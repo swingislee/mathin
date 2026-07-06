@@ -51,7 +51,7 @@ curl -fsS http://127.0.0.1:8000/auth/v1/health
 ## 密钥
 
 - `SUPABASE_PUBLISHABLE_KEY`：允许放入前端 `.env.local`，仍应避免无必要传播。
-- `SUPABASE_SECRET_KEY` / `SERVICE_ROLE_KEY`：绕过普通 RLS，仅允许可信服务器使用。本项目当前不需要。
+- `SUPABASE_SECRET_KEY` / `SERVICE_ROLE_KEY`：绕过普通 RLS，仅允许可信服务器使用。自 P2 起 Next 服务端需要它（`.env.local` 中的 `SUPABASE_SECRET_KEY`，游戏成绩经服务端校验后落库），仍绝不进入浏览器与 Git。
 - `JWT_SECRET`、`POSTGRES_PASSWORD`：绝不进入前端、日志、截图或 Git。
 - `.env.local` 被 Git 忽略；提交前使用 `git grep` 和 staged diff 检查密钥。
 

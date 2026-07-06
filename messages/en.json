@@ -3,6 +3,21 @@
   "home": {"quote":"Ce qui embellit le désert, c'est qu'il cache un puits quelque part…","quoteTranslation":"What makes the desert beautiful is that somewhere it hides a well…","cta":"Start exploring","heroAlt":"The Little Prince sitting on the moon, watching a rose","drawer":"Utilities","openDrawer":"Open utility navigation"},
   "common": {"theme":"Theme","language":"Language","light":"Light","dark":"Dark","system":"System","home":"Home","backHome":"Back home","comingSoon":"This space is being prepared. Content is coming soon.","logout":"Sign out","login":"Sign in"},
   "auth": {"loginTitle":"Sign in to Mathin","signupTitle":"Create an account","email":"Email","password":"Password","login":"Sign in","signup":"Sign up","noAccount":"Need an account?","hasAccount":"Already have an account?","error":"Something went wrong. Check your email and password."},
+  "games": {
+    "intro":"The royal arena: every game is a \"reasonable order\". Pick a crown and beat the clock.",
+    "start":"Start","restart":"Restart","backToGames":"Game hall",
+    "difficultyLabel":"Difficulty",
+    "difficulty": {"easy":"Page","medium":"Knight","hard":"King"},
+    "pickDifficulty":"Pick a difficulty — you can restart anytime.",
+    "rules":"Rules & tips",
+    "submitting":"Submitting score…",
+    "finishedIn":"Finished in {time}",
+    "recorded":"Entered in the royal register",
+    "notRecorded":"This round was not ranked",
+    "submitFailed":"Failed to submit score",
+    "loginToRank":"Sign in so your results count on the leaderboard",
+    "items": {}
+  },
   "tools": {
     "intro":"Interactive classroom instruments: open directly, or copy the embed code into your courseware.",
     "open":"Open","copyEmbed":"Copy embed code","copied":"Copied","backToTools":"Tools","fullscreen":"Fullscreen",

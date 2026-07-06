@@ -3,6 +3,21 @@
   "home": {"quote":"Ce qui embellit le désert, c'est qu'il cache un puits quelque part…","quoteTranslation":"使沙漠显得美丽的，是它在某处藏着一口井……","cta":"开始探索","heroAlt":"小王子坐在月球上观察玫瑰","drawer":"实用功能","openDrawer":"打开实用功能导航"},
   "common": {"theme":"主题","language":"语言","light":"亮色","dark":"暗色","system":"系统","home":"首页","backHome":"返回首页","comingSoon":"这里正在搭建，内容很快就会到来。","logout":"退出登录","login":"登录"},
   "auth": {"loginTitle":"登录 Mathin","signupTitle":"创建账号","email":"邮箱","password":"密码","login":"登录","signup":"注册","noAccount":"还没有账号？","hasAccount":"已经有账号？","error":"操作失败，请检查邮箱和密码。"},
+  "games": {
+    "intro":"御前竞技场：每个游戏都是一道「合理的敕令」。挑一顶王冠，开始计时。",
+    "start":"开始","restart":"重开","backToGames":"游戏大厅",
+    "difficultyLabel":"难度",
+    "difficulty": {"easy":"侍从","medium":"骑士","hard":"国王"},
+    "pickDifficulty":"选择难度，随时可以重开。",
+    "rules":"规则与技巧",
+    "submitting":"成绩提交中…",
+    "finishedIn":"完成用时 {time}",
+    "recorded":"已载入御前名册",
+    "notRecorded":"本局未计入排行",
+    "submitFailed":"成绩提交失败",
+    "loginToRank":"登录后成绩才会计入排行榜",
+    "items": {}
+  },
   "tools": {
     "intro":"课堂上的交互器具：直接打开使用，或复制嵌入代码插入课件。",
     "open":"打开","copyEmbed":"复制嵌入代码","copied":"已复制","backToTools":"工具库","fullscreen":"全屏",
