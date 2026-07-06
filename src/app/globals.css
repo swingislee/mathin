@@ -1,47 +1,172 @@
 @import "tailwindcss";
 
+/* 设计 token 来源：docs/plan/01-design-system.md（色值取样自 public/Main.png） */
 :root {
-  --background: #fffdf8;
-  --foreground: #29251f;
-  --card: #ffffff;
-  --border: #e8e1d5;
+  --paper: #fffdf8;
+  --ink: #29251f;
   --muted: #766f65;
-  --accent: #f5dfa4;
+  --line: #e8e1d5;
+  --card: #ffffff;
+  --moon: #feedb9;
+  --star: #ffebbd;
+  --crater: #cbab8f;
+  --rose: #e55c60;
+  --rose-deep: #c94a4f;
+  --leaf: #bbcf87;
+  --leaf-deep: #6f8b48;
+  --cheek: #fbc9c3;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
+/* 暗色 = 星夜 */
 .dark {
-  --background: #171612;
-  --foreground: #f4efe5;
-  --card: #211f1a;
-  --border: #39352d;
-  --muted: #aaa296;
-  --accent: #806a34;
+  --paper: #191d2b;
+  --ink: #f2eddf;
+  --muted: #9ba0b0;
+  --line: #333a4e;
+  --card: #212637;
+  --moon: #d9be7e;
+  --star: #e8d9a8;
+  --crater: #8f7a64;
+  --rose: #e06a6e;
+  --rose-deep: #c94a4f;
+  --leaf: #8fa968;
+  --leaf-deep: #a9c284;
+  --cheek: #b98883;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not(.light) {
-    --background: #171612;
-    --foreground: #f4efe5;
-    --card: #211f1a;
-    --border: #39352d;
-    --muted: #aaa296;
-    --accent: #806a34;
+    --paper: #191d2b;
+    --ink: #f2eddf;
+    --muted: #9ba0b0;
+    --line: #333a4e;
+    --card: #212637;
+    --moon: #d9be7e;
+    --star: #e8d9a8;
+    --crater: #8f7a64;
+    --rose: #e06a6e;
+    --rose-deep: #c94a4f;
+    --leaf: #8fa968;
+    --leaf-deep: #a9c284;
+    --cheek: #b98883;
   }
 }
 
+@theme inline {
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-card: var(--card);
+  --color-moon: var(--moon);
+  --color-star: var(--star);
+  --color-crater: var(--crater);
+  --color-rose: var(--rose);
+  --color-rose-deep: var(--rose-deep);
+  --color-leaf: var(--leaf);
+  --color-leaf-deep: var(--leaf-deep);
+  --color-cheek: var(--cheek);
+  --font-sans: ui-sans-serif, system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-display: "LXGW WenKai", "LXGW WenKai Screen", "Kaiti SC", "STKaiti", "KaiTi", "BiauKai", serif;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
   margin: 0;
 }
 
-* { border-color: var(--border); }
+* { border-color: var(--line); }
 button, a { -webkit-tap-highlight-color: transparent; }
+
+/* 纸纹：极轻的灰度噪点覆盖全页（docs/plan/01：纸感） */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.09;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.55' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.dark body::after { mix-blend-mode: screen; opacity: 0.05; }
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) body::after { mix-blend-mode: screen; opacity: 0.05; }
+}
+
+/*
+ * 五星球主题作用域变量（docs/plan/05）：
+ * 页面骨架输出 data-planet，星球色值只出现在这里，组件一律引用 --p-*。
+ */
+[data-planet="earth"] {
+  --p-accent: #de9455;
+  --p-accent-2: #3b4668;
+  --p-wash: #f9efdc;
+  --p-line: #d9c3a0;
+}
+[data-planet="king"] {
+  --p-accent: #b0525c;
+  --p-accent-2: #d8b266;
+  --p-wash: #f9ebe7;
+  --p-line: #e3c9bc;
+}
+[data-planet="lamplighter"] {
+  --p-accent: #f1c86e;
+  --p-accent-2: #4a4a72;
+  --p-wash: #f3efe9;
+  --p-line: #d5cfc9;
+}
+[data-planet="geographer"] {
+  --p-accent: #6f8b48;
+  --p-accent-2: #3e4a5e;
+  --p-wash: #f8f1e2;
+  --p-line: #e2d8c2;
+}
+[data-planet="businessman"] {
+  --p-accent: #c89b52;
+  --p-accent-2: #5c554a;
+  --p-wash: #f8f1df;
+  --p-line: #e0d3b4;
+}
+.dark [data-planet="earth"] { --p-accent: #c97f45; --p-accent-2: #8e9bc4; --p-wash: #1e2233; --p-line: #3a4059; }
+.dark [data-planet="king"] { --p-accent: #c76d76; --p-accent-2: #b99450; --p-wash: #242030; --p-line: #453a47; }
+.dark [data-planet="lamplighter"] { --p-accent: #e7bc5f; --p-accent-2: #9c9ccb; --p-wash: #1c1e30; --p-line: #383b54; }
+.dark [data-planet="geographer"] { --p-accent: #a9c284; --p-accent-2: #a7b4c9; --p-wash: #20242f; --p-line: #363c4a; }
+.dark [data-planet="businessman"] { --p-accent: #a87f42; --p-accent-2: #b4ab9c; --p-wash: #232019; --p-line: #413a2c; }
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) [data-planet="earth"] { --p-accent: #c97f45; --p-accent-2: #8e9bc4; --p-wash: #1e2233; --p-line: #3a4059; }
+  :root:not(.light) [data-planet="king"] { --p-accent: #c76d76; --p-accent-2: #b99450; --p-wash: #242030; --p-line: #453a47; }
+  :root:not(.light) [data-planet="lamplighter"] { --p-accent: #e7bc5f; --p-accent-2: #9c9ccb; --p-wash: #1c1e30; --p-line: #383b54; }
+  :root:not(.light) [data-planet="geographer"] { --p-accent: #a9c284; --p-accent-2: #a7b4c9; --p-wash: #20242f; --p-line: #363c4a; }
+  :root:not(.light) [data-planet="businessman"] { --p-accent: #a87f42; --p-accent-2: #b4ab9c; --p-wash: #232019; --p-line: #413a2c; }
+}
+
+/*
+ * 首页主视觉 focus box 适配：
+ * Main.png 中需要完整保留的构图区域（王子+玫瑰+月亮+入口轨道）为
+ * center (54%, 57%)、尺寸 64% × 70%（相对整张图）。
+ * 图片边长 --s 取「舞台宽/0.64」与「舞台高/0.70」的较小者（contain 语义，跟随短边缩放），
+ * 再把焦点框中心对齐舞台中心。cqw/cqh 相对 .hero-stage 容器解析。
+ */
+.hero-stage { container-type: size; }
+.hero-art {
+  --s: min(156.25cqw, 142.857cqh);
+  position: absolute;
+  width: var(--s);
+  height: var(--s);
+  left: calc(50cqw - 0.54 * var(--s));
+  top: calc(50cqh - 0.57 * var(--s));
+}
+
+/* 首页星球漂浮（01-5：全站唯一的页面级动画） */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+.animate-float { animation: float 6s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; }
+}

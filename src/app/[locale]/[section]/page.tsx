@@ -1,10 +1,12 @@
+import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
-import { SectionPage } from "@/components/section-page";
+import { EmptyState } from "@/components/empty-state";
+import { SectionShell, type Section } from "@/components/section-shell";
 import { requireUser } from "@/lib/auth";
 
-const publicSections = ["story", "games", "minds", "terms", "tools"] as const;
+// tools 已建成真实路由（app/[locale]/tools），从占位白名单移除（docs/plan/03-§6）
+const publicSections = ["story", "games", "minds", "terms"] as const;
 const protectedSections = ["dashboard", "classroom", "notebook", "whiteboard"] as const;
-type Section = (typeof publicSections)[number] | (typeof protectedSections)[number];
 
 export default async function SectionRoute({ params }: { params: Promise<{ locale: string; section: string }> }) {
   const { locale, section } = await params;
@@ -12,5 +14,10 @@ export default async function SectionRoute({ params }: { params: Promise<{ local
   const isProtected = protectedSections.includes(section as (typeof protectedSections)[number]);
   if (!isPublic && !isProtected) notFound();
   if (isProtected) await requireUser(locale);
-  return <SectionPage section={section as Section} locale={locale} showLogout={isProtected} />;
+  const common = await getTranslations("common");
+  return (
+    <SectionShell section={section as Section}>
+      <EmptyState message={common("comingSoon")} />
+    </SectionShell>
+  );
 }

@@ -1,6 +1,17 @@
 {
   "nav": {"story":"故事","games":"游戏","minds":"思维","terms":"知识","tools":"工具","dashboard":"仪表盘","classroom":"教室","notebook":"笔记","whiteboard":"画板"},
-  "home": {"eyebrow":"数学，从好奇开始","description":"在故事、游戏和动手探索中，发现数学清晰而有趣的一面。","drawer":"实用功能","openDrawer":"打开实用功能导航"},
-  "common": {"theme":"主题","language":"语言","light":"亮色","dark":"暗色","system":"系统","backHome":"返回首页","comingSoon":"这里正在搭建，内容很快就会到来。","logout":"退出登录","login":"登录"},
-  "auth": {"loginTitle":"登录 Mathin","signupTitle":"创建账号","email":"邮箱","password":"密码","login":"登录","signup":"注册","noAccount":"还没有账号？","hasAccount":"已经有账号？","error":"操作失败，请检查邮箱和密码。"}
+  "home": {"quote":"Ce qui embellit le désert, c'est qu'il cache un puits quelque part…","quoteTranslation":"使沙漠显得美丽的，是它在某处藏着一口井……","cta":"开始探索","heroAlt":"小王子坐在月球上观察玫瑰","drawer":"实用功能","openDrawer":"打开实用功能导航"},
+  "common": {"theme":"主题","language":"语言","light":"亮色","dark":"暗色","system":"系统","home":"首页","backHome":"返回首页","comingSoon":"这里正在搭建，内容很快就会到来。","logout":"退出登录","login":"登录"},
+  "auth": {"loginTitle":"登录 Mathin","signupTitle":"创建账号","email":"邮箱","password":"密码","login":"登录","signup":"注册","noAccount":"还没有账号？","hasAccount":"已经有账号？","error":"操作失败，请检查邮箱和密码。"},
+  "tools": {
+    "intro":"课堂上的交互器具：直接打开使用，或复制嵌入代码插入课件。",
+    "open":"打开","copyEmbed":"复制嵌入代码","copied":"已复制","backToTools":"工具库","fullscreen":"全屏",
+    "categories": {"number":"数与运算","geometry":"几何","motion":"行程","misc":"其他"},
+    "items": {
+      "fraction-line": {"name":"分数数轴","desc":"以分数单位逐点累加，在同一条数轴上比较不同的分数单位。"},
+      "motion-lab": {"name":"行程演示","desc":"多角色同场出发，演示相遇与追及，用测距尺实时查看间距。"}
+    },
+    "fractionLine": {"unitLabel":"分数单位","nextPoint":"绘制下一个点","undoPoint":"撤销上一点","deleteRow":"删除当前行","clearAll":"清空","zoom":"缩放","overview":"全览","showTicks":"整数刻度","showGuides":"对齐参考线","zeroHint":"拖动任意整数刻度可平移数轴，双击复位"},
+    "motion": {"length":"全程","start":"出发","pause":"暂停","resume":"继续","reset":"回到起点","addRunway":"添加跑道","removeRunway":"移除跑道","showRuler":"测距尺","clock":"计时","allTime":"统一时间","allSpeed":"统一速度","apply":"确认","cancel":"取消","auto":"自动","cropTitle":"裁剪图片","cropZoom":"缩放","distance":"路程","time":"时间","speed":"速度","solveHint":"标「自动」的量由另外两项算出，直接修改它则换成求另一个量","chooseVehicle":"选择载具（自动填入该载具的速度）","uploadImage":"上传图片","resetImage":"恢复默认","avatar":"角色头像","flip":"换方向","position":"位置","dragHint":"拖动角色即可移动与实测：拖动方向就是运动方向，松手自动填入路程、时间与速度","editHint":"点击头像上传照片、长按恢复默认；点击载具换乘（自动带速度）、长按恢复默认；点击位置数字可直接输入；◀ ▶ 原地换向"}
+  }
 }
