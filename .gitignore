@@ -45,3 +45,9 @@ supabase-project/
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Claude Code personal settings and reference material
+.claude/
+
+# editor
+.vscode/
