@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // 参考资料与历史 demo，不参与构建
+    ".claude/**",
   ]),
 ]);
 

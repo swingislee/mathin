@@ -35,4 +35,5 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
-export const config = { matcher: ["/((?!api|_next|_vercel|.*\\..*).*)"] };
+// embed 为无 locale 前缀的纯净嵌入路由（docs/plan/03-§6），不经过 intl/auth 中间件
+export const config = { matcher: ["/((?!api|embed|_next|_vercel|.*\\..*).*)"] };
