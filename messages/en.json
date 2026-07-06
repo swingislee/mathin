@@ -1,0 +1,6 @@
+{
+  "nav": {"story":"Stories","games":"Games","minds":"Minds","terms":"Terms","tools":"Tools","dashboard":"Dashboard","classroom":"Classroom","notebook":"Notebook","whiteboard":"Whiteboard"},
+  "home": {"eyebrow":"Mathematics starts with curiosity","description":"Discover the clear and playful side of mathematics through stories, games, and hands-on exploration.","drawer":"Utilities","openDrawer":"Open utility navigation"},
+  "common": {"theme":"Theme","language":"Language","light":"Light","dark":"Dark","system":"System","backHome":"Back home","comingSoon":"This space is being prepared. Content is coming soon.","logout":"Sign out","login":"Sign in"},
+  "auth": {"loginTitle":"Sign in to Mathin","signupTitle":"Create an account","email":"Email","password":"Password","login":"Sign in","signup":"Sign up","noAccount":"Need an account?","hasAccount":"Already have an account?","error":"Something went wrong. Check your email and password."}
+}

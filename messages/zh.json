@@ -1,0 +1,6 @@
+{
+  "nav": {"story":"故事","games":"游戏","minds":"思维","terms":"知识","tools":"工具","dashboard":"仪表盘","classroom":"教室","notebook":"笔记","whiteboard":"画板"},
+  "home": {"eyebrow":"数学，从好奇开始","description":"在故事、游戏和动手探索中，发现数学清晰而有趣的一面。","drawer":"实用功能","openDrawer":"打开实用功能导航"},
+  "common": {"theme":"主题","language":"语言","light":"亮色","dark":"暗色","system":"系统","backHome":"返回首页","comingSoon":"这里正在搭建，内容很快就会到来。","logout":"退出登录","login":"登录"},
+  "auth": {"loginTitle":"登录 Mathin","signupTitle":"创建账号","email":"邮箱","password":"密码","login":"登录","signup":"注册","noAccount":"还没有账号？","hasAccount":"已经有账号？","error":"操作失败，请检查邮箱和密码。"}
+}

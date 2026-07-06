@@ -1,0 +1,9 @@
+import { getTranslations } from "next-intl/server";
+import { Link } from "@/i18n/navigation";
+import { login, signup } from "@/app/[locale]/(auth)/actions";
+
+export async function AuthForm({ mode, locale, hasError, next }: { mode: "login" | "signup"; locale: string; hasError: boolean; next?: string }) {
+  const t = await getTranslations("auth");
+  const action = mode === "login" ? login : signup;
+  return <main className="grid min-h-screen place-items-center p-6"><form action={action} className="w-full max-w-md rounded-[2rem] border bg-[var(--card)] p-8 shadow-sm"><Link href="/" className="text-2xl font-semibold">Mathin</Link><h1 className="mb-8 mt-12 text-3xl font-semibold">{t(mode === "login" ? "loginTitle" : "signupTitle")}</h1><input type="hidden" name="locale" value={locale} />{next && <input type="hidden" name="next" value={next} />}<label className="mb-2 block text-sm" htmlFor="email">{t("email")}</label><input className="mb-5 w-full rounded-xl border bg-transparent px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--accent)]" id="email" name="email" type="email" required autoComplete="email" /><label className="mb-2 block text-sm" htmlFor="password">{t("password")}</label><input className="w-full rounded-xl border bg-transparent px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--accent)]" id="password" name="password" type="password" minLength={6} required autoComplete={mode === "login" ? "current-password" : "new-password"} />{hasError && <p className="mt-4 text-sm text-red-600">{t("error")}</p>}<button className="mt-7 w-full rounded-xl bg-[var(--foreground)] px-4 py-3 font-medium text-[var(--background)]" type="submit">{t(mode)}</button><p className="mt-6 text-center text-sm text-[var(--muted)]">{t(mode === "login" ? "noAccount" : "hasAccount")} <Link className="underline" href={mode === "login" ? "/signup" : "/login"}>{t(mode === "login" ? "signup" : "login")}</Link></p></form></main>;
+}
