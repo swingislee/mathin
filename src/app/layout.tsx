@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { cookies } from "next/headers";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -18,18 +19,21 @@ export const metadata: Metadata = {
   description: "探索数学故事、游戏、思维与工具。",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const savedTheme = (await cookies()).get("mathin-theme")?.value;
+  const theme = savedTheme === "light" || savedTheme === "dark" ? savedTheme : "system";
   return (
     <html
       lang="zh-CN"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      data-theme={theme}
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased ${theme === "system" ? "" : theme}`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body suppressHydrationWarning className="min-h-full flex flex-col">{children}</body>
     </html>
   );
 }

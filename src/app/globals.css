@@ -25,6 +25,17 @@
   --accent: #806a34;
 }
 
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --background: #171612;
+    --foreground: #f4efe5;
+    --card: #211f1a;
+    --border: #39352d;
+    --muted: #aaa296;
+    --accent: #806a34;
+  }
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
