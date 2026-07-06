@@ -42,6 +42,12 @@ curl -fsS http://127.0.0.1:8000/auth/v1/health
 
 若新配置失败，恢复相同时间戳的两个备份后重新执行 `docker compose up -d --force-recreate auth kong`。确认成功后可将备份移动到仅管理员可读的离线目录；不要复制进本仓库。
 
+## 数据库迁移
+
+- 所有建表与 RLS 以 SQL 文件形式提交在仓库 `supabase/migrations/`，文件名前缀为时间戳，按文件名顺序在 Studio 的 SQL Editor（或宿主机 psql）中手动执行一次。
+- 迁移文件只追加、不修改历史文件；需要变更结构时新增一个迁移文件。
+- 没有 RLS 策略的表不得合并（docs/plan/03-3）。
+
 ## 密钥
 
 - `SUPABASE_PUBLISHABLE_KEY`：允许放入前端 `.env.local`，仍应避免无必要传播。
