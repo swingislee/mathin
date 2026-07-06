@@ -16,7 +16,9 @@
     "notRecorded":"This round was not ranked",
     "submitFailed":"Failed to submit score",
     "loginToRank":"Sign in so your results count on the leaderboard",
-    "items": {}
+    "items": {
+      "sudoku": {"name":"Sudoku","desc":"Fill the 9×9 board with 1–9 so no row, column or box repeats.","rules":"Each row, column and 3×3 box must contain the digits 1–9 exactly once. Tap an empty cell, then enter a digit with the keyboard or the pad below — clashing digits turn red. Start with the cells that have the fewest candidates."}
+    }
   },
   "tools": {
     "intro":"Interactive classroom instruments: open directly, or copy the embed code into your courseware.",
