@@ -1,5 +1,5 @@
 {
-  "nav": {"story":"故事","games":"游戏","minds":"思维","terms":"知识","tools":"工具","dashboard":"仪表盘","classroom":"教室","notebook":"笔记","whiteboard":"画板"},
+  "nav": {"story":"故事","games":"游戏","minds":"思维","terms":"知识","tools":"工具","dashboard":"仪表盘","classroom":"教室","notebook":"笔记","whiteboard":"画板","planetNames":{"story":"地球","games":"国王的星球","minds":"点灯人的星球","terms":"地理学家的星球","tools":"商人的星球"}},
   "home": {"quote":"Ce qui embellit le désert, c'est qu'il cache un puits quelque part…","quoteTranslation":"使沙漠显得美丽的，是它在某处藏着一口井……","cta":"开始探索","heroAlt":"小王子坐在月球上观察玫瑰","drawer":"实用功能","openDrawer":"打开实用功能导航"},
   "common": {"theme":"主题","language":"语言","light":"亮色","dark":"暗色","system":"系统","home":"首页","backHome":"返回首页","comingSoon":"这里正在搭建，内容很快就会到来。","logout":"退出登录","login":"登录"},
   "auth": {"loginTitle":"登录 Mathin","signupTitle":"创建账号","email":"邮箱","password":"密码","login":"登录","signup":"注册","noAccount":"还没有账号？","hasAccount":"已经有账号？","error":"操作失败，请检查邮箱和密码。"},
@@ -13,5 +13,40 @@
     },
     "fractionLine": {"unitLabel":"分数单位","nextPoint":"绘制下一个点","undoPoint":"撤销上一点","deleteRow":"删除当前行","clearAll":"清空","zoom":"缩放","overview":"全览","showTicks":"整数刻度","showGuides":"对齐参考线","zeroHint":"拖动任意整数刻度可平移数轴，双击复位"},
     "motion": {"length":"全程","start":"出发","pause":"暂停","resume":"继续","reset":"回到起点","addRunway":"添加跑道","removeRunway":"移除跑道","showRuler":"测距尺","clock":"计时","allTime":"统一时间","allSpeed":"统一速度","apply":"确认","cancel":"取消","auto":"自动","cropTitle":"裁剪图片","cropZoom":"缩放","distance":"路程","time":"时间","speed":"速度","solveHint":"标「自动」的量由另外两项算出，直接修改它则换成求另一个量","chooseVehicle":"选择载具（自动填入该载具的速度）","uploadImage":"上传图片","resetImage":"恢复默认","avatar":"角色头像","flip":"换方向","position":"位置","dragHint":"拖动角色即可移动与实测：拖动方向就是运动方向，松手自动填入路程、时间与速度","editHint":"点击头像上传照片、长按恢复默认；点击载具换乘（自动带速度）、长按恢复默认；点击位置数字可直接输入；◀ ▶ 原地换向"}
+  },
+  "terms": {
+    "intro":"从小学到大学基础的数学定义学习线。地理学家只记录永恒的东西。",
+    "stage1":"第一学段 · 1–2 年级","stage2":"第二学段 · 3–4 年级","stage3":"第三学段 · 5–6 年级",
+    "entry":"词条","definition":"定义","seeIt":"看见它","fromTo":"它从哪来 · 到哪去","tryIt":"试一试",
+    "prereq":"前置概念","descendants":"后继概念","none":"（暂无）","relatedMinds":"背后的思维",
+    "openFull":"在工具页打开","correct":"答对了","wrong":"再想想",
+    "galaxyLearned":"你点亮过的星","galaxyHint":"每一颗星都是一个知识点，金色的是你深入学习过的地方；把鼠标放上去看看它是什么，点一下就能前往。","index":"学段索引"
+  },
+  "termsUniverse": {
+    "hint":"点击一颗星球，去看看那里的数学","recommended":"从这里开始","enter":"进入星球","islands":"知识岛屿","progress":"学习进度","path":"学习路径",
+    "conceptCount":"{n} 个知识点","litCount":"已点亮 {n} / {total}","empty":"这座岛还笼罩在云雾里，等待开垦……","rotateHint":"拖动旋转星球",
+    "enterIsland":"进入学习路径","backToGalaxy":"知识星系","continueHere":"从这里继续","graphEntry":"完整知识图谱","graphIntro":"给教师与重度探索者的全景关系视图——星球与岛屿才是学习入口。",
+    "planets": {
+      "number": {"name":"数与数量","tag":"数的诞生、表示与比较——一切从数数开始。"},
+      "operations": {"name":"运算与算法","tag":"加减乘除的工坊，规则与算理的机械城。"},
+      "geometry": {"name":"图形与空间","tag":"点线面体的水晶世界，测量与变换。"},
+      "algebra": {"name":"关系与代数","tag":"从具体的数走向抽象的关系与符号。"},
+      "functions": {"name":"函数与变化","tag":"坐标、变化与运动的时间之城。"},
+      "data": {"name":"数据与概率","tag":"观测、统计与随机的湖畔天文台。"},
+      "logic": {"name":"逻辑与证明","tag":"命题、集合与证明的灯塔海岸。"}
+    },
+    "islandNames": {
+      "number": {"birth":{"name":"数的诞生岛","desc":"数数、自然数、0 与数轴——数是怎么来的。"},"notation":{"name":"位值高塔岛","desc":"十进制、位值与大数的读写。"},"decimals":{"name":"小数百分岛","desc":"小数、小数的性质与百分数。"},"fraction-ratio":{"name":"分数比例岛","desc":"分数、比与比例——部分与整体的语言。"}},
+      "operations": {"add-sub":{"name":"加减工坊岛","desc":"加法、减法、进退位、估算与小数分数加减。"},"mul-div":{"name":"乘除磨坊岛","desc":"乘法、除法、倍、余数与小数分数乘除。"},"factors":{"name":"因倍矿脉岛","desc":"因数倍数、质数合数与奇偶。"},"rules":{"name":"运算规则岛","desc":"运算顺序、括号与运算律。"}},
+      "geometry": {"shapes":{"name":"形的花园岛","desc":"立体与平面图形、三角形、四边形与圆。"},"lines":{"name":"线与角谷岛","desc":"线段、射线、直线、角与垂直平行。"},"measure":{"name":"测量山谷岛","desc":"长度、周长、面积、体积与单位。"},"transform":{"name":"空间变换岛","desc":"位置、方向、平移旋转对称与坐标。"}},
+      "algebra": {"patterns":{"name":"规律村岛","desc":"符号与用字母表示数。"},"relations":{"name":"关系桥岛","desc":"常见数量关系与模型。"},"equations":{"name":"方程门岛","desc":"等式、未知数与方程的远方。"},"structures":{"name":"结构城岛","desc":"代数结构的远方。"}},
+      "functions": {"coordinates":{"name":"坐标港岛","desc":"坐标、图象与正比例。"},"change":{"name":"变化钟塔岛","desc":"变量、变化率与函数的远方。"},"sequences":{"name":"数列阶梯岛","desc":"数列与规律的远方。"},"calculus":{"name":"微积分悬崖岛","desc":"极限、导数与积分的远方。"}},
+      "data": {"market":{"name":"数据集市岛","desc":"分类、收集与统计表。"},"charts":{"name":"图表湾岛","desc":"条形、折线与复式统计图。"},"lighthouse":{"name":"统计灯塔岛","desc":"平均数与数据的代表。"},"chance":{"name":"概率花园岛","desc":"随机事件与可能性。"}},
+      "logic": {"logic-lighthouse":{"name":"逻辑灯塔岛","desc":"命题与推理的远方。"},"proof-bridge":{"name":"证明桥岛","desc":"证明方法的远方。"},"set-library":{"name":"集合书库岛","desc":"集合与映射的远方。"},"language":{"name":"数学语言岛","desc":"符号、表述与严谨表达的远方。"}}
+    }
+  },
+  "mindsSection": {
+    "intro":"每领悟一种思维方式，就点亮一盏灯。",
+    "appearsIn":"在哪些知识里出现","lit":"已点亮","unlit":"未点亮"
   }
 }

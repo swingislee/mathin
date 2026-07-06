@@ -1,5 +1,5 @@
 {
-  "nav": {"story":"Stories","games":"Games","minds":"Minds","terms":"Terms","tools":"Tools","dashboard":"Dashboard","classroom":"Classroom","notebook":"Notebook","whiteboard":"Whiteboard"},
+  "nav": {"story":"Stories","games":"Games","minds":"Minds","terms":"Terms","tools":"Tools","dashboard":"Dashboard","classroom":"Classroom","notebook":"Notebook","whiteboard":"Whiteboard","planetNames":{"story":"Earth","games":"The King's planet","minds":"The Lamplighter's planet","terms":"The Geographer's planet","tools":"The Businessman's planet"}},
   "home": {"quote":"Ce qui embellit le désert, c'est qu'il cache un puits quelque part…","quoteTranslation":"What makes the desert beautiful is that somewhere it hides a well…","cta":"Start exploring","heroAlt":"The Little Prince sitting on the moon, watching a rose","drawer":"Utilities","openDrawer":"Open utility navigation"},
   "common": {"theme":"Theme","language":"Language","light":"Light","dark":"Dark","system":"System","home":"Home","backHome":"Back home","comingSoon":"This space is being prepared. Content is coming soon.","logout":"Sign out","login":"Sign in"},
   "auth": {"loginTitle":"Sign in to Mathin","signupTitle":"Create an account","email":"Email","password":"Password","login":"Sign in","signup":"Sign up","noAccount":"Need an account?","hasAccount":"Already have an account?","error":"Something went wrong. Check your email and password."},
@@ -13,5 +13,40 @@
     },
     "fractionLine": {"unitLabel":"Unit fraction","nextPoint":"Plot next point","undoPoint":"Undo point","deleteRow":"Delete current row","clearAll":"Clear","zoom":"Zoom","overview":"Overview","showTicks":"Integer ticks","showGuides":"Alignment guides","zeroHint":"Drag any integer tick to pan; double-click to reset"},
     "motion": {"length":"Track length","start":"Go","pause":"Pause","resume":"Resume","reset":"Back to start","addRunway":"Add track","removeRunway":"Remove track","showRuler":"Ruler","clock":"Clock","allTime":"Set all times","allSpeed":"Set all speeds","apply":"Apply","cancel":"Cancel","auto":"auto","cropTitle":"Crop image","cropZoom":"Zoom","distance":"Distance","time":"Time","speed":"Speed","solveHint":"The value marked “auto” is computed from the other two; edit it to switch which one is solved","chooseVehicle":"Choose vehicle (sets its typical speed)","uploadImage":"Upload image","resetImage":"Reset","avatar":"Avatar","flip":"Flip direction","position":"Position","dragHint":"Drag a character to move and measure: the drag direction sets the travel direction; distance, time and speed fill in on release","editHint":"Click the avatar to upload a photo (long-press to reset); click the vehicle to switch (sets its speed, long-press to reset); click the position number to type a position; ◀ ▶ turns in place"}
+  },
+  "terms": {
+    "intro":"A learning line of mathematical definitions from primary school onward. The geographer records only eternal things.",
+    "stage1":"Stage 1 · Grades 1–2","stage2":"Stage 2 · Grades 3–4","stage3":"Stage 3 · Grades 5–6",
+    "entry":"Entry","definition":"Definition","seeIt":"See it","fromTo":"Where it comes from · where it goes","tryIt":"Try it",
+    "prereq":"Prerequisites","descendants":"What builds on it","none":"(none yet)","relatedMinds":"Minds behind it",
+    "openFull":"Open in Tools","correct":"Correct!","wrong":"Think again",
+    "galaxyLearned":"Stars you have lit","galaxyHint":"Every star is a concept; the golden ones are those you have studied in depth. Hover to see what a star is, click to visit it.","index":"Index by stage"
+  },
+  "termsUniverse": {
+    "hint":"Click a planet to explore its mathematics","recommended":"Start here","enter":"Visit planet","islands":"Knowledge islands","progress":"Progress","path":"Learning path",
+    "conceptCount":"{n} concepts","litCount":"Lit {n} / {total}","empty":"This island is still wrapped in mist, waiting to be settled…","rotateHint":"Drag to rotate",
+    "enterIsland":"Enter the path","backToGalaxy":"Knowledge galaxy","continueHere":"Continue here","graphEntry":"Full knowledge graph","graphIntro":"A panoramic relation view for teachers and heavy explorers — planets and islands are the learning entrances.",
+    "planets": {
+      "number": {"name":"Number & Quantity","tag":"Where numbers are born, written and compared."},
+      "operations": {"name":"Operations & Algorithms","tag":"The workshop of add, subtract, multiply, divide."},
+      "geometry": {"name":"Geometry & Space","tag":"A crystal world of shapes, measure and motion."},
+      "algebra": {"name":"Algebra & Relations","tag":"From concrete numbers to abstract relations."},
+      "functions": {"name":"Functions & Change","tag":"The clock town of coordinates and change."},
+      "data": {"name":"Data & Chance","tag":"A lakeside observatory of statistics and randomness."},
+      "logic": {"name":"Logic & Proof","tag":"The lighthouse coast of propositions and proof."}
+    },
+    "islandNames": {
+      "number": {"birth":{"name":"Isle of Counting","desc":"Counting, natural numbers, zero and the number line."},"notation":{"name":"Tower of Place Value","desc":"Base ten, place value and big numbers."},"decimals":{"name":"Isle of Decimals & Percent","desc":"Decimals, their properties, and percent."},"fraction-ratio":{"name":"Isle of Fractions & Ratio","desc":"Fractions, ratio and proportion."}},
+      "operations": {"add-sub":{"name":"Add & Subtract Workshop","desc":"Addition, subtraction, carrying, estimation."},"mul-div":{"name":"Multiply & Divide Mill","desc":"Multiplication, division, times and remainders."},"factors":{"name":"Mine of Factors","desc":"Factors, multiples, primes, odd and even."},"rules":{"name":"Isle of Rules","desc":"Order of operations, brackets and laws."}},
+      "geometry": {"shapes":{"name":"Garden of Shapes","desc":"Solid and plane figures, triangles, quadrilaterals, circles."},"lines":{"name":"Valley of Lines & Angles","desc":"Segments, rays, lines, angles, perpendicular and parallel."},"measure":{"name":"Valley of Measure","desc":"Length, perimeter, area, volume and units."},"transform":{"name":"Isle of Transformations","desc":"Position, direction, motion, symmetry, coordinates."}},
+      "algebra": {"patterns":{"name":"Village of Patterns","desc":"Symbols and letters for numbers."},"relations":{"name":"Bridge of Relations","desc":"Common quantity relations and models."},"equations":{"name":"Gate of Equations","desc":"Equalities and unknowns, further ahead."},"structures":{"name":"City of Structures","desc":"Algebraic structures, further ahead."}},
+      "functions": {"coordinates":{"name":"Harbour of Coordinates","desc":"Coordinates, graphs and direct proportion."},"change":{"name":"Clocktower of Change","desc":"Variables and rates, further ahead."},"sequences":{"name":"Stairs of Sequences","desc":"Sequences and patterns, further ahead."},"calculus":{"name":"Cliffs of Calculus","desc":"Limits, derivatives, integrals — far ahead."}},
+      "data": {"market":{"name":"Market of Data","desc":"Sorting, collecting and tables."},"charts":{"name":"Bay of Charts","desc":"Bar, line and composite charts."},"lighthouse":{"name":"Lighthouse of Statistics","desc":"The mean and what represents data."},"chance":{"name":"Garden of Chance","desc":"Random events and likelihood."}},
+      "logic": {"logic-lighthouse":{"name":"Lighthouse of Logic","desc":"Propositions and reasoning, further ahead."},"proof-bridge":{"name":"Bridge of Proof","desc":"Ways of proving, further ahead."},"set-library":{"name":"Library of Sets","desc":"Sets and mappings, further ahead."},"language":{"name":"Isle of Notation & Rigor","desc":"Symbols and precise mathematical language, further ahead."}}
+    }
+  },
+  "mindsSection": {
+    "intro":"Each way of thinking you grasp lights another lamp.",
+    "appearsIn":"Where it appears","lit":"Lit","unlit":"Not yet lit"
   }
 }

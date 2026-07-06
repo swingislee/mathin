@@ -2,7 +2,9 @@ import Image from "next/image";
 import { ArrowRight, BookOpen, Lightbulb, Puzzle, Sprout, Wrench } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import type { CSSProperties } from "react";
+import { MiniPlanet } from "@/components/mini-planets";
 import { PlanetLink, type PlanetAccent } from "@/components/planet-link";
+import type { Planet } from "@/components/section-shell";
 import { SiteHeader } from "@/components/site-header";
 import { Star4 } from "@/components/star4";
 import { StarPath } from "@/components/star-path";
@@ -17,12 +19,12 @@ import { cn } from "@/lib/utils";
  * 轨道与站点定位在 .hero-art 图片坐标系内：以月亮圆心 (50.6%, 62%) 为圆心、
  * 半径 33%（约月亮半径 1.3 倍）的同心圆弧，站点取圆上 θ = 35°/63°/91°/119°/147°。
  */
-const stations: { slug: string; icon: typeof BookOpen; accent: PlanetAccent; left: string; top: string }[] = [
-  { slug: "story", icon: BookOpen, accent: "rose", left: "69.5%", top: "35.0%" },
-  { slug: "games", icon: Puzzle, accent: "moon", left: "80.0%", top: "47.0%" },
-  { slug: "minds", icon: Lightbulb, accent: "crater", left: "83.6%", top: "62.6%" },
-  { slug: "terms", icon: Sprout, accent: "leaf", left: "79.5%", top: "78.0%" },
-  { slug: "tools", icon: Wrench, accent: "star", left: "68.6%", top: "89.7%" },
+const stations: { slug: string; planet: Planet; icon: typeof BookOpen; accent: PlanetAccent; left: string; top: string }[] = [
+  { slug: "story", planet: "earth", icon: BookOpen, accent: "rose", left: "69.5%", top: "35.0%" },
+  { slug: "games", planet: "king", icon: Puzzle, accent: "moon", left: "80.0%", top: "47.0%" },
+  { slug: "minds", planet: "lamplighter", icon: Lightbulb, accent: "crater", left: "83.6%", top: "62.6%" },
+  { slug: "terms", planet: "geographer", icon: Sprout, accent: "leaf", left: "79.5%", top: "78.0%" },
+  { slug: "tools", planet: "businessman", icon: Wrench, accent: "star", left: "68.6%", top: "89.7%" },
 ];
 
 export default async function HomePage() {
@@ -65,13 +67,13 @@ export default async function HomePage() {
               />
               {/* 月亮的同心轨道弧（θ 25° → 157°） */}
               <StarPath viewBox="0 0 100 100" d="M64.6 32.1 A33 33 0 0 1 63.5 92.4" className="absolute inset-0 h-full w-full opacity-70" />
-              {stations.map(({ slug, icon, accent, left, top }, i) => (
+              {stations.map(({ slug, planet, accent, left, top }, i) => (
                 <div
                   key={slug}
                   className="animate-float absolute -translate-x-1/2 -translate-y-1/2"
                   style={{ left, top, animationDelay: `${i * 1.2}s` } as CSSProperties}
                 >
-                  <PlanetLink href={`/${slug}`} label={nav(slug)} icon={icon} accent={accent} />
+                  <PlanetLink href={`/${slug}`} label={nav(slug)} planetName={nav(`planetNames.${slug}`)} art={<MiniPlanet planet={planet} />} accent={accent} />
                 </div>
               ))}
             </div>

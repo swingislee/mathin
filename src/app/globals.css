@@ -144,6 +144,28 @@ body::after {
 }
 
 /*
+ * 星空页固定夜间基调（terms 知识宇宙）：星空即是夜，不随系统深浅切换。
+ * 同时兜底默认文字色与表单控件配色，避免浅色系统下出现深字压深底。
+ */
+.night {
+  color-scheme: dark;
+  color: var(--ink);
+  --paper: #191d2b;
+  --ink: #f2eddf;
+  --muted: #9ba0b0;
+  --line: #333a4e;
+  --card: #212637;
+  --moon: #d9be7e;
+  --star: #e8d9a8;
+  --crater: #8f7a64;
+  --rose: #e06a6e;
+  --rose-deep: #c94a4f;
+  --leaf: #8fa968;
+  --leaf-deep: #a9c284;
+  --cheek: #b98883;
+}
+
+/*
  * 首页主视觉 focus box 适配：
  * Main.png 中需要完整保留的构图区域（王子+玫瑰+月亮+入口轨道）为
  * center (54%, 57%)、尺寸 64% × 70%（相对整张图）。
@@ -166,6 +188,12 @@ body::after {
   50% { transform: translateY(-6px); }
 }
 .animate-float { animation: float 6s ease-in-out infinite; }
+
+/* 知识星空的星星微光闪烁（terms 板块专属动效） */
+@keyframes twinkle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; }
