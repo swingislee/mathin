@@ -26,7 +26,7 @@
 
 验收：一个工具能在教学课件 iframe 中正常嵌入使用；一条包含 ≥3 个概念、带前后置跳转的知识样板线上线。
 
-## P2 游戏与排名(当前阶段)
+## P2 游戏与排名（已完成）
 
 1. `profiles` 表 + 注册触发器 + `requireTeacher`（migration 起点）。
 2. 游戏框架：`GameDef`/`GameBoard` 接口、对局页统一框架、`game_sessions`/`game_scores` 表与服务端校验（03-3.2）。
@@ -36,7 +36,7 @@
 
 验收：两名用户可各自完赛并在排行榜看到彼此；直接 POST 伪造成绩被服务端拒绝。
 
-## P3 笔记（社交最小闭环）
+## P3 笔记（社交最小闭环）（已完成）
 
 0. **规划同步与依赖**：修订旧规划描述，安装 BlockNote/shadcn、zustand 与服务端消毒依赖。
 1. **数据层**：`notes`/`posts`/`post_likes`、RLS、触发器、Storage 桶与策略。
@@ -47,7 +47,7 @@
 
 验收以 `07-p3-notebook.md` §9 为准：未登录浏览与登录写作发布点赞闭环可用；连续输入期间零保存请求、停顿后单次写入；标题三处一致且双标签冲突不覆盖；anon 越权读私有笔记、改点赞数、传他人 Storage 路径均被拒；中英编辑器 UI 正确；lint/typecheck/build 与四档视觉验收全过。
 
-## P4 教室与画板（最重，拆细执行）
+## P4 教室与画板（当前阶段，最重，拆细执行；执行计划见 `08-p4-classroom-whiteboard.md`）
 
 1. 白板先行（教室依赖它）：Canvas 画布 + 工具条 → `whiteboards` 表与快照 → Realtime 协作同步。
 2. 教室结构：`classrooms`/`classroom_members` + 邀请码加入 + 教室主页。
