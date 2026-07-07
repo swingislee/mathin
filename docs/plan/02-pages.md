@@ -117,9 +117,12 @@ h1 板块名（文楷体）+ 标题左下 32px 短横线（--section-accent，2p
 
 ### 3.7 notebook 笔记
 
-- `/notebook`：帖子流（最新在前，P3 加点赞排序 tab）。每条：作者头像昵称、标题、正文前两行、点赞数、时间。浏览公开，发布/点赞需登录。
-- `/notebook/new`：发布页 = 标题 + Markdown 正文（textarea + 预览 tab，不引入富文本编辑器）。
-- `/notebook/[id]`：详情页 + 点赞按钮（cheek 色反馈）。首版无评论，无关注。
+- `/notebook`：公开帖子流，支持最新/最热排序；未登录可浏览。
+- `/notebook/[postId]`：公开帖子详情 + 点赞；点赞需登录。
+- `/notebook/me`：个人 Notion 式笔记工作区，需登录。
+- `/notebook/me/[noteId]`：在工作区内打开并编辑一篇笔记，需登录。
+
+P3 已批准引入 BlockNote 富文本编辑器；完整范围、数据模型、保存策略、视觉与验收以 `07-p3-notebook.md` 为唯一执行依据。
 
 ### 3.8 whiteboard 画板
 

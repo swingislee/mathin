@@ -78,11 +78,7 @@ game_scores (
 
 ### 3.3 笔记
 
-```sql
-posts ( author_id uuid, title text not null, body_md text not null, like_count int default 0 )
-post_likes ( post_id uuid, user_id uuid, primary key (post_id, user_id) )
--- RLS：posts 所有人可读，作者可增删改；post_likes 本人增删；like_count 由触发器维护
-```
+P3 使用三表模型：`notes` 保存私有树形笔记与 BlockNote `jsonb` 文档，`posts` 保存与源笔记解耦的公开发布快照，`post_likes` 保存点赞关系。所有表启用 RLS；`notes` 仅本人可读写，`posts` 公开可读且仅作者可发布维护，`like_count` 只允许安全定义者触发器更新。完整字段、索引、Storage 策略与并发版本锁见 `07-p3-notebook.md` §4。
 
 ### 3.4 教室（P4 建表，先记录设计）
 
@@ -111,6 +107,7 @@ whiteboard_members ( whiteboard_id, user_id, can_edit bool )
 - 统一用 **Supabase Realtime**：
   - 教室上课页：`channel("session:<id>")`，broadcast 翻页/答题/举手事件，presence 做在线名单。
   - 白板：`channel("wb:<id>")`，broadcast 增量笔画（节流 30ms 批量发送），每 30s 或离开时把全量笔画写入 `snapshot`。
+  - notebook：跨端元信息失效通知使用 broadcast 私有频道；不可用时降级为窗口聚焦刷新，详见 `07-p3-notebook.md` §5.3。
 - 明确不引入的东西（除非用户批准）：Yjs/CRDT、自建 websocket 服务、tldraw/excalidraw 整库。白板首版手写 Canvas 实现，功能范围以 02-3.8 为限。
 
 ## 5. 内容渲染
