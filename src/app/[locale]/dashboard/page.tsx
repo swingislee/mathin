@@ -15,6 +15,13 @@ interface BestRow {
   duration_ms: number;
 }
 
+interface RecentPostRow {
+  id: string;
+  title: string;
+  published_at: string;
+  like_count: number;
+}
+
 export default async function DashboardPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
@@ -28,6 +35,14 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
     .eq("user_id", user.id)
     .returns<BestRow[]>();
   const bests = data ?? [];
+  const { data: recentData } = await supabase
+    .from("posts")
+    .select("id,title,published_at,like_count")
+    .eq("author_id", user.id)
+    .order("published_at", { ascending: false })
+    .limit(3)
+    .returns<RecentPostRow[]>();
+  const recentPosts = recentData ?? [];
 
   return (
     <SectionShell section="dashboard">
@@ -68,6 +83,23 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
             )}
           </ul>
         )}
+      </section>
+      <section className="mt-6 rounded-2xl border bg-card p-5">
+        <h2 className="font-medium">{t("notesTitle")}</h2>
+        {recentPosts.length === 0 ? (
+          <p className="mt-4 text-sm text-muted">{t("noNotes")}</p>
+        ) : (
+          <ul className="mt-4 divide-y">
+            {recentPosts.map((post) => (
+              <li key={post.id} className="flex flex-wrap items-center gap-3 py-3 text-sm">
+                <Link href={`/notebook/${post.id}`} className="min-w-0 flex-1 truncate font-medium hover:underline">{post.title || t("untitled")}</Link>
+                <time className="text-xs text-muted">{new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(post.published_at))}</time>
+                <span className="text-xs text-muted">{t("likes", { count: post.like_count })}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <Link href="/notebook/me" className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "mt-4")}>{t("goWrite")}</Link>
       </section>
     </SectionShell>
   );

@@ -4,6 +4,7 @@ import { AlertCircle, Check, Copy, Globe2, LoaderCircle, Menu, Palette, PanelLef
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useState, useTransition } from "react";
 import { getPublishStatus, publishNote, unpublishNote } from "../actions";
+import { SearchCommand } from "./SearchCommand";
 import type { WorkspaceTone } from "../types";
 import { useNotebookStore } from "../store";
 
@@ -38,6 +39,7 @@ export function WorkspaceTopbar({ activeId, tone, onToneChange, onMenu }: {
           {t(`save.${saveState}`)}
         </span>
       )}
+      <SearchCommand />
       {activeId && (
         <div className="flex items-center gap-1">
           <button
