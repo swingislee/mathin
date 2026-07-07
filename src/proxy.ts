@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { routing } from "@/i18n/routing";
 
 const intlMiddleware = createMiddleware(routing);
-const protectedPattern = /^\/(zh|en)\/(dashboard|classroom|notebook|whiteboard)(?:\/|$)/;
+const protectedPattern = /^\/(zh|en)\/(dashboard|classroom|whiteboard|notebook\/me)(?:\/|$)/;
 
 export async function proxy(request: NextRequest) {
   let response = intlMiddleware(request);

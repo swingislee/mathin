@@ -52,6 +52,39 @@
   }
 }
 
+/* Notebook 工作区：只从基础设计 token 派生，不引入新的组件硬编码色。 */
+[data-workspace] {
+  --ws-window: var(--paper);
+  --ws-panel: color-mix(in srgb, var(--ink) 88%, var(--paper));
+  --ws-panel-ink: var(--paper);
+  --ws-sheet: var(--paper);
+}
+[data-workspace][data-ws-tone="leaf"] {
+  --ws-panel: color-mix(in srgb, var(--leaf-deep) 78%, var(--ink));
+}
+[data-workspace][data-ws-tone="rose"] {
+  --ws-panel: color-mix(in srgb, var(--rose-deep) 72%, var(--ink));
+}
+[data-workspace][data-ws-tone="crater"] {
+  --ws-panel: color-mix(in srgb, var(--crater) 66%, var(--ink));
+}
+.dark [data-workspace] {
+  --ws-panel: color-mix(in srgb, var(--paper) 88%, var(--ink));
+  --ws-panel-ink: var(--ink);
+}
+.dark [data-workspace][data-ws-tone="leaf"] { --ws-panel: color-mix(in srgb, var(--paper) 78%, var(--leaf-deep)); }
+.dark [data-workspace][data-ws-tone="rose"] { --ws-panel: color-mix(in srgb, var(--paper) 78%, var(--rose)); }
+.dark [data-workspace][data-ws-tone="crater"] { --ws-panel: color-mix(in srgb, var(--paper) 78%, var(--crater)); }
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) [data-workspace] {
+    --ws-panel: color-mix(in srgb, var(--paper) 88%, var(--ink));
+    --ws-panel-ink: var(--ink);
+  }
+  :root:not(.light) [data-workspace][data-ws-tone="leaf"] { --ws-panel: color-mix(in srgb, var(--paper) 78%, var(--leaf-deep)); }
+  :root:not(.light) [data-workspace][data-ws-tone="rose"] { --ws-panel: color-mix(in srgb, var(--paper) 78%, var(--rose)); }
+  :root:not(.light) [data-workspace][data-ws-tone="crater"] { --ws-panel: color-mix(in srgb, var(--paper) 78%, var(--crater)); }
+}
+
 @theme inline {
   --color-paper: var(--paper);
   --color-ink: var(--ink);

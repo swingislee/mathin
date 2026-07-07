@@ -43,6 +43,13 @@
     "goPlay":"去玩一局",
     "viewRanks":"排行榜"
   },
+  "notebook": {
+    "public": {"intro":"公开分享数学想法，也保留一间安静的私人写作空间。","empty":"还没有公开笔记。第一篇文章正在路上。"},
+    "workspace": {
+      "workspaceName":"笔记工作区","myNotes":"我的笔记","newNote":"新建笔记","newChild":"新建子笔记","untitled":"无标题","emptyNotes":"新建第一篇笔记","rename":"重命名","archive":"移入回收站","trash":"回收站","emptyTrash":"回收站是空的","restore":"恢复","deleteForever":"彻底删除","deleteConfirm":"彻底删除后无法恢复，确认继续吗？","expand":"展开","collapse":"收起","openSidebar":"打开侧栏","closeSidebar":"关闭侧栏","resizeSidebar":"调整侧栏宽度","backHome":"返回首页","tone":"面板色调","tones":{"night":"星夜","leaf":"深叶","rose":"玫瑰","crater":"陨石"},"welcomeTitle":"从一篇笔记开始","welcomeDescription":"在左侧新建笔记；你可以继续添加任意层级的子笔记。"
+    },
+    "editor": {"titlePlaceholder":"无标题"}
+  },
   "terms": {
     "intro":"从小学到大学基础的数学定义学习线。地理学家只记录永恒的东西。",
     "stage1":"第一学段 · 1–2 年级","stage2":"第二学段 · 3–4 年级","stage3":"第三学段 · 5–6 年级",
