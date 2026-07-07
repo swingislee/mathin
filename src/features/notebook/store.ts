@@ -5,12 +5,14 @@ import type { NoteMeta } from "./types";
 
 interface NotebookState {
   notes: Record<string, NoteMeta>;
+  saveStates: Record<string, "saved" | "saving" | "error" | "conflict">;
   hydratedFor: string | null;
   hydrate: (userId: string, notes: NoteMeta[]) => void;
   replaceAll: (notes: NoteMeta[]) => void;
   upsert: (note: NoteMeta) => void;
   patch: (id: string, patch: Partial<NoteMeta>) => void;
   remove: (id: string) => void;
+  setSaveState: (id: string, status: "saved" | "saving" | "error" | "conflict") => void;
 }
 
 function byId(notes: NoteMeta[]) {
@@ -19,6 +21,7 @@ function byId(notes: NoteMeta[]) {
 
 export const useNotebookStore = create<NotebookState>((set) => ({
   notes: {},
+  saveStates: {},
   hydratedFor: null,
   hydrate: (userId, notes) => set((state) =>
     state.hydratedFor === userId ? state : { notes: byId(notes), hydratedFor: userId },
@@ -42,6 +45,7 @@ export const useNotebookStore = create<NotebookState>((set) => ({
     }
     return { notes };
   }),
+  setSaveState: (id, status) => set((state) => ({ saveStates: { ...state.saveStates, [id]: status } })),
 }));
 
 export function selectNotes(state: NotebookState) {

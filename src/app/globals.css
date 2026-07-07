@@ -68,6 +68,30 @@
 [data-workspace][data-ws-tone="crater"] {
   --ws-panel: color-mix(in srgb, var(--crater) 66%, var(--ink));
 }
+
+.notebook-editor.bn-root {
+  --bn-colors-editor-text: var(--ink);
+  --bn-colors-editor-background: var(--paper);
+  --bn-colors-menu-text: var(--ink);
+  --bn-colors-menu-background: var(--card);
+  --bn-colors-tooltip-text: var(--ink);
+  --bn-colors-tooltip-background: var(--card);
+  --bn-colors-hovered-text: var(--ink);
+  --bn-colors-hovered-background: color-mix(in srgb, var(--moon) 45%, var(--paper));
+  --bn-colors-selected-text: var(--ink);
+  --bn-colors-selected-background: var(--moon);
+  --bn-colors-disabled-text: var(--muted);
+  --bn-colors-disabled-background: var(--paper);
+  --bn-colors-shadow: var(--line);
+  --bn-colors-border: var(--line);
+  --bn-colors-side-menu: var(--muted);
+  --bn-font-family: var(--font-sans);
+  --bn-border-radius: 1rem;
+}
+.notebook-editor .bn-editor { padding-inline: 48px 12px; }
+@media (max-width: 640px) {
+  .notebook-editor .bn-editor { padding-inline: 36px 0; }
+}
 .dark [data-workspace] {
   --ws-panel: color-mix(in srgb, var(--paper) 88%, var(--ink));
   --ws-panel-ink: var(--ink);

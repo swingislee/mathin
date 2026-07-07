@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { z } from "zod";
 import type { NoteMeta, NoteRecord } from "./types";
 
 interface NoteRow {
@@ -91,9 +92,60 @@ export async function setNoteArchived(id: string, archived: boolean): Promise<No
 
 export async function deleteNoteForever(id: string): Promise<{ id: string }> {
   const { supabase, user } = await authenticatedClient();
+  const { data: ownedNotes, error: listError } = await supabase
+    .from("notes")
+    .select("id,parent_id")
+    .eq("owner_id", user.id)
+    .returns<Array<{ id: string; parent_id: string | null }>>();
+  if (listError) throw new Error(listError.message);
+  const subtree = new Set([id]);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const note of ownedNotes ?? []) {
+      if (note.parent_id && subtree.has(note.parent_id) && !subtree.has(note.id)) {
+        subtree.add(note.id);
+        changed = true;
+      }
+    }
+  }
+  for (const noteId of subtree) {
+    const prefix = `${user.id}/${noteId}`;
+    const { data: files, error: storageError } = await supabase.storage.from("note-assets").list(prefix, { limit: 1000 });
+    if (storageError) throw new Error(storageError.message);
+    if (files?.length) {
+      const { error: removeError } = await supabase.storage.from("note-assets").remove(files.map((file) => `${prefix}/${file.name}`));
+      if (removeError) throw new Error(removeError.message);
+    }
+  }
   const { error } = await supabase.from("notes").delete().eq("id", id).eq("owner_id", user.id);
   if (error) throw new Error(error.message);
   return { id };
+}
+
+const documentSchema = z.array(z.unknown());
+
+export type SaveNoteResult =
+  | { ok: true; version: number; updatedAt: string }
+  | { ok: false; reason: "conflict" | "too_large" | "invalid" };
+
+export async function saveNoteDoc(id: string, document: unknown, baseVersion: number): Promise<SaveNoteResult> {
+  const parsed = documentSchema.safeParse(document);
+  if (!parsed.success || !Number.isInteger(baseVersion) || baseVersion < 0) return { ok: false, reason: "invalid" };
+  const serialized = JSON.stringify(parsed.data);
+  if (serialized.length >= 1_000_000) return { ok: false, reason: "too_large" };
+  const { supabase, user } = await authenticatedClient();
+  const { data, error } = await supabase
+    .from("notes")
+    .update({ document: parsed.data, version: baseVersion + 1 })
+    .eq("id", id)
+    .eq("owner_id", user.id)
+    .eq("version", baseVersion)
+    .select("version,updated_at")
+    .maybeSingle<{ version: number; updated_at: string }>();
+  if (error) throw new Error(error.message);
+  if (!data) return { ok: false, reason: "conflict" };
+  return { ok: true, version: data.version, updatedAt: data.updated_at };
 }
 
 export async function getNote(id: string): Promise<NoteRecord | null> {

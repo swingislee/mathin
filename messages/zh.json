@@ -46,9 +46,9 @@
   "notebook": {
     "public": {"intro":"公开分享数学想法，也保留一间安静的私人写作空间。","empty":"还没有公开笔记。第一篇文章正在路上。"},
     "workspace": {
-      "workspaceName":"笔记工作区","myNotes":"我的笔记","newNote":"新建笔记","newChild":"新建子笔记","untitled":"无标题","emptyNotes":"新建第一篇笔记","rename":"重命名","archive":"移入回收站","trash":"回收站","emptyTrash":"回收站是空的","restore":"恢复","deleteForever":"彻底删除","deleteConfirm":"彻底删除后无法恢复，确认继续吗？","expand":"展开","collapse":"收起","openSidebar":"打开侧栏","closeSidebar":"关闭侧栏","resizeSidebar":"调整侧栏宽度","backHome":"返回首页","tone":"面板色调","tones":{"night":"星夜","leaf":"深叶","rose":"玫瑰","crater":"陨石"},"welcomeTitle":"从一篇笔记开始","welcomeDescription":"在左侧新建笔记；你可以继续添加任意层级的子笔记。"
+      "workspaceName":"笔记工作区","myNotes":"我的笔记","newNote":"新建笔记","newChild":"新建子笔记","untitled":"无标题","emptyNotes":"新建第一篇笔记","rename":"重命名","archive":"移入回收站","trash":"回收站","emptyTrash":"回收站是空的","restore":"恢复","deleteForever":"彻底删除","deleteConfirm":"彻底删除后无法恢复，确认继续吗？","expand":"展开","collapse":"收起","openSidebar":"打开侧栏","closeSidebar":"关闭侧栏","resizeSidebar":"调整侧栏宽度","backHome":"返回首页","tone":"面板色调","save":{"saving":"保存中…","saved":"已保存","error":"保存失败","conflict":"存在冲突"},"tones":{"night":"星夜","leaf":"深叶","rose":"玫瑰","crater":"陨石"},"welcomeTitle":"从一篇笔记开始","welcomeDescription":"在左侧新建笔记；你可以继续添加任意层级的子笔记。"
     },
-    "editor": {"titlePlaceholder":"无标题"}
+    "editor": {"titlePlaceholder":"无标题","placeholder":"输入“/”选择内容类型","chooseIcon":"选择图标","searchEmoji":"搜索表情","loadingEmoji":"正在加载表情…","emptyEmoji":"没有找到表情","removeIcon":"移除图标","loadLatest":"加载最新版","retry":"重试","errors":{"conflict":"本篇已在其他窗口被修改。为避免覆盖，请加载最新版。","too_large":"文档超过 1 MB 上限，请精简内容后重试。","invalid":"文档格式无效，无法保存。","network":"保存失败，请检查网络后重试。"}}
   },
   "terms": {
     "intro":"从小学到大学基础的数学定义学习线。地理学家只记录永恒的东西。",
