@@ -20,8 +20,11 @@
     "rankCol":"Rank","playerCol":"Player","timeCol":"Time","dateCol":"Date",
     "noRanks":"No one has finished this difficulty yet — the throne awaits.",
     "items": {
-      "sudoku": {"name":"Sudoku","desc":"Fill the 9×9 board with 1–9 so no row, column or box repeats.","rules":"Each row, column and 3×3 box must contain the digits 1–9 exactly once. Tap an empty cell, then enter a digit with the keyboard or the pad below — clashing digits turn red. Start with the cells that have the fewest candidates."}
-    }
+      "sudoku": {"name":"Sudoku","desc":"Fill the 9×9 board with 1–9 so no row, column or box repeats.","rules":"Each row, column and 3×3 box must contain the digits 1–9 exactly once. Tap an empty cell, then enter a digit with the keyboard or the pad below — clashing digits turn red. Start with the cells that have the fewest candidates."},
+      "kakuro": {"name":"Kakuro","desc":"Fill by the clue sums in the black cells: each run uses distinct digits 1–9 that add up exactly.","rules":"The number at a black cell's top right is the sum of the run to its right; bottom left is the sum of the run below. Digits 1–9, no repeats within a run — broken runs turn red. Start with the smallest or largest sums (a two-cell run of 3 can only be 1+2)."},
+      "magic-square": {"name":"Magic square","desc":"Place 1 to n² in the grid so every row, column and diagonal has the same sum.","rules":"Each number is used exactly once; every row, column and both diagonals must equal the magic sum. Compute it first (total of all numbers ÷ rows), then work from the diagonals and the centre."}
+    },
+    "magicSquare": {"target":"Every row, column and both diagonals must sum to {sum}"}
   },
   "tools": {
     "intro":"Interactive classroom instruments: open directly, or copy the embed code into your courseware.",
