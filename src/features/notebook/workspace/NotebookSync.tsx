@@ -18,6 +18,7 @@ export function NotebookSync({ userId, children }: { userId: string; children: R
   const channelRef = useRef<ReturnType<ReturnType<typeof createClient>["channel"]> | null>(null);
   const upsert = useNotebookStore((state) => state.upsert);
   const remove = useNotebookStore((state) => state.remove);
+  const patch = useNotebookStore((state) => state.patch);
   const replaceAll = useNotebookStore((state) => state.replaceAll);
 
   const refresh = useCallback(async () => {
@@ -42,6 +43,7 @@ export function NotebookSync({ userId, children }: { userId: string; children: R
       .on("broadcast", { event: "note" }, ({ payload }: { payload: NotebookEvent }) => {
         if (payload.type === "meta") upsert(payload.note);
         if (payload.type === "removed") remove(payload.id);
+        if (payload.type === "doc") patch(payload.id, { version: payload.version });
       })
       .subscribe();
     channelRef.current = channel;
@@ -49,7 +51,7 @@ export function NotebookSync({ userId, children }: { userId: string; children: R
       channelRef.current = null;
       void supabase.removeChannel(channel);
     };
-  }, [remove, upsert, userId]);
+  }, [patch, remove, upsert, userId]);
 
   const broadcast = useCallback((event: NotebookEvent) => {
     void channelRef.current?.send({ type: "broadcast", event: "note", payload: event });

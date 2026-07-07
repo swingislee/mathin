@@ -19,6 +19,7 @@ export function WorkspaceTopbar({ activeId, tone, onToneChange, onMenu }: {
   const note = useNotebookStore((state) => activeId ? state.notes[activeId] : undefined);
   const saveState = useNotebookStore((state) => activeId ? state.saveStates[activeId] : undefined);
   const [postId, setPostId] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const [publishing, startPublishing] = useTransition();
   useEffect(() => {
     let cancelled = false;
@@ -33,14 +34,18 @@ export function WorkspaceTopbar({ activeId, tone, onToneChange, onMenu }: {
       <div className="min-w-0 flex-1 truncate text-sm font-medium">
         {note ? <><span className="mr-2">{note.icon}</span>{note.title || t("untitled")}</> : t("workspaceName")}
       </div>
-      {activeId && saveState && (
-        <span className={`hidden items-center gap-1 text-xs sm:inline-flex ${saveState === "error" || saveState === "conflict" ? "text-rose" : "text-[var(--ws-panel-ink)]/65"}`}>
+      {note?.isArchived && <span className="rounded-full bg-rose px-2.5 py-1 text-xs text-[var(--paper)]">{t("inTrash")}</span>}
+      {activeId && !note?.isArchived && saveState && (
+        <span
+          aria-live="polite"
+          className={`inline-flex items-center gap-1 text-xs ${saveState === "error" || saveState === "conflict" ? "text-rose" : "text-[var(--ws-panel-ink)]/65"}`}
+        >
           {saveState === "saving" ? <LoaderCircle size={13} className="animate-spin motion-reduce:animate-none" /> : saveState === "saved" ? <Check size={13} /> : <AlertCircle size={13} />}
-          {t(`save.${saveState}`)}
+          <span className="hidden sm:inline">{t(`save.${saveState}`)}</span>
         </span>
       )}
       <SearchCommand />
-      {activeId && (
+      {activeId && !note?.isArchived && (
         <div className="flex items-center gap-1">
           <button
             type="button"
@@ -50,7 +55,16 @@ export function WorkspaceTopbar({ activeId, tone, onToneChange, onMenu }: {
             className="inline-flex items-center gap-1 rounded-full border border-[var(--ws-panel-ink)]/25 p-2 text-xs hover:bg-[var(--ws-sheet)]/10 disabled:opacity-50 sm:px-3 sm:py-1.5"
           ><Globe2 size={13} /><span className="hidden sm:inline">{postId ? t("updatePublish") : t("publish")}</span></button>
           {postId && <>
-            <button type="button" aria-label={t("copyPublicLink")} onClick={() => void navigator.clipboard.writeText(`${window.location.origin}/${locale}/notebook/${postId}`)} className="rounded-full p-2 hover:bg-[var(--ws-sheet)]/10"><Copy size={13} /></button>
+            <button
+              type="button"
+              aria-label={copied ? t("copied") : t("copyPublicLink")}
+              onClick={() => {
+                void navigator.clipboard.writeText(`${window.location.origin}/${locale}/notebook/${postId}`);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 1500);
+              }}
+              className="rounded-full p-2 hover:bg-[var(--ws-sheet)]/10"
+            >{copied ? <Check size={13} className="text-leaf" /> : <Copy size={13} />}</button>
             <button type="button" aria-label={t("unpublish")} onClick={() => startPublishing(async () => { await unpublishNote(activeId); setPostId(null); })} className="rounded-full p-2 hover:bg-[var(--ws-sheet)]/10"><Unlink size={13} /></button>
           </>}
         </div>

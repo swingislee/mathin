@@ -80,50 +80,92 @@ export async function updateNoteMeta(id: string, patch: { title?: string; icon?:
   return toMeta(data);
 }
 
-export async function setNoteArchived(id: string, archived: boolean): Promise<NoteMeta> {
-  const { supabase, user } = await authenticatedClient();
+interface TreeRow { id: string; parent_id: string | null; is_archived: boolean }
+
+async function ownedTreeRows(supabase: Awaited<ReturnType<typeof authenticatedClient>>["supabase"], userId: string) {
   const { data, error } = await supabase
     .from("notes")
-    .update({ is_archived: archived })
-    .eq("id", id)
-    .eq("owner_id", user.id)
-    .select(META_COLUMNS)
-    .single<NoteRow>();
+    .select("id,parent_id,is_archived")
+    .eq("owner_id", userId)
+    .returns<TreeRow[]>();
   if (error) throw new Error(error.message);
-  return toMeta(data);
+  return data ?? [];
 }
 
-export async function deleteNoteForever(id: string): Promise<{ id: string }> {
-  const { supabase, user } = await authenticatedClient();
-  const { data: ownedNotes, error: listError } = await supabase
-    .from("notes")
-    .select("id,parent_id")
-    .eq("owner_id", user.id)
-    .returns<Array<{ id: string; parent_id: string | null }>>();
-  if (listError) throw new Error(listError.message);
-  const subtree = new Set([id]);
+function collectSubtree(rows: TreeRow[], rootId: string) {
+  const subtree = new Set([rootId]);
   let changed = true;
   while (changed) {
     changed = false;
-    for (const note of ownedNotes ?? []) {
-      if (note.parent_id && subtree.has(note.parent_id) && !subtree.has(note.id)) {
-        subtree.add(note.id);
+    for (const row of rows) {
+      if (row.parent_id && subtree.has(row.parent_id) && !subtree.has(row.id)) {
+        subtree.add(row.id);
         changed = true;
       }
     }
   }
+  return subtree;
+}
+
+/** 归档/恢复整棵子树，返回全部受影响笔记的元信息。 */
+export async function setNoteArchived(id: string, archived: boolean): Promise<NoteMeta[]> {
+  const { supabase, user } = await authenticatedClient();
+  const rows = await ownedTreeRows(supabase, user.id);
+  const subtree = collectSubtree(rows, id);
+  // 恢复时若父级仍在回收站，把本篇挂回根部，否则恢复后在树里不可见。
+  if (!archived) {
+    const root = rows.find((row) => row.id === id);
+    const parent = root?.parent_id ? rows.find((row) => row.id === root.parent_id) : undefined;
+    if (parent?.is_archived) {
+      const { error } = await supabase.from("notes").update({ parent_id: null }).eq("id", id).eq("owner_id", user.id);
+      if (error) throw new Error(error.message);
+    }
+  }
+  const { data, error } = await supabase
+    .from("notes")
+    .update({ is_archived: archived })
+    .in("id", [...subtree])
+    .eq("owner_id", user.id)
+    .select(META_COLUMNS)
+    .returns<NoteRow[]>();
+  if (error) throw new Error(error.message);
+  // 帖子快照与源笔记联动：入回收站即从瀑布流隐藏，恢复即回归（保留点赞）。
+  const { error: postError } = await supabase
+    .from("posts")
+    .update({ hidden: archived })
+    .in("note_id", [...subtree])
+    .eq("author_id", user.id);
+  if (postError) throw new Error(postError.message);
+  return (data ?? []).map(toMeta);
+}
+
+export async function deleteNoteForever(id: string): Promise<{ id: string; removedIds: string[] }> {
+  const { supabase, user } = await authenticatedClient();
+  const subtree = collectSubtree(await ownedTreeRows(supabase, user.id), id);
+  // 彻底删除时公开快照一并删除（点赞随行级联清理）。
+  const { error: postsError } = await supabase
+    .from("posts")
+    .delete()
+    .in("note_id", [...subtree])
+    .eq("author_id", user.id);
+  if (postsError) throw new Error(postsError.message);
+  // Storage 清理是次要目标：失败只记录，不能反过来卡死笔记删除本身。
   for (const noteId of subtree) {
     const prefix = `${user.id}/${noteId}`;
-    const { data: files, error: storageError } = await supabase.storage.from("note-assets").list(prefix, { limit: 1000 });
-    if (storageError) throw new Error(storageError.message);
-    if (files?.length) {
-      const { error: removeError } = await supabase.storage.from("note-assets").remove(files.map((file) => `${prefix}/${file.name}`));
-      if (removeError) throw new Error(removeError.message);
+    try {
+      const { data: files, error: storageError } = await supabase.storage.from("note-assets").list(prefix, { limit: 1000 });
+      if (storageError) throw new Error(storageError.message);
+      if (files?.length) {
+        const { error: removeError } = await supabase.storage.from("note-assets").remove(files.map((file) => `${prefix}/${file.name}`));
+        if (removeError) throw new Error(removeError.message);
+      }
+    } catch (cleanupError) {
+      console.error(`notebook: failed to clean assets under ${prefix}`, cleanupError);
     }
   }
   const { error } = await supabase.from("notes").delete().eq("id", id).eq("owner_id", user.id);
   if (error) throw new Error(error.message);
-  return { id };
+  return { id, removedIds: [...subtree] };
 }
 
 const documentSchema = z.array(z.unknown());

@@ -136,7 +136,7 @@ create table post_likes (
 
 **Realtime 私有频道（可选，允许降级）**：如自托管实例已启用 Realtime Authorization，加策略允许用户读写 topic = `'notes:' || auth.uid()` 的 `realtime.messages`；如未启用或版本不支持，**跳过本段并在 PR 描述注明「跨端实时通知降级为窗口聚焦刷新」**，不得为此阻塞。
 
-migration 由用户手动执行（与 P2 相同流程），提交 PR 时在描述中提醒。
+migration 由 agent 通过 SSH 直接执行（`docs/supabase-self-hosting.md` §数据库迁移），执行前做幂等检查、执行后验证。
 
 ## 5. 前端架构（`src/features/notebook/`）
 

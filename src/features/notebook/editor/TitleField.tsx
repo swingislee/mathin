@@ -10,7 +10,7 @@ import { updateNoteMeta } from "../actions";
 import { useNotebookStore } from "../store";
 import { useNotebookSync } from "../workspace/NotebookSync";
 
-export function TitleField({ noteId }: { noteId: string }) {
+export function TitleField({ noteId, readOnly = false }: { noteId: string; readOnly?: boolean }) {
   const t = useTranslations("notebook.editor");
   const locale = useLocale();
   const note = useNotebookStore((state) => state.notes[noteId]);
@@ -31,6 +31,15 @@ export function TitleField({ noteId }: { noteId: string }) {
   }, [broadcast, noteId, upsert]);
 
   if (!note) return null;
+
+  if (readOnly) {
+    return (
+      <div>
+        {note.icon && <span className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-full border text-xl" aria-hidden>{note.icon}</span>}
+        <h1 className="min-h-14 w-full font-display text-4xl leading-tight md:text-5xl">{note.title || t("titlePlaceholder")}</h1>
+      </div>
+    );
+  }
 
   function scheduleSave(title: string) {
     titleRef.current = title;

@@ -70,10 +70,11 @@ export function WorkspaceFrame({ userId, initialNotes, children }: { userId: str
           <WorkspaceTopbar activeId={activeId} tone={tone} onToneChange={setWorkspaceTone} onMenu={() => setSidebarOpen(true)} />
           <div className="relative flex min-h-0 flex-1">
             {sidebarOpen && <button type="button" aria-label={t("closeSidebar")} onClick={() => setSidebarOpen(false)} className="fixed inset-0 z-30 bg-ink/35 lg:hidden" />}
+            {/* 拖拽宽度只作用于桌面：用 CSS 变量 + lg: 前缀，避免 inline width 把移动端的 w-[min(86vw,360px)] 覆盖成固定像素 */}
             <aside
               data-notebook-sidebar
-              className={`fixed inset-y-0 left-0 z-40 flex w-[min(86vw,360px)] flex-col bg-[var(--ws-panel)] pt-3 transition-transform duration-200 lg:static lg:z-auto lg:w-auto lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
-              style={{ width: `${sidebarWidth}px` }}
+              className={`fixed inset-y-0 left-0 z-40 flex w-[min(86vw,360px)] flex-col bg-[var(--ws-panel)] pt-3 transition-transform duration-200 motion-reduce:transition-none lg:static lg:z-auto lg:w-[var(--ws-sidebar-w)] lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
+              style={{ "--ws-sidebar-w": `${sidebarWidth}px` } as React.CSSProperties}
             >
               <div className="mb-4 flex items-center justify-between px-5 text-[var(--ws-panel-ink)]">
                 <Link href="/" aria-label={t("backHome")} className="rounded-full p-2 hover:bg-[var(--ws-sheet)]/10"><Home size={18} /></Link>

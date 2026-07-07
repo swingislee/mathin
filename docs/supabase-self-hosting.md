@@ -44,7 +44,15 @@ curl -fsS http://127.0.0.1:8000/auth/v1/health
 
 ## 数据库迁移
 
-- 所有建表与 RLS 以 SQL 文件形式提交在仓库 `supabase/migrations/`，文件名前缀为时间戳，按文件名顺序在 Studio 的 SQL Editor（或宿主机 psql）中手动执行一次。
+- 所有建表与 RLS 以 SQL 文件形式提交在仓库 `supabase/migrations/`，文件名前缀为时间戳，按文件名顺序各执行一次。
+- 执行方式：由 agent 通过 SSH 直接应用（用户无需手动跑）：
+
+  ```bash
+  (echo "begin;"; cat supabase/migrations/<file>.sql; echo "commit;") \
+    | ssh xiaomi "docker exec -i supabase-db psql -U postgres -d postgres -v ON_ERROR_STOP=1"
+  ```
+
+  执行前先查 `pg_policies` / `information_schema` 确认未重复应用，执行后验证关键对象生效。
 - 迁移文件只追加、不修改历史文件；需要变更结构时新增一个迁移文件。
 - 没有 RLS 策略的表不得合并（docs/plan/03-3）。
 

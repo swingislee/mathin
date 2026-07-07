@@ -3,7 +3,7 @@
 import { Archive, ChevronRight, FileText, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { createNote, setNoteArchived, updateNoteMeta } from "../actions";
 import { useNotebookStore } from "../store";
 import type { NoteMeta } from "../types";
@@ -17,6 +17,7 @@ export function TreeItem({ note, childNotes, activeId, depth = 0, onNavigate }: 
   onNavigate: () => void;
 }) {
   const t = useTranslations("notebook.workspace");
+  const router = useRouter();
   const [expanded, setExpanded] = useState(true);
   const [renaming, setRenaming] = useState(false);
   const upsert = useNotebookStore((state) => state.upsert);
@@ -34,8 +35,14 @@ export function TreeItem({ note, childNotes, activeId, depth = 0, onNavigate }: 
     patch(note.id, { isArchived: true });
     try {
       const updated = await setNoteArchived(note.id, true);
-      upsert(updated);
-      broadcast({ type: "meta", note: updated });
+      updated.forEach((meta) => {
+        upsert(meta);
+        broadcast({ type: "meta", note: meta });
+      });
+      // 打开中的笔记被归档（含子孙）时离开该页，否则页面停留在服务端渲染的旧状态。
+      if (activeId && updated.some((meta) => meta.id === activeId)) {
+        router.push(note.parentId ? `/notebook/me/${note.parentId}` : "/notebook/me");
+      }
     } catch {
       patch(note.id, { isArchived: false });
     }
