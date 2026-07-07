@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { drawItem, hitStrokeId, renderAll, resolveColor } from "./strokes";
+import { drawItem, hitStrokeId, newStrokeId, renderAll, resolveColor } from "./strokes";
 import { useWhiteboardStore } from "./store";
 import type { StrokeItem, Tool } from "./types";
 
@@ -113,7 +113,7 @@ export function CanvasSurface({ editable }: { editable: boolean }) {
       const { w, h } = dimsRef.current;
       const erase = tool.startsWith("eraser");
       strokeRef.current = {
-        id: crypto.randomUUID(),
+        id: newStrokeId(),
         mode: erase ? "erase" : "ink",
         color,
         wNorm: erase ? ERASER_NORM[tool] ?? 0.02 : sizeNorm,

@@ -80,6 +80,7 @@
 - **无 op 流水表**。任何已连接客户端内存里的笔迹 Map 就是全量状态，谁保存快照都是完整的；`board_ops` 表和清流 RPC 整体删除。
 - **坐标契约**：归一化统一以 CSS 像素为基准（旧版混用 CSS px 与设备 px，dpr≠1 时有隐性偏差，重写时修正）。
 - 撤销 = 本地栈只记**自己的**笔迹 id，撤销即发 `eraseLine`；不做全局历史。导出 PNG = base canvas `toBlob`。
+- **画布比例（用户 2026-07-08 拍板）**：独立白板 16:9；**上课页主板书必须 4:3**（16:9 屏幕里要同时放 4:3 课件 + 主板书 + 学生名录）。`CanvasSurface` 对比例无感知——笔迹相对父容器归一化，父容器给什么纵横比就是什么，两处直接复用同一组件。
 - 独立白板（`/whiteboard/[id]`）的传输走 T2 服务器通道即可（§3.4 的 T0/T1 是课堂专属增强，白板组件对传输层无感知）。
 - 新依赖：`perfect-freehand`（约 4KB 无传递依赖）；复用已有 zustand。
 
@@ -218,6 +219,8 @@ src/features/classroom/
 - canvas 内存：iOS 对画布总面积有硬上限。**不为每页保留 canvas 实例**，笔迹数据在 store、切页时重绘（这同时消灭了旧版 unmount 异步保存竞态）。
 - 触控：stylus/手写笔用 `pointerType` 区分做防误触（手掌拒绝）；容器保留旧版 `touch-none`/`WebkitUserSelect` 全套；橡皮光标是自绘 div，别用系统 cursor。
 - 时钟不可信：跨设备排序用 `(device_id, seq)`，报告展示用事件自带 `at` 并容忍乱序；绝不用服务器 `created_at` 排课堂时间线（离线事件是晚到的）。
+
+- **局域网 HTTP 是非安全上下文**（开发经 `http://192.168.5.213:3130`、上课设备走本地 IP 时同理）：`crypto.randomUUID`、Wake Lock、Service Worker、剪贴板等 API 不存在或被禁。所有此类调用必须能力检测 + 兜底（uuid 用 `crypto.getRandomValues` 手拼 v4，见 `strokes.ts` 的 `newStrokeId`；Wake Lock 缺失时候课单降级为「请手动关闭自动锁屏」提示）。生产 HTTPS 后自然恢复，但**不得假设安全上下文存在**。
 
 **数据 / 逻辑层**
 
