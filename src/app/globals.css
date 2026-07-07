@@ -77,7 +77,10 @@ body {
   margin: 0;
 }
 
-* { border-color: var(--line); }
+/* 必须置于 base 层：未分层规则会压过 utilities 层的所有 border 颜色工具类 */
+@layer base {
+  * { border-color: var(--line); }
+}
 button, a { -webkit-tap-highlight-color: transparent; }
 
 /* 纸纹：极轻的灰度噪点覆盖全页（docs/plan/01：纸感） */

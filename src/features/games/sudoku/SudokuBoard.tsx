@@ -66,9 +66,10 @@ export function SudokuBoard({ seed, difficulty, finished, onComplete }: GameBoar
               aria-label={`r${row + 1}c${col + 1}`}
               onClick={() => setSelected(i)}
               className={cn(
-                "flex aspect-square items-center justify-center border-line text-lg tabular-nums transition-colors duration-100 sm:text-xl",
-                col < 8 && (col % 3 === 2 ? "border-r-2 border-r-ink/50" : "border-r"),
-                row < 8 && (row % 3 === 2 ? "border-b-2 border-b-ink/50" : "border-b"),
+                "flex aspect-square items-center justify-center text-lg tabular-nums transition-colors duration-100 sm:text-xl",
+                // 单边颜色类会被 border-line（shorthand）覆盖，因此四边颜色全部用单边类
+                col < 8 && (col % 3 === 2 ? "border-r-2 border-r-ink/70" : "border-r border-r-line"),
+                row < 8 && (row % 3 === 2 ? "border-b-2 border-b-ink/70" : "border-b border-b-line"),
                 given ? "font-semibold" : "text-(--p-accent)",
                 conflicts.has(i) && "text-rose",
                 selected === i && "bg-(--p-wash)",
