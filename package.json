@@ -31,6 +31,7 @@
     "next": "16.2.10",
     "next-intl": "^4.13.1",
     "next-mdx-remote-client": "^2.1.11",
+    "perfect-freehand": "^1.2.3",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-easy-crop": "^6.1.0",

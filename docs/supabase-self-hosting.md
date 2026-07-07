@@ -56,6 +56,21 @@ curl -fsS http://127.0.0.1:8000/auth/v1/health
 - 迁移文件只追加、不修改历史文件；需要变更结构时新增一个迁移文件。
 - 没有 RLS 策略的表不得合并（docs/plan/03-3）。
 
+## Realtime
+
+- 版本：`supabase/realtime:v2.102.3`，支持 Realtime Authorization（私有频道）：`realtime.messages` 表存在，P3 已建 `notes_broadcast_receive_own` / `notes_broadcast_send_own` 两条策略验证过该机制可用。P4 的 `wb:*` / `session:*` 策略随各自 migration 增加。
+- **租户限额**存于 `_realtime.tenants`（修改需 `supabase_admin`，普通 `postgres` 无权限），改后需 `docker restart realtime-dev.supabase-realtime` 生效。2026-07-07 已从默认值调高（P4-0，白板笔画流需要）：
+
+  | 参数 | 默认 | 现值 |
+  | --- | --- | --- |
+  | `max_events_per_second` | 100 | 1000 |
+  | `max_bytes_per_second` | 100000 | 5000000 |
+  | `max_concurrent_users` | 200 | 500 |
+  | `max_joins_per_second` | 100 | 200 |
+
+  查询/修改示例：`ssh xiaomi "docker exec -i supabase-db psql -U supabase_admin -d postgres"`，`update _realtime.tenants set ... where external_id = 'realtime-dev';`
+- 注意：限额是**全租户共享**（整个实例一份），不是每频道；broadcast 为 at-most-once，超限静默丢弃。
+
 ## 密钥
 
 - `SUPABASE_PUBLISHABLE_KEY`：允许放入前端 `.env.local`，仍应避免无必要传播。
