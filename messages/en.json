@@ -51,6 +51,45 @@
     "editor": {"titlePlaceholder":"Untitled","placeholder":"Type “/” to choose a block","chooseIcon":"Choose icon","searchEmoji":"Search emoji","loadingEmoji":"Loading emoji…","emptyEmoji":"No emoji found","removeIcon":"Remove icon","loadLatest":"Load latest","retry":"Retry","dismiss":"Dismiss","errors":{"conflict":"This note changed in another window. Load the latest version to avoid overwriting it.","too_large":"This document exceeds the 1 MB limit. Shorten it and retry.","invalid":"The document format is invalid and cannot be saved.","network":"Save failed. Check the connection and retry.","upload":"Image upload failed: {message}"}},
     "search":{"open":"Open note search","label":"Search","placeholder":"Search note titles…","empty":"No matching notes","group":"Notes","untitled":"Untitled"}
   },
+  "whiteboard": {
+    "list": {
+      "intro":"A whiteboard that opens in a snap: sketch and calculate alone, or share one canvas with friends.",
+      "empty":"No whiteboards yet. Create one and start drawing.",
+      "newBoard":"New whiteboard",
+      "untitled":"Untitled whiteboard",
+      "updatedAt":"Updated {date}",
+      "delete":"Delete whiteboard",
+      "deleteConfirm":"This cannot be undone. Delete this whiteboard?",
+      "cancel":"Cancel",
+      "confirm":"Delete"
+    },
+    "board": {
+      "back":"Back to whiteboards",
+      "titlePlaceholder":"Untitled whiteboard",
+      "readOnly":"Read-only",
+      "save":{"saving":"Saving…","saved":"Saved","error":"Save failed, retrying"},
+      "tools":{
+        "pointer":"Select",
+        "pen":"Pen",
+        "eraser":"Eraser",
+        "strokeEraser":"Stroke eraser",
+        "eraserS":"Small eraser",
+        "eraserM":"Medium eraser",
+        "eraserL":"Large eraser",
+        "color":"Color",
+        "size":"Thickness",
+        "sizeThin":"Thin",
+        "sizeMedium":"Medium",
+        "sizeThick":"Thick",
+        "undo":"Undo",
+        "clear":"Clear board",
+        "clearConfirm":"Clear the whole board? You can still undo this once.",
+        "cancel":"Cancel",
+        "export":"Export PNG"
+      },
+      "colors":{"ink":"Ink","rose":"Rose","leaf":"Leaf","crater":"Crater","cheek":"Cheek","moon":"Moon"}
+    }
+  },
   "terms": {
     "intro":"A learning line of mathematical definitions from primary school onward. The geographer records only eternal things.",
     "stage1":"Stage 1 · Grades 1–2","stage2":"Stage 2 · Grades 3–4","stage3":"Stage 3 · Grades 5–6",

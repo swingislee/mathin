@@ -51,6 +51,45 @@
     "editor": {"titlePlaceholder":"无标题","placeholder":"输入“/”选择内容类型","chooseIcon":"选择图标","searchEmoji":"搜索表情","loadingEmoji":"正在加载表情…","emptyEmoji":"没有找到表情","removeIcon":"移除图标","loadLatest":"加载最新版","retry":"重试","dismiss":"知道了","errors":{"conflict":"本篇已在其他窗口被修改。为避免覆盖，请加载最新版。","too_large":"文档超过 1 MB 上限，请精简内容后重试。","invalid":"文档格式无效，无法保存。","network":"保存失败，请检查网络后重试。","upload":"图片上传失败：{message}"}},
     "search":{"open":"打开笔记搜索","label":"搜索","placeholder":"搜索笔记标题…","empty":"没有匹配的笔记","group":"笔记","untitled":"无标题"}
   },
+  "whiteboard": {
+    "list": {
+      "intro":"一块随手可开的画板：自己演算涂画，也能与伙伴共用一块画布。",
+      "empty":"还没有画板。新建一块开始涂画吧。",
+      "newBoard":"新建画板",
+      "untitled":"未命名画板",
+      "updatedAt":"更新于 {date}",
+      "delete":"删除画板",
+      "deleteConfirm":"删除后无法恢复，确认删除这块画板吗？",
+      "cancel":"取消",
+      "confirm":"删除"
+    },
+    "board": {
+      "back":"返回画板列表",
+      "titlePlaceholder":"未命名画板",
+      "readOnly":"只读",
+      "save":{"saving":"保存中…","saved":"已保存","error":"保存失败，将自动重试"},
+      "tools":{
+        "pointer":"选择",
+        "pen":"画笔",
+        "eraser":"橡皮",
+        "strokeEraser":"整线擦除",
+        "eraserS":"小块擦除",
+        "eraserM":"中块擦除",
+        "eraserL":"大块擦除",
+        "color":"颜色",
+        "size":"粗细",
+        "sizeThin":"细",
+        "sizeMedium":"中",
+        "sizeThick":"粗",
+        "undo":"撤销",
+        "clear":"清空画板",
+        "clearConfirm":"清空整块画板？清空后仍可用「撤销」找回一次。",
+        "cancel":"取消",
+        "export":"导出 PNG"
+      },
+      "colors":{"ink":"墨色","rose":"玫瑰","leaf":"深叶","crater":"陨石","cheek":"脸颊","moon":"月亮"}
+    }
+  },
   "terms": {
     "intro":"从小学到大学基础的数学定义学习线。地理学家只记录永恒的东西。",
     "stage1":"第一学段 · 1–2 年级","stage2":"第二学段 · 3–4 年级","stage3":"第三学段 · 5–6 年级",

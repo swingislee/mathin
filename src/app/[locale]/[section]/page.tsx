@@ -4,9 +4,9 @@ import { EmptyState } from "@/components/empty-state";
 import { SectionShell, type Section } from "@/components/section-shell";
 import { requireUser } from "@/lib/auth";
 
-// tools/terms/minds/games/dashboard 已建成真实路由，从占位白名单移除（docs/plan/03-§6）
+// tools/terms/minds/games/dashboard/whiteboard 已建成真实路由，从占位白名单移除（docs/plan/03-§6）
 const publicSections = ["story"] as const;
-const protectedSections = ["classroom", "whiteboard"] as const;
+const protectedSections = ["classroom"] as const;
 
 export default async function SectionRoute({ params }: { params: Promise<{ locale: string; section: string }> }) {
   const { locale, section } = await params;
