@@ -1,6 +1,9 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { ServerBlockNoteEditor } from "@blocknote/server-util";
+import type { PartialBlock } from "@blocknote/core";
+import sanitizeHtml from "sanitize-html";
 import { z } from "zod";
 import type { NoteMeta, NoteRecord } from "./types";
 
@@ -146,6 +149,112 @@ export async function saveNoteDoc(id: string, document: unknown, baseVersion: nu
   if (error) throw new Error(error.message);
   if (!data) return { ok: false, reason: "conflict" };
   return { ok: true, version: data.version, updatedAt: data.updated_at };
+}
+
+function excerptFromDocument(document: unknown[]) {
+  const pieces: string[] = [];
+  const visit = (value: unknown) => {
+    if (typeof value === "string") pieces.push(value);
+    else if (Array.isArray(value)) value.forEach(visit);
+    else if (value && typeof value === "object") {
+      const record = value as Record<string, unknown>;
+      if (typeof record.text === "string") pieces.push(record.text);
+      else {
+        if (record.content) visit(record.content);
+        if (record.children) visit(record.children);
+      }
+    }
+  };
+  visit(document);
+  const plain = pieces.join(" ").replace(/\s+/g, " ").trim();
+  return plain.length > 200 ? `${plain.slice(0, 200).trimEnd()}…` : plain;
+}
+
+export async function getPublishStatus(noteId: string): Promise<string | null> {
+  const { supabase, user } = await authenticatedClient();
+  const { data, error } = await supabase.from("posts").select("id").eq("note_id", noteId).eq("author_id", user.id).maybeSingle<{ id: string }>();
+  if (error) throw new Error(error.message);
+  return data?.id ?? null;
+}
+
+export async function publishNote(noteId: string): Promise<{ postId: string }> {
+  const { supabase, user } = await authenticatedClient();
+  const { data: note, error: noteError } = await supabase
+    .from("notes")
+    .select("id,title,document")
+    .eq("id", noteId)
+    .eq("owner_id", user.id)
+    .single<{ id: string; title: string; document: unknown[] | null }>();
+  if (noteError) throw new Error(noteError.message);
+  const parsed = documentSchema.parse(note.document ?? []);
+  const editor = ServerBlockNoteEditor.create();
+  const generated = await editor.blocksToFullHTML(parsed as PartialBlock[]);
+  const contentHtml = sanitizeHtml(generated, {
+    allowedTags: [...sanitizeHtml.defaults.allowedTags, "img", "figure", "figcaption", "picture", "source"],
+    allowedAttributes: {
+      "*": ["class", "data-*"],
+      a: ["href", "title", "target", "rel"],
+      img: ["src", "alt", "title", "width", "height", "loading"],
+      source: ["src", "srcset", "type"],
+    },
+    allowedSchemes: ["http", "https"],
+    allowProtocolRelative: false,
+    transformTags: {
+      a: sanitizeHtml.simpleTransform("a", { rel: "nofollow noopener noreferrer" }, true),
+    },
+  });
+  const values = {
+    title: note.title.trim(),
+    content: parsed,
+    content_html: contentHtml,
+    excerpt: excerptFromDocument(parsed),
+  };
+  const { data: existing, error: existingError } = await supabase
+    .from("posts")
+    .select("id")
+    .eq("note_id", noteId)
+    .eq("author_id", user.id)
+    .maybeSingle<{ id: string }>();
+  if (existingError) throw new Error(existingError.message);
+  if (existing) {
+    const { error } = await supabase.from("posts").update(values).eq("id", existing.id).eq("author_id", user.id);
+    if (error) throw new Error(error.message);
+    return { postId: existing.id };
+  }
+  const { data: created, error } = await supabase
+    .from("posts")
+    .insert({ note_id: noteId, author_id: user.id, ...values })
+    .select("id")
+    .single<{ id: string }>();
+  if (error) throw new Error(error.message);
+  return { postId: created.id };
+}
+
+export async function unpublishNote(noteId: string): Promise<void> {
+  const { supabase, user } = await authenticatedClient();
+  const { error } = await supabase.from("posts").delete().eq("note_id", noteId).eq("author_id", user.id);
+  if (error) throw new Error(error.message);
+}
+
+export async function toggleLike(postId: string): Promise<{ liked: boolean; likeCount: number }> {
+  const { supabase, user } = await authenticatedClient();
+  const { data: existing, error: selectError } = await supabase
+    .from("post_likes")
+    .select("post_id")
+    .eq("post_id", postId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (selectError) throw new Error(selectError.message);
+  if (existing) {
+    const { error } = await supabase.from("post_likes").delete().eq("post_id", postId).eq("user_id", user.id);
+    if (error) throw new Error(error.message);
+  } else {
+    const { error } = await supabase.from("post_likes").insert({ post_id: postId, user_id: user.id });
+    if (error) throw new Error(error.message);
+  }
+  const { data: post, error: postError } = await supabase.from("posts").select("like_count").eq("id", postId).single<{ like_count: number }>();
+  if (postError) throw new Error(postError.message);
+  return { liked: !existing, likeCount: post.like_count };
 }
 
 export async function getNote(id: string): Promise<NoteRecord | null> {
