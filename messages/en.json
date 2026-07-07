@@ -16,6 +16,9 @@
     "notRecorded":"This round was not ranked",
     "submitFailed":"Failed to submit score",
     "loginToRank":"Sign in so your results count on the leaderboard",
+    "ranks":"Leaderboard",
+    "rankCol":"Rank","playerCol":"Player","timeCol":"Time","dateCol":"Date",
+    "noRanks":"No one has finished this difficulty yet — the throne awaits.",
     "items": {
       "sudoku": {"name":"Sudoku","desc":"Fill the 9×9 board with 1–9 so no row, column or box repeats.","rules":"Each row, column and 3×3 box must contain the digits 1–9 exactly once. Tap an empty cell, then enter a digit with the keyboard or the pad below — clashing digits turn red. Start with the cells that have the fewest candidates."}
     }
@@ -30,6 +33,12 @@
     },
     "fractionLine": {"unitLabel":"Unit fraction","nextPoint":"Plot next point","undoPoint":"Undo point","deleteRow":"Delete current row","clearAll":"Clear","zoom":"Zoom","overview":"Overview","showTicks":"Integer ticks","showGuides":"Alignment guides","zeroHint":"Drag any integer tick to pan; double-click to reset"},
     "motion": {"length":"Track length","start":"Go","pause":"Pause","resume":"Resume","reset":"Back to start","addRunway":"Add track","removeRunway":"Remove track","showRuler":"Ruler","clock":"Clock","allTime":"Set all times","allSpeed":"Set all speeds","apply":"Apply","cancel":"Cancel","auto":"auto","cropTitle":"Crop image","cropZoom":"Zoom","distance":"Distance","time":"Time","speed":"Speed","solveHint":"The value marked “auto” is computed from the other two; edit it to switch which one is solved","chooseVehicle":"Choose vehicle (sets its typical speed)","uploadImage":"Upload image","resetImage":"Reset","avatar":"Avatar","flip":"Flip direction","position":"Position","dragHint":"Drag a character to move and measure: the drag direction sets the travel direction; distance, time and speed fill in on release","editHint":"Click the avatar to upload a photo (long-press to reset); click the vehicle to switch (sets its speed, long-press to reset); click the position number to type a position; ◀ ▶ turns in place"}
+  },
+  "dashboard": {
+    "scoresTitle":"My results",
+    "noScores":"No finished games yet — win a star in the royal arena.",
+    "goPlay":"Play a round",
+    "viewRanks":"Leaderboard"
   },
   "terms": {
     "intro":"A learning line of mathematical definitions from primary school onward. The geographer records only eternal things.",

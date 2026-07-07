@@ -16,6 +16,9 @@
     "notRecorded":"本局未计入排行",
     "submitFailed":"成绩提交失败",
     "loginToRank":"登录后成绩才会计入排行榜",
+    "ranks":"排行榜",
+    "rankCol":"名次","playerCol":"玩家","timeCol":"用时","dateCol":"日期",
+    "noRanks":"这一难度还没有人完赛，虚位以待。",
     "items": {
       "sudoku": {"name":"数独","desc":"在 9×9 棋盘上填入 1–9，使每行、每列、每宫都不重复。","rules":"每行、每列和每个 3×3 宫内必须恰好出现 1–9 各一次。点击空格选中，用键盘数字或下方数字盘填入，重复的数字会标红。先从候选最少的格子入手。"}
     }
@@ -30,6 +33,12 @@
     },
     "fractionLine": {"unitLabel":"分数单位","nextPoint":"绘制下一个点","undoPoint":"撤销上一点","deleteRow":"删除当前行","clearAll":"清空","zoom":"缩放","overview":"全览","showTicks":"整数刻度","showGuides":"对齐参考线","zeroHint":"拖动任意整数刻度可平移数轴，双击复位"},
     "motion": {"length":"全程","start":"出发","pause":"暂停","resume":"继续","reset":"回到起点","addRunway":"添加跑道","removeRunway":"移除跑道","showRuler":"测距尺","clock":"计时","allTime":"统一时间","allSpeed":"统一速度","apply":"确认","cancel":"取消","auto":"自动","cropTitle":"裁剪图片","cropZoom":"缩放","distance":"路程","time":"时间","speed":"速度","solveHint":"标「自动」的量由另外两项算出，直接修改它则换成求另一个量","chooseVehicle":"选择载具（自动填入该载具的速度）","uploadImage":"上传图片","resetImage":"恢复默认","avatar":"角色头像","flip":"换方向","position":"位置","dragHint":"拖动角色即可移动与实测：拖动方向就是运动方向，松手自动填入路程、时间与速度","editHint":"点击头像上传照片、长按恢复默认；点击载具换乘（自动带速度）、长按恢复默认；点击位置数字可直接输入；◀ ▶ 原地换向"}
+  },
+  "dashboard": {
+    "scoresTitle":"我的成绩",
+    "noScores":"还没有完赛记录，去御前竞技场赢一枚星徽吧。",
+    "goPlay":"去玩一局",
+    "viewRanks":"排行榜"
   },
   "terms": {
     "intro":"从小学到大学基础的数学定义学习线。地理学家只记录永恒的东西。",

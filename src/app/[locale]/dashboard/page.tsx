@@ -1,0 +1,74 @@
+import { Crown } from "lucide-react";
+import { getTranslations, setRequestLocale } from "next-intl/server";
+import { SectionShell } from "@/components/section-shell";
+import { buttonVariants } from "@/components/ui/button";
+import { formatMs } from "@/features/games/format";
+import { games } from "@/features/games/registry";
+import { Link } from "@/i18n/navigation";
+import { requireUser } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
+import { cn } from "@/lib/utils";
+
+interface BestRow {
+  game_id: string;
+  difficulty: string;
+  duration_ms: number;
+}
+
+export default async function DashboardPage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+  setRequestLocale(locale);
+  const user = await requireUser(locale);
+  const t = await getTranslations("dashboard");
+  const gamesT = await getTranslations("games");
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("game_leaderboard")
+    .select("game_id, difficulty, duration_ms")
+    .eq("user_id", user.id)
+    .returns<BestRow[]>();
+  const bests = data ?? [];
+
+  return (
+    <SectionShell section="dashboard">
+      {/* 成绩卡（docs/plan/04 P2-4）；后续 P3/P4 的笔记卡、教室卡并列于此 */}
+      <section className="rounded-2xl border bg-card p-5">
+        <h2 className="font-medium">{t("scoresTitle")}</h2>
+        {bests.length === 0 ? (
+          <div className="mt-4 flex flex-col items-start gap-3">
+            <p className="text-sm text-muted">{t("noScores")}</p>
+            <Link href="/games" className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>
+              {t("goPlay")}
+            </Link>
+          </div>
+        ) : (
+          <ul className="mt-4 divide-y">
+            {games.map((def) =>
+              def.difficulties.map((difficulty, i) => {
+                const row = bests.find((b) => b.game_id === def.id && b.difficulty === difficulty);
+                if (!row) return null;
+                return (
+                  <li key={`${def.id}:${difficulty}`} className="flex items-center gap-3 py-2.5 text-sm">
+                    <def.icon size={16} className="text-muted" />
+                    <span className="font-medium">{gamesT(`items.${def.id}.name`)}</span>
+                    <span className="flex items-center gap-1 text-xs text-muted">
+                      {Array.from({ length: i + 1 }, (_, k) => <Crown key={k} size={10} />)}
+                      {gamesT(`difficulty.${difficulty}`)}
+                    </span>
+                    <span className="ml-auto font-serif tabular-nums">{formatMs(row.duration_ms)}</span>
+                    <Link
+                      href={`/games/${def.id}/ranks?difficulty=${difficulty}`}
+                      className="text-xs text-muted underline underline-offset-2 transition-colors duration-200 hover:text-ink"
+                    >
+                      {t("viewRanks")}
+                    </Link>
+                  </li>
+                );
+              }),
+            )}
+          </ul>
+        )}
+      </section>
+    </SectionShell>
+  );
+}

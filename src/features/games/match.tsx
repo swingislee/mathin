@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { startGame, submitScore } from "./actions";
+import { formatMs } from "./format";
 import { getGame } from "./registry";
 import type { Difficulty } from "./types";
 
@@ -17,11 +18,6 @@ function localSeed() {
 
 function nowMs() {
   return Date.now();
-}
-
-function formatMs(ms: number) {
-  const s = Math.floor(ms / 1000);
-  return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 }
 
 /** 对局页统一框架（docs/plan/02-3.2）：卷轴计时条 + 难度/重开 + 面板 + 结果条。 */

@@ -111,6 +111,10 @@ body::after {
   --p-accent-2: #d8b266;
   --p-wash: #f9ebe7;
   --p-line: #e3c9bc;
+  /* 御前名册前三名星徽：金/银/铜（docs/plan/05-3.2） */
+  --medal-1: #d8b266;
+  --medal-2: #9aa3ad;
+  --medal-3: #b78a66;
 }
 [data-planet="lamplighter"] {
   --p-accent: #f1c86e;
@@ -131,13 +135,13 @@ body::after {
   --p-line: #e0d3b4;
 }
 .dark [data-planet="earth"] { --p-accent: #c97f45; --p-accent-2: #8e9bc4; --p-wash: #1e2233; --p-line: #3a4059; }
-.dark [data-planet="king"] { --p-accent: #c76d76; --p-accent-2: #b99450; --p-wash: #242030; --p-line: #453a47; }
+.dark [data-planet="king"] { --p-accent: #c76d76; --p-accent-2: #b99450; --p-wash: #242030; --p-line: #453a47; --medal-1: #b99450; --medal-2: #8a94a3; --medal-3: #a1795c; }
 .dark [data-planet="lamplighter"] { --p-accent: #e7bc5f; --p-accent-2: #9c9ccb; --p-wash: #1c1e30; --p-line: #383b54; }
 .dark [data-planet="geographer"] { --p-accent: #a9c284; --p-accent-2: #a7b4c9; --p-wash: #20242f; --p-line: #363c4a; }
 .dark [data-planet="businessman"] { --p-accent: #a87f42; --p-accent-2: #b4ab9c; --p-wash: #232019; --p-line: #413a2c; }
 @media (prefers-color-scheme: dark) {
   :root:not(.light) [data-planet="earth"] { --p-accent: #c97f45; --p-accent-2: #8e9bc4; --p-wash: #1e2233; --p-line: #3a4059; }
-  :root:not(.light) [data-planet="king"] { --p-accent: #c76d76; --p-accent-2: #b99450; --p-wash: #242030; --p-line: #453a47; }
+  :root:not(.light) [data-planet="king"] { --p-accent: #c76d76; --p-accent-2: #b99450; --p-wash: #242030; --p-line: #453a47; --medal-1: #b99450; --medal-2: #8a94a3; --medal-3: #a1795c; }
   :root:not(.light) [data-planet="lamplighter"] { --p-accent: #e7bc5f; --p-accent-2: #9c9ccb; --p-wash: #1c1e30; --p-line: #383b54; }
   :root:not(.light) [data-planet="geographer"] { --p-accent: #a9c284; --p-accent-2: #a7b4c9; --p-wash: #20242f; --p-line: #363c4a; }
   :root:not(.light) [data-planet="businessman"] { --p-accent: #a87f42; --p-accent-2: #b4ab9c; --p-wash: #232019; --p-line: #413a2c; }

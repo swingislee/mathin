@@ -1,4 +1,4 @@
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Trophy } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { GameMatch } from "@/features/games/match";
@@ -24,6 +24,13 @@ export default async function GamePage({ params }: { params: Promise<{ locale: s
         <span aria-hidden className="h-4 w-px bg-line" />
         <span className="font-serif text-xs text-(--p-accent)">Nº {String(def.no).padStart(2, "0")}</span>
         <span className="text-sm font-medium">{t(`items.${game}.name`)}</span>
+        <Link
+          href={`/games/${game}/ranks`}
+          className="ml-auto inline-flex items-center gap-1.5 text-sm text-muted transition-colors duration-200 hover:text-ink"
+        >
+          <Trophy size={14} />
+          {t("ranks")}
+        </Link>
       </div>
       <div className="mt-4 flex-1">
         <GameMatch gameId={game} loggedIn={Boolean(user)} />
