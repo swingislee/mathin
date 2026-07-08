@@ -91,6 +91,41 @@
       "collab":{"invite":"Invite collaborators","enableInvite":"Enable invite link","disableInvite":"Stop inviting","copyLink":"Copy invite link","members":"Collaborators","owner":"Owner","canEdit":"Can edit","viewOnly":"View only","makeViewOnly":"Make view-only","makeEditor":"Make editor","remove":"Remove member","anonymous":"Unnamed user"}
     }
   },
+  "classroom": {
+    "list": {
+      "intro":"Teachers open classrooms; students join with an invite code to learn and submit work together.",
+      "create":"New classroom",
+      "createTitle":"Name your classroom",
+      "namePlaceholder":"e.g. Grade 5 Thinking Class",
+      "confirmCreate":"Create",
+      "cancel":"Cancel",
+      "join":"Join classroom",
+      "joinPlaceholder":"Enter 8-char invite code",
+      "joinFailed":"Invalid invite code. Please check with your teacher.",
+      "empty":"No classrooms yet. Teachers can create one; students, ask your teacher for an invite code.",
+      "teaching":"Teaching",
+      "studying":"Learning",
+      "untitled":"Untitled classroom",
+      "createdAt":"Created {date}"
+    },
+    "home": {
+      "invite":"Invite code",
+      "inviteHint":"Students enter this code on the classroom page to join.",
+      "copy":"Copy invite code",
+      "members":"Members ({count})",
+      "teacher":"Teacher",
+      "student":"Student",
+      "remove":"Remove from classroom",
+      "removeConfirm":"Remove {name} from this classroom?",
+      "leave":"Leave classroom",
+      "leaveConfirm":"Leave this classroom?",
+      "cancel":"Cancel",
+      "sessionsTitle":"Sessions",
+      "assignmentsTitle":"Assignments",
+      "untitled":"Untitled classroom",
+      "anonymous":"Unnamed user"
+    }
+  },
   "terms": {
     "intro":"A learning line of mathematical definitions from primary school onward. The geographer records only eternal things.",
     "stage1":"Stage 1 · Grades 1–2","stage2":"Stage 2 · Grades 3–4","stage3":"Stage 3 · Grades 5–6",

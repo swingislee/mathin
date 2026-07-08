@@ -91,6 +91,41 @@
       "collab":{"invite":"邀请协作","enableInvite":"开启邀请链接","disableInvite":"停止邀请","copyLink":"复制邀请链接","members":"协作成员","owner":"所有者","canEdit":"可编辑","viewOnly":"只读","makeViewOnly":"设为只读","makeEditor":"设为可编辑","remove":"移除成员","anonymous":"未命名用户"}
     }
   },
+  "classroom": {
+    "list": {
+      "intro":"教师开设教室，学生凭邀请码加入，一起上课与交作业。",
+      "create":"新建教室",
+      "createTitle":"给教室起个名字",
+      "namePlaceholder":"例如：五年级思维班",
+      "confirmCreate":"创建",
+      "cancel":"取消",
+      "join":"加入教室",
+      "joinPlaceholder":"输入 8 位邀请码",
+      "joinFailed":"邀请码无效，请和老师确认后重试。",
+      "empty":"还没有教室。教师可以新建教室；学生请向老师要一枚邀请码。",
+      "teaching":"我执教",
+      "studying":"我在学",
+      "untitled":"未命名教室",
+      "createdAt":"创建于 {date}"
+    },
+    "home": {
+      "invite":"邀请码",
+      "inviteHint":"学生在教室页输入此码即可加入。",
+      "copy":"复制邀请码",
+      "members":"成员（{count}）",
+      "teacher":"教师",
+      "student":"学生",
+      "remove":"移出教室",
+      "removeConfirm":"确定把 {name} 移出教室吗？",
+      "leave":"退出教室",
+      "leaveConfirm":"确定退出这间教室吗？",
+      "cancel":"取消",
+      "sessionsTitle":"课堂",
+      "assignmentsTitle":"作业",
+      "untitled":"未命名教室",
+      "anonymous":"未命名用户"
+    }
+  },
   "terms": {
     "intro":"从小学到大学基础的数学定义学习线。地理学家只记录永恒的东西。",
     "stage1":"第一学段 · 1–2 年级","stage2":"第二学段 · 3–4 年级","stage3":"第三学段 · 5–6 年级",
