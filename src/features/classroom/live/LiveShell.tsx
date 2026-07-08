@@ -163,6 +163,8 @@ function reduceEvent(state: LiveState, ev: SessionEvent): LiveState {
 }
 
 const OPTION_LABELS = ["A", "B", "C", "D"];
+/** 星数不超过此值时直接摆星星图标（更直观）；超出退回单星+数字（08-§3.5）。 */
+const MAX_INLINE_STARS = 5;
 
 export function LiveShell({ session, classId, members, myRole, userId, initialEvents, role }: Props) {
   const t = useTranslations("classroom.live");
@@ -211,11 +213,15 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
   const [mainStore, setMainStore] = useState<WhiteboardStore | null>(null);
   const [activeArea, setActiveArea] = useState<"main" | "side">("main");
   const [endOpen, setEndOpen] = useState(false);
+  const [stageWidth, setStageWidth] = useState(0);
   const logRef = useRef<SessionEventLog | null>(null);
   const preloadTick = useRef(0);
+  const stageRef = useRef<HTMLDivElement | null>(null);
 
   const isController = role === "control" && myRole === "teacher";
   const editable = isController && !state.ended;
+  // 展示窗/学生端跟随 start 事件进入上课（派生而非 effect，避免级联渲染）
+  const effectivePhase: Phase = phase === "live" || (state.started && !isController) ? "live" : "prep";
 
   // --- 事件层与传输层 ---------------------------------------------------
   useEffect(() => {
@@ -339,6 +345,18 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // --- 舞台宽度（线宽换算的统一参照，08-§3.2 追加）------------------------
+  // 主板书自身宽度即为参照；副板书借同一个值，让同屏两块板上的同一支笔粗细一致。
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    const update = () => setStageWidth(el.clientWidth);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [effectivePhase]);
+
   // --- 副板书（全课一块，pageKey="side"）---------------------------------
   const sideBoard = useClassBoard(log, "side", editable, initialState.boards["side"]);
 
@@ -418,12 +436,20 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
   }, [append, session.id]);
 
   // --- 派生 ----------------------------------------------------------------
-  // 展示窗/学生端跟随 start 事件进入上课（派生而非 effect，避免级联渲染）
-  const effectivePhase: Phase = phase === "live" || (state.started && !isController) ? "live" : "prep";
   const page = state.pages[state.currentPage] as CoursewarePage | undefined;
   const assetsReady = preload.done >= preload.total;
   const onlineIds = useMemo(() => new Set(onlinePeers.map((peer) => peer.userId)), [onlinePeers]);
   const toolbarStore = activeArea === "side" ? sideBoard.store : mainStore;
+  // 清空对话框目标：默认勾选主板书，副板书可选加入（用户 2026-07-08 要求）
+  const clearTargets = useMemo(
+    () => (mainStore
+      ? [
+          { key: "main", label: t("clearMain"), store: mainStore, defaultChecked: true },
+          { key: "side", label: t("clearSide"), store: sideBoard.store, defaultChecked: false },
+        ]
+      : undefined),
+    [mainStore, sideBoard.store, t],
+  );
   const myAnswer = state.quiz ? state.answers[state.quiz.id]?.[userId] : undefined;
   const tally = useMemo(() => {
     if (!state.quiz) return [];
@@ -433,6 +459,7 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
     }
     return bucket;
   }, [state.quiz, state.answers]);
+  const showControlBar = isController || (myRole === "student" && role === "viewer") || Boolean(state.quiz);
 
   const connectionBadges = (
     <div className="flex items-center gap-2 text-xs">
@@ -581,11 +608,12 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
       )}
 
       <div className="mt-2 flex min-h-0 flex-1 gap-3">
-        {/* 舞台：4:3 课件层 + 主板书覆盖层（08-§3.2 归一化坐标，比例由容器决定） */}
+        {/* 左：4:3 课件层 + 主板书覆盖层，尽量占满可压缩空间（08-§3.2 归一化坐标） */}
         <main className="relative flex min-w-0 flex-1 items-center justify-center">
           <div
+            ref={stageRef}
             className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-line bg-card"
-            style={{ width: "min(100%, calc((100dvh - 10.5rem) * 4 / 3))" }}
+            style={{ width: "min(100%, calc((100dvh - 6rem) * 4 / 3))" }}
             onPointerDownCapture={() => setActiveArea("main")}
           >
             {!page ? (
@@ -613,7 +641,7 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
               )
             ) : page.type === "game" ? (
               <GamePage
-                key={page.id}
+                key={`game-${page.id}`}
                 page={page}
                 isController={isController}
                 mirror={state.games[page.id] ?? null}
@@ -623,11 +651,12 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
 
             {page && (
               <MainBoard
-                key={page.id}
+                key={`board-${page.id}`}
                 log={log}
                 boardKey={page.id}
                 editable={editable}
                 initialItems={state.boards[page.id]}
+                strokeWidthBasis={stageWidth}
                 onStore={setMainStore}
               />
             )}
@@ -645,188 +674,193 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
               <span className="rounded-full bg-ink/70 px-2 py-0.5 text-[10px] leading-none text-paper">
                 {activeArea === "side" ? t("boardSide") : t("boardMain")}
               </span>
-              <Toolbar title={`${session.title || t("untitled")}-${page?.title ?? ""}`} store={toolbarStore} />
+              <Toolbar title={`${session.title || t("untitled")}-${page?.title ?? ""}`} store={toolbarStore} clearTargets={clearTargets} />
             </div>
           )}
         </main>
 
-        {/* 右栏：副板书（全课共享）+ 学生名录 */}
-        <aside className="flex w-60 shrink-0 flex-col gap-2 xl:w-72">
-          <div
-            className="relative min-h-0 flex-[3] overflow-hidden rounded-2xl border border-line bg-card"
-            onPointerDownCapture={() => setActiveArea("side")}
-          >
-            <CanvasSurface editable={editable} store={sideBoard.store} bus={sideBoard.bus} />
-          </div>
-          <div className="flex min-h-0 flex-[2] flex-col overflow-hidden rounded-2xl border border-line">
-            <p className="shrink-0 border-b border-line px-3 py-1.5 text-xs text-muted">
-              {t("roster", { count: students.length })}
-            </p>
-            <ul className="min-h-0 flex-1 space-y-1.5 overflow-y-auto p-2">
-              {students.map((student) => {
-                const count = state.stars[student.userId] ?? 0;
-                const answered = state.quiz ? state.answers[state.quiz.id]?.[student.userId] : undefined;
-                return (
-                  <StudentCard
-                    key={student.userId}
-                    name={student.displayName || t("anonymous")}
-                    count={count}
-                    hand={Boolean(state.hands[student.userId])}
-                    online={onlineIds.has(student.userId)}
-                    answerLabel={
-                      answered === undefined ? null : isController ? OPTION_LABELS[answered] ?? "?" : "✓"
-                    }
-                    interactive={editable}
-                    undoHint={t("undoStar")}
-                    onStar={() => append("star", { studentId: student.userId })}
-                    onUndo={() => {
-                      if (count > 0) append("star_undo", { studentId: student.userId });
-                    }}
-                  />
-                );
-              })}
-            </ul>
-          </div>
-        </aside>
-      </div>
-
-      <footer className="mt-2 flex shrink-0 flex-wrap items-center gap-2">
-        {isController && (
-          <>
-            <button
-              type="button"
-              aria-label={t("prevPage")}
-              disabled={state.currentPage <= 0}
-              onClick={() => gotoPage(state.currentPage - 1, state.pages.length)}
-              className="grid size-10 place-items-center rounded-full border border-line text-ink transition-colors hover:bg-moon/30 disabled:opacity-30"
+        {/* 右：副板书（长条，固定宽）+ 学生名录（固定宽，容纳多人）+ 控制条，三段式（用户 2026-07-08 拍板） */}
+        <div className="flex w-[21rem] shrink-0 flex-col gap-2 xl:w-[24rem]">
+          <div className="flex min-h-0 flex-1 gap-2">
+            <div
+              className="relative w-32 shrink-0 overflow-hidden rounded-2xl border border-line bg-card sm:w-36"
+              onPointerDownCapture={() => setActiveArea("side")}
             >
-              <ChevronLeft size={18} />
-            </button>
-            <button
-              type="button"
-              aria-label={t("nextPage")}
-              disabled={state.currentPage >= state.pages.length - 1}
-              onClick={() => gotoPage(state.currentPage + 1, state.pages.length)}
-              className="grid size-10 place-items-center rounded-full border border-line text-ink transition-colors hover:bg-moon/30 disabled:opacity-30"
-            >
-              <ChevronRight size={18} />
-            </button>
-            {!state.ended && (
-              <>
-                <button
-                  type="button"
-                  onClick={insertBoardPage}
-                  className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-line px-3 text-xs text-muted transition-colors hover:bg-moon/30 hover:text-ink"
-                >
-                  <PenLine size={14} />
-                  {t("insertBoard")}
-                </button>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <button
-                      type="button"
-                      className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-line px-3 text-xs text-muted transition-colors hover:bg-moon/30 hover:text-ink"
-                    >
-                      <Wrench size={14} />
-                      {t("openTool")}
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent side="top" className="w-auto p-1.5">
-                    <ToolPicker
-                      onPick={(toolId) => append("tool_ctl", { action: "open", toolId })}
+              <CanvasSurface editable={editable} store={sideBoard.store} bus={sideBoard.bus} strokeWidthBasis={stageWidth} />
+            </div>
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-line">
+              <p className="shrink-0 border-b border-line px-3 py-1.5 text-xs text-muted">
+                {t("roster", { count: students.length })}
+              </p>
+              <ul className="min-h-0 flex-1 space-y-1 overflow-y-auto p-1.5">
+                {students.map((student) => {
+                  const count = state.stars[student.userId] ?? 0;
+                  const answered = state.quiz ? state.answers[state.quiz.id]?.[student.userId] : undefined;
+                  return (
+                    <StudentCard
+                      key={student.userId}
+                      name={student.displayName || t("anonymous")}
+                      count={count}
+                      hand={Boolean(state.hands[student.userId])}
+                      online={onlineIds.has(student.userId)}
+                      answerLabel={
+                        answered === undefined ? null : isController ? OPTION_LABELS[answered] ?? "?" : "✓"
+                      }
+                      interactive={editable}
+                      undoHint={t("undoStar")}
+                      onStar={() => append("star", { studentId: student.userId })}
+                      onUndo={() => {
+                        if (count > 0) append("star_undo", { studentId: student.userId });
+                      }}
                     />
-                  </PopoverContent>
-                </Popover>
-                {state.quiz ? (
+                  );
+                })}
+              </ul>
+            </div>
+          </div>
+
+          {/* 控制条：翻页/插页/工具/发题（教师）或举手/作答（学生），紧贴副板书+名录下方，老师操作更方便 */}
+          {showControlBar && (
+            <div className="flex shrink-0 flex-col gap-1.5 rounded-2xl border border-line p-2">
+              {isController && (
+                <div className="flex flex-wrap items-center gap-1.5">
                   <button
                     type="button"
-                    onClick={() => append("session_ctl", { action: "quiz_close", quizId: state.quiz?.id })}
-                    className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-ink px-3 text-xs text-paper transition-opacity hover:opacity-85"
+                    aria-label={t("prevPage")}
+                    disabled={state.currentPage <= 0}
+                    onClick={() => gotoPage(state.currentPage - 1, state.pages.length)}
+                    className="grid size-10 place-items-center rounded-full border border-line text-ink transition-colors hover:bg-moon/30 disabled:opacity-30"
                   >
-                    <SquareCheckBig size={14} />
-                    {t("quizClose")}
+                    <ChevronLeft size={18} />
                   </button>
-                ) : (
-                  <Popover>
-                    <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label={t("nextPage")}
+                    disabled={state.currentPage >= state.pages.length - 1}
+                    onClick={() => gotoPage(state.currentPage + 1, state.pages.length)}
+                    className="grid size-10 place-items-center rounded-full border border-line text-ink transition-colors hover:bg-moon/30 disabled:opacity-30"
+                  >
+                    <ChevronRight size={18} />
+                  </button>
+                  {!state.ended && (
+                    <>
                       <button
                         type="button"
+                        onClick={insertBoardPage}
                         className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-line px-3 text-xs text-muted transition-colors hover:bg-moon/30 hover:text-ink"
                       >
-                        <ListTodo size={14} />
-                        {t("quizOpen")}
+                        <PenLine size={14} />
+                        {t("insertBoard")}
                       </button>
-                    </PopoverTrigger>
-                    <PopoverContent side="top" className="w-auto p-1.5">
-                      <div className="flex items-center gap-1">
-                        {[2, 3, 4].map((options) => (
+                      <Popover>
+                        <PopoverTrigger asChild>
                           <button
-                            key={options}
                             type="button"
-                            onClick={() => append("session_ctl", { action: "quiz_open", quizId: newId(), options })}
-                            className="rounded-lg px-2.5 py-1.5 text-sm text-muted transition-colors hover:bg-moon/30 hover:text-ink"
+                            className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-line px-3 text-xs text-muted transition-colors hover:bg-moon/30 hover:text-ink"
                           >
-                            {t("quizOptions", { last: OPTION_LABELS[options - 1] })}
+                            <Wrench size={14} />
+                            {t("openTool")}
                           </button>
-                        ))}
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                )}
-              </>
-            )}
-          </>
-        )}
-
-        {myRole === "student" && role === "viewer" && !state.ended && (
-          <>
-            <button
-              type="button"
-              onClick={() => append("hand", { up: !state.hands[userId] })}
-              className={cn(
-                "inline-flex min-h-11 items-center gap-1.5 rounded-full border px-4 text-sm transition-colors",
-                state.hands[userId]
-                  ? "border-crater/50 bg-crater/10 text-crater"
-                  : "border-line text-muted hover:bg-moon/30 hover:text-ink",
+                        </PopoverTrigger>
+                        <PopoverContent side="top" className="w-auto p-1.5">
+                          <ToolPicker
+                            onPick={(toolId) => append("tool_ctl", { action: "open", toolId })}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      {state.quiz ? (
+                        <button
+                          type="button"
+                          onClick={() => append("session_ctl", { action: "quiz_close", quizId: state.quiz?.id })}
+                          className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-ink px-3 text-xs text-paper transition-opacity hover:opacity-85"
+                        >
+                          <SquareCheckBig size={14} />
+                          {t("quizClose")}
+                        </button>
+                      ) : (
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button
+                              type="button"
+                              className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-line px-3 text-xs text-muted transition-colors hover:bg-moon/30 hover:text-ink"
+                            >
+                              <ListTodo size={14} />
+                              {t("quizOpen")}
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent side="top" className="w-auto p-1.5">
+                            <div className="flex items-center gap-1">
+                              {[2, 3, 4].map((options) => (
+                                <button
+                                  key={options}
+                                  type="button"
+                                  onClick={() => append("session_ctl", { action: "quiz_open", quizId: newId(), options })}
+                                  className="rounded-lg px-2.5 py-1.5 text-sm text-muted transition-colors hover:bg-moon/30 hover:text-ink"
+                                >
+                                  {t("quizOptions", { last: OPTION_LABELS[options - 1] })}
+                                </button>
+                              ))}
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      )}
+                    </>
+                  )}
+                </div>
               )}
-            >
-              <Hand size={15} />
-              {state.hands[userId] ? t("handDown") : t("handUp")}
-            </button>
-            {state.quiz && (
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs text-muted">{t("answerPrompt")}</span>
-                {Array.from({ length: state.quiz.options }, (_, choice) => (
+
+              {myRole === "student" && role === "viewer" && !state.ended && (
+                <div className="flex flex-wrap items-center gap-1.5">
                   <button
-                    key={choice}
                     type="button"
-                    onClick={() => append("answer", { quizId: state.quiz?.id, choice })}
+                    onClick={() => append("hand", { up: !state.hands[userId] })}
                     className={cn(
-                      "grid size-11 place-items-center rounded-full border text-sm font-medium transition-colors",
-                      myAnswer === choice
-                        ? "border-ink/60 bg-ink text-paper"
-                        : "border-line text-ink hover:bg-moon/30",
+                      "inline-flex min-h-11 items-center gap-1.5 rounded-full border px-4 text-sm transition-colors",
+                      state.hands[userId]
+                        ? "border-crater/50 bg-crater/10 text-crater"
+                        : "border-line text-muted hover:bg-moon/30 hover:text-ink",
                     )}
                   >
-                    {OPTION_LABELS[choice]}
+                    <Hand size={15} />
+                    {state.hands[userId] ? t("handDown") : t("handUp")}
                   </button>
-                ))}
-              </div>
-            )}
-          </>
-        )}
+                  {state.quiz && (
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="w-full text-xs text-muted">{t("answerPrompt")}</span>
+                      {Array.from({ length: state.quiz.options }, (_, choice) => (
+                        <button
+                          key={choice}
+                          type="button"
+                          onClick={() => append("answer", { quizId: state.quiz?.id, choice })}
+                          className={cn(
+                            "grid size-11 place-items-center rounded-full border text-sm font-medium transition-colors",
+                            myAnswer === choice
+                              ? "border-ink/60 bg-ink text-paper"
+                              : "border-line text-ink hover:bg-moon/30",
+                          )}
+                        >
+                          {OPTION_LABELS[choice]}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
-        {state.quiz && (
-          <div className="ml-auto flex items-center gap-1.5 text-xs">
-            <span className="text-muted">{t("quizTally")}</span>
-            {tally.map((count, choice) => (
-              <span key={choice} className="rounded-full bg-line/50 px-2 py-0.5 font-mono">
-                {OPTION_LABELS[choice]} {count}
-              </span>
-            ))}
-          </div>
-        )}
-      </footer>
+              {state.quiz && (
+                <div className="flex flex-wrap items-center gap-1 text-xs">
+                  <span className="text-muted">{t("quizTally")}</span>
+                  {tally.map((count, choice) => (
+                    <span key={choice} className="rounded-full bg-line/50 px-2 py-0.5 font-mono">
+                      {OPTION_LABELS[choice]} {count}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
 
       <Dialog open={endOpen} onOpenChange={setEndOpen}>
         <DialogContent>
@@ -850,12 +884,14 @@ function MainBoard({
   boardKey,
   editable,
   initialItems,
+  strokeWidthBasis,
   onStore,
 }: {
   log: SessionEventLog | null;
   boardKey: string;
   editable: boolean;
   initialItems: StrokeItem[] | undefined;
+  strokeWidthBasis?: number;
   onStore: (store: WhiteboardStore) => void;
 }) {
   const { store, bus } = useClassBoard(log, boardKey, editable, initialItems);
@@ -864,7 +900,7 @@ function MainBoard({
   }, [store, onStore]);
   return (
     <div className="pointer-events-none absolute inset-0 z-10">
-      <CanvasSurface editable={editable} store={store} bus={bus} />
+      <CanvasSurface editable={editable} store={store} bus={bus} strokeWidthBasis={strokeWidthBasis} />
     </div>
   );
 }
@@ -1001,15 +1037,21 @@ function StudentCard({
           {answerLabel}
         </span>
       )}
-      <Star
-        key={count}
-        size={13}
-        className={cn(
-          "shrink-0 text-crater",
-          count > 0 && "motion-safe:[animation:star-pop_.35s_ease-out]",
-        )}
-      />
-      <span className="w-5 shrink-0 text-right font-mono text-xs">{count}</span>
+      {/* 空间允许时直接摆出对应数量的星星（更直观）；超出才退回数字标识（用户 2026-07-08 要求） */}
+      {count === 0 ? (
+        <Star size={12} className="shrink-0 text-line" />
+      ) : count <= MAX_INLINE_STARS ? (
+        <span key={count} className="flex shrink-0 items-center gap-0.5 motion-safe:[animation:star-pop_.35s_ease-out]">
+          {Array.from({ length: count }, (_, i) => (
+            <Star key={i} size={12} className="shrink-0 text-crater" />
+          ))}
+        </span>
+      ) : (
+        <span key={count} className="flex shrink-0 items-center gap-1 motion-safe:[animation:star-pop_.35s_ease-out]">
+          <Star size={13} className="shrink-0 text-crater" />
+          <span className="font-mono text-xs">{count}</span>
+        </span>
+      )}
     </>
   );
 

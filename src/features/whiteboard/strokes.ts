@@ -32,16 +32,22 @@ function outlinePath(pointsPx: number[][], sizePx: number): Path2D {
   return new Path2D(d + "Z");
 }
 
-/** 画一条绘制项；erase 项以 destination-out 挖除底下的墨迹。 */
+/**
+ * 画一条绘制项；erase 项以 destination-out 挖除底下的墨迹。
+ * `basisW` 是线宽换算的参照宽度，默认等于 `w`（点坐标的归一化基准）；
+ * 课堂场景主/副板书物理宽度悬殊，传入统一的 basisW（主板书宽度）
+ * 让同一支笔在同屏两块板上像素粗细一致（点位置仍各自按自身宽度归一化）。
+ */
 export function drawItem(
   ctx: CanvasRenderingContext2D,
   item: StrokeItem,
   w: number,
   h: number,
   color: string,
+  basisW: number = w,
 ): void {
   const pts = item.points.map(([xn, yn]) => [xn * w, yn * h]);
-  const path = outlinePath(pts, Math.max(item.wNorm * w, 1));
+  const path = outlinePath(pts, Math.max(item.wNorm * basisW, 1));
   ctx.save();
   if (item.mode === "erase") ctx.globalCompositeOperation = "destination-out";
   ctx.fillStyle = item.mode === "erase" ? "#000" : color;
@@ -56,10 +62,11 @@ export function renderAll(
   w: number,
   h: number,
   colorEl: Element,
+  basisW: number = w,
 ): void {
   ctx.clearRect(0, 0, w, h);
   for (const item of items) {
-    drawItem(ctx, item, w, h, item.mode === "erase" ? "#000" : resolveColor(colorEl, item.color));
+    drawItem(ctx, item, w, h, item.mode === "erase" ? "#000" : resolveColor(colorEl, item.color), basisW);
   }
 }
 
@@ -79,11 +86,12 @@ export function hitStrokeId(
   w: number,
   h: number,
   thresholdPx: number,
+  basisW: number = w,
 ): string | null {
   for (let i = items.length - 1; i >= 0; i--) {
     const item = items[i];
     if (item.mode !== "ink") continue;
-    const radius = thresholdPx + (item.wNorm * w) / 2;
+    const radius = thresholdPx + (item.wNorm * basisW) / 2;
     const pts = item.points;
     if (pts.length === 1) {
       if (Math.hypot(pts[0][0] * w - x, pts[0][1] * h - y) <= radius) return item.id;

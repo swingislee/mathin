@@ -299,6 +299,7 @@
         "undo": "Undo",
         "clear": "Clear board",
         "clearConfirm": "Clear the whole board? You can still undo this once.",
+        "clearTargetsHint": "Choose which boards to clear:",
         "cancel": "Cancel",
         "export": "Export PNG"
       },
@@ -441,6 +442,8 @@
       "enableSound": "Tap to enable sound",
       "boardMain": "Writing on main board",
       "boardSide": "Writing on side board",
+      "clearMain": "Main board",
+      "clearSide": "Side board",
       "boardPageTitle": "Board",
       "insertBoard": "Insert board page",
       "openTool": "Tools",

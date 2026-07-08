@@ -32,6 +32,29 @@ const ERASER_TOOLS: Tool[] = ["strokeEraser", "eraserS", "eraserM", "eraserL"];
 const SIZE_ORDER = ["thin", "medium", "thick"] as const;
 type SizeLabelKey = "sizeThin" | "sizeMedium" | "sizeThick";
 
+/** 课堂多板场景：清空前勾选目标板（默认勾选主板书）；独立白板不传，退化为单板清空。 */
+export interface ClearTarget {
+  key: string;
+  label: string;
+  store: WhiteboardStore;
+  defaultChecked?: boolean;
+}
+
+function ClearTargetRow({ target, checked, onToggle }: { target: ClearTarget; checked: boolean; onToggle: () => void }) {
+  const hasItems = useStore(target.store, (state) => state.items.length > 0);
+  return (
+    <label className="flex items-center gap-2.5 rounded-lg px-2 py-2 text-sm transition-colors hover:bg-moon/20">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={onToggle}
+        className="size-4 accent-(--ink)"
+      />
+      <span className={cn("flex-1", !hasItems && "text-muted")}>{target.label}</span>
+    </label>
+  );
+}
+
 function ToolButton({ active, label, onClick, disabled, children }: {
   active?: boolean;
   label: string;
@@ -58,7 +81,15 @@ function ToolButton({ active, label, onClick, disabled, children }: {
   );
 }
 
-export function Toolbar({ title, store = useWhiteboardStore }: { title: string; store?: WhiteboardStore }) {
+export function Toolbar({
+  title,
+  store = useWhiteboardStore,
+  clearTargets,
+}: {
+  title: string;
+  store?: WhiteboardStore;
+  clearTargets?: ClearTarget[];
+}) {
   const t = useTranslations("whiteboard.board.tools");
   const colorNames = useTranslations("whiteboard.board.colors");
   const tool = useStore(store, (state) => state.tool);
@@ -73,6 +104,9 @@ export function Toolbar({ title, store = useWhiteboardStore }: { title: string; 
   const clear = useStore(store, (state) => state.clear);
   const [lastEraser, setLastEraser] = useState<Tool>("strokeEraser");
   const [clearOpen, setClearOpen] = useState(false);
+  const [clearSelected, setClearSelected] = useState<Set<string>>(
+    () => new Set(clearTargets?.filter((target) => target.defaultChecked).map((target) => target.key) ?? []),
+  );
   const isEraser = ERASER_TOOLS.includes(tool);
   const sizeIndex = Math.max(SIZE_ORDER.findIndex((key) => SIZE_PRESETS[key] === sizeNorm), 0);
 
@@ -185,7 +219,7 @@ export function Toolbar({ title, store = useWhiteboardStore }: { title: string; 
       <ToolButton label={t("undo")} onClick={undo} disabled={!canUndo}>
         <Undo2 size={18} />
       </ToolButton>
-      <ToolButton label={t("clear")} onClick={() => setClearOpen(true)} disabled={!hasItems}>
+      <ToolButton label={t("clear")} onClick={() => setClearOpen(true)} disabled={clearTargets ? false : !hasItems}>
         <Trash2 size={18} />
       </ToolButton>
       <ToolButton
@@ -200,14 +234,36 @@ export function Toolbar({ title, store = useWhiteboardStore }: { title: string; 
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t("clear")}</DialogTitle>
-            <DialogDescription>{t("clearConfirm")}</DialogDescription>
+            <DialogDescription>{clearTargets ? t("clearTargetsHint") : t("clearConfirm")}</DialogDescription>
           </DialogHeader>
+          {clearTargets && (
+            <div className="space-y-0.5">
+              {clearTargets.map((target) => (
+                <ClearTargetRow
+                  key={target.key}
+                  target={target}
+                  checked={clearSelected.has(target.key)}
+                  onToggle={() => setClearSelected((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(target.key)) next.delete(target.key);
+                    else next.add(target.key);
+                    return next;
+                  })}
+                />
+              ))}
+            </div>
+          )}
           <DialogFooter>
             <Button variant="ghost" size="sm" onClick={() => setClearOpen(false)}>{t("cancel")}</Button>
             <Button
               size="sm"
+              disabled={clearTargets ? clearSelected.size === 0 : false}
               onClick={() => {
-                clear();
+                if (clearTargets) {
+                  for (const target of clearTargets) if (clearSelected.has(target.key)) target.store.getState().clear();
+                } else {
+                  clear();
+                }
                 setClearOpen(false);
               }}
             >

@@ -30,15 +30,25 @@ export function CanvasSurface({
   editable,
   store = useWhiteboardStore,
   bus = boardBus,
+  strokeWidthBasis,
 }: {
   editable: boolean;
   store?: WhiteboardStore;
   bus?: BoardBus;
+  /** 线宽换算的参照宽度（像素）：不传则用画布自身宽度（独立白板默认行为）；
+   *  课堂场景传入统一值（主板书宽度），让同屏两块板上的同一支笔粗细一致。 */
+  strokeWidthBasis?: number;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const baseRef = useRef<HTMLCanvasElement | null>(null);
   const draftRef = useRef<HTMLCanvasElement | null>(null);
   const dimsRef = useRef({ w: 1, h: 1 });
+  const basisRef = useRef(strokeWidthBasis);
+  useEffect(() => {
+    basisRef.current = strokeWidthBasis;
+  }, [strokeWidthBasis]);
+  // 稳定引用（只读 ref，不随 strokeWidthBasis 变化重建）：line-width 换算的参照宽度。
+  const basisW = useCallback(() => (basisRef.current && basisRef.current > 0 ? basisRef.current : dimsRef.current.w), []);
   const strokeRef = useRef<StrokeItem | null>(null);
   const remotePendingRef = useRef<Map<string, StrokeItem>>(new Map());
   const [cursor, setCursor] = useState<[number, number] | null>(null);
@@ -54,8 +64,8 @@ export function CanvasSurface({
     const base = baseRef.current;
     const ctx = base?.getContext("2d");
     if (!base || !ctx) return;
-    renderAll(ctx, store.getState().items, dimsRef.current.w, dimsRef.current.h, base);
-  }, [store]);
+    renderAll(ctx, store.getState().items, dimsRef.current.w, dimsRef.current.h, base, basisW());
+  }, [store, basisW]);
 
   /** draft = 本地进行中的墨迹 + 远端 progress 预览（碎擦不预览，见 08-§3.2）。 */
   const redrawDraft = useCallback(() => {
@@ -66,12 +76,12 @@ export function CanvasSurface({
     ctx.clearRect(0, 0, w, h);
     const local = strokeRef.current;
     if (local && local.mode === "ink") {
-      drawItem(ctx, local, w, h, resolveColor(draft, local.color));
+      drawItem(ctx, local, w, h, resolveColor(draft, local.color), basisW());
     }
     for (const pending of remotePendingRef.current.values()) {
-      if (pending.mode === "ink") drawItem(ctx, pending, w, h, resolveColor(draft, pending.color));
+      if (pending.mode === "ink") drawItem(ctx, pending, w, h, resolveColor(draft, pending.color), basisW());
     }
-  }, []);
+  }, [basisW]);
 
   /* 尺寸自适应：backing store 用设备像素，绘制坐标一律 CSS 像素（08-§3.2 坐标契约）。 */
   useEffect(() => {
@@ -97,6 +107,12 @@ export function CanvasSurface({
     observer.observe(container);
     return () => observer.disconnect();
   }, [redrawBase, redrawDraft]);
+
+  /* 线宽参照宽度变化（如主板书随窗口调整）→ 重放，保持同屏两板粗细一致。 */
+  useEffect(() => {
+    redrawBase();
+    redrawDraft();
+  }, [strokeWidthBasis, redrawBase, redrawDraft]);
 
   /* 笔迹变更（提交/撤销/清空/远端 op）→ 全量重放。 */
   useEffect(() => {
@@ -177,7 +193,7 @@ export function CanvasSurface({
 
     const eraseHit = (x: number, y: number) => {
       const { w, h } = dimsRef.current;
-      const id = hitStrokeId(store.getState().items, x, y, w, h, STROKE_ERASER_THRESHOLD_PX);
+      const id = hitStrokeId(store.getState().items, x, y, w, h, STROKE_ERASER_THRESHOLD_PX, basisW());
       if (id) actions.eraseLine(id);
     };
 
@@ -218,7 +234,7 @@ export function CanvasSurface({
         redrawDraft();
       } else {
         // 碎擦：直接在 base 上增量挖除做即时反馈；提交后由全量重放收敛到同一结果。
-        drawItem(baseCtx, { ...stroke, points: [prev, [x / w, y / h]] }, w, h, "#000");
+        drawItem(baseCtx, { ...stroke, points: [prev, [x / w, y / h]] }, w, h, "#000", basisW());
       }
     };
 
@@ -244,11 +260,11 @@ export function CanvasSurface({
       window.removeEventListener("pointerup", finish);
       window.removeEventListener("pointercancel", finish);
     };
-  }, [editable, tool, color, sizeNorm, redrawDraft, store, bus]);
+  }, [editable, tool, color, sizeNorm, redrawDraft, store, bus, basisW]);
 
   const interactive = editable && tool !== "pointer";
   const cursorStyle = !interactive ? "default" : tool.startsWith("eraser") ? "none" : "crosshair";
-  const eraserSize = (ERASER_NORM[tool] ?? 0) * cssWidth;
+  const eraserSize = (ERASER_NORM[tool] ?? 0) * (strokeWidthBasis && strokeWidthBasis > 0 ? strokeWidthBasis : cssWidth);
 
   return (
     // 容器不拦截指针：只有 draft 画布按工具态自行开启（课堂里下层还有课件/游戏要点）

@@ -299,6 +299,7 @@
         "undo": "撤销",
         "clear": "清空画板",
         "clearConfirm": "清空整块画板？清空后仍可用「撤销」找回一次。",
+        "clearTargetsHint": "选择要清空的画板：",
         "cancel": "取消",
         "export": "导出 PNG"
       },
@@ -441,6 +442,8 @@
       "enableSound": "点击开启声音",
       "boardMain": "写在主板书",
       "boardSide": "写在副板书",
+      "clearMain": "主板书",
+      "clearSide": "副板书",
       "boardPageTitle": "白板",
       "insertBoard": "插入白板页",
       "openTool": "工具",
