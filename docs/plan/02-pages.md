@@ -74,9 +74,11 @@ h1 板块名（文楷体）+ 标题左下 32px 短横线（--section-accent，2p
 
 ### 3.1 story 故事
 
+> **2026-07-08 修订：本节被 `09-p5-story.md` 取代**——story 升级为网页沉浸式故事游戏（场景漫游 + 对话任务 + 数学谜题 beat），漫画降为受支持的章节媒介之一（`kind: "playable" | "comic"`）。时间线页的明信片视觉语言仍以 05-§3.1 为准。以下原始设计仅漫画章节（comic kind）继续沿用：
+
 - `/story`：章节时间线。垂直 `StarPath` 星轨贯穿页面，每章一个节点卡：封面缩略图（4:3，占位插画）+ 章节号 + 标题 + 一句摘要 + 状态（已发布/敬请期待）。未发布章节卡为 60% 透明度且不可点。
-- `/story/[chapter]`：漫画阅读页。首版 = 纵向长图滚动阅读（图片序列，`next/image`，懒加载），顶部进度条（rose 色），底部上一章/下一章。动画形式留待后续（预留 `media_type: comic | animation`）。
-- 内容源：`content/story/<chapter-slug>/meta.json`（标题、摘要、顺序、状态）+ `pages/*.webp`。
+- `/story/[chapter]`（comic 章节）：漫画阅读页 = 纵向长图滚动阅读（图片序列，`next/image`，懒加载），顶部进度条（狐狸橙），底部上一章/下一章。
+- 内容源（修订）：章节脚本 `src/features/story/chapters/<slug>/script.ts` + 资产 `public/story/<slug>/`，见 09-§3.2/§3.5。
 
 ### 3.2 games 游戏
 
