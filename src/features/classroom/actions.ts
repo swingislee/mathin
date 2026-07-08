@@ -1,7 +1,18 @@
 "use server";
 
+import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import type { ClassroomMember, ClassroomMeta, ClassroomRecord, ClassroomRole } from "./types";
+import type {
+  ClassroomMember,
+  ClassroomMeta,
+  ClassroomRecord,
+  ClassroomRole,
+  ClassSessionMeta,
+  ClassSessionRecord,
+  CoursewarePage,
+  SessionEvent,
+  SessionEventType,
+} from "./types";
 
 async function authenticatedClient() {
   const supabase = await createClient();
@@ -106,6 +117,152 @@ export async function leaveClassroom(classroomId: string): Promise<void> {
     .eq("classroom_id", classroomId)
     .eq("user_id", user.id);
   if (error) throw new Error(error.message);
+}
+
+// ---------------------------------------------------------------------------
+// 课次与课件（P4-4）
+// ---------------------------------------------------------------------------
+
+const pageBase = { id: z.string().uuid(), title: z.string().max(100) };
+const coursewareSchema = z
+  .array(
+    z.discriminatedUnion("type", [
+      z.object({ ...pageBase, type: z.literal("image"), path: z.string().min(1).max(500) }),
+      z.object({ ...pageBase, type: z.literal("video"), path: z.string().min(1).max(500) }),
+      z.object({
+        ...pageBase,
+        type: z.literal("game"),
+        gameId: z.string().min(1).max(50),
+        difficulty: z.enum(["easy", "medium", "hard"]),
+        seed: z.string().min(1).max(100),
+      }),
+      z.object({ ...pageBase, type: z.literal("board") }),
+    ]),
+  )
+  .max(200);
+
+interface SessionRow {
+  id: string;
+  classroom_id: string;
+  title: string;
+  courseware: CoursewarePage[];
+  current_page: number;
+  started_at: string | null;
+  ended_at: string | null;
+  created_at: string;
+}
+
+function toSessionMeta(row: SessionRow): ClassSessionMeta {
+  return {
+    id: row.id,
+    classroomId: row.classroom_id,
+    title: row.title,
+    pageCount: Array.isArray(row.courseware) ? row.courseware.length : 0,
+    currentPage: row.current_page,
+    startedAt: row.started_at,
+    endedAt: row.ended_at,
+    createdAt: row.created_at,
+  };
+}
+
+export async function listClassSessions(classroomId: string): Promise<ClassSessionMeta[]> {
+  const { supabase } = await authenticatedClient();
+  const { data, error } = await supabase
+    .from("class_sessions")
+    .select("id,classroom_id,title,courseware,current_page,started_at,ended_at,created_at")
+    .eq("classroom_id", classroomId)
+    .order("created_at", { ascending: false })
+    .returns<SessionRow[]>();
+  if (error) throw new Error(error.message);
+  return (data ?? []).map(toSessionMeta);
+}
+
+export async function createClassSession(classroomId: string, title: string): Promise<string> {
+  const { supabase } = await authenticatedClient();
+  const { data, error } = await supabase
+    .from("class_sessions")
+    .insert({ classroom_id: classroomId, title: title.trim().slice(0, 100) })
+    .select("id")
+    .single<{ id: string }>();
+  if (error) throw new Error(error.message);
+  return data.id;
+}
+
+export async function getClassSession(sessionId: string): Promise<ClassSessionRecord | null> {
+  const { supabase } = await authenticatedClient();
+  const { data, error } = await supabase
+    .from("class_sessions")
+    .select("id,classroom_id,title,courseware,current_page,started_at,ended_at,created_at")
+    .eq("id", sessionId)
+    .maybeSingle<SessionRow>();
+  if (error) throw new Error(error.message);
+  if (!data) return null;
+  return { ...toSessionMeta(data), courseware: Array.isArray(data.courseware) ? data.courseware : [] };
+}
+
+export async function renameClassSession(sessionId: string, title: string): Promise<void> {
+  const { supabase } = await authenticatedClient();
+  const { error } = await supabase
+    .from("class_sessions")
+    .update({ title: title.trim().slice(0, 100) })
+    .eq("id", sessionId);
+  if (error) throw new Error(error.message);
+}
+
+export async function saveCourseware(sessionId: string, pages: CoursewarePage[]): Promise<void> {
+  const parsed = coursewareSchema.safeParse(pages);
+  if (!parsed.success) throw new Error("INVALID_COURSEWARE");
+  const { supabase } = await authenticatedClient();
+  const { error } = await supabase
+    .from("class_sessions")
+    .update({ courseware: parsed.data })
+    .eq("id", sessionId);
+  if (error) throw new Error(error.message);
+}
+
+export async function deleteClassSession(sessionId: string): Promise<void> {
+  const { supabase } = await authenticatedClient();
+  const { error } = await supabase.from("class_sessions").delete().eq("id", sessionId);
+  if (error) throw new Error(error.message);
+}
+
+export async function startClassSession(sessionId: string): Promise<void> {
+  const { supabase } = await authenticatedClient();
+  const { error } = await supabase
+    .from("class_sessions")
+    .update({ started_at: new Date().toISOString() })
+    .eq("id", sessionId)
+    .is("started_at", null);
+  if (error) throw new Error(error.message);
+}
+
+/** 上课页初始基线：已入库的课堂事件（离线期间产生的事件在恢复后经 flush 汇入）。 */
+export async function listSessionEvents(
+  sessionId: string,
+  types?: SessionEventType[],
+): Promise<SessionEvent[]> {
+  const { supabase } = await authenticatedClient();
+  let query = supabase
+    .from("session_events")
+    .select("id,session_id,user_id,device_id,seq,type,payload,at")
+    .eq("session_id", sessionId)
+    .order("at", { ascending: true })
+    .limit(5000);
+  if (types && types.length > 0) query = query.in("type", types);
+  const { data, error } = await query.returns<
+    Array<{ id: string; session_id: string; user_id: string; device_id: string; seq: number; type: SessionEventType; payload: Record<string, unknown>; at: string }>
+  >();
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    sessionId: row.session_id,
+    userId: row.user_id,
+    deviceId: row.device_id,
+    seq: row.seq,
+    type: row.type,
+    payload: row.payload ?? {},
+    at: row.at,
+  }));
 }
 
 export async function getMyProfileRole(): Promise<"student" | "teacher" | "admin"> {

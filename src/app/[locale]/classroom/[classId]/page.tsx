@@ -1,9 +1,12 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { BookOpen } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { SectionShell } from "@/components/section-shell";
-import { getClassroom } from "@/features/classroom/actions";
+import { getClassroom, listClassSessions } from "@/features/classroom/actions";
 import { CopyInviteButton, LeaveClassroomButton, RemoveMemberButton } from "@/features/classroom/HomeActions";
+import { CreateSessionButton, DeleteSessionButton } from "@/features/classroom/SessionActions";
+import { Link } from "@/i18n/navigation";
 import { requireUser } from "@/lib/auth";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -13,12 +16,14 @@ export default async function ClassroomHomePage({ params }: { params: Promise<{ 
   setRequestLocale(locale);
   const user = await requireUser(locale);
   if (!UUID_PATTERN.test(classId)) notFound();
-  const [t, common, classroom] = await Promise.all([
+  const [t, tSessions, common, classroom] = await Promise.all([
     getTranslations("classroom.home"),
+    getTranslations("classroom.sessions"),
     getTranslations("common"),
     getClassroom(classId),
   ]);
   if (!classroom) notFound();
+  const sessions = await listClassSessions(classId);
   const isTeacher = classroom.myRole === "teacher";
   const isOwner = classroom.ownerId === user.id;
 
@@ -62,8 +67,39 @@ export default async function ClassroomHomePage({ params }: { params: Promise<{ 
 
       <div className="mt-10 grid gap-4 md:grid-cols-2">
         <section className="rounded-2xl border border-line p-5">
-          <h3 className="text-sm font-medium text-muted">{t("sessionsTitle")}</h3>
-          <EmptyState message={common("comingSoon")} />
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-sm font-medium text-muted">{t("sessionsTitle")}</h3>
+            {isTeacher && <CreateSessionButton classroomId={classroom.id} />}
+          </div>
+          {sessions.length === 0 ? (
+            <EmptyState message={tSessions("empty")} />
+          ) : (
+            <ul className="mt-3 divide-y divide-line">
+              {sessions.map((session) => {
+                const status = session.endedAt ? "ended" : session.startedAt ? "live" : "notStarted";
+                return (
+                  <li key={session.id} className="flex items-center gap-3 py-2.5">
+                    <BookOpen size={15} className="shrink-0 text-muted" aria-hidden />
+                    <Link
+                      href={`/classroom/${classroom.id}/session/${session.id}`}
+                      className="min-w-0 flex-1 truncate text-sm underline-offset-4 transition-colors hover:underline"
+                    >
+                      {session.title || tSessions("untitled")}
+                    </Link>
+                    <span className="shrink-0 text-xs text-muted">{tSessions("pages", { count: session.pageCount })}</span>
+                    <span
+                      className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${
+                        status === "live" ? "bg-leaf/15 text-leaf-deep" : "bg-line/50 text-muted"
+                      }`}
+                    >
+                      {tSessions(status)}
+                    </span>
+                    {isTeacher && <DeleteSessionButton sessionId={session.id} title={session.title || tSessions("untitled")} />}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </section>
         <section className="rounded-2xl border border-line p-5">
           <h3 className="text-sm font-medium text-muted">{t("assignmentsTitle")}</h3>
