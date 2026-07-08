@@ -169,7 +169,13 @@
     "noNotes": "还没有发布笔记。",
     "untitled": "无标题",
     "likes": "{count} 个赞",
-    "goWrite": "去写笔记"
+    "goWrite": "去写笔记",
+    "classroomsTitle": "我的教室",
+    "noClassrooms": "还没有加入或创建教室。",
+    "goClassroom": "查看",
+    "goClassrooms": "去教室",
+    "teaching": "执教",
+    "studying": "在学"
   },
   "notebook": {
     "public": {
@@ -483,6 +489,50 @@
       "rehearsalBadge": "试讲模式",
       "rehearsalHint": "试讲中的翻页、板书和加星只在本窗口生效，不会被记录或同步。",
       "cancel": "取消"
+    },
+    "assignments": {
+      "create": "布置作业",
+      "createTitle": "布置新作业",
+      "titlePlaceholder": "作业标题",
+      "contentPlaceholder": "作业说明…",
+      "dueLabel": "截止时间（可选）",
+      "createConfirm": "布置",
+      "cancel": "取消",
+      "empty": "还没有作业。",
+      "due": "截止 {date}",
+      "noDue": "无截止时间",
+      "submissionCount": "{done}/{total} 已提交",
+      "statusNotSubmitted": "未提交",
+      "statusSubmitted": "已提交",
+      "statusGraded": "已批改 · {score} 分",
+      "delete": "删除作业",
+      "deleteConfirm": "确定删除「{title}」吗？学生提交记录将一并删除。",
+      "back": "返回教室",
+      "untitled": "未命名作业",
+      "anonymous": "未命名用户",
+      "yourSubmission": "你的提交",
+      "submitPlaceholder": "在此输入你的作答…",
+      "submit": "提交",
+      "resubmitHint": "可重新提交覆盖之前的作答。",
+      "notSubmittedYet": "尚未提交",
+      "feedbackLabel": "老师评语",
+      "scoreLabel": "得分（0–100，可留空）",
+      "gradeSave": "保存批改",
+      "rosterTitle": "全部学生提交情况"
+    },
+    "report": {
+      "title": "课堂报告",
+      "back": "返回课次",
+      "noStudents": "本教室还没有学生。",
+      "student": "学生",
+      "stars": "星数",
+      "hands": "举手次数",
+      "answered": "作答题数",
+      "quizzesTitle": "发题记录",
+      "quizTitle": "第 {index} 题",
+      "respondents": "{count} 人作答",
+      "noQuiz": "本课没有发题记录。",
+      "openLink": "课堂报告"
     }
   },
   "terms": {

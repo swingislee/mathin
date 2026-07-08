@@ -76,3 +76,61 @@ export interface SessionEvent {
   /** 客户端时间 ISO 串，报告展示用；排序不依赖它。 */
   at: string;
 }
+
+// ---------------------------------------------------------------------------
+// 课堂报告（08-§6 P4-7）：对 session_events 的纯聚合，不单独存表（03-§3.4）。
+// ---------------------------------------------------------------------------
+
+export interface SessionReportRow {
+  userId: string;
+  displayName: string;
+  stars: number;
+  handRaises: number;
+  answeredCount: number;
+}
+
+export interface QuizReport {
+  quizId: string;
+  options: number;
+  openedAt: string;
+  /** 每个选项被选次数，下标 = 选项序号（A=0）。 */
+  tally: number[];
+  respondents: number;
+}
+
+export interface SessionReport {
+  rows: SessionReportRow[];
+  quizzes: QuizReport[];
+}
+
+// ---------------------------------------------------------------------------
+// 作业（08-§6 P4-7）：content 目前是 {text} 纯文本，不引入富文本编辑器。
+// 写入一律走 RPC（submit_assignment/grade_submission），见对应 migration 注释。
+// ---------------------------------------------------------------------------
+
+export interface AssignmentContent {
+  text: string;
+}
+
+export interface AssignmentMeta {
+  id: string;
+  classroomId: string;
+  title: string;
+  dueAt: string | null;
+  createdAt: string;
+}
+
+export interface AssignmentRecord extends AssignmentMeta {
+  content: AssignmentContent;
+}
+
+export interface SubmissionRecord {
+  id: string;
+  userId: string;
+  displayName: string;
+  content: AssignmentContent;
+  submittedAt: string | null;
+  score: number | null;
+  feedback: string;
+  gradedAt: string | null;
+}

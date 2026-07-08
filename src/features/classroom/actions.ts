@@ -2,7 +2,11 @@
 
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { buildSessionReport } from "./report";
 import type {
+  AssignmentContent,
+  AssignmentMeta,
+  AssignmentRecord,
   ClassroomMember,
   ClassroomMeta,
   ClassroomRecord,
@@ -12,6 +16,8 @@ import type {
   CoursewarePage,
   SessionEvent,
   SessionEventType,
+  SessionReport,
+  SubmissionRecord,
 } from "./types";
 
 async function authenticatedClient() {
@@ -293,4 +299,201 @@ export async function getMyProfileRole(): Promise<"student" | "teacher" | "admin
     .eq("id", user.id)
     .maybeSingle<{ role: "student" | "teacher" | "admin" }>();
   return data?.role ?? "student";
+}
+
+// ---------------------------------------------------------------------------
+// 课堂报告（P4-7）：仅教师可查看；聚合逻辑是纯函数（report.ts），这里只管取数。
+// ---------------------------------------------------------------------------
+
+export async function getSessionReport(sessionId: string): Promise<SessionReport> {
+  const { supabase, user } = await authenticatedClient();
+  const { data: session, error } = await supabase
+    .from("class_sessions")
+    .select("id,classroom_id")
+    .eq("id", sessionId)
+    .maybeSingle<{ id: string; classroom_id: string }>();
+  if (error) throw new Error(error.message);
+  if (!session) throw new Error("NOT_FOUND");
+  const { data: myMembership } = await supabase
+    .from("classroom_members")
+    .select("role")
+    .eq("classroom_id", session.classroom_id)
+    .eq("user_id", user.id)
+    .maybeSingle<{ role: ClassroomRole }>();
+  if (myMembership?.role !== "teacher") throw new Error("FORBIDDEN");
+
+  const [{ data: memberRows, error: memberError }, events] = await Promise.all([
+    supabase
+      .from("classroom_members")
+      .select("user_id,role,profiles(display_name)")
+      .eq("classroom_id", session.classroom_id)
+      .returns<Array<{ user_id: string; role: ClassroomRole; profiles: { display_name: string } | null }>>(),
+    listSessionEvents(sessionId, ["star", "star_undo", "hand", "answer", "session_ctl"]),
+  ]);
+  if (memberError) throw new Error(memberError.message);
+  const members: ClassroomMember[] = (memberRows ?? []).map((row) => ({
+    userId: row.user_id,
+    displayName: row.profiles?.display_name || "",
+    role: row.role,
+  }));
+  return buildSessionReport(members, events);
+}
+
+// ---------------------------------------------------------------------------
+// 作业（P4-7）：布置/删除走表级 RLS（教师专属，同 class_sessions 模式）；
+// 提交/批改一律走 RPC（submit_assignment/grade_submission，见 migration 注释——
+// 教师与学生共用 authenticated 角色，列权限拆不开「谁能写哪列」）。
+// ---------------------------------------------------------------------------
+
+interface SubmissionRow {
+  id: string;
+  user_id: string;
+  content: AssignmentContent;
+  submitted_at: string | null;
+  score: number | null;
+  feedback: string;
+  graded_at: string | null;
+}
+
+export async function listAssignments(classroomId: string): Promise<AssignmentMeta[]> {
+  const { supabase } = await authenticatedClient();
+  const { data, error } = await supabase
+    .from("assignments")
+    .select("id,classroom_id,title,due_at,created_at")
+    .eq("classroom_id", classroomId)
+    .order("created_at", { ascending: false })
+    .returns<Array<{ id: string; classroom_id: string; title: string; due_at: string | null; created_at: string }>>();
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    classroomId: row.classroom_id,
+    title: row.title,
+    dueAt: row.due_at,
+    createdAt: row.created_at,
+  }));
+}
+
+export async function createAssignment(classroomId: string, title: string, text: string, dueAt: string | null): Promise<string> {
+  const { supabase, user } = await authenticatedClient();
+  const { data, error } = await supabase
+    .from("assignments")
+    .insert({
+      classroom_id: classroomId,
+      title: title.trim().slice(0, 100),
+      content: { text: text.trim().slice(0, 20000) },
+      due_at: dueAt,
+      created_by: user.id,
+    })
+    .select("id")
+    .single<{ id: string }>();
+  if (error) throw new Error(error.message);
+  return data.id;
+}
+
+export async function deleteAssignment(id: string): Promise<void> {
+  const { supabase } = await authenticatedClient();
+  const { error } = await supabase.from("assignments").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+export async function getAssignment(id: string): Promise<AssignmentRecord | null> {
+  const { supabase } = await authenticatedClient();
+  const { data, error } = await supabase
+    .from("assignments")
+    .select("id,classroom_id,title,content,due_at,created_at")
+    .eq("id", id)
+    .maybeSingle<{ id: string; classroom_id: string; title: string; content: AssignmentContent; due_at: string | null; created_at: string }>();
+  if (error) throw new Error(error.message);
+  if (!data) return null;
+  return {
+    id: data.id,
+    classroomId: data.classroom_id,
+    title: data.title,
+    content: data.content ?? { text: "" },
+    dueAt: data.due_at,
+    createdAt: data.created_at,
+  };
+}
+
+/** 教师视角：教室全部学生 + 各自提交（未提交则为空壳记录，id 为空串）。 */
+export async function listSubmissions(assignmentId: string): Promise<SubmissionRecord[]> {
+  const { supabase } = await authenticatedClient();
+  const { data: assignment, error: assignmentError } = await supabase
+    .from("assignments")
+    .select("classroom_id")
+    .eq("id", assignmentId)
+    .maybeSingle<{ classroom_id: string }>();
+  if (assignmentError) throw new Error(assignmentError.message);
+  if (!assignment) return [];
+  const [{ data: memberRows, error: memberError }, { data: subRows, error: subError }] = await Promise.all([
+    supabase
+      .from("classroom_members")
+      .select("user_id,profiles(display_name)")
+      .eq("classroom_id", assignment.classroom_id)
+      .eq("role", "student")
+      .returns<Array<{ user_id: string; profiles: { display_name: string } | null }>>(),
+    supabase
+      .from("submissions")
+      .select("id,user_id,content,submitted_at,score,feedback,graded_at")
+      .eq("assignment_id", assignmentId)
+      .returns<SubmissionRow[]>(),
+  ]);
+  if (memberError) throw new Error(memberError.message);
+  if (subError) throw new Error(subError.message);
+  const byUser = new Map((subRows ?? []).map((row) => [row.user_id, row]));
+  return (memberRows ?? []).map((member) => {
+    const sub = byUser.get(member.user_id);
+    return {
+      id: sub?.id ?? "",
+      userId: member.user_id,
+      displayName: member.profiles?.display_name || "",
+      content: sub?.content ?? { text: "" },
+      submittedAt: sub?.submitted_at ?? null,
+      score: sub?.score ?? null,
+      feedback: sub?.feedback ?? "",
+      gradedAt: sub?.graded_at ?? null,
+    };
+  });
+}
+
+/** 学生视角：自己的提交（未提交则 null）。 */
+export async function getMySubmission(assignmentId: string): Promise<SubmissionRecord | null> {
+  const { supabase, user } = await authenticatedClient();
+  const { data, error } = await supabase
+    .from("submissions")
+    .select("id,user_id,content,submitted_at,score,feedback,graded_at")
+    .eq("assignment_id", assignmentId)
+    .eq("user_id", user.id)
+    .maybeSingle<SubmissionRow>();
+  if (error) throw new Error(error.message);
+  if (!data) return null;
+  return {
+    id: data.id,
+    userId: data.user_id,
+    displayName: "",
+    content: data.content ?? { text: "" },
+    submittedAt: data.submitted_at,
+    score: data.score,
+    feedback: data.feedback,
+    gradedAt: data.graded_at,
+  };
+}
+
+export async function submitAssignment(assignmentId: string, text: string): Promise<void> {
+  const { supabase } = await authenticatedClient();
+  const { error } = await supabase.rpc("submit_assignment", {
+    p_assignment_id: assignmentId,
+    p_content: { text: text.trim().slice(0, 20000) },
+  });
+  if (error) throw new Error(error.message);
+}
+
+export async function gradeSubmission(submissionId: string, score: number | null, feedback: string): Promise<void> {
+  const { supabase } = await authenticatedClient();
+  const { error } = await supabase.rpc("grade_submission", {
+    p_submission_id: submissionId,
+    p_score: score,
+    p_feedback: feedback.trim().slice(0, 2000),
+  });
+  if (error) throw new Error(error.message);
 }

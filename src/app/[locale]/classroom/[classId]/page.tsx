@@ -1,9 +1,10 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { BookOpen } from "lucide-react";
+import { BookOpen, ClipboardList } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { SectionShell } from "@/components/section-shell";
-import { getClassroom, listClassSessions } from "@/features/classroom/actions";
+import { CreateAssignmentButton, DeleteAssignmentButton } from "@/features/classroom/assignments/AssignmentActions";
+import { getClassroom, listAssignments, listClassSessions } from "@/features/classroom/actions";
 import { CopyInviteButton, LeaveClassroomButton, RemoveMemberButton } from "@/features/classroom/HomeActions";
 import { CreateSessionButton, DeleteSessionButton } from "@/features/classroom/SessionActions";
 import { Link } from "@/i18n/navigation";
@@ -16,14 +17,18 @@ export default async function ClassroomHomePage({ params }: { params: Promise<{ 
   setRequestLocale(locale);
   const user = await requireUser(locale);
   if (!UUID_PATTERN.test(classId)) notFound();
-  const [t, tSessions, common, classroom] = await Promise.all([
+  const [t, tSessions, tAssignments, tReport, classroom] = await Promise.all([
     getTranslations("classroom.home"),
     getTranslations("classroom.sessions"),
-    getTranslations("common"),
+    getTranslations("classroom.assignments"),
+    getTranslations("classroom.report"),
     getClassroom(classId),
   ]);
   if (!classroom) notFound();
-  const sessions = await listClassSessions(classId);
+  const [sessions, assignments] = await Promise.all([
+    listClassSessions(classId),
+    listAssignments(classId),
+  ]);
   const isTeacher = classroom.myRole === "teacher";
   const isOwner = classroom.ownerId === user.id;
 
@@ -94,6 +99,16 @@ export default async function ClassroomHomePage({ params }: { params: Promise<{ 
                     >
                       {tSessions(status)}
                     </span>
+                    {isTeacher && status === "ended" && (
+                      <Link
+                        href={`/classroom/${classroom.id}/session/${session.id}/report`}
+                        aria-label={tReport("openLink")}
+                        title={tReport("openLink")}
+                        className="shrink-0 rounded-full p-2 text-muted transition-colors hover:bg-moon/30 hover:text-ink"
+                      >
+                        <ClipboardList size={14} />
+                      </Link>
+                    )}
                     {isTeacher && <DeleteSessionButton sessionId={session.id} title={session.title || tSessions("untitled")} />}
                   </li>
                 );
@@ -102,8 +117,33 @@ export default async function ClassroomHomePage({ params }: { params: Promise<{ 
           )}
         </section>
         <section className="rounded-2xl border border-line p-5">
-          <h3 className="text-sm font-medium text-muted">{t("assignmentsTitle")}</h3>
-          <EmptyState message={common("comingSoon")} />
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-sm font-medium text-muted">{t("assignmentsTitle")}</h3>
+            {isTeacher && <CreateAssignmentButton classroomId={classroom.id} />}
+          </div>
+          {assignments.length === 0 ? (
+            <EmptyState message={tAssignments("empty")} />
+          ) : (
+            <ul className="mt-3 divide-y divide-line">
+              {assignments.map((assignment) => (
+                <li key={assignment.id} className="flex items-center gap-3 py-2.5">
+                  <ClipboardList size={15} className="shrink-0 text-muted" aria-hidden />
+                  <Link
+                    href={`/classroom/${classroom.id}/assignment/${assignment.id}`}
+                    className="min-w-0 flex-1 truncate text-sm underline-offset-4 transition-colors hover:underline"
+                  >
+                    {assignment.title || tAssignments("untitled")}
+                  </Link>
+                  <span className="shrink-0 text-xs text-muted">
+                    {assignment.dueAt
+                      ? tAssignments("due", { date: new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(assignment.dueAt)) })
+                      : tAssignments("noDue")}
+                  </span>
+                  {isTeacher && <DeleteAssignmentButton assignmentId={assignment.id} title={assignment.title || tAssignments("untitled")} />}
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       </div>
     </SectionShell>

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { ArrowLeft, Play, Presentation } from "lucide-react";
+import { ArrowLeft, ClipboardList, Play, Presentation } from "lucide-react";
 import { SectionShell } from "@/components/section-shell";
 import { getClassroom, getClassSession } from "@/features/classroom/actions";
 import { CoursewareEditor } from "@/features/classroom/courseware/CoursewareEditor";
@@ -20,8 +20,9 @@ export default async function ClassSessionPage({
   await requireUser(locale);
   if (!UUID_PATTERN.test(classId) || !UUID_PATTERN.test(sessionId)) notFound();
 
-  const [t, classroom, session] = await Promise.all([
+  const [t, tReport, classroom, session] = await Promise.all([
     getTranslations("classroom.session"),
+    getTranslations("classroom.report"),
     getClassroom(classId),
     getClassSession(sessionId),
   ]);
@@ -62,6 +63,15 @@ export default async function ClassSessionPage({
               <Play size={15} />
               {!session.startedAt ? t("enterPrep") : !session.endedAt ? t("resume") : t("review")}
             </Link>
+            {session.endedAt && (
+              <Link
+                href={`/classroom/${classId}/session/${sessionId}/report`}
+                className="inline-flex items-center gap-2 rounded-full border border-line px-4 py-2 text-sm text-muted transition-colors hover:bg-moon/30 hover:text-ink"
+              >
+                <ClipboardList size={15} />
+                {tReport("openLink")}
+              </Link>
+            )}
           </div>
         ) : (
           <Link

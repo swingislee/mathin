@@ -169,7 +169,13 @@
     "noNotes": "No published notes yet.",
     "untitled": "Untitled",
     "likes": "{count} likes",
-    "goWrite": "Write a note"
+    "goWrite": "Write a note",
+    "classroomsTitle": "My classrooms",
+    "noClassrooms": "You haven't joined or created a classroom yet.",
+    "goClassroom": "View",
+    "goClassrooms": "Go to classrooms",
+    "teaching": "Teaching",
+    "studying": "Studying"
   },
   "notebook": {
     "public": {
@@ -483,6 +489,50 @@
       "rehearsalBadge": "Rehearsal",
       "rehearsalHint": "Page turns, boards and stars in rehearsal stay in this window only — nothing is recorded or synced.",
       "cancel": "Cancel"
+    },
+    "assignments": {
+      "create": "Assign work",
+      "createTitle": "New assignment",
+      "titlePlaceholder": "Assignment title",
+      "contentPlaceholder": "Instructions…",
+      "dueLabel": "Due date (optional)",
+      "createConfirm": "Assign",
+      "cancel": "Cancel",
+      "empty": "No assignments yet.",
+      "due": "Due {date}",
+      "noDue": "No due date",
+      "submissionCount": "{done}/{total} submitted",
+      "statusNotSubmitted": "Not submitted",
+      "statusSubmitted": "Submitted",
+      "statusGraded": "Graded · {score} pts",
+      "delete": "Delete assignment",
+      "deleteConfirm": "Delete \"{title}\"? Student submissions will be deleted too.",
+      "back": "Back to classroom",
+      "untitled": "Untitled assignment",
+      "anonymous": "Anonymous user",
+      "yourSubmission": "Your submission",
+      "submitPlaceholder": "Type your answer here…",
+      "submit": "Submit",
+      "resubmitHint": "You can resubmit to overwrite your previous answer.",
+      "notSubmittedYet": "Not submitted yet",
+      "feedbackLabel": "Teacher feedback",
+      "scoreLabel": "Score (0–100, optional)",
+      "gradeSave": "Save grade",
+      "rosterTitle": "All student submissions"
+    },
+    "report": {
+      "title": "Class report",
+      "back": "Back to session",
+      "noStudents": "No students in this classroom yet.",
+      "student": "Student",
+      "stars": "Stars",
+      "hands": "Hands raised",
+      "answered": "Questions answered",
+      "quizzesTitle": "Questions asked",
+      "quizTitle": "Question {index}",
+      "respondents": "{count} answered",
+      "noQuiz": "No questions were asked in this class.",
+      "openLink": "Class report"
     }
   },
   "terms": {

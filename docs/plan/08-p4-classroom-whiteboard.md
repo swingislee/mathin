@@ -208,7 +208,7 @@ src/features/classroom/
 - **P4-4 课堂事件层与候课**：`class_sessions`/`session_events` migration + `courseware` bucket；`sync/` 三件套（先 T0 + outbox + flush，T1 留接口）；课件管理（图片/视频上传、插游戏页/白板页、排序）；候课检查单（blob 预载、Wake Lock、自检）；**最小上课壳**（课件页展示 + 翻页 + 简版加星，`?role=display|control` 双窗）供事件层验收。验收：**拔网线测试**——断网状态下 T0 双窗完整走完翻页+加星，恢复网络后事件完整入库、无重复。
 - **P4-5 上课页·同步与互动**：舞台正式布局（4:3 课件/主板书 + 副板书 + 名录）+ 主/副板书（笔迹 op 走 fx 短命通道、快照落 `board_snapshot`，main 按页 uuid 隔离、side 全课一块）+ §3.5 加星面板（点卡 +1、长按撤销）+ 游戏页实时互动（`game_state` 镜像）+ 视频同步播放（`video_ctl`）+ 工具快捷窗（`tool_ctl`）+ 上课中临时插白板页（`page_insert`）+ 举手/发题/作答 + presence 在线名单（在线场景）。验收：04-roadmap 模拟课（1 教师 + 2 学生）+ 离线课（教师单机双窗）双场景通过。
 - **P4-6 局域网 P2P（T1）**：WebRTC 配对（候课信令握手，T2 同频道 `p2p-signal` 事件）+ DataChannel 传输层（ev/fx 双载荷、>9KB 分块、ping 测延迟、12s 看门狗拆卡死协商重配）+ 自检红绿灯与热点提示 + **局域网 coturn**（§3.4，跨设备直连的先决条件）。随轮补：备课试讲模式（rehearsal ephemeral 事件流）与下课后重新开课（生命周期缺口，用户实测提出）。验收（2026-07-08 已过）：学生端隐藏全部 host 候选（模拟手机 mDNS 失效）仍经 LAN srflx 直连、往返 ≤1ms；试讲零落库；下课→重开双端收敛。
-- **P4-7 报告、作业与 dashboard**：课堂报告聚合页；`assignments`/`submissions` migration + 布置/提交/批改三视图；dashboard 教室卡。验收：越权改分被 RLS 拒；全阶段 lint/typecheck/build 绿 + 四档视觉截图。
+- **P4-7 报告、作业与 dashboard**（已完成）：`assignments`/`submissions` migration（写入一律走 `submit_assignment`/`grade_submission` 两个 SECURITY DEFINER RPC，不给表级 insert/update——教师与学生共用 `authenticated` 角色，列权限拆不开「谁能写哪列」，RPC 内部凭 `auth.uid()` 自判更不留后门）；布置/提交/批改三视图（教室主页新增作业列表 + 布置弹窗、`/classroom/[id]/assignment/[id]` 详情页——教师看全员提交名录+批改，学生看自己的提交表单+已批改结果）；课堂报告 `/classroom/[id]/session/[id]/report`（仅教师，`getClassroom` 兜底 `notFound`）——对 `session_events` 的纯函数聚合（`report.ts`，星数净值/举手次数/作答题数 + 逐题选项 tally），不建报告表；dashboard 新增「我的教室」卡（复用既有 `listMyClassrooms`）。验收：Playwright 覆盖布置→提交→批改全链路、学生越权调用 `grade_submission`/`submit_assignment` RPC 均被拒且不改动数据、学生直接访问报告页返回 404、报告聚合数字与灌入的 `session_events` 精确匹配；lint/typecheck/build 绿。
 
 排序理由：T0+outbox（P4-4）先于 T1（P4-6）——单设备双窗 + HDMI 已能保底完成「离线上完整课」的核心场景，WebRTC 是不确定性最大的一块，独立成期、失败不阻塞。
 
@@ -240,3 +240,4 @@ src/features/classroom/
 - broadcast `self: false` 记得配，否则自己的笔迹画两遍；`removeChannel` 在 effect cleanup 里做。
 - WebRTC DataChannel 单条消息 >16KB 要分块（`sync:response` 全量状态尤其）；SDP 信令只在候课期做，掉线重握手需要回到有网环境。
 - 秘钥纪律与 migration SSH 流程同 P3（`docs/supabase-self-hosting.md`）。
+- **课堂报告聚合（`report.ts`）依赖 `listSessionEvents` 按 `at` 升序的顺序**：`session_ctl(quiz_open)` 必须先于对应 `answer` 出现，否则 reducer 找不到 quizId 会静默丢弃该答案。真实客户端因果上不会撞车（学生不可能在题目出现前作答），但**手写测试/种子数据用同一事务内的 `now()` 会给所有行完全相同的时间戳**，导致排序不确定——验收脚本已踩过这个坑，灌事件测试数据时给每行显式递增的时间戳。

@@ -1,7 +1,8 @@
-import { Crown } from "lucide-react";
+import { Crown, School } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { SectionShell } from "@/components/section-shell";
 import { buttonVariants } from "@/components/ui/button";
+import { listMyClassrooms } from "@/features/classroom/actions";
 import { formatMs } from "@/features/games/format";
 import { games } from "@/features/games/registry";
 import { Link } from "@/i18n/navigation";
@@ -43,6 +44,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
     .limit(3)
     .returns<RecentPostRow[]>();
   const recentPosts = recentData ?? [];
+  const classrooms = (await listMyClassrooms()).slice(0, 5);
 
   return (
     <SectionShell section="dashboard">
@@ -100,6 +102,34 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
           </ul>
         )}
         <Link href="/notebook/me" className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "mt-4")}>{t("goWrite")}</Link>
+      </section>
+      <section className="mt-6 rounded-2xl border bg-card p-5">
+        <h2 className="font-medium">{t("classroomsTitle")}</h2>
+        {classrooms.length === 0 ? (
+          <div className="mt-4 flex flex-col items-start gap-3">
+            <p className="text-sm text-muted">{t("noClassrooms")}</p>
+            <Link href="/classroom" className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>
+              {t("goClassrooms")}
+            </Link>
+          </div>
+        ) : (
+          <ul className="mt-4 divide-y">
+            {classrooms.map((classroom) => (
+              <li key={classroom.id} className="flex items-center gap-3 py-2.5 text-sm">
+                <School size={16} className="shrink-0 text-muted" aria-hidden />
+                <Link href={`/classroom/${classroom.id}`} className="min-w-0 flex-1 truncate font-medium hover:underline">
+                  {classroom.name || t("untitled")}
+                </Link>
+                <span className="shrink-0 rounded-full bg-line/50 px-2 py-0.5 text-xs text-muted">
+                  {classroom.myRole === "teacher" ? t("teaching") : t("studying")}
+                </span>
+                <Link href={`/classroom/${classroom.id}`} className="shrink-0 text-xs text-muted underline underline-offset-2 transition-colors duration-200 hover:text-ink">
+                  {t("goClassroom")}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
     </SectionShell>
   );
