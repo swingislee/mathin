@@ -225,6 +225,9 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
   const [activeArea, setActiveArea] = useState<"main" | "side">("main");
   const [endOpen, setEndOpen] = useState(false);
   const [stageWidth, setStageWidth] = useState(0);
+  // 副板书/名录默认展开（用户 2026-07-08 要求可折叠腾空间给对方或主板书）
+  const [sideCollapsed, setSideCollapsed] = useState(false);
+  const [rosterCollapsed, setRosterCollapsed] = useState(false);
   const logRef = useRef<SessionEventLog | null>(null);
   const preloadTick = useRef(0);
   const stageRef = useRef<HTMLDivElement | null>(null);
@@ -753,43 +756,81 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
           )}
         </main>
 
-        {/* 右：副板书（长条，固定宽）+ 学生名录（固定宽，容纳多人）+ 控制条，三段式（用户 2026-07-08 拍板） */}
-        <div className="flex w-[21rem] shrink-0 flex-col gap-2 xl:w-[24rem]">
+        {/* 右：副板书（长条，固定宽，用户 2026-07-08 要求加宽一倍）+ 学生名录（固定宽，容纳多人）+ 控制条，三段式 */}
+        <div className="flex w-[29rem] shrink-0 flex-col gap-2 xl:w-[33rem]">
           <div className="flex min-h-0 flex-1 gap-2">
+            {/* 副板书：默认展开固定宽；折叠为窄条腾出空间；名录折叠时改吃 flex-1（用户 2026-07-08 要求可折叠） */}
             <div
-              className="relative w-32 shrink-0 overflow-hidden rounded-2xl border border-line bg-card sm:w-36"
-              onPointerDownCapture={() => setActiveArea("side")}
+              className={cn(
+                "relative shrink-0 overflow-hidden rounded-2xl border border-line bg-card transition-[width] duration-150",
+                sideCollapsed ? "w-9" : rosterCollapsed ? "flex-1" : "w-64 sm:w-72",
+              )}
+              onPointerDownCapture={() => !sideCollapsed && setActiveArea("side")}
             >
-              <CanvasSurface editable={editable} store={sideBoard.store} bus={sideBoard.bus} strokeWidthBasis={stageWidth} />
+              <button
+                type="button"
+                onClick={() => {
+                  setSideCollapsed((collapsed) => !collapsed);
+                  // 收起时若工具条正指向副板书，收回主板书——不留一个看不见的操作目标
+                  setActiveArea((area) => (area === "side" ? "main" : area));
+                }}
+                aria-label={sideCollapsed ? t("expandSide") : t("collapseSide")}
+                title={sideCollapsed ? t("expandSide") : t("collapseSide")}
+                className="absolute right-1 top-1 z-10 rounded-full bg-card/90 p-1 text-muted shadow-sm transition-colors hover:bg-moon/40 hover:text-ink"
+              >
+                {sideCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+              </button>
+              {!sideCollapsed && (
+                <CanvasSurface editable={editable} store={sideBoard.store} bus={sideBoard.bus} strokeWidthBasis={stageWidth} />
+              )}
             </div>
-            <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-line">
-              <p className="shrink-0 border-b border-line px-3 py-1.5 text-xs text-muted">
-                {t("roster", { count: students.length })}
-              </p>
-              <ul className="min-h-0 flex-1 space-y-1 overflow-y-auto p-1.5">
-                {students.map((student) => {
-                  const count = state.stars[student.userId] ?? 0;
-                  const answered = state.quiz ? state.answers[state.quiz.id]?.[student.userId] : undefined;
-                  return (
-                    <StudentCard
-                      key={student.userId}
-                      name={student.displayName || t("anonymous")}
-                      count={count}
-                      hand={Boolean(state.hands[student.userId])}
-                      online={onlineIds.has(student.userId)}
-                      answerLabel={
-                        answered === undefined ? null : isController ? OPTION_LABELS[answered] ?? "?" : "✓"
-                      }
-                      interactive={editable}
-                      undoHint={t("undoStar")}
-                      onStar={() => append("star", { studentId: student.userId })}
-                      onUndo={() => {
-                        if (count > 0) append("star_undo", { studentId: student.userId });
-                      }}
-                    />
-                  );
-                })}
-              </ul>
+            {/* 名录：默认展开吃满剩余宽度；折叠为窄条，副板书自动接手空间 */}
+            <div
+              className={cn(
+                "flex min-h-0 flex-col overflow-hidden rounded-2xl border border-line transition-[width] duration-150",
+                rosterCollapsed ? "w-9 shrink-0" : "flex-1",
+              )}
+            >
+              <div className="flex shrink-0 items-center gap-1 border-b border-line px-2 py-1.5">
+                {!rosterCollapsed && (
+                  <p className="min-w-0 flex-1 truncate text-xs text-muted">{t("roster", { count: students.length })}</p>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setRosterCollapsed((collapsed) => !collapsed)}
+                  aria-label={rosterCollapsed ? t("expandRoster") : t("collapseRoster")}
+                  title={rosterCollapsed ? t("expandRoster") : t("collapseRoster")}
+                  className="ml-auto shrink-0 rounded-full p-1 text-muted transition-colors hover:bg-moon/40 hover:text-ink"
+                >
+                  {rosterCollapsed ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
+                </button>
+              </div>
+              {!rosterCollapsed && (
+                <ul className="min-h-0 flex-1 space-y-1 overflow-y-auto p-1.5">
+                  {students.map((student) => {
+                    const count = state.stars[student.userId] ?? 0;
+                    const answered = state.quiz ? state.answers[state.quiz.id]?.[student.userId] : undefined;
+                    return (
+                      <StudentCard
+                        key={student.userId}
+                        name={student.displayName || t("anonymous")}
+                        count={count}
+                        hand={Boolean(state.hands[student.userId])}
+                        online={onlineIds.has(student.userId)}
+                        answerLabel={
+                          answered === undefined ? null : isController ? OPTION_LABELS[answered] ?? "?" : "✓"
+                        }
+                        interactive={editable}
+                        undoHint={t("undoStar")}
+                        onStar={() => append("star", { studentId: student.userId })}
+                        onUndo={() => {
+                          if (count > 0) append("star_undo", { studentId: student.userId });
+                        }}
+                      />
+                    );
+                  })}
+                </ul>
+              )}
             </div>
           </div>
 
