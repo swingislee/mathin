@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { ArrowLeft, Play } from "lucide-react";
+import { ArrowLeft, Play, Presentation } from "lucide-react";
 import { SectionShell } from "@/components/section-shell";
 import { getClassroom, getClassSession } from "@/features/classroom/actions";
 import { CoursewareEditor } from "@/features/classroom/courseware/CoursewareEditor";
@@ -45,13 +45,33 @@ export default async function ClassSessionPage({
             <h2 className="truncate font-display text-2xl md:text-3xl">{session.title || t("untitled")}</h2>
           )}
         </div>
-        <Link
-          href={`/classroom/${classId}/session/${sessionId}/live`}
-          className="inline-flex shrink-0 items-center gap-2 rounded-full bg-ink px-4 py-2 text-sm text-paper transition-opacity hover:opacity-85"
-        >
-          <Play size={15} />
-          {isTeacher ? t("enterPrep") : t("enterLive")}
-        </Link>
+        {isTeacher ? (
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            {/* 备课试讲：本地预演/复盘，不落库不同步；正式入口按课次状态给不同动词 */}
+            <Link
+              href={`/classroom/${classId}/session/${sessionId}/live?mode=rehearsal`}
+              className="inline-flex items-center gap-2 rounded-full border border-line px-4 py-2 text-sm text-muted transition-colors hover:bg-moon/30 hover:text-ink"
+            >
+              <Presentation size={15} />
+              {t("enterRehearsal")}
+            </Link>
+            <Link
+              href={`/classroom/${classId}/session/${sessionId}/live`}
+              className="inline-flex items-center gap-2 rounded-full bg-ink px-4 py-2 text-sm text-paper transition-opacity hover:opacity-85"
+            >
+              <Play size={15} />
+              {!session.startedAt ? t("enterPrep") : !session.endedAt ? t("resume") : t("review")}
+            </Link>
+          </div>
+        ) : (
+          <Link
+            href={`/classroom/${classId}/session/${sessionId}/live`}
+            className="inline-flex shrink-0 items-center gap-2 rounded-full bg-ink px-4 py-2 text-sm text-paper transition-opacity hover:opacity-85"
+          >
+            <Play size={15} />
+            {t("enterLive")}
+          </Link>
+        )}
       </div>
 
       {isTeacher ? (

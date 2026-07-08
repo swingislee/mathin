@@ -101,10 +101,10 @@
 
 **一堂课的生命周期**：
 
-1. **备课（在线）**：建课次、上传课件、排页（图片/工具页/白板页）。
+1. **备课（在线）**：建课次、上传课件、排页（图片/工具页/白板页）。**试讲**（P4-6 补，用户需求：备课 ≠ 正式上课）：`/live?mode=rehearsal`，教师直达舞台预演——事件流为纯内存 ephemeral（不写 outbox、不挂 T0/T1/T2、不动 `started_at`/`current_page`），已下课的课次也可试讲 = 课后复盘随手写画不留痕。
 2. **候课（在线，开课前）**：进入候课检查单页——①课件全部页下载为 blob 存入 IndexedDB；②名单与历史数据载入；③多设备配对（§T1 握手）与联机自检；④申请 Screen Wake Lock。**全绿才亮「开始上课」**。
 3. **上课（可完全离线）**：一切操作先写本地（内存 + IndexedDB outbox），UI 零等待网络；教室内设备经 T0/T1 互相同步；有外网时 T2 并行走一份。**上课页内零路由跳转**——翻页、开白板、发题全部是页内状态切换，绝不触发 Next.js 导航（离线时拉不到 chunk 就死）。
-4. **课后（网络恢复）**：outbox 幂等回传 `session_events` 与板书快照；报告基于服务器聚合。
+4. **课后（网络恢复）**：outbox 幂等回传 `session_events` 与板书快照；报告基于服务器聚合。**重新开课**（P4-6 补）：下课横幅上教师可一键重开——清 `ended_at` + 再发一条 `session_ctl start`（reducer 里 start 同时清 ended，按时间序回放收敛到最后一次状态），误点下课/拖堂续讲都走这条路。
 
 **同步三层**（同一事件流的三种传输层，自动级联，业务代码无感知）：
 
@@ -121,6 +121,7 @@
 - 传输层双载荷（P4-5 起）：`ev` 持久事件（进 outbox 回传 DB、晚加入可重放）与 `fx` 短命效果（板书笔迹 op/绘制中增量、视频对时——高频、可丢、不落库；最终状态由对应持久事件收敛，如 `board_snapshot`）。
 - 回传：`insert … on conflict (id) do nothing`，分批 + 指数退避；恢复网络先 `refreshSession()`（JWT 一小时过期，长课 + 断网后旧 token 必失效）再 flush。
 - T1 细节：信令（SDP/ICE）在候课时经 T2 交换；DataChannel 消息 >16KB 分块；教室 WiFi 若开 AP 隔离 P2P 会失败——候课自检直接测通断亮红/绿灯，红灯时提示「改用手机热点或单设备双窗（T0）」。离线中刷新页面 = T1 无法重新握手（信令需要服务器），自检文案要写明「上课中勿刷新」。
+- **T1 跨设备直连依赖局域网 coturn（P4-6 实测结论）**：浏览器把 host 候选混淆成 mDNS `.local` 名——同机双浏览器能解析（本机应答），手机↔电脑跨 AP/有线边界组播常被路由器丢弃，host 对全废；公网 STUN 在国内不可达（Google 被墙、Cloudflare UDP 不稳）。解法 = 在 supabase 宿主机（192.168.5.183，docker 容器 `coturn`，UDP 3478 + 中继段 49160–49200，ufw 已放行 192.168.5.0/24）跑 coturn：**LAN STUN 返回的 srflx 就是客户端真实局域网地址**（中间无 NAT），绕开 mDNS；LAN TURN 兜底 AP 隔离（中继仍在局域网内，断外网可用）。ICE 地址经 `NEXT_PUBLIC_WEBRTC_STUN/TURN/TURN_USER/TURN_PASS` env 注入（见 `.env.example`），TURN 密码在 xiaomi `~/services/coturn-turn-pass.txt`。验收方式：Playwright 学生端加 `--force-webrtc-ip-handling-policy=default_public_interface_only` 隐藏全部 host 候选，等价模拟手机 mDNS 失效，仍必须连通。
 
 ### 3.5 加星面板（从源头需求设计）
 
@@ -206,7 +207,7 @@ src/features/classroom/
 - **P4-3 教室结构**：`classrooms`/`classroom_members` migration + 邀请码 RPC；教室列表（师/生视角）+ 新建 + 加入 + 教室主页骨架。验收：学生凭码入班、非成员访问被拒。
 - **P4-4 课堂事件层与候课**：`class_sessions`/`session_events` migration + `courseware` bucket；`sync/` 三件套（先 T0 + outbox + flush，T1 留接口）；课件管理（图片/视频上传、插游戏页/白板页、排序）；候课检查单（blob 预载、Wake Lock、自检）；**最小上课壳**（课件页展示 + 翻页 + 简版加星，`?role=display|control` 双窗）供事件层验收。验收：**拔网线测试**——断网状态下 T0 双窗完整走完翻页+加星，恢复网络后事件完整入库、无重复。
 - **P4-5 上课页·同步与互动**：舞台正式布局（4:3 课件/主板书 + 副板书 + 名录）+ 主/副板书（笔迹 op 走 fx 短命通道、快照落 `board_snapshot`，main 按页 uuid 隔离、side 全课一块）+ §3.5 加星面板（点卡 +1、长按撤销）+ 游戏页实时互动（`game_state` 镜像）+ 视频同步播放（`video_ctl`）+ 工具快捷窗（`tool_ctl`）+ 上课中临时插白板页（`page_insert`）+ 举手/发题/作答 + presence 在线名单（在线场景）。验收：04-roadmap 模拟课（1 教师 + 2 学生）+ 离线课（教师单机双窗）双场景通过。
-- **P4-6 局域网 P2P（T1）**：WebRTC 配对（候课信令握手）+ DataChannel 传输层 + 自检红绿灯与热点提示。验收：平板 + 电脑同热点、拔外网，翻页/加星/板书三类事件互通 <300ms。
+- **P4-6 局域网 P2P（T1）**：WebRTC 配对（候课信令握手，T2 同频道 `p2p-signal` 事件）+ DataChannel 传输层（ev/fx 双载荷、>9KB 分块、ping 测延迟、12s 看门狗拆卡死协商重配）+ 自检红绿灯与热点提示 + **局域网 coturn**（§3.4，跨设备直连的先决条件）。随轮补：备课试讲模式（rehearsal ephemeral 事件流）与下课后重新开课（生命周期缺口，用户实测提出）。验收（2026-07-08 已过）：学生端隐藏全部 host 候选（模拟手机 mDNS 失效）仍经 LAN srflx 直连、往返 ≤1ms；试讲零落库；下课→重开双端收敛。
 - **P4-7 报告、作业与 dashboard**：课堂报告聚合页；`assignments`/`submissions` migration + 布置/提交/批改三视图；dashboard 教室卡。验收：越权改分被 RLS 拒；全阶段 lint/typecheck/build 绿 + 四档视觉截图。
 
 排序理由：T0+outbox（P4-4）先于 T1（P4-6）——单设备双窗 + HDMI 已能保底完成「离线上完整课」的核心场景，WebRTC 是不确定性最大的一块，独立成期、失败不阻塞。

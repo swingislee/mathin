@@ -246,6 +246,16 @@ export async function endClassSession(sessionId: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+/** 重新开课：清掉 ended_at 即可回到上课态；事件流里由新的 session_ctl start 收敛各端。 */
+export async function reopenClassSession(sessionId: string): Promise<void> {
+  const { supabase } = await authenticatedClient();
+  const { error } = await supabase
+    .from("class_sessions")
+    .update({ ended_at: null })
+    .eq("id", sessionId);
+  if (error) throw new Error(error.message);
+}
+
 /** 上课页初始基线：已入库的课堂事件（离线期间产生的事件在恢复后经 flush 汇入）。 */
 export async function listSessionEvents(
   sessionId: string,

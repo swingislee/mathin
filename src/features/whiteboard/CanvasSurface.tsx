@@ -185,6 +185,7 @@ export function CanvasSurface({
     const baseCtx = base.getContext("2d");
     if (!baseCtx) return;
     const actions = store.getState();
+    let capturedPointerId: number | null = null;
 
     const toPoint = (event: PointerEvent): [number, number] => {
       const rect = draft.getBoundingClientRect();
@@ -215,6 +216,7 @@ export function CanvasSurface({
       strokeRef.current = stroke;
       if (stroke.mode === "ink") bus.emit("local-progress-start", stroke);
       draft.setPointerCapture(event.pointerId);
+      capturedPointerId = event.pointerId;
     };
 
     const move = (event: PointerEvent) => {
@@ -239,6 +241,16 @@ export function CanvasSurface({
     };
 
     const finish = () => {
+      if (capturedPointerId !== null) {
+        // pointercancel、热更新或节点迁移可能已由浏览器隐式释放 capture。
+        // 先检测再释放，避免 Safari/Chromium 抛 NotFoundError。
+        try {
+          if (draft.hasPointerCapture(capturedPointerId)) draft.releasePointerCapture(capturedPointerId);
+        } catch {
+          // 检测与释放之间节点仍可能被卸载；capture 已失效时无需处理。
+        }
+        capturedPointerId = null;
+      }
       const stroke = strokeRef.current;
       if (!stroke) return;
       strokeRef.current = null;

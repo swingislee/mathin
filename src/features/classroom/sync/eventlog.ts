@@ -30,21 +30,25 @@ export class SessionEventLog {
   readonly sessionId: string;
   readonly userId: string;
   readonly deviceId: string;
+  /** 试讲模式：事件只在本窗口内存里生效——不写 outbox、不回传 DB（传输层也不挂）。 */
+  readonly ephemeral: boolean;
   private seq = 0;
   private seen = new Set<string>();
   private listeners = new Set<Listener>();
   private fxListeners = new Set<(fx: FxMessage) => void>();
   private transports: Transport[] = [];
 
-  private constructor(sessionId: string, userId: string, deviceId: string) {
+  private constructor(sessionId: string, userId: string, deviceId: string, ephemeral: boolean) {
     this.sessionId = sessionId;
     this.userId = userId;
     this.deviceId = deviceId;
+    this.ephemeral = ephemeral;
   }
 
   /** seq 水位取 max(meta 记录, outbox 残留)——崩溃恢复后不回退、不撞唯一约束。 */
-  static async create(sessionId: string, userId: string): Promise<SessionEventLog> {
-    const log = new SessionEventLog(sessionId, userId, getDeviceId());
+  static async create(sessionId: string, userId: string, opts?: { ephemeral?: boolean }): Promise<SessionEventLog> {
+    const log = new SessionEventLog(sessionId, userId, getDeviceId(), Boolean(opts?.ephemeral));
+    if (log.ephemeral) return log;
     const saved = (await idbGet<number>(STORE_META, log.metaKey())) ?? 0;
     const pending = await idbListByIndex<SessionEvent>(STORE_OUTBOX, "sessionId", sessionId);
     let maxPending = 0;
@@ -88,9 +92,11 @@ export class SessionEventLog {
       at: new Date().toISOString(),
     };
     this.seen.add(ev.id);
-    // outbox 先落盘再回显：宁可 UI 慢一帧，不丢已展示过的事件
-    await idbPut(STORE_OUTBOX, ev.id, ev);
-    await idbPut(STORE_META, this.metaKey(), this.seq);
+    if (!this.ephemeral) {
+      // outbox 先落盘再回显：宁可 UI 慢一帧，不丢已展示过的事件
+      await idbPut(STORE_OUTBOX, ev.id, ev);
+      await idbPut(STORE_META, this.metaKey(), this.seq);
+    }
     this.emit(ev, true);
     for (const transport of this.transports) transport.send(ev);
     return ev;

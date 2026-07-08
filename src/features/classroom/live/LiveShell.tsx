@@ -38,15 +38,22 @@ import { Toolbar } from "@/features/whiteboard/Toolbar";
 import type { WhiteboardStore } from "@/features/whiteboard/store";
 import type { StrokeItem } from "@/features/whiteboard/types";
 import { Link } from "@/i18n/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { createClient, createIsolatedRealtimeClient } from "@/lib/supabase/client";
 import { newId } from "@/lib/uuid";
 import { cn } from "@/lib/utils";
-import { endClassSession, saveCourseware, startClassSession } from "../actions";
+import { endClassSession, reopenClassSession, saveCourseware, startClassSession } from "../actions";
 import { downloadCoursewareAsset } from "../courseware/upload";
 import { SessionEventLog } from "../sync/eventlog";
 import { flushOutbox, pendingCount } from "../sync/flush";
 import { STORE_ASSETS, idbGet, idbPut } from "../sync/idb";
-import { createLocalTransport, createRealtimeTransport, type PresencePeer } from "../sync/transports";
+import {
+  createLocalTransport,
+  createP2PSignalBus,
+  createP2PTransport,
+  createRealtimeTransport,
+  type P2PHealth,
+  type PresencePeer,
+} from "../sync/transports";
 import type { ClassroomMember, ClassSessionRecord, CoursewarePage, SessionEvent } from "../types";
 import { useClassBoard } from "./useClassBoard";
 import { VideoStage, type VideoCtl } from "./VideoStage";
@@ -67,6 +74,8 @@ interface Props {
   userId: string;
   initialEvents: SessionEvent[];
   role: Role;
+  /** 试讲：教师本地预演/复盘——事件不落库不同步，随时可进（包括已下课的课次）。 */
+  rehearsal?: boolean;
 }
 
 interface LiveState {
@@ -112,7 +121,8 @@ function reduceEvent(state: LiveState, ev: SessionEvent): LiveState {
     }
     case "session_ctl": {
       const action = ev.payload.action;
-      if (action === "start") return { ...state, started: true };
+      // start 同时清 ended：重新开课复用同一事件，按时间序回放后收敛到最后一次状态
+      if (action === "start") return { ...state, started: true, ended: false };
       if (action === "end") return { ...state, ended: true };
       if (action === "quiz_open") {
         const quizId = String(ev.payload.quizId ?? "");
@@ -166,7 +176,7 @@ const OPTION_LABELS = ["A", "B", "C", "D"];
 /** 星数不超过此值时直接摆星星图标（更直观）；超出退回单星+数字（08-§3.5）。 */
 const MAX_INLINE_STARS = 5;
 
-export function LiveShell({ session, classId, members, myRole, userId, initialEvents, role }: Props) {
+export function LiveShell({ session, classId, members, myRole, userId, initialEvents, role, rehearsal = false }: Props) {
   const t = useTranslations("classroom.live");
   const tPrep = useTranslations("classroom.prep");
   const students = useMemo(() => members.filter((member) => member.role === "student"), [members]);
@@ -202,11 +212,12 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
   );
 
   const [state, setState] = useState(initialState);
-  const [phase, setPhase] = useState<Phase>(role === "viewer" || initialState.started ? "live" : "prep");
+  const [phase, setPhase] = useState<Phase>(rehearsal || role === "viewer" || initialState.started ? "live" : "prep");
   const [assetUrls, setAssetUrls] = useState<Record<string, string>>({});
   const [preload, setPreload] = useState(() => ({ done: 0, total: mediaPages.length, failed: 0 }));
   const [wakeLockState, setWakeLockState] = useState<"pending" | "ok" | "unavailable">("pending");
   const [t2Connected, setT2Connected] = useState(false);
+  const [p2pHealth, setP2PHealth] = useState<P2PHealth>({ state: "signaling", peers: 0, latencyMs: null });
   const [pending, setPending] = useState(0);
   const [log, setLog] = useState<SessionEventLog | null>(null);
   const [onlinePeers, setOnlinePeers] = useState<PresencePeer[]>([]);
@@ -219,7 +230,8 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
   const stageRef = useRef<HTMLDivElement | null>(null);
 
   const isController = role === "control" && myRole === "teacher";
-  const editable = isController && !state.ended;
+  // 试讲不受「已下课」限制：复盘已结束的课次也可随手写画（本地临时，不留痕）
+  const editable = isController && (rehearsal || !state.ended);
   // 展示窗/学生端跟随 start 事件进入上课（派生而非 effect，避免级联渲染）
   const effectivePhase: Phase = phase === "live" || (state.started && !isController) ? "live" : "prep";
 
@@ -229,17 +241,33 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
     let flushTimer: ReturnType<typeof setInterval> | null = null;
 
     const setup = async () => {
-      const eventLog = await SessionEventLog.create(session.id, userId);
+      const eventLog = await SessionEventLog.create(session.id, userId, { ephemeral: rehearsal });
       if (disposed) {
         eventLog.close();
         return;
       }
+      // 试讲：事件只在本窗口内存生效，不挂 T0/T1/T2、不回传——预演/复盘零副作用
+      if (rehearsal) {
+        logRef.current = eventLog;
+        eventLog.subscribe((ev) => setState((prev) => reduceEvent(prev, ev)));
+        setLog(eventLog);
+        return;
+      }
       eventLog.markSeen(initialEvents.map((ev) => ev.id));
+      const p2pSignals = createP2PSignalBus();
       logRef.current = eventLog;
       eventLog.subscribe((ev) => setState((prev) => reduceEvent(prev, ev)));
       eventLog.attach(createLocalTransport(session.id, eventLog.ingest, eventLog.ingestFx));
+      eventLog.attach(createP2PTransport(
+        p2pSignals,
+        eventLog.deviceId,
+        role === "control" && myRole === "teacher",
+        eventLog.ingest,
+        eventLog.ingestFx,
+        (health) => { if (!disposed) setP2PHealth(health); },
+      ));
       eventLog.attach(createRealtimeTransport(
-        createClient(),
+        createIsolatedRealtimeClient(),
         session.id,
         eventLog.ingest,
         setT2Connected,
@@ -251,6 +279,7 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
             if (!disposed) setOnlinePeers(peers);
           },
         },
+        p2pSignals,
       ));
       setLog(eventLog);
 
@@ -278,7 +307,7 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
       logRef.current = null;
       setLog(null);
     };
-    // initialEvents/selfName/myRole 仅首帧使用，不追踪
+    // initialEvents/selfName/myRole/rehearsal 仅首帧使用（rehearsal 来自 URL，整页生命周期不变），不追踪
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.id, userId]);
 
@@ -363,17 +392,18 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
   // --- 操作 ----------------------------------------------------------------
   const append = useCallback((type: Parameters<SessionEventLog["append"]>[0], payload: Record<string, unknown>) => {
     void logRef.current?.append(type, payload).then(() => {
-      void pendingCount(session.id).then(setPending).catch(() => undefined);
+      if (!rehearsal) void pendingCount(session.id).then(setPending).catch(() => undefined);
     });
-  }, [session.id]);
+  }, [session.id, rehearsal]);
 
   const gotoPage = useCallback((page: number, total: number) => {
     const clamped = Math.max(0, Math.min(total - 1, page));
     append("page", { page: clamped });
-    // 在线时顺手更新 DB 基线（晚加入者用）；离线静默失败
+    // 在线时顺手更新 DB 基线（晚加入者用）；离线静默失败。试讲不改共享基线。
+    if (rehearsal) return;
     void createClient().from("class_sessions").update({ current_page: clamped }).eq("id", session.id)
       .then(() => undefined, () => undefined);
-  }, [append, session.id]);
+  }, [append, session.id, rehearsal]);
 
   const startClass = useCallback(() => {
     append("session_ctl", { action: "start" });
@@ -435,6 +465,11 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
     setEndOpen(false);
   }, [append, session.id]);
 
+  const reopenClass = useCallback(() => {
+    append("session_ctl", { action: "start" });
+    void reopenClassSession(session.id).catch(() => undefined);
+  }, [append, session.id]);
+
   // --- 派生 ----------------------------------------------------------------
   const page = state.pages[state.currentPage] as CoursewarePage | undefined;
   const assetsReady = preload.done >= preload.total;
@@ -461,11 +496,21 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
   }, [state.quiz, state.answers]);
   const showControlBar = isController || (myRole === "student" && role === "viewer") || Boolean(state.quiz);
 
-  const connectionBadges = (
+  const connectionBadges = rehearsal ? (
+    // 试讲没有任何同步通道，连接徽标只会误导——换成单一模式标识
+    <span className="rounded-full bg-moon/40 px-2 py-0.5 text-xs text-ink" title={t("rehearsalHint")}>
+      {t("rehearsalBadge")}
+    </span>
+  ) : (
     <div className="flex items-center gap-2 text-xs">
       <span className="rounded-full bg-leaf/15 px-2 py-0.5 text-leaf-deep">{t("localChannel")}</span>
       <span className={`rounded-full px-2 py-0.5 ${t2Connected ? "bg-leaf/15 text-leaf-deep" : "bg-line/50 text-muted"}`}>
         {t2Connected ? t("online") : t("offline")}
+      </span>
+      <span className={`rounded-full px-2 py-0.5 ${p2pHealth.peers > 0 ? "bg-leaf/15 text-leaf-deep" : "bg-line/50 text-muted"}`}>
+        {p2pHealth.peers > 0
+          ? t("p2pConnected", { count: p2pHealth.peers, latency: p2pHealth.latencyMs ?? 0 })
+          : t("p2pWaiting")}
       </span>
       {pending > 0 && (
         <span className="rounded-full bg-moon/40 px-2 py-0.5 text-ink" title={t("pendingHint")}>
@@ -490,6 +535,24 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
         ok: typeof BroadcastChannel !== "undefined",
         label: tPrep("localChannel"),
         hint: tPrep("localHint"),
+      },
+      {
+        key: "p2p",
+        ok: p2pHealth.peers > 0 && (p2pHealth.latencyMs === null || p2pHealth.latencyMs < 300),
+        warn: p2pHealth.state === "failed" || p2pHealth.state === "unsupported"
+          || (p2pHealth.latencyMs !== null && p2pHealth.latencyMs >= 300),
+        label: p2pHealth.peers > 0
+          ? tPrep("p2pOk", { count: p2pHealth.peers, latency: p2pHealth.latencyMs ?? 0 })
+          : p2pHealth.state === "unsupported"
+            ? tPrep("p2pUnsupported")
+            : p2pHealth.state === "failed"
+              ? tPrep(`p2pFailure.${p2pHealth.reason ?? "ice-failed"}`)
+              : tPrep("p2pWaiting"),
+        hint: p2pHealth.peers > 0
+          ? tPrep("p2pOfflineReady")
+          : p2pHealth.state === "failed"
+            ? tPrep("p2pFailureHint", { candidates: p2pHealth.candidateTypes?.join(", ") || "—" })
+            : tPrep("p2pHint"),
       },
       {
         key: "server",
@@ -589,7 +652,7 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
         </Link>
         <h1 className="min-w-0 flex-1 truncate text-sm font-medium">{session.title || t("untitled")}</h1>
         {connectionBadges}
-        {isController && !state.ended && (
+        {isController && !state.ended && !rehearsal && (
           <button
             type="button"
             onClick={() => setEndOpen(true)}
@@ -603,8 +666,19 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
         </span>
       </header>
 
-      {state.ended && (
-        <p className="mt-2 shrink-0 rounded-xl bg-moon/40 px-3 py-1.5 text-center text-xs">{t("ended")}</p>
+      {state.ended && !rehearsal && (
+        <div className="mt-2 flex shrink-0 items-center justify-center gap-3 rounded-xl bg-moon/40 px-3 py-1.5 text-xs">
+          <span>{t("ended")}</span>
+          {isController && (
+            <button
+              type="button"
+              onClick={reopenClass}
+              className="rounded-full border border-line bg-card px-3 py-0.5 transition-colors hover:bg-moon/50"
+            >
+              {t("reopenClass")}
+            </button>
+          )}
+        </div>
       )}
 
       <div className="mt-2 flex min-h-0 flex-1 gap-3">

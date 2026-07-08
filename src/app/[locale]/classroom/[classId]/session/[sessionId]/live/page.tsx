@@ -11,9 +11,9 @@ export default async function LiveClassPage({
   searchParams,
 }: {
   params: Promise<{ locale: string; classId: string; sessionId: string }>;
-  searchParams: Promise<{ role?: string }>;
+  searchParams: Promise<{ role?: string; mode?: string }>;
 }) {
-  const [{ locale, classId, sessionId }, { role: roleParam }] = await Promise.all([params, searchParams]);
+  const [{ locale, classId, sessionId }, { role: roleParam, mode }] = await Promise.all([params, searchParams]);
   setRequestLocale(locale);
   const user = await requireUser(locale);
   if (!UUID_PATTERN.test(classId) || !UUID_PATTERN.test(sessionId)) notFound();
@@ -26,7 +26,9 @@ export default async function LiveClassPage({
   ]);
   if (!classroom || !session || session.classroomId !== classId) notFound();
 
-  const role = roleParam === "display"
+  // 试讲模式仅教师可用：本地临时事件流，不落库、不同步、不改课次状态
+  const rehearsal = mode === "rehearsal" && classroom.myRole === "teacher";
+  const role = !rehearsal && roleParam === "display"
     ? "display"
     : classroom.myRole === "teacher"
       ? "control"
@@ -41,6 +43,7 @@ export default async function LiveClassPage({
       userId={user.id}
       initialEvents={events}
       role={role}
+      rehearsal={rehearsal}
     />
   );
 }
