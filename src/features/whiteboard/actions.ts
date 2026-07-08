@@ -2,7 +2,13 @@
 
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { COLOR_TOKENS, type StrokeItem, type WhiteboardMeta, type WhiteboardRecord } from "./types";
+import {
+  COLOR_TOKENS,
+  type StrokeItem,
+  type WhiteboardMemberInfo,
+  type WhiteboardMeta,
+  type WhiteboardRecord,
+} from "./types";
 
 const MAX_SNAPSHOT_BYTES = 1024 * 1024;
 
@@ -80,7 +86,8 @@ export async function getWhiteboard(id: string): Promise<WhiteboardRecord | null
   if (error) throw new Error(error.message);
   if (!data) return null;
 
-  let canEdit = data.owner_id === user.id;
+  const isOwner = data.owner_id === user.id;
+  let canEdit = isOwner;
   if (!canEdit) {
     const { data: membership } = await supabase
       .from("whiteboard_members")
@@ -91,12 +98,81 @@ export async function getWhiteboard(id: string): Promise<WhiteboardRecord | null
     canEdit = membership?.can_edit ?? false;
   }
 
+  let inviteCode: string | null = null;
+  if (isOwner) {
+    const { data: code } = await supabase.rpc("get_whiteboard_invite", { wb_id: id });
+    inviteCode = (code as string | null) ?? null;
+  }
+
   const parsed = snapshotSchema.safeParse(data.snapshot ?? []);
   return {
     ...toMeta(data),
     snapshot: (parsed.success ? parsed.data : []) as StrokeItem[],
     canEdit,
+    isOwner,
+    ownerId: data.owner_id,
+    inviteCode,
   };
+}
+
+export async function setWhiteboardInvite(id: string, enabled: boolean): Promise<string | null> {
+  const { supabase } = await authenticatedClient();
+  const { data, error } = await supabase.rpc("set_whiteboard_invite", { wb_id: id, enabled });
+  if (error) throw new Error(error.message);
+  return (data as string | null) ?? null;
+}
+
+export async function joinWhiteboard(id: string, code: string): Promise<boolean> {
+  const { supabase } = await authenticatedClient();
+  const { data, error } = await supabase.rpc("join_whiteboard", { wb_id: id, code });
+  if (error) throw new Error(error.message);
+  return data === true;
+}
+
+export async function listWhiteboardMembers(id: string): Promise<WhiteboardMemberInfo[]> {
+  const { supabase } = await authenticatedClient();
+  const { data, error } = await supabase
+    .from("whiteboard_members")
+    .select("user_id,can_edit,profiles(display_name)")
+    .eq("whiteboard_id", id)
+    .order("created_at", { ascending: true })
+    .returns<Array<{ user_id: string; can_edit: boolean; profiles: { display_name: string } | null }>>();
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row) => ({
+    userId: row.user_id,
+    displayName: row.profiles?.display_name || "",
+    canEdit: row.can_edit,
+  }));
+}
+
+export async function setWhiteboardMemberEdit(id: string, userId: string, canEdit: boolean): Promise<void> {
+  const { supabase } = await authenticatedClient();
+  const { error } = await supabase
+    .from("whiteboard_members")
+    .update({ can_edit: canEdit })
+    .eq("whiteboard_id", id)
+    .eq("user_id", userId);
+  if (error) throw new Error(error.message);
+}
+
+export async function removeWhiteboardMember(id: string, userId: string): Promise<void> {
+  const { supabase } = await authenticatedClient();
+  const { error } = await supabase
+    .from("whiteboard_members")
+    .delete()
+    .eq("whiteboard_id", id)
+    .eq("user_id", userId);
+  if (error) throw new Error(error.message);
+}
+
+export async function getMyDisplayName(): Promise<string> {
+  const { supabase, user } = await authenticatedClient();
+  const { data } = await supabase
+    .from("profiles")
+    .select("display_name")
+    .eq("id", user.id)
+    .maybeSingle<{ display_name: string }>();
+  return data?.display_name || user.email?.split("@")[0] || "?";
 }
 
 export async function saveSnapshot(id: string, items: unknown): Promise<void> {

@@ -1,17 +1,28 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { drawItem, hitStrokeId, newStrokeId, renderAll, resolveColor } from "./strokes";
+import { boardBus } from "./bus";
+import { colorVar, drawItem, hitStrokeId, newStrokeId, renderAll, resolveColor } from "./strokes";
 import { useWhiteboardStore } from "./store";
-import type { StrokeItem, Tool } from "./types";
+import { COLOR_TOKENS, type StrokeItem, type Tool } from "./types";
 
 /** S/M/L 碎擦宽度（相对逻辑画布宽），沿旧版手感微调。 */
 const ERASER_NORM: Partial<Record<Tool, number>> = { eraserS: 0.012, eraserM: 0.025, eraserL: 0.05 };
 const STROKE_ERASER_THRESHOLD_PX = 12;
+const CURSOR_STALE_MS = 4000;
+
+interface RemoteCursor {
+  name: string;
+  x: number;
+  y: number;
+  at: number;
+}
 
 /**
- * 双层画布：base 落定笔迹（由 store.items 全量重放），draft 只画进行中的笔迹。
- * 组件自身无笔迹状态（08-§7：canvas 无状态化，切换/卸载无保存竞态）。
+ * 双层画布：base 落定笔迹（由 store.items 全量重放），draft 画进行中的笔迹
+ * （本地 + 远端 progress 流）。组件自身无笔迹状态（08-§7：canvas 无状态化）。
+ * 坐标契约：一切读写坐标先除以容器 CSS 尺寸归一化；组件对容器纵横比无感知，
+ * 独立白板 16:9、课堂主板书 4:3 都由父容器决定。
  */
 export function CanvasSurface({ editable }: { editable: boolean }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -19,8 +30,10 @@ export function CanvasSurface({ editable }: { editable: boolean }) {
   const draftRef = useRef<HTMLCanvasElement | null>(null);
   const dimsRef = useRef({ w: 1, h: 1 });
   const strokeRef = useRef<StrokeItem | null>(null);
+  const remotePendingRef = useRef<Map<string, StrokeItem>>(new Map());
   const [cursor, setCursor] = useState<[number, number] | null>(null);
   const [cssWidth, setCssWidth] = useState(0);
+  const [remoteCursors, setRemoteCursors] = useState<Record<string, RemoteCursor>>({});
 
   const items = useWhiteboardStore((state) => state.items);
   const tool = useWhiteboardStore((state) => state.tool);
@@ -34,11 +47,20 @@ export function CanvasSurface({ editable }: { editable: boolean }) {
     renderAll(ctx, useWhiteboardStore.getState().items, dimsRef.current.w, dimsRef.current.h, base);
   }, []);
 
-  const clearDraft = useCallback(() => {
+  /** draft = 本地进行中的墨迹 + 远端 progress 预览（碎擦不预览，见 08-§3.2）。 */
+  const redrawDraft = useCallback(() => {
     const draft = draftRef.current;
     const ctx = draft?.getContext("2d");
-    if (!ctx) return;
-    ctx.clearRect(0, 0, dimsRef.current.w, dimsRef.current.h);
+    if (!draft || !ctx) return;
+    const { w, h } = dimsRef.current;
+    ctx.clearRect(0, 0, w, h);
+    const local = strokeRef.current;
+    if (local && local.mode === "ink") {
+      drawItem(ctx, local, w, h, resolveColor(draft, local.color));
+    }
+    for (const pending of remotePendingRef.current.values()) {
+      if (pending.mode === "ink") drawItem(ctx, pending, w, h, resolveColor(draft, pending.color));
+    }
   }, []);
 
   /* 尺寸自适应：backing store 用设备像素，绘制坐标一律 CSS 像素（08-§3.2 坐标契约）。 */
@@ -58,39 +80,84 @@ export function CanvasSurface({ editable }: { editable: boolean }) {
         canvas.getContext("2d")?.setTransform(dpr, 0, 0, dpr, 0, 0);
       }
       redrawBase();
+      redrawDraft();
     };
     resize();
     const observer = new ResizeObserver(resize);
     observer.observe(container);
     return () => observer.disconnect();
-  }, [redrawBase]);
+  }, [redrawBase, redrawDraft]);
 
-  /* 笔迹变更（提交/撤销/清空/远端到达）→ 全量重放。 */
+  /* 笔迹变更（提交/撤销/清空/远端 op）→ 全量重放。 */
   useEffect(() => {
+    // 已入 items 的远端笔迹不再需要 progress 预览
+    for (const item of items) remotePendingRef.current.delete(item.id);
     redrawBase();
-    clearDraft();
-  }, [items, redrawBase, clearDraft]);
+    redrawDraft();
+  }, [items, redrawBase, redrawDraft]);
 
   /* 主题切换时 token 色值变化，需重放一次。 */
   useEffect(() => {
-    const observer = new MutationObserver(redrawBase);
+    const observer = new MutationObserver(() => {
+      redrawBase();
+      redrawDraft();
+    });
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "data-theme"] });
     const media = window.matchMedia("(prefers-color-scheme: dark)");
-    media.addEventListener("change", redrawBase);
+    const onChange = () => {
+      redrawBase();
+      redrawDraft();
+    };
+    media.addEventListener("change", onChange);
     return () => {
       observer.disconnect();
-      media.removeEventListener("change", redrawBase);
+      media.removeEventListener("change", onChange);
     };
-  }, [redrawBase]);
+  }, [redrawBase, redrawDraft]);
+
+  /* 远端事件：progress 预览与协作光标。 */
+  useEffect(() => {
+    const offProgress = boardBus.on("remote-progress", (chunk) => {
+      const pending = remotePendingRef.current;
+      if (chunk.done) {
+        pending.delete(chunk.id);
+        redrawDraft();
+        return;
+      }
+      // progress 尾包晚于 commit 到达的兜底：已落定的笔迹不再预览
+      if (useWhiteboardStore.getState().items.some((item) => item.id === chunk.id)) return;
+      const existing = pending.get(chunk.id);
+      if (existing) {
+        existing.points.push(...chunk.points);
+      } else {
+        pending.set(chunk.id, { id: chunk.id, mode: chunk.mode, color: chunk.color, wNorm: chunk.wNorm, points: [...chunk.points] });
+      }
+      redrawDraft();
+    });
+    const offCursor = boardBus.on("remote-cursor", (payload) => {
+      setRemoteCursors((prev) => ({ ...prev, [payload.key]: { name: payload.name, x: payload.x, y: payload.y, at: Date.now() } }));
+    });
+    const prune = setInterval(() => {
+      setRemoteCursors((prev) => {
+        const now = Date.now();
+        const alive = Object.entries(prev).filter(([, value]) => now - value.at < CURSOR_STALE_MS);
+        return alive.length === Object.keys(prev).length ? prev : Object.fromEntries(alive);
+      });
+    }, 2000);
+    return () => {
+      offProgress();
+      offCursor();
+      clearInterval(prune);
+    };
+  }, [redrawDraft]);
 
   /* 指针逻辑 */
   useEffect(() => {
     const draft = draftRef.current;
     const base = baseRef.current;
     if (!draft || !base || !editable || tool === "pointer") return;
-    const draftCtx = draft.getContext("2d");
     const baseCtx = base.getContext("2d");
-    if (!draftCtx || !baseCtx) return;
+    if (!baseCtx) return;
     const store = useWhiteboardStore.getState();
 
     const toPoint = (event: PointerEvent): [number, number] => {
@@ -112,18 +179,22 @@ export function CanvasSurface({ editable }: { editable: boolean }) {
       }
       const { w, h } = dimsRef.current;
       const erase = tool.startsWith("eraser");
-      strokeRef.current = {
+      const stroke: StrokeItem = {
         id: newStrokeId(),
         mode: erase ? "erase" : "ink",
         color,
         wNorm: erase ? ERASER_NORM[tool] ?? 0.02 : sizeNorm,
         points: [[x / w, y / h]],
       };
+      strokeRef.current = stroke;
+      if (stroke.mode === "ink") boardBus.emit("local-progress-start", stroke);
       draft.setPointerCapture(event.pointerId);
     };
 
     const move = (event: PointerEvent) => {
       const [x, y] = toPoint(event);
+      const { w, h } = dimsRef.current;
+      boardBus.emit("local-cursor", { x: x / w, y: y / h });
       if (tool.startsWith("eraser")) setCursor([x, y]);
       if (tool === "strokeEraser") {
         if (event.buttons & 1) eraseHit(x, y);
@@ -131,12 +202,10 @@ export function CanvasSurface({ editable }: { editable: boolean }) {
       }
       const stroke = strokeRef.current;
       if (!stroke) return;
-      const { w, h } = dimsRef.current;
       const prev = stroke.points[stroke.points.length - 1];
       stroke.points.push([x / w, y / h]);
       if (stroke.mode === "ink") {
-        draftCtx.clearRect(0, 0, w, h);
-        drawItem(draftCtx, stroke, w, h, resolveColor(draft, stroke.color));
+        redrawDraft();
       } else {
         // 碎擦：直接在 base 上增量挖除做即时反馈；提交后由全量重放收敛到同一结果。
         drawItem(baseCtx, { ...stroke, points: [prev, [x / w, y / h]] }, w, h, "#000");
@@ -147,7 +216,7 @@ export function CanvasSurface({ editable }: { editable: boolean }) {
       const stroke = strokeRef.current;
       if (!stroke) return;
       strokeRef.current = null;
-      clearDraft();
+      if (stroke.mode === "ink") boardBus.emit("local-progress-end", { id: stroke.id });
       useWhiteboardStore.getState().commitItem(stroke);
     };
 
@@ -165,7 +234,7 @@ export function CanvasSurface({ editable }: { editable: boolean }) {
       window.removeEventListener("pointerup", finish);
       window.removeEventListener("pointercancel", finish);
     };
-  }, [editable, tool, color, sizeNorm, clearDraft]);
+  }, [editable, tool, color, sizeNorm, redrawDraft]);
 
   const interactive = editable && tool !== "pointer";
   const cursorStyle = !interactive ? "default" : tool.startsWith("eraser") ? "none" : "crosshair";
@@ -179,6 +248,22 @@ export function CanvasSurface({ editable }: { editable: boolean }) {
         className="absolute inset-0 h-full w-full touch-none"
         style={{ pointerEvents: interactive ? "auto" : "none", cursor: cursorStyle }}
       />
+      {Object.entries(remoteCursors).map(([key, value]) => (
+        <div
+          key={key}
+          aria-hidden
+          className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-1/2"
+          style={{ left: `${value.x * 100}%`, top: `${value.y * 100}%` }}
+        >
+          <span
+            className="block size-2.5 rounded-full border border-paper shadow"
+            style={{ background: colorVar(COLOR_TOKENS[Math.abs([...key].reduce((acc, ch) => acc + ch.charCodeAt(0), 0)) % COLOR_TOKENS.length]) }}
+          />
+          <span className="mt-1 block max-w-28 truncate rounded-full bg-ink/80 px-1.5 py-0.5 text-[10px] leading-none text-paper">
+            {value.name}
+          </span>
+        </div>
+      ))}
       {interactive && tool.startsWith("eraser") && cursor && eraserSize > 0 && (
         <div
           aria-hidden

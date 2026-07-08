@@ -87,7 +87,8 @@
         "cancel":"取消",
         "export":"导出 PNG"
       },
-      "colors":{"ink":"墨色","rose":"玫瑰","leaf":"深叶","crater":"陨石","cheek":"脸颊","moon":"月亮"}
+      "colors":{"ink":"墨色","rose":"玫瑰","leaf":"深叶","crater":"陨石","cheek":"脸颊","moon":"月亮"},
+      "collab":{"invite":"邀请协作","enableInvite":"开启邀请链接","disableInvite":"停止邀请","copyLink":"复制邀请链接","members":"协作成员","owner":"所有者","canEdit":"可编辑","viewOnly":"只读","makeViewOnly":"设为只读","makeEditor":"设为可编辑","remove":"移除成员","anonymous":"未命名用户"}
     }
   },
   "terms": {

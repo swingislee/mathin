@@ -28,4 +28,43 @@ export interface WhiteboardMeta {
 export interface WhiteboardRecord extends WhiteboardMeta {
   snapshot: StrokeItem[];
   canEdit: boolean;
+  isOwner: boolean;
+  ownerId: string;
+  /** 仅 owner 可见（经 security definer RPC 读取），其余为 null。 */
+  inviteCode: string | null;
+}
+
+export interface WhiteboardMemberInfo {
+  userId: string;
+  displayName: string;
+  canEdit: boolean;
+}
+
+/** 协同 op：广播与本地事件共用同一形状（08-§3.2）。 */
+export type BoardOp =
+  | { t: "commit"; item: StrokeItem }
+  | { t: "erase"; id: string }
+  | { t: "clear" }
+  | { t: "restore"; items: StrokeItem[] };
+
+/** 绘制中的增量点（节流广播，对端画在 draft 层）。 */
+export interface ProgressChunk {
+  id: string;
+  mode: StrokeMode;
+  color: ColorToken;
+  wNorm: number;
+  points: Array<[number, number]>;
+  done?: boolean;
+}
+
+export interface CursorPayload {
+  key: string;
+  name: string;
+  x: number;
+  y: number;
+}
+
+export interface PeerInfo {
+  key: string;
+  name: string;
 }

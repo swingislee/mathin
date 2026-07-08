@@ -87,7 +87,8 @@
         "cancel":"Cancel",
         "export":"Export PNG"
       },
-      "colors":{"ink":"Ink","rose":"Rose","leaf":"Leaf","crater":"Crater","cheek":"Cheek","moon":"Moon"}
+      "colors":{"ink":"Ink","rose":"Rose","leaf":"Leaf","crater":"Crater","cheek":"Cheek","moon":"Moon"},
+      "collab":{"invite":"Invite collaborators","enableInvite":"Enable invite link","disableInvite":"Stop inviting","copyLink":"Copy invite link","members":"Collaborators","owner":"Owner","canEdit":"Can edit","viewOnly":"View only","makeViewOnly":"Make view-only","makeEditor":"Make editor","remove":"Remove member","anonymous":"Unnamed user"}
     }
   },
   "terms": {

@@ -38,17 +38,30 @@ export function NotebookSync({ userId, children }: { userId: string; children: R
   useEffect(() => {
     if (!NOTEBOOK_REALTIME_ENABLED || !userId) return;
     const supabase = createClient();
+    let cancelled = false;
     const channel = supabase
       .channel(`notes:${userId}`, { config: { private: true, broadcast: { self: false } } })
       .on("broadcast", { event: "note" }, ({ payload }: { payload: NotebookEvent }) => {
         if (payload.type === "meta") upsert(payload.note);
         if (payload.type === "removed") remove(payload.id);
         if (payload.type === "doc") patch(payload.id, { version: payload.version });
-      })
-      .subscribe();
+      });
+    // 私有频道必须先注入用户 token，否则以 anon 身份被 RLS 拒（P4-2 发现的坑）。
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.access_token) void supabase.realtime.setAuth(session.access_token);
+    });
+    void (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (cancelled) return;
+      await supabase.realtime.setAuth(session?.access_token ?? null);
+      if (cancelled) return;
+      channel.subscribe();
+    })();
     channelRef.current = channel;
     return () => {
+      cancelled = true;
       channelRef.current = null;
+      authListener.subscription.unsubscribe();
       void supabase.removeChannel(channel);
     };
   }, [patch, remove, upsert, userId]);

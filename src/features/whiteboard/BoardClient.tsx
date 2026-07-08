@@ -7,7 +7,9 @@ import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { renameWhiteboard, saveSnapshot } from "./actions";
 import { CanvasSurface } from "./CanvasSurface";
+import { InvitePanel } from "./InvitePanel";
 import { Toolbar } from "./Toolbar";
+import { useBoardSync } from "./useBoardSync";
 import { useWhiteboardStore } from "./store";
 import type { WhiteboardRecord } from "./types";
 
@@ -15,13 +17,14 @@ const SAVE_DEBOUNCE_MS = 1500;
 const SAVE_INTERVAL_MS = 30_000;
 const RENAME_DEBOUNCE_MS = 800;
 
-export function BoardClient({ board }: { board: WhiteboardRecord }) {
+export function BoardClient({ board, selfName }: { board: WhiteboardRecord; selfName: string }) {
   const t = useTranslations("whiteboard.board");
   const [title, setTitle] = useState(board.title);
   const saveState = useWhiteboardStore((state) => state.saveState);
   const revision = useWhiteboardStore((state) => state.revision);
   const savingRef = useRef(false);
   const renameTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { peers } = useBoardSync(board.id, board.canEdit, selfName);
 
   useEffect(() => {
     useWhiteboardStore.getState().hydrate(board.id, board.snapshot);
@@ -97,6 +100,22 @@ export function BoardClient({ board }: { board: WhiteboardRecord }) {
         />
         {!board.canEdit && (
           <span className="shrink-0 rounded-full bg-line/60 px-2.5 py-1 text-xs text-muted">{t("readOnly")}</span>
+        )}
+        {peers.length > 1 && (
+          <span className="flex shrink-0 items-center" title={peers.map((peer) => peer.name).join("、")}>
+            {peers.slice(0, 5).map((peer) => (
+              <span
+                key={peer.key}
+                className="-ml-1.5 grid size-6 place-items-center rounded-full border border-paper bg-moon/70 text-[10px] font-medium text-ink first:ml-0"
+              >
+                {(peer.name || "?").slice(0, 1).toUpperCase()}
+              </span>
+            ))}
+            {peers.length > 5 && <span className="ml-1 text-xs text-muted">+{peers.length - 5}</span>}
+          </span>
+        )}
+        {board.isOwner && (
+          <InvitePanel boardId={board.id} ownerId={board.ownerId} initialInviteCode={board.inviteCode} />
         )}
         <span
           role="status"
