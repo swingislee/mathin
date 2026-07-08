@@ -236,6 +236,16 @@ export async function startClassSession(sessionId: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+export async function endClassSession(sessionId: string): Promise<void> {
+  const { supabase } = await authenticatedClient();
+  const { error } = await supabase
+    .from("class_sessions")
+    .update({ ended_at: new Date().toISOString() })
+    .eq("id", sessionId)
+    .is("ended_at", null);
+  if (error) throw new Error(error.message);
+}
+
 /** 上课页初始基线：已入库的课堂事件（离线期间产生的事件在恢复后经 flush 汇入）。 */
 export async function listSessionEvents(
   sessionId: string,

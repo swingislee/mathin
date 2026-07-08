@@ -1,7 +1,7 @@
 import { newId } from "@/lib/uuid";
 import type { SessionEvent, SessionEventType } from "../types";
 import { STORE_META, STORE_OUTBOX, idbGet, idbListByIndex, idbPut } from "./idb";
-import type { Transport } from "./transports";
+import type { FxMessage, Transport } from "./transports";
 
 // 课堂事件流（08-§3.4）：一切操作先写本地（内存 + outbox），UI 零等待网络；
 // 幂等靠客户端 uuid 主键 + (deviceId, seq)，排序靠单写者天然有序。
@@ -33,6 +33,7 @@ export class SessionEventLog {
   private seq = 0;
   private seen = new Set<string>();
   private listeners = new Set<Listener>();
+  private fxListeners = new Set<(fx: FxMessage) => void>();
   private transports: Transport[] = [];
 
   private constructor(sessionId: string, userId: string, deviceId: string) {
@@ -102,10 +103,29 @@ export class SessionEventLog {
     this.emit(ev, false);
   };
 
+  // --- fx 短命通道（板书笔迹流/视频对时等，高频可丢，不落库、不去重）-----
+
+  onFx(listener: (fx: FxMessage) => void): () => void {
+    this.fxListeners.add(listener);
+    return () => this.fxListeners.delete(listener);
+  }
+
+  sendFx(fx: FxMessage): void {
+    for (const transport of this.transports) transport.sendFx(fx);
+  }
+
+  /** 传输层收到远端 fx：直接分发（同一 fx 可能 T0/T2 各到一次，接收方需幂等，
+   *  板书 op 靠 stroke id 判重、对时类天然幂等）。 */
+  ingestFx = (fx: FxMessage): void => {
+    if (!fx?.scope) return;
+    for (const listener of this.fxListeners) listener(fx);
+  };
+
   close(): void {
     for (const transport of this.transports) transport.close();
     this.transports = [];
     this.listeners.clear();
+    this.fxListeners.clear();
   }
 
   private emit(ev: SessionEvent, local: boolean): void {

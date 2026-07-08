@@ -22,9 +22,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useStore } from "zustand";
 import { cn } from "@/lib/utils";
 import { colorVar, exportPng } from "./strokes";
-import { SIZE_PRESETS, useWhiteboardStore } from "./store";
+import { SIZE_PRESETS, useWhiteboardStore, type WhiteboardStore } from "./store";
 import { COLOR_TOKENS, type Tool } from "./types";
 
 const ERASER_TOOLS: Tool[] = ["strokeEraser", "eraserS", "eraserM", "eraserL"];
@@ -57,19 +58,19 @@ function ToolButton({ active, label, onClick, disabled, children }: {
   );
 }
 
-export function Toolbar({ title }: { title: string }) {
+export function Toolbar({ title, store = useWhiteboardStore }: { title: string; store?: WhiteboardStore }) {
   const t = useTranslations("whiteboard.board.tools");
   const colorNames = useTranslations("whiteboard.board.colors");
-  const tool = useWhiteboardStore((state) => state.tool);
-  const color = useWhiteboardStore((state) => state.color);
-  const sizeNorm = useWhiteboardStore((state) => state.sizeNorm);
-  const canUndo = useWhiteboardStore((state) => state.undoStack.length > 0);
-  const hasItems = useWhiteboardStore((state) => state.items.length > 0);
-  const setTool = useWhiteboardStore((state) => state.setTool);
-  const setColor = useWhiteboardStore((state) => state.setColor);
-  const setSizeNorm = useWhiteboardStore((state) => state.setSizeNorm);
-  const undo = useWhiteboardStore((state) => state.undo);
-  const clear = useWhiteboardStore((state) => state.clear);
+  const tool = useStore(store, (state) => state.tool);
+  const color = useStore(store, (state) => state.color);
+  const sizeNorm = useStore(store, (state) => state.sizeNorm);
+  const canUndo = useStore(store, (state) => state.undoStack.length > 0);
+  const hasItems = useStore(store, (state) => state.items.length > 0);
+  const setTool = useStore(store, (state) => state.setTool);
+  const setColor = useStore(store, (state) => state.setColor);
+  const setSizeNorm = useStore(store, (state) => state.setSizeNorm);
+  const undo = useStore(store, (state) => state.undo);
+  const clear = useStore(store, (state) => state.clear);
   const [lastEraser, setLastEraser] = useState<Tool>("strokeEraser");
   const [clearOpen, setClearOpen] = useState(false);
   const isEraser = ERASER_TOOLS.includes(tool);
@@ -189,7 +190,7 @@ export function Toolbar({ title }: { title: string }) {
       </ToolButton>
       <ToolButton
         label={t("export")}
-        onClick={() => exportPng(useWhiteboardStore.getState().items, title, document.documentElement)}
+        onClick={() => exportPng(store.getState().items, title, document.documentElement)}
         disabled={!hasItems}
       >
         <Download size={18} />

@@ -3,7 +3,7 @@
 import { Eraser } from "lucide-react";
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
-import type { GameBoardProps } from "../types";
+import type { GameBoardProps, GameMirrorState } from "../types";
 import { isKakuroSolved, kakuroPuzzle, type KakuroPuzzle } from "./logic";
 
 /** 出错段（重复数字 / 和超出 / 填满但和不符）里的白格 */
@@ -19,10 +19,20 @@ function findBadCells(puzzle: KakuroPuzzle, values: number[]): Set<number> {
   return bad;
 }
 
-export function KakuroBoard({ seed, difficulty, finished, onComplete }: GameBoardProps) {
+export function KakuroBoard({ seed, difficulty, finished, onComplete, mirror, onMirror, readOnly }: GameBoardProps) {
   const puzzle = useMemo(() => kakuroPuzzle(seed, difficulty), [seed, difficulty]);
   const [values, setValues] = useState<number[]>(() => new Array(puzzle.black.length).fill(0));
   const [selected, setSelected] = useState<number | null>(null);
+
+  // 课堂镜像：新状态对象到达即在渲染期对齐本地（React「adjust state during render」模式）
+  const [appliedMirror, setAppliedMirror] = useState<GameMirrorState | null | undefined>(mirror);
+  if (mirror !== appliedMirror) {
+    setAppliedMirror(mirror);
+    if (mirror && Array.isArray(mirror.values) && mirror.values.length === puzzle.black.length) {
+      setValues([...mirror.values]);
+      setSelected(typeof mirror.selected === "number" ? mirror.selected : null);
+    }
+  }
   const badCells = useMemo(() => findBadCells(puzzle, values), [puzzle, values]);
   const clues = useMemo(() => {
     const map = new Map<number, { h?: number; v?: number }>();
@@ -34,11 +44,18 @@ export function KakuroBoard({ seed, difficulty, finished, onComplete }: GameBoar
     return map;
   }, [puzzle]);
 
+  function select(i: number) {
+    if (readOnly) return;
+    setSelected(i);
+    onMirror?.({ values, selected: i });
+  }
+
   function put(n: number) {
-    if (finished || selected === null || puzzle.black[selected]) return;
+    if (readOnly || finished || selected === null || puzzle.black[selected]) return;
     const next = [...values];
     next[selected] = n;
     setValues(next);
+    onMirror?.({ values: next, selected });
     if (n && isKakuroSolved(puzzle, next)) onComplete(next);
   }
 
@@ -49,7 +66,7 @@ export function KakuroBoard({ seed, difficulty, finished, onComplete }: GameBoar
     if (step && selected !== null) {
       e.preventDefault();
       const next = selected + step;
-      if (next >= 0 && next < puzzle.black.length) setSelected(next);
+      if (next >= 0 && next < puzzle.black.length) select(next);
     }
   }
 
@@ -72,7 +89,7 @@ export function KakuroBoard({ seed, difficulty, finished, onComplete }: GameBoar
           return (
             <button
               key={i}
-              onClick={() => setSelected(i)}
+              onClick={() => select(i)}
               className={cn(
                 "flex aspect-square items-center justify-center border border-line bg-card text-lg tabular-nums transition-colors duration-100 sm:text-xl",
                 "text-(--p-accent)",

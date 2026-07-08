@@ -3,7 +3,7 @@
 import { Eraser } from "lucide-react";
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
-import type { GameBoardProps } from "../types";
+import type { GameBoardProps, GameMirrorState } from "../types";
 import { isSolvedGrid, sudokuPuzzle } from "./logic";
 
 /** 有冲突（行/列/宫重复）的格子下标集合，只做轻提示 */
@@ -28,17 +28,34 @@ function findConflicts(values: number[]): Set<number> {
   return bad;
 }
 
-export function SudokuBoard({ seed, difficulty, finished, onComplete }: GameBoardProps) {
+export function SudokuBoard({ seed, difficulty, finished, onComplete, mirror, onMirror, readOnly }: GameBoardProps) {
   const puzzle = useMemo(() => sudokuPuzzle(seed, difficulty), [seed, difficulty]);
   const [values, setValues] = useState<number[]>(() => [...puzzle]);
   const [selected, setSelected] = useState<number | null>(null);
   const conflicts = useMemo(() => findConflicts(values), [values]);
 
+  // 课堂镜像：新状态对象到达即在渲染期对齐本地（React「adjust state during render」模式）
+  const [appliedMirror, setAppliedMirror] = useState<GameMirrorState | null | undefined>(mirror);
+  if (mirror !== appliedMirror) {
+    setAppliedMirror(mirror);
+    if (mirror && Array.isArray(mirror.values) && mirror.values.length === puzzle.length) {
+      setValues([...mirror.values]);
+      setSelected(typeof mirror.selected === "number" ? mirror.selected : null);
+    }
+  }
+
+  function select(i: number) {
+    if (readOnly) return;
+    setSelected(i);
+    onMirror?.({ values, selected: i });
+  }
+
   function put(n: number) {
-    if (finished || selected === null || puzzle[selected] !== 0) return;
+    if (readOnly || finished || selected === null || puzzle[selected] !== 0) return;
     const next = [...values];
     next[selected] = n;
     setValues(next);
+    onMirror?.({ values: next, selected });
     if (n && next.every((v) => v > 0) && isSolvedGrid(next)) onComplete(next);
   }
 
@@ -49,7 +66,7 @@ export function SudokuBoard({ seed, difficulty, finished, onComplete }: GameBoar
     if (step && selected !== null) {
       e.preventDefault();
       const next = selected + step;
-      if (next >= 0 && next < 81) setSelected(next);
+      if (next >= 0 && next < 81) select(next);
     }
   }
 
@@ -64,7 +81,7 @@ export function SudokuBoard({ seed, difficulty, finished, onComplete }: GameBoar
             <button
               key={i}
               aria-label={`r${row + 1}c${col + 1}`}
-              onClick={() => setSelected(i)}
+              onClick={() => select(i)}
               className={cn(
                 "flex aspect-square items-center justify-center text-lg tabular-nums transition-colors duration-100 sm:text-xl",
                 // 单边颜色类会被 border-line（shorthand）覆盖，因此四边颜色全部用单边类

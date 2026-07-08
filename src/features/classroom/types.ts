@@ -54,13 +54,16 @@ export interface ClassSessionRecord extends ClassSessionMeta {
 
 export type SessionEventType =
   | "page"           // {page:number} 教师翻页
+  | "page_insert"    // {index:number, page:CoursewarePage} 上课中临时插页（白板页等，仅教师）
   | "star"           // {studentId} 教师加星
-  | "star_undo"      // {studentId, eventId} 撤销该生最新一颗星（原子语义：指名事件）
-  | "session_ctl"    // {action:"start"|"end"}
-  | "board_snapshot" // {pageKey:number, items:[...]}（P4-5）
-  | "game_state"     // {pageId, state}（P4-5 游戏页镜像）
-  | "hand"           // 学生举手（P4-5）
-  | "answer";        // 学生作答（P4-5）
+  | "star_undo"      // {studentId} 撤销该生最新一颗星（原子语义：删事件不减计数）
+  | "session_ctl"    // {action:"start"|"end"|"quiz_open"|"quiz_close", ...}
+  | "board_snapshot" // {pageKey:string, items:StrokeItem[]}（main=页 uuid、side="side"）
+  | "game_state"     // {pageId, state:{values,selected}} 游戏页镜像（单写者=教师）
+  | "video_ctl"      // {pageId, action:"play"|"pause"|"seek", time} 视频同步（仅教师）
+  | "tool_ctl"       // {action:"open"|"close", toolId?} 工具快捷窗（仅教师）
+  | "hand"           // {up:boolean} 学生举手
+  | "answer";        // {quizId, choice:number} 学生作答
 
 export interface SessionEvent {
   id: string;

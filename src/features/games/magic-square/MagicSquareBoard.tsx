@@ -4,7 +4,7 @@ import { Eraser } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
-import type { GameBoardProps } from "../types";
+import type { GameBoardProps, GameMirrorState } from "../types";
 import { isMagicSolved, magicPuzzle } from "./logic";
 
 /** 已填满但和不等于幻和的行/列/对角线里的格子 */
@@ -26,7 +26,7 @@ function findBadCells(n: number, target: number, values: number[]): Set<number> 
   return bad;
 }
 
-export function MagicSquareBoard({ seed, difficulty, finished, onComplete }: GameBoardProps) {
+export function MagicSquareBoard({ seed, difficulty, finished, onComplete, mirror, onMirror, readOnly }: GameBoardProps) {
   const t = useTranslations("games.magicSquare");
   const puzzle = useMemo(() => magicPuzzle(seed, difficulty), [seed, difficulty]);
   const [values, setValues] = useState<number[]>(() => [...puzzle.givens]);
@@ -34,12 +34,29 @@ export function MagicSquareBoard({ seed, difficulty, finished, onComplete }: Gam
   const badCells = useMemo(() => findBadCells(puzzle.n, puzzle.magicSum, values), [puzzle, values]);
   const used = useMemo(() => new Set(values.filter((v) => v > 0)), [values]);
 
+  // 课堂镜像：新状态对象到达即在渲染期对齐本地（React「adjust state during render」模式）
+  const [appliedMirror, setAppliedMirror] = useState<GameMirrorState | null | undefined>(mirror);
+  if (mirror !== appliedMirror) {
+    setAppliedMirror(mirror);
+    if (mirror && Array.isArray(mirror.values) && mirror.values.length === puzzle.givens.length) {
+      setValues([...mirror.values]);
+      setSelected(typeof mirror.selected === "number" ? mirror.selected : null);
+    }
+  }
+
+  function select(i: number) {
+    if (readOnly) return;
+    setSelected(i);
+    onMirror?.({ values, selected: i });
+  }
+
   function put(n: number) {
-    if (finished || selected === null || puzzle.givens[selected] !== 0) return;
+    if (readOnly || finished || selected === null || puzzle.givens[selected] !== 0) return;
     if (n !== 0 && used.has(n) && values[selected] !== n) return;
     const next = [...values];
     next[selected] = n;
     setValues(next);
+    onMirror?.({ values: next, selected });
     if (n && isMagicSolved(puzzle.n, next)) onComplete(next);
   }
 
@@ -49,7 +66,7 @@ export function MagicSquareBoard({ seed, difficulty, finished, onComplete }: Gam
     if (step && selected !== null) {
       e.preventDefault();
       const next = selected + step;
-      if (next >= 0 && next < puzzle.n * puzzle.n) setSelected(next);
+      if (next >= 0 && next < puzzle.n * puzzle.n) select(next);
     }
   }
 
@@ -65,7 +82,7 @@ export function MagicSquareBoard({ seed, difficulty, finished, onComplete }: Gam
           return (
             <button
               key={i}
-              onClick={() => setSelected(i)}
+              onClick={() => select(i)}
               className={cn(
                 "flex aspect-square items-center justify-center border border-line text-xl tabular-nums transition-colors duration-100 sm:text-2xl",
                 given ? "font-semibold" : "text-(--p-accent)",

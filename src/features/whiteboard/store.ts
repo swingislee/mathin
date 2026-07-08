@@ -1,6 +1,7 @@
 "use client";
 
-import { create } from "zustand";
+import { create, type StateCreator } from "zustand";
+import { createStore, type StoreApi } from "zustand/vanilla";
 import type { BoardOp, ColorToken, StrokeItem, Tool } from "./types";
 
 /** 撤销条目只记录本人操作的逆操作（08-§3.2：不做全局历史）。 */
@@ -34,6 +35,8 @@ interface WhiteboardState {
   undo: () => void;
   /** 应用远端 op：不进撤销栈、不置脏（八股见 08-§3.2）。 */
   applyRemote: (op: BoardOp) => void;
+  /** 整体替换（课堂快照对齐用）：不进撤销栈、不置脏、不广播。 */
+  replaceItems: (items: StrokeItem[]) => void;
   drainOutbox: () => BoardOp[];
   setSaveState: (saveState: SaveState) => void;
   markSaved: (revision: number) => void;
@@ -47,7 +50,7 @@ function appendMissing(items: StrokeItem[], incoming: StrokeItem[]): StrokeItem[
   return fresh.length ? [...items, ...fresh] : items;
 }
 
-export const useWhiteboardStore = create<WhiteboardState>((set, get) => ({
+const stateCreator: StateCreator<WhiteboardState> = (set, get) => ({
   boardId: null,
   items: [],
   revision: 0,
@@ -118,6 +121,7 @@ export const useWhiteboardStore = create<WhiteboardState>((set, get) => ({
       outbox: [...state.outbox, { t: "restore", items: entry.items }],
     };
   }),
+  replaceItems: (items) => set({ items }),
   applyRemote: (op) => set((state) => {
     if (op.t === "commit") {
       return state.items.some((item) => item.id === op.item.id)
@@ -142,4 +146,14 @@ export const useWhiteboardStore = create<WhiteboardState>((set, get) => ({
   },
   setSaveState: (saveState) => set({ saveState }),
   markSaved: (revision) => set({ savedRevision: revision, saveState: "saved" }),
-}));
+});
+
+/** 独立白板用的全局单例（一页只有一块板）。 */
+export const useWhiteboardStore = create<WhiteboardState>(stateCreator);
+
+export type WhiteboardStore = StoreApi<WhiteboardState>;
+
+/** 课堂用工厂：主/副板书同屏各持一个实例（08-§5 上课页板书）。 */
+export function createWhiteboardStore(): WhiteboardStore {
+  return createStore<WhiteboardState>(stateCreator);
+}

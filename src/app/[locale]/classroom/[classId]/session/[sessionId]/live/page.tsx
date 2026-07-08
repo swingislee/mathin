@@ -18,10 +18,11 @@ export default async function LiveClassPage({
   const user = await requireUser(locale);
   if (!UUID_PATTERN.test(classId) || !UUID_PATTERN.test(sessionId)) notFound();
 
+  // 全量类型：P4-5 起晚加入者要还原板书快照/游戏镜像/视频进度/临时插页等一切基线
   const [classroom, session, events] = await Promise.all([
     getClassroom(classId),
     getClassSession(sessionId),
-    listSessionEvents(sessionId, ["page", "star", "star_undo", "session_ctl"]),
+    listSessionEvents(sessionId),
   ]);
   if (!classroom || !session || session.classroomId !== classId) notFound();
 

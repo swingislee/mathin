@@ -118,6 +118,7 @@
 
 - 课堂事件 = `{ id: uuid(客户端生成), device_id, seq(每设备单调递增), type, payload, at(客户端时间) }`。
 - 去重靠 `(device_id, seq)`；排序靠单写者天然有序（翻页/加星只有教师设备写，答题按学生分流），**不依赖时钟对齐**。
+- 传输层双载荷（P4-5 起）：`ev` 持久事件（进 outbox 回传 DB、晚加入可重放）与 `fx` 短命效果（板书笔迹 op/绘制中增量、视频对时——高频、可丢、不落库；最终状态由对应持久事件收敛，如 `board_snapshot`）。
 - 回传：`insert … on conflict (id) do nothing`，分批 + 指数退避；恢复网络先 `refreshSession()`（JWT 一小时过期，长课 + 断网后旧 token 必失效）再 flush。
 - T1 细节：信令（SDP/ICE）在候课时经 T2 交换；DataChannel 消息 >16KB 分块；教室 WiFi 若开 AP 隔离 P2P 会失败——候课自检直接测通断亮红/绿灯，红灯时提示「改用手机热点或单设备双窗（T0）」。离线中刷新页面 = T1 无法重新握手（信令需要服务器），自检文案要写明「上课中勿刷新」。
 
@@ -134,10 +135,10 @@
 
 - 星星/答题/举手/板书快照统一进 `session_events` append-only；排行与报告 = 聚合查询，不建报告表（03-§3.4 已定）。
 - 课件 = `class_sessions.courseware jsonb`：有序页数组（每页带客户端 uuid），页类型：
-  - `image` / `video`：Storage 路径（私有 bucket `courseware`，见 §4）。候课时 `storage.download()` 为 blob 存 IndexedDB。
-  - `game`（**用户 2026-07-08 拍板：项目游戏可作为课件页插入课堂，师生实时交互演示**）：`{ gameId, difficulty, seed }`——本项目游戏题面由 `createRng(seed)` 确定性推导（P2 既有约束），游戏页**零资源预载、天然离线**，候课单直接绿灯。P4-4 先落模型与插页管理；上课页内的实时互动（教师/大屏操作镜像 = `session_events` type=`game_state` 全量轻状态，单写者语义不变）在 P4-5 实现。
-  - `board`：空白板页（主板书区变整页白板）。
-  - ~~`tool`（iframe 嵌 tools）~~ 暂缓：iframe 依赖网络且无法预载，违背离线优先；游戏页已覆盖「互动演示」需求，tools 嵌入等有真实场景再议。
+  - `image` / `video`：Storage 路径（私有 bucket `courseware`，见 §4）。候课时 `storage.download()` 为 blob 存 IndexedDB。**视频跨端同步播放（用户 2026-07-08 要求）**：教师端是唯一控制者，play/pause/seek 走持久事件 `video_ctl`（晚加入重放到位），播放中每 4s 一发 fx 对时（可丢），跟随端漂移 >1s 才校正；自动播放被浏览器策略拦截时降级静音播放 + 「开启声音」按钮。
+  - `game`（**用户 2026-07-08 拍板：项目游戏可作为课件页插入课堂，师生实时交互演示**）：`{ gameId, difficulty, seed }`——本项目游戏题面由 `createRng(seed)` 确定性推导（P2 既有约束），游戏页**零资源预载、天然离线**，候课单直接绿灯。上课页实时互动（P4-5 已落）：三游戏共用轻状态 `{values, selected}`，教师操作防抖 350ms 发 `game_state` 全量镜像（单写者），大屏/学生端只读跟随。
+  - `board`：空白板页（主板书区变整页白板）。既可备课时排入，也可**上课中临时插入**（`page_insert` 持久事件 + 在线时回写 courseware；离线晚加入者靠事件重放还原排布）。
+  - **工具快捷窗（用户 2026-07-08 拍板，取代原「tool 页暂缓」结论）**：tools 是本仓组件（`tools/registry.ts` 直接渲染 `Component embedded`），**不走 iframe、零网络、天然离线**——原暂缓理由不成立。形态与游戏页不同：不是课件页而是**上课中随叫随到的浮窗**（教师经 `tool_ctl` 事件镜像开/关，全端同步弹出；窗内操作各端本地交互，学生可跟着摆弄，输入镜像等有真实教学场景再议）。
 - 不迁移旧 `resources`/`lectures` 资源库表结构（courses→lectures→lecture_resources 三层是教培排课体系的一部分，随 CRM 一起放弃；新模型课件直接内嵌在课次 jsonb 里）。**旧演示资源可用**：`.claude/过往实践/01_Preliminary_graphics_rules/` 是「图形规律初步」一讲的 28 页图片+动画（Supabase Storage 磁盘目录格式，每个文件名是目录、内含版本 uuid 文件），`supabase_data.sql` 里 `edu_core.resources` 有对应中文页标题（课前热身/追本溯源/新知探索/选题/捉虫时刻/总结/闯关）——验证与演示时按此顺序组一堂真实结构的课。
 - 数据获取沿本仓库既有模式（Server Action + zustand），**不引入 SWR**；「广播到达即刷新 + 兜底轮询」思路保留。
 - **舞台课件图不用 `next/image`**（优化器在服务端，离线即死）：候课预载的 blob 经 `URL.createObjectURL` 直接给原生 `<img>`/`<video>`。这是对 03-§5「图片一律 next/image」的**明确豁免**，仅限上课页舞台。
@@ -204,7 +205,7 @@ src/features/classroom/
 - **P4-2 白板协同（T2）**：私有频道笔画流（含绘制中增量）+ presence 光标 + 邀请协作 + 晚加入同步。验收：双浏览器互见对方**正在画**的笔迹；只读成员无法产生笔迹；连续绘制期间零 DB 写入、停顿后单次快照。
 - **P4-3 教室结构**：`classrooms`/`classroom_members` migration + 邀请码 RPC；教室列表（师/生视角）+ 新建 + 加入 + 教室主页骨架。验收：学生凭码入班、非成员访问被拒。
 - **P4-4 课堂事件层与候课**：`class_sessions`/`session_events` migration + `courseware` bucket；`sync/` 三件套（先 T0 + outbox + flush，T1 留接口）；课件管理（图片/视频上传、插游戏页/白板页、排序）；候课检查单（blob 预载、Wake Lock、自检）；**最小上课壳**（课件页展示 + 翻页 + 简版加星，`?role=display|control` 双窗）供事件层验收。验收：**拔网线测试**——断网状态下 T0 双窗完整走完翻页+加星，恢复网络后事件完整入库、无重复。
-- **P4-5 上课页·同步与互动**：舞台正式布局（4:3 课件/主板书 + 副板书 + 名录）+ 主/副板书 + §3.5 加星面板 + 游戏页实时互动（教师操作经 `game_state` 事件镜像到大屏/学生端）+ 举手/发题/作答 + presence 在线名单（在线场景）。验收：04-roadmap 模拟课（1 教师 + 2 学生）+ 离线课（教师单机双窗）双场景通过。
+- **P4-5 上课页·同步与互动**：舞台正式布局（4:3 课件/主板书 + 副板书 + 名录）+ 主/副板书（笔迹 op 走 fx 短命通道、快照落 `board_snapshot`，main 按页 uuid 隔离、side 全课一块）+ §3.5 加星面板（点卡 +1、长按撤销）+ 游戏页实时互动（`game_state` 镜像）+ 视频同步播放（`video_ctl`）+ 工具快捷窗（`tool_ctl`）+ 上课中临时插白板页（`page_insert`）+ 举手/发题/作答 + presence 在线名单（在线场景）。验收：04-roadmap 模拟课（1 教师 + 2 学生）+ 离线课（教师单机双窗）双场景通过。
 - **P4-6 局域网 P2P（T1）**：WebRTC 配对（候课信令握手）+ DataChannel 传输层 + 自检红绿灯与热点提示。验收：平板 + 电脑同热点、拔外网，翻页/加星/板书三类事件互通 <300ms。
 - **P4-7 报告、作业与 dashboard**：课堂报告聚合页；`assignments`/`submissions` migration + 布置/提交/批改三视图；dashboard 教室卡。验收：越权改分被 RLS 拒；全阶段 lint/typecheck/build 绿 + 四档视觉截图。
 

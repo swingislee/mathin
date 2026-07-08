@@ -16,7 +16,7 @@ interface BusEvents {
 
 type Handler<K extends keyof BusEvents> = (payload: BusEvents[K]) => void;
 
-class BoardBus {
+export class BoardBus {
   private listeners = new Map<keyof BusEvents, Set<Handler<never>>>();
 
   on<K extends keyof BusEvents>(event: K, handler: Handler<K>): () => void {
