@@ -16,7 +16,7 @@ export default async function ClassroomListPage({ params }: { params: Promise<{ 
     listMyClassrooms(),
     getMyProfileRole(),
   ]);
-  const isTeacher = profileRole === "teacher" || profileRole === "admin";
+  const isTeacher = profileRole === "staff" || profileRole === "admin";
   return (
     <SectionShell section="classroom" intro={t("intro")} wide>
       <div className="flex flex-wrap items-center justify-between gap-4">

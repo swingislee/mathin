@@ -1,0 +1,38 @@
+export const PERMISSION_KEYS = [
+  "student.view.all",
+  "student.view.assigned",
+  "student.edit",
+  "student.create",
+  "student.assign",
+  "followup.view",
+  "followup.write",
+  "course.view",
+  "course.manage",
+  "courseware.template.edit",
+  "courseware.overlay.edit",
+  "class.view.all",
+  "class.view.mine",
+  "class.create",
+  "class.manage",
+  "schedule.view.all",
+  "attendance.mark",
+  "grading.write",
+  "report.view.all",
+  "finance.order.view",
+  "finance.order.create",
+  "finance.payment.record",
+  "finance.refund.request",
+  "finance.refund.approve",
+  "finance.coupon.manage",
+  "finance.scholarship.grant",
+  "finance.account.adjust",
+  "finance.report.view",
+  "staff.manage",
+  "permission.configure",
+] as const;
+
+export type PermissionKey = (typeof PERMISSION_KEYS)[number];
+
+export function isPermissionKey(value: string): value is PermissionKey {
+  return (PERMISSION_KEYS as readonly string[]).includes(value);
+}

@@ -57,7 +57,23 @@
 
 验收：一次真实模拟课（1 教师 + 2 学生浏览器）全流程走通：进入 → 同步翻页 → 发题 → 作答 → 评分 → 报告。
 
-## P5 故事（执行计划见 `09-p5-story.md`）
+## P4B 学校端后台（当前阶段，执行计划见 `10-school-backend.md`）
+
+**2026-07-09 新增**：暂缓 P5，回头对 P4 深度加工——建立完整的学校端后台。推翻 08-§1「不做教培 CRM」的非目标；财务模块回到范围内（订单/收款/退费/优惠券/奖学金/账户），仅多租户与工资支出仍不做。角色升级为**可配置 RBAC**：身份类 student/parent/staff/admin + 岗位角色（校长/主管/教研/教师/学辅/兼职，管理员可增改）+ 权限键颗粒度配置。
+
+0. RBAC 基建：`profiles.role` 扩展 + `staff_roles`/`role_permissions`/`staff_role_members` + `has_perm` + 权限配置/员工页 + `/dashboard` 身份分发骨架。
+1. 课程体系：`courses`/`course_lectures` + 教学计划种子导入（72 门课 / 865 讲）。
+2. 学生档案：`students`/`student_guardians`/`student_follow_ups`，360° 档案页与跟进时间线。
+3. 建班报名排课 + 课件模板/覆盖层：`classrooms`/`class_sessions` 扩展列 + `enrollments`；课件走「模板引用+受限覆盖层+开课冻结」（不深拷贝）。
+4. 课表周视图（全校/教师/本人/孩子切面）。
+5. 考勤 `session_attendance` 与学生学情聚合。
+6. 财务模块：`orders`/`order_items`/`payments`/`refunds`/`coupons`/`scholarships`/`student_accounts`/`account_ledger` + 全部财务 RPC。
+7. staff 工作台首屏（按权限自适应卡片）。
+8. 学生/家长端收尾与 Playwright 全链路验收。
+
+验收：全链路——admin 配岗位权限 → 建课建班 → 学辅报名下单收款 → 学生/家长绑码 → 教师点名跟进 → 各端看到课表/学情/费用；越权（权限键伪造、订单金额篡改、跨界读写）全部被拒。权威计划见 `10-school-backend.md`。
+
+## P5 故事（暂缓，待 P4B 完成后重启；执行计划见 `09-p5-story.md`）
 
 **2026-07-08 修订**：从「漫画阅读」升级为**网页沉浸式故事游戏**（风格参照 messenger.abeto.co：小世界漫游 + 对话任务 + 环境音，每章 10–20 分钟，手机可玩）。技术路线 = 自研 DOM/CSS 2.5D 分层插画场景引擎，零新依赖，不用游戏引擎；漫画降为受支持的章节媒介之一。
 

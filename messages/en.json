@@ -177,6 +177,24 @@
     "teaching": "Teaching",
     "studying": "Studying"
   },
+  "school": {
+    "home": {
+      "staffTitle": "School workspace",
+      "staffIntro": "Available areas are shown from the account's role permissions. Courses, students, classes and finance will light up across later P4B commits.",
+      "emptyStaff": "This account has no school workspace permissions. Ask an administrator to assign a staff role.",
+      "notesTitle": "My notes",
+      "classroomsTitle": "My classrooms"
+    },
+    "nav": {
+      "students": "Students",
+      "courses": "Courses",
+      "classes": "Classes",
+      "schedule": "Schedule",
+      "finance": "Finance",
+      "staff": "Staff",
+      "roles": "Roles"
+    }
+  },
   "notebook": {
     "public": {
       "intro": "Share mathematical ideas in public while keeping a quiet private writing space.",

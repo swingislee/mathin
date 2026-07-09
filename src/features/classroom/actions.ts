@@ -291,13 +291,13 @@ export async function listSessionEvents(
   }));
 }
 
-export async function getMyProfileRole(): Promise<"student" | "teacher" | "admin"> {
+export async function getMyProfileRole(): Promise<"student" | "parent" | "staff" | "admin"> {
   const { supabase, user } = await authenticatedClient();
   const { data } = await supabase
     .from("profiles")
     .select("role")
     .eq("id", user.id)
-    .maybeSingle<{ role: "student" | "teacher" | "admin" }>();
+    .maybeSingle<{ role: "student" | "parent" | "staff" | "admin" }>();
   return data?.role ?? "student";
 }
 

@@ -5,8 +5,9 @@ import { buttonVariants } from "@/components/ui/button";
 import { listMyClassrooms } from "@/features/classroom/actions";
 import { formatMs } from "@/features/games/format";
 import { games } from "@/features/games/registry";
+import { filterSchoolNav } from "@/features/school/nav";
 import { Link } from "@/i18n/navigation";
-import { requireUser } from "@/lib/auth";
+import { getMyPerms, getProfile, requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +29,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
   setRequestLocale(locale);
   const user = await requireUser(locale);
   const t = await getTranslations("dashboard");
+  const schoolT = await getTranslations("school");
   const gamesT = await getTranslations("games");
   const supabase = await createClient();
   const { data } = await supabase
@@ -45,6 +47,82 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
     .returns<RecentPostRow[]>();
   const recentPosts = recentData ?? [];
   const classrooms = (await listMyClassrooms()).slice(0, 5);
+  const profile = await getProfile(user.id);
+  const isStaff = profile?.role === "staff" || profile?.role === "admin";
+  const schoolNav = isStaff ? filterSchoolNav(await getMyPerms(user.id)) : [];
+
+  if (isStaff) {
+    return (
+      <SectionShell section="dashboard" wide>
+        <section className="rounded-2xl border bg-card p-5">
+          <h1 className="font-display text-2xl">{schoolT("home.staffTitle")}</h1>
+          <p className="mt-2 max-w-3xl text-sm text-muted">{schoolT("home.staffIntro")}</p>
+          {schoolNav.length === 0 ? (
+            <p className="mt-5 text-sm text-muted">{schoolT("home.emptyStaff")}</p>
+          ) : (
+            <nav className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label={schoolT("home.staffTitle")}>
+              {schoolNav.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="rounded-xl border border-line bg-background px-4 py-3 text-sm font-medium transition hover:border-crater"
+                >
+                  {schoolT(`nav.${item.labelKey}`)}
+                </Link>
+              ))}
+            </nav>
+          )}
+        </section>
+
+        <section className="mt-6 rounded-2xl border bg-card p-5">
+          <h2 className="font-medium">{schoolT("home.notesTitle")}</h2>
+          {recentPosts.length === 0 ? (
+            <p className="mt-4 text-sm text-muted">{t("noNotes")}</p>
+          ) : (
+            <ul className="mt-4 divide-y">
+              {recentPosts.map((post) => (
+                <li key={post.id} className="flex flex-wrap items-center gap-3 py-3 text-sm">
+                  <Link href={`/notebook/${post.id}`} className="min-w-0 flex-1 truncate font-medium hover:underline">{post.title || t("untitled")}</Link>
+                  <time className="text-xs text-muted">{new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(post.published_at))}</time>
+                  <span className="text-xs text-muted">{t("likes", { count: post.like_count })}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <Link href="/notebook/me" className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "mt-4")}>{t("goWrite")}</Link>
+        </section>
+
+        <section className="mt-6 rounded-2xl border bg-card p-5">
+          <h2 className="font-medium">{schoolT("home.classroomsTitle")}</h2>
+          {classrooms.length === 0 ? (
+            <div className="mt-4 flex flex-col items-start gap-3">
+              <p className="text-sm text-muted">{t("noClassrooms")}</p>
+              <Link href="/classroom" className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>
+                {t("goClassrooms")}
+              </Link>
+            </div>
+          ) : (
+            <ul className="mt-4 divide-y">
+              {classrooms.map((classroom) => (
+                <li key={classroom.id} className="flex items-center gap-3 py-2.5 text-sm">
+                  <School size={16} className="shrink-0 text-muted" aria-hidden />
+                  <Link href={`/classroom/${classroom.id}`} className="min-w-0 flex-1 truncate font-medium hover:underline">
+                    {classroom.name || t("untitled")}
+                  </Link>
+                  <span className="shrink-0 rounded-full bg-line/50 px-2 py-0.5 text-xs text-muted">
+                    {classroom.myRole === "teacher" ? t("teaching") : t("studying")}
+                  </span>
+                  <Link href={`/classroom/${classroom.id}`} className="shrink-0 text-xs text-muted underline underline-offset-2 transition-colors duration-200 hover:text-ink">
+                    {t("goClassroom")}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </SectionShell>
+    );
+  }
 
   return (
     <SectionShell section="dashboard">

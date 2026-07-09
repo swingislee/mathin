@@ -177,6 +177,24 @@
     "teaching": "执教",
     "studying": "在学"
   },
+  "school": {
+    "home": {
+      "staffTitle": "学校工作台",
+      "staffIntro": "按岗位权限显示可用入口。课程、学生、班级与财务模块会随 P4B 后续提交逐步点亮。",
+      "emptyStaff": "当前账号没有后台功能权限。请让管理员分配岗位角色。",
+      "notesTitle": "我的笔记",
+      "classroomsTitle": "我的教室"
+    },
+    "nav": {
+      "students": "学生",
+      "courses": "课程",
+      "classes": "班级",
+      "schedule": "课表",
+      "finance": "财务",
+      "staff": "员工",
+      "roles": "岗位权限"
+    }
+  },
   "notebook": {
     "public": {
       "intro": "公开分享数学想法，也保留一间安静的私人写作空间。",
