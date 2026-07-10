@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { resolveCourseware, type CoursewareTemplatePage, type OverlaySlot } from "@/features/school/courseware-overlay";
 import { createClient } from "@/lib/supabase/server";
 import { buildSessionReport } from "./report";
 import type {
@@ -152,11 +153,21 @@ interface SessionRow {
   classroom_id: string;
   title: string;
   courseware: CoursewarePage[];
+  courseware_overlay: unknown[];
   current_page: number;
   started_at: string | null;
   ended_at: string | null;
   created_at: string;
+  lecture_id: string | null;
+  lecture_no: number | null;
+  scheduled_at: string | null;
+  duration_min: number | null;
+  courseware_frozen_at: string | null;
 }
+
+const SESSION_COLUMNS =
+  "id,classroom_id,title,courseware,courseware_overlay,current_page,started_at,ended_at,created_at," +
+  "lecture_id,lecture_no,scheduled_at,duration_min,courseware_frozen_at";
 
 function toSessionMeta(row: SessionRow): ClassSessionMeta {
   return {
@@ -168,6 +179,11 @@ function toSessionMeta(row: SessionRow): ClassSessionMeta {
     startedAt: row.started_at,
     endedAt: row.ended_at,
     createdAt: row.created_at,
+    lectureId: row.lecture_id,
+    lectureNo: row.lecture_no,
+    scheduledAt: row.scheduled_at,
+    durationMin: row.duration_min,
+    coursewareFrozenAt: row.courseware_frozen_at,
   };
 }
 
@@ -175,7 +191,7 @@ export async function listClassSessions(classroomId: string): Promise<ClassSessi
   const { supabase } = await authenticatedClient();
   const { data, error } = await supabase
     .from("class_sessions")
-    .select("id,classroom_id,title,courseware,current_page,started_at,ended_at,created_at")
+    .select(SESSION_COLUMNS)
     .eq("classroom_id", classroomId)
     .order("created_at", { ascending: false })
     .returns<SessionRow[]>();
@@ -198,12 +214,16 @@ export async function getClassSession(sessionId: string): Promise<ClassSessionRe
   const { supabase } = await authenticatedClient();
   const { data, error } = await supabase
     .from("class_sessions")
-    .select("id,classroom_id,title,courseware,current_page,started_at,ended_at,created_at")
+    .select(SESSION_COLUMNS)
     .eq("id", sessionId)
     .maybeSingle<SessionRow>();
   if (error) throw new Error(error.message);
   if (!data) return null;
-  return { ...toSessionMeta(data), courseware: Array.isArray(data.courseware) ? data.courseware : [] };
+  return {
+    ...toSessionMeta(data),
+    courseware: Array.isArray(data.courseware) ? data.courseware : [],
+    coursewareOverlay: Array.isArray(data.courseware_overlay) ? data.courseware_overlay : [],
+  };
 }
 
 export async function renameClassSession(sessionId: string, title: string): Promise<void> {
@@ -232,8 +252,48 @@ export async function deleteClassSession(sessionId: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+/**
+ * 开课：mode=rehearsal 不调用本函数（LiveShell 的 prep phase 对试讲直接跳过）。
+ * 若课次挂了讲次且未冻结，先服务端 resolve(模板+覆盖层) 落 courseware，
+ * 与 started_at 一起原子写入（同一条 UPDATE ... WHERE started_at is null，
+ * 天然充当行锁：并发开课只有一次真正生效，见 10-§5.4）。
+ */
 export async function startClassSession(sessionId: string): Promise<void> {
   const { supabase } = await authenticatedClient();
+  const { data: session, error: fetchError } = await supabase
+    .from("class_sessions")
+    .select("lecture_id,courseware_overlay,courseware_frozen_at,started_at")
+    .eq("id", sessionId)
+    .maybeSingle<{
+      lecture_id: string | null;
+      courseware_overlay: OverlaySlot[];
+      courseware_frozen_at: string | null;
+      started_at: string | null;
+    }>();
+  if (fetchError) throw new Error(fetchError.message);
+  if (!session || session.started_at) return;
+
+  if (session.lecture_id && !session.courseware_frozen_at) {
+    const { data: lecture, error: lectureError } = await supabase
+      .from("course_lectures")
+      .select("courseware_template")
+      .eq("id", session.lecture_id)
+      .maybeSingle<{ courseware_template: CoursewareTemplatePage[] }>();
+    if (lectureError) throw new Error(lectureError.message);
+    const resolved = resolveCourseware(lecture?.courseware_template ?? [], session.courseware_overlay ?? []);
+    const { error } = await supabase
+      .from("class_sessions")
+      .update({
+        courseware: resolved,
+        courseware_frozen_at: new Date().toISOString(),
+        started_at: new Date().toISOString(),
+      })
+      .eq("id", sessionId)
+      .is("started_at", null);
+    if (error) throw new Error(error.message);
+    return;
+  }
+
   const { error } = await supabase
     .from("class_sessions")
     .update({ started_at: new Date().toISOString() })

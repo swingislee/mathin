@@ -5,6 +5,9 @@ import { SectionShell } from "@/components/section-shell";
 import { getClassroom, getClassSession } from "@/features/classroom/actions";
 import { CoursewareEditor } from "@/features/classroom/courseware/CoursewareEditor";
 import { SessionTitleInput } from "@/features/classroom/SessionActions";
+import { CoursewareOverlayEditor } from "@/features/school/CoursewareOverlayEditor";
+import { getLectureCoursewareTemplate } from "@/features/school/courses";
+import type { OverlaySlot } from "@/features/school/courseware-overlay";
 import { Link } from "@/i18n/navigation";
 import { requireUser } from "@/lib/auth";
 
@@ -28,6 +31,8 @@ export default async function ClassSessionPage({
   ]);
   if (!classroom || !session || session.classroomId !== classId) notFound();
   const isTeacher = classroom.myRole === "teacher";
+  const showOverlayEditor = isTeacher && session.lectureId && !session.coursewareFrozenAt;
+  const template = showOverlayEditor ? await getLectureCoursewareTemplate(session.lectureId!) : [];
 
   return (
     <SectionShell section="classroom" wide>
@@ -84,7 +89,16 @@ export default async function ClassSessionPage({
         )}
       </div>
 
-      {isTeacher ? (
+      {showOverlayEditor ? (
+        <div className="mt-8">
+          <CoursewareOverlayEditor
+            classroomId={classId}
+            sessionId={session.id}
+            template={template}
+            initialOverlay={session.coursewareOverlay as OverlaySlot[]}
+          />
+        </div>
+      ) : isTeacher ? (
         <CoursewareEditor classroomId={classId} sessionId={session.id} initialPages={session.courseware} />
       ) : (
         <p className="mt-8 rounded-2xl border border-line px-5 py-6 text-sm text-muted">

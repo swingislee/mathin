@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { summarizeAttendance, sumStars, type AttendanceStatus, type AttendanceSummary } from "./learning";
 
 export const STUDENT_STATUSES = ["lead", "trialing", "enrolled", "paused", "alumni", "invalid"] as const;
 export const FOLLOW_UP_STATUSES = ["pending", "following", "invited", "trialed", "signed", "lost"] as const;
@@ -177,5 +178,169 @@ export async function getStudentDetail(id: string): Promise<StudentDetail | null
       createdAt: followUp.created_at,
       authorName: followUp.profiles?.display_name || "",
     })),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// 学习（P4B-5 §8「学习」tab）：报名记录 + 未来课次 + 出勤/星星/作业成绩聚合。
+// 数据取用一律靠既有 RLS 收窄（can_access_student / can_view_attendance），
+// 无权限时各段自然返回空，不额外在这里重复判权。
+// ---------------------------------------------------------------------------
+
+export interface StudentEnrollmentRow {
+  classroomId: string;
+  classroomName: string;
+  courseTitle: string | null;
+  status: string;
+  joinedAt: string;
+  leftAt: string | null;
+}
+
+export interface StudentUpcomingSession {
+  sessionId: string;
+  classroomName: string;
+  lectureName: string;
+  scheduledAt: string;
+}
+
+export interface StudentSubmissionRow {
+  assignmentId: string;
+  assignmentTitle: string;
+  score: number | null;
+  feedback: string;
+  submittedAt: string | null;
+  gradedAt: string | null;
+}
+
+export interface StudentLearning {
+  hasAccount: boolean;
+  enrollments: StudentEnrollmentRow[];
+  upcomingSessions: StudentUpcomingSession[];
+  attendance: AttendanceSummary;
+  starTotal: number;
+  submissions: StudentSubmissionRow[];
+}
+
+interface EnrollmentLearningRow {
+  classroom_id: string;
+  status: string;
+  joined_at: string;
+  left_at: string | null;
+  classrooms: { name: string; courses: { title: string } | null } | null;
+}
+
+interface UpcomingSessionRow {
+  id: string;
+  title: string;
+  scheduled_at: string;
+  classrooms: { name: string } | null;
+}
+
+interface SubmissionLearningRow {
+  assignment_id: string;
+  score: number | null;
+  feedback: string;
+  submitted_at: string | null;
+  graded_at: string | null;
+  assignments: { title: string } | null;
+}
+
+export async function getStudentLearning(studentId: string): Promise<StudentLearning> {
+  const supabase = await createClient();
+
+  const { data: studentRow, error: studentError } = await supabase
+    .from("students")
+    .select("user_id")
+    .eq("id", studentId)
+    .maybeSingle<{ user_id: string | null }>();
+  if (studentError) throw new Error(studentError.message);
+  const userId = studentRow?.user_id ?? null;
+
+  const [{ data: enrollmentRows, error: enrollmentError }, { data: attendanceRows, error: attendanceError }] = await Promise.all([
+    supabase
+      .from("enrollments")
+      .select("classroom_id,status,joined_at,left_at,classrooms(name,courses(title))")
+      .eq("student_id", studentId)
+      .order("joined_at", { ascending: false })
+      .returns<EnrollmentLearningRow[]>(),
+    supabase
+      .from("session_attendance")
+      .select("status")
+      .eq("student_id", studentId)
+      .returns<Array<{ status: AttendanceStatus }>>(),
+  ]);
+  if (enrollmentError) throw new Error(enrollmentError.message);
+  if (attendanceError) throw new Error(attendanceError.message);
+
+  const activeClassroomIds = (enrollmentRows ?? [])
+    .filter((row) => row.status === "active")
+    .map((row) => row.classroom_id);
+
+  let upcomingSessions: StudentUpcomingSession[] = [];
+  if (activeClassroomIds.length > 0) {
+    const { data: sessionRows, error: sessionError } = await supabase
+      .from("class_sessions")
+      .select("id,title,scheduled_at,classrooms(name)")
+      .in("classroom_id", activeClassroomIds)
+      .gte("scheduled_at", new Date().toISOString())
+      .order("scheduled_at", { ascending: true })
+      .limit(10)
+      .returns<UpcomingSessionRow[]>();
+    if (sessionError) throw new Error(sessionError.message);
+    upcomingSessions = (sessionRows ?? []).map((row) => ({
+      sessionId: row.id,
+      classroomName: row.classrooms?.name || "",
+      lectureName: row.title,
+      scheduledAt: row.scheduled_at,
+    }));
+  }
+
+  let starTotal = 0;
+  let submissions: StudentSubmissionRow[] = [];
+  if (userId) {
+    const [{ data: eventRows, error: eventError }, { data: submissionRows, error: submissionError }] = await Promise.all([
+      // 星标事件的作者是教师（user_id=教师），学生在 payload.studentId（08-§3.5 单写者语义）
+      supabase
+        .from("session_events")
+        .select("type,at")
+        .eq("payload->>studentId", userId)
+        .in("type", ["star", "star_undo"])
+        .order("at", { ascending: true })
+        .returns<Array<{ type: string; at: string }>>(),
+      supabase
+        .from("submissions")
+        .select("assignment_id,score,feedback,submitted_at,graded_at,assignments(title)")
+        .eq("user_id", userId)
+        .order("submitted_at", { ascending: false, nullsFirst: false })
+        .limit(20)
+        .returns<SubmissionLearningRow[]>(),
+    ]);
+    if (eventError) throw new Error(eventError.message);
+    if (submissionError) throw new Error(submissionError.message);
+    starTotal = sumStars(eventRows ?? []);
+    submissions = (submissionRows ?? []).map((row) => ({
+      assignmentId: row.assignment_id,
+      assignmentTitle: row.assignments?.title || "",
+      score: row.score,
+      feedback: row.feedback,
+      submittedAt: row.submitted_at,
+      gradedAt: row.graded_at,
+    }));
+  }
+
+  return {
+    hasAccount: Boolean(userId),
+    enrollments: (enrollmentRows ?? []).map((row) => ({
+      classroomId: row.classroom_id,
+      classroomName: row.classrooms?.name || "-",
+      courseTitle: row.classrooms?.courses?.title ?? null,
+      status: row.status,
+      joinedAt: row.joined_at,
+      leftAt: row.left_at,
+    })),
+    upcomingSessions,
+    attendance: summarizeAttendance((attendanceRows ?? []).map((row) => row.status)),
+    starTotal,
+    submissions,
   };
 }

@@ -2,6 +2,7 @@
 
 /* 设计 token 来源：docs/plan/01-design-system.md（色值取样自 public/Main.png） */
 :root {
+  color-scheme: light;
   --paper: #fffdf8;
   --ink: #29251f;
   --muted: #766f65;
@@ -19,6 +20,7 @@
 
 /* 暗色 = 星夜 */
 .dark {
+  color-scheme: dark;
   --paper: #191d2b;
   --ink: #f2eddf;
   --muted: #9ba0b0;
@@ -36,6 +38,7 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not(.light) {
+    color-scheme: dark;
     --paper: #191d2b;
     --ink: #f2eddf;
     --muted: #9ba0b0;

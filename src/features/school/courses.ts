@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import type { CoursewareTemplatePage } from "./courseware-overlay";
 
 export const COURSE_TERMS = [
   { value: 1, labelKey: "summer" },
@@ -151,5 +152,51 @@ export async function getCourseDetail(id: string): Promise<CourseDetail | null> 
       objectives: lecture.objectives,
       templatePageCount: Array.isArray(lecture.courseware_template) ? lecture.courseware_template.length : 0,
     })),
+  };
+}
+
+/** 供候课/覆盖层编辑页取模板页（不需要课程信息时用这个，省一次 join）。 */
+export async function getLectureCoursewareTemplate(id: string): Promise<CoursewareTemplatePage[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("course_lectures")
+    .select("courseware_template")
+    .eq("id", id)
+    .maybeSingle<{ courseware_template: CoursewareTemplatePage[] }>();
+  if (error) throw new Error(error.message);
+  return Array.isArray(data?.courseware_template) ? data.courseware_template : [];
+}
+
+export interface LectureDetail {
+  id: string;
+  no: number;
+  name: string;
+  courseId: string;
+  courseTitle: string;
+  coursewareTemplate: CoursewareTemplatePage[];
+}
+
+export async function getLectureDetail(id: string): Promise<LectureDetail | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("course_lectures")
+    .select("id,no,name,courseware_template,courses(id,title)")
+    .eq("id", id)
+    .maybeSingle<{
+      id: string;
+      no: number;
+      name: string;
+      courseware_template: CoursewareTemplatePage[];
+      courses: { id: string; title: string } | null;
+    }>();
+  if (error) throw new Error(error.message);
+  if (!data || !data.courses) return null;
+  return {
+    id: data.id,
+    no: data.no,
+    name: data.name,
+    courseId: data.courses.id,
+    courseTitle: data.courses.title,
+    coursewareTemplate: Array.isArray(data.courseware_template) ? data.courseware_template : [],
   };
 }

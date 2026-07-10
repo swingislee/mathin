@@ -17,6 +17,10 @@ pnpm build
 
 There is no test suite. Requires `.env.local` (copy from `.env.example`) with the self-hosted Supabase URL and publishable key.
 
+## Test accounts
+
+A fixed set of 5 reusable test accounts (admin / teacher / sales / student / parent, all `@mathin.local`) already exists on the self-hosted dev DB, with roles/staff_role_members/student profile/guardian link pre-bound. Credentials and IDs are in `.claude/test-accounts.local.md` (gitignored, not in this repo — read that file when you need to log in or emulate one of these users). **Reuse this account set for all manual/agent testing; do not create new test accounts.** If a task genuinely requires a new/different account (e.g. testing an unclaimed bind-code flow, multi-child parent, or privilege-escalation case), ask the user to confirm first.
+
 ## Stack constraints
 
 - **Next.js pinned to stable 16.2.10** (App Router, React 19, Turbopack default). Do not use 16.3 canary/preview.

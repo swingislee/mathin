@@ -1,0 +1,628 @@
+"use server";
+
+import { getMyPerms, getProfile } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
+import type { PermissionKey } from "./permissions";
+import {
+  courseware_template_array_schema,
+  initialOverlayFromTemplate,
+  overlayArraySchema,
+  parseOverlayForSave,
+  type CoursewareTemplatePage,
+  type OverlaySlot,
+} from "./courseware-overlay";
+import { getStudentAccount, listAvailableCouponGrants } from "./finance";
+import type { CouponGrantOption, CouponKind, PaymentMethod, ScholarshipKind, StudentAccount } from "./finance";
+import type { AttendanceStatus } from "./learning";
+import type { ScheduleEntry } from "./schedule";
+import { FOLLOW_UP_STATUSES } from "./students";
+
+/** 校验闸：登录 + 功能权限键（两道闸的第二道，第一道靠 requirePerm 挡在页面级；RLS 第三道兜底）。 */
+async function authorizedClient(key: PermissionKey) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("UNAUTHENTICATED");
+  const perms = await getMyPerms(user.id);
+  if (!perms.has(key)) throw new Error("FORBIDDEN");
+  return { supabase, user };
+}
+
+// ---------------------------------------------------------------------------
+// 课件模板（P4B-3 §4.3）
+// ---------------------------------------------------------------------------
+
+export async function updateLectureTemplate(lectureId: string, pages: CoursewareTemplatePage[]): Promise<void> {
+  const parsed = courseware_template_array_schema.safeParse(pages);
+  if (!parsed.success) throw new Error("INVALID_TEMPLATE");
+  const { supabase } = await authorizedClient("courseware.template.edit");
+  const { error } = await supabase
+    .from("course_lectures")
+    .update({ courseware_template: parsed.data })
+    .eq("id", lectureId);
+  if (error) throw new Error(error.message);
+}
+
+// ---------------------------------------------------------------------------
+// 课次覆盖层（P4B-3 §4.3）：教师只能插页/排序，服务端 resolve 校验禁止删改模板页。
+// ---------------------------------------------------------------------------
+
+export async function saveCoursewareOverlay(sessionId: string, overlay: OverlaySlot[]): Promise<void> {
+  const shapeCheck = overlayArraySchema.safeParse(overlay);
+  if (!shapeCheck.success) throw new Error("INVALID_OVERLAY");
+  const { supabase } = await authorizedClient("courseware.overlay.edit");
+
+  const { data: session, error: sessionError } = await supabase
+    .from("class_sessions")
+    .select("lecture_id,courseware_frozen_at")
+    .eq("id", sessionId)
+    .maybeSingle<{ lecture_id: string | null; courseware_frozen_at: string | null }>();
+  if (sessionError) throw new Error(sessionError.message);
+  if (!session) throw new Error("NOT_FOUND");
+  if (session.courseware_frozen_at) throw new Error("ALREADY_FROZEN");
+  if (!session.lecture_id) throw new Error("NO_LECTURE");
+
+  const { data: lecture, error: lectureError } = await supabase
+    .from("course_lectures")
+    .select("courseware_template")
+    .eq("id", session.lecture_id)
+    .maybeSingle<{ courseware_template: CoursewareTemplatePage[] }>();
+  if (lectureError) throw new Error(lectureError.message);
+  if (!lecture) throw new Error("NOT_FOUND");
+
+  const healed = parseOverlayForSave(lecture.courseware_template ?? [], shapeCheck.data);
+  const { error } = await supabase
+    .from("class_sessions")
+    .update({ courseware_overlay: healed })
+    .eq("id", sessionId)
+    .is("courseware_frozen_at", null);
+  if (error) throw new Error(error.message);
+}
+
+// ---------------------------------------------------------------------------
+// 建班向导（P4B-3 §9）
+// ---------------------------------------------------------------------------
+
+export interface BuildClassSession {
+  lectureId: string;
+  no: number;
+  name: string;
+  scheduledAt: string;
+  durationMin: number;
+}
+
+export interface BuildClassInput {
+  name: string;
+  courseId: string | null;
+  grade: number | null;
+  capacity: number | null;
+  room: string;
+  teacherId: string;
+  sessions: BuildClassSession[];
+}
+
+export async function buildClass(input: BuildClassInput): Promise<string> {
+  const { supabase } = await authorizedClient("class.create");
+
+  const { data: cid, error: rpcError } = await supabase.rpc("create_class", {
+    p_name: input.name.trim().slice(0, 100),
+    p_course_id: input.courseId,
+    p_grade: input.grade,
+    p_capacity: input.capacity,
+    p_room: input.room.trim().slice(0, 100),
+    p_teacher_id: input.teacherId,
+  });
+  if (rpcError) throw new Error(rpcError.message);
+  const classroomId = cid as string;
+
+  if (input.sessions.length === 0) return classroomId;
+
+  const lectureIds = input.sessions.map((session) => session.lectureId);
+  const { data: lectureRows, error: lectureError } = await supabase
+    .from("course_lectures")
+    .select("id,courseware_template")
+    .in("id", lectureIds)
+    .returns<Array<{ id: string; courseware_template: CoursewareTemplatePage[] }>>();
+  if (lectureError) throw new Error(lectureError.message);
+  const templateById = new Map((lectureRows ?? []).map((row) => [row.id, row.courseware_template ?? []]));
+
+  const rows = input.sessions.map((session) => ({
+    classroom_id: classroomId,
+    lecture_id: session.lectureId,
+    lecture_no: session.no,
+    title: session.name.slice(0, 100),
+    scheduled_at: session.scheduledAt,
+    duration_min: session.durationMin,
+    courseware: [],
+    courseware_overlay: initialOverlayFromTemplate(templateById.get(session.lectureId) ?? []),
+  }));
+
+  const { error: insertError } = await supabase.from("class_sessions").insert(rows);
+  if (insertError) throw new Error(insertError.message);
+
+  return classroomId;
+}
+
+// ---------------------------------------------------------------------------
+// 报名 / 转班 / 退班（P4B-3 §9，跨表事实一律 RPC，Server Action 只透传+权限双闸）
+// ---------------------------------------------------------------------------
+
+export async function enrollStudentAction(classroomId: string, studentId: string, remark: string): Promise<void> {
+  const { supabase } = await authorizedClient("class.manage");
+  const { error } = await supabase.rpc("enroll_student", {
+    p_classroom_id: classroomId,
+    p_student_id: studentId,
+    p_remark: remark.slice(0, 500),
+  });
+  if (error) throw new Error(error.message);
+}
+
+export async function transferStudentAction(
+  studentId: string,
+  fromClassroomId: string,
+  toClassroomId: string,
+  remark: string,
+): Promise<void> {
+  const { supabase } = await authorizedClient("class.manage");
+  const { error } = await supabase.rpc("transfer_student", {
+    p_student_id: studentId,
+    p_from_classroom: fromClassroomId,
+    p_to_classroom: toClassroomId,
+    p_remark: remark.slice(0, 500),
+  });
+  if (error) throw new Error(error.message);
+}
+
+export async function withdrawStudentAction(enrollmentId: string, remark: string): Promise<void> {
+  const { supabase } = await authorizedClient("class.manage");
+  const { error } = await supabase.rpc("withdraw_student", {
+    p_enrollment_id: enrollmentId,
+    p_remark: remark.slice(0, 500),
+  });
+  if (error) throw new Error(error.message);
+}
+
+// ---------------------------------------------------------------------------
+// 课次改时间 / 补排 / 删未上课次（同边界 CRUD，走 RLS 的 can_manage_classroom）
+// ---------------------------------------------------------------------------
+
+// class.manage 只是全局功能闸；行级作用域（本人任教 vs 全局）靠 RLS 收窄。
+// 跨作用域操作时 RLS 会让 update/delete 静默命中 0 行而不报错，前端会误以为成功——
+// 这里额外 select 受影响行数，0 行时改抛 FORBIDDEN_SCOPE（10-§7 代码审查发现）。
+
+export async function rescheduleSessionAction(sessionId: string, scheduledAt: string, durationMin: number): Promise<void> {
+  const { supabase } = await authorizedClient("class.manage");
+  const { data, error } = await supabase
+    .from("class_sessions")
+    .update({ scheduled_at: scheduledAt, duration_min: durationMin })
+    .eq("id", sessionId)
+    .select("id");
+  if (error) throw new Error(error.message);
+  if (!data || data.length === 0) throw new Error("FORBIDDEN_SCOPE");
+}
+
+export async function deleteUnstartedSessionAction(sessionId: string): Promise<void> {
+  const { supabase } = await authorizedClient("class.manage");
+  const { data, error } = await supabase
+    .from("class_sessions")
+    .delete()
+    .eq("id", sessionId)
+    .is("started_at", null)
+    .select("id");
+  if (error) throw new Error(error.message);
+  if (!data || data.length === 0) throw new Error("FORBIDDEN_SCOPE");
+}
+
+export async function archiveClassroomAction(classroomId: string, archived: boolean): Promise<void> {
+  const { supabase } = await authorizedClient("class.manage");
+  const { data, error } = await supabase
+    .from("classrooms")
+    .update({ archived_at: archived ? new Date().toISOString() : null })
+    .eq("id", classroomId)
+    .select("id");
+  if (error) throw new Error(error.message);
+  if (!data || data.length === 0) throw new Error("FORBIDDEN_SCOPE");
+}
+
+// ---------------------------------------------------------------------------
+// 花名册辅助：报名对话框的学生搜索、转班对话框的目标班级下拉
+// ---------------------------------------------------------------------------
+
+export interface StudentSearchResult {
+  id: string;
+  name: string;
+  grade: number | null;
+  status: string;
+}
+
+export async function searchStudentsForEnroll(query: string): Promise<StudentSearchResult[]> {
+  const { supabase } = await authorizedClient("class.manage");
+  const trimmed = query.trim().slice(0, 80);
+  if (!trimmed) return [];
+  const escaped = trimmed.replaceAll("\\", "\\\\").replaceAll("%", "\\%").replaceAll("_", "\\_");
+  const { data, error } = await supabase
+    .from("students")
+    .select("id,name,grade,status")
+    .ilike("name", `%${escaped}%`)
+    .limit(10)
+    .returns<StudentSearchResult[]>();
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+export async function listClassroomOptions(excludeId?: string): Promise<Array<{ id: string; name: string }>> {
+  const { supabase } = await authorizedClient("class.manage");
+  let query = supabase.from("classrooms").select("id,name").is("archived_at", null).order("name", { ascending: true }).limit(200);
+  if (excludeId) query = query.neq("id", excludeId);
+  const { data, error } = await query.returns<Array<{ id: string; name: string }>>();
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row) => ({ id: row.id, name: row.name || "-" }));
+}
+
+// ---------------------------------------------------------------------------
+// 课表（P4B-4）：student/parent 经白名单 RPC；staff 直查表，RLS 按
+// schedule.view.all（全校）或本人任教（otherwise）自然收窄，教师名在此合并进结果。
+// ---------------------------------------------------------------------------
+
+interface MySchedRow {
+  session_id: string;
+  classroom_name: string;
+  lecture_name: string;
+  scheduled_at: string;
+  duration_min: number | null;
+  teacher_name: string | null;
+  student_name: string | null;
+}
+
+interface StaffSessionRow {
+  id: string;
+  title: string;
+  scheduled_at: string;
+  duration_min: number | null;
+  classroom_id: string;
+  classrooms: { name: string } | null;
+}
+
+export async function getWeekSchedule(fromIso: string, toIso: string): Promise<ScheduleEntry[]> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("UNAUTHENTICATED");
+  const profile = await getProfile(user.id);
+  if (!profile) return [];
+
+  if (profile.role === "student" || profile.role === "parent") {
+    const { data, error } = await supabase.rpc("get_my_schedule", { p_from: fromIso, p_to: toIso });
+    if (error) throw new Error(error.message);
+    return ((data ?? []) as MySchedRow[]).map((row) => ({
+      sessionId: row.session_id,
+      classroomName: row.classroom_name,
+      lectureName: row.lecture_name,
+      scheduledAt: row.scheduled_at,
+      durationMin: row.duration_min ?? 0,
+      teacherName: row.teacher_name ?? "",
+      studentName: row.student_name ?? "",
+    }));
+  }
+
+  const { data: sessionRows, error } = await supabase
+    .from("class_sessions")
+    .select("id,title,scheduled_at,duration_min,classroom_id,classrooms(name)")
+    .gte("scheduled_at", fromIso)
+    .lt("scheduled_at", toIso)
+    .order("scheduled_at", { ascending: true })
+    .returns<StaffSessionRow[]>();
+  if (error) throw new Error(error.message);
+  const rows = sessionRows ?? [];
+  if (rows.length === 0) return [];
+
+  const classroomIds = Array.from(new Set(rows.map((row) => row.classroom_id)));
+  const { data: teacherRows, error: teacherError } = await supabase
+    .from("classroom_members")
+    .select("classroom_id,profiles(display_name)")
+    .in("classroom_id", classroomIds)
+    .eq("role", "teacher")
+    .returns<Array<{ classroom_id: string; profiles: { display_name: string } | null }>>();
+  if (teacherError) throw new Error(teacherError.message);
+  const teacherByClassroom = new Map<string, string>();
+  for (const row of teacherRows ?? []) {
+    if (!teacherByClassroom.has(row.classroom_id)) teacherByClassroom.set(row.classroom_id, row.profiles?.display_name ?? "");
+  }
+
+  return rows.map((row) => ({
+    sessionId: row.id,
+    classroomName: row.classrooms?.name || "",
+    lectureName: row.title,
+    scheduledAt: row.scheduled_at,
+    durationMin: row.duration_min ?? 0,
+    teacherName: teacherByClassroom.get(row.classroom_id) ?? "",
+    studentName: "",
+  }));
+}
+
+// ---------------------------------------------------------------------------
+// 点名（P4B-5 §5.5）：花名册逐人四态 upsert；有账号且该 session 有其 user
+// 事件的默认预填 present，其余默认 absent，抽屉里都可手动改。
+// ---------------------------------------------------------------------------
+
+export interface AttendanceDrawerRow {
+  studentId: string;
+  studentName: string;
+  status: AttendanceStatus;
+  note: string;
+}
+
+export async function getAttendanceDrawerData(sessionId: string): Promise<AttendanceDrawerRow[]> {
+  const { supabase } = await authorizedClient("attendance.mark");
+
+  const { data: session, error: sessionError } = await supabase
+    .from("class_sessions")
+    .select("classroom_id")
+    .eq("id", sessionId)
+    .maybeSingle<{ classroom_id: string }>();
+  if (sessionError) throw new Error(sessionError.message);
+  if (!session) throw new Error("NOT_FOUND");
+
+  const [{ data: rosterRows, error: rosterError }, { data: existingRows, error: existingError }, { data: eventRows, error: eventError }] =
+    await Promise.all([
+      supabase
+        .from("enrollments")
+        .select("student_id,students(name,user_id)")
+        .eq("classroom_id", session.classroom_id)
+        .eq("status", "active")
+        .returns<Array<{ student_id: string; students: { name: string; user_id: string | null } | null }>>(),
+      supabase
+        .from("session_attendance")
+        .select("student_id,status,note")
+        .eq("session_id", sessionId)
+        .returns<Array<{ student_id: string; status: AttendanceStatus; note: string }>>(),
+      supabase
+        .from("session_events")
+        .select("user_id")
+        .eq("session_id", sessionId)
+        .returns<Array<{ user_id: string }>>(),
+    ]);
+  if (rosterError) throw new Error(rosterError.message);
+  if (existingError) throw new Error(existingError.message);
+  if (eventError) throw new Error(eventError.message);
+
+  const existingByStudent = new Map((existingRows ?? []).map((row) => [row.student_id, row]));
+  const participatedUserIds = new Set((eventRows ?? []).map((row) => row.user_id));
+
+  return (rosterRows ?? []).map((row) => {
+    const existing = existingByStudent.get(row.student_id);
+    const userId = row.students?.user_id ?? null;
+    const defaultStatus: AttendanceStatus = userId && participatedUserIds.has(userId) ? "present" : "absent";
+    return {
+      studentId: row.student_id,
+      studentName: row.students?.name ?? "-",
+      status: existing?.status ?? defaultStatus,
+      note: existing?.note ?? "",
+    };
+  });
+}
+
+export async function saveAttendanceAction(
+  sessionId: string,
+  records: Array<{ studentId: string; status: AttendanceStatus; note: string }>,
+): Promise<void> {
+  const { supabase } = await authorizedClient("attendance.mark");
+  if (records.length === 0) return;
+  const { error } = await supabase.from("session_attendance").upsert(
+    records.map((record) => ({
+      session_id: sessionId,
+      student_id: record.studentId,
+      status: record.status,
+      note: record.note.slice(0, 500),
+    })),
+    { onConflict: "session_id,student_id" },
+  );
+  if (error) throw new Error(error.message);
+}
+
+// ---------------------------------------------------------------------------
+// 财务（P4B-6 §5.6）：下单/收款/退费走 security definer RPC，金额一律服务端算，
+// 这里只透传 + 权限双闸第二道；表本身不给 insert/update，第三道 RLS 兜底只读。
+// ---------------------------------------------------------------------------
+
+export interface OrderItemInput {
+  name: string;
+  category: "course" | "material" | "other";
+  unitPrice: number;
+  qty: number;
+  refundable: boolean;
+}
+
+/** 任一财务功能键即放行（与 authorizedClient 的单键模式不同，财务多个 tab 各管各的键）。 */
+async function financeClient(keys: PermissionKey[]) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("UNAUTHENTICATED");
+  const perms = await getMyPerms(user.id);
+  if (!keys.some((key) => perms.has(key))) throw new Error("FORBIDDEN");
+  return { supabase, user };
+}
+
+export async function placeOrderAction(input: {
+  studentId: string;
+  classroomId: string | null;
+  items: OrderItemInput[];
+  kind: "enroll" | "makeup" | "deposit";
+  couponGrantId: string | null;
+  remark: string;
+}): Promise<string> {
+  const { supabase } = await authorizedClient("finance.order.create");
+  const { data, error } = await supabase.rpc("place_order", {
+    p_student_id: input.studentId,
+    p_classroom_id: input.classroomId,
+    p_items: input.items.map((item) => ({
+      name: item.name.trim().slice(0, 100),
+      category: item.category,
+      unit_price: item.unitPrice,
+      qty: item.qty,
+      refundable: item.refundable,
+    })),
+    p_kind: input.kind,
+    p_coupon_grant_id: input.couponGrantId,
+    p_remark: input.remark.slice(0, 500),
+  });
+  if (error) throw new Error(error.message);
+  return data as string;
+}
+
+export async function recordPaymentAction(orderId: string, amount: number, method: PaymentMethod, remark: string): Promise<void> {
+  const { supabase } = await authorizedClient("finance.payment.record");
+  const { error } = await supabase.rpc("record_payment", {
+    p_order_id: orderId,
+    p_amount: amount,
+    p_method: method,
+    p_remark: remark.slice(0, 500),
+  });
+  if (error) throw new Error(error.message);
+}
+
+export async function requestRefundAction(orderId: string, amount: number, reason: string): Promise<void> {
+  const { supabase } = await authorizedClient("finance.refund.request");
+  const { error } = await supabase.rpc("request_refund", {
+    p_order_id: orderId,
+    p_amount: amount,
+    p_reason: reason.slice(0, 500),
+  });
+  if (error) throw new Error(error.message);
+}
+
+export async function approveRefundAction(refundId: string, ok: boolean): Promise<void> {
+  const { supabase } = await authorizedClient("finance.refund.approve");
+  const { error } = await supabase.rpc("approve_refund", { p_refund_id: refundId, p_ok: ok });
+  if (error) throw new Error(error.message);
+}
+
+export async function createCouponAction(input: {
+  code: string;
+  name: string;
+  kind: CouponKind;
+  value: number;
+  validFrom: string | null;
+  validTo: string | null;
+}): Promise<string> {
+  const { supabase } = await authorizedClient("finance.coupon.manage");
+  const { data, error } = await supabase.rpc("create_coupon", {
+    p_code: input.code.trim().slice(0, 40),
+    p_name: input.name.trim().slice(0, 100),
+    p_kind: input.kind,
+    p_value: input.value,
+    p_scope: {},
+    p_valid_from: input.validFrom,
+    p_valid_to: input.validTo,
+  });
+  if (error) throw new Error(error.message);
+  return data as string;
+}
+
+export async function setCouponStatusAction(couponId: string, status: "enabled" | "disabled"): Promise<void> {
+  const { supabase } = await authorizedClient("finance.coupon.manage");
+  const { error } = await supabase.rpc("set_coupon_status", { p_coupon_id: couponId, p_status: status });
+  if (error) throw new Error(error.message);
+}
+
+export async function grantCouponAction(couponId: string, studentId: string): Promise<void> {
+  const { supabase } = await authorizedClient("finance.coupon.manage");
+  const { error } = await supabase.rpc("grant_coupon", { p_coupon_id: couponId, p_student_id: studentId });
+  if (error) throw new Error(error.message);
+}
+
+export async function revokeCouponAction(grantId: string): Promise<void> {
+  const { supabase } = await authorizedClient("finance.coupon.manage");
+  const { error } = await supabase.rpc("revoke_coupon", { p_grant_id: grantId });
+  if (error) throw new Error(error.message);
+}
+
+export async function grantScholarshipAction(studentId: string, amount: number, kind: ScholarshipKind, reason: string, orderId: string | null): Promise<void> {
+  const { supabase } = await authorizedClient("finance.scholarship.grant");
+  const { error } = await supabase.rpc("grant_scholarship", {
+    p_student_id: studentId,
+    p_amount: amount,
+    p_kind: kind,
+    p_reason: reason.slice(0, 500),
+    p_order_id: orderId,
+  });
+  if (error) throw new Error(error.message);
+}
+
+export async function adjustAccountAction(studentId: string, delta: number, reason: string): Promise<void> {
+  const { supabase } = await authorizedClient("finance.account.adjust");
+  const { error } = await supabase.rpc("adjust_account", { p_student_id: studentId, p_delta: delta, p_reason: reason.slice(0, 500) });
+  if (error) throw new Error(error.message);
+}
+
+export async function getOrderClassroomOptions(): Promise<Array<{ id: string; name: string; courseTitle: string | null }>> {
+  const { supabase } = await financeClient(["finance.order.create"]);
+  const { data, error } = await supabase.rpc("get_order_classroom_options");
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as Array<{ id: string; name: string; course_title: string | null }>).map((row) => ({
+    id: row.id,
+    name: row.name || "-",
+    courseTitle: row.course_title,
+  }));
+}
+
+export async function getStudentAccountAction(studentId: string): Promise<StudentAccount> {
+  await financeClient(["finance.order.view", "finance.account.adjust", "finance.scholarship.grant", "finance.coupon.manage"]);
+  return getStudentAccount(studentId);
+}
+
+export async function listAvailableCouponGrantsAction(studentId: string): Promise<CouponGrantOption[]> {
+  await authorizedClient("finance.order.create");
+  return listAvailableCouponGrants(studentId);
+}
+
+// ---------------------------------------------------------------------------
+// 跟进时间线（P4B-2 §8：教师与学辅的日常写入口）。RLS 第三道兜底：
+// followups_insert_staff_scope 只放行我作用域内学生；students 冗余字段由触发器更新。
+// ---------------------------------------------------------------------------
+
+const FOLLOW_UP_KINDS = ["note", "call", "class", "visit"] as const;
+export type FollowUpKind = (typeof FOLLOW_UP_KINDS)[number];
+
+export async function addStudentFollowUp(
+  studentId: string,
+  input: { content: string; kind: FollowUpKind; nextFollowUpAt: string | null; statusAfter: string | null },
+): Promise<void> {
+  const content = input.content.trim().slice(0, 2000);
+  if (!content) throw new Error("EMPTY_CONTENT");
+  if (!FOLLOW_UP_KINDS.includes(input.kind)) throw new Error("INVALID_KIND");
+  const statusAfter = input.statusAfter && (FOLLOW_UP_STATUSES as readonly string[]).includes(input.statusAfter) ? input.statusAfter : null;
+  const nextFollowUpAt = input.nextFollowUpAt && !Number.isNaN(Date.parse(input.nextFollowUpAt)) ? new Date(input.nextFollowUpAt).toISOString() : null;
+  const { supabase, user } = await authorizedClient("followup.write");
+  const { error } = await supabase.from("student_follow_ups").insert({
+    student_id: studentId,
+    author_id: user.id,
+    content,
+    kind: input.kind,
+    next_follow_up_at: nextFollowUpAt,
+    status_after: statusAfter,
+  });
+  if (error) throw new Error(error.message);
+}
+
+export async function searchStudentsForFinance(query: string): Promise<StudentSearchResult[]> {
+  const { supabase } = await financeClient([
+    "finance.order.view",
+    "finance.order.create",
+    "finance.payment.record",
+    "finance.refund.request",
+    "finance.refund.approve",
+    "finance.coupon.manage",
+    "finance.scholarship.grant",
+    "finance.account.adjust",
+  ]);
+  const trimmed = query.trim().slice(0, 80);
+  if (!trimmed) return [];
+  const escaped = trimmed.replaceAll("\\", "\\\\").replaceAll("%", "\\%").replaceAll("_", "\\_");
+  const { data, error } = await supabase
+    .from("students")
+    .select("id,name,grade,status")
+    .ilike("name", `%${escaped}%`)
+    .limit(10)
+    .returns<StudentSearchResult[]>();
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}

@@ -228,6 +228,8 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
   // 副板书/名录默认展开（用户 2026-07-08 要求可折叠腾空间给对方或主板书）
   const [sideCollapsed, setSideCollapsed] = useState(false);
   const [rosterCollapsed, setRosterCollapsed] = useState(false);
+  const [starting, setStarting] = useState(false);
+  const [startError, setStartError] = useState(false);
   const logRef = useRef<SessionEventLog | null>(null);
   const preloadTick = useRef(0);
   const stageRef = useRef<HTMLDivElement | null>(null);
@@ -408,9 +410,19 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
       .then(() => undefined, () => undefined);
   }, [append, session.id, rehearsal]);
 
-  const startClass = useCallback(() => {
+  const startClass = useCallback(async () => {
+    // 挂了讲次的课次要先在服务端 resolve 模板+覆盖层冻结 courseware，
+    // 成功后才广播 session_ctl:start（10-§5.4）；失败则留在候课页重试。
+    setStarting(true);
+    setStartError(false);
+    try {
+      await startClassSession(session.id);
+    } catch {
+      setStarting(false);
+      setStartError(true);
+      return;
+    }
     append("session_ctl", { action: "start" });
-    void startClassSession(session.id).catch(() => undefined);
     setPhase("live");
   }, [append, session.id]);
 
@@ -623,13 +635,14 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
               </button>
               <button
                 type="button"
-                disabled={!assetsReady}
-                onClick={startClass}
+                disabled={!assetsReady || starting}
+                onClick={() => void startClass()}
                 className="inline-flex items-center gap-2 rounded-full bg-ink px-5 py-2 text-sm text-paper transition-opacity hover:opacity-85 disabled:opacity-40"
               >
-                <MonitorPlay size={15} />
+                {starting ? <LoaderCircle size={15} className="animate-spin motion-reduce:animate-none" /> : <MonitorPlay size={15} />}
                 {tPrep("start")}
               </button>
+              {startError && <p className="text-xs text-rose">{tPrep("startFailed")}</p>}
             </>
           ) : (
             <p className="inline-flex items-center gap-2 text-sm text-muted">

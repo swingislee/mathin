@@ -1,7 +1,9 @@
 import { setRequestLocale } from "next-intl/server";
 import { getTranslations } from "next-intl/server";
 import { buttonVariants } from "@/components/ui/button";
+import { selectClass } from "@/features/school/controls";
 import { COURSE_TERMS, listCourses, parseCourseFilters } from "@/features/school/courses";
+import { SchoolPageHeader } from "@/features/school/PageHeader";
 import { Link } from "@/i18n/navigation";
 import { requirePerm } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -34,13 +36,10 @@ export default async function CoursesPage({
   };
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-8">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="font-display text-2xl">{t("title")}</h1>
-          <p className="mt-2 max-w-3xl text-sm text-muted">{t("intro")}</p>
-        </div>
-      </div>
+    <div className="mx-auto w-full max-w-6xl">
+      <SchoolPageHeader title={t("title")}>
+        <p className="mt-1 max-w-3xl text-sm text-muted">{t("intro")}</p>
+      </SchoolPageHeader>
 
       <form className="mt-6 grid gap-3 rounded-xl border border-line bg-card p-4 md:grid-cols-[1fr_140px_140px_140px_140px_auto_auto]">
         <input
@@ -49,25 +48,25 @@ export default async function CoursesPage({
           placeholder={t("search")}
           className="min-w-0 rounded-lg border border-line bg-background px-3 py-2 text-sm outline-none focus:border-crater"
         />
-        <select name="grade" defaultValue={filters.grade ?? ""} className="rounded-lg border border-line bg-background px-3 py-2 text-sm outline-none focus:border-crater">
+        <select name="grade" defaultValue={filters.grade ?? ""} className={selectClass}>
           <option value="">{t("allGrades")}</option>
           {Array.from({ length: 6 }, (_, index) => index + 1).map((grade) => (
             <option key={grade} value={grade}>{t("grade", { grade })}</option>
           ))}
         </select>
-        <select name="term" defaultValue={filters.term ?? ""} className="rounded-lg border border-line bg-background px-3 py-2 text-sm outline-none focus:border-crater">
+        <select name="term" defaultValue={filters.term ?? ""} className={selectClass}>
           <option value="">{t("allTerms")}</option>
           {COURSE_TERMS.map((term) => (
             <option key={term.value} value={term.value}>{t(term.labelKey)}</option>
           ))}
         </select>
-        <select name="classType" defaultValue={filters.classType ?? ""} className="rounded-lg border border-line bg-background px-3 py-2 text-sm outline-none focus:border-crater">
+        <select name="classType" defaultValue={filters.classType ?? ""} className={selectClass}>
           <option value="">{t("allTypes")}</option>
           {["A", "B", "S"].map((type) => (
             <option key={type} value={type}>{type}</option>
           ))}
         </select>
-        <select name="status" defaultValue={filters.status ?? ""} className="rounded-lg border border-line bg-background px-3 py-2 text-sm outline-none focus:border-crater">
+        <select name="status" defaultValue={filters.status ?? ""} className={selectClass}>
           <option value="">{t("allStatuses")}</option>
           <option value="enabled">{t("enabled")}</option>
           <option value="disabled">{t("disabled")}</option>
@@ -121,6 +120,6 @@ export default async function CoursesPage({
           <Link href={pageHref(filters.page + 1)} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>{t("next")}</Link>
         )}
       </div>
-    </main>
+    </div>
   );
 }

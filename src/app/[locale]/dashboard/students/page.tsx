@@ -1,10 +1,21 @@
 import { setRequestLocale } from "next-intl/server";
 import { getTranslations } from "next-intl/server";
 import { buttonVariants } from "@/components/ui/button";
+import { selectClass } from "@/features/school/controls";
+import { getFollowUpFunnel, type FollowUpFunnelBucket } from "@/features/school/dashboard";
+import { SchoolPageHeader } from "@/features/school/PageHeader";
 import { FOLLOW_UP_STATUSES, listStudents, parseStudentFilters, STUDENT_STATUSES } from "@/features/school/students";
 import { Link } from "@/i18n/navigation";
-import { requireAnyPerm } from "@/lib/auth";
+import { getMyPerms, requireAnyPerm } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+
+async function safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
+  try {
+    return await fn();
+  } catch {
+    return fallback;
+  }
+}
 
 export default async function StudentsPage({
   params,
@@ -15,11 +26,18 @@ export default async function StudentsPage({
 }) {
   const [{ locale }, rawSearchParams] = await Promise.all([params, searchParams]);
   setRequestLocale(locale);
-  await requireAnyPerm(locale, ["student.view.all", "student.view.assigned"]);
+  const user = await requireAnyPerm(locale, ["student.view.all", "student.view.assigned"]);
   const t = await getTranslations("school.students");
+  const schoolT = await getTranslations("school");
+  const perms = await getMyPerms(user.id);
+  const canFunnel = perms.has("student.view.all");
   const filters = parseStudentFilters(rawSearchParams);
-  const { students, count } = await listStudents(filters);
+  const [{ students, count }, funnel]: [Awaited<ReturnType<typeof listStudents>>, FollowUpFunnelBucket[]] = await Promise.all([
+    listStudents(filters),
+    canFunnel ? safe(getFollowUpFunnel, []) : Promise.resolve([]),
+  ]);
   const maxPage = count ? Math.max(1, Math.ceil(count / 20)) : filters.page;
+  const funnelMax = Math.max(1, ...funnel.map((bucket) => bucket.count));
 
   const pageHref = (page: number) => {
     const query = new URLSearchParams();
@@ -33,9 +51,27 @@ export default async function StudentsPage({
   };
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-8">
-      <h1 className="font-display text-2xl">{t("title")}</h1>
-      <p className="mt-2 max-w-3xl text-sm text-muted">{t("intro")}</p>
+    <div className="mx-auto w-full max-w-6xl">
+      <SchoolPageHeader title={t("title")}>
+        <p className="mt-1 max-w-3xl text-sm text-muted">{t("intro")}</p>
+      </SchoolPageHeader>
+
+      {canFunnel && funnel.length > 0 && (
+        <section className="mt-6 rounded-xl border border-line bg-card p-5">
+          <h2 className="font-medium">{schoolT("home.funnelTitle")}</h2>
+          <div className="mt-4 space-y-2">
+            {funnel.map((bucket) => (
+              <div key={bucket.status} className="flex items-center gap-3 text-sm">
+                <span className="w-16 shrink-0 text-xs text-muted">{t(bucket.status)}</span>
+                <div className="h-2 flex-1 rounded-full bg-line/40">
+                  <div className="h-2 rounded-full bg-crater" style={{ width: `${Math.round((bucket.count / funnelMax) * 100)}%` }} />
+                </div>
+                <span className="w-8 shrink-0 text-right text-xs tabular-nums">{bucket.count}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <form className="mt-6 grid gap-3 rounded-xl border border-line bg-card p-4 md:grid-cols-[1fr_150px_150px_140px_auto_auto]">
         <input
@@ -44,15 +80,15 @@ export default async function StudentsPage({
           placeholder={t("search")}
           className="min-w-0 rounded-lg border border-line bg-background px-3 py-2 text-sm outline-none focus:border-crater"
         />
-        <select name="status" defaultValue={filters.status ?? ""} className="rounded-lg border border-line bg-background px-3 py-2 text-sm outline-none focus:border-crater">
+        <select name="status" defaultValue={filters.status ?? ""} className={selectClass}>
           <option value="">{t("allStatuses")}</option>
           {STUDENT_STATUSES.map((status) => <option key={status} value={status}>{t(status)}</option>)}
         </select>
-        <select name="followUpStatus" defaultValue={filters.followUpStatus ?? ""} className="rounded-lg border border-line bg-background px-3 py-2 text-sm outline-none focus:border-crater">
+        <select name="followUpStatus" defaultValue={filters.followUpStatus ?? ""} className={selectClass}>
           <option value="">{t("allFollowUps")}</option>
           {FOLLOW_UP_STATUSES.map((status) => <option key={status} value={status}>{t(status)}</option>)}
         </select>
-        <select name="grade" defaultValue={filters.grade ?? ""} className="rounded-lg border border-line bg-background px-3 py-2 text-sm outline-none focus:border-crater">
+        <select name="grade" defaultValue={filters.grade ?? ""} className={selectClass}>
           <option value="">{t("allGrades")}</option>
           {Array.from({ length: 9 }, (_, index) => index + 1).map((grade) => (
             <option key={grade} value={grade}>{t("grade", { grade })}</option>
@@ -105,6 +141,6 @@ export default async function StudentsPage({
         {filters.page > 1 && <Link href={pageHref(filters.page - 1)} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>{t("previous")}</Link>}
         {filters.page < maxPage && <Link href={pageHref(filters.page + 1)} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>{t("next")}</Link>}
       </div>
-    </main>
+    </div>
   );
 }
