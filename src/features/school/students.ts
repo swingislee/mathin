@@ -282,6 +282,7 @@ export async function getStudentLearning(studentId: string): Promise<StudentLear
       .from("class_sessions")
       .select("id,title,scheduled_at,classrooms(name)")
       .in("classroom_id", activeClassroomIds)
+      .is("deleted_at", null)
       .gte("scheduled_at", new Date().toISOString())
       .order("scheduled_at", { ascending: true })
       .limit(10)

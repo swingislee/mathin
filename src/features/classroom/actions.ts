@@ -193,6 +193,7 @@ export async function listClassSessions(classroomId: string): Promise<ClassSessi
     .from("class_sessions")
     .select(SESSION_COLUMNS)
     .eq("classroom_id", classroomId)
+    .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .returns<SessionRow[]>();
   if (error) throw new Error(error.message);
@@ -216,6 +217,7 @@ export async function getClassSession(sessionId: string): Promise<ClassSessionRe
     .from("class_sessions")
     .select(SESSION_COLUMNS)
     .eq("id", sessionId)
+    .is("deleted_at", null)
     .maybeSingle<SessionRow>();
   if (error) throw new Error(error.message);
   if (!data) return null;
@@ -371,6 +373,7 @@ export async function getSessionReport(sessionId: string): Promise<SessionReport
     .from("class_sessions")
     .select("id,classroom_id")
     .eq("id", sessionId)
+    .is("deleted_at", null)
     .maybeSingle<{ id: string; classroom_id: string }>();
   if (error) throw new Error(error.message);
   if (!session) throw new Error("NOT_FOUND");

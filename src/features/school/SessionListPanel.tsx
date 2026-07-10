@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { deleteUnstartedSessionAction, rescheduleSessionAction } from "./actions";
 import { AttendanceDrawer } from "./AttendanceDrawer";
 import type { SessionRow } from "./classes";
@@ -25,16 +25,18 @@ export function SessionListPanel({
   canManage: boolean;
 }) {
   const t = useTranslations("school.classes");
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [rows, setRows] = useState(sessions);
   const [error, setError] = useState<string | null>(null);
 
+  // 直接渲染 sessions prop；每次改动后 router.refresh() 让服务端带回最新列表
+  // （删除→移出列表并进回收站、恢复→回到列表），避免本地缓存与回收站不同步。
   const reschedule = (sessionId: string, iso: string, durationMin: number) => {
     setError(null);
     startTransition(async () => {
       try {
         await rescheduleSessionAction(sessionId, iso, durationMin);
-        setRows((prev) => prev.map((row) => (row.id === sessionId ? { ...row, scheduledAt: iso } : row)));
+        router.refresh();
       } catch {
         setError(t("actionFailed"));
       }
@@ -46,7 +48,7 @@ export function SessionListPanel({
     startTransition(async () => {
       try {
         await deleteUnstartedSessionAction(sessionId);
-        setRows((prev) => prev.filter((row) => row.id !== sessionId));
+        router.refresh(); // 同步课次列表与回收站
       } catch {
         setError(t("actionFailed"));
       }
@@ -55,14 +57,14 @@ export function SessionListPanel({
 
   return (
     <section className="rounded-xl border border-line bg-card p-5">
-      <h2 className="font-medium">{t("sessions", { count: rows.length })}</h2>
+      <h2 className="font-medium">{t("sessions", { count: sessions.length })}</h2>
       {error && <p className="mt-3 text-xs text-rose">{error}</p>}
 
-      {rows.length === 0 ? (
+      {sessions.length === 0 ? (
         <p className="mt-4 text-sm text-muted">{t("emptySessions")}</p>
       ) : (
         <ul className="mt-4 divide-y divide-line">
-          {rows.map((row) => {
+          {sessions.map((row) => {
             const unstarted = !row.startedAt;
             return (
               <li key={row.id} className="flex flex-wrap items-center gap-3 py-2.5 text-sm">

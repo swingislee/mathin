@@ -525,6 +525,8 @@
       "statusLive": "Live",
       "statusScheduled": "Scheduled",
       "deleteSession": "Delete",
+      "recycleBin": "Recycle bin ({count})",
+      "restore": "Restore",
       "markAttendance": "Attendance",
       "attendanceNote": "Note",
       "loading": "Loading…",

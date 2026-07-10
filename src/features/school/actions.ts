@@ -200,13 +200,28 @@ export async function rescheduleSessionAction(sessionId: string, scheduledAt: st
   if (!data || data.length === 0) throw new Error("FORBIDDEN_SCOPE");
 }
 
+// 软删（P4C-2 §7）：不物理 delete，置 deleted_at；未开始且未删的课次才可删。
+// 0 行命中同样抛 FORBIDDEN_SCOPE（RLS 跨作用域静默命中 0 行的老坑）。
 export async function deleteUnstartedSessionAction(sessionId: string): Promise<void> {
   const { supabase } = await authorizedClient("class.manage");
   const { data, error } = await supabase
     .from("class_sessions")
-    .delete()
+    .update({ deleted_at: new Date().toISOString() })
     .eq("id", sessionId)
     .is("started_at", null)
+    .is("deleted_at", null)
+    .select("id");
+  if (error) throw new Error(error.message);
+  if (!data || data.length === 0) throw new Error("FORBIDDEN_SCOPE");
+}
+
+export async function restoreSessionAction(sessionId: string): Promise<void> {
+  const { supabase } = await authorizedClient("class.manage");
+  const { data, error } = await supabase
+    .from("class_sessions")
+    .update({ deleted_at: null })
+    .eq("id", sessionId)
+    .not("deleted_at", "is", null)
     .select("id");
   if (error) throw new Error(error.message);
   if (!data || data.length === 0) throw new Error("FORBIDDEN_SCOPE");
@@ -306,6 +321,7 @@ export async function getWeekSchedule(fromIso: string, toIso: string): Promise<S
   const { data: sessionRows, error } = await supabase
     .from("class_sessions")
     .select("id,title,scheduled_at,duration_min,classroom_id,classrooms(name)")
+    .is("deleted_at", null)
     .gte("scheduled_at", fromIso)
     .lt("scheduled_at", toIso)
     .order("scheduled_at", { ascending: true })

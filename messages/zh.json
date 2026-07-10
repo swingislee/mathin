@@ -525,6 +525,8 @@
       "statusLive": "已开课",
       "statusScheduled": "未开始",
       "deleteSession": "删除",
+      "recycleBin": "回收站（{count}）",
+      "restore": "恢复",
       "markAttendance": "点名",
       "attendanceNote": "备注",
       "loading": "加载中…",

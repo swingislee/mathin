@@ -170,6 +170,35 @@ export interface ClassroomDetail {
   sessions: SessionRow[];
 }
 
+export interface DeletedSessionRow extends SessionRow {
+  deletedAt: string;
+}
+
+/** 回收站（P4C-2 §7）：某班已软删的课次，按删除时间倒序。仅 class.manage 页面调用。 */
+export async function listDeletedSessions(classroomId: string): Promise<DeletedSessionRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("class_sessions")
+    .select("id,lecture_no,title,scheduled_at,duration_min,started_at,ended_at,deleted_at")
+    .eq("classroom_id", classroomId)
+    .not("deleted_at", "is", null)
+    .order("deleted_at", { ascending: false })
+    .returns<
+      Array<{ id: string; lecture_no: number | null; title: string; scheduled_at: string | null; duration_min: number | null; started_at: string | null; ended_at: string | null; deleted_at: string }>
+    >();
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    no: row.lecture_no,
+    name: row.title,
+    scheduledAt: row.scheduled_at,
+    durationMin: row.duration_min,
+    startedAt: row.started_at,
+    endedAt: row.ended_at,
+    deletedAt: row.deleted_at,
+  }));
+}
+
 export async function getClassroomDetail(id: string): Promise<ClassroomDetail | null> {
   const supabase = await createClient();
   const { data: classroom, error } = await supabase
@@ -206,6 +235,7 @@ export async function getClassroomDetail(id: string): Promise<ClassroomDetail | 
         .from("class_sessions")
         .select("id,lecture_no,title,scheduled_at,duration_min,started_at,ended_at")
         .eq("classroom_id", id)
+        .is("deleted_at", null)
         .order("scheduled_at", { ascending: true, nullsFirst: false })
         .returns<Array<{ id: string; lecture_no: number | null; title: string; scheduled_at: string | null; duration_min: number | null; started_at: string | null; ended_at: string | null }>>(),
     ]);

@@ -27,6 +27,7 @@ export async function getStaffStats(): Promise<StaffStats> {
     supabase
       .from("class_sessions")
       .select("*", { count: "exact", head: true })
+      .is("deleted_at", null)
       .gte("scheduled_at", weekStart.toISOString())
       .lt("scheduled_at", weekEnd.toISOString()),
     supabase.from("students").select("*", { count: "exact", head: true }).lt("next_follow_up_at", now.toISOString()),
@@ -56,6 +57,7 @@ export async function getTodaySchedule(): Promise<TodaySessionRow[]> {
   const { data: sessionRows, error } = await supabase
     .from("class_sessions")
     .select("id,title,scheduled_at,classroom_id,classrooms(name)")
+    .is("deleted_at", null)
     .gte("scheduled_at", from.toISOString())
     .lt("scheduled_at", to.toISOString())
     .order("scheduled_at", { ascending: true })
@@ -188,6 +190,7 @@ export async function getMyTeachingCard(uid: string): Promise<MyTeachingCard> {
       .from("class_sessions")
       .select("id,title,scheduled_at,classroom_id,courseware_overlay,classrooms(name)")
       .in("classroom_id", classroomIds)
+      .is("deleted_at", null)
       .gte("scheduled_at", todayStart.toISOString())
       .lt("scheduled_at", weekEnd.toISOString())
       .order("scheduled_at", { ascending: true })
@@ -243,6 +246,7 @@ export async function getMyClassroomCards(uid: string): Promise<MyClassroomCard[
     .select("id,name,capacity,archived_at,enrollments!enrollments_classroom_id_fkey(status),class_sessions!class_sessions_classroom_id_fkey(started_at,ended_at)")
     .in("id", classroomIds)
     .is("archived_at", null)
+    .is("class_sessions.deleted_at", null)
     .returns<
       Array<{
         id: string;

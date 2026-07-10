@@ -1,10 +1,11 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { buttonVariants } from "@/components/ui/button";
-import { getClassroomDetail } from "@/features/school/classes";
+import { getClassroomDetail, listDeletedSessions } from "@/features/school/classes";
 import { SchoolPageHeader } from "@/features/school/PageHeader";
 import { RosterPanel } from "@/features/school/RosterPanel";
 import { SessionListPanel } from "@/features/school/SessionListPanel";
+import { SessionRecycleBin } from "@/features/school/SessionRecycleBin";
 import { Link } from "@/i18n/navigation";
 import { getMyPerms, requireAnyPerm } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -23,6 +24,9 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ lo
     getMyPerms(user.id),
   ]);
   if (!classroom) notFound();
+
+  const canManage = perms.has("class.manage");
+  const deletedSessions = canManage ? await listDeletedSessions(id) : [];
 
   return (
     <div className="mx-auto w-full max-w-5xl">
@@ -57,8 +61,9 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ lo
           classroomId={classroom.id}
           sessions={classroom.sessions}
           canMarkAttendance={perms.has("attendance.mark")}
-          canManage={perms.has("class.manage")}
+          canManage={canManage}
         />
+        {canManage && <SessionRecycleBin sessions={deletedSessions} />}
       </div>
     </div>
   );
