@@ -14,6 +14,7 @@ export const PERMISSION_KEYS = [
   "class.view.mine",
   "class.create",
   "class.manage",
+  "enrollment.manage",
   "schedule.view.all",
   "attendance.mark",
   "grading.write",

@@ -17,10 +17,12 @@ export function SessionListPanel({
   classroomId,
   sessions,
   canMarkAttendance,
+  canManage,
 }: {
   classroomId: string;
   sessions: SessionRow[];
   canMarkAttendance: boolean;
+  canManage: boolean;
 }) {
   const t = useTranslations("school.classes");
   const [pending, startTransition] = useTransition();
@@ -72,7 +74,7 @@ export function SessionListPanel({
                   {row.endedAt ? t("statusEnded") : row.startedAt ? t("statusLive") : t("statusScheduled")}
                 </span>
                 {canMarkAttendance && !unstarted && <AttendanceDrawer sessionId={row.id} />}
-                {unstarted && row.scheduledAt && (
+                {canManage && unstarted && row.scheduledAt && (
                   <input
                     type="datetime-local"
                     disabled={pending}
@@ -81,10 +83,10 @@ export function SessionListPanel({
                       const iso = new Date(event.target.value).toISOString();
                       reschedule(row.id, iso, row.durationMin ?? 90);
                     }}
-                    className="shrink-0 rounded-lg border border-line bg-background px-2 py-1 text-xs outline-none focus:border-crater"
+                    className="shrink-0 rounded-lg border border-line bg-card px-2 py-1 text-xs text-ink outline-none focus:border-crater"
                   />
                 )}
-                {unstarted && (
+                {canManage && unstarted && (
                   <button
                     type="button"
                     disabled={pending}

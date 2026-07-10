@@ -147,7 +147,7 @@ export async function buildClass(input: BuildClassInput): Promise<string> {
 // ---------------------------------------------------------------------------
 
 export async function enrollStudentAction(classroomId: string, studentId: string, remark: string): Promise<void> {
-  const { supabase } = await authorizedClient("class.manage");
+  const { supabase } = await authorizedClient("enrollment.manage");
   const { error } = await supabase.rpc("enroll_student", {
     p_classroom_id: classroomId,
     p_student_id: studentId,
@@ -162,7 +162,7 @@ export async function transferStudentAction(
   toClassroomId: string,
   remark: string,
 ): Promise<void> {
-  const { supabase } = await authorizedClient("class.manage");
+  const { supabase } = await authorizedClient("enrollment.manage");
   const { error } = await supabase.rpc("transfer_student", {
     p_student_id: studentId,
     p_from_classroom: fromClassroomId,
@@ -173,7 +173,7 @@ export async function transferStudentAction(
 }
 
 export async function withdrawStudentAction(enrollmentId: string, remark: string): Promise<void> {
-  const { supabase } = await authorizedClient("class.manage");
+  const { supabase } = await authorizedClient("enrollment.manage");
   const { error } = await supabase.rpc("withdraw_student", {
     p_enrollment_id: enrollmentId,
     p_remark: remark.slice(0, 500),
@@ -235,7 +235,7 @@ export interface StudentSearchResult {
 }
 
 export async function searchStudentsForEnroll(query: string): Promise<StudentSearchResult[]> {
-  const { supabase } = await authorizedClient("class.manage");
+  const { supabase } = await authorizedClient("enrollment.manage");
   const trimmed = query.trim().slice(0, 80);
   if (!trimmed) return [];
   const escaped = trimmed.replaceAll("\\", "\\\\").replaceAll("%", "\\%").replaceAll("_", "\\_");
@@ -250,7 +250,7 @@ export async function searchStudentsForEnroll(query: string): Promise<StudentSea
 }
 
 export async function listClassroomOptions(excludeId?: string): Promise<Array<{ id: string; name: string }>> {
-  const { supabase } = await authorizedClient("class.manage");
+  const { supabase } = await authorizedClient("enrollment.manage");
   let query = supabase.from("classrooms").select("id,name").is("archived_at", null).order("name", { ascending: true }).limit(200);
   if (excludeId) query = query.neq("id", excludeId);
   const { data, error } = await query.returns<Array<{ id: string; name: string }>>();

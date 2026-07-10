@@ -23,7 +23,7 @@ import {
 } from "./actions";
 import type { RosterRow } from "./classes";
 
-export function RosterPanel({ classroomId, roster }: { classroomId: string; roster: RosterRow[] }) {
+export function RosterPanel({ classroomId, roster, canManage }: { classroomId: string; roster: RosterRow[]; canManage: boolean }) {
   const t = useTranslations("school.classes");
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -106,9 +106,11 @@ export function RosterPanel({ classroomId, roster }: { classroomId: string; rost
     <section className="rounded-xl border border-line bg-card p-5">
       <div className="flex items-center justify-between">
         <h2 className="font-medium">{t("roster", { count: roster.length })}</h2>
-        <button type="button" onClick={() => setEnrollOpen(true)} className={cn(buttonVariants({ size: "sm" }))}>
-          {t("enroll")}
-        </button>
+        {canManage && (
+          <button type="button" onClick={() => setEnrollOpen(true)} className={cn(buttonVariants({ size: "sm" }))}>
+            {t("enroll")}
+          </button>
+        )}
       </div>
 
       {error && <p className="mt-3 text-xs text-rose">{error}</p>}
@@ -122,12 +124,16 @@ export function RosterPanel({ classroomId, roster }: { classroomId: string; rost
               <span className="min-w-0 flex-1 truncate">{row.studentName}</span>
               {!row.hasAccount && <span className="rounded-full bg-line/50 px-2 py-0.5 text-xs text-muted">{t("noAccount")}</span>}
               {row.hasAccount && !row.isMember && <span className="rounded-full bg-cheek/30 px-2 py-0.5 text-xs text-ink">{t("notInClassroom")}</span>}
-              <button type="button" disabled={pending} onClick={() => void openTransfer(row)} className="text-xs text-muted underline underline-offset-2 hover:text-ink disabled:opacity-40">
-                {t("transfer")}
-              </button>
-              <button type="button" disabled={pending} onClick={() => withdraw(row)} className="text-xs text-muted underline underline-offset-2 hover:text-rose disabled:opacity-40">
-                {t("withdraw")}
-              </button>
+              {canManage && (
+                <>
+                  <button type="button" disabled={pending} onClick={() => void openTransfer(row)} className="text-xs text-muted underline underline-offset-2 hover:text-ink disabled:opacity-40">
+                    {t("transfer")}
+                  </button>
+                  <button type="button" disabled={pending} onClick={() => withdraw(row)} className="text-xs text-muted underline underline-offset-2 hover:text-rose disabled:opacity-40">
+                    {t("withdraw")}
+                  </button>
+                </>
+              )}
             </li>
           ))}
         </ul>

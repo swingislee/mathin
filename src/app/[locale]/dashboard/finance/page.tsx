@@ -44,7 +44,12 @@ export default async function FinancePage({
   const perms = await getMyPerms(user.id);
   const hasFinancePerm = FINANCE_PERM_KEYS.some((key) => perms.has(key));
 
-  if (!hasFinancePerm && (profile?.role === "student" || profile?.role === "parent")) {
+  // 学生端去财务（P4C-1 §4.4）：家长管钱，学生直接踢回总览。家长只读分支保留。
+  if (profile?.role === "student") {
+    redirect(`/${locale}/dashboard`);
+  }
+
+  if (!hasFinancePerm && profile?.role === "parent") {
     const customerT = await getTranslations("school.customer");
     const financeT = await getTranslations("school.finance");
     const [orders, accounts] = await Promise.all([safe(getMyOrders, []), safe(getMyAccounts, [])]);

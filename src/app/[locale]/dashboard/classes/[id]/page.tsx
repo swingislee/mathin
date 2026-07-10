@@ -52,8 +52,13 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ lo
       </SchoolPageHeader>
 
       <div className="mt-6 grid gap-6">
-        <RosterPanel classroomId={classroom.id} roster={classroom.roster} />
-        <SessionListPanel classroomId={classroom.id} sessions={classroom.sessions} canMarkAttendance={perms.has("attendance.mark")} />
+        <RosterPanel classroomId={classroom.id} roster={classroom.roster} canManage={perms.has("enrollment.manage")} />
+        <SessionListPanel
+          classroomId={classroom.id}
+          sessions={classroom.sessions}
+          canMarkAttendance={perms.has("attendance.mark")}
+          canManage={perms.has("class.manage")}
+        />
       </div>
     </div>
   );
