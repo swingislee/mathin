@@ -37,6 +37,10 @@ export interface MyLearningSummary {
   recentSubmissions: Array<{ title: string; score: number | null; gradedAt: string | null }>;
   starTotal: number;
   paymentStatus: PaymentStatus;
+  /** 未来 7 天课次数（P4C-7；时刻展示串由调用方从课表拼）。 */
+  weekSessionCount: number;
+  /** 未交且未过期作业数；孩子无账号时为 null（显示"—"，不是 0）。 */
+  pendingAssignmentCount: number | null;
 }
 
 export async function getMyLearningSummary(): Promise<MyLearningSummary[]> {
@@ -53,6 +57,8 @@ export async function getMyLearningSummary(): Promise<MyLearningSummary[]> {
       recent_submissions: Array<{ title: string; score: number | null; gradedAt: string | null }>;
       star_total: number;
       payment_status: PaymentStatus;
+      week_session_count: number;
+      pending_assignment_count: number | null;
     }>
   ).map((row) => ({
     studentId: row.student_id,
@@ -63,6 +69,8 @@ export async function getMyLearningSummary(): Promise<MyLearningSummary[]> {
     recentSubmissions: row.recent_submissions ?? [],
     starTotal: row.star_total,
     paymentStatus: row.payment_status,
+    weekSessionCount: row.week_session_count,
+    pendingAssignmentCount: row.pending_assignment_count,
   }));
 }
 

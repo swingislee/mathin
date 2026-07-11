@@ -339,7 +339,8 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
     .limit(3)
     .returns<RecentPostRow[]>();
   const recentPosts = recentData ?? [];
-  const classrooms = (await listMyClassrooms()).slice(0, 5);
+  const myClassroomList = await listMyClassrooms();
+  const classrooms = myClassroomList.slice(0, 5);
   const profile = await getProfile(user.id);
   const isStaff = profile?.role === "staff" || profile?.role === "admin";
   const perms: Set<PermissionKey> = isStaff ? await getMyPerms(user.id) : new Set();
@@ -973,11 +974,25 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
 
   if (profile?.role === "parent") {
     const studentsT = await getTranslations("school.students");
-    const summaries = await safe(getMyLearningSummary, []);
+    const [summaries, parentWeekSchedule] = await Promise.all([
+      safe(getMyLearningSummary, []),
+      safe(() => getWeekSchedule(new Date().toISOString(), addDays(new Date(), 7).toISOString()), []),
+    ]);
+    const weekFmt = new Intl.DateTimeFormat(locale, { weekday: "short", hour: "2-digit", minute: "2-digit" });
 
     for (const child of summaries) {
       const key = `${CHILD_TILE_PREFIX}${child.studentId}`;
       const nextAt = child.nextSessionAt ? shortFmt.format(new Date(child.nextSessionAt)) : "-";
+      // §0.8：本周 N 节 + 首两个时刻（时刻串按课表在 TS 侧拼，RPC 只给数）。
+      const childTimes = parentWeekSchedule
+        .filter((entry) => entry.studentName === child.studentName)
+        .slice(0, 2)
+        .map((entry) => weekFmt.format(new Date(entry.scheduledAt)))
+        .join(locale === "zh" ? "、" : ", ");
+      const weekLine =
+        child.weekSessionCount > 0 && childTimes
+          ? customerT("weekSessionsValue", { count: child.weekSessionCount, times: childTimes })
+          : customerT("weekSessionsCount", { count: child.weekSessionCount });
       labels.set(key, child.studentName);
       extras.set(key, {
         href: `/dashboard/children?child=${child.studentId}`,
@@ -993,6 +1008,16 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
             <div className="flex justify-between gap-3">
               <dt className="text-muted">{customerT("nextSession")}</dt>
               <dd>{child.nextSessionAt ? shortFmt.format(new Date(child.nextSessionAt)) : "-"}</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt className="shrink-0 text-muted">{customerT("weekSessions")}</dt>
+              <dd className="min-w-0 truncate text-right">{weekLine}</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt className="text-muted">{customerT("pendingAssignmentsTitle")}</dt>
+              <dd className={cn("tabular-nums", (child.pendingAssignmentCount ?? 0) > 0 && "text-rose")}>
+                {child.pendingAssignmentCount ?? "—"}
+              </dd>
             </div>
             <div className="flex justify-between gap-3">
               <dt className="text-muted">{customerT("starTotal")}</dt>
@@ -1040,13 +1065,23 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
   // ---- 学生首屏（§0.7）：无费用磁贴（§4.4）；未绑定档案时绑定卡是固定块不是磁贴。 ----
   const myStudents = await safe(getMyStudents, []);
   const isBound = myStudents.length > 0;
-  const [nextWeekSchedule, myPendingAssignments] = isBound
+  const [nextWeekSchedule, myPendingAssignments, mySummaries] = isBound
     ? await Promise.all([
         safe(() => getWeekSchedule(new Date().toISOString(), addDays(new Date(), 7).toISOString()), []),
         safe(getMyPendingAssignments, []),
+        safe(getMyLearningSummary, []),
       ])
-    : ([[], []] as [Awaited<ReturnType<typeof getWeekSchedule>>, Awaited<ReturnType<typeof getMyPendingAssignments>>]);
+    : ([[], [], []] as [
+        Awaited<ReturnType<typeof getWeekSchedule>>,
+        Awaited<ReturnType<typeof getMyPendingAssignments>>,
+        Awaited<ReturnType<typeof getMyLearningSummary>>,
+      ]);
   const nextSession = nextWeekSchedule[0] ?? null;
+  // §0.7 进教室：距开课 ≤30 分钟且本人是该班 classroom_members 成员（非 enrollment）。
+  const canEnterClassroom =
+    nextSession !== null &&
+    new Date(nextSession.scheduledAt).getTime() - new Date().getTime() <= 30 * 60_000 &&
+    myClassroomList.some((classroom) => classroom.id === nextSession.classroomId);
 
   if (isBound) {
     labels.set("mySchedule", customerT("myScheduleTitle"));
@@ -1065,21 +1100,101 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
       !nextSession ? (
         <EmptyBody text={customerT("myScheduleEmpty")} href="/dashboard/schedule" linkLabel={schoolT("nav.schedule")} />
       ) : (
-        <div className="flex flex-1 flex-wrap content-center items-center gap-3 text-sm">
-          <time className="shrink-0 font-mono text-xs text-muted">{shortFmt.format(new Date(nextSession.scheduledAt))}</time>
-          <span className="min-w-0 flex-1 truncate font-medium">{nextSession.classroomName}</span>
-          <span className="shrink-0 text-xs text-muted">{nextSession.lectureName}</span>
+        <div className="flex min-h-0 flex-1 flex-col gap-1">
+          <div className="flex flex-wrap items-center gap-3 py-1 text-sm">
+            <time className="shrink-0 font-mono text-xs text-muted">{shortFmt.format(new Date(nextSession.scheduledAt))}</time>
+            <span className="min-w-0 flex-1 truncate font-medium">{nextSession.classroomName}</span>
+            <span className="shrink-0 text-xs text-muted">{nextSession.lectureName}</span>
+            {canEnterClassroom && (
+              <Link href={`/classroom/${nextSession.classroomId}`} className={cn(buttonVariants({ size: "sm" }), "shrink-0")}>
+                {customerT("enterClassroom")}
+              </Link>
+            )}
+          </div>
+          {nextWeekSchedule.length > 1 && (
+            <ul className="min-h-0 flex-1 divide-y overflow-hidden border-t">
+              {nextWeekSchedule.slice(1, 5).map((entry) => (
+                <li key={entry.sessionId} className="flex items-center gap-3 py-2 text-sm">
+                  <time className="shrink-0 font-mono text-xs text-muted">{shortFmt.format(new Date(entry.scheduledAt))}</time>
+                  <span className="min-w-0 flex-1 truncate">{entry.classroomName}</span>
+                  <span className="shrink-0 text-xs text-muted">{entry.lectureName}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       ),
     );
 
+    // §0.7 列表化：最近截止 3 份逐行直达提交页，不再只给计数。
+    const nearestDue = myPendingAssignments[0] ?? null;
     labels.set("pendingAssignments", customerT("pendingAssignmentsTitle"));
-    extras.set("pendingAssignments", { href: "/dashboard/assignments", cover: true });
-    contents.set("pendingAssignments", <StatBody value={myPendingAssignments.length} />);
+    extras.set("pendingAssignments", {
+      href: "/dashboard/assignments",
+      tone: myPendingAssignments.length > 0 ? "rose" : undefined,
+      minimal: <MinimalBody value={myPendingAssignments.length} rose={myPendingAssignments.length > 0} />,
+      compact: (
+        <CompactBody
+          value={myPendingAssignments.length}
+          rose={myPendingAssignments.length > 0}
+          line={
+            nearestDue
+              ? `${nearestDue.title} · ${nearestDue.dueAt ? shortFmt.format(new Date(nearestDue.dueAt)) : customerT("noDue")}`
+              : customerT("pendingAssignmentsEmpty")
+          }
+        />
+      ),
+    });
+    contents.set(
+      "pendingAssignments",
+      myPendingAssignments.length === 0 ? (
+        <EmptyBody text={customerT("pendingAssignmentsEmpty")} href="/dashboard/assignments" linkLabel={customerT("goSubmit")} />
+      ) : (
+        <ul className="min-h-0 flex-1 divide-y overflow-hidden">
+          {myPendingAssignments.slice(0, 3).map((row) => (
+            <li key={row.assignmentId} className="flex items-center gap-3 py-2 text-sm">
+              <Link
+                href={`/classroom/${row.classroomId}/assignment/${row.assignmentId}`}
+                className="min-w-0 flex-1 truncate font-medium hover:underline"
+              >
+                {row.title}
+              </Link>
+              <span className="shrink-0 text-xs text-muted">
+                {row.dueAt ? shortFmt.format(new Date(row.dueAt)) : customerT("noDue")}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ),
+    );
+
+    // §0.7 myStars：直接吃 get_my_learning_summary 本人行，不另写聚合。
+    const myStar = mySummaries[0] ?? null;
+    if (myStar) {
+      const rateText = myStar.attendanceRate30d !== null ? `${myStar.attendanceRate30d}%` : "—";
+      labels.set("myStars", customerT("myStarsTitle"));
+      extras.set("myStars", {
+        minimal: <MinimalBody value={myStar.starTotal} />,
+        compact: <CompactBody value={myStar.starTotal} line={`${customerT("attendanceRate30d")} ${rateText}`} />,
+      });
+      contents.set(
+        "myStars",
+        <dl className="grid flex-1 content-center gap-2 text-sm">
+          <div className="flex justify-between gap-3">
+            <dt className="text-muted">{customerT("starTotal")}</dt>
+            <dd className="font-display text-2xl tabular-nums">{myStar.starTotal}</dd>
+          </div>
+          <div className="flex justify-between gap-3">
+            <dt className="text-muted">{customerT("attendanceRate30d")}</dt>
+            <dd className="tabular-nums">{rateText}</dd>
+          </div>
+        </dl>,
+      );
+    }
   }
 
   const eligible = pickEligible("student", perms).filter(
-    (tile) => isBound || (tile.key !== "mySchedule" && tile.key !== "pendingAssignments"),
+    (tile) => isBound || (tile.key !== "mySchedule" && tile.key !== "pendingAssignments" && tile.key !== "myStars"),
   );
   const merged = mergeTileLayout(eligible, userTiles, STUDENT_ORDER);
   const { items, hidden } = buildTileItems(merged, eligible, labels, contents, extras);

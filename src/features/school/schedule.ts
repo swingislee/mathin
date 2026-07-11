@@ -35,6 +35,7 @@ export function startOfMonth(date: Date): Date {
 
 export interface ScheduleEntry {
   sessionId: string;
+  classroomId: string;
   classroomName: string;
   lectureName: string;
   scheduledAt: string;

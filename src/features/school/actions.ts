@@ -280,6 +280,7 @@ export async function listClassroomOptions(excludeId?: string): Promise<Array<{ 
 
 interface MySchedRow {
   session_id: string;
+  classroom_id: string;
   classroom_name: string;
   lecture_name: string;
   scheduled_at: string;
@@ -309,6 +310,7 @@ export async function getWeekSchedule(fromIso: string, toIso: string): Promise<S
     if (error) throw new Error(error.message);
     return ((data ?? []) as MySchedRow[]).map((row) => ({
       sessionId: row.session_id,
+      classroomId: row.classroom_id,
       classroomName: row.classroom_name,
       lectureName: row.lecture_name,
       scheduledAt: row.scheduled_at,
@@ -345,6 +347,7 @@ export async function getWeekSchedule(fromIso: string, toIso: string): Promise<S
 
   return rows.map((row) => ({
     sessionId: row.id,
+    classroomId: row.classroom_id,
     classroomName: row.classrooms?.name || "",
     lectureName: row.title,
     scheduledAt: row.scheduled_at,

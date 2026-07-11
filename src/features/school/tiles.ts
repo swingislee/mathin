@@ -100,9 +100,10 @@ export const TILE_REGISTRY: readonly TileDef[] = [
   { key: "unmarkedAttendance", audiences: ["staff"], requiredPerm: "class.view.all", allowedSizes: ["2x2", "3x2", "2x1", "1x1"], icon: "ClipboardList" },
   { key: "rosterMismatch", audiences: ["staff"], requiredPerm: "class.view.all", allowedSizes: ["2x1", "1x1"], icon: "UserX" },
   { key: "followupBoardEntry", audiences: ["staff"], requiredPerm: "followup.write", allowedSizes: ["2x1", "1x1"], icon: "PhoneForwarded" },
-  // ---- student 池（§0.7；myStars 在 P4C-7 落）。无费用磁贴（§4.4）。 ----
+  // ---- student 池（§0.7）。无费用磁贴（§4.4）。 ----
   { key: "mySchedule", audiences: ["student"], allowedSizes: ["3x2", "2x2", "2x1", "1x1"], icon: "CalendarDays" },
-  { key: "pendingAssignments", audiences: ["student"], allowedSizes: ["2x1", "1x1"], icon: "ClipboardList" },
+  { key: "pendingAssignments", audiences: ["student"], allowedSizes: ["2x1", "2x2", "3x2", "1x1"], icon: "ClipboardList" },
+  { key: "myStars", audiences: ["student"], allowedSizes: ["1x1", "2x1", "2x2"], icon: "Star" },
   // ---- parent 池（§0.8） ----
   { key: CHILD_TILE_BASE, audiences: ["parent"], allowedSizes: ["2x2", "3x2", "2x1", "1x1"], icon: "Baby" },
   { key: "bindChild", audiences: ["parent"], allowedSizes: ["2x1", "2x2"], icon: "Link2" },
