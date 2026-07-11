@@ -24,6 +24,7 @@ export const HOME_NAV_ITEM: SchoolNavItem = { href: "/dashboard", labelKey: "hom
 
 export const SCHOOL_NAV_ITEMS: readonly SchoolNavItem[] = [
   { href: "/dashboard/followups", labelKey: "followups", requiredPerm: "followup.view" },
+  { href: "/dashboard/activities", labelKey: "activities", requiredPerm: "activity.register" },
   { href: "/dashboard/students", labelKey: "students", requiredPerm: "student.view.assigned" },
   { href: "/dashboard/courses", labelKey: "courses", requiredPerm: "course.view" },
   { href: "/dashboard/classes", labelKey: "classes", requiredPerm: "class.view.mine" },

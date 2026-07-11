@@ -100,6 +100,7 @@ export const TILE_REGISTRY: readonly TileDef[] = [
   { key: "unmarkedAttendance", audiences: ["staff"], requiredPerm: "class.view.all", allowedSizes: ["2x2", "3x2", "2x1", "1x1"], icon: "ClipboardList" },
   { key: "rosterMismatch", audiences: ["staff"], requiredPerm: "class.view.all", allowedSizes: ["2x1", "1x1"], icon: "UserX" },
   { key: "followupBoardEntry", audiences: ["staff"], requiredPerm: "followup.write", allowedSizes: ["2x1", "1x1"], icon: "PhoneForwarded" },
+  { key: "activityToday", audiences: ["staff"], requiredPerm: "activity.register", allowedSizes: ["2x2", "2x1", "1x1"], icon: "CalendarDays" },
   // ---- student 池（§0.7）。无费用磁贴（§4.4）。 ----
   { key: "mySchedule", audiences: ["student"], allowedSizes: ["3x2", "2x2", "2x1", "1x1"], icon: "CalendarDays" },
   { key: "pendingAssignments", audiences: ["student"], allowedSizes: ["2x1", "2x2", "3x2", "1x1"], icon: "ClipboardList" },
@@ -130,6 +131,7 @@ export const STAFF_MANAGER_ORDER: readonly string[] = [
   "statWeekSessions",
   "statOverdueFollowUps",
   "todaySchedule",
+  "activityToday",
   "dueOrders",
   "funnel",
   "financeOverview",
@@ -144,6 +146,7 @@ export const STAFF_TEACHER_ORDER: readonly string[] = [
   "gradingQueue",
   "myClasses",
   "todaySchedule",
+  "activityToday",
   "myFollowUps",
   "followupBoardEntry",
 ];
@@ -152,6 +155,7 @@ export const STAFF_RESEARCH_ORDER: readonly string[] = ["templateUrgent", "templ
 
 export const STAFF_SALES_ORDER: readonly string[] = [
   "followupBoardEntry",
+  "activityToday",
   "myFollowUps",
   "dueOrders",
   "myPerformance",

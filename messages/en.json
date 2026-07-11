@@ -249,7 +249,10 @@
       "rosterOrphan": "In room, no enrollment",
       "followupBoardTitle": "Follow-up board",
       "followupOverdue": "Overdue",
-      "followupToday": "Today"
+      "followupToday": "Today",
+      "activityTodayTitle": "Activities today & tomorrow",
+      "activityTodayEmpty": "No activities in the next two days.",
+      "activityBooked": "{count} booked"
     },
     "tileEdit": {
       "edit": "Edit layout",
@@ -276,6 +279,17 @@
       "roles": "Roles",
       "children": "Children",
       "assignments": "Assignments"
+      ,"activities": "Activities"
+    },
+    "activities": {
+      "title": "Activities", "intro": "Manage trials, assessments, workshops, lectures and competitions. Results are added to each student's follow-up timeline.",
+      "new": "New activity", "edit": "Edit", "upcoming": "Upcoming", "past": "Past ({count})", "empty": "No activities yet.",
+      "kind": "Type", "kind_trial_class": "Trial class", "kind_assessment_1v1": "1:1 assessment", "kind_sanbanfu": "Three-step workshop", "kind_lecture": "Lecture", "kind_competition": "Competition",
+      "titleLabel": "Title", "time": "Time", "duration": "Duration (minutes)", "location": "Location", "capacity": "Capacity", "remark": "Remark",
+      "counts": "{booked} booked · {attended} attended · capacity {capacity}", "searchStudent": "Search student to register", "outcome": "Outcome",
+      "status_booked": "Booked", "status_attended": "Attended", "status_no_show": "No-show", "status_cancelled": "Cancelled",
+      "attended": "Attended", "noShow": "No-show", "full": "This activity is full.", "deleteConfirm": "Delete this activity?", "actionFailed": "Action failed. Please try again.",
+      "save": "Save", "cancel": "Cancel"
     },
     "courses": {
       "title": "Courses",
@@ -502,6 +516,7 @@
       "followUpKind_call": "Call",
       "followUpKind_class": "Class",
       "followUpKind_visit": "Visit",
+      "followUpKind_activity": "Activity",
       "followUpPlaceholder": "Log a follow-up: call summary, class performance, learning notes…",
       "followUpStatusAfter": "Follow-up status change",
       "followUpStatusKeep": "Keep status",

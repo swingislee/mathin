@@ -8,6 +8,7 @@ import { BindCodeForm } from "@/features/school/BindCodeForm";
 import { getMyLearningSummary, getMyPendingAssignments, getMyStudents } from "@/features/school/customer";
 import {
   getDueOrders,
+  getActivityToday,
   getFinanceOverview,
   getFollowUpFunnel,
   getFollowupBoardCounts,
@@ -23,6 +24,7 @@ import {
   getTodaySchedule,
   getUnmarkedSessions,
   type DueOrderRow,
+  type ActivityTodayRow,
   type FinanceOverview,
   type FollowUpFunnelBucket,
   type FollowupBoardCounts,
@@ -374,6 +376,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
     const canCourseManage = perms.has("course.manage");
     const canClassViewAll = perms.has("class.view.all");
     const canFollowupWrite = perms.has("followup.write");
+    const canActivity = perms.has("activity.register");
 
     const [
       stats,
@@ -392,6 +395,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
       unmarkedSessions,
       rosterMismatch,
       followupCounts,
+      activityToday,
     ]: [
       StaffStats,
       FollowUpFunnelBucket[],
@@ -409,6 +413,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
       UnmarkedSessionRow[],
       RosterMismatch,
       FollowupBoardCounts,
+      ActivityTodayRow[],
     ] = await Promise.all([
       canStats ? safe(getStaffStats, EMPTY_STATS) : Promise.resolve(EMPTY_STATS),
       canStats ? safe(getFollowUpFunnel, []) : Promise.resolve([]),
@@ -426,6 +431,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
       canClassViewAll ? safe(getUnmarkedSessions, []) : Promise.resolve([]),
       canClassViewAll ? safe(getRosterMismatchCount, EMPTY_MISMATCH) : Promise.resolve(EMPTY_MISMATCH),
       canFollowupWrite ? safe(getFollowupBoardCounts, EMPTY_FOLLOWUP_COUNTS) : Promise.resolve(EMPTY_FOLLOWUP_COUNTS),
+      canActivity ? safe(getActivityToday, []) : Promise.resolve([]),
     ]);
 
     const funnelMax = Math.max(1, ...funnel.map((bucket) => bucket.count));
@@ -945,6 +951,10 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
         </div>
       </div>,
     );
+
+    labels.set("activityToday", schoolT("home.activityTodayTitle"));
+    extras.set("activityToday", { href: "/dashboard/activities", cover: true, minimal: <MinimalBody value={activityToday.length} />, compact: <CompactBody value={activityToday.length} line={activityToday[0]?.title ?? schoolT("home.activityTodayEmpty")} /> });
+    contents.set("activityToday", activityToday.length===0?<EmptyBody text={schoolT("home.activityTodayEmpty")}/>:<ul className="min-h-0 flex-1 divide-y overflow-hidden">{activityToday.map(row=><li key={row.id} className="flex items-center gap-3 py-2 text-sm"><time className="shrink-0 text-xs text-muted">{timeFmt.format(new Date(row.scheduledAt))}</time><span className="min-w-0 flex-1 truncate font-medium">{row.title}</span><span className="text-xs text-muted">{schoolT("home.activityBooked",{count:row.bookedCount})}</span></li>)}</ul>);
 
     const eligible = pickEligible("staff", perms).filter((tile) => tile.key !== "refundQueue" || pendingRefundCount > 0);
     // 管理者且待跟进为空：myFollowUps 不进默认序（留在池里可手动加回，§5.6）。

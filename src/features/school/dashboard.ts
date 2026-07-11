@@ -579,6 +579,14 @@ export interface FinanceOverview {
   overdueOrderCount: number;
 }
 
+export interface ActivityTodayRow { id:string; title:string; scheduledAt:string; bookedCount:number }
+/** P4D-2 今明两天活动；活动表 RLS 限 staff，调用方再按 activity.register 决定是否取数。 */
+export async function getActivityToday():Promise<ActivityTodayRow[]> {
+  const supabase=await createClient(); const from=startOfDay(new Date()); const to=addDays(from,2);
+  const {data,error}=await supabase.from("activities").select("id,title,scheduled_at,activity_registrations(count)").is("deleted_at",null).gte("scheduled_at",from.toISOString()).lt("scheduled_at",to.toISOString()).order("scheduled_at",{ascending:true}).returns<Array<{id:string;title:string;scheduled_at:string;activity_registrations:Array<{count:number}>|null}>>();
+  if(error)throw new Error(error.message);return(data??[]).map(x=>({id:x.id,title:x.title,scheduledAt:x.scheduled_at,bookedCount:x.activity_registrations?.[0]?.count??0}));
+}
+
 export async function getFinanceOverview(): Promise<FinanceOverview> {
   const supabase = await createClient();
   const monthStart = startOfMonth(new Date());
