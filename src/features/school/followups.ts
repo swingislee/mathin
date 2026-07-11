@@ -76,6 +76,7 @@ export async function listFollowUpBoard(userId: string, scope: BoardScope, bucke
   let query = supabase
     .from("students")
     .select("id,name,grade,status,follow_up_status,last_follow_up_at,next_follow_up_at")
+    .is("deleted_at", null)
     .order("next_follow_up_at", { ascending: true, nullsFirst: false })
     .limit(500);
   if (scope === "mine") query = query.eq("assigned_to", userId);

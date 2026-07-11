@@ -16,6 +16,7 @@ export interface StudentSummary {
   assignedName: string;
   lastFollowUpAt: string | null;
   nextFollowUpAt: string | null;
+  deletedAt: string | null;
 }
 
 export interface StudentDetail extends StudentSummary {
@@ -24,11 +25,14 @@ export interface StudentDetail extends StudentSummary {
   phone: string;
   wechat: string;
   school: string;
+  region: string;
+  source: string;
   parentName: string;
   parentRelation: string;
   parentPhone: string;
   bindCode: string;
   remark: string;
+  assignedTo: string | null;
   followUps: StudentFollowUp[];
 }
 
@@ -47,6 +51,7 @@ export interface StudentFilters {
   followUpStatus?: FollowUpStatus;
   grade?: number;
   q?: string;
+  recycle: boolean;
   page: number;
 }
 
@@ -58,6 +63,8 @@ interface StudentRow {
   phone: string;
   wechat: string;
   school: string;
+  region: string;
+  source: string;
   grade: number | null;
   status: StudentStatus;
   follow_up_status: FollowUpStatus;
@@ -66,6 +73,8 @@ interface StudentRow {
   parent_phone: string;
   bind_code: string;
   remark: string;
+  assigned_to: string | null;
+  deleted_at: string | null;
   last_follow_up_at: string | null;
   next_follow_up_at: string | null;
   profiles: { display_name: string } | null;
@@ -97,6 +106,7 @@ export function parseStudentFilters(searchParams: Record<string, string | string
     followUpStatus: FOLLOW_UP_STATUSES.includes(followUpStatus as FollowUpStatus) ? followUpStatus as FollowUpStatus : undefined,
     grade: Number.isInteger(grade) && grade >= 1 && grade <= 12 ? grade : undefined,
     q: pick("q")?.trim().slice(0, 80) || undefined,
+    recycle: pick("tab") === "recycle",
     page,
   };
 }
@@ -111,6 +121,7 @@ function toSummary(row: StudentRow): StudentSummary {
     assignedName: row.profiles?.display_name || "",
     lastFollowUpAt: row.last_follow_up_at,
     nextFollowUpAt: row.next_follow_up_at,
+    deletedAt: row.deleted_at,
   };
 }
 
@@ -120,7 +131,9 @@ export async function listStudents(filters: StudentFilters): Promise<{ students:
   const to = from + PAGE_SIZE - 1;
   let query = supabase
     .from("students")
-    .select("id,name,grade,status,follow_up_status,last_follow_up_at,next_follow_up_at,profiles!students_assigned_to_fkey(display_name)", { count: "estimated" });
+    .select("id,name,gender,birthday,phone,wechat,school,region,source,grade,status,follow_up_status,parent_name,parent_relation,parent_phone,bind_code,remark,assigned_to,deleted_at,last_follow_up_at,next_follow_up_at,profiles!students_assigned_to_fkey(display_name)", { count: "estimated" });
+
+  query = filters.recycle ? query.not("deleted_at", "is", null) : query.is("deleted_at", null);
 
   if (filters.status) query = query.eq("status", filters.status);
   if (filters.followUpStatus) query = query.eq("follow_up_status", filters.followUpStatus);
@@ -142,7 +155,7 @@ export async function getStudentDetail(id: string): Promise<StudentDetail | null
   const supabase = await createClient();
   const { data: student, error } = await supabase
     .from("students")
-    .select("id,name,gender,birthday,phone,wechat,school,grade,status,follow_up_status,parent_name,parent_relation,parent_phone,bind_code,remark,last_follow_up_at,next_follow_up_at,profiles!students_assigned_to_fkey(display_name)")
+    .select("id,name,gender,birthday,phone,wechat,school,region,source,grade,status,follow_up_status,parent_name,parent_relation,parent_phone,bind_code,remark,assigned_to,deleted_at,last_follow_up_at,next_follow_up_at,profiles!students_assigned_to_fkey(display_name)")
     .eq("id", id)
     .maybeSingle<StudentRow>();
   if (error) throw new Error(error.message);
@@ -164,11 +177,14 @@ export async function getStudentDetail(id: string): Promise<StudentDetail | null
     phone: student.phone,
     wechat: student.wechat,
     school: student.school,
+    region: student.region,
+    source: student.source,
     parentName: student.parent_name,
     parentRelation: student.parent_relation,
     parentPhone: student.parent_phone,
     bindCode: student.bind_code,
     remark: student.remark,
+    assignedTo: student.assigned_to,
     followUps: (followUps ?? []).map((followUp) => ({
       id: followUp.id,
       content: followUp.content,

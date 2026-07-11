@@ -10,6 +10,7 @@ export interface StaffMember {
   identity: "staff" | "admin";
   roleIds: string[];
   roleNames: string[];
+  canFollowUp: boolean;
 }
 
 interface StaffMemberRpcRow {
@@ -19,6 +20,7 @@ interface StaffMemberRpcRow {
   identity: "staff" | "admin";
   role_ids: string[];
   role_names: string[];
+  can_follow_up: boolean;
 }
 
 /** 员工列表（RPC 内 staff.manage 门控；无权限得空集）。admin 置顶，其余按姓名排。 */
@@ -34,6 +36,7 @@ export async function listStaffMembers(): Promise<StaffMember[]> {
       identity: row.identity,
       roleIds: row.role_ids ?? [],
       roleNames: row.role_names ?? [],
+      canFollowUp: Boolean(row.can_follow_up),
     }))
     .sort((a, b) =>
       a.identity !== b.identity ? (a.identity === "admin" ? -1 : 1) : a.displayName.localeCompare(b.displayName, "zh"),

@@ -257,6 +257,7 @@ export async function searchStudentsForEnroll(query: string): Promise<StudentSea
   const { data, error } = await supabase
     .from("students")
     .select("id,name,grade,status")
+    .is("deleted_at", null)
     .ilike("name", `%${escaped}%`)
     .limit(10)
     .returns<StudentSearchResult[]>();
@@ -631,7 +632,10 @@ export interface CreateStudentInput {
   name: string;
   grade: number | null;
   phone: string;
+  region?: string;
   source: string;
+  parentName?: string;
+  parentPhone?: string;
   remark: string;
 }
 
@@ -647,18 +651,114 @@ export async function createStudentAction(input: CreateStudentInput): Promise<st
     p_name: name,
     p_grade: grade,
     p_phone: input.phone.trim().slice(0, 40),
+    p_region: input.region?.trim().slice(0, 100) ?? "",
+    p_source: input.source.trim().slice(0, 100),
+    p_parent_name: input.parentName?.trim().slice(0, 100) ?? "",
+    p_parent_phone: input.parentPhone?.trim().slice(0, 40) ?? "",
+    p_remark: input.remark.trim().slice(0, 2000),
   });
   if (error) throw new Error(error.message);
-  const studentId = data as string;
+  return data as string;
+}
 
-  // 来源/备注补写走 students_update RLS（需 student.edit）。学生已创建成功，
-  // 补写失败（如自定义角色只有 create 没有 edit）不回滚、不报错，字段留空。
-  const source = input.source.trim().slice(0, 100);
-  const remark = input.remark.trim().slice(0, 500);
-  if (source || remark) {
-    await supabase.from("students").update({ source, remark }).eq("id", studentId);
-  }
-  return studentId;
+export interface UpdateStudentInput {
+  name: string;
+  gender: string;
+  birthday: string | null;
+  phone: string;
+  wechat: string;
+  school: string;
+  grade: number | null;
+  region: string;
+  source: string;
+  parentName: string;
+  parentRelation: string;
+  parentPhone: string;
+  remark: string;
+}
+
+export async function updateStudentAction(studentId: string, input: UpdateStudentInput): Promise<void> {
+  const name = input.name.trim().slice(0, 100);
+  if (!name) throw new Error("EMPTY_NAME");
+  const grade = input.grade === null
+    ? null
+    : Number.isInteger(input.grade) && input.grade >= 1 && input.grade <= 12
+      ? input.grade
+      : null;
+  const birthday = input.birthday && /^\d{4}-\d{2}-\d{2}$/.test(input.birthday) ? input.birthday : null;
+  const { supabase } = await authorizedClient("student.edit");
+  const { data, error } = await supabase
+    .from("students")
+    .update({
+      name,
+      gender: input.gender.trim().slice(0, 30),
+      birthday,
+      phone: input.phone.trim().slice(0, 40),
+      wechat: input.wechat.trim().slice(0, 80),
+      school: input.school.trim().slice(0, 100),
+      grade,
+      region: input.region.trim().slice(0, 100),
+      source: input.source.trim().slice(0, 100),
+      parent_name: input.parentName.trim().slice(0, 100),
+      parent_relation: input.parentRelation.trim().slice(0, 40),
+      parent_phone: input.parentPhone.trim().slice(0, 40),
+      remark: input.remark.trim().slice(0, 2000),
+    })
+    .eq("id", studentId)
+    .is("deleted_at", null)
+    .select("id");
+  if (error) throw new Error(error.message);
+  if (!data || data.length === 0) throw new Error("NOT_FOUND");
+}
+
+export async function assignStudentAction(studentId: string, staffUserId: string): Promise<void> {
+  const { supabase } = await authorizedClient("student.assign");
+  const { error } = await supabase.rpc("assign_student", {
+    p_student_id: studentId,
+    p_staff_user_id: staffUserId,
+  });
+  if (error) throw new Error(error.message);
+}
+
+export interface ImportStudentRow {
+  name: string;
+  phone: string;
+  grade: number | string | null;
+  region: string;
+  source: string;
+  remark: string;
+}
+
+export interface ImportStudentsResult {
+  inserted: number;
+  dup: number;
+  errors: Array<{ row: number; reason: string }>;
+}
+
+export async function importStudentsAction(rows: ImportStudentRow[]): Promise<ImportStudentsResult> {
+  if (rows.length > 500) throw new Error("TOO_MANY_ROWS");
+  const { supabase } = await authorizedClient("student.import");
+  const { data, error } = await supabase.rpc("import_students", { p_rows: rows });
+  if (error) throw new Error(error.message);
+  const result = data as Partial<ImportStudentsResult> | null;
+  return {
+    inserted: Number(result?.inserted) || 0,
+    dup: Number(result?.dup) || 0,
+    errors: Array.isArray(result?.errors) ? result.errors : [],
+  };
+}
+
+export async function softDeleteStudentAction(studentId: string): Promise<{ ok: true } | { ok: false; code: "ACTIVE_ENROLLMENT" | "FAILED" }> {
+  const { supabase } = await authorizedClient("student.delete");
+  const { error } = await supabase.rpc("soft_delete_student", { p_student_id: studentId });
+  if (!error) return { ok: true };
+  return { ok: false, code: error.message.includes("ACTIVE_ENROLLMENT") ? "ACTIVE_ENROLLMENT" : "FAILED" };
+}
+
+export async function restoreStudentAction(studentId: string): Promise<boolean> {
+  const { supabase } = await authorizedClient("student.delete");
+  const { error } = await supabase.rpc("restore_student", { p_student_id: studentId });
+  return !error;
 }
 
 export async function changeStudentStatusAction(studentId: string, status: StudentStatus): Promise<void> {
@@ -685,6 +785,7 @@ export async function searchStudentsForFinance(query: string): Promise<StudentSe
   const { data, error } = await supabase
     .from("students")
     .select("id,name,grade,status")
+    .is("deleted_at", null)
     .ilike("name", `%${escaped}%`)
     .limit(10)
     .returns<StudentSearchResult[]>();

@@ -207,6 +207,7 @@ export async function listOrders(filters: OrderFilters): Promise<{ orders: Order
     const { data: matchedStudents, error: studentError } = await supabase
       .from("students")
       .select("id")
+      .is("deleted_at", null)
       .ilike("name", `%${escaped}%`)
       .limit(50)
       .returns<Array<{ id: string }>>();

@@ -3,7 +3,9 @@ import { getTranslations } from "next-intl/server";
 import { buttonVariants } from "@/components/ui/button";
 import { selectClass } from "@/features/school/controls";
 import { getFollowUpFunnel, type FollowUpFunnelBucket } from "@/features/school/dashboard";
+import { NewStudentDialog } from "@/features/school/NewStudentDialog";
 import { SchoolPageHeader } from "@/features/school/PageHeader";
+import { StudentRestoreButton } from "@/features/school/StudentLifecycleActions";
 import { FOLLOW_UP_STATUSES, listStudents, parseStudentFilters, STUDENT_STATUSES } from "@/features/school/students";
 import { Link } from "@/i18n/navigation";
 import { getMyPerms, requireAnyPerm } from "@/lib/auth";
@@ -31,6 +33,9 @@ export default async function StudentsPage({
   const schoolT = await getTranslations("school");
   const perms = await getMyPerms(user.id);
   const canFunnel = perms.has("student.view.all");
+  const canCreate = perms.has("student.create");
+  const canImport = perms.has("student.import");
+  const canDelete = perms.has("student.delete");
   const filters = parseStudentFilters(rawSearchParams);
   const [{ students, count }, funnel]: [Awaited<ReturnType<typeof listStudents>>, FollowUpFunnelBucket[]] = await Promise.all([
     listStudents(filters),
@@ -45,6 +50,7 @@ export default async function StudentsPage({
     if (filters.followUpStatus) query.set("followUpStatus", filters.followUpStatus);
     if (filters.grade) query.set("grade", String(filters.grade));
     if (filters.q) query.set("q", filters.q);
+    if (filters.recycle) query.set("tab", "recycle");
     if (page > 1) query.set("page", String(page));
     const qs = query.toString();
     return `/dashboard/students${qs ? `?${qs}` : ""}`;
@@ -52,11 +58,24 @@ export default async function StudentsPage({
 
   return (
     <div className="mx-auto w-full max-w-6xl">
-      <SchoolPageHeader title={t("title")}>
+      <SchoolPageHeader
+        title={filters.recycle ? t("recycleBin") : t("title")}
+        actions={
+          <>
+            {canDelete && (
+              <Link href={filters.recycle ? "/dashboard/students" : "/dashboard/students?tab=recycle"} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>
+                {filters.recycle ? t("backToActive") : t("recycleBin")}
+              </Link>
+            )}
+            {!filters.recycle && canImport && <Link href="/dashboard/students/import" className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>{t("import")}</Link>}
+            {!filters.recycle && canCreate && <NewStudentDialog />}
+          </>
+        }
+      >
         <p className="mt-1 max-w-3xl text-sm text-muted">{t("intro")}</p>
       </SchoolPageHeader>
 
-      {canFunnel && funnel.length > 0 && (
+      {!filters.recycle && canFunnel && funnel.length > 0 && (
         <section className="mt-6 rounded-xl border border-line bg-card p-5">
           <h2 className="font-medium">{schoolT("home.funnelTitle")}</h2>
           <div className="mt-4 space-y-2">
@@ -74,6 +93,7 @@ export default async function StudentsPage({
       )}
 
       <form className="mt-6 grid gap-3 rounded-xl border border-line bg-card p-4 md:grid-cols-[1fr_150px_150px_140px_auto_auto]">
+        {filters.recycle && <input type="hidden" name="tab" value="recycle" />}
         <input
           name="q"
           defaultValue={filters.q}
@@ -95,7 +115,7 @@ export default async function StudentsPage({
           ))}
         </select>
         <button className={cn(buttonVariants({ size: "sm" }), "h-10")} type="submit">{t("filter")}</button>
-        <Link href="/dashboard/students" className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "h-10")}>{t("reset")}</Link>
+        <Link href={filters.recycle ? "/dashboard/students?tab=recycle" : "/dashboard/students"} className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "h-10")}>{t("reset")}</Link>
       </form>
 
       {students.length === 0 ? (
@@ -126,9 +146,12 @@ export default async function StudentsPage({
                     {student.nextFollowUpAt ? new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(student.nextFollowUpAt)) : "-"}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <Link href={`/dashboard/students/${student.id}`} className="text-xs text-muted underline underline-offset-2 hover:text-ink">
-                      {t("open")}
-                    </Link>
+                    <div className="flex items-center justify-end gap-3">
+                      <Link href={`/dashboard/students/${student.id}`} className="text-xs text-muted underline underline-offset-2 hover:text-ink">
+                        {t("open")}
+                      </Link>
+                      {filters.recycle && canDelete && <StudentRestoreButton studentId={student.id} />}
+                    </div>
                   </td>
                 </tr>
               ))}

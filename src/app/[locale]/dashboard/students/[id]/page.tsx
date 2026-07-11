@@ -4,7 +4,10 @@ import { buttonVariants } from "@/components/ui/button";
 import { getStudentAccount, getStudentOrders } from "@/features/school/finance";
 import { FollowUpForm } from "@/features/school/FollowUpForm";
 import { SchoolPageHeader } from "@/features/school/PageHeader";
+import { listStaffMembers } from "@/features/school/staff";
 import { StudentFinancePanel } from "@/features/school/StudentFinancePanel";
+import { StudentLifecycleActions } from "@/features/school/StudentLifecycleActions";
+import { StudentProfileEditor } from "@/features/school/StudentProfileEditor";
 import { getStudentDetail, getStudentLearning } from "@/features/school/students";
 import { Link } from "@/i18n/navigation";
 import { getMyPerms, requireAnyPerm } from "@/lib/auth";
@@ -26,6 +29,10 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
   ]);
   if (!student) notFound();
 
+  const assignees = perms.has("student.assign")
+    ? (await listStaffMembers()).filter((member) => member.canFollowUp).map((member) => ({ userId: member.userId, displayName: member.displayName }))
+    : [];
+
   const showFinance = perms.has("finance.order.view");
   const [orders, account] = showFinance
     ? await Promise.all([getStudentOrders(id), getStudentAccount(id)])
@@ -36,9 +43,21 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
       <SchoolPageHeader
         title={student.name}
         actions={
-          <Link href="/dashboard/students" className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>
-            {t("back")}
-          </Link>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <StudentLifecycleActions
+              studentId={id}
+              status={student.status}
+              assignedTo={student.assignedTo}
+              deleted={Boolean(student.deletedAt)}
+              canEdit={perms.has("student.edit")}
+              canAssign={perms.has("student.assign")}
+              canDelete={perms.has("student.delete")}
+              assignees={assignees}
+            />
+            <Link href={student.deletedAt ? "/dashboard/students?tab=recycle" : "/dashboard/students"} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>
+              {t("back")}
+            </Link>
+          </div>
         }
       >
         <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted">
@@ -49,32 +68,20 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
         </div>
       </SchoolPageHeader>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_1fr]">
-        <section className="rounded-xl border border-line bg-card p-5">
-          <h2 className="font-medium">{t("profile")}</h2>
-          <dl className="mt-4 grid gap-3 text-sm">
-            <div className="flex justify-between gap-4"><dt className="text-muted">{t("gradeCol")}</dt><dd>{student.grade ? t("grade", { grade: student.grade }) : "-"}</dd></div>
-            <div className="flex justify-between gap-4"><dt className="text-muted">{t("contact")}</dt><dd>{student.phone || student.wechat || "-"}</dd></div>
-            <div className="flex justify-between gap-4"><dt className="text-muted">{t("assignedTo")}</dt><dd>{student.assignedName || t("none")}</dd></div>
-            <div className="flex justify-between gap-4"><dt className="text-muted">{t("bindCode")}</dt><dd className="font-mono">{student.bindCode}</dd></div>
-          </dl>
-          {student.remark && <p className="mt-4 rounded-lg bg-background p-3 text-sm text-muted">{student.remark}</p>}
-        </section>
+      {student.deletedAt && (
+        <div className="mt-6 rounded-xl border border-rose/30 bg-rose/5 p-4 text-sm text-rose">
+          {t("deletedBanner", { date: new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(student.deletedAt)) })}
+        </div>
+      )}
 
-        <section className="rounded-xl border border-line bg-card p-5">
-          <h2 className="font-medium">{t("guardian")}</h2>
-          <dl className="mt-4 grid gap-3 text-sm">
-            <div className="flex justify-between gap-4"><dt className="text-muted">{t("name")}</dt><dd>{student.parentName || "-"}</dd></div>
-            <div className="flex justify-between gap-4"><dt className="text-muted">{t("contact")}</dt><dd>{student.parentPhone || "-"}</dd></div>
-            <div className="flex justify-between gap-4"><dt className="text-muted">{t("status")}</dt><dd>{student.parentRelation || "-"}</dd></div>
-          </dl>
-        </section>
+      <div className="mt-6">
+        <StudentProfileEditor student={student} canEdit={perms.has("student.edit")} />
       </div>
 
       {perms.has("followup.view") && (
         <section className="mt-6 rounded-xl border border-line bg-card p-5">
           <h2 className="font-medium">{t("followUps")}</h2>
-          {perms.has("followup.write") && <FollowUpForm studentId={id} />}
+          {perms.has("followup.write") && !student.deletedAt && <FollowUpForm studentId={id} />}
           {student.followUps.length === 0 ? (
             <p className="mt-4 text-sm text-muted">{t("noFollowUps")}</p>
           ) : (

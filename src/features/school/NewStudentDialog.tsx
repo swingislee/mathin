@@ -10,8 +10,7 @@ import { createStudentAction } from "./actions";
 import { inputClass, selectClass } from "./controls";
 
 /**
- * 简版新建学生弹窗（P4C-6 §6 页头 actions）：姓名必填 + 电话/年级/来源/备注，
- * 调 create_student。完整版（地区/家长文本/批量导入）在 P4D-0。
+ * P4D-0 完整版新建学生弹窗：基础资料、地区/来源与家长联系方式一次写入 RPC。
  */
 export function NewStudentDialog() {
   const t = useTranslations("school.followups");
@@ -22,6 +21,9 @@ export function NewStudentDialog() {
   const [phone, setPhone] = useState("");
   const [grade, setGrade] = useState("");
   const [source, setSource] = useState("");
+  const [region, setRegion] = useState("");
+  const [parentName, setParentName] = useState("");
+  const [parentPhone, setParentPhone] = useState("");
   const [remark, setRemark] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -31,6 +33,9 @@ export function NewStudentDialog() {
     setPhone("");
     setGrade("");
     setSource("");
+    setRegion("");
+    setParentName("");
+    setParentPhone("");
     setRemark("");
     setError(null);
   };
@@ -43,7 +48,10 @@ export function NewStudentDialog() {
           name,
           grade: grade ? Number(grade) : null,
           phone,
+          region,
           source,
+          parentName,
+          parentPhone,
           remark,
         });
         setOpen(false);
@@ -62,7 +70,7 @@ export function NewStudentDialog() {
         {t("newStudent")}
       </Button>
       <Dialog open={open} onOpenChange={(next) => { setOpen(next); if (!next) setError(null); }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>{t("newStudent")}</DialogTitle>
           </DialogHeader>
@@ -92,10 +100,26 @@ export function NewStudentDialog() {
                 </select>
               </label>
             </div>
-            <label className="grid gap-1 text-xs text-muted">
-              {t("source")}
-              <input value={source} onChange={(event) => setSource(event.target.value)} maxLength={100} className={inputClass} />
-            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="grid gap-1 text-xs text-muted">
+                {studentsT("region")}
+                <input value={region} onChange={(event) => setRegion(event.target.value)} maxLength={100} className={inputClass} />
+              </label>
+              <label className="grid gap-1 text-xs text-muted">
+                {t("source")}
+                <input value={source} onChange={(event) => setSource(event.target.value)} maxLength={100} className={inputClass} />
+              </label>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="grid gap-1 text-xs text-muted">
+                {studentsT("parentName")}
+                <input value={parentName} onChange={(event) => setParentName(event.target.value)} maxLength={100} className={inputClass} />
+              </label>
+              <label className="grid gap-1 text-xs text-muted">
+                {studentsT("parentPhone")}
+                <input value={parentPhone} onChange={(event) => setParentPhone(event.target.value)} maxLength={40} className={inputClass} />
+              </label>
+            </div>
             <label className="grid gap-1 text-xs text-muted">
               {studentsT("remark")}
               <textarea value={remark} onChange={(event) => setRemark(event.target.value)} rows={2} maxLength={500} className={`resize-y ${inputClass}`} />

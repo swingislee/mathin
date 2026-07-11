@@ -22,15 +22,15 @@ export async function getStaffStats(): Promise<StaffStats> {
   const weekStart = startOfWeek(now);
   const weekEnd = addDays(weekStart, 7);
   const [enrolled, leads, sessions, overdue] = await Promise.all([
-    supabase.from("students").select("*", { count: "exact", head: true }).eq("status", "enrolled"),
-    supabase.from("students").select("*", { count: "exact", head: true }).in("status", ["lead", "trialing"]),
+    supabase.from("students").select("*", { count: "exact", head: true }).is("deleted_at", null).eq("status", "enrolled"),
+    supabase.from("students").select("*", { count: "exact", head: true }).is("deleted_at", null).in("status", ["lead", "trialing"]),
     supabase
       .from("class_sessions")
       .select("*", { count: "exact", head: true })
       .is("deleted_at", null)
       .gte("scheduled_at", weekStart.toISOString())
       .lt("scheduled_at", weekEnd.toISOString()),
-    supabase.from("students").select("*", { count: "exact", head: true }).lt("next_follow_up_at", now.toISOString()),
+    supabase.from("students").select("*", { count: "exact", head: true }).is("deleted_at", null).lt("next_follow_up_at", now.toISOString()),
   ]);
   return {
     enrolledCount: enrolled.count ?? 0,
@@ -99,7 +99,7 @@ export interface FollowUpFunnelBucket {
 export async function getFollowUpFunnel(): Promise<FollowUpFunnelBucket[]> {
   const supabase = await createClient();
   const results = await Promise.all(
-    FOLLOW_UP_STATUSES.map((status) => supabase.from("students").select("*", { count: "exact", head: true }).eq("follow_up_status", status)),
+    FOLLOW_UP_STATUSES.map((status) => supabase.from("students").select("*", { count: "exact", head: true }).is("deleted_at", null).eq("follow_up_status", status)),
   );
   return FOLLOW_UP_STATUSES.map((status, i) => ({ status, count: results[i].count ?? 0 }));
 }
@@ -116,6 +116,7 @@ export async function getMyOverdueFollowUps(uid: string): Promise<MyOverdueFollo
   const { data, error } = await supabase
     .from("students")
     .select("id,name,follow_up_status,next_follow_up_at")
+    .is("deleted_at", null)
     .eq("assigned_to", uid)
     .lt("next_follow_up_at", new Date().toISOString())
     .order("next_follow_up_at", { ascending: true })
@@ -418,7 +419,8 @@ export async function getDueOrders(): Promise<DueOrderRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("orders")
-    .select("id,student_id,amount_due,created_at,students(name),payments(amount)")
+    .select("id,student_id,amount_due,created_at,students!inner(name),payments(amount)")
+    .is("students.deleted_at", null)
     .in("status", ["unpaid", "partial"])
     .order("created_at", { ascending: true })
     .limit(100)
@@ -517,7 +519,8 @@ export async function getRosterMismatchCount(): Promise<RosterMismatch> {
   const [enrollRes, memberRes] = await Promise.all([
     supabase
       .from("enrollments")
-      .select("classroom_id,student_id,students(user_id)")
+      .select("classroom_id,student_id,students!inner(user_id)")
+      .is("students.deleted_at", null)
       .eq("status", "active")
       .limit(5000)
       .returns<Array<{ classroom_id: string; student_id: string; students: { user_id: string | null } | null }>>(),
@@ -558,10 +561,11 @@ export async function getFollowupBoardCounts(): Promise<FollowupBoardCounts> {
   const dayStart = startOfDay(now);
   const dayEnd = addDays(dayStart, 1);
   const [overdueRes, todayRes] = await Promise.all([
-    supabase.from("students").select("*", { count: "exact", head: true }).lt("next_follow_up_at", now.toISOString()),
+    supabase.from("students").select("*", { count: "exact", head: true }).is("deleted_at", null).lt("next_follow_up_at", now.toISOString()),
     supabase
       .from("students")
       .select("*", { count: "exact", head: true })
+      .is("deleted_at", null)
       .gte("next_follow_up_at", dayStart.toISOString())
       .lt("next_follow_up_at", dayEnd.toISOString()),
   ]);
