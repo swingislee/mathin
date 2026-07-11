@@ -13,7 +13,7 @@ const KINDS: FollowUpKind[] = ["note", "call", "class", "visit"];
 const FOLLOW_UP_STATUSES = ["pending", "following", "invited", "trialed", "signed", "lost"] as const;
 
 /** 360° 档案页跟进快捷添加表单（10-§8：交互要轻，提交后刷新时间线）。 */
-export function FollowUpForm({ studentId }: { studentId: string }) {
+export function FollowUpForm({ studentId, onSuccess }: { studentId: string; onSuccess?: () => void }) {
   const t = useTranslations("school.students");
   const router = useRouter();
   const [content, setContent] = useState("");
@@ -38,6 +38,7 @@ export function FollowUpForm({ studentId }: { studentId: string }) {
         setStatusAfter("");
         setError(null);
         router.refresh();
+        onSuccess?.();
       } catch {
         setError(t("followUpFailed"));
       }

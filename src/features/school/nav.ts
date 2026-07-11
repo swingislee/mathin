@@ -23,6 +23,7 @@ const FINANCE_NAV_PERMS: readonly PermissionKey[] = [
 export const HOME_NAV_ITEM: SchoolNavItem = { href: "/dashboard", labelKey: "home" };
 
 export const SCHOOL_NAV_ITEMS: readonly SchoolNavItem[] = [
+  { href: "/dashboard/followups", labelKey: "followups", requiredPerm: "followup.view" },
   { href: "/dashboard/students", labelKey: "students", requiredPerm: "student.view.assigned" },
   { href: "/dashboard/courses", labelKey: "courses", requiredPerm: "course.view" },
   { href: "/dashboard/classes", labelKey: "classes", requiredPerm: "class.view.mine" },

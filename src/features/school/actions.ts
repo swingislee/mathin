@@ -15,7 +15,7 @@ import { getStudentAccount, listAvailableCouponGrants } from "./finance";
 import type { CouponGrantOption, CouponKind, PaymentMethod, ScholarshipKind, StudentAccount } from "./finance";
 import type { AttendanceStatus } from "./learning";
 import type { ScheduleEntry } from "./schedule";
-import { FOLLOW_UP_STATUSES } from "./students";
+import { FOLLOW_UP_STATUSES, STUDENT_STATUSES, type StudentStatus } from "./students";
 
 /** 校验闸：登录 + 功能权限键（两道闸的第二道，第一道靠 requirePerm 挡在页面级；RLS 第三道兜底）。 */
 async function authorizedClient(key: PermissionKey) {
@@ -616,6 +616,52 @@ export async function addStudentFollowUp(
     next_follow_up_at: nextFollowUpAt,
     status_after: statusAfter,
   });
+  if (error) throw new Error(error.message);
+}
+
+// ---------------------------------------------------------------------------
+// 新建学生 / 改学生状态（P4C-6 §6：跟进工作台的两个快捷写入口）。
+// create_student RPC 只收姓名/年级/电话；来源与备注是 students 直列，创建后补写。
+// ---------------------------------------------------------------------------
+
+export interface CreateStudentInput {
+  name: string;
+  grade: number | null;
+  phone: string;
+  source: string;
+  remark: string;
+}
+
+export async function createStudentAction(input: CreateStudentInput): Promise<string> {
+  const name = input.name.trim().slice(0, 100);
+  if (!name) throw new Error("EMPTY_NAME");
+  const grade =
+    typeof input.grade === "number" && Number.isInteger(input.grade) && input.grade >= 1 && input.grade <= 12
+      ? input.grade
+      : null;
+  const { supabase } = await authorizedClient("student.create");
+  const { data, error } = await supabase.rpc("create_student", {
+    p_name: name,
+    p_grade: grade,
+    p_phone: input.phone.trim().slice(0, 40),
+  });
+  if (error) throw new Error(error.message);
+  const studentId = data as string;
+
+  // 来源/备注补写走 students_update RLS（需 student.edit）。学生已创建成功，
+  // 补写失败（如自定义角色只有 create 没有 edit）不回滚、不报错，字段留空。
+  const source = input.source.trim().slice(0, 100);
+  const remark = input.remark.trim().slice(0, 500);
+  if (source || remark) {
+    await supabase.from("students").update({ source, remark }).eq("id", studentId);
+  }
+  return studentId;
+}
+
+export async function changeStudentStatusAction(studentId: string, status: StudentStatus): Promise<void> {
+  if (!(STUDENT_STATUSES as readonly string[]).includes(status)) throw new Error("INVALID_STATUS");
+  const { supabase } = await authorizedClient("student.edit");
+  const { error } = await supabase.rpc("change_student_status", { p_student_id: studentId, p_status: status });
   if (error) throw new Error(error.message);
 }
 

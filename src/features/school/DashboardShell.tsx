@@ -1,7 +1,7 @@
 "use client";
 
 import * as Dialog from "@radix-ui/react-dialog";
-import { Baby, BookOpen, CalendarDays, ClipboardList, LayoutDashboard, Menu, School, ShieldCheck, Users, UserCog, Wallet, X } from "lucide-react";
+import { Baby, BookOpen, CalendarDays, ClipboardList, LayoutDashboard, Menu, PhoneForwarded, School, ShieldCheck, Users, UserCog, Wallet, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import type { ComponentType } from "react";
@@ -11,6 +11,7 @@ import type { SchoolNavItem } from "./nav";
 
 const ICONS: Record<string, ComponentType<{ size?: number; strokeWidth?: number }>> = {
   home: LayoutDashboard,
+  followups: PhoneForwarded,
   students: Users,
   courses: BookOpen,
   classes: School,
