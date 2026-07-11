@@ -232,6 +232,19 @@
       "classProgress": "已上 {done}/{total} 讲",
       "todayScheduleTitleMine": "我的今日课表"
     },
+    "tileEdit": {
+      "edit": "编辑布局",
+      "done": "完成",
+      "cancel": "取消",
+      "reset": "恢复默认",
+      "hiddenTitle": "已隐藏磁贴",
+      "hide": "隐藏",
+      "moveUp": "上移",
+      "moveDown": "下移",
+      "size": "切换尺寸",
+      "drag": "拖动排序",
+      "saveFailed": "保存失败，请重试。"
+    },
     "nav": {
       "home": "总览",
       "students": "学生",
@@ -704,6 +717,8 @@
     },
     "customer": {
       "childrenTitle": "我的孩子",
+      "studentTitle": "学生首页",
+      "bindChildTitle": "绑定孩子",
       "parentTitle": "家长首页",
       "parentIntro": "查看孩子的课表、学情与费用；输入绑定码可关联更多孩子。",
       "noChildren": "还没有绑定孩子，输入孩子的绑定码即可关联。",

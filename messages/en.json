@@ -232,6 +232,19 @@
       "classProgress": "{done}/{total} lectures done",
       "todayScheduleTitleMine": "My schedule today"
     },
+    "tileEdit": {
+      "edit": "Edit layout",
+      "done": "Done",
+      "cancel": "Cancel",
+      "reset": "Reset to default",
+      "hiddenTitle": "Hidden tiles",
+      "hide": "Hide",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "size": "Cycle size",
+      "drag": "Drag to reorder",
+      "saveFailed": "Failed to save, please retry."
+    },
     "nav": {
       "home": "Overview",
       "students": "Students",
@@ -704,6 +717,8 @@
     },
     "customer": {
       "childrenTitle": "My children",
+      "studentTitle": "Student home",
+      "bindChildTitle": "Link a child",
       "parentTitle": "Parent home",
       "parentIntro": "Track your children's schedule, learning, and payments; enter a bind code to link another child.",
       "noChildren": "No children linked yet — enter your child's bind code to link one.",
