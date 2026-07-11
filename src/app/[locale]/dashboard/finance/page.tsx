@@ -113,6 +113,7 @@ export default async function FinancePage({
       <SchoolPageHeader title={t("title")}>
         <p className="mt-1 max-w-3xl text-sm text-muted">{t("intro")}</p>
       </SchoolPageHeader>
+      <p className="mt-4 rounded-lg border border-line bg-card px-4 py-3 text-xs text-muted">{t("appendOnlyPolicy")}</p>
 
       <div className="mt-6 grid gap-6">
         {canSeeOrders && (

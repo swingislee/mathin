@@ -85,6 +85,7 @@ export default async function FollowUpsPage({
       >
         <p className="mt-1 max-w-3xl text-sm text-muted">{t("intro")}</p>
       </SchoolPageHeader>
+      <p className="mt-4 rounded-lg border border-line bg-card px-4 py-3 text-xs text-muted">{t("appendOnlyPolicy")}</p>
 
       <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-7">
         {BOARD_BUCKETS.map((key) => {

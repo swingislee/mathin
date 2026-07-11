@@ -5,7 +5,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { listMyClassrooms } from "@/features/classroom/actions";
 import type { ClassroomMeta } from "@/features/classroom/types";
 import { BindCodeForm } from "@/features/school/BindCodeForm";
-import { getMyLearningSummary, getMyPendingAssignments, getMyStudents } from "@/features/school/customer";
+import { getMyLearningSummary, getMyPendingAssignments, getMySessionReviews, getMyStudents } from "@/features/school/customer";
 import {
   getDueOrders,
   getActivityToday,
@@ -1004,9 +1004,10 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
 
   if (profile?.role === "parent") {
     const studentsT = await getTranslations("school.students");
-    const [summaries, parentWeekSchedule] = await Promise.all([
+    const [summaries, parentWeekSchedule, parentReviews] = await Promise.all([
       safe(getMyLearningSummary, []),
       safe(() => getWeekSchedule(new Date().toISOString(), addDays(new Date(), 7).toISOString()), []),
+      safe(()=>getMySessionReviews(addDays(new Date(),-180).toISOString(),new Date().toISOString()),[]),
     ]);
     const weekFmt = new Intl.DateTimeFormat(locale, { weekday: "short", hour: "2-digit", minute: "2-digit" });
 
@@ -1023,6 +1024,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
         child.weekSessionCount > 0 && childTimes
           ? customerT("weekSessionsValue", { count: child.weekSessionCount, times: childTimes })
           : customerT("weekSessionsCount", { count: child.weekSessionCount });
+      const recentReview=parentReviews.find(review=>review.studentId===child.studentId);
       labels.set(key, child.studentName);
       extras.set(key, {
         href: `/dashboard/children?child=${child.studentId}`,
@@ -1049,10 +1051,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
                 {child.pendingAssignmentCount ?? "—"}
               </dd>
             </div>
-            <div className="flex justify-between gap-3">
-              <dt className="text-muted">{customerT("starTotal")}</dt>
-              <dd className="tabular-nums">{child.starTotal}</dd>
-            </div>
+            {recentReview?<div className="flex justify-between gap-3"><dt className="text-muted">{customerT("recentReview")}</dt><dd className="min-w-0 truncate text-right">{customerT("recentReviewValue",{entry:recentReview.entryScore??"—",exit:recentReview.exitScore??"—"})}</dd></div>:<div className="flex justify-between gap-3"><dt className="text-muted">{customerT("starTotal")}</dt><dd className="tabular-nums">{child.starTotal}</dd></div>}
             <div className="flex justify-between gap-3">
               <dt className="text-muted">{customerT("paymentStatus")}</dt>
               <dd>

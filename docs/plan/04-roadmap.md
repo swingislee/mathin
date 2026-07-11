@@ -86,7 +86,7 @@
 6. 学辅跟进工作台 `/dashboard/followups`（全生命周期操作面板，含今日试听桶）。
 7. 顾客侧需求补齐：学生"一键进教室"/作业直达/我的课堂；家长孩子卡加本周课次与待交作业数。
 
-## P4D 学生生命周期深化（P4C 之后，执行计划见 `12-p4d-student-lifecycle.md`）
+## P4D 学生生命周期深化（已完成，执行计划见 `12-p4d-student-lifecycle.md`，审计见 `14-p4d-completion-audit.md`）
 
 **2026-07-10 二轮新增**：按完整生命周期（地推获客→线索→到校活动→跟进→正式课多维记录→续费，流失可回流）深化：
 
@@ -99,6 +99,8 @@
 6. 全模块 CRUD/批量/回收审计收尾 + 生命周期一条龙回归。
 
 新权限键 6 个：activity.manage / activity.register / review.write / video.review / student.import / student.delete。
+
+**2026-07-12 完工**：P4D-0～6 已按任务独立落地；学生 CRUD/导入、课程与班级 CRUD、活动、课评、视频、续费与流失回流全链路代码完成。P4D 迁移已部署到自托管开发库，数据库事务审计与真实视频 Storage/API 角色回归均通过，证据见 `14-p4d-completion-audit.md`。
 
 ## P5 故事（暂缓，待 P4D 完成后重启；执行计划见 `09-p5-story.md`）
 

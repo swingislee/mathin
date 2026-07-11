@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "p4d:audit": "node scripts/verify-p4d.mjs"
   },
   "dependencies": {
     "@blocknote/core": "~0.51.4",

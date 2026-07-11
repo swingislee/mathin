@@ -298,7 +298,7 @@
       "save": "Save", "cancel": "Cancel"
     },
     "reviews": {"button":"Review","title":"Session reviews","summary":"Knowledge summary","student":"Student","entry":"Entry","exit":"Exit","focus":"Focus","participation":"Participation","mastery":"Mastery","comment":"Comment","save":"Save","cancel":"Cancel","failed":"Could not save reviews. Please retry."},
-    "videos": {"title":"Review session videos","uploadTitle":"Upload session video","upload":"Upload","uploaded":"Upload complete.","uploadFailed":"Upload failed. Check the file and network.","note":"Student note","queue":"Videos","pending":"Pending","reviewed":"Reviewed","comment":"Review comment","score":"Score","markReviewed":"Mark reviewed","select":"Select a video to review.","playback":"Play video"},
+    "videos": {"title":"Review session videos","uploadTitle":"Upload session video","upload":"Upload","uploaded":"Upload complete.","uploadFailed":"Upload failed. Check the file and network.","note":"Student note","queue":"Videos","pending":"Pending","reviewed":"Reviewed","comment":"Review comment","score":"Score","markReviewed":"Mark reviewed","select":"Select a video to review.","playback":"Play video","delete":"Delete"},
     "courses": {
       "title": "Courses",
       "intro": "Courses, lectures and courseware templates — classes are built from here.",
@@ -367,6 +367,7 @@
       "bucket_lost": "Lost students",
       "recover": "Recover",
       "lostDays": "Lost for {days} days",
+      "appendOnlyPolicy": "Follow-ups are append-only. Add a correction entry instead of editing or deleting history.",
       "overdueBadge": "Overdue",
       "latestNote": "Latest note",
       "logFollowUp": "Log follow-up",
@@ -703,6 +704,7 @@
     "finance": {
       "title": "Finance",
       "intro": "Orders, payments, refunds, coupons, scholarships and student accounts.",
+      "appendOnlyPolicy": "Finance records are append-only. Correct errors with reversals, voids, or negative ledger entries.",
       "orders": "Orders ({count})",
       "searchOrder": "Search by student or order no.",
       "filter": "Filter",
@@ -882,6 +884,8 @@
       "latestScore": "Latest score",
       "ungraded": "Ungraded",
       "starTotal": "Classroom stars",
+      "recentReview": "Latest session",
+      "recentReviewValue": "Entry {entry} / Exit {exit}",
       "paymentStatus": "Payment status",
       "payment_overdue": "Overdue",
       "payment_ok": "Paid up",

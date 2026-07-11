@@ -298,7 +298,7 @@
       "save": "保存", "cancel": "取消"
     },
     "reviews": {"button":"课评","title":"课堂课评","summary":"课堂知识总结","student":"学生","entry":"入门考","exit":"出门测","focus":"专注","participation":"参与","mastery":"掌握","comment":"评语","save":"保存","cancel":"取消","failed":"课评保存失败，请重试。"},
-    "videos": {"title":"课后视频审阅","uploadTitle":"上传课后视频","upload":"上传","uploaded":"上传成功。","uploadFailed":"上传失败，请检查文件和网络。","note":"学生留言","queue":"视频列表","pending":"待审","reviewed":"已审","comment":"审阅评语","score":"评分","markReviewed":"标记已审","select":"选择一条视频开始审阅。","playback":"回看视频"},
+    "videos": {"title":"课后视频审阅","uploadTitle":"上传课后视频","upload":"上传","uploaded":"上传成功。","uploadFailed":"上传失败，请检查文件和网络。","note":"学生留言","queue":"视频列表","pending":"待审","reviewed":"已审","comment":"审阅评语","score":"评分","markReviewed":"标记已审","select":"选择一条视频开始审阅。","playback":"回看视频","delete":"删除"},
     "courses": {
       "title": "课程",
       "intro": "课程 → 讲次 → 课件模板，建班排课都从这里长出来。",
@@ -367,6 +367,7 @@
       "bucket_lost": "流失池",
       "recover": "回流",
       "lostDays": "已流失 {days} 天",
+      "appendOnlyPolicy": "跟进记录只追加、不修改或删除；写错时请补记一条更正，完整保留沟通历史。",
       "overdueBadge": "逾期",
       "latestNote": "最近跟进",
       "logFollowUp": "记跟进",
@@ -469,6 +470,8 @@
       "attendanceRate": "出勤率",
       "attendanceBreakdown": "出勤 {present} · 缺勤 {absent} · 迟到 {late} · 请假 {leave}",
       "starTotal": "课堂星星",
+      "recentReview": "最近课堂",
+      "recentReviewValue": "入门 {entry} / 出门 {exit}",
       "noAccountAttendanceOnly": "未绑定账号，仅统计出勤",
       "submissions": "作业成绩",
       "noSubmissions": "还没有提交记录。",
@@ -703,6 +706,7 @@
     "finance": {
       "title": "财务",
       "intro": "订单、收款、退费、优惠券、奖学金与学生账户。",
+      "appendOnlyPolicy": "财务流水只追加、不改删；错误通过冲正、作废或负向流水处理，确保审计链完整。",
       "orders": "订单（{count}）",
       "searchOrder": "按学生或单号搜索",
       "filter": "筛选",
