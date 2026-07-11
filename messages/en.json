@@ -308,6 +308,21 @@
       "templatePages": "Template pages",
       "noObjectives": "None yet",
       "notFound": "The course does not exist or you do not have access."
+      ,"newCourse": "New course"
+      ,"courseInfo": "Course information"
+      ,"courseTitle": "Course title"
+      ,"gradeLabel": "Grade"
+      ,"save": "Save"
+      ,"create": "Create"
+      ,"cancel": "Cancel"
+      ,"actionFailed": "Action failed. Please try again."
+      ,"lectureName": "Lecture name"
+      ,"addLecture": "Add lecture"
+      ,"moveUp": "Move up"
+      ,"moveDown": "Move down"
+      ,"deleteLecture": "Delete lecture"
+      ,"lectureInUse": "This lecture is used by a class session and cannot be deleted."
+      ,"templatePagesCount": "{count} template pages"
     },
     "followups": {
       "title": "Follow-up board",
@@ -634,6 +649,11 @@
       "absent": "Absent",
       "late": "Late",
       "leave": "Leave"
+      ,"editClass": "Edit class"
+      ,"gradeLabel": "Grade"
+      ,"capacity": "Capacity"
+      ,"room": "Room / location"
+      ,"save": "Save"
     },
     "schedule": {
       "title": "Schedule",

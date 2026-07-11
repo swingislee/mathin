@@ -308,6 +308,21 @@
       "templatePages": "模板页",
       "noObjectives": "暂无",
       "notFound": "课程不存在或无权访问。"
+      ,"newCourse": "新建课程"
+      ,"courseInfo": "课程信息"
+      ,"courseTitle": "课程名称"
+      ,"gradeLabel": "年级"
+      ,"save": "保存"
+      ,"create": "创建"
+      ,"cancel": "取消"
+      ,"actionFailed": "操作失败，请重试。"
+      ,"lectureName": "讲次名称"
+      ,"addLecture": "添加讲次"
+      ,"moveUp": "上移"
+      ,"moveDown": "下移"
+      ,"deleteLecture": "删除讲次"
+      ,"lectureInUse": "该讲次已被班级课次引用，不能删除。"
+      ,"templatePagesCount": "模板 {count} 页"
     },
     "followups": {
       "title": "跟进工作台",
@@ -634,6 +649,11 @@
       "absent": "缺勤",
       "late": "迟到",
       "leave": "请假"
+      ,"editClass": "编辑班级"
+      ,"gradeLabel": "年级"
+      ,"capacity": "容量"
+      ,"room": "教室 / 地点"
+      ,"save": "保存"
     },
     "schedule": {
       "title": "课表",

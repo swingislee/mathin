@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { buttonVariants } from "@/components/ui/button";
+import { CourseCrudPanel } from "@/features/school/CourseCrud";
 import { COURSE_TERMS, getCourseDetail } from "@/features/school/courses";
 import { SchoolPageHeader } from "@/features/school/PageHeader";
 import { Link } from "@/i18n/navigation";
@@ -22,6 +23,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ l
   ]);
   if (!course) notFound();
   const canEditTemplate = perms.has("courseware.template.edit");
+  const canManage = perms.has("course.manage");
   const termKey = COURSE_TERMS.find((term) => term.value === course.term)?.labelKey ?? "summer";
 
   return (
@@ -42,7 +44,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ l
         </div>
       </SchoolPageHeader>
 
-      <section className="mt-6 overflow-hidden rounded-xl border border-line bg-card">
+      {canManage ? <CourseCrudPanel course={course} canEditTemplate={canEditTemplate} /> : <section className="mt-6 overflow-hidden rounded-xl border border-line bg-card">
         <table className="w-full border-collapse text-left text-sm">
           <thead className="border-b border-line text-xs text-muted">
             <tr>
@@ -74,7 +76,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ l
             ))}
           </tbody>
         </table>
-      </section>
+      </section>}
     </div>
   );
 }

@@ -1,11 +1,12 @@
 import { setRequestLocale } from "next-intl/server";
 import { getTranslations } from "next-intl/server";
 import { buttonVariants } from "@/components/ui/button";
+import { CourseCreateDialog } from "@/features/school/CourseCrud";
 import { selectClass } from "@/features/school/controls";
 import { COURSE_TERMS, listCourses, parseCourseFilters } from "@/features/school/courses";
 import { SchoolPageHeader } from "@/features/school/PageHeader";
 import { Link } from "@/i18n/navigation";
-import { requirePerm } from "@/lib/auth";
+import { getMyPerms, requirePerm } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
 export default async function CoursesPage({
@@ -17,10 +18,10 @@ export default async function CoursesPage({
 }) {
   const [{ locale }, rawSearchParams] = await Promise.all([params, searchParams]);
   setRequestLocale(locale);
-  await requirePerm(locale, "course.view");
+  const user = await requirePerm(locale, "course.view");
   const t = await getTranslations("school.courses");
   const filters = parseCourseFilters(rawSearchParams);
-  const { courses, count } = await listCourses(filters);
+  const [{ courses, count }, perms] = await Promise.all([listCourses(filters), getMyPerms(user.id)]);
   const maxPage = count ? Math.max(1, Math.ceil(count / 20)) : filters.page;
 
   const pageHref = (page: number) => {
@@ -37,7 +38,7 @@ export default async function CoursesPage({
 
   return (
     <div className="mx-auto w-full max-w-6xl">
-      <SchoolPageHeader title={t("title")}>
+      <SchoolPageHeader title={t("title")} actions={perms.has("course.manage") ? <CourseCreateDialog /> : undefined}>
         <p className="mt-1 max-w-3xl text-sm text-muted">{t("intro")}</p>
       </SchoolPageHeader>
 
@@ -50,7 +51,7 @@ export default async function CoursesPage({
         />
         <select name="grade" defaultValue={filters.grade ?? ""} className={selectClass}>
           <option value="">{t("allGrades")}</option>
-          {Array.from({ length: 6 }, (_, index) => index + 1).map((grade) => (
+          {Array.from({ length: 9 }, (_, index) => index + 1).map((grade) => (
             <option key={grade} value={grade}>{t("grade", { grade })}</option>
           ))}
         </select>

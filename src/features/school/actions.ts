@@ -794,6 +794,87 @@ export async function searchStudentsForFinance(query: string): Promise<StudentSe
 }
 
 // ---------------------------------------------------------------------------
+// P4D-1 课程 / 讲次 / 班级基础 CRUD。
+// ---------------------------------------------------------------------------
+
+export interface CourseWriteInput {
+  title: string;
+  productCode: string;
+  grade: number;
+  term: number;
+  classType: string;
+  status: "enabled" | "disabled";
+}
+
+function cleanCourseInput(input: CourseWriteInput) {
+  const title = input.title.trim().slice(0, 100);
+  if (!title) throw new Error("EMPTY_TITLE");
+  if (!Number.isInteger(input.grade) || input.grade < 1 || input.grade > 9) throw new Error("INVALID_GRADE");
+  if (!Number.isInteger(input.term) || input.term < 1 || input.term > 4) throw new Error("INVALID_TERM");
+  return {
+    title,
+    product_code: input.productCode.trim().slice(0, 40) || null,
+    grade: input.grade,
+    term: input.term,
+    class_type: input.classType.trim().slice(0, 20),
+    status: input.status,
+  };
+}
+
+export async function createCourseAction(input: CourseWriteInput): Promise<string> {
+  const { supabase, user } = await authorizedClient("course.manage");
+  const { data, error } = await supabase.from("courses").insert({ ...cleanCourseInput(input), created_by: user.id }).select("id").single<{ id: string }>();
+  if (error) throw new Error(error.message);
+  return data.id;
+}
+
+export async function updateCourseAction(courseId: string, input: CourseWriteInput): Promise<void> {
+  const { supabase } = await authorizedClient("course.manage");
+  const { data, error } = await supabase.from("courses").update(cleanCourseInput(input)).eq("id", courseId).select("id");
+  if (error) throw new Error(error.message);
+  if (!data?.length) throw new Error("NOT_FOUND");
+}
+
+export async function createLectureAction(courseId: string, name: string, objectives: string): Promise<void> {
+  const { supabase } = await authorizedClient("course.manage");
+  const { error } = await supabase.rpc("create_course_lecture", { p_course_id: courseId, p_name: name, p_objectives: objectives });
+  if (error) throw new Error(error.message);
+}
+
+export async function updateLectureAction(lectureId: string, name: string, objectives: string): Promise<void> {
+  const cleanName = name.trim().slice(0, 100);
+  if (!cleanName) throw new Error("EMPTY_NAME");
+  const { supabase } = await authorizedClient("course.manage");
+  const { data, error } = await supabase.from("course_lectures").update({ name: cleanName, objectives: objectives.trim().slice(0, 2000) }).eq("id", lectureId).select("id");
+  if (error) throw new Error(error.message);
+  if (!data?.length) throw new Error("NOT_FOUND");
+}
+
+export async function deleteLectureAction(lectureId: string): Promise<"ok" | "in_use" | "failed"> {
+  const { supabase } = await authorizedClient("course.manage");
+  const { error } = await supabase.rpc("delete_course_lecture", { p_lecture_id: lectureId });
+  if (!error) return "ok";
+  return error.message.includes("LECTURE_IN_USE") ? "in_use" : "failed";
+}
+
+export async function reorderLecturesAction(courseId: string, lectureIds: string[]): Promise<void> {
+  const { supabase } = await authorizedClient("course.manage");
+  const { error } = await supabase.rpc("reorder_course_lectures", { p_course_id: courseId, p_lecture_ids: lectureIds });
+  if (error) throw new Error(error.message);
+}
+
+export async function updateClassroomAction(classroomId: string, input: { name: string; capacity: number | null; room: string; grade: number | null }): Promise<void> {
+  const name = input.name.trim().slice(0, 100);
+  if (!name) throw new Error("EMPTY_NAME");
+  const capacity = input.capacity === null ? null : Number.isInteger(input.capacity) && input.capacity > 0 ? input.capacity : null;
+  const grade = input.grade === null ? null : Number.isInteger(input.grade) && input.grade >= 1 && input.grade <= 12 ? input.grade : null;
+  const { supabase } = await authorizedClient("class.manage");
+  const { data, error } = await supabase.from("classrooms").update({ name, capacity, room: input.room.trim().slice(0, 100), grade }).eq("id", classroomId).select("id");
+  if (error) throw new Error(error.message);
+  if (!data?.length) throw new Error("FORBIDDEN_SCOPE");
+}
+
+// ---------------------------------------------------------------------------
 // 员工与岗位权限（P4C-3 §8）
 // ---------------------------------------------------------------------------
 
