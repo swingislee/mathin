@@ -44,6 +44,7 @@ import { games } from "@/features/games/registry";
 import type { PermissionKey } from "@/features/school/permissions";
 import { addDays } from "@/features/school/schedule";
 import { getWeekSchedule } from "@/features/school/actions";
+import { sizeToWH, type TilePlacement } from "@/features/school/tile-layout";
 import {
   CHILD_TILE_PREFIX,
   findTileDef,
@@ -94,14 +95,19 @@ interface RecentPostRow {
 type Translator = Awaited<ReturnType<typeof getTranslations>>;
 
 // ---------------------------------------------------------------------------
-// 磁贴装配（P4C-4 §5.3 / P4C-5 §5.4）：取数留在服务端，磁贴壳（图标+眉标签+箭头
-// +tone）由客户端 TileWorkspace 渲染，这里只产出 body 内容与逐贴 extras。
+// 磁贴装配（P4C-4 §5.3 / P4C-5 §5.4 / P4C-4b §5.8c）：取数留在服务端，磁贴壳
+// （图标+眉标签+箭头+tone）由客户端 TileWorkspace 渲染，这里产出三档 body
+// （full=contents、compact/minimal 缺省回落 full）与逐贴 extras。
 // ---------------------------------------------------------------------------
 
 interface TileExtra {
   tone?: TileTone;
   href?: string;
   cover?: boolean;
+  /** compact 形态（宽或高为 1 的小档）：关键数+一行摘要；缺省回落 full。 */
+  compact?: ReactNode;
+  /** minimal 形态（1x1）：单关键数；缺省回落 compact → full。 */
+  minimal?: ReactNode;
 }
 
 function pickEligible(audience: TileAudience, perms: ReadonlySet<PermissionKey>): EligibleTile[] {
@@ -121,27 +127,30 @@ function buildTileItems(
   extras: ReadonlyMap<string, TileExtra>,
 ): { items: TileGridItem[]; hidden: TileGridItem[] } {
   const sizesByKey = new Map(eligible.map((tile) => [tile.key, tile.allowedSizes]));
-  const toItem = (key: string, size: TileGridItem["size"]): TileGridItem | null => {
-    const allowedSizes = sizesByKey.get(key);
-    const def = findTileDef(key);
-    if (!allowedSizes || !def || !contents.has(key)) return null;
-    const extra = extras.get(key);
+  const toItem = (placement: TilePlacement): TileGridItem | null => {
+    const allowedSizes = sizesByKey.get(placement.k);
+    const def = findTileDef(placement.k);
+    if (!allowedSizes || !def || !contents.has(placement.k)) return null;
+    const extra = extras.get(placement.k);
     return {
-      key,
-      size,
-      label: labels.get(key) ?? key,
+      key: placement.k,
+      placement,
+      label: labels.get(placement.k) ?? placement.k,
       allowedSizes,
       icon: def.icon,
       tone: extra?.tone ?? def.tone,
       href: extra?.href,
       cover: extra?.cover,
-      node: contents.get(key),
+      node: contents.get(placement.k),
+      compact: extra?.compact,
+      minimal: extra?.minimal,
     };
   };
   return {
-    items: merged.result.map((entry) => toItem(entry.k, entry.s)).filter((item): item is TileGridItem => item !== null),
+    items: merged.result.map(toItem).filter((item): item is TileGridItem => item !== null),
+    // hidden 磁贴没有坐标：给默认档占位，重新加入时由客户端 resolve 落位。
     hidden: merged.hidden
-      .map((key) => toItem(key, sizesByKey.get(key)![0]))
+      .map((key) => toItem({ k: key, x: 0, y: 0, ...sizeToWH(sizesByKey.get(key)![0]) }))
       .filter((item): item is TileGridItem => item !== null),
   };
 }
@@ -152,6 +161,25 @@ function StatBody({ value, tone }: { value: number; tone?: TileTone }) {
     <p className={cn("flex flex-1 items-center font-display text-4xl tabular-nums", tone === "rose" && value > 0 && "text-rose")}>
       {value}
     </p>
+  );
+}
+
+/** minimal 形态（§5.8c）：单关键数/短串，1x1 内绝不溢出。 */
+function MinimalBody({ value, rose }: { value: ReactNode; rose?: boolean }) {
+  return (
+    <p className={cn("flex min-w-0 flex-1 items-center truncate font-display text-3xl tabular-nums", rose && "text-rose")}>
+      {value}
+    </p>
+  );
+}
+
+/** compact 形态（§5.8c）：关键数 + 一行摘要。 */
+function CompactBody({ value, line, rose }: { value: ReactNode; line?: string; rose?: boolean }) {
+  return (
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-center gap-0.5">
+      <p className={cn("truncate font-display text-2xl tabular-nums", rose && "text-rose")}>{value}</p>
+      {line && <p className="truncate text-xs text-muted">{line}</p>}
+    </div>
   );
 }
 
@@ -192,7 +220,16 @@ function buildSharedCustomerTiles({
   extras: Map<string, TileExtra>;
 }) {
   labels.set("myScores", t("scoresTitle"));
-  extras.set("myScores", { href: "/games" });
+  extras.set("myScores", {
+    href: "/games",
+    minimal: <MinimalBody value={bests.length} />,
+    compact: (
+      <CompactBody
+        value={bests.length}
+        line={bests[0] ? `${gamesT(`items.${bests[0].game_id}.name`)} ${formatMs(bests[0].duration_ms)}` : t("noScores")}
+      />
+    ),
+  });
   contents.set(
     "myScores",
     bests.length === 0 ? (
@@ -223,7 +260,13 @@ function buildSharedCustomerTiles({
   );
 
   labels.set("myNotes", t("notesTitle"));
-  extras.set("myNotes", { href: "/notebook/me" });
+  extras.set("myNotes", {
+    href: "/notebook/me",
+    minimal: <MinimalBody value={recentPosts.length} />,
+    compact: (
+      <CompactBody value={recentPosts.length} line={recentPosts[0] ? recentPosts[0].title || t("untitled") : t("noNotes")} />
+    ),
+  });
   contents.set(
     "myNotes",
     recentPosts.length === 0 ? (
@@ -245,7 +288,13 @@ function buildSharedCustomerTiles({
   );
 
   labels.set("myClassrooms", t("classroomsTitle"));
-  extras.set("myClassrooms", { href: "/classroom" });
+  extras.set("myClassrooms", {
+    href: "/classroom",
+    minimal: <MinimalBody value={classrooms.length} />,
+    compact: (
+      <CompactBody value={classrooms.length} line={classrooms[0] ? classrooms[0].name || t("untitled") : t("noClassrooms")} />
+    ),
+  });
   contents.set(
     "myClassrooms",
     classrooms.length === 0 ? (
@@ -402,7 +451,20 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
 
     // ---- 今日课表 ----
     labels.set("todaySchedule", canSeeAllSchedule ? schoolT("home.todayScheduleTitle") : schoolT("home.todayScheduleTitleMine"));
-    extras.set("todaySchedule", { href: "/dashboard/schedule" });
+    extras.set("todaySchedule", {
+      href: "/dashboard/schedule",
+      minimal: <MinimalBody value={todaySessions.length} />,
+      compact: (
+        <CompactBody
+          value={todaySessions.length}
+          line={
+            todaySessions[0]
+              ? `${timeFmt.format(new Date(todaySessions[0].scheduledAt))} ${todaySessions[0].classroomName}`
+              : schoolT("home.todayScheduleEmpty")
+          }
+        />
+      ),
+    });
     contents.set(
       "todaySchedule",
       todaySessions.length === 0 ? (
@@ -424,7 +486,20 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
     );
 
     // ---- 生源漏斗 ----
+    const funnelTotal = funnel.reduce((sum, bucket) => sum + bucket.count, 0);
     labels.set("funnel", schoolT("home.funnelTitle"));
+    extras.set("funnel", {
+      minimal: <MinimalBody value={funnelTotal} />,
+      compact: (
+        <CompactBody
+          value={funnelTotal}
+          line={funnel
+            .slice(0, 2)
+            .map((bucket) => `${studentsFilterT(bucket.status)} ${bucket.count}`)
+            .join(" · ")}
+        />
+      ),
+    });
     contents.set(
       "funnel",
       <ul className="grid flex-1 content-center gap-1.5">
@@ -445,7 +520,21 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
 
     // ---- 我的待跟进 ----
     labels.set("myFollowUps", schoolT("home.myFollowUpsTitle"));
-    extras.set("myFollowUps", { href: "/dashboard/students" });
+    extras.set("myFollowUps", {
+      href: "/dashboard/students",
+      minimal: <MinimalBody value={myFollowUps.length} rose={myFollowUps.length > 0} />,
+      compact: (
+        <CompactBody
+          value={myFollowUps.length}
+          rose={myFollowUps.length > 0}
+          line={
+            myFollowUps[0]
+              ? `${myFollowUps[0].studentName} · ${dateFmt.format(new Date(myFollowUps[0].nextFollowUpAt))}`
+              : schoolT("home.myFollowUpsEmpty")
+          }
+        />
+      ),
+    });
     contents.set(
       "myFollowUps",
       myFollowUps.length === 0 ? (
@@ -468,7 +557,11 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
 
     // ---- 本月业绩 ----
     labels.set("myPerformance", schoolT("home.myPerformanceTitle"));
-    extras.set("myPerformance", { href: "/dashboard/finance" });
+    extras.set("myPerformance", {
+      href: "/dashboard/finance",
+      // 2x1 的 full（三小数并排）本就放得下，只补 1x1 的单金额档。
+      minimal: <MinimalBody value={cny.format(myPerformance.paidTotal)} />,
+    });
     contents.set(
       "myPerformance",
       <div className="flex flex-1 flex-wrap content-center items-center gap-x-6 gap-y-2">
@@ -487,7 +580,20 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
 
     // ---- 我的课与待办 ----
     labels.set("myTeaching", schoolT("home.myTeachingTitle"));
-    extras.set("myTeaching", { href: "/dashboard/classes" });
+    extras.set("myTeaching", {
+      href: "/dashboard/classes",
+      minimal: <MinimalBody value={myTeaching.sessions.length} />,
+      compact: (
+        <CompactBody
+          value={myTeaching.sessions.length}
+          line={
+            myTeaching.sessions[0]
+              ? `${myTeaching.sessions[0].classroomName} · ${shortFmt.format(new Date(myTeaching.sessions[0].scheduledAt))}`
+              : schoolT("home.myTeachingEmpty")
+          }
+        />
+      ),
+    });
     contents.set(
       "myTeaching",
       <>
@@ -523,7 +629,16 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
 
     // ---- 我的班级 ----
     labels.set("myClasses", schoolT("home.myClassesTitle"));
-    extras.set("myClasses", { href: "/dashboard/classes" });
+    extras.set("myClasses", {
+      href: "/dashboard/classes",
+      minimal: <MinimalBody value={myClassrooms.length} />,
+      compact: (
+        <CompactBody
+          value={myClassrooms.length}
+          line={myClassrooms[0] ? myClassrooms[0].name : schoolT("home.myClassroomsEmpty")}
+        />
+      ),
+    });
     contents.set(
       "myClasses",
       myClassrooms.length === 0 ? (
@@ -551,7 +666,16 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
 
     // ---- 财务概览 ----
     labels.set("financeOverview", schoolT("home.financeOverviewTitle"));
-    extras.set("financeOverview", { href: "/dashboard/finance" });
+    extras.set("financeOverview", {
+      href: "/dashboard/finance",
+      minimal: <MinimalBody value={cny.format(financeOverview.paidTotal)} />,
+      compact: (
+        <CompactBody
+          value={cny.format(financeOverview.paidTotal)}
+          line={`${schoolT("home.financeDue")} ${cny.format(financeOverview.dueTotal)}`}
+        />
+      ),
+    });
     contents.set(
       "financeOverview",
       <div className="grid flex-1 grid-cols-2 content-center gap-3 lg:grid-cols-4">
@@ -576,7 +700,22 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
 
     // ---- 批改清单（§0.4）：逐份直达批改页 ----
     labels.set("gradingQueue", schoolT("home.gradingQueueTitle"));
-    extras.set("gradingQueue", { href: "/dashboard/classes", tone: gradingQueue.length > 0 ? "rose" : undefined });
+    extras.set("gradingQueue", {
+      href: "/dashboard/classes",
+      tone: gradingQueue.length > 0 ? "rose" : undefined,
+      minimal: <MinimalBody value={gradingQueue.length} rose={gradingQueue.length > 0} />,
+      compact: (
+        <CompactBody
+          value={gradingQueue.length}
+          rose={gradingQueue.length > 0}
+          line={
+            gradingQueue[0]
+              ? `${gradingQueue[0].studentName} · ${gradingQueue[0].assignmentTitle}`
+              : schoolT("home.gradingQueueEmpty")
+          }
+        />
+      ),
+    });
     contents.set(
       "gradingQueue",
       gradingQueue.length === 0 ? (
@@ -602,7 +741,21 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
 
     // ---- 催缴名单（§0.1/§0.5）：scope 由 orders RLS 决定，同贴双 scope ----
     labels.set("dueOrders", schoolT("home.dueOrdersTitle"));
-    extras.set("dueOrders", { tone: dueOrders.length > 0 ? "rose" : undefined });
+    extras.set("dueOrders", {
+      tone: dueOrders.length > 0 ? "rose" : undefined,
+      minimal: <MinimalBody value={dueOrders.length} rose={dueOrders.length > 0} />,
+      compact: (
+        <CompactBody
+          value={dueOrders.length}
+          rose={dueOrders.length > 0}
+          line={
+            dueOrders[0]
+              ? `${dueOrders[0].studentName} · ${schoolT("home.dueAmount", { amount: cny.format(dueOrders[0].dueAmount) })}`
+              : schoolT("home.dueOrdersEmpty")
+          }
+        />
+      ),
+    });
     contents.set(
       "dueOrders",
       dueOrders.length === 0 ? (
@@ -626,7 +779,21 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
 
     // ---- 倒排期（§0.3）：即将开课未备模板 ----
     labels.set("templateUrgent", schoolT("home.templateUrgentTitle"));
-    extras.set("templateUrgent", { tone: templateUrgent.length === 0 ? "leaf" : "rose" });
+    extras.set("templateUrgent", {
+      tone: templateUrgent.length === 0 ? "leaf" : "rose",
+      minimal: <MinimalBody value={templateUrgent.length} rose={templateUrgent.length > 0} />,
+      compact: (
+        <CompactBody
+          value={templateUrgent.length}
+          rose={templateUrgent.length > 0}
+          line={
+            templateUrgent[0]
+              ? `${templateUrgent[0].courseTitle} · ${templateUrgent[0].lectureName}`
+              : schoolT("home.templateUrgentEmpty")
+          }
+        />
+      ),
+    });
     contents.set(
       "templateUrgent",
       templateUrgent.length === 0 ? (
@@ -652,8 +819,23 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
     );
 
     // ---- 模板完成度（教研） ----
+    const progressReady = templateProgress.reduce((sum, row) => sum + row.ready, 0);
+    const progressTotal = templateProgress.reduce((sum, row) => sum + row.total, 0);
     labels.set("templateProgress", schoolT("home.templateProgressTitle"));
-    extras.set("templateProgress", { href: "/dashboard/courses" });
+    extras.set("templateProgress", {
+      href: "/dashboard/courses",
+      minimal: <MinimalBody value={`${progressReady}/${progressTotal}`} />,
+      compact: (
+        <CompactBody
+          value={`${progressReady}/${progressTotal}`}
+          line={
+            templateProgress[0]
+              ? `${studentsFilterT("grade", { grade: templateProgress[0].grade })} ${templateProgress[0].ready}/${templateProgress[0].total}`
+              : schoolT("home.templateProgressEmpty")
+          }
+        />
+      ),
+    });
     contents.set(
       "templateProgress",
       templateProgress.length === 0 ? (
@@ -680,7 +862,21 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
 
     // ---- 未点名课次（§0.2 教务） ----
     labels.set("unmarkedAttendance", schoolT("home.unmarkedTitle"));
-    extras.set("unmarkedAttendance", { tone: unmarkedSessions.length === 0 ? "leaf" : "rose" });
+    extras.set("unmarkedAttendance", {
+      tone: unmarkedSessions.length === 0 ? "leaf" : "rose",
+      minimal: <MinimalBody value={unmarkedSessions.length} rose={unmarkedSessions.length > 0} />,
+      compact: (
+        <CompactBody
+          value={unmarkedSessions.length}
+          rose={unmarkedSessions.length > 0}
+          line={
+            unmarkedSessions[0]
+              ? `${unmarkedSessions[0].classroomName} · ${shortFmt.format(new Date(unmarkedSessions[0].scheduledAt))}`
+              : schoolT("home.unmarkedEmpty")
+          }
+        />
+      ),
+    });
     contents.set(
       "unmarkedAttendance",
       unmarkedSessions.length === 0 ? (
@@ -703,7 +899,13 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
     // ---- 花名册错位（§0.2）：两计数，整贴进班级列表 ----
     const mismatchTotal = rosterMismatch.unlinkedEnrollments + rosterMismatch.orphanMembers;
     labels.set("rosterMismatch", schoolT("home.rosterMismatchTitle"));
-    extras.set("rosterMismatch", { href: "/dashboard/classes", cover: true, tone: mismatchTotal > 0 ? "rose" : undefined });
+    extras.set("rosterMismatch", {
+      href: "/dashboard/classes",
+      cover: true,
+      tone: mismatchTotal > 0 ? "rose" : undefined,
+      // 2x1 的 full（两计数并排）放得下，只补 1x1 的总数档。
+      minimal: <MinimalBody value={mismatchTotal} rose={mismatchTotal > 0} />,
+    });
     contents.set(
       "rosterMismatch",
       <div className="flex flex-1 flex-wrap content-center items-center gap-x-5 gap-y-1">
@@ -724,7 +926,11 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
 
     // ---- 跟进工作台入口（§6） ----
     labels.set("followupBoardEntry", schoolT("home.followupBoardTitle"));
-    extras.set("followupBoardEntry", { href: "/dashboard/followups", cover: true });
+    extras.set("followupBoardEntry", {
+      href: "/dashboard/followups",
+      cover: true,
+      minimal: <MinimalBody value={followupCounts.overdue} rose={followupCounts.overdue > 0} />,
+    });
     contents.set(
       "followupBoardEntry",
       <div className="flex flex-1 flex-wrap content-center items-center gap-x-5 gap-y-1">
@@ -771,8 +977,14 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
 
     for (const child of summaries) {
       const key = `${CHILD_TILE_PREFIX}${child.studentId}`;
+      const nextAt = child.nextSessionAt ? shortFmt.format(new Date(child.nextSessionAt)) : "-";
       labels.set(key, child.studentName);
-      extras.set(key, { href: `/dashboard/children?child=${child.studentId}` });
+      extras.set(key, {
+        href: `/dashboard/children?child=${child.studentId}`,
+        // §5.8c：childCard 的 minimal 关键数 = 下次上课时间。
+        minimal: <MinimalBody value={nextAt} />,
+        compact: <CompactBody value={nextAt} line={`${customerT("paymentStatus")} · ${customerT(`payment_${child.paymentStatus}`)}`} />,
+      });
       contents.set(
         key,
         <>
@@ -838,7 +1050,16 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
 
   if (isBound) {
     labels.set("mySchedule", customerT("myScheduleTitle"));
-    extras.set("mySchedule", { href: "/dashboard/schedule" });
+    extras.set("mySchedule", {
+      href: "/dashboard/schedule",
+      minimal: <MinimalBody value={nextWeekSchedule.length} />,
+      compact: (
+        <CompactBody
+          value={nextWeekSchedule.length}
+          line={nextSession ? `${shortFmt.format(new Date(nextSession.scheduledAt))} ${nextSession.classroomName}` : customerT("myScheduleEmpty")}
+        />
+      ),
+    });
     contents.set(
       "mySchedule",
       !nextSession ? (

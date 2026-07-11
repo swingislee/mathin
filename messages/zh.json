@@ -260,8 +260,8 @@
       "hide": "隐藏",
       "moveUp": "上移",
       "moveDown": "下移",
-      "size": "切换尺寸",
-      "drag": "拖动排序",
+      "resize": "拖动调整尺寸",
+      "maximize": "查看完整卡片",
       "saveFailed": "保存失败，请重试。"
     },
     "nav": {

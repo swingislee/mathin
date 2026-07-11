@@ -260,8 +260,8 @@
       "hide": "Hide",
       "moveUp": "Move up",
       "moveDown": "Move down",
-      "size": "Cycle size",
-      "drag": "Drag to reorder",
+      "resize": "Drag to resize",
+      "maximize": "View full card",
       "saveFailed": "Failed to save, please retry."
     },
     "nav": {
