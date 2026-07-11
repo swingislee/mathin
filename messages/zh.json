@@ -257,6 +257,8 @@
       ,"reviewGapsEmpty": "近 7 天课评已补齐。"
       ,"videoQueueTitle": "待审视频"
       ,"videoQueueEmpty": "暂无待审视频。"
+      ,"renewalDueTitle": "待续费"
+      ,"renewalDueHint": "剩余课次不超过 3"
     },
     "tileEdit": {
       "edit": "编辑布局",
@@ -361,6 +363,10 @@
       "bucket_week": "本周",
       "bucket_unscheduled": "未安排",
       "bucket_trialToday": "今日试听",
+      "bucket_renewal": "待续费",
+      "bucket_lost": "流失池",
+      "recover": "回流",
+      "lostDays": "已流失 {days} 天",
       "overdueBadge": "逾期",
       "latestNote": "最近跟进",
       "logFollowUp": "记跟进",

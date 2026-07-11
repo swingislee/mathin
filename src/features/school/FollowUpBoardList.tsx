@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Link, useRouter } from "@/i18n/navigation";
-import { changeStudentStatusAction } from "./actions";
+import { changeStudentStatusAction, recoverLostStudentAction } from "./actions";
 import { selectClass } from "./controls";
 import { FollowUpForm } from "./FollowUpForm";
 import type { BoardGroup, BoardRow } from "./followups";
@@ -24,10 +24,12 @@ export function FollowUpBoardList({
   groups,
   canEditStatus,
   canOrder,
+  canRecover=false,
 }: {
   groups: BoardGroup[];
   canEditStatus: boolean;
   canOrder: boolean;
+  canRecover?:boolean;
 }) {
   const t = useTranslations("school.followups");
   const studentsT = useTranslations("school.students");
@@ -106,6 +108,7 @@ export function FollowUpBoardList({
                         <td className="px-4 py-2.5 whitespace-nowrap">{row.grade ? studentsT("grade", { grade: row.grade }) : "-"}</td>
                         <td className="px-4 py-2.5">
                           <span className="rounded-full bg-crater/10 px-2 py-0.5 text-xs whitespace-nowrap">{studentsT(row.status)}</span>
+                          {row.isLost&&<span className="ml-1 text-[11px] text-rose">{t("lostDays",{days:row.lostDays})}</span>}
                         </td>
                         <td className="px-4 py-2.5 whitespace-nowrap text-muted">{formatAt(row.lastFollowUpAt)}</td>
                         <td className={`px-4 py-2.5 whitespace-nowrap ${row.overdue ? "text-rose" : "text-muted"}`}>
@@ -143,6 +146,7 @@ export function FollowUpBoardList({
                                 {studentsT("placeOrder")}
                               </Link>
                             )}
+                            {canRecover&&row.isLost&&<Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={()=>startTransition(async()=>{try{await recoverLostStudentAction(row.id);router.refresh()}catch{setStatusError(t("changeFailed"))}})}>{t("recover")}</Button>}
                           </div>
                         </td>
                       </tr>

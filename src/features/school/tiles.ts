@@ -103,6 +103,7 @@ export const TILE_REGISTRY: readonly TileDef[] = [
   { key: "activityToday", audiences: ["staff"], requiredPerm: "activity.register", allowedSizes: ["2x2", "2x1", "1x1"], icon: "CalendarDays" },
   { key: "reviewGaps", audiences: ["staff"], requiredPerm: "review.write", allowedSizes: ["2x1", "1x1"], icon: "ClipboardList", tone: "rose" },
   { key: "videoQueue", audiences: ["staff"], requiredPerm: "video.review", allowedSizes: ["2x1", "1x1"], icon: "ClipboardCheck", tone: "rose" },
+  { key: "renewalDue", audiences: ["staff"], requiredAnyPerm: ["finance.order.view","followup.view"], allowedSizes: ["2x1", "1x1"], icon: "ReceiptText", tone: "rose" },
   // ---- student 池（§0.7）。无费用磁贴（§4.4）。 ----
   { key: "mySchedule", audiences: ["student"], allowedSizes: ["3x2", "2x2", "2x1", "1x1"], icon: "CalendarDays" },
   { key: "pendingAssignments", audiences: ["student"], allowedSizes: ["2x1", "2x2", "3x2", "1x1"], icon: "ClipboardList" },
@@ -135,6 +136,7 @@ export const STAFF_MANAGER_ORDER: readonly string[] = [
   "todaySchedule",
   "activityToday",
   "dueOrders",
+  "renewalDue",
   "funnel",
   "financeOverview",
   "refundQueue",
@@ -162,6 +164,7 @@ export const STAFF_SALES_ORDER: readonly string[] = [
   "activityToday",
   "myFollowUps",
   "dueOrders",
+  "renewalDue",
   "myPerformance",
   "todaySchedule",
 ];

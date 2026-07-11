@@ -257,6 +257,8 @@
       ,"reviewGapsEmpty": "All sessions in the last 7 days are reviewed."
       ,"videoQueueTitle": "Videos to review"
       ,"videoQueueEmpty": "No videos waiting for review."
+      ,"renewalDueTitle": "Renewals due"
+      ,"renewalDueHint": "3 or fewer sessions remaining"
     },
     "tileEdit": {
       "edit": "Edit layout",
@@ -361,6 +363,10 @@
       "bucket_week": "This week",
       "bucket_unscheduled": "Unscheduled",
       "bucket_trialToday": "Trial today",
+      "bucket_renewal": "Renewals due",
+      "bucket_lost": "Lost students",
+      "recover": "Recover",
+      "lostDays": "Lost for {days} days",
       "overdueBadge": "Overdue",
       "latestNote": "Latest note",
       "logFollowUp": "Log follow-up",

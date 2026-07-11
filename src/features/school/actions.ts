@@ -760,6 +760,7 @@ export async function restoreStudentAction(studentId: string): Promise<boolean> 
   const { error } = await supabase.rpc("restore_student", { p_student_id: studentId });
   return !error;
 }
+export async function recoverLostStudentAction(studentId:string):Promise<void>{const{supabase}=await authorizedClient("student.edit");const{error}=await supabase.rpc("recover_lost_student",{p_student_id:studentId});if(error)throw new Error(error.message)}
 
 export async function changeStudentStatusAction(studentId: string, status: StudentStatus): Promise<void> {
   if (!(STUDENT_STATUSES as readonly string[]).includes(status)) throw new Error("INVALID_STATUS");

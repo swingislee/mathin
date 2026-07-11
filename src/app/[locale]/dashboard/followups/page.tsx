@@ -15,7 +15,7 @@ import { getMyPerms, requirePerm } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
 const EMPTY_BOARD: FollowUpBoard = {
-  counts: { overdue: 0, today: 0, week: 0, unscheduled: 0, trialToday: 0 },
+  counts: { overdue: 0, today: 0, week: 0, unscheduled: 0, trialToday: 0, renewal:0, lost:0 },
   groups: FOLLOW_UP_STATUSES.map((status) => ({ status, rows: [] })),
 };
 
@@ -86,7 +86,7 @@ export default async function FollowUpsPage({
         <p className="mt-1 max-w-3xl text-sm text-muted">{t("intro")}</p>
       </SchoolPageHeader>
 
-      <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-5">
+      <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-7">
         {BOARD_BUCKETS.map((key) => {
           const active = bucket === key;
           const rose = key === "overdue" && board.counts[key] > 0;
@@ -107,7 +107,7 @@ export default async function FollowUpsPage({
         })}
       </div>
 
-      <FollowUpBoardList groups={board.groups} canEditStatus={canEditStatus} canOrder={canOrder} />
+      <FollowUpBoardList groups={board.groups} canEditStatus={canEditStatus} canOrder={canOrder} canRecover={canEditStatus&&perms.has("followup.write")} />
     </div>
   );
 }

@@ -11,7 +11,7 @@ import { FOLLOW_UP_STATUSES, type FollowUpStatus, type StudentStatus } from "./s
 export const BOARD_SCOPES = ["mine", "all"] as const;
 export type BoardScope = (typeof BOARD_SCOPES)[number];
 
-export const BOARD_BUCKETS = ["overdue", "today", "week", "unscheduled", "trialToday"] as const;
+export const BOARD_BUCKETS = ["overdue", "today", "week", "unscheduled", "trialToday", "renewal", "lost"] as const;
 export type BoardBucket = (typeof BOARD_BUCKETS)[number];
 
 export interface BoardRow {
@@ -25,6 +25,8 @@ export interface BoardRow {
   overdue: boolean;
   /** 最近一条跟进摘要（单行 truncate 用）。 */
   latestNote: string;
+  isLost: boolean;
+  lostDays:number;
 }
 
 export interface BoardGroup {
@@ -129,6 +131,9 @@ export async function listFollowUpBoard(userId: string, scope: BoardScope, bucke
     }
   }
 
+  const renewalIds=new Set<string>();
+  if(studentIds.length>0){const{data:ers,error:ee}=await supabase.from("enrollments").select("student_id,classroom_id").eq("status","active").in("student_id",studentIds).returns<Array<{student_id:string;classroom_id:string}>>();if(ee)throw new Error(ee.message);const cids=Array.from(new Set((ers??[]).map(x=>x.classroom_id)));if(cids.length){const{data:ss,error:se}=await supabase.from("class_sessions").select("classroom_id").in("classroom_id",cids).is("deleted_at",null).gte("scheduled_at",nowIso).returns<Array<{classroom_id:string}>>();if(se)throw new Error(se.message);const counts=new Map<string,number>();for(const x of ss??[])counts.set(x.classroom_id,(counts.get(x.classroom_id)??0)+1);for(const e of ers??[])if((counts.get(e.classroom_id)??0)<=3)renewalIds.add(e.student_id)}}
+
   const inBucket = (row: BoardStudentRow, key: BoardBucket): boolean => {
     const next = row.next_follow_up_at;
     switch (key) {
@@ -142,6 +147,8 @@ export async function listFollowUpBoard(userId: string, scope: BoardScope, bucke
         return next === null && row.follow_up_status !== "signed" && row.follow_up_status !== "lost";
       case "trialToday":
         return trialTodayIds.has(row.id);
+      case "renewal":return renewalIds.has(row.id);
+      case "lost":return row.follow_up_status==="lost"||row.status==="invalid";
     }
   };
 
@@ -164,6 +171,8 @@ export async function listFollowUpBoard(userId: string, scope: BoardScope, bucke
         nextFollowUpAt: row.next_follow_up_at,
         overdue: row.next_follow_up_at !== null && row.next_follow_up_at < nowIso,
         latestNote: latestByStudent.get(row.id) ?? "",
+        isLost:row.follow_up_status==="lost"||row.status==="invalid",
+        lostDays:(row.follow_up_status==="lost"||row.status==="invalid")&&row.last_follow_up_at?Math.max(0,Math.floor((now.getTime()-new Date(row.last_follow_up_at).getTime())/86400000)):0,
       })),
   }));
 
