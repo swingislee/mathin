@@ -161,6 +161,9 @@ export async function getMyAttendance(fromIso: string, toIso: string): Promise<M
   }));
 }
 
+export interface MySessionReview{sessionId:string;studentId:string;studentName:string;classroomName:string;lectureName:string;scheduledAt:string;entryScore:number|null;exitScore:number|null;focus:number|null;participation:number|null;mastery:number|null;comment:string;knowledgeSummary:string}
+export async function getMySessionReviews(fromIso:string,toIso:string):Promise<MySessionReview[]>{const s=await createClient();const{data,error}=await s.rpc("get_my_session_reviews",{p_from:fromIso,p_to:toIso});if(error)throw new Error(error.message);return((data??[])as Array<{session_id:string;student_id:string;student_name:string;classroom_name:string;lecture_name:string;scheduled_at:string;entry_score:number|null;exit_score:number|null;focus:number|null;participation:number|null;mastery:number|null;comment:string;knowledge_summary:string}>).map(x=>({sessionId:x.session_id,studentId:x.student_id,studentName:x.student_name,classroomName:x.classroom_name,lectureName:x.lecture_name,scheduledAt:x.scheduled_at,entryScore:x.entry_score,exitScore:x.exit_score,focus:x.focus,participation:x.participation,mastery:x.mastery,comment:x.comment,knowledgeSummary:x.knowledge_summary}))}
+
 export interface MyPendingAssignment {
   assignmentId: string;
   classroomId: string;

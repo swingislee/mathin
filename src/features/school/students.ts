@@ -235,6 +235,7 @@ export interface StudentLearning {
   attendance: AttendanceSummary;
   starTotal: number;
   submissions: StudentSubmissionRow[];
+  reviews: Array<{sessionId:string;lectureName:string;scheduledAt:string;entryScore:number|null;exitScore:number|null;focus:number|null;participation:number|null;mastery:number|null;comment:string}>;
 }
 
 interface EnrollmentLearningRow {
@@ -345,6 +346,9 @@ export async function getStudentLearning(studentId: string): Promise<StudentLear
     }));
   }
 
+  const {data:reviewRows,error:reviewError}=await supabase.from("session_reviews").select("session_id,entry_score,exit_score,focus,participation,mastery,comment,class_sessions(title,scheduled_at)").eq("student_id",studentId).order("updated_at",{ascending:false}).limit(5).returns<Array<{session_id:string;entry_score:number|null;exit_score:number|null;focus:number|null;participation:number|null;mastery:number|null;comment:string;class_sessions:{title:string;scheduled_at:string}|null}>>();
+  if(reviewError)throw new Error(reviewError.message);
+
   return {
     hasAccount: Boolean(userId),
     enrollments: (enrollmentRows ?? []).map((row) => ({
@@ -359,5 +363,6 @@ export async function getStudentLearning(studentId: string): Promise<StudentLear
     attendance: summarizeAttendance((attendanceRows ?? []).map((row) => row.status)),
     starTotal,
     submissions,
+    reviews:(reviewRows??[]).map(r=>({sessionId:r.session_id,lectureName:r.class_sessions?.title??"",scheduledAt:r.class_sessions?.scheduled_at??"",entryScore:r.entry_score,exitScore:r.exit_score,focus:r.focus,participation:r.participation,mastery:r.mastery,comment:r.comment})),
   };
 }

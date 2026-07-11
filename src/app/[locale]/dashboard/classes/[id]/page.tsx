@@ -64,6 +64,7 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ lo
           sessions={classroom.sessions}
           canMarkAttendance={perms.has("attendance.mark")}
           canManage={canManage}
+          canReview={perms.has("review.write")}
         />
         {canManage && <SessionRecycleBin sessions={deletedSessions} />}
       </div>

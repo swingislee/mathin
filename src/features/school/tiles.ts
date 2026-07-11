@@ -101,6 +101,7 @@ export const TILE_REGISTRY: readonly TileDef[] = [
   { key: "rosterMismatch", audiences: ["staff"], requiredPerm: "class.view.all", allowedSizes: ["2x1", "1x1"], icon: "UserX" },
   { key: "followupBoardEntry", audiences: ["staff"], requiredPerm: "followup.write", allowedSizes: ["2x1", "1x1"], icon: "PhoneForwarded" },
   { key: "activityToday", audiences: ["staff"], requiredPerm: "activity.register", allowedSizes: ["2x2", "2x1", "1x1"], icon: "CalendarDays" },
+  { key: "reviewGaps", audiences: ["staff"], requiredPerm: "review.write", allowedSizes: ["2x1", "1x1"], icon: "ClipboardList", tone: "rose" },
   // ---- student 池（§0.7）。无费用磁贴（§4.4）。 ----
   { key: "mySchedule", audiences: ["student"], allowedSizes: ["3x2", "2x2", "2x1", "1x1"], icon: "CalendarDays" },
   { key: "pendingAssignments", audiences: ["student"], allowedSizes: ["2x1", "2x2", "3x2", "1x1"], icon: "ClipboardList" },
@@ -143,6 +144,7 @@ export const STAFF_MANAGER_ORDER: readonly string[] = [
 
 export const STAFF_TEACHER_ORDER: readonly string[] = [
   "myTeaching",
+  "reviewGaps",
   "gradingQueue",
   "myClasses",
   "todaySchedule",

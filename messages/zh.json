@@ -253,6 +253,8 @@
       "activityTodayTitle": "今明活动",
       "activityTodayEmpty": "近两天没有活动。",
       "activityBooked": "报名 {count}"
+      ,"reviewGapsTitle": "待写课评"
+      ,"reviewGapsEmpty": "近 7 天课评已补齐。"
     },
     "tileEdit": {
       "edit": "编辑布局",
@@ -291,6 +293,7 @@
       "attended": "到场", "noShow": "爽约", "full": "活动已满员。", "deleteConfirm": "确认删除该活动？", "actionFailed": "操作失败，请重试。",
       "save": "保存", "cancel": "取消"
     },
+    "reviews": {"button":"课评","title":"课堂课评","summary":"课堂知识总结","student":"学生","entry":"入门考","exit":"出门测","focus":"专注","participation":"参与","mastery":"掌握","comment":"评语","save":"保存","cancel":"取消","failed":"课评保存失败，请重试。"},
     "courses": {
       "title": "课程",
       "intro": "课程 → 讲次 → 课件模板，建班排课都从这里长出来。",
@@ -460,6 +463,9 @@
       "noAccountAttendanceOnly": "未绑定账号，仅统计出勤",
       "submissions": "作业成绩",
       "noSubmissions": "还没有提交记录。",
+      "recentReviews": "近期课评",
+      "noReviews": "还没有课评记录。",
+      "reviewScores": "入门 {entry} · 出门 {exit} · 专注 {focus} · 参与 {participation} · 掌握 {mastery}",
       "untitledAssignment": "未命名作业",
       "ungraded": "未批改",
       "active": "在读",

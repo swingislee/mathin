@@ -173,6 +173,11 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
         </div>
 
         <div className="mt-6">
+          <h3 className="text-xs text-muted">{t("recentReviews")}</h3>
+          {learning.reviews.length===0?<p className="mt-2 text-sm text-muted">{t("noReviews")}</p>:<ul className="mt-2 divide-y divide-line">{learning.reviews.map(r=><li key={r.sessionId} className="py-2 text-sm"><div className="flex justify-between"><span className="font-medium">{r.lectureName}</span>{r.scheduledAt&&<time className="text-xs text-muted">{new Intl.DateTimeFormat(locale,{dateStyle:"short"}).format(new Date(r.scheduledAt))}</time>}</div><p className="mt-1 text-xs text-muted">{t("reviewScores",{entry:r.entryScore??"—",exit:r.exitScore??"—",focus:r.focus??"—",participation:r.participation??"—",mastery:r.mastery??"—"})}</p>{r.comment&&<p className="mt-1">{r.comment}</p>}</li>)}</ul>}
+        </div>
+
+        <div className="mt-6">
           <h3 className="text-xs text-muted">{t("submissions")}</h3>
           {learning.submissions.length === 0 ? (
             <p className="mt-2 text-sm text-muted">{t("noSubmissions")}</p>

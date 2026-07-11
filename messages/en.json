@@ -253,6 +253,8 @@
       "activityTodayTitle": "Activities today & tomorrow",
       "activityTodayEmpty": "No activities in the next two days.",
       "activityBooked": "{count} booked"
+      ,"reviewGapsTitle": "Missing session reviews"
+      ,"reviewGapsEmpty": "All sessions in the last 7 days are reviewed."
     },
     "tileEdit": {
       "edit": "Edit layout",
@@ -291,6 +293,7 @@
       "attended": "Attended", "noShow": "No-show", "full": "This activity is full.", "deleteConfirm": "Delete this activity?", "actionFailed": "Action failed. Please try again.",
       "save": "Save", "cancel": "Cancel"
     },
+    "reviews": {"button":"Review","title":"Session reviews","summary":"Knowledge summary","student":"Student","entry":"Entry","exit":"Exit","focus":"Focus","participation":"Participation","mastery":"Mastery","comment":"Comment","save":"Save","cancel":"Cancel","failed":"Could not save reviews. Please retry."},
     "courses": {
       "title": "Courses",
       "intro": "Courses, lectures and courseware templates — classes are built from here.",
@@ -460,6 +463,9 @@
       "noAccountAttendanceOnly": "No linked account, attendance only",
       "submissions": "Assignment scores",
       "noSubmissions": "No submissions yet.",
+      "recentReviews": "Recent session reviews",
+      "noReviews": "No session reviews yet.",
+      "reviewScores": "Entry {entry} · Exit {exit} · Focus {focus} · Participation {participation} · Mastery {mastery}",
       "untitledAssignment": "Untitled assignment",
       "ungraded": "Ungraded",
       "active": "Active",

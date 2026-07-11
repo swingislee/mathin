@@ -6,6 +6,7 @@ import { Link, useRouter } from "@/i18n/navigation";
 import { deleteUnstartedSessionAction, rescheduleSessionAction } from "./actions";
 import { AttendanceDrawer } from "./AttendanceDrawer";
 import type { SessionRow } from "./classes";
+import { ReviewDrawer } from "./ReviewDrawer";
 
 function toDateTimeLocalValue(iso: string): string {
   const date = new Date(iso);
@@ -18,11 +19,13 @@ export function SessionListPanel({
   sessions,
   canMarkAttendance,
   canManage,
+  canReview = false,
 }: {
   classroomId: string;
   sessions: SessionRow[];
   canMarkAttendance: boolean;
   canManage: boolean;
+  canReview?: boolean;
 }) {
   const t = useTranslations("school.classes");
   const router = useRouter();
@@ -76,6 +79,7 @@ export function SessionListPanel({
                   {row.endedAt ? t("statusEnded") : row.startedAt ? t("statusLive") : t("statusScheduled")}
                 </span>
                 {canMarkAttendance && !unstarted && <AttendanceDrawer sessionId={row.id} />}
+                {canReview && !unstarted && <ReviewDrawer sessionId={row.id} />}
                 {canManage && unstarted && row.scheduledAt && (
                   <input
                     type="datetime-local"
