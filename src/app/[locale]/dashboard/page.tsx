@@ -10,6 +10,7 @@ import {
   getDueOrders,
   getActivityToday,
   getReviewGaps,
+  getVideoQueue,
   getFinanceOverview,
   getFollowUpFunnel,
   getFollowupBoardCounts,
@@ -27,6 +28,7 @@ import {
   type DueOrderRow,
   type ActivityTodayRow,
   type ReviewGapRow,
+  type VideoQueueRow,
   type FinanceOverview,
   type FollowUpFunnelBucket,
   type FollowupBoardCounts,
@@ -380,6 +382,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
     const canFollowupWrite = perms.has("followup.write");
     const canActivity = perms.has("activity.register");
     const canReview = perms.has("review.write");
+    const canVideoReview = perms.has("video.review");
 
     const [
       stats,
@@ -400,6 +403,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
       followupCounts,
       activityToday,
       reviewGaps,
+      videoQueue,
     ]: [
       StaffStats,
       FollowUpFunnelBucket[],
@@ -419,6 +423,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
       FollowupBoardCounts,
       ActivityTodayRow[],
       ReviewGapRow[],
+      VideoQueueRow[],
     ] = await Promise.all([
       canStats ? safe(getStaffStats, EMPTY_STATS) : Promise.resolve(EMPTY_STATS),
       canStats ? safe(getFollowUpFunnel, []) : Promise.resolve([]),
@@ -438,6 +443,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
       canFollowupWrite ? safe(getFollowupBoardCounts, EMPTY_FOLLOWUP_COUNTS) : Promise.resolve(EMPTY_FOLLOWUP_COUNTS),
       canActivity ? safe(getActivityToday, []) : Promise.resolve([]),
       canReview ? safe(getReviewGaps, []) : Promise.resolve([]),
+      canVideoReview ? safe(getVideoQueue, []) : Promise.resolve([]),
     ]);
 
     const funnelMax = Math.max(1, ...funnel.map((bucket) => bucket.count));
@@ -962,6 +968,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
     extras.set("activityToday", { href: "/dashboard/activities", cover: true, minimal: <MinimalBody value={activityToday.length} />, compact: <CompactBody value={activityToday.length} line={activityToday[0]?.title ?? schoolT("home.activityTodayEmpty")} /> });
     contents.set("activityToday", activityToday.length===0?<EmptyBody text={schoolT("home.activityTodayEmpty")}/>:<ul className="min-h-0 flex-1 divide-y overflow-hidden">{activityToday.map(row=><li key={row.id} className="flex items-center gap-3 py-2 text-sm"><time className="shrink-0 text-xs text-muted">{timeFmt.format(new Date(row.scheduledAt))}</time><span className="min-w-0 flex-1 truncate font-medium">{row.title}</span><span className="text-xs text-muted">{schoolT("home.activityBooked",{count:row.bookedCount})}</span></li>)}</ul>);
     labels.set("reviewGaps",schoolT("home.reviewGapsTitle"));extras.set("reviewGaps",{href:"/dashboard/classes",cover:true,minimal:<MinimalBody value={reviewGaps.length} rose={reviewGaps.length>0}/>});contents.set("reviewGaps",reviewGaps.length===0?<EmptyBody text={schoolT("home.reviewGapsEmpty")}/>:<ul className="min-h-0 flex-1 divide-y overflow-hidden">{reviewGaps.map(x=><li key={x.sessionId} className="py-2 text-sm"><Link href={`/dashboard/classes/${x.classroomId}`} className="font-medium hover:underline">{x.classroomName}</Link><span className="ml-2 text-xs text-muted">{x.title}</span></li>)}</ul>);
+    labels.set("videoQueue",schoolT("home.videoQueueTitle"));extras.set("videoQueue",{href:"/dashboard/videos",cover:true,minimal:<MinimalBody value={videoQueue.length} rose={videoQueue.length>0}/>});contents.set("videoQueue",videoQueue.length===0?<EmptyBody text={schoolT("home.videoQueueEmpty")}/>:<ul className="min-h-0 flex-1 divide-y overflow-hidden">{videoQueue.map(x=><li key={x.id} className="flex justify-between py-2 text-sm"><span className="font-medium">{x.studentName}</span><time className="text-xs text-muted">{dateFmt.format(new Date(x.submittedAt))}</time></li>)}</ul>);
 
     const eligible = pickEligible("staff", perms).filter((tile) => tile.key !== "refundQueue" || pendingRefundCount > 0);
     // 管理者且待跟进为空：myFollowUps 不进默认序（留在池里可手动加回，§5.6）。

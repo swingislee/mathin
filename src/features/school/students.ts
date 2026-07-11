@@ -236,6 +236,7 @@ export interface StudentLearning {
   starTotal: number;
   submissions: StudentSubmissionRow[];
   reviews: Array<{sessionId:string;lectureName:string;scheduledAt:string;entryScore:number|null;exitScore:number|null;focus:number|null;participation:number|null;mastery:number|null;comment:string}>;
+  videos:Array<{id:string;sessionId:string;lectureName:string;submittedAt:string;reviewedAt:string|null;reviewScore:number|null;reviewComment:string}>;
 }
 
 interface EnrollmentLearningRow {
@@ -348,6 +349,7 @@ export async function getStudentLearning(studentId: string): Promise<StudentLear
 
   const {data:reviewRows,error:reviewError}=await supabase.from("session_reviews").select("session_id,entry_score,exit_score,focus,participation,mastery,comment,class_sessions(title,scheduled_at)").eq("student_id",studentId).order("updated_at",{ascending:false}).limit(5).returns<Array<{session_id:string;entry_score:number|null;exit_score:number|null;focus:number|null;participation:number|null;mastery:number|null;comment:string;class_sessions:{title:string;scheduled_at:string}|null}>>();
   if(reviewError)throw new Error(reviewError.message);
+  const{data:videoRows,error:videoError}=await supabase.from("session_videos").select("id,session_id,submitted_at,reviewed_at,review_score,review_comment,class_sessions(title)").eq("student_id",studentId).is("deleted_at",null).order("submitted_at",{ascending:false}).limit(20).returns<Array<{id:string;session_id:string;submitted_at:string;reviewed_at:string|null;review_score:number|null;review_comment:string;class_sessions:{title:string}|null}>>();if(videoError)throw new Error(videoError.message);
 
   return {
     hasAccount: Boolean(userId),
@@ -364,5 +366,6 @@ export async function getStudentLearning(studentId: string): Promise<StudentLear
     starTotal,
     submissions,
     reviews:(reviewRows??[]).map(r=>({sessionId:r.session_id,lectureName:r.class_sessions?.title??"",scheduledAt:r.class_sessions?.scheduled_at??"",entryScore:r.entry_score,exitScore:r.exit_score,focus:r.focus,participation:r.participation,mastery:r.mastery,comment:r.comment})),
+    videos:(videoRows??[]).map(v=>({id:v.id,sessionId:v.session_id,lectureName:v.class_sessions?.title??"",submittedAt:v.submitted_at,reviewedAt:v.reviewed_at,reviewScore:v.review_score,reviewComment:v.review_comment})),
   };
 }

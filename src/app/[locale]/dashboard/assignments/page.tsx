@@ -4,6 +4,7 @@ import { getMyPendingAssignments, getMyStudents } from "@/features/school/custom
 import { SchoolPageHeader } from "@/features/school/PageHeader";
 import { Link } from "@/i18n/navigation";
 import { requireUser } from "@/lib/auth";
+import { VideoUploadPanel } from "@/features/school/VideoUploadPanel";
 
 async function safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
   try {
@@ -54,6 +55,7 @@ export default async function AssignmentsPage({ params }: { params: Promise<{ lo
           ))}
         </ul>
       )}
+      {isBound && <VideoUploadPanel />}
     </div>
   );
 }

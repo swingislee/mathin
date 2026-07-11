@@ -255,6 +255,8 @@
       "activityBooked": "{count} booked"
       ,"reviewGapsTitle": "Missing session reviews"
       ,"reviewGapsEmpty": "All sessions in the last 7 days are reviewed."
+      ,"videoQueueTitle": "Videos to review"
+      ,"videoQueueEmpty": "No videos waiting for review."
     },
     "tileEdit": {
       "edit": "Edit layout",
@@ -294,6 +296,7 @@
       "save": "Save", "cancel": "Cancel"
     },
     "reviews": {"button":"Review","title":"Session reviews","summary":"Knowledge summary","student":"Student","entry":"Entry","exit":"Exit","focus":"Focus","participation":"Participation","mastery":"Mastery","comment":"Comment","save":"Save","cancel":"Cancel","failed":"Could not save reviews. Please retry."},
+    "videos": {"title":"Review session videos","uploadTitle":"Upload session video","upload":"Upload","uploaded":"Upload complete.","uploadFailed":"Upload failed. Check the file and network.","note":"Student note","queue":"Videos","pending":"Pending","reviewed":"Reviewed","comment":"Review comment","score":"Score","markReviewed":"Mark reviewed","select":"Select a video to review.","playback":"Play video"},
     "courses": {
       "title": "Courses",
       "intro": "Courses, lectures and courseware templates — classes are built from here.",
@@ -466,6 +469,10 @@
       "recentReviews": "Recent session reviews",
       "noReviews": "No session reviews yet.",
       "reviewScores": "Entry {entry} · Exit {exit} · Focus {focus} · Participation {participation} · Mastery {mastery}",
+      "sessionVideos": "Session videos",
+      "noVideos": "No session videos yet.",
+      "videoReviewed": "Reviewed · score {score}",
+      "videoPending": "Pending review",
       "untitledAssignment": "Untitled assignment",
       "ungraded": "Ungraded",
       "active": "Active",

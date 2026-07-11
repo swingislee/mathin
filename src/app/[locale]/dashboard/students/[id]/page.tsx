@@ -8,6 +8,7 @@ import { listStaffMembers } from "@/features/school/staff";
 import { StudentFinancePanel } from "@/features/school/StudentFinancePanel";
 import { StudentLifecycleActions } from "@/features/school/StudentLifecycleActions";
 import { StudentProfileEditor } from "@/features/school/StudentProfileEditor";
+import { CustomerVideoButton } from "@/features/school/CustomerVideoButton";
 import { getStudentDetail, getStudentLearning } from "@/features/school/students";
 import { Link } from "@/i18n/navigation";
 import { getMyPerms, requireAnyPerm } from "@/lib/auth";
@@ -170,6 +171,10 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
             <p className="mt-1 text-lg font-medium">{learning.hasAccount ? learning.starTotal : "-"}</p>
             {!learning.hasAccount && <p className="mt-1 text-xs text-muted">{t("noAccountAttendanceOnly")}</p>}
           </div>
+        </div>
+
+        <div className="mt-6">
+          <h3 className="text-xs text-muted">{t("sessionVideos")}</h3>{learning.videos.length===0?<p className="mt-2 text-sm text-muted">{t("noVideos")}</p>:<ul className="mt-2 divide-y">{learning.videos.map(v=><li key={v.id} className="flex flex-wrap items-center gap-3 py-2 text-sm"><span className="min-w-0 flex-1 truncate">{v.lectureName}</span><span className="text-xs text-muted">{v.reviewedAt?t("videoReviewed",{score:v.reviewScore??"—"}):t("videoPending")}</span><CustomerVideoButton videoId={v.id}/></li>)}</ul>}
         </div>
 
         <div className="mt-6">

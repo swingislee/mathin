@@ -1,7 +1,8 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { getWeekSchedule } from "@/features/school/actions";
 import { BindCodeForm } from "@/features/school/BindCodeForm";
-import { getMyAttendance, getMyLearningSummary, getMySessionReviews, getMyStudents } from "@/features/school/customer";
+import { getMyAttendance, getMyLearningSummary, getMyReviewedVideos, getMySessionReviews, getMyStudents } from "@/features/school/customer";
+import { CustomerVideoButton } from "@/features/school/CustomerVideoButton";
 import { summarizeAttendance } from "@/features/school/learning";
 import { SchoolPageHeader } from "@/features/school/PageHeader";
 import { addDays } from "@/features/school/schedule";
@@ -44,10 +45,11 @@ export default async function ChildrenPage({
   const summary = summaries.find((s) => s.studentId === activeId) ?? null;
 
   const now = new Date();
-  const [scheduleEntries, attendanceRows, reviewRows] = await Promise.all([
+  const [scheduleEntries, attendanceRows, reviewRows, reviewedVideos] = await Promise.all([
     getWeekSchedule(now.toISOString(), addDays(now, 30).toISOString()),
     getMyAttendance(addDays(now, -60).toISOString(), now.toISOString()),
     getMySessionReviews(addDays(now,-180).toISOString(),now.toISOString()),
+    getMyReviewedVideos(),
   ]);
   const upcomingSessions = scheduleEntries.filter((entry) => entry.studentName === activeStudent.name);
   const attendance = summarizeAttendance(
@@ -75,7 +77,7 @@ export default async function ChildrenPage({
 
       <section className="mt-6 rounded-2xl border bg-card p-5">
         <h2 className="font-medium">{studentsT("recentReviews")}</h2>
-        {reviewRows.filter(x=>x.studentId===activeId).length===0?<p className="mt-4 text-sm text-muted">{studentsT("noReviews")}</p>:<ul className="mt-4 divide-y">{reviewRows.filter(x=>x.studentId===activeId).map(r=><li key={r.sessionId} className="py-3 text-sm"><div className="flex justify-between gap-3"><span className="font-medium">{r.classroomName} · {r.lectureName}</span><time className="text-xs text-muted">{new Intl.DateTimeFormat(locale,{dateStyle:"short"}).format(new Date(r.scheduledAt))}</time></div><p className="mt-1 text-xs text-muted">{studentsT("reviewScores",{entry:r.entryScore??"—",exit:r.exitScore??"—",focus:r.focus??"—",participation:r.participation??"—",mastery:r.mastery??"—"})}</p>{r.comment&&<p className="mt-2">{r.comment}</p>}{r.knowledgeSummary&&<p className="mt-2 rounded-lg bg-background p-2 text-xs text-muted">{r.knowledgeSummary}</p>}</li>)}</ul>}
+        {reviewRows.filter(x=>x.studentId===activeId).length===0?<p className="mt-4 text-sm text-muted">{studentsT("noReviews")}</p>:<ul className="mt-4 divide-y">{reviewRows.filter(x=>x.studentId===activeId).map(r=>{const videos=reviewedVideos.filter(v=>v.sessionId===r.sessionId&&v.studentId===activeId);return <li key={r.sessionId} className="py-3 text-sm"><div className="flex justify-between gap-3"><span className="font-medium">{r.classroomName} · {r.lectureName}</span><time className="text-xs text-muted">{new Intl.DateTimeFormat(locale,{dateStyle:"short"}).format(new Date(r.scheduledAt))}</time></div><p className="mt-1 text-xs text-muted">{studentsT("reviewScores",{entry:r.entryScore??"—",exit:r.exitScore??"—",focus:r.focus??"—",participation:r.participation??"—",mastery:r.mastery??"—"})}</p>{r.comment&&<p className="mt-2">{r.comment}</p>}{r.knowledgeSummary&&<p className="mt-2 rounded-lg bg-background p-2 text-xs text-muted">{r.knowledgeSummary}</p>}<div className="mt-2 flex gap-2">{videos.map(v=><CustomerVideoButton key={v.videoId} videoId={v.videoId}/>)}</div></li>})}</ul>}
       </section>
 
       <section className="mt-6 rounded-2xl border bg-card p-5">
