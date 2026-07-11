@@ -1,14 +1,80 @@
 "use client";
 
-import { ArrowDown, ArrowUp, EyeOff, GripVertical, PenLine, Plus, RotateCcw } from "lucide-react";
+import {
+  AlarmClock,
+  ArrowDown,
+  ArrowUp,
+  ArrowUpRight,
+  Baby,
+  BookOpen,
+  CalendarDays,
+  CircleAlert,
+  ClipboardCheck,
+  ClipboardList,
+  EyeOff,
+  Filter,
+  GripVertical,
+  Link2,
+  ListChecks,
+  NotebookPen,
+  PenLine,
+  PhoneCall,
+  PhoneForwarded,
+  Plus,
+  ReceiptText,
+  RotateCcw,
+  School,
+  Star,
+  TrendingUp,
+  Trophy,
+  Undo2,
+  UserPlus,
+  Users,
+  UserX,
+  Wallet,
+  type LucideIcon,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useState, type DragEvent, type ReactNode } from "react";
-import { useRouter } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { SchoolPageHeader } from "./PageHeader";
 import { resetDashboardLayout, saveDashboardLayout } from "./layout-actions";
-import type { TileSize } from "./tiles";
+import type { TileIconName, TileSize, TileTone } from "./tiles";
+
+const TILE_ICONS: Record<TileIconName, LucideIcon> = {
+  Users,
+  UserPlus,
+  UserX,
+  CalendarDays,
+  AlarmClock,
+  Filter,
+  PhoneCall,
+  PhoneForwarded,
+  TrendingUp,
+  School,
+  ListChecks,
+  Wallet,
+  Undo2,
+  ReceiptText,
+  BookOpen,
+  CircleAlert,
+  ClipboardCheck,
+  ClipboardList,
+  Star,
+  Trophy,
+  NotebookPen,
+  Baby,
+  Link2,
+};
+
+/** tone → 头部图标着色（§5.4 语义三档；文字仍用常规 token 保证对比度）。 */
+const TONE_ICON_CLASS: Record<TileTone, string> = {
+  crater: "text-crater",
+  leaf: "text-leaf-deep",
+  rose: "text-rose",
+};
 
 // ---------------------------------------------------------------------------
 // 磁贴工作台客户端层（P4C-4 §5.3/§5.7）：内容是服务端渲染好的 ReactNode，
@@ -21,6 +87,12 @@ export interface TileGridItem {
   size: TileSize;
   label: string;
   allowedSizes: readonly TileSize[];
+  icon: TileIconName;
+  /** 语义洗底（§5.4）：只给需要行动/健康态的磁贴上色，常规素卡传 undefined。 */
+  tone?: TileTone;
+  /** 头部右上箭头直达；cover=true 时整贴可点（内容里不得再有链接）。 */
+  href?: string;
+  cover?: boolean;
   node: ReactNode;
 }
 
@@ -212,10 +284,12 @@ export function TileWorkspace({
         {visible.map((entry) => {
           const item = itemByKey.get(entry.key);
           if (!item) return null;
+          const Icon = TILE_ICONS[item.icon];
           return (
             <section
               key={entry.key}
               aria-label={item.label}
+              data-tile-tone={item.tone}
               draggable={editing}
               onDragStart={(event) => {
                 if (!editing) return;
@@ -232,11 +306,23 @@ export function TileWorkspace({
               className={cn(
                 "relative flex min-w-0 flex-col overflow-hidden rounded-2xl border border-line bg-card p-4 transition-transform duration-150 motion-reduce:transition-none",
                 SIZE_CLASSES[entry.size],
+                item.href && !editing && "transition-colors hover:border-crater/50",
                 editing && "select-none",
                 editing && dragKey === entry.key && "opacity-60",
               )}
             >
-              {item.node}
+              <div className="flex shrink-0 items-center gap-2">
+                <Icon size={16} strokeWidth={1.75} className={item.tone ? TONE_ICON_CLASS[item.tone] : "text-muted"} aria-hidden />
+                <span className="min-w-0 flex-1 truncate text-[11px] uppercase tracking-[0.18em] text-muted">{item.label}</span>
+                {item.href && !editing && (
+                  <Link href={item.href} aria-label={item.label} className="shrink-0 text-muted transition-colors hover:text-ink">
+                    <ArrowUpRight size={14} />
+                    {/* cover：把点击面撑满整贴（此类磁贴内容里没有别的链接）。 */}
+                    {item.cover && <span className="absolute inset-0" aria-hidden />}
+                  </Link>
+                )}
+              </div>
+              <div className="mt-2 flex min-h-0 flex-1 flex-col">{item.node}</div>
               {editing && (
                 <>
                   {/* 遮罩层统一挡掉磁贴内容交互（§10：别逐元素 pointer-events-none）。 */}

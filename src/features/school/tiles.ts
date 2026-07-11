@@ -11,6 +11,35 @@ export type TileSize = (typeof TILE_SIZES)[number];
 
 export type TileAudience = "staff" | "student" | "parent";
 
+/** 语义三档（§5.4）：rose=需要行动、leaf=健康、crater=中性强调；常规磁贴不上色。 */
+export type TileTone = "crater" | "leaf" | "rose";
+
+/** 磁贴头部图标（lucide 组件名，客户端 TileWorkspace 按名映射）。 */
+export type TileIconName =
+  | "Users"
+  | "UserPlus"
+  | "UserX"
+  | "CalendarDays"
+  | "AlarmClock"
+  | "Filter"
+  | "PhoneCall"
+  | "PhoneForwarded"
+  | "TrendingUp"
+  | "School"
+  | "ListChecks"
+  | "Wallet"
+  | "Undo2"
+  | "ReceiptText"
+  | "BookOpen"
+  | "CircleAlert"
+  | "ClipboardCheck"
+  | "ClipboardList"
+  | "Star"
+  | "Trophy"
+  | "NotebookPen"
+  | "Baby"
+  | "Link2";
+
 export interface TileDef {
   /** 稳定机读键；家长孩子卡用动态键 `childCard:<student_id>`，注册表内以 childCard 占位。 */
   key: string;
@@ -20,6 +49,9 @@ export interface TileDef {
   requiredAnyPerm?: readonly PermissionKey[];
   /** 首个为默认档，尺寸按钮在档位间循环。 */
   allowedSizes: readonly TileSize[];
+  icon: TileIconName;
+  /** 静态 tone；随数据变的 tone（如欠费>0 才 rose）由页面渲染时在 item 上覆盖。 */
+  tone?: TileTone;
 }
 
 /** 家长孩子卡动态键前缀（§5.6）：`childCard:<student_id>`。 */
@@ -27,34 +59,49 @@ export const CHILD_TILE_PREFIX = "childCard:";
 const CHILD_TILE_BASE = "childCard";
 
 export const TILE_REGISTRY: readonly TileDef[] = [
-  // ---- staff 池（P4B-7 卡片池换壳；P4C-5 再补七张新贴） ----
-  { key: "statEnrolled", audiences: ["staff"], requiredPerm: "student.view.all", allowedSizes: ["1x1"] },
-  { key: "statLeads", audiences: ["staff"], requiredPerm: "student.view.all", allowedSizes: ["1x1"] },
-  { key: "statWeekSessions", audiences: ["staff"], requiredPerm: "student.view.all", allowedSizes: ["1x1"] },
-  { key: "statOverdueFollowUps", audiences: ["staff"], requiredPerm: "student.view.all", allowedSizes: ["1x1"] },
-  { key: "todaySchedule", audiences: ["staff"], allowedSizes: ["3x2", "3x3", "6x2"] },
-  { key: "funnel", audiences: ["staff"], requiredPerm: "student.view.all", allowedSizes: ["2x2", "3x2"] },
-  { key: "myFollowUps", audiences: ["staff"], requiredPerm: "followup.view", allowedSizes: ["3x2", "3x3"] },
+  // ---- staff 池（P4B-7 卡片池换壳 + P4C-5 §0 反推七张新贴） ----
+  { key: "statEnrolled", audiences: ["staff"], requiredPerm: "student.view.all", allowedSizes: ["1x1"], icon: "Users" },
+  { key: "statLeads", audiences: ["staff"], requiredPerm: "student.view.all", allowedSizes: ["1x1"], icon: "UserPlus" },
+  { key: "statWeekSessions", audiences: ["staff"], requiredPerm: "student.view.all", allowedSizes: ["1x1"], icon: "CalendarDays" },
+  { key: "statOverdueFollowUps", audiences: ["staff"], requiredPerm: "student.view.all", allowedSizes: ["1x1"], icon: "AlarmClock", tone: "rose" },
+  { key: "todaySchedule", audiences: ["staff"], allowedSizes: ["3x2", "3x3", "6x2"], icon: "CalendarDays" },
+  { key: "funnel", audiences: ["staff"], requiredPerm: "student.view.all", allowedSizes: ["2x2", "3x2"], icon: "Filter" },
+  { key: "myFollowUps", audiences: ["staff"], requiredPerm: "followup.view", allowedSizes: ["3x2", "3x3"], icon: "PhoneCall" },
   {
     key: "myPerformance",
     audiences: ["staff"],
     requiredAnyPerm: ["finance.order.view", "finance.order.create"],
     allowedSizes: ["2x1", "2x2"],
+    icon: "TrendingUp",
   },
-  { key: "myTeaching", audiences: ["staff"], requiredPerm: "class.view.mine", allowedSizes: ["3x2", "3x3"] },
-  { key: "myClasses", audiences: ["staff"], requiredPerm: "class.view.mine", allowedSizes: ["3x2"] },
-  { key: "financeOverview", audiences: ["staff"], requiredPerm: "finance.report.view", allowedSizes: ["3x2", "6x2"] },
-  { key: "refundQueue", audiences: ["staff"], requiredPerm: "finance.refund.approve", allowedSizes: ["2x1"] },
+  { key: "myTeaching", audiences: ["staff"], requiredPerm: "class.view.mine", allowedSizes: ["3x2", "3x3"], icon: "School" },
+  { key: "myClasses", audiences: ["staff"], requiredPerm: "class.view.mine", allowedSizes: ["3x2"], icon: "ListChecks" },
+  { key: "financeOverview", audiences: ["staff"], requiredPerm: "finance.report.view", allowedSizes: ["3x2", "6x2"], icon: "Wallet" },
+  { key: "refundQueue", audiences: ["staff"], requiredPerm: "finance.refund.approve", allowedSizes: ["2x1"], icon: "Undo2", tone: "rose" },
+  { key: "gradingQueue", audiences: ["staff"], requiredPerm: "grading.write", allowedSizes: ["3x2", "3x3"], icon: "ClipboardCheck" },
+  {
+    key: "dueOrders",
+    audiences: ["staff"],
+    requiredAnyPerm: ["finance.order.view", "finance.order.create"],
+    allowedSizes: ["3x2"],
+    icon: "ReceiptText",
+  },
+  { key: "templateUrgent", audiences: ["staff"], requiredPerm: "course.manage", allowedSizes: ["3x2"], icon: "CircleAlert" },
+  { key: "templateProgress", audiences: ["staff"], requiredPerm: "course.manage", allowedSizes: ["2x2"], icon: "BookOpen" },
+  { key: "unmarkedAttendance", audiences: ["staff"], requiredPerm: "class.view.all", allowedSizes: ["2x2"], icon: "ClipboardList" },
+  // 默认 2x1：两计数并排 + 各自标签，1x1 会裁掉第二计数（截图实测），保留 1x1 档给想省地方的用户。
+  { key: "rosterMismatch", audiences: ["staff"], requiredPerm: "class.view.all", allowedSizes: ["2x1", "1x1"], icon: "UserX" },
+  { key: "followupBoardEntry", audiences: ["staff"], requiredPerm: "followup.write", allowedSizes: ["2x1"], icon: "PhoneForwarded" },
   // ---- student 池（§0.7；myStars 在 P4C-7 落）。无费用磁贴（§4.4）。 ----
-  { key: "mySchedule", audiences: ["student"], allowedSizes: ["3x2"] },
-  { key: "pendingAssignments", audiences: ["student"], allowedSizes: ["2x1"] },
+  { key: "mySchedule", audiences: ["student"], allowedSizes: ["3x2"], icon: "CalendarDays" },
+  { key: "pendingAssignments", audiences: ["student"], allowedSizes: ["2x1"], icon: "ClipboardList" },
   // ---- parent 池（§0.8） ----
-  { key: CHILD_TILE_BASE, audiences: ["parent"], allowedSizes: ["2x2", "3x2"] },
-  { key: "bindChild", audiences: ["parent"], allowedSizes: ["2x1", "2x2"] },
+  { key: CHILD_TILE_BASE, audiences: ["parent"], allowedSizes: ["2x2", "3x2"], icon: "Baby" },
+  { key: "bindChild", audiences: ["parent"], allowedSizes: ["2x1", "2x2"], icon: "Link2" },
   // ---- 学生/家长共享三贴（原成绩/笔记/教室卡） ----
-  { key: "myScores", audiences: ["student", "parent"], allowedSizes: ["2x2", "3x2"] },
-  { key: "myNotes", audiences: ["student", "parent"], allowedSizes: ["2x1", "3x2"] },
-  { key: "myClassrooms", audiences: ["student", "parent"], allowedSizes: ["2x2", "3x2"] },
+  { key: "myScores", audiences: ["student", "parent"], allowedSizes: ["2x2", "3x2"], icon: "Trophy" },
+  { key: "myNotes", audiences: ["student", "parent"], allowedSizes: ["2x1", "3x2"], icon: "NotebookPen" },
+  { key: "myClassrooms", audiences: ["student", "parent"], allowedSizes: ["2x2", "3x2"], icon: "School" },
 ];
 
 /** 按键找注册表定义；childCard:<uuid> 动态键归到 childCard 占位定义。 */

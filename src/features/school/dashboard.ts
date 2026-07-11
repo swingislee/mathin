@@ -267,6 +267,307 @@ export async function getMyClassroomCards(uid: string): Promise<MyClassroomCard[
   }));
 }
 
+// ---------------------------------------------------------------------------
+// P4C-5 §0 反推的新磁贴取数（11-§5.6/§10）。约束：零权限分支（scope 全交 RLS）、
+// 禁 N+1、全部用调用者身份的 server client。
+// ---------------------------------------------------------------------------
+
+export interface TemplateProgressRow {
+  grade: number;
+  ready: number;
+  total: number;
+}
+
+/** 课件模板完成度：按年级分行（教研 templateProgress 贴）。两次轻量行查询内存分组，不拉模板 jsonb。 */
+export async function getTemplateProgress(): Promise<TemplateProgressRow[]> {
+  const supabase = await createClient();
+  const [totalRes, readyRes] = await Promise.all([
+    supabase.from("course_lectures").select("courses!inner(grade)").limit(10000).returns<Array<{ courses: { grade: number } }>>(),
+    supabase
+      .from("course_lectures")
+      .select("courses!inner(grade)")
+      .neq("courseware_template", "[]")
+      .limit(10000)
+      .returns<Array<{ courses: { grade: number } }>>(),
+  ]);
+  if (totalRes.error) throw new Error(totalRes.error.message);
+  if (readyRes.error) throw new Error(readyRes.error.message);
+  const rows = new Map<number, TemplateProgressRow>();
+  for (const row of totalRes.data ?? []) {
+    const entry = rows.get(row.courses.grade) ?? { grade: row.courses.grade, ready: 0, total: 0 };
+    entry.total += 1;
+    rows.set(row.courses.grade, entry);
+  }
+  for (const row of readyRes.data ?? []) {
+    const entry = rows.get(row.courses.grade);
+    if (entry) entry.ready += 1;
+  }
+  return Array.from(rows.values()).sort((a, b) => a.grade - b.grade);
+}
+
+export interface TemplateUrgentRow {
+  sessionId: string;
+  classroomName: string;
+  courseId: string;
+  courseTitle: string;
+  lectureId: string;
+  lectureName: string;
+  scheduledAt: string;
+}
+
+/** 倒排期（§0.3）：未来 7 天开课但 lecture 模板仍为空的课次。只回查空模板讲次，不拉大 jsonb。 */
+export async function getTemplateUrgent(): Promise<TemplateUrgentRow[]> {
+  const supabase = await createClient();
+  const now = new Date();
+  const { data: sessionRows, error } = await supabase
+    .from("class_sessions")
+    .select("id,scheduled_at,lecture_id,classrooms(name)")
+    .is("deleted_at", null)
+    .is("courseware_frozen_at", null)
+    .not("lecture_id", "is", null)
+    .gte("scheduled_at", now.toISOString())
+    .lt("scheduled_at", addDays(now, 7).toISOString())
+    .order("scheduled_at", { ascending: true })
+    .limit(200)
+    .returns<Array<{ id: string; scheduled_at: string; lecture_id: string; classrooms: { name: string } | null }>>();
+  if (error) throw new Error(error.message);
+  const sessions = sessionRows ?? [];
+  if (sessions.length === 0) return [];
+
+  const lectureIds = Array.from(new Set(sessions.map((row) => row.lecture_id)));
+  const { data: lectureRows, error: lectureError } = await supabase
+    .from("course_lectures")
+    .select("id,name,course_id,courses(title)")
+    .in("id", lectureIds)
+    .eq("courseware_template", "[]")
+    .returns<Array<{ id: string; name: string; course_id: string; courses: { title: string } | null }>>();
+  if (lectureError) throw new Error(lectureError.message);
+  const emptyById = new Map((lectureRows ?? []).map((row) => [row.id, row]));
+
+  return sessions
+    .filter((row) => emptyById.has(row.lecture_id))
+    .slice(0, 8)
+    .map((row) => {
+      const lecture = emptyById.get(row.lecture_id)!;
+      return {
+        sessionId: row.id,
+        classroomName: row.classrooms?.name || "-",
+        courseId: lecture.course_id,
+        courseTitle: lecture.courses?.title || "-",
+        lectureId: lecture.id,
+        lectureName: lecture.name,
+        scheduledAt: row.scheduled_at,
+      };
+    });
+}
+
+export interface GradingQueueRow {
+  assignmentId: string;
+  classroomId: string;
+  studentName: string;
+  assignmentTitle: string;
+  submittedAt: string;
+}
+
+/** 批改清单（§0.4）：我任教班级未批改提交，升序取 8，每行直达批改页。 */
+export async function getGradingQueue(uid: string): Promise<GradingQueueRow[]> {
+  const supabase = await createClient();
+  const classroomIds = await getMyTeacherClassroomIds(supabase, uid);
+  if (classroomIds.length === 0) return [];
+  const { data: assignmentRows, error: assignmentError } = await supabase
+    .from("assignments")
+    .select("id,title,classroom_id")
+    .in("classroom_id", classroomIds)
+    .returns<Array<{ id: string; title: string; classroom_id: string }>>();
+  if (assignmentError) throw new Error(assignmentError.message);
+  const assignmentById = new Map((assignmentRows ?? []).map((row) => [row.id, row]));
+  if (assignmentById.size === 0) return [];
+
+  const { data: submissionRows, error: submissionError } = await supabase
+    .from("submissions")
+    .select("assignment_id,submitted_at,profiles(display_name)")
+    .in("assignment_id", Array.from(assignmentById.keys()))
+    .is("graded_at", null)
+    .not("submitted_at", "is", null)
+    .order("submitted_at", { ascending: true })
+    .limit(8)
+    .returns<Array<{ assignment_id: string; submitted_at: string; profiles: { display_name: string } | null }>>();
+  if (submissionError) throw new Error(submissionError.message);
+  return (submissionRows ?? []).map((row) => {
+    const assignment = assignmentById.get(row.assignment_id)!;
+    return {
+      assignmentId: assignment.id,
+      classroomId: assignment.classroom_id,
+      studentName: row.profiles?.display_name || "-",
+      assignmentTitle: assignment.title || "-",
+      submittedAt: row.submitted_at,
+    };
+  });
+}
+
+export interface DueOrderRow {
+  orderId: string;
+  studentId: string;
+  studentName: string;
+  dueAmount: number;
+  createdAt: string;
+}
+
+/** 催缴名单（§0.1/§0.5）：欠额 = amount_due − 已收合计。scope 全靠 orders RLS（§10 零权限分支）。 */
+export async function getDueOrders(): Promise<DueOrderRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("orders")
+    .select("id,student_id,amount_due,created_at,students(name),payments(amount)")
+    .in("status", ["unpaid", "partial"])
+    .order("created_at", { ascending: true })
+    .limit(100)
+    .returns<
+      Array<{
+        id: string;
+        student_id: string;
+        amount_due: number;
+        created_at: string;
+        students: { name: string } | null;
+        payments: Array<{ amount: number }>;
+      }>
+    >();
+  if (error) throw new Error(error.message);
+  return (data ?? [])
+    .map((row) => ({
+      orderId: row.id,
+      studentId: row.student_id,
+      studentName: row.students?.name || "-",
+      dueAmount: row.amount_due - (row.payments ?? []).reduce((sum, p) => sum + p.amount, 0),
+      createdAt: row.created_at,
+    }))
+    .filter((row) => row.dueAmount > 0.005)
+    .slice(0, 8);
+}
+
+export interface UnmarkedSessionRow {
+  sessionId: string;
+  classroomId: string;
+  classroomName: string;
+  title: string;
+  scheduledAt: string;
+}
+
+/** 未点名课次（§0.2）：近 7 天已结束（ended_at 非空或 scheduled_at+duration 已过）且考勤零行。 */
+export async function getUnmarkedSessions(): Promise<UnmarkedSessionRow[]> {
+  const supabase = await createClient();
+  const now = new Date();
+  const { data: sessionRows, error } = await supabase
+    .from("class_sessions")
+    .select("id,title,scheduled_at,duration_min,ended_at,classroom_id,classrooms(name)")
+    .is("deleted_at", null)
+    .not("scheduled_at", "is", null)
+    .gte("scheduled_at", addDays(now, -7).toISOString())
+    .lte("scheduled_at", now.toISOString())
+    .order("scheduled_at", { ascending: true })
+    .limit(200)
+    .returns<
+      Array<{
+        id: string;
+        title: string;
+        scheduled_at: string;
+        duration_min: number | null;
+        ended_at: string | null;
+        classroom_id: string;
+        classrooms: { name: string } | null;
+      }>
+    >();
+  if (error) throw new Error(error.message);
+  const ended = (sessionRows ?? []).filter(
+    (row) => row.ended_at || new Date(row.scheduled_at).getTime() + (row.duration_min ?? 0) * 60000 < now.getTime(),
+  );
+  if (ended.length === 0) return [];
+
+  // 一次查回考勤 Set 对账（§10 禁 N+1）。
+  const { data: attendanceRows, error: attendanceError } = await supabase
+    .from("session_attendance")
+    .select("session_id")
+    .in("session_id", ended.map((row) => row.id))
+    .returns<Array<{ session_id: string }>>();
+  if (attendanceError) throw new Error(attendanceError.message);
+  const marked = new Set((attendanceRows ?? []).map((row) => row.session_id));
+
+  return ended
+    .filter((row) => !marked.has(row.id))
+    .slice(0, 8)
+    .map((row) => ({
+      sessionId: row.id,
+      classroomId: row.classroom_id,
+      classroomName: row.classrooms?.name || "-",
+      title: row.title,
+      scheduledAt: row.scheduled_at,
+    }));
+}
+
+export interface RosterMismatch {
+  /** active 报名但学生无账号，或账号不在该教室成员里。 */
+  unlinkedEnrollments: number;
+  /** 教室 student 成员没有对应 active 报名（只统计带 course_id 的教学班，排除自由教室）。 */
+  orphanMembers: number;
+}
+
+/** 花名册错位全局对账（§0.2）：两个全量数组内存对账，禁按班级循环 N+1。 */
+export async function getRosterMismatchCount(): Promise<RosterMismatch> {
+  const supabase = await createClient();
+  const [enrollRes, memberRes] = await Promise.all([
+    supabase
+      .from("enrollments")
+      .select("classroom_id,student_id,students(user_id)")
+      .eq("status", "active")
+      .limit(5000)
+      .returns<Array<{ classroom_id: string; student_id: string; students: { user_id: string | null } | null }>>(),
+    supabase
+      .from("classroom_members")
+      .select("classroom_id,user_id,classrooms!inner(course_id)")
+      .eq("role", "student")
+      .not("classrooms.course_id", "is", null)
+      .limit(5000)
+      .returns<Array<{ classroom_id: string; user_id: string }>>(),
+  ]);
+  if (enrollRes.error) throw new Error(enrollRes.error.message);
+  if (memberRes.error) throw new Error(memberRes.error.message);
+  const enrollments = enrollRes.data ?? [];
+  const members = memberRes.data ?? [];
+
+  const memberSet = new Set(members.map((row) => `${row.classroom_id}:${row.user_id}`));
+  const enrolledSet = new Set(
+    enrollments.filter((row) => row.students?.user_id).map((row) => `${row.classroom_id}:${row.students!.user_id}`),
+  );
+  return {
+    unlinkedEnrollments: enrollments.filter(
+      (row) => !row.students?.user_id || !memberSet.has(`${row.classroom_id}:${row.students.user_id}`),
+    ).length,
+    orphanMembers: members.filter((row) => !enrolledSet.has(`${row.classroom_id}:${row.user_id}`)).length,
+  };
+}
+
+export interface FollowupBoardCounts {
+  overdue: number;
+  today: number;
+}
+
+/** 跟进台入口贴两数：逾期（next < now）与今日（next 在今天内）。scope 交 students RLS。 */
+export async function getFollowupBoardCounts(): Promise<FollowupBoardCounts> {
+  const supabase = await createClient();
+  const now = new Date();
+  const dayStart = startOfDay(now);
+  const dayEnd = addDays(dayStart, 1);
+  const [overdueRes, todayRes] = await Promise.all([
+    supabase.from("students").select("*", { count: "exact", head: true }).lt("next_follow_up_at", now.toISOString()),
+    supabase
+      .from("students")
+      .select("*", { count: "exact", head: true })
+      .gte("next_follow_up_at", dayStart.toISOString())
+      .lt("next_follow_up_at", dayEnd.toISOString()),
+  ]);
+  return { overdue: overdueRes.count ?? 0, today: todayRes.count ?? 0 };
+}
+
 export interface FinanceOverview {
   dueTotal: number;
   paidTotal: number;

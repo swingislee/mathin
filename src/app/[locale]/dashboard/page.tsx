@@ -7,22 +7,36 @@ import type { ClassroomMeta } from "@/features/classroom/types";
 import { BindCodeForm } from "@/features/school/BindCodeForm";
 import { getMyLearningSummary, getMyPendingAssignments, getMyStudents } from "@/features/school/customer";
 import {
+  getDueOrders,
   getFinanceOverview,
   getFollowUpFunnel,
+  getFollowupBoardCounts,
+  getGradingQueue,
   getMyClassroomCards,
   getMyMonthlyPerformance,
   getMyOverdueFollowUps,
   getMyTeachingCard,
+  getRosterMismatchCount,
   getStaffStats,
+  getTemplateProgress,
+  getTemplateUrgent,
   getTodaySchedule,
+  getUnmarkedSessions,
+  type DueOrderRow,
   type FinanceOverview,
   type FollowUpFunnelBucket,
+  type FollowupBoardCounts,
+  type GradingQueueRow,
   type MyClassroomCard,
   type MyOverdueFollowUp,
   type MyPerformance,
   type MyTeachingCard,
+  type RosterMismatch,
   type StaffStats,
+  type TemplateProgressRow,
+  type TemplateUrgentRow,
   type TodaySessionRow,
+  type UnmarkedSessionRow,
 } from "@/features/school/dashboard";
 import { countPendingRefunds } from "@/features/school/finance";
 import { formatMs } from "@/features/games/format";
@@ -32,6 +46,7 @@ import { addDays } from "@/features/school/schedule";
 import { getWeekSchedule } from "@/features/school/actions";
 import {
   CHILD_TILE_PREFIX,
+  findTileDef,
   mergeTileLayout,
   parentDefaultOrder,
   staffDefaultOrder,
@@ -40,6 +55,7 @@ import {
   type EligibleTile,
   type MergedTileLayout,
   type TileAudience,
+  type TileTone,
 } from "@/features/school/tiles";
 import { TileWorkspace, type TileGridItem } from "@/features/school/TileWorkspace";
 import { Link } from "@/i18n/navigation";
@@ -59,6 +75,8 @@ const EMPTY_STATS: StaffStats = { enrolledCount: 0, leadCount: 0, weekSessionCou
 const EMPTY_PERFORMANCE: MyPerformance = { dueTotal: 0, paidTotal: 0, enrollCount: 0 };
 const EMPTY_TEACHING: MyTeachingCard = { sessions: [], pendingGradingCount: 0 };
 const EMPTY_FINANCE: FinanceOverview = { dueTotal: 0, paidTotal: 0, refundTotal: 0, overdueOrderCount: 0 };
+const EMPTY_MISMATCH: RosterMismatch = { unlinkedEnrollments: 0, orphanMembers: 0 };
+const EMPTY_FOLLOWUP_COUNTS: FollowupBoardCounts = { overdue: 0, today: 0 };
 
 interface BestRow {
   game_id: string;
@@ -76,9 +94,15 @@ interface RecentPostRow {
 type Translator = Awaited<ReturnType<typeof getTranslations>>;
 
 // ---------------------------------------------------------------------------
-// 磁贴装配（P4C-4 §5.3）：取数留在服务端，每个有权限的磁贴渲染成 ReactNode 后
-// 连同合并好的布局交给客户端 TileWorkspace；隐藏贴也要渲染（编辑态可即时加回）。
+// 磁贴装配（P4C-4 §5.3 / P4C-5 §5.4）：取数留在服务端，磁贴壳（图标+眉标签+箭头
+// +tone）由客户端 TileWorkspace 渲染，这里只产出 body 内容与逐贴 extras。
 // ---------------------------------------------------------------------------
+
+interface TileExtra {
+  tone?: TileTone;
+  href?: string;
+  cover?: boolean;
+}
 
 function pickEligible(audience: TileAudience, perms: ReadonlySet<PermissionKey>): EligibleTile[] {
   return TILE_REGISTRY.filter(
@@ -94,12 +118,25 @@ function buildTileItems(
   eligible: readonly EligibleTile[],
   labels: ReadonlyMap<string, string>,
   contents: ReadonlyMap<string, ReactNode>,
+  extras: ReadonlyMap<string, TileExtra>,
 ): { items: TileGridItem[]; hidden: TileGridItem[] } {
   const sizesByKey = new Map(eligible.map((tile) => [tile.key, tile.allowedSizes]));
   const toItem = (key: string, size: TileGridItem["size"]): TileGridItem | null => {
     const allowedSizes = sizesByKey.get(key);
-    if (!allowedSizes || !contents.has(key)) return null;
-    return { key, size, label: labels.get(key) ?? key, allowedSizes, node: contents.get(key) };
+    const def = findTileDef(key);
+    if (!allowedSizes || !def || !contents.has(key)) return null;
+    const extra = extras.get(key);
+    return {
+      key,
+      size,
+      label: labels.get(key) ?? key,
+      allowedSizes,
+      icon: def.icon,
+      tone: extra?.tone ?? def.tone,
+      href: extra?.href,
+      cover: extra?.cover,
+      node: contents.get(key),
+    };
   };
   return {
     items: merged.result.map((entry) => toItem(entry.k, entry.s)).filter((item): item is TileGridItem => item !== null),
@@ -109,26 +146,26 @@ function buildTileItems(
   };
 }
 
-/** 磁贴内小页头：标题 + 右侧直达链接（列表尾链接会被固定行高裁掉，统一收到头部）。 */
-function TileHead({ title, href, linkLabel }: { title: string; href?: string; linkLabel?: string }) {
+/** 1x1 统计贴主体：主数垂直居中（标签在壳的眉标行，§5.4）。 */
+function StatBody({ value, tone }: { value: number; tone?: TileTone }) {
   return (
-    <div className="flex items-baseline justify-between gap-2">
-      <h2 className="truncate font-medium">{title}</h2>
+    <p className={cn("flex flex-1 items-center font-display text-4xl tabular-nums", tone === "rose" && value > 0 && "text-rose")}>
+      {value}
+    </p>
+  );
+}
+
+/** 空态：一句话 + 直达按钮（§5.4 禁止只有一行灰字）。 */
+function EmptyBody({ text, href, linkLabel }: { text: string; href?: string; linkLabel?: string }) {
+  return (
+    <div className="flex flex-1 flex-col items-start justify-center gap-3">
+      <p className="text-sm text-muted">{text}</p>
       {href && linkLabel && (
-        <Link href={href} className="shrink-0 text-xs text-crater underline underline-offset-2">
+        <Link href={href} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>
           {linkLabel}
         </Link>
       )}
     </div>
-  );
-}
-
-function StatTileContent({ value, label, href }: { value: number; label: string; href: string }) {
-  return (
-    <Link href={href} className="flex flex-1 flex-col justify-center">
-      <p className="font-display text-3xl tabular-nums">{value}</p>
-      <p className="mt-1 truncate text-xs text-muted">{label}</p>
-    </Link>
   );
 }
 
@@ -142,6 +179,7 @@ function buildSharedCustomerTiles({
   classrooms,
   labels,
   contents,
+  extras,
 }: {
   t: Translator;
   gamesT: Translator;
@@ -151,92 +189,82 @@ function buildSharedCustomerTiles({
   classrooms: ClassroomMeta[];
   labels: Map<string, string>;
   contents: Map<string, ReactNode>;
+  extras: Map<string, TileExtra>;
 }) {
   labels.set("myScores", t("scoresTitle"));
+  extras.set("myScores", { href: "/games" });
   contents.set(
     "myScores",
-    <>
-      <TileHead title={t("scoresTitle")} />
-      {bests.length === 0 ? (
-        <div className="mt-3 flex flex-col items-start gap-3">
-          <p className="text-sm text-muted">{t("noScores")}</p>
-          <Link href="/games" className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>
-            {t("goPlay")}
-          </Link>
-        </div>
-      ) : (
-        <ul className="mt-2 min-h-0 flex-1 divide-y overflow-hidden">
-          {games.map((def) =>
-            def.difficulties.map((difficulty, i) => {
-              const row = bests.find((b) => b.game_id === def.id && b.difficulty === difficulty);
-              if (!row) return null;
-              return (
-                <li key={`${def.id}:${difficulty}`} className="flex items-center gap-3 py-2 text-sm">
-                  <def.icon size={16} className="text-muted" />
-                  <span className="min-w-0 flex-1 truncate font-medium">{gamesT(`items.${def.id}.name`)}</span>
-                  <span className="flex shrink-0 items-center gap-1 text-xs text-muted">
-                    {Array.from({ length: i + 1 }, (_, k) => (
-                      <Crown key={k} size={10} />
-                    ))}
-                    {gamesT(`difficulty.${difficulty}`)}
-                  </span>
-                  <span className="shrink-0 font-serif tabular-nums">{formatMs(row.duration_ms)}</span>
-                </li>
-              );
-            }),
-          )}
-        </ul>
-      )}
-    </>,
+    bests.length === 0 ? (
+      <EmptyBody text={t("noScores")} href="/games" linkLabel={t("goPlay")} />
+    ) : (
+      <ul className="min-h-0 flex-1 divide-y overflow-hidden">
+        {games.map((def) =>
+          def.difficulties.map((difficulty, i) => {
+            const row = bests.find((b) => b.game_id === def.id && b.difficulty === difficulty);
+            if (!row) return null;
+            return (
+              <li key={`${def.id}:${difficulty}`} className="flex items-center gap-3 py-2 text-sm">
+                <def.icon size={16} className="text-muted" />
+                <span className="min-w-0 flex-1 truncate font-medium">{gamesT(`items.${def.id}.name`)}</span>
+                <span className="flex shrink-0 items-center gap-1 text-xs text-muted">
+                  {Array.from({ length: i + 1 }, (_, k) => (
+                    <Crown key={k} size={10} />
+                  ))}
+                  {gamesT(`difficulty.${difficulty}`)}
+                </span>
+                <span className="shrink-0 font-serif tabular-nums">{formatMs(row.duration_ms)}</span>
+              </li>
+            );
+          }),
+        )}
+      </ul>
+    ),
   );
 
   labels.set("myNotes", t("notesTitle"));
+  extras.set("myNotes", { href: "/notebook/me" });
   contents.set(
     "myNotes",
-    <>
-      <TileHead title={t("notesTitle")} href="/notebook/me" linkLabel={t("goWrite")} />
-      {recentPosts.length === 0 ? (
-        <p className="mt-3 text-sm text-muted">{t("noNotes")}</p>
-      ) : (
-        <ul className="mt-2 min-h-0 flex-1 divide-y overflow-hidden">
-          {recentPosts.map((post) => (
-            <li key={post.id} className="flex flex-wrap items-center gap-3 py-2 text-sm">
-              <Link href={`/notebook/${post.id}`} className="min-w-0 flex-1 truncate font-medium hover:underline">
-                {post.title || t("untitled")}
-              </Link>
-              <time className="shrink-0 text-xs text-muted">
-                {new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(post.published_at))}
-              </time>
-            </li>
-          ))}
-        </ul>
-      )}
-    </>,
+    recentPosts.length === 0 ? (
+      <EmptyBody text={t("noNotes")} href="/notebook/me" linkLabel={t("goWrite")} />
+    ) : (
+      <ul className="min-h-0 flex-1 divide-y overflow-hidden">
+        {recentPosts.map((post) => (
+          <li key={post.id} className="flex flex-wrap items-center gap-3 py-2 text-sm">
+            <Link href={`/notebook/${post.id}`} className="min-w-0 flex-1 truncate font-medium hover:underline">
+              {post.title || t("untitled")}
+            </Link>
+            <time className="shrink-0 text-xs text-muted">
+              {new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(post.published_at))}
+            </time>
+          </li>
+        ))}
+      </ul>
+    ),
   );
 
   labels.set("myClassrooms", t("classroomsTitle"));
+  extras.set("myClassrooms", { href: "/classroom" });
   contents.set(
     "myClassrooms",
-    <>
-      <TileHead title={t("classroomsTitle")} href="/classroom" linkLabel={t("goClassrooms")} />
-      {classrooms.length === 0 ? (
-        <p className="mt-3 text-sm text-muted">{t("noClassrooms")}</p>
-      ) : (
-        <ul className="mt-2 min-h-0 flex-1 divide-y overflow-hidden">
-          {classrooms.map((classroom) => (
-            <li key={classroom.id} className="flex items-center gap-3 py-2 text-sm">
-              <School size={16} className="shrink-0 text-muted" aria-hidden />
-              <Link href={`/classroom/${classroom.id}`} className="min-w-0 flex-1 truncate font-medium hover:underline">
-                {classroom.name || t("untitled")}
-              </Link>
-              <span className="shrink-0 rounded-full bg-line/50 px-2 py-0.5 text-xs text-muted">
-                {classroom.myRole === "teacher" ? t("teaching") : t("studying")}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </>,
+    classrooms.length === 0 ? (
+      <EmptyBody text={t("noClassrooms")} href="/classroom" linkLabel={t("goClassrooms")} />
+    ) : (
+      <ul className="min-h-0 flex-1 divide-y overflow-hidden">
+        {classrooms.map((classroom) => (
+          <li key={classroom.id} className="flex items-center gap-3 py-2 text-sm">
+            <School size={16} className="shrink-0 text-muted" aria-hidden />
+            <Link href={`/classroom/${classroom.id}`} className="min-w-0 flex-1 truncate font-medium hover:underline">
+              {classroom.name || t("untitled")}
+            </Link>
+            <span className="shrink-0 rounded-full bg-line/50 px-2 py-0.5 text-xs text-muted">
+              {classroom.myRole === "teacher" ? t("teaching") : t("studying")}
+            </span>
+          </li>
+        ))}
+      </ul>
+    ),
   );
 }
 
@@ -274,9 +302,14 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
   const userTiles = layoutRow?.tiles ?? null;
   const dateLine = new Intl.DateTimeFormat(locale, { dateStyle: "full" }).format(new Date());
   const subtitle = `${schoolT("home.staffGreeting", { name: profile?.displayName || "" })} · ${dateLine}`;
+  const cny = new Intl.NumberFormat(locale, { style: "currency", currency: "CNY" });
+  const timeFmt = new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit" });
+  const shortFmt = new Intl.DateTimeFormat(locale, { dateStyle: "short", timeStyle: "short" });
+  const dateFmt = new Intl.DateTimeFormat(locale, { dateStyle: "short" });
 
   const labels = new Map<string, string>();
   const contents = new Map<string, ReactNode>();
+  const extras = new Map<string, TileExtra>();
 
   if (isStaff) {
     const studentsFilterT = await getTranslations("school.students");
@@ -287,8 +320,29 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
     const canFinanceOverview = perms.has("finance.report.view");
     const canRefundQueue = perms.has("finance.refund.approve");
     const canSeeAllSchedule = perms.has("schedule.view.all");
+    const canGrading = perms.has("grading.write");
+    const canCourseManage = perms.has("course.manage");
+    const canClassViewAll = perms.has("class.view.all");
+    const canFollowupWrite = perms.has("followup.write");
 
-    const [stats, funnel, todaySessions, myFollowUps, myPerformance, myTeaching, myClassrooms, financeOverview, pendingRefundCount]: [
+    const [
+      stats,
+      funnel,
+      todaySessions,
+      myFollowUps,
+      myPerformance,
+      myTeaching,
+      myClassrooms,
+      financeOverview,
+      pendingRefundCount,
+      gradingQueue,
+      dueOrders,
+      templateUrgent,
+      templateProgress,
+      unmarkedSessions,
+      rosterMismatch,
+      followupCounts,
+    ]: [
       StaffStats,
       FollowUpFunnelBucket[],
       TodaySessionRow[],
@@ -298,6 +352,13 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
       MyClassroomCard[],
       FinanceOverview,
       number,
+      GradingQueueRow[],
+      DueOrderRow[],
+      TemplateUrgentRow[],
+      TemplateProgressRow[],
+      UnmarkedSessionRow[],
+      RosterMismatch,
+      FollowupBoardCounts,
     ] = await Promise.all([
       canStats ? safe(getStaffStats, EMPTY_STATS) : Promise.resolve(EMPTY_STATS),
       canStats ? safe(getFollowUpFunnel, []) : Promise.resolve([]),
@@ -308,146 +369,142 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
       canMyTeaching ? safe(() => getMyClassroomCards(user.id), []) : Promise.resolve([]),
       canFinanceOverview ? safe(getFinanceOverview, EMPTY_FINANCE) : Promise.resolve(EMPTY_FINANCE),
       canRefundQueue ? safe(countPendingRefunds, 0) : Promise.resolve(0),
+      canGrading ? safe(() => getGradingQueue(user.id), []) : Promise.resolve([]),
+      canMyPerformance ? safe(getDueOrders, []) : Promise.resolve([]),
+      canCourseManage ? safe(getTemplateUrgent, []) : Promise.resolve([]),
+      canCourseManage ? safe(getTemplateProgress, []) : Promise.resolve([]),
+      canClassViewAll ? safe(getUnmarkedSessions, []) : Promise.resolve([]),
+      canClassViewAll ? safe(getRosterMismatchCount, EMPTY_MISMATCH) : Promise.resolve(EMPTY_MISMATCH),
+      canFollowupWrite ? safe(getFollowupBoardCounts, EMPTY_FOLLOWUP_COUNTS) : Promise.resolve(EMPTY_FOLLOWUP_COUNTS),
     ]);
 
     const funnelMax = Math.max(1, ...funnel.map((bucket) => bucket.count));
     const isManager = canStats;
 
-    // ---- 统计四贴 ----
-    const statTiles: Array<{ key: string; label: string; value: number; href: string }> = [
+    // ---- 统计四贴（整贴可点） ----
+    const statTiles: Array<{ key: string; label: string; value: number; href: string; tone?: TileTone }> = [
       { key: "statEnrolled", label: schoolT("home.statEnrolled"), value: stats.enrolledCount, href: "/dashboard/students" },
       { key: "statLeads", label: schoolT("home.statLeads"), value: stats.leadCount, href: "/dashboard/students?status=lead" },
       { key: "statWeekSessions", label: schoolT("home.statWeekSessions"), value: stats.weekSessionCount, href: "/dashboard/schedule" },
-      { key: "statOverdueFollowUps", label: schoolT("home.statOverdueFollowUps"), value: stats.overdueFollowUpCount, href: "/dashboard/students" },
+      {
+        key: "statOverdueFollowUps",
+        label: schoolT("home.statOverdueFollowUps"),
+        value: stats.overdueFollowUpCount,
+        href: "/dashboard/students",
+        tone: "rose",
+      },
     ];
     for (const stat of statTiles) {
       labels.set(stat.key, stat.label);
-      contents.set(stat.key, <StatTileContent value={stat.value} label={stat.label} href={stat.href} />);
+      extras.set(stat.key, { href: stat.href, cover: true });
+      contents.set(stat.key, <StatBody value={stat.value} tone={stat.tone} />);
     }
 
     // ---- 今日课表 ----
-    const todayTitle = canSeeAllSchedule ? schoolT("home.todayScheduleTitle") : schoolT("home.todayScheduleTitleMine");
-    labels.set("todaySchedule", todayTitle);
+    labels.set("todaySchedule", canSeeAllSchedule ? schoolT("home.todayScheduleTitle") : schoolT("home.todayScheduleTitleMine"));
+    extras.set("todaySchedule", { href: "/dashboard/schedule" });
     contents.set(
       "todaySchedule",
-      <>
-        <TileHead title={todayTitle} href="/dashboard/schedule" linkLabel={schoolT("nav.schedule")} />
-        {todaySessions.length === 0 ? (
-          <p className="mt-3 text-sm text-muted">{schoolT("home.todayScheduleEmpty")}</p>
-        ) : (
-          <ul className="mt-2 min-h-0 flex-1 divide-y overflow-hidden">
-            {todaySessions.slice(0, 12).map((session) => (
-              <li key={session.sessionId} className="flex flex-wrap items-center gap-3 py-2 text-sm">
-                <span className="w-12 shrink-0 font-mono text-xs text-muted">
-                  {new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit" }).format(new Date(session.scheduledAt))}
-                </span>
-                <span className="min-w-[7rem] flex-1 truncate font-medium">{session.classroomName}</span>
-                <span className="max-w-[10rem] shrink-0 truncate text-xs text-muted">{session.title}</span>
-                {session.teacherName && (
-                  <span className="shrink-0 rounded-full bg-line/50 px-2 py-0.5 text-xs text-muted">{session.teacherName}</span>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </>,
+      todaySessions.length === 0 ? (
+        <EmptyBody text={schoolT("home.todayScheduleEmpty")} href="/dashboard/schedule" linkLabel={schoolT("nav.schedule")} />
+      ) : (
+        <ul className="min-h-0 flex-1 divide-y overflow-hidden">
+          {todaySessions.slice(0, 12).map((session) => (
+            <li key={session.sessionId} className="flex flex-wrap items-center gap-3 py-2 text-sm">
+              <span className="w-12 shrink-0 font-mono text-xs text-muted">{timeFmt.format(new Date(session.scheduledAt))}</span>
+              <span className="min-w-[7rem] flex-1 truncate font-medium">{session.classroomName}</span>
+              <span className="max-w-[10rem] shrink-0 truncate text-xs text-muted">{session.title}</span>
+              {session.teacherName && (
+                <span className="shrink-0 rounded-full bg-line/50 px-2 py-0.5 text-xs text-muted">{session.teacherName}</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      ),
     );
 
     // ---- 生源漏斗 ----
     labels.set("funnel", schoolT("home.funnelTitle"));
     contents.set(
       "funnel",
-      <>
-        <TileHead title={schoolT("home.funnelTitle")} />
-        <ul className="mt-3 grid gap-2">
-          {funnel.map((bucket) => (
-            <li key={bucket.status} className="flex items-center gap-3 text-sm">
-              <span className="w-14 shrink-0 truncate text-xs text-muted">{studentsFilterT(bucket.status)}</span>
-              <span className="h-2 flex-1 overflow-hidden rounded-full bg-line/40">
-                <span
-                  className="block h-full rounded-full bg-crater/50"
-                  style={{ width: `${Math.round((bucket.count / funnelMax) * 100)}%` }}
-                />
-              </span>
-              <span className="w-8 shrink-0 text-right font-display tabular-nums">{bucket.count}</span>
-            </li>
-          ))}
-        </ul>
-      </>,
+      <ul className="grid flex-1 content-center gap-1.5">
+        {funnel.map((bucket) => (
+          <li key={bucket.status} className="flex items-center gap-3 text-sm">
+            <span className="w-14 shrink-0 truncate text-xs text-muted">{studentsFilterT(bucket.status)}</span>
+            <span className="h-2 flex-1 overflow-hidden rounded-full bg-line/40">
+              <span
+                className="block h-full rounded-full bg-crater/50"
+                style={{ width: `${Math.round((bucket.count / funnelMax) * 100)}%` }}
+              />
+            </span>
+            <span className="w-8 shrink-0 text-right font-display tabular-nums">{bucket.count}</span>
+          </li>
+        ))}
+      </ul>,
     );
 
     // ---- 我的待跟进 ----
     labels.set("myFollowUps", schoolT("home.myFollowUpsTitle"));
+    extras.set("myFollowUps", { href: "/dashboard/students" });
     contents.set(
       "myFollowUps",
-      <>
-        <TileHead title={schoolT("home.myFollowUpsTitle")} href="/dashboard/students" linkLabel={schoolT("nav.students")} />
-        {myFollowUps.length === 0 ? (
-          <p className="mt-3 text-sm text-muted">{schoolT("home.myFollowUpsEmpty")}</p>
-        ) : (
-          <ul className="mt-2 min-h-0 flex-1 divide-y overflow-hidden">
-            {myFollowUps.map((row) => (
-              <li key={row.studentId} className="flex items-center justify-between gap-3 py-2 text-sm">
-                <Link href={`/dashboard/students/${row.studentId}`} className="min-w-0 flex-1 truncate font-medium hover:underline">
-                  {row.studentName}
-                </Link>
-                <span className="shrink-0 text-xs text-rose">
-                  {new Intl.DateTimeFormat(locale, { dateStyle: "short" }).format(new Date(row.nextFollowUpAt))}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </>,
+      myFollowUps.length === 0 ? (
+        <EmptyBody text={schoolT("home.myFollowUpsEmpty")} href="/dashboard/students" linkLabel={schoolT("nav.students")} />
+      ) : (
+        <ul className="min-h-0 flex-1 divide-y overflow-hidden">
+          {myFollowUps.map((row) => (
+            <li key={row.studentId} className="flex items-center justify-between gap-3 py-2 text-sm">
+              <Link href={`/dashboard/students/${row.studentId}`} className="min-w-0 flex-1 truncate font-medium hover:underline">
+                {row.studentName}
+              </Link>
+              <span className="shrink-0 rounded-full bg-rose/10 px-2 py-0.5 text-xs text-rose">
+                {dateFmt.format(new Date(row.nextFollowUpAt))}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ),
     );
 
     // ---- 本月业绩 ----
     labels.set("myPerformance", schoolT("home.myPerformanceTitle"));
+    extras.set("myPerformance", { href: "/dashboard/finance" });
     contents.set(
       "myPerformance",
-      <>
-        <TileHead title={schoolT("home.myPerformanceTitle")} />
-        <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm">
-          <span>
-            <span className="font-display tabular-nums">¥{myPerformance.dueTotal.toFixed(2)}</span>
-            <span className="ml-1 text-xs text-muted">{schoolT("home.performanceDue")}</span>
-          </span>
-          <span>
-            <span className="font-display tabular-nums">¥{myPerformance.paidTotal.toFixed(2)}</span>
-            <span className="ml-1 text-xs text-muted">{schoolT("home.performancePaid")}</span>
-          </span>
-          <span>
-            <span className="font-display tabular-nums">{myPerformance.enrollCount}</span>
-            <span className="ml-1 text-xs text-muted">{schoolT("home.performanceEnrolls")}</span>
-          </span>
-        </div>
-      </>,
+      <div className="flex flex-1 flex-wrap content-center items-center gap-x-6 gap-y-2">
+        {[
+          { value: cny.format(myPerformance.dueTotal), label: schoolT("home.performanceDue") },
+          { value: cny.format(myPerformance.paidTotal), label: schoolT("home.performancePaid") },
+          { value: String(myPerformance.enrollCount), label: schoolT("home.performanceEnrolls") },
+        ].map((item) => (
+          <div key={item.label}>
+            <p className="font-display text-xl tabular-nums">{item.value}</p>
+            <p className="mt-0.5 text-xs text-muted">{item.label}</p>
+          </div>
+        ))}
+      </div>,
     );
 
     // ---- 我的课与待办 ----
     labels.set("myTeaching", schoolT("home.myTeachingTitle"));
+    extras.set("myTeaching", { href: "/dashboard/classes" });
     contents.set(
       "myTeaching",
       <>
-        <div className="flex items-baseline justify-between gap-2">
-          <h2 className="truncate font-medium">{schoolT("home.myTeachingTitle")}</h2>
-          {myTeaching.pendingGradingCount > 0 && (
-            <Link href="/dashboard/classes" className="shrink-0 text-xs text-rose underline underline-offset-2">
-              {schoolT("home.pendingGrading", { count: myTeaching.pendingGradingCount })}
-            </Link>
-          )}
-        </div>
+        {myTeaching.pendingGradingCount > 0 && (
+          <Link href="/dashboard/classes" className="mb-1 shrink-0 self-start text-xs text-rose underline underline-offset-2">
+            {schoolT("home.pendingGrading", { count: myTeaching.pendingGradingCount })}
+          </Link>
+        )}
         {myTeaching.sessions.length === 0 ? (
-          <p className="mt-3 text-sm text-muted">{schoolT("home.myTeachingEmpty")}</p>
+          <EmptyBody text={schoolT("home.myTeachingEmpty")} href="/dashboard/classes" linkLabel={schoolT("nav.classes")} />
         ) : (
-          <ul className="mt-2 min-h-0 flex-1 divide-y overflow-hidden">
+          <ul className="min-h-0 flex-1 divide-y overflow-hidden">
             {myTeaching.sessions.slice(0, 6).map((session) => (
               <li key={session.sessionId} className="flex flex-wrap items-center gap-3 py-2 text-sm">
                 <span className="min-w-[7rem] flex-1 truncate font-medium">{session.classroomName}</span>
                 <span className="shrink-0 text-xs text-muted">{session.title}</span>
-                <time className="shrink-0 text-xs text-muted">
-                  {new Intl.DateTimeFormat(locale, { dateStyle: "short", timeStyle: "short" }).format(new Date(session.scheduledAt))}
-                </time>
+                <time className="shrink-0 text-xs text-muted">{shortFmt.format(new Date(session.scheduledAt))}</time>
                 {session.unprepared && (
                   <span className="shrink-0 rounded-full bg-rose/10 px-2 py-0.5 text-xs text-rose">{schoolT("home.unprepared")}</span>
                 )}
@@ -466,75 +523,227 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
 
     // ---- 我的班级 ----
     labels.set("myClasses", schoolT("home.myClassesTitle"));
+    extras.set("myClasses", { href: "/dashboard/classes" });
     contents.set(
       "myClasses",
-      <>
-        <TileHead title={schoolT("home.myClassesTitle")} href="/dashboard/classes" linkLabel={schoolT("nav.classes")} />
-        {myClassrooms.length === 0 ? (
-          <p className="mt-3 text-sm text-muted">{schoolT("home.myClassroomsEmpty")}</p>
-        ) : (
-          <ul className="mt-2 min-h-0 flex-1 divide-y overflow-hidden">
-            {myClassrooms.map((classroom) => (
-              <li key={classroom.id} className="flex flex-wrap items-center gap-3 py-2 text-sm">
-                <Link href={`/dashboard/classes/${classroom.id}`} className="min-w-0 flex-1 truncate font-medium hover:underline">
-                  {classroom.name}
-                </Link>
-                <span className="shrink-0 text-xs text-muted">
-                  {classroom.capacity
-                    ? schoolT("home.classActiveCap", { count: classroom.activeCount, capacity: classroom.capacity })
-                    : schoolT("home.classActive", { count: classroom.activeCount })}
-                </span>
-                <span className="shrink-0 rounded-full bg-line/50 px-2 py-0.5 text-xs text-muted">
-                  {schoolT("home.classProgress", { done: classroom.doneSessionCount, total: classroom.totalSessionCount })}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </>,
+      myClassrooms.length === 0 ? (
+        <EmptyBody text={schoolT("home.myClassroomsEmpty")} href="/dashboard/classes" linkLabel={schoolT("nav.classes")} />
+      ) : (
+        <ul className="min-h-0 flex-1 divide-y overflow-hidden">
+          {myClassrooms.map((classroom) => (
+            <li key={classroom.id} className="flex flex-wrap items-center gap-3 py-2 text-sm">
+              <Link href={`/dashboard/classes/${classroom.id}`} className="min-w-0 flex-1 truncate font-medium hover:underline">
+                {classroom.name}
+              </Link>
+              <span className="shrink-0 text-xs text-muted">
+                {classroom.capacity
+                  ? schoolT("home.classActiveCap", { count: classroom.activeCount, capacity: classroom.capacity })
+                  : schoolT("home.classActive", { count: classroom.activeCount })}
+              </span>
+              <span className="shrink-0 rounded-full bg-line/50 px-2 py-0.5 text-xs text-muted">
+                {schoolT("home.classProgress", { done: classroom.doneSessionCount, total: classroom.totalSessionCount })}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ),
     );
 
     // ---- 财务概览 ----
     labels.set("financeOverview", schoolT("home.financeOverviewTitle"));
+    extras.set("financeOverview", { href: "/dashboard/finance" });
     contents.set(
       "financeOverview",
-      <>
-        <TileHead title={schoolT("home.financeOverviewTitle")} href="/dashboard/finance" linkLabel={schoolT("home.goFinance")} />
-        <div className="mt-3 grid grid-cols-2 gap-3 text-sm lg:grid-cols-4">
-          {[
-            { value: `¥${financeOverview.dueTotal.toFixed(2)}`, label: schoolT("home.financeDue") },
-            { value: `¥${financeOverview.paidTotal.toFixed(2)}`, label: schoolT("home.financePaid") },
-            { value: `¥${financeOverview.refundTotal.toFixed(2)}`, label: schoolT("home.financeRefunded") },
-            { value: String(financeOverview.overdueOrderCount), label: schoolT("home.financeOverdueOrders") },
-          ].map((item) => (
-            <div key={item.label}>
-              <p className="font-display text-xl tabular-nums">{item.value}</p>
-              <p className="mt-1 text-xs text-muted">{item.label}</p>
-            </div>
-          ))}
-        </div>
-      </>,
+      <div className="grid flex-1 grid-cols-2 content-center gap-3 lg:grid-cols-4">
+        {[
+          { value: cny.format(financeOverview.dueTotal), label: schoolT("home.financeDue") },
+          { value: cny.format(financeOverview.paidTotal), label: schoolT("home.financePaid") },
+          { value: cny.format(financeOverview.refundTotal), label: schoolT("home.financeRefunded") },
+          { value: String(financeOverview.overdueOrderCount), label: schoolT("home.financeOverdueOrders") },
+        ].map((item) => (
+          <div key={item.label}>
+            <p className="font-display text-xl tabular-nums">{item.value}</p>
+            <p className="mt-0.5 text-xs text-muted">{item.label}</p>
+          </div>
+        ))}
+      </div>,
     );
 
     // ---- 待审退费（count=0 时不进池，§5.6 自动隐藏） ----
-    labels.set("refundQueue", schoolT("home.refundQueueTitle", { count: pendingRefundCount }));
+    labels.set("refundQueue", schoolT("home.refundQueueLabel"));
+    extras.set("refundQueue", { href: "/dashboard/finance", cover: true });
+    contents.set("refundQueue", <StatBody value={pendingRefundCount} tone="rose" />);
+
+    // ---- 批改清单（§0.4）：逐份直达批改页 ----
+    labels.set("gradingQueue", schoolT("home.gradingQueueTitle"));
+    extras.set("gradingQueue", { href: "/dashboard/classes", tone: gradingQueue.length > 0 ? "rose" : undefined });
     contents.set(
-      "refundQueue",
-      <>
-        <TileHead
-          title={schoolT("home.refundQueueTitle", { count: pendingRefundCount })}
-          href="/dashboard/finance"
-          linkLabel={schoolT("home.goApproveRefunds")}
-        />
-        <p className="mt-2 truncate text-sm text-muted">{schoolT("home.refundQueueHint")}</p>
-      </>,
+      "gradingQueue",
+      gradingQueue.length === 0 ? (
+        <EmptyBody text={schoolT("home.gradingQueueEmpty")} href="/dashboard/classes" linkLabel={schoolT("nav.classes")} />
+      ) : (
+        <ul className="min-h-0 flex-1 divide-y overflow-hidden">
+          {gradingQueue.map((row) => (
+            <li key={`${row.assignmentId}:${row.studentName}:${row.submittedAt}`} className="flex flex-wrap items-center gap-3 py-2 text-sm">
+              <span className="shrink-0 font-medium">{row.studentName}</span>
+              <span className="min-w-0 flex-1 truncate text-xs text-muted">{row.assignmentTitle}</span>
+              <time className="shrink-0 text-xs text-muted">{shortFmt.format(new Date(row.submittedAt))}</time>
+              <Link
+                href={`/classroom/${row.classroomId}/assignment/${row.assignmentId}`}
+                className="shrink-0 text-xs text-crater underline underline-offset-2"
+              >
+                {schoolT("home.goGrade")}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      ),
+    );
+
+    // ---- 催缴名单（§0.1/§0.5）：scope 由 orders RLS 决定，同贴双 scope ----
+    labels.set("dueOrders", schoolT("home.dueOrdersTitle"));
+    extras.set("dueOrders", { tone: dueOrders.length > 0 ? "rose" : undefined });
+    contents.set(
+      "dueOrders",
+      dueOrders.length === 0 ? (
+        <EmptyBody text={schoolT("home.dueOrdersEmpty")} />
+      ) : (
+        <ul className="min-h-0 flex-1 divide-y overflow-hidden">
+          {dueOrders.map((row) => (
+            <li key={row.orderId} className="flex flex-wrap items-center gap-3 py-2 text-sm">
+              <Link href={`/dashboard/students/${row.studentId}#finance`} className="min-w-0 flex-1 truncate font-medium hover:underline">
+                {row.studentName}
+              </Link>
+              <span className="shrink-0 rounded-full bg-rose/10 px-2 py-0.5 text-xs tabular-nums text-rose">
+                {schoolT("home.dueAmount", { amount: cny.format(row.dueAmount) })}
+              </span>
+              <time className="shrink-0 text-xs text-muted">{dateFmt.format(new Date(row.createdAt))}</time>
+            </li>
+          ))}
+        </ul>
+      ),
+    );
+
+    // ---- 倒排期（§0.3）：即将开课未备模板 ----
+    labels.set("templateUrgent", schoolT("home.templateUrgentTitle"));
+    extras.set("templateUrgent", { tone: templateUrgent.length === 0 ? "leaf" : "rose" });
+    contents.set(
+      "templateUrgent",
+      templateUrgent.length === 0 ? (
+        <EmptyBody text={schoolT("home.templateUrgentEmpty")} href="/dashboard/courses" linkLabel={schoolT("nav.courses")} />
+      ) : (
+        <ul className="min-h-0 flex-1 divide-y overflow-hidden">
+          {templateUrgent.map((row) => (
+            <li key={row.sessionId} className="flex flex-wrap items-center gap-3 py-2 text-sm">
+              <Link
+                href={`/dashboard/courses/${row.courseId}/lectures/${row.lectureId}`}
+                className="min-w-0 flex-1 truncate font-medium hover:underline"
+              >
+                {row.courseTitle} · {row.lectureName}
+              </Link>
+              <span className="shrink-0 text-xs text-muted">{row.classroomName}</span>
+              <time className="shrink-0 rounded-full bg-rose/10 px-2 py-0.5 text-xs text-rose">
+                {shortFmt.format(new Date(row.scheduledAt))}
+              </time>
+            </li>
+          ))}
+        </ul>
+      ),
+    );
+
+    // ---- 模板完成度（教研） ----
+    labels.set("templateProgress", schoolT("home.templateProgressTitle"));
+    extras.set("templateProgress", { href: "/dashboard/courses" });
+    contents.set(
+      "templateProgress",
+      templateProgress.length === 0 ? (
+        <EmptyBody text={schoolT("home.templateProgressEmpty")} href="/dashboard/courses" linkLabel={schoolT("nav.courses")} />
+      ) : (
+        <ul className="grid flex-1 content-center gap-1.5">
+          {templateProgress.map((row) => (
+            <li key={row.grade} className="flex items-center gap-3 text-sm">
+              <span className="w-14 shrink-0 truncate text-xs text-muted">{studentsFilterT("grade", { grade: row.grade })}</span>
+              <span className="h-2 flex-1 overflow-hidden rounded-full bg-line/40">
+                <span
+                  className="block h-full rounded-full bg-leaf-deep/60"
+                  style={{ width: `${Math.round((row.ready / Math.max(1, row.total)) * 100)}%` }}
+                />
+              </span>
+              <span className="w-14 shrink-0 text-right font-display text-xs tabular-nums">
+                {row.ready}/{row.total}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ),
+    );
+
+    // ---- 未点名课次（§0.2 教务） ----
+    labels.set("unmarkedAttendance", schoolT("home.unmarkedTitle"));
+    extras.set("unmarkedAttendance", { tone: unmarkedSessions.length === 0 ? "leaf" : "rose" });
+    contents.set(
+      "unmarkedAttendance",
+      unmarkedSessions.length === 0 ? (
+        <EmptyBody text={schoolT("home.unmarkedEmpty")} />
+      ) : (
+        <ul className="min-h-0 flex-1 divide-y overflow-hidden">
+          {unmarkedSessions.map((row) => (
+            <li key={row.sessionId} className="flex flex-wrap items-center gap-2 py-2 text-sm">
+              <Link href={`/dashboard/classes/${row.classroomId}`} className="min-w-0 flex-1 truncate font-medium hover:underline">
+                {row.classroomName}
+              </Link>
+              <span className="max-w-[8rem] shrink-0 truncate text-xs text-muted">{row.title}</span>
+              <time className="shrink-0 text-xs text-muted">{shortFmt.format(new Date(row.scheduledAt))}</time>
+            </li>
+          ))}
+        </ul>
+      ),
+    );
+
+    // ---- 花名册错位（§0.2）：两计数，整贴进班级列表 ----
+    const mismatchTotal = rosterMismatch.unlinkedEnrollments + rosterMismatch.orphanMembers;
+    labels.set("rosterMismatch", schoolT("home.rosterMismatchTitle"));
+    extras.set("rosterMismatch", { href: "/dashboard/classes", cover: true, tone: mismatchTotal > 0 ? "rose" : undefined });
+    contents.set(
+      "rosterMismatch",
+      <div className="flex flex-1 flex-wrap content-center items-center gap-x-5 gap-y-1">
+        <div>
+          <p className={cn("font-display text-2xl tabular-nums", rosterMismatch.unlinkedEnrollments > 0 && "text-rose")}>
+            {rosterMismatch.unlinkedEnrollments}
+          </p>
+          <p className="text-[11px] text-muted">{schoolT("home.rosterUnlinked")}</p>
+        </div>
+        <div>
+          <p className={cn("font-display text-2xl tabular-nums", rosterMismatch.orphanMembers > 0 && "text-rose")}>
+            {rosterMismatch.orphanMembers}
+          </p>
+          <p className="text-[11px] text-muted">{schoolT("home.rosterOrphan")}</p>
+        </div>
+      </div>,
+    );
+
+    // ---- 跟进工作台入口（§6） ----
+    labels.set("followupBoardEntry", schoolT("home.followupBoardTitle"));
+    extras.set("followupBoardEntry", { href: "/dashboard/followups", cover: true });
+    contents.set(
+      "followupBoardEntry",
+      <div className="flex flex-1 flex-wrap content-center items-center gap-x-5 gap-y-1">
+        <div>
+          <p className={cn("font-display text-2xl tabular-nums", followupCounts.overdue > 0 && "text-rose")}>{followupCounts.overdue}</p>
+          <p className="text-[11px] text-muted">{schoolT("home.followupOverdue")}</p>
+        </div>
+        <div>
+          <p className="font-display text-2xl tabular-nums">{followupCounts.today}</p>
+          <p className="text-[11px] text-muted">{schoolT("home.followupToday")}</p>
+        </div>
+      </div>,
     );
 
     const eligible = pickEligible("staff", perms).filter((tile) => tile.key !== "refundQueue" || pendingRefundCount > 0);
     // 管理者且待跟进为空：myFollowUps 不进默认序（留在池里可手动加回，§5.6）。
     const defaultExclude = isManager && myFollowUps.length === 0 ? ["myFollowUps"] : [];
     const merged = mergeTileLayout(eligible, userTiles, staffDefaultOrder(perms), defaultExclude);
-    const { items, hidden } = buildTileItems(merged, eligible, labels, contents);
+    const { items, hidden } = buildTileItems(merged, eligible, labels, contents, extras);
 
     return (
       <TileWorkspace
@@ -554,7 +763,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
   }
 
   const customerT = await getTranslations("school.customer");
-  buildSharedCustomerTiles({ t, gamesT, locale, bests, recentPosts, classrooms, labels, contents });
+  buildSharedCustomerTiles({ t, gamesT, locale, bests, recentPosts, classrooms, labels, contents, extras });
 
   if (profile?.role === "parent") {
     const studentsT = await getTranslations("school.students");
@@ -563,27 +772,29 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
     for (const child of summaries) {
       const key = `${CHILD_TILE_PREFIX}${child.studentId}`;
       labels.set(key, child.studentName);
+      extras.set(key, { href: `/dashboard/children?child=${child.studentId}` });
       contents.set(
         key,
         <>
-          <TileHead title={child.studentName} href={`/dashboard/children?child=${child.studentId}`} linkLabel={customerT("goChildDetail")} />
-          {child.grade !== null && <p className="mt-0.5 text-xs text-muted">{studentsT("grade", { grade: child.grade })}</p>}
-          <dl className="mt-3 grid gap-2 text-sm">
+          {child.grade !== null && <p className="shrink-0 text-xs text-muted">{studentsT("grade", { grade: child.grade })}</p>}
+          <dl className="mt-2 grid flex-1 content-start gap-2 text-sm">
             <div className="flex justify-between gap-3">
               <dt className="text-muted">{customerT("nextSession")}</dt>
-              <dd>
-                {child.nextSessionAt
-                  ? new Intl.DateTimeFormat(locale, { dateStyle: "short", timeStyle: "short" }).format(new Date(child.nextSessionAt))
-                  : "-"}
-              </dd>
+              <dd>{child.nextSessionAt ? shortFmt.format(new Date(child.nextSessionAt)) : "-"}</dd>
             </div>
             <div className="flex justify-between gap-3">
               <dt className="text-muted">{customerT("starTotal")}</dt>
-              <dd>{child.starTotal}</dd>
+              <dd className="tabular-nums">{child.starTotal}</dd>
             </div>
             <div className="flex justify-between gap-3">
               <dt className="text-muted">{customerT("paymentStatus")}</dt>
-              <dd>{customerT(`payment_${child.paymentStatus}`)}</dd>
+              <dd>
+                {child.paymentStatus === "overdue" ? (
+                  <span className="rounded-full bg-rose/10 px-2 py-0.5 text-xs text-rose">{customerT("payment_overdue")}</span>
+                ) : (
+                  customerT(`payment_${child.paymentStatus}`)
+                )}
+              </dd>
             </div>
           </dl>
         </>,
@@ -609,7 +820,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
       ...pickEligible("parent", perms).filter((tile) => tile.key !== "childCard"),
     ];
     const merged = mergeTileLayout(eligible, userTiles, parentDefaultOrder(childKeys));
-    const { items, hidden } = buildTileItems(merged, eligible, labels, contents);
+    const { items, hidden } = buildTileItems(merged, eligible, labels, contents, extras);
 
     return <TileWorkspace title={customerT("parentTitle")} subtitle={subtitle} items={items} hidden={hidden} />;
   }
@@ -627,39 +838,30 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
 
   if (isBound) {
     labels.set("mySchedule", customerT("myScheduleTitle"));
+    extras.set("mySchedule", { href: "/dashboard/schedule" });
     contents.set(
       "mySchedule",
-      <>
-        <TileHead title={customerT("myScheduleTitle")} href="/dashboard/schedule" linkLabel={schoolT("nav.schedule")} />
-        {!nextSession ? (
-          <p className="mt-3 text-sm text-muted">{customerT("myScheduleEmpty")}</p>
-        ) : (
-          <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
-            <time className="shrink-0 font-mono text-xs text-muted">
-              {new Intl.DateTimeFormat(locale, { dateStyle: "short", timeStyle: "short" }).format(new Date(nextSession.scheduledAt))}
-            </time>
-            <span className="min-w-0 flex-1 truncate font-medium">{nextSession.classroomName}</span>
-            <span className="shrink-0 text-xs text-muted">{nextSession.lectureName}</span>
-          </div>
-        )}
-      </>,
+      !nextSession ? (
+        <EmptyBody text={customerT("myScheduleEmpty")} href="/dashboard/schedule" linkLabel={schoolT("nav.schedule")} />
+      ) : (
+        <div className="flex flex-1 flex-wrap content-center items-center gap-3 text-sm">
+          <time className="shrink-0 font-mono text-xs text-muted">{shortFmt.format(new Date(nextSession.scheduledAt))}</time>
+          <span className="min-w-0 flex-1 truncate font-medium">{nextSession.classroomName}</span>
+          <span className="shrink-0 text-xs text-muted">{nextSession.lectureName}</span>
+        </div>
+      ),
     );
 
     labels.set("pendingAssignments", customerT("pendingAssignmentsTitle"));
-    contents.set(
-      "pendingAssignments",
-      <Link href="/dashboard/assignments" className="flex flex-1 flex-col justify-center">
-        <p className="font-display text-3xl tabular-nums">{myPendingAssignments.length}</p>
-        <p className="mt-1 truncate text-xs text-muted">{customerT("pendingAssignmentsTitle")}</p>
-      </Link>,
-    );
+    extras.set("pendingAssignments", { href: "/dashboard/assignments", cover: true });
+    contents.set("pendingAssignments", <StatBody value={myPendingAssignments.length} />);
   }
 
   const eligible = pickEligible("student", perms).filter(
     (tile) => isBound || (tile.key !== "mySchedule" && tile.key !== "pendingAssignments"),
   );
   const merged = mergeTileLayout(eligible, userTiles, STUDENT_ORDER);
-  const { items, hidden } = buildTileItems(merged, eligible, labels, contents);
+  const { items, hidden } = buildTileItems(merged, eligible, labels, contents, extras);
 
   return (
     <TileWorkspace

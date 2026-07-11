@@ -72,6 +72,19 @@
   --ws-panel: color-mix(in srgb, var(--crater) 66%, var(--ink));
 }
 
+/* P4C-5 §5.4 磁贴 tone 洗底：亮色 92% 卡底混 tone，暗色 88%；只从基础 token 派生。 */
+[data-tile-tone="crater"] { background: color-mix(in srgb, var(--card) 92%, var(--crater)); }
+[data-tile-tone="leaf"]   { background: color-mix(in srgb, var(--card) 92%, var(--leaf)); }
+[data-tile-tone="rose"]   { background: color-mix(in srgb, var(--card) 92%, var(--rose)); }
+.dark [data-tile-tone="crater"] { background: color-mix(in srgb, var(--card) 88%, var(--crater)); }
+.dark [data-tile-tone="leaf"]   { background: color-mix(in srgb, var(--card) 88%, var(--leaf)); }
+.dark [data-tile-tone="rose"]   { background: color-mix(in srgb, var(--card) 88%, var(--rose)); }
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) [data-tile-tone="crater"] { background: color-mix(in srgb, var(--card) 88%, var(--crater)); }
+  :root:not(.light) [data-tile-tone="leaf"]   { background: color-mix(in srgb, var(--card) 88%, var(--leaf)); }
+  :root:not(.light) [data-tile-tone="rose"]   { background: color-mix(in srgb, var(--card) 88%, var(--rose)); }
+}
+
 .notebook-editor.bn-root {
   --bn-colors-editor-text: var(--ink);
   --bn-colors-editor-background: var(--paper);
