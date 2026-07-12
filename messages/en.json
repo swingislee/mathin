@@ -1083,7 +1083,10 @@
       "save": {
         "saving": "Saving…",
         "saved": "Saved",
-        "error": "Save failed, retrying"
+        "error": "Save failed, retrying",
+        "conflict": "Another editor updated this canvas. Refresh and merge your changes.",
+        "tooLarge": "This canvas reached its limit. Create a new whiteboard to continue.",
+        "generic": "The canvas could not be saved. Check your connection and retry."
       },
       "tools": {
         "pointer": "Select",

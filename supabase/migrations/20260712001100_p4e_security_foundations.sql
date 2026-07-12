@@ -71,7 +71,9 @@ begin
    returning id into sid;
   insert into public.bind_claim_attempts(user_id,purpose,code_hash,ok)
   values(uid,'student',encode(digest(normalized,'sha256'),'hex'),sid is not null);
-  if sid is null then raise exception 'INVALID_BIND_CODE'; end if;
+  -- 无效码必须正常返回 null；若在这里 raise，刚写入的失败尝试会随事务回滚，
+  -- 节流计数将永远为零。Server Action 负责把 null 翻译成 INVALID_BIND_CODE。
+  if sid is null then return null; end if;
   return sid;
 end $$;
 
@@ -108,7 +110,7 @@ begin
    where code=normalized and used_at is null and expires_at>now() for update;
   insert into public.bind_claim_attempts(user_id,purpose,code_hash,ok)
   values(uid,'guardian',encode(digest(normalized,'sha256'),'hex'),sid is not null);
-  if sid is null then raise exception 'INVALID_BIND_CODE'; end if;
+  if sid is null then return null; end if;
   update public.guardian_bind_invitations set used_by=uid,used_at=now() where id=invite_id;
   insert into public.student_guardians(student_id,guardian_id,relation,scope)
   values(sid,uid,coalesce(nullif(trim(p_relation),''),invite_relation),invite_scope)

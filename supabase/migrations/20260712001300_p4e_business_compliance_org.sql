@@ -56,6 +56,10 @@ begin
     perform public.emit_domain_event('attendance.consumed','student',new.student_id,
       jsonb_build_object('sessionId',new.session_id,'status',new.status,'lessonDelta',-amount,'ledgerId',entry_id),null,null);
   end if;
+  if new.status='leave' and not exists(select 1 from public.session_changes where session_id=new.session_id and student_id=new.student_id and kind='leave') then
+    insert into public.session_changes(session_id,student_id,kind,from_session,reason,operated_by)
+    values(new.session_id,new.student_id,'leave',new.session_id,new.note,coalesce(auth.uid(),new.marked_by));
+  end if;
   return new;
 end $$;
 create trigger attendance_consumes_lessons after insert or update of status on public.session_attendance

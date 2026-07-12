@@ -22,6 +22,7 @@ const RENAME_DEBOUNCE_MS = 800;
 export function BoardClient({ board, selfName }: { board: WhiteboardRecord; selfName: string }) {
   const t = useTranslations("whiteboard.board");
   const [title, setTitle] = useState(board.title);
+  const [saveError,setSaveError]=useState<"conflict"|"tooLarge"|"generic"|null>(null);
   const saveState = useWhiteboardStore((state) => state.saveState);
   const revision = useWhiteboardStore((state) => state.revision);
   const savingRef = useRef(false);
@@ -44,8 +45,11 @@ export function BoardClient({ board, selfName }: { board: WhiteboardRecord; self
     state.setSaveState("saving");
     try {
       versionRef.current = await saveSnapshot(board.id, state.items, versionRef.current);
+      setSaveError(null);
       useWhiteboardStore.getState().markSaved(revisionAtStart);
-    } catch {
+    } catch (error) {
+      const message=error instanceof Error?error.message:"";
+      setSaveError(message.includes("VERSION_CONFLICT")?"conflict":message.includes("TOO_LARGE")||message.includes("SNAPSHOT_TOO_LARGE")?"tooLarge":"generic");
       useWhiteboardStore.getState().setSaveState("error");
     } finally {
       savingRef.current = false;
@@ -135,6 +139,7 @@ export function BoardClient({ board, selfName }: { board: WhiteboardRecord; self
               : <AlertCircle size={13} />}
           <span className="hidden sm:inline">{t(`save.${saveState}`)}</span>
         </span>
+        {saveError&&<span role="alert" className="max-w-64 text-xs text-rose">{t(`save.${saveError}`)}</span>}
       </header>
       <main className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-3 md:p-5">
         <div

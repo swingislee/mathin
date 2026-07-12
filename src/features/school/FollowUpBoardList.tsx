@@ -15,6 +15,7 @@ import type { StudentStatus } from "./students";
 
 // 与 students.ts 的 STUDENT_STATUSES 同步（该模块引 server supabase，客户端不可值导入）
 const STUDENT_STATUSES: readonly StudentStatus[] = ["lead", "trialing", "enrolled", "paused", "alumni", "invalid"];
+const STATUS_TRANSITIONS:Record<StudentStatus,readonly StudentStatus[]>={lead:["trialing","invalid"],trialing:["lead","enrolled","invalid"],enrolled:["paused","alumni"],paused:["enrolled","alumni"],alumni:["enrolled"],invalid:["lead"]};
 
 const FOLD_LIMIT = 8;
 
@@ -38,7 +39,7 @@ export function FollowUpBoardList({
   const locale = useLocale();
   const router = useRouter();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [logTarget, setLogTarget] = useState<{ id: string; name: string } | null>(null);
+  const [logTarget, setLogTarget] = useState<{ id: string; name: string; followUpStatus: BoardRow["followUpStatus"] } | null>(null);
   const [statusPendingId, setStatusPendingId] = useState<string | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
@@ -124,7 +125,7 @@ export function FollowUpBoardList({
                         </TableCell>
                         <TableCell className="px-4 py-2.5">
                           <div className="flex items-center justify-end gap-2 whitespace-nowrap">
-                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setLogTarget({ id: row.id, name: row.name })}>
+                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setLogTarget({ id: row.id, name: row.name, followUpStatus: row.followUpStatus })}>
                               {t("logFollowUp")}
                             </Button>
                             {canEditStatus && (
@@ -135,7 +136,7 @@ export function FollowUpBoardList({
                                 aria-label={t("changeStatus")}
                                 className={`${selectClass} h-7 py-0 text-xs`}
                               >
-                                {STUDENT_STATUSES.map((status) => (
+                                {STUDENT_STATUSES.filter((status)=>status===row.status||STATUS_TRANSITIONS[row.status].includes(status)).map((status) => (
                                   <option key={status} value={status}>{studentsT(status)}</option>
                                 ))}
                               </select>
@@ -173,7 +174,7 @@ export function FollowUpBoardList({
           <DialogHeader>
             <DialogTitle>{logTarget ? t("logFollowUpFor", { name: logTarget.name }) : ""}</DialogTitle>
           </DialogHeader>
-          {logTarget && <FollowUpForm studentId={logTarget.id} onSuccess={() => setLogTarget(null)} />}
+          {logTarget && <FollowUpForm studentId={logTarget.id} currentStatus={logTarget.followUpStatus} onSuccess={() => setLogTarget(null)} />}
         </DialogContent>
       </Dialog>
     </div>

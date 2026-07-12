@@ -87,7 +87,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
       {perms.has("followup.view") && (
         <section className="mt-6 rounded-xl border border-line bg-card p-5">
           <h2 className="font-medium">{t("followUps")}</h2>
-          {perms.has("followup.write") && !student.deletedAt && <FollowUpForm studentId={id} />}
+          {perms.has("followup.write") && !student.deletedAt && <FollowUpForm studentId={id} currentStatus={student.followUpStatus} />}
           {student.followUps.length === 0 ? (
             <p className="mt-4 text-sm text-muted">{t("noFollowUps")}</p>
           ) : (

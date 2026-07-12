@@ -13,9 +13,11 @@ import { inputClass } from "./controls";
 const KINDS: FollowUpKind[] = ["note", "call", "class", "visit"];
 // 与 students.ts 的 FOLLOW_UP_STATUSES 同步（该模块引 server supabase，客户端不可 import）
 const FOLLOW_UP_STATUSES = ["pending", "following", "invited", "trialed", "signed", "lost"] as const;
+type FollowUpStatus=(typeof FOLLOW_UP_STATUSES)[number];
+const FOLLOW_UP_TRANSITIONS:Record<FollowUpStatus,readonly FollowUpStatus[]>={pending:["following","lost"],following:["invited","lost"],invited:["following","trialed","lost"],trialed:["following","signed","lost"],signed:[],lost:["following"]};
 
 /** 360° 档案页跟进快捷添加表单（10-§8：交互要轻，提交后刷新时间线）。 */
-export function FollowUpForm({ studentId, onSuccess }: { studentId: string; onSuccess?: () => void }) {
+export function FollowUpForm({ studentId, currentStatus, onSuccess }: { studentId: string; currentStatus: FollowUpStatus; onSuccess?: () => void }) {
   const t = useTranslations("school.students");
   const router = useRouter();
   const [content, setContent] = useState("");
@@ -92,7 +94,7 @@ export function FollowUpForm({ studentId, onSuccess }: { studentId: string; onSu
           className={inputClass}
         >
           <option value="">{t("followUpStatusKeep")}</option>
-          {FOLLOW_UP_STATUSES.map((status) => (
+          {FOLLOW_UP_STATUSES.filter((status)=>FOLLOW_UP_TRANSITIONS[currentStatus].includes(status)).map((status) => (
             <option key={status} value={status}>
               {t(status)}
             </option>

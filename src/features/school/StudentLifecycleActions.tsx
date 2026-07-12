@@ -17,6 +17,7 @@ import type { StudentStatus } from "./students";
 
 // students.ts 依赖服务端 Supabase；客户端只保留同序常量，避免把 next/headers 带入浏览器包。
 const STUDENT_STATUSES: readonly StudentStatus[] = ["lead", "trialing", "enrolled", "paused", "alumni", "invalid"];
+const STATUS_TRANSITIONS:Record<StudentStatus,readonly StudentStatus[]>={lead:["trialing","invalid"],trialing:["lead","enrolled","invalid"],enrolled:["paused","alumni"],paused:["enrolled","alumni"],alumni:["enrolled"],invalid:["lead"]};
 
 export interface StudentAssigneeOption {
   userId: string;
@@ -108,7 +109,7 @@ export function StudentLifecycleActions({
             onChange={(event) => changeStatus(event.target.value as StudentStatus)}
             className={`${selectClass} h-9 w-auto py-1.5`}
           >
-            {STUDENT_STATUSES.map((value) => <option key={value} value={value}>{t(value)}</option>)}
+            {STUDENT_STATUSES.filter((value)=>value===status||STATUS_TRANSITIONS[status].includes(value)).map((value) => <option key={value} value={value}>{t(value)}</option>)}
           </select>
         </label>
       )}

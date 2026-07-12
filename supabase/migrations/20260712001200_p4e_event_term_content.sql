@@ -37,6 +37,22 @@ insert into public.student_grade_history(student_id,term_id,grade)
 select s.id,t.id,s.grade from public.students s cross join public.school_terms t
  where t.is_current and t.campus_id is null and s.grade is not null on conflict do nothing;
 
+create or replace function public.capture_student_grade_history()
+returns trigger language plpgsql security definer set search_path=public,pg_temp as $$
+declare tid uuid;
+begin
+  if tg_op='UPDATE' and new.grade is not distinct from old.grade then return new; end if;
+  select id into tid from public.school_terms where is_current and campus_id is null;
+  if tid is not null then
+    insert into public.student_grade_history(student_id,term_id,grade,recorded_by)
+    values(new.id,tid,new.grade,auth.uid())
+    on conflict(student_id,term_id) do update set grade=excluded.grade,recorded_by=excluded.recorded_by,recorded_at=now();
+  end if;
+  return new;
+end $$;
+create trigger students_capture_grade after insert or update of grade on public.students
+  for each row execute function public.capture_student_grade_history();
+
 alter table public.courses add column if not exists term_id uuid references public.school_terms(id);
 alter table public.classrooms add column if not exists term_id uuid references public.school_terms(id);
 alter table public.class_sessions add column if not exists term_id uuid references public.school_terms(id);
@@ -128,7 +144,9 @@ begin
   row_json:=case when tg_op='DELETE' then to_jsonb(old) else to_jsonb(new) end;
   if tg_table_name='payments' then kind:='payment.recorded'; entity:=new.id;
   elsif tg_table_name='refunds' then kind:='refund.'||lower(coalesce(new.status,tg_op)); entity:=new.id;
-  elsif tg_table_name='role_permissions' then kind:='permission.'||lower(tg_op); entity:=coalesce(new.role_id,old.role_id);
+  elsif tg_table_name='role_permissions' then
+    kind:='permission.'||lower(tg_op);
+    entity:=case when tg_op='DELETE' then old.role_id else new.role_id end;
   elsif tg_table_name='session_reviews' then
     kind:='review.'||lower(tg_op); entity:=new.session_id;
     select user_id into target_uid from public.students where id=new.student_id;
