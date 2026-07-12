@@ -1,5 +1,7 @@
 "use client";
 
+import { Input } from "@/components/ui/input";
+
 import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { buttonVariants } from "@/components/ui/button";
@@ -138,7 +140,7 @@ export function RolesMatrixPanel({ roles, isAdmin }: { roles: StaffRoleInfo[]; i
               <li key={role.id} className="flex items-center gap-2">
                 {renamingId === role.id ? (
                   <>
-                    <input
+                    <Input
                       value={renameValue}
                       autoFocus
                       onChange={(event) => setRenameValue(event.target.value)}
@@ -191,7 +193,7 @@ export function RolesMatrixPanel({ roles, isAdmin }: { roles: StaffRoleInfo[]; i
             ))}
           </ul>
           <div className="mt-4 flex gap-2 border-t border-line pt-4">
-            <input
+            <Input
               value={newName}
               onChange={(event) => setNewName(event.target.value)}
               onKeyDown={(event) => event.key === "Enter" && create()}
@@ -233,7 +235,7 @@ export function RolesMatrixPanel({ roles, isAdmin }: { roles: StaffRoleInfo[]; i
                             className={cn("flex items-center gap-2.5 text-sm", configureLocked ? "cursor-not-allowed opacity-50" : "cursor-pointer")}
                             title={configureLocked ? t("configureAdminOnly") : undefined}
                           >
-                            <input
+                            <Input
                               type="checkbox"
                               checked={checked.has(key)}
                               disabled={configureLocked}

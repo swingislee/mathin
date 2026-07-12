@@ -1,3 +1,4 @@
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { ArrowLeft } from "lucide-react";
@@ -49,26 +50,26 @@ export default async function SessionReportPage({
         <p className="mt-8 rounded-2xl border border-line px-5 py-6 text-sm text-muted">{t("noStudents")}</p>
       ) : (
         <div className="mt-8 overflow-x-auto rounded-2xl border border-line">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-line text-left text-xs text-muted">
-                <th className="px-4 py-2.5 font-medium">{t("student")}</th>
-                <th className="px-4 py-2.5 font-medium">{t("stars")}</th>
-                <th className="px-4 py-2.5 font-medium">{t("hands")}</th>
-                <th className="px-4 py-2.5 font-medium">{t("answered")}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line">
+          <Table className="w-full text-sm">
+            <TableHeader>
+              <TableRow className="border-b border-line text-left text-xs text-muted">
+                <TableHead className="px-4 py-2.5 font-medium">{t("student")}</TableHead>
+                <TableHead className="px-4 py-2.5 font-medium">{t("stars")}</TableHead>
+                <TableHead className="px-4 py-2.5 font-medium">{t("hands")}</TableHead>
+                <TableHead className="px-4 py-2.5 font-medium">{t("answered")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody className="divide-y divide-line">
               {report.rows.map((row) => (
-                <tr key={row.userId}>
-                  <td className="px-4 py-2.5">{row.displayName || "—"}</td>
-                  <td className="px-4 py-2.5 tabular-nums">{row.stars}</td>
-                  <td className="px-4 py-2.5 tabular-nums">{row.handRaises}</td>
-                  <td className="px-4 py-2.5 tabular-nums">{row.answeredCount}</td>
-                </tr>
+                <TableRow key={row.userId}>
+                  <TableCell className="px-4 py-2.5">{row.displayName || "—"}</TableCell>
+                  <TableCell className="px-4 py-2.5 tabular-nums">{row.stars}</TableCell>
+                  <TableCell className="px-4 py-2.5 tabular-nums">{row.handRaises}</TableCell>
+                  <TableCell className="px-4 py-2.5 tabular-nums">{row.answeredCount}</TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       )}
 

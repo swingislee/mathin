@@ -1,5 +1,7 @@
 "use client";
 
+import { Input } from "@/components/ui/input";
+
 import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { buttonVariants } from "@/components/ui/button";
@@ -117,13 +119,13 @@ export function CouponsPanel({ coupons }: { coupons: CouponRow[] }) {
         <DialogContent>
           <DialogHeader><DialogTitle>{t("createCouponDialogTitle")}</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("couponName")} className={`w-full ${selectClass}`} />
-            <input value={code} onChange={(e) => setCode(e.target.value)} placeholder={t("couponCode")} className={`w-full ${selectClass}`} />
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("couponName")} className={`w-full ${selectClass}`} />
+            <Input value={code} onChange={(e) => setCode(e.target.value)} placeholder={t("couponCode")} className={`w-full ${selectClass}`} />
             <select value={kind} onChange={(e) => setKind(e.target.value as CouponKind)} className={`w-full ${selectClass}`}>
               <option value="amount">{t("couponAmount")}</option>
               <option value="percent">{t("couponPercent")}</option>
             </select>
-            <input type="number" value={value} onChange={(e) => setValue(Number(e.target.value))} className={`w-full ${selectClass}`} />
+            <Input type="number" value={value} onChange={(e) => setValue(Number(e.target.value))} className={`w-full ${selectClass}`} />
           </div>
           <DialogFooter>
             <button type="button" onClick={() => setCreateOpen(false)} className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>{t("cancel")}</button>
@@ -135,7 +137,7 @@ export function CouponsPanel({ coupons }: { coupons: CouponRow[] }) {
       <Dialog open={Boolean(grantTarget)} onOpenChange={(open) => !open && setGrantTarget(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>{t("grantCouponDialogTitle", { name: grantTarget?.name ?? "" })}</DialogTitle></DialogHeader>
-          <input
+          <Input
             value={query}
             onChange={(event) => void search(event.target.value)}
             placeholder={t("searchStudent")}

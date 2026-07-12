@@ -1,3 +1,4 @@
+import { Input } from "@/components/ui/input";
 import { redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { AccountLookupPanel } from "@/features/school/AccountLookupPanel";
@@ -120,7 +121,7 @@ export default async function FinancePage({
           <section className="rounded-xl border border-line bg-card p-5">
             <h2 className="font-medium">{t("orders", { count: ordersResult.count ?? ordersResult.orders.length })}</h2>
             <form className="mt-3 flex gap-2">
-              <input name="q" defaultValue={filters.q} placeholder={t("searchOrder")} className="min-w-0 flex-1 rounded-lg border border-line bg-background px-3 py-2 text-sm outline-none focus:border-crater" />
+              <Input name="q" defaultValue={filters.q} placeholder={t("searchOrder")} className="min-w-0 flex-1 rounded-lg border border-line bg-background px-3 py-2 text-sm outline-none focus:border-crater" />
               <button type="submit" className="rounded-lg border border-line px-3 py-2 text-sm">{t("filter")}</button>
             </form>
             {ordersResult.orders.length === 0 ? (

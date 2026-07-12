@@ -1,5 +1,7 @@
 "use client";
 
+import { Input } from "@/components/ui/input";
+
 import { Check } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -22,7 +24,7 @@ export function NumField({ value, onCommit, onFocusField, disabled, className, a
     if (!focused) setText(String(value));
   }
   return (
-    <input
+    <Input
       type="number"
       inputMode="decimal"
       value={text}
@@ -71,7 +73,7 @@ export function ApplyField({ value, onApply, disabled, ariaLabel, applyLabel }: 
   };
   return (
     <span className="inline-flex items-center gap-1">
-      <input
+      <Input
         type="number"
         inputMode="decimal"
         value={text}

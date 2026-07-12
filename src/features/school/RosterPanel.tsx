@@ -1,5 +1,7 @@
 "use client";
 
+import { Input } from "@/components/ui/input";
+
 import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { buttonVariants } from "@/components/ui/button";
@@ -144,7 +146,7 @@ export function RosterPanel({ classroomId, roster, canManage }: { classroomId: s
           <DialogHeader>
             <DialogTitle>{t("enrollDialogTitle")}</DialogTitle>
           </DialogHeader>
-          <input
+          <Input
             value={query}
             onChange={(event) => void search(event.target.value)}
             placeholder={t("searchStudent")}

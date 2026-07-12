@@ -1,5 +1,7 @@
 "use client";
 
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
 import { LoaderCircle, Upload } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useState, useTransition } from "react";
@@ -116,25 +118,25 @@ export function ImportStudentsPanel() {
         <section className="overflow-hidden rounded-xl border border-line bg-card">
           <div className="border-b border-line px-4 py-3 text-sm font-medium">{t("preview")}</div>
           <div className="max-h-96 overflow-auto">
-            <table className="w-full min-w-[760px] border-collapse text-left text-xs">
-              <thead className="sticky top-0 bg-card text-muted">
-                <tr>{["line", "name", "phone", "gradeCol", "region", "source", "remark", "validation"].map((key) => <th key={key} className="px-3 py-2 font-medium">{t(key)}</th>)}</tr>
-              </thead>
-              <tbody className="divide-y divide-line">
+            <Table className="w-full min-w-[760px] border-collapse text-left text-xs">
+              <TableHeader className="sticky top-0 bg-card text-muted">
+                <TableRow>{["line", "name", "phone", "gradeCol", "region", "source", "remark", "validation"].map((key) => <TableHead key={key} className="px-3 py-2 font-medium">{t(key)}</TableHead>)}</TableRow>
+              </TableHeader>
+              <TableBody className="divide-y divide-line">
                 {rows.map((row) => (
-                  <tr key={row.line} className={row.errors.length ? "bg-rose/5" : undefined}>
-                    <td className="px-3 py-2 font-mono text-muted">{row.line}</td>
-                    <td className="px-3 py-2 font-medium">{row.name || "—"}</td>
-                    <td className="px-3 py-2">{row.phone || "—"}</td>
-                    <td className="px-3 py-2">{row.gradeText || "—"}</td>
-                    <td className="px-3 py-2">{row.region || "—"}</td>
-                    <td className="px-3 py-2">{row.source || "—"}</td>
-                    <td className="max-w-52 truncate px-3 py-2">{row.remark || "—"}</td>
-                    <td className="px-3 py-2 text-rose">{row.errors.map((code) => t(`importError_${code}`)).join("；") || t("valid")}</td>
-                  </tr>
+                  <TableRow key={row.line} className={row.errors.length ? "bg-rose/5" : undefined}>
+                    <TableCell className="px-3 py-2 font-mono text-muted">{row.line}</TableCell>
+                    <TableCell className="px-3 py-2 font-medium">{row.name || "—"}</TableCell>
+                    <TableCell className="px-3 py-2">{row.phone || "—"}</TableCell>
+                    <TableCell className="px-3 py-2">{row.gradeText || "—"}</TableCell>
+                    <TableCell className="px-3 py-2">{row.region || "—"}</TableCell>
+                    <TableCell className="px-3 py-2">{row.source || "—"}</TableCell>
+                    <TableCell className="max-w-52 truncate px-3 py-2">{row.remark || "—"}</TableCell>
+                    <TableCell className="px-3 py-2 text-rose">{row.errors.map((code) => t(`importError_${code}`)).join("；") || t("valid")}</TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </section>
       )}

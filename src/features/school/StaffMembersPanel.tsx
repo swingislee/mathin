@@ -1,5 +1,9 @@
 "use client";
 
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
+import { Input } from "@/components/ui/input";
+
 import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { buttonVariants } from "@/components/ui/button";
@@ -144,29 +148,29 @@ export function StaffMembersPanel({
   return (
     <div className="space-y-6">
       <section className="overflow-hidden rounded-xl border border-line bg-card">
-        <table className="w-full border-collapse text-left text-sm">
-          <thead className="border-b border-line text-xs text-muted">
-            <tr>
-              <th className="px-4 py-3 font-medium">{t("colName")}</th>
-              <th className="px-4 py-3 font-medium">{t("colEmail")}</th>
-              <th className="px-4 py-3 font-medium">{t("colIdentity")}</th>
-              <th className="px-4 py-3 font-medium">{t("colRoles")}</th>
-              <th className="px-4 py-3 font-medium"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-line">
+        <Table className="w-full border-collapse text-left text-sm">
+          <TableHeader className="border-b border-line text-xs text-muted">
+            <TableRow>
+              <TableHead className="px-4 py-3 font-medium">{t("colName")}</TableHead>
+              <TableHead className="px-4 py-3 font-medium">{t("colEmail")}</TableHead>
+              <TableHead className="px-4 py-3 font-medium">{t("colIdentity")}</TableHead>
+              <TableHead className="px-4 py-3 font-medium">{t("colRoles")}</TableHead>
+              <TableHead className="px-4 py-3 font-medium"></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody className="divide-y divide-line">
             {members.map((member) => (
-              <tr key={member.userId}>
-                <td className="px-4 py-3 font-medium">{member.displayName}</td>
-                <td className="px-4 py-3 text-muted">{member.email}</td>
-                <td className="px-4 py-3">
+              <TableRow key={member.userId}>
+                <TableCell className="px-4 py-3 font-medium">{member.displayName}</TableCell>
+                <TableCell className="px-4 py-3 text-muted">{member.email}</TableCell>
+                <TableCell className="px-4 py-3">
                   {member.identity === "admin" ? (
                     <span className="rounded-full bg-moon/30 px-2 py-0.5 text-xs text-ink">{t("identityAdmin")}</span>
                   ) : (
                     <span className="rounded-full bg-line/50 px-2 py-0.5 text-xs text-muted">{t("identityStaff")}</span>
                   )}
-                </td>
-                <td className="px-4 py-3">
+                </TableCell>
+                <TableCell className="px-4 py-3">
                   {member.roleNames.length === 0 ? (
                     <span className="text-xs text-muted">{t("noRoles")}</span>
                   ) : (
@@ -176,8 +180,8 @@ export function StaffMembersPanel({
                       ))}
                     </span>
                   )}
-                </td>
-                <td className="px-4 py-3 text-right">
+                </TableCell>
+                <TableCell className="px-4 py-3 text-right">
                   {member.userId === selfId ? (
                     <span className="text-xs text-muted">{t("selfRow")}</span>
                   ) : (
@@ -189,18 +193,18 @@ export function StaffMembersPanel({
                       {t("manageRoles")}
                     </button>
                   )}
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </section>
 
       <section className="rounded-xl border border-line bg-card p-5">
         <h2 className="font-medium">{t("addStaff")}</h2>
         <p className="mt-1 text-xs text-muted">{t("addStaffHint")}</p>
         <div className="mt-3 flex flex-wrap gap-3">
-          <input
+          <Input
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
@@ -258,7 +262,7 @@ export function StaffMembersPanel({
             {roles.map((role) => (
               <li key={role.id}>
                 <label className="flex cursor-pointer items-center gap-2.5 text-sm">
-                  <input
+                  <Input
                     type="checkbox"
                     checked={checked.has(role.id)}
                     onChange={() => toggle(role.id)}

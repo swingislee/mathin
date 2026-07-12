@@ -1,5 +1,7 @@
 "use client";
 
+import { Input } from "@/components/ui/input";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { AlertCircle, ArrowLeft, Check, LoaderCircle } from "lucide-react";
@@ -91,7 +93,7 @@ export function BoardClient({ board, selfName }: { board: WhiteboardRecord; self
         <Link href="/whiteboard" aria-label={t("back")} className="rounded-full p-2 text-muted transition-colors hover:bg-moon/30 hover:text-ink">
           <ArrowLeft size={18} />
         </Link>
-        <input
+        <Input
           value={title}
           onChange={(event) => onTitleChange(event.target.value)}
           placeholder={t("titlePlaceholder")}

@@ -1,3 +1,4 @@
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { buttonVariants } from "@/components/ui/button";
@@ -48,22 +49,22 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ l
       </SchoolPageHeader>
 
       {canManage ? <CourseCrudPanel course={course} canEditTemplate={canEditTemplate} /> : <section className="mt-6 overflow-hidden rounded-xl border border-line bg-card">
-        <table className="w-full border-collapse text-left text-sm">
-          <thead className="border-b border-line text-xs text-muted">
-            <tr>
-              <th className="w-20 px-4 py-3 font-medium">No.</th>
-              <th className="px-4 py-3 font-medium">{t("lectures")}</th>
-              <th className="px-4 py-3 font-medium">{t("objectives")}</th>
-              <th className="w-28 px-4 py-3 font-medium">{t("templatePages")}</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-line">
+        <Table className="w-full border-collapse text-left text-sm">
+          <TableHeader className="border-b border-line text-xs text-muted">
+            <TableRow>
+              <TableHead className="w-20 px-4 py-3 font-medium">No.</TableHead>
+              <TableHead className="px-4 py-3 font-medium">{t("lectures")}</TableHead>
+              <TableHead className="px-4 py-3 font-medium">{t("objectives")}</TableHead>
+              <TableHead className="w-28 px-4 py-3 font-medium">{t("templatePages")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody className="divide-y divide-line">
             {course.lectures.map((lecture) => (
-              <tr key={lecture.id}>
-                <td className="px-4 py-3 font-mono text-xs text-muted">{lecture.no}</td>
-                <td className="px-4 py-3 font-medium">{lecture.name}</td>
-                <td className="px-4 py-3 text-muted">{lecture.objectives || t("noObjectives")}</td>
-                <td className="px-4 py-3 tabular-nums">
+              <TableRow key={lecture.id}>
+                <TableCell className="px-4 py-3 font-mono text-xs text-muted">{lecture.no}</TableCell>
+                <TableCell className="px-4 py-3 font-medium">{lecture.name}</TableCell>
+                <TableCell className="px-4 py-3 text-muted">{lecture.objectives || t("noObjectives")}</TableCell>
+                <TableCell className="px-4 py-3 tabular-nums">
                   {canEditTemplate ? (
                     <Link
                       href={`/dashboard/courses/${course.id}/lectures/${lecture.id}`}
@@ -74,11 +75,11 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ l
                   ) : (
                     lecture.templatePageCount
                   )}
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </section>}
     </div>
   );

@@ -1,3 +1,5 @@
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
 import { setRequestLocale } from "next-intl/server";
 import { getTranslations } from "next-intl/server";
 import { buttonVariants } from "@/components/ui/button";
@@ -93,8 +95,8 @@ export default async function StudentsPage({
       )}
 
       <form className="mt-6 grid gap-3 rounded-xl border border-line bg-card p-4 md:grid-cols-[1fr_150px_150px_140px_auto_auto]">
-        {filters.recycle && <input type="hidden" name="tab" value="recycle" />}
-        <input
+        {filters.recycle && <Input type="hidden" name="tab" value="recycle" />}
+        <Input
           name="q"
           defaultValue={filters.q}
           placeholder={t("search")}
@@ -122,41 +124,41 @@ export default async function StudentsPage({
         <p className="mt-8 rounded-xl border border-line bg-card p-5 text-sm text-muted">{t("empty")}</p>
       ) : (
         <div className="mt-6 overflow-hidden rounded-xl border border-line bg-card">
-          <table className="w-full border-collapse text-left text-sm">
-            <thead className="border-b border-line text-xs text-muted">
-              <tr>
-                <th className="px-4 py-3 font-medium">{t("name")}</th>
-                <th className="px-4 py-3 font-medium">{t("gradeCol")}</th>
-                <th className="px-4 py-3 font-medium">{t("status")}</th>
-                <th className="px-4 py-3 font-medium">{t("followUp")}</th>
-                <th className="px-4 py-3 font-medium">{t("assignedTo")}</th>
-                <th className="px-4 py-3 font-medium">{t("nextFollowUp")}</th>
-                <th className="px-4 py-3 font-medium"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line">
+          <Table className="w-full border-collapse text-left text-sm">
+            <TableHeader className="border-b border-line text-xs text-muted">
+              <TableRow>
+                <TableHead className="px-4 py-3 font-medium">{t("name")}</TableHead>
+                <TableHead className="px-4 py-3 font-medium">{t("gradeCol")}</TableHead>
+                <TableHead className="px-4 py-3 font-medium">{t("status")}</TableHead>
+                <TableHead className="px-4 py-3 font-medium">{t("followUp")}</TableHead>
+                <TableHead className="px-4 py-3 font-medium">{t("assignedTo")}</TableHead>
+                <TableHead className="px-4 py-3 font-medium">{t("nextFollowUp")}</TableHead>
+                <TableHead className="px-4 py-3 font-medium"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody className="divide-y divide-line">
               {students.map((student) => (
-                <tr key={student.id}>
-                  <td className="px-4 py-3 font-medium">{student.name}</td>
-                  <td className="px-4 py-3">{student.grade ? t("grade", { grade: student.grade }) : "-"}</td>
-                  <td className="px-4 py-3">{t(student.status)}</td>
-                  <td className="px-4 py-3">{t(student.followUpStatus)}</td>
-                  <td className="px-4 py-3">{student.assignedName || t("none")}</td>
-                  <td className="px-4 py-3 text-muted">
+                <TableRow key={student.id}>
+                  <TableCell className="px-4 py-3 font-medium">{student.name}</TableCell>
+                  <TableCell className="px-4 py-3">{student.grade ? t("grade", { grade: student.grade }) : "-"}</TableCell>
+                  <TableCell className="px-4 py-3">{t(student.status)}</TableCell>
+                  <TableCell className="px-4 py-3">{t(student.followUpStatus)}</TableCell>
+                  <TableCell className="px-4 py-3">{student.assignedName || t("none")}</TableCell>
+                  <TableCell className="px-4 py-3 text-muted">
                     {student.nextFollowUpAt ? new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(student.nextFollowUpAt)) : "-"}
-                  </td>
-                  <td className="px-4 py-3 text-right">
+                  </TableCell>
+                  <TableCell className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-3">
                       <Link href={`/dashboard/students/${student.id}`} className="text-xs text-muted underline underline-offset-2 hover:text-ink">
                         {t("open")}
                       </Link>
                       {filters.recycle && canDelete && <StudentRestoreButton studentId={student.id} />}
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       )}
 

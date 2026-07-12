@@ -1,5 +1,7 @@
 "use client";
 
+import { Input } from "@/components/ui/input";
+
 import { Eraser, Plus, RotateCcw, Undo2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
@@ -137,7 +139,7 @@ export function FractionLine({ embedded }: ToolComponentProps) {
           <span className="text-sm text-muted">{t("unitLabel")}</span>
           <div className="flex flex-col items-center leading-none">
             <span className="text-sm">1</span>
-            <input
+            <Input
               type="number"
               min={1}
               max={100}
@@ -177,11 +179,11 @@ export function FractionLine({ embedded }: ToolComponentProps) {
           </div>
         </div>
         <label className="flex items-center gap-1.5 text-xs text-muted">
-          <input type="checkbox" checked={showTicks} onChange={(e) => setShowTicks(e.target.checked)} className="accent-[var(--p-accent)]" />
+          <Input type="checkbox" checked={showTicks} onChange={(e) => setShowTicks(e.target.checked)} className="accent-[var(--p-accent)]" />
           {t("showTicks")}
         </label>
         <label className="flex items-center gap-1.5 text-xs text-muted">
-          <input type="checkbox" checked={showGuides} onChange={(e) => setShowGuides(e.target.checked)} className="accent-[var(--p-accent)]" />
+          <Input type="checkbox" checked={showGuides} onChange={(e) => setShowGuides(e.target.checked)} className="accent-[var(--p-accent)]" />
           {t("showGuides")}
         </label>
       </div>

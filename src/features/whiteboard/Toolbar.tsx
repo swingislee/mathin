@@ -1,5 +1,7 @@
 "use client";
 
+import { Input } from "@/components/ui/input";
+
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import {
@@ -44,7 +46,7 @@ function ClearTargetRow({ target, checked, onToggle }: { target: ClearTarget; ch
   const hasItems = useStore(target.store, (state) => state.items.length > 0);
   return (
     <label className="flex items-center gap-2.5 rounded-lg px-2 py-2 text-sm transition-colors hover:bg-moon/20">
-      <input
+      <Input
         type="checkbox"
         checked={checked}
         onChange={onToggle}

@@ -1,5 +1,7 @@
 "use client";
 
+import { Input } from "@/components/ui/input";
+
 import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { buttonVariants } from "@/components/ui/button";
@@ -81,7 +83,7 @@ export function ScholarshipsPanel({ scholarships }: { scholarships: ScholarshipR
         <DialogContent>
           <DialogHeader><DialogTitle>{t("grantScholarshipDialogTitle")}</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <input
+            <Input
               value={query}
               onChange={(event) => void search(event.target.value)}
               placeholder={t("searchStudent")}
@@ -102,8 +104,8 @@ export function ScholarshipsPanel({ scholarships }: { scholarships: ScholarshipR
               </div>
             )}
             {selected && <p className="text-sm">{t("selectedStudent", { name: selected.name })}</p>}
-            <input type="number" value={amount} onChange={(e) => setAmount(Number(e.target.value))} placeholder={t("amount")} className="w-full rounded-lg border border-line bg-background px-3 py-2 text-sm outline-none focus:border-crater" />
-            <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder={t("remark")} className="w-full rounded-lg border border-line bg-background px-3 py-2 text-sm outline-none focus:border-crater" />
+            <Input type="number" value={amount} onChange={(e) => setAmount(Number(e.target.value))} placeholder={t("amount")} className="w-full rounded-lg border border-line bg-background px-3 py-2 text-sm outline-none focus:border-crater" />
+            <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder={t("remark")} className="w-full rounded-lg border border-line bg-background px-3 py-2 text-sm outline-none focus:border-crater" />
           </div>
           <DialogFooter>
             <button type="button" onClick={() => setOpen(false)} className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>{t("cancel")}</button>

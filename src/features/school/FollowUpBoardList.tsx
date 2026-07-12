@@ -1,5 +1,7 @@
 "use client";
 
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
 import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
@@ -85,42 +87,42 @@ export function FollowUpBoardList({
               <p className="px-4 py-3 text-sm text-muted">{t("emptyGroup")}</p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full border-collapse text-left text-sm">
-                  <thead className="border-b border-line text-xs text-muted">
-                    <tr>
-                      <th className="px-4 py-2.5 font-medium">{studentsT("name")}</th>
-                      <th className="px-4 py-2.5 font-medium">{studentsT("gradeCol")}</th>
-                      <th className="px-4 py-2.5 font-medium">{studentsT("status")}</th>
-                      <th className="px-4 py-2.5 font-medium">{studentsT("lastFollowUp")}</th>
-                      <th className="px-4 py-2.5 font-medium">{studentsT("nextFollowUp")}</th>
-                      <th className="px-4 py-2.5 font-medium">{t("latestNote")}</th>
-                      <th className="px-4 py-2.5"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-line">
+                <Table className="w-full border-collapse text-left text-sm">
+                  <TableHeader className="border-b border-line text-xs text-muted">
+                    <TableRow>
+                      <TableHead className="px-4 py-2.5 font-medium">{studentsT("name")}</TableHead>
+                      <TableHead className="px-4 py-2.5 font-medium">{studentsT("gradeCol")}</TableHead>
+                      <TableHead className="px-4 py-2.5 font-medium">{studentsT("status")}</TableHead>
+                      <TableHead className="px-4 py-2.5 font-medium">{studentsT("lastFollowUp")}</TableHead>
+                      <TableHead className="px-4 py-2.5 font-medium">{studentsT("nextFollowUp")}</TableHead>
+                      <TableHead className="px-4 py-2.5 font-medium">{t("latestNote")}</TableHead>
+                      <TableHead className="px-4 py-2.5"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody className="divide-y divide-line">
                     {rows.map((row) => (
-                      <tr key={row.id}>
-                        <td className="px-4 py-2.5 font-medium">
+                      <TableRow key={row.id}>
+                        <TableCell className="px-4 py-2.5 font-medium">
                           <Link href={`/dashboard/students/${row.id}`} className="underline-offset-2 hover:underline">
                             {row.name}
                           </Link>
-                        </td>
-                        <td className="px-4 py-2.5 whitespace-nowrap">{row.grade ? studentsT("grade", { grade: row.grade }) : "-"}</td>
-                        <td className="px-4 py-2.5">
+                        </TableCell>
+                        <TableCell className="px-4 py-2.5 whitespace-nowrap">{row.grade ? studentsT("grade", { grade: row.grade }) : "-"}</TableCell>
+                        <TableCell className="px-4 py-2.5">
                           <span className="rounded-full bg-crater/10 px-2 py-0.5 text-xs whitespace-nowrap">{studentsT(row.status)}</span>
                           {row.isLost&&<span className="ml-1 text-[11px] text-rose">{t("lostDays",{days:row.lostDays})}</span>}
-                        </td>
-                        <td className="px-4 py-2.5 whitespace-nowrap text-muted">{formatAt(row.lastFollowUpAt)}</td>
-                        <td className={`px-4 py-2.5 whitespace-nowrap ${row.overdue ? "text-rose" : "text-muted"}`}>
+                        </TableCell>
+                        <TableCell className="px-4 py-2.5 whitespace-nowrap text-muted">{formatAt(row.lastFollowUpAt)}</TableCell>
+                        <TableCell className={`px-4 py-2.5 whitespace-nowrap ${row.overdue ? "text-rose" : "text-muted"}`}>
                           {formatAt(row.nextFollowUpAt)}
                           {row.overdue && (
                             <span className="ml-1.5 rounded-full bg-rose/10 px-2 py-0.5 text-xs text-rose">{t("overdueBadge")}</span>
                           )}
-                        </td>
-                        <td className="max-w-[16rem] truncate px-4 py-2.5 text-muted" title={row.latestNote || undefined}>
+                        </TableCell>
+                        <TableCell className="max-w-[16rem] truncate px-4 py-2.5 text-muted" title={row.latestNote || undefined}>
                           {row.latestNote || "-"}
-                        </td>
-                        <td className="px-4 py-2.5">
+                        </TableCell>
+                        <TableCell className="px-4 py-2.5">
                           <div className="flex items-center justify-end gap-2 whitespace-nowrap">
                             <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setLogTarget({ id: row.id, name: row.name })}>
                               {t("logFollowUp")}
@@ -148,11 +150,11 @@ export function FollowUpBoardList({
                             )}
                             {canRecover&&row.isLost&&<Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={()=>startTransition(async()=>{try{await recoverLostStudentAction(row.id);router.refresh()}catch{setStatusError(t("changeFailed"))}})}>{t("recover")}</Button>}
                           </div>
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </div>
             )}
             {group.rows.length > FOLD_LIMIT && (

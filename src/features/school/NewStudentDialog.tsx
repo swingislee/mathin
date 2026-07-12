@@ -1,5 +1,7 @@
 "use client";
 
+import { Input } from "@/components/ui/input";
+
 import { LoaderCircle, UserPlus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
@@ -77,7 +79,7 @@ export function NewStudentDialog() {
           <div className="grid gap-3">
             <label className="grid gap-1 text-xs text-muted">
               {studentsT("name")}
-              <input
+              <Input
                 value={name}
                 onChange={(event) => { setName(event.target.value); setError(null); }}
                 maxLength={100}
@@ -88,7 +90,7 @@ export function NewStudentDialog() {
             <div className="grid grid-cols-2 gap-3">
               <label className="grid gap-1 text-xs text-muted">
                 {t("phone")}
-                <input value={phone} onChange={(event) => setPhone(event.target.value)} maxLength={40} className={inputClass} />
+                <Input value={phone} onChange={(event) => setPhone(event.target.value)} maxLength={40} className={inputClass} />
               </label>
               <label className="grid gap-1 text-xs text-muted">
                 {studentsT("gradeCol")}
@@ -103,21 +105,21 @@ export function NewStudentDialog() {
             <div className="grid grid-cols-2 gap-3">
               <label className="grid gap-1 text-xs text-muted">
                 {studentsT("region")}
-                <input value={region} onChange={(event) => setRegion(event.target.value)} maxLength={100} className={inputClass} />
+                <Input value={region} onChange={(event) => setRegion(event.target.value)} maxLength={100} className={inputClass} />
               </label>
               <label className="grid gap-1 text-xs text-muted">
                 {t("source")}
-                <input value={source} onChange={(event) => setSource(event.target.value)} maxLength={100} className={inputClass} />
+                <Input value={source} onChange={(event) => setSource(event.target.value)} maxLength={100} className={inputClass} />
               </label>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <label className="grid gap-1 text-xs text-muted">
                 {studentsT("parentName")}
-                <input value={parentName} onChange={(event) => setParentName(event.target.value)} maxLength={100} className={inputClass} />
+                <Input value={parentName} onChange={(event) => setParentName(event.target.value)} maxLength={100} className={inputClass} />
               </label>
               <label className="grid gap-1 text-xs text-muted">
                 {studentsT("parentPhone")}
-                <input value={parentPhone} onChange={(event) => setParentPhone(event.target.value)} maxLength={40} className={inputClass} />
+                <Input value={parentPhone} onChange={(event) => setParentPhone(event.target.value)} maxLength={40} className={inputClass} />
               </label>
             </div>
             <label className="grid gap-1 text-xs text-muted">

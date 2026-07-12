@@ -1,5 +1,7 @@
 "use client";
 
+import { Input } from "@/components/ui/input";
+
 import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { buttonVariants } from "@/components/ui/button";
@@ -86,7 +88,7 @@ export function AttendanceDrawer({ sessionId }: { sessionId: string }) {
                       </option>
                     ))}
                   </select>
-                  <input
+                  <Input
                     value={row.note}
                     onChange={(event) => updateRow(row.studentId, { note: event.target.value })}
                     placeholder={t("attendanceNote")}

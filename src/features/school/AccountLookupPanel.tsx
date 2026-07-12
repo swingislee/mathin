@@ -1,5 +1,7 @@
 "use client";
 
+import { Input } from "@/components/ui/input";
+
 import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { buttonVariants } from "@/components/ui/button";
@@ -71,7 +73,7 @@ export function AccountLookupPanel({ canAdjust }: { canAdjust: boolean }) {
     <section className="rounded-xl border border-line bg-card p-5">
       <h2 className="font-medium">{t("accounts")}</h2>
       {error && <p className="mt-3 text-xs text-rose">{error}</p>}
-      <input
+      <Input
         value={query}
         onChange={(event) => void search(event.target.value)}
         placeholder={t("searchStudent")}
@@ -117,8 +119,8 @@ export function AccountLookupPanel({ canAdjust }: { canAdjust: boolean }) {
         <DialogContent>
           <DialogHeader><DialogTitle>{t("adjustAccountDialogTitle")}</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <input type="number" value={delta} onChange={(e) => setDelta(Number(e.target.value))} placeholder={t("adjustDeltaHint")} className="w-full rounded-lg border border-line bg-background px-3 py-2 text-sm outline-none focus:border-crater" />
-            <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder={t("remark")} className="w-full rounded-lg border border-line bg-background px-3 py-2 text-sm outline-none focus:border-crater" />
+            <Input type="number" value={delta} onChange={(e) => setDelta(Number(e.target.value))} placeholder={t("adjustDeltaHint")} className="w-full rounded-lg border border-line bg-background px-3 py-2 text-sm outline-none focus:border-crater" />
+            <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder={t("remark")} className="w-full rounded-lg border border-line bg-background px-3 py-2 text-sm outline-none focus:border-crater" />
           </div>
           <DialogFooter>
             <button type="button" onClick={() => setAdjustOpen(false)} className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>{t("cancel")}</button>

@@ -1,3 +1,5 @@
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
 import { setRequestLocale } from "next-intl/server";
 import { getTranslations } from "next-intl/server";
 import { buttonVariants } from "@/components/ui/button";
@@ -43,7 +45,7 @@ export default async function CoursesPage({
       </SchoolPageHeader>
 
       <form className="mt-6 grid gap-3 rounded-xl border border-line bg-card p-4 md:grid-cols-[1fr_140px_140px_140px_140px_auto_auto]">
-        <input
+        <Input
           name="q"
           defaultValue={filters.q}
           placeholder={t("search")}
@@ -80,36 +82,36 @@ export default async function CoursesPage({
         <p className="mt-8 rounded-xl border border-line bg-card p-5 text-sm text-muted">{t("empty")}</p>
       ) : (
         <div className="mt-6 overflow-hidden rounded-xl border border-line bg-card">
-          <table className="w-full border-collapse text-left text-sm">
-            <thead className="border-b border-line text-xs text-muted">
-              <tr>
-                <th className="px-4 py-3 font-medium">{t("title")}</th>
-                <th className="px-4 py-3 font-medium">{t("productCode")}</th>
-                <th className="px-4 py-3 font-medium">{t("term")}</th>
-                <th className="px-4 py-3 font-medium">{t("classType")}</th>
-                <th className="px-4 py-3 font-medium">{t("lectures")}</th>
-                <th className="px-4 py-3 font-medium">{t("status")}</th>
-                <th className="px-4 py-3 font-medium"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line">
+          <Table className="w-full border-collapse text-left text-sm">
+            <TableHeader className="border-b border-line text-xs text-muted">
+              <TableRow>
+                <TableHead className="px-4 py-3 font-medium">{t("title")}</TableHead>
+                <TableHead className="px-4 py-3 font-medium">{t("productCode")}</TableHead>
+                <TableHead className="px-4 py-3 font-medium">{t("term")}</TableHead>
+                <TableHead className="px-4 py-3 font-medium">{t("classType")}</TableHead>
+                <TableHead className="px-4 py-3 font-medium">{t("lectures")}</TableHead>
+                <TableHead className="px-4 py-3 font-medium">{t("status")}</TableHead>
+                <TableHead className="px-4 py-3 font-medium"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody className="divide-y divide-line">
               {courses.map((course) => (
-                <tr key={course.id}>
-                  <td className="px-4 py-3 font-medium">{course.title}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-muted">{course.productCode ?? "-"}</td>
-                  <td className="px-4 py-3">{t("grade", { grade: course.grade })} · {t(COURSE_TERMS.find((term) => term.value === course.term)?.labelKey ?? "summer")}</td>
-                  <td className="px-4 py-3">{course.classType || "-"}</td>
-                  <td className="px-4 py-3 tabular-nums">{course.lectureCount}</td>
-                  <td className="px-4 py-3">{t(course.status)}</td>
-                  <td className="px-4 py-3 text-right">
+                <TableRow key={course.id}>
+                  <TableCell className="px-4 py-3 font-medium">{course.title}</TableCell>
+                  <TableCell className="px-4 py-3 font-mono text-xs text-muted">{course.productCode ?? "-"}</TableCell>
+                  <TableCell className="px-4 py-3">{t("grade", { grade: course.grade })} · {t(COURSE_TERMS.find((term) => term.value === course.term)?.labelKey ?? "summer")}</TableCell>
+                  <TableCell className="px-4 py-3">{course.classType || "-"}</TableCell>
+                  <TableCell className="px-4 py-3 tabular-nums">{course.lectureCount}</TableCell>
+                  <TableCell className="px-4 py-3">{t(course.status)}</TableCell>
+                  <TableCell className="px-4 py-3 text-right">
                     <Link href={`/dashboard/courses/${course.id}`} className="text-xs text-muted underline underline-offset-2 hover:text-ink">
                       {t("open")}
                     </Link>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       )}
 

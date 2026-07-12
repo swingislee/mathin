@@ -33,6 +33,9 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ lo
     <div className="mx-auto w-full max-w-5xl">
       <SchoolPageHeader
         title={classroom.name}
+        backHref="/dashboard/classes"
+        backLabel={t("back")}
+        breadcrumbs={[{label:t("title"),href:"/dashboard/classes"},{label:classroom.name}]}
         actions={
           <>
             {canManage && <ClassroomEditor classroom={classroom} />}

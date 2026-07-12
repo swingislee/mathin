@@ -1,5 +1,7 @@
 "use client";
 
+import { Input } from "@/components/ui/input";
+
 import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
@@ -81,7 +83,7 @@ export function SessionListPanel({
                 {canMarkAttendance && !unstarted && <AttendanceDrawer sessionId={row.id} />}
                 {canReview && !unstarted && <ReviewDrawer sessionId={row.id} />}
                 {canManage && unstarted && row.scheduledAt && (
-                  <input
+                  <Input
                     type="datetime-local"
                     disabled={pending}
                     defaultValue={toDateTimeLocalValue(row.scheduledAt)}

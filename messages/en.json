@@ -22,7 +22,7 @@
     "quoteTranslation": "What makes the desert beautiful is that somewhere it hides a well…",
     "cta": "Start exploring",
     "heroAlt": "The Little Prince sitting on the moon, watching a rose",
-    "drawer": "Utilities",
+    "drawer": "Site navigation",
     "openDrawer": "Open site navigation",
     "publicSections": "Explore",
     "featureSections": "Learn and manage"
@@ -1007,6 +1007,7 @@
       "collapse": "Collapse",
       "openSidebar": "Open sidebar",
       "closeSidebar": "Close sidebar",
+      "sidebarTitle": "Notebook navigation",
       "resizeSidebar": "Resize sidebar",
       "backHome": "Back home",
       "tone": "Panel tone",

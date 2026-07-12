@@ -1,5 +1,7 @@
 "use client";
 
+import { Input } from "@/components/ui/input";
+
 import { LoaderCircle, Save } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
@@ -64,23 +66,23 @@ export function StudentProfileEditor({ student, canEdit }: { student: StudentDet
         )}
       </div>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <Field label={t("name")}><input disabled={disabled} value={form.name} maxLength={100} onChange={(e) => set("name", e.target.value)} className={fieldClass} /></Field>
-        <Field label={t("gender")}><input disabled={disabled} value={form.gender} maxLength={30} onChange={(e) => set("gender", e.target.value)} className={fieldClass} /></Field>
-        <Field label={t("birthday")}><input disabled={disabled} type="date" value={form.birthday ?? ""} onChange={(e) => set("birthday", e.target.value || null)} className={fieldClass} /></Field>
+        <Field label={t("name")}><Input disabled={disabled} value={form.name} maxLength={100} onChange={(e) => set("name", e.target.value)} className={fieldClass} /></Field>
+        <Field label={t("gender")}><Input disabled={disabled} value={form.gender} maxLength={30} onChange={(e) => set("gender", e.target.value)} className={fieldClass} /></Field>
+        <Field label={t("birthday")}><Input disabled={disabled} type="date" value={form.birthday ?? ""} onChange={(e) => set("birthday", e.target.value || null)} className={fieldClass} /></Field>
         <Field label={t("gradeCol")}>
           <select disabled={disabled} value={form.grade ?? ""} onChange={(e) => set("grade", e.target.value ? Number(e.target.value) : null)} className={selectClass}>
             <option value="">{t("none")}</option>
             {Array.from({ length: 12 }, (_, index) => index + 1).map((grade) => <option key={grade} value={grade}>{t("grade", { grade })}</option>)}
           </select>
         </Field>
-        <Field label={t("phone")}><input disabled={disabled} value={form.phone} maxLength={40} onChange={(e) => set("phone", e.target.value)} className={fieldClass} /></Field>
-        <Field label={t("wechat")}><input disabled={disabled} value={form.wechat} maxLength={80} onChange={(e) => set("wechat", e.target.value)} className={fieldClass} /></Field>
-        <Field label={t("schoolName")}><input disabled={disabled} value={form.school} maxLength={100} onChange={(e) => set("school", e.target.value)} className={fieldClass} /></Field>
-        <Field label={t("region")}><input disabled={disabled} list="student-region-options" value={form.region} maxLength={100} onChange={(e) => set("region", e.target.value)} className={fieldClass} /></Field>
-        <Field label={t("source")}><input disabled={disabled} list="student-source-options" value={form.source} maxLength={100} onChange={(e) => set("source", e.target.value)} className={fieldClass} /></Field>
-        <Field label={t("parentName")}><input disabled={disabled} value={form.parentName} maxLength={100} onChange={(e) => set("parentName", e.target.value)} className={fieldClass} /></Field>
-        <Field label={t("parentRelation")}><input disabled={disabled} value={form.parentRelation} maxLength={40} onChange={(e) => set("parentRelation", e.target.value)} className={fieldClass} /></Field>
-        <Field label={t("parentPhone")}><input disabled={disabled} value={form.parentPhone} maxLength={40} onChange={(e) => set("parentPhone", e.target.value)} className={fieldClass} /></Field>
+        <Field label={t("phone")}><Input disabled={disabled} value={form.phone} maxLength={40} onChange={(e) => set("phone", e.target.value)} className={fieldClass} /></Field>
+        <Field label={t("wechat")}><Input disabled={disabled} value={form.wechat} maxLength={80} onChange={(e) => set("wechat", e.target.value)} className={fieldClass} /></Field>
+        <Field label={t("schoolName")}><Input disabled={disabled} value={form.school} maxLength={100} onChange={(e) => set("school", e.target.value)} className={fieldClass} /></Field>
+        <Field label={t("region")}><Input disabled={disabled} list="student-region-options" value={form.region} maxLength={100} onChange={(e) => set("region", e.target.value)} className={fieldClass} /></Field>
+        <Field label={t("source")}><Input disabled={disabled} list="student-source-options" value={form.source} maxLength={100} onChange={(e) => set("source", e.target.value)} className={fieldClass} /></Field>
+        <Field label={t("parentName")}><Input disabled={disabled} value={form.parentName} maxLength={100} onChange={(e) => set("parentName", e.target.value)} className={fieldClass} /></Field>
+        <Field label={t("parentRelation")}><Input disabled={disabled} value={form.parentRelation} maxLength={40} onChange={(e) => set("parentRelation", e.target.value)} className={fieldClass} /></Field>
+        <Field label={t("parentPhone")}><Input disabled={disabled} value={form.parentPhone} maxLength={40} onChange={(e) => set("parentPhone", e.target.value)} className={fieldClass} /></Field>
       </div>
       <label className="mt-3 grid gap-1 text-xs text-muted">
         {t("remark")}

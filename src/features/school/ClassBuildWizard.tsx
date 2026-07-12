@@ -1,5 +1,9 @@
 "use client";
 
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
+import { Input } from "@/components/ui/input";
+
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { buttonVariants } from "@/components/ui/button";
@@ -139,7 +143,7 @@ export function ClassBuildWizard({
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           <div>
             <label className="text-xs text-muted">{t("name")}</label>
-            <input
+            <Input
               value={name}
               onChange={(event) => setName(event.target.value)}
               placeholder={course?.title ?? t("namePlaceholder")}
@@ -157,7 +161,7 @@ export function ClassBuildWizard({
           </div>
           <div>
             <label className="text-xs text-muted">{t("capacity")}</label>
-            <input
+            <Input
               type="number"
               min={1}
               value={capacity}
@@ -168,7 +172,7 @@ export function ClassBuildWizard({
           </div>
           <div>
             <label className="text-xs text-muted">{t("room")}</label>
-            <input value={room} onChange={(event) => setRoom(event.target.value)} maxLength={100} className={`mt-1 w-full ${inputClass}`} />
+            <Input value={room} onChange={(event) => setRoom(event.target.value)} maxLength={100} className={`mt-1 w-full ${inputClass}`} />
           </div>
         </div>
       </section>
@@ -179,15 +183,15 @@ export function ClassBuildWizard({
           <div className="mt-4 grid gap-3 md:grid-cols-3">
             <div>
               <label className="text-xs text-muted">{t("startDate")}</label>
-              <input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} className={`mt-1 w-full ${inputClass}`} />
+              <Input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} className={`mt-1 w-full ${inputClass}`} />
             </div>
             <div>
               <label className="text-xs text-muted">{t("time")}</label>
-              <input type="time" value={time} onChange={(event) => setTime(event.target.value)} className={`mt-1 w-full ${inputClass}`} />
+              <Input type="time" value={time} onChange={(event) => setTime(event.target.value)} className={`mt-1 w-full ${inputClass}`} />
             </div>
             <div>
               <label className="text-xs text-muted">{t("duration")}</label>
-              <input
+              <Input
                 type="number"
                 min={10}
                 step={5}
@@ -215,21 +219,21 @@ export function ClassBuildWizard({
 
           {preview.length > 0 && (
             <div className="mt-5 overflow-hidden rounded-xl border border-line">
-              <table className="w-full border-collapse text-left text-sm">
-                <thead className="border-b border-line text-xs text-muted">
-                  <tr>
-                    <th className="w-16 px-3 py-2 font-medium">No.</th>
-                    <th className="px-3 py-2 font-medium">{t("lectureName")}</th>
-                    <th className="w-56 px-3 py-2 font-medium">{t("scheduledAt")}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-line">
+              <Table className="w-full border-collapse text-left text-sm">
+                <TableHeader className="border-b border-line text-xs text-muted">
+                  <TableRow>
+                    <TableHead className="w-16 px-3 py-2 font-medium">No.</TableHead>
+                    <TableHead className="px-3 py-2 font-medium">{t("lectureName")}</TableHead>
+                    <TableHead className="w-56 px-3 py-2 font-medium">{t("scheduledAt")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y divide-line">
                   {preview.map((row) => (
-                    <tr key={row.lectureId}>
-                      <td className="px-3 py-2 font-mono text-xs text-muted">{row.no}</td>
-                      <td className="px-3 py-2">{row.name}</td>
-                      <td className="px-3 py-2">
-                        <input
+                    <TableRow key={row.lectureId}>
+                      <TableCell className="px-3 py-2 font-mono text-xs text-muted">{row.no}</TableCell>
+                      <TableCell className="px-3 py-2">{row.name}</TableCell>
+                      <TableCell className="px-3 py-2">
+                        <Input
                           type="datetime-local"
                           defaultValue={toDateTimeLocalValue(row.scheduledAt)}
                           onChange={(event) =>
@@ -237,11 +241,11 @@ export function ClassBuildWizard({
                           }
                           className="w-full rounded-lg border border-line bg-background px-2 py-1.5 text-xs outline-none focus:border-crater"
                         />
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           )}
         </section>

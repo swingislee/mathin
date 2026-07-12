@@ -1,5 +1,7 @@
 "use client";
 
+import { Input } from "@/components/ui/input";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
@@ -121,7 +123,7 @@ export function CoursewareTemplateEditor({
         <h3 className="text-sm font-medium text-muted">{t("templateTitle", { count: pages.length })}</h3>
         <span className={`text-xs ${saveState === "error" ? "text-rose" : "text-muted"}`}>{saveLabel}</span>
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          <input
+          <Input
             ref={fileInputRef}
             type="file"
             accept="image/*,video/*"
@@ -173,7 +175,7 @@ export function CoursewareTemplateEditor({
               <li key={page.id} className="flex items-center gap-3 px-4 py-2.5">
                 <span className="w-6 shrink-0 text-right font-mono text-xs text-muted">{index + 1}</span>
                 <Icon size={15} className="shrink-0 text-muted" aria-hidden />
-                <input
+                <Input
                   value={page.title}
                   maxLength={100}
                   placeholder={t("pageTitlePlaceholder")}

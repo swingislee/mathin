@@ -1,5 +1,7 @@
 "use client";
 
+import { Input } from "@/components/ui/input";
+
 import { ImageUp, Play, RotateCcw } from "lucide-react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
@@ -218,8 +220,8 @@ export function RunwayLane({ runway, length, ppm, locked, onMove, onField, onFie
           </div>
         </div>
 
-        <input ref={headInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { readImageFile(e.target.files?.[0], (url) => { setCropTarget("head"); setCropSrc(url); }); e.target.value = ""; }} />
-        <input ref={vehicleInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { readImageFile(e.target.files?.[0], (url) => { setVehicleOpen(false); setCropTarget("vehicle"); setCropSrc(url); }); e.target.value = ""; }} />
+        <Input ref={headInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { readImageFile(e.target.files?.[0], (url) => { setCropTarget("head"); setCropSrc(url); }); e.target.value = ""; }} />
+        <Input ref={vehicleInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { readImageFile(e.target.files?.[0], (url) => { setVehicleOpen(false); setCropTarget("vehicle"); setCropSrc(url); }); e.target.value = ""; }} />
 
         {/* 载具选择：固定居中弹窗（不再随角色位置被遮挡） */}
         <Dialog open={vehicleOpen} onOpenChange={setVehicleOpen}>

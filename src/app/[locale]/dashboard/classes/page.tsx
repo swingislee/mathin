@@ -1,3 +1,5 @@
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { buttonVariants } from "@/components/ui/button";
 import { listClassrooms, parseClassroomFilters } from "@/features/school/classes";
@@ -45,7 +47,7 @@ export default async function ClassesPage({
       </SchoolPageHeader>
 
       <form className="mt-6 flex gap-3 rounded-xl border border-line bg-card p-4">
-        <input
+        <Input
           name="q"
           defaultValue={filters.q}
           placeholder={t("search")}
@@ -59,34 +61,34 @@ export default async function ClassesPage({
         <p className="mt-8 rounded-xl border border-line bg-card p-5 text-sm text-muted">{t("empty")}</p>
       ) : (
         <div className="mt-6 overflow-hidden rounded-xl border border-line bg-card">
-          <table className="w-full border-collapse text-left text-sm">
-            <thead className="border-b border-line text-xs text-muted">
-              <tr>
-                <th className="px-4 py-3 font-medium">{t("name")}</th>
-                <th className="px-4 py-3 font-medium">{t("course")}</th>
-                <th className="px-4 py-3 font-medium">{t("size")}</th>
-                <th className="px-4 py-3 font-medium">{t("sessionCount")}</th>
-                <th className="px-4 py-3 font-medium">{t("status")}</th>
-                <th className="px-4 py-3 font-medium"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line">
+          <Table className="w-full border-collapse text-left text-sm">
+            <TableHeader className="border-b border-line text-xs text-muted">
+              <TableRow>
+                <TableHead className="px-4 py-3 font-medium">{t("name")}</TableHead>
+                <TableHead className="px-4 py-3 font-medium">{t("course")}</TableHead>
+                <TableHead className="px-4 py-3 font-medium">{t("size")}</TableHead>
+                <TableHead className="px-4 py-3 font-medium">{t("sessionCount")}</TableHead>
+                <TableHead className="px-4 py-3 font-medium">{t("status")}</TableHead>
+                <TableHead className="px-4 py-3 font-medium"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody className="divide-y divide-line">
               {classrooms.map((classroom) => (
-                <tr key={classroom.id}>
-                  <td className="px-4 py-3 font-medium">{classroom.name}</td>
-                  <td className="px-4 py-3 text-muted">{classroom.courseTitle ?? t("freeClass")}</td>
-                  <td className="px-4 py-3 tabular-nums">{classroom.activeCount}{classroom.capacity ? ` / ${classroom.capacity}` : ""}</td>
-                  <td className="px-4 py-3 tabular-nums">{classroom.sessionCount}</td>
-                  <td className="px-4 py-3">{classroom.archivedAt ? t("archived") : t("active")}</td>
-                  <td className="px-4 py-3 text-right">
+                <TableRow key={classroom.id}>
+                  <TableCell className="px-4 py-3 font-medium">{classroom.name}</TableCell>
+                  <TableCell className="px-4 py-3 text-muted">{classroom.courseTitle ?? t("freeClass")}</TableCell>
+                  <TableCell className="px-4 py-3 tabular-nums">{classroom.activeCount}{classroom.capacity ? ` / ${classroom.capacity}` : ""}</TableCell>
+                  <TableCell className="px-4 py-3 tabular-nums">{classroom.sessionCount}</TableCell>
+                  <TableCell className="px-4 py-3">{classroom.archivedAt ? t("archived") : t("active")}</TableCell>
+                  <TableCell className="px-4 py-3 text-right">
                     <Link href={`/dashboard/classes/${classroom.id}`} className="text-xs text-muted underline underline-offset-2 hover:text-ink">
                       {t("open")}
                     </Link>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       )}
 

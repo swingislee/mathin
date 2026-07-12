@@ -1,3 +1,4 @@
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ArrowLeft, Crown } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -78,39 +79,39 @@ export default async function RanksPage({ params, searchParams }: {
 
       {/* 御前名册：前三名金/银/铜星徽（docs/plan/05-3.2） */}
       <div className="mt-6 overflow-x-auto rounded-2xl border">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b bg-(--p-wash) text-left text-xs text-muted">
-              <th className="w-16 px-4 py-2.5 font-medium">{t("rankCol")}</th>
-              <th className="px-4 py-2.5 font-medium">{t("playerCol")}</th>
-              <th className="px-4 py-2.5 font-medium">{t("timeCol")}</th>
-              <th className="px-4 py-2.5 font-medium">{t("dateCol")}</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table className="w-full text-sm">
+          <TableHeader>
+            <TableRow className="border-b bg-(--p-wash) text-left text-xs text-muted">
+              <TableHead className="w-16 px-4 py-2.5 font-medium">{t("rankCol")}</TableHead>
+              <TableHead className="px-4 py-2.5 font-medium">{t("playerCol")}</TableHead>
+              <TableHead className="px-4 py-2.5 font-medium">{t("timeCol")}</TableHead>
+              <TableHead className="px-4 py-2.5 font-medium">{t("dateCol")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {(rows ?? []).map((row, i) => (
-              <tr key={row.user_id} className={cn("border-b last:border-b-0", row.user_id === user?.id && "bg-(--p-wash)")}>
-                <td className="px-4 py-2.5">
+              <TableRow key={row.user_id} className={cn("border-b last:border-b-0", row.user_id === user?.id && "bg-(--p-wash)")}>
+                <TableCell className="px-4 py-2.5">
                   {i < 3 ? (
                     <Star4 size={16} className={medalClasses[i]} />
                   ) : (
                     <span className="tabular-nums text-muted">{i + 1}</span>
                   )}
-                </td>
-                <td className="px-4 py-2.5">{row.display_name}</td>
-                <td className="px-4 py-2.5 font-serif tabular-nums">{formatMs(row.duration_ms)}</td>
-                <td className="px-4 py-2.5 text-muted">
+                </TableCell>
+                <TableCell className="px-4 py-2.5">{row.display_name}</TableCell>
+                <TableCell className="px-4 py-2.5 font-serif tabular-nums">{formatMs(row.duration_ms)}</TableCell>
+                <TableCell className="px-4 py-2.5 text-muted">
                   {new Date(row.created_at).toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US")}
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ))}
             {(rows ?? []).length === 0 && (
-              <tr>
-                <td colSpan={4} className="px-4 py-10 text-center text-muted">{t("noRanks")}</td>
-              </tr>
+              <TableRow>
+                <TableCell colSpan={4} className="px-4 py-10 text-center text-muted">{t("noRanks")}</TableCell>
+              </TableRow>
             )}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
 
       {!user && (

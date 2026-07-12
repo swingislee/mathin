@@ -1,5 +1,7 @@
 "use client";
 
+import { Input } from "@/components/ui/input";
+
 import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { buttonVariants } from "@/components/ui/button";
@@ -287,11 +289,11 @@ export function StudentFinancePanel({
             <div className="space-y-2">
               {items.map((item, index) => (
                 <div key={index} className="grid grid-cols-[1fr_80px_70px_50px_auto] items-center gap-1.5">
-                  <input value={item.name} onChange={(e) => setItems(items.map((it, i) => (i === index ? { ...it, name: e.target.value } : it)))} placeholder={t("itemName")} className="rounded-lg border border-line bg-background px-2 py-1.5 text-sm outline-none focus:border-crater" />
-                  <input type="number" value={item.unitPrice} onChange={(e) => setItems(items.map((it, i) => (i === index ? { ...it, unitPrice: Number(e.target.value) } : it)))} className="rounded-lg border border-line bg-background px-2 py-1.5 text-sm outline-none focus:border-crater" />
-                  <input type="number" value={item.qty} min={1} onChange={(e) => setItems(items.map((it, i) => (i === index ? { ...it, qty: Number(e.target.value) || 1 } : it)))} className="rounded-lg border border-line bg-background px-2 py-1.5 text-sm outline-none focus:border-crater" />
+                  <Input value={item.name} onChange={(e) => setItems(items.map((it, i) => (i === index ? { ...it, name: e.target.value } : it)))} placeholder={t("itemName")} className="rounded-lg border border-line bg-background px-2 py-1.5 text-sm outline-none focus:border-crater" />
+                  <Input type="number" value={item.unitPrice} onChange={(e) => setItems(items.map((it, i) => (i === index ? { ...it, unitPrice: Number(e.target.value) } : it)))} className="rounded-lg border border-line bg-background px-2 py-1.5 text-sm outline-none focus:border-crater" />
+                  <Input type="number" value={item.qty} min={1} onChange={(e) => setItems(items.map((it, i) => (i === index ? { ...it, qty: Number(e.target.value) || 1 } : it)))} className="rounded-lg border border-line bg-background px-2 py-1.5 text-sm outline-none focus:border-crater" />
                   <label className="flex items-center justify-center text-xs text-muted" title={t("refundable")}>
-                    <input type="checkbox" checked={item.refundable} onChange={(e) => setItems(items.map((it, i) => (i === index ? { ...it, refundable: e.target.checked } : it)))} />
+                    <Input type="checkbox" checked={item.refundable} onChange={(e) => setItems(items.map((it, i) => (i === index ? { ...it, refundable: e.target.checked } : it)))} />
                   </label>
                   <button type="button" onClick={() => setItems(items.filter((_, i) => i !== index))} disabled={items.length <= 1} className="text-xs text-muted underline underline-offset-2 disabled:opacity-30">{t("remove")}</button>
                 </div>
@@ -308,7 +310,7 @@ export function StudentFinancePanel({
                 ))}
               </select>
             )}
-            <input value={orderRemark} onChange={(e) => setOrderRemark(e.target.value)} placeholder={t("remark")} className={`w-full ${selectClass}`} />
+            <Input value={orderRemark} onChange={(e) => setOrderRemark(e.target.value)} placeholder={t("remark")} className={`w-full ${selectClass}`} />
           </div>
           <DialogFooter>
             <button type="button" onClick={() => setOrderOpen(false)} className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>{t("cancel")}</button>
@@ -321,14 +323,14 @@ export function StudentFinancePanel({
         <DialogContent>
           <DialogHeader><DialogTitle>{t("recordPaymentDialogTitle", { orderNo: paymentTarget?.orderNo ?? "" })}</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <input type="number" value={paymentAmount} onChange={(e) => setPaymentAmount(Number(e.target.value))} className={`w-full ${selectClass}`} />
+            <Input type="number" value={paymentAmount} onChange={(e) => setPaymentAmount(Number(e.target.value))} className={`w-full ${selectClass}`} />
             <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)} className={`w-full ${selectClass}`}>
               <option value="cash">{t("cash")}</option>
               <option value="scan">{t("scan")}</option>
               <option value="transfer">{t("transfer")}</option>
               <option value="account">{t("account")}</option>
             </select>
-            <input value={paymentRemark} onChange={(e) => setPaymentRemark(e.target.value)} placeholder={t("remark")} className={`w-full ${selectClass}`} />
+            <Input value={paymentRemark} onChange={(e) => setPaymentRemark(e.target.value)} placeholder={t("remark")} className={`w-full ${selectClass}`} />
           </div>
           <DialogFooter>
             <button type="button" onClick={() => setPaymentTarget(null)} className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>{t("cancel")}</button>
@@ -341,8 +343,8 @@ export function StudentFinancePanel({
         <DialogContent>
           <DialogHeader><DialogTitle>{t("requestRefundDialogTitle", { orderNo: refundTarget?.orderNo ?? "" })}</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <input type="number" value={refundAmount} onChange={(e) => setRefundAmount(Number(e.target.value))} className={`w-full ${selectClass}`} />
-            <input value={refundReason} onChange={(e) => setRefundReason(e.target.value)} placeholder={t("refundReason")} className={`w-full ${selectClass}`} />
+            <Input type="number" value={refundAmount} onChange={(e) => setRefundAmount(Number(e.target.value))} className={`w-full ${selectClass}`} />
+            <Input value={refundReason} onChange={(e) => setRefundReason(e.target.value)} placeholder={t("refundReason")} className={`w-full ${selectClass}`} />
           </div>
           <DialogFooter>
             <button type="button" onClick={() => setRefundTarget(null)} className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>{t("cancel")}</button>
@@ -365,8 +367,8 @@ export function StudentFinancePanel({
                 {discountableOrders.map((o) => <option key={o.id} value={o.id}>{o.orderNo}（¥{o.amountDue.toFixed(2)}）</option>)}
               </select>
             )}
-            <input type="number" value={scholarshipAmount} onChange={(e) => setScholarshipAmount(Number(e.target.value))} className={`w-full ${selectClass}`} />
-            <input value={scholarshipReason} onChange={(e) => setScholarshipReason(e.target.value)} placeholder={t("remark")} className={`w-full ${selectClass}`} />
+            <Input type="number" value={scholarshipAmount} onChange={(e) => setScholarshipAmount(Number(e.target.value))} className={`w-full ${selectClass}`} />
+            <Input value={scholarshipReason} onChange={(e) => setScholarshipReason(e.target.value)} placeholder={t("remark")} className={`w-full ${selectClass}`} />
           </div>
           <DialogFooter>
             <button type="button" onClick={() => setScholarshipOpen(false)} className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>{t("cancel")}</button>
@@ -379,8 +381,8 @@ export function StudentFinancePanel({
         <DialogContent>
           <DialogHeader><DialogTitle>{t("adjustAccountDialogTitle")}</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <input type="number" value={adjustDelta} onChange={(e) => setAdjustDelta(Number(e.target.value))} placeholder={t("adjustDeltaHint")} className={`w-full ${selectClass}`} />
-            <input value={adjustReason} onChange={(e) => setAdjustReason(e.target.value)} placeholder={t("remark")} className={`w-full ${selectClass}`} />
+            <Input type="number" value={adjustDelta} onChange={(e) => setAdjustDelta(Number(e.target.value))} placeholder={t("adjustDeltaHint")} className={`w-full ${selectClass}`} />
+            <Input value={adjustReason} onChange={(e) => setAdjustReason(e.target.value)} placeholder={t("remark")} className={`w-full ${selectClass}`} />
           </div>
           <DialogFooter>
             <button type="button" onClick={() => setAdjustOpen(false)} className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>{t("cancel")}</button>

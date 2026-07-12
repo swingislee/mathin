@@ -4,6 +4,7 @@ import { Home, X } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
+import * as Dialog from "@radix-ui/react-dialog";
 import { Link } from "@/i18n/navigation";
 import type { NoteMeta, WorkspaceTone } from "../types";
 import { useNotebookStore } from "../store";
@@ -63,32 +64,41 @@ export function WorkspaceFrame({ userId, initialNotes, children }: { userId: str
     return element?.offsetWidth ?? sidebarWidth;
   }
 
+  const sidebarBody = (mobile: boolean) => <>
+    <div className="mb-4 flex items-center justify-between px-5 text-[var(--ws-panel-ink)]">
+      <Link href="/" aria-label={t("backHome")} className="rounded-full p-2 hover:bg-[var(--ws-sheet)]/10"><Home size={18} /></Link>
+      <strong className="font-display">Mathin</strong>
+      {mobile ? <Dialog.Close asChild><button type="button" aria-label={t("closeSidebar")} className="rounded-full p-2 hover:bg-[var(--ws-sheet)]/10"><X size={18} /></button></Dialog.Close> : <span className="size-9" aria-hidden />}
+    </div>
+    <NoteTree activeId={activeId} onNavigate={() => setSidebarOpen(false)} />
+    <TrashPopover />
+    {!mobile && <button type="button" aria-label={t("resizeSidebar")} {...resizeHandlers} className="absolute inset-y-0 right-0 hidden w-1 cursor-col-resize bg-[var(--ws-panel-ink)]/0 transition-colors hover:bg-[var(--ws-panel-ink)]/20 lg:block" />}
+  </>;
+
   return (
     <NotebookSync userId={userId}>
       <main data-workspace data-ws-tone={tone} className="min-h-dvh bg-[var(--ws-window)] p-0 lg:p-8 lg:px-16">
         <div className="mx-auto flex h-dvh max-w-[1600px] flex-col overflow-hidden bg-[var(--ws-panel)] shadow-sm lg:h-[calc(100dvh-4rem)] lg:rounded-3xl">
           <WorkspaceTopbar activeId={activeId} tone={tone} onToneChange={setWorkspaceTone} onMenu={() => setSidebarOpen(true)} />
           <div className="relative flex min-h-0 flex-1">
-            {sidebarOpen && <button type="button" aria-label={t("closeSidebar")} onClick={() => setSidebarOpen(false)} className="fixed inset-0 z-30 bg-ink/35 lg:hidden" />}
-            {/* 拖拽宽度只作用于桌面：用 CSS 变量 + lg: 前缀，避免 inline width 把移动端的 w-[min(86vw,360px)] 覆盖成固定像素 */}
+            <Dialog.Root open={sidebarOpen} onOpenChange={setSidebarOpen}>
+              <Dialog.Portal>
+                <Dialog.Overlay className="fixed inset-0 z-30 bg-ink/35 lg:hidden" />
+                <Dialog.Content asChild>
+                  <aside className="fixed inset-y-0 left-0 z-40 flex w-[min(86vw,360px)] flex-col bg-[var(--ws-panel)] pt-3 shadow-xl outline-none lg:hidden">
+                    <Dialog.Title className="sr-only">{t("sidebarTitle")}</Dialog.Title>
+                    {sidebarBody(true)}
+                  </aside>
+                </Dialog.Content>
+              </Dialog.Portal>
+            </Dialog.Root>
+            {/* 桌面侧栏独立常驻；移动端使用上方 Radix Dialog 获得焦点陷阱、Esc 与滚动锁。 */}
             <aside
               data-notebook-sidebar
-              className={`fixed inset-y-0 left-0 z-40 flex w-[min(86vw,360px)] flex-col bg-[var(--ws-panel)] pt-3 transition-transform duration-200 motion-reduce:transition-none lg:static lg:z-auto lg:w-[var(--ws-sidebar-w)] lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
+              className="relative hidden flex-col bg-[var(--ws-panel)] pt-3 lg:flex lg:w-[var(--ws-sidebar-w)]"
               style={{ "--ws-sidebar-w": `${sidebarWidth}px` } as React.CSSProperties}
             >
-              <div className="mb-4 flex items-center justify-between px-5 text-[var(--ws-panel-ink)]">
-                <Link href="/" aria-label={t("backHome")} className="rounded-full p-2 hover:bg-[var(--ws-sheet)]/10"><Home size={18} /></Link>
-                <strong className="font-display">Mathin</strong>
-                <button type="button" aria-label={t("closeSidebar")} onClick={() => setSidebarOpen(false)} className="rounded-full p-2 hover:bg-[var(--ws-sheet)]/10 lg:hidden"><X size={18} /></button>
-              </div>
-              <NoteTree activeId={activeId} onNavigate={() => setSidebarOpen(false)} />
-              <TrashPopover />
-              <button
-                type="button"
-                aria-label={t("resizeSidebar")}
-                {...resizeHandlers}
-                className="absolute inset-y-0 right-0 hidden w-1 cursor-col-resize bg-[var(--ws-panel-ink)]/0 transition-colors hover:bg-[var(--ws-panel-ink)]/20 lg:block"
-              />
+              {sidebarBody(false)}
             </aside>
             <section className="relative min-w-0 flex-1 overflow-y-auto rounded-t-2xl bg-[var(--ws-sheet)] lg:mr-2 lg:mb-2 lg:rounded-2xl">
               {children}

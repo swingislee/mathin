@@ -22,7 +22,7 @@
     "quoteTranslation": "使沙漠显得美丽的，是它在某处藏着一口井……",
     "cta": "开始探索",
     "heroAlt": "小王子坐在月球上观察玫瑰",
-    "drawer": "实用功能",
+    "drawer": "全站导航",
     "openDrawer": "打开全站导航",
     "publicSections": "探索板块",
     "featureSections": "学习与管理"
@@ -1007,6 +1007,7 @@
       "collapse": "收起",
       "openSidebar": "打开侧栏",
       "closeSidebar": "关闭侧栏",
+      "sidebarTitle": "笔记导航",
       "resizeSidebar": "调整侧栏宽度",
       "backHome": "返回首页",
       "tone": "面板色调",

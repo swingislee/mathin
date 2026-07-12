@@ -1,4 +1,8 @@
 {
+  "cn-term-fen-shu-de-yi-yi": {
+    "tools": ["fraction-line"],
+    "games": ["kakuro"]
+  },
   "cn-term-fen-shu-dan-wei": {
     "tools": ["fraction-line"],
     "games": ["kakuro"]

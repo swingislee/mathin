@@ -1,5 +1,7 @@
 "use client";
 
+import { Input } from "@/components/ui/input";
+
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { LoaderCircle, Plus, Trash2 } from "lucide-react";
@@ -36,7 +38,7 @@ export function CreateSessionButton({ classroomId }: { classroomId: string }) {
           <DialogHeader>
             <DialogTitle>{t("createTitle")}</DialogTitle>
           </DialogHeader>
-          <input
+          <Input
             value={name}
             onChange={(event) => setName(event.target.value)}
             placeholder={t("namePlaceholder")}
@@ -71,7 +73,7 @@ export function SessionTitleInput({ sessionId, initialTitle }: { sessionId: stri
     if (timer.current) clearTimeout(timer.current);
   }, []);
   return (
-    <input
+    <Input
       value={title}
       maxLength={100}
       placeholder={t("untitled")}
