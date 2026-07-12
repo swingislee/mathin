@@ -4,6 +4,7 @@ import { RotateCcw, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { useRouter } from "@/i18n/navigation";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { deleteNoteForever, setNoteArchived } from "../actions";
 import { useNotebookStore } from "../store";
 import { useNotebookSync } from "./NotebookSync";
@@ -17,6 +18,7 @@ export function ArchivedBanner({ noteId }: { noteId: string }) {
   const broadcast = useNotebookSync();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [confirmOpen,setConfirmOpen]=useState(false);
 
   const restore = () => startTransition(async () => {
     try {
@@ -32,7 +34,7 @@ export function ArchivedBanner({ noteId }: { noteId: string }) {
   });
 
   const destroy = () => {
-    if (!window.confirm(t("deleteConfirm"))) return;
+    setConfirmOpen(false);
     startTransition(async () => {
       try {
         await deleteNoteForever(noteId);
@@ -50,9 +52,10 @@ export function ArchivedBanner({ noteId }: { noteId: string }) {
       <div className="mx-auto flex max-w-3xl flex-wrap items-center gap-3">
         <span className="flex-1 font-medium">{t("archivedBanner")}</span>
         <button type="button" disabled={pending} onClick={restore} className="inline-flex items-center gap-1.5 rounded-full border border-[var(--paper)]/60 px-3 py-1.5 hover:bg-[var(--paper)]/15 disabled:opacity-50"><RotateCcw size={13} />{t("restore")}</button>
-        <button type="button" disabled={pending} onClick={destroy} className="inline-flex items-center gap-1.5 rounded-full bg-[var(--paper)] px-3 py-1.5 text-rose-deep hover:opacity-90 disabled:opacity-50"><Trash2 size={13} />{t("deleteForever")}</button>
+        <button type="button" disabled={pending} onClick={()=>setConfirmOpen(true)} className="inline-flex items-center gap-1.5 rounded-full bg-[var(--paper)] px-3 py-1.5 text-rose-deep hover:opacity-90 disabled:opacity-50"><Trash2 size={13} />{t("deleteForever")}</button>
         {error && <p className="w-full text-xs text-[var(--paper)]/90">{t("actionFailed", { message: error })}</p>}
       </div>
+      <ConfirmDialog open={confirmOpen} onOpenChange={setConfirmOpen} title={t("deleteForever")} description={t("deleteConfirm")} confirmLabel={t("deleteForever")} cancelLabel={t("cancel")} onConfirm={destroy} pending={pending}/>
     </div>
   );
 }

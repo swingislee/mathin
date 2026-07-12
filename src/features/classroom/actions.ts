@@ -314,6 +314,15 @@ export async function endClassSession(sessionId: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+export async function setSessionPage(sessionId: string, page: number): Promise<void> {
+  const { supabase } = await authenticatedClient();
+  const { error } = await supabase.rpc("set_session_authoritative_state", {
+    p_session_id: sessionId,
+    p_current_page: page,
+  });
+  if (error) throw new Error(error.message);
+}
+
 /** 重新开课：清掉 ended_at 即可回到上课态；事件流里由新的 session_ctl start 收敛各端。 */
 export async function reopenClassSession(sessionId: string): Promise<void> {
   const { supabase } = await authenticatedClient();

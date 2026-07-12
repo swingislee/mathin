@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { LoaderCircle, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useRouter } from "@/i18n/navigation";
 import { bindGuardianAction, claimStudentAccountAction } from "./customer-actions";
 
@@ -16,6 +17,7 @@ export function BindCodeForm({ mode }: BindCodeFormProps) {
   const router = useRouter();
   const [code, setCode] = useState("");
   const [relation, setRelation] = useState("");
+  const [consents,setConsents]=useState({profile:false,learning:false,video:false});
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -26,7 +28,7 @@ export function BindCodeForm({ mode }: BindCodeFormProps) {
         if (mode === "claim") {
           await claimStudentAccountAction(code);
         } else {
-          await bindGuardianAction(code, relation);
+          await bindGuardianAction(code, relation, consents);
         }
         setError(null);
         router.refresh();
@@ -39,7 +41,7 @@ export function BindCodeForm({ mode }: BindCodeFormProps) {
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
-        <input
+        <Input
           value={code}
           onChange={(event) => {
             setCode(event.target.value);
@@ -48,23 +50,23 @@ export function BindCodeForm({ mode }: BindCodeFormProps) {
           placeholder={t("bindCodePlaceholder")}
           maxLength={16}
           aria-label={t("bindCodePlaceholder")}
-          className="w-40 rounded-full border border-line bg-transparent px-4 py-2 font-mono text-sm outline-none transition focus:ring-2 focus:ring-moon"
+          className="h-9 w-48 rounded-full bg-transparent font-mono"
         />
         {mode === "guardian" && (
-          <input
+          <Input
             value={relation}
             onChange={(event) => setRelation(event.target.value)}
             placeholder={t("relationPlaceholder")}
             maxLength={20}
             aria-label={t("relationPlaceholder")}
-            className="w-28 rounded-full border border-line bg-transparent px-4 py-2 text-sm outline-none transition focus:ring-2 focus:ring-moon"
+            className="h-9 w-32 rounded-full bg-transparent"
           />
         )}
         <Button
           variant="secondary"
           size="sm"
           className="gap-1.5"
-          disabled={pending || !code.trim()}
+          disabled={pending || !code.trim() || (mode==="guardian"&&!consents.profile)}
           onClick={(event) => {
             event.preventDefault();
             submit();
@@ -74,6 +76,7 @@ export function BindCodeForm({ mode }: BindCodeFormProps) {
           {t("bindSubmit")}
         </Button>
       </div>
+      {mode==="guardian"&&<div className="flex flex-wrap gap-2 pl-1" aria-label={t("consentTitle")}>{(["profile","learning","video"] as const).map(scope=><Button key={scope} type="button" size="sm" variant={consents[scope]?"primary":"secondary"} aria-pressed={consents[scope]} onClick={()=>setConsents(current=>({...current,[scope]:!current[scope]}))}>{t(`consent_${scope}`)}</Button>)}</div>}
       {error && <p role="alert" className="pl-4 text-xs text-rose">{error}</p>}
     </div>
   );

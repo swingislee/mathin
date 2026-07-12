@@ -23,7 +23,9 @@
     "cta": "开始探索",
     "heroAlt": "小王子坐在月球上观察玫瑰",
     "drawer": "实用功能",
-    "openDrawer": "打开实用功能导航"
+    "openDrawer": "打开全站导航",
+    "publicSections": "探索板块",
+    "featureSections": "学习与管理"
   },
   "common": {
     "theme": "主题",
@@ -35,10 +37,58 @@
     "backHome": "返回首页",
     "comingSoon": "这里正在搭建，内容很快就会到来。",
     "logout": "退出登录",
-    "login": "登录"
+    "login": "登录",
+    "switchLanguage": "切换语言",
+    "skipToContent": "跳到主要内容",
+    "back": "返回上一级",
+    "privacy": "隐私政策",
+    "childrenPrivacy": "儿童信息保护",
+    "unexpectedError": "这里暂时出了点问题",
+    "unexpectedErrorHint": "错误已经记录。你可以重试；若仍失败，请稍后再来。",
+    "retry": "重试"
+  },
+  "changes": {
+    "title": "最近变化",
+    "label": "变化通知，{count} 条未读",
+    "empty": "暂时没有与你有关的新变化。",
+    "types": {
+      "payment_recorded": "已记录一笔收款",
+      "review_insert": "发布了新的课堂课评",
+      "review_update": "更新了课堂课评",
+      "attendance_consumed": "考勤已完成课时结算",
+      "student_merged": "学生档案已合并",
+      "staff_deactivated": "员工已停用并完成交接"
+    }
+  },
+  "compliance": {
+    "privacyTitle": "隐私政策",
+    "privacyIntro": "Mathin 仅为提供学习、课堂与学校运营服务处理必要数据，并按角色权限和数据库行级安全限制访问。",
+    "rightsTitle": "你的数据权利",
+    "rightsBody": "你可以申请访问、更正、导出或删除个人信息。涉及财务审计与法定保存义务的数据会依法保留并限制用途。",
+    "childrenLink": "儿童个人信息保护规则",
+    "requestTitle": "数据导出或注销申请",
+    "export": "导出数据",
+    "delete": "注销账号",
+    "reason": "补充说明（可选）",
+    "submit": "提交申请",
+    "requestSaved": "申请已提交，我们会在核验身份后处理。",
+    "requestFailed": "提交失败，请登录后重试。",
+    "childrenTitle": "儿童个人信息保护规则",
+    "childrenIntro": "不满十四周岁儿童使用 Mathin 前，应由监护人阅读本规则并完成同意。",
+    "consentTitle": "单独同意",
+    "consentBody": "学习轨迹、课堂评价与视频分别记录监护人同意；监护人可以撤回未完成处理的同意。",
+    "videoTitle": "课堂视频",
+    "videoBody": "课堂视频存储在私有空间，仅学生本人、获授权监护人与负责教师可在短时签名链接有效期内访问。"
   },
   "auth": {
     "loginTitle": "登录 Mathin",
+    "phoneLogin": "手机验证码登录",
+    "phoneHint": "输入含国家区号的手机号，我们会发送一次性验证码。",
+    "phone": "手机号",
+    "otp": "验证码",
+    "sendOtp": "发送验证码",
+    "verifyOtp": "验证并登录",
+    "phoneError": "验证码发送或验证失败，请检查短信服务配置后重试。",
     "signupTitle": "创建账号",
     "email": "邮箱",
     "password": "密码",
@@ -61,6 +111,7 @@
     },
     "pickDifficulty": "选择难度，随时可以重开。",
     "rules": "规则与技巧",
+    "relatedTerms": "相关知识：",
     "submitting": "成绩提交中…",
     "finishedIn": "完成用时 {time}",
     "recorded": "已载入御前名册",
@@ -68,6 +119,8 @@
     "submitFailed": "成绩提交失败",
     "loginToRank": "登录后成绩才会计入排行榜",
     "ranks": "排行榜",
+    "viewRanking": "查看我的排名",
+    "playAgain": "再来一局",
     "rankCol": "名次",
     "playerCol": "玩家",
     "timeCol": "用时",
@@ -543,7 +596,12 @@
       "followUpStatusAfter": "跟进状态变更",
       "followUpStatusKeep": "状态不变",
       "addFollowUp": "添加跟进",
-      "followUpFailed": "添加失败，请重试。"
+      "followUpFailed": "添加失败，请重试。",
+      "followUpSaved": "已保存跟进记录。",
+      "guardianInvite": "签发监护人邀请码",
+      "guardianInviteHint": "邀请码七天内有效且只能使用一次；监护人绑定时仍需分别确认学习与视频同意。",
+      "guardianRelation": "关系，如母亲",
+      "issueInvite": "签发邀请码"
     },
     "courseware": {
       "backToCourse": "返回课程",
@@ -832,6 +890,7 @@
       "domain_finance": "财务",
       "domain_staff": "员工",
       "domain_permission": "权限配置",
+      "domain_audit": "审计",
       "perm_student_view_all": "查看全部学生",
       "perm_student_view_assigned": "查看名下学生",
       "perm_student_edit": "编辑学生档案",
@@ -868,7 +927,8 @@
       "perm_finance_account_adjust": "调整学员账户",
       "perm_finance_report_view": "查看财务报表",
       "perm_staff_manage": "管理员工岗位",
-      "perm_permission_configure": "配置岗位权限"
+      "perm_permission_configure": "配置岗位权限",
+      "perm_audit_view": "查看审计与变化记录"
     },
     "customer": {
       "childrenTitle": "我的孩子",
@@ -877,7 +937,11 @@
       "parentTitle": "家长首页",
       "parentIntro": "查看孩子的课表、学情与费用；输入绑定码可关联更多孩子。",
       "noChildren": "还没有绑定孩子，输入孩子的绑定码即可关联。",
-      "bindCodePlaceholder": "输入 8 位绑定码",
+      "bindCodePlaceholder": "输入 12 位邀请码",
+      "consentTitle": "监护人单独同意",
+      "consent_profile": "同意处理档案信息（必选）",
+      "consent_learning": "同意处理学习轨迹",
+      "consent_video": "同意处理课堂视频",
       "relationPlaceholder": "与孩子关系（如：妈妈）",
       "bindSubmit": "绑定",
       "bindFailed": "绑定码无效或已被使用，请检查后重试。",
@@ -1286,7 +1350,11 @@
     "wrong": "再想想",
     "galaxyLearned": "你点亮过的星",
     "galaxyHint": "每一颗星都是一个知识点，金色的是你深入学习过的地方；把鼠标放上去看看它是什么，点一下就能前往。",
-    "index": "学段索引"
+    "index": "学段索引",
+    "nextSteps": "下一步",
+    "exploreTool": "去动手探索",
+    "playGame": "去游戏里练习",
+    "nextConcept": "继续学习"
   },
   "termsUniverse": {
     "hint": "点击一颗星球，去看看那里的数学",

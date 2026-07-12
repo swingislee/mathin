@@ -23,12 +23,14 @@ export function BoardClient({ board, selfName }: { board: WhiteboardRecord; self
   const saveState = useWhiteboardStore((state) => state.saveState);
   const revision = useWhiteboardStore((state) => state.revision);
   const savingRef = useRef(false);
+  const versionRef = useRef(board.version);
   const renameTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { peers } = useBoardSync(board.id, board.canEdit, selfName);
 
   useEffect(() => {
     useWhiteboardStore.getState().hydrate(board.id, board.snapshot);
-  }, [board.id, board.snapshot]);
+    versionRef.current = board.version;
+  }, [board.id, board.snapshot, board.version]);
 
   /* 快照保存：防抖 + 定时兜底 + 页面隐藏即时（08-§3.2 持久化纪律）。 */
   const flush = useCallback(async () => {
@@ -39,7 +41,7 @@ export function BoardClient({ board, selfName }: { board: WhiteboardRecord; self
     const revisionAtStart = state.revision;
     state.setSaveState("saving");
     try {
-      await saveSnapshot(board.id, state.items);
+      versionRef.current = await saveSnapshot(board.id, state.items, versionRef.current);
       useWhiteboardStore.getState().markSaved(revisionAtStart);
     } catch {
       useWhiteboardStore.getState().setSaveState("error");

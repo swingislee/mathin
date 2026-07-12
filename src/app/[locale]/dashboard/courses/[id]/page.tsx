@@ -30,6 +30,9 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ l
     <div className="mx-auto w-full max-w-5xl">
       <SchoolPageHeader
         title={course.title}
+        backHref="/dashboard/courses"
+        backLabel={t("detailBack")}
+        breadcrumbs={[{label:t("title"),href:"/dashboard/courses"},{label:course.title}]}
         actions={
           <Link href="/dashboard/courses" className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>
             {t("detailBack")}

@@ -36,6 +36,7 @@ export const PERMISSION_KEYS = [
   "finance.report.view",
   "staff.manage",
   "permission.configure",
+  "audit.view",
 ] as const;
 
 export type PermissionKey = (typeof PERMISSION_KEYS)[number];

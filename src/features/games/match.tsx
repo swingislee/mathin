@@ -3,7 +3,8 @@
 import { Crown, RotateCcw } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { startGame, submitScore } from "./actions";
 import { formatMs } from "./format";
@@ -129,12 +130,14 @@ export function GameMatch({ gameId, loggedIn }: { gameId: string; loggedIn: bool
       <div aria-live="polite">
         {phase === "submitting" && <p className="mt-4 text-center text-sm text-muted">{t("submitting")}</p>}
         {phase === "done" && (
-          <p className="mt-4 text-center text-sm">
-            <span className="font-medium">{t("finishedIn", { time: formatMs(elapsedMs) })}</span>
-            <span className="ml-2 text-muted">
-              {recorded === "yes" ? t("recorded") : recorded === "failed" ? t("submitFailed") : t("notRecorded")}
-            </span>
-          </p>
+          <div className="mt-4 text-center text-sm">
+            <p><span className="font-medium">{t("finishedIn", { time: formatMs(elapsedMs) })}</span><span className="ml-2 text-muted">{recorded === "yes" ? t("recorded") : recorded === "failed" ? t("submitFailed") : t("notRecorded")}</span></p>
+            <div className="mt-4 flex flex-wrap justify-center gap-2">
+              <Link href={`/games/${gameId}/ranks?difficulty=${difficulty}`} className={buttonVariants({size:"sm"})}>{t("viewRanking")}</Link>
+              <Button variant="secondary" size="sm" onClick={()=>begin(difficulty)}>{t("playAgain")}</Button>
+              <Link href="/games" className={buttonVariants({variant:"ghost",size:"sm"})}>{t("backToGames")}</Link>
+            </div>
+          </div>
         )}
         {!loggedIn && <p className="mt-4 text-center text-xs text-muted">{t("loginToRank")}</p>}
       </div>

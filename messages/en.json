@@ -23,7 +23,9 @@
     "cta": "Start exploring",
     "heroAlt": "The Little Prince sitting on the moon, watching a rose",
     "drawer": "Utilities",
-    "openDrawer": "Open utility navigation"
+    "openDrawer": "Open site navigation",
+    "publicSections": "Explore",
+    "featureSections": "Learn and manage"
   },
   "common": {
     "theme": "Theme",
@@ -35,10 +37,58 @@
     "backHome": "Back home",
     "comingSoon": "This space is being prepared. Content is coming soon.",
     "logout": "Sign out",
-    "login": "Sign in"
+    "login": "Sign in",
+    "switchLanguage": "Switch language",
+    "skipToContent": "Skip to main content",
+    "back": "Back",
+    "privacy": "Privacy",
+    "childrenPrivacy": "Children's privacy",
+    "unexpectedError": "Something went wrong here",
+    "unexpectedErrorHint": "The error was recorded. Retry now, or come back later if it continues.",
+    "retry": "Retry"
+  },
+  "changes": {
+    "title": "Recent changes",
+    "label": "Change notifications, {count} unread",
+    "empty": "There are no new changes relevant to you.",
+    "types": {
+      "payment_recorded": "A payment was recorded",
+      "review_insert": "A class review was published",
+      "review_update": "A class review was updated",
+      "attendance_consumed": "Attendance lesson consumption was posted",
+      "student_merged": "Student records were merged",
+      "staff_deactivated": "A staff member was deactivated and handed over"
+    }
+  },
+  "compliance": {
+    "privacyTitle": "Privacy policy",
+    "privacyIntro": "Mathin processes only the data needed for learning, classes and school operations, with role permissions and database row-level security restricting access.",
+    "rightsTitle": "Your data rights",
+    "rightsBody": "You may request access, correction, export or deletion. Financial audit records subject to retention duties are retained with restricted use.",
+    "childrenLink": "Children's personal information rules",
+    "requestTitle": "Data export or account deletion",
+    "export": "Export data",
+    "delete": "Delete account",
+    "reason": "Additional details (optional)",
+    "submit": "Submit request",
+    "requestSaved": "Your request was submitted and will be handled after identity verification.",
+    "requestFailed": "Submission failed. Sign in and retry.",
+    "childrenTitle": "Children's personal information rules",
+    "childrenIntro": "A guardian should read and consent to these rules before a child under 14 uses Mathin.",
+    "consentTitle": "Separate consent",
+    "consentBody": "Guardian consent is recorded separately for learning traces, class reviews and video, and may be withdrawn where processing is incomplete.",
+    "videoTitle": "Class videos",
+    "videoBody": "Class videos are private and available only to the student, authorized guardians and responsible teachers through short-lived signed links."
   },
   "auth": {
     "loginTitle": "Sign in to Mathin",
+    "phoneLogin": "Sign in with phone",
+    "phoneHint": "Enter a phone number with country code and we will send a one-time code.",
+    "phone": "Phone number",
+    "otp": "Verification code",
+    "sendOtp": "Send code",
+    "verifyOtp": "Verify and sign in",
+    "phoneError": "The code could not be sent or verified. Check the SMS provider configuration and retry.",
     "signupTitle": "Create an account",
     "email": "Email",
     "password": "Password",
@@ -61,6 +111,7 @@
     },
     "pickDifficulty": "Pick a difficulty — you can restart anytime.",
     "rules": "Rules & tips",
+    "relatedTerms": "Related concepts: ",
     "submitting": "Submitting score…",
     "finishedIn": "Finished in {time}",
     "recorded": "Entered in the royal register",
@@ -68,6 +119,8 @@
     "submitFailed": "Failed to submit score",
     "loginToRank": "Sign in so your results count on the leaderboard",
     "ranks": "Leaderboard",
+    "viewRanking": "View my rank",
+    "playAgain": "Play again",
     "rankCol": "Rank",
     "playerCol": "Player",
     "timeCol": "Time",
@@ -541,7 +594,12 @@
       "followUpStatusAfter": "Follow-up status change",
       "followUpStatusKeep": "Keep status",
       "addFollowUp": "Add follow-up",
-      "followUpFailed": "Failed to add, please retry."
+      "followUpFailed": "Failed to add, please retry.",
+      "followUpSaved": "Follow-up saved.",
+      "guardianInvite": "Issue guardian invitation",
+      "guardianInviteHint": "The invitation expires in seven days and is single-use. The guardian still confirms learning and video consent separately.",
+      "guardianRelation": "Relationship, e.g. mother",
+      "issueInvite": "Issue invitation"
     },
     "courseware": {
       "backToCourse": "Back to course",
@@ -830,6 +888,7 @@
       "domain_finance": "Finance",
       "domain_staff": "Staff",
       "domain_permission": "Permissions",
+      "domain_audit": "Audit",
       "perm_student_view_all": "View all students",
       "perm_student_view_assigned": "View assigned students",
       "perm_student_edit": "Edit student profiles",
@@ -866,7 +925,8 @@
       "perm_finance_account_adjust": "Adjust student accounts",
       "perm_finance_report_view": "View finance reports",
       "perm_staff_manage": "Manage staff",
-      "perm_permission_configure": "Configure role permissions"
+      "perm_permission_configure": "Configure role permissions",
+      "perm_audit_view": "View audit and change records"
     },
     "customer": {
       "childrenTitle": "My children",
@@ -875,7 +935,11 @@
       "parentTitle": "Parent home",
       "parentIntro": "Track your children's schedule, learning, and payments; enter a bind code to link another child.",
       "noChildren": "No children linked yet — enter your child's bind code to link one.",
-      "bindCodePlaceholder": "Enter 8-character bind code",
+      "bindCodePlaceholder": "Enter 12-character invitation code",
+      "consentTitle": "Separate guardian consent",
+      "consent_profile": "Consent to profile data (required)",
+      "consent_learning": "Consent to learning records",
+      "consent_video": "Consent to class videos",
       "relationPlaceholder": "Relation (e.g. Mom)",
       "bindSubmit": "Bind",
       "bindFailed": "Invalid or already-used bind code, please check and retry.",
@@ -1286,7 +1350,11 @@
     "wrong": "Think again",
     "galaxyLearned": "Stars you have lit",
     "galaxyHint": "Every star is a concept; the golden ones are those you have studied in depth. Hover to see what a star is, click to visit it.",
-    "index": "Index by stage"
+    "index": "Index by stage",
+    "nextSteps": "Next steps",
+    "exploreTool": "Explore with a tool",
+    "playGame": "Practice in a game",
+    "nextConcept": "Continue learning"
   },
   "termsUniverse": {
     "hint": "Click a planet to explore its mathematics",

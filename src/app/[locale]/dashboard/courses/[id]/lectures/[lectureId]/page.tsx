@@ -31,6 +31,9 @@ export default async function LectureTemplatePage({
       <SchoolPageHeader
         eyebrow={lecture.courseTitle}
         title={`${t("lectureNo", { no: lecture.no })} · ${lecture.name}`}
+        backHref={`/dashboard/courses/${id}`}
+        backLabel={t("backToCourse")}
+        breadcrumbs={[{label:lecture.courseTitle,href:`/dashboard/courses/${id}`},{label:lecture.name}]}
         actions={
           <Link href={`/dashboard/courses/${id}`} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>
             {t("backToCourse")}

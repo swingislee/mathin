@@ -9,6 +9,7 @@ import { StudentFinancePanel } from "@/features/school/StudentFinancePanel";
 import { StudentLifecycleActions } from "@/features/school/StudentLifecycleActions";
 import { StudentProfileEditor } from "@/features/school/StudentProfileEditor";
 import { CustomerVideoButton } from "@/features/school/CustomerVideoButton";
+import { GuardianInvitePanel } from "@/features/school/GuardianInvitePanel";
 import { getStudentDetail, getStudentLearning } from "@/features/school/students";
 import { Link } from "@/i18n/navigation";
 import { getMyPerms, requireAnyPerm } from "@/lib/auth";
@@ -43,6 +44,9 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
     <div className="mx-auto w-full max-w-5xl">
       <SchoolPageHeader
         title={student.name}
+        backHref={student.deletedAt ? "/dashboard/students?tab=recycle" : "/dashboard/students"}
+        backLabel={t("back")}
+        breadcrumbs={[{label:t("title"),href:"/dashboard/students"},{label:student.name}]}
         actions={
           <div className="flex flex-wrap items-center justify-end gap-2">
             <StudentLifecycleActions
@@ -74,6 +78,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
           {t("deletedBanner", { date: new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(student.deletedAt)) })}
         </div>
       )}
+      {!student.deletedAt && perms.has("student.edit") && <GuardianInvitePanel studentId={id} />}
 
       <div className="mt-6">
         <StudentProfileEditor student={student} canEdit={perms.has("student.edit")} />

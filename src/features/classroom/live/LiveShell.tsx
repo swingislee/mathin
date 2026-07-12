@@ -37,11 +37,11 @@ import { CanvasSurface } from "@/features/whiteboard/CanvasSurface";
 import { Toolbar } from "@/features/whiteboard/Toolbar";
 import type { WhiteboardStore } from "@/features/whiteboard/store";
 import type { StrokeItem } from "@/features/whiteboard/types";
-import { Link } from "@/i18n/navigation";
-import { createClient, createIsolatedRealtimeClient } from "@/lib/supabase/client";
+import { Link, useRouter } from "@/i18n/navigation";
+import { createIsolatedRealtimeClient } from "@/lib/supabase/client";
 import { newId } from "@/lib/uuid";
 import { cn } from "@/lib/utils";
-import { endClassSession, reopenClassSession, saveCourseware, startClassSession } from "../actions";
+import { endClassSession, reopenClassSession, saveCourseware, setSessionPage, startClassSession } from "../actions";
 import { downloadCoursewareAsset } from "../courseware/upload";
 import { SessionEventLog } from "../sync/eventlog";
 import { flushOutbox, pendingCount } from "../sync/flush";
@@ -177,6 +177,7 @@ const OPTION_LABELS = ["A", "B", "C", "D"];
 const MAX_INLINE_STARS = 5;
 
 export function LiveShell({ session, classId, members, myRole, userId, initialEvents, role, rehearsal = false }: Props) {
+  const router = useRouter();
   const t = useTranslations("classroom.live");
   const tPrep = useTranslations("classroom.prep");
   const students = useMemo(() => members.filter((member) => member.role === "student"), [members]);
@@ -406,8 +407,7 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
     append("page", { page: clamped });
     // 在线时顺手更新 DB 基线（晚加入者用）；离线静默失败。试讲不改共享基线。
     if (rehearsal) return;
-    void createClient().from("class_sessions").update({ current_page: clamped }).eq("id", session.id)
-      .then(() => undefined, () => undefined);
+    void setSessionPage(session.id, clamped).catch(() => undefined);
   }, [append, session.id, rehearsal]);
 
   const startClass = useCallback(async () => {
@@ -435,8 +435,7 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
     const nextPages = [...state.pages];
     nextPages.splice(index, 0, page);
     void saveCourseware(session.id, nextPages).catch(() => undefined);
-    void createClient().from("class_sessions").update({ current_page: index }).eq("id", session.id)
-      .then(() => undefined, () => undefined);
+    void setSessionPage(session.id, index).catch(() => undefined);
   }, [state.currentPage, state.pages, append, session.id, t]);
 
   // 游戏镜像：全量轻状态防抖 350ms（08-§3.6 game_state，单写者）
@@ -474,11 +473,15 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
     };
   }, [mainStore, sideBoard.store]);
 
-  const endClass = useCallback(() => {
+  const endClass = useCallback(async () => {
     append("session_ctl", { action: "end" });
-    void endClassSession(session.id).catch(() => undefined);
-    setEndOpen(false);
-  }, [append, session.id]);
+    try {
+      await endClassSession(session.id);
+      router.push(`/classroom/${classId}/session/${session.id}/report`);
+    } finally {
+      setEndOpen(false);
+    }
+  }, [append, classId, router, session.id]);
 
   const reopenClass = useCallback(() => {
     append("session_ctl", { action: "start" });

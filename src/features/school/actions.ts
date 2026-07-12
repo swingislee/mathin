@@ -16,6 +16,7 @@ import type { CouponGrantOption, CouponKind, PaymentMethod, ScholarshipKind, Stu
 import type { AttendanceStatus } from "./learning";
 import type { ScheduleEntry } from "./schedule";
 import { FOLLOW_UP_STATUSES, STUDENT_STATUSES, type StudentStatus } from "./students";
+import type { ActionResult } from "@/lib/action-result";
 
 /** 校验闸：登录 + 功能权限键（两道闸的第二道，第一道靠 requirePerm 挡在页面级；RLS 第三道兜底）。 */
 async function authorizedClient(key: PermissionKey) {
@@ -895,7 +896,7 @@ const STAFF_ERROR_CODES = new Set([
   "INVALID_ROLE",
 ]);
 
-export type StaffActionResult = { ok: true } | { ok: false; code: string };
+export type StaffActionResult = ActionResult;
 
 function staffResult(error: { message: string } | null): StaffActionResult {
   if (!error) return { ok: true };

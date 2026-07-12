@@ -1,0 +1,3 @@
+"use client";
+import{useEffect}from"react";import{useTranslations}from"next-intl";import{Button}from"@/components/ui/button";
+export default function ErrorBoundary({error,reset}:{error:Error&{digest?:string};reset:()=>void}){const t=useTranslations("common");useEffect(()=>{console.error(error)},[error]);return <main className="grid min-h-screen place-items-center p-6"><div className="max-w-md text-center"><h1 className="font-display text-2xl">{t("unexpectedError")}</h1><p className="mt-3 text-sm text-muted">{t("unexpectedErrorHint")}</p><Button className="mt-6" onClick={reset}>{t("retry")}</Button></div></main>}

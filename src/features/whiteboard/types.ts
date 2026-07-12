@@ -27,6 +27,8 @@ export interface WhiteboardMeta {
 
 export interface WhiteboardRecord extends WhiteboardMeta {
   snapshot: StrokeItem[];
+  /** 快照乐观锁版本；每次成功落盘递增。 */
+  version: number;
   canEdit: boolean;
   isOwner: boolean;
   ownerId: string;

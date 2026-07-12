@@ -4,6 +4,8 @@ import { LoaderCircle, MessageSquarePlus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "@/i18n/navigation";
 import { addStudentFollowUp, type FollowUpKind } from "./actions";
 import { inputClass } from "./controls";
@@ -21,6 +23,7 @@ export function FollowUpForm({ studentId, onSuccess }: { studentId: string; onSu
   const [nextAt, setNextAt] = useState("");
   const [statusAfter, setStatusAfter] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [saved,setSaved]=useState(false);
   const [pending, startTransition] = useTransition();
 
   const submit = () => {
@@ -37,9 +40,11 @@ export function FollowUpForm({ studentId, onSuccess }: { studentId: string; onSu
         setNextAt("");
         setStatusAfter("");
         setError(null);
+        setSaved(true);
         router.refresh();
         onSuccess?.();
       } catch {
+        setSaved(false);
         setError(t("followUpFailed"));
       }
     });
@@ -47,11 +52,11 @@ export function FollowUpForm({ studentId, onSuccess }: { studentId: string; onSu
 
   return (
     <div className="mt-4 rounded-xl border border-line bg-background p-4">
-      <textarea
+      <Textarea
         value={content}
         onChange={(event) => {
           setContent(event.target.value);
-          setError(null);
+          setError(null); setSaved(false);
         }}
         rows={2}
         maxLength={2000}
@@ -78,7 +83,7 @@ export function FollowUpForm({ studentId, onSuccess }: { studentId: string; onSu
         </div>
         <label className="flex items-center gap-1.5 text-xs text-muted">
           {t("nextFollowUp")}
-          <input type="datetime-local" value={nextAt} onChange={(event) => setNextAt(event.target.value)} className={inputClass} />
+          <Input type="datetime-local" value={nextAt} onChange={(event) => setNextAt(event.target.value)} className="h-9 w-auto" />
         </label>
         <select
           value={statusAfter}
@@ -103,6 +108,7 @@ export function FollowUpForm({ studentId, onSuccess }: { studentId: string; onSu
         </Button>
       </div>
       {error && <p role="alert" className="mt-2 text-xs text-rose">{error}</p>}
+      {saved && <p role="status" className="mt-2 text-xs text-leaf-deep">{t("followUpSaved")}</p>}
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { LoaderCircle, RotateCcw, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useRouter } from "@/i18n/navigation";
 import {
   assignStudentAction,
@@ -45,6 +46,7 @@ export function StudentLifecycleActions({
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [confirmOpen,setConfirmOpen]=useState(false);
 
   const changeStatus = (next: StudentStatus) => {
     setError(null);
@@ -72,7 +74,7 @@ export function StudentLifecycleActions({
   };
 
   const remove = () => {
-    if (!window.confirm(t("deleteConfirm"))) return;
+    setConfirmOpen(false);
     setError(null);
     startTransition(async () => {
       const result = await softDeleteStudentAction(studentId);
@@ -126,7 +128,7 @@ export function StudentLifecycleActions({
         </label>
       )}
       {!deleted && canDelete && (
-        <Button type="button" size="sm" variant="secondary" disabled={pending} onClick={remove} className="gap-1.5 text-rose">
+        <Button type="button" size="sm" variant="secondary" disabled={pending} onClick={()=>setConfirmOpen(true)} className="gap-1.5 text-rose">
           <Trash2 size={15} />{t("deleteStudent")}
         </Button>
       )}
@@ -136,6 +138,7 @@ export function StudentLifecycleActions({
         </Button>
       )}
       {error && <p role="alert" className="basis-full text-right text-xs text-rose">{error}</p>}
+      <ConfirmDialog open={confirmOpen} onOpenChange={setConfirmOpen} title={t("deleteStudent")} description={t("deleteConfirm")} confirmLabel={t("deleteStudent")} cancelLabel={t("cancel")} onConfirm={remove} pending={pending}/>
     </div>
   );
 }
