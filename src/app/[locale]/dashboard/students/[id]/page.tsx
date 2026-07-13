@@ -10,6 +10,7 @@ import { StudentLifecycleActions } from "@/features/school/StudentLifecycleActio
 import { StudentProfileEditor } from "@/features/school/StudentProfileEditor";
 import { CustomerVideoButton } from "@/features/school/CustomerVideoButton";
 import { GuardianInvitePanel } from "@/features/school/GuardianInvitePanel";
+import { GuardianScopePanel } from "@/features/school/GuardianScopePanel";
 import { getStudentDetail, getStudentLearning } from "@/features/school/students";
 import { Link } from "@/i18n/navigation";
 import { getMyPerms, requireAnyPerm } from "@/lib/auth";
@@ -79,6 +80,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
         </div>
       )}
       {!student.deletedAt && perms.has("student.edit") && <GuardianInvitePanel studentId={id} />}
+      {!student.deletedAt && perms.has("student.edit") && <GuardianScopePanel studentId={id} />}
 
       <div className="mt-6">
         <StudentProfileEditor student={student} canEdit={perms.has("student.edit")} />

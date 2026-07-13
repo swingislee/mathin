@@ -600,6 +600,14 @@
       "guardianInviteHint": "The invitation expires in seven days and is single-use. The guardian still confirms learning and video consent separately.",
       "guardianRelation": "Relationship, e.g. mother",
       "issueInvite": "Issue invitation"
+      ,"guardianScope": "Guardian visibility"
+      ,"guardianScope_grades": "Grades"
+      ,"guardianScope_video": "Videos"
+      ,"guardianScope_finance": "Finance"
+      ,"guardians": "Guardians and visibility"
+      ,"noGuardians": "No guardians linked yet."
+      ,"primaryGuardian": "Primary guardian"
+      ,"guardianScopeFor": "Visibility for {name}"
     },
     "courseware": {
       "backToCourse": "Back to course",

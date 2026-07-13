@@ -602,6 +602,14 @@
       "guardianInviteHint": "邀请码七天内有效且只能使用一次；监护人绑定时仍需分别确认学习与视频同意。",
       "guardianRelation": "关系，如母亲",
       "issueInvite": "签发邀请码"
+      ,"guardianScope": "监护人可见范围"
+      ,"guardianScope_grades": "成绩"
+      ,"guardianScope_video": "视频"
+      ,"guardianScope_finance": "费用"
+      ,"guardians": "监护人与可见范围"
+      ,"noGuardians": "尚未绑定监护人。"
+      ,"primaryGuardian": "主监护人"
+      ,"guardianScopeFor": "{name} 的可见范围"
     },
     "courseware": {
       "backToCourse": "返回课程",

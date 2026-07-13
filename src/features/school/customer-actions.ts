@@ -31,9 +31,24 @@ export async function bindGuardianAction(code: string, relation: string, consent
   }
 }
 
-export async function issueGuardianInviteAction(studentId:string,relation:string):Promise<string>{
+export async function issueGuardianInviteAction(studentId:string,relation:string,scope:string[]):Promise<string>{
   const{supabase}=await authenticatedClient();
-  const{data,error}=await supabase.rpc("issue_guardian_invite",{p_student_id:studentId,p_relation:relation.trim().slice(0,40),p_scope:["grades","video","finance"]});
+  const allowed=["grades","video","finance"];
+  const normalized=Array.from(new Set(scope.filter(value=>allowed.includes(value))));
+  const{data,error}=await supabase.rpc("issue_guardian_invite",{p_student_id:studentId,p_relation:relation.trim().slice(0,40),p_scope:normalized});
   if(error||typeof data!=="string")throw new Error(error?.message??"INVITE_FAILED");
   return data;
+}
+
+export interface GuardianScopeRow { guardianId:string; displayName:string; relation:string; scope:string[]; isPrimary:boolean }
+export async function listStudentGuardiansAction(studentId:string):Promise<GuardianScopeRow[]>{
+  const{supabase}=await authenticatedClient();
+  const{data,error}=await supabase.rpc("list_student_guardians",{p_student_id:studentId});
+  if(error)throw new Error(error.message);
+  return ((data??[]) as Array<{guardian_id:string;display_name:string;relation:string;scope:string[];is_primary:boolean}>).map(row=>({guardianId:row.guardian_id,displayName:row.display_name,relation:row.relation,scope:row.scope??[],isPrimary:row.is_primary}));
+}
+export async function setGuardianScopeAction(studentId:string,guardianId:string,scope:string[]):Promise<void>{
+  const{supabase}=await authenticatedClient();
+  const{error}=await supabase.rpc("set_guardian_scope",{p_student_id:studentId,p_guardian_id:guardianId,p_scope:scope});
+  if(error)throw new Error(error.message);
 }
