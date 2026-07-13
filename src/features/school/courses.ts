@@ -8,6 +8,9 @@ export const COURSE_TERMS = [
   { value: 4, labelKey: "spring" },
 ] as const;
 
+export interface SchoolTermRow{id:string;year:number;term:number;name:string;startsOn:string;endsOn:string;isCurrent:boolean}
+export async function listSchoolTerms():Promise<SchoolTermRow[]>{const supabase=await createClient();const{data,error}=await supabase.from("school_terms").select("id,year,term,name,starts_on,ends_on,is_current").order("starts_on",{ascending:false}).returns<Array<{id:string;year:number;term:number;name:string;starts_on:string;ends_on:string;is_current:boolean}>>();if(error)throw new Error(error.message);return(data??[]).map(row=>({id:row.id,year:row.year,term:row.term,name:row.name,startsOn:row.starts_on,endsOn:row.ends_on,isCurrent:row.is_current}))}
+
 export interface CourseSummary {
   id: string;
   title: string;

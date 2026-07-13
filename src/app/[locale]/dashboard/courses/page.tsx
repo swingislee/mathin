@@ -5,7 +5,8 @@ import { getTranslations } from "next-intl/server";
 import { buttonVariants } from "@/components/ui/button";
 import { CourseCreateDialog } from "@/features/school/CourseCrud";
 import { selectClass } from "@/features/school/controls";
-import { COURSE_TERMS, listCourses, parseCourseFilters } from "@/features/school/courses";
+import { COURSE_TERMS, listCourses, listSchoolTerms, parseCourseFilters } from "@/features/school/courses";
+import { TermManager } from "@/features/school/TermManager";
 import { SchoolPageHeader } from "@/features/school/PageHeader";
 import { Link } from "@/i18n/navigation";
 import { getMyPerms, requirePerm } from "@/lib/auth";
@@ -23,7 +24,7 @@ export default async function CoursesPage({
   const user = await requirePerm(locale, "course.view");
   const t = await getTranslations("school.courses");
   const filters = parseCourseFilters(rawSearchParams);
-  const [{ courses, count }, perms] = await Promise.all([listCourses(filters), getMyPerms(user.id)]);
+  const [{ courses, count }, perms, schoolTerms] = await Promise.all([listCourses(filters), getMyPerms(user.id),listSchoolTerms()]);
   const maxPage = count ? Math.max(1, Math.ceil(count / 20)) : filters.page;
 
   const pageHref = (page: number) => {
@@ -43,6 +44,7 @@ export default async function CoursesPage({
       <SchoolPageHeader title={t("title")} actions={perms.has("course.manage") ? <CourseCreateDialog /> : undefined}>
         <p className="mt-1 max-w-3xl text-sm text-muted">{t("intro")}</p>
       </SchoolPageHeader>
+      {perms.has("course.manage")&&<TermManager terms={schoolTerms}/>}
 
       <form className="mt-6 grid gap-3 rounded-xl border border-line bg-card p-4 md:grid-cols-[1fr_140px_140px_140px_140px_auto_auto]">
         <Input

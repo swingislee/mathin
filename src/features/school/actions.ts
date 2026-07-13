@@ -630,6 +630,15 @@ export async function setConsumeRuleAction(classroomId: string, rule: ConsumeRul
   if (error) throw new Error(error.message);
 }
 
+export async function createSchoolTermAction(input:{year:number;term:1|2;name:string;startsOn:string;endsOn:string}):Promise<void>{
+  const{supabase}=await authorizedClient("course.manage");
+  const{error}=await supabase.rpc("create_school_term",{p_year:input.year,p_term:input.term,p_name:input.name.trim().slice(0,100),p_starts_on:input.startsOn,p_ends_on:input.endsOn});
+  if(error)throw new Error(error.message);
+}
+export async function activateSchoolTermAction(termId:string):Promise<void>{
+  const{supabase}=await authorizedClient("course.manage");const{error}=await supabase.rpc("activate_school_term",{p_term_id:termId});if(error)throw new Error(error.message);
+}
+
 export async function getOrderClassroomOptions(): Promise<Array<{ id: string; name: string; courseTitle: string | null }>> {
   const { supabase } = await financeClient(["finance.order.create"]);
   const { data, error } = await supabase.rpc("get_order_classroom_options");
