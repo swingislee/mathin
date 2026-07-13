@@ -619,6 +619,10 @@
       ,"mergeIntoCurrent": "合并到当前档案"
       ,"mergeStudentTitle": "确认合并学生档案"
       ,"mergeStudentConfirm": "将“{name}”合并到当前档案？候选档案会变成不可用的合并留痕，操作无法直接撤销。"
+      ,"provisionPhoneAccount": "开通手机账号"
+      ,"provisionPhoneTitle": "为学生开通登录账号"
+      ,"provisionPhoneConfirm": "将使用手机号 {phone} 创建已确认的 Supabase Auth 账号并绑定当前档案。之后可直接使用短信验证码登录。"
+      ,"provisionPhoneFailed": "开通失败：请确认手机号含国家区号、短信服务和账号唯一性。"
     },
     "courseware": {
       "backToCourse": "返回课程",

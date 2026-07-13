@@ -20,6 +20,7 @@ export interface StudentSummary {
 }
 
 export interface StudentDetail extends StudentSummary {
+  userId: string | null;
   gender: string;
   birthday: string | null;
   phone: string;
@@ -74,6 +75,7 @@ interface StudentRow {
   bind_code: string;
   remark: string;
   assigned_to: string | null;
+  user_id: string | null;
   deleted_at: string | null;
   last_follow_up_at: string | null;
   next_follow_up_at: string | null;
@@ -131,7 +133,7 @@ export async function listStudents(filters: StudentFilters): Promise<{ students:
   const to = from + PAGE_SIZE - 1;
   let query = supabase
     .from("students")
-    .select("id,name,gender,birthday,phone,wechat,school,region,source,grade,status,follow_up_status,parent_name,parent_relation,parent_phone,bind_code,remark,assigned_to,deleted_at,last_follow_up_at,next_follow_up_at,profiles!students_assigned_to_fkey(display_name)", { count: "estimated" });
+    .select("id,name,gender,birthday,phone,wechat,school,region,source,grade,status,follow_up_status,parent_name,parent_relation,parent_phone,bind_code,remark,assigned_to,user_id,deleted_at,last_follow_up_at,next_follow_up_at,profiles!students_assigned_to_fkey(display_name)", { count: "estimated" });
 
   query = filters.recycle ? query.not("deleted_at", "is", null) : query.is("deleted_at", null);
 
@@ -155,7 +157,7 @@ export async function getStudentDetail(id: string): Promise<StudentDetail | null
   const supabase = await createClient();
   const { data: student, error } = await supabase
     .from("students")
-    .select("id,name,gender,birthday,phone,wechat,school,region,source,grade,status,follow_up_status,parent_name,parent_relation,parent_phone,bind_code,remark,assigned_to,deleted_at,last_follow_up_at,next_follow_up_at,profiles!students_assigned_to_fkey(display_name)")
+    .select("id,name,gender,birthday,phone,wechat,school,region,source,grade,status,follow_up_status,parent_name,parent_relation,parent_phone,bind_code,remark,assigned_to,user_id,deleted_at,last_follow_up_at,next_follow_up_at,profiles!students_assigned_to_fkey(display_name)")
     .eq("id", id)
     .maybeSingle<StudentRow>();
   if (error) throw new Error(error.message);
@@ -185,6 +187,7 @@ export async function getStudentDetail(id: string): Promise<StudentDetail | null
     bindCode: student.bind_code,
     remark: student.remark,
     assignedTo: student.assigned_to,
+    userId: student.user_id,
     followUps: (followUps ?? []).map((followUp) => ({
       id: followUp.id,
       content: followUp.content,

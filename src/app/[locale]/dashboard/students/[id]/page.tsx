@@ -12,6 +12,7 @@ import { CustomerVideoButton } from "@/features/school/CustomerVideoButton";
 import { GuardianInvitePanel } from "@/features/school/GuardianInvitePanel";
 import { GuardianScopePanel } from "@/features/school/GuardianScopePanel";
 import { StudentMergePanel } from "@/features/school/StudentMergePanel";
+import { ProvisionStudentAccountButton } from "@/features/school/ProvisionStudentAccountButton";
 import { getStudentDetail, getStudentLearning } from "@/features/school/students";
 import { Link } from "@/i18n/navigation";
 import { getMyPerms, requireAnyPerm } from "@/lib/auth";
@@ -61,6 +62,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
               canDelete={perms.has("student.delete")}
               assignees={assignees}
             />
+            {!student.userId && perms.has("student.edit") && <ProvisionStudentAccountButton studentId={id} phone={student.phone} />}
             <Link href={student.deletedAt ? "/dashboard/students?tab=recycle" : "/dashboard/students"} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>
               {t("back")}
             </Link>

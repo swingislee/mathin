@@ -17,6 +17,7 @@ import type { AttendanceStatus } from "./learning";
 import type { ScheduleEntry } from "./schedule";
 import { FOLLOW_UP_STATUSES, STUDENT_STATUSES, type StudentStatus } from "./students";
 import type { ActionResult } from "@/lib/action-result";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 /** 校验闸：登录 + 功能权限键（两道闸的第二道，第一道靠 requirePerm 挡在页面级；RLS 第三道兜底）。 */
 async function authorizedClient(key: PermissionKey) {
@@ -743,6 +744,25 @@ export async function mergeStudentsAction(keptId: string, mergedId: string): Pro
   const { supabase } = await authorizedClient("student.edit");
   const { error } = await supabase.rpc("merge_students", { p_kept_id: keptId, p_merged_id: mergedId });
   if (error) throw new Error(error.message);
+}
+
+export async function provisionStudentPhoneAccountAction(studentId: string): Promise<void> {
+  const { supabase, user } = await authorizedClient("student.edit");
+  const { data: student, error: studentError } = await supabase.from("students").select("id,name,phone,user_id").eq("id", studentId).maybeSingle<{id:string;name:string;phone:string;user_id:string|null}>();
+  if (studentError) throw new Error(studentError.message);
+  if (!student) throw new Error("FORBIDDEN_SCOPE");
+  if (student.user_id) throw new Error("ACCOUNT_ALREADY_LINKED");
+  const phone = student.phone.replace(/[\s()-]/g, "");
+  if (!/^\+[1-9]\d{7,14}$/.test(phone)) throw new Error("INVALID_PHONE");
+  const admin = createAdminClient();
+  const { data: created, error: createError } = await admin.auth.admin.createUser({ phone, phone_confirm: true, user_metadata: { display_name: student.name } });
+  if (createError || !created.user) throw new Error(createError?.message ?? "ACCOUNT_CREATE_FAILED");
+  const { data: linked, error: linkError } = await admin.from("students").update({ user_id: created.user.id }).eq("id", studentId).is("user_id", null).select("id");
+  if (linkError || !linked?.length) {
+    await admin.auth.admin.deleteUser(created.user.id);
+    throw new Error(linkError?.message ?? "ACCOUNT_LINK_FAILED");
+  }
+  await admin.from("domain_events").insert({ actor_id: user.id, event_type: "student.phone_account_provisioned", entity_type: "student", entity_id: studentId, target_user_id: created.user.id, payload: { phoneMasked: `${phone.slice(0, 3)}****${phone.slice(-4)}` } });
 }
 
 export interface UpdateStudentInput {

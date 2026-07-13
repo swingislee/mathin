@@ -617,6 +617,10 @@
       ,"mergeIntoCurrent": "Merge into current"
       ,"mergeStudentTitle": "Confirm student merge"
       ,"mergeStudentConfirm": "Merge “{name}” into the current profile? The candidate becomes an immutable merge tombstone and this cannot be directly undone."
+      ,"provisionPhoneAccount": "Create phone account"
+      ,"provisionPhoneTitle": "Create a student login account"
+      ,"provisionPhoneConfirm": "Create a confirmed Supabase Auth account for {phone} and link it to this profile. The student can then sign in with SMS OTP."
+      ,"provisionPhoneFailed": "Account creation failed. Check the country code, SMS setup, and phone uniqueness."
     },
     "courseware": {
       "backToCourse": "Back to course",
