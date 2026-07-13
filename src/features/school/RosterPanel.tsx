@@ -3,9 +3,10 @@
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { buttonVariants } from "@/components/ui/button";
+import { useAction } from "@/components/action-form";
 import {
   Dialog,
   DialogContent,
@@ -29,7 +30,6 @@ import type { RosterRow } from "./classes";
 export function RosterPanel({ classroomId, roster, canManage }: { classroomId: string; roster: RosterRow[]; canManage: boolean }) {
   const t = useTranslations("school.classes");
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
 
   const [enrollOpen, setEnrollOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -39,7 +39,6 @@ export function RosterPanel({ classroomId, roster, canManage }: { classroomId: s
   const [transferTarget, setTransferTarget] = useState<RosterRow | null>(null);
   const [classroomOptions, setClassroomOptions] = useState<Array<{ id: string; name: string }>>([]);
   const [transferTo, setTransferTo] = useState("");
-  const [error, setError] = useState<string | null>(null);
 
   const search = async (value: string) => {
     setQuery(value);
@@ -55,33 +54,19 @@ export function RosterPanel({ classroomId, roster, canManage }: { classroomId: s
     }
   };
 
-  const enroll = (studentId: string) => {
-    setError(null);
-    startTransition(async () => {
-      try {
-        await enrollStudentAction(classroomId, studentId, "");
-        setEnrollOpen(false);
-        setQuery("");
-        setResults([]);
-        router.refresh();
-      } catch {
-        setError(t("actionFailed"));
-      }
-    });
-  };
+  const enrollRun = useAction(enrollStudentAction, {
+    successMessage: t("enrollSuccess"),
+    errorMessage: { default: t("actionFailed") },
+    onSuccess: () => { setEnrollOpen(false); setQuery(""); setResults([]); router.refresh(); },
+  });
+  const enroll = (studentId: string) => enrollRun.run(classroomId, studentId, "");
 
-  const withdraw = (row: RosterRow) => {
-    if (!row.enrollmentId) return;
-    setError(null);
-    startTransition(async () => {
-      try {
-        await withdrawStudentAction(row.enrollmentId!, "");
-        router.refresh();
-      } catch {
-        setError(t("actionFailed"));
-      }
-    });
-  };
+  const withdrawRun = useAction(withdrawStudentAction, {
+    successMessage: t("withdrawSuccess"),
+    errorMessage: { default: t("actionFailed") },
+    onSuccess: () => router.refresh(),
+  });
+  const withdraw = (row: RosterRow) => { if (row.enrollmentId) withdrawRun.run(row.enrollmentId, ""); };
 
   const openTransfer = async (row: RosterRow) => {
     setTransferTarget(row);
@@ -91,19 +76,16 @@ export function RosterPanel({ classroomId, roster, canManage }: { classroomId: s
     if (options[0]) setTransferTo(options[0].id);
   };
 
+  const transferRun = useAction(transferStudentAction, {
+    successMessage: t("transferSuccess"),
+    errorMessage: { default: t("actionFailed") },
+    onSuccess: () => { setTransferTarget(null); router.refresh(); },
+  });
   const confirmTransfer = () => {
-    if (!transferTarget || !transferTo) return;
-    setError(null);
-    startTransition(async () => {
-      try {
-        await transferStudentAction(transferTarget.studentId, classroomId, transferTo, "");
-        setTransferTarget(null);
-        router.refresh();
-      } catch {
-        setError(t("actionFailed"));
-      }
-    });
+    if (transferTarget && transferTo) transferRun.run(transferTarget.studentId, classroomId, transferTo, "");
   };
+
+  const pending = enrollRun.pending || withdrawRun.pending || transferRun.pending;
 
   return (
     <section className="rounded-xl border border-line bg-card p-5">
@@ -115,8 +97,6 @@ export function RosterPanel({ classroomId, roster, canManage }: { classroomId: s
           </button>
         )}
       </div>
-
-      {error && <p className="mt-3 text-xs text-rose">{error}</p>}
 
       {roster.length === 0 ? (
         <p className="mt-4 text-sm text-muted">{t("emptyRoster")}</p>

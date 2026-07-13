@@ -2,8 +2,8 @@
 
 import { Input } from "@/components/ui/input";
 
-import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
+import { useAction } from "@/components/action-form";
 import { Link, useRouter } from "@/i18n/navigation";
 import { deleteUnstartedSessionAction, rescheduleSessionAction } from "./actions";
 import { AttendanceDrawer } from "./AttendanceDrawer";
@@ -34,39 +34,28 @@ export function SessionListPanel({
 }) {
   const t = useTranslations("school.classes");
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
 
   // 直接渲染 sessions prop；每次改动后 router.refresh() 让服务端带回最新列表
   // （删除→移出列表并进回收站、恢复→回到列表），避免本地缓存与回收站不同步。
-  const reschedule = (sessionId: string, iso: string, durationMin: number) => {
-    setError(null);
-    startTransition(async () => {
-      try {
-        await rescheduleSessionAction(sessionId, iso, durationMin);
-        router.refresh();
-      } catch {
-        setError(t("actionFailed"));
-      }
-    });
-  };
+  const rescheduleRun = useAction(rescheduleSessionAction, {
+    successMessage: t("rescheduleSuccess"),
+    errorMessage: { default: t("actionFailed") },
+    onSuccess: () => router.refresh(),
+  });
+  const reschedule = (sessionId: string, iso: string, durationMin: number) => rescheduleRun.run(sessionId, iso, durationMin);
 
-  const remove = (sessionId: string) => {
-    setError(null);
-    startTransition(async () => {
-      try {
-        await deleteUnstartedSessionAction(sessionId);
-        router.refresh(); // 同步课次列表与回收站
-      } catch {
-        setError(t("actionFailed"));
-      }
-    });
-  };
+  const removeRun = useAction(deleteUnstartedSessionAction, {
+    successMessage: t("sessionDeleted"),
+    errorMessage: { default: t("actionFailed") },
+    onSuccess: () => router.refresh(), // 同步课次列表与回收站
+  });
+  const remove = (sessionId: string) => removeRun.run(sessionId);
+
+  const pending = rescheduleRun.pending || removeRun.pending;
 
   return (
     <section className="rounded-xl border border-line bg-card p-5">
       <h2 className="font-medium">{t("sessions", { count: sessions.length })}</h2>
-      {error && <p className="mt-3 text-xs text-rose">{error}</p>}
 
       {sessions.length === 0 ? (
         <p className="mt-4 text-sm text-muted">{t("emptySessions")}</p>

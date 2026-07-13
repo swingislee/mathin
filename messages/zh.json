@@ -414,6 +414,12 @@
       ,"endsOn": "结束日期"
       ,"cancel": "取消"
       ,"actionFailed": "操作失败，请重试。"
+      ,"courseCreated": "课程已创建。"
+      ,"courseSaved": "课程信息已保存。"
+      ,"lectureAdded": "讲次已添加。"
+      ,"lectureSaved": "讲次已保存。"
+      ,"lectureDeleted": "讲次已删除。"
+      ,"lecturesReordered": "讲次顺序已更新。"
       ,"lectureName": "讲次名称"
       ,"addLecture": "添加讲次"
       ,"moveUp": "上移"
@@ -784,6 +790,7 @@
       "cancel": "取消",
       "confirm": "确认",
       "actionFailed": "操作失败，请重试。",
+      "classSaved": "班级信息已保存。",
       "sessions": "课次（{count}）",
       "emptySessions": "还没有课次。",
       "untitledSession": "未命名课次",
@@ -810,6 +817,16 @@
       "consumeRule": "课消规则",
       "consumeRuleTitle": "配置本班课消规则",
       "consumeRuleDescription": "数值表示一次对应考勤扣除的课时；修改考勤会先冲正旧流水，再按新状态记账。",
+      "consumeRuleSaved": "课消规则已保存。",
+      "attendanceSaved": "考勤已保存。",
+      "enrollSuccess": "已报名。",
+      "withdrawSuccess": "已退班。",
+      "transferSuccess": "已转班。",
+      "substituteSaved": "代课安排已保存。",
+      "rescheduleSuccess": "已调整上课时间。",
+      "sessionDeleted": "课次已移入回收站。",
+      "sessionRestored": "课次已恢复。",
+      "sessionChangeSaved": "已登记。",
       "recycleBin": "回收站（{count}）",
       "restore": "恢复",
       "markAttendance": "点名",

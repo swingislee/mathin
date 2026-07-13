@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
+import { useAction } from "@/components/action-form";
 import { useRouter } from "@/i18n/navigation";
 import { restoreSessionAction } from "./actions";
 import type { DeletedSessionRow } from "./classes";
@@ -14,27 +14,17 @@ import type { DeletedSessionRow } from "./classes";
 export function SessionRecycleBin({ sessions }: { sessions: DeletedSessionRow[] }) {
   const t = useTranslations("school.classes");
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-
-  const restore = (id: string) => {
-    setError(null);
-    startTransition(async () => {
-      try {
-        await restoreSessionAction(id);
-        router.refresh();
-      } catch {
-        setError(t("actionFailed"));
-      }
-    });
-  };
+  const { run: restore, pending } = useAction(restoreSessionAction, {
+    successMessage: t("sessionRestored"),
+    errorMessage: { default: t("actionFailed") },
+    onSuccess: () => router.refresh(),
+  });
 
   if (sessions.length === 0) return null;
 
   return (
     <details className="rounded-xl border border-line bg-card p-5">
       <summary className="cursor-pointer text-sm font-medium text-muted">{t("recycleBin", { count: sessions.length })}</summary>
-      {error && <p className="mt-3 text-xs text-rose">{error}</p>}
       <ul className="mt-4 divide-y divide-line">
         {sessions.map((row) => (
           <li key={row.id} className="flex flex-wrap items-center gap-3 py-2.5 text-sm">

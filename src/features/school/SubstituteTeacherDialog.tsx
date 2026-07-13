@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import { LoaderCircle, UserRoundCog } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
+import { useAction } from "@/components/action-form";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useRouter } from "@/i18n/navigation";
@@ -19,7 +20,6 @@ export function SubstituteTeacherDialog({ sessionId, currentTeacherId }: { sessi
   const [selected, setSelected] = useState<string | null>(currentTeacherId);
   const [reason, setReason] = useState("");
   const [failed, setFailed] = useState(false);
-  const [pending, startTransition] = useTransition();
 
   useEffect(() => {
     if (!open) return;
@@ -28,12 +28,10 @@ export function SubstituteTeacherDialog({ sessionId, currentTeacherId }: { sessi
     return () => { live = false; };
   }, [open, sessionId]);
 
-  const save = () => startTransition(async () => {
-    try {
-      await assignSessionSubstituteAction(sessionId, selected, reason);
-      setOpen(false);
-      router.refresh();
-    } catch { setFailed(true); }
+  const { run: save, pending } = useAction(assignSessionSubstituteAction, {
+    successMessage: t("substituteSaved"),
+    errorMessage: { default: t("actionFailed") },
+    onSuccess: () => { setOpen(false); router.refresh(); },
   });
 
   return <>
@@ -49,7 +47,7 @@ export function SubstituteTeacherDialog({ sessionId, currentTeacherId }: { sessi
         </div>
         <Input value={reason} onChange={(event) => setReason(event.target.value)} maxLength={1000} placeholder={t("substituteReason")} />
         {failed && <p className="text-xs text-rose">{t("actionFailed")}</p>}
-        <DialogFooter><Button type="button" variant="secondary" onClick={() => setOpen(false)}>{t("cancel")}</Button><Button type="button" disabled={pending} onClick={save}>{pending && <LoaderCircle size={14} className="animate-spin" />}{t("confirm")}</Button></DialogFooter>
+        <DialogFooter><Button type="button" variant="secondary" onClick={() => setOpen(false)}>{t("cancel")}</Button><Button type="button" disabled={pending} onClick={() => save(sessionId, selected, reason)}>{pending && <LoaderCircle size={14} className="animate-spin" />}{t("confirm")}</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   </>;

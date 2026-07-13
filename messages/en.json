@@ -414,6 +414,12 @@
       ,"endsOn": "Ends on"
       ,"cancel": "Cancel"
       ,"actionFailed": "Action failed. Please try again."
+      ,"courseCreated": "Course created."
+      ,"courseSaved": "Course info saved."
+      ,"lectureAdded": "Lecture added."
+      ,"lectureSaved": "Lecture saved."
+      ,"lectureDeleted": "Lecture deleted."
+      ,"lecturesReordered": "Lecture order updated."
       ,"lectureName": "Lecture name"
       ,"addLecture": "Add lecture"
       ,"moveUp": "Move up"
@@ -782,6 +788,7 @@
       "cancel": "Cancel",
       "confirm": "Confirm",
       "actionFailed": "Action failed, please try again.",
+      "classSaved": "Class info saved.",
       "sessions": "Sessions ({count})",
       "emptySessions": "No sessions yet.",
       "untitledSession": "Untitled session",
@@ -808,6 +815,16 @@
       "consumeRule": "Consumption rules",
       "consumeRuleTitle": "Configure lesson consumption",
       "consumeRuleDescription": "Each value is the lesson amount deducted for that attendance state. Attendance edits reverse the old ledger entry before applying the new state.",
+      "consumeRuleSaved": "Consume rule saved.",
+      "attendanceSaved": "Attendance saved.",
+      "enrollSuccess": "Enrolled.",
+      "withdrawSuccess": "Withdrawn.",
+      "transferSuccess": "Transferred.",
+      "substituteSaved": "Substitute assignment saved.",
+      "rescheduleSuccess": "Session time updated.",
+      "sessionDeleted": "Session moved to recycle bin.",
+      "sessionRestored": "Session restored.",
+      "sessionChangeSaved": "Recorded.",
       "recycleBin": "Recycle bin ({count})",
       "restore": "Restore",
       "markAttendance": "Attendance",

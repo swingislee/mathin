@@ -3,9 +3,10 @@
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { buttonVariants } from "@/components/ui/button";
+import { useAction } from "@/components/action-form";
 import {
   Dialog,
   DialogContent,
@@ -19,7 +20,6 @@ import { ATTENDANCE_STATUSES, type AttendanceStatus } from "./learning";
 
 export function AttendanceDrawer({ sessionId }: { sessionId: string }) {
   const t = useTranslations("school.classes");
-  const [pending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState<AttendanceDrawerRow[]>([]);
@@ -30,8 +30,10 @@ export function AttendanceDrawer({ sessionId }: { sessionId: string }) {
     setLoading(true);
     setError(null);
     void getAttendanceDrawerData(sessionId)
-      .then(setRows)
-      .catch(() => setError(t("actionFailed")))
+      .then((result) => {
+        if (result.ok) setRows(result.data);
+        else setError(t("actionFailed"));
+      })
       .finally(() => setLoading(false));
   };
 
@@ -39,17 +41,11 @@ export function AttendanceDrawer({ sessionId }: { sessionId: string }) {
     setRows((prev) => prev.map((row) => (row.studentId === studentId ? { ...row, ...patch } : row)));
   };
 
-  const save = () => {
-    setError(null);
-    startTransition(async () => {
-      try {
-        await saveAttendanceAction(sessionId, rows);
-        setOpen(false);
-      } catch {
-        setError(t("actionFailed"));
-      }
-    });
-  };
+  const { run: save, pending } = useAction((rows: AttendanceDrawerRow[]) => saveAttendanceAction(sessionId, rows), {
+    successMessage: t("attendanceSaved"),
+    errorMessage: { default: t("actionFailed") },
+    onSuccess: () => setOpen(false),
+  });
 
   return (
     <>
@@ -103,7 +99,7 @@ export function AttendanceDrawer({ sessionId }: { sessionId: string }) {
             <button type="button" onClick={() => setOpen(false)} className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
               {t("cancel")}
             </button>
-            <button type="button" disabled={pending || loading || rows.length === 0} onClick={save} className={cn(buttonVariants({ size: "sm" }))}>
+            <button type="button" disabled={pending || loading || rows.length === 0} onClick={() => save(rows)} className={cn(buttonVariants({ size: "sm" }))}>
               {t("confirm")}
             </button>
           </DialogFooter>

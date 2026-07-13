@@ -156,14 +156,19 @@ export async function buildClass(input: BuildClassInput): Promise<string> {
 // 报名 / 转班 / 退班（P4B-3 §9，跨表事实一律 RPC，Server Action 只透传+权限双闸）
 // ---------------------------------------------------------------------------
 
-export async function enrollStudentAction(classroomId: string, studentId: string, remark: string): Promise<void> {
-  const { supabase } = await authorizedClient("enrollment.manage");
-  const { error } = await supabase.rpc("enroll_student", {
-    p_classroom_id: classroomId,
-    p_student_id: studentId,
-    p_remark: remark.slice(0, 500),
-  });
-  if (error) throw new Error(error.message);
+export async function enrollStudentAction(classroomId: string, studentId: string, remark: string): Promise<ActionResult> {
+  try {
+    const { supabase } = await authorizedClient("enrollment.manage");
+    const { error } = await supabase.rpc("enroll_student", {
+      p_classroom_id: classroomId,
+      p_student_id: studentId,
+      p_remark: remark.slice(0, 500),
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["FORBIDDEN", "UNAUTHENTICATED"]);
+  }
 }
 
 export async function transferStudentAction(
@@ -171,24 +176,34 @@ export async function transferStudentAction(
   fromClassroomId: string,
   toClassroomId: string,
   remark: string,
-): Promise<void> {
-  const { supabase } = await authorizedClient("enrollment.manage");
-  const { error } = await supabase.rpc("transfer_student", {
-    p_student_id: studentId,
-    p_from_classroom: fromClassroomId,
-    p_to_classroom: toClassroomId,
-    p_remark: remark.slice(0, 500),
-  });
-  if (error) throw new Error(error.message);
+): Promise<ActionResult> {
+  try {
+    const { supabase } = await authorizedClient("enrollment.manage");
+    const { error } = await supabase.rpc("transfer_student", {
+      p_student_id: studentId,
+      p_from_classroom: fromClassroomId,
+      p_to_classroom: toClassroomId,
+      p_remark: remark.slice(0, 500),
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["FORBIDDEN", "UNAUTHENTICATED"]);
+  }
 }
 
-export async function withdrawStudentAction(enrollmentId: string, remark: string): Promise<void> {
-  const { supabase } = await authorizedClient("enrollment.manage");
-  const { error } = await supabase.rpc("withdraw_student", {
-    p_enrollment_id: enrollmentId,
-    p_remark: remark.slice(0, 500),
-  });
-  if (error) throw new Error(error.message);
+export async function withdrawStudentAction(enrollmentId: string, remark: string): Promise<ActionResult> {
+  try {
+    const { supabase } = await authorizedClient("enrollment.manage");
+    const { error } = await supabase.rpc("withdraw_student", {
+      p_enrollment_id: enrollmentId,
+      p_remark: remark.slice(0, 500),
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["FORBIDDEN", "UNAUTHENTICATED"]);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -199,25 +214,35 @@ export async function withdrawStudentAction(enrollmentId: string, remark: string
 // 跨作用域操作时 RLS 会让 update/delete 静默命中 0 行而不报错，前端会误以为成功——
 // 这里额外 select 受影响行数，0 行时改抛 FORBIDDEN_SCOPE（10-§7 代码审查发现）。
 
-export async function rescheduleSessionAction(sessionId: string, scheduledAt: string, durationMin: number): Promise<void> {
-  const { supabase } = await authorizedClient("class.manage");
-  const { data, error } = await supabase
-    .from("class_sessions")
-    .update({ scheduled_at: scheduledAt, duration_min: durationMin })
-    .eq("id", sessionId)
-    .select("id");
-  if (error) throw new Error(error.message);
-  if (!data || data.length === 0) throw new Error("FORBIDDEN_SCOPE");
+export async function rescheduleSessionAction(sessionId: string, scheduledAt: string, durationMin: number): Promise<ActionResult> {
+  try {
+    const { supabase } = await authorizedClient("class.manage");
+    const { data, error } = await supabase
+      .from("class_sessions")
+      .update({ scheduled_at: scheduledAt, duration_min: durationMin })
+      .eq("id", sessionId)
+      .select("id");
+    if (error) throw new Error(error.message);
+    if (!data || data.length === 0) throw new Error("FORBIDDEN_SCOPE");
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["FORBIDDEN_SCOPE", "FORBIDDEN", "UNAUTHENTICATED"]);
+  }
 }
 
-export async function assignSessionSubstituteAction(sessionId: string, teacherId: string | null, reason: string): Promise<void> {
-  const { supabase } = await authorizedClient("class.manage");
-  const { error } = await supabase.rpc("assign_session_substitute", {
-    p_session_id: sessionId,
-    p_teacher_id: nullableRpcArg(teacherId),
-    p_reason: reason.trim().slice(0, 1000),
-  });
-  if (error) throw new Error(error.message);
+export async function assignSessionSubstituteAction(sessionId: string, teacherId: string | null, reason: string): Promise<ActionResult> {
+  try {
+    const { supabase } = await authorizedClient("class.manage");
+    const { error } = await supabase.rpc("assign_session_substitute", {
+      p_session_id: sessionId,
+      p_teacher_id: nullableRpcArg(teacherId),
+      p_reason: reason.trim().slice(0, 1000),
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["FORBIDDEN", "UNAUTHENTICATED"]);
+  }
 }
 
 export async function listSubstituteTeachersAction(sessionId: string): Promise<Array<{ id: string; name: string }>> {
@@ -229,29 +254,39 @@ export async function listSubstituteTeachersAction(sessionId: string): Promise<A
 
 // 软删（P4C-2 §7）：不物理 delete，置 deleted_at；未开始且未删的课次才可删。
 // 0 行命中同样抛 FORBIDDEN_SCOPE（RLS 跨作用域静默命中 0 行的老坑）。
-export async function deleteUnstartedSessionAction(sessionId: string): Promise<void> {
-  const { supabase } = await authorizedClient("class.manage");
-  const { data, error } = await supabase
-    .from("class_sessions")
-    .update({ deleted_at: new Date().toISOString() })
-    .eq("id", sessionId)
-    .is("started_at", null)
-    .is("deleted_at", null)
-    .select("id");
-  if (error) throw new Error(error.message);
-  if (!data || data.length === 0) throw new Error("FORBIDDEN_SCOPE");
+export async function deleteUnstartedSessionAction(sessionId: string): Promise<ActionResult> {
+  try {
+    const { supabase } = await authorizedClient("class.manage");
+    const { data, error } = await supabase
+      .from("class_sessions")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", sessionId)
+      .is("started_at", null)
+      .is("deleted_at", null)
+      .select("id");
+    if (error) throw new Error(error.message);
+    if (!data || data.length === 0) throw new Error("FORBIDDEN_SCOPE");
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["FORBIDDEN_SCOPE", "FORBIDDEN", "UNAUTHENTICATED"]);
+  }
 }
 
-export async function restoreSessionAction(sessionId: string): Promise<void> {
-  const { supabase } = await authorizedClient("class.manage");
-  const { data, error } = await supabase
-    .from("class_sessions")
-    .update({ deleted_at: null })
-    .eq("id", sessionId)
-    .not("deleted_at", "is", null)
-    .select("id");
-  if (error) throw new Error(error.message);
-  if (!data || data.length === 0) throw new Error("FORBIDDEN_SCOPE");
+export async function restoreSessionAction(sessionId: string): Promise<ActionResult> {
+  try {
+    const { supabase } = await authorizedClient("class.manage");
+    const { data, error } = await supabase
+      .from("class_sessions")
+      .update({ deleted_at: null })
+      .eq("id", sessionId)
+      .not("deleted_at", "is", null)
+      .select("id");
+    if (error) throw new Error(error.message);
+    if (!data || data.length === 0) throw new Error("FORBIDDEN_SCOPE");
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["FORBIDDEN_SCOPE", "FORBIDDEN", "UNAUTHENTICATED"]);
+  }
 }
 
 export async function archiveClassroomAction(classroomId: string, archived: boolean): Promise<void> {
@@ -397,72 +432,82 @@ export interface AttendanceDrawerRow {
   note: string;
 }
 
-export async function getAttendanceDrawerData(sessionId: string): Promise<AttendanceDrawerRow[]> {
-  const { supabase } = await authorizedClient("attendance.mark");
+export async function getAttendanceDrawerData(sessionId: string): Promise<ActionResult<AttendanceDrawerRow[]>> {
+  try {
+    const { supabase } = await authorizedClient("attendance.mark");
 
-  const { data: session, error: sessionError } = await supabase
-    .from("class_sessions")
-    .select("classroom_id")
-    .eq("id", sessionId)
-    .maybeSingle<{ classroom_id: string }>();
-  if (sessionError) throw new Error(sessionError.message);
-  if (!session) throw new Error("NOT_FOUND");
+    const { data: session, error: sessionError } = await supabase
+      .from("class_sessions")
+      .select("classroom_id")
+      .eq("id", sessionId)
+      .maybeSingle<{ classroom_id: string }>();
+    if (sessionError) throw new Error(sessionError.message);
+    if (!session) throw new Error("NOT_FOUND");
 
-  const [{ data: rosterRows, error: rosterError }, { data: existingRows, error: existingError }, { data: eventRows, error: eventError }] =
-    await Promise.all([
-      supabase
-        .from("enrollments")
-        .select("student_id,students(name,user_id)")
-        .eq("classroom_id", session.classroom_id)
-        .eq("status", "active")
-        .returns<Array<{ student_id: string; students: { name: string; user_id: string | null } | null }>>(),
-      supabase
-        .from("session_attendance")
-        .select("student_id,status,note")
-        .eq("session_id", sessionId)
-        .returns<Array<{ student_id: string; status: AttendanceStatus; note: string }>>(),
-      supabase
-        .from("session_events")
-        .select("user_id")
-        .eq("session_id", sessionId)
-        .returns<Array<{ user_id: string }>>(),
-    ]);
-  if (rosterError) throw new Error(rosterError.message);
-  if (existingError) throw new Error(existingError.message);
-  if (eventError) throw new Error(eventError.message);
+    const [{ data: rosterRows, error: rosterError }, { data: existingRows, error: existingError }, { data: eventRows, error: eventError }] =
+      await Promise.all([
+        supabase
+          .from("enrollments")
+          .select("student_id,students(name,user_id)")
+          .eq("classroom_id", session.classroom_id)
+          .eq("status", "active")
+          .returns<Array<{ student_id: string; students: { name: string; user_id: string | null } | null }>>(),
+        supabase
+          .from("session_attendance")
+          .select("student_id,status,note")
+          .eq("session_id", sessionId)
+          .returns<Array<{ student_id: string; status: AttendanceStatus; note: string }>>(),
+        supabase
+          .from("session_events")
+          .select("user_id")
+          .eq("session_id", sessionId)
+          .returns<Array<{ user_id: string }>>(),
+      ]);
+    if (rosterError) throw new Error(rosterError.message);
+    if (existingError) throw new Error(existingError.message);
+    if (eventError) throw new Error(eventError.message);
 
-  const existingByStudent = new Map((existingRows ?? []).map((row) => [row.student_id, row]));
-  const participatedUserIds = new Set((eventRows ?? []).map((row) => row.user_id));
+    const existingByStudent = new Map((existingRows ?? []).map((row) => [row.student_id, row]));
+    const participatedUserIds = new Set((eventRows ?? []).map((row) => row.user_id));
 
-  return (rosterRows ?? []).map((row) => {
-    const existing = existingByStudent.get(row.student_id);
-    const userId = row.students?.user_id ?? null;
-    const defaultStatus: AttendanceStatus = userId && participatedUserIds.has(userId) ? "present" : "absent";
-    return {
-      studentId: row.student_id,
-      studentName: row.students?.name ?? "-",
-      status: existing?.status ?? defaultStatus,
-      note: existing?.note ?? "",
-    };
-  });
+    const rows = (rosterRows ?? []).map((row) => {
+      const existing = existingByStudent.get(row.student_id);
+      const userId = row.students?.user_id ?? null;
+      const defaultStatus: AttendanceStatus = userId && participatedUserIds.has(userId) ? "present" : "absent";
+      return {
+        studentId: row.student_id,
+        studentName: row.students?.name ?? "-",
+        status: existing?.status ?? defaultStatus,
+        note: existing?.note ?? "",
+      };
+    });
+    return { ok: true, data: rows };
+  } catch (error) {
+    return actionError<AttendanceDrawerRow[]>(error, ["NOT_FOUND", "FORBIDDEN", "UNAUTHENTICATED"]);
+  }
 }
 
 export async function saveAttendanceAction(
   sessionId: string,
   records: Array<{ studentId: string; status: AttendanceStatus; note: string }>,
-): Promise<void> {
-  const { supabase } = await authorizedClient("attendance.mark");
-  if (records.length === 0) return;
-  const { error } = await supabase.from("session_attendance").upsert(
-    records.map((record) => ({
-      session_id: sessionId,
-      student_id: record.studentId,
-      status: record.status,
-      note: record.note.slice(0, 500),
-    })),
-    { onConflict: "session_id,student_id" },
-  );
-  if (error) throw new Error(error.message);
+): Promise<ActionResult> {
+  try {
+    const { supabase } = await authorizedClient("attendance.mark");
+    if (records.length === 0) return { ok: true };
+    const { error } = await supabase.from("session_attendance").upsert(
+      records.map((record) => ({
+        session_id: sessionId,
+        student_id: record.studentId,
+        status: record.status,
+        note: record.note.slice(0, 500),
+      })),
+      { onConflict: "session_id,student_id" },
+    );
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["FORBIDDEN", "UNAUTHENTICATED"]);
+  }
 }
 
 export interface SessionChangeOptions {
@@ -478,16 +523,21 @@ export async function getSessionChangeOptionsAction(sessionId: string): Promise<
   return { students: value?.students ?? [], targets: value?.targets ?? [] };
 }
 
-export async function recordSessionChangeAction(input: { sessionId: string; studentId: string; kind: "leave" | "makeup"; targetSessionId: string | null; reason: string }): Promise<void> {
-  const { supabase } = await authorizedClient("attendance.mark");
-  const { error } = await supabase.rpc("record_session_change", {
-    p_session_id: input.sessionId,
-    p_student_id: input.studentId,
-    p_kind: input.kind,
-    p_to_session: input.targetSessionId ?? undefined,
-    p_reason: input.reason.trim().slice(0, 1000),
-  });
-  if (error) throw new Error(error.message);
+export async function recordSessionChangeAction(input: { sessionId: string; studentId: string; kind: "leave" | "makeup"; targetSessionId: string | null; reason: string }): Promise<ActionResult> {
+  try {
+    const { supabase } = await authorizedClient("attendance.mark");
+    const { error } = await supabase.rpc("record_session_change", {
+      p_session_id: input.sessionId,
+      p_student_id: input.studentId,
+      p_kind: input.kind,
+      p_to_session: input.targetSessionId ?? undefined,
+      p_reason: input.reason.trim().slice(0, 1000),
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["FORBIDDEN", "UNAUTHENTICATED"]);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -626,16 +676,25 @@ export async function adjustAccountAction(studentId: string, delta: number, reas
 }
 
 export interface ConsumeRule { present: number; late: number; absent: number; leave: number }
-export async function getConsumeRuleAction(classroomId: string): Promise<ConsumeRule> {
-  const { supabase } = await authorizedClient("finance.account.adjust");
-  const { data, error } = await supabase.from("consume_rules").select("present_lessons,late_lessons,absent_lessons,leave_lessons").eq("classroom_id", classroomId).maybeSingle<{present_lessons:number;late_lessons:number;absent_lessons:number;leave_lessons:number}>();
-  if (error) throw new Error(error.message);
-  return { present: data?.present_lessons ?? 1, late: data?.late_lessons ?? 1, absent: data?.absent_lessons ?? 1, leave: data?.leave_lessons ?? 0 };
+export async function getConsumeRuleAction(classroomId: string): Promise<ActionResult<ConsumeRule>> {
+  try {
+    const { supabase } = await authorizedClient("finance.account.adjust");
+    const { data, error } = await supabase.from("consume_rules").select("present_lessons,late_lessons,absent_lessons,leave_lessons").eq("classroom_id", classroomId).maybeSingle<{present_lessons:number;late_lessons:number;absent_lessons:number;leave_lessons:number}>();
+    if (error) throw new Error(error.message);
+    return { ok: true, data: { present: data?.present_lessons ?? 1, late: data?.late_lessons ?? 1, absent: data?.absent_lessons ?? 1, leave: data?.leave_lessons ?? 0 } };
+  } catch (error) {
+    return actionError<ConsumeRule>(error, ["FORBIDDEN", "UNAUTHENTICATED"]);
+  }
 }
-export async function setConsumeRuleAction(classroomId: string, rule: ConsumeRule): Promise<void> {
-  const { supabase } = await authorizedClient("finance.account.adjust");
-  const { error } = await supabase.rpc("set_consume_rule", { p_classroom_id: classroomId, p_present: rule.present, p_late: rule.late, p_absent: rule.absent, p_leave: rule.leave });
-  if (error) throw new Error(error.message);
+export async function setConsumeRuleAction(classroomId: string, rule: ConsumeRule): Promise<ActionResult> {
+  try {
+    const { supabase } = await authorizedClient("finance.account.adjust");
+    const { error } = await supabase.rpc("set_consume_rule", { p_classroom_id: classroomId, p_present: rule.present, p_late: rule.late, p_absent: rule.absent, p_leave: rule.leave });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["FORBIDDEN", "UNAUTHENTICATED"]);
+  }
 }
 
 export async function createSchoolTermAction(input:{year:number;term:1|2;name:string;startsOn:string;endsOn:string}):Promise<void>{
@@ -988,57 +1047,90 @@ function cleanCourseInput(input: CourseWriteInput) {
   };
 }
 
-export async function createCourseAction(input: CourseWriteInput): Promise<string> {
-  const { supabase, user } = await authorizedClient("course.manage");
-  const { data, error } = await supabase.from("courses").insert({ ...cleanCourseInput(input), created_by: user.id }).select("id").single<{ id: string }>();
-  if (error) throw new Error(error.message);
-  return data.id;
+export async function createCourseAction(input: CourseWriteInput): Promise<ActionResult<string>> {
+  try {
+    const { supabase, user } = await authorizedClient("course.manage");
+    const { data, error } = await supabase.from("courses").insert({ ...cleanCourseInput(input), created_by: user.id }).select("id").single<{ id: string }>();
+    if (error) throw new Error(error.message);
+    return { ok: true, data: data.id };
+  } catch (error) {
+    return actionError<string>(error, ["FORBIDDEN", "UNAUTHENTICATED"]);
+  }
 }
 
-export async function updateCourseAction(courseId: string, input: CourseWriteInput): Promise<void> {
-  const { supabase } = await authorizedClient("course.manage");
-  const { data, error } = await supabase.from("courses").update(cleanCourseInput(input)).eq("id", courseId).select("id");
-  if (error) throw new Error(error.message);
-  if (!data?.length) throw new Error("NOT_FOUND");
+export async function updateCourseAction(courseId: string, input: CourseWriteInput): Promise<ActionResult> {
+  try {
+    const { supabase } = await authorizedClient("course.manage");
+    const { data, error } = await supabase.from("courses").update(cleanCourseInput(input)).eq("id", courseId).select("id");
+    if (error) throw new Error(error.message);
+    if (!data?.length) throw new Error("NOT_FOUND");
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["NOT_FOUND", "FORBIDDEN", "UNAUTHENTICATED"]);
+  }
 }
 
-export async function createLectureAction(courseId: string, name: string, objectives: string): Promise<void> {
-  const { supabase } = await authorizedClient("course.manage");
-  const { error } = await supabase.rpc("create_course_lecture", { p_course_id: courseId, p_name: name, p_objectives: objectives });
-  if (error) throw new Error(error.message);
+export async function createLectureAction(courseId: string, name: string, objectives: string): Promise<ActionResult> {
+  try {
+    const { supabase } = await authorizedClient("course.manage");
+    const { error } = await supabase.rpc("create_course_lecture", { p_course_id: courseId, p_name: name, p_objectives: objectives });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["FORBIDDEN", "UNAUTHENTICATED"]);
+  }
 }
 
-export async function updateLectureAction(lectureId: string, name: string, objectives: string): Promise<void> {
-  const cleanName = name.trim().slice(0, 100);
-  if (!cleanName) throw new Error("EMPTY_NAME");
-  const { supabase } = await authorizedClient("course.manage");
-  const { data, error } = await supabase.from("course_lectures").update({ name: cleanName, objectives: objectives.trim().slice(0, 2000) }).eq("id", lectureId).select("id");
-  if (error) throw new Error(error.message);
-  if (!data?.length) throw new Error("NOT_FOUND");
+export async function updateLectureAction(lectureId: string, name: string, objectives: string): Promise<ActionResult> {
+  try {
+    const cleanName = name.trim().slice(0, 100);
+    if (!cleanName) throw new Error("EMPTY_NAME");
+    const { supabase } = await authorizedClient("course.manage");
+    const { data, error } = await supabase.from("course_lectures").update({ name: cleanName, objectives: objectives.trim().slice(0, 2000) }).eq("id", lectureId).select("id");
+    if (error) throw new Error(error.message);
+    if (!data?.length) throw new Error("NOT_FOUND");
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["EMPTY_NAME", "NOT_FOUND", "FORBIDDEN", "UNAUTHENTICATED"]);
+  }
 }
 
-export async function deleteLectureAction(lectureId: string): Promise<"ok" | "in_use" | "failed"> {
-  const { supabase } = await authorizedClient("course.manage");
-  const { error } = await supabase.rpc("delete_course_lecture", { p_lecture_id: lectureId });
-  if (!error) return "ok";
-  return error.message.includes("LECTURE_IN_USE") ? "in_use" : "failed";
+export async function deleteLectureAction(lectureId: string): Promise<ActionResult> {
+  try {
+    const { supabase } = await authorizedClient("course.manage");
+    const { error } = await supabase.rpc("delete_course_lecture", { p_lecture_id: lectureId });
+    if (error) throw new Error(error.message.includes("LECTURE_IN_USE") ? "LECTURE_IN_USE" : error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["LECTURE_IN_USE", "FORBIDDEN", "UNAUTHENTICATED"]);
+  }
 }
 
-export async function reorderLecturesAction(courseId: string, lectureIds: string[]): Promise<void> {
-  const { supabase } = await authorizedClient("course.manage");
-  const { error } = await supabase.rpc("reorder_course_lectures", { p_course_id: courseId, p_lecture_ids: lectureIds });
-  if (error) throw new Error(error.message);
+export async function reorderLecturesAction(courseId: string, lectureIds: string[]): Promise<ActionResult> {
+  try {
+    const { supabase } = await authorizedClient("course.manage");
+    const { error } = await supabase.rpc("reorder_course_lectures", { p_course_id: courseId, p_lecture_ids: lectureIds });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["FORBIDDEN", "UNAUTHENTICATED"]);
+  }
 }
 
-export async function updateClassroomAction(classroomId: string, input: { name: string; capacity: number | null; room: string; grade: number | null }): Promise<void> {
-  const name = input.name.trim().slice(0, 100);
-  if (!name) throw new Error("EMPTY_NAME");
-  const capacity = input.capacity === null ? null : Number.isInteger(input.capacity) && input.capacity > 0 ? input.capacity : null;
-  const grade = input.grade === null ? null : Number.isInteger(input.grade) && input.grade >= 1 && input.grade <= 12 ? input.grade : null;
-  const { supabase } = await authorizedClient("class.manage");
-  const { data, error } = await supabase.from("classrooms").update({ name, capacity, room: input.room.trim().slice(0, 100), grade }).eq("id", classroomId).select("id");
-  if (error) throw new Error(error.message);
-  if (!data?.length) throw new Error("FORBIDDEN_SCOPE");
+export async function updateClassroomAction(classroomId: string, input: { name: string; capacity: number | null; room: string; grade: number | null }): Promise<ActionResult> {
+  try {
+    const name = input.name.trim().slice(0, 100);
+    if (!name) throw new Error("EMPTY_NAME");
+    const capacity = input.capacity === null ? null : Number.isInteger(input.capacity) && input.capacity > 0 ? input.capacity : null;
+    const grade = input.grade === null ? null : Number.isInteger(input.grade) && input.grade >= 1 && input.grade <= 12 ? input.grade : null;
+    const { supabase } = await authorizedClient("class.manage");
+    const { data, error } = await supabase.from("classrooms").update({ name, capacity, room: input.room.trim().slice(0, 100), grade }).eq("id", classroomId).select("id");
+    if (error) throw new Error(error.message);
+    if (!data?.length) throw new Error("FORBIDDEN_SCOPE");
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["EMPTY_NAME", "FORBIDDEN_SCOPE", "FORBIDDEN", "UNAUTHENTICATED"]);
+  }
 }
 
 // ---------------------------------------------------------------------------
