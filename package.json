@@ -13,7 +13,8 @@
     "p4e:db-audit": "node scripts/run-p4e-db-audit.mjs",
     "db:types": "node scripts/generate-database-types.mjs",
     "db:types:check": "node scripts/verify-database-types.mjs",
-    "migrations:ledger": "node scripts/migration-ledger.mjs"
+    "migrations:ledger": "node scripts/migration-ledger.mjs",
+    "migrations:ledger:snapshot": "node scripts/migration-ledger.mjs --write-snapshot"
   },
   "dependencies": {
     "@blocknote/core": "~0.51.4",
