@@ -1,6 +1,7 @@
 "use client";
 
 import { Eraser } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import type { GameBoardProps, GameMirrorState } from "../types";
@@ -29,6 +30,7 @@ function findConflicts(values: number[]): Set<number> {
 }
 
 export function SudokuBoard({ seed, difficulty, finished, onComplete, mirror, onMirror, readOnly }: GameBoardProps) {
+  const t = useTranslations("games");
   const puzzle = useMemo(() => sudokuPuzzle(seed, difficulty), [seed, difficulty]);
   const [values, setValues] = useState<number[]>(() => [...puzzle]);
   const [selected, setSelected] = useState<number | null>(null);
@@ -71,7 +73,7 @@ export function SudokuBoard({ seed, difficulty, finished, onComplete, mirror, on
   }
 
   return (
-    <div className="mx-auto max-w-md outline-none" tabIndex={0} onKeyDown={onKeyDown}>
+    <div className="mx-auto max-w-md rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-crater focus-visible:ring-offset-2 focus-visible:ring-offset-paper" tabIndex={0} onKeyDown={onKeyDown}>
       <div className="grid grid-cols-9 overflow-hidden rounded-lg border-2 border-ink/50 bg-card">
         {values.map((v, i) => {
           const given = puzzle[i] !== 0;
@@ -111,7 +113,7 @@ export function SudokuBoard({ seed, difficulty, finished, onComplete, mirror, on
         <button
           onClick={() => put(0)}
           disabled={finished}
-          aria-label="erase"
+          aria-label={t("erase")}
           className="flex size-9 items-center justify-center rounded-lg border bg-card transition duration-150 hover:bg-(--p-wash) disabled:opacity-50"
         >
           <Eraser size={16} />

@@ -106,6 +106,7 @@ export function RunwayLane({ runway, length, ppm, locked, onMove, onField, onFie
               <button
                 type="button"
                 title={t("solveHint")}
+                aria-label={t("solveHint")}
                 onClick={() => onSolve(runway.id, key)}
                 className="grid size-4 shrink-0 cursor-pointer place-items-center rounded-full border-[1.5px] border-crater"
               >

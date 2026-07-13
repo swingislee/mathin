@@ -69,7 +69,7 @@ export function TitleField({ noteId, readOnly = false }: { noteId: string; readO
         <Popover.Portal>
           <Popover.Content sideOffset={8} align="start" className="z-50 w-72 rounded-2xl border bg-card p-2 text-ink shadow-sm">
             <EmojiPicker.Root locale={locale === "zh" ? "zh" : "en"} onEmojiSelect={({ emoji }) => void setIcon(emoji)} className="flex h-80 flex-col">
-              <EmojiPicker.Search placeholder={t("searchEmoji")} className="mb-2 rounded-full border bg-paper px-3 py-2 text-sm outline-none" />
+              <EmojiPicker.Search placeholder={t("searchEmoji")} className="mb-2 rounded-full border bg-paper px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-crater focus-visible:ring-offset-2 focus-visible:ring-offset-paper" />
               <EmojiPicker.Viewport className="min-h-0 flex-1 overflow-y-auto">
                 <EmojiPicker.Loading className="grid h-full place-items-center text-sm text-muted">{t("loadingEmoji")}</EmojiPicker.Loading>
                 <EmojiPicker.Empty className="grid h-full place-items-center text-sm text-muted">{t("emptyEmoji")}</EmojiPicker.Empty>
@@ -93,7 +93,7 @@ export function TitleField({ noteId, readOnly = false }: { noteId: string; readO
         placeholder={t("titlePlaceholder")}
         rows={1}
         maxLength={200}
-        className="field-sizing-content min-h-14 w-full resize-none bg-transparent font-display text-4xl leading-tight outline-none placeholder:text-muted/55 md:text-5xl"
+        className="field-sizing-content min-h-14 w-full resize-none rounded-lg bg-transparent font-display text-4xl leading-tight outline-none placeholder:text-muted/55 focus-visible:ring-2 focus-visible:ring-crater md:text-5xl"
       />
     </div>
   );

@@ -28,6 +28,7 @@ function findBadCells(n: number, target: number, values: number[]): Set<number> 
 
 export function MagicSquareBoard({ seed, difficulty, finished, onComplete, mirror, onMirror, readOnly }: GameBoardProps) {
   const t = useTranslations("games.magicSquare");
+  const tGames = useTranslations("games");
   const puzzle = useMemo(() => magicPuzzle(seed, difficulty), [seed, difficulty]);
   const [values, setValues] = useState<number[]>(() => [...puzzle.givens]);
   const [selected, setSelected] = useState<number | null>(null);
@@ -71,7 +72,7 @@ export function MagicSquareBoard({ seed, difficulty, finished, onComplete, mirro
   }
 
   return (
-    <div className="mx-auto max-w-sm outline-none" tabIndex={0} onKeyDown={onKeyDown}>
+    <div className="mx-auto max-w-sm rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-crater focus-visible:ring-offset-2 focus-visible:ring-offset-paper" tabIndex={0} onKeyDown={onKeyDown}>
       <p className="mb-4 text-center text-sm text-muted">{t("target", { sum: puzzle.magicSum })}</p>
       <div
         className="grid overflow-hidden rounded-lg border-2 border-ink/50 bg-card"
@@ -109,7 +110,7 @@ export function MagicSquareBoard({ seed, difficulty, finished, onComplete, mirro
         <button
           onClick={() => put(0)}
           disabled={finished}
-          aria-label="erase"
+          aria-label={tGames("erase")}
           className="flex h-9 items-center justify-center rounded-lg border bg-card transition duration-150 hover:bg-(--p-wash) disabled:opacity-50"
         >
           <Eraser size={16} />

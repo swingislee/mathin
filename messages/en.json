@@ -40,6 +40,8 @@
     "logout": "Sign out",
     "login": "Sign in",
     "switchLanguage": "Switch language",
+    "toggleTheme": "Toggle theme",
+    "breadcrumbNav": "Breadcrumb",
     "skipToContent": "Skip to main content",
     "back": "Back",
     "privacy": "Privacy",
@@ -127,6 +129,7 @@
     "timeCol": "Time",
     "dateCol": "Date",
     "noRanks": "No one has finished this difficulty yet — the throne awaits.",
+    "erase": "Erase",
     "items": {
       "sudoku": {
         "name": "Sudoku",
@@ -928,6 +931,7 @@
     },
     "staff": {
       "title": "Staff",
+      "back": "Back to staff",
       "intro": "Review staff members and their roles, assign roles to existing accounts, or promote a customer account to staff.",
       "colName": "Name",
       "colEmail": "Email",

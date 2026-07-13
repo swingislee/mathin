@@ -1,7 +1,7 @@
 import * as React from "react";
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-export function Breadcrumb({ className,...props }:React.ComponentProps<"nav">){return <nav aria-label="breadcrumb" className={cn("text-xs text-muted",className)} {...props}/>;}
+export function Breadcrumb({ className,ariaLabel="breadcrumb",...props }:React.ComponentProps<"nav">&{ariaLabel?:string}){return <nav aria-label={ariaLabel} className={cn("text-xs text-muted",className)} {...props}/>;}
 export function BreadcrumbList({ className,...props }:React.ComponentProps<"ol">){return <ol className={cn("flex flex-wrap items-center gap-1.5",className)} {...props}/>;}
 export function BreadcrumbItem({ className,...props }:React.ComponentProps<"li">){return <li className={cn("inline-flex items-center gap-1.5",className)} {...props}/>;}
 export function BreadcrumbSeparator(){return <li aria-hidden="true"><ChevronRight size={12}/></li>;}

@@ -40,6 +40,8 @@
     "logout": "退出登录",
     "login": "登录",
     "switchLanguage": "切换语言",
+    "toggleTheme": "切换主题",
+    "breadcrumbNav": "面包屑导航",
     "skipToContent": "跳到主要内容",
     "back": "返回上一级",
     "privacy": "隐私政策",
@@ -127,6 +129,7 @@
     "timeCol": "用时",
     "dateCol": "日期",
     "noRanks": "这一难度还没有人完赛，虚位以待。",
+    "erase": "擦除",
     "items": {
       "sudoku": {
         "name": "数独",
@@ -930,6 +933,7 @@
     },
     "staff": {
       "title": "员工",
+      "back": "返回员工列表",
       "intro": "查看在职员工与其岗位角色，为已有账号授岗，或将顾客账号提升为员工。",
       "colName": "姓名",
       "colEmail": "邮箱",

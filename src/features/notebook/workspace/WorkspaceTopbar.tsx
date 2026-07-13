@@ -75,7 +75,7 @@ export function WorkspaceTopbar({ activeId, tone, onToneChange, onMenu }: {
         <select
           value={tone}
           onChange={(event) => onToneChange(event.target.value as WorkspaceTone)}
-          className="rounded-full border border-[var(--ws-panel-ink)]/25 bg-transparent px-2 py-1 text-[var(--ws-panel-ink)] outline-none"
+          className="rounded-full border border-[var(--ws-panel-ink)]/25 bg-transparent px-2 py-1 text-[var(--ws-panel-ink)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--ws-panel-ink)]"
         >
           {(["night", "leaf", "rose", "crater"] as const).map((value) => <option key={value} value={value} className="bg-paper text-ink">{t(`tones.${value}`)}</option>)}
         </select>
