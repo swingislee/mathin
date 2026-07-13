@@ -1,12 +1,12 @@
 "use client";
 
-import * as Dialog from "@radix-ui/react-dialog";
-import { Baby, BookOpen, CalendarDays, ClipboardList, LayoutDashboard, Menu, PhoneForwarded, School, ShieldAlert, ShieldCheck, Users, UserCog, Wallet, X } from "lucide-react";
+import { Baby, BookOpen, CalendarDays, ClipboardList, LayoutDashboard, Menu, PhoneForwarded, School, ShieldAlert, ShieldCheck, Users, UserCog, Wallet } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import type { ComponentType } from "react";
 import { Link, usePathname } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import type { SchoolNavItem } from "./nav";
 
 const ICONS: Record<string, ComponentType<{ size?: number; strokeWidth?: number }>> = {
@@ -73,26 +73,18 @@ export function DashboardShell({ nav, children }: { nav: readonly SchoolNavItem[
 
       <main className="min-w-0 flex-1 overflow-y-auto py-6">
         <div className="mb-4 lg:hidden">
-          <Dialog.Root open={open} onOpenChange={setOpen}>
-            <Dialog.Trigger asChild>
+          <Sheet open={open} onOpenChange={setOpen}>
+            <SheetTrigger asChild>
               <button type="button" aria-label={shellT("openNav")} className="flex items-center gap-2 rounded-full border border-line bg-card px-4 py-2.5 text-sm">
                 <Menu size={18} />
                 {shellT("openNav")}
               </button>
-            </Dialog.Trigger>
-            <Dialog.Portal>
-              <Dialog.Overlay className="fixed inset-0 z-40 bg-black/35" />
-              <Dialog.Content className="fixed inset-y-0 left-0 z-50 flex w-[min(80vw,320px)] flex-col border-r border-line bg-paper py-3 shadow-2xl">
-                <div className="mb-2 flex items-center justify-between px-4">
-                  <Dialog.Title className="font-display text-lg">{shellT("title")}</Dialog.Title>
-                  <Dialog.Close className="rounded-full border border-line p-2" aria-label={shellT("closeNav")}>
-                    <X size={16} />
-                  </Dialog.Close>
-                </div>
-                <NavList nav={nav} pathname={pathname} onNavigate={() => setOpen(false)} />
-              </Dialog.Content>
-            </Dialog.Portal>
-          </Dialog.Root>
+            </SheetTrigger>
+            <SheetContent side="left" closeLabel={shellT("closeNav")} className="flex w-[min(80vw,320px)] flex-col py-3">
+              <SheetTitle className="mb-2 px-4 text-lg">{shellT("title")}</SheetTitle>
+              <NavList nav={nav} pathname={pathname} onNavigate={() => setOpen(false)} />
+            </SheetContent>
+          </Sheet>
         </div>
 
         {children}
