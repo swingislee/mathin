@@ -4,6 +4,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
@@ -17,7 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
-import { inputClass, selectClass } from "./controls";
+import { fromSelectValue, inputClass, toSelectValue } from "./controls";
 import {
   findProfileByEmailAction,
   deactivateStaffAction,
@@ -284,18 +287,16 @@ export function StaffMembersPanel({
           <ul className="space-y-2">
             {roles.map((role) => (
               <li key={role.id}>
-                <label className="flex cursor-pointer items-center gap-2.5 text-sm">
-                  <Input
-                    type="checkbox"
+                <Label className="flex cursor-pointer items-center gap-2.5 text-sm font-normal">
+                  <Checkbox
                     checked={checked.has(role.id)}
-                    onChange={() => toggle(role.id)}
-                    className="size-4 accent-crater"
+                    onCheckedChange={() => toggle(role.id)}
                   />
                   <span>{role.name}</span>
                   {role.permKeys.includes("permission.configure") && (
                     <span className="rounded-full bg-moon/30 px-2 py-0.5 text-xs text-ink">{t("configureBearing")}</span>
                   )}
-                </label>
+                </Label>
               </li>
             ))}
           </ul>
@@ -315,10 +316,15 @@ export function StaffMembersPanel({
           <DialogHeader><DialogTitle>{t("deactivateTitle", { name: deactivateTarget?.displayName ?? "" })}</DialogTitle></DialogHeader>
           <p className="text-sm text-muted">{t("deactivateHint")}</p>
           {handoverPreview&&<ul className="grid gap-2 rounded-xl bg-line/40 p-3 text-sm"><li>{t("handoverStudents",{count:handoverPreview.studentCount})}</li><li>{t("handoverSessions",{count:handoverPreview.futureOverrideCount})}</li><li>{t("handoverClassrooms",{count:handoverPreview.classroomCount})}</li></ul>}
-          <select value={reassignTo} onChange={(event) => setReassignTo(event.target.value)} className={selectClass}>
-            <option value="">{t("noReplacement")}</option>
-            {members.filter((member) => member.isActive && member.userId !== deactivateTarget?.userId).map((member) => <option key={member.userId} value={member.userId}>{member.displayName}</option>)}
-          </select>
+          <Select value={toSelectValue(reassignTo)} onValueChange={(value) => setReassignTo(fromSelectValue(value))}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value={toSelectValue("")}>{t("noReplacement")}</SelectItem>
+              {members.filter((member) => member.isActive && member.userId !== deactivateTarget?.userId).map((member) => (
+                <SelectItem key={member.userId} value={member.userId}>{member.displayName}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           {dialogError && <p className="text-xs text-rose">{dialogError}</p>}
           <DialogFooter>
             <button type="button" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))} onClick={() => setDeactivateTarget(null)}>{t("cancel")}</button>

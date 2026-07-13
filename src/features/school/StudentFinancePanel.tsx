@@ -1,6 +1,9 @@
 "use client";
 
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
@@ -8,7 +11,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
-import { selectClass } from "./controls";
+import { fromSelectValue, selectClass, toSelectValue } from "./controls";
 import {
   adjustAccountAction,
   approveRefundAction,
@@ -277,18 +280,24 @@ export function StudentFinancePanel({
         <DialogContent>
           <DialogHeader><DialogTitle>{t("placeOrderDialogTitle")}</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <select value={kind} onChange={(e) => setKind(e.target.value as OrderKind)} className={`w-full ${selectClass}`}>
-              <option value="enroll">{t("enroll")}</option>
-              <option value="makeup">{t("makeup")}</option>
-              <option value="deposit">{t("deposit")}</option>
-            </select>
+            <Select value={kind} onValueChange={(value) => setKind(value as OrderKind)}>
+              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="enroll">{t("enroll")}</SelectItem>
+                <SelectItem value="makeup">{t("makeup")}</SelectItem>
+                <SelectItem value="deposit">{t("deposit")}</SelectItem>
+              </SelectContent>
+            </Select>
             {kind !== "deposit" && (
-              <select value={classroomId} onChange={(e) => setClassroomId(e.target.value)} className={`w-full ${selectClass}`}>
-                <option value="">{t("noClassroom")}</option>
-                {classroomOptions.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}{c.courseTitle ? ` · ${c.courseTitle}` : ""}</option>
-                ))}
-              </select>
+              <Select value={toSelectValue(classroomId)} onValueChange={(value) => setClassroomId(fromSelectValue(value))}>
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={toSelectValue("")}>{t("noClassroom")}</SelectItem>
+                  {classroomOptions.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}{c.courseTitle ? ` · ${c.courseTitle}` : ""}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             )}
             <div className="space-y-2">
               {items.map((item, index) => (
@@ -296,9 +305,9 @@ export function StudentFinancePanel({
                   <Input value={item.name} onChange={(e) => setItems(items.map((it, i) => (i === index ? { ...it, name: e.target.value } : it)))} placeholder={t("itemName")} className="px-2 py-1.5" />
                   <Input type="number" value={item.unitPrice} onChange={(e) => setItems(items.map((it, i) => (i === index ? { ...it, unitPrice: Number(e.target.value) } : it)))} className="px-2 py-1.5" />
                   <Input type="number" value={item.qty} min={1} onChange={(e) => setItems(items.map((it, i) => (i === index ? { ...it, qty: Number(e.target.value) || 1 } : it)))} className="px-2 py-1.5" />
-                  <label className="flex items-center justify-center text-xs text-muted" title={t("refundable")}>
-                    <Input type="checkbox" checked={item.refundable} onChange={(e) => setItems(items.map((it, i) => (i === index ? { ...it, refundable: e.target.checked } : it)))} />
-                  </label>
+                  <Label className="flex items-center justify-center text-xs text-muted font-normal" title={t("refundable")}>
+                    <Checkbox checked={item.refundable} onCheckedChange={(checked) => setItems(items.map((it, i) => (i === index ? { ...it, refundable: checked === true } : it)))} />
+                  </Label>
                   <button type="button" onClick={() => setItems(items.filter((_, i) => i !== index))} disabled={items.length <= 1} className="text-xs text-muted underline underline-offset-2 disabled:opacity-30">{t("remove")}</button>
                 </div>
               ))}
@@ -307,12 +316,15 @@ export function StudentFinancePanel({
               </button>
             </div>
             {couponOptions.length > 0 && (
-              <select value={couponGrantId} onChange={(e) => setCouponGrantId(e.target.value)} className={`w-full ${selectClass}`}>
-                <option value="">{t("noCoupon")}</option>
-                {couponOptions.map((c) => (
-                  <option key={c.grantId} value={c.grantId}>{c.couponName}（{c.kind === "amount" ? `-¥${c.value}` : `${c.value}%`}）</option>
-                ))}
-              </select>
+              <Select value={toSelectValue(couponGrantId)} onValueChange={(value) => setCouponGrantId(fromSelectValue(value))}>
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={toSelectValue("")}>{t("noCoupon")}</SelectItem>
+                  {couponOptions.map((c) => (
+                    <SelectItem key={c.grantId} value={c.grantId}>{c.couponName}（{c.kind === "amount" ? `-¥${c.value}` : `${c.value}%`}）</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             )}
             <Input value={orderRemark} onChange={(e) => setOrderRemark(e.target.value)} placeholder={t("remark")} className={`w-full ${selectClass}`} />
           </div>
@@ -328,12 +340,15 @@ export function StudentFinancePanel({
           <DialogHeader><DialogTitle>{t("recordPaymentDialogTitle", { orderNo: paymentTarget?.orderNo ?? "" })}</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <Input type="number" value={paymentAmount} onChange={(e) => setPaymentAmount(Number(e.target.value))} className={`w-full ${selectClass}`} />
-            <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)} className={`w-full ${selectClass}`}>
-              <option value="cash">{t("cash")}</option>
-              <option value="scan">{t("scan")}</option>
-              <option value="transfer">{t("transfer")}</option>
-              <option value="account">{t("account")}</option>
-            </select>
+            <Select value={paymentMethod} onValueChange={(value) => setPaymentMethod(value as PaymentMethod)}>
+              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="cash">{t("cash")}</SelectItem>
+                <SelectItem value="scan">{t("scan")}</SelectItem>
+                <SelectItem value="transfer">{t("transfer")}</SelectItem>
+                <SelectItem value="account">{t("account")}</SelectItem>
+              </SelectContent>
+            </Select>
             <Input value={paymentRemark} onChange={(e) => setPaymentRemark(e.target.value)} placeholder={t("remark")} className={`w-full ${selectClass}`} />
           </div>
           <DialogFooter>
@@ -361,15 +376,21 @@ export function StudentFinancePanel({
         <DialogContent>
           <DialogHeader><DialogTitle>{t("grantScholarshipDialogTitle")}</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <select value={scholarshipKind} onChange={(e) => setScholarshipKind(e.target.value as ScholarshipKind)} className={`w-full ${selectClass}`}>
-              <option value="deposit">{t("scholarshipDeposit")}</option>
-              <option value="discount">{t("scholarshipDiscount")}</option>
-            </select>
+            <Select value={scholarshipKind} onValueChange={(value) => setScholarshipKind(value as ScholarshipKind)}>
+              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="deposit">{t("scholarshipDeposit")}</SelectItem>
+                <SelectItem value="discount">{t("scholarshipDiscount")}</SelectItem>
+              </SelectContent>
+            </Select>
             {scholarshipKind === "discount" && (
-              <select value={scholarshipOrderId} onChange={(e) => setScholarshipOrderId(e.target.value)} className={`w-full ${selectClass}`}>
-                {discountableOrders.length === 0 && <option value="">{t("noOrders")}</option>}
-                {discountableOrders.map((o) => <option key={o.id} value={o.id}>{o.orderNo}（¥{o.amountDue.toFixed(2)}）</option>)}
-              </select>
+              <Select value={toSelectValue(scholarshipOrderId)} onValueChange={(value) => setScholarshipOrderId(fromSelectValue(value))}>
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {discountableOrders.length === 0 && <SelectItem value={toSelectValue("")}>{t("noOrders")}</SelectItem>}
+                  {discountableOrders.map((o) => <SelectItem key={o.id} value={o.id}>{o.orderNo}（¥{o.amountDue.toFixed(2)}）</SelectItem>)}
+                </SelectContent>
+              </Select>
             )}
             <Input type="number" value={scholarshipAmount} onChange={(e) => setScholarshipAmount(Number(e.target.value))} className={`w-full ${selectClass}`} />
             <Input value={scholarshipReason} onChange={(e) => setScholarshipReason(e.target.value)} placeholder={t("remark")} className={`w-full ${selectClass}`} />

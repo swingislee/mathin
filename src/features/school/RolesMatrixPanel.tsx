@@ -1,6 +1,8 @@
 "use client";
 
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 
 import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
@@ -231,19 +233,17 @@ export function RolesMatrixPanel({ roles, isAdmin }: { roles: StaffRoleInfo[]; i
                       const configureLocked = key === "permission.configure" && !isAdmin;
                       return (
                         <li key={key}>
-                          <label
-                            className={cn("flex items-center gap-2.5 text-sm", configureLocked ? "cursor-not-allowed opacity-50" : "cursor-pointer")}
+                          <Label
+                            className={cn("flex items-center gap-2.5 text-sm font-normal", configureLocked ? "cursor-not-allowed opacity-50" : "cursor-pointer")}
                             title={configureLocked ? t("configureAdminOnly") : undefined}
                           >
-                            <Input
-                              type="checkbox"
+                            <Checkbox
                               checked={checked.has(key)}
                               disabled={configureLocked}
-                              onChange={() => toggle(key)}
-                              className="size-4 accent-crater"
+                              onCheckedChange={() => toggle(key)}
                             />
                             <span>{t(`perm_${key.replaceAll(".", "_")}`)}</span>
-                          </label>
+                          </Label>
                         </li>
                       );
                     })}
