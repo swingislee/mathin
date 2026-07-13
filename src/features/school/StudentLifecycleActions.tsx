@@ -2,11 +2,12 @@
 
 import { LoaderCircle, RotateCcw, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { type ActionErrorMessages, useAction } from "@/components/action-form";
 import { useRouter } from "@/i18n/navigation";
 import {
   assignStudentAction,
@@ -47,56 +48,39 @@ export function StudentLifecycleActions({
 }) {
   const t = useTranslations("school.students");
   const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
   const [confirmOpen,setConfirmOpen]=useState(false);
 
-  const changeStatus = (next: StudentStatus) => {
-    setError(null);
-    startTransition(async () => {
-      try {
-        await changeStudentStatusAction(studentId, next);
-        router.refresh();
-      } catch {
-        setError(t("actionFailed"));
-      }
-    });
-  };
+  const defaultErrorMessage: ActionErrorMessages = { default: t("actionFailed") };
 
-  const assign = (staffUserId: string) => {
-    if (!staffUserId) return;
-    setError(null);
-    startTransition(async () => {
-      try {
-        await assignStudentAction(studentId, staffUserId);
-        router.refresh();
-      } catch {
-        setError(t("actionFailed"));
-      }
-    });
-  };
+  const changeStatusRun = useAction(changeStudentStatusAction, {
+    successMessage: t("statusChanged"),
+    errorMessage: defaultErrorMessage,
+    onSuccess: () => router.refresh(),
+  });
+  const changeStatus = (next: StudentStatus) => changeStatusRun.run(studentId, next);
 
-  const remove = () => {
-    setConfirmOpen(false);
-    setError(null);
-    startTransition(async () => {
-      const result = await softDeleteStudentAction(studentId);
-      if (result.ok) {
-        router.push("/dashboard/students");
-        router.refresh();
-      } else {
-        setError(result.code === "ACTIVE_ENROLLMENT" ? t("deleteActiveEnrollment") : t("actionFailed"));
-      }
-    });
-  };
+  const assignRun = useAction(assignStudentAction, {
+    successMessage: t("assignSuccess"),
+    errorMessage: defaultErrorMessage,
+    onSuccess: () => router.refresh(),
+  });
+  const assign = (staffUserId: string) => { if (staffUserId) assignRun.run(studentId, staffUserId); };
 
-  const restore = () => {
-    setError(null);
-    startTransition(async () => {
-      if (await restoreStudentAction(studentId)) router.refresh();
-      else setError(t("actionFailed"));
-    });
-  };
+  const removeRun = useAction(softDeleteStudentAction, {
+    successMessage: t("deleteSuccess"),
+    errorMessage: { ACTIVE_ENROLLMENT: t("deleteActiveEnrollment"), default: t("actionFailed") },
+    onSuccess: () => { router.push("/dashboard/students"); router.refresh(); },
+  });
+  const remove = () => { setConfirmOpen(false); removeRun.run(studentId); };
+
+  const restoreRun = useAction(restoreStudentAction, {
+    successMessage: t("restoreSuccess"),
+    errorMessage: defaultErrorMessage,
+    onSuccess: () => router.refresh(),
+  });
+  const restore = () => restoreRun.run(studentId);
+
+  const pending = changeStatusRun.pending || assignRun.pending || removeRun.pending || restoreRun.pending;
 
   return (
     <div className="flex flex-wrap items-center justify-end gap-2">
@@ -142,7 +126,6 @@ export function StudentLifecycleActions({
           <RotateCcw size={15} />{t("restore")}
         </Button>
       )}
-      {error && <p role="alert" className="basis-full text-right text-xs text-rose">{error}</p>}
       <ConfirmDialog open={confirmOpen} onOpenChange={setConfirmOpen} title={t("deleteStudent")} description={t("deleteConfirm")} confirmLabel={t("deleteStudent")} cancelLabel={t("cancel")} onConfirm={remove} pending={pending}/>
     </div>
   );
@@ -151,23 +134,19 @@ export function StudentLifecycleActions({
 export function StudentRestoreButton({ studentId }: { studentId: string }) {
   const t = useTranslations("school.students");
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
-  const [failed, setFailed] = useState(false);
+  const { run, pending } = useAction(restoreStudentAction, {
+    successMessage: t("restoreSuccess"),
+    errorMessage: { default: t("actionFailed") },
+    onSuccess: () => router.refresh(),
+  });
   return (
-    <span className="inline-flex flex-col items-end gap-1">
-      <button
-        type="button"
-        disabled={pending}
-        onClick={() => startTransition(async () => {
-          setFailed(false);
-          if (await restoreStudentAction(studentId)) router.refresh();
-          else setFailed(true);
-        })}
-        className="text-xs text-crater underline underline-offset-2 disabled:opacity-40"
-      >
-        {pending ? t("restoring") : t("restore")}
-      </button>
-      {failed && <span className="text-[11px] text-rose">{t("actionFailed")}</span>}
-    </span>
+    <button
+      type="button"
+      disabled={pending}
+      onClick={() => run(studentId)}
+      className="text-xs text-crater underline underline-offset-2 disabled:opacity-40"
+    >
+      {pending ? t("restoring") : t("restore")}
+    </button>
   );
 }

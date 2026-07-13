@@ -839,13 +839,18 @@ export async function updateStudentAction(studentId: string, input: UpdateStuden
   if (!data || data.length === 0) throw new Error("NOT_FOUND");
 }
 
-export async function assignStudentAction(studentId: string, staffUserId: string): Promise<void> {
-  const { supabase } = await authorizedClient("student.assign");
-  const { error } = await supabase.rpc("assign_student", {
-    p_student_id: studentId,
-    p_staff_user_id: staffUserId,
-  });
-  if (error) throw new Error(error.message);
+export async function assignStudentAction(studentId: string, staffUserId: string): Promise<ActionResult> {
+  try {
+    const { supabase } = await authorizedClient("student.assign");
+    const { error } = await supabase.rpc("assign_student", {
+      p_student_id: studentId,
+      p_staff_user_id: staffUserId,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["FORBIDDEN", "UNAUTHENTICATED"]);
+  }
 }
 
 export interface ImportStudentRow {
@@ -883,18 +888,28 @@ export async function softDeleteStudentAction(studentId: string): Promise<{ ok: 
   return { ok: false, code: error.message.includes("ACTIVE_ENROLLMENT") ? "ACTIVE_ENROLLMENT" : "FAILED" };
 }
 
-export async function restoreStudentAction(studentId: string): Promise<boolean> {
-  const { supabase } = await authorizedClient("student.delete");
-  const { error } = await supabase.rpc("restore_student", { p_student_id: studentId });
-  return !error;
+export async function restoreStudentAction(studentId: string): Promise<ActionResult> {
+  try {
+    const { supabase } = await authorizedClient("student.delete");
+    const { error } = await supabase.rpc("restore_student", { p_student_id: studentId });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["FORBIDDEN", "UNAUTHENTICATED"]);
+  }
 }
 export async function recoverLostStudentAction(studentId:string):Promise<void>{const{supabase}=await authorizedClient("student.edit");const{error}=await supabase.rpc("recover_lost_student",{p_student_id:studentId});if(error)throw new Error(error.message)}
 
-export async function changeStudentStatusAction(studentId: string, status: StudentStatus): Promise<void> {
-  if (!(STUDENT_STATUSES as readonly string[]).includes(status)) throw new Error("INVALID_STATUS");
-  const { supabase } = await authorizedClient("student.edit");
-  const { error } = await supabase.rpc("change_student_status", { p_student_id: studentId, p_status: status });
-  if (error) throw new Error(error.message);
+export async function changeStudentStatusAction(studentId: string, status: StudentStatus): Promise<ActionResult> {
+  try {
+    if (!(STUDENT_STATUSES as readonly string[]).includes(status)) throw new Error("INVALID_STATUS");
+    const { supabase } = await authorizedClient("student.edit");
+    const { error } = await supabase.rpc("change_student_status", { p_student_id: studentId, p_status: status });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["INVALID_STATUS", "FORBIDDEN", "UNAUTHENTICATED"]);
+  }
 }
 
 export async function searchStudentsForFinance(query: string): Promise<StudentSearchResult[]> {
@@ -1038,65 +1053,102 @@ export interface FoundProfile {
   identity: "student" | "parent" | "staff" | "admin";
 }
 
+/** 服务端错误码转 ActionResult 的统一 catch：authorizedClient 的 UNAUTHENTICATED/FORBIDDEN 也会走到这里。 */
+function staffCatch(error: unknown): StaffActionResult {
+  return { ok: false, code: error instanceof Error && STAFF_ERROR_CODES.has(error.message) ? error.message : "UNKNOWN" };
+}
+
 /** 按邮箱精确查找账号（添加员工入口）。邮箱只走 POST 体，不写日志、不进 URL。 */
-export async function findProfileByEmailAction(email: string): Promise<FoundProfile | null> {
-  const { supabase } = await authorizedClient("staff.manage");
-  const trimmed = email.trim();
-  if (!trimmed) return null;
-  const { data, error } = await supabase.rpc("find_profile_by_email", { p: trimmed });
-  if (error) throw new Error("LOOKUP_FAILED");
-  const row = ((data ?? []) as Array<{ user_id: string; display_name: string; identity: FoundProfile["identity"] }>)[0];
-  return row ? { userId: row.user_id, displayName: row.display_name, identity: row.identity } : null;
+export async function findProfileByEmailAction(email: string): Promise<ActionResult<FoundProfile | null>> {
+  try {
+    const { supabase } = await authorizedClient("staff.manage");
+    const trimmed = email.trim();
+    if (!trimmed) return { ok: true, data: null };
+    const { data, error } = await supabase.rpc("find_profile_by_email", { p: trimmed });
+    if (error) throw new Error("LOOKUP_FAILED");
+    const row = ((data ?? []) as Array<{ user_id: string; display_name: string; identity: FoundProfile["identity"] }>)[0];
+    return { ok: true, data: row ? { userId: row.user_id, displayName: row.display_name, identity: row.identity } : null };
+  } catch (error) {
+    return actionError<FoundProfile | null>(error, ["LOOKUP_FAILED", "FORBIDDEN", "UNAUTHENTICATED"]);
+  }
 }
 
 export async function grantStaffRoleAction(target: string, roleId: string): Promise<StaffActionResult> {
-  const { supabase } = await authorizedClient("staff.manage");
-  const { error } = await supabase.rpc("grant_staff_role", { target, p_role_id: roleId });
-  return staffResult(error);
+  try {
+    const { supabase } = await authorizedClient("staff.manage");
+    const { error } = await supabase.rpc("grant_staff_role", { target, p_role_id: roleId });
+    return staffResult(error);
+  } catch (error) {
+    return staffCatch(error);
+  }
 }
 
 export async function revokeStaffRoleAction(target: string, roleId: string): Promise<StaffActionResult> {
-  const { supabase } = await authorizedClient("staff.manage");
-  const { error } = await supabase.rpc("revoke_staff_role", { target, p_role_id: roleId });
-  return staffResult(error);
+  try {
+    const { supabase } = await authorizedClient("staff.manage");
+    const { error } = await supabase.rpc("revoke_staff_role", { target, p_role_id: roleId });
+    return staffResult(error);
+  } catch (error) {
+    return staffCatch(error);
+  }
 }
 
 /** 提升为员工身份：双闸——UI 仅 admin 可见，RPC 本身也仅 admin（docs/plan/11 §10 员工页层）。 */
 export async function promoteToStaffAction(target: string): Promise<StaffActionResult> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("UNAUTHENTICATED");
-  const profile = await getProfile(user.id);
-  if (profile?.role !== "admin") return { ok: false, code: "FORBIDDEN" };
-  const { error } = await supabase.rpc("admin_set_identity", { target, new_role: "staff" });
-  return staffResult(error);
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("UNAUTHENTICATED");
+    const profile = await getProfile(user.id);
+    if (profile?.role !== "admin") return { ok: false, code: "FORBIDDEN" };
+    const { error } = await supabase.rpc("admin_set_identity", { target, new_role: "staff" });
+    return staffResult(error);
+  } catch (error) {
+    return staffCatch(error);
+  }
 }
 
-export async function createStaffRoleAction(name: string): Promise<StaffActionResult & { roleId?: string }> {
-  const { supabase } = await authorizedClient("permission.configure");
-  const { data, error } = await supabase.rpc("create_staff_role", { p_name: name });
-  const result = staffResult(error);
-  return result.ok ? { ok: true, roleId: (data as string | null) ?? undefined } : result;
+export async function createStaffRoleAction(name: string): Promise<ActionResult<{ roleId: string }>> {
+  try {
+    const { supabase } = await authorizedClient("permission.configure");
+    const { data, error } = await supabase.rpc("create_staff_role", { p_name: name });
+    if (error) throw new Error(error.message);
+    return { ok: true, data: { roleId: data as string } };
+  } catch (error) {
+    return { ok: false, code: error instanceof Error && STAFF_ERROR_CODES.has(error.message) ? error.message : "UNKNOWN" };
+  }
 }
 
 export async function renameStaffRoleAction(roleId: string, name: string): Promise<StaffActionResult> {
-  const { supabase } = await authorizedClient("permission.configure");
-  const { error } = await supabase.rpc("rename_staff_role", { role_id: roleId, p_name: name });
-  return staffResult(error);
+  try {
+    const { supabase } = await authorizedClient("permission.configure");
+    const { error } = await supabase.rpc("rename_staff_role", { role_id: roleId, p_name: name });
+    return staffResult(error);
+  } catch (error) {
+    return staffCatch(error);
+  }
 }
 
 export async function deleteStaffRoleAction(roleId: string): Promise<StaffActionResult> {
-  const { supabase } = await authorizedClient("permission.configure");
-  const { error } = await supabase.rpc("delete_staff_role", { role_id: roleId });
-  return staffResult(error);
+  try {
+    const { supabase } = await authorizedClient("permission.configure");
+    const { error } = await supabase.rpc("delete_staff_role", { role_id: roleId });
+    return staffResult(error);
+  } catch (error) {
+    return staffCatch(error);
+  }
 }
 
 export async function setRolePermissionsAction(roleId: string, keys: string[]): Promise<StaffActionResult> {
-  const { supabase } = await authorizedClient("permission.configure");
-  const cleanKeys = keys.filter(isPermissionKey);
-  if (cleanKeys.length !== keys.length) return { ok: false, code: "INVALID_PERMISSION_KEYS" };
-  const { error } = await supabase.rpc("set_role_permissions", { p_role_id: roleId, perm_keys: cleanKeys });
-  return staffResult(error);
+  try {
+    const { supabase } = await authorizedClient("permission.configure");
+    const cleanKeys = keys.filter(isPermissionKey);
+    if (cleanKeys.length !== keys.length) return { ok: false, code: "INVALID_PERMISSION_KEYS" };
+    const { error } = await supabase.rpc("set_role_permissions", { p_role_id: roleId, perm_keys: cleanKeys });
+    return staffResult(error);
+  } catch (error) {
+    return staffCatch(error);
+  }
 }
 
 export async function deactivateStaffAction(target: string, reassignTo: string | null): Promise<StaffActionResult> {
@@ -1105,7 +1157,7 @@ export async function deactivateStaffAction(target: string, reassignTo: string |
     const { error } = await supabase.rpc("deactivate_staff", { p_target: target, p_reassign_to: nullableRpcArg(reassignTo) });
     return staffResult(error);
   } catch (error) {
-    return { ok: false, code: error instanceof Error && STAFF_ERROR_CODES.has(error.message) ? error.message : "UNKNOWN" };
+    return staffCatch(error);
   }
 }
 

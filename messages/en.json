@@ -504,6 +504,10 @@
       "deleteConfirm": "Move this student to the recycle bin? Historical records will be kept.",
       "deleteActiveEnrollment": "This student still has an active enrollment. Withdraw them before deleting.",
       "actionFailed": "Action failed. Please try again.",
+      "statusChanged": "Status updated.",
+      "assignSuccess": "Owner assigned.",
+      "deleteSuccess": "Moved to recycle bin.",
+      "restoreSuccess": "Restored.",
       "lead": "Lead",
       "trialing": "Trialing",
       "enrolled": "Enrolled",
@@ -925,7 +929,10 @@
       "err_CANNOT_REVOKE_SELF": "You cannot change your own roles.",
       "err_CANNOT_CHANGE_SELF": "You cannot change your own identity.",
       "err_TARGET_NOT_STAFF": "The target is not a staff member yet. Promote them first.",
-      "err_NOT_FOUND": "Target account not found."
+      "err_NOT_FOUND": "Target account not found.",
+      "rolesSaved": "Roles updated.",
+      "promoteSuccess": "Promoted to staff.",
+      "deactivateSuccess": "Staff member deactivated."
     },
     "roles": {
       "title": "Roles & permissions",
@@ -949,6 +956,9 @@
       "err_SYSTEM_ROLE": "Built-in roles cannot be deleted.",
       "err_ROLE_HAS_MEMBERS": "This role still has members. Remove them on the Staff page first.",
       "err_INVALID_PERMISSION_KEYS": "Invalid permission keys. Refresh the page and retry.",
+      "createSuccess": "New role created.",
+      "renameSuccess": "Renamed.",
+      "deleteSuccess": "Role deleted.",
       "domain_student": "Students",
       "domain_followup": "Follow-ups",
       "domain_activity": "Activities",

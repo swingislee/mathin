@@ -22,13 +22,13 @@ export function ActionForm({action,successMessage,errorMessage,children,classNam
   return <form action={formAction} className={className} aria-busy={pending}>{children}</form>;
 }
 
-/** 命令式版本：非 <form> 触发（按钮点击、ConfirmDialog 确认后）的 Server Action 统一走成功 toast / 失败按 code 分流文案。 */
-export function useAction<A extends unknown[]>(action:(...args:A)=>Promise<ActionResult>,opts:{successMessage:string;errorMessage:ActionErrorMessages;onSuccess?:()=>void}){
+/** 命令式版本：非 <form> 触发（按钮点击、ConfirmDialog 确认后）的 Server Action 统一走成功 toast / 失败按 code 分流文案。onSuccess 收到 ActionResult 的 data（无 data 时为 undefined）。 */
+export function useAction<A extends unknown[],T=undefined>(action:(...args:A)=>Promise<ActionResult<T>>,opts:{successMessage:string;errorMessage:ActionErrorMessages;onSuccess?:(data:T)=>void}){
   const [pending,startTransition]=useTransition();
   function run(...args:A){
     startTransition(async()=>{
       const result=await action(...args);
-      if(result.ok){toast.success(opts.successMessage);opts.onSuccess?.();}
+      if(result.ok){toast.success(opts.successMessage);opts.onSuccess?.((result as {data?:T}).data as T);}
       else toast.error(resolveError(opts.errorMessage,result.code));
     });
   }

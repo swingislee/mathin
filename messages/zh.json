@@ -504,6 +504,10 @@
       "deleteConfirm": "确认将该学生移入回收站？历史记录不会删除。",
       "deleteActiveEnrollment": "该学生仍有在读报名，请先退班再删除。",
       "actionFailed": "操作失败，请重试。",
+      "statusChanged": "状态已更新。",
+      "assignSuccess": "已分配跟进人。",
+      "deleteSuccess": "已移入回收站。",
+      "restoreSuccess": "已恢复。",
       "lead": "潜在",
       "trialing": "试听",
       "enrolled": "在读",
@@ -927,7 +931,10 @@
       "err_CANNOT_REVOKE_SELF": "不能修改自己的岗位。",
       "err_CANNOT_CHANGE_SELF": "不能更改自己的身份。",
       "err_TARGET_NOT_STAFF": "对方还不是员工身份，请先提升为员工。",
-      "err_NOT_FOUND": "目标账号不存在。"
+      "err_NOT_FOUND": "目标账号不存在。",
+      "rolesSaved": "岗位已更新。",
+      "promoteSuccess": "已提升为员工。",
+      "deactivateSuccess": "员工已停用。"
     },
     "roles": {
       "title": "岗位权限",
@@ -951,6 +958,9 @@
       "err_SYSTEM_ROLE": "内置角色不可删除。",
       "err_ROLE_HAS_MEMBERS": "该角色仍有成员，请先在员工页移除后再删除。",
       "err_INVALID_PERMISSION_KEYS": "存在无效权限键，请刷新页面后重试。",
+      "createSuccess": "已创建新角色。",
+      "renameSuccess": "已改名。",
+      "deleteSuccess": "已删除角色。",
       "domain_student": "学生",
       "domain_followup": "跟进",
       "domain_activity": "活动",

@@ -4,11 +4,13 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { buttonVariants } from "@/components/ui/button";
+import { type ActionErrorMessages, useAction } from "@/components/action-form";
 import { useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
+import type { ActionResult } from "@/lib/action-result";
 import { inputClass } from "./controls";
 import {
   createStaffRoleAction,
@@ -36,7 +38,6 @@ const KNOWN_ERR = new Set(["FORBIDDEN", "ROLE_NOT_FOUND", "INVALID_NAME", "SYSTE
 export function RolesMatrixPanel({ roles, isAdmin }: { roles: StaffRoleInfo[]; isAdmin: boolean }) {
   const t = useTranslations("school.roles");
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
 
   const [selectedId, setSelectedId] = useState<string | null>(roles[0]?.id ?? null);
   // 勾选集只在「选中角色时」从 props 初始化（事件驱动，不用 effect 同步）；保存成功后与服务端一致
@@ -44,21 +45,19 @@ export function RolesMatrixPanel({ roles, isAdmin }: { roles: StaffRoleInfo[]; i
   const [newName, setNewName] = useState("");
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
 
   const selected = roles.find((role) => role.id === selectedId) ?? null;
-  const errText = (code: string) => (KNOWN_ERR.has(code) ? t(`err_${code}`) : t("actionFailed"));
+  const errorMessage: ActionErrorMessages = {
+    ...Object.fromEntries([...KNOWN_ERR].map((code) => [code, t(`err_${code}`)])),
+    default: t("actionFailed"),
+  };
 
   const selectRole = (role: StaffRoleInfo) => {
     setSelectedId(role.id);
     setChecked(new Set(role.permKeys));
-    setError(null);
-    setSaved(false);
   };
 
   const toggle = (key: PermissionKey) => {
-    setSaved(false);
     setChecked((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
@@ -67,71 +66,55 @@ export function RolesMatrixPanel({ roles, isAdmin }: { roles: StaffRoleInfo[]; i
     });
   };
 
-  const save = () => {
-    if (!selected) return;
-    setError(null);
-    setSaved(false);
-    startTransition(async () => {
-      const result = await setRolePermissionsAction(selected.id, [...checked]);
-      if (!result.ok) {
-        setError(errText(result.code));
-        return;
-      }
-      setSaved(true);
-      router.refresh();
-    });
-  };
+  const saveRun = useAction(setRolePermissionsAction, {
+    successMessage: t("savedToast"),
+    errorMessage,
+    onSuccess: () => router.refresh(),
+  });
+  const save = () => { if (selected) saveRun.run(selected.id, [...checked]); };
 
-  const create = () => {
-    const name = newName.trim();
-    if (!name) return;
-    setError(null);
-    startTransition(async () => {
-      const result = await createStaffRoleAction(name);
-      if (!result.ok) {
-        setError(errText(result.code));
-        return;
-      }
+  const createRun = useAction(createStaffRoleAction, {
+    successMessage: t("createSuccess"),
+    errorMessage,
+    onSuccess: (data) => {
       setNewName("");
-      if (result.roleId) {
-        setSelectedId(result.roleId);
-        setChecked(new Set());
-      }
+      setSelectedId(data.roleId);
+      setChecked(new Set());
       router.refresh();
-    });
-  };
+    },
+  });
+  const create = () => { const name = newName.trim(); if (name) createRun.run(name); };
 
+  const renameRun = useAction(renameStaffRoleAction, {
+    successMessage: t("renameSuccess"),
+    errorMessage,
+    onSuccess: () => { setRenamingId(null); router.refresh(); },
+  });
   const confirmRename = (roleId: string) => {
     const name = renameValue.trim();
-    if (!name) return;
-    setError(null);
-    startTransition(async () => {
-      const result = await renameStaffRoleAction(roleId, name);
-      if (!result.ok) {
-        setError(errText(result.code));
-        return;
-      }
-      setRenamingId(null);
-      router.refresh();
-    });
+    if (name) renameRun.run(roleId, name);
   };
 
-  const remove = (roleId: string) => {
-    setError(null);
-    startTransition(async () => {
-      const result = await deleteStaffRoleAction(roleId);
-      if (!result.ok) {
-        setError(errText(result.code));
-        return;
-      }
+  // 包一层把 roleId 塞进 ActionResult 的 data，供 onSuccess 判断是否要重置当前选中角色。
+  const removeRoleAction = async (roleId: string): Promise<ActionResult<string>> => {
+    const result = await deleteStaffRoleAction(roleId);
+    return result.ok ? { ok: true, data: roleId } : result;
+  };
+  const removeRun = useAction(removeRoleAction, {
+    successMessage: t("deleteSuccess"),
+    errorMessage,
+    onSuccess: (roleId) => {
       if (selectedId === roleId) {
         const fallback = roles.find((role) => role.id !== roleId);
         setSelectedId(fallback?.id ?? null);
         setChecked(new Set(fallback?.permKeys ?? []));
       }
       router.refresh();
-    });
-  };
+    },
+  });
+  const remove = (roleId: string) => removeRun.run(roleId);
+
+  const pending = saveRun.pending || createRun.pending || renameRun.pending || removeRun.pending;
 
   return (
     <div className="flex flex-col gap-6 lg:flex-row">
@@ -217,8 +200,6 @@ export function RolesMatrixPanel({ roles, isAdmin }: { roles: StaffRoleInfo[]; i
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="font-medium">{t("matrixTitle", { name: selected.name })}</h2>
               <div className="flex items-center gap-3">
-                {saved && <span role="status" className="text-xs text-muted">{t("savedToast")}</span>}
-                {error && <span className="text-xs text-rose">{error}</span>}
                 <button type="button" disabled={pending} onClick={save} className={cn(buttonVariants({ size: "sm" }))}>
                   {t("save")}
                 </button>

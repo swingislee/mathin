@@ -61,14 +61,10 @@ export function FollowUpBoardList({
     setStatusError(null);
     setStatusPendingId(row.id);
     startTransition(async () => {
-      try {
-        await changeStudentStatusAction(row.id, status);
-        router.refresh();
-      } catch {
-        setStatusError(t("changeFailed"));
-      } finally {
-        setStatusPendingId(null);
-      }
+      const result = await changeStudentStatusAction(row.id, status);
+      if (result.ok) router.refresh();
+      else setStatusError(t("changeFailed"));
+      setStatusPendingId(null);
     });
   };
 

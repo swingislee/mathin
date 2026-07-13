@@ -8,9 +8,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { buttonVariants } from "@/components/ui/button";
+import { type ActionErrorMessages, useAction } from "@/components/action-form";
 import {
   Dialog,
   DialogContent,
@@ -58,12 +59,10 @@ export function StaffMembersPanel({
 }) {
   const t = useTranslations("school.staff");
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
 
   // 授岗弹窗：目标成员 + 勾选集（打开时从成员当前岗位初始化，保存时按差异 grant/revoke）
   const [target, setTarget] = useState<StaffMember | null>(null);
   const [checked, setChecked] = useState<Set<string>>(new Set());
-  const [dialogError, setDialogError] = useState<string | null>(null);
   const [deactivateTarget, setDeactivateTarget] = useState<StaffMember | null>(null);
   const [reassignTo, setReassignTo] = useState("");
   const [handoverPreview,setHandoverPreview]=useState<{studentCount:number;futureOverrideCount:number;classroomCount:number}|null>(null);
@@ -75,12 +74,14 @@ export function StaffMembersPanel({
   const [found, setFound] = useState<FoundProfile | null>(null);
   const [lookupError, setLookupError] = useState<string | null>(null);
 
-  const errText = (code: string) => (KNOWN_ERR.has(code) ? t(`err_${code}`) : t("actionFailed"));
+  const errorMessage: ActionErrorMessages = {
+    ...Object.fromEntries([...KNOWN_ERR].map((code) => [code, t(`err_${code}`)])),
+    default: t("actionFailed"),
+  };
 
   const openDialog = (member: StaffMember) => {
     setTarget(member);
     setChecked(new Set(member.roleIds));
-    setDialogError(null);
   };
 
   const toggle = (roleId: string) => {
@@ -92,33 +93,25 @@ export function StaffMembersPanel({
     });
   };
 
-  const saveRoles = () => {
-    if (!target) return;
-    setDialogError(null);
-    startTransition(async () => {
-      const before = new Set(target.roleIds);
-      const grants = [...checked].filter((id) => !before.has(id));
-      const revokes = [...before].filter((id) => !checked.has(id));
-      let failed: StaffActionResult | null = null;
-      for (const roleId of grants) {
-        const result = await grantStaffRoleAction(target.userId, roleId);
-        if (!result.ok) { failed = result; break; }
-      }
-      if (!failed) {
-        for (const roleId of revokes) {
-          const result = await revokeStaffRoleAction(target.userId, roleId);
-          if (!result.ok) { failed = result; break; }
-        }
-      }
-      if (failed && !failed.ok) {
-        setDialogError(errText(failed.code));
-        router.refresh(); // 部分成功也要回真身：重取列表对齐服务端
-        return;
-      }
-      setTarget(null);
-      router.refresh();
-    });
+  const saveRolesAction = async (userId: string, before: Set<string>, after: Set<string>): Promise<StaffActionResult> => {
+    const grants = [...after].filter((id) => !before.has(id));
+    const revokes = [...before].filter((id) => !after.has(id));
+    for (const roleId of grants) {
+      const result = await grantStaffRoleAction(userId, roleId);
+      if (!result.ok) return result;
+    }
+    for (const roleId of revokes) {
+      const result = await revokeStaffRoleAction(userId, roleId);
+      if (!result.ok) return result;
+    }
+    return { ok: true };
   };
+  const saveRolesRun = useAction(saveRolesAction, {
+    successMessage: t("rolesSaved"),
+    errorMessage,
+    onSuccess: () => { setTarget(null); router.refresh(); },
+  });
+  const saveRoles = () => { if (target) saveRolesRun.run(target.userId, new Set(target.roleIds), checked); };
 
   const lookup = () => {
     setLookupError(null);
@@ -126,47 +119,32 @@ export function StaffMembersPanel({
     setLooked(false);
     if (!email.trim()) return;
     setLooking(true);
-    startTransition(async () => {
-      try {
-        const profile = await findProfileByEmailAction(email);
-        setFound(profile);
+    findProfileByEmailAction(email).then((result) => {
+      if (result.ok) {
+        setFound(result.data);
         setLooked(true);
-      } catch {
+      } else {
         setLookupError(t("actionFailed"));
-      } finally {
-        setLooking(false);
       }
+      setLooking(false);
     });
   };
 
-  const promote = () => {
-    if (!found) return;
-    setLookupError(null);
-    startTransition(async () => {
-      const result = await promoteToStaffAction(found.userId);
-      if (!result.ok) {
-        setLookupError(errText(result.code));
-        return;
-      }
-      setFound({ ...found, identity: "staff" });
-      router.refresh();
-    });
-  };
+  const promoteRun = useAction(promoteToStaffAction, {
+    successMessage: t("promoteSuccess"),
+    errorMessage,
+    onSuccess: () => { if (found) setFound({ ...found, identity: "staff" }); router.refresh(); },
+  });
+  const promote = () => { if (found) promoteRun.run(found.userId); };
 
-  const deactivate = () => {
-    if (!deactivateTarget) return;
-    setDialogError(null);
-    startTransition(async () => {
-      const result = await deactivateStaffAction(deactivateTarget.userId, reassignTo || null);
-      if (!result.ok) {
-        setDialogError(errText(result.code));
-        return;
-      }
-      setDeactivateTarget(null);
-      setReassignTo("");
-      router.refresh();
-    });
-  };
+  const deactivateRun = useAction(deactivateStaffAction, {
+    successMessage: t("deactivateSuccess"),
+    errorMessage,
+    onSuccess: () => { setDeactivateTarget(null); setReassignTo(""); router.refresh(); },
+  });
+  const deactivate = () => { if (deactivateTarget) deactivateRun.run(deactivateTarget.userId, reassignTo || null); };
+
+  const pending = saveRolesRun.pending || promoteRun.pending || deactivateRun.pending;
 
   // 查到的已是员工：直接从成员列表里找到对应行进授岗弹窗
   const foundMember = found ? members.find((member) => member.userId === found.userId) ?? null : null;
@@ -216,7 +194,7 @@ export function StaffMembersPanel({
                   ) : (
                     <span className="inline-flex gap-3">
                       <button type="button" onClick={() => openDialog(member)} className="text-xs text-muted underline underline-offset-2 hover:text-ink">{t("manageRoles")}</button>
-                      {member.isActive && <button type="button" onClick={() => { setDeactivateTarget(member); setReassignTo(""); setDialogError(null); setHandoverPreview(null); void getStaffHandoverPreviewAction(member.userId).then(setHandoverPreview).catch(()=>setDialogError(t("actionFailed"))); }} className="text-xs text-rose underline underline-offset-2">{t("deactivate")}</button>}
+                      {member.isActive && <button type="button" onClick={() => { setDeactivateTarget(member); setReassignTo(""); setHandoverPreview(null); void getStaffHandoverPreviewAction(member.userId).then(setHandoverPreview).catch(()=>{}); }} className="text-xs text-rose underline underline-offset-2">{t("deactivate")}</button>}
                     </span>
                   )}
                 </TableCell>
@@ -300,7 +278,6 @@ export function StaffMembersPanel({
               </li>
             ))}
           </ul>
-          {dialogError && <p className="text-xs text-rose">{dialogError}</p>}
           <DialogFooter>
             <button type="button" onClick={() => setTarget(null)} className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
               {t("cancel")}
@@ -325,7 +302,6 @@ export function StaffMembersPanel({
               ))}
             </SelectContent>
           </Select>
-          {dialogError && <p className="text-xs text-rose">{dialogError}</p>}
           <DialogFooter>
             <button type="button" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))} onClick={() => setDeactivateTarget(null)}>{t("cancel")}</button>
             <button type="button" disabled={pending} className={cn(buttonVariants({ size: "sm" }))} onClick={deactivate}>{t("confirmDeactivate")}</button>
