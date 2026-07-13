@@ -1,6 +1,7 @@
 "use client";
 
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
@@ -177,15 +178,14 @@ export function RosterPanel({ classroomId, roster, canManage }: { classroomId: s
           <DialogHeader>
             <DialogTitle>{t("transferDialogTitle", { name: transferTarget?.studentName ?? "" })}</DialogTitle>
           </DialogHeader>
-          <select
-            value={transferTo}
-            onChange={(event) => setTransferTo(event.target.value)}
-            className={`w-full ${selectClass}`}
-          >
-            {classroomOptions.map((option) => (
-              <option key={option.id} value={option.id}>{option.name}</option>
-            ))}
-          </select>
+          <Select value={transferTo} onValueChange={setTransferTo}>
+            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {classroomOptions.map((option) => (
+                <SelectItem key={option.id} value={option.id}>{option.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <DialogFooter>
             <button type="button" onClick={() => setTransferTarget(null)} className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
               {t("cancel")}

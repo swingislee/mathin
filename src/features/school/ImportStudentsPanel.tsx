@@ -6,6 +6,7 @@ import { LoaderCircle, Upload } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { importStudentsAction, type ImportStudentRow, type ImportStudentsResult } from "./actions";
 import { inputClass } from "./controls";
 
@@ -93,7 +94,7 @@ export function ImportStudentsPanel() {
   return (
     <div className="mt-6 space-y-6">
       <section className="rounded-xl border border-line bg-card p-5">
-        <label className="grid gap-2 text-sm font-medium">
+        <Label className="grid gap-2 text-sm font-medium">
           {t("pasteData")}
           <textarea
             value={text}
@@ -103,7 +104,7 @@ export function ImportStudentsPanel() {
             placeholder={t("importPlaceholder")}
             className={`${inputClass} resize-y font-mono text-xs`}
           />
-        </label>
+        </Label>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-muted">
           <span>{t("importLimit", { count: rows.length })}</span>
           <Button type="button" size="sm" disabled={pending || rows.length === 0 || rows.length > 500} onClick={submit} className="gap-1.5">

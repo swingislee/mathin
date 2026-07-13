@@ -3,8 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { buttonVariants } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { getWeekSchedule } from "./actions";
+import { fromSelectValue, toSelectValue } from "./controls";
 import { markConflicts, type ScheduleBlock } from "./schedule";
 
 const HOUR_START = 8;
@@ -94,16 +96,15 @@ export function ScheduleWeekView({ canFilterTeacher }: { canFilterTeacher: boole
         </button>
         <span className="text-sm text-muted">{dayFormatter.format(weekStart)} – {dayFormatter.format(addDays(weekStart, 6))}</span>
         {canFilterTeacher && teacherOptions.length > 0 && (
-          <select
-            value={teacherFilter}
-            onChange={(event) => setTeacherFilter(event.target.value)}
-            className="ml-auto rounded-lg border border-line bg-card px-3 py-1.5 text-sm text-ink outline-none focus:border-crater"
-          >
-            <option value="">{t("allTeachers")}</option>
-            {teacherOptions.map((name) => (
-              <option key={name} value={name}>{name}</option>
-            ))}
-          </select>
+          <Select value={toSelectValue(teacherFilter)} onValueChange={(value) => setTeacherFilter(fromSelectValue(value))}>
+            <SelectTrigger className="ml-auto"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value={toSelectValue("")}>{t("allTeachers")}</SelectItem>
+              {teacherOptions.map((name) => (
+                <SelectItem key={name} value={name}>{name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         )}
       </div>
 

@@ -6,9 +6,9 @@ import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Link, useRouter } from "@/i18n/navigation";
 import { changeStudentStatusAction, recoverLostStudentAction } from "./actions";
-import { selectClass } from "./controls";
 import { FollowUpForm } from "./FollowUpForm";
 import type { BoardGroup, BoardRow } from "./followups";
 import type { StudentStatus } from "./students";
@@ -129,17 +129,18 @@ export function FollowUpBoardList({
                               {t("logFollowUp")}
                             </Button>
                             {canEditStatus && (
-                              <select
+                              <Select
                                 value={row.status}
-                                onChange={(event) => changeStatus(row, event.target.value as StudentStatus)}
+                                onValueChange={(value) => changeStatus(row, value as StudentStatus)}
                                 disabled={statusPendingId === row.id}
-                                aria-label={t("changeStatus")}
-                                className={`${selectClass} h-7 py-0 text-xs`}
                               >
-                                {STUDENT_STATUSES.filter((status)=>status===row.status||STATUS_TRANSITIONS[row.status].includes(status)).map((status) => (
-                                  <option key={status} value={status}>{studentsT(status)}</option>
-                                ))}
-                              </select>
+                                <SelectTrigger aria-label={t("changeStatus")} className="h-7 py-0 text-xs"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  {STUDENT_STATUSES.filter((status)=>status===row.status||STATUS_TRANSITIONS[row.status].includes(status)).map((status) => (
+                                    <SelectItem key={status} value={status}>{studentsT(status)}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
                             )}
                             {canOrder && (
                               <Link

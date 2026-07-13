@@ -1,8 +1,8 @@
 /**
- * 后台统一表单控件类名（P4C-0 §3.5）。
- * 原先各处裸 <select>/<input> 手写 `bg-background`——该 token 在 @theme 里未定义，
- * 实际渲染为透明底，叠在暗色卡片上出脏色。统一走 `bg-card + text-ink`，
- * 配合 globals.css 的 color-scheme 声明，原生下拉弹层随主题深浅。
+ * 历史遗留的表单控件类名（P4C-0 §3.5）。P4F-3 已把全部原生 <select> 迁到 shadcn
+ * Select，`selectClass` 现在只剩几处 <Input> 上的补充 className（多为历史遗留的
+ * 重复覆盖，Input 自身默认样式已含等价效果），不再对应任何 <select> 元素。
+ * 暂不删除/合并——留给下一次碰这些文件的人顺手清理。
  */
 export const selectClass =
   "rounded-lg border border-line bg-card px-3 py-2 text-sm text-ink outline-none transition focus:ring-2 focus:ring-moon";

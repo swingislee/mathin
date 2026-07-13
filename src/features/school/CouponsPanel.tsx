@@ -1,6 +1,7 @@
 "use client";
 
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
@@ -121,10 +122,13 @@ export function CouponsPanel({ coupons }: { coupons: CouponRow[] }) {
           <div className="space-y-3">
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("couponName")} className={`w-full ${selectClass}`} />
             <Input value={code} onChange={(e) => setCode(e.target.value)} placeholder={t("couponCode")} className={`w-full ${selectClass}`} />
-            <select value={kind} onChange={(e) => setKind(e.target.value as CouponKind)} className={`w-full ${selectClass}`}>
-              <option value="amount">{t("couponAmount")}</option>
-              <option value="percent">{t("couponPercent")}</option>
-            </select>
+            <Select value={kind} onValueChange={(value) => setKind(value as CouponKind)}>
+              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="amount">{t("couponAmount")}</SelectItem>
+                <SelectItem value="percent">{t("couponPercent")}</SelectItem>
+              </SelectContent>
+            </Select>
             <Input type="number" value={value} onChange={(e) => setValue(Number(e.target.value))} className={`w-full ${selectClass}`} />
           </div>
           <DialogFooter>
