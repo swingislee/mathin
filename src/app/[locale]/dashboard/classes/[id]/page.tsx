@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { buttonVariants } from "@/components/ui/button";
 import { ClassroomEditor } from "@/features/school/ClassroomEditor";
+import { ConsumeRuleDialog } from "@/features/school/ConsumeRuleDialog";
 import { getClassroomDetail, listDeletedSessions } from "@/features/school/classes";
 import { SchoolPageHeader } from "@/features/school/PageHeader";
 import { RosterPanel } from "@/features/school/RosterPanel";
@@ -39,6 +40,7 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ lo
         actions={
           <>
             {canManage && <ClassroomEditor classroom={classroom} />}
+            {perms.has("finance.account.adjust") && <ConsumeRuleDialog classroomId={classroom.id} />}
             <Link href="/dashboard/classes" className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>
               {t("back")}
             </Link>

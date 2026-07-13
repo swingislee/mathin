@@ -616,6 +616,19 @@ export async function adjustAccountAction(studentId: string, delta: number, reas
   if (error) throw new Error(error.message);
 }
 
+export interface ConsumeRule { present: number; late: number; absent: number; leave: number }
+export async function getConsumeRuleAction(classroomId: string): Promise<ConsumeRule> {
+  const { supabase } = await authorizedClient("finance.account.adjust");
+  const { data, error } = await supabase.from("consume_rules").select("present_lessons,late_lessons,absent_lessons,leave_lessons").eq("classroom_id", classroomId).maybeSingle<{present_lessons:number;late_lessons:number;absent_lessons:number;leave_lessons:number}>();
+  if (error) throw new Error(error.message);
+  return { present: data?.present_lessons ?? 1, late: data?.late_lessons ?? 1, absent: data?.absent_lessons ?? 1, leave: data?.leave_lessons ?? 0 };
+}
+export async function setConsumeRuleAction(classroomId: string, rule: ConsumeRule): Promise<void> {
+  const { supabase } = await authorizedClient("finance.account.adjust");
+  const { error } = await supabase.rpc("set_consume_rule", { p_classroom_id: classroomId, p_present: rule.present, p_late: rule.late, p_absent: rule.absent, p_leave: rule.leave });
+  if (error) throw new Error(error.message);
+}
+
 export async function getOrderClassroomOptions(): Promise<Array<{ id: string; name: string; courseTitle: string | null }>> {
   const { supabase } = await financeClient(["finance.order.create"]);
   const { data, error } = await supabase.rpc("get_order_classroom_options");

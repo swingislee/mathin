@@ -407,12 +407,14 @@ export interface StudentAccount {
   studentId: string;
   balance: number;
   ledger: LedgerEntry[];
+  lessonBalance: number;
+  lessonLedger: Array<{ delta: number; status: string; createdAt: string }>;
 }
 
 export async function getStudentAccount(studentId: string): Promise<StudentAccount> {
   const supabase = await createClient();
-  const [{ data: accountRow, error: accountError }, { data: ledgerRows, error: ledgerError }] = await Promise.all([
-    supabase.from("student_accounts").select("balance").eq("student_id", studentId).maybeSingle<{ balance: number }>(),
+  const [{ data: accountRow, error: accountError }, { data: ledgerRows, error: ledgerError }, { data: lessonRows, error: lessonError }] = await Promise.all([
+    supabase.from("student_accounts").select("balance,lesson_balance").eq("student_id", studentId).maybeSingle<{ balance: number; lesson_balance: number }>(),
     supabase
       .from("account_ledger")
       .select("delta,reason,created_at,profiles(display_name)")
@@ -420,17 +422,22 @@ export async function getStudentAccount(studentId: string): Promise<StudentAccou
       .order("created_at", { ascending: false })
       .limit(50)
       .returns<Array<{ delta: number; reason: string; created_at: string; profiles: { display_name: string } | null }>>(),
+    supabase.from("lesson_ledger").select("lesson_delta,attendance_status,created_at").eq("student_id", studentId).order("created_at", { ascending: false }).limit(50)
+      .returns<Array<{ lesson_delta: number; attendance_status: string; created_at: string }>>(),
   ]);
   if (accountError) throw new Error(accountError.message);
   if (ledgerError) throw new Error(ledgerError.message);
+  if (lessonError) throw new Error(lessonError.message);
   return {
     studentId,
     balance: accountRow?.balance ?? 0,
+    lessonBalance: accountRow?.lesson_balance ?? 0,
     ledger: (ledgerRows ?? []).map((row) => ({
       delta: row.delta,
       reason: row.reason,
       operatorName: row.profiles?.display_name || "",
       createdAt: row.created_at,
     })),
+    lessonLedger: (lessonRows ?? []).map((row) => ({ delta: row.lesson_delta, status: row.attendance_status, createdAt: row.created_at })),
   };
 }

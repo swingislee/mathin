@@ -219,6 +219,10 @@ export function StudentFinancePanel({
           </ul>
         )}
       </div>
+      <div className="mt-3 rounded-lg bg-background p-3 text-sm">
+        <div className="flex items-center justify-between"><span className="text-xs text-muted">{t("lessonBalance")}</span><span className="font-medium">{account.lessonBalance.toFixed(2)}</span></div>
+        {account.lessonLedger.length > 0 && <ul className="mt-2 max-h-32 divide-y divide-line overflow-y-auto text-xs text-muted">{account.lessonLedger.slice(0,10).map((entry,index)=><li key={index} className="flex items-center justify-between gap-2 py-1"><span>{t(entry.status)} · {new Intl.DateTimeFormat(undefined,{dateStyle:"short"}).format(new Date(entry.createdAt))}</span><span className={entry.delta>=0?"text-crater":"text-rose"}>{entry.delta>=0?"+":""}{entry.delta.toFixed(2)}</span></li>)}</ul>}
+      </div>
 
       <div className="mt-4">
         {orders.length === 0 ? (

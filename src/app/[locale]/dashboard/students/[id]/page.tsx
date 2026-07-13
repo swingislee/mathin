@@ -40,7 +40,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
   const showFinance = perms.has("finance.order.view");
   const [orders, account] = showFinance
     ? await Promise.all([getStudentOrders(id), getStudentAccount(id)])
-    : [[], { studentId: id, balance: 0, ledger: [] }];
+    : [[], { studentId: id, balance: 0, ledger: [], lessonBalance: 0, lessonLedger: [] }];
 
   return (
     <div className="mx-auto w-full max-w-5xl">
