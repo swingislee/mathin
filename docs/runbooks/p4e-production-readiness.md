@@ -9,6 +9,15 @@
 3. 备份完成后计算 SHA-256，记录数据库行数摘要与 Storage 对象数/总字节数。
 4. 监控数据库卷、Storage 卷和备份目标；任一磁盘使用率达到 75% 告警、85% 升级。
 
+仓库已提供可部署的 systemd 单元与脚本：`scripts/infra/p4e-backup.sh`、`scripts/infra/p4e-disk-check.sh` 和 `deploy/p4e-ops/`。部署时：
+
+1. 将仓库固定部署到 `/opt/mathin`，把 `p4e-ops.env.example` 复制到 `/etc/mathin/p4e-ops.env` 并设为 `0600`。
+2. `BACKUP_ROOT` 必须是 NAS/异机文件系统挂载点；脚本默认拒绝把生产备份写到系统根分区。仅临时恢复演练可显式设 `ALLOW_LOCAL_BACKUP=1`。
+3. 将四个 service/timer 文件安装到 `/etc/systemd/system/`，执行 `systemctl daemon-reload`，再启用两个 timer。
+4. 先手工运行一次 backup service，核对 `SHA256SUMS`、`database-counts.json`、`storage-files.tsv`，再检查 timer 的下次执行时间。
+
+备份采用 partial 目录写入、成功后原子改名，并用 `flock` 防并发；任何一步失败都不会留下看似成功的备份目录。磁盘检查同时验证最近成功备份是否超过 26 小时。
+
 ## 每月恢复演练
 
 在隔离实例创建空库，用 `pg_restore --no-owner --exit-on-error` 恢复最近备份；随后应用 `pnpm migrations:ledger` 生成的账本断言，并以 `DATABASE_URL=... pnpm p4e:db-audit` 执行越权断言。核对学生、订单、支付、事件、视频对象数及抽样哈希。演练记录必须包含耗时、RPO、RTO、失败点和负责人。

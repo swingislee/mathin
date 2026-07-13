@@ -1,0 +1,8 @@
+[Unit]
+Description=Mathin P4E disk and backup freshness check
+
+[Service]
+Type=oneshot
+User=swing
+EnvironmentFile=/etc/mathin/p4e-ops.env
+ExecStart=/opt/mathin/scripts/infra/p4e-disk-check.sh

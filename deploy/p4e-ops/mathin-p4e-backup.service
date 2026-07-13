@@ -1,0 +1,10 @@
+[Unit]
+Description=Mathin P4E database and Storage backup
+After=docker.service network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=swing
+EnvironmentFile=/etc/mathin/p4e-ops.env
+ExecStart=/opt/mathin/scripts/infra/p4e-backup.sh
