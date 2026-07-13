@@ -24,6 +24,7 @@
     "heroAlt": "The Little Prince sitting on the moon, watching a rose",
     "drawer": "Site navigation",
     "openDrawer": "Open site navigation",
+    "closeDrawer": "Close site navigation",
     "publicSections": "Explore",
     "featureSections": "Learn and manage"
   },
@@ -643,6 +644,9 @@
       ,"provisionPhoneTitle": "Create a student login account"
       ,"provisionPhoneConfirm": "Create a confirmed Supabase Auth account for {phone} and link it to this profile. The student can then sign in with SMS OTP."
       ,"provisionPhoneFailed": "Account creation failed. Check the country code, SMS setup, and phone uniqueness."
+      ,"provisionPhoneSuccess": "Phone login account created."
+      ,"provisionPhoneAlreadyLinked": "This student already has a linked login account."
+      ,"provisionPhoneInvalid": "Invalid phone number. Include the country code (e.g. +86)."
     },
     "courseware": {
       "backToCourse": "Back to course",

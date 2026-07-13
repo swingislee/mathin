@@ -24,6 +24,7 @@
     "heroAlt": "小王子坐在月球上观察玫瑰",
     "drawer": "全站导航",
     "openDrawer": "打开全站导航",
+    "closeDrawer": "关闭全站导航",
     "publicSections": "探索板块",
     "featureSections": "学习与管理"
   },
@@ -645,6 +646,9 @@
       ,"provisionPhoneTitle": "为学生开通登录账号"
       ,"provisionPhoneConfirm": "将使用手机号 {phone} 创建已确认的 Supabase Auth 账号并绑定当前档案。之后可直接使用短信验证码登录。"
       ,"provisionPhoneFailed": "开通失败：请确认手机号含国家区号、短信服务和账号唯一性。"
+      ,"provisionPhoneSuccess": "已开通手机登录账号。"
+      ,"provisionPhoneAlreadyLinked": "该学生已绑定登录账号，无需重复开通。"
+      ,"provisionPhoneInvalid": "手机号格式不正确，需包含国家区号（如 +86）。"
     },
     "courseware": {
       "backToCourse": "返回课程",
