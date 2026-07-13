@@ -1,6 +1,7 @@
 "use client";
 
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
@@ -77,17 +78,16 @@ export function AttendanceDrawer({ sessionId }: { sessionId: string }) {
               {rows.map((row) => (
                 <li key={row.studentId} className="flex flex-wrap items-center gap-2 py-2.5 text-sm">
                   <span className="min-w-0 flex-1 truncate">{row.studentName}</span>
-                  <select
-                    value={row.status}
-                    onChange={(event) => updateRow(row.studentId, { status: event.target.value as AttendanceStatus })}
-                    className="shrink-0 rounded-lg border border-line bg-card px-2 py-1 text-xs text-ink outline-none focus:border-crater"
-                  >
-                    {ATTENDANCE_STATUSES.map((status) => (
-                      <option key={status} value={status}>
-                        {t(status)}
-                      </option>
-                    ))}
-                  </select>
+                  <Select value={row.status} onValueChange={(value) => updateRow(row.studentId, { status: value as AttendanceStatus })}>
+                    <SelectTrigger className="h-8 shrink-0 px-2 py-1 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {ATTENDANCE_STATUSES.map((status) => (
+                        <SelectItem key={status} value={status}>
+                          {t(status)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <Input
                     value={row.note}
                     onChange={(event) => updateRow(row.studentId, { note: event.target.value })}

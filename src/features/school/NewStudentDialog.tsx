@@ -1,6 +1,8 @@
 "use client";
 
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 import { LoaderCircle, UserPlus } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -10,7 +12,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { useRouter } from "@/i18n/navigation";
 import { createStudentAction, findDuplicateStudentsAction, type DuplicateStudentRow } from "./actions";
 import { Link } from "@/i18n/navigation";
-import { inputClass, selectClass } from "./controls";
+import { fromSelectValue, inputClass, toSelectValue } from "./controls";
 
 /**
  * P4D-0 完整版新建学生弹窗：基础资料、地区/来源与家长联系方式一次写入 RPC。
@@ -88,7 +90,7 @@ export function NewStudentDialog() {
             <DialogTitle>{t("newStudent")}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-3">
-            <label className="grid gap-1 text-xs text-muted">
+            <Label className="grid gap-1 text-xs font-normal text-muted">
               {studentsT("name")}
               <Input
                 value={name}
@@ -97,46 +99,49 @@ export function NewStudentDialog() {
                 required
                 className={inputClass}
               />
-            </label>
+            </Label>
             <div className="grid grid-cols-2 gap-3">
-              <label className="grid gap-1 text-xs text-muted">
+              <Label className="grid gap-1 text-xs font-normal text-muted">
                 {t("phone")}
                 <Input value={phone} onChange={(event) => { setPhone(event.target.value); setDuplicateChecked(false); setDuplicates([]); }} maxLength={40} className={inputClass} />
-              </label>
-              <label className="grid gap-1 text-xs text-muted">
+              </Label>
+              <Label className="grid gap-1 text-xs font-normal text-muted">
                 {studentsT("gradeCol")}
-                <select value={grade} onChange={(event) => setGrade(event.target.value)} className={selectClass}>
-                  <option value="">{studentsT("allGrades")}</option>
-                  {Array.from({ length: 9 }, (_, index) => index + 1).map((value) => (
-                    <option key={value} value={value}>{studentsT("grade", { grade: value })}</option>
-                  ))}
-                </select>
-              </label>
+                <Select value={toSelectValue(grade)} onValueChange={(value) => setGrade(fromSelectValue(value))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={toSelectValue("")}>{studentsT("allGrades")}</SelectItem>
+                    {Array.from({ length: 9 }, (_, index) => index + 1).map((value) => (
+                      <SelectItem key={value} value={String(value)}>{studentsT("grade", { grade: value })}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Label>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <label className="grid gap-1 text-xs text-muted">
+              <Label className="grid gap-1 text-xs font-normal text-muted">
                 {studentsT("region")}
                 <Input value={region} onChange={(event) => setRegion(event.target.value)} maxLength={100} className={inputClass} />
-              </label>
-              <label className="grid gap-1 text-xs text-muted">
+              </Label>
+              <Label className="grid gap-1 text-xs font-normal text-muted">
                 {t("source")}
                 <Input value={source} onChange={(event) => setSource(event.target.value)} maxLength={100} className={inputClass} />
-              </label>
+              </Label>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <label className="grid gap-1 text-xs text-muted">
+              <Label className="grid gap-1 text-xs font-normal text-muted">
                 {studentsT("parentName")}
                 <Input value={parentName} onChange={(event) => setParentName(event.target.value)} maxLength={100} className={inputClass} />
-              </label>
-              <label className="grid gap-1 text-xs text-muted">
+              </Label>
+              <Label className="grid gap-1 text-xs font-normal text-muted">
                 {studentsT("parentPhone")}
                 <Input value={parentPhone} onChange={(event) => setParentPhone(event.target.value)} maxLength={40} className={inputClass} />
-              </label>
+              </Label>
             </div>
-            <label className="grid gap-1 text-xs text-muted">
+            <Label className="grid gap-1 text-xs font-normal text-muted">
               {studentsT("remark")}
               <textarea value={remark} onChange={(event) => setRemark(event.target.value)} rows={2} maxLength={500} className={`resize-y ${inputClass}`} />
-            </label>
+            </Label>
           </div>
           {error && <p role="alert" className="text-xs text-rose">{error}</p>}
           {duplicates.length > 0 && <div role="alert" className="rounded-xl border border-amber-400/40 bg-amber-400/10 p-3 text-sm"><p className="font-medium">{t("duplicatesFound")}</p><ul className="mt-2 grid gap-1">{duplicates.map(row=><li key={row.id}><Link href={`/dashboard/students/${row.id}`} className="underline underline-offset-2">{row.name} · {row.phone || studentsT("none")} · {studentsT(row.status)}</Link></li>)}</ul><p className="mt-2 text-xs text-muted">{t("duplicateProceedHint")}</p></div>}

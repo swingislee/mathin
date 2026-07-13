@@ -5,10 +5,12 @@ import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "@/i18n/navigation";
 import { addStudentFollowUp, type FollowUpKind } from "./actions";
-import { inputClass } from "./controls";
+import { fromSelectValue, inputClass, toSelectValue } from "./controls";
 
 const KINDS: FollowUpKind[] = ["note", "call", "class", "visit"];
 // 与 students.ts 的 FOLLOW_UP_STATUSES 同步（该模块引 server supabase，客户端不可 import）
@@ -83,23 +85,21 @@ export function FollowUpForm({ studentId, currentStatus, onSuccess }: { studentI
             </button>
           ))}
         </div>
-        <label className="flex items-center gap-1.5 text-xs text-muted">
+        <Label className="flex items-center gap-1.5 text-xs font-normal text-muted">
           {t("nextFollowUp")}
           <Input type="datetime-local" value={nextAt} onChange={(event) => setNextAt(event.target.value)} className="h-9 w-auto" />
-        </label>
-        <select
-          value={statusAfter}
-          onChange={(event) => setStatusAfter(event.target.value)}
-          aria-label={t("followUpStatusAfter")}
-          className={inputClass}
-        >
-          <option value="">{t("followUpStatusKeep")}</option>
-          {FOLLOW_UP_STATUSES.filter((status)=>FOLLOW_UP_TRANSITIONS[currentStatus].includes(status)).map((status) => (
-            <option key={status} value={status}>
-              {t(status)}
-            </option>
-          ))}
-        </select>
+        </Label>
+        <Select value={toSelectValue(statusAfter)} onValueChange={(value) => setStatusAfter(fromSelectValue(value))}>
+          <SelectTrigger aria-label={t("followUpStatusAfter")}><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value={toSelectValue("")}>{t("followUpStatusKeep")}</SelectItem>
+            {FOLLOW_UP_STATUSES.filter((status)=>FOLLOW_UP_TRANSITIONS[currentStatus].includes(status)).map((status) => (
+              <SelectItem key={status} value={status}>
+                {t(status)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Button variant="secondary" size="sm" className="ml-auto gap-1.5" disabled={pending || !content.trim()} onClick={submit}>
           {pending ? (
             <LoaderCircle size={15} className="animate-spin motion-reduce:animate-none" />

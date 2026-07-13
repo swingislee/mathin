@@ -5,6 +5,8 @@ import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useRouter } from "@/i18n/navigation";
 import {
   assignStudentAction,
@@ -12,7 +14,7 @@ import {
   restoreStudentAction,
   softDeleteStudentAction,
 } from "./actions";
-import { selectClass } from "./controls";
+import { fromSelectValue, toSelectValue } from "./controls";
 import type { StudentStatus } from "./students";
 
 // students.ts 依赖服务端 Supabase；客户端只保留同序常量，避免把 next/headers 带入浏览器包。
@@ -100,33 +102,35 @@ export function StudentLifecycleActions({
     <div className="flex flex-wrap items-center justify-end gap-2">
       {pending && <LoaderCircle size={16} className="animate-spin text-muted motion-reduce:animate-none" />}
       {!deleted && canEdit && (
-        <label>
+        <Label>
           <span className="sr-only">{t("changeStatus")}</span>
-          <select
-            aria-label={t("changeStatus")}
+          <Select
             defaultValue={status}
             disabled={pending}
-            onChange={(event) => changeStatus(event.target.value as StudentStatus)}
-            className={`${selectClass} h-9 w-auto py-1.5`}
+            onValueChange={(value) => changeStatus(value as StudentStatus)}
           >
-            {STUDENT_STATUSES.filter((value)=>value===status||STATUS_TRANSITIONS[status].includes(value)).map((value) => <option key={value} value={value}>{t(value)}</option>)}
-          </select>
-        </label>
+            <SelectTrigger aria-label={t("changeStatus")} className="h-9 w-auto py-1.5"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {STUDENT_STATUSES.filter((value)=>value===status||STATUS_TRANSITIONS[status].includes(value)).map((value) => <SelectItem key={value} value={value}>{t(value)}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </Label>
       )}
       {!deleted && canAssign && (
-        <label>
+        <Label>
           <span className="sr-only">{t("assignOwner")}</span>
-          <select
-            aria-label={t("assignOwner")}
-            defaultValue={assignedTo ?? ""}
+          <Select
+            defaultValue={toSelectValue(assignedTo ?? "")}
             disabled={pending}
-            onChange={(event) => assign(event.target.value)}
-            className={`${selectClass} h-9 w-auto max-w-44 py-1.5`}
+            onValueChange={(value) => assign(fromSelectValue(value))}
           >
-            <option value="">{t("assignOwner")}</option>
-            {assignees.map((person) => <option key={person.userId} value={person.userId}>{person.displayName}</option>)}
-          </select>
-        </label>
+            <SelectTrigger aria-label={t("assignOwner")} className="h-9 w-auto max-w-44 py-1.5"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value={toSelectValue("")}>{t("assignOwner")}</SelectItem>
+              {assignees.map((person) => <SelectItem key={person.userId} value={person.userId}>{person.displayName}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </Label>
       )}
       {!deleted && canDelete && (
         <Button type="button" size="sm" variant="secondary" disabled={pending} onClick={()=>setConfirmOpen(true)} className="gap-1.5 text-rose">

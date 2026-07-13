@@ -1,6 +1,8 @@
 "use client";
 
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 import { ArrowDown, ArrowUp, LoaderCircle, Plus, Save, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -9,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useRouter } from "@/i18n/navigation";
 import { createCourseAction, createLectureAction, deleteLectureAction, reorderLecturesAction, updateCourseAction, updateLectureAction, type CourseWriteInput } from "./actions";
-import { inputClass, selectClass } from "./controls";
+import { inputClass } from "./controls";
 import type { CourseDetail, CourseLecture } from "./courses";
 
 const COURSE_TERMS = [
@@ -73,5 +75,27 @@ function LectureEditor({lecture,courseId,index,count,canEditTemplate,pending,mov
 
 function CourseFields({form,setForm}:{form:CourseWriteInput;setForm:React.Dispatch<React.SetStateAction<CourseWriteInput>>}){
   const t=useTranslations("school.courses"); const set=<K extends keyof CourseWriteInput>(k:K,v:CourseWriteInput[K])=>setForm(x=>({...x,[k]:v}));
-  return <div className="grid gap-3 sm:grid-cols-2"><label className="grid gap-1 text-xs text-muted">{t("courseTitle")}<Input value={form.title} onChange={e=>set("title",e.target.value)} className={inputClass}/></label><label className="grid gap-1 text-xs text-muted">{t("productCode")}<Input value={form.productCode} onChange={e=>set("productCode",e.target.value)} className={inputClass}/></label><label className="grid gap-1 text-xs text-muted">{t("gradeLabel")}<select value={form.grade} onChange={e=>set("grade",Number(e.target.value))} className={selectClass}>{Array.from({length:9},(_,i)=>i+1).map(x=><option key={x} value={x}>{t("grade",{grade:x})}</option>)}</select></label><label className="grid gap-1 text-xs text-muted">{t("term")}<select value={form.term} onChange={e=>set("term",Number(e.target.value))} className={selectClass}>{COURSE_TERMS.map(x=><option key={x.value} value={x.value}>{t(x.labelKey)}</option>)}</select></label><label className="grid gap-1 text-xs text-muted">{t("classType")}<Input value={form.classType} onChange={e=>set("classType",e.target.value)} className={inputClass}/></label><label className="grid gap-1 text-xs text-muted">{t("status")}<select value={form.status} onChange={e=>set("status",e.target.value as "enabled"|"disabled")} className={selectClass}><option value="enabled">{t("enabled")}</option><option value="disabled">{t("disabled")}</option></select></label></div>;
+  return <div className="grid gap-3 sm:grid-cols-2">
+    <Label className="grid gap-1 text-xs font-normal text-muted">{t("courseTitle")}<Input value={form.title} onChange={e=>set("title",e.target.value)} className={inputClass}/></Label>
+    <Label className="grid gap-1 text-xs font-normal text-muted">{t("productCode")}<Input value={form.productCode} onChange={e=>set("productCode",e.target.value)} className={inputClass}/></Label>
+    <Label className="grid gap-1 text-xs font-normal text-muted">{t("gradeLabel")}
+      <Select value={String(form.grade)} onValueChange={v=>set("grade",Number(v))}>
+        <SelectTrigger><SelectValue /></SelectTrigger>
+        <SelectContent>{Array.from({length:9},(_,i)=>i+1).map(x=><SelectItem key={x} value={String(x)}>{t("grade",{grade:x})}</SelectItem>)}</SelectContent>
+      </Select>
+    </Label>
+    <Label className="grid gap-1 text-xs font-normal text-muted">{t("term")}
+      <Select value={String(form.term)} onValueChange={v=>set("term",Number(v))}>
+        <SelectTrigger><SelectValue /></SelectTrigger>
+        <SelectContent>{COURSE_TERMS.map(x=><SelectItem key={x.value} value={String(x.value)}>{t(x.labelKey)}</SelectItem>)}</SelectContent>
+      </Select>
+    </Label>
+    <Label className="grid gap-1 text-xs font-normal text-muted">{t("classType")}<Input value={form.classType} onChange={e=>set("classType",e.target.value)} className={inputClass}/></Label>
+    <Label className="grid gap-1 text-xs font-normal text-muted">{t("status")}
+      <Select value={form.status} onValueChange={v=>set("status",v as "enabled"|"disabled")}>
+        <SelectTrigger><SelectValue /></SelectTrigger>
+        <SelectContent><SelectItem value="enabled">{t("enabled")}</SelectItem><SelectItem value="disabled">{t("disabled")}</SelectItem></SelectContent>
+      </Select>
+    </Label>
+  </div>;
 }

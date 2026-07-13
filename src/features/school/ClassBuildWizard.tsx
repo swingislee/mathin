@@ -3,6 +3,8 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
@@ -129,20 +131,23 @@ export function ClassBuildWizard({
 
         {mode === "course" && (
           <div className="mt-4">
-            <label className="text-xs text-muted">{t("course")}</label>
-            <select value={courseId} onChange={(event) => setCourseId(event.target.value)} className={`mt-1 w-full ${inputClass}`}>
-              {courses.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.title} {item.productCode ? `(${item.productCode})` : ""}
-                </option>
-              ))}
-            </select>
+            <Label className="text-xs font-normal text-muted">{t("course")}</Label>
+            <Select value={courseId} onValueChange={setCourseId}>
+              <SelectTrigger className="mt-1 w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {courses.map((item) => (
+                  <SelectItem key={item.id} value={item.id}>
+                    {item.title} {item.productCode ? `(${item.productCode})` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         )}
 
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           <div>
-            <label className="text-xs text-muted">{t("name")}</label>
+            <Label className="text-xs font-normal text-muted">{t("name")}</Label>
             <Input
               value={name}
               onChange={(event) => setName(event.target.value)}
@@ -152,15 +157,18 @@ export function ClassBuildWizard({
             />
           </div>
           <div>
-            <label className="text-xs text-muted">{t("teacher")}</label>
-            <select value={teacherId} onChange={(event) => setTeacherId(event.target.value)} className={`mt-1 w-full ${inputClass}`}>
-              {teachers.map((item) => (
-                <option key={item.id} value={item.id}>{item.name}</option>
-              ))}
-            </select>
+            <Label className="text-xs font-normal text-muted">{t("teacher")}</Label>
+            <Select value={teacherId} onValueChange={setTeacherId}>
+              <SelectTrigger className="mt-1 w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {teachers.map((item) => (
+                  <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div>
-            <label className="text-xs text-muted">{t("capacity")}</label>
+            <Label className="text-xs font-normal text-muted">{t("capacity")}</Label>
             <Input
               type="number"
               min={1}
@@ -171,7 +179,7 @@ export function ClassBuildWizard({
             />
           </div>
           <div>
-            <label className="text-xs text-muted">{t("room")}</label>
+            <Label className="text-xs font-normal text-muted">{t("room")}</Label>
             <Input value={room} onChange={(event) => setRoom(event.target.value)} maxLength={100} className={`mt-1 w-full ${inputClass}`} />
           </div>
         </div>
@@ -182,15 +190,15 @@ export function ClassBuildWizard({
           <h2 className="font-medium">{t("stepSchedule")}</h2>
           <div className="mt-4 grid gap-3 md:grid-cols-3">
             <div>
-              <label className="text-xs text-muted">{t("startDate")}</label>
+              <Label className="text-xs font-normal text-muted">{t("startDate")}</Label>
               <Input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} className={`mt-1 w-full ${inputClass}`} />
             </div>
             <div>
-              <label className="text-xs text-muted">{t("time")}</label>
+              <Label className="text-xs font-normal text-muted">{t("time")}</Label>
               <Input type="time" value={time} onChange={(event) => setTime(event.target.value)} className={`mt-1 w-full ${inputClass}`} />
             </div>
             <div>
-              <label className="text-xs text-muted">{t("duration")}</label>
+              <Label className="text-xs font-normal text-muted">{t("duration")}</Label>
               <Input
                 type="number"
                 min={10}
@@ -202,7 +210,7 @@ export function ClassBuildWizard({
             </div>
           </div>
           <div className="mt-4">
-            <label className="text-xs text-muted">{t("weekdays")}</label>
+            <Label className="text-xs font-normal text-muted">{t("weekdays")}</Label>
             <div className="mt-2 flex flex-wrap gap-2">
               {WEEKDAYS.map((day) => (
                 <button
