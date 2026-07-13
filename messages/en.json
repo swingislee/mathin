@@ -1030,7 +1030,14 @@
       "backToFeed": "Back to notebook",
       "like": "Like",
       "liked": "Liked",
-      "loginToLike": "Sign in to like"
+      "loginToLike": "Sign in to like",
+      "moderationTitle": "Platform moderation",
+      "moderationVisible": "Currently public. Platform removal does not alter the author's source note.",
+      "moderationHidden": "Currently removed by the platform and visible only to its author and administrators.",
+      "moderationReason": "Moderation reason (stored in audit event)",
+      "hidePost": "Remove from public",
+      "restorePost": "Restore public access",
+      "moderationFailed": "Moderation failed. Please retry."
     },
     "workspace": {
       "workspaceName": "Notebook workspace",

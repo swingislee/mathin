@@ -219,6 +219,14 @@ export async function getPublishStatus(noteId: string): Promise<string | null> {
   return data?.id ?? null;
 }
 
+export async function moderatePostAction(postId: string, status: "approved" | "hidden", reason: string): Promise<void> {
+  const { supabase, user } = await authenticatedClient();
+  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle<{ role: string }>();
+  if (profile?.role !== "admin") throw new Error("FORBIDDEN");
+  const { error } = await supabase.rpc("moderate_post", { p_post_id: postId, p_status: status, p_reason: reason.trim().slice(0, 1000) });
+  if (error) throw new Error(error.message);
+}
+
 export async function publishNote(noteId: string): Promise<{ postId: string }> {
   const { supabase, user } = await authenticatedClient();
   const { data: note, error: noteError } = await supabase

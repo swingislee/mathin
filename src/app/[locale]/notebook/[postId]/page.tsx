@@ -4,6 +4,8 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { SectionShell } from "@/components/section-shell";
 import { LikeButton } from "@/features/notebook/post/LikeButton";
+import { ModerationPanel } from "@/features/notebook/post/ModerationPanel";
+import { getProfile } from "@/lib/auth";
 import { Link } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/server";
 
@@ -15,6 +17,7 @@ interface DetailRow {
   like_count: number;
   published_at: string;
   updated_at: string;
+  review_status: string;
   author: { display_name: string; avatar_url: string | null } | Array<{ display_name: string; avatar_url: string | null }>;
 }
 
@@ -22,7 +25,7 @@ async function loadPost(postId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("posts")
-    .select("id,title,excerpt,content_html,like_count,published_at,updated_at,author:profiles!posts_author_id_fkey(display_name,avatar_url)")
+    .select("id,title,excerpt,content_html,like_count,published_at,updated_at,review_status,author:profiles!posts_author_id_fkey(display_name,avatar_url)")
     .eq("id", postId)
     .maybeSingle<DetailRow>();
   if (error) throw new Error(error.message);
@@ -44,6 +47,7 @@ export default async function NotebookPostPage({ params }: { params: Promise<{ l
   if (!post) notFound();
   const { data: { user } } = await supabase.auth.getUser();
   let liked = false;
+  const profile = user ? await getProfile(user.id) : null;
   if (user) {
     const { data } = await supabase.from("post_likes").select("post_id").eq("post_id", post.id).eq("user_id", user.id).maybeSingle();
     liked = Boolean(data);
@@ -62,6 +66,7 @@ export default async function NotebookPostPage({ params }: { params: Promise<{ l
           <time dateTime={post.published_at}>{new Intl.DateTimeFormat(locale, { dateStyle: "long" }).format(new Date(post.published_at))}</time>
         </div>
         <div className="notebook-post-content mt-10" dangerouslySetInnerHTML={{ __html: post.content_html }} />
+        {profile?.role === "admin" && <ModerationPanel postId={post.id} status={post.review_status} />}
         <div className="mt-10 border-t pt-6">
           <LikeButton postId={post.id} initialLiked={liked} initialCount={post.like_count} isLoggedIn={Boolean(user)} loginHref={`/login?next=${encodeURIComponent(nextPath)}`} />
         </div>

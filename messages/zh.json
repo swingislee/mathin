@@ -1030,7 +1030,14 @@
       "backToFeed": "返回笔记流",
       "like": "点赞",
       "liked": "已点赞",
-      "loginToLike": "登录后点赞"
+      "loginToLike": "登录后点赞",
+      "moderationTitle": "平台内容审核",
+      "moderationVisible": "当前对公众可见。平台下架不影响作者的源笔记。",
+      "moderationHidden": "当前已被平台下架，仅作者与管理员可见。",
+      "moderationReason": "审核原因（写入审计事件）",
+      "hidePost": "平台下架",
+      "restorePost": "恢复公开",
+      "moderationFailed": "审核操作失败，请重试。"
     },
     "workspace": {
       "workspaceName": "笔记工作区",
