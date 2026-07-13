@@ -11,11 +11,17 @@
 
 ## 每月恢复演练
 
-在隔离实例创建空库，用 `pg_restore --clean --if-exists --no-owner` 恢复最近备份；随后应用 `pnpm migrations:ledger` 生成的账本断言，并以 `DATABASE_URL=... pnpm p4e:db-audit` 执行越权断言。核对学生、订单、支付、事件、视频对象数及抽样哈希。演练记录必须包含耗时、RPO、RTO、失败点和负责人。
+在隔离实例创建空库，用 `pg_restore --no-owner --exit-on-error` 恢复最近备份；随后应用 `pnpm migrations:ledger` 生成的账本断言，并以 `DATABASE_URL=... pnpm p4e:db-audit` 执行越权断言。核对学生、订单、支付、事件、视频对象数及抽样哈希。演练记录必须包含耗时、RPO、RTO、失败点和负责人。
+
+Supabase 自托管镜像中的普通 `postgres` 角色不一定是 superuser。完整恢复包含 `realtime` schema 时必须使用集群恢复管理员（当前部署为 `supabase_admin`），否则会在恢复带 `SET log_min_messages` 的函数时失败。恢复只在隔离库执行，核验完成后销毁隔离库和临时 dump。
+
+最近一次实际演练记录见 [`p4e-restore-drill-2026-07-13.md`](./p4e-restore-drill-2026-07-13.md)。该演练证明当前快照可恢复，不替代每日异机备份任务。
 
 ## 短信登录
 
 手机号界面已接入 Supabase Phone OTP；上线前必须在自托管 GoTrue 配置国内短信 provider/hook、签名模板、发送频控和失败告警。未完成 provider 配置时保留邮箱登录，不把手机号入口宣传为可用能力。
+
+2026-07-13 审计：当前 GoTrue 仅存在 phone enable/autoconfirm 基础项，未发现 SMS provider/hook 配置。此项仍是上线阻断项。
 
 ## 错误与课堂降级
 
