@@ -8,7 +8,8 @@ import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useRouter } from "@/i18n/navigation";
-import { createStudentAction } from "./actions";
+import { createStudentAction, findDuplicateStudentsAction, type DuplicateStudentRow } from "./actions";
+import { Link } from "@/i18n/navigation";
 import { inputClass, selectClass } from "./controls";
 
 /**
@@ -28,6 +29,8 @@ export function NewStudentDialog() {
   const [parentPhone, setParentPhone] = useState("");
   const [remark, setRemark] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [duplicates, setDuplicates] = useState<DuplicateStudentRow[]>([]);
+  const [duplicateChecked, setDuplicateChecked] = useState(false);
   const [pending, startTransition] = useTransition();
 
   const reset = () => {
@@ -40,12 +43,20 @@ export function NewStudentDialog() {
     setParentPhone("");
     setRemark("");
     setError(null);
+    setDuplicates([]);
+    setDuplicateChecked(false);
   };
 
   const submit = () => {
     if (!name.trim()) return;
     startTransition(async () => {
       try {
+        if (!duplicateChecked) {
+          const matches = await findDuplicateStudentsAction(name, phone);
+          setDuplicateChecked(true);
+          setDuplicates(matches);
+          if (matches.length > 0) return;
+        }
         await createStudentAction({
           name,
           grade: grade ? Number(grade) : null,
@@ -81,7 +92,7 @@ export function NewStudentDialog() {
               {studentsT("name")}
               <Input
                 value={name}
-                onChange={(event) => { setName(event.target.value); setError(null); }}
+                onChange={(event) => { setName(event.target.value); setError(null); setDuplicateChecked(false); setDuplicates([]); }}
                 maxLength={100}
                 required
                 className={inputClass}
@@ -90,7 +101,7 @@ export function NewStudentDialog() {
             <div className="grid grid-cols-2 gap-3">
               <label className="grid gap-1 text-xs text-muted">
                 {t("phone")}
-                <Input value={phone} onChange={(event) => setPhone(event.target.value)} maxLength={40} className={inputClass} />
+                <Input value={phone} onChange={(event) => { setPhone(event.target.value); setDuplicateChecked(false); setDuplicates([]); }} maxLength={40} className={inputClass} />
               </label>
               <label className="grid gap-1 text-xs text-muted">
                 {studentsT("gradeCol")}
@@ -128,11 +139,12 @@ export function NewStudentDialog() {
             </label>
           </div>
           {error && <p role="alert" className="text-xs text-rose">{error}</p>}
+          {duplicates.length > 0 && <div role="alert" className="rounded-xl border border-amber-400/40 bg-amber-400/10 p-3 text-sm"><p className="font-medium">{t("duplicatesFound")}</p><ul className="mt-2 grid gap-1">{duplicates.map(row=><li key={row.id}><Link href={`/dashboard/students/${row.id}`} className="underline underline-offset-2">{row.name} · {row.phone || studentsT("none")} · {studentsT(row.status)}</Link></li>)}</ul><p className="mt-2 text-xs text-muted">{t("duplicateProceedHint")}</p></div>}
           <DialogFooter>
             <Button variant="secondary" size="sm" onClick={() => setOpen(false)}>{t("cancel")}</Button>
             <Button size="sm" className="gap-1.5" disabled={pending || !name.trim()} onClick={submit}>
               {pending && <LoaderCircle size={15} className="animate-spin motion-reduce:animate-none" />}
-              {t("create")}
+              {duplicates.length > 0 ? t("createAnyway") : t("create")}
             </Button>
           </DialogFooter>
         </DialogContent>

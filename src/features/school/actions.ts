@@ -704,6 +704,34 @@ export async function createStudentAction(input: CreateStudentInput): Promise<st
   return data as string;
 }
 
+export interface DuplicateStudentRow { id: string; name: string; phone: string; status: string }
+
+export async function findDuplicateStudentsAction(name: string, phone: string): Promise<DuplicateStudentRow[]> {
+  const { supabase } = await authorizedClient("student.create");
+  const { data, error } = await supabase.rpc("find_duplicate_students", {
+    p_name: name.trim().slice(0, 100),
+    p_phone: phone.trim().slice(0, 40),
+  });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as DuplicateStudentRow[];
+}
+
+export async function findDuplicateStudentsForMergeAction(name: string, phone: string): Promise<DuplicateStudentRow[]> {
+  const { supabase } = await authorizedClient("student.edit");
+  const { data, error } = await supabase.rpc("find_duplicate_students", {
+    p_name: name.trim().slice(0, 100),
+    p_phone: phone.trim().slice(0, 40),
+  });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as DuplicateStudentRow[];
+}
+
+export async function mergeStudentsAction(keptId: string, mergedId: string): Promise<void> {
+  const { supabase } = await authorizedClient("student.edit");
+  const { error } = await supabase.rpc("merge_students", { p_kept_id: keptId, p_merged_id: mergedId });
+  if (error) throw new Error(error.message);
+}
+
 export interface UpdateStudentInput {
   name: string;
   gender: string;

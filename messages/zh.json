@@ -408,6 +408,9 @@
       "create": "创建",
       "cancel": "取消",
       "createFailed": "创建失败，请重试。",
+      "duplicatesFound": "发现疑似重复学生",
+      "duplicateProceedHint": "请先核对现有档案；确认不是同一人后，可再次点击继续创建。",
+      "createAnyway": "仍然创建",
       "scopeLabel": "范围",
       "scopeMine": "我名下",
       "scopeAll": "全部",
@@ -610,6 +613,11 @@
       ,"noGuardians": "尚未绑定监护人。"
       ,"primaryGuardian": "主监护人"
       ,"guardianScopeFor": "{name} 的可见范围"
+      ,"possibleDuplicates": "疑似重复档案"
+      ,"mergeKeepsCurrent": "合并会保留当前档案，并迁移候选档案的订单、考勤、跟进和学情记录。"
+      ,"mergeIntoCurrent": "合并到当前档案"
+      ,"mergeStudentTitle": "确认合并学生档案"
+      ,"mergeStudentConfirm": "将“{name}”合并到当前档案？候选档案会变成不可用的合并留痕，操作无法直接撤销。"
     },
     "courseware": {
       "backToCourse": "返回课程",

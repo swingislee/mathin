@@ -408,6 +408,9 @@
       "create": "Create",
       "cancel": "Cancel",
       "createFailed": "Failed to create, please retry.",
+      "duplicatesFound": "Possible duplicate students found",
+      "duplicateProceedHint": "Review the existing profiles first. If this is a different person, click again to continue.",
+      "createAnyway": "Create anyway",
       "scopeLabel": "Scope",
       "scopeMine": "Mine",
       "scopeAll": "All",
@@ -608,6 +611,11 @@
       ,"noGuardians": "No guardians linked yet."
       ,"primaryGuardian": "Primary guardian"
       ,"guardianScopeFor": "Visibility for {name}"
+      ,"possibleDuplicates": "Possible duplicate profiles"
+      ,"mergeKeepsCurrent": "The current profile is kept; orders, attendance, follow-ups, and learning records move from the candidate."
+      ,"mergeIntoCurrent": "Merge into current"
+      ,"mergeStudentTitle": "Confirm student merge"
+      ,"mergeStudentConfirm": "Merge “{name}” into the current profile? The candidate becomes an immutable merge tombstone and this cannot be directly undone."
     },
     "courseware": {
       "backToCourse": "Back to course",
