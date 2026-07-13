@@ -69,7 +69,7 @@ export default async function ChildrenPage({
             href={`/dashboard/children?child=${student.id}`}
             className={cn(
               "rounded-full border px-4 py-1.5 text-sm transition",
-              student.id === activeId ? "border-crater bg-crater/10 font-medium" : "border-line bg-background hover:border-crater",
+              student.id === activeId ? "border-crater bg-crater/10 font-medium" : "border-line hover:border-crater",
             )}
           >
             {student.name}
@@ -80,7 +80,7 @@ export default async function ChildrenPage({
 
       <section className="mt-6 rounded-2xl border bg-card p-5">
         <h2 className="font-medium">{studentsT("recentReviews")}</h2>
-        {reviewRows.filter(x=>x.studentId===activeId).length===0?<p className="mt-4 text-sm text-muted">{studentsT("noReviews")}</p>:<ul className="mt-4 divide-y">{reviewRows.filter(x=>x.studentId===activeId).map(r=>{const videos=reviewedVideos.filter(v=>v.sessionId===r.sessionId&&v.studentId===activeId);return <li key={r.sessionId} className="py-3 text-sm"><div className="flex justify-between gap-3"><span className="font-medium">{r.classroomName} · {r.lectureName}</span><time className="text-xs text-muted">{new Intl.DateTimeFormat(locale,{dateStyle:"short"}).format(new Date(r.scheduledAt))}</time></div><p className="mt-1 text-xs text-muted">{studentsT("reviewScores",{entry:r.entryScore??"—",exit:r.exitScore??"—",focus:r.focus??"—",participation:r.participation??"—",mastery:r.mastery??"—"})}</p>{r.comment&&<p className="mt-2">{r.comment}</p>}{r.knowledgeSummary&&<p className="mt-2 rounded-lg bg-background p-2 text-xs text-muted">{r.knowledgeSummary}</p>}<div className="mt-2 flex gap-2">{videos.map(v=><CustomerVideoButton key={v.videoId} videoId={v.videoId}/>)}</div></li>})}</ul>}
+        {reviewRows.filter(x=>x.studentId===activeId).length===0?<p className="mt-4 text-sm text-muted">{studentsT("noReviews")}</p>:<ul className="mt-4 divide-y">{reviewRows.filter(x=>x.studentId===activeId).map(r=>{const videos=reviewedVideos.filter(v=>v.sessionId===r.sessionId&&v.studentId===activeId);return <li key={r.sessionId} className="py-3 text-sm"><div className="flex justify-between gap-3"><span className="font-medium">{r.classroomName} · {r.lectureName}</span><time className="text-xs text-muted">{new Intl.DateTimeFormat(locale,{dateStyle:"short"}).format(new Date(r.scheduledAt))}</time></div><p className="mt-1 text-xs text-muted">{studentsT("reviewScores",{entry:r.entryScore??"—",exit:r.exitScore??"—",focus:r.focus??"—",participation:r.participation??"—",mastery:r.mastery??"—"})}</p>{r.comment&&<p className="mt-2">{r.comment}</p>}{r.knowledgeSummary&&<p className="mt-2 rounded-lg bg-line/40 p-2 text-xs text-muted">{r.knowledgeSummary}</p>}<div className="mt-2 flex gap-2">{videos.map(v=><CustomerVideoButton key={v.videoId} videoId={v.videoId}/>)}</div></li>})}</ul>}
       </section>
 
       <section className="mt-6 rounded-2xl border bg-card p-5">
@@ -99,7 +99,7 @@ export default async function ChildrenPage({
 
       <section className="mt-6 rounded-2xl border bg-card p-5">
         <h2 className="font-medium">{studentsT("attendanceRate")}</h2>
-        <div className="mt-4 rounded-lg bg-background p-3">
+        <div className="mt-4 rounded-lg bg-line/40 p-3">
           <p className="text-lg font-medium tabular-nums">{attendance.total > 0 ? `${Math.round(attendance.rate * 100)}%` : "-"}</p>
           <p className="mt-1 text-xs text-muted">
             {studentsT("attendanceBreakdown", { present: attendance.present, absent: attendance.absent, late: attendance.late, leave: attendance.leave })}

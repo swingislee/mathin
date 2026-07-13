@@ -314,7 +314,7 @@ export function StaffMembersPanel({
         <DialogContent>
           <DialogHeader><DialogTitle>{t("deactivateTitle", { name: deactivateTarget?.displayName ?? "" })}</DialogTitle></DialogHeader>
           <p className="text-sm text-muted">{t("deactivateHint")}</p>
-          {handoverPreview&&<ul className="grid gap-2 rounded-xl bg-background p-3 text-sm"><li>{t("handoverStudents",{count:handoverPreview.studentCount})}</li><li>{t("handoverSessions",{count:handoverPreview.futureOverrideCount})}</li><li>{t("handoverClassrooms",{count:handoverPreview.classroomCount})}</li></ul>}
+          {handoverPreview&&<ul className="grid gap-2 rounded-xl bg-line/40 p-3 text-sm"><li>{t("handoverStudents",{count:handoverPreview.studentCount})}</li><li>{t("handoverSessions",{count:handoverPreview.futureOverrideCount})}</li><li>{t("handoverClassrooms",{count:handoverPreview.classroomCount})}</li></ul>}
           <select value={reassignTo} onChange={(event) => setReassignTo(event.target.value)} className={selectClass}>
             <option value="">{t("noReplacement")}</option>
             {members.filter((member) => member.isActive && member.userId !== deactivateTarget?.userId).map((member) => <option key={member.userId} value={member.userId}>{member.displayName}</option>)}

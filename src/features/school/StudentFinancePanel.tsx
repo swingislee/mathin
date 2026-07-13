@@ -203,7 +203,7 @@ export function StudentFinancePanel({
 
       {error && <p className="mt-3 text-xs text-rose">{error}</p>}
 
-      <div className="mt-4 rounded-lg bg-background p-3 text-sm">
+      <div className="mt-4 rounded-lg bg-line/40 p-3 text-sm">
         <div className="flex items-center justify-between">
           <span className="text-xs text-muted">{t("accountBalance")}</span>
           <span className="font-medium">¥{account.balance.toFixed(2)}</span>
@@ -219,7 +219,7 @@ export function StudentFinancePanel({
           </ul>
         )}
       </div>
-      <div className="mt-3 rounded-lg bg-background p-3 text-sm">
+      <div className="mt-3 rounded-lg bg-line/40 p-3 text-sm">
         <div className="flex items-center justify-between"><span className="text-xs text-muted">{t("lessonBalance")}</span><span className="font-medium">{account.lessonBalance.toFixed(2)}</span></div>
         {account.lessonLedger.length > 0 && <ul className="mt-2 max-h-32 divide-y divide-line overflow-y-auto text-xs text-muted">{account.lessonLedger.slice(0,10).map((entry,index)=><li key={index} className="flex items-center justify-between gap-2 py-1"><span>{t(entry.status)} · {new Intl.DateTimeFormat(undefined,{dateStyle:"short"}).format(new Date(entry.createdAt))}</span><span className={entry.delta>=0?"text-crater":"text-rose"}>{entry.delta>=0?"+":""}{entry.delta.toFixed(2)}</span></li>)}</ul>}
       </div>
@@ -293,9 +293,9 @@ export function StudentFinancePanel({
             <div className="space-y-2">
               {items.map((item, index) => (
                 <div key={index} className="grid grid-cols-[1fr_80px_70px_50px_auto] items-center gap-1.5">
-                  <Input value={item.name} onChange={(e) => setItems(items.map((it, i) => (i === index ? { ...it, name: e.target.value } : it)))} placeholder={t("itemName")} className="rounded-lg border border-line bg-background px-2 py-1.5 text-sm outline-none focus:border-crater" />
-                  <Input type="number" value={item.unitPrice} onChange={(e) => setItems(items.map((it, i) => (i === index ? { ...it, unitPrice: Number(e.target.value) } : it)))} className="rounded-lg border border-line bg-background px-2 py-1.5 text-sm outline-none focus:border-crater" />
-                  <Input type="number" value={item.qty} min={1} onChange={(e) => setItems(items.map((it, i) => (i === index ? { ...it, qty: Number(e.target.value) || 1 } : it)))} className="rounded-lg border border-line bg-background px-2 py-1.5 text-sm outline-none focus:border-crater" />
+                  <Input value={item.name} onChange={(e) => setItems(items.map((it, i) => (i === index ? { ...it, name: e.target.value } : it)))} placeholder={t("itemName")} className="px-2 py-1.5" />
+                  <Input type="number" value={item.unitPrice} onChange={(e) => setItems(items.map((it, i) => (i === index ? { ...it, unitPrice: Number(e.target.value) } : it)))} className="px-2 py-1.5" />
+                  <Input type="number" value={item.qty} min={1} onChange={(e) => setItems(items.map((it, i) => (i === index ? { ...it, qty: Number(e.target.value) || 1 } : it)))} className="px-2 py-1.5" />
                   <label className="flex items-center justify-center text-xs text-muted" title={t("refundable")}>
                     <Input type="checkbox" checked={item.refundable} onChange={(e) => setItems(items.map((it, i) => (i === index ? { ...it, refundable: e.target.checked } : it)))} />
                   </label>

@@ -53,7 +53,7 @@ export function FollowUpForm({ studentId, currentStatus, onSuccess }: { studentI
   };
 
   return (
-    <div className="mt-4 rounded-xl border border-line bg-background p-4">
+    <div className="mt-4 rounded-xl border border-line bg-line/40 p-4">
       <Textarea
         value={content}
         onChange={(event) => {

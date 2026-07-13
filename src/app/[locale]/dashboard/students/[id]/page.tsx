@@ -165,7 +165,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
         </div>
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          <div className="rounded-lg bg-background p-3">
+          <div className="rounded-lg bg-line/40 p-3">
             <p className="text-xs text-muted">{t("attendanceRate")}</p>
             <p className="mt-1 text-lg font-medium">{Math.round(learning.attendance.rate * 100)}%</p>
             <p className="mt-1 text-xs text-muted">
@@ -177,7 +177,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
               })}
             </p>
           </div>
-          <div className="rounded-lg bg-background p-3">
+          <div className="rounded-lg bg-line/40 p-3">
             <p className="text-xs text-muted">{t("starTotal")}</p>
             <p className="mt-1 text-lg font-medium">{learning.hasAccount ? learning.starTotal : "-"}</p>
             {!learning.hasAccount && <p className="mt-1 text-xs text-muted">{t("noAccountAttendanceOnly")}</p>}

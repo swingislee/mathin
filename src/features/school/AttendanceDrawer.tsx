@@ -92,7 +92,7 @@ export function AttendanceDrawer({ sessionId }: { sessionId: string }) {
                     value={row.note}
                     onChange={(event) => updateRow(row.studentId, { note: event.target.value })}
                     placeholder={t("attendanceNote")}
-                    className="w-28 shrink-0 rounded-lg border border-line bg-background px-2 py-1 text-xs outline-none focus:border-crater"
+                    className="w-28 shrink-0 px-2 py-1 text-xs"
                   />
                 </li>
               ))}

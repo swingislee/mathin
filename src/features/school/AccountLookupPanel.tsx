@@ -77,7 +77,7 @@ export function AccountLookupPanel({ canAdjust }: { canAdjust: boolean }) {
         value={query}
         onChange={(event) => void search(event.target.value)}
         placeholder={t("searchStudent")}
-        className="mt-3 w-full rounded-lg border border-line bg-background px-3 py-2 text-sm outline-none focus:border-crater"
+        className="mt-3"
       />
       {results.length > 0 && (
         <ul className="mt-2 max-h-40 divide-y divide-line overflow-y-auto">
@@ -92,7 +92,7 @@ export function AccountLookupPanel({ canAdjust }: { canAdjust: boolean }) {
       {searching && <p className="mt-2 text-xs text-muted">{t("searching")}</p>}
 
       {selected && account && (
-        <div className="mt-4 rounded-lg bg-background p-3 text-sm">
+        <div className="mt-4 rounded-lg bg-line/40 p-3 text-sm">
           <div className="flex items-center justify-between">
             <span>{selected.name}</span>
             <span className="flex items-center gap-3">
@@ -119,8 +119,8 @@ export function AccountLookupPanel({ canAdjust }: { canAdjust: boolean }) {
         <DialogContent>
           <DialogHeader><DialogTitle>{t("adjustAccountDialogTitle")}</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <Input type="number" value={delta} onChange={(e) => setDelta(Number(e.target.value))} placeholder={t("adjustDeltaHint")} className="w-full rounded-lg border border-line bg-background px-3 py-2 text-sm outline-none focus:border-crater" />
-            <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder={t("remark")} className="w-full rounded-lg border border-line bg-background px-3 py-2 text-sm outline-none focus:border-crater" />
+            <Input type="number" value={delta} onChange={(e) => setDelta(Number(e.target.value))} placeholder={t("adjustDeltaHint")} />
+            <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder={t("remark")} />
           </div>
           <DialogFooter>
             <button type="button" onClick={() => setAdjustOpen(false)} className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>{t("cancel")}</button>

@@ -87,7 +87,6 @@ export function ScholarshipsPanel({ scholarships }: { scholarships: ScholarshipR
               value={query}
               onChange={(event) => void search(event.target.value)}
               placeholder={t("searchStudent")}
-              className="w-full rounded-lg border border-line bg-background px-3 py-2 text-sm outline-none focus:border-crater"
             />
             {!selected && (
               <div className="max-h-40 overflow-y-auto">
@@ -104,8 +103,8 @@ export function ScholarshipsPanel({ scholarships }: { scholarships: ScholarshipR
               </div>
             )}
             {selected && <p className="text-sm">{t("selectedStudent", { name: selected.name })}</p>}
-            <Input type="number" value={amount} onChange={(e) => setAmount(Number(e.target.value))} placeholder={t("amount")} className="w-full rounded-lg border border-line bg-background px-3 py-2 text-sm outline-none focus:border-crater" />
-            <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder={t("remark")} className="w-full rounded-lg border border-line bg-background px-3 py-2 text-sm outline-none focus:border-crater" />
+            <Input type="number" value={amount} onChange={(e) => setAmount(Number(e.target.value))} placeholder={t("amount")} />
+            <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder={t("remark")} />
           </div>
           <DialogFooter>
             <button type="button" onClick={() => setOpen(false)} className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>{t("cancel")}</button>

@@ -100,7 +100,7 @@ export default async function StudentsPage({
           name="q"
           defaultValue={filters.q}
           placeholder={t("search")}
-          className="min-w-0 rounded-lg border border-line bg-background px-3 py-2 text-sm outline-none focus:border-crater"
+          className="min-w-0"
         />
         <select name="status" defaultValue={filters.status ?? ""} className={selectClass}>
           <option value="">{t("allStatuses")}</option>

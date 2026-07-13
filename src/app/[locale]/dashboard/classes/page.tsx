@@ -51,7 +51,7 @@ export default async function ClassesPage({
           name="q"
           defaultValue={filters.q}
           placeholder={t("search")}
-          className="min-w-0 flex-1 rounded-lg border border-line bg-background px-3 py-2 text-sm outline-none focus:border-crater"
+          className="min-w-0 flex-1"
         />
         <button className={cn(buttonVariants({ size: "sm" }), "h-10")} type="submit">{t("filter")}</button>
         <Link href="/dashboard/classes" className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "h-10")}>{t("reset")}</Link>

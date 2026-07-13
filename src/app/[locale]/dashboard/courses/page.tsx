@@ -51,7 +51,7 @@ export default async function CoursesPage({
           name="q"
           defaultValue={filters.q}
           placeholder={t("search")}
-          className="min-w-0 rounded-lg border border-line bg-background px-3 py-2 text-sm outline-none focus:border-crater"
+          className="min-w-0"
         />
         <select name="grade" defaultValue={filters.grade ?? ""} className={selectClass}>
           <option value="">{t("allGrades")}</option>

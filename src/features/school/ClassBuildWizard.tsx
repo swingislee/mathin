@@ -239,7 +239,7 @@ export function ClassBuildWizard({
                           onChange={(event) =>
                             setOverrides((prev) => ({ ...prev, [row.lectureId]: new Date(event.target.value).toISOString() }))
                           }
-                          className="w-full rounded-lg border border-line bg-background px-2 py-1.5 text-xs outline-none focus:border-crater"
+                          className="px-2 py-1.5 text-xs"
                         />
                       </TableCell>
                     </TableRow>
