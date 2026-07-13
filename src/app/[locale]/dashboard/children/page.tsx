@@ -1,7 +1,8 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { getWeekSchedule } from "@/features/school/actions";
 import { BindCodeForm } from "@/features/school/BindCodeForm";
-import { getMyAttendance, getMyLearningSummary, getMyReviewedVideos, getMySessionReviews, getMyStudents } from "@/features/school/customer";
+import { canManageGuardianScopes, getMyAttendance, getMyLearningSummary, getMyReviewedVideos, getMySessionReviews, getMyStudents } from "@/features/school/customer";
+import { GuardianScopePanel } from "@/features/school/GuardianScopePanel";
 import { CustomerVideoButton } from "@/features/school/CustomerVideoButton";
 import { summarizeAttendance } from "@/features/school/learning";
 import { SchoolPageHeader } from "@/features/school/PageHeader";
@@ -43,6 +44,7 @@ export default async function ChildrenPage({
   const activeId = students.some((s) => s.id === requestedId) ? requestedId! : students[0].id;
   const activeStudent = students.find((s) => s.id === activeId)!;
   const summary = summaries.find((s) => s.studentId === activeId) ?? null;
+  const canManageGuardians=await canManageGuardianScopes(activeId);
 
   const now = new Date();
   const [scheduleEntries, attendanceRows, reviewRows, reviewedVideos] = await Promise.all([
@@ -74,6 +76,7 @@ export default async function ChildrenPage({
           </Link>
         ))}
       </nav>
+      {canManageGuardians&&<GuardianScopePanel studentId={activeId}/>}
 
       <section className="mt-6 rounded-2xl border bg-card p-5">
         <h2 className="font-medium">{studentsT("recentReviews")}</h2>

@@ -26,6 +26,12 @@ export async function getMyStudents(): Promise<MyStudentRow[]> {
   }));
 }
 
+export async function canManageGuardianScopes(studentId:string):Promise<boolean>{
+  const supabase=await createClient();const{data:{user}}=await supabase.auth.getUser();if(!user)return false;
+  const{data,error}=await supabase.from("student_guardians").select("is_primary").eq("student_id",studentId).eq("guardian_id",user.id).maybeSingle<{is_primary:boolean}>();
+  if(error)throw new Error(error.message);return Boolean(data?.is_primary);
+}
+
 export type PaymentStatus = "overdue" | "ok" | "none";
 
 export interface MyLearningSummary {
