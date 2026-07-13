@@ -1,10 +1,11 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { setRequestLocale } from "next-intl/server";
 import { getTranslations } from "next-intl/server";
 import { buttonVariants } from "@/components/ui/button";
 import { CourseCreateDialog } from "@/features/school/CourseCrud";
-import { selectClass } from "@/features/school/controls";
+import { toSelectValue } from "@/features/school/controls";
 import { COURSE_TERMS, listCourses, listSchoolTerms, parseCourseFilters } from "@/features/school/courses";
 import { TermManager } from "@/features/school/TermManager";
 import { SchoolPageHeader } from "@/features/school/PageHeader";
@@ -53,29 +54,41 @@ export default async function CoursesPage({
           placeholder={t("search")}
           className="min-w-0"
         />
-        <select name="grade" defaultValue={filters.grade ?? ""} className={selectClass}>
-          <option value="">{t("allGrades")}</option>
-          {Array.from({ length: 9 }, (_, index) => index + 1).map((grade) => (
-            <option key={grade} value={grade}>{t("grade", { grade })}</option>
-          ))}
-        </select>
-        <select name="term" defaultValue={filters.term ?? ""} className={selectClass}>
-          <option value="">{t("allTerms")}</option>
-          {COURSE_TERMS.map((term) => (
-            <option key={term.value} value={term.value}>{t(term.labelKey)}</option>
-          ))}
-        </select>
-        <select name="classType" defaultValue={filters.classType ?? ""} className={selectClass}>
-          <option value="">{t("allTypes")}</option>
-          {["A", "B", "S"].map((type) => (
-            <option key={type} value={type}>{type}</option>
-          ))}
-        </select>
-        <select name="status" defaultValue={filters.status ?? ""} className={selectClass}>
-          <option value="">{t("allStatuses")}</option>
-          <option value="enabled">{t("enabled")}</option>
-          <option value="disabled">{t("disabled")}</option>
-        </select>
+        <Select name="grade" defaultValue={toSelectValue(String(filters.grade ?? ""))}>
+          <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value={toSelectValue("")}>{t("allGrades")}</SelectItem>
+            {Array.from({ length: 9 }, (_, index) => index + 1).map((grade) => (
+              <SelectItem key={grade} value={String(grade)}>{t("grade", { grade })}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select name="term" defaultValue={toSelectValue(String(filters.term ?? ""))}>
+          <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value={toSelectValue("")}>{t("allTerms")}</SelectItem>
+            {COURSE_TERMS.map((term) => (
+              <SelectItem key={term.value} value={String(term.value)}>{t(term.labelKey)}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select name="classType" defaultValue={toSelectValue(filters.classType ?? "")}>
+          <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value={toSelectValue("")}>{t("allTypes")}</SelectItem>
+            {["A", "B", "S"].map((type) => (
+              <SelectItem key={type} value={type}>{type}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select name="status" defaultValue={toSelectValue(filters.status ?? "")}>
+          <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value={toSelectValue("")}>{t("allStatuses")}</SelectItem>
+            <SelectItem value="enabled">{t("enabled")}</SelectItem>
+            <SelectItem value="disabled">{t("disabled")}</SelectItem>
+          </SelectContent>
+        </Select>
         <button className={cn(buttonVariants({ size: "sm" }), "h-10")} type="submit">{t("filter")}</button>
         <Link href="/dashboard/courses" className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "h-10")}>{t("reset")}</Link>
       </form>

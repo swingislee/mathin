@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { SELECT_ALL_VALUE } from "./controls";
 import type { CoursewareTemplatePage } from "./courseware-overlay";
 
 export const COURSE_TERMS = [
@@ -67,7 +68,8 @@ const PAGE_SIZE = 20;
 export function parseCourseFilters(searchParams: Record<string, string | string[] | undefined>): CourseFilters {
   const pick = (key: string) => {
     const value = searchParams[key];
-    return Array.isArray(value) ? value[0] : value;
+    const picked = Array.isArray(value) ? value[0] : value;
+    return picked === SELECT_ALL_VALUE ? undefined : picked;
   };
   const grade = Number(pick("grade"));
   const term = Number(pick("term"));

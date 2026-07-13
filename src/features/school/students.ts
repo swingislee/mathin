@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { SELECT_ALL_VALUE } from "./controls";
 import { summarizeAttendance, sumStars, type AttendanceStatus, type AttendanceSummary } from "./learning";
 
 export const STUDENT_STATUSES = ["lead", "trialing", "enrolled", "paused", "alumni", "invalid"] as const;
@@ -97,7 +98,8 @@ const PAGE_SIZE = 20;
 export function parseStudentFilters(searchParams: Record<string, string | string[] | undefined>): StudentFilters {
   const pick = (key: string) => {
     const value = searchParams[key];
-    return Array.isArray(value) ? value[0] : value;
+    const picked = Array.isArray(value) ? value[0] : value;
+    return picked === SELECT_ALL_VALUE ? undefined : picked;
   };
   const status = pick("status");
   const followUpStatus = pick("followUpStatus");

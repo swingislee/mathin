@@ -1,9 +1,10 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { setRequestLocale } from "next-intl/server";
 import { getTranslations } from "next-intl/server";
 import { buttonVariants } from "@/components/ui/button";
-import { selectClass } from "@/features/school/controls";
+import { toSelectValue } from "@/features/school/controls";
 import { getFollowUpFunnel, type FollowUpFunnelBucket } from "@/features/school/dashboard";
 import { NewStudentDialog } from "@/features/school/NewStudentDialog";
 import { SchoolPageHeader } from "@/features/school/PageHeader";
@@ -102,20 +103,29 @@ export default async function StudentsPage({
           placeholder={t("search")}
           className="min-w-0"
         />
-        <select name="status" defaultValue={filters.status ?? ""} className={selectClass}>
-          <option value="">{t("allStatuses")}</option>
-          {STUDENT_STATUSES.map((status) => <option key={status} value={status}>{t(status)}</option>)}
-        </select>
-        <select name="followUpStatus" defaultValue={filters.followUpStatus ?? ""} className={selectClass}>
-          <option value="">{t("allFollowUps")}</option>
-          {FOLLOW_UP_STATUSES.map((status) => <option key={status} value={status}>{t(status)}</option>)}
-        </select>
-        <select name="grade" defaultValue={filters.grade ?? ""} className={selectClass}>
-          <option value="">{t("allGrades")}</option>
-          {Array.from({ length: 9 }, (_, index) => index + 1).map((grade) => (
-            <option key={grade} value={grade}>{t("grade", { grade })}</option>
-          ))}
-        </select>
+        <Select name="status" defaultValue={toSelectValue(filters.status ?? "")}>
+          <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value={toSelectValue("")}>{t("allStatuses")}</SelectItem>
+            {STUDENT_STATUSES.map((status) => <SelectItem key={status} value={status}>{t(status)}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select name="followUpStatus" defaultValue={toSelectValue(filters.followUpStatus ?? "")}>
+          <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value={toSelectValue("")}>{t("allFollowUps")}</SelectItem>
+            {FOLLOW_UP_STATUSES.map((status) => <SelectItem key={status} value={status}>{t(status)}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select name="grade" defaultValue={toSelectValue(String(filters.grade ?? ""))}>
+          <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value={toSelectValue("")}>{t("allGrades")}</SelectItem>
+            {Array.from({ length: 9 }, (_, index) => index + 1).map((grade) => (
+              <SelectItem key={grade} value={String(grade)}>{t("grade", { grade })}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <button className={cn(buttonVariants({ size: "sm" }), "h-10")} type="submit">{t("filter")}</button>
         <Link href={filters.recycle ? "/dashboard/students?tab=recycle" : "/dashboard/students"} className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "h-10")}>{t("reset")}</Link>
       </form>
