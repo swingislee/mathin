@@ -338,7 +338,17 @@
       "roles": "Roles",
       "children": "Children",
       "assignments": "Assignments"
-      ,"activities": "Activities"
+      ,"activities": "Activities",
+      "operations": "Error monitor"
+    },
+    "operations": {
+      "title": "Error monitor",
+      "intro": "The latest 200 server request, Server Action, and route errors. Records are read-only and grouped by route, digest, and release for diagnosis.",
+      "empty": "No server errors recorded.",
+      "time": "Occurred",
+      "route": "Route",
+      "message": "Error summary",
+      "release": "Release"
     },
     "activities": {
       "title": "Activities", "intro": "Manage trials, assessments, workshops, lectures and competitions. Results are added to each student's follow-up timeline.",

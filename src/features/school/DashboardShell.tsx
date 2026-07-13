@@ -1,7 +1,7 @@
 "use client";
 
 import * as Dialog from "@radix-ui/react-dialog";
-import { Baby, BookOpen, CalendarDays, ClipboardList, LayoutDashboard, Menu, PhoneForwarded, School, ShieldCheck, Users, UserCog, Wallet, X } from "lucide-react";
+import { Baby, BookOpen, CalendarDays, ClipboardList, LayoutDashboard, Menu, PhoneForwarded, School, ShieldAlert, ShieldCheck, Users, UserCog, Wallet, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import type { ComponentType } from "react";
@@ -21,6 +21,7 @@ const ICONS: Record<string, ComponentType<{ size?: number; strokeWidth?: number 
   roles: ShieldCheck,
   children: Baby,
   assignments: ClipboardList,
+  operations: ShieldAlert,
 };
 
 function isActive(pathname: string, href: string): boolean {

@@ -25,6 +25,9 @@ returning id as foreign_post_id \gset
 insert into storage.objects(bucket_id,name,owner_id)
 values('session-videos','00000000-0000-0000-0000-000000000000/'||gen_random_uuid()::text||'.mp4',:'admin_id'::text)
 returning name as foreign_storage_path \gset
+insert into public.operational_errors(event,message,environment)
+values('p4e.audit','__P4E_OPERATIONAL_ERROR__','test')
+returning id as operational_error_id \gset
 select set_config('p4e.private_note_id',:'private_note_id',true);
 select set_config('p4e.foreign_post_id',:'foreign_post_id',true);
 select set_config('p4e.admin_id',:'admin_id',true);
@@ -53,6 +56,10 @@ begin
   if has_table_privilege('anon','public.notes','SELECT') then failures:=array_append(failures,'anon can SELECT private notes'); end if;
   if has_table_privilege('anon','public.post_likes','INSERT') then failures:=array_append(failures,'anon can INSERT likes'); end if;
   if has_table_privilege('authenticated','public.role_permissions','INSERT') then failures:=array_append(failures,'role_permissions direct INSERT granted'); end if;
+  if has_table_privilege('authenticated','public.operational_errors','INSERT') then failures:=array_append(failures,'operational_errors INSERT granted'); end if;
+  if has_table_privilege('authenticated','public.operational_errors','UPDATE') then failures:=array_append(failures,'operational_errors UPDATE granted'); end if;
+  if has_table_privilege('authenticated','public.operational_errors','DELETE') then failures:=array_append(failures,'operational_errors DELETE granted'); end if;
+  if not exists(select 1 from pg_trigger where tgrelid='public.operational_errors'::regclass and tgname='operational_errors_immutable' and not tgisinternal) then failures:=array_append(failures,'operational_errors append-only trigger missing'); end if;
   if not exists(select 1 from pg_policies where schemaname='realtime' and tablename='messages' and policyname='session_broadcast_send_authoritative_teacher' and with_check like '%is_session_teacher%') then failures:=array_append(failures,'authoritative realtime teacher policy missing'); end if;
   if exists(select 1 from pg_policies where schemaname='realtime' and tablename='messages' and policyname='session_broadcast_send_member') then failures:=array_append(failures,'legacy broad broadcast policy remains'); end if;
   if not exists(select 1 from pg_policies where schemaname='storage' and tablename='objects' and policyname like 'session_videos_storage_select%') then failures:=array_append(failures,'private video SELECT policy missing'); end if;
@@ -79,6 +86,14 @@ select (count(*)=0) as assigned_scope_ok from public.students where id=:'foreign
 \if :assigned_scope_ok
 \else
   \echo P4E security failed: view.assigned user read a foreign student
+  \quit 1
+\endif
+
+select (count(*)=0) as operational_error_scope_ok
+from public.operational_errors where id=:'operational_error_id' \gset
+\if :operational_error_scope_ok
+\else
+  \echo P4E security failed: student read operational errors
   \quit 1
 \endif
 

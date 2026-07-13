@@ -2764,6 +2764,54 @@ export type Database = {
           },
         ]
       }
+      operational_errors: {
+        Row: {
+          digest: string | null
+          environment: string | null
+          event: string
+          id: string
+          level: string
+          message: string
+          method: string | null
+          occurred_at: string
+          path: string | null
+          release: string | null
+          route_path: string | null
+          route_type: string | null
+          router_kind: string | null
+        }
+        Insert: {
+          digest?: string | null
+          environment?: string | null
+          event?: string
+          id?: string
+          level?: string
+          message: string
+          method?: string | null
+          occurred_at?: string
+          path?: string | null
+          release?: string | null
+          route_path?: string | null
+          route_type?: string | null
+          router_kind?: string | null
+        }
+        Update: {
+          digest?: string | null
+          environment?: string | null
+          event?: string
+          id?: string
+          level?: string
+          message?: string
+          method?: string | null
+          occurred_at?: string
+          path?: string | null
+          release?: string | null
+          route_path?: string | null
+          route_type?: string | null
+          router_kind?: string | null
+        }
+        Relationships: []
+      }
       order_items: {
         Row: {
           category: string

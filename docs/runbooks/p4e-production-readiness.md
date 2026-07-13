@@ -16,7 +16,7 @@
 3. 将四个 service/timer 文件安装到 `/etc/systemd/system/`，执行 `systemctl daemon-reload`，再启用两个 timer。
 4. 先手工运行一次 backup service，核对 `SHA256SUMS`、`database-counts.json`、`storage-files.tsv`，再检查 timer 的下次执行时间。
 
-备份采用 partial 目录写入、成功后原子改名，并用 `flock` 防并发；任何一步失败都不会留下看似成功的备份目录。磁盘检查同时验证最近成功备份是否超过 26 小时。
+备份采用 partial 目录写入、成功后原子改名，并用 `flock` 防并发；任何一步失败都不会留下看似成功的备份目录。磁盘检查同时验证最近成功备份是否超过 26 小时。磁盘 warning/critical 会写入只读 `operational_errors` 看板；配置 webhook 后再同步发到外部接收端。
 
 ## 每月恢复演练
 

@@ -50,6 +50,34 @@ export const onRequestError: Instrumentation.onRequestError = async (error, requ
   };
   console.error(JSON.stringify(payload));
 
+  if (process.env.NEXT_RUNTIME === "nodejs" && process.env.SUPABASE_SECRET_KEY) {
+    try {
+      const { createAdminClient } = await import("@/lib/supabase/admin");
+      const { error: insertError } = await createAdminClient().from("operational_errors").insert({
+        occurred_at: payload.at,
+        level: payload.level,
+        event: payload.event,
+        message: payload.message,
+        digest: payload.digest,
+        path: payload.path,
+        method: payload.method,
+        router_kind: payload.routerKind,
+        route_path: payload.routePath,
+        route_type: payload.routeType,
+        environment: payload.environment,
+        release: payload.release,
+      });
+      if (insertError) throw new Error(insertError.message);
+    } catch (persistError) {
+      console.error(JSON.stringify({
+        level: "error",
+        event: "observability.persistence_failed",
+        at: new Date().toISOString(),
+        message: messageOf(persistError),
+      }));
+    }
+  }
+
   const url = reportUrl();
   if (!url) return;
   try {

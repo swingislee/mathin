@@ -32,6 +32,7 @@ export const SCHOOL_NAV_ITEMS: readonly SchoolNavItem[] = [
   { href: "/dashboard/finance", labelKey: "finance", requiredAnyPerm: FINANCE_NAV_PERMS },
   { href: "/dashboard/staff", labelKey: "staff", requiredPerm: "staff.manage" },
   { href: "/dashboard/staff/roles", labelKey: "roles", requiredPerm: "permission.configure" },
+  { href: "/dashboard/operations", labelKey: "operations", requiredPerm: "audit.view" },
 ];
 
 /** 侧边栏导航项：总览 + 按权限过滤后的功能入口。 */
