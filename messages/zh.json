@@ -359,10 +359,11 @@
       "counts": "报名 {booked} · 到场 {attended} · 容量 {capacity}", "searchStudent": "搜索学生并报名", "outcome": "现场结论",
       "status_booked": "已报名", "status_attended": "已到场", "status_no_show": "爽约", "status_cancelled": "已取消",
       "attended": "到场", "noShow": "爽约", "full": "活动已满员。", "deleteConfirm": "确认删除该活动？", "actionFailed": "操作失败，请重试。",
+      "activityCreated": "活动已创建。", "activitySaved": "活动已保存。", "activityDeleted": "活动已删除。", "bookSuccess": "已报名。", "resultMarked": "结果已记录。", "delete": "删除",
       "save": "保存", "cancel": "取消"
     },
-    "reviews": {"button":"课评","title":"课堂课评","summary":"课堂知识总结","student":"学生","entry":"入门考","exit":"出门测","focus":"专注","participation":"参与","mastery":"掌握","comment":"评语","save":"保存","cancel":"取消","failed":"课评保存失败，请重试。"},
-    "videos": {"title":"课后视频审阅","uploadTitle":"上传课后视频","upload":"上传","uploaded":"上传成功。","uploadFailed":"上传失败，请检查文件和网络。","note":"学生留言","queue":"视频列表","pending":"待审","reviewed":"已审","comment":"审阅评语","score":"评分","markReviewed":"标记已审","select":"选择一条视频开始审阅。","playback":"回看视频","delete":"删除"},
+    "reviews": {"button":"课评","title":"课堂课评","summary":"课堂知识总结","student":"学生","entry":"入门考","exit":"出门测","focus":"专注","participation":"参与","mastery":"掌握","comment":"评语","save":"保存","cancel":"取消","failed":"课评保存失败，请重试。","saved":"课评已保存。"},
+    "videos": {"title":"课后视频审阅","uploadTitle":"上传课后视频","upload":"上传","uploaded":"上传成功。","uploadFailed":"上传失败，请检查文件和网络。","note":"学生留言","queue":"视频列表","pending":"待审","reviewed":"已审","comment":"审阅评语","score":"评分","markReviewed":"标记已审","select":"选择一条视频开始审阅。","playback":"回看视频","delete":"删除","playbackFailed":"视频加载失败，请重试。"},
     "courses": {
       "title": "课程",
       "intro": "课程 → 讲次 → 课件模板，建班排课都从这里长出来。",
@@ -420,6 +421,8 @@
       ,"lectureSaved": "讲次已保存。"
       ,"lectureDeleted": "讲次已删除。"
       ,"lecturesReordered": "讲次顺序已更新。"
+      ,"termCreated": "学期已创建。"
+      ,"termActivated": "已设为当前学期。"
       ,"lectureName": "讲次名称"
       ,"addLecture": "添加讲次"
       ,"moveUp": "上移"
@@ -452,6 +455,7 @@
       "bucket_renewal": "待续费",
       "bucket_lost": "流失池",
       "recover": "回流",
+      "recoverSuccess": "已回流。",
       "lostDays": "已流失 {days} 天",
       "appendOnlyPolicy": "跟进记录只追加、不修改或删除；写错时请补记一条更正，完整保留沟通历史。",
       "overdueBadge": "逾期",

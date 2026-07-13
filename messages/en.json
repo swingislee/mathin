@@ -359,10 +359,11 @@
       "counts": "{booked} booked · {attended} attended · capacity {capacity}", "searchStudent": "Search student to register", "outcome": "Outcome",
       "status_booked": "Booked", "status_attended": "Attended", "status_no_show": "No-show", "status_cancelled": "Cancelled",
       "attended": "Attended", "noShow": "No-show", "full": "This activity is full.", "deleteConfirm": "Delete this activity?", "actionFailed": "Action failed. Please try again.",
+      "activityCreated": "Activity created.", "activitySaved": "Activity saved.", "activityDeleted": "Activity deleted.", "bookSuccess": "Booked.", "resultMarked": "Result recorded.", "delete": "Delete",
       "save": "Save", "cancel": "Cancel"
     },
-    "reviews": {"button":"Review","title":"Session reviews","summary":"Knowledge summary","student":"Student","entry":"Entry","exit":"Exit","focus":"Focus","participation":"Participation","mastery":"Mastery","comment":"Comment","save":"Save","cancel":"Cancel","failed":"Could not save reviews. Please retry."},
-    "videos": {"title":"Review session videos","uploadTitle":"Upload session video","upload":"Upload","uploaded":"Upload complete.","uploadFailed":"Upload failed. Check the file and network.","note":"Student note","queue":"Videos","pending":"Pending","reviewed":"Reviewed","comment":"Review comment","score":"Score","markReviewed":"Mark reviewed","select":"Select a video to review.","playback":"Play video","delete":"Delete"},
+    "reviews": {"button":"Review","title":"Session reviews","summary":"Knowledge summary","student":"Student","entry":"Entry","exit":"Exit","focus":"Focus","participation":"Participation","mastery":"Mastery","comment":"Comment","save":"Save","cancel":"Cancel","failed":"Could not save reviews. Please retry.","saved":"Reviews saved."},
+    "videos": {"title":"Review session videos","uploadTitle":"Upload session video","upload":"Upload","uploaded":"Upload complete.","uploadFailed":"Upload failed. Check the file and network.","note":"Student note","queue":"Videos","pending":"Pending","reviewed":"Reviewed","comment":"Review comment","score":"Score","markReviewed":"Mark reviewed","select":"Select a video to review.","playback":"Play video","delete":"Delete","playbackFailed":"Failed to load video, please retry."},
     "courses": {
       "title": "Courses",
       "intro": "Courses, lectures and courseware templates — classes are built from here.",
@@ -420,6 +421,8 @@
       ,"lectureSaved": "Lecture saved."
       ,"lectureDeleted": "Lecture deleted."
       ,"lecturesReordered": "Lecture order updated."
+      ,"termCreated": "Term created."
+      ,"termActivated": "Set as current term."
       ,"lectureName": "Lecture name"
       ,"addLecture": "Add lecture"
       ,"moveUp": "Move up"
@@ -452,6 +455,7 @@
       "bucket_renewal": "Renewals due",
       "bucket_lost": "Lost students",
       "recover": "Recover",
+      "recoverSuccess": "Recovered.",
       "lostDays": "Lost for {days} days",
       "appendOnlyPolicy": "Follow-ups are append-only. Add a correction entry instead of editing or deleting history.",
       "overdueBadge": "Overdue",

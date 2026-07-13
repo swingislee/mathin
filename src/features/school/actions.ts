@@ -745,13 +745,21 @@ export async function setConsumeRuleAction(classroomId: string, rule: ConsumeRul
   }
 }
 
-export async function createSchoolTermAction(input:{year:number;term:1|2;name:string;startsOn:string;endsOn:string}):Promise<void>{
-  const{supabase}=await authorizedClient("course.manage");
-  const{error}=await supabase.rpc("create_school_term",{p_year:input.year,p_term:input.term,p_name:input.name.trim().slice(0,100),p_starts_on:input.startsOn,p_ends_on:input.endsOn});
-  if(error)throw new Error(error.message);
+export async function createSchoolTermAction(input:{year:number;term:1|2;name:string;startsOn:string;endsOn:string}):Promise<ActionResult>{
+  try{
+    const{supabase}=await authorizedClient("course.manage");
+    const{error}=await supabase.rpc("create_school_term",{p_year:input.year,p_term:input.term,p_name:input.name.trim().slice(0,100),p_starts_on:input.startsOn,p_ends_on:input.endsOn});
+    if(error)throw new Error(error.message);
+    return{ok:true};
+  }catch(error){return actionError(error,["FORBIDDEN","UNAUTHENTICATED"])}
 }
-export async function activateSchoolTermAction(termId:string):Promise<void>{
-  const{supabase}=await authorizedClient("course.manage");const{error}=await supabase.rpc("activate_school_term",{p_term_id:termId});if(error)throw new Error(error.message);
+export async function activateSchoolTermAction(termId:string):Promise<ActionResult>{
+  try{
+    const{supabase}=await authorizedClient("course.manage");
+    const{error}=await supabase.rpc("activate_school_term",{p_term_id:termId});
+    if(error)throw new Error(error.message);
+    return{ok:true};
+  }catch(error){return actionError(error,["FORBIDDEN","UNAUTHENTICATED"])}
 }
 
 export async function getOrderClassroomOptions(): Promise<Array<{ id: string; name: string; courseTitle: string | null }>> {
@@ -786,22 +794,27 @@ export type FollowUpKind = (typeof FOLLOW_UP_KINDS)[number];
 export async function addStudentFollowUp(
   studentId: string,
   input: { content: string; kind: FollowUpKind; nextFollowUpAt: string | null; statusAfter: string | null },
-): Promise<void> {
-  const content = input.content.trim().slice(0, 2000);
-  if (!content) throw new Error("EMPTY_CONTENT");
-  if (!FOLLOW_UP_KINDS.includes(input.kind)) throw new Error("INVALID_KIND");
-  const statusAfter = input.statusAfter && (FOLLOW_UP_STATUSES as readonly string[]).includes(input.statusAfter) ? input.statusAfter : null;
-  const nextFollowUpAt = input.nextFollowUpAt && !Number.isNaN(Date.parse(input.nextFollowUpAt)) ? new Date(input.nextFollowUpAt).toISOString() : null;
-  const { supabase, user } = await authorizedClient("followup.write");
-  const { error } = await supabase.from("student_follow_ups").insert({
-    student_id: studentId,
-    author_id: user.id,
-    content,
-    kind: input.kind,
-    next_follow_up_at: nextFollowUpAt,
-    status_after: statusAfter,
-  });
-  if (error) throw new Error(error.message);
+): Promise<ActionResult> {
+  try {
+    const content = input.content.trim().slice(0, 2000);
+    if (!content) throw new Error("EMPTY_CONTENT");
+    if (!FOLLOW_UP_KINDS.includes(input.kind)) throw new Error("INVALID_KIND");
+    const statusAfter = input.statusAfter && (FOLLOW_UP_STATUSES as readonly string[]).includes(input.statusAfter) ? input.statusAfter : null;
+    const nextFollowUpAt = input.nextFollowUpAt && !Number.isNaN(Date.parse(input.nextFollowUpAt)) ? new Date(input.nextFollowUpAt).toISOString() : null;
+    const { supabase, user } = await authorizedClient("followup.write");
+    const { error } = await supabase.from("student_follow_ups").insert({
+      student_id: studentId,
+      author_id: user.id,
+      content,
+      kind: input.kind,
+      next_follow_up_at: nextFollowUpAt,
+      status_after: statusAfter,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["EMPTY_CONTENT", "INVALID_KIND", "FORBIDDEN", "UNAUTHENTICATED"]);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1028,7 +1041,16 @@ export async function restoreStudentAction(studentId: string): Promise<ActionRes
     return actionError(error, ["FORBIDDEN", "UNAUTHENTICATED"]);
   }
 }
-export async function recoverLostStudentAction(studentId:string):Promise<void>{const{supabase}=await authorizedClient("student.edit");const{error}=await supabase.rpc("recover_lost_student",{p_student_id:studentId});if(error)throw new Error(error.message)}
+export async function recoverLostStudentAction(studentId:string):Promise<ActionResult>{
+  try {
+    const{supabase}=await authorizedClient("student.edit");
+    const{error}=await supabase.rpc("recover_lost_student",{p_student_id:studentId});
+    if(error)throw new Error(error.message);
+    return{ok:true};
+  } catch (error) {
+    return actionError(error,["FORBIDDEN","UNAUTHENTICATED"]);
+  }
+}
 
 export async function changeStudentStatusAction(studentId: string, status: StudentStatus): Promise<ActionResult> {
   try {

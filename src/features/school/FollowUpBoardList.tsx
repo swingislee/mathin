@@ -3,10 +3,11 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 import { useLocale, useTranslations } from "next-intl";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useAction } from "@/components/action-form";
 import { Link, useRouter } from "@/i18n/navigation";
 import { changeStudentStatusAction, recoverLostStudentAction } from "./actions";
 import { FollowUpForm } from "./FollowUpForm";
@@ -40,9 +41,6 @@ export function FollowUpBoardList({
   const router = useRouter();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [logTarget, setLogTarget] = useState<{ id: string; name: string; followUpStatus: BoardRow["followUpStatus"] } | null>(null);
-  const [statusPendingId, setStatusPendingId] = useState<string | null>(null);
-  const [statusError, setStatusError] = useState<string | null>(null);
-  const [, startTransition] = useTransition();
 
   const formatAt = (iso: string | null) =>
     iso ? new Intl.DateTimeFormat(locale, { dateStyle: "short", timeStyle: "short" }).format(new Date(iso)) : "-";
@@ -56,21 +54,24 @@ export function FollowUpBoardList({
     });
   };
 
+  const changeStatusRun = useAction(changeStudentStatusAction, {
+    successMessage: studentsT("statusChanged"),
+    errorMessage: { default: t("changeFailed") },
+    onSuccess: () => router.refresh(),
+  });
   const changeStatus = (row: BoardRow, status: StudentStatus) => {
     if (status === row.status) return;
-    setStatusError(null);
-    setStatusPendingId(row.id);
-    startTransition(async () => {
-      const result = await changeStudentStatusAction(row.id, status);
-      if (result.ok) router.refresh();
-      else setStatusError(t("changeFailed"));
-      setStatusPendingId(null);
-    });
+    changeStatusRun.run(row.id, status);
   };
+
+  const recoverRun = useAction(recoverLostStudentAction, {
+    successMessage: t("recoverSuccess"),
+    errorMessage: { default: t("changeFailed") },
+    onSuccess: () => router.refresh(),
+  });
 
   return (
     <div className="mt-6 space-y-4">
-      {statusError && <p role="alert" className="text-xs text-rose">{statusError}</p>}
       {groups.map((group) => {
         const open = expanded.has(group.status);
         const rows = open ? group.rows : group.rows.slice(0, FOLD_LIMIT);
@@ -128,7 +129,7 @@ export function FollowUpBoardList({
                               <Select
                                 value={row.status}
                                 onValueChange={(value) => changeStatus(row, value as StudentStatus)}
-                                disabled={statusPendingId === row.id}
+                                disabled={changeStatusRun.pending}
                               >
                                 <SelectTrigger aria-label={t("changeStatus")} className="h-7 py-0 text-xs"><SelectValue /></SelectTrigger>
                                 <SelectContent>
@@ -146,7 +147,7 @@ export function FollowUpBoardList({
                                 {studentsT("placeOrder")}
                               </Link>
                             )}
-                            {canRecover&&row.isLost&&<Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={()=>startTransition(async()=>{try{await recoverLostStudentAction(row.id);router.refresh()}catch{setStatusError(t("changeFailed"))}})}>{t("recover")}</Button>}
+                            {canRecover&&row.isLost&&<Button variant="ghost" size="sm" className="h-7 px-2 text-xs" disabled={recoverRun.pending} onClick={()=>recoverRun.run(row.id)}>{t("recover")}</Button>}
                           </div>
                         </TableCell>
                       </TableRow>

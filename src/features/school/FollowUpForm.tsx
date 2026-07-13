@@ -2,12 +2,13 @@
 
 import { LoaderCircle, MessageSquarePlus } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useAction } from "@/components/action-form";
 import { useRouter } from "@/i18n/navigation";
 import { addStudentFollowUp, type FollowUpKind } from "./actions";
 import { fromSelectValue, inputClass, toSelectValue } from "./controls";
@@ -26,42 +27,31 @@ export function FollowUpForm({ studentId, currentStatus, onSuccess }: { studentI
   const [kind, setKind] = useState<FollowUpKind>("note");
   const [nextAt, setNextAt] = useState("");
   const [statusAfter, setStatusAfter] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [saved,setSaved]=useState(false);
-  const [pending, startTransition] = useTransition();
 
-  const submit = () => {
-    if (!content.trim()) return;
-    startTransition(async () => {
-      try {
-        await addStudentFollowUp(studentId, {
-          content,
-          kind,
-          nextFollowUpAt: nextAt || null,
-          statusAfter: statusAfter || null,
-        });
+  const { run: submitRun, pending } = useAction(
+    (input: { content: string; kind: FollowUpKind; nextFollowUpAt: string | null; statusAfter: string | null }) => addStudentFollowUp(studentId, input),
+    {
+      successMessage: t("followUpSaved"),
+      errorMessage: { default: t("followUpFailed") },
+      onSuccess: () => {
         setContent("");
         setNextAt("");
         setStatusAfter("");
-        setError(null);
-        setSaved(true);
         router.refresh();
         onSuccess?.();
-      } catch {
-        setSaved(false);
-        setError(t("followUpFailed"));
-      }
-    });
+      },
+    },
+  );
+  const submit = () => {
+    if (!content.trim()) return;
+    submitRun({ content, kind, nextFollowUpAt: nextAt || null, statusAfter: statusAfter || null });
   };
 
   return (
     <div className="mt-4 rounded-xl border border-line bg-line/40 p-4">
       <Textarea
         value={content}
-        onChange={(event) => {
-          setContent(event.target.value);
-          setError(null); setSaved(false);
-        }}
+        onChange={(event) => setContent(event.target.value)}
         rows={2}
         maxLength={2000}
         placeholder={t("followUpPlaceholder")}
@@ -109,8 +99,6 @@ export function FollowUpForm({ studentId, currentStatus, onSuccess }: { studentI
           {t("addFollowUp")}
         </Button>
       </div>
-      {error && <p role="alert" className="mt-2 text-xs text-rose">{error}</p>}
-      {saved && <p role="status" className="mt-2 text-xs text-leaf-deep">{t("followUpSaved")}</p>}
     </div>
   );
 }
