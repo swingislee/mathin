@@ -10,10 +10,12 @@ do $$ begin
 end $$;
 
 select id as sales_id from public.profiles where display_name='测试-学辅' limit 1 \gset
+select id as admin_id from public.profiles where display_name='测试-管理员' limit 1 \gset
+select id as teacher_id from public.profiles where display_name='测试-教师' limit 1 \gset
 select id as student_user_id from public.profiles where display_name='测试-学生' limit 1 \gset
-select id as foreign_student_id from public.students
- where deleted_at is null and assigned_to is distinct from :'sales_id'
-   and not public.teacher_of_student(id,:'sales_id') order by created_at limit 1 \gset
+insert into public.students(name,assigned_to,created_by,bind_code,follow_up_status)
+values('__P4E_FOREIGN_SCOPE__',:'teacher_id',:'admin_id','p4e'||substr(replace(gen_random_uuid()::text,'-',''),1,12),'pending')
+returning id as foreign_student_id \gset
 select cs.id as member_session_id from public.class_sessions cs
  join public.classroom_members cm on cm.classroom_id=cs.classroom_id
  where cm.user_id=:'student_user_id' and cm.role='student' and cs.deleted_at is null limit 1 \gset

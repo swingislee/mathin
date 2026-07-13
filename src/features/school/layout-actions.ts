@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import type { Json } from "@/lib/database.types";
 import { GRID_COLS, MAX_Y, nearestSize, normalizePlacements, sizeToWH, type TilePlacement } from "./tile-layout";
 import { CHILD_TILE_PREFIX, findTileDef } from "./tiles";
 
@@ -59,7 +60,7 @@ export async function saveDashboardLayout(tiles: TilePlacement[]): Promise<void>
 
   const { error } = await supabase
     .from("dashboard_layouts")
-    .upsert({ user_id: user.id, tiles: normalized, updated_at: new Date().toISOString() });
+    .upsert({ user_id: user.id, tiles: normalized as unknown as Json, updated_at: new Date().toISOString() });
   if (error) throw new Error(error.message);
 }
 

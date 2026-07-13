@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
+import type { Database, Json } from "@/lib/database.types";
 import type { SessionEvent } from "../types";
 import { STORE_OUTBOX, idbDelete, idbListByIndex } from "./idb";
 
@@ -7,7 +8,9 @@ import { STORE_OUTBOX, idbDelete, idbListByIndex } from "./idb";
 
 const BATCH_SIZE = 100;
 
-function toRow(ev: SessionEvent) {
+type SessionEventInsert = Database["public"]["Tables"]["session_events"]["Insert"];
+
+function toRow(ev: SessionEvent): SessionEventInsert {
   return {
     id: ev.id,
     session_id: ev.sessionId,
@@ -15,7 +18,7 @@ function toRow(ev: SessionEvent) {
     device_id: ev.deviceId,
     seq: ev.seq,
     type: ev.type,
-    payload: ev.payload,
+    payload: ev.payload as Json,
     at: ev.at,
   };
 }

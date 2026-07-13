@@ -564,7 +564,9 @@ export async function gradeSubmission(submissionId: string, score: number | null
   const { supabase } = await authenticatedClient();
   const { error } = await supabase.rpc("grade_submission", {
     p_submission_id: submissionId,
-    p_score: score,
+    // pg-meta cannot express a nullable required PostgreSQL function argument;
+    // the RPC deliberately accepts NULL to clear a grade.
+    p_score: score as number,
     p_feedback: feedback.trim().slice(0, 2000),
   });
   if (error) throw new Error(error.message);

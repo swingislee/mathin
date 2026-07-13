@@ -18,6 +18,14 @@ import type { ScheduleEntry } from "./schedule";
 import { FOLLOW_UP_STATUSES, STUDENT_STATUSES, type StudentStatus } from "./students";
 import type { ActionResult } from "@/lib/action-result";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { Json } from "@/lib/database.types";
+
+// PostgreSQL functions accept NULL unless their body rejects it, but pg-meta's
+// generated Args type cannot represent a nullable, required function argument.
+// Keep the runtime NULL while narrowing only that generator limitation.
+function nullableRpcArg<T>(value: T | null): T {
+  return value as T;
+}
 
 /** 校验闸：登录 + 功能权限键（两道闸的第二道，第一道靠 requirePerm 挡在页面级；RLS 第三道兜底）。 */
 async function authorizedClient(key: PermissionKey) {
@@ -107,9 +115,9 @@ export async function buildClass(input: BuildClassInput): Promise<string> {
 
   const { data: cid, error: rpcError } = await supabase.rpc("create_class", {
     p_name: input.name.trim().slice(0, 100),
-    p_course_id: input.courseId,
-    p_grade: input.grade,
-    p_capacity: input.capacity,
+    p_course_id: input.courseId ?? undefined,
+    p_grade: input.grade ?? undefined,
+    p_capacity: input.capacity ?? undefined,
     p_room: input.room.trim().slice(0, 100),
     p_teacher_id: input.teacherId,
   });
@@ -206,7 +214,7 @@ export async function assignSessionSubstituteAction(sessionId: string, teacherId
   const { supabase } = await authorizedClient("class.manage");
   const { error } = await supabase.rpc("assign_session_substitute", {
     p_session_id: sessionId,
-    p_teacher_id: teacherId,
+    p_teacher_id: nullableRpcArg(teacherId),
     p_reason: reason.trim().slice(0, 1000),
   });
   if (error) throw new Error(error.message);
@@ -476,7 +484,7 @@ export async function recordSessionChangeAction(input: { sessionId: string; stud
     p_session_id: input.sessionId,
     p_student_id: input.studentId,
     p_kind: input.kind,
-    p_to_session: input.targetSessionId,
+    p_to_session: input.targetSessionId ?? undefined,
     p_reason: input.reason.trim().slice(0, 1000),
   });
   if (error) throw new Error(error.message);
@@ -516,7 +524,7 @@ export async function placeOrderAction(input: {
   const { supabase } = await authorizedClient("finance.order.create");
   const { data, error } = await supabase.rpc("place_order", {
     p_student_id: input.studentId,
-    p_classroom_id: input.classroomId,
+    p_classroom_id: nullableRpcArg(input.classroomId),
     p_items: input.items.map((item) => ({
       name: item.name.trim().slice(0, 100),
       category: item.category,
@@ -525,7 +533,7 @@ export async function placeOrderAction(input: {
       refundable: item.refundable,
     })),
     p_kind: input.kind,
-    p_coupon_grant_id: input.couponGrantId,
+    p_coupon_grant_id: input.couponGrantId ?? undefined,
     p_remark: input.remark.slice(0, 500),
   });
   if (error) throw new Error(error.message);
@@ -574,8 +582,8 @@ export async function createCouponAction(input: {
     p_kind: input.kind,
     p_value: input.value,
     p_scope: {},
-    p_valid_from: input.validFrom,
-    p_valid_to: input.validTo,
+    p_valid_from: input.validFrom ?? undefined,
+    p_valid_to: input.validTo ?? undefined,
   });
   if (error) throw new Error(error.message);
   return data as string;
@@ -606,7 +614,7 @@ export async function grantScholarshipAction(studentId: string, amount: number, 
     p_amount: amount,
     p_kind: kind,
     p_reason: reason.slice(0, 500),
-    p_order_id: orderId,
+    p_order_id: orderId ?? undefined,
   });
   if (error) throw new Error(error.message);
 }
@@ -715,7 +723,7 @@ export async function createStudentAction(input: CreateStudentInput): Promise<st
   const { supabase } = await authorizedClient("student.create");
   const { data, error } = await supabase.rpc("create_student", {
     p_name: name,
-    p_grade: grade,
+    p_grade: grade ?? undefined,
     p_phone: input.phone.trim().slice(0, 40),
     p_region: input.region?.trim().slice(0, 100) ?? "",
     p_source: input.source.trim().slice(0, 100),
@@ -851,7 +859,7 @@ export interface ImportStudentsResult {
 export async function importStudentsAction(rows: ImportStudentRow[]): Promise<ImportStudentsResult> {
   if (rows.length > 500) throw new Error("TOO_MANY_ROWS");
   const { supabase } = await authorizedClient("student.import");
-  const { data, error } = await supabase.rpc("import_students", { p_rows: rows });
+  const { data, error } = await supabase.rpc("import_students", { p_rows: rows as unknown as Json });
   if (error) throw new Error(error.message);
   const result = data as Partial<ImportStudentsResult> | null;
   return {
@@ -1087,7 +1095,7 @@ export async function setRolePermissionsAction(roleId: string, keys: string[]): 
 export async function deactivateStaffAction(target: string, reassignTo: string | null): Promise<StaffActionResult> {
   try {
     const { supabase } = await authorizedClient("staff.manage");
-    const { error } = await supabase.rpc("deactivate_staff", { p_target: target, p_reassign_to: reassignTo });
+    const { error } = await supabase.rpc("deactivate_staff", { p_target: target, p_reassign_to: nullableRpcArg(reassignTo) });
     return staffResult(error);
   } catch (error) {
     return { ok: false, code: error instanceof Error && STAFF_ERROR_CODES.has(error.message) ? error.message : "UNKNOWN" };

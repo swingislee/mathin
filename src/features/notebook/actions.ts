@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import type { Json } from "@/lib/database.types";
 import { ServerBlockNoteEditor } from "@blocknote/server-util";
 import type { PartialBlock } from "@blocknote/core";
 import sanitizeHtml from "sanitize-html";
@@ -182,7 +183,7 @@ export async function saveNoteDoc(id: string, document: unknown, baseVersion: nu
   const { supabase, user } = await authenticatedClient();
   const { data, error } = await supabase
     .from("notes")
-    .update({ document: parsed.data, version: baseVersion + 1 })
+    .update({ document: parsed.data as Json, version: baseVersion + 1 })
     .eq("id", id)
     .eq("owner_id", user.id)
     .eq("version", baseVersion)
@@ -255,7 +256,7 @@ export async function publishNote(noteId: string): Promise<{ postId: string }> {
   });
   const values = {
     title: note.title.trim(),
-    content: parsed,
+    content: parsed as Json,
     content_html: contentHtml,
     excerpt: excerptFromDocument(parsed),
   };

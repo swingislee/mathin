@@ -3,14 +3,16 @@ import fs from "node:fs";
 import path from "node:path";
 
 const databaseUrl = process.env.DATABASE_URL;
-if (!databaseUrl) {
-  console.error("DATABASE_URL is required for db:types");
+const metaSsh = process.env.SUPABASE_META_SSH;
+if (!databaseUrl && !metaSsh) {
+  console.error("DATABASE_URL or SUPABASE_META_SSH is required for db:types");
   process.exit(2);
 }
-const command = process.platform === "win32" ? "supabase.exe" : "supabase";
-const result = spawnSync(command, ["gen", "types", "typescript", "--db-url", databaseUrl, "--schema", "public"], { encoding: "utf8", shell: false });
+const result = metaSsh
+  ? spawnSync("ssh", [metaSsh, "ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' supabase-meta); curl -fsS http://$ip:8080/generators/typescript"], { encoding: "utf8", shell: false })
+  : spawnSync(process.platform === "win32" ? "supabase.exe" : "supabase", ["gen", "types", "typescript", "--db-url", databaseUrl, "--schema", "public"], { encoding: "utf8", shell: false });
 if (result.error?.code === "ENOENT") {
-  console.error("Supabase CLI is required. Install the official CLI outside this repository, then rerun pnpm db:types.");
+  console.error("Supabase CLI (DATABASE_URL mode) or ssh (SUPABASE_META_SSH mode) is required.");
   process.exit(2);
 }
 if (result.status !== 0) {
