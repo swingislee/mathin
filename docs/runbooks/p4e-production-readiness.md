@@ -23,4 +23,4 @@
 
 ## 发布门禁
 
-依次运行 `pnpm lint`、`pnpm typecheck`、`pnpm p4d:audit`、`pnpm p4e:audit`、`DATABASE_URL=... pnpm p4e:db-audit`、`pnpm build`。任何 migration 应用后都重新生成数据库类型和 migration 账本。
+依次运行 `pnpm lint`、`pnpm typecheck`、`pnpm p4d:audit`、`pnpm p4e:audit`、`DATABASE_URL=... pnpm p4e:db-audit`、`pnpm db:types:check`、`pnpm build`。任何 migration 应用后都运行 `DATABASE_URL=... pnpm db:types`，再生成 migration 账本。类型生成使用官方 Supabase CLI；生成文件不得手工编辑。
