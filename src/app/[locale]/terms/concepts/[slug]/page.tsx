@@ -1,7 +1,7 @@
 import "katex/dist/katex.min.css";
 import { ExternalLink } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { MdxContent } from "@/components/mdx-content";
 import { SiteHeader } from "@/components/site-header";
 import { Star4 } from "@/components/star4";
@@ -10,7 +10,7 @@ import { Quiz } from "@/features/terms/quiz";
 import { MarkStudied } from "@/features/terms/studied";
 import { getIsland, getPlanet } from "@/features/terms/universe";
 import { Link } from "@/i18n/navigation";
-import { getMind, getTerm, getTermDescendants, getTerms } from "@/lib/content";
+import { getCurrentTermSlug, getMind, getTerm, getTermDescendants, getTermRelation, getTerms } from "@/lib/content";
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
@@ -38,13 +38,20 @@ export default async function TermPage({ params }: { params: Promise<{ locale: s
   const { locale, slug } = await params;
   setRequestLocale(locale);
   const term = getTerm(slug);
-  if (!term) notFound();
+  if (!term) {
+    const current=getCurrentTermSlug(slug);
+    if(current)permanentRedirect(`/${locale}/terms/concepts/${current}`);
+    notFound();
+  }
   const t = await getTranslations("terms");
   const tu = await getTranslations("termsUniverse");
   const nav = await getTranslations("nav");
   const common = await getTranslations("common");
   const tool = term.interactive ? getTool(term.interactive) : undefined;
-  const tTools = tool ? await getTranslations("tools") : null;
+  const relation = getTermRelation(term.uid);
+  const relatedTools = relation.tools.map(getTool).filter((item)=>item!==undefined);
+  const tTools = tool || relatedTools.length ? await getTranslations("tools") : null;
+  const tGames = relation.games.length ? await getTranslations("games") : null;
   const prereqs = term.deps.map((d) => getTerm(d)).filter((x) => x !== undefined);
   const descendants = getTermDescendants(term.slug);
   const minds = term.minds.map((m) => getMind(m)).filter((x) => x !== undefined);
@@ -141,6 +148,12 @@ export default async function TermPage({ params }: { params: Promise<{ locale: s
             <Quiz items={term.quiz} correctLabel={t("correct")} wrongLabel={t("wrong")} />
           </>
         )}
+        <SectionHeading>{t("nextSteps")}</SectionHeading>
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          {relatedTools.map(item=><Link key={item.id} href={`/tools/${item.id}`} className="rounded-xl border border-line bg-card p-4 transition hover:-translate-y-0.5 hover:bg-moon/20"><p className="text-xs text-muted">{t("exploreTool")}</p><p className="mt-1 font-medium">{tTools?.(`items.${item.id}.name`)??item.id}</p></Link>)}
+          {relation.games.map(gameId=><Link key={gameId} href={`/games/${gameId}`} className="rounded-xl border border-line bg-card p-4 transition hover:-translate-y-0.5 hover:bg-moon/20"><p className="text-xs text-muted">{t("playGame")}</p><p className="mt-1 font-medium">{tGames?.(`items.${gameId}.name`)??gameId}</p></Link>)}
+          {descendants.slice(0,1).map(item=><Link key={item.uid} href={`/terms/concepts/${item.slug}`} className="rounded-xl border border-line bg-card p-4 transition hover:-translate-y-0.5 hover:bg-moon/20"><p className="text-xs text-muted">{t("nextConcept")}</p><p className="mt-1 font-medium">{item.title}</p></Link>)}
+        </div>
       </article>
       <MarkStudied slug={term.slug} />
       <footer className="flex items-center justify-center gap-2 pb-8 text-sm text-muted">

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { CopyEmbedButton } from "@/features/tools/copy-embed-button";
 import { getTool } from "@/features/tools/registry";
 import { Link } from "@/i18n/navigation";
+import { getTermsForTool } from "@/lib/content";
 
 export default async function ToolPage({ params }: { params: Promise<{ locale: string; tool: string }> }) {
   const { locale, tool } = await params;
@@ -11,6 +12,7 @@ export default async function ToolPage({ params }: { params: Promise<{ locale: s
   const def = getTool(tool);
   if (!def) notFound();
   const t = await getTranslations("tools");
+  const relatedTerms = getTermsForTool(tool);
   return (
     <main data-planet="businessman" className="flex h-screen flex-col">
       <div className="flex items-center gap-3 border-b px-4 py-2">
@@ -22,6 +24,7 @@ export default async function ToolPage({ params }: { params: Promise<{ locale: s
         <span className="font-serif text-xs text-[var(--p-accent)]">Nº {String(def.no).padStart(2, "0")}</span>
         <span className="text-sm font-medium">{t(`items.${def.id}.name`)}</span>
         <div className="ml-auto">
+          {relatedTerms.map(term=><Link key={term.uid} href={`/terms/concepts/${term.slug}`} className="mr-3 text-xs text-muted underline underline-offset-2 hover:text-ink">{term.title}</Link>)}
           <CopyEmbedButton toolId={def.id} locale={locale} />
         </div>
       </div>

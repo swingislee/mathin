@@ -1,5 +1,7 @@
 "use client";
 
+import { Input } from "@/components/ui/input";
+
 import { Archive, ChevronRight, FileText, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -76,7 +78,7 @@ export function TreeItem({ note, childNotes, activeId, depth = 0, onNavigate }: 
           <ChevronRight size={14} className={`transition-transform duration-200 ${expanded ? "rotate-90" : ""}`} />
         </button>
         {renaming ? (
-          <input
+          <Input
             autoFocus
             defaultValue={note.title}
             aria-label={t("rename")}

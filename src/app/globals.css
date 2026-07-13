@@ -2,6 +2,7 @@
 
 /* 设计 token 来源：docs/plan/01-design-system.md（色值取样自 public/Main.png） */
 :root {
+  color-scheme: light;
   --paper: #fffdf8;
   --ink: #29251f;
   --muted: #766f65;
@@ -19,6 +20,7 @@
 
 /* 暗色 = 星夜 */
 .dark {
+  color-scheme: dark;
   --paper: #191d2b;
   --ink: #f2eddf;
   --muted: #9ba0b0;
@@ -36,6 +38,7 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not(.light) {
+    color-scheme: dark;
     --paper: #191d2b;
     --ink: #f2eddf;
     --muted: #9ba0b0;
@@ -67,6 +70,34 @@
 }
 [data-workspace][data-ws-tone="crater"] {
   --ws-panel: color-mix(in srgb, var(--crater) 66%, var(--ink));
+}
+
+/* P4C-5 §5.4 磁贴 tone 洗底：亮色 92% 卡底混 tone，暗色 88%；只从基础 token 派生。 */
+[data-tile-tone="crater"] { background: color-mix(in srgb, var(--card) 92%, var(--crater)); }
+[data-tile-tone="leaf"]   { background: color-mix(in srgb, var(--card) 92%, var(--leaf)); }
+[data-tile-tone="rose"]   { background: color-mix(in srgb, var(--card) 92%, var(--rose)); }
+.dark [data-tile-tone="crater"] { background: color-mix(in srgb, var(--card) 88%, var(--crater)); }
+.dark [data-tile-tone="leaf"]   { background: color-mix(in srgb, var(--card) 88%, var(--leaf)); }
+.dark [data-tile-tone="rose"]   { background: color-mix(in srgb, var(--card) 88%, var(--rose)); }
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) [data-tile-tone="crater"] { background: color-mix(in srgb, var(--card) 88%, var(--crater)); }
+  :root:not(.light) [data-tile-tone="leaf"]   { background: color-mix(in srgb, var(--card) 88%, var(--leaf)); }
+  :root:not(.light) [data-tile-tone="rose"]   { background: color-mix(in srgb, var(--card) 88%, var(--rose)); }
+}
+
+/* P4C-4b §5.8a 磁贴真二维定位：服务端算好 lg(6列)/md(4列) 两套坐标写进 CSS 变量，
+   媒体查询选用——SSR 首屏两断点都不闪；sm 单列时变量不生效，按 DOM 序纵排。 */
+@media (min-width: 768px) {
+  .tile-cell {
+    grid-column: var(--tx-md) / span var(--tw-md);
+    grid-row: var(--ty-md) / span var(--th-md);
+  }
+}
+@media (min-width: 1024px) {
+  .tile-cell {
+    grid-column: var(--tx-lg) / span var(--tw-lg);
+    grid-row: var(--ty-lg) / span var(--th-lg);
+  }
 }
 
 .notebook-editor.bn-root {

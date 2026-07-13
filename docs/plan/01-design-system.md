@@ -102,16 +102,117 @@
 
 ## 6. 组件规范
 
-**shadcn/ui 优先（铁律）**：任何可复用组件一律经 shadcn/ui 统一管理——新建组件前必须先查 shadcn/ui 是否已有同类组件，有则 `pnpm dlx shadcn@latest add <name>` 引入并把默认 token 类改写为本设计系统 token（参照已适配的 `dialog.tsx`/`slider.tsx`），禁止绕开它重复造轮子。允许清单：`button dialog slider sheet dropdown-menu input label tabs card badge avatar tooltip separator skeleton sonner`。超出清单先问用户。
+### 6.0 shadcn/ui 优先（铁律 + 强制流程）
 
-自定义组件（放 `src/components/`，逐步建设）：
+任何可复用 UI 组件一律经 shadcn/ui 统一管理，禁止绕开它手搓样式常量或用未加工的原生元素。**这条铁律此前在 P4B/P4C/P4D 被系统性违反（原生 input 102 处、select 32 处、table 12 文件、`window.confirm` 做删除确认、手抄 controls.ts 还引发暗色脏色 bug 返工），补齐计划见 `14-§6.5` + 任务 P4F-0b。**
+
+**动手任何控件前的强制流程**：
+1. **先查 §6.1 能力目录**——"我需要的交互是什么 → 对应哪个 shadcn 组件"。目录里有的，一律 `add`，不手搓。
+2. 未安装则 `corepack pnpm dlx shadcn@latest add <name>`（本机 `pnpm` 不在 PATH，**必须带 `corepack` 前缀**；CLI 内部装 radix 依赖会失败，先手动 `corepack pnpm add <radix 依赖>` 再跑 CLI）。
+3. 引入后把默认 token 类（`bg-background/text-muted-foreground/bg-primary`…）改写为本设计系统 token（`bg-card/text-muted/bg-rose`…），**只改内部变量映射、不改组件结构/API**，参照已适配的 `src/components/ui/dialog.tsx`、`slider.tsx`。
+4. §6.1 目录里没有、确需自造的，先问用户；自造组件遵守 §6.5。
+
+### 6.1 shadcn/ui 完整能力目录（决策表：需要什么 → 用什么）
+
+状态图例：✅ 已装可用 · ⚠️ 债务（当前被手搓/原生顶替，见 14-§6.5，须迁移） · ○ 未装但推荐（遇到即装） · ◇ 未来阶段将需要（见 §6.2）。
+
+**表单与输入**
+
+| 你需要 | 组件 | 状态 |
+| --- | --- | --- |
+| 按钮 | `button` | ✅ |
+| 单行输入 | `input` | ⚠️ 原生 102 处 + 手抄 controls.ts |
+| 多行输入 | `textarea` | ✅ |
+| 字段标签 | `label` | ⚠️ 原生 21 处 |
+| 下拉选择（状态/年级/角色等） | `select` | ⚠️ 原生 32 处 |
+| 可搜索下拉 | `combobox`（`command`+`popover` 组合） | ○（command 已装） |
+| 勾选 | `checkbox` | ⚠️ 原生 7 处 |
+| 单选组 | `radio-group` | ○ |
+| 开关 | `switch` | ○ |
+| 滑块 | `slider` | ✅ |
+| 切换按钮/按钮组 | `toggle` / `toggle-group` | ○ |
+| 表单校验编排（RHF+zod） | `form` | ○（与 14 的 `<ActionForm>` 配合） |
+| 验证码输入 | `input-otp` | ◇ P4E-C3 手机验证码登录 |
+| 日期选择 | `calendar` + `date-picker` | ⚠️ 现用原生 `datetime-local` |
+
+**覆盖层与反馈**
+
+| 你需要 | 组件 | 状态 |
+| --- | --- | --- |
+| 模态对话框 | `dialog` | ✅ |
+| **破坏性动作确认**（删除等） | `alert-dialog` | ⚠️ 现用 `window.confirm()` |
+| 侧滑抽屉（桌面） | `sheet` | ⚠️ 手搓 Radix Dialog 4 处 |
+| 移动端底部抽屉 | `drawer`（vaul） | ◇ 14-§7 移动端 |
+| 悬浮层 | `popover` | ✅ |
+| 操作菜单 | `dropdown-menu` | ○ |
+| 右键菜单 | `context-menu` | ○ |
+| 悬停卡片 | `hover-card` | ○ |
+| 提示气泡 | `tooltip` | ○ |
+| **Toast 通知** | `sonner` | ⚠️ 未装（14-§3 反馈原语基座） |
+| 进度条 | `progress` | ○ |
+| **加载骨架** | `skeleton` | ⚠️ 未装（14 加载态 / loading.tsx） |
+| 加载转圈 | `spinner` | ○（现用 lucide `LoaderCircle`+animate-spin） |
+
+**布局与导航**
+
+| 你需要 | 组件 | 状态 |
+| --- | --- | --- |
+| 标签页切换 | `tabs` | ○（现手搓按钮组切换） |
+| 手风琴 | `accordion` | ○ |
+| 折叠区 | `collapsible` | ○（教室侧板折叠现手搓） |
+| **面包屑** | `breadcrumb` | ⚠️ 未装（14-§5.1） |
+| 分页 | `pagination` | ○（列表现手搓 `?page`） |
+| **全站/板块导航** | `navigation-menu` | ◇ 14-§2.1 板块导航 |
+| **后台侧栏** | `sidebar` | ◇ DashboardShell 现为手搓侧栏，shadcn `sidebar` 专此设计 |
+| 分隔线 | `separator` | ○ |
+| 受控滚动区 | `scroll-area` | ○（P4C-0「唯一滚动区」现手搓） |
+| 可拖拽分栏 | `resizable` | ○（教室三段舞台/磁贴缩放现手搓） |
+| 定比容器 | `aspect-ratio` | ○ |
+
+**数据展示**
+
+| 你需要 | 组件 | 状态 |
+| --- | --- | --- |
+| 表格 | `table` | ⚠️ 原生 12 文件 |
+| **带排序/筛选/分页的数据表** | `data-table`（`table`+TanStack Table） | ◇ 后台学生/课程/订单列表 |
+| 卡片容器 | `card` | ⚠️ 现手搓 `rounded-xl border bg-card` |
+| **状态/种类标签** | `badge` | ⚠️ 内联手搓 35 文件 |
+| 头像 | `avatar` | ○（员工/学生显示） |
+| **图表**（财务/学情/漏斗） | `chart`（recharts） | ◇ 财务总览、掌握度、转化漏斗 |
+| 空状态 | `empty` | ○（现有自造 `EmptyState`，可评估迁移） |
+| 轮播 | `carousel` | ○ |
+| 快捷键显示 | `kbd` | ○（notebook Cmd+K） |
+
+### 6.2 与近期路线的映射（这些阶段一开工就该装对应组件，别再手搓）
+
+- **P4E-C3 手机验证码登录** → `input-otp`。
+- **P4F-0 反馈原语** → `sonner`（Toast）；**P4F-0b 债务补齐** → `input/select/table/alert-dialog/badge/sheet/checkbox/label/skeleton/breadcrumb` 一次性安装。
+- **P4F-2 无障碍** → 手搓抽屉迁 `sheet`；**P4F-4 面包屑** → `breadcrumb`。
+- **DashboardShell 重构**（如动它）→ `sidebar`；**后台列表** → `data-table` + `pagination`。
+- **财务/学情看板**（P4D-3/学情中台）→ `chart`。
+- **课表周视图**（P4B-4）/日期字段 → `calendar` + `date-picker`。
+- **移动端磁贴/面板**（14-§7）→ `drawer`。
+
+### 6.3 shadcn 不止是组件（平台能力，避免"以为没有就自造"）
+
+- **CLI + `components.json`**：`shadcn add` 可从官方注册表、**任意 URL、命名空间注册表**拉取组件；本项目 `components.json` 已配置（new-york 风格、lucide 图标、`@/components/ui` 别名）。
+- **Blocks**：官方提供成套区块（dashboard、sidebar、login、calendar 等整段布局），可整块 `add` 后改造，别从零拼。
+- **Charts**：基于 recharts 的图表组件族（面积/柱/饼/雷达/漏斗），配 `chart` 容器与主题联动。
+- **MCP**：shadcn 提供 MCP server，可让 agent 直接查询/安装组件——需要时可评估接入以固化"先查后装"的反射。
+- 官方组件持续新增（2025 起有 `sidebar/sonner/input-otp/calendar/spinner/kbd/empty/data-table` 等）；**每次要造"shadcn 应该有"的东西前，先去 ui.shadcn.com/docs/components 或 MCP 确认一次**，本目录随之更新。
+
+### 6.4 自定义组件（放 `src/components/`，仅限 shadcn 确无对应项）
 
 | 组件 | 职责 |
 | --- | --- |
-| `SectionShell` | 子页面统一骨架：SiteHeader + 面包屑 + 标题（含 accent 下划线短横）+ 内容槽（详见 02） |
+| `SectionShell` | 子页面统一骨架：SiteHeader + 面包屑（走 `breadcrumb`）+ 标题（含 accent 下划线短横）+ 内容槽（详见 02） |
 | `Star4` | 四角星 SVG 装饰 |
 | `StarPath` | 星轨虚线 SVG（水平/自定义 path 两种用法） |
 | `PlanetLink` | 首页/导航用的圆形星球入口（圆 + 描边 + 标签） |
-| `EmptyState` | 空状态：一颗星 + 一句话（替代现在的 comingSoon 纯文本） |
+| `EmptyState` | 空状态：一颗星 + 一句话（可评估迁移到 shadcn `empty`） |
 
-按钮变体约定（shadcn button 上定制）：`primary` = rose 底白字；`secondary` = 透明底 crater 描边；`ghost` = 无边框 muted 文字。一个视图同屏只允许一个 primary。
+自造前自检：§6.1 目录真的没有？不能由 shadcn 组件组合而成（如 combobox=command+popover）？两者都否才自造，且遵守设计系统 token。
+
+### 6.5 按钮变体约定（shadcn `button` 上定制）
+
+`primary` = rose 底白字；`secondary` = 透明底 crater 描边；`ghost` = 无边框 muted 文字。一个视图同屏只允许一个 primary。

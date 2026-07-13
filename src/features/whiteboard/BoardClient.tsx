@@ -1,5 +1,7 @@
 "use client";
 
+import { Input } from "@/components/ui/input";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { AlertCircle, ArrowLeft, Check, LoaderCircle } from "lucide-react";
@@ -20,15 +22,18 @@ const RENAME_DEBOUNCE_MS = 800;
 export function BoardClient({ board, selfName }: { board: WhiteboardRecord; selfName: string }) {
   const t = useTranslations("whiteboard.board");
   const [title, setTitle] = useState(board.title);
+  const [saveError,setSaveError]=useState<"conflict"|"tooLarge"|"generic"|null>(null);
   const saveState = useWhiteboardStore((state) => state.saveState);
   const revision = useWhiteboardStore((state) => state.revision);
   const savingRef = useRef(false);
+  const versionRef = useRef(board.version);
   const renameTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { peers } = useBoardSync(board.id, board.canEdit, selfName);
 
   useEffect(() => {
     useWhiteboardStore.getState().hydrate(board.id, board.snapshot);
-  }, [board.id, board.snapshot]);
+    versionRef.current = board.version;
+  }, [board.id, board.snapshot, board.version]);
 
   /* 快照保存：防抖 + 定时兜底 + 页面隐藏即时（08-§3.2 持久化纪律）。 */
   const flush = useCallback(async () => {
@@ -39,9 +44,12 @@ export function BoardClient({ board, selfName }: { board: WhiteboardRecord; self
     const revisionAtStart = state.revision;
     state.setSaveState("saving");
     try {
-      await saveSnapshot(board.id, state.items);
+      versionRef.current = await saveSnapshot(board.id, state.items, versionRef.current);
+      setSaveError(null);
       useWhiteboardStore.getState().markSaved(revisionAtStart);
-    } catch {
+    } catch (error) {
+      const message=error instanceof Error?error.message:"";
+      setSaveError(message.includes("VERSION_CONFLICT")?"conflict":message.includes("TOO_LARGE")||message.includes("SNAPSHOT_TOO_LARGE")?"tooLarge":"generic");
       useWhiteboardStore.getState().setSaveState("error");
     } finally {
       savingRef.current = false;
@@ -89,7 +97,7 @@ export function BoardClient({ board, selfName }: { board: WhiteboardRecord; self
         <Link href="/whiteboard" aria-label={t("back")} className="rounded-full p-2 text-muted transition-colors hover:bg-moon/30 hover:text-ink">
           <ArrowLeft size={18} />
         </Link>
-        <input
+        <Input
           value={title}
           onChange={(event) => onTitleChange(event.target.value)}
           placeholder={t("titlePlaceholder")}
@@ -131,6 +139,7 @@ export function BoardClient({ board, selfName }: { board: WhiteboardRecord; self
               : <AlertCircle size={13} />}
           <span className="hidden sm:inline">{t(`save.${saveState}`)}</span>
         </span>
+        {saveError&&<span role="alert" className="max-w-64 text-xs text-rose">{t(`save.${saveError}`)}</span>}
       </header>
       <main className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-3 md:p-5">
         <div

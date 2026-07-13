@@ -1,5 +1,7 @@
 "use client";
 
+import { Input } from "@/components/ui/input";
+
 import { Minus, Pause, Play, Plus, RotateCcw } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
@@ -142,7 +144,7 @@ export function MotionLab({ embedded }: ToolComponentProps) {
         </label>
         <div className="ml-auto flex items-center gap-2.5">
           <label className="flex items-center gap-1.5 text-xs text-muted">
-            <input type="checkbox" checked={showRuler} onChange={(e) => setShowRuler(e.target.checked)} className="accent-(--p-accent)" />
+            <Input type="checkbox" checked={showRuler} onChange={(e) => setShowRuler(e.target.checked)} className="accent-(--p-accent)" />
             {t("showRuler")}
           </label>
           <Button variant="ghost" size="sm" disabled={phase !== "idle" || runways.length >= MAX_RUNWAYS} onClick={() => setRunways((p) => [...p, makeRunway()])}>

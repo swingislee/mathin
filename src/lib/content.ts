@@ -14,6 +14,8 @@ export interface QuizItem {
 }
 
 export interface TermEntry {
+  /** 永不随 slug/文件名变化的学习数据主键。 */
+  uid: string;
   slug: string;
   title: string;
   stage: Stage;
@@ -60,6 +62,7 @@ function readDir(sub: string): { slug: string; data: Record<string, unknown>; bo
 
 export const getTerms = cache((): TermEntry[] => {
   const entries = readDir("terms").map(({ slug, data, body }) => ({
+    uid: String(data.uid ?? ""),
     slug,
     title: String(data.title ?? slug),
     stage: (Number(data.stage) || 1) as Stage,
@@ -82,6 +85,15 @@ export const getTerms = cache((): TermEntry[] => {
 });
 
 export const getTerm = (slug: string) => getTerms().find((t) => t.slug === slug);
+export const getTermByUid = (uid: string) => getTerms().find((t) => t.uid === uid);
+
+export interface ContentRelation { tools: string[]; games: string[] }
+const getRelations = cache(() => JSON.parse(fs.readFileSync(path.join(CONTENT_DIR, "relations.json"), "utf8")) as Record<string, ContentRelation>);
+export const getTermRelation = (uid: string): ContentRelation => getRelations()[uid] ?? { tools: [], games: [] };
+export const getTermsForTool = (toolId: string) => getTerms().filter((term) => getTermRelation(term.uid).tools.includes(toolId));
+export const getTermsForGame = (gameId: string) => getTerms().filter((term) => getTermRelation(term.uid).games.includes(gameId));
+const getSlugAliases = cache(() => JSON.parse(fs.readFileSync(path.join(CONTENT_DIR,"slug-aliases.json"),"utf8")) as Record<string,string>);
+export const getCurrentTermSlug = (oldSlug:string) => getSlugAliases()[oldSlug];
 
 /** 后继概念 = 所有把该 slug 列为前置的概念 */
 export const getTermDescendants = (slug: string) => getTerms().filter((t) => t.deps.includes(slug));

@@ -365,9 +365,15 @@ export function createRealtimeTransport(
   presence?: { key: string; meta: PresencePeer; onPeers: (peers: PresencePeer[]) => void },
   signaling?: P2PSignalBus,
 ): Transport {
-  const topic = `session:${sessionId}`;
-  let channel: RealtimeChannel | null = null;
-  let joined = false;
+  const authoritativeTopic = `session:${sessionId}:authoritative`;
+  const clientTopic = `session:${sessionId}:client`;
+  const presenceTopic = `session:${sessionId}`;
+  let authoritativeChannel: RealtimeChannel | null = null;
+  let clientChannel: RealtimeChannel | null = null;
+  let presenceChannel: RealtimeChannel | null = null;
+  let authoritativeJoined = false;
+  let clientJoined = false;
+  let presenceJoined = !presence;
   let closed = false;
   let disconnectSignal: (() => void) | null = null;
 
@@ -376,41 +382,55 @@ export function createRealtimeTransport(
     const { data: { session } } = await supabase.auth.getSession();
     await supabase.realtime.setAuth(session?.access_token ?? null);
     if (closed) return;
-    channel = supabase.channel(topic, {
-      config: {
-        private: true,
-        broadcast: { self: false },
-        ...(presence ? { presence: { key: presence.key } } : {}),
-      },
+    const reportStatus = () => onStatus?.(authoritativeJoined && clientJoined && presenceJoined);
+    authoritativeChannel = supabase.channel(authoritativeTopic, {
+      config: { private: true, broadcast: { self: false } },
     });
-    channel.on("broadcast", { event: "ev" }, ({ payload }) => {
+    clientChannel = supabase.channel(clientTopic, {
+      config: { private: true, broadcast: { self: false } },
+    });
+    authoritativeChannel.on("broadcast", { event: "ev" }, ({ payload }) => {
       onEvent(payload as SessionEvent);
     });
-    channel.on("broadcast", { event: "fx" }, ({ payload }) => {
+    clientChannel.on("broadcast", { event: "ev" }, ({ payload }) => {
+      onEvent(payload as SessionEvent);
+    });
+    authoritativeChannel.on("broadcast", { event: "fx" }, ({ payload }) => {
       onFx?.(payload as FxMessage);
     });
     if (signaling) {
-      channel.on("broadcast", { event: "p2p-signal" }, ({ payload }) => {
+      clientChannel.on("broadcast", { event: "p2p-signal" }, ({ payload }) => {
         signaling.deliver(payload as Signal);
       });
       disconnectSignal = signaling.connect((payload) => {
-        if (joined && channel) void channel.send({ type: "broadcast", event: "p2p-signal", payload });
+        if (clientJoined && clientChannel) void clientChannel.send({ type: "broadcast", event: "p2p-signal", payload });
       });
     }
     if (presence) {
-      channel.on("presence", { event: "sync" }, () => {
-        const state = channel?.presenceState<PresencePeer>() ?? {};
+      presenceChannel = supabase.channel(presenceTopic, {
+        config: { private: true, presence: { key: presence.key } },
+      });
+      presenceChannel.on("presence", { event: "sync" }, () => {
+        const state = presenceChannel?.presenceState<PresencePeer>() ?? {};
         presence.onPeers(
           Object.values(state)
             .map((metas) => metas[0])
             .filter((peer): peer is PresencePeer & { presence_ref: string } => Boolean(peer?.userId)),
         );
       });
+      presenceChannel.subscribe((status) => {
+        presenceJoined = status === "SUBSCRIBED";
+        reportStatus();
+        if (presenceJoined && presenceChannel) void presenceChannel.track(presence.meta);
+      });
     }
-    channel.subscribe((status) => {
-      joined = status === "SUBSCRIBED";
-      onStatus?.(joined);
-      if (joined && presence && channel) void channel.track(presence.meta);
+    authoritativeChannel.subscribe((status) => {
+      authoritativeJoined = status === "SUBSCRIBED";
+      reportStatus();
+    });
+    clientChannel.subscribe((status) => {
+      clientJoined = status === "SUBSCRIBED";
+      reportStatus();
     });
   };
   void start();
@@ -423,17 +443,26 @@ export function createRealtimeTransport(
   return {
     kind: "realtime",
     send(ev) {
+      const isClientEvent = ev.type === "hand" || ev.type === "answer";
+      const channel = isClientEvent ? clientChannel : authoritativeChannel;
+      const joined = isClientEvent ? clientJoined : authoritativeJoined;
       if (joined && channel) void channel.send({ type: "broadcast", event: "ev", payload: ev });
     },
     sendFx(fx) {
-      if (joined && channel) void channel.send({ type: "broadcast", event: "fx", payload: fx });
+      if (authoritativeJoined && authoritativeChannel) {
+        void authoritativeChannel.send({ type: "broadcast", event: "fx", payload: fx });
+      }
     },
     close() {
       closed = true;
-      joined = false;
+      authoritativeJoined = false;
+      clientJoined = false;
+      presenceJoined = false;
       authListener.subscription.unsubscribe();
       disconnectSignal?.();
-      if (channel) void supabase.removeChannel(channel);
+      if (authoritativeChannel) void supabase.removeChannel(authoritativeChannel);
+      if (clientChannel) void supabase.removeChannel(clientChannel);
+      if (presenceChannel) void supabase.removeChannel(presenceChannel);
       onStatus?.(false);
     },
   };

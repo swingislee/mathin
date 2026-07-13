@@ -7,7 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "p4d:audit": "node scripts/verify-p4d.mjs",
+    "p4e:audit": "node scripts/verify-p4e.mjs && node scripts/verify-content-uids.mjs",
+    "migrations:ledger": "node scripts/migration-ledger.mjs"
   },
   "dependencies": {
     "@blocknote/core": "~0.51.4",

@@ -37,11 +37,11 @@ import { CanvasSurface } from "@/features/whiteboard/CanvasSurface";
 import { Toolbar } from "@/features/whiteboard/Toolbar";
 import type { WhiteboardStore } from "@/features/whiteboard/store";
 import type { StrokeItem } from "@/features/whiteboard/types";
-import { Link } from "@/i18n/navigation";
-import { createClient, createIsolatedRealtimeClient } from "@/lib/supabase/client";
+import { Link, useRouter } from "@/i18n/navigation";
+import { createIsolatedRealtimeClient } from "@/lib/supabase/client";
 import { newId } from "@/lib/uuid";
 import { cn } from "@/lib/utils";
-import { endClassSession, reopenClassSession, saveCourseware, startClassSession } from "../actions";
+import { endClassSession, reopenClassSession, saveCourseware, setSessionPage, startClassSession } from "../actions";
 import { downloadCoursewareAsset } from "../courseware/upload";
 import { SessionEventLog } from "../sync/eventlog";
 import { flushOutbox, pendingCount } from "../sync/flush";
@@ -177,6 +177,7 @@ const OPTION_LABELS = ["A", "B", "C", "D"];
 const MAX_INLINE_STARS = 5;
 
 export function LiveShell({ session, classId, members, myRole, userId, initialEvents, role, rehearsal = false }: Props) {
+  const router = useRouter();
   const t = useTranslations("classroom.live");
   const tPrep = useTranslations("classroom.prep");
   const students = useMemo(() => members.filter((member) => member.role === "student"), [members]);
@@ -228,6 +229,8 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
   // 副板书/名录默认展开（用户 2026-07-08 要求可折叠腾空间给对方或主板书）
   const [sideCollapsed, setSideCollapsed] = useState(false);
   const [rosterCollapsed, setRosterCollapsed] = useState(false);
+  const [starting, setStarting] = useState(false);
+  const [startError, setStartError] = useState(false);
   const logRef = useRef<SessionEventLog | null>(null);
   const preloadTick = useRef(0);
   const stageRef = useRef<HTMLDivElement | null>(null);
@@ -404,13 +407,22 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
     append("page", { page: clamped });
     // 在线时顺手更新 DB 基线（晚加入者用）；离线静默失败。试讲不改共享基线。
     if (rehearsal) return;
-    void createClient().from("class_sessions").update({ current_page: clamped }).eq("id", session.id)
-      .then(() => undefined, () => undefined);
+    void setSessionPage(session.id, clamped).catch(() => undefined);
   }, [append, session.id, rehearsal]);
 
-  const startClass = useCallback(() => {
+  const startClass = useCallback(async () => {
+    // 挂了讲次的课次要先在服务端 resolve 模板+覆盖层冻结 courseware，
+    // 成功后才广播 session_ctl:start（10-§5.4）；失败则留在候课页重试。
+    setStarting(true);
+    setStartError(false);
+    try {
+      await startClassSession(session.id);
+    } catch {
+      setStarting(false);
+      setStartError(true);
+      return;
+    }
     append("session_ctl", { action: "start" });
-    void startClassSession(session.id).catch(() => undefined);
     setPhase("live");
   }, [append, session.id]);
 
@@ -423,8 +435,7 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
     const nextPages = [...state.pages];
     nextPages.splice(index, 0, page);
     void saveCourseware(session.id, nextPages).catch(() => undefined);
-    void createClient().from("class_sessions").update({ current_page: index }).eq("id", session.id)
-      .then(() => undefined, () => undefined);
+    void setSessionPage(session.id, index).catch(() => undefined);
   }, [state.currentPage, state.pages, append, session.id, t]);
 
   // 游戏镜像：全量轻状态防抖 350ms（08-§3.6 game_state，单写者）
@@ -462,11 +473,15 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
     };
   }, [mainStore, sideBoard.store]);
 
-  const endClass = useCallback(() => {
+  const endClass = useCallback(async () => {
     append("session_ctl", { action: "end" });
-    void endClassSession(session.id).catch(() => undefined);
-    setEndOpen(false);
-  }, [append, session.id]);
+    try {
+      await endClassSession(session.id);
+      router.push(`/classroom/${classId}/session/${session.id}/report`);
+    } finally {
+      setEndOpen(false);
+    }
+  }, [append, classId, router, session.id]);
 
   const reopenClass = useCallback(() => {
     append("session_ctl", { action: "start" });
@@ -623,13 +638,14 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
               </button>
               <button
                 type="button"
-                disabled={!assetsReady}
-                onClick={startClass}
+                disabled={!assetsReady || starting}
+                onClick={() => void startClass()}
                 className="inline-flex items-center gap-2 rounded-full bg-ink px-5 py-2 text-sm text-paper transition-opacity hover:opacity-85 disabled:opacity-40"
               >
-                <MonitorPlay size={15} />
+                {starting ? <LoaderCircle size={15} className="animate-spin motion-reduce:animate-none" /> : <MonitorPlay size={15} />}
                 {tPrep("start")}
               </button>
+              {startError && <p className="text-xs text-rose">{tPrep("startFailed")}</p>}
             </>
           ) : (
             <p className="inline-flex items-center gap-2 text-sm text-muted">

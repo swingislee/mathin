@@ -8,6 +8,7 @@ import { Link, useRouter } from "@/i18n/navigation";
 import { deleteNoteForever, setNoteArchived } from "../actions";
 import { useNotebookStore } from "../store";
 import { useNotebookSync } from "./NotebookSync";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 export function TrashPopover() {
   const t = useTranslations("notebook.workspace");
@@ -20,6 +21,7 @@ export function TrashPopover() {
   const remove = useNotebookStore((state) => state.remove);
   const broadcast = useNotebookSync();
   const [error, setError] = useState<string | null>(null);
+  const [pendingDeleteId,setPendingDeleteId]=useState<string|null>(null);
   const archived = notes.filter((note) => note.isArchived).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 
   async function restore(id: string) {
@@ -38,7 +40,7 @@ export function TrashPopover() {
   }
 
   async function destroy(id: string) {
-    if (!window.confirm(t("deleteConfirm"))) return;
+    setPendingDeleteId(null);
     try {
       const { removedIds } = await deleteNoteForever(id);
       remove(id);
@@ -68,12 +70,13 @@ export function TrashPopover() {
               <li key={note.id} className="flex items-center gap-2 rounded-xl px-2 py-2 hover:bg-paper">
                 <Link href={`/notebook/me/${note.id}`} title={t("preview")} className="min-w-0 flex-1 truncate text-sm underline-offset-2 hover:underline">{note.icon} {note.title || t("untitled")}</Link>
                 <button type="button" onClick={() => void restore(note.id)} aria-label={t("restore")} className="rounded-full p-1 hover:bg-moon/50"><RotateCcw size={14} /></button>
-                <button type="button" onClick={() => void destroy(note.id)} aria-label={t("deleteForever")} className="rounded-full p-1 text-rose hover:bg-cheek/30"><Trash2 size={14} /></button>
+                <button type="button" onClick={() => setPendingDeleteId(note.id)} aria-label={t("deleteForever")} className="rounded-full p-1 text-rose hover:bg-cheek/30"><Trash2 size={14} /></button>
               </li>
             ))}
           </ul>
         )}
       </div>
+      <ConfirmDialog open={pendingDeleteId!==null} onOpenChange={(open)=>{if(!open)setPendingDeleteId(null)}} title={t("deleteForever")} description={t("deleteConfirm")} confirmLabel={t("deleteForever")} cancelLabel={t("cancel")} onConfirm={()=>{if(pendingDeleteId)void destroy(pendingDeleteId)}}/>
     </details>
   );
 }

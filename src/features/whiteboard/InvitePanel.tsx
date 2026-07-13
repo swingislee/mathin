@@ -1,5 +1,7 @@
 "use client";
 
+import { Input } from "@/components/ui/input";
+
 import { useEffect, useState, useTransition } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Check, Copy, LoaderCircle, UserPlus, X } from "lucide-react";
@@ -58,7 +60,7 @@ export function InvitePanel({ boardId, ownerId, initialInviteCode }: {
         {inviteLink ? (
           <div className="mt-3 space-y-2">
             <div className="flex items-center gap-1.5">
-              <input
+              <Input
                 readOnly
                 value={inviteLink}
                 aria-label={t("copyLink")}

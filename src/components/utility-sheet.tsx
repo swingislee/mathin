@@ -1,12 +1,16 @@
 "use client";
 
 import * as Dialog from "@radix-ui/react-dialog";
-import { LayoutDashboard, LogIn, LogOut, Menu, NotebookPen, PenLine, Presentation, X } from "lucide-react";
+import { BookOpen, LayoutDashboard, Lightbulb, LogIn, LogOut, Menu, NotebookPen, PenLine, Presentation, Puzzle, Sprout, Wrench, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { logout } from "@/app/[locale]/(auth)/actions";
+import { Input } from "@/components/ui/input";
 
-const items = [
+const publicItems = [
+  ["story", BookOpen], ["games", Puzzle], ["minds", Lightbulb], ["terms", Sprout], ["tools", Wrench],
+] as const;
+const featureItems = [
   ["dashboard", LayoutDashboard], ["classroom", Presentation], ["notebook", NotebookPen], ["whiteboard", PenLine],
 ] as const;
 
@@ -26,8 +30,9 @@ export function UtilitySheet({ isLoggedIn, locale }: { isLoggedIn: boolean; loca
             <Dialog.Title className="font-display text-xl">{home("drawer")}</Dialog.Title>
             <Dialog.Close className="rounded-full border p-2"><X size={18} /></Dialog.Close>
           </div>
-          <nav className="grid gap-3">
-            {items.map(([slug, Icon]) => (
+          <nav aria-label={home("publicSections")} className="grid gap-3">
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted">{home("publicSections")}</p>
+            {publicItems.map(([slug, Icon]) => (
               <Dialog.Close asChild key={slug}>
                 <Link href={`/${slug}`} className="flex items-center gap-3 rounded-2xl border bg-card p-4 transition duration-200 hover:translate-x-1">
                   <Icon size={20} strokeWidth={1.75} />
@@ -36,10 +41,24 @@ export function UtilitySheet({ isLoggedIn, locale }: { isLoggedIn: boolean; loca
               </Dialog.Close>
             ))}
           </nav>
+          {isLoggedIn && (
+            <nav aria-label={home("featureSections")} className="mt-7 grid gap-3 border-t border-line pt-6">
+              <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted">{home("featureSections")}</p>
+              {featureItems.map(([slug, Icon]) => (
+                <Dialog.Close asChild key={slug}>
+                  <Link href={`/${slug}`} className="flex items-center gap-3 rounded-2xl border bg-card p-4 transition duration-200 hover:translate-x-1">
+                    <Icon size={20} strokeWidth={1.75} />
+                    <span>{nav(slug)}</span>
+                  </Link>
+                </Dialog.Close>
+              ))}
+            </nav>
+          )}
           <div className="mt-auto border-t pt-5">
+            <div className="mb-4 flex flex-wrap gap-3 text-xs text-muted"><Dialog.Close asChild><Link href="/privacy" className="underline underline-offset-2 hover:text-ink">{common("privacy")}</Link></Dialog.Close><Dialog.Close asChild><Link href="/children-privacy" className="underline underline-offset-2 hover:text-ink">{common("childrenPrivacy")}</Link></Dialog.Close></div>
             {isLoggedIn ? (
               <form action={logout}>
-                <input type="hidden" name="locale" value={locale} />
+                <Input type="hidden" name="locale" value={locale} />
                 <button type="submit" className="flex w-full items-center gap-3 rounded-2xl border border-crater p-4 text-sm transition duration-200 hover:bg-moon/50">
                   <LogOut size={18} strokeWidth={1.75} />
                   <span>{common("logout")}</span>

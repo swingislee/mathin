@@ -80,9 +80,9 @@ export async function getWhiteboard(id: string): Promise<WhiteboardRecord | null
   const { supabase, user } = await authenticatedClient();
   const { data, error } = await supabase
     .from("whiteboards")
-    .select("id,title,snapshot,updated_at,owner_id")
+    .select("id,title,snapshot,version,updated_at,owner_id")
     .eq("id", id)
-    .maybeSingle<WhiteboardRow & { snapshot: unknown; owner_id: string }>();
+    .maybeSingle<WhiteboardRow & { snapshot: unknown; version: number; owner_id: string }>();
   if (error) throw new Error(error.message);
   if (!data) return null;
 
@@ -108,6 +108,7 @@ export async function getWhiteboard(id: string): Promise<WhiteboardRecord | null
   return {
     ...toMeta(data),
     snapshot: (parsed.success ? parsed.data : []) as StrokeItem[],
+    version: data.version,
     canEdit,
     isOwner,
     ownerId: data.owner_id,
@@ -175,17 +176,18 @@ export async function getMyDisplayName(): Promise<string> {
   return data?.display_name || user.email?.split("@")[0] || "?";
 }
 
-export async function saveSnapshot(id: string, items: unknown): Promise<void> {
+export async function saveSnapshot(id: string, items: unknown, baseVersion: number): Promise<number> {
   const { supabase } = await authenticatedClient();
   const parsed = snapshotSchema.safeParse(items);
   if (!parsed.success) throw new Error("INVALID");
   const snapshot = parsed.data;
   if (JSON.stringify(snapshot).length > MAX_SNAPSHOT_BYTES) throw new Error("TOO_LARGE");
-  const { data, error } = await supabase
-    .from("whiteboards")
-    .update({ snapshot })
-    .eq("id", id)
-    .select("id");
+  const { data, error } = await supabase.rpc("save_whiteboard_snapshot", {
+    wb_id: id,
+    p_snapshot: snapshot,
+    p_base_version: baseVersion,
+  });
   if (error) throw new Error(error.message);
-  if (!data?.length) throw new Error("FORBIDDEN");
+  if (typeof data !== "number") throw new Error("INVALID_VERSION");
+  return data;
 }

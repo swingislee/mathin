@@ -1,5 +1,7 @@
 "use client";
 
+import { Input } from "@/components/ui/input";
+
 import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { LoaderCircle, Plus, Trash2 } from "lucide-react";
@@ -39,7 +41,7 @@ export function CreateAssignmentButton({ classroomId }: { classroomId: string })
           <DialogHeader>
             <DialogTitle>{t("createTitle")}</DialogTitle>
           </DialogHeader>
-          <input
+          <Input
             value={title}
             onChange={(event) => setTitle(event.target.value)}
             placeholder={t("titlePlaceholder")}
@@ -54,7 +56,7 @@ export function CreateAssignmentButton({ classroomId }: { classroomId: string })
           />
           <label className="flex items-center gap-2 text-xs text-muted">
             {t("dueLabel")}
-            <input
+            <Input
               type="date"
               value={due}
               onChange={(event) => setDue(event.target.value)}

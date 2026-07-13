@@ -1,3 +1,4 @@
+import { Table, TableCell, TableHead } from "@/components/ui/table";
 import { MDXRemote } from "next-mdx-remote-client/rsc";
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
@@ -18,11 +19,11 @@ const components = {
   hr: () => <hr className="my-8 border-line" />,
   table: (props: React.HTMLAttributes<HTMLTableElement>) => (
     <div className="mt-4 overflow-x-auto">
-      <table className="w-full border-collapse text-sm" {...props} />
+      <Table className="w-full border-collapse text-sm" {...props} />
     </div>
   ),
-  th: (props: React.HTMLAttributes<HTMLTableCellElement>) => <th className="border-b border-crater/60 px-2 py-1.5 text-left font-medium" {...props} />,
-  td: (props: React.HTMLAttributes<HTMLTableCellElement>) => <td className="border-b border-line px-2 py-1.5 tabular-nums" {...props} />,
+  th: (props: React.HTMLAttributes<HTMLTableCellElement>) => <TableHead className="border-b border-crater/60 px-2 py-1.5 text-left font-medium" {...props} />,
+  td: (props: React.HTMLAttributes<HTMLTableCellElement>) => <TableCell className="border-b border-line px-2 py-1.5 tabular-nums" {...props} />,
 };
 
 export function MdxContent({ source }: { source: string }) {

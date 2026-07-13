@@ -1,5 +1,7 @@
 "use client";
 
+import { Input } from "@/components/ui/input";
+
 import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { LoaderCircle, LogIn, Plus } from "lucide-react";
@@ -38,7 +40,7 @@ export function CreateClassroomButton() {
           <DialogHeader>
             <DialogTitle>{t("createTitle")}</DialogTitle>
           </DialogHeader>
-          <input
+          <Input
             value={name}
             onChange={(event) => setName(event.target.value)}
             placeholder={t("namePlaceholder")}
@@ -83,7 +85,7 @@ export function JoinClassroomForm() {
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-center gap-2">
-        <input
+        <Input
           value={code}
           onChange={(event) => {
             setCode(event.target.value);

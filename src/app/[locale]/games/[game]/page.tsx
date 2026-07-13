@@ -5,6 +5,7 @@ import { GameMatch } from "@/features/games/match";
 import { getGame } from "@/features/games/registry";
 import { Link } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getTermsForGame } from "@/lib/content";
 
 export default async function GamePage({ params }: { params: Promise<{ locale: string; game: string }> }) {
   const { locale, game } = await params;
@@ -14,6 +15,7 @@ export default async function GamePage({ params }: { params: Promise<{ locale: s
   const t = await getTranslations("games");
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+  const relatedTerms = getTermsForGame(game);
   return (
     <main data-planet="king" className="mx-auto flex min-h-screen w-full max-w-3xl flex-col px-6 pb-16">
       <div className="flex items-center gap-3 py-4">
@@ -39,6 +41,7 @@ export default async function GamePage({ params }: { params: Promise<{ locale: s
           <summary className="cursor-pointer font-medium">{t("rules")}</summary>
           <p className="mt-2 leading-6 text-muted">{t(`items.${game}.rules`)}</p>
         </details>
+        {relatedTerms.length > 0 && <div className="mx-auto mt-4 max-w-2xl text-sm text-muted">{t("relatedTerms")}{relatedTerms.map(term=><Link key={term.uid} href={`/terms/concepts/${term.slug}`} className="ml-2 underline underline-offset-2 hover:text-ink">{term.title}</Link>)}</div>}
       </div>
     </main>
   );

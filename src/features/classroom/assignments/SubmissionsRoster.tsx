@@ -1,5 +1,7 @@
 "use client";
 
+import { Input } from "@/components/ui/input";
+
 import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { ChevronDown, ChevronUp, LoaderCircle } from "lucide-react";
@@ -52,7 +54,7 @@ function SubmissionRow({ row }: { row: SubmissionRecord }) {
           <div className="flex flex-wrap items-end gap-3">
             <label className="text-xs text-muted">
               {t("scoreLabel")}
-              <input
+              <Input
                 type="number"
                 min={0}
                 max={100}

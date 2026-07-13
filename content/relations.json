@@ -1,0 +1,22 @@
+{
+  "cn-term-fen-shu-de-yi-yi": {
+    "tools": ["fraction-line"],
+    "games": ["kakuro"]
+  },
+  "cn-term-fen-shu-dan-wei": {
+    "tools": ["fraction-line"],
+    "games": ["kakuro"]
+  },
+  "cn-term-shu-zhou": {
+    "tools": ["fraction-line"],
+    "games": []
+  },
+  "cn-term-shu-liang-guan-xi": {
+    "tools": ["motion-lab"],
+    "games": []
+  },
+  "cn-term-yun-suan-lv": {
+    "tools": [],
+    "games": ["magic-square"]
+  }
+}
