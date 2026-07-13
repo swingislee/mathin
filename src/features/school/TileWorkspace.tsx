@@ -374,9 +374,10 @@ export function TileWorkspace({
 
   const editControls = (key: string) => (
     <>
-      {/* 遮罩层统一挡掉磁贴内容交互；同时是移动拖拽的抓取面（§10）。 */}
+      {/* 遮罩层统一挡掉磁贴内容交互；仅 md+ 是拖拽抓取面才需要隔离触摸滚动（§7）——
+          移动端编辑态用上/下按钮改序，这层遮罩只用来挡点击，不能连带吞掉整页滚动手势。 */}
       <div
-        className="absolute inset-0 z-10 cursor-grab touch-none rounded-2xl active:cursor-grabbing"
+        className={cn("absolute inset-0 z-10 rounded-2xl", wide && "touch-none cursor-grab active:cursor-grabbing")}
         aria-hidden
         onPointerDown={(event) => beginDrag(event, key, "move")}
         onPointerMove={onDragMove}
