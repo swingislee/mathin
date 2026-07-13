@@ -14,6 +14,7 @@ const assertions = [
   ["school term axis", /create table public\.school_terms/],
   ["state transition guard", /INVALID_STATUS_TRANSITION/],
   ["attendance reversal ledger", /reverses_id/],
+  ["leave and makeup workflow", /get_session_change_options/],
   ["student merge audit", /student\.merged/],
   ["guardian consent", /guardian_consents/],
   ["staff deactivation", /staff\.deactivated/]

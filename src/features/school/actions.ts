@@ -456,6 +456,31 @@ export async function saveAttendanceAction(
   if (error) throw new Error(error.message);
 }
 
+export interface SessionChangeOptions {
+  students: Array<{ id: string; name: string }>;
+  targets: Array<{ id: string; title: string; scheduledAt: string; classroomName: string }>;
+}
+
+export async function getSessionChangeOptionsAction(sessionId: string): Promise<SessionChangeOptions> {
+  const { supabase } = await authorizedClient("attendance.mark");
+  const { data, error } = await supabase.rpc("get_session_change_options", { p_session_id: sessionId });
+  if (error) throw new Error(error.message);
+  const value = data as Partial<SessionChangeOptions> | null;
+  return { students: value?.students ?? [], targets: value?.targets ?? [] };
+}
+
+export async function recordSessionChangeAction(input: { sessionId: string; studentId: string; kind: "leave" | "makeup"; targetSessionId: string | null; reason: string }): Promise<void> {
+  const { supabase } = await authorizedClient("attendance.mark");
+  const { error } = await supabase.rpc("record_session_change", {
+    p_session_id: input.sessionId,
+    p_student_id: input.studentId,
+    p_kind: input.kind,
+    p_to_session: input.targetSessionId,
+    p_reason: input.reason.trim().slice(0, 1000),
+  });
+  if (error) throw new Error(error.message);
+}
+
 // ---------------------------------------------------------------------------
 // 财务（P4B-6 §5.6）：下单/收款/退费走 security definer RPC，金额一律服务端算，
 // 这里只透传 + 权限双闸第二道；表本身不给 insert/update，第三道 RLS 兜底只读。

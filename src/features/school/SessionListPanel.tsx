@@ -11,6 +11,7 @@ import type { SessionRow } from "./classes";
 import { ReviewDrawer } from "./ReviewDrawer";
 import { Badge } from "@/components/ui/badge";
 import { SubstituteTeacherDialog } from "./SubstituteTeacherDialog";
+import { SessionChangeDialog } from "./SessionChangeDialog";
 
 function toDateTimeLocalValue(iso: string): string {
   const date = new Date(iso);
@@ -84,6 +85,7 @@ export function SessionListPanel({
                 </Badge>
                 {row.teacherOverrideName && <Badge variant="outline">{t("substituteBy", { name: row.teacherOverrideName })}</Badge>}
                 {canMarkAttendance && !unstarted && <AttendanceDrawer sessionId={row.id} />}
+                {canMarkAttendance && <SessionChangeDialog sessionId={row.id} />}
                 {canReview && !unstarted && <ReviewDrawer sessionId={row.id} />}
                 {canManage && unstarted && row.scheduledAt && (
                   <Input
