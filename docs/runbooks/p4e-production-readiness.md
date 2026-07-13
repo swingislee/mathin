@@ -11,7 +11,7 @@
 
 ## 每月恢复演练
 
-在隔离实例创建空库，用 `pg_restore --clean --if-exists --no-owner` 恢复最近备份；随后应用 `pnpm migrations:ledger` 生成的账本断言和 `supabase/tests/p4e_security_assertions.sql`。核对学生、订单、支付、事件、视频对象数及抽样哈希。演练记录必须包含耗时、RPO、RTO、失败点和负责人。
+在隔离实例创建空库，用 `pg_restore --clean --if-exists --no-owner` 恢复最近备份；随后应用 `pnpm migrations:ledger` 生成的账本断言，并以 `DATABASE_URL=... pnpm p4e:db-audit` 执行越权断言。核对学生、订单、支付、事件、视频对象数及抽样哈希。演练记录必须包含耗时、RPO、RTO、失败点和负责人。
 
 ## 短信登录
 
@@ -23,4 +23,4 @@
 
 ## 发布门禁
 
-依次运行 `pnpm lint`、`pnpm typecheck`、`pnpm p4d:audit`、`pnpm p4e:audit`、`pnpm build`，再在测试库执行 RLS SQL。任何 migration 应用后都重新生成数据库类型和 migration 账本。
+依次运行 `pnpm lint`、`pnpm typecheck`、`pnpm p4d:audit`、`pnpm p4e:audit`、`DATABASE_URL=... pnpm p4e:db-audit`、`pnpm build`。任何 migration 应用后都重新生成数据库类型和 migration 账本。
