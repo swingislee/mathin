@@ -6,6 +6,7 @@
 
 - Node.js >= 20.9（当前开发环境 Node.js 22），TypeScript >= 5.1，pnpm。
 - App Router、React 19、Turbopack、Tailwind CSS 4、next-intl、Supabase SSR、shadcn/ui。
+- **UI 组件铁律**：任何可复用控件动手前先查 `docs/plan/01-§6` 的 shadcn/ui 能力目录（"需要什么→用什么"决策表），有则 `add` 不手搓——禁止再新增原生 `<input>/<select>/<table>`、`window.confirm()`、内联手搓 badge/card、手搓抽屉等（历史债务清单与迁移计划见 `docs/plan/14-§6.5`）。
 - 中文是默认语言，路由始终带 `/zh` 或 `/en` 前缀。
 - 路由边界逻辑写在 `src/proxy.ts`，不要新增 `middleware.ts`。
 

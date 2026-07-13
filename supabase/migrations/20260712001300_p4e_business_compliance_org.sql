@@ -285,6 +285,20 @@ begin
 end $$;
 revoke all on function public.deactivate_staff(uuid,uuid) from public,anon,authenticated;grant execute on function public.deactivate_staff(uuid,uuid) to authenticated;
 
+drop function if exists public.list_staff_members();
+create function public.list_staff_members()
+returns table(user_id uuid,display_name text,email text,identity text,role_ids uuid[],role_names text[],can_follow_up boolean,is_active boolean)
+language sql security definer stable set search_path=public,pg_temp as $$
+ select p.id,p.display_name,u.email::text,p.role,coalesce(r.role_ids,'{}'::uuid[]),coalesce(r.role_names,'{}'::text[]),
+   p.is_active and public.has_perm(p.id,'followup.write'),p.is_active
+ from public.profiles p join auth.users u on u.id=p.id
+ left join lateral(select array_agg(sr.id order by sr.created_at) role_ids,array_agg(sr.name order by sr.created_at) role_names
+   from public.staff_role_members m join public.staff_roles sr on sr.id=m.role_id where m.user_id=p.id)r on true
+ where p.role in('staff','admin') and (public.has_perm(auth.uid(),'staff.manage') or (public.has_perm(auth.uid(),'student.assign') and p.is_active and public.has_perm(p.id,'followup.write')))
+ order by p.is_active desc,p.role desc,p.display_name
+$$;
+revoke all on function public.list_staff_members() from public,anon,authenticated;grant execute on function public.list_staff_members() to authenticated;
+
 create or replace function public.guardian_can(p_student_id uuid,p_uid uuid,p_scope text)
 returns boolean language sql security definer stable set search_path=public,pg_temp as $$
  select exists(select 1 from public.student_guardians where student_id=p_student_id and guardian_id=p_uid and p_scope=any(scope))

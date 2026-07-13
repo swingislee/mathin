@@ -1,6 +1,7 @@
 "use client";
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 
 import { Input } from "@/components/ui/input";
 
@@ -16,9 +17,10 @@ import {
 } from "@/components/ui/dialog";
 import { useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
-import { inputClass } from "./controls";
+import { inputClass, selectClass } from "./controls";
 import {
   findProfileByEmailAction,
+  deactivateStaffAction,
   grantStaffRoleAction,
   promoteToStaffAction,
   revokeStaffRoleAction,
@@ -35,6 +37,7 @@ const KNOWN_ERR = new Set([
   "CANNOT_CHANGE_SELF",
   "TARGET_NOT_STAFF",
   "NOT_FOUND",
+  "INVALID_REPLACEMENT",
 ]);
 
 export function StaffMembersPanel({
@@ -56,6 +59,8 @@ export function StaffMembersPanel({
   const [target, setTarget] = useState<StaffMember | null>(null);
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const [dialogError, setDialogError] = useState<string | null>(null);
+  const [deactivateTarget, setDeactivateTarget] = useState<StaffMember | null>(null);
+  const [reassignTo, setReassignTo] = useState("");
 
   // 添加员工：邮箱查找 → 命中显示姓名+身份；student/parent 且 admin 才有「提升为员工」
   const [email, setEmail] = useState("");
@@ -142,6 +147,21 @@ export function StaffMembersPanel({
     });
   };
 
+  const deactivate = () => {
+    if (!deactivateTarget) return;
+    setDialogError(null);
+    startTransition(async () => {
+      const result = await deactivateStaffAction(deactivateTarget.userId, reassignTo || null);
+      if (!result.ok) {
+        setDialogError(errText(result.code));
+        return;
+      }
+      setDeactivateTarget(null);
+      setReassignTo("");
+      router.refresh();
+    });
+  };
+
   // 查到的已是员工：直接从成员列表里找到对应行进授岗弹窗
   const foundMember = found ? members.find((member) => member.userId === found.userId) ?? null : null;
 
@@ -161,7 +181,10 @@ export function StaffMembersPanel({
           <TableBody className="divide-y divide-line">
             {members.map((member) => (
               <TableRow key={member.userId}>
-                <TableCell className="px-4 py-3 font-medium">{member.displayName}</TableCell>
+                <TableCell className="px-4 py-3 font-medium">
+                  {member.displayName}
+                  {!member.isActive && <Badge variant="secondary" className="ml-2">{t("inactive")}</Badge>}
+                </TableCell>
                 <TableCell className="px-4 py-3 text-muted">{member.email}</TableCell>
                 <TableCell className="px-4 py-3">
                   {member.identity === "admin" ? (
@@ -185,13 +208,10 @@ export function StaffMembersPanel({
                   {member.userId === selfId ? (
                     <span className="text-xs text-muted">{t("selfRow")}</span>
                   ) : (
-                    <button
-                      type="button"
-                      onClick={() => openDialog(member)}
-                      className="text-xs text-muted underline underline-offset-2 hover:text-ink"
-                    >
-                      {t("manageRoles")}
-                    </button>
+                    <span className="inline-flex gap-3">
+                      <button type="button" onClick={() => openDialog(member)} className="text-xs text-muted underline underline-offset-2 hover:text-ink">{t("manageRoles")}</button>
+                      {member.isActive && <button type="button" onClick={() => { setDeactivateTarget(member); setReassignTo(""); setDialogError(null); }} className="text-xs text-rose underline underline-offset-2">{t("deactivate")}</button>}
+                    </span>
                   )}
                 </TableCell>
               </TableRow>
@@ -284,6 +304,21 @@ export function StaffMembersPanel({
             <button type="button" disabled={pending} onClick={saveRoles} className={cn(buttonVariants({ size: "sm" }))}>
               {t("save")}
             </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={Boolean(deactivateTarget)} onOpenChange={(open) => { if (!open) setDeactivateTarget(null); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>{t("deactivateTitle", { name: deactivateTarget?.displayName ?? "" })}</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted">{t("deactivateHint")}</p>
+          <select value={reassignTo} onChange={(event) => setReassignTo(event.target.value)} className={selectClass}>
+            <option value="">{t("noReplacement")}</option>
+            {members.filter((member) => member.isActive && member.identity === "staff" && member.userId !== deactivateTarget?.userId).map((member) => <option key={member.userId} value={member.userId}>{member.displayName}</option>)}
+          </select>
+          {dialogError && <p className="text-xs text-rose">{dialogError}</p>}
+          <DialogFooter>
+            <button type="button" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))} onClick={() => setDeactivateTarget(null)}>{t("cancel")}</button>
+            <button type="button" disabled={pending} className={cn(buttonVariants({ size: "sm" }))} onClick={deactivate}>{t("confirmDeactivate")}</button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

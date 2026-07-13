@@ -11,6 +11,7 @@ export interface StaffMember {
   roleIds: string[];
   roleNames: string[];
   canFollowUp: boolean;
+  isActive: boolean;
 }
 
 interface StaffMemberRpcRow {
@@ -21,6 +22,7 @@ interface StaffMemberRpcRow {
   role_ids: string[];
   role_names: string[];
   can_follow_up: boolean;
+  is_active: boolean;
 }
 
 /** 员工列表（RPC 内 staff.manage 门控；无权限得空集）。admin 置顶，其余按姓名排。 */
@@ -37,10 +39,10 @@ export async function listStaffMembers(): Promise<StaffMember[]> {
       roleIds: row.role_ids ?? [],
       roleNames: row.role_names ?? [],
       canFollowUp: Boolean(row.can_follow_up),
+      isActive: Boolean(row.is_active),
     }))
-    .sort((a, b) =>
-      a.identity !== b.identity ? (a.identity === "admin" ? -1 : 1) : a.displayName.localeCompare(b.displayName, "zh"),
-    );
+    .sort((a, b) => a.isActive!==b.isActive?(a.isActive?-1:1):
+      a.identity !== b.identity ? (a.identity === "admin" ? -1 : 1) : a.displayName.localeCompare(b.displayName, "zh"));
 }
 
 export interface StaffRoleInfo {

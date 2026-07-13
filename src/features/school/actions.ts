@@ -894,6 +894,7 @@ const STAFF_ERROR_CODES = new Set([
   "ROLE_HAS_MEMBERS",
   "INVALID_PERMISSION_KEYS",
   "INVALID_ROLE",
+  "INVALID_REPLACEMENT",
 ]);
 
 export type StaffActionResult = ActionResult;
@@ -968,4 +969,14 @@ export async function setRolePermissionsAction(roleId: string, keys: string[]): 
   if (cleanKeys.length !== keys.length) return { ok: false, code: "INVALID_PERMISSION_KEYS" };
   const { error } = await supabase.rpc("set_role_permissions", { p_role_id: roleId, perm_keys: cleanKeys });
   return staffResult(error);
+}
+
+export async function deactivateStaffAction(target: string, reassignTo: string | null): Promise<StaffActionResult> {
+  try {
+    const { supabase } = await authorizedClient("staff.manage");
+    const { error } = await supabase.rpc("deactivate_staff", { p_target: target, p_reassign_to: reassignTo });
+    return staffResult(error);
+  } catch (error) {
+    return { ok: false, code: error instanceof Error && STAFF_ERROR_CODES.has(error.message) ? error.message : "UNKNOWN" };
+  }
 }
