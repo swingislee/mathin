@@ -8,15 +8,21 @@ export default async function StaffRolesPage({ params }: { params: Promise<{ loc
   const { locale } = await params;
   setRequestLocale(locale);
   const user = await requirePerm(locale, "permission.configure");
-  const [t, profile, roles] = await Promise.all([
+  const [t, tStaff, profile, roles] = await Promise.all([
     getTranslations("school.roles"),
+    getTranslations("school.staff"),
     getProfile(user.id),
     listStaffRoles(),
   ]);
 
   return (
     <div className="mx-auto w-full max-w-6xl">
-      <SchoolPageHeader title={t("title")}>
+      <SchoolPageHeader
+        title={t("title")}
+        backHref="/dashboard/staff"
+        backLabel={tStaff("back")}
+        breadcrumbs={[{ label: tStaff("title"), href: "/dashboard/staff" }, { label: t("title") }]}
+      >
         <p className="mt-1 max-w-2xl text-sm text-muted">{t("intro")}</p>
       </SchoolPageHeader>
       <div className="mt-6">

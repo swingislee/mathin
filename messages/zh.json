@@ -41,7 +41,6 @@
     "login": "登录",
     "switchLanguage": "切换语言",
     "toggleTheme": "切换主题",
-    "breadcrumbNav": "面包屑导航",
     "skipToContent": "跳到主要内容",
     "back": "返回上一级",
     "privacy": "隐私政策",
@@ -1157,6 +1156,7 @@
       "copyPublicLink": "复制公开链接",
       "copied": "已复制",
       "closeTrash": "关闭回收站",
+      "cancel": "取消",
       "save": {
         "saving": "保存中…",
         "saved": "已保存",

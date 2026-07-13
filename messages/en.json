@@ -41,7 +41,6 @@
     "login": "Sign in",
     "switchLanguage": "Switch language",
     "toggleTheme": "Toggle theme",
-    "breadcrumbNav": "Breadcrumb",
     "skipToContent": "Skip to main content",
     "back": "Back",
     "privacy": "Privacy",
@@ -1157,6 +1156,7 @@
       "copyPublicLink": "Copy public link",
       "copied": "Copied",
       "closeTrash": "Close trash",
+      "cancel": "Cancel",
       "save": {
         "saving": "Saving…",
         "saved": "Saved",
