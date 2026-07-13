@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import { useRouter } from "@/i18n/navigation";
 import { approveRefundAction } from "./actions";
 import type { PendingRefundRow } from "./finance";
@@ -10,24 +11,18 @@ export function RefundQueuePanel({ refunds }: { refunds: PendingRefundRow[] }) {
   const t = useTranslations("school.finance");
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
 
   const approve = (refundId: string, ok: boolean) => {
-    setError(null);
     startTransition(async () => {
-      try {
-        await approveRefundAction(refundId, ok);
-        router.refresh();
-      } catch {
-        setError(t("actionFailed"));
-      }
+      const result = await approveRefundAction(refundId, ok);
+      if (result.ok) { toast.success(ok ? t("refundApproved") : t("refundRejected")); router.refresh(); }
+      else toast.error(t("actionFailed"));
     });
   };
 
   return (
     <section className="rounded-xl border border-line bg-card p-5">
       <h2 className="font-medium">{t("refundQueue", { count: refunds.length })}</h2>
-      {error && <p className="mt-3 text-xs text-rose">{error}</p>}
       {refunds.length === 0 ? (
         <p className="mt-4 text-sm text-muted">{t("noPendingRefunds")}</p>
       ) : (

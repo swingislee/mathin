@@ -7,7 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import { buttonVariants } from "@/components/ui/button";
+import { useAction } from "@/components/action-form";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
@@ -49,8 +51,7 @@ export function StudentFinancePanel({
 }) {
   const t = useTranslations("school.students");
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
+  const [approvePending, startApprove] = useTransition();
 
   const [orderOpen, setOrderOpen] = useState(false);
   const [kind, setKind] = useState<OrderKind>("enroll");
@@ -81,7 +82,6 @@ export function StudentFinancePanel({
   const [adjustReason, setAdjustReason] = useState("");
 
   const openOrder = async () => {
-    setError(null);
     setOrderOpen(true);
     setKind("enroll");
     setItems([{ ...DEFAULT_ITEM, name: t("feeCourse") }]);
@@ -93,91 +93,57 @@ export function StudentFinancePanel({
     setCouponOptions(coupons);
   };
 
-  const submitOrder = () => {
-    setError(null);
-    startTransition(async () => {
-      try {
-        await placeOrderAction({
-          studentId,
-          classroomId: kind === "deposit" ? null : classroomId || null,
-          items: items.filter((item) => item.name.trim()),
-          kind,
-          couponGrantId: couponGrantId || null,
-          remark: orderRemark,
-        });
-        setOrderOpen(false);
-        router.refresh();
-      } catch {
-        setError(t("actionFailed"));
-      }
-    });
-  };
+  const orderRun = useAction(placeOrderAction, {
+    successMessage: t("orderPlaced"),
+    errorMessage: { default: t("actionFailed") },
+    onSuccess: () => { setOrderOpen(false); router.refresh(); },
+  });
+  const submitOrder = () => orderRun.run({
+    studentId,
+    classroomId: kind === "deposit" ? null : classroomId || null,
+    items: items.filter((item) => item.name.trim()),
+    kind,
+    couponGrantId: couponGrantId || null,
+    remark: orderRemark,
+  });
 
-  const submitPayment = () => {
-    if (!paymentTarget) return;
-    setError(null);
-    startTransition(async () => {
-      try {
-        await recordPaymentAction(paymentTarget.id, paymentAmount, paymentMethod, paymentRemark);
-        setPaymentTarget(null);
-        router.refresh();
-      } catch {
-        setError(t("actionFailed"));
-      }
-    });
-  };
+  const paymentRun = useAction(recordPaymentAction, {
+    successMessage: t("paymentRecorded"),
+    errorMessage: { default: t("actionFailed") },
+    onSuccess: () => { setPaymentTarget(null); router.refresh(); },
+  });
+  const submitPayment = () => { if (paymentTarget) paymentRun.run(paymentTarget.id, paymentAmount, paymentMethod, paymentRemark); };
 
-  const submitRefund = () => {
-    if (!refundTarget) return;
-    setError(null);
-    startTransition(async () => {
-      try {
-        await requestRefundAction(refundTarget.id, refundAmount, refundReason);
-        setRefundTarget(null);
-        router.refresh();
-      } catch {
-        setError(t("actionFailed"));
-      }
-    });
-  };
+  const refundRun = useAction(requestRefundAction, {
+    successMessage: t("refundRequested"),
+    errorMessage: { default: t("actionFailed") },
+    onSuccess: () => { setRefundTarget(null); router.refresh(); },
+  });
+  const submitRefund = () => { if (refundTarget) refundRun.run(refundTarget.id, refundAmount, refundReason); };
 
   const approveRefund = (refundId: string, ok: boolean) => {
-    setError(null);
-    startTransition(async () => {
-      try {
-        await approveRefundAction(refundId, ok);
-        router.refresh();
-      } catch {
-        setError(t("actionFailed"));
-      }
+    startApprove(async () => {
+      const result = await approveRefundAction(refundId, ok);
+      if (result.ok) { toast.success(ok ? t("refundApproved") : t("refundRejected")); router.refresh(); }
+      else toast.error(t("actionFailed"));
     });
   };
 
-  const submitScholarship = () => {
-    setError(null);
-    startTransition(async () => {
-      try {
-        await grantScholarshipAction(studentId, scholarshipAmount, scholarshipKind, scholarshipReason, scholarshipKind === "discount" ? scholarshipOrderId || null : null);
-        setScholarshipOpen(false);
-        router.refresh();
-      } catch {
-        setError(t("actionFailed"));
-      }
-    });
-  };
+  const scholarshipRun = useAction(grantScholarshipAction, {
+    successMessage: t("scholarshipGranted"),
+    errorMessage: { default: t("actionFailed") },
+    onSuccess: () => { setScholarshipOpen(false); router.refresh(); },
+  });
+  const submitScholarship = () => scholarshipRun.run(studentId, scholarshipAmount, scholarshipKind, scholarshipReason, scholarshipKind === "discount" ? scholarshipOrderId || null : null);
 
-  const submitAdjust = () => {
-    setError(null);
-    startTransition(async () => {
-      try {
-        await adjustAccountAction(studentId, adjustDelta, adjustReason);
-        setAdjustOpen(false);
-        router.refresh();
-      } catch {
-        setError(t("actionFailed"));
-      }
-    });
-  };
+  const adjustRun = useAction(adjustAccountAction, {
+    successMessage: t("accountAdjusted"),
+    errorMessage: { default: t("actionFailed") },
+    onSuccess: () => { setAdjustOpen(false); router.refresh(); },
+  });
+  const submitAdjust = () => adjustRun.run(studentId, adjustDelta, adjustReason);
+
+  const pending = orderRun.pending || paymentRun.pending || refundRun.pending || approvePending || scholarshipRun.pending || adjustRun.pending;
 
   const discountableOrders = orders.filter((o) => o.status === "unpaid" || o.status === "partial");
 
@@ -203,8 +169,6 @@ export function StudentFinancePanel({
           )}
         </div>
       </div>
-
-      {error && <p className="mt-3 text-xs text-rose">{error}</p>}
 
       <div className="mt-4 rounded-lg bg-line/40 p-3 text-sm">
         <div className="flex items-center justify-between">

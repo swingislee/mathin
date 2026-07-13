@@ -570,51 +570,70 @@ export async function placeOrderAction(input: {
   kind: "enroll" | "makeup" | "deposit";
   couponGrantId: string | null;
   remark: string;
-}): Promise<string> {
-  const { supabase } = await authorizedClient("finance.order.create");
-  const { data, error } = await supabase.rpc("place_order", {
-    p_student_id: input.studentId,
-    p_classroom_id: nullableRpcArg(input.classroomId),
-    p_items: input.items.map((item) => ({
-      name: item.name.trim().slice(0, 100),
-      category: item.category,
-      unit_price: item.unitPrice,
-      qty: item.qty,
-      refundable: item.refundable,
-    })),
-    p_kind: input.kind,
-    p_coupon_grant_id: input.couponGrantId ?? undefined,
-    p_remark: input.remark.slice(0, 500),
-  });
-  if (error) throw new Error(error.message);
-  return data as string;
+}): Promise<ActionResult<string>> {
+  try {
+    const { supabase } = await authorizedClient("finance.order.create");
+    const { data, error } = await supabase.rpc("place_order", {
+      p_student_id: input.studentId,
+      p_classroom_id: nullableRpcArg(input.classroomId),
+      p_items: input.items.map((item) => ({
+        name: item.name.trim().slice(0, 100),
+        category: item.category,
+        unit_price: item.unitPrice,
+        qty: item.qty,
+        refundable: item.refundable,
+      })),
+      p_kind: input.kind,
+      p_coupon_grant_id: input.couponGrantId ?? undefined,
+      p_remark: input.remark.slice(0, 500),
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true, data: data as string };
+  } catch (error) {
+    return actionError<string>(error, ["FORBIDDEN", "UNAUTHENTICATED"]);
+  }
 }
 
-export async function recordPaymentAction(orderId: string, amount: number, method: PaymentMethod, remark: string): Promise<void> {
-  const { supabase } = await authorizedClient("finance.payment.record");
-  const { error } = await supabase.rpc("record_payment", {
-    p_order_id: orderId,
-    p_amount: amount,
-    p_method: method,
-    p_remark: remark.slice(0, 500),
-  });
-  if (error) throw new Error(error.message);
+export async function recordPaymentAction(orderId: string, amount: number, method: PaymentMethod, remark: string): Promise<ActionResult> {
+  try {
+    const { supabase } = await authorizedClient("finance.payment.record");
+    const { error } = await supabase.rpc("record_payment", {
+      p_order_id: orderId,
+      p_amount: amount,
+      p_method: method,
+      p_remark: remark.slice(0, 500),
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["FORBIDDEN", "UNAUTHENTICATED"]);
+  }
 }
 
-export async function requestRefundAction(orderId: string, amount: number, reason: string): Promise<void> {
-  const { supabase } = await authorizedClient("finance.refund.request");
-  const { error } = await supabase.rpc("request_refund", {
-    p_order_id: orderId,
-    p_amount: amount,
-    p_reason: reason.slice(0, 500),
-  });
-  if (error) throw new Error(error.message);
+export async function requestRefundAction(orderId: string, amount: number, reason: string): Promise<ActionResult> {
+  try {
+    const { supabase } = await authorizedClient("finance.refund.request");
+    const { error } = await supabase.rpc("request_refund", {
+      p_order_id: orderId,
+      p_amount: amount,
+      p_reason: reason.slice(0, 500),
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["FORBIDDEN", "UNAUTHENTICATED"]);
+  }
 }
 
-export async function approveRefundAction(refundId: string, ok: boolean): Promise<void> {
-  const { supabase } = await authorizedClient("finance.refund.approve");
-  const { error } = await supabase.rpc("approve_refund", { p_refund_id: refundId, p_ok: ok });
-  if (error) throw new Error(error.message);
+export async function approveRefundAction(refundId: string, ok: boolean): Promise<ActionResult> {
+  try {
+    const { supabase } = await authorizedClient("finance.refund.approve");
+    const { error } = await supabase.rpc("approve_refund", { p_refund_id: refundId, p_ok: ok });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["FORBIDDEN", "UNAUTHENTICATED"]);
+  }
 }
 
 export async function createCouponAction(input: {
@@ -624,55 +643,84 @@ export async function createCouponAction(input: {
   value: number;
   validFrom: string | null;
   validTo: string | null;
-}): Promise<string> {
-  const { supabase } = await authorizedClient("finance.coupon.manage");
-  const { data, error } = await supabase.rpc("create_coupon", {
-    p_code: input.code.trim().slice(0, 40),
-    p_name: input.name.trim().slice(0, 100),
-    p_kind: input.kind,
-    p_value: input.value,
-    p_scope: {},
-    p_valid_from: input.validFrom ?? undefined,
-    p_valid_to: input.validTo ?? undefined,
-  });
-  if (error) throw new Error(error.message);
-  return data as string;
+}): Promise<ActionResult<string>> {
+  try {
+    const { supabase } = await authorizedClient("finance.coupon.manage");
+    const { data, error } = await supabase.rpc("create_coupon", {
+      p_code: input.code.trim().slice(0, 40),
+      p_name: input.name.trim().slice(0, 100),
+      p_kind: input.kind,
+      p_value: input.value,
+      p_scope: {},
+      p_valid_from: input.validFrom ?? undefined,
+      p_valid_to: input.validTo ?? undefined,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true, data: data as string };
+  } catch (error) {
+    return actionError<string>(error, ["FORBIDDEN", "UNAUTHENTICATED"]);
+  }
 }
 
-export async function setCouponStatusAction(couponId: string, status: "enabled" | "disabled"): Promise<void> {
-  const { supabase } = await authorizedClient("finance.coupon.manage");
-  const { error } = await supabase.rpc("set_coupon_status", { p_coupon_id: couponId, p_status: status });
-  if (error) throw new Error(error.message);
+export async function setCouponStatusAction(couponId: string, status: "enabled" | "disabled"): Promise<ActionResult> {
+  try {
+    const { supabase } = await authorizedClient("finance.coupon.manage");
+    const { error } = await supabase.rpc("set_coupon_status", { p_coupon_id: couponId, p_status: status });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["FORBIDDEN", "UNAUTHENTICATED"]);
+  }
 }
 
-export async function grantCouponAction(couponId: string, studentId: string): Promise<void> {
-  const { supabase } = await authorizedClient("finance.coupon.manage");
-  const { error } = await supabase.rpc("grant_coupon", { p_coupon_id: couponId, p_student_id: studentId });
-  if (error) throw new Error(error.message);
+export async function grantCouponAction(couponId: string, studentId: string): Promise<ActionResult> {
+  try {
+    const { supabase } = await authorizedClient("finance.coupon.manage");
+    const { error } = await supabase.rpc("grant_coupon", { p_coupon_id: couponId, p_student_id: studentId });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["FORBIDDEN", "UNAUTHENTICATED"]);
+  }
 }
 
-export async function revokeCouponAction(grantId: string): Promise<void> {
-  const { supabase } = await authorizedClient("finance.coupon.manage");
-  const { error } = await supabase.rpc("revoke_coupon", { p_grant_id: grantId });
-  if (error) throw new Error(error.message);
+export async function revokeCouponAction(grantId: string): Promise<ActionResult> {
+  try {
+    const { supabase } = await authorizedClient("finance.coupon.manage");
+    const { error } = await supabase.rpc("revoke_coupon", { p_grant_id: grantId });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["FORBIDDEN", "UNAUTHENTICATED"]);
+  }
 }
 
-export async function grantScholarshipAction(studentId: string, amount: number, kind: ScholarshipKind, reason: string, orderId: string | null): Promise<void> {
-  const { supabase } = await authorizedClient("finance.scholarship.grant");
-  const { error } = await supabase.rpc("grant_scholarship", {
-    p_student_id: studentId,
-    p_amount: amount,
-    p_kind: kind,
-    p_reason: reason.slice(0, 500),
-    p_order_id: orderId ?? undefined,
-  });
-  if (error) throw new Error(error.message);
+export async function grantScholarshipAction(studentId: string, amount: number, kind: ScholarshipKind, reason: string, orderId: string | null): Promise<ActionResult> {
+  try {
+    const { supabase } = await authorizedClient("finance.scholarship.grant");
+    const { error } = await supabase.rpc("grant_scholarship", {
+      p_student_id: studentId,
+      p_amount: amount,
+      p_kind: kind,
+      p_reason: reason.slice(0, 500),
+      p_order_id: orderId ?? undefined,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["FORBIDDEN", "UNAUTHENTICATED"]);
+  }
 }
 
-export async function adjustAccountAction(studentId: string, delta: number, reason: string): Promise<void> {
-  const { supabase } = await authorizedClient("finance.account.adjust");
-  const { error } = await supabase.rpc("adjust_account", { p_student_id: studentId, p_delta: delta, p_reason: reason.slice(0, 500) });
-  if (error) throw new Error(error.message);
+export async function adjustAccountAction(studentId: string, delta: number, reason: string): Promise<ActionResult> {
+  try {
+    const { supabase } = await authorizedClient("finance.account.adjust");
+    const { error } = await supabase.rpc("adjust_account", { p_student_id: studentId, p_delta: delta, p_reason: reason.slice(0, 500) });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["FORBIDDEN", "UNAUTHENTICATED"]);
+  }
 }
 
 export interface ConsumeRule { present: number; late: number; absent: number; leave: number }

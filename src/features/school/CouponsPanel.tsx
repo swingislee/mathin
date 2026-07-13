@@ -5,7 +5,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import { buttonVariants } from "@/components/ui/button";
+import { useAction } from "@/components/action-form";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
@@ -16,8 +18,6 @@ import type { CouponKind, CouponRow } from "./finance";
 export function CouponsPanel({ coupons }: { coupons: CouponRow[] }) {
   const t = useTranslations("school.finance");
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [code, setCode] = useState("");
@@ -30,33 +30,22 @@ export function CouponsPanel({ coupons }: { coupons: CouponRow[] }) {
   const [results, setResults] = useState<StudentSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
 
+  const [togglePending, startToggle] = useTransition();
   const toggle = (coupon: CouponRow) => {
-    setError(null);
-    startTransition(async () => {
-      try {
-        await setCouponStatusAction(coupon.id, coupon.status === "enabled" ? "disabled" : "enabled");
-        router.refresh();
-      } catch {
-        setError(t("actionFailed"));
-      }
+    const next = coupon.status === "enabled" ? "disabled" : "enabled";
+    startToggle(async () => {
+      const result = await setCouponStatusAction(coupon.id, next);
+      if (result.ok) { toast.success(next === "enabled" ? t("couponEnabled") : t("couponDisabled")); router.refresh(); }
+      else toast.error(t("actionFailed"));
     });
   };
 
-  const submitCreate = () => {
-    setError(null);
-    startTransition(async () => {
-      try {
-        await createCouponAction({ code, name, kind, value, validFrom: null, validTo: null });
-        setCreateOpen(false);
-        setCode("");
-        setName("");
-        setValue(0);
-        router.refresh();
-      } catch {
-        setError(t("actionFailed"));
-      }
-    });
-  };
+  const createRun = useAction(createCouponAction, {
+    successMessage: t("couponCreated"),
+    errorMessage: { default: t("actionFailed") },
+    onSuccess: () => { setCreateOpen(false); setCode(""); setName(""); setValue(0); router.refresh(); },
+  });
+  const submitCreate = () => createRun.run({ code, name, kind, value, validFrom: null, validTo: null });
 
   const search = async (value: string) => {
     setQuery(value);
@@ -72,21 +61,14 @@ export function CouponsPanel({ coupons }: { coupons: CouponRow[] }) {
     }
   };
 
-  const grant = (studentId: string) => {
-    if (!grantTarget) return;
-    setError(null);
-    startTransition(async () => {
-      try {
-        await grantCouponAction(grantTarget.id, studentId);
-        setGrantTarget(null);
-        setQuery("");
-        setResults([]);
-        router.refresh();
-      } catch {
-        setError(t("actionFailed"));
-      }
-    });
-  };
+  const grantRun = useAction(grantCouponAction, {
+    successMessage: t("couponGranted"),
+    errorMessage: { default: t("actionFailed") },
+    onSuccess: () => { setGrantTarget(null); setQuery(""); setResults([]); router.refresh(); },
+  });
+  const grant = (studentId: string) => { if (grantTarget) grantRun.run(grantTarget.id, studentId); };
+
+  const pending = togglePending || createRun.pending || grantRun.pending;
 
   return (
     <section className="rounded-xl border border-line bg-card p-5">
@@ -94,7 +76,6 @@ export function CouponsPanel({ coupons }: { coupons: CouponRow[] }) {
         <h2 className="font-medium">{t("coupons", { count: coupons.length })}</h2>
         <button type="button" onClick={() => setCreateOpen(true)} className={cn(buttonVariants({ size: "sm" }))}>{t("createCoupon")}</button>
       </div>
-      {error && <p className="mt-3 text-xs text-rose">{error}</p>}
       {coupons.length === 0 ? (
         <p className="mt-4 text-sm text-muted">{t("noCoupons")}</p>
       ) : (

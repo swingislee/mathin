@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 
 import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import { buttonVariants } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
@@ -57,15 +58,17 @@ export function AccountLookupPanel({ canAdjust }: { canAdjust: boolean }) {
     if (!selected) return;
     setError(null);
     startTransition(async () => {
+      const result = await adjustAccountAction(selected.id, delta, reason);
+      if (!result.ok) { setError(t("actionFailed")); return; }
+      toast.success(t("accountAdjusted"));
       try {
-        await adjustAccountAction(selected.id, delta, reason);
         setAccount(await getStudentAccountAction(selected.id));
-        setAdjustOpen(false);
-        setDelta(0);
-        setReason("");
       } catch {
         setError(t("actionFailed"));
       }
+      setAdjustOpen(false);
+      setDelta(0);
+      setReason("");
     });
   };
 
