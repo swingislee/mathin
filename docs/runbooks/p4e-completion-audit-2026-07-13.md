@@ -13,7 +13,7 @@
 | P4E-F4 状态机/迁移账本 | **完成** | migrations 012、020、099：非法跃迁守卫、48 条远端迁移账本均有 checksum。 |
 | P4E-V1 RLS 断言网 | **完成当前最低验收集** | `p4e_security_assertions.sql` 在真实开发库通过：跨学生范围、财务直读、权威广播、Storage 跨路径及结构权限。 |
 | P4E-V2 数据库类型生成 | **完成** | 官方 pg-meta 生成 `database.types.ts`，server/browser client 均绑定 `Database`；类型新鲜度、tsc、构建通过。 |
-| P4E-V3 可观测/课堂降级 | **部分完成，生产阻断** | 服务端错误已有结构化日志和可鉴权 HTTPS 看板投递；课堂已有 IndexedDB outbox、BroadcastChannel、WebRTC 和恢复回传。尚无真实看板 URL/token，也未完成有登录夹具的 10 分钟拔网现场演练。 |
+| P4E-V3 可观测/课堂降级 | **部分完成，生产阻断** | 服务端错误已有结构化日志和可鉴权 HTTPS 看板投递；课堂已有 IndexedDB outbox、BroadcastChannel、WebRTC 和恢复回传，离线持久化/重启续号/双窗传输已纳入自动化。尚无真实看板 URL/token，也未完成有登录夹具的 10 分钟拔网现场演练。 |
 | P4E-W1 课消/请假补课/查重合并 | **完成** | migrations 013/017/018 与后台 UI：规则化课消、冲正、病假到补课闭环、软查重和合并留痕。 |
 | P4E-W2 权威状态对账 | **完成** | 教师事件经 RPC/持久事件落库，断线重连从库/事件流重建；权威广播仅作实时提速。 |
 | P4E-C1 私有视频与 signed URL | **完成** | 私有 `session-videos` 桶、服务端归属校验签发、1 小时有效期和签发审计；跨路径 RLS 断言通过。 |

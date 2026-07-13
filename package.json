@@ -11,6 +11,7 @@
     "p4d:audit": "node scripts/verify-p4d.mjs",
     "p4e:audit": "node scripts/verify-p4e.mjs && node scripts/verify-content-uids.mjs",
     "p4e:db-audit": "node scripts/run-p4e-db-audit.mjs",
+    "p4e:offline-test": "vitest run tests/p4e-offline.test.ts",
     "db:types": "node scripts/generate-database-types.mjs",
     "db:types:check": "node scripts/verify-database-types.mjs",
     "migrations:ledger": "node scripts/migration-ledger.mjs",
@@ -61,8 +62,10 @@
     "@types/three": "^0.185.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
+    "fake-indexeddb": "6.2.5",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "4.1.10"
   },
   "packageManager": "pnpm@11.10.0+sha512.0b7f8b98060031904c017e3a41eb187a16d40eeb829b95c4f8cb03681761fc4ab53dd219115b9b447f4dce1a05a214764461e7d3703392a9f32f9511ce8c86c8"
 }
