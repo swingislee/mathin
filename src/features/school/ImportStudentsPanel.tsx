@@ -4,9 +4,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 
 import { LoaderCircle, Upload } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { useAction } from "@/components/action-form";
 import { importStudentsAction, type ImportStudentRow, type ImportStudentsResult } from "./actions";
 import { inputClass } from "./controls";
 
@@ -70,26 +71,24 @@ export function ImportStudentsPanel() {
   const t = useTranslations("school.students");
   const [text, setText] = useState("");
   const [result, setResult] = useState<ImportStudentsResult | null>(null);
-  const [failed, setFailed] = useState(false);
-  const [pending, startTransition] = useTransition();
   const rows = useMemo(() => parseInput(text), [text]);
 
-  const submit = () => startTransition(async () => {
-    setFailed(false);
-    setResult(null);
-    try {
-      setResult(await importStudentsAction(rows.map((row) => ({
-        name: row.name,
-        phone: row.phone,
-        grade: row.gradeText || null,
-        region: row.region,
-        source: row.source,
-        remark: row.remark,
-      }))));
-    } catch {
-      setFailed(true);
-    }
+  const { run: submit, pending } = useAction(importStudentsAction, {
+    successMessage: t("importSuccessToast"),
+    errorMessage: { default: t("importFailed") },
+    onSuccess: setResult,
   });
+  const startImport = () => {
+    setResult(null);
+    submit(rows.map((row) => ({
+      name: row.name,
+      phone: row.phone,
+      grade: row.gradeText || null,
+      region: row.region,
+      source: row.source,
+      remark: row.remark,
+    })));
+  };
 
   return (
     <div className="mt-6 space-y-6">
@@ -98,7 +97,7 @@ export function ImportStudentsPanel() {
           {t("pasteData")}
           <textarea
             value={text}
-            onChange={(event) => { setText(event.target.value); setResult(null); setFailed(false); }}
+            onChange={(event) => { setText(event.target.value); setResult(null); }}
             rows={8}
             spellCheck={false}
             placeholder={t("importPlaceholder")}
@@ -107,12 +106,11 @@ export function ImportStudentsPanel() {
         </Label>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-muted">
           <span>{t("importLimit", { count: rows.length })}</span>
-          <Button type="button" size="sm" disabled={pending || rows.length === 0 || rows.length > 500} onClick={submit} className="gap-1.5">
+          <Button type="button" size="sm" disabled={pending || rows.length === 0 || rows.length > 500} onClick={startImport} className="gap-1.5">
             {pending ? <LoaderCircle size={15} className="animate-spin motion-reduce:animate-none" /> : <Upload size={15} />}
             {t("submitImport")}
           </Button>
         </div>
-        {failed && <p role="alert" className="mt-3 text-xs text-rose">{t("importFailed")}</p>}
       </section>
 
       {rows.length > 0 && (

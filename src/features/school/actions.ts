@@ -713,54 +713,65 @@ export interface CreateStudentInput {
   remark: string;
 }
 
-export async function createStudentAction(input: CreateStudentInput): Promise<string> {
-  const name = input.name.trim().slice(0, 100);
-  if (!name) throw new Error("EMPTY_NAME");
-  const grade =
-    typeof input.grade === "number" && Number.isInteger(input.grade) && input.grade >= 1 && input.grade <= 12
-      ? input.grade
-      : null;
-  const { supabase } = await authorizedClient("student.create");
-  const { data, error } = await supabase.rpc("create_student", {
-    p_name: name,
-    p_grade: grade ?? undefined,
-    p_phone: input.phone.trim().slice(0, 40),
-    p_region: input.region?.trim().slice(0, 100) ?? "",
-    p_source: input.source.trim().slice(0, 100),
-    p_parent_name: input.parentName?.trim().slice(0, 100) ?? "",
-    p_parent_phone: input.parentPhone?.trim().slice(0, 40) ?? "",
-    p_remark: input.remark.trim().slice(0, 2000),
-  });
-  if (error) throw new Error(error.message);
-  return data as string;
+export async function createStudentAction(input: CreateStudentInput): Promise<ActionResult<string>> {
+  try {
+    const name = input.name.trim().slice(0, 100);
+    if (!name) throw new Error("EMPTY_NAME");
+    const grade =
+      typeof input.grade === "number" && Number.isInteger(input.grade) && input.grade >= 1 && input.grade <= 12
+        ? input.grade
+        : null;
+    const { supabase } = await authorizedClient("student.create");
+    const { data, error } = await supabase.rpc("create_student", {
+      p_name: name,
+      p_grade: grade ?? undefined,
+      p_phone: input.phone.trim().slice(0, 40),
+      p_region: input.region?.trim().slice(0, 100) ?? "",
+      p_source: input.source.trim().slice(0, 100),
+      p_parent_name: input.parentName?.trim().slice(0, 100) ?? "",
+      p_parent_phone: input.parentPhone?.trim().slice(0, 40) ?? "",
+      p_remark: input.remark.trim().slice(0, 2000),
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true, data: data as string };
+  } catch (error) {
+    return actionError<string>(error, ["EMPTY_NAME", "FORBIDDEN", "UNAUTHENTICATED"]);
+  }
 }
 
 export interface DuplicateStudentRow { id: string; name: string; phone: string; status: string }
 
-export async function findDuplicateStudentsAction(name: string, phone: string): Promise<DuplicateStudentRow[]> {
-  const { supabase } = await authorizedClient("student.create");
-  const { data, error } = await supabase.rpc("find_duplicate_students", {
-    p_name: name.trim().slice(0, 100),
-    p_phone: phone.trim().slice(0, 40),
-  });
-  if (error) throw new Error(error.message);
-  return (data ?? []) as DuplicateStudentRow[];
+async function findDuplicateStudents(permKey: PermissionKey, name: string, phone: string): Promise<ActionResult<DuplicateStudentRow[]>> {
+  try {
+    const { supabase } = await authorizedClient(permKey);
+    const { data, error } = await supabase.rpc("find_duplicate_students", {
+      p_name: name.trim().slice(0, 100),
+      p_phone: phone.trim().slice(0, 40),
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true, data: (data ?? []) as DuplicateStudentRow[] };
+  } catch (error) {
+    return actionError<DuplicateStudentRow[]>(error, ["FORBIDDEN", "UNAUTHENTICATED"]);
+  }
 }
 
-export async function findDuplicateStudentsForMergeAction(name: string, phone: string): Promise<DuplicateStudentRow[]> {
-  const { supabase } = await authorizedClient("student.edit");
-  const { data, error } = await supabase.rpc("find_duplicate_students", {
-    p_name: name.trim().slice(0, 100),
-    p_phone: phone.trim().slice(0, 40),
-  });
-  if (error) throw new Error(error.message);
-  return (data ?? []) as DuplicateStudentRow[];
+export async function findDuplicateStudentsAction(name: string, phone: string): Promise<ActionResult<DuplicateStudentRow[]>> {
+  return findDuplicateStudents("student.create", name, phone);
 }
 
-export async function mergeStudentsAction(keptId: string, mergedId: string): Promise<void> {
-  const { supabase } = await authorizedClient("student.edit");
-  const { error } = await supabase.rpc("merge_students", { p_kept_id: keptId, p_merged_id: mergedId });
-  if (error) throw new Error(error.message);
+export async function findDuplicateStudentsForMergeAction(name: string, phone: string): Promise<ActionResult<DuplicateStudentRow[]>> {
+  return findDuplicateStudents("student.edit", name, phone);
+}
+
+export async function mergeStudentsAction(keptId: string, mergedId: string): Promise<ActionResult> {
+  try {
+    const { supabase } = await authorizedClient("student.edit");
+    const { error } = await supabase.rpc("merge_students", { p_kept_id: keptId, p_merged_id: mergedId });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["FORBIDDEN", "UNAUTHENTICATED"]);
+  }
 }
 
 const PHONE_PROVISION_CODES = ["FORBIDDEN_SCOPE", "ACCOUNT_ALREADY_LINKED", "INVALID_PHONE", "ACCOUNT_CREATE_FAILED", "ACCOUNT_LINK_FAILED"] as const;
@@ -805,38 +816,43 @@ export interface UpdateStudentInput {
   remark: string;
 }
 
-export async function updateStudentAction(studentId: string, input: UpdateStudentInput): Promise<void> {
-  const name = input.name.trim().slice(0, 100);
-  if (!name) throw new Error("EMPTY_NAME");
-  const grade = input.grade === null
-    ? null
-    : Number.isInteger(input.grade) && input.grade >= 1 && input.grade <= 12
-      ? input.grade
-      : null;
-  const birthday = input.birthday && /^\d{4}-\d{2}-\d{2}$/.test(input.birthday) ? input.birthday : null;
-  const { supabase } = await authorizedClient("student.edit");
-  const { data, error } = await supabase
-    .from("students")
-    .update({
-      name,
-      gender: input.gender.trim().slice(0, 30),
-      birthday,
-      phone: input.phone.trim().slice(0, 40),
-      wechat: input.wechat.trim().slice(0, 80),
-      school: input.school.trim().slice(0, 100),
-      grade,
-      region: input.region.trim().slice(0, 100),
-      source: input.source.trim().slice(0, 100),
-      parent_name: input.parentName.trim().slice(0, 100),
-      parent_relation: input.parentRelation.trim().slice(0, 40),
-      parent_phone: input.parentPhone.trim().slice(0, 40),
-      remark: input.remark.trim().slice(0, 2000),
-    })
-    .eq("id", studentId)
-    .is("deleted_at", null)
-    .select("id");
-  if (error) throw new Error(error.message);
-  if (!data || data.length === 0) throw new Error("NOT_FOUND");
+export async function updateStudentAction(studentId: string, input: UpdateStudentInput): Promise<ActionResult> {
+  try {
+    const name = input.name.trim().slice(0, 100);
+    if (!name) throw new Error("EMPTY_NAME");
+    const grade = input.grade === null
+      ? null
+      : Number.isInteger(input.grade) && input.grade >= 1 && input.grade <= 12
+        ? input.grade
+        : null;
+    const birthday = input.birthday && /^\d{4}-\d{2}-\d{2}$/.test(input.birthday) ? input.birthday : null;
+    const { supabase } = await authorizedClient("student.edit");
+    const { data, error } = await supabase
+      .from("students")
+      .update({
+        name,
+        gender: input.gender.trim().slice(0, 30),
+        birthday,
+        phone: input.phone.trim().slice(0, 40),
+        wechat: input.wechat.trim().slice(0, 80),
+        school: input.school.trim().slice(0, 100),
+        grade,
+        region: input.region.trim().slice(0, 100),
+        source: input.source.trim().slice(0, 100),
+        parent_name: input.parentName.trim().slice(0, 100),
+        parent_relation: input.parentRelation.trim().slice(0, 40),
+        parent_phone: input.parentPhone.trim().slice(0, 40),
+        remark: input.remark.trim().slice(0, 2000),
+      })
+      .eq("id", studentId)
+      .is("deleted_at", null)
+      .select("id");
+    if (error) throw new Error(error.message);
+    if (!data || data.length === 0) throw new Error("NOT_FOUND");
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["EMPTY_NAME", "NOT_FOUND", "FORBIDDEN", "UNAUTHENTICATED"]);
+  }
 }
 
 export async function assignStudentAction(studentId: string, staffUserId: string): Promise<ActionResult> {
@@ -868,17 +884,24 @@ export interface ImportStudentsResult {
   errors: Array<{ row: number; reason: string }>;
 }
 
-export async function importStudentsAction(rows: ImportStudentRow[]): Promise<ImportStudentsResult> {
-  if (rows.length > 500) throw new Error("TOO_MANY_ROWS");
-  const { supabase } = await authorizedClient("student.import");
-  const { data, error } = await supabase.rpc("import_students", { p_rows: rows as unknown as Json });
-  if (error) throw new Error(error.message);
-  const result = data as Partial<ImportStudentsResult> | null;
-  return {
-    inserted: Number(result?.inserted) || 0,
-    dup: Number(result?.dup) || 0,
-    errors: Array.isArray(result?.errors) ? result.errors : [],
-  };
+export async function importStudentsAction(rows: ImportStudentRow[]): Promise<ActionResult<ImportStudentsResult>> {
+  try {
+    if (rows.length > 500) throw new Error("TOO_MANY_ROWS");
+    const { supabase } = await authorizedClient("student.import");
+    const { data, error } = await supabase.rpc("import_students", { p_rows: rows as unknown as Json });
+    if (error) throw new Error(error.message);
+    const result = data as Partial<ImportStudentsResult> | null;
+    return {
+      ok: true,
+      data: {
+        inserted: Number(result?.inserted) || 0,
+        dup: Number(result?.dup) || 0,
+        errors: Array.isArray(result?.errors) ? result.errors : [],
+      },
+    };
+  } catch (error) {
+    return actionError<ImportStudentsResult>(error, ["TOO_MANY_ROWS", "FORBIDDEN", "UNAUTHENTICATED"]);
+  }
 }
 
 export async function softDeleteStudentAction(studentId: string): Promise<{ ok: true } | { ok: false; code: "ACTIVE_ENROLLMENT" | "FAILED" }> {

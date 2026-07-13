@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { LoaderCircle, UserPlus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useRouter } from "@/i18n/navigation";
@@ -52,29 +53,32 @@ export function NewStudentDialog() {
   const submit = () => {
     if (!name.trim()) return;
     startTransition(async () => {
-      try {
-        if (!duplicateChecked) {
-          const matches = await findDuplicateStudentsAction(name, phone);
-          setDuplicateChecked(true);
-          setDuplicates(matches);
-          if (matches.length > 0) return;
-        }
-        await createStudentAction({
-          name,
-          grade: grade ? Number(grade) : null,
-          phone,
-          region,
-          source,
-          parentName,
-          parentPhone,
-          remark,
-        });
-        setOpen(false);
-        reset();
-        router.refresh();
-      } catch {
-        setError(t("createFailed"));
+      setError(null);
+      if (!duplicateChecked) {
+        const found = await findDuplicateStudentsAction(name, phone);
+        if (!found.ok) { setError(t("createFailed")); return; }
+        setDuplicateChecked(true);
+        setDuplicates(found.data);
+        if (found.data.length > 0) return;
       }
+      const result = await createStudentAction({
+        name,
+        grade: grade ? Number(grade) : null,
+        phone,
+        region,
+        source,
+        parentName,
+        parentPhone,
+        remark,
+      });
+      if (!result.ok) {
+        setError(t("createFailed"));
+        return;
+      }
+      toast.success(t("createSuccess"));
+      setOpen(false);
+      reset();
+      router.refresh();
     });
   };
 

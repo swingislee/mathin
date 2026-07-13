@@ -431,6 +431,7 @@
       "create": "Create",
       "cancel": "Cancel",
       "createFailed": "Failed to create, please retry.",
+      "createSuccess": "Student created.",
       "duplicatesFound": "Possible duplicate students found",
       "duplicateProceedHint": "Review the existing profiles first. If this is a different person, click again to continue.",
       "createAnyway": "Create anyway",
@@ -484,6 +485,7 @@
       "importLimit": "{count} rows detected; up to 500 per import.",
       "submitImport": "Import",
       "importFailed": "Import failed. Check the data or your permissions and retry.",
+      "importSuccessToast": "Import complete.",
       "preview": "Preview",
       "line": "Line",
       "validation": "Validation",
@@ -631,10 +633,12 @@
       "guardianInviteHint": "The invitation expires in seven days and is single-use. The guardian still confirms learning and video consent separately.",
       "guardianRelation": "Relationship, e.g. mother",
       "issueInvite": "Issue invitation"
+      ,"inviteSuccess": "Invitation code generated."
       ,"guardianScope": "Guardian visibility"
       ,"guardianScope_grades": "Grades"
       ,"guardianScope_video": "Videos"
       ,"guardianScope_finance": "Finance"
+      ,"guardianScopeSaved": "Visibility updated."
       ,"guardians": "Guardians and visibility"
       ,"noGuardians": "No guardians linked yet."
       ,"primaryGuardian": "Primary guardian"
@@ -644,6 +648,7 @@
       ,"mergeIntoCurrent": "Merge into current"
       ,"mergeStudentTitle": "Confirm student merge"
       ,"mergeStudentConfirm": "Merge “{name}” into the current profile? The candidate becomes an immutable merge tombstone and this cannot be directly undone."
+      ,"mergeSuccess": "Profile merged."
       ,"provisionPhoneAccount": "Create phone account"
       ,"provisionPhoneTitle": "Create a student login account"
       ,"provisionPhoneConfirm": "Create a confirmed Supabase Auth account for {phone} and link it to this profile. The student can then sign in with SMS OTP."
@@ -1030,6 +1035,7 @@
       "relationPlaceholder": "Relation (e.g. Mom)",
       "bindSubmit": "Bind",
       "bindFailed": "Invalid or already-used bind code, please check and retry.",
+      "bindSuccess": "Bound successfully.",
       "nextSession": "Next session",
       "attendanceRate30d": "30-day attendance rate",
       "latestScore": "Latest score",

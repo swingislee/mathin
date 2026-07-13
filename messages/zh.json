@@ -431,6 +431,7 @@
       "create": "创建",
       "cancel": "取消",
       "createFailed": "创建失败，请重试。",
+      "createSuccess": "学生已创建。",
       "duplicatesFound": "发现疑似重复学生",
       "duplicateProceedHint": "请先核对现有档案；确认不是同一人后，可再次点击继续创建。",
       "createAnyway": "仍然创建",
@@ -484,6 +485,7 @@
       "importLimit": "已识别 {count} 行，单次最多 500 行。",
       "submitImport": "开始导入",
       "importFailed": "导入失败，请检查数据或权限后重试。",
+      "importSuccessToast": "导入完成。",
       "preview": "导入预览",
       "line": "行号",
       "validation": "校验",
@@ -633,10 +635,12 @@
       "guardianInviteHint": "邀请码七天内有效且只能使用一次；监护人绑定时仍需分别确认学习与视频同意。",
       "guardianRelation": "关系，如母亲",
       "issueInvite": "签发邀请码"
+      ,"inviteSuccess": "邀请码已生成。"
       ,"guardianScope": "监护人可见范围"
       ,"guardianScope_grades": "成绩"
       ,"guardianScope_video": "视频"
       ,"guardianScope_finance": "费用"
+      ,"guardianScopeSaved": "可见范围已更新。"
       ,"guardians": "监护人与可见范围"
       ,"noGuardians": "尚未绑定监护人。"
       ,"primaryGuardian": "主监护人"
@@ -646,6 +650,7 @@
       ,"mergeIntoCurrent": "合并到当前档案"
       ,"mergeStudentTitle": "确认合并学生档案"
       ,"mergeStudentConfirm": "将“{name}”合并到当前档案？候选档案会变成不可用的合并留痕，操作无法直接撤销。"
+      ,"mergeSuccess": "已合并档案。"
       ,"provisionPhoneAccount": "开通手机账号"
       ,"provisionPhoneTitle": "为学生开通登录账号"
       ,"provisionPhoneConfirm": "将使用手机号 {phone} 创建已确认的 Supabase Auth 账号并绑定当前档案。之后可直接使用短信验证码登录。"
@@ -1032,6 +1037,7 @@
       "relationPlaceholder": "与孩子关系（如：妈妈）",
       "bindSubmit": "绑定",
       "bindFailed": "绑定码无效或已被使用，请检查后重试。",
+      "bindSuccess": "绑定成功。",
       "nextSession": "下次上课",
       "attendanceRate30d": "近 30 天出勤率",
       "latestScore": "最近作业成绩",

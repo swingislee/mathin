@@ -6,8 +6,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 import { LoaderCircle, Save } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useAction } from "@/components/action-form";
 import { useRouter } from "@/i18n/navigation";
 import { updateStudentAction, type UpdateStudentInput } from "./actions";
 import { fromSelectValue, inputClass, toSelectValue } from "./controls";
@@ -18,9 +19,6 @@ const SOURCE_OPTIONS = ["地推", "转介绍", "自然引流", "活动", "其他
 export function StudentProfileEditor({ student, canEdit }: { student: StudentDetail; canEdit: boolean }) {
   const t = useTranslations("school.students");
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState(false);
   const [form, setForm] = useState<UpdateStudentInput>({
     name: student.name,
     gender: student.gender,
@@ -38,19 +36,13 @@ export function StudentProfileEditor({ student, canEdit }: { student: StudentDet
   });
 
   const set = <K extends keyof UpdateStudentInput>(key: K, value: UpdateStudentInput[K]) => {
-    setSaved(false);
-    setError(false);
     setForm((current) => ({ ...current, [key]: value }));
   };
 
-  const save = () => startTransition(async () => {
-    try {
-      await updateStudentAction(student.id, form);
-      setSaved(true);
-      router.refresh();
-    } catch {
-      setError(true);
-    }
+  const { run: save, pending } = useAction((input: UpdateStudentInput) => updateStudentAction(student.id, input), {
+    successMessage: t("saved"),
+    errorMessage: { default: t("saveFailed") },
+    onSuccess: () => router.refresh(),
   });
 
   const disabled = !canEdit || pending || Boolean(student.deletedAt);
@@ -61,7 +53,7 @@ export function StudentProfileEditor({ student, canEdit }: { student: StudentDet
       <div className="flex items-center justify-between gap-3">
         <h2 className="font-medium">{t("profile")}</h2>
         {canEdit && !student.deletedAt && (
-          <Button type="button" size="sm" disabled={pending || !form.name.trim()} onClick={save} className="gap-1.5">
+          <Button type="button" size="sm" disabled={pending || !form.name.trim()} onClick={() => save(form)} className="gap-1.5">
             {pending ? <LoaderCircle size={15} className="animate-spin motion-reduce:animate-none" /> : <Save size={15} />}
             {t("save")}
           </Button>
@@ -95,8 +87,6 @@ export function StudentProfileEditor({ student, canEdit }: { student: StudentDet
       </Label>
       <datalist id="student-source-options">{SOURCE_OPTIONS.map((value) => <option key={value} value={value} />)}</datalist>
       <datalist id="student-region-options"><option value="主校区" /><option value="东区" /><option value="西区" /></datalist>
-      {saved && <p className="mt-3 text-xs text-crater">{t("saved")}</p>}
-      {error && <p role="alert" className="mt-3 text-xs text-rose">{t("saveFailed")}</p>}
     </section>
   );
 }
