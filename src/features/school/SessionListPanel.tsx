@@ -9,6 +9,8 @@ import { deleteUnstartedSessionAction, rescheduleSessionAction } from "./actions
 import { AttendanceDrawer } from "./AttendanceDrawer";
 import type { SessionRow } from "./classes";
 import { ReviewDrawer } from "./ReviewDrawer";
+import { Badge } from "@/components/ui/badge";
+import { SubstituteTeacherDialog } from "./SubstituteTeacherDialog";
 
 function toDateTimeLocalValue(iso: string): string {
   const date = new Date(iso);
@@ -77,9 +79,10 @@ export function SessionListPanel({
                 <Link href={`/classroom/${classroomId}/session/${row.id}`} className="min-w-0 flex-1 truncate underline-offset-2 hover:underline">
                   {row.name || t("untitledSession")}
                 </Link>
-                <span className="shrink-0 rounded-full bg-line/50 px-2 py-0.5 text-xs text-muted">
+                <Badge variant="secondary">
                   {row.endedAt ? t("statusEnded") : row.startedAt ? t("statusLive") : t("statusScheduled")}
-                </span>
+                </Badge>
+                {row.teacherOverrideName && <Badge variant="outline">{t("substituteBy", { name: row.teacherOverrideName })}</Badge>}
                 {canMarkAttendance && !unstarted && <AttendanceDrawer sessionId={row.id} />}
                 {canReview && !unstarted && <ReviewDrawer sessionId={row.id} />}
                 {canManage && unstarted && row.scheduledAt && (
@@ -93,6 +96,9 @@ export function SessionListPanel({
                     }}
                     className="shrink-0 rounded-lg border border-line bg-card px-2 py-1 text-xs text-ink outline-none focus:border-crater"
                   />
+                )}
+                {canManage && unstarted && (
+                  <SubstituteTeacherDialog sessionId={row.id} currentTeacherId={row.teacherOverrideId} />
                 )}
                 {canManage && unstarted && (
                   <button

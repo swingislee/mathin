@@ -201,6 +201,23 @@ export async function rescheduleSessionAction(sessionId: string, scheduledAt: st
   if (!data || data.length === 0) throw new Error("FORBIDDEN_SCOPE");
 }
 
+export async function assignSessionSubstituteAction(sessionId: string, teacherId: string | null, reason: string): Promise<void> {
+  const { supabase } = await authorizedClient("class.manage");
+  const { error } = await supabase.rpc("assign_session_substitute", {
+    p_session_id: sessionId,
+    p_teacher_id: teacherId,
+    p_reason: reason.trim().slice(0, 1000),
+  });
+  if (error) throw new Error(error.message);
+}
+
+export async function listSubstituteTeachersAction(sessionId: string): Promise<Array<{ id: string; name: string }>> {
+  const { supabase } = await authorizedClient("class.manage");
+  const { data, error } = await supabase.rpc("list_substitute_candidates", { p_session_id: sessionId });
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as Array<{ id: string; display_name: string }>).map((row) => ({ id: row.id, name: row.display_name }));
+}
+
 // 软删（P4C-2 §7）：不物理 delete，置 deleted_at；未开始且未删的课次才可删。
 // 0 行命中同样抛 FORBIDDEN_SCOPE（RLS 跨作用域静默命中 0 行的老坑）。
 export async function deleteUnstartedSessionAction(sessionId: string): Promise<void> {

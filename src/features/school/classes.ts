@@ -155,6 +155,8 @@ export interface SessionRow {
   durationMin: number | null;
   startedAt: string | null;
   endedAt: string | null;
+  teacherOverrideId: string | null;
+  teacherOverrideName: string | null;
 }
 
 export interface ClassroomDetail {
@@ -179,12 +181,12 @@ export async function listDeletedSessions(classroomId: string): Promise<DeletedS
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("class_sessions")
-    .select("id,lecture_no,title,scheduled_at,duration_min,started_at,ended_at,deleted_at")
+        .select("id,lecture_no,title,scheduled_at,duration_min,started_at,ended_at,deleted_at,teacher_override,profiles!class_sessions_teacher_override_fkey(display_name)")
     .eq("classroom_id", classroomId)
     .not("deleted_at", "is", null)
     .order("deleted_at", { ascending: false })
     .returns<
-      Array<{ id: string; lecture_no: number | null; title: string; scheduled_at: string | null; duration_min: number | null; started_at: string | null; ended_at: string | null; deleted_at: string }>
+      Array<{ id: string; lecture_no: number | null; title: string; scheduled_at: string | null; duration_min: number | null; started_at: string | null; ended_at: string | null; deleted_at: string; teacher_override: string | null; profiles: { display_name: string } | null }>
     >();
   if (error) throw new Error(error.message);
   return (data ?? []).map((row) => ({
@@ -196,6 +198,8 @@ export async function listDeletedSessions(classroomId: string): Promise<DeletedS
     startedAt: row.started_at,
     endedAt: row.ended_at,
     deletedAt: row.deleted_at,
+    teacherOverrideId: row.teacher_override,
+    teacherOverrideName: row.profiles?.display_name ?? null,
   }));
 }
 
@@ -233,11 +237,11 @@ export async function getClassroomDetail(id: string): Promise<ClassroomDetail | 
         .returns<Array<{ user_id: string; role: string; profiles: { display_name: string } | null }>>(),
       supabase
         .from("class_sessions")
-        .select("id,lecture_no,title,scheduled_at,duration_min,started_at,ended_at")
+        .select("id,lecture_no,title,scheduled_at,duration_min,started_at,ended_at,teacher_override,profiles!class_sessions_teacher_override_fkey(display_name)")
         .eq("classroom_id", id)
         .is("deleted_at", null)
         .order("scheduled_at", { ascending: true, nullsFirst: false })
-        .returns<Array<{ id: string; lecture_no: number | null; title: string; scheduled_at: string | null; duration_min: number | null; started_at: string | null; ended_at: string | null }>>(),
+        .returns<Array<{ id: string; lecture_no: number | null; title: string; scheduled_at: string | null; duration_min: number | null; started_at: string | null; ended_at: string | null; teacher_override: string | null; profiles: { display_name: string } | null }>>(),
     ]);
   if (enrollmentError) throw new Error(enrollmentError.message);
   if (memberError) throw new Error(memberError.message);
@@ -271,6 +275,8 @@ export async function getClassroomDetail(id: string): Promise<ClassroomDetail | 
       durationMin: row.duration_min,
       startedAt: row.started_at,
       endedAt: row.ended_at,
+      teacherOverrideId: row.teacher_override,
+      teacherOverrideName: row.profiles?.display_name ?? null,
     })),
   };
 }
