@@ -1,0 +1,89 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # 构建期只需要形如 URL/key 的占位值：本仓库不在构建期连库（页面全是运行时动态取数）。
+  NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-placeholder-publishable-key
+  NEXT_PUBLIC_SITE_URL: https://mathin.club
+
+jobs:
+  checks:
+    name: lint / typecheck / build / audits
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm build
+      - name: 静态安全/内容断言（P4E 资产）
+        run: pnpm p4e:audit
+      - name: 数据库类型与 migrations 同步
+        run: pnpm db:types:check
+      - name: 双语文案键全等
+        run: pnpm messages:check
+      - name: 离线补发回放测试
+        run: pnpm p4e:offline-test
+
+  database:
+    name: 从零重建库 + RLS 越权断言
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # 一次性容器，凭据即弃。自托管库的密钥绝不进 workflow（CLAUDE.md 密钥纪律）。
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      CI_ALLOW_DB_REBUILD: "1"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: 平台垫片 + 全量 migration 重放 + 夹具
+        run: pnpm ci:db-rebuild
+      - name: migration 校验和账本
+        run: node scripts/migration-ledger.mjs | psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1
+      - name: RLS 越权断言
+        run: pnpm p4e:db-audit
+
+  supply-chain:
+    name: 依赖安全公告
+    runs-on: ubuntu-latest
+    # 观察期：先只报告不阻断（docs/plan/15-§7.4），噪声水平确认后再升级为门禁。
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm audit --prod

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "timezone": "Asia/Shanghai",
+  "labels": ["dependencies"],
+  "packageRules": [
+    {
+      "description": "常规升级仍走人工：Next.js 锁定 16.2.10（AGENTS.md），其余依赖也由人决定何时动。Renovate 只负责安全公告。",
+      "matchPackageNames": ["*"],
+      "enabled": false
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["security"],
+    "automerge": false
+  },
+  "osvVulnerabilityAlerts": true
+}
