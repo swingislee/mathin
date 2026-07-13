@@ -1367,6 +1367,7 @@
       "ended": "本课已下课",
       "reopenClass": "重新开课",
       "rehearsalBadge": "试讲模式",
+      "offlineDrillBadge": "离线演练",
       "rehearsalHint": "试讲中的翻页、板书和加星只在本窗口生效，不会被记录或同步。",
       "cancel": "取消"
     },

@@ -21,6 +21,7 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -76,6 +77,8 @@ interface Props {
   role: Role;
   /** 试讲：教师本地预演/复盘——事件不落库不同步，随时可进（包括已下课的课次）。 */
   rehearsal?: boolean;
+  /** 离线演练：保留可靠 outbox，但主动禁用 T2 与服务端写入，退出后验证补同步。 */
+  offlineDrill?: boolean;
 }
 
 interface LiveState {
@@ -176,7 +179,7 @@ const OPTION_LABELS = ["A", "B", "C", "D"];
 /** 星数不超过此值时直接摆星星图标（更直观）；超出退回单星+数字（08-§3.5）。 */
 const MAX_INLINE_STARS = 5;
 
-export function LiveShell({ session, classId, members, myRole, userId, initialEvents, role, rehearsal = false }: Props) {
+export function LiveShell({ session, classId, members, myRole, userId, initialEvents, role, rehearsal = false, offlineDrill = false }: Props) {
   const router = useRouter();
   const t = useTranslations("classroom.live");
   const tPrep = useTranslations("classroom.prep");
@@ -245,6 +248,8 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
   useEffect(() => {
     let disposed = false;
     let flushTimer: ReturnType<typeof setInterval> | null = null;
+    let tryFlush: (() => void) | null = null;
+    let onHide: (() => void) | null = null;
 
     const setup = async () => {
       const eventLog = await SessionEventLog.create(session.id, userId, { ephemeral: rehearsal });
@@ -272,24 +277,31 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
         eventLog.ingestFx,
         (health) => { if (!disposed) setP2PHealth(health); },
       ));
-      eventLog.attach(createRealtimeTransport(
-        createIsolatedRealtimeClient(),
-        session.id,
-        eventLog.ingest,
-        setT2Connected,
-        eventLog.ingestFx,
-        {
-          key: eventLog.deviceId,
-          meta: { userId, name: selfName, role: myRole },
-          onPeers: (peers) => {
-            if (!disposed) setOnlinePeers(peers);
+      if (!offlineDrill) {
+        eventLog.attach(createRealtimeTransport(
+          createIsolatedRealtimeClient(),
+          session.id,
+          eventLog.ingest,
+          setT2Connected,
+          eventLog.ingestFx,
+          {
+            key: eventLog.deviceId,
+            meta: { userId, name: selfName, role: myRole },
+            onPeers: (peers) => {
+              if (!disposed) setOnlinePeers(peers);
+            },
           },
-        },
-        p2pSignals,
-      ));
+          p2pSignals,
+        ));
+      }
       setLog(eventLog);
+      if (offlineDrill) {
+        void pendingCount(session.id).then((count) => {
+          if (!disposed) setPending(count);
+        }).catch(() => undefined);
+      }
 
-      const tryFlush = () => {
+      tryFlush = () => {
         flushOutbox(session.id)
           .then(() => pendingCount(session.id))
           .then((count) => {
@@ -297,25 +309,32 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
           })
           .catch(() => undefined);
       };
-      tryFlush();
-      flushTimer = setInterval(tryFlush, 15000);
-      window.addEventListener("online", tryFlush);
-      const onHide = () => tryFlush();
-      document.addEventListener("visibilitychange", onHide);
-      window.addEventListener("pagehide", onHide);
+      if (!offlineDrill) {
+        tryFlush();
+        flushTimer = setInterval(tryFlush, 15000);
+        window.addEventListener("online", tryFlush);
+        onHide = () => tryFlush?.();
+        document.addEventListener("visibilitychange", onHide);
+        window.addEventListener("pagehide", onHide);
+      }
     };
     void setup();
 
     return () => {
       disposed = true;
       if (flushTimer) clearInterval(flushTimer);
+      if (tryFlush) window.removeEventListener("online", tryFlush);
+      if (onHide) {
+        document.removeEventListener("visibilitychange", onHide);
+        window.removeEventListener("pagehide", onHide);
+      }
       logRef.current?.close();
       logRef.current = null;
       setLog(null);
     };
-    // initialEvents/selfName/myRole/rehearsal 仅首帧使用（rehearsal 来自 URL，整页生命周期不变），不追踪
+    // initialEvents/selfName/myRole 仅首帧使用，不追踪
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session.id, userId]);
+  }, [session.id, userId, rehearsal, offlineDrill]);
 
   // --- 课件预载（IndexedDB 命中则直接建 objectURL）-----------------------
   useEffect(() => {
@@ -406,9 +425,9 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
     const clamped = Math.max(0, Math.min(total - 1, page));
     append("page", { page: clamped });
     // 在线时顺手更新 DB 基线（晚加入者用）；离线静默失败。试讲不改共享基线。
-    if (rehearsal) return;
+    if (rehearsal || offlineDrill) return;
     void setSessionPage(session.id, clamped).catch(() => undefined);
-  }, [append, session.id, rehearsal]);
+  }, [append, session.id, rehearsal, offlineDrill]);
 
   const startClass = useCallback(async () => {
     // 挂了讲次的课次要先在服务端 resolve 模板+覆盖层冻结 courseware，
@@ -519,6 +538,15 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
     <span className="rounded-full bg-moon/40 px-2 py-0.5 text-xs text-ink" title={t("rehearsalHint")}>
       {t("rehearsalBadge")}
     </span>
+  ) : offlineDrill ? (
+    <div className="flex items-center gap-2 text-xs">
+      <Badge variant="secondary" className="bg-moon/40 text-ink">{t("offlineDrillBadge")}</Badge>
+      {pending > 0 && (
+        <Badge variant="secondary" className="bg-moon/40 text-ink" title={t("pendingHint")}>
+          {t("pending", { count: pending })}
+        </Badge>
+      )}
+    </div>
   ) : (
     <div className="flex items-center gap-2 text-xs">
       <span className="rounded-full bg-leaf/15 px-2 py-0.5 text-leaf-deep">{t("localChannel")}</span>

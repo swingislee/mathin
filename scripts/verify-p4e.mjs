@@ -13,7 +13,11 @@ const sources = {
   migrations,
   rls: read("supabase/tests/p4e_security_assertions.sql"),
   backup: read("scripts/infra/p4e-backup.sh") + read("scripts/infra/p4e-disk-check.sh"),
-  offline: read("src/features/classroom/sync/eventlog.ts") + read("tests/p4e-offline.test.ts"),
+  offline:
+    read("src/features/classroom/sync/eventlog.ts") +
+    read("src/features/classroom/live/LiveShell.tsx") +
+    read("scripts/p4e-offline-fixture.mjs") +
+    read("tests/p4e-offline.test.ts"),
   observability: read("src/instrumentation.ts"),
   operations: read("src/instrumentation.ts") + read("src/app/[locale]/dashboard/operations/page.tsx"),
   phone: read("src/components/phone-auth-form.tsx") + read("src/features/school/actions.ts"),
@@ -37,6 +41,7 @@ const assertions = [
   ["student merge audit", "migrations", /student\.merged/],
   ["runtime RLS denial assertions", "rls", /ANON_PRIVATE_NOTE_WAS_VISIBLE[\s\S]*FOREIGN_LIKE_WAS_ACCEPTED[\s\S]*CROSS_SCOPE_STORAGE_INSERT_WAS_ACCEPTED/],
   ["offline outbox and restart test", "offline", /STORE_OUTBOX[\s\S]*resumes the sequence after restart/],
+  ["repeatable ten-minute offline drill", "offline", /offlineDrill[\s\S]*verifyFixture/],
   ["server error sink", "observability", /MATHIN_ERROR_REPORT_URL[\s\S]*observability\.delivery_failed/],
   ["append-only operational error dashboard", "operations", /operational_errors[\s\S]*requirePerm\(locale, "audit\.view"\)/],
   ["guardian consent and requests", "migrations", /guardian_consents[\s\S]*account_requests/],

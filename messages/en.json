@@ -1367,6 +1367,7 @@
       "ended": "Class has ended",
       "reopenClass": "Reopen class",
       "rehearsalBadge": "Rehearsal",
+      "offlineDrillBadge": "Offline drill",
       "rehearsalHint": "Page turns, boards and stars in rehearsal stay in this window only — nothing is recorded or synced.",
       "cancel": "Cancel"
     },

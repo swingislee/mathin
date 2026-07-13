@@ -28,6 +28,7 @@ export default async function LiveClassPage({
 
   // 试讲模式仅教师可用：本地临时事件流，不落库、不同步、不改课次状态
   const rehearsal = mode === "rehearsal" && classroom.myRole === "teacher";
+  const offlineDrill = mode === "offline-drill" && classroom.myRole === "teacher";
   const role = !rehearsal && roleParam === "display"
     ? "display"
     : classroom.myRole === "teacher"
@@ -44,6 +45,7 @@ export default async function LiveClassPage({
       initialEvents={events}
       role={role}
       rehearsal={rehearsal}
+      offlineDrill={offlineDrill}
     />
   );
 }

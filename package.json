@@ -12,6 +12,7 @@
     "p4e:audit": "node scripts/verify-p4e.mjs && node scripts/verify-content-uids.mjs",
     "p4e:db-audit": "node scripts/run-p4e-db-audit.mjs",
     "p4e:offline-test": "vitest run tests/p4e-offline.test.ts",
+    "p4e:offline-fixture": "node scripts/p4e-offline-fixture.mjs",
     "db:types": "node scripts/generate-database-types.mjs",
     "db:types:check": "node scripts/verify-database-types.mjs",
     "migrations:ledger": "node scripts/migration-ledger.mjs",
