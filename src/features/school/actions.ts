@@ -1007,6 +1007,7 @@ const STAFF_ERROR_CODES = new Set([
   "INVALID_PERMISSION_KEYS",
   "INVALID_ROLE",
   "INVALID_REPLACEMENT",
+  "LAST_ACTIVE_ADMIN",
 ]);
 
 export type StaffActionResult = ActionResult;
@@ -1091,4 +1092,9 @@ export async function deactivateStaffAction(target: string, reassignTo: string |
   } catch (error) {
     return { ok: false, code: error instanceof Error && STAFF_ERROR_CODES.has(error.message) ? error.message : "UNKNOWN" };
   }
+}
+
+export interface StaffHandoverPreview { studentCount:number; futureOverrideCount:number; classroomCount:number }
+export async function getStaffHandoverPreviewAction(target:string):Promise<StaffHandoverPreview>{
+  const{supabase}=await authorizedClient("staff.manage");const{data,error}=await supabase.rpc("get_staff_handover_preview",{p_target:target});if(error)throw new Error(error.message);const row=(data??[])[0] as {student_count:number;future_override_count:number;classroom_count:number}|undefined;return{studentCount:Number(row?.student_count??0),futureOverrideCount:Number(row?.future_override_count??0),classroomCount:Number(row?.classroom_count??0)};
 }

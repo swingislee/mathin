@@ -21,6 +21,7 @@ import { inputClass, selectClass } from "./controls";
 import {
   findProfileByEmailAction,
   deactivateStaffAction,
+  getStaffHandoverPreviewAction,
   grantStaffRoleAction,
   promoteToStaffAction,
   revokeStaffRoleAction,
@@ -38,6 +39,7 @@ const KNOWN_ERR = new Set([
   "TARGET_NOT_STAFF",
   "NOT_FOUND",
   "INVALID_REPLACEMENT",
+  "LAST_ACTIVE_ADMIN",
 ]);
 
 export function StaffMembersPanel({
@@ -61,6 +63,7 @@ export function StaffMembersPanel({
   const [dialogError, setDialogError] = useState<string | null>(null);
   const [deactivateTarget, setDeactivateTarget] = useState<StaffMember | null>(null);
   const [reassignTo, setReassignTo] = useState("");
+  const [handoverPreview,setHandoverPreview]=useState<{studentCount:number;futureOverrideCount:number;classroomCount:number}|null>(null);
 
   // 添加员工：邮箱查找 → 命中显示姓名+身份；student/parent 且 admin 才有「提升为员工」
   const [email, setEmail] = useState("");
@@ -210,7 +213,7 @@ export function StaffMembersPanel({
                   ) : (
                     <span className="inline-flex gap-3">
                       <button type="button" onClick={() => openDialog(member)} className="text-xs text-muted underline underline-offset-2 hover:text-ink">{t("manageRoles")}</button>
-                      {member.isActive && <button type="button" onClick={() => { setDeactivateTarget(member); setReassignTo(""); setDialogError(null); }} className="text-xs text-rose underline underline-offset-2">{t("deactivate")}</button>}
+                      {member.isActive && <button type="button" onClick={() => { setDeactivateTarget(member); setReassignTo(""); setDialogError(null); setHandoverPreview(null); void getStaffHandoverPreviewAction(member.userId).then(setHandoverPreview).catch(()=>setDialogError(t("actionFailed"))); }} className="text-xs text-rose underline underline-offset-2">{t("deactivate")}</button>}
                     </span>
                   )}
                 </TableCell>
@@ -311,9 +314,10 @@ export function StaffMembersPanel({
         <DialogContent>
           <DialogHeader><DialogTitle>{t("deactivateTitle", { name: deactivateTarget?.displayName ?? "" })}</DialogTitle></DialogHeader>
           <p className="text-sm text-muted">{t("deactivateHint")}</p>
+          {handoverPreview&&<ul className="grid gap-2 rounded-xl bg-background p-3 text-sm"><li>{t("handoverStudents",{count:handoverPreview.studentCount})}</li><li>{t("handoverSessions",{count:handoverPreview.futureOverrideCount})}</li><li>{t("handoverClassrooms",{count:handoverPreview.classroomCount})}</li></ul>}
           <select value={reassignTo} onChange={(event) => setReassignTo(event.target.value)} className={selectClass}>
             <option value="">{t("noReplacement")}</option>
-            {members.filter((member) => member.isActive && member.identity === "staff" && member.userId !== deactivateTarget?.userId).map((member) => <option key={member.userId} value={member.userId}>{member.displayName}</option>)}
+            {members.filter((member) => member.isActive && member.userId !== deactivateTarget?.userId).map((member) => <option key={member.userId} value={member.userId}>{member.displayName}</option>)}
           </select>
           {dialogError && <p className="text-xs text-rose">{dialogError}</p>}
           <DialogFooter>
