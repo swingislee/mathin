@@ -6,9 +6,10 @@ import { JsonLd } from "@/components/json-ld";
 import { MdxContent } from "@/components/mdx-content";
 import { SiteHeader } from "@/components/site-header";
 import { Star4 } from "@/components/star4";
+import { TranslationNotice } from "@/components/translation-notice";
 import { MarkRead } from "@/features/minds/lamp";
 import { Link } from "@/i18n/navigation";
-import { getMind, getMinds, getTermsByMind } from "@/lib/content";
+import { getMind, getMinds, getTermsByMind, mindContentLocales } from "@/lib/content";
 import { breadcrumbJsonLd } from "@/lib/jsonld";
 import { buildMetadata } from "@/lib/seo";
 
@@ -16,17 +17,17 @@ export function generateStaticParams() {
   return getMinds().map((m) => ({ slug: m.slug }));
 }
 
-/** 正文只有中文，同概念页：/en 是重复品，canonical 指回中文版、不产出 hreflang。 */
+/** 同概念页：有英文正文才宣称有 en 版本，否则 canonical 指回中文版、不产出 hreflang。 */
 export async function generateMetadata({ params }: { params: Promise<{ locale: string; slug: string }> }): Promise<Metadata> {
   const { locale, slug } = await params;
-  const mind = getMind(slug);
+  const mind = getMind(locale, slug);
   if (!mind) return {};
   return buildMetadata({
     locale,
     path: `/minds/${mind.slug}`,
     title: mind.title,
     description: mind.summary,
-    contentLocales: ["zh"],
+    contentLocales: mindContentLocales(mind.slug),
     type: "article",
   });
 }
@@ -34,12 +35,13 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 export default async function MindPage({ params }: { params: Promise<{ locale: string; slug: string }> }) {
   const { locale, slug } = await params;
   setRequestLocale(locale);
-  const mind = getMind(slug);
+  const mind = getMind(locale, slug);
   if (!mind) notFound();
   const t = await getTranslations("mindsSection");
   const nav = await getTranslations("nav");
   const common = await getTranslations("common");
-  const appearsIn = getTermsByMind(mind.slug);
+  const appearsIn = getTermsByMind(locale, mind.slug);
+  const contentLang = mind.contentLocale === "en" ? "en" : "zh-CN";
 
   return (
     <main data-planet="lamplighter" className="flex min-h-screen flex-col">
@@ -60,10 +62,14 @@ export default async function MindPage({ params }: { params: Promise<{ locale: s
           <span className="text-ink">{mind.title}</span>
         </nav>
 
-        <h1 className="mt-8 font-display text-3xl md:text-4xl">{mind.title}</h1>
-        {mind.summary && <p className="mt-4 border-l-2 border-[var(--p-accent)] pl-4 leading-7 text-muted">{mind.summary}</p>}
+        {/* 正文的语言未必是页面的语言（回退时 /en 上是中文），就地标注 */}
+        <h1 lang={contentLang} className="mt-8 font-display text-3xl md:text-4xl">{mind.title}</h1>
+        {mind.summary && <p lang={contentLang} className="mt-4 border-l-2 border-[var(--p-accent)] pl-4 leading-7 text-muted">{mind.summary}</p>}
+        <TranslationNotice locale={locale} contentLocale={mind.contentLocale} />
 
-        <MdxContent source={mind.body} />
+        <div lang={contentLang}>
+          <MdxContent source={mind.body} />
+        </div>
 
         {appearsIn.length > 0 && (
           <div className="mt-12">

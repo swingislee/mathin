@@ -7,12 +7,13 @@ import { JsonLd } from "@/components/json-ld";
 import { MdxContent } from "@/components/mdx-content";
 import { SiteHeader } from "@/components/site-header";
 import { Star4 } from "@/components/star4";
+import { TranslationNotice } from "@/components/translation-notice";
 import { getTool } from "@/features/tools/registry";
 import { Quiz } from "@/features/terms/quiz";
 import { MarkStudied } from "@/features/terms/studied";
 import { getIsland, getPlanet } from "@/features/terms/universe";
 import { Link } from "@/i18n/navigation";
-import { getMind, getTerm, getTermDescendants, getTermRelation, getTerms } from "@/lib/content";
+import { getMind, getTerm, getTermDescendants, getTermRelation, getTerms, termContentLocales } from "@/lib/content";
 import { breadcrumbJsonLd, learningResourceJsonLd } from "@/lib/jsonld";
 import { buildMetadata, canonicalUrl } from "@/lib/seo";
 
@@ -38,23 +39,24 @@ export function generateStaticParams() {
   return getTerms().map((t) => ({ slug: t.slug }));
 }
 
+
 /** 概念是一份封闭清单：未知 slug（含 P4G-1 改名前的拼音 URL）由路由层直接 404，
  *  带真状态码，再渲染 [locale]/not-found.tsx。这要求本段之上没有流式边界，
  *  否则外壳先发出、状态码锁死在 200，只剩 soft 404——loading.tsx 因此不放在 /terms 顶层。 */
 export const dynamicParams = false;
 
-/** 正文目前只有中文（英译是内容工程，见 doc15 §1 非目标）：/en 的概念页只是中文页的重复品，
- *  canonical 指回中文版、不宣称有 en 语言备份。P4G-4 打通 content/{zh,en} 后按篇改 contentLocales。 */
+/** 有英文正文的篇目才宣称有 en 版本；没有的仍是中文页的重复品，canonical 指回中文版
+ *  （contentLocales 的含义见 lib/seo，可用语言由 content/en 下有没有这篇 MDX 决定）。 */
 export async function generateMetadata({ params }: { params: Promise<{ locale: string; slug: string }> }): Promise<Metadata> {
   const { locale, slug } = await params;
-  const term = getTerm(slug);
+  const term = getTerm(locale, slug);
   if (!term) return {};
   return buildMetadata({
     locale,
     path: `/terms/concepts/${term.slug}`,
     title: term.title,
     description: term.summary,
-    contentLocales: ["zh"],
+    contentLocales: termContentLocales(term.slug),
     type: "article",
   });
 }
@@ -62,7 +64,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 export default async function TermPage({ params }: { params: Promise<{ locale: string; slug: string }> }) {
   const { locale, slug } = await params;
   setRequestLocale(locale);
-  const term = getTerm(slug);
+  const term = getTerm(locale, slug);
   if (!term) notFound();
   const t = await getTranslations("terms");
   const tu = await getTranslations("termsUniverse");
@@ -73,11 +75,12 @@ export default async function TermPage({ params }: { params: Promise<{ locale: s
   const relatedTools = relation.tools.map(getTool).filter((item)=>item!==undefined);
   const tTools = tool || relatedTools.length ? await getTranslations("tools") : null;
   const tGames = relation.games.length ? await getTranslations("games") : null;
-  const prereqs = term.deps.map((d) => getTerm(d)).filter((x) => x !== undefined);
-  const descendants = getTermDescendants(term.slug);
-  const minds = term.minds.map((m) => getMind(m)).filter((x) => x !== undefined);
+  const prereqs = term.deps.map((d) => getTerm(locale, d)).filter((x) => x !== undefined);
+  const descendants = getTermDescendants(locale, term.slug);
+  const minds = term.minds.map((m) => getMind(locale, m)).filter((x) => x !== undefined);
   const planet = getPlanet(term.planet);
   const island = planet ? getIsland(term.planet, term.island) : undefined;
+  const contentLang = term.contentLocale === "en" ? "en" : "zh-CN";
 
   // 结构化数据与页面顶部的面包屑同源，两者不会说不一样的话
   const crumbs = [
@@ -94,7 +97,7 @@ export default async function TermPage({ params }: { params: Promise<{ locale: s
         data={[
           breadcrumbJsonLd(locale, crumbs),
           learningResourceJsonLd(term, {
-            url: canonicalUrl(locale, `/terms/concepts/${term.slug}`, ["zh"]),
+            url: canonicalUrl(locale, `/terms/concepts/${term.slug}`, termContentLocales(term.slug)),
             stageLabel: t(`stage${term.stage}`),
             prerequisites: prereqs.map((p) => p.title),
           }),
@@ -128,12 +131,16 @@ export default async function TermPage({ params }: { params: Promise<{ locale: s
           <span className="rounded-full border px-2.5 py-0.5 text-xs text-muted">{t(`stage${term.stage}`)}</span>
           {term.topic && <span className="rounded-full border px-2.5 py-0.5 text-xs text-muted">{term.topic}</span>}
         </div>
-        <h1 className="mt-3 font-display text-3xl md:text-4xl">{term.title}</h1>
-        {term.summary && <p className="mt-4 border-l-2 border-[var(--p-accent)] pl-4 leading-7 text-muted">{term.summary}</p>}
+        {/* 正文的语言未必是页面的语言（回退时 /en 上是中文），就地标注给读屏器与浏览器翻译 */}
+        <h1 lang={contentLang} className="mt-3 font-display text-3xl md:text-4xl">{term.title}</h1>
+        {term.summary && <p lang={contentLang} className="mt-4 border-l-2 border-[var(--p-accent)] pl-4 leading-7 text-muted">{term.summary}</p>}
+        <TranslationNotice locale={locale} contentLocale={term.contentLocale} />
 
         {/* 一、定义 */}
         <SectionHeading>{t("definition")}</SectionHeading>
-        <MdxContent source={term.body} />
+        <div lang={contentLang}>
+          <MdxContent source={term.body} />
+        </div>
 
         {/* 二、看见它（交互演示槽 → 工具注册表） */}
         {tool && tTools && (
@@ -185,7 +192,9 @@ export default async function TermPage({ params }: { params: Promise<{ locale: s
         {term.quiz.length > 0 && (
           <>
             <SectionHeading>{t("tryIt")}</SectionHeading>
-            <Quiz items={term.quiz} correctLabel={t("correct")} wrongLabel={t("wrong")} />
+            <div lang={contentLang}>
+              <Quiz items={term.quiz} correctLabel={t("correct")} wrongLabel={t("wrong")} />
+            </div>
           </>
         )}
         <SectionHeading>{t("nextSteps")}</SectionHeading>

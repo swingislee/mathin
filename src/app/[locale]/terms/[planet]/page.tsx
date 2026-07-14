@@ -42,7 +42,7 @@ export default async function PlanetPage({ params }: { params: Promise<{ locale:
   const common = await getTranslations("common");
 
   const islands = planet.islands.map((isl) => {
-    const nodes = getTermsByIsland(planet.id, isl.id);
+    const nodes = getTermsByIsland(locale, planet.id, isl.id);
     return {
       id: isl.id,
       name: t(`islandNames.${planet.id}.${isl.id}.name`),

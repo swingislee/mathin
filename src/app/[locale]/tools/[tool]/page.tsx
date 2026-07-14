@@ -28,7 +28,7 @@ export default async function ToolPage({ params }: { params: Promise<{ locale: s
   const def = getTool(tool);
   if (!def) notFound();
   const t = await getTranslations("tools");
-  const relatedTerms = getTermsForTool(tool);
+  const relatedTerms = getTermsForTool(locale, tool);
   const nav = await getTranslations("nav");
   const common = await getTranslations("common");
   return (

@@ -46,7 +46,7 @@ export function breadcrumbJsonLd(locale: string, crumbs: Crumb[]) {
 }
 
 /** 概念页的 LearningResource：教什么（teaches）、给谁（educationalLevel）、先修什么。
- *  正文目前只有中文，inLanguage 因此固定 zh-CN（与 canonical 指向中文页一致，见 seo.ts）。 */
+ *  inLanguage 取**正文实际的语言**（回退时 /en 上仍是中文），与 canonical 的指向一致（见 seo.ts）。 */
 export function learningResourceJsonLd(
   term: TermEntry,
   options: { url: string; stageLabel: string; prerequisites: string[] },
@@ -57,7 +57,7 @@ export function learningResourceJsonLd(
     name: term.title,
     url: options.url,
     description: term.summary,
-    inLanguage: "zh-CN",
+    inLanguage: term.contentLocale === "en" ? "en" : "zh-CN",
     learningResourceType: "concept",
     teaches: term.title,
     educationalLevel: options.stageLabel,

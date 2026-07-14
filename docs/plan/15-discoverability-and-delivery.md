@@ -121,6 +121,16 @@
 
 **验收**：`/en/terms/concepts/percentage` 在英文 MDX 存在时渲染英文正文、不存在时渲染中文正文并显式标注；zh 行为零回归。
 
+> **落地（P4G-4）：中文是骨架，英文只覆写展示层**。这是本节唯一重要的设计决定——
+>
+> - `content/{zh,en}/{terms,minds}/`；`glossary.json` / `relations.json` 留在 `content/` 根，它们**语言中立**。
+> - **结构字段只从 `content/zh` 读**：uid、deps、minds、stage、order、planet、island、pathOrder，以及图鉴编号 `no`。英文 MDX 只需要 `title` / `summary` / 正文 / `quiz`，其余**不必也不该**重复。这样缺一篇英文既不会打断图谱、也不会让 `/en` 的编号跟 `/zh` 对不上——`getTerms(locale)` 是"取中文骨架 → 用英文覆写展示层"，不是"读两个平行目录"。
+> - `TermEntry.contentLocale` / `MindEntry.contentLocale` 记录**这份正文实际是什么语言**。回退时 `/en` 上它是 `"zh"`，页面据此渲染 `<TranslationNotice>`（"This page has no English version yet…"），并把 `lang="zh-CN"` 就地打在标题/摘要/正文/测验上——读屏器不会用英文语音念中文（呼应 14-§5.2）。
+> - **同一个事实驱动三处**：`termContentLocales(slug)` / `mindContentLocales(slug)` 决定该篇的 `contentLocales`，于是 canonical、hreflang、sitemap、`LearningResource.inLanguage` 全部自动一致。**补一篇英文 MDX，这四处同时翻面，无需改代码。**
+> - `verify-content-uids.mjs` 新增断言：`content/en` 里的文件名必须在 `content/zh` 里有同名篇目（孤儿译文既不进图谱也不进 sitemap，必须拦住）。
+>
+> 验证方式：临时放入一篇 `content/en/terms/percent.mdx` 实跑——`/en/.../percent` 渲染英文正文、canonical 指向自身、三条 hreflang、`inLanguage: "en"`、无回退提示；同一时刻 `/en/.../ratio` 仍是中文正文 + 回退提示 + canonical 指回 `/zh`、零 hreflang；`/zh` 两者均无回归。验证后删除该文件——**英文内容本身不在本文范围**（§1 非目标），管线已就位，随时可填。
+
 ### 3.2 拼音标识符债——**永久 uid 里冻着拼音**（用户明确要求：MDX 命名用英文数学名词；趁现在改，成本为零）
 
 **现状证据**：

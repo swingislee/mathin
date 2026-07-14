@@ -20,7 +20,7 @@ export default async function GraphPage({ params }: { params: Promise<{ locale: 
   setRequestLocale(locale);
   const t = await getTranslations("terms");
   const tu = await getTranslations("termsUniverse");
-  const { nodes, edges } = layoutGalaxy(getTerms());
+  const { nodes, edges } = layoutGalaxy(getTerms(locale));
   return (
     <div className="night">
       <main className="flex min-h-screen flex-col" style={{ background: "#121524" }}>

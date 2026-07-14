@@ -3,7 +3,8 @@ import path from "node:path";
 import matter from "gray-matter";
 
 const root = process.cwd();
-const dir = path.join(root, "content", "terms");
+/** 中文是骨架语言：结构（uid/deps/星球/编号）只以 content/zh 为准（docs/plan/15-§3.1）。 */
+const dir = path.join(root, "content", "zh", "terms");
 const files = fs.readdirSync(dir).filter((name) => name.endsWith(".mdx"));
 const seen = new Map();
 const slugs = new Set(files.map((name) => name.replace(/\.mdx$/, "")));
@@ -51,10 +52,30 @@ const relations = JSON.parse(fs.readFileSync(path.join(root, "content", "relatio
 for (const uid of Object.keys(relations)) {
   if (!seen.has(uid)) errors.push(`relations.json: 未知 uid ${uid}`);
 }
+
+/** 译文必须挂在骨架上：content/en 里的文件名要在 content/zh 里有同名篇目，
+ *  否则它既不进图谱也不进 sitemap，成了谁也看不见的孤儿。 */
+function translationsOf(sub) {
+  const dir = path.join(root, "content", "en", sub);
+  if (!fs.existsSync(dir)) return [];
+  return fs.readdirSync(dir).filter((name) => name.endsWith(".mdx"));
+}
+const baseMinds = new Set(
+  fs.readdirSync(path.join(root, "content", "zh", "minds")).filter((n) => n.endsWith(".mdx")).map((n) => n.replace(/\.mdx$/, "")),
+);
+const translated = { terms: translationsOf("terms"), minds: translationsOf("minds") };
+for (const [sub, base] of [["terms", slugs], ["minds", baseMinds]]) {
+  for (const file of translated[sub]) {
+    const slug = file.replace(/\.mdx$/, "");
+    if (!base.has(slug)) errors.push(`en/${sub}/${file}: content/zh/${sub} 里没有同名篇目（英文只覆写展示层，文件名必须一致）`);
+  }
+}
+
 if (errors.length) {
   console.error(errors.join("\n"));
   process.exit(1);
 }
 console.log(
-  `content uid audit passed (${files.length} terms, ${glossary.length} glossary entries, ${Object.keys(relations).length} relation entries)`,
+  `content uid audit passed (${files.length} terms, ${glossary.length} glossary entries, ${Object.keys(relations).length} relation entries, ` +
+    `en 译文 ${translated.terms.length} terms / ${translated.minds.length} minds)`,
 );

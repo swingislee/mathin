@@ -29,7 +29,7 @@ export default async function TermsPage({ params }: { params: Promise<{ locale: 
     ]),
   );
   const planetSlugs: Record<string, string[]> = {};
-  for (const term of getTerms()) {
+  for (const term of getTerms(locale)) {
     (planetSlugs[term.planet] ??= []).push(term.slug);
   }
 

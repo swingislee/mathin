@@ -17,7 +17,7 @@ export default async function MindsPage({ params }: { params: Promise<{ locale: 
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("mindsSection");
-  const minds = getMinds();
+  const minds = getMinds(locale);
   return (
     <SectionShell section="minds" intro={t("intro")}>
       {/* 一条街道的灯：纵向单列（docs/plan/05-3.3） */}

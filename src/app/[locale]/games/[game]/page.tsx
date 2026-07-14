@@ -31,7 +31,7 @@ export default async function GamePage({ params }: { params: Promise<{ locale: s
   const t = await getTranslations("games");
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const relatedTerms = getTermsForGame(game);
+  const relatedTerms = getTermsForGame(locale, game);
   const nav = await getTranslations("nav");
   const common = await getTranslations("common");
   return (

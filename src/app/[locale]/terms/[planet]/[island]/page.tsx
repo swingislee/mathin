@@ -41,7 +41,7 @@ export default async function IslandPage({ params }: { params: Promise<{ locale:
   const t = await getTranslations("termsUniverse");
   const nav = await getTranslations("nav");
   const common = await getTranslations("common");
-  const nodes = getTermsByIsland(planet.id, island.id);
+  const nodes = getTermsByIsland(locale, planet.id, island.id);
 
   return (
     <main data-planet="geographer" className="flex min-h-screen flex-col">
