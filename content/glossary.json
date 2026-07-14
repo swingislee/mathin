@@ -1,0 +1,428 @@
+[
+  {
+    "uid": "cn-term-adding-and-subtracting-decimals",
+    "slug": "adding-and-subtracting-decimals",
+    "zh": "小数加减法",
+    "en": "Adding and Subtracting Decimals"
+  },
+  {
+    "uid": "cn-term-adding-and-subtracting-fractions",
+    "slug": "adding-and-subtracting-fractions",
+    "zh": "分数加减法",
+    "en": "Adding and Subtracting Fractions"
+  },
+  {
+    "uid": "cn-term-addition",
+    "slug": "addition",
+    "zh": "加法",
+    "en": "Addition"
+  },
+  {
+    "uid": "cn-term-angle",
+    "slug": "angle",
+    "zh": "角",
+    "en": "Angle"
+  },
+  {
+    "uid": "cn-term-area",
+    "slug": "area",
+    "zh": "面积",
+    "en": "Area"
+  },
+  {
+    "uid": "cn-term-area-of-a-circle",
+    "slug": "area-of-a-circle",
+    "zh": "圆的面积",
+    "en": "Area of a Circle"
+  },
+  {
+    "uid": "cn-term-area-of-polygons",
+    "slug": "area-of-polygons",
+    "zh": "多边形的面积",
+    "en": "Area of Polygons"
+  },
+  {
+    "uid": "cn-term-bar-graph",
+    "slug": "bar-graph",
+    "zh": "条形统计图",
+    "en": "Bar Graph"
+  },
+  {
+    "uid": "cn-term-base-ten-system",
+    "slug": "base-ten-system",
+    "zh": "十进制计数法",
+    "en": "Base Ten System"
+  },
+  {
+    "uid": "cn-term-circle",
+    "slug": "circle",
+    "zh": "圆",
+    "en": "Circle"
+  },
+  {
+    "uid": "cn-term-circumference-and-pi",
+    "slug": "circumference-and-pi",
+    "zh": "圆的周长与圆周率",
+    "en": "Circumference and Pi"
+  },
+  {
+    "uid": "cn-term-classifying-data",
+    "slug": "classifying-data",
+    "zh": "数据分类",
+    "en": "Classifying Data"
+  },
+  {
+    "uid": "cn-term-collecting-and-organizing-data",
+    "slug": "collecting-and-organizing-data",
+    "zh": "数据的收集与整理",
+    "en": "Collecting and Organizing Data"
+  },
+  {
+    "uid": "cn-term-common-denominators-and-simplifying",
+    "slug": "common-denominators-and-simplifying",
+    "zh": "通分与约分",
+    "en": "Common Denominators and Simplifying"
+  },
+  {
+    "uid": "cn-term-comparing-numbers",
+    "slug": "comparing-numbers",
+    "zh": "大小比较",
+    "en": "Comparing Numbers"
+  },
+  {
+    "uid": "cn-term-cylinder-and-cone",
+    "slug": "cylinder-and-cone",
+    "zh": "圆柱和圆锥",
+    "en": "Cylinder and Cone"
+  },
+  {
+    "uid": "cn-term-data-table",
+    "slug": "data-table",
+    "zh": "统计表",
+    "en": "Data Table"
+  },
+  {
+    "uid": "cn-term-direct-proportion",
+    "slug": "direct-proportion",
+    "zh": "正比例",
+    "en": "Direct Proportion"
+  },
+  {
+    "uid": "cn-term-direction-and-position",
+    "slug": "direction-and-position",
+    "zh": "方向与位置",
+    "en": "Direction and Position"
+  },
+  {
+    "uid": "cn-term-division",
+    "slug": "division",
+    "zh": "除法",
+    "en": "Division"
+  },
+  {
+    "uid": "cn-term-double-bar-and-line-graphs",
+    "slug": "double-bar-and-line-graphs",
+    "zh": "复式统计图表",
+    "en": "Double Bar and Line Graphs"
+  },
+  {
+    "uid": "cn-term-enlargement-and-reduction",
+    "slug": "enlargement-and-reduction",
+    "zh": "图形的放大与缩小",
+    "en": "Enlargement and Reduction"
+  },
+  {
+    "uid": "cn-term-equivalent-decimals",
+    "slug": "equivalent-decimals",
+    "zh": "小数的性质",
+    "en": "Equivalent Decimals"
+  },
+  {
+    "uid": "cn-term-equivalent-fractions",
+    "slug": "equivalent-fractions",
+    "zh": "分数的基本性质",
+    "en": "Equivalent Fractions"
+  },
+  {
+    "uid": "cn-term-estimation-and-rounding",
+    "slug": "estimation-and-rounding",
+    "zh": "估算与近似数",
+    "en": "Estimation and Rounding"
+  },
+  {
+    "uid": "cn-term-even-and-odd-numbers",
+    "slug": "even-and-odd-numbers",
+    "zh": "奇数与偶数",
+    "en": "Even and Odd Numbers"
+  },
+  {
+    "uid": "cn-term-factors-and-multiples",
+    "slug": "factors-and-multiples",
+    "zh": "因数与倍数",
+    "en": "Factors and Multiples"
+  },
+  {
+    "uid": "cn-term-line-graph",
+    "slug": "line-graph",
+    "zh": "折线统计图",
+    "en": "Line Graph"
+  },
+  {
+    "uid": "cn-term-line-segment",
+    "slug": "line-segment",
+    "zh": "线段",
+    "en": "Line Segment"
+  },
+  {
+    "uid": "cn-term-map-scale",
+    "slug": "map-scale",
+    "zh": "比例尺",
+    "en": "Map Scale"
+  },
+  {
+    "uid": "cn-term-mean",
+    "slug": "mean",
+    "zh": "平均数",
+    "en": "Mean"
+  },
+  {
+    "uid": "cn-term-measuring-length",
+    "slug": "measuring-length",
+    "zh": "长度单位与测量",
+    "en": "Measuring Length"
+  },
+  {
+    "uid": "cn-term-multi-digit-numbers",
+    "slug": "multi-digit-numbers",
+    "zh": "多位数的认识",
+    "en": "Multi Digit Numbers"
+  },
+  {
+    "uid": "cn-term-multiplication",
+    "slug": "multiplication",
+    "zh": "乘法",
+    "en": "Multiplication"
+  },
+  {
+    "uid": "cn-term-multiplicative-comparison",
+    "slug": "multiplicative-comparison",
+    "zh": "倍",
+    "en": "Multiplicative Comparison"
+  },
+  {
+    "uid": "cn-term-multiplying-and-dividing-decimals",
+    "slug": "multiplying-and-dividing-decimals",
+    "zh": "小数乘除法",
+    "en": "Multiplying and Dividing Decimals"
+  },
+  {
+    "uid": "cn-term-multiplying-and-dividing-fractions",
+    "slug": "multiplying-and-dividing-fractions",
+    "zh": "分数乘除法",
+    "en": "Multiplying and Dividing Fractions"
+  },
+  {
+    "uid": "cn-term-negative-numbers",
+    "slug": "negative-numbers",
+    "zh": "负数",
+    "en": "Negative Numbers"
+  },
+  {
+    "uid": "cn-term-nets-of-solids",
+    "slug": "nets-of-solids",
+    "zh": "展开图",
+    "en": "Nets of Solids"
+  },
+  {
+    "uid": "cn-term-number-line",
+    "slug": "number-line",
+    "zh": "数轴",
+    "en": "Number Line"
+  },
+  {
+    "uid": "cn-term-number-sequence",
+    "slug": "number-sequence",
+    "zh": "数的顺序",
+    "en": "Number Sequence"
+  },
+  {
+    "uid": "cn-term-order-of-operations",
+    "slug": "order-of-operations",
+    "zh": "混合运算与运算顺序",
+    "en": "Order of Operations"
+  },
+  {
+    "uid": "cn-term-ordered-pairs",
+    "slug": "ordered-pairs",
+    "zh": "用数对确定位置",
+    "en": "Ordered Pairs"
+  },
+  {
+    "uid": "cn-term-percent",
+    "slug": "percent",
+    "zh": "百分数",
+    "en": "Percent"
+  },
+  {
+    "uid": "cn-term-perimeter",
+    "slug": "perimeter",
+    "zh": "周长",
+    "en": "Perimeter"
+  },
+  {
+    "uid": "cn-term-perpendicular-and-parallel",
+    "slug": "perpendicular-and-parallel",
+    "zh": "垂直与平行",
+    "en": "Perpendicular and Parallel"
+  },
+  {
+    "uid": "cn-term-plane-figures",
+    "slug": "plane-figures",
+    "zh": "平面图形的初步认识",
+    "en": "Plane Figures"
+  },
+  {
+    "uid": "cn-term-prime-and-composite-numbers",
+    "slug": "prime-and-composite-numbers",
+    "zh": "质数与合数",
+    "en": "Prime and Composite Numbers"
+  },
+  {
+    "uid": "cn-term-probability",
+    "slug": "probability",
+    "zh": "可能性",
+    "en": "Probability"
+  },
+  {
+    "uid": "cn-term-properties-of-operations",
+    "slug": "properties-of-operations",
+    "zh": "运算律",
+    "en": "Properties of Operations"
+  },
+  {
+    "uid": "cn-term-proportion",
+    "slug": "proportion",
+    "zh": "比例",
+    "en": "Proportion"
+  },
+  {
+    "uid": "cn-term-quadrilateral",
+    "slug": "quadrilateral",
+    "zh": "四边形",
+    "en": "Quadrilateral"
+  },
+  {
+    "uid": "cn-term-quantitative-relationships",
+    "slug": "quantitative-relationships",
+    "zh": "常见数量关系",
+    "en": "Quantitative Relationships"
+  },
+  {
+    "uid": "cn-term-ratio",
+    "slug": "ratio",
+    "zh": "比",
+    "en": "Ratio"
+  },
+  {
+    "uid": "cn-term-rays-and-lines",
+    "slug": "rays-and-lines",
+    "zh": "射线与直线",
+    "en": "Rays and Lines"
+  },
+  {
+    "uid": "cn-term-rectangle-and-square",
+    "slug": "rectangle-and-square",
+    "zh": "长方形与正方形",
+    "en": "Rectangle and Square"
+  },
+  {
+    "uid": "cn-term-rectangular-prism-and-cube",
+    "slug": "rectangular-prism-and-cube",
+    "zh": "长方体和正方体",
+    "en": "Rectangular Prism and Cube"
+  },
+  {
+    "uid": "cn-term-regrouping",
+    "slug": "regrouping",
+    "zh": "进位与退位",
+    "en": "Regrouping"
+  },
+  {
+    "uid": "cn-term-remainder",
+    "slug": "remainder",
+    "zh": "余数",
+    "en": "Remainder"
+  },
+  {
+    "uid": "cn-term-solid-figures",
+    "slug": "solid-figures",
+    "zh": "立体图形的初步认识",
+    "en": "Solid Figures"
+  },
+  {
+    "uid": "cn-term-subtraction",
+    "slug": "subtraction",
+    "zh": "减法",
+    "en": "Subtraction"
+  },
+  {
+    "uid": "cn-term-surface-area",
+    "slug": "surface-area",
+    "zh": "表面积",
+    "en": "Surface Area"
+  },
+  {
+    "uid": "cn-term-transformations",
+    "slug": "transformations",
+    "zh": "图形的运动",
+    "en": "Transformations"
+  },
+  {
+    "uid": "cn-term-triangle",
+    "slug": "triangle",
+    "zh": "三角形",
+    "en": "Triangle"
+  },
+  {
+    "uid": "cn-term-understanding-decimals",
+    "slug": "understanding-decimals",
+    "zh": "小数的意义",
+    "en": "Understanding Decimals"
+  },
+  {
+    "uid": "cn-term-understanding-fractions",
+    "slug": "understanding-fractions",
+    "zh": "分数的意义",
+    "en": "Understanding Fractions"
+  },
+  {
+    "uid": "cn-term-unit-fraction",
+    "slug": "unit-fraction",
+    "zh": "分数单位",
+    "en": "Unit Fraction"
+  },
+  {
+    "uid": "cn-term-variables",
+    "slug": "variables",
+    "zh": "用字母表示数",
+    "en": "Variables"
+  },
+  {
+    "uid": "cn-term-views-of-objects",
+    "slug": "views-of-objects",
+    "zh": "观察物体",
+    "en": "Views of Objects"
+  },
+  {
+    "uid": "cn-term-volume-and-capacity",
+    "slug": "volume-and-capacity",
+    "zh": "体积与容积",
+    "en": "Volume and Capacity"
+  },
+  {
+    "uid": "cn-term-whole-numbers",
+    "slug": "whole-numbers",
+    "zh": "自然数",
+    "en": "Whole Numbers"
+  }
+]

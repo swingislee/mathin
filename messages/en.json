@@ -49,6 +49,11 @@
     "unexpectedErrorHint": "The error was recorded. Retry now, or come back later if it continues.",
     "retry": "Retry"
   },
+  "notFound": {
+    "title": "This page wandered off",
+    "description": "The page you are looking for does not exist, or its address has changed. Head back to the atlas and start from a planet.",
+    "browseTerms": "Browse the atlas"
+  },
   "changes": {
     "title": "Recent changes",
     "label": "Change notifications, {count} unread",
@@ -308,13 +313,13 @@
       "followupToday": "Today",
       "activityTodayTitle": "Activities today & tomorrow",
       "activityTodayEmpty": "No activities in the next two days.",
-      "activityBooked": "{count} booked"
-      ,"reviewGapsTitle": "Missing session reviews"
-      ,"reviewGapsEmpty": "All sessions in the last 7 days are reviewed."
-      ,"videoQueueTitle": "Videos to review"
-      ,"videoQueueEmpty": "No videos waiting for review."
-      ,"renewalDueTitle": "Renewals due"
-      ,"renewalDueHint": "3 or fewer sessions remaining"
+      "activityBooked": "{count} booked",
+      "reviewGapsTitle": "Missing session reviews",
+      "reviewGapsEmpty": "All sessions in the last 7 days are reviewed.",
+      "videoQueueTitle": "Videos to review",
+      "videoQueueEmpty": "No videos waiting for review.",
+      "renewalDueTitle": "Renewals due",
+      "renewalDueHint": "3 or fewer sessions remaining"
     },
     "tileEdit": {
       "edit": "Edit layout",
@@ -340,8 +345,8 @@
       "staff": "Staff",
       "roles": "Roles",
       "children": "Children",
-      "assignments": "Assignments"
-      ,"activities": "Activities",
+      "assignments": "Assignments",
+      "activities": "Activities",
       "operations": "Error monitor"
     },
     "operations": {
@@ -354,18 +359,80 @@
       "release": "Release"
     },
     "activities": {
-      "title": "Activities", "intro": "Manage trials, assessments, workshops, lectures and competitions. Results are added to each student's follow-up timeline.",
-      "new": "New activity", "edit": "Edit", "upcoming": "Upcoming", "past": "Past ({count})", "empty": "No activities yet.",
-      "kind": "Type", "kind_trial_class": "Trial class", "kind_assessment_1v1": "1:1 assessment", "kind_sanbanfu": "Three-step workshop", "kind_lecture": "Lecture", "kind_competition": "Competition",
-      "titleLabel": "Title", "time": "Time", "duration": "Duration (minutes)", "location": "Location", "capacity": "Capacity", "remark": "Remark",
-      "counts": "{booked} booked · {attended} attended · capacity {capacity}", "searchStudent": "Search student to register", "outcome": "Outcome",
-      "status_booked": "Booked", "status_attended": "Attended", "status_no_show": "No-show", "status_cancelled": "Cancelled",
-      "attended": "Attended", "noShow": "No-show", "full": "This activity is full.", "deleteConfirm": "Delete this activity?", "actionFailed": "Action failed. Please try again.",
-      "activityCreated": "Activity created.", "activitySaved": "Activity saved.", "activityDeleted": "Activity deleted.", "bookSuccess": "Booked.", "resultMarked": "Result recorded.", "delete": "Delete",
-      "save": "Save", "cancel": "Cancel"
+      "title": "Activities",
+      "intro": "Manage trials, assessments, workshops, lectures and competitions. Results are added to each student's follow-up timeline.",
+      "new": "New activity",
+      "edit": "Edit",
+      "upcoming": "Upcoming",
+      "past": "Past ({count})",
+      "empty": "No activities yet.",
+      "kind": "Type",
+      "kind_trial_class": "Trial class",
+      "kind_assessment_1v1": "1:1 assessment",
+      "kind_sanbanfu": "Three-step workshop",
+      "kind_lecture": "Lecture",
+      "kind_competition": "Competition",
+      "titleLabel": "Title",
+      "time": "Time",
+      "duration": "Duration (minutes)",
+      "location": "Location",
+      "capacity": "Capacity",
+      "remark": "Remark",
+      "counts": "{booked} booked · {attended} attended · capacity {capacity}",
+      "searchStudent": "Search student to register",
+      "outcome": "Outcome",
+      "status_booked": "Booked",
+      "status_attended": "Attended",
+      "status_no_show": "No-show",
+      "status_cancelled": "Cancelled",
+      "attended": "Attended",
+      "noShow": "No-show",
+      "full": "This activity is full.",
+      "deleteConfirm": "Delete this activity?",
+      "actionFailed": "Action failed. Please try again.",
+      "activityCreated": "Activity created.",
+      "activitySaved": "Activity saved.",
+      "activityDeleted": "Activity deleted.",
+      "bookSuccess": "Booked.",
+      "resultMarked": "Result recorded.",
+      "delete": "Delete",
+      "save": "Save",
+      "cancel": "Cancel"
     },
-    "reviews": {"button":"Review","title":"Session reviews","summary":"Knowledge summary","student":"Student","entry":"Entry","exit":"Exit","focus":"Focus","participation":"Participation","mastery":"Mastery","comment":"Comment","save":"Save","cancel":"Cancel","failed":"Could not save reviews. Please retry.","saved":"Reviews saved."},
-    "videos": {"title":"Review session videos","uploadTitle":"Upload session video","upload":"Upload","uploaded":"Upload complete.","uploadFailed":"Upload failed. Check the file and network.","note":"Student note","queue":"Videos","pending":"Pending","reviewed":"Reviewed","comment":"Review comment","score":"Score","markReviewed":"Mark reviewed","select":"Select a video to review.","playback":"Play video","delete":"Delete","playbackFailed":"Failed to load video, please retry."},
+    "reviews": {
+      "button": "Review",
+      "title": "Session reviews",
+      "summary": "Knowledge summary",
+      "student": "Student",
+      "entry": "Entry",
+      "exit": "Exit",
+      "focus": "Focus",
+      "participation": "Participation",
+      "mastery": "Mastery",
+      "comment": "Comment",
+      "save": "Save",
+      "cancel": "Cancel",
+      "failed": "Could not save reviews. Please retry.",
+      "saved": "Reviews saved."
+    },
+    "videos": {
+      "title": "Review session videos",
+      "uploadTitle": "Upload session video",
+      "upload": "Upload",
+      "uploaded": "Upload complete.",
+      "uploadFailed": "Upload failed. Check the file and network.",
+      "note": "Student note",
+      "queue": "Videos",
+      "pending": "Pending",
+      "reviewed": "Reviewed",
+      "comment": "Review comment",
+      "score": "Score",
+      "markReviewed": "Mark reviewed",
+      "select": "Select a video to review.",
+      "playback": "Play video",
+      "delete": "Delete",
+      "playbackFailed": "Failed to load video, please retry."
+    },
     "courses": {
       "title": "Courses",
       "intro": "Courses, lectures and courseware templates — classes are built from here.",
@@ -396,42 +463,42 @@
       "objectives": "Objectives",
       "templatePages": "Template pages",
       "noObjectives": "None yet",
-      "notFound": "The course does not exist or you do not have access."
-      ,"newCourse": "New course"
-      ,"courseInfo": "Course information"
-      ,"courseTitle": "Course title"
-      ,"gradeLabel": "Grade"
-      ,"save": "Save"
-      ,"create": "Create"
-      ,"schoolTerms": "Academic term timeline"
-      ,"schoolTermsHint": "New records use the current term; activating another term never rewrites history."
-      ,"newSchoolTerm": "New term"
-      ,"currentSchoolTerm": "Current term"
-      ,"activateSchoolTerm": "Make current"
-      ,"newSchoolTermHint": "The term is created inactive. Verify dates before activating it."
-      ,"schoolYear": "Academic year start"
-      ,"semester": "Semester"
-      ,"semesterOne": "Semester 1"
-      ,"semesterTwo": "Semester 2"
-      ,"startsOn": "Starts on"
-      ,"endsOn": "Ends on"
-      ,"cancel": "Cancel"
-      ,"actionFailed": "Action failed. Please try again."
-      ,"courseCreated": "Course created."
-      ,"courseSaved": "Course info saved."
-      ,"lectureAdded": "Lecture added."
-      ,"lectureSaved": "Lecture saved."
-      ,"lectureDeleted": "Lecture deleted."
-      ,"lecturesReordered": "Lecture order updated."
-      ,"termCreated": "Term created."
-      ,"termActivated": "Set as current term."
-      ,"lectureName": "Lecture name"
-      ,"addLecture": "Add lecture"
-      ,"moveUp": "Move up"
-      ,"moveDown": "Move down"
-      ,"deleteLecture": "Delete lecture"
-      ,"lectureInUse": "This lecture is used by a class session and cannot be deleted."
-      ,"templatePagesCount": "{count} template pages"
+      "notFound": "The course does not exist or you do not have access.",
+      "newCourse": "New course",
+      "courseInfo": "Course information",
+      "courseTitle": "Course title",
+      "gradeLabel": "Grade",
+      "save": "Save",
+      "create": "Create",
+      "schoolTerms": "Academic term timeline",
+      "schoolTermsHint": "New records use the current term; activating another term never rewrites history.",
+      "newSchoolTerm": "New term",
+      "currentSchoolTerm": "Current term",
+      "activateSchoolTerm": "Make current",
+      "newSchoolTermHint": "The term is created inactive. Verify dates before activating it.",
+      "schoolYear": "Academic year start",
+      "semester": "Semester",
+      "semesterOne": "Semester 1",
+      "semesterTwo": "Semester 2",
+      "startsOn": "Starts on",
+      "endsOn": "Ends on",
+      "cancel": "Cancel",
+      "actionFailed": "Action failed. Please try again.",
+      "courseCreated": "Course created.",
+      "courseSaved": "Course info saved.",
+      "lectureAdded": "Lecture added.",
+      "lectureSaved": "Lecture saved.",
+      "lectureDeleted": "Lecture deleted.",
+      "lecturesReordered": "Lecture order updated.",
+      "termCreated": "Term created.",
+      "termActivated": "Set as current term.",
+      "lectureName": "Lecture name",
+      "addLecture": "Add lecture",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "deleteLecture": "Delete lecture",
+      "lectureInUse": "This lecture is used by a class session and cannot be deleted.",
+      "templatePagesCount": "{count} template pages"
     },
     "followups": {
       "title": "Follow-up board",
@@ -517,7 +584,7 @@
       "deleteStudent": "Delete",
       "deleteConfirm": "Move this student to the recycle bin? Historical records will be kept.",
       "deleteActiveEnrollment": "This student still has an active enrollment. Withdraw them before deleting.",
-      "actionFailed": "Action failed. Please try again.",
+      "actionFailed": "Action failed, please retry",
       "statusChanged": "Status updated.",
       "assignSuccess": "Owner assigned.",
       "deleteSuccess": "Moved to recycle bin.",
@@ -618,7 +685,6 @@
       "reject": "Reject",
       "cancel": "Cancel",
       "confirm": "Confirm",
-      "actionFailed": "Action failed, please retry",
       "orderPlaced": "Order placed.",
       "paymentRecorded": "Payment recorded.",
       "refundRequested": "Refund requested.",
@@ -651,30 +717,30 @@
       "guardianInvite": "Issue guardian invitation",
       "guardianInviteHint": "The invitation expires in seven days and is single-use. The guardian still confirms learning and video consent separately.",
       "guardianRelation": "Relationship, e.g. mother",
-      "issueInvite": "Issue invitation"
-      ,"inviteSuccess": "Invitation code generated."
-      ,"guardianScope": "Guardian visibility"
-      ,"guardianScope_grades": "Grades"
-      ,"guardianScope_video": "Videos"
-      ,"guardianScope_finance": "Finance"
-      ,"guardianScopeSaved": "Visibility updated."
-      ,"guardians": "Guardians and visibility"
-      ,"noGuardians": "No guardians linked yet."
-      ,"primaryGuardian": "Primary guardian"
-      ,"guardianScopeFor": "Visibility for {name}"
-      ,"possibleDuplicates": "Possible duplicate profiles"
-      ,"mergeKeepsCurrent": "The current profile is kept; orders, attendance, follow-ups, and learning records move from the candidate."
-      ,"mergeIntoCurrent": "Merge into current"
-      ,"mergeStudentTitle": "Confirm student merge"
-      ,"mergeStudentConfirm": "Merge “{name}” into the current profile? The candidate becomes an immutable merge tombstone and this cannot be directly undone."
-      ,"mergeSuccess": "Profile merged."
-      ,"provisionPhoneAccount": "Create phone account"
-      ,"provisionPhoneTitle": "Create a student login account"
-      ,"provisionPhoneConfirm": "Create a confirmed Supabase Auth account for {phone} and link it to this profile. The student can then sign in with SMS OTP."
-      ,"provisionPhoneFailed": "Account creation failed. Check the country code, SMS setup, and phone uniqueness."
-      ,"provisionPhoneSuccess": "Phone login account created."
-      ,"provisionPhoneAlreadyLinked": "This student already has a linked login account."
-      ,"provisionPhoneInvalid": "Invalid phone number. Include the country code (e.g. +86)."
+      "issueInvite": "Issue invitation",
+      "inviteSuccess": "Invitation code generated.",
+      "guardianScope": "Guardian visibility",
+      "guardianScope_grades": "Grades",
+      "guardianScope_video": "Videos",
+      "guardianScope_finance": "Finance",
+      "guardianScopeSaved": "Visibility updated.",
+      "guardians": "Guardians and visibility",
+      "noGuardians": "No guardians linked yet.",
+      "primaryGuardian": "Primary guardian",
+      "guardianScopeFor": "Visibility for {name}",
+      "possibleDuplicates": "Possible duplicate profiles",
+      "mergeKeepsCurrent": "The current profile is kept; orders, attendance, follow-ups, and learning records move from the candidate.",
+      "mergeIntoCurrent": "Merge into current",
+      "mergeStudentTitle": "Confirm student merge",
+      "mergeStudentConfirm": "Merge “{name}” into the current profile? The candidate becomes an immutable merge tombstone and this cannot be directly undone.",
+      "mergeSuccess": "Profile merged.",
+      "provisionPhoneAccount": "Create phone account",
+      "provisionPhoneTitle": "Create a student login account",
+      "provisionPhoneConfirm": "Create a confirmed Supabase Auth account for {phone} and link it to this profile. The student can then sign in with SMS OTP.",
+      "provisionPhoneFailed": "Account creation failed. Check the country code, SMS setup, and phone uniqueness.",
+      "provisionPhoneSuccess": "Phone login account created.",
+      "provisionPhoneAlreadyLinked": "This student already has a linked login account.",
+      "provisionPhoneInvalid": "Invalid phone number. Include the country code (e.g. +86)."
     },
     "courseware": {
       "backToCourse": "Back to course",
@@ -846,12 +912,12 @@
       "present": "Present",
       "absent": "Absent",
       "late": "Late",
-      "leave": "Leave"
-      ,"editClass": "Edit class"
-      ,"gradeLabel": "Grade"
-      ,"capacity": "Capacity"
-      ,"room": "Room / location"
-      ,"save": "Save"
+      "leave": "Leave",
+      "editClass": "Edit class",
+      "gradeLabel": "Grade",
+      "capacity": "Capacity",
+      "room": "Room / location",
+      "save": "Save"
     },
     "schedule": {
       "title": "Schedule",

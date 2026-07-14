@@ -49,6 +49,11 @@
     "unexpectedErrorHint": "错误已经记录。你可以重试；若仍失败，请稍后再来。",
     "retry": "重试"
   },
+  "notFound": {
+    "title": "这一页走丢了",
+    "description": "你要找的内容不存在，或者它的地址已经变了。回到图鉴，从星球重新出发吧。",
+    "browseTerms": "去看图鉴"
+  },
   "changes": {
     "title": "最近变化",
     "label": "变化通知，{count} 条未读",
@@ -308,13 +313,13 @@
       "followupToday": "今日",
       "activityTodayTitle": "今明活动",
       "activityTodayEmpty": "近两天没有活动。",
-      "activityBooked": "报名 {count}"
-      ,"reviewGapsTitle": "待写课评"
-      ,"reviewGapsEmpty": "近 7 天课评已补齐。"
-      ,"videoQueueTitle": "待审视频"
-      ,"videoQueueEmpty": "暂无待审视频。"
-      ,"renewalDueTitle": "待续费"
-      ,"renewalDueHint": "剩余课次不超过 3"
+      "activityBooked": "报名 {count}",
+      "reviewGapsTitle": "待写课评",
+      "reviewGapsEmpty": "近 7 天课评已补齐。",
+      "videoQueueTitle": "待审视频",
+      "videoQueueEmpty": "暂无待审视频。",
+      "renewalDueTitle": "待续费",
+      "renewalDueHint": "剩余课次不超过 3"
     },
     "tileEdit": {
       "edit": "编辑布局",
@@ -340,8 +345,8 @@
       "staff": "员工",
       "roles": "岗位权限",
       "children": "孩子",
-      "assignments": "作业"
-      ,"activities": "活动",
+      "assignments": "作业",
+      "activities": "活动",
       "operations": "错误看板"
     },
     "operations": {
@@ -354,18 +359,80 @@
       "release": "版本"
     },
     "activities": {
-      "title": "活动管理", "intro": "管理体验课、测评、三板斧、讲座与竞赛活动，现场结果会同步到学生跟进时间线。",
-      "new": "新建活动", "edit": "编辑", "upcoming": "即将举行", "past": "已结束（{count}）", "empty": "暂无活动。",
-      "kind": "类型", "kind_trial_class": "体验课", "kind_assessment_1v1": "1v1 测评", "kind_sanbanfu": "三板斧", "kind_lecture": "讲座", "kind_competition": "竞赛活动",
-      "titleLabel": "标题", "time": "时间", "duration": "时长（分钟）", "location": "地点", "capacity": "容量", "remark": "备注",
-      "counts": "报名 {booked} · 到场 {attended} · 容量 {capacity}", "searchStudent": "搜索学生并报名", "outcome": "现场结论",
-      "status_booked": "已报名", "status_attended": "已到场", "status_no_show": "爽约", "status_cancelled": "已取消",
-      "attended": "到场", "noShow": "爽约", "full": "活动已满员。", "deleteConfirm": "确认删除该活动？", "actionFailed": "操作失败，请重试。",
-      "activityCreated": "活动已创建。", "activitySaved": "活动已保存。", "activityDeleted": "活动已删除。", "bookSuccess": "已报名。", "resultMarked": "结果已记录。", "delete": "删除",
-      "save": "保存", "cancel": "取消"
+      "title": "活动管理",
+      "intro": "管理体验课、测评、三板斧、讲座与竞赛活动，现场结果会同步到学生跟进时间线。",
+      "new": "新建活动",
+      "edit": "编辑",
+      "upcoming": "即将举行",
+      "past": "已结束（{count}）",
+      "empty": "暂无活动。",
+      "kind": "类型",
+      "kind_trial_class": "体验课",
+      "kind_assessment_1v1": "1v1 测评",
+      "kind_sanbanfu": "三板斧",
+      "kind_lecture": "讲座",
+      "kind_competition": "竞赛活动",
+      "titleLabel": "标题",
+      "time": "时间",
+      "duration": "时长（分钟）",
+      "location": "地点",
+      "capacity": "容量",
+      "remark": "备注",
+      "counts": "报名 {booked} · 到场 {attended} · 容量 {capacity}",
+      "searchStudent": "搜索学生并报名",
+      "outcome": "现场结论",
+      "status_booked": "已报名",
+      "status_attended": "已到场",
+      "status_no_show": "爽约",
+      "status_cancelled": "已取消",
+      "attended": "到场",
+      "noShow": "爽约",
+      "full": "活动已满员。",
+      "deleteConfirm": "确认删除该活动？",
+      "actionFailed": "操作失败，请重试。",
+      "activityCreated": "活动已创建。",
+      "activitySaved": "活动已保存。",
+      "activityDeleted": "活动已删除。",
+      "bookSuccess": "已报名。",
+      "resultMarked": "结果已记录。",
+      "delete": "删除",
+      "save": "保存",
+      "cancel": "取消"
     },
-    "reviews": {"button":"课评","title":"课堂课评","summary":"课堂知识总结","student":"学生","entry":"入门考","exit":"出门测","focus":"专注","participation":"参与","mastery":"掌握","comment":"评语","save":"保存","cancel":"取消","failed":"课评保存失败，请重试。","saved":"课评已保存。"},
-    "videos": {"title":"课后视频审阅","uploadTitle":"上传课后视频","upload":"上传","uploaded":"上传成功。","uploadFailed":"上传失败，请检查文件和网络。","note":"学生留言","queue":"视频列表","pending":"待审","reviewed":"已审","comment":"审阅评语","score":"评分","markReviewed":"标记已审","select":"选择一条视频开始审阅。","playback":"回看视频","delete":"删除","playbackFailed":"视频加载失败，请重试。"},
+    "reviews": {
+      "button": "课评",
+      "title": "课堂课评",
+      "summary": "课堂知识总结",
+      "student": "学生",
+      "entry": "入门考",
+      "exit": "出门测",
+      "focus": "专注",
+      "participation": "参与",
+      "mastery": "掌握",
+      "comment": "评语",
+      "save": "保存",
+      "cancel": "取消",
+      "failed": "课评保存失败，请重试。",
+      "saved": "课评已保存。"
+    },
+    "videos": {
+      "title": "课后视频审阅",
+      "uploadTitle": "上传课后视频",
+      "upload": "上传",
+      "uploaded": "上传成功。",
+      "uploadFailed": "上传失败，请检查文件和网络。",
+      "note": "学生留言",
+      "queue": "视频列表",
+      "pending": "待审",
+      "reviewed": "已审",
+      "comment": "审阅评语",
+      "score": "评分",
+      "markReviewed": "标记已审",
+      "select": "选择一条视频开始审阅。",
+      "playback": "回看视频",
+      "delete": "删除",
+      "playbackFailed": "视频加载失败，请重试。"
+    },
     "courses": {
       "title": "课程",
       "intro": "课程 → 讲次 → 课件模板，建班排课都从这里长出来。",
@@ -396,42 +463,42 @@
       "objectives": "教学目标",
       "templatePages": "模板页",
       "noObjectives": "暂无",
-      "notFound": "课程不存在或无权访问。"
-      ,"newCourse": "新建课程"
-      ,"courseInfo": "课程信息"
-      ,"courseTitle": "课程名称"
-      ,"gradeLabel": "年级"
-      ,"save": "保存"
-      ,"create": "创建"
-      ,"schoolTerms": "学期时间轴"
-      ,"schoolTermsHint": "新数据自动归入当前学期；切换不会改写历史记录。"
-      ,"newSchoolTerm": "新建学期"
-      ,"currentSchoolTerm": "当前学期"
-      ,"activateSchoolTerm": "设为当前"
-      ,"newSchoolTermHint": "先创建为非当前学期，核对日期后再手动启用。"
-      ,"schoolYear": "学年起始年份"
-      ,"semester": "学期"
-      ,"semesterOne": "第一学期"
-      ,"semesterTwo": "第二学期"
-      ,"startsOn": "开始日期"
-      ,"endsOn": "结束日期"
-      ,"cancel": "取消"
-      ,"actionFailed": "操作失败，请重试。"
-      ,"courseCreated": "课程已创建。"
-      ,"courseSaved": "课程信息已保存。"
-      ,"lectureAdded": "讲次已添加。"
-      ,"lectureSaved": "讲次已保存。"
-      ,"lectureDeleted": "讲次已删除。"
-      ,"lecturesReordered": "讲次顺序已更新。"
-      ,"termCreated": "学期已创建。"
-      ,"termActivated": "已设为当前学期。"
-      ,"lectureName": "讲次名称"
-      ,"addLecture": "添加讲次"
-      ,"moveUp": "上移"
-      ,"moveDown": "下移"
-      ,"deleteLecture": "删除讲次"
-      ,"lectureInUse": "该讲次已被班级课次引用，不能删除。"
-      ,"templatePagesCount": "模板 {count} 页"
+      "notFound": "课程不存在或无权访问。",
+      "newCourse": "新建课程",
+      "courseInfo": "课程信息",
+      "courseTitle": "课程名称",
+      "gradeLabel": "年级",
+      "save": "保存",
+      "create": "创建",
+      "schoolTerms": "学期时间轴",
+      "schoolTermsHint": "新数据自动归入当前学期；切换不会改写历史记录。",
+      "newSchoolTerm": "新建学期",
+      "currentSchoolTerm": "当前学期",
+      "activateSchoolTerm": "设为当前",
+      "newSchoolTermHint": "先创建为非当前学期，核对日期后再手动启用。",
+      "schoolYear": "学年起始年份",
+      "semester": "学期",
+      "semesterOne": "第一学期",
+      "semesterTwo": "第二学期",
+      "startsOn": "开始日期",
+      "endsOn": "结束日期",
+      "cancel": "取消",
+      "actionFailed": "操作失败，请重试。",
+      "courseCreated": "课程已创建。",
+      "courseSaved": "课程信息已保存。",
+      "lectureAdded": "讲次已添加。",
+      "lectureSaved": "讲次已保存。",
+      "lectureDeleted": "讲次已删除。",
+      "lecturesReordered": "讲次顺序已更新。",
+      "termCreated": "学期已创建。",
+      "termActivated": "已设为当前学期。",
+      "lectureName": "讲次名称",
+      "addLecture": "添加讲次",
+      "moveUp": "上移",
+      "moveDown": "下移",
+      "deleteLecture": "删除讲次",
+      "lectureInUse": "该讲次已被班级课次引用，不能删除。",
+      "templatePagesCount": "模板 {count} 页"
     },
     "followups": {
       "title": "跟进工作台",
@@ -517,7 +584,7 @@
       "deleteStudent": "删除",
       "deleteConfirm": "确认将该学生移入回收站？历史记录不会删除。",
       "deleteActiveEnrollment": "该学生仍有在读报名，请先退班再删除。",
-      "actionFailed": "操作失败，请重试。",
+      "actionFailed": "操作失败，请重试",
       "statusChanged": "状态已更新。",
       "assignSuccess": "已分配跟进人。",
       "deleteSuccess": "已移入回收站。",
@@ -618,7 +685,6 @@
       "reject": "驳回",
       "cancel": "取消",
       "confirm": "确认",
-      "actionFailed": "操作失败，请重试",
       "orderPlaced": "订单已创建。",
       "paymentRecorded": "收款已登记。",
       "refundRequested": "退费申请已提交。",
@@ -651,30 +717,30 @@
       "guardianInvite": "签发监护人邀请码",
       "guardianInviteHint": "邀请码七天内有效且只能使用一次；监护人绑定时仍需分别确认学习与视频同意。",
       "guardianRelation": "关系，如母亲",
-      "issueInvite": "签发邀请码"
-      ,"inviteSuccess": "邀请码已生成。"
-      ,"guardianScope": "监护人可见范围"
-      ,"guardianScope_grades": "成绩"
-      ,"guardianScope_video": "视频"
-      ,"guardianScope_finance": "费用"
-      ,"guardianScopeSaved": "可见范围已更新。"
-      ,"guardians": "监护人与可见范围"
-      ,"noGuardians": "尚未绑定监护人。"
-      ,"primaryGuardian": "主监护人"
-      ,"guardianScopeFor": "{name} 的可见范围"
-      ,"possibleDuplicates": "疑似重复档案"
-      ,"mergeKeepsCurrent": "合并会保留当前档案，并迁移候选档案的订单、考勤、跟进和学情记录。"
-      ,"mergeIntoCurrent": "合并到当前档案"
-      ,"mergeStudentTitle": "确认合并学生档案"
-      ,"mergeStudentConfirm": "将“{name}”合并到当前档案？候选档案会变成不可用的合并留痕，操作无法直接撤销。"
-      ,"mergeSuccess": "已合并档案。"
-      ,"provisionPhoneAccount": "开通手机账号"
-      ,"provisionPhoneTitle": "为学生开通登录账号"
-      ,"provisionPhoneConfirm": "将使用手机号 {phone} 创建已确认的 Supabase Auth 账号并绑定当前档案。之后可直接使用短信验证码登录。"
-      ,"provisionPhoneFailed": "开通失败：请确认手机号含国家区号、短信服务和账号唯一性。"
-      ,"provisionPhoneSuccess": "已开通手机登录账号。"
-      ,"provisionPhoneAlreadyLinked": "该学生已绑定登录账号，无需重复开通。"
-      ,"provisionPhoneInvalid": "手机号格式不正确，需包含国家区号（如 +86）。"
+      "issueInvite": "签发邀请码",
+      "inviteSuccess": "邀请码已生成。",
+      "guardianScope": "监护人可见范围",
+      "guardianScope_grades": "成绩",
+      "guardianScope_video": "视频",
+      "guardianScope_finance": "费用",
+      "guardianScopeSaved": "可见范围已更新。",
+      "guardians": "监护人与可见范围",
+      "noGuardians": "尚未绑定监护人。",
+      "primaryGuardian": "主监护人",
+      "guardianScopeFor": "{name} 的可见范围",
+      "possibleDuplicates": "疑似重复档案",
+      "mergeKeepsCurrent": "合并会保留当前档案，并迁移候选档案的订单、考勤、跟进和学情记录。",
+      "mergeIntoCurrent": "合并到当前档案",
+      "mergeStudentTitle": "确认合并学生档案",
+      "mergeStudentConfirm": "将“{name}”合并到当前档案？候选档案会变成不可用的合并留痕，操作无法直接撤销。",
+      "mergeSuccess": "已合并档案。",
+      "provisionPhoneAccount": "开通手机账号",
+      "provisionPhoneTitle": "为学生开通登录账号",
+      "provisionPhoneConfirm": "将使用手机号 {phone} 创建已确认的 Supabase Auth 账号并绑定当前档案。之后可直接使用短信验证码登录。",
+      "provisionPhoneFailed": "开通失败：请确认手机号含国家区号、短信服务和账号唯一性。",
+      "provisionPhoneSuccess": "已开通手机登录账号。",
+      "provisionPhoneAlreadyLinked": "该学生已绑定登录账号，无需重复开通。",
+      "provisionPhoneInvalid": "手机号格式不正确，需包含国家区号（如 +86）。"
     },
     "courseware": {
       "backToCourse": "返回课程",
@@ -846,12 +912,12 @@
       "present": "出勤",
       "absent": "缺勤",
       "late": "迟到",
-      "leave": "请假"
-      ,"editClass": "编辑班级"
-      ,"gradeLabel": "年级"
-      ,"capacity": "容量"
-      ,"room": "教室 / 地点"
-      ,"save": "保存"
+      "leave": "请假",
+      "editClass": "编辑班级",
+      "gradeLabel": "年级",
+      "capacity": "容量",
+      "room": "教室 / 地点",
+      "save": "保存"
     },
     "schedule": {
       "title": "课表",

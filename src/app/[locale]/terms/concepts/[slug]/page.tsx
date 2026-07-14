@@ -1,7 +1,7 @@
 import "katex/dist/katex.min.css";
 import { ExternalLink } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { notFound, permanentRedirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { MdxContent } from "@/components/mdx-content";
 import { SiteHeader } from "@/components/site-header";
 import { Star4 } from "@/components/star4";
@@ -10,7 +10,7 @@ import { Quiz } from "@/features/terms/quiz";
 import { MarkStudied } from "@/features/terms/studied";
 import { getIsland, getPlanet } from "@/features/terms/universe";
 import { Link } from "@/i18n/navigation";
-import { getCurrentTermSlug, getMind, getTerm, getTermDescendants, getTermRelation, getTerms } from "@/lib/content";
+import { getMind, getTerm, getTermDescendants, getTermRelation, getTerms } from "@/lib/content";
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
@@ -34,15 +34,16 @@ export function generateStaticParams() {
   return getTerms().map((t) => ({ slug: t.slug }));
 }
 
+/** 概念是一份封闭清单：未知 slug（含 P4G-1 改名前的拼音 URL）由路由层直接 404，
+ *  带真状态码，再渲染 [locale]/not-found.tsx。这要求本段之上没有流式边界，
+ *  否则外壳先发出、状态码锁死在 200，只剩 soft 404——loading.tsx 因此不放在 /terms 顶层。 */
+export const dynamicParams = false;
+
 export default async function TermPage({ params }: { params: Promise<{ locale: string; slug: string }> }) {
   const { locale, slug } = await params;
   setRequestLocale(locale);
   const term = getTerm(slug);
-  if (!term) {
-    const current=getCurrentTermSlug(slug);
-    if(current)permanentRedirect(`/${locale}/terms/concepts/${current}`);
-    notFound();
-  }
+  if (!term) notFound();
   const t = await getTranslations("terms");
   const tu = await getTranslations("termsUniverse");
   const nav = await getTranslations("nav");

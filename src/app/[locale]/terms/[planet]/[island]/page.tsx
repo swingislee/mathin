@@ -12,6 +12,9 @@ export function generateStaticParams() {
   return termPlanets.flatMap((p) => p.islands.map((i) => ({ planet: p.id, island: i.id })));
 }
 
+/** 岛屿是封闭清单，未知 id 由路由层 404（真状态码），不进入渲染。 */
+export const dynamicParams = false;
+
 /** 岛屿学习路径页：具体知识点只在这里展开（设计文档 §10） */
 export default async function IslandPage({ params }: { params: Promise<{ locale: string; planet: string; island: string }> }) {
   const { locale, planet: planetId, island: islandId } = await params;

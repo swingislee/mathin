@@ -92,8 +92,6 @@ const getRelations = cache(() => JSON.parse(fs.readFileSync(path.join(CONTENT_DI
 export const getTermRelation = (uid: string): ContentRelation => getRelations()[uid] ?? { tools: [], games: [] };
 export const getTermsForTool = (toolId: string) => getTerms().filter((term) => getTermRelation(term.uid).tools.includes(toolId));
 export const getTermsForGame = (gameId: string) => getTerms().filter((term) => getTermRelation(term.uid).games.includes(gameId));
-const getSlugAliases = cache(() => JSON.parse(fs.readFileSync(path.join(CONTENT_DIR,"slug-aliases.json"),"utf8")) as Record<string,string>);
-export const getCurrentTermSlug = (oldSlug:string) => getSlugAliases()[oldSlug];
 
 /** 后继概念 = 所有把该 slug 列为前置的概念 */
 export const getTermDescendants = (slug: string) => getTerms().filter((t) => t.deps.includes(slug));

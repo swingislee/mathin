@@ -19,7 +19,7 @@
 
 **两个必须先记录的既有结论修正**：
 1. `14-§2.2` 称互导飞轮"无一处从概念页链到相关 game/tool"——**已过时/不准确**。`content/relations.json` + `getTermRelation` / `getTermsForTool` / `getTermsForGame`（`src/lib/content.ts:91–94`）已存在，概念页已消费相关工具/游戏。真正缺的是反向链与"下一步"出口的完整度，以及**锚点的命名质量**（见 §3.2）。执行 P4F-8 时按此校正，且 P4F-8 应排在本文 P4G-1 之后。
-2. `13-§3.3` 的 uid 机制正确并已落地（`content_slug_aliases` 表、`verify-content-uids.mjs`、概念页 301 跳转全就绪），但其命名示例与实际种子用了**拼音**。本文 §3.2 取代其命名部分。
+2. `13-§3.3` 的 uid 机制正确并已落地（`content_slug_aliases` 表、`verify-content-uids.mjs`），但其命名示例与实际种子用了**拼音**。本文 §3.2 取代其命名部分。（该节设想的"旧 slug 301 跳转"在 P4G-1 中**未采用**：拼音 URL 未发布，直接失效，见 §3.2 与 §10.2；`content_slug_aliases` 表保留，服务将来真正需要改名的场景。）
 
 ---
 
@@ -111,13 +111,20 @@
 **修法（一次性整改，趁 73 篇）**：
 1. **uid 改为英文数学名词**：`cn-term-bai-fen-shu` → `cn-term-percentage`。保留 `cn-term-` 前缀（它标注的是**课标体系**而非语言，仍有意义），仅把拼音本体换成英文术语。
 2. **文件名/slug 同步改英文**：`bai-fen-shu.mdx` → `percentage.mdx`，URL 变为 `/zh/terms/concepts/percentage`、`/en/terms/concepts/percentage`。
-3. **旧拼音 slug 全部登记为别名**：写入 `content/slug-aliases.json` 与 DB `content_slug_aliases`（`locale='zh'`）。**跳转机制已经现成**——概念页 `:41–45` 已实现 `getCurrentTermSlug(slug)` → `permanentRedirect`（301）。这次整改正是该机制被造出来要服务的场景，属于**用既有能力，不新增机制**。
+3. **旧拼音 slug 直接失效，不做 301**（2026-07-14 决策，取代原「登记别名 + 永久跳转」方案）：这批拼音 URL 从未对外发布、无外链、无索引，把它们养成永久别名等于永久背一份没人访问的兼容包袱。做法是：
+   - 删除 `content/slug-aliases.json` 与 `src/lib/content.ts` 里的 `getSlugAliases` / `getCurrentTermSlug`，概念页不再做 `permanentRedirect`；
+   - DB `content_slug_aliases` 的 71 行拼音记录由 migration 删除，改写入英文 slug（`is_current = true`）——表本身保留，它服务的是**将来真正需要改名时**的场景；
+   - 概念页 / 星球页 / 岛屿页均加 `export const dynamicParams = false`：三者都是 `generateStaticParams` 覆盖的封闭清单，未知 id 由路由层直接 404，**带真状态码**。
+   - **前提：动态段之上不得有流式边界**。原 `terms/loading.tsx` 会为整棵 `/terms` 子树先发出外壳，状态码被锁死在 200，`notFound()` 只能降级为 soft 404（200 + noindex）。因此该文件被移除，骨架下沉为 `terms/(atlas)/loading.tsx` 与 `terms/graph/loading.tsx`（路由组只罩图鉴首页，不波及子路由）。
+   - 失效页不用 Next 默认页：新增 `src/app/[locale]/not-found.tsx`（SiteHeader + 站内配色 + 去图鉴/回首页），**真 404 状态码 + 站内一致的 UI**。
 4. **改写全部交叉引用**：`deps`、`minds`、`relations.json` 的键、以及 `content/` 内正文里的相对链接。写一个一次性迁移脚本跑完，人工只审 diff。
 5. **写成校验规则而非一次性劳动**：扩展已有的 `scripts/verify-content-uids.mjs`（P4E 已建）——新增断言：uid/slug 必须为 ASCII 小写英文词、**不得匹配拼音模式**、必须在一份受控的英文数学术语表内、uid 全局唯一且不复用。此后新内容**无法**再引入拼音（进 CI，见 §5）。
 
 **术语表纪律**：英文名以国际数学教育通用术语为准（`fraction` / `numerator` / `least-common-multiple` / `perpendicular-and-parallel`），复合概念用连字符，不用缩写。术语表落在 `content/glossary.json`（zh 名 ↔ en 名 ↔ uid），与英文内容翻译共用同一份权威命名——**它同时是 §3.1 英译工作的词汇基线**，一举两得。
 
-**验收**：73 篇文件名/uid/deps/relations 全部为英文数学名词；访问任一旧拼音 URL 301 到新 URL；`pnpm p4e:audit` 对任何新增拼音标识符报错；DB `content_slug_aliases` 含全部旧 slug 映射。
+**验收**：71 篇文件名/uid/deps/relations 全部为英文数学名词；访问任一旧拼音 URL 返回 **HTTP 404** 并渲染站内失效页（不是 200 soft 404、也不是跳转）；新英文 URL、星球页、岛屿页、图鉴首页、图谱页均 200；`pnpm p4e:audit` 对任何新增拼音标识符报错；DB `content_slug_aliases` 只含英文 slug。
+
+> **范围说明**：`minds` 两篇（`shu-xing-jie-he`、`you-xu-si-kao`）本轮**不改名**，等用户对 minds 板块的定位想清楚再动。
 
 > **对 13-§3.3 的修订**：该节的 uid 机制本身正确并已落地，但示例与实际种子用了拼音。本节取代其命名部分：**uid 本体必须是英文数学名词**。执行 P4G-1 后回改 13-§3.3 的示例。
 
@@ -288,7 +295,7 @@
 | --- | --- | --- | --- |
 | **P4G-0** | **CI 门禁上线**：`.github/workflows/ci.yml` 接上已有的 lint/typecheck/build/p4e:audit/db:types:check/offline-test + 临时库跑 RLS 断言；含 §7.4 的 `pnpm audit`、messages 键全等断言、renovate security PR | **立即，先于一切**（此后所有任务都被它守着） | §5 + §7.4 验收 |
 | **P4G-0b** | **HTTP 安全响应头**：`headers()` 全套 + frame 策略分路径（全站禁、`/embed/*` 放）+ CSP Report-Only 起步 | **立即**，与 P4G-0 同批（clickjacking 面开着一天是一天） | §7.1 验收 |
-| **P4G-1** | **拼音 → 英文数学名词整改** ★不可逆：73 篇 uid/文件名/deps/relations 改名 + 旧 slug 别名 301 + `verify-content-uids` 加命名断言 + `glossary.json` | **立即，在任何学习数据引用 uid 之前**（窗口会关闭） | §3.2 验收 |
+| **P4G-1** | **拼音 → 英文数学名词整改** ★不可逆：71 篇 uid/文件名/deps/relations 改名 + 旧 slug 直接失效（真 404 + 自维护失效页，不做 301）+ `verify-content-uids` 加命名断言 + `glossary.json` | **立即，在任何学习数据引用 uid 之前**（窗口会关闭） | §3.2 验收 |
 | **P4G-2** | `html lang` 下沉到 `[locale]/layout.tsx` | 随 P4G-1（同为"每页都在犯"） | §2.1 验收 |
 | **P4G-3** | SEO 元数据层：`buildMetadata` helper + 公开路由 `generateMetadata` + sitemap + robots + canonical/hreflang | P4G-2 后（依赖正确的 lang 与英文 slug） | §2.2/2.3/2.4 验收 |
 | **P4G-4** | 内容 locale 接缝：`content/{zh,en}/` + `getTerm(locale, slug)` + 缺失回退与显式标注 | P4G-1 后（命名先定，再分语言目录） | §3.1 验收 |
@@ -305,8 +312,8 @@
 
 ## 10. 隐含坑清单
 
-1. **改名要一次做完，不能分批**：uid/文件名/deps/relations/aliases 是一张互相引用的网，半途而废会留下悬空引用。写一个一次性迁移脚本跑完，人工只审 diff。
-2. **旧 URL 必须 301 而非 404**：`permanentRedirect` 机制已存在（概念页 `:41–45`），别新造；但要确保 `slug-aliases.json` 与 DB `content_slug_aliases` 两侧都登记（前者服务渲染，后者服务将来的外部引用）。
+1. **改名要一次做完，不能分批**：uid/文件名/deps/relations 是一张互相引用的网，半途而废会留下悬空引用。一次性改完，人工只审 diff。
+2. **旧 URL 直接失效，且必须是"真" 404**（2026-07-14 决策，取代原「必须 301」条）：拼音 URL 未发布、无外链，不值得养成永久别名。但**流式边界会吃掉状态码**——动态段之上只要有 `loading.tsx`，外壳先发出，`notFound()` 就退化成 soft 404（200 + noindex），旧 URL 事实上仍可访问。规则：**封闭清单的动态段用 `dynamicParams = false`，且其祖先路由段不得放 `loading.tsx`**（要骨架就用路由组把它限制在具体页面上）。失效页走 `[locale]/not-found.tsx`，保持站内 UI 一致，不用 Next 默认页。
 3. **hreflang 不能谎报**：英文内容不存在时，不要宣称有 en 版本（§2.4 与 §3.1 成对交付）。半真的 hreflang 比没有更伤。
 4. **`html` 下沉要带全 cookie/主题逻辑**：根 layout 的 `data-theme` + `<Toaster>` 随迁，别把暗色模式或 toast 弄回归。
 5. **CI 连库不得用生产库**：临时容器 + GitHub Secrets；自托管库的 `POSTGRES_PASSWORD`/`JWT_SECRET`/service key **绝不进仓库、日志、workflow 文件**。

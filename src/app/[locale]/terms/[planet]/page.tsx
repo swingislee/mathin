@@ -12,6 +12,9 @@ export function generateStaticParams() {
   return termPlanets.map((p) => ({ planet: p.id }));
 }
 
+/** 星球是封闭清单，未知 id 由路由层 404（真状态码），不进入渲染。 */
+export const dynamicParams = false;
+
 /** 星球聚焦页：完整球体轮廓 + 3 个岛屿（设计文档 §9） */
 export default async function PlanetPage({ params }: { params: Promise<{ locale: string; planet: string }> }) {
   const { locale, planet: planetId } = await params;

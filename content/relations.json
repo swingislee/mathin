@@ -1,21 +1,21 @@
 {
-  "cn-term-fen-shu-de-yi-yi": {
+  "cn-term-understanding-fractions": {
     "tools": ["fraction-line"],
     "games": ["kakuro"]
   },
-  "cn-term-fen-shu-dan-wei": {
+  "cn-term-unit-fraction": {
     "tools": ["fraction-line"],
     "games": ["kakuro"]
   },
-  "cn-term-shu-zhou": {
+  "cn-term-number-line": {
     "tools": ["fraction-line"],
     "games": []
   },
-  "cn-term-shu-liang-guan-xi": {
+  "cn-term-quantitative-relationships": {
     "tools": ["motion-lab"],
     "games": []
   },
-  "cn-term-yun-suan-lv": {
+  "cn-term-properties-of-operations": {
     "tools": [],
     "games": ["magic-square"]
   }
