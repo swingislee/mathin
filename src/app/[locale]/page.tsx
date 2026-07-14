@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import { ArrowRight, BookOpen, Lightbulb, Puzzle, Sprout, Wrench } from "lucide-react";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import type { CSSProperties } from "react";
+import { JsonLd } from "@/components/json-ld";
+import { organizationJsonLd, webSiteJsonLd } from "@/lib/jsonld";
 import { buildMetadata } from "@/lib/seo";
 import { MiniPlanet } from "@/components/mini-planets";
 import { PlanetLink, type PlanetAccent } from "@/components/planet-link";
@@ -36,11 +38,14 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 }
 
 export default async function HomePage() {
+  const locale = await getLocale();
   const home = await getTranslations("home");
   const nav = await getTranslations("nav");
+  const seo = await getTranslations("seo");
 
   return (
     <main className="flex min-h-screen flex-col overflow-x-clip">
+      <JsonLd data={[organizationJsonLd(), webSiteJsonLd(locale, seo("siteDescription"))]} />
       <SiteHeader />
 
       {/* 桌面：左题签 + 右「星球地图」（单屏完成，无第二屏） */}

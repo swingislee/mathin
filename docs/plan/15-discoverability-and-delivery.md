@@ -93,6 +93,14 @@
 
 **验收**：Google 富媒体测试工具校验通过，无结构化数据错误。
 
+> **落地（P4G-5）**：`src/lib/jsonld.ts`（`organizationJsonLd` / `webSiteJsonLd` / `breadcrumbJsonLd` / `learningResourceJsonLd`）+ `src/components/json-ld.tsx`（注入点，`<` 转义防提前闭合脚本标签）。
+>
+> - **Organization + WebSite**：只在首页注入一次，其余结构化数据用 `@id` 引用它，不重复整块。
+> - **BreadcrumbList**：概念、岛屿、星球、思维文章、游戏详情、工具详情。**面包屑数据与页面顶部那条 `<nav>` 同源**（同一批 `t()` 调用），两者不会说不一样的话。末项（当前页）按 schema.org 允许的形式省略 `item`——顺带绕开了单语页 canonical 的语言归属问题。
+> - **LearningResource**（概念页）：`teaches` ← 标题、`educationalLevel` ← frontmatter `stage`、`competencyRequired` ← `deps` 的标题、`url` ← **canonical**（复用 `seo.ts` 的 `canonicalUrl`，与 `<link rel="canonical">` 同一地址）。正文只有中文，故 `inLanguage` 固定 `zh-CN`。
+>
+> 尚未做人工的 Google 富媒体测试（需公网域名），本地已逐页校验 JSON 结构与字段取值。
+
 ---
 
 ## 3. P4G-B · 内容双语架构与命名（本文最贵、最不可逆的一节）

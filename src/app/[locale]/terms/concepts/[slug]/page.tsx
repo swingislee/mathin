@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { ExternalLink } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
+import { JsonLd } from "@/components/json-ld";
 import { MdxContent } from "@/components/mdx-content";
 import { SiteHeader } from "@/components/site-header";
 import { Star4 } from "@/components/star4";
@@ -12,7 +13,8 @@ import { MarkStudied } from "@/features/terms/studied";
 import { getIsland, getPlanet } from "@/features/terms/universe";
 import { Link } from "@/i18n/navigation";
 import { getMind, getTerm, getTermDescendants, getTermRelation, getTerms } from "@/lib/content";
-import { buildMetadata } from "@/lib/seo";
+import { breadcrumbJsonLd, learningResourceJsonLd } from "@/lib/jsonld";
+import { buildMetadata, canonicalUrl } from "@/lib/seo";
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
@@ -77,8 +79,27 @@ export default async function TermPage({ params }: { params: Promise<{ locale: s
   const planet = getPlanet(term.planet);
   const island = planet ? getIsland(term.planet, term.island) : undefined;
 
+  // 结构化数据与页面顶部的面包屑同源，两者不会说不一样的话
+  const crumbs = [
+    { name: common("home"), path: "" },
+    { name: nav("terms"), path: "/terms" },
+    ...(planet ? [{ name: tu(`planets.${planet.id}.name`), path: `/terms/${planet.id}` }] : []),
+    ...(planet && island ? [{ name: tu(`islandNames.${planet.id}.${island.id}.name`), path: `/terms/${planet.id}/${island.id}` }] : []),
+    { name: term.title },
+  ];
+
   return (
     <main data-planet="geographer" className="flex min-h-screen flex-col">
+      <JsonLd
+        data={[
+          breadcrumbJsonLd(locale, crumbs),
+          learningResourceJsonLd(term, {
+            url: canonicalUrl(locale, `/terms/concepts/${term.slug}`, ["zh"]),
+            stageLabel: t(`stage${term.stage}`),
+            prerequisites: prereqs.map((p) => p.title),
+          }),
+        ]}
+      />
       <SiteHeader />
       <article className="mx-auto w-full max-w-3xl flex-1 px-6 pb-16">
         <nav className="flex flex-wrap items-center gap-2 text-sm text-muted">

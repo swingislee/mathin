@@ -45,6 +45,14 @@ export interface BuildMetadataArgs {
   noIndex?: boolean;
 }
 
+/** 页面的规范地址。单语页只有一个真实版本，另一语言的地址全部 canonical 回它。
+ *  结构化数据里的 url/@id 必须和 <link rel="canonical"> 是同一个地址，故共用此函数。 */
+export function canonicalUrl(locale: string, path = "", contentLocales: readonly string[] = routing.locales): string {
+  const available = routing.locales.filter((l) => contentLocales.includes(l));
+  if (available.length > 1) return absoluteUrl(asLocale(locale), path);
+  return absoluteUrl(available[0] ?? routing.defaultLocale, path);
+}
+
 export function buildMetadata({
   locale,
   path = "",
@@ -57,8 +65,7 @@ export function buildMetadata({
 }: BuildMetadataArgs): Metadata {
   const available = routing.locales.filter((l) => contentLocales.includes(l));
   const bilingual = available.length > 1;
-  // 单语页只有一个真实版本，另一语言的地址全部 canonical 回它
-  const canonical = absoluteUrl(bilingual ? asLocale(locale) : (available[0] ?? routing.defaultLocale), path);
+  const canonical = canonicalUrl(locale, path, contentLocales);
   const languages = bilingual
     ? {
         ...Object.fromEntries(available.map((l) => [HREFLANG[l], absoluteUrl(l, path)])),

@@ -2,12 +2,14 @@ import "katex/dist/katex.min.css";
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
+import { JsonLd } from "@/components/json-ld";
 import { MdxContent } from "@/components/mdx-content";
 import { SiteHeader } from "@/components/site-header";
 import { Star4 } from "@/components/star4";
 import { MarkRead } from "@/features/minds/lamp";
 import { Link } from "@/i18n/navigation";
 import { getMind, getMinds, getTermsByMind } from "@/lib/content";
+import { breadcrumbJsonLd } from "@/lib/jsonld";
 import { buildMetadata } from "@/lib/seo";
 
 export function generateStaticParams() {
@@ -41,6 +43,13 @@ export default async function MindPage({ params }: { params: Promise<{ locale: s
 
   return (
     <main data-planet="lamplighter" className="flex min-h-screen flex-col">
+      <JsonLd
+        data={breadcrumbJsonLd(locale, [
+          { name: common("home"), path: "" },
+          { name: nav("minds"), path: "/minds" },
+          { name: mind.title },
+        ])}
+      />
       <SiteHeader />
       <article className="mx-auto w-full max-w-3xl flex-1 px-6 pb-16">
         <nav className="flex items-center gap-2 text-sm text-muted">

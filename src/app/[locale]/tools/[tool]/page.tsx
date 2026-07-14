@@ -2,10 +2,12 @@ import type { Metadata } from "next";
 import { ArrowLeft } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
+import { JsonLd } from "@/components/json-ld";
 import { CopyEmbedButton } from "@/features/tools/copy-embed-button";
 import { getTool } from "@/features/tools/registry";
 import { Link } from "@/i18n/navigation";
 import { getTermsForTool } from "@/lib/content";
+import { breadcrumbJsonLd } from "@/lib/jsonld";
 import { buildMetadata } from "@/lib/seo";
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string; tool: string }> }): Promise<Metadata> {
@@ -27,8 +29,17 @@ export default async function ToolPage({ params }: { params: Promise<{ locale: s
   if (!def) notFound();
   const t = await getTranslations("tools");
   const relatedTerms = getTermsForTool(tool);
+  const nav = await getTranslations("nav");
+  const common = await getTranslations("common");
   return (
     <main data-planet="businessman" className="flex h-screen flex-col">
+      <JsonLd
+        data={breadcrumbJsonLd(locale, [
+          { name: common("home"), path: "" },
+          { name: nav("tools"), path: "/tools" },
+          { name: t(`items.${def.id}.name`) },
+        ])}
+      />
       <div className="flex items-center gap-3 border-b px-4 py-2">
         <Link href="/tools" className="inline-flex items-center gap-1.5 text-sm text-muted transition-colors duration-200 hover:text-ink">
           <ArrowLeft size={15} />

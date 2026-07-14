@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 import { ArrowLeft } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
+import { JsonLd } from "@/components/json-ld";
 import { SiteHeader } from "@/components/site-header";
 import type { IslandCard } from "@/features/terms/three/planet-scene";
 import { IslandProgressList, PlanetView } from "@/features/terms/three/views";
 import { getPlanet, termPlanets } from "@/features/terms/universe";
 import { getTermsByIsland } from "@/lib/content";
 import { Link } from "@/i18n/navigation";
+import { breadcrumbJsonLd } from "@/lib/jsonld";
 import { buildMetadata } from "@/lib/seo";
 
 export function generateStaticParams() {
@@ -36,6 +38,8 @@ export default async function PlanetPage({ params }: { params: Promise<{ locale:
   const planet = getPlanet(planetId);
   if (!planet) notFound();
   const t = await getTranslations("termsUniverse");
+  const nav = await getTranslations("nav");
+  const common = await getTranslations("common");
 
   const islands = planet.islands.map((isl) => {
     const nodes = getTermsByIsland(planet.id, isl.id);
@@ -56,6 +60,13 @@ export default async function PlanetPage({ params }: { params: Promise<{ locale:
 
   return (
     <div className="night">
+      <JsonLd
+        data={breadcrumbJsonLd(locale, [
+          { name: common("home"), path: "" },
+          { name: nav("terms"), path: "/terms" },
+          { name: t(`planets.${planet.id}.name`) },
+        ])}
+      />
       <main className="relative flex h-screen min-h-[600px] flex-col overflow-hidden" style={{ background: "#121524" }}>
         <div className="relative z-10">
           <SiteHeader />

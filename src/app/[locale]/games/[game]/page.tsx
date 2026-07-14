@@ -2,11 +2,13 @@ import type { Metadata } from "next";
 import { ArrowLeft, Trophy } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
+import { JsonLd } from "@/components/json-ld";
 import { GameMatch } from "@/features/games/match";
 import { getGame } from "@/features/games/registry";
 import { Link } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getTermsForGame } from "@/lib/content";
+import { breadcrumbJsonLd } from "@/lib/jsonld";
 import { buildMetadata } from "@/lib/seo";
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string; game: string }> }): Promise<Metadata> {
@@ -30,8 +32,17 @@ export default async function GamePage({ params }: { params: Promise<{ locale: s
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const relatedTerms = getTermsForGame(game);
+  const nav = await getTranslations("nav");
+  const common = await getTranslations("common");
   return (
     <main data-planet="king" className="mx-auto flex min-h-screen w-full max-w-3xl flex-col px-6 pb-16">
+      <JsonLd
+        data={breadcrumbJsonLd(locale, [
+          { name: common("home"), path: "" },
+          { name: nav("games"), path: "/games" },
+          { name: t(`items.${game}.name`) },
+        ])}
+      />
       <div className="flex items-center gap-3 py-4">
         <Link href="/games" className="inline-flex items-center gap-1.5 text-sm text-muted transition-colors duration-200 hover:text-ink">
           <ArrowLeft size={15} />
