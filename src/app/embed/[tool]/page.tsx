@@ -15,7 +15,8 @@ export default async function EmbedToolPage({ params, searchParams }: {
   const messages = (await import(`../../../../messages/${locale}.json`)).default;
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
-      <div data-planet="businessman" className="flex min-h-screen flex-col">
+      {/* embed 没有 locale 段，文档根落到默认 zh-CN；英文嵌入在这里就地标注语言 */}
+      <div lang={locale === "en" ? "en" : "zh-CN"} data-planet="businessman" className="flex min-h-screen flex-col">
         <def.Component embedded />
       </div>
     </NextIntlClientProvider>

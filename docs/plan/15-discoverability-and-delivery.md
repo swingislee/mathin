@@ -33,9 +33,19 @@
 
 **后果**（不止 SEO）：读屏器用中文语音引擎念英文——**14-§5.2 刚建成的无障碍基线在根节点被一票否决**；搜索引擎的语言判定与将来的 hreflang 自相矛盾；浏览器翻译/断词/字体回退全部走错分支。
 
-**修法**：把 `<html>`/`<body>` 下沉到 `src/app/[locale]/layout.tsx`（next-intl 在 `localePrefix: "always"` 下的标准布局），`lang={locale === "zh" ? "zh-CN" : "en"}`；根 layout 只保留 `metadata` 与全局样式。注意随迁 `data-theme` cookie 逻辑与 `<Toaster>`（`layout.tsx:17–28`）。
+**修法（2026-07-14 实测后修正）**：`<html>`/`<body>` **留在根布局**，locale 用 `getLocale()`（next-intl）从请求解析：`lang={htmlLang(locale)}`（`src/lib/theme.ts`）。
+
+原方案是把 `<html>` 下沉到 `[locale]/layout.tsx`，实测**不可行**，三条路都撞墙：
+
+- **下沉后 404 全废**。404 走 Next 的 fallback 渲染路径，只认根布局的文档外壳；根布局一旦不含 `<html>`，所有 404 掉进 `<html id="__next_error__">` 空壳，SSR 出来的 `<body>` 是空的。
+- **`next/root-params` 用不了**。它只暴露**根布局自身路径上**的动态段（`collect-root-param-keys.js`）；根布局在 `app/` 而 `[locale]` 在其下，取到的 root params 为空。要让它生效必须删掉 `app/layout.tsx`、让 `[locale]/layout.tsx` 与 `embed/layout.tsx` 成为两个并列根布局——回到上一条的 404 死角。
+- **`experimental.globalNotFound` 救不回来**。Turbopack 下 `app/global-not-found.tsx` 未被采用，404 依旧是空壳。
+
+`getLocale()` 在 `[locale]` 段之外同样可用（next-intl 从请求解析），`/embed`、`/api` 无 locale 段时回落默认语言。`/embed?locale=en` 的内容语言由页面内 `lang` 属性就地标注。
 
 **验收**：`/en/terms` 的 DOM 根节点 `lang="en"`；`/zh/...` 为 `zh-CN`；主题 cookie 与 toast 行为不回归。
+
+> **已知遗留（非本次引入，HEAD 上同样存在）**：404 的 SSR body 为空，站内失效页由客户端 hydration 渲染。状态码与 `noindex` 都正确，用户看到的也是站内失效页；但若将来要让 404 首屏 SSR，需要等 Turbopack 支持 `global-not-found` 或换掉 fallback 渲染路径。
 
 ### 2.2 52 个页面，1 个 `generateMetadata`
 

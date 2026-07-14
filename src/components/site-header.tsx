@@ -1,7 +1,7 @@
-import { cookies } from "next/headers";
 import { getLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getThemePreference } from "@/lib/theme";
 import { LocaleSwitcher } from "./locale-switcher";
 import { ThemeToggle } from "./theme-toggle";
 import { UtilitySheet } from "./utility-sheet";
@@ -10,8 +10,7 @@ import { getInitialChangeFeed } from "@/features/events/actions";
 
 export async function SiteHeader() {
   const locale = await getLocale();
-  const savedTheme = (await cookies()).get("mathin-theme")?.value;
-  const theme = savedTheme === "light" || savedTheme === "dark" ? savedTheme : "system";
+  const theme = await getThemePreference();
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const changes = user ? await getInitialChangeFeed() : [];
