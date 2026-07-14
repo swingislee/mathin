@@ -1,8 +1,17 @@
+import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { SectionShell } from "@/components/section-shell";
 import { tools } from "@/features/tools/registry";
 import { toolThumbs } from "@/features/tools/thumbs";
 import { Link } from "@/i18n/navigation";
+import { buildMetadata } from "@/lib/seo";
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  const nav = await getTranslations({ locale, namespace: "nav" });
+  const t = await getTranslations({ locale, namespace: "tools" });
+  return buildMetadata({ locale, path: "/tools", title: nav("tools"), description: t("intro") });
+}
 
 export default async function ToolsPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { ArrowLeft } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -5,6 +6,19 @@ import { CopyEmbedButton } from "@/features/tools/copy-embed-button";
 import { getTool } from "@/features/tools/registry";
 import { Link } from "@/i18n/navigation";
 import { getTermsForTool } from "@/lib/content";
+import { buildMetadata } from "@/lib/seo";
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string; tool: string }> }): Promise<Metadata> {
+  const { locale, tool } = await params;
+  if (!getTool(tool)) return {};
+  const t = await getTranslations({ locale, namespace: "tools" });
+  return buildMetadata({
+    locale,
+    path: `/tools/${tool}`,
+    title: t(`items.${tool}.name`),
+    description: t(`items.${tool}.desc`),
+  });
+}
 
 export default async function ToolPage({ params }: { params: Promise<{ locale: string; tool: string }> }) {
   const { locale, tool } = await params;

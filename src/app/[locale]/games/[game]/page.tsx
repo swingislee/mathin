@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { ArrowLeft, Trophy } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -6,6 +7,19 @@ import { getGame } from "@/features/games/registry";
 import { Link } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getTermsForGame } from "@/lib/content";
+import { buildMetadata } from "@/lib/seo";
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string; game: string }> }): Promise<Metadata> {
+  const { locale, game } = await params;
+  if (!getGame(game)) return {};
+  const t = await getTranslations({ locale, namespace: "games" });
+  return buildMetadata({
+    locale,
+    path: `/games/${game}`,
+    title: t(`items.${game}.name`),
+    description: t(`items.${game}.desc`),
+  });
+}
 
 export default async function GamePage({ params }: { params: Promise<{ locale: string; game: string }> }) {
   const { locale, game } = await params;

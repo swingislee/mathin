@@ -1,4 +1,5 @@
 import "katex/dist/katex.min.css";
+import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { MdxContent } from "@/components/mdx-content";
@@ -7,9 +8,25 @@ import { Star4 } from "@/components/star4";
 import { MarkRead } from "@/features/minds/lamp";
 import { Link } from "@/i18n/navigation";
 import { getMind, getMinds, getTermsByMind } from "@/lib/content";
+import { buildMetadata } from "@/lib/seo";
 
 export function generateStaticParams() {
   return getMinds().map((m) => ({ slug: m.slug }));
+}
+
+/** 正文只有中文，同概念页：/en 是重复品，canonical 指回中文版、不产出 hreflang。 */
+export async function generateMetadata({ params }: { params: Promise<{ locale: string; slug: string }> }): Promise<Metadata> {
+  const { locale, slug } = await params;
+  const mind = getMind(slug);
+  if (!mind) return {};
+  return buildMetadata({
+    locale,
+    path: `/minds/${mind.slug}`,
+    title: mind.title,
+    description: mind.summary,
+    contentLocales: ["zh"],
+    type: "article",
+  });
 }
 
 export default async function MindPage({ params }: { params: Promise<{ locale: string; slug: string }> }) {

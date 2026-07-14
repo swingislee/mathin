@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { ArrowLeft } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -7,9 +8,22 @@ import { IslandProgressList, PlanetView } from "@/features/terms/three/views";
 import { getPlanet, termPlanets } from "@/features/terms/universe";
 import { getTermsByIsland } from "@/lib/content";
 import { Link } from "@/i18n/navigation";
+import { buildMetadata } from "@/lib/seo";
 
 export function generateStaticParams() {
   return termPlanets.map((p) => ({ planet: p.id }));
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string; planet: string }> }): Promise<Metadata> {
+  const { locale, planet } = await params;
+  if (!getPlanet(planet)) return {};
+  const t = await getTranslations({ locale, namespace: "termsUniverse" });
+  return buildMetadata({
+    locale,
+    path: `/terms/${planet}`,
+    title: t(`planets.${planet}.name`),
+    description: t(`planets.${planet}.tag`),
+  });
 }
 
 /** 星球是封闭清单，未知 id 由路由层 404（真状态码），不进入渲染。 */

@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import { getLocale } from "next-intl/server";
 import { Toaster } from "@/components/ui/sonner";
+import { SITE_NAME, siteUrl } from "@/lib/seo";
 import { getThemePreference, htmlLang, themeClassName } from "@/lib/theme";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://mathin.club"),
-  title: { default: "Mathin", template: "%s · Mathin" },
+  metadataBase: new URL(siteUrl),
+  title: { default: SITE_NAME, template: `%s · ${SITE_NAME}` },
   description: "探索数学故事、游戏、思维与工具。",
 };
 

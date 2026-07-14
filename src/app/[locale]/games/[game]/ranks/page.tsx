@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ArrowLeft, Crown } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
@@ -7,8 +8,22 @@ import { formatMs } from "@/features/games/format";
 import { getGame } from "@/features/games/registry";
 import type { Difficulty } from "@/features/games/types";
 import { Link } from "@/i18n/navigation";
+import { buildMetadata } from "@/lib/seo";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
+
+/** 榜单挂着真实姓名（多为未成年人），公开可看但不进搜索索引。 */
+export async function generateMetadata({ params }: { params: Promise<{ locale: string; game: string }> }): Promise<Metadata> {
+  const { locale, game } = await params;
+  if (!getGame(game)) return {};
+  const t = await getTranslations({ locale, namespace: "games" });
+  return buildMetadata({
+    locale,
+    path: `/games/${game}/ranks`,
+    title: `${t(`items.${game}.name`)} · ${t("ranks")}`,
+    noIndex: true,
+  });
+}
 
 // Tailwind 只识别字面量类名，勋章色不能运行时拼接
 const medalClasses = ["text-(--medal-1)", "text-(--medal-2)", "text-(--medal-3)"];

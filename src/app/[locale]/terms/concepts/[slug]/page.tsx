@@ -1,4 +1,5 @@
 import "katex/dist/katex.min.css";
+import type { Metadata } from "next";
 import { ExternalLink } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -11,6 +12,7 @@ import { MarkStudied } from "@/features/terms/studied";
 import { getIsland, getPlanet } from "@/features/terms/universe";
 import { Link } from "@/i18n/navigation";
 import { getMind, getTerm, getTermDescendants, getTermRelation, getTerms } from "@/lib/content";
+import { buildMetadata } from "@/lib/seo";
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
@@ -38,6 +40,22 @@ export function generateStaticParams() {
  *  带真状态码，再渲染 [locale]/not-found.tsx。这要求本段之上没有流式边界，
  *  否则外壳先发出、状态码锁死在 200，只剩 soft 404——loading.tsx 因此不放在 /terms 顶层。 */
 export const dynamicParams = false;
+
+/** 正文目前只有中文（英译是内容工程，见 doc15 §1 非目标）：/en 的概念页只是中文页的重复品，
+ *  canonical 指回中文版、不宣称有 en 语言备份。P4G-4 打通 content/{zh,en} 后按篇改 contentLocales。 */
+export async function generateMetadata({ params }: { params: Promise<{ locale: string; slug: string }> }): Promise<Metadata> {
+  const { locale, slug } = await params;
+  const term = getTerm(slug);
+  if (!term) return {};
+  return buildMetadata({
+    locale,
+    path: `/terms/concepts/${term.slug}`,
+    title: term.title,
+    description: term.summary,
+    contentLocales: ["zh"],
+    type: "article",
+  });
+}
 
 export default async function TermPage({ params }: { params: Promise<{ locale: string; slug: string }> }) {
   const { locale, slug } = await params;

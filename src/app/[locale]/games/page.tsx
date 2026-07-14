@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Crown } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { EmptyState } from "@/components/empty-state";
@@ -7,8 +8,16 @@ import { buttonVariants } from "@/components/ui/button";
 import { formatMs } from "@/features/games/format";
 import { games } from "@/features/games/registry";
 import { Link } from "@/i18n/navigation";
+import { buildMetadata } from "@/lib/seo";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  const nav = await getTranslations({ locale, namespace: "nav" });
+  const t = await getTranslations({ locale, namespace: "games" });
+  return buildMetadata({ locale, path: "/games", title: nav("games"), description: t("intro") });
+}
 
 /** 登录用户在每个游戏的最好用时（跨难度取最小） */
 async function fetchPersonalBests(): Promise<Record<string, number>> {

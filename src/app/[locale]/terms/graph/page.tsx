@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { ArrowLeft } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { SiteHeader } from "@/components/site-header";
@@ -5,6 +6,13 @@ import { KnowledgeGalaxy } from "@/features/terms/galaxy";
 import { layoutGalaxy } from "@/features/terms/galaxy-layout";
 import { getTerms } from "@/lib/content";
 import { Link } from "@/i18n/navigation";
+import { buildMetadata } from "@/lib/seo";
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  const tu = await getTranslations({ locale, namespace: "termsUniverse" });
+  return buildMetadata({ locale, path: "/terms/graph", title: tu("graphEntry"), description: tu("graphIntro") });
+}
 
 /** 完整知识图谱：高级关系视图，给教师与重度探索者（设计文档 §12），不是学习入口 */
 export default async function GraphPage({ params }: { params: Promise<{ locale: string }> }) {

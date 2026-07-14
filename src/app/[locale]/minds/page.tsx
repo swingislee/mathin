@@ -1,8 +1,17 @@
+import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { SectionShell } from "@/components/section-shell";
 import { Lamp } from "@/features/minds/lamp";
 import { getMinds } from "@/lib/content";
 import { Link } from "@/i18n/navigation";
+import { buildMetadata } from "@/lib/seo";
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  const nav = await getTranslations({ locale, namespace: "nav" });
+  const t = await getTranslations({ locale, namespace: "mindsSection" });
+  return buildMetadata({ locale, path: "/minds", title: nav("minds"), description: t("intro") });
+}
 
 export default async function MindsPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;

@@ -1,4 +1,9 @@
 {
+  "seo": {
+    "siteTitle": "Mathin · Explore Mathematics",
+    "siteDescription": "Mathematics drawn as a map you can walk: a concept atlas, interactive tools, ways of thinking, and puzzle games — from primary school to the foundations of university math.",
+    "story": "Follow the little prince from planet to planet and meet mathematics inside the story."
+  },
   "nav": {
     "story": "Stories",
     "games": "Games",

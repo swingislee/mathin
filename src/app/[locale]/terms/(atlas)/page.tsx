@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { SiteHeader } from "@/components/site-header";
 import type { PlanetLabel } from "@/features/terms/three/galaxy-scene";
@@ -5,6 +6,14 @@ import { GalaxyView } from "@/features/terms/three/views";
 import { termPlanets } from "@/features/terms/universe";
 import { getTerms } from "@/lib/content";
 import { Link } from "@/i18n/navigation";
+import { buildMetadata } from "@/lib/seo";
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  const nav = await getTranslations({ locale, namespace: "nav" });
+  const t = await getTranslations({ locale, namespace: "terms" });
+  return buildMetadata({ locale, path: "/terms", title: nav("terms"), description: t("intro") });
+}
 
 /** 知识星系首页：只展示星球，不展示知识点（设计文档 §3.2/§8） */
 export default async function TermsPage({ params }: { params: Promise<{ locale: string }> }) {

@@ -55,6 +55,8 @@
 
 **验收**：任一概念页的 `<title>` 为「百分数 · Mathin」、有 description 与 OG；分享到微信/Twitter 有正确卡片。
 
+> **落地（P4G-3）**：`src/lib/seo.ts` 的 `buildMetadata({ locale, path, title, description, contentLocales, type, titleIsAbsolute, noIndex })` 一处产出 title/description/canonical/hreflang/OG/Twitter。全部公开路由已接入（首页、story、terms 星系/图谱/星球/岛屿/概念、minds 首页与文章、games 首页/详情/排行榜、tools 首页/详情、privacy、children-privacy）。OG 图暂用首页主视觉 `public/Main.png`（1521²，方图 → Twitter 卡片用 `summary` 而非 `summary_large_image`），将来若做逐页 OG 图再换 `next/og`。
+
 ### 2.3 无 `sitemap.ts`、无 `robots.ts`
 
 **现状证据**：`src/app/` 下只有 `[locale]/`、`api/`、`embed/`、`layout.tsx`、`globals.css`、`favicon.ico`。
@@ -65,6 +67,8 @@
 
 **验收**：`/sitemap.xml` 列出全部公开内容页的 zh/en 两版；`/robots.txt` 指向它且不放行受保护板块。
 
+> **落地（P4G-3）**：`src/app/sitemap.ts` 共 122 条（9 个板块/法务页 + 7 星球 × 5（星球本身 + 4 岛屿）+ 3 游戏 + 2 工具，两语一条带 `alternates.languages`；71 概念 + 2 思维只登记中文，理由见 §2.4）。`src/app/robots.ts` 屏蔽 dashboard/classroom/whiteboard/notebook/login/signup（两语）+ `/api/` + `/embed/`。**排行榜不进 robots.txt**——它靠页面级 `noindex`（榜上挂的是未成年人真实姓名），而爬虫必须先读到页面才看得见那条 meta，robots 屏蔽反而会让 `noindex` 永远送不出去。绝对源统一走 `NEXT_PUBLIC_SITE_URL`，缺省回落 `https://mathin.club`。
+
 ### 2.4 无 hreflang / canonical——双语站的两半在自相残杀
 
 **现状证据**：全库 `grep alternates|hreflang|canonical` **零命中**。
@@ -74,6 +78,12 @@
 **修法**：在 §2.2 的 `buildMetadata` 里统一产出 `alternates: { canonical, languages: { "zh-CN": ..., "en": ..., "x-default": ... } }`。**注意**：hreflang 承诺的是"这里有对应语言的版本"——在英文内容真正存在之前（§3），en 备份指向的仍是中文正文，属于**半真承诺**。因此 §2.4 与 §3 必须成对交付，不能只上 hreflang。
 
 **验收**：每个公开页 head 含 canonical + 双语 alternates；两语版本在搜索结果中互为语言备份而非重复页。
+
+> **落地（P4G-3）：用 `contentLocales` 把"半真承诺"变成可编码的事实**。`buildMetadata` 收一个 `contentLocales` 参数——**该页正文真实存在的语言**：
+>
+> - 版面文案来自 `messages/` 的页面（首页、板块首页、星球/岛屿、游戏、工具、法务页）两语都是真的 → canonical 指向自身，产出 `zh-CN` / `en` / `x-default` 三条 alternates。
+> - 正文只有中文的内容页（71 概念 + 2 思维）传 `["zh"]` → `/en/...` 只是中文页的**重复品**而非语言版本，于是 canonical **指回中文地址**、**不产出任何 hreflang**，sitemap 也只登记中文 URL。这既满足了 §10.3「不许谎报」，又不必把 P4G-3 压在英文内容之后。
+> - P4G-4 打通 `content/{zh,en}/` 后，**每写出一篇英文正文，就把那一篇的 `contentLocales` 改回两语**——hreflang 与 sitemap 自动跟着变。接缝就在这一个参数上。
 
 ### 2.5 无结构化数据
 

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { EmptyState } from "@/components/empty-state";
@@ -7,9 +8,22 @@ import { PathTrail } from "@/features/terms/path-trail";
 import { getIsland, getPlanet, termPlanets } from "@/features/terms/universe";
 import { getTermsByIsland } from "@/lib/content";
 import { Link } from "@/i18n/navigation";
+import { buildMetadata } from "@/lib/seo";
 
 export function generateStaticParams() {
   return termPlanets.flatMap((p) => p.islands.map((i) => ({ planet: p.id, island: i.id })));
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string; planet: string; island: string }> }): Promise<Metadata> {
+  const { locale, planet, island } = await params;
+  if (!getIsland(planet, island)) return {};
+  const t = await getTranslations({ locale, namespace: "termsUniverse" });
+  return buildMetadata({
+    locale,
+    path: `/terms/${planet}/${island}`,
+    title: t(`islandNames.${planet}.${island}.name`),
+    description: t(`islandNames.${planet}.${island}.desc`),
+  });
 }
 
 /** 岛屿是封闭清单，未知 id 由路由层 404（真状态码），不进入渲染。 */

@@ -1,7 +1,9 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import { ArrowRight, BookOpen, Lightbulb, Puzzle, Sprout, Wrench } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import type { CSSProperties } from "react";
+import { buildMetadata } from "@/lib/seo";
 import { MiniPlanet } from "@/components/mini-planets";
 import { PlanetLink, type PlanetAccent } from "@/components/planet-link";
 import type { Planet } from "@/components/section-shell";
@@ -26,6 +28,12 @@ const stations: { slug: string; planet: Planet; icon: typeof BookOpen; accent: P
   { slug: "terms", planet: "geographer", icon: Sprout, accent: "leaf", left: "79.5%", top: "78.0%" },
   { slug: "tools", planet: "businessman", icon: Wrench, accent: "star", left: "68.6%", top: "89.7%" },
 ];
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "seo" });
+  return buildMetadata({ locale, title: t("siteTitle"), titleIsAbsolute: true, description: t("siteDescription") });
+}
 
 export default async function HomePage() {
   const home = await getTranslations("home");
