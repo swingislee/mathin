@@ -8,7 +8,8 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useAction } from "@/components/action-form";
-import { importStudentsAction, type ImportStudentRow, type ImportStudentsResult } from "./actions";
+import { importStudentsAction } from "./actions/students";
+import { type ImportStudentRow, type ImportStudentsResult } from "./actions/types";
 import { inputClass } from "./controls";
 
 interface PreviewRow extends ImportStudentRow {

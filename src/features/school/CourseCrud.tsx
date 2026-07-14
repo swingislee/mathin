@@ -13,7 +13,8 @@ import { useAction } from "@/components/action-form";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useRouter } from "@/i18n/navigation";
 import type { ActionResult } from "@/lib/action-result";
-import { createCourseAction, createLectureAction, deleteLectureAction, reorderLecturesAction, updateCourseAction, updateLectureAction, type CourseWriteInput } from "./actions";
+import { createCourseAction, createLectureAction, deleteLectureAction, reorderLecturesAction, updateCourseAction, updateLectureAction } from "./actions/courses";
+import { type CourseWriteInput } from "./actions/types";
 import { inputClass } from "./controls";
 import type { CourseDetail, CourseLecture } from "./courses";
 

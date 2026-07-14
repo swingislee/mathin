@@ -20,7 +20,7 @@ const sources = {
     read("tests/p4e-offline.test.ts"),
   observability: read("src/instrumentation.ts"),
   operations: read("src/instrumentation.ts") + read("src/app/[locale]/dashboard/operations/page.tsx"),
-  phone: read("src/components/phone-auth-form.tsx") + read("src/features/school/actions.ts"),
+  phone: read("src/components/phone-auth-form.tsx") + read("src/features/school/actions/students.ts"),
   video: read("src/features/school/video-actions.ts"),
   privacy: read("src/features/notebook/actions.ts") + read("src/features/school/customer-actions.ts"),
 };

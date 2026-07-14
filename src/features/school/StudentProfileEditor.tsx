@@ -10,7 +10,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useAction } from "@/components/action-form";
 import { useRouter } from "@/i18n/navigation";
-import { updateStudentAction, type UpdateStudentInput } from "./actions";
+import { updateStudentAction } from "./actions/students";
+import { type UpdateStudentInput } from "./actions/types";
 import { fromSelectValue, inputClass, toSelectValue } from "./controls";
 import type { StudentDetail } from "./students";
 

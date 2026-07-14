@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useAction } from "@/components/action-form";
 import { useRouter } from "@/i18n/navigation";
-import { addStudentFollowUp, type FollowUpKind } from "./actions";
+import { addStudentFollowUp } from "./actions/followups";
+import { type FollowUpKind } from "./actions/types";
 import { fromSelectValue, inputClass, toSelectValue } from "./controls";
 
 const KINDS: FollowUpKind[] = ["note", "call", "class", "visit"];

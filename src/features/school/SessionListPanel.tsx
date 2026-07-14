@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { useTranslations } from "next-intl";
 import { useAction } from "@/components/action-form";
 import { Link, useRouter } from "@/i18n/navigation";
-import { deleteUnstartedSessionAction, rescheduleSessionAction } from "./actions";
+import { deleteUnstartedSessionAction, rescheduleSessionAction } from "./actions/classes";
 import { AttendanceDrawer } from "./AttendanceDrawer";
 import type { SessionRow } from "./classes";
 import { ReviewDrawer } from "./ReviewDrawer";

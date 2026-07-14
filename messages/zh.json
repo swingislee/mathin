@@ -53,7 +53,8 @@
     "childrenPrivacy": "儿童信息保护",
     "unexpectedError": "这里暂时出了点问题",
     "unexpectedErrorHint": "错误已经记录。你可以重试；若仍失败，请稍后再来。",
-    "retry": "重试"
+    "retry": "重试",
+    "invalidInput": "输入有误，请检查后重试。"
   },
   "notFound": {
     "title": "这一页走丢了",

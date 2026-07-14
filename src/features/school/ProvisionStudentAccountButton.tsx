@@ -1,5 +1,5 @@
 "use client";
-import{useState}from"react";import{LoaderCircle,Smartphone}from"lucide-react";import{useTranslations}from"next-intl";import{Button}from"@/components/ui/button";import{ConfirmDialog}from"@/components/ui/confirm-dialog";import{useAction}from"@/components/action-form";import{useRouter}from"@/i18n/navigation";import{provisionStudentPhoneAccountAction}from"./actions";
+import{useState}from"react";import{LoaderCircle,Smartphone}from"lucide-react";import{useTranslations}from"next-intl";import{Button}from"@/components/ui/button";import{ConfirmDialog}from"@/components/ui/confirm-dialog";import{useAction}from"@/components/action-form";import{useRouter}from"@/i18n/navigation";import{provisionStudentPhoneAccountAction}from"./actions/students";
 
 export function ProvisionStudentAccountButton({studentId,phone}:{studentId:string;phone:string}){
   const t=useTranslations("school.students");

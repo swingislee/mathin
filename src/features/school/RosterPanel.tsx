@@ -17,14 +17,8 @@ import {
 import { useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { selectClass } from "./controls";
-import {
-  enrollStudentAction,
-  listClassroomOptions,
-  searchStudentsForEnroll,
-  transferStudentAction,
-  withdrawStudentAction,
-  type StudentSearchResult,
-} from "./actions";
+import { enrollStudentAction, listClassroomOptions, searchStudentsForEnroll, transferStudentAction, withdrawStudentAction } from "./actions/classes";
+import { type StudentSearchResult } from "./actions/types";
 import type { RosterRow } from "./classes";
 
 export function RosterPanel({ classroomId, roster, canManage }: { classroomId: string; roster: RosterRow[]; canManage: boolean }) {

@@ -9,7 +9,8 @@ import { useAction } from "@/components/action-form";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
-import { grantScholarshipAction, searchStudentsForFinance, type StudentSearchResult } from "./actions";
+import { grantScholarshipAction, searchStudentsForFinance } from "./actions/finance";
+import { type StudentSearchResult } from "./actions/types";
 import type { ScholarshipRow } from "./finance";
 
 export function ScholarshipsPanel({ scholarships }: { scholarships: ScholarshipRow[] }) {

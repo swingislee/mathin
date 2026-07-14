@@ -22,16 +22,9 @@ import {
 import { useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { fromSelectValue, inputClass, toSelectValue } from "./controls";
-import {
-  findProfileByEmailAction,
-  deactivateStaffAction,
-  getStaffHandoverPreviewAction,
-  grantStaffRoleAction,
-  promoteToStaffAction,
-  revokeStaffRoleAction,
-  type FoundProfile,
-  type StaffActionResult,
-} from "./actions";
+import { deactivateStaffAction, findProfileByEmailAction, getStaffHandoverPreviewAction, grantStaffRoleAction, promoteToStaffAction, revokeStaffRoleAction } from "./actions/staff";
+import { type FoundProfile } from "./actions/types";
+import type { ActionResult } from "@/lib/action-result";
 import type { StaffMember, StaffRoleInfo } from "./staff";
 
 /** 服务端错误码 → school.staff.err_* 文案；未知码回落 actionFailed。 */
@@ -93,7 +86,7 @@ export function StaffMembersPanel({
     });
   };
 
-  const saveRolesAction = async (userId: string, before: Set<string>, after: Set<string>): Promise<StaffActionResult> => {
+  const saveRolesAction = async (userId: string, before: Set<string>, after: Set<string>): Promise<ActionResult> => {
     const grants = [...after].filter((id) => !before.has(id));
     const revokes = [...before].filter((id) => !after.has(id));
     for (const roleId of grants) {

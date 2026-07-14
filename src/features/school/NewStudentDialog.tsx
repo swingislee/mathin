@@ -11,7 +11,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useRouter } from "@/i18n/navigation";
-import { createStudentAction, findDuplicateStudentsAction, type DuplicateStudentRow } from "./actions";
+import { createStudentAction, findDuplicateStudentsAction } from "./actions/students";
+import { type DuplicateStudentRow } from "./actions/types";
 import { Link } from "@/i18n/navigation";
 import { fromSelectValue, inputClass, toSelectValue } from "./controls";
 

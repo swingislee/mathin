@@ -5,7 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { buttonVariants } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { getWeekSchedule } from "./actions";
+import { getWeekSchedule } from "./actions/schedule";
 import { fromSelectValue, toSelectValue } from "./controls";
 import { markConflicts, type ScheduleBlock } from "./schedule";
 

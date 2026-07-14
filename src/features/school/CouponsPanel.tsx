@@ -11,7 +11,8 @@ import { useAction } from "@/components/action-form";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
-import { createCouponAction, grantCouponAction, searchStudentsForFinance, setCouponStatusAction, type StudentSearchResult } from "./actions";
+import { createCouponAction, grantCouponAction, searchStudentsForFinance, setCouponStatusAction } from "./actions/finance";
+import { type StudentSearchResult } from "./actions/types";
 import { selectClass } from "./controls";
 import type { CouponKind, CouponRow } from "./finance";
 

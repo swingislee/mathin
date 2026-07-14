@@ -9,12 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { type ActionErrorMessages, useAction } from "@/components/action-form";
 import { useRouter } from "@/i18n/navigation";
-import {
-  assignStudentAction,
-  changeStudentStatusAction,
-  restoreStudentAction,
-  softDeleteStudentAction,
-} from "./actions";
+import { assignStudentAction, changeStudentStatusAction, restoreStudentAction, softDeleteStudentAction } from "./actions/students";
 import { fromSelectValue, toSelectValue } from "./controls";
 import type { StudentStatus } from "./students";
 

@@ -1,5 +1,5 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { getWeekSchedule } from "@/features/school/actions";
+import { getWeekSchedule } from "@/features/school/actions/schedule";
 import { BindCodeForm } from "@/features/school/BindCodeForm";
 import { canManageGuardianScopes, getMyAttendance, getMyLearningSummary, getMyReviewedVideos, getMySessionReviews, getMyStudents } from "@/features/school/customer";
 import { GuardianScopePanel } from "@/features/school/GuardianScopePanel";

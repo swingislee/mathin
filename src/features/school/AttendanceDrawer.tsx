@@ -15,7 +15,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { getAttendanceDrawerData, saveAttendanceAction, type AttendanceDrawerRow } from "./actions";
+import { getAttendanceDrawerData, saveAttendanceAction } from "./actions/attendance";
+import { type AttendanceDrawerRow } from "./actions/types";
 import { ATTENDANCE_STATUSES, type AttendanceStatus } from "./learning";
 
 export function AttendanceDrawer({ sessionId }: { sessionId: string }) {

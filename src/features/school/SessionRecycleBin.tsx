@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useAction } from "@/components/action-form";
 import { useRouter } from "@/i18n/navigation";
-import { restoreSessionAction } from "./actions";
+import { restoreSessionAction } from "./actions/classes";
 import type { DeletedSessionRow } from "./classes";
 
 /**

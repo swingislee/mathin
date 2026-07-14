@@ -28,7 +28,7 @@ import {
 import { games } from "@/features/games/registry";
 import type { Difficulty } from "@/features/games/types";
 import { newId } from "@/lib/uuid";
-import { saveCoursewareOverlay } from "./actions";
+import { saveCoursewareOverlay } from "./actions/courseware";
 import { healOverlay, isOverlayRef, type CoursewareTemplatePage, type OverlaySlot } from "./courseware-overlay";
 import { overlayAssetKind, uploadOverlayAsset } from "./courseware-overlay-upload";
 

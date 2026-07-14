@@ -8,7 +8,8 @@ import { toast } from "sonner";
 import { buttonVariants } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { adjustAccountAction, getStudentAccountAction, searchStudentsForFinance, type StudentSearchResult } from "./actions";
+import { adjustAccountAction, getStudentAccountAction, searchStudentsForFinance } from "./actions/finance";
+import { type StudentSearchResult } from "./actions/types";
 import type { StudentAccount } from "./finance";
 
 export function AccountLookupPanel({ canAdjust }: { canAdjust: boolean }) {

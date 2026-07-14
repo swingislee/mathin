@@ -50,7 +50,7 @@ import { formatMs } from "@/features/games/format";
 import { games } from "@/features/games/registry";
 import type { PermissionKey } from "@/features/school/permissions";
 import { addDays } from "@/features/school/schedule";
-import { getWeekSchedule } from "@/features/school/actions";
+import { getWeekSchedule } from "@/features/school/actions/schedule";
 import { sizeToWH, type TilePlacement } from "@/features/school/tile-layout";
 import {
   CHILD_TILE_PREFIX,

@@ -14,17 +14,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { fromSelectValue, selectClass, toSelectValue } from "./controls";
-import {
-  adjustAccountAction,
-  approveRefundAction,
-  getOrderClassroomOptions,
-  grantScholarshipAction,
-  listAvailableCouponGrantsAction,
-  placeOrderAction,
-  recordPaymentAction,
-  requestRefundAction,
-  type OrderItemInput,
-} from "./actions";
+import { adjustAccountAction, approveRefundAction, getOrderClassroomOptions, grantScholarshipAction, listAvailableCouponGrantsAction, placeOrderAction, recordPaymentAction, requestRefundAction } from "./actions/finance";
+import { type OrderItemInput } from "./actions/types";
 import type { CouponGrantOption, OrderDetail, OrderKind, PaymentMethod, ScholarshipKind, StudentAccount } from "./finance";
 
 const DEFAULT_ITEM: OrderItemInput = { name: "", category: "course", unitPrice: 0, qty: 1, refundable: true };

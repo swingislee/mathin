@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAction } from "@/components/action-form";
 import { Link, useRouter } from "@/i18n/navigation";
-import { changeStudentStatusAction, recoverLostStudentAction } from "./actions";
+import { changeStudentStatusAction, recoverLostStudentAction } from "./actions/students";
 import { FollowUpForm } from "./FollowUpForm";
 import type { BoardGroup, BoardRow } from "./followups";
 import type { StudentStatus } from "./students";

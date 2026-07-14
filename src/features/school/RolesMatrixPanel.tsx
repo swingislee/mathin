@@ -12,12 +12,7 @@ import { useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import type { ActionResult } from "@/lib/action-result";
 import { inputClass } from "./controls";
-import {
-  createStaffRoleAction,
-  deleteStaffRoleAction,
-  renameStaffRoleAction,
-  setRolePermissionsAction,
-} from "./actions";
+import { createStaffRoleAction, deleteStaffRoleAction, renameStaffRoleAction, setRolePermissionsAction } from "./actions/staff";
 import { PERMISSION_KEYS, type PermissionKey } from "./permissions";
 import type { StaffRoleInfo } from "./staff";
 

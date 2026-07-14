@@ -4,7 +4,7 @@ import { useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { useRouter } from "@/i18n/navigation";
-import { approveRefundAction } from "./actions";
+import { approveRefundAction } from "./actions/finance";
 import type { PendingRefundRow } from "./finance";
 
 export function RefundQueuePanel({ refunds }: { refunds: PendingRefundRow[] }) {

@@ -27,7 +27,7 @@ import {
 import { games } from "@/features/games/registry";
 import type { Difficulty } from "@/features/games/types";
 import { newId } from "@/lib/uuid";
-import { updateLectureTemplate } from "./actions";
+import { updateLectureTemplate } from "./actions/courseware";
 import type { CoursewareTemplatePage } from "./courseware-overlay";
 import { templateAssetKind, uploadTemplateAsset } from "./courseware-template-upload";
 

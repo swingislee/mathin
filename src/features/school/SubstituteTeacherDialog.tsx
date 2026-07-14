@@ -8,7 +8,7 @@ import { useAction } from "@/components/action-form";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useRouter } from "@/i18n/navigation";
-import { assignSessionSubstituteAction, listSubstituteTeachersAction } from "./actions";
+import { assignSessionSubstituteAction, listSubstituteTeachersAction } from "./actions/classes";
 
 interface SubstituteTeacherOption { id: string; name: string }
 

@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useAction } from "@/components/action-form";
 import { Dialog,DialogContent,DialogFooter,DialogHeader,DialogTitle } from "@/components/ui/dialog";
 import { useRouter } from "@/i18n/navigation";
-import { updateClassroomAction } from "./actions";
+import { updateClassroomAction } from "./actions/classes";
 import type { ClassroomDetail } from "./classes";
 import { fromSelectValue,inputClass,toSelectValue } from "./controls";
 export function ClassroomEditor({classroom}:{classroom:ClassroomDetail}){const t=useTranslations("school.classes");const router=useRouter();const [open,setOpen]=useState(false);const [name,setName]=useState(classroom.name);const [grade,setGrade]=useState(classroom.grade?.toString()??"");const [capacity,setCapacity]=useState(classroom.capacity?.toString()??"");const [room,setRoom]=useState(classroom.room);

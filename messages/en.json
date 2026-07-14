@@ -53,7 +53,8 @@
     "childrenPrivacy": "Children's privacy",
     "unexpectedError": "Something went wrong here",
     "unexpectedErrorHint": "The error was recorded. Retry now, or come back later if it continues.",
-    "retry": "Retry"
+    "retry": "Retry",
+    "invalidInput": "Invalid input. Please check the form and try again."
   },
   "notFound": {
     "title": "This page wandered off",

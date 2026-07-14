@@ -270,6 +270,13 @@
 
 **验收**：对任一 school action 提交负数金额/超长文本/非法枚举，返回 `VALIDATION` 码而非入库或 500；`school/actions.ts` 拆分后单文件回到合理规模；新 action 默认带 schema。
 
+> **落地（P4G-9）**：`school/actions.ts`（1352 行）拆成 `src/features/school/actions/` 下的九个子域文件（students / finance / staff / followups / courses / classes / attendance / schedule / courseware，最大 316 行）+ 三个基座：`schemas.ts`（zod 原语与 `parse()`）、`guards.ts`（`authorizedClient` / `financeClient`）、`types.ts`（纯类型，客户端可安全 import）。26 个调用方按子域重新 import，`actions.ts` 删除。
+>
+> - **校验层**：金额走 `money`（finite + 非负 + 上限 100 万；调账用 `signedMoney`，是唯一允许负数的入口），文本按原 `slice` 上限改为**拒绝**，枚举一律 `z.enum(...)` 复用既有常量数组（`PAYMENT_METHODS` / `STUDENT_STATUSES` / `ATTENDANCE_STATUSES` …），日期收 `datetime-local` 与完整 ISO 两种形状并归一化为 ISO（与整改前 `Date.parse` 行为一致）。**搜索串例外**：不入库，截断而非拒绝——让用户多打几个字就报「输入有误」是把校验用错了地方。
+> - **toast 分流**：`VALIDATION` 的文案在 `useAction` / `ActionForm` 里一处兜底成 `common.invalidInput`，40 个调用点无需各自声明。
+> - **运行时验证**（Playwright 抓真实 Server Action 请求后重放，绕过 UI 的 `disabled`——这正是攻击者的路径）：收款 action 的负数金额 / NaN 金额 / 超长备注 / 非法 method 枚举 / 非 uuid 订单号，**五项全部返回 `{ok:false,code:"VALIDATION"}`**，数据库 `payments` 表零条 `amount <= 0`。
+> - **未纳入本轮**：`LiveShell.tsx`（1251 行）与 `dashboard/page.tsx`（1249 行）两个巨石留给 P4G-7（性能）一并拆，避免同文件互相踩。`activity-actions` / `review-actions` / `video-actions` / `customer-actions` 四个小 action 文件（合计 165 行）本轮未改，新 action 按 `AGENTS.md` 新约定默认带 schema。
+
 ### 7.3 遥测盲区：错误可观测已建成，性能与产品度量为零
 
 **现状证据**：**错误侧已经做了**——`src/instrumentation.ts` 结构化输出 + `MATHIN_ERROR_REPORT_URL` 投递 + `operational_errors` 看板（P4E-V3 成果，运行手册齐全）。但**性能与行为侧零命中**：无 `useReportWebVitals`、无任何产品分析（umami/plausible/PostHog 均无）、未提 Search Console。
