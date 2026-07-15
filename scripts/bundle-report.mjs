@@ -13,7 +13,10 @@ import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { gzipSync } from "node:zlib";
 
-const APP_DIR = ".next/server/app";
+// 默认读 .next；量化时可 BUNDLE_DIST_DIR=.next-bundle 指向独立构建目录，
+// 避免与正在运行的 dev server（占用 .next）争用而互相损坏产物。
+const DIST = process.env.BUNDLE_DIST_DIR || ".next";
+const APP_DIR = `${DIST}/server/app`;
 const args = process.argv.slice(2);
 const asJson = args.includes("--json");
 const baselinePath = args[args.indexOf("--baseline") + 1];
@@ -27,7 +30,7 @@ if (!existsSync(APP_DIR)) {
 const gzipCache = new Map();
 function gzipSize(chunk) {
   if (gzipCache.has(chunk)) return gzipCache.get(chunk);
-  const file = join(".next", chunk.replace(/^static\//, "static/"));
+  const file = join(DIST, chunk.replace(/^static\//, "static/"));
   const size = existsSync(file) ? gzipSync(readFileSync(file)).length : 0;
   gzipCache.set(chunk, size);
   return size;

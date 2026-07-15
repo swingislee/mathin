@@ -218,6 +218,15 @@
 
 **验收**：前 10 路由的客户端 JS 体积有可测量下降；新增页面默认为 Server Component。
 
+**② 审计结果（P4G-7，2026-07-15，如实纠正）**：跑 `pnpm bundle:report`（构建到独立 `.next-bundle`，`NEXT_DIST_DIR=.next-bundle pnpm build`，不撞 dev 的 `.next`）拿到 54 路由 gzip 排名后，结论与 §6.2 同构——**边界本就基本正确，没有可下推的页面级 `"use client"`，也没有藏在全局壳里的重依赖**：
+
+- **地板 ~249 kB 压在全部 54 路由**：拆开是 ~168 kB 框架（React 19 + Next/Turbopack 运行时，不可压）+ ~80 kB 全局 client 组件。零 `page.tsx`／零 `layout.tsx` 标 `"use client"`；根布局全局 client 只有 sonner `Toaster` 与 `NextIntlClientProvider`（皆必需），主题走 SSR（`getThemePreference`）无客户端 theme provider。**全局壳里没有放错的重依赖可搬。**
+- **46/54 路由贴地板**：自身几乎零额外 client JS，说明页面壳已是 Server Component。
+- **高出地板的 8 个路由背的都是正当交互 JS**：classroom session/live、whiteboard（realtime，浏览器 supabase 客户端必需）、notebook/lecture 编辑器（BlockNote + 客户端自动保存）、assignments（`VideoUploadPanel` 200 MB 视频直传 storage，Server Action 无法代理大文件）、login/phone（OTP 走浏览器 auth）。`@supabase/supabase-js`（55.8 kB）仅出现在这 8 个路由，**不在全局地板**。
+- **批次1 懒加载得到排名证实**：`/games`、`/tools`、`/terms/graph`、`/terms/(atlas)` 均贴地板（249~252 kB），不再背 game/tool 代码；game/tool 的实现只落在真正的 `games/[game]`（258）、`tools/[tool]`（286）上——注册表拆分的收益如预期。
+
+因此不做「为压数字而压数字」的高风险 refactor（计划 §6.1 已预留此判断）。留下的量尺：`scripts/bundle-report.mjs` 支持 `BUNDLE_DIST_DIR` 指向独立构建目录，`next.config` 支持 `NEXT_DIST_DIR`——量化 bundle 时不必停 dev server。
+
 ### 6.2 重依赖已正确分割（**此前的担忧不成立，如实纠正**）
 
 **现状证据**：`three` / `@react-three/*` 走 `next/dynamic` + `ssr: false`（`src/features/terms/three/views.tsx:18–19`，带 `NightLoading` 占位）；BlockNote 走 `next/dynamic`（`src/features/notebook/editor/NoteEditor.tsx:6`）。

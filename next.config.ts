@@ -57,6 +57,9 @@ const baseHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // 默认 .next；bundle 量化时 NEXT_DIST_DIR=.next-bundle 构建到独立目录，
+  // 不与正在运行的 dev server 争用 .next（见 scripts/bundle-report.mjs）。
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   allowedDevOrigins: ["192.168.5.213", "127.0.0.1", "localhost"],
   serverExternalPackages: ["@blocknote/server-util"],
   async headers() {
