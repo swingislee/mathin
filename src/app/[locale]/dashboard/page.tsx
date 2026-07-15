@@ -327,36 +327,30 @@ function buildSharedCustomerTiles({
 export default async function DashboardPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const user = await requireUser(locale);
-  const t = await getTranslations("dashboard");
-  const schoolT = await getTranslations("school");
-  const gamesT = await getTranslations("games");
+  const user = await requireUser(locale); // 鉴权闸门：保持在最前，单独 await
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("game_leaderboard")
-    .select("game_id, difficulty, duration_ms")
-    .eq("user_id", user.id)
-    .returns<BestRow[]>();
-  const bests = data ?? [];
-  const { data: recentData } = await supabase
-    .from("posts")
-    .select("id,title,published_at,like_count")
-    .eq("author_id", user.id)
-    .order("published_at", { ascending: false })
-    .limit(3)
-    .returns<RecentPostRow[]>();
-  const recentPosts = recentData ?? [];
-  const myClassroomList = await listMyClassrooms();
+
+  // 原本这里是 8 连串行 await（3 个 getTranslations + 2 个内联查询 + listMyClassrooms
+  // + getProfile + layout 查询）。翻译已缓存（各 ~1ms）可忽略，但 5 次取数是到远程库的
+  // 独立网络往返（各 12~55ms），串起来 ~120ms 直接加在全站访问频率最高页面的 TTFB 上。
+  // 合并成一个 Promise.all 后耗时被最慢的单条卡住（~55ms），取数延迟腰斩（§6.3）。
+  const [t, schoolT, gamesT, bestsRes, recentRes, myClassroomList, profile, layoutRow] = await Promise.all([
+    getTranslations("dashboard"),
+    getTranslations("school"),
+    getTranslations("games"),
+    supabase.from("game_leaderboard").select("game_id, difficulty, duration_ms").eq("user_id", user.id).returns<BestRow[]>(),
+    supabase.from("posts").select("id,title,published_at,like_count").eq("author_id", user.id).order("published_at", { ascending: false }).limit(3).returns<RecentPostRow[]>(),
+    listMyClassrooms(),
+    getProfile(user.id),
+    supabase.from("dashboard_layouts").select("tiles").eq("user_id", user.id).maybeSingle<{ tiles: unknown }>(),
+  ]);
+  const bests = bestsRes.data ?? [];
+  const recentPosts = recentRes.data ?? [];
   const classrooms = myClassroomList.slice(0, 5);
-  const profile = await getProfile(user.id);
   const isStaff = profile?.role === "staff" || profile?.role === "admin";
+  // getMyPerms 依赖 isStaff（来自 profile），只能在 profile 落地后发出——保持串行
   const perms: Set<PermissionKey> = isStaff ? await getMyPerms(user.id) : new Set();
-  const { data: layoutRow } = await supabase
-    .from("dashboard_layouts")
-    .select("tiles")
-    .eq("user_id", user.id)
-    .maybeSingle<{ tiles: unknown }>();
-  const userTiles = layoutRow?.tiles ?? null;
+  const userTiles = layoutRow.data?.tiles ?? null;
   const dateLine = new Intl.DateTimeFormat(locale, { dateStyle: "full" }).format(new Date());
   const subtitle = `${schoolT("home.staffGreeting", { name: profile?.displayName || "" })} · ${dateLine}`;
   const cny = new Intl.NumberFormat(locale, { style: "currency", currency: "CNY" });
