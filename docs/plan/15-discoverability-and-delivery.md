@@ -184,6 +184,13 @@
 
 **验收**：改一门课程后，只有该课程相关 tag 失效、其余缓存命中；dashboard 首屏查询数在无写入的重复访问中显著下降；`AGENTS.md` 的缓存约定在代码中有实际落点。
 
+**决策与拆分（2026-07-15，用户拍板）**：本节「修法①」字面要 `use cache`，但 `use cache` 在 Next 16.2 **必须开全局 `cacheComponents`**（本项目 AGENTS.md 刻意暂未启用）；而唯一不开 flag 的替代 `unstable_cache` 已在 Next 弃用路径上——按「绝不引入计划移除的 API」的铁律**出局**。二者相抵，**中间地带不存在**：P4G-6 塌缩为「要么做 `cacheComponents` 全量迁移，要么整件暂缓」。
+
+- **判据**：`cacheComponents` 迁移成本是**线性、可逆、机械**（新增页多一页多包一个 Suspense），非拼音-uid 那种复利/不可逆；触及 30 个读 `cookies()` 的鉴权页，错一处＝缓存串用户数据；且是项目刻意未上的较新模型。收益侧，§6.3（dashboard 并行化＋巨石拆分）已削掉本节引的最大痛点。**故：暂缓**。
+- **对冲（已落地）**：`AGENTS.md` 新增「动态数据 Suspense 就绪」约定——新受保护页写时即把动态子树包 Suspense / 配 `loading.tsx`，把将来迁移成本**预付**成持平，抵消「线性增长」这一唯一「现在做」的理由。
+- **P4G-6a**（原小切口，随 unstable_cache 出局而**取消**）：曾设想只给课程/员工角色两张全局低写表加缓存，但（a）合规工具只剩 `use cache`＝仍要开 flag；（b）安全缓存须把 RLS 会话 client 换 service client（`admin.ts`），拿纵深防御换命中，对未成年人数据不划算。故不单独做。
+- **P4G-6b**（未来独立任务，见 §9）：`cacheComponents` 全量迁移 → 30 鉴权页补 Suspense 边界 → 稳定读多写少数据转 `use cache` + `cacheTag`，写 Action `updateTag` 精准失效。单列、单给风险预算。interim 保持 `router.refresh()`。
+
 ---
 
 ## 5. P4G-D · CI：守门人全部造好了，但没有一个上岗（**最便宜的一项**）
@@ -355,10 +362,11 @@
 | **P4G-3** | SEO 元数据层：`buildMetadata` helper + 公开路由 `generateMetadata` + sitemap + robots + canonical/hreflang | P4G-2 后（依赖正确的 lang 与英文 slug） | §2.2/2.3/2.4 验收 |
 | **P4G-4** | 内容 locale 接缝：`content/{zh,en}/` + `getTerm(locale, slug)` + 缺失回退与显式标注 | P4G-1 后（命名先定，再分语言目录） | §3.1 验收 |
 | **P4G-5** | 结构化数据（LearningResource / BreadcrumbList / Organization） | 随 P4G-3 | §2.5 验收 |
-| **P4G-6** | 缓存与失效：`use cache` + `cacheTag` + Server Action `updateTag`，从课程/花名册/学期切入 | 随 P4D 模块改造合批 | §4 验收 |
-| **P4G-7** | 性能：bundle 分析 → 客户端边界下推 → dashboard 前奏并行化 + 拆分 + Suspense/skeleton | **先量后改**；P4G-0 之后任意时机 | §6.1/6.3 验收 |
-| **P4G-8** | 索引与查询计划审计（`explain analyze` 报表类 + RLS 谓词） | 有真实数据量后 | §6.4 验收 |
-| **P4G-9** | school actions 的 zod 校验层 + 巨石文件按子域拆分 | 随 P4D 各模块改造合批（与 P4F-3 的 `useAction` 范式合流） | §7.2 验收 |
+| ~~**P4G-6**~~ | ~~缓存与失效~~ **暂缓/取消**：`unstable_cache` 触弃用铁律出局、`use cache` 须开 `cacheComponents`，无中间地带；§6.3 已削主要痛点。决策见 §4「决策与拆分」，工作转入 P4G-6b | — | — |
+| **P4G-6b** | **`cacheComponents` 全量迁移（未来独立任务）**：开 flag → 30 个读 `cookies()` 的鉴权页补 Suspense 边界 → 稳定读多写少数据转 `use cache` + `cacheTag`，写 Action `updateTag` 精准失效 | 专项立项、单给风险预算；新页已按 AGENTS.md「Suspense 就绪」约定预付边界 | §4 验收 |
+| **P4G-7** | ✅ 已完成（2026-07-15）。性能：bundle 分析 → 边界审计（如实纠正：本就正确）→ dashboard 前奏并行化 → dashboard/LiveShell 巨石拆分 → loading skeleton | **先量后改**；P4G-0 之后任意时机 | §6.1/6.3/6.4① |
+| **P4G-8** | 索引与查询计划审计（`explain analyze` 报表类 + RLS 谓词）；含 §6.4② | 有真实数据量后 | §6.4 验收 |
+| **P4G-9** | ✅ 已完成。school actions 的 zod 校验层 + 巨石文件按子域拆分 | 随 P4D 各模块改造合批（与 P4F-3 的 `useAction` 范式合流） | §7.2 验收 |
 | **P4G-10** | 遥测：web vitals 上报 + 自托管产品分析 + Search Console 接入 | **随 P4G-3 成对**（SEO 做了要能被度量） | §7.3 验收 |
 
 **与 13/14/P4D 的咬合点**：P4G-1 **必须先于**任何把内容 uid 写进数据库的任务（掌握度模型、课件引用、作业挂概念）——这是本文唯一有硬性时间窗的项。P4G-1 完成后，`14-P4F-8`（板块互导飞轮）才有干净的锚点可挂。P4G-3 依赖 P4G-1（英文 slug）与 P4G-2（正确 lang）。P4G-4 与英文内容撰写（内容工程，非本文）解耦：接缝先通，内容随后填。
