@@ -285,6 +285,7 @@
 > - **toast 分流**：`VALIDATION` 的文案在 `useAction` / `ActionForm` 里一处兜底成 `common.invalidInput`，40 个调用点无需各自声明。
 > - **运行时验证**（Playwright 抓真实 Server Action 请求后重放，绕过 UI 的 `disabled`——这正是攻击者的路径）：收款 action 的负数金额 / NaN 金额 / 超长备注 / 非法 method 枚举 / 非 uuid 订单号，**五项全部返回 `{ok:false,code:"VALIDATION"}`**，数据库 `payments` 表零条 `amount <= 0`。
 > - **未纳入本轮**：`LiveShell.tsx`（1251 行）与 `dashboard/page.tsx`（1249 行）两个巨石留给 P4G-7（性能）一并拆，避免同文件互相踩。`activity-actions` / `review-actions` / `video-actions` / `customer-actions` 四个小 action 文件（合计 165 行）本轮未改，新 action 按 `AGENTS.md` 新约定默认带 schema。
+> - **已完成（P4G-7，2026-07-15）**：两个巨石均已拆。`dashboard/page.tsx` 1243 → 23 行瘦分派器，三角色分支各成自包含 server component（`src/features/school/home/{StaffHome,ParentHome,StudentHome}.tsx` + `shared.tsx`），顺带修 staff 白取 bests/recentPosts/classrooms 的浪费。`LiveShell.tsx` 1252 → 938 行，沿已有接缝抽出 `liveState.ts`（纯 reduceEvent + 类型 + 常量）与 `LivePanels.tsx`（五个 props 驱动的展示子组件），有状态核心一行未动——原「避免与 P4G-9 互踩」的排期理由已随 P4G-9 完成而消失。两处 SSR/渲染行为均经 Playwright 验证不变、零 JS 错误。
 
 ### 7.3 遥测盲区：错误可观测已建成，性能与产品度量为零
 
