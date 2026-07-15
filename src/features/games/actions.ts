@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getGame } from "./registry";
 import type { Difficulty } from "./types";
+import { getVerifier } from "./verify";
 
 // 客户端计时与服务端 started_at 的允许偏差（docs/plan/03-3.2）
 const DURATION_TOLERANCE_MS = 10_000;
@@ -55,11 +56,11 @@ export async function submitScore(sessionId: string, durationMs: number, proof: 
     .single();
   if (!session) return { ok: false, error: "invalid" };
 
-  const game = getGame(session.game_id);
-  if (!game) return { ok: false, error: "invalid" };
+  const verify = getVerifier(session.game_id);
+  if (!verify) return { ok: false, error: "invalid" };
   const elapsedMs = Date.now() - new Date(session.started_at).getTime();
   if (Math.abs(elapsedMs - durationMs) > DURATION_TOLERANCE_MS) return { ok: false, error: "invalid" };
-  if (!game.verify(session.seed, session.difficulty as Difficulty, proof)) return { ok: false, error: "invalid" };
+  if (!verify(session.seed, session.difficulty as Difficulty, proof)) return { ok: false, error: "invalid" };
 
   const { error } = await admin.from("game_scores").insert({
     user_id: user.id,

@@ -7,6 +7,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { startGame, submitScore } from "./actions";
+import { GameBoard } from "./boards";
 import { formatMs } from "./format";
 import { getGame } from "./registry";
 import type { Difficulty } from "./types";
@@ -117,7 +118,8 @@ export function GameMatch({ gameId, loggedIn }: { gameId: string; loggedIn: bool
             <Button variant="secondary" onClick={() => begin(difficulty)}>{t("start")}</Button>
           </div>
         ) : (
-          <game.Board
+          <GameBoard
+            id={gameId}
             key={`${seed}:${difficulty}`}
             seed={seed}
             difficulty={difficulty}

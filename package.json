@@ -14,6 +14,7 @@
     "p4e:offline-test": "vitest run tests/p4e-offline.test.ts",
     "p4e:offline-fixture": "node scripts/p4e-offline-fixture.mjs",
     "messages:check": "node scripts/verify-messages.mjs",
+    "bundle:report": "node scripts/bundle-report.mjs",
     "ci:db-rebuild": "node scripts/ci-rebuild-db.mjs",
     "db:types": "node scripts/generate-database-types.mjs",
     "db:types:check": "node scripts/verify-database-types.mjs",

@@ -8,6 +8,7 @@ import { MdxContent } from "@/components/mdx-content";
 import { SiteHeader } from "@/components/site-header";
 import { Star4 } from "@/components/star4";
 import { TranslationNotice } from "@/components/translation-notice";
+import { ToolView } from "@/features/tools/components";
 import { getTool } from "@/features/tools/registry";
 import { Quiz } from "@/features/terms/quiz";
 import { MarkStudied } from "@/features/terms/studied";
@@ -147,7 +148,7 @@ export default async function TermPage({ params }: { params: Promise<{ locale: s
           <>
             <SectionHeading>{t("seeIt")}</SectionHeading>
             <div className="mt-4 flex h-[520px] flex-col overflow-hidden rounded-2xl border bg-paper" data-planet="businessman">
-              <tool.Component embedded />
+              <ToolView id={tool.id} embedded />
             </div>
             <p className="mt-2 text-right text-xs">
               <Link href={`/tools/${tool.id}`} className="inline-flex items-center gap-1 text-muted transition-colors duration-200 hover:text-ink">

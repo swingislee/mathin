@@ -31,8 +31,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { GameBoard } from "@/features/games/boards";
 import { games } from "@/features/games/registry";
 import type { GameMirrorState } from "@/features/games/types";
+import { ToolView } from "@/features/tools/components";
 import { getTool, tools } from "@/features/tools/registry";
 import { CanvasSurface } from "@/features/whiteboard/CanvasSurface";
 import { Toolbar } from "@/features/whiteboard/Toolbar";
@@ -1081,10 +1083,10 @@ function GamePage({
   const [initialMirror] = useState(() => mirror);
   const game = games.find((item) => item.id === page.gameId);
   if (!game) return <p className="grid size-full place-items-center text-sm text-muted">{t("gameMissing")}</p>;
-  const Board = game.Board;
   return (
     <div className="size-full overflow-auto p-4">
-      <Board
+      <GameBoard
+        id={game.id}
         seed={page.seed}
         difficulty={page.difficulty}
         finished={false}
@@ -1104,7 +1106,6 @@ function ToolOverlay({ toolId, onClose }: { toolId: string; onClose?: () => void
   const tTools = useTranslations("tools");
   const tool = getTool(toolId);
   if (!tool) return null;
-  const Component = tool.Component;
   const Icon = tool.icon;
   return (
     <div className="absolute inset-0 z-30 flex flex-col bg-paper">
@@ -1123,7 +1124,7 @@ function ToolOverlay({ toolId, onClose }: { toolId: string; onClose?: () => void
         )}
       </div>
       <div className="min-h-0 flex-1 overflow-auto">
-        <Component embedded />
+        <ToolView id={tool.id} embedded />
       </div>
     </div>
   );

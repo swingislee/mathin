@@ -28,7 +28,12 @@ export interface GameBoardProps {
   readOnly?: boolean;
 }
 
-export interface GameDef {
+/**
+ * 游戏的元数据。**不含 Board 组件、不含 verify 函数**——这三样曾焊在一个 GameDef 里，
+ * 结果是任何只想列出游戏名的页面（dashboard 磁贴、课件编辑器、sitemap）都把三个棋盘
+ * 打进了首屏 bundle。棋盘走 `./boards` 的按需加载，校验走 `./verify`（仅服务端）。
+ */
+export interface GameMeta {
   /** 路由段（kebab-case），同时是 messages 里 games.items 的 key */
   id: string;
   /** 图鉴编号 */
@@ -37,7 +42,9 @@ export interface GameDef {
   crowns: 1 | 2 | 3;
   icon: LucideIcon;
   difficulties: readonly Difficulty[];
-  Board: ComponentType<GameBoardProps>;
-  /** 纯函数：由 seed+难度重新生成题目并检验 proof 是否为其有效解（服务端调用） */
-  verify: (seed: string, difficulty: Difficulty, proof: unknown) => boolean;
 }
+
+export type GameBoard = ComponentType<GameBoardProps>;
+
+/** 纯函数：由 seed+难度重新生成题目并检验 proof 是否为其有效解（服务端调用） */
+export type GameVerifier = (seed: string, difficulty: Difficulty, proof: unknown) => boolean;

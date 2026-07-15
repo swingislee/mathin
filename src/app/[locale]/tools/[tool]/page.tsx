@@ -3,6 +3,7 @@ import { ArrowLeft } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { JsonLd } from "@/components/json-ld";
+import { ToolView } from "@/features/tools/components";
 import { CopyEmbedButton } from "@/features/tools/copy-embed-button";
 import { getTool } from "@/features/tools/registry";
 import { Link } from "@/i18n/navigation";
@@ -54,7 +55,7 @@ export default async function ToolPage({ params }: { params: Promise<{ locale: s
         </div>
       </div>
       <div className="flex min-h-0 flex-1 flex-col">
-        <def.Component />
+        <ToolView id={def.id} />
       </div>
     </main>
   );
