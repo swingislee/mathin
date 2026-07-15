@@ -15,10 +15,8 @@ import {
   MonitorPlay,
   PenLine,
   SquareCheckBig,
-  Star,
   TriangleAlert,
   Wrench,
-  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,15 +29,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { GameBoard } from "@/features/games/boards";
-import { games } from "@/features/games/registry";
 import type { GameMirrorState } from "@/features/games/types";
-import { ToolView } from "@/features/tools/components";
-import { getTool, tools } from "@/features/tools/registry";
 import { CanvasSurface } from "@/features/whiteboard/CanvasSurface";
 import { Toolbar } from "@/features/whiteboard/Toolbar";
 import type { WhiteboardStore } from "@/features/whiteboard/store";
-import type { StrokeItem } from "@/features/whiteboard/types";
+
 import { Link, useRouter } from "@/i18n/navigation";
 import { createIsolatedRealtimeClient } from "@/lib/supabase/client";
 import { newId } from "@/lib/uuid";
@@ -59,15 +53,14 @@ import {
 } from "../sync/transports";
 import type { ClassroomMember, ClassSessionRecord, CoursewarePage, SessionEvent } from "../types";
 import { useClassBoard } from "./useClassBoard";
-import { VideoStage, type VideoCtl } from "./VideoStage";
+import { VideoStage } from "./VideoStage";
+import { GamePage, MainBoard, StudentCard, ToolOverlay, ToolPicker } from "./LivePanels";
+import { OPTION_LABELS, reduceEvent, type LiveState, type Phase, type Role } from "./liveState";
 
 // 上课页（08-§3.4/§5）：候课（预载/自检）→ 上课 全程页内状态切换，零路由跳转。
 // P4-5 正式舞台：4:3 课件/主板书 + 副板书 + 学生名录；主板书按页 uuid 隔离、
 // 副板书全课一块；游戏页 game_state 镜像、视频 video_ctl 同步、工具快捷窗、
 // 上课中临时插白板页、加星长按撤销、举手/发题/作答、presence 在线名单。
-
-type Role = "control" | "display" | "viewer";
-type Phase = "prep" | "live";
 
 interface Props {
   session: ClassSessionRecord;
@@ -82,104 +75,6 @@ interface Props {
   /** 离线演练：保留可靠 outbox，但主动禁用 T2 与服务端写入，退出后验证补同步。 */
   offlineDrill?: boolean;
 }
-
-interface LiveState {
-  pages: CoursewarePage[];
-  currentPage: number;
-  stars: Record<string, number>;
-  started: boolean;
-  ended: boolean;
-  hands: Record<string, boolean>;
-  boards: Record<string, StrokeItem[]>;
-  games: Record<string, GameMirrorState>;
-  video: Record<string, VideoCtl>;
-  openTool: string | null;
-  quiz: { id: string; options: number } | null;
-  answers: Record<string, Record<string, number>>;
-}
-
-function reduceEvent(state: LiveState, ev: SessionEvent): LiveState {
-  switch (ev.type) {
-    case "page": {
-      const page = Number(ev.payload.page);
-      return Number.isFinite(page) ? { ...state, currentPage: page } : state;
-    }
-    case "page_insert": {
-      const page = ev.payload.page as CoursewarePage | undefined;
-      if (!page || typeof page !== "object" || !page.id || !page.type) return state;
-      if (state.pages.some((item) => item.id === page.id)) return state;
-      const raw = Number(ev.payload.index);
-      const index = Number.isFinite(raw) ? Math.max(0, Math.min(state.pages.length, raw)) : state.pages.length;
-      const pages = [...state.pages];
-      pages.splice(index, 0, page);
-      return { ...state, pages };
-    }
-    case "star": {
-      const studentId = String(ev.payload.studentId ?? "");
-      if (!studentId) return state;
-      return { ...state, stars: { ...state.stars, [studentId]: (state.stars[studentId] ?? 0) + 1 } };
-    }
-    case "star_undo": {
-      const studentId = String(ev.payload.studentId ?? "");
-      if (!studentId) return state;
-      return { ...state, stars: { ...state.stars, [studentId]: Math.max(0, (state.stars[studentId] ?? 0) - 1) } };
-    }
-    case "session_ctl": {
-      const action = ev.payload.action;
-      // start 同时清 ended：重新开课复用同一事件，按时间序回放后收敛到最后一次状态
-      if (action === "start") return { ...state, started: true, ended: false };
-      if (action === "end") return { ...state, ended: true };
-      if (action === "quiz_open") {
-        const quizId = String(ev.payload.quizId ?? "");
-        const options = Number(ev.payload.options);
-        if (!quizId || !Number.isFinite(options)) return state;
-        return { ...state, quiz: { id: quizId, options: Math.max(2, Math.min(4, options)) } };
-      }
-      if (action === "quiz_close") return { ...state, quiz: null };
-      return state;
-    }
-    case "board_snapshot": {
-      const pageKey = String(ev.payload.pageKey ?? "");
-      const items = ev.payload.items;
-      if (!pageKey || !Array.isArray(items)) return state;
-      return { ...state, boards: { ...state.boards, [pageKey]: items as StrokeItem[] } };
-    }
-    case "game_state": {
-      const pageId = String(ev.payload.pageId ?? "");
-      const mirror = ev.payload.state as GameMirrorState | undefined;
-      if (!pageId || !mirror || !Array.isArray(mirror.values)) return state;
-      return { ...state, games: { ...state.games, [pageId]: mirror } };
-    }
-    case "video_ctl": {
-      const pageId = String(ev.payload.pageId ?? "");
-      const action = ev.payload.action;
-      const time = Number(ev.payload.time);
-      if (!pageId || (action !== "play" && action !== "pause" && action !== "seek") || !Number.isFinite(time)) return state;
-      return { ...state, video: { ...state.video, [pageId]: { action, time, evId: ev.id } } };
-    }
-    case "tool_ctl": {
-      if (ev.payload.action === "open") {
-        const toolId = String(ev.payload.toolId ?? "");
-        return toolId ? { ...state, openTool: toolId } : state;
-      }
-      return { ...state, openTool: null };
-    }
-    case "hand":
-      return { ...state, hands: { ...state.hands, [ev.userId]: Boolean(ev.payload.up) } };
-    case "answer": {
-      const quizId = String(ev.payload.quizId ?? "");
-      const choice = Number(ev.payload.choice);
-      if (!quizId || !Number.isFinite(choice)) return state;
-      return { ...state, answers: { ...state.answers, [quizId]: { ...state.answers[quizId], [ev.userId]: choice } } };
-    }
-    default:
-      return state;
-  }
-}
-
-const OPTION_LABELS = ["A", "B", "C", "D"];
-/** 星数不超过此值时直接摆星星图标（更直观）；超出退回单星+数字（08-§3.5）。 */
-const MAX_INLINE_STARS = 5;
 
 export function LiveShell({ session, classId, members, myRole, userId, initialEvents, role, rehearsal = false, offlineDrill = false }: Props) {
   const router = useRouter();
@@ -1039,214 +934,3 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
   );
 }
 
-/** 主板书：按页 uuid 隔离，key 换页时整体重建并从最近快照水合。 */
-function MainBoard({
-  log,
-  boardKey,
-  editable,
-  initialItems,
-  strokeWidthBasis,
-  onStore,
-}: {
-  log: SessionEventLog | null;
-  boardKey: string;
-  editable: boolean;
-  initialItems: StrokeItem[] | undefined;
-  strokeWidthBasis?: number;
-  onStore: (store: WhiteboardStore) => void;
-}) {
-  const { store, bus } = useClassBoard(log, boardKey, editable, initialItems);
-  useEffect(() => {
-    onStore(store);
-  }, [store, onStore]);
-  return (
-    <div className="pointer-events-none absolute inset-0 z-10">
-      <CanvasSurface editable={editable} store={store} bus={bus} strokeWidthBasis={strokeWidthBasis} />
-    </div>
-  );
-}
-
-/** 游戏课件页：题面由 seed 确定性推导，教师操作经 game_state 镜像（08-§3.6）。 */
-function GamePage({
-  page,
-  isController,
-  mirror,
-  onMirror,
-}: {
-  page: Extract<CoursewarePage, { type: "game" }>;
-  isController: boolean;
-  mirror: GameMirrorState | null;
-  onMirror: (pageId: string, mirror: GameMirrorState) => void;
-}) {
-  const t = useTranslations("classroom.live");
-  // 主控端只在挂载时取一次镜像（断线重进恢复现场），此后本地即权威，防事件回环
-  const [initialMirror] = useState(() => mirror);
-  const game = games.find((item) => item.id === page.gameId);
-  if (!game) return <p className="grid size-full place-items-center text-sm text-muted">{t("gameMissing")}</p>;
-  return (
-    <div className="size-full overflow-auto p-4">
-      <GameBoard
-        id={game.id}
-        seed={page.seed}
-        difficulty={page.difficulty}
-        finished={false}
-        onComplete={() => undefined}
-        mirror={isController ? initialMirror : mirror}
-        onMirror={isController ? (state) => onMirror(page.id, state) : undefined}
-        readOnly={!isController}
-      />
-    </div>
-  );
-}
-
-/** 工具快捷窗（用户 2026-07-08 要求）：本仓组件直接渲染，零网络、天然离线；
- *  开/关由教师经 tool_ctl 镜像，窗内操作各端本地交互（学生可跟着摆弄）。 */
-function ToolOverlay({ toolId, onClose }: { toolId: string; onClose?: () => void }) {
-  const t = useTranslations("classroom.live");
-  const tTools = useTranslations("tools");
-  const tool = getTool(toolId);
-  if (!tool) return null;
-  const Icon = tool.icon;
-  return (
-    <div className="absolute inset-0 z-30 flex flex-col bg-paper">
-      <div className="flex h-10 shrink-0 items-center gap-2 border-b border-line px-3">
-        <Icon size={15} className="text-muted" />
-        <span className="text-sm font-medium">{tTools(`items.${tool.id}.name`)}</span>
-        {onClose && (
-          <button
-            type="button"
-            aria-label={t("closeTool")}
-            onClick={onClose}
-            className="ml-auto rounded-full p-1.5 text-muted transition-colors hover:bg-moon/30 hover:text-ink"
-          >
-            <X size={16} />
-          </button>
-        )}
-      </div>
-      <div className="min-h-0 flex-1 overflow-auto">
-        <ToolView id={tool.id} embedded />
-      </div>
-    </div>
-  );
-}
-
-function ToolPicker({ onPick }: { onPick: (toolId: string) => void }) {
-  const tTools = useTranslations("tools");
-  return (
-    <div className="flex flex-col gap-0.5">
-      {tools.map((tool) => {
-        const Icon = tool.icon;
-        return (
-          <button
-            key={tool.id}
-            type="button"
-            onClick={() => onPick(tool.id)}
-            className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm text-muted transition-colors hover:bg-moon/30 hover:text-ink"
-          >
-            <Icon size={15} />
-            {tTools(`items.${tool.id}.name`)}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-/** 学生卡（08-§3.5 加星面板）：点卡 +1 星、长按撤销最新一颗；触控目标 ≥44px。 */
-function StudentCard({
-  name,
-  count,
-  hand,
-  online,
-  answerLabel,
-  interactive,
-  undoHint,
-  onStar,
-  onUndo,
-}: {
-  name: string;
-  count: number;
-  hand: boolean;
-  online: boolean;
-  answerLabel: string | null;
-  interactive: boolean;
-  undoHint: string;
-  onStar: () => void;
-  onUndo: () => void;
-}) {
-  const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const longFired = useRef(false);
-
-  const clearPress = () => {
-    if (pressTimer.current) {
-      clearTimeout(pressTimer.current);
-      pressTimer.current = null;
-    }
-  };
-
-  const content = (
-    <>
-      <span
-        aria-hidden
-        className={cn("size-2 shrink-0 rounded-full", online ? "bg-leaf" : "bg-line")}
-      />
-      <span className="min-w-0 flex-1 truncate text-left text-sm">{name}</span>
-      {hand && <Hand size={14} className="shrink-0 text-crater motion-safe:animate-bounce" />}
-      {answerLabel && (
-        <span className="shrink-0 rounded-full bg-line/50 px-1.5 py-0.5 font-mono text-[10px] leading-none">
-          {answerLabel}
-        </span>
-      )}
-      {/* 空间允许时直接摆出对应数量的星星（更直观）；超出才退回数字标识（用户 2026-07-08 要求） */}
-      {count === 0 ? (
-        <Star size={12} className="shrink-0 text-line" />
-      ) : count <= MAX_INLINE_STARS ? (
-        <span key={count} className="flex shrink-0 items-center gap-0.5 motion-safe:[animation:star-pop_.35s_ease-out]">
-          {Array.from({ length: count }, (_, i) => (
-            <Star key={i} size={12} className="shrink-0 text-crater" />
-          ))}
-        </span>
-      ) : (
-        <span key={count} className="flex shrink-0 items-center gap-1 motion-safe:[animation:star-pop_.35s_ease-out]">
-          <Star size={13} className="shrink-0 text-crater" />
-          <span className="font-mono text-xs">{count}</span>
-        </span>
-      )}
-    </>
-  );
-
-  if (!interactive) {
-    return <li className="flex min-h-11 items-center gap-2 rounded-xl border border-line px-3">{content}</li>;
-  }
-
-  return (
-    <li>
-      <button
-        type="button"
-        title={undoHint}
-        className="flex min-h-11 w-full touch-none select-none items-center gap-2 rounded-xl border border-line px-3 transition-colors hover:bg-moon/30"
-        onPointerDown={() => {
-          longFired.current = false;
-          clearPress();
-          pressTimer.current = setTimeout(() => {
-            longFired.current = true;
-            onUndo();
-          }, 550);
-        }}
-        onPointerUp={clearPress}
-        onPointerLeave={clearPress}
-        onPointerCancel={clearPress}
-        onContextMenu={(event) => event.preventDefault()}
-        onClick={() => {
-          if (longFired.current) {
-            longFired.current = false;
-            return;
-          }
-          onStar();
-        }}
-      >
-        {content}
-      </button>
-    </li>
-  );
-}
