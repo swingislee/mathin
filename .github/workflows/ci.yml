@@ -72,6 +72,8 @@ jobs:
         run: node scripts/migration-ledger.mjs | psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1
       - name: RLS 越权断言
         run: pnpm p4e:db-audit
+      - name: P6 课件资产 RLS 越权断言
+        run: pnpm p6:db-audit
 
   supply-chain:
     name: 依赖安全公告
