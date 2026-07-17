@@ -78,6 +78,14 @@ describe("P6 courseware importer", () => {
     expect(plan.pages[0].doc.nodes[0].content.html).toBe(RICH_HTML);
   });
 
+  it("tolerates unescaped < inside attribute values (LaTeX formulas)", async () => {
+    const html = '<span class="xes-formula-latex" data-latex="10<y<20" style="line-height: 0;">x</span>';
+    const fixture = await createPackageFixture(html);
+    const plan = await loadImportPlan({ packageRoot: fixture.root, coursewareId: "sample-courseware" });
+
+    expect(plan.pages[0].doc.nodes[0].content.html).toBe(html);
+  });
+
   it("fails loudly when markup would be altered by sanitization", async () => {
     const fixture = await createPackageFixture('<div onclick="alert(1)"><blink>x</blink></div>');
 

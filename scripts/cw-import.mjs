@@ -136,6 +136,17 @@ const MARKUP_TAG_PATTERN = /<([a-zA-Z][a-zA-Z0-9:-]*)/g;
 // 这两类归一化不构成内容损失，不应触发门禁。
 const MARKUP_NON_EMPTY_ATTR_PATTERN = /\s([a-zA-Z][a-zA-Z0-9:_-]*)=("|')(?!\2)/g;
 
+// 门禁两侧都先过一遍「放行一切」的恒等消毒：属性值里的未转义 <（如 data-latex="10<y<20"）
+// 与实体转义差异在两侧同时归一，剩下的差异只可能来自真实白名单丢弃。
+const MARKUP_IDENTITY_OPTIONS = {
+  allowedTags: false,
+  allowedAttributes: false,
+  allowVulnerableTags: true,
+  allowedSchemesAppliedToAttributes: [],
+  allowProtocolRelative: true,
+  parser: { lowerCaseTags: false, lowerCaseAttributeNames: false },
+};
+
 function markupInventory(markup) {
   const counts = new Map();
   for (const match of markup.matchAll(MARKUP_TAG_PATTERN)) {
@@ -150,7 +161,7 @@ function markupInventory(markup) {
 }
 
 function assertMarkupLossless(markup, label) {
-  const before = markupInventory(markup);
+  const before = markupInventory(sanitizeHtml(markup, MARKUP_IDENTITY_OPTIONS));
   const after = markupInventory(sanitizeHtml(markup, COURSEWARE_MARKUP_OPTIONS));
   const lost = [];
   for (const [token, count] of before) {
@@ -161,7 +172,7 @@ function assertMarkupLossless(markup, label) {
   }
 }
 
-function assertPageDocMarkupSafe(doc, label) {
+export function assertPageDocMarkupSafe(doc, label) {
   const walk = (nodes) => {
     if (!Array.isArray(nodes)) fail("page doc nodes must be an array");
     for (const node of nodes) {
