@@ -119,8 +119,8 @@
 
 0. ~~地基核查~~（✅ 2026-07-17 完成：磁盘 196G 够用；补齐 MFHK01863 第 15 讲后 865 讲全对齐；H5 spike 得出「public 桶 + mathin HTML 垫片」方案；page-doc-v1 已冻结进 `courseware-doc/schema.ts`；双桶已建）。五项关键决策同日拍板（doc 16 §10）：cw-h5 public / 4:3 按讲灰度＋16:9 顶置打底 / 不做预览分享 / 资产读收紧为 staff＋课次批签 / 镜像转维护不做增量。
 1. ~~镜像侧 v2 发布包导出（全 kind 资产 + 页文档 + H5 包 + 讲次映射，在镜像仓库执行）~~ ✅ 2026-07-17：`export mathin-package` 落地（镜像阶段 25），样本讲与全量（865 讲/55,101 页/usages 160,647/H5 包 1,240）audit 全绿，页文档过 mathin 冻结 schema；镜像项目转维护模式。导入用 exportId `2490b13a…`。
-2. mathin 资产层 migration（CAS 对象 / 公共资源 / 资源版本 / 页面绑定 / 页 revision / 讲 release）。
-3. 幂等导入 CLI + 样本讲垂直打穿。
+2. ~~mathin 资产层 migration（CAS 对象 / 公共资源 / 资源版本 / 页面绑定 / 页 revision / 讲 release）~~ ✅ 2026-07-17：migration ×5 + RLS + 权限键 + RPC + `getSessionAssetUrls` 批签 action，安全断言在开发库通过。
+3. ~~幂等导入 CLI + 样本讲垂直打穿~~ ✅ 2026-07-18：`scripts/cw-import.mjs`（包校验/TUS 上传/单事务/对账）；审核发现导入期 sanitize 损毁标记，已改「无损门禁」（doc 原样入库、会改写即失败）并清除重导——样本 69 页 verbatim、幂等复跑零新增。
 4. 原布局渲染器移植（Viewer 实装渲染 + 交互执行器 → React 组件）。
 5. 课堂接入（doc 页型、候课预载、冻结物化 resolved bindings）。
 6. 4:3 增强轨（非阻塞；「16:9 顶置」兼容模式已在 4/5 打底）：自动分类 A–E → 批量派生 → 人工审校队列 → 按讲灰度发布。
