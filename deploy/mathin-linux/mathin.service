@@ -1,0 +1,21 @@
+[Unit]
+Description=Mathin Next.js production service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/services/mathin/current
+Environment=NODE_ENV=production
+Environment=PORT=3131
+Environment=HOSTNAME=127.0.0.1
+Environment=NODE_OPTIONS=--max-old-space-size=768
+EnvironmentFile=%h/services/mathin/config/.env.production.local
+ExecStart=%h/.local/bin/node server.js
+Restart=always
+RestartSec=5
+MemoryHigh=512M
+MemoryMax=768M
+
+[Install]
+WantedBy=default.target

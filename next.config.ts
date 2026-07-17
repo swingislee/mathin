@@ -57,6 +57,9 @@ const baseHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Public production runs from the immutable standalone output on port 3131;
+  // the development server on 3130 remains an internal-only process.
+  output: "standalone",
   // 默认 .next；bundle 量化时 NEXT_DIST_DIR=.next-bundle 构建到独立目录，
   // 不与正在运行的 dev server 争用 .next（见 scripts/bundle-report.mjs）。
   distDir: process.env.NEXT_DIST_DIR || ".next",
