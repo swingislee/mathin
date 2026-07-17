@@ -250,6 +250,32 @@
       "closeNav": "关闭导航"
     }
   },
+  "coursewareStudio": {
+    "title": "课件中台",
+    "intro": "浏览已导入的课件资产：按课程进入讲次，预览已发布 release 的每一页。",
+    "empty": "还没有可浏览的课件。",
+    "course": "课程",
+    "productCode": "产品编码",
+    "lectures": "讲次数",
+    "releasedLectures": "已发布",
+    "open": "进入",
+    "lectureCount": "共 {count} 讲",
+    "backToCourses": "← 返回课程列表",
+    "backToLectures": "← 返回讲次列表",
+    "lectureNo": "讲次",
+    "lectureName": "名称",
+    "pages": "页数",
+    "release": "发布状态",
+    "releaseNo": "Release {no}",
+    "notReleased": "未发布",
+    "preview": "预览",
+    "lectureTitle": "第 {no} 讲 · {name}",
+    "pageIndicator": "第 {current} / {total} 页",
+    "stageNatural": "原生画幅",
+    "stageBoard": "4:3 课堂",
+    "prevPage": "上一页",
+    "nextPage": "下一页"
+  },
   "school": {
     "home": {
       "staffTitle": "学校工作台",

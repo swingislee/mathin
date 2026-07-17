@@ -250,6 +250,32 @@
       "closeNav": "Close navigation"
     }
   },
+  "coursewareStudio": {
+    "title": "Courseware studio",
+    "intro": "Browse imported courseware assets: open a course to see its lectures and preview every page of the published release.",
+    "empty": "No courseware to browse yet.",
+    "course": "Course",
+    "productCode": "Product code",
+    "lectures": "Lectures",
+    "releasedLectures": "Released",
+    "open": "Open",
+    "lectureCount": "{count} lectures",
+    "backToCourses": "← Back to courses",
+    "backToLectures": "← Back to lectures",
+    "lectureNo": "No.",
+    "lectureName": "Name",
+    "pages": "Pages",
+    "release": "Release",
+    "releaseNo": "Release {no}",
+    "notReleased": "Not released",
+    "preview": "Preview",
+    "lectureTitle": "Lecture {no} · {name}",
+    "pageIndicator": "Page {current} / {total}",
+    "stageNatural": "Native aspect",
+    "stageBoard": "4:3 classroom",
+    "prevPage": "Previous page",
+    "nextPage": "Next page"
+  },
   "school": {
     "home": {
       "staffTitle": "School workspace",
