@@ -15,7 +15,12 @@ async function writeFixtureFile(root: string, relative: string, value: string) {
   return { path: relative, sha256: hash(value), byteCount: Buffer.byteLength(value) };
 }
 
-async function createPackageFixture() {
+const RICH_HTML = '<div style="line-height: 0;"><sup>2</sup><table cellpadding="0"><tbody><tr><td colspan="2">题干</td></tr></tbody></table>'
+  + '<svg viewBox="0 0 10 10"><text font-size="24" text-anchor="middle" dy=".3em">1</text>'
+  + '<linearGradient x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff"/></linearGradient>'
+  + '<rect rx="2" ry="2" stroke-dasharray="4 2"/><ellipse cx="5" cy="5"/></svg></div>';
+
+async function createPackageFixture(html = RICH_HTML) {
   const root = await mkdtemp(join(tmpdir(), "mathin-cw-import-"));
   const normalHash = "a".repeat(64);
   const h5Hash = "b".repeat(64);
@@ -31,7 +36,7 @@ async function createPackageFixture() {
     sourceSnapshotId: 1,
     sourceContentHash: "1".repeat(64),
     canvas: { width: 1280, height: 720, backgroundColor: null, backgroundBindingKey: usageNormal },
-    nodes: [{ resources: [{ bindingKey: usageH5, bindingPath: "$.src", role: "entry", kind: "h5" }], children: [] }],
+    nodes: [{ content: { kind: "rich_text", html }, resources: [{ bindingKey: usageH5, bindingPath: "$.src", role: "entry", kind: "h5" }], children: [] }],
     interactions: [],
   };
   const files = await Promise.all([
@@ -64,6 +69,20 @@ describe("P6 courseware importer", () => {
     expect(sql).toContain("CW_IMPORT_LECTURE_MAPPING_MISSING_OR_AMBIGUOUS");
     expect(sql).toContain("'launchQuery'");
     expect(sql).toContain("courseware_template = '[]'::jsonb");
+  });
+
+  it("stores documents verbatim — presentation markup passes the lossless gate untouched", async () => {
+    const fixture = await createPackageFixture();
+    const plan = await loadImportPlan({ packageRoot: fixture.root, coursewareId: "sample-courseware" });
+
+    expect(plan.pages[0].doc.nodes[0].content.html).toBe(RICH_HTML);
+  });
+
+  it("fails loudly when markup would be altered by sanitization", async () => {
+    const fixture = await createPackageFixture('<div onclick="alert(1)"><blink>x</blink></div>');
+
+    await expect(loadImportPlan({ packageRoot: fixture.root, coursewareId: "sample-courseware" }))
+      .rejects.toThrow(/sanitize would drop/);
   });
 
   it("rejects package paths that escape their declared root", () => {

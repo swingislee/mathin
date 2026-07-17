@@ -15,16 +15,35 @@ const DEFAULT_SSH_HOST = "xiaomi";
 const RESUMABLE_UPLOAD_BYTES = 6 * 1024 * 1024;
 const storageDirectoryCache = new Map();
 
+// 白名单按 exportId 2490b13a 全量包的标签/属性清单对齐（镜像端已做保留呈现属性的
+// 黑名单消毒，doc 带 sanitized: true）。这里只做无损门禁：消毒结果与原文不一致即失败，
+// 文档永远原样入库——绝不静默改写已过导出侧 audit 的内容。
 const COURSEWARE_MARKUP_OPTIONS = {
   allowedTags: [
-    "div", "span", "br", "img", "svg", "g", "defs", "path", "text", "title", "use",
-    "linearGradient", "stop", "rect", "tal-readonly",
+    "div", "span", "br", "img", "sup", "sub", "ul", "ol", "li",
+    "table", "thead", "tbody", "tfoot", "tr", "th", "td", "col", "colgroup",
+    "svg", "g", "defs", "path", "text", "tspan", "title", "use", "foreignObject",
+    "rect", "circle", "ellipse", "line", "polyline", "polygon", "marker",
+    "linearGradient", "radialGradient", "stop", "clipPath", "pattern", "mask",
+    "tal-readonly",
   ],
   allowedAttributes: {
     "*": [
       "class", "style", "id", "role", "aria-*", "data-*", "contenteditable", "spellcheck",
       "xmlns", "xmlns:xlink", "viewBox", "width", "height", "x", "y", "d", "fill", "stroke",
-      "stroke-width", "transform", "focusable", "alt", "src", "xlink:href",
+      "stroke-width", "transform", "focusable", "alt", "src", "xlink:href", "title",
+      "font-family", "font-size", "font-weight", "font-style", "text-anchor", "text-rendering",
+      "text-decoration", "dominant-baseline", "letter-spacing", "dx", "dy",
+      "opacity", "fill-opacity", "fill-rule", "stroke-opacity", "stroke-dasharray",
+      "stroke-linecap", "stroke-linejoin", "clip-path", "clip-rule", "display", "version",
+      "x1", "x2", "y1", "y2", "cx", "cy", "r", "rx", "ry", "points",
+      "offset", "stop-color", "stop-opacity", "gradientUnits", "gradientTransform",
+      "preserveAspectRatio", "refX", "refY", "orient", "markerWidth", "markerHeight",
+      "marker-start", "marker-mid", "marker-end",
+      "border", "cellpadding", "cellspacing", "align", "valign", "colspan", "rowspan",
+      "span", "nowrap", "size", "draggable",
+      "data", "text-id", "edit-key", "originsrc", "original-src", "ori-data",
+      "original-width", "original-height", "res_perstans_id",
     ],
   },
   allowedSchemes: ["http", "https", "data", "asset"],
@@ -112,25 +131,49 @@ function validateLaunchQuery(value, label) {
   return launch;
 }
 
-function sanitizePageDoc(doc) {
-  const sanitized = structuredClone(doc);
+const MARKUP_TAG_PATTERN = /<([a-zA-Z][a-zA-Z0-9:-]*)/g;
+// 只统计带非空值的属性：sanitize-html 会丢弃空值属性（class=""）、重排 style 串，
+// 这两类归一化不构成内容损失，不应触发门禁。
+const MARKUP_NON_EMPTY_ATTR_PATTERN = /\s([a-zA-Z][a-zA-Z0-9:_-]*)=("|')(?!\2)/g;
+
+function markupInventory(markup) {
+  const counts = new Map();
+  for (const match of markup.matchAll(MARKUP_TAG_PATTERN)) {
+    const token = `<${match[1]}>`;
+    counts.set(token, (counts.get(token) ?? 0) + 1);
+  }
+  for (const match of markup.matchAll(MARKUP_NON_EMPTY_ATTR_PATTERN)) {
+    const token = `[${match[1]}]`;
+    counts.set(token, (counts.get(token) ?? 0) + 1);
+  }
+  return counts;
+}
+
+function assertMarkupLossless(markup, label) {
+  const before = markupInventory(markup);
+  const after = markupInventory(sanitizeHtml(markup, COURSEWARE_MARKUP_OPTIONS));
+  const lost = [];
+  for (const [token, count] of before) {
+    if ((after.get(token) ?? 0) < count) lost.push(token);
+  }
+  if (lost.length > 0) {
+    fail(`${label} sanitize would drop ${lost.join(", ")} — documents are stored verbatim; extend the allowlist deliberately or reject the source`);
+  }
+}
+
+function assertPageDocMarkupSafe(doc, label) {
   const walk = (nodes) => {
     if (!Array.isArray(nodes)) fail("page doc nodes must be an array");
     for (const node of nodes) {
       assertObject(node, "page doc node");
       if (node.content && typeof node.content === "object") {
-        if (typeof node.content.html === "string") {
-          node.content.html = sanitizeHtml(node.content.html, COURSEWARE_MARKUP_OPTIONS);
-        }
-        if (typeof node.content.svg === "string") {
-          node.content.svg = sanitizeHtml(node.content.svg, COURSEWARE_MARKUP_OPTIONS);
-        }
+        if (typeof node.content.html === "string") assertMarkupLossless(node.content.html, `${label} html`);
+        if (typeof node.content.svg === "string") assertMarkupLossless(node.content.svg, `${label} svg`);
       }
       walk(node.children);
     }
   };
-  walk(sanitized.nodes);
-  return sanitized;
+  walk(doc.nodes);
 }
 
 function validatePageDoc(doc, label) {
@@ -326,7 +369,8 @@ export async function loadImportPlan({ packageRoot, coursewareId }) {
     if (!Number.isInteger(page.pageIndex) || page.pageIndex <= 0 || pageIds.has(page.pageIndex)) fail("pageIndex must be unique positive integer");
     pageIds.add(page.pageIndex);
     if (!Number.isInteger(page.pageDatabaseId) || page.pageDatabaseId <= 0) fail("pageDatabaseId invalid");
-    const doc = sanitizePageDoc(page.doc);
+    const doc = page.doc;
+    assertPageDocMarkupSafe(assertObject(doc, `page ${page.pageIndex} doc`), `page ${page.pageIndex}`);
     const docBindingKeys = validatePageDoc(doc, `page ${page.pageIndex} doc`);
     if (doc.sourceCoursewareId !== coursewareId || doc.sourcePageDatabaseId !== page.pageDatabaseId) fail(`page ${page.pageIndex} provenance mismatch`);
     const pageUsages = usagesByPage.get(page.pageDatabaseId) ?? [];
@@ -961,6 +1005,10 @@ async function main() {
   const storage = await uploadPlan(plan, path.resolve(options.storeRoot), client, { url: resumableUrl, key });
   const database = JSON.parse(runRemoteSql(buildImportSql(plan), options.sshHost));
   process.stdout.write(`${JSON.stringify({ ...summary, storage, database }, null, 2)}\n`);
+  const problems = [];
+  if (database.bindings.conflicts > 0) problems.push(`${database.bindings.conflicts} binding conflicts`);
+  if (database.pages.baselineDrift > 0) problems.push(`${database.pages.baselineDrift} pages drifted from the imported baseline`);
+  if (problems.length > 0) fail(`reconciliation reported ${problems.join(" and ")} — inspect before re-running`);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
