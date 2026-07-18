@@ -31,7 +31,7 @@ describe("P6-4 binding resolution", () => {
 interface StubNode {
   dataset: { sourceResourceId: string };
   style: { display: string; transform: string };
-  animate?: undefined;
+  animate?: (frames: unknown, options: unknown) => { cancel: () => void; finished: Promise<void> };
 }
 
 function stubStage(nodes: StubNode[]) {
@@ -105,5 +105,38 @@ describe("P6-4 interaction runtime", () => {
     await runtime.runAuto();
     expect(target.style.display).toBe("block");
     expect(target.style.transform).toBe("translate(300px,400px) rotate(0deg)");
+  });
+
+  it("dispose cancels live animations and freezes further mutations", async () => {
+    // fill:"both" 动画残留是换页整页位移事故的根源——dispose 必须 cancel
+    let cancelled = 0;
+    let finishAnimation!: () => void;
+    const target: StubNode = {
+      dataset: { sourceResourceId: "r1" },
+      style: { display: "block", transform: "translate(0px,0px)" },
+      animate: () => ({
+        cancel: () => {
+          cancelled += 1;
+        },
+        finished: new Promise<void>((resolve) => {
+          finishAnimation = resolve;
+        }),
+      }),
+    };
+    const runtime = createInteractionRuntime({
+      root: stubStage([target]),
+      interactions: [interaction({ step: 1, action: "exit", duration: 1 })],
+      resolveAudioUrl: () => null,
+    });
+    const running = runtime.runAuto();
+    runtime.dispose();
+    finishAnimation();
+    await running;
+    expect(cancelled).toBe(1);
+    // dispose 后动画完成回调不得再改样式:exit 不得再把节点隐藏
+    expect(target.style.display).toBe("block");
+    // dispose 后调度器冻结,重新 runAuto 不再执行任何步骤
+    await runtime.runAuto();
+    expect(target.style.display).toBe("block");
   });
 });

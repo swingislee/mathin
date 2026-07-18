@@ -9,12 +9,18 @@ import type { DocInteraction } from "./schema";
  * - exit 动画结束后隐藏;path 动画结束后节点落位到 points[0,1];
  * - 交互音频经 bindingKey 解析播放,失败静默(浏览器自动播放策略)。
  * 纯 DOM/WAAPI,无 React 依赖,便于单测与课堂复用。
+ *
+ * fill:"both" 的动画效果与 style 直改都会在元素上长期残留,离开当前页时
+ * 必须 dispose():取消全部动画、停掉音频,否则残留终帧 transform 会盖住
+ * 后续复用元素的行内样式(整页节点集体位移的事故根源)。
  */
 
 export interface InteractionRuntime {
   runAuto: () => Promise<void>;
   /** 舞台 click 委托:节点触发器优先,无则走页级 click 流。 */
   handleStageClick: (target: EventTarget | null) => Promise<void>;
+  /** 取消在跑动画/音频并冻结调度器;卸载或换页时必须调用。 */
+  dispose: () => void;
 }
 
 interface RuntimeOptions {
@@ -69,6 +75,9 @@ function frames(item: DocInteraction, node: HTMLElement): Keyframe[] {
 
 export function createInteractionRuntime({ root, interactions, resolveAudioUrl }: RuntimeOptions): InteractionRuntime {
   const interactionSteps = new Map<string, number>();
+  const liveAnimations = new Set<Animation>();
+  const liveAudios = new Set<HTMLAudioElement>();
+  let disposed = false;
 
   const targets = (id: string): HTMLElement[] =>
     [...root.querySelectorAll<HTMLElement>("[data-source-resource-id]")].filter(
@@ -79,10 +88,14 @@ export function createInteractionRuntime({ root, interactions, resolveAudioUrl }
     if (!item.audioBindingKey) return;
     const url = resolveAudioUrl(item.audioBindingKey);
     if (!url) return;
-    new Audio(url).play().catch(() => {});
+    const audio = new Audio(url);
+    liveAudios.add(audio);
+    audio.addEventListener("ended", () => liveAudios.delete(audio));
+    audio.play().catch(() => {});
   };
 
   const execute = (item: DocInteraction) => {
+    if (disposed) return Promise.resolve([]);
     const ms = (item.duration || 0) * 1000;
     const delay = (item.delay || 0) * 1000;
     const repeat = Math.max(1, item.loop || 1);
@@ -92,13 +105,16 @@ export function createInteractionRuntime({ root, interactions, resolveAudioUrl }
       nodes.map(async (node) => {
         if (item.action === "enter" || item.action === "emphasize" || item.action === "path") node.style.display = "block";
         if (delay) await wait(delay);
+        if (disposed) return;
         const animation = node.animate?.(frames(item, node), {
           duration: ms,
           iterations: repeat,
           easing: "ease-out",
           fill: "both",
         });
+        if (animation) liveAnimations.add(animation);
         if (ms) await (animation?.finished?.catch(() => {}) ?? wait(ms * repeat));
+        if (disposed) return;
         if (item.action === "exit") node.style.display = "none";
         if (item.action === "path" && (item.path?.points.length ?? 0) >= 2) {
           const points = item.path?.points ?? [];
@@ -124,7 +140,7 @@ export function createInteractionRuntime({ root, interactions, resolveAudioUrl }
     let previous: Promise<unknown> = Promise.resolve();
     for (;;) {
       const items = all.filter((item) => item.step === step);
-      if (!items.length) break;
+      if (!items.length || disposed) break;
       const trigger = items[0].trigger;
       if (step !== first.step && trigger === "click") break;
       if (trigger === "follow") await previous;
@@ -145,7 +161,7 @@ export function createInteractionRuntime({ root, interactions, resolveAudioUrl }
     let previous: Promise<unknown> = Promise.resolve();
     for (let cursor = step; ; cursor++) {
       const items = all.filter((item) => item.step === cursor);
-      if (!items.length) break;
+      if (!items.length || disposed) break;
       if (cursor !== step && items[0].trigger === "click") break;
       if (items[0].trigger === "follow") await previous;
       const current = Promise.all(items.map(execute));
@@ -168,5 +184,13 @@ export function createInteractionRuntime({ root, interactions, resolveAudioUrl }
     await runClick("page", null);
   };
 
-  return { runAuto, handleStageClick };
+  const dispose = () => {
+    disposed = true;
+    for (const animation of liveAnimations) animation.cancel?.();
+    liveAnimations.clear();
+    for (const audio of liveAudios) audio.pause();
+    liveAudios.clear();
+  };
+
+  return { runAuto, handleStageClick, dispose };
 }

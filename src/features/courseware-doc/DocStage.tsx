@@ -266,7 +266,10 @@ export default function DocStage({ doc, bindingUrls, stageMode = "natural", clas
     void runtime.runAuto();
     const onClick = (event: MouseEvent) => void runtime.handleStageClick(event.target);
     stage.addEventListener("click", onClick);
-    return () => stage.removeEventListener("click", onClick);
+    return () => {
+      stage.removeEventListener("click", onClick);
+      runtime.dispose();
+    };
   }, [doc, bindingUrls]);
 
   const canvas = doc.canvas;
@@ -298,6 +301,9 @@ export default function DocStage({ doc, bindingUrls, stageMode = "natural", clas
         />
       ) : null}
       <div
+        // 换页必须整树 remount:交互运行时会直改节点行内样式,而各页节点的
+        // nodePath key 相同,React 复用元素会把上一页的残留样式带进下一页。
+        key={`${doc.sourceCoursewareId}:${doc.sourcePageDatabaseId}`}
         ref={stageRef}
         data-doc-stage
         style={{
