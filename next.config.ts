@@ -73,8 +73,20 @@ const nextConfig: NextConfig = {
         headers: [...baseHeaders, { key: "Content-Security-Policy-Report-Only", value: contentSecurityPolicy("*") }],
       },
       {
+        // H5 课件包由 DocStage 以同源沙箱 iframe 嵌入，DENY 会让 iframe 拒绝
+        // 渲染整个包；收敛为仅允许同源嵌套。默认 report-only CSP 的
+        // default-src 'self' 也会对包内 308 到 storage 的子资源刷无意义报告，
+        // 一并覆盖成只申明 frame-ancestors。
+        source: "/api/cw-h5/:path*",
+        headers: [
+          ...baseHeaders,
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "Content-Security-Policy-Report-Only", value: "frame-ancestors 'self'" },
+        ],
+      },
+      {
         // 其余全站禁止被嵌套：后台管钱管档案，clickjacking 面必须关死。
-        source: "/:path((?!embed/).*)",
+        source: "/:path((?!embed/|api/cw-h5/).*)",
         headers: [
           ...baseHeaders,
           { key: "X-Frame-Options", value: "DENY" },
