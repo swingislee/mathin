@@ -315,6 +315,11 @@ export default function DocStage({ doc, bindingUrls, stageMode = "natural", clas
           // 文本折行位置,跟随站点字体会让旧课件文案换行点漂移。
           fontFamily: 'Inter, "Microsoft YaHei", system-ui, sans-serif',
           lineHeight: "normal",
+          // color 是继承属性,preflight 中和层挡不住站点暗色主题的前景色
+          // 渗入(MathJax SVG 用 currentColor 填充,暗色下文字直接隐形),
+          // 在舞台根钉死 UA 默认黑并锁 light 配色域。
+          color: "#000",
+          colorScheme: "light",
           width: `${canvas.width}px`,
           height: `${canvas.height}px`,
           transform: `scale(${scale})`,
