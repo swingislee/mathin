@@ -72,6 +72,7 @@ export type SessionEventType =
   | "board_snapshot" // {pageKey:string, items:StrokeItem[]}（main=页 uuid、side="side"）
   | "game_state"     // {pageId, state:{values,selected}} 游戏页镜像（单写者=教师）
   | "video_ctl"      // {pageId, action:"play"|"pause"|"seek", time} 视频同步（仅教师）
+  | "doc_step"       // {pageId, scope:"node"|"page", id} doc 页点击步进转发（仅教师，P6-5）
   | "tool_ctl"       // {action:"open"|"close", toolId?} 工具快捷窗（仅教师）
   | "hand"           // {up:boolean} 学生举手
   | "answer";        // {quizId, choice:number} 学生作答

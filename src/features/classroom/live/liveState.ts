@@ -1,3 +1,4 @@
+import type { InteractionTrigger } from "@/features/courseware-doc/interactions";
 import type { GameMirrorState } from "@/features/games/types";
 import type { StrokeItem } from "@/features/whiteboard/types";
 import type { CoursewarePage, SessionEvent } from "../types";
@@ -19,6 +20,8 @@ export interface LiveState {
   boards: Record<string, StrokeItem[]>;
   games: Record<string, GameMirrorState>;
   video: Record<string, VideoCtl>;
+  /** doc 页点击步进流（P6-5）：pageId → 有序触发列表，回放可收敛舞台状态。 */
+  docSteps: Record<string, InteractionTrigger[]>;
   openTool: string | null;
   quiz: { id: string; options: number } | null;
   answers: Record<string, Record<string, number>>;
@@ -75,6 +78,15 @@ export function reduceEvent(state: LiveState, ev: SessionEvent): LiveState {
       const mirror = ev.payload.state as GameMirrorState | undefined;
       if (!pageId || !mirror || !Array.isArray(mirror.values)) return state;
       return { ...state, games: { ...state.games, [pageId]: mirror } };
+    }
+    case "doc_step": {
+      const pageId = String(ev.payload.pageId ?? "");
+      if (!pageId) return state;
+      const scope = ev.payload.scope === "node" ? "node" as const : "page" as const;
+      const id = scope === "node" ? String(ev.payload.id ?? "") : null;
+      if (scope === "node" && !id) return state;
+      const steps = state.docSteps[pageId] ?? [];
+      return { ...state, docSteps: { ...state.docSteps, [pageId]: [...steps, { scope, id }] } };
     }
     case "video_ctl": {
       const pageId = String(ev.payload.pageId ?? "");

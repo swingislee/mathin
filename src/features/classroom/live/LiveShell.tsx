@@ -34,12 +34,26 @@ import { CanvasSurface } from "@/features/whiteboard/CanvasSurface";
 import { Toolbar } from "@/features/whiteboard/Toolbar";
 import type { WhiteboardStore } from "@/features/whiteboard/store";
 
+import type { InteractionTrigger } from "@/features/courseware-doc/interactions";
+import type { ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 import { Link, useRouter } from "@/i18n/navigation";
 import { createIsolatedRealtimeClient } from "@/lib/supabase/client";
 import { newId } from "@/lib/uuid";
 import { cn } from "@/lib/utils";
-import { endClassSession, reopenClassSession, saveCourseware, setSessionPage, startClassSession } from "../actions";
+import { endClassSession, getClassSession, reopenClassSession, saveCourseware, setSessionPage, startClassSession } from "../actions";
+import {
+  buildDocBindingUrls,
+  collectDocObjectHashes,
+  collectH5PackageHashes,
+  countH5Pages,
+  fetchH5Manifest,
+  loadObjectBlob,
+  loadSessionDocsBundle,
+  preheatH5Package,
+} from "../courseware/doc-preload";
+import { getSessionAssetUrls, type SessionPageDoc } from "../courseware/session-assets";
 import { downloadCoursewareAsset } from "../courseware/upload";
+import { DocCoursewarePage } from "./DocCoursewarePage";
 import { SessionEventLog } from "../sync/eventlog";
 import { flushOutbox, pendingCount } from "../sync/flush";
 import { STORE_ASSETS, idbGet, idbPut } from "../sync/idb";
@@ -100,22 +114,26 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
       openTool: null,
       quiz: null,
       answers: {},
+      docSteps: {},
     };
     for (const ev of initialEvents) state = reduceEvent(state, ev);
     return state;
   }, [session, initialEvents]);
 
+  const [state, setState] = useState(initialState);
+  // 从 state.pages（而非 props）取媒体页：学生开课后补取的冻结页也要进预载
   const mediaPages = useMemo(
-    () => session.courseware.filter((page): page is Extract<CoursewarePage, { path: string }> =>
+    () => state.pages.filter((page): page is Extract<CoursewarePage, { path: string }> =>
       page.type === "image" || page.type === "video",
     ),
-    [session.courseware],
+    [state.pages],
   );
-
-  const [state, setState] = useState(initialState);
   const [phase, setPhase] = useState<Phase>(rehearsal || role === "viewer" || initialState.started ? "live" : "prep");
   const [assetUrls, setAssetUrls] = useState<Record<string, string>>({});
   const [preload, setPreload] = useState(() => ({ done: 0, total: mediaPages.length, failed: 0 }));
+  // --- doc 页（P6-5）：页束 + bindingKey→URL 表（blob objectURL / H5 垫片入口） ---
+  const [docBundle, setDocBundle] = useState<SessionPageDoc[] | null>(null);
+  const [docUrls, setDocUrls] = useState<ResolvedBindingUrls>({});
   const [wakeLockState, setWakeLockState] = useState<"pending" | "ok" | "unavailable">("pending");
   const [t2Connected, setT2Connected] = useState(false);
   const [p2pHealth, setP2PHealth] = useState<P2PHealth>({ state: "signaling", peers: 0, latencyMs: null });
@@ -234,13 +252,33 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
   }, [session.id, userId, rehearsal, offlineDrill]);
 
   // --- 课件预载（IndexedDB 命中则直接建 objectURL）-----------------------
+  // 板书插页等 pages 数组重建不应重跑预载（会撤销在用的 objectURL），
+  // 媒体页内容以路径串为准。
+  const mediaKey = mediaPages.map((page) => page.path).join("|");
   useEffect(() => {
     const tick = ++preloadTick.current;
     const urls: string[] = [];
+    const isLive = () => preloadTick.current === tick;
 
     const run = async () => {
+      // doc 页束先行（P6-5，D4）：挂讲次的课次统一走 release 页束——
+      // 冻结课次取冻结 pin 的 release，候课/试讲回退 current release。
+      let docPages: SessionPageDoc[] = [];
+      let docHashes: string[] = [];
+      if (session.lectureId) {
+        try {
+          docPages = await loadSessionDocsBundle(session.id);
+          docHashes = collectDocObjectHashes(docPages);
+        } catch {
+          // 束取不到（离线首进且无缓存）：doc 页降级提示，媒体页照常预载
+        }
+        if (!isLive()) return;
+        setDocBundle(docPages);
+      }
+      setPreload({ done: 0, total: mediaPages.length + docHashes.length, failed: 0 });
+
       for (const page of mediaPages) {
-        if (preloadTick.current !== tick) return;
+        if (!isLive()) return;
         try {
           let blob = await idbGet<Blob>(STORE_ASSETS, page.path);
           if (!blob) {
@@ -248,16 +286,67 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
             await idbPut(STORE_ASSETS, page.path, blob);
           }
           // await 之后必须复查 tick：StrictMode 双跑 effect 时旧一轮会在此重复计数
-          if (preloadTick.current !== tick) return;
+          if (!isLive()) return;
           const url = URL.createObjectURL(blob);
           urls.push(url);
           setAssetUrls((prev) => ({ ...prev, [page.path]: url }));
           setPreload((prev) => ({ ...prev, done: prev.done + 1 }));
         } catch {
-          if (preloadTick.current !== tick) return;
+          if (!isLive()) return;
           setPreload((prev) => ({ ...prev, failed: prev.failed + 1 }));
         }
       }
+
+      if (docPages.length === 0) return;
+
+      // 非 H5 对象：IndexedDB 命中免签发（离线可续课）；缺的批签一次（D3）
+      let signedByHash = new Map<string, string>();
+      const missing: string[] = [];
+      for (const hash of docHashes) {
+        if (!(await idbGet<Blob>(STORE_ASSETS, `cw:${hash}`))) missing.push(hash);
+      }
+      if (!isLive()) return;
+      if (missing.length > 0) {
+        try {
+          const signed = await getSessionAssetUrls(session.id);
+          signedByHash = new Map(signed.map((item) => [item.objectHash, item.signedUrl]));
+        } catch {
+          // 批签失败（离线）：仅 IndexedDB 命中的对象可用
+        }
+        if (!isLive()) return;
+      }
+      const urlByObjectHash = new Map<string, string>();
+      for (const hash of docHashes) {
+        if (!isLive()) return;
+        try {
+          const blob = await loadObjectBlob(hash, signedByHash.get(hash));
+          if (!isLive()) return;
+          const url = URL.createObjectURL(blob);
+          urls.push(url);
+          urlByObjectHash.set(hash, url);
+          setPreload((prev) => ({ ...prev, done: prev.done + 1 }));
+        } catch {
+          if (!isLive()) return;
+          setPreload((prev) => ({ ...prev, failed: prev.failed + 1 }));
+        }
+      }
+
+      // H5：入口取公开桶 manifest 的 entryPath，同时按清单做 HTTP 缓存预热
+      // ——只是加速，不改变候课单黄灯语义（D4）
+      const h5EntryByHash = new Map<string, string>();
+      const h5Hashes = collectH5PackageHashes(docPages);
+      for (const hash of h5Hashes) {
+        if (!isLive()) return;
+        try {
+          const manifest = await fetchH5Manifest(hash);
+          h5EntryByHash.set(hash, manifest.entryPath);
+          void preheatH5Package(hash, manifest, isLive);
+        } catch {
+          // manifest 取不到：该包的 doc 节点渲染可见的降级块
+        }
+      }
+      if (!isLive()) return;
+      setDocUrls(buildDocBindingUrls(docPages, urlByObjectHash, h5EntryByHash));
     };
     void run();
 
@@ -265,7 +354,25 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
       preloadTick.current += 1;
       for (const url of urls) URL.revokeObjectURL(url);
     };
-  }, [mediaPages]);
+    // mediaPages 的内容由 mediaKey 代表（见上）
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mediaKey, session.id, session.lectureId]);
+
+  // --- 学生端开课补取（P6-5）：挂讲次课次的 courseware 在开课冻结时才落库，
+  // 早于开课进入等待页的学生 pages 为空，收到 start 后拉一次冻结基线。
+  useEffect(() => {
+    if (isController || !state.started || state.pages.length > 0 || !session.lectureId) return;
+    let cancelled = false;
+    void getClassSession(session.id)
+      .then((fresh) => {
+        if (cancelled || !fresh || fresh.courseware.length === 0) return;
+        setState((prev) => (prev.pages.length > 0 ? prev : { ...prev, pages: fresh.courseware }));
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [isController, state.started, state.pages.length, session.id, session.lectureId]);
 
   // --- Wake Lock（非安全上下文没有该 API，降级为人工提示）-----------------
   useEffect(() => {
@@ -407,6 +514,14 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
   // --- 派生 ----------------------------------------------------------------
   const page = state.pages[state.currentPage] as CoursewarePage | undefined;
   const assetsReady = preload.done >= preload.total;
+  const docsById = useMemo(
+    () => new Map((docBundle ?? []).map((item) => [item.pageDocId, item.doc])),
+    [docBundle],
+  );
+  const h5PageCount = useMemo(() => countH5Pages(docBundle ?? []), [docBundle]);
+  const onDocStep = useCallback((pageId: string, trigger: InteractionTrigger) => {
+    append("doc_step", { pageId, scope: trigger.scope, id: trigger.id });
+  }, [append]);
   const onlineIds = useMemo(() => new Set(onlinePeers.map((peer) => peer.userId)), [onlinePeers]);
   const toolbarStore = activeArea === "side" ? sideBoard.store : mainStore;
   // 清空对话框目标：默认勾选主板书，副板书可选加入（用户 2026-07-08 要求）
@@ -473,6 +588,17 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
         label: tPrep("assets", { done: preload.done, total: preload.total }),
         hint: preload.failed > 0 ? tPrep("assetsFailed", { count: preload.failed }) : undefined,
       },
+      // 含 H5 的 doc 页无法 blob 预载（多文件包），单列「需在线」黄灯——
+      // 预热只改善在线首开速度，不算进已预载（doc 16 §3 D4，不糊弄成绿灯）
+      ...(h5PageCount > 0
+        ? [{
+            key: "h5",
+            ok: false,
+            warn: true,
+            label: tPrep("h5Online", { count: h5PageCount }),
+            hint: tPrep("h5OnlineHint"),
+          }]
+        : []),
       {
         key: "local",
         ok: typeof BroadcastChannel !== "undefined",
@@ -664,6 +790,15 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
                 isController={isController}
                 mirror={state.games[page.id] ?? null}
                 onMirror={onGameMirror}
+              />
+            ) : page.type === "doc" ? (
+              <DocCoursewarePage
+                key={`doc-${page.id}`}
+                doc={docsById.get(page.docId) ?? null}
+                bindingUrls={docUrls}
+                isController={isController}
+                steps={state.docSteps[page.id]}
+                onStep={(trigger) => onDocStep(page.id, trigger)}
               />
             ) : null}
 

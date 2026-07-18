@@ -15,10 +15,18 @@ import type { DocInteraction } from "./schema";
  * 后续复用元素的行内样式(整页节点集体位移的事故根源)。
  */
 
+/** 一次实际触发的步进描述:课堂教师端广播/学生端回放的最小单位(P6-5)。 */
+export interface InteractionTrigger {
+  scope: "node" | "page";
+  id: string | null;
+}
+
 export interface InteractionRuntime {
   runAuto: () => Promise<void>;
-  /** 舞台 click 委托:节点触发器优先,无则走页级 click 流。 */
-  handleStageClick: (target: EventTarget | null) => Promise<void>;
+  /** 舞台 click 委托:节点触发器优先,无则走页级 click 流;返回实际触发的步进(未触发为 null)。 */
+  handleStageClick: (target: EventTarget | null) => Promise<InteractionTrigger | null>;
+  /** 按描述直接推进一次 click 步(课堂学生端回放远端步进);返回是否有步可播。 */
+  runClick: (scope: InteractionTrigger["scope"], id: string | null) => Promise<boolean>;
   /** 取消在跑动画/音频并冻结调度器;卸载或换页时必须调用。 */
   dispose: () => void;
 }
@@ -171,7 +179,7 @@ export function createInteractionRuntime({ root, interactions, resolveAudioUrl }
     return true;
   };
 
-  const handleStageClick = async (target: EventTarget | null) => {
+  const handleStageClick = async (target: EventTarget | null): Promise<InteractionTrigger | null> => {
     const element =
       typeof Element !== "undefined" && target instanceof Element
         ? target.closest<HTMLElement>("[data-click-trigger]")
@@ -179,9 +187,9 @@ export function createInteractionRuntime({ root, interactions, resolveAudioUrl }
     const trigger = element?.dataset.clickTrigger;
     if (trigger && stream("node", trigger).some((item) => item.trigger === "click")) {
       await runClick("node", trigger);
-      return;
+      return { scope: "node", id: trigger };
     }
-    await runClick("page", null);
+    return (await runClick("page", null)) ? { scope: "page", id: null } : null;
   };
 
   const dispose = () => {
@@ -192,5 +200,5 @@ export function createInteractionRuntime({ root, interactions, resolveAudioUrl }
     liveAudios.clear();
   };
 
-  return { runAuto, handleStageClick, dispose };
+  return { runAuto, handleStageClick, runClick, dispose };
 }

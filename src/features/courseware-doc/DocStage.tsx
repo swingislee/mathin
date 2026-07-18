@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import "./doc-stage.css";
 import type { DocNode, PageDoc } from "./schema";
 import { injectBindingUrls, type ResolvedBindingUrls } from "./resolve";
-import { createInteractionRuntime } from "./interactions";
+import { createInteractionRuntime, type InteractionRuntime, type InteractionTrigger } from "./interactions";
 
 /**
  * page-doc-v1 舞台渲染器——镜像 viewer renderedNodeHtmlV2 的 React 移植,
@@ -26,6 +26,12 @@ export interface DocStageProps {
   bindingUrls: ResolvedBindingUrls;
   stageMode?: "natural" | "board43";
   className?: string;
+  /** false = 舞台不响应本地点击(课堂学生端,步进只由 replaySteps 驱动);默认 true。 */
+  interactive?: boolean;
+  /** 本地点击实际触发步进时回调(课堂教师端借此广播 doc_step;P6-5)。 */
+  onClickTrigger?: (trigger: InteractionTrigger) => void;
+  /** 远端步进流:mount 时全量补放(晚加入/重进页),此后按序增量回放。 */
+  replaySteps?: readonly InteractionTrigger[];
 }
 
 const RESOURCE_ROLES = ["source", "image", "src", "video", "poster", "background"];
@@ -240,10 +246,26 @@ function NodeView({
 
 const BOARD_ASPECT = 4 / 3;
 
-export default function DocStage({ doc, bindingUrls, stageMode = "natural", className }: DocStageProps) {
+export default function DocStage({
+  doc,
+  bindingUrls,
+  stageMode = "natural",
+  className,
+  interactive = true,
+  onClickTrigger,
+  replaySteps,
+}: DocStageProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
+  const runtimeRef = useRef<InteractionRuntime | null>(null);
+  // 回放游标:replaySteps 中已执行的条数。本地点击成功即预推进,
+  // 让自己广播的 doc_step 回流时不被重复执行(课堂单写者=教师)。
+  const appliedStepsRef = useRef(0);
+  const onClickTriggerRef = useRef(onClickTrigger);
+  useEffect(() => {
+    onClickTriggerRef.current = onClickTrigger;
+  }, [onClickTrigger]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -264,14 +286,37 @@ export default function DocStage({ doc, bindingUrls, stageMode = "natural", clas
       interactions: doc.interactions,
       resolveAudioUrl: (bindingKey) => bindingUrls[bindingKey] ?? null,
     });
+    runtimeRef.current = runtime;
+    appliedStepsRef.current = 0;
     void runtime.runAuto();
-    const onClick = (event: MouseEvent) => void runtime.handleStageClick(event.target);
-    stage.addEventListener("click", onClick);
+    const onClick = interactive
+      ? (event: MouseEvent) => {
+          void runtime.handleStageClick(event.target).then((trigger) => {
+            if (!trigger) return;
+            appliedStepsRef.current += 1;
+            onClickTriggerRef.current?.(trigger);
+          });
+        }
+      : null;
+    if (onClick) stage.addEventListener("click", onClick);
     return () => {
-      stage.removeEventListener("click", onClick);
+      if (onClick) stage.removeEventListener("click", onClick);
       runtime.dispose();
+      runtimeRef.current = null;
     };
-  }, [doc, bindingUrls]);
+  }, [doc, bindingUrls, interactive]);
+
+  // 远端步进回放:mount 时把已记录的步进全量补放(晚加入/重进页与
+  // 现场看课的观众收敛到同一舞台状态),此后每来一条增量执行一条。
+  useEffect(() => {
+    const runtime = runtimeRef.current;
+    if (!runtime || !replaySteps || replaySteps.length <= appliedStepsRef.current) return;
+    const pending = replaySteps.slice(appliedStepsRef.current);
+    appliedStepsRef.current = replaySteps.length;
+    void (async () => {
+      for (const step of pending) await runtime.runClick(step.scope, step.id);
+    })();
+  }, [replaySteps]);
 
   const canvas = doc.canvas;
   const canvasAspect = canvas.width / canvas.height;

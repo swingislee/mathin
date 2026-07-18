@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { pageDocSchema, type PageDoc } from "@/features/courseware-doc/schema";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -10,6 +11,53 @@ const SIGNED_URL_TTL_SECONDS = 6 * 60 * 60;
 export interface SessionAssetUrl {
   objectHash: string;
   signedUrl: string;
+}
+
+const sessionDocBindingSchema = z.object({
+  bindingKey: z.string().min(1),
+  objectHash: z.string().regex(/^[0-9a-f]{64}$/),
+  kind: z.string().min(1),
+  launchQuery: z
+    .object({
+      query: z.record(z.string(), z.array(z.string())),
+      coursewareIdParam: z.string().nullable(),
+    })
+    .nullable(),
+});
+
+export type SessionDocBinding = z.infer<typeof sessionDocBindingSchema>;
+
+export interface SessionPageDoc {
+  pageDocId: string;
+  pageNo: number;
+  doc: PageDoc;
+  bindings: SessionDocBinding[];
+}
+
+/**
+ * 课堂取页 doc(P6-5,D4):get_session_page_docs 在数据库内校验教室成员,
+ * 冻结课次用冻结 pin 的 release,未冻结(候课/试讲)回退讲次 current release。
+ * 学生/家长不直读 cw_* 表,这是课堂侧唯一的页内容通道。
+ */
+export async function getSessionPageDocs(sessionId: string): Promise<SessionPageDoc[]> {
+  const parsed = sessionIdSchema.safeParse(sessionId);
+  if (!parsed.success) throw new Error("VALIDATION");
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("UNAUTHENTICATED");
+
+  const { data, error } = await supabase
+    .rpc("get_session_page_docs", { p_session_id: parsed.data })
+    .returns<Array<{ page_doc_id: string; page_no: number; doc: unknown; bindings: unknown }>>();
+  if (error) throw new Error(error.message);
+
+  return (data ?? []).map((row) => ({
+    pageDocId: row.page_doc_id,
+    pageNo: row.page_no,
+    doc: pageDocSchema.parse(row.doc),
+    bindings: z.array(sessionDocBindingSchema).parse(row.bindings),
+  }));
 }
 
 /**

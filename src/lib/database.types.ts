@@ -4948,6 +4948,15 @@ export type Database = {
         Args: { p_session_id: string }
         Returns: Json
       }
+      get_session_page_docs: {
+        Args: { p_session_id: string }
+        Returns: {
+          bindings: Json
+          doc: Json
+          page_doc_id: string
+          page_no: number
+        }[]
+      }
       get_staff_handover_preview: {
         Args: { p_target: string }
         Returns: {
