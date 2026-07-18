@@ -299,7 +299,23 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
 
       if (docPages.length === 0) return;
 
-      // 非 H5 对象：IndexedDB 命中免签发（离线可续课）；缺的批签一次（D3）
+      // H5 先行：入口取公开桶 manifest 的 entryPath，同时按清单做 HTTP 缓存
+      // 预热——只是加速，不改变候课单黄灯语义（D4）
+      const h5EntryByHash = new Map<string, string>();
+      const h5Hashes = collectH5PackageHashes(docPages);
+      for (const hash of h5Hashes) {
+        if (!isLive()) return;
+        try {
+          const manifest = await fetchH5Manifest(hash);
+          h5EntryByHash.set(hash, manifest.entryPath);
+          void preheatH5Package(hash, manifest, isLive);
+        } catch {
+          // manifest 取不到：该包的 doc 节点渲染可见的降级块
+        }
+      }
+
+      // 非 H5 对象：IndexedDB 命中免签发（离线可续课）；缺的批签一次（D3）。
+      // URL 表逐对象增量刷新——开课中途加入的学生不必等全部对象下完。
       let signedByHash = new Map<string, string>();
       const missing: string[] = [];
       for (const hash of docHashes) {
@@ -316,6 +332,7 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
         if (!isLive()) return;
       }
       const urlByObjectHash = new Map<string, string>();
+      setDocUrls(buildDocBindingUrls(docPages, urlByObjectHash, h5EntryByHash));
       for (const hash of docHashes) {
         if (!isLive()) return;
         try {
@@ -324,29 +341,13 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
           const url = URL.createObjectURL(blob);
           urls.push(url);
           urlByObjectHash.set(hash, url);
+          setDocUrls(buildDocBindingUrls(docPages, urlByObjectHash, h5EntryByHash));
           setPreload((prev) => ({ ...prev, done: prev.done + 1 }));
         } catch {
           if (!isLive()) return;
           setPreload((prev) => ({ ...prev, failed: prev.failed + 1 }));
         }
       }
-
-      // H5：入口取公开桶 manifest 的 entryPath，同时按清单做 HTTP 缓存预热
-      // ——只是加速，不改变候课单黄灯语义（D4）
-      const h5EntryByHash = new Map<string, string>();
-      const h5Hashes = collectH5PackageHashes(docPages);
-      for (const hash of h5Hashes) {
-        if (!isLive()) return;
-        try {
-          const manifest = await fetchH5Manifest(hash);
-          h5EntryByHash.set(hash, manifest.entryPath);
-          void preheatH5Package(hash, manifest, isLive);
-        } catch {
-          // manifest 取不到：该包的 doc 节点渲染可见的降级块
-        }
-      }
-      if (!isLive()) return;
-      setDocUrls(buildDocBindingUrls(docPages, urlByObjectHash, h5EntryByHash));
     };
     void run();
 

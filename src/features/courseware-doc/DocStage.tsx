@@ -263,9 +263,13 @@ export default function DocStage({
   // 让自己广播的 doc_step 回流时不被重复执行(课堂单写者=教师)。
   const appliedStepsRef = useRef(0);
   const onClickTriggerRef = useRef(onClickTrigger);
+  // URL 表经 ref 供交互运行时读取:课堂预载是逐对象增量刷新 bindingUrls,
+  // 若作为运行时 effect 依赖会反复 dispose/重放动画;节点 URL 更新走 React 渲染即可。
+  const bindingUrlsRef = useRef(bindingUrls);
   useEffect(() => {
     onClickTriggerRef.current = onClickTrigger;
-  }, [onClickTrigger]);
+    bindingUrlsRef.current = bindingUrls;
+  }, [onClickTrigger, bindingUrls]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -284,7 +288,7 @@ export default function DocStage({
     const runtime = createInteractionRuntime({
       root: stage,
       interactions: doc.interactions,
-      resolveAudioUrl: (bindingKey) => bindingUrls[bindingKey] ?? null,
+      resolveAudioUrl: (bindingKey) => bindingUrlsRef.current[bindingKey] ?? null,
     });
     runtimeRef.current = runtime;
     appliedStepsRef.current = 0;
@@ -304,7 +308,7 @@ export default function DocStage({
       runtime.dispose();
       runtimeRef.current = null;
     };
-  }, [doc, bindingUrls, interactive]);
+  }, [doc, interactive]);
 
   // 远端步进回放:mount 时把已记录的步进全量补放(晚加入/重进页与
   // 现场看课的观众收敛到同一舞台状态),此后每来一条增量执行一条。
