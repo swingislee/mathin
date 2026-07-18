@@ -30,7 +30,10 @@ export type CoursewarePage =
   | { id: string; type: "image"; path: string; title: string }
   | { id: string; type: "video"; path: string; title: string }
   | { id: string; type: "game"; gameId: string; difficulty: "easy" | "medium" | "hard"; seed: string; title: string }
-  | { id: string; type: "board"; title: string };
+  | { id: string; type: "board"; title: string }
+  // P6 课件页(doc 16 §3 D4):正文经 docId 在渲染时解析;课堂接入是 P6-5,
+  // 在此之前 LiveShell 对 doc 页走白板兜底(不崩、可板书)。
+  | { id: string; type: "doc"; docId: string; title: string };
 
 export interface ClassSessionMeta {
   id: string;

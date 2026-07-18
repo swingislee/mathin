@@ -18,6 +18,9 @@ export const coursewareTemplatePageSchema = z.discriminatedUnion("type", [
     seed: z.string().min(1).max(100),
   }),
   z.object({ ...pageBase, type: z.literal("board") }),
+  // P6 课件页(doc 16 §3 D4):docId 指 cw_page_docs.id,正文在页 revision 表,
+  // 模板只存引用——对模板/覆盖层/冻结机制而言就是一种普通模板页。
+  z.object({ ...pageBase, type: z.literal("doc"), docId: z.string().uuid() }),
 ]);
 
 export type CoursewareTemplatePage = z.infer<typeof coursewareTemplatePageSchema>;

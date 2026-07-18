@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import {
   ArrowDown,
   ArrowUp,
+  BookOpen,
   Dices,
   Film,
   Gamepad2,
@@ -33,7 +34,7 @@ import { coursewareKind, uploadCoursewareAsset } from "./upload";
 
 type SaveState = "saved" | "saving" | "dirty" | "error";
 
-const PAGE_ICONS = { image: ImageIcon, video: Film, game: Gamepad2, board: PenLine } as const;
+const PAGE_ICONS = { image: ImageIcon, video: Film, game: Gamepad2, board: PenLine, doc: BookOpen } as const;
 
 export function CoursewareEditor({
   classroomId,
