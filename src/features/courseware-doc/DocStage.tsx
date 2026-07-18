@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import "./doc-stage.css";
 import type { DocNode, PageDoc } from "./schema";
 import { injectBindingUrls, type ResolvedBindingUrls } from "./resolve";
 import { createInteractionRuntime } from "./interactions";
@@ -310,6 +311,10 @@ export default function DocStage({ doc, bindingUrls, stageMode = "natural", clas
           position: "absolute",
           left: 0,
           top: 0,
+          // 排版基准对齐镜像查看器 :root——字体与 line-height 直接决定
+          // 文本折行位置,跟随站点字体会让旧课件文案换行点漂移。
+          fontFamily: 'Inter, "Microsoft YaHei", system-ui, sans-serif',
+          lineHeight: "normal",
           width: `${canvas.width}px`,
           height: `${canvas.height}px`,
           transform: `scale(${scale})`,

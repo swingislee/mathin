@@ -1,0 +1,78 @@
+/*
+ * Tailwind preflight 中和层（docs/plan/16 §3 D5 排版基准）。
+ *
+ * 舞台内注入的是镜像端导出的历史课件 HTML,其排版基线是镜像查看器:
+ * 除 `*{box-sizing:border-box}` 与 Inter/微软雅黑外零重置,内容元素全按
+ * 浏览器 UA 默认渲染。Tailwind preflight 的全局重置会打碎这套排版——
+ * 最典型的是 `img,svg,…{display:block}`:行内 MathJax SVG 公式(算式、
+ * 选项、题号里的数字)被顶成独占一行,一行文案裂成多行。
+ *
+ * 这里把 preflight 中会命中任意内容元素的每条重置按属性 revert 回 UA
+ * 默认,与 node_modules/tailwindcss/preflight.css 逐条对应;表单控件类
+ * 重置不在课件内容白名单内,不做处理。box-sizing 不还原——镜像同样是
+ * 全局 border-box。渲染器自身的样式全部走行内 style,优先级高于本层。
+ */
+
+[data-doc-stage] * {
+  margin: revert;
+  padding: revert;
+  border: revert;
+}
+
+[data-doc-stage] hr {
+  height: revert;
+  color: revert;
+  border-top-width: revert;
+}
+
+[data-doc-stage] :is(h1, h2, h3, h4, h5, h6) {
+  font-size: revert;
+  font-weight: revert;
+}
+
+[data-doc-stage] a {
+  color: revert;
+  text-decoration: revert;
+}
+
+[data-doc-stage] :is(b, strong) {
+  font-weight: revert;
+}
+
+[data-doc-stage] :is(code, kbd, samp, pre) {
+  font-family: revert;
+  font-size: revert;
+}
+
+[data-doc-stage] small {
+  font-size: revert;
+}
+
+[data-doc-stage] :is(sub, sup) {
+  font-size: revert;
+  line-height: revert;
+  position: revert;
+  vertical-align: revert;
+  top: revert;
+  bottom: revert;
+}
+
+[data-doc-stage] table {
+  text-indent: revert;
+  border-color: revert;
+  border-collapse: revert;
+}
+
+[data-doc-stage] :is(ol, ul, menu) {
+  list-style: revert;
+}
+
+[data-doc-stage] :is(img, svg, video, canvas, audio, iframe, embed, object) {
+  display: revert;
+  vertical-align: revert;
+}
+
+[data-doc-stage] :is(img, video) {
+  max-width: revert;
+  height: revert;
+}
