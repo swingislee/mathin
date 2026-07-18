@@ -267,6 +267,50 @@ async function resolveSnapshotBindingUrls(
   return urls;
 }
 
+export interface SessionResolvedMeta {
+  version: "cw-session-resolved-v1";
+  releaseId: string | null;
+  bindings: Array<{ pageDocId: string; bindingKey: string; objectHash: string }>;
+}
+
+/**
+ * 开课冻结用:把讲次 current release 的快照物化为 courseware_resolved
+ * (objectHash 清单)。freeze_session_courseware 对已发布讲次强制校验
+ * releaseId 一致,课堂资产签发(list_session_resolved_assets)按 objectHash 取对象。
+ */
+export async function materializeSessionResolved(releaseId: string): Promise<SessionResolvedMeta> {
+  const supabase = await createClient();
+  const { data: release, error } = await supabase
+    .from("cw_lecture_releases")
+    .select("id, snapshot")
+    .eq("id", releaseId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!release) throw new Error(`RELEASE_NOT_FOUND: ${releaseId}`);
+
+  const snapshot = releaseSnapshotSchema.parse(release.snapshot);
+  const assetRevisionIds = [...new Set(snapshot.flatMap((entry) => entry.bindings.map((binding) => binding.assetRevisionId)))];
+  const hashByRevisionId = new Map<string, string>();
+  if (assetRevisionIds.length > 0) {
+    const { data: revisions, error: revisionError } = await supabase
+      .from("cw_asset_revisions")
+      .select("id, object:cw_asset_objects!cw_asset_revisions_object_id_fkey(sha256)")
+      .in("id", assetRevisionIds);
+    if (revisionError) throw new Error(revisionError.message);
+    for (const revision of revisions ?? []) {
+      if (revision.object?.sha256) hashByRevisionId.set(revision.id, revision.object.sha256);
+    }
+  }
+  const bindings = snapshot.flatMap((entry) =>
+    entry.bindings.map((binding) => {
+      const objectHash = hashByRevisionId.get(binding.assetRevisionId);
+      if (!objectHash) throw new Error(`RELEASE_ASSET_REVISION_MISSING: ${binding.assetRevisionId}`);
+      return { pageDocId: entry.pageDocId, bindingKey: binding.bindingKey, objectHash };
+    }),
+  );
+  return { version: "cw-session-resolved-v1", releaseId, bindings };
+}
+
 /** staff 直读 = 用户自身 token 批签 signed URL,RLS select 策略即签名授权(D3 拍板第 4 项);不走 service key。 */
 async function signCasPaths(supabase: Supabase, paths: string[]): Promise<Map<string, string>> {
   if (paths.length === 0) return new Map();

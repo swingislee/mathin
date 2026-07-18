@@ -1,7 +1,9 @@
 "use server";
 
 import { z } from "zod";
+import { materializeSessionResolved } from "@/features/courseware-studio/data";
 import { resolveCourseware, type CoursewareTemplatePage, type OverlaySlot } from "@/features/school/courseware-overlay";
+import type { Json } from "@/lib/database.types";
 import { createClient } from "@/lib/supabase/server";
 import { buildSessionReport } from "./report";
 import type {
@@ -278,18 +280,20 @@ export async function startClassSession(sessionId: string): Promise<void> {
   if (session.lecture_id && !session.courseware_frozen_at) {
     const { data: lecture, error: lectureError } = await supabase
       .from("course_lectures")
-      .select("courseware_template")
+      .select("courseware_template,current_release_id")
       .eq("id", session.lecture_id)
-      .maybeSingle<{ courseware_template: CoursewareTemplatePage[] }>();
+      .maybeSingle<{ courseware_template: CoursewareTemplatePage[]; current_release_id: string | null }>();
     if (lectureError) throw new Error(lectureError.message);
     const resolved = resolveCourseware(lecture?.courseware_template ?? [], session.courseware_overlay ?? []);
     // P6-2：同一 DB 事务同时冻结页数组、解析对象 pin 与开课时间。
-    // P6-5 接入 doc 页后会把 bindings/releaseId 填充为当前 release 的物化结果；
-    // 在尚无 doc 页的既有模板上保持空清单，课堂行为不变。
+    // 讲次已发布 release 时必须物化 releaseId + objectHash 清单——
+    // freeze RPC 校验 RELEASE_MISMATCH,课堂资产签发按该清单授权(D3')。
     const { error } = await supabase.rpc("freeze_session_courseware", {
       p_session_id: sessionId,
       p_courseware: resolved,
-      p_courseware_resolved: { version: "cw-session-resolved-v1", releaseId: null, bindings: [] },
+      p_courseware_resolved: lecture?.current_release_id
+        ? ((await materializeSessionResolved(lecture.current_release_id)) as unknown as Json)
+        : { version: "cw-session-resolved-v1", releaseId: null, bindings: [] },
     });
     if (error) throw new Error(error.message);
     return;
