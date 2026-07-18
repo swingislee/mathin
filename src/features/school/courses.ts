@@ -179,19 +179,22 @@ export interface LectureDetail {
   courseId: string;
   courseTitle: string;
   coursewareTemplate: CoursewareTemplatePage[];
+  /** P6:有已发布 release 时,模板页提供中台只读预览入口。 */
+  hasRelease: boolean;
 }
 
 export async function getLectureDetail(id: string): Promise<LectureDetail | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("course_lectures")
-    .select("id,no,name,courseware_template,courses(id,title)")
+    .select("id,no,name,courseware_template,current_release_id,courses(id,title)")
     .eq("id", id)
     .maybeSingle<{
       id: string;
       no: number;
       name: string;
       courseware_template: CoursewareTemplatePage[];
+      current_release_id: string | null;
       courses: { id: string; title: string } | null;
     }>();
   if (error) throw new Error(error.message);
@@ -203,5 +206,6 @@ export async function getLectureDetail(id: string): Promise<LectureDetail | null
     courseId: data.courses.id,
     courseTitle: data.courses.title,
     coursewareTemplate: Array.isArray(data.courseware_template) ? data.courseware_template : [],
+    hasRelease: data.current_release_id !== null,
   };
 }

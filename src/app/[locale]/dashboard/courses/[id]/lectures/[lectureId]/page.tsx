@@ -35,9 +35,19 @@ export default async function LectureTemplatePage({
         backLabel={t("backToCourse")}
         breadcrumbs={[{label:lecture.courseTitle,href:`/dashboard/courses/${id}`},{label:lecture.name}]}
         actions={
-          <Link href={`/dashboard/courses/${id}`} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>
-            {t("backToCourse")}
-          </Link>
+          <>
+            {lecture.hasRelease ? (
+              <Link
+                href={`/dashboard/courseware/${id}/${lectureId}`}
+                className={cn(buttonVariants({ size: "sm" }))}
+              >
+                {t("studioPreview")}
+              </Link>
+            ) : null}
+            <Link href={`/dashboard/courses/${id}`} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>
+              {t("backToCourse")}
+            </Link>
+          </>
         }
       />
 

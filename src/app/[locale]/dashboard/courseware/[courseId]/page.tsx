@@ -60,14 +60,22 @@ export default async function CoursewareLecturesPage({
                     )}
                   </TableCell>
                   <TableCell className="px-4 py-3 text-right">
-                    {lecture.released ? (
+                    <span className="inline-flex items-center gap-3">
+                      {lecture.released ? (
+                        <Link
+                          href={`/dashboard/courseware/${courseId}/${lecture.id}`}
+                          className="text-xs text-muted underline underline-offset-2 hover:text-ink"
+                        >
+                          {t("preview")}
+                        </Link>
+                      ) : null}
                       <Link
-                        href={`/dashboard/courseware/${courseId}/${lecture.id}`}
+                        href={`/dashboard/courses/${courseId}/lectures/${lecture.id}`}
                         className="text-xs text-muted underline underline-offset-2 hover:text-ink"
                       >
-                        {t("preview")}
+                        {t("templateEditor")}
                       </Link>
-                    ) : null}
+                    </span>
                   </TableCell>
                 </TableRow>
               ))}
