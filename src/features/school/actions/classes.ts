@@ -32,6 +32,44 @@ const buildClassSchema = z.object({
     .max(200),
 });
 
+const coursewareTrackSchema = z.enum(["native-16x9", "adapted-4x3"]);
+
+export async function setClassroomCoursewareTrackAction(
+  classroomId: string,
+  track: z.infer<typeof coursewareTrackSchema>,
+): Promise<ActionResult> {
+  try {
+    const value = parse(z.object({ classroomId: uuid, track: coursewareTrackSchema }), { classroomId, track });
+    const { supabase } = await authorizedClient("class.manage");
+    const { error } = await supabase.rpc("set_classroom_courseware_track", {
+      p_classroom_id: value.classroomId,
+      p_track: value.track,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["CLASSROOM_NOT_FOUND", "INVALID_COURSEWARE_TRACK", ...COMMON_CODES]);
+  }
+}
+
+export async function setSessionCoursewareTrackOverrideAction(
+  sessionId: string,
+  track: z.infer<typeof coursewareTrackSchema> | null,
+): Promise<ActionResult> {
+  try {
+    const value = parse(z.object({ sessionId: uuid, track: coursewareTrackSchema.nullable() }), { sessionId, track });
+    const { supabase } = await authorizedClient("class.manage");
+    const { error } = await supabase.rpc("set_session_courseware_track_override", {
+      p_session_id: value.sessionId,
+      p_track: nullableRpcArg(value.track),
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["SESSION_NOT_FOUND", "ALREADY_STARTED_OR_FROZEN", "INVALID_COURSEWARE_TRACK", ...COMMON_CODES]);
+  }
+}
+
 export async function buildClass(input: BuildClassInput): Promise<string> {
   const value = parse(buildClassSchema, input);
   const { supabase } = await authorizedClient("class.create");

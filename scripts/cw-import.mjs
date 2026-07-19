@@ -564,6 +564,11 @@ update public.cw_shared_assets asset
  where asset.candidate_key = input.candidate_key
    and revision.shared_asset_id = asset.id
    and revision.revision_no = 1;
+insert into public.cw_asset_variant_heads(shared_asset_id,track,published_revision_id)
+select asset.id,'native-16x9',revision.id
+from cw_import_assets input join public.cw_shared_assets asset on asset.candidate_key=input.candidate_key
+join public.cw_asset_revisions revision on revision.shared_asset_id=asset.id and revision.revision_no=1
+on conflict(shared_asset_id,track) do update set published_revision_id=coalesce(public.cw_asset_variant_heads.published_revision_id,excluded.published_revision_id),updated_at=now();
 
 create temporary table cw_import_inserted_pages (page_no int primary key) on commit drop;
 with inserted as (
@@ -611,8 +616,8 @@ select page.page_no
 
 create temporary table cw_import_inserted_page_revisions (page_no int primary key) on commit drop;
 with inserted as (
-  insert into public.cw_page_revisions (page_doc_id, revision_no, doc, origin, note)
-  select page.id, 1, input.doc, 'import', ${sqlText(importNote)}
+  insert into public.cw_page_revisions (page_doc_id, revision_no, doc, origin, note, track)
+  select page.id, 1, input.doc, 'import', ${sqlText(importNote)}, 'native-16x9'
     from cw_import_context context
     join public.cw_page_docs page on page.lecture_id = context.lecture_id
     join cw_import_pages input on input.page_no = page.page_no
@@ -632,6 +637,11 @@ update public.cw_page_docs page
    and revision.revision_no = 1
    and page.current_revision_id is null
    and page.draft_revision_id is null;
+insert into public.cw_page_track_heads(page_doc_id,track,current_revision_id)
+select page.id,'native-16x9',revision.id
+from cw_import_context context join public.cw_page_docs page on page.lecture_id=context.lecture_id
+join public.cw_page_revisions revision on revision.page_doc_id=page.id and revision.revision_no=1
+on conflict(page_doc_id,track) do nothing;
 
 create temporary table cw_import_binding_conflicts (binding_key text primary key) on commit drop;
 insert into cw_import_binding_conflicts
@@ -639,7 +649,7 @@ select binding.binding_key
   from cw_import_context context
   join public.cw_page_docs page on page.lecture_id = context.lecture_id
   join cw_import_bindings input on input.page_no = page.page_no
-  join public.cw_page_asset_bindings binding on binding.page_doc_id = page.id and binding.binding_key = input.binding_key
+  join public.cw_page_asset_bindings binding on binding.page_doc_id = page.id and binding.binding_key = input.binding_key and binding.track='native-16x9'
   join public.cw_shared_assets asset on asset.id = binding.shared_asset_id
  where binding.role <> input.role
     or binding.kind <> input.kind
@@ -647,15 +657,15 @@ select binding.binding_key
     or binding.launch_query is distinct from input.launch_query;
 create temporary table cw_import_inserted_bindings (binding_key text primary key) on commit drop;
 with inserted as (
-  insert into public.cw_page_asset_bindings (page_doc_id, binding_key, role, kind, shared_asset_id, launch_query)
-  select page.id, input.binding_key, input.role, input.kind, asset.id, input.launch_query
+  insert into public.cw_page_asset_bindings (page_doc_id, binding_key, role, kind, shared_asset_id, launch_query, track)
+  select page.id, input.binding_key, input.role, input.kind, asset.id, input.launch_query, 'native-16x9'
     from cw_import_context context
     join public.cw_page_docs page on page.lecture_id = context.lecture_id
     join cw_import_bindings input on input.page_no = page.page_no
     join public.cw_shared_assets asset on asset.candidate_key = input.candidate_key
    where not exists (
      select 1 from public.cw_page_asset_bindings binding
-      where binding.page_doc_id = page.id and binding.binding_key = input.binding_key
+      where binding.page_doc_id = page.id and binding.binding_key = input.binding_key and binding.track='native-16x9'
    )
   returning binding_key
 )
@@ -679,7 +689,7 @@ with updated as (
 insert into cw_import_template_updated select exists(select 1 from updated);
 
 do $$ begin
-  if not exists (select 1 from public.cw_lecture_releases release join cw_import_context context on context.lecture_id = release.lecture_id) then
+  if not exists (select 1 from public.cw_lecture_releases release join cw_import_context context on context.lecture_id = release.lecture_id where release.track='native-16x9') then
     if exists (
       select 1 from public.cw_page_docs page join cw_import_context context on context.lecture_id = page.lecture_id
        where page.deleted_at is null and (page.current_revision_id is null or page.draft_revision_id is not null)
@@ -689,7 +699,7 @@ do $$ begin
       join public.cw_page_docs page on page.id = binding.page_doc_id
       join cw_import_context context on context.lecture_id = page.lecture_id
       join public.cw_shared_assets asset on asset.id = binding.shared_asset_id
-      where page.deleted_at is null and coalesce(binding.pinned_revision_id, asset.published_revision_id) is null
+      where page.deleted_at is null and binding.track='native-16x9' and coalesce(binding.pinned_revision_id, asset.published_revision_id) is null
     ) then raise exception 'CW_IMPORT_RELEASE_UNRESOLVED_ASSET'; end if;
   end if;
 end $$;
@@ -706,18 +716,18 @@ with snapshot as (
       )) order by binding.binding_key)
         from public.cw_page_asset_bindings binding
         join public.cw_shared_assets asset on asset.id = binding.shared_asset_id
-       where binding.page_doc_id = page.id
+       where binding.page_doc_id = page.id and binding.track='native-16x9'
     ), '[]'::jsonb)
   ) order by page.page_no) as value
     from public.cw_page_docs page
     join cw_import_context context on context.lecture_id = page.lecture_id
    where page.deleted_at is null
 ), inserted as (
-  insert into public.cw_lecture_releases (lecture_id, release_no, note, snapshot)
-  select context.lecture_id, 1, ${sqlText(importNote)}, snapshot.value
+  insert into public.cw_lecture_releases (lecture_id, release_no, note, snapshot, track)
+  select context.lecture_id, 1, ${sqlText(importNote)}, snapshot.value, 'native-16x9'
     from cw_import_context context cross join snapshot
    where not exists (
-     select 1 from public.cw_lecture_releases release where release.lecture_id = context.lecture_id
+     select 1 from public.cw_lecture_releases release where release.lecture_id = context.lecture_id and release.track='native-16x9'
    )
   returning id
 )
@@ -727,6 +737,9 @@ update public.course_lectures lecture
   from cw_import_context context
   join cw_import_inserted_release release on true
  where lecture.id = context.lecture_id;
+insert into public.cw_lecture_track_heads(lecture_id,track,current_release_id)
+select context.lecture_id,'native-16x9',release.id from cw_import_context context join cw_import_inserted_release release on true
+on conflict(lecture_id,track) do update set current_release_id=excluded.current_release_id,updated_at=now();
 
 select jsonb_build_object(
   'lectureId', (select lecture_id from cw_import_context),

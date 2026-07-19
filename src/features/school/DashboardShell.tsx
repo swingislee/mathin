@@ -32,10 +32,13 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-/** 课件编辑器需要独立的桌面端面板滚动，其余 Dashboard 页面统一使用全宽壳层。 */
+/** 课件审阅/编辑工作区需要独立的桌面端面板布局，其余 Dashboard 页面统一使用全宽壳层。 */
 function isCoursewareWorkspace(pathname: string): boolean {
   const segments = pathname.split("/").filter(Boolean);
-  return segments[0] === "dashboard" && segments[1] === "courseware" && segments.length >= 5;
+  return segments[0] === "dashboard"
+    && segments[1] === "courseware"
+    && segments[2] !== "assets"
+    && segments.length >= 4;
 }
 
 function NavList({ nav, pathname, onNavigate }: { nav: readonly SchoolNavItem[]; pathname: string; onNavigate?: () => void }) {

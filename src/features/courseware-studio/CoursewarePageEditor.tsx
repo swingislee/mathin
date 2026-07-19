@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { StagePreview } from "@/features/courseware-studio/StagePreview";
 import type { DocNode, PageDoc } from "@/features/courseware-doc/schema";
 import type { ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
-import type { StudioImageAssetUsage, StudioPageSummary, StudioRelease, StudioRevision } from "./data";
+import type { CoursewareTrack, StudioImageAssetUsage, StudioPageSummary, StudioRelease, StudioRevision } from "./data";
 import {
   createBlankCoursewarePageAction,
   copyCoursewarePageAction,
@@ -29,6 +29,7 @@ import { useTranslations } from "next-intl";
 
 type Props = {
   lecture: { id: string; courseId: string; no: number; name: string };
+  track: CoursewareTrack;
   page: StudioPageSummary;
   pages: StudioPageSummary[];
   initialDoc: PageDoc;
@@ -74,7 +75,7 @@ function manualNode(kind: "text" | "rich_text" | "shape" | "image" | "video", in
   };
 }
 
-export function CoursewarePageEditor({ lecture, page, pages, initialDoc, baseRevisionNo, revisions, releases, bindingUrls, imageAssetUsage, copyTargets }: Props) {
+export function CoursewarePageEditor({ lecture, track, page, pages, initialDoc, baseRevisionNo, revisions, releases, bindingUrls, imageAssetUsage, copyTargets }: Props) {
   const router = useRouter();
   const t = useTranslations("coursewareStudio");
   const [doc, setDoc] = useState<PageDoc>(() => clone(initialDoc));
@@ -96,7 +97,7 @@ export function CoursewarePageEditor({ lecture, page, pages, initialDoc, baseRev
     setCurrentBaseRevisionNo(baseRevisionNo);
     setSelectedPath(null);
     setImageFile(null);
-  }, [page.id, initialDoc, baseRevisionNo]);
+  }, [page.id, track, initialDoc, baseRevisionNo]);
 
   const patchSelected = (mutate: (node: DocNode) => void) => {
     if (!selectedPath) return;
@@ -117,7 +118,7 @@ export function CoursewarePageEditor({ lecture, page, pages, initialDoc, baseRev
     });
   };
   const save = () => startTransition(async () => {
-    const result = await saveCoursewareDraftAction({ pageDocId: page.id, doc, baseRevisionNo: currentBaseRevisionNo, note });
+    const result = await saveCoursewareDraftAction({ pageDocId: page.id, track, doc, baseRevisionNo: currentBaseRevisionNo, note });
     setMessage(result.ok ? t("savedDraft", { revision: result.data.revisionNo }) : t("saveFailed", { code: result.code }));
     if (result.ok) {
       setCurrentBaseRevisionNo(result.data.revisionNo);
@@ -125,14 +126,14 @@ export function CoursewarePageEditor({ lecture, page, pages, initialDoc, baseRev
     }
   });
   const publish = () => startTransition(async () => {
-    const result = await publishCoursewareReleaseAction(lecture.id, note);
+    const result = await publishCoursewareReleaseAction(lecture.id, track, note);
     setMessage(result.ok ? t("published") : t("publishFailed", { code: result.code }));
     if (result.ok) router.refresh();
   });
   const add = (kind: "text" | "rich_text" | "shape" | "image" | "video") => {
     setDoc((current) => ({ ...current, nodes: [...current.nodes, manualNode(kind, current.nodes.length + 1)] }));
   };
-  const navigatePage = (id: string) => router.push(`/dashboard/courseware/${lecture.courseId}/${lecture.id}/${id}`);
+  const navigatePage = (id: string) => router.push(`/dashboard/courseware/${lecture.courseId}/${lecture.id}/${id}?track=${track}`);
   const move = (direction: -1 | 1) => {
     const index = pages.findIndex((item) => item.id === page.id);
     const target = index + direction;
@@ -152,6 +153,10 @@ export function CoursewarePageEditor({ lecture, page, pages, initialDoc, baseRev
         <div>
           <h1 className="text-2xl font-semibold text-ink">{t("lectureTitle", { no: lecture.no, name: lecture.name })}</h1>
           <p className="mt-1 text-sm text-muted">{t("editorHint", { page: page.pageNo, title: page.title ? `· ${page.title}` : "" })}</p>
+          <div className="mt-3 inline-flex rounded-lg border border-line bg-paper p-1">
+            <Link href={`/dashboard/courseware/${lecture.courseId}/${lecture.id}/${page.id}?track=native-16x9`} className={`rounded-md px-3 py-1.5 text-xs ${track === "native-16x9" ? "bg-card font-medium text-ink shadow-sm" : "text-muted hover:text-ink"}`}>{t("trackNative")}</Link>
+            <Link href={`/dashboard/courseware/${lecture.courseId}/${lecture.id}/${page.id}?track=adapted-4x3`} className={`rounded-md px-3 py-1.5 text-xs ${track === "adapted-4x3" ? "bg-card font-medium text-ink shadow-sm" : "text-muted hover:text-ink"}`}>{t("trackAdapted")}</Link>
+          </div>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="secondary" size="sm" disabled={pending} onClick={() => move(-1)}>{t("moveUp")}</Button>
@@ -162,7 +167,7 @@ export function CoursewarePageEditor({ lecture, page, pages, initialDoc, baseRev
           })}><Plus className="size-4" />{t("insertPage")}</Button>
           <Button variant="secondary" size="sm" disabled={pending} onClick={() => startTransition(async () => {
             const result = await deleteCoursewarePageAction(page.id);
-            if (result.ok) router.push(`/dashboard/courseware/${lecture.courseId}/${lecture.id}`); else setMessage(t("deleteFailed", { code: result.code }));
+            if (result.ok) router.push(`/dashboard/courseware/${lecture.courseId}/${lecture.id}?track=${track}`); else setMessage(t("deleteFailed", { code: result.code }));
           })}><Trash2 className="size-4" />{t("deletePage")}</Button>
           <Button size="sm" disabled={pending} onClick={save}><Save className="size-4" />{t("saveDraft")}</Button>
           <Button size="sm" disabled={pending} onClick={publish}><Send className="size-4" />{t("publishLecture")}</Button>
@@ -194,7 +199,7 @@ export function CoursewarePageEditor({ lecture, page, pages, initialDoc, baseRev
               <p className="break-all text-xs text-muted">{selected.nodePath}</p>
               <Label>{t("textOrHtml")}</Label>
               <Textarea className="h-28 min-h-28 max-h-48 resize-y" value={selected.content?.html ?? selected.content?.text ?? ""} onChange={(event) => patchSelected((node) => { if (node.content?.kind === "rich_text" || node.content?.kind === "shape") node.content.html = event.target.value; else if (node.content) node.content.text = event.target.value; })} />
-              {imageBinding ? <div className="space-y-2"><Label htmlFor="courseware-image">{t("replaceImage")}</Label>{imageUsage ? <p className="text-xs text-muted">{t("sharedAsset", { name: imageUsage.name })}<br />{t("assetUseCount", { count: imageUsage.useCount })}<br /><Link href={`/dashboard/courseware/assets/${imageUsage.sharedAssetId}`} className="underline underline-offset-2 hover:text-ink">{t("openAssetLibrary")}</Link></p> : null}<Input id="courseware-image" type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={(event) => setImageFile(event.target.files?.[0] ?? null)} /><Button variant="secondary" size="sm" disabled={pending || !imageFile} onClick={() => startTransition(async () => { if (!imageFile) return; const result = await replaceCoursewarePageImageAction({ pageDocId: page.id, bindingKey: imageBinding.bindingKey, file: imageFile }); setMessage(result.ok ? t("imageReplaced") : t("imageReplaceFailed", { code: result.code })); if (result.ok) { setImageFile(null); router.refresh(); } })}>{t("replaceThisPage")}</Button></div> : null}
+              {imageBinding ? <div className="space-y-2"><Label htmlFor="courseware-image">{t("replaceImage")}</Label>{imageUsage ? <p className="text-xs text-muted">{t("sharedAsset", { name: imageUsage.name })}<br />{t("assetUseCountInTrack", { count: imageUsage.useCount, track: track === "adapted-4x3" ? t("trackAdapted") : t("trackNative") })}<br /><Link href={`/dashboard/courseware/assets/${imageUsage.sharedAssetId}`} className="underline underline-offset-2 hover:text-ink">{t("openAssetLibrary")}</Link></p> : null}<Input id="courseware-image" type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={(event) => setImageFile(event.target.files?.[0] ?? null)} /><div className="flex flex-wrap gap-2"><Button variant="secondary" size="sm" disabled={pending || !imageFile} onClick={() => startTransition(async () => { if (!imageFile) return; const result = await replaceCoursewarePageImageAction({ pageDocId: page.id, bindingKey: imageBinding.bindingKey, track, scope: "current-page", file: imageFile }); setMessage(result.ok ? t("imageReplaced") : t("imageReplaceFailed", { code: result.code })); if (result.ok) { setImageFile(null); router.refresh(); } })}>{t("replaceThisPage")}</Button><Button size="sm" disabled={pending || !imageFile || !imageUsage} onClick={() => startTransition(async () => { if (!imageFile) return; const result = await replaceCoursewarePageImageAction({ pageDocId: page.id, bindingKey: imageBinding.bindingKey, track, scope: "all-track", file: imageFile }); setMessage(result.ok ? t("imageReplacedInTrack", { count: result.data.affectedCount }) : t("imageReplaceFailed", { code: result.code })); if (result.ok) { setImageFile(null); router.refresh(); } })}>{t("replaceAllInTrack", { count: imageUsage?.useCount ?? 0 })}</Button></div><p className="text-xs text-muted">{t("trackReplacementHint")}</p></div> : null}
               <div className="grid grid-cols-2 gap-2">
                 {(["x", "y", "width", "height", "rotation"] as const).map((key) => <label key={key} className="text-xs text-muted">{key}<Input type="number" value={selected.transform[key]} onChange={(event) => numeric(key, event.target.value)} /></label>)}
                 <label className="text-xs text-muted">{t("fontSize")}<Input type="number" value={selected.style.fontSize ?? ""} onChange={(event) => numeric("fontSize", event.target.value)} /></label>
@@ -221,13 +226,13 @@ export function CoursewarePageEditor({ lecture, page, pages, initialDoc, baseRev
           <div>
             <p className="mb-2 text-sm font-medium text-ink">{t("pageVersions")}</p>
             <div className="space-y-2">
-              {revisions.map((revision) => <div key={revision.id} className="rounded-lg border border-line p-2 text-xs text-muted"><p>{t("revisionLabel", { no: revision.revisionNo })} · {revision.origin}</p><p>{revision.note || "—"}</p><p>{t("revisionSummary", { nodes: revision.doc.nodes.length, interactions: revision.doc.interactions.length })}</p><Button variant="ghost" size="sm" disabled={pending} onClick={() => { setDoc(clone(revision.doc)); setSelectedPath(null); setMessage(t("previewingRevision", { no: revision.revisionNo })); }}>{t("previewRevision")}</Button><Button variant="ghost" size="sm" disabled={pending || revision.revisionNo === currentBaseRevisionNo} onClick={() => startTransition(async () => { const result = await revertCoursewarePageAction({ pageDocId: page.id, revisionId: revision.id, baseRevisionNo: currentBaseRevisionNo, note: t("revisionLabel", { no: revision.revisionNo }) }); setMessage(result.ok ? t("revertDraftCreated") : t("revertFailed", { code: result.code })); if (result.ok) { setCurrentBaseRevisionNo(result.data.revisionNo); router.refresh(); } })}><RotateCcw className="size-3" />{t("revertTo")}</Button></div>)}
+              {revisions.map((revision) => <div key={revision.id} className="rounded-lg border border-line p-2 text-xs text-muted"><p>{t("revisionLabel", { no: revision.revisionNo })} · {revision.origin}</p><p>{revision.note || "—"}</p><p>{t("revisionSummary", { nodes: revision.doc.nodes.length, interactions: revision.doc.interactions.length })}</p><Button variant="ghost" size="sm" disabled={pending} onClick={() => { setDoc(clone(revision.doc)); setSelectedPath(null); setMessage(t("previewingRevision", { no: revision.revisionNo })); }}>{t("previewRevision")}</Button><Button variant="ghost" size="sm" disabled={pending || revision.track !== track || revision.revisionNo === currentBaseRevisionNo} onClick={() => startTransition(async () => { const result = await revertCoursewarePageAction({ pageDocId: page.id, track, revisionId: revision.id, baseRevisionNo: currentBaseRevisionNo, note: t("revisionLabel", { no: revision.revisionNo }) }); setMessage(result.ok ? t("revertDraftCreated") : t("revertFailed", { code: result.code })); if (result.ok) { setCurrentBaseRevisionNo(result.data.revisionNo); router.refresh(); } })}><RotateCcw className="size-3" />{t("revertTo")}</Button></div>)}
             </div>
           </div>
           <div>
             <p className="mb-2 text-sm font-medium text-ink">{t("lectureReleases")}</p>
             <div className="space-y-2">
-              {releases.map((release) => <div key={release.id} className="rounded-lg border border-line p-2 text-xs text-muted"><p>Release {release.releaseNo}</p><p>{release.note || "—"}</p><Button variant="ghost" size="sm" disabled={pending} onClick={() => startTransition(async () => { const result = await rollbackCoursewareReleaseAction(lecture.id, release.id, `release ${release.releaseNo}`); setMessage(result.ok ? t("rollbackPublished") : t("rollbackFailed", { code: result.code })); if (result.ok) router.refresh(); })}>{t("rollbackLecture")}</Button></div>)}
+              {releases.map((release) => <div key={release.id} className="rounded-lg border border-line p-2 text-xs text-muted"><p>Release {release.releaseNo}</p><p>{release.note || "—"}</p><Button variant="ghost" size="sm" disabled={pending} onClick={() => startTransition(async () => { const result = await rollbackCoursewareReleaseAction(lecture.id, track, release.id, `release ${release.releaseNo}`); setMessage(result.ok ? t("rollbackPublished") : t("rollbackFailed", { code: result.code })); if (result.ok) router.refresh(); })}>{t("rollbackLecture")}</Button></div>)}
             </div>
           </div>
         </aside>

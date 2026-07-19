@@ -149,6 +149,7 @@ export interface RosterRow {
 
 export interface SessionRow {
   id: string;
+  lectureId: string | null;
   no: number | null;
   name: string;
   scheduledAt: string | null;
@@ -157,6 +158,7 @@ export interface SessionRow {
   endedAt: string | null;
   teacherOverrideId: string | null;
   teacherOverrideName: string | null;
+  coursewareTrackOverride: "native-16x9" | "adapted-4x3" | null;
 }
 
 export interface ClassroomDetail {
@@ -167,6 +169,7 @@ export interface ClassroomDetail {
   grade: number | null;
   capacity: number | null;
   room: string;
+  coursewareTrack: "native-16x9" | "adapted-4x3";
   archivedAt: string | null;
   roster: RosterRow[];
   sessions: SessionRow[];
@@ -181,16 +184,17 @@ export async function listDeletedSessions(classroomId: string): Promise<DeletedS
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("class_sessions")
-        .select("id,lecture_no,title,scheduled_at,duration_min,started_at,ended_at,deleted_at,teacher_override,profiles!class_sessions_teacher_override_fkey(display_name)")
+        .select("id,lecture_id,lecture_no,title,scheduled_at,duration_min,started_at,ended_at,deleted_at,teacher_override,courseware_track_override,profiles!class_sessions_teacher_override_fkey(display_name)")
     .eq("classroom_id", classroomId)
     .not("deleted_at", "is", null)
     .order("deleted_at", { ascending: false })
     .returns<
-      Array<{ id: string; lecture_no: number | null; title: string; scheduled_at: string | null; duration_min: number | null; started_at: string | null; ended_at: string | null; deleted_at: string; teacher_override: string | null; profiles: { display_name: string } | null }>
+      Array<{ id: string; lecture_id: string | null; lecture_no: number | null; title: string; scheduled_at: string | null; duration_min: number | null; started_at: string | null; ended_at: string | null; deleted_at: string; teacher_override: string | null; courseware_track_override: "native-16x9" | "adapted-4x3" | null; profiles: { display_name: string } | null }>
     >();
   if (error) throw new Error(error.message);
   return (data ?? []).map((row) => ({
     id: row.id,
+    lectureId: row.lecture_id,
     no: row.lecture_no,
     name: row.title,
     scheduledAt: row.scheduled_at,
@@ -200,6 +204,7 @@ export async function listDeletedSessions(classroomId: string): Promise<DeletedS
     deletedAt: row.deleted_at,
     teacherOverrideId: row.teacher_override,
     teacherOverrideName: row.profiles?.display_name ?? null,
+    coursewareTrackOverride: row.courseware_track_override,
   }));
 }
 
@@ -207,7 +212,7 @@ export async function getClassroomDetail(id: string): Promise<ClassroomDetail | 
   const supabase = await createClient();
   const { data: classroom, error } = await supabase
     .from("classrooms")
-    .select("id,name,course_id,grade,capacity,room,archived_at,courses(title)")
+    .select("id,name,course_id,grade,capacity,room,archived_at,courseware_track,courses(title)")
     .eq("id", id)
     .maybeSingle<{
       id: string;
@@ -216,6 +221,7 @@ export async function getClassroomDetail(id: string): Promise<ClassroomDetail | 
       grade: number | null;
       capacity: number | null;
       room: string;
+      courseware_track: "native-16x9" | "adapted-4x3";
       archived_at: string | null;
       courses: { title: string } | null;
     }>();
@@ -237,11 +243,11 @@ export async function getClassroomDetail(id: string): Promise<ClassroomDetail | 
         .returns<Array<{ user_id: string; role: string; profiles: { display_name: string } | null }>>(),
       supabase
         .from("class_sessions")
-        .select("id,lecture_no,title,scheduled_at,duration_min,started_at,ended_at,teacher_override,profiles!class_sessions_teacher_override_fkey(display_name)")
+        .select("id,lecture_id,lecture_no,title,scheduled_at,duration_min,started_at,ended_at,teacher_override,courseware_track_override,profiles!class_sessions_teacher_override_fkey(display_name)")
         .eq("classroom_id", id)
         .is("deleted_at", null)
         .order("scheduled_at", { ascending: true, nullsFirst: false })
-        .returns<Array<{ id: string; lecture_no: number | null; title: string; scheduled_at: string | null; duration_min: number | null; started_at: string | null; ended_at: string | null; teacher_override: string | null; profiles: { display_name: string } | null }>>(),
+        .returns<Array<{ id: string; lecture_id: string | null; lecture_no: number | null; title: string; scheduled_at: string | null; duration_min: number | null; started_at: string | null; ended_at: string | null; teacher_override: string | null; courseware_track_override: "native-16x9" | "adapted-4x3" | null; profiles: { display_name: string } | null }>>(),
     ]);
   if (enrollmentError) throw new Error(enrollmentError.message);
   if (memberError) throw new Error(memberError.message);
@@ -265,10 +271,12 @@ export async function getClassroomDetail(id: string): Promise<ClassroomDetail | 
     grade: classroom.grade,
     capacity: classroom.capacity,
     room: classroom.room,
+    coursewareTrack: classroom.courseware_track,
     archivedAt: classroom.archived_at,
     roster,
     sessions: (sessionRows ?? []).map((row) => ({
       id: row.id,
+      lectureId: row.lecture_id,
       no: row.lecture_no,
       name: row.title,
       scheduledAt: row.scheduled_at,
@@ -277,6 +285,7 @@ export async function getClassroomDetail(id: string): Promise<ClassroomDetail | 
       endedAt: row.ended_at,
       teacherOverrideId: row.teacher_override,
       teacherOverrideName: row.profiles?.display_name ?? null,
+      coursewareTrackOverride: row.courseware_track_override,
     })),
   };
 }

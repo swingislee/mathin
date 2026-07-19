@@ -8,6 +8,7 @@ import { SchoolPageHeader } from "@/features/school/PageHeader";
 import { RosterPanel } from "@/features/school/RosterPanel";
 import { SessionListPanel } from "@/features/school/SessionListPanel";
 import { SessionRecycleBin } from "@/features/school/SessionRecycleBin";
+import { CoursewareTrackSettings } from "@/features/school/CoursewareTrackSettings";
 import { Link } from "@/i18n/navigation";
 import { getMyPerms, requireAnyPerm } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -64,12 +65,14 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ lo
 
       <div className="mt-6 grid gap-6">
         <RosterPanel classroomId={classroom.id} roster={classroom.roster} canManage={perms.has("enrollment.manage")} />
+        {canManage && classroom.courseId ? <CoursewareTrackSettings classroomId={classroom.id} track={classroom.coursewareTrack} /> : null}
         <SessionListPanel
           classroomId={classroom.id}
           sessions={classroom.sessions}
           canMarkAttendance={perms.has("attendance.mark")}
           canManage={canManage}
           canReview={perms.has("review.write")}
+          classroomCoursewareTrack={classroom.coursewareTrack}
         />
         {canManage && <SessionRecycleBin sessions={deletedSessions} />}
       </div>

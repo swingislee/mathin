@@ -12,6 +12,8 @@ import { ReviewDrawer } from "./ReviewDrawer";
 import { Badge } from "@/components/ui/badge";
 import { SubstituteTeacherDialog } from "./SubstituteTeacherDialog";
 import { SessionChangeDialog } from "./SessionChangeDialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { setSessionCoursewareTrackOverrideAction } from "./actions/classes";
 
 function toDateTimeLocalValue(iso: string): string {
   const date = new Date(iso);
@@ -25,12 +27,14 @@ export function SessionListPanel({
   canMarkAttendance,
   canManage,
   canReview = false,
+  classroomCoursewareTrack,
 }: {
   classroomId: string;
   sessions: SessionRow[];
   canMarkAttendance: boolean;
   canManage: boolean;
   canReview?: boolean;
+  classroomCoursewareTrack: "native-16x9" | "adapted-4x3";
 }) {
   const t = useTranslations("school.classes");
   const router = useRouter();
@@ -51,7 +55,13 @@ export function SessionListPanel({
   });
   const remove = (sessionId: string) => removeRun.run(sessionId);
 
-  const pending = rescheduleRun.pending || removeRun.pending;
+  const trackRun = useAction(setSessionCoursewareTrackOverrideAction, {
+    successMessage: t("coursewareTrackSaved"),
+    errorMessage: { default: t("actionFailed") },
+    onSuccess: () => router.refresh(),
+  });
+
+  const pending = rescheduleRun.pending || removeRun.pending || trackRun.pending;
 
   return (
     <section className="rounded-xl border border-line bg-card p-5">
@@ -73,6 +83,7 @@ export function SessionListPanel({
                   {row.endedAt ? t("statusEnded") : row.startedAt ? t("statusLive") : t("statusScheduled")}
                 </Badge>
                 {row.teacherOverrideName && <Badge variant="outline">{t("substituteBy", { name: row.teacherOverrideName })}</Badge>}
+                {row.lectureId ? <Badge variant="outline">{row.coursewareTrackOverride === "adapted-4x3" || (!row.coursewareTrackOverride && classroomCoursewareTrack === "adapted-4x3") ? t("coursewareTrackAdaptedShort") : t("coursewareTrackNativeShort")}</Badge> : null}
                 {canMarkAttendance && !unstarted && <AttendanceDrawer sessionId={row.id} />}
                 {canMarkAttendance && <SessionChangeDialog sessionId={row.id} />}
                 {canReview && !unstarted && <ReviewDrawer sessionId={row.id} />}
@@ -91,6 +102,20 @@ export function SessionListPanel({
                 {canManage && unstarted && (
                   <SubstituteTeacherDialog sessionId={row.id} currentTeacherId={row.teacherOverrideId} />
                 )}
+                {canManage && unstarted && row.lectureId ? (
+                  <Select
+                    value={row.coursewareTrackOverride ?? "inherit"}
+                    disabled={pending}
+                    onValueChange={(value) => trackRun.run(row.id, value === "inherit" ? null : value as "native-16x9" | "adapted-4x3")}
+                  >
+                    <SelectTrigger className="h-8 w-36 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="inherit">{t("coursewareTrackInherit")}</SelectItem>
+                      <SelectItem value="native-16x9">{t("coursewareTrackNative")}</SelectItem>
+                      <SelectItem value="adapted-4x3">{t("coursewareTrackAdapted")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : null}
                 {canManage && unstarted && (
                   <button
                     type="button"

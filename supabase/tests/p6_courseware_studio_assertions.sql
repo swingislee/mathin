@@ -66,11 +66,11 @@ from public.cw_page_docs where lecture_id=:'lecture_id' and deleted_at is null \
   \echo P6 studio failed: page ordering
   \quit 1
 \endif
-select revision_id as draft_revision_id, revision_no as draft_revision_no from public.save_page_draft(
-  :'page_id', (select doc from public.cw_page_revisions where id=:'baseline_revision_id'), 1, 'draft'
+select revision_id as draft_revision_id, revision_no as draft_revision_no from public.save_cw_track_page_draft(
+  :'page_id','native-16x9', (select doc from public.cw_page_revisions where id=:'baseline_revision_id'), 1, 'draft'
 ) \gset
-select revision_id as revert_revision_id, revision_no as revert_revision_no from public.revert_cw_page_revision(
-  :'page_id', :'baseline_revision_id', :'draft_revision_no', 'revert'
+select revision_id as revert_revision_id, revision_no as revert_revision_no from public.revert_cw_track_page_revision(
+  :'page_id','native-16x9', :'baseline_revision_id', :'draft_revision_no', 'revert'
 ) \gset
 select (origin='revert' and revision_no=:'revert_revision_no'::int) as p6_studio_revert_ok
 from public.cw_page_revisions where id=:'revert_revision_id' \gset
@@ -81,19 +81,19 @@ from public.cw_page_revisions where id=:'revert_revision_id' \gset
 \endif
 
 -- 发布 release 1 后冻结一堂课；之后发布 release 2，冻结的课次仍 pin release 1。
-select public.publish_lecture_release(:'lecture_id','release 1') as release_1 \gset
+select public.publish_cw_track_release(:'lecture_id','native-16x9','release 1') as release_1 \gset
 insert into public.classrooms(owner_id,name,invite_code) values(:'admin_id','__P6_STUDIO_CLASS__',substr(md5(gen_random_uuid()::text),1,8))
 returning id as classroom_id \gset
 insert into public.class_sessions(classroom_id,lecture_id,title) values(:'classroom_id',:'lecture_id','__P6_STUDIO_SESSION__')
 returning id as session_id \gset
 select public.freeze_session_courseware(
   :'session_id', '[]'::jsonb,
-  jsonb_build_object('version','cw-session-resolved-v1','releaseId',:'release_1','bindings','[]'::jsonb)
+  jsonb_build_object('version','cw-session-resolved-v1','track','native-16x9','releaseId',:'release_1','bindings','[]'::jsonb)
 );
-select revision_id as later_draft_id, revision_no as later_draft_no from public.save_page_draft(
-  :'page_id', (select doc from public.cw_page_revisions where id=:'revert_revision_id'), :'revert_revision_no', 'release 2 draft'
+select revision_id as later_draft_id, revision_no as later_draft_no from public.save_cw_track_page_draft(
+  :'page_id','native-16x9', (select doc from public.cw_page_revisions where id=:'revert_revision_id'), :'revert_revision_no', 'release 2 draft'
 ) \gset
-select public.publish_lecture_release(:'lecture_id','release 2') as release_2 \gset
+select public.publish_cw_track_release(:'lecture_id','native-16x9','release 2') as release_2 \gset
 select (
   (select courseware_resolved->>'releaseId' from public.class_sessions where id=:'session_id')=:'release_1'
   and (select current_release_id from public.course_lectures where id=:'lecture_id')=:'release_2'::uuid
@@ -106,9 +106,11 @@ select (
 
 -- 本页图片替换必须建出新 shared_asset 分支，而不是推进原资产的 published 指针。
 select repeat('d',64) as replacement_hash \gset
-select public.replace_cw_page_image_binding(:'page_id',:'binding_key',:'replacement_hash','image/png',1,1,1,'replacement') as replacement_revision_id \gset
+select revision_id as replacement_revision_id from public.replace_cw_track_image_binding(
+  :'page_id',:'binding_key','native-16x9','current-page',:'replacement_hash','image/png',1,1,1,'replacement'
+) \gset
 select (
-  (select shared_asset_id from public.cw_page_asset_bindings where page_doc_id=:'page_id' and binding_key=:'binding_key') <> :'source_asset_id'::uuid
+  (select shared_asset_id from public.cw_page_asset_bindings where page_doc_id=:'page_id' and binding_key=:'binding_key' and track='native-16x9') <> :'source_asset_id'::uuid
   and (select published_revision_id from public.cw_shared_assets where id=:'source_asset_id')=:'source_asset_revision_id'::uuid
 ) as p6_studio_page_only_image_ok \gset
 \if :p6_studio_page_only_image_ok

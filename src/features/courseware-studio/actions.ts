@@ -8,26 +8,28 @@ import { COMMON_CODES, intInRange, parse, requiredText, text, uuid } from "@/fea
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
+import { COURSEWARE_TRACKS, type CoursewareTrack } from "./data";
 
 type RpcClient = Awaited<ReturnType<typeof authorizedClient>>["supabase"];
 function rpc<T>(client: RpcClient, name: string, args: Record<string, unknown>) {
   return (client.rpc as unknown as (fn: string, params: Record<string, unknown>) => Promise<{ data: T; error: { message: string } | null }>)(name, args);
 }
 
-const draftSchema = z.object({ pageDocId: uuid, doc: pageDocSchema, baseRevisionNo: intInRange(1, 100_000), note: text(1000) });
+const trackSchema = z.enum(COURSEWARE_TRACKS);
+const draftSchema = z.object({ pageDocId: uuid, track: trackSchema, doc: pageDocSchema, baseRevisionNo: intInRange(1, 100_000), note: text(1000) });
 export async function saveCoursewareDraftAction(input: z.input<typeof draftSchema>): Promise<ActionResult<{ revisionNo: number }>> {
   try {
     const value = parse(draftSchema, input); const { supabase } = await authorizedClient("courseware.page.edit");
-    const { data, error } = await rpc<Array<{ revision_no: number }>>(supabase, "save_page_draft", { p_page_doc_id: value.pageDocId, p_doc: value.doc, p_base_revision_no: value.baseRevisionNo, p_note: value.note });
+    const { data, error } = await rpc<Array<{ revision_no: number }>>(supabase, "save_cw_track_page_draft", { p_page_doc_id: value.pageDocId, p_track: value.track, p_doc: value.doc, p_base_revision_no: value.baseRevisionNo, p_note: value.note });
     if (error || !data?.[0]) throw new Error(error?.message ?? "SAVE_FAILED");
     return { ok: true, data: { revisionNo: data[0].revision_no } };
   } catch (error) { return actionError(error, ["VERSION_CONFLICT", "SAVE_FAILED", ...COMMON_CODES]); }
 }
 
-export async function publishCoursewareReleaseAction(lectureId: string, note: string): Promise<ActionResult<{ releaseId: string }>> {
+export async function publishCoursewareReleaseAction(lectureId: string, track: CoursewareTrack, note: string): Promise<ActionResult<{ releaseId: string }>> {
   try {
-    const value = parse(z.object({ lectureId: uuid, note: text(1000) }), { lectureId, note }); const { supabase } = await authorizedClient("courseware.release.publish");
-    const { data, error } = await rpc<string>(supabase, "publish_lecture_release", { p_lecture_id: value.lectureId, p_note: value.note });
+    const value = parse(z.object({ lectureId: uuid, track: trackSchema, note: text(1000) }), { lectureId, track, note }); const { supabase } = await authorizedClient("courseware.release.publish");
+    const { data, error } = await rpc<string>(supabase, "publish_cw_track_release", { p_lecture_id: value.lectureId, p_track: value.track, p_note: value.note });
     if (error) throw new Error(error.message); return { ok: true, data: { releaseId: data } };
   } catch (error) { return actionError(error, ["LECTURE_HAS_NO_PAGES", "UNRESOLVED_ASSET_BINDING", ...COMMON_CODES]); }
 }
@@ -59,24 +61,26 @@ export async function deleteCoursewarePageAction(pageDocId: string): Promise<Act
   catch (error) { return actionError(error, ["LAST_PAGE_FORBIDDEN", "PAGE_NOT_FOUND", ...COMMON_CODES]); }
 }
 
-export async function revertCoursewarePageAction(input: { pageDocId: string; revisionId: string; baseRevisionNo: number; note: string }): Promise<ActionResult<{ revisionNo: number }>> {
+export async function revertCoursewarePageAction(input: { pageDocId: string; track: CoursewareTrack; revisionId: string; baseRevisionNo: number; note: string }): Promise<ActionResult<{ revisionNo: number }>> {
   try {
-    const value = parse(z.object({ pageDocId: uuid, revisionId: uuid, baseRevisionNo: intInRange(1, 100_000), note: text(1000) }), input); const { supabase } = await authorizedClient("courseware.page.edit");
-    const { data, error } = await rpc<Array<{ revision_no: number }>>(supabase, "revert_cw_page_revision", { p_page_doc_id: value.pageDocId, p_revision_id: value.revisionId, p_base_revision_no: value.baseRevisionNo, p_note: value.note });
+    const value = parse(z.object({ pageDocId: uuid, track: trackSchema, revisionId: uuid, baseRevisionNo: intInRange(1, 100_000), note: text(1000) }), input); const { supabase } = await authorizedClient("courseware.page.edit");
+    const { data, error } = await rpc<Array<{ revision_no: number }>>(supabase, "revert_cw_track_page_revision", { p_page_doc_id: value.pageDocId, p_track: value.track, p_revision_id: value.revisionId, p_base_revision_no: value.baseRevisionNo, p_note: value.note });
     if (error || !data?.[0]) throw new Error(error?.message ?? "SAVE_FAILED"); return { ok: true, data: { revisionNo: data[0].revision_no } };
   } catch (error) { return actionError(error, ["VERSION_CONFLICT", "REVISION_NOT_FOUND", "SAVE_FAILED", ...COMMON_CODES]); }
 }
 
-export async function rollbackCoursewareReleaseAction(lectureId: string, releaseId: string, note: string): Promise<ActionResult<{ releaseId: string }>> {
+export async function rollbackCoursewareReleaseAction(lectureId: string, track: CoursewareTrack, releaseId: string, note: string): Promise<ActionResult<{ releaseId: string }>> {
   try {
-    const value = parse(z.object({ lectureId: uuid, releaseId: uuid, note: text(1000) }), { lectureId, releaseId, note }); const { supabase } = await authorizedClient("courseware.release.publish");
-    const { data, error } = await rpc<string>(supabase, "rollback_cw_lecture_release", { p_lecture_id: value.lectureId, p_release_id: value.releaseId, p_note: value.note }); if (error) throw new Error(error.message); return { ok: true, data: { releaseId: data } };
+    const value = parse(z.object({ lectureId: uuid, track: trackSchema, releaseId: uuid, note: text(1000) }), { lectureId, track, releaseId, note }); const { supabase } = await authorizedClient("courseware.release.publish");
+    const { data, error } = await rpc<string>(supabase, "rollback_cw_track_release", { p_lecture_id: value.lectureId, p_track: value.track, p_release_id: value.releaseId, p_note: value.note }); if (error) throw new Error(error.message); return { ok: true, data: { releaseId: data } };
   } catch (error) { return actionError(error, ["RELEASE_NOT_FOUND", ...COMMON_CODES]); }
 }
 
 const imageReplacementSchema = z.object({
   pageDocId: uuid,
   bindingKey: z.string().regex(/^[0-9a-f]{64}$/),
+  track: trackSchema,
+  scope: z.enum(["current-page", "all-track"]),
   file: z.instanceof(File).refine(
     (file) => ["image/png", "image/jpeg", "image/webp", "image/gif"].includes(file.type) && file.size > 0 && file.size <= 52_428_800,
   ),
@@ -227,11 +231,11 @@ export async function rollbackCoursewareImageReplacementAction(batchId: string):
 }
 
 /** P6-7 图片替换：先以 hash 上传不可变 CAS，再经 RPC 建本页独立资源分支。 */
-export async function replaceCoursewarePageImageAction(input: { pageDocId: string; bindingKey: string; file: File }): Promise<ActionResult> {
+export async function replaceCoursewarePageImageAction(input: { pageDocId: string; bindingKey: string; track: CoursewareTrack; scope: "current-page" | "all-track"; file: File }): Promise<ActionResult<{ affectedCount: number }>> {
   try {
     const value = parse(imageReplacementSchema, input);
     const { supabase } = await authorizedClient("courseware.asset.manage");
-    const { pageDocId, bindingKey, file } = value;
+    const { pageDocId, bindingKey, track, scope, file } = value;
     const bytes = new Uint8Array(await file.arrayBuffer());
     const dimensions = imageDimensions(bytes, file.type);
     if (!dimensions || dimensions.width <= 0 || dimensions.height <= 0) throw new Error("VALIDATION");
@@ -240,8 +244,9 @@ export async function replaceCoursewarePageImageAction(input: { pageDocId: strin
     const admin = createAdminClient();
     const { error: uploadError } = await admin.storage.from("cw-objects").upload(path, bytes, { contentType: file.type, cacheControl: "31536000", upsert: false });
     if (uploadError && !/already exists|duplicate/i.test(uploadError.message)) throw new Error(uploadError.message);
-    const { error } = await rpc<string>(supabase, "replace_cw_page_image_binding", { p_page_doc_id: pageDocId, p_binding_key: bindingKey, p_sha256: sha256, p_mime: file.type, p_byte_count: file.size, p_width: dimensions.width, p_height: dimensions.height, p_name: file.name });
-    if (error) throw new Error(error.message);
-    return { ok: true };
-  } catch (error) { return actionError(error, ["IMAGE_BINDING_NOT_FOUND", "INVALID_IMAGE_UPLOAD", ...COMMON_CODES]); }
+    const { data, error } = await rpc<Array<{ affected_count: number }>>(supabase, "replace_cw_track_image_binding", { p_page_doc_id: pageDocId, p_binding_key: bindingKey, p_track: track, p_scope: scope, p_sha256: sha256, p_mime: file.type, p_byte_count: file.size, p_width: dimensions.width, p_height: dimensions.height, p_name: file.name });
+    if (error || !data?.[0]) throw new Error(error?.message ?? "IMAGE_REPLACEMENT_FAILED");
+    revalidatePath("/dashboard/courseware");
+    return { ok: true, data: { affectedCount: data[0].affected_count } };
+  } catch (error) { return actionError(error, ["IMAGE_BINDING_NOT_FOUND", "INVALID_IMAGE_UPLOAD", "INVALID_REPLACEMENT_SCOPE", ...COMMON_CODES]); }
 }

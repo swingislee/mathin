@@ -206,15 +206,26 @@ end $$;
 update public.cw_page_docs page set adapt_class=classification.adapt_class, adapt_reason=classification.adapt_reason
 from cw_adapt_context context join cw_adapt_classifications classification on true
 where page.lecture_id=context.lecture_id and page.page_no=classification.page_no and page.deleted_at is null;
+insert into public.cw_page_track_heads(page_doc_id,track,draft_revision_id,current_revision_id)
+select page.id,'adapted-4x3',native.draft_revision_id,native.current_revision_id
+from cw_adapt_context context join public.cw_page_docs page on page.lecture_id=context.lecture_id and page.deleted_at is null
+join public.cw_page_track_heads native on native.page_doc_id=page.id and native.track='native-16x9'
+on conflict(page_doc_id,track) do nothing;
 create temporary table cw_adapt_input(page_no int primary key, adapt_class text not null, doc jsonb not null, background_binding_key text, source_object_hash text, derived_object_hash text) on commit drop;
 insert into cw_adapt_input values ${pageValues};
+insert into public.cw_page_asset_bindings(page_doc_id,binding_key,role,kind,shared_asset_id,pinned_revision_id,launch_query,track)
+select binding.page_doc_id,binding.binding_key,binding.role,binding.kind,binding.shared_asset_id,binding.pinned_revision_id,binding.launch_query,'adapted-4x3'
+from cw_adapt_context context join public.cw_page_docs page on page.lecture_id=context.lecture_id and page.deleted_at is null
+join public.cw_page_asset_bindings binding on binding.page_doc_id=page.id and binding.track='native-16x9'
+on conflict(page_doc_id,binding_key,track) do nothing;
 create temporary table cw_adapt_objects(source_hash text not null, derived_hash text primary key, mime text not null, byte_count bigint not null, storage_path text not null, crop_x int not null, crop_y int not null) on commit drop;
 insert into cw_adapt_objects values ${objectValues};
 delete from cw_adapt_objects where source_hash is null;
 do $$ begin
  if exists (
    select 1 from cw_adapt_input input join cw_adapt_context context on true join public.cw_page_docs page on page.lecture_id=context.lecture_id and page.page_no=input.page_no
-   join public.cw_page_revisions base on base.id=coalesce(page.draft_revision_id,page.current_revision_id)
+   join public.cw_page_track_heads head on head.page_doc_id=page.id and head.track='native-16x9'
+   join public.cw_page_revisions base on base.id=coalesce(head.draft_revision_id,head.current_revision_id)
    where base.origin <> 'import'
  ) then raise exception 'CW_ADAPT_PAGE_NOT_IMPORT_BASELINE'; end if;
 end $$;
@@ -227,7 +238,7 @@ insert into cw_adapt_background_map(page_doc_id,binding_id,source_revision_id,sh
 -- pin 为来源：重跑时它已指向 mathin-4x3 revision，会把派生背景再裁一遍。
 select page.id,binding.id,source_revision.id,asset.id,input.derived_object_hash
 from cw_adapt_input input join cw_adapt_context context on true join public.cw_page_docs page on page.lecture_id=context.lecture_id and page.page_no=input.page_no
-join public.cw_page_asset_bindings binding on binding.page_doc_id=page.id and binding.binding_key=input.background_binding_key
+join public.cw_page_asset_bindings binding on binding.page_doc_id=page.id and binding.binding_key=input.background_binding_key and binding.track='native-16x9'
 join public.cw_shared_assets asset on asset.id=binding.shared_asset_id
 join public.cw_asset_revisions source_revision on source_revision.shared_asset_id=asset.id
 join public.cw_asset_objects source_object on source_object.id=source_revision.object_id and source_object.sha256=input.source_object_hash
@@ -247,20 +258,32 @@ do $$ begin if exists(select 1 from cw_adapt_background_map where derived_revisi
 insert into public.cw_adapt_backgrounds(source_asset_revision_id,derived_asset_revision_id,crop_x,crop_y)
 select source_revision_id,derived_revision_id,object.crop_x,object.crop_y from cw_adapt_background_map map join cw_adapt_objects object on object.derived_hash=map.derived_object_hash
 on conflict(derived_asset_revision_id) do nothing;
-update public.cw_page_asset_bindings binding set pinned_revision_id=map.derived_revision_id from cw_adapt_background_map map where binding.id=map.binding_id;
+insert into public.cw_asset_variant_heads(shared_asset_id,track,draft_revision_id,published_revision_id)
+select distinct on (shared_asset_id) shared_asset_id,'adapted-4x3',derived_revision_id,null
+from cw_adapt_background_map order by shared_asset_id,derived_revision_id
+on conflict(shared_asset_id,track) do update set draft_revision_id=excluded.draft_revision_id,updated_at=now();
+insert into public.cw_page_asset_bindings(page_doc_id,binding_key,role,kind,shared_asset_id,pinned_revision_id,launch_query,track)
+select binding.page_doc_id,binding.binding_key,binding.role,binding.kind,binding.shared_asset_id,map.derived_revision_id,binding.launch_query,'adapted-4x3'
+from cw_adapt_background_map map join public.cw_page_asset_bindings binding on binding.id=map.binding_id
+on conflict(page_doc_id,binding_key,track) do update set shared_asset_id=excluded.shared_asset_id,pinned_revision_id=excluded.pinned_revision_id,launch_query=excluded.launch_query;
 create temporary table cw_adapt_inserted_pages(page_doc_id uuid primary key) on commit drop;
 with inserted as (
- insert into public.cw_page_revisions(page_doc_id,revision_no,doc,origin,base_revision_id,note)
- select page.id,(select coalesce(max(revision_no),0)+1 from public.cw_page_revisions r where r.page_doc_id=page.id),input.doc,'adapt-4x3',base.id,'P6-6 automatic 4:3 derivation'
+ insert into public.cw_page_revisions(page_doc_id,revision_no,doc,origin,base_revision_id,note,track)
+ select page.id,(select coalesce(max(revision_no),0)+1 from public.cw_page_revisions r where r.page_doc_id=page.id),input.doc,'adapt-4x3',base.id,'P6-6 automatic 4:3 derivation','adapted-4x3'
  from cw_adapt_input input join cw_adapt_context context on true join public.cw_page_docs page on page.lecture_id=context.lecture_id and page.page_no=input.page_no
- join public.cw_page_revisions base on base.id=coalesce(page.draft_revision_id,page.current_revision_id)
+ join public.cw_page_track_heads head on head.page_doc_id=page.id and head.track='native-16x9'
+ join public.cw_page_revisions base on base.id=coalesce(head.draft_revision_id,head.current_revision_id)
  returning page_doc_id
 ) insert into cw_adapt_inserted_pages select page_doc_id from inserted;
-update public.cw_page_docs page set draft_revision_id=revision.id,adapt_class=input.adapt_class
+insert into public.cw_page_track_heads(page_doc_id,track,draft_revision_id,current_revision_id)
+select page.id,'adapted-4x3',revision.id,existing.current_revision_id
 from cw_adapt_context context, cw_adapt_input input, public.cw_page_revisions revision
+join public.cw_page_docs page on page.id=revision.page_doc_id
+left join public.cw_page_track_heads existing on existing.page_doc_id=page.id and existing.track='adapted-4x3'
 where page.lecture_id=context.lecture_id and page.page_no=input.page_no
   and revision.page_doc_id=page.id and revision.origin='adapt-4x3'
-  and revision.revision_no=(select max(r.revision_no) from public.cw_page_revisions r where r.page_doc_id=page.id);
+  and revision.revision_no=(select max(r.revision_no) from public.cw_page_revisions r where r.page_doc_id=page.id)
+on conflict(page_doc_id,track) do update set draft_revision_id=excluded.draft_revision_id,updated_at=now();
 select jsonb_build_object('lectureId',(select lecture_id from cw_adapt_context),'pages',jsonb_build_object('expected',(select count(*) from cw_adapt_input),'inserted',(select count(*) from cw_adapt_inserted_pages)),'backgrounds',jsonb_build_object('expected',(select count(*) from cw_adapt_background_map),'pending',(select count(*) from public.cw_adapt_backgrounds a join cw_adapt_background_map m on m.derived_revision_id=a.derived_asset_revision_id where a.status='pending')),'objects',jsonb_build_object('expected',(select count(*) from cw_adapt_objects),'present',(select count(*) from cw_adapt_objects input join public.cw_asset_objects object on object.sha256=input.derived_hash)))::text;
 commit;`;
 }

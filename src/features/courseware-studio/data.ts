@@ -7,6 +7,13 @@ import { pageDocSchema, type PageDoc } from "@/features/courseware-doc/schema";
 import { buildH5EntryUrl, type H5LaunchQuery, type ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 
 const SIGNED_URL_TTL_SECONDS = 60 * 60;
+export const COURSEWARE_TRACKS = ["native-16x9", "adapted-4x3"] as const;
+export type CoursewareTrack = (typeof COURSEWARE_TRACKS)[number];
+
+export function parseCoursewareTrack(value: string | string[] | undefined): CoursewareTrack {
+  const first = Array.isArray(value) ? value[0] : value;
+  return first === "adapted-4x3" ? "adapted-4x3" : "native-16x9";
+}
 
 /** 中台只读预览的准入权限:任一 courseware.* 键即可浏览(写路径各自再校验)。 */
 export const COURSEWARE_STUDIO_PERMS = [
@@ -382,6 +389,7 @@ export interface StudioRevision {
   id: string;
   revisionNo: number;
   origin: string;
+  track: CoursewareTrack;
   note: string;
   createdAt: string;
   createdBy: string | null;
@@ -403,11 +411,11 @@ export interface StudioImageAssetUsage {
 }
 
 /** 编辑器壳数据：草稿优先，其余页面走当前 release/current revision。 */
-export async function loadCoursewareStudioPage(lectureId: string, pageDocId: string) {
+export async function loadCoursewareStudioPage(lectureId: string, pageDocId: string, track: CoursewareTrack) {
   const supabase = await createClient();
   const { data: lecture, error: lectureError } = await supabase
     .from("course_lectures")
-    .select("id, no, name, course_id, current_release_id")
+    .select("id, no, name, course_id")
     .eq("id", lectureId)
     .maybeSingle();
   if (lectureError) throw new Error(lectureError.message);
@@ -420,15 +428,25 @@ export async function loadCoursewareStudioPage(lectureId: string, pageDocId: str
     .is("deleted_at", null)
     .order("page_no");
   if (pagesError) throw new Error(pagesError.message);
-  const typedPages: StudioPageSummary[] = (pages ?? []).map((page) => ({
+  const pageIds = (pages ?? []).map((page) => page.id);
+  const { data: trackHeads, error: trackHeadsError } = pageIds.length
+    ? await supabase.from("cw_page_track_heads").select("page_doc_id,draft_revision_id,current_revision_id").eq("track", track).in("page_doc_id", pageIds)
+    : { data: [], error: null };
+  if (trackHeadsError) throw new Error(trackHeadsError.message);
+  const headByPage = new Map((trackHeads ?? []).map((head) => [head.page_doc_id, head]));
+  const typedPages: StudioPageSummary[] = (pages ?? []).flatMap((page) => {
+    const head = headByPage.get(page.id);
+    if (!head) return [];
+    return [{
     id: page.id,
     pageNo: page.page_no,
     title: page.title,
-    aspect: page.aspect,
-    draftRevisionId: page.draft_revision_id,
-    currentRevisionId: page.current_revision_id,
+    aspect: track === "adapted-4x3" ? "4:3" : "16:9",
+    draftRevisionId: head.draft_revision_id,
+    currentRevisionId: head.current_revision_id,
     adaptClass: page.adapt_class as StudioPageSummary["adaptClass"],
-  }));
+  }];
+  });
   const page = typedPages.find((item) => item.id === pageDocId);
   if (!page) return null;
   const baseRevisionId = page.draftRevisionId ?? page.currentRevisionId;
@@ -437,21 +455,23 @@ export async function loadCoursewareStudioPage(lectureId: string, pageDocId: str
   const [{ data: revisionRows, error: revisionError }, { data: releases, error: releaseError }] = await Promise.all([
     supabase
       .from("cw_page_revisions")
-      .select("id, revision_no, origin, note, created_at, created_by, doc")
+      .select("id, revision_no, origin, note, created_at, created_by, doc, track")
       .eq("page_doc_id", pageDocId)
       .order("revision_no", { ascending: false }),
     supabase
       .from("cw_lecture_releases")
       .select("id, release_no, note, published_at, published_by")
       .eq("lecture_id", lectureId)
+      .eq("track", track)
       .order("release_no", { ascending: false }),
   ]);
   if (revisionError) throw new Error(revisionError.message);
   if (releaseError) throw new Error(releaseError.message);
-  const revisions: StudioRevision[] = (revisionRows ?? []).map((revision) => ({
+  const revisions: StudioRevision[] = (revisionRows ?? []).filter((revision) => revision.track === track || revision.id === baseRevisionId).map((revision) => ({
     id: revision.id,
     revisionNo: revision.revision_no,
     origin: revision.origin,
+    track: revision.track as CoursewareTrack,
     note: revision.note,
     createdAt: revision.created_at,
     createdBy: revision.created_by,
@@ -467,8 +487,8 @@ export async function loadCoursewareStudioPage(lectureId: string, pageDocId: str
     publishedBy: release.published_by,
   }));
   const [bindingUrls, imageAssetUsage] = await Promise.all([
-    resolveEditorBindingUrls(supabase, pageDocId),
-    loadImageAssetUsage(supabase, pageDocId),
+    resolveEditorBindingUrls(supabase, pageDocId, track),
+    loadImageAssetUsage(supabase, pageDocId, track),
   ]);
   const { data: copyTargets, error: copyTargetsError } = await supabase
     .from("course_lectures")
@@ -477,7 +497,8 @@ export async function loadCoursewareStudioPage(lectureId: string, pageDocId: str
     .order("no");
   if (copyTargetsError) throw new Error(copyTargetsError.message);
   return {
-    lecture: { id: lecture.id, no: lecture.no, name: lecture.name, courseId: lecture.course_id, currentReleaseId: lecture.current_release_id },
+    lecture: { id: lecture.id, no: lecture.no, name: lecture.name, courseId: lecture.course_id },
+    track,
     pages: typedPages,
     page,
     activeRevision,
@@ -490,18 +511,19 @@ export async function loadCoursewareStudioPage(lectureId: string, pageDocId: str
 }
 
 /** 图片替换前显式展示共享资产及其当前页级引用数，避免误以为会改动所有页面。 */
-async function loadImageAssetUsage(supabase: Supabase, pageDocId: string): Promise<Record<string, StudioImageAssetUsage>> {
+async function loadImageAssetUsage(supabase: Supabase, pageDocId: string, track: CoursewareTrack): Promise<Record<string, StudioImageAssetUsage>> {
   const { data: pageBindings, error: pageBindingsError } = await supabase
     .from("cw_page_asset_bindings")
     .select("binding_key, shared_asset_id")
     .eq("page_doc_id", pageDocId)
+    .eq("track", track)
     .eq("kind", "image");
   if (pageBindingsError) throw new Error(pageBindingsError.message);
   const sharedAssetIds = [...new Set((pageBindings ?? []).map((binding) => binding.shared_asset_id))];
   if (sharedAssetIds.length === 0) return {};
 
   const [{ data: allBindings, error: allBindingsError }, { data: assets, error: assetsError }] = await Promise.all([
-    supabase.from("cw_page_asset_bindings").select("shared_asset_id").in("shared_asset_id", sharedAssetIds),
+    supabase.from("cw_page_asset_bindings").select("shared_asset_id").eq("track", track).in("shared_asset_id", sharedAssetIds),
     supabase.from("cw_shared_assets").select("id, name").in("id", sharedAssetIds),
   ]);
   if (allBindingsError) throw new Error(allBindingsError.message);
@@ -519,24 +541,27 @@ async function loadImageAssetUsage(supabase: Supabase, pageDocId: string): Promi
 }
 
 /** 草稿预览按当前 binding 指针解析；发布后 release 再把版本精确 pin 进快照。 */
-async function resolveEditorBindingUrls(supabase: Supabase, pageDocId: string): Promise<ResolvedBindingUrls> {
+async function resolveEditorBindingUrls(supabase: Supabase, pageDocId: string, track: CoursewareTrack): Promise<ResolvedBindingUrls> {
   const { data: bindings, error: bindingError } = await supabase
     .from("cw_page_asset_bindings")
     .select("binding_key, kind, launch_query, pinned_revision_id, shared_asset_id")
-    .eq("page_doc_id", pageDocId);
+    .eq("page_doc_id", pageDocId)
+    .eq("track", track);
   if (bindingError) throw new Error(bindingError.message);
   if (!bindings?.length) return {};
   const sharedIds = [...new Set(bindings.map((binding) => binding.shared_asset_id))];
-  const { data: assets, error: assetError } = await supabase
-    .from("cw_shared_assets")
-    .select("id, published_revision_id")
-    .in("id", sharedIds);
+  const [{ data: assets, error: assetError }, { data: variantHeads, error: variantError }] = await Promise.all([
+    supabase.from("cw_shared_assets").select("id, published_revision_id").in("id", sharedIds),
+    supabase.from("cw_asset_variant_heads").select("shared_asset_id,draft_revision_id,published_revision_id").eq("track", track).in("shared_asset_id", sharedIds),
+  ]);
   if (assetError) throw new Error(assetError.message);
+  if (variantError) throw new Error(variantError.message);
   const publishedByAsset = new Map((assets ?? []).map((asset) => [asset.id, asset.published_revision_id]));
+  const variantByAsset = new Map((variantHeads ?? []).map((head) => [head.shared_asset_id, head.draft_revision_id ?? head.published_revision_id]));
   const entries = bindings.map((binding) => ({
     pageDocId,
     revisionId: "00000000-0000-0000-0000-000000000000",
-    bindings: [{ bindingKey: binding.binding_key, assetRevisionId: binding.pinned_revision_id ?? publishedByAsset.get(binding.shared_asset_id) }],
+    bindings: [{ bindingKey: binding.binding_key, assetRevisionId: binding.pinned_revision_id ?? variantByAsset.get(binding.shared_asset_id) ?? publishedByAsset.get(binding.shared_asset_id) }],
   })).filter((entry) => entry.bindings[0].assetRevisionId);
   return resolveSnapshotBindingUrls(
     supabase,
@@ -549,20 +574,29 @@ async function resolveEditorBindingUrls(supabase: Supabase, pageDocId: string): 
  * 只读预览数据:讲的 current release 快照 → 页 doc(过冻结 schema)+ 全部绑定的 URL。
  * 渲染的是已发布状态,不是草稿——预览即验收视角(docs/plan/16 P6-4)。
  */
-export async function loadLecturePreview(lectureId: string, requestedPageIndex?: number): Promise<CoursewareLecturePreview | null> {
+export async function loadLecturePreview(lectureId: string, track: CoursewareTrack, requestedPageIndex?: number): Promise<CoursewareLecturePreview | null> {
   const supabase = await createClient();
   const { data: lecture, error: lectureError } = await supabase
     .from("course_lectures")
-    .select("id, no, name, course_id, current_release_id")
+    .select("id, no, name, course_id")
     .eq("id", lectureId)
     .maybeSingle();
   if (lectureError) throw new Error(lectureError.message);
-  if (!lecture?.current_release_id) return null;
+  if (!lecture) return null;
+
+  const { data: releaseHead, error: releaseHeadError } = await supabase
+    .from("cw_lecture_track_heads")
+    .select("current_release_id")
+    .eq("lecture_id", lectureId)
+    .eq("track", track)
+    .maybeSingle();
+  if (releaseHeadError) throw new Error(releaseHeadError.message);
+  if (!releaseHead?.current_release_id) return null;
 
   const { data: release, error: releaseError } = await supabase
     .from("cw_lecture_releases")
     .select("id, release_no, published_at, snapshot")
-    .eq("id", lecture.current_release_id)
+    .eq("id", releaseHead.current_release_id)
     .maybeSingle();
   if (releaseError) throw new Error(releaseError.message);
   if (!release) return null;
@@ -583,7 +617,7 @@ export async function loadLecturePreview(lectureId: string, requestedPageIndex?:
       pageDocId: page.id,
       pageNo: page.page_no,
       title: page.title,
-      aspect: page.aspect,
+      aspect: track === "adapted-4x3" ? "4:3" : "16:9",
     };
   });
   pages.sort((a, b) => a.pageNo - b.pageNo);
@@ -598,7 +632,7 @@ export async function loadLecturePreview(lectureId: string, requestedPageIndex?:
 
   const [{ data: revision, error: revisionError }, { data: bindingRows, error: bindingRowsError }] = await Promise.all([
     supabase.from("cw_page_revisions").select("id, doc").eq("id", snapshotEntry.revisionId).maybeSingle(),
-    supabase.from("cw_page_asset_bindings").select("binding_key, kind, launch_query").eq("page_doc_id", pageMeta.pageDocId),
+    supabase.from("cw_page_asset_bindings").select("binding_key, kind, launch_query").eq("page_doc_id", pageMeta.pageDocId).eq("track", track),
   ]);
   if (revisionError) throw new Error(revisionError.message);
   if (!revision) throw new Error(`RELEASE_SNAPSHOT_INCOMPLETE: ${pageMeta.pageDocId}`);
@@ -675,6 +709,7 @@ async function resolveSnapshotBindingUrls(
 
 export interface SessionResolvedMeta {
   version: "cw-session-resolved-v1";
+  track: CoursewareTrack;
   releaseId: string | null;
   bindings: Array<{ pageDocId: string; bindingKey: string; objectHash: string }>;
 }
@@ -684,7 +719,7 @@ export interface SessionResolvedMeta {
  * (objectHash 清单)。freeze_session_courseware 对已发布讲次强制校验
  * releaseId 一致,课堂资产签发(list_session_resolved_assets)按 objectHash 取对象。
  */
-export async function materializeSessionResolved(releaseId: string): Promise<SessionResolvedMeta> {
+export async function materializeSessionResolved(releaseId: string, track: CoursewareTrack): Promise<SessionResolvedMeta> {
   const supabase = await createClient();
   const { data: release, error } = await supabase
     .from("cw_lecture_releases")
@@ -714,7 +749,7 @@ export async function materializeSessionResolved(releaseId: string): Promise<Ses
       return { pageDocId: entry.pageDocId, bindingKey: binding.bindingKey, objectHash };
     }),
   );
-  return { version: "cw-session-resolved-v1", releaseId, bindings };
+  return { version: "cw-session-resolved-v1", track, releaseId, bindings };
 }
 
 /** staff 直读 = 用户自身 token 批签 signed URL,RLS select 策略即签名授权(D3 拍板第 4 项);不走 service key。 */

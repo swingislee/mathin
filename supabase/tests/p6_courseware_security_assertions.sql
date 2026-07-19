@@ -101,6 +101,7 @@ insert into public.cw_page_asset_bindings (
 update public.class_sessions
    set courseware_resolved=jsonb_build_object(
      'version', 'cw-session-resolved-v1',
+     'track', 'native-16x9',
      'releaseId', null,
      'bindings', jsonb_build_array(jsonb_build_object(
        'pageDocId', :'page_doc_id',

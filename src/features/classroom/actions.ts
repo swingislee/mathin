@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import { materializeSessionResolved } from "@/features/courseware-studio/data";
+import { materializeSessionResolved, type CoursewareTrack } from "@/features/courseware-studio/data";
 import { resolveCourseware, type CoursewareTemplatePage, type OverlaySlot } from "@/features/school/courseware-overlay";
 import type { Json } from "@/lib/database.types";
 import { createClient } from "@/lib/supabase/server";
@@ -280,10 +280,17 @@ export async function startClassSession(sessionId: string): Promise<void> {
   if (session.lecture_id && !session.courseware_frozen_at) {
     const { data: lecture, error: lectureError } = await supabase
       .from("course_lectures")
-      .select("courseware_template,current_release_id")
+      .select("courseware_template")
       .eq("id", session.lecture_id)
-      .maybeSingle<{ courseware_template: CoursewareTemplatePage[]; current_release_id: string | null }>();
+      .maybeSingle<{ courseware_template: CoursewareTemplatePage[] }>();
     if (lectureError) throw new Error(lectureError.message);
+    const { data: resolvedRelease, error: resolvedReleaseError } = await supabase.rpc("resolve_session_courseware_release", {
+      p_session_id: sessionId,
+    });
+    if (resolvedReleaseError) throw new Error(resolvedReleaseError.message);
+    const selected = resolvedRelease?.[0] as { track: CoursewareTrack; release_id: string | null } | undefined;
+    if (!selected) throw new Error("COURSEWARE_TRACK_NOT_RESOLVED");
+    if (selected.track === "adapted-4x3" && !selected.release_id) throw new Error("COURSEWARE_TRACK_UNPUBLISHED");
     const resolved = resolveCourseware(lecture?.courseware_template ?? [], session.courseware_overlay ?? []);
     // P6-2：同一 DB 事务同时冻结页数组、解析对象 pin 与开课时间。
     // 讲次已发布 release 时必须物化 releaseId + objectHash 清单——
@@ -291,9 +298,9 @@ export async function startClassSession(sessionId: string): Promise<void> {
     const { error } = await supabase.rpc("freeze_session_courseware", {
       p_session_id: sessionId,
       p_courseware: resolved,
-      p_courseware_resolved: lecture?.current_release_id
-        ? ((await materializeSessionResolved(lecture.current_release_id)) as unknown as Json)
-        : { version: "cw-session-resolved-v1", releaseId: null, bindings: [] },
+      p_courseware_resolved: selected.release_id
+        ? ((await materializeSessionResolved(selected.release_id, selected.track)) as unknown as Json)
+        : { version: "cw-session-resolved-v1", track: selected.track, releaseId: null, bindings: [] },
     });
     if (error) throw new Error(error.message);
     return;
