@@ -43,6 +43,215 @@ export interface CoursewareCourseSummary {
   releasedCount: number;
 }
 
+const assetLibraryFiltersSchema = z.object({
+  query: z.string().trim().max(200).catch(""),
+  kind: z.enum(["image", "video", "audio", "svg", "h5"]).nullable().catch(null),
+  role: z.string().trim().min(1).max(100).nullable().catch(null),
+  minUsage: z.coerce.number().int().min(0).max(1_000_000).catch(0),
+  page: z.coerce.number().int().min(1).max(1_000).catch(1),
+});
+
+export type AssetLibraryFilters = z.infer<typeof assetLibraryFiltersSchema>;
+
+export function parseAssetLibraryFilters(input: {
+  query?: string | string[];
+  kind?: string | string[];
+  role?: string | string[];
+  minUsage?: string | string[];
+  page?: string | string[];
+}): AssetLibraryFilters {
+  const first = (value: string | string[] | undefined) => Array.isArray(value) ? value[0] : value;
+  return assetLibraryFiltersSchema.parse({
+    query: first(input.query) ?? "",
+    kind: first(input.kind) || null,
+    role: first(input.role) || null,
+    minUsage: first(input.minUsage) ?? "0",
+    page: first(input.page) ?? "1",
+  });
+}
+
+export interface SharedAssetLibraryItem {
+  id: string;
+  name: string;
+  kind: string;
+  role: string;
+  publishedRevisionId: string;
+  publishedRevisionNo: number;
+  sha256: string;
+  mime: string;
+  byteCount: number;
+  width: number;
+  height: number;
+  usageCount: number;
+  courseCount: number;
+  lectureCount: number;
+  updatedAt: string;
+}
+
+const ASSET_LIBRARY_PAGE_SIZE = 100;
+
+/** 资源库按服务端筛选和分页，避免全量迁入后一次把数万 semantic asset 下发给浏览器。 */
+export async function loadCoursewareSharedAssets(filters: AssetLibraryFilters) {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("list_cw_shared_assets", {
+    p_query: filters.query,
+    p_kind: filters.kind ?? undefined,
+    p_role: filters.role ?? undefined,
+    p_min_usage: filters.minUsage,
+    p_limit: ASSET_LIBRARY_PAGE_SIZE + 1,
+    p_offset: (filters.page - 1) * ASSET_LIBRARY_PAGE_SIZE,
+  });
+  if (error) throw new Error(error.message);
+  const rows = data ?? [];
+  return {
+    items: rows.slice(0, ASSET_LIBRARY_PAGE_SIZE).map((asset): SharedAssetLibraryItem => ({
+      id: asset.id,
+      name: asset.name,
+      kind: asset.kind,
+      role: asset.role,
+      publishedRevisionId: asset.published_revision_id,
+      publishedRevisionNo: asset.published_revision_no,
+      sha256: asset.object_sha256,
+      mime: asset.mime,
+      byteCount: asset.byte_count,
+      width: asset.width,
+      height: asset.height,
+      usageCount: asset.usage_count,
+      courseCount: asset.course_count,
+      lectureCount: asset.lecture_count,
+      updatedAt: asset.updated_at,
+    })),
+    hasNextPage: rows.length > ASSET_LIBRARY_PAGE_SIZE,
+    pageSize: ASSET_LIBRARY_PAGE_SIZE,
+  };
+}
+
+export interface SharedAssetUsage {
+  bindingId: string;
+  bindingKey: string;
+  pageDocId: string;
+  pageNo: number;
+  pageTitle: string;
+  lectureId: string;
+  lectureNo: number;
+  lectureName: string;
+  courseId: string;
+  courseTitle: string;
+  productCode: string;
+  pinnedRevisionId: string | null;
+  resolvedRevisionId: string;
+  frozenSessionCount: number;
+}
+
+export interface SharedAssetReplacementBatch {
+  id: string;
+  mode: "publish_pointer" | "branch_rebind";
+  selectedUsageCount: number;
+  status: "applied" | "rolled_back";
+  note: string;
+  createdAt: string;
+  rolledBackAt: string | null;
+}
+
+export interface CoursewareSharedAssetDetail {
+  asset: {
+    id: string;
+    name: string;
+    role: string;
+    publishedRevisionId: string;
+    publishedRevisionNo: number;
+    sha256: string;
+    mime: string;
+    byteCount: number;
+    width: number;
+    height: number;
+    previewUrl: string | null;
+  };
+  usages: SharedAssetUsage[];
+  batches: SharedAssetReplacementBatch[];
+}
+
+/** 资源详情的使用位置、冻结标记和审计历史。页面级 pinned binding 只展示，不能进入批量选择。 */
+export async function loadCoursewareSharedAssetDetail(assetId: string): Promise<CoursewareSharedAssetDetail | null> {
+  const parsedAssetId = z.uuid().safeParse(assetId);
+  if (!parsedAssetId.success) return null;
+  assetId = parsedAssetId.data;
+  const supabase = await createClient();
+  const { data: asset, error: assetError } = await supabase
+    .from("cw_shared_assets")
+    .select("id, name, kind, role, published_revision_id")
+    .eq("id", assetId)
+    .maybeSingle();
+  if (assetError) throw new Error(assetError.message);
+  if (!asset || asset.kind !== "image" || !asset.published_revision_id) return null;
+
+  const { data: revision, error: revisionError } = await supabase
+    .from("cw_asset_revisions")
+    .select("id, revision_no, object_id")
+    .eq("id", asset.published_revision_id)
+    .maybeSingle();
+  if (revisionError) throw new Error(revisionError.message);
+  if (!revision) throw new Error("ASSET_PUBLISHED_REVISION_MISSING");
+
+  const [{ data: object, error: objectError }, { data: usageRows, error: usagesError }, { data: batchRows, error: batchesError }] = await Promise.all([
+    supabase.from("cw_asset_objects").select("sha256, mime, byte_count, width, height, storage_path").eq("id", revision.object_id).maybeSingle(),
+    supabase.rpc("list_cw_shared_asset_usages", { p_shared_asset_id: assetId }),
+    supabase
+      .from("cw_replacement_batches")
+      .select("id, mode, selected_usage_count, status, note, created_at, rolled_back_at")
+      .or(`source_shared_asset_id.eq.${assetId},target_shared_asset_id.eq.${assetId}`)
+      .order("created_at", { ascending: false })
+      .limit(20),
+  ]);
+  if (objectError) throw new Error(objectError.message);
+  if (usagesError) throw new Error(usagesError.message);
+  if (batchesError) throw new Error(batchesError.message);
+  if (!object) throw new Error("ASSET_OBJECT_MISSING");
+
+  const { data: signed, error: signedError } = await supabase.storage.from("cw-objects").createSignedUrl(object.storage_path, SIGNED_URL_TTL_SECONDS);
+  if (signedError) throw new Error(signedError.message);
+  return {
+    asset: {
+      id: asset.id,
+      name: asset.name,
+      role: asset.role,
+      publishedRevisionId: revision.id,
+      publishedRevisionNo: revision.revision_no,
+      sha256: object.sha256,
+      mime: object.mime,
+      byteCount: object.byte_count,
+      width: object.width ?? 0,
+      height: object.height ?? 0,
+      previewUrl: signed?.signedUrl ?? null,
+    },
+    usages: (usageRows ?? []).map((usage): SharedAssetUsage => ({
+      bindingId: usage.binding_id,
+      bindingKey: usage.binding_key,
+      pageDocId: usage.page_doc_id,
+      pageNo: usage.page_no,
+      pageTitle: usage.page_title,
+      lectureId: usage.lecture_id,
+      lectureNo: usage.lecture_no,
+      lectureName: usage.lecture_name,
+      courseId: usage.course_id,
+      courseTitle: usage.course_title,
+      productCode: usage.product_code,
+      pinnedRevisionId: usage.pinned_revision_id,
+      resolvedRevisionId: usage.resolved_revision_id,
+      frozenSessionCount: usage.frozen_session_count,
+    })),
+    batches: (batchRows ?? []).map((batch): SharedAssetReplacementBatch => ({
+      id: batch.id,
+      mode: batch.mode as SharedAssetReplacementBatch["mode"],
+      selectedUsageCount: batch.selected_usage_count,
+      status: batch.status as SharedAssetReplacementBatch["status"],
+      note: batch.note,
+      createdAt: batch.created_at,
+      rolledBackAt: batch.rolled_back_at,
+    })),
+  };
+}
+
 /** 课程网格:全部课程 + 各自讲次数/已发布 release 数(72 门课,内存聚合)。 */
 export async function loadCoursewareCourses(): Promise<CoursewareCourseSummary[]> {
   const supabase = await createClient();

@@ -24,6 +24,7 @@ import {
   saveCoursewareDraftAction,
 } from "./actions";
 import { useRouter } from "@/i18n/navigation";
+import { Link } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 
 type Props = {
@@ -193,7 +194,7 @@ export function CoursewarePageEditor({ lecture, page, pages, initialDoc, baseRev
               <p className="break-all text-xs text-muted">{selected.nodePath}</p>
               <Label>{t("textOrHtml")}</Label>
               <Textarea className="h-28 min-h-28 max-h-48 resize-y" value={selected.content?.html ?? selected.content?.text ?? ""} onChange={(event) => patchSelected((node) => { if (node.content?.kind === "rich_text" || node.content?.kind === "shape") node.content.html = event.target.value; else if (node.content) node.content.text = event.target.value; })} />
-              {imageBinding ? <div className="space-y-2"><Label htmlFor="courseware-image">{t("replaceImage")}</Label>{imageUsage ? <p className="text-xs text-muted">{t("sharedAsset", { name: imageUsage.name })}<br />{t("assetUseCount", { count: imageUsage.useCount })}</p> : null}<Input id="courseware-image" type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={(event) => setImageFile(event.target.files?.[0] ?? null)} /><Button variant="secondary" size="sm" disabled={pending || !imageFile} onClick={() => startTransition(async () => { if (!imageFile) return; const result = await replaceCoursewarePageImageAction({ pageDocId: page.id, bindingKey: imageBinding.bindingKey, file: imageFile }); setMessage(result.ok ? t("imageReplaced") : t("imageReplaceFailed", { code: result.code })); if (result.ok) { setImageFile(null); router.refresh(); } })}>{t("replaceThisPage")}</Button></div> : null}
+              {imageBinding ? <div className="space-y-2"><Label htmlFor="courseware-image">{t("replaceImage")}</Label>{imageUsage ? <p className="text-xs text-muted">{t("sharedAsset", { name: imageUsage.name })}<br />{t("assetUseCount", { count: imageUsage.useCount })}<br /><Link href={`/dashboard/courseware/assets/${imageUsage.sharedAssetId}`} className="underline underline-offset-2 hover:text-ink">{t("openAssetLibrary")}</Link></p> : null}<Input id="courseware-image" type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={(event) => setImageFile(event.target.files?.[0] ?? null)} /><Button variant="secondary" size="sm" disabled={pending || !imageFile} onClick={() => startTransition(async () => { if (!imageFile) return; const result = await replaceCoursewarePageImageAction({ pageDocId: page.id, bindingKey: imageBinding.bindingKey, file: imageFile }); setMessage(result.ok ? t("imageReplaced") : t("imageReplaceFailed", { code: result.code })); if (result.ok) { setImageFile(null); router.refresh(); } })}>{t("replaceThisPage")}</Button></div> : null}
               <div className="grid grid-cols-2 gap-2">
                 {(["x", "y", "width", "height", "rotation"] as const).map((key) => <label key={key} className="text-xs text-muted">{key}<Input type="number" value={selected.transform[key]} onChange={(event) => numeric(key, event.target.value)} /></label>)}
                 <label className="text-xs text-muted">{t("fontSize")}<Input type="number" value={selected.style.fontSize ?? ""} onChange={(event) => numeric("fontSize", event.target.value)} /></label>

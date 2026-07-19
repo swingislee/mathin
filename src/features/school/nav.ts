@@ -20,6 +20,13 @@ const FINANCE_NAV_PERMS: readonly PermissionKey[] = [
   "finance.report.view",
 ];
 
+/** 课件中台的只读入口与路由 `requireAnyPerm` 使用同一组权限键。 */
+const COURSEWARE_NAV_PERMS: readonly PermissionKey[] = [
+  "courseware.page.edit",
+  "courseware.release.publish",
+  "courseware.asset.manage",
+];
+
 export const HOME_NAV_ITEM: SchoolNavItem = { href: "/dashboard", labelKey: "home" };
 
 export const SCHOOL_NAV_ITEMS: readonly SchoolNavItem[] = [
@@ -27,6 +34,8 @@ export const SCHOOL_NAV_ITEMS: readonly SchoolNavItem[] = [
   { href: "/dashboard/activities", labelKey: "activities", requiredPerm: "activity.register" },
   { href: "/dashboard/students", labelKey: "students", requiredPerm: "student.view.assigned" },
   { href: "/dashboard/courses", labelKey: "courses", requiredPerm: "course.view" },
+  { href: "/dashboard/courseware", labelKey: "courseware", requiredAnyPerm: COURSEWARE_NAV_PERMS },
+  { href: "/dashboard/courseware/assets", labelKey: "assetLibrary", requiredPerm: "courseware.asset.manage" },
   { href: "/dashboard/classes", labelKey: "classes", requiredPerm: "class.view.mine" },
   { href: "/dashboard/schedule", labelKey: "schedule" },
   { href: "/dashboard/finance", labelKey: "finance", requiredAnyPerm: FINANCE_NAV_PERMS },

@@ -7,6 +7,7 @@ import { authorizedClient } from "@/features/school/actions/guards";
 import { COMMON_CODES, intInRange, parse, requiredText, text, uuid } from "@/features/school/actions/schemas";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createHash } from "node:crypto";
+import { revalidatePath } from "next/cache";
 
 type RpcClient = Awaited<ReturnType<typeof authorizedClient>>["supabase"];
 function rpc<T>(client: RpcClient, name: string, args: Record<string, unknown>) {
@@ -107,6 +108,122 @@ function imageDimensions(bytes: Uint8Array, mime: string): { width: number; heig
     }
   }
   return null;
+}
+
+const stagedImageSchema = z.object({
+  file: z.instanceof(File).refine(
+    (file) => ["image/png", "image/jpeg", "image/webp", "image/gif"].includes(file.type) && file.size > 0 && file.size <= 52_428_800,
+  ),
+});
+
+/**
+ * P6-8 两阶段的 A 阶段：服务端验证并将不可变对象落到 CAS，再写入仅本人可消费的一小时 staging 记录。
+ * 这里故意不改变任何 binding；用户仍可在确认页调整范围或直接离开。
+ */
+export async function stageCoursewareImageReplacementAction(input: { file: File }): Promise<ActionResult<{ uploadId: string; sha256: string; width: number; height: number }>> {
+  try {
+    const { file } = parse(stagedImageSchema, input);
+    const { user } = await authorizedClient("courseware.asset.manage");
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const dimensions = imageDimensions(bytes, file.type);
+    if (!dimensions || dimensions.width <= 0 || dimensions.height <= 0) throw new Error("VALIDATION");
+    const sha256 = createHash("sha256").update(bytes).digest("hex");
+    const storagePath = `sha256/${sha256.slice(0, 2)}/${sha256}`;
+    const admin = createAdminClient();
+    const { error: uploadError } = await admin.storage.from("cw-objects").upload(storagePath, bytes, {
+      contentType: file.type,
+      cacheControl: "31536000",
+      upsert: false,
+    });
+    if (uploadError && !/already exists|duplicate/i.test(uploadError.message)) throw new Error(uploadError.message);
+    const { data: staged, error: stageError } = await admin
+      .from("cw_replacement_uploads")
+      .insert({
+        sha256,
+        mime: file.type,
+        byte_count: file.size,
+        width: dimensions.width,
+        height: dimensions.height,
+        storage_path: storagePath,
+        original_name: file.name.slice(0, 500),
+        created_by: user.id,
+      })
+      .select("id")
+      .single();
+    if (stageError || !staged) throw new Error(stageError?.message ?? "STAGE_FAILED");
+    return { ok: true, data: { uploadId: staged.id, sha256, ...dimensions } };
+  } catch (error) {
+    return actionError(error, ["STAGE_FAILED", ...COMMON_CODES]);
+  }
+}
+
+const applyReplacementSchema = z.object({
+  sourceSharedAssetId: uuid,
+  selectedBindingIds: z.array(uuid).min(1).max(50_000),
+  uploadId: uuid,
+  note: text(1000),
+});
+
+/** P6-8 B 阶段：单 RPC 原子判定全量/部分替换、写 audit，并在部分场景建立资源语义分支。 */
+export async function applyCoursewareImageReplacementAction(
+  input: z.input<typeof applyReplacementSchema>,
+): Promise<ActionResult<{ batchId: string; mode: "publish_pointer" | "branch_rebind"; affectedCount: number }>> {
+  try {
+    const value = parse(applyReplacementSchema, input);
+    const { supabase } = await authorizedClient("courseware.asset.manage");
+    const { data, error } = await rpc<Array<{ batch_id: string; mode: "publish_pointer" | "branch_rebind"; affected_count: number }>>(
+      supabase,
+      "apply_cw_asset_replacement",
+      {
+        p_source_shared_asset_id: value.sourceSharedAssetId,
+        p_selected_binding_ids: value.selectedBindingIds,
+        p_upload_id: value.uploadId,
+        p_note: value.note,
+      },
+    );
+    if (error || !data?.[0]) throw new Error(error?.message ?? "REPLACEMENT_FAILED");
+    revalidatePath("/dashboard/courseware");
+    return {
+      ok: true,
+      data: {
+        batchId: data[0].batch_id,
+        mode: data[0].mode,
+        affectedCount: data[0].affected_count,
+      },
+    };
+  } catch (error) {
+    return actionError(error, [
+      "UPLOAD_NOT_FOUND",
+      "UPLOAD_EXPIRED",
+      "SOURCE_ASSET_NOT_FOUND",
+      "SOURCE_ASSET_UNPUBLISHED",
+      "SELECTED_BINDING_NOT_FOUND",
+      "SELECTED_BINDING_NOT_FROM_SOURCE",
+      "PINNED_BINDING_EXCLUDED",
+      "OBJECT_METADATA_CONFLICT",
+      "INVALID_REPLACEMENT_SELECTION",
+      ...COMMON_CODES,
+    ]);
+  }
+}
+
+export async function rollbackCoursewareImageReplacementAction(batchId: string): Promise<ActionResult> {
+  try {
+    const value = parse(uuid, batchId);
+    const { supabase } = await authorizedClient("courseware.asset.manage");
+    const { error } = await rpc<null>(supabase, "rollback_cw_asset_replacement", { p_batch_id: value });
+    if (error) throw new Error(error.message);
+    revalidatePath("/dashboard/courseware");
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, [
+      "REPLACEMENT_BATCH_NOT_FOUND",
+      "REPLACEMENT_ALREADY_ROLLED_BACK",
+      "REPLACEMENT_ROLLBACK_CONFLICT",
+      "REPLACEMENT_AUDIT_INCOMPLETE",
+      ...COMMON_CODES,
+    ]);
+  }
 }
 
 /** P6-7 图片替换：先以 hash 上传不可变 CAS，再经 RPC 建本页独立资源分支。 */

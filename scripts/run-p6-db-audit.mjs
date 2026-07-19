@@ -10,6 +10,7 @@ if (!databaseUrl) {
 const files = [
   "p6_courseware_security_assertions.sql",
   "p6_courseware_studio_assertions.sql",
+  "p6_courseware_replacement_assertions.sql",
 ].map((name) => path.join(process.cwd(), "supabase", "tests", name));
 
 for (const file of files) {
