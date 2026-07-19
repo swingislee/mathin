@@ -25,9 +25,11 @@ export const PERMISSION_KEYS = [
   "class.manage",
   "enrollment.manage",
   "schedule.view.all",
+  "schedule.manage",
   "attendance.mark",
   "grading.write",
   "report.view.all",
+  "session.void",
   "finance.order.view",
   "finance.order.create",
   "finance.payment.record",
@@ -40,6 +42,7 @@ export const PERMISSION_KEYS = [
   "staff.manage",
   "permission.configure",
   "audit.view",
+  "testdata.purge",
 ] as const;
 
 export type PermissionKey = (typeof PERMISSION_KEYS)[number];
