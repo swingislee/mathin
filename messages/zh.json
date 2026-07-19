@@ -275,7 +275,22 @@
     "stageNatural": "原生画幅",
     "stageBoard": "4:3 课堂",
     "prevPage": "上一页",
-    "nextPage": "下一页"
+    "h5Expand": "全屏互动",
+    "h5Collapse": "收回互动",
+    "nextPage": "下一页",
+    "adaptQueueTitle": "4:3 背景确认队列",
+    "adaptQueueIntro": "自动裁切的背景必须经人工确认，才允许进入 4:3 release。",
+    "adaptQueueEmpty": "没有待确认的 4:3 背景。",
+    "adaptCrop": "裁切偏移：x {x}，y {y}",
+    "adaptApprove": "确认派生图",
+    "adaptReject": "退回重制",
+    "adaptManualTitle": "待人工重排页面",
+    "adaptManualIntro": "D 类页面依赖 16:9 构图，不会被自动改写；请在教研编辑器中逐页重排后再进入 release。",
+    "adaptManualEmpty": "没有需要人工重排的页面。",
+    "adaptManualPage": "第 {page} 页 · {title}",
+    "adaptManualLecture": "讲次：{id}",
+    "adaptManualReason": "分类原因：{reason}",
+    "untitledPage": "未命名页"
   },
   "school": {
     "home": {

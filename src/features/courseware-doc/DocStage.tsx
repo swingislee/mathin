@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useTranslations } from "next-intl";
+import { Button } from "@/components/ui/button";
 import "./doc-stage.css";
 import type { DocNode, PageDoc } from "./schema";
 import { injectBindingUrls, type ResolvedBindingUrls } from "./resolve";
@@ -86,6 +88,56 @@ function textBlockStyle(node: DocNode): CSSProperties {
   };
 }
 
+/** H5 保持沙箱隔离；全屏只提升 iframe 外壳，不放宽其 origin 权限。 */
+function H5Frame({ entryUrl, title }: { entryUrl: string; title: string }) {
+  const t = useTranslations("coursewareStudio");
+  const frameRef = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const syncFullscreen = () => setIsFullscreen(document.fullscreenElement === frameRef.current);
+    document.addEventListener("fullscreenchange", syncFullscreen);
+    syncFullscreen();
+    return () => document.removeEventListener("fullscreenchange", syncFullscreen);
+  }, []);
+
+  const toggleFullscreen = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const frame = frameRef.current;
+    if (!frame) return;
+    if (document.fullscreenElement === frame) {
+      void document.exitFullscreen();
+      return;
+    }
+    void frame.requestFullscreen().catch(() => undefined);
+  };
+
+  return (
+    <div ref={frameRef} style={{ position: "relative", width: "100%", height: "100%", background: "#fff" }}>
+      <iframe
+        title={title}
+        src={entryUrl}
+        // 垫片让 iframe 与站点同源,必须保持 opaque origin 隔离:
+        // 只给 allow-scripts,严禁 allow-same-origin(doc 16 §9)。
+        sandbox="allow-scripts"
+        allowFullScreen
+        style={{ width: "100%", height: "100%", border: 0, display: "block" }}
+      />
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        className="absolute right-3 top-3 bg-paper/95 shadow-sm"
+        aria-label={isFullscreen ? t("h5Collapse") : t("h5Expand")}
+        onClick={toggleFullscreen}
+      >
+        {isFullscreen ? t("h5Collapse") : t("h5Expand")}
+      </Button>
+    </div>
+  );
+}
+
 function nodeBody(node: DocNode, urls: ResolvedBindingUrls, clickTriggers: ReadonlySet<string>): ReactNode {
   const alt = node.content?.text || node.name || node.sourceType;
   const url = bindingUrl(node, RESOURCE_ROLES, urls);
@@ -139,16 +191,7 @@ function nodeBody(node: DocNode, urls: ResolvedBindingUrls, clickTriggers: Reado
         ? (urls[node.resources.find((item) => item.role === "entry")!.bindingKey] ?? null)
         : null;
       if (!entryUrl) return unknownBody(node, `互动 · ${node.content?.status ?? "unavailable"}`);
-      return (
-        <iframe
-          title={node.name ?? "互动"}
-          src={entryUrl}
-          // 垫片让 iframe 与站点同源,必须保持 opaque origin 隔离:
-          // 只给 allow-scripts,严禁 allow-same-origin(doc 16 §9)。
-          sandbox="allow-scripts"
-          style={{ width: "100%", height: "100%", border: 0 }}
-        />
-      );
+      return <H5Frame entryUrl={entryUrl} title={node.name ?? "互动"} />;
     }
     case "table": {
       const rows = node.content?.rows ?? [];

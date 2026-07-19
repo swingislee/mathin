@@ -141,10 +141,20 @@ export interface CoursewarePreviewPage {
   doc: PageDoc;
 }
 
+export interface CoursewarePreviewPageMeta {
+  pageDocId: string;
+  pageNo: number;
+  title: string;
+  aspect: string;
+}
+
 export interface CoursewareLecturePreview {
   lecture: { id: string; no: number; name: string; courseId: string };
   release: { id: string; releaseNo: number; publishedAt: string };
-  pages: CoursewarePreviewPage[];
+  /** 导航只需轻量元数据；不把整讲 page-doc 下发或解析。 */
+  pages: CoursewarePreviewPageMeta[];
+  page: CoursewarePreviewPage;
+  pageIndex: number;
   /** bindingKey → URL(staff 自签 signed URL;H5 为垫片入口 URL,已拼 launch query) */
   bindingUrls: ResolvedBindingUrls;
 }
@@ -153,7 +163,7 @@ export interface CoursewareLecturePreview {
  * 只读预览数据:讲的 current release 快照 → 页 doc(过冻结 schema)+ 全部绑定的 URL。
  * 渲染的是已发布状态,不是草稿——预览即验收视角(docs/plan/16 P6-4)。
  */
-export async function loadLecturePreview(lectureId: string): Promise<CoursewareLecturePreview | null> {
+export async function loadLecturePreview(lectureId: string, requestedPageIndex?: number): Promise<CoursewareLecturePreview | null> {
   const supabase = await createClient();
   const { data: lecture, error: lectureError } = await supabase
     .from("course_lectures")
@@ -173,38 +183,48 @@ export async function loadLecturePreview(lectureId: string): Promise<CoursewareL
 
   const snapshot = releaseSnapshotSchema.parse(release.snapshot);
   const pageDocIds = snapshot.map((entry) => entry.pageDocId);
-  const revisionIds = snapshot.map((entry) => entry.revisionId);
+  const { data: pageRows, error: pageRowsError } = await supabase
+    .from("cw_page_docs")
+    .select("id, page_no, title, aspect")
+    .in("id", pageDocIds);
+  if (pageRowsError) throw new Error(pageRowsError.message);
 
-  const [pageRows, revisionRows, bindingRows] = await Promise.all([
-    supabase.from("cw_page_docs").select("id, page_no, title, aspect").in("id", pageDocIds),
-    supabase.from("cw_page_revisions").select("id, page_doc_id, doc").in("id", revisionIds),
-    supabase.from("cw_page_asset_bindings").select("binding_key, kind, launch_query").in("page_doc_id", pageDocIds),
-  ]);
-  if (pageRows.error) throw new Error(pageRows.error.message);
-  if (revisionRows.error) throw new Error(revisionRows.error.message);
-  if (bindingRows.error) throw new Error(bindingRows.error.message);
-
-  const pageById = new Map((pageRows.data ?? []).map((page) => [page.id, page]));
-  const revisionById = new Map((revisionRows.data ?? []).map((revision) => [revision.id, revision]));
-  const pages: CoursewarePreviewPage[] = snapshot.map((entry) => {
+  const pageById = new Map((pageRows ?? []).map((page) => [page.id, page]));
+  const pages: CoursewarePreviewPageMeta[] = snapshot.map((entry) => {
     const page = pageById.get(entry.pageDocId);
-    const revision = revisionById.get(entry.revisionId);
-    if (!page || !revision) throw new Error(`RELEASE_SNAPSHOT_INCOMPLETE: ${entry.pageDocId}`);
+    if (!page) throw new Error(`RELEASE_SNAPSHOT_INCOMPLETE: ${entry.pageDocId}`);
     return {
       pageDocId: page.id,
       pageNo: page.page_no,
       title: page.title,
       aspect: page.aspect,
-      doc: pageDocSchema.parse(revision.doc),
     };
   });
   pages.sort((a, b) => a.pageNo - b.pageNo);
 
-  const bindingUrls = await resolveSnapshotBindingUrls(supabase, snapshot, bindingRows.data ?? []);
+  const pageIndex = Number.isInteger(requestedPageIndex)
+    ? Math.min(Math.max(requestedPageIndex!, 1), pages.length)
+    : 1;
+  const pageMeta = pages[pageIndex - 1];
+  if (!pageMeta) throw new Error("RELEASE_HAS_NO_PAGES");
+  const snapshotEntry = snapshot.find((entry) => entry.pageDocId === pageMeta.pageDocId);
+  if (!snapshotEntry) throw new Error(`RELEASE_SNAPSHOT_INCOMPLETE: ${pageMeta.pageDocId}`);
+
+  const [{ data: revision, error: revisionError }, { data: bindingRows, error: bindingRowsError }] = await Promise.all([
+    supabase.from("cw_page_revisions").select("id, doc").eq("id", snapshotEntry.revisionId).maybeSingle(),
+    supabase.from("cw_page_asset_bindings").select("binding_key, kind, launch_query").eq("page_doc_id", pageMeta.pageDocId),
+  ]);
+  if (revisionError) throw new Error(revisionError.message);
+  if (!revision) throw new Error(`RELEASE_SNAPSHOT_INCOMPLETE: ${pageMeta.pageDocId}`);
+  if (bindingRowsError) throw new Error(bindingRowsError.message);
+
+  const bindingUrls = await resolveSnapshotBindingUrls(supabase, [snapshotEntry], bindingRows ?? []);
   return {
     lecture: { id: lecture.id, no: lecture.no, name: lecture.name, courseId: lecture.course_id },
     release: { id: release.id, releaseNo: release.release_no, publishedAt: release.published_at },
     pages,
+    page: { ...pageMeta, doc: pageDocSchema.parse(revision.doc) },
+    pageIndex,
     bindingUrls,
   };
 }

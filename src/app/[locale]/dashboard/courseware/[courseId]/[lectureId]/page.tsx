@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { buttonVariants } from "@/components/ui/button";
-import { collectBindingKeys } from "@/features/courseware-doc/schema";
 import { COURSEWARE_STUDIO_PERMS, loadLecturePreview } from "@/features/courseware-studio/data";
 import { StagePreview } from "@/features/courseware-studio/StagePreview";
 import { Link } from "@/i18n/navigation";
@@ -24,21 +23,13 @@ export default async function CoursewarePreviewPage({
   setRequestLocale(locale);
   await requireAnyPerm(locale, COURSEWARE_STUDIO_PERMS);
   const t = await getTranslations("coursewareStudio");
-  const preview = await loadLecturePreview(lectureId);
+  const pageParam = Number(Array.isArray(rawSearchParams.page) ? rawSearchParams.page[0] : rawSearchParams.page);
+  const preview = await loadLecturePreview(lectureId, pageParam);
   if (!preview || preview.lecture.courseId !== courseId) notFound();
 
-  const pageParam = Number(Array.isArray(rawSearchParams.page) ? rawSearchParams.page[0] : rawSearchParams.page);
-  const pageIndex = Number.isInteger(pageParam) ? Math.min(Math.max(pageParam, 1), preview.pages.length) : 1;
+  const pageIndex = preview.pageIndex;
   const stageMode = rawSearchParams.stage === "board43" ? "board43" : "natural";
-  const page = preview.pages[pageIndex - 1];
-  if (!page) notFound();
-
-  const pageBindingKeys = collectBindingKeys(page.doc);
-  const pageUrls: Record<string, string> = {};
-  for (const key of pageBindingKeys.keys()) {
-    const url = preview.bindingUrls[key];
-    if (url) pageUrls[key] = url;
-  }
+  const page = preview.page;
 
   const href = (nextPage: number, nextStage: string) => {
     const query = new URLSearchParams();
@@ -85,7 +76,7 @@ export default async function CoursewarePreviewPage({
       </p>
 
       <div className="mt-5 overflow-hidden rounded-xl border border-line bg-card">
-        <StagePreview doc={page.doc} bindingUrls={pageUrls} stageMode={stageMode} />
+        <StagePreview doc={page.doc} bindingUrls={preview.bindingUrls} stageMode={stageMode} />
       </div>
 
       <div className="mt-5 flex items-center justify-between">

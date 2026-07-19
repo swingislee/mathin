@@ -279,6 +279,16 @@ export async function loadImportPlan({ packageRoot, coursewareId }) {
   const pageRows = await readNdjson(packageRoot, `page-docs/${coursewareId}.ndjson`);
   if (pageRows.length !== lecture.pageCount) fail(`page count mismatch: lecture=${lecture.pageCount}, rows=${pageRows.length}`);
   const usageRows = (await readNdjson(packageRoot, "usages.ndjson")).filter((row) => row.coursewareId === coursewareId);
+  const adaptByPage = new Map();
+  if (manifestFiles.has("adaptations.ndjson")) {
+    await assertFileHash(packageRoot, manifestFiles, "adaptations.ndjson");
+    for (const row of (await readNdjson(packageRoot, "adaptations.ndjson")).filter((item) => item.coursewareId === coursewareId)) {
+      if (!Number.isInteger(row.pageDatabaseId) || !["A", "B", "C", "D", "E", "F"].includes(row.adaptClass) || typeof row.reason !== "string") {
+        fail("invalid 4:3 adaptation classification");
+      }
+      adaptByPage.set(row.pageDatabaseId, { adaptClass: row.adaptClass, adaptReason: row.reason, adaptReport: row });
+    }
+  }
   if (usageRows.length === 0) fail("sample lecture has no usages");
   const usageByKey = new Map();
   const usagesByPage = new Map();
@@ -399,6 +409,7 @@ export async function loadImportPlan({ packageRoot, coursewareId }) {
       sourcePageId: doc.sourcePageId,
       sourcePageDatabaseId: page.pageDatabaseId,
       doc,
+      ...(adaptByPage.get(page.pageDatabaseId) ?? { adaptClass: null, adaptReason: "", adaptReport: null }),
     });
   }
   pages.sort((left, right) => left.pageNo - right.pageNo);
@@ -439,6 +450,7 @@ export function buildImportSql(plan) {
   const pageValues = values(plan.pages, (page) => [
     String(page.pageNo), sqlText(page.title), sqlText(plan.lecture.coursewareId),
     page.sourcePageId === null ? "NULL" : sqlText(page.sourcePageId), sqlJson(page.doc),
+    page.adaptClass === null ? "NULL" : sqlText(page.adaptClass), sqlText(page.adaptReason), page.adaptReport === null ? "NULL" : sqlJson(page.adaptReport),
   ]);
   const bindingValues = values(plan.bindings, (binding) => [
     String(binding.pageNo), sqlText(binding.bindingKey), sqlText(binding.role), sqlText(binding.kind),
@@ -472,9 +484,10 @@ create temporary table cw_import_assets (
 insert into cw_import_assets (candidate_key, kind, role, object_hash) values
 ${assetValues};
 create temporary table cw_import_pages (
-  page_no int primary key, title text not null, source_courseware_id text not null, source_page_id text, doc jsonb not null
+  page_no int primary key, title text not null, source_courseware_id text not null, source_page_id text, doc jsonb not null,
+  adapt_class text, adapt_reason text not null, adapt_report jsonb
 ) on commit drop;
-insert into cw_import_pages (page_no, title, source_courseware_id, source_page_id, doc) values
+insert into cw_import_pages (page_no, title, source_courseware_id, source_page_id, doc, adapt_class, adapt_reason, adapt_report) values
 ${pageValues};
 create temporary table cw_import_bindings (
   page_no int not null, binding_key text not null, role text not null, kind text not null, candidate_key text not null, launch_query jsonb,
@@ -554,17 +567,29 @@ update public.cw_shared_assets asset
 
 create temporary table cw_import_inserted_pages (page_no int primary key) on commit drop;
 with inserted as (
-  insert into public.cw_page_docs (lecture_id, page_no, title, source_courseware_id, source_page_id)
-  select context.lecture_id, input.page_no, input.title, input.source_courseware_id, input.source_page_id
+  insert into public.cw_page_docs (lecture_id, page_no, title, source_courseware_id, source_page_id, adapt_class, adapt_reason)
+  select context.lecture_id, input.page_no, input.title, input.source_courseware_id, input.source_page_id, input.adapt_class, input.adapt_reason
     from cw_import_context context
     cross join cw_import_pages input
-   where not exists (
+  where not exists (
      select 1 from public.cw_page_docs page
       where page.lecture_id = context.lecture_id and page.page_no = input.page_no
    )
   returning page_no
 )
 insert into cw_import_inserted_pages select page_no from inserted;
+
+-- 新导入包的分类报告只回填尚未被教研改动的页面；保护规则与 baseline doc 一致。
+update public.cw_page_docs page
+   set adapt_class = input.adapt_class, adapt_reason = input.adapt_reason
+  from cw_import_context context
+  join cw_import_pages input on true
+ where page.lecture_id = context.lecture_id
+   and page.page_no = input.page_no
+   and not exists (
+     select 1 from public.cw_page_revisions revision
+      where revision.page_doc_id = page.id and revision.origin <> 'import'
+   );
 
 create temporary table cw_import_protected_pages (page_no int primary key) on commit drop;
 insert into cw_import_protected_pages
@@ -723,6 +748,7 @@ function runRemoteSql(sql, sshHost) {
     [sshHost, "docker exec -i supabase-db psql -U postgres -d postgres -X -q -t -A -v ON_ERROR_STOP=1"],
     { input: sql, encoding: "utf8", maxBuffer: 256 * 1024 * 1024, shell: false },
   );
+
   if (result.error) fail(`cannot start SSH psql: ${result.error.message}`);
   if (result.status !== 0) fail(`remote SQL failed: ${(result.stderr || result.stdout || "unknown error").trim()}`);
   return result.stdout.trim();
@@ -815,7 +841,8 @@ async function storageObjectExists(client, bucket, remotePath) {
   fail(`storage existence check exhausted retries for ${bucket}/${remotePath}`);
 }
 
-async function uploadOne(client, uploadConfig, bucket, remotePath, file, mime, cacheControl) {
+/** 供同样写入 CAS 的增量管线复用：先查存在性、瞬态失败重试，大对象走 TUS。 */
+export async function uploadOne(client, uploadConfig, bucket, remotePath, file, mime, cacheControl) {
   if (await storageObjectExists(client, bucket, remotePath)) return "existing";
   const info = await stat(file);
   if (info.size > RESUMABLE_UPLOAD_BYTES) {
