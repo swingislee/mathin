@@ -31,6 +31,17 @@ function courseRow(input: CourseWriteInput) {
   };
 }
 
+function courseMetadataRow(input: CourseWriteInput) {
+  const row = courseRow(input);
+  return {
+    title: row.title,
+    product_code: row.product_code,
+    grade: row.grade,
+    term: row.term,
+    class_type: row.class_type,
+  };
+}
+
 export async function createCourseAction(input: CourseWriteInput): Promise<ActionResult<string>> {
   try {
     const row = courseRow(input);
@@ -52,9 +63,22 @@ export async function updateCourseAction(courseId: string, input: CourseWriteInp
     const id = parse(uuid, courseId);
     const row = courseRow(input);
     const { supabase } = await authorizedClient("course.manage");
-    const { data, error } = await supabase.from("courses").update(row).eq("id", id).select("id");
+    const { data: current, error: currentError } = await supabase
+      .from("courses")
+      .select("status")
+      .eq("id", id)
+      .single<{ status: "draft" | "enabled" | "disabled" }>();
+    if (currentError) throw new Error(currentError.message);
+    const { data, error } = await supabase.from("courses").update(courseMetadataRow(input)).eq("id", id).select("id");
     if (error) throw new Error(error.message);
     if (!data?.length) throw new Error("NOT_FOUND");
+    if (current.status !== row.status) {
+      const { error: transitionError } = await supabase.rpc("transition_course_status", {
+        p_course_id: id,
+        p_target: row.status,
+      });
+      if (transitionError) throw new Error(transitionError.message);
+    }
     return { ok: true };
   } catch (error) {
     return actionError(error, ["NOT_FOUND", ...COMMON_CODES]);

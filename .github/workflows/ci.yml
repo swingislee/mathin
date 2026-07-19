@@ -74,6 +74,8 @@ jobs:
         run: pnpm p4e:db-audit
       - name: P6 课件资产 RLS 越权断言
         run: pnpm p6:db-audit
+      - name: P4H 教学运营生命周期断言
+        run: pnpm p4h:db-audit
 
   supply-chain:
     name: 依赖安全公告

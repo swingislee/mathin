@@ -222,20 +222,18 @@ export async function listSubstituteTeachersAction(sessionId: string): Promise<A
   return ((data ?? []) as Array<{ id: string; display_name: string }>).map((row) => ({ id: row.id, name: row.display_name }));
 }
 
-// 软删（P4C-2 §7）：不物理 delete，置 deleted_at；未开始且未删的课次才可删。
-export async function deleteUnstartedSessionAction(sessionId: string): Promise<ActionResult> {
+// P4H-2：取消/恢复课次只走受控 RPC，保留历史事件而不发生物理删除。
+const cancelSessionSchema = z.object({ sessionId: uuid, reason: text(1000) });
+
+export async function deleteUnstartedSessionAction(sessionId: string, reason = ""): Promise<ActionResult> {
   try {
-    const id = parse(uuid, sessionId);
+    const value = parse(cancelSessionSchema, { sessionId, reason });
     const { supabase } = await authorizedClient("class.manage");
-    const { data, error } = await supabase
-      .from("class_sessions")
-      .update({ deleted_at: new Date().toISOString() })
-      .eq("id", id)
-      .is("started_at", null)
-      .is("deleted_at", null)
-      .select("id");
+    const { error } = await supabase.rpc("cancel_session", {
+      p_session_id: value.sessionId,
+      p_reason: value.reason,
+    });
     if (error) throw new Error(error.message);
-    if (!data || data.length === 0) throw new Error("FORBIDDEN_SCOPE");
     return { ok: true };
   } catch (error) {
     return actionError(error, SCOPED_CODES);
@@ -246,14 +244,8 @@ export async function restoreSessionAction(sessionId: string): Promise<ActionRes
   try {
     const id = parse(uuid, sessionId);
     const { supabase } = await authorizedClient("class.manage");
-    const { data, error } = await supabase
-      .from("class_sessions")
-      .update({ deleted_at: null })
-      .eq("id", id)
-      .not("deleted_at", "is", null)
-      .select("id");
+    const { error } = await supabase.rpc("restore_session", { p_session_id: id });
     if (error) throw new Error(error.message);
-    if (!data || data.length === 0) throw new Error("FORBIDDEN_SCOPE");
     return { ok: true };
   } catch (error) {
     return actionError(error, SCOPED_CODES);
@@ -263,13 +255,11 @@ export async function restoreSessionAction(sessionId: string): Promise<ActionRes
 export async function archiveClassroomAction(classroomId: string, archived: boolean): Promise<void> {
   const value = parse(z.object({ classroomId: uuid, archived: z.boolean() }), { classroomId, archived });
   const { supabase } = await authorizedClient("class.manage");
-  const { data, error } = await supabase
-    .from("classrooms")
-    .update({ archived_at: value.archived ? new Date().toISOString() : null })
-    .eq("id", value.classroomId)
-    .select("id");
+  const { error } = await supabase.rpc("archive_classroom", {
+    p_classroom_id: value.classroomId,
+    p_archived: value.archived,
+  });
   if (error) throw new Error(error.message);
-  if (!data || data.length === 0) throw new Error("FORBIDDEN_SCOPE");
 }
 
 const updateClassroomSchema = z.object({
