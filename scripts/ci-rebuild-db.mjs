@@ -18,6 +18,7 @@ if (!process.env.CI_ALLOW_DB_REBUILD) {
 const root = process.cwd();
 const ciDir = path.join(root, "supabase", "ci");
 const migrationDir = path.join(root, "supabase", "migrations");
+const preFamilySeed = path.join(root, "supabase", "seed", "courses.pre-family.seed.sql");
 
 const run = (args, label) => {
   const result = spawnSync("psql", [databaseUrl, "-X", "-q", "-v", "ON_ERROR_STOP=1", ...args], {
@@ -34,9 +35,23 @@ const run = (args, label) => {
   }
 };
 
+const migrations = fs.readdirSync(migrationDir).filter((name) => name.endsWith(".sql")).sort();
+const familyMigration = "20260720000300_p4h_course_families.sql";
+const familyMigrationIndex = migrations.indexOf(familyMigration);
+if (familyMigrationIndex < 0) {
+  console.error(`${familyMigration} is required for the CI replay order`);
+  process.exit(2);
+}
+if (!fs.existsSync(preFamilySeed)) {
+  console.error(`${path.relative(root, preFamilySeed)} is required for the P4H-3 CI replay`);
+  process.exit(2);
+}
+
 const files = [
   path.join(ciDir, "00_platform_bootstrap.sql"),
-  ...fs.readdirSync(migrationDir).filter((name) => name.endsWith(".sql")).sort().map((name) => path.join(migrationDir, name)),
+  ...migrations.slice(0, familyMigrationIndex).map((name) => path.join(migrationDir, name)),
+  preFamilySeed,
+  ...migrations.slice(familyMigrationIndex).map((name) => path.join(migrationDir, name)),
   path.join(ciDir, "10_fixtures.sql"),
 ];
 

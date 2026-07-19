@@ -45,16 +45,21 @@ function courseMetadataRow(input: CourseWriteInput) {
 export async function createCourseAction(input: CourseWriteInput): Promise<ActionResult<string>> {
   try {
     const row = courseRow(input);
-    const { supabase, user } = await authorizedClient("course.manage");
+    const { supabase } = await authorizedClient("course.manage");
     const { data, error } = await supabase
-      .from("courses")
-      .insert({ ...row, created_by: user.id })
-      .select("id")
-      .single<{ id: string }>();
+      .rpc("create_legacy_course", {
+        p_title: row.title,
+        p_product_code: row.product_code ?? "",
+        p_grade: row.grade,
+        p_course_season: row.term,
+        p_class_type: row.class_type,
+        p_status: row.status,
+      });
     if (error) throw new Error(error.message);
-    return { ok: true, data: data.id };
+    if (!data) throw new Error("NOT_FOUND");
+    return { ok: true, data };
   } catch (error) {
-    return actionError<string>(error, COMMON_CODES);
+    return actionError<string>(error, ["NOT_FOUND", ...COMMON_CODES]);
   }
 }
 

@@ -1,7 +1,10 @@
 export type CoursePurpose = "production" | "test";
 export type CourseStatus = "draft" | "enabled" | "disabled";
 export type LectureStatus = "draft" | "active" | "archived";
+/** courses.term 的产品季节值（1=暑期、2=秋季、3=寒假、4=春季），不是 school_terms 的运营学期。 */
 export type CourseSeason = 1 | 2 | 3 | 4;
+export type CourseScope = "research" | "teaching" | "all" | "test";
+export type ClassroomScope = "teaching" | "support" | "all" | "test";
 
 export type ClassroomPurpose = "production" | "test";
 export type ClassroomOperationalStatus = "planning" | "active" | "completed";
@@ -27,6 +30,41 @@ export interface CourseCapabilities {
     "lectureArchive" | "usingClasses" | "createClass",
     string
   >>;
+}
+
+export interface CourseFamilySummary {
+  id: string;
+  slug: string;
+  title: string;
+  publisher: string;
+  stage: string;
+  subject: string;
+  edition: string;
+  purpose: CoursePurpose;
+  status: CourseStatus;
+  variantCount: number;
+  lectureCount: number;
+  matchedVariants: CourseVariantSummary[];
+}
+
+export interface CourseVariantSummary {
+  id: string;
+  title: string;
+  productCode: string | null;
+  grade: number;
+  courseSeason: CourseSeason;
+  classType: string;
+  lectureCount: number;
+  releasedLectureCount: number;
+}
+
+export interface ClassroomCapabilities {
+  canViewClassroom: boolean;
+  canManageClassroom: boolean;
+  canPrepareTeaching: boolean;
+  canViewSchedule: boolean;
+  canManageSchedule: boolean;
+  reasons: Partial<Record<"manage" | "prepare" | "schedule", string>>;
 }
 
 export interface SessionCapabilities {

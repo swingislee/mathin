@@ -15,6 +15,57 @@ select id as teacher_id from public.profiles where display_name = '测试-教师
   \quit 1
 \endif
 
+-- P4H-3：72 个明确的 E 系列版本归入唯一 family；非空关系、元数据和唯一索引均须成立。
+select id as e_family_id from public.course_families where slug = 'xueersi-e-primary-math-cn' limit 1 \gset
+\if :{?e_family_id}
+\else
+  \echo P4H course family missing: xueersi-e-primary-math-cn
+  \quit 1
+\endif
+select (
+  title = 'E 系列小学数学'
+  and publisher = '学而思'
+  and stage = '小学'
+  and subject = '数学'
+  and edition = '全国版'
+  and purpose = 'production'
+  and status = 'enabled'
+  and (select count(*) from public.courses where family_id = :'e_family_id'::uuid) = 72
+  and (select count(*) from public.course_lectures lecture_row join public.courses course_row on course_row.id = lecture_row.course_id where course_row.family_id = :'e_family_id'::uuid) = 865
+  and not exists (select 1 from public.courses where family_id is null)
+) as p4h_family_backfill_ok
+from public.course_families where id = :'e_family_id'::uuid \gset
+\if :p4h_family_backfill_ok
+\else
+  \echo P4H course family failed: metadata or backfill mismatch
+  \quit 1
+\endif
+do $$
+begin
+  begin
+    insert into public.courses (family_id,title,product_code,grade,term,class_type,status,purpose)
+    values (
+      (select id from public.course_families where slug = 'xueersi-e-primary-math-cn'),
+      '__P4H_DUPLICATE_VARIANT__',
+      '__P4H_DUP__' || replace(gen_random_uuid()::text, '-', ''),
+      1, 1, 'A', 'enabled', 'test'
+    );
+    raise exception 'P4H_ACTIVE_VARIANT_DUPLICATE_WAS_ACCEPTED';
+  exception when unique_violation then
+    null;
+  end;
+end;
+$$;
+select exists (
+  select 1 from information_schema.columns
+   where table_schema = 'public' and table_name = 'courses' and column_name = 'term_id'
+) as p4h_course_term_id_retained \gset
+\if :p4h_course_term_id_retained
+\else
+  \echo P4H course family failed: legacy courses.term_id was removed
+  \quit 1
+\endif
+
 -- 事务内构造带班级引用、release 引用、历史 event 的最小基线。
 insert into public.courses (title, product_code, grade, term, class_type, status, purpose, created_by)
 values ('__P4H_AUDIT_COURSE__', '__P4H__' || replace(gen_random_uuid()::text, '-', ''), 1, 1, 'audit', 'draft', 'test', :'admin_id')
@@ -58,6 +109,66 @@ select set_config('p4h.audit_lecture_id', :'audit_lecture_id', true);
 select set_config('p4h.audit_classroom_id', :'audit_classroom_id', true);
 select set_config('p4h.audit_started_session_id', :'started_session_id', true);
 select set_config('p4h.audit_course_updated_at', :'audit_course_updated_at', true);
+
+-- P4H-3 兼容入口必须在同一事务内创建不为空的 legacy family 关系。
+select public.create_legacy_course(
+  '__P4H_LEGACY_RPC_COURSE__',
+  '__P4H_RPC__' || replace(gen_random_uuid()::text, '-', ''),
+  9::smallint,
+  4::smallint,
+  'compat',
+  'draft'
+) as legacy_rpc_course_id \gset
+select exists (
+  select 1
+    from public.courses course_row
+    join public.course_families family_row on family_row.id = course_row.family_id
+   where course_row.id = :'legacy_rpc_course_id'::uuid
+     and family_row.slug = 'legacy-course-' || course_row.id::text
+     and family_row.title = course_row.title
+) as p4h_legacy_course_compat_ok \gset
+\if :p4h_legacy_course_compat_ok
+\else
+  \echo P4H course family failed: legacy course RPC did not create an atomic family mapping
+  \quit 1
+\endif
+
+-- family 查询合同只返回版本/教学计划/readiness，不泄漏 page doc；family 状态变化不触碰子版本。
+select (
+  exists (
+    select 1
+      from public.list_course_families('all', '{"q":"E 系列小学数学"}'::jsonb, 1) family_row
+     where family_row.id = :'e_family_id'::uuid
+       and family_row.variant_count = 72
+       and jsonb_array_length(family_row.matched_variants) = 72
+  )
+  and jsonb_array_length(public.get_course_family_detail(:'e_family_id'::uuid, null) -> 'variants') = 72
+  and (public.get_course_family_detail(:'e_family_id'::uuid, null) #>> '{readiness,lectureCount}')::integer > 0
+  and (select variant_count = 72 and lecture_count = 865 from public.get_course_family_impact(:'e_family_id'::uuid))
+) as p4h_family_query_contract_ok \gset
+\if :p4h_family_query_contract_ok
+\else
+  \echo P4H course family failed: list/detail/impact contract mismatch
+  \quit 1
+\endif
+create temporary table p4h_family_variant_status on commit drop as
+select id, status from public.courses where family_id = :'e_family_id'::uuid;
+select public.transition_course_family_status(:'e_family_id'::uuid, 'draft');
+select (
+  (select status = 'draft' from public.course_families where id = :'e_family_id'::uuid)
+  and not exists (
+    select 1
+      from public.courses course_row
+      join p4h_family_variant_status before_row on before_row.id = course_row.id
+     where course_row.status is distinct from before_row.status
+  )
+) as p4h_family_transition_isolated \gset
+\if :p4h_family_transition_isolated
+\else
+  \echo P4H course family failed: family transition changed a child variant
+  \quit 1
+\endif
+select public.transition_course_family_status(:'e_family_id'::uuid, 'enabled');
 
 -- 有班级/release 引用的课程不可进入回收站，影响预览只给计数。
 do $$
