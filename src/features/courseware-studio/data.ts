@@ -39,15 +39,61 @@ const launchQuerySchema = z.object({
 
 const h5ManifestSchema = z.object({ entryPath: z.string().min(1) }).loose();
 
-export interface CoursewareCourseSummary {
-  id: string;
-  title: string;
+export const COURSEWARE_TASK_TABS = ["incomplete", "recent", "publish"] as const;
+export type CoursewareTaskTab = (typeof COURSEWARE_TASK_TABS)[number];
+
+export function parseCoursewareTaskTab(value: string | string[] | undefined): CoursewareTaskTab {
+  const first = Array.isArray(value) ? value[0] : value;
+  return first === "recent" || first === "publish" ? first : "incomplete";
+}
+
+export function parseCoursewareTaskQuery(value: string | string[] | undefined): string {
+  const first = Array.isArray(value) ? value[0] : value;
+  return first?.trim().slice(0, 200) ?? "";
+}
+
+export interface CoursewareTaskItem {
+  lectureId: string;
+  familyId: string;
+  familyTitle: string;
+  courseId: string;
+  courseTitle: string;
   productCode: string | null;
-  grade: number;
-  term: number;
-  classType: string;
-  lectureCount: number;
-  releasedCount: number;
+  lectureNo: number;
+  lectureName: string;
+  track: CoursewareTrack;
+  pageCount: number;
+  hasDraft: boolean;
+  releaseNo: number | null;
+  lastEditedAt: string | null;
+  lastEditorName: string | null;
+}
+
+/** P4H-6 制作任务台：按讲次与轨道返回轻量队列，不下发 page doc 或资源 URL。 */
+export async function loadCoursewareTaskQueue(tab: CoursewareTaskTab, query: string): Promise<CoursewareTaskItem[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("list_courseware_tasks", {
+    p_tab: tab,
+    p_query: query,
+    p_limit: 60,
+  });
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((item) => ({
+    lectureId: item.lecture_id,
+    familyId: item.family_id,
+    familyTitle: item.family_title,
+    courseId: item.course_id,
+    courseTitle: item.course_title,
+    productCode: item.product_code,
+    lectureNo: item.lecture_no,
+    lectureName: item.lecture_name,
+    track: item.track as CoursewareTrack,
+    pageCount: item.page_count,
+    hasDraft: item.has_draft,
+    releaseNo: item.release_no,
+    lastEditedAt: item.last_edited_at,
+    lastEditorName: item.last_editor_name,
+  }));
 }
 
 const assetLibraryFiltersSchema = z.object({
@@ -259,96 +305,6 @@ export async function loadCoursewareSharedAssetDetail(assetId: string): Promise<
   };
 }
 
-/** 课程网格:全部课程 + 各自讲次数/已发布 release 数(72 门课,内存聚合)。 */
-export async function loadCoursewareCourses(): Promise<CoursewareCourseSummary[]> {
-  const supabase = await createClient();
-  const [{ data: courses, error: coursesError }, { data: lectures, error: lecturesError }] = await Promise.all([
-    supabase.from("courses").select("id, title, product_code, grade, term, class_type").order("product_code"),
-    supabase.from("course_lectures").select("course_id, current_release_id"),
-  ]);
-  if (coursesError) throw new Error(coursesError.message);
-  if (lecturesError) throw new Error(lecturesError.message);
-
-  const lectureStats = new Map<string, { lectureCount: number; releasedCount: number }>();
-  for (const lecture of lectures ?? []) {
-    const stats = lectureStats.get(lecture.course_id) ?? { lectureCount: 0, releasedCount: 0 };
-    stats.lectureCount += 1;
-    if (lecture.current_release_id) stats.releasedCount += 1;
-    lectureStats.set(lecture.course_id, stats);
-  }
-  return (courses ?? []).map((course) => ({
-    id: course.id,
-    title: course.title,
-    productCode: course.product_code,
-    grade: course.grade,
-    term: course.term,
-    classType: course.class_type,
-    ...(lectureStats.get(course.id) ?? { lectureCount: 0, releasedCount: 0 }),
-  }));
-}
-
-export interface CoursewareLectureSummary {
-  id: string;
-  no: number;
-  name: string;
-  released: boolean;
-  releaseNo: number | null;
-  publishedAt: string | null;
-  pageCount: number;
-}
-
-/** 讲次列表 + release 状态。 */
-export async function loadCoursewareLectures(courseId: string) {
-  const supabase = await createClient();
-  const { data: course, error: courseError } = await supabase
-    .from("courses")
-    .select("id, title, product_code")
-    .eq("id", courseId)
-    .maybeSingle();
-  if (courseError) throw new Error(courseError.message);
-  if (!course) return null;
-
-  const { data: lectures, error: lecturesError } = await supabase
-    .from("course_lectures")
-    .select("id, no, name, current_release_id")
-    .eq("course_id", courseId)
-    .order("no");
-  if (lecturesError) throw new Error(lecturesError.message);
-
-  const releaseIds = (lectures ?? []).flatMap((lecture) => lecture.current_release_id ?? []);
-  const [releases, pageCounts] = await Promise.all([
-    releaseIds.length
-      ? supabase.from("cw_lecture_releases").select("id, release_no, published_at").in("id", releaseIds)
-      : Promise.resolve({ data: [], error: null }),
-    supabase
-      .from("cw_page_docs")
-      .select("lecture_id")
-      .in("lecture_id", (lectures ?? []).map((lecture) => lecture.id))
-      .is("deleted_at", null),
-  ]);
-  if (releases.error) throw new Error(releases.error.message);
-  if (pageCounts.error) throw new Error(pageCounts.error.message);
-
-  const releaseById = new Map((releases.data ?? []).map((release) => [release.id, release]));
-  const pagesByLecture = new Map<string, number>();
-  for (const row of pageCounts.data ?? []) {
-    pagesByLecture.set(row.lecture_id, (pagesByLecture.get(row.lecture_id) ?? 0) + 1);
-  }
-  const summaries: CoursewareLectureSummary[] = (lectures ?? []).map((lecture) => {
-    const release = lecture.current_release_id ? releaseById.get(lecture.current_release_id) : undefined;
-    return {
-      id: lecture.id,
-      no: lecture.no,
-      name: lecture.name,
-      released: Boolean(release),
-      releaseNo: release?.release_no ?? null,
-      publishedAt: release?.published_at ?? null,
-      pageCount: pagesByLecture.get(lecture.id) ?? 0,
-    };
-  });
-  return { course, lectures: summaries };
-}
-
 export interface CoursewarePreviewPage {
   pageDocId: string;
   pageNo: number;
@@ -373,6 +329,56 @@ export interface CoursewareLecturePreview {
   pageIndex: number;
   /** bindingKey → URL(staff 自签 signed URL;H5 为垫片入口 URL,已拼 launch query) */
   bindingUrls: ResolvedBindingUrls;
+}
+
+export interface CoursewareWorkbenchContext {
+  family: { id: string; title: string };
+  course: { id: string; title: string; productCode: string | null };
+  lecture: { id: string; no: number; name: string; courseId: string };
+  firstPageDocId: string | null;
+}
+
+/** 唯一 workbench 的最小壳数据：面包屑与默认页，不读取任何 page doc 或资产 URL。 */
+export async function loadCoursewareWorkbenchContext(lectureId: string): Promise<CoursewareWorkbenchContext | null> {
+  const parsedLectureId = z.uuid().safeParse(lectureId);
+  if (!parsedLectureId.success) return null;
+  const supabase = await createClient();
+  const { data: lecture, error: lectureError } = await supabase
+    .from("course_lectures")
+    .select("id, no, name, course_id")
+    .eq("id", parsedLectureId.data)
+    .maybeSingle();
+  if (lectureError) throw new Error(lectureError.message);
+  if (!lecture) return null;
+
+  const [{ data: course, error: courseError }, { data: pages, error: pagesError }] = await Promise.all([
+    supabase.from("courses").select("id, title, product_code, family_id").eq("id", lecture.course_id).maybeSingle(),
+    supabase
+      .from("cw_page_docs")
+      .select("id")
+      .eq("lecture_id", lecture.id)
+      .is("deleted_at", null)
+      .order("page_no")
+      .limit(1),
+  ]);
+  if (courseError) throw new Error(courseError.message);
+  if (pagesError) throw new Error(pagesError.message);
+  if (!course) return null;
+
+  const { data: family, error: familyError } = await supabase
+    .from("course_families")
+    .select("id, title")
+    .eq("id", course.family_id)
+    .maybeSingle();
+  if (familyError) throw new Error(familyError.message);
+  if (!family) return null;
+
+  return {
+    family: { id: family.id, title: family.title },
+    course: { id: course.id, title: course.title, productCode: course.product_code },
+    lecture: { id: lecture.id, no: lecture.no, name: lecture.name, courseId: lecture.course_id },
+    firstPageDocId: pages?.[0]?.id ?? null,
+  };
 }
 
 export interface StudioPageSummary {
@@ -574,7 +580,11 @@ async function resolveEditorBindingUrls(supabase: Supabase, pageDocId: string, t
  * 只读预览数据:讲的 current release 快照 → 页 doc(过冻结 schema)+ 全部绑定的 URL。
  * 渲染的是已发布状态,不是草稿——预览即验收视角(docs/plan/16 P6-4)。
  */
-export async function loadLecturePreview(lectureId: string, track: CoursewareTrack, requestedPageIndex?: number): Promise<CoursewareLecturePreview | null> {
+export async function loadLecturePreview(
+  lectureId: string,
+  track: CoursewareTrack,
+  requestedPage?: number | string,
+): Promise<CoursewareLecturePreview | null> {
   const supabase = await createClient();
   const { data: lecture, error: lectureError } = await supabase
     .from("course_lectures")
@@ -622,8 +632,11 @@ export async function loadLecturePreview(lectureId: string, track: CoursewareTra
   });
   pages.sort((a, b) => a.pageNo - b.pageNo);
 
-  const pageIndex = Number.isInteger(requestedPageIndex)
-    ? Math.min(Math.max(requestedPageIndex!, 1), pages.length)
+  const requestedPageIndex = typeof requestedPage === "string"
+    ? pages.findIndex((page) => page.pageDocId === requestedPage) + 1
+    : requestedPage;
+  const pageIndex = Number.isInteger(requestedPageIndex) && requestedPageIndex! > 0
+    ? Math.min(requestedPageIndex!, pages.length)
     : 1;
   const pageMeta = pages[pageIndex - 1];
   if (!pageMeta) throw new Error("RELEASE_HAS_NO_PAGES");

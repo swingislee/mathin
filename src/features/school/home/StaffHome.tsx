@@ -543,7 +543,7 @@ export async function StaffHome({ locale, user, profile }: HomeProps) {
           {templateUrgent.map((row) => (
             <li key={row.sessionId} className="flex flex-wrap items-center gap-3 py-2 text-sm">
               <Link
-                href={`/dashboard/courses/${row.courseId}/lectures/${row.lectureId}`}
+                href={`/dashboard/courseware/lectures/${row.lectureId}?mode=edit`}
                 className="min-w-0 flex-1 truncate font-medium hover:underline"
               >
                 {row.courseTitle} · {row.lectureName}

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { reviewAdaptBackground } from "@/features/courseware-studio/adapt-actions";
 import { COURSEWARE_STUDIO_PERMS } from "@/features/courseware-studio/data";
 import { SchoolPageHeader } from "@/features/school/PageHeader";
+import { Link } from "@/i18n/navigation";
 import { requireAnyPerm } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
@@ -32,6 +33,7 @@ export default async function AdaptReviewQueuePage({ params }: { params: Promise
       <SchoolPageHeader title={t("adaptQueueTitle")}>
         <p className="mt-1 text-sm text-muted">{t("adaptQueueIntro")}</p>
       </SchoolPageHeader>
+      <p className="mt-3"><Link href="/dashboard/courseware" className="text-xs text-muted underline underline-offset-2 hover:text-ink">{t("backToWorkbench")}</Link></p>
       {!data?.length ? <p className="mt-6 rounded-xl border border-line bg-card p-5 text-sm text-muted">{t("adaptQueueEmpty")}</p> : (
         <div className="mt-6 overflow-hidden rounded-xl border border-line bg-card">
           <ul className="divide-y divide-line">

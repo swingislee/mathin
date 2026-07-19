@@ -39,6 +39,9 @@ type Props = {
   bindingUrls: ResolvedBindingUrls;
   imageAssetUsage: Record<string, StudioImageAssetUsage>;
   copyTargets: Array<{ id: string; no: number; name: string }>;
+  canPublish: boolean;
+  backToPlanHref: string;
+  backToPlanLabel: string;
 };
 
 function clone<T>(value: T): T { return structuredClone(value); }
@@ -75,7 +78,7 @@ function manualNode(kind: "text" | "rich_text" | "shape" | "image" | "video", in
   };
 }
 
-export function CoursewarePageEditor({ lecture, track, page, pages, initialDoc, baseRevisionNo, revisions, releases, bindingUrls, imageAssetUsage, copyTargets }: Props) {
+export function CoursewarePageEditor({ lecture, track, page, pages, initialDoc, baseRevisionNo, revisions, releases, bindingUrls, imageAssetUsage, copyTargets, canPublish, backToPlanHref, backToPlanLabel }: Props) {
   const router = useRouter();
   const t = useTranslations("coursewareStudio");
   const [doc, setDoc] = useState<PageDoc>(() => clone(initialDoc));
@@ -133,7 +136,12 @@ export function CoursewarePageEditor({ lecture, track, page, pages, initialDoc, 
   const add = (kind: "text" | "rich_text" | "shape" | "image" | "video") => {
     setDoc((current) => ({ ...current, nodes: [...current.nodes, manualNode(kind, current.nodes.length + 1)] }));
   };
-  const navigatePage = (id: string) => router.push(`/dashboard/courseware/${lecture.courseId}/${lecture.id}/${id}?track=${track}`);
+  const workbenchHref = (pageId: string | null, nextTrack = track) => {
+    const query = new URLSearchParams({ mode: "edit", track: nextTrack });
+    if (pageId) query.set("page", pageId);
+    return `/dashboard/courseware/lectures/${lecture.id}?${query.toString()}`;
+  };
+  const navigatePage = (id: string) => router.push(workbenchHref(id));
   const move = (direction: -1 | 1) => {
     const index = pages.findIndex((item) => item.id === page.id);
     const target = index + direction;
@@ -154,11 +162,12 @@ export function CoursewarePageEditor({ lecture, track, page, pages, initialDoc, 
           <h1 className="text-2xl font-semibold text-ink">{t("lectureTitle", { no: lecture.no, name: lecture.name })}</h1>
           <p className="mt-1 text-sm text-muted">{t("editorHint", { page: page.pageNo, title: page.title ? `· ${page.title}` : "" })}</p>
           <div className="mt-3 inline-flex rounded-lg border border-line bg-paper p-1">
-            <Link href={`/dashboard/courseware/${lecture.courseId}/${lecture.id}/${page.id}?track=native-16x9`} className={`rounded-md px-3 py-1.5 text-xs ${track === "native-16x9" ? "bg-card font-medium text-ink shadow-sm" : "text-muted hover:text-ink"}`}>{t("trackNative")}</Link>
-            <Link href={`/dashboard/courseware/${lecture.courseId}/${lecture.id}/${page.id}?track=adapted-4x3`} className={`rounded-md px-3 py-1.5 text-xs ${track === "adapted-4x3" ? "bg-card font-medium text-ink shadow-sm" : "text-muted hover:text-ink"}`}>{t("trackAdapted")}</Link>
+            <Link href={workbenchHref(page.id, "native-16x9")} className={`rounded-md px-3 py-1.5 text-xs ${track === "native-16x9" ? "bg-card font-medium text-ink shadow-sm" : "text-muted hover:text-ink"}`}>{t("trackNative")}</Link>
+            <Link href={workbenchHref(page.id, "adapted-4x3")} className={`rounded-md px-3 py-1.5 text-xs ${track === "adapted-4x3" ? "bg-card font-medium text-ink shadow-sm" : "text-muted hover:text-ink"}`}>{t("trackAdapted")}</Link>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Link href={backToPlanHref} className="inline-flex items-center justify-center rounded-full border border-line px-3 text-sm text-muted transition hover:bg-paper hover:text-ink">{backToPlanLabel}</Link>
           <Button variant="secondary" size="sm" disabled={pending} onClick={() => move(-1)}>{t("moveUp")}</Button>
           <Button variant="secondary" size="sm" disabled={pending} onClick={() => move(1)}>{t("moveDown")}</Button>
           <Button variant="secondary" size="sm" disabled={pending} onClick={() => startTransition(async () => {
@@ -167,10 +176,10 @@ export function CoursewarePageEditor({ lecture, track, page, pages, initialDoc, 
           })}><Plus className="size-4" />{t("insertPage")}</Button>
           <Button variant="secondary" size="sm" disabled={pending} onClick={() => startTransition(async () => {
             const result = await deleteCoursewarePageAction(page.id);
-            if (result.ok) router.push(`/dashboard/courseware/${lecture.courseId}/${lecture.id}?track=${track}`); else setMessage(t("deleteFailed", { code: result.code }));
+            if (result.ok) router.push(workbenchHref(null)); else setMessage(t("deleteFailed", { code: result.code }));
           })}><Trash2 className="size-4" />{t("deletePage")}</Button>
           <Button size="sm" disabled={pending} onClick={save}><Save className="size-4" />{t("saveDraft")}</Button>
-          <Button size="sm" disabled={pending} onClick={publish}><Send className="size-4" />{t("publishLecture")}</Button>
+          {canPublish && <Button size="sm" disabled={pending} onClick={publish}><Send className="size-4" />{t("publishLecture")}</Button>}
         </div>
       </header>
 

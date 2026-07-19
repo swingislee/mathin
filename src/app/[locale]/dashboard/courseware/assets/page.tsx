@@ -38,7 +38,7 @@ export default async function CoursewareAssetLibraryPage({
         <p className="mt-1 max-w-3xl text-sm text-muted">{t("assetLibraryIntro")}</p>
       </SchoolPageHeader>
       <p className="mt-3">
-        <Link href="/dashboard/courseware" className="text-xs text-muted underline underline-offset-2 hover:text-ink">{t("backToCourses")}</Link>
+        <Link href="/dashboard/courseware" className="text-xs text-muted underline underline-offset-2 hover:text-ink">{t("backToWorkbench")}</Link>
       </p>
       <AssetLibraryFilters initial={filters} />
 
