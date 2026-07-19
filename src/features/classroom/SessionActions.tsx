@@ -4,13 +4,12 @@ import { Input } from "@/components/ui/input";
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
-import { LoaderCircle, Plus, Trash2 } from "lucide-react";
+import { LoaderCircle, Plus } from "lucide-react";
 import { useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -88,53 +87,5 @@ export function SessionTitleInput({ sessionId, initialTitle }: { sessionId: stri
       }}
       className="w-full min-w-0 bg-transparent font-display text-2xl outline-none placeholder:text-muted/50 md:text-3xl"
     />
-  );
-}
-
-export function DeleteSessionButton({ sessionId, title }: { sessionId: string; title: string }) {
-  const t = useTranslations("classroom.sessions");
-  const router = useRouter();
-  const [open, setOpen] = useState(false);
-  const [pending, startTransition] = useTransition();
-
-  return (
-    <>
-      <button
-        type="button"
-        aria-label={t("delete")}
-        title={t("delete")}
-        onClick={(event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          setOpen(true);
-        }}
-        className="rounded-full p-2 text-muted transition-colors hover:bg-rose/10 hover:text-rose"
-      >
-        <Trash2 size={14} />
-      </button>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t("delete")}</DialogTitle>
-            <DialogDescription>{t("deleteConfirm", { title })}</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>{t("cancel")}</Button>
-            <Button
-              size="sm"
-              disabled={pending}
-              onClick={() => startTransition(async () => {
-                const { deleteClassSession } = await import("./actions");
-                await deleteClassSession(sessionId);
-                setOpen(false);
-                router.refresh();
-              })}
-            >
-              {pending ? <LoaderCircle size={15} className="animate-spin motion-reduce:animate-none" /> : t("delete")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
   );
 }

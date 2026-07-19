@@ -100,13 +100,10 @@ export async function updateLectureAction(lectureId: string, name: string, objec
 
 export async function deleteLectureAction(lectureId: string): Promise<ActionResult> {
   try {
-    const id = parse(uuid, lectureId);
-    const { supabase } = await authorizedClient("course.manage");
-    const { error } = await supabase.rpc("delete_course_lecture", { p_lecture_id: id });
-    if (error) throw new Error(error.message.includes("LECTURE_IN_USE") ? "LECTURE_IN_USE" : error.message);
-    return { ok: true };
+    parse(uuid, lectureId);
+    return { ok: false, code: "LECTURE_DELETE_DISABLED" };
   } catch (error) {
-    return actionError(error, ["LECTURE_IN_USE", ...COMMON_CODES]);
+    return actionError(error, COMMON_CODES);
   }
 }
 

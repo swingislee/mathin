@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 
 import { useTranslations } from "next-intl";
 import { useAction } from "@/components/action-form";
-import { Link, useRouter } from "@/i18n/navigation";
+import { useRouter } from "@/i18n/navigation";
 import { deleteUnstartedSessionAction, rescheduleSessionAction } from "./actions/classes";
 import { AttendanceDrawer } from "./AttendanceDrawer";
 import type { SessionRow } from "./classes";
@@ -22,14 +22,12 @@ function toDateTimeLocalValue(iso: string): string {
 }
 
 export function SessionListPanel({
-  classroomId,
   sessions,
   canMarkAttendance,
   canManage,
   canReview = false,
   classroomCoursewareTrack,
 }: {
-  classroomId: string;
   sessions: SessionRow[];
   canMarkAttendance: boolean;
   canManage: boolean;
@@ -76,9 +74,9 @@ export function SessionListPanel({
             return (
               <li key={row.id} className="flex flex-wrap items-center gap-3 py-2.5 text-sm">
                 <span className="w-10 shrink-0 font-mono text-xs text-muted">{row.no ?? "-"}</span>
-                <Link href={`/classroom/${classroomId}/session/${row.id}`} className="min-w-0 flex-1 truncate underline-offset-2 hover:underline">
+                <span className="min-w-0 flex-1 truncate font-medium">
                   {row.name || t("untitledSession")}
-                </Link>
+                </span>
                 <Badge variant="secondary">
                   {row.endedAt ? t("statusEnded") : row.startedAt ? t("statusLive") : t("statusScheduled")}
                 </Badge>

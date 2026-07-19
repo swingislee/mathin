@@ -6,7 +6,7 @@ import { SectionShell } from "@/components/section-shell";
 import { CreateAssignmentButton, DeleteAssignmentButton } from "@/features/classroom/assignments/AssignmentActions";
 import { getClassroom, listAssignments, listClassSessions } from "@/features/classroom/actions";
 import { CopyInviteButton, LeaveClassroomButton, RemoveMemberButton } from "@/features/classroom/HomeActions";
-import { CreateSessionButton, DeleteSessionButton } from "@/features/classroom/SessionActions";
+import { CreateSessionButton } from "@/features/classroom/SessionActions";
 import { Link } from "@/i18n/navigation";
 import { requireUser } from "@/lib/auth";
 
@@ -109,7 +109,6 @@ export default async function ClassroomHomePage({ params }: { params: Promise<{ 
                         <ClipboardList size={14} />
                       </Link>
                     )}
-                    {isTeacher && <DeleteSessionButton sessionId={session.id} title={session.title || tSessions("untitled")} />}
                   </li>
                 );
               })}

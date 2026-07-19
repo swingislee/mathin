@@ -67,7 +67,6 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ lo
         <RosterPanel classroomId={classroom.id} roster={classroom.roster} canManage={perms.has("enrollment.manage")} />
         {canManage && classroom.courseId ? <CoursewareTrackSettings classroomId={classroom.id} track={classroom.coursewareTrack} /> : null}
         <SessionListPanel
-          classroomId={classroom.id}
           sessions={classroom.sessions}
           canMarkAttendance={perms.has("attendance.mark")}
           canManage={canManage}

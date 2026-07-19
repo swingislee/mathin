@@ -59,7 +59,7 @@
   "notFound": {
     "title": "这一页走丢了",
     "description": "你要找的内容不存在，或者它的地址已经变了。回到图鉴，从星球重新出发吧。",
-    "browseTerms": "去看图鉴"
+    "backUp": "返回上一级"
   },
   "changes": {
     "title": "最近变化",

@@ -59,7 +59,7 @@
   "notFound": {
     "title": "This page wandered off",
     "description": "The page you are looking for does not exist, or its address has changed. Head back to the atlas and start from a planet.",
-    "browseTerms": "Browse the atlas"
+    "backUp": "Back to parent"
   },
   "changes": {
     "title": "Recent changes",

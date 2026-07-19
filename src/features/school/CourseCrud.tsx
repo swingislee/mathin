@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-import { ArrowDown, ArrowUp, LoaderCircle, Plus, Save, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, LoaderCircle, Plus, Save } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -13,7 +13,7 @@ import { useAction } from "@/components/action-form";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useRouter } from "@/i18n/navigation";
 import type { ActionResult } from "@/lib/action-result";
-import { createCourseAction, createLectureAction, deleteLectureAction, reorderLecturesAction, updateCourseAction, updateLectureAction } from "./actions/courses";
+import { createCourseAction, createLectureAction, reorderLecturesAction, updateCourseAction, updateLectureAction } from "./actions/courses";
 import { type CourseWriteInput } from "./actions/types";
 import { inputClass } from "./controls";
 import type { CourseDetail, CourseLecture } from "./courses";
@@ -73,12 +73,7 @@ export function CourseCrudPanel({ course, canEditTemplate }: { course: CourseDet
 
 function LectureEditor({lecture,courseId,index,count,canEditTemplate,pending,move,run}:{lecture:CourseLecture;courseId:string;index:number;count:number;canEditTemplate:boolean;pending:boolean;move:(i:number,d:number)=>void;run:(job:()=>Promise<ActionResult>,successMessage:string,errorMessage?:(code:string)=>string)=>void}){
   const t=useTranslations("school.courses"); const router=useRouter(); const [name,setName]=useState(lecture.name); const [objectives,setObjectives]=useState(lecture.objectives);
-  const remove=()=>run(
-    ()=>deleteLectureAction(lecture.id),
-    t("lectureDeleted"),
-    (code)=>code==="LECTURE_IN_USE"?t("lectureInUse"):t("actionFailed"),
-  );
-  return <div className="grid gap-2 rounded-lg border border-line p-3 lg:grid-cols-[42px_1fr_2fr_auto] lg:items-center"><span className="font-mono text-xs text-muted">{index+1}</span><Input value={name} onChange={e=>setName(e.target.value)} className={inputClass}/><Input value={objectives} onChange={e=>setObjectives(e.target.value)} className={inputClass}/><div className="flex items-center justify-end gap-1"><Button variant="secondary" size="sm" className="h-8 w-8 p-0" disabled={pending||index===0} onClick={()=>move(index,-1)} aria-label={t("moveUp")}><ArrowUp size={15}/></Button><Button variant="secondary" size="sm" className="h-8 w-8 p-0" disabled={pending||index===count-1} onClick={()=>move(index,1)} aria-label={t("moveDown")}><ArrowDown size={15}/></Button><Button variant="secondary" size="sm" className="h-8 w-8 p-0" disabled={pending||!name.trim()} onClick={()=>run(()=>updateLectureAction(lecture.id,name,objectives),t("lectureSaved"))} aria-label={t("save")}><Save size={15}/></Button>{canEditTemplate&&<Button variant="secondary" size="sm" onClick={()=>router.push(`/dashboard/courses/${courseId}/lectures/${lecture.id}`)}>{t("templatePagesCount",{count:lecture.templatePageCount})}</Button>}<Button variant="secondary" size="sm" disabled={pending} onClick={remove} aria-label={t("deleteLecture")} className="h-8 w-8 p-0 text-rose"><Trash2 size={15}/></Button></div></div>;
+  return <div className="grid gap-2 rounded-lg border border-line p-3 lg:grid-cols-[42px_1fr_2fr_auto] lg:items-center"><span className="font-mono text-xs text-muted">{index+1}</span><Input value={name} onChange={e=>setName(e.target.value)} className={inputClass}/><Input value={objectives} onChange={e=>setObjectives(e.target.value)} className={inputClass}/><div className="flex items-center justify-end gap-1"><Button variant="secondary" size="sm" className="h-8 w-8 p-0" disabled={pending||index===0} onClick={()=>move(index,-1)} aria-label={t("moveUp")}><ArrowUp size={15}/></Button><Button variant="secondary" size="sm" className="h-8 w-8 p-0" disabled={pending||index===count-1} onClick={()=>move(index,1)} aria-label={t("moveDown")}><ArrowDown size={15}/></Button><Button variant="secondary" size="sm" className="h-8 w-8 p-0" disabled={pending||!name.trim()} onClick={()=>run(()=>updateLectureAction(lecture.id,name,objectives),t("lectureSaved"))} aria-label={t("save")}><Save size={15}/></Button>{canEditTemplate&&<Button variant="secondary" size="sm" onClick={()=>router.push(`/dashboard/courses/${courseId}/lectures/${lecture.id}`)}>{t("templatePagesCount",{count:lecture.templatePageCount})}</Button>}</div></div>;
 }
 
 function CourseFields({form,setForm}:{form:CourseWriteInput;setForm:React.Dispatch<React.SetStateAction<CourseWriteInput>>}){

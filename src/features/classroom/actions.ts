@@ -250,12 +250,6 @@ export async function saveCourseware(sessionId: string, pages: CoursewarePage[])
   if (error) throw new Error(error.message);
 }
 
-export async function deleteClassSession(sessionId: string): Promise<void> {
-  const { supabase } = await authenticatedClient();
-  const { error } = await supabase.from("class_sessions").delete().eq("id", sessionId);
-  if (error) throw new Error(error.message);
-}
-
 /**
  * 开课：mode=rehearsal 不调用本函数（LiveShell 的 prep phase 对试讲直接跳过）。
  * 若课次挂了讲次且未冻结，先服务端 resolve(模板+覆盖层) 落 courseware，
