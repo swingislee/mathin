@@ -34,6 +34,22 @@ export interface DocStageProps {
   onClickTrigger?: (trigger: InteractionTrigger) => void;
   /** 远端步进流:mount 时全量补放(晚加入/重进页),此后按序增量回放。 */
   replaySteps?: readonly InteractionTrigger[];
+  /** 课堂内嵌视频控制；不传时保持中台预览的本地 controls 行为。 */
+  videoControl?: DocVideoControl;
+  /** 中台编辑器选择节点；课堂不传，保持原有交互语义。 */
+  onNodeSelect?: (nodePath: string) => void;
+}
+
+export interface DocVideoCtl {
+  action: "play" | "pause" | "seek";
+  time: number;
+  evId: string;
+}
+
+export interface DocVideoControl {
+  controller: boolean;
+  ctl?: DocVideoCtl;
+  onCtl?: (action: DocVideoCtl["action"], time: number) => void;
 }
 
 const RESOURCE_ROLES = ["source", "image", "src", "video", "poster", "background"];
@@ -88,6 +104,63 @@ function textBlockStyle(node: DocNode): CSSProperties {
   };
 }
 
+function DocVideo({
+  node,
+  src,
+  poster,
+  control,
+}: {
+  node: DocNode;
+  src: string;
+  poster: string | null;
+  control: DocVideoControl | undefined;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const appliedCtl = useRef<DocVideoCtl | undefined>(undefined);
+  const [needsManualAudio, setNeedsManualAudio] = useState(false);
+
+  useEffect(() => {
+    if (!control || control.controller || !control.ctl || appliedCtl.current === control.ctl) return;
+    appliedCtl.current = control.ctl;
+    const video = videoRef.current;
+    if (!video) return;
+    if (Number.isFinite(control.ctl.time) && Math.abs(video.currentTime - control.ctl.time) > 0.5) {
+      video.currentTime = control.ctl.time;
+    }
+    if (control.ctl.action === "play") {
+      video.play().catch(() => {
+        video.muted = true;
+        setNeedsManualAudio(true);
+        video.play().catch(() => undefined);
+      });
+    } else if (control.ctl.action === "pause") {
+      video.pause();
+    }
+  }, [control]);
+
+  const isController = control?.controller ?? true;
+  return (
+    <video
+      ref={videoRef}
+      controls={isController || needsManualAudio}
+      playsInline
+      preload="metadata"
+      poster={poster ?? undefined}
+      src={src}
+      style={{ width: "100%", height: "100%", objectFit: node.style.objectFit ?? "contain" }}
+      onPlay={isController && control?.onCtl
+        ? (event) => control.onCtl?.("play", event.currentTarget.currentTime)
+        : undefined}
+      onPause={isController && control?.onCtl
+        ? (event) => control.onCtl?.("pause", event.currentTarget.currentTime)
+        : undefined}
+      onSeeked={isController && control?.onCtl
+        ? (event) => control.onCtl?.("seek", event.currentTarget.currentTime)
+        : undefined}
+    />
+  );
+}
+
 /** H5 保持沙箱隔离；全屏只提升 iframe 外壳，不放宽其 origin 权限。 */
 function H5Frame({ entryUrl, title }: { entryUrl: string; title: string }) {
   const t = useTranslations("coursewareStudio");
@@ -138,14 +211,27 @@ function H5Frame({ entryUrl, title }: { entryUrl: string; title: string }) {
   );
 }
 
-function nodeBody(node: DocNode, urls: ResolvedBindingUrls, clickTriggers: ReadonlySet<string>): ReactNode {
+function nodeBody(
+  node: DocNode,
+  urls: ResolvedBindingUrls,
+  clickTriggers: ReadonlySet<string>,
+  videoControl: DocVideoControl | undefined,
+  onNodeSelect: ((nodePath: string) => void) | undefined,
+): ReactNode {
   const alt = node.content?.text || node.name || node.sourceType;
   const url = bindingUrl(node, RESOURCE_ROLES, urls);
   switch (node.adapter) {
     case "group":
     case "page":
       return node.children.map((child) => (
-        <NodeView key={child.nodePath} node={child} urls={urls} clickTriggers={clickTriggers} />
+        <NodeView
+          key={child.nodePath}
+          node={child}
+          urls={urls}
+          clickTriggers={clickTriggers}
+          videoControl={videoControl}
+          onNodeSelect={onNodeSelect}
+        />
       ));
     case "image":
       return url ? croppedImage(node, url, alt) : unknownBody(node);
@@ -174,15 +260,7 @@ function nodeBody(node: DocNode, urls: ResolvedBindingUrls, clickTriggers: Reado
     case "video": {
       if (!url) return unknownBody(node);
       const poster = bindingUrl(node, ["poster", "thumbnail"], urls);
-      return (
-        <video
-          controls
-          preload="metadata"
-          poster={poster ?? undefined}
-          src={url}
-          style={{ width: "100%", height: "100%", objectFit: node.style.objectFit ?? "contain" }}
-        />
-      );
+      return <DocVideo node={node} src={url} poster={poster} control={videoControl} />;
     }
     case "audio":
       return url ? <audio controls src={url} style={{ width: "100%" }} /> : unknownBody(node);
@@ -249,10 +327,14 @@ function NodeView({
   node,
   urls,
   clickTriggers,
+  videoControl,
+  onNodeSelect,
 }: {
   node: DocNode;
   urls: ResolvedBindingUrls;
   clickTriggers: ReadonlySet<string>;
+  videoControl: DocVideoControl | undefined;
+  onNodeSelect: ((nodePath: string) => void) | undefined;
 }) {
   const t = node.transform;
   const s = node.style;
@@ -280,9 +362,10 @@ function NodeView({
       data-node-path={node.nodePath}
       data-source-resource-id={node.sourceResourceId ?? ""}
       data-click-trigger={clickTrigger}
+      onClickCapture={() => onNodeSelect?.(node.nodePath)}
       style={style}
     >
-      {nodeBody(node, urls, clickTriggers)}
+      {nodeBody(node, urls, clickTriggers, videoControl, onNodeSelect)}
     </div>
   );
 }
@@ -297,6 +380,8 @@ export default function DocStage({
   interactive = true,
   onClickTrigger,
   replaySteps,
+  videoControl,
+  onNodeSelect,
 }: DocStageProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -430,7 +515,14 @@ export default function DocStage({
           />
         ) : null}
         {doc.nodes.map((node) => (
-          <NodeView key={node.nodePath} node={node} urls={bindingUrls} clickTriggers={clickTriggers} />
+          <NodeView
+            key={node.nodePath}
+            node={node}
+            urls={bindingUrls}
+            clickTriggers={clickTriggers}
+            videoControl={videoControl}
+            onNodeSelect={onNodeSelect}
+          />
         ))}
       </div>
     </div>

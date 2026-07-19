@@ -800,6 +800,8 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
                 isController={isController}
                 steps={state.docSteps[page.id]}
                 onStep={(trigger) => onDocStep(page.id, trigger)}
+                videoCtl={state.video[page.id]}
+                onVideoCtl={(action, time) => append("video_ctl", { pageId: page.id, action, time })}
               />
             ) : null}
 
@@ -1069,4 +1071,3 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
     </div>
   );
 }
-

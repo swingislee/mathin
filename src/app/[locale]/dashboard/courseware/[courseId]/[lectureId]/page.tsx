@@ -53,6 +53,12 @@ export default async function CoursewarePreviewPage({
         </div>
         <div className="flex items-center gap-2">
           <Link
+            href={`/dashboard/courseware/${courseId}/${lectureId}/${page.pageDocId}`}
+            className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}
+          >
+            {t("editPage")}
+          </Link>
+          <Link
             href={href(pageIndex, "natural")}
             className={cn(buttonVariants({ variant: stageMode === "natural" ? "primary" : "secondary", size: "sm" }))}
           >

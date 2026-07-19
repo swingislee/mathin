@@ -186,6 +186,18 @@ body {
 }
 button, a { -webkit-tap-highlight-color: transparent; }
 
+  /* Dashboard 统一全宽：只解除页面根容器的限宽，不影响页面内部卡片与对话框。 */
+  [data-dashboard-content] > .mx-auto {
+    max-width: none;
+    margin-inline: 0;
+  }
+  @media (min-width: 1280px) {
+    [data-dashboard-content][data-dashboard-workspace="true"] > .mx-auto {
+      height: 100%;
+      min-height: 0;
+  }
+}
+
 /* 纸纹：极轻的灰度噪点覆盖全页（docs/plan/01：纸感） */
 body::after {
   content: "";

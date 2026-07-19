@@ -7,13 +7,21 @@ if (!databaseUrl) {
   process.exit(2);
 }
 
-const file = path.join(process.cwd(), "supabase", "tests", "p6_courseware_security_assertions.sql");
-const result = spawnSync("psql", [databaseUrl, "-X", "-v", "ON_ERROR_STOP=1", "-f", file], {
-  stdio: "inherit",
-  shell: process.platform === "win32",
-});
-if (result.error) {
-  console.error(`Unable to run psql: ${result.error.message}`);
-  process.exit(2);
+const files = [
+  "p6_courseware_security_assertions.sql",
+  "p6_courseware_studio_assertions.sql",
+].map((name) => path.join(process.cwd(), "supabase", "tests", name));
+
+for (const file of files) {
+  const result = spawnSync("psql", [databaseUrl, "-X", "-v", "ON_ERROR_STOP=1", "-f", file], {
+    stdio: "inherit",
+    shell: process.platform === "win32",
+  });
+  if (result.error) {
+    console.error(`Unable to run psql: ${result.error.message}`);
+    process.exit(2);
+  }
+  if (result.status !== 0) {
+    process.exit(result.status ?? 1);
+  }
 }
-process.exit(result.status ?? 1);

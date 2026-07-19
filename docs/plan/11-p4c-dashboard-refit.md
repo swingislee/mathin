@@ -238,6 +238,23 @@ export function SchoolPageHeader({ title, eyebrow, actions, children }: {
 - 新建 `src/features/school/controls.ts` 导出统一控件类名常量：`export const selectClass = "rounded-lg border border-line bg-card px-3 py-2 text-sm text-ink outline-none transition focus:ring-2 focus:ring-moon";`（input 同款 `inputClass` 一并收编）。上列 9 个含裸 `<select>` 的文件全部改用该常量，消灭各处手写的 `bg-transparent`（透明底在暗色卡上叠出脏色）。
 - 验收：暗色模式下打开 students 页筛选下拉、点名抽屉四态下拉、建班向导周几选择，截图中弹层为深底浅字。
 
+### 3.6 Dashboard 全宽壳层与创作工作台（2026-07-19 修订）
+
+后台页面以表格、排课、数据看板和编辑工作台为主，统一采用全宽壳层。`DashboardShell` 不再按 pathname 切换 `content / wide / workspace` 三档宽度，也不再把「左侧导航 + 业务内容」锁进居中的 `max-w-*` 容器。桌面端导航固定为 `w-60`，壳层使用整个视口可用宽度，板块切换时导航的横坐标、宽度、外侧内边距和栏间距均保持不变。
+
+主内容区统一解除**页面根节点**既有的 `mx-auto/max-w-*`，列表、表格和编辑器使用导航右侧全部可用空间。若阅读型页面确实需要控制行长，应在页面内部的正文、表单或卡片区设置局部 `max-w-*`，不得再次限制整个页面根容器。
+
+课件页面编辑器仍保留工作台行为，但该识别只负责滚动与高度，不再改变壳层宽度：`/dashboard/courseware/[courseId]/[lectureId]/[pageId]` 占满 Header 以下可用空间，页面列表、舞台和属性区在桌面端各自滚动。
+
+实现约束：
+
+- 外框仍是 `h-dvh + overflow-hidden`；普通页唯一纵向滚动区仍为 main。课件工作台仅在桌面端让三个编辑面板独立滚动，窄屏回退为正常页面滚动，禁止横向溢出。
+- 全宽策略只能在 DashboardShell 的 `data-dashboard-content` 作用域内覆盖**页面根节点**的最大宽度，不能全局覆盖 `.mx-auto`，以免影响卡片、对话框和公开板块。
+- 课件属性的文字/HTML 输入框固定为紧凑的可控高度；完整结构 JSON 保留在显式的“高级编辑”折叠区，避免 SVG path 把右侧属性面板无限拉长。
+- DashboardShell 仍使用既有移动端 Sheet；`< 1280px` 不强制桌面三栏高度，保证触屏滚动与窄视口可用。
+
+验收：在同一桌面视口依次切换总览、学生、课程、财务和课件编辑器，左侧导航的横坐标与宽度完全一致，业务内容均使用导航右侧全部可用宽度；在 1440×900，课件编辑器的页面列表、舞台、属性栏可独立滚动且 Header/导航不移动；在 390px，导航仍由 Sheet 打开且无横向滚动；亮/暗模式均使用现有 paper/card/line token。
+
 ## 4. P4C-1 权限矫正（反馈⑦⑧⑨的权限部分）
 
 ### 4.1 新权限键 `enrollment.manage`（报名/转班/退班从 class.manage 拆出）

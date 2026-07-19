@@ -159,6 +159,183 @@ export interface CoursewareLecturePreview {
   bindingUrls: ResolvedBindingUrls;
 }
 
+export interface StudioPageSummary {
+  id: string;
+  pageNo: number;
+  title: string;
+  aspect: string;
+  draftRevisionId: string | null;
+  currentRevisionId: string | null;
+  adaptClass: "A" | "B" | "C" | "D" | "E" | "F" | null;
+}
+
+export interface StudioRevision {
+  id: string;
+  revisionNo: number;
+  origin: string;
+  note: string;
+  createdAt: string;
+  createdBy: string | null;
+  doc: PageDoc;
+}
+
+export interface StudioRelease {
+  id: string;
+  releaseNo: number;
+  note: string;
+  publishedAt: string;
+  publishedBy: string | null;
+}
+
+export interface StudioImageAssetUsage {
+  sharedAssetId: string;
+  name: string;
+  useCount: number;
+}
+
+/** 编辑器壳数据：草稿优先，其余页面走当前 release/current revision。 */
+export async function loadCoursewareStudioPage(lectureId: string, pageDocId: string) {
+  const supabase = await createClient();
+  const { data: lecture, error: lectureError } = await supabase
+    .from("course_lectures")
+    .select("id, no, name, course_id, current_release_id")
+    .eq("id", lectureId)
+    .maybeSingle();
+  if (lectureError) throw new Error(lectureError.message);
+  if (!lecture) return null;
+
+  const { data: pages, error: pagesError } = await supabase
+    .from("cw_page_docs")
+    .select("id, page_no, title, aspect, draft_revision_id, current_revision_id, adapt_class")
+    .eq("lecture_id", lectureId)
+    .is("deleted_at", null)
+    .order("page_no");
+  if (pagesError) throw new Error(pagesError.message);
+  const typedPages: StudioPageSummary[] = (pages ?? []).map((page) => ({
+    id: page.id,
+    pageNo: page.page_no,
+    title: page.title,
+    aspect: page.aspect,
+    draftRevisionId: page.draft_revision_id,
+    currentRevisionId: page.current_revision_id,
+    adaptClass: page.adapt_class as StudioPageSummary["adaptClass"],
+  }));
+  const page = typedPages.find((item) => item.id === pageDocId);
+  if (!page) return null;
+  const baseRevisionId = page.draftRevisionId ?? page.currentRevisionId;
+  if (!baseRevisionId) throw new Error("PAGE_HAS_NO_BASE_REVISION");
+
+  const [{ data: revisionRows, error: revisionError }, { data: releases, error: releaseError }] = await Promise.all([
+    supabase
+      .from("cw_page_revisions")
+      .select("id, revision_no, origin, note, created_at, created_by, doc")
+      .eq("page_doc_id", pageDocId)
+      .order("revision_no", { ascending: false }),
+    supabase
+      .from("cw_lecture_releases")
+      .select("id, release_no, note, published_at, published_by")
+      .eq("lecture_id", lectureId)
+      .order("release_no", { ascending: false }),
+  ]);
+  if (revisionError) throw new Error(revisionError.message);
+  if (releaseError) throw new Error(releaseError.message);
+  const revisions: StudioRevision[] = (revisionRows ?? []).map((revision) => ({
+    id: revision.id,
+    revisionNo: revision.revision_no,
+    origin: revision.origin,
+    note: revision.note,
+    createdAt: revision.created_at,
+    createdBy: revision.created_by,
+    doc: pageDocSchema.parse(revision.doc),
+  }));
+  const activeRevision = revisions.find((revision) => revision.id === baseRevisionId);
+  if (!activeRevision) throw new Error("PAGE_REVISION_MISSING");
+  const releaseHistory: StudioRelease[] = (releases ?? []).map((release) => ({
+    id: release.id,
+    releaseNo: release.release_no,
+    note: release.note,
+    publishedAt: release.published_at,
+    publishedBy: release.published_by,
+  }));
+  const [bindingUrls, imageAssetUsage] = await Promise.all([
+    resolveEditorBindingUrls(supabase, pageDocId),
+    loadImageAssetUsage(supabase, pageDocId),
+  ]);
+  const { data: copyTargets, error: copyTargetsError } = await supabase
+    .from("course_lectures")
+    .select("id, no, name")
+    .eq("course_id", lecture.course_id)
+    .order("no");
+  if (copyTargetsError) throw new Error(copyTargetsError.message);
+  return {
+    lecture: { id: lecture.id, no: lecture.no, name: lecture.name, courseId: lecture.course_id, currentReleaseId: lecture.current_release_id },
+    pages: typedPages,
+    page,
+    activeRevision,
+    revisions,
+    releaseHistory,
+    bindingUrls,
+    imageAssetUsage,
+    copyTargets: (copyTargets ?? []).map((item) => ({ id: item.id, no: item.no, name: item.name })),
+  };
+}
+
+/** 图片替换前显式展示共享资产及其当前页级引用数，避免误以为会改动所有页面。 */
+async function loadImageAssetUsage(supabase: Supabase, pageDocId: string): Promise<Record<string, StudioImageAssetUsage>> {
+  const { data: pageBindings, error: pageBindingsError } = await supabase
+    .from("cw_page_asset_bindings")
+    .select("binding_key, shared_asset_id")
+    .eq("page_doc_id", pageDocId)
+    .eq("kind", "image");
+  if (pageBindingsError) throw new Error(pageBindingsError.message);
+  const sharedAssetIds = [...new Set((pageBindings ?? []).map((binding) => binding.shared_asset_id))];
+  if (sharedAssetIds.length === 0) return {};
+
+  const [{ data: allBindings, error: allBindingsError }, { data: assets, error: assetsError }] = await Promise.all([
+    supabase.from("cw_page_asset_bindings").select("shared_asset_id").in("shared_asset_id", sharedAssetIds),
+    supabase.from("cw_shared_assets").select("id, name").in("id", sharedAssetIds),
+  ]);
+  if (allBindingsError) throw new Error(allBindingsError.message);
+  if (assetsError) throw new Error(assetsError.message);
+  const useCountByAsset = new Map<string, number>();
+  for (const binding of allBindings ?? []) {
+    useCountByAsset.set(binding.shared_asset_id, (useCountByAsset.get(binding.shared_asset_id) ?? 0) + 1);
+  }
+  const assetNameById = new Map((assets ?? []).map((asset) => [asset.id, asset.name]));
+  return Object.fromEntries((pageBindings ?? []).map((binding) => [binding.binding_key, {
+    sharedAssetId: binding.shared_asset_id,
+    name: assetNameById.get(binding.shared_asset_id) ?? binding.shared_asset_id,
+    useCount: useCountByAsset.get(binding.shared_asset_id) ?? 0,
+  }]));
+}
+
+/** 草稿预览按当前 binding 指针解析；发布后 release 再把版本精确 pin 进快照。 */
+async function resolveEditorBindingUrls(supabase: Supabase, pageDocId: string): Promise<ResolvedBindingUrls> {
+  const { data: bindings, error: bindingError } = await supabase
+    .from("cw_page_asset_bindings")
+    .select("binding_key, kind, launch_query, pinned_revision_id, shared_asset_id")
+    .eq("page_doc_id", pageDocId);
+  if (bindingError) throw new Error(bindingError.message);
+  if (!bindings?.length) return {};
+  const sharedIds = [...new Set(bindings.map((binding) => binding.shared_asset_id))];
+  const { data: assets, error: assetError } = await supabase
+    .from("cw_shared_assets")
+    .select("id, published_revision_id")
+    .in("id", sharedIds);
+  if (assetError) throw new Error(assetError.message);
+  const publishedByAsset = new Map((assets ?? []).map((asset) => [asset.id, asset.published_revision_id]));
+  const entries = bindings.map((binding) => ({
+    pageDocId,
+    revisionId: "00000000-0000-0000-0000-000000000000",
+    bindings: [{ bindingKey: binding.binding_key, assetRevisionId: binding.pinned_revision_id ?? publishedByAsset.get(binding.shared_asset_id) }],
+  })).filter((entry) => entry.bindings[0].assetRevisionId);
+  return resolveSnapshotBindingUrls(
+    supabase,
+    entries as z.infer<typeof releaseSnapshotSchema>,
+    bindings.map((binding) => ({ binding_key: binding.binding_key, kind: binding.kind, launch_query: binding.launch_query })),
+  );
+}
+
 /**
  * 只读预览数据:讲的 current release 快照 → 页 doc(过冻结 schema)+ 全部绑定的 URL。
  * 渲染的是已发布状态,不是草稿——预览即验收视角(docs/plan/16 P6-4)。
