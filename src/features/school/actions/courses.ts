@@ -1,7 +1,7 @@
 "use server";
 
 // ---------------------------------------------------------------------------
-// 课程 / 讲次 CRUD（P4D-1）与学期轴（P4E）。都归 course.manage 一把钥匙。
+// 课程 / 讲次 CRUD（P4D-1）与运营学年学期（P4E）。课程归 course.manage，学期归 schedule.manage。
 // ---------------------------------------------------------------------------
 
 import { z } from "zod";
@@ -168,7 +168,7 @@ export async function createSchoolTermAction(input: {
 }): Promise<ActionResult> {
   try {
     const value = parse(termSchema, input);
-    const { supabase } = await authorizedClient("course.manage");
+    const { supabase } = await authorizedClient("schedule.manage");
     const { error } = await supabase.rpc("create_school_term", {
       p_year: value.year,
       p_term: value.term,
@@ -186,7 +186,7 @@ export async function createSchoolTermAction(input: {
 export async function activateSchoolTermAction(termId: string): Promise<ActionResult> {
   try {
     const id = parse(uuid, termId);
-    const { supabase } = await authorizedClient("course.manage");
+    const { supabase } = await authorizedClient("schedule.manage");
     const { error } = await supabase.rpc("activate_school_term", { p_term_id: id });
     if (error) throw new Error(error.message);
     return { ok: true };
