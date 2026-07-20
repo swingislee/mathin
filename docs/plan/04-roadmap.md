@@ -152,7 +152,38 @@
 10. 测试数据视图、批量归档、恢复、影响预览与 admin-only 受控清理；共享 CAS 资源不跟随删除。
 11. 全角色 E2E、旧入口与死代码收口、P6 回归、DB/route audit 和文档完成。
 
-排期约束：P6-8 已完成，P4H 现在可启动并严格按 0→11 串行；P4H-3 完成后可执行 P6-9 全量数据导入，P6-9 的“865 讲可浏览”最终验收必须等待 P4H-5/6 并使用新入口。每条任务一次独立提交，验收细节、文件范围、错误码与停止条件以 doc 18 为准。（P4H-11 收尾：主管/教研/教师/学辅/多岗位/测试数据/旧路由/404/P6 回归共 9 条路径全角色 Playwright 回归通过，过程中发现并修复两处遗留问题——`/dashboard/classes/[id]` 的“进入教室”入口曾对管理视角（无课堂成员关系）展示并 404（对应 F3），已改为仅 `isTeachingView` 才显示；`school.classes.name` 中英文案缺失已补全。`scripts/verify-p4h-route-audit.mjs` 上线，确认 §3.3 五条旧路由仍是纯 redirect 壳、仓库内无死链接、`CoursewareTemplateEditor` 零引用。验收关闭。）
+排期约束：P6-8 已完成，P4H 现在可启动并严格按 0→11 串行；P4H-3 完成后可执行 P6-9 全量数据导入，P6-9 的“865 讲可浏览”最终验收必须等待 P4H-5/6 并使用新入口。每条任务一次独立提交，验收细节、文件范围、错误码与停止条件以 doc 18 为准。（P4H-11 收尾：主管/教研/教师/学辅/多岗位/测试数据/旧路由/404/P6 回归共 9 条路径全角色 Playwright 回归通过，过程中发现并修复两处遗留问题——`/dashboard/classes/[id]` 的“进入教室”入口曾对管理视角（无课堂成员关系）展示并 404（对应 F3），已改为仅 `isTeachingView` 才显示；`school.classes.name` 中英文案缺失已补全。`scripts/verify-p4h-route-audit.mjs` 上线，确认 §3.3 五条旧路由仍是纯 redirect 壳、仓库内无死链接、`CoursewareTemplateEditor` 零引用。验收关闭。）**2026-07-20 追记**：导航分组、路由合同（§3）、员工首页磁贴、课次入口与多岗位视角切换规则已被 `P4I`（`19-p4i-final.md`）修订取代；P4H 落地的生命周期状态机、状态转换 RPC、capability 模型、assignment 数据结构与安全不变量继续保留，P4I 在其上重排产品结构与工作流。
+
+## P4I 学校端工作台、课程研发与教学运营重构（当前阶段，2026-07-20 立项；执行计划见 `19-p4i-final.md`）
+
+P4H 试用后发现问题不在功能而在信息架构：课程/课件/班级/课次各自有多套目录和返回链路，员工首页是可自由拖拽的磁贴池、无法区分任务与异常，多岗位用户被迫选一个"最像的角色"。P4I 是对 P4H 在导航、页面归属、课程 scope、制作工作台、讲次/课次入口、多岗位视角、员工首页方面的最终修订版——**与 doc 18 冲突处以 doc 19 为准**；doc 18 已落地的生命周期状态机、安全不变量、历史保留、assignment 能力继续保留，不重做。
+
+最终结构：任务入口（今日工作）→ 唯一对象工作区（课程产品/讲次/班级/课次各自只有一个 canonical 工作区）→ 专用工具（Studio/Classroom/排课）→ 退出回到原对象。新增课程研发多轮校对（1/2/3 校，主管可配置校对级数与是否允许制作人自校）、统一工作项投影（`list_my_work_items`，区分 action/alert/metric 与 direct/delegated/oversight）、员工兼家长的环境切换（工作台/家庭/学习）。
+
+**2026-07-20 P4I-0 基线**：commit `ff29642`，`git status --short` 为空（clean tree）。
+
+执行顺序固定为（§22，严格串行，一任务一提交，细节/验收/停止条件以 doc 19 为准）：
+
+0. 规划冻结与基线：写入本节、标记 P4H 被修订部分、记录 commit/git status、固定测试账号/样本对象/5 视口、拍摄改造前截图、建立旧功能回归清单。
+1. 使用环境与对象镜头：staff/family/learning 环境识别、员工兼家长切换、`returnTo` 白名单。
+2. 课程责任、权限与校对政策：`course_staff_assignments`、`cw_workflow_policies`（默认 1 校 + 允许自校）。
+3. 课程制作与多轮校对状态机：`cw_lecture_workflows`/`cw_review_cycles`，提交/退回/通过/紧急发布 RPC。
+4. 课次备课与课后数据：`session_preparations`、`session_completion_tasks`。
+5. 学辅与家庭摘要底座：主责学辅、`class_support_task_recipients`、`session_family_briefs`。
+6. 统一工作投影：`work_item_user_state`、`list_my_work_items`、旧 StaffHome 数量对账。
+7. 页面原语与 StageViewport：`ObjectBar`/`ObjectWorkspace`/`ObjectOverlay`/`DecisionRail` 等。
+8. 今日工作只读试用：`/dashboard/work`，不删旧磁贴首页（**停止点**：需真实账号试用通过）。
+9. 课程研发导航与产品库：新导航分组、研发任务、课程产品库。
+10. 课程产品工作区：产品总览、版本矩阵、教学计划编辑模式。
+11. 讲次工作区：canonical `/dashboard/curriculum/lectures/[id]`、拦截路由覆盖层。
+12. Studio 壳层：`/studio/courseware/[lectureId]` 单工具栏三栏。
+13. 班级工作区：下一课/需要处理/未来/已结束/已取消固定分组。
+14. 课次工作区与备课冻结：canonical `/dashboard/sessions/[id]`、课前/课堂/课后。
+15. 课后工作与学辅接缝：点名/课评/总结/作业/视频/跟进 + 家庭摘要发布。
+16. 课表与快速抽屉：全高日历、抽屉收缩为纯排课操作。
+17. 今日工作切换为默认首页（**前提**：P4I-8 通过），逐步删除 StaffHome 并行查询。
+18. 全角色、全状态、全视口验收（11 种角色组合 × 5 视口：1920×1080/1440×900/1280×800/1024×768/390×844）。
+19. 旧入口、死代码与文档收口：更新 00/04/10/11/16/18，DB audit，用户截图签收。
 
 ## 长期暂缓（明确不做，除非用户重启议题）
 

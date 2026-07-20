@@ -9,6 +9,17 @@
 > **前置阅读（每个执行 Agent 都必须读）**：`00-overview.md`、`01-design-system.md`、`04-roadmap.md`、本文，以及当前任务直接涉及的 `10-school-backend.md`、`11-p4c-dashboard-refit.md`、`12-p4d-student-lifecycle.md` 或 `16-p6-courseware-platform.md`。禁止默认读取整个 `docs/plan/`。
 >
 > **与 P6 的关系**：P6-8 已完成，2026-07-20 复盘时工作树为 clean。P4H 现在接管 `courses/courseware/lectures` 的产品信息架构；P6 的 DocStage、页 revision、讲 release、资源替换与双轨数据模型保持不变。P4H-0～6 应在 P6-9 的最终浏览验收前完成；P6-9 的全量导入可在 P4H-3 schema 验收后执行，但“865 讲可浏览”的最终验收必须使用 P4H-5/6 的新入口。
+>
+> **与 P4I 的关系（2026-07-20 追记）**：P4H 已全部 0→11 完成，随后在同日试用复盘中被 `19-p4i-final.md`（P4I）修订。**本文与 doc 19 冲突处一律以 doc 19 为准**，执行 agent 不再按本文 §3 路由合同、导航、员工首页或多岗位视角实现新页面。具体被取代的部分：
+>
+> - §3 路由合同（`/dashboard/courses`、`/dashboard/courseware`、`/dashboard/classes/[id]?session=`）→ doc 19 §20 新路由（`/dashboard/curriculum/products`、`/dashboard/curriculum/lectures/[id]`、`/dashboard/classes/[classroomId]` 与独立 `/dashboard/sessions/[sessionId]`）；
+> - “制作工作台”/`courseware` 命名与左侧平级入口 → doc 19 §4 的“课程研发”分组（研发任务/课程产品/适配校对/公共资源）；
+> - 讲次详情与预览的拦截路由承载页 → doc 19 §9 讲次工作区（唯一 canonical URL + 覆盖层）；
+> - 课次入口从班级详情内嵌抽屉（§3、§8.3）→ doc 19 §14 独立课次工作区，快速抽屉收缩为仅排课操作（doc 19 §15.2）；
+> - 员工首页磁贴池（§9 多岗位工作台）→ doc 19 §6 今日工作（现在/我的工作/今天的安排/需要关注，不可拖拽隐藏）；
+> - 多岗位“视角切换”心智 → doc 19 §2.5～2.7 的工作集合筛选 + 对象上下文镜头（不是角色模式）。
+>
+> 继续保留、doc 19 直接复用、不重做的部分：§5 生命周期状态机（版本/讲次/班级/课次状态与转换 RPC）、§6 capability 模型（权限 = 岗位权限 × 对象关系 × 当前状态）、`course_staff_assignments`/assignment 表结构与继承规则、§2.3 安全不变量（禁止物理级联删除、学辅不进 `classroom_members`、403≠404 等）、P4H-0～10 已落地的数据库 schema 与 RPC。
 
 ---
 
