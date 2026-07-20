@@ -14,6 +14,10 @@
     "classroom": "教室",
     "notebook": "笔记",
     "whiteboard": "画板",
+    "envSection": "使用环境",
+    "envStaff": "工作台",
+    "envFamily": "家庭",
+    "envLearning": "学习",
     "planetNames": {
       "story": "地球",
       "games": "国王的星球",

@@ -273,7 +273,12 @@ export function mergeTileLayout(
             : allowed[0];
       accepted.push({ k, allowed, size, coords: hasCoords ? { x: x as number, y: y as number } : null });
     }
-    if (accepted.length > 0 && accepted.every((entry) => entry.coords !== null)) {
+    if (accepted.length === 0) {
+      // P4I-1：dashboard_layouts 按 user_id 存单份布局，同一账号在不同使用环境下
+      // eligible 磁贴词表完全不同（如 staff 布局迁到 family 视角）时，存量键会
+      // 被上面的越权过滤全部滤空——落回该环境默认布局，而不是渲染空白页。
+      result = defaultPlacements(eligible, defaultOrder, new Set(defaultExclude));
+    } else if (accepted.every((entry) => entry.coords !== null)) {
       // 全员带坐标：钳制 + push 消解 + 压实（§5.8a 安全边界）。
       result = normalizePlacements(
         accepted.map((entry) => ({ k: entry.k, ...entry.coords!, ...sizeToWH(entry.size) })),

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { PERMISSION_KEYS, type PermissionKey } from "@/features/school/permissions";
+import type { UserEnvironment } from "@/lib/environment";
 import { createClient } from "@/lib/supabase/server";
 
 export type ProfileRole = "student" | "parent" | "staff" | "admin";
@@ -10,6 +11,7 @@ export interface Profile {
   role: ProfileRole;
   displayName: string;
   avatarUrl: string | null;
+  lastActiveEnvironment: UserEnvironment;
 }
 
 export async function requireUser(locale: string) {
@@ -23,15 +25,22 @@ export async function getProfile(userId: string): Promise<Profile | null> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("profiles")
-    .select("id,role,display_name,avatar_url")
+    .select("id,role,display_name,avatar_url,last_active_environment")
     .eq("id", userId)
-    .maybeSingle<{ id: string; role: ProfileRole; display_name: string; avatar_url: string | null }>();
+    .maybeSingle<{
+      id: string;
+      role: ProfileRole;
+      display_name: string;
+      avatar_url: string | null;
+      last_active_environment: UserEnvironment;
+    }>();
   if (!data) return null;
   return {
     id: data.id,
     role: data.role,
     displayName: data.display_name,
     avatarUrl: data.avatar_url,
+    lastActiveEnvironment: data.last_active_environment,
   };
 }
 

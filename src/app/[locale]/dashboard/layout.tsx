@@ -4,6 +4,8 @@ import { DashboardShell } from "@/features/school/DashboardShell";
 import { getMyStudents } from "@/features/school/customer";
 import { filterSchoolNav, HOME_NAV_ITEM, PARENT_NAV_ITEMS, STUDENT_NAV_ITEMS, type SchoolNavItem } from "@/features/school/nav";
 import { getMyPerms, getProfile, requireUser } from "@/lib/auth";
+import { pickActiveEnvironment, resolveAvailableEnvironments } from "@/lib/environment";
+import { createClient } from "@/lib/supabase/server";
 
 async function safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
   try {
@@ -24,14 +26,18 @@ export default async function DashboardLayout({
   setRequestLocale(locale);
   const user = await requireUser(locale);
   const profile = await getProfile(user.id);
-  const isStaff = profile?.role === "staff" || profile?.role === "admin";
+  const supabase = await createClient();
+  const available = await resolveAvailableEnvironments(supabase, user.id, profile?.role);
+  // P4I-1：左侧导航跟渲染在下面的 Home 一样按"当前使用环境"分派，不再直接认
+  // profiles.role——员工兼家长切换到家庭视角时，导航也要跟着换成家庭导航。
+  const active = pickActiveEnvironment(profile?.lastActiveEnvironment, available);
 
   let nav: readonly SchoolNavItem[] = [HOME_NAV_ITEM];
-  if (isStaff) {
+  if (active === "staff") {
     nav = filterSchoolNav(await getMyPerms(user.id));
-  } else if (profile?.role === "student" || profile?.role === "parent") {
+  } else if (active === "family" || active === "learning") {
     const bound = (await safe(getMyStudents, [])).length > 0;
-    if (bound) nav = profile.role === "student" ? STUDENT_NAV_ITEMS : PARENT_NAV_ITEMS;
+    if (bound) nav = active === "learning" ? STUDENT_NAV_ITEMS : PARENT_NAV_ITEMS;
   }
 
   return (

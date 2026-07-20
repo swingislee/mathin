@@ -1,12 +1,12 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { resolveSafeReturnTo } from "@/lib/safe-redirect";
 import { createClient } from "@/lib/supabase/server";
 
 function safeLocale(value: FormDataEntryValue | null) { return value === "en" ? "en" : "zh"; }
 function safeNext(value: FormDataEntryValue | null, locale: string) {
-  const path = typeof value === "string" ? value : "";
-  return path.startsWith(`/${locale}/`) && !path.startsWith("//") ? path : `/${locale}/dashboard`;
+  return resolveSafeReturnTo(typeof value === "string" ? value : null, locale, `/${locale}/dashboard`);
 }
 
 export async function login(formData: FormData) {

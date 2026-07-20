@@ -14,6 +14,10 @@
     "classroom": "Classroom",
     "notebook": "Notebook",
     "whiteboard": "Whiteboard",
+    "envSection": "Environment",
+    "envStaff": "Workspace",
+    "envFamily": "Family",
+    "envLearning": "Learning",
     "planetNames": {
       "story": "Earth",
       "games": "The King's planet",
