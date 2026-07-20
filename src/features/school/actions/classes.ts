@@ -7,18 +7,26 @@
 
 import { z } from "zod";
 import { actionError, type ActionResult } from "@/lib/action-result";
-import { initialOverlayFromTemplate, type CoursewareTemplatePage } from "../courseware-overlay";
 import { authorizedClient, nullableRpcArg } from "./guards";
 import { COMMON_CODES, datetime, intInRange, parse, requiredText, searchQuery, text, uuid } from "./schemas";
 import type { BuildClassInput, StudentSearchResult } from "./types";
+import type {
+  ClassBuildCourseCandidate,
+  ClassBuildCourseDetail,
+  ClassBuildPurpose,
+  ClassBuildScheduleConflict,
+} from "../teaching-operations/course-picker-types";
 
 const buildClassSchema = z.object({
   name: requiredText(100),
   courseId: uuid.nullable(),
-  grade: intInRange(1, 12).nullable(),
   capacity: intInRange(1, 500).nullable(),
   room: text(100),
-  teacherId: uuid,
+  primaryTeacherId: uuid,
+  learningSupportId: uuid.nullable(),
+  schoolTermId: uuid,
+  purpose: z.enum(["production", "test"]),
+  activateNow: z.boolean(),
   sessions: z
     .array(
       z.object({
@@ -30,7 +38,166 @@ const buildClassSchema = z.object({
       }),
     )
     .max(200),
+}).superRefine((value, ctx) => {
+  if (value.courseId === null && value.sessions.length > 0) {
+    ctx.addIssue({ code: "custom", path: ["sessions"], message: "INVALID_SCHEDULE" });
+  }
+  if (value.learningSupportId !== null && value.learningSupportId === value.primaryTeacherId) {
+    ctx.addIssue({ code: "custom", path: ["learningSupportId"], message: "INVALID_STAFF" });
+  }
 });
+
+const courseSearchSchema = z.object({
+  query: searchQuery,
+  grade: intInRange(1, 12).nullable(),
+  courseSeason: intInRange(1, 4).nullable(),
+  classType: text(20),
+  purpose: z.enum(["production", "test"]),
+});
+
+const classBuildCandidateSchema = z.object({
+  id: uuid,
+  familyId: uuid,
+  familyTitle: z.string(),
+  title: z.string(),
+  productCode: z.string().nullable(),
+  grade: z.number().int(),
+  courseSeason: z.number().int(),
+  classType: z.string(),
+  lectureCount: z.number().int().nonnegative(),
+  releasedLectureCount: z.number().int().nonnegative(),
+});
+
+const classBuildDetailSchema = classBuildCandidateSchema.extend({
+  lectures: z.array(z.object({
+    id: uuid,
+    no: z.number().int(),
+    name: z.string(),
+    objectives: z.string(),
+    ready: z.boolean(),
+  })),
+});
+
+const conflictSchema = z.object({
+  sessionId: uuid,
+  classroomName: z.string(),
+  lectureName: z.string(),
+  scheduledAt: z.string(),
+  durationMin: z.number().int(),
+});
+
+type UntypedRpc = (name: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>;
+
+function rpc(supabase: { rpc: unknown }): UntypedRpc {
+  return supabase.rpc as UntypedRpc;
+}
+
+export async function searchClassBuildCoursesAction(input: {
+  query: string;
+  grade: number | null;
+  courseSeason: number | null;
+  classType: string;
+  purpose: ClassBuildPurpose;
+}): Promise<ClassBuildCourseCandidate[]> {
+  const value = parse(courseSearchSchema, input);
+  const { supabase } = await authorizedClient("class.create");
+  const { data, error } = await rpc(supabase)("list_class_build_course_variants", {
+    p_query: value.query,
+    p_grade: value.grade,
+    p_course_season: value.courseSeason,
+    p_class_type: value.classType || null,
+    p_purpose: value.purpose,
+    p_limit: 30,
+  });
+  if (error) throw new Error(error.message);
+  const rows = z.array(z.object({
+    course_id: uuid,
+    family_id: uuid,
+    family_title: z.string(),
+    variant_title: z.string(),
+    product_code: z.string().nullable(),
+    grade: z.number().int(),
+    course_season: z.number().int(),
+    class_type: z.string(),
+    lecture_count: z.number().int().nonnegative(),
+    released_lecture_count: z.number().int().nonnegative(),
+  })).parse(data ?? []);
+  return rows.map((row) => classBuildCandidateSchema.parse({
+    id: row.course_id,
+    familyId: row.family_id,
+    familyTitle: row.family_title,
+    title: row.variant_title,
+    productCode: row.product_code,
+    grade: row.grade,
+    courseSeason: row.course_season,
+    classType: row.class_type,
+    lectureCount: row.lecture_count,
+    releasedLectureCount: row.released_lecture_count,
+  }));
+}
+
+export async function getClassBuildCourseDetailAction(
+  courseId: string,
+  purpose: ClassBuildPurpose,
+): Promise<ClassBuildCourseDetail> {
+  const value = parse(z.object({ courseId: uuid, purpose: z.enum(["production", "test"]) }), { courseId, purpose });
+  const { supabase } = await authorizedClient("class.create");
+  const { data, error } = await rpc(supabase)("get_class_build_course_detail", {
+    p_course_id: value.courseId,
+    p_purpose: value.purpose,
+  });
+  if (error) throw new Error(error.message);
+  const row = z.object({
+    id: uuid,
+    familyId: uuid,
+    familyTitle: z.string(),
+    title: z.string(),
+    productCode: z.string().nullable(),
+    grade: z.number().int(),
+    courseSeason: z.number().int(),
+    classType: z.string(),
+    lectureCount: z.number().int().nonnegative(),
+    releasedLectureCount: z.number().int().nonnegative(),
+    lectures: z.array(z.object({
+      id: uuid,
+      no: z.number().int(),
+      name: z.string(),
+      objectives: z.string(),
+      ready: z.boolean(),
+    })),
+  }).parse(data);
+  return classBuildDetailSchema.parse(row);
+}
+
+export async function getClassBuildConflictsAction(
+  primaryTeacherId: string,
+  slots: Array<{ scheduledAt: string; durationMin: number }>,
+): Promise<ClassBuildScheduleConflict[]> {
+  const value = parse(z.object({
+    primaryTeacherId: uuid,
+    slots: z.array(z.object({ scheduledAt: datetime, durationMin: intInRange(1, 600) })).max(200),
+  }), { primaryTeacherId, slots });
+  const { supabase } = await authorizedClient("class.create");
+  const { data, error } = await rpc(supabase)("get_class_build_conflicts", {
+    p_primary_teacher_id: value.primaryTeacherId,
+    p_slots: value.slots.map((slot) => ({ scheduled_at: slot.scheduledAt, duration_min: slot.durationMin })),
+  });
+  if (error) throw new Error(error.message);
+  const rows = z.array(z.object({
+    session_id: uuid,
+    classroom_name: z.string(),
+    lecture_name: z.string(),
+    scheduled_at: z.string(),
+    duration_min: z.number().int(),
+  })).parse(data ?? []);
+  return rows.map((row) => conflictSchema.parse({
+    sessionId: row.session_id,
+    classroomName: row.classroom_name,
+    lectureName: row.lecture_name,
+    scheduledAt: row.scheduled_at,
+    durationMin: row.duration_min,
+  }));
+}
 
 const coursewareTrackSchema = z.enum(["native-16x9", "adapted-4x3"]);
 
@@ -74,43 +241,24 @@ export async function buildClass(input: BuildClassInput): Promise<string> {
   const value = parse(buildClassSchema, input);
   const { supabase } = await authorizedClient("class.create");
 
-  const { data: cid, error: rpcError } = await supabase.rpc("create_class", {
+  const { data: cid, error: rpcError } = await rpc(supabase)("create_class", {
     p_name: value.name,
-    p_course_id: value.courseId ?? undefined,
-    p_grade: value.grade ?? undefined,
-    p_capacity: value.capacity ?? undefined,
+    p_course_id: value.courseId,
+    p_capacity: value.capacity,
     p_room: value.room,
-    p_teacher_id: value.teacherId,
+    p_primary_teacher_id: value.primaryTeacherId,
+    p_learning_support_id: value.learningSupportId,
+    p_term_id: value.schoolTermId,
+    p_purpose: value.purpose,
+    p_sessions: value.sessions.map((session) => ({
+      lecture_id: session.lectureId,
+      scheduled_at: session.scheduledAt,
+      duration_min: session.durationMin,
+    })),
+    p_activate: value.activateNow,
   });
   if (rpcError) throw new Error(rpcError.message);
-  const classroomId = cid as string;
-
-  if (value.sessions.length === 0) return classroomId;
-
-  const lectureIds = value.sessions.map((session) => session.lectureId);
-  const { data: lectureRows, error: lectureError } = await supabase
-    .from("course_lectures")
-    .select("id,courseware_template")
-    .in("id", lectureIds)
-    .returns<Array<{ id: string; courseware_template: CoursewareTemplatePage[] }>>();
-  if (lectureError) throw new Error(lectureError.message);
-  const templateById = new Map((lectureRows ?? []).map((row) => [row.id, row.courseware_template ?? []]));
-
-  const rows = value.sessions.map((session) => ({
-    classroom_id: classroomId,
-    lecture_id: session.lectureId,
-    lecture_no: session.no,
-    title: session.name,
-    scheduled_at: session.scheduledAt,
-    duration_min: session.durationMin,
-    courseware: [],
-    courseware_overlay: initialOverlayFromTemplate(templateById.get(session.lectureId) ?? []),
-  }));
-
-  const { error: insertError } = await supabase.from("class_sessions").insert(rows);
-  if (insertError) throw new Error(insertError.message);
-
-  return classroomId;
+  return parse(uuid, cid);
 }
 
 const enrollSchema = z.object({ classroomId: uuid, studentId: uuid, remark: text(500) });

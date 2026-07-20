@@ -1,50 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
 
-export interface CourseOption {
-  id: string;
-  title: string;
-  productCode: string | null;
-  grade: number;
-}
-
-export interface LectureOption {
-  id: string;
-  no: number;
-  name: string;
-}
-
-export async function listEnabledCoursesWithLectures(): Promise<{
-  courses: CourseOption[];
-  lecturesByCourse: Record<string, LectureOption[]>;
-}> {
-  const supabase = await createClient();
-  const { data: courseRows, error } = await supabase
-    .from("courses")
-    .select("id,title,product_code,grade")
-    .eq("status", "enabled")
-    .order("grade", { ascending: true })
-    .order("term", { ascending: true })
-    .returns<Array<{ id: string; title: string; product_code: string | null; grade: number }>>();
-  if (error) throw new Error(error.message);
-
-  const { data: lectureRows, error: lectureError } = await supabase
-    .from("course_lectures")
-    .select("id,course_id,no,name")
-    .order("no", { ascending: true })
-    .returns<Array<{ id: string; course_id: string; no: number; name: string }>>();
-  if (lectureError) throw new Error(lectureError.message);
-
-  const lecturesByCourse: Record<string, LectureOption[]> = {};
-  for (const row of lectureRows ?? []) {
-    (lecturesByCourse[row.course_id] ??= []).push({ id: row.id, no: row.no, name: row.name });
-  }
-
-  return {
-    courses: (courseRows ?? []).map((row) => ({ id: row.id, title: row.title, productCode: row.product_code, grade: row.grade })),
-    lecturesByCourse,
-  };
-}
-
 export interface StaffOption {
   id: string;
   name: string;
@@ -56,6 +11,7 @@ export async function listStaffOptions(): Promise<StaffOption[]> {
     .from("profiles")
     .select("id,display_name")
     .in("role", ["staff", "admin"])
+    .eq("is_active", true)
     .order("display_name", { ascending: true })
     .returns<Array<{ id: string; display_name: string }>>();
   if (error) throw new Error(error.message);

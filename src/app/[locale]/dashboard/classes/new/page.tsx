@@ -1,20 +1,29 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { ClassBuildWizard } from "@/features/school/ClassBuildWizard";
-import { listEnabledCoursesWithLectures, listStaffOptions } from "@/features/school/classes";
+import { listStaffOptions } from "@/features/school/classes";
+import { listSchoolTerms } from "@/features/school/courses";
 import { SchoolPageHeader } from "@/features/school/PageHeader";
 import { requirePerm } from "@/lib/auth";
 
-export default async function NewClassPage({ params }: { params: Promise<{ locale: string }> }) {
+export default async function NewClassPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<{ courseId?: string | string[] }>;
+}) {
   const { locale } = await params;
+  const { courseId } = await searchParams;
   setRequestLocale(locale);
   await requirePerm(locale, "class.create");
 
-  const [t, tClasses, { courses, lecturesByCourse }, teachers] = await Promise.all([
+  const [t, tClasses, schoolTerms, teachers] = await Promise.all([
     getTranslations("school.classBuild"),
     getTranslations("school.classes"),
-    listEnabledCoursesWithLectures(),
+    listSchoolTerms(),
     listStaffOptions(),
   ]);
+  const initialCourseId = typeof courseId === "string" ? courseId : undefined;
 
   return (
     <div className="mx-auto w-full max-w-4xl">
@@ -28,7 +37,7 @@ export default async function NewClassPage({ params }: { params: Promise<{ local
       </SchoolPageHeader>
 
       <div className="mt-6">
-        <ClassBuildWizard courses={courses} lecturesByCourse={lecturesByCourse} teachers={teachers} />
+        <ClassBuildWizard schoolTerms={schoolTerms} teachers={teachers} initialCourseId={initialCourseId} />
       </div>
     </div>
   );

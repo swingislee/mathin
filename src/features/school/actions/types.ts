@@ -21,10 +21,13 @@ export interface BuildClassSession {
 export interface BuildClassInput {
   name: string;
   courseId: string | null;
-  grade: number | null;
   capacity: number | null;
   room: string;
-  teacherId: string;
+  primaryTeacherId: string;
+  learningSupportId: string | null;
+  schoolTermId: string;
+  purpose: "production" | "test";
+  activateNow: boolean;
   sessions: BuildClassSession[];
 }
 
