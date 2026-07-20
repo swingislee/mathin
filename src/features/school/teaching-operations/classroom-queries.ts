@@ -20,6 +20,7 @@ export interface ClassroomListItem {
   name: string;
   purpose: ClassroomPurpose;
   operationalStatus: ClassroomOperationalStatus;
+  archivedAt: string | null;
   courseFamilyTitle: string | null;
   courseTitle: string | null;
   courseProductCode: string | null;
@@ -107,6 +108,7 @@ export async function listClassroomsForScope(scope: ClassroomScope, filters: Cla
     name: row.name,
     purpose: row.purpose as ClassroomPurpose,
     operationalStatus: row.operational_status as ClassroomOperationalStatus,
+    archivedAt: row.archived_at,
     courseFamilyTitle: row.course_family_title,
     courseTitle: row.course_title,
     courseProductCode: row.course_product_code,

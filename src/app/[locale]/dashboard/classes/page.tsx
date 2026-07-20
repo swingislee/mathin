@@ -4,6 +4,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { ClassroomFilters } from "@/features/school/ClassroomFilters";
 import { ClassroomList } from "@/features/school/ClassroomList";
 import { ClassroomScopeSwitch } from "@/features/school/ClassroomScopeSwitch";
+import { ClassroomTestBulkPanel } from "@/features/school/ClassroomTestBulkPanel";
 import { SchoolPageHeader } from "@/features/school/PageHeader";
 import { listClassroomsForScope, parseClassroomListFilters, resolveClassroomScope } from "@/features/school/teaching-operations/classroom-queries";
 import { Link } from "@/i18n/navigation";
@@ -65,6 +66,10 @@ async function ClassroomLibrary({ locale, searchParams }: { locale: string; sear
       )}
     </div>
     <ClassroomFilters filters={filters} scope={scope.scope} />
-    <ClassroomList classrooms={classrooms} totalCount={totalCount} scope={scope.scope} hasFilters={hasFilters} resetHref={resetHref} />
+    {scope.scope === "test" ? (
+      <ClassroomTestBulkPanel classrooms={classrooms} />
+    ) : (
+      <ClassroomList classrooms={classrooms} totalCount={totalCount} scope={scope.scope} hasFilters={hasFilters} resetHref={resetHref} />
+    )}
   </section>;
 }
