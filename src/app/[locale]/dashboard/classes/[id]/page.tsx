@@ -5,7 +5,8 @@ import { CircleAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { ClassroomEditor } from "@/features/school/ClassroomEditor";
-import { getClassroomDetailForScope } from "@/features/school/classes";
+import { ClassroomStaffDialog } from "@/features/school/ClassroomStaffDialog";
+import { getClassroomDetailForScope, listStaffOptions } from "@/features/school/classes";
 import { ConsumeRuleDialog } from "@/features/school/ConsumeRuleDialog";
 import { CoursewareTrackSettings } from "@/features/school/CoursewareTrackSettings";
 import { SchoolPageHeader } from "@/features/school/PageHeader";
@@ -72,6 +73,7 @@ async function ClassDetailBody({
     ? classroom.sessions.find((session) => session.id === requestedSessionId) ?? null
     : null;
   const closeHref = `/dashboard/classes/${id}?tab=${activeTab}`;
+  const staffOptions = isManagementView ? await listStaffOptions() : [];
   const anomalyCount = classroom.sessions.filter((session) => session.state === "scheduled" && session.scheduledAt && new Date(session.scheduledAt) < new Date()).length;
 
   return (
@@ -84,6 +86,9 @@ async function ClassDetailBody({
         actions={
           <>
             {classroom.capabilities.canManageClassroom && <ClassroomEditor classroom={classroom} />}
+            {classroom.capabilities.canManageClassroom && (
+              <ClassroomStaffDialog classroomId={classroom.id} staffAssignments={classroom.staffAssignments} staffOptions={staffOptions} />
+            )}
             {perms.has("finance.account.adjust") && <ConsumeRuleDialog classroomId={classroom.id} />}
             <Link href="/dashboard/classes" className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>{t("back")}</Link>
             {(isManagementView || isTeachingView) && (

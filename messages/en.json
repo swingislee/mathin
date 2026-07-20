@@ -531,7 +531,11 @@
       "videoQueueTitle": "Videos to review",
       "videoQueueEmpty": "No videos waiting for review.",
       "renewalDueTitle": "Renewals due",
-      "renewalDueHint": "3 or fewer sessions remaining"
+      "renewalDueHint": "3 or fewer sessions remaining",
+      "coursewareTasksTitle": "Courseware production",
+      "coursewareTasksEmpty": "No lectures need work.",
+      "supportTasksTitle": "Support tasks",
+      "supportTasksEmpty": "No pending tasks."
     },
     "tileEdit": {
       "edit": "Edit layout",
@@ -1335,7 +1339,25 @@
       "gradeLabel": "Grade",
       "capacity": "Capacity",
       "room": "Room / location",
-      "save": "Save"
+      "save": "Save",
+      "staffDialogTitle": "Staff assignments",
+      "responsibility_primary_teacher": "Primary teacher",
+      "responsibility_assistant_teacher": "Assistant teacher",
+      "responsibility_learning_support": "Learning support",
+      "staffNone": "None assigned.",
+      "staffRemove": "Remove",
+      "staffPickPlaceholder": "Choose staff",
+      "staffAdd": "Add",
+      "staffAssignSuccess": "Assignment added.",
+      "staffRemoveSuccess": "Assignment removed.",
+      "supportTaskUpdated": "Task updated.",
+      "supportTaskEmpty": "No pending tasks.",
+      "supportTaskDone": "Done",
+      "supportTaskSkip": "Skip",
+      "supportTaskKind_preclass_notice": "Preclass notice",
+      "supportTaskKind_absence_check": "Absence check",
+      "supportTaskKind_makeup_followup": "Makeup follow-up",
+      "supportTaskKind_postclass_followup": "Postclass follow-up"
     },
     "schedule": {
       "title": "Schedule",

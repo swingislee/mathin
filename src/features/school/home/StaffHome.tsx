@@ -39,7 +39,11 @@ import {
   type TodaySessionRow,
   type UnmarkedSessionRow,
 } from "@/features/school/dashboard";
+import { loadCoursewareTaskQueue, type CoursewareTaskItem } from "@/features/courseware-studio/data";
 import { countPendingRefunds } from "@/features/school/finance";
+import { listMySupportTasks } from "@/features/school/support-tasks";
+import type { SupportTaskRow } from "@/features/school/support-tasks";
+import { SupportTaskList } from "@/features/school/SupportTaskList";
 import { mergeTileLayout, staffDefaultOrder, type TileTone } from "@/features/school/tiles";
 import { TileWorkspace } from "@/features/school/TileWorkspace";
 import { Link } from "@/i18n/navigation";
@@ -101,6 +105,8 @@ export async function StaffHome({ locale, user, profile }: HomeProps) {
     const canReview = perms.has("review.write");
     const canVideoReview = perms.has("video.review");
     const canRenewal = perms.has("finance.order.view")||perms.has("followup.view");
+    const canCoursewareTasks = perms.has("courseware.page.edit");
+    const canSupportTasks = canFollowupWrite || perms.has("attendance.mark") || perms.has("class.manage") || canClassViewAll;
 
     const [
       stats,
@@ -123,6 +129,8 @@ export async function StaffHome({ locale, user, profile }: HomeProps) {
       reviewGaps,
       videoQueue,
       renewalDue,
+      coursewareTasks,
+      supportTasks,
     ]: [
       StaffStats,
       FollowUpFunnelBucket[],
@@ -144,6 +152,8 @@ export async function StaffHome({ locale, user, profile }: HomeProps) {
       ReviewGapRow[],
       VideoQueueRow[],
       number,
+      CoursewareTaskItem[],
+      SupportTaskRow[],
     ] = await Promise.all([
       canStats ? safe(getStaffStats, EMPTY_STATS) : Promise.resolve(EMPTY_STATS),
       canStats ? safe(getFollowUpFunnel, []) : Promise.resolve([]),
@@ -165,6 +175,8 @@ export async function StaffHome({ locale, user, profile }: HomeProps) {
       canReview ? safe(getReviewGaps, []) : Promise.resolve([]),
       canVideoReview ? safe(getVideoQueue, []) : Promise.resolve([]),
       canRenewal ? safe(getRenewalDueCount,0) : Promise.resolve(0),
+      canCoursewareTasks ? safe(() => loadCoursewareTaskQueue("incomplete", ""), []) : Promise.resolve([]),
+      canSupportTasks ? safe(() => listMySupportTasks(), []) : Promise.resolve([]),
     ]);
 
     const funnelMax = Math.max(1, ...funnel.map((bucket) => bucket.count));
@@ -321,7 +333,7 @@ export async function StaffHome({ locale, user, profile }: HomeProps) {
     // ---- 我的课与待办 ----
     labels.set("myTeaching", schoolT("home.myTeachingTitle"));
     extras.set("myTeaching", {
-      href: "/dashboard/classes",
+      href: "/dashboard/classes?scope=teaching",
       minimal: <MinimalBody value={myTeaching.sessions.length} />,
       compact: (
         <CompactBody
@@ -338,12 +350,12 @@ export async function StaffHome({ locale, user, profile }: HomeProps) {
       "myTeaching",
       <>
         {myTeaching.pendingGradingCount > 0 && (
-          <Link href="/dashboard/classes" className="mb-1 shrink-0 self-start text-xs text-rose underline underline-offset-2">
+          <Link href="/dashboard/classes?scope=teaching" className="mb-1 shrink-0 self-start text-xs text-rose underline underline-offset-2">
             {schoolT("home.pendingGrading", { count: myTeaching.pendingGradingCount })}
           </Link>
         )}
         {myTeaching.sessions.length === 0 ? (
-          <EmptyBody text={schoolT("home.myTeachingEmpty")} href="/dashboard/classes" linkLabel={schoolT("nav.classes")} />
+          <EmptyBody text={schoolT("home.myTeachingEmpty")} href="/dashboard/classes?scope=teaching" linkLabel={schoolT("nav.classes")} />
         ) : (
           <ul className="min-h-0 flex-1 divide-y overflow-hidden">
             {myTeaching.sessions.slice(0, 6).map((session) => (
@@ -370,7 +382,7 @@ export async function StaffHome({ locale, user, profile }: HomeProps) {
     // ---- 我的班级 ----
     labels.set("myClasses", schoolT("home.myClassesTitle"));
     extras.set("myClasses", {
-      href: "/dashboard/classes",
+      href: "/dashboard/classes?scope=teaching",
       minimal: <MinimalBody value={myClassrooms.length} />,
       compact: (
         <CompactBody
@@ -382,7 +394,7 @@ export async function StaffHome({ locale, user, profile }: HomeProps) {
     contents.set(
       "myClasses",
       myClassrooms.length === 0 ? (
-        <EmptyBody text={schoolT("home.myClassroomsEmpty")} href="/dashboard/classes" linkLabel={schoolT("nav.classes")} />
+        <EmptyBody text={schoolT("home.myClassroomsEmpty")} href="/dashboard/classes?scope=teaching" linkLabel={schoolT("nav.classes")} />
       ) : (
         <ul className="min-h-0 flex-1 divide-y overflow-hidden">
           {myClassrooms.map((classroom) => (
@@ -441,7 +453,7 @@ export async function StaffHome({ locale, user, profile }: HomeProps) {
     // ---- 批改清单（§0.4）：逐份直达批改页 ----
     labels.set("gradingQueue", schoolT("home.gradingQueueTitle"));
     extras.set("gradingQueue", {
-      href: "/dashboard/classes",
+      href: "/dashboard/classes?scope=teaching",
       tone: gradingQueue.length > 0 ? "rose" : undefined,
       minimal: <MinimalBody value={gradingQueue.length} rose={gradingQueue.length > 0} />,
       compact: (
@@ -459,7 +471,7 @@ export async function StaffHome({ locale, user, profile }: HomeProps) {
     contents.set(
       "gradingQueue",
       gradingQueue.length === 0 ? (
-        <EmptyBody text={schoolT("home.gradingQueueEmpty")} href="/dashboard/classes" linkLabel={schoolT("nav.classes")} />
+        <EmptyBody text={schoolT("home.gradingQueueEmpty")} href="/dashboard/classes?scope=teaching" linkLabel={schoolT("nav.classes")} />
       ) : (
         <ul className="min-h-0 flex-1 divide-y overflow-hidden">
           {gradingQueue.map((row) => (
@@ -537,7 +549,7 @@ export async function StaffHome({ locale, user, profile }: HomeProps) {
     contents.set(
       "templateUrgent",
       templateUrgent.length === 0 ? (
-        <EmptyBody text={schoolT("home.templateUrgentEmpty")} href="/dashboard/courses" linkLabel={schoolT("nav.courses")} />
+        <EmptyBody text={schoolT("home.templateUrgentEmpty")} href="/dashboard/courses?scope=research" linkLabel={schoolT("nav.courses")} />
       ) : (
         <ul className="min-h-0 flex-1 divide-y overflow-hidden">
           {templateUrgent.map((row) => (
@@ -563,7 +575,7 @@ export async function StaffHome({ locale, user, profile }: HomeProps) {
     const progressTotal = templateProgress.reduce((sum, row) => sum + row.total, 0);
     labels.set("templateProgress", schoolT("home.templateProgressTitle"));
     extras.set("templateProgress", {
-      href: "/dashboard/courses",
+      href: "/dashboard/courses?scope=research",
       minimal: <MinimalBody value={`${progressReady}/${progressTotal}`} />,
       compact: (
         <CompactBody
@@ -579,7 +591,7 @@ export async function StaffHome({ locale, user, profile }: HomeProps) {
     contents.set(
       "templateProgress",
       templateProgress.length === 0 ? (
-        <EmptyBody text={schoolT("home.templateProgressEmpty")} href="/dashboard/courses" linkLabel={schoolT("nav.courses")} />
+        <EmptyBody text={schoolT("home.templateProgressEmpty")} href="/dashboard/courses?scope=research" linkLabel={schoolT("nav.courses")} />
       ) : (
         <ul className="grid flex-1 content-center gap-1.5">
           {templateProgress.map((row) => (
@@ -640,7 +652,7 @@ export async function StaffHome({ locale, user, profile }: HomeProps) {
     const mismatchTotal = rosterMismatch.unlinkedEnrollments + rosterMismatch.orphanMembers;
     labels.set("rosterMismatch", schoolT("home.rosterMismatchTitle"));
     extras.set("rosterMismatch", {
-      href: "/dashboard/classes",
+      href: "/dashboard/classes?scope=all",
       cover: true,
       tone: mismatchTotal > 0 ? "rose" : undefined,
       // 2x1 的 full（两计数并排）放得下，只补 1x1 的总数档。
@@ -688,9 +700,54 @@ export async function StaffHome({ locale, user, profile }: HomeProps) {
     labels.set("activityToday", schoolT("home.activityTodayTitle"));
     extras.set("activityToday", { href: "/dashboard/activities", cover: true, minimal: <MinimalBody value={activityToday.length} />, compact: <CompactBody value={activityToday.length} line={activityToday[0]?.title ?? schoolT("home.activityTodayEmpty")} /> });
     contents.set("activityToday", activityToday.length===0?<EmptyBody text={schoolT("home.activityTodayEmpty")}/>:<ul className="min-h-0 flex-1 divide-y overflow-hidden">{activityToday.map(row=><li key={row.id} className="flex items-center gap-3 py-2 text-sm"><time className="shrink-0 text-xs text-muted">{timeFmt.format(new Date(row.scheduledAt))}</time><span className="min-w-0 flex-1 truncate font-medium">{row.title}</span><span className="text-xs text-muted">{schoolT("home.activityBooked",{count:row.bookedCount})}</span></li>)}</ul>);
-    labels.set("reviewGaps",schoolT("home.reviewGapsTitle"));extras.set("reviewGaps",{href:"/dashboard/classes",cover:true,minimal:<MinimalBody value={reviewGaps.length} rose={reviewGaps.length>0}/>});contents.set("reviewGaps",reviewGaps.length===0?<EmptyBody text={schoolT("home.reviewGapsEmpty")}/>:<ul className="min-h-0 flex-1 divide-y overflow-hidden">{reviewGaps.map(x=><li key={x.sessionId} className="py-2 text-sm"><Link href={`/dashboard/classes/${x.classroomId}`} className="font-medium hover:underline">{x.classroomName}</Link><span className="ml-2 text-xs text-muted">{x.title}</span></li>)}</ul>);
+    labels.set("reviewGaps",schoolT("home.reviewGapsTitle"));extras.set("reviewGaps",{href:"/dashboard/classes?scope=teaching",cover:true,minimal:<MinimalBody value={reviewGaps.length} rose={reviewGaps.length>0}/>});contents.set("reviewGaps",reviewGaps.length===0?<EmptyBody text={schoolT("home.reviewGapsEmpty")}/>:<ul className="min-h-0 flex-1 divide-y overflow-hidden">{reviewGaps.map(x=><li key={x.sessionId} className="py-2 text-sm"><Link href={`/dashboard/classes/${x.classroomId}`} className="font-medium hover:underline">{x.classroomName}</Link><span className="ml-2 text-xs text-muted">{x.title}</span></li>)}</ul>);
     labels.set("videoQueue",schoolT("home.videoQueueTitle"));extras.set("videoQueue",{href:"/dashboard/videos",cover:true,minimal:<MinimalBody value={videoQueue.length} rose={videoQueue.length>0}/>});contents.set("videoQueue",videoQueue.length===0?<EmptyBody text={schoolT("home.videoQueueEmpty")}/>:<ul className="min-h-0 flex-1 divide-y overflow-hidden">{videoQueue.map(x=><li key={x.id} className="flex justify-between py-2 text-sm"><span className="font-medium">{x.studentName}</span><time className="text-xs text-muted">{dateFmt.format(new Date(x.submittedAt))}</time></li>)}</ul>);
     labels.set("renewalDue",schoolT("home.renewalDueTitle"));extras.set("renewalDue",{href:"/dashboard/followups?bucket=renewal",cover:true,minimal:<MinimalBody value={renewalDue} rose={renewalDue>0}/>});contents.set("renewalDue",<CompactBody value={renewalDue} rose={renewalDue>0} line={schoolT("home.renewalDueHint")}/>);
+
+    // ---- 制作任务台（教研）：按讲次的课件制作队列，P4H-9 §10-4 ----
+    labels.set("coursewareTasks", schoolT("home.coursewareTasksTitle"));
+    extras.set("coursewareTasks", {
+      href: "/dashboard/courseware",
+      minimal: <MinimalBody value={coursewareTasks.length} />,
+      compact: (
+        <CompactBody
+          value={coursewareTasks.length}
+          line={coursewareTasks[0] ? `${coursewareTasks[0].courseTitle} · ${coursewareTasks[0].lectureName}` : schoolT("home.coursewareTasksEmpty")}
+        />
+      ),
+    });
+    contents.set(
+      "coursewareTasks",
+      coursewareTasks.length === 0 ? (
+        <EmptyBody text={schoolT("home.coursewareTasksEmpty")} href="/dashboard/courseware" linkLabel={schoolT("nav.courseware")} />
+      ) : (
+        <ul className="min-h-0 flex-1 divide-y overflow-hidden">
+          {coursewareTasks.slice(0, 6).map((row) => (
+            <li key={row.lectureId} className="flex flex-wrap items-center gap-3 py-2 text-sm">
+              <Link href={`/dashboard/courseware/lectures/${row.lectureId}?mode=edit`} className="min-w-0 flex-1 truncate font-medium hover:underline">
+                {row.courseTitle} · {row.lectureName}
+              </Link>
+              <span className="shrink-0 text-xs text-muted">{row.pageCount}p</span>
+            </li>
+          ))}
+        </ul>
+      ),
+    );
+
+    // ---- 学辅任务（P4H-9 §9）：learning_support 责任行按 classroom_staff_assignments 归属 ----
+    labels.set("supportTasks", schoolT("home.supportTasksTitle"));
+    extras.set("supportTasks", {
+      href: "/dashboard/classes?scope=support",
+      minimal: <MinimalBody value={supportTasks.length} rose={supportTasks.length > 0} />,
+      compact: (
+        <CompactBody
+          value={supportTasks.length}
+          rose={supportTasks.length > 0}
+          line={supportTasks[0] ? supportTasks[0].classroomName : schoolT("home.supportTasksEmpty")}
+        />
+      ),
+    });
+    contents.set("supportTasks", <SupportTaskList tasks={supportTasks} />);
 
     const eligible = pickEligible("staff", perms).filter((tile) => tile.key !== "refundQueue" || pendingRefundCount > 0);
     // 管理者且待跟进为空：myFollowUps 不进默认序（留在池里可手动加回，§5.6）。

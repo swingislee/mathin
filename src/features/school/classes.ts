@@ -79,9 +79,16 @@ export interface ClassroomDetail {
   trashedAt: string | null;
   primaryTeacherName: string | null;
   learningSupportNames: string[];
+  staffAssignments: StaffAssignmentSummary[];
   capabilities: ClassroomCapabilities;
   roster: RosterRow[];
   sessions: SessionRow[];
+}
+
+export interface StaffAssignmentSummary {
+  userId: string;
+  name: string;
+  responsibility: StaffResponsibility;
 }
 
 interface StaffAssignmentRow {
@@ -193,6 +200,11 @@ export async function getClassroomDetailForScope(id: string): Promise<ClassroomD
     .filter((row) => row.responsibility === "learning_support")
     .map((row) => row.profiles?.display_name)
     .filter((name): name is string => Boolean(name));
+  const staffAssignments: StaffAssignmentSummary[] = assignments.map((row) => ({
+    userId: row.user_id,
+    name: row.profiles?.display_name || row.user_id.slice(0, 8),
+    responsibility: row.responsibility,
+  }));
 
   const memberUserIds = new Set((memberRows ?? []).filter((m) => m.role === "student").map((m) => m.user_id));
   const roster: RosterRow[] = (enrollmentRows ?? []).map((row) => ({
@@ -259,6 +271,7 @@ export async function getClassroomDetailForScope(id: string): Promise<ClassroomD
     trashedAt: classroom.trashed_at,
     primaryTeacherName,
     learningSupportNames,
+    staffAssignments,
     capabilities: classroomCapabilities,
     roster,
     sessions,

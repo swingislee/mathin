@@ -531,7 +531,11 @@
       "videoQueueTitle": "待审视频",
       "videoQueueEmpty": "暂无待审视频。",
       "renewalDueTitle": "待续费",
-      "renewalDueHint": "剩余课次不超过 3"
+      "renewalDueHint": "剩余课次不超过 3",
+      "coursewareTasksTitle": "课件制作",
+      "coursewareTasksEmpty": "暂无待制作的讲次。",
+      "supportTasksTitle": "学辅任务",
+      "supportTasksEmpty": "暂无待办任务。"
     },
     "tileEdit": {
       "edit": "编辑布局",
@@ -1335,7 +1339,25 @@
       "gradeLabel": "年级",
       "capacity": "容量",
       "room": "教室 / 地点",
-      "save": "保存"
+      "save": "保存",
+      "staffDialogTitle": "责任分工",
+      "responsibility_primary_teacher": "主讲",
+      "responsibility_assistant_teacher": "助教",
+      "responsibility_learning_support": "学辅",
+      "staffNone": "暂未指派。",
+      "staffRemove": "移除",
+      "staffPickPlaceholder": "选择员工",
+      "staffAdd": "添加",
+      "staffAssignSuccess": "已添加责任分工。",
+      "staffRemoveSuccess": "已移除责任分工。",
+      "supportTaskUpdated": "任务已更新。",
+      "supportTaskEmpty": "暂无待办任务。",
+      "supportTaskDone": "完成",
+      "supportTaskSkip": "跳过",
+      "supportTaskKind_preclass_notice": "课前提醒",
+      "supportTaskKind_absence_check": "缺勤跟进",
+      "supportTaskKind_makeup_followup": "补课跟进",
+      "supportTaskKind_postclass_followup": "课后跟进"
     },
     "schedule": {
       "title": "课表",
