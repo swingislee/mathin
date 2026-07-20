@@ -14,6 +14,7 @@
     "p6:db-audit": "node scripts/run-p6-db-audit.mjs",
     "p4h:db-audit": "node scripts/run-p4h-db-audit.mjs",
     "p4h:delete-guard": "node scripts/verify-p4h-delete-guard.mjs",
+    "p4h:route-audit": "node scripts/verify-p4h-route-audit.mjs",
     "cw:import": "node scripts/cw-import.mjs",
     "cw:adapt-4x3": "node scripts/cw-adapt-4x3.mjs",
     "p4e:offline-test": "vitest run tests/p4e-offline.test.ts",

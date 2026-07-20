@@ -1376,6 +1376,7 @@
       "late": "Late",
       "leave": "Leave",
       "editClass": "Edit class",
+      "name": "Class name",
       "gradeLabel": "Grade",
       "capacity": "Capacity",
       "room": "Room / location",

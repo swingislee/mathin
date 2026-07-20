@@ -91,7 +91,7 @@ async function ClassDetailBody({
             )}
             {perms.has("finance.account.adjust") && <ConsumeRuleDialog classroomId={classroom.id} />}
             <Link href="/dashboard/classes" className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>{t("back")}</Link>
-            {(isManagementView || isTeachingView) && (
+            {isTeachingView && (
               <Link href={`/classroom/${classroom.id}`} className={cn(buttonVariants({ size: "sm" }))}>{t("openClassroom")}</Link>
             )}
           </>
