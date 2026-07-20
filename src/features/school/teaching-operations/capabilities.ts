@@ -1,4 +1,6 @@
 import type {
+  ClassroomCapabilities,
+  ClassroomCapabilityContext,
   CourseCapabilities,
   CourseCapabilityContext,
   SessionCapabilities,
@@ -84,6 +86,36 @@ export function resolveCourseCapabilities(context: CourseCapabilityContext): Cou
     canArchiveLecture,
     canViewUsingClasses,
     canCreateClass,
+    reasons,
+  };
+}
+
+function classroomReason(
+  reasons: ClassroomCapabilities["reasons"],
+  key: keyof ClassroomCapabilities["reasons"],
+  allowed: boolean,
+  code: string,
+) {
+  if (!allowed) reasons[key] = code;
+  return allowed;
+}
+
+/** P4H 的唯一班级能力公式；教学/学辅/管理关系由服务端查询层折叠后传入。 */
+export function resolveClassroomCapabilities(context: ClassroomCapabilityContext): ClassroomCapabilities {
+  const reasons: ClassroomCapabilities["reasons"] = {};
+  const canViewClassroom = context.isTeaching || context.isSupport || context.isManagement;
+  const manageable = context.isManagement && !context.classroomTrashed;
+
+  const canManageClassroom = classroomReason(reasons, "manage", manageable, context.classroomTrashed ? "CLASSROOM_TRASHED" : "FORBIDDEN");
+  const canPrepareTeaching = classroomReason(reasons, "prepare", context.isTeaching, "FORBIDDEN");
+  const canManageSchedule = classroomReason(reasons, "schedule", manageable, context.classroomTrashed ? "CLASSROOM_TRASHED" : "FORBIDDEN");
+
+  return {
+    canViewClassroom,
+    canManageClassroom,
+    canPrepareTeaching,
+    canViewSchedule: canViewClassroom,
+    canManageSchedule,
     reasons,
   };
 }

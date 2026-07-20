@@ -67,6 +67,14 @@ export interface ClassroomCapabilities {
   reasons: Partial<Record<"manage" | "prepare" | "schedule", string>>;
 }
 
+/** Server query 层已把岗位权限、责任关系和班级生命周期折叠为这些布尔值；UI 不自行推导。 */
+export interface ClassroomCapabilityContext {
+  isTeaching: boolean;
+  isSupport: boolean;
+  isManagement: boolean;
+  classroomTrashed: boolean;
+}
+
 export interface SessionCapabilities {
   canOpenManagement: boolean;
   canPrepare: boolean;

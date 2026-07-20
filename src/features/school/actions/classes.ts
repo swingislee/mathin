@@ -400,6 +400,25 @@ export async function restoreSessionAction(sessionId: string): Promise<ActionRes
   }
 }
 
+// P4H-8：作废课次是 session.void 专属功能键（目前只授予 principal），与 class.manage 的
+// 取消/恢复分开授权，不能复用 SCOPED_CODES 的 authorizedClient 闸。
+const voidSessionSchema = z.object({ sessionId: uuid, reason: text(1000) });
+
+export async function voidSessionAction(sessionId: string, reason = ""): Promise<ActionResult> {
+  try {
+    const value = parse(voidSessionSchema, { sessionId, reason });
+    const { supabase } = await authorizedClient("session.void");
+    const { error } = await supabase.rpc("void_session", {
+      p_session_id: value.sessionId,
+      p_reason: value.reason,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["FORBIDDEN_SCOPE", "SESSION_NOT_ENDED", "SESSION_ALREADY_VOIDED", ...COMMON_CODES]);
+  }
+}
+
 export async function archiveClassroomAction(classroomId: string, archived: boolean): Promise<void> {
   const value = parse(z.object({ classroomId: uuid, archived: z.boolean() }), { classroomId, archived });
   const { supabase } = await authorizedClient("class.manage");
