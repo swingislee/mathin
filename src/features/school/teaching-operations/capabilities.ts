@@ -150,6 +150,12 @@ export function resolveSessionCapabilities(context: SessionCapabilityContext): S
     context.canWriteReview && (context.isTeaching || context.isManagement) && isCompleted,
     "FORBIDDEN_SCOPE",
   );
+  const canCompletePostwork = sessionReason(
+    reasons,
+    "postwork",
+    context.canManagePostwork && (context.isTeaching || context.isManagement) && isCompleted,
+    "FORBIDDEN_SCOPE",
+  );
 
   return {
     canOpenManagement: openManagement,
@@ -163,6 +169,7 @@ export function resolveSessionCapabilities(context: SessionCapabilityContext): S
     canViewReport,
     canMarkAttendance,
     canWriteReview,
+    canCompletePostwork,
     reasons,
   };
 }

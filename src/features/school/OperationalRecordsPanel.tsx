@@ -17,6 +17,7 @@ const EVENT_LABEL_KEYS: Record<string, string> = {
   "session.lifecycle.voided": "eventLabel_sessionVoided",
   "session_change.substitute": "eventLabel_sessionSubstitute",
   "session_family_brief.published": "eventLabel_familyBriefPublished",
+  "session.courseware.blank_fallback": "eventLabel_blankCoursewareFallback",
 };
 
 /** 运营记录 tab（doc19 §13.2）：`list_classroom_operational_events` 的只读时间线。 */

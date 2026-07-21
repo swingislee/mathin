@@ -7,6 +7,11 @@
 
 import { z } from "zod";
 import { actionError, type ActionResult } from "@/lib/action-result";
+import { createClient } from "@/lib/supabase/server";
+import type { Json } from "@/lib/database.types";
+import { materializeSessionResolved } from "@/features/courseware-studio/data";
+import { getLectureCoursewareTemplate } from "../courses";
+import { resolveCourseware, type OverlaySlot } from "../courseware-overlay";
 import { authorizedClient, nullableRpcArg } from "./guards";
 import { COMMON_CODES, datetime, intInRange, parse, requiredText, searchQuery, text, uuid } from "./schemas";
 import type { BuildClassInput, StudentSearchResult } from "./types";
@@ -554,4 +559,190 @@ export async function listClassroomOptions(excludeId?: string): Promise<Array<{ 
   const { data, error } = await query.returns<Array<{ id: string; name: string }>>();
   if (error) throw new Error(error.message);
   return (data ?? []).map((row) => ({ id: row.id, name: row.name || "-" }));
+}
+
+// ---------------------------------------------------------------------------
+// P4I-14：课次工作区备课编排（开始/复制/完成备课）与课后任务/完成本次课。
+// 备课相关权限闸统一用 courseware.overlay.edit（teacher/principal 持有，语义上
+// "本次覆盖" 就是这个权限键管的对象），真正的作用域仍由各 RPC 内部
+// is_session_teacher 收窄；courseware.overlay.edit 只挡"完全无关的登录用户"。
+// ---------------------------------------------------------------------------
+
+const PREP_CODES = [
+  "SESSION_NOT_FOUND", "ALREADY_STARTED", "TRACK_MISMATCH", "RELEASE_MISMATCH",
+  "LECTURE_MISMATCH", "SOURCE_PREPARATION_NOT_FOUND", "NO_LECTURE",
+  "COURSEWARE_TRACK_NOT_RESOLVED", "COURSEWARE_TRACK_UNPUBLISHED", "RELEASE_REQUIRED",
+  "INVALID_COURSEWARE_FREEZE", "REASON_REQUIRED",
+  ...COMMON_CODES,
+] as const;
+
+export async function startSessionPreparationAction(sessionId: string): Promise<ActionResult> {
+  try {
+    const id = parse(uuid, sessionId);
+    const { supabase } = await authorizedClient("courseware.overlay.edit");
+    const { error } = await supabase.rpc("start_session_preparation", { p_session_id: id });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, PREP_CODES);
+  }
+}
+
+export interface SessionPrepCopyCandidate {
+  sessionId: string;
+  classroomName: string;
+  scheduledAt: string | null;
+  track: string | null;
+  releaseNo: number | null;
+}
+
+export async function listSessionPreparationCopyCandidatesAction(sessionId: string): Promise<ActionResult<SessionPrepCopyCandidate[]>> {
+  try {
+    const id = parse(uuid, sessionId);
+    const { supabase } = await authorizedClient("courseware.overlay.edit");
+    const { data, error } = await supabase.rpc("list_session_preparation_copy_candidates", { p_session_id: id });
+    if (error) throw new Error(error.message);
+    const rows = z.array(z.object({
+      session_id: uuid,
+      classroom_name: z.string(),
+      scheduled_at: z.string().nullable(),
+      track: z.string().nullable(),
+      release_no: z.number().int().nullable(),
+    })).parse(data ?? []);
+    return {
+      ok: true,
+      data: rows.map((row) => ({
+        sessionId: row.session_id,
+        classroomName: row.classroom_name,
+        scheduledAt: row.scheduled_at,
+        track: row.track,
+        releaseNo: row.release_no,
+      })),
+    };
+  } catch (error) {
+    return actionError<SessionPrepCopyCandidate[]>(error, PREP_CODES);
+  }
+}
+
+export async function copySessionPreparationAction(sessionId: string, fromSessionId: string): Promise<ActionResult> {
+  try {
+    const value = parse(z.object({ sessionId: uuid, fromSessionId: uuid }), { sessionId, fromSessionId });
+    const { supabase } = await authorizedClient("courseware.overlay.edit");
+    const { error } = await supabase.rpc("copy_session_preparation", {
+      p_session_id: value.sessionId,
+      p_from_session_id: value.fromSessionId,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, PREP_CODES);
+  }
+}
+
+const completePrepSchema = z.object({ sessionId: uuid, fallbackReason: text(1000) });
+
+/**
+ * 完成备课/更新 release 编排（.claude/p4i-0-baseline.md「P4I-14 执行记录」记录的调用顺序）：
+ * resolve_session_courseware_release → （无 release 且未给理由则 RELEASE_REQUIRED，UI 弹理由
+ * 对话框后带理由重新提交）→ TS 层 resolveCourseware 合并 → materializeSessionResolved →
+ * save_session_prepared_courseware（只要 started_at 仍为空就能重复调用，同一个函数服务
+ * "完成备课"首次调用和"更新 release"后续调用）。
+ */
+export async function completeSessionPreparationAction(sessionId: string, fallbackReason = ""): Promise<ActionResult> {
+  try {
+    const value = parse(completePrepSchema, { sessionId, fallbackReason });
+    const { supabase } = await authorizedClient("courseware.overlay.edit");
+
+    const { data: session, error: sessionError } = await supabase
+      .from("class_sessions")
+      .select("lecture_id,courseware_overlay")
+      .eq("id", value.sessionId)
+      .maybeSingle<{ lecture_id: string | null; courseware_overlay: OverlaySlot[] }>();
+    if (sessionError) throw new Error(sessionError.message);
+    if (!session) throw new Error("SESSION_NOT_FOUND");
+    if (!session.lecture_id) throw new Error("NO_LECTURE");
+
+    const { data: resolvedRows, error: resolveError } = await supabase.rpc("resolve_session_courseware_release", {
+      p_session_id: value.sessionId,
+    });
+    if (resolveError) throw new Error(resolveError.message);
+    const resolved = (resolvedRows?.[0] ?? null) as { track: "native-16x9" | "adapted-4x3"; release_id: string | null } | null;
+    if (!resolved) throw new Error("COURSEWARE_TRACK_NOT_RESOLVED");
+
+    if (!resolved.release_id) {
+      if (!value.fallbackReason) throw new Error("RELEASE_REQUIRED");
+      const { error: fallbackError } = await supabase.rpc("record_session_blank_fallback", {
+        p_session_id: value.sessionId,
+        p_reason: value.fallbackReason,
+      });
+      if (fallbackError) throw new Error(fallbackError.message);
+    }
+
+    const template = await getLectureCoursewareTemplate(session.lecture_id);
+    const merged = resolveCourseware(template, session.courseware_overlay ?? []);
+    const resolvedMeta = resolved.release_id
+      ? await materializeSessionResolved(resolved.release_id, resolved.track)
+      : { version: "cw-session-resolved-v1" as const, track: resolved.track, releaseId: null, bindings: [] };
+
+    const { error: saveError } = await supabase.rpc("save_session_prepared_courseware", {
+      p_session_id: value.sessionId,
+      p_courseware: merged as unknown as Json,
+      p_courseware_resolved: resolvedMeta as unknown as Json,
+    });
+    if (saveError) throw new Error(saveError.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, PREP_CODES);
+  }
+}
+
+const completeTaskSchema = z.object({ taskId: uuid, status: z.enum(["done", "skipped"]), note: text(1000) });
+
+/**
+ * 通用"标记完成/跳过"；每类任务的专用表单（点名网格/课评撰写等）留给 P4I-15，
+ * 这里不加外层权限闸——complete_session_task 内部按 kind 分派到各自的精确权限
+ * （attendance.mark/can_review_session/is_classroom_teacher/can_review_video_session/
+ * followup.write），套一个统一 authorizedClient(key) 反而会误伤持有其他 kind 权限的
+ * 合法责任人。
+ */
+export async function completeSessionTaskAction(taskId: string, status: "done" | "skipped", note = ""): Promise<ActionResult> {
+  try {
+    const value = parse(completeTaskSchema, { taskId, status, note });
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("UNAUTHENTICATED");
+    const { error } = await supabase.rpc("complete_session_task", {
+      p_task_id: value.taskId,
+      p_status: value.status,
+      p_note: value.note,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["TASK_NOT_FOUND", "TASK_ALREADY_COMPLETED", "SKIP_REASON_REQUIRED", "INVALID_STATUS", "FORBIDDEN", ...COMMON_CODES]);
+  }
+}
+
+export async function completeSessionPostworkAction(sessionId: string): Promise<ActionResult> {
+  try {
+    const id = parse(uuid, sessionId);
+    const { supabase } = await authorizedClient("session.postwork.manage");
+    const { error } = await supabase.rpc("complete_class_session_postwork", { p_session_id: id });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["SESSION_NOT_FOUND", "TASKS_NOT_COMPLETE", "FORBIDDEN", ...COMMON_CODES]);
+  }
+}
+
+export async function reopenSessionPostworkAction(sessionId: string): Promise<ActionResult> {
+  try {
+    const id = parse(uuid, sessionId);
+    const { supabase } = await authorizedClient("session.postwork.manage");
+    const { error } = await supabase.rpc("reopen_class_session_postwork", { p_session_id: id });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["SESSION_NOT_FOUND", "NOT_COMPLETED", "FORBIDDEN", ...COMMON_CODES]);
+  }
 }

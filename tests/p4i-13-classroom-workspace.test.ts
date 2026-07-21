@@ -21,14 +21,11 @@ describe("P4I-13 classroom workspace contract", () => {
     expect(list).not.toContain("canPrepare || canEnterLive");
   });
 
-  it("课次工作区 stub 存在、鉴权正确，且没有抢跑 P4I-14 的课前/课堂/课后深化", () => {
-    const stub = read("src", "app", "[locale]", "dashboard", "sessions", "[sessionId]", "page.tsx");
-    expect(stub).toContain("requireUser");
-    expect(stub).toContain("getSessionWorkspaceDetail");
-    expect(stub).toContain("ObjectWorkspace");
-    expect(stub).not.toContain("session_preparations");
-    expect(stub).not.toContain("freeze_session_courseware");
-    expect(stub).not.toContain("session_completion_tasks");
+  it("课次工作区路由存在且鉴权正确（P4I-14 起深化为课前/课堂/课后，见 p4i-14 测试）", () => {
+    const route = read("src", "app", "[locale]", "dashboard", "sessions", "[sessionId]", "page.tsx");
+    expect(route).toContain("requireUser");
+    expect(route).toContain("getSessionWorkspaceDetail");
+    expect(route).toContain("SessionWorkspaceBody");
   });
 
   it("resolveWorkItemHref 已接上 session 工作项的过渡期路由替换", () => {

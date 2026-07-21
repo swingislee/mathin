@@ -9,6 +9,7 @@ export interface TeachingRelationshipInput {
   hasSessionVoid: boolean;
   hasAttendanceMark: boolean;
   hasReviewWrite: boolean;
+  hasPostworkManage: boolean;
   state: TeachingSessionState;
 }
 
@@ -44,6 +45,50 @@ export function resolveSessionCapabilityContext(input: TeachingRelationshipInput
     canVoidSession: input.hasSessionVoid,
     canMarkAttendance: input.hasAttendanceMark,
     canWriteReview: input.hasReviewWrite,
+    canManagePostwork: input.hasPostworkManage,
     state: input.state,
   };
+}
+
+export type SessionPrepStatus = "not_started" | "in_progress" | "ready" | null;
+export type SessionWorkState = "not_ready" | "ready" | "post_pending" | "completed";
+
+/** 工作状态（doc19 §14.2）：与事件状态是独立轴，取消/作废课次的工作态没有实际意义，统一按 not_ready 兜底。 */
+export function deriveSessionWorkState(
+  prepStatus: SessionPrepStatus,
+  postworkCompletedAt: string | null,
+  state: TeachingSessionState,
+): SessionWorkState {
+  if (state === "ended") return postworkCompletedAt ? "completed" : "post_pending";
+  return prepStatus === "ready" ? "ready" : "not_ready";
+}
+
+export type SessionStatusLabelKey =
+  | "scheduled_not_ready"
+  | "scheduled_ready"
+  | "imminent"
+  | "live"
+  | "ended_pending"
+  | "completed"
+  | "cancelled"
+  | "voided";
+
+const IMMINENT_WINDOW_MS = 15 * 60 * 1000;
+
+/** doc19 §14.2 八选一复合标签；「即将开始」是已就绪且临近/已过开课时间的展示态，不落库。 */
+export function computeSessionStatusLabel(
+  state: TeachingSessionState,
+  workState: SessionWorkState,
+  scheduledAt: string | null,
+  now: Date = new Date(),
+): SessionStatusLabelKey {
+  if (state === "cancelled") return "cancelled";
+  if (state === "voided") return "voided";
+  if (state === "started") return "live";
+  if (state === "ended") return workState === "completed" ? "completed" : "ended_pending";
+  if (workState === "ready") {
+    const dueInMs = scheduledAt ? new Date(scheduledAt).getTime() - now.getTime() : Infinity;
+    return dueInMs <= IMMINENT_WINDOW_MS ? "imminent" : "scheduled_ready";
+  }
+  return "scheduled_not_ready";
 }

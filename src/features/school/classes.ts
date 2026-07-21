@@ -1,10 +1,19 @@
 import "server-only";
 
 import { getLectureWorkspaceDetail } from "./curriculum/lecture-workspace-detail";
+import type { OverlaySlot } from "./courseware-overlay";
 import { getMyPerms } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { resolveClassroomCapabilities, resolveSessionCapabilities } from "./teaching-operations/capabilities";
-import { deriveSessionState, resolveSessionCapabilityContext } from "./teaching-operations/scopes";
+import {
+  computeSessionStatusLabel,
+  deriveSessionState,
+  deriveSessionWorkState,
+  resolveSessionCapabilityContext,
+  type SessionPrepStatus,
+  type SessionStatusLabelKey,
+  type SessionWorkState,
+} from "./teaching-operations/scopes";
 import type {
   ClassroomCapabilities,
   ClassroomOperationalStatus,
@@ -245,6 +254,7 @@ export async function getClassroomDetailForScope(id: string): Promise<ClassroomD
       hasSessionVoid: perms.has("session.void"),
       hasAttendanceMark: perms.has("attendance.mark"),
       hasReviewWrite: perms.has("review.write"),
+      hasPostworkManage: perms.has("session.postwork.manage"),
       state,
     });
     return {
@@ -292,27 +302,71 @@ export async function getClassroomDetailForScope(id: string): Promise<ClassroomD
 }
 
 // ---------------------------------------------------------------------------
-// 课次工作区 stub（P4I-13 §13.3"统一课次点击"；深化课前/课堂/课后留给 P4I-14）
+// 课次工作区（P4I-13 §13.3"统一课次点击"落地为 stub；P4I-14 §14 深化课前/课堂/课后）
 // ---------------------------------------------------------------------------
+
+export type CoursewareTrack = "native-16x9" | "adapted-4x3";
+
+export interface SessionLeaveRequestRow {
+  id: string;
+  studentName: string;
+  reason: string;
+  status: string;
+  createdAt: string;
+}
+
+export interface SessionCompletionTaskRow {
+  id: string;
+  kind: "attendance" | "reviews" | "summary" | "assignment" | "video_review" | "followup";
+  required: boolean;
+  status: "pending" | "done" | "skipped";
+  assignedToName: string | null;
+  dueAt: string | null;
+  completedByName: string | null;
+  completedAt: string | null;
+  skipReason: string;
+}
 
 export interface SessionWorkspaceDetail {
   id: string;
   classroomId: string;
   classroomName: string;
+  lectureId: string | null;
+  lectureObjectives: string;
   no: number | null;
   name: string;
   scheduledAt: string | null;
+  durationMin: number | null;
   state: TeachingSessionState;
+  workState: SessionWorkState;
+  statusLabelKey: SessionStatusLabelKey;
   teacherOverrideName: string | null;
+  primaryTeacherName: string | null;
   capabilities: SessionCapabilities;
+  coursewareTrack: CoursewareTrack;
+  coursewareTrackOverride: CoursewareTrack | null;
+  coursewareFrozenAt: string | null;
+  coursewareOverlay: OverlaySlot[];
+  prepStatus: SessionPrepStatus;
+  prepAutoFrozen: boolean;
+  prepPreparedAt: string | null;
+  currentReleaseNo: number | null;
+  hasUnpublishedChanges: boolean;
+  rosterCount: number;
+  pendingLeaveRequests: SessionLeaveRequestRow[];
+  completionTasks: SessionCompletionTaskRow[];
+  postworkCompletedAt: string | null;
+  familyBriefPublishedAt: string | null;
 }
 
 interface SessionWorkspaceQueryRow {
   id: string;
   classroom_id: string;
+  lecture_id: string | null;
   lecture_no: number | null;
   title: string;
   scheduled_at: string | null;
+  duration_min: number | null;
   started_at: string | null;
   ended_at: string | null;
   deleted_at: string | null;
@@ -321,7 +375,11 @@ interface SessionWorkspaceQueryRow {
   voided_at: string | null;
   void_reason: string | null;
   teacher_override: string | null;
-  classrooms: { name: string } | null;
+  courseware_track_override: CoursewareTrack | null;
+  courseware_frozen_at: string | null;
+  courseware_overlay: OverlaySlot[] | null;
+  postwork_completed_at: string | null;
+  classrooms: { name: string; courseware_track: CoursewareTrack } | null;
   profiles: { display_name: string } | null;
 }
 
@@ -333,21 +391,71 @@ export async function getSessionWorkspaceDetail(sessionId: string): Promise<Sess
 
   const { data: session, error } = await supabase
     .from("class_sessions")
-    .select("id,classroom_id,lecture_no,title,scheduled_at,started_at,ended_at,deleted_at,cancelled_by,cancel_reason,voided_at,void_reason,teacher_override,classrooms(name),profiles!class_sessions_teacher_override_fkey(display_name)")
+    .select(
+      "id,classroom_id,lecture_id,lecture_no,title,scheduled_at,duration_min,started_at,ended_at,deleted_at," +
+        "cancelled_by,cancel_reason,voided_at,void_reason,teacher_override,courseware_track_override," +
+        "courseware_frozen_at,courseware_overlay,postwork_completed_at,classrooms(name,courseware_track)," +
+        "profiles!class_sessions_teacher_override_fkey(display_name)",
+    )
     .eq("id", sessionId)
     .maybeSingle<SessionWorkspaceQueryRow>();
   if (error) throw new Error(error.message);
   if (!session) return null;
 
-  const [{ data: assignmentRows, error: assignmentError }, perms] = await Promise.all([
+  const [
+    { data: assignmentRows, error: assignmentError },
+    { data: prepRow, error: prepError },
+    { data: leaveRows, error: leaveError },
+    { data: taskRows, error: taskError },
+    { data: briefRow, error: briefError },
+    { count: rosterCount, error: rosterError },
+    perms,
+  ] = await Promise.all([
     supabase
       .from("classroom_staff_assignments")
-      .select("user_id,responsibility")
+      .select("user_id,responsibility,profiles!classroom_staff_assignments_user_id_fkey(display_name)")
       .eq("classroom_id", session.classroom_id)
-      .returns<Array<{ user_id: string; responsibility: StaffResponsibility }>>(),
+      .returns<Array<{ user_id: string; responsibility: StaffResponsibility; profiles: { display_name: string } | null }>>(),
+    supabase
+      .from("session_preparations")
+      .select("status,auto_frozen,prepared_at")
+      .eq("session_id", sessionId)
+      .maybeSingle<{ status: SessionPrepStatus; auto_frozen: boolean; prepared_at: string | null }>(),
+    supabase
+      .from("session_leave_requests")
+      .select("id,reason,status,created_at,students(name)")
+      .eq("session_id", sessionId)
+      .eq("status", "pending")
+      .returns<Array<{ id: string; reason: string; status: string; created_at: string; students: { name: string } | null }>>(),
+    supabase
+      .from("session_completion_tasks")
+      .select(
+        "id,kind,required,status,due_at,completed_at,skip_reason," +
+          "assigned:profiles!session_completion_tasks_assigned_to_fkey(display_name)," +
+          "completer:profiles!session_completion_tasks_completed_by_fkey(display_name)",
+      )
+      .eq("session_id", sessionId)
+      .returns<Array<{
+        id: string;
+        kind: SessionCompletionTaskRow["kind"];
+        required: boolean;
+        status: SessionCompletionTaskRow["status"];
+        due_at: string | null;
+        completed_at: string | null;
+        skip_reason: string | null;
+        assigned: { display_name: string } | null;
+        completer: { display_name: string } | null;
+      }>>(),
+    supabase.from("session_family_briefs").select("published_at").eq("session_id", sessionId).maybeSingle<{ published_at: string | null }>(),
+    supabase.from("enrollments").select("id", { count: "exact", head: true }).eq("classroom_id", session.classroom_id).eq("status", "active"),
     getMyPerms(user.id),
   ]);
   if (assignmentError) throw new Error(assignmentError.message);
+  if (prepError) throw new Error(prepError.message);
+  if (leaveError) throw new Error(leaveError.message);
+  if (taskError) throw new Error(taskError.message);
+  if (briefError) throw new Error(briefError.message);
+  if (rosterError) throw new Error(rosterError.message);
 
   const myResponsibilities = (assignmentRows ?? []).filter((row) => row.user_id === user.id).map((row) => row.responsibility);
   const isTeaching = myResponsibilities.includes("primary_teacher") || myResponsibilities.includes("assistant_teacher");
@@ -370,19 +478,72 @@ export async function getSessionWorkspaceDetail(sessionId: string): Promise<Sess
     hasSessionVoid: perms.has("session.void"),
     hasAttendanceMark: perms.has("attendance.mark"),
     hasReviewWrite: perms.has("review.write"),
+    hasPostworkManage: perms.has("session.postwork.manage"),
     state,
   });
+
+  const resolvedTrack: CoursewareTrack = session.courseware_track_override ?? session.classrooms?.courseware_track ?? "native-16x9";
+  const workState = deriveSessionWorkState(prepRow?.status ?? null, session.postwork_completed_at, state);
+  const statusLabelKey = computeSessionStatusLabel(state, workState, session.scheduled_at);
+  const primaryTeacherName = (assignmentRows ?? []).find((row) => row.responsibility === "primary_teacher")?.profiles?.display_name ?? null;
+
+  let currentReleaseNo: number | null = null;
+  let hasUnpublishedChanges = false;
+  let lectureObjectives = "";
+  if (session.lecture_id) {
+    const lecture = await getLectureWorkspaceDetail(session.lecture_id).catch(() => null);
+    const trackState = lecture?.tracks.find((track) => track.track === resolvedTrack);
+    currentReleaseNo = trackState?.currentReleaseNo ?? null;
+    hasUnpublishedChanges = trackState?.hasUnpublishedChanges ?? false;
+    lectureObjectives = lecture?.lecture.objectives ?? "";
+  }
 
   return {
     id: session.id,
     classroomId: session.classroom_id,
     classroomName: session.classrooms?.name || "-",
+    lectureId: session.lecture_id,
+    lectureObjectives,
     no: session.lecture_no,
     name: session.title,
     scheduledAt: session.scheduled_at,
+    durationMin: session.duration_min,
     state,
+    workState,
+    statusLabelKey,
     teacherOverrideName: session.profiles?.display_name ?? null,
+    primaryTeacherName,
     capabilities: resolveSessionCapabilities(context),
+    coursewareTrack: resolvedTrack,
+    coursewareTrackOverride: session.courseware_track_override,
+    coursewareFrozenAt: session.courseware_frozen_at,
+    coursewareOverlay: session.courseware_overlay ?? [],
+    prepStatus: prepRow?.status ?? "not_started",
+    prepAutoFrozen: prepRow?.auto_frozen ?? false,
+    prepPreparedAt: prepRow?.prepared_at ?? null,
+    currentReleaseNo,
+    hasUnpublishedChanges,
+    rosterCount: rosterCount ?? 0,
+    pendingLeaveRequests: (leaveRows ?? []).map((row) => ({
+      id: row.id,
+      studentName: row.students?.name ?? "-",
+      reason: row.reason,
+      status: row.status,
+      createdAt: row.created_at,
+    })),
+    completionTasks: (taskRows ?? []).map((row) => ({
+      id: row.id,
+      kind: row.kind,
+      required: row.required,
+      status: row.status,
+      assignedToName: row.assigned?.display_name ?? null,
+      dueAt: row.due_at,
+      completedByName: row.completer?.display_name ?? null,
+      completedAt: row.completed_at,
+      skipReason: row.skip_reason ?? "",
+    })),
+    postworkCompletedAt: session.postwork_completed_at,
+    familyBriefPublishedAt: briefRow?.published_at ?? null,
   };
 }
 

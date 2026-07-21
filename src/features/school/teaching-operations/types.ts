@@ -114,9 +114,10 @@ export interface SessionCapabilities {
   canViewReport: boolean;
   canMarkAttendance: boolean;
   canWriteReview: boolean;
+  canCompletePostwork: boolean;
   reasons: Partial<Record<
     "prepare" | "live" | "reschedule" | "substitute" | "cancel" |
-    "restore" | "void" | "report" | "attendance" | "review",
+    "restore" | "void" | "report" | "attendance" | "review" | "postwork",
     string
   >>;
 }
@@ -143,6 +144,7 @@ export interface SessionCapabilityContext {
   canVoidSession: boolean;
   canMarkAttendance: boolean;
   canWriteReview: boolean;
+  canManagePostwork: boolean;
   state: TeachingSessionState;
 }
 
