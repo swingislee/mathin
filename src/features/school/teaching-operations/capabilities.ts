@@ -3,6 +3,8 @@ import type {
   ClassroomCapabilityContext,
   CourseCapabilities,
   CourseCapabilityContext,
+  LectureReviewCapabilities,
+  LectureReviewCapabilityContext,
   SessionCapabilities,
   SessionCapabilityContext,
 } from "./types";
@@ -163,4 +165,23 @@ export function resolveSessionCapabilities(context: SessionCapabilityContext): S
     canWriteReview,
     reasons,
   };
+}
+
+/**
+ * P4I-3 校对状态机（cw_lecture_workflows/cw_review_cycles）的唯一能力公式，
+ * 供 P4I-11 讲次工作区提前置灰而不是只靠调用失败兜底；每条轨道各算一份。
+ * 对齐 supabase/migrations/20260720001400_p4i3_review_workflow.sql 里各 RPC 的裸校验：
+ * submit 只接受 idle/editing/changes_requested；withdraw 要求当前提交者本人且处于 in_review；
+ * approve/reject 在 `!allowCreatorAsReviewer && 提交者是当前用户` 时禁止（FORBIDDEN_SELF_REVIEW）。
+ */
+export function resolveLectureReviewCapabilities(context: LectureReviewCapabilityContext): LectureReviewCapabilities {
+  const selfReviewBlocked = !context.allowCreatorAsReviewer && context.activeCycleCreatorId === context.currentUserId;
+  const canSubmit = context.canEditPage && ["idle", "editing", "changes_requested"].includes(context.stage);
+  const canWithdraw = context.canEditPage && context.stage === "in_review" && context.activeCycleCreatorId === context.currentUserId;
+  const canApprove = context.canReview && context.stage === "in_review" && !selfReviewBlocked;
+  const canReject = context.canReview && context.stage === "in_review" && !selfReviewBlocked;
+  const canPublishNow = context.canPublish && context.stage === "ready_to_publish";
+  const canEmergencyPublishNow = context.canEmergencyPublish;
+
+  return { canSubmit, canWithdraw, canApprove, canReject, canPublishNow, canEmergencyPublishNow };
 }

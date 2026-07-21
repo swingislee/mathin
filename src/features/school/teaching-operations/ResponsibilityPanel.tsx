@@ -25,7 +25,7 @@ export function ResponsibilityPanel({
   canManage,
   title,
 }: {
-  scopeType: "family" | "variant";
+  scopeType: "family" | "variant" | "lecture";
   scopeId: string;
   assignments: CourseAssignment[];
   staffOptions: StaffOption[];

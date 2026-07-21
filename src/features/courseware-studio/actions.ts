@@ -250,3 +250,83 @@ export async function replaceCoursewarePageImageAction(input: { pageDocId: strin
     return { ok: true, data: { affectedCount: data[0].affected_count } };
   } catch (error) { return actionError(error, ["IMAGE_BINDING_NOT_FOUND", "INVALID_IMAGE_UPLOAD", "INVALID_REPLACEMENT_SCOPE", ...COMMON_CODES]); }
 }
+
+// ---------------------------------------------------------------------------
+// P4I-11：制作/校对状态机（P4I-3 建好的六个 RPC，此前零调用方）。
+// ---------------------------------------------------------------------------
+
+const REVIEW_CODES = [
+  "PAGE_TRACK_NOT_READY",
+  "INVALID_STAGE_FOR_SUBMIT",
+  "REVIEW_CYCLE_NOT_FOUND",
+  "INVALID_CYCLE_STATUS",
+  "FORBIDDEN_SELF_REVIEW",
+  "REVIEW_NOTE_REQUIRED",
+  "NOT_READY_TO_PUBLISH",
+  "EMERGENCY_PUBLISH_DISABLED",
+  "REASON_REQUIRED",
+  ...COMMON_CODES,
+] as const;
+
+export async function submitCoursewareReviewAction(lectureId: string, track: CoursewareTrack, note: string): Promise<ActionResult<string>> {
+  try {
+    const value = parse(z.object({ lectureId: uuid, track: trackSchema, note: text(1000) }), { lectureId, track, note });
+    const { supabase } = await authorizedClient("courseware.page.edit");
+    const { data, error } = await rpc<string>(supabase, "submit_cw_review", { p_lecture_id: value.lectureId, p_track: value.track, p_note: value.note });
+    if (error) throw new Error(error.message);
+    return { ok: true, data };
+  } catch (error) { return actionError<string>(error, REVIEW_CODES); }
+}
+
+export async function withdrawCoursewareReviewAction(reviewCycleId: string): Promise<ActionResult> {
+  try {
+    const value = parse(uuid, reviewCycleId);
+    const { supabase } = await authorizedClient("courseware.page.edit");
+    const { error } = await rpc<null>(supabase, "withdraw_cw_review", { p_review_cycle_id: value });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) { return actionError(error, REVIEW_CODES); }
+}
+
+export async function approveCoursewareReviewAction(reviewCycleId: string, note: string): Promise<ActionResult<string>> {
+  try {
+    const value = parse(z.object({ reviewCycleId: uuid, note: text(1000) }), { reviewCycleId, note });
+    const { supabase } = await authorizedClient("courseware.review");
+    const { data, error } = await rpc<string>(supabase, "approve_cw_review", { p_review_cycle_id: value.reviewCycleId, p_note: value.note });
+    if (error) throw new Error(error.message);
+    return { ok: true, data };
+  } catch (error) { return actionError<string>(error, REVIEW_CODES); }
+}
+
+export async function rejectCoursewareReviewAction(reviewCycleId: string, note: string): Promise<ActionResult> {
+  try {
+    const value = parse(z.object({ reviewCycleId: uuid, note: requiredText(1000) }), { reviewCycleId, note });
+    const { supabase } = await authorizedClient("courseware.review");
+    const { error } = await rpc<null>(supabase, "reject_cw_review", { p_review_cycle_id: value.reviewCycleId, p_note: value.note });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) { return actionError(error, REVIEW_CODES); }
+}
+
+export async function publishCoursewareReviewCycleAction(lectureId: string, track: CoursewareTrack, note: string): Promise<ActionResult<{ releaseId: string }>> {
+  try {
+    const value = parse(z.object({ lectureId: uuid, track: trackSchema, note: text(1000) }), { lectureId, track, note });
+    const { supabase } = await authorizedClient("courseware.release.publish");
+    const { data, error } = await rpc<string>(supabase, "publish_cw_review_cycle", { p_lecture_id: value.lectureId, p_track: value.track, p_note: value.note });
+    if (error) throw new Error(error.message);
+    return { ok: true, data: { releaseId: data } };
+  } catch (error) { return actionError(error, REVIEW_CODES); }
+}
+
+export async function emergencyPublishCoursewareReviewAction(lectureId: string, track: CoursewareTrack, reason: string, note: string): Promise<ActionResult<{ releaseId: string }>> {
+  try {
+    const value = parse(
+      z.object({ lectureId: uuid, track: trackSchema, reason: requiredText(500), note: text(1000) }),
+      { lectureId, track, reason, note },
+    );
+    const { supabase } = await authorizedClient("courseware.emergency_publish");
+    const { data, error } = await rpc<string>(supabase, "emergency_publish_cw_review", { p_lecture_id: value.lectureId, p_track: value.track, p_reason: value.reason, p_note: value.note });
+    if (error) throw new Error(error.message);
+    return { ok: true, data: { releaseId: data } };
+  } catch (error) { return actionError(error, REVIEW_CODES); }
+}

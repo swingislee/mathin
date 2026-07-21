@@ -145,3 +145,26 @@ export interface SessionCapabilityContext {
   canWriteReview: boolean;
   state: TeachingSessionState;
 }
+
+export type CoursewareWorkflowStage = "idle" | "editing" | "in_review" | "changes_requested" | "ready_to_publish";
+
+export interface LectureReviewCapabilities {
+  canSubmit: boolean;
+  canWithdraw: boolean;
+  canApprove: boolean;
+  canReject: boolean;
+  canPublishNow: boolean;
+  canEmergencyPublishNow: boolean;
+}
+
+/** P4I-3 状态机的裸 perm 校验按 stage/自校政策折成 UI 可提前置灰的动作能力；每条轨道各算一份。 */
+export interface LectureReviewCapabilityContext {
+  canEditPage: boolean;
+  canReview: boolean;
+  canPublish: boolean;
+  canEmergencyPublish: boolean;
+  stage: CoursewareWorkflowStage;
+  activeCycleCreatorId: string | null;
+  allowCreatorAsReviewer: boolean;
+  currentUserId: string;
+}

@@ -34,13 +34,19 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-/** 课件审阅/编辑工作区需要独立的桌面端面板布局，其余 Dashboard 页面统一使用全宽壳层。 */
-function isCoursewareWorkspace(pathname: string): boolean {
+/**
+ * 课件审阅/编辑工作区与讲次工作区需要独立的桌面端面板布局（内部单一滚动区，
+ * 不与 <main> 争夺滚动），其余 Dashboard 页面统一使用全宽壳层。讲次工作区以
+ * 覆盖层形式打开时 `usePathname()` 会报告新 URL，但 `children` 槽仍是旧页面
+ * 的缓存渲染——此时切到 xl:overflow-hidden 对旧页面视觉无影响（旧页面被
+ * Sheet 遮挡），且 ObjectOverlay 自己在开关时快照/恢复滚动位置，不会丢失。
+ */
+function isPanelWorkspace(pathname: string): boolean {
   const segments = pathname.split("/").filter(Boolean);
-  return segments[0] === "dashboard"
-    && segments[1] === "courseware"
-    && segments[2] !== "assets"
-    && segments.length >= 4;
+  if (segments[0] !== "dashboard") return false;
+  if (segments[1] === "courseware" && segments[2] !== "assets" && segments.length >= 4) return true;
+  if (segments[1] === "curriculum" && segments[2] === "lectures" && segments.length >= 4) return true;
+  return false;
 }
 
 /** 给每个导航项标注是否需要在它前面插入分组标题（上一项的 group 不同时才插）。 */
@@ -91,7 +97,7 @@ export function DashboardShell({ nav, children }: { nav: readonly SchoolNavItem[
   const shellT = useTranslations("dashboard.shell");
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const workspace = isCoursewareWorkspace(pathname);
+  const workspace = isPanelWorkspace(pathname);
 
   return (
     // 内框 overflow-hidden：aside 与 main 各自独立滚动，祖先已 h-dvh，故 window 永不滚动。

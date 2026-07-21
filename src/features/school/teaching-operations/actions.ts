@@ -168,7 +168,7 @@ export async function transitionCourseFamilyStatusAction(familyId: string, targe
   }
 }
 
-const scopeSchema = z.object({ scopeType: z.enum(["family", "variant"]), scopeId: uuid, userId: uuid });
+const scopeSchema = z.object({ scopeType: z.enum(["family", "variant", "lecture"]), scopeId: uuid, userId: uuid });
 const ASSIGNMENT_CODES = [
   ...COMMON_CODES,
   "INVALID_SCOPE",
@@ -180,7 +180,7 @@ const ASSIGNMENT_CODES = [
   "ASSIGNMENT_NOT_FOUND",
 ] as const;
 
-export async function assignCourseOwnerAction(scopeType: "family" | "variant", scopeId: string, userId: string): Promise<ActionResult> {
+export async function assignCourseOwnerAction(scopeType: "family" | "variant" | "lecture", scopeId: string, userId: string): Promise<ActionResult> {
   try {
     const value = parse(scopeSchema, { scopeType, scopeId, userId });
     const { supabase } = await authorizedClient("course.assignment.manage");
@@ -197,14 +197,14 @@ export async function assignCourseOwnerAction(scopeType: "family" | "variant", s
 }
 
 const collaboratorSchema = z.object({
-  scopeType: z.enum(["family", "variant"]),
+  scopeType: z.enum(["family", "variant", "lecture"]),
   scopeId: uuid,
   userId: uuid,
   responsibility: z.enum(["editor", "reviewer"]),
 });
 
 export async function addCourseCollaboratorAction(
-  scopeType: "family" | "variant",
+  scopeType: "family" | "variant" | "lecture",
   scopeId: string,
   userId: string,
   responsibility: "editor" | "reviewer",

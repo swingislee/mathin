@@ -26,7 +26,7 @@ function hrefFor(tab: CoursewareTaskTab, query: string) {
 }
 
 function workbenchHref(item: CoursewareTaskItem) {
-  return `/dashboard/courseware/lectures/${item.lectureId}?track=${item.track}`;
+  return `/dashboard/curriculum/lectures/${item.lectureId}?track=${item.track}`;
 }
 
 export async function CoursewareTaskQueue({ locale, tab, query }: Props) {

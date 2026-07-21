@@ -4,7 +4,6 @@ import { notFound, permanentRedirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { CourseLecturePreviewDialog } from "@/features/school/teaching-operations/CourseLecturePreviewDialog";
 import { findCourseFamilyForLegacyVariant, getCourseFamilyDetail, isUuid } from "@/features/school/teaching-operations/course-family-detail";
 import { ResponsibilityPanel } from "@/features/school/teaching-operations/ResponsibilityPanel";
 import { StatusOverflowMenu } from "@/features/school/teaching-operations/StatusOverflowMenu";
@@ -19,7 +18,6 @@ import type { SelectedCourseVariant } from "@/features/school/teaching-operation
 import { ObjectBar } from "@/features/school/stage/ObjectBar";
 import { ObjectWorkspace } from "@/features/school/stage/ObjectWorkspace";
 import { listStaffOptions } from "@/features/school/classes";
-import { loadLecturePreview, parseCoursewareTrack } from "@/features/courseware-studio/data";
 import { Link } from "@/i18n/navigation";
 import { getMyPerms, requirePerm } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -31,11 +29,6 @@ function first(value: string | string[] | undefined) {
 
 function familyHref(familyId: string, variantId: string) {
   return `/dashboard/courses/${familyId}?variant=${variantId}`;
-}
-
-function parsePage(value: string | undefined) {
-  const page = Number(value);
-  return Number.isInteger(page) && page > 0 ? page : 1;
 }
 
 export default async function CourseDetailPage({
@@ -133,14 +126,6 @@ async function CourseFamilyProductPage({
   const selectedVariant: SelectedCourseVariant = detail.selectedVariant;
   const canCreateClass = permissions.has("class.create");
   const canEditCourseware = permissions.has("courseware.page.edit");
-  const lectureId = first(rawSearchParams.lecture);
-  const requestedLecture = detail.teachingPlan.find((lecture) => lecture.id === lectureId);
-  const baseHref = familyHref(detail.family.id, selectedVariant.id);
-  const track = parseCoursewareTrack(rawSearchParams.track);
-  const preview = requestedLecture?.hasRelease
-    ? await loadLecturePreview(requestedLecture.id, track, parsePage(first(rawSearchParams.page)))
-    : null;
-  const validPreview = preview?.lecture.courseId === selectedVariant.id ? preview : null;
 
   const variantTrashed = Boolean(detail.variants.find((variant) => variant.id === selectedVariant.id)?.trashedAt);
   const capabilities = resolveCourseCapabilities({
@@ -181,8 +166,7 @@ async function CourseFamilyProductPage({
         </div>
       </div>
     </div>
-    {requestedLecture && !validPreview && <section className="mt-5 rounded-2xl border border-dashed border-line bg-card p-5"><h2 className="font-medium text-ink">{t("coursewareNotReleased")}</h2><p className="mt-1 text-sm text-muted">{t("coursewareNotReleasedHint")}</p><Link href={baseHref} className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "mt-4")}>{t("closePreview")}</Link></section>}
-    <TeachingPlan familyId={detail.family.id} selectedVariant={selectedVariant} teachingPlan={detail.teachingPlan} canManage={canManage} />
+    <TeachingPlan teachingPlan={detail.teachingPlan} canManage={canManage} />
     <div className="mt-6 grid gap-4 lg:grid-cols-2">
       {capabilities.canViewUsingClasses && <UsagePanel usage={detail.usage} />}
       <ResponsibilityPanel
@@ -194,6 +178,5 @@ async function CourseFamilyProductPage({
         title={t("variantResponsibility")}
       />
     </div>
-    {validPreview && <CourseLecturePreviewDialog preview={validPreview} baseHref={baseHref} canEditCourseware={canEditCourseware} />}
   </ObjectWorkspace>;
 }

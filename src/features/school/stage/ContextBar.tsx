@@ -1,3 +1,5 @@
+"use client";
+
 import type { ReactNode } from "react";
 import { Link } from "@/i18n/navigation";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
