@@ -111,7 +111,7 @@ export function resolveWorkItemHref(item: WorkItemRow): string {
   switch (item.primaryObjectType) {
     case "lecture": {
       const track = jsonString(item.routeParams, "track") ?? "native-16x9";
-      return `/dashboard/courseware/lectures/${item.primaryObjectId}?track=${track}`;
+      return `/dashboard/curriculum/lectures/${item.primaryObjectId}?track=${track}`;
     }
     case "classroom":
       return `/dashboard/classes/${item.primaryObjectId}`;

@@ -17,5 +17,5 @@ export default async function LegacyCoursewarePageEditorRoute({
   const context = await loadCoursewareWorkbenchContext(lectureId);
   if (!context || context.course.id !== courseId) notFound();
   const track = parseCoursewareTrack(query.track);
-  permanentRedirect(`/dashboard/courseware/lectures/${lectureId}?mode=edit&page=${pageId}&track=${track}`);
+  permanentRedirect(`/studio/courseware/${lectureId}?page=${pageId}&track=${track}`);
 }

@@ -14,5 +14,5 @@ export default async function LegacyCourseTemplateRoute({
   await requireAnyPerm(locale, COURSEWARE_STUDIO_PERMS);
   const context = await loadCoursewareWorkbenchContext(lectureId);
   if (!context || context.course.id !== id) notFound();
-  permanentRedirect(`/dashboard/courseware/lectures/${lectureId}`);
+  permanentRedirect(`/dashboard/curriculum/lectures/${lectureId}`);
 }

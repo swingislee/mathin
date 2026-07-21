@@ -3,7 +3,7 @@ import { setRequestLocale } from "next-intl/server";
 import { COURSEWARE_STUDIO_PERMS, loadCoursewareWorkbenchContext, parseCoursewareTrack } from "@/features/courseware-studio/data";
 import { requireAnyPerm } from "@/lib/auth";
 
-/** P4H-6 compatibility shell: the former preview route now points at the one workbench. */
+/** P4H-6/P4I-12 compatibility shell: the former preview route now points at the lecture workspace. */
 export default async function LegacyCoursewarePreviewRoute({
   params,
   searchParams,
@@ -17,5 +17,5 @@ export default async function LegacyCoursewarePreviewRoute({
   const context = await loadCoursewareWorkbenchContext(lectureId);
   if (!context || context.course.id !== courseId) notFound();
   const track = parseCoursewareTrack(query.track);
-  permanentRedirect(`/dashboard/courseware/lectures/${lectureId}?track=${track}`);
+  permanentRedirect(`/dashboard/curriculum/lectures/${lectureId}?track=${track}`);
 }
