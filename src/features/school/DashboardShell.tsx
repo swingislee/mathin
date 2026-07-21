@@ -46,6 +46,7 @@ function isPanelWorkspace(pathname: string): boolean {
   if (segments[0] !== "dashboard") return false;
   if (segments[1] === "courseware" && segments[2] !== "assets" && segments.length >= 4) return true;
   if (segments[1] === "curriculum" && segments[2] === "lectures" && segments.length >= 4) return true;
+  if (segments[1] === "sessions" && segments.length >= 3) return true;
   return false;
 }
 

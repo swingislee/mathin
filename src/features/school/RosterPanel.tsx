@@ -14,14 +14,46 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useRouter } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { selectClass } from "./controls";
 import { enrollStudentAction, listClassroomOptions, searchStudentsForEnroll, transferStudentAction, withdrawStudentAction } from "./actions/classes";
 import { type StudentSearchResult } from "./actions/types";
-import type { RosterRow } from "./classes";
+import type { RosterRow, RosterSignals, RosterViewerRole } from "./classes";
 
-export function RosterPanel({ classroomId, roster, canManage }: { classroomId: string; roster: RosterRow[]; canManage: boolean }) {
+/** 角色默认列（doc19 §13.4）：教师看出勤/作业/学习异常，学辅看请假/欠费，主管看综合异常，其余角色沿用既有教务列。 */
+function RosterSignalColumns({ role, signals }: { role: RosterViewerRole; signals: RosterSignals | undefined }) {
+  const t = useTranslations("school.classes");
+  if (!signals) return null;
+  if (role === "teacher") {
+    const anomaly = signals.recentAbsences >= 2;
+    return <span className="flex shrink-0 items-center gap-2 text-xs text-muted">
+      <span>{t("rosterAttendance", { count: signals.recentAbsences })}</span>
+      <span>{t("rosterSubmissions", { count: signals.pendingSubmissions })}</span>
+      {anomaly && <span className="rounded-full bg-rose/10 px-2 py-0.5 text-rose">{t("rosterAnomaly")}</span>}
+    </span>;
+  }
+  if (role === "support") {
+    return <span className="flex shrink-0 items-center gap-2 text-xs text-muted">
+      {signals.pendingLeaveRequests > 0 && <span className="rounded-full bg-cheek/30 px-2 py-0.5 text-ink">{t("rosterLeaveRequests", { count: signals.pendingLeaveRequests })}</span>}
+      {signals.accountBalance < 0 && <span className="rounded-full bg-rose/10 px-2 py-0.5 text-rose">{t("rosterArrears")}</span>}
+    </span>;
+  }
+  if (role === "oversight") {
+    const flags = [signals.recentAbsences >= 2, signals.pendingLeaveRequests > 0, signals.accountBalance < 0].filter(Boolean).length;
+    if (flags === 0) return null;
+    return <span className="shrink-0 rounded-full bg-rose/10 px-2 py-0.5 text-xs text-rose">{t("rosterCompositeAnomaly", { count: flags })}</span>;
+  }
+  return null;
+}
+
+export function RosterPanel({ classroomId, roster, canManage, viewerRole, signals }: {
+  classroomId: string;
+  roster: RosterRow[];
+  canManage: boolean;
+  viewerRole: RosterViewerRole;
+  signals: Record<string, RosterSignals>;
+}) {
   const t = useTranslations("school.classes");
   const router = useRouter();
 
@@ -98,9 +130,12 @@ export function RosterPanel({ classroomId, roster, canManage }: { classroomId: s
         <ul className="mt-4 divide-y divide-line">
           {roster.map((row) => (
             <li key={row.studentId} className="flex items-center gap-3 py-2.5 text-sm">
-              <span className="min-w-0 flex-1 truncate">{row.studentName}</span>
+              <Link href={`/dashboard/students/${row.studentId}`} className="min-w-0 flex-1 truncate hover:text-crater hover:underline">
+                {row.studentName}
+              </Link>
               {!row.hasAccount && <span className="rounded-full bg-line/50 px-2 py-0.5 text-xs text-muted">{t("noAccount")}</span>}
               {row.hasAccount && !row.isMember && <span className="rounded-full bg-cheek/30 px-2 py-0.5 text-xs text-ink">{t("notInClassroom")}</span>}
+              <RosterSignalColumns role={viewerRole} signals={signals[row.studentId]} />
               {canManage && (
                 <>
                   <button type="button" disabled={pending} onClick={() => void openTransfer(row)} className="text-xs text-muted underline underline-offset-2 hover:text-ink disabled:opacity-40">

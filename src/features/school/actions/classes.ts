@@ -419,14 +419,79 @@ export async function voidSessionAction(sessionId: string, reason = ""): Promise
   }
 }
 
-export async function archiveClassroomAction(classroomId: string, archived: boolean): Promise<void> {
-  const value = parse(z.object({ classroomId: uuid, archived: z.boolean() }), { classroomId, archived });
-  const { supabase } = await authorizedClient("class.manage");
-  const { error } = await supabase.rpc("archive_classroom", {
-    p_classroom_id: value.classroomId,
-    p_archived: value.archived,
-  });
-  if (error) throw new Error(error.message);
+// P4I-13：班级生命周期（archive_classroom/transition_classroom_status/trash_classroom/
+// restore_classroom）迁移期就已完整实现，本次是首次接 Server Action + UI（设置 Sheet）。
+// archive_classroom 此前零消费者、返回 void 且不捕获异常，一并改成 ActionResult 与其余三个一致。
+const LIFECYCLE_CODES = [
+  "FORBIDDEN_SCOPE",
+  "CLASSROOM_NOT_FOUND",
+  "INVALID_TRANSITION",
+  "CLASSROOM_PREP_INCOMPLETE",
+  "CLASSROOM_HAS_ACTIVE_ENROLLMENTS",
+  "CLASSROOM_HAS_HISTORY",
+  ...COMMON_CODES,
+] as const;
+
+const transitionClassroomStatusSchema = z.object({
+  classroomId: uuid,
+  target: z.enum(["planning", "active", "completed"]),
+});
+
+export async function transitionClassroomStatusAction(
+  classroomId: string,
+  target: "planning" | "active" | "completed",
+): Promise<ActionResult> {
+  try {
+    const value = parse(transitionClassroomStatusSchema, { classroomId, target });
+    const { supabase } = await authorizedClient("class.manage");
+    const { error } = await supabase.rpc("transition_classroom_status", {
+      p_classroom_id: value.classroomId,
+      p_target: value.target,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, LIFECYCLE_CODES);
+  }
+}
+
+export async function trashClassroomAction(classroomId: string): Promise<ActionResult> {
+  try {
+    const id = parse(uuid, classroomId);
+    const { supabase } = await authorizedClient("class.manage");
+    const { error } = await supabase.rpc("trash_classroom", { p_classroom_id: id });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, LIFECYCLE_CODES);
+  }
+}
+
+export async function restoreClassroomAction(classroomId: string): Promise<ActionResult> {
+  try {
+    const id = parse(uuid, classroomId);
+    const { supabase } = await authorizedClient("class.manage");
+    const { error } = await supabase.rpc("restore_classroom", { p_classroom_id: id });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, LIFECYCLE_CODES);
+  }
+}
+
+export async function archiveClassroomAction(classroomId: string, archived: boolean): Promise<ActionResult> {
+  try {
+    const value = parse(z.object({ classroomId: uuid, archived: z.boolean() }), { classroomId, archived });
+    const { supabase } = await authorizedClient("class.manage");
+    const { error } = await supabase.rpc("archive_classroom", {
+      p_classroom_id: value.classroomId,
+      p_archived: value.archived,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, LIFECYCLE_CODES);
+  }
 }
 
 const updateClassroomSchema = z.object({

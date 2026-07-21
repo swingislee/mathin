@@ -1,5 +1,6 @@
 import "server-only";
 
+import { getLectureWorkspaceDetail } from "./curriculum/lecture-workspace-detail";
 import { getMyPerms } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { resolveClassroomCapabilities, resolveSessionCapabilities } from "./teaching-operations/capabilities";
@@ -12,6 +13,7 @@ import type {
   StaffResponsibility,
   TeachingSessionState,
 } from "./teaching-operations/types";
+import type { WorkItemRow } from "./stage/types";
 
 export interface StaffOption {
   id: string;
@@ -64,6 +66,9 @@ export interface SessionRow {
   capabilities: SessionCapabilities;
 }
 
+/** 学生区域默认列角色（doc19 §13.4）：一人可能同时满足多种，取最高优先级只展示一种，不做多列并陈。 */
+export type RosterViewerRole = "registrar" | "teacher" | "support" | "oversight";
+
 export interface ClassroomDetail {
   id: string;
   name: string;
@@ -81,6 +86,7 @@ export interface ClassroomDetail {
   learningSupportNames: string[];
   staffAssignments: StaffAssignmentSummary[];
   capabilities: ClassroomCapabilities;
+  viewerRole: RosterViewerRole;
   roster: RosterRow[];
   sessions: SessionRow[];
 }
@@ -195,6 +201,12 @@ export async function getClassroomDetailForScope(id: string): Promise<ClassroomD
     classroomTrashed: classroom.trashed_at !== null,
   });
 
+  const viewerRole: RosterViewerRole = hasClassViewAll ? "oversight"
+    : isManagement ? "registrar"
+    : isTeaching ? "teacher"
+    : isSupport ? "support"
+    : "registrar";
+
   const primaryTeacherName = assignments.find((row) => row.responsibility === "primary_teacher")?.profiles?.display_name ?? null;
   const learningSupportNames = assignments
     .filter((row) => row.responsibility === "learning_support")
@@ -273,7 +285,246 @@ export async function getClassroomDetailForScope(id: string): Promise<ClassroomD
     learningSupportNames,
     staffAssignments,
     capabilities: classroomCapabilities,
+    viewerRole,
     roster,
     sessions,
   };
+}
+
+// ---------------------------------------------------------------------------
+// 课次工作区 stub（P4I-13 §13.3"统一课次点击"；深化课前/课堂/课后留给 P4I-14）
+// ---------------------------------------------------------------------------
+
+export interface SessionWorkspaceDetail {
+  id: string;
+  classroomId: string;
+  classroomName: string;
+  no: number | null;
+  name: string;
+  scheduledAt: string | null;
+  state: TeachingSessionState;
+  teacherOverrideName: string | null;
+  capabilities: SessionCapabilities;
+}
+
+interface SessionWorkspaceQueryRow {
+  id: string;
+  classroom_id: string;
+  lecture_no: number | null;
+  title: string;
+  scheduled_at: string | null;
+  started_at: string | null;
+  ended_at: string | null;
+  deleted_at: string | null;
+  cancelled_by: string | null;
+  cancel_reason: string | null;
+  voided_at: string | null;
+  void_reason: string | null;
+  teacher_override: string | null;
+  classrooms: { name: string } | null;
+  profiles: { display_name: string } | null;
+}
+
+/** 单课次版的 `getClassroomDetailForScope`；RLS（sessions_select_*）已把无关用户挡在结果之外。 */
+export async function getSessionWorkspaceDetail(sessionId: string): Promise<SessionWorkspaceDetail | null> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data: session, error } = await supabase
+    .from("class_sessions")
+    .select("id,classroom_id,lecture_no,title,scheduled_at,started_at,ended_at,deleted_at,cancelled_by,cancel_reason,voided_at,void_reason,teacher_override,classrooms(name),profiles!class_sessions_teacher_override_fkey(display_name)")
+    .eq("id", sessionId)
+    .maybeSingle<SessionWorkspaceQueryRow>();
+  if (error) throw new Error(error.message);
+  if (!session) return null;
+
+  const [{ data: assignmentRows, error: assignmentError }, perms] = await Promise.all([
+    supabase
+      .from("classroom_staff_assignments")
+      .select("user_id,responsibility")
+      .eq("classroom_id", session.classroom_id)
+      .returns<Array<{ user_id: string; responsibility: StaffResponsibility }>>(),
+    getMyPerms(user.id),
+  ]);
+  if (assignmentError) throw new Error(assignmentError.message);
+
+  const myResponsibilities = (assignmentRows ?? []).filter((row) => row.user_id === user.id).map((row) => row.responsibility);
+  const isTeaching = myResponsibilities.includes("primary_teacher") || myResponsibilities.includes("assistant_teacher");
+  const hasClassViewAll = perms.has("class.view.all");
+  const hasClassManageScope = perms.has("class.manage") && (hasClassViewAll || isTeaching);
+
+  const state = deriveSessionState({
+    startedAt: session.started_at,
+    endedAt: session.ended_at,
+    deletedAt: session.deleted_at,
+    cancelledBy: session.cancelled_by,
+    voidedAt: session.voided_at,
+  });
+  const context = resolveSessionCapabilityContext({
+    responsibilities: myResponsibilities,
+    isTeacherOverride: session.teacher_override === user.id,
+    hasClassManageScope,
+    hasClassViewAll,
+    hasCourseManage: perms.has("course.manage"),
+    hasSessionVoid: perms.has("session.void"),
+    hasAttendanceMark: perms.has("attendance.mark"),
+    hasReviewWrite: perms.has("review.write"),
+    state,
+  });
+
+  return {
+    id: session.id,
+    classroomId: session.classroom_id,
+    classroomName: session.classrooms?.name || "-",
+    no: session.lecture_no,
+    name: session.title,
+    scheduledAt: session.scheduled_at,
+    state,
+    teacherOverrideName: session.profiles?.display_name ?? null,
+    capabilities: resolveSessionCapabilities(context),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// 课次五分组、角色列信号、教学准备、运营记录（P4I-13 §13）
+// ---------------------------------------------------------------------------
+
+export interface SessionGroups {
+  next: SessionRow | null;
+  needsAttention: SessionRow[];
+  upcoming: SessionRow[];
+  ended: SessionRow[];
+  cancelled: SessionRow[];
+}
+
+/** 未开始/进行中的课次按时间升序；没有排课时间的排到最后。 */
+function sortLiveSessions(sessions: readonly SessionRow[]): SessionRow[] {
+  return sessions
+    .filter((row) => row.state === "scheduled" || row.state === "started")
+    .slice()
+    .sort((a, b) => {
+      if (!a.scheduledAt) return 1;
+      if (!b.scheduledAt) return -1;
+      return new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime();
+    });
+}
+
+/** 固定五分组（doc19 §13.3）：下一课单条置顶；"需要处理"来自统一工作项投影而不是另起判断逻辑。 */
+export function groupClassroomSessions(sessions: readonly SessionRow[], workItems: readonly WorkItemRow[]): SessionGroups {
+  const attentionSessionIds = new Set(
+    workItems
+      .filter((item) => item.primaryObjectType === "session" && item.urgencyBucket !== "backlog")
+      .map((item) => item.primaryObjectId),
+  );
+  const cancelled = sessions.filter((row) => row.state === "cancelled" || row.state === "voided");
+  const ended = sessions.filter((row) => row.state === "ended");
+  const live = sortLiveSessions(sessions);
+  const next = live[0] ?? null;
+  const rest = live.slice(1);
+  const needsAttention = rest.filter((row) => attentionSessionIds.has(row.id));
+  const upcoming = rest.filter((row) => !attentionSessionIds.has(row.id));
+  return { next, needsAttention, upcoming, ended, cancelled };
+}
+
+export interface RosterSignals {
+  recentAbsences: number;
+  pendingSubmissions: number;
+  gradedAvg: number | null;
+  pendingLeaveRequests: number;
+  accountBalance: number;
+}
+
+interface RosterSignalsRow {
+  student_id: string;
+  recent_absences: number;
+  pending_submissions: number;
+  graded_avg: number | null;
+  pending_leave_requests: number;
+  account_balance: number;
+}
+
+/** 出勤/作业/请假/欠费信号（`get_classroom_roster_signals`，P4I-13）；assignments/submissions/student_accounts
+ * 各自的 RLS 走的是与 classroom_staff_assignments 不同的模型（旧 classroom_members / finance 权限），
+ * 直查会被挡，统一走这个 SECURITY DEFINER RPC。 */
+export async function getClassroomRosterSignals(classroomId: string): Promise<Map<string, RosterSignals>> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("get_classroom_roster_signals", { p_classroom_id: classroomId }).returns<RosterSignalsRow[]>();
+  if (error) throw new Error(error.message);
+  const map = new Map<string, RosterSignals>();
+  for (const row of data ?? []) {
+    map.set(row.student_id, {
+      recentAbsences: row.recent_absences,
+      pendingSubmissions: row.pending_submissions,
+      gradedAvg: row.graded_avg,
+      pendingLeaveRequests: row.pending_leave_requests,
+      accountBalance: row.account_balance,
+    });
+  }
+  return map;
+}
+
+export interface TeachingReadinessRow {
+  sessionId: string;
+  lectureNo: number | null;
+  lectureName: string;
+  prepStatus: "not_started" | "in_progress" | "ready" | null;
+  workflowStage: string | null;
+  hasUnpublishedChanges: boolean;
+  currentReleaseNo: number | null;
+  teacherOverrideName: string | null;
+  coursewareTrackOverride: "native-16x9" | "adapted-4x3" | null;
+}
+
+/** 接下来几节课的备课状态 + 课件风险（`session_preparations` + `getLectureWorkspaceDetail`，均为首次 TS 消费）。 */
+export async function getClassroomTeachingReadiness(
+  defaultTrack: "native-16x9" | "adapted-4x3",
+  sessions: readonly SessionRow[],
+): Promise<TeachingReadinessRow[]> {
+  const targets = sortLiveSessions(sessions).filter((row) => row.lectureId).slice(0, 3);
+  if (targets.length === 0) return [];
+
+  const supabase = await createClient();
+  const { data: prepRows, error: prepError } = await supabase
+    .from("session_preparations")
+    .select("session_id,status")
+    .in("session_id", targets.map((row) => row.id))
+    .returns<Array<{ session_id: string; status: "not_started" | "in_progress" | "ready" }>>();
+  if (prepError) throw new Error(prepError.message);
+  const prepBySession = new Map((prepRows ?? []).map((row) => [row.session_id, row.status]));
+
+  const details = await Promise.all(targets.map((row) => getLectureWorkspaceDetail(row.lectureId!).catch(() => null)));
+
+  return targets.map((row, index) => {
+    const detail = details[index];
+    const effectiveTrack = row.coursewareTrackOverride ?? defaultTrack;
+    const trackState = detail?.tracks.find((track) => track.track === effectiveTrack) ?? null;
+    return {
+      sessionId: row.id,
+      lectureNo: row.no,
+      lectureName: row.name,
+      prepStatus: prepBySession.get(row.id) ?? null,
+      workflowStage: trackState?.stage ?? null,
+      hasUnpublishedChanges: trackState?.hasUnpublishedChanges ?? false,
+      currentReleaseNo: trackState?.currentReleaseNo ?? null,
+      teacherOverrideName: row.teacherOverrideName,
+      coursewareTrackOverride: row.coursewareTrackOverride,
+    };
+  });
+}
+
+export interface OperationalEventRow {
+  eventType: string;
+  occurredAt: string;
+  actorName: string;
+}
+
+/** 运营记录时间线（`list_classroom_operational_events`，P4I-13）。 */
+export async function getClassroomOperationalEvents(classroomId: string): Promise<OperationalEventRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .rpc("list_classroom_operational_events", { p_classroom_id: classroomId })
+    .returns<Array<{ event_type: string; occurred_at: string; actor_name: string }>>();
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row) => ({ eventType: row.event_type, occurredAt: row.occurred_at, actorName: row.actor_name }));
 }

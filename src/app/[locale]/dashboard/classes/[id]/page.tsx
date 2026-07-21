@@ -4,18 +4,29 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { CircleAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { ClassroomEditor } from "@/features/school/ClassroomEditor";
-import { ClassroomStaffDialog } from "@/features/school/ClassroomStaffDialog";
-import { getClassroomDetailForScope, listStaffOptions } from "@/features/school/classes";
-import { ConsumeRuleDialog } from "@/features/school/ConsumeRuleDialog";
-import { CoursewareTrackSettings } from "@/features/school/CoursewareTrackSettings";
-import { SchoolPageHeader } from "@/features/school/PageHeader";
+import { ClassroomSettingsSheet } from "@/features/school/ClassroomSettingsSheet";
+import {
+  getClassroomDetailForScope,
+  getClassroomOperationalEvents,
+  getClassroomRosterSignals,
+  getClassroomTeachingReadiness,
+  groupClassroomSessions,
+  listStaffOptions,
+  type OperationalEventRow,
+  type RosterSignals,
+  type TeachingReadinessRow,
+} from "@/features/school/classes";
+import { OperationalRecordsPanel } from "@/features/school/OperationalRecordsPanel";
 import { RosterPanel } from "@/features/school/RosterPanel";
 import { SessionGroupList } from "@/features/school/SessionGroupList";
 import { SessionManagementDrawer } from "@/features/school/SessionManagementDrawer";
+import { ObjectBar } from "@/features/school/stage/ObjectBar";
+import { ContextBar } from "@/features/school/stage/ContextBar";
+import { ObjectWorkspace } from "@/features/school/stage/ObjectWorkspace";
+import { TeachingReadinessPanel } from "@/features/school/TeachingReadinessPanel";
+import { listMyWorkItems } from "@/features/school/work-items";
 import { Link } from "@/i18n/navigation";
 import { getMyPerms, requireUser } from "@/lib/auth";
-import { cn } from "@/lib/utils";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const TABS = ["sessions", "students", "readiness", "records"] as const;
@@ -55,15 +66,17 @@ async function ClassDetailBody({
   const [{ id }, rawSearchParams, user] = await Promise.all([params, searchParams, requireUser(locale)]);
   if (!UUID_PATTERN.test(id)) notFound();
 
-  const [t, classroom, perms] = await Promise.all([
+  const [t, classroom, perms, allWorkItems] = await Promise.all([
     getTranslations("school.classes"),
     getClassroomDetailForScope(id),
     getMyPerms(user.id),
+    listMyWorkItems(),
   ]);
   if (!classroom) notFound();
 
   const isManagementView = classroom.capabilities.canManageClassroom;
   const isTeachingView = classroom.capabilities.canPrepareTeaching;
+  const canViewClassroom = classroom.capabilities.canViewClassroom;
   const defaultTab: Tab = isManagementView || isTeachingView ? "sessions" : "students";
   const requestedTab = first(rawSearchParams.tab);
   const activeTab: Tab = TABS.includes(requestedTab as Tab) ? (requestedTab as Tab) : defaultTab;
@@ -74,76 +87,91 @@ async function ClassDetailBody({
     : null;
   const closeHref = `/dashboard/classes/${id}?tab=${activeTab}`;
   const staffOptions = isManagementView ? await listStaffOptions() : [];
-  const anomalyCount = classroom.sessions.filter((session) => session.state === "scheduled" && session.scheduledAt && new Date(session.scheduledAt) < new Date()).length;
+
+  const classroomSessionIds = new Set(classroom.sessions.map((session) => session.id));
+  const sessionWorkItems = allWorkItems.filter((item) => item.primaryObjectType === "session" && classroomSessionIds.has(item.primaryObjectId));
+  const groups = groupClassroomSessions(classroom.sessions, sessionWorkItems);
+  const anomalyCount = groups.needsAttention.length;
+
+  // teachingReadiness 不只是"教学准备" tab 自己用——设置 Sheet 的启用班级风险确认（任何 tab 都可能打开
+  // 设置）也依赖它，所以只要是管理视角就加载，不能像 rosterSignals/operationalEvents 那样按 tab 懒加载。
+  const [rosterSignals, teachingReadiness, operationalEvents] = await Promise.all([
+    activeTab === "students" ? getClassroomRosterSignals(id) : Promise.resolve(new Map<string, RosterSignals>()),
+    isManagementView ? getClassroomTeachingReadiness(classroom.coursewareTrack, classroom.sessions) : Promise.resolve([] as TeachingReadinessRow[]),
+    activeTab === "records" && canViewClassroom ? getClassroomOperationalEvents(id) : Promise.resolve([] as OperationalEventRow[]),
+  ]);
+
+  const contextSummary = [
+    classroom.courseTitle ?? t("freeClass"),
+    classroom.grade ? t("grade", { grade: classroom.grade }) : null,
+    classroom.primaryTeacherName ?? t("noPrimaryTeacher"),
+    classroom.learningSupportNames.length > 0 ? `${t("learningSupport")}：${classroom.learningSupportNames.join("、")}` : null,
+    t("rosterCount", { count: classroom.roster.length }),
+    groups.next?.scheduledAt ? t("nextSessionAt", { time: new Date(groups.next.scheduledAt).toLocaleString() }) : null,
+  ].filter(Boolean).join(" · ");
+
+  const primaryAction = isTeachingView && groups.next?.capabilities.canEnterLive
+    ? <Link href={`/classroom/${classroom.id}/session/${groups.next.id}`} className={buttonVariants({ size: "sm" })}>{t("openClassroom")}</Link>
+    : undefined;
+
+  const lifecycleStatus = (
+    <span className="flex shrink-0 items-center gap-1.5">
+      <Badge variant={classroom.operationalStatus === "active" ? "secondary" : "outline"}>
+        {t(classroom.operationalStatus === "active" ? "operationalActive" : classroom.operationalStatus)}
+      </Badge>
+      {classroom.archivedAt && <Badge variant="outline">{t("archived")}</Badge>}
+      {classroom.trashedAt && <Badge variant="outline">{t("trashed")}</Badge>}
+      {classroom.purpose === "test" && <Badge variant="outline">{t("test")}</Badge>}
+    </span>
+  );
 
   return (
     <>
-      <SchoolPageHeader
-        title={classroom.name}
-        backHref="/dashboard/classes"
-        backLabel={t("back")}
-        breadcrumbs={[{ label: t("title"), href: "/dashboard/classes" }, { label: classroom.name }]}
-        actions={
-          <>
-            {classroom.capabilities.canManageClassroom && <ClassroomEditor classroom={classroom} />}
-            {classroom.capabilities.canManageClassroom && (
-              <ClassroomStaffDialog classroomId={classroom.id} staffAssignments={classroom.staffAssignments} staffOptions={staffOptions} />
-            )}
-            {perms.has("finance.account.adjust") && <ConsumeRuleDialog classroomId={classroom.id} />}
-            <Link href="/dashboard/classes" className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>{t("back")}</Link>
-            {isTeachingView && (
-              <Link href={`/classroom/${classroom.id}`} className={cn(buttonVariants({ size: "sm" }))}>{t("openClassroom")}</Link>
-            )}
-          </>
-        }
+      <ObjectWorkspace
+        objectBar={<ObjectBar
+          title={classroom.name}
+          backHref="/dashboard/classes"
+          backLabel={t("back")}
+          context={contextSummary}
+          status={lifecycleStatus}
+          primaryAction={primaryAction}
+          overflowSlot={isManagementView ? <ClassroomSettingsSheet classroom={classroom} staffOptions={staffOptions} teachingReadiness={teachingReadiness} /> : undefined}
+        />}
+        contextBar={<ContextBar
+          tabs={TABS.map((tab) => ({ value: tab, label: t(`tab_${tab}`), href: `/dashboard/classes/${id}?tab=${tab}` }))}
+          activeTab={activeTab}
+        />}
       >
-        <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted">
-          <span>
-            {classroom.courseTitle ?? t("freeClass")}
-            {classroom.grade ? ` · ${t("grade", { grade: classroom.grade })}` : ""}
-            {classroom.room ? ` · ${classroom.room}` : ""}
-          </span>
-          <Badge variant={classroom.operationalStatus === "active" ? "secondary" : "outline"}>{t(classroom.operationalStatus === "active" ? "operationalActive" : classroom.operationalStatus)}</Badge>
-          {classroom.purpose === "test" && <Badge variant="outline">{t("test")}</Badge>}
+        {isManagementView && anomalyCount > 0 && (
+          <p className="mb-4 flex items-center gap-1.5 rounded-lg border border-rose/40 bg-rose/10 px-3 py-2 text-sm text-rose">
+            <CircleAlert className="size-4" />
+            {t("anomalySummary", { count: anomalyCount })}
+          </p>
+        )}
+
+        <div className="grid gap-6">
+          {activeTab === "sessions" && (
+            <SessionGroupList classroomId={classroom.id} sessions={classroom.sessions} workItems={sessionWorkItems} />
+          )}
+          {activeTab === "students" && (
+            <RosterPanel
+              classroomId={classroom.id}
+              roster={classroom.roster}
+              canManage={perms.has("enrollment.manage")}
+              viewerRole={classroom.viewerRole}
+              signals={Object.fromEntries(rosterSignals)}
+            />
+          )}
+          {activeTab === "readiness" && (
+            classroom.capabilities.canManageClassroom && classroom.courseId
+              ? <TeachingReadinessPanel classroomId={classroom.id} track={classroom.coursewareTrack} readiness={teachingReadiness} />
+              : <p className="rounded-xl border border-line bg-card p-5 text-sm text-muted">{t("readinessTabEmpty")}</p>
+          )}
+          {activeTab === "records" && (
+            <OperationalRecordsPanel events={operationalEvents} canView={canViewClassroom} />
+          )}
         </div>
-      </SchoolPageHeader>
-
-      <nav aria-label={t("tabsLabel")} className="mt-6 flex flex-wrap gap-2">
-        {TABS.map((tab) => (
-          <Link
-            key={tab}
-            href={`/dashboard/classes/${id}?tab=${tab}`}
-            aria-current={tab === activeTab ? "page" : undefined}
-            className={cn(buttonVariants({ variant: tab === activeTab ? "primary" : "secondary", size: "sm" }), "h-9")}
-          >
-            {t(`tab_${tab}`)}
-          </Link>
-        ))}
-      </nav>
-
-      {isManagementView && anomalyCount > 0 && (
-        <p className="mt-4 flex items-center gap-1.5 rounded-lg border border-rose/40 bg-rose/10 px-3 py-2 text-sm text-rose">
-          <CircleAlert className="size-4" />
-          {t("anomalySummary", { count: anomalyCount })}
-        </p>
-      )}
-
-      <div className="mt-6 grid gap-6">
-        {activeTab === "sessions" && (
-          <SessionGroupList classroomId={classroom.id} sessions={classroom.sessions} />
-        )}
-        {activeTab === "students" && (
-          <RosterPanel classroomId={classroom.id} roster={classroom.roster} canManage={perms.has("enrollment.manage")} />
-        )}
-        {activeTab === "readiness" && (
-          classroom.capabilities.canManageClassroom && classroom.courseId
-            ? <CoursewareTrackSettings classroomId={classroom.id} track={classroom.coursewareTrack} />
-            : <p className="rounded-xl border border-line bg-card p-5 text-sm text-muted">{t("readinessTabEmpty")}</p>
-        )}
-        {activeTab === "records" && (
-          <p className="rounded-xl border border-line bg-card p-5 text-sm text-muted">{t("recordsTabEmpty")}</p>
-        )}
-      </div>
+      </ObjectWorkspace>
 
       <SessionManagementDrawer
         key={activeSession?.id ?? "none"}

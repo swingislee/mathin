@@ -115,6 +115,8 @@ export function resolveWorkItemHref(item: WorkItemRow): string {
     }
     case "classroom":
       return `/dashboard/classes/${item.primaryObjectId}`;
+    case "session":
+      return `/dashboard/sessions/${item.primaryObjectId}`;
     case "student":
       return `/dashboard/students/${item.primaryObjectId}`;
     case "course_family":
