@@ -51,7 +51,7 @@ export async function CourseFamilyList({
           </dl>
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
             <p className={cn("flex items-center gap-1 text-xs", family.incompleteLectureCount ? "text-rose" : "text-leaf-deep")}><CircleAlert className="size-3.5" />{family.incompleteLectureCount ? t("readinessIssues", { count: family.incompleteLectureCount }) : t("readinessComplete")}</p>
-            <Link href={`/dashboard/courses/${family.id}`} className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "shrink-0")}>{t("viewTeachingPlan")}<ArrowRight className="size-4" /></Link>
+            <Link href={`/dashboard/courses/${family.id}`} className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "shrink-0")}>{t("viewProduct")}<ArrowRight className="size-4" /></Link>
           </div>
         </div>
       </article>)}

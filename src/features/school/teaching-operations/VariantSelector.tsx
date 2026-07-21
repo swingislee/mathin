@@ -3,7 +3,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { COURSE_SEASONS } from "./course-queries";
-import type { CourseFamilyDetail } from "./course-family-detail";
+import type { CourseFamilyDetail, SelectedCourseVariant } from "./course-family-detail";
 import type { CourseSeason } from "./types";
 
 type Variant = CourseFamilyDetail["variants"][number];
@@ -33,22 +33,29 @@ function OptionLink({
   return <Link href={hrefForVariant(familyId, target.id)} aria-current={active ? "page" : undefined} className={cn(buttonVariants({ variant: active ? "primary" : "secondary", size: "sm" }), "min-w-10 px-3 py-1.5")}>{label}</Link>;
 }
 
-export async function VariantSelector({ detail }: { detail: CourseFamilyDetail }) {
+export async function VariantSelector({
+  familyId,
+  variants,
+  current,
+}: {
+  familyId: string;
+  variants: CourseFamilyDetail["variants"];
+  current: SelectedCourseVariant;
+}) {
   const t = await getTranslations("school.courses");
-  const current = detail.selectedVariant;
-  const currentVariant: Variant = detail.variants.find((variant) => variant.id === current.id) ?? { ...current, trashedAt: null };
-  const grades = Array.from(new Set(detail.variants.map((variant) => variant.grade))).sort((a, b) => a - b);
-  const classTypes = Array.from(new Set(detail.variants.map((variant) => variant.classType))).sort();
+  const currentVariant: Variant = variants.find((variant) => variant.id === current.id) ?? { ...current, trashedAt: null, lectureCount: 0, releasedLectureCount: 0, classroomCount: 0, hasRisk: false };
+  const grades = Array.from(new Set(variants.map((variant) => variant.grade))).sort((a, b) => a - b);
+  const classTypes = Array.from(new Set(variants.map((variant) => variant.classType))).sort();
 
   return <div className="mt-5 space-y-3">
     <SelectorRow label={t("gradeLabel")}>
-      {grades.map((grade) => <OptionLink key={grade} active={current.grade === grade} label={String(grade)} target={pickVariant(detail.variants, currentVariant, (variant) => variant.grade === grade)} familyId={detail.family.id} />)}
+      {grades.map((grade) => <OptionLink key={grade} active={current.grade === grade} label={String(grade)} target={pickVariant(variants, currentVariant, (variant) => variant.grade === grade)} familyId={familyId} />)}
     </SelectorRow>
     <SelectorRow label={t("classType")}>
-      {classTypes.map((classType) => <OptionLink key={classType || "default"} active={current.classType === classType} label={classType || t("defaultClassType")} target={pickVariant(detail.variants, currentVariant, (variant) => variant.classType === classType)} familyId={detail.family.id} />)}
+      {classTypes.map((classType) => <OptionLink key={classType || "default"} active={current.classType === classType} label={classType || t("defaultClassType")} target={pickVariant(variants, currentVariant, (variant) => variant.classType === classType)} familyId={familyId} />)}
     </SelectorRow>
     <SelectorRow label={t("courseSeason")}>
-      {COURSE_SEASONS.map((season) => <OptionLink key={season.value} active={current.courseSeason === season.value} label={t(season.labelKey)} target={pickVariant(detail.variants, currentVariant, (variant) => variant.courseSeason === season.value as CourseSeason)} familyId={detail.family.id} />)}
+      {COURSE_SEASONS.map((season) => <OptionLink key={season.value} active={current.courseSeason === season.value} label={t(season.labelKey)} target={pickVariant(variants, currentVariant, (variant) => variant.courseSeason === season.value as CourseSeason)} familyId={familyId} />)}
     </SelectorRow>
   </div>;
 }

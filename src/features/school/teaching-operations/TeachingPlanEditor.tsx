@@ -15,7 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { archiveLectureAction, getLectureLifecycleImpactAction, restoreLectureAction, saveTeachingPlanAction } from "./actions";
-import type { CourseFamilyDetail } from "./course-family-detail";
+import type { CourseFamilyDetail, SelectedCourseVariant } from "./course-family-detail";
 
 type EditableLecture = CourseFamilyDetail["teachingPlan"][number];
 type LifecycleIntent = { lecture: EditableLecture; mode: "archive" | "restore" };
@@ -39,7 +39,7 @@ export function TeachingPlanEditor({
   onClose,
 }: {
   familyId: string;
-  selectedVariant: CourseFamilyDetail["selectedVariant"];
+  selectedVariant: SelectedCourseVariant;
   lectures: EditableLecture[];
   canEditCourseware: boolean;
   onClose: () => void;

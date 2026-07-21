@@ -2,20 +2,16 @@ import "server-only";
 
 import type { Json } from "@/lib/database.types";
 import { createClient } from "@/lib/supabase/server";
-import type {
-  CourseFamilySummary,
-  CoursePurpose,
-  CourseSeason,
-  CourseStatus,
-  CourseVariantSummary,
+import {
+  COURSE_SEASONS,
+  type CourseFamilySummary,
+  type CoursePurpose,
+  type CourseSeason,
+  type CourseStatus,
+  type CourseVariantSummary,
 } from "./types";
 
-export const COURSE_SEASONS = [
-  { value: 1, labelKey: "summer" },
-  { value: 2, labelKey: "autumn" },
-  { value: 3, labelKey: "winter" },
-  { value: 4, labelKey: "spring" },
-] as const satisfies ReadonlyArray<{ value: CourseSeason; labelKey: string }>;
+export { COURSE_SEASONS };
 
 export interface CourseFamilyFilters {
   q?: string;

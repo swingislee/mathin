@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import type { CourseFamilyDetail } from "./course-family-detail";
+import type { CourseFamilyDetail, SelectedCourseVariant } from "./course-family-detail";
 
 const TeachingPlanEditor = dynamic(() => import("./TeachingPlanEditor").then((module) => module.TeachingPlanEditor), { ssr: false });
 
@@ -15,7 +15,7 @@ export function TeachingPlanEditorLauncher({
   label,
 }: {
   familyId: string;
-  selectedVariant: CourseFamilyDetail["selectedVariant"];
+  selectedVariant: SelectedCourseVariant;
   lectures: CourseFamilyDetail["teachingPlan"];
   canEditCourseware: boolean;
   label: string;

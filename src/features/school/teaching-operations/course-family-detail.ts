@@ -8,6 +8,23 @@ const uuidSchema = z.uuid();
 const courseSeasonSchema = z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]);
 const courseStatusSchema = z.enum(["draft", "enabled", "disabled"]);
 const lectureStatusSchema = z.enum(["draft", "active", "archived"]);
+const operationalStatusSchema = z.enum(["planning", "active", "completed"]);
+
+const assignmentSchema = z.object({
+  id: uuidSchema,
+  userId: uuidSchema,
+  userName: z.string(),
+  responsibility: z.enum(["owner", "editor", "reviewer"]),
+  createdAt: z.string(),
+  archivedAt: z.string().nullable(),
+});
+
+const usageSchema = z.object({
+  id: uuidSchema,
+  name: z.string(),
+  operationalStatus: operationalStatusSchema,
+  archivedAt: z.string().nullable(),
+});
 
 const detailSchema = z.object({
   family: z.object({
@@ -33,6 +50,10 @@ const detailSchema = z.object({
     status: courseStatusSchema,
     purpose: z.enum(["production", "test"]),
     trashedAt: z.string().nullable(),
+    lectureCount: z.number().int().nonnegative(),
+    releasedLectureCount: z.number().int().nonnegative(),
+    classroomCount: z.number().int().nonnegative(),
+    hasRisk: z.boolean(),
   })),
   selectedVariant: z.object({
     id: uuidSchema,
@@ -44,7 +65,7 @@ const detailSchema = z.object({
     status: courseStatusSchema,
     purpose: z.enum(["production", "test"]),
     updatedAt: z.string(),
-  }),
+  }).nullable(),
   teachingPlan: z.array(z.object({
     id: uuidSchema,
     no: z.number().int().positive(),
@@ -60,6 +81,9 @@ const detailSchema = z.object({
     releasedLectureCount: z.number().int().nonnegative(),
     pageCount: z.number().int().nonnegative(),
   }),
+  familyAssignments: z.array(assignmentSchema),
+  variantAssignments: z.array(assignmentSchema),
+  usage: z.array(usageSchema),
 });
 
 export interface CourseFamilyDetail {
@@ -86,6 +110,10 @@ export interface CourseFamilyDetail {
     status: CourseStatus;
     purpose: "production" | "test";
     trashedAt: string | null;
+    lectureCount: number;
+    releasedLectureCount: number;
+    classroomCount: number;
+    hasRisk: boolean;
   }>;
   selectedVariant: {
     id: string;
@@ -97,7 +125,7 @@ export interface CourseFamilyDetail {
     status: CourseStatus;
     purpose: "production" | "test";
     updatedAt: string;
-  };
+  } | null;
   teachingPlan: Array<{
     id: string;
     no: number;
@@ -113,7 +141,13 @@ export interface CourseFamilyDetail {
     releasedLectureCount: number;
     pageCount: number;
   };
+  familyAssignments: Array<z.infer<typeof assignmentSchema>>;
+  variantAssignments: Array<z.infer<typeof assignmentSchema>>;
+  usage: Array<z.infer<typeof usageSchema>>;
 }
+
+/** 版本详情分支（`?variant=` 已解析）时的非空 selectedVariant；产品总览分支不携带它。 */
+export type SelectedCourseVariant = NonNullable<CourseFamilyDetail["selectedVariant"]>;
 
 export function isUuid(value: string | undefined): value is string {
   return Boolean(value && uuidSchema.safeParse(value).success);

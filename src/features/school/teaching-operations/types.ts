@@ -3,6 +3,14 @@ export type CourseStatus = "draft" | "enabled" | "disabled";
 export type LectureStatus = "draft" | "active" | "archived";
 /** courses.term 的产品季节值（1=暑期、2=秋季、3=寒假、4=春季），不是 school_terms 的运营学期。 */
 export type CourseSeason = 1 | 2 | 3 | 4;
+
+/** 不依赖 server-only 数据层的纯常量，client 组件（矩阵/新建版本弹窗）可直接引入。 */
+export const COURSE_SEASONS = [
+  { value: 1, labelKey: "summer" },
+  { value: 2, labelKey: "autumn" },
+  { value: 3, labelKey: "winter" },
+  { value: 4, labelKey: "spring" },
+] as const satisfies ReadonlyArray<{ value: CourseSeason; labelKey: string }>;
 export type ClassroomScope = "teaching" | "support" | "all" | "test";
 
 export type ClassroomPurpose = "production" | "test";
@@ -55,6 +63,26 @@ export interface CourseVariantSummary {
   classType: string;
   lectureCount: number;
   releasedLectureCount: number;
+}
+
+export type CourseAssignmentResponsibility = "owner" | "editor" | "reviewer";
+
+/** 课程责任行（family/variant 两级），含已归档的历史记录。 */
+export interface CourseAssignment {
+  id: string;
+  userId: string;
+  userName: string;
+  responsibility: CourseAssignmentResponsibility;
+  createdAt: string;
+  archivedAt: string | null;
+}
+
+/** 版本使用情况：引用该版本的班级。 */
+export interface ClassroomUsage {
+  id: string;
+  name: string;
+  operationalStatus: ClassroomOperationalStatus;
+  archivedAt: string | null;
 }
 
 export interface ClassroomCapabilities {
