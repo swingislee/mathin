@@ -1,8 +1,15 @@
 import { getTranslations } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
+import { AttendanceDrawer } from "./AttendanceDrawer";
 import type { SessionWorkspaceDetail } from "./classes";
+import { ReviewDrawer } from "./ReviewDrawer";
 import { SessionCompletePostworkButton } from "./SessionCompletePostworkButton";
+import { SessionFamilyBriefPanel } from "./SessionFamilyBriefPanel";
+import { SessionFollowUpQuickForm } from "./SessionFollowUpQuickForm";
 import { SessionTaskActions } from "./SessionPostworkActions";
+import { SupportTaskRecipientList } from "./SupportTaskRecipientList";
+import { VideoReviewPanel } from "./VideoReviewPanel";
+import { listSessionVideos } from "./videos";
 
 const TASK_KIND_KEYS = {
   attendance: "taskKind_attendance",
@@ -14,21 +21,25 @@ const TASK_KIND_KEYS = {
 } as const;
 
 /**
- * 课后（doc19 §14.9）：本任务只做通用"标记完成/跳过"清单 + 完成本次课整体门控；
- * 各任务类型的专用表单（点名网格/课评撰写/视频审阅等）留给 P4I-15。
+ * 课后（doc19 §14.9）：点名/课评+总结/视频审阅/跟进已接上各自的专用表单（AttendanceDrawer/
+ * ReviewDrawer/VideoReviewPanel/SessionFollowUpQuickForm，均为 P4B/P4D 时期已有的完整实现，
+ * 保存成功后顺带把对应任务标记完成）；作业没有内容表规格，维持通用标记完成/跳过。
  */
 export async function SessionPostworkPanel({ detail }: { detail: SessionWorkspaceDetail }) {
   const t = await getTranslations("school.session");
   const tc = await getTranslations("school.classes");
 
   const pendingRequired = detail.completionTasks.filter((task) => task.required && task.status === "pending").length;
+  const followupTask = detail.completionTasks.find((task) => task.kind === "followup");
+  const hasVideoTask = detail.completionTasks.some((task) => task.kind === "video_review");
+  const sessionVideos = hasVideoTask && detail.capabilities.canReviewVideo ? await listSessionVideos(detail.id) : [];
 
   return (
     <div className="flex flex-col gap-4 px-1">
       <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-card p-4 text-sm">
         <div>
           <p className="text-ink">{detail.postworkCompletedAt ? t("postworkAllDone") : t("postworkPending", { count: pendingRequired })}</p>
-          {detail.familyBriefPublishedAt && <p className="text-xs text-muted">{t("familyBriefPublished")}</p>}
+          {detail.familyBrief.publishedAt && <p className="text-xs text-muted">{t("familyBriefPublished")}</p>}
         </div>
         <SessionCompletePostworkButton
           sessionId={detail.id}
@@ -50,7 +61,11 @@ export async function SessionPostworkPanel({ detail }: { detail: SessionWorkspac
               {task.dueAt && <span className="text-xs text-muted">{new Date(task.dueAt).toLocaleString()}</span>}
             </div>
             {task.status === "pending" ? (
-              <SessionTaskActions taskId={task.id} disabled={false} />
+              <div className="flex shrink-0 items-center gap-2">
+                {task.kind === "attendance" && detail.capabilities.canMarkAttendance && <AttendanceDrawer sessionId={detail.id} />}
+                {(task.kind === "reviews" || task.kind === "summary") && detail.capabilities.canWriteReview && <ReviewDrawer sessionId={detail.id} />}
+                <SessionTaskActions taskId={task.id} disabled={false} hideMarkDone={task.kind !== "assignment" && task.kind !== "video_review"} />
+              </div>
             ) : (
               <span className="shrink-0 text-xs text-muted">
                 {task.completedByName ? t("taskCompletedBy", { name: task.completedByName }) : tc("notApplicable")}
@@ -59,6 +74,46 @@ export async function SessionPostworkPanel({ detail }: { detail: SessionWorkspac
           </li>
         ))}
       </ol>
+
+      {followupTask && followupTask.status === "pending" && (
+        <SessionFollowUpQuickForm taskId={followupTask.id} roster={detail.roster} />
+      )}
+
+      {hasVideoTask && detail.capabilities.canReviewVideo && (
+        <section className="rounded-2xl border border-line bg-card p-4 text-sm">
+          <h3 className="mb-2 text-xs font-medium uppercase text-muted">{t("taskKind_videoReview")}</h3>
+          {sessionVideos.length === 0 ? (
+            <p className="text-muted">{t("videoReviewEmpty")}</p>
+          ) : (
+            <VideoReviewPanel rows={sessionVideos} />
+          )}
+        </section>
+      )}
+
+      {detail.supportTasks.length > 0 && (
+        <section className="rounded-2xl border border-line bg-card p-4 text-sm">
+          <h3 className="mb-2 text-xs font-medium uppercase text-muted">{t("supportTasksTitle")}</h3>
+          <ul className="flex flex-col gap-3">
+            {detail.supportTasks.map((task) => (
+              <li key={task.id}>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-ink">{tc(`supportTaskKind_${task.kind}`)}</span>
+                    {task.studentName && <span className="text-xs text-muted">{task.studentName}</span>}
+                    <Badge variant={task.status === "done" ? "default" : task.status === "pending" ? "secondary" : "outline"}>
+                      {tc(`supportTaskStatus_${task.status}`)}
+                    </Badge>
+                    {task.assignedToName && <span className="text-xs text-muted">{t("taskAssignedTo", { name: task.assignedToName })}</span>}
+                  </div>
+                </div>
+                {task.recipients.length > 0 && <SupportTaskRecipientList recipients={task.recipients} />}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <SessionFamilyBriefPanel detail={detail} />
     </div>
   );
 }

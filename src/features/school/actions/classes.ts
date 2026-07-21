@@ -746,3 +746,98 @@ export async function reopenSessionPostworkAction(sessionId: string): Promise<Ac
     return actionError(error, ["SESSION_NOT_FOUND", "NOT_COMPLETED", "FORBIDDEN", ...COMMON_CODES]);
   }
 }
+
+// ---------------------------------------------------------------------------
+// P4I-15：请假审批、支持任务逐人明细、家庭摘要发布入口。
+// ---------------------------------------------------------------------------
+
+const decideLeaveRequestSchema = z.object({ requestId: uuid, approve: z.boolean() });
+
+/**
+ * 不加 authorizedClient(singleKey)：decide_session_leave_request 内部用
+ * can_mark_attendance 校验，套一个统一权限键反而多此一举——鉴权交给 RPC。
+ */
+export async function decideSessionLeaveRequestAction(requestId: string, approve: boolean): Promise<ActionResult> {
+  try {
+    const value = parse(decideLeaveRequestSchema, { requestId, approve });
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("UNAUTHENTICATED");
+    const { error } = await supabase.rpc("decide_session_leave_request", { p_request_id: value.requestId, p_approve: value.approve });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["REQUEST_NOT_FOUND", "REQUEST_ALREADY_DECIDED", "FORBIDDEN", ...COMMON_CODES]);
+  }
+}
+
+const updateRecipientSchema = z.object({
+  recipientId: uuid,
+  status: z.enum(["sent", "confirmed", "failed", "waived"]),
+  note: text(1000),
+});
+
+export async function updateSupportTaskRecipientAction(recipientId: string, status: "sent" | "confirmed" | "failed" | "waived", note = ""): Promise<ActionResult> {
+  try {
+    const value = parse(updateRecipientSchema, { recipientId, status, note });
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("UNAUTHENTICATED");
+    const { error } = await supabase.rpc("update_support_task_recipient", {
+      p_recipient_id: value.recipientId,
+      p_status: value.status,
+      p_note: value.note,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["RECIPIENT_NOT_FOUND", "INVALID_TRANSITION", "FORBIDDEN", ...COMMON_CODES]);
+  }
+}
+
+const familyBriefSchema = z.object({
+  sessionId: uuid,
+  lessonTitle: text(200),
+  learningSummary: text(2000),
+  homeworkSummary: text(2000),
+  materialsNote: text(2000),
+  teacherPublicComment: text(2000),
+});
+
+export async function saveSessionFamilyBriefAction(input: {
+  sessionId: string;
+  lessonTitle: string;
+  learningSummary: string;
+  homeworkSummary: string;
+  materialsNote: string;
+  teacherPublicComment: string;
+}): Promise<ActionResult> {
+  try {
+    const value = parse(familyBriefSchema, input);
+    const { supabase } = await authorizedClient("review.write");
+    const { error } = await supabase.rpc("save_session_family_brief", {
+      p_session_id: value.sessionId,
+      p_lesson_title: value.lessonTitle,
+      p_learning_summary: value.learningSummary,
+      p_homework_summary: value.homeworkSummary,
+      p_materials_note: value.materialsNote,
+      p_teacher_public_comment: value.teacherPublicComment,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["SESSION_NOT_FOUND", "FORBIDDEN", ...COMMON_CODES]);
+  }
+}
+
+export async function publishSessionFamilyBriefAction(sessionId: string): Promise<ActionResult> {
+  try {
+    const id = parse(uuid, sessionId);
+    const { supabase } = await authorizedClient("review.write");
+    const { error } = await supabase.rpc("publish_session_family_brief", { p_session_id: id });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["SESSION_NOT_FOUND", "BRIEF_NOT_FOUND", "FORBIDDEN", ...COMMON_CODES]);
+  }
+}

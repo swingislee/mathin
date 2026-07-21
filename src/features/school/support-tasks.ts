@@ -2,8 +2,8 @@ import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
 
-export type SupportTaskKind = "preclass_notice" | "absence_check" | "makeup_followup" | "postclass_followup";
-export type SupportTaskStatus = "pending" | "done" | "skipped";
+export type SupportTaskKind = "preclass_notice" | "absence_check" | "makeup_followup" | "postclass_followup" | "renewal_followup";
+export type SupportTaskStatus = "pending" | "done" | "skipped" | "invalidated";
 
 export interface SupportTaskRow {
   id: string;

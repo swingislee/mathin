@@ -141,13 +141,20 @@ export function resolveSessionCapabilities(context: SessionCapabilityContext): S
   const canMarkAttendance = sessionReason(
     reasons,
     "attendance",
-    context.canMarkAttendance && (context.isTeaching || context.isManagement) && isLiveEligible,
+    // 点名同时是"上课中当场点名"和 doc19 §14.9 的课后默认任务之一：ended 之后仍需要能补录/订正。
+    context.canMarkAttendance && (context.isTeaching || context.isManagement) && (isLiveEligible || context.state === "ended"),
     "FORBIDDEN_SCOPE",
   );
   const canWriteReview = sessionReason(
     reasons,
     "review",
     context.canWriteReview && (context.isTeaching || context.isManagement) && isCompleted,
+    "FORBIDDEN_SCOPE",
+  );
+  const canReviewVideo = sessionReason(
+    reasons,
+    "videoReview",
+    context.canReviewVideo && (context.isTeaching || context.isManagement) && isCompleted,
     "FORBIDDEN_SCOPE",
   );
   const canCompletePostwork = sessionReason(
@@ -169,6 +176,7 @@ export function resolveSessionCapabilities(context: SessionCapabilityContext): S
     canViewReport,
     canMarkAttendance,
     canWriteReview,
+    canReviewVideo,
     canCompletePostwork,
     reasons,
   };

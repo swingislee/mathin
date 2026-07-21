@@ -7,6 +7,14 @@ export async function saveSessionReviewsAction(sessionId:string,knowledgeSummary
     const s=await createClient();const{data:{user}}=await s.auth.getUser();if(!user||!(await getMyPerms(user.id)).has("review.write"))throw new Error("FORBIDDEN");
     const{error}=await s.rpc("save_session_reviews",{p_session_id:sessionId,p_knowledge_summary:knowledgeSummary,p_records:records as unknown as Json});
     if(error)throw new Error(error.message);
+    // P4I-15：保存课评+总结后顺带把课后"逐生课评"和"知识总结"两个任务标记完成（若仍待处理）。
+    const{data:taskRows}=await s.from("session_completion_tasks").select("id,kind,status").eq("session_id",sessionId).in("kind",["reviews","summary"]).returns<Array<{id:string;kind:string;status:string}>>();
+    for(const task of taskRows??[]){
+      if(task.status==="pending"){
+        const{error:completeError}=await s.rpc("complete_session_task",{p_task_id:task.id,p_status:"done",p_note:""});
+        if(completeError)console.error("complete_session_task(review) failed",completeError.message);
+      }
+    }
     return{ok:true};
   }catch(error){return actionError(error,["FORBIDDEN","UNAUTHENTICATED"])}
 }

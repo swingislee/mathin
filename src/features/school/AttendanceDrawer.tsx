@@ -15,12 +15,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { useRouter } from "@/i18n/navigation";
 import { getAttendanceDrawerData, saveAttendanceAction } from "./actions/attendance";
 import { type AttendanceDrawerRow } from "./actions/types";
 import { ATTENDANCE_STATUSES, type AttendanceStatus } from "./learning";
 
 export function AttendanceDrawer({ sessionId }: { sessionId: string }) {
   const t = useTranslations("school.classes");
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState<AttendanceDrawerRow[]>([]);
@@ -45,7 +47,11 @@ export function AttendanceDrawer({ sessionId }: { sessionId: string }) {
   const { run: save, pending } = useAction((rows: AttendanceDrawerRow[]) => saveAttendanceAction(sessionId, rows), {
     successMessage: t("attendanceSaved"),
     errorMessage: { default: t("actionFailed") },
-    onSuccess: () => setOpen(false),
+    onSuccess: () => {
+      setOpen(false);
+      // P4I-15：保存后课后 tab 的"点名"任务可能已被服务端顺带标记完成，刷新以反映最新状态。
+      router.refresh();
+    },
   });
 
   return (

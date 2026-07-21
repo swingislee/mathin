@@ -23,6 +23,7 @@ import type {
   TeachingSessionState,
 } from "./teaching-operations/types";
 import type { WorkItemRow } from "./stage/types";
+import type { SupportTaskKind } from "./support-tasks";
 
 export interface StaffOption {
   id: string;
@@ -254,6 +255,7 @@ export async function getClassroomDetailForScope(id: string): Promise<ClassroomD
       hasSessionVoid: perms.has("session.void"),
       hasAttendanceMark: perms.has("attendance.mark"),
       hasReviewWrite: perms.has("review.write"),
+      hasReviewVideo: perms.has("video.review"),
       hasPostworkManage: perms.has("session.postwork.manage"),
       state,
     });
@@ -327,6 +329,42 @@ export interface SessionCompletionTaskRow {
   skipReason: string;
 }
 
+export interface SessionRosterRow {
+  studentId: string;
+  studentName: string;
+}
+
+export interface SessionSupportTaskRecipientRow {
+  id: string;
+  studentName: string;
+  guardianName: string | null;
+  status: "pending" | "sent" | "confirmed" | "failed" | "waived";
+  channel: string;
+  sentAt: string | null;
+  confirmedAt: string | null;
+  note: string;
+}
+
+export interface SessionSupportTaskRow {
+  id: string;
+  kind: SupportTaskKind;
+  status: "pending" | "done" | "skipped" | "invalidated";
+  dueAt: string | null;
+  assignedToName: string | null;
+  studentName: string | null;
+  note: string;
+  recipients: SessionSupportTaskRecipientRow[];
+}
+
+export interface SessionFamilyBrief {
+  lessonTitle: string;
+  learningSummary: string;
+  homeworkSummary: string;
+  materialsNote: string;
+  teacherPublicComment: string;
+  publishedAt: string | null;
+}
+
 export interface SessionWorkspaceDetail {
   id: string;
   classroomId: string;
@@ -353,10 +391,13 @@ export interface SessionWorkspaceDetail {
   currentReleaseNo: number | null;
   hasUnpublishedChanges: boolean;
   rosterCount: number;
+  roster: SessionRosterRow[];
   pendingLeaveRequests: SessionLeaveRequestRow[];
   completionTasks: SessionCompletionTaskRow[];
+  supportTasks: SessionSupportTaskRow[];
+  pendingVideoCount: number;
   postworkCompletedAt: string | null;
-  familyBriefPublishedAt: string | null;
+  familyBrief: SessionFamilyBrief;
 }
 
 interface SessionWorkspaceQueryRow {
@@ -408,7 +449,9 @@ export async function getSessionWorkspaceDetail(sessionId: string): Promise<Sess
     { data: leaveRows, error: leaveError },
     { data: taskRows, error: taskError },
     { data: briefRow, error: briefError },
-    { count: rosterCount, error: rosterError },
+    { data: rosterRows, error: rosterError },
+    { data: supportTaskRows, error: supportTaskError },
+    { count: pendingVideoCount, error: videoError },
     perms,
   ] = await Promise.all([
     supabase
@@ -446,8 +489,60 @@ export async function getSessionWorkspaceDetail(sessionId: string): Promise<Sess
         assigned: { display_name: string } | null;
         completer: { display_name: string } | null;
       }>>(),
-    supabase.from("session_family_briefs").select("published_at").eq("session_id", sessionId).maybeSingle<{ published_at: string | null }>(),
-    supabase.from("enrollments").select("id", { count: "exact", head: true }).eq("classroom_id", session.classroom_id).eq("status", "active"),
+    supabase
+      .from("session_family_briefs")
+      .select("lesson_title,learning_summary,homework_summary,materials_note,teacher_public_comment,published_at")
+      .eq("session_id", sessionId)
+      .maybeSingle<{
+        lesson_title: string;
+        learning_summary: string;
+        homework_summary: string;
+        materials_note: string;
+        teacher_public_comment: string;
+        published_at: string | null;
+      }>(),
+    supabase
+      .from("enrollments")
+      .select("student_id,students(name)")
+      .eq("classroom_id", session.classroom_id)
+      .eq("status", "active")
+      .returns<Array<{ student_id: string; students: { name: string } | null }>>(),
+    supabase
+      .from("class_support_tasks")
+      .select(
+        "id,kind,status,due_at,note," +
+          "assigned:profiles!class_support_tasks_assigned_to_fkey(display_name)," +
+          "student:students(name)," +
+          "class_support_task_recipients(id,status,channel,sent_at,confirmed_at,note,students(name)," +
+          "guardian:profiles!class_support_task_recipients_guardian_id_fkey(display_name))",
+      )
+      .eq("session_id", sessionId)
+      .order("created_at", { ascending: true })
+      .returns<Array<{
+        id: string;
+        kind: SupportTaskKind;
+        status: SessionSupportTaskRow["status"];
+        due_at: string | null;
+        note: string;
+        assigned: { display_name: string } | null;
+        student: { name: string } | null;
+        class_support_task_recipients: Array<{
+          id: string;
+          status: SessionSupportTaskRecipientRow["status"];
+          channel: string;
+          sent_at: string | null;
+          confirmed_at: string | null;
+          note: string;
+          students: { name: string } | null;
+          guardian: { display_name: string } | null;
+        }>;
+      }>>(),
+    supabase
+      .from("session_videos")
+      .select("id", { count: "exact", head: true })
+      .eq("session_id", sessionId)
+      .is("deleted_at", null)
+      .is("reviewed_at", null),
     getMyPerms(user.id),
   ]);
   if (assignmentError) throw new Error(assignmentError.message);
@@ -456,6 +551,8 @@ export async function getSessionWorkspaceDetail(sessionId: string): Promise<Sess
   if (taskError) throw new Error(taskError.message);
   if (briefError) throw new Error(briefError.message);
   if (rosterError) throw new Error(rosterError.message);
+  if (supportTaskError) throw new Error(supportTaskError.message);
+  if (videoError) throw new Error(videoError.message);
 
   const myResponsibilities = (assignmentRows ?? []).filter((row) => row.user_id === user.id).map((row) => row.responsibility);
   const isTeaching = myResponsibilities.includes("primary_teacher") || myResponsibilities.includes("assistant_teacher");
@@ -478,6 +575,7 @@ export async function getSessionWorkspaceDetail(sessionId: string): Promise<Sess
     hasSessionVoid: perms.has("session.void"),
     hasAttendanceMark: perms.has("attendance.mark"),
     hasReviewWrite: perms.has("review.write"),
+    hasReviewVideo: perms.has("video.review"),
     hasPostworkManage: perms.has("session.postwork.manage"),
     state,
   });
@@ -523,7 +621,11 @@ export async function getSessionWorkspaceDetail(sessionId: string): Promise<Sess
     prepPreparedAt: prepRow?.prepared_at ?? null,
     currentReleaseNo,
     hasUnpublishedChanges,
-    rosterCount: rosterCount ?? 0,
+    rosterCount: (rosterRows ?? []).length,
+    roster: (rosterRows ?? []).map((row) => ({
+      studentId: row.student_id,
+      studentName: row.students?.name ?? "-",
+    })),
     pendingLeaveRequests: (leaveRows ?? []).map((row) => ({
       id: row.id,
       studentName: row.students?.name ?? "-",
@@ -542,8 +644,35 @@ export async function getSessionWorkspaceDetail(sessionId: string): Promise<Sess
       completedAt: row.completed_at,
       skipReason: row.skip_reason ?? "",
     })),
+    supportTasks: (supportTaskRows ?? []).map((row) => ({
+      id: row.id,
+      kind: row.kind,
+      status: row.status,
+      dueAt: row.due_at,
+      assignedToName: row.assigned?.display_name ?? null,
+      studentName: row.student?.name ?? null,
+      note: row.note,
+      recipients: row.class_support_task_recipients.map((recipient) => ({
+        id: recipient.id,
+        studentName: recipient.students?.name ?? "-",
+        guardianName: recipient.guardian?.display_name ?? null,
+        status: recipient.status,
+        channel: recipient.channel,
+        sentAt: recipient.sent_at,
+        confirmedAt: recipient.confirmed_at,
+        note: recipient.note,
+      })),
+    })),
+    pendingVideoCount: pendingVideoCount ?? 0,
     postworkCompletedAt: session.postwork_completed_at,
-    familyBriefPublishedAt: briefRow?.published_at ?? null,
+    familyBrief: {
+      lessonTitle: briefRow?.lesson_title ?? "",
+      learningSummary: briefRow?.learning_summary ?? "",
+      homeworkSummary: briefRow?.homework_summary ?? "",
+      materialsNote: briefRow?.materials_note ?? "",
+      teacherPublicComment: briefRow?.teacher_public_comment ?? "",
+      publishedAt: briefRow?.published_at ?? null,
+    },
   };
 }
 

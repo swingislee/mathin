@@ -25,11 +25,9 @@ describe("P4I-14 session workspace contract", () => {
     expect(body).toContain("<Link");
   });
 
-  it("课后面板只做通用标记，不实现 P4I-15 的逐类型专用表单", () => {
+  it("课后面板通用标记通道仍在（P4I-15 起补上逐类型专用表单，见 p4i-15 测试）", () => {
     const post = read("src", "features", "school", "SessionPostworkPanel.tsx");
     expect(post).toContain("SessionTaskActions");
-    expect(post).not.toContain("AttendanceDrawer");
-    expect(post).not.toContain("ReviewDrawer");
   });
 
   it("备课/复制/完成/任务/课后 Server Action 均已接线", () => {

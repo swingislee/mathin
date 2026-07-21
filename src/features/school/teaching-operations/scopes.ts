@@ -9,6 +9,7 @@ export interface TeachingRelationshipInput {
   hasSessionVoid: boolean;
   hasAttendanceMark: boolean;
   hasReviewWrite: boolean;
+  hasReviewVideo: boolean;
   hasPostworkManage: boolean;
   state: TeachingSessionState;
 }
@@ -45,6 +46,7 @@ export function resolveSessionCapabilityContext(input: TeachingRelationshipInput
     canVoidSession: input.hasSessionVoid,
     canMarkAttendance: input.hasAttendanceMark,
     canWriteReview: input.hasReviewWrite,
+    canReviewVideo: input.hasReviewVideo,
     canManagePostwork: input.hasPostworkManage,
     state: input.state,
   };

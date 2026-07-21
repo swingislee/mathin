@@ -10,6 +10,7 @@ describe("P4H teaching-operation capabilities", () => {
       canVoidSession: true,
       canMarkAttendance: true,
       canWriteReview: true,
+      canReviewVideo: true,
       canManagePostwork: true,
       state: "scheduled",
     });
@@ -45,6 +46,7 @@ describe("P4H teaching-operation capabilities", () => {
       canVoidSession: false,
       canMarkAttendance: false,
       canWriteReview: false,
+      canReviewVideo: false,
       canManagePostwork: false,
       state: "scheduled",
     }).canEnterLive).toBe(false);
@@ -58,6 +60,7 @@ describe("P4H teaching-operation capabilities", () => {
       canVoidSession: false,
       canMarkAttendance: true,
       canWriteReview: true,
+      canReviewVideo: true,
       canManagePostwork: true,
       state: "scheduled",
     });
@@ -68,6 +71,7 @@ describe("P4H teaching-operation capabilities", () => {
       canVoidSession: false,
       canMarkAttendance: false,
       canWriteReview: false,
+      canReviewVideo: false,
       canManagePostwork: false,
       state: "scheduled",
     });

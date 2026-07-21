@@ -15,8 +15,12 @@ import { useAction } from "@/components/action-form";
 import { useRouter } from "@/i18n/navigation";
 import { completeSessionTaskAction } from "./actions/classes";
 
-/** 通用"标记完成/跳过"；具体每类任务的专用表单留给 P4I-15，本组件只做状态位标记。 */
-export function SessionTaskActions({ taskId, disabled }: { taskId: string; disabled: boolean }) {
+/**
+ * 通用"标记完成/跳过"。作业任务无专用表单，两个按钮都保留；点名/课评/总结/视频审阅/跟进
+ * 已在 P4I-15 接上专用表单并在保存成功后自动标记完成，这里用 hideMarkDone 只保留"跳过"
+ * （例如本节课无人提交视频、无需跟进等确有其事的"没有可做"场景）。
+ */
+export function SessionTaskActions({ taskId, disabled, hideMarkDone = false }: { taskId: string; disabled: boolean; hideMarkDone?: boolean }) {
   const t = useTranslations("school.session");
   const router = useRouter();
   const [skipOpen, setSkipOpen] = useState(false);
@@ -34,9 +38,11 @@ export function SessionTaskActions({ taskId, disabled }: { taskId: string; disab
 
   return (
     <div className="flex shrink-0 items-center gap-2">
-      <Button size="sm" variant="secondary" disabled={disabled || run.pending} onClick={() => run.run(taskId, "done", "")}>
-        {t("taskMarkDone")}
-      </Button>
+      {!hideMarkDone && (
+        <Button size="sm" variant="secondary" disabled={disabled || run.pending} onClick={() => run.run(taskId, "done", "")}>
+          {t("taskMarkDone")}
+        </Button>
+      )}
       <Button size="sm" variant="ghost" disabled={disabled || run.pending} onClick={() => setSkipOpen(true)}>
         {t("taskSkip")}
       </Button>

@@ -93,6 +93,30 @@ export async function saveAttendanceAction(
       { onConflict: "session_id,student_id" },
     );
     if (error) throw new Error(error.message);
+
+    // P4I-15：点名保存后顺带把课后"点名"任务标记完成（若仍待处理），并对每个缺勤学生
+    // 生成 absence_check 支持任务（record_attendance_absence 内部 on conflict 幂等，
+    // 重复编辑点名不会重复生成）。这两步失败不应该让已经写入的点名数据回滚展示为失败，
+    // 只在控制台记录，不向调用方抛错。
+    const absentStudentIds = value.records.filter((record) => record.status === "absent").map((record) => record.studentId);
+    await Promise.all(
+      absentStudentIds.map((studentId) =>
+        supabase.rpc("record_attendance_absence", { p_session_id: value.sessionId, p_student_id: studentId }).then(({ error: rpcError }) => {
+          if (rpcError) console.error("record_attendance_absence failed", rpcError.message);
+        }),
+      ),
+    );
+    const { data: taskRow } = await supabase
+      .from("session_completion_tasks")
+      .select("id,status")
+      .eq("session_id", value.sessionId)
+      .eq("kind", "attendance")
+      .maybeSingle<{ id: string; status: string }>();
+    if (taskRow && taskRow.status === "pending") {
+      const { error: completeError } = await supabase.rpc("complete_session_task", { p_task_id: taskRow.id, p_status: "done", p_note: "" });
+      if (completeError) console.error("complete_session_task(attendance) failed", completeError.message);
+    }
+
     return { ok: true };
   } catch (error) {
     return actionError(error, COMMON_CODES);

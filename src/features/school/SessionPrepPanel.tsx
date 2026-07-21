@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import type { SessionWorkspaceDetail } from "./classes";
 import { getLectureCoursewareTemplate } from "./courses";
 import { CoursewareOverlayEditor } from "./CoursewareOverlayEditor";
+import { LeaveRequestActions } from "./LeaveRequestActions";
 import { SessionPrepActions } from "./SessionPrepActions";
 import { SessionTrackOverrideSelect } from "./SessionTrackOverrideSelect";
 
@@ -56,9 +57,10 @@ export async function SessionPrepPanel({ detail }: { detail: SessionWorkspaceDet
           <h3 className="mb-2 text-xs font-medium uppercase text-muted">{t("pendingLeaveRequests")}</h3>
           <ul className="flex flex-col gap-1.5">
             {detail.pendingLeaveRequests.map((row) => (
-              <li key={row.id} className="flex items-center justify-between gap-3">
+              <li key={row.id} className="flex flex-wrap items-center justify-between gap-3">
                 <span className="text-ink">{row.studentName}</span>
-                <span className="truncate text-muted">{row.reason || t("noReason")}</span>
+                <span className="min-w-0 flex-1 truncate text-muted">{row.reason || t("noReason")}</span>
+                {detail.capabilities.canMarkAttendance && <LeaveRequestActions requestId={row.id} />}
               </li>
             ))}
           </ul>
