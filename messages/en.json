@@ -257,7 +257,7 @@
   "coursewareStudio": {
     "title": "Production workbench",
     "intro": "Work on courseware production, publishing, and adaptation by lecture.",
-    "workbenchTitle": "Production workbench",
+    "workbenchTitle": "R&D Tasks",
     "workbenchIntro": "Work through incomplete, recently edited, and ready-to-publish lectures in one place; browse courses from the product library.",
     "taskQueueTitle": "Courseware task queue",
     "taskQueueIntro": "Each item is one lecture and aspect track, rather than another course directory.",
@@ -559,9 +559,11 @@
       "work": "Today's Work",
       "followups": "Follow-ups",
         "students": "Students",
-        "courses": "Courses",
+        "courses": "Course products",
         "courseware": "Courseware",
-        "workbench": "Production workbench",
+        "workbench": "R&D tasks",
+        "adaptReview": "Adapt review",
+        "sharedAssets": "Shared assets",
         "assetLibrary": "Courseware assets",
         "classes": "Classes",
         "testdata": "Test data cleanup",
@@ -572,7 +574,12 @@
       "children": "Children",
       "assignments": "Assignments",
       "activities": "Activities",
-      "operations": "Error monitor"
+      "operations": "Runtime & errors",
+      "group_studentService": "Student Services",
+      "group_teachingOps": "Teaching Operations",
+      "group_curriculum": "Curriculum R&D",
+      "group_org": "Organization",
+      "group_system": "System"
     },
     "operations": {
       "title": "Error monitor",
@@ -736,7 +743,7 @@
       "playbackFailed": "Failed to load video, please retry."
     },
     "courses": {
-      "title": "Courses",
+      "title": "Course Product Library",
       "name": "Name",
       "intro": "Courses, lectures and courseware templates — classes are built from here.",
       "libraryIntro": "Browse course products, variants, teaching plans and courseware readiness. Course seasons and operating terms are managed separately.",
@@ -756,11 +763,6 @@
       "status": "Status",
       "draft": "Draft",
       "active": "Active",
-      "scopeLabel": "View scope",
-      "scope_research": "Research",
-      "scope_teaching": "My teaching",
-      "scope_all": "All courses",
-      "scope_test": "Test data",
       "searchFamilies": "Search course products, variant codes or lectures",
       "moreFilters": "More filters",
       "allFamilyStatuses": "All product statuses",

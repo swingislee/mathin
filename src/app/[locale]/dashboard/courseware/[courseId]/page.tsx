@@ -15,5 +15,5 @@ export default async function LegacyCoursewareCourseRoute({
   await requireAnyPerm(locale, COURSEWARE_STUDIO_PERMS);
   const familyId = await findCourseFamilyForLegacyVariant(courseId);
   if (!familyId) notFound();
-  permanentRedirect(`/dashboard/courses/${familyId}?variant=${courseId}&scope=research`);
+  permanentRedirect(`/dashboard/courses/${familyId}?variant=${courseId}`);
 }

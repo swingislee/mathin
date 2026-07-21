@@ -4,12 +4,12 @@ import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { COURSE_SEASONS } from "./course-queries";
 import type { CourseFamilyDetail } from "./course-family-detail";
-import type { CourseScope, CourseSeason } from "./types";
+import type { CourseSeason } from "./types";
 
 type Variant = CourseFamilyDetail["variants"][number];
 
-function hrefForVariant(familyId: string, variantId: string, scope: CourseScope) {
-  return `/dashboard/courses/${familyId}?variant=${variantId}&scope=${scope}`;
+function hrefForVariant(familyId: string, variantId: string) {
+  return `/dashboard/courses/${familyId}?variant=${variantId}`;
 }
 
 function pickVariant(variants: Variant[], current: Variant, match: (variant: Variant) => boolean) {
@@ -23,19 +23,17 @@ function OptionLink({
   label,
   target,
   familyId,
-  scope,
 }: {
   active: boolean;
   label: string;
   target: Variant | undefined;
   familyId: string;
-  scope: CourseScope;
 }) {
   if (!target) return <span aria-disabled="true" className="rounded-full border border-line px-3 py-1.5 text-sm text-muted/60">{label}</span>;
-  return <Link href={hrefForVariant(familyId, target.id, scope)} aria-current={active ? "page" : undefined} className={cn(buttonVariants({ variant: active ? "primary" : "secondary", size: "sm" }), "min-w-10 px-3 py-1.5")}>{label}</Link>;
+  return <Link href={hrefForVariant(familyId, target.id)} aria-current={active ? "page" : undefined} className={cn(buttonVariants({ variant: active ? "primary" : "secondary", size: "sm" }), "min-w-10 px-3 py-1.5")}>{label}</Link>;
 }
 
-export async function VariantSelector({ detail, scope }: { detail: CourseFamilyDetail; scope: CourseScope }) {
+export async function VariantSelector({ detail }: { detail: CourseFamilyDetail }) {
   const t = await getTranslations("school.courses");
   const current = detail.selectedVariant;
   const currentVariant: Variant = detail.variants.find((variant) => variant.id === current.id) ?? { ...current, trashedAt: null };
@@ -44,13 +42,13 @@ export async function VariantSelector({ detail, scope }: { detail: CourseFamilyD
 
   return <div className="mt-5 space-y-3">
     <SelectorRow label={t("gradeLabel")}>
-      {grades.map((grade) => <OptionLink key={grade} active={current.grade === grade} label={String(grade)} target={pickVariant(detail.variants, currentVariant, (variant) => variant.grade === grade)} familyId={detail.family.id} scope={scope} />)}
+      {grades.map((grade) => <OptionLink key={grade} active={current.grade === grade} label={String(grade)} target={pickVariant(detail.variants, currentVariant, (variant) => variant.grade === grade)} familyId={detail.family.id} />)}
     </SelectorRow>
     <SelectorRow label={t("classType")}>
-      {classTypes.map((classType) => <OptionLink key={classType || "default"} active={current.classType === classType} label={classType || t("defaultClassType")} target={pickVariant(detail.variants, currentVariant, (variant) => variant.classType === classType)} familyId={detail.family.id} scope={scope} />)}
+      {classTypes.map((classType) => <OptionLink key={classType || "default"} active={current.classType === classType} label={classType || t("defaultClassType")} target={pickVariant(detail.variants, currentVariant, (variant) => variant.classType === classType)} familyId={detail.family.id} />)}
     </SelectorRow>
     <SelectorRow label={t("courseSeason")}>
-      {COURSE_SEASONS.map((season) => <OptionLink key={season.value} active={current.courseSeason === season.value} label={t(season.labelKey)} target={pickVariant(detail.variants, currentVariant, (variant) => variant.courseSeason === season.value as CourseSeason)} familyId={detail.family.id} scope={scope} />)}
+      {COURSE_SEASONS.map((season) => <OptionLink key={season.value} active={current.courseSeason === season.value} label={t(season.labelKey)} target={pickVariant(detail.variants, currentVariant, (variant) => variant.courseSeason === season.value as CourseSeason)} familyId={detail.family.id} />)}
     </SelectorRow>
   </div>;
 }

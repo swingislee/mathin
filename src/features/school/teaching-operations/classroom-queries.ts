@@ -70,8 +70,9 @@ export function parseClassroomListFilters(input: Record<string, string | string[
 }
 
 /**
- * 与 resolveCourseScope 不同，这里必须查库：学辅（sales 岗位）没有任何 class.* 权限，
- * 默认可见 scope 完全取决于 classroom_staff_assignments 是否存在，无法用静态权限集推出。
+ * ClassroomScope 是独立于课程 CourseScope（P4I-9 已取消）的概念，这里必须查库：
+ * 学辅（sales 岗位）没有任何 class.* 权限，默认可见 scope 完全取决于
+ * classroom_staff_assignments 是否存在，无法用静态权限集推出。
  */
 export async function resolveClassroomScope(requestedScope: string | string[] | undefined): Promise<{ scope: ClassroomScope; availableScopes: ClassroomScope[] }> {
   const supabase = await createClient();

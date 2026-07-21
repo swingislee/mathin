@@ -549,7 +549,7 @@ export async function StaffHome({ locale, user, profile }: HomeProps) {
     contents.set(
       "templateUrgent",
       templateUrgent.length === 0 ? (
-        <EmptyBody text={schoolT("home.templateUrgentEmpty")} href="/dashboard/courses?scope=research" linkLabel={schoolT("nav.courses")} />
+        <EmptyBody text={schoolT("home.templateUrgentEmpty")} href="/dashboard/courses" linkLabel={schoolT("nav.courses")} />
       ) : (
         <ul className="min-h-0 flex-1 divide-y overflow-hidden">
           {templateUrgent.map((row) => (
@@ -575,7 +575,7 @@ export async function StaffHome({ locale, user, profile }: HomeProps) {
     const progressTotal = templateProgress.reduce((sum, row) => sum + row.total, 0);
     labels.set("templateProgress", schoolT("home.templateProgressTitle"));
     extras.set("templateProgress", {
-      href: "/dashboard/courses?scope=research",
+      href: "/dashboard/courses",
       minimal: <MinimalBody value={`${progressReady}/${progressTotal}`} />,
       compact: (
         <CompactBody
@@ -591,7 +591,7 @@ export async function StaffHome({ locale, user, profile }: HomeProps) {
     contents.set(
       "templateProgress",
       templateProgress.length === 0 ? (
-        <EmptyBody text={schoolT("home.templateProgressEmpty")} href="/dashboard/courses?scope=research" linkLabel={schoolT("nav.courses")} />
+        <EmptyBody text={schoolT("home.templateProgressEmpty")} href="/dashboard/courses" linkLabel={schoolT("nav.courses")} />
       ) : (
         <ul className="grid flex-1 content-center gap-1.5">
           {templateProgress.map((row) => (

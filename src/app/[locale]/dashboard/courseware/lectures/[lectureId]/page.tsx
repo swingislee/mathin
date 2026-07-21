@@ -30,7 +30,7 @@ function workbenchHref(
 }
 
 function familyHref(familyId: string, courseId: string) {
-  return `/dashboard/courses/${familyId}?variant=${courseId}&scope=research`;
+  return `/dashboard/courses/${familyId}?variant=${courseId}`;
 }
 
 export default async function CoursewareWorkbenchPage({

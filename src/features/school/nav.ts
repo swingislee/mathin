@@ -1,11 +1,15 @@
 import type { PermissionKey } from "./permissions";
 
+/** 员工侧栏分组（doc19 §4）；不设置时该项渲染在无分组区（今日工作/财务）。 */
+export type SchoolNavGroup = "studentService" | "teachingOps" | "curriculum" | "org" | "system";
+
 export interface SchoolNavItem {
   href: string;
   labelKey: string;
   requiredPerm?: PermissionKey;
   /** 任一持有即放行（如财务：sales 失 order.view 后仍靠 order.create 进财务页）。 */
   requiredAnyPerm?: readonly PermissionKey[];
+  group?: SchoolNavGroup;
 }
 
 /** 任一财务功能键即显示财务入口（与 finance 页 FINANCE_PERM_KEYS 门控同口径）。 */
@@ -31,18 +35,20 @@ export const HOME_NAV_ITEM: SchoolNavItem = { href: "/dashboard", labelKey: "hom
 
 export const SCHOOL_NAV_ITEMS: readonly SchoolNavItem[] = [
   { href: "/dashboard/work", labelKey: "work" },
-  { href: "/dashboard/followups", labelKey: "followups", requiredPerm: "followup.view" },
-  { href: "/dashboard/activities", labelKey: "activities", requiredPerm: "activity.register" },
-  { href: "/dashboard/students", labelKey: "students", requiredPerm: "student.view.assigned" },
-  { href: "/dashboard/courses", labelKey: "courses", requiredPerm: "course.view" },
-  { href: "/dashboard/courseware", labelKey: "workbench", requiredAnyPerm: COURSEWARE_NAV_PERMS },
-  { href: "/dashboard/classes", labelKey: "classes", requiredPerm: "class.view.mine" },
-  { href: "/dashboard/schedule", labelKey: "schedule" },
+  { href: "/dashboard/students", labelKey: "students", requiredPerm: "student.view.assigned", group: "studentService" },
+  { href: "/dashboard/followups", labelKey: "followups", requiredPerm: "followup.view", group: "studentService" },
+  { href: "/dashboard/activities", labelKey: "activities", requiredPerm: "activity.register", group: "studentService" },
+  { href: "/dashboard/classes", labelKey: "classes", requiredPerm: "class.view.mine", group: "teachingOps" },
+  { href: "/dashboard/schedule", labelKey: "schedule", group: "teachingOps" },
+  { href: "/dashboard/courseware", labelKey: "workbench", requiredAnyPerm: COURSEWARE_NAV_PERMS, group: "curriculum" },
+  { href: "/dashboard/courses", labelKey: "courses", requiredPerm: "course.view", group: "curriculum" },
+  { href: "/dashboard/courseware/adapt", labelKey: "adaptReview", requiredAnyPerm: COURSEWARE_NAV_PERMS, group: "curriculum" },
+  { href: "/dashboard/courseware/assets", labelKey: "sharedAssets", requiredPerm: "courseware.asset.manage", group: "curriculum" },
   { href: "/dashboard/finance", labelKey: "finance", requiredAnyPerm: FINANCE_NAV_PERMS },
-  { href: "/dashboard/staff", labelKey: "staff", requiredPerm: "staff.manage" },
-  { href: "/dashboard/staff/roles", labelKey: "roles", requiredPerm: "permission.configure" },
-  { href: "/dashboard/operations", labelKey: "operations", requiredPerm: "audit.view" },
-  { href: "/dashboard/operations/testdata", labelKey: "testdata", requiredPerm: "testdata.purge" },
+  { href: "/dashboard/staff", labelKey: "staff", requiredPerm: "staff.manage", group: "org" },
+  { href: "/dashboard/staff/roles", labelKey: "roles", requiredPerm: "permission.configure", group: "org" },
+  { href: "/dashboard/operations", labelKey: "operations", requiredPerm: "audit.view", group: "system" },
+  { href: "/dashboard/operations/testdata", labelKey: "testdata", requiredPerm: "testdata.purge", group: "system" },
 ];
 
 /** 侧边栏导航项：总览 + 按权限过滤后的功能入口。 */

@@ -16,7 +16,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { archiveLectureAction, getLectureLifecycleImpactAction, restoreLectureAction, saveTeachingPlanAction } from "./actions";
 import type { CourseFamilyDetail } from "./course-family-detail";
-import type { CourseScope } from "./types";
 
 type EditableLecture = CourseFamilyDetail["teachingPlan"][number];
 type LifecycleIntent = { lecture: EditableLecture; mode: "archive" | "restore" };
@@ -26,22 +25,20 @@ function newLecture(name: string, objectives: string, no: number): EditableLectu
   return { id: crypto.randomUUID(), no, name: name.trim(), objectives: objectives.trim(), status: "draft", archivedAt: null, hasRelease: false, pageCount: 0 };
 }
 
-function productHref(familyId: string, courseId: string, scope: CourseScope, lectureId?: string) {
-  const query = new URLSearchParams({ variant: courseId, scope });
+function productHref(familyId: string, courseId: string, lectureId?: string) {
+  const query = new URLSearchParams({ variant: courseId });
   if (lectureId) query.set("lecture", lectureId);
   return `/dashboard/courses/${familyId}?${query.toString()}`;
 }
 
 export function TeachingPlanEditor({
   familyId,
-  scope,
   selectedVariant,
   lectures: initialLectures,
   canEditCourseware,
   onClose,
 }: {
   familyId: string;
-  scope: CourseScope;
   selectedVariant: CourseFamilyDetail["selectedVariant"];
   lectures: EditableLecture[];
   canEditCourseware: boolean;
@@ -115,7 +112,7 @@ export function TeachingPlanEditor({
               <div className="pt-2 font-mono text-sm text-muted">{String(index + 1).padStart(2, "0")}</div>
               <Label className="grid gap-1 text-xs font-normal text-muted">{t("lectureName")}<Input value={lecture.name} maxLength={100} disabled={pending} onChange={(event) => updateLecture(lecture.id, { name: event.target.value })} /></Label>
               <Label className="grid gap-1 text-xs font-normal text-muted">{t("objectives")}<Textarea value={lecture.objectives} maxLength={2000} rows={2} disabled={pending} onChange={(event) => updateLecture(lecture.id, { objectives: event.target.value })} /></Label>
-              <div className="flex flex-wrap items-center justify-end gap-2 pt-5"><Badge variant={lecture.status === "archived" ? "outline" : "secondary"}>{t(lecture.status)}</Badge><Button type="button" size="sm" variant="ghost" className="px-2" disabled={pending || index === 0} aria-label={t("moveUp")} onClick={() => moveLecture(index, -1)}><ArrowUp className="size-4" /></Button><Button type="button" size="sm" variant="ghost" className="px-2" disabled={pending || index === lectures.length - 1} aria-label={t("moveDown")} onClick={() => moveLecture(index, 1)}><ArrowDown className="size-4" /></Button><Popover><PopoverTrigger asChild><Button type="button" size="sm" variant="ghost" className="px-2" aria-label={t("moreActions")}><Ellipsis className="size-4" /></Button></PopoverTrigger><PopoverContent className="w-52 p-2"><div className="grid gap-1"><Link href={productHref(familyId, selectedVariant.id, scope, lecture.id)} className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "justify-start")}>{t("preview")}</Link>{canEditCourseware && <Link href={`/dashboard/courseware/lectures/${lecture.id}?mode=edit`} className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "justify-start")}>{t("editLectureCourseware")}</Link>}<Button type="button" size="sm" variant="ghost" className="justify-start" disabled={pending} onClick={() => void openLifecycle({ lecture, mode: lecture.status === "archived" ? "restore" : "archive" })}>{lecture.status === "archived" ? t("restoreLecture") : t("archiveLecture")}</Button></div></PopoverContent></Popover></div>
+              <div className="flex flex-wrap items-center justify-end gap-2 pt-5"><Badge variant={lecture.status === "archived" ? "outline" : "secondary"}>{t(lecture.status)}</Badge><Button type="button" size="sm" variant="ghost" className="px-2" disabled={pending || index === 0} aria-label={t("moveUp")} onClick={() => moveLecture(index, -1)}><ArrowUp className="size-4" /></Button><Button type="button" size="sm" variant="ghost" className="px-2" disabled={pending || index === lectures.length - 1} aria-label={t("moveDown")} onClick={() => moveLecture(index, 1)}><ArrowDown className="size-4" /></Button><Popover><PopoverTrigger asChild><Button type="button" size="sm" variant="ghost" className="px-2" aria-label={t("moreActions")}><Ellipsis className="size-4" /></Button></PopoverTrigger><PopoverContent className="w-52 p-2"><div className="grid gap-1"><Link href={productHref(familyId, selectedVariant.id, lecture.id)} className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "justify-start")}>{t("preview")}</Link>{canEditCourseware && <Link href={`/dashboard/courseware/lectures/${lecture.id}?mode=edit`} className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "justify-start")}>{t("editLectureCourseware")}</Link>}<Button type="button" size="sm" variant="ghost" className="justify-start" disabled={pending} onClick={() => void openLifecycle({ lecture, mode: lecture.status === "archived" ? "restore" : "archive" })}>{lecture.status === "archived" ? t("restoreLecture") : t("archiveLecture")}</Button></div></PopoverContent></Popover></div>
             </div>
           </article>)}
         </div>

@@ -1,8 +1,8 @@
 "use client";
 
-import { Baby, BookOpen, CalendarDays, ClipboardList, LayoutDashboard, ListChecks, Menu, PhoneForwarded, Presentation, School, ShieldAlert, ShieldCheck, Users, UserCog, Wallet } from "lucide-react";
+import { Baby, BookOpen, CalendarDays, ClipboardList, Crop, FolderOpen, LayoutDashboard, ListChecks, Menu, PhoneForwarded, Presentation, School, ShieldAlert, ShieldCheck, Users, UserCog, Wallet } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import type { ComponentType } from "react";
 import { Link, usePathname } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
@@ -17,6 +17,8 @@ const ICONS: Record<string, ComponentType<{ size?: number; strokeWidth?: number 
   students: Users,
   courses: BookOpen,
   workbench: Presentation,
+  adaptReview: Crop,
+  sharedAssets: FolderOpen,
   classes: School,
   schedule: CalendarDays,
   finance: Wallet,
@@ -41,26 +43,43 @@ function isCoursewareWorkspace(pathname: string): boolean {
     && segments.length >= 4;
 }
 
+/** 给每个导航项标注是否需要在它前面插入分组标题（上一项的 group 不同时才插）。 */
+function withGroupHeaders(nav: readonly SchoolNavItem[]): Array<{ item: SchoolNavItem; showGroupHeader: boolean }> {
+  const result: Array<{ item: SchoolNavItem; showGroupHeader: boolean }> = [];
+  let lastGroup: string | undefined;
+  for (const item of nav) {
+    result.push({ item, showGroupHeader: item.group !== undefined && item.group !== lastGroup });
+    lastGroup = item.group;
+  }
+  return result;
+}
+
 function NavList({ nav, pathname, onNavigate }: { nav: readonly SchoolNavItem[]; pathname: string; onNavigate?: () => void }) {
   const navT = useTranslations("school.nav");
   return (
     <nav className="flex flex-col gap-1 p-3">
-      {nav.map((item) => {
+      {withGroupHeaders(nav).map(({ item, showGroupHeader }) => {
         const Icon = ICONS[item.labelKey] ?? LayoutDashboard;
         const active = isActive(pathname, item.href);
         return (
-          <Link
-            key={item.href}
-            href={item.href}
-            onClick={onNavigate}
-            className={cn(
-              "flex items-center gap-3 rounded-xl border px-3 py-2.5 text-sm transition",
-              active ? "border-crater bg-crater/10 font-medium text-ink" : "border-transparent text-muted hover:border-line hover:bg-card hover:text-ink",
-            )}
-          >
-            <Icon size={17} strokeWidth={1.75} />
-            {navT(item.labelKey)}
-          </Link>
+          <Fragment key={item.href}>
+            {showGroupHeader ? (
+              <p className="mb-1 mt-3 px-3 text-[11px] font-medium uppercase tracking-wide text-muted first:mt-1">
+                {navT(`group_${item.group}`)}
+              </p>
+            ) : null}
+            <Link
+              href={item.href}
+              onClick={onNavigate}
+              className={cn(
+                "flex items-center gap-3 rounded-xl border px-3 py-2.5 text-sm transition",
+                active ? "border-crater bg-crater/10 font-medium text-ink" : "border-transparent text-muted hover:border-line hover:bg-card hover:text-ink",
+              )}
+            >
+              <Icon size={17} strokeWidth={1.75} />
+              {navT(item.labelKey)}
+            </Link>
+          </Fragment>
         );
       })}
     </nav>

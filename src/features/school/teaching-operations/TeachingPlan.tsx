@@ -5,26 +5,23 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import type { CourseFamilyDetail } from "./course-family-detail";
-import type { CourseScope } from "./types";
 
-function previewHref(familyId: string, courseId: string, scope: CourseScope, lectureId: string) {
-  return `/dashboard/courses/${familyId}?variant=${courseId}&scope=${scope}&lecture=${lectureId}`;
+function previewHref(familyId: string, courseId: string, lectureId: string) {
+  return `/dashboard/courses/${familyId}?variant=${courseId}&lecture=${lectureId}`;
 }
 
 export async function TeachingPlan({
   detail,
-  scope,
   canManage,
 }: {
   detail: CourseFamilyDetail;
-  scope: CourseScope;
   canManage: boolean;
 }) {
   const t = await getTranslations("school.courses");
   const lectures = canManage ? detail.teachingPlan : detail.teachingPlan.filter((lecture) => lecture.status !== "archived");
   const archivedCount = detail.teachingPlan.length - lectures.length;
   const previewLink = (lecture: CourseFamilyDetail["teachingPlan"][number]) => lecture.hasRelease
-    ? <Link href={previewHref(detail.family.id, detail.selectedVariant.id, scope, lecture.id)} className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "shrink-0")}>{t("preview")}</Link>
+    ? <Link href={previewHref(detail.family.id, detail.selectedVariant.id, lecture.id)} className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "shrink-0")}>{t("preview")}</Link>
     : <span className="text-xs text-muted">{t("coursewareNotReleased")}</span>;
 
   return <section id="teaching-plan" className="mt-8 scroll-mt-6">

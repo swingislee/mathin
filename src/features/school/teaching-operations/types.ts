@@ -3,7 +3,6 @@ export type CourseStatus = "draft" | "enabled" | "disabled";
 export type LectureStatus = "draft" | "active" | "archived";
 /** courses.term 的产品季节值（1=暑期、2=秋季、3=寒假、4=春季），不是 school_terms 的运营学期。 */
 export type CourseSeason = 1 | 2 | 3 | 4;
-export type CourseScope = "research" | "teaching" | "all" | "test";
 export type ClassroomScope = "teaching" | "support" | "all" | "test";
 
 export type ClassroomPurpose = "production" | "test";

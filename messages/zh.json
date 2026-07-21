@@ -257,7 +257,7 @@
   "coursewareStudio": {
     "title": "制作工作台",
     "intro": "按讲次处理课件制作、发布和适配任务。",
-    "workbenchTitle": "制作工作台",
+    "workbenchTitle": "研发任务",
     "workbenchIntro": "按讲次集中处理待完善、最近编辑和待发布的课件；课程浏览仍从课程产品库进入。",
     "taskQueueTitle": "课件任务队列",
     "taskQueueIntro": "每一项对应一个讲次与画幅轨道，不再重复展示课程目录。",
@@ -559,9 +559,11 @@
       "work": "今日工作",
       "followups": "跟进",
         "students": "学生",
-        "courses": "课程",
+        "courses": "课程产品",
         "courseware": "课件",
-        "workbench": "制作工作台",
+        "workbench": "研发任务",
+        "adaptReview": "适配校对",
+        "sharedAssets": "公共资源",
         "assetLibrary": "课件资源库",
         "classes": "班级",
         "testdata": "测试数据清理",
@@ -572,7 +574,12 @@
       "children": "孩子",
       "assignments": "作业",
       "activities": "活动",
-      "operations": "错误看板"
+      "operations": "运行与错误",
+      "group_studentService": "学员服务",
+      "group_teachingOps": "教学运营",
+      "group_curriculum": "课程研发",
+      "group_org": "组织管理",
+      "group_system": "系统"
     },
     "operations": {
       "title": "错误看板",
@@ -736,7 +743,7 @@
       "playbackFailed": "视频加载失败，请重试。"
     },
     "courses": {
-      "title": "课程",
+      "title": "课程产品库",
       "name": "名称",
       "intro": "课程 → 讲次 → 课件模板，建班排课都从这里长出来。",
       "libraryIntro": "按课程产品查看版本、教学计划与课件准备情况。课程季节与运营学期分别管理。",
@@ -756,11 +763,6 @@
       "status": "状态",
       "draft": "草稿",
       "active": "启用",
-      "scopeLabel": "查看范围",
-      "scope_research": "教研",
-      "scope_teaching": "我的教学",
-      "scope_all": "全部课程",
-      "scope_test": "测试数据",
       "searchFamilies": "搜索课程产品、版本编号或讲次",
       "moreFilters": "更多筛选",
       "allFamilyStatuses": "全部产品状态",

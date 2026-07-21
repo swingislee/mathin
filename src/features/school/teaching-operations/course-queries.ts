@@ -5,7 +5,6 @@ import { createClient } from "@/lib/supabase/server";
 import type {
   CourseFamilySummary,
   CoursePurpose,
-  CourseScope,
   CourseSeason,
   CourseStatus,
   CourseVariantSummary,
@@ -103,23 +102,9 @@ export function parseCourseFamilyFilters(input: Record<string, string | string[]
   };
 }
 
-export function resolveCourseScope(requestedScope: string | string[] | undefined, permissions: ReadonlySet<string>): CourseScope {
-  const requested = first(requestedScope);
-  const canManage = permissions.has("course.manage");
-  if (requested === "research" || requested === "test") return canManage ? requested : "all";
-  if (requested === "teaching" || requested === "all") return requested;
-  if (canManage) return "research";
-  return permissions.has("class.view.mine") ? "teaching" : "all";
-}
-
-export function availableCourseScopes(permissions: ReadonlySet<string>): CourseScope[] {
-  return permissions.has("course.manage") ? ["research", "teaching", "all", "test"] : ["teaching", "all"];
-}
-
-export async function listCourseFamilies(scope: CourseScope, filters: CourseFamilyFilters): Promise<CourseFamilyListResult> {
+export async function listCourseFamilies(filters: CourseFamilyFilters): Promise<CourseFamilyListResult> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("list_course_families", {
-    p_scope: scope,
     p_filters: {
       q: filters.q ?? "",
       grade: filters.grade?.toString() ?? "",

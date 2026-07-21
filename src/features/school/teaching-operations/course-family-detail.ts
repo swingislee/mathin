@@ -2,7 +2,7 @@ import "server-only";
 
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import type { CourseScope, CourseSeason, CourseStatus, LectureStatus } from "./types";
+import type { CourseSeason, CourseStatus, LectureStatus } from "./types";
 
 const uuidSchema = z.uuid();
 const courseSeasonSchema = z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]);
@@ -122,7 +122,6 @@ export function isUuid(value: string | undefined): value is string {
 export async function getCourseFamilyDetail(
   familyId: string,
   variantId: string | undefined,
-  scope: CourseScope,
 ): Promise<CourseFamilyDetail> {
   const parsedFamilyId = uuidSchema.parse(familyId);
   const parsedVariantId = variantId && uuidSchema.safeParse(variantId).success ? variantId : undefined;
@@ -130,7 +129,6 @@ export async function getCourseFamilyDetail(
   const { data, error } = await supabase.rpc("get_course_family_detail", {
     p_family_id: parsedFamilyId,
     p_variant_id: parsedVariantId,
-    p_scope: scope,
   });
   if (error) throw new Error(error.message);
   return detailSchema.parse(data) as CourseFamilyDetail;
