@@ -25,18 +25,19 @@ function defaultItemTitle(item: WorkItemRow): string {
  * 把它解析成真实 href——不传时组头不可点击，只作展示。
  */
 export function WorkItemGroup({
-  groupKey,
   items,
   getGroupHref,
   renderItemTitle = defaultItemTitle,
   renderActions,
+  bucketLabels,
   className,
 }: {
-  groupKey: string;
   items: readonly WorkItemRow[];
   getGroupHref?: (representative: WorkItemRow) => string;
   renderItemTitle?: (item: WorkItemRow) => ReactNode;
   renderActions?: (item: WorkItemRow) => ReactNode;
+  /** 桶名的展示文案；不传时退化显示原始英文键（now/overdue/...）。 */
+  bucketLabels?: Partial<Record<WorkItemUrgencyBucket, ReactNode>>;
   className?: string;
 }) {
   const head = items[0];
@@ -49,7 +50,6 @@ export function WorkItemGroup({
         <p className="truncate text-sm font-medium text-ink">{head.primaryObjectName}</p>
         {head.secondaryObjectName ? <p className="truncate text-xs text-muted">{head.secondaryObjectName}</p> : null}
       </div>
-      <span className="shrink-0 text-xs text-muted">{groupKey}</span>
     </>
   );
 
@@ -71,7 +71,7 @@ export function WorkItemGroup({
         {items.map((item) => (
           <li key={item.workKey} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
             <div className="flex min-w-0 items-center gap-2">
-              <Badge variant={BUCKET_BADGE_VARIANT[item.urgencyBucket]}>{item.urgencyBucket}</Badge>
+              <Badge variant={BUCKET_BADGE_VARIANT[item.urgencyBucket]}>{bucketLabels?.[item.urgencyBucket] ?? item.urgencyBucket}</Badge>
               <span className="truncate text-sm text-ink">{renderItemTitle(item)}</span>
             </div>
             {renderActions ? <div className="flex shrink-0 items-center gap-2">{renderActions(item)}</div> : null}

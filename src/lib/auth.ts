@@ -82,8 +82,8 @@ export async function requireAnyPerm(locale: string, keys: readonly PermissionKe
   return user;
 }
 
-/** 兼容旧课堂入口：P4B 起 profiles.role 的员工身份为 staff/admin。 */
-export async function requireTeacher(locale: string) {
+/** P4I-8 起是员工工作台入口的统一闸门：profiles.role 的员工身份为 staff/admin。 */
+export async function requireStaff(locale: string) {
   const user = await requireUser(locale);
   const profile = await getProfile(user.id);
   if (profile?.role !== "staff" && profile?.role !== "admin") redirect(`/${locale}/dashboard`);

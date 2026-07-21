@@ -1,6 +1,6 @@
 "use client";
 
-import { Baby, BookOpen, CalendarDays, ClipboardList, LayoutDashboard, Menu, PhoneForwarded, Presentation, School, ShieldAlert, ShieldCheck, Users, UserCog, Wallet } from "lucide-react";
+import { Baby, BookOpen, CalendarDays, ClipboardList, LayoutDashboard, ListChecks, Menu, PhoneForwarded, Presentation, School, ShieldAlert, ShieldCheck, Users, UserCog, Wallet } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import type { ComponentType } from "react";
@@ -12,6 +12,7 @@ import type { SchoolNavItem } from "./nav";
 
 const ICONS: Record<string, ComponentType<{ size?: number; strokeWidth?: number }>> = {
   home: LayoutDashboard,
+  work: ListChecks,
   followups: PhoneForwarded,
   students: Users,
   courses: BookOpen,

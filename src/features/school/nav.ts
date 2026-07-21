@@ -30,6 +30,7 @@ const COURSEWARE_NAV_PERMS: readonly PermissionKey[] = [
 export const HOME_NAV_ITEM: SchoolNavItem = { href: "/dashboard", labelKey: "home" };
 
 export const SCHOOL_NAV_ITEMS: readonly SchoolNavItem[] = [
+  { href: "/dashboard/work", labelKey: "work" },
   { href: "/dashboard/followups", labelKey: "followups", requiredPerm: "followup.view" },
   { href: "/dashboard/activities", labelKey: "activities", requiredPerm: "activity.register" },
   { href: "/dashboard/students", labelKey: "students", requiredPerm: "student.view.assigned" },

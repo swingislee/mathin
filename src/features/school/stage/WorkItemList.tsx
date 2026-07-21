@@ -66,11 +66,11 @@ export function WorkItemList({
               {Array.from(groups.entries()).map(([groupKey, groupItems]) => (
                 <WorkItemGroup
                   key={groupKey}
-                  groupKey={groupKey}
                   items={groupItems}
                   getGroupHref={getGroupHref}
                   renderItemTitle={renderItemTitle}
                   renderActions={renderActions}
+                  bucketLabels={bucketLabels}
                 />
               ))}
             </div>
