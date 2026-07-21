@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { ObjectBar } from "@/features/school/stage/ObjectBar";
 import { ObjectWorkspace } from "@/features/school/stage/ObjectWorkspace";
@@ -19,6 +20,17 @@ import { getMyPerms, requireStaff } from "@/lib/auth";
 // P4I-8（docs/plan/19-p4i-final.md §6-7/§22）：今日工作只读试用。只做展示 +
 // 只读跳转，不接 snooze/pin/acknowledge/watch——这是 doc19 的停止条件任务，
 // 交给真实账号判断排序/分组是否符合工作直觉后再决定是否继续 P4I-9。
+
+// 四个工作分区在宽屏下并排成列（最多 4 列），而不是各自占满整行——避免每张
+// 工作卡横向铺满整个视口、内容却只占一小块的观感问题（P4I-8 真实试用反馈）。
+function WorkColumn({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="flex min-w-0 flex-col gap-3">
+      <h2 className="text-xs font-medium uppercase tracking-[0.14em] text-muted">{title}</h2>
+      {children}
+    </section>
+  );
+}
 
 async function safeListMyWorkItems(): Promise<WorkItemRow[]> {
   try {
@@ -74,73 +86,71 @@ export default async function WorkPage({ params }: { params: Promise<{ locale: s
 
   return (
     <ObjectWorkspace objectBar={<ObjectBar title={t("title")} />} statusStrip={<StatusStrip items={statusItems} />}>
-      <div className="mx-auto w-full max-w-6xl space-y-10">
+      <div className="mx-auto w-full max-w-[96rem] space-y-6">
         <p className="text-sm text-muted">{t("intro")}</p>
 
-        {spotlightGroups.length > 0 ? (
-          <section className="space-y-3">
-            <h2 className="text-xs font-medium uppercase tracking-[0.14em] text-muted">{t("nowTitle")}</h2>
-            <div className="flex flex-col gap-3">
-              {spotlightGroups.map((group) => (
-                <WorkItemGroup
-                  key={group[0].groupKey}
-                  items={group}
-                  getGroupHref={resolveWorkItemHref}
-                  renderItemTitle={renderReason}
-                  bucketLabels={bucketLabels}
-                />
-              ))}
-            </div>
-          </section>
-        ) : null}
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4 xl:items-start">
+          {spotlightGroups.length > 0 ? (
+            <WorkColumn title={t("nowTitle")}>
+              <div className="flex flex-col gap-3">
+                {spotlightGroups.map((group) => (
+                  <WorkItemGroup
+                    key={group[0].groupKey}
+                    items={group}
+                    getGroupHref={resolveWorkItemHref}
+                    renderItemTitle={renderReason}
+                    bucketLabels={bucketLabels}
+                  />
+                ))}
+              </div>
+            </WorkColumn>
+          ) : null}
 
-        <section className="space-y-3">
-          <h2 className="text-xs font-medium uppercase tracking-[0.14em] text-muted">{t("myWorkTitle")}</h2>
-          <WorkItemList
-            items={mine}
-            getGroupHref={resolveWorkItemHref}
-            renderItemTitle={renderReason}
-            bucketLabels={bucketLabels}
-            emptyMessage={t("myWorkEmpty")}
-          />
-        </section>
-
-        <section className="space-y-3">
-          <h2 className="text-xs font-medium uppercase tracking-[0.14em] text-muted">{t("todayTitle")}</h2>
-          {todaySchedule.length > 0 ? (
-            <ul className="divide-y divide-line rounded-2xl border border-line bg-card">
-              {todaySchedule.map((entry) => (
-                <li key={entry.groupKey}>
-                  <Link
-                    href={entry.href}
-                    className="flex items-center justify-between gap-3 px-4 py-3 text-sm transition hover:bg-line/20"
-                  >
-                    <span className="tabular-nums text-muted">{timeFmt.format(new Date(entry.scheduledAt))}</span>
-                    <span className="min-w-0 flex-1 truncate px-3 text-ink">{entry.primaryObjectName}</span>
-                    {entry.secondaryObjectName ? (
-                      <span className="shrink-0 truncate text-xs text-muted">{entry.secondaryObjectName}</span>
-                    ) : null}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-muted">{t("todayEmpty")}</p>
-          )}
-        </section>
-
-        {hasManagementScope ? (
-          <section className="space-y-3">
-            <h2 className="text-xs font-medium uppercase tracking-[0.14em] text-muted">{t("oversightTitle")}</h2>
+          <WorkColumn title={t("myWorkTitle")}>
             <WorkItemList
-              items={oversight}
+              items={mine}
               getGroupHref={resolveWorkItemHref}
               renderItemTitle={renderReason}
               bucketLabels={bucketLabels}
-              emptyMessage={t("oversightAllClear")}
+              emptyMessage={t("myWorkEmpty")}
             />
-          </section>
-        ) : null}
+          </WorkColumn>
+
+          <WorkColumn title={t("todayTitle")}>
+            {todaySchedule.length > 0 ? (
+              <ul className="divide-y divide-line rounded-2xl border border-line bg-card">
+                {todaySchedule.map((entry) => (
+                  <li key={entry.groupKey}>
+                    <Link
+                      href={entry.href}
+                      className="flex items-center justify-between gap-3 px-4 py-3 text-sm transition hover:bg-line/20"
+                    >
+                      <span className="tabular-nums text-muted">{timeFmt.format(new Date(entry.scheduledAt))}</span>
+                      <span className="min-w-0 flex-1 truncate px-3 text-ink">{entry.primaryObjectName}</span>
+                      {entry.secondaryObjectName ? (
+                        <span className="shrink-0 truncate text-xs text-muted">{entry.secondaryObjectName}</span>
+                      ) : null}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted">{t("todayEmpty")}</p>
+            )}
+          </WorkColumn>
+
+          {hasManagementScope ? (
+            <WorkColumn title={t("oversightTitle")}>
+              <WorkItemList
+                items={oversight}
+                getGroupHref={resolveWorkItemHref}
+                renderItemTitle={renderReason}
+                bucketLabels={bucketLabels}
+                emptyMessage={t("oversightAllClear")}
+              />
+            </WorkColumn>
+          ) : null}
+        </div>
       </div>
     </ObjectWorkspace>
   );
