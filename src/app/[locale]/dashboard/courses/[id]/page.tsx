@@ -1,5 +1,4 @@
 import { Suspense } from "react";
-import { BookOpen } from "lucide-react";
 import { notFound, permanentRedirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
@@ -172,15 +171,16 @@ async function CourseFamilyProductPage({
       overflowSlot={capabilities.canTransitionVariant ? <StatusOverflowMenu id={selectedVariant.id} status={selectedVariant.status} action={transitionCourseVariantStatusAction} ariaLabel={t("moreActions")} /> : undefined}
     />}
   >
-    <div className="rounded-2xl border border-line bg-card p-5 sm:p-6">
-      <div className="grid gap-6 lg:grid-cols-[12rem_minmax(0,1fr)]">
-        <div className="flex aspect-[4/3] w-full max-w-xs items-center justify-center rounded-2xl border border-crater/30 bg-moon/40 text-crater"><BookOpen className="size-14" strokeWidth={1.35} aria-hidden="true" /></div>
-        <div className="min-w-0">
-          <p className="text-sm text-muted">{identity}</p>
-          <VariantSelector familyId={detail.family.id} variants={detail.variants} current={selectedVariant} />
-          <div className="mt-5 rounded-xl border border-line bg-paper p-4"><dl className="grid gap-3 sm:grid-cols-3"><div><dt className="text-xs text-muted">{t("lectures")}</dt><dd className="mt-1 font-medium">{detail.readiness.lectureCount}</dd></div><div><dt className="text-xs text-muted">{t("publishedLectures")}</dt><dd className="mt-1 font-medium">{detail.readiness.releasedLectureCount}</dd></div><div><dt className="text-xs text-muted">{t("incompleteLectures")}</dt><dd className="mt-1 font-medium">{Math.max(0, detail.readiness.lectureCount - detail.readiness.releasedLectureCount)}</dd></div></dl></div>
-        </div>
+    <div className="rounded-2xl border border-line bg-card p-4 sm:p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted">{identity}</p>
+        <dl className="flex flex-wrap gap-x-5 gap-y-1 text-sm">
+          <div className="flex items-baseline gap-1.5"><dt className="text-xs text-muted">{t("lectures")}</dt><dd className="font-medium">{detail.readiness.lectureCount}</dd></div>
+          <div className="flex items-baseline gap-1.5"><dt className="text-xs text-muted">{t("publishedLectures")}</dt><dd className="font-medium">{detail.readiness.releasedLectureCount}</dd></div>
+          <div className="flex items-baseline gap-1.5"><dt className="text-xs text-muted">{t("incompleteLectures")}</dt><dd className="font-medium">{Math.max(0, detail.readiness.lectureCount - detail.readiness.releasedLectureCount)}</dd></div>
+        </dl>
       </div>
+      <VariantSelector familyId={detail.family.id} variants={detail.variants} current={selectedVariant} />
     </div>
     <TeachingPlan baseHref={baseHref} teachingPlan={detail.teachingPlan} canManage={canManage} />
     <div className="mt-6 grid gap-4 lg:grid-cols-2">
