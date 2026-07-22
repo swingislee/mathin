@@ -14,7 +14,6 @@
     "p6:db-audit": "node scripts/run-p6-db-audit.mjs",
     "p4h:db-audit": "node scripts/run-p4h-db-audit.mjs",
     "p4h:delete-guard": "node scripts/verify-p4h-delete-guard.mjs",
-    "p4h:route-audit": "node scripts/verify-p4h-route-audit.mjs",
     "p4i1:boundary-audit": "node scripts/verify-p4i1-environment-boundary.mjs",
     "cw:import": "node scripts/cw-import.mjs",
     "cw:adapt-4x3": "node scripts/cw-adapt-4x3.mjs",

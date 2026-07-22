@@ -592,8 +592,7 @@
       "time": "发生时间",
       "route": "路由",
       "message": "错误摘要",
-      "release": "版本",
-      "legacyHomeLinkLabel": "旧磁贴对账（临时）"
+      "release": "版本"
     },
     "work": {
       "title": "今日工作",

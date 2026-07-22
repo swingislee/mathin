@@ -12,24 +12,6 @@ describe("P4I-17 today's work becomes the default staff home", () => {
     expect(page).not.toContain("StaffHome");
   });
 
-  it("StaffHome.tsx 不再读取 dashboard_layouts，TileWorkspace 调用带 readOnly", () => {
-    const staffHome = read("src", "features", "school", "home", "StaffHome.tsx");
-    expect(staffHome).not.toContain('from("dashboard_layouts")');
-    expect(staffHome).toContain("readOnly");
-  });
-
-  it("TileWorkspace 支持 readOnly 关闭编辑入口", () => {
-    const workspace = read("src", "features", "school", "TileWorkspace.tsx");
-    expect(workspace).toContain("readOnly?: boolean");
-    expect(workspace).toContain("readOnly ? undefined :");
-  });
-
-  it("旧磁贴只读对账挂在 operations/legacy-home，用 audit.view 门禁", () => {
-    const legacyPage = read("src", "app", "[locale]", "dashboard", "operations", "legacy-home", "page.tsx");
-    expect(legacyPage).toContain("StaffHome");
-    expect(legacyPage).toContain('requirePerm(locale, "audit.view")');
-  });
-
   it("nav.ts 不再有独立的今日工作入口", () => {
     const nav = read("src", "features", "school", "nav.ts");
     expect(nav).not.toContain("/dashboard/work");

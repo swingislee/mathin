@@ -37,21 +37,16 @@ describe("P4H/P4I-12 courseware workbench contract", () => {
     expect(editor).toContain("beforeunload");
   });
 
-  it("leaves old addresses as permanent redirects with no legacy UI", () => {
-    const oldCourse = read("src", "app", "[locale]", "dashboard", "courseware", "[courseId]", "page.tsx");
-    const oldLecture = read("src", "app", "[locale]", "dashboard", "courseware", "[courseId]", "[lectureId]", "page.tsx");
-    const oldPage = read("src", "app", "[locale]", "dashboard", "courseware", "[courseId]", "[lectureId]", "[pageId]", "page.tsx");
-    const oldTemplate = read("src", "app", "[locale]", "dashboard", "courses", "[id]", "lectures", "[lectureId]", "page.tsx");
-    const oldWorkbench = read("src", "app", "[locale]", "dashboard", "courseware", "lectures", "[lectureId]", "page.tsx");
-
-    for (const source of [oldCourse, oldLecture, oldPage, oldTemplate, oldWorkbench]) {
-      expect(source).toContain("permanentRedirect");
-      expect(source).not.toContain("CoursewareTemplateEditor");
-      expect(source).not.toContain("CoursewareReviewViewport");
-      expect(source).not.toContain("CoursewareWorkbenchBody");
+  it("retired the 5 P4H-era legacy redirect shells (P4I-19: dev-stage old addresses 404, no redirects kept)", () => {
+    const root = process.cwd();
+    for (const segments of [
+      ["src", "app", "[locale]", "dashboard", "courseware", "[courseId]", "page.tsx"],
+      ["src", "app", "[locale]", "dashboard", "courseware", "[courseId]", "[lectureId]", "page.tsx"],
+      ["src", "app", "[locale]", "dashboard", "courseware", "[courseId]", "[lectureId]", "[pageId]", "page.tsx"],
+      ["src", "app", "[locale]", "dashboard", "courses", "[id]", "lectures", "[lectureId]", "page.tsx"],
+      ["src", "app", "[locale]", "dashboard", "courseware", "lectures", "[lectureId]", "page.tsx"],
+    ]) {
+      expect(fs.existsSync(path.join(root, ...segments))).toBe(false);
     }
-    expect(oldPage).toContain("/studio/courseware/");
-    expect(oldWorkbench).toContain("/studio/courseware/");
-    expect(oldWorkbench).toContain("/dashboard/curriculum/lectures/");
   });
 });

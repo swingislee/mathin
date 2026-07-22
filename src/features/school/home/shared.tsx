@@ -5,14 +5,6 @@ import { buttonVariants } from "@/components/ui/button";
 import type { ClassroomMeta } from "@/features/classroom/types";
 import { formatMs } from "@/features/games/format";
 import { games } from "@/features/games/registry";
-import type {
-  FinanceOverview,
-  FollowupBoardCounts,
-  MyPerformance,
-  MyTeachingCard,
-  RosterMismatch,
-  StaffStats,
-} from "@/features/school/dashboard";
 import type { PermissionKey } from "@/features/school/permissions";
 import { sizeToWH, type TilePlacement } from "@/features/school/tile-layout";
 import {
@@ -45,13 +37,6 @@ export async function safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
     return fallback;
   }
 }
-
-export const EMPTY_STATS: StaffStats = { enrolledCount: 0, leadCount: 0, weekSessionCount: 0, overdueFollowUpCount: 0 };
-export const EMPTY_PERFORMANCE: MyPerformance = { dueTotal: 0, paidTotal: 0, enrollCount: 0 };
-export const EMPTY_TEACHING: MyTeachingCard = { sessions: [], pendingGradingCount: 0 };
-export const EMPTY_FINANCE: FinanceOverview = { dueTotal: 0, paidTotal: 0, refundTotal: 0, overdueOrderCount: 0 };
-export const EMPTY_MISMATCH: RosterMismatch = { unlinkedEnrollments: 0, orphanMembers: 0 };
-export const EMPTY_FOLLOWUP_COUNTS: FollowupBoardCounts = { overdue: 0, today: 0 };
 
 export interface BestRow {
   game_id: string;

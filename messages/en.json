@@ -592,8 +592,7 @@
       "time": "Occurred",
       "route": "Route",
       "message": "Error summary",
-      "release": "Release",
-      "legacyHomeLinkLabel": "Legacy tile reconciliation (temporary)"
+      "release": "Release"
     },
     "work": {
       "title": "Today's Work",

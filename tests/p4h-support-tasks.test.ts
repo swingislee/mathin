@@ -31,23 +31,6 @@ describe("P4H-9 workbench scope wiring and support task model", () => {
     expect(actions).toContain("UNAUTHENTICATED");
   });
 
-  it("carries a scope query param on every teaching/research/all dashboard tile link, not the account's default scope", () => {
-    const staffHome = read("src", "features", "school", "home", "StaffHome.tsx");
-    expect(staffHome).toContain('href: "/dashboard/classes?scope=teaching"');
-    expect(staffHome).toContain('href: "/dashboard/courses?scope=research"');
-    expect(staffHome).toContain('href: "/dashboard/classes?scope=all"');
-    expect(staffHome).toContain('href: "/dashboard/classes?scope=support"');
-    expect(staffHome).toContain('href: "/dashboard/courseware"');
-  });
-
-  it("registers the two new tiles and places them in the relevant default orders", () => {
-    const tiles = read("src", "features", "school", "tiles.ts");
-    expect(tiles).toContain('key: "coursewareTasks"');
-    expect(tiles).toContain('key: "supportTasks"');
-    expect(tiles).toContain('"coursewareTasks"');
-    expect(tiles.includes('STAFF_RESEARCH_ORDER: readonly string[] = ["templateUrgent", "templateProgress", "coursewareTasks"')).toBe(true);
-  });
-
   it("classroom detail exposes staffAssignments for the new management dialog without a second query", () => {
     const classes = read("src", "features", "school", "classes.ts");
     expect(classes).toContain("staffAssignments: StaffAssignmentSummary[]");

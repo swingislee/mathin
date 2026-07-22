@@ -1887,6 +1887,8 @@ updated_at
 
 `returnTo` 只接受站内白名单；浏览器历史优先。
 
+> **实际落地脚注（P4I-19，2026-07-22）**：本表 `/dashboard/curriculum/tasks`、`/dashboard/curriculum/products` 两条从未按字面落地，实施时务实保留了 P4H 时代已有的 `/dashboard/courseware`（研发任务）、`/dashboard/courses`（课程产品）命名，避免无谓改名+加重定向；`/dashboard/curriculum/lectures/[lectureId]`（讲次工作区）按本表原样落地。"旧课程和 courseware 路由保留一个发布周期 redirect" 这条原则已在 P4I-19 执行：5 个 P4H-6/P4H-11 兼容壳已超过一个发布周期，随 P4I-19 直接删除（不建重定向，开发阶段旧地址直接 404，与本批次 `957641a` 确立的原则一致）。本表其余路由与实际代码一致，可继续当活文档使用。
+
 ---
 
 # 21. 不变量

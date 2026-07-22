@@ -1,37 +1,22 @@
 "use client";
 
 import {
-  AlarmClock,
   ArrowDown,
   ArrowUp,
   ArrowUpRight,
   Baby,
-  BookOpen,
   CalendarDays,
-  CircleAlert,
-  ClipboardCheck,
   ClipboardList,
   EyeOff,
-  Filter,
   Link2,
-  ListChecks,
   Maximize2,
   NotebookPen,
   PenLine,
-  PhoneCall,
-  PhoneForwarded,
   Plus,
-  ReceiptText,
   RotateCcw,
   School,
   Star,
-  TrendingUp,
   Trophy,
-  Undo2,
-  UserPlus,
-  Users,
-  UserX,
-  Wallet,
   type LucideIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -57,23 +42,8 @@ import {
 import type { TileIconName, TileSize, TileTone } from "./tiles";
 
 const TILE_ICONS: Record<TileIconName, LucideIcon> = {
-  Users,
-  UserPlus,
-  UserX,
   CalendarDays,
-  AlarmClock,
-  Filter,
-  PhoneCall,
-  PhoneForwarded,
-  TrendingUp,
   School,
-  ListChecks,
-  Wallet,
-  Undo2,
-  ReceiptText,
-  BookOpen,
-  CircleAlert,
-  ClipboardCheck,
   ClipboardList,
   Star,
   Trophy,
@@ -153,7 +123,6 @@ export function TileWorkspace({
   prelude,
   items,
   hidden,
-  readOnly = false,
 }: {
   title: string;
   subtitle?: string;
@@ -161,8 +130,6 @@ export function TileWorkspace({
   prelude?: ReactNode;
   items: TileGridItem[];
   hidden: TileGridItem[];
-  /** 为真时不渲染"编辑"入口——`editing` 永远进不去 true，拖拽/隐藏/调档/保存/重置全部随之失效（P4I-17 磁贴只读对账视图用）。 */
-  readOnly?: boolean;
 }) {
   const t = useTranslations("school.tileEdit");
   const router = useRouter();
@@ -438,7 +405,7 @@ export function TileWorkspace({
       <SchoolPageHeader
         title={title}
         actions={
-          readOnly ? undefined : editing ? (
+          editing ? (
             <>
               <button
                 type="button"

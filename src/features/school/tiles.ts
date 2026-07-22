@@ -16,30 +16,15 @@ import {
 export const TILE_SIZES = ["1x1", "2x1", "1x2", "2x2", "3x1", "1x3", "3x2", "2x3", "3x3", "6x2"] as const;
 export type TileSize = (typeof TILE_SIZES)[number];
 
-export type TileAudience = "staff" | "student" | "parent";
+export type TileAudience = "student" | "parent";
 
 /** 语义三档（§5.4）：rose=需要行动、leaf=健康、crater=中性强调；常规磁贴不上色。 */
 export type TileTone = "crater" | "leaf" | "rose";
 
 /** 磁贴头部图标（lucide 组件名，客户端 TileWorkspace 按名映射）。 */
 export type TileIconName =
-  | "Users"
-  | "UserPlus"
-  | "UserX"
   | "CalendarDays"
-  | "AlarmClock"
-  | "Filter"
-  | "PhoneCall"
-  | "PhoneForwarded"
-  | "TrendingUp"
   | "School"
-  | "ListChecks"
-  | "Wallet"
-  | "Undo2"
-  | "ReceiptText"
-  | "BookOpen"
-  | "CircleAlert"
-  | "ClipboardCheck"
   | "ClipboardList"
   | "Star"
   | "Trophy"
@@ -68,50 +53,6 @@ const CHILD_TILE_BASE = "childCard";
 // §5.8c：首档=默认档；小档（1x1=minimal、宽或高为 1 且面积 ≤3=compact）由页面
 // 提供分档内容模板，绝不缩放裁剪。表单贴（bindChild）不配 minimal 档。
 export const TILE_REGISTRY: readonly TileDef[] = [
-  // ---- staff 池（P4B-7 卡片池换壳 + P4C-5 §0 反推七张新贴） ----
-  { key: "statEnrolled", audiences: ["staff"], requiredPerm: "student.view.all", allowedSizes: ["1x1", "2x1"], icon: "Users" },
-  { key: "statLeads", audiences: ["staff"], requiredPerm: "student.view.all", allowedSizes: ["1x1", "2x1"], icon: "UserPlus" },
-  { key: "statWeekSessions", audiences: ["staff"], requiredPerm: "student.view.all", allowedSizes: ["1x1", "2x1"], icon: "CalendarDays" },
-  { key: "statOverdueFollowUps", audiences: ["staff"], requiredPerm: "student.view.all", allowedSizes: ["1x1", "2x1"], icon: "AlarmClock", tone: "rose" },
-  { key: "todaySchedule", audiences: ["staff"], allowedSizes: ["3x2", "3x3", "6x2", "2x2", "2x1", "1x1"], icon: "CalendarDays" },
-  { key: "funnel", audiences: ["staff"], requiredPerm: "student.view.all", allowedSizes: ["2x2", "3x2", "2x1", "1x1"], icon: "Filter" },
-  { key: "myFollowUps", audiences: ["staff"], requiredPerm: "followup.view", allowedSizes: ["3x2", "3x3", "2x2", "2x1", "1x1"], icon: "PhoneCall" },
-  {
-    key: "myPerformance",
-    audiences: ["staff"],
-    requiredAnyPerm: ["finance.order.view", "finance.order.create"],
-    allowedSizes: ["2x1", "2x2", "1x1"],
-    icon: "TrendingUp",
-  },
-  { key: "myTeaching", audiences: ["staff"], requiredPerm: "class.view.mine", allowedSizes: ["3x2", "3x3", "2x2", "2x1", "1x1"], icon: "School" },
-  { key: "myClasses", audiences: ["staff"], requiredPerm: "class.view.mine", allowedSizes: ["3x2", "2x2", "2x1", "1x1"], icon: "ListChecks" },
-  { key: "financeOverview", audiences: ["staff"], requiredPerm: "finance.report.view", allowedSizes: ["3x2", "6x2", "2x2", "2x1", "1x1"], icon: "Wallet" },
-  { key: "refundQueue", audiences: ["staff"], requiredPerm: "finance.refund.approve", allowedSizes: ["2x1", "1x1"], icon: "Undo2", tone: "rose" },
-  { key: "gradingQueue", audiences: ["staff"], requiredPerm: "grading.write", allowedSizes: ["3x2", "3x3", "2x2", "2x1", "1x1"], icon: "ClipboardCheck" },
-  {
-    key: "dueOrders",
-    audiences: ["staff"],
-    requiredAnyPerm: ["finance.order.view", "finance.order.create"],
-    allowedSizes: ["3x2", "2x2", "2x1", "1x1"],
-    icon: "ReceiptText",
-  },
-  { key: "templateUrgent", audiences: ["staff"], requiredPerm: "course.manage", allowedSizes: ["3x2", "2x2", "2x1", "1x1"], icon: "CircleAlert" },
-  { key: "templateProgress", audiences: ["staff"], requiredPerm: "course.manage", allowedSizes: ["2x2", "3x2", "2x1", "1x1"], icon: "BookOpen" },
-  { key: "unmarkedAttendance", audiences: ["staff"], requiredPerm: "class.view.all", allowedSizes: ["2x2", "3x2", "2x1", "1x1"], icon: "ClipboardList" },
-  { key: "rosterMismatch", audiences: ["staff"], requiredPerm: "class.view.all", allowedSizes: ["2x1", "1x1"], icon: "UserX" },
-  { key: "followupBoardEntry", audiences: ["staff"], requiredPerm: "followup.write", allowedSizes: ["2x1", "1x1"], icon: "PhoneForwarded" },
-  { key: "activityToday", audiences: ["staff"], requiredPerm: "activity.register", allowedSizes: ["2x2", "2x1", "1x1"], icon: "CalendarDays" },
-  { key: "reviewGaps", audiences: ["staff"], requiredPerm: "review.write", allowedSizes: ["2x1", "1x1"], icon: "ClipboardList", tone: "rose" },
-  { key: "videoQueue", audiences: ["staff"], requiredPerm: "video.review", allowedSizes: ["2x1", "1x1"], icon: "ClipboardCheck", tone: "rose" },
-  { key: "renewalDue", audiences: ["staff"], requiredAnyPerm: ["finance.order.view","followup.view"], allowedSizes: ["2x1", "1x1"], icon: "ReceiptText", tone: "rose" },
-  { key: "coursewareTasks", audiences: ["staff"], requiredPerm: "courseware.page.edit", allowedSizes: ["3x2", "2x2", "2x1", "1x1"], icon: "BookOpen" },
-  {
-    key: "supportTasks",
-    audiences: ["staff"],
-    requiredAnyPerm: ["followup.write", "attendance.mark", "class.manage", "class.view.all"],
-    allowedSizes: ["3x2", "2x2", "2x1", "1x1"],
-    icon: "ClipboardList",
-  },
   // ---- student 池（§0.7）。无费用磁贴（§4.4）。 ----
   { key: "mySchedule", audiences: ["student"], allowedSizes: ["3x2", "2x2", "2x1", "1x1"], icon: "CalendarDays" },
   { key: "pendingAssignments", audiences: ["student"], allowedSizes: ["2x1", "2x2", "3x2", "1x1"], icon: "ClipboardList" },
@@ -135,57 +76,6 @@ export function findTileDef(key: string): TileDef | null {
 // 角色默认顺序（§5.6）。清单里可以出现尚未上线的键（P4C-5/7 的新磁贴）——
 // 合并时会被 eligible 过滤，届时磁贴上线即自动进默认序，不需要回改这里。
 // ---------------------------------------------------------------------------
-
-export const STAFF_MANAGER_ORDER: readonly string[] = [
-  "statEnrolled",
-  "statLeads",
-  "statWeekSessions",
-  "statOverdueFollowUps",
-  "todaySchedule",
-  "activityToday",
-  "dueOrders",
-  "renewalDue",
-  "funnel",
-  "financeOverview",
-  "refundQueue",
-  "unmarkedAttendance",
-  "rosterMismatch",
-  "templateProgress",
-];
-
-export const STAFF_TEACHER_ORDER: readonly string[] = [
-  "myTeaching",
-  "reviewGaps",
-  "videoQueue",
-  "gradingQueue",
-  "myClasses",
-  "todaySchedule",
-  "activityToday",
-  "myFollowUps",
-  "followupBoardEntry",
-  "supportTasks",
-];
-
-export const STAFF_RESEARCH_ORDER: readonly string[] = ["templateUrgent", "templateProgress", "coursewareTasks", "todaySchedule"];
-
-export const STAFF_SALES_ORDER: readonly string[] = [
-  "followupBoardEntry",
-  "supportTasks",
-  "activityToday",
-  "myFollowUps",
-  "dueOrders",
-  "renewalDue",
-  "myPerformance",
-  "todaySchedule",
-];
-
-/** staff 默认序画像判定（§5.5 第 4 步）：manager > 教师 > 教研 > 学辅，取首个命中。 */
-export function staffDefaultOrder(perms: ReadonlySet<PermissionKey>): readonly string[] {
-  if (perms.has("student.view.all")) return STAFF_MANAGER_ORDER;
-  if (perms.has("class.view.mine")) return STAFF_TEACHER_ORDER;
-  if (perms.has("course.manage")) return STAFF_RESEARCH_ORDER;
-  return STAFF_SALES_ORDER;
-}
 
 export const STUDENT_ORDER: readonly string[] = [
   "mySchedule",

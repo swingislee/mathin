@@ -3,7 +3,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { getRosterMismatchCount } from "@/features/school/dashboard";
 import { SchoolPageHeader } from "@/features/school/PageHeader";
 import { StatusStrip, type StatusStripItem } from "@/features/school/stage/StatusStrip";
-import { Link } from "@/i18n/navigation";
 import { getMyPerms, requirePerm } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
@@ -61,10 +60,7 @@ export default async function OperationsPage({ params }: { params: Promise<{ loc
 
   return (
     <div className="mx-auto w-full max-w-6xl">
-      <SchoolPageHeader
-        title={t("title")}
-        actions={<Link href="/dashboard/operations/legacy-home" className="text-xs text-muted underline underline-offset-2 hover:text-ink">{t("legacyHomeLinkLabel")}</Link>}
-      >
+      <SchoolPageHeader title={t("title")}>
         <p className="mt-1 max-w-3xl text-sm text-muted">{t("intro")}</p>
       </SchoolPageHeader>
       {statusItems.length > 0 && <StatusStrip items={statusItems} className="mt-4" />}
