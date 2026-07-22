@@ -29,7 +29,7 @@ export function AssetLibraryFilters({ initial }: Props) {
     if (role.trim()) params.set("role", role.trim());
     if (minUsage !== "0") params.set("minUsage", minUsage);
     const suffix = params.toString();
-    router.push(`/dashboard/courseware/assets${suffix ? `?${suffix}` : ""}`);
+    router.push(`/dashboard/shared-assets${suffix ? `?${suffix}` : ""}`);
   };
 
   return (

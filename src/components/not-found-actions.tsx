@@ -13,8 +13,6 @@ const classroomSessionPattern = /^\/classroom\/([0-9a-f-]{36})\/session(?:\/.*)?
 export function resolveSemanticParent(pathname: string): string {
   const normalized = pathname.replace(/\/+$/, "") || "/";
 
-  if (/^\/dashboard\/courseware\/assets(?:\/.*)?$/.test(normalized)) return "/dashboard/courseware/assets";
-  if (/^\/dashboard\/courseware\/adapt(?:\/.*)?$/.test(normalized)) return "/dashboard/courseware/adapt";
   if (/^\/dashboard\/courseware\/lectures\/[^/]+(?:\/.*)?$/.test(normalized)) return "/dashboard/courseware";
   if (/^\/dashboard\/courseware(?:\/.*)?$/.test(normalized)) return "/dashboard/courseware";
   if (/^\/dashboard\/courses\/[^/]+(?:\/.*)?$/.test(normalized)) return "/dashboard/courses";

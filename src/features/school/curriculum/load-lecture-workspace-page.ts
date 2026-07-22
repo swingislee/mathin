@@ -51,7 +51,9 @@ export async function loadLectureWorkspacePageData(
     }),
   ])) as Record<CoursewareTrack, LectureReviewCapabilities>;
 
-  const preview = await loadLecturePreview(lectureId, track);
+  const requestedPageRaw = Number(first(rawSearchParams.page));
+  const requestedPage = Number.isInteger(requestedPageRaw) && requestedPageRaw > 0 ? requestedPageRaw : undefined;
+  const preview = await loadLecturePreview(lectureId, track, requestedPage);
   const validPreview = preview && preview.lecture.id === detail.lecture.id ? preview : null;
 
   return {

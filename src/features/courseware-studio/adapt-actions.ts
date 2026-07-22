@@ -16,5 +16,5 @@ export async function reviewAdaptBackground(adaptationId: string, decision: "app
     p_note: "",
   });
   if (error) throw new Error(error.message);
-  revalidatePath("/dashboard/courseware/adapt");
+  revalidatePath("/dashboard/adapt-review");
 }

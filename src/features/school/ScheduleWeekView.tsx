@@ -202,7 +202,7 @@ export function ScheduleWeekView({ canFilterAll }: { canFilterAll: boolean }) {
       ) : null}
 
       <div
-        className="mt-4 overflow-x-auto rounded-xl border border-line"
+        className="mt-4 rounded-xl border border-line"
         style={{ display: !loading ? "block" : "none" }}
       >
         <div

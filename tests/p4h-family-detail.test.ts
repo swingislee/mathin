@@ -25,7 +25,7 @@ describe("P4H course family detail contract", () => {
 
     expect(page).toContain("permanentRedirect");
     expect(page).toContain("TeachingPlanEditorLauncher");
-    expect(page).toContain("CourseLecturePreviewDialog");
+    expect(page).toContain("LecturePreviewDialog");
     expect(page).toContain("loadLecturePreview");
     expect(page).not.toContain("CourseCrudPanel");
   });

@@ -35,10 +35,7 @@ function isActive(pathname: string, href: string): boolean {
 
 /**
  * 课件审阅/编辑工作区、讲次工作区和课表需要独立的桌面端面板布局（内部单一滚动区，
- * 不与 <main> 争夺滚动），其余 Dashboard 页面统一使用全宽壳层。讲次工作区以
- * 覆盖层形式打开时 `usePathname()` 会报告新 URL，但 `children` 槽仍是旧页面
- * 的缓存渲染——此时切到 xl:overflow-hidden 对旧页面视觉无影响（旧页面被
- * Sheet 遮挡），且 ObjectOverlay 自己在开关时快照/恢复滚动位置，不会丢失。
+ * 不与 <main> 争夺滚动），其余 Dashboard 页面统一使用全宽壳层。
  */
 function isPanelWorkspace(pathname: string): boolean {
   const segments = pathname.split("/").filter(Boolean);

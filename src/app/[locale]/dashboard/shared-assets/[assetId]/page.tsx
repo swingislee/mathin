@@ -6,7 +6,7 @@ import { SchoolPageHeader } from "@/features/school/PageHeader";
 import { Link } from "@/i18n/navigation";
 import { requirePerm } from "@/lib/auth";
 
-export default async function CoursewareAssetDetailPage({
+export default async function SharedAssetDetailPage({
   params,
 }: {
   params: Promise<{ locale: string; assetId: string }>;
@@ -23,7 +23,7 @@ export default async function CoursewareAssetDetailPage({
       <SchoolPageHeader title={t("assetDetailTitle")}>
         <p className="mt-1 max-w-3xl text-sm text-muted">{t("assetDetailIntro")}</p>
       </SchoolPageHeader>
-      <p className="mt-3"><Link href="/dashboard/courseware/assets" className="text-xs text-muted underline underline-offset-2 hover:text-ink">{t("backToAssetLibrary")}</Link></p>
+      <p className="mt-3"><Link href="/dashboard/shared-assets" className="text-xs text-muted underline underline-offset-2 hover:text-ink">{t("backToAssetLibrary")}</Link></p>
       <SharedAssetReplacementEditor detail={detail} />
     </div>
   );

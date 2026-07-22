@@ -34,6 +34,9 @@ const COURSEWARE_NAV_PERMS: readonly PermissionKey[] = [
 export const HOME_NAV_ITEM: SchoolNavItem = { href: "/dashboard", labelKey: "home" };
 
 export const SCHOOL_NAV_ITEMS: readonly SchoolNavItem[] = [
+  // 无分组独立顶部项：必须排在第一个分组开始之前，否则 DashboardShell 的
+  // withGroupHeaders() 不会为它插入新标题，视觉上会"挂"在前一个分组下面。
+  { href: "/dashboard/finance", labelKey: "finance", requiredAnyPerm: FINANCE_NAV_PERMS },
   { href: "/dashboard/students", labelKey: "students", requiredPerm: "student.view.assigned", group: "studentService" },
   { href: "/dashboard/followups", labelKey: "followups", requiredPerm: "followup.view", group: "studentService" },
   { href: "/dashboard/activities", labelKey: "activities", requiredPerm: "activity.register", group: "studentService" },
@@ -41,9 +44,8 @@ export const SCHOOL_NAV_ITEMS: readonly SchoolNavItem[] = [
   { href: "/dashboard/schedule", labelKey: "schedule", group: "teachingOps" },
   { href: "/dashboard/courseware", labelKey: "workbench", requiredAnyPerm: COURSEWARE_NAV_PERMS, group: "curriculum" },
   { href: "/dashboard/courses", labelKey: "courses", requiredPerm: "course.view", group: "curriculum" },
-  { href: "/dashboard/courseware/adapt", labelKey: "adaptReview", requiredAnyPerm: COURSEWARE_NAV_PERMS, group: "curriculum" },
-  { href: "/dashboard/courseware/assets", labelKey: "sharedAssets", requiredPerm: "courseware.asset.manage", group: "curriculum" },
-  { href: "/dashboard/finance", labelKey: "finance", requiredAnyPerm: FINANCE_NAV_PERMS },
+  { href: "/dashboard/adapt-review", labelKey: "adaptReview", requiredAnyPerm: COURSEWARE_NAV_PERMS, group: "curriculum" },
+  { href: "/dashboard/shared-assets", labelKey: "sharedAssets", requiredPerm: "courseware.asset.manage", group: "curriculum" },
   { href: "/dashboard/staff", labelKey: "staff", requiredPerm: "staff.manage", group: "org" },
   { href: "/dashboard/staff/roles", labelKey: "roles", requiredPerm: "permission.configure", group: "org" },
   { href: "/dashboard/operations", labelKey: "operations", requiredPerm: "audit.view", group: "system" },

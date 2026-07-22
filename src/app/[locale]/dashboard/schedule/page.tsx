@@ -38,16 +38,19 @@ export default async function SchedulePage({
 
   return (
     <>
-      <ObjectWorkspace
-        scroll="internal"
-        objectBar={
-          <SchoolPageHeader title={t("title")} actions={perms.has("schedule.manage") ? <TermManager terms={schoolTerms} /> : undefined}>
-            <p className="mt-1 max-w-2xl text-sm text-muted">{t("intro")}</p>
-          </SchoolPageHeader>
-        }
-      >
-        <ScheduleWeekView canFilterAll={perms.has("schedule.view.all")} />
-      </ObjectWorkspace>
+      <div className="flex w-full flex-1 flex-col xl:h-full xl:min-h-0">
+        <ObjectWorkspace
+          scroll="internal"
+          horizontalScrollbar
+          objectBar={
+            <SchoolPageHeader title={t("title")} actions={perms.has("schedule.manage") ? <TermManager terms={schoolTerms} /> : undefined}>
+              <p className="mt-1 max-w-2xl text-sm text-muted">{t("intro")}</p>
+            </SchoolPageHeader>
+          }
+        >
+          <ScheduleWeekView canFilterAll={perms.has("schedule.view.all")} />
+        </ObjectWorkspace>
+      </div>
 
       <SessionManagementDrawer
         key={quickRow?.id ?? "none"}

@@ -4,6 +4,7 @@ import { notFound, permanentRedirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
+import { loadLecturePreview, parseCoursewareTrack } from "@/features/courseware-studio/data";
 import { findCourseFamilyForLegacyVariant, getCourseFamilyDetail, isUuid } from "@/features/school/teaching-operations/course-family-detail";
 import { ResponsibilityPanel } from "@/features/school/teaching-operations/ResponsibilityPanel";
 import { StatusOverflowMenu } from "@/features/school/teaching-operations/StatusOverflowMenu";
@@ -15,6 +16,8 @@ import { VariantMatrix } from "@/features/school/teaching-operations/VariantMatr
 import { VariantSelector } from "@/features/school/teaching-operations/VariantSelector";
 import { resolveCourseCapabilities } from "@/features/school/teaching-operations/capabilities";
 import type { SelectedCourseVariant } from "@/features/school/teaching-operations/course-family-detail";
+import { LecturePreviewDialog } from "@/features/school/curriculum/LecturePreviewDialog";
+import { LecturePreviewPanel } from "@/features/school/curriculum/LecturePreviewPanel";
 import { ObjectBar } from "@/features/school/stage/ObjectBar";
 import { ObjectWorkspace } from "@/features/school/stage/ObjectWorkspace";
 import { listStaffOptions } from "@/features/school/classes";
@@ -25,6 +28,11 @@ import { cn } from "@/lib/utils";
 
 function first(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
+}
+
+function parsePage(value: string | undefined) {
+  const page = Number(value);
+  return Number.isInteger(page) && page > 0 ? page : 1;
 }
 
 function familyHref(familyId: string, variantId: string) {
@@ -126,6 +134,14 @@ async function CourseFamilyProductPage({
   const selectedVariant: SelectedCourseVariant = detail.selectedVariant;
   const canCreateClass = permissions.has("class.create");
   const canEditCourseware = permissions.has("courseware.page.edit");
+  const baseHref = familyHref(detail.family.id, selectedVariant.id);
+  const lectureId = first(rawSearchParams.lecture);
+  const requestedLecture = detail.teachingPlan.find((lecture) => lecture.id === lectureId);
+  const previewTrack = parseCoursewareTrack(rawSearchParams.track);
+  const preview = requestedLecture?.hasRelease
+    ? await loadLecturePreview(requestedLecture.id, previewTrack, parsePage(first(rawSearchParams.page)))
+    : null;
+  const validPreview = preview?.lecture.courseId === selectedVariant.id ? preview : null;
 
   const variantTrashed = Boolean(detail.variants.find((variant) => variant.id === selectedVariant.id)?.trashedAt);
   const capabilities = resolveCourseCapabilities({
@@ -166,7 +182,7 @@ async function CourseFamilyProductPage({
         </div>
       </div>
     </div>
-    <TeachingPlan teachingPlan={detail.teachingPlan} canManage={canManage} />
+    <TeachingPlan baseHref={baseHref} teachingPlan={detail.teachingPlan} canManage={canManage} />
     <div className="mt-6 grid gap-4 lg:grid-cols-2">
       {capabilities.canViewUsingClasses && <UsagePanel usage={detail.usage} />}
       <ResponsibilityPanel
@@ -178,5 +194,10 @@ async function CourseFamilyProductPage({
         title={t("variantResponsibility")}
       />
     </div>
+    {validPreview && (
+      <LecturePreviewDialog title={t("lecturePreviewTitle", { no: validPreview.lecture.no, name: validPreview.lecture.name })} closeHref={baseHref}>
+        <LecturePreviewPanel preview={validPreview} baseHref={baseHref} workspaceHref={`/dashboard/curriculum/lectures/${validPreview.lecture.id}?track=${previewTrack}`} />
+      </LecturePreviewDialog>
+    )}
   </ObjectWorkspace>;
 }

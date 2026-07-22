@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ContextBar } from "@/features/school/stage/ContextBar";
 import {
   COURSEWARE_TASK_TABS,
   loadCoursewareTaskQueue,
@@ -19,19 +20,24 @@ type Props = {
   query: string;
 };
 
-function hrefFor(tab: CoursewareTaskTab, query: string) {
+export function hrefFor(tab: CoursewareTaskTab, query: string) {
   const search = new URLSearchParams({ tab });
   if (query) search.set("q", query);
   return `/dashboard/courseware?${search.toString()}`;
 }
 
-function workbenchHref(item: CoursewareTaskItem) {
-  return `/dashboard/curriculum/lectures/${item.lectureId}?track=${item.track}`;
+/** 有已发布 release 的讲次可以"预览"（走查询参数弹窗，见 courseware/page.tsx）；
+ * 还没发布的讲次没有可预览的课件,直接整页跳讲次工作区（不是弹窗）。 */
+function rowHref(item: CoursewareTaskItem, baseHref: string) {
+  return item.releaseNo !== null
+    ? `${baseHref}&lecture=${item.lectureId}&track=${item.track}`
+    : `/dashboard/curriculum/lectures/${item.lectureId}?track=${item.track}`;
 }
 
 export async function CoursewareTaskQueue({ locale, tab, query }: Props) {
-  const [t, tasks] = await Promise.all([
+  const [t, tCourses, tasks] = await Promise.all([
     getTranslations("coursewareStudio"),
+    getTranslations("school.courses"),
     loadCoursewareTaskQueue(tab, query),
   ]);
   const dateTime = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" });
@@ -40,19 +46,19 @@ export async function CoursewareTaskQueue({ locale, tab, query }: Props) {
     recent: t("tabRecent"),
     publish: t("tabPublish"),
   };
+  const baseHref = hrefFor(tab, query);
+  const rowLabel = (item: CoursewareTaskItem) => item.releaseNo !== null ? tCourses("preview") : t("openWorkbench");
 
   return (
     <section className="mt-6">
-      <div className="rounded-2xl border border-line bg-card p-4 sm:p-5">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h2 className="font-display text-2xl text-ink">{t("taskQueueTitle")}</h2>
-            <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">{t("taskQueueIntro")}</p>
-          </div>
+      <ContextBar
+        tabs={COURSEWARE_TASK_TABS.map((item) => ({ value: item, label: tabLabels[item], href: hrefFor(item, query) }))}
+        activeTab={tab}
+        filters={
           <form className="flex w-full gap-2 sm:w-auto" method="get">
             <Input type="hidden" name="tab" value={tab} readOnly />
             <Input
-              className="min-w-0 sm:w-72"
+              className="min-w-0 sm:w-64"
               defaultValue={query}
               name="q"
               placeholder={t("taskSearchPlaceholder")}
@@ -60,30 +66,8 @@ export async function CoursewareTaskQueue({ locale, tab, query }: Props) {
             />
             <Button type="submit" variant="secondary" size="sm"><Search className="size-4" />{t("taskSearch")}</Button>
           </form>
-        </div>
-
-        <nav className="mt-5 flex flex-wrap gap-2" aria-label={t("taskQueueTitle")}>
-          {COURSEWARE_TASK_TABS.map((item) => (
-            <Link
-              key={item}
-              href={hrefFor(item, query)}
-              aria-current={item === tab ? "page" : undefined}
-              className={cn(
-                buttonVariants({ variant: item === tab ? "primary" : "secondary", size: "sm" }),
-                "rounded-full",
-              )}
-            >
-              {tabLabels[item]}
-            </Link>
-          ))}
-          <Link href="/dashboard/courseware/adapt" className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "rounded-full")}>
-            {t("tabAdapt")}
-          </Link>
-          <Link href="/dashboard/courseware/assets" className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "rounded-full")}>
-            {t("tabAssets")}
-          </Link>
-        </nav>
-      </div>
+        }
+      />
 
       {tasks.length === 0 ? (
         <p className="mt-5 rounded-2xl border border-dashed border-line bg-card p-6 text-sm text-muted">{t("taskQueueEmpty")}</p>
@@ -103,7 +87,7 @@ export async function CoursewareTaskQueue({ locale, tab, query }: Props) {
               </TableHeader>
               <TableBody>
                 {tasks.map((item) => (
-                  <TaskRow key={`${item.lectureId}:${item.track}`} item={item} t={t} dateTime={dateTime} />
+                  <TaskRow key={`${item.lectureId}:${item.track}`} item={item} t={t} dateTime={dateTime} baseHref={baseHref} label={rowLabel(item)} />
                 ))}
               </TableBody>
             </Table>
@@ -116,8 +100,8 @@ export async function CoursewareTaskQueue({ locale, tab, query }: Props) {
                 <p className="mt-3 text-sm text-ink">{t("lectureTitle", { no: item.lectureNo, name: item.lectureName })}</p>
                 <div className="mt-3 flex flex-wrap gap-2"><StateBadges item={item} t={t} /></div>
                 <p className="mt-3 flex items-center gap-1.5 text-xs text-muted"><Clock3 className="size-3.5" />{lastEditedLabel(item, t, dateTime)}</p>
-                <Link href={workbenchHref(item)} className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "mt-4 w-full")}>
-                  {t("openWorkbench")}<ExternalLink className="size-4" />
+                <Link href={rowHref(item, baseHref)} className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "mt-4 w-full")}>
+                  {rowLabel(item)}<ExternalLink className="size-4" />
                 </Link>
               </article>
             ))}
@@ -128,7 +112,7 @@ export async function CoursewareTaskQueue({ locale, tab, query }: Props) {
   );
 }
 
-function TaskRow({ item, t, dateTime }: { item: CoursewareTaskItem; t: Awaited<ReturnType<typeof getTranslations>>; dateTime: Intl.DateTimeFormat }) {
+function TaskRow({ item, t, dateTime, baseHref, label }: { item: CoursewareTaskItem; t: Awaited<ReturnType<typeof getTranslations>>; dateTime: Intl.DateTimeFormat; baseHref: string; label: string }) {
   return <TableRow>
     <TableCell>
       <p className="font-medium text-ink">{item.familyTitle}</p>
@@ -138,7 +122,7 @@ function TaskRow({ item, t, dateTime }: { item: CoursewareTaskItem; t: Awaited<R
     <TableCell><Badge variant="outline">{item.track === "adapted-4x3" ? t("trackAdapted") : t("trackNative")}</Badge></TableCell>
     <TableCell><StateBadges item={item} t={t} /></TableCell>
     <TableCell className="text-xs text-muted">{lastEditedLabel(item, t, dateTime)}</TableCell>
-    <TableCell className="text-right"><Link href={workbenchHref(item)} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>{t("openWorkbench")}</Link></TableCell>
+    <TableCell className="text-right"><Link href={rowHref(item, baseHref)} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>{label}</Link></TableCell>
   </TableRow>;
 }
 

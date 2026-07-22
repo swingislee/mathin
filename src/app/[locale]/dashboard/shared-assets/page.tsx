@@ -8,7 +8,7 @@ import { SchoolPageHeader } from "@/features/school/PageHeader";
 import { Link } from "@/i18n/navigation";
 import { requirePerm } from "@/lib/auth";
 
-export default async function CoursewareAssetLibraryPage({
+export default async function SharedAssetLibraryPage({
   params,
   searchParams,
 }: {
@@ -29,7 +29,7 @@ export default async function CoursewareAssetLibraryPage({
     if (filters.minUsage) query.set("minUsage", String(filters.minUsage));
     if (page > 1) query.set("page", String(page));
     const suffix = query.toString();
-    return `/dashboard/courseware/assets${suffix ? `?${suffix}` : ""}`;
+    return `/dashboard/shared-assets${suffix ? `?${suffix}` : ""}`;
   };
 
   return (
@@ -37,9 +37,6 @@ export default async function CoursewareAssetLibraryPage({
       <SchoolPageHeader title={t("assetLibraryTitle")}>
         <p className="mt-1 max-w-3xl text-sm text-muted">{t("assetLibraryIntro")}</p>
       </SchoolPageHeader>
-      <p className="mt-3">
-        <Link href="/dashboard/courseware" className="text-xs text-muted underline underline-offset-2 hover:text-ink">{t("backToWorkbench")}</Link>
-      </p>
       <AssetLibraryFilters initial={filters} />
 
       {items.length === 0 ? (
@@ -70,7 +67,7 @@ export default async function CoursewareAssetLibraryPage({
                   <TableCell className="px-4 py-3 tabular-nums text-muted">{asset.width && asset.height ? `${asset.width} × ${asset.height}` : "—"}</TableCell>
                   <TableCell className="px-4 py-3 text-right">
                     {asset.kind === "image" ? (
-                      <Link href={`/dashboard/courseware/assets/${asset.id}`} className={buttonVariants({ variant: "secondary", size: "sm" })}>{t("manageAsset")}</Link>
+                      <Link href={`/dashboard/shared-assets/${asset.id}`} className={buttonVariants({ variant: "secondary", size: "sm" })}>{t("manageAsset")}</Link>
                     ) : <span className="text-xs text-muted">{t("assetReadOnly")}</span>}
                   </TableCell>
                 </TableRow>

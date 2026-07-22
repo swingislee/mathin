@@ -17,11 +17,9 @@ async function safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
 
 export default async function DashboardLayout({
   children,
-  modal,
   params,
 }: {
   children: React.ReactNode;
-  modal: React.ReactNode;
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
@@ -49,7 +47,6 @@ export default async function DashboardLayout({
         <SiteHeader />
       </div>
       <DashboardShell nav={nav}>{children}</DashboardShell>
-      {modal}
     </div>
   );
 }

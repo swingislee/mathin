@@ -1,7 +1,6 @@
 import { AlertTriangle } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { buttonVariants } from "@/components/ui/button";
-import { StagePreview } from "@/features/courseware-studio/StagePreview";
 import type { CoursewareLecturePreview, CoursewareTrack } from "@/features/courseware-studio/data";
 import { ContextBar } from "@/features/school/stage/ContextBar";
 import { ObjectBar } from "@/features/school/stage/ObjectBar";
@@ -10,11 +9,18 @@ import { StatusStrip } from "@/features/school/stage/StatusStrip";
 import type { StaffOption } from "@/features/school/classes";
 import { ResponsibilityPanel } from "@/features/school/teaching-operations/ResponsibilityPanel";
 import { Link } from "@/i18n/navigation";
+import { LectureCoursewarePreview } from "./LectureCoursewarePreview";
 import type { LectureWorkspaceDetail } from "./types";
 import { lectureStageLabelKey } from "./stage-label";
 
 function trackHref(baseHref: string, track: CoursewareTrack) {
   const search = new URLSearchParams({ track });
+  return `${baseHref}?${search.toString()}`;
+}
+
+function pageHref(baseHref: string, track: CoursewareTrack, page: number) {
+  const search = new URLSearchParams({ track });
+  if (page > 1) search.set("page", String(page));
   return `${baseHref}?${search.toString()}`;
 }
 
@@ -84,8 +90,12 @@ export async function LectureWorkspaceBody({
       <section className="rounded-2xl border border-line bg-card p-4">
         <h2 className="text-sm font-medium text-ink">{t("authoritativePreview")}</h2>
         {preview ? (
-          <div className="mt-3 overflow-hidden rounded-xl border border-line" style={{ maxWidth: 640 }}>
-            <StagePreview doc={preview.page.doc} bindingUrls={preview.bindingUrls} stageMode={track === "adapted-4x3" ? "board43" : "natural"} />
+          <div className="mt-3">
+            <LectureCoursewarePreview
+              preview={preview}
+              prevHref={preview.pageIndex > 1 ? pageHref(baseHref, track, preview.pageIndex - 1) : null}
+              nextHref={preview.pageIndex < preview.pages.length ? pageHref(baseHref, track, preview.pageIndex + 1) : null}
+            />
           </div>
         ) : <p className="mt-2 text-sm text-muted">{t("previewUnavailable")}</p>}
       </section>
