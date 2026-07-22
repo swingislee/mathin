@@ -5,9 +5,10 @@ import { setRequestLocale } from "next-intl/server";
 import { getTranslations } from "next-intl/server";
 import { buttonVariants } from "@/components/ui/button";
 import { toSelectValue } from "@/features/school/controls";
-import { getFollowUpFunnel, type FollowUpFunnelBucket } from "@/features/school/dashboard";
+import { getFollowUpFunnel, getStaffStats, type FollowUpFunnelBucket, type StaffStats } from "@/features/school/dashboard";
 import { NewStudentDialog } from "@/features/school/NewStudentDialog";
 import { SchoolPageHeader } from "@/features/school/PageHeader";
+import { StatusStrip, type StatusStripItem } from "@/features/school/stage/StatusStrip";
 import { StudentRestoreButton } from "@/features/school/StudentLifecycleActions";
 import { FOLLOW_UP_STATUSES, listStudents, parseStudentFilters, STUDENT_STATUSES } from "@/features/school/students";
 import { Link } from "@/i18n/navigation";
@@ -40,12 +41,22 @@ export default async function StudentsPage({
   const canImport = perms.has("student.import");
   const canDelete = perms.has("student.delete");
   const filters = parseStudentFilters(rawSearchParams);
-  const [{ students, count }, funnel]: [Awaited<ReturnType<typeof listStudents>>, FollowUpFunnelBucket[]] = await Promise.all([
+  const emptyStats: StaffStats = { enrolledCount: 0, leadCount: 0, weekSessionCount: 0, overdueFollowUpCount: 0 };
+  const [{ students, count }, funnel, stats]: [Awaited<ReturnType<typeof listStudents>>, FollowUpFunnelBucket[], StaffStats] = await Promise.all([
     listStudents(filters),
     canFunnel ? safe(getFollowUpFunnel, []) : Promise.resolve([]),
+    canFunnel ? safe(getStaffStats, emptyStats) : Promise.resolve(emptyStats),
   ]);
   const maxPage = count ? Math.max(1, Math.ceil(count / 20)) : filters.page;
   const funnelMax = Math.max(1, ...funnel.map((bucket) => bucket.count));
+  const statusItems: StatusStripItem[] = canFunnel
+    ? [
+        { label: schoolT("home.statEnrolled"), value: stats.enrolledCount },
+        { label: schoolT("home.statLeads"), value: stats.leadCount },
+        { label: schoolT("home.statWeekSessions"), value: stats.weekSessionCount },
+        { label: schoolT("home.statOverdueFollowUps"), value: stats.overdueFollowUpCount, tone: stats.overdueFollowUpCount > 0 ? "warning" : "default" },
+      ]
+    : [];
 
   const pageHref = (page: number) => {
     const query = new URLSearchParams();
@@ -77,6 +88,8 @@ export default async function StudentsPage({
       >
         <p className="mt-1 max-w-3xl text-sm text-muted">{t("intro")}</p>
       </SchoolPageHeader>
+
+      {!filters.recycle && statusItems.length > 0 && <StatusStrip items={statusItems} className="mt-4" />}
 
       {!filters.recycle && canFunnel && funnel.length > 0 && (
         <section className="mt-6 rounded-xl border border-line bg-card p-5">

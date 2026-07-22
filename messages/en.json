@@ -567,7 +567,6 @@
     },
     "nav": {
       "home": "Overview",
-      "work": "Today's Work",
       "followups": "Follow-ups",
         "students": "Students",
         "courses": "Course products",
@@ -599,11 +598,12 @@
       "time": "Occurred",
       "route": "Route",
       "message": "Error summary",
-      "release": "Release"
+      "release": "Release",
+      "legacyHomeLinkLabel": "Legacy tile reconciliation (temporary)"
     },
     "work": {
       "title": "Today's Work",
-      "intro": "Work items sorted by urgency and your responsibility; click through to the object. The old tile home page still lives at /dashboard — this is a parallel trial page.",
+      "intro": "Work items sorted by urgency and your responsibility; click through to the object.",
       "nowTitle": "Now",
       "myWorkTitle": "My Work",
       "todayTitle": "Today's Schedule",
@@ -637,7 +637,23 @@
       "reasonFollowupDueLabel": "Follow-up due",
       "reasonRefundApprove": "Refund pending approval",
       "reasonNoPrimaryTeacher": "Active classroom has no primary teacher",
-      "reasonOverdueNotStartedLabel": "Past start time, not started"
+      "reasonOverdueNotStartedLabel": "Past start time, not started",
+      "actionFailed": "Action failed, please try again.",
+      "action_updated": "Updated",
+      "action_markSeen": "Mark as seen",
+      "action_seen": "Seen",
+      "action_acknowledge": "Acknowledge",
+      "action_acknowledged": "Acknowledged",
+      "action_pin": "Pin",
+      "action_unpin": "Unpin",
+      "action_watch": "Watch",
+      "action_unwatch": "Unwatch",
+      "action_snooze": "Snooze",
+      "snooze_6h": "In 6 hours",
+      "snooze_1d": "Tomorrow",
+      "snooze_3d": "In 3 days",
+      "snooze_1w": "Next week",
+      "snooze_2w": "In 2 weeks"
     },
     "testdata": {
       "pageTitle": "Test data cleanup",

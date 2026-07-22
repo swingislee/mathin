@@ -1,7 +1,7 @@
 import { setRequestLocale } from "next-intl/server";
 import { ParentHome } from "@/features/school/home/ParentHome";
-import { StaffHome } from "@/features/school/home/StaffHome";
 import { StudentHome } from "@/features/school/home/StudentHome";
+import { TodayWorkHome } from "@/features/school/home/TodayWorkHome";
 import { getProfile, requireUser } from "@/lib/auth";
 import { pickActiveEnvironment, resolveAvailableEnvironments } from "@/lib/environment";
 import { createClient } from "@/lib/supabase/server";
@@ -24,7 +24,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
   const available = await resolveAvailableEnvironments(supabase, user.id, profile.role);
   const active = pickActiveEnvironment(profile.lastActiveEnvironment, available);
 
-  if (active === "staff") return <StaffHome locale={locale} user={user} profile={profile} />;
+  if (active === "staff") return <TodayWorkHome locale={locale} user={user} profile={profile} />;
   if (active === "family") return <ParentHome locale={locale} user={user} profile={profile} />;
   return <StudentHome locale={locale} user={user} profile={profile} />;
 }

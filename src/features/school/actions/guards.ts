@@ -24,6 +24,15 @@ export async function financeClient(keys: PermissionKey[]) {
   return { supabase, user };
 }
 
+/** 今日工作的已读/稍后处理/置顶/确认/关注这类状态 RPC 没有对应的细粒度权限键，
+ * 门禁本来就是 RPC 自身的 `is_staff(uid)`——这里只做「已登录」，不臆造一个权限键。 */
+export async function staffRpcClient() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("UNAUTHENTICATED");
+  return { supabase, user };
+}
+
 // PostgreSQL functions accept NULL unless their body rejects it, but pg-meta's
 // generated Args type cannot represent a nullable, required function argument.
 // Keep the runtime NULL while narrowing only that generator limitation.

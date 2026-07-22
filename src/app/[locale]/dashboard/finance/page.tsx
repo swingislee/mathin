@@ -4,11 +4,13 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { AccountLookupPanel } from "@/features/school/AccountLookupPanel";
 import { CouponsPanel } from "@/features/school/CouponsPanel";
 import { getMyAccounts, getMyOrders } from "@/features/school/customer";
-import { listCoupons, listOrders, listPendingRefunds, listScholarships, parseOrderFilters } from "@/features/school/finance";
+import { getFinanceOverview, type FinanceOverview } from "@/features/school/dashboard";
+import { countPendingRefunds, listCoupons, listOrders, listPendingRefunds, listScholarships, parseOrderFilters } from "@/features/school/finance";
 import { SchoolPageHeader } from "@/features/school/PageHeader";
 import type { PermissionKey } from "@/features/school/permissions";
 import { RefundQueuePanel } from "@/features/school/RefundQueuePanel";
 import { ScholarshipsPanel } from "@/features/school/ScholarshipsPanel";
+import { StatusStrip, type StatusStripItem } from "@/features/school/stage/StatusStrip";
 import { Link } from "@/i18n/navigation";
 import { getMyPerms, getProfile, requireUser } from "@/lib/auth";
 
@@ -83,21 +85,37 @@ export default async function FinancePage({
 
   if (!hasFinancePerm) redirect(`/${locale}/dashboard`);
 
-  const t = await getTranslations("school.finance");
+  const [t, homeT] = await Promise.all([getTranslations("school.finance"), getTranslations("school.home")]);
 
   const canSeeOrders = perms.has("finance.order.view") || perms.has("finance.order.create") || perms.has("finance.payment.record");
   const canApproveRefunds = perms.has("finance.refund.approve");
   const canManageCoupons = perms.has("finance.coupon.manage");
   const canSeeScholarships = perms.has("finance.scholarship.grant") || perms.has("finance.order.view");
   const canSeeAccounts = perms.has("finance.account.adjust") || perms.has("finance.order.view") || perms.has("finance.scholarship.grant") || perms.has("finance.coupon.manage");
+  const canFinanceOverview = perms.has("finance.report.view");
 
   const filters = parseOrderFilters(rawSearchParams);
-  const [ordersResult, pendingRefunds, coupons, scholarships] = await Promise.all([
+  const emptyOverview: FinanceOverview = { dueTotal: 0, paidTotal: 0, refundTotal: 0, overdueOrderCount: 0 };
+  const [ordersResult, pendingRefunds, coupons, scholarships, financeOverview, pendingRefundCount] = await Promise.all([
     canSeeOrders ? listOrders(filters) : Promise.resolve({ orders: [], count: 0 }),
     canApproveRefunds ? listPendingRefunds() : Promise.resolve([]),
     canManageCoupons ? listCoupons() : Promise.resolve([]),
     canSeeScholarships ? listScholarships() : Promise.resolve([]),
+    canFinanceOverview ? safe(getFinanceOverview, emptyOverview) : Promise.resolve(emptyOverview),
+    canApproveRefunds ? safe(countPendingRefunds, 0) : Promise.resolve(0),
   ]);
+  const cny = new Intl.NumberFormat(locale, { style: "currency", currency: "CNY" });
+  const statusItems: StatusStripItem[] = [
+    ...(canFinanceOverview
+      ? [
+          { label: homeT("financeDue"), value: cny.format(financeOverview.dueTotal) },
+          { label: homeT("financePaid"), value: cny.format(financeOverview.paidTotal) },
+          { label: homeT("financeRefunded"), value: cny.format(financeOverview.refundTotal) },
+          { label: homeT("financeOverdueOrders"), value: financeOverview.overdueOrderCount, tone: financeOverview.overdueOrderCount > 0 ? "warning" as const : "default" as const },
+        ]
+      : []),
+    ...(canApproveRefunds && pendingRefundCount > 0 ? [{ label: homeT("refundQueueLabel"), value: pendingRefundCount, tone: "warning" as const }] : []),
+  ];
 
   const pageHref = (page: number) => {
     const query = new URLSearchParams();
@@ -114,6 +132,7 @@ export default async function FinancePage({
       <SchoolPageHeader title={t("title")}>
         <p className="mt-1 max-w-3xl text-sm text-muted">{t("intro")}</p>
       </SchoolPageHeader>
+      {statusItems.length > 0 && <StatusStrip items={statusItems} className="mt-4" />}
       <p className="mt-4 rounded-lg border border-line bg-card px-4 py-3 text-xs text-muted">{t("appendOnlyPolicy")}</p>
 
       <div className="mt-6 grid gap-6">

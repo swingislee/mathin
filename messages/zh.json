@@ -567,7 +567,6 @@
     },
     "nav": {
       "home": "总览",
-      "work": "今日工作",
       "followups": "跟进",
         "students": "学生",
         "courses": "课程产品",
@@ -599,11 +598,12 @@
       "time": "发生时间",
       "route": "路由",
       "message": "错误摘要",
-      "release": "版本"
+      "release": "版本",
+      "legacyHomeLinkLabel": "旧磁贴对账（临时）"
     },
     "work": {
       "title": "今日工作",
-      "intro": "按紧急程度和你的责任整理的工作项，点击进入对应对象；旧版磁贴首页仍在 /dashboard，这里是并行试用页。",
+      "intro": "按紧急程度和你的责任整理的工作项，点击进入对应对象。",
       "nowTitle": "现在",
       "myWorkTitle": "我的工作",
       "todayTitle": "今天的安排",
@@ -637,7 +637,23 @@
       "reasonFollowupDueLabel": "跟进已到期",
       "reasonRefundApprove": "退款待审批",
       "reasonNoPrimaryTeacher": "在读班级缺主讲",
-      "reasonOverdueNotStartedLabel": "已过点未开课"
+      "reasonOverdueNotStartedLabel": "已过点未开课",
+      "actionFailed": "操作失败，请重试。",
+      "action_updated": "已更新",
+      "action_markSeen": "标记已读",
+      "action_seen": "已读",
+      "action_acknowledge": "确认",
+      "action_acknowledged": "已确认",
+      "action_pin": "置顶",
+      "action_unpin": "取消置顶",
+      "action_watch": "关注",
+      "action_unwatch": "取消关注",
+      "action_snooze": "稍后处理",
+      "snooze_6h": "6 小时后",
+      "snooze_1d": "明天",
+      "snooze_3d": "3 天后",
+      "snooze_1w": "下周",
+      "snooze_2w": "两周后"
     },
     "testdata": {
       "pageTitle": "测试数据清理",

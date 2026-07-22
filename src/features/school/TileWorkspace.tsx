@@ -153,6 +153,7 @@ export function TileWorkspace({
   prelude,
   items,
   hidden,
+  readOnly = false,
 }: {
   title: string;
   subtitle?: string;
@@ -160,6 +161,8 @@ export function TileWorkspace({
   prelude?: ReactNode;
   items: TileGridItem[];
   hidden: TileGridItem[];
+  /** 为真时不渲染"编辑"入口——`editing` 永远进不去 true，拖拽/隐藏/调档/保存/重置全部随之失效（P4I-17 磁贴只读对账视图用）。 */
+  readOnly?: boolean;
 }) {
   const t = useTranslations("school.tileEdit");
   const router = useRouter();
@@ -435,7 +438,7 @@ export function TileWorkspace({
       <SchoolPageHeader
         title={title}
         actions={
-          editing ? (
+          readOnly ? undefined : editing ? (
             <>
               <button
                 type="button"

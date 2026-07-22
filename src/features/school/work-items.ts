@@ -133,7 +133,7 @@ export function resolveWorkItemHref(item: WorkItemRow): string {
   if (item.secondaryObjectType === "classroom" && item.secondaryObjectId) {
     return `/dashboard/classes/${item.secondaryObjectId}`;
   }
-  return "/dashboard/work";
+  return "/dashboard";
 }
 
 function relativeTime(iso: string | undefined, locale: string, now: Date): string | null {

@@ -48,7 +48,6 @@ import { mergeTileLayout, staffDefaultOrder, type TileTone } from "@/features/sc
 import { TileWorkspace } from "@/features/school/TileWorkspace";
 import { Link } from "@/i18n/navigation";
 import { getMyPerms } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 import {
   buildTileItems,
@@ -68,17 +67,16 @@ import {
   type TileExtra,
 } from "./shared";
 
-/** 教务/管理员首屏（原 dashboard/page.tsx 的 isStaff 分支，P4G-7 拆出）。 */
+// P4I-17：不再是 staff 默认首页（该角色改挂 TodayWorkHome），只作为
+// `/dashboard/operations/legacy-home` 的只读磁贴对账视图存在——用来核对
+// 新工作项投影的数量是否与旧磁贴一致，P4I-19 会整体删除这个组件。因此
+// 不再读 `dashboard_layouts`（用户自定义布局对一个只读页没有意义，永远
+// 走默认序），`TileWorkspace` 也传 `readOnly` 关掉编辑/拖拽/保存。
+/** 磁贴只读对账视图（原员工首页，P4G-7 拆出）。 */
 export async function StaffHome({ locale, user, profile }: HomeProps) {
   const schoolT = await getTranslations("school");
   const perms = await getMyPerms(user.id);
-  const supabase = await createClient();
-  const layoutRow = await supabase
-    .from("dashboard_layouts")
-    .select("tiles")
-    .eq("user_id", user.id)
-    .maybeSingle<{ tiles: unknown }>();
-  const userTiles = layoutRow.data?.tiles ?? null;
+  const userTiles = null;
   const dateLine = new Intl.DateTimeFormat(locale, { dateStyle: "full" }).format(new Date());
   const subtitle = `${schoolT("home.staffGreeting", { name: profile?.displayName || "" })} · ${dateLine}`;
   const cny = new Intl.NumberFormat(locale, { style: "currency", currency: "CNY" });
@@ -768,6 +766,7 @@ export async function StaffHome({ locale, user, profile }: HomeProps) {
         }
         items={items}
         hidden={hidden}
+        readOnly
       />
     );
 }
