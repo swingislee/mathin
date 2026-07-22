@@ -32,9 +32,9 @@ describe("P4H-8 classroom list, detail tabs and session drawer contract", () => 
     const drawer = read("src", "features", "school", "SessionManagementDrawer.tsx");
     const detailPage = read("src", "app", "[locale]", "dashboard", "classes", "[id]", "page.tsx");
 
-    expect(drawer).toContain("AttendanceDrawer");
+    // P4I-16 起瘦身为"快速抽屉"（doc19 §15.2）：点名/课评已移交课后 tab 专属表单
+    // （见 tests/p4i-16-schedule-drawer.test.ts），此处不再断言 AttendanceDrawer/ReviewDrawer。
     expect(drawer).toContain("SubstituteTeacherDialog");
-    expect(drawer).toContain("ReviewDrawer");
     expect(drawer).toContain("SessionChangeDialog");
     expect(drawer).toContain("voidSessionAction");
     expect(drawer).toContain("closeHref");

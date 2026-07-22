@@ -5,21 +5,17 @@ import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useAction } from "@/components/action-form";
-import { useRouter } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import type { SessionCapabilities } from "./teaching-operations/types";
 import {
   deleteUnstartedSessionAction,
   rescheduleSessionAction,
   restoreSessionAction,
-  setSessionCoursewareTrackOverrideAction,
   voidSessionAction,
 } from "./actions/classes";
-import { AttendanceDrawer } from "./AttendanceDrawer";
 import type { SessionRow } from "./classes";
-import { ReviewDrawer } from "./ReviewDrawer";
 import { SessionChangeDialog } from "./SessionChangeDialog";
 import { SubstituteTeacherDialog } from "./SubstituteTeacherDialog";
 
@@ -41,11 +37,13 @@ function reasonText(t: ReturnType<typeof useTranslations>, code: string | undefi
 
 export function SessionManagementDrawer({
   session,
-  classroomCoursewareTrack,
+  classroomName,
+  classroomRoom,
   closeHref,
 }: {
   session: SessionRow | null;
-  classroomCoursewareTrack: "native-16x9" | "adapted-4x3";
+  classroomName: string;
+  classroomRoom: string;
   closeHref: string;
 }) {
   const t = useTranslations("school.classes");
@@ -56,11 +54,6 @@ export function SessionManagementDrawer({
 
   const rescheduleRun = useAction(rescheduleSessionAction, {
     successMessage: t("rescheduleSuccess"),
-    errorMessage: { default: t("actionFailed") },
-    onSuccess: () => router.refresh(),
-  });
-  const trackRun = useAction(setSessionCoursewareTrackOverrideAction, {
-    successMessage: t("coursewareTrackSaved"),
     errorMessage: { default: t("actionFailed") },
     onSuccess: () => router.refresh(),
   });
@@ -80,7 +73,7 @@ export function SessionManagementDrawer({
     onSuccess: () => router.refresh(),
   });
 
-  const pending = rescheduleRun.pending || trackRun.pending || cancelRun.pending || restoreRun.pending || voidRun.pending;
+  const pending = rescheduleRun.pending || cancelRun.pending || restoreRun.pending || voidRun.pending;
   const capabilities: SessionCapabilities | undefined = session?.capabilities;
 
   const stateLabel = session && (
@@ -101,7 +94,11 @@ export function SessionManagementDrawer({
               <div className="flex flex-wrap items-center gap-2 text-sm text-muted">
                 <Badge variant="secondary">{stateLabel}</Badge>
                 {session.scheduledAt && <span>{new Date(session.scheduledAt).toLocaleString()}</span>}
+                {classroomName && <span>· {classroomName}</span>}
               </div>
+              <Link href={`/dashboard/sessions/${session.id}`} className="text-sm font-medium text-crater transition hover:underline">
+                {t("openFullSession")}
+              </Link>
             </SheetHeader>
 
             <section className="grid gap-2">
@@ -120,50 +117,11 @@ export function SessionManagementDrawer({
               ) : (
                 <p className="text-sm text-muted">{session.scheduledAt ? new Date(session.scheduledAt).toLocaleString() : t("notApplicable")}</p>
               )}
+              <p className="text-sm text-muted">{classroomRoom || t("notApplicable")}</p>
               {capabilities.canAssignSubstitute && (
                 <SubstituteTeacherDialog sessionId={session.id} currentTeacherId={session.teacherOverrideId} />
               )}
-            </section>
-
-            <section className="grid gap-2">
-              <h3 className="text-xs font-medium uppercase text-muted">{t("zoneCourseware")}</h3>
-              {capabilities.canReschedule && session.lectureId ? (
-                <Select
-                  value={session.coursewareTrackOverride ?? "inherit"}
-                  disabled={pending}
-                  onValueChange={(value) => trackRun.run(session.id, value === "inherit" ? null : value as "native-16x9" | "adapted-4x3")}
-                >
-                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="inherit">{t("coursewareTrackInherit")}</SelectItem>
-                    <SelectItem value="native-16x9">{t("coursewareTrackNative")}</SelectItem>
-                    <SelectItem value="adapted-4x3">{t("coursewareTrackAdapted")}</SelectItem>
-                  </SelectContent>
-                </Select>
-              ) : (
-                <Badge variant="outline">
-                  {session.coursewareTrackOverride === "adapted-4x3" || (!session.coursewareTrackOverride && classroomCoursewareTrack === "adapted-4x3")
-                    ? t("coursewareTrackAdaptedShort") : t("coursewareTrackNativeShort")}
-                </Badge>
-              )}
-            </section>
-
-            <section className="grid gap-2">
-              <h3 className="text-xs font-medium uppercase text-muted">{t("zoneAttendance")}</h3>
-              <div className="flex flex-wrap gap-2">
-                {capabilities.canMarkAttendance && <AttendanceDrawer sessionId={session.id} />}
-                {capabilities.canMarkAttendance && <SessionChangeDialog sessionId={session.id} />}
-                {!capabilities.canMarkAttendance && <p className="text-sm text-muted">{reasonText(t, capabilities.reasons.attendance) ?? t("notApplicable")}</p>}
-              </div>
-            </section>
-
-            <section className="grid gap-2">
-              <h3 className="text-xs font-medium uppercase text-muted">{t("zoneReview")}</h3>
-              {capabilities.canWriteReview ? (
-                <ReviewDrawer sessionId={session.id} />
-              ) : (
-                <p className="text-sm text-muted">{reasonText(t, capabilities.reasons.review) ?? t("notApplicable")}</p>
-              )}
+              {capabilities.canMarkAttendance && <SessionChangeDialog sessionId={session.id} />}
             </section>
 
             <section className="grid gap-2 border-t border-line pt-4">

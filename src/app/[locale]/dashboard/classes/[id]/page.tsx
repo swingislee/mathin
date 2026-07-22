@@ -176,7 +176,8 @@ async function ClassDetailBody({
       <SessionManagementDrawer
         key={activeSession?.id ?? "none"}
         session={activeSession}
-        classroomCoursewareTrack={classroom.coursewareTrack}
+        classroomName={classroom.name}
+        classroomRoom={classroom.room}
         closeHref={closeHref}
       />
     </>

@@ -28,7 +28,7 @@ interface StaffSessionRow {
   scheduled_at: string;
   duration_min: number | null;
   classroom_id: string;
-  classrooms: { name: string } | null;
+  classrooms: { name: string; room: string } | null;
 }
 
 const rangeSchema = z.object({ fromIso: datetime, toIso: datetime });
@@ -53,12 +53,13 @@ export async function getWeekSchedule(fromIso: string, toIso: string): Promise<S
       durationMin: row.duration_min ?? 0,
       teacherName: row.teacher_name ?? "",
       studentName: row.student_name ?? "",
+      room: "",
     }));
   }
 
   const { data: sessionRows, error } = await supabase
     .from("class_sessions")
-    .select("id,title,scheduled_at,duration_min,classroom_id,classrooms(name)")
+    .select("id,title,scheduled_at,duration_min,classroom_id,classrooms(name,room)")
     .is("deleted_at", null)
     .gte("scheduled_at", range.fromIso)
     .lt("scheduled_at", range.toIso)
@@ -90,5 +91,6 @@ export async function getWeekSchedule(fromIso: string, toIso: string): Promise<S
     durationMin: row.duration_min ?? 0,
     teacherName: teacherByClassroom.get(row.classroom_id) ?? "",
     studentName: "",
+    room: row.classrooms?.room || "",
   }));
 }

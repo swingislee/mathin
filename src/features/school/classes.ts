@@ -132,6 +132,63 @@ interface SessionQueryRow {
   profiles: { display_name: string } | null;
 }
 
+interface BuildSessionRowInput {
+  userId: string;
+  myResponsibilities: readonly StaffResponsibility[];
+  hasClassManageScope: boolean;
+  hasClassViewAll: boolean;
+  hasCourseManage: boolean;
+  hasSessionVoid: boolean;
+  hasAttendanceMark: boolean;
+  hasReviewWrite: boolean;
+  hasReviewVideo: boolean;
+  hasPostworkManage: boolean;
+}
+
+/** `SessionQueryRow` + 岗位关系 → `SessionRow`；`getClassroomDetailForScope`（整班）和
+ * `getSessionQuickRow`（课表快速抽屉，单课次）共用同一套状态/capabilities 折算逻辑。 */
+function buildSessionRow(row: SessionQueryRow, input: BuildSessionRowInput): SessionRow {
+  const state = deriveSessionState({
+    startedAt: row.started_at,
+    endedAt: row.ended_at,
+    deletedAt: row.deleted_at,
+    cancelledBy: row.cancelled_by,
+    voidedAt: row.voided_at,
+  });
+  const context = resolveSessionCapabilityContext({
+    responsibilities: input.myResponsibilities,
+    isTeacherOverride: row.teacher_override === input.userId,
+    hasClassManageScope: input.hasClassManageScope,
+    hasClassViewAll: input.hasClassViewAll,
+    hasCourseManage: input.hasCourseManage,
+    hasSessionVoid: input.hasSessionVoid,
+    hasAttendanceMark: input.hasAttendanceMark,
+    hasReviewWrite: input.hasReviewWrite,
+    hasReviewVideo: input.hasReviewVideo,
+    hasPostworkManage: input.hasPostworkManage,
+    state,
+  });
+  return {
+    id: row.id,
+    lectureId: row.lecture_id,
+    no: row.lecture_no,
+    name: row.title,
+    scheduledAt: row.scheduled_at,
+    durationMin: row.duration_min,
+    startedAt: row.started_at,
+    endedAt: row.ended_at,
+    deletedAt: row.deleted_at,
+    cancelReason: row.cancel_reason ?? "",
+    voidedAt: row.voided_at,
+    voidReason: row.void_reason ?? "",
+    teacherOverrideId: row.teacher_override,
+    teacherOverrideName: row.profiles?.display_name ?? null,
+    coursewareTrackOverride: row.courseware_track_override,
+    state,
+    capabilities: resolveSessionCapabilities(context),
+  };
+}
+
 /** 班级详情：把权限、责任关系和课次生命周期一次折叠成 capabilities，UI 不再自行猜角色。 */
 export async function getClassroomDetailForScope(id: string): Promise<ClassroomDetail | null> {
   const supabase = await createClient();
@@ -238,47 +295,18 @@ export async function getClassroomDetailForScope(id: string): Promise<ClassroomD
     isMember: Boolean(row.students?.user_id && memberUserIds.has(row.students.user_id)),
   }));
 
-  const sessions: SessionRow[] = (sessionRows ?? []).map((row) => {
-    const state = deriveSessionState({
-      startedAt: row.started_at,
-      endedAt: row.ended_at,
-      deletedAt: row.deleted_at,
-      cancelledBy: row.cancelled_by,
-      voidedAt: row.voided_at,
-    });
-    const context = resolveSessionCapabilityContext({
-      responsibilities: myResponsibilities,
-      isTeacherOverride: row.teacher_override === user.id,
-      hasClassManageScope,
-      hasClassViewAll,
-      hasCourseManage: perms.has("course.manage"),
-      hasSessionVoid: perms.has("session.void"),
-      hasAttendanceMark: perms.has("attendance.mark"),
-      hasReviewWrite: perms.has("review.write"),
-      hasReviewVideo: perms.has("video.review"),
-      hasPostworkManage: perms.has("session.postwork.manage"),
-      state,
-    });
-    return {
-      id: row.id,
-      lectureId: row.lecture_id,
-      no: row.lecture_no,
-      name: row.title,
-      scheduledAt: row.scheduled_at,
-      durationMin: row.duration_min,
-      startedAt: row.started_at,
-      endedAt: row.ended_at,
-      deletedAt: row.deleted_at,
-      cancelReason: row.cancel_reason ?? "",
-      voidedAt: row.voided_at,
-      voidReason: row.void_reason ?? "",
-      teacherOverrideId: row.teacher_override,
-      teacherOverrideName: row.profiles?.display_name ?? null,
-      coursewareTrackOverride: row.courseware_track_override,
-      state,
-      capabilities: resolveSessionCapabilities(context),
-    };
-  });
+  const sessions: SessionRow[] = (sessionRows ?? []).map((row) => buildSessionRow(row, {
+    userId: user.id,
+    myResponsibilities,
+    hasClassManageScope,
+    hasClassViewAll,
+    hasCourseManage: perms.has("course.manage"),
+    hasSessionVoid: perms.has("session.void"),
+    hasAttendanceMark: perms.has("attendance.mark"),
+    hasReviewWrite: perms.has("review.write"),
+    hasReviewVideo: perms.has("video.review"),
+    hasPostworkManage: perms.has("session.postwork.manage"),
+  }));
 
   return {
     id: classroom.id,
@@ -300,6 +328,69 @@ export async function getClassroomDetailForScope(id: string): Promise<ClassroomD
     viewerRole,
     roster,
     sessions,
+  };
+}
+
+export interface SessionQuickRow extends SessionRow {
+  classroomId: string;
+  classroomName: string;
+  classroomRoom: string;
+  classroomCoursewareTrack: "native-16x9" | "adapted-4x3";
+}
+
+/** 课表快速抽屉用的单课次精简查询（doc19 §15.2），不像 `getClassroomDetailForScope` 那样
+ * 拉整班学生/花名册/全部课次。 */
+export async function getSessionQuickRow(sessionId: string): Promise<SessionQuickRow | null> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data: row, error } = await supabase
+    .from("class_sessions")
+    .select(
+      "id,lecture_id,lecture_no,title,scheduled_at,duration_min,started_at,ended_at,deleted_at,cancelled_by,cancel_reason,voided_at,void_reason,teacher_override,courseware_track_override,classroom_id," +
+        "profiles!class_sessions_teacher_override_fkey(display_name),classrooms(name,room,courseware_track)",
+    )
+    .eq("id", sessionId)
+    .maybeSingle<SessionQueryRow & { classroom_id: string; classrooms: { name: string; room: string; courseware_track: "native-16x9" | "adapted-4x3" } | null }>();
+  if (error) throw new Error(error.message);
+  if (!row) return null;
+
+  const [{ data: assignmentRows, error: assignmentError }, perms] = await Promise.all([
+    supabase
+      .from("classroom_staff_assignments")
+      .select("responsibility")
+      .eq("classroom_id", row.classroom_id)
+      .eq("user_id", user.id)
+      .returns<Array<{ responsibility: StaffResponsibility }>>(),
+    getMyPerms(user.id),
+  ]);
+  if (assignmentError) throw new Error(assignmentError.message);
+
+  const myResponsibilities = (assignmentRows ?? []).map((assignment) => assignment.responsibility);
+  const isTeaching = myResponsibilities.includes("primary_teacher") || myResponsibilities.includes("assistant_teacher");
+  const hasClassViewAll = perms.has("class.view.all");
+  const hasClassManageScope = perms.has("class.manage") && (hasClassViewAll || isTeaching);
+
+  const sessionRow = buildSessionRow(row, {
+    userId: user.id,
+    myResponsibilities,
+    hasClassManageScope,
+    hasClassViewAll,
+    hasCourseManage: perms.has("course.manage"),
+    hasSessionVoid: perms.has("session.void"),
+    hasAttendanceMark: perms.has("attendance.mark"),
+    hasReviewWrite: perms.has("review.write"),
+    hasReviewVideo: perms.has("video.review"),
+    hasPostworkManage: perms.has("session.postwork.manage"),
+  });
+
+  return {
+    ...sessionRow,
+    classroomId: row.classroom_id,
+    classroomName: row.classrooms?.name ?? "",
+    classroomRoom: row.classrooms?.room ?? "",
+    classroomCoursewareTrack: row.classrooms?.courseware_track ?? "native-16x9",
   };
 }
 
