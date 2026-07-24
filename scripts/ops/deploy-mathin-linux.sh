@@ -18,6 +18,7 @@ if [[ ! -x "$node_bin" || ! -x "$pnpm_bin" ]]; then
   echo "Node or pnpm is unavailable; set MATHIN_NODE_BIN and MATHIN_PNPM_BIN." >&2
   exit 1
 fi
+export PATH="$(dirname "$node_bin"):$PATH"
 if [[ ! -f "$runtime_env" ]]; then
   echo "Production environment file is missing: $runtime_env" >&2
   exit 1

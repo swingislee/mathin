@@ -10,10 +10,11 @@ param(
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
-$repositoryRoot = Split-Path -Parent $PSScriptRoot
+$repositoryRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $repositoryRoot = (Resolve-Path -LiteralPath $repositoryRoot).Path
 $gitExe = (Get-Command git.exe -ErrorAction Stop).Source
 $sshExe = (Get-Command ssh.exe -ErrorAction Stop).Source
+$scpExe = (Get-Command scp.exe -ErrorAction Stop).Source
 
 if ($SshHost -notmatch "^[A-Za-z0-9][A-Za-z0-9_.@:-]*$") {
   throw "SshHost contains unsupported characters."
@@ -60,15 +61,15 @@ function Invoke-LocalChecks {
   Write-Host "Running lint..."
   Push-Location $repositoryRoot
   try {
-    & pnpm.cmd lint
+    & pnpm.cmd lint | Out-Host
     if ($LASTEXITCODE -ne 0) { throw "pnpm lint failed." }
 
     Write-Host "Running typecheck..."
-    & pnpm.cmd typecheck
+    & pnpm.cmd typecheck | Out-Host
     if ($LASTEXITCODE -ne 0) { throw "pnpm typecheck failed." }
 
     Write-Host "Running production build..."
-    & pnpm.cmd build
+    & pnpm.cmd build | Out-Host
     if ($LASTEXITCODE -ne 0) { throw "pnpm build failed." }
   } finally {
     Pop-Location
@@ -82,10 +83,7 @@ function Invoke-XiaomiScript {
 
   $payload = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($Script))
   $remoteCommand = "printf '%s' $payload | base64 -d | bash"
-  $output = & $sshExe $SshHost $remoteCommand 2>&1
-  if ($output) {
-    $output | ForEach-Object { Write-Host $_ }
-  }
+  & $sshExe $SshHost $remoteCommand | Out-Host
   if ($LASTEXITCODE -ne 0) {
     throw "Remote operation failed on $SshHost."
   }
@@ -97,43 +95,23 @@ function Send-GitArchive {
     [string]$RemoteSourceRoot
   )
 
-  $gitInfo = [Diagnostics.ProcessStartInfo]::new()
-  $gitInfo.FileName = $gitExe
-  $gitInfo.Arguments = "-C `"$repositoryRoot`" archive --format=tar $Commit"
-  $gitInfo.UseShellExecute = $false
-  $gitInfo.RedirectStandardOutput = $true
-  $gitInfo.RedirectStandardError = $true
-
-  $sshInfo = [Diagnostics.ProcessStartInfo]::new()
-  $sshInfo.FileName = $sshExe
-  $sshInfo.Arguments = "$SshHost `"tar -xf - -C $RemoteSourceRoot`""
-  $sshInfo.UseShellExecute = $false
-  $sshInfo.RedirectStandardInput = $true
-  $sshInfo.RedirectStandardError = $true
-
-  $gitProcess = [Diagnostics.Process]::new()
-  $gitProcess.StartInfo = $gitInfo
-  $sshProcess = [Diagnostics.Process]::new()
-  $sshProcess.StartInfo = $sshInfo
-
-  if (-not $gitProcess.Start() -or -not $sshProcess.Start()) {
-    throw "Could not start the Git archive transfer."
-  }
-
+  $archivePath = Join-Path ([IO.Path]::GetTempPath()) ("mathin-release-{0}.tar" -f [Guid]::NewGuid().ToString("N"))
+  $remoteArchivePath = "$RemoteSourceRoot/source.tar"
   try {
-    $gitProcess.StandardOutput.BaseStream.CopyTo($sshProcess.StandardInput.BaseStream)
-  } finally {
-    $sshProcess.StandardInput.Close()
-  }
+    & $gitExe -C $repositoryRoot archive --format=tar "--output=$archivePath" $Commit
+    if ($LASTEXITCODE -ne 0) { throw "Could not create the Git archive." }
 
-  $gitProcess.WaitForExit()
-  $sshProcess.WaitForExit()
-  $gitError = $gitProcess.StandardError.ReadToEnd().Trim()
-  $sshError = $sshProcess.StandardError.ReadToEnd().Trim()
-  if ($gitProcess.ExitCode -ne 0 -or $sshProcess.ExitCode -ne 0) {
-    if ($gitError) { Write-Host $gitError }
-    if ($sshError) { Write-Host $sshError }
-    throw "Git archive transfer to Xiaomi failed."
+    & $scpExe $archivePath "${SshHost}:$remoteArchivePath"
+    if ($LASTEXITCODE -ne 0) { throw "Could not copy the Git archive to $SshHost." }
+
+    $extractScript = @"
+set -Eeuo pipefail
+tar -xf '$remoteArchivePath' -C '$RemoteSourceRoot'
+rm -f -- '$remoteArchivePath'
+"@
+    Invoke-XiaomiScript $extractScript
+  } finally {
+    Remove-Item -LiteralPath $archivePath -Force -ErrorAction SilentlyContinue
   }
 }
 
