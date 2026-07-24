@@ -26,6 +26,7 @@ export default async function SharedAssetLibraryPage({
     if (filters.query) query.set("query", filters.query);
     if (filters.kind) query.set("kind", filters.kind);
     if (filters.role) query.set("role", filters.role);
+    if (filters.track !== "native-16x9") query.set("track", filters.track);
     if (filters.minUsage) query.set("minUsage", String(filters.minUsage));
     if (page > 1) query.set("page", String(page));
     const suffix = query.toString();
@@ -67,7 +68,7 @@ export default async function SharedAssetLibraryPage({
                   <TableCell className="px-4 py-3 tabular-nums text-muted">{asset.width && asset.height ? `${asset.width} × ${asset.height}` : "—"}</TableCell>
                   <TableCell className="px-4 py-3 text-right">
                     {asset.kind === "image" ? (
-                      <Link href={`/dashboard/shared-assets/${asset.id}`} className={buttonVariants({ variant: "secondary", size: "sm" })}>{t("manageAsset")}</Link>
+                      <Link href={`/dashboard/shared-assets/${asset.id}?track=${filters.track}`} className={buttonVariants({ variant: "secondary", size: "sm" })}>{t("manageAsset")}</Link>
                     ) : <span className="text-xs text-muted">{t("assetReadOnly")}</span>}
                   </TableCell>
                 </TableRow>

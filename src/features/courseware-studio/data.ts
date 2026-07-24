@@ -100,6 +100,7 @@ const assetLibraryFiltersSchema = z.object({
   query: z.string().trim().max(200).catch(""),
   kind: z.enum(["image", "video", "audio", "svg", "h5"]).nullable().catch(null),
   role: z.string().trim().min(1).max(100).nullable().catch(null),
+  track: z.enum(COURSEWARE_TRACKS).catch("native-16x9"),
   minUsage: z.coerce.number().int().min(0).max(1_000_000).catch(0),
   page: z.coerce.number().int().min(1).max(1_000).catch(1),
 });
@@ -110,6 +111,7 @@ export function parseAssetLibraryFilters(input: {
   query?: string | string[];
   kind?: string | string[];
   role?: string | string[];
+  track?: string | string[];
   minUsage?: string | string[];
   page?: string | string[];
 }): AssetLibraryFilters {
@@ -118,6 +120,7 @@ export function parseAssetLibraryFilters(input: {
     query: first(input.query) ?? "",
     kind: first(input.kind) || null,
     role: first(input.role) || null,
+    track: first(input.track) ?? "native-16x9",
     minUsage: first(input.minUsage) ?? "0",
     page: first(input.page) ?? "1",
   });
@@ -150,6 +153,7 @@ export async function loadCoursewareSharedAssets(filters: AssetLibraryFilters) {
     p_query: filters.query,
     p_kind: filters.kind ?? undefined,
     p_role: filters.role ?? undefined,
+    p_track: filters.track,
     p_min_usage: filters.minUsage,
     p_limit: ASSET_LIBRARY_PAGE_SIZE + 1,
     p_offset: (filters.page - 1) * ASSET_LIBRARY_PAGE_SIZE,
@@ -207,6 +211,7 @@ export interface SharedAssetReplacementBatch {
 }
 
 export interface CoursewareSharedAssetDetail {
+  track: CoursewareTrack;
   asset: {
     id: string;
     name: string;
@@ -225,7 +230,7 @@ export interface CoursewareSharedAssetDetail {
 }
 
 /** 资源详情的使用位置、冻结标记和审计历史。页面级 pinned binding 只展示，不能进入批量选择。 */
-export async function loadCoursewareSharedAssetDetail(assetId: string): Promise<CoursewareSharedAssetDetail | null> {
+export async function loadCoursewareSharedAssetDetail(assetId: string, track: CoursewareTrack): Promise<CoursewareSharedAssetDetail | null> {
   const parsedAssetId = z.uuid().safeParse(assetId);
   if (!parsedAssetId.success) return null;
   assetId = parsedAssetId.data;
@@ -236,34 +241,49 @@ export async function loadCoursewareSharedAssetDetail(assetId: string): Promise<
     .eq("id", assetId)
     .maybeSingle();
   if (assetError) throw new Error(assetError.message);
-  if (!asset || asset.kind !== "image" || !asset.published_revision_id) return null;
+  if (!asset || asset.kind !== "image") return null;
 
-  const { data: revision, error: revisionError } = await supabase
-    .from("cw_asset_revisions")
-    .select("id, revision_no, object_id")
-    .eq("id", asset.published_revision_id)
-    .maybeSingle();
-  if (revisionError) throw new Error(revisionError.message);
-  if (!revision) throw new Error("ASSET_PUBLISHED_REVISION_MISSING");
-
-  const [{ data: object, error: objectError }, { data: usageRows, error: usagesError }, { data: batchRows, error: batchesError }] = await Promise.all([
-    supabase.from("cw_asset_objects").select("sha256, mime, byte_count, width, height, storage_path").eq("id", revision.object_id).maybeSingle(),
-    supabase.rpc("list_cw_shared_asset_usages", { p_shared_asset_id: assetId }),
+  const [{ data: variant, error: variantError }, { data: usageRows, error: usagesError }, { data: batchRows, error: batchesError }] = await Promise.all([
+    supabase
+      .from("cw_asset_variant_heads")
+      .select("draft_revision_id, published_revision_id")
+      .eq("shared_asset_id", assetId)
+      .eq("track", track)
+      .maybeSingle(),
+    supabase.rpc("list_cw_shared_asset_usages", { p_shared_asset_id: assetId, p_track: track }),
     supabase
       .from("cw_replacement_batches")
       .select("id, mode, selected_usage_count, status, note, created_at, rolled_back_at")
       .or(`source_shared_asset_id.eq.${assetId},target_shared_asset_id.eq.${assetId}`)
+      .eq("track", track)
       .order("created_at", { ascending: false })
       .limit(20),
   ]);
-  if (objectError) throw new Error(objectError.message);
+  if (variantError) throw new Error(variantError.message);
   if (usagesError) throw new Error(usagesError.message);
   if (batchesError) throw new Error(batchesError.message);
+
+  const currentRevisionId = variant?.published_revision_id ?? variant?.draft_revision_id ?? asset.published_revision_id;
+  if (!currentRevisionId) return null;
+  const { data: revision, error: revisionError } = await supabase
+    .from("cw_asset_revisions")
+    .select("id, revision_no, object_id")
+    .eq("id", currentRevisionId)
+    .maybeSingle();
+  if (revisionError) throw new Error(revisionError.message);
+  if (!revision) throw new Error("ASSET_PUBLISHED_REVISION_MISSING");
+  const { data: object, error: objectError } = await supabase
+    .from("cw_asset_objects")
+    .select("sha256, mime, byte_count, width, height, storage_path")
+    .eq("id", revision.object_id)
+    .maybeSingle();
+  if (objectError) throw new Error(objectError.message);
   if (!object) throw new Error("ASSET_OBJECT_MISSING");
 
   const { data: signed, error: signedError } = await supabase.storage.from("cw-objects").createSignedUrl(object.storage_path, SIGNED_URL_TTL_SECONDS);
   if (signedError) throw new Error(signedError.message);
   return {
+    track,
     asset: {
       id: asset.id,
       name: asset.name,
@@ -304,7 +324,6 @@ export async function loadCoursewareSharedAssetDetail(assetId: string): Promise<
     })),
   };
 }
-
 export interface CoursewarePreviewPage {
   pageDocId: string;
   pageNo: number;

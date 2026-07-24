@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { buildImportSql, loadImportPlan, parseArgs, resolveInside } from "../scripts/cw-import.mjs";
+import { buildImportSql, h5StoragePath, loadImportPlan, parseArgs, resolveInside } from "../scripts/cw-import.mjs";
 
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");
 
@@ -52,6 +52,11 @@ async function createPackageFixture(html = RICH_HTML) {
 }
 
 describe("P6 courseware importer", () => {
+  it("uses an ASCII-safe Storage key without changing an H5 package's logical filename", () => {
+    expect(h5StoragePath("a".repeat(64), "images/位图12.png")).toBe(
+      `packages/${"a".repeat(64)}/images/u__E4_BD_8D_E5_9B_BE12.png`,
+    );
+  });
   it("builds a complete sample import plan and preserves H5 launch query", async () => {
     const fixture = await createPackageFixture();
     const plan = await loadImportPlan({ packageRoot: fixture.root, coursewareId: "sample-courseware" });

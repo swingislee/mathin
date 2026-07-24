@@ -165,6 +165,7 @@ const applyReplacementSchema = z.object({
   sourceSharedAssetId: uuid,
   selectedBindingIds: z.array(uuid).min(1).max(50_000),
   uploadId: uuid,
+  track: trackSchema,
   note: text(1000),
 });
 
@@ -182,6 +183,7 @@ export async function applyCoursewareImageReplacementAction(
         p_source_shared_asset_id: value.sourceSharedAssetId,
         p_selected_binding_ids: value.selectedBindingIds,
         p_upload_id: value.uploadId,
+        p_track: value.track,
         p_note: value.note,
       },
     );
@@ -205,6 +207,7 @@ export async function applyCoursewareImageReplacementAction(
       "SELECTED_BINDING_NOT_FROM_SOURCE",
       "PINNED_BINDING_EXCLUDED",
       "OBJECT_METADATA_CONFLICT",
+      "INVALID_COURSEWARE_TRACK",
       "INVALID_REPLACEMENT_SELECTION",
       ...COMMON_CODES,
     ]);

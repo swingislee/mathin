@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { Check, ImageUp, RotateCcw, Upload } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,7 @@ import {
   rollbackCoursewareImageReplacementAction,
   stageCoursewareImageReplacementAction,
 } from "./actions";
-import { useRouter } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 
 type Props = { detail: CoursewareSharedAssetDetail };
@@ -49,7 +49,7 @@ function selectableIds(usages: SharedAssetUsage[]) {
 
 /** 资源指针或使用树改变后，以 key 重置上传/勾选等仅属于旧资源状态的本地状态。 */
 export function SharedAssetReplacementEditor({ detail }: Props) {
-  const scope = `${detail.asset.id}:${detail.asset.publishedRevisionId}:${detail.usages.map((usage) => `${usage.bindingId}:${usage.pinnedRevisionId ?? ""}`).join(",")}`;
+  const scope = `${detail.track}:${detail.asset.id}:${detail.asset.publishedRevisionId}:${detail.usages.map((usage) => `${usage.bindingId}:${usage.pinnedRevisionId ?? ""}`).join(",")}`;
   return <SharedAssetReplacementEditorBody key={scope} detail={detail} />;
 }
 
@@ -103,6 +103,7 @@ function SharedAssetReplacementEditorBody({ detail }: Props) {
       sourceSharedAssetId: detail.asset.id,
       selectedBindingIds: selectedIds,
       uploadId: staged.uploadId,
+      track: detail.track,
       note,
     });
     if (!result.ok) {
@@ -120,14 +121,23 @@ function SharedAssetReplacementEditorBody({ detail }: Props) {
     if (result.ok) router.refresh();
   });
 
+  const trackLabel = detail.track === "adapted-4x3" ? t("trackAdapted") : t("trackNative");
+  const detailHref = (track: "native-16x9" | "adapted-4x3") => `/dashboard/shared-assets/${detail.asset.id}?track=${track}`;
+
   return (
-    <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
+    <>
+      <nav className="mt-6 flex flex-wrap items-center gap-2" aria-label={t("assetTrack")}>
+        <span className="mr-1 text-sm text-muted">{t("assetTrack")}</span>
+        <Link href={detailHref("native-16x9")} className={buttonVariants({ variant: detail.track === "native-16x9" ? "primary" : "secondary", size: "sm" })}>{t("trackNative")}</Link>
+        <Link href={detailHref("adapted-4x3")} className={buttonVariants({ variant: detail.track === "adapted-4x3" ? "primary" : "secondary", size: "sm" })}>{t("trackAdapted")}</Link>
+      </nav>
+      <div className="mt-4 grid gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
       <section className="space-y-4">
         <div className="rounded-2xl border border-line bg-card p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold text-ink">{t("assetUsageTree")}</h2>
-              <p className="mt-1 text-sm text-muted">{t("assetUsageTreeHint")}</p>
+              <p className="mt-1 text-sm text-muted">{t("assetUsageTreeHint", { track: trackLabel })}</p>
             </div>
             <Badge variant="secondary">{t("assetSelectableCount", { selected: selectedIds.length, total: eligible.length })}</Badge>
           </div>
@@ -179,9 +189,9 @@ function SharedAssetReplacementEditorBody({ detail }: Props) {
               <figure className="rounded-xl border border-line p-2"><img src={staged.previewUrl} alt={t("assetNewPreview")} className="aspect-video w-full rounded-lg bg-paper object-contain" /><figcaption className="mt-2 text-xs text-muted">{staged.fileName} · {staged.width} × {staged.height}</figcaption></figure>
             </div>
             <div className="mt-4 rounded-xl bg-paper p-3 text-sm text-muted">
-              <p>{t(predictedMode === "publish_pointer" ? "assetPointerPlan" : "assetBranchPlan", { count: selectedIds.length })}</p>
+              <p>{t(predictedMode === "publish_pointer" ? "assetPointerPlan" : "assetBranchPlan", { count: selectedIds.length, track: trackLabel })}</p>
               <p className="mt-1">{t("assetImpactSummary", { selected: selectedIds.length, unselected: eligible.length - selectedIds.length, frozen: frozenSelectedCount })}</p>
-              <p className="mt-1">{t("assetReleaseIsolation")}</p>
+              <p className="mt-1">{t("assetReleaseIsolation", { track: trackLabel })}</p>
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
               <Button disabled={pending || selectedIds.length === 0} onClick={apply}><ImageUp className="size-4" />{t("assetApplyReplacement")}</Button>
@@ -233,6 +243,7 @@ function SharedAssetReplacementEditorBody({ detail }: Props) {
         onConfirm={rollback}
         pending={pending}
       />
-    </div>
+      </div>
+    </>
   );
 }

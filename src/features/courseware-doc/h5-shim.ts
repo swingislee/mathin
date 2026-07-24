@@ -12,6 +12,20 @@ const HTML_EXTENSIONS = new Set(["html", "htm"]);
 export const H5_IMMUTABLE_CACHE = "public, max-age=31536000, immutable";
 
 /**
+ * Storage API rejects some raw Unicode object keys. H5 documents retain their
+ * original relative filenames, while Storage uses this ASCII-safe projection.
+ * Keep it segment based: slashes remain directory delimiters and a browser's
+ * relative URL continues to resolve through the shim with the original name.
+ */
+function h5StorageSegment(segment: string): string {
+  return /[^\x20-\x7E]/.test(segment) ? `u_${encodeURIComponent(segment).replaceAll("%", "_")}` : segment;
+}
+
+export function h5StorageObjectPath(objectPath: string): string {
+  return objectPath.split("/").map(h5StorageSegment).join("/");
+}
+
+/**
  * 校验 catch-all 段并拼回桶内对象路径。
  * 只接受 packages/<packageHash>/<包内相对路径>;任何 ".."、空段、反斜杠、
  * 非法 hash 一律拒绝(返回 null → 404),防目录穿越与任意对象探测。
@@ -33,7 +47,8 @@ export function isHtmlObjectPath(objectPath: string): boolean {
 }
 
 export function h5PublicUrl(supabaseUrl: string, objectPath: string): string {
-  const encoded = objectPath.split("/").map(encodeURIComponent).join("/");
+  // The URL encodes the ASCII-safe physical Storage key, not the logical H5 filename.
+  const encoded = h5StorageObjectPath(objectPath).split("/").map(encodeURIComponent).join("/");
   return `${supabaseUrl.replace(/\/$/, "")}/storage/v1/object/public/cw-h5/${encoded}`;
 }
 

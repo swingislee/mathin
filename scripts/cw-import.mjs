@@ -256,6 +256,20 @@ function storagePathForObject(object) {
   return object.kind === "h5" ? `packages/${object.objectHash}` : `sha256/${object.objectHash.slice(0, 2)}/${object.objectHash}`;
 }
 
+/**
+ * Storage API rejects some raw Unicode object keys. Keep the H5 package's
+ * logical filenames untouched (the HTML relies on them), but store each path
+ * segment under its deterministic percent-encoded key. The H5 shim applies
+ * the same mapping when resolving browser requests back to Storage.
+ */
+function h5StorageSegment(segment) {
+  return /[^\x20-\x7E]/.test(segment) ? `u_${encodeURIComponent(segment).replaceAll("%", "_")}` : segment;
+}
+
+export function h5StoragePath(packageHash, packagePath) {
+  return `packages/${packageHash}/${packagePath.split("/").map(h5StorageSegment).join("/")}`;
+}
+
 export async function loadImportPlan({ packageRoot, coursewareId }) {
   const manifest = JSON.parse(await readFile(resolveInside(packageRoot, "manifest.json"), "utf8"));
   if (manifest?.schemaVersion !== PACKAGE_SCHEMA_VERSION) fail(`unsupported package schema ${manifest?.schemaVersion ?? "<missing>"}`);
@@ -993,7 +1007,7 @@ async function uploadPlan(plan, storeRoot, client, uploadConfig) {
     for (const file of manifest.files) {
       const source = resolveInside(storeRoot, `h5/packages/${hash}/patched/${file.packagePath}`);
       await verifyLocalFile(source, file.sha256, file.byteCount, `H5 ${hash}/${file.packagePath}`);
-      const state = await uploadOne(client, uploadConfig, "cw-h5", `packages/${hash}/${file.packagePath}`, source, file.mime, "31536000");
+      const state = await uploadOne(client, uploadConfig, "cw-h5", h5StoragePath(hash, file.packagePath), source, file.mime, "31536000");
       result.cwH5[state] += 1;
     }
   }

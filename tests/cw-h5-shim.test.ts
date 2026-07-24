@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   h5ObjectPath,
   h5PublicUrl,
+  h5StorageObjectPath,
   injectHeadSnippet,
   isHtmlObjectPath,
 } from "../src/features/courseware-doc/h5-shim";
@@ -31,9 +32,12 @@ describe("P6-4 H5 shim", () => {
     expect(isHtmlObjectPath(`packages/${HASH}/noext`)).toBe(false);
   });
 
-  it("builds encoded public storage URLs", () => {
+  it("maps Unicode H5 filenames to ASCII Storage keys and addresses those keys", () => {
+    expect(h5StorageObjectPath(`packages/${HASH}/img/主图 1.png`)).toBe(
+      `packages/${HASH}/img/u__E4_B8_BB_E5_9B_BE_201.png`,
+    );
     expect(h5PublicUrl("https://supabase.example/", `packages/${HASH}/img/主图 1.png`)).toBe(
-      `https://supabase.example/storage/v1/object/public/cw-h5/packages/${HASH}/img/%E4%B8%BB%E5%9B%BE%201.png`,
+      `https://supabase.example/storage/v1/object/public/cw-h5/packages/${HASH}/img/u__E4_B8_BB_E5_9B_BE_201.png`,
     );
   });
 
