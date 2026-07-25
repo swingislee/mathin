@@ -13,7 +13,7 @@ export default async function LocaleLayout({ children, params }: { children: Rea
   setRequestLocale(locale);
   const t = await getTranslations("common");
   return <NextIntlClientProvider>
-    <a href="#main-content" className="sr-only fixed left-3 top-3 z-[100] rounded-lg bg-paper px-4 py-2 text-sm text-ink shadow-lg focus:not-sr-only">{t("skipToContent")}</a>
+    <a href="#main-content" className="sr-only fixed left-3 top-3 z-100 rounded-lg bg-paper px-4 py-2 text-sm text-ink shadow-lg focus:not-sr-only">{t("skipToContent")}</a>
     <div id="main-content" tabIndex={-1} className="contents">{children}</div>
   </NextIntlClientProvider>;
 }

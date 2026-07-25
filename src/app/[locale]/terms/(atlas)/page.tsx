@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { SiteHeader } from "@/components/site-header";
+import { ThemePageIdentity } from "@/components/theme-page-identity";
 import type { PlanetLabel } from "@/features/terms/three/galaxy-scene";
 import { GalaxyView } from "@/features/terms/three/views";
 import { termPlanets } from "@/features/terms/universe";
@@ -20,6 +21,7 @@ export default async function TermsPage({ params }: { params: Promise<{ locale: 
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("termsUniverse");
+  const sectionT = await getTranslations("terms");
   const nav = await getTranslations("nav");
 
   const labels: Record<string, PlanetLabel> = Object.fromEntries(
@@ -46,10 +48,16 @@ export default async function TermsPage({ params }: { params: Promise<{ locale: 
           </div>
         </div>
         {/* 覆盖层文案 */}
-        <div className="pointer-events-none absolute left-6 top-20 z-10 md:left-10">
-          <h1 className="font-display text-2xl text-ink md:text-3xl">{nav("terms")}</h1>
-          <p className="mt-1.5 text-xs text-muted md:text-sm">{t("hint")}</p>
-        </div>
+        <ThemePageIdentity
+          sectionName={nav("terms")}
+          planetName={nav("planetNames.terms")}
+          description={sectionT("intro")}
+          tone="terms"
+          className="pointer-events-none"
+        />
+        <p className="pointer-events-none absolute bottom-4 left-6 z-10 hidden text-xs text-muted sm:block md:left-8">
+          {t("hint")}
+        </p>
         <div className="absolute bottom-4 right-6 z-10 md:right-10">
           <Link href="/terms/graph" className="text-xs text-muted transition-colors duration-200 hover:text-ink">
             ✦ {t("graphEntry")}

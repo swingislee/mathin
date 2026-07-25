@@ -43,9 +43,7 @@ export default async function DashboardLayout({
   return (
     // 唯一滚动区 = 主内容：外框 h-dvh + overflow-hidden 锁死 window 滚动（P4C-0 §3.1）
     <div className="flex h-screen h-dvh flex-col overflow-hidden">
-      <div className="shrink-0 border-b border-line">
-        <SiteHeader />
-      </div>
+      <SiteHeader workspace />
       <DashboardShell nav={nav}>{children}</DashboardShell>
     </div>
   );

@@ -54,7 +54,7 @@ export default async function IslandPage({ params }: { params: Promise<{ locale:
         ])}
       />
       <SiteHeader />
-      <div className="mx-auto w-full max-w-3xl flex-1 px-6 pb-16">
+      <div className="mx-auto w-full max-w-3xl flex-1 px-6 pb-16 pt-24 md:pt-28">
         <nav className="flex flex-wrap items-center gap-2 text-sm text-muted">
           <Link href="/" className="transition-colors duration-200 hover:text-ink">{common("home")}</Link>
           <span aria-hidden>/</span>

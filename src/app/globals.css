@@ -1,3 +1,4 @@
+@import "../../public/fonts/lxgw-wenkai/lxgwwenkai-regular.css";
 @import "tailwindcss";
 
 /* 设计 token 来源：docs/plan/01-design-system.md（色值取样自 public/Main.png） */
@@ -169,8 +170,8 @@
   --color-leaf: var(--leaf);
   --color-leaf-deep: var(--leaf-deep);
   --color-cheek: var(--cheek);
-  --font-sans: ui-sans-serif, system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
-  --font-display: "LXGW WenKai", "LXGW WenKai Screen", "Kaiti SC", "STKaiti", "KaiTi", "BiauKai", serif;
+  --font-sans: var(--font-body);
+  --font-display: var(--font-heading);
 }
 
 body {
@@ -326,3 +327,106 @@ body::after {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; }
 }
+/* Global typography: WenKai for Chinese; a related bookish serif voice elsewhere. */
+:root {
+  --font-body: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --font-heading: var(--font-body);
+}
+html:lang(zh-CN) {
+  --font-body: "LXGW WenKai", "Kaiti SC", "STKaiti", "KaiTi", serif;
+  --font-heading: var(--font-body);
+}
+
+/* Edge controls replace the former full-width global utility bar. */
+.edge-control {
+  display: inline-flex;
+  width: 2.75rem;
+  height: 2.75rem;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid color-mix(in srgb, var(--line) 88%, transparent);
+  border-radius: 999px;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--card) 86%, transparent);
+  box-shadow: 0 8px 28px color-mix(in srgb, var(--ink) 9%, transparent);
+  backdrop-filter: blur(14px);
+  transition: transform 180ms ease, border-color 180ms ease, background-color 180ms ease;
+}
+.edge-control:hover { transform: translateY(-2px); border-color: var(--crater); }
+.edge-control:focus-visible { outline: 2px solid var(--rose); outline-offset: 3px; }
+
+.drawer-nav-row {
+  display: flex;
+  width: 100%;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.9rem;
+  text-align: left;
+  font-size: 0.875rem;
+  color: var(--muted);
+  transition: color 160ms ease, background-color 160ms ease, padding-left 160ms ease;
+}
+.drawer-nav-row:hover { padding-left: 1.05rem; color: var(--ink); background: color-mix(in srgb, var(--moon) 22%, transparent); }
+.drawer-account-action {
+  display: flex;
+  width: 100%;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+  padding: 0.65rem 0.9rem;
+  font-size: 0.875rem;
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+.drawer-account-action:hover { border-color: var(--crater); background: color-mix(in srgb, var(--moon) 22%, transparent); }
+
+/* One unobtrusive scrollbar language across browser and Radix scroll areas. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--crater) 66%, transparent) transparent;
+}
+*::-webkit-scrollbar { width: 6px; height: 6px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--crater) 66%, transparent);
+}
+*::-webkit-scrollbar-thumb:hover { background: var(--crater); }
+
+@keyframes scene-rise {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes scene-drift {
+  0%, 100% { transform: translateY(0) rotate(var(--scene-rotate, 0deg)); }
+  50% { transform: translateY(-7px) rotate(var(--scene-rotate, 0deg)); }
+}
+.scene-enter { animation: scene-rise 700ms cubic-bezier(.22,.8,.22,1) both; }
+.scene-drift { animation: scene-drift 7s ease-in-out infinite; }
+.scene-title-shadow { text-shadow: 0 2px 24px color-mix(in srgb, var(--paper) 80%, transparent); }
+
+@media (prefers-reduced-motion: reduce) {
+  .edge-control, .drawer-nav-row, .scene-enter, .scene-drift { transition: none; animation: none; }
+}
+/* Illustrated public scenes stay daylight spaces even when the global preference is dark. */
+.scene-day {
+  color-scheme: light;
+  --paper: #fffaf0;
+  --ink: #342d25;
+  --muted: #746a5e;
+  --line: #dfd2bd;
+  --card: #fffaf1;
+  --moon: #f1d79a;
+  --star: #ffe2a1;
+  --crater: #a9896c;
+  --rose: #c65359;
+  --rose-deep: #9f3e45;
+  --leaf: #b9c985;
+  --leaf-deep: #627b43;
+  --cheek: #efb9ad;
+  color: var(--ink);
+}
+.scene-day .edge-control { background: color-mix(in srgb, #fffaf0 84%, transparent); }

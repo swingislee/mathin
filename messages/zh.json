@@ -108,6 +108,14 @@
     "verifyOtp": "验证并登录",
     "phoneError": "验证码发送或验证失败，请检查短信服务配置后重试。",
     "signupTitle": "创建账号",
+    "displayName": "昵称",
+    "displayNamePlaceholder": "你希望大家如何称呼你",
+    "inviteCode": "邀请码",
+    "inviteCodePlaceholder": "请输入主管提供的邀请码",
+    "privacyAgreement": "我已阅读并同意",
+    "childrenPrivacyAgreement": "我确认已阅读并同意",
+    "invalidInvite": "邀请码无效或已停用，请向主管确认。",
+    "invalidRegistration": "请完整填写注册信息并同意两项政策。",
     "email": "邮箱",
     "password": "密码",
     "login": "登录",
@@ -620,6 +628,7 @@
       "finance": "财务",
       "staff": "员工",
       "roles": "岗位权限",
+      "registrationInvites": "注册邀请码",
       "children": "孩子",
       "assignments": "作业",
       "activities": "活动",
@@ -638,6 +647,19 @@
       "route": "路由",
       "message": "错误摘要",
       "release": "版本"
+    },
+    "registration": {
+      "title": "注册邀请码",
+      "intro": "控制谁可以创建 Mathin 账号。新的注册请求必须使用当前启用的邀请码。",
+      "code": "当前邀请码",
+      "codeHint": "使用 6–32 位字母、数字、短横线或下划线；保存时会自动转为大写。",
+      "active": "启用邀请码注册",
+      "activeHint": "关闭后所有新的公开注册都会暂停，已有账号不受影响。",
+      "save": "保存设置",
+      "saved": "邀请码设置已保存",
+      "saveError": "保存失败，请稍后重试。",
+      "updatedAt": "最近更新：{date}",
+      "invalid": "邀请码格式不正确。"
     },
     "work": {
       "title": "今日工作",
@@ -1977,6 +1999,7 @@
       "domain_finance": "财务",
       "domain_staff": "员工",
       "domain_permission": "权限配置",
+      "domain_registration": "注册管理",
       "domain_audit": "审计",
       "perm_student_view_all": "查看全部学生",
       "perm_student_view_assigned": "查看名下学生",
@@ -2018,6 +2041,7 @@
       "perm_finance_report_view": "查看财务报表",
       "perm_staff_manage": "管理员工岗位",
       "perm_permission_configure": "配置岗位权限",
+      "perm_registration_invite_manage": "配置注册邀请码",
       "perm_audit_view": "查看审计与变化记录"
     },
     "customer": {
@@ -2638,6 +2662,28 @@
           "name": "数学语言岛",
           "desc": "符号、表述与严谨表达的远方。"
         }
+      }
+    }
+  },
+  "storyScene": {
+    "title": "沙丘上的数学旅程",
+    "intro": "沿着地平线前行，在故事里遇见模式、尺度与未知。",
+    "soon": "旅程准备中",
+    "chapters": {
+      "patterns": {
+        "eyebrow": "第一章",
+        "title": "玫瑰与重复的秘密",
+        "desc": "从花瓣、脚印与星群里辨认模式。"
+      },
+      "measure": {
+        "eyebrow": "第二章",
+        "title": "沙丘有多远",
+        "desc": "用数量、单位和比例丈量旅途。"
+      },
+      "unknown": {
+        "eyebrow": "第三章",
+        "title": "井藏在哪里",
+        "desc": "把未知写下来，循着线索找到它。"
       }
     }
   },

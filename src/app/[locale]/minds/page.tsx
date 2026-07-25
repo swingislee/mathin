@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
+import Image from "next/image";
+import { ArrowUpRight } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { SectionShell } from "@/components/section-shell";
+import { SiteHeader } from "@/components/site-header";
+import { ThemePageIdentity } from "@/components/theme-page-identity";
 import { Lamp } from "@/features/minds/lamp";
-import { getMinds } from "@/lib/content";
 import { Link } from "@/i18n/navigation";
+import { getMinds } from "@/lib/content";
 import { buildMetadata } from "@/lib/seo";
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
@@ -17,21 +20,53 @@ export default async function MindsPage({ params }: { params: Promise<{ locale: 
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("mindsSection");
+  const nav = await getTranslations("nav");
   const minds = getMinds(locale);
+
   return (
-    <SectionShell section="minds" intro={t("intro")}>
-      {/* 一条街道的灯：纵向单列（docs/plan/05-3.3） */}
-      <div className="space-y-3">
-        {minds.map((m) => (
-          <Link key={m.slug} href={`/minds/${m.slug}`} className="group flex items-center gap-5 rounded-2xl border bg-card p-5 transition duration-200 hover:-translate-y-0.5">
-            <Lamp slug={m.slug} litLabel={t("lit")} unlitLabel={t("unlit")} />
-            <div>
-              <p className="font-medium transition-colors duration-200 group-hover:text-ink">{m.title}</p>
-              <p className="mt-1 text-sm leading-6 text-muted">{m.summary}</p>
-            </div>
-          </Link>
-        ))}
-      </div>
-    </SectionShell>
+    <div className="scene-day min-h-dvh bg-[#eee9df]" data-planet="lamplighter">
+      <SiteHeader />
+      <main className="relative min-h-[900px] overflow-hidden text-[#413b45] md:h-dvh md:min-h-[620px]">
+        <Image
+          src="/illustrations/minds-lamplighter.png"
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover object-center"
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#f7efe3]/5 via-transparent to-[#f7f1e8]/35" />
+
+        <ThemePageIdentity
+          sectionName={nav("minds")}
+          planetName={nav("planetNames.minds")}
+          description={t("intro")}
+          tone="minds"
+        />
+
+        <section className="relative z-10 ml-auto grid w-full max-w-xl gap-8 px-6 pb-20 pt-[27rem] md:absolute md:right-[7%] md:top-[24%] md:w-[43%] md:max-w-[620px] md:p-0" aria-label={nav("minds")}>
+          <div className="absolute bottom-12 left-[2.4rem] top-[27rem] border-l border-dashed border-[#8c7e90]/60 md:bottom-12 md:left-[1.1rem] md:top-5" aria-hidden />
+          {minds.map((mind, index) => (
+            <Link
+              key={mind.slug}
+              href={`/minds/${mind.slug}`}
+              className="scene-enter group relative flex items-start gap-5 rounded-2xl px-3 py-4 transition-colors hover:bg-[#fffaf2]/45 md:rounded-none md:px-0 md:py-5"
+              style={{ animationDelay: `${160 + index * 130}ms` }}
+            >
+              <span className="relative z-10 grid size-9 shrink-0 place-items-center rounded-full bg-[#f5ede2]/90 shadow-[0_0_24px_rgba(245,195,88,0.24)]">
+                <Lamp slug={mind.slug} litLabel={t("lit")} unlitLabel={t("unlit")} />
+              </span>
+              <span className="min-w-0 flex-1 border-b border-[#817384]/35 pb-5">
+                <span className="flex items-start justify-between gap-4">
+                  <span className="font-display text-xl leading-snug md:text-2xl">{mind.title}</span>
+                  <ArrowUpRight className="mt-1 shrink-0 text-[#827487] transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" size={18} />
+                </span>
+                <span className="mt-2 block text-sm leading-6 text-[#716875]">{mind.summary}</span>
+              </span>
+            </Link>
+          ))}
+        </section>
+      </main>
+    </div>
   );
 }

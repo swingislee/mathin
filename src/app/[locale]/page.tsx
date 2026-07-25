@@ -95,7 +95,7 @@ export default async function HomePage() {
       </section>
 
       {/* 移动：一张完整的手机绘本扉页（题签压在星球插画之上，入口为小胶囊） */}
-      <section className="relative flex flex-1 flex-col overflow-hidden px-6 pb-6 pt-4 lg:hidden">
+      <section className="relative flex flex-1 flex-col overflow-hidden px-6 pb-6 pt-24 lg:hidden">
         <div className="hero-stage pointer-events-none absolute inset-0" aria-hidden>
           <div className="hero-art opacity-95">
             <Image

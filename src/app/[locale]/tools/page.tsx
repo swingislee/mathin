@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
+import Image from "next/image";
+import { ArrowUpRight } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { SectionShell } from "@/components/section-shell";
+import { SiteHeader } from "@/components/site-header";
+import { ThemePageIdentity } from "@/components/theme-page-identity";
 import { tools } from "@/features/tools/registry";
 import { toolThumbs } from "@/features/tools/thumbs";
 import { Link } from "@/i18n/navigation";
@@ -17,25 +20,52 @@ export default async function ToolsPage({ params }: { params: Promise<{ locale: 
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("tools");
+  const nav = await getTranslations("nav");
+
   return (
-    <SectionShell section="tools" wide intro={t("intro")}>
-      {/* 工具箱：一格一件器具 */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-        {tools.map(({ id, no }) => (
-          <Link
-            key={id}
-            href={`/tools/${id}`}
-            className="group rounded-2xl border bg-card p-3 transition duration-200 hover:-translate-y-0.5"
-          >
-            <div className="relative aspect-5/3 overflow-hidden rounded-xl border border-(--p-line) bg-(--p-wash)">
-              {toolThumbs[id]}
-              <span className="absolute right-2 top-1.5 font-serif text-xs text-(--p-accent)">Nº {String(no).padStart(2, "0")}</span>
-            </div>
-            <p className="mt-3 px-1 font-medium">{t(`items.${id}.name`)}</p>
-            <p className="mt-1 px-1 pb-1 text-xs leading-5 text-muted">{t(`items.${id}.desc`)}</p>
-          </Link>
-        ))}
-      </div>
-    </SectionShell>
+    <div className="scene-day min-h-dvh bg-[#c79b61]" data-planet="businessman">
+      <SiteHeader />
+      <main className="relative min-h-[920px] overflow-hidden text-[#473827] md:h-dvh md:min-h-[650px]">
+        <Image
+          src="/illustrations/tools-workbench.png"
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover object-center"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#fff4d9]/10 via-transparent to-[#4b2f17]/10" />
+
+        <ThemePageIdentity
+          sectionName={nav("tools")}
+          planetName={nav("planetNames.tools")}
+          description={t("intro")}
+          tone="tools"
+        />
+
+        <section className="relative z-10 grid gap-5 px-6 pb-20 pt-72 sm:grid-cols-2 md:absolute md:inset-x-[27%] md:top-[29%] md:p-0" aria-label={nav("tools")}>
+          {tools.map(({ id, no }, index) => (
+            <Link
+              key={id}
+              href={`/tools/${id}`}
+              className="scene-enter group mx-auto w-full max-w-[300px] rounded-2xl border border-[#b88e59]/70 bg-[#fffaf0]/90 p-3 shadow-[0_15px_38px_rgba(75,46,20,0.16)] backdrop-blur-[2px] transition duration-300 hover:-translate-y-2"
+              style={{ animationDelay: `${140 + index * 130}ms` }}
+            >
+              <div className="relative aspect-[5/3] overflow-hidden rounded-xl border border-[#c9a87b] bg-[#f5ead5]">
+                {toolThumbs[id]}
+                <span className="absolute right-2 top-1.5 text-xs tracking-[0.12em] text-[#8d6a43]">Nº {String(no).padStart(2, "0")}</span>
+              </div>
+              <div className="flex items-start gap-3 px-1 pb-1 pt-3">
+                <div className="min-w-0 flex-1">
+                  <h2 className="font-display text-lg">{t(`items.${id}.name`)}</h2>
+                  <p className="mt-1 text-xs leading-5 text-[#75634f]">{t(`items.${id}.desc`)}</p>
+                </div>
+                <ArrowUpRight size={17} className="mt-1 shrink-0 text-[#866647] transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
+              </div>
+            </Link>
+          ))}
+        </section>
+      </main>
+    </div>
   );
 }

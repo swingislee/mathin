@@ -13,5 +13,5 @@ export function LocaleSwitcher() {
   const router = useRouter();
   const next = locale === "zh" ? "en" : "zh";
   const href = `${pathname}${searchParams.size ? `?${searchParams.toString()}` : ""}`;
-  return <button type="button" aria-label={t("switchLanguage")} onClick={() => router.replace(href, { locale: next })} className="flex items-center gap-1.5 rounded-full border bg-[var(--card)] px-3 py-2 text-sm transition hover:-translate-y-0.5"><Languages size={17} /><span>{next.toUpperCase()}</span></button>;
+  return <button type="button" aria-label={t("switchLanguage")} onClick={() => router.replace(href, { locale: next })} className="edge-control min-w-16 gap-1.5 px-3 text-sm"><Languages size={17} /><span>{next.toUpperCase()}</span></button>;
 }

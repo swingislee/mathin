@@ -108,6 +108,14 @@
     "verifyOtp": "Verify and sign in",
     "phoneError": "The code could not be sent or verified. Check the SMS provider configuration and retry.",
     "signupTitle": "Create an account",
+    "displayName": "Nickname",
+    "displayNamePlaceholder": "How should people address you?",
+    "inviteCode": "Invite code",
+    "inviteCodePlaceholder": "Enter the code from your supervisor",
+    "privacyAgreement": "I have read and agree to the",
+    "childrenPrivacyAgreement": "I confirm that I have read and agree to the",
+    "invalidInvite": "This invite code is invalid or disabled. Check with your supervisor.",
+    "invalidRegistration": "Complete every registration field and agree to both policies.",
     "email": "Email",
     "password": "Password",
     "login": "Sign in",
@@ -620,6 +628,7 @@
       "finance": "Finance",
       "staff": "Staff",
       "roles": "Roles",
+      "registrationInvites": "Registration invites",
       "children": "Children",
       "assignments": "Assignments",
       "activities": "Activities",
@@ -638,6 +647,19 @@
       "route": "Route",
       "message": "Error summary",
       "release": "Release"
+    },
+    "registration": {
+      "title": "Registration invites",
+      "intro": "Control who can create a Mathin account. New registrations must use the currently enabled invite code.",
+      "code": "Current invite code",
+      "codeHint": "Use 6–32 letters, numbers, hyphens, or underscores. The code is saved in uppercase.",
+      "active": "Enable invite-only registration",
+      "activeHint": "Turning this off pauses all new public registration. Existing accounts are unaffected.",
+      "save": "Save settings",
+      "saved": "Invite settings saved",
+      "saveError": "Could not save the settings. Try again.",
+      "updatedAt": "Last updated: {date}",
+      "invalid": "The invite code format is invalid."
     },
     "work": {
       "title": "Today's Work",
@@ -1977,6 +1999,7 @@
       "domain_finance": "Finance",
       "domain_staff": "Staff",
       "domain_permission": "Permissions",
+      "domain_registration": "Registration",
       "domain_audit": "Audit",
       "perm_student_view_all": "View all students",
       "perm_student_view_assigned": "View assigned students",
@@ -2018,6 +2041,7 @@
       "perm_finance_report_view": "View finance reports",
       "perm_staff_manage": "Manage staff",
       "perm_permission_configure": "Configure role permissions",
+      "perm_registration_invite_manage": "Configure registration invite codes",
       "perm_audit_view": "View audit and change records"
     },
     "customer": {
@@ -2638,6 +2662,28 @@
           "name": "Isle of Notation & Rigor",
           "desc": "Symbols and precise mathematical language, further ahead."
         }
+      }
+    }
+  },
+  "storyScene": {
+    "title": "A mathematical journey over the dunes",
+    "intro": "Follow the horizon and meet patterns, measure and the unknown inside a story.",
+    "soon": "The journey is being prepared",
+    "chapters": {
+      "patterns": {
+        "eyebrow": "Chapter one",
+        "title": "The rose and the secret of repetition",
+        "desc": "Notice patterns in petals, footprints and constellations."
+      },
+      "measure": {
+        "eyebrow": "Chapter two",
+        "title": "How far is the dune?",
+        "desc": "Measure a journey with quantities, units and ratios."
+      },
+      "unknown": {
+        "eyebrow": "Chapter three",
+        "title": "Where is the well hidden?",
+        "desc": "Write down the unknown and follow the clues toward it."
       }
     }
   },

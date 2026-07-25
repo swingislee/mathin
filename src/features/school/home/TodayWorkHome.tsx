@@ -61,7 +61,7 @@ export async function TodayWorkHome({ locale, user, profile }: HomeProps) {
   const todaySchedule = selectTodaySchedule(items, now);
   const timeFmt = new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit" });
   const dateLine = new Intl.DateTimeFormat(locale, { dateStyle: "full" }).format(now);
-  const greeting = `${schoolT("home.staffGreeting", { name: profile?.displayName || "" })} · ${dateLine}`;
+  const greeting = schoolT("home.staffGreeting", { name: profile?.displayName || "" });
 
   const renderReason = (item: WorkItemRow) => (
     <span className="inline-flex flex-wrap items-center gap-1.5">
@@ -88,7 +88,7 @@ export async function TodayWorkHome({ locale, user, profile }: HomeProps) {
   }
 
   return (
-    <ObjectWorkspace objectBar={<ObjectBar title={t("title")} context={greeting} />} statusStrip={<StatusStrip items={statusItems} />}>
+    <ObjectWorkspace objectBar={<ObjectBar title={greeting} context={`${t("title")} · ${dateLine}`} />} statusStrip={<StatusStrip items={statusItems} />}>
       <div className="mx-auto w-full max-w-[96rem] space-y-6">
         <p className="text-sm text-muted">{t("intro")}</p>
 

@@ -47,6 +47,7 @@ export const PERMISSION_KEYS = [
   "finance.report.view",
   "staff.manage",
   "permission.configure",
+  "registration.invite.manage",
   "audit.view",
   "testdata.purge",
 ] as const;

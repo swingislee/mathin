@@ -25,7 +25,7 @@ export default async function GraphPage({ params }: { params: Promise<{ locale: 
     <div className="night">
       <main className="flex min-h-screen flex-col" style={{ background: "#121524" }}>
         <SiteHeader />
-        <div className="mx-auto w-full max-w-6xl flex-1 px-6 pb-14">
+        <div className="mx-auto w-full max-w-6xl flex-1 px-6 pb-14 pt-24 md:pt-28">
           <Link href="/terms" className="inline-flex items-center gap-1.5 text-xs text-muted transition-colors duration-200 hover:text-ink">
             <ArrowLeft size={13} />
             {tu("backToGalaxy")}

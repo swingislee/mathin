@@ -48,16 +48,15 @@ export async function SectionShell({ section, intro, wide = false, children }: {
       style={{ "--section-accent": planet ? "var(--p-accent)" : `var(--${sectionAccents[section]})` } as CSSProperties}
     >
       <SiteHeader />
-      <div className={cn("mx-auto w-full flex-1 px-6 pb-16", wide ? "max-w-6xl" : "max-w-3xl")}>
+      <div className={cn("mx-auto w-full flex-1 px-6 pb-16 pt-24 md:pt-28", wide ? "max-w-6xl" : "max-w-3xl")}>
         <nav className="flex items-center gap-2 text-sm text-muted">
           <Link href="/" className="transition-colors duration-200 hover:text-ink">{common("home")}</Link>
           <span aria-hidden>/</span>
           <span className="text-ink">{nav(section)}</span>
         </nav>
         <h1 className="mt-6 font-display text-4xl md:text-5xl">{nav(section)}</h1>
-        <div aria-hidden className="mt-4 h-0.5 w-8 rounded-full bg-[var(--section-accent)]" />
-        {intro && <p className="mt-5 leading-7 text-muted">{intro}</p>}
-        <div className="mt-10 md:mt-14">{children}</div>
+        {intro && <p className="mt-3 max-w-2xl leading-7 text-muted">{intro}</p>}
+        <div className="mt-10">{children}</div>
       </div>
       <footer className="flex items-center justify-center gap-2 pb-8 text-sm text-muted">
         <Star4 size={12} />
