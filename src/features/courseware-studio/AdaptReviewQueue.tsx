@@ -9,38 +9,58 @@ import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { Link, useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { reviewAdaptBackgroundsAction } from "./adapt-actions";
 import type { AdaptReviewItem } from "./adapt-review-data";
+import { ADAPT_REJECTION_CODES, type AdaptRejectionCode } from "./adapt-review-shared";
 
 type Decision = "approve" | "reject";
 type PendingDecision = { decision: Decision; ids: string[] } | null;
 
-function pageHref(page: number) {
-  return "/dashboard/adapt-review?tab=backgrounds&page=" + page;
+function pageHref(page: number, courseId: string | null, lectureId: string | null) {
+  const query = new URLSearchParams({ tab: "backgrounds", page: String(page) });
+  if (courseId) query.set("course", courseId);
+  if (lectureId) query.set("lecture", lectureId);
+  return "/dashboard/adapt-review?" + query.toString();
 }
 
-export function AdaptReviewQueue({ items, page, total, totalPages, canManageAssets }: { items: AdaptReviewItem[]; page: number; total: number; totalPages: number; canManageAssets: boolean }) {
+export function AdaptReviewQueue({ items, page, total, totalPages, canManageAssets, courseId, lectureId }: { items: AdaptReviewItem[]; page: number; total: number; totalPages: number; canManageAssets: boolean; courseId: string | null; lectureId: string | null }) {
   const t = useTranslations("coursewareStudio");
   const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pendingDecision, setPendingDecision] = useState<PendingDecision>(null);
+  const [rejectReason, setRejectReason] = useState<AdaptRejectionCode | "">("");
+  const [rejectNote, setRejectNote] = useState("");
   const ids = useMemo(() => items.map((item) => item.id), [items]);
   const selectedIds = useMemo(() => ids.filter((id) => selected.has(id)), [ids, selected]);
   const allSelected = ids.length > 0 && selectedIds.length === ids.length;
   const finish = () => {
     setSelected(new Set());
     setPendingDecision(null);
+    setRejectReason("");
+    setRejectNote("");
     router.refresh();
   };
   const approveRun = useAction(
-    (adaptationIds: string[]) => reviewAdaptBackgroundsAction({ adaptationIds, decision: "approve" }),
+    (adaptationIds: string[]) => reviewAdaptBackgroundsAction({ adaptationIds, decision: "approve", rejectionCode: null, note: "" }),
     { successMessage: t("adaptReviewApproved"), errorMessage: { ADAPT_BACKGROUND_NOT_PENDING: t("adaptReviewStale"), default: t("adaptReviewFailed") }, onSuccess: finish },
   );
   const rejectRun = useAction(
-    (adaptationIds: string[]) => reviewAdaptBackgroundsAction({ adaptationIds, decision: "reject" }),
-    { successMessage: t("adaptReviewRejected"), errorMessage: { ADAPT_BACKGROUND_NOT_PENDING: t("adaptReviewStale"), default: t("adaptReviewFailed") }, onSuccess: finish },
+    (input: { adaptationIds: string[]; rejectionCode: AdaptRejectionCode; note: string }) => reviewAdaptBackgroundsAction({ ...input, decision: "reject" }),
+    {
+      successMessage: t("adaptReviewRejected"),
+      errorMessage: {
+        ADAPT_BACKGROUND_NOT_PENDING: t("adaptReviewStale"),
+        REJECTION_REASON_REQUIRED: t("adaptRejectReasonRequired"),
+        REJECTION_NOTE_REQUIRED: t("adaptRejectNoteRequired"),
+        default: t("adaptReviewFailed"),
+      },
+      onSuccess: finish,
+    },
   );
   const pending = approveRun.pending || rejectRun.pending;
   const toggle = (id: string) => setSelected((current) => {
@@ -49,11 +69,19 @@ export function AdaptReviewQueue({ items, page, total, totalPages, canManageAsse
     return next;
   });
   const toggleAll = () => setSelected(allSelected ? new Set() : new Set(ids));
-  const requestDecision = (decision: Decision, requestedIds: string[]) => setPendingDecision({ decision, ids: requestedIds });
-  const confirm = () => {
-    if (!pendingDecision) return;
-    if (pendingDecision.decision === "approve") approveRun.run(pendingDecision.ids);
-    else rejectRun.run(pendingDecision.ids);
+  const requestDecision = (decision: Decision, requestedIds: string[]) => {
+    setPendingDecision({ decision, ids: requestedIds });
+    if (decision === "reject") {
+      setRejectReason("");
+      setRejectNote("");
+    }
+  };
+  const confirmApprove = () => {
+    if (pendingDecision?.decision === "approve") approveRun.run(pendingDecision.ids);
+  };
+  const confirmReject = () => {
+    if (pendingDecision?.decision !== "reject" || !rejectReason) return;
+    rejectRun.run({ adaptationIds: pendingDecision.ids, rejectionCode: rejectReason, note: rejectNote });
   };
 
   if (items.length === 0) return <p className="mt-6 rounded-2xl border border-dashed border-line bg-card p-8 text-center text-sm text-muted">{t("adaptQueueEmpty")}</p>;
@@ -101,21 +129,47 @@ export function AdaptReviewQueue({ items, page, total, totalPages, canManageAsse
         </article>)}
       </div>
       <nav className="mt-6 flex items-center justify-between gap-3" aria-label={t("adaptPagination")}>
-        {page > 1 ? <Link href={pageHref(page - 1)} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}><ChevronLeft className="size-4" />{t("adaptPreviousPage")}</Link> : <span />}
+        {page > 1 ? <Link href={pageHref(page - 1, courseId, lectureId)} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}><ChevronLeft className="size-4" />{t("adaptPreviousPage")}</Link> : <span />}
         <p className="text-sm text-muted">{t("adaptQueuePage", { page, totalPages, total })}</p>
-        {page < totalPages ? <Link href={pageHref(page + 1)} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>{t("adaptNextPage")}<ChevronRight className="size-4" /></Link> : <span />}
+        {page < totalPages ? <Link href={pageHref(page + 1, courseId, lectureId)} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>{t("adaptNextPage")}<ChevronRight className="size-4" /></Link> : <span />}
       </nav>
     </section>
     <ConfirmDialog
-      open={pendingDecision !== null}
+      open={pendingDecision?.decision === "approve"}
       onOpenChange={(open) => { if (!open && !pending) setPendingDecision(null); }}
-      title={pendingDecision?.decision === "approve" ? t("adaptApproveConfirmTitle") : t("adaptRejectConfirmTitle")}
-      description={pendingDecision ? t(pendingDecision.decision === "approve" ? "adaptApproveConfirmDescription" : "adaptRejectConfirmDescription", { count: pendingDecision.ids.length }) : ""}
-      confirmLabel={pendingDecision?.decision === "approve" ? t("adaptApprove") : t("adaptReject")}
+      title={t("adaptApproveConfirmTitle")}
+      description={pendingDecision?.decision === "approve" ? t("adaptApproveConfirmDescription", { count: pendingDecision.ids.length }) : ""}
+      confirmLabel={t("adaptApprove")}
       cancelLabel={t("adaptCancel")}
-      onConfirm={confirm}
+      onConfirm={confirmApprove}
       pending={pending}
     />
+    <Dialog open={pendingDecision?.decision === "reject"} onOpenChange={(open) => { if (!open && !pending) setPendingDecision(null); }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{t("adaptRejectConfirmTitle")}</DialogTitle>
+          <DialogDescription>{pendingDecision?.decision === "reject" ? t("adaptRejectConfirmDescription", { count: pendingDecision.ids.length }) : ""}</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div>
+            <p className="mb-1 text-sm font-medium text-ink">{t("adaptRejectReasonLabel")}</p>
+            <Select value={rejectReason} onValueChange={(value) => setRejectReason(value as AdaptRejectionCode)}>
+              <SelectTrigger aria-label={t("adaptRejectReasonLabel")}><SelectValue placeholder={t("adaptRejectReasonPlaceholder")} /></SelectTrigger>
+              <SelectContent>{ADAPT_REJECTION_CODES.map((code) => <SelectItem key={code} value={code}>{t(`adaptRejectReason_${code}`)}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div>
+            <p className="mb-1 text-sm font-medium text-ink">{t("adaptRejectNoteLabel")}</p>
+            <Textarea value={rejectNote} maxLength={1000} onChange={(event) => setRejectNote(event.target.value)} placeholder={t("adaptRejectNotePlaceholder")} />
+            <p className="mt-1 text-xs text-muted">{t("adaptRejectNoteHint")}</p>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="ghost" onClick={() => setPendingDecision(null)} disabled={pending}>{t("adaptCancel")}</Button>
+          <Button type="button" variant="secondary" onClick={confirmReject} disabled={pending || !rejectReason || (rejectReason === "other" && !rejectNote.trim())}>{t("adaptReject")}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </>;
 }
 

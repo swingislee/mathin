@@ -775,7 +775,7 @@ canonical `.../courseware/lectures/[lectureId]`：
 
 新增 `src/features/school/teaching-operations/CoursePicker.tsx`：
 
-- 使用 Command + Popover；初始无选中值；输入防抖 250ms；服务端最多返回 30 个 variant 候选。
+- 使用 Command + Popover；初始无选中值；打开即请求首批最多 30 个紧凑 variant 候选，输入与筛选防抖 250ms 后更新；任何请求都不得下发全量讲次明细。
 - 搜索 family/variant title、product_code、lecture name；快捷筛选 grade/courseSeason/classType。
 - 结果按 family 分组，但最终选择值必须是现有 `courses.id`；每项显示“E 系列小学数学 · 一年级 · 秋季 · A · MFHK00007”和 ready/total。
 - 默认只查 family/variant 都 enabled 且 trashed_at 为空；purpose=test 仅 test 建班模式可见。
@@ -1234,7 +1234,7 @@ UI 只能针对这些已知码映射具体文案；未知码走统一 actionFail
 4. 课程产品库和产品详情初始请求不得下发 page doc、bindings、signed URL；只有打开 `lecture` 预览才按当前页懒取。
 5. 班级列表不得下发 roster 全量，只返回 count。
 6. 管理抽屉按单课次懒取详情。
-7. CoursePicker 首次不加载 72 个版本或 865 讲明细；输入/筛选后仅返回紧凑候选。
+7. CoursePicker 首次仅加载最多 30 个紧凑版本候选，不加载 865 讲明细；输入/筛选后仍保持最多 30 个候选。
 8. 讲次预览每次只下发一页 doc 和该页 URL；切页复用 P6 当前按页加载合同。
 9. 任何新 client bundle 前后执行 `pnpm bundle:report`；产品库和产品页不得因引入 Viewer/Editor 显著变大，重组件必须动态加载。
 

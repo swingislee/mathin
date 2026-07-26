@@ -12,11 +12,14 @@ import { setAdaptPageClassificationAction } from "./adapt-actions";
 import { ADAPT_CLASSES, type AdaptClass } from "./adapt-review-shared";
 import type { AdaptPageQueue as AdaptPageQueueData, AdaptPageQueueItem } from "./adapt-review-data";
 
-function hrefFor(classification: AdaptClass | "all", page: number) {
-  return "/dashboard/adapt-review?tab=pages&class=" + classification + "&page=" + page;
+function hrefFor(classification: AdaptClass | "all", page: number, courseId: string | null, lectureId: string | null) {
+  const query = new URLSearchParams({ tab: "pages", class: classification, page: String(page) });
+  if (courseId) query.set("course", courseId);
+  if (lectureId) query.set("lecture", lectureId);
+  return "/dashboard/adapt-review?" + query.toString();
 }
 
-export function AdaptPageQueue({ items, page, total, totalPages, classification, canEditPages }: AdaptPageQueueData & { canEditPages: boolean }) {
+export function AdaptPageQueue({ items, page, total, totalPages, classification, canEditPages, courseId, lectureId }: AdaptPageQueueData & { canEditPages: boolean; courseId: string | null; lectureId: string | null }) {
   const t = useTranslations("coursewareStudio");
   const router = useRouter();
   return <section className="mt-6">
@@ -26,7 +29,7 @@ export function AdaptPageQueue({ items, page, total, totalPages, classification,
         <p className="mt-1 text-sm text-muted">{t("adaptPageQueueIntro")}</p>
       </div>
       <div className="w-40">
-        <Select value={classification} onValueChange={(value) => router.push(hrefFor(value as AdaptClass | "all", 1))}>
+        <Select value={classification} onValueChange={(value) => router.push(hrefFor(value as AdaptClass | "all", 1, courseId, lectureId))}>
           <SelectTrigger aria-label={t("adaptClassFilter")}><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t("adaptClassAll")}</SelectItem>
@@ -39,9 +42,9 @@ export function AdaptPageQueue({ items, page, total, totalPages, classification,
       {items.map((item) => <AdaptPageRow key={item.id} item={item} canEditPages={canEditPages} />)}
     </div>}
     <nav className="mt-6 flex items-center justify-between gap-3" aria-label={t("adaptPagination")}>
-      {page > 1 ? <Link href={hrefFor(classification, page - 1)} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}><ChevronLeft className="size-4" />{t("adaptPreviousPage")}</Link> : <span />}
+      {page > 1 ? <Link href={hrefFor(classification, page - 1, courseId, lectureId)} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}><ChevronLeft className="size-4" />{t("adaptPreviousPage")}</Link> : <span />}
       <p className="text-sm text-muted">{t("adaptQueuePage", { page, totalPages, total })}</p>
-      {page < totalPages ? <Link href={hrefFor(classification, page + 1)} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>{t("adaptNextPage")}<ChevronRight className="size-4" /></Link> : <span />}
+      {page < totalPages ? <Link href={hrefFor(classification, page + 1, courseId, lectureId)} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>{t("adaptNextPage")}<ChevronRight className="size-4" /></Link> : <span />}
     </nav>
   </section>;
 }
@@ -57,6 +60,7 @@ function AdaptPageRow({ item, canEditPages }: { item: AdaptPageQueueItem; canEdi
   return <article className="flex flex-wrap items-center gap-3 p-4">
     <div className="min-w-0 flex-1">
       <p className="font-medium text-ink">{t("adaptPageLabel", { page: item.pageNo, title: item.title || t("untitledPage") })}</p>
+      <p className="mt-1 text-xs text-muted">{item.courseTitle} · {t("adaptLectureOption", { no: item.lectureNo, name: item.lectureName })}</p>
       <p className="mt-1 text-xs text-muted">{item.adaptReason || t("adaptNoReason")}</p>
     </div>
     <Badge variant="outline">{classLabel(t, item.adaptClass)}</Badge>

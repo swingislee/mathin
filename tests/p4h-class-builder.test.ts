@@ -45,5 +45,6 @@ describe("P4H CoursePicker and class-builder contract", () => {
     expect(migration).toContain("case when p_activate then 'active' else 'planning' end");
     expect(actions).toContain('authorizedClient("class.create")');
     expect(actions).toContain('rpc(supabase)("create_class"');
+    expect(actions).toContain(".bind(supabase)");
   });
 });

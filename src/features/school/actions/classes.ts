@@ -94,7 +94,7 @@ const conflictSchema = z.object({
 type UntypedRpc = (name: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>;
 
 function rpc(supabase: { rpc: unknown }): UntypedRpc {
-  return supabase.rpc as UntypedRpc;
+  return (supabase.rpc as UntypedRpc).bind(supabase);
 }
 
 export async function searchClassBuildCoursesAction(input: {

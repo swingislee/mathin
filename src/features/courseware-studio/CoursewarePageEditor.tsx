@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { Plus, RotateCcw, Save, Send, Trash2 } from "lucide-react";
+import { Plus, Rocket, RotateCcw, Save, Send, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -20,6 +20,7 @@ import {
   copyCoursewarePageAction,
   deleteCoursewarePageAction,
   replaceCoursewarePageImageAction,
+  publishCoursewareReleaseAction,
   reorderCoursewarePagesAction,
   revertCoursewarePageAction,
   rollbackCoursewareReleaseAction,
@@ -151,6 +152,11 @@ export function CoursewarePageEditor({ lecture, track, page, pages, initialDoc, 
     setMessage(result.ok ? t("reviewSubmitted") : t("submitReviewFailed", { code: result.code }));
     if (result.ok) router.refresh();
   });
+  const publish = () => startTransition(async () => {
+    const result = await publishCoursewareReleaseAction(lecture.id, track, note);
+    setMessage(result.ok ? t("published") : t("publishFailed", { code: result.code }));
+    if (result.ok) router.refresh();
+  });
   const add = (kind: "text" | "rich_text" | "shape" | "image" | "video") => {
     setDoc((current) => ({ ...current, nodes: [...current.nodes, manualNode(kind, current.nodes.length + 1)] }));
   };
@@ -202,6 +208,7 @@ export function CoursewarePageEditor({ lecture, track, page, pages, initialDoc, 
       })}><Trash2 className="size-4" />{t("deletePage")}</Button>
       <Button size="sm" disabled={pending} onClick={save}><Save className="size-4" />{t("saveDraft")}</Button>
       {canSubmitReview && <Button size="sm" variant="secondary" disabled={pending} onClick={submitReview}><Send className="size-4" />{t("submitReview")}</Button>}
+      {canPublish && <Button size="sm" variant="secondary" disabled={pending || isDirty} onClick={publish} title={isDirty ? t("publishSaveFirst") : undefined}><Rocket className="size-4" />{t("publishLecture")}</Button>}
     </div>
   </div>;
 

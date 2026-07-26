@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Check, ChevronsUpDown, LoaderCircle, Search, X } from "lucide-react";
+import { Check, ChevronsUpDown, LoaderCircle, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -59,8 +59,6 @@ export function CoursePicker({
   const [searching, setSearching] = useState(false);
   const [selectingId, setSelectingId] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
-
-  const hasCriteria = Boolean(query.trim() || grade !== null || courseSeason !== null || classType);
   const grouped = useMemo(() => {
     const groups = new Map<string, ClassBuildCourseCandidate[]>();
     for (const candidate of results) {
@@ -72,7 +70,7 @@ export function CoursePicker({
   }, [results]);
 
   useEffect(() => {
-    if (!open || !hasCriteria) return;
+    if (!open) return;
     let active = true;
     const timer = window.setTimeout(() => {
       setSearching(true);
@@ -83,10 +81,10 @@ export function CoursePicker({
         .finally(() => { if (active) setSearching(false); });
     }, 250);
     return () => { active = false; window.clearTimeout(timer); };
-  }, [classType, courseSeason, grade, hasCriteria, open, purpose, query]);
+  }, [classType, courseSeason, grade, open, purpose, query]);
 
-  const visibleResults = open && hasCriteria ? grouped : [];
-  const showSearching = open && hasCriteria && searching;
+  const visibleResults = open ? grouped : [];
+  const showSearching = open && searching;
 
   const choose = async (candidate: ClassBuildCourseCandidate) => {
     setSelectingId(candidate.id);
@@ -129,15 +127,14 @@ export function CoursePicker({
             </Select>
           </div>
           <CommandList className="max-h-80">
-            {!hasCriteria && <div className="px-3 py-8 text-center text-sm text-muted"><Search className="mx-auto mb-2 size-4" />{t("coursePickerStart")}</div>}
             {showSearching && <div className="flex items-center justify-center gap-2 px-3 py-8 text-sm text-muted"><LoaderCircle className="size-4 animate-spin" />{t("searchingCourses")}</div>}
-            {!showSearching && hasCriteria && visibleResults.map(([familyTitle, candidates]) => <CommandGroup key={familyTitle} heading={familyTitle}>
+            {!showSearching && visibleResults.map(([familyTitle, candidates]) => <CommandGroup key={familyTitle} heading={familyTitle}>
               {candidates.map((candidate) => <CommandItem key={candidate.id} value={`${candidate.familyTitle} ${candidate.title} ${candidate.productCode ?? ""}`} onSelect={() => void choose(candidate)} disabled={selectingId !== null} className="items-start py-2">
                 <CourseCandidateLabel candidate={candidate} />
                 {selectingId === candidate.id ? <LoaderCircle className="mt-1 size-4 animate-spin" /> : selected?.id === candidate.id ? <Check className="mt-1 size-4" /> : null}
               </CommandItem>)}
             </CommandGroup>)}
-            {!showSearching && hasCriteria && !failed && <CommandEmpty>{t("coursePickerEmpty")}</CommandEmpty>}
+            {!showSearching && !failed && <CommandEmpty>{t("coursePickerEmpty")}</CommandEmpty>}
             {!showSearching && failed && <p className="px-3 py-5 text-center text-sm text-rose">{t("coursePickerFailed")}</p>}
           </CommandList>
         </Command>
