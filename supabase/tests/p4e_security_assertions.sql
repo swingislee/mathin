@@ -37,12 +37,12 @@ select cs.id as member_session_id from public.class_sessions cs
 \if :{?foreign_student_id}
 \else
   \echo P4E fixtures missing: no foreign student for 测试-学辅
-  \quit 1
+  select 1 / 0;
 \endif
 \if :{?member_session_id}
 \else
   \echo P4E fixtures missing: 测试-学生 has no classroom session
-  \quit 1
+  select 1 / 0;
 \endif
 
 -- 结构授权：append-only、敏感写、私有表与 Storage 不得被宽授。
@@ -86,7 +86,7 @@ select (count(*)=0) as assigned_scope_ok from public.students where id=:'foreign
 \if :assigned_scope_ok
 \else
   \echo P4E security failed: view.assigned user read a foreign student
-  \quit 1
+  select 1 / 0;
 \endif
 
 select (count(*)=0) as operational_error_scope_ok
@@ -94,7 +94,7 @@ from public.operational_errors where id=:'operational_error_id' \gset
 \if :operational_error_scope_ok
 \else
   \echo P4E security failed: student read operational errors
-  \quit 1
+  select 1 / 0;
 \endif
 
 -- 顾客侧学生不得直接读取财务表，即使猜中自己的学生档案也只能走白名单 RPC。
@@ -103,7 +103,7 @@ select (count(*)=0) as customer_finance_ok from public.orders \gset
 \if :customer_finance_ok
 \else
   \echo P4E security failed: student read orders directly
-  \quit 1
+  select 1 / 0;
 \endif
 
 -- 反作弊对局表即使存在 Supabase 默认表级 grant，也必须被“零 RLS 策略”全拒。
@@ -111,7 +111,7 @@ select (count(*)=0) as game_session_read_ok from public.game_sessions \gset
 \if :game_session_read_ok
 \else
   \echo P4E security failed: student read game session credentials
-  \quit 1
+  select 1 / 0;
 \endif
 do $$
 begin
@@ -144,7 +144,7 @@ from storage.objects where bucket_id='session-videos' and name=:'foreign_storage
 \if :cross_storage_read_ok
 \else
   \echo P4E security failed: student read a foreign Storage object
-  \quit 1
+  select 1 / 0;
 \endif
 
 -- 学生向 authoritative topic 写业务广播必须被 RLS 拒。

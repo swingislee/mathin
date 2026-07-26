@@ -7,12 +7,12 @@ select id as teacher_id from public.profiles where display_name = '测试-教师
 \if :{?admin_id}
 \else
   \echo P4H fixtures missing: 测试-管理员
-  \quit 1
+  select 1 / 0;
 \endif
 \if :{?teacher_id}
 \else
   \echo P4H fixtures missing: 测试-教师
-  \quit 1
+  select 1 / 0;
 \endif
 
 -- P4H-3：72 个明确的 E 系列版本归入唯一 family；非空关系、元数据和唯一索引均须成立。
@@ -20,7 +20,7 @@ select id as e_family_id from public.course_families where slug = 'xueersi-e-pri
 \if :{?e_family_id}
 \else
   \echo P4H course family missing: xueersi-e-primary-math-cn
-  \quit 1
+  select 1 / 0;
 \endif
 select (
   title = 'E 系列小学数学'
@@ -38,7 +38,7 @@ from public.course_families where id = :'e_family_id'::uuid \gset
 \if :p4h_family_backfill_ok
 \else
   \echo P4H course family failed: metadata or backfill mismatch
-  \quit 1
+  select 1 / 0;
 \endif
 do $$
 begin
@@ -63,7 +63,7 @@ select exists (
 \if :p4h_course_term_id_retained
 \else
   \echo P4H course family failed: legacy courses.term_id was removed
-  \quit 1
+  select 1 / 0;
 \endif
 
 -- 事务内构造带班级引用、release 引用、历史 event 的最小基线。
@@ -130,10 +130,15 @@ select exists (
 \if :p4h_legacy_course_compat_ok
 \else
   \echo P4H course family failed: legacy course RPC did not create an atomic family mapping
-  \quit 1
+  select 1 / 0;
 \endif
 
--- family 查询合同只返回版本/教学计划/readiness，不泄漏 page doc；family 状态变化不触碰子版本。
+-- family 查询合同只返回版本摘要；产品总览不自动选择版本，也不下发教学计划/page doc。
+with family_detail as (
+  select public.get_course_family_detail(:'e_family_id'::uuid, null) as value
+), family_impact as (
+  select * from public.get_course_family_impact(:'e_family_id'::uuid)
+)
 select (
   exists (
     select 1
@@ -142,14 +147,16 @@ select (
        and family_row.variant_count = 72
        and jsonb_array_length(family_row.matched_variants) = 72
   )
-  and jsonb_array_length(public.get_course_family_detail(:'e_family_id'::uuid, null) -> 'variants') = 72
-  and (public.get_course_family_detail(:'e_family_id'::uuid, null) #>> '{readiness,lectureCount}')::integer > 0
-  and (select variant_count = 72 and lecture_count = 865 from public.get_course_family_impact(:'e_family_id'::uuid))
+  and (select jsonb_array_length(value -> 'variants') = 72 from family_detail)
+  and (select value -> 'selectedVariant' = 'null'::jsonb from family_detail)
+  and (select jsonb_array_length(value -> 'teachingPlan') = 0 from family_detail)
+  and (select value -> 'readiness' = '{"lectureCount":0,"releasedLectureCount":0,"pageCount":0}'::jsonb from family_detail)
+  and (select variant_count = 72 and lecture_count = 865 from family_impact)
 ) as p4h_family_query_contract_ok \gset
 \if :p4h_family_query_contract_ok
 \else
   \echo P4H course family failed: list/detail/impact contract mismatch
-  \quit 1
+  select 1 / 0;
 \endif
 create temporary table p4h_family_variant_status on commit drop as
 select id, status from public.courses where family_id = :'e_family_id'::uuid;
@@ -166,7 +173,7 @@ select (
 \if :p4h_family_transition_isolated
 \else
   \echo P4H course family failed: family transition changed a child variant
-  \quit 1
+  select 1 / 0;
 \endif
 select public.transition_course_family_status(:'e_family_id'::uuid, 'enabled');
 
@@ -187,7 +194,7 @@ from public.get_course_lifecycle_impact(:'audit_course_id') \gset
 \if :p4h_course_impact_ok
 \else
   \echo P4H lifecycle failed: course impact count mismatch
-  \quit 1
+  select 1 / 0;
 \endif
 
 -- 讲次归档/恢复不改变引用、ID 或课件 release。
@@ -198,7 +205,7 @@ from public.course_lectures where id = :'audit_lecture_id' \gset
 \if :p4h_lecture_archived
 \else
   \echo P4H lifecycle failed: lecture archive mutated release or status
-  \quit 1
+  select 1 / 0;
 \endif
 select public.restore_lecture(:'audit_lecture_id');
 select (
@@ -209,7 +216,7 @@ select (
 \if :p4h_lecture_restored
 \else
   \echo P4H lifecycle failed: lecture restore did not preserve identity/reference
-  \quit 1
+  select 1 / 0;
 \endif
 
 -- 未开课课次可取消/恢复，已开课课次拒绝取消。
@@ -220,7 +227,7 @@ from public.class_sessions where id = :'audit_session_id' \gset
 \if :p4h_session_cancelled
 \else
   \echo P4H lifecycle failed: session cancellation not recorded
-  \quit 1
+  select 1 / 0;
 \endif
 select public.restore_session(:'audit_session_id');
 select (deleted_at is null and cancelled_by is null and cancel_reason = '')
@@ -229,7 +236,7 @@ from public.class_sessions where id = :'audit_session_id' \gset
 \if :p4h_session_restored
 \else
   \echo P4H lifecycle failed: session restore not recorded
-  \quit 1
+  select 1 / 0;
 \endif
 do $$
 begin
@@ -255,7 +262,7 @@ from public.class_sessions where id = :'ended_session_id' \gset
 \if :p4h_void_preserves_events
 \else
   \echo P4H lifecycle failed: void did not preserve session events
-  \quit 1
+  select 1 / 0;
 \endif
 
 -- 有已开始历史的班级绝不能进入回收站。
@@ -294,7 +301,7 @@ from public.course_lectures where id = :'audit_lecture_id' \gset
 \if :p4h_stale_no_partial_write
 \else
   \echo P4H lifecycle failed: stale plan partially wrote lecture metadata
-  \quit 1
+  select 1 / 0;
 \endif
 
 rollback;

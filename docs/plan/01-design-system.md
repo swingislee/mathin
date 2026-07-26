@@ -67,15 +67,16 @@
 
 ## 2. 字体
 
+> **2026-07-25 修订**：本节旧版“中文只在标题使用文楷、正文使用系统黑体”已被页面 UI 重构取代；实现与后续规则以 `20-ui-layout-refit.md` §7 为准。
+
 | 用途 | 字体 | 加载方式 |
 | --- | --- | --- |
-| 标题（中/英） | 霞鹜文楷 LXGW WenKai（开源 OFL，楷体手写感贴合小王子） | `next/font/local`，woff2 子集放 `src/fonts/`（只子集常用字 + 页面标题用字，控制体积；构建时若缺文件则回退系统楷体 `"Kaiti SC","KaiTi",serif`） |
-| 正文（中） | 系统栈：`"PingFang SC","Microsoft YaHei",sans-serif` | 不加载 webfont，保证速度 |
-| 正文（英）/ UI | 系统栈：`ui-sans-serif,system-ui` | |
+| 中文正文、标题与 UI | 霞鹜文楷 LXGW WenKai（开源 OFL） | `public/fonts/lxgw-wenkai/` 自托管 `unicode-range` 分片；回退 `"Kaiti SC","STKaiti","KaiTi",serif` |
+| 英文及其他语言 | Iowan Old Style / Palatino / Georgia | 系统书卷感衬线栈，不发起远程请求 |
 | 数学公式 | KaTeX 自带字体（terms 板块引入 KaTeX 时一并处理） | P1 阶段处理 |
 | 等宽 | `ui-monospace` | |
 
-规则：标题字体只用于 `h1/h2` 与 Logo「Mathin」；正文、按钮、表单一律系统字体。禁止引入 Google Fonts 远程链接（国内网络不稳定），webfont 一律自托管。
+规则：中文页面全局使用文楷，其他语言使用气质相近的书卷感字体。当前 97 个 WOFF2 是同一字体的 Unicode 分片，浏览器按页面字符命中下载，不得误判为 97 套字体后随意删除。禁止引入 Google Fonts 远程链接。
 
 ## 3. 线条与形状语言
 
@@ -95,9 +96,11 @@
 
 ## 5. 动效
 
+> 场景页已增加 `scene-rise`（700ms）和 `scene-drift`（7s、位移约 7px）；它们是页面级动画的第二类受控例外，完整约束见 `20-ui-layout-refit.md` §9。
+
 - 只用 CSS transition：`transition-[color,background,transform,opacity] duration-200`。
 - hover 允许的效果：颜色过渡、`-translate-y-0.5` 轻浮起、下划线展开；禁止旋转、缩放超过 1.03、弹跳。
-- 页面级动画只有一处例外：首页星球导航的缓慢漂浮（`animation: float 6s ease-in-out infinite`，位移 ≤ 6px）。
+- 页面级动画仅允许命名过的受控模式：首页 `float`，以及 `20-ui-layout-refit.md` 的 `scene-rise` / `scene-drift`；不得另增无规范动画。
 - 必须尊重 `prefers-reduced-motion: reduce`：关闭所有 animation，保留 opacity 过渡。
 
 ## 6. 组件规范
@@ -205,10 +208,11 @@
 
 | 组件 | 职责 |
 | --- | --- |
-| `SectionShell` | 子页面统一骨架：SiteHeader + 面包屑（走 `breadcrumb`）+ 标题（含 accent 下划线短横）+ 内容槽（详见 02） |
+| `SectionShell` | 内容型子页面骨架：边缘 SiteHeader + 面包屑 + 内容轴标题 + 内容槽（详见 02/20） |
 | `Star4` | 四角星 SVG 装饰 |
 | `StarPath` | 星轨虚线 SVG（水平/自定义 path 两种用法） |
 | `PlanetLink` | 首页/导航用的圆形星球入口（圆 + 描边 + 标签） |
+| `ThemePageIdentity` | 五个公开场景首页统一的星球身份 / h1 / 简介合同（详见 20） |
 | `EmptyState` | 空状态：一颗星 + 一句话（可评估迁移到 shadcn `empty`） |
 
 自造前自检：§6.1 目录真的没有？不能由 shadcn 组件组合而成（如 combobox=command+popover）？两者都否才自造，且遵守设计系统 token。

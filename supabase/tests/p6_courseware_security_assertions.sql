@@ -11,17 +11,26 @@ select id as member_session_id from public.class_sessions cs
 \if :{?admin_id}
 \else
   \echo P6 fixtures missing: 测试-管理员
-  \quit 1
+  select 1 / 0;
 \endif
 \if :{?member_session_id}
 \else
   \echo P6 fixtures missing: 测试-学生 has no classroom session
-  \quit 1
+  select 1 / 0;
 \endif
 
 -- 事务内补一个 parent 身份，确保 student / parent 都无法直读新表。
 insert into auth.users (id, email, raw_user_meta_data)
-values ('00000000-0000-4000-8000-000000000005', 'ci-p6-parent@mathin.local', jsonb_build_object('display_name', '测试-P6家长'))
+values (
+  '00000000-0000-4000-8000-000000000005',
+  'ci-p6-parent@mathin.local',
+  jsonb_build_object(
+    'display_name', '测试-P6家长',
+    'registration_invite_code', (select code from public.registration_invite_settings where id = 1),
+    'privacy_consent', true,
+    'children_privacy_consent', true
+  )
+)
 on conflict (id) do nothing;
 update public.profiles set role='parent' where id='00000000-0000-4000-8000-000000000005';
 select id as parent_id from public.profiles where id='00000000-0000-4000-8000-000000000005' \gset
@@ -149,7 +158,7 @@ select (count(*)=0) as p6_student_storage_denied
 \if :p6_student_storage_denied
 \else
   \echo P6 security failed: student read cw-objects metadata
-  \quit 1
+  select 1 / 0;
 \endif
 
 -- 同一个学生作为课堂成员，可以只取本课冻结清单中的对象元数据；签名由 Server Action 完成。
@@ -159,7 +168,7 @@ select (count(*)=1) as p6_member_resolved_scope_ok
 \if :p6_member_resolved_scope_ok
 \else
   \echo P6 security failed: classroom member could not resolve frozen asset
-  \quit 1
+  select 1 / 0;
 \endif
 
 -- 家长既不能直读，也不能借 RPC 猜另一堂课的冻结对象。
@@ -186,7 +195,7 @@ select (count(*)=0) as p6_parent_storage_denied
 \if :p6_parent_storage_denied
 \else
   \echo P6 security failed: parent read cw-objects metadata
-  \quit 1
+  select 1 / 0;
 \endif
 
 -- 开课冻结必须以同一受控事务写入页面数组、resolved 清单和开始时间。
@@ -206,7 +215,7 @@ from public.class_sessions where id=current_setting('p6.member_session_id')::uui
 \if :p6_freeze_transaction_ok
 \else
   \echo P6 security failed: freeze transaction did not materialize all fields
-  \quit 1
+  select 1 / 0;
 \endif
 
 -- 管理员可存草稿并发布；release 固定 page revision 与 binding 的 asset revision。
@@ -224,7 +233,7 @@ select (current_release_id=:'release_id'::uuid) as p6_release_current_ok
 \if :p6_release_current_ok
 \else
   \echo P6 security failed: release not current
-  \quit 1
+  select 1 / 0;
 \endif
 select (
   current_revision_id=:'draft_revision_id'::uuid
@@ -234,7 +243,7 @@ from public.cw_page_docs where id=:'page_doc_id' \gset
 \if :p6_release_revision_pin_ok
 \else
   \echo P6 security failed: page revision was not pinned by release
-  \quit 1
+  select 1 / 0;
 \endif
 select (
   snapshot @> jsonb_build_array(jsonb_build_object(
@@ -253,7 +262,7 @@ from public.cw_lecture_releases where id=:'release_id' \gset
 \if :p6_release_h5_launch_query_pin_ok
 \else
   \echo P6 security failed: release did not pin H5 launch query
-  \quit 1
+  select 1 / 0;
 \endif
 
 rollback;

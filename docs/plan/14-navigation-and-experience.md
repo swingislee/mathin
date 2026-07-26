@@ -158,6 +158,8 @@
 
 ### 6.5 shadcn-first 组件债（用户强调的一等问题：能复用 shadcn/ui 就不手搓）
 
+> **2026-07-25 完成追记**：P4F-0b 已安装并迁移 `input/select/table/alert-dialog/badge/sheet/checkbox/label/skeleton/breadcrumb` 等基座；本轮 UtilitySheet 与 Dashboard 移动导航继续复用 `Sheet` + `ScrollArea`，未新增手搓抽屉。下表保留为历史债务证据，不再表示当前安装状态；现行页面布局规则见 `20-ui-layout-refit.md`。
+
 **背景**：`AGENTS.md`/全局铁律要求"新组件先查 shadcn/ui、能复用就不手搓"。但审计发现整个 P4B/P4C/P4D 期间该反射系统性缺失——遇到需要控件时默认手搓样式常量或用原生元素，而非 `pnpm dlx shadcn@latest add`。toast 漏装只是冰山一角。
 
 **成本实锤（不是风格偏好）**：`src/features/school/controls.ts` 是一份**手抄的 shadcn input/select**（`inputClass = selectClass = "rounded-lg border border-line bg-card ..."`）。其注释自白：原先各处裸 `<input>/<select>` 手写 `bg-background`（未定义 token）→ 暗色卡片上渲染脏色 → 专门起 P4C-0 §3.5 任务补救。**这个 bug 用 shadcn `input`/`select` 根本不会发生**——它们是主题测试过、暗色适配好的。违反 shadcn-first 直接导致了一次返工。

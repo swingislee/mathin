@@ -7,7 +7,7 @@ select id as student_id from public.profiles where display_name='测试-学生' 
 \if :{?admin_id}
 \else
   \echo P6 replacement fixtures missing: 测试-管理员
-  \quit 1
+  select 1 / 0;
 \endif
 
 insert into public.courses (title, product_code, grade, term, class_type, created_by)
@@ -88,7 +88,7 @@ select (
 \if :p6_replacement_native_partial_ok
 \else
   \echo P6 replacement failed: native partial branch rebind
-  \quit 1
+  select 1 / 0;
 \endif
 select public.rollback_cw_asset_replacement(:'branch_batch_id');
 select (
@@ -98,7 +98,7 @@ select (
 \if :p6_replacement_native_partial_rollback_ok
 \else
   \echo P6 replacement failed: native partial rollback
-  \quit 1
+  select 1 / 0;
 \endif
 
 -- 原生 16:9：全选只推进原生 variant/legacy 指针，不重写 binding。
@@ -117,7 +117,7 @@ select (
 \if :p6_replacement_native_pointer_ok
 \else
   \echo P6 replacement failed: native published pointer update
-  \quit 1
+  select 1 / 0;
 \endif
 select public.rollback_cw_asset_replacement(:'pointer_batch_id');
 select (
@@ -127,7 +127,7 @@ select (
 \if :p6_replacement_native_pointer_rollback_ok
 \else
   \echo P6 replacement failed: native published pointer rollback
-  \quit 1
+  select 1 / 0;
 \endif
 
 -- 同一页面复制 4:3 binding；随后的替换必须严格与 16:9 绑定、variant 指针隔离。
@@ -172,12 +172,12 @@ select (
 \if :p6_replacement_adapted_partial_ok
 \else
   \echo P6 replacement failed: adapted partial crossed native track
-  \quit 1
+  select 1 / 0;
 \endif
 \if :p6_replacement_track_list_guard_ok
 \else
   \echo P6 replacement failed: adapted branch leaked into native list
-  \quit 1
+  select 1 / 0;
 \endif
 select public.rollback_cw_asset_replacement(:'adapted_branch_batch_id');
 select (
@@ -187,7 +187,7 @@ select (
 \if :p6_replacement_adapted_partial_rollback_ok
 \else
   \echo P6 replacement failed: adapted partial rollback
-  \quit 1
+  select 1 / 0;
 \endif
 
 select repeat('e',64) as adapted_pointer_hash \gset
@@ -205,7 +205,7 @@ select (
 \if :p6_replacement_adapted_pointer_ok
 \else
   \echo P6 replacement failed: adapted pointer crossed native variant
-  \quit 1
+  select 1 / 0;
 \endif
 select public.rollback_cw_asset_replacement(:'adapted_pointer_batch_id');
 select (
@@ -217,7 +217,7 @@ select (
 \if :p6_replacement_adapted_pointer_rollback_ok
 \else
   \echo P6 replacement failed: adapted pointer rollback
-  \quit 1
+  select 1 / 0;
 \endif
 
 rollback;

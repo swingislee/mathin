@@ -6,7 +6,7 @@ select id as admin_id from public.profiles where display_name='测试-管理员'
 \if :{?admin_id}
 \else
   \echo P6 track fixtures missing: 测试-管理员
-  \quit 1
+  select 1 / 0;
 \endif
 select set_config('request.jwt.claim.sub', :'admin_id', true);
 
@@ -74,7 +74,7 @@ select (
 \if :p6_tracks_release_isolation_ok
 \else
   \echo P6 tracks failed: release heads are not isolated
-  \quit 1
+  select 1 / 0;
 \endif
 
 select revision_id replacement_revision,affected_count from public.replace_cw_track_image_binding(
@@ -88,7 +88,7 @@ select (
 \if :p6_tracks_asset_isolation_ok
 \else
   \echo P6 tracks failed: track-scoped replacement crossed aspect tracks
-  \quit 1
+  select 1 / 0;
 \endif
 
 insert into public.classrooms(owner_id,name,invite_code,course_id)
@@ -105,7 +105,7 @@ select (:'resolved_default'::uuid=:'adapted_release'::uuid and :'resolved_overri
 \if :p6_tracks_class_selection_ok
 \else
   \echo P6 tracks failed: class/session selection precedence
-  \quit 1
+  select 1 / 0;
 \endif
 
 select public.freeze_session_courseware(:'session_id','[]'::jsonb,jsonb_build_object(

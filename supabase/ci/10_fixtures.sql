@@ -11,10 +11,46 @@
 
 insert into auth.users (id, email, raw_user_meta_data)
 values
-  ('00000000-0000-4000-8000-000000000001', 'ci-admin@mathin.local',   jsonb_build_object('display_name', '测试-管理员')),
-  ('00000000-0000-4000-8000-000000000002', 'ci-teacher@mathin.local', jsonb_build_object('display_name', '测试-教师')),
-  ('00000000-0000-4000-8000-000000000003', 'ci-sales@mathin.local',   jsonb_build_object('display_name', '测试-学辅')),
-  ('00000000-0000-4000-8000-000000000004', 'ci-student@mathin.local', jsonb_build_object('display_name', '测试-学生'))
+  (
+    '00000000-0000-4000-8000-000000000001',
+    'ci-admin@mathin.local',
+    jsonb_build_object(
+      'display_name', '测试-管理员',
+      'registration_invite_code', (select code from public.registration_invite_settings where id = 1),
+      'privacy_consent', true,
+      'children_privacy_consent', true
+    )
+  ),
+  (
+    '00000000-0000-4000-8000-000000000002',
+    'ci-teacher@mathin.local',
+    jsonb_build_object(
+      'display_name', '测试-教师',
+      'registration_invite_code', (select code from public.registration_invite_settings where id = 1),
+      'privacy_consent', true,
+      'children_privacy_consent', true
+    )
+  ),
+  (
+    '00000000-0000-4000-8000-000000000003',
+    'ci-sales@mathin.local',
+    jsonb_build_object(
+      'display_name', '测试-学辅',
+      'registration_invite_code', (select code from public.registration_invite_settings where id = 1),
+      'privacy_consent', true,
+      'children_privacy_consent', true
+    )
+  ),
+  (
+    '00000000-0000-4000-8000-000000000004',
+    'ci-student@mathin.local',
+    jsonb_build_object(
+      'display_name', '测试-学生',
+      'registration_invite_code', (select code from public.registration_invite_settings where id = 1),
+      'privacy_consent', true,
+      'children_privacy_consent', true
+    )
+  )
 on conflict (id) do nothing;
 
 -- handle_new_user 触发器已按 display_name 建好 profiles；这里只补身份类角色。

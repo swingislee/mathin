@@ -2,6 +2,8 @@
 
 本文件规定首页与各板块页面的布局、交互与验收标准。所有实现必须使用 01 的 token 与组件。
 
+> **2026-07-25 修订**：全宽顶部栏、所有公开页统一 `SectionShell`、五页各自拼标题的旧规则已被 `20-ui-layout-refit.md` 取代。当前页面分为场景型、内容型、工作区型三种坐标系；五个公开主题首页使用边缘控制和统一 `ThemePageIdentity`。
+
 ## 1. 首页（`/[locale]`）重设计 —— 「月亮与五颗星球」
 
 ### 1.1 设计意图
@@ -50,12 +52,12 @@
 - [ ] 深色模式（星夜）下主图 `brightness-95`，星球与文字对比度 ≥ 4.5:1。
 - [ ] `pnpm lint && pnpm typecheck && pnpm build` 通过。
 
-## 2. 子页面统一骨架 `SectionShell`
+## 2. 内容型子页面骨架 `SectionShell`
 
-所有板块页共用，替代现有 `SectionPage` 的"居中一张卡"布局：
+`SectionShell` 服务内容型详情页和尚未场景化的页面，不再强制包裹五个公开主题首页：
 
 ```
-SiteHeader（保留，含返回首页的 logo）
+SiteHeader（边缘悬浮签名与全局控制，不占据全宽栏）
 面包屑：首页 / 板块名（text-sm muted）
 h1 板块名（文楷体）+ 标题左下 32px 短横线（--section-accent，2px 圆头）
 可选一句板块简介（muted）
@@ -67,6 +69,7 @@ h1 板块名（文楷体）+ 标题左下 32px 短横线（--section-accent，2p
 - 受保护板块的「退出登录」按钮移入 UtilitySheet，不再放页面顶部。
 - 未建设完成的板块内容槽渲染 `EmptyState`（一颗 star4 + `common.comingSoon`）。
 - 现有 `src/app/[locale]/[section]/page.tsx` 的公开/受保护白名单机制保留。
+- 场景首页自行建立视口坐标系，但必须使用统一的“星球身份 / h1 / 简介”标题合同；学校工作区标题服从 P4I 对象工作区原语。
 
 ## 3. 各板块页面规格
 
@@ -137,4 +140,6 @@ P3 已批准引入 BlockNote 富文本编辑器；完整范围、数据模型、
 
 ### 3.10 登录 / 注册页
 
-- 现有逻辑保留，视觉统一：卡片居中 `max-w-sm`，卡片上方放一颗小星球插画位（首版用 `Star4`），标题文楷体，主按钮 primary。错误提示用卡内红字（rose），不用 alert。
+- 登录页继续使用居中卡片；注册页新增昵称、邀请码、邮箱、密码，并要求分别勾选隐私政策与儿童个人信息保护政策后才能提交。
+- 隐私政策链接只出现在注册流程，不放入 UtilitySheet。主管/校长与 admin 通过 `registration.invite.manage` 页面配置邀请码及启用状态。
+- 卡片上方使用 `Star4`，标题使用全局文楷，主按钮 primary；错误提示用卡内 rose 文案，不使用浏览器 alert。

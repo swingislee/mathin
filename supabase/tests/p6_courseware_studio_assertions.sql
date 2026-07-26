@@ -7,7 +7,7 @@ select id as student_id from public.profiles where display_name='测试-学生' 
 \if :{?admin_id}
 \else
   \echo P6 studio fixtures missing: 测试-管理员
-  \quit 1
+  select 1 / 0;
 \endif
 
 insert into public.courses (title, product_code, grade, term, class_type, created_by)
@@ -64,7 +64,7 @@ from public.cw_page_docs where lecture_id=:'lecture_id' and deleted_at is null \
 \if :p6_studio_page_order_ok
 \else
   \echo P6 studio failed: page ordering
-  \quit 1
+  select 1 / 0;
 \endif
 select revision_id as draft_revision_id, revision_no as draft_revision_no from public.save_cw_track_page_draft(
   :'page_id','native-16x9', (select doc from public.cw_page_revisions where id=:'baseline_revision_id'), 1, 'draft'
@@ -77,7 +77,7 @@ from public.cw_page_revisions where id=:'revert_revision_id' \gset
 \if :p6_studio_revert_ok
 \else
   \echo P6 studio failed: page revert
-  \quit 1
+  select 1 / 0;
 \endif
 
 -- 发布 release 1 后冻结一堂课；之后发布 release 2，冻结的课次仍 pin release 1。
@@ -101,7 +101,7 @@ select (
 \if :p6_studio_frozen_isolation_ok
 \else
   \echo P6 studio failed: frozen session changed after new release
-  \quit 1
+  select 1 / 0;
 \endif
 
 -- 本页图片替换必须建出新 shared_asset 分支，而不是推进原资产的 published 指针。
@@ -116,7 +116,7 @@ select (
 \if :p6_studio_page_only_image_ok
 \else
   \echo P6 studio failed: image replacement changed shared source
-  \quit 1
+  select 1 / 0;
 \endif
 
 rollback;
