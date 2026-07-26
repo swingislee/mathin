@@ -1,5 +1,6 @@
 import "server-only";
 
+import { cache } from "react";
 import type { Json } from "@/lib/database.types";
 import { createClient } from "@/lib/supabase/server";
 import type { WorkItemRow } from "./stage/types";
@@ -47,7 +48,7 @@ interface WorkItemRpcRow {
 }
 
 /** 统一工作项列表（P4I-6 RPC）；RPC 内部已按 doc19 §6.4 顺序排序，这里只做 snake→camel 映射。 */
-export async function listMyWorkItems(): Promise<WorkItemRow[]> {
+export const listMyWorkItems = cache(async function listMyWorkItems(): Promise<WorkItemRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("list_my_work_items");
   if (error) throw new Error(error.message);
@@ -86,7 +87,7 @@ export async function listMyWorkItems(): Promise<WorkItemRow[]> {
     acknowledgedAt: row.acknowledged_at ?? undefined,
     watching: row.watching,
   }));
-}
+});
 
 function jsonField(value: Json, key: string): Json | undefined {
   if (value && typeof value === "object" && !Array.isArray(value)) return value[key];

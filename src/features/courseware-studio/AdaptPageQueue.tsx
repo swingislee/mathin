@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Link, useRouter } from "@/i18n/navigation";
+import { FilterSelectTrigger } from "@/features/school/FilterBar";
 import { cn } from "@/lib/utils";
 import { setAdaptPageClassificationAction } from "./adapt-actions";
 import { ADAPT_CLASSES, type AdaptClass } from "./adapt-review-shared";
@@ -23,14 +24,14 @@ export function AdaptPageQueue({ items, page, total, totalPages, classification,
   const t = useTranslations("coursewareStudio");
   const router = useRouter();
   return <section className="mt-6">
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-card p-4">
+    <div className="flex flex-wrap items-center justify-between gap-3">
       <div>
         <h2 className="text-base font-semibold text-ink">{t("adaptPageQueueTitle")}</h2>
         <p className="mt-1 text-sm text-muted">{t("adaptPageQueueIntro")}</p>
       </div>
       <div className="w-40">
         <Select value={classification} onValueChange={(value) => router.push(hrefFor(value as AdaptClass | "all", 1, courseId, lectureId))}>
-          <SelectTrigger aria-label={t("adaptClassFilter")}><SelectValue /></SelectTrigger>
+          <FilterSelectTrigger aria-label={t("adaptClassFilter")}><SelectValue /></FilterSelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t("adaptClassAll")}</SelectItem>
             {ADAPT_CLASSES.map((item) => <SelectItem key={item} value={item}>{classLabel(t, item)}</SelectItem>)}

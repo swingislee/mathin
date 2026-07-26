@@ -13,17 +13,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 export function DashboardListSkeleton() {
   return (
     <div className="mx-auto w-full max-w-6xl" aria-busy="true">
-      {/* 页头：标题 + 副标题 + 右侧动作，底部一条分隔线 */}
-      <header className="flex flex-wrap items-end justify-between gap-3 border-b border-line pb-4">
+      <header className="sticky top-16 z-30 -mx-4 flex min-h-16 items-center justify-between gap-3 bg-paper/95 px-4 py-3 backdrop-blur-md md:-mx-6 md:px-6 lg:top-0 lg:-mx-8 lg:min-h-24 lg:px-8 lg:pr-24">
         <div className="min-w-0 space-y-2">
           <Skeleton className="h-7 w-40" />
-          <Skeleton className="h-4 w-72" />
         </div>
         <Skeleton className="h-9 w-28 rounded-md" />
       </header>
 
       {/* 筛选条 */}
-      <div className="mt-6 flex flex-wrap gap-2">
+      <div className="mt-4 flex min-h-12 flex-wrap items-center gap-2 py-1">
         <Skeleton className="h-9 w-48 rounded-md" />
         <Skeleton className="h-9 w-32 rounded-md" />
         <Skeleton className="h-9 w-32 rounded-md" />

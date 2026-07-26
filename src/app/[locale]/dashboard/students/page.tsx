@@ -1,11 +1,12 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { setRequestLocale } from "next-intl/server";
 import { getTranslations } from "next-intl/server";
 import { buttonVariants } from "@/components/ui/button";
 import { toSelectValue } from "@/features/school/controls";
-import { getFollowUpFunnel, getStaffStats, type FollowUpFunnelBucket, type StaffStats } from "@/features/school/dashboard";
+import { getStaffStats, type StaffStats } from "@/features/school/dashboard";
+import { FilterBar, FilterBarReset, FilterBarSubmit, FilterSearchInput, FilterSelectTrigger } from "@/features/school/FilterBar";
 import { NewStudentDialog } from "@/features/school/NewStudentDialog";
 import { SchoolPageHeader } from "@/features/school/PageHeader";
 import { StatusStrip, type StatusStripItem } from "@/features/school/stage/StatusStrip";
@@ -36,20 +37,17 @@ export default async function StudentsPage({
   const t = await getTranslations("school.students");
   const schoolT = await getTranslations("school");
   const perms = await getMyPerms(user.id);
-  const canFunnel = perms.has("student.view.all");
   const canCreate = perms.has("student.create");
   const canImport = perms.has("student.import");
   const canDelete = perms.has("student.delete");
   const filters = parseStudentFilters(rawSearchParams);
   const emptyStats: StaffStats = { enrolledCount: 0, leadCount: 0, weekSessionCount: 0, overdueFollowUpCount: 0 };
-  const [{ students, count }, funnel, stats]: [Awaited<ReturnType<typeof listStudents>>, FollowUpFunnelBucket[], StaffStats] = await Promise.all([
+  const [{ students, count }, stats]: [Awaited<ReturnType<typeof listStudents>>, StaffStats] = await Promise.all([
     listStudents(filters),
-    canFunnel ? safe(getFollowUpFunnel, []) : Promise.resolve([]),
-    canFunnel ? safe(getStaffStats, emptyStats) : Promise.resolve(emptyStats),
+    perms.has("student.view.all") ? safe(getStaffStats, emptyStats) : Promise.resolve(emptyStats),
   ]);
   const maxPage = count ? Math.max(1, Math.ceil(count / 20)) : filters.page;
-  const funnelMax = Math.max(1, ...funnel.map((bucket) => bucket.count));
-  const statusItems: StatusStripItem[] = canFunnel
+  const statusItems: StatusStripItem[] = perms.has("student.view.all")
     ? [
         { label: schoolT("home.statEnrolled"), value: stats.enrolledCount },
         { label: schoolT("home.statLeads"), value: stats.leadCount },
@@ -85,53 +83,33 @@ export default async function StudentsPage({
             {!filters.recycle && canCreate && <NewStudentDialog />}
           </>
         }
-      >
-        <p className="mt-1 max-w-3xl text-sm text-muted">{t("intro")}</p>
-      </SchoolPageHeader>
+      />
+      {!filters.recycle && statusItems.length > 0 && <StatusStrip items={statusItems} className="mt-3" />}
 
-      {!filters.recycle && statusItems.length > 0 && <StatusStrip items={statusItems} className="mt-4" />}
-
-      {!filters.recycle && canFunnel && funnel.length > 0 && (
-        <section className="mt-6 rounded-xl border border-line bg-card p-5">
-          <h2 className="font-medium">{schoolT("home.funnelTitle")}</h2>
-          <div className="mt-4 space-y-2">
-            {funnel.map((bucket) => (
-              <div key={bucket.status} className="flex items-center gap-3 text-sm">
-                <span className="w-16 shrink-0 text-xs text-muted">{t(bucket.status)}</span>
-                <div className="h-2 flex-1 rounded-full bg-line/40">
-                  <div className="h-2 rounded-full bg-crater" style={{ width: `${Math.round((bucket.count / funnelMax) * 100)}%` }} />
-                </div>
-                <span className="w-8 shrink-0 text-right text-xs tabular-nums">{bucket.count}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      <form className="mt-6 grid gap-3 rounded-xl border border-line bg-card p-4 md:grid-cols-[1fr_150px_150px_140px_auto_auto]">
+      <FilterBar aria-label={t("filter")}>
         {filters.recycle && <Input type="hidden" name="tab" value="recycle" />}
-        <Input
+        <FilterSearchInput
           name="q"
           defaultValue={filters.q}
           placeholder={t("search")}
-          className="min-w-0"
+          aria-label={t("search")}
         />
         <Select name="status" defaultValue={toSelectValue(filters.status ?? "")}>
-          <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+          <FilterSelectTrigger><SelectValue /></FilterSelectTrigger>
           <SelectContent>
             <SelectItem value={toSelectValue("")}>{t("allStatuses")}</SelectItem>
             {STUDENT_STATUSES.map((status) => <SelectItem key={status} value={status}>{t(status)}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select name="followUpStatus" defaultValue={toSelectValue(filters.followUpStatus ?? "")}>
-          <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+          <FilterSelectTrigger><SelectValue /></FilterSelectTrigger>
           <SelectContent>
             <SelectItem value={toSelectValue("")}>{t("allFollowUps")}</SelectItem>
             {FOLLOW_UP_STATUSES.map((status) => <SelectItem key={status} value={status}>{t(status)}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select name="grade" defaultValue={toSelectValue(String(filters.grade ?? ""))}>
-          <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+          <FilterSelectTrigger><SelectValue /></FilterSelectTrigger>
           <SelectContent>
             <SelectItem value={toSelectValue("")}>{t("allGrades")}</SelectItem>
             {Array.from({ length: 9 }, (_, index) => index + 1).map((grade) => (
@@ -139,9 +117,11 @@ export default async function StudentsPage({
             ))}
           </SelectContent>
         </Select>
-        <button className={cn(buttonVariants({ size: "sm" }), "h-10")} type="submit">{t("filter")}</button>
-        <Link href={filters.recycle ? "/dashboard/students?tab=recycle" : "/dashboard/students"} className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "h-10")}>{t("reset")}</Link>
-      </form>
+        <FilterBarSubmit>{t("filter")}</FilterBarSubmit>
+        {(filters.q || filters.status || filters.followUpStatus || filters.grade) && (
+          <FilterBarReset href={filters.recycle ? "/dashboard/students?tab=recycle" : "/dashboard/students"} label={t("reset")} />
+        )}
+      </FilterBar>
 
       {students.length === 0 ? (
         <p className="mt-8 rounded-xl border border-line bg-card p-5 text-sm text-muted">{t("empty")}</p>

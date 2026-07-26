@@ -1,19 +1,22 @@
-import { getLocale } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
+import { ChangeBell, type InboxWorkItem } from "@/features/events/ChangeBell";
+import { getInitialChangeFeed, type ChangeEvent } from "@/features/events/actions";
+import { formatWorkItemReason, listMyWorkItems, resolveWorkItemHref } from "@/features/school/work-items";
 import { Link } from "@/i18n/navigation";
 import { getProfile } from "@/lib/auth";
 import { pickActiveEnvironment, resolveAvailableEnvironments } from "@/lib/environment";
 import { createClient } from "@/lib/supabase/server";
 import { getThemePreference } from "@/lib/theme";
 import { UtilitySheet } from "./utility-sheet";
-import { ChangeBell } from "@/features/events/ChangeBell";
-import { getInitialChangeFeed } from "@/features/events/actions";
 
 export async function SiteHeader({ workspace = false }: { workspace?: boolean } = {}) {
   const locale = await getLocale();
   const theme = await getThemePreference();
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const changes = user ? await getInitialChangeFeed() : [];
+  let changes: ChangeEvent[] = [];
+  let inboxWorkItems: InboxWorkItem[] = [];
+  let totalWorkItems = 0;
 
   let environments: Awaited<ReturnType<typeof resolveAvailableEnvironments>> = [];
   let activeEnvironment: ReturnType<typeof pickActiveEnvironment> = null;
@@ -22,6 +25,34 @@ export async function SiteHeader({ workspace = false }: { workspace?: boolean } 
     profile = await getProfile(user.id);
     environments = await resolveAvailableEnvironments(supabase, user.id, profile?.role);
     activeEnvironment = pickActiveEnvironment(profile?.lastActiveEnvironment, environments);
+    const [nextChanges, rawWorkItems] = await Promise.all([
+      getInitialChangeFeed(),
+      activeEnvironment === "staff" ? listMyWorkItems().catch(() => []) : Promise.resolve([]),
+    ]);
+    changes = nextChanges;
+    totalWorkItems = rawWorkItems.length;
+    if (rawWorkItems.length > 0) {
+      const [workT, classesT] = await Promise.all([
+        getTranslations("school.work"),
+        getTranslations("school.classes"),
+      ]);
+      const now = new Date();
+      const urgencyLabels = {
+        now: workT("bucket_now"),
+        overdue: workT("bucket_overdue"),
+        today: workT("bucket_today"),
+        upcoming: workT("bucket_upcoming"),
+        backlog: workT("bucket_backlog"),
+      };
+      inboxWorkItems = rawWorkItems.slice(0, 8).map((item) => ({
+        key: item.workKey,
+        title: item.primaryObjectName,
+        reason: formatWorkItemReason(item, workT, classesT, locale, now),
+        href: resolveWorkItemHref(item),
+        urgency: item.urgencyBucket,
+        urgencyLabel: urgencyLabels[item.urgencyBucket],
+      }));
+    }
   }
 
   return (
@@ -32,7 +63,7 @@ export async function SiteHeader({ workspace = false }: { workspace?: boolean } 
         </Link>
       )}
       <div className="pointer-events-auto flex items-center gap-2">
-        {user && <ChangeBell initialEvents={changes} />}
+        {user && <ChangeBell key={changes[0]?.id ?? "empty"} initialEvents={changes} workItems={inboxWorkItems} totalWorkItems={totalWorkItems} />}
         <UtilitySheet
           isLoggedIn={!!user}
           locale={locale}

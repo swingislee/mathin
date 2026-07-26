@@ -68,14 +68,13 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
             </Link>
           </div>
         }
-      >
-        <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted">
+        meta={<>
           <span>
             {student.grade ? t("grade", { grade: student.grade }) : "-"} · {t(student.status)} · {t(student.followUpStatus)}
           </span>
           <span className="rounded-full bg-line/60 px-3 py-1 font-mono text-xs text-muted">{student.bindCode}</span>
-        </div>
-      </SchoolPageHeader>
+        </>}
+      />
 
       {student.deletedAt && (
         <div className="mt-6 rounded-xl border border-rose/30 bg-rose/5 p-4 text-sm text-rose">

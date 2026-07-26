@@ -1,4 +1,5 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { FilterBarFrame } from "@/features/school/FilterBar";
 import { FollowUpBoardList } from "@/features/school/FollowUpBoardList";
 import {
   BOARD_BUCKETS,
@@ -61,33 +62,24 @@ export default async function FollowUpsPage({
     <div className="mx-auto w-full max-w-6xl">
       <SchoolPageHeader
         title={t("title")}
-        actions={
-          <>
-            {canScopeAll && (
-              <div className="flex overflow-hidden rounded-lg border border-line text-xs" role="group" aria-label={t("scopeLabel")}>
-                {(["mine", "all"] as const).map((value) => (
-                  <Link
-                    key={value}
-                    href={boardHref({ scope: value })}
-                    className={cn(
-                      "px-3 py-1.5 transition",
-                      scope === value ? "bg-crater/10 font-medium text-ink" : "text-muted hover:text-ink",
-                    )}
-                  >
-                    {t(value === "mine" ? "scopeMine" : "scopeAll")}
-                  </Link>
-                ))}
-              </div>
-            )}
-            {canCreate && <NewStudentDialog />}
-          </>
-        }
-      >
-        <p className="mt-1 max-w-3xl text-sm text-muted">{t("intro")}</p>
-      </SchoolPageHeader>
-      <p className="mt-4 rounded-lg border border-line bg-card px-4 py-3 text-xs text-muted">{t("appendOnlyPolicy")}</p>
+        actions={canCreate ? <NewStudentDialog /> : undefined}
+      />
+      <p className="mt-3 px-1 text-xs text-muted">{t("appendOnlyPolicy")}</p>
 
-      <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-7">
+      <FilterBarFrame aria-label={t("scopeLabel")}>
+        {canScopeAll && (["mine", "all"] as const).map((value) => (
+          <Link
+            key={value}
+            href={boardHref({ scope: value })}
+            className={cn(
+              "rounded-full px-3 py-1.5 text-xs transition",
+              scope === value ? "bg-ink font-medium text-paper" : "text-muted hover:bg-paper/80 hover:text-ink",
+            )}
+          >
+            {t(value === "mine" ? "scopeMine" : "scopeAll")}
+          </Link>
+        ))}
+        <span className="hidden h-5 w-px bg-line/70 md:block" aria-hidden />
         {BOARD_BUCKETS.map((key) => {
           const active = bucket === key;
           const rose = key === "overdue" && board.counts[key] > 0;
@@ -97,16 +89,16 @@ export default async function FollowUpsPage({
               href={boardHref({ bucket: active ? undefined : key })}
               aria-current={active ? "true" : undefined}
               className={cn(
-                "rounded-xl border p-3 transition",
-                active ? "border-crater bg-crater/10" : "border-line bg-card hover:border-crater/50",
+                "inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs transition",
+                active ? "bg-crater/12 font-medium text-ink" : "text-muted hover:bg-paper/80 hover:text-ink",
               )}
             >
-              <p className="text-[11px] uppercase tracking-[0.18em] text-muted">{t(`bucket_${key}`)}</p>
-              <p className={cn("font-display text-2xl tabular-nums", rose ? "text-rose" : "")}>{board.counts[key]}</p>
+              <span>{t(`bucket_${key}`)}</span>
+              <span className={cn("tabular-nums", rose ? "text-rose" : "")}>{board.counts[key]}</span>
             </Link>
           );
         })}
-      </div>
+      </FilterBarFrame>
 
       <FollowUpBoardList groups={board.groups} canEditStatus={canEditStatus} canOrder={canOrder} canRecover={canEditStatus&&perms.has("followup.write")} />
     </div>

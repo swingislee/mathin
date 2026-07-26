@@ -434,6 +434,30 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
     void setSessionPage(session.id, clamped).catch(() => undefined);
   }, [append, session.id, rehearsal, offlineDrill]);
 
+  useEffect(() => {
+    if (!isController || state.pages.length === 0) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+      const target = event.target;
+      if (target instanceof HTMLElement && (
+        target.isContentEditable
+        || target.matches("input, textarea, select, button, [role='dialog'], [role='textbox']")
+      )) return;
+      const direction = event.key === "ArrowLeft" || event.key === "PageUp"
+        ? -1
+        : event.key === "ArrowRight" || event.key === "PageDown" || event.key === " "
+          ? 1
+          : 0;
+      if (!direction) return;
+      const nextPage = Math.max(0, Math.min(state.pages.length - 1, state.currentPage + direction));
+      if (nextPage === state.currentPage) return;
+      event.preventDefault();
+      gotoPage(nextPage, state.pages.length);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [gotoPage, isController, state.currentPage, state.pages.length]);
+
   const startClass = useCallback(async () => {
     // 挂了讲次的课次要先在服务端 resolve 模板+覆盖层冻结 courseware，
     // 成功后才广播 session_ctl:start（10-§5.4）；失败则留在候课页重试。

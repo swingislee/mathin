@@ -23,9 +23,7 @@ export default async function SharedAssetDetailPage({
 
   return (
     <div className="mx-auto w-full max-w-7xl">
-      <SchoolPageHeader title={t("assetDetailTitle")}>
-        <p className="mt-1 max-w-3xl text-sm text-muted">{t("assetDetailIntro")}</p>
-      </SchoolPageHeader>
+      <SchoolPageHeader title={t("assetDetailTitle")} />
       <p className="mt-3"><Link href={`/dashboard/shared-assets?track=${track}`} className="text-xs text-muted underline underline-offset-2 hover:text-ink">{t("backToAssetLibrary")}</Link></p>
       <SharedAssetReplacementEditor detail={detail} />
     </div>

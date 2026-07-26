@@ -22,9 +22,7 @@ export default async function StaffRolesPage({ params }: { params: Promise<{ loc
         backHref="/dashboard/staff"
         backLabel={tStaff("back")}
         breadcrumbs={[{ label: tStaff("title"), href: "/dashboard/staff" }, { label: t("title") }]}
-      >
-        <p className="mt-1 max-w-2xl text-sm text-muted">{t("intro")}</p>
-      </SchoolPageHeader>
+      />
       <div className="mt-6">
         <RolesMatrixPanel roles={roles} isAdmin={profile?.role === "admin"} />
       </div>

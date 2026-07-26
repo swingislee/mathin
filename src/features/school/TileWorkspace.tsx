@@ -404,6 +404,7 @@ export function TileWorkspace({
     <div className="mx-auto w-full max-w-7xl">
       <SchoolPageHeader
         title={title}
+        description={subtitle}
         actions={
           editing ? (
             <>
@@ -440,9 +441,7 @@ export function TileWorkspace({
             </button>
           )
         }
-      >
-        {subtitle && <p className="mt-1 text-sm text-muted">{subtitle}</p>}
-      </SchoolPageHeader>
+      />
 
       {error && <p className="mt-4 text-sm text-rose">{error}</p>}
       {prelude && <div className="mt-6">{prelude}</div>}

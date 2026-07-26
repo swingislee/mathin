@@ -18,7 +18,7 @@ const TONE_CLASS: Record<NonNullable<StatusStripItem["tone"]>, string> = {
 export function StatusStrip({ items, className }: { items: readonly StatusStripItem[]; className?: string }) {
   if (items.length === 0) return null;
   return (
-    <div className={cn("flex min-h-10 shrink-0 flex-wrap items-center gap-3 border-t border-line px-1 py-2 text-xs", className)}>
+    <div className={cn("flex min-h-10 shrink-0 flex-wrap items-center gap-3 rounded-xl bg-card/35 px-2.5 py-2 text-xs", className)}>
       {items.map((item, index) => (
         <Fragment key={`${item.label}-${index}`}>
           {index > 0 ? <Separator orientation="vertical" className="h-3" /> : null}

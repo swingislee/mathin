@@ -35,9 +35,7 @@ export default async function SharedAssetLibraryPage({
 
   return (
     <div className="mx-auto w-full max-w-6xl">
-      <SchoolPageHeader title={t("assetLibraryTitle")}>
-        <p className="mt-1 max-w-3xl text-sm text-muted">{t("assetLibraryIntro")}</p>
-      </SchoolPageHeader>
+      <SchoolPageHeader title={t("assetLibraryTitle")} />
       <AssetLibraryFilters initial={filters} />
 
       {items.length === 0 ? (
@@ -47,6 +45,7 @@ export default async function SharedAssetLibraryPage({
           <Table className="w-full border-collapse text-left text-sm">
             <TableHeader className="border-b border-line text-xs text-muted">
               <TableRow>
+                <TableHead className="w-24 px-4 py-3 font-medium">{t("assetPreview")}</TableHead>
                 <TableHead className="px-4 py-3 font-medium">{t("assetName")}</TableHead>
                 <TableHead className="px-4 py-3 font-medium">{t("assetKind")}</TableHead>
                 <TableHead className="px-4 py-3 font-medium">{t("assetUsage")}</TableHead>
@@ -57,6 +56,14 @@ export default async function SharedAssetLibraryPage({
             <TableBody className="divide-y divide-line">
               {items.map((asset) => (
                 <TableRow key={asset.id}>
+                  <TableCell className="px-4 py-3">
+                    <div className="grid aspect-video w-16 place-items-center overflow-hidden rounded-lg bg-paper ring-1 ring-line/50">
+                      {asset.previewUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element -- signed storage URL is short lived and has arbitrary host
+                        <img src={asset.previewUrl} alt="" className="h-full w-full object-contain" />
+                      ) : <span className="text-[10px] text-muted">—</span>}
+                    </div>
+                  </TableCell>
                   <TableCell className="px-4 py-3">
                     <p className="font-medium text-ink">{asset.name || t("unnamedAsset")}</p>
                     <p className="mt-1 font-mono text-xs text-muted">{asset.sha256.slice(0, 12)}… · r{asset.publishedRevisionNo}</p>

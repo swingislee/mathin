@@ -142,6 +142,7 @@ export interface SharedAssetLibraryItem {
   courseCount: number;
   lectureCount: number;
   updatedAt: string;
+  previewUrl: string | null;
 }
 
 const ASSET_LIBRARY_PAGE_SIZE = 100;
@@ -160,8 +161,39 @@ export async function loadCoursewareSharedAssets(filters: AssetLibraryFilters) {
   });
   if (error) throw new Error(error.message);
   const rows = data ?? [];
+  const pageRows = rows.slice(0, ASSET_LIBRARY_PAGE_SIZE);
+  const imageRevisionIds = pageRows
+    .filter((asset) => asset.kind === "image" && asset.published_revision_id)
+    .map((asset) => asset.published_revision_id);
+  const previewByRevisionId = new Map<string, string>();
+  if (imageRevisionIds.length > 0) {
+    const { data: revisions, error: revisionError } = await supabase
+      .from("cw_asset_revisions")
+      .select("id, object_id")
+      .in("id", imageRevisionIds);
+    if (revisionError) throw new Error(revisionError.message);
+    const objectIds = (revisions ?? []).map((revision) => revision.object_id);
+    const { data: objects, error: objectError } = objectIds.length > 0
+      ? await supabase.from("cw_asset_objects").select("id, storage_path").in("id", objectIds)
+      : { data: [], error: null };
+    if (objectError) throw new Error(objectError.message);
+    const objectById = new Map((objects ?? []).map((object) => [object.id, object.storage_path]));
+    const paths = (revisions ?? []).flatMap((revision) => {
+      const path = objectById.get(revision.object_id);
+      return path ? [path] : [];
+    });
+    const { data: signed, error: signedError } = paths.length > 0
+      ? await supabase.storage.from("cw-objects").createSignedUrls(paths, SIGNED_URL_TTL_SECONDS)
+      : { data: [], error: null };
+    if (signedError) throw new Error(signedError.message);
+    const signedByPath = new Map((signed ?? []).map((item) => [item.path, item.signedUrl]));
+    for (const revision of revisions ?? []) {
+      const path = objectById.get(revision.object_id);
+      if (path && signedByPath.get(path)) previewByRevisionId.set(revision.id, signedByPath.get(path)!);
+    }
+  }
   return {
-    items: rows.slice(0, ASSET_LIBRARY_PAGE_SIZE).map((asset): SharedAssetLibraryItem => ({
+    items: pageRows.map((asset): SharedAssetLibraryItem => ({
       id: asset.id,
       name: asset.name,
       kind: asset.kind,
@@ -177,6 +209,7 @@ export async function loadCoursewareSharedAssets(filters: AssetLibraryFilters) {
       courseCount: asset.course_count,
       lectureCount: asset.lecture_count,
       updatedAt: asset.updated_at,
+      previewUrl: previewByRevisionId.get(asset.published_revision_id) ?? null,
     })),
     hasNextPage: rows.length > ASSET_LIBRARY_PAGE_SIZE,
     pageSize: ASSET_LIBRARY_PAGE_SIZE,

@@ -16,9 +16,7 @@ export default async function ImportStudentsPage({ params }: { params: Promise<{
         backHref="/dashboard/students"
         backLabel={t("back")}
         breadcrumbs={[{ label: t("title"), href: "/dashboard/students" }, { label: t("importTitle") }]}
-      >
-        <p className="mt-1 max-w-3xl text-sm text-muted">{t("importIntro")}</p>
-      </SchoolPageHeader>
+      />
       <ImportStudentsPanel />
     </div>
   );

@@ -38,6 +38,8 @@ export interface DocStageProps {
   videoControl?: DocVideoControl;
   /** 中台编辑器选择节点；课堂不传，保持原有交互语义。 */
   onNodeSelect?: (nodePath: string) => void;
+  /** Studio 选择画布背景资源；只有存在背景 binding 时才会触发。 */
+  onBackgroundSelect?: () => void;
 }
 
 export interface DocVideoCtl {
@@ -382,6 +384,7 @@ export default function DocStage({
   replaySteps,
   videoControl,
   onNodeSelect,
+  onBackgroundSelect,
 }: DocStageProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -511,6 +514,10 @@ export default function DocStage({
           <img
             alt=""
             src={backgroundUrl}
+            onClickCapture={(event) => {
+              event.stopPropagation();
+              onBackgroundSelect?.();
+            }}
             style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
           />
         ) : null}

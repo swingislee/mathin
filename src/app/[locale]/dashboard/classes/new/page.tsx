@@ -32,9 +32,7 @@ export default async function NewClassPage({
         backHref="/dashboard/classes"
         backLabel={t("back")}
         breadcrumbs={[{ label: tClasses("title"), href: "/dashboard/classes" }, { label: t("title") }]}
-      >
-        <p className="mt-1 max-w-2xl text-sm text-muted">{t("intro")}</p>
-      </SchoolPageHeader>
+      />
 
       <div className="mt-6">
         <ClassBuildWizard schoolTerms={schoolTerms} teachers={teachers} initialCourseId={initialCourseId} />

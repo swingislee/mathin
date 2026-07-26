@@ -28,23 +28,27 @@ export function ObjectBar({
   className?: string;
 }) {
   return (
-    <header className={cn("flex h-16 shrink-0 items-center gap-3 border-b border-line", className)}>
-      {backHref ? (
-        <Link
-          href={backHref}
-          aria-label={backLabel}
-          className="flex shrink-0 items-center justify-center rounded-full border border-line p-2 text-muted transition hover:border-crater hover:text-ink"
-        >
-          <ArrowLeft size={16} />
-        </Link>
-      ) : null}
-      <div className="flex min-w-0 flex-1 items-center gap-3">
+    <header className={cn("sticky top-0 z-30 grid shrink-0 border-b border-line bg-paper/95 backdrop-blur-md lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center", className)}>
+      <div className="flex min-h-[76px] min-w-0 items-center gap-3 pl-16 pr-32 lg:min-h-24 lg:px-0">
         <h1 className="truncate font-display text-lg text-ink">{title}</h1>
         {context ? <div className="min-w-0 shrink-0 truncate text-sm text-muted">{context}</div> : null}
         {status}
+        {backHref ? (
+          <Link
+            href={backHref}
+            className="hidden shrink-0 items-center gap-1.5 text-sm text-muted transition hover:text-ink sm:inline-flex"
+          >
+            <ArrowLeft size={16} />
+            {backLabel}
+          </Link>
+        ) : null}
       </div>
-      {primaryAction}
-      {overflowSlot}
+      {primaryAction || overflowSlot ? (
+        <div className="flex min-h-12 shrink-0 items-center justify-end gap-2 pb-3 lg:min-h-0 lg:pb-0 lg:pr-24">
+          {primaryAction}
+          {overflowSlot}
+        </div>
+      ) : null}
     </header>
   );
 }

@@ -90,8 +90,6 @@ export async function TodayWorkHome({ locale, user, profile }: HomeProps) {
   return (
     <ObjectWorkspace objectBar={<ObjectBar title={greeting} context={`${t("title")} · ${dateLine}`} />} statusStrip={<StatusStrip items={statusItems} />}>
       <div className="mx-auto w-full max-w-[96rem] space-y-6">
-        <p className="text-sm text-muted">{t("intro")}</p>
-
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4 xl:items-start">
           {spotlightGroups.length > 0 ? (
             <WorkColumn title={t("nowTitle")}>

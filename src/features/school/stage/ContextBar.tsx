@@ -30,7 +30,7 @@ export function ContextBar({
 }) {
   if (!tabs?.length && !filters) return null;
   return (
-    <div className={cn("flex flex-wrap items-center justify-between gap-3 border-b border-line py-3", className)}>
+    <div className={cn("mt-3 flex min-h-12 flex-wrap items-center justify-between gap-2 py-1", className)}>
       {tabs && tabs.length > 0 ? (
         <Tabs value={activeTab} onValueChange={() => undefined} className="min-w-0">
           <TabsList>

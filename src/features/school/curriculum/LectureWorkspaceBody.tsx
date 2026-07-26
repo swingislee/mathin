@@ -95,6 +95,7 @@ export async function LectureWorkspaceBody({
               preview={preview}
               prevHref={preview.pageIndex > 1 ? pageHref(baseHref, track, preview.pageIndex - 1) : null}
               nextHref={preview.pageIndex < preview.pages.length ? pageHref(baseHref, track, preview.pageIndex + 1) : null}
+              pageHrefs={preview.pages.map((_, index) => pageHref(baseHref, track, index + 1))}
             />
           </div>
         ) : <p className="mt-2 text-sm text-muted">{t("previewUnavailable")}</p>}

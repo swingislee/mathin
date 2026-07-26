@@ -20,9 +20,8 @@ export default async function TestDataCleanupPage({ params }: { params: Promise<
 
   return (
     <div className="mx-auto w-full max-w-5xl">
-      <SchoolPageHeader title={t("pageTitle")}>
-        <p className="mt-1 max-w-2xl text-sm text-rose">{t("pageIrreversibleNotice")}</p>
-      </SchoolPageHeader>
+      <SchoolPageHeader title={t("pageTitle")} />
+      <p className="mt-4 max-w-2xl text-sm text-rose">{t("pageIrreversibleNotice")}</p>
 
       <div className="mt-6 grid gap-6">
         <CoursewareZeroReferenceReport assets={zeroReferenceAssets} />

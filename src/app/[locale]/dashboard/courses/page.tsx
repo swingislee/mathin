@@ -30,7 +30,7 @@ async function CourseFamilyLibrary({ locale, searchParams }: { locale: string; s
   const filters = parseCourseFamilyFilters(rawSearchParams);
   const { families, totalCount } = await listCourseFamilies(filters);
   const hasFilters = Boolean(filters.q || filters.grade || filters.courseSeason || filters.classType || filters.familyStatus || filters.variantStatus || filters.purpose || filters.readiness);
-  return <section className="mt-6">
+  return <section>
     <CourseFamilyFilters filters={filters} />
     <CourseFamilyList families={families} totalCount={totalCount} hasFilters={hasFilters} resetHref="/dashboard/courses" />
   </section>;

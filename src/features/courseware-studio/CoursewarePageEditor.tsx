@@ -27,6 +27,8 @@ import {
   saveCoursewareDraftAction,
   submitCoursewareReviewAction,
 } from "./actions";
+import { setAdaptPageClassificationAction } from "./adapt-actions";
+import { ADAPT_CLASSES, type AdaptClass } from "./adapt-review-shared";
 import { useRouter } from "@/i18n/navigation";
 import { Link } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
@@ -47,6 +49,8 @@ type Props = {
   canSubmitReview: boolean;
   lectureWorkspaceHref: string;
 };
+const BACKGROUND_SELECTION = "$.canvas.background";
+
 
 function clone<T>(value: T): T { return structuredClone(value); }
 
@@ -95,8 +99,11 @@ export function CoursewarePageEditor({ lecture, track, page, pages, initialDoc, 
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [pendingHref, setPendingHref] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const backgroundSelected = selectedPath === BACKGROUND_SELECTION;
   const selected = useMemo(() => selectedPath ? visit(doc.nodes, selectedPath) : null, [doc, selectedPath]);
-  const imageBinding = selected?.resources.find((resource) => resource.kind === "image") ?? null;
+  const imageBinding = backgroundSelected && doc.canvas.backgroundBindingKey
+    ? { bindingKey: doc.canvas.backgroundBindingKey }
+    : selected?.resources.find((resource) => resource.kind === "image") ?? null;
   const imageUsage = imageBinding ? imageAssetUsage[imageBinding.bindingKey] : null;
   const isDirty = useMemo(() => JSON.stringify(doc) !== savedDocJson, [doc, savedDocJson]);
 
@@ -222,6 +229,36 @@ export function CoursewarePageEditor({ lecture, track, page, pages, initialDoc, 
   const rightPanel = <div className="space-y-4 p-3">
     <div>
       <p className="mb-2 text-sm font-medium text-ink">{t("properties")}</p>
+      {track === "adapted-4x3" ? (
+        <div className="mb-4 space-y-1.5 rounded-xl bg-paper/75 p-2.5 ring-1 ring-line/45">
+          <Label>{t("adaptClassSelect")}</Label>
+          <Select
+            value={page.adaptClass ?? "D"}
+            disabled={pending}
+            onValueChange={(value) => startTransition(async () => {
+              const classification = value as AdaptClass;
+              const result = await setAdaptPageClassificationAction({ pageDocId: page.id, classification, note });
+              setMessage(result.ok ? t("adaptClassificationUpdated") : t("adaptClassificationFailed"));
+              if (result.ok) router.refresh();
+            })}
+          >
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>{ADAPT_CLASSES.map((classification) => <SelectItem key={classification} value={classification}>{classification} · {t(`adaptClass${classification}`)}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+      ) : null}
+      {backgroundSelected && imageBinding ? (
+        <div className="mb-4 space-y-2 rounded-xl bg-paper/75 p-2.5 ring-1 ring-line/45">
+          <Label htmlFor="courseware-background-image">{t("canvasBackground")}</Label>
+          <p className="text-xs text-muted">{t("canvasBackgroundHint")}</p>
+          {imageUsage ? <p className="text-xs text-muted">{t("sharedAsset", { name: imageUsage.name })}<br />{t("assetUseCountInTrack", { count: imageUsage.useCount, track: track === "adapted-4x3" ? t("trackAdapted") : t("trackNative") })}</p> : null}
+          <Input id="courseware-background-image" type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={(event) => setImageFile(event.target.files?.[0] ?? null)} />
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" size="sm" disabled={pending || !imageFile} onClick={() => startTransition(async () => { if (!imageFile) return; const result = await replaceCoursewarePageImageAction({ pageDocId: page.id, bindingKey: imageBinding.bindingKey, track, scope: "current-page", file: imageFile }); setMessage(result.ok ? t("imageReplaced") : t("imageReplaceFailed", { code: result.code })); if (result.ok) { setImageFile(null); router.refresh(); } })}>{t("replaceThisPage")}</Button>
+            <Button size="sm" disabled={pending || !imageFile || !imageUsage} onClick={() => startTransition(async () => { if (!imageFile) return; const result = await replaceCoursewarePageImageAction({ pageDocId: page.id, bindingKey: imageBinding.bindingKey, track, scope: "all-track", file: imageFile }); setMessage(result.ok ? t("imageReplacedInTrack", { count: result.data.affectedCount }) : t("imageReplaceFailed", { code: result.code })); if (result.ok) { setImageFile(null); router.refresh(); } })}>{t("replaceAllInTrack", { count: imageUsage?.useCount ?? 0 })}</Button>
+          </div>
+        </div>
+      ) : null}
       {selected ? <div className="space-y-3">
         <p className="break-all text-xs text-muted">{selected.nodePath}</p>
         <Label>{t("textOrHtml")}</Label>
@@ -236,7 +273,7 @@ export function CoursewarePageEditor({ lecture, track, page, pages, initialDoc, 
           <label className="text-xs text-muted">{t("layer")}<Input type="number" value={selected.zIndex} onChange={(event) => numeric("zIndex", event.target.value)} /></label>
         </div>
         <label className="flex items-center gap-2 text-sm text-muted"><Checkbox checked={selected.visible} onCheckedChange={(checked) => patchSelected((node) => { node.visible = checked === true; })} />{t("visible")}</label>
-      </div> : <p className="text-sm text-muted">{t("selectNode")}</p>}
+      </div> : backgroundSelected ? null : <p className="text-sm text-muted">{t("selectNode")}</p>}
     </div>
     <div>
       <p className="mb-2 text-sm font-medium text-ink">{t("copyPage")}</p>
@@ -280,7 +317,7 @@ export function CoursewarePageEditor({ lecture, track, page, pages, initialDoc, 
       <div className="flex h-full min-h-0 flex-col">
         <div className="min-h-0 flex-1">
           <StageViewport intrinsicWidth={doc.canvas.width} intrinsicHeight={doc.canvas.height}>
-            <StagePreview doc={doc} bindingUrls={bindingUrls} stageMode="natural" onNodeSelect={setSelectedPath} />
+            <StagePreview doc={doc} bindingUrls={bindingUrls} stageMode="natural" onNodeSelect={setSelectedPath} onBackgroundSelect={() => setSelectedPath(BACKGROUND_SELECTION)} />
           </StageViewport>
         </div>
         <div className="shrink-0 border-t border-line p-3">

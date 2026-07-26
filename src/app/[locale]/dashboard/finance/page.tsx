@@ -1,11 +1,13 @@
-import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { AccountLookupPanel } from "@/features/school/AccountLookupPanel";
 import { CouponsPanel } from "@/features/school/CouponsPanel";
 import { getMyAccounts, getMyOrders } from "@/features/school/customer";
 import { getFinanceOverview, type FinanceOverview } from "@/features/school/dashboard";
-import { countPendingRefunds, listCoupons, listOrders, listPendingRefunds, listScholarships, parseOrderFilters } from "@/features/school/finance";
+import { countPendingRefunds, listCoupons, listOrders, listPendingRefunds, listScholarships, ORDER_STATUSES, parseOrderFilters } from "@/features/school/finance";
+import { toSelectValue } from "@/features/school/controls";
+import { FilterBar, FilterBarReset, FilterBarSubmit, FilterSearchInput, FilterSelectTrigger } from "@/features/school/FilterBar";
 import { SchoolPageHeader } from "@/features/school/PageHeader";
 import type { PermissionKey } from "@/features/school/permissions";
 import { RefundQueuePanel } from "@/features/school/RefundQueuePanel";
@@ -129,20 +131,26 @@ export default async function FinancePage({
 
   return (
     <div className="mx-auto w-full max-w-6xl">
-      <SchoolPageHeader title={t("title")}>
-        <p className="mt-1 max-w-3xl text-sm text-muted">{t("intro")}</p>
-      </SchoolPageHeader>
-      {statusItems.length > 0 && <StatusStrip items={statusItems} className="mt-4" />}
-      <p className="mt-4 rounded-lg border border-line bg-card px-4 py-3 text-xs text-muted">{t("appendOnlyPolicy")}</p>
+      <SchoolPageHeader title={t("title")} />
+      {statusItems.length > 0 && <StatusStrip items={statusItems} className="mt-3" />}
+      <p className="mt-3 px-1 text-xs text-muted">{t("appendOnlyPolicy")}</p>
 
       <div className="mt-6 grid gap-6">
         {canSeeOrders && (
           <section className="rounded-xl border border-line bg-card p-5">
             <h2 className="font-medium">{t("orders", { count: ordersResult.count ?? ordersResult.orders.length })}</h2>
-            <form className="mt-3 flex gap-2">
-              <Input name="q" defaultValue={filters.q} placeholder={t("searchOrder")} className="min-w-0 flex-1" />
-              <button type="submit" className="rounded-lg border border-line px-3 py-2 text-sm">{t("filter")}</button>
-            </form>
+            <FilterBar className="mt-3" aria-label={t("filter")}>
+              <FilterSearchInput name="q" defaultValue={filters.q} placeholder={t("searchOrder")} aria-label={t("searchOrder")} />
+              <Select name="status" defaultValue={toSelectValue(filters.status ?? "")}>
+                <FilterSelectTrigger><SelectValue /></FilterSelectTrigger>
+                <SelectContent>
+                  <SelectItem value={toSelectValue("")}>{t("allStatuses")}</SelectItem>
+                  {ORDER_STATUSES.map((status) => <SelectItem key={status} value={status}>{t(status)}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <FilterBarSubmit>{t("filter")}</FilterBarSubmit>
+              {(filters.q || filters.status) && <FilterBarReset href="/dashboard/finance" label={t("reset")} />}
+            </FilterBar>
             {ordersResult.orders.length === 0 ? (
               <p className="mt-4 text-sm text-muted">{t("noOrders")}</p>
             ) : (

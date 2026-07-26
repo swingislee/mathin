@@ -17,9 +17,7 @@ export default async function StaffPage({ params }: { params: Promise<{ locale: 
 
   return (
     <div className="mx-auto w-full max-w-6xl">
-      <SchoolPageHeader title={t("title")}>
-        <p className="mt-1 max-w-2xl text-sm text-muted">{t("intro")}</p>
-      </SchoolPageHeader>
+      <SchoolPageHeader title={t("title")} />
       <div className="mt-6">
         <StaffMembersPanel members={members} roles={roles} selfId={user.id} isAdmin={profile?.role === "admin"} />
       </div>

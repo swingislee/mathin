@@ -1,20 +1,23 @@
 "use client";
 
-import { Filter, RotateCcw } from "lucide-react";
+import { RotateCcw } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
+import { FilterBarFrame, FilterSelectTrigger } from "@/features/school/FilterBar";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import type { AdaptReviewFilterOptions } from "./adapt-review-data";
 
 const ALL = "__all__";
 
 export function AdaptReviewFilters({
+  embedded = false,
   options,
   courseId,
   lectureId,
 }: {
+  embedded?: boolean;
   options: AdaptReviewFilterOptions;
   courseId: string | null;
   lectureId: string | null;
@@ -32,14 +35,10 @@ export function AdaptReviewFilters({
     router.replace(`${pathname}?${query.toString()}`);
   };
 
-  return <section className="mt-4 flex flex-wrap items-end gap-3 rounded-2xl border border-line bg-card p-4">
-    <div className="flex items-center gap-2 self-center text-sm font-medium text-ink">
-      <Filter className="size-4" />{t("adaptFilterTitle")}
-    </div>
-    <div className="min-w-64 flex-1">
-      <p className="mb-1 text-xs text-muted">{t("adaptCourseFilter")}</p>
+  return <FilterBarFrame className={embedded ? "contents" : undefined} aria-label={t("adaptFilterTitle")}>
+    <div className="min-w-56 flex-1 sm:max-w-md">
       <Select value={courseId ?? ALL} onValueChange={(value) => update(value === ALL ? null : value, null)}>
-        <SelectTrigger><SelectValue /></SelectTrigger>
+        <FilterSelectTrigger className="w-full" aria-label={t("adaptCourseFilter")}><SelectValue /></FilterSelectTrigger>
         <SelectContent>
           <SelectItem value={ALL}>{t("adaptAllCourses")}</SelectItem>
           {options.courses.map((course) => <SelectItem key={course.id} value={course.id}>
@@ -48,10 +47,9 @@ export function AdaptReviewFilters({
         </SelectContent>
       </Select>
     </div>
-    <div className="min-w-56 flex-1">
-      <p className="mb-1 text-xs text-muted">{t("adaptLectureFilter")}</p>
+    <div className="min-w-48 flex-1 sm:max-w-sm">
       <Select value={lectureId ?? ALL} disabled={!courseId} onValueChange={(value) => update(courseId, value === ALL ? null : value)}>
-        <SelectTrigger><SelectValue placeholder={courseId ? t("adaptAllLectures") : t("adaptChooseCourseFirst")} /></SelectTrigger>
+        <FilterSelectTrigger className="w-full" aria-label={t("adaptLectureFilter")}><SelectValue placeholder={courseId ? t("adaptAllLectures") : t("adaptChooseCourseFirst")} /></FilterSelectTrigger>
         <SelectContent>
           <SelectItem value={ALL}>{t("adaptAllLectures")}</SelectItem>
           {options.lectures.map((lecture) => <SelectItem key={lecture.id} value={lecture.id}>
@@ -60,8 +58,8 @@ export function AdaptReviewFilters({
         </SelectContent>
       </Select>
     </div>
-    {(courseId || lectureId) && <Button type="button" variant="ghost" size="sm" onClick={() => update(null, null)}>
+    {(courseId || lectureId) && <Button type="button" variant="ghost" size="sm" className="h-9" onClick={() => update(null, null)}>
       <RotateCcw className="size-4" />{t("adaptClearFilters")}
     </Button>}
-  </section>;
+  </FilterBarFrame>;
 }

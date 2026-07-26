@@ -1,6 +1,6 @@
 "use client";
 
-import { Baby, BookOpen, CalendarDays, ClipboardList, Crop, FolderOpen, KeyRound, LayoutDashboard, Menu, PhoneForwarded, Presentation, School, ShieldAlert, ShieldCheck, Users, UserCog, Wallet } from "lucide-react";
+import { Baby, BookOpen, CalendarDays, ClipboardList, Crop, FolderOpen, KeyRound, LayoutDashboard, PanelLeftOpen, PhoneForwarded, Presentation, School, ShieldAlert, ShieldCheck, Users, UserCog, Wallet } from "lucide-react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { Fragment, useState } from "react";
@@ -124,7 +124,7 @@ export function DashboardShell({ nav, children }: { nav: readonly SchoolNavItem[
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
             <Button type="button" variant="secondary" size="sm" className="size-11 rounded-full p-0 shadow-lg" aria-label={shellT("openNav")}>
-              <Menu size={18} />
+              <PanelLeftOpen size={18} />
             </Button>
           </SheetTrigger>
           <SheetContent side="left" closeLabel={shellT("closeNav")} className="grid h-dvh w-[min(84vw,320px)] grid-rows-[auto_minmax(0,1fr)] p-0">
@@ -139,7 +139,7 @@ export function DashboardShell({ nav, children }: { nav: readonly SchoolNavItem[
       </div>
 
       <main className={cn(
-        "flex min-w-0 flex-1 flex-col overflow-y-auto px-4 pb-5 pt-20 md:px-6 lg:px-8 lg:pb-6 lg:pr-24 lg:pt-6 2xl:px-10",
+        "flex min-w-0 flex-1 flex-col overflow-y-auto px-4 pb-5 md:px-6 lg:px-8 lg:pb-6 lg:pr-24 2xl:px-10",
         workspace && "xl:overflow-hidden",
       )}>
         <div

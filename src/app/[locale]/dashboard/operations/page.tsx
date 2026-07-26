@@ -60,9 +60,7 @@ export default async function OperationsPage({ params }: { params: Promise<{ loc
 
   return (
     <div className="mx-auto w-full max-w-6xl">
-      <SchoolPageHeader title={t("title")}>
-        <p className="mt-1 max-w-3xl text-sm text-muted">{t("intro")}</p>
-      </SchoolPageHeader>
+      <SchoolPageHeader title={t("title")} />
       {statusItems.length > 0 && <StatusStrip items={statusItems} className="mt-4" />}
       <div className="mt-6 overflow-hidden rounded-2xl border border-line bg-card">
         {rows.length === 0 ? (

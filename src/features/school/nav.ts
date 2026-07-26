@@ -50,7 +50,6 @@ export const SCHOOL_NAV_ITEMS: readonly SchoolNavItem[] = [
   { href: "/dashboard/schedule", labelKey: "schedule", group: "teachingOps" },
   { href: "/dashboard/courseware", labelKey: "workbench", requiredAnyPerm: COURSEWARE_NAV_PERMS, group: "curriculum" },
   { href: "/dashboard/courses", labelKey: "courses", requiredPerm: "course.view", group: "curriculum" },
-  { href: "/dashboard/adapt-review", labelKey: "adaptReview", requiredAnyPerm: COURSEWARE_NAV_PERMS, group: "curriculum" },
   { href: "/dashboard/shared-assets", labelKey: "sharedAssets", requiredPerm: "courseware.asset.manage", group: "curriculum" },
   { href: "/dashboard/staff", labelKey: "staff", requiredPerm: "staff.manage", group: "org" },
   { href: "/dashboard/staff/roles", labelKey: "roles", requiredPerm: "permission.configure", group: "org" },

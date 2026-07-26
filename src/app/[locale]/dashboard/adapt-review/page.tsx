@@ -1,6 +1,5 @@
 import { Suspense } from "react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { buttonVariants } from "@/components/ui/button";
 import { AdaptBackgroundHistory } from "@/features/courseware-studio/AdaptBackgroundHistory";
 import { AdaptBackgroundReworkQueue } from "@/features/courseware-studio/AdaptBackgroundReworkQueue";
 import { AdaptPageQueue } from "@/features/courseware-studio/AdaptPageQueue";
@@ -20,10 +19,9 @@ import {
   parseAdaptReviewPage,
 } from "@/features/courseware-studio/adapt-review-data";
 import { COURSEWARE_STUDIO_PERMS } from "@/features/courseware-studio/data";
+import { ContextBar } from "@/features/school/stage/ContextBar";
 import { SchoolPageHeader } from "@/features/school/PageHeader";
 import { getMyPerms, requireAnyPerm } from "@/lib/auth";
-import { Link } from "@/i18n/navigation";
-import { cn } from "@/lib/utils";
 
 type AdaptReviewTab = "backgrounds" | "rework" | "pages" | "releases" | "history";
 
@@ -82,17 +80,18 @@ async function AdaptReviewContent({ locale, searchParams }: { locale: string; se
   ]);
 
   return <>
-    <SchoolPageHeader title={t("adaptReviewTitle")}>
-      <p className="mt-1 text-sm text-muted">{t("adaptReviewIntro")}</p>
-    </SchoolPageHeader>
-    <nav className="mt-5 flex flex-wrap gap-2" aria-label={t("adaptReviewTabs")}>
-      <Link href={tabHref("backgrounds", courseId, lectureId)} className={cn(buttonVariants({ variant: tab === "backgrounds" ? "primary" : "secondary", size: "sm" }))}>{t("adaptBackgroundTab")}</Link>
-      <Link href={tabHref("rework", courseId, lectureId)} className={cn(buttonVariants({ variant: tab === "rework" ? "primary" : "secondary", size: "sm" }))}>{t("adaptReworkTab")}</Link>
-      <Link href={tabHref("pages", courseId, lectureId)} className={cn(buttonVariants({ variant: tab === "pages" ? "primary" : "secondary", size: "sm" }))}>{t("adaptPageTab")}</Link>
-      <Link href={tabHref("releases", courseId, lectureId)} className={cn(buttonVariants({ variant: tab === "releases" ? "primary" : "secondary", size: "sm" }))}>{t("adaptReleaseTab")}</Link>
-      <Link href={tabHref("history", courseId, lectureId)} className={cn(buttonVariants({ variant: tab === "history" ? "primary" : "secondary", size: "sm" }))}>{t("adaptHistoryTab")}</Link>
-    </nav>
-    <AdaptReviewFilters options={filterOptions} courseId={courseId} lectureId={lectureId} />
+    <SchoolPageHeader title={t("adaptReviewTitle")} />
+    <ContextBar
+      tabs={[
+        { value: "backgrounds", label: t("adaptBackgroundTab"), href: tabHref("backgrounds", courseId, lectureId) },
+        { value: "rework", label: t("adaptReworkTab"), href: tabHref("rework", courseId, lectureId) },
+        { value: "pages", label: t("adaptPageTab"), href: tabHref("pages", courseId, lectureId) },
+        { value: "releases", label: t("adaptReleaseTab"), href: tabHref("releases", courseId, lectureId) },
+        { value: "history", label: t("adaptHistoryTab"), href: tabHref("history", courseId, lectureId) },
+      ]}
+      activeTab={tab}
+      filters={<AdaptReviewFilters options={filterOptions} courseId={courseId} lectureId={lectureId} embedded />}
+    />
     {tab === "backgrounds"
       ? <AdaptReviewQueue {...queue as Awaited<ReturnType<typeof loadAdaptReviewQueue>>} canManageAssets={canManageAssets} courseId={courseId} lectureId={lectureId} />
       : tab === "rework"

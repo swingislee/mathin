@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { buttonVariants } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
+import { FilterBarFrame, FilterSelectTrigger } from "./FilterBar";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { getWeekSchedule } from "./actions/schedule";
@@ -151,22 +152,22 @@ export function ScheduleWeekView({ canFilterAll }: { canFilterAll: boolean }) {
 
   return (
     <div>
-      <div className="flex flex-wrap items-center gap-3">
-        <button type="button" onClick={() => jumpWeek(-7)} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>
+      <FilterBarFrame className="mt-3 shrink-0">
+        <Button type="button" variant="secondary" size="sm" onClick={() => jumpWeek(-7)}>
           {t("prevWeek")}
-        </button>
-        <button type="button" onClick={jumpToday} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>
+        </Button>
+        <Button type="button" variant="secondary" size="sm" onClick={jumpToday}>
           {t("today")}
-        </button>
-        <button type="button" onClick={() => jumpWeek(7)} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>
+        </Button>
+        <Button type="button" variant="secondary" size="sm" onClick={() => jumpWeek(7)}>
           {t("nextWeek")}
-        </button>
+        </Button>
         <span className="text-sm text-muted">{dayFormatter.format(weekStart)} – {dayFormatter.format(addDays(weekStart, 6))}</span>
         {canFilterAll && (
           <div className="ml-auto flex flex-wrap items-center gap-2">
             {teacherOptions.length > 0 && (
               <Select value={toSelectValue(teacherFilter)} onValueChange={(value) => setTeacherFilter(fromSelectValue(value))}>
-                <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+                <FilterSelectTrigger className="w-36"><SelectValue /></FilterSelectTrigger>
                 <SelectContent>
                   <SelectItem value={toSelectValue("")}>{t("allTeachers")}</SelectItem>
                   {teacherOptions.map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}
@@ -175,7 +176,7 @@ export function ScheduleWeekView({ canFilterAll }: { canFilterAll: boolean }) {
             )}
             {classroomOptions.length > 0 && (
               <Select value={toSelectValue(classroomFilter)} onValueChange={(value) => setClassroomFilter(fromSelectValue(value))}>
-                <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+                <FilterSelectTrigger className="w-36"><SelectValue /></FilterSelectTrigger>
                 <SelectContent>
                   <SelectItem value={toSelectValue("")}>{t("allClassrooms")}</SelectItem>
                   {classroomOptions.map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}
@@ -184,7 +185,7 @@ export function ScheduleWeekView({ canFilterAll }: { canFilterAll: boolean }) {
             )}
             {roomOptions.length > 0 && (
               <Select value={toSelectValue(roomFilter)} onValueChange={(value) => setRoomFilter(fromSelectValue(value))}>
-                <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+                <FilterSelectTrigger className="w-32"><SelectValue /></FilterSelectTrigger>
                 <SelectContent>
                   <SelectItem value={toSelectValue("")}>{t("allRooms")}</SelectItem>
                   {roomOptions.map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}
@@ -193,7 +194,7 @@ export function ScheduleWeekView({ canFilterAll }: { canFilterAll: boolean }) {
             )}
           </div>
         )}
-      </div>
+      </FilterBarFrame>
 
       {loading ? (
         <p className="mt-6 text-sm text-muted">{t("loading")}</p>

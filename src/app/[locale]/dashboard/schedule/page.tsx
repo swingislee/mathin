@@ -43,9 +43,7 @@ export default async function SchedulePage({
           scroll="internal"
           horizontalScrollbar
           objectBar={
-            <SchoolPageHeader title={t("title")} actions={perms.has("schedule.manage") ? <TermManager terms={schoolTerms} /> : undefined}>
-              <p className="mt-1 max-w-2xl text-sm text-muted">{t("intro")}</p>
-            </SchoolPageHeader>
+            <SchoolPageHeader title={t("title")} actions={perms.has("schedule.manage") ? <TermManager terms={schoolTerms} /> : undefined} />
           }
         >
           <ScheduleWeekView canFilterAll={perms.has("schedule.view.all")} />

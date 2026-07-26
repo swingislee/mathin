@@ -1,10 +1,11 @@
-import { Clock3, ExternalLink, Search } from "lucide-react";
+import { Clock3, ExternalLink } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ContextBar } from "@/features/school/stage/ContextBar";
+import { FilterBarSubmit, FilterSearchInput } from "@/features/school/FilterBar";
 import {
   COURSEWARE_TASK_TABS,
   loadCoursewareTaskQueue,
@@ -50,21 +51,21 @@ export async function CoursewareTaskQueue({ locale, tab, query }: Props) {
   const rowLabel = (item: CoursewareTaskItem) => item.releaseNo !== null ? tCourses("preview") : t("openWorkbench");
 
   return (
-    <section className="mt-6">
+    <section>
       <ContextBar
         tabs={COURSEWARE_TASK_TABS.map((item) => ({ value: item, label: tabLabels[item], href: hrefFor(item, query) }))}
         activeTab={tab}
         filters={
           <form className="flex w-full gap-2 sm:w-auto" method="get">
             <Input type="hidden" name="tab" value={tab} readOnly />
-            <Input
-              className="min-w-0 sm:w-64"
+            <FilterSearchInput
+              className="sm:w-64"
               defaultValue={query}
               name="q"
               placeholder={t("taskSearchPlaceholder")}
               aria-label={t("taskSearch")}
             />
-            <Button type="submit" variant="secondary" size="sm"><Search className="size-4" />{t("taskSearch")}</Button>
+            <FilterBarSubmit>{t("taskSearch")}</FilterBarSubmit>
           </form>
         }
       />

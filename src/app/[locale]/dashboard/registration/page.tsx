@@ -23,9 +23,7 @@ export default async function RegistrationInvitePage({ params }: { params: Promi
 
   return (
     <div className="mx-auto w-full max-w-6xl">
-      <SchoolPageHeader title={t("title")}>
-        <p className="mt-1 max-w-3xl text-sm leading-6 text-muted">{t("intro")}</p>
-      </SchoolPageHeader>
+      <SchoolPageHeader title={t("title")} />
       <RegistrationInvitePanel initial={settings} updatedLabel={updatedLabel} />
     </div>
   );
