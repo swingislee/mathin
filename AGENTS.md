@@ -22,7 +22,7 @@ Mathin 是一个中英双语（zh/en，中文为默认语言）的数学探索�
 ## 技术基线
 
 - Node.js >= 20.9（当前开发环境 Node.js 22），TypeScript >= 5.1，pnpm。
-- **Next.js 锁定稳定版 16.2.10**（App Router、React 19、Turbopack 默认构建器）。禁止使用 16.3 canary/preview。
+- **Next.js 锁定稳定版 16.2.11**（App Router、React 19、Turbopack 默认构建器）。禁止使用 16.3 canary/preview。
 - Tailwind CSS 4、next-intl、Supabase SSR、shadcn/ui（`components.json`）。
 - 无测试套件。需要 `.env.local`（从 `.env.example` 复制），填入自托管 Supabase 的 URL 与 publishable key。
 - 路由边界逻辑写在 `src/proxy.ts`（导出 `proxy`），**禁止新增 `middleware.ts`**——它在 Next.js 16 中已废弃。
