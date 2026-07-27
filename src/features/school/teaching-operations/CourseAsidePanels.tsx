@@ -1,5 +1,6 @@
 import { AlertTriangle } from "lucide-react";
 import { getTranslations } from "next-intl/server";
+import { DashboardStatGrid, DashboardSummaryCard } from "@/features/school/dashboard-page";
 import { Link } from "@/i18n/navigation";
 import type { CourseFamilyDetail } from "./course-family-detail";
 
@@ -13,28 +14,6 @@ import type { CourseFamilyDetail } from "./course-family-detail";
  *
  * 只读、无 action、不请求数据：全部来自已加载的 detail，因此可以是 Server Component。
  */
-
-function SummaryCard({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="rounded-2xl border border-line bg-card p-4">
-      <h2 className="text-sm font-medium text-ink">{title}</h2>
-      {children}
-    </section>
-  );
-}
-
-function StatList({ items }: { items: readonly { label: string; value: React.ReactNode }[] }) {
-  return (
-    <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3">
-      {items.map((item) => (
-        <div key={item.label}>
-          <dt className="text-xs text-muted">{item.label}</dt>
-          <dd className="mt-0.5 text-lg font-medium tabular-nums text-ink">{item.value}</dd>
-        </div>
-      ))}
-    </dl>
-  );
-}
 
 /** 产品摘要：整个 family 跨全部版本的规模与就绪度。 */
 export async function CourseFamilySummary({ variants }: { variants: CourseFamilyDetail["variants"] }) {
@@ -50,8 +29,8 @@ export async function CourseFamilySummary({ variants }: { variants: CourseFamily
   );
 
   return (
-    <SummaryCard title={t("familySummary")}>
-      <StatList
+    <DashboardSummaryCard title={t("familySummary")}>
+      <DashboardStatGrid
         items={[
           { label: t("variants"), value: live.length },
           { label: t("lectures"), value: totals.lectures },
@@ -59,7 +38,7 @@ export async function CourseFamilySummary({ variants }: { variants: CourseFamily
           { label: t("usingClasses"), value: totals.classrooms },
         ]}
       />
-    </SummaryCard>
+    </DashboardSummaryCard>
   );
 }
 
@@ -88,7 +67,7 @@ export async function CourseFamilyRisks({
     .filter((row) => row.reasons.length > 0);
 
   return (
-    <SummaryCard title={t("familyRisks")}>
+    <DashboardSummaryCard title={t("familyRisks")}>
       {rows.length === 0 ? (
         <p className="mt-2 text-sm text-muted">{t("familyRisksNone")}</p>
       ) : (
@@ -106,7 +85,7 @@ export async function CourseFamilyRisks({
           ))}
         </ul>
       )}
-    </SummaryCard>
+    </DashboardSummaryCard>
   );
 }
 
@@ -116,8 +95,8 @@ export async function CourseVariantReadiness({ readiness }: { readiness: CourseF
   const incomplete = Math.max(0, readiness.lectureCount - readiness.releasedLectureCount);
 
   return (
-    <SummaryCard title={t("readiness")}>
-      <StatList
+    <DashboardSummaryCard title={t("readiness")}>
+      <DashboardStatGrid
         items={[
           { label: t("lectures"), value: readiness.lectureCount },
           { label: t("publishedLectures"), value: readiness.releasedLectureCount },
@@ -128,6 +107,6 @@ export async function CourseVariantReadiness({ readiness }: { readiness: CourseF
       <p className="mt-3 text-xs text-muted">
         {incomplete === 0 && readiness.lectureCount > 0 ? t("readinessComplete") : t("readinessIssues", { count: incomplete })}
       </p>
-    </SummaryCard>
+    </DashboardSummaryCard>
   );
 }

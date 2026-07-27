@@ -178,7 +178,7 @@ async function ClassDetailBody({
             )}
           </DashboardMainColumn>
 
-          <DashboardAside className="flex flex-col gap-4">
+          <DashboardAside>
             <ClassroomSummary classroom={classroom} />
             <ClassroomNextSession next={groups.next} />
             {isManagementView && <ClassroomRisks needsAttention={groups.needsAttention} />}

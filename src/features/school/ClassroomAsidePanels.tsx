@@ -1,5 +1,6 @@
 import { CircleAlert } from "lucide-react";
 import { getTranslations } from "next-intl/server";
+import { DashboardStatGrid, DashboardSummaryCard } from "@/features/school/dashboard-page";
 import { Link } from "@/i18n/navigation";
 import type { ClassroomDetail, SessionGroups } from "./classes";
 
@@ -16,50 +17,36 @@ import type { ClassroomDetail, SessionGroups } from "./classes";
  * 只读、不请求数据：全部来自页面已加载的 detail 与分组结果。
  */
 
-function SummaryCard({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="rounded-2xl border border-line bg-card p-4">
-      <h2 className="text-sm font-medium text-ink">{title}</h2>
-      {children}
-    </section>
-  );
-}
-
 export async function ClassroomSummary({ classroom }: { classroom: ClassroomDetail }) {
   const t = await getTranslations("school.classes");
   const ended = classroom.sessions.filter((session) => session.state === "ended").length;
 
   return (
-    <SummaryCard title={t("classSummary")}>
-      <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3">
-        <div>
-          <dt className="text-xs text-muted">{t("summaryRoster")}</dt>
-          <dd className="mt-0.5 text-lg font-medium tabular-nums text-ink">
-            {classroom.roster.length}
-            {classroom.capacity ? <span className="text-sm text-muted"> / {classroom.capacity}</span> : null}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-xs text-muted">{t("summarySessions")}</dt>
-          <dd className="mt-0.5 text-lg font-medium tabular-nums text-ink">{classroom.sessions.length}</dd>
-        </div>
-        <div>
-          <dt className="text-xs text-muted">{t("summaryEnded")}</dt>
-          <dd className="mt-0.5 text-lg font-medium tabular-nums text-ink">{ended}</dd>
-        </div>
-        <div>
-          <dt className="text-xs text-muted">{t("summaryRoom")}</dt>
-          <dd className="mt-0.5 truncate text-lg font-medium text-ink">{classroom.room || "—"}</dd>
-        </div>
-      </dl>
-    </SummaryCard>
+    <DashboardSummaryCard title={t("classSummary")}>
+      <DashboardStatGrid
+        items={[
+          {
+            label: t("summaryRoster"),
+            value: (
+              <>
+                {classroom.roster.length}
+                {classroom.capacity ? <span className="text-sm text-muted"> / {classroom.capacity}</span> : null}
+              </>
+            ),
+          },
+          { label: t("summarySessions"), value: classroom.sessions.length },
+          { label: t("summaryEnded"), value: ended },
+          { label: t("summaryRoom"), value: classroom.room || "—" },
+        ]}
+      />
+    </DashboardSummaryCard>
   );
 }
 
 export async function ClassroomNextSession({ next }: { next: SessionGroups["next"] }) {
   const t = await getTranslations("school.classes");
   return (
-    <SummaryCard title={t("nextSessionTitle")}>
+    <DashboardSummaryCard title={t("nextSessionTitle")}>
       {!next ? (
         <p className="mt-2 text-sm text-muted">{t("nextSessionEmpty")}</p>
       ) : (
@@ -74,14 +61,14 @@ export async function ClassroomNextSession({ next }: { next: SessionGroups["next
           </Link>
         </div>
       )}
-    </SummaryCard>
+    </DashboardSummaryCard>
   );
 }
 
 export async function ClassroomRisks({ needsAttention }: { needsAttention: SessionGroups["needsAttention"] }) {
   const t = await getTranslations("school.classes");
   return (
-    <SummaryCard title={t("riskTitle")}>
+    <DashboardSummaryCard title={t("riskTitle")}>
       {needsAttention.length === 0 ? (
         <p className="mt-2 text-sm text-muted">{t("riskNone")}</p>
       ) : (
@@ -105,14 +92,14 @@ export async function ClassroomRisks({ needsAttention }: { needsAttention: Sessi
           </ul>
         </>
       )}
-    </SummaryCard>
+    </DashboardSummaryCard>
   );
 }
 
 export async function ClassroomResponsibility({ assignments }: { assignments: ClassroomDetail["staffAssignments"] }) {
   const t = await getTranslations("school.classes");
   return (
-    <SummaryCard title={t("responsibilityTitle")}>
+    <DashboardSummaryCard title={t("responsibilityTitle")}>
       {assignments.length === 0 ? (
         <p className="mt-2 text-sm text-muted">{t("responsibilityEmpty")}</p>
       ) : (
@@ -125,6 +112,6 @@ export async function ClassroomResponsibility({ assignments }: { assignments: Cl
           ))}
         </dl>
       )}
-    </SummaryCard>
+    </DashboardSummaryCard>
   );
 }

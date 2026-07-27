@@ -129,7 +129,7 @@ async function CourseFamilyProductPage({
           <VariantMatrix familyId={detail.family.id} variants={detail.variants} canManage={canManage} />
         </DashboardMainColumn>
 
-        <DashboardAside className="flex flex-col gap-4">
+        <DashboardAside>
           <CourseFamilySummary variants={detail.variants} />
           <ResponsibilityPanel
             scopeType="family"
@@ -203,7 +203,7 @@ async function CourseFamilyProductPage({
         <TeachingPlan baseHref={baseHref} teachingPlan={detail.teachingPlan} canManage={canManage} />
       </DashboardMainColumn>
 
-      <DashboardAside className="flex flex-col gap-4">
+      <DashboardAside>
         <CourseVariantReadiness readiness={detail.readiness} />
         {capabilities.canViewUsingClasses && <UsagePanel usage={detail.usage} />}
         <ResponsibilityPanel

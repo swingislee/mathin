@@ -19,9 +19,17 @@ export function DashboardMainColumn({ children, className }: { children: ReactNo
   return <div className={cn("col-span-12 min-w-0 @4xl/page:col-span-8", className)}>{children}</div>;
 }
 
-/** 侧栏：窄容器整宽落到主列下方，宽容器 4 列。 */
+/**
+ * 侧栏：窄容器整宽落到主列下方，宽容器 4 列。
+ *
+ * 默认就是"一摞卡片"（doc 23 §5.2）：每个重建后的对象页都在调用点写同一个
+ * `flex flex-col gap-4`，那是纵向节奏该由容器给的信号。需要别的排布仍可用
+ * className 覆盖。
+ */
 export function DashboardAside({ children, className }: { children: ReactNode; className?: string }) {
-  return <aside className={cn("col-span-12 min-w-0 @4xl/page:col-span-4", className)}>{children}</aside>;
+  return (
+    <aside className={cn("col-span-12 flex min-w-0 flex-col gap-4 @4xl/page:col-span-4", className)}>{children}</aside>
+  );
 }
 
 /** 阅读列：只限制文字块本身的行宽，不限制页面（§16.4）。 */

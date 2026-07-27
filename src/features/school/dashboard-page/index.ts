@@ -5,6 +5,8 @@ export { DashboardPageIdentity } from "./DashboardPageIdentity";
 export { DashboardPageBody } from "./DashboardPageBody";
 export { DashboardPageSection } from "./DashboardPageSection";
 export { DashboardPageSummary } from "./DashboardPageSummary";
+export { DashboardBackLink } from "./DashboardBackLink";
+export { DashboardStatGrid, DashboardSummaryCard, type DashboardStat } from "./DashboardSummaryCard";
 export {
   DashboardCommandActions,
   DashboardCommandFilters,
