@@ -1,0 +1,26 @@
+import type { ReactNode } from "react";
+import { cn } from "@/lib/utils";
+
+/**
+ * 页头与命令面板共用的 sticky 栈（docs/plan/21 §13）。
+ *
+ * 两者一起 sticky 而不是各自 sticky：分开做就要为第二条手算 top 偏移，而那个偏移
+ * 随标题行数、面包屑、描述换行不断变化，最终必然出现滚动缝隙或面板被标题压住。
+ *
+ * 负外边距把背景铺满整条 canvas（A→D），内边距再把内容推回统一左右边线（B→C），
+ * 两者都读同一个 --dashboard-gutter，所以 chrome 与正文永远对齐。
+ */
+export function DashboardPageChrome({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <div
+      data-dashboard-page-chrome
+      className={cn(
+        "@container/chrome sticky top-0 z-30 w-full min-w-0 border-b border-line bg-paper/95 backdrop-blur-md",
+        "mx-[calc(var(--dashboard-gutter,0px)*-1)] px-[var(--dashboard-gutter,0px)]",
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
+}
