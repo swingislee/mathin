@@ -8,9 +8,10 @@ const root = process.cwd();
 
 const rules = [
   {
-    label: "StaffHome must not import the family/student whitelist RPC layer",
+    // P4I-17 起员工首页是 TodayWorkHome（StaffHome 与磁贴池已在 P4I-19 退休）。
+    label: "The staff home must not import the family/student whitelist RPC layer",
     files: [
-      path.join(root, "src/features/school/home/StaffHome.tsx"),
+      path.join(root, "src/features/school/home/TodayWorkHome.tsx"),
       path.join(root, "src/features/school/home/shared.tsx"),
     ],
     forbidden: [/from\s+["']@\/features\/school\/customer["']/],

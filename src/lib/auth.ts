@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { PERMISSION_KEYS, type PermissionKey } from "@/features/school/permissions";
-import type { UserEnvironment } from "@/lib/environment";
+import { pickActiveEnvironment, resolveAvailableEnvironments, type UserEnvironment } from "@/lib/environment";
 import { createClient } from "@/lib/supabase/server";
 
 export type ProfileRole = "student" | "parent" | "staff" | "admin";
@@ -68,24 +68,40 @@ export const getMyPerms = cache(async (userId: string): Promise<Set<PermissionKe
   return perms;
 });
 
-export async function requirePerm(locale: string, key: PermissionKey) {
+/** 当前账号实际处在的使用环境（staff / family / learning），按关系集合 + 偏好推导。 */
+export const getActiveEnvironment = cache(async (userId: string): Promise<UserEnvironment | null> => {
+  const profile = await getProfile(userId);
+  const supabase = await createClient();
+  const available = await resolveAvailableEnvironments(supabase, userId, profile?.role);
+  return pickActiveEnvironment(profile?.lastActiveEnvironment, available);
+});
+
+/**
+ * 环境闸门（docs/plan/22 §10）：路由先按使用环境放行，再按权限键放行。
+ *
+ * 两者管的不是一回事。权限键回答"这个人能不能做这件事"，使用环境回答"他现在是以
+ * 什么身份在看后台"——员工兼家长切到家庭视角时，侧栏已经换成家庭导航，直接敲
+ * /dashboard/students 的 URL 也不该再落进员工页面。此前 staff 页面只靠
+ * `getMyPerms` 对非员工返回空集合来挡人，那挡的是角色而不是环境。
+ */
+export async function requireDashboardEnvironment(locale: string, allowed: readonly UserEnvironment[]) {
   const user = await requireUser(locale);
+  const environment = await getActiveEnvironment(user.id);
+  if (!environment || !allowed.includes(environment)) redirect(`/${locale}/dashboard`);
+  return { user, environment };
+}
+
+/** 员工页面的统一入口：先过 staff 环境闸门，再验权限键。 */
+export async function requirePerm(locale: string, key: PermissionKey) {
+  const { user } = await requireDashboardEnvironment(locale, ["staff"]);
   const perms = await getMyPerms(user.id);
   if (!perms.has(key)) redirect(`/${locale}/dashboard`);
   return user;
 }
 
 export async function requireAnyPerm(locale: string, keys: readonly PermissionKey[]) {
-  const user = await requireUser(locale);
+  const { user } = await requireDashboardEnvironment(locale, ["staff"]);
   const perms = await getMyPerms(user.id);
   if (!keys.some((key) => perms.has(key))) redirect(`/${locale}/dashboard`);
-  return user;
-}
-
-/** P4I-8 起是员工工作台入口的统一闸门：profiles.role 的员工身份为 staff/admin。 */
-export async function requireStaff(locale: string) {
-  const user = await requireUser(locale);
-  const profile = await getProfile(user.id);
-  if (profile?.role !== "staff" && profile?.role !== "admin") redirect(`/${locale}/dashboard`);
   return user;
 }

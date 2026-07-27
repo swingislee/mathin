@@ -2,9 +2,7 @@ import { setRequestLocale } from "next-intl/server";
 import { ParentHome } from "@/features/school/home/ParentHome";
 import { StudentHome } from "@/features/school/home/StudentHome";
 import { TodayWorkHome } from "@/features/school/home/TodayWorkHome";
-import { getProfile, requireUser } from "@/lib/auth";
-import { pickActiveEnvironment, resolveAvailableEnvironments } from "@/lib/environment";
-import { createClient } from "@/lib/supabase/server";
+import { getActiveEnvironment, getProfile, requireUser } from "@/lib/auth";
 
 // 首屏按角色分派到三个自包含的 server component（P4G-7：原 1243 行巨石拆分）。
 // 鉴权闸门 requireUser 单独最前置；各角色组件自取所需数据——staff 不再白取
@@ -20,9 +18,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
   const profile = await getProfile(user.id);
   if (!profile) return <StudentHome locale={locale} user={user} profile={profile} />;
 
-  const supabase = await createClient();
-  const available = await resolveAvailableEnvironments(supabase, user.id, profile.role);
-  const active = pickActiveEnvironment(profile.lastActiveEnvironment, available);
+  const active = await getActiveEnvironment(user.id);
 
   if (active === "staff") return <TodayWorkHome locale={locale} user={user} profile={profile} />;
   if (active === "family") return <ParentHome locale={locale} user={user} profile={profile} />;

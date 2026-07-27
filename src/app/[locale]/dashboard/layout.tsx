@@ -3,9 +3,7 @@ import { SiteHeader } from "@/components/site-header";
 import { DashboardShell } from "@/features/school/DashboardShell";
 import { getMyStudents } from "@/features/school/customer";
 import { filterSchoolNav, HOME_NAV_ITEM, PARENT_NAV_ITEMS, STUDENT_NAV_ITEMS, type SchoolNavItem } from "@/features/school/nav";
-import { getMyPerms, getProfile, requireUser } from "@/lib/auth";
-import { pickActiveEnvironment, resolveAvailableEnvironments } from "@/lib/environment";
-import { createClient } from "@/lib/supabase/server";
+import { getActiveEnvironment, getMyPerms, requireUser } from "@/lib/auth";
 
 async function safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
   try {
@@ -25,12 +23,10 @@ export default async function DashboardLayout({
   const { locale } = await params;
   setRequestLocale(locale);
   const user = await requireUser(locale);
-  const profile = await getProfile(user.id);
-  const supabase = await createClient();
-  const available = await resolveAvailableEnvironments(supabase, user.id, profile?.role);
   // P4I-1：左侧导航跟渲染在下面的 Home 一样按"当前使用环境"分派，不再直接认
   // profiles.role——员工兼家长切换到家庭视角时，导航也要跟着换成家庭导航。
-  const active = pickActiveEnvironment(profile?.lastActiveEnvironment, available);
+  // doc22 §10：与页面级 requireDashboardEnvironment 共用同一个（每请求缓存的）判定。
+  const active = await getActiveEnvironment(user.id);
 
   let nav: readonly SchoolNavItem[] = [HOME_NAV_ITEM];
   if (active === "staff") {

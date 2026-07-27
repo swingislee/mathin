@@ -26,7 +26,7 @@ import { ObjectWorkspace } from "@/features/school/stage/ObjectWorkspace";
 import { TeachingReadinessPanel } from "@/features/school/TeachingReadinessPanel";
 import { listMyWorkItems } from "@/features/school/work-items";
 import { Link } from "@/i18n/navigation";
-import { getMyPerms, requireUser } from "@/lib/auth";
+import { getMyPerms, requireDashboardEnvironment } from "@/lib/auth";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const TABS = ["sessions", "students", "readiness", "records"] as const;
@@ -63,7 +63,7 @@ async function ClassDetailBody({
   params: Promise<{ locale: string; classId: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const [{ classId }, rawSearchParams, user] = await Promise.all([params, searchParams, requireUser(locale)]);
+  const [{ classId }, rawSearchParams, { user }] = await Promise.all([params, searchParams, requireDashboardEnvironment(locale, ["staff"])]);
   if (!UUID_PATTERN.test(classId)) notFound();
 
   const [t, classroom, perms, allWorkItems] = await Promise.all([

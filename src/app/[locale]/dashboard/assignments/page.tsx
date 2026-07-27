@@ -3,7 +3,7 @@ import { BindCodeForm } from "@/features/school/BindCodeForm";
 import { getMyPendingAssignments, getMyStudents } from "@/features/school/customer";
 import { DashboardContentGrid, DashboardMainColumn, DashboardPage } from "@/features/school/dashboard-page";
 import { Link } from "@/i18n/navigation";
-import { requireUser } from "@/lib/auth";
+import { requireDashboardEnvironment } from "@/lib/auth";
 import { VideoUploadPanel } from "@/features/school/VideoUploadPanel";
 
 async function safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
@@ -17,7 +17,7 @@ async function safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
 export default async function AssignmentsPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  await requireUser(locale);
+  await requireDashboardEnvironment(locale, ["learning"]);
   const t = await getTranslations("school.customer");
 
   const myStudents = await safe(getMyStudents, []);

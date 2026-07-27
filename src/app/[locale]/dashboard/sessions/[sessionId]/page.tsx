@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
 import { getSessionWorkspaceDetail } from "@/features/school/classes";
 import { SessionWorkspaceBody, type SessionTab } from "@/features/school/SessionWorkspaceBody";
-import { requireUser } from "@/lib/auth";
+import { requireDashboardEnvironment } from "@/lib/auth";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -39,7 +39,7 @@ async function SessionWorkspaceContent({
   params: Promise<{ locale: string; sessionId: string }>;
   searchParams: Promise<{ tab?: string }>;
 }) {
-  await requireUser(locale);
+  await requireDashboardEnvironment(locale, ["staff"]);
   const [{ sessionId }, rawSearchParams] = await Promise.all([params, searchParams]);
   if (!UUID_PATTERN.test(sessionId)) notFound();
 

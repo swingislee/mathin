@@ -15,7 +15,7 @@ import {
   DashboardPage,
 } from "@/features/school/dashboard-page";
 import { addDays } from "@/features/school/schedule";
-import { requireUser } from "@/lib/auth";
+import { requireDashboardEnvironment } from "@/lib/auth";
 
 export default async function ChildrenPage({
   params,
@@ -26,7 +26,7 @@ export default async function ChildrenPage({
 }) {
   const [{ locale }, rawSearchParams] = await Promise.all([params, searchParams]);
   setRequestLocale(locale);
-  await requireUser(locale);
+  await requireDashboardEnvironment(locale, ["family"]);
   const [t, studentsT] = await Promise.all([getTranslations("school.customer"), getTranslations("school.students")]);
 
   const [students, summaries] = await Promise.all([getMyStudents(), getMyLearningSummary()]);

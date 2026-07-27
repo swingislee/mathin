@@ -21,7 +21,7 @@ import { RefundQueuePanel } from "@/features/school/RefundQueuePanel";
 import { ScholarshipsPanel } from "@/features/school/ScholarshipsPanel";
 import { StatusStrip, type StatusStripItem } from "@/features/school/stage/StatusStrip";
 import { Link } from "@/i18n/navigation";
-import { getMyPerms, getProfile, requireUser } from "@/lib/auth";
+import { getMyPerms, requireDashboardEnvironment } from "@/lib/auth";
 
 async function safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
   try {
@@ -51,17 +51,15 @@ export default async function FinancePage({
 }) {
   const [{ locale }, rawSearchParams] = await Promise.all([params, searchParams]);
   setRequestLocale(locale);
-  const user = await requireUser(locale);
-  const profile = await getProfile(user.id);
+  // doc22 §10：财务是唯一横跨两个环境的业务页，分派依据必须是**当前使用环境**而不是
+  // profiles.role。员工兼家长切到家庭视角时该看到家庭账单，切回工作台才是全校财务台；
+  // 按 role 分派会让这类账号永远只看得到员工分支。学习环境（学生）根本进不来
+  // ——家长管钱，学生只关心课/作业/成绩（P4C-1 §4.4）。
+  const { user, environment } = await requireDashboardEnvironment(locale, ["staff", "family"]);
   const perms = await getMyPerms(user.id);
   const hasFinancePerm = FINANCE_PERM_KEYS.some((key) => perms.has(key));
 
-  // 学生端去财务（P4C-1 §4.4）：家长管钱，学生直接踢回总览。家长只读分支保留。
-  if (profile?.role === "student") {
-    redirect(`/${locale}/dashboard`);
-  }
-
-  if (!hasFinancePerm && profile?.role === "parent") {
+  if (environment === "family") {
     const customerT = await getTranslations("school.customer");
     const financeT = await getTranslations("school.finance");
     const [orders, accounts] = await Promise.all([safe(getMyOrders, []), safe(getMyAccounts, [])]);

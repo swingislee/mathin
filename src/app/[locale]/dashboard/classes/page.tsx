@@ -14,7 +14,7 @@ import {
 } from "@/features/school/dashboard-page";
 import { listClassroomsForScope, parseClassroomListFilters, resolveClassroomScope } from "@/features/school/teaching-operations/classroom-queries";
 import { Link } from "@/i18n/navigation";
-import { getMyPerms, requireUser } from "@/lib/auth";
+import { getMyPerms, requireDashboardEnvironment } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
 export default async function ClassesPage({
@@ -44,7 +44,7 @@ export default async function ClassesPage({
 }
 
 async function ClassroomCommandPanel({ locale, searchParams }: { locale: string; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const [rawSearchParams, user] = await Promise.all([searchParams, requireUser(locale)]);
+  const [rawSearchParams, { user }] = await Promise.all([searchParams, requireDashboardEnvironment(locale, ["staff"])]);
   const [scope, t, perms] = await Promise.all([
     // scope 解析失败（无任何班级 scope 权限）时正文会给出说明，命令面板保持空壳，
     // 不要在 sticky chrome 里抛错把整页打掉。
@@ -72,7 +72,7 @@ async function ClassroomCommandPanel({ locale, searchParams }: { locale: string;
 }
 
 async function ClassroomLibrary({ locale, searchParams }: { locale: string; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const [rawSearchParams] = await Promise.all([searchParams, requireUser(locale)]);
+  const [rawSearchParams] = await Promise.all([searchParams, requireDashboardEnvironment(locale, ["staff"])]);
   const t = await getTranslations("school.classes");
 
   let scope;
