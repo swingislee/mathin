@@ -199,6 +199,26 @@ button, a { -webkit-tap-highlight-color: transparent; }
   }
 }
 
+/*
+ * 悬浮控制安全区（docs/plan/21 §12）。这些值只是 SSR 首屏与测量前的默认值，
+ * 挂载后由 useFloatingControlMetrics 的 ResizeObserver 写入真实测量结果，
+ * 因此按钮增减、身份切换、缩放和断点变化都不需要人工调 pr-*。
+ *
+ * 默认值按当前实现取整：右上是两个 44px 圆形控件 + gap-2 + 视口内边距 + 12px 呼吸；
+ * 左上主入口只在 lg 以下存在（桌面端导航常驻侧栏），所以 lg 起归零。
+ */
+:root {
+  --main-floating-control-safe-inline-size: 64px;
+  --global-floating-controls-safe-inline-size: 124px;
+  --global-floating-controls-safe-block-size: 56px;
+}
+@media (min-width: 768px) {
+  :root { --global-floating-controls-safe-inline-size: 136px; }
+}
+@media (min-width: 1024px) {
+  :root { --main-floating-control-safe-inline-size: 0px; }
+}
+
 /* 纸纹：极轻的灰度噪点覆盖全页（docs/plan/01：纸感） */
 body::after {
   content: "";

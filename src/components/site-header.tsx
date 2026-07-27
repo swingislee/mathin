@@ -1,4 +1,5 @@
 import { getLocale, getTranslations } from "next-intl/server";
+import { GlobalFloatingControls } from "@/components/global-floating-controls";
 import { ChangeBell, type InboxWorkItem } from "@/features/events/ChangeBell";
 import { getInitialChangeFeed, type ChangeEvent } from "@/features/events/actions";
 import { formatWorkItemReason, listMyWorkItems, resolveWorkItemHref } from "@/features/school/work-items";
@@ -62,7 +63,7 @@ export async function SiteHeader({ workspace = false }: { workspace?: boolean } 
           Mathin
         </Link>
       )}
-      <div className="pointer-events-auto flex items-center gap-2">
+      <GlobalFloatingControls>
         {user && <ChangeBell key={changes[0]?.id ?? "empty"} initialEvents={changes} workItems={inboxWorkItems} totalWorkItems={totalWorkItems} />}
         <UtilitySheet
           isLoggedIn={!!user}
@@ -73,7 +74,7 @@ export async function SiteHeader({ workspace = false }: { workspace?: boolean } 
           accountName={profile?.displayName || user?.email || undefined}
           accountEmail={user?.email}
         />
-      </div>
+      </GlobalFloatingControls>
     </header>
   );
 }

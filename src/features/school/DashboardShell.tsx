@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { Fragment, useState } from "react";
 import type { ComponentType } from "react";
+import { MainFloatingControl } from "@/components/global-floating-controls";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -120,7 +121,7 @@ export function DashboardShell({ nav, children }: { nav: readonly SchoolNavItem[
         </div>
       </aside>
 
-      <div className="fixed left-4 top-4 z-40 lg:hidden">
+      <MainFloatingControl className="fixed left-4 top-4 z-40 lg:hidden">
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
             <Button type="button" variant="secondary" size="sm" className="size-11 rounded-full p-0 shadow-lg" aria-label={shellT("openNav")}>
@@ -136,12 +137,21 @@ export function DashboardShell({ nav, children }: { nav: readonly SchoolNavItem[
             </ScrollArea>
           </SheetContent>
         </Sheet>
-      </div>
+      </MainFloatingControl>
 
-      <main className={cn(
-        "flex min-w-0 flex-1 flex-col overflow-y-auto px-4 pb-5 md:px-6 lg:px-8 lg:pb-6 lg:pr-24 2xl:px-10",
-        workspace && "xl:overflow-hidden",
-      )}>
+      {/*
+        Dashboard 唯一水平边界（docs/plan/21 §6）：--dashboard-gutter 是 A→B / C→D 的
+        单一来源，页头安全占位和 chrome 出血都从它推导。左右必须对称——原先为了避让右上
+        悬浮控件加的 lg:pr-24 会让整页正文从头到尾右边多缺一块，那份避让已经改由页头内部
+        的透明占位承担。
+      */}
+      <main
+        data-dashboard-canvas
+        className={cn(
+          "flex min-w-0 flex-1 flex-col overflow-y-auto pb-5 [--dashboard-gutter:1rem] px-[var(--dashboard-gutter)] md:[--dashboard-gutter:1.5rem] lg:pb-6 lg:[--dashboard-gutter:2rem] 2xl:[--dashboard-gutter:2.5rem]",
+          workspace && "xl:overflow-hidden",
+        )}
+      >
         <div
           data-dashboard-content
           data-dashboard-workspace={workspace ? "true" : undefined}
