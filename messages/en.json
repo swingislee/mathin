@@ -1683,7 +1683,6 @@
       "noPrimaryTeacher": "No primary teacher",
       "learningSupport": "Learning support",
       "rosterCount": "{count} enrolled",
-      "nextSessionAt": "Next session: {time}",
       "tabsLabel": "Class detail sections",
       "tab_sessions": "Sessions",
       "tab_students": "Students",
@@ -1847,7 +1846,19 @@
       "supportTaskStatus_pending": "Pending",
       "supportTaskStatus_done": "Done",
       "supportTaskStatus_skipped": "Skipped",
-      "supportTaskStatus_invalidated": "Invalidated"
+      "supportTaskStatus_invalidated": "Invalidated",
+      "classSummary": "Class summary",
+      "summaryRoster": "Enrolled",
+      "summarySessions": "Sessions",
+      "summaryEnded": "Finished",
+      "summaryRoom": "Room",
+      "nextSessionTitle": "Next session",
+      "nextSessionEmpty": "No scheduled session.",
+      "riskTitle": "Issues and risks",
+      "riskNone": "No session needs attention.",
+      "responsibilityTitle": "Responsibilities",
+      "responsibilityEmpty": "No teaching staff assigned yet.",
+      "openSessionWorkspace": "Open session"
     },
     "session": {
       "untitledSession": "Untitled session",

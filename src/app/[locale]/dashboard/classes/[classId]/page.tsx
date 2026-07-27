@@ -1,9 +1,14 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { CircleAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
+import {
+  ClassroomNextSession,
+  ClassroomResponsibility,
+  ClassroomRisks,
+  ClassroomSummary,
+} from "@/features/school/ClassroomAsidePanels";
 import { ClassroomSettingsSheet } from "@/features/school/ClassroomSettingsSheet";
 import {
   getClassroomDetailForScope,
@@ -20,6 +25,7 @@ import { OperationalRecordsPanel } from "@/features/school/OperationalRecordsPan
 import { RosterPanel } from "@/features/school/RosterPanel";
 import { SessionGroupList } from "@/features/school/SessionGroupList";
 import { SessionManagementDrawer } from "@/features/school/SessionManagementDrawer";
+import { DashboardAside, DashboardContentGrid, DashboardMainColumn } from "@/features/school/dashboard-page";
 import { ObjectBar, ObjectTabs, ObjectWorkspace, type ObjectContextItem } from "@/features/school/object-workspace";
 import { TeachingReadinessPanel } from "@/features/school/TeachingReadinessPanel";
 import { listMyWorkItems } from "@/features/school/work-items";
@@ -89,7 +95,6 @@ async function ClassDetailBody({
   const classroomSessionIds = new Set(classroom.sessions.map((session) => session.id));
   const sessionWorkItems = allWorkItems.filter((item) => item.primaryObjectType === "session" && classroomSessionIds.has(item.primaryObjectId));
   const groups = groupClassroomSessions(classroom.sessions, sessionWorkItems);
-  const anomalyCount = groups.needsAttention.length;
 
   // teachingReadiness 不只是"教学准备" tab 自己用——设置 Sheet 的启用班级风险确认（任何 tab 都可能打开
   // 设置）也依赖它，所以只要是管理视角就加载，不能像 rosterSignals/operationalEvents 那样按 tab 懒加载。
@@ -99,17 +104,16 @@ async function ClassDetailBody({
     activeTab === "records" && canViewClassroom ? getClassroomOperationalEvents(classId) : Promise.resolve([] as OperationalEventRow[]),
   ]);
 
-  // doc23 §4.2：长拼接串拆成结构化条目。这一提交只做结构转换、不改内容；
-  // 摘要类信息（人数、下一节课）在班级页重建那一提交移进 Aside。
+  // doc23 §9：身份行只保留"这是哪个班"——课程版本、年级、主讲、学辅。
+  // 人数与下一节课是**状况**不是身份，进 Aside；它们放在这条里既会被截断，
+  // 又会随排课变化让身份行看起来一直在动。
   const contextItems: ObjectContextItem[] = ([
     { value: classroom.courseTitle ?? t("freeClass") },
     classroom.grade ? { value: t("grade", { grade: classroom.grade }) } : null,
-    { value: classroom.primaryTeacherName ?? t("noPrimaryTeacher") },
+    { label: t("responsibility_primary_teacher"), value: classroom.primaryTeacherName ?? t("noPrimaryTeacher") },
     classroom.learningSupportNames.length > 0
       ? { label: t("learningSupport"), value: classroom.learningSupportNames.join("、") }
       : null,
-    { value: t("rosterCount", { count: classroom.roster.length }) },
-    groups.next?.scheduledAt ? { value: t("nextSessionAt", { time: new Date(groups.next.scheduledAt).toLocaleString() }) } : null,
   ] satisfies (ObjectContextItem | null)[]).filter((item) => item !== null);
 
   const primaryAction = isTeachingView && groups.next?.capabilities.canEnterLive
@@ -145,35 +149,42 @@ async function ClassDetailBody({
           ariaLabel={t("tabsLabel")}
         />}
       >
-        {isManagementView && anomalyCount > 0 && (
-          <p className="mb-4 flex items-center gap-1.5 rounded-lg border border-rose/40 bg-rose/10 px-3 py-2 text-sm text-rose">
-            <CircleAlert className="size-4" />
-            {t("anomalySummary", { count: anomalyCount })}
-          </p>
-        )}
+        {/*
+          §9：主栏只放当前 tab 的工作面，侧栏放跨 tab 不变的班级状况。
+          原来那条异常横幅横在正文顶部，是"通知"而不是"待办"——切到学生 tab 就消失，
+          而它恰恰是管理视角进这一页最想先看到的东西，现在固定在 Aside 的风险区。
+        */}
+        <DashboardContentGrid>
+          <DashboardMainColumn>
+            {activeTab === "sessions" && (
+              <SessionGroupList classroomId={classroom.id} sessions={classroom.sessions} workItems={sessionWorkItems} />
+            )}
+            {activeTab === "students" && (
+              <RosterPanel
+                classroomId={classroom.id}
+                roster={classroom.roster}
+                canManage={perms.has("enrollment.manage")}
+                viewerRole={classroom.viewerRole}
+                signals={Object.fromEntries(rosterSignals)}
+              />
+            )}
+            {activeTab === "readiness" && (
+              classroom.capabilities.canManageClassroom && classroom.courseId
+                ? <TeachingReadinessPanel classroomId={classroom.id} track={classroom.coursewareTrack} readiness={teachingReadiness} />
+                : <p className="rounded-xl border border-line bg-card p-5 text-sm text-muted">{t("readinessTabEmpty")}</p>
+            )}
+            {activeTab === "records" && (
+              <OperationalRecordsPanel events={operationalEvents} canView={canViewClassroom} />
+            )}
+          </DashboardMainColumn>
 
-        <div className="grid gap-6">
-          {activeTab === "sessions" && (
-            <SessionGroupList classroomId={classroom.id} sessions={classroom.sessions} workItems={sessionWorkItems} />
-          )}
-          {activeTab === "students" && (
-            <RosterPanel
-              classroomId={classroom.id}
-              roster={classroom.roster}
-              canManage={perms.has("enrollment.manage")}
-              viewerRole={classroom.viewerRole}
-              signals={Object.fromEntries(rosterSignals)}
-            />
-          )}
-          {activeTab === "readiness" && (
-            classroom.capabilities.canManageClassroom && classroom.courseId
-              ? <TeachingReadinessPanel classroomId={classroom.id} track={classroom.coursewareTrack} readiness={teachingReadiness} />
-              : <p className="rounded-xl border border-line bg-card p-5 text-sm text-muted">{t("readinessTabEmpty")}</p>
-          )}
-          {activeTab === "records" && (
-            <OperationalRecordsPanel events={operationalEvents} canView={canViewClassroom} />
-          )}
-        </div>
+          <DashboardAside className="flex flex-col gap-4">
+            <ClassroomSummary classroom={classroom} />
+            <ClassroomNextSession next={groups.next} />
+            {isManagementView && <ClassroomRisks needsAttention={groups.needsAttention} />}
+            <ClassroomResponsibility assignments={classroom.staffAssignments} />
+          </DashboardAside>
+        </DashboardContentGrid>
       </ObjectWorkspace>
 
       <SessionManagementDrawer
