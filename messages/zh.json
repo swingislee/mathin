@@ -317,8 +317,6 @@
     "releasedLectures": "已发布",
     "open": "进入",
     "lectureCount": "共 {count} 讲",
-    "backToCourses": "← 返回课程列表",
-    "backToLectures": "← 返回讲次列表",
     "lectureNo": "讲次",
     "lectureName": "名称",
     "pages": "页数",
@@ -577,7 +575,7 @@
     "unnamedAsset": "未命名资源",
     "assetDetailTitle": "共享资源替换",
     "assetDetailIntro": "先选择 16:9 原生版或 4:3 稳定版，再选择该轨道中要使用新图片的位置。已发布 release 与已冻结课次始终固定在原版本。",
-    "backToAssetLibrary": "← 返回资源库",
+    "backToAssetLibrary": "返回资源库",
     "assetUsageTree": "使用位置",
     "assetUsageTreeHint": "默认选中 {track} 中所有跟随当前资源版本的位置；已固定版本的独立修改页不会被批量改动。",
     "assetSelectableCount": "已选 {selected} / {total}",
@@ -616,7 +614,8 @@
     "assetRollbackSucceeded": "资源替换已回滚。",
     "assetRollbackFailed": "回滚失败：{code}",
     "cancel": "取消",
-    "assetTrack": "画幅轨道"
+    "assetTrack": "画幅轨道",
+    "assetReplacementRailTitle": "替换与回滚"
   },
   "school": {
     "home": {

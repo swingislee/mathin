@@ -317,8 +317,6 @@
     "releasedLectures": "Released",
     "open": "Open",
     "lectureCount": "{count} lectures",
-    "backToCourses": "← Back to courses",
-    "backToLectures": "← Back to lectures",
     "lectureNo": "No.",
     "lectureName": "Name",
     "pages": "Pages",
@@ -577,7 +575,7 @@
     "unnamedAsset": "Unnamed asset",
     "assetDetailTitle": "Replace shared asset",
     "assetDetailIntro": "Choose Native 16:9 or Stable 4:3 first, then choose the locations in that track that should use the new image. Published releases and frozen sessions always retain their original version.",
-    "backToAssetLibrary": "← Back to asset library",
+    "backToAssetLibrary": "Back to asset library",
     "assetUsageTree": "Usage locations",
     "assetUsageTreeHint": "All {track} locations following the current resource version are selected by default. Page-specific pinned revisions are never changed in bulk.",
     "assetSelectableCount": "{selected} / {total} selected",
@@ -616,7 +614,8 @@
     "assetRollbackSucceeded": "The asset replacement was rolled back.",
     "assetRollbackFailed": "Rollback failed: {code}",
     "cancel": "Cancel",
-    "assetTrack": "Aspect track"
+    "assetTrack": "Aspect track",
+    "assetReplacementRailTitle": "Replace and roll back"
   },
   "school": {
     "home": {

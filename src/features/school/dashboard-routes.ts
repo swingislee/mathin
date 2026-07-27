@@ -317,6 +317,9 @@ export const DASHBOARD_ROUTES = {
   coursewareAssetDetail: {
     hrefPattern: "/dashboard/courseware-assets/[assetId]",
     kind: "object",
+    // doc 23 §13.1：素材替换是一个双栏专业编辑器（使用树 + 新旧对比 + 决策栏），
+    // 不是一张详情页。之前它被 Shell 漏在 panel 之外，外层页面滚动叠着内部长内容。
+    shellMode: "panel",
     environments: STAFF_ONLY,
     permission: "courseware.asset.manage",
     createSurface: "derived",
