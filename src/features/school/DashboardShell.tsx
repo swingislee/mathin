@@ -59,7 +59,7 @@ function NavList({ nav, pathname, onNavigate }: { nav: readonly SchoolNavItem[];
         return (
           <Fragment key={item.href}>
             {showGroupHeader ? (
-              <p className="mb-1 mt-4 px-3 text-[11px] font-medium uppercase tracking-[0.14em] text-muted first:mt-1">
+              <p className="mb-1 mt-2 px-3 text-[11px] font-medium uppercase tracking-[0.14em] text-muted first:mt-1">
                 {navT(`group_${item.group}`)}
               </p>
             ) : null}
@@ -68,11 +68,11 @@ function NavList({ nav, pathname, onNavigate }: { nav: readonly SchoolNavItem[];
               onClick={onNavigate}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "flex min-h-10 items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors",
+                "flex min-h-8 items-center gap-3 rounded-xl px-3 py-1 text-sm transition-colors",
                 active ? "bg-moon/35 font-medium text-ink" : "text-muted hover:bg-card/70 hover:text-ink",
               )}
             >
-              <Icon size={17} strokeWidth={1.75} />
+              <Icon size={15} strokeWidth={1.75} />
               {navT(item.labelKey)}
             </Link>
           </Fragment>
@@ -145,7 +145,7 @@ export function DashboardShell({ nav, children }: { nav: readonly SchoolNavItem[
       <main
         data-dashboard-canvas
         className={cn(
-          "flex min-w-0 flex-1 flex-col overflow-y-auto pb-5 [--dashboard-gutter:1rem] px-[var(--dashboard-gutter)] md:[--dashboard-gutter:1.5rem] lg:pb-6 lg:[--dashboard-gutter:2rem] 2xl:[--dashboard-gutter:2.5rem]",
+          "flex min-w-0 flex-1 flex-col overflow-y-auto pb-5 [--dashboard-gutter:1rem] px-(--dashboard-gutter) md:[--dashboard-gutter:1.5rem] lg:pb-6 lg:[--dashboard-gutter:2rem] 2xl:[--dashboard-gutter:2.5rem]",
           workspace && "xl:overflow-hidden",
         )}
       >
