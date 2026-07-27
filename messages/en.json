@@ -915,7 +915,6 @@
       "saved": "Reviews saved."
     },
     "videos": {
-      "title": "Review session videos",
       "uploadTitle": "Upload session video",
       "upload": "Upload",
       "uploaded": "Upload complete.",
@@ -2019,7 +2018,6 @@
     },
     "staff": {
       "title": "Staff",
-      "back": "Back to staff",
       "intro": "Review staff members and their roles, assign roles to existing accounts, or promote a customer account to staff.",
       "colName": "Name",
       "colEmail": "Email",

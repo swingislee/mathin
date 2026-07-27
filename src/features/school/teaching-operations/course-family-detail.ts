@@ -167,17 +167,3 @@ export async function getCourseFamilyDetail(
   if (error) throw new Error(error.message);
   return detailSchema.parse(data) as CourseFamilyDetail;
 }
-
-/** 旧 `/courses/[courseId]` 地址仅用于找到其 family；可见性仍由详情 RPC 再次核验。 */
-export async function findCourseFamilyForLegacyVariant(courseId: string): Promise<string | null> {
-  const parsedCourseId = uuidSchema.safeParse(courseId);
-  if (!parsedCourseId.success) return null;
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("courses")
-    .select("family_id")
-    .eq("id", parsedCourseId.data)
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  return data?.family_id ?? null;
-}

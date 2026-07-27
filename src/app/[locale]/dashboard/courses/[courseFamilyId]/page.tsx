@@ -1,10 +1,10 @@
 import { Suspense } from "react";
-import { notFound, permanentRedirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { loadLecturePreview, parseCoursewareTrack } from "@/features/courseware-studio/data";
-import { findCourseFamilyForLegacyVariant, getCourseFamilyDetail, isUuid } from "@/features/school/teaching-operations/course-family-detail";
+import { getCourseFamilyDetail, isUuid } from "@/features/school/teaching-operations/course-family-detail";
 import { ResponsibilityPanel } from "@/features/school/teaching-operations/ResponsibilityPanel";
 import { StatusOverflowMenu } from "@/features/school/teaching-operations/StatusOverflowMenu";
 import { TeachingPlan } from "@/features/school/teaching-operations/TeachingPlan";
@@ -42,7 +42,7 @@ export default async function CourseDetailPage({
   params,
   searchParams,
 }: {
-  params: Promise<{ locale: string; id: string }>;
+  params: Promise<{ locale: string; courseFamilyId: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { locale } = await params;
@@ -60,11 +60,11 @@ async function CourseFamilyProductPage({
   searchParams,
 }: {
   locale: string;
-  params: Promise<{ locale: string; id: string }>;
+  params: Promise<{ locale: string; courseFamilyId: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const [{ id }, rawSearchParams, user] = await Promise.all([params, searchParams, requirePerm(locale, "course.view")]);
-  if (!isUuid(id)) notFound();
+  const [{ courseFamilyId }, rawSearchParams, user] = await Promise.all([params, searchParams, requirePerm(locale, "course.view")]);
+  if (!isUuid(courseFamilyId)) notFound();
   const [t, permissions, staffOptions] = await Promise.all([
     getTranslations("school.courses"),
     getMyPerms(user.id),
@@ -72,26 +72,26 @@ async function CourseFamilyProductPage({
   ]);
   const requestedVariantId = first(rawSearchParams.variant);
 
+  // doc22 §5.16：这条路由只接受 Course Family ID。P4H 时期的「传 Variant ID 也认，
+  // 查出所属 family 后 308」兼容已删除——旧 ID 让 URL 同时表达两种资源，无效 ID 直接 404。
   const supabase = await createClient();
-  const { data: family, error: familyError } = await supabase.from("course_families").select("id").eq("id", id).maybeSingle();
+  const { data: family, error: familyError } = await supabase
+    .from("course_families")
+    .select("id")
+    .eq("id", courseFamilyId)
+    .maybeSingle();
   if (familyError) throw new Error(familyError.message);
-  const familyId = family?.id ?? await findCourseFamilyForLegacyVariant(id);
-  if (!familyId) notFound();
+  if (!family) notFound();
 
   let detail;
   try {
-    detail = await getCourseFamilyDetail(familyId, family ? requestedVariantId : id);
+    detail = await getCourseFamilyDetail(family.id, requestedVariantId);
   } catch (error) {
     if (error instanceof Error && error.message.includes("FORBIDDEN_SCOPE")) {
       return <section className="mt-6 rounded-2xl border border-line bg-card p-6"><h1 className="font-display text-2xl text-ink">{t("familyScopeUnavailableTitle")}</h1><p className="mt-2 text-sm text-muted">{t("familyScopeUnavailableHint")}</p><Link href="/dashboard/courses" className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "mt-5")}>{t("backToLibrary")}</Link></section>;
     }
     if (error instanceof Error && (error.message.includes("COURSE_FAMILY_NOT_FOUND") || error.message.includes("COURSE_VARIANT_NOT_IN_FAMILY"))) notFound();
     throw error;
-  }
-
-  if (!family) {
-    if (!detail.selectedVariant) notFound();
-    permanentRedirect(familyHref(detail.family.id, detail.selectedVariant.id));
   }
 
   const canManage = permissions.has("course.manage");

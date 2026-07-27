@@ -24,16 +24,16 @@ import { getMyPerms, requireAnyPerm } from "@/lib/auth";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export default async function StudentDetailPage({ params }: { params: Promise<{ locale: string; id: string }> }) {
-  const { locale, id } = await params;
+export default async function StudentDetailPage({ params }: { params: Promise<{ locale: string; studentId: string }> }) {
+  const { locale, studentId } = await params;
   setRequestLocale(locale);
   const user = await requireAnyPerm(locale, ["student.view.all", "student.view.assigned"]);
-  if (!UUID_PATTERN.test(id)) notFound();
+  if (!UUID_PATTERN.test(studentId)) notFound();
 
   const [t, student, learning, perms] = await Promise.all([
     getTranslations("school.students"),
-    getStudentDetail(id),
-    getStudentLearning(id),
+    getStudentDetail(studentId),
+    getStudentLearning(studentId),
     getMyPerms(user.id),
   ]);
   if (!student) notFound();
@@ -44,8 +44,8 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
 
   const showFinance = perms.has("finance.order.view");
   const [orders, account] = showFinance
-    ? await Promise.all([getStudentOrders(id), getStudentAccount(id)])
-    : [[], { studentId: id, balance: 0, ledger: [], lessonBalance: 0, lessonLedger: [] }];
+    ? await Promise.all([getStudentOrders(studentId), getStudentAccount(studentId)])
+    : [[], { studentId, balance: 0, ledger: [], lessonBalance: 0, lessonLedger: [] }];
 
   return (
     <DashboardPage
@@ -57,7 +57,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
         <DashboardCommandPanel>
           <DashboardCommandActions>
             <StudentLifecycleActions
-              studentId={id}
+              studentId={studentId}
               status={student.status}
               assignedTo={student.assignedTo}
               deleted={Boolean(student.deletedAt)}
@@ -66,7 +66,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
               canDelete={perms.has("student.delete")}
               assignees={assignees}
             />
-            {!student.userId && perms.has("student.edit") && <ProvisionStudentAccountButton studentId={id} phone={student.phone} />}
+            {!student.userId && perms.has("student.edit") && <ProvisionStudentAccountButton studentId={studentId} phone={student.phone} />}
           </DashboardCommandActions>
         </DashboardCommandPanel>
       }
@@ -94,7 +94,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
       {perms.has("followup.view") && (
         <section className="rounded-xl border border-line bg-card p-5">
           <h2 className="font-medium">{t("followUps")}</h2>
-          {perms.has("followup.write") && !student.deletedAt && <FollowUpForm studentId={id} currentStatus={student.followUpStatus} />}
+          {perms.has("followup.write") && !student.deletedAt && <FollowUpForm studentId={studentId} currentStatus={student.followUpStatus} />}
           {student.followUps.length === 0 ? (
             <p className="mt-4 text-sm text-muted">{t("noFollowUps")}</p>
           ) : (
@@ -213,7 +213,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
 
       {showFinance && (
         <StudentFinancePanel
-          studentId={id}
+          studentId={studentId}
           orders={orders}
           account={account}
           perms={{
@@ -229,9 +229,9 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
       </DashboardMainColumn>
 
       <DashboardAside className="space-y-6">
-        {!student.deletedAt && perms.has("student.edit") && <GuardianInvitePanel studentId={id} />}
-        {!student.deletedAt && perms.has("student.edit") && <GuardianScopePanel studentId={id} />}
-        {!student.deletedAt && perms.has("student.edit") && <StudentMergePanel studentId={id} name={student.name} phone={student.phone} />}
+        {!student.deletedAt && perms.has("student.edit") && <GuardianInvitePanel studentId={studentId} />}
+        {!student.deletedAt && perms.has("student.edit") && <GuardianScopePanel studentId={studentId} />}
+        {!student.deletedAt && perms.has("student.edit") && <StudentMergePanel studentId={studentId} name={student.name} phone={student.phone} />}
       </DashboardAside>
       </DashboardContentGrid>
     </DashboardPage>

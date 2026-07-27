@@ -40,7 +40,7 @@ export default async function ClassDetailPage({
   params,
   searchParams,
 }: {
-  params: Promise<{ locale: string; id: string }>;
+  params: Promise<{ locale: string; classId: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { locale } = await params;
@@ -60,15 +60,15 @@ async function ClassDetailBody({
   searchParams,
 }: {
   locale: string;
-  params: Promise<{ locale: string; id: string }>;
+  params: Promise<{ locale: string; classId: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const [{ id }, rawSearchParams, user] = await Promise.all([params, searchParams, requireUser(locale)]);
-  if (!UUID_PATTERN.test(id)) notFound();
+  const [{ classId }, rawSearchParams, user] = await Promise.all([params, searchParams, requireUser(locale)]);
+  if (!UUID_PATTERN.test(classId)) notFound();
 
   const [t, classroom, perms, allWorkItems] = await Promise.all([
     getTranslations("school.classes"),
-    getClassroomDetailForScope(id),
+    getClassroomDetailForScope(classId),
     getMyPerms(user.id),
     listMyWorkItems(),
   ]);
@@ -85,7 +85,7 @@ async function ClassDetailBody({
   const activeSession = requestedSessionId && UUID_PATTERN.test(requestedSessionId)
     ? classroom.sessions.find((session) => session.id === requestedSessionId) ?? null
     : null;
-  const closeHref = `/dashboard/classes/${id}?tab=${activeTab}`;
+  const closeHref = `/dashboard/classes/${classId}?tab=${activeTab}`;
   const staffOptions = isManagementView ? await listStaffOptions() : [];
 
   const classroomSessionIds = new Set(classroom.sessions.map((session) => session.id));
@@ -96,9 +96,9 @@ async function ClassDetailBody({
   // teachingReadiness 不只是"教学准备" tab 自己用——设置 Sheet 的启用班级风险确认（任何 tab 都可能打开
   // 设置）也依赖它，所以只要是管理视角就加载，不能像 rosterSignals/operationalEvents 那样按 tab 懒加载。
   const [rosterSignals, teachingReadiness, operationalEvents] = await Promise.all([
-    activeTab === "students" ? getClassroomRosterSignals(id) : Promise.resolve(new Map<string, RosterSignals>()),
+    activeTab === "students" ? getClassroomRosterSignals(classId) : Promise.resolve(new Map<string, RosterSignals>()),
     isManagementView ? getClassroomTeachingReadiness(classroom.coursewareTrack, classroom.sessions) : Promise.resolve([] as TeachingReadinessRow[]),
-    activeTab === "records" && canViewClassroom ? getClassroomOperationalEvents(id) : Promise.resolve([] as OperationalEventRow[]),
+    activeTab === "records" && canViewClassroom ? getClassroomOperationalEvents(classId) : Promise.resolve([] as OperationalEventRow[]),
   ]);
 
   const contextSummary = [
@@ -138,7 +138,7 @@ async function ClassDetailBody({
           overflowSlot={isManagementView ? <ClassroomSettingsSheet classroom={classroom} staffOptions={staffOptions} teachingReadiness={teachingReadiness} /> : undefined}
         />}
         contextBar={<ContextBar
-          tabs={TABS.map((tab) => ({ value: tab, label: t(`tab_${tab}`), href: `/dashboard/classes/${id}?tab=${tab}` }))}
+          tabs={TABS.map((tab) => ({ value: tab, label: t(`tab_${tab}`), href: `/dashboard/classes/${classId}?tab=${tab}` }))}
           activeTab={activeTab}
         />}
       >

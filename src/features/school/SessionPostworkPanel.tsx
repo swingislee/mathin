@@ -10,6 +10,14 @@ import { SessionTaskActions } from "./SessionPostworkActions";
 import { SupportTaskRecipientList } from "./SupportTaskRecipientList";
 import { VideoReviewPanel } from "./VideoReviewPanel";
 import { listSessionVideos } from "./videos";
+import { getProfile } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
+
+async function currentProfile() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  return user ? getProfile(user.id) : null;
+}
 
 const TASK_KIND_KEYS = {
   attendance: "taskKind_attendance",
@@ -33,6 +41,10 @@ export async function SessionPostworkPanel({ detail }: { detail: SessionWorkspac
   const followupTask = detail.completionTasks.find((task) => task.kind === "followup");
   const hasVideoTask = detail.completionTasks.some((task) => task.kind === "video_review");
   const sessionVideos = hasVideoTask && detail.capabilities.canReviewVideo ? await listSessionVideos(detail.id) : [];
+  // 管理员删除视频（P4D-4）原来只挂在已删除的全校 /dashboard/videos 页上，
+  // 随它一起消失就等于丢能力，因此把这个入口接到视频真正所属的课次上下文里。
+  // 真正的授权在 delete_session_video RPC，这里只决定按钮是否出现。
+  const isAdmin = sessionVideos.length > 0 && (await currentProfile())?.role === "admin";
 
   return (
     <div className="flex flex-col gap-4 px-1">
@@ -85,7 +97,7 @@ export async function SessionPostworkPanel({ detail }: { detail: SessionWorkspac
           {sessionVideos.length === 0 ? (
             <p className="text-muted">{t("videoReviewEmpty")}</p>
           ) : (
-            <VideoReviewPanel rows={sessionVideos} />
+            <VideoReviewPanel rows={sessionVideos} canDelete={isAdmin} />
           )}
         </section>
       )}
