@@ -1,6 +1,6 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
-export default function RegistrationInviteLoading() {
+export default function RegistrationSettingsLoading() {
   return (
     <div className="w-full min-w-0" aria-busy="true">
       <div className="border-b border-line pb-4">

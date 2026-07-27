@@ -6,7 +6,9 @@ import { DashboardPage } from "@/features/school/dashboard-page";
 import { listPurgeableClassrooms, listPurgeableCourseFamilies, listZeroReferenceAssets } from "@/features/school/testdata";
 import { requirePerm } from "@/lib/auth";
 
-export default async function TestDataCleanupPage({ params }: { params: Promise<{ locale: string }> }) {
+// doc22 §5.26：跨资源维护工具（测试数据清理、零引用素材、课程产品与班级清理、
+// 级联影响与高危确认），不是 system-health 的子页面——两者只是同属"系统"导航组。
+export default async function DataMaintenancePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
   await requirePerm(locale, "testdata.purge");

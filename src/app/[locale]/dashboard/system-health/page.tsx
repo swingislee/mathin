@@ -27,7 +27,9 @@ interface OperationalErrorRow {
   release: string | null;
 }
 
-export default async function OperationsPage({ params }: { params: Promise<{ locale: string }> }) {
+// doc22 §5.25：这一页展示的是系统错误、请求路径与方法、环境、release 和 roster
+// mismatch，属于系统健康而不是业务运营，因此从 /dashboard/operations 迁到这里。
+export default async function SystemHealthPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
   const user = await requirePerm(locale, "audit.view");

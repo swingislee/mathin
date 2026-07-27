@@ -4,7 +4,9 @@ import { DashboardPage } from "@/features/school/dashboard-page";
 import { getRegistrationInviteSettings } from "@/features/school/registration";
 import { requirePerm } from "@/lib/auth";
 
-export default async function RegistrationInvitePage({ params }: { params: Promise<{ locale: string }> }) {
+// doc22 §5.24：数据模型是一套组织级注册邀请设置（单例），不是邀请码集合，
+// 因此既不叫 registration-invites，也没有 /new 或 /[inviteId]。
+export default async function RegistrationSettingsPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
   await requirePerm(locale, "registration.invite.manage");
