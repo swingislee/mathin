@@ -734,9 +734,11 @@
       "assignments": "作业",
       "activities": "活动",
       "operations": "运行与错误",
+      "group_work": "工作",
       "group_studentService": "学员服务",
       "group_teachingOps": "教学运营",
-      "group_curriculum": "课程研发",
+      "group_courseware": "课件",
+      "group_finance": "财务",
       "group_org": "组织管理",
       "group_system": "系统"
     },

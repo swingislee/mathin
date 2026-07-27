@@ -1,7 +1,11 @@
+import {
+  DASHBOARD_ROUTES,
+  type DashboardRouteKey,
+  type SchoolNavGroup,
+} from "./dashboard-routes";
 import type { PermissionKey } from "./permissions";
 
-/** 员工侧栏分组（doc19 §4）；不设置时该项渲染在无分组区（今日工作/财务）。 */
-export type SchoolNavGroup = "studentService" | "teachingOps" | "curriculum" | "org" | "system";
+export type { SchoolNavGroup };
 
 export interface SchoolNavItem {
   href: string;
@@ -9,77 +13,101 @@ export interface SchoolNavItem {
   requiredPerm?: PermissionKey;
   /** 任一持有即放行（如财务：sales 失 order.view 后仍靠 order.create 进财务页）。 */
   requiredAnyPerm?: readonly PermissionKey[];
+  /** 仅员工侧栏渲染分组标题；家庭/学习侧栏是平铺列表（doc22 §8.2/§8.3）。 */
   group?: SchoolNavGroup;
 }
 
-/** 任一财务功能键即显示财务入口（与 finance 页 FINANCE_PERM_KEYS 门控同口径）。 */
-const FINANCE_NAV_PERMS: readonly PermissionKey[] = [
-  "finance.order.view",
-  "finance.order.create",
-  "finance.payment.record",
-  "finance.refund.approve",
-  "finance.coupon.manage",
-  "finance.scholarship.grant",
-  "finance.account.adjust",
-  "finance.report.view",
-];
-
-/** 课件中台的只读入口与路由 `requireAnyPerm` 使用同一组权限键。 */
-const COURSEWARE_NAV_PERMS: readonly PermissionKey[] = [
-  "courseware.page.edit",
-  "courseware.release.publish",
-  "courseware.asset.manage",
-];
-
-export const HOME_NAV_ITEM: SchoolNavItem = { href: "/dashboard", labelKey: "home" };
-
-/** 学生花名册：分配制（assigned）或全量（all）任一即放行，与 students 页自身的 requireAnyPerm 同口径。 */
-const STUDENTS_NAV_PERMS: readonly PermissionKey[] = ["student.view.assigned", "student.view.all"];
-
-/** 班级：我的班级、全量查看、管理权限任一即放行——resolve_classroom_scope 用这三者中任一即可解出 all/teaching 之外的可用 scope（support 纯靠 assignment 关系，无法静态权限判定，维持既有"需手动 ?scope=support"设计不变）。 */
-const CLASSES_NAV_PERMS: readonly PermissionKey[] = ["class.view.mine", "class.view.all", "class.manage"];
-
-export const SCHOOL_NAV_ITEMS: readonly SchoolNavItem[] = [
-  // 无分组独立顶部项：必须排在第一个分组开始之前，否则 DashboardShell 的
-  // withGroupHeaders() 不会为它插入新标题，视觉上会"挂"在前一个分组下面。
-  { href: "/dashboard/finance", labelKey: "finance", requiredAnyPerm: FINANCE_NAV_PERMS },
-  { href: "/dashboard/students", labelKey: "students", requiredAnyPerm: STUDENTS_NAV_PERMS, group: "studentService" },
-  { href: "/dashboard/followups", labelKey: "followups", requiredPerm: "followup.view", group: "studentService" },
-  { href: "/dashboard/activities", labelKey: "activities", requiredPerm: "activity.register", group: "studentService" },
-  { href: "/dashboard/classes", labelKey: "classes", requiredAnyPerm: CLASSES_NAV_PERMS, group: "teachingOps" },
-  { href: "/dashboard/schedule", labelKey: "schedule", group: "teachingOps" },
-  { href: "/dashboard/courseware", labelKey: "workbench", requiredAnyPerm: COURSEWARE_NAV_PERMS, group: "curriculum" },
-  { href: "/dashboard/courses", labelKey: "courses", requiredPerm: "course.view", group: "curriculum" },
-  { href: "/dashboard/shared-assets", labelKey: "sharedAssets", requiredPerm: "courseware.asset.manage", group: "curriculum" },
-  { href: "/dashboard/staff", labelKey: "staff", requiredPerm: "staff.manage", group: "org" },
-  { href: "/dashboard/staff/roles", labelKey: "roles", requiredPerm: "permission.configure", group: "org" },
-  { href: "/dashboard/registration", labelKey: "registrationInvites", requiredPerm: "registration.invite.manage", group: "system" },
-  { href: "/dashboard/operations", labelKey: "operations", requiredPerm: "audit.view", group: "system" },
-  { href: "/dashboard/operations/testdata", labelKey: "testdata", requiredPerm: "testdata.purge", group: "system" },
-];
-
-/** 侧边栏导航项：总览 + 按权限过滤后的功能入口。 */
-export function filterSchoolNav(perms: ReadonlySet<PermissionKey>): SchoolNavItem[] {
-  return [
-    HOME_NAV_ITEM,
-    ...SCHOOL_NAV_ITEMS.filter((item) => {
-      if (item.requiredPerm && !perms.has(item.requiredPerm)) return false;
-      if (item.requiredAnyPerm && !item.requiredAnyPerm.some((key) => perms.has(key))) return false;
-      return true;
-    }),
-  ];
+/**
+ * 三套侧栏统一从 ./dashboard-routes.ts 的路由合同派生——nav 不再是第二份 href/权限
+ * 真相，改任何一条路由只需改合同一处（doc22 §12 阶段 B）。
+ */
+function navItem(key: DashboardRouteKey, options?: { withGroup?: boolean }): SchoolNavItem {
+  const route = DASHBOARD_ROUTES[key];
+  if (!("nav" in route) || !route.nav) throw new Error(`DASHBOARD_ROUTES.${key} is not a navigation entry`);
+  if (!("href" in route) || !route.href) throw new Error(`DASHBOARD_ROUTES.${key} has no static href`);
+  const nav: { labelKey: string; group?: SchoolNavGroup } = route.nav;
+  return {
+    href: route.href,
+    labelKey: nav.labelKey,
+    requiredPerm: "permission" in route ? (route.permission as PermissionKey) : undefined,
+    requiredAnyPerm: "permissionAny" in route ? (route.permissionAny as readonly PermissionKey[]) : undefined,
+    group: options?.withGroup === false ? undefined : nav.group,
+  };
 }
 
-export const STUDENT_NAV_ITEMS: readonly SchoolNavItem[] = [
-  HOME_NAV_ITEM,
-  { href: "/dashboard/schedule", labelKey: "schedule" },
-  { href: "/dashboard/assignments", labelKey: "assignments" },
-  // 学生端去财务（P4C-1 §4.4）：家长管钱，学生只关心课/作业/成绩。
+export const HOME_NAV_ITEM: SchoolNavItem = navItem("home", { withGroup: false });
+
+/** 员工侧栏顺序（doc22 §8.1）。总览与课表同属"工作"组，因此不再有无分组顶部项。 */
+const STAFF_NAV_KEYS: readonly DashboardRouteKey[] = [
+  "home",
+  "schedule",
+  "followups",
+  "students",
+  "activities",
+  "classes",
+  "courses",
+  "courseware",
+  "coursewareReview",
+  "coursewareAssets",
+  "finance",
+  "staff",
+  "accessControl",
+  "registrationSettings",
+  "systemHealth",
+  "dataMaintenance",
 ];
 
-export const PARENT_NAV_ITEMS: readonly SchoolNavItem[] = [
-  HOME_NAV_ITEM,
-  { href: "/dashboard/children", labelKey: "children" },
-  { href: "/dashboard/schedule", labelKey: "schedule" },
-  { href: "/dashboard/finance", labelKey: "finance" },
+export const SCHOOL_NAV_ITEMS: readonly SchoolNavItem[] = STAFF_NAV_KEYS.map((key) => navItem(key));
+
+/** 侧边栏导航项：按权限过滤后的员工功能入口（总览已在 STAFF_NAV_KEYS 内）。 */
+export function filterSchoolNav(perms: ReadonlySet<PermissionKey>): SchoolNavItem[] {
+  return SCHOOL_NAV_ITEMS.filter((item) => {
+    if (item.requiredPerm && !perms.has(item.requiredPerm)) return false;
+    if (item.requiredAnyPerm && !item.requiredAnyPerm.some((key) => perms.has(key))) return false;
+    return true;
+  });
+}
+
+/** 学生端去财务（P4C-1 §4.4）：家长管钱，学生只关心课/作业/成绩。 */
+export const STUDENT_NAV_ITEMS: readonly SchoolNavItem[] = (["home", "assignments", "schedule"] as const).map((key) =>
+  navItem(key, { withGroup: false }),
+);
+
+export const PARENT_NAV_ITEMS: readonly SchoolNavItem[] = (["home", "children", "schedule", "finance"] as const).map(
+  (key) => navItem(key, { withGroup: false }),
+);
+
+/**
+ * 最长路径优先（doc22 §9）。
+ *
+ * 前缀匹配会让 `/dashboard/courseware/review` 同时点亮"课件工作台"和"课件审阅"。
+ * 伪父子（staff/roles、operations/testdata）在本轮已按 §6 拆平，但 courseware 下的
+ * review 与 lectures/[lectureId] 是**真实**父子结构，仍需要这条规则：
+ * 找出所有可匹配项，只高亮路径最长（最具体）的那一个。
+ *
+ * 桌面与移动端共用同一结果——两端各算一次是双重高亮的另一个来源。
+ *
+ * 对象详情归属其集合：`/dashboard/sessions/[sessionId]` 是顶层 canonical 对象路由、
+ * 没有自己的侧栏项，把高亮落回创建它的班级入口，避免整条侧栏全灭。
+ * （`/dashboard/courseware/lectures/[lectureId]` 不需要这条——它本身就在 courseware 前缀下。）
+ */
+const OBJECT_ROUTE_FALLBACKS: readonly { prefix: string; navHref: string }[] = [
+  { prefix: "/dashboard/sessions/", navHref: "/dashboard/classes" },
 ];
+
+export function resolveActiveNavHref(pathname: string, nav: readonly SchoolNavItem[]): string | null {
+  let best: string | null = null;
+  for (const item of nav) {
+    // 总览只精确匹配，否则它会吃掉每一条 /dashboard/* 路径。
+    const matched = item.href === "/dashboard"
+      ? pathname === "/dashboard"
+      : pathname === item.href || pathname.startsWith(`${item.href}/`);
+    if (!matched) continue;
+    if (best === null || item.href.length > best.length) best = item.href;
+  }
+  if (best) return best;
+
+  const fallback = OBJECT_ROUTE_FALLBACKS.find((entry) => pathname.startsWith(entry.prefix));
+  if (!fallback) return null;
+  return nav.some((item) => item.href === fallback.navHref) ? fallback.navHref : null;
+}

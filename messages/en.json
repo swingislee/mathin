@@ -734,9 +734,11 @@
       "assignments": "Assignments",
       "activities": "Activities",
       "operations": "Runtime & errors",
+      "group_work": "Work",
       "group_studentService": "Student Services",
       "group_teachingOps": "Teaching Operations",
-      "group_curriculum": "Curriculum R&D",
+      "group_courseware": "Courseware",
+      "group_finance": "Finance",
       "group_org": "Organization",
       "group_system": "System"
     },

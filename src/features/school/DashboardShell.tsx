@@ -1,6 +1,6 @@
 "use client";
 
-import { Baby, BookOpen, CalendarDays, ClipboardList, Crop, FolderOpen, KeyRound, LayoutDashboard, PanelLeftOpen, PhoneForwarded, Presentation, School, ShieldAlert, ShieldCheck, Users, UserCog, Wallet } from "lucide-react";
+import { Baby, BookOpen, CalendarDays, ClipboardList, Crop, DatabaseZap, FolderOpen, KeyRound, LayoutDashboard, PanelLeftOpen, PhoneForwarded, Presentation, School, ShieldAlert, ShieldCheck, Sparkles, Users, UserCog, Wallet } from "lucide-react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { Fragment, useState } from "react";
@@ -11,7 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Link, usePathname } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
-import type { SchoolNavItem } from "./nav";
+import { resolveActiveNavHref, type SchoolNavItem } from "./nav";
 
 const ICONS: Record<string, ComponentType<{ size?: number; strokeWidth?: number }>> = {
   home: LayoutDashboard,
@@ -22,6 +22,7 @@ const ICONS: Record<string, ComponentType<{ size?: number; strokeWidth?: number 
   adaptReview: Crop,
   sharedAssets: FolderOpen,
   classes: School,
+  activities: Sparkles,
   schedule: CalendarDays,
   finance: Wallet,
   staff: UserCog,
@@ -30,12 +31,8 @@ const ICONS: Record<string, ComponentType<{ size?: number; strokeWidth?: number 
   children: Baby,
   assignments: ClipboardList,
   operations: ShieldAlert,
+  testdata: DatabaseZap,
 };
-
-function isActive(pathname: string, href: string): boolean {
-  if (href === "/dashboard") return pathname === "/dashboard";
-  return pathname === href || pathname.startsWith(`${href}/`);
-}
 
 /**
  * 课件审阅/编辑工作区、讲次工作区和课表需要独立的桌面端面板布局（内部单一滚动区，
@@ -63,11 +60,13 @@ function withGroupHeaders(nav: readonly SchoolNavItem[]): Array<{ item: SchoolNa
 
 function NavList({ nav, pathname, onNavigate }: { nav: readonly SchoolNavItem[]; pathname: string; onNavigate?: () => void }) {
   const navT = useTranslations("school.nav");
+  // 桌面与移动端共用同一个 active 结果（doc22 §9）：两端各算一次曾经是双重高亮的来源之一。
+  const activeHref = resolveActiveNavHref(pathname, nav);
   return (
     <nav className="flex flex-col gap-0.5 px-3 pb-4">
       {withGroupHeaders(nav).map(({ item, showGroupHeader }) => {
         const Icon = ICONS[item.labelKey] ?? LayoutDashboard;
-        const active = isActive(pathname, item.href);
+        const active = item.href === activeHref;
         return (
           <Fragment key={item.href}>
             {showGroupHeader ? (
