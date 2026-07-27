@@ -2,5 +2,8 @@ export { ObjectBar, type ObjectContextItem } from "./ObjectBar";
 export { ObjectContextSwitcher } from "./ObjectContextSwitcher";
 export { ObjectTabs, type ObjectTab } from "./ObjectTabs";
 export { ObjectWorkspace } from "./ObjectWorkspace";
+export { StageNavigation, type WorkspaceStage } from "./StageNavigation";
 export { WorkspaceMain } from "./WorkspaceMain";
+export { WorkspaceRail } from "./WorkspaceRail";
+export { WorkspaceSplitShell } from "./WorkspaceSplitShell";
 export { resolveReturnTarget, withReturnTo } from "./return-target";

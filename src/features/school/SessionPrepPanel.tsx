@@ -20,37 +20,26 @@ export async function SessionPrepPanel({ detail }: { detail: SessionWorkspaceDet
     : detail.prepStatus === "in_progress" ? t("prepStatusInProgress")
     : t("prepStatusNotStarted");
 
+  // 摘要搬去 Rail 之后，课前这一段在"已下课且无讲次"这类情形下可能什么都不剩。
+  // panel 的主区不允许出现空白（§22）——右边 Rail 满满一栏、左边一片空白最难判断
+  // 到底是没数据还是没加载出来。
+  const hasContent = Boolean(detail.lectureObjectives) || detail.pendingLeaveRequests.length > 0 || Boolean(detail.lectureId);
+
   return (
     <div className="flex flex-col gap-4 px-1">
-      <section className="grid gap-3 rounded-2xl border border-line bg-card p-4 text-sm sm:grid-cols-2">
-        <div className="flex justify-between gap-3 sm:col-span-2">
-          <dt className="text-muted">{t("scheduledAt")}</dt>
-          <dd className="text-ink">
-            {detail.scheduledAt ? new Date(detail.scheduledAt).toLocaleString() : tc("notApplicable")}
-            {detail.durationMin ? ` · ${t("durationMin", { count: detail.durationMin })}` : ""}
-          </dd>
-        </div>
-        <div className="flex justify-between gap-3">
-          <dt className="text-muted">{t("primaryTeacher")}</dt>
-          <dd className="text-ink">{detail.primaryTeacherName ?? tc("notApplicable")}</dd>
-        </div>
-        {detail.teacherOverrideName && (
-          <div className="flex justify-between gap-3">
-            <dt className="text-muted">{tc("substitute")}</dt>
-            <dd className="text-ink">{detail.teacherOverrideName}</dd>
-          </div>
-        )}
-        <div className="flex justify-between gap-3">
-          <dt className="text-muted">{t("rosterCount")}</dt>
-          <dd className="text-ink">{tc("rosterCount", { count: detail.rosterCount })}</dd>
-        </div>
-        {detail.lectureObjectives && (
-          <div className="flex justify-between gap-3 sm:col-span-2">
-            <dt className="shrink-0 text-muted">{t("lectureObjectives")}</dt>
-            <dd className="text-ink">{detail.lectureObjectives}</dd>
-          </div>
-        )}
-      </section>
+      {!hasContent && <p className="rounded-2xl border border-line bg-card p-4 text-sm text-muted">{t("stageEmpty")}</p>}
+      {/*
+        doc23 §10：时间 / 主讲 / 代课 / 人数原来在这里再说一遍，现在归 WorkspaceRail
+        的课次摘要——它们是做课前工作时要一直看得见的上下文，不该只在"课前"这一段出现，
+        更不该在同一屏出现两次（§15 禁止新旧并存）。这里只留讲次目标：它属于备课本身。
+        顺带修掉 <dt>/<dd> 直接挂在 <section> 上的无效嵌套。
+      */}
+      {detail.lectureObjectives && (
+        <dl className="rounded-2xl border border-line bg-card p-4 text-sm">
+          <dt className="text-xs text-muted">{t("lectureObjectives")}</dt>
+          <dd className="mt-1.5 leading-6 text-ink">{detail.lectureObjectives}</dd>
+        </dl>
+      )}
 
       {detail.pendingLeaveRequests.length > 0 && (
         <section className="rounded-2xl border border-line bg-card p-4 text-sm">

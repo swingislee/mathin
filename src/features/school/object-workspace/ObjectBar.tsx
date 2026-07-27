@@ -66,18 +66,18 @@ export function ObjectBar({
         {backHref ? <DashboardBackLink href={backHref} label={backLabel ?? ""} /> : null}
 
         {/*
-          窄容器下操作组整行下沉（`w-full` 强制换行，不是 flex-wrap 碰运气）。
-          不这么做的话，390px 上"左上菜单安全区 64 + 右上悬浮控件安全区 128"已经吃掉一半宽度，
-          剩下的再让给一个"用此版本建班"，标题就会被 truncate 成零宽——对象页最不能丢的
-          恰恰是"我在处理什么"。
+          窄容器下标题独占第一行（`w-full` 强制换行，不是 flex-wrap 碰运气），
+          状态与操作落到第二行。390px 上"左上菜单安全区 64 + 右上悬浮控件安全区 128"
+          已经吃掉一半宽度，再让给一个状态徽标和一个"用此版本建班"，标题就会被
+          truncate 成"P…"——对象页最不能丢的恰恰是"我在处理什么"。
         */}
         <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
-          <h1 className="min-w-0 flex-1 truncate font-display text-lg leading-tight text-ink @2xl/chrome:flex-none @2xl/chrome:text-xl">
+          <h1 className="w-full min-w-0 truncate font-display text-lg leading-tight text-ink @2xl/chrome:w-auto @2xl/chrome:text-xl">
             {title}
           </h1>
           {status ? <div className="flex shrink-0 items-center gap-1.5">{status}</div> : null}
           {primaryAction || overflowSlot ? (
-            <div className="flex w-full shrink-0 items-center gap-2 @2xl/chrome:ml-auto @2xl/chrome:w-auto">
+            <div className="ml-auto flex shrink-0 items-center gap-2">
               {primaryAction}
               {overflowSlot}
             </div>

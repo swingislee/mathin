@@ -3,6 +3,7 @@ import "server-only";
 import { cache } from "react";
 import type { Json } from "@/lib/database.types";
 import { createClient } from "@/lib/supabase/server";
+import { withReturnTo } from "./object-workspace/return-target";
 import type { WorkItemRow } from "./stage/types";
 
 // ---------------------------------------------------------------------------
@@ -117,7 +118,8 @@ export function resolveWorkItemHref(item: WorkItemRow): string {
     case "classroom":
       return `/dashboard/classes/${item.primaryObjectId}`;
     case "session":
-      return `/dashboard/sessions/${item.primaryObjectId}`;
+      // doc23 §18：工作项都是从今日工作点开的，处理完应该回到那份清单继续下一条。
+      return withReturnTo(`/dashboard/sessions/${item.primaryObjectId}`, "/dashboard");
     case "student":
       return `/dashboard/students/${item.primaryObjectId}`;
     case "course_family":

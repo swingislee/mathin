@@ -16,6 +16,7 @@ import {
   voidSessionAction,
 } from "./actions/classes";
 import type { SessionRow } from "./classes";
+import { withReturnTo } from "./object-workspace/return-target";
 import { SessionChangeDialog } from "./SessionChangeDialog";
 import { SubstituteTeacherDialog } from "./SubstituteTeacherDialog";
 
@@ -96,7 +97,9 @@ export function SessionManagementDrawer({
                 {session.scheduledAt && <span>{new Date(session.scheduledAt).toLocaleString()}</span>}
                 {classroomName && <span>· {classroomName}</span>}
               </div>
-              <Link href={`/dashboard/sessions/${session.id}`} className="text-sm font-medium text-crater transition hover:underline">
+              {/* doc23 §18：抽屉可能开在班级详情，也可能开在课表。带上来源，
+                  课次工作区的返回才会回到刚才那一页，而不是永远回班级。 */}
+              <Link href={withReturnTo(`/dashboard/sessions/${session.id}`, closeHref)} className="text-sm font-medium text-crater transition hover:underline">
                 {t("openFullSession")}
               </Link>
             </SheetHeader>

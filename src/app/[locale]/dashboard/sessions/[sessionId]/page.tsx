@@ -2,22 +2,24 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
 import { getSessionWorkspaceDetail } from "@/features/school/classes";
-import { SessionWorkspaceBody, type SessionTab } from "@/features/school/SessionWorkspaceBody";
+import { resolveReturnTarget } from "@/features/school/object-workspace";
+import { parseSessionStage, SessionWorkspaceBody } from "@/features/school/SessionWorkspaceBody";
 import { requireDashboardEnvironment } from "@/lib/auth";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
- * P4I-14 canonical 课次工作区：课前/课堂/课后三段结构 + 完成备课冻结编排。
- * doc19 §14 的备课复制/更新 release/空白课堂降级/主动作算法均已接线；
- * 课后逐任务专用表单（点名网格/课评撰写/视频审阅）留给 P4I-15。
+ * canonical 课次工作区：课前/课堂/课后三段结构 + 完成备课冻结编排。
+ *
+ * doc 23 §10：`?tab=` 已硬切成 `?stage=`，不保留兼容——项目尚未首次部署，
+ * 留一层 alias 只会让"这三段是流程不是页签"这个结论在 URL 上继续说反话。
  */
 export default async function SessionWorkspacePage({
   params,
   searchParams,
 }: {
   params: Promise<{ locale: string; sessionId: string }>;
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ stage?: string; returnTo?: string | string[] }>;
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
@@ -37,16 +39,28 @@ async function SessionWorkspaceContent({
 }: {
   locale: string;
   params: Promise<{ locale: string; sessionId: string }>;
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ stage?: string; returnTo?: string | string[] }>;
 }) {
-  await requireDashboardEnvironment(locale, ["staff"]);
+  const { environment } = await requireDashboardEnvironment(locale, ["staff"]);
   const [{ sessionId }, rawSearchParams] = await Promise.all([params, searchParams]);
   if (!UUID_PATTERN.test(sessionId)) notFound();
 
   const detail = await getSessionWorkspaceDetail(sessionId);
   if (!detail) notFound();
 
-  const activeTab: SessionTab = rawSearchParams.tab === "live" ? "live" : rawSearchParams.tab === "post" ? "post" : "pre";
+  // §18：课次从班级详情、课表、今日工作三处进入，返回必须回到来的地方；
+  // returnTo 是用户可改的输入，所以过合同校验后才使用，无效时回 canonical 父页面。
+  const backHref = resolveReturnTarget({
+    returnTo: rawSearchParams.returnTo,
+    fallback: `/dashboard/classes/${detail.classroomId}`,
+    environment,
+  });
 
-  return <SessionWorkspaceBody detail={detail} activeTab={activeTab} />;
+  return (
+    <SessionWorkspaceBody
+      detail={detail}
+      stage={parseSessionStage(rawSearchParams.stage, detail.state)}
+      backHref={backHref}
+    />
+  );
 }
