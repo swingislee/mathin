@@ -104,7 +104,7 @@ function useNowMarker(days: Date[]) {
  * 周次切换和三个筛选都是本组件的客户端状态，只有住在这里才能进命令面板。
  * DashboardPage 是同步组件，Client Component 可以直接渲染（同 TileWorkspace）。
  *
- * 内部滚动保留：课表是 isPanelWorkspace 之一，日期表头 sticky 贴的是下面这个
+ * 内部滚动保留：课表在路由合同里是 shellMode: "panel"，日期表头 sticky 贴的是下面这个
  * ScrollArea 的视口。若改成随 main 一起滚，表头会贴到 chrome 背后被盖住。
  */
 export function ScheduleWeekView({

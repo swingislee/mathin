@@ -22,6 +22,19 @@ import type { UserEnvironment } from "@/lib/environment";
  * 员工/家庭/学习三套侧栏都从本文件派生，见 ./nav.ts。
  */
 
+/**
+ * 页面外壳模式（doc 23 §6）。
+ *
+ * `page`：普通 Dashboard 页面，`<main>` 是唯一滚动区，正文随之整体滚动。
+ * `panel`：专业工作区，`<main>` 不滚动，滚动责任下沉到工作区内部（主区 / Rail）。
+ *
+ * 放在路由合同里而不是 DashboardShell 里的原因和 §3 一致：外壳模式是**产品结论**
+ * （"这个对象是不是需要固定顶栏 + 内部滚动的工作台"），不是路径长相。原来 Shell 自己
+ * 按 segment 猜（`segments[1] === "sessions"`…），于是新增一个工作区就得同时改 Shell，
+ * 而 Shell 又完全看不到合同——两处各自演化正是素材详情一直漏在 panel 之外的原因。
+ */
+export type DashboardShellMode = "page" | "panel";
+
 /** 页面类型（§3.1）。 */
 export type DashboardRouteKind =
   /** 资源集合，可通过 Dialog 或页面创建。 */
@@ -73,6 +86,8 @@ export interface DashboardRoute {
   /** 动态路由模式，例如 `/dashboard/sessions/[sessionId]`。 */
   readonly hrefPattern?: string;
   readonly kind: DashboardRouteKind;
+  /** 外壳模式（doc 23 §6）；缺省为 `page`。 */
+  readonly shellMode?: DashboardShellMode;
   /** 允许进入该路由的使用环境（§10），不是岗位角色。 */
   readonly environments: readonly UserEnvironment[];
   /** 单一必需权限键。 */
@@ -140,6 +155,8 @@ export const DASHBOARD_ROUTES = {
   schedule: {
     href: "/dashboard/schedule",
     kind: "queue",
+    // 全高日历：周网格自己滚动（横向 + 纵向），日期表头 sticky 贴的是它而不是 <main>。
+    shellMode: "panel",
     environments: ALL_ENVIRONMENTS,
     // 课次创建属于班级上下文；课表只做跨班级/教师/课次的聚合时间视图（§5.3）。
     createSurface: "parent",
@@ -225,6 +242,7 @@ export const DASHBOARD_ROUTES = {
     // 课次从多个入口进入，需要稳定的顶层 canonical 详情 URL；但创建责任属于班级（§5.13）。
     hrefPattern: "/dashboard/sessions/[sessionId]",
     kind: "object",
+    shellMode: "panel",
     environments: STAFF_ONLY,
     createSurface: "parent",
     creationOwner: "classes",
@@ -279,6 +297,7 @@ export const DASHBOARD_ROUTES = {
     // 讲次在课程版本的教学计划中创建，没有 /courseware/lectures/new（§5.19）。
     hrefPattern: "/dashboard/courseware/lectures/[lectureId]",
     kind: "object",
+    shellMode: "panel",
     environments: STAFF_ONLY,
     permission: "course.view",
     createSurface: "parent",
@@ -391,6 +410,39 @@ export function routeHref(key: DashboardRouteKey): string {
   const route: DashboardRoute = DASHBOARD_ROUTES[key];
   if (!route.href) throw new Error(`DASHBOARD_ROUTES.${key} has no static href`);
   return route.href;
+}
+
+function segmentsOf(pathname: string): string[] {
+  return pathname.split("?")[0].split("#")[0].split("/").filter(Boolean);
+}
+
+/** 模式段与真实段是否匹配；`[param]` 吃掉任意一段非空内容。 */
+function patternMatches(pattern: string, segments: readonly string[]): boolean {
+  const patternSegments = segmentsOf(pattern);
+  if (patternSegments.length !== segments.length) return false;
+  return patternSegments.every((patternSegment, index) =>
+    patternSegment.startsWith("[") ? segments[index].length > 0 : patternSegment === segments[index],
+  );
+}
+
+/**
+ * 从合同解析外壳模式（doc 23 §6）。传入的是**已去掉 locale 前缀**的路径，
+ * 也就是 `@/i18n/navigation` 的 `usePathname()` 返回值。
+ *
+ * 只接受完全匹配，不做前缀继承：`/dashboard/courseware` 队列是普通页面，
+ * `/dashboard/courseware/lectures/[lectureId]` 才是 panel——按前缀继承会把
+ * 队列页一起拖进内部滚动。合同里没有的路径（尚未登记的子路径）一律回落 `page`，
+ * 这是安全的默认值：多一个滚动区只是不够好看，少一个会让内容彻底不可达。
+ */
+export function resolveDashboardShellMode(pathname: string): DashboardShellMode {
+  const segments = segmentsOf(pathname);
+  if (segments[0] !== "dashboard") return "page";
+  for (const route of Object.values(DASHBOARD_ROUTES) as DashboardRoute[]) {
+    const pattern = route.href ?? route.hrefPattern;
+    if (!pattern) continue;
+    if (patternMatches(pattern, segments)) return route.shellMode ?? "page";
+  }
+  return "page";
 }
 
 /**

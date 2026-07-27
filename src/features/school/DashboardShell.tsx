@@ -11,6 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Link, usePathname } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
+import { resolveDashboardShellMode } from "./dashboard-routes";
 import { resolveActiveNavHref, type SchoolNavItem } from "./nav";
 
 const ICONS: Record<string, ComponentType<{ size?: number; strokeWidth?: number }>> = {
@@ -33,21 +34,6 @@ const ICONS: Record<string, ComponentType<{ size?: number; strokeWidth?: number 
   operations: ShieldAlert,
   testdata: DatabaseZap,
 };
-
-/**
- * 课件审阅/编辑工作区、讲次工作区和课表需要独立的桌面端面板布局（内部单一滚动区，
- * 不与 <main> 争夺滚动），其余 Dashboard 页面统一使用全宽壳层。
- */
-function isPanelWorkspace(pathname: string): boolean {
-  const segments = pathname.split("/").filter(Boolean);
-  if (segments[0] !== "dashboard") return false;
-  // 讲次工作区（/dashboard/courseware/lectures/[lectureId]）是面板；同在 courseware
-  // 前缀下的 /courseware 队列和 /courseware/review 审阅队列都是普通页面。
-  if (segments[1] === "courseware" && segments[2] === "lectures" && segments.length >= 4) return true;
-  if (segments[1] === "sessions" && segments.length >= 3) return true;
-  if (segments[1] === "schedule") return true;
-  return false;
-}
 
 function withGroupHeaders(nav: readonly SchoolNavItem[]): Array<{ item: SchoolNavItem; showGroupHeader: boolean }> {
   const result: Array<{ item: SchoolNavItem; showGroupHeader: boolean }> = [];
@@ -101,7 +87,8 @@ export function DashboardShell({ nav, children }: { nav: readonly SchoolNavItem[
   const shellT = useTranslations("dashboard.shell");
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const workspace = isPanelWorkspace(pathname);
+  // doc 23 §6：外壳模式来自路由合同，Shell 不再自己认路径。
+  const workspace = resolveDashboardShellMode(pathname) === "panel";
 
   return (
     <div className="flex min-h-0 w-full flex-1 overflow-hidden">
