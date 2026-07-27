@@ -92,20 +92,28 @@ export function DashboardShell({ nav, children }: { nav: readonly SchoolNavItem[
 
   return (
     <div className="flex min-h-0 w-full flex-1 overflow-hidden">
-      <aside className="hidden w-60 shrink-0 border-r border-line bg-card/35 lg:flex lg:flex-col">
-        <Link href="/" className="shrink-0 px-6 pb-5 pt-6 font-display text-3xl tracking-tight text-ink">
+      <aside className="relative hidden w-60 shrink-0 overflow-hidden border-r border-line bg-card/35 lg:flex lg:flex-col">
+        <Link
+          href="/"
+          className="relative z-10 shrink-0 px-6 pb-5 pt-6 font-display text-3xl tracking-tight text-ink"
+        >
           Mathin
         </Link>
-        <ScrollArea className="min-h-0 flex-1">
+
+        <ScrollArea className="relative z-10 min-h-0 flex-1">
           <NavList nav={nav} pathname={pathname} />
         </ScrollArea>
-        <div className="relative h-36 shrink-0 overflow-hidden px-4 pb-3" aria-hidden>
+
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-52"
+          aria-hidden
+        >
           <Image
             src="/illustrations/dashboard-observatory.png"
             alt=""
             fill
             sizes="240px"
-            className="object-cover object-center opacity-70 mix-blend-multiply dark:opacity-35 dark:mix-blend-screen"
+            className="object-cover object-bottom opacity-25 mix-blend-multiply dark:opacity-20 dark:mix-blend-screen"
           />
         </div>
       </aside>
