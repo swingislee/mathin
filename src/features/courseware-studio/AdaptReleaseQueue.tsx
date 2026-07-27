@@ -9,6 +9,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Link, useRouter } from "@/i18n/navigation";
+import { withReturnTo } from "@/features/school/object-workspace/return-target";
 import { cn } from "@/lib/utils";
 import { publishAdaptReleasesAction } from "./adapt-release-actions";
 import type { AdaptReleaseQueue as AdaptReleaseQueueData, AdaptReleaseScope } from "./adapt-review-data";
@@ -116,7 +117,7 @@ export function AdaptReleaseQueue({
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Link href={`/dashboard/courseware/lectures/${item.lectureId}?track=adapted-4x3`} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>
+            <Link href={withReturnTo(`/dashboard/courseware/lectures/${item.lectureId}?track=adapted-4x3`, "/dashboard/courseware/review")} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>
               <ExternalLink className="size-4" />{t("adaptOpenLecture")}
             </Link>
             {canPublish && isPublishable(item) && <Button type="button" size="sm" disabled={publishRun.pending} onClick={() => setPublishIds([item.lectureId])}>

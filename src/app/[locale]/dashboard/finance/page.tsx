@@ -19,7 +19,7 @@ import { FilterBar, FilterBarReset, FilterBarSubmit, FilterSearchInput, FilterSe
 import type { PermissionKey } from "@/features/school/permissions";
 import { RefundQueuePanel } from "@/features/school/RefundQueuePanel";
 import { ScholarshipsPanel } from "@/features/school/ScholarshipsPanel";
-import { StatusStrip, type StatusStripItem } from "@/features/school/stage/StatusStrip";
+import { StatusStrip, type StatusStripItem } from "@/features/school/dashboard-page";
 import { Link } from "@/i18n/navigation";
 import { getMyPerms, requireDashboardEnvironment } from "@/lib/auth";
 

@@ -7,3 +7,4 @@ export { WorkspaceMain } from "./WorkspaceMain";
 export { WorkspaceRail } from "./WorkspaceRail";
 export { WorkspaceSplitShell } from "./WorkspaceSplitShell";
 export { resolveReturnTarget, withReturnTo } from "./return-target";
+export { TrackSwitcher, type WorkspaceTrack } from "./TrackSwitcher";

@@ -1210,7 +1210,8 @@
       "emergencyPublishSuccess": "Emergency published.",
       "reasonRequired": "Please enter a reason for the emergency publish.",
       "emergencyPublishDisabled": "Emergency publish is disabled by the current policy.",
-      "tabsLabel": "Courseware track"
+      "trackSwitcherLabel": "Courseware track",
+      "usageRailTitle": "Used by"
     },
     "followups": {
       "title": "Follow-up board",

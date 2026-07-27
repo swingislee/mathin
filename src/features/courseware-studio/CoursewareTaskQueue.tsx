@@ -11,6 +11,7 @@ import {
   DashboardCommandTabs,
 } from "@/features/school/dashboard-page";
 import { FilterBar, FilterBarSubmit, FilterSearchInput } from "@/features/school/FilterBar";
+import { withReturnTo } from "@/features/school/object-workspace/return-target";
 import {
   COURSEWARE_TASK_TABS,
   loadCoursewareTaskQueue,
@@ -37,7 +38,8 @@ export function hrefFor(tab: CoursewareTaskTab, query: string) {
 function rowHref(item: CoursewareTaskItem, baseHref: string) {
   return item.releaseNo !== null
     ? `${baseHref}&lecture=${item.lectureId}&track=${item.track}`
-    : `/dashboard/courseware/lectures/${item.lectureId}?track=${item.track}`;
+    // doc23 §18：从研发任务队列进入讲次，改完要能回到队列继续下一条。
+    : withReturnTo(`/dashboard/courseware/lectures/${item.lectureId}?track=${item.track}`, baseHref);
 }
 
 async function taskTabLabels() {

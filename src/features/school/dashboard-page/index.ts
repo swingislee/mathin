@@ -27,3 +27,4 @@ export type {
   DashboardPageDensity,
   DashboardPageProps,
 } from "./dashboard-page.types";
+export { StatusStrip, type StatusStripItem } from "./StatusStrip";

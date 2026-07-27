@@ -2,7 +2,7 @@ import { getTranslations } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
 import { CoursewareTrackSettings } from "./CoursewareTrackSettings";
 import type { TeachingReadinessRow } from "./classes";
-import { StatusStrip } from "./stage/StatusStrip";
+import { StatusStrip } from "./dashboard-page";
 import { hasTeachingReadinessRisk } from "./teaching-operations/readiness";
 
 function workflowLabelKey(row: TeachingReadinessRow): string {

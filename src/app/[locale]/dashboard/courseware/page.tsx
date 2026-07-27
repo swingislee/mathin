@@ -11,7 +11,7 @@ import {
 import { LecturePreviewDialog } from "@/features/school/curriculum/LecturePreviewDialog";
 import { LecturePreviewPanel } from "@/features/school/curriculum/LecturePreviewPanel";
 import { DashboardCommandPanel, DashboardPage } from "@/features/school/dashboard-page";
-import { StatusStrip, type StatusStripItem } from "@/features/school/stage/StatusStrip";
+import { StatusStrip, type StatusStripItem } from "@/features/school/dashboard-page";
 import { getMyPerms, requireAnyPerm } from "@/lib/auth";
 
 async function safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {

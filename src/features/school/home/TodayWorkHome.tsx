@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { getTranslations } from "next-intl/server";
 import { ObjectBar, ObjectWorkspace } from "@/features/school/object-workspace";
-import { StatusStrip, type StatusStripItem } from "@/features/school/stage/StatusStrip";
+import { StatusStrip, type StatusStripItem } from "@/features/school/dashboard-page";
 import { WorkItemActions } from "@/features/school/stage/WorkItemActions";
 import { WorkItemGroup } from "@/features/school/stage/WorkItemGroup";
 import { WorkItemList } from "@/features/school/stage/WorkItemList";

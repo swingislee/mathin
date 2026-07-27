@@ -1210,7 +1210,8 @@
       "emergencyPublishSuccess": "已紧急发布。",
       "reasonRequired": "请填写紧急发布原因。",
       "emergencyPublishDisabled": "当前政策未开启紧急发布。",
-      "tabsLabel": "课件轨道切换"
+      "trackSwitcherLabel": "课件轨道",
+      "usageRailTitle": "使用情况"
     },
     "followups": {
       "title": "跟进工作台",

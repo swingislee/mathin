@@ -2,7 +2,7 @@ import { getFormatter, getTranslations, setRequestLocale } from "next-intl/serve
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getRosterMismatchCount } from "@/features/school/dashboard";
 import { DashboardPage } from "@/features/school/dashboard-page";
-import { StatusStrip, type StatusStripItem } from "@/features/school/stage/StatusStrip";
+import { StatusStrip, type StatusStripItem } from "@/features/school/dashboard-page";
 import { getMyPerms, requirePerm } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 

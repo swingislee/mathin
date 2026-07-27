@@ -1,10 +1,10 @@
 import { Suspense } from "react";
-import { getTranslations, setRequestLocale } from "next-intl/server";
-import { DecisionRail } from "@/features/school/stage/DecisionRail";
+import { setRequestLocale } from "next-intl/server";
 import { DecisionRailContent } from "@/features/school/curriculum/DecisionRailContent";
 import { LectureWorkspaceBody } from "@/features/school/curriculum/LectureWorkspaceBody";
-import { LectureWorkspaceShell } from "@/features/school/curriculum/LectureWorkspaceShell";
 import { loadLectureWorkspacePageData } from "@/features/school/curriculum/load-lecture-workspace-page";
+import { resolveReturnTarget } from "@/features/school/object-workspace";
+import { requireDashboardEnvironment } from "@/lib/auth";
 
 // doc22 §5.19：原 /dashboard/curriculum/lectures/[lectureId] 的 curriculum 是代码领域名
 // 泄漏——系统里根本没有 /dashboard/curriculum 首页，那是一个没有父页面的虚假中间层。
@@ -33,30 +33,34 @@ async function LectureWorkspaceContent({
   params: Promise<{ locale: string; lectureId: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const [{ lectureId }, rawSearchParams, t] = await Promise.all([
+  const [{ lectureId }, rawSearchParams, { environment }] = await Promise.all([
     params,
     searchParams,
-    getTranslations("school.lecture"),
+    requireDashboardEnvironment(locale, ["staff"]),
   ]);
   const { detail, track, staffOptions, capabilitiesByTrack, preview, canOpenCoursewareWorkbench, canAssign } =
     await loadLectureWorkspacePageData(locale, lectureId, rawSearchParams);
 
-  const variantHref = `/dashboard/courses/${detail.family.id}?variant=${detail.variant.id}`;
   const baseHref = `/dashboard/courseware/lectures/${detail.lecture.id}`;
   const trackState = detail.tracks.find((row) => row.track === track) ?? detail.tracks[0];
 
-  return <LectureWorkspaceShell
-    body={<LectureWorkspaceBody
-      detail={detail}
-      track={track}
-      baseHref={baseHref}
-      variantHref={variantHref}
-      canOpenCoursewareWorkbench={canOpenCoursewareWorkbench}
-      canAssign={canAssign}
-      staffOptions={staffOptions}
-      preview={preview}
-    />}
-    decisionRail={<DecisionRail title={t("decisionRailTitle")}>
+  // doc23 §18：讲次可以从课程版本的教学计划进入，也可以从研发任务队列或适配校对队列进入。
+  const backHref = resolveReturnTarget({
+    returnTo: rawSearchParams.returnTo,
+    fallback: `/dashboard/courses/${detail.family.id}?variant=${detail.variant.id}`,
+    environment,
+  });
+
+  return <LectureWorkspaceBody
+    detail={detail}
+    track={track}
+    baseHref={baseHref}
+    backHref={backHref}
+    canOpenCoursewareWorkbench={canOpenCoursewareWorkbench}
+    canAssign={canAssign}
+    staffOptions={staffOptions}
+    preview={preview}
+    decisionContent={
       <DecisionRailContent
         lectureId={detail.lecture.id}
         trackState={trackState}
@@ -64,6 +68,6 @@ async function LectureWorkspaceContent({
         emergencyPublishEnabled={detail.policy.emergencyPublishEnabled}
         history={detail.history}
       />
-    </DecisionRail>}
+    }
   />;
 }
