@@ -2,6 +2,8 @@
 
 > **完成状态（2026-07-12）**：P4D-0～6 施工完成，迁移已部署到自托管开发库，数据库事务审计与真实视频 Storage/API 角色回归通过；逐模块证据见 `14-p4d-completion-audit.md`。
 
+> **与 doc 22 的关系（2026-07-27 追记）**：本文出现的 Dashboard URL 有一部分已被 `22-dashboard-route-information-architecture-refactor.md` 改名或删除（`staff/roles`→`access-control`、`registration`→`registration-settings`、`operations`→`system-health`、`operations/testdata`→`data-maintenance`、`adapt-review`→`courseware/review`、`curriculum/lectures/[id]`→`courseware/lectures/[lectureId]`、`shared-assets`→`courseware-assets`；`/dashboard/work` 与 `/dashboard/videos` 已删除）。**旧地址一律 404，不留重定向**。本文其余结论不受影响；路由的当前真相以 `src/features/school/dashboard-routes.ts` 的路由合同为准。
+>
 > 本文是 P4D 的权威执行计划，承接 `11-p4c-dashboard-refit.md`（P4C 精装修）：**P4C 全部完成后再开工 P4D**。前置阅读：`10-school-backend.md`（数据模型/RBAC 底座）、`11-…md` §0（角色需求画像，尤其 §0.10 生命周期地图——本文就是它的施工层）。执行纪律同前：遇到本文没写的决策停下来问用户；每条任务一次提交；提交前 lint/typecheck/build（先停 dev server）。
 >
 > 源头（用户 2026-07-10 二轮拍板）：一、完整学生生命周期 0 获客 → 1 线索 → 2 到校活动 → 3 持续跟进 → 4 正式课（每课产出多维记录+课后视频）→ 6 续费，每阶段可流失、流失可回流；二、各数据板块普遍缺少「新建/修改/删除/回收」与批量入口，权限需随之规整。

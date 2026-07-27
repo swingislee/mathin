@@ -67,3 +67,5 @@ Mathin 是一个中英双语的数学探索网站，以《小王子》的视觉�
 - `09-p5-story.md` — P5 沉浸式故事游戏执行计划（暂缓）
 - `10-school-backend.md` — P4B 学校端后台执行计划（当前阶段）：角色仪表盘 + 课程/学生/排课/考勤数据底座
 - `20-ui-layout-refit.md` — 2026-07-25 页面 UI 布局重构施工基线：边缘控制、抽屉三区、三类页面坐标系、五主题场景、滚动与字体
+- `21-dashboard-unified-canvas-command-panel-refactor.md` — Dashboard 唯一内容坐标系与页面命令面板（`--dashboard-gutter`、`DashboardPage`）
+- `22-dashboard-route-information-architecture-refactor.md` — Dashboard 路由信息架构与资源操作模型：**新增/移动 dashboard 路由前必读**，路由合同在 `src/features/school/dashboard-routes.ts`

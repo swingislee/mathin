@@ -172,10 +172,10 @@ P4H 试用后发现问题不在功能而在信息架构：课程/课件/班级/�
 5. 学辅与家庭摘要底座：主责学辅、`class_support_task_recipients`、`session_family_briefs`。
 6. 统一工作投影：`work_item_user_state`、`list_my_work_items`、旧 StaffHome 数量对账。
 7. 页面原语与 StageViewport：`ObjectBar`/`ObjectWorkspace`/`ObjectOverlay`/`DecisionRail` 等。
-8. 今日工作只读试用：`/dashboard/work`，不删旧磁贴首页（**停止点**：需真实账号试用通过）。
+8. 今日工作只读试用：`/dashboard/work`（该临时路由已由 doc 22 删除，今日工作的 canonical 地址是 `/dashboard`），不删旧磁贴首页（**停止点**：需真实账号试用通过）。
 9. 课程研发导航与产品库：新导航分组、研发任务、课程产品库。
 10. 课程产品工作区：产品总览、版本矩阵、教学计划编辑模式。
-11. 讲次工作区：canonical `/dashboard/curriculum/lectures/[id]`、拦截路由覆盖层。
+11. 讲次工作区：canonical `/dashboard/curriculum/lectures/[id]`（doc 22 已改名为 `/dashboard/courseware/lectures/[lectureId]`）、拦截路由覆盖层。
 12. Studio 壳层：`/studio/courseware/[lectureId]` 单工具栏三栏。
 13. 班级工作区：下一课/需要处理/未来/已结束/已取消固定分组。
 14. 课次工作区与备课冻结：canonical `/dashboard/sessions/[id]`、课前/课堂/课后。
@@ -209,6 +209,19 @@ P4H 试用后发现问题不在功能而在信息架构：课程/课件/班级/�
 4. `SchoolPageHeader` 与全局 `[data-dashboard-content] > .mx-auto` 兜底规则退休；新增 `pnpm doc21:audit` 与一条 ESLint 规则防回退。
 
 验收：9 页 × 6 视口边线完全一致、悬浮控件安全区随控件增减自动跟随、工作区页面无回归；`lint`/`typecheck`/`build`/`messages:check` 全过。剩余人工项：固定视口截图的亮/暗逐页视觉签收。
+
+## UI-L3 Dashboard 路由信息架构与资源操作模型重构（2026-07-27 完成）
+
+权威施工记录见 `22-dashboard-route-information-architecture-refactor.md`（含 §18 施工记录与实际偏差）。起因是侧栏双重高亮，但根因不是 active 算法而是 URL 表达了错误的父子关系：岗位权限不是员工的子页面，数据维护也不是错误日志的子页面。项目尚未首次部署，因此本轮是一次性 hard cut——旧 URL 不留重定向、不留 alias、直接 404。
+
+1. 新增 `src/features/school/dashboard-routes.ts` 路由合同（页面类型 × 使用环境 × 权限 × 创建方式 × 导航归属），三套侧栏全部由它派生；它的职责是**阻止后续 agent 靠目录对称性推断产品结构**——`createSurface: "none"` 是主动结论而不是"还没做"。
+2. 八条旧 URL 迁移：`staff/roles`→`access-control`、`registration`→`registration-settings`、`operations`→`system-health`、`operations/testdata`→`data-maintenance`、`adapt-review`→`courseware/review`、`curriculum/lectures/[id]`→`courseware/lectures/[lectureId]`、`shared-assets`→`courseware-assets`。
+3. 动态参数语义化（`[studentId]`/`[classId]`/`[courseFamilyId]`），删除 Course Variant 旧 ID 兼容；删除 `/dashboard/work`（P4I-17 后只是 redirect 空壳）与 `/dashboard/videos`（无入口的孤儿页，能力已并入课次课后 tab）。
+4. 新增本轮唯一的创建路由 `/dashboard/courses/new` + `create_course_family` RPC，兑现从 P4B 起就零消费方的 `course.product.create`；顺带修 `list_course_families` 让零版本产品在库里可见。
+5. `requireDashboardEnvironment` 统一环境守卫（环境闸门先于权限键），finance 按 activeEnvironment 而非 profiles.role 分派；导航 active 改最长匹配、桌面与移动共用一个结果。
+6. 新增 `pnpm doc22:audit` 防回流（旧路由 / `[id]` 目录 / 禁止的创建路由 / **合同与真实路由树一一对应**），并把一直未进 CI 的 `doc21:audit` 与 `p4i1:boundary-audit` 接进 workflow。
+
+验收：`lint`/`typecheck`/`build`/`messages:check`/`db:types:check` 与四条 audit 全过；`create_course_family` 的权限门禁与零版本产品可见性已在开发库直接断言。剩余人工项：§13.2～13.5 的逐路由访问、旧 URL 404 与全角色权限/环境矩阵回归。
 
 ## 长期暂缓（明确不做，除非用户重启议题）
 

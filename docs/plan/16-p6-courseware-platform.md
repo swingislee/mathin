@@ -4,6 +4,8 @@
 >
 > **与 P4I 的关系（2026-07-22 追记）**：本文的 CAS/H5/DocStage/revision/release 数据模型与迁移方法论不受 P4I 影响，`19-p4i-final.md` 明确保留（doc19 §21 不变量 9）。本文如涉及"教研中台"入口的具体导航路径/页面归属描述，以 doc 19 §4/§9/§20 的课程研发分组（研发任务/课程产品/适配校对/公共资源 + 讲次工作区 canonical URL）为准。
 >
+> **与 doc 22 的关系（2026-07-27 追记）**：本文出现的 Dashboard URL 有一部分已被 `22-dashboard-route-information-architecture-refactor.md` 改名或删除（`staff/roles`→`access-control`、`registration`→`registration-settings`、`operations`→`system-health`、`operations/testdata`→`data-maintenance`、`adapt-review`→`courseware/review`、`curriculum/lectures/[id]`→`courseware/lectures/[lectureId]`、`shared-assets`→`courseware-assets`；`/dashboard/work` 与 `/dashboard/videos` 已删除）。**旧地址一律 404，不留重定向**。本文其余结论不受影响；路由的当前真相以 `src/features/school/dashboard-routes.ts` 的路由合同为准。
+>
 > **源项目**：`D:\code\2026\2026-07_mofaxiao_courseware`（下称「镜像项目」）——一套已基本竣工的课件资源镜像系统，其权威约束见该仓库 `AGENTS.md` 与 `README.md`。**凡在镜像项目内执行的任务，必须遵守镜像项目自己的工程约束**（原始输入只读、CAS 不可变、集合对账、测试纪律），本文不复述、不覆盖。
 >
 > P6 三大目标（用户 2026-07-17 提出）：

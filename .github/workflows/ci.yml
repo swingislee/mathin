@@ -36,6 +36,12 @@ jobs:
         run: pnpm db:types:check
       - name: 双语文案键全等
         run: pnpm messages:check
+      - name: Dashboard 内容坐标系防回退（doc21）
+        run: pnpm doc21:audit
+      - name: Dashboard 路由信息架构防回流（doc22）
+        run: pnpm doc22:audit
+      - name: 使用环境数据边界（P4I-1）
+        run: pnpm p4i1:boundary-audit
       - name: 离线补发回放测试
         run: pnpm p4e:offline-test
 

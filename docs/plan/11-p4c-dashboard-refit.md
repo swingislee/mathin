@@ -9,6 +9,8 @@
 >
 > **§0 是全文的第一优先级**（用户 2026-07-10 追加拍板）：先从"这个人每天进后台要干什么"推需求，再由需求定面板，数据可扩充、需求必须被满足。§5/§6 的磁贴清单与页面规格全部以 §0 为依据；两者冲突时以 §0 为准。
 >
+> **与 doc 22 的关系（2026-07-27 追记）**：本文出现的 Dashboard URL 有一部分已被 `22-dashboard-route-information-architecture-refactor.md` 改名或删除（`staff/roles`→`access-control`、`registration`→`registration-settings`、`operations`→`system-health`、`operations/testdata`→`data-maintenance`、`adapt-review`→`courseware/review`、`curriculum/lectures/[id]`→`courseware/lectures/[lectureId]`、`shared-assets`→`courseware-assets`；`/dashboard/work` 与 `/dashboard/videos` 已删除）。**旧地址一律 404，不留重定向**。本文其余结论不受影响；路由的当前真相以 `src/features/school/dashboard-routes.ts` 的路由合同为准。
+>
 > **与 P4I 的关系（2026-07-22 追记）**：本文 §5/§6 引入的 staff 可拖拽磁贴工作台（StaffHome）已被 `19-p4i-final.md`（P4I-17/P4I-19）retired——staff 默认首页改为"今日工作"统一工作投影（doc 19 §6），不再有可自定义磁贴池。§0 的角色需求画像本身（"这个人每天进后台要干什么"）作为方法论仍然成立，也正是 P4I 今日工作沿用的出发点；学生/家长的磁贴工作台（§5.6 起）不受影响，继续保留。权限矫正（§7/§4）与缺页补齐部分已并入后续版本，不再是本文单独维护。
 
 > 方法：对每个身份回答四问——日常工作是什么？打开工作台**第一眼**必须看到什么？每天要在工作台上**操作**什么？现有权限画像是否与身份匹配？每节末尾给「需求 → 面板去处」审计表：✅=P4B 已有、🔧=本期建（标任务号）、🌱=数据待扩充（只建磁贴键位与空态或暂不建，不算本期验收）。
