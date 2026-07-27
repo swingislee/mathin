@@ -38,9 +38,11 @@ export function ObjectBar({
   className?: string;
 }) {
   return (
-    <header className={cn("sticky top-0 z-30 grid shrink-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 border-b border-line bg-paper/95 backdrop-blur-md", className)}>
+    <header className={cn("sticky top-0 z-30 grid shrink-0 grid-cols-[auto_minmax(0,1fr)_auto] items-end gap-x-2 border-b border-line bg-paper/95 backdrop-blur-md", className)}>
       <MainFloatingControlSafeArea />
-      <div className="flex min-h-16 min-w-0 flex-wrap items-center gap-x-3 gap-y-1 py-2 lg:min-h-[76px]">
+      {/* items-end 与普通页页头（DashboardPageHeader）对齐：标题贴行底，与下方内容成组。
+          行高仍由 min-h-16 给出，只是内容沉到底部而不是居中。 */}
+      <div className="flex min-h-16 min-w-0 flex-wrap items-end gap-x-3 gap-y-1 py-2.5 lg:min-h-[76px] lg:py-3">
         <h1 className="truncate font-display text-lg text-ink">{title}</h1>
         {context ? <div className="min-w-0 shrink-0 truncate text-sm text-muted">{context}</div> : null}
         {status}

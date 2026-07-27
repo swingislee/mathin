@@ -1,10 +1,20 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
-import { FilterBarFrame, FilterSelectTrigger } from "./FilterBar";
+import {
+  DashboardCommandActions,
+  DashboardCommandFilters,
+  DashboardCommandPanel,
+  DashboardCommandState,
+  DashboardPage,
+} from "./dashboard-page";
+import { FilterSelectTrigger } from "./FilterBar";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { getWeekSchedule } from "./actions/schedule";
@@ -89,7 +99,23 @@ function useNowMarker(days: Date[]) {
   return { dayIndex, slot, offsetPx };
 }
 
-export function ScheduleWeekView({ canFilterAll }: { canFilterAll: boolean }) {
+/**
+ * 课表整页（docs/plan/21 §9）。它自己渲染 DashboardPage 而不是由 page.tsx 渲染：
+ * 周次切换和三个筛选都是本组件的客户端状态，只有住在这里才能进命令面板。
+ * DashboardPage 是同步组件，Client Component 可以直接渲染（同 TileWorkspace）。
+ *
+ * 内部滚动保留：课表是 isPanelWorkspace 之一，日期表头 sticky 贴的是下面这个
+ * ScrollArea 的视口。若改成随 main 一起滚，表头会贴到 chrome 背后被盖住。
+ */
+export function ScheduleWeekView({
+  title,
+  canFilterAll,
+  termManager,
+}: {
+  title: string;
+  canFilterAll: boolean;
+  termManager?: ReactNode;
+}) {
   const t = useTranslations("school.schedule");
   const locale = useLocale();
   const [anchor, setAnchor] = useState(() => new Date());
@@ -150,61 +176,79 @@ export function ScheduleWeekView({ canFilterAll }: { canFilterAll: boolean }) {
   const timeFormatter = new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit" });
   const nowMarker = useNowMarker(days);
 
-  return (
-    <div>
-      <FilterBarFrame className="mt-3 shrink-0">
-        <Button type="button" variant="secondary" size="sm" onClick={() => jumpWeek(-7)}>
-          {t("prevWeek")}
-        </Button>
-        <Button type="button" variant="secondary" size="sm" onClick={jumpToday}>
-          {t("today")}
-        </Button>
-        <Button type="button" variant="secondary" size="sm" onClick={() => jumpWeek(7)}>
-          {t("nextWeek")}
-        </Button>
-        <span className="text-sm text-muted">{dayFormatter.format(weekStart)} – {dayFormatter.format(addDays(weekStart, 6))}</span>
-        {canFilterAll && (
-          <div className="ml-auto flex flex-wrap items-center gap-2">
-            {teacherOptions.length > 0 && (
-              <Select value={toSelectValue(teacherFilter)} onValueChange={(value) => setTeacherFilter(fromSelectValue(value))}>
-                <FilterSelectTrigger className="w-36"><SelectValue /></FilterSelectTrigger>
-                <SelectContent>
-                  <SelectItem value={toSelectValue("")}>{t("allTeachers")}</SelectItem>
-                  {teacherOptions.map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            )}
-            {classroomOptions.length > 0 && (
-              <Select value={toSelectValue(classroomFilter)} onValueChange={(value) => setClassroomFilter(fromSelectValue(value))}>
-                <FilterSelectTrigger className="w-36"><SelectValue /></FilterSelectTrigger>
-                <SelectContent>
-                  <SelectItem value={toSelectValue("")}>{t("allClassrooms")}</SelectItem>
-                  {classroomOptions.map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            )}
-            {roomOptions.length > 0 && (
-              <Select value={toSelectValue(roomFilter)} onValueChange={(value) => setRoomFilter(fromSelectValue(value))}>
-                <FilterSelectTrigger className="w-32"><SelectValue /></FilterSelectTrigger>
-                <SelectContent>
-                  <SelectItem value={toSelectValue("")}>{t("allRooms")}</SelectItem>
-                  {roomOptions.map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
-        )}
-      </FilterBarFrame>
+  const hasFilters = canFilterAll && (teacherOptions.length > 0 || classroomOptions.length > 0 || roomOptions.length > 0);
 
+  return (
+    <DashboardPage
+      title={title}
+      // 周区间是"我在看哪一周"，属于页面身份而不是操作——放 meta，命令面板第一行
+      // 就只剩三个按钮，390px 下不会被日期串挤到换行。
+      meta={<span>{dayFormatter.format(weekStart)} – {dayFormatter.format(addDays(weekStart, 6))}</span>}
+      density="compact"
+      className="flex w-full min-w-0 flex-1 flex-col xl:h-full xl:min-h-0"
+      bodyClassName="min-h-0 flex-1"
+      contentClassName="flex min-h-0 flex-1 flex-col"
+      commandPanel={
+        <DashboardCommandPanel>
+          <DashboardCommandState>
+            {/* 上/下一周用图标按钮：命令面板第一行还要放学年学期设置，三个中文文字按钮在窄容器下放不下。 */}
+            <Button type="button" variant="secondary" size="sm" className="size-9 px-0" aria-label={t("prevWeek")} title={t("prevWeek")} onClick={() => jumpWeek(-7)}>
+              <ChevronLeft size={16} />
+            </Button>
+            <Button type="button" variant="secondary" size="sm" className="h-9" onClick={jumpToday}>
+              {t("today")}
+            </Button>
+            <Button type="button" variant="secondary" size="sm" className="size-9 px-0" aria-label={t("nextWeek")} title={t("nextWeek")} onClick={() => jumpWeek(7)}>
+              <ChevronRight size={16} />
+            </Button>
+          </DashboardCommandState>
+
+          {hasFilters ? (
+            <DashboardCommandFilters className="flex-wrap">
+              {teacherOptions.length > 0 && (
+                <Select value={toSelectValue(teacherFilter)} onValueChange={(value) => setTeacherFilter(fromSelectValue(value))}>
+                  <FilterSelectTrigger className="w-36"><SelectValue /></FilterSelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={toSelectValue("")}>{t("allTeachers")}</SelectItem>
+                    {teacherOptions.map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              )}
+              {classroomOptions.length > 0 && (
+                <Select value={toSelectValue(classroomFilter)} onValueChange={(value) => setClassroomFilter(fromSelectValue(value))}>
+                  <FilterSelectTrigger className="w-36"><SelectValue /></FilterSelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={toSelectValue("")}>{t("allClassrooms")}</SelectItem>
+                    {classroomOptions.map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              )}
+              {roomOptions.length > 0 && (
+                <Select value={toSelectValue(roomFilter)} onValueChange={(value) => setRoomFilter(fromSelectValue(value))}>
+                  <FilterSelectTrigger className="w-32"><SelectValue /></FilterSelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={toSelectValue("")}>{t("allRooms")}</SelectItem>
+                    {roomOptions.map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              )}
+            </DashboardCommandFilters>
+          ) : null}
+
+          {termManager ? <DashboardCommandActions>{termManager}</DashboardCommandActions> : null}
+        </DashboardCommandPanel>
+      }
+    >
       {loading ? (
-        <p className="mt-6 text-sm text-muted">{t("loading")}</p>
+        <p className="text-sm text-muted">{t("loading")}</p>
       ) : visibleEntries.length === 0 ? (
-        <p className="mt-6 rounded-xl border border-line bg-card p-5 text-sm text-muted">{t("empty")}</p>
+        <p className="rounded-xl border border-line bg-card p-5 text-sm text-muted">{t("empty")}</p>
       ) : null}
 
-      <div
-        className="mt-4 rounded-xl border border-line"
-        style={{ display: !loading ? "block" : "none" }}
+      {/* 加载中用 hidden 而不是卸载：整张网格重建会让滚动位置和当前时间线跳一下。 */}
+      <ScrollArea
+        orientation="both"
+        className={cn("min-h-0 flex-1 rounded-xl border border-line", loading && "hidden")}
       >
         <div
           className="relative grid min-w-[820px]"
@@ -295,7 +339,7 @@ export function ScheduleWeekView({ canFilterAll }: { canFilterAll: boolean }) {
             );
           })}
         </div>
-      </div>
-    </div>
+      </ScrollArea>
+    </DashboardPage>
   );
 }

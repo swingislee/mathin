@@ -140,7 +140,6 @@ export default async function FinancePage({
   return (
     <DashboardPage
       title={t("title")}
-      description={t("appendOnlyPolicy")}
       summary={statusItems.length > 0 ? <StatusStrip items={statusItems} /> : null}
       commandPanel={
         canSeeOrders ? (

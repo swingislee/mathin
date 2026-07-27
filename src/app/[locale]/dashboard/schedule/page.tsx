@@ -1,8 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { ScheduleWeekView } from "@/features/school/ScheduleWeekView";
 import { SessionManagementDrawer } from "@/features/school/SessionManagementDrawer";
-import { ObjectBar } from "@/features/school/stage/ObjectBar";
-import { ObjectWorkspace } from "@/features/school/stage/ObjectWorkspace";
 import { TermManager } from "@/features/school/TermManager";
 import { listSchoolTerms } from "@/features/school/courses";
 import { getSessionQuickRow } from "@/features/school/classes";
@@ -38,17 +36,13 @@ export default async function SchedulePage({
 
   return (
     <>
-      <div className="flex w-full flex-1 flex-col xl:h-full xl:min-h-0">
-        <ObjectWorkspace
-          scroll="internal"
-          horizontalScrollbar
-          objectBar={
-            <ObjectBar title={t("title")} primaryAction={perms.has("schedule.manage") ? <TermManager terms={schoolTerms} /> : undefined} />
-          }
-        >
-          <ScheduleWeekView canFilterAll={perms.has("schedule.view.all")} />
-        </ObjectWorkspace>
-      </div>
+      {/* 页壳由 ScheduleWeekView 自己渲染：周次切换与筛选是它的客户端状态，
+          必须住在命令面板里（docs/plan/21 §14）。 */}
+      <ScheduleWeekView
+        title={t("title")}
+        canFilterAll={perms.has("schedule.view.all")}
+        termManager={perms.has("schedule.manage") ? <TermManager terms={schoolTerms} /> : undefined}
+      />
 
       <SessionManagementDrawer
         key={quickRow?.id ?? "none"}
