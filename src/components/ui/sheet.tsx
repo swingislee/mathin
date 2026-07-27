@@ -30,14 +30,18 @@ const SheetOverlay = React.forwardRef<
 ))
 SheetOverlay.displayName = SheetPrimitive.Overlay.displayName
 
+// docs/plan/24 §5.3：抽屉默认可滚动、且上下抽屉有高度上限。
+// 左右抽屉原本只有 `h-full`，内容超过一屏时超出部分既不滚动也够不着——课次快速管理、
+// 班级设置这类抽屉底部恰好是保存按钮。上下抽屉更糟：连 `h-full` 都没有，长内容会把
+// 抽屉顶出视口。overscroll-contain 防止滚到底之后继续带动身后的页面。
 const sheetVariants = cva(
-  "fixed z-50 gap-4 bg-paper p-6 shadow-2xl transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500 data-[state=open]:animate-in data-[state=closed]:animate-out",
+  "fixed z-50 gap-4 overflow-y-auto overscroll-contain bg-paper p-6 shadow-2xl transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500 data-[state=open]:animate-in data-[state=closed]:animate-out",
   {
     variants: {
       side: {
-        top: "inset-x-0 top-0 border-b border-line data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top",
+        top: "inset-x-0 top-0 max-h-[85dvh] border-b border-line data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top",
         bottom:
-          "inset-x-0 bottom-0 border-t border-line data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
+          "inset-x-0 bottom-0 max-h-[85dvh] border-t border-line data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
         left: "inset-y-0 left-0 h-full w-[min(86vw,360px)] border-r border-line data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left",
         right:
           "inset-y-0 right-0 h-full w-[min(86vw,360px)] border-l border-line data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right",

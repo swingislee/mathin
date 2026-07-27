@@ -35,7 +35,13 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 rounded-2xl border bg-card p-6 shadow-sm",
+        // docs/plan/24 §5.3：默认就带高度上限与内部滚动。原来这里只有居中变换，没有任何
+        // 高度约束——内容一长，弹窗会同时溢出视口上下沿，而 `fixed` + `translate-y(-50%)`
+        // 让溢出的部分**滚不到**：390×844 上"新建订单""建班向导"的保存按钮直接够不着。
+        // 各调用点此前只能各自补 max-h-[90vh] / h-[min(94vh,58rem)]，于是同一个弹窗族有
+        // 五种高度策略。dvh 而不是 vh：移动端浏览器地址栏收起时 vh 会算多一截。
+        // 宽度留出左右各 1rem，否则 390px 上弹窗贴着屏幕边、圆角被切掉。
+        "fixed left-[50%] top-[50%] z-50 grid max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto overscroll-contain rounded-2xl border border-line bg-card p-6 shadow-sm",
         className
       )}
       {...props}
