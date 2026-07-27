@@ -6,7 +6,12 @@ import { SelectTrigger } from "@/components/ui/select";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 
-const BAR_CLASS = "mt-4 flex min-h-12 flex-wrap items-center gap-2 py-1";
+/**
+ * 不带任何外边距：筛选条现在住在 DashboardCommandPanel 的 filters 槽里，
+ * 纵向节奏由面板统一给出（docs/plan/21 §19.2）。原来的默认 `mt-4` 是页面一级
+ * 外边距散落在组件里的典型例子，会让每个调用方的上下间距各差一点。
+ */
+const BAR_CLASS = "flex min-w-0 flex-1 flex-wrap items-center gap-2";
 
 /**
  * Dashboard 列表的统一轻量筛选条。它只编排 shadcn 输入控件和 GET 表单，
@@ -23,7 +28,7 @@ export function FilterBarFrame({ className, children, ...props }: ComponentProps
 
 export function FilterSearchInput({ className, ...props }: ComponentProps<typeof Input>) {
   return (
-    <div className="relative min-w-48 flex-1 sm:max-w-sm">
+    <div className="relative min-w-32 flex-1 sm:max-w-sm">
       <Search aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" />
       <Input
         className={cn("h-9 rounded-full border-line/80 bg-card/70 pl-9 shadow-none focus-visible:bg-card", className)}
@@ -53,13 +58,29 @@ export function FilterBarReset({ href, label, className }: { href: string; label
 /**
  * 高级条件留在 form DOM 子树内，确保 Radix Select 的隐藏字段能随 GET 表单提交；
  * 面板绝对定位，不会把列表向下顶开。
+ *
+ * 多于一个 Select 的页面一律走这里而不是平铺（docs/plan/21 §14.5）：命令面板在
+ * 窄容器下只有两行预算，平铺四五个 Select 会把 sticky 顶部撑到小半个视口。
+ * `activeCount` 把"当前有几个条件生效"显式说出来，否则条件收起来之后用户无从判断
+ * 列表为什么是空的。
  */
-export function FilterBarMore({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
+export function FilterBarMore({
+  label,
+  children,
+  activeCount = 0,
+  className,
+}: {
+  label: string;
+  children: ReactNode;
+  activeCount?: number;
+  className?: string;
+}) {
   return (
-    <details className="relative">
+    <details className="relative shrink-0">
       <summary className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "h-9 cursor-pointer list-none px-3")}>
         <SlidersHorizontal className="size-3.5" />
         {label}
+        {activeCount > 0 ? <span className="ml-1 rounded-full bg-crater/15 px-1.5 text-xs tabular-nums text-ink">{activeCount}</span> : null}
       </summary>
       <div className={cn("absolute right-0 top-full z-30 mt-2 w-[min(32rem,calc(100vw-2rem))] rounded-2xl border border-line bg-card p-4 text-ink shadow-sm", className)}>
         {children}

@@ -1409,7 +1409,9 @@
       "provisionPhoneFailed": "开通失败：请确认手机号含国家区号、短信服务和账号唯一性。",
       "provisionPhoneSuccess": "已开通手机登录账号。",
       "provisionPhoneAlreadyLinked": "该学生已绑定登录账号，无需重复开通。",
-      "provisionPhoneInvalid": "手机号格式不正确，需包含国家区号（如 +86）。"
+      "provisionPhoneInvalid": "手机号格式不正确，需包含国家区号（如 +86）。",
+      "scopeActive": "在册",
+      "scopeRecycle": "回收站"
     },
     "courseware": {
       "backToCourse": "返回课程",

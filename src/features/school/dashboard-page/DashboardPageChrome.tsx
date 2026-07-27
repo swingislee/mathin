@@ -15,7 +15,9 @@ export function DashboardPageChrome({ children, className }: { children: ReactNo
     <div
       data-dashboard-page-chrome
       className={cn(
-        "@container/chrome sticky top-0 z-30 w-full min-w-0 border-b border-line bg-paper/95 backdrop-blur-md",
+        // 不能写 w-full：显式 width:100% 会让宽度锁在父级内容宽上，负外边距只把整块
+        // 往左推，右边线反而少一个 gutter。让它作为普通块级元素由外边距撑开。
+        "@container/chrome sticky top-0 z-30 min-w-0 border-b border-line bg-paper/95 backdrop-blur-md",
         "mx-[calc(var(--dashboard-gutter,0px)*-1)] px-[var(--dashboard-gutter,0px)]",
         className,
       )}

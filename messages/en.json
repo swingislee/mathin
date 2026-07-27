@@ -1409,7 +1409,9 @@
       "provisionPhoneFailed": "Account creation failed. Check the country code, SMS setup, and phone uniqueness.",
       "provisionPhoneSuccess": "Phone login account created.",
       "provisionPhoneAlreadyLinked": "This student already has a linked login account.",
-      "provisionPhoneInvalid": "Invalid phone number. Include the country code (e.g. +86)."
+      "provisionPhoneInvalid": "Invalid phone number. Include the country code (e.g. +86).",
+      "scopeActive": "Active",
+      "scopeRecycle": "Recycle bin"
     },
     "courseware": {
       "backToCourse": "Back to course",

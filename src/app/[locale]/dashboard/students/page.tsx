@@ -6,9 +6,16 @@ import { getTranslations } from "next-intl/server";
 import { buttonVariants } from "@/components/ui/button";
 import { toSelectValue } from "@/features/school/controls";
 import { getStaffStats, type StaffStats } from "@/features/school/dashboard";
-import { FilterBar, FilterBarReset, FilterBarSubmit, FilterSearchInput, FilterSelectTrigger } from "@/features/school/FilterBar";
+import {
+  DashboardCommandActions,
+  DashboardCommandFilters,
+  DashboardCommandPanel,
+  DashboardCommandState,
+  DashboardCommandTabs,
+  DashboardPage,
+} from "@/features/school/dashboard-page";
+import { FilterBar, FilterBarMore, FilterBarReset, FilterBarSubmit, FilterSearchInput, FilterSelectTrigger } from "@/features/school/FilterBar";
 import { NewStudentDialog } from "@/features/school/NewStudentDialog";
-import { SchoolPageHeader } from "@/features/school/PageHeader";
 import { StatusStrip, type StatusStripItem } from "@/features/school/stage/StatusStrip";
 import { StudentRestoreButton } from "@/features/school/StudentLifecycleActions";
 import { FOLLOW_UP_STATUSES, listStudents, parseStudentFilters, STUDENT_STATUSES } from "@/features/school/students";
@@ -35,6 +42,7 @@ export default async function StudentsPage({
   setRequestLocale(locale);
   const user = await requireAnyPerm(locale, ["student.view.all", "student.view.assigned"]);
   const t = await getTranslations("school.students");
+  const commonT = await getTranslations("common");
   const schoolT = await getTranslations("school");
   const perms = await getMyPerms(user.id);
   const canCreate = perms.has("student.create");
@@ -47,6 +55,7 @@ export default async function StudentsPage({
     perms.has("student.view.all") ? safe(getStaffStats, emptyStats) : Promise.resolve(emptyStats),
   ]);
   const maxPage = count ? Math.max(1, Math.ceil(count / 20)) : filters.page;
+  const activeFilterCount = [filters.q, filters.status, filters.followUpStatus, filters.grade].filter(Boolean).length;
   const statusItems: StatusStripItem[] = perms.has("student.view.all")
     ? [
         { label: schoolT("home.statEnrolled"), value: stats.enrolledCount },
@@ -69,65 +78,91 @@ export default async function StudentsPage({
   };
 
   return (
-    <div className="mx-auto w-full max-w-6xl">
-      <SchoolPageHeader
-        title={filters.recycle ? t("recycleBin") : t("title")}
-        actions={
-          <>
-            {canDelete && (
-              <Link href={filters.recycle ? "/dashboard/students" : "/dashboard/students?tab=recycle"} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>
-                {filters.recycle ? t("backToActive") : t("recycleBin")}
-              </Link>
-            )}
-            {!filters.recycle && canImport && <Link href="/dashboard/students/import" className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>{t("import")}</Link>}
-            {!filters.recycle && canCreate && <NewStudentDialog />}
-          </>
-        }
-      />
-      {!filters.recycle && statusItems.length > 0 && <StatusStrip items={statusItems} className="mt-3" />}
+    <DashboardPage
+      title={filters.recycle ? t("recycleBin") : t("title")}
+      commandPanel={
+        <DashboardCommandPanel>
+          {canDelete ? (
+            <DashboardCommandState>
+              <DashboardCommandTabs
+                ariaLabel={t("title")}
+                activeValue={filters.recycle ? "recycle" : "active"}
+                items={[
+                  { value: "active", label: t("scopeActive"), href: "/dashboard/students" },
+                  { value: "recycle", label: t("scopeRecycle"), href: "/dashboard/students?tab=recycle" },
+                ]}
+              />
+            </DashboardCommandState>
+          ) : null}
 
-      <FilterBar aria-label={t("filter")}>
-        {filters.recycle && <Input type="hidden" name="tab" value="recycle" />}
-        <FilterSearchInput
-          name="q"
-          defaultValue={filters.q}
-          placeholder={t("search")}
-          aria-label={t("search")}
-        />
-        <Select name="status" defaultValue={toSelectValue(filters.status ?? "")}>
-          <FilterSelectTrigger><SelectValue /></FilterSelectTrigger>
-          <SelectContent>
-            <SelectItem value={toSelectValue("")}>{t("allStatuses")}</SelectItem>
-            {STUDENT_STATUSES.map((status) => <SelectItem key={status} value={status}>{t(status)}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select name="followUpStatus" defaultValue={toSelectValue(filters.followUpStatus ?? "")}>
-          <FilterSelectTrigger><SelectValue /></FilterSelectTrigger>
-          <SelectContent>
-            <SelectItem value={toSelectValue("")}>{t("allFollowUps")}</SelectItem>
-            {FOLLOW_UP_STATUSES.map((status) => <SelectItem key={status} value={status}>{t(status)}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select name="grade" defaultValue={toSelectValue(String(filters.grade ?? ""))}>
-          <FilterSelectTrigger><SelectValue /></FilterSelectTrigger>
-          <SelectContent>
-            <SelectItem value={toSelectValue("")}>{t("allGrades")}</SelectItem>
-            {Array.from({ length: 9 }, (_, index) => index + 1).map((grade) => (
-              <SelectItem key={grade} value={String(grade)}>{t("grade", { grade })}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <FilterBarSubmit>{t("filter")}</FilterBarSubmit>
-        {(filters.q || filters.status || filters.followUpStatus || filters.grade) && (
-          <FilterBarReset href={filters.recycle ? "/dashboard/students?tab=recycle" : "/dashboard/students"} label={t("reset")} />
-        )}
-      </FilterBar>
+          <DashboardCommandFilters>
+            <FilterBar aria-label={t("filter")}>
+              {filters.recycle && <Input type="hidden" name="tab" value="recycle" />}
+              <FilterSearchInput
+                name="q"
+                defaultValue={filters.q}
+                placeholder={t("search")}
+                aria-label={t("search")}
+              />
+              <FilterBarMore label={commonT("moreFilters")} activeCount={activeFilterCount}>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <Select name="status" defaultValue={toSelectValue(filters.status ?? "")}>
+                    <FilterSelectTrigger className="w-full"><SelectValue /></FilterSelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={toSelectValue("")}>{t("allStatuses")}</SelectItem>
+                      {STUDENT_STATUSES.map((status) => <SelectItem key={status} value={status}>{t(status)}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Select name="followUpStatus" defaultValue={toSelectValue(filters.followUpStatus ?? "")}>
+                    <FilterSelectTrigger className="w-full"><SelectValue /></FilterSelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={toSelectValue("")}>{t("allFollowUps")}</SelectItem>
+                      {FOLLOW_UP_STATUSES.map((status) => <SelectItem key={status} value={status}>{t(status)}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Select name="grade" defaultValue={toSelectValue(String(filters.grade ?? ""))}>
+                    <FilterSelectTrigger className="w-full"><SelectValue /></FilterSelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={toSelectValue("")}>{t("allGrades")}</SelectItem>
+                      {Array.from({ length: 9 }, (_, index) => index + 1).map((grade) => (
+                        <SelectItem key={grade} value={String(grade)}>{t("grade", { grade })}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </FilterBarMore>
+              <FilterBarSubmit>{t("filter")}</FilterBarSubmit>
+              {activeFilterCount > 0 && (
+                <FilterBarReset href={filters.recycle ? "/dashboard/students?tab=recycle" : "/dashboard/students"} label={t("reset")} />
+              )}
+            </FilterBar>
+          </DashboardCommandFilters>
 
+          {!filters.recycle && (canImport || canCreate) ? (
+            <DashboardCommandActions>
+              {canImport && <Link href="/dashboard/students/import" className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>{t("import")}</Link>}
+              {canCreate && <NewStudentDialog />}
+            </DashboardCommandActions>
+          ) : null}
+        </DashboardCommandPanel>
+      }
+      summary={!filters.recycle && statusItems.length > 0 ? <StatusStrip items={statusItems} /> : null}
+      footer={
+        filters.page > 1 || filters.page < maxPage ? (
+          <div className="flex justify-end gap-2">
+            {filters.page > 1 && <Link href={pageHref(filters.page - 1)} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>{t("previous")}</Link>}
+            {filters.page < maxPage && <Link href={pageHref(filters.page + 1)} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>{t("next")}</Link>}
+          </div>
+        ) : null
+      }
+    >
       {students.length === 0 ? (
-        <p className="mt-8 rounded-xl border border-line bg-card p-5 text-sm text-muted">{t("empty")}</p>
+        <p className="rounded-xl border border-line bg-card p-5 text-sm text-muted">{t("empty")}</p>
       ) : (
-        <div className="mt-6 overflow-hidden rounded-xl border border-line bg-card">
-          <Table className="w-full border-collapse text-left text-sm">
+        <div className="overflow-hidden rounded-xl border border-line bg-card">
+          {/* 表格铺满统一内容轴；列放不下时由 Table 自带的 overflow-x 横向滚动，
+              而不是把每一格挤成竖排单字（§17.1）。 */}
+          <Table className="w-full min-w-[44rem] border-collapse text-left text-sm">
             <TableHeader className="border-b border-line text-xs text-muted">
               <TableRow>
                 <TableHead className="px-4 py-3 font-medium">{t("name")}</TableHead>
@@ -164,11 +199,6 @@ export default async function StudentsPage({
           </Table>
         </div>
       )}
-
-      <div className="mt-5 flex justify-end gap-2">
-        {filters.page > 1 && <Link href={pageHref(filters.page - 1)} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>{t("previous")}</Link>}
-        {filters.page < maxPage && <Link href={pageHref(filters.page + 1)} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>{t("next")}</Link>}
-      </div>
-    </div>
+    </DashboardPage>
   );
 }

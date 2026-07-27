@@ -12,6 +12,7 @@ export {
   DashboardCommandSelection,
   DashboardCommandState,
 } from "./DashboardCommandPanel";
+export { DashboardCommandTabs, type DashboardCommandTab } from "./DashboardCommandTabs";
 export {
   DashboardAside,
   DashboardCardGrid,
