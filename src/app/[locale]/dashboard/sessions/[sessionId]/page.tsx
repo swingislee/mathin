@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
 import { getSessionWorkspaceDetail } from "@/features/school/classes";
-import { resolveReturnTarget } from "@/features/school/object-workspace";
+import { parseReturnTo } from "@/features/school/object-workspace";
 import { parseSessionStage, SessionWorkspaceBody } from "@/features/school/SessionWorkspaceBody";
 import { requireDashboardEnvironment } from "@/lib/auth";
 
@@ -50,17 +50,14 @@ async function SessionWorkspaceContent({
 
   // §18：课次从班级详情、课表、今日工作三处进入，返回必须回到来的地方；
   // returnTo 是用户可改的输入，所以过合同校验后才使用，无效时回 canonical 父页面。
-  const backHref = resolveReturnTarget({
-    returnTo: rawSearchParams.returnTo,
-    fallback: `/dashboard/classes/${detail.classroomId}`,
-    environment,
-  });
+  const returnTo = parseReturnTo({ returnTo: rawSearchParams.returnTo, environment });
 
   return (
     <SessionWorkspaceBody
       detail={detail}
       stage={parseSessionStage(rawSearchParams.stage, detail.state)}
-      backHref={backHref}
+      backHref={returnTo ?? `/dashboard/classes/${detail.classroomId}`}
+      returnTo={returnTo}
     />
   );
 }

@@ -1,6 +1,7 @@
 import { CircleAlert } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { DashboardStatGrid, DashboardSummaryCard } from "@/features/school/dashboard-page";
+import { withReturnTo } from "./object-workspace/return-target";
 import { Link } from "@/i18n/navigation";
 import type { ClassroomDetail, SessionGroups } from "./classes";
 
@@ -43,7 +44,7 @@ export async function ClassroomSummary({ classroom }: { classroom: ClassroomDeta
   );
 }
 
-export async function ClassroomNextSession({ next }: { next: SessionGroups["next"] }) {
+export async function ClassroomNextSession({ next, returnTo }: { next: SessionGroups["next"]; returnTo: string }) {
   const t = await getTranslations("school.classes");
   return (
     <DashboardSummaryCard title={t("nextSessionTitle")}>
@@ -56,7 +57,7 @@ export async function ClassroomNextSession({ next }: { next: SessionGroups["next
             {next.no !== null ? `${String(next.no).padStart(2, "0")} · ` : ""}
             {next.name || t("untitledSession")}
           </p>
-          <Link href={`/dashboard/sessions/${next.id}`} className="mt-2 inline-flex text-xs text-crater hover:underline">
+          <Link href={withReturnTo(`/dashboard/sessions/${next.id}`, returnTo)} className="mt-2 inline-flex text-xs text-crater hover:underline">
             {t("openSessionWorkspace")}
           </Link>
         </div>
@@ -65,7 +66,7 @@ export async function ClassroomNextSession({ next }: { next: SessionGroups["next
   );
 }
 
-export async function ClassroomRisks({ needsAttention }: { needsAttention: SessionGroups["needsAttention"] }) {
+export async function ClassroomRisks({ needsAttention, returnTo }: { needsAttention: SessionGroups["needsAttention"]; returnTo: string }) {
   const t = await getTranslations("school.classes");
   return (
     <DashboardSummaryCard title={t("riskTitle")}>
@@ -80,7 +81,7 @@ export async function ClassroomRisks({ needsAttention }: { needsAttention: Sessi
           <ul className="mt-3 flex flex-col gap-1.5 text-sm">
             {needsAttention.slice(0, 5).map((session) => (
               <li key={session.id} className="min-w-0">
-                <Link href={`/dashboard/sessions/${session.id}`} className="block truncate text-ink hover:text-crater">
+                <Link href={withReturnTo(`/dashboard/sessions/${session.id}`, returnTo)} className="block truncate text-ink hover:text-crater">
                   {session.no !== null ? `${String(session.no).padStart(2, "0")} · ` : ""}
                   {session.name || t("untitledSession")}
                 </Link>

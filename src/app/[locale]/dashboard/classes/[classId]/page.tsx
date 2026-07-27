@@ -31,7 +31,14 @@ import {
   DashboardEmptyCard,
   DashboardMainColumn,
 } from "@/features/school/dashboard-page";
-import { ObjectBar, ObjectTabs, ObjectWorkspace, type ObjectContextItem } from "@/features/school/object-workspace";
+import {
+  ObjectBar,
+  ObjectTabs,
+  ObjectWorkspace,
+  parseReturnTo,
+  preserveReturnTo,
+  type ObjectContextItem,
+} from "@/features/school/object-workspace";
 import { TeachingReadinessPanel } from "@/features/school/TeachingReadinessPanel";
 import { listMyWorkItems } from "@/features/school/work-items";
 import { Link } from "@/i18n/navigation";
@@ -72,7 +79,7 @@ async function ClassDetailBody({
   params: Promise<{ locale: string; classId: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const [{ classId }, rawSearchParams, { user }] = await Promise.all([params, searchParams, requireDashboardEnvironment(locale, ["staff"])]);
+  const [{ classId }, rawSearchParams, { user, environment }] = await Promise.all([params, searchParams, requireDashboardEnvironment(locale, ["staff"])]);
   if (!UUID_PATTERN.test(classId)) notFound();
 
   const [t, classroom, perms, allWorkItems] = await Promise.all([
@@ -94,7 +101,12 @@ async function ClassDetailBody({
   const activeSession = requestedSessionId && UUID_PATTERN.test(requestedSessionId)
     ? classroom.sessions.find((session) => session.id === requestedSessionId) ?? null
     : null;
-  const closeHref = `/dashboard/classes/${classId}?tab=${activeTab}`;
+  // doc24 §6：班级从班级列表、今日工作、课表、课程使用情况、学生档案的"在读班级"
+  // 五处进入。tabHref 与抽屉的 closeHref 都必须把来源带上，否则用户切一次 Tab、
+  // 或者关一次课次抽屉，返回就悄悄退回班级列表。
+  const returnTo = parseReturnTo({ returnTo: rawSearchParams.returnTo, environment });
+  const tabHref = (tab: Tab) => preserveReturnTo(`/dashboard/classes/${classId}?tab=${tab}`, returnTo);
+  const closeHref = tabHref(activeTab);
   const staffOptions = isManagementView ? await listStaffOptions() : [];
 
   const classroomSessionIds = new Set(classroom.sessions.map((session) => session.id));
@@ -141,7 +153,7 @@ async function ClassDetailBody({
       <ObjectWorkspace
         objectBar={<ObjectBar
           title={classroom.name}
-          backHref="/dashboard/classes"
+          backHref={returnTo ?? "/dashboard/classes"}
           backLabel={t("back")}
           context={contextItems}
           status={lifecycleStatus}
@@ -149,7 +161,7 @@ async function ClassDetailBody({
           overflowSlot={isManagementView ? <ClassroomSettingsSheet classroom={classroom} staffOptions={staffOptions} teachingReadiness={teachingReadiness} /> : undefined}
         />}
         navigation={<ObjectTabs
-          items={TABS.map((tab) => ({ value: tab, label: t(`tab_${tab}`), href: `/dashboard/classes/${classId}?tab=${tab}` }))}
+          items={TABS.map((tab) => ({ value: tab, label: t(`tab_${tab}`), href: tabHref(tab) }))}
           activeValue={activeTab}
           ariaLabel={t("tabsLabel")}
         />}
@@ -162,7 +174,7 @@ async function ClassDetailBody({
         <DashboardContentGrid>
           <DashboardMainColumn>
             {activeTab === "sessions" && (
-              <SessionGroupList classroomId={classroom.id} sessions={classroom.sessions} workItems={sessionWorkItems} />
+              <SessionGroupList classroomId={classroom.id} sessions={classroom.sessions} workItems={sessionWorkItems} returnTo={tabHref("sessions")} />
             )}
             {activeTab === "students" && (
               <RosterPanel
@@ -171,6 +183,7 @@ async function ClassDetailBody({
                 canManage={perms.has("enrollment.manage")}
                 viewerRole={classroom.viewerRole}
                 signals={Object.fromEntries(rosterSignals)}
+                returnTo={tabHref("students")}
               />
             )}
             {activeTab === "readiness" && (
@@ -185,8 +198,8 @@ async function ClassDetailBody({
 
           <DashboardAside>
             <ClassroomSummary classroom={classroom} />
-            <ClassroomNextSession next={groups.next} />
-            {isManagementView && <ClassroomRisks needsAttention={groups.needsAttention} />}
+            <ClassroomNextSession next={groups.next} returnTo={tabHref(activeTab)} />
+            {isManagementView && <ClassroomRisks needsAttention={groups.needsAttention} returnTo={tabHref(activeTab)} />}
             <ClassroomResponsibility assignments={classroom.staffAssignments} />
           </DashboardAside>
         </DashboardContentGrid>

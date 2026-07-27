@@ -26,9 +26,10 @@ import { StudentProfileEditor } from "@/features/school/StudentProfileEditor";
 import { GuardianInvitePanel } from "@/features/school/GuardianInvitePanel";
 import { GuardianScopePanel } from "@/features/school/GuardianScopePanel";
 import { StudentMergePanel } from "@/features/school/StudentMergePanel";
+import { parseReturnTo, preserveReturnTo } from "@/features/school/object-workspace";
 import { getStudentDetail, getStudentLearning } from "@/features/school/students";
 import { Link } from "@/i18n/navigation";
-import { getMyPerms, requireAnyPerm } from "@/lib/auth";
+import { getActiveEnvironment, getMyPerms, requireAnyPerm } from "@/lib/auth";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -51,18 +52,20 @@ export default async function StudentDetailPage({
   searchParams,
 }: {
   params: Promise<{ locale: string; studentId: string }>;
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; returnTo?: string | string[] }>;
 }) {
   const [{ locale, studentId }, rawSearchParams] = await Promise.all([params, searchParams]);
   setRequestLocale(locale);
   const user = await requireAnyPerm(locale, ["student.view.all", "student.view.assigned"]);
   if (!UUID_PATTERN.test(studentId)) notFound();
 
-  const [t, student, learning, perms] = await Promise.all([
+  const [t, student, learning, perms, environment] = await Promise.all([
     getTranslations("school.students"),
     getStudentDetail(studentId),
     getStudentLearning(studentId),
     getMyPerms(user.id),
+    // requireAnyPerm 已经过了 staff 环境闸门，这里读的是同一次 cache 结果，不额外查库。
+    getActiveEnvironment(user.id),
   ]);
   if (!student) notFound();
 
@@ -82,12 +85,16 @@ export default async function StudentDetailPage({
     ? await Promise.all([getStudentOrders(studentId), getStudentAccount(studentId)])
     : [[], { studentId, balance: 0, ledger: [], lessonBalance: 0, lessonLedger: [] }];
 
-  const tabHref = (tab: StudentTab) => `/dashboard/students/${studentId}?tab=${tab}`;
+  // doc24 §6：学生详情有四个真实入口——学生列表、跟进队列、财务订单、班级名单。
+  // 只有列表那一条的"回到上一级"和"回到来的地方"是同一个答案，其余三条以前都把学辅
+  // 甩回学生列表，再自己找一遍刚才处理到哪一行。
+  const returnTo = environment ? parseReturnTo({ returnTo: rawSearchParams.returnTo, environment }) : null;
+  const tabHref = (tab: StudentTab) => preserveReturnTo(`/dashboard/students/${studentId}?tab=${tab}`, returnTo);
 
   return (
     <DashboardPage
       title={student.name}
-      backHref={student.deletedAt ? "/dashboard/students?tab=recycle" : "/dashboard/students"}
+      backHref={returnTo ?? (student.deletedAt ? "/dashboard/students?tab=recycle" : "/dashboard/students")}
       backLabel={t("back")}
       // §11 强制删除"Header meta 完整状态串"：年级 · 状态 · 跟进状态 · 绑定码全塞在标题下，
       // 既压不住信息量又没有层级。年级和负责人留在这里，其余归 Aside 摘要。
@@ -174,7 +181,7 @@ export default async function StudentDetailPage({
         <DashboardAside>
           <StudentSummary student={student} ownerName={student.assignedName || null} />
           <StudentNextFollowUp student={student} locale={locale} />
-          <StudentCurrentClasses enrollments={learning.enrollments} />
+          <StudentCurrentClasses enrollments={learning.enrollments} returnTo={tabHref(activeTab)} />
           <StudentAccountStatus student={student} learning={learning} />
         </DashboardAside>
       </DashboardContentGrid>

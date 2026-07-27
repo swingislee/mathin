@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
+import { withReturnTo } from "@/features/school/object-workspace/return-target";
 import { Link } from "@/i18n/navigation";
 import type { ClassroomOperationalStatus, ClassroomUsage } from "./types";
 
@@ -9,7 +10,7 @@ const STATUS_KEY: Record<ClassroomOperationalStatus, string> = {
   completed: "usageCompleted",
 };
 
-export async function UsagePanel({ usage }: { usage: ClassroomUsage[] }) {
+export async function UsagePanel({ usage, returnTo }: { usage: ClassroomUsage[]; returnTo: string }) {
   const t = await getTranslations("school.courses");
   const current = usage.filter((row) => row.archivedAt === null);
   const past = usage.filter((row) => row.archivedAt !== null);
@@ -21,7 +22,7 @@ export async function UsagePanel({ usage }: { usage: ClassroomUsage[] }) {
         <h3 className="text-xs font-medium uppercase text-muted">{t("currentlyUsing")}</h3>
         <ul className="mt-1 divide-y divide-line">
           {current.map((row) => <li key={row.id} className="flex items-center justify-between gap-3 py-1.5 text-sm">
-            <Link href={`/dashboard/classes/${row.id}`} className="min-w-0 truncate text-ink hover:text-crater">{row.name}</Link>
+            <Link href={withReturnTo(`/dashboard/classes/${row.id}`, returnTo)} className="min-w-0 truncate text-ink hover:text-crater">{row.name}</Link>
             <Badge variant="secondary">{t(STATUS_KEY[row.operationalStatus])}</Badge>
           </li>)}
         </ul>
@@ -30,7 +31,7 @@ export async function UsagePanel({ usage }: { usage: ClassroomUsage[] }) {
         <h3 className="text-xs font-medium uppercase text-muted">{t("previouslyUsed")}</h3>
         <ul className="mt-1 divide-y divide-line">
           {past.map((row) => <li key={row.id} className="flex items-center justify-between gap-3 py-1.5 text-sm text-muted">
-            <Link href={`/dashboard/classes/${row.id}`} className="min-w-0 truncate hover:text-crater">{row.name}</Link>
+            <Link href={withReturnTo(`/dashboard/classes/${row.id}`, returnTo)} className="min-w-0 truncate hover:text-crater">{row.name}</Link>
             <Badge variant="outline">{t(STATUS_KEY[row.operationalStatus])}</Badge>
           </li>)}
         </ul>

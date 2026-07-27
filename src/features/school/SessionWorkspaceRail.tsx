@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
+import { withReturnTo } from "./object-workspace/return-target";
 import { Link } from "@/i18n/navigation";
 import type { SessionWorkspaceDetail } from "./classes";
 
@@ -33,7 +34,7 @@ export async function SessionWorkspaceRail({
       <section>
         <h3 className="text-xs uppercase tracking-[0.14em] text-muted">{t("summaryTitle")}</h3>
         <dl className="mt-2 flex flex-col gap-1.5 text-sm">
-          <Row label={tc("title")} value={<Link href={`/dashboard/classes/${detail.classroomId}`} className="text-ink hover:text-crater">{detail.classroomName}</Link>} />
+          <Row label={tc("title")} value={<Link href={withReturnTo(`/dashboard/classes/${detail.classroomId}`, `/dashboard/sessions/${detail.id}`)} className="text-ink hover:text-crater">{detail.classroomName}</Link>} />
           <Row label={t("scheduledAt")} value={detail.scheduledAt ? new Date(detail.scheduledAt).toLocaleString() : "—"} />
           <Row label={t("durationLabel")} value={detail.durationMin ? t("durationMin", { count: detail.durationMin }) : "—"} />
           <Row label={t("primaryTeacher")} value={detail.primaryTeacherName ?? "—"} />

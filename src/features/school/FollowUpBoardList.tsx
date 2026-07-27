@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAction } from "@/components/action-form";
 import { Link, useRouter } from "@/i18n/navigation";
+import { withReturnTo } from "./object-workspace/return-target";
 import { changeStudentStatusAction, recoverLostStudentAction } from "./actions/students";
 import { FollowUpForm } from "./FollowUpForm";
 import type { BoardGroup, BoardRow } from "./followups";
@@ -29,11 +30,17 @@ export function FollowUpBoardList({
   canEditStatus,
   canOrder,
   canRecover=false,
+  returnTo,
 }: {
   groups: BoardGroup[];
   canEditStatus: boolean;
   canOrder: boolean;
   canRecover?:boolean;
+  /**
+   * 当前跟进台地址（含 scope 与时间桶）。学辅一天要在这份队列和学生档案之间来回
+   * 几十趟，返回必须回到刚才那个桶，而不是队列的默认视图（doc24 §6.2）。
+   */
+  returnTo: string;
 }) {
   const t = useTranslations("school.followups");
   const studentsT = useTranslations("school.students");
@@ -101,7 +108,7 @@ export function FollowUpBoardList({
                     {rows.map((row) => (
                       <TableRow key={row.id}>
                         <TableCell className="px-4 py-2.5 font-medium">
-                          <Link href={`/dashboard/students/${row.id}`} className="underline-offset-2 hover:underline">
+                          <Link href={withReturnTo(`/dashboard/students/${row.id}`, returnTo)} className="underline-offset-2 hover:underline">
                             {row.name}
                           </Link>
                         </TableCell>
@@ -141,7 +148,7 @@ export function FollowUpBoardList({
                             )}
                             {canOrder && (
                               <Link
-                                href={`/dashboard/students/${row.id}#finance`}
+                                href={withReturnTo(`/dashboard/students/${row.id}?tab=finance`, returnTo)}
                                 className="text-xs text-muted underline underline-offset-2 hover:text-ink"
                               >
                                 {studentsT("placeOrder")}

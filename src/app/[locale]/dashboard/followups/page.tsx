@@ -119,7 +119,7 @@ export default async function FollowUpsPage({
         </DashboardCommandPanel>
       }
     >
-      <FollowUpBoardList groups={board.groups} canEditStatus={canEditStatus} canOrder={canOrder} canRecover={canEditStatus&&perms.has("followup.write")} />
+      <FollowUpBoardList groups={board.groups} canEditStatus={canEditStatus} canOrder={canOrder} canRecover={canEditStatus&&perms.has("followup.write")} returnTo={boardHref({})} />
     </DashboardPage>
   );
 }

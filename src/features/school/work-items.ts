@@ -116,15 +116,15 @@ export function resolveWorkItemHref(item: WorkItemRow): string {
       return withReturnTo(`/dashboard/courseware/lectures/${item.primaryObjectId}?track=${track}`, "/dashboard");
     }
     case "classroom":
-      return `/dashboard/classes/${item.primaryObjectId}`;
+      return withReturnTo(`/dashboard/classes/${item.primaryObjectId}`, "/dashboard");
     case "session":
       // doc23 §18：工作项都是从今日工作点开的，处理完应该回到那份清单继续下一条。
       return withReturnTo(`/dashboard/sessions/${item.primaryObjectId}`, "/dashboard");
     case "student":
-      return `/dashboard/students/${item.primaryObjectId}`;
+      return withReturnTo(`/dashboard/students/${item.primaryObjectId}`, "/dashboard");
     case "course_family":
     case "course_variant":
-      return `/dashboard/courses/${item.primaryObjectId}`;
+      return withReturnTo(`/dashboard/courses/${item.primaryObjectId}`, "/dashboard");
     case "refund":
     case "order":
       return "/dashboard/finance";
@@ -134,7 +134,7 @@ export function resolveWorkItemHref(item: WorkItemRow): string {
       break;
   }
   if (item.secondaryObjectType === "classroom" && item.secondaryObjectId) {
-    return `/dashboard/classes/${item.secondaryObjectId}`;
+    return withReturnTo(`/dashboard/classes/${item.secondaryObjectId}`, "/dashboard");
   }
   return "/dashboard";
 }

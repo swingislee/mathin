@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "@/i18n/navigation";
 import { groupClassroomSessions, type SessionRow } from "./classes";
+import { withReturnTo } from "./object-workspace/return-target";
 import type { WorkItemRow } from "./stage/types";
 
 function stateLabel(t: Awaited<ReturnType<typeof getTranslations>>, session: SessionRow) {
@@ -17,13 +18,15 @@ function stateLabel(t: Awaited<ReturnType<typeof getTranslations>>, session: Ses
  * 统一点击合同（doc19 §13.3）：主体→课次工作区；⋯→快速管理（原地开 Sheet，query 驱动）；
  * 进入教室→Classroom（仅 canEnterLive 时显示），三者互不吞并，不再按权限让整行跳到不同系统。
  */
-async function SessionRowItem({ classroomId, session, quickManageHref }: { classroomId: string; session: SessionRow; quickManageHref: string }) {
+async function SessionRowItem({ classroomId, session, quickManageHref, returnTo }: { classroomId: string; session: SessionRow; quickManageHref: string; returnTo: string }) {
   const t = await getTranslations("school.classes");
 
   return (
     <li className="flex flex-wrap items-center gap-2 py-2.5 text-sm">
       <Link
-        href={`/dashboard/sessions/${session.id}`}
+        // doc24 §6.2：带上"我是从这个班的课次列表来的"，课次工作区改完点返回才会回到
+        // 这一屏而不是班级页的默认 Tab。
+        href={withReturnTo(`/dashboard/sessions/${session.id}`, returnTo)}
         className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-1 py-1 transition-colors hover:bg-moon/20"
       >
         <span className="w-10 shrink-0 font-mono text-xs text-muted">{session.no ?? "-"}</span>
@@ -47,12 +50,13 @@ async function SessionRowItem({ classroomId, session, quickManageHref }: { class
   );
 }
 
-async function SessionGroupSection({ titleKey, count, classroomId, sessions, collapsible }: {
+async function SessionGroupSection({ titleKey, count, classroomId, sessions, collapsible, returnTo }: {
   titleKey: string;
   count: number;
   classroomId: string;
   sessions: SessionRow[];
   collapsible?: boolean;
+  returnTo: string;
 }) {
   const t = await getTranslations("school.classes");
   if (sessions.length === 0) return null;
@@ -62,6 +66,7 @@ async function SessionGroupSection({ titleKey, count, classroomId, sessions, col
       classroomId={classroomId}
       session={session}
       quickManageHref={`/dashboard/classes/${classroomId}?tab=sessions&session=${session.id}`}
+      returnTo={returnTo}
     />)}
   </ul>;
   if (collapsible) {
@@ -76,10 +81,12 @@ async function SessionGroupSection({ titleKey, count, classroomId, sessions, col
   </div>;
 }
 
-export async function SessionGroupList({ classroomId, sessions, workItems }: {
+export async function SessionGroupList({ classroomId, sessions, workItems, returnTo }: {
   classroomId: string;
   sessions: SessionRow[];
   workItems: readonly WorkItemRow[];
+  /** 本屏自己的地址，作为课次工作区的返回来源。 */
+  returnTo: string;
 }) {
   const t = await getTranslations("school.classes");
   const groups = groupClassroomSessions(sessions, workItems);
@@ -97,14 +104,14 @@ export async function SessionGroupList({ classroomId, sessions, workItems }: {
             <div>
               <h3 className="text-xs font-medium uppercase text-muted">{t("groupNext")}</h3>
               <ul className="mt-2 divide-y divide-line">
-                <SessionRowItem classroomId={classroomId} session={groups.next} quickManageHref={`/dashboard/classes/${classroomId}?tab=sessions&session=${groups.next.id}`} />
+                <SessionRowItem classroomId={classroomId} session={groups.next} quickManageHref={`/dashboard/classes/${classroomId}?tab=sessions&session=${groups.next.id}`} returnTo={returnTo} />
               </ul>
             </div>
           )}
-          <SessionGroupSection titleKey="groupNeedsAttention" count={groups.needsAttention.length} classroomId={classroomId} sessions={groups.needsAttention} />
-          <SessionGroupSection titleKey="groupUpcoming" count={groups.upcoming.length} classroomId={classroomId} sessions={groups.upcoming} />
-          <SessionGroupSection titleKey="groupEnded" count={groups.ended.length} classroomId={classroomId} sessions={groups.ended} collapsible />
-          <SessionGroupSection titleKey="groupCancelled" count={groups.cancelled.length} classroomId={classroomId} sessions={groups.cancelled} collapsible />
+          <SessionGroupSection returnTo={returnTo} titleKey="groupNeedsAttention" count={groups.needsAttention.length} classroomId={classroomId} sessions={groups.needsAttention} />
+          <SessionGroupSection returnTo={returnTo} titleKey="groupUpcoming" count={groups.upcoming.length} classroomId={classroomId} sessions={groups.upcoming} />
+          <SessionGroupSection returnTo={returnTo} titleKey="groupEnded" count={groups.ended.length} classroomId={classroomId} sessions={groups.ended} collapsible />
+          <SessionGroupSection returnTo={returnTo} titleKey="groupCancelled" count={groups.cancelled.length} classroomId={classroomId} sessions={groups.cancelled} collapsible />
         </div>
       )}
     </section>

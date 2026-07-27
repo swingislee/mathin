@@ -19,14 +19,18 @@ import { LectureCoursewarePreview } from "./LectureCoursewarePreview";
 import type { LectureWorkspaceDetail } from "./types";
 import { lectureStageLabelKey } from "./stage-label";
 
-function trackHref(baseHref: string, track: CoursewareTrack) {
+// doc24 §6：换轨与翻页都是**对象内部**导航，来源必须原样传下去。
+// 少了这一层，从适配校对队列点进讲次、翻一页、再点返回，就会退到课程版本页。
+function trackHref(baseHref: string, track: CoursewareTrack, returnTo: string | null) {
   const search = new URLSearchParams({ track });
+  if (returnTo) search.set("returnTo", returnTo);
   return `${baseHref}?${search.toString()}`;
 }
 
-function pageHref(baseHref: string, track: CoursewareTrack, page: number) {
+function pageHref(baseHref: string, track: CoursewareTrack, page: number, returnTo: string | null) {
   const search = new URLSearchParams({ track });
   if (page > 1) search.set("page", String(page));
+  if (returnTo) search.set("returnTo", returnTo);
   return `${baseHref}?${search.toString()}`;
 }
 
@@ -47,6 +51,7 @@ export async function LectureWorkspaceBody({
   track,
   baseHref,
   backHref,
+  returnTo,
   canOpenCoursewareWorkbench,
   canAssign,
   staffOptions,
@@ -58,6 +63,8 @@ export async function LectureWorkspaceBody({
   baseHref: string;
   /** 已过 resolveReturnTarget 校验的来源地址（默认课程版本）。 */
   backHref: string;
+  /** 已校验的 `?returnTo=`，没有来源时为 null；对象内部链接据此决定要不要带上。 */
+  returnTo: string | null;
   canOpenCoursewareWorkbench: boolean;
   canAssign: boolean;
   staffOptions: StaffOption[];
@@ -96,8 +103,8 @@ export async function LectureWorkspaceBody({
     />}
     navigation={<TrackSwitcher
       items={[
-        { value: "native-16x9", label: t("trackNative"), href: trackHref(baseHref, "native-16x9") },
-        { value: "adapted-4x3", label: t("trackAdapted"), href: trackHref(baseHref, "adapted-4x3") },
+        { value: "native-16x9", label: t("trackNative"), href: trackHref(baseHref, "native-16x9", returnTo) },
+        { value: "adapted-4x3", label: t("trackAdapted"), href: trackHref(baseHref, "adapted-4x3", returnTo) },
       ]}
       activeValue={track}
       ariaLabel={t("trackSwitcherLabel")}
@@ -119,9 +126,9 @@ export async function LectureWorkspaceBody({
               <div className="mt-3">
                 <LectureCoursewarePreview
                   preview={preview}
-                  prevHref={preview.pageIndex > 1 ? pageHref(baseHref, track, preview.pageIndex - 1) : null}
-                  nextHref={preview.pageIndex < preview.pages.length ? pageHref(baseHref, track, preview.pageIndex + 1) : null}
-                  pageHrefs={preview.pages.map((_, index) => pageHref(baseHref, track, index + 1))}
+                  prevHref={preview.pageIndex > 1 ? pageHref(baseHref, track, preview.pageIndex - 1, returnTo) : null}
+                  nextHref={preview.pageIndex < preview.pages.length ? pageHref(baseHref, track, preview.pageIndex + 1, returnTo) : null}
+                  pageHrefs={preview.pages.map((_, index) => pageHref(baseHref, track, index + 1, returnTo))}
                 />
               </div>
             ) : <p className="mt-2 text-sm text-muted">{t("previewUnavailable")}</p>}

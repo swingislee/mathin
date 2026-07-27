@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
 import { DashboardSummaryCard } from "@/features/school/dashboard-page";
+import { withReturnTo } from "./object-workspace/return-target";
 import { Link } from "@/i18n/navigation";
 import type { StudentDetail, StudentLearning } from "./students";
 
@@ -58,7 +59,7 @@ export async function StudentNextFollowUp({ student, locale }: { student: Studen
   );
 }
 
-export async function StudentCurrentClasses({ enrollments }: { enrollments: StudentLearning["enrollments"] }) {
+export async function StudentCurrentClasses({ enrollments, returnTo }: { enrollments: StudentLearning["enrollments"]; returnTo: string }) {
   const t = await getTranslations("school.students");
   const active = enrollments.filter((enrollment) => enrollment.status === "active");
   return (
@@ -69,7 +70,7 @@ export async function StudentCurrentClasses({ enrollments }: { enrollments: Stud
         <ul className="mt-3 flex flex-col gap-1.5 text-sm">
           {active.map((enrollment) => (
             <li key={`${enrollment.classroomId}-${enrollment.joinedAt}`} className="min-w-0">
-              <Link href={`/dashboard/classes/${enrollment.classroomId}`} className="block truncate text-ink hover:text-crater">
+              <Link href={withReturnTo(`/dashboard/classes/${enrollment.classroomId}`, returnTo)} className="block truncate text-ink hover:text-crater">
                 {enrollment.classroomName}
               </Link>
               {enrollment.courseTitle ? <span className="block truncate text-xs text-muted">{enrollment.courseTitle}</span> : null}

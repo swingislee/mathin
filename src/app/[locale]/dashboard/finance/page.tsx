@@ -16,6 +16,7 @@ import {
   DashboardPage,
 } from "@/features/school/dashboard-page";
 import { FilterBar, FilterBarReset, FilterBarSubmit, FilterSearchInput, FilterSelectTrigger } from "@/features/school/FilterBar";
+import { withReturnTo } from "@/features/school/object-workspace";
 import type { PermissionKey } from "@/features/school/permissions";
 import { RefundQueuePanel } from "@/features/school/RefundQueuePanel";
 import { ScholarshipsPanel } from "@/features/school/ScholarshipsPanel";
@@ -176,7 +177,7 @@ export default async function FinancePage({
                 {ordersResult.orders.map((order) => (
                   <li key={order.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-sm">
                     <div className="min-w-0">
-                      <Link href={`/dashboard/students/${order.studentId}`} className="font-medium hover:underline">{order.studentName}</Link>
+                      <Link href={withReturnTo(`/dashboard/students/${order.studentId}?tab=finance`, pageHref(filters.page))} className="font-medium hover:underline">{order.studentName}</Link>
                       <span className="ml-2 font-mono text-xs text-muted">{order.orderNo}</span>
                     </div>
                     <span className="shrink-0 text-xs text-muted">

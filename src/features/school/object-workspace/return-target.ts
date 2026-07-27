@@ -36,35 +36,68 @@ function matchesRoute(route: DashboardRoute, segments: readonly string[]): boole
   );
 }
 
+/**
+ * 校验 `?returnTo=`，通过返回可用的站内地址，否则返回 `null`。
+ *
+ * 与 resolveReturnTarget 分开，是因为对象页有两个不同的问题要回答：
+ *   - "返回按钮指向哪" —— 校验失败也得有个去处，用 canonical 父页面兜底；
+ *   - "对象内部换 Tab / 换 stage / 换版本时，要不要把来源带上" —— 这里必须能区分
+ *     "用户确实是从课表来的"和"兜底值"。分不开就会把 fallback 当成来源钉进 URL，
+ *     之后每次切 Tab 都在 URL 上滚一层假的 returnTo。
+ */
+export function parseReturnTo({
+  returnTo,
+  environment,
+}: {
+  /** 原始 `?returnTo=` 值（未解码前已由框架解码），可能缺失、可能是攻击载荷。 */
+  returnTo: string | string[] | undefined;
+  environment: UserEnvironment;
+}): string | null {
+  const candidate = Array.isArray(returnTo) ? returnTo[0] : returnTo;
+  if (!candidate) return null;
+
+  // 单斜杠开头的站内绝对路径；`//evil.com` 是协议相对外链，必须挡掉。
+  if (!candidate.startsWith("/") || candidate.startsWith("//")) return null;
+  // 反斜杠在部分浏览器里等价于斜杠，`/\evil.com` 同样会跳出站外。
+  if (candidate.includes("\\")) return null;
+
+  const [pathname, ...rest] = candidate.split("?");
+  const query = rest.join("?");
+  const segments = segmentsOf(pathname);
+  if (segments[0] !== "dashboard") return null;
+
+  const route = (Object.values(DASHBOARD_ROUTES) as DashboardRoute[]).find((entry) => matchesRoute(entry, segments));
+  if (!route) return null;
+  if (!route.environments.includes(environment)) return null;
+
+  return query ? `${pathname}?${query}` : pathname;
+}
+
 export function resolveReturnTarget({
   returnTo,
   fallback,
   environment,
 }: {
-  /** 原始 `?returnTo=` 值（未解码前已由框架解码），可能缺失、可能是攻击载荷。 */
   returnTo: string | string[] | undefined;
   /** 该对象的 canonical 父页面，校验不通过时使用。 */
   fallback: string;
   environment: UserEnvironment;
 }): string {
-  const candidate = Array.isArray(returnTo) ? returnTo[0] : returnTo;
-  if (!candidate) return fallback;
+  return parseReturnTo({ returnTo, environment }) ?? fallback;
+}
 
-  // 单斜杠开头的站内绝对路径；`//evil.com` 是协议相对外链，必须挡掉。
-  if (!candidate.startsWith("/") || candidate.startsWith("//")) return fallback;
-  // 反斜杠在部分浏览器里等价于斜杠，`/\evil.com` 同样会跳出站外。
-  if (candidate.includes("\\")) return fallback;
-
-  const [pathname, ...rest] = candidate.split("?");
-  const query = rest.join("?");
-  const segments = segmentsOf(pathname);
-  if (segments[0] !== "dashboard") return fallback;
-
-  const route = (Object.values(DASHBOARD_ROUTES) as DashboardRoute[]).find((entry) => matchesRoute(entry, segments));
-  if (!route) return fallback;
-  if (!route.environments.includes(environment)) return fallback;
-
-  return query ? `${pathname}?${query}` : pathname;
+/**
+ * 对象**内部**导航保留来源（doc 24 §6）。
+ *
+ * 之前只有进入对象的那一跳带 `?returnTo=`：从课表点进课次，返回确实回课表；但只要
+ * 在课次里切一次"课后"，stage 链接是从 `baseHref` 重新拼的，returnTo 就掉了，返回
+ * 变成回班级详情——而用户是从课表来的。对象内部的每个 URL 都必须把来源原样传下去。
+ *
+ * 只接受**已校验过**的来源（parseReturnTo 的返回值），所以不会把攻击载荷或兜底值
+ * 传播到下一跳。
+ */
+export function preserveReturnTo(href: string, validatedReturnTo: string | null | undefined): string {
+  return validatedReturnTo ? withReturnTo(href, validatedReturnTo) : href;
 }
 
 /** 把当前地址编码进目标链接，供列表/队列页给出"改完能回来"的入口。 */

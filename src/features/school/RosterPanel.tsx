@@ -17,6 +17,7 @@ import {
 import { Link, useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { selectClass } from "./controls";
+import { withReturnTo } from "./object-workspace/return-target";
 import { enrollStudentAction, listClassroomOptions, searchStudentsForEnroll, transferStudentAction, withdrawStudentAction } from "./actions/classes";
 import { type StudentSearchResult } from "./actions/types";
 import type { RosterRow, RosterSignals, RosterViewerRole } from "./classes";
@@ -47,12 +48,14 @@ function RosterSignalColumns({ role, signals }: { role: RosterViewerRole; signal
   return null;
 }
 
-export function RosterPanel({ classroomId, roster, canManage, viewerRole, signals }: {
+export function RosterPanel({ classroomId, roster, canManage, viewerRole, signals, returnTo }: {
   classroomId: string;
   roster: RosterRow[];
   canManage: boolean;
   viewerRole: RosterViewerRole;
   signals: Record<string, RosterSignals>;
+  /** 本屏地址：从名单点进学生档案，改完要回到这份名单（doc24 §6.2）。 */
+  returnTo: string;
 }) {
   const t = useTranslations("school.classes");
   const router = useRouter();
@@ -130,7 +133,7 @@ export function RosterPanel({ classroomId, roster, canManage, viewerRole, signal
         <ul className="mt-4 divide-y divide-line">
           {roster.map((row) => (
             <li key={row.studentId} className="flex items-center gap-3 py-2.5 text-sm">
-              <Link href={`/dashboard/students/${row.studentId}`} className="min-w-0 flex-1 truncate hover:text-crater hover:underline">
+              <Link href={withReturnTo(`/dashboard/students/${row.studentId}`, returnTo)} className="min-w-0 flex-1 truncate hover:text-crater hover:underline">
                 {row.studentName}
               </Link>
               {!row.hasAccount && <span className="rounded-full bg-line/50 px-2 py-0.5 text-xs text-muted">{t("noAccount")}</span>}

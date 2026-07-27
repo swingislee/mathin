@@ -9,6 +9,7 @@ import { SessionWorkspaceRail } from "./SessionWorkspaceRail";
 import {
   ObjectBar,
   ObjectWorkspace,
+  preserveReturnTo,
   StageNavigation,
   WorkspaceMain,
   WorkspaceRail,
@@ -74,17 +75,21 @@ export async function SessionWorkspaceBody({
   detail,
   stage,
   backHref,
+  returnTo,
 }: {
   detail: SessionWorkspaceDetail;
   stage: SessionStage;
   /** 已过 resolveReturnTarget 校验的来源地址（默认班级详情）。 */
   backHref: string;
+  /** 已校验的 `?returnTo=`；课前/课堂/课后三段之间切换要带着它走（doc24 §6）。 */
+  returnTo: string | null;
 }) {
   const t = await getTranslations("school.session");
   const tc = await getTranslations("school.classes");
 
   const baseHref = `/dashboard/sessions/${detail.id}`;
-  const stageHref = (target: SessionStage) => `${baseHref}?stage=${target}`;
+  const stageHref = (target: SessionStage) =>
+    preserveReturnTo(`${baseHref}?stage=${target}`, returnTo);
 
   const statusLabel = {
     scheduled_not_ready: t("status_scheduledNotReady"),

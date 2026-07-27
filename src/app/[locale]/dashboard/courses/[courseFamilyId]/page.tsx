@@ -24,10 +24,17 @@ import {
   DashboardMainColumn,
   DashboardReadingColumn,
 } from "@/features/school/dashboard-page";
-import { ObjectBar, ObjectContextSwitcher, ObjectWorkspace, type ObjectContextItem } from "@/features/school/object-workspace";
+import {
+  ObjectBar,
+  ObjectContextSwitcher,
+  ObjectWorkspace,
+  parseReturnTo,
+  preserveReturnTo,
+  type ObjectContextItem,
+} from "@/features/school/object-workspace";
 import { listStaffOptions } from "@/features/school/classes";
 import { Link } from "@/i18n/navigation";
-import { getMyPerms, requirePerm } from "@/lib/auth";
+import { getActiveEnvironment, getMyPerms, requirePerm } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
 function first(value: string | string[] | undefined) {
@@ -70,11 +77,15 @@ async function CourseFamilyProductPage({
 }) {
   const [{ courseFamilyId }, rawSearchParams, user] = await Promise.all([params, searchParams, requirePerm(locale, "course.view")]);
   if (!isUuid(courseFamilyId)) notFound();
-  const [t, permissions, staffOptions] = await Promise.all([
+  const [t, permissions, staffOptions, environment] = await Promise.all([
     getTranslations("school.courses"),
     getMyPerms(user.id),
     listStaffOptions(),
+    getActiveEnvironment(user.id),
   ]);
+  // doc24 §6：课程产品可以从产品库进入，也可以从课件队列、研发任务和班级的课程链接进入。
+  // 版本层不需要——它的父页面就是同一个对象的总览（§6 明确保留这条稳定父子关系）。
+  const returnTo = environment ? parseReturnTo({ returnTo: rawSearchParams.returnTo, environment }) : null;
   const requestedVariantId = first(rawSearchParams.variant);
 
   // doc22 §5.16：这条路由只接受 Course Family ID。P4H 时期的「传 Variant ID 也认，
@@ -110,7 +121,7 @@ async function CourseFamilyProductPage({
     return <ObjectWorkspace
       objectBar={<ObjectBar
         title={detail.family.title}
-        backHref="/dashboard/courses"
+        backHref={returnTo ?? "/dashboard/courses"}
         backLabel={t("backToLibrary")}
         context={identity}
         status={familyStatusBadge}
@@ -177,7 +188,7 @@ async function CourseFamilyProductPage({
   return <ObjectWorkspace
     objectBar={<ObjectBar
       title={selectedVariant.title}
-      backHref={`/dashboard/courses/${detail.family.id}`}
+      backHref={preserveReturnTo(`/dashboard/courses/${detail.family.id}`, returnTo)}
       backLabel={t("backToOverview")}
       // 只留产品码。年级 / 季节 / 班型这三维就在下面的 ObjectContextSwitcher 里高亮着，
       // 在身份行再说一遍是同一屏两份同样的信息（§15），移动端还要多占一整行 sticky 高度。
@@ -199,7 +210,7 @@ async function CourseFamilyProductPage({
 
       <DashboardAside>
         <CourseVariantReadiness readiness={detail.readiness} />
-        {capabilities.canViewUsingClasses && <UsagePanel usage={detail.usage} />}
+        {capabilities.canViewUsingClasses && <UsagePanel usage={detail.usage} returnTo={baseHref} />}
         <ResponsibilityPanel
           scopeType="variant"
           scopeId={selectedVariant.id}
