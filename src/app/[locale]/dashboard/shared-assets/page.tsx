@@ -4,7 +4,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AssetLibraryFilters } from "@/features/courseware-studio/AssetLibraryFilters";
 import { loadCoursewareSharedAssets, parseAssetLibraryFilters } from "@/features/courseware-studio/data";
-import { SchoolPageHeader } from "@/features/school/PageHeader";
+import { DashboardCommandFilters, DashboardCommandPanel, DashboardPage } from "@/features/school/dashboard-page";
 import { Link } from "@/i18n/navigation";
 import { requirePerm } from "@/lib/auth";
 
@@ -34,15 +34,28 @@ export default async function SharedAssetLibraryPage({
   };
 
   return (
-    <div className="mx-auto w-full max-w-6xl">
-      <SchoolPageHeader title={t("assetLibraryTitle")} />
-      <AssetLibraryFilters initial={filters} />
-
+    <DashboardPage
+      title={t("assetLibraryTitle")}
+      commandPanel={
+        <DashboardCommandPanel>
+          <DashboardCommandFilters>
+            <AssetLibraryFilters initial={filters} />
+          </DashboardCommandFilters>
+        </DashboardCommandPanel>
+      }
+      footer={
+        <nav className="flex items-center justify-between" aria-label={t("assetPagination")}>
+          {filters.page > 1 ? <Link href={hrefForPage(filters.page - 1)} className={buttonVariants({ variant: "secondary", size: "sm" })}>{t("assetPreviousPage")}</Link> : <span />}
+          <span className="text-xs text-muted">{t("assetPage", { page: filters.page })}</span>
+          {hasNextPage ? <Link href={hrefForPage(filters.page + 1)} className={buttonVariants({ variant: "secondary", size: "sm" })}>{t("assetNextPage")}</Link> : <span />}
+        </nav>
+      }
+    >
       {items.length === 0 ? (
-        <p className="mt-5 rounded-2xl border border-line bg-card p-5 text-sm text-muted">{t("assetLibraryEmpty")}</p>
+        <p className="rounded-2xl border border-line bg-card p-5 text-sm text-muted">{t("assetLibraryEmpty")}</p>
       ) : (
-        <div className="mt-5 overflow-hidden rounded-2xl border border-line bg-card">
-          <Table className="w-full border-collapse text-left text-sm">
+        <div className="overflow-hidden rounded-2xl border border-line bg-card">
+          <Table className="w-full min-w-[48rem] border-collapse text-left text-sm">
             <TableHeader className="border-b border-line text-xs text-muted">
               <TableRow>
                 <TableHead className="w-24 px-4 py-3 font-medium">{t("assetPreview")}</TableHead>
@@ -84,12 +97,6 @@ export default async function SharedAssetLibraryPage({
           </Table>
         </div>
       )}
-
-      <nav className="mt-5 flex items-center justify-between" aria-label={t("assetPagination")}>
-        {filters.page > 1 ? <Link href={hrefForPage(filters.page - 1)} className={buttonVariants({ variant: "secondary", size: "sm" })}>{t("assetPreviousPage")}</Link> : <span />}
-        <span className="text-xs text-muted">{t("assetPage", { page: filters.page })}</span>
-        {hasNextPage ? <Link href={hrefForPage(filters.page + 1)} className={buttonVariants({ variant: "secondary", size: "sm" })}>{t("assetNextPage")}</Link> : <span />}
-      </nav>
-    </div>
+    </DashboardPage>
   );
 }

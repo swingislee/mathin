@@ -71,7 +71,7 @@ export function FollowUpBoardList({
   });
 
   return (
-    <div className="mt-6 space-y-4">
+    <div className="space-y-4">
       {groups.map((group) => {
         const open = expanded.has(group.status);
         const rows = open ? group.rows : group.rows.slice(0, FOLD_LIMIT);

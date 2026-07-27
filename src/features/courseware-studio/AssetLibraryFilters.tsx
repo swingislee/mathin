@@ -22,6 +22,8 @@ export function AssetLibraryFilters({ initial }: Props) {
   const [track, setTrack] = useState(initial.track);
   const [minUsage, setMinUsage] = useState(String(initial.minUsage));
 
+  const activeCount = [query, kind !== "all", role, track !== "native-16x9", minUsage !== "0"].filter(Boolean).length;
+
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const params = new URLSearchParams();
@@ -37,20 +39,22 @@ export function AssetLibraryFilters({ initial }: Props) {
   return (
     <FilterBar onSubmit={submit} aria-label={t("applyAssetFilters")}>
       <FilterSearchInput id="asset-search" value={query} maxLength={200} onChange={(event) => setQuery(event.target.value)} placeholder={t("assetSearchPlaceholder")} aria-label={t("assetSearch")} />
-      <Select value={kind} onValueChange={setKind}>
-          <FilterSelectTrigger aria-label={t("assetKind")}><SelectValue /></FilterSelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("assetKindAll")}</SelectItem>
-            <SelectItem value="image">{t("assetKindImage")}</SelectItem>
-            <SelectItem value="video">{t("assetKindVideo")}</SelectItem>
-            <SelectItem value="audio">{t("assetKindAudio")}</SelectItem>
-            <SelectItem value="svg">{t("assetKindSvg")}</SelectItem>
-            <SelectItem value="h5">{t("assetKindH5")}</SelectItem>
-          </SelectContent>
-      </Select>
-      <FilterBarSubmit>{t("applyAssetFilters")}</FilterBarSubmit>
-      <FilterBarMore label={commonT("moreFilters")}>
-        <div className="grid gap-3 sm:grid-cols-3">
+      <FilterBarMore label={commonT("moreFilters")} activeCount={activeCount}>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label>{t("assetKind")}</Label>
+            <Select value={kind} onValueChange={setKind}>
+              <FilterSelectTrigger className="w-full" aria-label={t("assetKind")}><SelectValue /></FilterSelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("assetKindAll")}</SelectItem>
+                <SelectItem value="image">{t("assetKindImage")}</SelectItem>
+                <SelectItem value="video">{t("assetKindVideo")}</SelectItem>
+                <SelectItem value="audio">{t("assetKindAudio")}</SelectItem>
+                <SelectItem value="svg">{t("assetKindSvg")}</SelectItem>
+                <SelectItem value="h5">{t("assetKindH5")}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <div className="space-y-1.5">
             <Label htmlFor="asset-role">{t("assetRole")}</Label>
             <Input id="asset-role" value={role} maxLength={100} onChange={(event) => setRole(event.target.value)} placeholder={t("assetRolePlaceholder")} />
@@ -71,9 +75,8 @@ export function AssetLibraryFilters({ initial }: Props) {
           </div>
         </div>
       </FilterBarMore>
-      {(query || kind !== "all" || role || track !== "native-16x9" || minUsage !== "0") && (
-        <FilterBarReset href="/dashboard/shared-assets" label={commonT("clearFilters")} />
-      )}
+      <FilterBarSubmit>{t("applyAssetFilters")}</FilterBarSubmit>
+      {activeCount > 0 && <FilterBarReset href="/dashboard/shared-assets" label={commonT("clearFilters")} />}
     </FilterBar>
   );
 }

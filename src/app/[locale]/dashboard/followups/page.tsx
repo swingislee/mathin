@@ -1,5 +1,12 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { FilterBarFrame } from "@/features/school/FilterBar";
+import {
+  DashboardCommandActions,
+  DashboardCommandFilters,
+  DashboardCommandPanel,
+  DashboardCommandState,
+  DashboardCommandTabs,
+  DashboardPage,
+} from "@/features/school/dashboard-page";
 import { FollowUpBoardList } from "@/features/school/FollowUpBoardList";
 import {
   BOARD_BUCKETS,
@@ -9,7 +16,6 @@ import {
   type FollowUpBoard,
 } from "@/features/school/followups";
 import { NewStudentDialog } from "@/features/school/NewStudentDialog";
-import { SchoolPageHeader } from "@/features/school/PageHeader";
 import { FOLLOW_UP_STATUSES } from "@/features/school/students";
 import { Link } from "@/i18n/navigation";
 import { getMyPerms, requirePerm } from "@/lib/auth";
@@ -59,48 +65,58 @@ export default async function FollowUpsPage({
   };
 
   return (
-    <div className="mx-auto w-full max-w-6xl">
-      <SchoolPageHeader
-        title={t("title")}
-        actions={canCreate ? <NewStudentDialog /> : undefined}
-      />
-      <p className="mt-3 px-1 text-xs text-muted">{t("appendOnlyPolicy")}</p>
+    <DashboardPage
+      title={t("title")}
+      description={t("appendOnlyPolicy")}
+      commandPanel={
+        <DashboardCommandPanel>
+          {canScopeAll ? (
+            <DashboardCommandState>
+              <DashboardCommandTabs
+                ariaLabel={t("scopeLabel")}
+                activeValue={scope}
+                items={[
+                  { value: "mine", label: t("scopeMine"), href: boardHref({ scope: "mine" }) },
+                  { value: "all", label: t("scopeAll"), href: boardHref({ scope: "all" }) },
+                ]}
+              />
+            </DashboardCommandState>
+          ) : null}
 
-      <FilterBarFrame aria-label={t("scopeLabel")}>
-        {canScopeAll && (["mine", "all"] as const).map((value) => (
-          <Link
-            key={value}
-            href={boardHref({ scope: value })}
-            className={cn(
-              "rounded-full px-3 py-1.5 text-xs transition",
-              scope === value ? "bg-ink font-medium text-paper" : "text-muted hover:bg-paper/80 hover:text-ink",
-            )}
-          >
-            {t(value === "mine" ? "scopeMine" : "scopeAll")}
-          </Link>
-        ))}
-        <span className="hidden h-5 w-px bg-line/70 md:block" aria-hidden />
-        {BOARD_BUCKETS.map((key) => {
-          const active = bucket === key;
-          const rose = key === "overdue" && board.counts[key] > 0;
-          return (
-            <Link
-              key={key}
-              href={boardHref({ bucket: active ? undefined : key })}
-              aria-current={active ? "true" : undefined}
-              className={cn(
-                "inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs transition",
-                active ? "bg-crater/12 font-medium text-ink" : "text-muted hover:bg-paper/80 hover:text-ink",
-              )}
-            >
-              <span>{t(`bucket_${key}`)}</span>
-              <span className={cn("tabular-nums", rose ? "text-rose" : "")}>{board.counts[key]}</span>
-            </Link>
-          );
-        })}
-      </FilterBarFrame>
+          {/* 七个时间桶带计数，窄容器下不换行而是横向滚动：换行会让命令面板一路长到
+              小半屏，而这些桶本来就是一条可扫视的量表。 */}
+          <DashboardCommandFilters className="overflow-x-auto">
+            <div role="group" aria-label={t("title")} className="flex items-center gap-1">
+              {BOARD_BUCKETS.map((key) => {
+                const active = bucket === key;
+                const rose = key === "overdue" && board.counts[key] > 0;
+                return (
+                  <Link
+                    key={key}
+                    href={boardHref({ bucket: active ? undefined : key })}
+                    aria-current={active ? "true" : undefined}
+                    className={cn(
+                      "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3 text-xs transition",
+                      active ? "bg-crater/12 font-medium text-ink" : "text-muted hover:bg-paper/80 hover:text-ink",
+                    )}
+                  >
+                    <span>{t(`bucket_${key}`)}</span>
+                    <span className={cn("tabular-nums", rose ? "text-rose" : "")}>{board.counts[key]}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </DashboardCommandFilters>
 
+          {canCreate ? (
+            <DashboardCommandActions>
+              <NewStudentDialog />
+            </DashboardCommandActions>
+          ) : null}
+        </DashboardCommandPanel>
+      }
+    >
       <FollowUpBoardList groups={board.groups} canEditStatus={canEditStatus} canOrder={canOrder} canRecover={canEditStatus&&perms.has("followup.write")} />
-    </div>
+    </DashboardPage>
   );
 }

@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { getTemplateProgress } from "@/features/school/dashboard";
 import { loadLecturePreview, parseCoursewareTrack } from "@/features/courseware-studio/data";
-import { CoursewareTaskQueue, hrefFor } from "@/features/courseware-studio/CoursewareTaskQueue";
+import { CoursewareTaskCommandPanel, CoursewareTaskQueue, hrefFor } from "@/features/courseware-studio/CoursewareTaskQueue";
 import {
   COURSEWARE_STUDIO_PERMS,
   parseCoursewareTaskQuery,
@@ -10,7 +10,7 @@ import {
 } from "@/features/courseware-studio/data";
 import { LecturePreviewDialog } from "@/features/school/curriculum/LecturePreviewDialog";
 import { LecturePreviewPanel } from "@/features/school/curriculum/LecturePreviewPanel";
-import { SchoolPageHeader } from "@/features/school/PageHeader";
+import { DashboardCommandPanel, DashboardPage } from "@/features/school/dashboard-page";
 import { StatusStrip, type StatusStripItem } from "@/features/school/stage/StatusStrip";
 import { getMyPerms, requireAnyPerm } from "@/lib/auth";
 
@@ -42,12 +42,31 @@ export default async function CoursewareTasksPage({
   setRequestLocale(locale);
   const t = await getTranslations("coursewareStudio");
 
-  return <div className="mx-auto w-full max-w-6xl">
-    <SchoolPageHeader title={t("workbenchTitle")} />
-    <Suspense fallback={<div className="mt-6 h-96 animate-pulse rounded-2xl border border-line bg-card" />}>
-      <CoursewareTasksContent locale={locale} searchParams={searchParams} />
-    </Suspense>
-  </div>;
+  return (
+    <DashboardPage
+      title={t("workbenchTitle")}
+      commandPanel={
+        <Suspense fallback={<DashboardCommandPanel />}>
+          <CoursewareTasksCommandPanel locale={locale} searchParams={searchParams} />
+        </Suspense>
+      }
+    >
+      <Suspense fallback={<div className="h-96 animate-pulse rounded-2xl border border-line bg-card" />}>
+        <CoursewareTasksContent locale={locale} searchParams={searchParams} />
+      </Suspense>
+    </DashboardPage>
+  );
+}
+
+async function CoursewareTasksCommandPanel({
+  locale,
+  searchParams,
+}: {
+  locale: string;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const [query] = await Promise.all([searchParams, requireAnyPerm(locale, COURSEWARE_STUDIO_PERMS)]);
+  return <CoursewareTaskCommandPanel tab={parseCoursewareTaskTab(query.tab)} query={parseCoursewareTaskQuery(query.q)} />;
 }
 
 async function CoursewareTasksContent({
@@ -80,8 +99,8 @@ async function CoursewareTasksContent({
     value: `${row.ready}/${row.total}`,
   }));
 
-  return <>
-    {statusItems.length > 0 && <StatusStrip items={statusItems} className="mt-4" />}
+  return <div className="flex min-w-0 flex-col gap-4">
+    {statusItems.length > 0 && <StatusStrip items={statusItems} />}
     <CoursewareTaskQueue
       locale={locale}
       tab={tab}
@@ -92,5 +111,5 @@ async function CoursewareTasksContent({
         <LecturePreviewPanel preview={preview} baseHref={baseHref} workspaceHref={`/dashboard/curriculum/lectures/${preview.lecture.id}?track=${preview.page.aspect === "4:3" ? "adapted-4x3" : "native-16x9"}`} />
       </LecturePreviewDialog>
     )}
-  </>;
+  </div>;
 }

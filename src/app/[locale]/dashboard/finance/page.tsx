@@ -7,8 +7,15 @@ import { getMyAccounts, getMyOrders } from "@/features/school/customer";
 import { getFinanceOverview, type FinanceOverview } from "@/features/school/dashboard";
 import { countPendingRefunds, listCoupons, listOrders, listPendingRefunds, listScholarships, ORDER_STATUSES, parseOrderFilters } from "@/features/school/finance";
 import { toSelectValue } from "@/features/school/controls";
+import {
+  DashboardAside,
+  DashboardCommandFilters,
+  DashboardCommandPanel,
+  DashboardContentGrid,
+  DashboardMainColumn,
+  DashboardPage,
+} from "@/features/school/dashboard-page";
 import { FilterBar, FilterBarReset, FilterBarSubmit, FilterSearchInput, FilterSelectTrigger } from "@/features/school/FilterBar";
-import { SchoolPageHeader } from "@/features/school/PageHeader";
 import type { PermissionKey } from "@/features/school/permissions";
 import { RefundQueuePanel } from "@/features/school/RefundQueuePanel";
 import { ScholarshipsPanel } from "@/features/school/ScholarshipsPanel";
@@ -61,9 +68,9 @@ export default async function FinancePage({
     const balance = accounts[0]?.balance ?? 0;
 
     return (
-      <div className="mx-auto w-full max-w-3xl">
-        <SchoolPageHeader title={customerT("myFinanceTitle")} />
-        <section className="mt-6 rounded-2xl border bg-card p-5">
+      <DashboardPage title={customerT("myFinanceTitle")}>
+        <DashboardContentGrid>
+        <DashboardMainColumn className="rounded-2xl border bg-card p-5">
           <p className="text-sm">{customerT("myBalance", { balance: balance.toFixed(2) })}</p>
           {orders.length === 0 ? (
             <p className="mt-4 text-sm text-muted">{customerT("myOrdersEmpty")}</p>
@@ -80,8 +87,9 @@ export default async function FinancePage({
               ))}
             </ul>
           )}
-        </section>
-      </div>
+        </DashboardMainColumn>
+        </DashboardContentGrid>
+      </DashboardPage>
     );
   }
 
@@ -130,27 +138,40 @@ export default async function FinancePage({
   const maxPage = ordersResult.count ? Math.max(1, Math.ceil(ordersResult.count / 20)) : filters.page;
 
   return (
-    <div className="mx-auto w-full max-w-6xl">
-      <SchoolPageHeader title={t("title")} />
-      {statusItems.length > 0 && <StatusStrip items={statusItems} className="mt-3" />}
-      <p className="mt-3 px-1 text-xs text-muted">{t("appendOnlyPolicy")}</p>
-
-      <div className="mt-6 grid gap-6">
+    <DashboardPage
+      title={t("title")}
+      description={t("appendOnlyPolicy")}
+      summary={statusItems.length > 0 ? <StatusStrip items={statusItems} /> : null}
+      commandPanel={
+        canSeeOrders ? (
+          <DashboardCommandPanel>
+            <DashboardCommandFilters>
+              <FilterBar aria-label={t("filter")}>
+                <FilterSearchInput name="q" defaultValue={filters.q} placeholder={t("searchOrder")} aria-label={t("searchOrder")} />
+                <Select name="status" defaultValue={toSelectValue(filters.status ?? "")}>
+                  <FilterSelectTrigger><SelectValue /></FilterSelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={toSelectValue("")}>{t("allStatuses")}</SelectItem>
+                    {ORDER_STATUSES.map((status) => <SelectItem key={status} value={status}>{t(status)}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <FilterBarSubmit>{t("filter")}</FilterBarSubmit>
+                {(filters.q || filters.status) && <FilterBarReset href="/dashboard/finance" label={t("reset")} />}
+              </FilterBar>
+            </DashboardCommandFilters>
+          </DashboardCommandPanel>
+        ) : null
+      }
+    >
+      {/*
+        §22.1：财务过去是一列业务模块纵向堆叠，统一全宽后会显得稀疏且看不出模块关系。
+        改成主次两列——订单是这一页真正的工作流，退款/优惠券/奖学金/账户查询是围绕它的
+        辅助面板，放侧栏而不是继续往下排。
+      */}
+      <DashboardContentGrid>
         {canSeeOrders && (
-          <section className="rounded-xl border border-line bg-card p-5">
+          <DashboardMainColumn className="rounded-xl border border-line bg-card p-5">
             <h2 className="font-medium">{t("orders", { count: ordersResult.count ?? ordersResult.orders.length })}</h2>
-            <FilterBar className="mt-3" aria-label={t("filter")}>
-              <FilterSearchInput name="q" defaultValue={filters.q} placeholder={t("searchOrder")} aria-label={t("searchOrder")} />
-              <Select name="status" defaultValue={toSelectValue(filters.status ?? "")}>
-                <FilterSelectTrigger><SelectValue /></FilterSelectTrigger>
-                <SelectContent>
-                  <SelectItem value={toSelectValue("")}>{t("allStatuses")}</SelectItem>
-                  {ORDER_STATUSES.map((status) => <SelectItem key={status} value={status}>{t(status)}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <FilterBarSubmit>{t("filter")}</FilterBarSubmit>
-              {(filters.q || filters.status) && <FilterBarReset href="/dashboard/finance" label={t("reset")} />}
-            </FilterBar>
             {ordersResult.orders.length === 0 ? (
               <p className="mt-4 text-sm text-muted">{t("noOrders")}</p>
             ) : (
@@ -172,14 +193,16 @@ export default async function FinancePage({
               {filters.page > 1 && <Link href={pageHref(filters.page - 1)} className="rounded-lg border border-line px-3 py-1.5 text-xs">{t("previous")}</Link>}
               {filters.page < maxPage && <Link href={pageHref(filters.page + 1)} className="rounded-lg border border-line px-3 py-1.5 text-xs">{t("next")}</Link>}
             </div>
-          </section>
+          </DashboardMainColumn>
         )}
 
-        {canApproveRefunds && <RefundQueuePanel refunds={pendingRefunds} />}
-        {canManageCoupons && <CouponsPanel coupons={coupons} />}
-        {canSeeScholarships && <ScholarshipsPanel scholarships={scholarships} />}
-        {canSeeAccounts && <AccountLookupPanel canAdjust={perms.has("finance.account.adjust")} />}
-      </div>
-    </div>
+        <DashboardAside className="space-y-4">
+          {canApproveRefunds && <RefundQueuePanel refunds={pendingRefunds} />}
+          {canManageCoupons && <CouponsPanel coupons={coupons} />}
+          {canSeeScholarships && <ScholarshipsPanel scholarships={scholarships} />}
+          {canSeeAccounts && <AccountLookupPanel canAdjust={perms.has("finance.account.adjust")} />}
+        </DashboardAside>
+      </DashboardContentGrid>
+    </DashboardPage>
   );
 }

@@ -4,8 +4,13 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ContextBar } from "@/features/school/stage/ContextBar";
-import { FilterBarSubmit, FilterSearchInput } from "@/features/school/FilterBar";
+import {
+  DashboardCommandFilters,
+  DashboardCommandPanel,
+  DashboardCommandState,
+  DashboardCommandTabs,
+} from "@/features/school/dashboard-page";
+import { FilterBar, FilterBarSubmit, FilterSearchInput } from "@/features/school/FilterBar";
 import {
   COURSEWARE_TASK_TABS,
   loadCoursewareTaskQueue,
@@ -35,6 +40,44 @@ function rowHref(item: CoursewareTaskItem, baseHref: string) {
     : `/dashboard/curriculum/lectures/${item.lectureId}?track=${item.track}`;
 }
 
+async function taskTabLabels() {
+  const t = await getTranslations("coursewareStudio");
+  const labels: Record<CoursewareTaskTab, string> = {
+    incomplete: t("tabIncomplete"),
+    recent: t("tabRecent"),
+    publish: t("tabPublish"),
+  };
+  return labels;
+}
+
+/** 讲次任务队列的命令面板：待完善/最近/待发布切换 + 任务搜索（docs/plan/21 §14）。 */
+export async function CoursewareTaskCommandPanel({ tab, query }: { tab: CoursewareTaskTab; query: string }) {
+  const [t, tabLabels] = await Promise.all([getTranslations("coursewareStudio"), taskTabLabels()]);
+  return (
+    <DashboardCommandPanel>
+      <DashboardCommandState>
+        <DashboardCommandTabs
+          ariaLabel={t("workbenchTitle")}
+          activeValue={tab}
+          items={COURSEWARE_TASK_TABS.map((item) => ({ value: item, label: tabLabels[item], href: hrefFor(item, query) }))}
+        />
+      </DashboardCommandState>
+      <DashboardCommandFilters>
+        <FilterBar aria-label={t("taskSearch")}>
+          <Input type="hidden" name="tab" value={tab} readOnly />
+          <FilterSearchInput
+            defaultValue={query}
+            name="q"
+            placeholder={t("taskSearchPlaceholder")}
+            aria-label={t("taskSearch")}
+          />
+          <FilterBarSubmit>{t("taskSearch")}</FilterBarSubmit>
+        </FilterBar>
+      </DashboardCommandFilters>
+    </DashboardCommandPanel>
+  );
+}
+
 export async function CoursewareTaskQueue({ locale, tab, query }: Props) {
   const [t, tCourses, tasks] = await Promise.all([
     getTranslations("coursewareStudio"),
@@ -42,39 +85,16 @@ export async function CoursewareTaskQueue({ locale, tab, query }: Props) {
     loadCoursewareTaskQueue(tab, query),
   ]);
   const dateTime = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" });
-  const tabLabels: Record<CoursewareTaskTab, string> = {
-    incomplete: t("tabIncomplete"),
-    recent: t("tabRecent"),
-    publish: t("tabPublish"),
-  };
   const baseHref = hrefFor(tab, query);
   const rowLabel = (item: CoursewareTaskItem) => item.releaseNo !== null ? tCourses("preview") : t("openWorkbench");
 
   return (
     <section>
-      <ContextBar
-        tabs={COURSEWARE_TASK_TABS.map((item) => ({ value: item, label: tabLabels[item], href: hrefFor(item, query) }))}
-        activeTab={tab}
-        filters={
-          <form className="flex w-full gap-2 sm:w-auto" method="get">
-            <Input type="hidden" name="tab" value={tab} readOnly />
-            <FilterSearchInput
-              className="sm:w-64"
-              defaultValue={query}
-              name="q"
-              placeholder={t("taskSearchPlaceholder")}
-              aria-label={t("taskSearch")}
-            />
-            <FilterBarSubmit>{t("taskSearch")}</FilterBarSubmit>
-          </form>
-        }
-      />
-
       {tasks.length === 0 ? (
-        <p className="mt-5 rounded-2xl border border-dashed border-line bg-card p-6 text-sm text-muted">{t("taskQueueEmpty")}</p>
+        <p className="rounded-2xl border border-dashed border-line bg-card p-6 text-sm text-muted">{t("taskQueueEmpty")}</p>
       ) : (
         <>
-          <div className="mt-5 hidden overflow-hidden rounded-2xl border border-line bg-card md:block">
+          <div className="hidden overflow-hidden rounded-2xl border border-line bg-card md:block">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -93,7 +113,7 @@ export async function CoursewareTaskQueue({ locale, tab, query }: Props) {
               </TableBody>
             </Table>
           </div>
-          <div className="mt-5 grid gap-3 md:hidden">
+          <div className="grid gap-3 md:hidden">
             {tasks.map((item) => (
               <article key={`${item.lectureId}:${item.track}`} className="rounded-2xl border border-line bg-card p-4">
                 <p className="text-xs text-muted">{item.familyTitle}</p>

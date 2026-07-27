@@ -9,7 +9,9 @@ import { cn } from "@/lib/utils";
  * 页面可用宽度。
  */
 export function DashboardContentGrid({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("grid min-w-0 grid-cols-12 gap-4 @4xl/page:gap-6", className)}>{children}</div>;
+  // items-start：默认的 stretch 会把主列拉到与侧栏等高，一张只有一行订单的卡片
+  // 被抻成一整屏空白框，反而比迁移前更空。
+  return <div className={cn("grid min-w-0 grid-cols-12 items-start gap-4 @4xl/page:gap-6", className)}>{children}</div>;
 }
 
 /** 主列：窄容器整宽，宽容器 8 列。 */
