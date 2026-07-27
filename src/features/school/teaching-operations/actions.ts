@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { actionError, type ActionResult } from "@/lib/action-result";
-import { authorizedClient } from "@/features/school/actions/guards";
+import { authorizedClient, nullableRpcArg } from "@/features/school/actions/guards";
 import { COMMON_CODES, parse, requiredText, text, uuid } from "@/features/school/actions/schemas";
 
 const teachingPlanSchema = z.object({
@@ -139,6 +139,77 @@ export async function createCourseVariantAction(input: {
     return { ok: true, data };
   } catch (error) {
     return actionError<string>(error, VARIANT_CODES);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// doc22 §5.15：课程产品创建——本轮唯一新增的创建路由 /dashboard/courses/new。
+// 权限键 course.product.create 从 P4B 起就存在，此前零消费方：能在已有 family 下
+// 建 Variant，却没有从零建立一个课程产品的入口。
+// ---------------------------------------------------------------------------
+
+const courseSeason = z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]);
+
+const createFamilySchema = z.object({
+  title: requiredText(120),
+  publisher: text(60),
+  stage: text(40),
+  subject: text(40),
+  edition: text(60),
+  description: text(2000),
+  purpose: z.enum(["production", "test"]),
+  ownerId: uuid.nullable(),
+  // 首个版本是可选步骤：只填产品身份也能建成产品，版本随后在产品工作区里补。
+  firstVariant: z
+    .object({
+      title: requiredText(100),
+      productCode: text(40),
+      grade: z.number().int().min(1).max(9),
+      courseSeason,
+      classType: text(20),
+    })
+    .nullable(),
+});
+
+const FAMILY_CODES = [...COMMON_CODES, "INVALID_STAFF", "VARIANT_ALREADY_EXISTS", "SLUG_EXHAUSTED"] as const;
+
+export async function createCourseFamilyAction(input: {
+  title: string;
+  publisher: string;
+  stage: string;
+  subject: string;
+  edition: string;
+  description: string;
+  purpose: "production" | "test";
+  ownerId: string | null;
+  firstVariant: { title: string; productCode: string; grade: number; courseSeason: 1 | 2 | 3 | 4; classType: string } | null;
+}): Promise<ActionResult<string>> {
+  try {
+    const value = parse(createFamilySchema, input);
+    const { supabase } = await authorizedClient("course.product.create");
+    const { data, error } = await supabase.rpc("create_course_family", {
+      p_title: value.title,
+      p_publisher: value.publisher,
+      p_stage: value.stage,
+      p_subject: value.subject,
+      p_edition: value.edition,
+      p_description: value.description,
+      p_purpose: value.purpose,
+      p_owner_id: nullableRpcArg(value.ownerId),
+      p_first_variant: value.firstVariant
+        ? {
+            title: value.firstVariant.title,
+            productCode: value.firstVariant.productCode,
+            grade: String(value.firstVariant.grade),
+            courseSeason: String(value.firstVariant.courseSeason),
+            classType: value.firstVariant.classType,
+          }
+        : nullableRpcArg(null),
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true, data };
+  } catch (error) {
+    return actionError<string>(error, FAMILY_CODES);
   }
 }
 

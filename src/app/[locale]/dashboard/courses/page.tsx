@@ -1,12 +1,16 @@
 import { Suspense } from "react";
+import { Plus } from "lucide-react";
 import { setRequestLocale } from "next-intl/server";
 import { getTranslations } from "next-intl/server";
+import { buttonVariants } from "@/components/ui/button";
 import {
+  DashboardCommandActions,
   DashboardCommandFilters,
   DashboardCommandPanel,
   DashboardPage,
 } from "@/features/school/dashboard-page";
-import { requirePerm } from "@/lib/auth";
+import { Link } from "@/i18n/navigation";
+import { getMyPerms, requirePerm } from "@/lib/auth";
 import { CourseFamilyFilters } from "@/features/school/teaching-operations/CourseFamilyFilters";
 import { CourseFamilyList } from "@/features/school/teaching-operations/CourseFamilyList";
 import { listCourseFamilies, parseCourseFamilyFilters } from "@/features/school/teaching-operations/course-queries";
@@ -38,12 +42,22 @@ export default async function CoursesPage({
 }
 
 async function CourseFamilyCommandPanel({ locale, searchParams }: { locale: string; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const [rawSearchParams] = await Promise.all([searchParams, requirePerm(locale, "course.view")]);
+  const [rawSearchParams, user] = await Promise.all([searchParams, requirePerm(locale, "course.view")]);
+  const [t, perms] = await Promise.all([getTranslations("school.courseProduct"), getMyPerms(user.id)]);
   return (
     <DashboardCommandPanel>
       <DashboardCommandFilters>
         <CourseFamilyFilters filters={parseCourseFamilyFilters(rawSearchParams)} />
       </DashboardCommandFilters>
+      {/* doc22 §13.5：只有 course.product.create 才看得到新建入口。 */}
+      {perms.has("course.product.create") && (
+        <DashboardCommandActions>
+          <Link href="/dashboard/courses/new" className={buttonVariants({ size: "sm" })}>
+            <Plus className="size-4" />
+            {t("newProduct")}
+          </Link>
+        </DashboardCommandActions>
+      )}
     </DashboardCommandPanel>
   );
 }
