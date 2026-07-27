@@ -1,5 +1,6 @@
 # Dashboard 统一内容坐标系与页面命令面板重构规划
 
+> 状态：**2026-07-27 阶段 A–J 全部完成**，施工记录与实际偏差见文末「§30 施工记录」。  
 > 建议仓库路径：`docs/plan/21-dashboard-unified-canvas-command-panel-refactor.md`  
 > 适用范围：`src/app/[locale]/dashboard` 下的普通列表页、管理页、表单页和部分详情页  
 > 暂不适用：`ObjectWorkspace` 工作区页面、`TileWorkspace` 首页体系  
@@ -2015,3 +2016,47 @@ DashboardShell 决定所有页面的唯一宽度
 ```
 
 这与当前固定导航、左右悬浮控制和统一 Dashboard 工作区的整体方向一致，也是消除页面切换偏移、异常留白和布局错位的根本方案。
+
+---
+
+## 30. 施工记录（2026-07-27 完成）
+
+### 30.1 实际落地
+
+| 阶段 | 提交 | 内容 |
+| --- | --- | --- |
+| A + B | `b4f10c2` | `--dashboard-gutter` 成为唯一水平边界来源；删除整页 `lg:pr-24`；`components/global-floating-controls/` 用 ResizeObserver 把控件到视口边缘的真实距离写进 CSS 变量，透明占位读回来 |
+| C + D | `0ceecfb` | `features/school/dashboard-page/`：页面骨架六件套 + 命令面板五件套 + 12 列内部网格原语 |
+| E | `156c94c` | 学生列表样板页 |
+| F | `60883b3` | classes / courses / staff / registration / operations / activities / videos / assignments |
+| G | `ea19e14` | followups / courseware / shared-assets / adapt-review / finance |
+| H | `7769716` | classes/new、students/import、students/[id]、children、shared-assets/[assetId]、operations/testdata、staff/roles |
+| I + J | 本次 | 删除旧规则、退休 `SchoolPageHeader`、防回退门禁、回归 |
+
+### 30.2 实施中被验证推翻的三个写法
+
+这三条都是先按规划写完、再用 Playwright 量出来才发现的，值得留档：
+
+1. **`DashboardPageChrome` 不能带 `w-full`。** 显式 `width:100%` 把宽度锁在父级内容盒上，负外边距只把整块往左推，右边线反而少一个 gutter。必须让它作为普通块级元素由外边距撑开。
+2. **命令面板不能用 flex + order 排版。** 窄容器下需要「状态与主操作同一行、筛选独占第二行」是**硬要求**，靠 `flex-wrap` 只是碰运气——状态标签或操作按钮一长就各自另起一行，移动端 sticky 顶部直接吃掉小半个视口。改为显式行列定位（`grid-cols-[minmax(0,1fr)_auto]` → `@3xl/chrome` 三列）。
+3. **`DashboardContentGrid` 必须 `items-start`。** grid 默认 stretch 会把主列拉到与侧栏等高，财务页那张只有一行订单的卡片被抻成一整屏空框，比迁移前更空。
+
+另外：表格铺满统一内容轴后必须自带 `min-w-*`，否则手机上列会被挤成竖排单字，而不是按 §17.1 横向滚动。
+
+### 30.3 与规划的偏差
+
+1. **§14.5 的「移动端复杂筛选进入 Sheet」未实现。** 现有筛选是带 Radix `Select` 的 GET 表单，塞进 Sheet 要么复制 DOM（GET 提交会带上重复字段），要么让表单在 Sheet 关闭时卸载。改为：搜索框常驻 + 次要条件全部收进已有的 `FilterBarMore`（`<details>` 面板，留在 form DOM 子树内）并显示生效条件数。命令面板在 390px 下实测 2 行（有生效筛选时 3 行），仍在 §13.2 的高度预算内。该做法满足 §14.5 的「不平铺大量 Select / 显示有效筛选数量」，Sheet 形态本身不在 §26 完工标准内，留作后续项。
+2. **§21.4「TileWorkspace 暂不迁移」按「只迁页头、不动磁贴」执行。** 磁贴网格、编辑态、拖拽与持久化完全未动；只是把「编辑布局 / 重置 / 完成」从页头 actions 移进命令面板，页头换成 `DashboardPage`。否则 `SchoolPageHeader` 会因为唯一一个调用方永久活着，§23-I.2「删除页头 actions」无法收口。
+3. **`ObjectBar` 与 `DecisionRail` 一并接入了安全占位。** 它们不在页面迁移范围内，但删掉整页 `lg:pr-24` 之后，决策栏标题会被右上悬浮控件压住（讲次工作区实测），所以必须同步处理。`ObjectBar` 增加 `floatingSafeArea` 开关：右侧另有决策栏时置 `false`，避免两处重复让位白丢一截宽度。
+
+### 30.4 验收结果
+
+- `pnpm lint` / `pnpm typecheck` / `pnpm build` / `pnpm messages:check` 全通过。
+- **§25.3 页面切换稳定性**：学生/班级/课程/跟进/课件/共享资源/财务/员工/运营 9 页 × 6 视口（1920/1440/1280/1024/390），`chrome`、`panel`、`body`、`content` 四条轴的左右边线在同一视口内完全一致，无横向溢出。
+- **§25.4 悬浮控件安全区**：移除一个控件 → 安全区 104px→52px；再加两个 → 156px；超长中文/英文标题下标题右边线始终位于控件左边线之前；正文宽度四种情况全程不变。
+- **§25.5 工作区回归**：`/dashboard`、`/dashboard/schedule`、`/dashboard/classes/[id]`、`/dashboard/curriculum/lectures/[id]`、`/dashboard/sessions/[id]` 无双滚动、无横向溢出，ObjectBar / ContextBar / 决策栏 / 课表横向滚动均正常。
+- **§23 阶段 J 防回退**：`pnpm doc21:audit`（`scripts/verify-doc21-coordinates.mjs`）检查页面根重新居中、`SchoolPageHeader` 复活、Shell 整页右侧 padding 回流、全局 `.mx-auto` 兜底规则回流、骨架自身引入限宽；另有一条 ESLint `no-restricted-syntax` 禁止 dashboard 路由下 `className` 出现 `mx-auto`。两道门禁都做过反向验证（人为加回 `mx-auto max-w-6xl` 时确实报错）。
+
+### 30.5 待人工签收
+
+固定视口截图已产出但未经用户逐页签收；§25.2 的亮/暗两档视觉验收仍需用户确认。

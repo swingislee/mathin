@@ -47,7 +47,7 @@ export default async function CourseDetailPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  return <div className="mx-auto w-full max-w-6xl">
+  return <div className="w-full min-w-0">
     <Suspense fallback={<div className="mt-6 h-96 animate-pulse rounded-2xl border border-line bg-card" />}>
       <CourseFamilyProductPage locale={locale} params={params} searchParams={searchParams} />
     </Suspense>

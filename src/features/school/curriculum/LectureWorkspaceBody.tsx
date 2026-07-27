@@ -71,6 +71,7 @@ export async function LectureWorkspaceBody({
       context={`${detail.variant.title}`}
       status={detail.tracks.find((row) => row.hasUnpublishedChanges) ? <AlertTriangle size={16} className="text-amber-600" aria-label={t("hasUnpublishedChanges")} /> : undefined}
       primaryAction={primaryAction}
+      floatingSafeArea={false}
     />}
     contextBar={<ContextBar
       tabs={[

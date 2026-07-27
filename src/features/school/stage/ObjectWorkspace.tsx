@@ -32,7 +32,7 @@ export function ObjectWorkspace({
     return (
       <div className={cn("flex h-full min-h-0 flex-col", className)}>
         {objectBar}
-        {contextBar}
+        {contextBar ? <div className="pt-3">{contextBar}</div> : null}
         <ScrollArea className="min-h-0 flex-1" orientation={horizontalScrollbar ? "both" : "vertical"}>
           <div className="py-6">{children}</div>
         </ScrollArea>

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { GlobalFloatingControlsSafeArea } from "@/components/global-floating-controls";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
@@ -20,7 +21,17 @@ export function DecisionRail({
 }) {
   return (
     <aside className={cn("flex max-h-[45vh] w-full shrink-0 flex-col lg:h-full lg:max-h-none lg:w-[320px] lg:border-l lg:border-line", className)}>
-      {title ? <div className="shrink-0 border-b border-line px-4 py-3 text-sm font-medium text-ink">{title}</div> : null}
+      {/*
+        决策栏贴着工作区右边线，它的标题正好落在右上悬浮控件下面。整页右侧 padding
+        取消后（docs/plan/21 §6.2），这里必须自己让出安全区——否则"校对与决策"会被
+        通知铃和菜单压住。
+      */}
+      {title ? (
+        <div className="flex shrink-0 items-center border-b border-line px-4 py-3 text-sm font-medium text-ink">
+          <span className="min-w-0 truncate">{title}</span>
+          <GlobalFloatingControlsSafeArea />
+        </div>
+      ) : null}
       <ScrollArea className="min-h-0 flex-1">
         <div className="flex flex-col gap-3 p-4">{children}</div>
       </ScrollArea>

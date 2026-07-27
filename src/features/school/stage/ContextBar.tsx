@@ -16,6 +16,9 @@ export interface ContextBarTab {
  * 只承载"当前视图切换"（子视图 tab）和筛选,不重复对象身份信息。
  * tab 通过真实 href 跳转（响应式驱动而非本地 state）,对齐现有列表页
  * `?tab=` 路由约定,Tabs 只提供样式与键盘导航,不吞掉导航行为。
+ *
+ * 不带默认外边距（docs/plan/21 §19.3）：与 ObjectBar 之间的间距由
+ * ObjectWorkspace 统一给出，组件自己不携带页面级纵向节奏。
  */
 export function ContextBar({
   tabs,
@@ -30,7 +33,7 @@ export function ContextBar({
 }) {
   if (!tabs?.length && !filters) return null;
   return (
-    <div className={cn("mt-3 flex min-h-12 flex-wrap items-center justify-between gap-2 py-1", className)}>
+    <div className={cn("flex min-h-12 flex-wrap items-center justify-between gap-2 py-1", className)}>
       {tabs && tabs.length > 0 ? (
         <Tabs value={activeTab} onValueChange={() => undefined} className="min-w-0">
           <TabsList>

@@ -22,7 +22,7 @@ export default async function SessionWorkspacePage({
   const { locale } = await params;
   setRequestLocale(locale);
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col xl:h-full xl:min-h-0">
+    <div className="flex w-full min-w-0 flex-1 flex-col xl:h-full xl:min-h-0">
       <Suspense fallback={<div className="mt-6 h-96 animate-pulse rounded-2xl border border-line bg-card" />}>
         <SessionWorkspaceContent locale={locale} params={params} searchParams={searchParams} />
       </Suspense>

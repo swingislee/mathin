@@ -1,7 +1,7 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { SchoolPageHeader } from "@/features/school/PageHeader";
 import { ScheduleWeekView } from "@/features/school/ScheduleWeekView";
 import { SessionManagementDrawer } from "@/features/school/SessionManagementDrawer";
+import { ObjectBar } from "@/features/school/stage/ObjectBar";
 import { ObjectWorkspace } from "@/features/school/stage/ObjectWorkspace";
 import { TermManager } from "@/features/school/TermManager";
 import { listSchoolTerms } from "@/features/school/courses";
@@ -43,7 +43,7 @@ export default async function SchedulePage({
           scroll="internal"
           horizontalScrollbar
           objectBar={
-            <SchoolPageHeader title={t("title")} actions={perms.has("schedule.manage") ? <TermManager terms={schoolTerms} /> : undefined} />
+            <ObjectBar title={t("title")} primaryAction={perms.has("schedule.manage") ? <TermManager terms={schoolTerms} /> : undefined} />
           }
         >
           <ScheduleWeekView canFilterAll={perms.has("schedule.view.all")} />

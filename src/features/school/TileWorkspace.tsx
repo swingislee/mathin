@@ -25,7 +25,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Link, useRouter } from "@/i18n/navigation";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { SchoolPageHeader } from "./PageHeader";
+import { DashboardCommandActions, DashboardCommandPanel, DashboardPage } from "./dashboard-page";
 import { resetDashboardLayout, saveDashboardLayout } from "./layout-actions";
 import {
   GRID_COLS,
@@ -401,57 +401,63 @@ export function TileWorkspace({
   );
 
   return (
-    <div className="mx-auto w-full max-w-7xl">
-      <SchoolPageHeader
-        title={title}
-        description={subtitle}
-        actions={
-          editing ? (
-            <>
-              <button
-                type="button"
-                onClick={resetLayout}
-                disabled={saving}
-                className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
-              >
-                <RotateCcw size={14} />
-                {t("reset")}
+    <DashboardPage
+      title={title}
+      description={subtitle}
+      commandPanel={
+        <DashboardCommandPanel>
+          <DashboardCommandActions>
+            {editing ? (
+              <>
+                <button
+                  type="button"
+                  onClick={resetLayout}
+                  disabled={saving}
+                  className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
+                >
+                  <RotateCcw size={14} />
+                  {t("reset")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditing(false)}
+                  disabled={saving}
+                  className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
+                >
+                  {t("cancel")}
+                </button>
+                <button
+                  type="button"
+                  onClick={finishEdit}
+                  disabled={saving}
+                  className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}
+                >
+                  {t("done")}
+                </button>
+              </>
+            ) : (
+              <button type="button" onClick={startEdit} className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
+                <PenLine size={14} />
+                {t("edit")}
               </button>
-              <button
-                type="button"
-                onClick={() => setEditing(false)}
-                disabled={saving}
-                className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
-              >
-                {t("cancel")}
-              </button>
-              <button
-                type="button"
-                onClick={finishEdit}
-                disabled={saving}
-                className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}
-              >
-                {t("done")}
-              </button>
-            </>
-          ) : (
-            <button type="button" onClick={startEdit} className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
-              <PenLine size={14} />
-              {t("edit")}
-            </button>
-          )
-        }
-      />
-
-      {error && <p className="mt-4 text-sm text-rose">{error}</p>}
-      {prelude && <div className="mt-6">{prelude}</div>}
+            )}
+          </DashboardCommandActions>
+        </DashboardCommandPanel>
+      }
+      summary={error || prelude ? (
+        <div className="space-y-4">
+          {error && <p className="text-sm text-rose">{error}</p>}
+          {prelude}
+        </div>
+      ) : null}
+    >
 
       {editing && wide ? (
         // 编辑态（md+）：绝对定位画布，拖动/调档实时 push 预览（§5.8a）。
         <div
           ref={containerRef}
           data-tile-canvas="edit"
-          className="relative mt-6"
+          className="relative"
           style={{ height: editRows * (ROW_H + GAP) - GAP }}
         >
           {editTiles.map((tile) => {
@@ -485,7 +491,7 @@ export function TileWorkspace({
         </div>
       ) : (
         // 展示态 / 移动端编辑态：CSS grid，lg/md 两套坐标走 .tile-cell 变量（SSR 直出）。
-        <div ref={containerRef} data-tile-canvas="grid" className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-4 md:[grid-auto-rows:6rem] lg:grid-cols-6">
+        <div ref={containerRef} data-tile-canvas="grid" className="grid grid-cols-1 gap-3 md:grid-cols-4 md:[grid-auto-rows:6rem] lg:grid-cols-6">
           {visibleItems.map((tile) => {
             const item = itemByKey.get(tile.k);
             if (!item) return null;
@@ -561,6 +567,6 @@ export function TileWorkspace({
           )}
         </DialogContent>
       </Dialog>
-    </div>
+    </DashboardPage>
   );
 }

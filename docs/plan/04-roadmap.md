@@ -199,6 +199,17 @@ P4H 试用后发现问题不在功能而在信息架构：课程/课件/班级/�
 
 剩余验收：参考截图逐页视觉签收、场景局部硬编码色提取为 `--scene-*` token。Story 真实章节内容仍属于 P5，不因场景首页完成而提前标记完成。
 
+## UI-L2 Dashboard 统一内容坐标系与命令面板（2026-07-27 完成）
+
+权威施工记录见 `21-dashboard-unified-canvas-command-panel-refactor.md`（含 §30 施工记录与实际偏差）。UI-L1 把 Dashboard 外壳统一成「固定左侧导航 + 视口边缘悬浮控制」之后，普通页面内部仍然是四套 `max-w-*` 混用的居中网页，切页时标题、筛选和表格持续横向跳动。本轮把宽度决定权收归 `DashboardShell`：
+
+1. `--dashboard-gutter` 成为 A→B / C→D 的唯一来源；整页 `lg:pr-24` 删除，右上悬浮控件改由 ResizeObserver 测量 + 页头透明占位避让。
+2. 新增 `src/features/school/dashboard-page/`（无宽度参数的 `DashboardPage` + 命令面板 + 12 列容器查询网格）与 `src/components/global-floating-controls/`。
+3. 21 个普通页面全部迁移；页头不再承载业务 actions，状态/筛选/操作统一进命令面板；财务、学生详情、孩子、测试数据按 §22 完成宽屏内部适配。
+4. `SchoolPageHeader` 与全局 `[data-dashboard-content] > .mx-auto` 兜底规则退休；新增 `pnpm doc21:audit` 与一条 ESLint 规则防回退。
+
+验收：9 页 × 6 视口边线完全一致、悬浮控件安全区随控件增减自动跟随、工作区页面无回归；`lint`/`typecheck`/`build`/`messages:check` 全过。剩余人工项：固定视口截图的亮/暗逐页视觉签收。
+
 ## 长期暂缓（明确不做，除非用户重启议题）
 
 - 评论区、关注/私信、消息通知系统

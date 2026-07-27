@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function RegistrationInviteLoading() {
   return (
-    <div className="mx-auto w-full max-w-6xl" aria-busy="true">
+    <div className="w-full min-w-0" aria-busy="true">
       <div className="border-b border-line pb-4">
         <Skeleton className="h-8 w-44" />
         <Skeleton className="mt-2 h-4 w-full max-w-xl" />
