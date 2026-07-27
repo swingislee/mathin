@@ -64,7 +64,9 @@ function NavList({ nav, pathname, onNavigate }: { nav: readonly SchoolNavItem[];
   // 桌面与移动端共用同一个 active 结果（doc22 §9）：两端各算一次曾经是双重高亮的来源之一。
   const activeHref = resolveActiveNavHref(pathname, nav);
   return (
-    <nav className="flex flex-col gap-0.5 px-3 pb-4">
+    // 具名：讲次工作区等页面会渲染自己的 <nav>，无名导航既让读屏用户分不清两者，
+    // 也让"侧栏当前项"无法被稳定选中（验收脚本据此断言无双重高亮）。
+    <nav data-dashboard-nav aria-label={navT("sidebarLabel")} className="flex flex-col gap-0.5 px-3 pb-4">
       {withGroupHeaders(nav).map(({ item, showGroupHeader }) => {
         const Icon = ICONS[item.labelKey] ?? LayoutDashboard;
         const active = item.href === activeHref;

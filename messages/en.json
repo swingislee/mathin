@@ -714,6 +714,7 @@
       "saveFailed": "Failed to save, please retry."
     },
     "nav": {
+      "sidebarLabel": "Dashboard navigation",
       "home": "Overview",
       "followups": "Follow-ups",
       "students": "Students",

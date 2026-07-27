@@ -1515,8 +1515,40 @@ left join：后者会让 grade / courseSeason / classType / variantStatus / read
 `p4i1:boundary-audit` 一并接入 workflow；后者自 P4I-19 退休 `StaffHome` 起就一直失败，
 已改指向 `TodayWorkHome`。
 
-### 18.5 待人工验收
+### 18.5 回归验收（2026-07-27，Playwright + 固定测试账号）
 
-§13.2～13.4 的逐路由访问、旧 URL 404 与创建入口验证需要真实账号跑一遍；
-§13.5 的权限与环境矩阵中，`course.product.create` 门禁与零版本产品可见性已在开发库
-直接断言通过，其余组合待 Playwright 全角色回归。
+§13.2～13.5 已用真实浏览器跑通，全部通过：
+
+- **19 条新路由**全部 200，且侧栏**有且只有一个** `aria-current="page"`——包括
+  `/courseware` 与 `/courseware/review` 这一对真实父子（旧的前缀匹配正是在这里双高亮）。
+- **9 条旧路由**全部 HTTP 404 且**未发生任何重定向**（`staff/roles`、`registration`、
+  `operations`、`operations/testdata`、`adapt-review`、`curriculum/lectures/[id]`、
+  `shared-assets`、`work`、`videos`）。
+- 6 条对象详情路由（学生/班级/课次/课程产品/讲次/素材）200 且归属正确的侧栏项。
+- 传 Course Variant ID 给 `/dashboard/courses/[courseFamilyId]` 得到 404 页，不再 308。
+- `/courses/new` 四步流程：不勾选首个版本也能建成 → 跳转产品工作区显示标题 →
+  在课程产品库里可搜到。
+- 环境矩阵：family 进不了 students/classes/assignments/courseware，learning 进不了
+  children/finance/students，teacher 进不了 courses/new / access-control /
+  data-maintenance / registration-settings，全部踢回 `/dashboard`；`course.product.create`
+  决定课程库是否显示「新建课程产品」入口。
+
+**回归中发现并修掉的两处真实缺陷**（均是"零版本产品不可见"的同源问题）：
+
+1. `course_families` 的 SELECT 策略同样带
+   `exists (select 1 from courses where family_id = ...)`，于是零版本产品对**任何直接表读**
+   都不存在——课程库能搜到（走 security definer 的 RPC），点进详情页却 404（详情页先直接
+   读了一次表）。这条 exists 是可见性启发式而不是授权条件，已放开"确实一个版本都没有"
+   这一种情况；全部版本都不可见（草稿/停用/回收）的产品继续隐藏。
+   见 `20260727000200_doc22_childless_course_family_visibility.sql`。
+2. 详情页那次直接读本身也删掉了：它当初唯一的作用是分辨"这是 family 还是 legacy variant"，
+   随 §5.16 的兼容一起失去意义，RPC 抛的 `COURSE_FAMILY_NOT_FOUND` 已经接成 `notFound()`。
+
+另外给侧栏 `<nav>` 补了 `aria-label` 与 `data-dashboard-nav`：讲次工作区会渲染自己的
+`<nav>`，两个无名导航既让读屏用户分不清，也让"侧栏当前项"无法被稳定选中。
+
+**踩坑留档**：`next build` 与常驻 `pnpm dev` 共用 `.next`，构建期间跑验收会让 dev server
+的路由清单失效——表现是**所有动态段路由（`[studentId]`/`[classId]`/…）返回 Next 内建
+404**，而静态路由一切正常，极易误判成"目录改名没生效"。删掉 `.next` 重启 dev server 即恢复。
+
+**剩余人工项**：亮/暗 × 桌面/移动的逐页视觉签收（导航分组重排后的观感）。

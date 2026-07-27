@@ -714,6 +714,7 @@
       "saveFailed": "保存失败，请重试。"
     },
     "nav": {
+      "sidebarLabel": "后台导航",
       "home": "总览",
       "followups": "跟进",
       "students": "学生",

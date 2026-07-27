@@ -221,7 +221,7 @@ P4H 试用后发现问题不在功能而在信息架构：课程/课件/班级/�
 5. `requireDashboardEnvironment` 统一环境守卫（环境闸门先于权限键），finance 按 activeEnvironment 而非 profiles.role 分派；导航 active 改最长匹配、桌面与移动共用一个结果。
 6. 新增 `pnpm doc22:audit` 防回流（旧路由 / `[id]` 目录 / 禁止的创建路由 / **合同与真实路由树一一对应**），并把一直未进 CI 的 `doc21:audit` 与 `p4i1:boundary-audit` 接进 workflow。
 
-验收：`lint`/`typecheck`/`build`/`messages:check`/`db:types:check` 与四条 audit 全过；`create_course_family` 的权限门禁与零版本产品可见性已在开发库直接断言。剩余人工项：§13.2～13.5 的逐路由访问、旧 URL 404 与全角色权限/环境矩阵回归。
+验收：`lint`/`typecheck`/`build`/`messages:check`/`db:types:check` 与四条 audit 全过；Playwright 回归通过——19 条新路由 200 且侧栏唯一高亮、9 条旧路由 404 且零重定向、对象详情与创建流程可用、family/learning/teacher 三套环境守卫矩阵全绿。回归中发现并修掉两处同源缺陷（`course_families` 的 RLS 可见性启发式让零版本产品对直接表读不存在；详情页那次已失去意义的直接预读）。剩余人工项：导航分组重排后的亮/暗 × 桌面/移动视觉签收。
 
 ## 长期暂缓（明确不做，除非用户重启议题）
 
