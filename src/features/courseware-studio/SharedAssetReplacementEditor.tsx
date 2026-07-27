@@ -122,7 +122,7 @@ function SharedAssetReplacementEditorBody({ detail }: Props) {
   });
 
   const trackLabel = detail.track === "adapted-4x3" ? t("trackAdapted") : t("trackNative");
-  const detailHref = (track: "native-16x9" | "adapted-4x3") => `/dashboard/shared-assets/${detail.asset.id}?track=${track}`;
+  const detailHref = (track: "native-16x9" | "adapted-4x3") => `/dashboard/courseware-assets/${detail.asset.id}?track=${track}`;
 
   return (
     <>

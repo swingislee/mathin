@@ -28,7 +28,7 @@ export async function publishAdaptReleasesAction(
     if (error) throw new Error(error.message);
     const rows = z.array(z.object({ lecture_id: uuid, release_id: uuid })).parse(data ?? []);
     if (rows.length !== value.lectureIds.length) throw new Error("RELEASE_COUNT_MISMATCH");
-    revalidatePath("/dashboard/adapt-review");
+    revalidatePath("/dashboard/courseware/review");
     return { ok: true, data: { publishedCount: rows.length } };
   } catch (error) {
     return actionError(error, [

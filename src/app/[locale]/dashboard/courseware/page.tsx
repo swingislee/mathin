@@ -108,7 +108,7 @@ async function CoursewareTasksContent({
     />
     {preview && (
       <LecturePreviewDialog title={tCourses("lecturePreviewTitle", { no: preview.lecture.no, name: preview.lecture.name })} closeHref={baseHref}>
-        <LecturePreviewPanel preview={preview} baseHref={baseHref} workspaceHref={`/dashboard/curriculum/lectures/${preview.lecture.id}?track=${preview.page.aspect === "4:3" ? "adapted-4x3" : "native-16x9"}`} />
+        <LecturePreviewPanel preview={preview} baseHref={baseHref} workspaceHref={`/dashboard/courseware/lectures/${preview.lecture.id}?track=${preview.page.aspect === "4:3" ? "adapted-4x3" : "native-16x9"}`} />
       </LecturePreviewDialog>
     )}
   </div>;

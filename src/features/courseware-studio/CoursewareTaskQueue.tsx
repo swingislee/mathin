@@ -37,7 +37,7 @@ export function hrefFor(tab: CoursewareTaskTab, query: string) {
 function rowHref(item: CoursewareTaskItem, baseHref: string) {
   return item.releaseNo !== null
     ? `${baseHref}&lecture=${item.lectureId}&track=${item.track}`
-    : `/dashboard/curriculum/lectures/${item.lectureId}?track=${item.track}`;
+    : `/dashboard/courseware/lectures/${item.lectureId}?track=${item.track}`;
 }
 
 async function taskTabLabels() {

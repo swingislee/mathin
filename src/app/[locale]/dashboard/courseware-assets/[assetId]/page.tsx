@@ -5,7 +5,7 @@ import { loadCoursewareSharedAssetDetail, parseCoursewareTrack } from "@/feature
 import { DashboardPage } from "@/features/school/dashboard-page";
 import { requirePerm } from "@/lib/auth";
 
-export default async function SharedAssetDetailPage({
+export default async function CoursewareAssetDetailPage({
   params,
   searchParams,
 }: {
@@ -23,9 +23,9 @@ export default async function SharedAssetDetailPage({
   return (
     <DashboardPage
       title={t("assetDetailTitle")}
-      backHref={`/dashboard/shared-assets?track=${track}`}
+      backHref={`/dashboard/courseware-assets?track=${track}`}
       backLabel={t("backToAssetLibrary")}
-      breadcrumbs={[{ label: t("assetLibraryTitle"), href: `/dashboard/shared-assets?track=${track}` }, { label: t("assetDetailTitle") }]}
+      breadcrumbs={[{ label: t("assetLibraryTitle"), href: `/dashboard/courseware-assets?track=${track}` }, { label: t("assetDetailTitle") }]}
     >
       <SharedAssetReplacementEditor detail={detail} />
     </DashboardPage>

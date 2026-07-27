@@ -40,10 +40,12 @@ function tabHref(tab: AdaptReviewTab, courseId: string | null, lectureId: string
   if (tab === "releases") query.set("scope", "pending");
   if (courseId) query.set("course", courseId);
   if (lectureId) query.set("lecture", lectureId);
-  return "/dashboard/adapt-review?" + query.toString();
+  return "/dashboard/courseware/review?" + query.toString();
 }
 
-export default async function AdaptReviewQueuePage({
+// doc22 §5.18：背景审阅/返工/页面审阅/发布/历史都属于课件生产，是 /dashboard/courseware
+// 的真实子工作区。原顶层 /dashboard/adapt-review 把内部实现词（adapt）当成了 URL。
+export default async function CoursewareReviewPage({
   params,
   searchParams,
 }: {

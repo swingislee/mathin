@@ -44,7 +44,7 @@ export async function reviewAdaptBackgroundsAction(input: z.input<typeof reviewS
       p_note: value.note,
     });
     if (error || data !== value.adaptationIds.length) throw new Error(error?.message ?? "ADAPT_BACKGROUND_NOT_PENDING");
-    revalidatePath("/dashboard/adapt-review");
+    revalidatePath("/dashboard/courseware/review");
     return { ok: true, data: { reviewedCount: data } };
   } catch (error) {
     return actionError(error, [
@@ -72,7 +72,7 @@ export async function repairAdaptBackgroundAction(input: z.input<typeof repairSc
     });
     const repaired = data?.[0];
     if (error || !repaired) throw new Error(error?.message ?? "ADAPT_REPAIR_FAILED");
-    revalidatePath("/dashboard/adapt-review");
+    revalidatePath("/dashboard/courseware/review");
     return { ok: true, data: { adaptationId: repaired.adaptation_id, affectedCount: repaired.affected_count } };
   } catch (error) {
     return actionError(error, [
@@ -101,7 +101,7 @@ export async function setAdaptPageClassificationAction(input: z.input<typeof cla
       p_note: value.note,
     });
     if (error) throw new Error(error.message);
-    revalidatePath("/dashboard/adapt-review");
+    revalidatePath("/dashboard/courseware/review");
     return { ok: true };
   } catch (error) {
     return actionError(error, ["PAGE_NOT_FOUND", "INVALID_ADAPT_CLASSIFICATION", ...COMMON_CODES]);

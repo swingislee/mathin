@@ -25,7 +25,7 @@ function pageHref(page: number, courseId: string | null, lectureId: string | nul
   const query = new URLSearchParams({ tab: "backgrounds", page: String(page) });
   if (courseId) query.set("course", courseId);
   if (lectureId) query.set("lecture", lectureId);
-  return "/dashboard/adapt-review?" + query.toString();
+  return "/dashboard/courseware/review?" + query.toString();
 }
 
 export function AdaptReviewQueue({ items, page, total, totalPages, canManageAssets, courseId, lectureId }: { items: AdaptReviewItem[]; page: number; total: number; totalPages: number; canManageAssets: boolean; courseId: string | null; lectureId: string | null }) {

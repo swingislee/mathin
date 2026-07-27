@@ -8,7 +8,9 @@ import { DashboardCommandFilters, DashboardCommandPanel, DashboardPage } from "@
 import { Link } from "@/i18n/navigation";
 import { requirePerm } from "@/lib/auth";
 
-export default async function SharedAssetLibraryPage({
+// doc22 §5.20：shared-assets 过于宽泛——这个模块只管理课件素材。保持顶层而不是收进
+// /courseware/assets，因为课件素材是独立的侧栏入口，不是课件工作台的子页面。
+export default async function CoursewareAssetLibraryPage({
   params,
   searchParams,
 }: {
@@ -30,7 +32,7 @@ export default async function SharedAssetLibraryPage({
     if (filters.minUsage) query.set("minUsage", String(filters.minUsage));
     if (page > 1) query.set("page", String(page));
     const suffix = query.toString();
-    return `/dashboard/shared-assets${suffix ? `?${suffix}` : ""}`;
+    return `/dashboard/courseware-assets${suffix ? `?${suffix}` : ""}`;
   };
 
   return (
@@ -88,7 +90,7 @@ export default async function SharedAssetLibraryPage({
                   <TableCell className="px-4 py-3 tabular-nums text-muted">{asset.width && asset.height ? `${asset.width} × ${asset.height}` : "—"}</TableCell>
                   <TableCell className="px-4 py-3 text-right">
                     {asset.kind === "image" ? (
-                      <Link href={`/dashboard/shared-assets/${asset.id}?track=${filters.track}`} className={buttonVariants({ variant: "secondary", size: "sm" })}>{t("manageAsset")}</Link>
+                      <Link href={`/dashboard/courseware-assets/${asset.id}?track=${filters.track}`} className={buttonVariants({ variant: "secondary", size: "sm" })}>{t("manageAsset")}</Link>
                     ) : <span className="text-xs text-muted">{t("assetReadOnly")}</span>}
                   </TableCell>
                 </TableRow>

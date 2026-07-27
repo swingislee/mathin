@@ -6,6 +6,8 @@ import { LectureWorkspaceBody } from "@/features/school/curriculum/LectureWorksp
 import { LectureWorkspaceShell } from "@/features/school/curriculum/LectureWorkspaceShell";
 import { loadLectureWorkspacePageData } from "@/features/school/curriculum/load-lecture-workspace-page";
 
+// doc22 §5.19：原 /dashboard/curriculum/lectures/[lectureId] 的 curriculum 是代码领域名
+// 泄漏——系统里根本没有 /dashboard/curriculum 首页，那是一个没有父页面的虚假中间层。
 export default async function LectureWorkspacePage({
   params,
   searchParams,
@@ -40,7 +42,7 @@ async function LectureWorkspaceContent({
     await loadLectureWorkspacePageData(locale, lectureId, rawSearchParams);
 
   const variantHref = `/dashboard/courses/${detail.family.id}?variant=${detail.variant.id}`;
-  const baseHref = `/dashboard/curriculum/lectures/${detail.lecture.id}`;
+  const baseHref = `/dashboard/courseware/lectures/${detail.lecture.id}`;
   const trackState = detail.tracks.find((row) => row.track === track) ?? detail.tracks[0];
 
   return <LectureWorkspaceShell

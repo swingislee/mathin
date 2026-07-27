@@ -33,7 +33,7 @@ export function AssetLibraryFilters({ initial }: Props) {
     if (track !== "native-16x9") params.set("track", track);
     if (minUsage !== "0") params.set("minUsage", minUsage);
     const suffix = params.toString();
-    router.push(`/dashboard/shared-assets${suffix ? `?${suffix}` : ""}`);
+    router.push(`/dashboard/courseware-assets${suffix ? `?${suffix}` : ""}`);
   };
 
   return (
@@ -76,7 +76,7 @@ export function AssetLibraryFilters({ initial }: Props) {
         </div>
       </FilterBarMore>
       <FilterBarSubmit>{t("applyAssetFilters")}</FilterBarSubmit>
-      {activeCount > 0 && <FilterBarReset href="/dashboard/shared-assets" label={commonT("clearFilters")} />}
+      {activeCount > 0 && <FilterBarReset href="/dashboard/courseware-assets" label={commonT("clearFilters")} />}
     </FilterBar>
   );
 }

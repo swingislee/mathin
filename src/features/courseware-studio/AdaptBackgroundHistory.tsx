@@ -12,7 +12,7 @@ function pageHref(page: number, courseId: string | null, lectureId: string | nul
   const query = new URLSearchParams({ tab: "history", page: String(page) });
   if (courseId) query.set("course", courseId);
   if (lectureId) query.set("lecture", lectureId);
-  return "/dashboard/adapt-review?" + query.toString();
+  return "/dashboard/courseware/review?" + query.toString();
 }
 
 export function AdaptBackgroundHistory({ items, page, total, totalPages, courseId, lectureId }: AdaptBackgroundHistoryData & { courseId: string | null; lectureId: string | null }) {

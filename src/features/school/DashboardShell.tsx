@@ -41,8 +41,9 @@ const ICONS: Record<string, ComponentType<{ size?: number; strokeWidth?: number 
 function isPanelWorkspace(pathname: string): boolean {
   const segments = pathname.split("/").filter(Boolean);
   if (segments[0] !== "dashboard") return false;
-  if (segments[1] === "courseware" && segments[2] !== "assets" && segments.length >= 4) return true;
-  if (segments[1] === "curriculum" && segments[2] === "lectures" && segments.length >= 4) return true;
+  // 讲次工作区（/dashboard/courseware/lectures/[lectureId]）是面板；同在 courseware
+  // 前缀下的 /courseware 队列和 /courseware/review 审阅队列都是普通页面。
+  if (segments[1] === "courseware" && segments[2] === "lectures" && segments.length >= 4) return true;
   if (segments[1] === "sessions" && segments.length >= 3) return true;
   if (segments[1] === "schedule") return true;
   return false;

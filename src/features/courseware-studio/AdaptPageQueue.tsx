@@ -17,7 +17,7 @@ function hrefFor(classification: AdaptClass | "all", page: number, courseId: str
   const query = new URLSearchParams({ tab: "pages", class: classification, page: String(page) });
   if (courseId) query.set("course", courseId);
   if (lectureId) query.set("lecture", lectureId);
-  return "/dashboard/adapt-review?" + query.toString();
+  return "/dashboard/courseware/review?" + query.toString();
 }
 
 export function AdaptPageQueue({ items, page, total, totalPages, classification, canEditPages, courseId, lectureId }: AdaptPageQueueData & { canEditPages: boolean; courseId: string | null; lectureId: string | null }) {

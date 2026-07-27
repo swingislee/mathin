@@ -36,7 +36,7 @@ export default async function StudioCoursewarePage({
 
   const track = parseCoursewareTrack(query.track);
   const requestedPageId = first(query.page);
-  const lectureWorkspaceHref = `/dashboard/curriculum/lectures/${lectureId}?track=${track}`;
+  const lectureWorkspaceHref = `/dashboard/courseware/lectures/${lectureId}?track=${track}`;
   const canPublish = perms.has("courseware.release.publish");
 
   if (!context.firstPageDocId) {

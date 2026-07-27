@@ -17,7 +17,7 @@ function queueHref(page: number, scope: AdaptReleaseScope, courseId: string | nu
   const query = new URLSearchParams({ tab: "releases", scope, page: String(page) });
   if (courseId) query.set("course", courseId);
   if (lectureId) query.set("lecture", lectureId);
-  return `/dashboard/adapt-review?${query.toString()}`;
+  return `/dashboard/courseware/review?${query.toString()}`;
 }
 
 function isPublishable(item: AdaptReleaseQueueData["items"][number]) {
@@ -116,7 +116,7 @@ export function AdaptReleaseQueue({
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Link href={`/dashboard/curriculum/lectures/${item.lectureId}?track=adapted-4x3`} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>
+            <Link href={`/dashboard/courseware/lectures/${item.lectureId}?track=adapted-4x3`} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>
               <ExternalLink className="size-4" />{t("adaptOpenLecture")}
             </Link>
             {canPublish && isPublishable(item) && <Button type="button" size="sm" disabled={publishRun.pending} onClick={() => setPublishIds([item.lectureId])}>
