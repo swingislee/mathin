@@ -1107,7 +1107,16 @@
       "statusUpdated": "Status updated.",
       "transitionTo_draft": "Set to draft",
       "transitionTo_enabled": "Enable",
-      "transitionTo_disabled": "Disable"
+      "transitionTo_disabled": "Disable",
+      "familySummary": "Product summary",
+      "familyRisks": "Variant risks",
+      "familyRisksNone": "Every variant is ready",
+      "riskNoLectures": "No teaching plan yet",
+      "riskIncompleteLectures": "{count} lectures unpublished",
+      "pagesLabel": "Template pages",
+      "familyDescription": "About this product",
+      "familyDescriptionEmpty": "This course product has no description yet.",
+      "variantContextLabel": "Current variant"
     },
     "courseProduct": {
       "title": "New course product",

@@ -1107,7 +1107,16 @@
       "statusUpdated": "状态已更新。",
       "transitionTo_draft": "设为草稿",
       "transitionTo_enabled": "启用",
-      "transitionTo_disabled": "停用"
+      "transitionTo_disabled": "停用",
+      "familySummary": "产品摘要",
+      "familyRisks": "版本风险",
+      "familyRisksNone": "全部版本已就绪",
+      "riskNoLectures": "尚无教学计划",
+      "riskIncompleteLectures": "{count} 讲未发布",
+      "pagesLabel": "模板页数",
+      "familyDescription": "产品说明",
+      "familyDescriptionEmpty": "这个课程产品还没有填写说明。",
+      "variantContextLabel": "当前版本"
     },
     "courseProduct": {
       "title": "新建课程产品",

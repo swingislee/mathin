@@ -1,5 +1,4 @@
 import { getTranslations } from "next-intl/server";
-import { buttonVariants } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { COURSE_SEASONS } from "./course-queries";
@@ -29,8 +28,15 @@ function OptionLink({
   target: Variant | undefined;
   familyId: string;
 }) {
-  if (!target) return <span aria-disabled="true" className="rounded-full border border-line px-3 py-1.5 text-sm text-muted/60">{label}</span>;
-  return <Link href={hrefForVariant(familyId, target.id)} aria-current={active ? "page" : undefined} className={cn(buttonVariants({ variant: active ? "primary" : "secondary", size: "sm" }), "min-w-10 px-3 py-1.5")}>{label}</Link>;
+  if (!target) return <span aria-disabled="true" className="flex h-7 min-w-7 items-center justify-center rounded-md px-2 text-xs text-muted/50">{label}</span>;
+  return <Link
+    href={hrefForVariant(familyId, target.id)}
+    aria-current={active ? "page" : undefined}
+    className={cn(
+      "flex h-7 min-w-7 items-center justify-center whitespace-nowrap rounded-md px-2 text-xs transition-all",
+      active ? "bg-card font-medium text-ink shadow-sm" : "text-muted hover:text-ink",
+    )}
+  >{label}</Link>;
 }
 
 export async function VariantSelector({
@@ -47,19 +53,24 @@ export async function VariantSelector({
   const grades = Array.from(new Set(variants.map((variant) => variant.grade))).sort((a, b) => a - b);
   const classTypes = Array.from(new Set(variants.map((variant) => variant.classType))).sort();
 
-  return <div className="mt-5 space-y-3">
-    <SelectorRow label={t("gradeLabel")}>
+  // doc23 §8.2：三行按钮阵列压成一条。它现在住在 sticky 的导航行里（ObjectContextSwitcher），
+  // 原来那种"每维一整行 + h-9 药丸"会把顶部撑到接近 200px，移动端预算是整条不超过视口约四分之一。
+  return <div className="flex min-w-0 items-center gap-2">
+    <SelectorGroup label={t("gradeLabel")}>
       {grades.map((grade) => <OptionLink key={grade} active={current.grade === grade} label={String(grade)} target={pickVariant(variants, currentVariant, (variant) => variant.grade === grade)} familyId={familyId} />)}
-    </SelectorRow>
-    <SelectorRow label={t("classType")}>
+    </SelectorGroup>
+    <SelectorGroup label={t("classType")}>
       {classTypes.map((classType) => <OptionLink key={classType || "default"} active={current.classType === classType} label={classType || t("defaultClassType")} target={pickVariant(variants, currentVariant, (variant) => variant.classType === classType)} familyId={familyId} />)}
-    </SelectorRow>
-    <SelectorRow label={t("courseSeason")}>
+    </SelectorGroup>
+    <SelectorGroup label={t("courseSeason")}>
       {COURSE_SEASONS.map((season) => <OptionLink key={season.value} active={current.courseSeason === season.value} label={t(season.labelKey)} target={pickVariant(variants, currentVariant, (variant) => variant.courseSeason === season.value as CourseSeason)} familyId={familyId} />)}
-    </SelectorRow>
+    </SelectorGroup>
   </div>;
 }
 
-function SelectorRow({ label, children }: { label: string; children: React.ReactNode }) {
-  return <div className="flex items-start gap-3"><p className="w-14 shrink-0 pt-1.5 text-sm text-muted">{label}</p><div className="flex min-w-0 gap-2 overflow-x-auto pb-1">{children}</div></div>;
+function SelectorGroup({ label, children }: { label: string; children: React.ReactNode }) {
+  return <div className="flex shrink-0 items-center gap-1 rounded-lg bg-line/40 p-1" aria-label={label} role="group">
+    <span className="px-1 text-[11px] text-muted">{label}</span>
+    {children}
+  </div>;
 }

@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { loadLecturePreview, parseCoursewareTrack } from "@/features/courseware-studio/data";
 import { getCourseFamilyDetail, isUuid } from "@/features/school/teaching-operations/course-family-detail";
+import { CourseFamilyRisks, CourseFamilySummary, CourseVariantReadiness } from "@/features/school/teaching-operations/CourseAsidePanels";
 import { ResponsibilityPanel } from "@/features/school/teaching-operations/ResponsibilityPanel";
 import { StatusOverflowMenu } from "@/features/school/teaching-operations/StatusOverflowMenu";
 import { TeachingPlan } from "@/features/school/teaching-operations/TeachingPlan";
@@ -14,10 +15,17 @@ import { UsagePanel } from "@/features/school/teaching-operations/UsagePanel";
 import { VariantMatrix } from "@/features/school/teaching-operations/VariantMatrix";
 import { VariantSelector } from "@/features/school/teaching-operations/VariantSelector";
 import { resolveCourseCapabilities } from "@/features/school/teaching-operations/capabilities";
+import { COURSE_SEASONS } from "@/features/school/teaching-operations/types";
 import type { SelectedCourseVariant } from "@/features/school/teaching-operations/course-family-detail";
 import { LecturePreviewDialog } from "@/features/school/curriculum/LecturePreviewDialog";
 import { LecturePreviewPanel } from "@/features/school/curriculum/LecturePreviewPanel";
-import { ObjectBar, ObjectWorkspace, type ObjectContextItem } from "@/features/school/object-workspace";
+import {
+  DashboardAside,
+  DashboardContentGrid,
+  DashboardMainColumn,
+  DashboardReadingColumn,
+} from "@/features/school/dashboard-page";
+import { ObjectBar, ObjectContextSwitcher, ObjectWorkspace, type ObjectContextItem } from "@/features/school/object-workspace";
 import { listStaffOptions } from "@/features/school/classes";
 import { Link } from "@/i18n/navigation";
 import { getMyPerms, requirePerm } from "@/lib/auth";
@@ -98,6 +106,8 @@ async function CourseFamilyProductPage({
   </>;
 
   if (!detail.selectedVariant) {
+    // doc23 §8.1 Family 蓝图：主栏是"这个产品由哪些版本组成"，侧栏是"它整体齐不齐、归谁管"。
+    // 原来责任面板排在版本矩阵之下，属于滚到底才看得见的决策前提。
     return <ObjectWorkspace
       objectBar={<ObjectBar
         title={detail.family.title}
@@ -108,20 +118,30 @@ async function CourseFamilyProductPage({
         overflowSlot={canManage ? <StatusOverflowMenu id={detail.family.id} status={detail.family.status} action={transitionCourseFamilyStatusAction} ariaLabel={t("moreActions")} /> : undefined}
       />}
     >
-      {detail.family.description && <p className="max-w-3xl text-sm leading-6 text-muted">{detail.family.description}</p>}
-      <div className="mt-5">
-        <VariantMatrix familyId={detail.family.id} variants={detail.variants} canManage={canManage} />
-      </div>
-      <div className="mt-6">
-        <ResponsibilityPanel
-          scopeType="family"
-          scopeId={detail.family.id}
-          assignments={detail.familyAssignments}
-          staffOptions={staffOptions}
-          canManage={canAssign}
-          title={t("familyResponsibility")}
-        />
-      </div>
+      <DashboardContentGrid>
+        <DashboardMainColumn className="flex flex-col gap-5">
+          <section className="rounded-2xl border border-line bg-card p-4">
+            <h2 className="text-sm font-medium text-ink">{t("familyDescription")}</h2>
+            <DashboardReadingColumn>
+              <p className="mt-2 text-sm leading-6 text-muted">{detail.family.description || t("familyDescriptionEmpty")}</p>
+            </DashboardReadingColumn>
+          </section>
+          <VariantMatrix familyId={detail.family.id} variants={detail.variants} canManage={canManage} />
+        </DashboardMainColumn>
+
+        <DashboardAside className="flex flex-col gap-4">
+          <CourseFamilySummary variants={detail.variants} />
+          <ResponsibilityPanel
+            scopeType="family"
+            scopeId={detail.family.id}
+            assignments={detail.familyAssignments}
+            staffOptions={staffOptions}
+            canManage={canAssign}
+            title={t("familyResponsibility")}
+          />
+          <CourseFamilyRisks familyId={detail.family.id} variants={detail.variants} />
+        </DashboardAside>
+      </DashboardContentGrid>
     </ObjectWorkspace>;
   }
 
@@ -160,34 +180,42 @@ async function CourseFamilyProductPage({
       title={selectedVariant.title}
       backHref={`/dashboard/courses/${detail.family.id}`}
       backLabel={t("backToOverview")}
-      context={[{ value: selectedVariant.productCode ?? "—" }, ...identity]}
+      // §8.2：版本的上下文是"它在产品矩阵里的坐标"，不是 family 的出版社/学段——
+      // 后者已经由"返回产品总览"这条路径表达，重复说一遍只会挤掉真正的坐标。
+      context={[
+        { value: selectedVariant.productCode ?? "—" },
+        { value: t("grade", { grade: selectedVariant.grade }) },
+        { value: t(COURSE_SEASONS.find((season) => season.value === selectedVariant.courseSeason)?.labelKey ?? "summer") },
+        { value: selectedVariant.classType || t("defaultClassType") },
+      ]}
       status={<Badge variant={selectedVariant.status === "enabled" ? "secondary" : "outline"}>{t(selectedVariant.status)}</Badge>}
       primaryAction={primaryAction}
       overflowSlot={capabilities.canTransitionVariant ? <StatusOverflowMenu id={selectedVariant.id} status={selectedVariant.status} action={transitionCourseVariantStatusAction} ariaLabel={t("moreActions")} /> : undefined}
     />}
-  >
-    <div className="rounded-2xl border border-line bg-card p-4 sm:p-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <dl className="flex flex-wrap gap-x-5 gap-y-1 text-sm">
-          <div className="flex items-baseline gap-1.5"><dt className="text-xs text-muted">{t("lectures")}</dt><dd className="font-medium">{detail.readiness.lectureCount}</dd></div>
-          <div className="flex items-baseline gap-1.5"><dt className="text-xs text-muted">{t("publishedLectures")}</dt><dd className="font-medium">{detail.readiness.releasedLectureCount}</dd></div>
-          <div className="flex items-baseline gap-1.5"><dt className="text-xs text-muted">{t("incompleteLectures")}</dt><dd className="font-medium">{Math.max(0, detail.readiness.lectureCount - detail.readiness.releasedLectureCount)}</dd></div>
-        </dl>
-      </div>
+    navigation={<ObjectContextSwitcher label={t("variantContextLabel")}>
       <VariantSelector familyId={detail.family.id} variants={detail.variants} current={selectedVariant} />
-    </div>
-    <TeachingPlan baseHref={baseHref} teachingPlan={detail.teachingPlan} canManage={canManage} />
-    <div className="mt-6 grid gap-4 lg:grid-cols-2">
-      {capabilities.canViewUsingClasses && <UsagePanel usage={detail.usage} />}
-      <ResponsibilityPanel
-        scopeType="variant"
-        scopeId={selectedVariant.id}
-        assignments={detail.variantAssignments}
-        staffOptions={staffOptions}
-        canManage={canAssign}
-        title={t("variantResponsibility")}
-      />
-    </div>
+    </ObjectContextSwitcher>}
+  >
+    {/* doc23 §8.2 Variant 蓝图：主栏只有教学计划——这一页的工作就是它；
+        就绪度、在用班级、责任分配都是做这件事时要参考的稳定信息，进侧栏。 */}
+    <DashboardContentGrid>
+      <DashboardMainColumn>
+        <TeachingPlan baseHref={baseHref} teachingPlan={detail.teachingPlan} canManage={canManage} />
+      </DashboardMainColumn>
+
+      <DashboardAside className="flex flex-col gap-4">
+        <CourseVariantReadiness readiness={detail.readiness} />
+        {capabilities.canViewUsingClasses && <UsagePanel usage={detail.usage} />}
+        <ResponsibilityPanel
+          scopeType="variant"
+          scopeId={selectedVariant.id}
+          assignments={detail.variantAssignments}
+          staffOptions={staffOptions}
+          canManage={canAssign}
+          title={t("variantResponsibility")}
+        />
+      </DashboardAside>
+    </DashboardContentGrid>
     {validPreview && (
       <LecturePreviewDialog title={t("lecturePreviewTitle", { no: validPreview.lecture.no, name: validPreview.lecture.name })} closeHref={baseHref}>
         <LecturePreviewPanel preview={validPreview} baseHref={baseHref} workspaceHref={`/dashboard/courseware/lectures/${validPreview.lecture.id}?track=${previewTrack}`} />

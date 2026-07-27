@@ -65,11 +65,19 @@ export function ObjectBar({
       <div className="flex min-h-16 min-w-0 flex-col justify-center gap-1 py-2.5 @2xl/chrome:min-h-[76px] @2xl/chrome:py-3">
         {backHref ? <DashboardBackLink href={backHref} label={backLabel ?? ""} /> : null}
 
-        <div className="flex min-w-0 items-center gap-x-3 gap-y-1">
-          <h1 className="min-w-0 truncate font-display text-lg leading-tight text-ink @2xl/chrome:text-xl">{title}</h1>
+        {/*
+          窄容器下操作组整行下沉（`w-full` 强制换行，不是 flex-wrap 碰运气）。
+          不这么做的话，390px 上"左上菜单安全区 64 + 右上悬浮控件安全区 128"已经吃掉一半宽度，
+          剩下的再让给一个"用此版本建班"，标题就会被 truncate 成零宽——对象页最不能丢的
+          恰恰是"我在处理什么"。
+        */}
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
+          <h1 className="min-w-0 flex-1 truncate font-display text-lg leading-tight text-ink @2xl/chrome:flex-none @2xl/chrome:text-xl">
+            {title}
+          </h1>
           {status ? <div className="flex shrink-0 items-center gap-1.5">{status}</div> : null}
           {primaryAction || overflowSlot ? (
-            <div className="ml-auto flex shrink-0 items-center gap-2">
+            <div className="flex w-full shrink-0 items-center gap-2 @2xl/chrome:ml-auto @2xl/chrome:w-auto">
               {primaryAction}
               {overflowSlot}
             </div>
@@ -98,12 +106,14 @@ function ObjectBarContext({ items }: { items: readonly ObjectContextItem[] }) {
         <div
           key={index}
           className={cn(
-            "flex min-w-0 shrink items-baseline gap-1.5 whitespace-nowrap",
+            // shrink-0：溢出时整项被右侧裁掉，而不是每一项一起等比压成"MFH… · 1… · 暑"。
+            // 前面的条目更重要，应该完整可读。
+            "flex shrink-0 items-baseline gap-1.5 whitespace-nowrap",
             index > 0 && "before:mr-3 before:text-line before:content-['·']",
           )}
         >
-          {item.label ? <dt className="shrink-0 text-xs text-muted/80">{item.label}</dt> : null}
-          <dd className="min-w-0 truncate">{item.value}</dd>
+          {item.label ? <dt className="text-xs text-muted/80">{item.label}</dt> : null}
+          <dd>{item.value}</dd>
         </div>
       ))}
     </dl>
