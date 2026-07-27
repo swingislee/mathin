@@ -2,7 +2,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { ClassBuildWizard } from "@/features/school/ClassBuildWizard";
 import { listStaffOptions } from "@/features/school/classes";
 import { listSchoolTerms } from "@/features/school/courses";
-import { SchoolPageHeader } from "@/features/school/PageHeader";
+import { DashboardContentGrid, DashboardMainColumn, DashboardPage } from "@/features/school/dashboard-page";
 import { requirePerm } from "@/lib/auth";
 
 export default async function NewClassPage({
@@ -26,17 +26,18 @@ export default async function NewClassPage({
   const initialCourseId = typeof courseId === "string" ? courseId : undefined;
 
   return (
-    <div className="mx-auto w-full max-w-4xl">
-      <SchoolPageHeader
-        title={t("title")}
-        backHref="/dashboard/classes"
-        backLabel={t("back")}
-        breadcrumbs={[{ label: tClasses("title"), href: "/dashboard/classes" }, { label: t("title") }]}
-      />
-
-      <div className="mt-6">
-        <ClassBuildWizard schoolTerms={schoolTerms} teachers={teachers} initialCourseId={initialCourseId} />
-      </div>
-    </div>
+    <DashboardPage
+      title={t("title")}
+      backHref="/dashboard/classes"
+      backLabel={t("back")}
+      breadcrumbs={[{ label: tClasses("title"), href: "/dashboard/classes" }, { label: t("title") }]}
+    >
+      {/* 表单不铺满：主列限宽在页面内部解决，不靠页面根重新居中（§17.3）。 */}
+      <DashboardContentGrid>
+        <DashboardMainColumn>
+          <ClassBuildWizard schoolTerms={schoolTerms} teachers={teachers} initialCourseId={initialCourseId} />
+        </DashboardMainColumn>
+      </DashboardContentGrid>
+    </DashboardPage>
   );
 }

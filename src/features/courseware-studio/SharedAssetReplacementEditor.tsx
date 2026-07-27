@@ -126,7 +126,7 @@ function SharedAssetReplacementEditorBody({ detail }: Props) {
 
   return (
     <>
-      <nav className="mt-6 flex flex-wrap items-center gap-2" aria-label={t("assetTrack")}>
+      <nav className="flex flex-wrap items-center gap-2" aria-label={t("assetTrack")}>
         <span className="mr-1 text-sm text-muted">{t("assetTrack")}</span>
         <Link href={detailHref("native-16x9")} className={buttonVariants({ variant: detail.track === "native-16x9" ? "primary" : "secondary", size: "sm" })}>{t("trackNative")}</Link>
         <Link href={detailHref("adapted-4x3")} className={buttonVariants({ variant: detail.track === "adapted-4x3" ? "primary" : "secondary", size: "sm" })}>{t("trackAdapted")}</Link>

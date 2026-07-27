@@ -2,8 +2,7 @@ import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { SharedAssetReplacementEditor } from "@/features/courseware-studio/SharedAssetReplacementEditor";
 import { loadCoursewareSharedAssetDetail, parseCoursewareTrack } from "@/features/courseware-studio/data";
-import { SchoolPageHeader } from "@/features/school/PageHeader";
-import { Link } from "@/i18n/navigation";
+import { DashboardPage } from "@/features/school/dashboard-page";
 import { requirePerm } from "@/lib/auth";
 
 export default async function SharedAssetDetailPage({
@@ -22,10 +21,13 @@ export default async function SharedAssetDetailPage({
   if (!detail) notFound();
 
   return (
-    <div className="mx-auto w-full max-w-7xl">
-      <SchoolPageHeader title={t("assetDetailTitle")} />
-      <p className="mt-3"><Link href={`/dashboard/shared-assets?track=${track}`} className="text-xs text-muted underline underline-offset-2 hover:text-ink">{t("backToAssetLibrary")}</Link></p>
+    <DashboardPage
+      title={t("assetDetailTitle")}
+      backHref={`/dashboard/shared-assets?track=${track}`}
+      backLabel={t("backToAssetLibrary")}
+      breadcrumbs={[{ label: t("assetLibraryTitle"), href: `/dashboard/shared-assets?track=${track}` }, { label: t("assetDetailTitle") }]}
+    >
       <SharedAssetReplacementEditor detail={detail} />
-    </div>
+    </DashboardPage>
   );
 }

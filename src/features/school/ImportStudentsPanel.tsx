@@ -92,7 +92,7 @@ export function ImportStudentsPanel() {
   };
 
   return (
-    <div className="mt-6 space-y-6">
+    <div className="space-y-6">
       <section className="rounded-xl border border-line bg-card p-5">
         <Label className="grid gap-2 text-sm font-medium">
           {t("pasteData")}

@@ -1,9 +1,15 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { buttonVariants } from "@/components/ui/button";
 import { getStudentAccount, getStudentOrders } from "@/features/school/finance";
 import { FollowUpForm } from "@/features/school/FollowUpForm";
-import { SchoolPageHeader } from "@/features/school/PageHeader";
+import {
+  DashboardAside,
+  DashboardCommandActions,
+  DashboardCommandPanel,
+  DashboardContentGrid,
+  DashboardMainColumn,
+  DashboardPage,
+} from "@/features/school/dashboard-page";
 import { listStaffMembers } from "@/features/school/staff";
 import { StudentFinancePanel } from "@/features/school/StudentFinancePanel";
 import { StudentLifecycleActions } from "@/features/school/StudentLifecycleActions";
@@ -14,9 +20,7 @@ import { GuardianScopePanel } from "@/features/school/GuardianScopePanel";
 import { StudentMergePanel } from "@/features/school/StudentMergePanel";
 import { ProvisionStudentAccountButton } from "@/features/school/ProvisionStudentAccountButton";
 import { getStudentDetail, getStudentLearning } from "@/features/school/students";
-import { Link } from "@/i18n/navigation";
 import { getMyPerms, requireAnyPerm } from "@/lib/auth";
-import { cn } from "@/lib/utils";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -44,14 +48,14 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
     : [[], { studentId: id, balance: 0, ledger: [], lessonBalance: 0, lessonLedger: [] }];
 
   return (
-    <div className="mx-auto w-full max-w-5xl">
-      <SchoolPageHeader
-        title={student.name}
-        backHref={student.deletedAt ? "/dashboard/students?tab=recycle" : "/dashboard/students"}
-        backLabel={t("back")}
-        breadcrumbs={[{label:t("title"),href:"/dashboard/students"},{label:student.name}]}
-        actions={
-          <div className="flex flex-wrap items-center justify-end gap-2">
+    <DashboardPage
+      title={student.name}
+      backHref={student.deletedAt ? "/dashboard/students?tab=recycle" : "/dashboard/students"}
+      backLabel={t("back")}
+      breadcrumbs={[{label:t("title"),href:"/dashboard/students"},{label:student.name}]}
+      commandPanel={
+        <DashboardCommandPanel>
+          <DashboardCommandActions>
             <StudentLifecycleActions
               studentId={id}
               status={student.status}
@@ -63,34 +67,32 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
               assignees={assignees}
             />
             {!student.userId && perms.has("student.edit") && <ProvisionStudentAccountButton studentId={id} phone={student.phone} />}
-            <Link href={student.deletedAt ? "/dashboard/students?tab=recycle" : "/dashboard/students"} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>
-              {t("back")}
-            </Link>
-          </div>
-        }
-        meta={<>
-          <span>
-            {student.grade ? t("grade", { grade: student.grade }) : "-"} · {t(student.status)} · {t(student.followUpStatus)}
-          </span>
-          <span className="rounded-full bg-line/60 px-3 py-1 font-mono text-xs text-muted">{student.bindCode}</span>
-        </>}
-      />
-
+          </DashboardCommandActions>
+        </DashboardCommandPanel>
+      }
+      meta={<>
+        <span>
+          {student.grade ? t("grade", { grade: student.grade }) : "-"} · {t(student.status)} · {t(student.followUpStatus)}
+        </span>
+        <span className="rounded-full bg-line/60 px-3 py-1 font-mono text-xs text-muted">{student.bindCode}</span>
+      </>}
+    >
+      {/*
+        §22.2：360° 档案原来是一条超长窄单列，宽屏下右半屏全是空的。主内容（档案、
+        跟进、学情、费用）走 8 列，账号与关系类面板收进 4 列侧栏。
+      */}
+      <DashboardContentGrid>
+      <DashboardMainColumn className="space-y-6">
       {student.deletedAt && (
-        <div className="mt-6 rounded-xl border border-rose/30 bg-rose/5 p-4 text-sm text-rose">
+        <div className="rounded-xl border border-rose/30 bg-rose/5 p-4 text-sm text-rose">
           {t("deletedBanner", { date: new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(student.deletedAt)) })}
         </div>
       )}
-      {!student.deletedAt && perms.has("student.edit") && <GuardianInvitePanel studentId={id} />}
-      {!student.deletedAt && perms.has("student.edit") && <GuardianScopePanel studentId={id} />}
-      {!student.deletedAt && perms.has("student.edit") && <StudentMergePanel studentId={id} name={student.name} phone={student.phone} />}
 
-      <div className="mt-6">
-        <StudentProfileEditor student={student} canEdit={perms.has("student.edit")} />
-      </div>
+      <StudentProfileEditor student={student} canEdit={perms.has("student.edit")} />
 
       {perms.has("followup.view") && (
-        <section className="mt-6 rounded-xl border border-line bg-card p-5">
+        <section className="rounded-xl border border-line bg-card p-5">
           <h2 className="font-medium">{t("followUps")}</h2>
           {perms.has("followup.write") && !student.deletedAt && <FollowUpForm studentId={id} currentStatus={student.followUpStatus} />}
           {student.followUps.length === 0 ? (
@@ -119,7 +121,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
         </section>
       )}
 
-      <section className="mt-6 rounded-xl border border-line bg-card p-5">
+      <section className="rounded-xl border border-line bg-card p-5">
         <h2 className="font-medium">{t("learning")}</h2>
 
         <div className="mt-4 grid gap-6 sm:grid-cols-2">
@@ -224,6 +226,14 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
           }}
         />
       )}
-    </div>
+      </DashboardMainColumn>
+
+      <DashboardAside className="space-y-6">
+        {!student.deletedAt && perms.has("student.edit") && <GuardianInvitePanel studentId={id} />}
+        {!student.deletedAt && perms.has("student.edit") && <GuardianScopePanel studentId={id} />}
+        {!student.deletedAt && perms.has("student.edit") && <StudentMergePanel studentId={id} name={student.name} phone={student.phone} />}
+      </DashboardAside>
+      </DashboardContentGrid>
+    </DashboardPage>
   );
 }

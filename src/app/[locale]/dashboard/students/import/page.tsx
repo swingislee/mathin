@@ -1,6 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { ImportStudentsPanel } from "@/features/school/ImportStudentsPanel";
-import { SchoolPageHeader } from "@/features/school/PageHeader";
+import { DashboardPage } from "@/features/school/dashboard-page";
 import { requirePerm } from "@/lib/auth";
 
 export default async function ImportStudentsPage({ params }: { params: Promise<{ locale: string }> }) {
@@ -10,14 +10,14 @@ export default async function ImportStudentsPage({ params }: { params: Promise<{
   const t = await getTranslations("school.students");
 
   return (
-    <div className="mx-auto w-full max-w-6xl">
-      <SchoolPageHeader
-        title={t("importTitle")}
-        backHref="/dashboard/students"
-        backLabel={t("back")}
-        breadcrumbs={[{ label: t("title"), href: "/dashboard/students" }, { label: t("importTitle") }]}
-      />
+    <DashboardPage
+      title={t("importTitle")}
+      description={t("importIntro")}
+      backHref="/dashboard/students"
+      backLabel={t("back")}
+      breadcrumbs={[{ label: t("title"), href: "/dashboard/students" }, { label: t("importTitle") }]}
+    >
       <ImportStudentsPanel />
-    </div>
+    </DashboardPage>
   );
 }

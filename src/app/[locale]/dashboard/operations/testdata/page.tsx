@@ -2,7 +2,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { CoursewareZeroReferenceReport } from "@/features/school/CoursewareZeroReferenceReport";
 import { PurgeConfirmDialog } from "@/features/school/PurgeConfirmDialog";
 import { purgeTestClassroomAction, purgeTestCourseFamilyAction } from "@/features/school/actions/testdata";
-import { SchoolPageHeader } from "@/features/school/PageHeader";
+import { DashboardPage } from "@/features/school/dashboard-page";
 import { listPurgeableClassrooms, listPurgeableCourseFamilies, listZeroReferenceAssets } from "@/features/school/testdata";
 import { requirePerm } from "@/lib/auth";
 
@@ -19,13 +19,20 @@ export default async function TestDataCleanupPage({ params }: { params: Promise<
   ]);
 
   return (
-    <div className="mx-auto w-full max-w-5xl">
-      <SchoolPageHeader title={t("pageTitle")} />
-      <p className="mt-4 max-w-2xl text-sm text-rose">{t("pageIrreversibleNotice")}</p>
-
-      <div className="mt-6 grid gap-6">
+    <DashboardPage
+      title={t("pageTitle")}
+      summary={
+        <p role="alert" className="rounded-xl border border-rose/30 bg-rose/5 px-4 py-3 text-sm text-rose">
+          {t("pageIrreversibleNotice")}
+        </p>
+      }
+    >
+      {/* §22.4：说明与警告（summary）+ 两列普通操作 + 独立危险区。可清理清单是普通
+          浏览内容，摆两列；不可逆的清除动作留在各自卡片内、不与浏览内容混排。 */}
+      <div className="grid gap-6">
         <CoursewareZeroReferenceReport assets={zeroReferenceAssets} />
 
+        <div className="grid gap-6 @4xl/page:grid-cols-2">
         <section className="rounded-2xl border border-line bg-card p-5">
           <h2 className="font-medium text-ink">{t("purgeableFamiliesTitle", { count: purgeableFamilies.length })}</h2>
           <p className="mt-1 text-sm text-muted">{t("purgeableFamiliesHint")}</p>
@@ -79,7 +86,8 @@ export default async function TestDataCleanupPage({ params }: { params: Promise<
             </ul>
           )}
         </section>
+        </div>
       </div>
-    </div>
+    </DashboardPage>
   );
 }
