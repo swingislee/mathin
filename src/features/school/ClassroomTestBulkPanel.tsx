@@ -37,7 +37,7 @@ export function ClassroomTestBulkPanel({ classrooms }: { classrooms: ClassroomLi
   });
 
   if (classrooms.length === 0) {
-    return <p className="mt-6 rounded-2xl border border-dashed border-line bg-card p-8 text-center text-sm text-muted">{t("bulkPanelEmpty")}</p>;
+    return <p className="rounded-2xl border border-dashed border-line bg-card p-8 text-center text-sm text-muted">{t("bulkPanelEmpty")}</p>;
   }
 
   return (

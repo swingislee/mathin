@@ -29,13 +29,13 @@ export async function ClassroomList({
 }) {
   const t = await getTranslations("school.classes");
   if (classrooms.length === 0) {
-    return <div className="mt-6 rounded-2xl border border-dashed border-line bg-card p-8 text-center">
+    return <div className="rounded-2xl border border-dashed border-line bg-card p-8 text-center">
       <p className="text-sm text-muted">{t("empty")}</p>
       {hasFilters && <Link href={resetHref} className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "mt-4")}>{t("clearFilters")}</Link>}
     </div>;
   }
 
-  return <div className="mt-6 space-y-4">
+  return <div className="space-y-4">
     <p className="text-sm text-muted">{t("results", { count: totalCount })}</p>
     <div className="grid gap-4 xl:grid-cols-2">
       {classrooms.map((classroom) => <article key={classroom.id} className="flex min-w-0 flex-col gap-4 rounded-2xl border border-line bg-card p-4 sm:flex-row">

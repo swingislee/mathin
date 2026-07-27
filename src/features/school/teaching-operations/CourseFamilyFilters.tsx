@@ -13,11 +13,10 @@ import { COURSE_SEASONS, type CourseFamilyFilters as Filters } from "./course-qu
  */
 export async function CourseFamilyFilters({ filters }: { filters: Filters }) {
   const t = await getTranslations("school.courses");
-  const hasFilters = Boolean(filters.q || filters.grade || filters.courseSeason || filters.classType || filters.familyStatus || filters.variantStatus || filters.purpose || filters.readiness);
+  const activeCount = [filters.q, filters.grade, filters.courseSeason, filters.classType, filters.familyStatus, filters.variantStatus, filters.purpose, filters.readiness].filter(Boolean).length;
   return <FilterBar aria-label={t("filter")}>
     <FilterSearchInput name="q" defaultValue={filters.q} maxLength={80} placeholder={t("searchFamilies")} aria-label={t("searchFamilies")} />
-    <FilterBarSubmit>{t("filter")}</FilterBarSubmit>
-    <FilterBarMore label={t("moreFilters")}>
+    <FilterBarMore label={t("moreFilters")} activeCount={activeCount}>
         <div className="grid gap-3 sm:grid-cols-2">
           <Select name="grade" defaultValue={toSelectValue(filters.grade?.toString() ?? "")}><FilterSelectTrigger className="w-full"><SelectValue placeholder={t("allGrades")} /></FilterSelectTrigger><SelectContent><SelectItem value={toSelectValue("")}>{t("allGrades")}</SelectItem>{Array.from({ length: 9 }, (_, index) => index + 1).map((grade) => <SelectItem key={grade} value={String(grade)}>{t("grade", { grade })}</SelectItem>)}</SelectContent></Select>
           <Select name="courseSeason" defaultValue={toSelectValue(filters.courseSeason?.toString() ?? "")}><FilterSelectTrigger className="w-full"><SelectValue placeholder={t("allCourseSeasons")} /></FilterSelectTrigger><SelectContent><SelectItem value={toSelectValue("")}>{t("allCourseSeasons")}</SelectItem>{COURSE_SEASONS.map((season) => <SelectItem key={season.value} value={String(season.value)}>{t(season.labelKey)}</SelectItem>)}</SelectContent></Select>
@@ -28,6 +27,7 @@ export async function CourseFamilyFilters({ filters }: { filters: Filters }) {
           <Select name="readiness" defaultValue={toSelectValue(filters.readiness ?? "")}><FilterSelectTrigger className="w-full"><SelectValue placeholder={t("allReadiness")} /></FilterSelectTrigger><SelectContent><SelectItem value={toSelectValue("")}>{t("allReadiness")}</SelectItem><SelectItem value="ready">{t("ready")}</SelectItem><SelectItem value="incomplete">{t("incomplete")}</SelectItem></SelectContent></Select>
         </div>
     </FilterBarMore>
-    {hasFilters && <FilterBarReset href="/dashboard/courses" label={t("clearFilters")} />}
+    <FilterBarSubmit>{t("filter")}</FilterBarSubmit>
+    {activeCount > 0 && <FilterBarReset href="/dashboard/courses" label={t("clearFilters")} />}
   </FilterBar>;
 }

@@ -1,5 +1,5 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { SchoolPageHeader } from "@/features/school/PageHeader";
+import { DashboardPage } from "@/features/school/dashboard-page";
 import { StaffMembersPanel } from "@/features/school/StaffMembersPanel";
 import { listStaffMembers, listStaffRoles } from "@/features/school/staff";
 import { getProfile, requirePerm } from "@/lib/auth";
@@ -16,11 +16,8 @@ export default async function StaffPage({ params }: { params: Promise<{ locale: 
   ]);
 
   return (
-    <div className="mx-auto w-full max-w-6xl">
-      <SchoolPageHeader title={t("title")} />
-      <div className="mt-6">
-        <StaffMembersPanel members={members} roles={roles} selfId={user.id} isAdmin={profile?.role === "admin"} />
-      </div>
-    </div>
+    <DashboardPage title={t("title")}>
+      <StaffMembersPanel members={members} roles={roles} selfId={user.id} isAdmin={profile?.role === "admin"} />
+    </DashboardPage>
   );
 }

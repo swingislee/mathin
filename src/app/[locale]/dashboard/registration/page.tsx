@@ -1,6 +1,6 @@
 import { getFormatter, getTranslations, setRequestLocale } from "next-intl/server";
 import { RegistrationInvitePanel } from "@/features/school/RegistrationInvitePanel";
-import { SchoolPageHeader } from "@/features/school/PageHeader";
+import { DashboardPage } from "@/features/school/dashboard-page";
 import { getRegistrationInviteSettings } from "@/features/school/registration";
 import { requirePerm } from "@/lib/auth";
 
@@ -22,9 +22,8 @@ export default async function RegistrationInvitePage({ params }: { params: Promi
   });
 
   return (
-    <div className="mx-auto w-full max-w-6xl">
-      <SchoolPageHeader title={t("title")} />
+    <DashboardPage title={t("title")}>
       <RegistrationInvitePanel initial={settings} updatedLabel={updatedLabel} />
-    </div>
+    </DashboardPage>
   );
 }

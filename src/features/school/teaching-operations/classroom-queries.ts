@@ -1,5 +1,6 @@
 import "server-only";
 
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import type { ClassroomOperationalStatus, ClassroomPurpose, ClassroomScope } from "./types";
 
@@ -74,7 +75,13 @@ export function parseClassroomListFilters(input: Record<string, string | string[
  * 学辅（sales 岗位）没有任何 class.* 权限，默认可见 scope 完全取决于
  * classroom_staff_assignments 是否存在，无法用静态权限集推出。
  */
-export async function resolveClassroomScope(requestedScope: string | string[] | undefined): Promise<{ scope: ClassroomScope; availableScopes: ClassroomScope[] }> {
+/**
+ * 命令面板与列表分处两棵 Suspense 子树（面板在 sticky chrome 里，列表在正文里），
+ * 两边都要知道当前 scope。用 request 级 cache 保证这一次 RPC 只发一次。
+ */
+export const resolveClassroomScope = cache(async function resolveClassroomScope(
+  requestedScope: string | string[] | undefined,
+): Promise<{ scope: ClassroomScope; availableScopes: ClassroomScope[] }> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("resolve_classroom_scope", { p_requested: first(requestedScope) ?? undefined });
   if (error) throw new Error(error.message);
@@ -84,7 +91,7 @@ export async function resolveClassroomScope(requestedScope: string | string[] | 
     scope: row.resolved_scope as ClassroomScope,
     availableScopes: row.available_scopes as ClassroomScope[],
   };
-}
+});
 
 export async function listClassroomsForScope(scope: ClassroomScope, filters: ClassroomListFilters): Promise<ClassroomListResult> {
   const supabase = await createClient();

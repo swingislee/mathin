@@ -5,27 +5,24 @@ import { toSelectValue } from "./controls";
 import { FilterBar, FilterBarMore, FilterBarReset, FilterBarSubmit, FilterSearchInput, FilterSelectTrigger } from "./FilterBar";
 import { listSchoolTerms } from "./courses";
 import { listStaffOptions } from "./classes";
-import { ClassroomScopeSwitch } from "./ClassroomScopeSwitch";
 import type { ClassroomListFilters as Filters } from "./teaching-operations/classroom-queries";
 import type { ClassroomScope } from "./teaching-operations/types";
 
-export async function ClassroomFilters({ filters, scope, availableScopes }: { filters: Filters; scope: ClassroomScope; availableScopes: readonly ClassroomScope[] }) {
+/** scope 切换已上移到命令面板的状态区（ClassroomScopeSwitch），这里只留筛选本身。 */
+export async function ClassroomFilters({ filters, scope }: { filters: Filters; scope: ClassroomScope }) {
   const [t, staff, terms] = await Promise.all([
     getTranslations("school.classes"),
     listStaffOptions(),
     listSchoolTerms(),
   ]);
 
-  const hasFilters = Boolean(filters.q || filters.teacherId || filters.supportId || filters.grade || filters.schoolTermId || filters.operationalStatus || filters.purpose || filters.readiness);
+  const activeCount = [filters.q, filters.teacherId, filters.supportId, filters.grade, filters.schoolTermId, filters.operationalStatus, filters.purpose, filters.readiness].filter(Boolean).length;
   return <FilterBar aria-label={t("filter")}>
     <Input type="hidden" name="scope" value={scope} aria-hidden="true" className="hidden" tabIndex={-1} />
-    <ClassroomScopeSwitch activeScope={scope} availableScopes={availableScopes} />
-    <span className="hidden h-5 w-px bg-line/70 md:block" aria-hidden />
     <FilterSearchInput name="q" defaultValue={filters.q} maxLength={80} placeholder={t("searchClasses")} aria-label={t("searchClasses")} />
-    <Select name="grade" defaultValue={toSelectValue(filters.grade?.toString() ?? "")}><FilterSelectTrigger><SelectValue placeholder={t("allGrades")} /></FilterSelectTrigger><SelectContent><SelectItem value={toSelectValue("")}>{t("allGrades")}</SelectItem>{Array.from({ length: 12 }, (_, index) => index + 1).map((grade) => <SelectItem key={grade} value={String(grade)}>{t("grade", { grade })}</SelectItem>)}</SelectContent></Select>
-    <FilterBarSubmit>{t("filter")}</FilterBarSubmit>
-    <FilterBarMore label={t("moreFilters")}>
+    <FilterBarMore label={t("moreFilters")} activeCount={activeCount}>
       <div className="grid gap-3 sm:grid-cols-2">
+        <Select name="grade" defaultValue={toSelectValue(filters.grade?.toString() ?? "")}><FilterSelectTrigger className="w-full"><SelectValue placeholder={t("allGrades")} /></FilterSelectTrigger><SelectContent><SelectItem value={toSelectValue("")}>{t("allGrades")}</SelectItem>{Array.from({ length: 12 }, (_, index) => index + 1).map((grade) => <SelectItem key={grade} value={String(grade)}>{t("grade", { grade })}</SelectItem>)}</SelectContent></Select>
         <Select name="teacherId" defaultValue={toSelectValue(filters.teacherId ?? "")}><FilterSelectTrigger className="w-full"><SelectValue placeholder={t("allTeachers")} /></FilterSelectTrigger><SelectContent><SelectItem value={toSelectValue("")}>{t("allTeachers")}</SelectItem>{staff.map((option) => <SelectItem key={option.id} value={option.id}>{option.name}</SelectItem>)}</SelectContent></Select>
         <Select name="supportId" defaultValue={toSelectValue(filters.supportId ?? "")}><FilterSelectTrigger className="w-full"><SelectValue placeholder={t("allSupport")} /></FilterSelectTrigger><SelectContent><SelectItem value={toSelectValue("")}>{t("allSupport")}</SelectItem>{staff.map((option) => <SelectItem key={option.id} value={option.id}>{option.name}</SelectItem>)}</SelectContent></Select>
         <Select name="schoolTermId" defaultValue={toSelectValue(filters.schoolTermId ?? "")}><FilterSelectTrigger className="w-full"><SelectValue placeholder={t("allSchoolTerms")} /></FilterSelectTrigger><SelectContent><SelectItem value={toSelectValue("")}>{t("allSchoolTerms")}</SelectItem>{terms.map((term) => <SelectItem key={term.id} value={term.id}>{term.name}</SelectItem>)}</SelectContent></Select>
@@ -34,6 +31,7 @@ export async function ClassroomFilters({ filters, scope, availableScopes }: { fi
         <Select name="readiness" defaultValue={toSelectValue(filters.readiness ?? "")}><FilterSelectTrigger className="w-full"><SelectValue placeholder={t("allReadiness")} /></FilterSelectTrigger><SelectContent><SelectItem value={toSelectValue("")}>{t("allReadiness")}</SelectItem><SelectItem value="ready">{t("ready")}</SelectItem><SelectItem value="incomplete">{t("incomplete")}</SelectItem></SelectContent></Select>
       </div>
     </FilterBarMore>
-    {hasFilters && <FilterBarReset href={`/dashboard/classes?scope=${scope}`} label={t("clearFilters")} />}
+    <FilterBarSubmit>{t("filter")}</FilterBarSubmit>
+    {activeCount > 0 && <FilterBarReset href={`/dashboard/classes?scope=${scope}`} label={t("clearFilters")} />}
   </FilterBar>;
 }

@@ -24,13 +24,13 @@ export async function CourseFamilyList({
 }) {
   const t = await getTranslations("school.courses");
   if (families.length === 0) {
-    return <div className="mt-6 rounded-2xl border border-dashed border-line bg-card p-8 text-center">
+    return <div className="rounded-2xl border border-dashed border-line bg-card p-8 text-center">
       <p className="text-sm text-muted">{t("familyEmpty")}</p>
       {hasFilters && <Link href={resetHref} className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "mt-4")}>{t("clearFilters")}</Link>}
     </div>;
   }
 
-  return <div className="mt-6 space-y-4">
+  return <div className="space-y-4">
     <p className="text-sm text-muted">{t("familyResults", { count: totalCount })}</p>
     <div className="grid gap-4 xl:grid-cols-2">
       {families.map((family) => <article key={family.id} className="flex min-w-0 flex-col gap-4 rounded-2xl border border-line bg-card p-4 sm:flex-row">

@@ -28,7 +28,7 @@ export function RegistrationInvitePanel({ initial, updatedLabel }: { initial: Re
   });
 
   return (
-    <section className="mt-6 max-w-2xl rounded-2xl border border-line bg-card p-5 shadow-sm sm:p-6">
+    <section className="max-w-2xl rounded-2xl border border-line bg-card p-5 shadow-sm sm:p-6">
       <div className="flex items-start gap-4">
         <span className="grid size-11 shrink-0 place-items-center rounded-full bg-moon/45 text-crater">
           <KeyRound size={20} strokeWidth={1.7} />
