@@ -1953,7 +1953,6 @@
     "finance": {
       "title": "Finance",
       "intro": "Orders, payments, refunds, coupons, scholarships and student accounts.",
-      "appendOnlyPolicy": "Finance records are append-only. Correct errors with reversals, voids, or negative ledger entries.",
       "orders": "Orders ({count})",
       "searchOrder": "Search by student or order no.",
       "filter": "Filter",

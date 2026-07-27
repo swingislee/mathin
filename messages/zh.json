@@ -1953,7 +1953,6 @@
     "finance": {
       "title": "财务",
       "intro": "订单、收款、退费、优惠券、奖学金与学生账户。",
-      "appendOnlyPolicy": "财务流水只追加、不改删；错误通过冲正、作废或负向流水处理，确保审计链完整。",
       "orders": "订单（{count}）",
       "searchOrder": "按学生或单号搜索",
       "filter": "筛选",
