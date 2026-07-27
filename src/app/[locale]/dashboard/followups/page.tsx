@@ -67,7 +67,6 @@ export default async function FollowUpsPage({
   return (
     <DashboardPage
       title={t("title")}
-      description={t("appendOnlyPolicy")}
       commandPanel={
         <DashboardCommandPanel>
           {canScopeAll ? (
