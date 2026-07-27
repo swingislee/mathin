@@ -3,7 +3,9 @@
 import { AlertTriangle, Plus } from "lucide-react";
 import { Fragment, useState } from "react";
 import { useTranslations } from "next-intl";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DashboardEmptyCard } from "@/features/school/dashboard-page";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { CreateVariantDialog } from "./CreateVariantDialog";
@@ -63,19 +65,18 @@ export function VariantMatrix({ familyId, variants, canManage }: { familyId: str
   const grades = Array.from(new Set(variants.map((variant) => variant.grade))).sort((a, b) => a - b);
 
   if (grades.length === 0) {
-    return <section className="rounded-2xl border border-dashed border-line bg-card p-8 text-center">
-      <p className="text-sm text-muted">{t("noVariantsYet")}</p>
-      {canManage && <div className="mt-4 flex justify-center">
-        <CreateVariantDialog
+    return <DashboardEmptyCard
+      action={canManage ? <CreateVariantDialog
           familyId={familyId}
-          trigger={<button type="button" className="rounded-full border border-crater/40 bg-crater/10 px-4 py-2 text-sm font-medium text-crater transition hover:bg-crater/15"><Plus size={14} className="mr-1.5 inline" />{t("createFirstVariant")}</button>}
-        />
-      </div>}
-    </section>;
+          // 手搓的 rounded-full 描边按钮已退休：同一页里的"新建版本"和空状态里的
+          // "创建第一个版本"是同一件事，不该长成两种按钮（AGENTS.md UI 组件约束）。
+          trigger={<Button type="button" variant="secondary" size="sm"><Plus size={14} />{t("createFirstVariant")}</Button>}
+        /> : undefined}
+    >{t("noVariantsYet")}</DashboardEmptyCard>;
   }
 
   return <section className="overflow-x-auto rounded-2xl border border-line bg-card p-4">
-    <h2 className="mb-3 font-medium text-ink">{t("versionMatrix")}</h2>
+    <h2 className="mb-3 text-base font-medium text-ink">{t("versionMatrix")}</h2>
     <div className="grid min-w-[640px] gap-2" style={{ gridTemplateColumns: `5rem repeat(${COURSE_SEASONS.length}, 1fr)` }}>
       <div />
       {COURSE_SEASONS.map((season) => <div key={season.value} className="px-2 text-center text-xs font-medium uppercase text-muted">{t(season.labelKey)}</div>)}

@@ -2,6 +2,7 @@ import { ArrowRight, BookOpen, CircleAlert, Layers3, School } from "lucide-react
 import { getTranslations } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
+import { DashboardEmptyCard } from "@/features/school/dashboard-page";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { type CourseFamilyListItem, COURSE_SEASONS } from "./course-queries";
@@ -24,10 +25,9 @@ export async function CourseFamilyList({
 }) {
   const t = await getTranslations("school.courses");
   if (families.length === 0) {
-    return <div className="rounded-2xl border border-dashed border-line bg-card p-8 text-center">
-      <p className="text-sm text-muted">{t("familyEmpty")}</p>
-      {hasFilters && <Link href={resetHref} className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "mt-4")}>{t("clearFilters")}</Link>}
-    </div>;
+    return <DashboardEmptyCard
+      action={hasFilters ? <Link href={resetHref} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>{t("clearFilters")}</Link> : undefined}
+    >{t("familyEmpty")}</DashboardEmptyCard>;
   }
 
   return <div className="space-y-4">

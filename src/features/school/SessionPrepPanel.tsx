@@ -1,3 +1,4 @@
+import { DashboardEmptyCard } from "@/features/school/dashboard-page";
 import { getTranslations } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
 import type { SessionWorkspaceDetail } from "./classes";
@@ -27,7 +28,7 @@ export async function SessionPrepPanel({ detail }: { detail: SessionWorkspaceDet
 
   return (
     <div className="flex flex-col gap-4 px-1">
-      {!hasContent && <p className="rounded-2xl border border-line bg-card p-4 text-sm text-muted">{t("stageEmpty")}</p>}
+      {!hasContent && <DashboardEmptyCard>{t("stageEmpty")}</DashboardEmptyCard>}
       {/*
         doc23 §10：时间 / 主讲 / 代课 / 人数原来在这里再说一遍，现在归 WorkspaceRail
         的课次摘要——它们是做课前工作时要一直看得见的上下文，不该只在"课前"这一段出现，

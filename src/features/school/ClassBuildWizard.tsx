@@ -188,7 +188,7 @@ export function ClassBuildWizard({
     {notice && <p role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">{notice}</p>}
 
     {step === 1 && <section className="rounded-2xl border border-line bg-card p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="font-medium">{t("stepCourse")}</h2><p className="mt-1 text-sm text-muted">{t("courseStepHint")}</p></div>{purpose === "test" && <Badge variant="outline" className="border-violet-500/40 bg-violet-500/10 text-violet-800 dark:text-violet-300">{t("testBadge")}</Badge>}</div>
+      <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-base font-medium text-ink">{t("stepCourse")}</h2><p className="mt-1 text-sm text-muted">{t("courseStepHint")}</p></div>{purpose === "test" && <Badge variant="outline" className="border-violet-500/40 bg-violet-500/10 text-violet-800 dark:text-violet-300">{t("testBadge")}</Badge>}</div>
       <div className="mt-5">
         <Label className="text-xs font-normal text-muted">{t("purpose")}</Label>
         <div className="mt-2 flex flex-wrap gap-2"><Button type="button" variant={purpose === "production" ? "primary" : "secondary"} onClick={() => setClassPurpose("production")}>{t("production")}</Button><Button type="button" variant={purpose === "test" ? "primary" : "secondary"} onClick={() => setClassPurpose("test")}>{t("test")}</Button></div>
@@ -200,7 +200,7 @@ export function ClassBuildWizard({
     </section>}
 
     {step === 2 && <section className="rounded-2xl border border-line bg-card p-5">
-      <h2 className="font-medium">{t("stepInfo")}</h2><p className="mt-1 text-sm text-muted">{t("infoStepHint")}</p>
+      <h2 className="text-base font-medium text-ink">{t("stepInfo")}</h2><p className="mt-1 text-sm text-muted">{t("infoStepHint")}</p>
       <div className="mt-5 grid gap-4 md:grid-cols-2">
         <div><Label htmlFor="class-name" className="text-xs font-normal text-muted">{t("name")}</Label><Input id="class-name" value={name} onChange={(event) => setName(event.target.value)} placeholder={course?.title ?? t("namePlaceholder")} maxLength={100} className={cn("mt-1", inputClass)} /></div>
         <div><Label className="text-xs font-normal text-muted">{t("primaryTeacher")}</Label><Select value={primaryTeacherId} onValueChange={(value) => { setPrimaryTeacherId(value); setActivateNow(false); }}><SelectTrigger className="mt-1"><SelectValue placeholder={t("chooseTeacher")} /></SelectTrigger><SelectContent>{teachers.map((teacher) => <SelectItem key={teacher.id} value={teacher.id}>{teacher.name}</SelectItem>)}</SelectContent></Select></div>
@@ -212,7 +212,7 @@ export function ClassBuildWizard({
     </section>}
 
     {step === 3 && <section className="rounded-2xl border border-line bg-card p-5">
-      <h2 className="font-medium">{t("stepSchedule")}</h2><p className="mt-1 text-sm text-muted">{t("scheduleStepHint")}</p>
+      <h2 className="text-base font-medium text-ink">{t("stepSchedule")}</h2><p className="mt-1 text-sm text-muted">{t("scheduleStepHint")}</p>
       <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <div><Label className="text-xs font-normal text-muted">{t("schoolTerm")}</Label><Select value={schoolTermId} onValueChange={setSchoolTermId}><SelectTrigger className="mt-1"><SelectValue placeholder={t("chooseSchoolTerm")} /></SelectTrigger><SelectContent>{schoolTerms.map((term) => <SelectItem key={term.id} value={term.id}>{term.name}{term.isCurrent ? ` · ${t("current")}` : ""}</SelectItem>)}</SelectContent></Select></div>
         <div><Label htmlFor="schedule-start" className="text-xs font-normal text-muted">{t("startDate")}</Label><Input id="schedule-start" type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} className={cn("mt-1", inputClass)} /></div>
@@ -228,7 +228,7 @@ export function ClassBuildWizard({
     </section>}
 
     {step === 4 && <section className="rounded-2xl border border-line bg-card p-5">
-      <h2 className="font-medium">{t("stepConfirm")}</h2><p className="mt-1 text-sm text-muted">{t("confirmStepHint")}</p>
+      <h2 className="text-base font-medium text-ink">{t("stepConfirm")}</h2><p className="mt-1 text-sm text-muted">{t("confirmStepHint")}</p>
       <dl className="mt-5 grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2"><div><dt className="text-muted">{t("course")}</dt><dd className="mt-1 font-medium">{mode === "free" ? t("modeFree") : `${course?.familyTitle ?? ""} · ${course?.title ?? ""}`}</dd></div><div><dt className="text-muted">{t("courseReadiness")}</dt><dd className="mt-1">{mode === "free" ? t("notApplicable") : isReady ? t("readyCount", { ready: course?.releasedLectureCount ?? 0, total: course?.lectureCount ?? 0 }) : <span className="text-amber-800 dark:text-amber-300">{t("incompleteCount", { ready: course?.releasedLectureCount ?? 0, total: course?.lectureCount ?? 0 })}</span>}</dd></div><div><dt className="text-muted">{t("teacher")}</dt><dd className="mt-1 font-medium">{teachers.find((teacher) => teacher.id === primaryTeacherId)?.name || "—"}</dd></div><div><dt className="text-muted">{t("conflicts")}</dt><dd className="mt-1">{visibleConflictsLoading ? t("checking") : visibleConflicts.length ? t("conflictsFound", { count: visibleConflicts.length }) : t("noTeacherConflicts")}</dd></div><div><dt className="text-muted">{t("sessionCount")}</dt><dd className="mt-1">{preview.length}</dd></div><div><dt className="text-muted">{t("purpose")}</dt><dd className="mt-1">{purpose === "test" ? <Badge variant="outline" className="border-violet-500/40 bg-violet-500/10 text-violet-800 dark:text-violet-300">{t("testBadge")}</Badge> : t("production")}</dd></div></dl>
       {purpose === "production" && !isReady && mode === "course" && <p className="mt-5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-950 dark:text-amber-100">{t("productionPlanningOnly")}</p>}
       {purpose === "test" && !isReady && <p className="mt-5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-950 dark:text-amber-100">{t("testActivationWarning")}</p>}

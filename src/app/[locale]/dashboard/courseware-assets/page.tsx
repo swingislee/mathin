@@ -4,7 +4,12 @@ import { buttonVariants } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AssetLibraryFilters } from "@/features/courseware-studio/AssetLibraryFilters";
 import { loadCoursewareSharedAssets, parseAssetLibraryFilters } from "@/features/courseware-studio/data";
-import { DashboardCommandFilters, DashboardCommandPanel, DashboardPage } from "@/features/school/dashboard-page";
+import {
+  DashboardCommandFilters,
+  DashboardCommandPanel,
+  DashboardEmptyCard,
+  DashboardPage,
+} from "@/features/school/dashboard-page";
 import { Link } from "@/i18n/navigation";
 import { requirePerm } from "@/lib/auth";
 
@@ -54,7 +59,7 @@ export default async function CoursewareAssetLibraryPage({
       }
     >
       {items.length === 0 ? (
-        <p className="rounded-2xl border border-line bg-card p-5 text-sm text-muted">{t("assetLibraryEmpty")}</p>
+        <DashboardEmptyCard>{t("assetLibraryEmpty")}</DashboardEmptyCard>
       ) : (
         <div className="overflow-hidden rounded-2xl border border-line bg-card">
           <Table className="w-full min-w-[48rem] border-collapse text-left text-sm">

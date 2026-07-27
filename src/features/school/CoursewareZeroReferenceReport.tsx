@@ -13,7 +13,7 @@ export async function CoursewareZeroReferenceReport({ assets }: { assets: ZeroRe
   const t = await getTranslations("school.testdata");
   return (
     <section className="rounded-2xl border border-line bg-card p-5">
-      <h2 className="font-medium text-ink">{t("zeroRefTitle", { count: assets.length })}</h2>
+      <h2 className="text-base font-medium text-ink">{t("zeroRefTitle", { count: assets.length })}</h2>
       <p className="mt-1 text-sm text-muted">{t("zeroRefHint")}</p>
       {assets.length === 0 ? (
         <p className="mt-4 text-sm text-muted">{t("zeroRefEmpty")}</p>

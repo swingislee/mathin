@@ -1,5 +1,6 @@
 "use client";
 
+import { DashboardEmptyCard } from "@/features/school/dashboard-page";
 import { ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
@@ -17,12 +18,12 @@ function pageHref(page: number, courseId: string | null, lectureId: string | nul
 
 export function AdaptBackgroundHistory({ items, page, total, totalPages, courseId, lectureId }: AdaptBackgroundHistoryData & { courseId: string | null; lectureId: string | null }) {
   const t = useTranslations("coursewareStudio");
-  return <section className="mt-6">
+  return <section className="min-w-0">
     <div className="rounded-2xl border border-line bg-card p-4">
-      <h2 className="font-display text-lg text-ink">{t("adaptHistoryTitle")}</h2>
+      <h2 className="text-base font-medium text-ink">{t("adaptHistoryTitle")}</h2>
       <p className="mt-1 text-sm text-muted">{t("adaptHistoryIntro")}</p>
     </div>
-    {items.length === 0 ? <p className="mt-4 rounded-2xl border border-dashed border-line bg-card p-8 text-center text-sm text-muted">{t("adaptHistoryEmpty")}</p> : <div className="mt-4 space-y-3">
+    {items.length === 0 ? <DashboardEmptyCard className="mt-4">{t("adaptHistoryEmpty")}</DashboardEmptyCard> : <div className="mt-4 space-y-3">
       {items.map((item) => <article key={item.id} className="rounded-2xl border border-line bg-card p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>

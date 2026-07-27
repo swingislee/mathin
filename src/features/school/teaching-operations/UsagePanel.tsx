@@ -15,7 +15,7 @@ export async function UsagePanel({ usage }: { usage: ClassroomUsage[] }) {
   const past = usage.filter((row) => row.archivedAt !== null);
 
   return <section className="rounded-2xl border border-line bg-card p-4">
-    <h2 className="font-medium text-ink">{t("usage")}</h2>
+    <h2 className="text-base font-medium text-ink">{t("usage")}</h2>
     {usage.length === 0 ? <p className="mt-2 text-sm text-muted">{t("usageEmpty")}</p> : <div className="mt-3 grid gap-4">
       {current.length > 0 && <div>
         <h3 className="text-xs font-medium uppercase text-muted">{t("currentlyUsing")}</h3>

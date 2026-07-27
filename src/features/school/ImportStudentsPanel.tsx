@@ -93,7 +93,7 @@ export function ImportStudentsPanel() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-xl border border-line bg-card p-5">
+      <section className="rounded-2xl border border-line bg-card p-5">
         <Label className="grid gap-2 text-sm font-medium">
           {t("pasteData")}
           <textarea
@@ -115,7 +115,7 @@ export function ImportStudentsPanel() {
       </section>
 
       {rows.length > 0 && (
-        <section className="overflow-hidden rounded-xl border border-line bg-card">
+        <section className="overflow-hidden rounded-2xl border border-line bg-card">
           <div className="border-b border-line px-4 py-3 text-sm font-medium">{t("preview")}</div>
           <div className="max-h-96 overflow-auto">
             <Table className="w-full min-w-[760px] border-collapse text-left text-xs">
@@ -142,8 +142,8 @@ export function ImportStudentsPanel() {
       )}
 
       {result && (
-        <section className="rounded-xl border border-line bg-card p-5">
-          <h2 className="font-medium">{t("importResult")}</h2>
+        <section className="rounded-2xl border border-line bg-card p-5">
+          <h2 className="text-base font-medium text-ink">{t("importResult")}</h2>
           <p className="mt-3 text-sm">{t("importSummary", { inserted: result.inserted, dup: result.dup, errors: result.errors.length })}</p>
           {result.errors.length > 0 && (
             <ul className="mt-3 space-y-1 text-xs text-rose">

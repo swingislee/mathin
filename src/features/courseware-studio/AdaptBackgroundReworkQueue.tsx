@@ -1,6 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element -- private, short-lived signed CAS URLs cannot use next/image. */
 
+import { DashboardEmptyCard } from "@/features/school/dashboard-page";
 import { ChevronLeft, ChevronRight, Crop, ExternalLink } from "lucide-react";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
@@ -102,12 +103,12 @@ export function AdaptBackgroundReworkQueue({ items, page, total, totalPages, can
     setRepairing(item);
   };
 
-  return <section className="mt-6">
+  return <section className="min-w-0">
     <div className="rounded-2xl border border-line bg-card p-4">
-      <h2 className="font-display text-lg text-ink">{t("adaptReworkQueueTitle")}</h2>
+      <h2 className="text-base font-medium text-ink">{t("adaptReworkQueueTitle")}</h2>
       <p className="mt-1 text-sm text-muted">{t("adaptReworkQueueIntro")}</p>
     </div>
-    {items.length === 0 ? <p className="mt-4 rounded-2xl border border-dashed border-line bg-card p-8 text-center text-sm text-muted">{t("adaptReworkQueueEmpty")}</p> : <div className="mt-4 grid gap-4 xl:grid-cols-2">
+    {items.length === 0 ? <DashboardEmptyCard className="mt-4">{t("adaptReworkQueueEmpty")}</DashboardEmptyCard> : <div className="mt-4 grid gap-4 xl:grid-cols-2">
       {items.map((item) => <article key={item.id} className="overflow-hidden rounded-2xl border border-line bg-card">
         <header className="border-b border-line px-4 py-3">
           <div className="flex flex-wrap items-center justify-between gap-2">

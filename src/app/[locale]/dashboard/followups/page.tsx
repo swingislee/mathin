@@ -82,10 +82,14 @@ export default async function FollowUpsPage({
             </DashboardCommandState>
           ) : null}
 
-          {/* 七个时间桶带计数，窄容器下不换行而是横向滚动：换行会让命令面板一路长到
-              小半屏，而这些桶本来就是一条可扫视的量表。 */}
-          <DashboardCommandFilters className="overflow-x-auto">
-            <div role="group" aria-label={t("title")} className="flex items-center gap-1">
+          {/*
+            七个时间桶带计数。doc 24 §3.1 之前这里是 `overflow-x-auto`，理由是"换行会让
+            命令面板长到小半屏"——但实测 390px 下七个桶横向滚动时后四个（本周/未排期/
+            续费/流失）完全在视野外，而这一页的用户就是靠"逾期几条"决定今天先打哪通电话。
+            换行只多一行 32px，滚动却是直接把一半量表藏起来。
+          */}
+          <DashboardCommandFilters>
+            <div role="group" aria-label={t("title")} className="flex min-w-0 flex-wrap items-center gap-1">
               {BOARD_BUCKETS.map((key) => {
                 const active = bucket === key;
                 const rose = key === "overdue" && board.counts[key] > 0;

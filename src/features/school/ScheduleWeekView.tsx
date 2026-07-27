@@ -1,5 +1,6 @@
 "use client";
 
+import { DashboardEmptyCard } from "@/features/school/dashboard-page";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -242,7 +243,7 @@ export function ScheduleWeekView({
       {loading ? (
         <p className="text-sm text-muted">{t("loading")}</p>
       ) : visibleEntries.length === 0 ? (
-        <p className="rounded-xl border border-line bg-card p-5 text-sm text-muted">{t("empty")}</p>
+        <DashboardEmptyCard>{t("empty")}</DashboardEmptyCard>
       ) : null}
 
       {/* 加载中用 hidden 而不是卸载：整张网格重建会让滚动位置和当前时间线跳一下。 */}

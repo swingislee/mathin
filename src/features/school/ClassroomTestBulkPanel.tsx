@@ -1,5 +1,6 @@
 "use client";
 
+import { DashboardEmptyCard } from "@/features/school/dashboard-page";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -37,7 +38,7 @@ export function ClassroomTestBulkPanel({ classrooms }: { classrooms: ClassroomLi
   });
 
   if (classrooms.length === 0) {
-    return <p className="rounded-2xl border border-dashed border-line bg-card p-8 text-center text-sm text-muted">{t("bulkPanelEmpty")}</p>;
+    return <DashboardEmptyCard>{t("bulkPanelEmpty")}</DashboardEmptyCard>;
   }
 
   return (
@@ -63,7 +64,7 @@ export function ClassroomTestBulkPanel({ classrooms }: { classrooms: ClassroomLi
           </button>
         </div>
       </div>
-      <div className="mt-4 overflow-hidden rounded-xl border border-line bg-card">
+      <div className="mt-4 overflow-hidden rounded-2xl border border-line bg-card">
         <Table className="w-full text-left text-sm">
           <TableHeader className="border-b border-line text-xs text-muted">
             <TableRow>

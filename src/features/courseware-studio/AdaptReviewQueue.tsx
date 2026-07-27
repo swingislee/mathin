@@ -1,6 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element -- private, short-lived signed CAS URLs cannot use next/image. */
 
+import { DashboardEmptyCard } from "@/features/school/dashboard-page";
 import { Check, ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
@@ -84,10 +85,10 @@ export function AdaptReviewQueue({ items, page, total, totalPages, canManageAsse
     rejectRun.run({ adaptationIds: pendingDecision.ids, rejectionCode: rejectReason, note: rejectNote });
   };
 
-  if (items.length === 0) return <p className="mt-6 rounded-2xl border border-dashed border-line bg-card p-8 text-center text-sm text-muted">{t("adaptQueueEmpty")}</p>;
+  if (items.length === 0) return <DashboardEmptyCard>{t("adaptQueueEmpty")}</DashboardEmptyCard>;
 
   return <>
-    <section className="mt-6">
+    <section className="min-w-0">
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-card p-4">
         <div>
           <p className="text-sm font-medium text-ink">{t("adaptQueuePage", { page, totalPages, total })}</p>

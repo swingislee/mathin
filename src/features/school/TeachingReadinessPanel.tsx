@@ -31,8 +31,8 @@ export async function TeachingReadinessPanel({
     <div className="grid gap-6">
       <CoursewareTrackSettings classroomId={classroomId} track={track} />
 
-      <section className="rounded-xl border border-line bg-card p-5">
-        <h2 className="font-medium">{t("teachingReadinessTitle")}</h2>
+      <section className="rounded-2xl border border-line bg-card p-5">
+        <h2 className="text-base font-medium text-ink">{t("teachingReadinessTitle")}</h2>
         {readiness.length === 0 ? (
           <p className="mt-3 text-sm text-muted">{t("teachingReadinessEmpty")}</p>
         ) : (

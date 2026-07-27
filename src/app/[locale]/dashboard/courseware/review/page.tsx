@@ -84,7 +84,7 @@ async function AdaptReviewCommandPanel({ locale, searchParams }: { locale: strin
   const filterOptions = await loadAdaptReviewFilterOptions(courseId);
   return (
     <DashboardCommandPanel>
-      <DashboardCommandState className="overflow-x-auto">
+      <DashboardCommandState>
         <DashboardCommandTabs
           ariaLabel={t("adaptReviewTitle")}
           activeValue={tab}

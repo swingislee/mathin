@@ -139,9 +139,9 @@ export function StudentFinancePanel({
   const discountableOrders = orders.filter((o) => o.status === "unpaid" || o.status === "partial");
 
   return (
-    <section className="rounded-xl border border-line bg-card p-5">
+    <section className="rounded-2xl border border-line bg-card p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-medium">{t("finance")}</h2>
+        <h2 className="text-base font-medium text-ink">{t("finance")}</h2>
         <div className="flex flex-wrap gap-2">
           {perms.canCreateOrder && (
             <button type="button" onClick={() => void openOrder()} className={cn(buttonVariants({ size: "sm" }))}>

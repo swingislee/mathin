@@ -9,6 +9,7 @@ import {
   DashboardCommandPanel,
   DashboardCommandState,
   DashboardCommandTabs,
+  DashboardEmptyCard,
 } from "@/features/school/dashboard-page";
 import { FilterBar, FilterBarSubmit, FilterSearchInput } from "@/features/school/FilterBar";
 import { withReturnTo } from "@/features/school/object-workspace/return-target";
@@ -93,7 +94,7 @@ export async function CoursewareTaskQueue({ locale, tab, query }: Props) {
   return (
     <section>
       {tasks.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-line bg-card p-6 text-sm text-muted">{t("taskQueueEmpty")}</p>
+        <DashboardEmptyCard>{t("taskQueueEmpty")}</DashboardEmptyCard>
       ) : (
         <>
           <div className="hidden overflow-hidden rounded-2xl border border-line bg-card md:block">

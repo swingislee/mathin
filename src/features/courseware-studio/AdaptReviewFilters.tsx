@@ -36,7 +36,13 @@ export function AdaptReviewFilters({
   };
 
   return <FilterBarFrame className={embedded ? "contents" : undefined} aria-label={t("adaptFilterTitle")}>
-    <div className="min-w-56 flex-1 sm:max-w-md">
+    {/*
+      basis 而不是 `flex-1 min-w-56`（doc 24 §7.3）：`flex-1` 的 basis 是 0，flex 换行
+      判据看的正是 basis，于是这两个 Select 在 390px 上永远不换行，再被 `min-w` 撑到
+      424px——超出的 50px 变成整块 Dashboard 主区的横向滚动。改成 basis 之后，
+      "至少这么宽，放不下就换行"是同一条规则说出来的。
+    */}
+    <div className="min-w-0 grow basis-56 sm:max-w-md">
       <Select value={courseId ?? ALL} onValueChange={(value) => update(value === ALL ? null : value, null)}>
         <FilterSelectTrigger className="w-full" aria-label={t("adaptCourseFilter")}><SelectValue /></FilterSelectTrigger>
         <SelectContent>
@@ -47,7 +53,7 @@ export function AdaptReviewFilters({
         </SelectContent>
       </Select>
     </div>
-    <div className="min-w-48 flex-1 sm:max-w-sm">
+    <div className="min-w-0 grow basis-48 sm:max-w-sm">
       <Select value={lectureId ?? ALL} disabled={!courseId} onValueChange={(value) => update(courseId, value === ALL ? null : value)}>
         <FilterSelectTrigger className="w-full" aria-label={t("adaptLectureFilter")}><SelectValue placeholder={courseId ? t("adaptAllLectures") : t("adaptChooseCourseFirst")} /></FilterSelectTrigger>
         <SelectContent>

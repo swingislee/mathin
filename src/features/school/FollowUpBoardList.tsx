@@ -76,9 +76,9 @@ export function FollowUpBoardList({
         const open = expanded.has(group.status);
         const rows = open ? group.rows : group.rows.slice(0, FOLD_LIMIT);
         return (
-          <section key={group.status} className="overflow-hidden rounded-xl border border-line bg-card">
+          <section key={group.status} className="overflow-hidden rounded-2xl border border-line bg-card">
             <header className="flex items-center gap-2 border-b border-line px-4 py-3">
-              <h2 className="text-sm font-medium">{studentsT(group.status)}</h2>
+              <h2 className="text-sm font-medium text-ink">{studentsT(group.status)}</h2>
               <span className="rounded-full bg-crater/10 px-2 py-0.5 text-xs tabular-nums text-muted">{group.rows.length}</span>
             </header>
             {group.rows.length === 0 ? (

@@ -36,7 +36,7 @@ export default async function DataMaintenancePage({ params }: { params: Promise<
 
         <div className="grid gap-6 @4xl/page:grid-cols-2">
         <section className="rounded-2xl border border-line bg-card p-5">
-          <h2 className="font-medium text-ink">{t("purgeableFamiliesTitle", { count: purgeableFamilies.length })}</h2>
+          <h2 className="text-base font-medium text-ink">{t("purgeableFamiliesTitle", { count: purgeableFamilies.length })}</h2>
           <p className="mt-1 text-sm text-muted">{t("purgeableFamiliesHint")}</p>
           {purgeableFamilies.length === 0 ? (
             <p className="mt-4 text-sm text-muted">{t("purgeableFamiliesEmpty")}</p>
@@ -63,7 +63,7 @@ export default async function DataMaintenancePage({ params }: { params: Promise<
         </section>
 
         <section className="rounded-2xl border border-line bg-card p-5">
-          <h2 className="font-medium text-ink">{t("purgeableClassroomsTitle", { count: purgeableClassrooms.length })}</h2>
+          <h2 className="text-base font-medium text-ink">{t("purgeableClassroomsTitle", { count: purgeableClassrooms.length })}</h2>
           <p className="mt-1 text-sm text-muted">{t("purgeableClassroomsHint")}</p>
           {purgeableClassrooms.length === 0 ? (
             <p className="mt-4 text-sm text-muted">{t("purgeableClassroomsEmpty")}</p>

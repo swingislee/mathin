@@ -48,9 +48,9 @@ export function ScholarshipsPanel({ scholarships }: { scholarships: ScholarshipR
   const submit = () => { if (selected) submitRun(selected.id, amount, "deposit", reason, null); };
 
   return (
-    <section className="rounded-xl border border-line bg-card p-5">
+    <section className="rounded-2xl border border-line bg-card p-5">
       <div className="flex items-center justify-between">
-        <h2 className="font-medium">{t("scholarships")}</h2>
+        <h2 className="text-base font-medium text-ink">{t("scholarships")}</h2>
         <button type="button" onClick={() => setOpen(true)} className={cn(buttonVariants({ size: "sm" }))}>{t("grantScholarship")}</button>
       </div>
       {scholarships.length === 0 ? (

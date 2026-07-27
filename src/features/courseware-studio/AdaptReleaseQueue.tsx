@@ -1,5 +1,6 @@
 "use client";
 
+import { DashboardEmptyCard } from "@/features/school/dashboard-page";
 import { Check, ChevronLeft, ChevronRight, ExternalLink, Rocket } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
@@ -68,10 +69,10 @@ export function AdaptReleaseQueue({
   });
   const toggleAll = () => setSelected(allSelected ? new Set() : new Set(readyIds));
 
-  return <section className="mt-6">
+  return <section className="min-w-0">
     <div className="flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-line bg-card p-4">
       <div>
-        <h2 className="font-medium text-ink">{t("adaptReleaseQueueTitle")}</h2>
+        <h2 className="text-base font-medium text-ink">{t("adaptReleaseQueueTitle")}</h2>
         <p className="mt-1 text-sm text-muted">{t("adaptReleaseQueueIntro")}</p>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -92,7 +93,7 @@ export function AdaptReleaseQueue({
       </Button>
     </div>}
 
-    {items.length === 0 ? <p className="mt-4 rounded-2xl border border-dashed border-line bg-card p-8 text-center text-sm text-muted">{t("adaptReleaseQueueEmpty")}</p> : (
+    {items.length === 0 ? <DashboardEmptyCard className="mt-4">{t("adaptReleaseQueueEmpty")}</DashboardEmptyCard> : (
       <div className="mt-4 space-y-3">
         {items.map((item) => <article key={item.lectureId} className="flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-card p-4">
           {canPublish && isPublishable(item) ? <Checkbox

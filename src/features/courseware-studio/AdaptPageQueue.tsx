@@ -1,5 +1,6 @@
 "use client";
 
+import { DashboardEmptyCard } from "@/features/school/dashboard-page";
 import { ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useAction } from "@/components/action-form";
@@ -23,10 +24,10 @@ function hrefFor(classification: AdaptClass | "all", page: number, courseId: str
 export function AdaptPageQueue({ items, page, total, totalPages, classification, canEditPages, courseId, lectureId }: AdaptPageQueueData & { canEditPages: boolean; courseId: string | null; lectureId: string | null }) {
   const t = useTranslations("coursewareStudio");
   const router = useRouter();
-  return <section className="mt-6">
+  return <section className="min-w-0">
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div>
-        <h2 className="text-base font-semibold text-ink">{t("adaptPageQueueTitle")}</h2>
+        <h2 className="text-base font-medium text-ink">{t("adaptPageQueueTitle")}</h2>
         <p className="mt-1 text-sm text-muted">{t("adaptPageQueueIntro")}</p>
       </div>
       <div className="w-40">
@@ -39,7 +40,7 @@ export function AdaptPageQueue({ items, page, total, totalPages, classification,
         </Select>
       </div>
     </div>
-    {items.length === 0 ? <p className="mt-4 rounded-2xl border border-dashed border-line bg-card p-8 text-center text-sm text-muted">{t("adaptPageQueueEmpty")}</p> : <div className="mt-4 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-card">
+    {items.length === 0 ? <DashboardEmptyCard className="mt-4">{t("adaptPageQueueEmpty")}</DashboardEmptyCard> : <div className="mt-4 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-card">
       {items.map((item) => <AdaptPageRow key={item.id} item={item} canEditPages={canEditPages} />)}
     </div>}
     <nav className="mt-6 flex items-center justify-between gap-3" aria-label={t("adaptPagination")}>

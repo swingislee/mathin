@@ -1,7 +1,12 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { BindCodeForm } from "@/features/school/BindCodeForm";
 import { getMyPendingAssignments, getMyStudents } from "@/features/school/customer";
-import { DashboardContentGrid, DashboardMainColumn, DashboardPage } from "@/features/school/dashboard-page";
+import {
+  DashboardContentGrid,
+  DashboardEmptyCard,
+  DashboardMainColumn,
+  DashboardPage,
+} from "@/features/school/dashboard-page";
 import { Link } from "@/i18n/navigation";
 import { requireDashboardEnvironment } from "@/lib/auth";
 import { VideoUploadPanel } from "@/features/school/VideoUploadPanel";
@@ -31,16 +36,16 @@ export default async function AssignmentsPage({ params }: { params: Promise<{ lo
       <DashboardContentGrid>
       <DashboardMainColumn className="space-y-6">
       {!isBound ? (
-        <section className="rounded-2xl border bg-card p-5">
+        <section className="rounded-2xl border border-line bg-card p-5">
           <p className="text-sm text-muted">{t("notBound")}</p>
           <div className="mt-4">
             <BindCodeForm mode="claim" />
           </div>
         </section>
       ) : assignments.length === 0 ? (
-        <p className="rounded-2xl border bg-card p-5 text-sm text-muted">{t("pendingAssignmentsEmpty")}</p>
+        <DashboardEmptyCard>{t("pendingAssignmentsEmpty")}</DashboardEmptyCard>
       ) : (
-        <ul className="divide-y rounded-2xl border bg-card px-5">
+        <ul className="divide-y rounded-2xl border border-line bg-card px-5">
           {assignments.map((assignment) => (
             <li key={assignment.assignmentId} className="flex flex-wrap items-center gap-3 py-3 text-sm">
               <span className="min-w-0 flex-1 truncate font-medium">{assignment.title}</span>

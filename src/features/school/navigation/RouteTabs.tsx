@@ -26,6 +26,13 @@ export interface RouteTab {
  * 窄屏换行而不是横向滚动：横向滚动条在没有触控板的桌面端等于把后几个标签藏起来
  * ——没有滚动提示，用户不知道"监护人""费用"还在右边。换行至多多占一行，
  * 但每个标签都始终可见可点。
+ *
+ * doc 24 §3.1 复核后的三处收口：
+ *   - `max-w-full`：`w-fit` 是 `min(max-content, 可用宽度)`，只有在祖先真的传下了可用
+ *     宽度时才自动收敛。命令面板的 filters 槽是 flex 行，一旦某个兄弟元素把行撑开，
+ *     这里就会跟着按 max-content 铺开，产生 1–2px 级的画布横向溢出。
+ *   - `gap-y-1`：换行后两行标签只隔 2px（gap-0.5），active 底片会黏成一整块。
+ *   - `min-h-8`：换行后的标签是 390px 下的主要点击区域，28px 行高偏小。
  */
 export function RouteTabs({
   items,
@@ -41,7 +48,7 @@ export function RouteTabs({
   if (items.length === 0) return null;
   return (
     <nav aria-label={ariaLabel} className={cn("min-w-0", className)}>
-      <div className="flex min-h-9 w-fit flex-wrap items-center gap-0.5 rounded-lg bg-line/40 p-1 text-muted">
+      <div className="flex min-h-9 w-fit max-w-full flex-wrap items-center gap-x-0.5 gap-y-1 rounded-lg bg-line/40 p-1 text-muted">
         {items.map((item) => {
           const active = item.value === activeValue;
           return (
@@ -50,7 +57,7 @@ export function RouteTabs({
               href={item.href}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "inline-flex items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1 text-sm transition-all",
+                "inline-flex min-h-8 items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1 text-sm transition-all",
                 active ? "bg-card font-medium text-ink shadow-sm" : "hover:text-ink",
               )}
             >

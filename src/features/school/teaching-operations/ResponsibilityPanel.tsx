@@ -65,7 +65,7 @@ export function ResponsibilityPanel({
   };
 
   return <section className="rounded-2xl border border-line bg-card p-4">
-    <h2 className="font-medium text-ink">{title}</h2>
+    <h2 className="text-base font-medium text-ink">{title}</h2>
     <div className="mt-3 grid gap-3">
       {RESPONSIBILITIES.map((responsibility) => {
         const rows = active.filter((row) => row.responsibility === responsibility);

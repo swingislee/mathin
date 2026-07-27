@@ -87,8 +87,8 @@ export async function SessionGroupList({ classroomId, sessions, workItems }: {
     && groups.ended.length === 0 && groups.cancelled.length === 0;
 
   return (
-    <section className="rounded-xl border border-line bg-card p-5">
-      <h2 className="font-medium">{t("sessions", { count: sessions.length })}</h2>
+    <section className="rounded-2xl border border-line bg-card p-5">
+      <h2 className="text-base font-medium text-ink">{t("sessions", { count: sessions.length })}</h2>
       {isEmpty ? (
         <p className="mt-4 text-sm text-muted">{t("emptySessions")}</p>
       ) : (

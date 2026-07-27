@@ -36,25 +36,37 @@ export function DashboardCommandPanel({
   );
 }
 
-/** 状态切换区：Tabs / ToggleGroup / Switch（§15）。窄容器下与主操作共用第一行。 */
+/**
+ * 状态切换区：Tabs / ToggleGroup / Switch（§15）。窄容器下与主操作共用第一行。
+ *
+ * `flex-wrap`（doc 24 §3.1）：这里放的是 RouteTabs 一族，它们的产品决定就是"放不下
+ * 就换行、所有选项保持可见"。此前有两个页面靠给这个槽加 `overflow-x-auto` 来兜住
+ * 溢出，那等于把决定反过来——桌面端没有滚动条提示，后几个标签就是消失了。
+ */
 export function DashboardCommandState({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <div
       data-dashboard-command-slot="state"
-      className={cn("col-start-1 row-start-1 flex min-w-0 items-center gap-2", className)}
+      className={cn("col-start-1 row-start-1 flex min-w-0 flex-wrap items-center gap-2", className)}
     >
       {children}
     </div>
   );
 }
 
-/** 搜索与筛选区：窄容器独占第二行，宽容器吃掉剩余空间把操作区顶到右边线 C。 */
+/**
+ * 搜索与筛选区：窄容器独占第二行，宽容器吃掉剩余空间把操作区顶到右边线 C。
+ *
+ * `flex-wrap` 同上：筛选控件有各自的 `min-w-*` 下限，不换行时它们会把这一行撑过
+ * 画布宽度。画布是 `overflow-y-auto`，CSS 会把另一轴一并算成 `auto`，于是整块
+ * Dashboard 主区静默地横向滚动起来——根节点宽度检查完全看不到这种溢出。
+ */
 export function DashboardCommandFilters({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <div
       data-dashboard-command-slot="filters"
       className={cn(
-        "col-span-2 col-start-1 row-start-2 flex min-w-0 items-center gap-2",
+        "col-span-2 col-start-1 row-start-2 flex min-w-0 flex-wrap items-center gap-2",
         "@3xl/chrome:col-span-1 @3xl/chrome:col-start-2 @3xl/chrome:row-start-1",
         className,
       )}

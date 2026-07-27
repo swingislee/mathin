@@ -1,9 +1,9 @@
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { setRequestLocale } from "next-intl/server";
 import { getTranslations } from "next-intl/server";
 import { buttonVariants } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toSelectValue } from "@/features/school/controls";
 import { getStaffStats, type StaffStats } from "@/features/school/dashboard";
 import {
@@ -12,6 +12,7 @@ import {
   DashboardCommandPanel,
   DashboardCommandState,
   DashboardCommandTabs,
+  DashboardEmptyCard,
   DashboardPage,
 } from "@/features/school/dashboard-page";
 import { FilterBar, FilterBarMore, FilterBarReset, FilterBarSubmit, FilterSearchInput, FilterSelectTrigger } from "@/features/school/FilterBar";
@@ -157,9 +158,9 @@ export default async function StudentsPage({
       }
     >
       {students.length === 0 ? (
-        <p className="rounded-xl border border-line bg-card p-5 text-sm text-muted">{t("empty")}</p>
+        <DashboardEmptyCard>{t("empty")}</DashboardEmptyCard>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-line bg-card">
+        <div className="overflow-hidden rounded-2xl border border-line bg-card">
           {/* 表格铺满统一内容轴；列放不下时由 Table 自带的 overflow-x 横向滚动，
               而不是把每一格挤成竖排单字（§17.1）。 */}
           <Table className="w-full min-w-[44rem] border-collapse text-left text-sm">

@@ -114,9 +114,9 @@ export function RosterPanel({ classroomId, roster, canManage, viewerRole, signal
   const pending = enrollRun.pending || withdrawRun.pending || transferRun.pending;
 
   return (
-    <section className="rounded-xl border border-line bg-card p-5">
+    <section className="rounded-2xl border border-line bg-card p-5">
       <div className="flex items-center justify-between">
-        <h2 className="font-medium">{t("roster", { count: roster.length })}</h2>
+        <h2 className="text-base font-medium text-ink">{t("roster", { count: roster.length })}</h2>
         {canManage && (
           <button type="button" onClick={() => setEnrollOpen(true)} className={cn(buttonVariants({ size: "sm" }))}>
             {t("enroll")}

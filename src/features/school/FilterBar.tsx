@@ -11,7 +11,13 @@ import { cn } from "@/lib/utils";
  * 纵向节奏由面板统一给出（docs/plan/21 §19.2）。原来的默认 `mt-4` 是页面一级
  * 外边距散落在组件里的典型例子，会让每个调用方的上下间距各差一点。
  */
-const BAR_CLASS = "flex min-w-0 flex-1 flex-wrap items-center gap-2";
+/**
+ * `relative`：FilterBarMore 的浮层以**筛选条本身**为定位参照，而不是那颗"更多筛选"
+ * 按钮（doc 24 §3.2）。按钮在 390px 上通常已经贴到右边线，以它为参照的 `right-0`
+ * 会把 358px 宽的面板整个推到视口左边界之外——左侧的 label 与第一列控件直接不可见。
+ * 以筛选条为参照，面板最宽就是筛选条的宽度，永远落在画布内。
+ */
+const BAR_CLASS = "relative flex min-w-0 flex-1 flex-wrap items-center gap-2";
 
 /**
  * Dashboard 列表的统一轻量筛选条。它只编排 shadcn 输入控件和 GET 表单，
@@ -91,14 +97,22 @@ export function FilterBarMore({
   className?: string;
 }) {
   return (
-    <details className="relative shrink-0">
+    // 不带 relative：定位参照是外层 FilterBar（见 BAR_CLASS）。
+    <details className="shrink-0">
       <summary className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "h-9 cursor-pointer list-none px-3")}>
         <SlidersHorizontal className="size-3.5" />
         {label}
         {activeCount > 0 ? <span className="ml-1 rounded-full bg-crater/15 px-1.5 text-xs tabular-nums text-ink">{activeCount}</span> : null}
       </summary>
-      <div className={cn("absolute right-0 top-full z-30 mt-2 w-[min(32rem,calc(100vw-2rem))] rounded-2xl border border-line bg-card p-4 text-ink shadow-sm", className)}>
-        {children}
+      {/*
+        两层：外层只负责"横跨筛选条、贴着它的下沿"，内层才是面板本体并靠右。
+        宽度写成 `min(32rem,100%)` 而不是 `min(32rem,100vw-2rem)`——后者量的是视口，
+        面板却锚在筛选条上，两个坐标系不一致正是它会跑出左边界的原因。
+      */}
+      <div className="absolute inset-x-0 top-full z-30 mt-2 flex justify-end">
+        <div className={cn("w-[min(32rem,100%)] rounded-2xl border border-line bg-card p-4 text-ink shadow-sm", className)}>
+          {children}
+        </div>
       </div>
     </details>
   );

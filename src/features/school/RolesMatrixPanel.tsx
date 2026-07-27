@@ -114,7 +114,7 @@ export function RolesMatrixPanel({ roles, isAdmin }: { roles: StaffRoleInfo[]; i
   return (
     <div className="flex flex-col gap-6 lg:flex-row">
       <aside className="w-full shrink-0 lg:w-72">
-        <section className="rounded-xl border border-line bg-card p-4">
+        <section className="rounded-2xl border border-line bg-card p-4">
           <ul className="space-y-1">
             {roles.map((role) => (
               <li key={role.id} className="flex items-center gap-2">
@@ -187,13 +187,13 @@ export function RolesMatrixPanel({ roles, isAdmin }: { roles: StaffRoleInfo[]; i
         </section>
       </aside>
 
-      <section className="min-w-0 flex-1 rounded-xl border border-line bg-card p-5">
+      <section className="min-w-0 flex-1 rounded-2xl border border-line bg-card p-5">
         {!selected ? (
           <p className="text-sm text-muted">{t("emptyRoles")}</p>
         ) : (
           <>
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="font-medium">{t("matrixTitle", { name: selected.name })}</h2>
+              <h2 className="text-base font-medium text-ink">{t("matrixTitle", { name: selected.name })}</h2>
               <div className="flex items-center gap-3">
                 <button type="button" disabled={pending} onClick={save} className={cn(buttonVariants({ size: "sm" }))}>
                   {t("save")}

@@ -35,7 +35,7 @@ export default async function ChildrenPage({
     return (
       <DashboardPage title={t("childrenTitle")}>
         <DashboardContentGrid>
-          <DashboardMainColumn className="rounded-2xl border bg-card p-5">
+          <DashboardMainColumn className="rounded-2xl border border-line bg-card p-5">
             <p className="text-sm text-muted">{t("noChildren")}</p>
             <div className="mt-4">
               <BindCodeForm mode="guardian" />
@@ -70,7 +70,7 @@ export default async function ChildrenPage({
       title={t("childrenTitle")}
       commandPanel={
         <DashboardCommandPanel>
-          <DashboardCommandState className="overflow-x-auto">
+          <DashboardCommandState>
             <DashboardCommandTabs
               ariaLabel={t("childrenTitle")}
               activeValue={activeId}
@@ -103,8 +103,8 @@ export default async function ChildrenPage({
           出勤/课表/作业/监护人权限是围绕它的旁证，收进侧栏。 */}
       <DashboardContentGrid>
       <DashboardMainColumn className="space-y-6">
-      <section className="rounded-2xl border bg-card p-5">
-        <h2 className="font-medium">{studentsT("recentReviews")}</h2>
+      <section className="rounded-2xl border border-line bg-card p-5">
+        <h2 className="text-base font-medium text-ink">{studentsT("recentReviews")}</h2>
         {reviewRows.filter(x=>x.studentId===activeId).length===0?<p className="mt-4 text-sm text-muted">{studentsT("noReviews")}</p>:<ul className="mt-4 divide-y">{reviewRows.filter(x=>x.studentId===activeId).map(r=>{const videos=reviewedVideos.filter(v=>v.sessionId===r.sessionId&&v.studentId===activeId);return <li key={r.sessionId} className="py-3 text-sm"><div className="flex justify-between gap-3"><span className="font-medium">{r.classroomName} · {r.lectureName}</span><time className="text-xs text-muted">{new Intl.DateTimeFormat(locale,{dateStyle:"short"}).format(new Date(r.scheduledAt))}</time></div><p className="mt-1 text-xs text-muted">{studentsT("reviewScores",{entry:r.entryScore??"—",exit:r.exitScore??"—",focus:r.focus??"—",participation:r.participation??"—",mastery:r.mastery??"—"})}</p>{r.comment&&<p className="mt-2">{r.comment}</p>}{r.knowledgeSummary&&<p className="mt-2 rounded-lg bg-line/40 p-2 text-xs text-muted">{r.knowledgeSummary}</p>}<div className="mt-2 flex gap-2">{videos.map(v=><CustomerVideoButton key={v.videoId} videoId={v.videoId}/>)}</div></li>})}</ul>}
       </section>
       </DashboardMainColumn>
@@ -112,8 +112,8 @@ export default async function ChildrenPage({
       <DashboardAside className="space-y-6">
       {canManageGuardians&&<GuardianScopePanel studentId={activeId}/>}
 
-      <section className="rounded-2xl border bg-card p-5">
-        <h2 className="font-medium">{studentsT("attendanceRate")}</h2>
+      <section className="rounded-2xl border border-line bg-card p-5">
+        <h2 className="text-base font-medium text-ink">{studentsT("attendanceRate")}</h2>
         <div className="mt-4 rounded-lg bg-line/40 p-3">
           <p className="text-lg font-medium tabular-nums">{attendance.total > 0 ? `${Math.round(attendance.rate * 100)}%` : "-"}</p>
           <p className="mt-1 text-xs text-muted">
@@ -122,8 +122,8 @@ export default async function ChildrenPage({
         </div>
       </section>
 
-      <section className="rounded-2xl border bg-card p-5">
-        <h2 className="font-medium">{studentsT("upcomingSessions")}</h2>
+      <section className="rounded-2xl border border-line bg-card p-5">
+        <h2 className="text-base font-medium text-ink">{studentsT("upcomingSessions")}</h2>
         {upcomingSessions.length === 0 ? (
           <p className="mt-4 text-sm text-muted">{studentsT("noUpcoming")}</p>
         ) : (
@@ -141,8 +141,8 @@ export default async function ChildrenPage({
         )}
       </section>
 
-      <section className="rounded-2xl border bg-card p-5">
-        <h2 className="font-medium">{studentsT("submissions")}</h2>
+      <section className="rounded-2xl border border-line bg-card p-5">
+        <h2 className="text-base font-medium text-ink">{studentsT("submissions")}</h2>
         {!summary || summary.recentSubmissions.length === 0 ? (
           <p className="mt-4 text-sm text-muted">{studentsT("noSubmissions")}</p>
         ) : (

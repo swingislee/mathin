@@ -50,9 +50,9 @@ export function StudentProfileEditor({ student, canEdit }: { student: StudentDet
   const fieldClass = `${inputClass} disabled:cursor-default disabled:opacity-80`;
 
   return (
-    <section className="rounded-xl border border-line bg-card p-5">
+    <section className="rounded-2xl border border-line bg-card p-5">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="font-medium">{t("profile")}</h2>
+        <h2 className="text-base font-medium text-ink">{t("profile")}</h2>
         {canEdit && !student.deletedAt && (
           <Button type="button" size="sm" disabled={pending || !form.name.trim()} onClick={() => save(form)} className="gap-1.5">
             {pending ? <LoaderCircle size={15} className="animate-spin motion-reduce:animate-none" /> : <Save size={15} />}

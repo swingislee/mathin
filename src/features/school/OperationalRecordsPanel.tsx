@@ -1,3 +1,4 @@
+import { DashboardEmptyCard } from "@/features/school/dashboard-page";
 import { getTranslations } from "next-intl/server";
 import type { OperationalEventRow } from "./classes";
 
@@ -23,11 +24,11 @@ const EVENT_LABEL_KEYS: Record<string, string> = {
 /** 运营记录 tab（doc19 §13.2）：`list_classroom_operational_events` 的只读时间线。 */
 export async function OperationalRecordsPanel({ events, canView }: { events: OperationalEventRow[]; canView: boolean }) {
   const t = await getTranslations("school.classes");
-  if (!canView) return <p className="rounded-xl border border-line bg-card p-5 text-sm text-muted">{t("recordsTabEmpty")}</p>;
+  if (!canView) return <DashboardEmptyCard>{t("recordsTabEmpty")}</DashboardEmptyCard>;
 
   return (
-    <section className="rounded-xl border border-line bg-card p-5">
-      <h2 className="font-medium">{t("operationalRecordsTitle")}</h2>
+    <section className="rounded-2xl border border-line bg-card p-5">
+      <h2 className="text-base font-medium text-ink">{t("operationalRecordsTitle")}</h2>
       {events.length === 0 ? (
         <p className="mt-3 text-sm text-muted">{t("recordsTabEmpty")}</p>
       ) : (

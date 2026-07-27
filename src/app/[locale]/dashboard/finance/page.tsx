@@ -68,7 +68,7 @@ export default async function FinancePage({
     return (
       <DashboardPage title={customerT("myFinanceTitle")}>
         <DashboardContentGrid>
-        <DashboardMainColumn className="rounded-2xl border bg-card p-5">
+        <DashboardMainColumn className="rounded-2xl border border-line bg-card p-5">
           <p className="text-sm">{customerT("myBalance", { balance: balance.toFixed(2) })}</p>
           {orders.length === 0 ? (
             <p className="mt-4 text-sm text-muted">{customerT("myOrdersEmpty")}</p>
@@ -167,8 +167,8 @@ export default async function FinancePage({
       */}
       <DashboardContentGrid>
         {canSeeOrders && (
-          <DashboardMainColumn className="rounded-xl border border-line bg-card p-5">
-            <h2 className="font-medium">{t("orders", { count: ordersResult.count ?? ordersResult.orders.length })}</h2>
+          <DashboardMainColumn className="rounded-2xl border border-line bg-card p-5">
+            <h2 className="text-base font-medium text-ink">{t("orders", { count: ordersResult.count ?? ordersResult.orders.length })}</h2>
             {ordersResult.orders.length === 0 ? (
               <p className="mt-4 text-sm text-muted">{t("noOrders")}</p>
             ) : (

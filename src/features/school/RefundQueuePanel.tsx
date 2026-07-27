@@ -21,8 +21,8 @@ export function RefundQueuePanel({ refunds }: { refunds: PendingRefundRow[] }) {
   };
 
   return (
-    <section className="rounded-xl border border-line bg-card p-5">
-      <h2 className="font-medium">{t("refundQueue", { count: refunds.length })}</h2>
+    <section className="rounded-2xl border border-line bg-card p-5">
+      <h2 className="text-base font-medium text-ink">{t("refundQueue", { count: refunds.length })}</h2>
       {refunds.length === 0 ? (
         <p className="mt-4 text-sm text-muted">{t("noPendingRefunds")}</p>
       ) : (

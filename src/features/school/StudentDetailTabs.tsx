@@ -16,7 +16,7 @@ import type { StudentDetail, StudentLearning } from "./students";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-xl border border-line bg-card p-5">
+    <section className="rounded-2xl border border-line bg-card p-5">
       <h2 className="text-sm font-medium text-ink">{title}</h2>
       {children}
     </section>

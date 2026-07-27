@@ -93,23 +93,29 @@ export function ObjectBar({
 }
 
 /**
- * 上下文行：单行、右侧溢出即裁掉。优先级由**数组顺序**表达，不额外给一个
- * `secondary` 布尔——溢出裁切已经是"越靠后越先消失"，再加一个开关只是让同一件事
- * 有两种说法，还会在 `display:none` 与 `:first-child` 之间制造分隔符错位。
+ * 上下文行。优先级由**数组顺序**表达，不额外给一个 `secondary` 布尔——溢出处理已经是
+ * "越靠后越先让位"，再加一个开关只是让同一件事有两种说法。
  *
- * 分隔符用伪元素而不是独立节点：跟着自己那一项一起出现/消失，不会留下孤立的"·"。
+ * 两种排版，由 chrome 容器宽度切换（doc 24 §4.1 移动端复核）：
+ *   - 宽容器：单行、`·` 分隔、右侧溢出即裁掉。信息密度优先，顶栏高度恒定。
+ *   - 窄容器（390px）：换行、无分隔符。原来这里在两档都裁切，于是班级详情的"主讲/学辅"、
+ *     课次详情的后三项在手机上**完全不可见且没有任何提示**——用户既看不到，也不知道
+ *     自己看不到。上下文是这一页"我在处理什么"的一半答案，宁可多占一行也不能静默丢掉。
+ *
+ * 分隔符用伪元素而不是独立节点：跟着自己那一项一起出现/消失，不会留下孤立的"·"；
+ * 换行档整体关掉它，否则每个折到行首的条目前面都会挂一个像项目符号的"·"。
  */
 function ObjectBarContext({ items }: { items: readonly ObjectContextItem[] }) {
   return (
-    <dl className="flex min-w-0 items-baseline gap-x-3 overflow-hidden text-sm text-muted">
+    <dl className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5 text-sm text-muted @2xl/chrome:flex-nowrap @2xl/chrome:gap-y-0 @2xl/chrome:overflow-hidden">
       {items.map((item, index) => (
         <div
           key={index}
           className={cn(
-            // shrink-0：溢出时整项被右侧裁掉，而不是每一项一起等比压成"MFH… · 1… · 暑"。
+            // shrink-0：宽容器溢出时整项被右侧裁掉，而不是每一项一起等比压成"MFH… · 1… · 暑"。
             // 前面的条目更重要，应该完整可读。
             "flex shrink-0 items-baseline gap-1.5 whitespace-nowrap",
-            index > 0 && "before:mr-3 before:text-line before:content-['·']",
+            index > 0 && "@2xl/chrome:before:mr-3 @2xl/chrome:before:text-line @2xl/chrome:before:content-['·']",
           )}
         >
           {item.label ? <dt className="text-xs text-muted/80">{item.label}</dt> : null}

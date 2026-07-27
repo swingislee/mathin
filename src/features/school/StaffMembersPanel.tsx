@@ -144,7 +144,7 @@ export function StaffMembersPanel({
 
   return (
     <div className="space-y-6">
-      <section className="overflow-hidden rounded-xl border border-line bg-card">
+      <section className="overflow-hidden rounded-2xl border border-line bg-card">
         <Table className="w-full border-collapse text-left text-sm">
           <TableHeader className="border-b border-line text-xs text-muted">
             <TableRow>
@@ -197,8 +197,8 @@ export function StaffMembersPanel({
         </Table>
       </section>
 
-      <section className="rounded-xl border border-line bg-card p-5">
-        <h2 className="font-medium">{t("addStaff")}</h2>
+      <section className="rounded-2xl border border-line bg-card p-5">
+        <h2 className="text-base font-medium text-ink">{t("addStaff")}</h2>
         <p className="mt-1 text-xs text-muted">{t("addStaffHint")}</p>
         <div className="mt-3 flex flex-wrap gap-3">
           <Input

@@ -25,7 +25,12 @@ import { OperationalRecordsPanel } from "@/features/school/OperationalRecordsPan
 import { RosterPanel } from "@/features/school/RosterPanel";
 import { SessionGroupList } from "@/features/school/SessionGroupList";
 import { SessionManagementDrawer } from "@/features/school/SessionManagementDrawer";
-import { DashboardAside, DashboardContentGrid, DashboardMainColumn } from "@/features/school/dashboard-page";
+import {
+  DashboardAside,
+  DashboardContentGrid,
+  DashboardEmptyCard,
+  DashboardMainColumn,
+} from "@/features/school/dashboard-page";
 import { ObjectBar, ObjectTabs, ObjectWorkspace, type ObjectContextItem } from "@/features/school/object-workspace";
 import { TeachingReadinessPanel } from "@/features/school/TeachingReadinessPanel";
 import { listMyWorkItems } from "@/features/school/work-items";
@@ -171,7 +176,7 @@ async function ClassDetailBody({
             {activeTab === "readiness" && (
               classroom.capabilities.canManageClassroom && classroom.courseId
                 ? <TeachingReadinessPanel classroomId={classroom.id} track={classroom.coursewareTrack} readiness={teachingReadiness} />
-                : <p className="rounded-xl border border-line bg-card p-5 text-sm text-muted">{t("readinessTabEmpty")}</p>
+                : <DashboardEmptyCard>{t("readinessTabEmpty")}</DashboardEmptyCard>
             )}
             {activeTab === "records" && (
               <OperationalRecordsPanel events={operationalEvents} canView={canViewClassroom} />
