@@ -32,7 +32,8 @@ export function DashboardPageHeader({
 }) {
   return (
     <header data-dashboard-page-header className={cn("w-full min-w-0", className)}>
-      <div className="grid min-h-16 min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 py-2.5 @2xl/chrome:min-h-[76px] @2xl/chrome:py-3">
+      {/* items-end：标题贴着行底，与下方命令面板成组；面包屑/eyebrow 往上长，不推动标题基线。 */}
+      <div className="grid min-h-16 min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-end gap-x-2 py-2.5 @2xl/chrome:min-h-[76px] @2xl/chrome:py-3">
         <MainFloatingControlSafeArea />
         <DashboardPageIdentity
           title={title}

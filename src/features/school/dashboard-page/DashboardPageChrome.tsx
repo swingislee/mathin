@@ -17,7 +17,9 @@ export function DashboardPageChrome({ children, className }: { children: ReactNo
       className={cn(
         // 不能写 w-full：显式 width:100% 会让宽度锁在父级内容宽上，负外边距只把整块
         // 往左推，右边线反而少一个 gutter。让它作为普通块级元素由外边距撑开。
-        "@container/chrome sticky top-0 z-30 min-w-0 border-b border-line bg-paper/95 backdrop-blur-md",
+        // 不加 border-b：chrome 与正文是同一块画布的上下段，分割线会把页头切成独立卡片。
+        // 滚动时的层次由 bg-paper/95 + backdrop-blur 给出。
+        "@container/chrome sticky top-0 z-30 min-w-0 bg-paper/95 backdrop-blur-md",
         "mx-[calc(var(--dashboard-gutter,0px)*-1)] px-[var(--dashboard-gutter,0px)]",
         className,
       )}

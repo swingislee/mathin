@@ -42,8 +42,23 @@ export function FilterSelectTrigger({ className, ...props }: ComponentProps<type
   return <SelectTrigger className={cn("h-9 w-auto min-w-32 rounded-full bg-card/70 shadow-none", className)} {...props} />;
 }
 
+/**
+ * 提交筛选走 moon 底色（设计系统 §1「月亮黄：主强调底色」），不再和"更多筛选/重置"
+ * 一样是 crater 描边：一行里有三四个同款描边按钮时，用户看不出哪个才是真正触发查询的。
+ * 同时不能用 rose——那是全页唯一的主行动色（新建学生一类），筛选抢不得。
+ */
 export function FilterBarSubmit({ children, className, ...props }: ComponentProps<typeof Button>) {
-  return <Button type="submit" variant="secondary" size="sm" className={cn("h-9", className)} {...props}>{children}</Button>;
+  return (
+    <Button
+      type="submit"
+      variant="secondary"
+      size="sm"
+      className={cn("h-9 border-moon bg-moon/40 text-ink hover:bg-moon/70", className)}
+      {...props}
+    >
+      {children}
+    </Button>
+  );
 }
 
 export function FilterBarReset({ href, label, className }: { href: string; label: string; className?: string }) {
