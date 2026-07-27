@@ -17,7 +17,7 @@ import {
 import { FilterBar, FilterBarMore, FilterBarReset, FilterBarSubmit, FilterSearchInput, FilterSelectTrigger } from "@/features/school/FilterBar";
 import { NewStudentDialog } from "@/features/school/NewStudentDialog";
 import { StatusStrip, type StatusStripItem } from "@/features/school/stage/StatusStrip";
-import { StudentRestoreButton } from "@/features/school/StudentLifecycleActions";
+import { StudentRestoreButton } from "@/features/school/StudentRestoreButton";
 import { FOLLOW_UP_STATUSES, listStudents, parseStudentFilters, STUDENT_STATUSES } from "@/features/school/students";
 import { Link } from "@/i18n/navigation";
 import { getMyPerms, requireAnyPerm } from "@/lib/auth";

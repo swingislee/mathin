@@ -1,31 +1,59 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { buttonVariants } from "@/components/ui/button";
 import { getStudentAccount, getStudentOrders } from "@/features/school/finance";
-import { FollowUpForm } from "@/features/school/FollowUpForm";
 import {
   DashboardAside,
   DashboardCommandActions,
   DashboardCommandPanel,
+  DashboardCommandState,
+  DashboardCommandTabs,
   DashboardContentGrid,
   DashboardMainColumn,
   DashboardPage,
 } from "@/features/school/dashboard-page";
 import { listStaffMembers } from "@/features/school/staff";
+import { StudentActionsMenu } from "@/features/school/StudentActionsMenu";
+import {
+  StudentAccountStatus,
+  StudentCurrentClasses,
+  StudentNextFollowUp,
+  StudentSummary,
+} from "@/features/school/StudentAsidePanels";
+import { StudentFollowUpsTab, StudentLearningTab, StudentVideosTab } from "@/features/school/StudentDetailTabs";
 import { StudentFinancePanel } from "@/features/school/StudentFinancePanel";
-import { StudentLifecycleActions } from "@/features/school/StudentLifecycleActions";
 import { StudentProfileEditor } from "@/features/school/StudentProfileEditor";
-import { CustomerVideoButton } from "@/features/school/CustomerVideoButton";
 import { GuardianInvitePanel } from "@/features/school/GuardianInvitePanel";
 import { GuardianScopePanel } from "@/features/school/GuardianScopePanel";
 import { StudentMergePanel } from "@/features/school/StudentMergePanel";
-import { ProvisionStudentAccountButton } from "@/features/school/ProvisionStudentAccountButton";
 import { getStudentDetail, getStudentLearning } from "@/features/school/students";
+import { Link } from "@/i18n/navigation";
 import { getMyPerms, requireAnyPerm } from "@/lib/auth";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export default async function StudentDetailPage({ params }: { params: Promise<{ locale: string; studentId: string }> }) {
-  const { locale, studentId } = await params;
+const BASE_TABS = ["overview", "followups", "learning", "videos", "guardians"] as const;
+type StudentTab = (typeof BASE_TABS)[number] | "finance";
+
+/**
+ * 学生 360° 档案（doc 23 §11）。
+ *
+ * 重建前是一条超长纵向主栏（档案 → 跟进 → 一张塞了七块内容的"学习"大卡 → 财务），
+ * 加上一个装着三个操作面板的侧栏。侧栏被当作"表单塞不下就往这儿放"，于是这一页
+ * 没有任何位置回答"这个学生现在什么情况"；而真正高频的动作——记一条跟进——
+ * 和"删除档案"在命令面板里是同级按钮。
+ *
+ * 现在：正文按事情分 Tab，侧栏是跨 Tab 不变的稳定摘要，命令面板只有一个主操作
+ * 加一个溢出菜单。
+ */
+export default async function StudentDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ locale: string; studentId: string }>;
+  searchParams: Promise<{ tab?: string }>;
+}) {
+  const [{ locale, studentId }, rawSearchParams] = await Promise.all([params, searchParams]);
   setRequestLocale(locale);
   const user = await requireAnyPerm(locale, ["student.view.all", "student.view.assigned"]);
   if (!UUID_PATTERN.test(studentId)) notFound();
@@ -38,201 +66,117 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
   ]);
   if (!student) notFound();
 
-  const assignees = perms.has("student.assign")
+  const canEdit = perms.has("student.edit");
+  const canAssign = perms.has("student.assign");
+  const showFinance = perms.has("finance.order.view");
+
+  const assignees = canAssign
     ? (await listStaffMembers()).filter((member) => member.canFollowUp).map((member) => ({ userId: member.userId, displayName: member.displayName }))
     : [];
 
-  const showFinance = perms.has("finance.order.view");
-  const [orders, account] = showFinance
+  const tabs: StudentTab[] = showFinance ? [...BASE_TABS, "finance"] : [...BASE_TABS];
+  const requested = rawSearchParams.tab as StudentTab | undefined;
+  const activeTab: StudentTab = requested && tabs.includes(requested) ? requested : "overview";
+
+  const [orders, account] = showFinance && activeTab === "finance"
     ? await Promise.all([getStudentOrders(studentId), getStudentAccount(studentId)])
     : [[], { studentId, balance: 0, ledger: [], lessonBalance: 0, lessonLedger: [] }];
+
+  const tabHref = (tab: StudentTab) => `/dashboard/students/${studentId}?tab=${tab}`;
 
   return (
     <DashboardPage
       title={student.name}
       backHref={student.deletedAt ? "/dashboard/students?tab=recycle" : "/dashboard/students"}
       backLabel={t("back")}
-      breadcrumbs={[{label:t("title"),href:"/dashboard/students"},{label:student.name}]}
+      // §11 强制删除"Header meta 完整状态串"：年级 · 状态 · 跟进状态 · 绑定码全塞在标题下，
+      // 既压不住信息量又没有层级。年级和负责人留在这里，其余归 Aside 摘要。
+      meta={<span>{student.grade ? t("grade", { grade: student.grade }) : "—"} · {student.assignedName || t("none")}</span>}
       commandPanel={
         <DashboardCommandPanel>
+          <DashboardCommandState>
+            <DashboardCommandTabs
+              items={tabs.map((tab) => ({ value: tab, label: t(`tab_${tab}`), href: tabHref(tab) }))}
+              activeValue={activeTab}
+              ariaLabel={t("tabsLabel")}
+            />
+          </DashboardCommandState>
           <DashboardCommandActions>
-            <StudentLifecycleActions
+            {perms.has("followup.write") && !student.deletedAt && (
+              <Link href={tabHref("followups")} className={buttonVariants({ size: "sm" })}>{t("logFollowUp")}</Link>
+            )}
+            <StudentActionsMenu
               studentId={studentId}
               status={student.status}
               assignedTo={student.assignedTo}
               deleted={Boolean(student.deletedAt)}
-              canEdit={perms.has("student.edit")}
-              canAssign={perms.has("student.assign")}
+              phone={student.phone}
+              hasAccount={Boolean(student.userId)}
+              canEdit={canEdit}
+              canAssign={canAssign}
               canDelete={perms.has("student.delete")}
               assignees={assignees}
+              ariaLabel={t("moreActions")}
             />
-            {!student.userId && perms.has("student.edit") && <ProvisionStudentAccountButton studentId={studentId} phone={student.phone} />}
           </DashboardCommandActions>
         </DashboardCommandPanel>
       }
-      meta={<>
-        <span>
-          {student.grade ? t("grade", { grade: student.grade }) : "-"} · {t(student.status)} · {t(student.followUpStatus)}
-        </span>
-        <span className="rounded-full bg-line/60 px-3 py-1 font-mono text-xs text-muted">{student.bindCode}</span>
-      </>}
     >
-      {/*
-        §22.2：360° 档案原来是一条超长窄单列，宽屏下右半屏全是空的。主内容（档案、
-        跟进、学情、费用）走 8 列，账号与关系类面板收进 4 列侧栏。
-      */}
       <DashboardContentGrid>
-      <DashboardMainColumn className="space-y-6">
-      {student.deletedAt && (
-        <div className="rounded-xl border border-rose/30 bg-rose/5 p-4 text-sm text-rose">
-          {t("deletedBanner", { date: new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(student.deletedAt)) })}
-        </div>
-      )}
-
-      <StudentProfileEditor student={student} canEdit={perms.has("student.edit")} />
-
-      {perms.has("followup.view") && (
-        <section className="rounded-xl border border-line bg-card p-5">
-          <h2 className="font-medium">{t("followUps")}</h2>
-          {perms.has("followup.write") && !student.deletedAt && <FollowUpForm studentId={studentId} currentStatus={student.followUpStatus} />}
-          {student.followUps.length === 0 ? (
-            <p className="mt-4 text-sm text-muted">{t("noFollowUps")}</p>
-          ) : (
-            <ol className="mt-4 divide-y divide-line">
-              {student.followUps.map((followUp) => (
-                <li key={followUp.id} className="py-4 text-sm">
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
-                    <span>{followUp.authorName || t("none")}</span>
-                    <span className="rounded-full bg-line/50 px-2 py-0.5">{t(`followUpKind_${followUp.kind}`)}</span>
-                    <time>{new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(followUp.createdAt))}</time>
-                    {followUp.statusAfter && <span className="text-crater">→ {t(followUp.statusAfter)}</span>}
-                    {followUp.nextFollowUpAt && (
-                      <span>
-                        {t("nextFollowUp")}{" "}
-                        {new Intl.DateTimeFormat(locale, { dateStyle: "short", timeStyle: "short" }).format(new Date(followUp.nextFollowUpAt))}
-                      </span>
-                    )}
-                  </div>
-                  <p className="mt-2 whitespace-pre-wrap">{followUp.content}</p>
-                </li>
-              ))}
-            </ol>
+        <DashboardMainColumn className="flex flex-col gap-6">
+          {student.deletedAt && (
+            <div className="rounded-xl border border-rose/30 bg-rose/5 p-4 text-sm text-rose">
+              {t("deletedBanner", { date: new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(student.deletedAt)) })}
+            </div>
           )}
-        </section>
-      )}
 
-      <section className="rounded-xl border border-line bg-card p-5">
-        <h2 className="font-medium">{t("learning")}</h2>
-
-        <div className="mt-4 grid gap-6 sm:grid-cols-2">
-          <div>
-            <h3 className="text-xs text-muted">{t("enrollments")}</h3>
-            {learning.enrollments.length === 0 ? (
-              <p className="mt-2 text-sm text-muted">{t("noEnrollments")}</p>
-            ) : (
-              <ul className="mt-2 divide-y divide-line text-sm">
-                {learning.enrollments.map((enrollment) => (
-                  <li key={`${enrollment.classroomId}-${enrollment.joinedAt}`} className="flex items-center justify-between gap-2 py-1.5">
-                    <span className="min-w-0 truncate">
-                      {enrollment.classroomName}
-                      {enrollment.courseTitle ? ` · ${enrollment.courseTitle}` : ""}
-                    </span>
-                    <span className="shrink-0 text-xs text-muted">{t(enrollment.status)}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          <div>
-            <h3 className="text-xs text-muted">{t("upcomingSessions")}</h3>
-            {learning.upcomingSessions.length === 0 ? (
-              <p className="mt-2 text-sm text-muted">{t("noUpcoming")}</p>
-            ) : (
-              <ul className="mt-2 divide-y divide-line text-sm">
-                {learning.upcomingSessions.map((session) => (
-                  <li key={session.sessionId} className="py-1.5">
-                    <time className="text-xs text-muted">
-                      {new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(session.scheduledAt))}
-                    </time>
-                    <span className="ml-2">
-                      {session.classroomName} · {session.lectureName}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </div>
-
-        <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          <div className="rounded-lg bg-line/40 p-3">
-            <p className="text-xs text-muted">{t("attendanceRate")}</p>
-            <p className="mt-1 text-lg font-medium">{Math.round(learning.attendance.rate * 100)}%</p>
-            <p className="mt-1 text-xs text-muted">
-              {t("attendanceBreakdown", {
-                present: learning.attendance.present,
-                absent: learning.attendance.absent,
-                late: learning.attendance.late,
-                leave: learning.attendance.leave,
-              })}
-            </p>
-          </div>
-          <div className="rounded-lg bg-line/40 p-3">
-            <p className="text-xs text-muted">{t("starTotal")}</p>
-            <p className="mt-1 text-lg font-medium">{learning.hasAccount ? learning.starTotal : "-"}</p>
-            {!learning.hasAccount && <p className="mt-1 text-xs text-muted">{t("noAccountAttendanceOnly")}</p>}
-          </div>
-        </div>
-
-        <div className="mt-6">
-          <h3 className="text-xs text-muted">{t("sessionVideos")}</h3>{learning.videos.length===0?<p className="mt-2 text-sm text-muted">{t("noVideos")}</p>:<ul className="mt-2 divide-y">{learning.videos.map(v=><li key={v.id} className="flex flex-wrap items-center gap-3 py-2 text-sm"><span className="min-w-0 flex-1 truncate">{v.lectureName}</span><span className="text-xs text-muted">{v.reviewedAt?t("videoReviewed",{score:v.reviewScore??"—"}):t("videoPending")}</span><CustomerVideoButton videoId={v.id}/></li>)}</ul>}
-        </div>
-
-        <div className="mt-6">
-          <h3 className="text-xs text-muted">{t("recentReviews")}</h3>
-          {learning.reviews.length===0?<p className="mt-2 text-sm text-muted">{t("noReviews")}</p>:<ul className="mt-2 divide-y divide-line">{learning.reviews.map(r=><li key={r.sessionId} className="py-2 text-sm"><div className="flex justify-between"><span className="font-medium">{r.lectureName}</span>{r.scheduledAt&&<time className="text-xs text-muted">{new Intl.DateTimeFormat(locale,{dateStyle:"short"}).format(new Date(r.scheduledAt))}</time>}</div><p className="mt-1 text-xs text-muted">{t("reviewScores",{entry:r.entryScore??"—",exit:r.exitScore??"—",focus:r.focus??"—",participation:r.participation??"—",mastery:r.mastery??"—"})}</p>{r.comment&&<p className="mt-1">{r.comment}</p>}</li>)}</ul>}
-        </div>
-
-        <div className="mt-6">
-          <h3 className="text-xs text-muted">{t("submissions")}</h3>
-          {learning.submissions.length === 0 ? (
-            <p className="mt-2 text-sm text-muted">{t("noSubmissions")}</p>
-          ) : (
-            <ul className="mt-2 divide-y divide-line text-sm">
-              {learning.submissions.map((submission) => (
-                <li key={submission.assignmentId} className="flex items-center justify-between gap-2 py-1.5">
-                  <span className="min-w-0 truncate">{submission.assignmentTitle || t("untitledAssignment")}</span>
-                  <span className="shrink-0 text-xs text-muted">{submission.score === null ? t("ungraded") : submission.score}</span>
-                </li>
-              ))}
-            </ul>
+          {activeTab === "overview" && (
+            <>
+              <StudentProfileEditor student={student} canEdit={canEdit} />
+              {/* 合并只在真的查到疑似重复时才渲染（组件自己返回 null），所以它是一个
+                  按需出现的档案维护区，而不是一张常驻侧栏的空卡。 */}
+              {!student.deletedAt && canEdit && <StudentMergePanel studentId={studentId} name={student.name} phone={student.phone} />}
+            </>
           )}
-        </div>
-      </section>
 
-      {showFinance && (
-        <StudentFinancePanel
-          studentId={studentId}
-          orders={orders}
-          account={account}
-          perms={{
-            canCreateOrder: perms.has("finance.order.create"),
-            canRecordPayment: perms.has("finance.payment.record"),
-            canRequestRefund: perms.has("finance.refund.request"),
-            canApproveRefund: perms.has("finance.refund.approve"),
-            canGrantScholarship: perms.has("finance.scholarship.grant"),
-            canAdjustAccount: perms.has("finance.account.adjust"),
-          }}
-        />
-      )}
-      </DashboardMainColumn>
+          {activeTab === "followups" && perms.has("followup.view") && (
+            <StudentFollowUpsTab student={student} locale={locale} canWrite={perms.has("followup.write") && !student.deletedAt} />
+          )}
 
-      <DashboardAside className="space-y-6">
-        {!student.deletedAt && perms.has("student.edit") && <GuardianInvitePanel studentId={studentId} />}
-        {!student.deletedAt && perms.has("student.edit") && <GuardianScopePanel studentId={studentId} />}
-        {!student.deletedAt && perms.has("student.edit") && <StudentMergePanel studentId={studentId} name={student.name} phone={student.phone} />}
-      </DashboardAside>
+          {activeTab === "learning" && <StudentLearningTab learning={learning} locale={locale} />}
+
+          {activeTab === "videos" && <StudentVideosTab videos={learning.videos} />}
+
+          {activeTab === "guardians" && !student.deletedAt && canEdit && (
+            <>
+              <GuardianInvitePanel studentId={studentId} />
+              <GuardianScopePanel studentId={studentId} />
+            </>
+          )}
+
+          {activeTab === "finance" && showFinance && (
+            <StudentFinancePanel
+              studentId={studentId}
+              orders={orders}
+              account={account}
+              perms={{
+                canCreateOrder: perms.has("finance.order.create"),
+                canRecordPayment: perms.has("finance.payment.record"),
+                canRequestRefund: perms.has("finance.refund.request"),
+                canApproveRefund: perms.has("finance.refund.approve"),
+                canGrantScholarship: perms.has("finance.scholarship.grant"),
+                canAdjustAccount: perms.has("finance.account.adjust"),
+              }}
+            />
+          )}
+        </DashboardMainColumn>
+
+        <DashboardAside>
+          <StudentSummary student={student} ownerName={student.assignedName || null} />
+          <StudentNextFollowUp student={student} locale={locale} />
+          <StudentCurrentClasses enrollments={learning.enrollments} />
+          <StudentAccountStatus student={student} learning={learning} />
+        </DashboardAside>
       </DashboardContentGrid>
     </DashboardPage>
   );
