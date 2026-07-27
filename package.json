@@ -17,6 +17,7 @@
     "p4i1:boundary-audit": "node scripts/verify-p4i1-environment-boundary.mjs",
     "doc21:audit": "node scripts/verify-doc21-coordinates.mjs",
     "doc22:audit": "node scripts/verify-doc22-routes.mjs",
+    "doc23:audit": "node scripts/verify-doc23-object-workspaces.mjs",
     "cw:import": "node scripts/cw-import.mjs",
     "cw:adapt-4x3": "node scripts/cw-adapt-4x3.mjs",
     "p4e:offline-test": "vitest run tests/p4e-offline.test.ts",

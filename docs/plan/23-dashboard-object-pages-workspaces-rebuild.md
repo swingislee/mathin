@@ -1476,3 +1476,43 @@ URL 导航
 最终目标：
 
 > 用户进入任何对象页都能立即理解“我在处理什么、下一步做什么、怎样返回”；后续 agent 也只能沿着两套明确页面骨架施工，不能继续保留旧骨架或制造第三套组件。
+
+---
+
+## 25. 施工记录与实际偏差（2026-07-27 完成）
+
+按 §20 的十次提交顺序执行，每次提交独立跑 `lint` / `typecheck` / `build` / `messages:check` / `doc21:audit` / `doc22:audit`，并在真实浏览器上按 §22 的视口截图签收。
+
+### 25.1 与规划一致的部分
+
+§6 shellMode、§7 三种骨架、§8–§13 六页蓝图、§14 组件目录、§18 返回来源合同、§21 审计、§23 完工标准逐条落地。`ContextBar`、`LectureWorkspaceShell`、`DecisionRail`（壳层）、`SharedAssetReplacementEditor`、`StudentLifecycleActions`、`ProvisionStudentAccountButton` 全部删除，零引用由 `pnpm doc23:audit` 守住。
+
+### 25.2 有意偏离规划的决定
+
+1. **素材页的 panel 标记推迟到 Commit 9**，不是随 §19-B 一起翻转。在它自己的工作区重建之前标成 panel，会让中间几个提交里出现一个被 `overflow-hidden` 裁掉且无法滚动的素材页。每个提交都必须是可交付的。
+
+2. **`StatusStrip` 落在 `dashboard-page/` 而不是 §14 设想的 `object-workspace/ObjectStatusStrip`**。规划假设它是工作区专用的，实际上它同时被 4 个普通页面用作 `DashboardPage` 的 `summary` 槽位。改名为 “Object...” 会让那些调用点说谎——它是共享的页面语言，和 `DashboardSummaryCard` 同类。
+
+3. **新增 `WorkspaceMain`**（§14 未列出）。§7.3 要求 panel 有且只有主区与 Rail 两个滚动区。如果由 `ObjectWorkspace internal` 自带 `ScrollArea`，等于宣布 panel 只能有一个滚动区，分栏工作区就得绕过壳层自己搭。把主区的滚动做成一个具名组件，“谁在滚动”在 JSX 上一眼可见——panel 页面最常见的回归就是不知不觉多出第三个滚动容器。
+
+4. **`ObjectBar` 的上下文条目没有 `secondary` 布尔**。规划允许按重要性取舍，实现改为由**数组顺序 + 溢出裁切**表达：越靠后越先消失。加一个开关只是让同一件事有两种说法，还会在 `display:none` 与 `:first-child` 之间制造分隔符错位（§5.2 禁止布尔 props 堆积）。
+
+5. **导航切换条不使用横向滚动**（用户在施工中提出）。§17 原写“Tabs/Stage 单行横向滚动”，实际改为换行。横向滚动条在没有触控板的桌面端等于把后几个标签藏起来——学生页的“监护人”“费用”会消失在看不见的右边，且没有任何滚动提示。代价是课程版本页的 sticky 顶部在 390×844 下达到约 35%（超出 doc21 的四分之一预算）：那一页有一个三维的上下文切换器（年级 × 班型 × 课程季节），全部可见比全部可达更重要。
+
+### 25.3 施工中发现并修掉的真实缺陷
+
+均为改造过程中在真实浏览器上实测发现，不是规划预见的：
+
+1. **390px 下 ObjectBar 标题被压成零宽**。左上菜单安全区 64 + 右上悬浮控件安全区 128 已吃掉一半宽度，再加一个状态徽标和一个主操作按钮，`truncate` 把标题截成 “P…”。改为窄容器下标题独占第一行。
+2. **上下文条目等比压缩**。原先每项 `shrink`，溢出时一起被压成“MFH… · 1… · 暑”。改 `shrink-0`，整项被右侧裁掉，靠前的条目保持完整可读。
+3. **课次缺省阶段固定落“课前”**。一节已上完的课打开时停在空面板上，而右边 Rail 正写着“下一步：处理课后”。改为缺省阶段跟课次状态走。
+4. **课次摘要重复两份**。Rail 补上摘要后，`SessionPrepPanel` 顶部那份成了同屏第二遍（§15 禁止新旧并存），删除；顺带修掉 `<dt>/<dd>` 直接挂在 `<section>` 上的无效嵌套。
+5. **学生侧栏与学习 Tab 重复出勤率/星星**。侧栏收敛为**信号**（缺勤次数、待批作业），指标留在学习 Tab。
+6. **返回箭头画了两遍**。`backToAssetLibrary` 等文案自带 `←`，而 `DashboardBackLink` 已经渲染图标。清理文案里的箭头，并删掉零引用的 `backToCourses` / `backToLectures`。
+7. **课程版本页身份行与上下文切换器重复三维坐标**。年级 / 季节 / 班型在切换器里本就高亮着，身份行只留产品码。
+
+### 25.4 验收证据
+
+- `pnpm lint` / `typecheck` / `build` / `messages:check` / `doc21:audit` / `doc22:audit` / `doc23:audit` / `p4i1:boundary-audit` 全过；`doc23:audit` 已接入 CI。
+- 六个对象页 × 三档视口（panel 页额外 1920×1080）真实浏览器截图；结构探针逐页确认：返回入口恰好一个、侧栏导航唯一高亮、无横向溢出、普通页只有 `<main>` 一个滚动区、panel 页 `<main>` 为 `overflow-y: hidden` 且滚动发生在主区与 Rail 内部。
+- 剩余人工项：亮 / 暗双主题的逐页视觉签收。

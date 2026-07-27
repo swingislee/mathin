@@ -23,8 +23,9 @@ export interface RouteTab {
  * （`?tab=`/`?stage=`/`?scope=`），服务端据此取不同数据，本组件不持有任何状态，
  * 因此可以是 Server Component。键盘访问由链接天然提供，不需要 roving tabindex。
  *
- * 窄屏单行横向滚动（§17）：标签一多就换行会把 sticky 顶部撑成两三行，移动端
- * 预算是整个顶部不超过视口约四分之一。
+ * 窄屏换行而不是横向滚动：横向滚动条在没有触控板的桌面端等于把后几个标签藏起来
+ * ——没有滚动提示，用户不知道"监护人""费用"还在右边。换行至多多占一行，
+ * 但每个标签都始终可见可点。
  */
 export function RouteTabs({
   items,
@@ -39,8 +40,8 @@ export function RouteTabs({
 }) {
   if (items.length === 0) return null;
   return (
-    <nav aria-label={ariaLabel} className={cn("-mx-1 min-w-0 max-w-full overflow-x-auto px-1 py-0.5", className)}>
-      <div className="inline-flex h-9 w-max items-center gap-0.5 rounded-lg bg-line/40 p-1 text-muted">
+    <nav aria-label={ariaLabel} className={cn("min-w-0", className)}>
+      <div className="flex min-h-9 w-fit flex-wrap items-center gap-0.5 rounded-lg bg-line/40 p-1 text-muted">
         {items.map((item) => {
           const active = item.value === activeValue;
           return (

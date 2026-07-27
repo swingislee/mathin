@@ -15,7 +15,6 @@ import { UsagePanel } from "@/features/school/teaching-operations/UsagePanel";
 import { VariantMatrix } from "@/features/school/teaching-operations/VariantMatrix";
 import { VariantSelector } from "@/features/school/teaching-operations/VariantSelector";
 import { resolveCourseCapabilities } from "@/features/school/teaching-operations/capabilities";
-import { COURSE_SEASONS } from "@/features/school/teaching-operations/types";
 import type { SelectedCourseVariant } from "@/features/school/teaching-operations/course-family-detail";
 import { LecturePreviewDialog } from "@/features/school/curriculum/LecturePreviewDialog";
 import { LecturePreviewPanel } from "@/features/school/curriculum/LecturePreviewPanel";
@@ -180,14 +179,9 @@ async function CourseFamilyProductPage({
       title={selectedVariant.title}
       backHref={`/dashboard/courses/${detail.family.id}`}
       backLabel={t("backToOverview")}
-      // §8.2：版本的上下文是"它在产品矩阵里的坐标"，不是 family 的出版社/学段——
-      // 后者已经由"返回产品总览"这条路径表达，重复说一遍只会挤掉真正的坐标。
-      context={[
-        { value: selectedVariant.productCode ?? "—" },
-        { value: t("grade", { grade: selectedVariant.grade }) },
-        { value: t(COURSE_SEASONS.find((season) => season.value === selectedVariant.courseSeason)?.labelKey ?? "summer") },
-        { value: selectedVariant.classType || t("defaultClassType") },
-      ]}
+      // 只留产品码。年级 / 季节 / 班型这三维就在下面的 ObjectContextSwitcher 里高亮着，
+      // 在身份行再说一遍是同一屏两份同样的信息（§15），移动端还要多占一整行 sticky 高度。
+      context={[{ value: selectedVariant.productCode ?? "—" }]}
       status={<Badge variant={selectedVariant.status === "enabled" ? "secondary" : "outline"}>{t(selectedVariant.status)}</Badge>}
       primaryAction={primaryAction}
       overflowSlot={capabilities.canTransitionVariant ? <StatusOverflowMenu id={selectedVariant.id} status={selectedVariant.status} action={transitionCourseVariantStatusAction} ariaLabel={t("moreActions")} /> : undefined}

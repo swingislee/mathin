@@ -55,7 +55,7 @@ export async function VariantSelector({
 
   // doc23 §8.2：三行按钮阵列压成一条。它现在住在 sticky 的导航行里（ObjectContextSwitcher），
   // 原来那种"每维一整行 + h-9 药丸"会把顶部撑到接近 200px，移动端预算是整条不超过视口约四分之一。
-  return <div className="flex min-w-0 items-center gap-2">
+  return <div className="flex min-w-0 flex-wrap items-center gap-2">
     <SelectorGroup label={t("gradeLabel")}>
       {grades.map((grade) => <OptionLink key={grade} active={current.grade === grade} label={String(grade)} target={pickVariant(variants, currentVariant, (variant) => variant.grade === grade)} familyId={familyId} />)}
     </SelectorGroup>

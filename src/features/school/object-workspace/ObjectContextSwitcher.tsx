@@ -27,10 +27,15 @@ export function ObjectContextSwitcher({
   return (
     <div
       data-object-context-switcher
-      className={cn("flex min-w-0 items-center gap-3 overflow-x-auto", className)}
+      // 同 RouteTabs：窄容器换行而不是横向滚动，切换项不允许被藏到看不见的右边。
+      className={cn("flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2", className)}
     >
-      <span className="shrink-0 text-xs uppercase tracking-[0.14em] text-muted">{label}</span>
-      <div className="flex min-w-0 items-center gap-2">{children}</div>
+      {/*
+        窄容器下标题只留给读屏：它独占一整行，而下面每个切换组本来就带着自己的名字
+        （年级 / 班型 / 课程季节），移动端 sticky 顶部的每一行都很贵。
+      */}
+      <span className="sr-only shrink-0 text-xs uppercase tracking-[0.14em] text-muted @2xl/chrome:not-sr-only">{label}</span>
+      <div className="flex min-w-0 flex-wrap items-center gap-2">{children}</div>
     </div>
   );
 }

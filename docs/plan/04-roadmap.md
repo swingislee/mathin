@@ -223,6 +223,18 @@ P4H 试用后发现问题不在功能而在信息架构：课程/课件/班级/�
 
 验收：`lint`/`typecheck`/`build`/`messages:check`/`db:types:check` 与四条 audit 全过；Playwright 回归通过——19 条新路由 200 且侧栏唯一高亮、9 条旧路由 404 且零重定向、对象详情与创建流程可用、family/learning/teacher 三套环境守卫矩阵全绿。回归中发现并修掉两处同源缺陷（`course_families` 的 RLS 可见性启发式让零版本产品对直接表读不存在；详情页那次已失去意义的直接预读）。剩余人工项：导航分组重排后的亮/暗 × 桌面/移动视觉签收。
 
+## UI-L4 对象详情页与专业工作区整体重建（2026-07-27 完成）
+
+权威施工记录见 `23-dashboard-object-pages-workspaces-rebuild.md`（含 §25 施工记录与实际偏差）。doc 21 统一了普通页面的坐标系、doc 22 统一了路由，但六个对象页的**骨架**仍各写各的：学生详情是一条超长纵向主栏加三个操作型侧栏，班级把身份拼成一条长字符串、异常做成正文横幅，课程版本顶部有一张重复身份的统计卡，课次只有三个业务面板的切换壳，讲次和素材各自拥有一份专用两栏布局。返回入口写了两遍（工作区那份在移动端还被隐藏），URL 标签写了两遍。
+
+1. `shellMode` 进 `dashboard-routes.ts`，`DashboardShell` 不再按 segment 猜哪些页面是专业工作区；素材替换随之进入 panel。
+2. 共享原语收敛为一套：`DashboardBackLink`（唯一返回）、`navigation/RouteTabs`（`DashboardCommandTabs` / `ObjectTabs` / `StageNavigation` / `TrackSwitcher` 的共同实现）、重写的 `ObjectBar`（返回在身份之前、结构化上下文、稳定区域）、`ObjectWorkspace`（ambient 复用 `DashboardPageChrome` + `DashboardPageBody`，internal 把滚动交给 `WorkspaceMain` / `WorkspaceSplitShell` + `WorkspaceRail`）。
+3. 六页按蓝图重排：主栏放"这一页要做的事"，侧栏 / Rail 放"跨视图不变的状况"。课程、班级、学生走主 + 侧栏；课次、讲次、素材走 panel 分栏。
+4. 课次 `?tab=` 硬切 `?stage=`；`object-workspace/return-target.ts` 落地 §18 返回来源合同（站内 + 命中路由合同 + 当前使用环境可访问，否则回落 canonical 父页面）。
+5. 删除 `ContextBar` / `LectureWorkspaceShell` / `DecisionRail` 壳层 / `SharedAssetReplacementEditor` 单体 / `StudentLifecycleActions`；新增 `pnpm doc23:audit` 并接入 CI。
+
+验收：`lint`/`typecheck`/`build`/`messages:check` 与 doc21/22/23、P4I-1 四条 audit 全过；六页 × 三档视口（panel 页额外 1920×1080）真实浏览器回归通过，逐页确认返回唯一、侧栏唯一高亮、无横向溢出、普通页单一滚动区、panel 页只有主区与 Rail 两个滚动区。剩余人工项：亮 / 暗双主题逐页视觉签收。
+
 ## 长期暂缓（明确不做，除非用户重启议题）
 
 - 评论区、关注/私信、消息通知系统
