@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
-import { ArrowLeft } from "lucide-react";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
+import { DashboardBackLink } from "./DashboardBackLink";
 import type { DashboardPageBreadcrumb } from "./dashboard-page.types";
 
 /**
@@ -32,12 +32,7 @@ export function DashboardPageIdentity({
 }) {
   return (
     <div data-dashboard-page-identity className={cn("flex min-w-0 flex-col justify-center", className)}>
-      {backHref ? (
-        <Link href={backHref} className="mb-1 inline-flex w-fit items-center gap-1 text-xs text-muted transition hover:text-ink">
-          <ArrowLeft size={14} />
-          {backLabel}
-        </Link>
-      ) : null}
+      {backHref ? <DashboardBackLink href={backHref} label={backLabel ?? ""} className="mb-1" /> : null}
       {breadcrumbs && breadcrumbs.length > 0 ? (
         <Breadcrumb className="mb-1">
           <BreadcrumbList>

@@ -2,9 +2,7 @@ import { AlertTriangle } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { buttonVariants } from "@/components/ui/button";
 import type { CoursewareLecturePreview, CoursewareTrack } from "@/features/courseware-studio/data";
-import { ContextBar } from "@/features/school/stage/ContextBar";
-import { ObjectBar } from "@/features/school/stage/ObjectBar";
-import { ObjectWorkspace } from "@/features/school/stage/ObjectWorkspace";
+import { ObjectBar, ObjectTabs, ObjectWorkspace, WorkspaceMain } from "@/features/school/object-workspace";
 import { StatusStrip } from "@/features/school/stage/StatusStrip";
 import type { StaffOption } from "@/features/school/classes";
 import { ResponsibilityPanel } from "@/features/school/teaching-operations/ResponsibilityPanel";
@@ -68,21 +66,22 @@ export async function LectureWorkspaceBody({
       title={t("lectureTitle", { no: detail.lecture.no, name: detail.lecture.name })}
       backHref={variantHref}
       backLabel={t("backToVariant")}
-      context={`${detail.variant.title}`}
+      context={[{ value: detail.variant.title }]}
       status={detail.tracks.find((row) => row.hasUnpublishedChanges) ? <AlertTriangle size={16} className="text-amber-600" aria-label={t("hasUnpublishedChanges")} /> : undefined}
       primaryAction={primaryAction}
       floatingSafeArea={false}
     />}
-    contextBar={<ContextBar
-      tabs={[
+    navigation={<ObjectTabs
+      items={[
         { value: "native-16x9", label: t("trackNative"), href: trackHref(baseHref, "native-16x9") },
         { value: "adapted-4x3", label: t("trackAdapted"), href: trackHref(baseHref, "adapted-4x3") },
       ]}
-      activeTab={track}
+      activeValue={track}
+      ariaLabel={t("tabsLabel")}
     />}
     statusStrip={<StatusStrip items={statusItems} />}
   >
-    <div className="flex flex-col gap-6">
+    <WorkspaceMain contentClassName="gap-6">
       <section className="rounded-2xl border border-line bg-card p-4">
         <h2 className="text-sm font-medium text-ink">{t("objectives")}</h2>
         <p className="mt-2 text-sm leading-6 text-muted">{detail.lecture.objectives || t("noObjectives")}</p>
@@ -127,6 +126,6 @@ export async function LectureWorkspaceBody({
           </ul>
         )}
       </section>
-    </div>
+    </WorkspaceMain>
   </ObjectWorkspace>;
 }

@@ -5,9 +5,7 @@ import type { SessionWorkspaceDetail } from "./classes";
 import { SessionLivePanel } from "./SessionLivePanel";
 import { SessionPostworkPanel } from "./SessionPostworkPanel";
 import { SessionPrepPanel } from "./SessionPrepPanel";
-import { ContextBar } from "./stage/ContextBar";
-import { ObjectBar } from "./stage/ObjectBar";
-import { ObjectWorkspace } from "./stage/ObjectWorkspace";
+import { ObjectBar, ObjectTabs, ObjectWorkspace, WorkspaceMain, type ObjectContextItem } from "./object-workspace";
 import { cn } from "@/lib/utils";
 import { Link } from "@/i18n/navigation";
 
@@ -59,10 +57,10 @@ export async function SessionWorkspaceBody({ detail, activeTab }: { detail: Sess
     voided: tc("statusVoided"),
   }[detail.statusLabelKey];
 
-  const contextSummary = [
-    detail.no ? t("lectureNo", { no: detail.no }) : null,
-    detail.durationMin ? t("durationMin", { count: detail.durationMin }) : null,
-  ].filter(Boolean).join(" · ");
+  const contextItems: ObjectContextItem[] = ([
+    detail.no ? { value: t("lectureNo", { no: detail.no }) } : null,
+    detail.durationMin ? { value: t("durationMin", { count: detail.durationMin }) } : null,
+  ] satisfies (ObjectContextItem | null)[]).filter((item) => item !== null);
 
   const primaryAction = resolvePrimaryAction(detail, baseHref, t);
 
@@ -74,23 +72,26 @@ export async function SessionWorkspaceBody({ detail, activeTab }: { detail: Sess
           title={detail.name || t("untitledSession")}
           backHref={classroomHref}
           backLabel={t("backToClassroom")}
-          context={contextSummary || undefined}
+          context={contextItems}
           status={<Badge variant="secondary">{statusLabel}</Badge>}
           primaryAction={primaryAction && (
             <Link href={primaryAction.href} className={cn(buttonVariants({ size: "sm" }))}>{primaryAction.label}</Link>
           )}
         />
       }
-      contextBar={
-        <ContextBar
-          tabs={TABS.map((tab) => ({ value: tab, label: t(`tab_${tab}`), href: `${baseHref}?tab=${tab}` }))}
-          activeTab={activeTab}
+      navigation={
+        <ObjectTabs
+          items={TABS.map((tab) => ({ value: tab, label: t(`tab_${tab}`), href: `${baseHref}?tab=${tab}` }))}
+          activeValue={activeTab}
+          ariaLabel={t("tabsLabel")}
         />
       }
     >
-      {activeTab === "pre" && <SessionPrepPanel detail={detail} />}
-      {activeTab === "live" && <SessionLivePanel detail={detail} />}
-      {activeTab === "post" && <SessionPostworkPanel detail={detail} />}
+      <WorkspaceMain>
+        {activeTab === "pre" && <SessionPrepPanel detail={detail} />}
+        {activeTab === "live" && <SessionLivePanel detail={detail} />}
+        {activeTab === "post" && <SessionPostworkPanel detail={detail} />}
+      </WorkspaceMain>
     </ObjectWorkspace>
   );
 }

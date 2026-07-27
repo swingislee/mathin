@@ -17,8 +17,7 @@ import { resolveCourseCapabilities } from "@/features/school/teaching-operations
 import type { SelectedCourseVariant } from "@/features/school/teaching-operations/course-family-detail";
 import { LecturePreviewDialog } from "@/features/school/curriculum/LecturePreviewDialog";
 import { LecturePreviewPanel } from "@/features/school/curriculum/LecturePreviewPanel";
-import { ObjectBar } from "@/features/school/stage/ObjectBar";
-import { ObjectWorkspace } from "@/features/school/stage/ObjectWorkspace";
+import { ObjectBar, ObjectWorkspace, type ObjectContextItem } from "@/features/school/object-workspace";
 import { listStaffOptions } from "@/features/school/classes";
 import { Link } from "@/i18n/navigation";
 import { getMyPerms, requirePerm } from "@/lib/auth";
@@ -90,7 +89,9 @@ async function CourseFamilyProductPage({
 
   const canManage = permissions.has("course.manage");
   const canAssign = permissions.has("course.assignment.manage");
-  const identity = [detail.family.publisher, detail.family.stage, detail.family.subject, detail.family.edition].filter(Boolean).join(" · ");
+  const identity: ObjectContextItem[] = [detail.family.publisher, detail.family.stage, detail.family.subject, detail.family.edition]
+    .filter(Boolean)
+    .map((value) => ({ value }));
   const familyStatusBadge = <>
     <Badge variant={detail.family.status === "enabled" ? "secondary" : "outline"}>{t(detail.family.status)}</Badge>
     {detail.family.purpose === "test" && <Badge variant="outline">{t("test")}</Badge>}
@@ -159,7 +160,7 @@ async function CourseFamilyProductPage({
       title={selectedVariant.title}
       backHref={`/dashboard/courses/${detail.family.id}`}
       backLabel={t("backToOverview")}
-      context={`${selectedVariant.productCode ?? "—"}`}
+      context={[{ value: selectedVariant.productCode ?? "—" }, ...identity]}
       status={<Badge variant={selectedVariant.status === "enabled" ? "secondary" : "outline"}>{t(selectedVariant.status)}</Badge>}
       primaryAction={primaryAction}
       overflowSlot={capabilities.canTransitionVariant ? <StatusOverflowMenu id={selectedVariant.id} status={selectedVariant.status} action={transitionCourseVariantStatusAction} ariaLabel={t("moreActions")} /> : undefined}
@@ -167,7 +168,6 @@ async function CourseFamilyProductPage({
   >
     <div className="rounded-2xl border border-line bg-card p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted">{identity}</p>
         <dl className="flex flex-wrap gap-x-5 gap-y-1 text-sm">
           <div className="flex items-baseline gap-1.5"><dt className="text-xs text-muted">{t("lectures")}</dt><dd className="font-medium">{detail.readiness.lectureCount}</dd></div>
           <div className="flex items-baseline gap-1.5"><dt className="text-xs text-muted">{t("publishedLectures")}</dt><dd className="font-medium">{detail.readiness.releasedLectureCount}</dd></div>

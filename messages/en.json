@@ -1200,7 +1200,8 @@
       "emergencyPublishConfirm": "Confirm emergency publish",
       "emergencyPublishSuccess": "Emergency published.",
       "reasonRequired": "Please enter a reason for the emergency publish.",
-      "emergencyPublishDisabled": "Emergency publish is disabled by the current policy."
+      "emergencyPublishDisabled": "Emergency publish is disabled by the current policy.",
+      "tabsLabel": "Courseware track"
     },
     "followups": {
       "title": "Follow-up board",
@@ -1950,7 +1951,8 @@
       "familyBriefSaveDraft": "Save draft",
       "familyBriefPublish": "Publish",
       "familyBriefSaved": "Draft saved.",
-      "familyBriefPublishedToast": "Family brief published."
+      "familyBriefPublishedToast": "Family brief published.",
+      "tabsLabel": "Session workspace sections"
     },
     "schedule": {
       "title": "Schedule",

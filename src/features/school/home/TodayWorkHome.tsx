@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { getTranslations } from "next-intl/server";
-import { ObjectBar } from "@/features/school/stage/ObjectBar";
-import { ObjectWorkspace } from "@/features/school/stage/ObjectWorkspace";
+import { ObjectBar, ObjectWorkspace } from "@/features/school/object-workspace";
 import { StatusStrip, type StatusStripItem } from "@/features/school/stage/StatusStrip";
 import { WorkItemActions } from "@/features/school/stage/WorkItemActions";
 import { WorkItemGroup } from "@/features/school/stage/WorkItemGroup";
@@ -88,7 +87,10 @@ export async function TodayWorkHome({ locale, user, profile }: HomeProps) {
   }
 
   return (
-    <ObjectWorkspace objectBar={<ObjectBar title={greeting} context={`${t("title")} · ${dateLine}`} />} statusStrip={<StatusStrip items={statusItems} />}>
+    <ObjectWorkspace
+      objectBar={<ObjectBar title={greeting} context={[{ value: t("title") }, { value: dateLine }]} />}
+      statusStrip={<StatusStrip items={statusItems} />}
+    >
       {/* 不再 mx-auto + max-w-[96rem]：宽度由 DashboardShell 唯一决定（docs/plan/21 §3.2）。
           页面级重新居中会让总览在宽屏上比其他页窄一截，切页时横向跳动。 */}
       <div className="space-y-6">

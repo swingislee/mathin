@@ -1200,7 +1200,8 @@
       "emergencyPublishConfirm": "确认紧急发布",
       "emergencyPublishSuccess": "已紧急发布。",
       "reasonRequired": "请填写紧急发布原因。",
-      "emergencyPublishDisabled": "当前政策未开启紧急发布。"
+      "emergencyPublishDisabled": "当前政策未开启紧急发布。",
+      "tabsLabel": "课件轨道切换"
     },
     "followups": {
       "title": "跟进工作台",
@@ -1950,7 +1951,8 @@
       "familyBriefSaveDraft": "保存草稿",
       "familyBriefPublish": "发布",
       "familyBriefSaved": "已保存草稿。",
-      "familyBriefPublishedToast": "已发布家庭摘要。"
+      "familyBriefPublishedToast": "已发布家庭摘要。",
+      "tabsLabel": "课次工作区分区"
     },
     "schedule": {
       "title": "课表",

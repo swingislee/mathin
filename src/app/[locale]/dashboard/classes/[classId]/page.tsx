@@ -20,9 +20,7 @@ import { OperationalRecordsPanel } from "@/features/school/OperationalRecordsPan
 import { RosterPanel } from "@/features/school/RosterPanel";
 import { SessionGroupList } from "@/features/school/SessionGroupList";
 import { SessionManagementDrawer } from "@/features/school/SessionManagementDrawer";
-import { ObjectBar } from "@/features/school/stage/ObjectBar";
-import { ContextBar } from "@/features/school/stage/ContextBar";
-import { ObjectWorkspace } from "@/features/school/stage/ObjectWorkspace";
+import { ObjectBar, ObjectTabs, ObjectWorkspace, type ObjectContextItem } from "@/features/school/object-workspace";
 import { TeachingReadinessPanel } from "@/features/school/TeachingReadinessPanel";
 import { listMyWorkItems } from "@/features/school/work-items";
 import { Link } from "@/i18n/navigation";
@@ -101,14 +99,18 @@ async function ClassDetailBody({
     activeTab === "records" && canViewClassroom ? getClassroomOperationalEvents(classId) : Promise.resolve([] as OperationalEventRow[]),
   ]);
 
-  const contextSummary = [
-    classroom.courseTitle ?? t("freeClass"),
-    classroom.grade ? t("grade", { grade: classroom.grade }) : null,
-    classroom.primaryTeacherName ?? t("noPrimaryTeacher"),
-    classroom.learningSupportNames.length > 0 ? `${t("learningSupport")}：${classroom.learningSupportNames.join("、")}` : null,
-    t("rosterCount", { count: classroom.roster.length }),
-    groups.next?.scheduledAt ? t("nextSessionAt", { time: new Date(groups.next.scheduledAt).toLocaleString() }) : null,
-  ].filter(Boolean).join(" · ");
+  // doc23 §4.2：长拼接串拆成结构化条目。这一提交只做结构转换、不改内容；
+  // 摘要类信息（人数、下一节课）在班级页重建那一提交移进 Aside。
+  const contextItems: ObjectContextItem[] = ([
+    { value: classroom.courseTitle ?? t("freeClass") },
+    classroom.grade ? { value: t("grade", { grade: classroom.grade }) } : null,
+    { value: classroom.primaryTeacherName ?? t("noPrimaryTeacher") },
+    classroom.learningSupportNames.length > 0
+      ? { label: t("learningSupport"), value: classroom.learningSupportNames.join("、") }
+      : null,
+    { value: t("rosterCount", { count: classroom.roster.length }) },
+    groups.next?.scheduledAt ? { value: t("nextSessionAt", { time: new Date(groups.next.scheduledAt).toLocaleString() }) } : null,
+  ] satisfies (ObjectContextItem | null)[]).filter((item) => item !== null);
 
   const primaryAction = isTeachingView && groups.next?.capabilities.canEnterLive
     ? <Link href={`/classroom/${classroom.id}/session/${groups.next.id}`} className={buttonVariants({ size: "sm" })}>{t("openClassroom")}</Link>
@@ -132,14 +134,15 @@ async function ClassDetailBody({
           title={classroom.name}
           backHref="/dashboard/classes"
           backLabel={t("back")}
-          context={contextSummary}
+          context={contextItems}
           status={lifecycleStatus}
           primaryAction={primaryAction}
           overflowSlot={isManagementView ? <ClassroomSettingsSheet classroom={classroom} staffOptions={staffOptions} teachingReadiness={teachingReadiness} /> : undefined}
         />}
-        contextBar={<ContextBar
-          tabs={TABS.map((tab) => ({ value: tab, label: t(`tab_${tab}`), href: `/dashboard/classes/${classId}?tab=${tab}` }))}
-          activeTab={activeTab}
+        navigation={<ObjectTabs
+          items={TABS.map((tab) => ({ value: tab, label: t(`tab_${tab}`), href: `/dashboard/classes/${classId}?tab=${tab}` }))}
+          activeValue={activeTab}
+          ariaLabel={t("tabsLabel")}
         />}
       >
         {isManagementView && anomalyCount > 0 && (
