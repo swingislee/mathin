@@ -20,6 +20,7 @@ import { LecturePreviewDialog } from "@/features/school/curriculum/LecturePrevie
 import { LecturePreviewPanel } from "@/features/school/curriculum/LecturePreviewPanel";
 import {
   DashboardAside,
+  DashboardCard,
   DashboardContentGrid,
   DashboardMainColumn,
   DashboardReadingColumn,
@@ -99,7 +100,9 @@ async function CourseFamilyProductPage({
     detail = await getCourseFamilyDetail(courseFamilyId, requestedVariantId);
   } catch (error) {
     if (error instanceof Error && error.message.includes("FORBIDDEN_SCOPE")) {
-      return <section className="mt-6 rounded-2xl border border-line bg-card p-6"><h1 className="font-display text-2xl text-ink">{t("familyScopeUnavailableTitle")}</h1><p className="mt-2 text-sm text-muted">{t("familyScopeUnavailableHint")}</p><Link href="/dashboard/courses" className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "mt-5")}>{t("backToLibrary")}</Link></section>;
+      return <DashboardCard title={t("familyScopeUnavailableTitle")} description={t("familyScopeUnavailableHint")}>
+        <Link href="/dashboard/courses" className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>{t("backToLibrary")}</Link>
+      </DashboardCard>;
     }
     if (error instanceof Error && (error.message.includes("COURSE_FAMILY_NOT_FOUND") || error.message.includes("COURSE_VARIANT_NOT_IN_FAMILY"))) notFound();
     throw error;
@@ -130,12 +133,11 @@ async function CourseFamilyProductPage({
     >
       <DashboardContentGrid>
         <DashboardMainColumn className="flex flex-col gap-5">
-          <section className="rounded-2xl border border-line bg-card p-4">
-            <h2 className="text-sm font-medium text-ink">{t("familyDescription")}</h2>
+          <DashboardCard title={t("familyDescription")}>
             <DashboardReadingColumn>
-              <p className="mt-2 text-sm leading-6 text-muted">{detail.family.description || t("familyDescriptionEmpty")}</p>
+              <p className="text-sm leading-6 text-muted">{detail.family.description || t("familyDescriptionEmpty")}</p>
             </DashboardReadingColumn>
-          </section>
+          </DashboardCard>
           <VariantMatrix familyId={detail.family.id} variants={detail.variants} canManage={canManage} />
         </DashboardMainColumn>
 

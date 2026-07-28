@@ -26,7 +26,7 @@ function VariantBadge({ familyId, variant }: { familyId: string; variant: Varian
     href={`/dashboard/courses/${familyId}?variant=${variant.id}`}
     className={cn("relative flex min-w-[3.25rem] flex-col items-center rounded-lg border px-2 py-1 text-xs transition hover:border-crater", statusTone(variant))}
   >
-    {variant.hasRisk && <AlertTriangle size={11} className="absolute -right-1 -top-1 text-amber-600" aria-label={t("hasRisk")} />}
+    {variant.hasRisk && <AlertTriangle size={11} className="absolute -right-1 -top-1 text-amber-700 dark:text-amber-300" aria-label={t("hasRisk")} />}
     <span className="font-medium">{variant.classType || t("defaultClassType")}</span>
     <span className="tabular-nums text-[10px] text-muted">{variant.releasedLectureCount}/{variant.lectureCount}</span>
     {variant.classroomCount > 0 && <span className="text-[10px] text-muted">· {t("classroomCountShort", { count: variant.classroomCount })}</span>}

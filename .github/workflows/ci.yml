@@ -42,6 +42,8 @@ jobs:
         run: pnpm doc22:audit
       - name: 对象详情页与专业工作区骨架防回流（doc23）
         run: pnpm doc23:audit
+      - name: Dashboard 视觉与交互收口防回流（doc24）
+        run: pnpm doc24:audit
       - name: 使用环境数据边界（P4I-1）
         run: pnpm p4i1:boundary-audit
       - name: 离线补发回放测试

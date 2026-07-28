@@ -98,7 +98,7 @@ export async function LectureWorkspaceBody({
       backHref={backHref}
       backLabel={t("backToVariant")}
       context={[{ value: detail.variant.title }]}
-      status={detail.tracks.find((row) => row.hasUnpublishedChanges) ? <AlertTriangle size={16} className="text-amber-600" aria-label={t("hasUnpublishedChanges")} /> : undefined}
+      status={detail.tracks.find((row) => row.hasUnpublishedChanges) ? <AlertTriangle size={16} className="text-amber-700 dark:text-amber-300" aria-label={t("hasUnpublishedChanges")} /> : undefined}
       primaryAction={primaryAction}
     />}
     navigation={<TrackSwitcher

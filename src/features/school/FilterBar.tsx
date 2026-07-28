@@ -10,8 +10,7 @@ import { cn } from "@/lib/utils";
  * 不带任何外边距：筛选条现在住在 DashboardCommandPanel 的 filters 槽里，
  * 纵向节奏由面板统一给出（docs/plan/21 §19.2）。原来的默认 `mt-4` 是页面一级
  * 外边距散落在组件里的典型例子，会让每个调用方的上下间距各差一点。
- */
-/**
+ *
  * `relative`：FilterBarMore 的浮层以**筛选条本身**为定位参照，而不是那颗"更多筛选"
  * 按钮（doc 24 §3.2）。按钮在 390px 上通常已经贴到右边线，以它为参照的 `right-0`
  * 会把 358px 宽的面板整个推到视口左边界之外——左侧的 label 与第一列控件直接不可见。
@@ -34,7 +33,7 @@ export function FilterBarFrame({ className, children, ...props }: ComponentProps
 
 export function FilterSearchInput({ className, ...props }: ComponentProps<typeof Input>) {
   return (
-    <div className="relative min-w-32 flex-1 sm:max-w-sm">
+    <div className="relative min-w-0 grow basis-40 sm:max-w-sm">
       <Search aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" />
       <Input
         className={cn("h-9 rounded-full border-line/80 bg-card/70 pl-9 shadow-none focus-visible:bg-card", className)}

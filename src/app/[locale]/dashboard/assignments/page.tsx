@@ -2,6 +2,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { BindCodeForm } from "@/features/school/BindCodeForm";
 import { getMyPendingAssignments, getMyStudents } from "@/features/school/customer";
 import {
+  DashboardCard,
   DashboardContentGrid,
   DashboardEmptyCard,
   DashboardMainColumn,
@@ -36,12 +37,12 @@ export default async function AssignmentsPage({ params }: { params: Promise<{ lo
       <DashboardContentGrid>
       <DashboardMainColumn className="space-y-6">
       {!isBound ? (
-        <section className="rounded-2xl border border-line bg-card p-5">
+        <DashboardCard>
           <p className="text-sm text-muted">{t("notBound")}</p>
           <div className="mt-4">
             <BindCodeForm mode="claim" />
           </div>
-        </section>
+        </DashboardCard>
       ) : assignments.length === 0 ? (
         <DashboardEmptyCard>{t("pendingAssignmentsEmpty")}</DashboardEmptyCard>
       ) : (

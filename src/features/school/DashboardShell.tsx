@@ -104,8 +104,15 @@ export function DashboardShell({ nav, children }: { nav: readonly SchoolNavItem[
           <NavList nav={nav} pathname={pathname} />
         </ScrollArea>
 
+        {/*
+          doc 24 §4.3「插图是否影响导航文字」。插图沉在导航之后是有意的（层次感），
+          但导航一长就会有三四条 `text-muted` 的链接正好压在望远镜和书堆的线条上——
+          插图的笔触和文字笔画粗细相近，扫视时要费一下劲才能读出条目名。
+          两处收敛：整体压到近乎水印的浓度；再用自上而下的渐变遮罩，让插图只在
+          底部真正留白的那一段显形，上半段完全淡出。装饰不该和导航争对比度。
+        */}
         <div
-          className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-52"
+          className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-52 [mask-image:linear-gradient(to_top,black_0%,black_30%,transparent_95%)]"
           aria-hidden
         >
           <Image
@@ -113,7 +120,7 @@ export function DashboardShell({ nav, children }: { nav: readonly SchoolNavItem[
             alt=""
             fill
             sizes="240px"
-            className="object-cover object-bottom opacity-25 mix-blend-multiply dark:opacity-20 dark:mix-blend-screen"
+            className="object-cover object-bottom opacity-[0.14] mix-blend-multiply dark:opacity-[0.12] dark:mix-blend-screen"
           />
         </div>
       </aside>

@@ -235,6 +235,21 @@ P4H 试用后发现问题不在功能而在信息架构：课程/课件/班级/�
 
 验收：`lint`/`typecheck`/`build`/`messages:check` 与 doc21/22/23、P4I-1 四条 audit 全过；六页 × 三档视口（panel 页额外 1920×1080）真实浏览器回归通过，逐页确认返回唯一、侧栏唯一高亮、无横向溢出、普通页单一滚动区、panel 页只有主区与 Rail 两个滚动区。剩余人工项：亮 / 暗双主题逐页视觉签收。
 
+## UI-L5 Dashboard 视觉与交互收口（2026-07-28 完成）
+
+权威施工记录见 `24-dashboard-visual-interaction-closeout.md`（含 §13 施工记录与实际偏差）。doc 21 统一了坐标系、doc 22 统一了路由、doc 23 统一了对象页骨架，剩下的是真实使用中仍然看得见的毛边：页面之间的密度差异、移动端遮挡、页面根部的细小横向溢出、异步反馈不齐、多入口对象页回不到来处。
+
+1. 阶段 A 改用脚本巡检（Playwright 逐元素量 `getBoundingClientRect`），而不是逐页截图看——1–2px 的溢出和"被裁掉的元素"眼睛看不出来。
+2. 计划给的根节点宽度判据不够：主画布 `overflow-y-auto` 会让 `overflow-x` 计算成 `auto`，溢出被它吃掉、根节点永远是绿的。判据改成根节点与 `[data-dashboard-canvas]` 都不横向滚动，据此揪出三个真实来源（`flex-1` 的 basis 为 0 与 `min-w-*` 并存、命令面板槽位不换行、`w-fit` 缺 `max-w-full`）。
+3. 三处用 `overflow-x-auto` 兜住 Tabs 溢出的写法改回换行（§3.1 的产品决定），`flex-wrap` 下沉到命令面板槽位本身；`ObjectBar` 上下文行在窄屏改为换行而不是静默裁切。
+4. `FilterBarMore` 面板改以筛选条为定位参照（原来锚点按按钮、宽度按视口，390px 下左边缘跑出视口 54px）。
+5. 新增 `DashboardCard` / `DashboardCardShell` / `DashboardEmptyCard`，圆角按设计系统统一到 `rounded-2xl`，卡片标题收敛为正文 `text-base` 与侧栏 `text-sm` 两档，空状态统一最小高度。
+6. `return-target.ts` 拆出 `parseReturnTo` / `preserveReturnTo`：来源返回扩展到学生/班级/课程产品，并在对象内部（切 Tab / stage / 换轨 / 翻页）保留来源。
+7. `DialogContent` / `SheetContent` 补高度上限与内部滚动（此前居中弹窗溢出的部分滚不到，底部保存按钮够不着）；`useAction` 加同步在途闸门堵住同一帧内的重复提交。
+8. 新增 `pnpm doc24:audit` 并接入 CI，含 §7.2 横向滚动容器白名单。
+
+验收：`lint`/`typecheck`/`build`/`messages:check` 与 doc21/22/23/24 四条 audit 全过；26 页 × 7 档宽度（含 80%/125%/150% 缩放等价宽度）× 亮暗双主题共 364 次检查零溢出；返回动线 13 条（含四类攻击载荷）全过。剩余人工项：亮/暗逐页视觉签收；遗留项见 doc 24 §13.9（告警语义色 token 化需先报批，`features/` 下约 70 处手搓卡片随后续改动迁移）。
+
 ## 长期暂缓（明确不做，除非用户重启议题）
 
 - 评论区、关注/私信、消息通知系统

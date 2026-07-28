@@ -6,6 +6,7 @@ import { ClassroomList } from "@/features/school/ClassroomList";
 import { ClassroomScopeSwitch } from "@/features/school/ClassroomScopeSwitch";
 import { ClassroomTestBulkPanel } from "@/features/school/ClassroomTestBulkPanel";
 import {
+  DashboardCard,
   DashboardCommandActions,
   DashboardCommandFilters,
   DashboardCommandPanel,
@@ -80,10 +81,7 @@ async function ClassroomLibrary({ locale, searchParams }: { locale: string; sear
     scope = await resolveClassroomScope(rawSearchParams.scope);
   } catch (error) {
     if (error instanceof Error && error.message.includes("FORBIDDEN")) {
-      return <section className="rounded-2xl border border-line bg-card p-6">
-        <h2 className="font-display text-2xl text-ink">{t("noAccessTitle")}</h2>
-        <p className="mt-2 text-sm text-muted">{t("noAccessHint")}</p>
-      </section>;
+      return <DashboardCard title={t("noAccessTitle")} description={t("noAccessHint")} />;
     }
     throw error;
   }

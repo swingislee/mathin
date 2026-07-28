@@ -91,7 +91,7 @@ export function FollowUpBoardList({
             {group.rows.length === 0 ? (
               <p className="px-4 py-3 text-sm text-muted">{t("emptyGroup")}</p>
             ) : (
-              <div className="overflow-x-auto">
+              <div>
                 <Table className="w-full border-collapse text-left text-sm">
                   <TableHeader className="border-b border-line text-xs text-muted">
                     <TableRow>

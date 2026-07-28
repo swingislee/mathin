@@ -69,3 +69,5 @@ Mathin 是一个中英双语的数学探索网站，以《小王子》的视觉�
 - `20-ui-layout-refit.md` — 2026-07-25 页面 UI 布局重构施工基线：边缘控制、抽屉三区、三类页面坐标系、五主题场景、滚动与字体
 - `21-dashboard-unified-canvas-command-panel-refactor.md` — Dashboard 唯一内容坐标系与页面命令面板（`--dashboard-gutter`、`DashboardPage`）
 - `22-dashboard-route-information-architecture-refactor.md` — Dashboard 路由信息架构与资源操作模型：**新增/移动 dashboard 路由前必读**，路由合同在 `src/features/school/dashboard-routes.ts`
+- `23-dashboard-object-pages-workspaces-rebuild.md` — 对象详情页与专业工作区骨架：page / panel 两套外壳、`ObjectBar`/`ObjectWorkspace`、唯一返回入口与 `?returnTo=` 合同
+- `24-dashboard-visual-interaction-closeout.md` — Dashboard 视觉与交互收口：**改 Dashboard 公共组件前必读**，卡片与空状态原语、Tabs 换行决定、横向溢出判据（根节点 **与** `[data-dashboard-canvas]`）、来源返回在对象内部的保留

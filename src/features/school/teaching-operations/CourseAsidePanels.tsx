@@ -74,7 +74,7 @@ export async function CourseFamilyRisks({
         <ul className="mt-3 flex flex-col gap-2">
           {rows.map(({ variant, reasons }) => (
             <li key={variant.id} className="flex items-start gap-2 text-sm">
-              <AlertTriangle size={14} className="mt-0.5 shrink-0 text-amber-600" aria-hidden />
+              <AlertTriangle size={14} className="mt-0.5 shrink-0 text-amber-700 dark:text-amber-300" aria-hidden />
               <span className="min-w-0">
                 <Link href={`/dashboard/courses/${familyId}?variant=${variant.id}`} className="text-ink hover:text-crater">
                   {variant.title}

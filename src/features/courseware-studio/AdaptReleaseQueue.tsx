@@ -102,7 +102,7 @@ export function AdaptReleaseQueue({
             aria-label={t("adaptSelectLecture", { no: item.lectureNo })}
             disabled={publishRun.pending}
           /> : null}
-          <div className="min-w-64 flex-1">
+          <div className="min-w-0 grow basis-64">
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="font-medium text-ink">{t("adaptLectureOption", { no: item.lectureNo, name: item.lectureName })}</h3>
               {item.currentReleaseNo && !item.hasUnpublishedChanges

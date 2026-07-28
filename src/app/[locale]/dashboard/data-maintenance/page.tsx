@@ -2,7 +2,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { CoursewareZeroReferenceReport } from "@/features/school/CoursewareZeroReferenceReport";
 import { PurgeConfirmDialog } from "@/features/school/PurgeConfirmDialog";
 import { purgeTestClassroomAction, purgeTestCourseFamilyAction } from "@/features/school/actions/testdata";
-import { DashboardPage } from "@/features/school/dashboard-page";
+import { DashboardCard, DashboardPage } from "@/features/school/dashboard-page";
 import { listPurgeableClassrooms, listPurgeableCourseFamilies, listZeroReferenceAssets } from "@/features/school/testdata";
 import { requirePerm } from "@/lib/auth";
 
@@ -35,13 +35,14 @@ export default async function DataMaintenancePage({ params }: { params: Promise<
         <CoursewareZeroReferenceReport assets={zeroReferenceAssets} />
 
         <div className="grid gap-6 @4xl/page:grid-cols-2">
-        <section className="rounded-2xl border border-line bg-card p-5">
-          <h2 className="text-base font-medium text-ink">{t("purgeableFamiliesTitle", { count: purgeableFamilies.length })}</h2>
-          <p className="mt-1 text-sm text-muted">{t("purgeableFamiliesHint")}</p>
+        <DashboardCard
+          title={t("purgeableFamiliesTitle", { count: purgeableFamilies.length })}
+          description={t("purgeableFamiliesHint")}
+        >
           {purgeableFamilies.length === 0 ? (
-            <p className="mt-4 text-sm text-muted">{t("purgeableFamiliesEmpty")}</p>
+            <p className="text-sm text-muted">{t("purgeableFamiliesEmpty")}</p>
           ) : (
-            <ul className="mt-4 divide-y divide-line">
+            <ul className="divide-y divide-line">
               {purgeableFamilies.map((family) => (
                 <li key={family.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
                   <div className="min-w-0">
@@ -60,15 +61,16 @@ export default async function DataMaintenancePage({ params }: { params: Promise<
               ))}
             </ul>
           )}
-        </section>
+        </DashboardCard>
 
-        <section className="rounded-2xl border border-line bg-card p-5">
-          <h2 className="text-base font-medium text-ink">{t("purgeableClassroomsTitle", { count: purgeableClassrooms.length })}</h2>
-          <p className="mt-1 text-sm text-muted">{t("purgeableClassroomsHint")}</p>
+        <DashboardCard
+          title={t("purgeableClassroomsTitle", { count: purgeableClassrooms.length })}
+          description={t("purgeableClassroomsHint")}
+        >
           {purgeableClassrooms.length === 0 ? (
-            <p className="mt-4 text-sm text-muted">{t("purgeableClassroomsEmpty")}</p>
+            <p className="text-sm text-muted">{t("purgeableClassroomsEmpty")}</p>
           ) : (
-            <ul className="mt-4 divide-y divide-line">
+            <ul className="divide-y divide-line">
               {purgeableClassrooms.map((classroom) => (
                 <li key={classroom.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
                   <div className="min-w-0">
@@ -87,7 +89,7 @@ export default async function DataMaintenancePage({ params }: { params: Promise<
               ))}
             </ul>
           )}
-        </section>
+        </DashboardCard>
         </div>
       </div>
     </DashboardPage>

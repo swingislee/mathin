@@ -1,6 +1,8 @@
 import { Select, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { AccountLookupPanel } from "@/features/school/AccountLookupPanel";
 import { CouponsPanel } from "@/features/school/CouponsPanel";
 import { getMyAccounts, getMyOrders } from "@/features/school/customer";
@@ -9,6 +11,7 @@ import { countPendingRefunds, listCoupons, listOrders, listPendingRefunds, listS
 import { toSelectValue } from "@/features/school/controls";
 import {
   DashboardAside,
+  DashboardCard,
   DashboardCommandFilters,
   DashboardCommandPanel,
   DashboardContentGrid,
@@ -69,7 +72,8 @@ export default async function FinancePage({
     return (
       <DashboardPage title={customerT("myFinanceTitle")}>
         <DashboardContentGrid>
-        <DashboardMainColumn className="rounded-2xl border border-line bg-card p-5">
+        <DashboardMainColumn>
+          <DashboardCard>
           <p className="text-sm">{customerT("myBalance", { balance: balance.toFixed(2) })}</p>
           {orders.length === 0 ? (
             <p className="mt-4 text-sm text-muted">{customerT("myOrdersEmpty")}</p>
@@ -86,6 +90,7 @@ export default async function FinancePage({
               ))}
             </ul>
           )}
+          </DashboardCard>
         </DashboardMainColumn>
         </DashboardContentGrid>
       </DashboardPage>
@@ -168,12 +173,12 @@ export default async function FinancePage({
       */}
       <DashboardContentGrid>
         {canSeeOrders && (
-          <DashboardMainColumn className="rounded-2xl border border-line bg-card p-5">
-            <h2 className="text-base font-medium text-ink">{t("orders", { count: ordersResult.count ?? ordersResult.orders.length })}</h2>
+          <DashboardMainColumn>
+            <DashboardCard title={t("orders", { count: ordersResult.count ?? ordersResult.orders.length })}>
             {ordersResult.orders.length === 0 ? (
-              <p className="mt-4 text-sm text-muted">{t("noOrders")}</p>
+              <p className="text-sm text-muted">{t("noOrders")}</p>
             ) : (
-              <ul className="mt-4 divide-y divide-line">
+              <ul className="divide-y divide-line">
                 {ordersResult.orders.map((order) => (
                   <li key={order.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-sm">
                     <div className="min-w-0">
@@ -188,9 +193,10 @@ export default async function FinancePage({
               </ul>
             )}
             <div className="mt-4 flex justify-end gap-2">
-              {filters.page > 1 && <Link href={pageHref(filters.page - 1)} className="rounded-lg border border-line px-3 py-1.5 text-xs">{t("previous")}</Link>}
-              {filters.page < maxPage && <Link href={pageHref(filters.page + 1)} className="rounded-lg border border-line px-3 py-1.5 text-xs">{t("next")}</Link>}
+              {filters.page > 1 && <Link href={pageHref(filters.page - 1)} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>{t("previous")}</Link>}
+              {filters.page < maxPage && <Link href={pageHref(filters.page + 1)} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>{t("next")}</Link>}
             </div>
+            </DashboardCard>
           </DashboardMainColumn>
         )}
 
