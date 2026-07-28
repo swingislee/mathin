@@ -50,7 +50,9 @@ function AddGradeRow({ familyId, existingGrades }: { familyId: string; existingG
   const gradeIsNew = typeof grade === "number" && !existingGrades.includes(grade);
   return <div className="mt-3 flex items-center gap-2 border-t border-line pt-3 text-sm text-muted">
     <span>{t("addGradeRow")}</span>
-    <Input type="number" min={1} max={9} value={grade} onChange={(event) => setGrade(event.target.value === "" ? "" : Number(event.target.value))} className="h-8 w-20" />
+    {/* doc24 §5.4：旁边那句 `<span>` 是视觉标签，不是可访问名称——读屏用户听到的只是
+        "编辑框"。文案已有，补一个 aria-label 就够，不必再造一个 <label>。 */}
+    <Input aria-label={t("addGradeRow")} type="number" min={1} max={9} value={grade} onChange={(event) => setGrade(event.target.value === "" ? "" : Number(event.target.value))} className="h-8 w-20" />
     <CreateVariantDialog
       key={grade}
       familyId={familyId}

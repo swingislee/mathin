@@ -85,11 +85,11 @@ export function ResponsibilityPanel({
 
     {canManage && <div className="mt-4 grid grid-cols-[1fr_9rem] gap-2 border-t border-line pt-4">
       <Select value={selectedUserId} onValueChange={setSelectedUserId}>
-        <SelectTrigger><SelectValue placeholder={t("responsibilityPickPlaceholder")} /></SelectTrigger>
+        <SelectTrigger aria-label={t("responsibilityPickPlaceholder")}><SelectValue placeholder={t("responsibilityPickPlaceholder")} /></SelectTrigger>
         <SelectContent>{staffOptions.map((option) => <SelectItem key={option.id} value={option.id}>{option.name}</SelectItem>)}</SelectContent>
       </Select>
       <Select value={selectedResponsibility} onValueChange={(value) => setSelectedResponsibility(value as CourseAssignmentResponsibility)}>
-        <SelectTrigger><SelectValue /></SelectTrigger>
+        <SelectTrigger aria-label={t("responsibilityPickRole")}><SelectValue /></SelectTrigger>
         <SelectContent>{RESPONSIBILITIES.map((responsibility) => <SelectItem key={responsibility} value={responsibility}>{t(`responsibility_${responsibility}`)}</SelectItem>)}</SelectContent>
       </Select>
       <Button size="sm" variant="secondary" className="col-span-2" disabled={!selectedUserId || pending} onClick={assign}>

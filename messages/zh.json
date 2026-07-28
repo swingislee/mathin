@@ -1090,6 +1090,7 @@
       "noOwnerYet": "还没有负责人。",
       "responsibilityNone": "暂无。",
       "responsibilityPickPlaceholder": "选择员工",
+      "responsibilityPickRole": "选择职责",
       "responsibilityAdd": "添加",
       "responsibilityRemove": "移除",
       "responsibilityAssignSuccess": "责任已更新。",

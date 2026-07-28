@@ -1090,6 +1090,7 @@
       "noOwnerYet": "No owner yet.",
       "responsibilityNone": "None yet.",
       "responsibilityPickPlaceholder": "Pick a staff member",
+      "responsibilityPickRole": "Pick a responsibility",
       "responsibilityAdd": "Add",
       "responsibilityRemove": "Remove",
       "responsibilityAssignSuccess": "Responsibility updated.",
