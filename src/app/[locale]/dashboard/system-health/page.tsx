@@ -1,7 +1,7 @@
 import { getFormatter, getTranslations, setRequestLocale } from "next-intl/server";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getRosterMismatchCount } from "@/features/school/dashboard";
-import { DashboardPage } from "@/features/school/dashboard-page";
+import { DashboardCardShell, DashboardEmptyCard, DashboardPage } from "@/features/school/dashboard-page";
 import { StatusStrip, type StatusStripItem } from "@/features/school/dashboard-page";
 import { getMyPerms, requirePerm } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -65,10 +65,10 @@ export default async function SystemHealthPage({ params }: { params: Promise<{ l
       title={t("title")}
       summary={statusItems.length > 0 ? <StatusStrip items={statusItems} /> : null}
     >
-      <div className="overflow-hidden rounded-2xl border border-line bg-card">
-        {rows.length === 0 ? (
-          <p className="p-8 text-center text-sm text-muted">{t("empty")}</p>
-        ) : (
+      {rows.length === 0 ? (
+        <DashboardEmptyCard>{t("empty")}</DashboardEmptyCard>
+      ) : (
+        <DashboardCardShell>
           <Table className="min-w-[52rem]">
             <TableHeader>
               <TableRow>
@@ -94,8 +94,8 @@ export default async function SystemHealthPage({ params }: { params: Promise<{ l
               ))}
             </TableBody>
           </Table>
-        )}
-      </div>
+        </DashboardCardShell>
+      )}
     </DashboardPage>
   );
 }

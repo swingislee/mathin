@@ -12,6 +12,7 @@ import {
   DashboardCommandPanel,
   DashboardCommandState,
   DashboardCommandTabs,
+  DashboardCardShell,
   DashboardEmptyCard,
   DashboardPage,
 } from "@/features/school/dashboard-page";
@@ -160,7 +161,7 @@ export default async function StudentsPage({
       {students.length === 0 ? (
         <DashboardEmptyCard>{t("empty")}</DashboardEmptyCard>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-line bg-card">
+        <DashboardCardShell>
           {/* 表格铺满统一内容轴；列放不下时由 Table 自带的 overflow-x 横向滚动，
               而不是把每一格挤成竖排单字（§17.1）。 */}
           <Table className="w-full min-w-[44rem] border-collapse text-left text-sm">
@@ -198,7 +199,7 @@ export default async function StudentsPage({
               ))}
             </TableBody>
           </Table>
-        </div>
+        </DashboardCardShell>
       )}
     </DashboardPage>
   );

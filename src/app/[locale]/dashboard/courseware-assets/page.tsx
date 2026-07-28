@@ -7,6 +7,7 @@ import { loadCoursewareSharedAssets, parseAssetLibraryFilters } from "@/features
 import {
   DashboardCommandFilters,
   DashboardCommandPanel,
+  DashboardCardShell,
   DashboardEmptyCard,
   DashboardPage,
 } from "@/features/school/dashboard-page";
@@ -61,7 +62,7 @@ export default async function CoursewareAssetLibraryPage({
       {items.length === 0 ? (
         <DashboardEmptyCard>{t("assetLibraryEmpty")}</DashboardEmptyCard>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-line bg-card">
+        <DashboardCardShell>
           <Table className="w-full min-w-[48rem] border-collapse text-left text-sm">
             <TableHeader className="border-b border-line text-xs text-muted">
               <TableRow>
@@ -102,7 +103,7 @@ export default async function CoursewareAssetLibraryPage({
               ))}
             </TableBody>
           </Table>
-        </div>
+        </DashboardCardShell>
       )}
     </DashboardPage>
   );
