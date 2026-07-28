@@ -1,5 +1,15 @@
 # Mathin 整体规划 · 18 P4H 教学运营体验重构
 
+> **规划状态**：`complete`
+>
+> **当前用途**：P4H Dashboard 教学运营体验的竣工记录。
+>
+> **权威边界**：不再作为当前阶段；后续入口与工作流以 P4I/代码为准。
+>
+> **剩余项**：仅修复 doc 25 量化验收发现的发布阻断问题。
+>
+> **最后核对**：2026-07-28。
+
 > **与 doc 22 的关系（2026-07-27 追记）**：本文出现的 Dashboard URL 有一部分已被 `22-dashboard-route-information-architecture-refactor.md` 改名或删除（`staff/roles`→`access-control`、`registration`→`registration-settings`、`operations`→`system-health`、`operations/testdata`→`data-maintenance`、`adapt-review`→`courseware/review`、`curriculum/lectures/[id]`→`courseware/lectures/[lectureId]`、`shared-assets`→`courseware-assets`；`/dashboard/work` 与 `/dashboard/videos` 已删除）。**旧地址一律 404，不留重定向**。本文其余结论不受影响；路由的当前真相以 `src/features/school/dashboard-routes.ts` 的路由合同为准。
 >
 > **主题**：从产品使用者视角重做课程、班级、课次与多岗位工作流。

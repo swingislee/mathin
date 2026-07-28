@@ -1,5 +1,15 @@
 # Mathin 整体规划 · 12 P4D 学生生命周期深化（获客活动 + 课堂多维记录 + 课后视频 + 续费流失 + 全模块 CRUD 补齐）
 
+> **规划状态**：`complete`
+>
+> **当前用途**：P4D 学生生命周期和学校运营领域规则参考。
+>
+> **权威边界**：领域表/RPC 和 RLS 是已落地真相，旧 UI 清单不构成当前任务。
+>
+> **剩余项**：学生/家庭门户、成果发布、初始化和财务正式闭环见 doc 25。
+>
+> **最后核对**：2026-07-28。
+
 > **完成状态（2026-07-12）**：P4D-0～6 施工完成，迁移已部署到自托管开发库，数据库事务审计与真实视频 Storage/API 角色回归通过；逐模块证据见 `14-p4d-completion-audit.md`。
 
 > **与 doc 22 的关系（2026-07-27 追记）**：本文出现的 Dashboard URL 有一部分已被 `22-dashboard-route-information-architecture-refactor.md` 改名或删除（`staff/roles`→`access-control`、`registration`→`registration-settings`、`operations`→`system-health`、`operations/testdata`→`data-maintenance`、`adapt-review`→`courseware/review`、`curriculum/lectures/[id]`→`courseware/lectures/[lectureId]`、`shared-assets`→`courseware-assets`；`/dashboard/work` 与 `/dashboard/videos` 已删除）。**旧地址一律 404，不留重定向**。本文其余结论不受影响；路由的当前真相以 `src/features/school/dashboard-routes.ts` 的路由合同为准。

@@ -1,6 +1,6 @@
 # Mathin 工程约定
 
-Mathin 是一个中英双语（zh/en，中文为默认语言）的数学探索网站。本文件是 Claude Code 与其他 Agent 工作时的权威工程约定，涵盖技术栈、架构与 Next.js 16 迁移要点。
+Mathin 是一个中英双语（zh/en，中文为默认语言）、以 Terms 为核心的数学探索网站。小王子世界观是全站主要视觉语言。1.0 同时包含对外的 Story、Games、Minds、Terms、Tools、Notebook，以及对内的完整学校运营与内容发布系统。本文件是所有 Agent 的权威工程约定，涵盖规划治理、技术栈、架构与 Next.js 16 迁移要点。
 
 ## 开始任务前的必读文档
 
@@ -8,15 +8,33 @@ Mathin 是一个中英双语（zh/en，中文为默认语言）的数学探索�
 
 - 阅读 `docs/plan/00-overview.md`。
 - 阅读 `docs/plan/04-roadmap.md`，确认当前阶段，不得抢跑。
-- 阅读与当前任务直接相关的规划文件，不要默认读取整个 `docs/plan/`。
+- 当前 R1/生产 1.0 任务阅读 `docs/plan/25-production-1.0-product-completeness.md` 的相关章节。
+- 阅读与当前任务直接相关的专题规划文件及其**状态头**，不要默认读取整个 `docs/plan/`。
 
 按任务类型补充阅读：
 
 - UI、视觉、交互：`01-design-system.md`
+- 小王子世界观、五星球、Notebook 与工作区视觉强度：`05-planet-themes.md`
 - 页面布局与路由：`02-pages.md`
 - 数据库、鉴权、RLS、registry：`03-data-and-tech.md`
 - shadcn/ui 组件选择：`01-design-system.md` 的“§6 shadcn/ui 能力目录”
 - 历史 UI 债务迁移：读取 `14-...md` 的“§6.5”，仅在相关任务中读取
+
+### 规划状态与冲突处理
+
+- `04-roadmap.md` 是唯一施工阶段入口；只有其顶部“当前施工阶段”可决定下一阶段。
+- `00`、`04`、`25` 是持续维护的 active 真相源。其他 doc 的 `complete` 表示历史阶段已竣工，不得因正文有未勾选项就重复实施；`partial` 只按状态头和 doc 25 重新收录的剩余项施工。
+- 事实优先级：工程硬约束 → 00 产品宪章 → 04 阶段顺序 → 25 发布门/缺口 → 相关专题文档 → 历史正文。实现状态最终以代码、迁移和自动化证据核对。
+- 文档与当前代码冲突时先查 00/04/25；如果规划确实过期，先更新 active 文档再实现，禁止按旧计划大范围返工。
+- 完成阶段时同步更新专题文档状态头、04、25，并运行 `pnpm plan:audit`。
+
+### 规划写作
+
+- 先写对象、动作、原因和结果；数量、时间、路由、表/RPC、角色、状态变化和验收命令优先于形容词。
+- 一句话必须增加事实、关系、解释或判断；四者都没有时删除。
+- 同一结论只保留一处，其他文档用链接或增加新的证据、限制、案例。
+- 结论注明证据范围。路由存在只能证明骨架，测试通过只能证明覆盖的合同，开发数据不能证明生产状态。
+- 并列字段使用表格/列表；连续因果使用段落。没有历史误解需要纠正时，不使用“不是……而是……”等对照句式。
 
 
 ## 技术基线
@@ -24,10 +42,13 @@ Mathin 是一个中英双语（zh/en，中文为默认语言）的数学探索�
 - Node.js >= 20.9（当前开发环境 Node.js 22），TypeScript >= 5.1，pnpm。
 - **Next.js 锁定稳定版 16.2.11**（App Router、React 19、Turbopack 默认构建器）。禁止使用 16.3 canary/preview。
 - Tailwind CSS 4、next-intl、Supabase SSR、shadcn/ui（`components.json`）。
-- 无测试套件。需要 `.env.local`（从 `.env.example` 复制），填入自托管 Supabase 的 URL 与 publishable key。
+- 已有 Vitest、CI 静态/构建审计、数据库重建与 RLS/安全检查；正式浏览器 E2E 框架仍在 R1-14 建设。需要 `.env.local`（从 `.env.example` 复制），填入自托管 Supabase 的 URL 与 publishable key。
 - 路由边界逻辑写在 `src/proxy.ts`（导出 `proxy`），**禁止新增 `middleware.ts`**——它在 Next.js 16 中已废弃。
 
 ### UI 组件约束
+
+- 所有 UI、导航、错误、空状态、通知模板与关键元数据必须同时维护 zh/en；英文课程/文章内容可以延后，但必须有显式回退，不能以缺英文内容为由交付单语 UI。
+- 小王子视觉按三级应用：公开首页/五星球首页使用场景级；内容、Notebook、身份/错误页使用内容级；Dashboard、Classroom、Whiteboard、Courseware Studio 使用工作区级。工作区保留纸色、星夜、字体、线宽和单个品牌锚点，表格、表单、实时控制与画布内禁止叙事装饰。
 
 - 页面、业务组件和功能模块中不得直接新增原生 `<input>`、`<select>`、`<table>` 等控件。
 - 应优先使用项目已有的 `components/ui/` 组件；缺失时先检查 shadcn/ui 是否提供对应组件。
@@ -68,11 +89,15 @@ pnpm dev        # 开发服务器 0.0.0.0:3130（局域网：http://192.168.5.21
 pnpm lint       # eslint . —— Next.js 16 的 next build 不再执行 lint
 pnpm typecheck  # tsc --noEmit
 pnpm build
+pnpm plan:audit # 00～25 状态头、索引与唯一阶段审计
+pnpm exec vitest run # 全量诊断；截至 2026-07-28 有 16 项历史合同失败，R1-14 必须归类并清零
 ```
 
 ## 测试账号
 
-自托管开发库上已存在一套固定的 5 个可复用测试账号（admin / teacher / sales / student / parent，均为 `@mathin.local`），角色/staff_role_members/学生档案/监护人关联均已预绑定。凭据与 ID 见 `.claude/test-accounts.local.md`（已 gitignore，不在仓库中，需要登录或模拟这些用户时读取该文件）。**所有人工/agent 测试复用这套账号，不要新建。** 如果任务确实需要新账号或不同账号（如测试未认领的绑定码流程、多子女家长、越权场景），先向用户确认。
+自托管开发库上已存在一套固定的 5 个可复用测试账号（admin / teacher / sales / student / parent，均为 `@mathin.local`），角色/staff_role_members/学生档案/监护人关联均已预绑定。凭据与 ID 见 `.claude/test-accounts.local.md`（已 gitignore，不在仓库中，需要登录或模拟这些用户时读取该文件）。**所有人工/agent 开发测试复用这套账号，不要新建。** 如果任务确实需要新账号或不同账号（如测试未认领的绑定码流程、多子女家长、越权场景），先向用户确认。
+
+这些账号只属于开发/RC 数据，不得进入正式 1.0 基线。正式发布按 doc 25 只保留唯一生产管理员并清除其余账号、班级、订单等运营数据；同时保留 E 系列 16:9/4:3 资源，并把每讲两条轨道重建为 `release_no=1`。除 R1-15 隔离演练或 R1-18 明确人工授权外，任何 Agent 都不得执行该破坏性清理。
 
 ## 架构
 
@@ -80,9 +105,11 @@ pnpm build
 
 每个路由都在 `src/app/[locale]/` 下，URL 始终带 `/zh` 或 `/en` 前缀（`src/i18n/routing.ts` 中 `localePrefix: "always"`）。翻译文案在 `messages/{zh,en}.json`。页面间跳转使用 `src/i18n/navigation.ts` 提供的 locale-aware 导航函数，而不是 `next/link`/`next/navigation` 原生 API。
 
+平台顶层身份角色以数据库为准：`student | parent | staff | admin`。教师、教务、教研、学辅、销售等是 staff 角色/权限，不得新增 `profiles.role=teacher` 这类并行顶层角色。
+
 ### 板块（Sections）
 
-内容板块是单一的动态路由 `src/app/[locale]/[section]/page.tsx`，白名单区分公开板块（`story`、`games`、`minds`、`terms`、`tools`）和受保护板块（`dashboard`、`classroom`、`notebook`、`whiteboard`），统一渲染共享的 `SectionPage` 组件。新增板块需要同时更新这两份白名单和两个语言的 messages 文件。
+Story、Games、Minds、Terms、Tools、Notebook 已有各自显式路由/功能入口，是 1.0 必须同步上线的公开产品模块；Terms 是关系中心。`[section]` 只保留当前代码明确承载的兼容/共享入口，旧文档中的“全部板块走单一动态路由”不再是目标。新增或调整板块时同时核对路由、Proxy/鉴权、导航、sitemap/SEO、内容 registry 和两种语言 messages。
 
 ### 鉴权（两层，缺一不可）
 

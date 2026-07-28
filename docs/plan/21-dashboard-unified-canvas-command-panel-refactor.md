@@ -1,9 +1,19 @@
 # Dashboard 统一内容坐标系与页面命令面板重构规划
 
+> **规划状态**：`complete`
+>
+> **当前用途**：UI-L1 token/画布/命令面板工程竣工记录。
+>
+> **权威边界**：自动审计已接入仓库；不作为当前阶段。
+>
+> **剩余项**：保持审计绿色，发布视觉证据见 doc 25。
+>
+> **最后核对**：2026-07-28。
+
 > **与 doc 22 的关系（2026-07-27 追记）**：本文出现的 Dashboard URL 有一部分已被 `22-dashboard-route-information-architecture-refactor.md` 改名或删除（`staff/roles`→`access-control`、`registration`→`registration-settings`、`operations`→`system-health`、`operations/testdata`→`data-maintenance`、`adapt-review`→`courseware/review`、`curriculum/lectures/[id]`→`courseware/lectures/[lectureId]`、`shared-assets`→`courseware-assets`；`/dashboard/work` 与 `/dashboard/videos` 已删除）。**旧地址一律 404，不留重定向**。本文其余结论不受影响；路由的当前真相以 `src/features/school/dashboard-routes.ts` 的路由合同为准。
 >
-> 状态：**2026-07-27 阶段 A–J 全部完成**，施工记录与实际偏差见文末「§30 施工记录」。  
-> 建议仓库路径：`docs/plan/21-dashboard-unified-canvas-command-panel-refactor.md`  
+> 状态：**2026-07-27 阶段 A–J 全部完成**，施工记录与实际偏差见文末「§30 施工记录」。
+> 建议仓库路径：`docs/plan/21-dashboard-unified-canvas-command-panel-refactor.md`
 > 适用范围：`src/app/[locale]/dashboard` 下的普通列表页、管理页、表单页和部分详情页  
 > 暂不适用：`ObjectWorkspace` 工作区页面、`TileWorkspace` 首页体系  
 > 规划性质：架构性 UI 重构、渐进迁移、逐页验收  

@@ -36,6 +36,8 @@ jobs:
         run: pnpm db:types:check
       - name: 双语文案键全等
         run: pnpm messages:check
+      - name: 规划状态、唯一阶段与 1.0 契约防漂移
+        run: pnpm plan:audit
       - name: Dashboard 内容坐标系防回退（doc21）
         run: pnpm doc21:audit
       - name: Dashboard 路由信息架构防回流（doc22）

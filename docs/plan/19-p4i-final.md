@@ -1,9 +1,19 @@
 # Mathin 整体规划 · 19 P4I Final：学校端工作台、课程研发与教学运营重构
 
+> **规划状态**：`complete`
+>
+> **当前用途**：P4I 学校端工作流、对象页和今日工作的权威历史设计。
+>
+> **权威边界**：P4I 已关闭；领域状态仍以领域表/RPC 为真相，work-items 1.0 决策见 doc 25 §5。
+>
+> **剩余项**：只做 R1 的人工协同、性能、审批和发布验收。
+>
+> **最后核对**：2026-07-28。
+
 > **与 doc 22 的关系（2026-07-27 追记）**：本文出现的 Dashboard URL 有一部分已被 `22-dashboard-route-information-architecture-refactor.md` 改名或删除（`staff/roles`→`access-control`、`registration`→`registration-settings`、`operations`→`system-health`、`operations/testdata`→`data-maintenance`、`adapt-review`→`courseware/review`、`curriculum/lectures/[id]`→`courseware/lectures/[lectureId]`、`shared-assets`→`courseware-assets`；`/dashboard/work` 与 `/dashboard/videos` 已删除）。**旧地址一律 404，不留重定向**。本文其余结论不受影响；路由的当前真相以 `src/features/school/dashboard-routes.ts` 的路由合同为准。
 >
-> **状态**：最终执行规范。  
-> **编号**：P4I / `docs/plan/19-p4i-final.md`。  
+> **状态**：最终执行规范。
+> **编号**：P4I / `docs/plan/19-p4i-final.md`。
 > **提出日期**：2026-07-20。  
 > **适用范围**：员工工作台、课程研发、课程产品、讲次课件、班级、课次、课表、备课、课后闭环及其与学辅/家庭摘要的数据接缝。  
 > **执行方式**：P4I-0～P4I-19 严格串行，一项一个提交。

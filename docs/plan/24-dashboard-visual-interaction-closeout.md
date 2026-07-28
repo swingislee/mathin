@@ -1,8 +1,18 @@
 # Dashboard 视觉与交互收口
 
-> 执行基线：远端 `main`，commit `3539ede7d69ab4f44ba353d62b3cc2fb6aaba36f`  
-> 建议仓库路径：`docs/plan/24-dashboard-visual-interaction-closeout.md`  
-> 任务性质：Dashboard 全局视觉与交互收尾  
+> **规划状态**：`complete`
+>
+> **当前用途**：UI-L4 视觉与交互工程收口记录。
+>
+> **权威边界**：工程任务完成不等于生产 M4；不得重开整轮 UI 改造。
+>
+> **剩余项**：人工视觉签收、warning token、残余业务卡和正式 E2E 在 doc 25 R1-12/14 关闭。
+>
+> **最后核对**：2026-07-28。
+
+> 执行基线：远端 `main`，commit `3539ede7d69ab4f44ba353d62b3cc2fb6aaba36f`
+> 建议仓库路径：`docs/plan/24-dashboard-visual-interaction-closeout.md`
+> 任务性质：Dashboard 全局视觉与交互收尾
 > 后续规划：财务模块业务信息架构、活动模块业务信息架构
 
 ---

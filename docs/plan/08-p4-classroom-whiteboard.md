@@ -1,5 +1,15 @@
 # Mathin 整体规划 · 08 P4 教室与画板执行计划
 
+> **规划状态**：`complete`
+>
+> **当前用途**：Classroom/Whiteboard P4 历史设计与竣工记录。
+>
+> **权威边界**：课堂当前实现和 P6 release 消费契约覆盖旧实现建议。
+>
+> **剩余项**：仅做 1.0 容量、权限、恢复和真实课堂 RC 验收。
+>
+> **最后核对**：2026-07-28。
+
 > 本文是 P4 的权威执行计划，地位等同 `07-p3-notebook.md` 之于 P3。前置阅读：`00-overview.md`、`02-pages.md` §3.6/§3.8、`03-data-and-tech.md` §3.4/§3.5/§4、`04-roadmap.md` P4。
 >
 > P4 不是从零开发：功能原型已在旧项目 **mathin2025**（`D:\code\2025\mathin2025`）中跑通过一轮，更早的 **mathin-4-4**（`D:\code\2024\mathin-4-4\next`）留下了 yjs-supabase 协同的失败经验。本文先盘点旧资产与踩过的坑，再给出技术结论与任务拆分。执行 agent 迁移时**只搬运设计与算法，不复制粘贴旧代码风格**——新代码必须符合本仓库规范（设计 token、next-intl、`requireUser`、RLS、shadcn 优先）。

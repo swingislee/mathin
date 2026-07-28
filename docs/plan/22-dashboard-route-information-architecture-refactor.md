@@ -1,8 +1,18 @@
 # Dashboard 路由信息架构与资源操作模型重构规划
 
-> 建议仓库路径：`docs/plan/22-dashboard-route-information-architecture-refactor.md`  
-> 审计基线：远端 `main`，commit `c66613f20aaf78c94f89d579a05a66a3bff4be7c`  
-> 适用范围：Dashboard 文件路由、导航、权限守卫、环境分派、内部链接、资源创建入口和历史兼容代码  
+> **规划状态**：`complete`
+>
+> **当前用途**：UI-L2 路由信息架构与资源操作模型竣工记录。
+>
+> **权威边界**：当前代码与 P4I 工作流优先于历史任务分解。
+>
+> **剩余项**：保持审计绿色，仅修发布阻断回归。
+>
+> **最后核对**：2026-07-28。
+
+> 建议仓库路径：`docs/plan/22-dashboard-route-information-architecture-refactor.md`
+> 审计基线：远端 `main`，commit `c66613f20aaf78c94f89d579a05a66a3bff4be7c`
+> 适用范围：Dashboard 文件路由、导航、权限守卫、环境分派、内部链接、资源创建入口和历史兼容代码
 > 规划性质：首次正式部署前的一次性 hard cut
 
 ---
