@@ -75,7 +75,7 @@ export function CouponsPanel({ coupons }: { coupons: CouponRow[] }) {
     <section className="rounded-2xl border border-line bg-card p-5">
       <div className="flex items-center justify-between">
         <h2 className="text-base font-medium text-ink">{t("coupons", { count: coupons.length })}</h2>
-        <button type="button" onClick={() => setCreateOpen(true)} className={cn(buttonVariants({ size: "sm" }))}>{t("createCoupon")}</button>
+        <button type="button" onClick={() => setCreateOpen(true)} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>{t("createCoupon")}</button>
       </div>
       {coupons.length === 0 ? (
         <p className="mt-4 text-sm text-muted">{t("noCoupons")}</p>

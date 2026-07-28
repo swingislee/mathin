@@ -180,7 +180,7 @@ export function RolesMatrixPanel({ roles, isAdmin }: { roles: StaffRoleInfo[]; i
               placeholder={t("newRolePlaceholder")}
               className={`min-w-0 flex-1 ${inputClass} py-1.5`}
             />
-            <button type="button" disabled={pending || !newName.trim()} onClick={create} className={cn(buttonVariants({ size: "sm" }))}>
+            <button type="button" disabled={pending || !newName.trim()} onClick={create} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>
               {t("newRole")}
             </button>
           </div>

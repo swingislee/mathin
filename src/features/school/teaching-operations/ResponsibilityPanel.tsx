@@ -92,7 +92,7 @@ export function ResponsibilityPanel({
         <SelectTrigger><SelectValue /></SelectTrigger>
         <SelectContent>{RESPONSIBILITIES.map((responsibility) => <SelectItem key={responsibility} value={responsibility}>{t(`responsibility_${responsibility}`)}</SelectItem>)}</SelectContent>
       </Select>
-      <Button size="sm" className="col-span-2" disabled={!selectedUserId || pending} onClick={assign}>
+      <Button size="sm" variant="secondary" className="col-span-2" disabled={!selectedUserId || pending} onClick={assign}>
         {pending && <LoaderCircle size={15} className="animate-spin" />}
         {t("responsibilityAdd")}
       </Button>

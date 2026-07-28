@@ -179,9 +179,9 @@ export function ClassBuildWizard({
     <ol className="grid gap-2 sm:grid-cols-4" aria-label={t("wizardSteps")}>
       {steps.map((label, index) => {
         const number = index + 1;
-        return <li key={label}><Button type="button" variant={step === number ? "primary" : "secondary"} onClick={() => {
+        return <li key={label}><Button type="button" variant="secondary" onClick={() => {
           if (number <= step || (number === 2 && step1Complete) || (number === 3 && step1Complete && step2Complete) || (number === 4 && step1Complete && step2Complete && step3Complete)) setStep(number);
-        }} aria-current={step === number ? "step" : undefined} className="w-full justify-start">{number}. {label}</Button></li>;
+        }} aria-current={step === number ? "step" : undefined} className={cn("w-full justify-start", step === number && "border-moon bg-moon/50 font-medium text-ink")}>{number}. {label}</Button></li>;
       })}
     </ol>
 
@@ -191,7 +191,7 @@ export function ClassBuildWizard({
       <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-base font-medium text-ink">{t("stepCourse")}</h2><p className="mt-1 text-sm text-muted">{t("courseStepHint")}</p></div>{purpose === "test" && <Badge variant="outline" className="border-violet-500/40 bg-violet-500/10 text-violet-800 dark:text-violet-300">{t("testBadge")}</Badge>}</div>
       <div className="mt-5">
         <Label className="text-xs font-normal text-muted">{t("purpose")}</Label>
-        <div className="mt-2 flex flex-wrap gap-2"><Button type="button" variant={purpose === "production" ? "primary" : "secondary"} onClick={() => setClassPurpose("production")}>{t("production")}</Button><Button type="button" variant={purpose === "test" ? "primary" : "secondary"} onClick={() => setClassPurpose("test")}>{t("test")}</Button></div>
+        <div className="mt-2 flex flex-wrap gap-2"><Button type="button" variant="secondary" aria-pressed={purpose === "production"} onClick={() => setClassPurpose("production")} className={cn(purpose === "production" && "border-moon bg-moon/50 font-medium text-ink")}>{t("production")}</Button><Button type="button" variant="secondary" aria-pressed={purpose === "test"} onClick={() => setClassPurpose("test")} className={cn(purpose === "test" && "border-moon bg-moon/50 font-medium text-ink")}>{t("test")}</Button></div>
       </div>
       <div className="mt-5"><Label className="text-xs font-normal text-muted">{t("course")}</Label><div className="mt-1"><CoursePicker purpose={purpose} selected={course} onSelect={updateCourse} onClear={clearCourse} /></div></div>
       <div className="mt-4 flex items-center gap-3 border-t border-line pt-4"><span className="text-sm text-muted">{t("or")}</span><Button type="button" variant={mode === "free" ? "secondary" : "ghost"} onClick={() => { clearCourse(); setMode("free"); }}>{t("modeFree")}</Button></div>
