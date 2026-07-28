@@ -25,7 +25,6 @@ export function DashboardCard({
   actions,
   children,
   className,
-  bodyClassName,
 }: {
   /** 省略时不渲染标题行——纯容器场景（如只放一张表格）也走同一套外观。 */
   title?: ReactNode;
@@ -34,7 +33,6 @@ export function DashboardCard({
   actions?: ReactNode;
   children?: ReactNode;
   className?: string;
-  bodyClassName?: string;
 }) {
   const hasHeader = title !== undefined || actions !== undefined;
   return (
@@ -48,9 +46,7 @@ export function DashboardCard({
           {actions !== undefined ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
         </div>
       ) : null}
-      {children !== undefined ? (
-        <div className={cn(hasHeader && "mt-4", "min-w-0", bodyClassName)}>{children}</div>
-      ) : null}
+      {children !== undefined ? <div className={cn("min-w-0", hasHeader && "mt-4")}>{children}</div> : null}
     </section>
   );
 }
