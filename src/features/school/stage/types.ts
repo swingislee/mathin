@@ -99,6 +99,16 @@ export interface WorkItemRow {
   pinnedAt?: string;
   acknowledgedAt?: string;
   watching: boolean;
+
+  /** R1-4 unified source/action contract across projections, durable items, and approvals. */
+  sourceKind: string;
+  sourceId: string;
+  actionKind?: string;
+  actionHref: string;
+  assigneeId?: string;
+  assigneeName?: string;
+  priority: WorkItemSeverity;
+  readState: "unseen" | "seen";
 }
 
 /** doc19 §6.4：桶的固定展示顺序,由高到低。 */

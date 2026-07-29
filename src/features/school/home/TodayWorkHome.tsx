@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { getTranslations } from "next-intl/server";
 import { ObjectBar, ObjectWorkspace } from "@/features/school/object-workspace";
 import { StatusStrip, type StatusStripItem } from "@/features/school/dashboard-page";
+import { WorkCoordinationPanel } from "@/features/school/WorkCoordinationPanel";
 import { WorkItemActions } from "@/features/school/stage/WorkItemActions";
 import { WorkItemGroup } from "@/features/school/stage/WorkItemGroup";
 import { WorkItemList } from "@/features/school/stage/WorkItemList";
@@ -9,6 +10,8 @@ import type { WorkItemRow } from "@/features/school/stage/types";
 import {
   formatWorkItemReason,
   listMyWorkItems,
+  listWorkCoordinationCandidates,
+  type WorkCoordinationCandidate,
   partitionByOwnership,
   resolveWorkItemHref,
   selectSpotlightGroups,
@@ -42,17 +45,27 @@ async function safeListMyWorkItems(): Promise<WorkItemRow[]> {
   }
 }
 
+async function safeListWorkCoordinationCandidates(): Promise<WorkCoordinationCandidate[]> {
+  try {
+    return await listWorkCoordinationCandidates();
+  } catch {
+    return [];
+  }
+}
+
 export async function TodayWorkHome({ locale, user, profile }: HomeProps) {
-  const [schoolT, t, tClasses, perms, items] = await Promise.all([
+  const [schoolT, t, tClasses, perms, items, candidates] = await Promise.all([
     getTranslations("school"),
     getTranslations("school.work"),
     getTranslations("school.classes"),
     getMyPerms(user.id),
     safeListMyWorkItems(),
+    safeListWorkCoordinationCandidates(),
   ]);
 
-  const hasManagementScope =
-    perms.has("class.manage") || perms.has("class.view.all") || perms.has("student.view.all") || perms.has("finance.refund.approve");
+  const canManageWorkItems = perms.has("work_item.manage");
+  const hasManagementScope = canManageWorkItems || perms.has("approval.manage")
+    || perms.has("class.manage") || perms.has("class.view.all") || perms.has("student.view.all") || perms.has("finance.refund.approve");
 
   const now = new Date();
   const spotlightGroups = selectSpotlightGroups(items);
@@ -159,6 +172,11 @@ export async function TodayWorkHome({ locale, user, profile }: HomeProps) {
             </WorkColumn>
           ) : null}
         </div>
+        <WorkCoordinationPanel
+          currentUserId={user.id}
+          candidates={candidates}
+          canManageWorkItems={canManageWorkItems}
+        />
       </div>
     </ObjectWorkspace>
   );

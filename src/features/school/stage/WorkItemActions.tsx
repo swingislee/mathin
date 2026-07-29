@@ -14,6 +14,7 @@ import {
 import { useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import type { WorkItemRow } from "./types";
+import { WorkItemDecisionActions } from "./WorkItemDecisionActions";
 
 const ICON_BUTTON = "rounded-lg border border-line bg-card p-1.5 text-muted transition hover:border-crater/50 hover:text-ink";
 
@@ -61,6 +62,7 @@ export function WorkItemActions({ item }: { item: WorkItemRow }) {
 
   return (
     <div className="flex items-center gap-1.5">
+      <WorkItemDecisionActions item={item} />
       {!isSeen ? (
         <button
           type="button"

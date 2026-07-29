@@ -46,6 +46,14 @@ interface WorkItemRpcRow {
   pinned_at: string | null;
   acknowledged_at: string | null;
   watching: boolean;
+  source_kind: string;
+  source_id: string;
+  action_kind: string | null;
+  action_href: string;
+  assignee_id: string | null;
+  assignee_name: string | null;
+  priority: WorkItemRow["priority"];
+  read_state: WorkItemRow["readState"];
 }
 
 /** 统一工作项列表（P4I-6 RPC）；RPC 内部已按 doc19 §6.4 顺序排序，这里只做 snake→camel 映射。 */
@@ -87,9 +95,30 @@ export const listMyWorkItems = cache(async function listMyWorkItems(): Promise<W
     pinnedAt: row.pinned_at ?? undefined,
     acknowledgedAt: row.acknowledged_at ?? undefined,
     watching: row.watching,
+    sourceKind: row.source_kind,
+    sourceId: row.source_id,
+    actionKind: row.action_kind ?? undefined,
+    actionHref: row.action_href,
+    assigneeId: row.assignee_id ?? undefined,
+    assigneeName: row.assignee_name ?? undefined,
+    priority: row.priority,
+    readState: row.read_state,
   }));
 });
 
+
+export interface WorkCoordinationCandidate {
+  id: string;
+  displayName: string;
+  canManageWorkItems: boolean;
+}
+
+export const listWorkCoordinationCandidates = cache(async function listWorkCoordinationCandidates(): Promise<WorkCoordinationCandidate[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("list_work_coordination_candidates");
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row) => ({ id: row.id, displayName: row.display_name, canManageWorkItems: row.can_manage_work_items }));
+});
 function jsonField(value: Json, key: string): Json | undefined {
   if (value && typeof value === "object" && !Array.isArray(value)) return value[key];
   return undefined;
@@ -110,6 +139,9 @@ function jsonNumber(value: Json, key: string): number | undefined {
  * 落到已有的过渡路由。P4I-9 起随各工作区上线逐个替换。
  */
 export function resolveWorkItemHref(item: WorkItemRow): string {
+  if (item.sourceKind !== "domain_projection" && item.actionHref.startsWith("/")) {
+    return item.actionHref;
+  }
   switch (item.primaryObjectType) {
     case "lecture": {
       const track = jsonString(item.routeParams, "track") ?? "native-16x9";
@@ -170,6 +202,13 @@ export function formatWorkItemReason(
   switch (item.kind) {
     case "review.fix":
       return t("reasonReviewFix", { round: jsonNumber(item.context, "round") ?? 1 });
+    case "work_item.manual":
+    case "work_item.cross_domain":
+    case "work_item.delegation":
+    case "work_item.sla":
+      return t("reasonDurable", { reason: jsonString(item.context, "createdReason") ?? item.primaryObjectName });
+    case "approval.decide":
+      return t("reasonApproval", { reason: jsonString(item.context, "requestReason") ?? item.primaryObjectName });
     case "review.approve":
       return t("reasonReviewApprove", { round: jsonNumber(item.context, "round") ?? 1 });
     case "review.publish":
