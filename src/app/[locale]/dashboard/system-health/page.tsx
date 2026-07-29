@@ -3,6 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { getRosterMismatchCount } from "@/features/school/dashboard";
 import { DashboardCardShell, DashboardEmptyCard, DashboardPage } from "@/features/school/dashboard-page";
 import { StatusStrip, type StatusStripItem } from "@/features/school/dashboard-page";
+import { PlatformOperationsPanel } from "@/features/school/PlatformOperationsPanel";
 import { getMyPerms, requirePerm } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
@@ -65,7 +66,10 @@ export default async function SystemHealthPage({ params }: { params: Promise<{ l
       title={t("title")}
       summary={statusItems.length > 0 ? <StatusStrip items={statusItems} /> : null}
     >
-      {rows.length === 0 ? (
+      <PlatformOperationsPanel canManage={perms.has("system.operations.manage")} />
+      <section className="grid gap-3">
+        <h2 className="text-base font-medium text-ink">{t("errorLogTitle")}</h2>
+        {rows.length === 0 ? (
         <DashboardEmptyCard>{t("empty")}</DashboardEmptyCard>
       ) : (
         <DashboardCardShell>
@@ -95,7 +99,8 @@ export default async function SystemHealthPage({ params }: { params: Promise<{ l
             </TableBody>
           </Table>
         </DashboardCardShell>
-      )}
+        )}
+      </section>
     </DashboardPage>
   );
 }

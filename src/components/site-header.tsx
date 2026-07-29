@@ -1,7 +1,7 @@
 import { getLocale, getTranslations } from "next-intl/server";
 import { GlobalFloatingControls } from "@/components/global-floating-controls";
 import { ChangeBell, type InboxWorkItem } from "@/features/events/ChangeBell";
-import { getInitialChangeFeed, type ChangeEvent } from "@/features/events/actions";
+import { getInitialChangeFeed, type ChangeEvent } from "@/features/events/notifications";
 import { formatWorkItemReason, listMyWorkItems, resolveWorkItemHref } from "@/features/school/work-items";
 import { Link } from "@/i18n/navigation";
 import { getProfile } from "@/lib/auth";

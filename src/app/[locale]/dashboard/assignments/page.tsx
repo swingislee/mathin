@@ -10,7 +10,7 @@ import {
 } from "@/features/school/dashboard-page";
 import { Link } from "@/i18n/navigation";
 import { requireDashboardEnvironment } from "@/lib/auth";
-import { VideoUploadPanel } from "@/features/school/VideoUploadPanel";
+import { ManagedVideoUploadPanel } from "@/features/school/ManagedVideoUploadPanel";
 
 async function safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
   try {
@@ -63,7 +63,7 @@ export default async function AssignmentsPage({ params }: { params: Promise<{ lo
           ))}
         </ul>
       )}
-      {isBound && <VideoUploadPanel />}
+      {isBound && <ManagedVideoUploadPanel />}
       </DashboardMainColumn>
       </DashboardContentGrid>
     </DashboardPage>

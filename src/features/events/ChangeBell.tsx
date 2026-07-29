@@ -10,7 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { WorkItemUrgencyBucket } from "@/features/school/stage/types";
 import { Link } from "@/i18n/navigation";
-import { markChangeFeedRead, type ChangeEvent } from "./actions";
+import { markChangeFeedRead, type ChangeEvent } from "./notifications";
 
 export interface InboxWorkItem {
   key: string;
