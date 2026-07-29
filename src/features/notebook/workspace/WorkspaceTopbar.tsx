@@ -3,7 +3,7 @@
 import { AlertCircle, Check, Copy, Globe2, LoaderCircle, Menu, Palette, PanelLeftClose, Unlink } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useState, useTransition } from "react";
-import { getPublishStatus, publishNote, unpublishNote } from "../actions";
+import { getPublicPublishingEnabled, getPublishStatus, publishNote, unpublishNote } from "../actions";
 import { SearchCommand } from "./SearchCommand";
 import type { WorkspaceTone } from "../types";
 import { useNotebookStore } from "../store";
@@ -18,13 +18,18 @@ export function WorkspaceTopbar({ activeId, tone, onToneChange, onMenu }: {
   const locale = useLocale();
   const note = useNotebookStore((state) => activeId ? state.notes[activeId] : undefined);
   const saveState = useNotebookStore((state) => activeId ? state.saveStates[activeId] : undefined);
+  const [publishEnabled, setPublishEnabled] = useState(false);
   const [postId, setPostId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [publishing, startPublishing] = useTransition();
   useEffect(() => {
     let cancelled = false;
     if (!activeId) return;
-    void getPublishStatus(activeId).then((id) => { if (!cancelled) setPostId(id); });
+    void Promise.all([getPublishStatus(activeId), getPublicPublishingEnabled()]).then(([id, enabled]) => {
+      if (cancelled) return;
+      setPostId(id);
+      setPublishEnabled(enabled);
+    });
     return () => { cancelled = true; };
   }, [activeId]);
   return (
@@ -49,9 +54,10 @@ export function WorkspaceTopbar({ activeId, tone, onToneChange, onMenu }: {
         <div className="flex items-center gap-1">
           <button
             type="button"
-            disabled={publishing || saveState === "saving"}
+            disabled={publishing || saveState === "saving" || !publishEnabled}
             onClick={() => startPublishing(async () => setPostId((await publishNote(activeId)).postId))}
             aria-label={postId ? t("updatePublish") : t("publish")}
+            title={!publishEnabled ? t("publishDisabled") : undefined}
             className="inline-flex items-center gap-1 rounded-full border border-[var(--ws-panel-ink)]/25 p-2 text-xs hover:bg-[var(--ws-sheet)]/10 disabled:opacity-50 sm:px-3 sm:py-1.5"
           ><Globe2 size={13} /><span className="hidden sm:inline">{postId ? t("updatePublish") : t("publish")}</span></button>
           {postId && <>

@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type { OrderStatus } from "./finance";
 import type { AttendanceStatus } from "./learning";
+import { isFeatureEnabled } from "./organization-settings";
 
 // ---------------------------------------------------------------------------
 // 顾客侧（学生/家长）首屏数据层（10-§7，P4B-8）。全部经白名单 RPC 或既有
@@ -32,7 +33,7 @@ export async function canManageGuardianScopes(studentId:string):Promise<boolean>
   if(error)throw new Error(error.message);return Boolean(data?.is_primary);
 }
 
-export type PaymentStatus = "overdue" | "ok" | "none";
+export type PaymentStatus = "overdue" | "ok" | "none" | "closed";
 
 export interface MyLearningSummary {
   studentId: string;
@@ -52,6 +53,7 @@ export interface MyLearningSummary {
 export async function getMyLearningSummary(): Promise<MyLearningSummary[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("get_my_learning_summary");
+  const financeEnabled = await isFeatureEnabled("finance.enabled").catch(() => false);
   if (error) throw new Error(error.message);
   return (
     (data ?? []) as Array<{
@@ -74,7 +76,7 @@ export async function getMyLearningSummary(): Promise<MyLearningSummary[]> {
     attendanceRate30d: row.attendance_rate_30d,
     recentSubmissions: row.recent_submissions ?? [],
     starTotal: row.star_total,
-    paymentStatus: row.payment_status,
+    paymentStatus: financeEnabled ? row.payment_status : "closed",
     weekSessionCount: row.week_session_count,
     pendingAssignmentCount: row.pending_assignment_count,
   }));

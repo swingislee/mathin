@@ -21,6 +21,7 @@ import {
 import { FilterBar, FilterBarReset, FilterBarSubmit, FilterSearchInput, FilterSelectTrigger } from "@/features/school/FilterBar";
 import { withReturnTo } from "@/features/school/object-workspace";
 import type { PermissionKey } from "@/features/school/permissions";
+import { isFeatureEnabled } from "@/features/school/organization-settings";
 import { RefundQueuePanel } from "@/features/school/RefundQueuePanel";
 import { ScholarshipsPanel } from "@/features/school/ScholarshipsPanel";
 import { StatusStrip, type StatusStripItem } from "@/features/school/dashboard-page";
@@ -61,6 +62,7 @@ export default async function FinancePage({
   // ——家长管钱，学生只关心课/作业/成绩（P4C-1 §4.4）。
   const { user, environment } = await requireDashboardEnvironment(locale, ["staff", "family"]);
   const perms = await getMyPerms(user.id);
+  if (!await isFeatureEnabled("finance.enabled")) redirect(`/${locale}/dashboard`);
   const hasFinancePerm = FINANCE_PERM_KEYS.some((key) => perms.has(key));
 
   if (environment === "family") {

@@ -220,6 +220,12 @@ export async function getPublishStatus(noteId: string): Promise<string | null> {
   return data?.id ?? null;
 }
 
+export async function getPublicPublishingEnabled(): Promise<boolean> {
+  const { supabase } = await authenticatedClient();
+  const { data, error } = await supabase.rpc("is_feature_enabled", { p_flag_key: "public_content.publish" });
+  return !error && data === true;
+}
+
 export async function moderatePostAction(postId: string, status: "approved" | "hidden", reason: string): Promise<void> {
   const { supabase, user } = await authenticatedClient();
   const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle<{ role: string }>();
@@ -230,6 +236,9 @@ export async function moderatePostAction(postId: string, status: "approved" | "h
 
 export async function publishNote(noteId: string): Promise<{ postId: string }> {
   const { supabase, user } = await authenticatedClient();
+  const { data: publishingEnabled, error: flagError } = await supabase.rpc("is_feature_enabled", { p_flag_key: "public_content.publish" });
+  if (flagError || publishingEnabled !== true) throw new Error("PUBLIC_PUBLISHING_DISABLED");
+
   const { data: note, error: noteError } = await supabase
     .from("notes")
     .select("id,title,document")
