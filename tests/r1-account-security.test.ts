@@ -39,6 +39,8 @@ describe("R1-3 account security contracts", () => {
     const actions = read("src/features/account/actions.ts");
     expect(security).toContain('signOut({ scope: "others" })');
     expect(security).toContain("challengeAndVerify");
+    expect(security).toContain("data.totp.qr_code.trimEnd()");
+    expect(security).toContain("factorData?.all");
     expect(security).toContain("isAdmin && verified.length <= 1");
     expect(actions).toContain("supportTargetSchema");
     expect(actions).toContain("updateUserById");

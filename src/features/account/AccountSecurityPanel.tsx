@@ -15,7 +15,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { AccountRequestKind, AccountSecuritySnapshot, ConsentKind } from "./account-security";
 import { recordAccountConsentAction, requestUserRightAction } from "./actions";
 
-type Factor = { id: string; friendly_name?: string; status: "verified" | "unverified"; created_at: string };
+type Factor = { id: string; friendly_name?: string; factor_type: "totp"; status: "verified" | "unverified"; created_at: string };
 
 export function AccountSecurityPanel({ snapshot, isAdmin }: { snapshot: AccountSecuritySnapshot; isAdmin: boolean }) {
   const locale = useLocale();
@@ -38,7 +38,7 @@ export function AccountSecurityPanel({ snapshot, isAdmin }: { snapshot: AccountS
       supabase.auth.mfa.listFactors(),
       supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
     ]);
-    setFactors(([...(factorData?.totp ?? [])] as Factor[]));
+    setFactors(((factorData?.all ?? []).filter((factor) => factor.factor_type === "totp")) as Factor[]);
     setAal(aalData?.currentLevel === "aal2" ? "aal2" : aalData?.currentLevel === "aal1" ? "aal1" : null);
   };
 
@@ -85,7 +85,9 @@ export function AccountSecurityPanel({ snapshot, isAdmin }: { snapshot: AccountS
     const { data, error } = await supabase.auth.mfa.enroll({ factorType: "totp", friendlyName: "Mathin" });
     setAuthBusy(false);
     if (error || !data) { toast.error(t("actionFailed")); return; }
-    setEnrollment({ id: data.id, qr: data.totp.qr_code, secret: data.totp.secret });
+    // GoTrue's inline SVG currently ends with a newline. Next.js 16 rejects an
+    // Image src ending in a control character, so normalize only that boundary.
+    setEnrollment({ id: data.id, qr: data.totp.qr_code.trimEnd(), secret: data.totp.secret });
     setTotpCode("");
     await refreshMfa();
   };
