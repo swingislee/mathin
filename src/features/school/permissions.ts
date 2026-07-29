@@ -48,6 +48,11 @@ export const PERMISSION_KEYS = [
   "staff.manage",
   "permission.configure",
   "registration.invite.manage",
+  "organization.settings.manage",
+  "system.operations.manage",
+  "account.support.manage",
+  "work_item.manage",
+  "approval.manage",
   "audit.view",
   "testdata.purge",
 ] as const;

@@ -23,7 +23,7 @@
 | 学校运营 | 学生、监护关系、员工权限、课程、班级、排课、考勤、作业、订单/支付/退款等迁移和 UI 已存在 | 管理员、教务、教师、学辅、教研/内容、学生、家长及启用时的财务旅程闭环 |
 | 内容发布 | Terms/Minds 文件内容、Notebook、课程研发和 release 机制分别存在 | Terms/Story/Minds/Notebook 共用草稿/审核/发布/撤回/版本合同；课堂只读取不可变课件 release |
 | E 系列 | 开发数据有 865 讲、16:9/4:3 双轨资源和 release 机制 | 保留 865×2 源资源；正式基线包含 1730 条 `release_no=1` |
-| 语言 | `messages/zh.json` 与 `messages/en.json` 各 2645 个 key；`content/en` 仅 README | UI 永久 zh/en；英文课程/文章可延期，缺失内容显示明确回退或“尚未发布”状态 |
+| 语言 | `messages/zh.json` 与 `messages/en.json` 各 3000 个 key；`content/en` 仅 README | UI 永久 zh/en；英文课程/文章可延期，缺失内容显示明确回退或“尚未发布”状态 |
 | 视觉 | `public/Main.png`、五星球 token/场景、`dashboard-observatory.png` 和公开场景插画已在仓库使用 | 小王子作为全站视觉基础；公开场景、内容/Notebook、运营工作区按三档强度验收 |
 
 Terms 使用稳定 ID 接收 Story、Minds、Games、Tools、Notebook 和课程的关联。修改 slug 或删除内容前检查反向引用、重定向、canonical 和 sitemap。
@@ -106,11 +106,11 @@ command_or_runbook, artifact_url_or_path, artifact_hash, failure_ticket
 
 | 领域 | 当前 | 1.0 | 已知缺口 | R1 |
 | --- | --- | --- | --- | --- |
-| 规划/变更治理 | M2 | M4 | 实际 owner、证据位置 | 0 |
-| 机构配置/Feature Flag | M1 | M4 | 规则版本、权限、生效/回滚 | 1 |
-| Jobs/通知/文件/集成 | M2 | M4 | durable job、dead-letter、外部渠道、文件策略、告警 | 2 |
-| 账户/Auth/同意/支持 | M2 | M4 | MFA、会话撤销、用户权利、生产初始化 | 3 |
-| Work-items/审批 | M2 | M4 | 人工项、跨域异常、SLA、p95、审批独立模型 | 4 |
+| 规划/变更治理 | M3 | M4 | R1-0 已冻结实际 owner 与证据位置；后续阶段持续维护索引并在 R1-18 汇总审批 | 0/18 |
+| 机构配置/Feature Flag | M3 | M4 | R1-1 已完成规则/开关版本、生效、权限、回滚、fail-closed 与开发环境验证；M4 仍需生产初始化、正式角色旅程和发布门 | 1/15/18 |
+| Jobs/通知/文件/集成 | M3 | M4 | R1-2 已完成 durable job/dead-letter/重放、第一方通知、TUS/文件策略、webhook 防重放与开发环境验证；M4 仍需生产 Worker、选中供应商（如有）、大文件并发/容量、告警恢复和 14 天 RC | 2/14/16/17 |
+| 账户/Auth/同意/支持 | M3 | M4 | R1-3 已完成版本化同意、MFA/会话、权利请求、员工邀请、封禁/恢复和审计支持；M4 仍需正式唯一管理员清单、生产 MFA/速率限制与 R1-14/16/17/18 环境证据 | 3/14/16/17/18 |
+| Work-items/审批 | M3 | M4 | R1-4 已完成混合投影、持久协同、独立审批、动态逾期、幂等/通知与开发规模 PERF-04；M4 仍需正式 E2E、生产候选负载和 RC 指标 | 4/14/17 |
 | 学生门户 | M1～M2 | M4 | 自助旅程、草稿隔离、权限 E2E | 5 |
 | 家庭门户 | M1～M2 | M4 | 多子女、关系撤销、成果/通知 | 5 |
 | 教学成果/报告 | M2 | M4 | 审核、撤回、修订、家庭可见、指标版本 | 6 |
@@ -140,7 +140,8 @@ command_or_runbook, artifact_url_or_path, artifact_hash, failure_ticket
 | 当前对象 | 已有行为 | 限制 |
 | --- | --- | --- |
 | 领域表/RPC | 保存考勤、订单、审核、作业等状态并执行副作用 | 继续作为业务真相 |
-| `list_my_work_items` | 投影 11 类行动项并统一计算紧急程度 | 缺生产规模 p95；不能表达无领域实体的人工任务 |
+| `list_my_domain_work_items` | 保留 11 类领域行动投影并统一计算紧急程度 | 只读投影；业务完成仍走领域 RPC |
+| `list_my_work_items` | 统一返回 11 类领域投影、持久协同项和审批请求/决定 | 已有开发规模 p95/p99；尚缺生产候选/RC 负载证据 |
 | `work_item_user_state` | 保存 seen/snooze/pin/acknowledge/watch | 只保存个人状态；不写业务完成态 |
 | `domain_events` + ChangeBell | 将领域事件和工作入口展示给用户 | 事件和工作项没有自动等价关系 |
 
@@ -151,6 +152,8 @@ command_or_runbook, artifact_url_or_path, artifact_hash, failure_ticket
 3. 持久 `work_items` 只保存人工协调、跨域异常、委派和独立 SLA；字段至少包含 `id/source_kind/source_id/idempotency_key/assignee_id/due_at/status/created_reason/closed_reason/created_at/closed_at`。
 
 审批保存独立 `approval_request` 与 decision/audit，再投影到列表。`overdue` 每次由 `due_at < now()` 计算。统一读取结果包含 `source_kind/source_id/action_kind/action_href/assignee/due_at/priority/read_state/can_act`。只有 p95 超过 500ms 且索引、谓词下推和查询改写仍不达标时，才设计物化投影。
+
+R1-4 以 `20260728000500_r1_work_items_approvals.sql` 落地上述三层模型、追加式分派审计、独立审批请求/不可变决定、授权 RPC 和通知去重。116 文件空库重放、开发库/一次性库权限与幂等断言、30,000 条持久项 PERF-04 采样及 zh/en 请求人/审批人浏览器旅程已通过，见 [`docs/evidence/r1/r1-4.md`](../evidence/r1/r1-4.md)。本证据为 M3，不证明真实生产或 14 天 RC 负载。
 
 ### 4.2 身份、门户与员工交接
 
@@ -164,9 +167,13 @@ command_or_runbook, artifact_url_or_path, artifact_hash, failure_ticket
 
 登录、登出、找回、改密、MFA、邮箱确认、封禁和速率限制提供 zh/en 结果。未绑定、待审核、多子女、内容撤回和财务关闭均有独立状态，不能显示为空列表。
 
+R1-3 以 `20260728000400_r1_account_security.sql` 落地账户锁、版本化且追加式同意、用户权利请求、邮箱绑定的一次性员工邀请和支持审计；共享 `requireUser` 对锁定、必要同意与管理员 AAL2 fail-closed。zh/en 账户安全/支持 UI、唯一生产管理员 manifest schema/校验器和双人恢复手册已通过 115 文件空库重放、开发库/一次性库 Auth-RLS-Storage 负向断言、14 项 R1 合同和开发浏览器验证，见 [`docs/evidence/r1/r1-3.md`](../evidence/r1/r1-3.md)。本证据不证明生产管理员已初始化或生产 MFA 达到 SEC-02。
+
 ### 4.3 机构、学生服务与教学运营
 
 - 设置中心保存机构/校区、时区、学期/教学周、节假日、教室、课时、排课、通知、财务和公开发布规则。规则变更记录版本、生效时间、操作者和旧值；历史考勤、订单和报告继续使用发生时口径。
+R1-1 以 `20260728000100_r1_organization_settings.sql` 与 `20260728000200_r1_public_publish_guard.sql` 落地单机构、多校区模型和显式默认：6 个规则域、5 个 Feature Flag、版本追加/回滚 RPC、直接表访问拒绝、`organization.settings.manage` 权限、公开发布 RLS 门禁及 zh/en 设置页。空库全迁移重放、越权/失败/回滚 SQL 断言和开发环境浏览器证据见 [`docs/evidence/r1/r1-1.md`](../evidence/r1/r1-1.md)。
+
 - 学生主链覆盖活动/线索、学生档案、监护关系、报名/分班、课表、考勤、请假/补课、作业、评价、续费/流失跟进。改班、换老师、撤课、合班和补录产生历史记录，不覆盖旧事实。
 - 教师课堂旅程包括进入课次、点名、读取已发布课件、课堂记录、布置作业和课后动作；教务/学辅从异常 work item 进入对应领域页处理。
 - 批量操作先显示目标数量和影响范围；每行校验，报告部分失败，使用幂等键。归档/撤销处理常规删除；物理删除使用专用权限和 runbook。
@@ -362,7 +369,15 @@ command_or_runbook, artifact_url_or_path, artifact_hash, failure_ticket
 
 ## 7. 决策、风险与延期
 
-### 7.1 已定事项与待填 manifest
+### 7.1 已定事项、实际责任人与待填 manifest
+
+当前是单人负责的仓库。所有责任角色映射到可审计的仓库所有者账号；自动化工具和 Agent 可以执行获授权的实现与验证，但不能成为 owner、审批人或生产高风险动作的替代确认。
+
+| 实际人员/账号 | 身份依据 | 映射的责任角色 | 边界 |
+| --- | --- | --- | --- |
+| `swingislee` | GitHub 仓库 `swingislee/mathin` 的所有者；当前 Git 提交身份 | 产品、设计、内容、学校产品、平台、技术、前端、数据库、课程研发、QA/发布、运维、安全、隐私、财务、教学运营负责人 | R1-15/R1-18 数据动作仍需该人员按阶段显式批准；要求非执行者复核的恢复/发布证据必须在对应阶段另登记实际复核人，未登记时 gate 不通过 |
+
+以下“责任角色”均通过上表解析到实际人员；角色名继续保留，用于描述专业职责和未来多人协作时的交接边界。
 
 | 事项 | 1.0 决定 | 责任角色 | 最迟完成 | 状态 |
 | --- | --- | --- | --- | --- |
@@ -370,7 +385,7 @@ command_or_runbook, artifact_url_or_path, artifact_hash, failure_ticket
 | 视觉 | 小王子为全站基础；场景/内容/工作区三级强度；Notebook=旅途笔记 | 产品+设计负责人 | 已定 | decided |
 | 语言 | UI 永久 zh/en；缺英文长内容时显式回退 | 产品+内容负责人 | 已定 | decided |
 | 财务 | 默认关闭；R1-8 全部门通过后才启用 | 产品+财务负责人 | R1-8 | decided default |
-| 通知 | 站内通知为硬门；未选定/未验收的邮件、SMS 渠道关闭 | 平台+运维负责人 | R1-2 | decided default |
+| 通知 | 站内通知为硬门；未选定/未验收的邮件、SMS、微信和 Webhook 渠道关闭 | 平台+运维负责人 | R1-2 | decided default |
 | 遥测 | 第一方最小事件；不采集非必要未成年人 PII；第三方 SDK 默认不接入 | 产品+隐私负责人 | R1-13 | decided default |
 | Work-items | 领域真相+领域投影+有限持久协同项；审批独立 | 学校产品+数据库负责人 | 已定 | decided |
 | E2E | Playwright；临时浏览脚本不进入发布证据 | QA/发布负责人 | R1-14 | decided |
@@ -378,9 +393,9 @@ command_or_runbook, artifact_url_or_path, artifact_hash, failure_ticket
 | 正式管理员 | 保留 1 个非测试 auth UUID | 产品所有者+安全负责人 | R1-15 | pending manifest |
 | 数据清理 | 删除测试身份和运营数据；保留 E 系列两轨源资源 | 数据库+课程研发负责人 | 已定 | decided |
 | release | 865×2=1730 条 `release_no=1`；legacy 指向 native | 课程研发+数据库负责人 | 已定 | decided |
-| 证据位置 | 小摘要/索引入库；大日志/截图保存 CI artifact 或受控对象存储并记录 hash | QA/发布负责人 | R1-0 | pending location |
+| 证据位置 | 小摘要/索引固定在 `docs/evidence/r1/`；大日志/截图保存 CI artifact 或受控对象存储并记录 SHA-256、保留期和访问角色 | QA/发布负责人 | R1-0 | decided |
 
-R1-1 开始前将责任角色映射到实际人员。改变 decided 项时，同一变更更新 doc 00、04、25、README 和受影响发布门。
+R1-0 已完成责任角色到 `swingislee` 的映射。增加人员或发生交接时先更新本节，并在证据索引记录生效日期；改变 decided 项时，同一变更更新 doc 00、04、25、README 和受影响发布门。
 
 ### 7.2 发布风险
 
@@ -388,9 +403,11 @@ R1-1 开始前将责任角色映射到实际人员。改变 decided 项时，同
 | --- | --- | --- | --- | --- |
 | Story 无完整章节 | 路由存在；无完整独立章节内容目录 | 对外 1.0 缺一模块 | 内容+产品 | R1-10 |
 | 英文正文缺失 | `content/en` 仅 README | `/en` 可能空白或混排 | 内容+前端 | R1-9～12 |
+| 平台运行内核尚无生产验收 | R1-2 已完成 Job/通知/文件/集成的开发库断言、空库重放、Worker 单次运行和 zh/en 浏览器验证（M3） | 开发合同不证明生产 Worker、选中供应商、大文件容量、告警恢复和最终成功率 | 平台+运维+QA | R1-14/16/17 |
 | 全站视觉强度合同刚固定 | doc 05 曾把工作区排除在星球主题外 | 公开站与后台品牌断裂或装饰侵入控件 | 设计+前端 | R1-12 |
-| 机构规则未配置化 | 当前能力来自多轮迁移和页面 | 生产规则依赖隐含 seed/硬编码 | 产品+数据库 | R1-1 |
-| Work-items 无生产 p95 | 11 路 union 已落地，无接近生产数据报告 | 今日工作随数据增长变慢 | 学校产品+数据库 | R1-4 |
+| 机构配置尚无生产验收 | R1-1 已完成显式默认、版本/RLS/回滚和开发环境验证（M3） | 开发合同不等于生产配置、正式角色旅程和发布初始化正确 | 产品+数据库+发布 | R1-15～18 |
+| 账户安全尚无生产验收 | R1-3 已完成账户/同意/支持的空库重放、负向断言与开发浏览器验证（M3） | 开发门控不证明正式唯一管理员、生产 MFA=100%、速率限制与恢复演练 | 安全+发布+QA | R1-14/16/17/18 |
+| Work-items 尚无生产候选/RC 负载证据 | R1-4 已在开发/一次性库完成 30,000 条持久项、300 名员工、40 次采样，p95≤18.87ms、p99≤20.71ms（M3） | 开发合成负载不能证明生产长尾、并发与 14 天稳定性 | 学校产品+数据库+QA | R1-14/17 |
 | Vitest 16 项失败 | 93/109 通过 | 过期测试遮蔽真实回归 | 技术+QA | R1-14 |
 | 无正式 Playwright 套件 | 只有临时浏览脚本 | 角色/浏览器回归不可重复 | QA/发布 | R1-14 |
 | 清理/release 未演练 | 只有规划与开发数据 | 正式数据或 4:3 资源损失 | 数据库+课程研发 | R1-15 |
@@ -406,7 +423,7 @@ R1-1 开始前将责任角色映射到实际人员。改变 decided 项时，同
 
 ## 8. 证据与文档维护
 
-R1 使用版本化证据索引（目标位置 `docs/evidence/r1/README.md`，最终位置在 R1-0 确定）。大日志、视频和截图存 CI artifact 或受控对象存储；索引保存 artifact URL、hash、保留期和访问角色。
+R1 使用固定的版本化证据索引 [`docs/evidence/r1/README.md`](../evidence/r1/README.md)。仓库保存无 secret/PII 的小摘要、结构化结果和外部 artifact 索引；大日志、视频和截图存 CI artifact 或受控对象存储，索引保存 artifact URL/path、SHA-256、保留期和访问角色。
 
 每次阶段关闭提交：
 

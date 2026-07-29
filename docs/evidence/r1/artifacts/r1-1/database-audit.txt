@@ -1,0 +1,22 @@
+R1-1 database audit
+date: 2026-07-28
+environment: disposable PostgreSQL database codex_r11_20260728 on the xiaomi self-hosted Supabase development host
+migration_head: 20260728000200_r1_public_publish_guard.sql
+
+PASS repository CI replay order from an empty public schema: platform bootstrap, ordered migrations, explicit course seed, explicit CI authorization fixtures, then R1 assertions
+PASS supabase/tests/r1_organization_settings_assertions.sql
+PASS one explicit default organization and one generated default campus
+PASS six organization rule defaults and five fail-closed feature defaults
+PASS authenticated direct table privileges revoked and RLS denial policies active
+PASS anonymous unknown/missing/future feature reads return false
+PASS teacher organization-management attempt is denied
+PASS admin organization permission is present while finance permissions remain unavailable when finance is disabled
+PASS public content publish rejects INSERT/UPDATE while disabled, permits publish after enable, and still permits unpublish after rollback
+PASS rule append creates v2 with old value/actor/effective range and rollback creates v3
+PASS finance enable creates a version and rollback restores disabled state
+PASS campus, room, holiday, and campus-scoped term writes succeed through authorized RPCs
+PASS assertion transaction rolled back
+PASS disposable database removed after verification
+
+Dataset manifest: R1 configuration defaults use generated UUIDs and are created before CI authorization fixtures; the migration contains no fixture UUID/email. Assertions use the explicit CI admin/teacher principals only to exercise authorization.
+Cleanup note: codex_r11_20260728 contained only disposable validation state and was dropped after the checks completed.

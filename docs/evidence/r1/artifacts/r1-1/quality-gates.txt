@@ -1,0 +1,23 @@
+R1-1 quality gates
+date: 2026-07-28
+migration_head: 20260728000200_r1_public_publish_guard.sql
+
+PASS pnpm messages:check — 2751 keys x 2 locales
+PASS pnpm typecheck
+PASS pnpm lint
+PASS pnpm db:types:check
+PASS pnpm doc22:audit — 28 dashboard routes, 28 contract entries, 507 files scanned
+PASS vitest run tests/r1-organization-settings.test.ts — 1 file, 4 tests
+PASS pnpm build — Next.js 16.2.11 production build, 298 static pages generated
+PASS Notebook public publishing is disabled in zh/en UI and rechecked by the server action while the database RLS policy remains authoritative.
+PASS pnpm plan:audit
+PASS git diff --check
+
+Browser environment verification:
+PASS /zh/dashboard/organization-settings rendered the organization profile and the campus/calendar, versioned business rules, and feature flag panels.
+PASS /en/dashboard/organization-settings rendered the English organization profile and navigation.
+PASS the default campus and current term rendered from the development database.
+PASS finance rendered as explicitly disabled; version history and rollback controls rendered.
+PASS browser console errors: 0.
+
+Known global baseline outside R1-1: the repository-wide Vitest suite still has 16 historical contract failures scheduled for R1-14; this stage added no new failure.

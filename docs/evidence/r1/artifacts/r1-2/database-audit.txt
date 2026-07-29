@@ -1,0 +1,26 @@
+R1-2 DATABASE AUDIT SUMMARY
+Date: 2026-07-28 (Asia/Shanghai)
+Result: PASSED
+Migration head: 20260728000300_r1_platform_runtime.sql
+
+Development environment
+- Applied the R1-2 migration to the Xiaomi self-hosted Supabase DEVELOPMENT database only.
+- Ran the R1-1 and R1-2 SQL assertions inside a transaction and rolled the transaction back.
+- Started the worker once with worker_id=dev-validation; heartbeat persisted and the worker exited cleanly.
+
+Disposable replay environment
+- Created the exact temporary PostgreSQL database codex_r12_20260728 from template0.
+- Replayed the CI bootstrap, migrations, course seed, and authorization fixtures in repository order: 114 files.
+- Ran r1_organization_settings_assertions.sql and r1_platform_runtime_assertions.sql: both passed.
+- Dropped codex_r12_20260728 and verified that the database no longer existed.
+
+Contracts exercised
+- Job enqueue idempotency, exclusive leases, expired-lease recovery, exponential retry, dead-letter, audited manual replay, transaction rollback, and effect-key deduplication.
+- First-party notification creation/read state and the absence of external delivery jobs while providers are unselected.
+- Webhook channel disablement, timestamp bounds, replay prevention, and circuit-breaker degradation.
+- TUS upload-session idempotency and validation; managed-file capture/linking, verification queueing, orphan cleanup, retention metadata, and RLS/direct-grant boundaries.
+
+Data handling
+- No production environment was accessed.
+- No secrets, tokens, credentials, email addresses, or user-generated content are included in this artifact.
+- Existing test authorization fixtures were used only after all migrations loaded and all assertion-side writes were rolled back.

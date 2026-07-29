@@ -38,6 +38,8 @@ jobs:
         run: pnpm messages:check
       - name: 规划状态、唯一阶段与 1.0 契约防漂移
         run: pnpm plan:audit
+      - name: R1 平台静态合同
+        run: pnpm r1:test
       - name: Dashboard 内容坐标系防回退（doc21）
         run: pnpm doc21:audit
       - name: Dashboard 路由信息架构防回流（doc22）
@@ -88,6 +90,8 @@ jobs:
         run: pnpm p6:db-audit
       - name: P4H 教学运营生命周期断言
         run: pnpm p4h:db-audit
+      - name: R1 机构、Jobs、通知、文件与集成断言
+        run: pnpm r1:db-audit
 
   supply-chain:
     name: 依赖安全公告

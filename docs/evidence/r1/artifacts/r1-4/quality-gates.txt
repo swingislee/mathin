@@ -1,0 +1,23 @@
+R1-4 QUALITY GATES SUMMARY
+Date: 2026-07-28 (Asia/Shanghai)
+Result: PASSED
+
+- pnpm messages:check: 3000 zh keys and 3000 en keys; parity passed.
+- pnpm typecheck: passed.
+- pnpm lint: passed.
+- pnpm db:types:check: generated database types matched the current migrations.
+- pnpm doc22:audit: 30 dashboard routes, 30 contract entries, 525 scanned files; passed.
+- pnpm r1:test: 4 files, 20 tests; passed.
+- pnpm p4e:audit: 25 controls and content UID audit passed.
+- pnpm build: Next.js 16.2.11 production build passed; 304 static pages generated.
+- Browser QA: zh/en work coordination UI rendered; a principal created and closed a durable item, requested an independent approval, and saw requester-safe actions.
+- Browser approval QA: a different reusable development user saw the direct decision actions, approved with a reason, and the item disappeared after refresh.
+- Browser source-boundary QA: projected domain items retained only their domain/user-state actions while the durable item alone exposed generic close.
+- Browser runtime QA: a type-only re-export from a use-server module was removed after action refresh exposed an erased runtime symbol; consent withdrawal/grant refresh was re-run and fresh console errors were 0.
+- git diff --check: passed (line-ending notices only).
+- pnpm plan:audit: passed after R1-4 evidence and roadmap registration.
+
+Scope note
+- These gates establish E2 plus development-database/browser E3 evidence for R1-4 (M3).
+- They do not establish production or 14-day RC latency, a formal Playwright suite, production alert behavior, recovery evidence, or M4 release approval.
+- The repository-wide Vitest baseline still has 16 historical contract failures assigned to R1-14; no claim of a clean full suite is made here.

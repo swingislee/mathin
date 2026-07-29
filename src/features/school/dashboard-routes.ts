@@ -338,7 +338,17 @@ export const DASHBOARD_ROUTES = {
   },
 
   // ── 组织管理 ────────────────────────────────────────────────────────────
+  organizationSettings: {
+    // R1-1：单机构/多校区、版本化规则和运行期开关共用一个设置中心。
+    href: "/dashboard/organization-settings",
+    kind: "singleton",
+    environments: STAFF_ONLY,
+    permission: "organization.settings.manage",
+    createSurface: "none",
+    nav: { labelKey: "organizationSettings", group: "org" },
+  },
   staff: {
+
     // 添加员工 = 精确邮箱查找已有账号 → 必要时提升为 staff → 分配岗位，
     // 不是创建全新账户，因此没有 /staff/new（§5.22）。
     href: "/dashboard/staff",
@@ -359,6 +369,23 @@ export const DASHBOARD_ROUTES = {
   },
 
   // ── 系统 ────────────────────────────────────────────────────────────────
+  accountSecurity: {
+    // 每个已登录用户都能管理自己的密码、MFA、会话、同意和权利请求。
+    href: "/dashboard/account-security",
+    kind: "singleton",
+    environments: ALL_ENVIRONMENTS,
+    createSurface: "none",
+    nav: { labelKey: "accountSecurity", group: "system" },
+  },
+  accountSupport: {
+    // 精确邮箱查找、恢复/封禁/会话撤销与用户权利请求处置共用审计入口。
+    href: "/dashboard/account-support",
+    kind: "tool",
+    environments: STAFF_ONLY,
+    permission: "account.support.manage",
+    createSurface: "none",
+    nav: { labelKey: "accountSupport", group: "system" },
+  },
   registrationSettings: {
     // 数据模型是一套组织级注册邀请设置，不是邀请码集合（§5.24）。
     href: "/dashboard/registration-settings",

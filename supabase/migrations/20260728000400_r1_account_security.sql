@@ -613,3 +613,4 @@ grant execute on function public.revoke_user_sessions(uuid,text) to authenticate
 grant execute on function public.get_my_account_security_snapshot() to authenticated;
 grant execute on function public.lookup_account_support_target(text) to authenticated;
 grant execute on function public.get_account_support_snapshot() to authenticated;
+

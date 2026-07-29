@@ -1,0 +1,36 @@
+R1-4 DATABASE AUDIT SUMMARY
+Date: 2026-07-28 (Asia/Shanghai)
+Result: PASSED
+Migration head: 20260728000500_r1_work_items_approvals.sql
+
+Development environment
+- Applied the R1-4 migration to the Xiaomi self-hosted Supabase DEVELOPMENT database only.
+- Ran the R1-1 through R1-4 SQL assertions in transactions; every assertion-side write rolled back.
+- R1-4 PERF-04 at 30,000 synthetic durable items distributed across 300 staff, 40 samples: p95 15.98 ms, p99 16.94 ms, max 17.37 ms.
+- Browser-created durable work item ended closed with a reason.
+- Browser-created approval ended decided/approved by a user different from the requester.
+- Approval request and decision each emitted exactly one domain event and one recipient notification.
+
+Disposable replay environment
+- Created the exact temporary PostgreSQL database codex_r14_20260728 from template0.
+- Replayed the CI bootstrap, all migrations, the course seed, and authorization fixtures in repository order: 116/116 files.
+- Ran r1_organization_settings_assertions.sql, r1_platform_runtime_assertions.sql, r1_account_security_assertions.sql, and r1_work_items_assertions.sql: 4/4 passed.
+- Final R1-4 PERF-04 at 30,000 synthetic durable items distributed across 300 staff, 40 samples: p95 18.87 ms, p99 20.71 ms, max 20.75 ms.
+- Dropped codex_r14_20260728 after the final audit and verified that the database no longer existed.
+
+Contracts exercised
+- Preserved all 11 domain projections and work_item_user_state while adding durable coordination items and independent approval requests/decisions.
+- Unified results expose source, action, assignee, due time, priority, read state, and can_act.
+- Overdue is derived from due_at; assignee/due partial indexes are asserted.
+- Domain projections cannot be closed through the generic durable-item RPC.
+- Direct table writes, unauthorized cross-assignment, self-approval, mutable assignment history, and mutable decision history are rejected.
+- Create, close, request, and decide idempotency keys replay safely and reject conflicting payloads.
+- Request/decision event and notification fan-out is deduplicated.
+
+Threshold
+- PERF-04 database p95 <= 500 ms and p99 <= 1,000 ms.
+- Authorization, RLS, idempotency, immutable audit, domain-action boundary, and notification assertions must all pass.
+
+Data handling
+- No production environment was accessed.
+- No production account, password, token, email address, user content, or PII is included in this artifact.

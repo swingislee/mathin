@@ -1,0 +1,27 @@
+R1-3 DATABASE AUDIT SUMMARY
+Date: 2026-07-28 (Asia/Shanghai)
+Result: PASSED
+Migration head: 20260728000400_r1_account_security.sql
+
+Development environment
+- Applied the R1-3 migration to the Xiaomi self-hosted Supabase DEVELOPMENT database only.
+- Ran the R1-1, R1-2, and R1-3 SQL assertions in transactions; each assertion rolled its writes back.
+- Existing duplicate historical rights requests were preserved. New duplicate open requests are serialized with an advisory transaction lock and rejected.
+
+Disposable replay environment
+- Created the exact temporary PostgreSQL database codex_r13_20260728 from template0.
+- Replayed the CI bootstrap, all migrations, the course seed, and authorization fixtures in repository order: 115/115 files.
+- Ran r1_organization_settings_assertions.sql, r1_platform_runtime_assertions.sql, and r1_account_security_assertions.sql: 3/3 passed.
+- Dropped codex_r13_20260728 and verified that the database no longer existed.
+
+Contracts exercised
+- Registration without both required consents rejected; exact policy versions appended and withdrawals fail closed.
+- Cross-user rights requests and private Storage objects invisible; direct consent, invitation, and support-audit writes rejected.
+- Email-bound one-time staff invitation; unauthorized staff/support access rejected.
+- Duplicate open rights request rejected; completion requires verified identity and evidence SHA-256.
+- Session revocation, account lock/restore, last-active-admin protection, immutable audits, and measurable administrator MFA posture.
+
+Data handling
+- No production environment was accessed.
+- No production account, password, token, MFA secret, email address, user content, or PII is included in this artifact.
+- Fixed development authorization fixtures were used; assertion-side writes were rolled back.

@@ -1019,3 +1019,4 @@ grant execute on function public.enqueue_file_cleanup_jobs(integer) to service_r
 grant execute on function public.mark_managed_file_deleted(uuid) to service_role;
 grant execute on function public.accept_webhook_receipt(text,text,timestamptz,text,text,jsonb) to service_role;
 grant execute on function public.record_integration_outcome(text,boolean,text) to service_role;
+

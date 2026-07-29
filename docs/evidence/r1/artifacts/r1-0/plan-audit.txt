@@ -1,0 +1,4 @@
+recorded_at=2026-07-28T19:03:00+08:00
+command=pnpm plan:audit
+exit_code=0
+output=规划治理审计通过：00～25 状态、唯一阶段、索引与 1.0 契约一致。

@@ -119,6 +119,7 @@ Story、Minds、Games、Tools 和 Notebook 使用稳定 ID 关联 Terms。课程
 ## 7. 当前发布纪律
 
 - 当前子阶段以 doc 04 顶部为准。
+- R1 实际责任映射由 doc 25 §7.1 维护；阶段证据统一从 `docs/evidence/r1/README.md` 索引，Agent 只能作为执行者，不能代替人员 owner 或批准人。
 - R1-15 在生产快照的隔离副本演练数据清理；R1-18 经人工批准后处理正式生产。其他阶段禁止执行账号、班级、订单或 release 删除。
 - 阶段关闭时更新实现证据、专题文档状态头、doc 04、doc 25 和 README，并运行 `pnpm plan:audit`。
 - 英文长内容、原生移动端和 `cacheComponents` 迁移可延后；安全、数据正确性、六个对外模块和全站小王子视觉验收不可延后。

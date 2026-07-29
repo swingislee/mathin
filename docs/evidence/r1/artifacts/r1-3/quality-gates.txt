@@ -1,0 +1,22 @@
+R1-3 QUALITY GATES SUMMARY
+Date: 2026-07-28 (Asia/Shanghai)
+Result: PASSED
+
+- pnpm messages:check: 2956 zh keys and 2956 en keys; parity passed.
+- pnpm typecheck: passed.
+- pnpm lint: passed.
+- pnpm db:types:check: generated database types matched the current migrations.
+- pnpm doc22:audit: 30 dashboard routes, 30 contract entries, 523 scanned files; passed.
+- pnpm r1:test: 3 files, 14 tests; passed.
+- pnpm r1:admin-manifest:check: one admin, MFA >= 1, and two distinct approvers; passed against the credential-free example.
+- pnpm p4e:audit: 25 controls and content UID audit passed.
+- pnpm build: Next.js 16.2.11 production build passed; 304 static pages generated.
+- Browser QA: zh/en account-security rendered password, other-session revocation, authenticator MFA, exact-version consent, and rights requests; final console errors=0; English dates followed the URL locale.
+- Browser authorization QA: an administrator without required consent/AAL2 was redirected from account support to account security; no real MFA factor was added to the reusable development account.
+- git diff --check: passed (line-ending notices only).
+- pnpm plan:audit: passed after R1-3 evidence and roadmap registration.
+
+Scope note
+- These gates establish E2 plus development-browser E3 evidence for R1-3 (M3).
+- They do not establish the SEC-02 production user count, production MFA coverage, provider rate limits, formal Playwright coverage, recovery exercise, or 14-day RC required for M4.
+- The repository-wide Vitest baseline still has 16 historical contract failures assigned to R1-14; no claim of a clean full suite is made here.

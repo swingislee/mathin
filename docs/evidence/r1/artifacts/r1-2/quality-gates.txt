@@ -1,0 +1,20 @@
+R1-2 QUALITY GATES SUMMARY
+Date: 2026-07-28 (Asia/Shanghai)
+Result: PASSED
+
+- pnpm messages:check: 2796 zh keys and 2796 en keys; parity passed.
+- pnpm typecheck: passed.
+- pnpm lint: passed.
+- pnpm db:types:check: generated database types matched the development schema.
+- pnpm doc22:audit: 28 dashboard routes, 28 contract entries, 515 scanned files; passed.
+- pnpm r1:test: 2 files, 9 tests; passed.
+- pnpm build: Next.js 16.2.11 production build passed; 298 static pages generated.
+- Browser QA: /zh/dashboard/system-health and /en/dashboard/system-health rendered the runtime metrics, disabled external channels, six file policies, and worker heartbeat; console errors=0.
+- Webhook fail-closed check: a structurally valid POST for an unselected provider returned HTTP 404 with CHANNEL_DISABLED.
+- git diff --check: passed (line-ending notices only).
+- pnpm plan:audit: passed after R1-2 evidence and roadmap registration.
+
+Scope note
+- These gates establish E2 plus development-browser E3 evidence for R1-2 (M3).
+- They do not establish production worker deployment, selected-provider delivery, formal Playwright coverage, large-file concurrency/capacity, recovery drills, or the 14-day RC required for M4.
+- The repository-wide Vitest baseline still has 16 historical contract failures assigned to R1-14; no claim of a clean full Vitest suite is made here.
