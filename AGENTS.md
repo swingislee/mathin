@@ -91,8 +91,15 @@ pnpm lint       # eslint . —— Next.js 16 的 next build 不再执行 lint
 pnpm typecheck  # tsc --noEmit
 pnpm build
 pnpm plan:audit # 00～25 状态头、索引与唯一阶段审计
+pnpm ci:checks  # 本地复现 CI checks job 的全部门禁（清单从 ci.yml 解析），推送前跑一次
 pnpm exec vitest run # 全量诊断；截至 2026-07-28 有 16 项历史合同失败，R1-14 必须归类并清零
 ```
+
+CI 的 checks job 不 fail-fast：所有静态门禁一次跑完再判定，`pnpm ci:checks` 行为一致，因此一次运行就能看到全部失败，不要只跑单个审计就推送。
+
+### 文件摘要（hash）纪律
+
+任何写入仓库或数据库并在其他环境复核的文件摘要（证据 `artifact_hash`、migration 账本 checksum、类型摘要），必须走 `scripts/lib/text-hash.mjs` 的 `textFileSha256` / `normalizeNewlines`，不得直接对 `readFileSync` 的原始字节取 hash。`.gitattributes` 以 `* text=auto eol=lf` 入库，Windows 工作区 checkout 出来可能是 CRLF；字节级摘要会让同一份内容在开发机与 CI clone 上不同，门禁只会在推送后才炸。
 
 ## 测试账号
 

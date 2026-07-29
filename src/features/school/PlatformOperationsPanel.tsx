@@ -91,7 +91,7 @@ export async function PlatformOperationsPanel({ canManage }: { canManage: boolea
       <div className="grid gap-5 xl:grid-cols-2">
         <DashboardCardShell>
           <div className="border-b border-line px-5 py-4">
-            <h2 className="font-medium text-ink">{t("jobRuntimeTitle")}</h2>
+            <h2 className="text-base font-medium text-ink">{t("jobRuntimeTitle")}</h2>
             <p className="mt-1 text-sm text-muted">{t("jobRuntimeIntro", { succeeded: snapshot.jobs.succeeded24h })}</p>
           </div>
           {snapshot.jobs.deadLetters.length === 0 ? (
@@ -116,7 +116,7 @@ export async function PlatformOperationsPanel({ canManage }: { canManage: boolea
 
         <DashboardCardShell>
           <div className="border-b border-line px-5 py-4">
-            <h2 className="font-medium text-ink">{t("integrationsTitle")}</h2>
+            <h2 className="text-base font-medium text-ink">{t("integrationsTitle")}</h2>
             <p className="mt-1 text-sm text-muted">{t("integrationsIntro")}</p>
           </div>
           <ul className="divide-y divide-line">{snapshot.integrations.map((integration) => (
@@ -130,7 +130,7 @@ export async function PlatformOperationsPanel({ canManage }: { canManage: boolea
 
       <DashboardCardShell>
         <div className="border-b border-line px-5 py-4">
-          <h2 className="font-medium text-ink">{t("fileGovernanceTitle")}</h2>
+          <h2 className="text-base font-medium text-ink">{t("fileGovernanceTitle")}</h2>
           <p className="mt-1 text-sm text-muted">{t("fileGovernanceIntro", { uploads: snapshot.files.activeUploads, orphans: snapshot.files.orphansDue, rejected: snapshot.files.rejected })}</p>
         </div>
         <Table>
@@ -154,7 +154,7 @@ export async function PlatformOperationsPanel({ canManage }: { canManage: boolea
         <DashboardEmptyCard>{t("noWorkers")}</DashboardEmptyCard>
       ) : (
         <DashboardCardShell>
-          <div className="border-b border-line px-5 py-4"><h2 className="font-medium text-ink">{t("workersTitle")}</h2></div>
+          <div className="border-b border-line px-5 py-4"><h2 className="text-base font-medium text-ink">{t("workersTitle")}</h2></div>
           <ul className="divide-y divide-line">{snapshot.workers.map((worker) => (
             <li key={worker.workerId} className="flex flex-wrap items-center gap-3 px-5 py-3 text-sm">
               <span className="font-mono text-xs">{worker.workerId}</span><Badge variant="outline">{worker.version}</Badge>

@@ -26,31 +26,48 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      - id: install
+        run: pnpm install --frozen-lockfile
+      # 以下步骤彼此独立（都是源码/文档静态扫描），只要装包成功就全部跑完再判定成败：
+      # fail-fast 会让第一个失败的门禁掩盖其余问题，把「修一个、推一次、再红一次」变成常态。
       - run: pnpm lint
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
       - run: pnpm typecheck
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
       - run: pnpm build
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
       - name: 静态安全/内容断言（P4E 资产）
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm p4e:audit
       - name: 数据库类型与 migrations 同步
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm db:types:check
       - name: 双语文案键全等
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm messages:check
       - name: 规划状态、唯一阶段与 1.0 契约防漂移
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm plan:audit
       - name: R1 平台静态合同
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm r1:test
       - name: Dashboard 内容坐标系防回退（doc21）
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm doc21:audit
       - name: Dashboard 路由信息架构防回流（doc22）
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm doc22:audit
       - name: 对象详情页与专业工作区骨架防回流（doc23）
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm doc23:audit
       - name: Dashboard 视觉与交互收口防回流（doc24）
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm doc24:audit
       - name: 使用环境数据边界（P4I-1）
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm p4i1:boundary-audit
       - name: 离线补发回放测试
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm p4e:offline-test
 
   database:

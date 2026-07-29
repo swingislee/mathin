@@ -5,9 +5,9 @@
  * doc 04 owns the sole current stage, and the active truth sources stay linked.
  */
 
-import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
+import { textFileSha256 } from "./lib/text-hash.mjs";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const PLAN_DIR = path.join(ROOT, "docs", "plan");
@@ -127,74 +127,64 @@ if (production.includes("pending location") || production.includes("最终位置
   fail("doc 25 的 R1 证据位置仍未冻结");
 }
 
-const evidenceIndexPath = path.join(ROOT, "docs", "evidence", "r1", "README.md");
-const r10EvidencePath = path.join(ROOT, "docs", "evidence", "r1", "r1-0.md");
-const r10ArtifactPath = path.join(ROOT, "docs", "evidence", "r1", "artifacts", "r1-0", "plan-audit.txt");
-const r11EvidencePath = path.join(ROOT, "docs", "evidence", "r1", "r1-1.md");
-const r11DatabaseArtifactPath = path.join(ROOT, "docs", "evidence", "r1", "artifacts", "r1-1", "database-audit.txt");
-const r11QualityArtifactPath = path.join(ROOT, "docs", "evidence", "r1", "artifacts", "r1-1", "quality-gates.txt");
-const r14EvidencePath = path.join(ROOT, "docs", "evidence", "r1", "r1-4.md");
-const r14DatabaseArtifactPath = path.join(ROOT, "docs", "evidence", "r1", "artifacts", "r1-4", "database-audit.txt");
-const r14QualityArtifactPath = path.join(ROOT, "docs", "evidence", "r1", "artifacts", "r1-4", "quality-gates.txt");
-const r12EvidencePath = path.join(ROOT, "docs", "evidence", "r1", "r1-2.md");
-const r12DatabaseArtifactPath = path.join(ROOT, "docs", "evidence", "r1", "artifacts", "r1-2", "database-audit.txt");
-const r12QualityArtifactPath = path.join(ROOT, "docs", "evidence", "r1", "artifacts", "r1-2", "quality-gates.txt");
-const r13EvidencePath = path.join(ROOT, "docs", "evidence", "r1", "r1-3.md");
-const r13DatabaseArtifactPath = path.join(ROOT, "docs", "evidence", "r1", "artifacts", "r1-3", "database-audit.txt");
-const r13QualityArtifactPath = path.join(ROOT, "docs", "evidence", "r1", "artifacts", "r1-3", "quality-gates.txt");
-for (const evidencePath of [evidenceIndexPath, r10EvidencePath, r10ArtifactPath, r11EvidencePath, r11DatabaseArtifactPath, r11QualityArtifactPath, r12EvidencePath, r12DatabaseArtifactPath, r12QualityArtifactPath, r13EvidencePath, r13DatabaseArtifactPath, r13QualityArtifactPath, r14EvidencePath, r14DatabaseArtifactPath, r14QualityArtifactPath]) {
-  if (!existsSync(evidencePath)) fail(`缺少 R1 证据文件：${path.relative(ROOT, evidencePath)}`);
+const EVIDENCE_DIR = path.join(ROOT, "docs", "evidence", "r1");
+const evidenceIndexPath = path.join(EVIDENCE_DIR, "README.md");
+if (!existsSync(evidenceIndexPath)) fail("缺少 R1 证据索引：docs/evidence/r1/README.md");
+
+// 阶段推进到 R1-N 即代表 R1-0～R1-(N-1) 已关闭，其证据不得缺失或被删除。
+// 由 doc 04 推导而非在此硬编码：关闭新阶段时无需再改本脚本。
+const currentStageNumber = Number(currentStage?.match(/^R1-(\d+)\b/)?.[1] ?? NaN);
+if (!Number.isInteger(currentStageNumber)) {
+  fail(`无法从当前施工阶段解析 R1 序号：${currentStage ?? "无"}`);
 }
-if (existsSync(r10EvidencePath) && existsSync(r10ArtifactPath)) {
-  const r10Evidence = readFileSync(r10EvidencePath, "utf8");
-  const actualHash = createHash("sha256").update(readFileSync(r10ArtifactPath)).digest("hex").toUpperCase();
-  if (!r10Evidence.includes(actualHash)) {
-    fail("R1-0 证据记录的 artifact_hash 与 plan-audit.txt 不一致");
+const closedStages = Number.isInteger(currentStageNumber)
+  ? Array.from({ length: currentStageNumber }, (_, index) => index)
+  : [];
+
+// 表格里 `artifact_hash` 紧跟在 `artifact_url_or_path` 之后，逐对匹配即可把 hash 绑到具体
+// artifact 上；整篇 includes(hash) 无法发现两个 artifact 的 hash 互换或张冠李戴。
+const ARTIFACT_PAIR =
+  /^\|\s*`artifact_url_or_path`\s*\|\s*`([^`]+)`\s*\|[^\n]*\n\|\s*`artifact_hash`\s*\|[^`\n]*`([0-9A-Fa-f]{64})`\s*\|/gm;
+
+const referencedArtifacts = new Set();
+for (const stage of closedStages) {
+  const relativeEvidence = `docs/evidence/r1/r1-${stage}.md`;
+  const evidencePath = path.join(EVIDENCE_DIR, `r1-${stage}.md`);
+  if (!existsSync(evidencePath)) {
+    fail(`缺少已关闭阶段 R1-${stage} 的证据：${relativeEvidence}`);
+    continue;
   }
-}
-if (existsSync(r11EvidencePath)) {
-  const r11Evidence = readFileSync(r11EvidencePath, "utf8");
-  for (const artifactPath of [r11DatabaseArtifactPath, r11QualityArtifactPath]) {
-    if (!existsSync(artifactPath)) continue;
-    const actualHash = createHash("sha256").update(readFileSync(artifactPath)).digest("hex").toUpperCase();
-    if (!r11Evidence.includes(actualHash)) {
-      fail(`R1-1 证据记录的 artifact_hash 与 ${path.basename(artifactPath)} 不一致`);
+  const pairs = [...readFileSync(evidencePath, "utf8").matchAll(ARTIFACT_PAIR)];
+  if (pairs.length === 0) {
+    fail(`${relativeEvidence} 缺少可校验的 artifact_url_or_path/artifact_hash 配对`);
+  }
+  for (const [, artifactRelativePath, recordedHash] of pairs) {
+    referencedArtifacts.add(artifactRelativePath.replaceAll("\\", "/"));
+    const artifactPath = path.join(ROOT, artifactRelativePath);
+    if (!existsSync(artifactPath)) {
+      fail(`${relativeEvidence} 引用的 artifact 不存在：${artifactRelativePath}`);
+      continue;
+    }
+    // 归一化换行后取 hash（见 lib/text-hash.mjs）：证据摘要必须只依赖内容，
+    // 否则 CRLF 工作区记录的值在 CI 的 LF clone 上必然对不上。
+    const actualHash = textFileSha256(artifactPath).toUpperCase();
+    if (actualHash !== recordedHash.toUpperCase()) {
+      fail(`${relativeEvidence} 记录的 artifact_hash 与 ${path.basename(artifactRelativePath)} 不一致：记录 ${recordedHash}，实际 ${actualHash}`);
     }
   }
 }
 
-if (existsSync(r12EvidencePath)) {
-  const r12Evidence = readFileSync(r12EvidencePath, "utf8");
-  for (const artifactPath of [r12DatabaseArtifactPath, r12QualityArtifactPath]) {
-    if (!existsSync(artifactPath)) continue;
-    const actualHash = createHash("sha256").update(readFileSync(artifactPath)).digest("hex").toUpperCase();
-    if (!r12Evidence.includes(actualHash)) {
-      fail(`R1-2 证据记录的 artifact_hash 与 ${path.basename(artifactPath)} 不一致`);
+// 反向：artifacts 目录下的每个文件都必须被某份证据登记 hash，杜绝未纳入合同的孤儿证据。
+const artifactsDir = path.join(EVIDENCE_DIR, "artifacts");
+if (existsSync(artifactsDir)) {
+  for (const entry of readdirSync(artifactsDir, { recursive: true, withFileTypes: true })) {
+    if (!entry.isFile()) continue;
+    const relativePath = path.relative(ROOT, path.join(entry.parentPath, entry.name)).replaceAll("\\", "/");
+    if (!referencedArtifacts.has(relativePath)) {
+      fail(`artifact 未被任何 R1 证据登记 hash：${relativePath}`);
     }
   }
 }
-
-if (existsSync(r13EvidencePath)) {
-  const r13Evidence = readFileSync(r13EvidencePath, "utf8");
-  for (const artifactPath of [r13DatabaseArtifactPath, r13QualityArtifactPath]) {
-    if (!existsSync(artifactPath)) continue;
-    const actualHash = createHash("sha256").update(readFileSync(artifactPath)).digest("hex").toUpperCase();
-    if (!r13Evidence.includes(actualHash)) {
-      fail(`R1-3 证据记录的 artifact_hash 与 ${path.basename(artifactPath)} 不一致`);
-    }
-  }
-}
-if (existsSync(r14EvidencePath)) {
-  const r14Evidence = readFileSync(r14EvidencePath, "utf8");
-  for (const artifactPath of [r14DatabaseArtifactPath, r14QualityArtifactPath]) {
-    if (!existsSync(artifactPath)) continue;
-    const actualHash = createHash("sha256").update(readFileSync(artifactPath)).digest("hex").toUpperCase();
-    if (!r14Evidence.includes(actualHash)) {
-      fail(`R1-4 证据记录的 artifact_hash 与 ${path.basename(artifactPath)} 不一致`);
-    }
-  }
-}
-
 
 if (existsSync(evidenceIndexPath)) {
   const evidenceIndex = readFileSync(evidenceIndexPath, "utf8");

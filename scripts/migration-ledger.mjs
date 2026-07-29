@@ -1,11 +1,12 @@
-import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { textFileSha256 } from "./lib/text-hash.mjs";
 
 const dir = path.join(process.cwd(), "supabase", "migrations");
 const rows = [];
 for (const name of fs.readdirSync(dir).filter((file) => file.endsWith(".sql") && !file.includes("migration_ledger_snapshot")).sort()) {
-  const checksum = crypto.createHash("sha256").update(fs.readFileSync(path.join(dir, name))).digest("hex");
+  // 归一化换行后再取 checksum：否则在 CRLF 工作区生成的账本会与 CI/其他环境永久不符。
+  const checksum = textFileSha256(path.join(dir, name));
   const version = name.replace(/\.sql$/, "").replaceAll("'", "''");
   rows.push({ version, checksum });
 }
