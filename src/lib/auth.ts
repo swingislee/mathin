@@ -14,10 +14,27 @@ export interface Profile {
   lastActiveEnvironment: UserEnvironment;
 }
 
-export async function requireUser(locale: string) {
+export async function requireUser(locale: string, options: { allowAccountRecovery?: boolean } = {}) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(`/${locale}/login`);
+  const [{ data: account }, { data: consentReady }] = await Promise.all([
+    supabase.from("profiles").select("role,account_status").eq("id", user.id).maybeSingle<{ role: ProfileRole; account_status: "active" | "locked" }>(),
+    supabase.rpc("has_current_required_consents", { p_user_id: user.id }),
+  ]);
+  if (account?.account_status === "locked") {
+    await supabase.auth.signOut({ scope: "local" });
+    redirect(`/${locale}/login?error=locked`);
+  }
+  if (!options.allowAccountRecovery && consentReady === false) {
+    redirect(`/${locale}/dashboard/account-security?required=consent`);
+  }
+  if (!options.allowAccountRecovery && account?.role === "admin") {
+    const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (assurance?.currentLevel !== "aal2") {
+      redirect(`/${locale}/dashboard/account-security?required=mfa`);
+    }
+  }
   return user;
 }
 
@@ -47,22 +64,16 @@ export async function getProfile(userId: string): Promise<Profile | null> {
 export const getMyPerms = cache(async (userId: string): Promise<Set<PermissionKey>> => {
   const profile = await getProfile(userId);
   if (!profile) return new Set();
-  if (profile.role === "admin") return new Set(PERMISSION_KEYS);
-  if (profile.role !== "staff") return new Set();
+  if (profile.role !== "staff" && profile.role !== "admin") return new Set();
 
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("staff_role_members")
-    .select("staff_roles(role_permissions(perm_key))")
-    .eq("user_id", userId)
-    .returns<Array<{ staff_roles: { role_permissions: Array<{ perm_key: string }> } | null }>>();
+  const { data, error } = await supabase.rpc("get_my_permission_keys");
+  if (error) throw new Error(error.message);
 
   const perms = new Set<PermissionKey>();
   for (const row of data ?? []) {
-    for (const permission of row.staff_roles?.role_permissions ?? []) {
-      if ((PERMISSION_KEYS as readonly string[]).includes(permission.perm_key)) {
-        perms.add(permission.perm_key as PermissionKey);
-      }
+    if ((PERMISSION_KEYS as readonly string[]).includes(row.perm_key)) {
+      perms.add(row.perm_key as PermissionKey);
     }
   }
   return perms;

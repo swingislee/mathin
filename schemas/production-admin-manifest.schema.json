@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mathin.local/schemas/production-admin-manifest.schema.json",
+  "title": "Mathin production administrator manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "environment", "projectId", "databaseId", "admin", "generatedAt", "approvedBy"],
+  "properties": {
+    "version": { "const": 1 },
+    "environment": { "const": "production" },
+    "projectId": { "type": "string", "minLength": 3, "maxLength": 100 },
+    "databaseId": { "type": "string", "minLength": 3, "maxLength": 100 },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "approvedBy": { "type": "array", "minItems": 2, "uniqueItems": true, "items": { "type": "string", "minLength": 2, "maxLength": 100 } },
+    "admin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authUserId", "profileId", "email", "role", "staffPermissions", "mfa", "recovery"],
+      "properties": {
+        "authUserId": { "type": "string", "format": "uuid" },
+        "profileId": { "type": "string", "format": "uuid" },
+        "email": { "type": "string", "format": "email", "maxLength": 254 },
+        "role": { "const": "admin" },
+        "staffPermissions": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1, "maxLength": 100 } },
+        "mfa": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["required", "verifiedFactorCount", "verifiedAt"],
+          "properties": {
+            "required": { "const": true },
+            "verifiedFactorCount": { "type": "integer", "minimum": 1 },
+            "verifiedAt": { "type": "string", "format": "date-time" }
+          }
+        },
+        "recovery": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["primaryContact", "secondaryContact", "offlineCredentialEnvelopeId", "lastTestedAt"],
+          "properties": {
+            "primaryContact": { "type": "string", "minLength": 2, "maxLength": 100 },
+            "secondaryContact": { "type": "string", "minLength": 2, "maxLength": 100 },
+            "offlineCredentialEnvelopeId": { "type": "string", "minLength": 3, "maxLength": 100 },
+            "lastTestedAt": { "type": "string", "format": "date-time" }
+          }
+        }
+      }
+    }
+  }
+}

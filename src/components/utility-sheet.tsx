@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, GraduationCap, Home as HomeIcon, LayoutDashboard, Lightbulb, LogIn, LogOut, type LucideIcon, Menu, NotebookPen, PenLine, Presentation, Puzzle, Sprout, Wrench } from "lucide-react";
+import { BookOpen, GraduationCap, Home as HomeIcon, LayoutDashboard, Lightbulb, LogIn, LogOut, type LucideIcon, Menu, NotebookPen, PenLine, Presentation, Puzzle, ShieldCheck, Sprout, Wrench } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { logout } from "@/app/[locale]/(auth)/actions";
 import { Input } from "@/components/ui/input";
@@ -139,13 +139,21 @@ export function UtilitySheet({
             <ThemeToggle initialTheme={initialTheme} />
           </div>
           {isLoggedIn ? (
-            <form action={logout}>
-              <Input type="hidden" name="locale" value={locale} />
-              <button type="submit" className="drawer-account-action">
-                <LogOut size={18} strokeWidth={1.75} />
-                <span>{common("logout")}</span>
-              </button>
-            </form>
+            <div className="space-y-1">
+              <SheetClose asChild>
+                <Link href="/dashboard/account-security" className="drawer-account-action">
+                  <ShieldCheck size={18} strokeWidth={1.75} />
+                  <span>{nav("accountSecurity")}</span>
+                </Link>
+              </SheetClose>
+              <form action={logout}>
+                <Input type="hidden" name="locale" value={locale} />
+                <button type="submit" className="drawer-account-action">
+                  <LogOut size={18} strokeWidth={1.75} />
+                  <span>{common("logout")}</span>
+                </button>
+              </form>
+            </div>
           ) : null}
         </div>
       </SheetContent>

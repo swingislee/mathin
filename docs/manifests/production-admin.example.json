@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "environment": "production",
+  "projectId": "example-production-project",
+  "databaseId": "example-production-database",
+  "admin": {
+    "authUserId": "00000000-0000-4000-8000-000000000001",
+    "profileId": "00000000-0000-4000-8000-000000000001",
+    "email": "admin@example.invalid",
+    "role": "admin",
+    "staffPermissions": [],
+    "mfa": {
+      "required": true,
+      "verifiedFactorCount": 1,
+      "verifiedAt": "2026-07-28T00:00:00.000Z"
+    },
+    "recovery": {
+      "primaryContact": "release-owner",
+      "secondaryContact": "security-reviewer",
+      "offlineCredentialEnvelopeId": "example-controlled-envelope",
+      "lastTestedAt": "2026-07-28T00:00:00.000Z"
+    }
+  },
+  "generatedAt": "2026-07-28T00:00:00.000Z",
+  "approvedBy": ["release-owner", "security-reviewer"]
+}

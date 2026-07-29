@@ -9,9 +9,13 @@ const signupSchema = z.object({
   displayName: z.string().trim().min(1).max(50),
   inviteCode: z.string().trim().min(6).max(32),
   email: z.string().trim().email().max(254).transform((value) => value.toLowerCase()),
-  password: z.string().min(6).max(128),
+  password: z.string().min(8).max(128),
   privacyConsent: z.literal("on"),
   childrenPrivacyConsent: z.literal("on"),
+});
+const recoverySchema = z.object({
+  locale: z.enum(["zh", "en"]),
+  email: z.string().trim().email().max(254).transform((value) => value.toLowerCase()),
 });
 
 function safeLocale(value: FormDataEntryValue | null) { return value === "en" ? "en" : "zh"; }
@@ -41,8 +45,9 @@ export async function signup(formData: FormData) {
   if (!parsed.success) redirect(`/${locale}/signup?error=validation`);
 
   const supabase = await createClient();
-  const { data: inviteValid, error: inviteError } = await supabase.rpc("validate_registration_invite", {
+  const { data: inviteValid, error: inviteError } = await supabase.rpc("validate_registration_access", {
     p_code: parsed.data.inviteCode,
+    p_email: parsed.data.email,
   });
   if (inviteError || !inviteValid) redirect(`/${locale}/signup?error=invite`);
 
@@ -67,4 +72,23 @@ export async function logout(formData: FormData) {
   const supabase = await createClient();
   await supabase.auth.signOut();
   redirect(`/${locale}`);
+}
+
+export async function requestPasswordRecovery(formData: FormData) {
+  const parsed = recoverySchema.safeParse({
+    locale: safeLocale(formData.get("locale")),
+    email: formData.get("email"),
+  });
+  const locale = parsed.success ? parsed.data.locale : safeLocale(formData.get("locale"));
+  if (parsed.success) {
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+    if (siteUrl) {
+      const next = encodeURIComponent(`/${locale}/dashboard/account-security?recovery=1`);
+      const supabase = await createClient();
+      await supabase.auth.resetPasswordForEmail(parsed.data.email, {
+        redirectTo: `${siteUrl}/${locale}/auth/callback?next=${next}`,
+      });
+    }
+  }
+  redirect(`/${locale}/forgot-password?sent=1`);
 }

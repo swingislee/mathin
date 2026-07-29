@@ -39,6 +39,25 @@ create table if not exists auth.users (
   created_at         timestamptz not null default now()
 );
 
+-- R1-3 的会话撤销与管理员 MFA 姿态只依赖 GoTrue 表的最小字段。
+create table if not exists auth.sessions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists auth.mfa_factors (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  status text not null default 'unverified' check (status in ('unverified','verified')),
+  factor_type text not null default 'totp',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists auth_sessions_user_idx on auth.sessions(user_id);
+create index if not exists auth_mfa_factors_user_idx on auth.mfa_factors(user_id,status);
+
 -- GoTrue 把 JWT 声明注入到 request.jwt.claims；旧版单键 request.jwt.claim.sub 仍被支持。
 create or replace function auth.uid() returns uuid
 language sql stable

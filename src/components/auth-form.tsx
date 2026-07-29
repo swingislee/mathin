@@ -16,9 +16,11 @@ export async function AuthForm({ mode, locale, error, next }: { mode: "login" | 
     ? t("invalidInvite")
     : error === "validation"
       ? t("invalidRegistration")
-      : error
-        ? t("error")
-        : null;
+      : error === "locked"
+        ? t("accountLocked")
+        : error
+          ? t("error")
+          : null;
 
   return (
     <main className="grid min-h-dvh place-items-center px-6 py-16">
@@ -42,7 +44,7 @@ export async function AuthForm({ mode, locale, error, next }: { mode: "login" | 
           <Label className="mb-2 block" htmlFor="email">{t("email")}</Label>
           <Input className="mb-5 h-11 rounded-full bg-transparent px-4" id="email" name="email" type="email" required autoComplete="email" />
           <Label className="mb-2 block" htmlFor="password">{t("password")}</Label>
-          <Input className="h-11 rounded-full bg-transparent px-4" id="password" name="password" type="password" minLength={6} maxLength={128} required autoComplete={mode === "login" ? "current-password" : "new-password"} />
+          <Input className="h-11 rounded-full bg-transparent px-4" id="password" name="password" type="password" minLength={mode === "login" ? 6 : 8} maxLength={128} required autoComplete={mode === "login" ? "current-password" : "new-password"} />
 
           {mode === "signup" && (
             <div className="mt-6 space-y-3 border-t border-line pt-5">
@@ -63,7 +65,7 @@ export async function AuthForm({ mode, locale, error, next }: { mode: "login" | 
 
           {errorMessage && <p className="mt-4 text-sm text-rose" role="alert">{errorMessage}</p>}
           <button className={cn(buttonVariants({ size: "lg" }), "mt-7 w-full")} type="submit">{t(mode)}</button>
-          {mode === "login" && <Link href="/login/phone" className="mt-3 block text-center text-sm text-crater underline underline-offset-2">{t("phoneLogin")}</Link>}
+          {mode === "login" && <div className="mt-3 flex justify-center gap-4 text-sm text-crater"><Link href="/login/phone" className="underline underline-offset-2">{t("phoneLogin")}</Link><Link href="/forgot-password" className="underline underline-offset-2">{t("forgotPassword")}</Link></div>}
           <p className="mt-6 text-center text-sm text-muted">
             {t(mode === "login" ? "noAccount" : "hasAccount")} {" "}
             <Link className="underline transition-colors duration-200 hover:text-ink" href={mode === "login" ? "/signup" : "/login"}>{t(mode === "login" ? "signup" : "login")}</Link>
