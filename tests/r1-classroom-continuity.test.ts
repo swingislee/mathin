@@ -165,7 +165,7 @@ describe("R1 classroom continuity contracts", () => {
     expect(panel).toContain("LEARNING_CHECK_STATUSES.map");
     expect(panel).toContain("mark([student.id], candidate)");
     expect(panel).toContain("selectedStudentIds");
-    expect(panel).toContain("xl:grid-cols-5");
+    expect(panel).toContain("lg:grid-cols-5");
     expect(panel).toContain("learningCheckIdForPage");
     expect(liveShell).toContain("activePageDocId");
     expect(liveShell).not.toContain("operateCourseware");
