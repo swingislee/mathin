@@ -12,6 +12,9 @@ import {
   type SessionPreparationReviewQueueItem,
   type SignedPrepArtifactFile,
 } from "@/features/school/session-preparation-reviews";
+import { SessionLessonPlanReview } from "@/features/school/SessionLessonPlanWorkspace";
+import { VectorStrokePreview } from "@/features/school/CoursewareAnnotationBoard";
+import { annotationContentSchema } from "@/features/school/teacher-preparation-contract";
 import type { PrepArtifactKind } from "@/features/school/session-preparation-artifacts";
 import { Link } from "@/i18n/navigation";
 import { requireDashboardEnvironment } from "@/lib/auth";
@@ -130,13 +133,14 @@ async function ReviewBadge({ row }: { row: SessionPreparationReviewQueueItem }) 
   );
 }
 
-function ArtifactContent({
+async function ArtifactContent({
   kind,
   detail,
 }: {
   kind: PrepArtifactKind;
   detail: Awaited<ReturnType<typeof getSessionPreparationReviewDetail>>;
 }) {
+  const t = await getTranslations("school.session");
   if (kind === "rehearsal_video") {
     return detail.rehearsalVideoUrl ? (
       <a href={detail.rehearsalVideoUrl} target="_blank" rel="noreferrer" className={cn(buttonVariants({ size: "sm", variant: "secondary" }), "mt-4 w-full")}>
@@ -144,11 +148,33 @@ function ArtifactContent({
       </a>
     ) : null;
   }
-  const files = kind === "solution" ? detail.signedSolutionFiles : detail.signedLessonPlanFiles;
+  if (kind === "lesson_plan") {
+    return (
+      <div className="mt-4 space-y-4">
+        {detail.lessonPlan ? (
+          <div className="max-h-[34rem] overflow-y-auto rounded-xl border border-line bg-paper p-2">
+            <SessionLessonPlanReview content={detail.lessonPlan.content} revision={detail.lessonPlan.revision} />
+          </div>
+        ) : null}
+        <FileLinks files={detail.signedLessonPlanFiles} />
+      </div>
+    );
+  }
+  const boardRecords = detail.solutionRecords.flatMap((record) => {
+    if (record.source !== "board") return [];
+    const parsed = annotationContentSchema.safeParse(record.content.strokes);
+    return parsed.success ? [{ ...record, strokes: parsed.data }] : [];
+  });
   return (
-    <div className="mt-4">
-      {kind === "solution" && detail.solutionNotes ? <p className="mb-3 whitespace-pre-wrap text-sm text-muted">{detail.solutionNotes}</p> : null}
-      <FileLinks files={files} />
+    <div className="mt-4 space-y-3">
+      {detail.solutionNotes ? <p className="whitespace-pre-wrap text-sm text-muted">{detail.solutionNotes}</p> : null}
+      <FileLinks files={detail.signedSolutionFiles} />
+      {boardRecords.map((record) => (
+        <div key={record.id}>
+          <p className="mb-1 text-xs text-muted">{t("annotationReviewRecord", { page: record.pageDocId?.slice(0, 8) ?? "—", revision: record.revision })}</p>
+          <VectorStrokePreview items={record.strokes} label={t("annotationReviewPreview", { revision: record.revision })} />
+        </div>
+      ))}
     </div>
   );
 }

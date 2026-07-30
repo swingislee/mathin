@@ -8,6 +8,8 @@ import {
   type PrepArtifactReviewStatus,
   type SessionPreparationArtifacts,
 } from "./session-preparation-artifacts";
+import { getTeacherPreparationReviewData } from "./teacher-preparation";
+import type { SessionLessonPlan, SolutionRecord } from "./teacher-preparation-contract";
 
 export interface SessionPreparationReviewQueueItem {
   sessionId: string;
@@ -28,6 +30,8 @@ export interface SignedPrepArtifactFile extends PrepArtifactFile {
 export interface SessionPreparationReviewDetail extends SessionPreparationArtifacts {
   signedSolutionFiles: SignedPrepArtifactFile[];
   signedLessonPlanFiles: SignedPrepArtifactFile[];
+  lessonPlan: SessionLessonPlan | null;
+  solutionRecords: SolutionRecord[];
 }
 
 export async function listSessionPreparationReviews(sessionId?: string): Promise<SessionPreparationReviewQueueItem[]> {
@@ -58,10 +62,10 @@ async function signFiles(files: PrepArtifactFile[]): Promise<SignedPrepArtifactF
 }
 
 export async function getSessionPreparationReviewDetail(sessionId: string): Promise<SessionPreparationReviewDetail> {
-  const artifacts = await getSessionPreparationArtifacts(sessionId);
+  const [artifacts, teacherPreparation] = await Promise.all([getSessionPreparationArtifacts(sessionId), getTeacherPreparationReviewData(sessionId)]);
   const [signedSolutionFiles, signedLessonPlanFiles] = await Promise.all([
     signFiles(artifacts.solutionFiles),
     signFiles(artifacts.lessonPlanFiles),
   ]);
-  return { ...artifacts, signedSolutionFiles, signedLessonPlanFiles };
+  return { ...artifacts, signedSolutionFiles, signedLessonPlanFiles, ...teacherPreparation };
 }

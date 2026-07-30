@@ -13,6 +13,7 @@ import { datetime, parse } from "./schemas";
 
 interface MySchedRow {
   session_id: string;
+  student_id: string;
   classroom_id: string;
   classroom_name: string;
   lecture_name: string;
@@ -46,6 +47,7 @@ export async function getWeekSchedule(fromIso: string, toIso: string): Promise<S
     if (error) throw new Error(error.message);
     return ((data ?? []) as MySchedRow[]).map((row) => ({
       sessionId: row.session_id,
+      studentId: row.student_id,
       classroomId: row.classroom_id,
       classroomName: row.classroom_name,
       lectureName: row.lecture_name,
@@ -84,6 +86,7 @@ export async function getWeekSchedule(fromIso: string, toIso: string): Promise<S
 
   return rows.map((row) => ({
     sessionId: row.id,
+    studentId: "",
     classroomId: row.classroom_id,
     classroomName: row.classrooms?.name || "",
     lectureName: row.title,

@@ -5,6 +5,12 @@ import { describe, expect, it } from "vitest";
 const root = process.cwd();
 const read = (file: string) => fs.readFileSync(path.join(root, file), "utf8");
 const migration = read("supabase/migrations/20260729000200_r1_family_learning_actions.sql");
+const privacyMigration = read("supabase/migrations/20260730010000_r1_family_portal_visibility.sql");
+const relationshipMigration = read("supabase/migrations/20260730010100_r1_guardian_relationship_revocation.sql");
+
+const leaveMakeupMigration = read("supabase/migrations/20260730010200_r1_leave_makeup_family_journey.sql");
+const leaveNotificationMigration = read("supabase/migrations/20260730010300_r1_leave_notification_owner_fix.sql");
+const availabilityMigration = read("supabase/migrations/20260730010400_r1_family_result_availability.sql");
 
 describe("R1-5 family learning contracts", () => {
   it("lets students and authorized guardians act on the same learning workflow", () => {
@@ -50,4 +56,143 @@ describe("R1-5 family learning contracts", () => {
     expect(migration).toContain("/dashboard/assignments/");
     expect(migration).toContain("/dashboard/children?child=");
   });
+  it("keeps draft learning results out of family projections", () => {
+    expect(privacyMigration).toContain("session_reviews_invalidate_family_brief");
+    expect(privacyMigration).toContain("published_at = null");
+    expect(privacyMigration).toContain("join public.session_family_briefs brief_row");
+    expect(privacyMigration).toContain("brief_row.published_at is not null");
+    expect(privacyMigration).toContain("public.guardian_can(student_row.id, uid, 'grades')");
+    expect(privacyMigration).not.toContain("coalesce(brief_row.learning_summary, session_row.knowledge_summary)");
+  });
+
+  it("isolates same-name children by stable student id", () => {
+    const schedule = read("src/features/school/actions/schedule.ts");
+    const childrenPage = read("src/app/[locale]/dashboard/children/page.tsx");
+    const parentHome = read("src/features/school/home/ParentHome.tsx");
+    expect(privacyMigration).toMatch(/get_my_schedule[\s\S]*student_id uuid/);
+    expect(privacyMigration).toMatch(/get_my_attendance[\s\S]*student_id uuid/);
+    expect(schedule).toContain("studentId: row.student_id");
+    expect(childrenPage).toContain("entry.studentId === activeId");
+    expect(childrenPage).toContain("row.studentId === activeId");
+    expect(parentHome).toContain("entry.studentId === child.studentId");
+  });
+
+  it("lets a guardian revoke only their own relationship without window.confirm", () => {
+    const actions = read("src/features/school/customer-actions.ts");
+    const childrenPage = read("src/app/[locale]/dashboard/children/page.tsx");
+    const panel = read("src/features/school/GuardianRelationshipPanel.tsx");
+    expect(relationshipMigration).toContain("revoke_my_guardian_relationship");
+    expect(relationshipMigration).toContain("guardian.relationship_revoked");
+    expect(relationshipMigration).toContain("'withdrawn', 'guardian_binding'");
+    expect(relationshipMigration).toContain("set is_primary = true");
+    expect(actions).toContain("revokeMyGuardianRelationshipAction");
+    expect(childrenPage).toContain("getMyGuardianRelationship(activeId)");
+    expect(panel).toContain("<AlertDialog");
+    expect(panel).not.toContain("window.confirm");
+  });
+
+  it("closes the leave approval and makeup scheduling journey for the whole family", () => {
+    const customer = read("src/features/school/customer.ts");
+    const panel = read("src/features/school/LeaveRequestPanel.tsx");
+    expect(leaveMakeupMigration).toContain("with latest_makeup as");
+    expect(leaveMakeupMigration).toContain("public.family_of_student(request_row.student_id, uid)");
+    expect(leaveMakeupMigration).toContain("'to_schedule'");
+    expect(leaveMakeupMigration).toContain("kind = 'makeup_followup'");
+    expect(leaveMakeupMigration).toContain("session_changes_notify_family_makeup");
+    expect(leaveMakeupMigration).toContain("'session_change.makeup'");
+    expect(customer).toContain("makeupSessionId: row.makeup_session_id");
+    expect(panel).toContain("leaveMakeup_");
+    expect(leaveNotificationMigration).toContain("notify_leave_request_roles_r1");
+    expect(leaveNotificationMigration).not.toContain("assignment_row.classroom_id = classroom_id");
+    expect(leaveNotificationMigration).toContain("select guardian_row.guardian_id");
+  });
+
+  it("shows pending and withdrawn result states without exposing draft content", () => {
+    const customer = read("src/features/school/customer.ts");
+    const results = read("src/features/school/FamilyLearningResults.tsx");
+    const childrenPage = read("src/app/[locale]/dashboard/children/page.tsx");
+    const parentHome = read("src/features/school/home/ParentHome.tsx");
+    expect(availabilityMigration).toContain("family_visibility_state");
+    expect(availabilityMigration).toContain("session_family_briefs_sync_visibility");
+    expect(availabilityMigration).toContain("get_my_session_review_states");
+    expect(availabilityMigration).toContain("coalesce(brief_row.family_visibility_state, 'pending')");
+    expect(availabilityMigration).not.toContain("review_row.comment");
+    expect(availabilityMigration).not.toContain("brief_row.learning_summary");
+    expect(customer).toContain("getMySessionReviewStates");
+    expect(results).toContain("reviewStatusHint_");
+    expect(results).toContain("CustomerVideoButton");
+    expect(childrenPage).toContain('id="knowledge-summary"');
+    expect(parentHome).toContain("recentReviewState.availabilityState");
+  });
+
+  it("renders the four required family special states in both locales", () => {
+    const customer = read("src/features/school/customer.ts");
+    const studentHome = read("src/features/school/home/StudentHome.tsx");
+    const parentHome = read("src/features/school/home/ParentHome.tsx");
+    const childrenPage = read("src/app/[locale]/dashboard/children/page.tsx");
+    const zh = JSON.parse(read("messages/zh.json"));
+    const en = JSON.parse(read("messages/en.json"));
+    for (const messages of [zh, en]) {
+      expect(messages.school.customer.notBound).toBeTruthy();
+      expect(messages.school.customer.noChildren).toBeTruthy();
+      expect(messages.school.customer.payment_closed).toBeTruthy();
+      expect(messages.school.students.reviewStatus_pending).toBeTruthy();
+      expect(messages.school.students.reviewStatus_withdrawn).toBeTruthy();
+    }
+    expect(studentHome).toContain('customerT("notBound")');
+    expect(parentHome).toContain('customerT("noChildren")');
+    expect(customer).toContain('paymentStatus: financeEnabled ? row.payment_status : "closed"');
+    expect(childrenPage).toContain('t(`payment_${summary.paymentStatus}`)');
+  });
+
+  it("covers every student-id family projection and parameterized foreign read", () => {
+    const assertion = read("supabase/tests/r1_family_portal_assertions.sql");
+    for (const rpc of [
+      "get_my_schedule",
+      "get_my_attendance",
+      "get_my_learning_summary",
+      "get_my_account",
+      "get_my_pending_assignments",
+      "get_my_session_reviews",
+      "get_my_session_review_states",
+      "get_my_reviewed_videos",
+      "get_my_published_video_tasks",
+      "get_my_video_sessions",
+      "list_my_session_leave_requests",
+    ]) {
+      expect(assertion).toContain(`public.${rpc}`);
+    }
+    for (const rpc of [
+      "get_customer_assignment",
+      "get_customer_submission",
+      "submit_assignment_for_student",
+      "get_family_session_brief",
+      "record_guardian_consent",
+      "list_student_guardians",
+      "set_guardian_scope",
+      "issue_guardian_invite",
+    ]) {
+      expect(assertion).toContain(`public.${rpc}`);
+    }
+  });
+
+  it("provides explicit development-only fixtures for unbound and multi-child families", () => {
+    const fixtures = read("scripts/ensure-r1-family-test-fixtures.mjs");
+    const pkg = JSON.parse(read("package.json"));
+    expect(pkg.scripts["r1:family-fixtures"]).toBe("node scripts/ensure-r1-family-test-fixtures.mjs");
+    expect(fixtures).toContain('process.env.R1_DEV_TEST_FIXTURES !== "1"');
+    expect(fixtures).toContain('import { lookup } from "node:dns/promises"');
+    expect(fixtures).toContain('markdownValue.startsWith("`")');
+    expect(fixtures).toContain('updateUserById(user.id, { password, email_confirm: true })');
+    expect(fixtures).toContain("isPrivateDevelopmentHost");
+    expect(fixtures).toContain("test-parent-unbound@mathin.local");
+    expect(fixtures).toContain("test-parent@mathin.local");
+    expect(fixtures).toContain("test-student-2@mathin.local");
+    expect(fixtures).toContain('role: "parent"');
+    expect(fixtures).toContain('last_active_environment: "family"');
+    expect(fixtures).toContain('scope: GUARDIAN_SCOPES');
+    expect(fixtures).toContain('source: "migration"');
+    expect(fixtures).not.toContain("deleteUser");
+  });
+
 });

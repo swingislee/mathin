@@ -12,6 +12,82 @@ const HTML_EXTENSIONS = new Set(["html", "htm"]);
 export const H5_IMMUTABLE_CACHE = "public, max-age=31536000, immutable";
 
 /**
+ * Runtime injected before package scripts. Opaque-origin sandbox documents throw
+ * on localStorage/sessionStorage access; several legacy courseware video managers
+ * read storage during bootstrap and otherwise stop before binding their controls.
+ * The same bridge relays native media events through nested package iframes.
+ */
+export const H5_OPAQUE_ORIGIN_RUNTIME = `<script data-mathin-h5-runtime>
+(() => {
+  if (window.__mathinH5Runtime) return;
+  window.__mathinH5Runtime = true;
+
+  const createMemoryStorage = () => {
+    const values = new Map();
+    return {
+      get length() { return values.size; },
+      key(index) { return Array.from(values.keys())[index] ?? null; },
+      getItem(key) { key = String(key); return values.has(key) ? values.get(key) : null; },
+      setItem(key, value) { values.set(String(key), String(value)); },
+      removeItem(key) { values.delete(String(key)); },
+      clear() { values.clear(); },
+    };
+  };
+  for (const name of ["localStorage", "sessionStorage"]) {
+    try {
+      void window[name];
+    } catch {
+      Object.defineProperty(window, name, { configurable: true, value: createMemoryStorage() });
+    }
+  }
+
+  let applying = 0;
+  const media = () => Array.from(document.querySelectorAll("video,audio"));
+  const childFrames = () => Array.from(document.querySelectorAll("iframe"));
+  const relay = (event) => {
+    if (applying > 0) return;
+    const target = event.target;
+    if (!(target instanceof HTMLMediaElement)) return;
+    const action = event.type === "play" ? "play" : event.type === "pause" ? "pause" : "seek";
+    parent.postMessage({ source: "mathin-h5-media", action, time: target.currentTime || 0 }, "*");
+  };
+  document.addEventListener("play", relay, true);
+  document.addEventListener("pause", relay, true);
+  document.addEventListener("seeked", relay, true);
+
+  const applyControl = (data) => {
+    applying += 1;
+    for (const target of media()) {
+      if (Number.isFinite(data.time)) {
+        try { target.currentTime = data.time; } catch {}
+      }
+      if (data.action === "play") {
+        Promise.resolve(target.play()).catch(() => {
+          target.muted = true;
+          return target.play();
+        }).catch(() => {});
+      } else if (data.action === "pause") {
+        target.pause();
+      }
+    }
+    for (const frame of childFrames()) {
+      frame.contentWindow?.postMessage(data, "*");
+    }
+    setTimeout(() => { applying = Math.max(0, applying - 1); }, 120);
+  };
+
+  window.addEventListener("message", (event) => {
+    const data = event.data || {};
+    if (data.source === "mathin-h5-media") {
+      if (event.source !== parent) parent.postMessage(data, "*");
+      return;
+    }
+    if (data.source === "mathin-classroom" && data.type === "media_ctl") applyControl(data);
+  });
+})();
+</script>`;
+
+/**
  * Storage API rejects some raw Unicode object keys. H5 documents retain their
  * original relative filenames, while Storage uses this ASCII-safe projection.
  * Keep it segment based: slashes remain directory delimiters and a browser's
@@ -62,4 +138,8 @@ export function injectHeadSnippet(html: string, snippet: string): string {
   if (!match) return snippet + html;
   const insertAt = match.index + match[0].length;
   return html.slice(0, insertAt) + snippet + html.slice(insertAt);
+}
+
+export function injectH5Runtime(html: string): string {
+  return injectHeadSnippet(html, H5_OPAQUE_ORIGIN_RUNTIME);
 }

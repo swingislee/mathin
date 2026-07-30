@@ -13,12 +13,11 @@ import {
   ListTodo,
   LoaderCircle,
   MonitorPlay,
-  MousePointer2,
+  MoreHorizontal,
   PanelsTopLeft,
   PenLine,
   SquareCheckBig,
   TriangleAlert,
-  Wrench,
   LocateFixed,
   ZoomIn,
   ZoomOut,
@@ -171,6 +170,7 @@ export function LiveShell({
   const [mainStore, setMainStore] = useState<WhiteboardStore | null>(null);
   const [activeArea, setActiveArea] = useState<"main" | "side">("main");
   const [endOpen, setEndOpen] = useState(false);
+  const [classroomToolsOpen, setClassroomToolsOpen] = useState(false);
   const [stageWidth, setStageWidth] = useState(0);
   // 副板书/名录默认展开（用户 2026-07-08 要求可折叠腾空间给对方或主板书）
   const [sideCollapsed, setSideCollapsed] = useState(false);
@@ -936,18 +936,6 @@ export function LiveShell({
               />
             ) : null}
 
-            {isController && page && (page.type === "video" || page.type === "doc" || page.type === "game") && (
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                className="absolute right-3 top-3 z-20 gap-1 bg-paper/95 shadow-sm"
-                onClick={() => mainStore?.setState({ tool: "pointer" })}
-              >
-                <MousePointer2 size={14} />
-                {t("operateCourseware")}
-              </Button>
-            )}
             {page && (
               <MainBoard
                 key={`board-${page.id}`}
@@ -983,7 +971,7 @@ export function LiveShell({
         {/* 右：副板书（长条，固定宽，用户 2026-07-08 要求加宽一倍）+ 学生名录（固定宽，容纳多人）+ 控制条，三段式 */}
         <div
           className={cn(
-            "flex min-h-0 w-full flex-1 flex-col gap-2 xl:flex-none xl:shrink-0",
+            "flex min-h-0 w-full flex-1 flex-col gap-2 transition-[width] duration-200 xl:ml-auto xl:flex-none xl:shrink-0",
             sideCollapsed && rosterCollapsed
               ? "xl:w-[5.25rem]"
               : sideCollapsed
@@ -993,7 +981,7 @@ export function LiveShell({
                   : "xl:w-[34rem]",
           )}
         >
-          <div className="flex min-h-0 flex-1 flex-col gap-2 xl:flex-row">
+          <div className="flex min-h-0 flex-1 flex-col gap-2 xl:flex-row xl:justify-end">
             {/* 副板书：默认展开固定宽；折叠为窄条腾出空间；名录折叠时改吃 flex-1（用户 2026-07-08 要求可折叠） */}
             <div
               className={cn(
@@ -1073,7 +1061,7 @@ export function LiveShell({
                   title={sideCollapsed ? t("expandSide") : t("collapseSide")}
                   className="rounded-full bg-card/90 p-1 text-muted shadow-sm transition-colors hover:bg-moon/40 hover:text-ink"
                 >
-                  {sideCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+                  {sideCollapsed ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
                 </button>}
               </div>
             </div>
@@ -1159,7 +1147,13 @@ export function LiveShell({
                   >
                     <ChevronRight size={18} />
                   </button>
-                  {learningSetup && <SessionLearningCheckPanel sessionId={session.id} setup={learningSetup} />}
+                  {learningSetup && (
+                    <SessionLearningCheckPanel
+                      sessionId={session.id}
+                      setup={learningSetup}
+                      activePageDocId={page?.type === "doc" ? page.docId : null}
+                    />
+                  )}
                   <Popover>
                     <PopoverTrigger asChild>
                       <button
@@ -1192,69 +1186,74 @@ export function LiveShell({
                       </ol>
                     </PopoverContent>
                   </Popover>
+                  {!state.ended && state.quiz && (
+                    <button
+                      type="button"
+                      onClick={() => append("session_ctl", { action: "quiz_close", quizId: state.quiz?.id })}
+                      className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-ink px-3 text-xs text-paper transition-opacity hover:opacity-85"
+                    >
+                      <SquareCheckBig size={14} />
+                      {t("quizClose")}
+                    </button>
+                  )}
                   {!state.ended && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={insertBoardPage}
-                        className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-line px-3 text-xs text-muted transition-colors hover:bg-moon/30 hover:text-ink"
-                      >
-                        <PenLine size={14} />
-                        {t("insertBoard")}
-                      </button>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <button
-                            type="button"
-                            className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-line px-3 text-xs text-muted transition-colors hover:bg-moon/30 hover:text-ink"
-                          >
-                            <Wrench size={14} />
-                            {t("openTool")}
-                          </button>
-                        </PopoverTrigger>
-                        <PopoverContent side="top" className="w-auto p-1.5">
-                          <ToolPicker
-                            onPick={(toolId) => append("tool_ctl", { action: "open", toolId })}
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      {state.quiz ? (
+                    <Popover open={classroomToolsOpen} onOpenChange={setClassroomToolsOpen}>
+                      <PopoverTrigger asChild>
                         <button
                           type="button"
-                          onClick={() => append("session_ctl", { action: "quiz_close", quizId: state.quiz?.id })}
-                          className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-ink px-3 text-xs text-paper transition-opacity hover:opacity-85"
+                          className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-line px-3 text-xs text-muted transition-colors hover:bg-moon/30 hover:text-ink"
                         >
-                          <SquareCheckBig size={14} />
-                          {t("quizClose")}
+                          <MoreHorizontal size={14} />
+                          {t("moreClassroomTools")}
                         </button>
-                      ) : (
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <button
-                              type="button"
-                              className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-line px-3 text-xs text-muted transition-colors hover:bg-moon/30 hover:text-ink"
-                            >
-                              <ListTodo size={14} />
-                              {t("quizOpen")}
-                            </button>
-                          </PopoverTrigger>
-                          <PopoverContent side="top" className="w-auto p-1.5">
-                            <div className="flex items-center gap-1">
+                      </PopoverTrigger>
+                      <PopoverContent side="top" align="end" className="w-64 p-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          className="w-full justify-start"
+                          onClick={() => {
+                            setClassroomToolsOpen(false);
+                            insertBoardPage();
+                          }}
+                        >
+                          <PenLine size={15} />
+                          {t("insertBoard")}
+                        </Button>
+                        <div aria-hidden className="my-2 h-px bg-line" />
+                        <p className="px-2 pb-1 text-xs font-medium text-muted">{t("openTool")}</p>
+                        <ToolPicker
+                          onPick={(toolId) => {
+                            setClassroomToolsOpen(false);
+                            append("tool_ctl", { action: "open", toolId });
+                          }}
+                        />
+                        {!state.quiz && (
+                          <>
+                            <div aria-hidden className="my-2 h-px bg-line" />
+                            <p className="px-2 pb-1 text-xs font-medium text-muted">{t("quizOpen")}</p>
+                            <div className="flex items-center gap-1 px-1">
                               {[2, 3, 4].map((options) => (
-                                <button
+                                <Button
                                   key={options}
                                   type="button"
-                                  onClick={() => append("session_ctl", { action: "quiz_open", quizId: newId(), options })}
-                                  className="rounded-lg px-2.5 py-1.5 text-sm text-muted transition-colors hover:bg-moon/30 hover:text-ink"
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setClassroomToolsOpen(false);
+                                    append("session_ctl", { action: "quiz_open", quizId: newId(), options });
+                                  }}
                                 >
+                                  <ListTodo size={14} />
                                   {t("quizOptions", { last: OPTION_LABELS[options - 1] })}
-                                </button>
+                                </Button>
                               ))}
                             </div>
-                          </PopoverContent>
-                        </Popover>
-                      )}
-                    </>
+                          </>
+                        )}
+                      </PopoverContent>
+                    </Popover>
                   )}
                 </div>
               )}

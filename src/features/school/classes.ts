@@ -1,7 +1,7 @@
 import "server-only";
 
 import { getLectureWorkspaceDetail } from "./curriculum/lecture-workspace-detail";
-import type { OverlaySlot } from "./courseware-overlay";
+import type { CoursewareTemplatePage, OverlaySlot } from "./courseware-overlay";
 import { getMyPerms } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { resolveClassroomCapabilities, resolveSessionCapabilities } from "./teaching-operations/capabilities";
@@ -490,6 +490,8 @@ export interface SessionWorkspaceDetail {
   coursewareTrack: CoursewareTrack;
   coursewareTrackOverride: CoursewareTrack | null;
   coursewareFrozenAt: string | null;
+  /** Exact session snapshot used after preparation is frozen; never rebuilt from the current track head. */
+  courseware: CoursewareTemplatePage[];
   coursewareOverlay: OverlaySlot[];
   prepStatus: SessionPrepStatus;
   prepAutoFrozen: boolean;
@@ -526,6 +528,7 @@ interface SessionWorkspaceQueryRow {
   teacher_override: string | null;
   courseware_track_override: CoursewareTrack | null;
   courseware_frozen_at: string | null;
+  courseware: CoursewareTemplatePage[] | null;
   courseware_overlay: OverlaySlot[] | null;
   postwork_completed_at: string | null;
   classrooms: { name: string; courseware_track: CoursewareTrack } | null;
@@ -543,7 +546,7 @@ export async function getSessionWorkspaceDetail(sessionId: string): Promise<Sess
     .select(
       "id,classroom_id,lecture_id,lecture_no,title,scheduled_at,duration_min,started_at,ended_at,deleted_at," +
         "cancelled_by,cancel_reason,voided_at,void_reason,teacher_override,courseware_track_override," +
-        "courseware_frozen_at,courseware_overlay,postwork_completed_at,classrooms(name,courseware_track)," +
+        "courseware_frozen_at,courseware,courseware_overlay,postwork_completed_at,classrooms(name,courseware_track)," +
         "profiles!class_sessions_teacher_override_fkey(display_name)",
     )
     .eq("id", sessionId)
@@ -738,6 +741,7 @@ export async function getSessionWorkspaceDetail(sessionId: string): Promise<Sess
     coursewareTrack: resolvedTrack,
     coursewareTrackOverride: session.courseware_track_override,
     coursewareFrozenAt: session.courseware_frozen_at,
+    courseware: Array.isArray(session.courseware) ? session.courseware : [],
     coursewareOverlay: session.courseware_overlay ?? [],
     prepStatus: prepRow?.status ?? "not_started",
     prepAutoFrozen: prepRow?.auto_frozen ?? false,

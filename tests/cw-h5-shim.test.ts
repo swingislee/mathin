@@ -4,6 +4,7 @@ import {
   h5ObjectPath,
   h5PublicUrl,
   h5StorageObjectPath,
+  injectH5Runtime,
   injectHeadSnippet,
   isHtmlObjectPath,
 } from "../src/features/courseware-doc/h5-shim";
@@ -46,5 +47,13 @@ describe("P6-4 H5 shim", () => {
       .toBe('<html><head lang="zh"><script>1</script><title>t</title></head></html>');
     expect(injectHeadSnippet("<div>no head</div>", "<script>1</script>"))
       .toBe("<script>1</script><div>no head</div>");
+  });
+
+  it("injects opaque-origin storage and nested media bridges before package scripts", () => {
+    const html = injectH5Runtime('<html><head><script src="legacy.js"></script></head></html>');
+    expect(html.indexOf("data-mathin-h5-runtime")).toBeLessThan(html.indexOf("legacy.js"));
+    expect(html).toContain('Object.defineProperty(window, name');
+    expect(html).toContain('frame.contentWindow?.postMessage(data');
+    expect(html).toContain('source: "mathin-h5-media"');
   });
 });

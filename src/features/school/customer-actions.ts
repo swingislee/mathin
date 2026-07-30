@@ -79,6 +79,23 @@ export async function setGuardianScopeAction(studentId:string,guardianId:string,
   }
 }
 
+const guardianRelationshipSchema = z.string().uuid();
+
+export async function revokeMyGuardianRelationshipAction(studentId: string): Promise<ActionResult> {
+  try {
+    const parsed = guardianRelationshipSchema.safeParse(studentId);
+    if (!parsed.success) throw new Error("VALIDATION");
+    const { supabase } = await authenticatedClient();
+    const { error } = await supabase.rpc("revoke_my_guardian_relationship", {
+      p_student_id: parsed.data,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["VALIDATION", "RELATIONSHIP_NOT_FOUND", "UNAUTHENTICATED"]);
+  }
+}
+
 const assignmentAttachmentSchema = z.object({
   path: z.string().min(1).max(500),
   name: z.string().min(1).max(200),

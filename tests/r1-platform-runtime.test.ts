@@ -18,6 +18,10 @@ describe("R1-2 platform runtime contracts", () => {
     expect(migration).toContain("dead_lettered_at");
     expect(migration).toContain("create or replace function public.replay_dead_job");
     expect(migration).toContain("unique(job_id, attempt_no)");
+    const databaseAudit = read("supabase/tests/r1_platform_runtime_assertions.sql");
+    expect(databaseAudit).toContain("now(), 100, 2, 60, 2");
+    expect(databaseAudit).toContain("where other_claim.job_id = :'retry_job_id'::uuid");
+    expect(databaseAudit).not.toContain("count(*) from public.claim_jobs('r1-ci-worker-b'");
   });
 
   it("uses a first-party notification model with channel delivery history", () => {
@@ -49,6 +53,7 @@ describe("R1-2 platform runtime contracts", () => {
   it("governs user files and uses TUS for the large video path", () => {
     const tus = read("src/lib/storage/tus-upload.ts");
     const video = read("src/features/school/ManagedVideoUploadPanel.tsx");
+    const databaseAudit = read("supabase/tests/r1_platform_runtime_assertions.sql");
     expect(migration).toContain("create table public.file_policies");
     expect(migration).toContain("create table public.file_upload_sessions");
     expect(migration).toContain("create table public.managed_files");
@@ -58,6 +63,8 @@ describe("R1-2 platform runtime contracts", () => {
     expect(tus).toContain('method: "PATCH"');
     expect(video).toContain('bucketId: "session-videos"');
     expect(video).toContain("uploadTusFile");
+    expect(databaseAudit).toContain("from unnest(array['note-assets','courseware','course-assets','session-videos','cw-objects','cw-h5'])");
+    expect(databaseAudit).not.toContain("count(*) from public.file_policies) <> 6");
   });
 
   it("keeps external providers closed and verifies signed webhooks before the replay ledger", () => {

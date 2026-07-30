@@ -10,6 +10,7 @@ import { ASSET_BINDING_URL_PREFIX } from "./schema";
 export type ResolvedBindingUrls = Readonly<Record<string, string>>;
 
 const BINDING_PLACEHOLDER = /asset:\/\/binding\/([0-9a-f]{64})/g;
+export const H5_RUNTIME_VERSION = "2";
 
 /** richText html 里的 asset://binding/<key> 占位注入实际 URL;未解析的引用原样保留(渲染为破图,可见即可查)。 */
 export function injectBindingUrls(html: string, urls: ResolvedBindingUrls): string {
@@ -32,13 +33,17 @@ export function buildH5EntryUrl(
 ): string {
   const encodedEntry = entryPath.split("/").map(encodeURIComponent).join("/");
   const base = `/api/cw-h5/packages/${packageHash}/${encodedEntry}`;
-  if (!launchQuery) return base;
   const params = new URLSearchParams();
-  for (const [key, values] of Object.entries(launchQuery.query)) {
-    for (const value of values) params.append(key, value);
+  if (launchQuery) {
+    for (const [key, values] of Object.entries(launchQuery.query)) {
+      for (const value of values) params.append(key, value);
+    }
   }
-  const query = params.toString();
-  return query ? `${base}?${query}` : base;
+  // The HTML response contains a server-injected compatibility runtime. A
+  // versioned query invalidates previously immutable iframe entries whenever
+  // that runtime changes, without changing the content-addressed package hash.
+  params.set("mathin_h5_runtime", H5_RUNTIME_VERSION);
+  return `${base}?${params.toString()}`;
 }
 
 export { ASSET_BINDING_URL_PREFIX };

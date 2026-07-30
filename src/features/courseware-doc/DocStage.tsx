@@ -212,6 +212,7 @@ function H5Frame({
   const frameRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [frameGeneration, setFrameGeneration] = useState(0);
   const appliedCtl = useRef<DocVideoCtl | undefined>(undefined);
 
   useEffect(() => {
@@ -236,7 +237,7 @@ function H5Frame({
   }, [control]);
 
   useEffect(() => {
-    if (!control || control.controller || !control.ctl || appliedCtl.current === control.ctl) return;
+    if (!control || control.controller || !control.ctl || frameGeneration === 0 || appliedCtl.current === control.ctl) return;
     appliedCtl.current = control.ctl;
     iframeRef.current?.contentWindow?.postMessage({
       source: "mathin-classroom",
@@ -244,7 +245,7 @@ function H5Frame({
       action: control.ctl.action,
       time: control.ctl.time,
     }, "*");
-  }, [control]);
+  }, [control, frameGeneration]);
 
   const toggleFullscreen = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
@@ -265,7 +266,9 @@ function H5Frame({
         title={title}
         src={entryUrl}
         sandbox="allow-scripts"
+        allow="autoplay; fullscreen"
         allowFullScreen
+        onLoad={() => setFrameGeneration((generation) => generation + 1)}
         style={{ width: "100%", height: "100%", border: 0, display: "block" }}
       />
       <Button

@@ -32,7 +32,7 @@ export function AttendanceDrawer({
   onSaved,
 }: {
   sessionId: string;
-  appearance?: "link" | "primary";
+  appearance?: "link" | "secondary" | "primary";
   mode?: "initial" | "amend";
   onSaved?: () => void;
 }) {
@@ -75,9 +75,9 @@ export function AttendanceDrawer({
       <button
         type="button"
         onClick={openDrawer}
-        className={appearance === "primary"
-          ? cn(buttonVariants({ size: "sm" }), "shrink-0")
-          : "shrink-0 text-xs text-muted underline underline-offset-2 hover:text-ink"}
+        className={appearance === "link"
+          ? "shrink-0 text-xs text-muted underline underline-offset-2 hover:text-ink"
+          : cn(buttonVariants({ size: "sm", variant: appearance === "secondary" ? "secondary" : "primary" }), "shrink-0")}
       >
         {label}
       </button>

@@ -37,3 +37,28 @@ export interface SessionLearningSetup {
 export function learningResultKey(checkId: string, studentId: string): string {
   return checkId + ":" + studentId;
 }
+
+/** Resolve the official page-bound check for the courseware page currently on air. */
+export function learningCheckIdForPage(
+  checks: readonly SessionLearningCheck[],
+  pageDocId: string | null,
+): string | null {
+  if (!pageDocId) return null;
+  return checks.find((check) => check.sourcePageId === pageDocId)?.id ?? null;
+}
+
+/**
+ * Follow an on-air courseware page only when that page has an official check.
+ * Unmarked/media/board pages keep the teacher's current check instead of
+ * unexpectedly returning the panel to the first item.
+ */
+export function learningCheckIdAfterPageChange(
+  checks: readonly SessionLearningCheck[],
+  currentCheckId: string | null,
+  pageDocId: string | null,
+): string | null {
+  const pageCheckId = learningCheckIdForPage(checks, pageDocId);
+  if (pageCheckId) return pageCheckId;
+  if (currentCheckId && checks.some((check) => check.id === currentCheckId)) return currentCheckId;
+  return checks[0]?.id ?? null;
+}

@@ -19,6 +19,8 @@ import { Link } from "@/i18n/navigation";
 import { Presentation } from "lucide-react";
 import { NotificationFocus } from "@/features/events/NotificationFocus";
 import { SessionPrepCompleteAction, SessionPrepCopyAction } from "./SessionPrepActions";
+import { AttendanceDrawer } from "./AttendanceDrawer";
+import { SessionCompletePostworkButton } from "./SessionCompletePostworkButton";
 
 const STAGES = ["pre", "live", "post"] as const;
 export type SessionStage = (typeof STAGES)[number];
@@ -157,6 +159,18 @@ export async function SessionWorkspaceBody({
                 prepStatus={detail.prepStatus}
                 hasRelease={detail.currentReleaseNo !== null}
                 hasUnpublishedChanges={detail.hasUnpublishedChanges}
+              />
+            </div>
+          ) : null}
+          {stage === "post" ? (
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {detail.capabilities.canMarkAttendance && (
+                <AttendanceDrawer sessionId={detail.id} mode="amend" appearance="secondary" />
+              )}
+              <SessionCompletePostworkButton
+                sessionId={detail.id}
+                completed={Boolean(detail.postworkCompletedAt)}
+                disabled={!detail.capabilities.canCompletePostwork}
               />
             </div>
           ) : null}

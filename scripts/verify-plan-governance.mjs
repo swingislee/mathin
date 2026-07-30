@@ -41,6 +41,7 @@ const expectedStatuses = new Map([
   ["23", "complete"],
   ["24", "complete"],
   ["25", "active"],
+  ["26", "partial"],
 ]);
 
 const planFiles = readdirSync(PLAN_DIR)
@@ -71,11 +72,11 @@ for (const [number, expectedStatus] of expectedStatuses) {
   }
 }
 
-for (let number = 0; number <= 25; number += 1) {
+for (let number = 0; number <= 26; number += 1) {
   const key = String(number).padStart(2, "0");
-  if (!byNumber.has(key)) fail(`00～25 序列缺少 ${key}`);
+  if (!byNumber.has(key)) fail(`00～26 序列缺少 ${key}`);
 }
-if (planFiles.length !== 26) fail(`编号规划文件应恰为 26 个，当前 ${planFiles.length} 个`);
+if (planFiles.length !== 27) fail(`编号规划文件应恰为 27 个，当前 ${planFiles.length} 个`);
 
 const sources = new Map(
   planFiles.map((name) => [name, readFileSync(path.join(PLAN_DIR, name), "utf8")]),
@@ -234,4 +235,4 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-console.log("规划治理审计通过：00～25 状态、唯一阶段、索引与 1.0 契约一致。");
+console.log("规划治理审计通过：00～26 状态、唯一阶段、索引与 1.0 契约一致。");

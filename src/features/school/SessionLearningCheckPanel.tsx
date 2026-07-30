@@ -10,6 +10,8 @@ import { cn } from "@/lib/utils";
 import { markSessionLearningChecksAction } from "./session-learning-actions";
 import {
   LEARNING_CHECK_STATUSES,
+  learningCheckIdAfterPageChange,
+  learningCheckIdForPage,
   learningResultKey,
   type LearningCheckStatus,
   type SessionLearningSetup,
@@ -24,22 +26,53 @@ const STATUS_TONE: Record<LearningCheckStatus, string> = {
   unchecked: "border-line bg-card text-muted",
 };
 
+const EMPTY_STUDENT_IDS = new Set<string>();
+
 export function SessionLearningCheckPanel({
   sessionId,
   setup,
+  activePageDocId,
 }: {
   sessionId: string;
   setup: SessionLearningSetup;
+  activePageDocId: string | null;
 }) {
   const t = useTranslations("school.session");
-  const [activeCheckId, setActiveCheckId] = useState(setup.checks[0]?.id ?? "");
+  const [manualSelection, setManualSelection] = useState<{
+    pageDocId: string | null;
+    checkId: string | null;
+  }>(() => ({
+    pageDocId: activePageDocId,
+    checkId: learningCheckIdAfterPageChange(setup.checks, null, activePageDocId),
+  }));
   const [results, setResults] = useState(() => new Map(
     setup.results.map((result) => [learningResultKey(result.checkId, result.studentId), result.status as LearningCheckStatus]),
   ));
-  const [selectedStudentIds, setSelectedStudentIds] = useState(() => new Set<string>());
+  const [studentSelection, setStudentSelection] = useState<{
+    checkId: string;
+    ids: Set<string>;
+  }>(() => ({ checkId: "", ids: new Set<string>() }));
   const [batchMode, setBatchMode] = useState(false);
   const [pending, startTransition] = useTransition();
+  const automaticCheckId = learningCheckIdForPage(setup.checks, activePageDocId);
+  if (manualSelection.pageDocId !== activePageDocId) {
+    // React discards this render and retries with the new shared page. A marked
+    // page follows its check; an unmarked/media/board page keeps the current one.
+    setManualSelection({
+      pageDocId: activePageDocId,
+      checkId: learningCheckIdAfterPageChange(setup.checks, manualSelection.checkId, activePageDocId),
+    });
+    if (studentSelection.ids.size > 0) {
+      setStudentSelection({ checkId: "", ids: new Set() });
+    }
+  }
+  const activeCheckId = manualSelection.pageDocId === activePageDocId
+    ? manualSelection.checkId ?? automaticCheckId ?? setup.checks[0]?.id ?? ""
+    : learningCheckIdAfterPageChange(setup.checks, manualSelection.checkId, activePageDocId) ?? "";
   const activeCheck = setup.checks.find((check) => check.id === activeCheckId) ?? setup.checks[0];
+  const selectedStudentIds = activeCheck && studentSelection.checkId === activeCheck.id
+    ? studentSelection.ids
+    : EMPTY_STUDENT_IDS;
   const checkedCount = useMemo(() => {
     if (!activeCheck) return 0;
     return setup.students.filter((student) =>
@@ -82,16 +115,17 @@ export function SessionLearningCheckPanel({
         toast.error(t("learningSaveFailed", { code: result.code }));
         return;
       }
-      setSelectedStudentIds(new Set());
+      setStudentSelection({ checkId: activeCheck.id, ids: new Set() });
     });
   };
 
   const toggleSelected = (studentId: string) => {
-    setSelectedStudentIds((current) => {
-      const next = new Set(current);
+    if (!activeCheck) return;
+    setStudentSelection((current) => {
+      const next = new Set(current.checkId === activeCheck.id ? current.ids : EMPTY_STUDENT_IDS);
       if (next.has(studentId)) next.delete(studentId);
       else next.add(studentId);
-      return next;
+      return { checkId: activeCheck.id, ids: next };
     });
   };
 
@@ -119,8 +153,8 @@ export function SessionLearningCheckPanel({
                 size="sm"
                 variant={check.id === activeCheck?.id ? "primary" : "secondary"}
                 onClick={() => {
-                  setActiveCheckId(check.id);
-                  setSelectedStudentIds(new Set());
+                  setManualSelection({ pageDocId: activePageDocId, checkId: check.id });
+                  setStudentSelection({ checkId: check.id, ids: new Set() });
                 }}
               >
                 {index + 1}. {check.title}
@@ -140,7 +174,7 @@ export function SessionLearningCheckPanel({
               variant={batchMode ? "primary" : "secondary"}
               onClick={() => {
                 setBatchMode((enabled) => !enabled);
-                setSelectedStudentIds(new Set());
+                if (activeCheck) setStudentSelection({ checkId: activeCheck.id, ids: new Set() });
               }}
             >
               {batchMode ? <CheckSquare2 size={15} /> : <Square size={15} />}
@@ -150,11 +184,15 @@ export function SessionLearningCheckPanel({
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={() => setSelectedStudentIds(
-                  selectedStudentIds.size === setup.students.length
-                    ? new Set()
-                    : new Set(setup.students.map((student) => student.id)),
-                )}
+                onClick={() => {
+                  if (!activeCheck) return;
+                  setStudentSelection({
+                    checkId: activeCheck.id,
+                    ids: selectedStudentIds.size === setup.students.length
+                      ? new Set()
+                      : new Set(setup.students.map((student) => student.id)),
+                  });
+                }}
               >
                 {selectedStudentIds.size === setup.students.length ? t("learningBatchClear") : t("learningBatchAll")}
               </Button>

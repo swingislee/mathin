@@ -1,6 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import {
+  learningCheckIdAfterPageChange,
+  learningCheckIdForPage,
+} from "../src/features/school/session-learning-contract";
 
 const root = process.cwd();
 const read = (file: string) => fs.readFileSync(path.join(root, file), "utf8");
@@ -8,6 +12,7 @@ const continuityMigration = read("supabase/migrations/20260729000400_r1_classroo
 const publicationMigration = read("supabase/migrations/20260730000100_r1_session_learning_publications.sql");
 const learningCheckFlagMigration = read("supabase/migrations/20260730000400_r1_courseware_page_learning_check_flags.sql");
 const learningCheckConfigurationMigration = read("supabase/migrations/20260730000600_r1_session_learning_check_configuration.sql");
+const learningCheckMarkFixMigration = read("supabase/migrations/20260730000700_r1_fix_learning_check_mark.sql");
 const prepArtifactMigration = read("supabase/migrations/20260730000300_r1_session_preparation_artifacts.sql");
 const prepReviewMigration = read("supabase/migrations/20260730000500_r1_session_preparation_review.sql");
 
@@ -35,8 +40,25 @@ describe("R1 classroom continuity contracts", () => {
     expect(prep).toContain("SessionPreparationFlow");
     expect(prep).not.toContain("SessionPreparationArtifactsForm");
     expect(prep).not.toContain("SessionTrackOverrideSelect");
-    expect(prep).toContain("xl:grid-cols-[18rem_minmax(0,1fr)]");
+    expect(prep).toContain("xl:grid-cols-[minmax(24rem,30rem)_minmax(0,1fr)]");
     expect(prep).not.toContain("SessionLearningCheckEditor");
+  });
+
+  it("keeps the frozen preparation archive visible from the exact session courseware snapshot", () => {
+    const prep = read("src/features/school/SessionPrepPanel.tsx");
+    const prepFlow = read("src/features/school/SessionPreparationFlow.tsx");
+    const overlayEditor = read("src/features/school/CoursewareOverlayEditor.tsx");
+    const classes = read("src/features/school/classes.ts");
+    expect(prep).toContain("canViewPrepArchive");
+    expect(prep).toContain("prepArchiveFrozenTitle");
+    expect(prep).toContain("detail.courseware.map((page) => ({ page }))");
+    expect(prep).toContain("readOnly={prepReadOnly}");
+    expect(prep).not.toContain('t("overlayFrozen")');
+    expect(prepFlow).toContain("readOnly?: boolean");
+    expect(prepFlow).toContain('t("prepArchiveReadOnly")');
+    expect(overlayEditor).toContain("readOnly?: boolean");
+    expect(overlayEditor).toContain('ts("coursewareArchivePageRailTitle")');
+    expect(classes).toContain("courseware_frozen_at,courseware,courseware_overlay");
   });
 
   it("binds learning-check defaults to published courseware page identity instead of reusable title templates", () => {
@@ -144,10 +166,37 @@ describe("R1 classroom continuity contracts", () => {
     expect(panel).toContain("mark([student.id], candidate)");
     expect(panel).toContain("selectedStudentIds");
     expect(panel).toContain("xl:grid-cols-5");
+    expect(panel).toContain("learningCheckIdForPage");
+    expect(liveShell).toContain("activePageDocId");
+    expect(liveShell).not.toContain("operateCourseware");
+    expect(learningCheckMarkFixMigration).toContain("v_classroom_id");
+    expect(learningCheckMarkFixMigration).toContain("enrollment_row.classroom_id = v_classroom_id");
+  });
+
+  it("maps the shared live page identity to a learning check without overriding manual-only legacy items", () => {
+    const checks = [
+      { id: "check-1", position: 0, title: "例题", sourcePageId: "page-1" },
+      { id: "check-2", position: 1, title: "旧检查项", sourcePageId: null },
+    ];
+    expect(learningCheckIdForPage(checks, "page-1")).toBe("check-1");
+    expect(learningCheckIdForPage(checks, "page-2")).toBeNull();
+    expect(learningCheckIdForPage(checks, null)).toBeNull();
+  });
+
+  it("keeps the current learning check when the shared live page has no configured check", () => {
+    const checks = [
+      { id: "check-1", position: 0, title: "例题一", sourcePageId: "page-1" },
+      { id: "check-2", position: 1, title: "例题二", sourcePageId: "page-3" },
+    ];
+    expect(learningCheckIdAfterPageChange(checks, "check-1", "page-3")).toBe("check-2");
+    expect(learningCheckIdAfterPageChange(checks, "check-2", "page-4")).toBe("check-2");
+    expect(learningCheckIdAfterPageChange(checks, "check-2", null)).toBe("check-2");
+    expect(learningCheckIdAfterPageChange(checks, null, "page-4")).toBe("check-1");
   });
 
   it("prioritizes 4:3 courseware and keeps both collapsible teacher docks on the right", () => {
     const liveShell = read("src/features/classroom/live/LiveShell.tsx");
+    const toolbar = read("src/features/whiteboard/Toolbar.tsx");
     expect(liveShell).toContain("flex-col gap-2 overflow-y-auto xl:flex-row");
     expect(liveShell).toContain("data-side-board-viewport");
     expect(liveShell).toContain("sideZoom * 100");
@@ -156,6 +205,11 @@ describe("R1 classroom continuity contracts", () => {
     expect(liveShell).toContain('t("showClassmates")');
     expect(liveShell).toContain("sideCollapsed && rosterCollapsed");
     expect(liveShell).toContain("5.25rem");
+    expect(liveShell).toContain("xl:justify-end");
+    expect(liveShell).toContain("transition-[width] duration-200");
+    expect(liveShell).toContain('t("moreClassroomTools")');
+    expect(liveShell).not.toContain("compact");
+    expect(toolbar).not.toContain("compact?: boolean");
   });
 
   it("publishes knowledge summary, assignment, and video as three independent tasks", () => {

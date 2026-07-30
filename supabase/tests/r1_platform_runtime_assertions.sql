@@ -20,7 +20,15 @@ declare failures text[] := '{}';
 begin
   if (select count(*) from public.integration_channels where status = 'disabled' and provider_key is null) <> 4 then failures := array_append(failures, 'integration defaults are not fail-closed'); end if;
   if exists(select 1 from unnest(array['email','sms','wechat']) channel_name where public.notification_channel_enabled(channel_name)) then failures := array_append(failures, 'unselected notification channel is enabled'); end if;
-  if (select count(*) from public.file_policies) <> 6 then failures := array_append(failures, 'file policy defaults incomplete'); end if;
+  if exists(
+    select 1
+      from unnest(array['note-assets','courseware','course-assets','session-videos','cw-objects','cw-h5'])
+        as required_policy(bucket_id)
+     where not exists (
+       select 1 from public.file_policies policy_row
+        where policy_row.bucket_id = required_policy.bucket_id
+     )
+  ) then failures := array_append(failures, 'file policy defaults incomplete'); end if;
   if (select file_size_limit from storage.buckets where id = 'note-assets') <> 10485760 then failures := array_append(failures, 'note asset size policy missing'); end if;
   if (select public from storage.buckets where id = 'session-videos') then failures := array_append(failures, 'session video bucket is public'); end if;
   if has_table_privilege('authenticated', 'public.jobs', 'INSERT') then failures := array_append(failures, 'authenticated can insert jobs directly'); end if;
@@ -71,8 +79,8 @@ select (:'upload_session_id'::uuid = :'same_upload_session_id'::uuid) as r1_uplo
 select public.abort_file_upload_session(:'upload_session_id'::uuid);
 reset role;
 
-select public.enqueue_job('test.noop', '{"case":"retry"}'::jsonb, 'r1:job:retry', 'r1:effect:retry', now(), 0, 2, 60, 2) as retry_job_id \gset
-select public.enqueue_job('test.noop', '{"case":"retry"}'::jsonb, 'r1:job:retry', 'r1:effect:retry', now(), 0, 2, 60, 2) as duplicate_job_id \gset
+select public.enqueue_job('test.noop', '{"case":"retry"}'::jsonb, 'r1:job:retry', 'r1:effect:retry', now(), 100, 2, 60, 2) as retry_job_id \gset
+select public.enqueue_job('test.noop', '{"case":"retry"}'::jsonb, 'r1:job:retry', 'r1:effect:retry', now(), 100, 2, 60, 2) as duplicate_job_id \gset
 select (:'retry_job_id'::uuid = :'duplicate_job_id'::uuid and (select count(*) from public.jobs where idempotency_key = 'r1:job:retry') = 1) as r1_job_enqueue_idempotent \gset
 \if :r1_job_enqueue_idempotent
 \else
@@ -84,7 +92,10 @@ select public.heartbeat_job_worker('r1-ci-worker-a', 'test');
 select job_id as claimed_job_id, lease_token as claimed_lease_token, attempt_no as claimed_attempt_no
   from public.claim_jobs('r1-ci-worker-a', 1, 60) \gset
 select (:'claimed_job_id'::uuid = :'retry_job_id'::uuid and :'claimed_attempt_no'::integer = 1
-  and (select count(*) from public.claim_jobs('r1-ci-worker-b', 1, 60)) = 0) as r1_job_lease_exclusive \gset
+  and not exists(
+    select 1 from public.claim_jobs('r1-ci-worker-b', 1, 60) other_claim
+     where other_claim.job_id = :'retry_job_id'::uuid
+  )) as r1_job_lease_exclusive \gset
 \if :r1_job_lease_exclusive
 \else
   \echo R1-2 job lease exclusivity failed
@@ -128,6 +139,7 @@ select (public.get_platform_operations_snapshot() ? 'jobs') as r1_ops_snapshot_o
   select 1 / 0;
 \endif
 reset role;
+update public.jobs set status = 'cancelled' where id = :'replay_job_id'::uuid;
 
 select public.enqueue_job('test.noop', '{"case":"timeout"}'::jsonb, 'r1:job:timeout', 'r1:effect:timeout', now(), 50, 1, 5, 1) as timeout_job_id \gset
 select job_id as timeout_claimed_id, lease_token as timeout_lease_token from public.claim_jobs('r1-ci-timeout', 1, 5) \gset

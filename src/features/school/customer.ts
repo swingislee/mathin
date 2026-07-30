@@ -28,10 +28,24 @@ export async function getMyStudents(): Promise<MyStudentRow[]> {
   }));
 }
 
-export async function canManageGuardianScopes(studentId:string):Promise<boolean>{
-  const supabase=await createClient();const{data:{user}}=await supabase.auth.getUser();if(!user)return false;
-  const{data,error}=await supabase.from("student_guardians").select("is_primary").eq("student_id",studentId).eq("guardian_id",user.id).maybeSingle<{is_primary:boolean}>();
-  if(error)throw new Error(error.message);return Boolean(data?.is_primary);
+export interface MyGuardianRelationship {
+  isPrimary: boolean;
+}
+
+export async function getMyGuardianRelationship(studentId: string): Promise<MyGuardianRelationship | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data, error } = await supabase
+    .from("student_guardians")
+    .select("is_primary")
+    .eq("student_id", studentId)
+    .eq("guardian_id", user.id)
+    .maybeSingle<{ is_primary: boolean }>();
+  if (error) throw new Error(error.message);
+  return data ? { isPrimary: data.is_primary } : null;
 }
 
 export type PaymentStatus = "overdue" | "ok" | "none" | "closed";
@@ -140,6 +154,7 @@ export async function getMyAccounts(): Promise<MyAccountRow[]> {
 
 export interface MyAttendanceRow {
   sessionId: string;
+  studentId: string;
   studentName: string;
   classroomName: string;
   lectureName: string;
@@ -154,6 +169,7 @@ export async function getMyAttendance(fromIso: string, toIso: string): Promise<M
   return (
     (data ?? []) as Array<{
       session_id: string;
+      student_id: string;
       student_name: string;
       classroom_name: string;
       lecture_name: string;
@@ -162,6 +178,7 @@ export async function getMyAttendance(fromIso: string, toIso: string): Promise<M
     }>
   ).map((row) => ({
     sessionId: row.session_id,
+    studentId: row.student_id,
     studentName: row.student_name,
     classroomName: row.classroom_name,
     lectureName: row.lecture_name,
@@ -172,6 +189,38 @@ export async function getMyAttendance(fromIso: string, toIso: string): Promise<M
 
 export interface MySessionReview{sessionId:string;studentId:string;studentName:string;classroomName:string;lectureName:string;scheduledAt:string;entryScore:number|null;exitScore:number|null;focus:number|null;participation:number|null;mastery:number|null;comment:string;knowledgeSummary:string}
 export async function getMySessionReviews(fromIso:string,toIso:string):Promise<MySessionReview[]>{const s=await createClient();const{data,error}=await s.rpc("get_my_session_reviews",{p_from:fromIso,p_to:toIso});if(error)throw new Error(error.message);return((data??[])as Array<{session_id:string;student_id:string;student_name:string;classroom_name:string;lecture_name:string;scheduled_at:string;entry_score:number|null;exit_score:number|null;focus:number|null;participation:number|null;mastery:number|null;comment:string;knowledge_summary:string}>).map(x=>({sessionId:x.session_id,studentId:x.student_id,studentName:x.student_name,classroomName:x.classroom_name,lectureName:x.lecture_name,scheduledAt:x.scheduled_at,entryScore:x.entry_score,exitScore:x.exit_score,focus:x.focus,participation:x.participation,mastery:x.mastery,comment:x.comment,knowledgeSummary:x.knowledge_summary}))}
+export type SessionReviewAvailability = "pending" | "published" | "withdrawn";
+export interface MySessionReviewState {
+  sessionId: string;
+  studentId: string;
+  studentName: string;
+  classroomName: string;
+  lectureName: string;
+  scheduledAt: string;
+  availabilityState: SessionReviewAvailability;
+}
+export async function getMySessionReviewStates(fromIso: string, toIso: string): Promise<MySessionReviewState[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("get_my_session_review_states", { p_from: fromIso, p_to: toIso });
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as Array<{
+    session_id: string;
+    student_id: string;
+    student_name: string;
+    classroom_name: string;
+    lecture_name: string;
+    scheduled_at: string;
+    availability_state: SessionReviewAvailability;
+  }>).map((row) => ({
+    sessionId: row.session_id,
+    studentId: row.student_id,
+    studentName: row.student_name,
+    classroomName: row.classroom_name,
+    lectureName: row.lecture_name,
+    scheduledAt: row.scheduled_at,
+    availabilityState: row.availability_state,
+  }));
+}
 export async function getMyReviewedVideos():Promise<Array<{videoId:string;sessionId:string;studentId:string;score:number|null;comment:string}>>{const s=await createClient();const{data,error}=await s.rpc("get_my_reviewed_videos");if(error)throw new Error(error.message);return((data??[])as Array<{video_id:string;session_id:string;student_id:string;review_score:number|null;review_comment:string}>).map(x=>({videoId:x.video_id,sessionId:x.session_id,studentId:x.student_id,score:x.review_score,comment:x.review_comment}))}
 
 export interface MyPendingAssignment {
@@ -256,6 +305,11 @@ export interface MyLeaveRequest {
   status: string;
   createdAt: string;
   decidedAt: string | null;
+  makeupSessionId: string | null;
+  makeupSessionTitle: string | null;
+  makeupClassroomName: string | null;
+  makeupScheduledAt: string | null;
+  makeupStatus: "to_schedule" | "scheduled" | "completed" | "cancelled" | null;
 }
 
 export async function listMySessionLeaveRequests(): Promise<MyLeaveRequest[]> {
@@ -272,6 +326,11 @@ export async function listMySessionLeaveRequests(): Promise<MyLeaveRequest[]> {
     status: row.status,
     createdAt: row.created_at,
     decidedAt: row.decided_at,
+    makeupSessionId: row.makeup_session_id,
+    makeupSessionTitle: row.makeup_session_title,
+    makeupClassroomName: row.makeup_classroom_name,
+    makeupScheduledAt: row.makeup_scheduled_at,
+    makeupStatus: row.makeup_status as MyLeaveRequest["makeupStatus"],
   }));
 }
 

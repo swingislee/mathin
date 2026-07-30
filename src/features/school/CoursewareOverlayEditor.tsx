@@ -40,6 +40,11 @@ import { saveCoursewareOverlay } from "./actions/courseware";
 import { healOverlay, isOverlayRef, type CoursewareTemplatePage, type OverlaySlot } from "./courseware-overlay";
 import { overlayAssetKind, uploadOverlayAsset } from "./courseware-overlay-upload";
 import { downloadCoursewareAsset } from "@/features/classroom/courseware/upload";
+import { CoursewareAnnotationBoard } from "./CoursewareAnnotationBoard";
+import type {
+  CoursewareAnnotation,
+  SolutionRecord,
+} from "./teacher-preparation-contract";
 import { replaceSessionLearningChecksAction } from "./session-learning-actions";
 import type { CoursewareLearningCheckPage } from "./session-learning";
 import type { SessionLearningCheck } from "./session-learning-contract";
@@ -68,21 +73,27 @@ export function CoursewareOverlayEditor({
   sessionId,
   template,
   initialOverlay,
+  annotations,
+  solutionRecords,
   docPreviews,
   learningCheckPages,
   initialLearningChecks,
   learningChecksLocked,
   learningChecksConfigured,
+  readOnly = false,
 }: {
   classroomId: string;
   sessionId: string;
   template: CoursewareTemplatePage[];
   initialOverlay: OverlaySlot[];
   docPreviews: Array<{ pageDocId: string; doc: PageDoc; bindingUrls: ResolvedBindingUrls }>;
+  annotations: CoursewareAnnotation[];
+  solutionRecords: SolutionRecord[];
   learningCheckPages: CoursewareLearningCheckPage[];
   initialLearningChecks: SessionLearningCheck[];
   learningChecksLocked: boolean;
   learningChecksConfigured: boolean;
+  readOnly?: boolean;
 }) {
   const t = useTranslations("school.overlay");
   const ts = useTranslations("school.session");
@@ -129,6 +140,10 @@ export function CoursewareOverlayEditor({
   const selectedDoc = selectedPage?.type === "doc"
     ? docPreviews.find((preview) => preview.pageDocId === selectedPage.docId) ?? null
     : null;
+  const selectedAnnotation = selectedDoc
+    ? annotations.find((annotation) => annotation.pageDocId === selectedDoc.pageDocId) ?? null
+    : null;
+  const selectedBoardGenerated = selectedDoc ? solutionRecords.some((record) => record.source === "board" && record.pageDocId === selectedDoc.pageDocId) : false;
 
   useEffect(() => {
     let cancelled = false;
@@ -146,6 +161,7 @@ export function CoursewareOverlayEditor({
   }, [selectedPage]);
 
   const persist = useCallback(async () => {
+    if (readOnly) return;
     setSaveState("saving");
     try {
       await saveCoursewareOverlay(sessionId, overlayRef.current);
@@ -153,20 +169,22 @@ export function CoursewareOverlayEditor({
     } catch {
       setSaveState("error");
     }
-  }, [sessionId]);
+  }, [readOnly, sessionId]);
 
   const mutate = useCallback((updater: (prev: OverlaySlot[]) => OverlaySlot[]) => {
+    if (readOnly) return;
     setOverlay(updater);
     setSaveState("dirty");
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => void persist(), 1200);
-  }, [persist]);
+  }, [persist, readOnly]);
 
   useEffect(() => () => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
   }, []);
 
   const addFiles = async (files: FileList | null) => {
+    if (readOnly) return;
     if (!files || files.length === 0) return;
     setUploading(true);
     try {
@@ -186,6 +204,7 @@ export function CoursewareOverlayEditor({
   };
 
   const move = (index: number, delta: number) => {
+    if (readOnly) return;
     mutate((prev) => {
       const next = [...prev];
       const target = index + delta;
@@ -222,7 +241,7 @@ export function CoursewareOverlayEditor({
   };
 
   const toggleLearningCheck = (page: Extract<CoursewareTemplatePage, { type: "doc" }>) => {
-    if (learningChecksLocked) return;
+    if (readOnly || learningChecksLocked) return;
     restoreUndoRef.current = null;
     setRestoreUndoAvailable(false);
     const current = learningChecksRef.current;
@@ -233,7 +252,7 @@ export function CoursewareOverlayEditor({
   };
 
   const restoreLearningCheckDefaults = () => {
-    if (learningChecksLocked || learningCheckDefaultsActive) return;
+    if (readOnly || learningChecksLocked || learningCheckDefaultsActive) return;
     const previous = [...learningChecksRef.current];
     restoreUndoRef.current = previous;
     setRestoreUndoAvailable(true);
@@ -246,7 +265,7 @@ export function CoursewareOverlayEditor({
   };
 
   const undoRestoreLearningCheckDefaults = () => {
-    if (learningChecksLocked || !restoreUndoRef.current) return;
+    if (readOnly || learningChecksLocked || !restoreUndoRef.current) return;
     const previous = restoreUndoRef.current;
     restoreUndoRef.current = null;
     setRestoreUndoAvailable(false);
@@ -281,7 +300,7 @@ export function CoursewareOverlayEditor({
         aria-pressed={selectedForCheck}
         aria-label={ts(selectedForCheck ? "learningCheckQuickRemove" : "learningCheckQuickAdd")}
         title={ts(selectedForCheck ? "learningCheckQuickRemove" : "learningCheckQuickAdd")}
-        disabled={learningChecksLocked}
+        disabled={readOnly || learningChecksLocked}
         onClick={(event) => {
           event.stopPropagation();
           toggleLearningCheck(page);
@@ -305,7 +324,7 @@ export function CoursewareOverlayEditor({
         leading: page?.type === "doc"
           ? checkMarker(page)
           : <span className="grid size-7 shrink-0 place-items-center text-muted"><Icon size={15} aria-hidden /></span>,
-        trailing: (
+        trailing: readOnly ? undefined : (
           <div className="flex shrink-0 items-center opacity-40 transition group-hover:opacity-100">
             <button type="button" aria-label={t("moveUp")} disabled={index === 0} onClick={(event) => { event.stopPropagation(); move(index, -1); }} className="rounded-full p-1 text-muted hover:bg-moon/30 hover:text-ink disabled:opacity-20">
               <ArrowUp size={12} />
@@ -325,7 +344,9 @@ export function CoursewareOverlayEditor({
       leading: page.type === "doc"
         ? checkMarker(page)
         : <span className="grid size-7 shrink-0 place-items-center text-muted"><Icon size={15} aria-hidden /></span>,
-      titleContent: (
+      titleContent: readOnly ? (
+        <span className="min-w-0 flex-1 truncate px-1 text-xs">{page.title}</span>
+      ) : (
         <Input
           value={page.title}
           maxLength={100}
@@ -343,7 +364,7 @@ export function CoursewareOverlayEditor({
           className="h-8 min-w-0 border-0 bg-transparent px-1 text-xs shadow-none"
         />
       ),
-      trailing: (
+      trailing: readOnly ? undefined : (
         <div className="flex shrink-0 items-center opacity-40 transition group-hover:opacity-100">
           <button type="button" aria-label={t("moveUp")} disabled={index === 0} onClick={(event) => { event.stopPropagation(); move(index, -1); }} className="rounded-full p-1 text-muted hover:bg-moon/30 hover:text-ink disabled:opacity-20">
             <ArrowUp size={12} />
@@ -363,7 +384,17 @@ export function CoursewareOverlayEditor({
     <p className="grid size-full place-items-center text-sm text-muted">{t("previewEmpty")}</p>
   ) : selectedPage.type === "doc" ? (
     selectedDoc ? (
-      <StagePreview doc={selectedDoc.doc} bindingUrls={selectedDoc.bindingUrls} stageMode="board43" interactive={false} className="size-full" />
+      <CoursewareAnnotationBoard
+        key={`${selectedDoc.pageDocId}:${selectedAnnotation?.version ?? 0}`}
+        sessionId={sessionId}
+        pageDocId={selectedDoc.pageDocId}
+        initialContent={selectedAnnotation?.content ?? []}
+        initialVersion={selectedAnnotation?.version ?? 0}
+        generated={selectedBoardGenerated}
+        readOnly={readOnly}
+      >
+        <StagePreview doc={selectedDoc.doc} bindingUrls={selectedDoc.bindingUrls} stageMode="board43" interactive={false} className="size-full" />
+      </CoursewareAnnotationBoard>
     ) : (
       <p className="grid size-full place-items-center text-sm text-muted">{t("previewLoading")}</p>
     )
@@ -395,8 +426,8 @@ export function CoursewareOverlayEditor({
     <section className="flex min-h-0 flex-1 flex-col">
       <div className="flex flex-wrap items-center gap-3">
         <h3 className="text-sm font-medium text-muted">{t("title", { count: overlay.length })}</h3>
-        <span className={`text-xs ${saveState === "error" ? "text-rose" : "text-muted"}`}>{saveLabel}</span>
-        <div className="ml-auto flex flex-wrap items-center gap-2">
+        {!readOnly ? <span className={`text-xs ${saveState === "error" ? "text-rose" : "text-muted"}`}>{saveLabel}</span> : null}
+        {!readOnly ? <div className="ml-auto flex flex-wrap items-center gap-2">
           <Input
             ref={fileInputRef}
             type="file"
@@ -433,9 +464,9 @@ export function CoursewareOverlayEditor({
             <PenLine size={14} />
             {t("addBoard")}
           </button>
-        </div>
+        </div> : null}
       </div>
-      <p className="mt-2 text-xs text-muted">{t("hint")}</p>
+      <p className="mt-2 text-xs text-muted">{readOnly ? ts("prepArchiveCoursewareHint") : t("hint")}</p>
 
       <CoursewarePreviewWorkspace
         className="mt-3 flex-1"
@@ -443,7 +474,7 @@ export function CoursewareOverlayEditor({
         items={previewItems}
         selectedIndex={safeSelectedIndex}
         onSelectedIndexChange={setSelectedIndex}
-        directoryLabel={ts("coursewarePageRailTitle")}
+        directoryLabel={readOnly ? ts("coursewareArchivePageRailTitle") : ts("coursewarePageRailTitle")}
         previewLabel={t("visualPreview")}
         previousLabel={ts("coursewarePreviousPage")}
         nextLabel={ts("coursewareNextPage")}
@@ -451,11 +482,11 @@ export function CoursewareOverlayEditor({
         selectedPageLabel={selectedPage ? safeSelectedIndex + 1 + " / " + resolvedPages.length + " · " + selectedPage.title : t("previewEmpty")}
         railStatus={(
           <>
-            <span className={"shrink-0 text-[11px] " + (learningCheckSaveState === "error" ? "text-rose" : "text-muted")}>{learningCheckSaveLabel}</span>
+            {!readOnly ? <span className={"shrink-0 text-[11px] " + (learningCheckSaveState === "error" ? "text-rose" : "text-muted")}>{learningCheckSaveLabel}</span> : null}
             <span className="shrink-0 text-xs tabular-nums text-muted">{learningChecks.filter((item) => item.sourcePageId).length} / {resolvedPages.length}</span>
           </>
         )}
-        railFooter={!learningChecksLocked ? (
+        railFooter={!readOnly && !learningChecksLocked ? (
           <div className="flex items-center gap-1">
             <Button
               type="button"

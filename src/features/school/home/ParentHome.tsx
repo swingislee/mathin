@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { buttonVariants } from "@/components/ui/button";
 import { listMyClassrooms } from "@/features/classroom/actions";
 import { BindCodeForm } from "@/features/school/BindCodeForm";
-import { getMyLearningSummary, getMySessionReviews } from "@/features/school/customer";
+import { getMyLearningSummary, getMySessionReviews, getMySessionReviewStates } from "@/features/school/customer";
 import { getWeekSchedule } from "@/features/school/actions/schedule";
 import { addDays } from "@/features/school/schedule";
 import {
@@ -58,10 +58,11 @@ export async function ParentHome({ locale, user, profile }: HomeProps) {
   buildSharedCustomerTiles({ t, gamesT, locale, bests, recentPosts, classrooms, labels, contents, extras });
 
     const studentsT = await getTranslations("school.students");
-    const [summaries, parentWeekSchedule, parentReviews] = await Promise.all([
+    const [summaries, parentWeekSchedule, parentReviews, parentReviewStates] = await Promise.all([
       safe(getMyLearningSummary, []),
       safe(() => getWeekSchedule(new Date().toISOString(), addDays(new Date(), 7).toISOString()), []),
       safe(()=>getMySessionReviews(addDays(new Date(),-180).toISOString(),new Date().toISOString()),[]),
+      safe(() => getMySessionReviewStates(addDays(new Date(), -180).toISOString(), new Date().toISOString()), []),
     ]);
     const weekFmt = new Intl.DateTimeFormat(locale, { weekday: "short", hour: "2-digit", minute: "2-digit" });
 
@@ -70,7 +71,7 @@ export async function ParentHome({ locale, user, profile }: HomeProps) {
       const nextAt = child.nextSessionAt ? shortFmt.format(new Date(child.nextSessionAt)) : "-";
       // §0.8：本周 N 节 + 首两个时刻（时刻串按课表在 TS 侧拼，RPC 只给数）。
       const childTimes = parentWeekSchedule
-        .filter((entry) => entry.studentName === child.studentName)
+        .filter((entry) => entry.studentId === child.studentId)
         .slice(0, 2)
         .map((entry) => weekFmt.format(new Date(entry.scheduledAt)))
         .join(locale === "zh" ? "、" : ", ");
@@ -79,6 +80,7 @@ export async function ParentHome({ locale, user, profile }: HomeProps) {
           ? customerT("weekSessionsValue", { count: child.weekSessionCount, times: childTimes })
           : customerT("weekSessionsCount", { count: child.weekSessionCount });
       const recentReview=parentReviews.find(review=>review.studentId===child.studentId);
+      const recentReviewState = parentReviewStates.find((state) => state.studentId === child.studentId);
       labels.set(key, child.studentName);
       extras.set(key, {
         href: `/dashboard/children?child=${child.studentId}`,
@@ -105,7 +107,7 @@ export async function ParentHome({ locale, user, profile }: HomeProps) {
                 {child.pendingAssignmentCount ?? "—"}
               </dd>
             </div>
-            {recentReview?<div className="flex justify-between gap-3"><dt className="text-muted">{customerT("recentReview")}</dt><dd className="min-w-0 truncate text-right">{customerT("recentReviewValue",{entry:recentReview.entryScore??"—",exit:recentReview.exitScore??"—"})}</dd></div>:<div className="flex justify-between gap-3"><dt className="text-muted">{customerT("starTotal")}</dt><dd className="tabular-nums">{child.starTotal}</dd></div>}
+            {recentReview?<div className="flex justify-between gap-3"><dt className="text-muted">{customerT("recentReview")}</dt><dd className="min-w-0 truncate text-right">{customerT("recentReviewValue",{entry:recentReview.entryScore??"—",exit:recentReview.exitScore??"—"})}</dd></div>:recentReviewState?<div className="flex justify-between gap-3"><dt className="text-muted">{customerT("recentReview")}</dt><dd className="min-w-0 truncate text-right">{studentsT(`reviewStatus_${recentReviewState.availabilityState}`)}</dd></div>:<div className="flex justify-between gap-3"><dt className="text-muted">{customerT("starTotal")}</dt><dd className="tabular-nums">{child.starTotal}</dd></div>}
             <div className="flex justify-between gap-3">
               <dt className="text-muted">{customerT("paymentStatus")}</dt>
               <dd>

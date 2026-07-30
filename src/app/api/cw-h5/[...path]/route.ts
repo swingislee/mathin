@@ -3,6 +3,7 @@ import {
   H5_IMMUTABLE_CACHE,
   h5ObjectPath,
   h5PublicUrl,
+  injectH5Runtime,
   isHtmlObjectPath,
 } from "@/features/courseware-doc/h5-shim";
 
@@ -24,51 +25,6 @@ import {
  * 已返回 *)。带 Origin 时反射并允许凭据——通配符 * 会被凭据模式请求拒收;
  * 内容为公开桶的内容寻址对象,该路由也不做 Cookie 鉴权,放开无害。
  */
-
-const H5_MEDIA_BRIDGE = `<script data-mathin-media-bridge>
-(() => {
-  if (window.__mathinMediaBridge) return;
-  window.__mathinMediaBridge = true;
-  let applying = false;
-  const media = () => Array.from(document.querySelectorAll("video,audio"));
-  const relay = (event) => {
-    if (applying) return;
-    const target = event.target;
-    if (!(target instanceof HTMLMediaElement)) return;
-    const action = event.type === "play" ? "play" : event.type === "pause" ? "pause" : "seek";
-    parent.postMessage({ source: "mathin-h5-media", action, time: target.currentTime || 0 }, "*");
-  };
-  document.addEventListener("play", relay, true);
-  document.addEventListener("pause", relay, true);
-  document.addEventListener("seeked", relay, true);
-  window.addEventListener("message", (event) => {
-    const data = event.data || {};
-    if (data.source !== "mathin-classroom" || data.type !== "media_ctl") return;
-    applying = true;
-    for (const target of media()) {
-      if (Number.isFinite(data.time)) {
-        try { target.currentTime = data.time; } catch {}
-      }
-      if (data.action === "play") {
-        Promise.resolve(target.play()).catch(() => {
-          target.muted = true;
-          return target.play();
-        }).catch(() => {});
-      } else if (data.action === "pause") {
-        target.pause();
-      }
-    }
-    setTimeout(() => { applying = false; }, 80);
-  });
-})();
-</script>`;
-
-function injectH5MediaBridge(html: string): string {
-  const bodyEnd = html.toLowerCase().lastIndexOf("</body>");
-  return bodyEnd >= 0
-    ? html.slice(0, bodyEnd) + H5_MEDIA_BRIDGE + html.slice(bodyEnd)
-    : html + H5_MEDIA_BRIDGE;
-}
 
 function corsHeaders(request: Request): Record<string, string> {
   const origin = request.headers.get("origin");
@@ -145,12 +101,14 @@ export async function GET(
 
   const upstream = await fetch(publicUrl, { cache: "no-store" });
   if (!upstream.ok) return new Response("Not found", { status: 404, headers: cors });
-  return new Response(injectH5MediaBridge(await upstream.text()), {
+  return new Response(injectH5Runtime(await upstream.text()), {
     status: 200,
     headers: {
       ...cors,
       "Content-Type": "text/html; charset=utf-8",
-      "Cache-Control": H5_IMMUTABLE_CACHE,
+      // The package bytes are immutable, but this response also contains the
+      // app-owned runtime shim and must be revalidated after app deployments.
+      "Cache-Control": "public, max-age=0, must-revalidate",
       "X-Content-Type-Options": "nosniff",
     },
   });

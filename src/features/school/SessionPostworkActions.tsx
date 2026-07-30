@@ -20,7 +20,17 @@ import { completeSessionTaskAction } from "./actions/classes";
  * 已在 P4I-15 接上专用表单并在保存成功后自动标记完成，这里用 hideMarkDone 只保留"跳过"
  * （例如本节课无人提交视频、无需跟进等确有其事的"没有可做"场景）。
  */
-export function SessionTaskActions({ taskId, disabled, hideMarkDone = false }: { taskId: string; disabled: boolean; hideMarkDone?: boolean }) {
+export function SessionTaskActions({
+  taskId,
+  disabled,
+  hideMarkDone = false,
+  skipLabel,
+}: {
+  taskId: string;
+  disabled: boolean;
+  hideMarkDone?: boolean;
+  skipLabel?: string;
+}) {
   const t = useTranslations("school.session");
   const router = useRouter();
   const [skipOpen, setSkipOpen] = useState(false);
@@ -44,7 +54,7 @@ export function SessionTaskActions({ taskId, disabled, hideMarkDone = false }: {
         </Button>
       )}
       <Button size="sm" variant="ghost" disabled={disabled || run.pending} onClick={() => setSkipOpen(true)}>
-        {t("taskSkip")}
+        {skipLabel ?? t("taskSkip")}
       </Button>
       <Dialog open={skipOpen} onOpenChange={setSkipOpen}>
         <DialogContent>

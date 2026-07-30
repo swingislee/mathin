@@ -21,9 +21,9 @@ describe("P6-4 binding resolution", () => {
         query: { coursewareId: ["5518"], env: ["online", "backup"] },
         coursewareIdParam: "5518",
       }),
-    ).toBe(`/api/cw-h5/packages/${"f".repeat(64)}/index.html?coursewareId=5518&env=online&env=backup`);
+    ).toBe(`/api/cw-h5/packages/${"f".repeat(64)}/index.html?coursewareId=5518&env=online&env=backup&mathin_h5_runtime=2`);
     expect(buildH5EntryUrl("f".repeat(64), "sub dir/main.htm", null)).toBe(
-      `/api/cw-h5/packages/${"f".repeat(64)}/sub%20dir/main.htm`,
+      `/api/cw-h5/packages/${"f".repeat(64)}/sub%20dir/main.htm?mathin_h5_runtime=2`,
     );
   });
 });

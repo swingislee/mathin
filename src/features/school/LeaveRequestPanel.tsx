@@ -66,6 +66,19 @@ export function LeaveRequestPanel({
             <li key={request.id} className="py-3 text-sm">
               <div className="flex items-center justify-between gap-3"><span className="min-w-0 truncate font-medium">{request.sessionTitle}</span><span className="shrink-0 text-xs text-muted">{t(`leaveStatus_${request.status}`)}</span></div>
               <p className="mt-1 line-clamp-2 text-xs text-muted">{request.reason}</p>
+              {request.makeupStatus && (
+                <p className="mt-1 text-xs text-muted">
+                  <span className="font-medium text-ink">{t(`leaveMakeup_${request.makeupStatus}`)}</span>
+                  {request.makeupScheduledAt && request.makeupStatus !== "to_schedule" && (
+                    <>
+                      {" · "}
+                      {new Intl.DateTimeFormat(undefined, { dateStyle: "short", timeStyle: "short" }).format(new Date(request.makeupScheduledAt))}
+                      {request.makeupClassroomName ? ` · ${request.makeupClassroomName}` : ""}
+                      {request.makeupSessionTitle ? ` · ${request.makeupSessionTitle}` : ""}
+                    </>
+                  )}
+                </p>
+              )}
             </li>
           ))}
         </ul>
