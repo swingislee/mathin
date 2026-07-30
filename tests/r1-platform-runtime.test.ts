@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 const root = process.cwd();
 const read = (file: string) => fs.readFileSync(path.join(root, file), "utf8");
 const migration = read("supabase/migrations/20260728000300_r1_platform_runtime.sql");
+const notificationExperience = read("supabase/migrations/20260729000100_r1_notification_experience.sql");
 
 describe("R1-2 platform runtime contracts", () => {
   it("persists leases, attempts, exponential retry, dead letters, effects, and replay", () => {
@@ -21,14 +22,28 @@ describe("R1-2 platform runtime contracts", () => {
 
   it("uses a first-party notification model with channel delivery history", () => {
     const siteHeader = read("src/components/site-header.tsx");
+    const changeBell = read("src/features/events/ChangeBell.tsx");
+    const utilitySheet = read("src/components/utility-sheet.tsx");
     const actions = read("src/features/events/notifications.ts");
     expect(migration).toContain("create table public.notifications");
     expect(migration).toContain("create table public.notification_deliveries");
     expect(migration).toContain("domain_events_stage_notification");
     expect(migration).toContain("unique(recipient_id, idempotency_key)");
     expect(siteHeader).toContain("@/features/events/notifications");
+    expect(siteHeader).toContain("userId={user.id}");
+    expect(changeBell).toContain("supabase.realtime.setAuth");
+    expect(changeBell).toContain("notifications:${userId}");
+    expect(changeBell).toContain("initialEvents.filter");
+    expect(changeBell.indexOf("if (event.link) router.push(event.link);")).toBeLessThan(
+      changeBell.indexOf("await markChangeFeedItemRead(event.id)"),
+    );
     expect(actions).toContain('.from("notifications")');
+    expect(actions).toContain('rpc("mark_notification_read"');
     expect(actions).toContain('rpc("mark_notifications_read_through"');
+    expect(notificationExperience).toContain("alter publication supabase_realtime add table public.notifications");
+    expect(notificationExperience).toContain("notifications_apply_actionable_link");
+    expect(utilitySheet.indexOf('aria-label={common("logout")}' )).toBeLessThan(utilitySheet.indexOf("<ScrollArea"));
+    expect(utilitySheet).toContain('bg-background/95 px-5 py-2');
   });
 
   it("governs user files and uses TUS for the large video path", () => {

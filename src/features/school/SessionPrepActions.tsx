@@ -19,27 +19,22 @@ import {
   completeSessionPreparationAction,
   copySessionPreparationAction,
   listSessionPreparationCopyCandidatesAction,
-  startSessionPreparationAction,
   type SessionPrepCopyCandidate,
 } from "./actions/classes";
 import type { SessionPrepStatus } from "./teaching-operations/scopes";
 
 /**
- * 课前"备课"三个动作：开始/复制/完成备课。完成备课时若讲次尚无可用 release，
+ * 进入课前阶段会自动开始备课；复制与完成是两个独立叶子，分别贴近阶段导航和试讲入口。
+ * 完成备课时若讲次尚无可用 release，
  * 直接展示理由输入（doc19 §14.7"空白课堂降级"要求先填写原因），而不是等服务端
  * 报错后再弹窗——`hasRelease` 由页面用已加载的 `currentReleaseNo` 提前判断。
  */
-export function SessionPrepActions({
+export function SessionPrepCopyAction({
   sessionId,
   prepStatus,
-  hasRelease,
-  hasUnpublishedChanges,
 }: {
   sessionId: string;
   prepStatus: SessionPrepStatus;
-  hasRelease: boolean;
-  /** ready 状态下讲次是否已发布比当前采纳更新的 release（doc19 §14.6"显示 update_available"）。 */
-  hasUnpublishedChanges: boolean;
 }) {
   const t = useTranslations("school.session");
   const router = useRouter();
@@ -47,14 +42,6 @@ export function SessionPrepActions({
   const [candidates, setCandidates] = useState<SessionPrepCopyCandidate[] | null>(null);
   const [selectedCandidate, setSelectedCandidate] = useState("");
   const [loadingCandidates, startLoadCandidates] = useTransition();
-  const [fallbackOpen, setFallbackOpen] = useState(false);
-  const [fallbackReason, setFallbackReason] = useState("");
-
-  const startRun = useAction(startSessionPreparationAction, {
-    successMessage: t("prepStarted"),
-    errorMessage: { default: t("actionFailed") },
-    onSuccess: () => router.refresh(),
-  });
   const copyRun = useAction(copySessionPreparationAction, {
     successMessage: t("prepCopied"),
     errorMessage: { default: t("actionFailed") },
@@ -63,21 +50,6 @@ export function SessionPrepActions({
       router.refresh();
     },
   });
-  const completeRun = useAction(completeSessionPreparationAction, {
-    successMessage: t("prepCompleted"),
-    errorMessage: {
-      RELEASE_REQUIRED: t("releaseRequired"),
-      default: t("actionFailed"),
-    },
-    onSuccess: () => {
-      setFallbackOpen(false);
-      setFallbackReason("");
-      router.refresh();
-    },
-  });
-
-  const pending = startRun.pending || copyRun.pending || completeRun.pending;
-
   const openCopyDialog = () => {
     setCopyOpen(true);
     if (candidates) return;
@@ -88,31 +60,14 @@ export function SessionPrepActions({
     });
   };
 
-  if (prepStatus === "not_started") {
-    return (
-      <Button size="sm" variant="secondary" disabled={pending} onClick={() => startRun.run(sessionId)}>
-        {t("startPrep")}
-      </Button>
-    );
-  }
 
-  if (prepStatus === "ready" && !hasUnpublishedChanges) return null;
+  if (prepStatus === "ready") return null;
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      {prepStatus === "in_progress" && (
-        <Button size="sm" variant="secondary" disabled={pending} onClick={openCopyDialog}>
-          {t("copyPrep")}
-        </Button>
-      )}
-      <Button
-        size="sm"
-        disabled={pending}
-        onClick={() => (hasRelease ? completeRun.run(sessionId, "") : setFallbackOpen(true))}
-      >
-        {prepStatus === "ready" ? t("updateRelease") : t("completePrep")}
+    <>
+      <Button size="sm" variant="secondary" disabled={copyRun.pending} onClick={openCopyDialog}>
+        {t("copyPrep")}
       </Button>
-
       <Dialog open={copyOpen} onOpenChange={setCopyOpen}>
         <DialogContent>
           <DialogHeader>
@@ -148,7 +103,53 @@ export function SessionPrepActions({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </>
+  );
+}
 
+export function SessionPrepCompleteAction({
+  sessionId,
+  prepStatus,
+  hasRelease,
+  hasUnpublishedChanges,
+}: {
+  sessionId: string;
+  prepStatus: SessionPrepStatus;
+  hasRelease: boolean;
+  /** ready 状态下讲次是否已发布比当前采纳更新的 release（doc19 §14.6"显示 update_available"）。 */
+  hasUnpublishedChanges: boolean;
+}) {
+  const t = useTranslations("school.session");
+  const router = useRouter();
+  const [fallbackOpen, setFallbackOpen] = useState(false);
+  const [fallbackReason, setFallbackReason] = useState("");
+  const completeRun = useAction(completeSessionPreparationAction, {
+    successMessage: t("prepCompleted"),
+    errorMessage: {
+      RELEASE_REQUIRED: t("releaseRequired"),
+      PREP_ARTIFACTS_REQUIRED: t("prepArtifactsRequired"),
+      PREP_REVIEW_REQUIRED: t("prepReviewRequired"),
+      LEARNING_CHECKS_REQUIRED: t("learningChecksRequired"),
+      default: t("actionFailed"),
+    },
+    onSuccess: () => {
+      setFallbackOpen(false);
+      setFallbackReason("");
+      router.refresh();
+    },
+  });
+
+  if (prepStatus === "ready" && !hasUnpublishedChanges) return null;
+
+  return (
+    <>
+      <Button
+        size="sm"
+        disabled={completeRun.pending}
+        onClick={() => (hasRelease ? completeRun.run(sessionId, "") : setFallbackOpen(true))}
+      >
+        {prepStatus === "ready" ? t("updateRelease") : t("completePrep")}
+      </Button>
       <Dialog open={fallbackOpen} onOpenChange={setFallbackOpen}>
         <DialogContent>
           <DialogHeader>
@@ -173,6 +174,6 @@ export function SessionPrepActions({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }

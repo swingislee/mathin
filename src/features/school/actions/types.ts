@@ -36,6 +36,7 @@ export interface AttendanceDrawerRow {
   studentName: string;
   status: AttendanceStatus;
   note: string;
+  marked: boolean;
 }
 
 export interface SessionChangeOptions {

@@ -33,15 +33,20 @@ export function buildSessionReport(members: ClassroomMember[], events: SessionEv
     }
   }
 
+  const hasHandEvents = events.some((event) => event.type === "hand");
+  const hasQuizEvents = quizzes.size > 0;
+
   const rows: SessionReportRow[] = students.map((student) => {
     let answeredCount = 0;
     for (const quiz of quizzes.values()) if (quiz.answers.has(student.userId)) answeredCount += 1;
     return {
       userId: student.userId,
+      studentId: null,
       displayName: student.displayName,
+      attendanceStatus: null,
       stars: stars.get(student.userId) ?? 0,
-      handRaises: handRaises.get(student.userId) ?? 0,
-      answeredCount,
+      handRaises: hasHandEvents ? handRaises.get(student.userId) ?? 0 : null,
+      answeredCount: hasQuizEvents ? answeredCount : null,
     };
   });
 
@@ -53,5 +58,5 @@ export function buildSessionReport(members: ClassroomMember[], events: SessionEv
       return { quizId, options: quiz.options, openedAt: quiz.openedAt, tally, respondents: quiz.answers.size };
     });
 
-  return { rows, quizzes: quizReports };
+  return { rows, quizzes: quizReports, learningChecks: [] };
 }

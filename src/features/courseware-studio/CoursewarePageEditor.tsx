@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { Plus, Rocket, RotateCcw, Save, Send, Trash2 } from "lucide-react";
+import { BookOpenCheck, Plus, Rocket, RotateCcw, Save, Send, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -25,6 +25,7 @@ import {
   revertCoursewarePageAction,
   rollbackCoursewareReleaseAction,
   saveCoursewareDraftAction,
+  setCoursewarePageLearningCheckFlagAction,
   submitCoursewareReviewAction,
 } from "./actions";
 import { setAdaptPageClassificationAction } from "./adapt-actions";
@@ -97,6 +98,8 @@ export function CoursewarePageEditor({ lecture, track, page, pages, initialDoc, 
   const [message, setMessage] = useState("");
   const [copyTargetId, setCopyTargetId] = useState(lecture.id);
   const [imageFile, setImageFile] = useState<File | null>(null);
+
+  const [learningCheckEnabled, setLearningCheckEnabled] = useState(page.learningCheckEnabled);
   const [pendingHref, setPendingHref] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const backgroundSelected = selectedPath === BACKGROUND_SELECTION;
@@ -115,7 +118,9 @@ export function CoursewarePageEditor({ lecture, track, page, pages, initialDoc, 
     setCurrentBaseRevisionNo(baseRevisionNo);
     setSelectedPath(null);
     setImageFile(null);
-  }, [page.id, track, initialDoc, baseRevisionNo]);
+
+    setLearningCheckEnabled(page.learningCheckEnabled);
+  }, [page.id, page.learningCheckEnabled, track, initialDoc, baseRevisionNo]);
 
   useEffect(() => {
     const handler = (event: BeforeUnloadEvent) => {
@@ -195,6 +200,17 @@ export function CoursewarePageEditor({ lecture, track, page, pages, initialDoc, 
     });
   };
 
+  const saveLearningCheckFlag = () => startTransition(async () => {
+    const result = await setCoursewarePageLearningCheckFlagAction({
+      pageDocId: page.id,
+      track,
+
+      enabled: learningCheckEnabled,
+    });
+    setMessage(result.ok ? t("learningCheckFlagSaved") : t("learningCheckFlagSaveFailed", { code: result.code }));
+    if (result.ok) router.refresh();
+  });
+
   const toolbar = <div className="flex h-full items-center gap-2 overflow-x-auto">
     <Link href={lectureWorkspaceHref} onClick={guardLinkClick(lectureWorkspaceHref)} className="shrink-0 rounded-full border border-line px-3 py-1.5 text-xs text-muted transition hover:bg-paper hover:text-ink">{t("backToLectureWorkspace")}</Link>
     <span className="shrink-0 truncate text-sm font-medium text-ink">{t("lectureTitle", { no: lecture.no, name: lecture.name })}</span>
@@ -229,6 +245,25 @@ export function CoursewarePageEditor({ lecture, track, page, pages, initialDoc, 
   const rightPanel = <div className="space-y-4 p-3">
     <div>
       <p className="mb-2 text-sm font-medium text-ink">{t("properties")}</p>
+      <div className="mb-4 space-y-3 rounded-xl bg-paper/75 p-2.5 ring-1 ring-line/45">
+        <div className="flex items-center gap-2 text-sm font-medium text-ink">
+          <BookOpenCheck size={16} />
+          {t("learningCheckPageFlagTitle")}
+        </div>
+        <p className="text-xs leading-5 text-muted">{t("learningCheckPageFlagHint")}</p>
+
+        <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-lg border border-line bg-card px-3 py-2.5">
+          <Checkbox checked={learningCheckEnabled} disabled={pending} onCheckedChange={(value) => setLearningCheckEnabled(value === true)} />
+          <span>
+            <span className="block text-sm text-ink">{t("learningCheckEnabled")}</span>
+            <span className="mt-0.5 block text-xs leading-5 text-muted">{t("learningCheckEnabledHint")}</span>
+          </span>
+        </label>
+        {page.learningCheckFlagDirty && <p className="text-xs text-crater">{t("learningCheckFlagUnpublished")}</p>}
+        <Button size="sm" variant="secondary" disabled={pending || learningCheckEnabled === page.learningCheckEnabled} onClick={saveLearningCheckFlag}>
+          <Save size={14} />{t("saveLearningCheckFlag")}
+        </Button>
+      </div>
       {track === "adapted-4x3" ? (
         <div className="mb-4 space-y-1.5 rounded-xl bg-paper/75 p-2.5 ring-1 ring-line/45">
           <Label>{t("adaptClassSelect")}</Label>

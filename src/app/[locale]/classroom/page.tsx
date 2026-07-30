@@ -1,8 +1,9 @@
 import { getFormatter, getTranslations, setRequestLocale } from "next-intl/server";
+import { redirect } from "next/navigation";
 import { EmptyState } from "@/components/empty-state";
 import { SectionShell } from "@/components/section-shell";
 import { getMyProfileRole, listMyClassrooms } from "@/features/classroom/actions";
-import { CreateClassroomButton, JoinClassroomForm } from "@/features/classroom/ListActions";
+import { JoinClassroomForm } from "@/features/classroom/ListActions";
 import { Link } from "@/i18n/navigation";
 import { requireUser } from "@/lib/auth";
 
@@ -17,11 +18,12 @@ export default async function ClassroomListPage({ params }: { params: Promise<{ 
     getMyProfileRole(),
   ]);
   const isTeacher = profileRole === "staff" || profileRole === "admin";
+  if (isTeacher) redirect("/" + locale + "/dashboard/classes");
   return (
     <SectionShell section="classroom" intro={t("intro")} wide>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <JoinClassroomForm />
-        {isTeacher && <CreateClassroomButton />}
+
       </div>
       {classrooms.length === 0 ? (
         <EmptyState message={t("empty")} />

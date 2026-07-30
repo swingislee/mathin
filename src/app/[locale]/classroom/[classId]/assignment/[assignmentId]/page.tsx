@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { SectionShell } from "@/components/section-shell";
 import { getAssignment, getClassroom, getMySubmission, listSubmissions } from "@/features/classroom/actions";
 import { SubmissionForm } from "@/features/classroom/assignments/SubmissionForm";
+import { getMyStudents } from "@/features/school/customer";
 import { SubmissionsRoster } from "@/features/classroom/assignments/SubmissionsRoster";
 import { Link } from "@/i18n/navigation";
 import { requireUser } from "@/lib/auth";
@@ -28,7 +29,10 @@ export default async function AssignmentPage({
   if (!classroom || !assignment || assignment.classroomId !== classId) notFound();
   const isTeacher = classroom.myRole === "teacher";
   const submissions = isTeacher ? await listSubmissions(assignmentId) : null;
-  const mine = isTeacher ? null : await getMySubmission(assignmentId);
+  const [mine, myStudents] = isTeacher
+    ? [null, []]
+    : await Promise.all([getMySubmission(assignmentId), getMyStudents()]);
+  const studentId = myStudents[0]?.id ?? null;
 
   return (
     <SectionShell section="classroom" wide>
@@ -60,7 +64,7 @@ export default async function AssignmentPage({
         {isTeacher && submissions ? (
           <SubmissionsRoster rows={submissions} />
         ) : (
-          <SubmissionForm assignmentId={assignmentId} mine={mine} />
+          studentId ? <SubmissionForm assignmentId={assignmentId} studentId={studentId} mine={mine} /> : null
         )}
       </div>
     </SectionShell>

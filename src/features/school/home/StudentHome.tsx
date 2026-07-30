@@ -143,7 +143,7 @@ export async function StudentHome({ locale, user, profile }: HomeProps) {
           {myPendingAssignments.slice(0, 3).map((row) => (
             <li key={row.assignmentId} className="flex items-center gap-3 py-2 text-sm">
               <Link
-                href={`/classroom/${row.classroomId}/assignment/${row.assignmentId}`}
+                href={`/dashboard/assignments/${row.assignmentId}?student=${row.studentId}`}
                 className="min-w-0 flex-1 truncate font-medium hover:underline"
               >
                 {row.title}

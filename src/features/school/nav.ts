@@ -40,6 +40,7 @@ export const HOME_NAV_ITEM: SchoolNavItem = navItem("home", { withGroup: false }
 /** 员工侧栏顺序（doc22 §8.1）。总览与课表同属"工作"组，因此不再有无分组顶部项。 */
 const STAFF_NAV_KEYS: readonly DashboardRouteKey[] = [
   "home",
+  "coordination",
   "schedule",
   "followups",
   "students",
@@ -72,11 +73,11 @@ export function filterSchoolNav(perms: ReadonlySet<PermissionKey>): SchoolNavIte
 }
 
 /** 学生端去财务（P4C-1 §4.4）：家长管钱，学生只关心课/作业/成绩。 */
-export const STUDENT_NAV_ITEMS: readonly SchoolNavItem[] = (["home", "assignments", "schedule", "accountSecurity"] as const).map((key) =>
+export const STUDENT_NAV_ITEMS: readonly SchoolNavItem[] = (["home", "learningClasses", "assignments", "schedule", "accountSecurity"] as const).map((key) =>
   navItem(key, { withGroup: false }),
 );
 
-export const PARENT_NAV_ITEMS: readonly SchoolNavItem[] = (["home", "children", "schedule", "finance", "accountSecurity"] as const).map(
+export const PARENT_NAV_ITEMS: readonly SchoolNavItem[] = (["home", "children", "assignments", "schedule", "finance", "accountSecurity"] as const).map(
   (key) => navItem(key, { withGroup: false }),
 );
 

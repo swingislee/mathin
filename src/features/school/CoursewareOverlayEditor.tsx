@@ -1,12 +1,12 @@
 "use client";
 
-import { Input } from "@/components/ui/input";
-
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import {
   ArrowDown,
   ArrowUp,
+  BadgeCheck,
   BookOpen,
   Dices,
   Film,
@@ -16,9 +16,12 @@ import {
   LoaderCircle,
   PenLine,
   Plus,
+  RotateCcw,
   Trash2,
+  Undo2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -27,36 +30,86 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { games } from "@/features/games/registry";
+import { CoursewarePreviewWorkspace, type CoursewarePreviewListItem } from "@/features/courseware-preview/CoursewarePreviewWorkspace";
+import { StagePreview } from "@/features/courseware-studio/StagePreview";
+import type { PageDoc } from "@/features/courseware-doc/schema";
+import type { ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 import type { Difficulty } from "@/features/games/types";
 import { newId } from "@/lib/uuid";
 import { saveCoursewareOverlay } from "./actions/courseware";
 import { healOverlay, isOverlayRef, type CoursewareTemplatePage, type OverlaySlot } from "./courseware-overlay";
 import { overlayAssetKind, uploadOverlayAsset } from "./courseware-overlay-upload";
+import { downloadCoursewareAsset } from "@/features/classroom/courseware/upload";
+import { replaceSessionLearningChecksAction } from "./session-learning-actions";
+import type { CoursewareLearningCheckPage } from "./session-learning";
+import type { SessionLearningCheck } from "./session-learning-contract";
 
 type SaveState = "saved" | "saving" | "dirty" | "error";
+type LearningCheckSaveState = "saved" | "saving" | "error";
+type LearningCheckItem = { title: string; sourcePageId: string | null };
 
 const PAGE_ICONS = { image: ImageIcon, video: Film, game: Gamepad2, board: PenLine, doc: BookOpen } as const;
+
+function initialLearningCheckItems(
+  checks: SessionLearningCheck[],
+  pages: CoursewareLearningCheckPage[],
+  locked: boolean,
+  configured: boolean,
+): LearningCheckItem[] {
+  if (configured || checks.length > 0 || locked) {
+    return checks.map((check) => ({ title: check.title, sourcePageId: check.sourcePageId }));
+  }
+  return pages.filter((page) => page.learningCheckEnabled)
+    .map((page) => ({ title: page.title, sourcePageId: page.pageDocId }));
+}
 
 export function CoursewareOverlayEditor({
   classroomId,
   sessionId,
   template,
   initialOverlay,
+  docPreviews,
+  learningCheckPages,
+  initialLearningChecks,
+  learningChecksLocked,
+  learningChecksConfigured,
 }: {
   classroomId: string;
   sessionId: string;
   template: CoursewareTemplatePage[];
   initialOverlay: OverlaySlot[];
+  docPreviews: Array<{ pageDocId: string; doc: PageDoc; bindingUrls: ResolvedBindingUrls }>;
+  learningCheckPages: CoursewareLearningCheckPage[];
+  initialLearningChecks: SessionLearningCheck[];
+  learningChecksLocked: boolean;
+  learningChecksConfigured: boolean;
 }) {
   const t = useTranslations("school.overlay");
+  const ts = useTranslations("school.session");
   const tGames = useTranslations("games");
   const [overlay, setOverlay] = useState<OverlaySlot[]>(() => healOverlay(template, initialOverlay));
   const [saveState, setSaveState] = useState<SaveState>("saved");
   const [uploading, setUploading] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [previewAsset, setPreviewAsset] = useState<{ path: string; url: string } | null>(null);
   const [gameDialog, setGameDialog] = useState(false);
   const [gameId, setGameId] = useState(games[0]?.id ?? "");
   const [difficulty, setDifficulty] = useState<Difficulty>("easy");
   const [seed, setSeed] = useState(() => newId().slice(0, 8));
+  const [learningChecks, setLearningChecks] = useState<LearningCheckItem[]>(() =>
+    initialLearningCheckItems(initialLearningChecks, learningCheckPages, learningChecksLocked, learningChecksConfigured));
+  const coursewareDefaultLearningChecks = useMemo(
+    () => learningCheckPages.filter((page) => page.learningCheckEnabled)
+      .map((page) => ({ title: page.title, sourcePageId: page.pageDocId })),
+    [learningCheckPages],
+  );
+  const [learningCheckSaveState, setLearningCheckSaveState] = useState<LearningCheckSaveState>("saved");
+  const learningChecksRef = useRef(learningChecks);
+  const savedLearningChecksRef = useRef(learningChecks);
+  const learningCheckRevision = useRef(0);
+  const learningCheckSaveQueue = useRef<Promise<void>>(Promise.resolve());
+  const restoreUndoRef = useRef<LearningCheckItem[] | null>(null);
+  const [restoreUndoAvailable, setRestoreUndoAvailable] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const overlayRef = useRef(overlay);
@@ -65,6 +118,32 @@ export function CoursewareOverlayEditor({
   }, [overlay]);
 
   const templateById = useMemo(() => new Map(template.map((page) => [page.id, page])), [template]);
+  const resolvedPages = useMemo(
+    () => overlay.map((slot) => isOverlayRef(slot) ? templateById.get(slot.ref) : slot.page)
+      .filter((page): page is CoursewareTemplatePage => Boolean(page)),
+    [overlay, templateById],
+  );
+  const safeSelectedIndex = Math.min(selectedIndex, Math.max(0, resolvedPages.length - 1));
+  const selectedPage = resolvedPages[safeSelectedIndex] ?? null;
+  const previewUrl = selectedPage && (selectedPage.type === "image" || selectedPage.type === "video") && previewAsset?.path === selectedPage.path ? previewAsset.url : null;
+  const selectedDoc = selectedPage?.type === "doc"
+    ? docPreviews.find((preview) => preview.pageDocId === selectedPage.docId) ?? null
+    : null;
+
+  useEffect(() => {
+    let cancelled = false;
+    let objectUrl: string | null = null;
+    if (!selectedPage || (selectedPage.type !== "image" && selectedPage.type !== "video")) return;
+    void downloadCoursewareAsset(selectedPage.path).then((blob) => {
+      if (cancelled) return;
+      objectUrl = URL.createObjectURL(blob);
+      setPreviewAsset({ path: selectedPage.path, url: objectUrl });
+    }).catch(() => undefined);
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [selectedPage]);
 
   const persist = useCallback(async () => {
     setSaveState("saving");
@@ -116,15 +195,204 @@ export function CoursewareOverlayEditor({
     });
   };
 
+  const saveLearningChecks = (
+    next: LearningCheckItem[],
+    callbacks?: { onFailure?: () => void },
+  ) => {
+    learningChecksRef.current = next;
+    setLearningChecks(next);
+    const revision = ++learningCheckRevision.current;
+    setLearningCheckSaveState("saving");
+    learningCheckSaveQueue.current = learningCheckSaveQueue.current.then(async () => {
+      try {
+        const result = await replaceSessionLearningChecksAction({ sessionId, items: next });
+        if (!result.ok) throw new Error(result.code);
+        savedLearningChecksRef.current = next;
+        if (revision === learningCheckRevision.current) setLearningCheckSaveState("saved");
+      } catch {
+        if (revision === learningCheckRevision.current) {
+          learningChecksRef.current = savedLearningChecksRef.current;
+          setLearningChecks(savedLearningChecksRef.current);
+          setLearningCheckSaveState("error");
+          callbacks?.onFailure?.();
+          toast.error(ts("actionFailed"));
+        }
+      }
+    });
+  };
+
+  const toggleLearningCheck = (page: Extract<CoursewareTemplatePage, { type: "doc" }>) => {
+    if (learningChecksLocked) return;
+    restoreUndoRef.current = null;
+    setRestoreUndoAvailable(false);
+    const current = learningChecksRef.current;
+    const selected = current.some((item) => item.sourcePageId === page.docId);
+    saveLearningChecks(selected
+      ? current.filter((item) => item.sourcePageId !== page.docId)
+      : [...current, { title: page.title, sourcePageId: page.docId }]);
+  };
+
+  const restoreLearningCheckDefaults = () => {
+    if (learningChecksLocked || learningCheckDefaultsActive) return;
+    const previous = [...learningChecksRef.current];
+    restoreUndoRef.current = previous;
+    setRestoreUndoAvailable(true);
+    saveLearningChecks(coursewareDefaultLearningChecks, {
+      onFailure: () => {
+        restoreUndoRef.current = null;
+        setRestoreUndoAvailable(false);
+      },
+    });
+  };
+
+  const undoRestoreLearningCheckDefaults = () => {
+    if (learningChecksLocked || !restoreUndoRef.current) return;
+    const previous = restoreUndoRef.current;
+    restoreUndoRef.current = null;
+    setRestoreUndoAvailable(false);
+    saveLearningChecks(previous, {
+      onFailure: () => {
+        restoreUndoRef.current = previous;
+        setRestoreUndoAvailable(true);
+      },
+    });
+  };
+
   const saveLabel = {
     saved: t("saved"),
     saving: t("saving"),
     dirty: t("unsaved"),
     error: t("saveFailed"),
   }[saveState];
+  const learningCheckSaveLabel = {
+    saved: ts("learningChecksAutoSaved"),
+    saving: ts("learningChecksSaving"),
+    error: ts("learningChecksSaveFailed"),
+  }[learningCheckSaveState];
+  const learningCheckDefaultsActive = learningChecks.length === coursewareDefaultLearningChecks.length
+    && coursewareDefaultLearningChecks.every((expected, index) =>
+      learningChecks[index]?.sourcePageId === expected.sourcePageId);
+
+  const checkMarker = (page: Extract<CoursewareTemplatePage, { type: "doc" }>) => {
+    const selectedForCheck = learningChecks.some((item) => item.sourcePageId === page.docId);
+    return (
+      <button
+        type="button"
+        aria-pressed={selectedForCheck}
+        aria-label={ts(selectedForCheck ? "learningCheckQuickRemove" : "learningCheckQuickAdd")}
+        title={ts(selectedForCheck ? "learningCheckQuickRemove" : "learningCheckQuickAdd")}
+        disabled={learningChecksLocked}
+        onClick={(event) => {
+          event.stopPropagation();
+          toggleLearningCheck(page);
+        }}
+        className={"grid size-7 shrink-0 place-items-center rounded-full transition " + (selectedForCheck
+          ? "bg-leaf/30 text-leaf-deep"
+          : "text-muted hover:bg-moon/40 hover:text-ink")}
+      >
+        {selectedForCheck ? <BadgeCheck size={16} /> : <BookOpen size={15} />}
+      </button>
+    );
+  };
+
+  const previewItems: CoursewarePreviewListItem[] = overlay.map((slot, index) => {
+    if (isOverlayRef(slot)) {
+      const page = templateById.get(slot.ref);
+      const Icon = page ? PAGE_ICONS[page.type] : Lock;
+      return {
+        id: "ref-" + slot.ref,
+        title: page?.title || t("templatePage"),
+        leading: page?.type === "doc"
+          ? checkMarker(page)
+          : <span className="grid size-7 shrink-0 place-items-center text-muted"><Icon size={15} aria-hidden /></span>,
+        trailing: (
+          <div className="flex shrink-0 items-center opacity-40 transition group-hover:opacity-100">
+            <button type="button" aria-label={t("moveUp")} disabled={index === 0} onClick={(event) => { event.stopPropagation(); move(index, -1); }} className="rounded-full p-1 text-muted hover:bg-moon/30 hover:text-ink disabled:opacity-20">
+              <ArrowUp size={12} />
+            </button>
+            <button type="button" aria-label={t("moveDown")} disabled={index === overlay.length - 1} onClick={(event) => { event.stopPropagation(); move(index, 1); }} className="rounded-full p-1 text-muted hover:bg-moon/30 hover:text-ink disabled:opacity-20">
+              <ArrowDown size={12} />
+            </button>
+          </div>
+        ),
+      };
+    }
+    const page = slot.page;
+    const Icon = PAGE_ICONS[page.type];
+    return {
+      id: page.id,
+      title: page.title,
+      leading: page.type === "doc"
+        ? checkMarker(page)
+        : <span className="grid size-7 shrink-0 place-items-center text-muted"><Icon size={15} aria-hidden /></span>,
+      titleContent: (
+        <Input
+          value={page.title}
+          maxLength={100}
+          placeholder={t("pageTitlePlaceholder")}
+          onClick={(event) => event.stopPropagation()}
+          onChange={(event) =>
+            mutate((prev) =>
+              prev.map((item) =>
+                !isOverlayRef(item) && item.page.id === page.id
+                  ? { page: { ...item.page, title: event.target.value } }
+                  : item,
+              ),
+            )
+          }
+          className="h-8 min-w-0 border-0 bg-transparent px-1 text-xs shadow-none"
+        />
+      ),
+      trailing: (
+        <div className="flex shrink-0 items-center opacity-40 transition group-hover:opacity-100">
+          <button type="button" aria-label={t("moveUp")} disabled={index === 0} onClick={(event) => { event.stopPropagation(); move(index, -1); }} className="rounded-full p-1 text-muted hover:bg-moon/30 hover:text-ink disabled:opacity-20">
+            <ArrowUp size={12} />
+          </button>
+          <button type="button" aria-label={t("moveDown")} disabled={index === overlay.length - 1} onClick={(event) => { event.stopPropagation(); move(index, 1); }} className="rounded-full p-1 text-muted hover:bg-moon/30 hover:text-ink disabled:opacity-20">
+            <ArrowDown size={12} />
+          </button>
+          <button type="button" aria-label={t("removeInserted")} onClick={(event) => { event.stopPropagation(); mutate((prev) => prev.filter((item) => isOverlayRef(item) || item.page.id !== page.id)); }} className="rounded-full p-1 text-muted hover:bg-rose/10 hover:text-rose">
+            <Trash2 size={12} />
+          </button>
+        </div>
+      ),
+    };
+  });
+
+  const previewContent = !selectedPage ? (
+    <p className="grid size-full place-items-center text-sm text-muted">{t("previewEmpty")}</p>
+  ) : selectedPage.type === "doc" ? (
+    selectedDoc ? (
+      <StagePreview doc={selectedDoc.doc} bindingUrls={selectedDoc.bindingUrls} stageMode="board43" interactive={false} className="size-full" />
+    ) : (
+      <p className="grid size-full place-items-center text-sm text-muted">{t("previewLoading")}</p>
+    )
+  ) : selectedPage.type === "image" ? (
+    previewUrl ? (
+      // eslint-disable-next-line @next/next/no-img-element -- private courseware blob preview
+      <img src={previewUrl} alt={selectedPage.title} className="size-full object-contain" />
+    ) : (
+      <p className="grid size-full place-items-center text-sm text-muted">{t("previewLoading")}</p>
+    )
+  ) : selectedPage.type === "video" ? (
+    previewUrl ? (
+      <video src={previewUrl} controls playsInline className="size-full object-contain" />
+    ) : (
+      <p className="grid size-full place-items-center text-sm text-muted">{t("previewLoading")}</p>
+    )
+  ) : (
+    <div className="grid size-full place-items-center bg-paper-lines p-8 text-center">
+      <div>
+        <p className="font-display text-xl text-ink">{selectedPage.title}</p>
+        <p className="mt-2 text-sm text-muted">
+          {selectedPage.type === "game" ? t("previewGame") : t("previewBoard")}
+        </p>
+      </div>
+    </div>
+  );
 
   return (
-    <section>
+    <section className="flex min-h-0 flex-1 flex-col">
       <div className="flex flex-wrap items-center gap-3">
         <h3 className="text-sm font-medium text-muted">{t("title", { count: overlay.length })}</h3>
         <span className={`text-xs ${saveState === "error" ? "text-rose" : "text-muted"}`}>{saveLabel}</span>
@@ -169,76 +437,53 @@ export function CoursewareOverlayEditor({
       </div>
       <p className="mt-2 text-xs text-muted">{t("hint")}</p>
 
-      <ol className="mt-4 divide-y divide-line rounded-2xl border border-line">
-        {overlay.map((slot, index) => {
-          if (isOverlayRef(slot)) {
-            const page = templateById.get(slot.ref);
-            const Icon = page ? PAGE_ICONS[page.type] : Lock;
-            return (
-              <li key={`ref-${slot.ref}`} className="flex items-center gap-3 bg-line/20 px-4 py-2.5">
-                <span className="w-6 shrink-0 text-right font-mono text-xs text-muted">{index + 1}</span>
-                <Icon size={15} className="shrink-0 text-muted" aria-hidden />
-                <span className="min-w-0 flex-1 truncate text-sm text-muted">{page?.title || t("templatePage")}</span>
-                <span className="shrink-0 rounded-full bg-line/60 px-2 py-0.5 text-xs text-muted">{t("templatePage")}</span>
-                <div className="flex shrink-0 items-center">
-                  <button type="button" aria-label={t("moveUp")} disabled={index === 0} onClick={() => move(index, -1)} className="rounded-full p-1.5 text-muted transition-colors hover:bg-moon/30 hover:text-ink disabled:opacity-30">
-                    <ArrowUp size={14} />
-                  </button>
-                  <button type="button" aria-label={t("moveDown")} disabled={index === overlay.length - 1} onClick={() => move(index, 1)} className="rounded-full p-1.5 text-muted transition-colors hover:bg-moon/30 hover:text-ink disabled:opacity-30">
-                    <ArrowDown size={14} />
-                  </button>
-                  <span className="w-7" />
-                </div>
-              </li>
-            );
-          }
-          const page = slot.page;
-          const Icon = PAGE_ICONS[page.type];
-          return (
-            <li key={page.id} className="flex items-center gap-3 px-4 py-2.5">
-              <span className="w-6 shrink-0 text-right font-mono text-xs text-muted">{index + 1}</span>
-              <Icon size={15} className="shrink-0 text-muted" aria-hidden />
-              <Input
-                value={page.title}
-                maxLength={100}
-                placeholder={t("pageTitlePlaceholder")}
-                onChange={(event) =>
-                  mutate((prev) =>
-                    prev.map((item) =>
-                      !isOverlayRef(item) && item.page.id === page.id
-                        ? { page: { ...item.page, title: event.target.value } }
-                        : item,
-                    ),
-                  )
-                }
-                className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted/60"
-              />
-              <span className="shrink-0 rounded-full bg-crater/15 px-2 py-0.5 text-xs text-crater">
-                {page.type === "game"
-                  ? `${tGames(`items.${page.gameId}.name`)} · ${tGames(`difficulty.${page.difficulty}`)}`
-                  : t(`type_${page.type}`)}
-              </span>
-              <div className="flex shrink-0 items-center">
-                <button type="button" aria-label={t("moveUp")} disabled={index === 0} onClick={() => move(index, -1)} className="rounded-full p-1.5 text-muted transition-colors hover:bg-moon/30 hover:text-ink disabled:opacity-30">
-                  <ArrowUp size={14} />
-                </button>
-                <button type="button" aria-label={t("moveDown")} disabled={index === overlay.length - 1} onClick={() => move(index, 1)} className="rounded-full p-1.5 text-muted transition-colors hover:bg-moon/30 hover:text-ink disabled:opacity-30">
-                  <ArrowDown size={14} />
-                </button>
-                <button
-                  type="button"
-                  aria-label={t("removeInserted")}
-                  onClick={() => mutate((prev) => prev.filter((item) => isOverlayRef(item) || item.page.id !== page.id))}
-                  className="rounded-full p-1.5 text-muted transition-colors hover:bg-rose/10 hover:text-rose"
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            </li>
-          );
-        })}
-      </ol>
-
+      <CoursewarePreviewWorkspace
+        className="mt-3 flex-1"
+        railWidth="wide"
+        items={previewItems}
+        selectedIndex={safeSelectedIndex}
+        onSelectedIndexChange={setSelectedIndex}
+        directoryLabel={ts("coursewarePageRailTitle")}
+        previewLabel={t("visualPreview")}
+        previousLabel={ts("coursewarePreviousPage")}
+        nextLabel={ts("coursewareNextPage")}
+        keyboardHint={ts("coursewareKeyboardHint")}
+        selectedPageLabel={selectedPage ? safeSelectedIndex + 1 + " / " + resolvedPages.length + " · " + selectedPage.title : t("previewEmpty")}
+        railStatus={(
+          <>
+            <span className={"shrink-0 text-[11px] " + (learningCheckSaveState === "error" ? "text-rose" : "text-muted")}>{learningCheckSaveLabel}</span>
+            <span className="shrink-0 text-xs tabular-nums text-muted">{learningChecks.filter((item) => item.sourcePageId).length} / {resolvedPages.length}</span>
+          </>
+        )}
+        railFooter={!learningChecksLocked ? (
+          <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-7 min-w-0 flex-1 justify-start px-2 text-xs text-muted"
+              disabled={learningCheckDefaultsActive}
+              onClick={restoreLearningCheckDefaults}
+            >
+              <RotateCcw size={13} />
+              <span className="truncate">{ts("learningChecksRestoreCourseware")}</span>
+            </Button>
+            {restoreUndoAvailable ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="h-7 shrink-0 px-2 text-xs"
+                onClick={undoRestoreLearningCheckDefaults}
+              >
+                <Undo2 size={13} />
+                {ts("learningChecksUndoRestore")}
+              </Button>
+            ) : null}
+          </div>
+        ) : undefined}
+        preview={previewContent}
+      />
       <Dialog open={gameDialog} onOpenChange={setGameDialog}>
         <DialogContent>
           <DialogHeader>

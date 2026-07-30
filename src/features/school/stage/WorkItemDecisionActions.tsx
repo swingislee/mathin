@@ -11,13 +11,14 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "@/i18n/navigation";
+import { newId } from "@/lib/uuid";
 import { closeDurableWorkItemAction, decideApprovalAction } from "../actions/work-items";
 import type { WorkItemRow } from "./types";
 
 type Mode = "close" | "approved" | "rejected";
 
 function nextIdempotencyKey(mode: Mode) {
-  return `${mode}:${globalThis.crypto.randomUUID()}`;
+  return `${mode}:${newId()}`;
 }
 
 export function WorkItemDecisionActions({ item }: { item: WorkItemRow }) {

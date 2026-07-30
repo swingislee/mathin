@@ -13,10 +13,15 @@ import {
   ListTodo,
   LoaderCircle,
   MonitorPlay,
+  MousePointer2,
+  PanelsTopLeft,
   PenLine,
   SquareCheckBig,
   TriangleAlert,
   Wrench,
+  LocateFixed,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +35,9 @@ import {
 } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { GameMirrorState } from "@/features/games/types";
+import { AttendanceDrawer } from "@/features/school/AttendanceDrawer";
+import { SessionLearningCheckPanel } from "@/features/school/SessionLearningCheckPanel";
+import type { SessionLearningSetup } from "@/features/school/session-learning-contract";
 import { CanvasSurface } from "@/features/whiteboard/CanvasSurface";
 import { Toolbar } from "@/features/whiteboard/Toolbar";
 import type { WhiteboardStore } from "@/features/whiteboard/store";
@@ -43,13 +51,14 @@ import { cn } from "@/lib/utils";
 import { endClassSession, getClassSession, reopenClassSession, saveCourseware, setSessionPage, startClassSession } from "../actions";
 import {
   buildDocBindingUrls,
-  collectDocObjectHashes,
   collectH5PackageHashes,
   countH5Pages,
   fetchH5Manifest,
   loadObjectBlob,
   loadSessionDocsBundle,
   preheatH5Package,
+  prioritizeDocObjectHashes,
+  takePrioritizedDocObjectHash,
 } from "../courseware/doc-preload";
 import { getSessionAssetUrls, type SessionPageDoc } from "../courseware/session-assets";
 import { downloadCoursewareAsset } from "../courseware/upload";
@@ -88,9 +97,26 @@ interface Props {
   rehearsal?: boolean;
   /** 离线演练：保留可靠 outbox，但主动禁用 T2 与服务端写入，退出后验证补同步。 */
   offlineDrill?: boolean;
+  /** 正式开课前必须完成整班点名；试讲/离线演练不触发此门。 */
+  attendanceRequired: boolean;
+  initialAttendanceComplete: boolean;
+  learningSetup: SessionLearningSetup | null;
 }
 
-export function LiveShell({ session, classId, members, myRole, userId, initialEvents, role, rehearsal = false, offlineDrill = false }: Props) {
+export function LiveShell({
+  session,
+  classId,
+  members,
+  myRole,
+  userId,
+  initialEvents,
+  role,
+  rehearsal = false,
+  offlineDrill = false,
+  attendanceRequired,
+  initialAttendanceComplete,
+  learningSetup,
+}: Props) {
   const router = useRouter();
   const t = useTranslations("classroom.live");
   const tPrep = useTranslations("classroom.prep");
@@ -121,6 +147,8 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
   }, [session, initialEvents]);
 
   const [state, setState] = useState(initialState);
+  const activePage = state.pages[state.currentPage];
+  const activePageDocId = activePage?.type === "doc" ? activePage.docId : null;
   // 从 state.pages（而非 props）取媒体页：学生开课后补取的冻结页也要进预载
   const mediaPages = useMemo(
     () => state.pages.filter((page): page is Extract<CoursewarePage, { path: string }> =>
@@ -147,11 +175,21 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
   // 副板书/名录默认展开（用户 2026-07-08 要求可折叠腾空间给对方或主板书）
   const [sideCollapsed, setSideCollapsed] = useState(false);
   const [rosterCollapsed, setRosterCollapsed] = useState(false);
+  const [showAllStudents, setShowAllStudents] = useState(myRole !== "student");
+  const [sideZoom, setSideZoom] = useState(1);
+  const [sideFollow, setSideFollow] = useState(myRole === "student");
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState(false);
+  const [attendanceComplete, setAttendanceComplete] = useState(initialAttendanceComplete);
   const logRef = useRef<SessionEventLog | null>(null);
   const preloadTick = useRef(0);
+  const activePageDocIdRef = useRef(activePageDocId);
   const stageRef = useRef<HTMLDivElement | null>(null);
+  const sideViewportRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    activePageDocIdRef.current = activePageDocId;
+  }, [activePageDocId]);
 
   const isController = role === "control" && myRole === "teacher";
   // 试讲不受「已下课」限制：复盘已结束的课次也可随手写画（本地临时，不留痕）
@@ -268,7 +306,7 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
       if (session.lectureId) {
         try {
           docPages = await loadSessionDocsBundle(session.id);
-          docHashes = collectDocObjectHashes(docPages);
+          docHashes = prioritizeDocObjectHashes(docPages, activePageDocIdRef.current);
         } catch {
           // 束取不到（离线首进且无缓存）：doc 页降级提示，媒体页照常预载
         }
@@ -333,21 +371,26 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
       }
       const urlByObjectHash = new Map<string, string>();
       setDocUrls(buildDocBindingUrls(docPages, urlByObjectHash, h5EntryByHash));
-      for (const hash of docHashes) {
-        if (!isLive()) return;
-        try {
-          const blob = await loadObjectBlob(hash, signedByHash.get(hash));
-          if (!isLive()) return;
-          const url = URL.createObjectURL(blob);
-          urls.push(url);
-          urlByObjectHash.set(hash, url);
-          setDocUrls(buildDocBindingUrls(docPages, urlByObjectHash, h5EntryByHash));
-          setPreload((prev) => ({ ...prev, done: prev.done + 1 }));
-        } catch {
-          if (!isLive()) return;
-          setPreload((prev) => ({ ...prev, failed: prev.failed + 1 }));
+      const queue = [...docHashes];
+      const preloadWorker = async () => {
+        for (;;) {
+          const hash = takePrioritizedDocObjectHash(queue, docPages, activePageDocIdRef.current);
+          if (!hash || !isLive()) return;
+          try {
+            const blob = await loadObjectBlob(hash, signedByHash.get(hash));
+            if (!isLive()) return;
+            const url = URL.createObjectURL(blob);
+            urls.push(url);
+            urlByObjectHash.set(hash, url);
+            setDocUrls(buildDocBindingUrls(docPages, urlByObjectHash, h5EntryByHash));
+            setPreload((prev) => ({ ...prev, done: prev.done + 1 }));
+          } catch {
+            if (!isLive()) return;
+            setPreload((prev) => ({ ...prev, failed: prev.failed + 1 }));
+          }
         }
-      }
+      };
+      await Promise.all(Array.from({ length: Math.min(4, queue.length) }, preloadWorker));
     };
     void run();
 
@@ -419,6 +462,33 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
   // --- 副板书（全课一块，pageKey="side"）---------------------------------
   const sideBoard = useClassBoard(log, "side", editable, initialState.boards["side"]);
 
+  // 学生端的副板书保持固定纵横比并允许平移/缩放；新笔迹落定后自动把最后一行带回视口。
+  useEffect(() => {
+    if (isController) return;
+    const frames = new Set<number>();
+    const focusLastStroke = (behavior: ScrollBehavior) => {
+      const frame = window.requestAnimationFrame(() => {
+        frames.delete(frame);
+        const viewport = sideViewportRef.current;
+        const items = sideBoard.store.getState().items;
+        const lastItem = items[items.length - 1];
+        const lastPoint = lastItem?.points[lastItem.points.length - 1];
+        if (!viewport || !lastPoint) return;
+        const targetTop = Math.max(0, lastPoint[1] * viewport.scrollHeight - viewport.clientHeight * 0.72);
+        viewport.scrollTo({ top: targetTop, behavior });
+      });
+      frames.add(frame);
+    };
+    if (sideFollow) focusLastStroke("auto");
+    const unsubscribe = sideBoard.store.subscribe((next, previous) => {
+      if (sideFollow && next.items !== previous.items) focusLastStroke("smooth");
+    });
+    return () => {
+      unsubscribe();
+      for (const frame of frames) window.cancelAnimationFrame(frame);
+    };
+  }, [isController, sideBoard.store, sideFollow, sideZoom]);
+
   // --- 操作 ----------------------------------------------------------------
   const append = useCallback((type: Parameters<SessionEventLog["append"]>[0], payload: Record<string, unknown>) => {
     void logRef.current?.append(type, payload).then(() => {
@@ -459,6 +529,7 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
   }, [gotoPage, isController, state.currentPage, state.pages.length]);
 
   const startClass = useCallback(async () => {
+    if (attendanceRequired && !attendanceComplete) return;
     // 挂了讲次的课次要先在服务端 resolve 模板+覆盖层冻结 courseware，
     // 成功后才广播 session_ctl:start（10-§5.4）；失败则留在候课页重试。
     setStarting(true);
@@ -472,7 +543,7 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
     }
     append("session_ctl", { action: "start" });
     setPhase("live");
-  }, [append, session.id]);
+  }, [append, attendanceComplete, attendanceRequired, session.id]);
 
   const insertBoardPage = useCallback(() => {
     const index = Math.min(state.currentPage + 1, state.pages.length);
@@ -525,11 +596,11 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
     append("session_ctl", { action: "end" });
     try {
       await endClassSession(session.id);
-      router.push(`/classroom/${classId}/session/${session.id}/report`);
+      router.push(`/dashboard/sessions/${session.id}?stage=post`);
     } finally {
       setEndOpen(false);
     }
-  }, [append, classId, router, session.id]);
+  }, [append, router, session.id]);
 
   const reopenClass = useCallback(() => {
     append("session_ctl", { action: "start" });
@@ -543,11 +614,25 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
     () => new Map((docBundle ?? []).map((item) => [item.pageDocId, item.doc])),
     [docBundle],
   );
+  const activeDocBindings = page?.type === "doc"
+    ? docBundle?.find((item) => item.pageDocId === page.docId)?.bindings
+    : undefined;
+  const activeDocAssetsLoading = page?.type === "doc" && (
+    !docsById.has(page.docId)
+    || Boolean(
+      activeDocBindings?.some((binding) => binding.kind !== "h5" && !docUrls[binding.bindingKey])
+      && preload.done + preload.failed < preload.total,
+    )
+  );
   const h5PageCount = useMemo(() => countH5Pages(docBundle ?? []), [docBundle]);
   const onDocStep = useCallback((pageId: string, trigger: InteractionTrigger) => {
     append("doc_step", { pageId, scope: trigger.scope, id: trigger.id });
   }, [append]);
   const onlineIds = useMemo(() => new Set(onlinePeers.map((peer) => peer.userId)), [onlinePeers]);
+  const visibleStudents = useMemo(
+    () => (myRole === "student" && !showAllStudents ? students.filter((student) => student.userId === userId) : students),
+    [myRole, showAllStudents, students, userId],
+  );
   const toolbarStore = activeArea === "side" ? sideBoard.store : mainStore;
   // 清空对话框目标：默认勾选主板书，副板书可选加入（用户 2026-07-08 要求）
   const clearTargets = useMemo(
@@ -678,7 +763,21 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
           {connectionBadges}
         </div>
 
-        <h2 className="mt-8 text-sm font-medium text-muted">{tPrep("title")}</h2>
+        {attendanceRequired && (
+          <section className="mt-8 flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-card p-4">
+            <div className="min-w-0 flex-1">
+              <h2 className="text-sm font-medium">{tPrep("attendanceStepTitle")}</h2>
+              <p className="mt-1 text-xs text-muted">
+                {attendanceComplete ? tPrep("attendanceComplete") : tPrep("attendanceStepBody")}
+              </p>
+            </div>
+            {attendanceComplete
+              ? <Badge variant="secondary">{tPrep("attendanceDone")}</Badge>
+              : <AttendanceDrawer sessionId={session.id} appearance="primary" onSaved={() => setAttendanceComplete(true)} />}
+          </section>
+        )}
+
+        <h2 className={attendanceRequired ? "mt-6 text-sm font-medium text-muted" : "mt-8 text-sm font-medium text-muted"}>{tPrep("title")}</h2>
         <ul className="mt-3 divide-y divide-line rounded-2xl border border-line">
           {checklist.map((item) => (
             <li key={item.key} className="flex items-start gap-3 px-4 py-3">
@@ -714,13 +813,14 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
               </button>
               <button
                 type="button"
-                disabled={!assetsReady || starting}
+                disabled={!assetsReady || starting || (attendanceRequired && !attendanceComplete)}
                 onClick={() => void startClass()}
                 className="inline-flex items-center gap-2 rounded-full bg-ink px-5 py-2 text-sm text-paper transition-opacity hover:opacity-85 disabled:opacity-40"
               >
                 {starting ? <LoaderCircle size={15} className="animate-spin motion-reduce:animate-none" /> : <MonitorPlay size={15} />}
                 {tPrep("start")}
               </button>
+              {attendanceRequired && !attendanceComplete && <p className="text-xs text-crater">{tPrep("startAfterAttendance")}</p>}
               {startError && <p className="text-xs text-rose">{tPrep("startFailed")}</p>}
             </>
           ) : (
@@ -776,9 +876,9 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
         </div>
       )}
 
-      <div className="mt-2 flex min-h-0 flex-1 gap-3">
+      <div className="mt-2 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto xl:flex-row xl:gap-3 xl:overflow-hidden">
         {/* 左：4:3 课件层 + 主板书覆盖层，尽量占满可压缩空间（08-§3.2 归一化坐标） */}
-        <main className="relative flex min-w-0 flex-1 items-center justify-center">
+        <main className="relative flex min-w-0 shrink-0 items-center justify-center xl:min-h-0 xl:flex-1 xl:shrink">
           <div
             ref={stageRef}
             className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-line bg-card"
@@ -817,7 +917,14 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
                 onMirror={onGameMirror}
               />
             ) : page.type === "doc" ? (
-              <DocCoursewarePage
+              activeDocAssetsLoading ? (
+                <p className="grid size-full place-items-center text-sm text-muted">
+                  <span className="inline-flex items-center gap-2">
+                    <LoaderCircle size={16} className="animate-spin motion-reduce:animate-none" />
+                    {t("assetLoading")}
+                  </span>
+                </p>
+              ) : <DocCoursewarePage
                 key={`doc-${page.id}`}
                 doc={docsById.get(page.docId) ?? null}
                 bindingUrls={docUrls}
@@ -829,6 +936,18 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
               />
             ) : null}
 
+            {isController && page && (page.type === "video" || page.type === "doc" || page.type === "game") && (
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                className="absolute right-3 top-3 z-20 gap-1 bg-paper/95 shadow-sm"
+                onClick={() => mainStore?.setState({ tool: "pointer" })}
+              >
+                <MousePointer2 size={14} />
+                {t("operateCourseware")}
+              </Button>
+            )}
             {page && (
               <MainBoard
                 key={`board-${page.id}`}
@@ -847,6 +966,8 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
                 onClose={isController ? () => append("tool_ctl", { action: "close" }) : undefined}
               />
             )}
+
+            {!isController && page?.type === "doc" && <div aria-hidden="true" className="absolute inset-0 z-40 touch-none" />}
           </div>
 
           {isController && toolbarStore && (
@@ -860,45 +981,123 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
         </main>
 
         {/* 右：副板书（长条，固定宽，用户 2026-07-08 要求加宽一倍）+ 学生名录（固定宽，容纳多人）+ 控制条，三段式 */}
-        <div className="flex w-[29rem] shrink-0 flex-col gap-2 xl:w-[33rem]">
-          <div className="flex min-h-0 flex-1 gap-2">
+        <div
+          className={cn(
+            "flex min-h-0 w-full flex-1 flex-col gap-2 xl:flex-none xl:shrink-0",
+            sideCollapsed && rosterCollapsed
+              ? "xl:w-[5.25rem]"
+              : sideCollapsed
+                ? "xl:w-[18rem]"
+                : rosterCollapsed
+                  ? "xl:w-[22rem]"
+                  : "xl:w-[34rem]",
+          )}
+        >
+          <div className="flex min-h-0 flex-1 flex-col gap-2 xl:flex-row">
             {/* 副板书：默认展开固定宽；折叠为窄条腾出空间；名录折叠时改吃 flex-1（用户 2026-07-08 要求可折叠） */}
             <div
               className={cn(
-                "relative shrink-0 overflow-hidden rounded-2xl border border-line bg-card transition-[width] duration-150",
-                sideCollapsed ? "w-9" : rosterCollapsed ? "flex-1" : "w-64 sm:w-72",
+                "relative min-h-0 overflow-hidden rounded-2xl border border-line bg-card transition-[width,height] duration-150",
+                sideCollapsed
+                  ? "h-9 shrink-0 xl:h-auto xl:w-10"
+                  : rosterCollapsed
+                    ? "flex-1"
+                    : "min-h-48 flex-1 xl:w-[18rem] xl:flex-none",
               )}
               onPointerDownCapture={() => !sideCollapsed && setActiveArea("side")}
             >
-              <button
-                type="button"
-                onClick={() => {
-                  setSideCollapsed((collapsed) => !collapsed);
-                  // 收起时若工具条正指向副板书，收回主板书——不留一个看不见的操作目标
-                  setActiveArea((area) => (area === "side" ? "main" : area));
-                }}
-                aria-label={sideCollapsed ? t("expandSide") : t("collapseSide")}
-                title={sideCollapsed ? t("expandSide") : t("collapseSide")}
-                className="absolute right-1 top-1 z-10 rounded-full bg-card/90 p-1 text-muted shadow-sm transition-colors hover:bg-moon/40 hover:text-ink"
-              >
-                {sideCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
-              </button>
               {!sideCollapsed && (
-                <CanvasSurface editable={editable} store={sideBoard.store} bus={sideBoard.bus} strokeWidthBasis={stageWidth} />
+                <div
+                  ref={sideViewportRef}
+                  className="absolute inset-0 overflow-auto overscroll-contain touch-pan-x"
+                  data-side-board-viewport
+                  onWheelCapture={() => !isController && setSideFollow(false)}
+                  onPointerDownCapture={() => !isController && setSideFollow(false)}
+                >
+                  <div
+                    className="relative mx-auto aspect-[2/5] min-h-full min-w-full bg-card"
+                    style={{ width: `${sideZoom * 100}%` }}
+                  >
+                    <CanvasSurface editable={editable} store={sideBoard.store} bus={sideBoard.bus} strokeWidthBasis={stageWidth} />
+                  </div>
+                </div>
               )}
+              <div className="absolute right-1 top-1 z-10 flex items-center gap-1">
+                {!sideCollapsed && (
+                  <>
+                    {!isController && (
+                      <button
+                        type="button"
+                        aria-pressed={sideFollow}
+                        onClick={() => setSideFollow((follow) => !follow)}
+                        aria-label={sideFollow ? t("pauseSideFollow") : t("resumeSideFollow")}
+                        title={sideFollow ? t("pauseSideFollow") : t("resumeSideFollow")}
+                        className={cn(
+                          "rounded-full bg-card/90 p-1 shadow-sm transition-colors hover:bg-moon/40 hover:text-ink",
+                          sideFollow ? "text-crater" : "text-muted",
+                        )}
+                      >
+                        <LocateFixed size={14} />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      disabled={sideZoom <= 1}
+                      onClick={() => setSideZoom((zoom) => Math.max(1, zoom - 0.25))}
+                      aria-label={t("zoomOutSide")}
+                      title={t("zoomOutSide")}
+                      className="rounded-full bg-card/90 p-1 text-muted shadow-sm transition-colors hover:bg-moon/40 hover:text-ink disabled:opacity-35"
+                    >
+                      <ZoomOut size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={sideZoom >= 2}
+                      onClick={() => setSideZoom((zoom) => Math.min(2, zoom + 0.25))}
+                      aria-label={t("zoomInSide")}
+                      title={t("zoomInSide")}
+                      className="rounded-full bg-card/90 p-1 text-muted shadow-sm transition-colors hover:bg-moon/40 hover:text-ink disabled:opacity-35"
+                    >
+                      <ZoomIn size={14} />
+                    </button>
+                  </>
+                )}
+                {myRole === "teacher" && <button
+                  type="button"
+                  onClick={() => {
+                    setSideCollapsed((collapsed) => !collapsed);
+                    // 收起时若工具条正指向副板书，收回主板书——不留一个看不见的操作目标
+                    setActiveArea((area) => (area === "side" ? "main" : area));
+                  }}
+                  aria-label={sideCollapsed ? t("expandSide") : t("collapseSide")}
+                  title={sideCollapsed ? t("expandSide") : t("collapseSide")}
+                  className="rounded-full bg-card/90 p-1 text-muted shadow-sm transition-colors hover:bg-moon/40 hover:text-ink"
+                >
+                  {sideCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+                </button>}
+              </div>
             </div>
             {/* 名录：默认展开吃满剩余宽度；折叠为窄条，副板书自动接手空间 */}
             <div
               className={cn(
-                "flex min-h-0 flex-col overflow-hidden rounded-2xl border border-line transition-[width] duration-150",
-                rosterCollapsed ? "w-9 shrink-0" : "flex-1",
+                "flex min-h-0 flex-col overflow-hidden rounded-2xl border border-line transition-[width,height] duration-150",
+                rosterCollapsed ? "h-9 shrink-0 xl:h-auto xl:w-10" : "max-h-28 shrink-0 xl:max-h-none xl:w-60 xl:flex-none",
               )}
             >
               <div className="flex shrink-0 items-center gap-1 border-b border-line px-2 py-1.5">
                 {!rosterCollapsed && (
                   <p className="min-w-0 flex-1 truncate text-xs text-muted">{t("roster", { count: students.length })}</p>
                 )}
-                <button
+                {!rosterCollapsed && myRole === "student" && students.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllStudents((show) => !show)}
+                    className="shrink-0 rounded-full px-2 py-1 text-[11px] text-muted transition-colors hover:bg-moon/30 hover:text-ink"
+                  >
+                    {showAllStudents ? t("showSelfOnly") : t("showClassmates")}
+                  </button>
+                )}
+                {myRole === "teacher" && <button
                   type="button"
                   onClick={() => setRosterCollapsed((collapsed) => !collapsed)}
                   aria-label={rosterCollapsed ? t("expandRoster") : t("collapseRoster")}
@@ -906,11 +1105,11 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
                   className="ml-auto shrink-0 rounded-full p-1 text-muted transition-colors hover:bg-moon/40 hover:text-ink"
                 >
                   {rosterCollapsed ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
-                </button>
+                </button>}
               </div>
               {!rosterCollapsed && (
-                <ul className="min-h-0 flex-1 space-y-1 overflow-y-auto p-1.5">
-                  {students.map((student) => {
+                <ul className="flex min-h-0 flex-1 gap-1.5 overflow-x-auto p-1.5 [&>li]:min-w-48 xl:block xl:space-y-1 xl:overflow-y-auto xl:[&>li]:min-w-0">
+                  {visibleStudents.map((student) => {
                     const count = state.stars[student.userId] ?? 0;
                     const answered = state.quiz ? state.answers[state.quiz.id]?.[student.userId] : undefined;
                     return (
@@ -960,6 +1159,39 @@ export function LiveShell({ session, classId, members, myRole, userId, initialEv
                   >
                     <ChevronRight size={18} />
                   </button>
+                  {learningSetup && <SessionLearningCheckPanel sessionId={session.id} setup={learningSetup} />}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="ml-auto inline-flex min-h-10 items-center gap-1.5 rounded-full border border-line px-3 text-xs text-muted transition-colors hover:bg-moon/30 hover:text-ink"
+                      >
+                        <PanelsTopLeft size={14} />
+                        {t("pageList")}
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent side="top" align="end" className="w-72 p-2">
+                      <p className="px-2 pb-2 text-xs font-medium text-muted">{t("pageList")}</p>
+                      <ol className="max-h-72 space-y-1 overflow-y-auto">
+                        {state.pages.map((coursewarePage, pageIndex) => (
+                          <li key={coursewarePage.id}>
+                            <button
+                              type="button"
+                              onClick={() => gotoPage(pageIndex, state.pages.length)}
+                              aria-current={pageIndex === state.currentPage ? "page" : undefined}
+                              className={cn(
+                                "flex min-h-10 w-full items-center gap-2 rounded-lg px-2 text-left text-sm transition-colors",
+                                pageIndex === state.currentPage ? "bg-moon/50 text-ink" : "text-muted hover:bg-moon/30 hover:text-ink",
+                              )}
+                            >
+                              <span className="w-6 shrink-0 text-right font-mono text-xs">{pageIndex + 1}</span>
+                              <span className="min-w-0 flex-1 truncate">{coursewarePage.title || t("untitledPage")}</span>
+                            </button>
+                          </li>
+                        ))}
+                      </ol>
+                    </PopoverContent>
+                  </Popover>
                   {!state.ended && (
                     <>
                       <button

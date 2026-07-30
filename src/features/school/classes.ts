@@ -456,6 +456,21 @@ export interface SessionFamilyBrief {
   publishedAt: string | null;
 }
 
+export interface SessionPublishedAssignment {
+  id: string;
+  title: string;
+  dueAt: string | null;
+  createdAt: string;
+}
+
+export interface SessionVideoTask {
+  id: string;
+  title: string;
+  instructions: string;
+  dueAt: string | null;
+  publishedAt: string | null;
+}
+
 export interface SessionWorkspaceDetail {
   id: string;
   classroomId: string;
@@ -489,6 +504,8 @@ export interface SessionWorkspaceDetail {
   pendingVideoCount: number;
   postworkCompletedAt: string | null;
   familyBrief: SessionFamilyBrief;
+  publishedAssignments: SessionPublishedAssignment[];
+  videoTask: SessionVideoTask | null;
 }
 
 interface SessionWorkspaceQueryRow {
@@ -543,6 +560,8 @@ export async function getSessionWorkspaceDetail(sessionId: string): Promise<Sess
     { data: rosterRows, error: rosterError },
     { data: supportTaskRows, error: supportTaskError },
     { count: pendingVideoCount, error: videoError },
+    { data: publicationRows, error: publicationError },
+    { data: videoTaskRow, error: videoTaskError },
     perms,
   ] = await Promise.all([
     supabase
@@ -634,6 +653,17 @@ export async function getSessionWorkspaceDetail(sessionId: string): Promise<Sess
       .eq("session_id", sessionId)
       .is("deleted_at", null)
       .is("reviewed_at", null),
+    supabase
+      .from("assignments")
+      .select("id,title,due_at,created_at")
+      .eq("session_id", sessionId)
+      .order("created_at", { ascending: false })
+      .returns<Array<{ id: string; title: string; due_at: string | null; created_at: string }>>(),
+    supabase
+      .from("session_video_tasks")
+      .select("id,title,instructions,due_at,published_at")
+      .eq("session_id", sessionId)
+      .maybeSingle<{ id: string; title: string; instructions: string; due_at: string | null; published_at: string | null }>(),
     getMyPerms(user.id),
   ]);
   if (assignmentError) throw new Error(assignmentError.message);
@@ -644,6 +674,8 @@ export async function getSessionWorkspaceDetail(sessionId: string): Promise<Sess
   if (rosterError) throw new Error(rosterError.message);
   if (supportTaskError) throw new Error(supportTaskError.message);
   if (videoError) throw new Error(videoError.message);
+  if (publicationError) throw new Error(publicationError.message);
+  if (videoTaskError) throw new Error(videoTaskError.message);
 
   const myResponsibilities = (assignmentRows ?? []).filter((row) => row.user_id === user.id).map((row) => row.responsibility);
   const isTeaching = myResponsibilities.includes("primary_teacher") || myResponsibilities.includes("assistant_teacher");
@@ -764,6 +796,19 @@ export async function getSessionWorkspaceDetail(sessionId: string): Promise<Sess
       teacherPublicComment: briefRow?.teacher_public_comment ?? "",
       publishedAt: briefRow?.published_at ?? null,
     },
+    publishedAssignments: (publicationRows ?? []).map((row) => ({
+      id: row.id,
+      title: row.title,
+      dueAt: row.due_at,
+      createdAt: row.created_at,
+    })),
+    videoTask: videoTaskRow ? {
+      id: videoTaskRow.id,
+      title: videoTaskRow.title,
+      instructions: videoTaskRow.instructions,
+      dueAt: videoTaskRow.due_at,
+      publishedAt: videoTaskRow.published_at,
+    } : null,
   };
 }
 

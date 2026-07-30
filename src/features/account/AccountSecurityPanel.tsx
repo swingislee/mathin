@@ -143,7 +143,7 @@ export function AccountSecurityPanel({ snapshot, isAdmin }: { snapshot: AccountS
         <Button className="mt-5" variant="secondary" disabled={authBusy} onClick={revokeOtherSessions}>{t("revokeOtherSessions")}</Button>
       </section>
 
-      <section className="rounded-2xl border border-line bg-card p-5 xl:col-span-2">
+      <section id="mfa" className="scroll-mt-24 rounded-2xl border border-line bg-card p-5 xl:col-span-2">
         <div className="flex items-start gap-3">
           <ShieldCheck className="mt-0.5 size-5 text-crater" />
           <div className="min-w-0"><h2 className="font-medium text-ink">{t("mfaTitle")}</h2><p className="mt-1 text-sm text-muted">{isAdmin ? t("mfaAdminRequired") : t("mfaIntro")}</p></div>
@@ -165,7 +165,7 @@ export function AccountSecurityPanel({ snapshot, isAdmin }: { snapshot: AccountS
         </div>}
       </section>
 
-      <section className="rounded-2xl border border-line bg-card p-5">
+      <section id="consent" className="scroll-mt-24 rounded-2xl border border-line bg-card p-5">
         <h2 className="font-medium text-ink">{t("consentTitle")}</h2>
         <p className="mt-1 text-sm text-muted">{t("consentIntro")}</p>
         <ul className="mt-4 space-y-3">

@@ -572,7 +572,7 @@ const PREP_CODES = [
   "SESSION_NOT_FOUND", "ALREADY_STARTED", "TRACK_MISMATCH", "RELEASE_MISMATCH",
   "LECTURE_MISMATCH", "SOURCE_PREPARATION_NOT_FOUND", "NO_LECTURE",
   "COURSEWARE_TRACK_NOT_RESOLVED", "COURSEWARE_TRACK_UNPUBLISHED", "RELEASE_REQUIRED",
-  "INVALID_COURSEWARE_FREEZE", "REASON_REQUIRED",
+  "INVALID_COURSEWARE_FREEZE", "REASON_REQUIRED", "PREP_ARTIFACTS_REQUIRED", "PREP_REVIEW_REQUIRED", "LEARNING_CHECKS_REQUIRED",
   ...COMMON_CODES,
 ] as const;
 
@@ -653,6 +653,9 @@ export async function completeSessionPreparationAction(sessionId: string, fallba
     const value = parse(completePrepSchema, { sessionId, fallbackReason });
     const { supabase } = await authorizedClient("courseware.overlay.edit");
 
+    const { error: artifactGateError } = await supabase.rpc("assert_session_preparation_complete", { p_session_id: value.sessionId });
+    if (artifactGateError) throw new Error(artifactGateError.message);
+
     const { data: session, error: sessionError } = await supabase
       .from("class_sessions")
       .select("lecture_id,courseware_overlay")
@@ -682,7 +685,7 @@ export async function completeSessionPreparationAction(sessionId: string, fallba
     const merged = resolveCourseware(template, session.courseware_overlay ?? []);
     const resolvedMeta = resolved.release_id
       ? await materializeSessionResolved(resolved.release_id, resolved.track)
-      : { version: "cw-session-resolved-v1" as const, track: resolved.track, releaseId: null, bindings: [] };
+      : { version: "cw-session-resolved-v1" as const, track: resolved.track, releaseId: null, bindings: [], learningCheckPages: [] };
 
     const { error: saveError } = await supabase.rpc("save_session_prepared_courseware", {
       p_session_id: value.sessionId,
@@ -839,5 +842,149 @@ export async function publishSessionFamilyBriefAction(sessionId: string): Promis
     return { ok: true };
   } catch (error) {
     return actionError(error, ["SESSION_NOT_FOUND", "BRIEF_NOT_FOUND", "FORBIDDEN", ...COMMON_CODES]);
+  }
+}
+
+
+const preparationReviewSchema = z.object({
+  sessionId: uuid,
+  artifactKind: z.enum(["solution", "lesson_plan", "rehearsal_video"]),
+  decision: z.enum(["approved", "changes_requested"]),
+  note: text(1000),
+});
+
+export async function reviewSessionPreparationArtifactAction(input: {
+  sessionId: string;
+  artifactKind: "solution" | "lesson_plan" | "rehearsal_video";
+  decision: "approved" | "changes_requested";
+  note: string;
+}): Promise<ActionResult> {
+  try {
+    const value = parse(preparationReviewSchema, input);
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("UNAUTHENTICATED");
+    const { error } = await supabase.rpc("review_session_preparation_artifact", {
+      p_session_id: value.sessionId,
+      p_artifact_kind: value.artifactKind,
+      p_decision: value.decision,
+      p_note: value.note,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, [
+      "REVIEW_NOT_FOUND", "REVIEW_ALREADY_DECIDED", "REVIEW_NOTE_REQUIRED", "FORBIDDEN", ...COMMON_CODES,
+    ]);
+  }
+}
+
+const sessionAssignmentPublicationSchema = z.object({
+  sessionId: uuid,
+  title: requiredText(100),
+  content: text(20000),
+  dueAt: datetime.nullable(),
+});
+
+export async function publishSessionAssignmentAction(input: {
+  sessionId: string;
+  title: string;
+  content: string;
+  dueAt: string | null;
+}): Promise<ActionResult> {
+  try {
+    const value = parse(sessionAssignmentPublicationSchema, input);
+    const { supabase } = await authorizedClient("review.write");
+    const { error } = await supabase.rpc("publish_session_assignment", {
+      p_session_id: value.sessionId,
+      p_title: value.title,
+      p_content: value.content,
+      p_due_at: nullableRpcArg(value.dueAt),
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["SESSION_NOT_FOUND", "FORBIDDEN", ...COMMON_CODES]);
+  }
+}
+
+const sessionVideoTaskSchema = z.object({
+  sessionId: uuid,
+  title: text(100),
+  instructions: text(5000),
+  dueAt: datetime.nullable(),
+});
+
+export async function saveSessionVideoTaskAction(input: {
+  sessionId: string;
+  title: string;
+  instructions: string;
+  dueAt: string | null;
+}): Promise<ActionResult> {
+  try {
+    const value = parse(sessionVideoTaskSchema, input);
+    const { supabase } = await authorizedClient("review.write");
+    const { error } = await supabase.rpc("save_session_video_task", {
+      p_session_id: value.sessionId,
+      p_title: value.title,
+      p_instructions: value.instructions,
+      p_due_at: nullableRpcArg(value.dueAt),
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["SESSION_NOT_FOUND", "FORBIDDEN", ...COMMON_CODES]);
+  }
+}
+
+export async function publishSessionVideoTaskAction(sessionId: string): Promise<ActionResult> {
+  try {
+    const id = parse(uuid, sessionId);
+    const { supabase } = await authorizedClient("review.write");
+    const { error } = await supabase.rpc("publish_session_video_task", { p_session_id: id });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["SESSION_NOT_FOUND", "VIDEO_TASK_NOT_FOUND", "FORBIDDEN", ...COMMON_CODES]);
+  }
+}
+
+
+const prepArtifactFileSchema = z.object({
+  path: requiredText(500),
+  name: requiredText(200),
+  size: z.number().int().nonnegative().max(12 * 1024 * 1024),
+  type: text(200),
+});
+
+const sessionPreparationArtifactsSchema = z.object({
+  sessionId: uuid,
+  solutionNotes: text(5000),
+  solutionFiles: z.array(prepArtifactFileSchema).max(10),
+  lessonPlanFiles: z.array(prepArtifactFileSchema).max(10),
+  rehearsalVideoUrl: z.union([z.literal(""), z.string().url().max(1000).refine((value) => value.startsWith("https://"))]),
+});
+
+export async function saveSessionPreparationArtifactsAction(input: {
+  sessionId: string;
+  solutionNotes: string;
+  solutionFiles: Array<{ path: string; name: string; size: number; type: string }>;
+  lessonPlanFiles: Array<{ path: string; name: string; size: number; type: string }>;
+  rehearsalVideoUrl: string;
+}): Promise<ActionResult> {
+  try {
+    const value = parse(sessionPreparationArtifactsSchema, input);
+    const { supabase } = await authorizedClient("courseware.overlay.edit");
+    const { error } = await supabase.rpc("save_session_preparation_artifacts", {
+      p_session_id: value.sessionId,
+      p_solution_notes: value.solutionNotes,
+      p_solution_files: value.solutionFiles as unknown as Json,
+      p_lesson_plan_files: value.lessonPlanFiles as unknown as Json,
+      p_rehearsal_video_url: value.rehearsalVideoUrl,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["SESSION_NOT_FOUND", "FORBIDDEN", ...COMMON_CODES]);
   }
 }

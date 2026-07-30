@@ -15,7 +15,7 @@
     "p6:db-audit": "node scripts/run-p6-db-audit.mjs",
     "p4h:db-audit": "node scripts/run-p4h-db-audit.mjs",
     "r1:db-audit": "node scripts/run-r1-db-audit.mjs",
-    "r1:test": "vitest run tests/r1-organization-settings.test.ts tests/r1-platform-runtime.test.ts tests/r1-account-security.test.ts tests/r1-work-items.test.ts",
+    "r1:test": "vitest run tests/r1-organization-settings.test.ts tests/r1-platform-runtime.test.ts tests/r1-account-security.test.ts tests/r1-work-items.test.ts tests/r1-family-learning.test.ts tests/r1-classroom-continuity.test.ts tests/client-uuid.test.ts",
     "r1:admin-manifest:check": "node scripts/verify-production-admin-manifest.mjs",
     "p4h:delete-guard": "node scripts/verify-p4h-delete-guard.mjs",
     "p4i1:boundary-audit": "node scripts/verify-p4i1-environment-boundary.mjs",

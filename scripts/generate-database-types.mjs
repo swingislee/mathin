@@ -10,14 +10,14 @@ if (!databaseUrl && !metaSsh) {
   process.exit(2);
 }
 const result = metaSsh
-  ? spawnSync(process.platform === "win32" ? "ssh.exe" : "ssh", [metaSsh, "ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' supabase-meta); curl -fsS http://$ip:8080/generators/typescript"], { encoding: "utf8", shell: false })
-  : spawnSync(process.platform === "win32" ? "supabase.exe" : "supabase", ["gen", "types", "typescript", "--db-url", databaseUrl, "--schema", "public"], { encoding: "utf8", shell: false });
+  ? spawnSync(process.platform === "win32" ? "ssh.exe" : "ssh", [metaSsh, "ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' supabase-meta); curl -fsS http://$ip:8080/generators/typescript"], { encoding: "utf8", shell: false, maxBuffer: 64 * 1024 * 1024 })
+  : spawnSync(process.platform === "win32" ? "supabase.exe" : "supabase", ["gen", "types", "typescript", "--db-url", databaseUrl, "--schema", "public"], { encoding: "utf8", shell: false, maxBuffer: 64 * 1024 * 1024 });
 if (result.error?.code === "ENOENT") {
   console.error("Supabase CLI (DATABASE_URL mode) or ssh (SUPABASE_META_SSH mode) is required.");
   process.exit(2);
 }
 if (result.status !== 0) {
-  process.stderr.write(result.stderr || "supabase gen types failed\n");
+  process.stderr.write(result.stderr || `supabase gen types failed (status=${result.status}, error=${result.error?.message ?? "none"})\n`);
   process.exit(result.status ?? 1);
 }
 if (!result.stdout.includes("export type Database")) {

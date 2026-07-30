@@ -1,8 +1,6 @@
 "use client";
 
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { buttonVariants } from "@/components/ui/button";
@@ -20,13 +18,31 @@ import { getAttendanceDrawerData, saveAttendanceAction } from "./actions/attenda
 import { type AttendanceDrawerRow } from "./actions/types";
 import { ATTENDANCE_STATUSES, type AttendanceStatus } from "./learning";
 
-export function AttendanceDrawer({ sessionId }: { sessionId: string }) {
+const STATUS_TONE: Record<AttendanceStatus, string> = {
+  present: "border-leaf/60 bg-leaf/15 text-leaf-deep",
+  absent: "border-rose/60 bg-rose/10 text-rose",
+  late: "border-amber-400/60 bg-amber-100 text-amber-950 dark:bg-amber-950/40 dark:text-amber-100",
+  leave: "border-sky-400/60 bg-sky-100 text-sky-950 dark:bg-sky-950/40 dark:text-sky-100",
+};
+
+export function AttendanceDrawer({
+  sessionId,
+  appearance = "link",
+  mode = "initial",
+  onSaved,
+}: {
+  sessionId: string;
+  appearance?: "link" | "primary";
+  mode?: "initial" | "amend";
+  onSaved?: () => void;
+}) {
   const t = useTranslations("school.classes");
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState<AttendanceDrawerRow[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const label = mode === "amend" ? t("amendAttendance") : t("markAttendance");
 
   const openDrawer = () => {
     setOpen(true);
@@ -44,12 +60,12 @@ export function AttendanceDrawer({ sessionId }: { sessionId: string }) {
     setRows((prev) => prev.map((row) => (row.studentId === studentId ? { ...row, ...patch } : row)));
   };
 
-  const { run: save, pending } = useAction((rows: AttendanceDrawerRow[]) => saveAttendanceAction(sessionId, rows), {
+  const { run: save, pending } = useAction((records: AttendanceDrawerRow[]) => saveAttendanceAction(sessionId, records), {
     successMessage: t("attendanceSaved"),
     errorMessage: { default: t("actionFailed") },
     onSuccess: () => {
       setOpen(false);
-      // P4I-15：保存后课后 tab 的"点名"任务可能已被服务端顺带标记完成，刷新以反映最新状态。
+      onSaved?.();
       router.refresh();
     },
   });
@@ -59,17 +75,20 @@ export function AttendanceDrawer({ sessionId }: { sessionId: string }) {
       <button
         type="button"
         onClick={openDrawer}
-        className="shrink-0 text-xs text-muted underline underline-offset-2 hover:text-ink"
+        className={appearance === "primary"
+          ? cn(buttonVariants({ size: "sm" }), "shrink-0")
+          : "shrink-0 text-xs text-muted underline underline-offset-2 hover:text-ink"}
       >
-        {t("markAttendance")}
+        {label}
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-dvh overflow-hidden sm:max-w-3xl">
           <DialogHeader>
-            <DialogTitle>{t("markAttendance")}</DialogTitle>
+            <DialogTitle>{label}</DialogTitle>
           </DialogHeader>
 
+          {mode === "amend" && <p className="text-xs text-muted">{t("amendAttendanceHint")}</p>}
           {error && <p className="text-xs text-rose">{error}</p>}
 
           {loading ? (
@@ -77,25 +96,35 @@ export function AttendanceDrawer({ sessionId }: { sessionId: string }) {
           ) : rows.length === 0 ? (
             <p className="py-4 text-sm text-muted">{t("emptyRoster")}</p>
           ) : (
-            <ul className="max-h-96 divide-y divide-line overflow-y-auto">
+            <ul className="grid max-h-[70dvh] grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2">
               {rows.map((row) => (
-                <li key={row.studentId} className="flex flex-wrap items-center gap-2 py-2.5 text-sm">
-                  <span className="min-w-0 flex-1 truncate">{row.studentName}</span>
-                  <Select value={row.status} onValueChange={(value) => updateRow(row.studentId, { status: value as AttendanceStatus })}>
-                    <SelectTrigger className="h-8 shrink-0 px-2 py-1 text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {ATTENDANCE_STATUSES.map((status) => (
-                        <SelectItem key={status} value={status}>
-                          {t(status)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <li key={row.studentId} className="rounded-xl border border-line bg-card p-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="min-w-0 flex-1 truncate text-sm font-medium">{row.studentName}</span>
+                    {row.marked && <span className="text-[11px] text-muted">{t("attendanceRecorded")}</span>}
+                  </div>
+                  <div className="mt-2 grid grid-cols-4 gap-1">
+                    {ATTENDANCE_STATUSES.map((status) => (
+                      <button
+                        key={status}
+                        type="button"
+                        aria-pressed={row.status === status}
+                        onClick={() => updateRow(row.studentId, { status })}
+                        className={cn(
+                          "min-h-11 rounded-lg border px-1 text-xs font-medium transition-transform active:scale-95",
+                          STATUS_TONE[status],
+                          row.status === status && "ring-2 ring-ink/45 ring-offset-1 ring-offset-card",
+                        )}
+                      >
+                        {t(status)}
+                      </button>
+                    ))}
+                  </div>
                   <Input
                     value={row.note}
                     onChange={(event) => updateRow(row.studentId, { note: event.target.value })}
                     placeholder={t("attendanceNote")}
-                    className="w-28 shrink-0 px-2 py-1 text-xs"
+                    className="mt-2 h-9 w-full px-2 py-1 text-xs"
                   />
                 </li>
               ))}

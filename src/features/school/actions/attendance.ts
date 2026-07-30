@@ -60,6 +60,7 @@ export async function getAttendanceDrawerData(sessionId: string): Promise<Action
         studentName: row.students?.name ?? "-",
         status: existing?.status ?? defaultStatus,
         note: existing?.note ?? "",
+        marked: Boolean(existing),
       };
     });
     return { ok: true, data: rows };

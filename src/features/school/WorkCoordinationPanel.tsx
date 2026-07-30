@@ -1,10 +1,10 @@
 "use client";
 
-import { ClipboardCheck, ListPlus, LoaderCircle } from "lucide-react";
+import { ClipboardCheck, History, ListPlus, LoaderCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { FormEvent, useMemo, useState } from "react";
 import { useAction } from "@/components/action-form";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
@@ -13,7 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { useRouter } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
+import { newId } from "@/lib/uuid";
 import {
   createDurableWorkItemAction,
   requestApprovalAction,
@@ -30,7 +31,7 @@ const PRIORITIES: Priority[] = ["normal", "high", "critical", "low"];
 const SOURCE_KINDS: SourceKind[] = ["manual", "cross_domain", "delegation", "sla"];
 
 function token(prefix: string) {
-  return `${prefix}:${globalThis.crypto.randomUUID()}`;
+  return `${prefix}:${newId()}`;
 }
 
 export function WorkCoordinationPanel({
@@ -146,6 +147,9 @@ export function WorkCoordinationPanel({
         <p className="mt-1 max-w-2xl text-sm text-muted">{t("coordinationIntro")}</p>
       </div>
       <div className="flex flex-wrap gap-2">
+        <Link href="/dashboard/coordination" className={buttonVariants({ variant: "ghost" })}>
+          <History size={16} />{t("coordinationHistory")}
+        </Link>
         <Dialog open={workOpen} onOpenChange={setWorkOpen}>
           <DialogTrigger asChild><Button type="button" variant="secondary"><ListPlus size={16} />{t("coordinationCreateWork")}</Button></DialogTrigger>
           <DialogContent>

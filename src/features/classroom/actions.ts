@@ -20,6 +20,7 @@ import type {
   SessionEvent,
   SessionEventType,
   SessionReport,
+  SessionLearningReportStatus,
   SubmissionRecord,
 } from "./types";
 
@@ -260,9 +261,10 @@ export async function startClassSession(sessionId: string): Promise<void> {
   const { supabase } = await authenticatedClient();
   const { data: session, error: fetchError } = await supabase
     .from("class_sessions")
-    .select("lecture_id,courseware_overlay,courseware_frozen_at,started_at")
+    .select("classroom_id,lecture_id,courseware_overlay,courseware_frozen_at,started_at")
     .eq("id", sessionId)
     .maybeSingle<{
+      classroom_id: string;
       lecture_id: string | null;
       courseware_overlay: OverlaySlot[];
       courseware_frozen_at: string | null;
@@ -270,6 +272,21 @@ export async function startClassSession(sessionId: string): Promise<void> {
     }>();
   if (fetchError) throw new Error(fetchError.message);
   if (!session || session.started_at) return;
+
+  const [{ count: rosterCount, error: rosterError }, { count: attendanceCount, error: attendanceError }] = await Promise.all([
+    supabase
+      .from("enrollments")
+      .select("*", { count: "exact", head: true })
+      .eq("classroom_id", session.classroom_id)
+      .eq("status", "active"),
+    supabase
+      .from("session_attendance")
+      .select("*", { count: "exact", head: true })
+      .eq("session_id", sessionId),
+  ]);
+  if (rosterError) throw new Error(rosterError.message);
+  if (attendanceError) throw new Error(attendanceError.message);
+  if ((attendanceCount ?? 0) < (rosterCount ?? 0)) throw new Error("ATTENDANCE_REQUIRED");
 
   if (session.lecture_id && !session.courseware_frozen_at) {
     const { data: lecture, error: lectureError } = await supabase
@@ -398,21 +415,98 @@ export async function getSessionReport(sessionId: string): Promise<SessionReport
     .maybeSingle<{ role: ClassroomRole }>();
   if (myMembership?.role !== "teacher") throw new Error("FORBIDDEN");
 
-  const [{ data: memberRows, error: memberError }, events] = await Promise.all([
+  const [
+    { data: enrollmentRows, error: enrollmentError },
+    events,
+    { data: attendanceRows, error: attendanceError },
+    { data: checkRows, error: checkError },
+  ] = await Promise.all([
     supabase
-      .from("classroom_members")
-      .select("user_id,role,profiles(display_name)")
+      .from("enrollments")
+      .select("student_id,students(name,user_id)")
       .eq("classroom_id", session.classroom_id)
-      .returns<Array<{ user_id: string; role: ClassroomRole; profiles: { display_name: string } | null }>>(),
+      .eq("status", "active")
+      .returns<Array<{
+        student_id: string;
+        students: { name: string; user_id: string | null } | null;
+      }>>(),
     listSessionEvents(sessionId, ["star", "star_undo", "hand", "answer", "session_ctl"]),
+    supabase
+      .from("session_attendance")
+      .select("student_id,status")
+      .eq("session_id", sessionId)
+      .returns<Array<{
+        student_id: string;
+        status: "present" | "absent" | "late" | "leave";
+      }>>(),
+    supabase
+      .from("session_learning_checks")
+      .select("id,title,position")
+      .eq("session_id", sessionId)
+      .order("position", { ascending: true })
+      .returns<Array<{ id: string; title: string; position: number }>>(),
   ]);
-  if (memberError) throw new Error(memberError.message);
-  const members: ClassroomMember[] = (memberRows ?? []).map((row) => ({
-    userId: row.user_id,
-    displayName: row.profiles?.display_name || "",
-    role: row.role,
+  if (enrollmentError) throw new Error(enrollmentError.message);
+  if (attendanceError) throw new Error(attendanceError.message);
+  if (checkError) throw new Error(checkError.message);
+
+  const participants = (enrollmentRows ?? []).map((row) => ({
+    studentId: row.student_id,
+    userId: row.students?.user_id ?? row.student_id,
+    displayName: row.students?.name ?? "",
   }));
-  return buildSessionReport(members, events);
+  const members: ClassroomMember[] = participants.map((student) => ({
+    userId: student.userId,
+    displayName: student.displayName,
+    role: "student",
+  }));
+  const report = buildSessionReport(members, events);
+  const participantByUser = new Map(participants.map((student) => [student.userId, student]));
+  const attendanceByStudent = new Map((attendanceRows ?? []).map((row) => [row.student_id, row.status]));
+  report.rows = report.rows.map((row) => {
+    const participant = participantByUser.get(row.userId);
+    return {
+      ...row,
+      studentId: participant?.studentId ?? null,
+      attendanceStatus: participant ? attendanceByStudent.get(participant.studentId) ?? null : null,
+    };
+  });
+
+  const checkIds = (checkRows ?? []).map((row) => row.id);
+  const { data: resultRows, error: resultError } = checkIds.length === 0
+    ? { data: [], error: null }
+    : await supabase
+        .from("session_learning_check_results")
+        .select("check_id,student_id,status")
+        .in("check_id", checkIds)
+        .returns<Array<{
+          check_id: string;
+          student_id: string;
+          status: Exclude<SessionLearningReportStatus, "unchecked">;
+        }>>();
+  if (resultError) throw new Error(resultError.message);
+
+  const resultByKey = new Map((resultRows ?? []).map((row) => [
+    row.check_id + ":" + row.student_id,
+    row.status as SessionLearningReportStatus,
+  ]));
+  report.learningChecks = (checkRows ?? []).map((check) => {
+    const counts: Record<SessionLearningReportStatus, number> = {
+      explained: 0,
+      independent: 0,
+      prompted: 0,
+      imitated: 0,
+      incomplete: 0,
+      unchecked: 0,
+    };
+    const results = participants.map((student) => {
+      const status = resultByKey.get(check.id + ":" + student.studentId) ?? "unchecked";
+      counts[status] += 1;
+      return { studentId: student.studentId, status };
+    });
+    return { id: check.id, title: check.title, counts, results };
+  });
+  return report;
 }
 
 // ---------------------------------------------------------------------------

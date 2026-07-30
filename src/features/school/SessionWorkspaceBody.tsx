@@ -5,19 +5,20 @@ import type { SessionWorkspaceDetail } from "./classes";
 import { SessionLivePanel } from "./SessionLivePanel";
 import { SessionPostworkPanel } from "./SessionPostworkPanel";
 import { SessionPrepPanel } from "./SessionPrepPanel";
-import { SessionWorkspaceRail } from "./SessionWorkspaceRail";
 import {
   ObjectBar,
   ObjectWorkspace,
   preserveReturnTo,
   StageNavigation,
   WorkspaceMain,
-  WorkspaceRail,
   WorkspaceSplitShell,
   type ObjectContextItem,
 } from "./object-workspace";
 import { cn } from "@/lib/utils";
 import { Link } from "@/i18n/navigation";
+import { Presentation } from "lucide-react";
+import { NotificationFocus } from "@/features/events/NotificationFocus";
+import { SessionPrepCompleteAction, SessionPrepCopyAction } from "./SessionPrepActions";
 
 const STAGES = ["pre", "live", "post"] as const;
 export type SessionStage = (typeof STAGES)[number];
@@ -47,9 +48,7 @@ function resolvePrimaryAction(
   if (!capabilities.canPrepare && !capabilities.canEnterLive) return undefined;
 
   if (state === "scheduled") {
-    if (prepStatus === "not_started" || prepStatus === "in_progress") {
-      return { href: stageHref("pre"), label: prepStatus === "not_started" ? t("startPrep") : t("completePrep") };
-    }
+    if (prepStatus === "not_started" || prepStatus === "in_progress") return undefined;
     return { href: `/classroom/${detail.classroomId}/session/${detail.id}/live`, label: t("enterCandidate") };
   }
   if (state === "started") {
@@ -68,14 +67,14 @@ function resolvePrimaryAction(
  *   - `?tab=` 硬切成 `?stage=`。这三段不是并列视图而是一条有先后的流程，
  *     URL 上说 "tab" 会让"课前没做完就进课堂"看起来只是换了个页签。
  *   - 阶段切换从语义不清的 ContextBar 换成 StageNavigation。
- *   - 主区旁边补上 Rail：课次摘要 / 完成状态 / 下一步。原来这一页右边什么都没有，
- *     三个面板轮流独占整宽，"这节课是哪个班、几点、还差什么"要切回课前面板才看得到。
+ *   - 课前动作与阶段导航同行，正文只保留备课流程和课件工作区，避免重复的课次决策栏挤压画布。
  */
 export async function SessionWorkspaceBody({
   detail,
   stage,
   backHref,
   returnTo,
+  focusTarget,
 }: {
   detail: SessionWorkspaceDetail;
   stage: SessionStage;
@@ -83,6 +82,7 @@ export async function SessionWorkspaceBody({
   backHref: string;
   /** 已校验的 `?returnTo=`；课前/课堂/课后三段之间切换要带着它走（doc24 §6）。 */
   returnTo: string | null;
+  focusTarget?: string;
 }) {
   const t = await getTranslations("school.session");
   const tc = await getTranslations("school.classes");
@@ -129,25 +129,51 @@ export async function SessionWorkspaceBody({
         />
       }
       navigation={
-        <StageNavigation
-          items={STAGES.map((value) => ({ value, label: t(`stage_${value}`), href: stageHref(value) }))}
-          activeValue={stage}
-          ariaLabel={t("stageNavLabel")}
-        />
+        <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <StageNavigation
+              items={STAGES.map((value) => ({ value, label: t(`stage_${value}`), href: stageHref(value) }))}
+              activeValue={stage}
+              ariaLabel={t("stageNavLabel")}
+            />
+            {stage === "pre" && detail.capabilities.canPrepare && detail.state === "scheduled" && detail.lectureId ? (
+              <SessionPrepCopyAction
+                sessionId={detail.id}
+                prepStatus={detail.prepStatus}
+              />
+            ) : null}
+          </div>
+          {stage === "pre" && detail.capabilities.canPrepare && detail.state === "scheduled" && detail.lectureId ? (
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <Link
+                href={"/classroom/" + detail.classroomId + "/session/" + detail.id + "/live?mode=rehearsal"}
+                className={cn(buttonVariants({ size: "sm", variant: "secondary" }), "gap-2")}
+              >
+                <Presentation size={15} />
+                {t("rehearse")}
+              </Link>
+              <SessionPrepCompleteAction
+                sessionId={detail.id}
+                prepStatus={detail.prepStatus}
+                hasRelease={detail.currentReleaseNo !== null}
+                hasUnpublishedChanges={detail.hasUnpublishedChanges}
+              />
+            </div>
+          ) : null}
+        </div>
       }
     >
       <WorkspaceSplitShell
         main={
-          <WorkspaceMain>
+          <WorkspaceMain
+            scroll={stage === "pre" ? "none" : "auto"}
+            contentClassName={stage === "pre" ? "h-full min-h-0 !py-3" : undefined}
+          >
+            <NotificationFocus target={focusTarget} />
             {stage === "pre" && <SessionPrepPanel detail={detail} />}
             {stage === "live" && <SessionLivePanel detail={detail} />}
             {stage === "post" && <SessionPostworkPanel detail={detail} />}
           </WorkspaceMain>
-        }
-        rail={
-          <WorkspaceRail title={t("railTitle")}>
-            <SessionWorkspaceRail detail={detail} stageHref={stageHref} />
-          </WorkspaceRail>
         }
       />
     </ObjectWorkspace>

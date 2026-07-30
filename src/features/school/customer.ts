@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type { OrderStatus } from "./finance";
 import type { AttendanceStatus } from "./learning";
+import type { AssignmentContent, SubmissionRecord } from "@/features/classroom/types";
 import { isFeatureEnabled } from "./organization-settings";
 
 // ---------------------------------------------------------------------------
@@ -179,51 +180,130 @@ export interface MyPendingAssignment {
   classroomName: string;
   title: string;
   dueAt: string | null;
+  studentId: string;
+  studentName: string;
 }
 
 export async function getMyPendingAssignments(): Promise<MyPendingAssignment[]> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return [];
+  const { data, error } = await supabase.rpc("get_my_pending_assignments");
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row) => ({
+    assignmentId: row.assignment_id,
+    classroomId: row.classroom_id,
+    classroomName: row.classroom_name,
+    title: row.title,
+    dueAt: row.due_at,
+    studentId: row.student_id,
+    studentName: row.student_name,
+  }));
+}
+export interface CustomerAssignment {
+  assignmentId: string;
+  classroomId: string;
+  classroomName: string;
+  title: string;
+  content: AssignmentContent;
+  dueAt: string | null;
+  studentId: string;
+  studentName: string;
+}
 
-  const { data: memberRows, error: memberError } = await supabase
-    .from("classroom_members")
-    .select("classroom_id,classrooms(name)")
-    .eq("user_id", user.id)
-    .eq("role", "student")
-    .returns<Array<{ classroom_id: string; classrooms: { name: string } | null }>>();
-  if (memberError) throw new Error(memberError.message);
-  const classroomIds = (memberRows ?? []).map((row) => row.classroom_id);
-  if (classroomIds.length === 0) return [];
-  const classroomNameById = new Map((memberRows ?? []).map((row) => [row.classroom_id, row.classrooms?.name || "-"]));
-
-  const [{ data: assignmentRows, error: assignmentError }, { data: submissionRows, error: submissionError }] = await Promise.all([
-    supabase
-      .from("assignments")
-      .select("id,classroom_id,title,due_at")
-      .in("classroom_id", classroomIds)
-      .order("due_at", { ascending: true, nullsFirst: false })
-      .returns<Array<{ id: string; classroom_id: string; title: string; due_at: string | null }>>(),
-    supabase
-      .from("submissions")
-      .select("assignment_id")
-      .eq("user_id", user.id)
-      .not("submitted_at", "is", null)
-      .returns<Array<{ assignment_id: string }>>(),
+export async function getCustomerAssignment(assignmentId: string, studentId: string): Promise<{
+  assignment: CustomerAssignment | null;
+  submission: SubmissionRecord | null;
+}> {
+  const supabase = await createClient();
+  const [assignmentResult, submissionResult] = await Promise.all([
+    supabase.rpc("get_customer_assignment", { p_assignment_id: assignmentId, p_student_id: studentId }),
+    supabase.rpc("get_customer_submission", { p_assignment_id: assignmentId, p_student_id: studentId }),
   ]);
-  if (assignmentError) throw new Error(assignmentError.message);
-  if (submissionError) throw new Error(submissionError.message);
-  const submittedIds = new Set((submissionRows ?? []).map((row) => row.assignment_id));
-
-  return (assignmentRows ?? [])
-    .filter((row) => !submittedIds.has(row.id))
-    .map((row) => ({
-      assignmentId: row.id,
+  if (assignmentResult.error) throw new Error(assignmentResult.error.message);
+  if (submissionResult.error) throw new Error(submissionResult.error.message);
+  const row = assignmentResult.data?.[0];
+  const submission = submissionResult.data?.[0];
+  return {
+    assignment: row ? {
+      assignmentId: row.assignment_id,
       classroomId: row.classroom_id,
-      classroomName: classroomNameById.get(row.classroom_id) || "-",
+      classroomName: row.classroom_name,
       title: row.title,
+      content: (row.content ?? { text: "" }) as unknown as AssignmentContent,
       dueAt: row.due_at,
-    }));
+      studentId: row.student_id,
+      studentName: row.student_name,
+    } : null,
+    submission: submission ? {
+      id: submission.id,
+      userId: submission.user_id,
+      displayName: row?.student_name ?? "",
+      content: (submission.content ?? { text: "" }) as unknown as AssignmentContent,
+      submittedAt: submission.submitted_at,
+      score: submission.score,
+      feedback: submission.feedback,
+      gradedAt: submission.graded_at,
+    } : null,
+  };
+}
+
+export interface MyLeaveRequest {
+  id: string;
+  sessionId: string;
+  sessionTitle: string;
+  studentId: string;
+  studentName: string;
+  reason: string;
+  status: string;
+  createdAt: string;
+  decidedAt: string | null;
+}
+
+export async function listMySessionLeaveRequests(): Promise<MyLeaveRequest[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("list_my_session_leave_requests");
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    sessionId: row.session_id,
+    sessionTitle: row.session_title,
+    studentId: row.student_id,
+    studentName: row.student_name,
+    reason: row.reason,
+    status: row.status,
+    createdAt: row.created_at,
+    decidedAt: row.decided_at,
+  }));
+}
+
+export interface MyPublishedVideoTask {
+  videoTaskId: string;
+  sessionId: string;
+  classroomId: string;
+  classroomName: string;
+  lectureName: string;
+  title: string;
+  instructions: string;
+  dueAt: string | null;
+  studentId: string;
+  studentName: string;
+  submitted: boolean;
+}
+
+export async function getMyPublishedVideoTasks(): Promise<MyPublishedVideoTask[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("get_my_published_video_tasks");
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row) => ({
+    videoTaskId: row.video_task_id,
+    sessionId: row.session_id,
+    classroomId: row.classroom_id,
+    classroomName: row.classroom_name,
+    lectureName: row.lecture_name,
+    title: row.title,
+    instructions: row.instructions,
+    dueAt: row.due_at,
+    studentId: row.student_id,
+    studentName: row.student_name,
+    submitted: row.submitted,
+  }));
 }

@@ -114,7 +114,7 @@ export function DashboardShell({ nav, children }: { nav: readonly SchoolNavItem[
           底部真正留白的那一段显形，上半段完全淡出。装饰不该和导航争对比度。
         */}
         <div
-          className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-52 [mask-image:linear-gradient(to_top,black_0%,black_30%,transparent_95%)]"
+          className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-52 mask-[linear-gradient(to_top,black_0%,black_30%,transparent_95%)]"
           aria-hidden
         >
           <Image

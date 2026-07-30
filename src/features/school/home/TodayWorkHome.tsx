@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { getTranslations } from "next-intl/server";
+import { NotificationFocus } from "@/features/events/NotificationFocus";
 import { ObjectBar, ObjectWorkspace } from "@/features/school/object-workspace";
 import { StatusStrip, type StatusStripItem } from "@/features/school/dashboard-page";
 import { WorkCoordinationPanel } from "@/features/school/WorkCoordinationPanel";
@@ -53,7 +54,7 @@ async function safeListWorkCoordinationCandidates(): Promise<WorkCoordinationCan
   }
 }
 
-export async function TodayWorkHome({ locale, user, profile }: HomeProps) {
+export async function TodayWorkHome({ locale, user, profile, focusTarget }: HomeProps & { focusTarget?: string }) {
   const [schoolT, t, tClasses, perms, items, candidates] = await Promise.all([
     getTranslations("school"),
     getTranslations("school.work"),
@@ -107,6 +108,7 @@ export async function TodayWorkHome({ locale, user, profile }: HomeProps) {
       {/* 不再 mx-auto + max-w-[96rem]：宽度由 DashboardShell 唯一决定（docs/plan/21 §3.2）。
           页面级重新居中会让总览在宽屏上比其他页窄一截，切页时横向跳动。 */}
       <div className="space-y-6">
+        <NotificationFocus target={focusTarget} />
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4 xl:items-start">
           {spotlightGroups.length > 0 ? (
             <WorkColumn title={t("nowTitle")}>

@@ -26,6 +26,32 @@ export async function saveCoursewareDraftAction(input: z.input<typeof draftSchem
   } catch (error) { return actionError(error, ["VERSION_CONFLICT", "SAVE_FAILED", ...COMMON_CODES]); }
 }
 
+const learningCheckFlagSchema = z.object({
+  pageDocId: uuid,
+  track: trackSchema,
+  enabled: z.boolean(),
+});
+
+export async function setCoursewarePageLearningCheckFlagAction(input: {
+  pageDocId: string;
+  track: CoursewareTrack;
+  enabled: boolean;
+}): Promise<ActionResult> {
+  try {
+    const value = parse(learningCheckFlagSchema, input);
+    const { supabase } = await authorizedClient("courseware.page.edit");
+    const { error } = await rpc<null>(supabase, "set_cw_page_learning_check_flag", {
+      p_page_doc_id: value.pageDocId,
+      p_track: value.track,
+      p_enabled: value.enabled,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["PAGE_TRACK_NOT_FOUND", "INVALID_COURSEWARE_TRACK", ...COMMON_CODES]);
+  }
+}
+
 export async function publishCoursewareReleaseAction(lectureId: string, track: CoursewareTrack, note: string): Promise<ActionResult<{ releaseId: string }>> {
   try {
     const value = parse(z.object({ lectureId: uuid, track: trackSchema, note: text(1000) }), { lectureId, track, note }); const { supabase } = await authorizedClient("courseware.release.publish");

@@ -93,12 +93,17 @@ export interface SessionEvent {
 // 课堂报告（08-§6 P4-7）：对 session_events 的纯聚合，不单独存表（03-§3.4）。
 // ---------------------------------------------------------------------------
 
+export type SessionAttendanceStatus = "present" | "absent" | "late" | "leave";
+export type SessionLearningReportStatus = "explained" | "independent" | "prompted" | "imitated" | "incomplete" | "unchecked";
+
 export interface SessionReportRow {
   userId: string;
+  studentId: string | null;
   displayName: string;
+  attendanceStatus: SessionAttendanceStatus | null;
   stars: number;
-  handRaises: number;
-  answeredCount: number;
+  handRaises: number | null;
+  answeredCount: number | null;
 }
 
 export interface QuizReport {
@@ -110,9 +115,17 @@ export interface QuizReport {
   respondents: number;
 }
 
+export interface SessionLearningReportCheck {
+  id: string;
+  title: string;
+  counts: Record<SessionLearningReportStatus, number>;
+  results: Array<{ studentId: string; status: SessionLearningReportStatus }>;
+}
+
 export interface SessionReport {
   rows: SessionReportRow[];
   quizzes: QuizReport[];
+  learningChecks: SessionLearningReportCheck[];
 }
 
 // ---------------------------------------------------------------------------
@@ -120,8 +133,16 @@ export interface SessionReport {
 // 写入一律走 RPC（submit_assignment/grade_submission），见对应 migration 注释。
 // ---------------------------------------------------------------------------
 
+export interface AssignmentAttachment {
+  path: string;
+  name: string;
+  mimeType: "image/jpeg" | "image/png" | "image/webp" | "image/heic" | "image/heif" | "application/pdf";
+  size: number;
+}
+
 export interface AssignmentContent {
   text: string;
+  attachments?: AssignmentAttachment[];
 }
 
 export interface AssignmentMeta {

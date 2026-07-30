@@ -29,6 +29,8 @@ const releaseSnapshotSchema = z.array(
     pageDocId: z.uuid(),
     revisionId: z.uuid(),
     bindings: z.array(z.object({ bindingKey: z.string(), assetRevisionId: z.uuid() })),
+
+    learningCheckEnabled: z.boolean().default(false),
   }),
 );
 
@@ -441,7 +443,13 @@ export interface StudioPageSummary {
   draftRevisionId: string | null;
   currentRevisionId: string | null;
   adaptClass: "A" | "B" | "C" | "D" | "E" | "F" | null;
+
+  learningCheckEnabled: boolean;
+  learningCheckFlagDirty: boolean;
 }
+
+
+
 
 export interface StudioRevision {
   id: string;
@@ -487,14 +495,23 @@ export async function loadCoursewareStudioPage(lectureId: string, pageDocId: str
     .order("page_no");
   if (pagesError) throw new Error(pagesError.message);
   const pageIds = (pages ?? []).map((page) => page.id);
-  const { data: trackHeads, error: trackHeadsError } = pageIds.length
-    ? await supabase.from("cw_page_track_heads").select("page_doc_id,draft_revision_id,current_revision_id").eq("track", track).in("page_doc_id", pageIds)
-    : { data: [], error: null };
+  const [
+    { data: trackHeads, error: trackHeadsError },
+    { data: learningCheckRows, error: learningCheckError },
+  ] = pageIds.length
+    ? await Promise.all([
+      supabase.from("cw_page_track_heads").select("page_doc_id,draft_revision_id,current_revision_id").eq("track", track).in("page_doc_id", pageIds),
+      supabase.from("cw_page_learning_check_flags").select("page_doc_id,draft_enabled,published_enabled").eq("track", track).in("page_doc_id", pageIds),
+    ])
+    : [{ data: [], error: null }, { data: [], error: null }];
   if (trackHeadsError) throw new Error(trackHeadsError.message);
+  if (learningCheckError) throw new Error(learningCheckError.message);
   const headByPage = new Map((trackHeads ?? []).map((head) => [head.page_doc_id, head]));
+  const learningCheckByPage = new Map((learningCheckRows ?? []).map((metadata) => [metadata.page_doc_id, metadata]));
   const typedPages: StudioPageSummary[] = (pages ?? []).flatMap((page) => {
     const head = headByPage.get(page.id);
     if (!head) return [];
+    const metadata = learningCheckByPage.get(page.id);
     return [{
     id: page.id,
     pageNo: page.page_no,
@@ -503,6 +520,9 @@ export async function loadCoursewareStudioPage(lectureId: string, pageDocId: str
     draftRevisionId: head.draft_revision_id,
     currentRevisionId: head.current_revision_id,
     adaptClass: page.adapt_class as StudioPageSummary["adaptClass"],
+
+    learningCheckEnabled: metadata?.draft_enabled ?? metadata?.published_enabled ?? false,
+    learningCheckFlagDirty: metadata?.draft_enabled !== null && metadata?.draft_enabled !== undefined,
   }];
   });
   const page = typedPages.find((item) => item.id === pageDocId);
@@ -777,6 +797,11 @@ export interface SessionResolvedMeta {
   track: CoursewareTrack;
   releaseId: string | null;
   bindings: Array<{ pageDocId: string; bindingKey: string; objectHash: string }>;
+  learningCheckPages: Array<{
+    pageDocId: string;
+
+    learningCheckEnabled: boolean;
+  }>;
 }
 
 /**
@@ -814,7 +839,17 @@ export async function materializeSessionResolved(releaseId: string, track: Cours
       return { pageDocId: entry.pageDocId, bindingKey: binding.bindingKey, objectHash };
     }),
   );
-  return { version: "cw-session-resolved-v1", track, releaseId, bindings };
+  return {
+    version: "cw-session-resolved-v1",
+    track,
+    releaseId,
+    bindings,
+    learningCheckPages: snapshot.map((entry) => ({
+      pageDocId: entry.pageDocId,
+
+      learningCheckEnabled: entry.learningCheckEnabled,
+    })),
+  };
 }
 
 /** staff 直读 = 用户自身 token 批签 signed URL,RLS select 策略即签名授权(D3 拍板第 4 项);不走 service key。 */

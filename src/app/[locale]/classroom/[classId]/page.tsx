@@ -1,149 +1,137 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { BookOpen, ClipboardList } from "lucide-react";
+import { BookOpen, CalendarDays, ClipboardList, DoorOpen, UserRound } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { SectionShell } from "@/components/section-shell";
-import { CreateAssignmentButton, DeleteAssignmentButton } from "@/features/classroom/assignments/AssignmentActions";
+import { buttonVariants } from "@/components/ui/button";
 import { getClassroom, listAssignments, listClassSessions } from "@/features/classroom/actions";
-import { CopyInviteButton, LeaveClassroomButton, RemoveMemberButton } from "@/features/classroom/HomeActions";
-import { CreateSessionButton } from "@/features/classroom/SessionActions";
+import { getMyStudents } from "@/features/school/customer";
 import { Link } from "@/i18n/navigation";
 import { requireUser } from "@/lib/auth";
+import { cn } from "@/lib/utils";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default async function ClassroomHomePage({ params }: { params: Promise<{ locale: string; classId: string }> }) {
   const { locale, classId } = await params;
   setRequestLocale(locale);
-  const user = await requireUser(locale);
+  await requireUser(locale);
   if (!UUID_PATTERN.test(classId)) notFound();
-  const [t, tSessions, tAssignments, tReport, classroom] = await Promise.all([
+
+  const [t, tSessions, tAssignments, classroom] = await Promise.all([
     getTranslations("classroom.home"),
     getTranslations("classroom.sessions"),
     getTranslations("classroom.assignments"),
-    getTranslations("classroom.report"),
     getClassroom(classId),
   ]);
   if (!classroom) notFound();
-  const [sessions, assignments] = await Promise.all([
+  if (classroom.myRole === "teacher") redirect("/" + locale + "/dashboard/classes/" + classId);
+
+  const [sessions, assignments, myStudents] = await Promise.all([
     listClassSessions(classId),
     listAssignments(classId),
+    getMyStudents(),
   ]);
-  const isTeacher = classroom.myRole === "teacher";
-  const isOwner = classroom.ownerId === user.id;
+  const studentId = myStudents[0]?.id ?? null;
+  const teacherName = classroom.members.find((member) => member.role === "teacher")?.displayName || t("anonymous");
+  const upcoming = sessions
+    .filter((session) => !session.endedAt)
+    .sort((a, b) => (a.scheduledAt || a.createdAt).localeCompare(b.scheduledAt || b.createdAt));
+  const history = sessions
+    .filter((session) => session.endedAt)
+    .sort((a, b) => (b.scheduledAt || b.createdAt).localeCompare(a.scheduledAt || a.createdAt));
+  const fmt = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" });
 
   return (
-    <SectionShell section="classroom" wide>
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <h2 className="font-display text-2xl md:text-3xl">{classroom.name || t("untitled")}</h2>
-        {!isOwner && <LeaveClassroomButton classroomId={classroom.id} />}
-      </div>
-
-      {isTeacher && classroom.inviteCode && (
-        <div className="mt-6 flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-moon/15 px-5 py-4">
-          <div>
-            <p className="text-xs text-muted">{t("invite")}</p>
-            <p className="mt-1 font-mono text-xl tracking-widest">{classroom.inviteCode}</p>
-          </div>
-          <CopyInviteButton code={classroom.inviteCode} />
-          <p className="w-full text-xs text-muted sm:ml-auto sm:w-auto">{t("inviteHint")}</p>
+    <SectionShell section="classroom" intro={t("studentHubIntro")} wide>
+      <header className="flex flex-wrap items-start gap-4 border-b border-line pb-5">
+        <div className="min-w-0 flex-1">
+          <p className="text-xs text-muted">{t("myClass")}</p>
+          <h1 className="mt-1 truncate font-display text-2xl md:text-3xl">{classroom.name || t("untitled")}</h1>
+          <p className="mt-2 inline-flex items-center gap-2 text-sm text-muted"><UserRound size={15} />{t("teacherName", { name: teacherName })}</p>
         </div>
-      )}
+        {upcoming[0] && (
+          <Link
+            href={"/classroom/" + classroom.id + "/session/" + upcoming[0].id}
+            className={cn(buttonVariants({ size: "sm" }), "gap-2")}
+          >
+            <DoorOpen size={15} />{upcoming[0].startedAt ? t("enterLiveClass") : t("openNextSession")}
+          </Link>
+        )}
+      </header>
 
-      <section className="mt-10">
-        <h3 className="text-sm font-medium text-muted">{t("members", { count: classroom.members.length })}</h3>
-        <ul className="mt-3 divide-y divide-line rounded-2xl border border-line">
-          {classroom.members.map((member) => (
-            <li key={member.userId} className="flex items-center gap-3 px-4 py-3">
-              <span className="grid size-8 shrink-0 place-items-center rounded-full bg-moon/50 text-sm font-medium">
-                {(member.displayName || "?").slice(0, 1).toUpperCase()}
-              </span>
-              <span className="min-w-0 flex-1 truncate text-sm">{member.displayName || t("anonymous")}</span>
-              <span className="shrink-0 rounded-full bg-line/50 px-2 py-0.5 text-xs text-muted">
-                {member.role === "teacher" ? t("teacher") : t("student")}
-              </span>
-              {isTeacher && member.userId !== classroom.ownerId && member.userId !== user.id && (
-                <RemoveMemberButton classroomId={classroom.id} userId={member.userId} name={member.displayName || t("anonymous")} />
-              )}
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <div className="mt-10 grid gap-4 md:grid-cols-2">
-        <section className="rounded-2xl border border-line p-5">
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="text-sm font-medium text-muted">{t("sessionsTitle")}</h3>
-            {isTeacher && <CreateSessionButton classroomId={classroom.id} />}
-          </div>
-          {sessions.length === 0 ? (
-            <EmptyState message={tSessions("empty")} />
-          ) : (
-            <ul className="mt-3 divide-y divide-line">
-              {sessions.map((session) => {
-                const status = session.endedAt ? "ended" : session.startedAt ? "live" : "notStarted";
-                return (
-                  <li key={session.id} className="flex items-center gap-3 py-2.5">
-                    <BookOpen size={15} className="shrink-0 text-muted" aria-hidden />
-                    <Link
-                      href={`/classroom/${classroom.id}/session/${session.id}`}
-                      className="min-w-0 flex-1 truncate text-sm underline-offset-4 transition-colors hover:underline"
-                    >
+      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)]">
+        <main className="min-w-0">
+          <section>
+            <h2 className="flex items-center gap-2 text-sm font-medium text-ink"><CalendarDays size={16} />{t("upcomingSessions")}</h2>
+            {upcoming.length === 0 ? (
+              <EmptyState message={tSessions("empty")} />
+            ) : (
+              <ol className="mt-3 divide-y divide-line border-y border-line">
+                {upcoming.map((session) => (
+                  <li key={session.id} className="flex flex-wrap items-center gap-3 py-3">
+                    <time className="w-32 shrink-0 text-xs text-muted">
+                      {session.scheduledAt ? fmt.format(new Date(session.scheduledAt)) : t("timePending")}
+                    </time>
+                    <Link href={"/classroom/" + classroom.id + "/session/" + session.id} className="min-w-0 flex-1 truncate text-sm font-medium hover:underline">
                       {session.title || tSessions("untitled")}
                     </Link>
-                    <span className="shrink-0 text-xs text-muted">{tSessions("pages", { count: session.pageCount })}</span>
-                    <span
-                      className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${
-                        status === "live" ? "bg-leaf/15 text-leaf-deep" : "bg-line/50 text-muted"
-                      }`}
-                    >
-                      {tSessions(status)}
+                    <span className={cn("rounded-full px-2 py-0.5 text-xs", session.startedAt ? "bg-leaf/15 text-leaf-deep" : "bg-line/50 text-muted")}>
+                      {session.startedAt ? tSessions("live") : tSessions("notStarted")}
                     </span>
-                    {isTeacher && status === "ended" && (
-                      <Link
-                        href={`/classroom/${classroom.id}/session/${session.id}/report`}
-                        aria-label={tReport("openLink")}
-                        title={tReport("openLink")}
-                        className="shrink-0 rounded-full p-2 text-muted transition-colors hover:bg-moon/30 hover:text-ink"
-                      >
-                        <ClipboardList size={14} />
-                      </Link>
-                    )}
                   </li>
-                );
-              })}
-            </ul>
-          )}
-        </section>
-        <section className="rounded-2xl border border-line p-5">
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="text-sm font-medium text-muted">{t("assignmentsTitle")}</h3>
-            {isTeacher && <CreateAssignmentButton classroomId={classroom.id} />}
-          </div>
+                ))}
+              </ol>
+            )}
+          </section>
+
+          <section className="mt-8">
+            <h2 className="flex items-center gap-2 text-sm font-medium text-ink"><BookOpen size={16} />{t("classHistory")}</h2>
+            {history.length === 0 ? (
+              <p className="mt-3 text-sm text-muted">{t("historyEmpty")}</p>
+            ) : (
+              <ol className="mt-3 max-h-80 divide-y divide-line overflow-y-auto border-y border-line">
+                {history.map((session) => (
+                  <li key={session.id} className="flex items-center gap-3 py-3">
+                    <time className="w-32 shrink-0 text-xs text-muted">
+                      {session.scheduledAt ? fmt.format(new Date(session.scheduledAt)) : t("timePending")}
+                    </time>
+                    <span className="min-w-0 flex-1 truncate text-sm">{session.title || tSessions("untitled")}</span>
+                    <span className="text-xs text-muted">{tSessions("ended")}</span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </section>
+        </main>
+
+        <aside className="min-w-0 border-l-0 border-line lg:border-l lg:pl-5">
+          <h2 className="flex items-center gap-2 text-sm font-medium text-ink"><ClipboardList size={16} />{t("learningTasks")}</h2>
           {assignments.length === 0 ? (
-            <EmptyState message={tAssignments("empty")} />
+            <p className="mt-3 text-sm text-muted">{tAssignments("empty")}</p>
           ) : (
-            <ul className="mt-3 divide-y divide-line">
+            <ol className="mt-3 max-h-[32rem] divide-y divide-line overflow-y-auto">
               {assignments.map((assignment) => (
-                <li key={assignment.id} className="flex items-center gap-3 py-2.5">
-                  <ClipboardList size={15} className="shrink-0 text-muted" aria-hidden />
+                <li key={assignment.id} className="py-3">
                   <Link
-                    href={`/classroom/${classroom.id}/assignment/${assignment.id}`}
-                    className="min-w-0 flex-1 truncate text-sm underline-offset-4 transition-colors hover:underline"
+                    href={studentId
+                      ? "/dashboard/assignments/" + assignment.id + "?student=" + studentId
+                      : "/classroom/" + classroom.id + "/assignment/" + assignment.id}
+                    className="block truncate text-sm font-medium hover:underline"
                   >
                     {assignment.title || tAssignments("untitled")}
                   </Link>
-                  <span className="shrink-0 text-xs text-muted">
-                    {assignment.dueAt
-                      ? tAssignments("due", { date: new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(assignment.dueAt)) })
-                      : tAssignments("noDue")}
-                  </span>
-                  {isTeacher && <DeleteAssignmentButton assignmentId={assignment.id} title={assignment.title || tAssignments("untitled")} />}
+                  <p className="mt-1 text-xs text-muted">
+                    {assignment.dueAt ? tAssignments("due", { date: fmt.format(new Date(assignment.dueAt)) }) : tAssignments("noDue")}
+                  </p>
                 </li>
               ))}
-            </ul>
+            </ol>
           )}
-        </section>
+          <Link href="/dashboard/assignments" className={cn(buttonVariants({ size: "sm", variant: "secondary" }), "mt-4 w-full justify-center")}>
+            {t("allLearningTasks")}
+          </Link>
+        </aside>
       </div>
     </SectionShell>
   );

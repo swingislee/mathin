@@ -4,10 +4,11 @@ import { Input } from "@/components/ui/input";
 
 import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
-import { ChevronDown, ChevronUp, LoaderCircle } from "lucide-react";
+import { ChevronDown, ChevronUp, LoaderCircle, Paperclip } from "lucide-react";
 import { useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import type { SubmissionRecord } from "../types";
 
@@ -17,6 +18,7 @@ function SubmissionRow({ row }: { row: SubmissionRecord }) {
   const [open, setOpen] = useState(false);
   const [score, setScore] = useState(row.score === null ? "" : String(row.score));
   const [feedback, setFeedback] = useState(row.feedback);
+  const [message, setMessage] = useState("");
   const [pending, startTransition] = useTransition();
   const submitted = Boolean(row.id);
 
@@ -50,7 +52,20 @@ function SubmissionRow({ row }: { row: SubmissionRecord }) {
       </button>
       {open && submitted && (
         <div className="space-y-3 px-4 pb-4">
-          <p className="whitespace-pre-wrap rounded-xl bg-moon/15 p-3 text-sm">{row.content.text}</p>
+          {row.content.text && <p className="whitespace-pre-wrap rounded-xl bg-moon/15 p-3 text-sm">{row.content.text}</p>}
+          {(row.content.attachments?.length ?? 0) > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {row.content.attachments?.map((attachment) => (
+                <Button key={attachment.path} type="button" size="sm" variant="secondary" className="gap-1" onClick={() => {
+                  void createClient().storage.from("assignment-submissions").createSignedUrl(attachment.path, 600).then(({ data, error }) => {
+                    if (error || !data?.signedUrl) setMessage(t("attachmentOpenFailed"));
+                    else window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+                  });
+                }}><Paperclip size={14} /><span className="max-w-44 truncate">{attachment.name}</span></Button>
+              ))}
+            </div>
+          )}
+          {message && <p className="text-xs text-rose" aria-live="polite">{message}</p>}
           <div className="flex flex-wrap items-end gap-3">
             <label className="text-xs text-muted">
               {t("scoreLabel")}

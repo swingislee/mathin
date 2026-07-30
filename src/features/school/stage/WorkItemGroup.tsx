@@ -69,7 +69,7 @@ export function WorkItemGroup({
       )}
       <ul className="divide-y divide-line">
         {items.map((item) => (
-          <li key={item.workKey} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+          <li key={item.workKey} data-notification-target={item.workKey} tabIndex={-1} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 outline-none transition">
             <div className="flex min-w-0 items-center gap-2">
               <Badge variant={BUCKET_BADGE_VARIANT[item.urgencyBucket]}>{bucketLabels?.[item.urgencyBucket] ?? item.urgencyBucket}</Badge>
               <span className="truncate text-sm text-ink">{renderItemTitle(item)}</span>

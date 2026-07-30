@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { newId } from "@/lib/uuid";
 import { archiveLectureAction, getLectureLifecycleImpactAction, restoreLectureAction, saveTeachingPlanAction } from "./actions";
 import type { CourseFamilyDetail, SelectedCourseVariant } from "./course-family-detail";
 
@@ -22,7 +23,7 @@ type LifecycleIntent = { lecture: EditableLecture; mode: "archive" | "restore" }
 type Impact = { pageCount: number; releaseCount: number; classroomCount: number; sessionCount: number; objectCount: number };
 
 function newLecture(name: string, objectives: string, no: number): EditableLecture {
-  return { id: crypto.randomUUID(), no, name: name.trim(), objectives: objectives.trim(), status: "draft", archivedAt: null, hasRelease: false, pageCount: 0 };
+  return { id: newId(), no, name: name.trim(), objectives: objectives.trim(), status: "draft", archivedAt: null, hasRelease: false, pageCount: 0 };
 }
 
 function productHref(familyId: string, courseId: string, lectureId?: string) {

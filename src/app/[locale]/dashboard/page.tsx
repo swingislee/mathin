@@ -11,16 +11,25 @@ import { getActiveEnvironment, getProfile, requireUser } from "@/lib/auth";
 // P4I-1：分派依据从单一 profiles.role 硬分支，改为"账号可用环境集合 + 偏好"
 // （src/lib/environment.ts）。同一账号可能同时属于多个环境（例如 staff 账号
 // 也是某个学生的监护人），此时按 last_active_environment 落地，不强行只认一个角色。
-export default async function DashboardPage({ params }: { params: Promise<{ locale: string }> }) {
-  const { locale } = await params;
+export default async function DashboardPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<{ focus?: string | string[] }>;
+}) {
+  const [{ locale }, rawSearchParams] = await Promise.all([params, searchParams]);
   setRequestLocale(locale);
+  const focusTarget = typeof rawSearchParams.focus === "string" && rawSearchParams.focus.length <= 200
+    ? rawSearchParams.focus
+    : undefined;
   const user = await requireUser(locale);
   const profile = await getProfile(user.id);
   if (!profile) return <StudentHome locale={locale} user={user} profile={profile} />;
 
   const active = await getActiveEnvironment(user.id);
 
-  if (active === "staff") return <TodayWorkHome locale={locale} user={user} profile={profile} />;
+  if (active === "staff") return <TodayWorkHome locale={locale} user={user} profile={profile} focusTarget={focusTarget} />;
   if (active === "family") return <ParentHome locale={locale} user={user} profile={profile} />;
   return <StudentHome locale={locale} user={user} profile={profile} />;
 }

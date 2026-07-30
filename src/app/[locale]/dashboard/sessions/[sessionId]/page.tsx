@@ -19,7 +19,7 @@ export default async function SessionWorkspacePage({
   searchParams,
 }: {
   params: Promise<{ locale: string; sessionId: string }>;
-  searchParams: Promise<{ stage?: string; returnTo?: string | string[] }>;
+  searchParams: Promise<{ stage?: string; returnTo?: string | string[]; focus?: string | string[] }>;
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
@@ -39,7 +39,7 @@ async function SessionWorkspaceContent({
 }: {
   locale: string;
   params: Promise<{ locale: string; sessionId: string }>;
-  searchParams: Promise<{ stage?: string; returnTo?: string | string[] }>;
+  searchParams: Promise<{ stage?: string; returnTo?: string | string[]; focus?: string | string[] }>;
 }) {
   const { environment } = await requireDashboardEnvironment(locale, ["staff"]);
   const [{ sessionId }, rawSearchParams] = await Promise.all([params, searchParams]);
@@ -58,6 +58,7 @@ async function SessionWorkspaceContent({
       stage={parseSessionStage(rawSearchParams.stage, detail.state)}
       backHref={returnTo ?? `/dashboard/classes/${detail.classroomId}`}
       returnTo={returnTo}
+      focusTarget={typeof rawSearchParams.focus === "string" ? rawSearchParams.focus.slice(0, 160) : undefined}
     />
   );
 }

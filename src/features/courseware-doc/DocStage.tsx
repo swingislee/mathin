@@ -117,57 +117,102 @@ function DocVideo({
   poster: string | null;
   control: DocVideoControl | undefined;
 }) {
+  const t = useTranslations("classroom.live");
   const videoRef = useRef<HTMLVideoElement>(null);
   const appliedCtl = useRef<DocVideoCtl | undefined>(undefined);
   const [needsManualAudio, setNeedsManualAudio] = useState(false);
 
   useEffect(() => {
     if (!control || control.controller || !control.ctl || appliedCtl.current === control.ctl) return;
-    appliedCtl.current = control.ctl;
+    const ctl = control.ctl;
     const video = videoRef.current;
     if (!video) return;
-    if (Number.isFinite(control.ctl.time) && Math.abs(video.currentTime - control.ctl.time) > 0.5) {
-      video.currentTime = control.ctl.time;
+    const apply = () => {
+      if (Number.isFinite(ctl.time) && Math.abs(video.currentTime - ctl.time) > 0.5) {
+        try {
+          video.currentTime = ctl.time;
+        } catch {
+          return;
+        }
+      }
+      appliedCtl.current = ctl;
+      if (ctl.action === "play") {
+        void video.play().catch(() => {
+          video.muted = true;
+          setNeedsManualAudio(true);
+          void video.play().catch(() => undefined);
+        });
+      } else if (ctl.action === "pause") {
+        video.pause();
+      }
+    };
+    if (video.readyState === 0) {
+      video.addEventListener("loadedmetadata", apply, { once: true });
+      video.load();
+      return () => video.removeEventListener("loadedmetadata", apply);
     }
-    if (control.ctl.action === "play") {
-      video.play().catch(() => {
-        video.muted = true;
-        setNeedsManualAudio(true);
-        video.play().catch(() => undefined);
-      });
-    } else if (control.ctl.action === "pause") {
-      video.pause();
-    }
+    apply();
   }, [control]);
 
   const isController = control?.controller ?? true;
   return (
-    <video
-      ref={videoRef}
-      controls={isController || needsManualAudio}
-      playsInline
-      preload="metadata"
-      poster={poster ?? undefined}
-      src={src}
-      style={{ width: "100%", height: "100%", objectFit: node.style.objectFit ?? "contain" }}
-      onPlay={isController && control?.onCtl
-        ? (event) => control.onCtl?.("play", event.currentTarget.currentTime)
-        : undefined}
-      onPause={isController && control?.onCtl
-        ? (event) => control.onCtl?.("pause", event.currentTarget.currentTime)
-        : undefined}
-      onSeeked={isController && control?.onCtl
-        ? (event) => control.onCtl?.("seek", event.currentTarget.currentTime)
-        : undefined}
-    />
+    <div style={{ position: "relative", width: "100%", height: "100%" }}>
+      <video
+        ref={videoRef}
+        controls={isController}
+        playsInline
+        preload="auto"
+        poster={poster ?? undefined}
+        src={src}
+        style={{
+          width: "100%",
+          height: "100%",
+          objectFit: node.style.objectFit ?? "contain",
+          pointerEvents: isController ? "auto" : "none",
+        }}
+        onPlay={isController && control?.onCtl
+          ? (event) => control.onCtl?.("play", event.currentTarget.currentTime)
+          : undefined}
+        onPause={isController && control?.onCtl
+          ? (event) => control.onCtl?.("pause", event.currentTarget.currentTime)
+          : undefined}
+        onSeeked={isController && control?.onCtl
+          ? (event) => control.onCtl?.("seek", event.currentTarget.currentTime)
+          : undefined}
+      />
+      {!isController && needsManualAudio && (
+        <Button
+          type="button"
+          size="sm"
+          className="absolute bottom-3 left-1/2 -translate-x-1/2"
+          onClick={() => {
+            const video = videoRef.current;
+            if (video) video.muted = false;
+            setNeedsManualAudio(false);
+          }}
+        >
+          {t("enableSound")}
+        </Button>
+      )}
+    </div>
   );
 }
 
-/** H5 保持沙箱隔离；全屏只提升 iframe 外壳，不放宽其 origin 权限。 */
-function H5Frame({ entryUrl, title }: { entryUrl: string; title: string }) {
+/** H5 stays in an opaque-origin sandbox. A narrow postMessage bridge mirrors native media controls. */
+function H5Frame({
+  entryUrl,
+  title,
+  control,
+}: {
+  entryUrl: string;
+  title: string;
+  control: DocVideoControl | undefined;
+}) {
   const t = useTranslations("coursewareStudio");
   const frameRef = useRef<HTMLDivElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const appliedCtl = useRef<DocVideoCtl | undefined>(undefined);
 
   useEffect(() => {
     const syncFullscreen = () => setIsFullscreen(document.fullscreenElement === frameRef.current);
@@ -175,6 +220,31 @@ function H5Frame({ entryUrl, title }: { entryUrl: string; title: string }) {
     syncFullscreen();
     return () => document.removeEventListener("fullscreenchange", syncFullscreen);
   }, []);
+
+  useEffect(() => {
+    if (!control?.controller || !control.onCtl) return;
+    const receive = (event: MessageEvent) => {
+      if (event.source !== iframeRef.current?.contentWindow) return;
+      const payload = event.data as { source?: unknown; action?: unknown; time?: unknown };
+      if (payload.source !== "mathin-h5-media"
+          || !["play", "pause", "seek"].includes(String(payload.action))
+          || typeof payload.time !== "number") return;
+      control.onCtl?.(payload.action as DocVideoCtl["action"], payload.time);
+    };
+    window.addEventListener("message", receive);
+    return () => window.removeEventListener("message", receive);
+  }, [control]);
+
+  useEffect(() => {
+    if (!control || control.controller || !control.ctl || appliedCtl.current === control.ctl) return;
+    appliedCtl.current = control.ctl;
+    iframeRef.current?.contentWindow?.postMessage({
+      source: "mathin-classroom",
+      type: "media_ctl",
+      action: control.ctl.action,
+      time: control.ctl.time,
+    }, "*");
+  }, [control]);
 
   const toggleFullscreen = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
@@ -191,10 +261,9 @@ function H5Frame({ entryUrl, title }: { entryUrl: string; title: string }) {
   return (
     <div ref={frameRef} style={{ position: "relative", width: "100%", height: "100%", background: "#fff" }}>
       <iframe
+        ref={iframeRef}
         title={title}
         src={entryUrl}
-        // 垫片让 iframe 与站点同源,必须保持 opaque origin 隔离:
-        // 只给 allow-scripts,严禁 allow-same-origin(doc 16 §9)。
         sandbox="allow-scripts"
         allowFullScreen
         style={{ width: "100%", height: "100%", border: 0, display: "block" }}
@@ -271,7 +340,7 @@ function nodeBody(
         ? (urls[node.resources.find((item) => item.role === "entry")!.bindingKey] ?? null)
         : null;
       if (!entryUrl) return unknownBody(node, `互动 · ${node.content?.status ?? "unavailable"}`);
-      return <H5Frame entryUrl={entryUrl} title={node.name ?? "互动"} />;
+      return <H5Frame entryUrl={entryUrl} title={node.name ?? "互动"} control={videoControl} />;
     }
     case "table": {
       const rows = node.content?.rows ?? [];
@@ -477,7 +546,7 @@ export default function DocStage({
       {showBoardBand ? (
         <div
           data-board-band
-          className="bg-muted"
+          className="bg-card"
           style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "25%" }}
         />
       ) : null}

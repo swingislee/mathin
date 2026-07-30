@@ -46,6 +46,40 @@ export function collectDocObjectHashes(pages: readonly SessionPageDoc[]): string
   return [...hashes];
 }
 
+/** 让晚加入学生当前正在看的页面优先于其余后台预载。 */
+export function prioritizeDocObjectHashes(
+  pages: readonly SessionPageDoc[],
+  activePageDocId: string | null,
+): string[] {
+  const all = collectDocObjectHashes(pages);
+  if (!activePageDocId) return all;
+  const active = pages.find((page) => page.pageDocId === activePageDocId);
+  if (!active) return all;
+  const priority = active.bindings
+    .filter((binding) => binding.kind !== "h5")
+    .map((binding) => binding.objectHash);
+  return [...new Set([...priority, ...all])];
+}
+
+/** 每个空闲下载槽重新读取当前页，使上课中跳页也能抢占后台预载队列。 */
+export function takePrioritizedDocObjectHash(
+  queue: string[],
+  pages: readonly SessionPageDoc[],
+  activePageDocId: string | null,
+): string | undefined {
+  const active = activePageDocId
+    ? pages.find((page) => page.pageDocId === activePageDocId)
+    : undefined;
+  if (active) {
+    for (const binding of active.bindings) {
+      if (binding.kind === "h5") continue;
+      const index = queue.indexOf(binding.objectHash);
+      if (index >= 0) return queue.splice(index, 1)[0];
+    }
+  }
+  return queue.shift();
+}
+
 /** H5 包 hash（跨页去重；同包多关卡靠 launchQuery 区分，包只预热一次）。 */
 export function collectH5PackageHashes(pages: readonly SessionPageDoc[]): string[] {
   const hashes = new Set<string>();

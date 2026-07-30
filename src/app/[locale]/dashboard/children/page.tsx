@@ -1,8 +1,9 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { getWeekSchedule } from "@/features/school/actions/schedule";
 import { BindCodeForm } from "@/features/school/BindCodeForm";
-import { canManageGuardianScopes, getMyAttendance, getMyLearningSummary, getMyReviewedVideos, getMySessionReviews, getMyStudents } from "@/features/school/customer";
+import { canManageGuardianScopes, getMyAttendance, getMyLearningSummary, getMyReviewedVideos, getMySessionReviews, getMyStudents, listMySessionLeaveRequests } from "@/features/school/customer";
 import { GuardianScopePanel } from "@/features/school/GuardianScopePanel";
+import { LeaveRequestPanel } from "@/features/school/LeaveRequestPanel";
 import { CustomerVideoButton } from "@/features/school/CustomerVideoButton";
 import { summarizeAttendance } from "@/features/school/learning";
 import {
@@ -43,7 +44,8 @@ export default async function ChildrenPage({
                 <BindCodeForm mode="guardian" />
               </div>
             </DashboardCard>
-          </DashboardMainColumn>
+
+      </DashboardMainColumn>
         </DashboardContentGrid>
       </DashboardPage>
     );
@@ -57,11 +59,12 @@ export default async function ChildrenPage({
   const canManageGuardians=await canManageGuardianScopes(activeId);
 
   const now = new Date();
-  const [scheduleEntries, attendanceRows, reviewRows, reviewedVideos] = await Promise.all([
+  const [scheduleEntries, attendanceRows, reviewRows, reviewedVideos, leaveRequests] = await Promise.all([
     getWeekSchedule(now.toISOString(), addDays(now, 30).toISOString()),
     getMyAttendance(addDays(now, -60).toISOString(), now.toISOString()),
     getMySessionReviews(addDays(now,-180).toISOString(),now.toISOString()),
     getMyReviewedVideos(),
+    listMySessionLeaveRequests(),
   ]);
   const upcomingSessions = scheduleEntries.filter((entry) => entry.studentName === activeStudent.name);
   const attendance = summarizeAttendance(
@@ -109,6 +112,14 @@ export default async function ChildrenPage({
       <DashboardCard title={studentsT("recentReviews")}>
         {reviewRows.filter(x=>x.studentId===activeId).length===0?<p className="text-sm text-muted">{studentsT("noReviews")}</p>:<ul className="divide-y">{reviewRows.filter(x=>x.studentId===activeId).map(r=>{const videos=reviewedVideos.filter(v=>v.sessionId===r.sessionId&&v.studentId===activeId);return <li key={r.sessionId} className="py-3 text-sm"><div className="flex justify-between gap-3"><span className="font-medium">{r.classroomName} · {r.lectureName}</span><time className="text-xs text-muted">{new Intl.DateTimeFormat(locale,{dateStyle:"short"}).format(new Date(r.scheduledAt))}</time></div><p className="mt-1 text-xs text-muted">{studentsT("reviewScores",{entry:r.entryScore??"—",exit:r.exitScore??"—",focus:r.focus??"—",participation:r.participation??"—",mastery:r.mastery??"—"})}</p>{r.comment&&<p className="mt-2">{r.comment}</p>}{r.knowledgeSummary&&<p className="mt-2 rounded-lg bg-line/40 p-2 text-xs text-muted">{r.knowledgeSummary}</p>}<div className="mt-2 flex gap-2">{videos.map(v=><CustomerVideoButton key={v.videoId} videoId={v.videoId}/>)}</div></li>})}</ul>}
       </DashboardCard>
+      <LeaveRequestPanel
+        studentId={activeId}
+        sessions={upcomingSessions.map((session) => ({
+          id: session.sessionId,
+          label: `${new Intl.DateTimeFormat(locale, { dateStyle: "short", timeStyle: "short" }).format(new Date(session.scheduledAt))} · ${session.classroomName} · ${session.lectureName}`,
+        }))}
+        requests={leaveRequests.filter((request) => request.studentId === activeId)}
+      />
       </DashboardMainColumn>
 
       <DashboardAside className="space-y-6">

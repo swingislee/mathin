@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createClient } from "@/lib/supabase/client";
 import { uploadTusFile } from "@/lib/storage/tus-upload";
+import { newId } from "@/lib/uuid";
 import { deleteSessionVideoAction } from "./video-actions";
 
 const MAX_VIDEO_BYTES = 200 * 1024 * 1024;
@@ -28,11 +29,17 @@ interface UploadRow {
   reviewed_at: string | null;
 }
 
-export function ManagedVideoUploadPanel() {
+export function ManagedVideoUploadPanel({
+  initialSessionId,
+  initialStudentId,
+}: {
+  initialSessionId?: string;
+  initialStudentId?: string;
+} = {}) {
   const t = useTranslations("school.videos");
   const [sessions, setSessions] = useState<SessionOption[]>([]);
   const [uploads, setUploads] = useState<UploadRow[]>([]);
-  const [sessionId, setSessionId] = useState("");
+  const [sessionKey, setSessionKey] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [note, setNote] = useState("");
   const [progress, setProgress] = useState(0);
@@ -59,9 +66,16 @@ export function ManagedVideoUploadPanel() {
       lectureName: row.lecture_name,
     }));
     setSessions(options);
-    setSessionId((current) => current || options[0]?.id || "");
+    setSessionKey((current) => {
+      if (current) return current;
+      const preferred = options.find((option) =>
+        option.id === initialSessionId && (!initialStudentId || option.studentId === initialStudentId),
+      );
+      const selected = preferred ?? options[0];
+      return selected ? selected.id + ":" + selected.studentId : "";
+    });
     setUploads((uploadResult.data ?? []) as UploadRow[]);
-  }, []);
+  }, [initialSessionId, initialStudentId]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => { void load(); }, 0);
@@ -69,7 +83,7 @@ export function ManagedVideoUploadPanel() {
   }, [load]);
 
   const upload = async () => {
-    const session = sessions.find((candidate) => candidate.id === sessionId);
+    const session = sessions.find((candidate) => candidate.id + ":" + candidate.studentId === sessionKey);
     if (!file || !session) return;
     if (!VIDEO_MIME_TYPES.has(file.type)) {
       setMessage(t("unsupportedType"));
@@ -84,7 +98,7 @@ export function ManagedVideoUploadPanel() {
     setMessage("");
     setProgress(0);
     const supabase = createClient();
-    const videoId = crypto.randomUUID();
+    const videoId = newId();
     const extension = file.type === "video/webm" ? "webm" : file.type === "video/quicktime" ? "mov" : "mp4";
     const storagePath = `${session.classroomId}/${session.id}/${videoId}.${extension}`;
     try {
@@ -124,10 +138,10 @@ export function ManagedVideoUploadPanel() {
       <h2 className="text-base font-medium text-ink">{t("uploadTitle")}</h2>
       {sessions.length > 0 && (
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <Select value={sessionId} onValueChange={setSessionId}>
+          <Select value={sessionKey} onValueChange={setSessionKey}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>{sessions.map((session) => (
-              <SelectItem key={session.id} value={session.id}>{session.classroomName} · {session.lectureName}</SelectItem>
+              <SelectItem key={session.id + ":" + session.studentId} value={session.id + ":" + session.studentId}>{session.classroomName} · {session.lectureName}</SelectItem>
             ))}</SelectContent>
           </Select>
           <Input type="file" accept="video/mp4,video/webm,video/quicktime" onChange={(event) => setFile(event.target.files?.[0] ?? null)} />

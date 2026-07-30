@@ -33,9 +33,6 @@ export async function LecturePreviewPanel({
 }) {
   const t = await getTranslations("school.courses");
   const currentTrack: CoursewareTrack = preview.page.aspect === "4:3" ? "adapted-4x3" : "native-16x9";
-  const prevHref = preview.pageIndex > 1 ? previewHref(baseHref, preview.lecture.id, preview.pageIndex - 1, currentTrack) : null;
-  const nextHref = preview.pageIndex < preview.pages.length ? previewHref(baseHref, preview.lecture.id, preview.pageIndex + 1, currentTrack) : null;
-
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="px-6 py-5 pr-14">
@@ -48,11 +45,10 @@ export async function LecturePreviewPanel({
         </div>
         <Link href={workspaceHref} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>{t("openLecture")}<ExternalLink className="size-4" /></Link>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto bg-paper px-3 py-4 sm:px-6">
+      <div className="min-h-0 flex-1 overflow-hidden bg-paper px-3 py-4 sm:px-6">
         <LectureCoursewarePreview
           preview={preview}
-          prevHref={prevHref}
-          nextHref={nextHref}
+          fillAvailable
           pageHrefs={preview.pages.map((_, index) => previewHref(baseHref, preview.lecture.id, index + 1, currentTrack))}
         />
       </div>

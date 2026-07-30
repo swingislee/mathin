@@ -1,5 +1,6 @@
 "use server";
 
+import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { actionError, type ActionResult } from "@/lib/action-result";
 
@@ -75,5 +76,60 @@ export async function setGuardianScopeAction(studentId:string,guardianId:string,
     return { ok: true };
   } catch (error) {
     return actionError(error, ["GUARDIAN_NOT_FOUND", "INVALID_SCOPE", "FORBIDDEN", "UNAUTHENTICATED"]);
+  }
+}
+
+const assignmentAttachmentSchema = z.object({
+  path: z.string().min(1).max(500),
+  name: z.string().min(1).max(200),
+  mimeType: z.enum(["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", "application/pdf"]),
+  size: z.number().int().positive().max(12 * 1024 * 1024),
+});
+const customerSubmissionSchema = z.object({
+  assignmentId: z.string().uuid(),
+  studentId: z.string().uuid(),
+  text: z.string().max(20000),
+  attachments: z.array(assignmentAttachmentSchema).max(12),
+}).refine((value) => value.text.trim().length > 0 || value.attachments.length > 0);
+
+export type CustomerSubmissionInput = z.infer<typeof customerSubmissionSchema>;
+
+export async function submitCustomerAssignmentAction(input: CustomerSubmissionInput): Promise<ActionResult> {
+  try {
+    const parsed = customerSubmissionSchema.safeParse(input);
+    if (!parsed.success) throw new Error("VALIDATION");
+    const { supabase } = await authenticatedClient();
+    const { error } = await supabase.rpc("submit_assignment_for_student", {
+      p_assignment_id: parsed.data.assignmentId,
+      p_student_id: parsed.data.studentId,
+      p_content: { text: parsed.data.text.trim(), attachments: parsed.data.attachments },
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["VALIDATION", "FORBIDDEN", "STUDENT_ACCOUNT_REQUIRED", "UNAUTHENTICATED"]);
+  }
+}
+
+const leaveRequestSchema = z.object({
+  sessionId: z.string().uuid(),
+  studentId: z.string().uuid(),
+  reason: z.string().trim().min(1).max(1000),
+});
+
+export async function submitSessionLeaveRequestAction(input: z.infer<typeof leaveRequestSchema>): Promise<ActionResult> {
+  try {
+    const parsed = leaveRequestSchema.safeParse(input);
+    if (!parsed.success) throw new Error("VALIDATION");
+    const { supabase } = await authenticatedClient();
+    const { error } = await supabase.rpc("submit_session_leave_request", {
+      p_session_id: parsed.data.sessionId,
+      p_student_id: parsed.data.studentId,
+      p_reason: parsed.data.reason,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["VALIDATION", "FORBIDDEN", "SESSION_NOT_FOUND", "SESSION_NOT_LEAVABLE", "STUDENT_NOT_ENROLLED", "UNAUTHENTICATED"]);
   }
 }

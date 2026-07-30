@@ -126,8 +126,6 @@ export async function LectureWorkspaceBody({
               <div className="mt-3">
                 <LectureCoursewarePreview
                   preview={preview}
-                  prevHref={preview.pageIndex > 1 ? pageHref(baseHref, track, preview.pageIndex - 1, returnTo) : null}
-                  nextHref={preview.pageIndex < preview.pages.length ? pageHref(baseHref, track, preview.pageIndex + 1, returnTo) : null}
                   pageHrefs={preview.pages.map((_, index) => pageHref(baseHref, track, index + 1, returnTo))}
                 />
               </div>

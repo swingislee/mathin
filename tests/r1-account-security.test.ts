@@ -32,6 +32,9 @@ describe("R1-3 account security contracts", () => {
     expect(auth).toContain('getAuthenticatorAssuranceLevel()');
     expect(auth).toContain('currentLevel !== "aal2"');
     expect(layout).toContain("allowAccountRecovery: true");
+    const securityPage = read("src/app/[locale]/dashboard/account-security/page.tsx");
+    expect(securityPage).toContain('role="alert"');
+    expect(securityPage).toContain('rawRequired === "mfa" || rawRequired === "consent"');
   });
 
   it("keeps MFA and session controls in a client leaf while support changes are validated and audited", () => {

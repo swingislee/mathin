@@ -1,0 +1,180 @@
+import fs from "node:fs";
+import path from "node:path";
+import { describe, expect, it } from "vitest";
+
+const root = process.cwd();
+const read = (file: string) => fs.readFileSync(path.join(root, file), "utf8");
+const continuityMigration = read("supabase/migrations/20260729000400_r1_classroom_continuity.sql");
+const publicationMigration = read("supabase/migrations/20260730000100_r1_session_learning_publications.sql");
+const learningCheckFlagMigration = read("supabase/migrations/20260730000400_r1_courseware_page_learning_check_flags.sql");
+const learningCheckConfigurationMigration = read("supabase/migrations/20260730000600_r1_session_learning_check_configuration.sql");
+const prepArtifactMigration = read("supabase/migrations/20260730000300_r1_session_preparation_artifacts.sql");
+const prepReviewMigration = read("supabase/migrations/20260730000500_r1_session_preparation_review.sql");
+
+describe("R1 classroom continuity contracts", () => {
+  it("bridges active enrollments and claimed student accounts into live classroom membership", () => {
+    expect(continuityMigration).toContain("sync_enrollment_classroom_member");
+    expect(continuityMigration).toContain("enrollments_sync_classroom_member");
+    expect(continuityMigration).toContain("sync_student_account_classroom_members");
+    expect(continuityMigration).toContain("insert into public.classroom_members(classroom_id, user_id, role)");
+    expect(continuityMigration).toContain("where enrollment_row.status = 'active'");
+  });
+
+  it("uses one canonical staff session workspace with operational prep flow and no decision rail", () => {
+    const legacyPage = read("src/app/[locale]/classroom/[classId]/session/[sessionId]/page.tsx");
+    const workspace = read("src/features/school/SessionWorkspaceBody.tsx");
+    const prep = read("src/features/school/SessionPrepPanel.tsx");
+    expect(legacyPage).toContain("/dashboard/sessions/");
+    expect(legacyPage).toContain("redirect(");
+    expect(legacyPage).not.toContain("CoursewareEditor");
+    expect(workspace).toContain("SessionPrepCopyAction");
+    expect(workspace).toContain("SessionPrepCompleteAction");
+    expect(workspace.indexOf('t("rehearse")')).toBeLessThan(workspace.indexOf("<SessionPrepCompleteAction"));
+    expect(workspace).not.toContain("SessionWorkspaceRail");
+    expect(prep).toContain("SessionPrepAutostart");
+    expect(prep).toContain("SessionPreparationFlow");
+    expect(prep).not.toContain("SessionPreparationArtifactsForm");
+    expect(prep).not.toContain("SessionTrackOverrideSelect");
+    expect(prep).toContain("xl:grid-cols-[18rem_minmax(0,1fr)]");
+    expect(prep).not.toContain("SessionLearningCheckEditor");
+  });
+
+  it("binds learning-check defaults to published courseware page identity instead of reusable title templates", () => {
+    const studio = read("src/features/courseware-studio/CoursewarePageEditor.tsx");
+    const prep = read("src/features/school/SessionPrepPanel.tsx");
+    expect(learningCheckFlagMigration).toContain("create table if not exists public.cw_page_learning_check_flags");
+    expect(learningCheckFlagMigration).toContain("set_cw_page_learning_check_flag");
+    expect(learningCheckFlagMigration).toContain("'learningCheckEnabled',rows.learning_check_enabled");
+    expect(learningCheckFlagMigration).toContain("source_page_doc_id uuid references public.cw_page_docs(id)");
+    expect(studio).toContain('t("learningCheckPageFlagTitle")');
+    expect(studio).toContain('t("learningCheckEnabled")');
+    expect(studio).not.toContain("teachingRole");
+    expect(prep).toContain("getSessionCoursewareLearningCheckPages");
+    const overlayEditor = read("src/features/school/CoursewareOverlayEditor.tsx");
+    expect(overlayEditor).toContain("toggleLearningCheck");
+    expect(overlayEditor).toContain("learningCheckSaveQueue");
+    expect(overlayEditor).toContain("learningChecksConfigured");
+    expect(overlayEditor).toContain("BadgeCheck");
+    expect(overlayEditor).toContain("CoursewarePreviewWorkspace");
+    expect(overlayEditor).toContain('railWidth="wide"');
+    expect(overlayEditor).toContain("restoreLearningCheckDefaults");
+    expect(overlayEditor).toContain("undoRestoreLearningCheckDefaults");
+    const sharedPreview = read("src/features/courseware-preview/CoursewarePreviewWorkspace.tsx");
+    expect(sharedPreview).toContain("data-courseware-page-rail");
+    expect(sharedPreview).toContain("data-courseware-preview-stage");
+    expect(sharedPreview).toContain("ResizeObserver");
+    expect(sharedPreview).toContain('railWidth?: "standard" | "wide"');
+    expect(read("src/features/school/curriculum/LectureCoursewarePreview.tsx")).toContain("CoursewarePreviewWorkspace");
+    expect(read("src/features/school/SessionWorkspaceBody.tsx")).toContain('scroll={stage === "pre" ? "none" : "auto"}');
+    expect(overlayEditor).not.toContain("learningCheckAddCustom");
+    expect(learningCheckConfigurationMigration).toContain("learning_checks_configured_at");
+    expect(learningCheckConfigurationMigration).toContain("coalesce(learning_checks_configured_at,now())");
+  });
+
+  it("auto-submits each preparation artifact for review and gates completion on approvals", () => {
+    const prepFlow = read("src/features/school/SessionPreparationFlow.tsx");
+    const reviewPage = read("src/app/[locale]/dashboard/courseware/preparation-review/page.tsx");
+    expect(prepArtifactMigration).toContain("create table if not exists public.session_preparation_artifacts");
+    expect(prepArtifactMigration).toContain("solution_files");
+    expect(prepArtifactMigration).toContain("lesson_plan_files");
+    expect(prepArtifactMigration).toContain("rehearsal_video_url");
+    expect(prepArtifactMigration).toContain("LEARNING_CHECKS_REQUIRED");
+    expect(prepReviewMigration).toContain("create table public.session_preparation_reviews");
+    expect(prepReviewMigration).toContain("notify_session_preparation_reviewers");
+    expect(prepReviewMigration).toContain("session.preparation.submitted");
+    expect(prepReviewMigration).toContain("review_session_preparation_artifact");
+    expect(prepReviewMigration).toContain("PREP_REVIEW_REQUIRED");
+    expect(prepFlow).toContain("saveQueue");
+    expect(prepFlow).toContain("latest.current = next");
+    expect(prepFlow).not.toContain('type="submit"');
+    expect(reviewPage).toContain("listSessionPreparationReviews");
+  });
+
+  it("keeps the preparation canvas fixed while resolving H5 entries through the shared preview workspace", () => {
+    const workspace = read("src/features/school/SessionWorkspaceBody.tsx");
+    const sessionAssets = read("src/features/classroom/courseware/session-assets.ts");
+    const prep = read("src/features/school/SessionPrepPanel.tsx");
+    const sharedPreview = read("src/features/courseware-preview/CoursewarePreviewWorkspace.tsx");
+    expect(workspace).toContain('scroll={stage === "pre" ? "none" : "auto"}');
+    expect(sessionAssets).toContain("getSessionH5BindingUrls");
+    expect(sessionAssets).toContain("buildH5EntryUrl");
+    expect(prep).toContain("getSessionH5BindingUrls");
+    expect(sharedPreview).toContain("grid h-full min-h-0");
+    expect(sharedPreview).toContain("overflow-y-auto");
+    expect(sharedPreview).toContain('aria-keyshortcuts="ArrowLeft PageUp"');
+    expect(sharedPreview).toContain('aria-keyshortcuts="ArrowRight PageDown Space"');
+    const docStage = read("src/features/courseware-doc/DocStage.tsx");
+    expect(docStage).toContain("data-board-band");
+    expect(docStage).toContain('className="bg-card"');
+    const lecturePreview = read("src/features/school/curriculum/LectureCoursewarePreview.tsx");
+    const lecturePanel = read("src/features/school/curriculum/LecturePreviewPanel.tsx");
+    expect(lecturePreview).toContain("fillAvailable");
+    expect(lecturePreview).not.toContain("PreviewKeyboardNavigation");
+    expect(lecturePanel).toContain("flex-1 overflow-hidden bg-paper");
+    expect(lecturePanel).not.toContain("flex-1 overflow-y-auto bg-paper");
+  });
+
+  it("makes attendance the first persisted gate before a formal class starts", () => {
+    const livePage = read("src/app/[locale]/classroom/[classId]/session/[sessionId]/live/page.tsx");
+    const liveShell = read("src/features/classroom/live/LiveShell.tsx");
+    const actions = read("src/features/classroom/actions.ts");
+    expect(livePage).toContain("getAttendanceDrawerData");
+    expect(livePage).toContain("initialAttendanceComplete");
+    expect(liveShell).toContain("attendanceRequired && !attendanceComplete");
+    expect(liveShell).toContain("AttendanceDrawer");
+    expect(actions).toContain('throw new Error("ATTENDANCE_REQUIRED")');
+  });
+
+  it("ships a teacher page list, protected student media, and one-touch or batch learning checks", () => {
+    const liveShell = read("src/features/classroom/live/LiveShell.tsx");
+    const video = read("src/features/classroom/live/VideoStage.tsx");
+    const panel = read("src/features/school/SessionLearningCheckPanel.tsx");
+    expect(liveShell).toContain("PanelsTopLeft");
+    expect(liveShell).toContain('t("pageList")');
+    expect(liveShell).toContain('page?.type === "doc"');
+    expect(video).toContain("pointer-events-none");
+    expect(liveShell).toContain("prioritizeDocObjectHashes");
+    expect(liveShell).toContain("takePrioritizedDocObjectHash");
+    expect(liveShell).toContain("Math.min(4, queue.length)");
+    expect(liveShell).toContain('t("assetLoading")');
+    expect(continuityMigration).toContain("create table public.session_learning_checks");
+    expect(continuityMigration).toContain("create table public.session_learning_check_results");
+    expect(continuityMigration).toContain("mark_session_learning_check");
+    expect(panel).toContain("LEARNING_CHECK_STATUSES.map");
+    expect(panel).toContain("mark([student.id], candidate)");
+    expect(panel).toContain("selectedStudentIds");
+    expect(panel).toContain("xl:grid-cols-5");
+  });
+
+  it("prioritizes 4:3 courseware and keeps both collapsible teacher docks on the right", () => {
+    const liveShell = read("src/features/classroom/live/LiveShell.tsx");
+    expect(liveShell).toContain("flex-col gap-2 overflow-y-auto xl:flex-row");
+    expect(liveShell).toContain("data-side-board-viewport");
+    expect(liveShell).toContain("sideZoom * 100");
+    expect(liveShell).toContain("lastPoint[1] * viewport.scrollHeight");
+    expect(liveShell).toContain('myRole === "student" && !showAllStudents');
+    expect(liveShell).toContain('t("showClassmates")');
+    expect(liveShell).toContain("sideCollapsed && rosterCollapsed");
+    expect(liveShell).toContain("5.25rem");
+  });
+
+  it("publishes knowledge summary, assignment, and video as three independent tasks", () => {
+    const postwork = read("src/features/school/SessionPostworkPanel.tsx");
+    expect(publicationMigration).toContain("publish_session_assignment");
+    expect(publicationMigration).toContain("publish_session_video_task");
+    expect(publicationMigration).toContain("knowledge_summary.published");
+    expect(postwork).toContain("SessionFamilyBriefPanel");
+    expect(postwork).toContain("SessionAssignmentPublisher");
+    expect(postwork).toContain("SessionVideoTaskPublisher");
+  });
+
+  it("reports attendance and learning checks while preserving uncaptured digital metrics", () => {
+    const report = read("src/features/classroom/report.ts");
+    const reportPage = read("src/app/[locale]/classroom/[classId]/session/[sessionId]/report/page.tsx");
+    expect(report).toContain("hasHandEvents");
+    expect(report).toContain("hasQuizEvents");
+    expect(reportPage).toContain('t("notCaptured")');
+    expect(reportPage).toContain("report.learningChecks");
+    expect(reportPage).toContain("attendanceStatus");
+  });
+});

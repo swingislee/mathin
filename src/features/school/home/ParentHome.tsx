@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
+import { buttonVariants } from "@/components/ui/button";
 import { listMyClassrooms } from "@/features/classroom/actions";
 import { BindCodeForm } from "@/features/school/BindCodeForm";
 import { getMyLearningSummary, getMySessionReviews } from "@/features/school/customer";
@@ -14,6 +15,7 @@ import {
 } from "@/features/school/tiles";
 import { TileWorkspace } from "@/features/school/TileWorkspace";
 import type { PermissionKey } from "@/features/school/permissions";
+import { Link } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 import {
@@ -115,6 +117,11 @@ export async function ParentHome({ locale, user, profile }: HomeProps) {
               </dd>
             </div>
           </dl>
+          <div className="mt-auto flex flex-wrap gap-2 pt-3">
+            <Link href={`/dashboard/assignments?child=${child.studentId}`} className={cn(buttonVariants({ size: "sm" }), "grow")}>{customerT("homeworkAction")}</Link>
+            <Link href={`/dashboard/assignments?child=${child.studentId}#video-upload`} className={cn(buttonVariants({ size: "sm", variant: "secondary" }), "grow")}>{customerT("videoAction")}</Link>
+            <Link href={`/dashboard/children?child=${child.studentId}#leave`} className={cn(buttonVariants({ size: "sm", variant: "secondary" }), "grow")}>{customerT("leaveAction")}</Link>
+          </div>
         </>,
       );
     }

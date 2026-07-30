@@ -152,6 +152,13 @@ export const DASHBOARD_ROUTES = {
     createSurface: "none",
     nav: { labelKey: "home", group: "work" },
   },
+  coordination: {
+    href: "/dashboard/coordination",
+    kind: "queue",
+    environments: STAFF_ONLY,
+    createSurface: "none",
+    nav: { labelKey: "coordination", group: "work" },
+  },
   schedule: {
     href: "/dashboard/schedule",
     kind: "queue",
@@ -293,6 +300,13 @@ export const DASHBOARD_ROUTES = {
     parent: "courseware",
     nav: { labelKey: "adaptReview", group: "courseware" },
   },
+  coursewarePreparationReview: {
+    href: "/dashboard/courseware/preparation-review",
+    kind: "queue",
+    environments: STAFF_ONLY,
+    createSurface: "none",
+    parent: "courseware",
+  },
   coursewareLecture: {
     // 讲次在课程版本的教学计划中创建，没有 /courseware/lectures/new（§5.19）。
     hrefPattern: "/dashboard/courseware/lectures/[lectureId]",
@@ -423,13 +437,29 @@ export const DASHBOARD_ROUTES = {
     createSurface: "none",
     nav: { labelKey: "children" },
   },
-  assignments: {
-    // learning 环境的任务队列，学生不从这里创建作业（§5.28）。
-    href: "/dashboard/assignments",
-    kind: "queue",
+  learningClasses: {
+    // 学生的长期班级入口属于学习运行时；教师班级管理只走 /dashboard/classes。
+    href: "/classroom",
+    kind: "collection",
     environments: ["learning"],
     createSurface: "none",
+    nav: { labelKey: "classes" },
+  },
+  assignments: {
+    // 学生与家庭共用作业/课后视频任务入口；均只操作本人或已授权孩子。
+    href: "/dashboard/assignments",
+    kind: "queue",
+    environments: ["learning", "family"],
+    createSurface: "none",
     nav: { labelKey: "assignments" },
+  },
+  assignmentDetail: {
+    hrefPattern: "/dashboard/assignments/[assignmentId]",
+    kind: "object",
+    environments: ["learning", "family"],
+    createSurface: "parent",
+    creationOwner: "assignments",
+    parent: "assignments",
   },
 } as const satisfies Record<string, DashboardRoute>;
 

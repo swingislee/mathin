@@ -1,8 +1,10 @@
 "use server";
 
 import { z } from "zod";
+import { buildH5EntryUrl, type ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 import { pageDocSchema, type PageDoc } from "@/features/courseware-doc/schema";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getSupabaseConfig } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 
 const sessionIdSchema = z.uuid();
@@ -32,6 +34,42 @@ export interface SessionPageDoc {
   pageNo: number;
   doc: PageDoc;
   bindings: SessionDocBinding[];
+}
+
+const h5ManifestSchema = z.object({ entryPath: z.string().min(1) });
+
+/**
+ * Resolve H5 entry bindings for server-rendered previews. H5 packages live in
+ * the public content-addressed bucket and must use the app shim so HTML keeps
+ * its MIME type, relative assets work, and launch query parameters survive.
+ */
+export async function getSessionH5BindingUrls(pages: readonly SessionPageDoc[]): Promise<ResolvedBindingUrls> {
+  const packageHashes = [...new Set(pages.flatMap((page) =>
+    page.bindings.filter((binding) => binding.kind === "h5").map((binding) => binding.objectHash)))];
+  if (packageHashes.length === 0) return {};
+
+  const base = getSupabaseConfig().url.replace(/\/$/, "");
+  const entries = await Promise.all(packageHashes.map(async (packageHash) => {
+    const response = await fetch(
+      `${base}/storage/v1/object/public/cw-h5/packages/${packageHash}/__mathin_manifest.json`,
+      { cache: "force-cache" },
+    );
+    if (!response.ok) return null;
+    const manifest = h5ManifestSchema.safeParse(await response.json());
+    return manifest.success ? [packageHash, manifest.data.entryPath] as const : null;
+  }));
+  const entryPathByHash = new Map(entries.filter((entry): entry is readonly [string, string] => entry !== null));
+  const urls: Record<string, string> = {};
+  for (const page of pages) {
+    for (const binding of page.bindings) {
+      if (binding.kind !== "h5") continue;
+      const entryPath = entryPathByHash.get(binding.objectHash);
+      if (entryPath) {
+        urls[binding.bindingKey] = buildH5EntryUrl(binding.objectHash, entryPath, binding.launchQuery);
+      }
+    }
+  }
+  return urls;
 }
 
 /**

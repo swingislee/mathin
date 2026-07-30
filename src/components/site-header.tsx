@@ -64,7 +64,7 @@ export async function SiteHeader({ workspace = false }: { workspace?: boolean } 
         </Link>
       )}
       <GlobalFloatingControls>
-        {user && <ChangeBell key={changes[0]?.id ?? "empty"} initialEvents={changes} workItems={inboxWorkItems} totalWorkItems={totalWorkItems} />}
+        {user && <ChangeBell key={changes[0]?.id ?? "empty"} initialEvents={changes} workItems={inboxWorkItems} totalWorkItems={totalWorkItems} userId={user.id} />}
         <UtilitySheet
           isLoggedIn={!!user}
           locale={locale}

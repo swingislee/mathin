@@ -51,10 +51,10 @@ export function UtilitySheet({
         <button aria-label={home("openDrawer")} className="edge-control"><Menu size={18} /></button>
       </SheetTrigger>
       <SheetContent side="right" closeLabel={home("closeDrawer")} className="grid h-dvh w-[min(90vw,380px)] grid-rows-[auto_minmax(0,1fr)_auto] p-0">
-        <div className="border-b border-line px-5 py-4 pr-16">
+        <div className="flex items-center gap-3 border-b border-line px-5 py-3 pr-16">
           <SheetTitle className="sr-only">{home("drawer")}</SheetTitle>
           {isLoggedIn && accountName ? (
-            <div className="flex min-w-0 items-center gap-3">
+            <div className="flex min-w-0 flex-1 items-center gap-3">
               <span className="grid size-10 shrink-0 place-items-center rounded-full border border-line bg-moon/45 font-display text-lg text-ink">
                 {accountName.trim().charAt(0).toLocaleUpperCase()}
               </span>
@@ -72,6 +72,18 @@ export function UtilitySheet({
                 <span>{common("login")}</span>
               </Link>
             </SheetClose>
+          )}
+          {isLoggedIn && (
+            <form action={logout} className="ml-auto shrink-0">
+              <Input type="hidden" name="locale" value={locale} />
+              <button
+                type="submit"
+                aria-label={common("logout")}
+                className="grid size-10 place-items-center rounded-full border border-line text-muted transition hover:bg-moon/30 hover:text-ink"
+              >
+                <LogOut size={18} strokeWidth={1.75} />
+              </button>
+            </form>
           )}
         </div>
 
@@ -127,34 +139,21 @@ export function UtilitySheet({
                       </Link>
                     </SheetClose>
                   ))}
+                  <SheetClose asChild>
+                    <Link href="/dashboard/account-security" className="drawer-nav-row">
+                      <ShieldCheck size={19} strokeWidth={1.75} />
+                      <span>{nav("accountSecurity")}</span>
+                    </Link>
+                  </SheetClose>
                 </div>
               </nav>
             )}
           </div>
         </ScrollArea>
 
-        <div className="border-t border-line bg-background/95 px-5 py-4 backdrop-blur-md">
-          <div className="mb-3 flex items-center gap-2">
-            <LocaleSwitcher />
-            <ThemeToggle initialTheme={initialTheme} />
-          </div>
-          {isLoggedIn ? (
-            <div className="space-y-1">
-              <SheetClose asChild>
-                <Link href="/dashboard/account-security" className="drawer-account-action">
-                  <ShieldCheck size={18} strokeWidth={1.75} />
-                  <span>{nav("accountSecurity")}</span>
-                </Link>
-              </SheetClose>
-              <form action={logout}>
-                <Input type="hidden" name="locale" value={locale} />
-                <button type="submit" className="drawer-account-action">
-                  <LogOut size={18} strokeWidth={1.75} />
-                  <span>{common("logout")}</span>
-                </button>
-              </form>
-            </div>
-          ) : null}
+        <div className="flex items-center gap-2 border-t border-line bg-background/95 px-5 py-2 backdrop-blur-md">
+          <LocaleSwitcher />
+          <ThemeToggle initialTheme={initialTheme} />
         </div>
       </SheetContent>
     </Sheet>
