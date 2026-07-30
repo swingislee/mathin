@@ -195,4 +195,22 @@ describe("R1-5 family learning contracts", () => {
     expect(fixtures).not.toContain("deleteUser");
   });
 
+  it("provides a fail-closed browser fixture for the leave and cross-class makeup journey", () => {
+    const fixtures = read("scripts/ensure-r1-family-journey-fixture.mjs");
+    const pkg = JSON.parse(read("package.json"));
+    expect(pkg.scripts["r1:family-journey-fixture"]).toBe("node scripts/ensure-r1-family-journey-fixture.mjs");
+    expect(fixtures).toContain('process.env.R1_DEV_TEST_FIXTURES !== "1"');
+    expect(fixtures).toContain('import { lookup } from "node:dns/promises"');
+    expect(fixtures).toContain("assertPrivateDevelopmentTarget");
+    expect(fixtures).toContain("assertExternalChannelsDisabled");
+    expect(fixtures).toContain('["email", "sms", "wechat", "webhook"]');
+    expect(fixtures).toContain('statuses.get(channel) !== "disabled"');
+    expect(fixtures).toContain("R1_BROWSER_FIXTURE_FAMILY_JOURNEY_SOURCE");
+    expect(fixtures).toContain("R1_BROWSER_FIXTURE_FAMILY_JOURNEY_TARGET");
+    expect(fixtures).toContain('.from("course_lectures")');
+    expect(fixtures).toContain('lecture_id: lecture?.id ?? null');
+    expect(fixtures).toContain('eq("kind", "makeup")');
+    expect(fixtures).not.toContain("deleteUser");
+  });
+
 });
