@@ -13,6 +13,7 @@ export const ORGANIZATION_FEATURE_KEYS = [
   "notifications.sms",
   "notifications.wechat",
   "public_content.publish",
+  "teaching.preparation_archive_edit",
 ] as const;
 
 export type OrganizationRuleDomain = (typeof ORGANIZATION_RULE_DOMAINS)[number];

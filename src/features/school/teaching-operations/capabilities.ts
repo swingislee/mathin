@@ -131,6 +131,7 @@ export function resolveSessionCapabilities(context: SessionCapabilityContext): S
   const isCompleted = context.state === "ended" || context.state === "voided";
 
   const canPrepare = sessionReason(reasons, "prepare", context.isTeaching && isScheduled, "FORBIDDEN_SCOPE");
+  const canEditPreparationArchive = context.isTeaching;
   const canEnterLive = sessionReason(reasons, "live", context.isTeaching && isLiveEligible, "FORBIDDEN_SCOPE");
   const canReschedule = sessionReason(reasons, "reschedule", context.isManagement && isScheduled, "FORBIDDEN_SCOPE");
   const canAssignSubstitute = sessionReason(reasons, "substitute", context.isManagement && isScheduled, "FORBIDDEN_SCOPE");
@@ -167,6 +168,7 @@ export function resolveSessionCapabilities(context: SessionCapabilityContext): S
   return {
     canOpenManagement: openManagement,
     canPrepare,
+    canEditPreparationArchive,
     canEnterLive,
     canReschedule,
     canAssignSubstitute,

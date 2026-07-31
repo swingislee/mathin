@@ -15,6 +15,7 @@ const learningCheckConfigurationMigration = read("supabase/migrations/2026073000
 const learningCheckMarkFixMigration = read("supabase/migrations/20260730000700_r1_fix_learning_check_mark.sql");
 const prepArtifactMigration = read("supabase/migrations/20260730000300_r1_session_preparation_artifacts.sql");
 const prepReviewMigration = read("supabase/migrations/20260730000500_r1_session_preparation_review.sql");
+const prepUnlockMigration = read("supabase/migrations/20260731000500_r1_preparation_archive_unlock.sql");
 
 describe("R1 classroom continuity contracts", () => {
   it("bridges active enrollments and claimed student accounts into live classroom membership", () => {
@@ -59,6 +60,23 @@ describe("R1 classroom continuity contracts", () => {
     expect(overlayEditor).toContain("readOnly?: boolean");
     expect(overlayEditor).toContain('ts("coursewareArchivePageRailTitle")');
     expect(classes).toContain("courseware_frozen_at,courseware,courseware_overlay");
+  });
+
+  it("temporarily unlocks preparation records without mutating frozen courseware structure", () => {
+    const prep = read("src/features/school/SessionPrepPanel.tsx");
+    const overlayEditor = read("src/features/school/CoursewareOverlayEditor.tsx");
+    expect(prep).toContain('isFeatureEnabled("teaching.preparation_archive_edit")');
+    expect(prep).toContain("canEditPreparationArchive");
+    expect(prep).toContain("structureReadOnly={!canEditCoursewareStructure}");
+    expect(overlayEditor).toContain("structureReadOnly = readOnly");
+    expect(overlayEditor).toContain("prepArchiveUnlockedCoursewareHint");
+    expect(prepUnlockMigration).toContain("guard_locked_session_preparation_artifact");
+    expect(prepUnlockMigration).toContain("replace_session_learning_checks");
+    expect(prepUnlockMigration).toContain("save_courseware_annotation");
+    expect(prepUnlockMigration).toContain("save_session_lesson_plan");
+    expect(prepUnlockMigration).toContain("set_session_preparation_reviewer");
+    expect(prepUnlockMigration).toContain("withdraw_session_lesson_plan");
+    expect(prepUnlockMigration).toContain("and not public.is_feature_enabled('teaching.preparation_archive_edit')");
   });
 
   it("binds learning-check defaults to published courseware page identity instead of reusable title templates", () => {

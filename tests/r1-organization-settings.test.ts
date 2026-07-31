@@ -6,6 +6,7 @@ const root = process.cwd();
 const read = (file: string) => fs.readFileSync(path.join(root, file), "utf8");
 const migration = read("supabase/migrations/20260728000100_r1_organization_settings.sql");
 const publishGuard = read("supabase/migrations/20260728000200_r1_public_publish_guard.sql");
+const preparationUnlock = read("supabase/migrations/20260731000500_r1_preparation_archive_unlock.sql");
 
 describe("R1-1 organization settings contracts", () => {
   it("ships explicit organization, campus, calendar, rule, and flag schema with RLS", () => {
@@ -45,6 +46,14 @@ describe("R1-1 organization settings contracts", () => {
     expect(migration).toContain("default gen_random_uuid()");
     expect(migration).toContain("R1-1 explicit default");
     expect(migration).toContain("R1-1 fail-closed default");
+  });
+
+  it("registers preparation archive editing as a fail-closed administrator switch", () => {
+    const contract = read("src/features/school/organization-settings-contract.ts");
+    expect(contract).toContain('"teaching.preparation_archive_edit"');
+    expect(preparationUnlock).toContain("'teaching.preparation_archive_edit'");
+    expect(preparationUnlock).toContain("'R1-5 fail-closed default'");
+    expect(preparationUnlock).toMatch(/teaching\.preparation_archive_edit', 1, false/);
   });
 
   it("registers a bilingual, permission-gated singleton route", () => {

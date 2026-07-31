@@ -105,6 +105,7 @@ export interface ClassroomCapabilityContext {
 export interface SessionCapabilities {
   canOpenManagement: boolean;
   canPrepare: boolean;
+  canEditPreparationArchive: boolean;
   canEnterLive: boolean;
   canReschedule: boolean;
   canAssignSubstitute: boolean;

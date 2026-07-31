@@ -77,10 +77,29 @@ describe("P4H teaching-operation capabilities", () => {
     });
 
     expect(teacher.canPrepare).toBe(true);
+    expect(teacher.canEditPreparationArchive).toBe(true);
     expect(teacher.canEnterLive).toBe(true);
     expect(support.canOpenManagement).toBe(true);
     expect(support.canPrepare).toBe(false);
+    expect(support.canEditPreparationArchive).toBe(false);
     expect(support.canEnterLive).toBe(false);
+  });
+
+  it("keeps archive responsibility after the scheduled preparation state ends", () => {
+    const teacher = resolveSessionCapabilities({
+      isTeaching: true,
+      isSupport: false,
+      isManagement: false,
+      canVoidSession: false,
+      canMarkAttendance: true,
+      canWriteReview: true,
+      canReviewVideo: true,
+      canManagePostwork: true,
+      state: "ended",
+    });
+
+    expect(teacher.canPrepare).toBe(false);
+    expect(teacher.canEditPreparationArchive).toBe(true);
   });
 
   it("allows course metadata management without granting page editing", () => {
