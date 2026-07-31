@@ -77,6 +77,8 @@ export async function SessionWorkspaceBody({
   backHref,
   returnTo,
   focusTarget,
+  initialPrepStep,
+  initialPrepPageId,
 }: {
   detail: SessionWorkspaceDetail;
   stage: SessionStage;
@@ -85,6 +87,8 @@ export async function SessionWorkspaceBody({
   /** 已校验的 `?returnTo=`；课前/课堂/课后三段之间切换要带着它走（doc24 §6）。 */
   returnTo: string | null;
   focusTarget?: string;
+  initialPrepStep?: "study" | "design" | "rehearsal";
+  initialPrepPageId?: string;
 }) {
   const t = await getTranslations("school.session");
   const tc = await getTranslations("school.classes");
@@ -184,7 +188,13 @@ export async function SessionWorkspaceBody({
             contentClassName={stage === "pre" ? "h-full min-h-0 !py-3" : undefined}
           >
             <NotificationFocus target={focusTarget} />
-            {stage === "pre" && <SessionPrepPanel detail={detail} />}
+            {stage === "pre" && (
+              <SessionPrepPanel
+                detail={detail}
+                initialStep={initialPrepStep}
+                initialPageId={initialPrepPageId}
+              />
+            )}
             {stage === "live" && <SessionLivePanel detail={detail} />}
             {stage === "post" && <SessionPostworkPanel detail={detail} />}
           </WorkspaceMain>

@@ -21,6 +21,9 @@ export interface SessionPreparationReviewQueueItem {
   reviewNote: string;
   sessionTitle: string;
   classroomName: string;
+  assignedReviewerId: string | null;
+  assignedReviewerName: string | null;
+  selfReview: boolean;
 }
 
 export interface SignedPrepArtifactFile extends PrepArtifactFile {
@@ -50,6 +53,9 @@ export async function listSessionPreparationReviews(sessionId?: string): Promise
     reviewNote: row.review_note,
     sessionTitle: row.session_title,
     classroomName: row.classroom_name,
+    assignedReviewerId: row.assigned_reviewer_id,
+    assignedReviewerName: row.assigned_reviewer_name,
+    selfReview: row.self_review,
   }));
 }
 

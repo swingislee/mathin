@@ -56,16 +56,18 @@ describe("whiteboard geometry objects", () => {
     const toolbar = readFileSync("src/features/whiteboard/Toolbar.tsx", "utf8");
     const store = readFileSync("src/features/whiteboard/store.ts", "utf8");
 
-    expect(instrumentLayer).toContain("shortestAngleDelta(previous, current)");
+    expect(instrumentLayer).toContain(
+      "shortestAngleDelta(previousPointerAngle, pointerAngle)",
+    );
     expect(instrumentLayer).toContain("ellipseArcPath(preview.width * width");
-    expect(instrumentLayer).toContain('r={22} fill="transparent"');
+    expect(instrumentLayer).toContain('r={17} fill="transparent"');
     expect(instrumentLayer).toContain('r={24} fill="transparent"');
     expect(toolbar).toContain('data-tool-group="construction"');
     expect(instrumentLayer).toContain("compassRadiusNorm(item, width)");
-    expect(instrumentLayer).toContain("beginCompassControl(event, item)");
+    expect(instrumentLayer).toContain("beginCompassArc(event, item)");
     expect(toolbar).toContain('data-tool-group="drawing"');
     expect(instrumentLayer).toContain("absolute inset-0 z-40");
-    expect(toolbar.indexOf('data-tool-group="construction"')).toBeLessThan(toolbar.indexOf('data-tool-group="drawing"'));
+    expect(toolbar.indexOf('data-tool-group="construction"')).toBeGreaterThan(toolbar.indexOf('data-tool-group="drawing"'));
     expect(store).toContain('kind, x: 0.5, y: 0.32, width: 0.24');
     expect(store).not.toContain('kind, x: 0.5, y: 0.5, width: 0.24');
   });

@@ -6,7 +6,6 @@ import {
   createLessonPlanTemplateV1,
   LESSON_PLAN_TEMPLATE_VERSION,
   type CoursewareAnnotation,
-  type LessonPageNote,
   type LessonPlanStatus,
   type SessionLessonPlan,
   type SolutionRecord,
@@ -64,7 +63,6 @@ function solutionRecord(row: {
 
 export interface TeacherPreparationWorkspaceData {
   lessonPlan: SessionLessonPlan;
-  pageNotes: LessonPageNote[];
   annotations: CoursewareAnnotation[];
   solutionRecords: SolutionRecord[];
 }
@@ -81,14 +79,7 @@ export async function getTeacherPreparationWorkspace(sessionId: string): Promise
     .maybeSingle<LessonPlanRow>();
   if (planError) throw new Error(planError.message);
 
-  const [{ data: noteRows, error: noteError }, { data: annotationRows, error: annotationError }, { data: solutionRows, error: solutionError }] = await Promise.all([
-    planRow
-      ? supabase
-        .from("lesson_page_notes")
-        .select("page_doc_id,content,updated_at")
-        .eq("lesson_plan_id", planRow.id)
-        .returns<Array<{ page_doc_id: string; content: string; updated_at: string }>>()
-      : Promise.resolve({ data: [], error: null }),
+  const [{ data: annotationRows, error: annotationError }, { data: solutionRows, error: solutionError }] = await Promise.all([
     supabase
       .from("courseware_annotations")
       .select("id,page_doc_id,content,version,updated_at")
@@ -102,17 +93,11 @@ export async function getTeacherPreparationWorkspace(sessionId: string): Promise
       .eq("session_id", sessionId)
       .returns<Array<{ id: string; solution_source: string; page_doc_id: string | null; revision: number; content: unknown; updated_at: string }>>(),
   ]);
-  if (noteError) throw new Error(noteError.message);
   if (annotationError) throw new Error(annotationError.message);
   if (solutionError) throw new Error(solutionError.message);
 
   return {
     lessonPlan: lessonPlan(planRow, sessionId),
-    pageNotes: (noteRows ?? []).map((row) => ({
-      pageDocId: row.page_doc_id,
-      content: row.content,
-      updatedAt: row.updated_at,
-    })),
     annotations: (annotationRows ?? []).flatMap((row) => {
       const parsed = annotationContentSchema.safeParse(row.content);
       return parsed.success ? [{

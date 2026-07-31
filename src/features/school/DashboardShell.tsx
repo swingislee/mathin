@@ -1,6 +1,6 @@
 "use client";
 
-import { Baby, BookOpen, CalendarDays, ClipboardList, Crop, DatabaseZap, FolderOpen, KeyRound, LayoutDashboard, PanelLeftOpen, PhoneForwarded, Presentation, School, ShieldAlert, ShieldCheck, Sparkles, UserRoundCog, Users, UserCog, Wallet } from "lucide-react";
+import { Baby, BookOpen, CalendarDays, ClipboardCheck, ClipboardList, Crop, DatabaseZap, FolderOpen, KeyRound, LayoutDashboard, PanelLeftOpen, PhoneForwarded, Presentation, School, ShieldAlert, ShieldCheck, Sparkles, UserRoundCog, Users, UserCog, Wallet } from "lucide-react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { Fragment, useState } from "react";
@@ -21,6 +21,7 @@ const ICONS: Record<string, ComponentType<{ size?: number; strokeWidth?: number 
   courses: BookOpen,
   workbench: Presentation,
   adaptReview: Crop,
+  preparationReview: ClipboardCheck,
   sharedAssets: FolderOpen,
   classes: School,
   activities: Sparkles,

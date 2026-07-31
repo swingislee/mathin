@@ -58,7 +58,9 @@ describe("R1 classroom continuity contracts", () => {
     const classes = read("src/features/school/classes.ts");
     expect(prep).toContain("canViewPrepArchive");
     expect(prep).toContain("prepArchiveFrozenTitle");
-    expect(prep).toContain("detail.courseware.map((page) => ({ page }))");
+    expect(prep).toContain("coursewareEditorStateFromFrozenSnapshot(detail.courseware, detail.coursewareOverlay)");
+    expect(prep).toContain("template={editorTemplate}");
+    expect(prep).toContain("initialOverlay={editorOverlay}");
     expect(prep).toContain("readOnly={preparationWorkflowReadOnly}");
     expect(prep).not.toContain('t("overlayFrozen")');
     expect(prepFlow).toContain("readOnly?: boolean");
@@ -76,6 +78,7 @@ describe("R1 classroom continuity contracts", () => {
     expect(prep).toContain("canEditPreparationArchive");
     expect(prep).toContain("canAmendSessionArchive");
     expect(prep).toContain("readOnly={preparationWorkflowReadOnly}");
+    expect(prep).toContain("reviewerReadOnly={!regularPreparationEditing}");
     expect(prep).toContain("learningChecksLocked={!canAmendSessionArchive}");
     expect(prep).toContain("readOnly={!canAmendSessionArchive}");
     expect(prep).toContain("structureReadOnly={!canEditSessionCourseware}");

@@ -1,5 +1,9 @@
 import { z } from "zod";
-import type { StrokeItem } from "@/features/whiteboard/types";
+import {
+  COLOR_TOKENS,
+  SHAPE_KINDS,
+  type BoardItem,
+} from "@/features/whiteboard/types";
 
 export const LESSON_PLAN_TEMPLATE_VERSION = "mathin-teaching-plan-v1";
 
@@ -24,7 +28,7 @@ export interface LessonPageNote {
 export interface CoursewareAnnotation {
   id: string;
   pageDocId: string;
-  content: StrokeItem[];
+  content: BoardItem[];
   version: number;
   updatedAt: string;
 }
@@ -43,15 +47,35 @@ const pointSchema = z.tuple([
   z.number().finite().min(0).max(1),
 ]);
 
+const colorTokenSchema = z.enum(COLOR_TOKENS);
+
 export const strokeItemSchema = z.object({
   id: z.uuid(),
   mode: z.enum(["ink", "erase"]),
-  color: z.enum(["ink", "rose", "leaf", "crater", "cheek", "moon"]),
+  color: colorTokenSchema,
   wNorm: z.number().finite().positive().max(0.1),
   points: z.array(pointSchema).max(10_000),
 }).strict();
 
-export const annotationContentSchema = z.array(strokeItemSchema).max(5_000).refine(
+export const shapeItemSchema = z.object({
+  id: z.uuid(),
+  kind: z.literal("shape"),
+  shape: z.enum(SHAPE_KINDS),
+  color: colorTokenSchema,
+  fill: colorTokenSchema.nullable(),
+  strokeWidthNorm: z.number().finite().positive().max(0.1),
+  x: z.number().finite().min(0).max(1),
+  y: z.number().finite().min(0).max(1),
+  width: z.number().finite().positive().max(1.5),
+  height: z.number().finite().positive().max(1.5),
+  rotation: z.number().finite().min(-100_000).max(100_000),
+  startAngle: z.number().finite().min(-100_000).max(100_000).optional(),
+  sweepAngle: z.number().finite().min(-100_000).max(100_000).optional(),
+}).strict();
+
+export const annotationItemSchema = z.union([strokeItemSchema, shapeItemSchema]);
+
+export const annotationContentSchema = z.array(annotationItemSchema).max(5_000).refine(
   (value) => new TextEncoder().encode(JSON.stringify(value)).byteLength <= 2 * 1024 * 1024,
   "ANNOTATION_TOO_LARGE",
 );

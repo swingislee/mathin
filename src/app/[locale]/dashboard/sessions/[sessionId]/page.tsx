@@ -19,7 +19,13 @@ export default async function SessionWorkspacePage({
   searchParams,
 }: {
   params: Promise<{ locale: string; sessionId: string }>;
-  searchParams: Promise<{ stage?: string; returnTo?: string | string[]; focus?: string | string[] }>;
+  searchParams: Promise<{
+    stage?: string;
+    returnTo?: string | string[];
+    focus?: string | string[];
+    prepStep?: string | string[];
+    prepPage?: string | string[];
+  }>;
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
@@ -39,7 +45,13 @@ async function SessionWorkspaceContent({
 }: {
   locale: string;
   params: Promise<{ locale: string; sessionId: string }>;
-  searchParams: Promise<{ stage?: string; returnTo?: string | string[]; focus?: string | string[] }>;
+  searchParams: Promise<{
+    stage?: string;
+    returnTo?: string | string[];
+    focus?: string | string[];
+    prepStep?: string | string[];
+    prepPage?: string | string[];
+  }>;
 }) {
   const { environment } = await requireDashboardEnvironment(locale, ["staff"]);
   const [{ sessionId }, rawSearchParams] = await Promise.all([params, searchParams]);
@@ -59,6 +71,10 @@ async function SessionWorkspaceContent({
       backHref={returnTo ?? `/dashboard/classes/${detail.classroomId}`}
       returnTo={returnTo}
       focusTarget={typeof rawSearchParams.focus === "string" ? rawSearchParams.focus.slice(0, 160) : undefined}
+      initialPrepStep={rawSearchParams.prepStep === "design" || rawSearchParams.prepStep === "rehearsal"
+        ? rawSearchParams.prepStep : rawSearchParams.prepStep === "study" ? "study" : undefined}
+      initialPrepPageId={typeof rawSearchParams.prepPage === "string" && UUID_PATTERN.test(rawSearchParams.prepPage)
+        ? rawSearchParams.prepPage : undefined}
     />
   );
 }

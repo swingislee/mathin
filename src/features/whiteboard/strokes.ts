@@ -171,8 +171,14 @@ function drawShapeCanvas(
 const EXPORT_WIDTH = 1920;
 const EXPORT_HEIGHT = 1080;
 
-/** 导出 PNG：离屏按逻辑 16:9 重放，底色用当前主题纸色。 */
-export async function exportPng(items: BoardItem[], fileName: string, colorEl: Element): Promise<void> {
+async function exportRaster(
+  items: BoardItem[],
+  fileName: string,
+  colorEl: Element,
+  mimeType: "image/png" | "image/webp",
+  extension: "png" | "webp",
+  quality?: number,
+): Promise<void> {
   const canvas = document.createElement("canvas");
   canvas.width = EXPORT_WIDTH;
   canvas.height = EXPORT_HEIGHT;
@@ -187,12 +193,17 @@ export async function exportPng(items: BoardItem[], fileName: string, colorEl: E
       drawShapeCanvas(ctx, item, EXPORT_WIDTH, EXPORT_HEIGHT, colorEl);
     }
   }
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, mimeType, quality));
   if (!blob) return;
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `${fileName || "whiteboard"}.png`;
+  link.download = `${fileName || "whiteboard"}.${extension}`;
   link.click();
   URL.revokeObjectURL(url);
+}
+
+/** 导出 PNG：离屏按逻辑 16:9 重放，底色用当前主题纸色。 */
+export function exportPng(items: BoardItem[], fileName: string, colorEl: Element): Promise<void> {
+  return exportRaster(items, fileName, colorEl, "image/png", "png");
 }

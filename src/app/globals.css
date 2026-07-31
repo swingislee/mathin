@@ -121,6 +121,10 @@
   --bn-border-radius: 1rem;
 }
 .notebook-editor .bn-editor { padding-inline: 48px 12px; }
+.lesson-plan-editor .bn-editor.bn-default-styles { font-size: 13px !important; line-height: 1.55 !important; }
+.lesson-plan-editor .bn-block-content[data-content-type="heading"] { padding-top: 10px !important; --level: 1.35em !important; }
+.lesson-plan-editor .bn-block-content[data-content-type="heading"][data-level="2"] { --level: 1.15em !important; }
+.lesson-plan-editor .bn-block-content[data-content-type="heading"][data-level="3"] { --level: 1.05em !important; }
 @media (max-width: 640px) {
   .notebook-editor .bn-editor { padding-inline: 36px 0; }
 }

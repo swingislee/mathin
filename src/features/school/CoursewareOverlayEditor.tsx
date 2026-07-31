@@ -8,6 +8,9 @@ import {
   ArrowUp,
   BadgeCheck,
   BookOpen,
+  Cloud,
+  CloudAlert,
+  Check,
   Dices,
   Film,
   Gamepad2,
@@ -37,7 +40,7 @@ import type { ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 import type { Difficulty } from "@/features/games/types";
 import { newId } from "@/lib/uuid";
 import { saveCoursewareOverlay } from "./actions/courseware";
-import { healOverlay, isOverlayRef, type CoursewareTemplatePage, type OverlaySlot } from "./courseware-overlay";
+import { healOverlay, isOverlayRef, resolveCourseware, type CoursewareTemplatePage, type OverlaySlot } from "./courseware-overlay";
 import { overlayAssetKind, uploadOverlayAsset } from "./courseware-overlay-upload";
 import { downloadCoursewareAsset } from "@/features/classroom/courseware/upload";
 import { CoursewareAnnotationBoard } from "./CoursewareAnnotationBoard";
@@ -80,6 +83,7 @@ export function CoursewareOverlayEditor({
   initialLearningChecks,
   learningChecksLocked,
   learningChecksConfigured,
+  initialPageId,
   readOnly = false,
   structureReadOnly = readOnly,
 }: {
@@ -94,6 +98,7 @@ export function CoursewareOverlayEditor({
   initialLearningChecks: SessionLearningCheck[];
   learningChecksLocked: boolean;
   learningChecksConfigured: boolean;
+  initialPageId?: string;
   readOnly?: boolean;
   structureReadOnly?: boolean;
 }) {
@@ -103,7 +108,12 @@ export function CoursewareOverlayEditor({
   const [overlay, setOverlay] = useState<OverlaySlot[]>(() => healOverlay(template, initialOverlay));
   const [saveState, setSaveState] = useState<SaveState>("saved");
   const [uploading, setUploading] = useState(false);
-  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [selectedIndex, setSelectedIndex] = useState(() => {
+    if (!initialPageId) return 0;
+    const index = resolveCourseware(template, initialOverlay).findIndex((page) =>
+      (page.type === "doc" ? page.docId : page.id) === initialPageId);
+    return Math.max(0, index);
+  });
   const [previewAsset, setPreviewAsset] = useState<{ path: string; url: string } | null>(null);
   const [gameDialog, setGameDialog] = useState(false);
   const [gameId, setGameId] = useState(games[0]?.id ?? "");
@@ -339,15 +349,17 @@ export function CoursewareOverlayEditor({
       };
     }
     const page = slot.page;
-    const Icon = PAGE_ICONS[page.type];
+    const templatePage = templateById.get(page.id);
+    const displayPage = templatePage ?? page;
+    const Icon = PAGE_ICONS[displayPage.type];
     return {
-      id: page.id,
-      title: page.title,
-      leading: page.type === "doc"
-        ? checkMarker(page)
+      id: displayPage.id,
+      title: displayPage.title,
+      leading: displayPage.type === "doc"
+        ? checkMarker(displayPage)
         : <span className="grid size-7 shrink-0 place-items-center text-muted"><Icon size={15} aria-hidden /></span>,
-      titleContent: structureReadOnly ? (
-        <span className="min-w-0 flex-1 truncate px-1 text-xs">{page.title}</span>
+      titleContent: structureReadOnly || templatePage ? (
+        <span className="min-w-0 flex-1 truncate px-1 text-xs">{displayPage.title}</span>
       ) : (
         <Input
           value={page.title}
@@ -428,7 +440,20 @@ export function CoursewareOverlayEditor({
     <section className="flex min-h-0 flex-1 flex-col">
       <div className="flex flex-wrap items-center gap-3">
         <h3 className="text-sm font-medium text-muted">{t("title", { count: overlay.length })}</h3>
-        {!structureReadOnly ? <span className={`text-xs ${saveState === "error" ? "text-rose" : "text-muted"}`}>{saveLabel}</span> : null}
+        {!structureReadOnly ? (
+          <span
+            className={saveState === "error" ? "text-rose" : "text-muted"}
+            title={saveLabel}
+            aria-label={saveLabel}
+            data-courseware-save-state={saveState}
+          >
+            {saveState === "saved" ? <Check size={15} aria-hidden />
+              : saveState === "error" ? <CloudAlert size={15} aria-hidden />
+                : saveState === "saving" ? <LoaderCircle size={15} className="animate-spin motion-reduce:animate-none" aria-hidden />
+                  : <Cloud size={15} aria-hidden />}
+            <span className="sr-only">{saveLabel}</span>
+          </span>
+        ) : null}
         {!structureReadOnly ? <div className="ml-auto flex flex-wrap items-center gap-2">
           <Input
             ref={fileInputRef}

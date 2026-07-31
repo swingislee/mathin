@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { FileText, Link2 } from "lucide-react";
+import { FileText, Link2, PencilLine } from "lucide-react";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -12,8 +12,11 @@ import {
   type SessionPreparationReviewQueueItem,
   type SignedPrepArtifactFile,
 } from "@/features/school/session-preparation-reviews";
+import { getSessionPreparationReviewCourseware } from "@/features/school/session-preparation-review-courseware";
+import { SessionPreparationCoursewareReview } from "@/features/school/SessionPreparationCoursewareReview";
 import { SessionLessonPlanReview } from "@/features/school/SessionLessonPlanWorkspace";
-import { VectorStrokePreview } from "@/features/school/CoursewareAnnotationBoard";
+import { SolutionRecordPreview } from "@/features/school/CoursewareAnnotationBoard";
+import { SolutionRecordExportButton } from "@/features/school/SessionSolutionArchive";
 import { annotationContentSchema } from "@/features/school/teacher-preparation-contract";
 import type { PrepArtifactKind } from "@/features/school/session-preparation-artifacts";
 import { Link } from "@/i18n/navigation";
@@ -55,8 +58,18 @@ async function PreparationReviewContent({
     : undefined;
   const rows = await listSessionPreparationReviews(requestedSessionId);
   const selectedSessionId = requestedSessionId ?? rows[0]?.sessionId;
-  const detail = selectedSessionId ? await getSessionPreparationReviewDetail(selectedSessionId) : null;
+  const [detail, courseware] = selectedSessionId
+    ? await Promise.all([
+        getSessionPreparationReviewDetail(selectedSessionId),
+        getSessionPreparationReviewCourseware(selectedSessionId),
+      ])
+    : [null, null];
   const focus = typeof raw.focus === "string" ? raw.focus.slice(0, 160) : undefined;
+  const selectedRows = rows.filter((row) => row.sessionId === selectedSessionId);
+  const focusedKind = selectedRows.find((row) => focus === `${row.sessionId}:${row.artifactKind}`)?.artifactKind
+    ?? selectedRows[0]?.artifactKind
+    ?? "solution";
+  const coursewarePrepStep = prepStepForArtifact(focusedKind);
 
   return (
     <>
@@ -88,35 +101,74 @@ async function PreparationReviewContent({
 
           <section className="min-w-0">
             <div className="mb-3">
-              <h2 className="font-display text-lg text-ink">{rows[0]?.classroomName} · {rows[0]?.sessionTitle}</h2>
+              <h2 className="font-display text-lg text-ink">{selectedRows[0]?.classroomName} · {selectedRows[0]?.sessionTitle}</h2>
               <p className="mt-1 text-xs text-muted">{t("prepReviewSessionIntro")}</p>
             </div>
-            <div className="grid gap-4 lg:grid-cols-3">
-              {rows.filter((row) => row.sessionId === selectedSessionId).map((row) => (
-                <div
-                  key={row.artifactKind}
-                  data-notification-target={row.sessionId + ":" + row.artifactKind}
-                  tabIndex={-1}
-                  className="min-w-0 outline-none"
-                >
-                  <DashboardCard
-                    title={t("prepArtifactKind_" + row.artifactKind)}
-                    description={t("prepReviewRevision", { revision: row.revision })}
-                    actions={<ReviewBadge row={row} />}
-                    className="transition"
+            <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(18rem,0.85fr)_minmax(0,1.15fr)]">
+              <div className="grid min-w-0 gap-4">
+                {selectedRows.map((row) => (
+                  <div
+                    key={row.artifactKind}
+                    data-notification-target={row.sessionId + ":" + row.artifactKind}
+                    tabIndex={-1}
+                    className="min-w-0 outline-none"
                   >
-                    <ArtifactContent kind={row.artifactKind} detail={detail} />
-                    {row.reviewNote ? <p className="mt-3 rounded-lg bg-line/30 p-2 text-xs text-muted">{row.reviewNote}</p> : null}
-                    {row.status === "pending" ? <PreparationReviewActions sessionId={row.sessionId} artifactKind={row.artifactKind} /> : null}
-                  </DashboardCard>
+                    <DashboardCard
+                      title={t("prepArtifactKind_" + row.artifactKind)}
+                      description={[
+                        t("prepReviewRevision", { revision: row.revision }),
+                        row.assignedReviewerName ? t("prepReviewerAssigned", { name: row.assignedReviewerName }) : null,
+                        row.selfReview ? t("prepReviewerSelfReview") : null,
+                      ].filter(Boolean).join(" · ")}
+                      actions={(
+                        <div className="flex items-center gap-2">
+                          <Link
+                            href={artifactEditHref(row.sessionId, row.artifactKind)}
+                            className={cn(buttonVariants({ size: "sm", variant: "ghost" }), "h-7 gap-1.5 px-2 text-xs")}
+                          >
+                            <PencilLine size={13} aria-hidden />
+                            {t("prepReviewEditArtifact")}
+                          </Link>
+                          <ReviewBadge row={row} />
+                        </div>
+                      )}
+                      className="transition"
+                    >
+                      <ArtifactContent kind={row.artifactKind} detail={detail} courseware={courseware} />
+                      {row.reviewNote ? <p className="mt-3 rounded-lg bg-line/30 p-2 text-xs text-muted">{row.reviewNote}</p> : null}
+                      {row.status === "pending" ? <PreparationReviewActions sessionId={row.sessionId} artifactKind={row.artifactKind} /> : null}
+                    </DashboardCard>
+                  </div>
+                ))}
+              </div>
+              {courseware ? (
+                <div className="min-w-0 xl:sticky xl:top-3">
+                  <SessionPreparationCoursewareReview
+                    sessionId={selectedSessionId!}
+                    pages={courseware.pages}
+                    docs={courseware.docs}
+                    overlayAssetUrls={courseware.overlayAssetUrls}
+                    prepStep={coursewarePrepStep}
+                  />
                 </div>
-              ))}
+              ) : null}
             </div>
           </section>
         </div>
       )}
     </>
   );
+}
+
+function prepStepForArtifact(kind: PrepArtifactKind): "study" | "design" | "rehearsal" {
+  if (kind === "lesson_plan") return "design";
+  if (kind === "rehearsal_video") return "rehearsal";
+  return "study";
+}
+
+function artifactEditHref(sessionId: string, kind: PrepArtifactKind): string {
+  const step = prepStepForArtifact(kind);
+  return `/dashboard/sessions/${sessionId}?stage=pre&prepStep=${step}&focus=prep-${kind}`;
 }
 
 async function ReviewBadge({ row }: { row: SessionPreparationReviewQueueItem }) {
@@ -136,9 +188,11 @@ async function ReviewBadge({ row }: { row: SessionPreparationReviewQueueItem }) 
 async function ArtifactContent({
   kind,
   detail,
+  courseware,
 }: {
   kind: PrepArtifactKind;
   detail: Awaited<ReturnType<typeof getSessionPreparationReviewDetail>>;
+  courseware: Awaited<ReturnType<typeof getSessionPreparationReviewCourseware>> | null;
 }) {
   const t = await getTranslations("school.session");
   if (kind === "rehearsal_video") {
@@ -162,19 +216,38 @@ async function ArtifactContent({
   }
   const boardRecords = detail.solutionRecords.flatMap((record) => {
     if (record.source !== "board") return [];
-    const parsed = annotationContentSchema.safeParse(record.content.strokes);
-    return parsed.success ? [{ ...record, strokes: parsed.data }] : [];
+    const parsed = annotationContentSchema.safeParse(record.content.items ?? record.content.strokes);
+    return parsed.success ? [{ ...record, items: parsed.data }] : [];
   });
   return (
     <div className="mt-4 space-y-3">
       {detail.solutionNotes ? <p className="whitespace-pre-wrap text-sm text-muted">{detail.solutionNotes}</p> : null}
       <FileLinks files={detail.signedSolutionFiles} />
-      {boardRecords.map((record) => (
-        <div key={record.id}>
-          <p className="mb-1 text-xs text-muted">{t("annotationReviewRecord", { page: record.pageDocId?.slice(0, 8) ?? "—", revision: record.revision })}</p>
-          <VectorStrokePreview items={record.strokes} label={t("annotationReviewPreview", { revision: record.revision })} />
-        </div>
-      ))}
+      {boardRecords.map((record) => {
+        const pagePreview = record.pageDocId
+          ? courseware?.docs.find((item) => item.pageDocId === record.pageDocId) ?? null
+          : null;
+        const previewId = `review-solution-record-preview-${record.id}`;
+        return (
+          <div key={record.id}>
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs text-muted">{t("annotationReviewRecord", { page: record.pageDocId?.slice(0, 8) ?? "—", revision: record.revision })}</p>
+              <SolutionRecordExportButton
+                previewId={previewId}
+                fileName={`solution-${record.pageDocId ?? record.id}-r${record.revision}`}
+                disabled={!pagePreview}
+              />
+            </div>
+            <SolutionRecordPreview
+              items={record.items}
+              label={t("annotationReviewPreview", { revision: record.revision })}
+              previewId={previewId}
+              pagePreview={pagePreview}
+              unavailableLabel={t("solutionArchivePageUnavailable")}
+            />
+          </div>
+        );
+      })}
     </div>
   );
 }

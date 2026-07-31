@@ -5,6 +5,7 @@ import { DashboardEmptyCard } from "@/features/school/dashboard-page";
 import type { SessionWorkspaceDetail } from "./classes";
 import { getLectureCoursewareTemplate } from "./courses";
 import { CoursewareOverlayEditor } from "./CoursewareOverlayEditor";
+import { coursewareEditorStateFromFrozenSnapshot } from "./courseware-overlay";
 import { LeaveRequestActions } from "./LeaveRequestActions";
 import { getSessionCoursewareLearningCheckPages, getSessionLearningSetup } from "./session-learning";
 import { SessionPreparationFlow } from "./SessionPreparationFlow";
@@ -14,7 +15,15 @@ import { SessionLessonPlanWorkspace } from "./SessionLessonPlanWorkspace";
 import { getTeacherPreparationWorkspace } from "./teacher-preparation";
 import { isFeatureEnabled } from "./organization-settings";
 
-export async function SessionPrepPanel({ detail }: { detail: SessionWorkspaceDetail }) {
+export async function SessionPrepPanel({
+  detail,
+  initialStep,
+  initialPageId,
+}: {
+  detail: SessionWorkspaceDetail;
+  initialStep?: "study" | "design" | "rehearsal";
+  initialPageId?: string;
+}) {
   const [t, lockedPreparationEditingEnabled] = await Promise.all([
     getTranslations("school.session"),
     isFeatureEnabled("teaching.preparation_archive_edit"),
@@ -59,12 +68,19 @@ export async function SessionPrepPanel({ detail }: { detail: SessionWorkspaceDet
     })),
   }));
   const titleByPageDocId = new Map(coursewareLearningCheckPages.map((page) => [page.pageDocId, page.title]));
-  const lessonPlanReferencePages = sessionDocs.map((pageDoc) => ({
-    pageDocId: pageDoc.pageDocId,
-    pageNo: pageDoc.pageNo,
-    title: titleByPageDocId.get(pageDoc.pageDocId) ?? t("learningCheckPageOption", { no: pageDoc.pageNo, title: t("learningCheckUntitledPage") }),
-  }));
+  const solutionPageLabels = Object.fromEntries(sessionDocs.map((pageDoc) => [
+    pageDoc.pageDocId,
+    t("learningCheckPageOption", {
+      no: pageDoc.pageNo,
+      title: titleByPageDocId.get(pageDoc.pageDocId) ?? t("learningCheckUntitledPage"),
+    }),
+  ]));
   const canEditSessionCourseware = Boolean(detail.lectureId && canAmendSessionArchive);
+  const frozenEditorState = detail.coursewareFrozenAt
+    ? coursewareEditorStateFromFrozenSnapshot(detail.courseware, detail.coursewareOverlay)
+    : null;
+  const editorTemplate = frozenEditorState?.template ?? template;
+  const editorOverlay = frozenEditorState?.overlay ?? detail.coursewareOverlay;
 
   if (!detail.lectureId) {
     return <DashboardEmptyCard>{t("stageEmpty")}</DashboardEmptyCard>;
@@ -91,79 +107,73 @@ export async function SessionPrepPanel({ detail }: { detail: SessionWorkspaceDet
         ) : null}
 
         <div className="grid min-h-0 min-w-0 flex-1 gap-4 xl:grid-cols-[minmax(24rem,30rem)_minmax(0,1fr)]">
-        <aside className="flex min-h-0 min-w-0 flex-col">
-          <div className="border-l border-line pl-4" data-prep-workflow-heading>
-            <h2 className="font-display text-lg text-ink">{t("prepFlowTitle")}</h2>
-            <p className="mt-1 text-xs leading-5 text-muted">{t("prepFlowActionIntro")}</p>
-          </div>
+          <aside className="flex min-h-0 min-w-0 flex-col">
+            {canViewPrepArchive ? (
+              <SessionPreparationFlow
+                key={Object.entries(prepArtifacts.reviews)
+                  .map(([kind, review]) => `${kind}:${review?.revision ?? 0}:${review?.status ?? "none"}`)
+                  .join("|")}
+                sessionId={detail.id}
+                initial={prepArtifacts}
+                solutionRecords={teacherPreparation.solutionRecords}
+                solutionPageLabels={solutionPageLabels}
+                solutionPagePreviews={docPreviews}
+                lessonPlanEditor={(
+                  <SessionLessonPlanWorkspace
+                    lessonPlan={teacherPreparation.lessonPlan}
+                    readOnly={preparationWorkflowReadOnly}
+                  />
+                )}
+                initialStage={initialStep}
+                readOnly={preparationWorkflowReadOnly}
+                reviewerReadOnly={!regularPreparationEditing}
+              />
+            ) : null}
+          </aside>
 
-          {canViewPrepArchive ? (
-            <SessionPreparationFlow
-              key={Object.entries(prepArtifacts.reviews)
-                .map(([kind, review]) => `${kind}:${review?.revision ?? 0}:${review?.status ?? "none"}`)
-                .join("|")}
-              sessionId={detail.id}
-              initial={prepArtifacts}
-              lessonPlanPresent={teacherPreparation.lessonPlan.id !== null}
-              lessonPlanEditor={(
-                <SessionLessonPlanWorkspace
-                  lessonPlan={teacherPreparation.lessonPlan}
-                  pageNotes={teacherPreparation.pageNotes}
-                  pages={lessonPlanReferencePages}
-                  readOnly={preparationWorkflowReadOnly}
-                />
-              )}
-              readOnly={preparationWorkflowReadOnly}
-            />
-          ) : null}
+          <section className="flex min-h-0 min-w-0 flex-col">
+            {detail.lectureObjectives && (
+              <div className="mb-3 flex min-w-0 items-baseline gap-2 border-l-2 border-crater/50 pl-3 text-xs">
+                <span className="shrink-0 text-muted">{t("lectureObjectives")}</span>
+                <span className="min-w-0 truncate text-ink">{detail.lectureObjectives}</span>
+              </div>
+            )}
 
+            {detail.pendingLeaveRequests.length > 0 && (
+              <section className="mb-3 rounded-xl border border-line bg-card/70 px-3 py-2 text-sm">
+                <h3 className="mb-1 text-xs font-medium text-muted">{t("pendingLeaveRequests")}</h3>
+                <ul className="flex flex-col gap-1">
+                  {detail.pendingLeaveRequests.map((row) => (
+                    <li key={row.id} className="flex flex-wrap items-center justify-between gap-3">
+                      <span className="text-ink">{row.studentName}</span>
+                      <span className="min-w-0 flex-1 truncate text-muted">{row.reason || t("noReason")}</span>
+                      {detail.capabilities.canMarkAttendance && <LeaveRequestActions requestId={row.id} />}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
 
-        </aside>
-
-        <section className="flex min-h-0 min-w-0 flex-col">
-          {detail.lectureObjectives && (
-            <div className="mb-3 flex min-w-0 items-baseline gap-2 border-l-2 border-crater/50 pl-3 text-xs">
-              <span className="shrink-0 text-muted">{t("lectureObjectives")}</span>
-              <span className="min-w-0 truncate text-ink">{detail.lectureObjectives}</span>
-            </div>
-          )}
-
-          {detail.pendingLeaveRequests.length > 0 && (
-            <section className="mb-3 rounded-xl border border-line bg-card/70 px-3 py-2 text-sm">
-              <h3 className="mb-1 text-xs font-medium text-muted">{t("pendingLeaveRequests")}</h3>
-              <ul className="flex flex-col gap-1">
-                {detail.pendingLeaveRequests.map((row) => (
-                  <li key={row.id} className="flex flex-wrap items-center justify-between gap-3">
-                    <span className="text-ink">{row.studentName}</span>
-                    <span className="min-w-0 flex-1 truncate text-muted">{row.reason || t("noReason")}</span>
-                    {detail.capabilities.canMarkAttendance && <LeaveRequestActions requestId={row.id} />}
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-
-          {canViewPrepArchive ? (
-            <CoursewareOverlayEditor
-              key={"courseware-editor:" + (detail.coursewareFrozenAt ?? "draft") + ":" + (learningSetup?.configured ? "configured:" : "defaults:") + learningSetup?.checks.map((check) => check.id).join(":") + ":" + coursewareLearningCheckPages.map((page) => page.pageDocId + ":" + page.learningCheckEnabled).join("|")}
-              classroomId={detail.classroomId}
-              sessionId={detail.id}
-              template={detail.coursewareFrozenAt ? [] : template}
-              initialOverlay={detail.coursewareFrozenAt
-                ? detail.courseware.map((page) => ({ page }))
-                : detail.coursewareOverlay}
-              docPreviews={docPreviews}
-              annotations={teacherPreparation.annotations}
-              solutionRecords={teacherPreparation.solutionRecords}
-              learningCheckPages={coursewareLearningCheckPages}
-              initialLearningChecks={learningSetup?.checks ?? []}
-              learningChecksLocked={!canAmendSessionArchive}
-              learningChecksConfigured={learningSetup?.configured ?? false}
-              readOnly={!canAmendSessionArchive}
-              structureReadOnly={!canEditSessionCourseware}
-            />
-          ) : null}
-        </section>
+            {canViewPrepArchive ? (
+              <CoursewareOverlayEditor
+                key={"courseware-editor:" + (detail.coursewareFrozenAt ?? "draft") + ":" + (learningSetup?.configured ? "configured:" : "defaults:") + learningSetup?.checks.map((check) => check.id).join(":") + ":" + coursewareLearningCheckPages.map((page) => page.pageDocId + ":" + page.learningCheckEnabled).join("|")}
+                classroomId={detail.classroomId}
+                sessionId={detail.id}
+                template={editorTemplate}
+                initialOverlay={editorOverlay}
+                docPreviews={docPreviews}
+                annotations={teacherPreparation.annotations}
+                solutionRecords={teacherPreparation.solutionRecords}
+                learningCheckPages={coursewareLearningCheckPages}
+                initialLearningChecks={learningSetup?.checks ?? []}
+                learningChecksLocked={!canAmendSessionArchive}
+                learningChecksConfigured={learningSetup?.configured ?? false}
+                initialPageId={initialPageId}
+                readOnly={!canAmendSessionArchive}
+                structureReadOnly={!canEditSessionCourseware}
+              />
+            ) : null}
+          </section>
         </div>
       </div>
     </>

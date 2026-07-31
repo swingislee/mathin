@@ -5,29 +5,21 @@ import * as locales from "@blocknote/core/locales";
 import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/shadcn";
 import "@blocknote/shadcn/style.css";
-import { LoaderCircle, Send, StickyNote } from "lucide-react";
+import "./session-lesson-plan-editor.css";
+import { LoaderCircle, Send, Undo2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import {
-  saveLessonPageNoteAction,
   saveSessionLessonPlanAction,
   submitSessionLessonPlanAction,
+  withdrawSessionLessonPlanAction,
 } from "./teacher-preparation-actions";
 import type {
-  LessonPageNote,
   LessonPlanStatus,
   SessionLessonPlan,
 } from "./teacher-preparation-contract";
@@ -59,28 +51,21 @@ function StatusBadge({ status }: { status: LessonPlanStatus }) {
   return (
     <Badge
       variant={status === "changes_requested" ? "danger" : "secondary"}
-      className={status === "approved" ? "border-leaf/50 bg-leaf/25 text-leaf-deep" : undefined}
+      className={cn(
+        "shrink-0 px-1.5 py-0.5 text-[10px]",
+        status === "approved" && "border-leaf/50 bg-leaf/25 text-leaf-deep",
+      )}
     >
       {t(key)}
     </Badge>
   );
 }
 
-export interface LessonPlanReferencePage {
-  pageDocId: string;
-  pageNo: number;
-  title: string;
-}
-
 export function SessionLessonPlanEditor({
   lessonPlan,
-  pageNotes,
-  pages,
   readOnly,
 }: {
   lessonPlan: SessionLessonPlan;
-  pageNotes: LessonPageNote[];
-  pages: LessonPlanReferencePage[];
   readOnly: boolean;
 }) {
   const t = useTranslations("school.session");
@@ -91,6 +76,7 @@ export function SessionLessonPlanEditor({
   const [saveState, setSaveState] = useState<SaveState>("saved");
   const [status, setStatus] = useState(lessonPlan.status);
   const [submitting, setSubmitting] = useState(false);
+  const [withdrawing, setWithdrawing] = useState(false);
   const revisionRef = useRef(lessonPlan.revision);
   const sequenceRef = useRef(lessonPlan.id ? 0 : 1);
   const savedSequenceRef = useRef(0);
@@ -177,37 +163,53 @@ export function SessionLessonPlanEditor({
     setSubmitting(false);
   };
 
+  const withdraw = async () => {
+    setWithdrawing(true);
+    const result = await withdrawSessionLessonPlanAction({ sessionId: lessonPlan.sessionId });
+    if (result.ok) {
+      revisionRef.current = result.data.revision;
+      setStatus("draft");
+      toast.success(t("lessonPlanWithdrawn"));
+      router.refresh();
+    } else {
+      toast.error(t(result.code === "REVIEW_ALREADY_DECIDED"
+        ? "prepReviewAlreadyDecided"
+        : "actionFailed"));
+    }
+    setWithdrawing(false);
+  };
+
   const saveLabel = saveState === "saving" ? t("lessonPlanSaving")
     : saveState === "conflict" ? t("lessonPlanConflict")
       : saveState === "error" ? t("lessonPlanSaveFailed") : t("lessonPlanSaved");
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col rounded-2xl border border-line bg-card" data-lesson-plan-workspace>
-      <header className="flex shrink-0 flex-wrap items-center gap-3 border-b border-line px-4 py-3">
-        <div className="min-w-0 flex-1">
-          <h3 className="font-display text-lg text-ink">{t("lessonPlanWorkspaceTitle")}</h3>
-          <p className="mt-0.5 text-xs text-muted">{t("lessonPlanTemplateVersion", { version: lessonPlan.templateVersion })}</p>
-        </div>
+      <header className="flex shrink-0 items-center gap-2 border-b border-line px-2 py-1.5">
+        <h3
+          className="min-w-0 flex-1 truncate text-xs font-medium text-ink"
+          title={t("lessonPlanTemplateVersion", { version: lessonPlan.templateVersion })}
+        >
+          {t("lessonPlanWorkspaceTitle")}
+        </h3>
         <StatusBadge status={status} />
-        <span className={cn("text-xs", saveState === "error" || saveState === "conflict" ? "text-rose" : "text-muted")} aria-live="polite">
+        <span className={cn("max-w-24 shrink truncate text-[10px]", saveState === "error" || saveState === "conflict" ? "text-rose" : "text-muted")} aria-live="polite">
           {saveState === "saving" ? <LoaderCircle size={12} className="mr-1 inline animate-spin motion-reduce:animate-none" /> : null}
           {readOnly ? t("prepArchiveReadOnly") : saveLabel}
         </span>
-        {!readOnly ? (
-          <Button type="button" size="sm" disabled={submitting || saveState === "conflict"} onClick={() => void submit()}>
+        {!readOnly && status === "pending" ? (
+          <Button type="button" size="sm" variant="secondary" className="h-7 shrink-0 px-2 text-[11px]" disabled={withdrawing || submitting} onClick={() => void withdraw()}>
+            {withdrawing ? <LoaderCircle size={14} className="animate-spin motion-reduce:animate-none" /> : <Undo2 size={14} />}
+            {t("lessonPlanWithdrawReview")}
+          </Button>
+        ) : !readOnly ? (
+          <Button type="button" size="sm" className="h-7 shrink-0 px-2 text-[11px]" disabled={submitting || withdrawing || saveState === "conflict"} onClick={() => void submit()}>
             {submitting ? <LoaderCircle size={14} className="animate-spin motion-reduce:animate-none" /> : <Send size={14} />}
-            {status === "pending" ? t("lessonPlanResubmit") : t("lessonPlanSubmit")}
+            {t("lessonPlanSubmitShort")}
           </Button>
         ) : null}
       </header>
-      <LessonPageNotesPanel
-        sessionId={lessonPlan.sessionId}
-        pages={pages}
-        initialNotes={pageNotes}
-        readOnly={readOnly}
-        ensurePlanSaved={flush}
-      />
-      <div className="min-h-[24rem] flex-1 overflow-y-auto px-3 py-2">
+      <div className="min-h-[24rem] flex-1 overflow-y-auto px-2 py-1.5">
         <BlockNoteView
           editor={editor}
           theme={theme}
@@ -217,87 +219,6 @@ export function SessionLessonPlanEditor({
         />
       </div>
     </div>
-  );
-}
-
-function LessonPageNotesPanel({
-  sessionId,
-  pages,
-  initialNotes,
-  readOnly,
-  ensurePlanSaved,
-}: {
-  sessionId: string;
-  pages: LessonPlanReferencePage[];
-  initialNotes: LessonPageNote[];
-  readOnly: boolean;
-  ensurePlanSaved: () => Promise<boolean>;
-}) {
-  const t = useTranslations("school.session");
-  const [selectedPageDocId, setSelectedPageDocId] = useState(pages[0]?.pageDocId ?? "");
-  const [notes, setNotes] = useState<Record<string, string>>(() => Object.fromEntries(initialNotes.map((note) => [note.pageDocId, note.content])));
-  const [noteState, setNoteState] = useState<SaveState>("saved");
-  const noteTimerRef = useRef<number | null>(null);
-  const selected = pages.find((page) => page.pageDocId === selectedPageDocId) ?? pages[0] ?? null;
-
-  const persistNote = useCallback(async (pageDocId: string, content: string) => {
-    if (readOnly) return;
-    setNoteState("saving");
-    if (!(await ensurePlanSaved())) {
-      setNoteState("error");
-      return;
-    }
-    const result = await saveLessonPageNoteAction({ sessionId, pageDocId, content });
-    setNoteState(result.ok ? "saved" : result.code === "VERSION_CONFLICT" ? "conflict" : "error");
-  }, [ensurePlanSaved, readOnly, sessionId]);
-
-  const changeNote = (pageDocId: string, content: string) => {
-    setNotes((current) => ({ ...current, [pageDocId]: content }));
-    setNoteState("saving");
-    if (noteTimerRef.current) window.clearTimeout(noteTimerRef.current);
-    noteTimerRef.current = window.setTimeout(() => void persistNote(pageDocId, content), 800);
-  };
-
-  useEffect(() => () => {
-    if (noteTimerRef.current) window.clearTimeout(noteTimerRef.current);
-  }, []);
-
-  return (
-    <section className="shrink-0 border-b border-line bg-paper/45 px-3 py-3" data-lesson-page-notes>
-      <div className="flex items-center gap-2">
-        <StickyNote size={14} className="shrink-0 text-muted" aria-hidden />
-        <h4 className="text-xs font-medium text-ink">{t("lessonPageNotesTitle")}</h4>
-      </div>
-      {selected ? (
-        <>
-          <Select value={selected.pageDocId} onValueChange={setSelectedPageDocId}>
-            <SelectTrigger className="mt-2 w-full" aria-label={t("lessonPageNotePageLabel")}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {pages.map((page) => (
-                <SelectItem key={page.pageDocId} value={page.pageDocId}>
-                  {page.pageNo}. {page.title}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="mt-2 text-xs leading-5 text-muted">{t("lessonPageNoteIntro")}</p>
-          <Textarea
-            className="mt-2 min-h-20 resize-y text-xs"
-            value={notes[selected.pageDocId] ?? ""}
-            readOnly={readOnly}
-            maxLength={5_000}
-            rows={3}
-            placeholder={t("lessonPageNotePlaceholder")}
-            onChange={(event) => changeNote(selected.pageDocId, event.target.value)}
-          />
-          <p className={cn("mt-1 text-xs", noteState === "error" || noteState === "conflict" ? "text-rose" : "text-muted")} aria-live="polite">
-            {readOnly ? t("prepArchiveReadOnly") : t(noteState === "saving" ? "lessonPageNoteSaving" : noteState === "error" || noteState === "conflict" ? "lessonPageNoteSaveFailed" : "lessonPageNoteSaved")}
-          </p>
-        </>
-      ) : <p className="mt-2 text-xs text-muted">{t("lessonPageNoteEmpty")}</p>}
-    </section>
   );
 }
 

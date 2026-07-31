@@ -2,8 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { LessonPageNote, SessionLessonPlan } from "./teacher-preparation-contract";
-import type { LessonPlanReferencePage } from "./SessionLessonPlanEditor";
+import type { SessionLessonPlan } from "./teacher-preparation-contract";
 
 const SessionLessonPlanEditor = dynamic(
   () => import("./SessionLessonPlanEditor").then((module) => module.SessionLessonPlanEditor),
@@ -17,8 +16,6 @@ const LessonPlanDocumentView = dynamic(
 
 export function SessionLessonPlanWorkspace(props: {
   lessonPlan: SessionLessonPlan;
-  pageNotes: LessonPageNote[];
-  pages: LessonPlanReferencePage[];
   readOnly: boolean;
 }) {
   return <SessionLessonPlanEditor key={`${props.lessonPlan.id ?? "new"}:${props.lessonPlan.revision}`} {...props} />;

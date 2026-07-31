@@ -2,12 +2,16 @@
 
 import {
   CheckCircle2,
+  CircleAlert,
   CircleDashed,
+  Clock3,
   FileText,
   Link2,
+  LockKeyhole,
   LoaderCircle,
   Trash2,
   UploadCloud,
+  UserRoundCheck,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -15,13 +19,19 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "@/i18n/navigation";
 import { compressHomeworkImage } from "@/lib/media/compress-image";
+import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { newId } from "@/lib/uuid";
 import { saveSessionPreparationArtifactsAction } from "./actions/classes";
+import { setSessionPreparationReviewerAction } from "./teacher-preparation-actions";
+import type { SolutionRecordPagePreview } from "./CoursewareAnnotationBoard";
+import { SessionSolutionArchive } from "./SessionSolutionArchive";
+import type { SolutionRecord } from "./teacher-preparation-contract";
 import type {
   PrepArtifactFile,
   PrepArtifactKind,
@@ -41,6 +51,46 @@ function extension(file: File): string {
   return file.name.split(".").pop()?.replace(/[^a-z0-9]/gi, "").slice(0, 8).toLowerCase() || "bin";
 }
 
+function PrepStageTrigger({
+  value,
+  label,
+  review,
+}: {
+  value: PrepStage;
+  label: string;
+  review?: PrepArtifactReview;
+}) {
+  const t = useTranslations("school.session");
+  const completed = review?.status === "approved";
+  const stateLabel = completed ? t("prepFlowCompletedShort")
+    : review?.status === "pending" ? t("prepReviewPending")
+      : review?.status === "changes_requested" ? t("prepReviewChangesRequested")
+        : t("prepFlowIncompleteShort");
+  const stateIcon = completed
+    ? <CheckCircle2 size={15} className="text-leaf-deep" aria-hidden />
+    : review?.status === "pending"
+      ? <Clock3 size={15} className="text-amber-600 dark:text-amber-400" aria-hidden />
+      : review?.status === "changes_requested"
+        ? <CircleAlert size={15} className="text-rose" aria-hidden />
+        : <CircleDashed size={15} className="text-muted" aria-hidden />;
+  return (
+    <TabsTrigger
+      value={value}
+      title={label + " · " + stateLabel}
+      data-prep-stage-complete={completed ? "true" : "false"}
+      className={cn(
+        "min-w-0 gap-1 border border-transparent px-1.5 py-2 text-[11px] leading-tight",
+        completed && "border-leaf/50 bg-leaf/20 text-leaf-deep data-[state=active]:bg-leaf/30 data-[state=active]:text-leaf-deep",
+        review?.status === "changes_requested" && "border-rose/35",
+      )}
+    >
+      <span className="shrink-0" data-prep-stage-status-icon>{stateIcon}</span>
+      <span className="truncate font-medium">{label}</span>
+      <span className="sr-only">{stateLabel}</span>
+    </TabsTrigger>
+  );
+}
+
 function ReviewStatus({ review, present }: { review?: PrepArtifactReview; present: boolean }) {
   const t = useTranslations("school.session");
   if (!present) return <Badge variant="outline">{t("prepReviewNotSubmitted")}</Badge>;
@@ -55,25 +105,35 @@ function ReviewStatus({ review, present }: { review?: PrepArtifactReview; presen
 export function SessionPreparationFlow({
   sessionId,
   initial,
-  lessonPlanPresent = false,
+  solutionRecords,
+  solutionPageLabels,
+  solutionPagePreviews,
   lessonPlanEditor,
+  initialStage = "study",
   readOnly = false,
+  reviewerReadOnly = readOnly,
 }: {
   sessionId: string;
   initial: SessionPreparationArtifacts;
-  lessonPlanPresent?: boolean;
+  solutionRecords: SolutionRecord[];
+  solutionPageLabels: Record<string, string>;
+  solutionPagePreviews: SolutionRecordPagePreview[];
   lessonPlanEditor: ReactNode;
+  initialStage?: PrepStage;
   readOnly?: boolean;
+  reviewerReadOnly?: boolean;
 }) {
   const t = useTranslations("school.session");
   const router = useRouter();
-  const [activeStage, setActiveStage] = useState<PrepStage>("study");
-  const [lessonPlanMounted, setLessonPlanMounted] = useState(false);
+  const [activeStage, setActiveStage] = useState<PrepStage>(initialStage);
+  const [lessonPlanMounted, setLessonPlanMounted] = useState(initialStage === "design");
   const [solutionNotes, setSolutionNotes] = useState(initial.solutionNotes);
   const [solutionFiles, setSolutionFiles] = useState(initial.solutionFiles);
   const [lessonPlanFiles, setLessonPlanFiles] = useState(initial.lessonPlanFiles);
   const [rehearsalVideoUrl, setRehearsalVideoUrl] = useState(initial.rehearsalVideoUrl);
   const [reviews, setReviews] = useState(initial.reviews);
+  const [reviewerId, setReviewerId] = useState(initial.reviewerId);
+  const [reviewerSaving, setReviewerSaving] = useState(false);
   const [uploadingKind, setUploadingKind] = useState<"solution" | "lesson-plan" | null>(null);
   const [saveState, setSaveState] = useState<"saved" | "saving" | "error">("saved");
   const solutionInput = useRef<HTMLInputElement>(null);
@@ -199,6 +259,22 @@ export function SessionPreparationFlow({
       : kind === "lesson-plan" && next.lessonPlanFiles.length > 0 ? "lesson_plan" : undefined);
   };
 
+  const chooseReviewer = async (nextReviewerId: string) => {
+    if (reviewerReadOnly || reviewerSaving || nextReviewerId === reviewerId) return;
+    const previousReviewerId = reviewerId;
+    setReviewerId(nextReviewerId);
+    setReviewerSaving(true);
+    const result = await setSessionPreparationReviewerAction({ sessionId, reviewerId: nextReviewerId });
+    setReviewerSaving(false);
+    if (!result.ok) {
+      setReviewerId(previousReviewerId);
+      toast.error(t("prepReviewerSaveFailed"));
+      return;
+    }
+    toast.success(t("prepReviewerSaved"));
+    router.refresh();
+  };
+
   const fileList = (kind: "solution" | "lesson-plan", files: PrepArtifactFile[]) => files.length > 0 && (
     <ul className="mt-2 max-h-24 divide-y divide-line overflow-y-auto rounded-lg border border-line bg-card/60">
       {files.map((file) => (
@@ -216,29 +292,55 @@ export function SessionPreparationFlow({
   );
 
   const saveLabel = saveState === "saving" ? t("prepAutoSaving") : saveState === "error" ? t("prepAutoSaveFailed") : t("prepAutoSaved");
+  const reviewerLocked = initial.reviewerAssignmentSource === "supervisor_assigned";
+  const selectedReviewerName = initial.reviewerCandidates.find((candidate) => candidate.userId === reviewerId)?.displayName
+    ?? (reviewerId === initial.reviewerId ? initial.reviewerName : null);
+  const reviewerHint = reviewerLocked ? t("prepReviewerSupervisorHint") : t("prepReviewerPhaseOneHint");
 
   return (
     <Tabs
       value={activeStage}
       onValueChange={changeStage}
-      className="mt-4 flex min-h-0 flex-1 flex-col"
+      className="flex min-h-0 flex-1 flex-col"
       data-prep-flow-switcher
       data-active-stage={activeStage}
     >
-      <TabsList className="grid h-auto shrink-0 grid-cols-3 gap-1 rounded-xl p-1" aria-label={t("prepFlowTitle")}>
-        <TabsTrigger value="study" className="min-w-0 flex-col gap-0.5 px-1 py-2 text-[11px] leading-tight">
-          <span className="font-medium">1</span>
-          <span className="truncate">{t("prepFlowStudyShort")}</span>
-        </TabsTrigger>
-        <TabsTrigger value="design" className="min-w-0 flex-col gap-0.5 px-1 py-2 text-[11px] leading-tight">
-          <span className="font-medium">2</span>
-          <span className="truncate">{t("prepFlowDesignShort")}</span>
-        </TabsTrigger>
-        <TabsTrigger value="rehearsal" className="min-w-0 flex-col gap-0.5 px-1 py-2 text-[11px] leading-tight">
-          <span className="font-medium">3</span>
-          <span className="truncate">{t("prepFlowRehearseShort")}</span>
-        </TabsTrigger>
-      </TabsList>
+      <div className="grid shrink-0 grid-cols-[minmax(0,1fr)_7.75rem] gap-1 rounded-xl bg-line/40 p-1">
+        <TabsList className="grid h-auto grid-cols-3 gap-1 bg-transparent p-0" aria-label={t("prepFlowTitle")}>
+          <PrepStageTrigger value="study" label={t("prepFlowStudyShort")} review={reviews.solution} />
+          <PrepStageTrigger value="design" label={t("prepFlowDesignShort")} review={reviews.lesson_plan} />
+          <PrepStageTrigger value="rehearsal" label={t("prepFlowRehearseShort")} review={reviews.rehearsal_video} />
+        </TabsList>
+        <div className="min-w-0" data-preparation-reviewer-selector>
+          <Select
+            value={reviewerId ?? undefined}
+            onValueChange={(value) => void chooseReviewer(value)}
+            disabled={reviewerReadOnly || reviewerLocked || reviewerSaving}
+          >
+            <SelectTrigger
+              className="h-full min-h-9 gap-1 border-transparent bg-card/80 px-2 text-[11px] shadow-none focus:ring-1"
+              aria-label={t("prepReviewerTitle")}
+              title={t("prepReviewerTitle") + "：" + (selectedReviewerName ?? t("prepReviewerPlaceholder")) + "。" + reviewerHint}
+            >
+              {reviewerSaving
+                ? <LoaderCircle size={14} className="shrink-0 animate-spin motion-reduce:animate-none" aria-hidden />
+                : reviewerLocked
+                  ? <LockKeyhole size={14} className="shrink-0 text-muted" aria-hidden />
+                  : <UserRoundCheck size={14} className="shrink-0 text-muted" aria-hidden />}
+              <span className="min-w-0 flex-1 truncate text-left">
+                {selectedReviewerName ?? t("prepReviewerPlaceholder")}
+              </span>
+            </SelectTrigger>
+            <SelectContent>
+              {initial.reviewerCandidates.map((candidate) => (
+                <SelectItem key={candidate.userId} value={candidate.userId}>
+                  {candidate.displayName}{candidate.isSelf ? " · " + t("prepReviewerSelf") : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
 
       <TabsContent value="study" className="mt-3 min-h-0 flex-1 overflow-y-auto pr-1">
         <article data-notification-target="prep-solution" tabIndex={-1} className="rounded-xl border border-line bg-card/70 p-3 outline-none transition">
@@ -248,7 +350,7 @@ export function SessionPreparationFlow({
               <p className="text-sm font-medium text-ink">1. {t("prepFlowStudyTitle")}</p>
               <p className="mt-0.5 text-xs leading-5 text-muted">{t("prepFlowStudyBody")}</p>
             </div>
-            <ReviewStatus review={reviews.solution} present={solutionFiles.length > 0} />
+            <ReviewStatus review={reviews.solution} present={solutionFiles.length > 0 || solutionRecords.length > 0} />
           </header>
           <Textarea className="mt-2 min-h-24 text-xs" value={solutionNotes} readOnly={readOnly} onChange={(event) => setSolutionNotes(event.target.value)} maxLength={5000} rows={4} placeholder={t("solutionRecordPlaceholder")} />
           {!readOnly ? (
@@ -261,6 +363,17 @@ export function SessionPreparationFlow({
             </>
           ) : null}
           {fileList("solution", solutionFiles)}
+          <div className="mt-2">
+            <SessionSolutionArchive
+              sessionId={sessionId}
+              records={solutionRecords}
+              files={solutionFiles}
+              review={reviews.solution}
+              reviewerName={selectedReviewerName}
+              pageLabels={solutionPageLabels}
+              pagePreviews={solutionPagePreviews}
+            />
+          </div>
           {reviews.solution?.status === "changes_requested" && reviews.solution.reviewNote ? <p className="mt-2 text-xs text-rose">{reviews.solution.reviewNote}</p> : null}
         </article>
       </TabsContent>
@@ -268,24 +381,23 @@ export function SessionPreparationFlow({
       {lessonPlanMounted ? (
         <TabsContent forceMount value="design" className="mt-3 min-h-0 flex-1 overflow-y-auto pr-1 data-[state=inactive]:hidden">
           <div className="flex min-h-full flex-col gap-3">
-            <article data-notification-target="prep-lesson_plan" tabIndex={-1} className="shrink-0 rounded-xl border border-line bg-card/70 p-3 outline-none transition">
-              <header className="flex items-start gap-2">
-                {reviews.lesson_plan?.status === "approved" ? <CheckCircle2 size={18} className="mt-0.5 shrink-0 text-leaf-deep" /> : <CircleDashed size={18} className="mt-0.5 shrink-0 text-muted" />}
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-ink">2. {t("prepFlowDesignTitle")}</p>
-                  <p className="mt-0.5 text-xs leading-5 text-muted">{t("standardLessonPlanHint")}</p>
+            <article data-notification-target="prep-lesson_plan" tabIndex={-1} className="shrink-0 rounded-xl border border-line bg-card/70 p-2 outline-none transition">
+              <div className="flex min-w-0 items-center gap-2">
+                {reviews.lesson_plan?.status === "approved" ? <CheckCircle2 size={16} className="shrink-0 text-leaf-deep" /> : <FileText size={16} className="shrink-0 text-muted" />}
+                <div className="min-w-0 flex-1" title={t("standardLessonPlanHint")}>
+                  <p className="truncate text-xs font-medium text-ink">{t("lessonPlanAttachmentTitle")}</p>
+                  <p className="truncate text-[10px] text-muted">{t("lessonPlanAttachmentHint")}</p>
                 </div>
-                <ReviewStatus review={reviews.lesson_plan} present={lessonPlanFiles.length > 0 || lessonPlanPresent} />
-              </header>
-              {!readOnly ? (
-                <>
-                  <Input ref={lessonPlanInput} className="hidden" type="file" accept={ACCEPT} multiple onChange={(event) => void upload("lesson-plan", event.target.files)} />
-                  <Button type="button" size="sm" variant="secondary" className="mt-2 w-full" disabled={uploadingKind !== null} onClick={() => lessonPlanInput.current?.click()}>
-                    {uploadingKind === "lesson-plan" ? <LoaderCircle size={14} className="animate-spin motion-reduce:animate-none" /> : <UploadCloud size={14} />}
-                    {t("uploadStandardLessonPlan")}
-                  </Button>
-                </>
-              ) : null}
+                {!readOnly ? (
+                  <>
+                    <Input ref={lessonPlanInput} className="hidden" type="file" accept={ACCEPT} multiple onChange={(event) => void upload("lesson-plan", event.target.files)} />
+                    <Button type="button" size="sm" variant="secondary" className="h-8 shrink-0 px-2 text-xs" disabled={uploadingKind !== null} onClick={() => lessonPlanInput.current?.click()}>
+                      {uploadingKind === "lesson-plan" ? <LoaderCircle size={14} className="animate-spin motion-reduce:animate-none" /> : <UploadCloud size={14} />}
+                      {t("uploadLessonPlanShort")}
+                    </Button>
+                  </>
+                ) : null}
+              </div>
               {fileList("lesson-plan", lessonPlanFiles)}
               {reviews.lesson_plan?.status === "changes_requested" && reviews.lesson_plan.reviewNote ? <p className="mt-2 text-xs text-rose">{reviews.lesson_plan.reviewNote}</p> : null}
             </article>
@@ -324,10 +436,16 @@ export function SessionPreparationFlow({
                 placeholder="https://pan.baidu.com/..."
               />
               {!readOnly && rehearsalVideoUrl ? (
-                <Button type="button" size="sm" variant="ghost" className="shrink-0 text-rose" onClick={() => {
-                  setRehearsalVideoUrl("");
-                  persist({ ...latest.current, rehearsalVideoUrl: "" });
-                }}>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="shrink-0 text-rose"
+                  onClick={() => {
+                    setRehearsalVideoUrl("");
+                    persist({ ...latest.current, rehearsalVideoUrl: "" });
+                  }}
+                >
                   <Trash2 size={13} />
                   {t("removeRehearsalVideoLink")}
                 </Button>

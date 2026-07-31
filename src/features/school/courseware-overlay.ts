@@ -42,8 +42,9 @@ export function isOverlayRef(slot: OverlaySlot): slot is { ref: string } {
 
 /**
  * 自愈：失效引用（模板页已被删除）静默丢弃、重复引用只保留首次出现；
+ * 历史数据若把模板页误存成可编辑 page 副本，按同 id 还原为 ref，避免教师重命名模板页；
  * 模板新增的页（overlay 中无 ref）按模板顺序插回其模板前驱页之后。
- * 输出恒为「模板 id 集合的一个排列」，天然禁止删页——不会抛错。
+ * 输出保留教师新增页，同时包含全部模板 ref，天然禁止删除或改写模板页——不会抛错。
  */
 export function healOverlay(template: CoursewareTemplatePage[], overlay: OverlaySlot[]): OverlaySlot[] {
   const templateIds = template.map((page) => page.id);
@@ -56,6 +57,10 @@ export function healOverlay(template: CoursewareTemplatePage[], overlay: Overlay
       if (!templateIdSet.has(slot.ref) || seenRefs.has(slot.ref)) continue;
       seenRefs.add(slot.ref);
       working.push(slot);
+    } else if (templateIdSet.has(slot.page.id)) {
+      if (seenRefs.has(slot.page.id)) continue;
+      seenRefs.add(slot.page.id);
+      working.push({ ref: slot.page.id });
     } else {
       working.push(slot);
     }
@@ -86,6 +91,20 @@ export function resolveCourseware(template: CoursewareTemplatePage[], overlay: O
 /** 建班时的初始覆盖层：模板页的全 ref 序列，不拷贝内容。 */
 export function initialOverlayFromTemplate(template: CoursewareTemplatePage[]): OverlaySlot[] {
   return template.map((page) => ({ ref: page.id }));
+}
+
+/**
+ * 冻结课次编辑态保留正式快照为不可变模板 ref；持久 overlay 中的 page 才是教师插入页。
+ * 这样归档临时解锁只允许重命名/删除插入页，不会把整份冻结课件误判为自定义页。
+ */
+export function coursewareEditorStateFromFrozenSnapshot(
+  frozenPages: CoursewareTemplatePage[],
+  persistedOverlay: OverlaySlot[],
+): { template: CoursewareTemplatePage[]; overlay: OverlaySlot[] } {
+  const insertedPageIds = new Set(persistedOverlay.flatMap((slot) =>
+    isOverlayRef(slot) ? [] : [slot.page.id]));
+  const template = frozenPages.filter((page) => !insertedPageIds.has(page.id));
+  return { template, overlay: healOverlay(template, persistedOverlay) };
 }
 
 /**

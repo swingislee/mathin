@@ -12,6 +12,13 @@ export interface PrepArtifactFile {
 export const PREP_ARTIFACT_KINDS = ["solution", "lesson_plan", "rehearsal_video"] as const;
 export type PrepArtifactKind = (typeof PREP_ARTIFACT_KINDS)[number];
 export type PrepArtifactReviewStatus = "pending" | "approved" | "changes_requested";
+export type PrepReviewerAssignmentSource = "teacher_selected" | "supervisor_assigned";
+
+export interface PrepReviewerCandidate {
+  userId: string;
+  displayName: string;
+  isSelf: boolean;
+}
 
 export interface PrepArtifactReview {
   kind: PrepArtifactKind;
@@ -27,6 +34,10 @@ export interface SessionPreparationArtifacts {
   solutionFiles: PrepArtifactFile[];
   lessonPlanFiles: PrepArtifactFile[];
   rehearsalVideoUrl: string;
+  reviewerId: string | null;
+  reviewerName: string | null;
+  reviewerAssignmentSource: PrepReviewerAssignmentSource | null;
+  reviewerCandidates: PrepReviewerCandidate[];
   reviews: Partial<Record<PrepArtifactKind, PrepArtifactReview>>;
 }
 
@@ -44,7 +55,12 @@ function files(value: unknown): PrepArtifactFile[] {
 
 export async function getSessionPreparationArtifacts(sessionId: string): Promise<SessionPreparationArtifacts> {
   const supabase = await createClient();
-  const [{ data, error }, { data: reviewRows, error: reviewError }] = await Promise.all([
+  const [
+    { data, error },
+    { data: reviewRows, error: reviewError },
+    { data: reviewerSelection, error: reviewerSelectionError },
+    { data: reviewerCandidateRows, error: reviewerCandidatesError },
+  ] = await Promise.all([
     supabase
       .from("session_preparation_artifacts")
       .select("solution_notes,solution_files,lesson_plan_files,rehearsal_video_url")
@@ -67,9 +83,21 @@ export async function getSessionPreparationArtifacts(sessionId: string): Promise
         reviewed_at: string | null;
         review_note: string;
       }>>(),
+    supabase
+      .from("session_preparations")
+      .select("reviewer_id,reviewer_assignment_source,reviewer:profiles!session_preparations_reviewer_id_fkey(display_name)")
+      .eq("session_id", sessionId)
+      .maybeSingle<{
+        reviewer_id: string | null;
+        reviewer_assignment_source: PrepReviewerAssignmentSource | null;
+        reviewer: { display_name: string } | null;
+      }>(),
+    supabase.rpc("list_session_preparation_reviewer_candidates", { p_session_id: sessionId }),
   ]);
   if (error) throw new Error(error.message);
   if (reviewError) throw new Error(reviewError.message);
+  if (reviewerSelectionError) throw new Error(reviewerSelectionError.message);
+  if (reviewerCandidatesError) throw new Error(reviewerCandidatesError.message);
   const reviews = Object.fromEntries((reviewRows ?? []).map((row) => [row.artifact_kind, {
     kind: row.artifact_kind,
     status: row.status,
@@ -83,6 +111,14 @@ export async function getSessionPreparationArtifacts(sessionId: string): Promise
     solutionFiles: files(data?.solution_files),
     lessonPlanFiles: files(data?.lesson_plan_files),
     rehearsalVideoUrl: data?.rehearsal_video_url ?? "",
+    reviewerId: reviewerSelection?.reviewer_id ?? null,
+    reviewerName: reviewerSelection?.reviewer?.display_name ?? null,
+    reviewerAssignmentSource: reviewerSelection?.reviewer_assignment_source ?? null,
+    reviewerCandidates: (reviewerCandidateRows ?? []).map((row) => ({
+      userId: row.user_id,
+      displayName: row.display_name,
+      isSelf: row.is_self,
+    })),
     reviews,
   };
 }

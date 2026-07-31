@@ -306,6 +306,7 @@ export const DASHBOARD_ROUTES = {
     environments: STAFF_ONLY,
     createSurface: "none",
     parent: "courseware",
+    nav: { labelKey: "preparationReview", group: "courseware" },
   },
   coursewareLecture: {
     // 讲次在课程版本的教学计划中创建，没有 /courseware/lectures/new（§5.19）。

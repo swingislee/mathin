@@ -49,6 +49,7 @@ const STAFF_NAV_KEYS: readonly DashboardRouteKey[] = [
   "courses",
   "courseware",
   "coursewareReview",
+  "coursewarePreparationReview",
   "coursewareAssets",
   "finance",
   "staff",

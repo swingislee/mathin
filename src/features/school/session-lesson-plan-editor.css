@@ -1,0 +1,13 @@
+/* BlockNote 0.51.4 sizes heading side-menu hit areas for its default
+   3em/2em/1.3em headings. Keep them aligned with Mathin's compact headings. */
+.lesson-plan-editor.bn-root .bn-side-menu[data-block-type="heading"][data-level="1"] {
+  height: 40px !important;
+}
+
+.lesson-plan-editor.bn-root .bn-side-menu[data-block-type="heading"][data-level="2"] {
+  height: 36px !important;
+}
+
+.lesson-plan-editor.bn-root .bn-side-menu[data-block-type="heading"][data-level="3"] {
+  height: 34px !important;
+}

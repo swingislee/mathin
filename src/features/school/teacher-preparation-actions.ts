@@ -44,6 +44,31 @@ export async function saveCoursewareAnnotationAction(input: z.input<typeof annot
   }
 }
 
+const preparationReviewerSchema = z.object({ sessionId: uuid, reviewerId: uuid });
+
+export async function setSessionPreparationReviewerAction(
+  input: z.input<typeof preparationReviewerSchema>,
+): Promise<ActionResult> {
+  try {
+    const value = parse(preparationReviewerSchema, input);
+    const { supabase } = await authorizedClient("courseware.overlay.edit");
+    const { error } = await supabase.rpc("set_session_preparation_reviewer", {
+      p_session_id: value.sessionId,
+      p_reviewer_id: value.reviewerId,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, [
+      "REVIEWER_NOT_AVAILABLE",
+      "REVIEWER_LOCKED_BY_SUPERVISOR",
+      "PREPARATION_LOCKED",
+      "FORBIDDEN",
+      "VALIDATION",
+    ]);
+  }
+}
+
 const boardSolutionSchema = z.object({ sessionId: uuid, pageDocId: uuid });
 
 export async function generateSolutionRecordFromBoardAction(input: z.input<typeof boardSolutionSchema>): Promise<ActionResult<{
@@ -127,6 +152,31 @@ export async function submitSessionLessonPlanAction(input: z.input<typeof submit
     return { ok: true, data: { reviewRevision: z.number().int().positive().parse(data) } };
   } catch (error) {
     return actionError(error, ["LESSON_PLAN_REQUIRED", "VERSION_CONFLICT", "PREPARATION_LOCKED", "FORBIDDEN", "VALIDATION"]);
+  }
+}
+
+const withdrawLessonPlanSchema = z.object({ sessionId: uuid });
+
+export async function withdrawSessionLessonPlanAction(
+  input: z.input<typeof withdrawLessonPlanSchema>,
+): Promise<ActionResult<{ revision: number }>> {
+  try {
+    const value = parse(withdrawLessonPlanSchema, input);
+    const { supabase } = await authorizedClient("courseware.overlay.edit");
+    const { data, error } = await supabase.rpc("withdraw_session_lesson_plan", {
+      p_session_id: value.sessionId,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true, data: { revision: z.number().int().positive().parse(data) } };
+  } catch (error) {
+    return actionError(error, [
+      "REVIEW_NOT_FOUND",
+      "REVIEW_ALREADY_DECIDED",
+      "LESSON_PLAN_REQUIRED",
+      "PREPARATION_LOCKED",
+      "FORBIDDEN",
+      "VALIDATION",
+    ]);
   }
 }
 
