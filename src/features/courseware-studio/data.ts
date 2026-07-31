@@ -7,6 +7,10 @@ import { pageDocSchema, type PageDoc } from "@/features/courseware-doc/schema";
 import { buildH5EntryUrl, type H5LaunchQuery, type ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 
 const SIGNED_URL_TTL_SECONDS = 60 * 60;
+// PostgREST serializes `.in()` filters into the GET request URI. A full lecture
+// can contain 200+ revision UUIDs, so keep each filter comfortably below the
+// self-hosted gateway's request-line limit.
+const POSTGREST_IN_FILTER_BATCH_SIZE = 40;
 export const COURSEWARE_TRACKS = ["native-16x9", "adapted-4x3"] as const;
 export type CoursewareTrack = (typeof COURSEWARE_TRACKS)[number];
 
@@ -822,11 +826,12 @@ export async function materializeSessionResolved(releaseId: string, track: Cours
   const snapshot = releaseSnapshotSchema.parse(release.snapshot);
   const assetRevisionIds = [...new Set(snapshot.flatMap((entry) => entry.bindings.map((binding) => binding.assetRevisionId)))];
   const hashByRevisionId = new Map<string, string>();
-  if (assetRevisionIds.length > 0) {
+  for (let offset = 0; offset < assetRevisionIds.length; offset += POSTGREST_IN_FILTER_BATCH_SIZE) {
+    const revisionIdBatch = assetRevisionIds.slice(offset, offset + POSTGREST_IN_FILTER_BATCH_SIZE);
     const { data: revisions, error: revisionError } = await supabase
       .from("cw_asset_revisions")
       .select("id, object:cw_asset_objects!cw_asset_revisions_object_id_fkey(sha256)")
-      .in("id", assetRevisionIds);
+      .in("id", revisionIdBatch);
     if (revisionError) throw new Error(revisionError.message);
     for (const revision of revisions ?? []) {
       if (revision.object?.sha256) hashByRevisionId.set(revision.id, revision.object.sha256);
