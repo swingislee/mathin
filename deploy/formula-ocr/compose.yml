@@ -11,6 +11,7 @@ services:
     restart: unless-stopped
     init: true
     read_only: true
+    working_dir: /tmp
     user: "${MATHIN_FORMULA_OCR_UID:-1000}:${MATHIN_FORMULA_OCR_GID:-1000}"
     environment:
       HOME: /tmp
