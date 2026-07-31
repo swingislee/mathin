@@ -111,6 +111,11 @@ export async function StudentHome({ locale, user, profile }: HomeProps) {
               ))}
             </ul>
           )}
+          <div className="mt-auto flex justify-end pt-2">
+            <Link href="/dashboard/assignments#leave" className="text-xs text-crater underline underline-offset-2">
+              {customerT("leaveAction")}
+            </Link>
+          </div>
         </div>
       ),
     );
@@ -163,6 +168,7 @@ export async function StudentHome({ locale, user, profile }: HomeProps) {
       const rateText = myStar.attendanceRate30d !== null ? `${myStar.attendanceRate30d}%` : "—";
       labels.set("myStars", customerT("myStarsTitle"));
       extras.set("myStars", {
+        href: "/dashboard/assignments#learning-results",
         minimal: <MinimalBody value={myStar.starTotal} />,
         compact: <CompactBody value={myStar.starTotal} line={`${customerT("attendanceRate30d")} ${rateText}`} />,
       });
