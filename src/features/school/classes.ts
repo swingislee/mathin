@@ -458,6 +458,7 @@ export interface SessionFamilyBrief {
 }
 
 export interface SessionLearningResult {
+  kind: "knowledge_summary" | "session_review";
   headId: string;
   studentId: string;
   status: LearningResultStatus;
@@ -627,11 +628,12 @@ export async function getSessionWorkspaceDetail(sessionId: string): Promise<Sess
       }>(),
     supabase
       .from("learning_result_heads")
-      .select("id,student_id,status,published_at,updated_at")
-      .eq("kind", "session_result")
+      .select("id,kind,student_id,status,published_at,updated_at")
+      .in("kind", ["knowledge_summary", "session_review"])
       .eq("session_id", sessionId)
       .returns<Array<{
         id: string;
+        kind: "knowledge_summary" | "session_review";
         student_id: string;
         status: LearningResultStatus;
         published_at: string | null;
@@ -825,6 +827,7 @@ export async function getSessionWorkspaceDetail(sessionId: string): Promise<Sess
       publishedAt: briefRow?.published_at ?? null,
     },
     learningResults: (learningResultRows ?? []).map((row) => ({
+      kind: row.kind,
       headId: row.id,
       studentId: row.student_id,
       status: row.status,

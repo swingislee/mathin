@@ -14,6 +14,8 @@ describe("R1-6 learning result application contracts", () => {
       "decide_learning_result_review",
       "withdraw_learning_result",
       "withdraw_session_learning_results",
+      "publish_session_reviews",
+      "withdraw_session_reviews",
       "publish_session_video_review",
     ]) {
       expect(actions).toContain(`rpc("${rpc}"`);
@@ -28,12 +30,14 @@ describe("R1-6 learning result application contracts", () => {
     const form = read("src/features/school/SessionFamilyBriefForm.tsx");
     const panel = read("src/features/school/SessionFamilyBriefPanel.tsx");
     const data = read("src/features/school/classes.ts");
+    const actions = read("src/features/school/learning-result-actions.ts");
     expect(form).toContain("saveSessionFamilyBriefAction(fields)");
     expect(form).toContain("publishSessionFamilyBriefAction(sessionId)");
+    expect(actions).toContain('rpc("publish_session_reviews"');
     expect(form).toContain('mode="session"');
     expect(panel).toContain("learningResultStatus_");
     expect(data).toContain('.from("learning_result_heads")');
-    expect(data).toContain('.eq("kind", "session_result")');
+    expect(data).toContain('.in("kind", ["knowledge_summary", "session_review"])');
   });
 
   it("separates video review draft, publication, withdrawal, and customer playback", () => {

@@ -88,7 +88,7 @@ export async function StudentHome({ locale, user, profile }: HomeProps) {
             <span className="min-w-0 flex-1 truncate font-medium">{nextSession.classroomName}</span>
             <span className="shrink-0 text-xs text-muted">{nextSession.lectureName}</span>
             {canEnterClassroom && (
-              <Link href={`/classroom/${nextSession.classroomId}`} className={cn(buttonVariants({ size: "sm" }), "shrink-0")}>
+              <Link href={"/dashboard/learning/classes/" + nextSession.classroomId} className={cn(buttonVariants({ size: "sm" }), "shrink-0")}>
                 {customerT("enterClassroom")}
               </Link>
             )}

@@ -238,7 +238,7 @@ delete from public.session_family_briefs
 
 update public.learning_result_heads
    set status = 'draft'
- where kind = 'session_result'
+ where kind in ('knowledge_summary', 'session_review')
    and session_id = :'family_session_id'::uuid;
 insert into public.session_family_briefs (
   session_id, lesson_title, learning_summary, teacher_public_comment,
@@ -455,6 +455,7 @@ reset role;
 set local role authenticated;
 select set_config('request.jwt.claim.sub', :'admin_id', true);
 select public.publish_session_family_brief(:'family_session_id'::uuid);
+select public.publish_session_reviews(:'family_session_id'::uuid);
 reset role;
 
 set local role authenticated;
@@ -464,11 +465,24 @@ select exists (
     from public.get_my_session_reviews('2000-01-01'::timestamptz, '2100-01-01'::timestamptz)
    where session_id = :'family_session_id'::uuid
      and student_id = :'family_student_id'::uuid
-     and knowledge_summary = '__R1_FAMILY_DRAFT_SUMMARY__'
+     and comment = '__R1_FAMILY_DRAFT_REVIEW__'
 ) as published_result_visible \gset
 \if :published_result_visible
 \else
-  \echo R1-5 published family result was not visible
+  \echo R1-5 published family review was not visible
+  select 1 / 0;
+\endif
+
+select exists (
+  select 1
+    from public.get_my_knowledge_summaries('2000-01-01'::timestamptz, '2100-01-01'::timestamptz)
+   where session_id = :'family_session_id'::uuid
+     and student_id = :'family_student_id'::uuid
+     and learning_summary = '__R1_FAMILY_DRAFT_SUMMARY__'
+) as published_summary_visible \gset
+\if :published_summary_visible
+\else
+  \echo R1-5 published knowledge summary was not visible
   select 1 / 0;
 \endif
 

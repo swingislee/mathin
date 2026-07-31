@@ -5,9 +5,10 @@ import { SessionFamilyBriefForm } from "./SessionFamilyBriefForm";
 
 export async function SessionFamilyBriefPanel({ detail }: { detail: SessionWorkspaceDetail }) {
   const t = await getTranslations("school.session");
-  const statuses = new Set(detail.learningResults.map((result) => result.status));
+  const summaryResults = detail.learningResults.filter((result) => result.kind === "knowledge_summary");
+  const statuses = new Set(summaryResults.map((result) => result.status));
   const resultStatus = statuses.size === 1
-    ? detail.learningResults[0].status
+    ? summaryResults[0].status
     : statuses.has("revised")
       ? "revised"
       : statuses.has("withdrawn")
@@ -19,7 +20,7 @@ export async function SessionFamilyBriefPanel({ detail }: { detail: SessionWorks
             : detail.familyBrief.publishedAt
               ? "published"
               : "draft";
-  const latestPublishedAt = detail.learningResults
+  const latestPublishedAt = summaryResults
     .flatMap((result) => result.publishedAt ? [result.publishedAt] : [])
     .sort()
     .at(-1) ?? detail.familyBrief.publishedAt;

@@ -19,7 +19,8 @@ function studentLearningLink(type: string): string | null {
     return "/dashboard/coursework#leave";
   }
   if (
-    type.startsWith("knowledge_summary.")
+    type.startsWith("learning_result.")
+    || type.startsWith("knowledge_summary.")
     || type.startsWith("review.")
     || type.startsWith("attendance.")
   ) {
@@ -35,11 +36,12 @@ function familyLearningLink(type: string, payload: Record<string, unknown>): str
     return `/dashboard/children${suffix}#leave`;
   }
   if (
-    type.startsWith("knowledge_summary.")
+    type.startsWith("learning_result.")
+    || type.startsWith("knowledge_summary.")
     || type.startsWith("review.")
     || type.startsWith("attendance.")
   ) {
-    return `/dashboard/children${suffix}#knowledge-summary`;
+    return `/dashboard/children${suffix}#learning-results`;
   }
   return null;
 }

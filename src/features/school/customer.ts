@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import type { Json } from "@/lib/database.types";
 import type { OrderStatus } from "./finance";
 import type { AttendanceStatus } from "./learning";
 import type { AssignmentContent, SubmissionRecord } from "@/features/classroom/types";
@@ -232,8 +233,78 @@ export async function getMyAttendance(fromIso: string, toIso: string): Promise<M
   }));
 }
 
-export interface MySessionReview{sessionId:string;studentId:string;studentName:string;classroomName:string;lectureName:string;scheduledAt:string;entryScore:number|null;exitScore:number|null;focus:number|null;participation:number|null;mastery:number|null;comment:string;knowledgeSummary:string}
-export async function getMySessionReviews(fromIso:string,toIso:string):Promise<MySessionReview[]>{const s=await createClient();const{data,error}=await s.rpc("get_my_session_reviews",{p_from:fromIso,p_to:toIso});if(error)throw new Error(error.message);return((data??[])as Array<{session_id:string;student_id:string;student_name:string;classroom_name:string;lecture_name:string;scheduled_at:string;entry_score:number|null;exit_score:number|null;focus:number|null;participation:number|null;mastery:number|null;comment:string;knowledge_summary:string}>).map(x=>({sessionId:x.session_id,studentId:x.student_id,studentName:x.student_name,classroomName:x.classroom_name,lectureName:x.lecture_name,scheduledAt:x.scheduled_at,entryScore:x.entry_score,exitScore:x.exit_score,focus:x.focus,participation:x.participation,mastery:x.mastery,comment:x.comment,knowledgeSummary:x.knowledge_summary}))}
+export interface MyKnowledgeSummary {
+  headId: string;
+  sessionId: string;
+  studentId: string;
+  studentName: string;
+  classroomName: string;
+  lectureName: string;
+  scheduledAt: string;
+  lessonTitle: string;
+  learningSummary: string;
+  homeworkSummary: string;
+  materialsNote: string;
+  teacherPublicComment: string;
+  publishedAt: string;
+}
+
+export async function getMyKnowledgeSummaries(fromIso: string, toIso: string): Promise<MyKnowledgeSummary[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("get_my_knowledge_summaries", { p_from: fromIso, p_to: toIso });
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row) => ({
+    headId: row.head_id,
+    sessionId: row.session_id,
+    studentId: row.student_id,
+    studentName: row.student_name,
+    classroomName: row.classroom_name,
+    lectureName: row.lecture_name,
+    scheduledAt: row.scheduled_at,
+    lessonTitle: row.lesson_title,
+    learningSummary: row.learning_summary,
+    homeworkSummary: row.homework_summary,
+    materialsNote: row.materials_note,
+    teacherPublicComment: row.teacher_public_comment,
+    publishedAt: row.published_at,
+  }));
+}
+
+export interface MySessionReview {
+  sessionId: string;
+  studentId: string;
+  studentName: string;
+  classroomName: string;
+  lectureName: string;
+  scheduledAt: string;
+  entryScore: number | null;
+  exitScore: number | null;
+  focus: number | null;
+  participation: number | null;
+  mastery: number | null;
+  comment: string;
+}
+
+export async function getMySessionReviews(fromIso: string, toIso: string): Promise<MySessionReview[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("get_my_session_reviews", { p_from: fromIso, p_to: toIso });
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row) => ({
+    sessionId: row.session_id,
+    studentId: row.student_id,
+    studentName: row.student_name,
+    classroomName: row.classroom_name,
+    lectureName: row.lecture_name,
+    scheduledAt: row.scheduled_at,
+    entryScore: row.entry_score,
+    exitScore: row.exit_score,
+    focus: row.focus,
+    participation: row.participation,
+    mastery: row.mastery,
+    comment: row.comment,
+  }));
+}
+
 export type SessionReviewAvailability = "pending" | "published" | "withdrawn";
 export interface MySessionReviewState {
   sessionId: string;
@@ -244,30 +315,77 @@ export interface MySessionReviewState {
   scheduledAt: string;
   availabilityState: SessionReviewAvailability;
 }
+
 export async function getMySessionReviewStates(fromIso: string, toIso: string): Promise<MySessionReviewState[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("get_my_session_review_states", { p_from: fromIso, p_to: toIso });
   if (error) throw new Error(error.message);
-  return ((data ?? []) as Array<{
-    session_id: string;
-    student_id: string;
-    student_name: string;
-    classroom_name: string;
-    lecture_name: string;
-    scheduled_at: string;
-    availability_state: SessionReviewAvailability;
-  }>).map((row) => ({
+  return (data ?? []).map((row) => ({
     sessionId: row.session_id,
     studentId: row.student_id,
     studentName: row.student_name,
     classroomName: row.classroom_name,
     lectureName: row.lecture_name,
     scheduledAt: row.scheduled_at,
-    availabilityState: row.availability_state,
+    availabilityState: row.availability_state as SessionReviewAvailability,
   }));
 }
-export async function getMyReviewedVideos():Promise<Array<{videoId:string;sessionId:string;studentId:string;score:number|null;comment:string}>>{const s=await createClient();const{data,error}=await s.rpc("get_my_reviewed_videos");if(error)throw new Error(error.message);return((data??[])as Array<{video_id:string;session_id:string;student_id:string;review_score:number|null;review_comment:string}>).map(x=>({videoId:x.video_id,sessionId:x.session_id,studentId:x.student_id,score:x.review_score,comment:x.review_comment}))}
 
+export async function getMyReviewedVideos(): Promise<Array<{
+  videoId: string;
+  sessionId: string;
+  studentId: string;
+  score: number | null;
+  comment: string;
+}>> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("get_my_reviewed_videos");
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row) => ({
+    videoId: row.video_id,
+    sessionId: row.session_id,
+    studentId: row.student_id,
+    score: row.review_score,
+    comment: row.review_comment,
+  }));
+}
+
+export interface MyStageReport {
+  headId: string;
+  studentId: string;
+  termId: string;
+  periodStart: string;
+  periodEnd: string;
+  title: string;
+  summary: string;
+  teacherComment: string;
+  metricVersion: string;
+  dataCutoffAt: string;
+  timezone: string;
+  publishedAt: string;
+  dataset: Json;
+}
+
+export async function getMyStageReports(): Promise<MyStageReport[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("get_my_stage_reports");
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row) => ({
+    headId: row.head_id,
+    studentId: row.student_id,
+    termId: row.term_id,
+    periodStart: row.period_start,
+    periodEnd: row.period_end,
+    title: row.title,
+    summary: row.summary,
+    teacherComment: row.teacher_comment,
+    metricVersion: row.metric_version,
+    dataCutoffAt: row.data_cutoff_at,
+    timezone: row.timezone,
+    publishedAt: row.published_at,
+    dataset: row.dataset,
+  }));
+}
 export interface MyPendingAssignment {
   assignmentId: string;
   classroomId: string;

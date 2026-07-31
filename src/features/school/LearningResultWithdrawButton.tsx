@@ -16,6 +16,7 @@ import { useRouter } from "@/i18n/navigation";
 import {
   withdrawLearningResultAction,
   withdrawSessionLearningResultsAction,
+  withdrawSessionReviewsAction,
 } from "./learning-result-actions";
 
 export function LearningResultWithdrawButton({
@@ -23,7 +24,7 @@ export function LearningResultWithdrawButton({
   targetId,
   disabled = false,
 }: {
-  mode: "head" | "session";
+  mode: "head" | "session" | "sessionReviews";
   targetId: string;
   disabled?: boolean;
 }) {
@@ -32,9 +33,11 @@ export function LearningResultWithdrawButton({
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
   const action = useAction(
-    (value: string) => mode === "head"
-      ? withdrawLearningResultAction(targetId, value)
-      : withdrawSessionLearningResultsAction(targetId, value),
+    (value: string) => {
+      if (mode === "head") return withdrawLearningResultAction(targetId, value);
+      if (mode === "sessionReviews") return withdrawSessionReviewsAction(targetId, value);
+      return withdrawSessionLearningResultsAction(targetId, value);
+    },
     {
       successMessage: t("withdrawnToast"),
       errorMessage: { default: t("actionFailed") },

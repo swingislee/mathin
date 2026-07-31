@@ -440,11 +440,19 @@ export const DASHBOARD_ROUTES = {
   },
   learningClasses: {
     // 学生的长期班级入口属于学习运行时；教师班级管理只走 /dashboard/classes。
-    href: "/classroom",
+    href: "/dashboard/learning/classes",
     kind: "collection",
     environments: ["learning"],
     createSurface: "none",
     nav: { labelKey: "classes" },
+  },
+  learningClassDetail: {
+    hrefPattern: "/dashboard/learning/classes/[classId]",
+    kind: "object",
+    environments: ["learning"],
+    createSurface: "parent",
+    creationOwner: "learningClasses",
+    parent: "learningClasses",
   },
   assignments: {
     // 学生与家庭共用作业/课后视频任务入口；均只操作本人或已授权孩子。

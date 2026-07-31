@@ -1,7 +1,18 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { getWeekSchedule } from "@/features/school/actions/schedule";
 import { BindCodeForm } from "@/features/school/BindCodeForm";
-import { getMyAttendance, getMyGuardianRelationship, getMyLearningSummary, getMyReviewedVideos, getMySessionReviews, getMySessionReviewStates, getMyStudents, listMySessionLeaveRequests } from "@/features/school/customer";
+import {
+  getMyAttendance,
+  getMyGuardianRelationship,
+  getMyKnowledgeSummaries,
+  getMyLearningSummary,
+  getMyReviewedVideos,
+  getMySessionReviews,
+  getMySessionReviewStates,
+  getMyStageReports,
+  getMyStudents,
+  listMySessionLeaveRequests,
+} from "@/features/school/customer";
 import { FamilyLearningResults } from "@/features/school/FamilyLearningResults";
 import { GuardianRelationshipPanel } from "@/features/school/GuardianRelationshipPanel";
 import { GuardianScopePanel } from "@/features/school/GuardianScopePanel";
@@ -60,12 +71,14 @@ export default async function ChildrenPage({
   const guardianRelationship = await getMyGuardianRelationship(activeId);
 
   const now = new Date();
-  const [scheduleEntries, attendanceRows, reviewRows, reviewStates, reviewedVideos, leaveRequests] = await Promise.all([
+  const [scheduleEntries, attendanceRows, knowledgeSummaries, reviewRows, reviewStates, reviewedVideos, stageReports, leaveRequests] = await Promise.all([
     getWeekSchedule(now.toISOString(), addDays(now, 30).toISOString()),
     getMyAttendance(addDays(now, -60).toISOString(), now.toISOString()),
+    getMyKnowledgeSummaries(addDays(now, -180).toISOString(), now.toISOString()),
     getMySessionReviews(addDays(now,-180).toISOString(),now.toISOString()),
     getMySessionReviewStates(addDays(now, -180).toISOString(), now.toISOString()),
     getMyReviewedVideos(),
+    getMyStageReports(),
     listMySessionLeaveRequests(),
   ]);
   const upcomingSessions = scheduleEntries.filter((entry) => entry.studentId === activeId);
@@ -111,13 +124,15 @@ export default async function ChildrenPage({
           出勤/课表/作业/监护人权限是围绕它的旁证，收进侧栏。 */}
       <DashboardContentGrid>
       <DashboardMainColumn className="space-y-6">
-      <div id="knowledge-summary" className="scroll-mt-24">
-        <DashboardCard title={studentsT("recentReviews")}>
+      <div id="learning-results" className="scroll-mt-24">
+        <DashboardCard title={studentsT("learningResults")}>
           <FamilyLearningResults
             locale={locale}
+            knowledgeSummaries={knowledgeSummaries.filter((row) => row.studentId === activeId)}
             reviews={reviewRows.filter((row) => row.studentId === activeId)}
             states={reviewStates.filter((row) => row.studentId === activeId)}
             videos={reviewedVideos.filter((video) => video.studentId === activeId)}
+            stageReports={stageReports.filter((report) => report.studentId === activeId)}
           />
         </DashboardCard>
       </div>

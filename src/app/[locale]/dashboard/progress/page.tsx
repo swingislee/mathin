@@ -1,11 +1,13 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { BindCodeForm } from "@/features/school/BindCodeForm";
 import {
+  getMyKnowledgeSummaries,
   getMyLearningCheckResults,
   getMyLearningSummary,
   getMyReviewedVideos,
   getMySessionReviews,
   getMySessionReviewStates,
+  getMyStageReports,
   getMyStudents,
 } from "@/features/school/customer";
 import {
@@ -39,16 +41,28 @@ export default async function ProgressPage({ params }: { params: Promise<{ local
   const students = await safe(getMyStudents, []);
   const studentId = students[0]?.id ?? null;
   const now = new Date();
-  const [summaries, reviews, states, videos, learningChecks] = studentId
+  const from = addDays(now, -180).toISOString();
+  const to = now.toISOString();
+  const [
+    learningSummaries,
+    knowledgeSummaries,
+    reviews,
+    states,
+    videos,
+    stageReports,
+    learningChecks,
+  ] = studentId
     ? await Promise.all([
         safe(getMyLearningSummary, []),
-        safe(() => getMySessionReviews(addDays(now, -180).toISOString(), now.toISOString()), []),
-        safe(() => getMySessionReviewStates(addDays(now, -180).toISOString(), now.toISOString()), []),
+        safe(() => getMyKnowledgeSummaries(from, to), []),
+        safe(() => getMySessionReviews(from, to), []),
+        safe(() => getMySessionReviewStates(from, to), []),
         safe(getMyReviewedVideos, []),
+        safe(getMyStageReports, []),
         safe(getMyLearningCheckResults, []),
       ])
-    : [[], [], [], [], []];
-  const summary = summaries.find((row) => row.studentId === studentId) ?? null;
+    : [[], [], [], [], [], [], []];
+  const summary = learningSummaries.find((row) => row.studentId === studentId) ?? null;
   const submissions = summary?.recentSubmissions ?? [];
   const date = new Intl.DateTimeFormat(locale, { dateStyle: "medium" });
 
@@ -79,7 +93,7 @@ export default async function ProgressPage({ params }: { params: Promise<{ local
                 ) : (
                   <ul className="divide-y divide-line">
                     {submissions.map((submission, index) => (
-                      <li key={`${submission.title}:${index}`} className="flex flex-wrap items-center gap-3 py-3 text-sm">
+                      <li key={submission.title + ":" + index} className="flex flex-wrap items-center gap-3 py-3 text-sm">
                         <span className="min-w-0 flex-1 truncate font-medium">{submission.title}</span>
                         <span className="shrink-0 tabular-nums">{submission.score ?? studentsT("ungraded")}</span>
                         {submission.gradedAt && <time className="shrink-0 text-xs text-muted">{date.format(new Date(submission.gradedAt))}</time>}
@@ -90,12 +104,14 @@ export default async function ProgressPage({ params }: { params: Promise<{ local
               </DashboardCard>
 
               <div id="learning-results" className="scroll-mt-24">
-                <DashboardCard title={studentsT("recentReviews")}>
+                <DashboardCard title={studentsT("learningResults")}>
                   <FamilyLearningResults
                     locale={locale}
+                    knowledgeSummaries={knowledgeSummaries.filter((row) => row.studentId === studentId)}
                     reviews={reviews.filter((row) => row.studentId === studentId)}
                     states={states.filter((row) => row.studentId === studentId)}
                     videos={videos.filter((row) => row.studentId === studentId)}
+                    stageReports={stageReports.filter((row) => row.studentId === studentId)}
                   />
                 </DashboardCard>
               </div>

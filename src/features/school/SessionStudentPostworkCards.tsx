@@ -12,6 +12,9 @@ import { useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { completeSessionTaskAction } from "./actions/classes";
 import { addStudentFollowUp } from "./actions/followups";
+import { publishSessionReviewsAction } from "./learning-result-actions";
+import { LearningResultWithdrawButton } from "./LearningResultWithdrawButton";
+import type { LearningResultStatus } from "./learning-results";
 import type { ReviewRecord } from "./review-actions";
 import { saveSessionReviewsAction } from "./review-actions";
 import { SessionTaskActions } from "./SessionPostworkActions";
@@ -40,15 +43,15 @@ const CHECK_TONE: Record<SessionStudentPostworkRow["checks"][number]["status"], 
 export function SessionStudentPostworkCards({
   sessionId,
   rows,
-  knowledgeSummary,
   initialReviews,
+  resultStatus,
   canWriteReview,
   followupTask,
 }: {
   sessionId: string;
   rows: SessionStudentPostworkRow[];
-  knowledgeSummary: string;
   initialReviews: ReviewRecord[];
+  resultStatus: LearningResultStatus;
   canWriteReview: boolean;
   followupTask: { id: string; status: "pending" | "done" | "skipped" } | null;
 }) {
@@ -60,9 +63,21 @@ export function SessionStudentPostworkCards({
   const [followups, setFollowups] = useState<Record<string, string>>({});
 
   const saveReviews = useAction(
-    (records: ReviewRecord[]) => saveSessionReviewsAction(sessionId, knowledgeSummary, records),
+    (records: ReviewRecord[]) => saveSessionReviewsAction(sessionId, records),
     {
       successMessage: reviewT("saved"),
+      errorMessage: { default: reviewT("failed") },
+      onSuccess: () => router.refresh(),
+    },
+  );
+  const publishReviews = useAction(
+    async (records: ReviewRecord[]) => {
+      const saved = await saveSessionReviewsAction(sessionId, records);
+      if (!saved.ok) return saved;
+      return publishSessionReviewsAction(sessionId);
+    },
+    {
+      successMessage: t("studentReviewsPublishedToast"),
       errorMessage: { default: reviewT("failed") },
       onSuccess: () => router.refresh(),
     },
@@ -92,6 +107,8 @@ export function SessionStudentPostworkCards({
   );
 
   const reviewByStudent = new Map(reviews.map((review) => [review.studentId, review]));
+  const pending = saveReviews.pending || publishReviews.pending;
+  const isRepublish = resultStatus === "published" || resultStatus === "withdrawn" || resultStatus === "revised";
   const updateComment = (studentId: string, comment: string) => {
     setReviews((current) => current.map((review) => review.studentId === studentId ? { ...review, comment } : review));
   };
@@ -102,20 +119,33 @@ export function SessionStudentPostworkCards({
 
   return (
     <>
-      <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
-        {followupTask?.status === "pending" && (
-          <SessionTaskActions
-            taskId={followupTask.id}
-            disabled={false}
-            hideMarkDone
-            skipLabel={t("followupSkip")}
-          />
-        )}
-        {canWriteReview && (
-          <Button size="sm" disabled={saveReviews.pending} onClick={() => saveReviews.run(reviews)}>
-            {t("saveStudentReviews")}
-          </Button>
-        )}
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <Badge variant={resultStatus === "published" ? "default" : "outline"}>
+          {t("learningResultStatus_" + resultStatus)}
+        </Badge>
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+          {followupTask?.status === "pending" && (
+            <SessionTaskActions
+              taskId={followupTask.id}
+              disabled={false}
+              hideMarkDone
+              skipLabel={t("followupSkip")}
+            />
+          )}
+          {canWriteReview && resultStatus === "published" && (
+            <LearningResultWithdrawButton mode="sessionReviews" targetId={sessionId} disabled={pending} />
+          )}
+          {canWriteReview && (
+            <>
+              <Button size="sm" variant="secondary" disabled={pending} onClick={() => saveReviews.run(reviews)}>
+                {t("saveStudentReviews")}
+              </Button>
+              <Button size="sm" disabled={pending} onClick={() => publishReviews.run(reviews)}>
+                {isRepublish ? t("republish") : t("publishStudentReviews")}
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="mt-3 grid gap-3 md:grid-cols-2 2xl:grid-cols-3">

@@ -36,7 +36,6 @@ export async function SessionPostworkPanel({ detail }: { detail: SessionWorkspac
     getSessionReport(detail.id).catch(() => ({ rows: [], quizzes: [], learningChecks: [] })),
     detail.capabilities.canWriteReview
       ? getReviewDrawerData(detail.id).catch(() => ({
-          knowledgeSummary: "",
           records: detail.roster.map((student) => ({
             studentId: student.studentId,
             studentName: student.studentName,
@@ -48,7 +47,7 @@ export async function SessionPostworkPanel({ detail }: { detail: SessionWorkspac
             comment: "",
           })),
         }))
-      : Promise.resolve({ knowledgeSummary: "", records: [] }),
+      : Promise.resolve({ records: [] }),
     detail.capabilities.canWriteReview
       ? Promise.all(detail.publishedAssignments.map(async (assignment): Promise<SessionAssignmentReviewItem> => ({
           assignment,
@@ -57,6 +56,17 @@ export async function SessionPostworkPanel({ detail }: { detail: SessionWorkspac
       : Promise.resolve([]),
   ]);
   const isAdmin = sessionVideos.length > 0 && (await currentProfile())?.role === "admin";
+  const reviewResults = detail.learningResults.filter((result) => result.kind === "session_review");
+  const reviewStatuses = new Set(reviewResults.map((result) => result.status));
+  const reviewResultStatus = reviewStatuses.size === 1
+    ? reviewResults[0].status
+    : reviewStatuses.has("revised")
+      ? "revised"
+      : reviewStatuses.has("withdrawn")
+        ? "withdrawn"
+        : reviewStatuses.has("published")
+          ? "published"
+          : "draft";
   const reportByStudent = new Map(report.rows.flatMap((row) => row.studentId ? [[row.studentId, row] as const] : []));
   const studentRows: SessionStudentPostworkRow[] = detail.roster.map((student) => {
     const reportRow = reportByStudent.get(student.studentId);
@@ -114,8 +124,8 @@ export async function SessionPostworkPanel({ detail }: { detail: SessionWorkspac
         <SessionStudentPostworkCards
           sessionId={detail.id}
           rows={studentRows}
-          knowledgeSummary={reviewData.knowledgeSummary}
           initialReviews={reviewData.records}
+          resultStatus={reviewResultStatus}
           canWriteReview={detail.capabilities.canWriteReview}
           followupTask={followupTask ? { id: followupTask.id, status: followupTask.status } : null}
         />

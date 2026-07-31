@@ -154,6 +154,32 @@ export async function withdrawSessionLearningResultsAction(sessionId: string, re
   }
 }
 
+export async function publishSessionReviewsAction(sessionId: string): Promise<ActionResult> {
+  try {
+    const id = parse(uuid, sessionId);
+    const { supabase } = await authorizedClient("review.write");
+    const { error } = await supabase.rpc("publish_session_reviews", { p_session_id: id });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["SESSION_NOT_FOUND", "REVIEW_NOT_FOUND", ...COMMON_CODES]);
+  }
+}
+
+export async function withdrawSessionReviewsAction(sessionId: string, reason: string): Promise<ActionResult> {
+  try {
+    const value = parse(withdrawSessionSchema, { sessionId, reason });
+    const { supabase } = await authorizedClient("review.write");
+    const { error } = await supabase.rpc("withdraw_session_reviews", {
+      p_session_id: value.sessionId,
+      p_reason: value.reason,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["SESSION_NOT_FOUND", "INVALID_STATE", ...COMMON_CODES]);
+  }
+}
 export async function publishSessionVideoReviewAction(videoId: string): Promise<ActionResult<{ headId: string }>> {
   try {
     const id = parse(uuid, videoId);

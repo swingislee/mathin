@@ -6,6 +6,7 @@ do $$
 declare
   failures text[] := '{}';
   review_definition text := pg_get_functiondef('public.get_my_session_reviews(timestamptz,timestamptz)'::regprocedure);
+  knowledge_definition text := pg_get_functiondef('public.get_my_knowledge_summaries(timestamptz,timestamptz)'::regprocedure);
   stage_definition text := pg_get_functiondef('public.save_stage_report_draft(uuid,uuid,date,date,text,text,text,timestamptz,uuid)'::regprocedure);
   transition_definition text := pg_get_functiondef('public.record_learning_result_transition(uuid,uuid,text,text,text,uuid,boolean)'::regprocedure);
   notification_definition text := pg_get_functiondef('public.stage_notification_for_domain_event()'::regprocedure);
@@ -47,6 +48,9 @@ begin
   end if;
   if transition_definition not ilike '%insert into public.domain_events%'
      or transition_definition not ilike '%target_user_id%'
+     or transition_definition not ilike '%learning_result.review_submitted%'
+     or transition_definition not ilike '%learning_result.changes_requested%'
+     or transition_definition not ilike '%''title'', title_value%'
      or notification_definition not ilike '%enqueue_job%'
      or notification_definition not ilike '%notification_deliveries%' then
     failures := array_append(failures, 'result notifications do not enter the durable delivery pipeline');
@@ -110,12 +114,13 @@ select set_config('test.r16_session_id', :'session_id', true);
 select set_config('test.r16_student_id', :'student_id', true);
 select set_config('test.r16_parent_id', :'parent_id', true);
 select set_config('test.r16_teacher_id', :'teacher_id', true);
+select set_config('test.r16_admin_id', :'admin_id', true);
 select set_config('test.r16_term_id', :'term_id', true);
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', :'teacher_id', true);
-select public.save_session_reviews(
-  :'session_id'::uuid, '__R1_6_INTERNAL_SUMMARY__',
+select public.save_session_reviews_v2(
+  :'session_id'::uuid,
   jsonb_build_array(jsonb_build_object(
     'studentId', :'student_id', 'entryScore', 60, 'exitScore', 80,
     'focus', 4, 'participation', 5, 'mastery', 4, 'comment', '__R1_6_REVIEW_V1__'
@@ -137,7 +142,8 @@ begin
   if exists(select 1 from public.learning_result_heads where session_id = current_setting('test.r16_session_id')::uuid) then
     raise exception 'R1_6_PARENT_READ_RESULT_HEAD';
   end if;
-  if exists(select 1 from public.get_my_session_reviews('2000-01-01', '2100-01-01') where session_id = current_setting('test.r16_session_id')::uuid) then
+  if exists(select 1 from public.get_my_knowledge_summaries('2000-01-01', '2100-01-01') where session_id = current_setting('test.r16_session_id')::uuid)
+     or exists(select 1 from public.get_my_session_reviews('2000-01-01', '2100-01-01') where session_id = current_setting('test.r16_session_id')::uuid) then
     raise exception 'R1_6_DRAFT_RESULT_VISIBLE';
   end if;
   if not exists(
@@ -148,35 +154,90 @@ end
 $$;
 reset role;
 
+-- Knowledge summary publication is independent from per-student reviews.
 set local role authenticated;
 select set_config('request.jwt.claim.sub', :'teacher_id', true);
 select public.publish_session_family_brief(:'session_id'::uuid);
+select public.publish_session_family_brief(:'session_id'::uuid);
 reset role;
 
-select id as session_head_id from public.learning_result_heads
- where kind = 'session_result' and session_id = :'session_id'::uuid and student_id = :'student_id'::uuid \gset
-select set_config('test.r16_session_head_id', :'session_head_id', true);
+select id as summary_head_id from public.learning_result_heads
+ where kind = 'knowledge_summary' and session_id = :'session_id'::uuid and student_id = :'student_id'::uuid \gset
+select set_config('test.r16_summary_head_id', :'summary_head_id', true);
 
 do $$
 declare failures text[] := '{}';
 begin
-  if (select status from public.learning_result_heads where id = current_setting('test.r16_session_head_id')::uuid) <> 'published' then
-    failures := array_append(failures, 'session result was not published');
+  if (select status from public.learning_result_heads where id = current_setting('test.r16_summary_head_id')::uuid) <> 'published' then
+    failures := array_append(failures, 'knowledge summary was not published');
   end if;
-  if (select count(*) from public.learning_result_revisions where head_id = current_setting('test.r16_session_head_id')::uuid) <> 1 then
-    failures := array_append(failures, 'first session revision missing');
+  if (select count(*) from public.learning_result_revisions where head_id = current_setting('test.r16_summary_head_id')::uuid) <> 1 then
+    failures := array_append(failures, 'knowledge summary publication was not idempotent');
   end if;
-  if (select content ->> 'comment' from public.learning_result_revisions where head_id = current_setting('test.r16_session_head_id')::uuid and revision_no = 1) <> '__R1_6_REVIEW_V1__' then
-    failures := array_append(failures, 'first session snapshot mismatch');
+  if (select content ->> 'learningSummary' from public.learning_result_revisions
+       where head_id = current_setting('test.r16_summary_head_id')::uuid and revision_no = 1) <> '__R1_6_PUBLIC_SUMMARY__' then
+    failures := array_append(failures, 'knowledge summary snapshot mismatch');
+  end if;
+  if exists(
+    select 1 from public.learning_result_heads
+     where kind = 'session_review' and session_id = current_setting('test.r16_session_id')::uuid and status = 'published'
+  ) then failures := array_append(failures, 'knowledge summary publication also published reviews'); end if;
+  if not exists(
+    select 1 from public.notifications notification_row
+    join public.domain_events event_row on event_row.id = notification_row.source_event_id
+    where event_row.entity_id = current_setting('test.r16_summary_head_id')::uuid
+      and notification_row.recipient_id = current_setting('test.r16_parent_id')::uuid
+      and notification_row.notification_key = 'learning_result.published'
+      and notification_row.deep_link like '%#learning-results'
+  ) then failures := array_append(failures, 'knowledge summary notification missing or not actionable'); end if;
+  if cardinality(failures) > 0 then raise exception 'R1-6 summary publish failed: %', array_to_string(failures, ', '); end if;
+end
+$$;
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'parent_id', true);
+do $$
+begin
+  if not exists(
+    select 1 from public.get_my_knowledge_summaries('2000-01-01', '2100-01-01')
+     where session_id = current_setting('test.r16_session_id')::uuid and learning_summary = '__R1_6_PUBLIC_SUMMARY__'
+  ) then raise exception 'R1_6_SUMMARY_NOT_VISIBLE'; end if;
+  if exists(
+    select 1 from public.get_my_session_reviews('2000-01-01', '2100-01-01')
+     where session_id = current_setting('test.r16_session_id')::uuid
+  ) then raise exception 'R1_6_REVIEW_LEAKED_WITH_SUMMARY'; end if;
+end
+$$;
+reset role;
+
+-- Per-student reviews are published through their own action.
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'teacher_id', true);
+select public.publish_session_reviews(:'session_id'::uuid);
+reset role;
+
+select id as review_head_id from public.learning_result_heads
+ where kind = 'session_review' and session_id = :'session_id'::uuid and student_id = :'student_id'::uuid \gset
+select set_config('test.r16_review_head_id', :'review_head_id', true);
+
+do $$
+declare failures text[] := '{}';
+begin
+  if (select status from public.learning_result_heads where id = current_setting('test.r16_review_head_id')::uuid) <> 'published' then
+    failures := array_append(failures, 'session review was not published');
+  end if;
+  if (select content ->> 'comment' from public.learning_result_revisions
+       where head_id = current_setting('test.r16_review_head_id')::uuid and revision_no = 1) <> '__R1_6_REVIEW_V1__' then
+    failures := array_append(failures, 'session review snapshot mismatch');
   end if;
   if not exists(
     select 1 from public.notifications notification_row
     join public.domain_events event_row on event_row.id = notification_row.source_event_id
-    where event_row.entity_id = current_setting('test.r16_session_head_id')::uuid
+    where event_row.entity_id = current_setting('test.r16_review_head_id')::uuid
       and notification_row.recipient_id = current_setting('test.r16_parent_id')::uuid
       and notification_row.notification_key = 'learning_result.published'
-  ) then failures := array_append(failures, 'published result notification missing'); end if;
-  if cardinality(failures) > 0 then raise exception 'R1-6 session publish failed: %', array_to_string(failures, ', '); end if;
+  ) then failures := array_append(failures, 'session review notification missing'); end if;
+  if cardinality(failures) > 0 then raise exception 'R1-6 review publish failed: %', array_to_string(failures, ', '); end if;
 end
 $$;
 
@@ -185,18 +246,19 @@ select set_config('request.jwt.claim.sub', :'parent_id', true);
 select exists(
   select 1 from public.get_my_session_reviews('2000-01-01', '2100-01-01')
    where session_id = :'session_id'::uuid and comment = '__R1_6_REVIEW_V1__'
-) as r16_session_published_visible \gset
-\if :r16_session_published_visible
+) as r16_review_published_visible \gset
+\if :r16_review_published_visible
 \else
-  \echo R1-6 published session result not visible
+  \echo R1-6 published session review not visible
   select 1 / 0;
 \endif
 reset role;
 
+-- Editing a review revises only the review projection; the summary stays visible.
 set local role authenticated;
 select set_config('request.jwt.claim.sub', :'teacher_id', true);
-select public.save_session_reviews(
-  :'session_id'::uuid, '__R1_6_INTERNAL_SUMMARY_V2__',
+select public.save_session_reviews_v2(
+  :'session_id'::uuid,
   jsonb_build_array(jsonb_build_object(
     'studentId', :'student_id', 'entryScore', 61, 'exitScore', 88,
     'focus', 5, 'participation', 5, 'mastery', 5, 'comment', '__R1_6_REVIEW_V2__'
@@ -206,14 +268,14 @@ reset role;
 
 do $$
 begin
-  if (select status from public.learning_result_heads where id = current_setting('test.r16_session_head_id')::uuid) <> 'revised' then
-    raise exception 'R1_6_SESSION_EDIT_DID_NOT_REVISE';
+  if (select status from public.learning_result_heads where id = current_setting('test.r16_review_head_id')::uuid) <> 'revised' then
+    raise exception 'R1_6_REVIEW_EDIT_DID_NOT_REVISE';
   end if;
-  if (select count(*) from public.learning_result_revisions where head_id = current_setting('test.r16_session_head_id')::uuid) <> 1 then
-    raise exception 'R1_6_SOURCE_EDIT_MUTATED_HISTORY';
+  if (select status from public.learning_result_heads where id = current_setting('test.r16_summary_head_id')::uuid) <> 'published' then
+    raise exception 'R1_6_REVIEW_EDIT_REVISED_SUMMARY';
   end if;
-  if (select content ->> 'comment' from public.learning_result_revisions where head_id = current_setting('test.r16_session_head_id')::uuid and revision_no = 1) <> '__R1_6_REVIEW_V1__' then
-    raise exception 'R1_6_FIRST_REVISION_CHANGED';
+  if (select count(*) from public.learning_result_revisions where head_id = current_setting('test.r16_review_head_id')::uuid) <> 1 then
+    raise exception 'R1_6_REVIEW_EDIT_MUTATED_HISTORY';
   end if;
 end
 $$;
@@ -223,53 +285,76 @@ select set_config('request.jwt.claim.sub', :'parent_id', true);
 do $$
 begin
   if exists(select 1 from public.get_my_session_reviews('2000-01-01', '2100-01-01') where session_id = current_setting('test.r16_session_id')::uuid) then
-    raise exception 'R1_6_REVISED_SESSION_RESULT_VISIBLE';
+    raise exception 'R1_6_REVISED_REVIEW_VISIBLE';
+  end if;
+  if not exists(select 1 from public.get_my_knowledge_summaries('2000-01-01', '2100-01-01') where session_id = current_setting('test.r16_session_id')::uuid) then
+    raise exception 'R1_6_REVIEW_EDIT_HID_SUMMARY';
   end if;
   if not exists(
     select 1 from public.get_my_session_review_states('2000-01-01', '2100-01-01')
      where session_id = current_setting('test.r16_session_id')::uuid and availability_state = 'withdrawn'
-  ) then raise exception 'R1_6_REVISED_SESSION_STATE_MISSING'; end if;
+  ) then raise exception 'R1_6_REVISED_REVIEW_STATE_MISSING'; end if;
 end
 $$;
 reset role;
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', :'teacher_id', true);
-select public.publish_session_family_brief(:'session_id'::uuid);
-select public.publish_session_family_brief(:'session_id'::uuid);
+select public.publish_session_reviews(:'session_id'::uuid);
+select public.publish_session_reviews(:'session_id'::uuid);
 reset role;
 
 do $$
 begin
-  if (select count(*) from public.learning_result_revisions where head_id = current_setting('test.r16_session_head_id')::uuid) <> 2 then
-    raise exception 'R1_6_SESSION_REPUBLISH_NOT_IDEMPOTENT';
+  if (select count(*) from public.learning_result_revisions where head_id = current_setting('test.r16_review_head_id')::uuid) <> 2 then
+    raise exception 'R1_6_REVIEW_REPUBLISH_NOT_IDEMPOTENT';
   end if;
-  if (select content ->> 'comment' from public.learning_result_revisions where head_id = current_setting('test.r16_session_head_id')::uuid and revision_no = 2) <> '__R1_6_REVIEW_V2__' then
-    raise exception 'R1_6_SECOND_REVISION_MISMATCH';
+  if (select content ->> 'comment' from public.learning_result_revisions
+       where head_id = current_setting('test.r16_review_head_id')::uuid and revision_no = 2) <> '__R1_6_REVIEW_V2__' then
+    raise exception 'R1_6_SECOND_REVIEW_REVISION_MISMATCH';
   end if;
 end
 $$;
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', :'teacher_id', true);
-select public.withdraw_session_learning_results(:'session_id'::uuid, '__R1_6_SESSION_WITHDRAW__');
+select public.withdraw_session_reviews(:'session_id'::uuid, '__R1_6_REVIEW_WITHDRAW__');
 reset role;
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'parent_id', true);
+do $$
+begin
+  if exists(select 1 from public.get_my_session_reviews('2000-01-01', '2100-01-01') where session_id = current_setting('test.r16_session_id')::uuid) then
+    raise exception 'R1_6_WITHDRAWN_REVIEW_VISIBLE';
+  end if;
+  if not exists(select 1 from public.get_my_knowledge_summaries('2000-01-01', '2100-01-01') where session_id = current_setting('test.r16_session_id')::uuid) then
+    raise exception 'R1_6_REVIEW_WITHDRAW_HID_SUMMARY';
+  end if;
+end
+$$;
+reset role;
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'teacher_id', true);
+select public.withdraw_session_learning_results(:'session_id'::uuid, '__R1_6_SUMMARY_WITHDRAW__');
+reset role;
+
 set local role authenticated;
 select set_config('request.jwt.claim.sub', :'parent_id', true);
 select not exists(
-  select 1 from public.get_my_session_reviews('2000-01-01', '2100-01-01')
+  select 1 from public.get_my_knowledge_summaries('2000-01-01', '2100-01-01')
    where session_id = :'session_id'::uuid
-) as r16_withdrawn_session_hidden \gset
-\if :r16_withdrawn_session_hidden
+) as r16_withdrawn_summary_hidden \gset
+\if :r16_withdrawn_summary_hidden
 \else
-  \echo R1-6 withdrawn session result remained visible
+  \echo R1-6 withdrawn summary remained visible
   select 1 / 0;
 \endif
 reset role;
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', :'teacher_id', true);
-select result_head_id as stage_head_id, result_revision_id as stage_revision_1
+select set_config('request.jwt.claim.sub', :'teacher_id', true);select result_head_id as stage_head_id, result_revision_id as stage_revision_1
   from public.save_stage_report_draft(
     :'student_id'::uuid, :'term_id'::uuid, :'term_start'::date, :'report_end'::date,
     '__R1_6_STAGE_TITLE__', '__R1_6_STAGE_SUMMARY_V1__', '__R1_6_STAGE_COMMENT__', now(), null
@@ -307,6 +392,45 @@ reset role;
 set local role authenticated;
 select set_config('request.jwt.claim.sub', :'teacher_id', true);
 select public.submit_learning_result_review(:'stage_head_id'::uuid);
+reset role;
+
+do $$
+begin
+  if not exists(
+    select 1 from public.notifications notification_row
+    join public.domain_events event_row on event_row.id = notification_row.source_event_id
+    where event_row.entity_id = current_setting('test.r16_stage_head_id')::uuid
+      and notification_row.recipient_id = current_setting('test.r16_admin_id')::uuid
+      and notification_row.notification_key = 'learning_result.review_submitted'
+      and notification_row.deep_link like '/dashboard/students/%?tab=learning&report=%'
+  ) then raise exception 'R1_6_REVIEW_SUBMITTED_NOTIFICATION_MISSING'; end if;
+end
+$$;
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'admin_id', true);
+select public.decide_learning_result_review(:'stage_head_id'::uuid, 'changes_requested', '__R1_6_STAGE_CHANGES__');
+reset role;
+
+do $$
+begin
+  if not exists(
+    select 1 from public.notifications notification_row
+    join public.domain_events event_row on event_row.id = notification_row.source_event_id
+    where event_row.entity_id = current_setting('test.r16_stage_head_id')::uuid
+      and notification_row.recipient_id = current_setting('test.r16_teacher_id')::uuid
+      and notification_row.notification_key = 'learning_result.changes_requested'
+      and notification_row.deep_link like '/dashboard/students/%?tab=learning&report=%'
+  ) then raise exception 'R1_6_CHANGES_REQUESTED_NOTIFICATION_MISSING'; end if;
+end
+$$;
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'teacher_id', true);
+select public.submit_learning_result_review(:'stage_head_id'::uuid);
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'admin_id', true);
 select public.decide_learning_result_review(:'stage_head_id'::uuid, 'publish', '__R1_6_STAGE_APPROVED__');
 reset role;
 
@@ -346,7 +470,13 @@ reset role;
 set local role authenticated;
 select set_config('request.jwt.claim.sub', :'teacher_id', true);
 select public.submit_learning_result_review(:'stage_head_id'::uuid);
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'admin_id', true);
 select public.decide_learning_result_review(:'stage_head_id'::uuid, 'publish', '__R1_6_STAGE_REAPPROVED__');
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'teacher_id', true);
 select public.withdraw_learning_result(:'stage_head_id'::uuid, '__R1_6_STAGE_WITHDRAW__');
 reset role;
 
@@ -478,14 +608,14 @@ begin
   begin
     update public.learning_result_revisions
        set content = jsonb_set(content, '{tampered}', 'true')
-     where head_id = current_setting('test.r16_session_head_id')::uuid and revision_no = 1;
+     where head_id = current_setting('test.r16_review_head_id')::uuid and revision_no = 1;
     raise exception 'R1_6_REVISION_UPDATE_ACCEPTED';
   exception when others then
     if SQLERRM <> 'LEARNING_RESULT_HISTORY_IMMUTABLE' then raise; end if;
   end;
   begin
     delete from public.learning_result_events
-     where head_id = current_setting('test.r16_session_head_id')::uuid;
+     where head_id = current_setting('test.r16_review_head_id')::uuid;
     raise exception 'R1_6_EVENT_DELETE_ACCEPTED';
   exception when others then
     if SQLERRM <> 'LEARNING_RESULT_HISTORY_IMMUTABLE' then raise; end if;

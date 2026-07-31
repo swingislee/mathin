@@ -36,7 +36,7 @@ describe("R1-5 family learning contracts", () => {
 
   it("renders ended learning checks in the student class and progress views", () => {
     const customer = read("src/features/school/customer.ts");
-    const classPage = read("src/app/[locale]/classroom/[classId]/page.tsx");
+    const classPage = read("src/app/[locale]/dashboard/learning/classes/[classId]/page.tsx");
     const progressPage = read("src/app/[locale]/dashboard/progress/page.tsx");
     const results = read("src/features/school/StudentLearningCheckResults.tsx");
     const zh = JSON.parse(read("messages/zh.json"));
@@ -218,7 +218,7 @@ describe("R1-5 family learning contracts", () => {
     expect(customer).toContain("getMySessionReviewStates");
     expect(results).toContain("reviewStatusHint_");
     expect(results).toContain("CustomerVideoButton");
-    expect(childrenPage).toContain('id="knowledge-summary"');
+    expect(childrenPage).toContain('id="learning-results"');
     expect(parentHome).toContain("recentReviewState.availabilityState");
   });
 

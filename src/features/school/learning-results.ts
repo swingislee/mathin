@@ -3,7 +3,13 @@ import "server-only";
 import type { Json } from "@/lib/database.types";
 import { createClient } from "@/lib/supabase/server";
 
-export const LEARNING_RESULT_KINDS = ["session_result", "video_review", "stage_report"] as const;
+export const LEARNING_RESULT_KINDS = [
+  "session_result",
+  "knowledge_summary",
+  "session_review",
+  "video_review",
+  "stage_report",
+] as const;
 export type LearningResultKind = (typeof LEARNING_RESULT_KINDS)[number];
 
 export const LEARNING_RESULT_STATUSES = ["draft", "review", "published", "withdrawn", "revised"] as const;

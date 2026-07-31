@@ -75,7 +75,7 @@ export function JoinClassroomForm() {
     startTransition(async () => {
       const id = await joinClassroom(code);
       if (id) {
-        router.push(`/classroom/${id}`);
+        router.push("/dashboard/learning/classes/" + id);
       } else {
         setFailed(true);
       }

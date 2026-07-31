@@ -44,6 +44,7 @@ export function ChangeBell({
   const t = useTranslations("changes");
   const router = useRouter();
   const [dismissedEventIds, setDismissedEventIds] = useState<Set<string>>(() => new Set());
+  const [popoverOpen, setPopoverOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const events = initialEvents.filter((event) => !dismissedEventIds.has(event.id));
   const unread = events.length;
@@ -86,7 +87,14 @@ export function ChangeBell({
 
   const openEvent = (event: ChangeEvent) => {
     setDismissedEventIds((current) => new Set(current).add(event.id));
-    if (event.link) router.push(event.link);
+    setPopoverOpen(false);
+    if (event.link) {
+      router.push(event.link);
+      const hash = event.link.split("#")[1];
+      if (hash) {
+        window.setTimeout(() => document.getElementById(hash)?.scrollIntoView({ block: "start" }), 120);
+      }
+    }
     startTransition(async () => {
       try {
         await markChangeFeedItemRead(event.id);
@@ -115,7 +123,7 @@ export function ChangeBell({
   };
 
   return (
-    <Popover>
+    <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
       <PopoverTrigger asChild>
         <button
           type="button"

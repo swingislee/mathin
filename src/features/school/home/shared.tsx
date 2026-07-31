@@ -157,7 +157,7 @@ export function buildCustomerClassroomTile({
 }) {
   labels.set("myClassrooms", t("classroomsTitle"));
   extras.set("myClassrooms", {
-    href: "/classroom",
+    href: "/dashboard/learning/classes",
     minimal: <MinimalBody value={classrooms.length} />,
     compact: (
       <CompactBody value={classrooms.length} line={classrooms[0] ? classrooms[0].name || t("untitled") : t("noClassrooms")} />
@@ -166,13 +166,13 @@ export function buildCustomerClassroomTile({
   contents.set(
     "myClassrooms",
     classrooms.length === 0 ? (
-      <EmptyBody text={t("noClassrooms")} href="/classroom" linkLabel={t("goClassrooms")} />
+      <EmptyBody text={t("noClassrooms")} href="/dashboard/learning/classes" linkLabel={t("goClassrooms")} />
     ) : (
       <ul className="min-h-0 flex-1 divide-y overflow-hidden">
         {classrooms.map((classroom) => (
           <li key={classroom.id} className="flex items-center gap-3 py-2 text-sm">
             <School size={16} className="shrink-0 text-muted" aria-hidden />
-            <Link href={`/classroom/${classroom.id}`} className="min-w-0 flex-1 truncate font-medium hover:underline">
+            <Link href={"/dashboard/learning/classes/" + classroom.id} className="min-w-0 flex-1 truncate font-medium hover:underline">
               {classroom.name || t("untitled")}
             </Link>
             <span className="shrink-0 rounded-full bg-line/50 px-2 py-0.5 text-xs text-muted">
