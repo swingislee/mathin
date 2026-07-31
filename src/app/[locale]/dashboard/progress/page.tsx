@@ -1,6 +1,7 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { BindCodeForm } from "@/features/school/BindCodeForm";
 import {
+  getMyLearningCheckResults,
   getMyLearningSummary,
   getMyReviewedVideos,
   getMySessionReviews,
@@ -15,6 +16,7 @@ import {
   DashboardPage,
 } from "@/features/school/dashboard-page";
 import { FamilyLearningResults } from "@/features/school/FamilyLearningResults";
+import { StudentLearningCheckResults } from "@/features/school/StudentLearningCheckResults";
 import { addDays } from "@/features/school/schedule";
 import { requireDashboardEnvironment } from "@/lib/auth";
 
@@ -37,14 +39,15 @@ export default async function ProgressPage({ params }: { params: Promise<{ local
   const students = await safe(getMyStudents, []);
   const studentId = students[0]?.id ?? null;
   const now = new Date();
-  const [summaries, reviews, states, videos] = studentId
+  const [summaries, reviews, states, videos, learningChecks] = studentId
     ? await Promise.all([
         safe(getMyLearningSummary, []),
         safe(() => getMySessionReviews(addDays(now, -180).toISOString(), now.toISOString()), []),
         safe(() => getMySessionReviewStates(addDays(now, -180).toISOString(), now.toISOString()), []),
         safe(getMyReviewedVideos, []),
+        safe(getMyLearningCheckResults, []),
       ])
-    : [[], [], [], []];
+    : [[], [], [], [], []];
   const summary = summaries.find((row) => row.studentId === studentId) ?? null;
   const submissions = summary?.recentSubmissions ?? [];
   const date = new Intl.DateTimeFormat(locale, { dateStyle: "medium" });
@@ -63,6 +66,11 @@ export default async function ProgressPage({ params }: { params: Promise<{ local
               <DashboardCard title={t("myStarsTitle")}>
                 <p className="font-display text-3xl tabular-nums">{summary?.starTotal ?? 0}</p>
                 <p className="mt-1 text-xs text-muted">{t("starTotal")}</p>
+              </DashboardCard>
+
+              <DashboardCard title={studentsT("learningChecksTitle")}>
+                <p className="mb-4 text-xs text-muted">{studentsT("learningChecksIntro")}</p>
+                <StudentLearningCheckResults locale={locale} records={learningChecks} />
               </DashboardCard>
 
               <DashboardCard title={studentsT("submissions")}>

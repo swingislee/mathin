@@ -34,6 +34,30 @@ describe("R1-5 family learning contracts", () => {
     expect(studentLearningChecksMigration).not.toContain("public.guardian_can");
   });
 
+  it("renders ended learning checks in the student class and progress views", () => {
+    const customer = read("src/features/school/customer.ts");
+    const classPage = read("src/app/[locale]/classroom/[classId]/page.tsx");
+    const progressPage = read("src/app/[locale]/dashboard/progress/page.tsx");
+    const results = read("src/features/school/StudentLearningCheckResults.tsx");
+    const zh = JSON.parse(read("messages/zh.json"));
+    const en = JSON.parse(read("messages/en.json"));
+    expect(customer).toContain('rpc("get_my_learning_check_results"');
+    expect(customer).toContain("position: row.check_position");
+    expect(classPage).toContain("getMyLearningCheckResults({ classroomId: classId })");
+    expect(classPage).toContain("<StudentLearningCheckResults");
+    expect(progressPage).toContain("getMyLearningCheckResults");
+    expect(progressPage).toContain("<StudentLearningCheckResults");
+    expect(progressPage).toContain("safe(getMyLearningCheckResults, [])");
+    expect(results).toContain("learningStatus_");
+    expect(results).toContain("showClassroom");
+    for (const messages of [zh, en]) {
+      expect(messages.school.students.learningChecksTitle).toBeTruthy();
+      expect(messages.school.students.learningChecksIntro).toBeTruthy();
+      expect(messages.school.students.learningChecksEmpty).toBeTruthy();
+      expect(messages.school.students.learningCheckCount).toBeTruthy();
+    }
+  });
+
   it("accepts photographed paper homework through governed private storage", () => {
     const form = read("src/features/classroom/assignments/SubmissionForm.tsx");
     const compression = read("src/lib/media/compress-image.ts");

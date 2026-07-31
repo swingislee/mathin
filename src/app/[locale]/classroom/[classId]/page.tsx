@@ -1,11 +1,12 @@
 import { notFound, redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { BookOpen, CalendarDays, ClipboardList, DoorOpen, UserRound } from "lucide-react";
+import { BookOpen, CalendarDays, ClipboardList, DoorOpen, ListChecks, UserRound } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { SectionShell } from "@/components/section-shell";
 import { buttonVariants } from "@/components/ui/button";
 import { getClassroom, listAssignments, listClassSessions } from "@/features/classroom/actions";
-import { getMyStudents } from "@/features/school/customer";
+import { getMyLearningCheckResults, getMyStudents } from "@/features/school/customer";
+import { StudentLearningCheckResults } from "@/features/school/StudentLearningCheckResults";
 import { Link } from "@/i18n/navigation";
 import { requireUser } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -18,19 +19,21 @@ export default async function ClassroomHomePage({ params }: { params: Promise<{ 
   await requireUser(locale);
   if (!UUID_PATTERN.test(classId)) notFound();
 
-  const [t, tSessions, tAssignments, classroom] = await Promise.all([
+  const [t, tSessions, tAssignments, tStudents, classroom] = await Promise.all([
     getTranslations("classroom.home"),
     getTranslations("classroom.sessions"),
     getTranslations("classroom.assignments"),
+    getTranslations("school.students"),
     getClassroom(classId),
   ]);
   if (!classroom) notFound();
   if (classroom.myRole === "teacher") redirect("/" + locale + "/dashboard/classes/" + classId);
 
-  const [sessions, assignments, myStudents] = await Promise.all([
+  const [sessions, assignments, myStudents, learningChecks] = await Promise.all([
     listClassSessions(classId),
     listAssignments(classId),
     getMyStudents(),
+    getMyLearningCheckResults({ classroomId: classId }),
   ]);
   const studentId = myStudents[0]?.id ?? null;
   const teacherName = classroom.members.find((member) => member.role === "teacher")?.displayName || t("anonymous");
@@ -102,6 +105,14 @@ export default async function ClassroomHomePage({ params }: { params: Promise<{ 
                 ))}
               </ol>
             )}
+          </section>
+
+          <section className="mt-8">
+            <h2 className="flex items-center gap-2 text-sm font-medium text-ink"><ListChecks size={16} />{tStudents("learningChecksTitle")}</h2>
+            <p className="mt-1 text-xs text-muted">{tStudents("learningChecksIntro")}</p>
+            <div className="mt-3 rounded-2xl border border-line bg-card p-4">
+              <StudentLearningCheckResults locale={locale} records={learningChecks} showClassroom={false} />
+            </div>
           </section>
         </main>
 

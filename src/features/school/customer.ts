@@ -97,6 +97,51 @@ export async function getMyLearningSummary(): Promise<MyLearningSummary[]> {
   }));
 }
 
+export type MyLearningCheckStatus = "explained" | "independent" | "prompted" | "imitated" | "incomplete";
+
+export interface MyLearningCheckResult {
+  checkId: string;
+  sessionId: string;
+  studentId: string;
+  classroomId: string;
+  classroomName: string;
+  lectureName: string;
+  scheduledAt: string | null;
+  endedAt: string;
+  position: number;
+  checkTitle: string;
+  status: MyLearningCheckStatus;
+  markedAt: string;
+}
+
+export async function getMyLearningCheckResults(options: {
+  classroomId?: string;
+  fromIso?: string;
+  toIso?: string;
+} = {}): Promise<MyLearningCheckResult[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("get_my_learning_check_results", {
+    p_classroom_id: options.classroomId,
+    p_from: options.fromIso,
+    p_to: options.toIso,
+  });
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row) => ({
+    checkId: row.check_id,
+    sessionId: row.session_id,
+    studentId: row.student_id,
+    classroomId: row.classroom_id,
+    classroomName: row.classroom_name,
+    lectureName: row.lecture_name,
+    scheduledAt: row.scheduled_at,
+    endedAt: row.ended_at,
+    position: row.check_position,
+    checkTitle: row.check_title,
+    status: row.status as MyLearningCheckStatus,
+    markedAt: row.marked_at,
+  }));
+}
+
 export interface MyOrderRow {
   orderId: string;
   orderNo: string;
