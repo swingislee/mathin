@@ -1,6 +1,6 @@
 import type { InteractionTrigger } from "@/features/courseware-doc/interactions";
 import type { GameMirrorState } from "@/features/games/types";
-import type { StrokeItem } from "@/features/whiteboard/types";
+import type { BoardItem } from "@/features/whiteboard/types";
 import type { CoursewarePage, SessionEvent } from "../types";
 import type { VideoCtl } from "./VideoStage";
 
@@ -17,7 +17,7 @@ export interface LiveState {
   started: boolean;
   ended: boolean;
   hands: Record<string, boolean>;
-  boards: Record<string, StrokeItem[]>;
+  boards: Record<string, BoardItem[]>;
   games: Record<string, GameMirrorState>;
   video: Record<string, VideoCtl>;
   /** doc 页点击步进流（P6-5）：pageId → 有序触发列表，回放可收敛舞台状态。 */
@@ -71,7 +71,7 @@ export function reduceEvent(state: LiveState, ev: SessionEvent): LiveState {
       const pageKey = String(ev.payload.pageKey ?? "");
       const items = ev.payload.items;
       if (!pageKey || !Array.isArray(items)) return state;
-      return { ...state, boards: { ...state.boards, [pageKey]: items as StrokeItem[] } };
+      return { ...state, boards: { ...state.boards, [pageKey]: items as BoardItem[] } };
     }
     case "game_state": {
       const pageId = String(ev.payload.pageId ?? "");

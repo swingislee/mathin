@@ -8,7 +8,7 @@ import { useStore } from "zustand";
 import { Button } from "@/components/ui/button";
 import { CanvasSurface } from "@/features/whiteboard/CanvasSurface";
 import { createWhiteboardStore } from "@/features/whiteboard/store";
-import type { StrokeItem, Tool } from "@/features/whiteboard/types";
+import { isStrokeItem, type StrokeItem, type Tool } from "@/features/whiteboard/types";
 import { useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import {
@@ -90,7 +90,7 @@ export function CoursewareAnnotationBoard({
     const request = saveCoursewareAnnotationAction({
       sessionId,
       pageDocId,
-      content: state.items,
+      content: state.items.filter(isStrokeItem),
       baseVersion: serverVersionRef.current,
     }).then((result) => {
       if (!result.ok) {

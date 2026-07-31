@@ -4,23 +4,51 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import {
   COLOR_TOKENS,
-  type StrokeItem,
+  SHAPE_KINDS,
+  type BoardItem,
   type WhiteboardMemberInfo,
   type WhiteboardMeta,
   type WhiteboardRecord,
 } from "./types";
 
 const MAX_SNAPSHOT_BYTES = 1024 * 1024;
-
-const snapshotSchema = z.array(
-  z.object({
-    id: z.string().min(1).max(64),
-    mode: z.enum(["ink", "erase"]),
-    color: z.enum(COLOR_TOKENS),
-    wNorm: z.number().min(0.0005).max(0.25),
-    points: z.array(z.tuple([z.number().min(-0.5).max(1.5), z.number().min(-0.5).max(1.5)])).min(1).max(4000),
-  }),
-).max(4000);
+const coordinateSchema = z.number().min(-0.5).max(1.5);
+const sizeSchema = z.number().min(0.0005).max(1.5);
+const baseIdSchema = z.string().min(1).max(64);
+const strokeSchema = z.object({
+  id: baseIdSchema,
+  mode: z.enum(["ink", "erase"]),
+  color: z.enum(COLOR_TOKENS),
+  wNorm: z.number().min(0.0005).max(0.25),
+  points: z.array(z.tuple([coordinateSchema, coordinateSchema])).min(1).max(4000),
+});
+const shapeSchema = z.object({
+  id: baseIdSchema,
+  kind: z.literal("shape"),
+  shape: z.enum(SHAPE_KINDS),
+  color: z.enum(COLOR_TOKENS),
+  fill: z.enum(COLOR_TOKENS).nullable(),
+  strokeWidthNorm: z.number().min(0.0005).max(0.1),
+  x: coordinateSchema,
+  y: coordinateSchema,
+  width: sizeSchema,
+  height: sizeSchema,
+  rotation: z.number().min(-3600).max(3600),
+  startAngle: z.number().min(-3600).max(3600).optional(),
+  sweepAngle: z.number().min(-3600).max(3600).optional(),
+});
+const formulaSchema = z.object({
+  id: baseIdSchema,
+  kind: z.literal("formula"),
+  latex: z.string().min(1).max(4000),
+  color: z.enum(COLOR_TOKENS),
+  x: coordinateSchema,
+  y: coordinateSchema,
+  width: sizeSchema,
+  height: sizeSchema,
+  rotation: z.number().min(-3600).max(3600),
+});
+const snapshotSchema = z.array(z.union([strokeSchema, shapeSchema, formulaSchema])).max(4000);
 
 interface WhiteboardRow {
   id: string;
@@ -107,7 +135,7 @@ export async function getWhiteboard(id: string): Promise<WhiteboardRecord | null
   const parsed = snapshotSchema.safeParse(data.snapshot ?? []);
   return {
     ...toMeta(data),
-    snapshot: (parsed.success ? parsed.data : []) as StrokeItem[],
+    snapshot: (parsed.success ? parsed.data : []) as BoardItem[],
     version: data.version,
     canEdit,
     isOwner,

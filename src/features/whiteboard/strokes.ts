@@ -1,6 +1,17 @@
 import { getStroke } from "perfect-freehand";
+import { renderToString } from "katex";
 import { newId } from "@/lib/uuid";
-import type { ColorToken, StrokeItem } from "./types";
+import { shapePolygonPoints } from "./geometry";
+import {
+  isFormulaItem,
+  isShapeItem,
+  isStrokeItem,
+  type BoardItem,
+  type ColorToken,
+  type FormulaItem,
+  type ShapeItem,
+  type StrokeItem,
+} from "./types";
 
 export const newStrokeId = newId;
 
@@ -55,10 +66,10 @@ export function drawItem(
   ctx.restore();
 }
 
-/** 按序重放全部绘制项 = 当前画面。 */
+/** 按序重放笔迹；几何/公式由 SVG 对象层绘制。 */
 export function renderAll(
   ctx: CanvasRenderingContext2D,
-  items: StrokeItem[],
+  items: BoardItem[],
   w: number,
   h: number,
   colorEl: Element,
@@ -66,6 +77,7 @@ export function renderAll(
 ): void {
   ctx.clearRect(0, 0, w, h);
   for (const item of items) {
+    if (!isStrokeItem(item)) continue;
     drawItem(ctx, item, w, h, item.mode === "erase" ? "#000" : resolveColor(colorEl, item.color), basisW);
   }
 }
@@ -80,7 +92,7 @@ function segmentDistance(px: number, py: number, ax: number, ay: number, bx: num
 
 /** 整线擦命中：自最上层向下找第一条距离在阈值内的 ink 笔迹（像素空间计算，避免 16:9 归一化的轴向失真）。 */
 export function hitStrokeId(
-  items: StrokeItem[],
+  items: BoardItem[],
   x: number,
   y: number,
   w: number,
@@ -90,7 +102,7 @@ export function hitStrokeId(
 ): string | null {
   for (let i = items.length - 1; i >= 0; i--) {
     const item = items[i];
-    if (item.mode !== "ink") continue;
+    if (!isStrokeItem(item) || item.mode !== "ink") continue;
     const radius = thresholdPx + (item.wNorm * basisW) / 2;
     const pts = item.points;
     if (pts.length === 1) {
@@ -106,11 +118,98 @@ export function hitStrokeId(
   return null;
 }
 
+function drawShapeCanvas(
+  ctx: CanvasRenderingContext2D,
+  item: ShapeItem,
+  canvasWidth: number,
+  canvasHeight: number,
+  colorEl: Element,
+): void {
+  const width = item.width * canvasWidth;
+  const height = item.height * canvasHeight;
+  const stroke = resolveColor(colorEl, item.color);
+  const fill = item.fill ? resolveColor(colorEl, item.fill) : null;
+  ctx.save();
+  ctx.translate(item.x * canvasWidth, item.y * canvasHeight);
+  ctx.rotate(item.rotation * Math.PI / 180);
+  ctx.lineWidth = Math.max(item.strokeWidthNorm * canvasWidth, 1);
+  ctx.strokeStyle = stroke;
+  ctx.fillStyle = fill ?? "transparent";
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.beginPath();
+  if (item.shape === "line" || item.shape === "arrow") {
+    ctx.moveTo(-width / 2, 0);
+    ctx.lineTo(width / 2, 0);
+    if (item.shape === "arrow") {
+      const head = Math.min(Math.max(width * 0.12, 8), 28);
+      ctx.moveTo(width / 2, 0);
+      ctx.lineTo(width / 2 - head, -head * 0.55);
+      ctx.moveTo(width / 2, 0);
+      ctx.lineTo(width / 2 - head, head * 0.55);
+    }
+  } else if (item.shape === "rectangle") {
+    ctx.rect(-width / 2, -height / 2, width, height);
+  } else if (item.shape === "ellipse") {
+    ctx.ellipse(0, 0, width / 2, height / 2, 0, 0, Math.PI * 2);
+  } else if (item.shape === "arc") {
+    const start = (item.startAngle ?? 0) * Math.PI / 180;
+    const end = start + (item.sweepAngle ?? 360) * Math.PI / 180;
+    ctx.ellipse(0, 0, width / 2, height / 2, 0, start, end, (item.sweepAngle ?? 0) < 0);
+  } else {
+    const points = shapePolygonPoints(item.shape);
+    points.forEach(([x, y], index) => {
+      const px = (x - 0.5) * width;
+      const py = (y - 0.5) * height;
+      if (index === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    });
+    ctx.closePath();
+  }
+  if (fill && !["line", "arrow", "arc"].includes(item.shape)) ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
+
+function formulaMathMl(latex: string): string {
+  return renderToString(latex, { output: "mathml", throwOnError: false, strict: "ignore" });
+}
+
+async function drawFormulaCanvas(
+  ctx: CanvasRenderingContext2D,
+  item: FormulaItem,
+  canvasWidth: number,
+  canvasHeight: number,
+  colorEl: Element,
+): Promise<void> {
+  const width = Math.max(item.width * canvasWidth, 1);
+  const height = Math.max(item.height * canvasHeight, 1);
+  const color = resolveColor(colorEl, item.color);
+  const math = formulaMathMl(item.latex);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:${color};font-size:${Math.max(height * 0.55, 12)}px;overflow:hidden">${math}</div></foreignObject></svg>`;
+  const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
+  try {
+    const image = new Image();
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error("FORMULA_RENDER_FAILED"));
+      image.src = url;
+    });
+    ctx.save();
+    ctx.translate(item.x * canvasWidth, item.y * canvasHeight);
+    ctx.rotate(item.rotation * Math.PI / 180);
+    ctx.drawImage(image, -width / 2, -height / 2, width, height);
+    ctx.restore();
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 const EXPORT_WIDTH = 1920;
 const EXPORT_HEIGHT = 1080;
 
 /** 导出 PNG：离屏按逻辑 16:9 重放，底色用当前主题纸色。 */
-export function exportPng(items: StrokeItem[], fileName: string, colorEl: Element): void {
+export async function exportPng(items: BoardItem[], fileName: string, colorEl: Element): Promise<void> {
   const canvas = document.createElement("canvas");
   canvas.width = EXPORT_WIDTH;
   canvas.height = EXPORT_HEIGHT;
@@ -119,15 +218,20 @@ export function exportPng(items: StrokeItem[], fileName: string, colorEl: Elemen
   ctx.fillStyle = getComputedStyle(colorEl).getPropertyValue("--paper").trim() || "#fff";
   ctx.fillRect(0, 0, EXPORT_WIDTH, EXPORT_HEIGHT);
   for (const item of items) {
-    drawItem(ctx, item, EXPORT_WIDTH, EXPORT_HEIGHT, item.mode === "erase" ? "#000" : resolveColor(colorEl, item.color));
+    if (isStrokeItem(item)) {
+      drawItem(ctx, item, EXPORT_WIDTH, EXPORT_HEIGHT, item.mode === "erase" ? "#000" : resolveColor(colorEl, item.color));
+    } else if (isShapeItem(item)) {
+      drawShapeCanvas(ctx, item, EXPORT_WIDTH, EXPORT_HEIGHT, colorEl);
+    } else if (isFormulaItem(item)) {
+      await drawFormulaCanvas(ctx, item, EXPORT_WIDTH, EXPORT_HEIGHT, colorEl);
+    }
   }
-  canvas.toBlob((blob) => {
-    if (!blob) return;
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${fileName || "whiteboard"}.png`;
-    link.click();
-    URL.revokeObjectURL(url);
-  }, "image/png");
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+  if (!blob) return;
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${fileName || "whiteboard"}.png`;
+  link.click();
+  URL.revokeObjectURL(url);
 }

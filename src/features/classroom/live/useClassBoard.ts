@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { BoardBus } from "@/features/whiteboard/bus";
 import { createWhiteboardStore } from "@/features/whiteboard/store";
-import type { BoardOp, ProgressChunk, StrokeItem } from "@/features/whiteboard/types";
+import { isStrokeItem, type BoardItem, type BoardOp, type ProgressChunk, type StrokeItem } from "@/features/whiteboard/types";
 import type { SessionEventLog } from "../sync/eventlog";
 
 const PROGRESS_INTERVAL_MS = 50;
@@ -19,7 +19,7 @@ export function useClassBoard(
   log: SessionEventLog | null,
   boardKey: string,
   editable: boolean,
-  initialItems: StrokeItem[] | undefined,
+  initialItems: BoardItem[] | undefined,
 ) {
   const [store] = useState(createWhiteboardStore);
   const [bus] = useState(() => new BoardBus());
@@ -81,7 +81,7 @@ export function useClassBoard(
       if (payload.key !== boardKey) return;
       if (payload.op) {
         store.getState().applyRemote(payload.op);
-        if (payload.op.t === "commit") {
+        if (payload.op.t === "commit" && isStrokeItem(payload.op.item)) {
           const item = payload.op.item;
           bus.emit("remote-progress", { id: item.id, mode: item.mode, color: item.color, wNorm: item.wNorm, points: [], done: true });
         }
@@ -95,7 +95,7 @@ export function useClassBoard(
       if (local || editable || ev.type !== "board_snapshot") return;
       const payload = ev.payload as { pageKey?: unknown; items?: unknown };
       if (payload.pageKey !== boardKey || !Array.isArray(payload.items)) return;
-      store.getState().replaceItems(payload.items as StrokeItem[]);
+      store.getState().replaceItems(payload.items as BoardItem[]);
     });
 
     return () => {

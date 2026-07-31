@@ -1,4 +1,12 @@
-export type Tool = "pointer" | "pen" | "eraserS" | "eraserM" | "eraserL" | "strokeEraser";
+export type Tool =
+  | "pointer"
+  | "pen"
+  | "shape"
+  | "formula"
+  | "eraserS"
+  | "eraserM"
+  | "eraserL"
+  | "strokeEraser";
 
 /** 画笔六色：存 token 名而非色值，绘制时解析当前主题的 CSS 变量（08-§3.2）。 */
 export const COLOR_TOKENS = ["ink", "rose", "leaf", "crater", "cheek", "moon"] as const;
@@ -19,6 +27,83 @@ export interface StrokeItem {
   points: Array<[number, number]>;
 }
 
+export const SHAPE_KINDS = [
+  "line",
+  "arrow",
+  "rectangle",
+  "ellipse",
+  "triangle",
+  "rightTriangle",
+  "diamond",
+  "pentagon",
+  "hexagon",
+  "star",
+  "arc",
+] as const;
+export type ShapeKind = (typeof SHAPE_KINDS)[number];
+
+/**
+ * 几何对象使用中心点 + 归一化宽高 + 角度，避免把画布像素写入快照。
+ * arc 的 startAngle/sweepAngle 只由圆规作图产生，不出现在普通形状面板。
+ */
+export interface ShapeItem {
+  id: string;
+  kind: "shape";
+  shape: ShapeKind;
+  color: ColorToken;
+  fill: ColorToken | null;
+  strokeWidthNorm: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
+  startAngle?: number;
+  sweepAngle?: number;
+}
+
+export interface FormulaItem {
+  id: string;
+  kind: "formula";
+  latex: string;
+  color: ColorToken;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
+}
+
+export type BoardItem = StrokeItem | ShapeItem | FormulaItem;
+
+export const INSTRUMENT_KINDS = ["ruler", "compass", "protractor"] as const;
+export type InstrumentKind = (typeof INSTRUMENT_KINDS)[number];
+
+/** 尺规是本机临时教具；作图结果进入 items，教具本身不持久化也不广播。 */
+export interface InstrumentItem {
+  id: string;
+  kind: InstrumentKind;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
+  radius?: number;
+  armAngle?: number;
+}
+
+export function isStrokeItem(item: BoardItem): item is StrokeItem {
+  return !("kind" in item);
+}
+
+export function isShapeItem(item: BoardItem): item is ShapeItem {
+  return "kind" in item && item.kind === "shape";
+}
+
+export function isFormulaItem(item: BoardItem): item is FormulaItem {
+  return "kind" in item && item.kind === "formula";
+}
+
 export interface WhiteboardMeta {
   id: string;
   title: string;
@@ -26,7 +111,7 @@ export interface WhiteboardMeta {
 }
 
 export interface WhiteboardRecord extends WhiteboardMeta {
-  snapshot: StrokeItem[];
+  snapshot: BoardItem[];
   /** 快照乐观锁版本；每次成功落盘递增。 */
   version: number;
   canEdit: boolean;
@@ -44,10 +129,11 @@ export interface WhiteboardMemberInfo {
 
 /** 协同 op：广播与本地事件共用同一形状（08-§3.2）。 */
 export type BoardOp =
-  | { t: "commit"; item: StrokeItem }
+  | { t: "commit"; item: BoardItem }
+  | { t: "replace"; item: BoardItem }
   | { t: "erase"; id: string }
   | { t: "clear" }
-  | { t: "restore"; items: StrokeItem[] };
+  | { t: "restore"; items: BoardItem[] };
 
 /** 绘制中的增量点（节流广播，对端画在 draft 层）。 */
 export interface ProgressChunk {

@@ -1,20 +1,32 @@
 "use client";
 
-import { Input } from "@/components/ui/input";
-
-import { useState } from "react";
+import { useState, type ComponentType, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import {
+  ArrowRight,
   ChevronUp,
+  Circle,
+  Diamond,
   Download,
+  DraftingCompass,
   Eraser,
+  Hexagon,
+  Minus,
   MousePointer2,
+  PaintBucket,
   Pencil,
+  Ruler,
   Scissors,
+  Shapes,
+  Sigma,
+  Square,
+  Star,
   Trash2,
+  Triangle,
   Undo2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Dialog,
@@ -28,13 +40,44 @@ import { useStore } from "zustand";
 import { cn } from "@/lib/utils";
 import { colorVar, exportPng } from "./strokes";
 import { SIZE_PRESETS, useWhiteboardStore, type WhiteboardStore } from "./store";
-import { COLOR_TOKENS, type Tool } from "./types";
+import { COLOR_TOKENS, isShapeItem, type InstrumentKind, type ShapeKind, type Tool } from "./types";
 
 const ERASER_TOOLS: Tool[] = ["strokeEraser", "eraserS", "eraserM", "eraserL"];
 const SIZE_ORDER = ["thin", "medium", "thick"] as const;
 type SizeLabelKey = "sizeThin" | "sizeMedium" | "sizeThick";
+const INSERT_SHAPES: ShapeKind[] = ["line", "arrow", "rectangle", "ellipse", "triangle", "rightTriangle", "diamond", "pentagon", "hexagon", "star"];
 
-/** 课堂多板场景：清空前勾选目标板（默认勾选主板书）；独立白板不传，退化为单板清空。 */
+const SHAPE_ICONS: Partial<Record<ShapeKind, ComponentType<{ size?: number }>>> = {
+  line: Minus,
+  arrow: ArrowRight,
+  rectangle: Square,
+  ellipse: Circle,
+  triangle: Triangle,
+  diamond: Diamond,
+  hexagon: Hexagon,
+  star: Star,
+};
+
+function RightTriangleIcon({ size = 18 }: { size?: number }) {
+  return <svg aria-hidden width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M5 4v15h14L5 4Z" /></svg>;
+}
+
+function PentagonIcon({ size = 18 }: { size?: number }) {
+  return <svg aria-hidden width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m12 3 9 7-3.5 10h-11L3 10l9-7Z" /></svg>;
+}
+
+function ProtractorIcon({ size = 18 }: { size?: number }) {
+  return <svg aria-hidden width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 19a9 9 0 0 1 18 0H3Z" /><path d="M12 19v-4m-6.5 4 1.3-3.6M18.5 19l-1.3-3.6" /></svg>;
+}
+
+function ShapeIcon({ shape, size = 18 }: { shape: ShapeKind; size?: number }) {
+  if (shape === "rightTriangle") return <RightTriangleIcon size={size} />;
+  if (shape === "pentagon") return <PentagonIcon size={size} />;
+  const Icon = SHAPE_ICONS[shape] ?? Shapes;
+  return <Icon size={size} />;
+}
+
+/** 课堂多板场景：清空前勾选目标板（默认勾选主板书）；独立白板不传。 */
 export interface ClearTarget {
   key: string;
   label: string;
@@ -46,12 +89,7 @@ function ClearTargetRow({ target, checked, onToggle }: { target: ClearTarget; ch
   const hasItems = useStore(target.store, (state) => state.items.length > 0);
   return (
     <label className="flex items-center gap-2.5 rounded-lg px-2 py-2 text-sm transition-colors hover:bg-moon/20">
-      <Input
-        type="checkbox"
-        checked={checked}
-        onChange={onToggle}
-        className="size-4 accent-(--ink)"
-      />
+      <Checkbox checked={checked} onCheckedChange={onToggle} />
       <span className={cn("flex-1", !hasItems && "text-muted")}>{target.label}</span>
     </label>
   );
@@ -62,7 +100,7 @@ function ToolButton({ active, label, onClick, disabled, children }: {
   label: string;
   onClick: () => void;
   disabled?: boolean;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <button
@@ -73,7 +111,7 @@ function ToolButton({ active, label, onClick, disabled, children }: {
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        "grid size-9 place-items-center rounded-full transition-colors",
+        "grid size-9 shrink-0 place-items-center rounded-full transition-colors",
         active ? "bg-moon/60 text-ink" : "text-muted hover:bg-moon/30 hover:text-ink",
         disabled && "pointer-events-none opacity-40",
       )}
@@ -96,14 +134,20 @@ export function Toolbar({
   const colorNames = useTranslations("whiteboard.board.colors");
   const tool = useStore(store, (state) => state.tool);
   const color = useStore(store, (state) => state.color);
+  const fill = useStore(store, (state) => state.fill);
   const sizeNorm = useStore(store, (state) => state.sizeNorm);
+  const selectedIds = useStore(store, (state) => state.selectedIds);
+  const selectedHasShape = useStore(store, (state) => state.items.some((item) => selectedIds.includes(item.id) && isShapeItem(item)));
   const canUndo = useStore(store, (state) => state.undoStack.length > 0);
   const hasItems = useStore(store, (state) => state.items.length > 0);
   const setTool = useStore(store, (state) => state.setTool);
   const setColor = useStore(store, (state) => state.setColor);
+  const setFill = useStore(store, (state) => state.setFill);
   const setSizeNorm = useStore(store, (state) => state.setSizeNorm);
+  const setShapeKind = useStore(store, (state) => state.setShapeKind);
   const undo = useStore(store, (state) => state.undo);
   const clear = useStore(store, (state) => state.clear);
+  const addInstrument = useStore(store, (state) => state.addInstrument);
   const [lastEraser, setLastEraser] = useState<Tool>("strokeEraser");
   const [clearOpen, setClearOpen] = useState(false);
   const [clearSelected, setClearSelected] = useState<Set<string>>(
@@ -116,9 +160,21 @@ export function Toolbar({
     setLastEraser(next);
     setTool(next);
   };
+  const pickColor = (next: (typeof COLOR_TOKENS)[number]) => {
+    setColor(next);
+    if (selectedIds.length) store.getState().styleSelected({ color: next });
+  };
+  const pickFill = (next: (typeof COLOR_TOKENS)[number] | null) => {
+    setFill(next);
+    if (selectedHasShape) store.getState().styleSelected({ fill: next });
+  };
+  const insertInstrument = (kind: InstrumentKind) => {
+    addInstrument(kind);
+    setTool("pointer");
+  };
 
   return (
-    <div className="flex items-center gap-0.5 rounded-2xl border border-line bg-paper/85 p-1.5 shadow-lg backdrop-blur select-none">
+    <div className="flex max-w-[calc(100vw-1rem)] items-center gap-0.5 overflow-x-auto rounded-2xl border border-line bg-paper/90 p-1.5 shadow-lg backdrop-blur select-none">
       <ToolButton active={tool === "pointer"} label={t("pointer")} onClick={() => setTool("pointer")}>
         <MousePointer2 size={18} />
       </ToolButton>
@@ -126,111 +182,106 @@ export function Toolbar({
         <Pencil size={18} />
       </ToolButton>
 
-      {/* 橡皮组：主按钮回到上次用的橡皮，角标弹出四种 */}
+      <Popover>
+        <PopoverTrigger asChild>
+          <button type="button" aria-label={t("shape")} title={t("shape")} aria-pressed={tool === "shape"} className={cn("grid size-9 shrink-0 place-items-center rounded-full transition-colors", tool === "shape" ? "bg-moon/60 text-ink" : "text-muted hover:bg-moon/30 hover:text-ink")}>
+            <Shapes size={18} />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent side="top" className="w-64 p-2">
+          <div className="grid grid-cols-5 gap-1">
+            {INSERT_SHAPES.map((shape) => (
+              <button key={shape} type="button" aria-label={t(`shape_${shape}`)} title={t(`shape_${shape}`)} className="grid size-10 place-items-center rounded-lg text-muted hover:bg-moon/40 hover:text-ink" onClick={() => setShapeKind(shape)}>
+                <ShapeIcon shape={shape} />
+              </button>
+            ))}
+          </div>
+          <p className="mt-2 text-xs text-muted">{t("shapeHint")}</p>
+        </PopoverContent>
+      </Popover>
+
+      <Popover>
+        <PopoverTrigger asChild>
+          <button type="button" aria-label={t("instruments")} title={t("instruments")} className="grid size-9 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-moon/30 hover:text-ink">
+            <Ruler size={18} />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent side="top" className="w-48 p-1.5">
+          <div className="flex flex-col gap-0.5">
+            <button type="button" className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm hover:bg-moon/30" onClick={() => insertInstrument("ruler")}><Ruler size={16} />{t("ruler")}</button>
+            <button type="button" className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm hover:bg-moon/30" onClick={() => insertInstrument("compass")}><DraftingCompass size={16} />{t("compass")}</button>
+            <button type="button" className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm hover:bg-moon/30" onClick={() => insertInstrument("protractor")}><ProtractorIcon size={16} />{t("protractor")}</button>
+          </div>
+        </PopoverContent>
+      </Popover>
+
+      <ToolButton active={tool === "formula"} label={t("formula")} onClick={() => setTool("formula")}>
+        <Sigma size={18} />
+      </ToolButton>
+
       <Popover>
         <div className="flex items-center">
-          <ToolButton active={isEraser} label={t("eraser")} onClick={() => setTool(lastEraser)}>
-            <Eraser size={18} />
-          </ToolButton>
+          <ToolButton active={isEraser} label={t("eraser")} onClick={() => setTool(lastEraser)}><Eraser size={18} /></ToolButton>
           <PopoverTrigger asChild>
-            <button type="button" aria-label={t("eraser")} className="-ml-1.5 rounded-full p-0.5 text-muted transition-colors hover:text-ink">
-              <ChevronUp size={13} />
-            </button>
+            <button type="button" aria-label={t("eraserOptions")} className="-ml-1.5 rounded-full p-0.5 text-muted transition-colors hover:text-ink"><ChevronUp size={13} /></button>
           </PopoverTrigger>
         </div>
         <PopoverContent side="top" className="w-auto p-1.5">
           <div className="flex flex-col gap-0.5">
             {ERASER_TOOLS.map((eraser) => (
-              <button
-                key={eraser}
-                type="button"
-                onClick={() => pickEraser(eraser)}
-                className={cn(
-                  "flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-colors",
-                  tool === eraser ? "bg-moon/60 text-ink" : "text-muted hover:bg-moon/30 hover:text-ink",
-                )}
-              >
-                {eraser === "strokeEraser" ? <Scissors size={15} /> : <Eraser size={15} />}
-                {t(eraser)}
+              <button key={eraser} type="button" onClick={() => pickEraser(eraser)} className={cn("flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-colors", tool === eraser ? "bg-moon/60 text-ink" : "text-muted hover:bg-moon/30 hover:text-ink")}>
+                {eraser === "strokeEraser" ? <Scissors size={15} /> : <Eraser size={15} />}{t(eraser)}
               </button>
             ))}
           </div>
         </PopoverContent>
       </Popover>
 
-      {/* 颜色：设计系统六色 */}
       <Popover>
         <PopoverTrigger asChild>
-          <button type="button" aria-label={t("color")} title={t("color")} className="grid size-9 place-items-center rounded-full transition-colors hover:bg-moon/30">
-            <span aria-hidden className="size-4.5 rounded-full border border-line" style={{ background: colorVar(color) }} />
-          </button>
+          <button type="button" aria-label={t("color")} title={t("color")} className="grid size-9 shrink-0 place-items-center rounded-full transition-colors hover:bg-moon/30"><span aria-hidden className="size-4.5 rounded-full border border-line" style={{ background: colorVar(color) }} /></button>
         </PopoverTrigger>
         <PopoverContent side="top" className="w-auto p-2">
           <div className="grid grid-cols-3 gap-2">
             {COLOR_TOKENS.map((token) => (
-              <button
-                key={token}
-                type="button"
-                aria-label={colorNames(token)}
-                title={colorNames(token)}
-                onClick={() => setColor(token)}
-                className={cn(
-                  "size-7 rounded-full border border-line transition-transform hover:scale-110",
-                  color === token && "ring-2 ring-crater ring-offset-2 ring-offset-paper",
-                )}
-                style={{ background: colorVar(token) }}
-              />
+              <button key={token} type="button" aria-label={colorNames(token)} title={colorNames(token)} onClick={() => pickColor(token)} className={cn("size-7 rounded-full border border-line transition-transform hover:scale-110", color === token && "ring-2 ring-crater ring-offset-2 ring-offset-paper")} style={{ background: colorVar(token) }} />
             ))}
           </div>
         </PopoverContent>
       </Popover>
 
-      {/* 粗细：三档 */}
       <Popover>
         <PopoverTrigger asChild>
-          <button type="button" aria-label={t("size")} title={t("size")} className="grid size-9 place-items-center rounded-full text-ink transition-colors hover:bg-moon/30">
-            <span aria-hidden className="rounded-full bg-current" style={{ width: 4 + sizeIndex * 3, height: 4 + sizeIndex * 3 }} />
-          </button>
+          <button type="button" aria-label={t("fill")} title={t("fill")} className="grid size-9 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-moon/30 hover:text-ink"><PaintBucket size={18} /></button>
+        </PopoverTrigger>
+        <PopoverContent side="top" className="w-auto p-2">
+          <div className="grid grid-cols-4 gap-2">
+            <button type="button" aria-label={t("fillNone")} title={t("fillNone")} onClick={() => pickFill(null)} className={cn("relative size-7 rounded-full border border-line bg-paper", fill === null && "ring-2 ring-crater ring-offset-2 ring-offset-paper")}><span className="absolute inset-1/2 h-px w-6 -translate-x-1/2 -rotate-45 bg-rose" /></button>
+            {COLOR_TOKENS.map((token) => (
+              <button key={token} type="button" aria-label={colorNames(token)} title={colorNames(token)} onClick={() => pickFill(token)} className={cn("size-7 rounded-full border border-line", fill === token && "ring-2 ring-crater ring-offset-2 ring-offset-paper")} style={{ background: colorVar(token) }} />
+            ))}
+          </div>
+        </PopoverContent>
+      </Popover>
+
+      <Popover>
+        <PopoverTrigger asChild>
+          <button type="button" aria-label={t("size")} title={t("size")} className="grid size-9 shrink-0 place-items-center rounded-full text-ink transition-colors hover:bg-moon/30"><span aria-hidden className="rounded-full bg-current" style={{ width: 4 + sizeIndex * 3, height: 4 + sizeIndex * 3 }} /></button>
         </PopoverTrigger>
         <PopoverContent side="top" className="w-auto p-1.5">
           <div className="flex items-center gap-1">
             {SIZE_ORDER.map((key, index) => {
               const labelKey = `size${key.charAt(0).toUpperCase()}${key.slice(1)}` as SizeLabelKey;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  aria-label={t(labelKey)}
-                  title={t(labelKey)}
-                  onClick={() => setSizeNorm(SIZE_PRESETS[key])}
-                  className={cn(
-                    "grid size-9 place-items-center rounded-lg transition-colors",
-                    sizeNorm === SIZE_PRESETS[key] ? "bg-moon/60" : "hover:bg-moon/30",
-                  )}
-                >
-                  <span className="rounded-full bg-ink" style={{ width: 4 + index * 4, height: 4 + index * 4 }} />
-                </button>
-              );
+              return <button key={key} type="button" aria-label={t(labelKey)} title={t(labelKey)} onClick={() => setSizeNorm(SIZE_PRESETS[key])} className={cn("grid size-9 place-items-center rounded-lg transition-colors", sizeNorm === SIZE_PRESETS[key] ? "bg-moon/60" : "hover:bg-moon/30")}><span className="rounded-full bg-ink" style={{ width: 4 + index * 4, height: 4 + index * 4 }} /></button>;
             })}
           </div>
         </PopoverContent>
       </Popover>
 
-      <div aria-hidden className="mx-1 h-6 w-px bg-line" />
-
-      <ToolButton label={t("undo")} onClick={undo} disabled={!canUndo}>
-        <Undo2 size={18} />
-      </ToolButton>
-      <ToolButton label={t("clear")} onClick={() => setClearOpen(true)} disabled={clearTargets ? false : !hasItems}>
-        <Trash2 size={18} />
-      </ToolButton>
-      <ToolButton
-        label={t("export")}
-        onClick={() => exportPng(store.getState().items, title, document.documentElement)}
-        disabled={!hasItems}
-      >
-        <Download size={18} />
-      </ToolButton>
+      <div aria-hidden className="mx-1 h-6 w-px shrink-0 bg-line" />
+      <ToolButton label={t("undo")} onClick={undo} disabled={!canUndo}><Undo2 size={18} /></ToolButton>
+      <ToolButton label={t("clear")} onClick={() => setClearOpen(true)} disabled={clearTargets ? false : !hasItems}><Trash2 size={18} /></ToolButton>
+      <ToolButton label={t("export")} onClick={() => { void exportPng(store.getState().items, title, document.documentElement); }} disabled={!hasItems}><Download size={18} /></ToolButton>
 
       <Dialog open={clearOpen} onOpenChange={setClearOpen}>
         <DialogContent>
@@ -238,39 +289,14 @@ export function Toolbar({
             <DialogTitle>{t("clear")}</DialogTitle>
             <DialogDescription>{clearTargets ? t("clearTargetsHint") : t("clearConfirm")}</DialogDescription>
           </DialogHeader>
-          {clearTargets && (
+          {clearTargets ? (
             <div className="space-y-0.5">
-              {clearTargets.map((target) => (
-                <ClearTargetRow
-                  key={target.key}
-                  target={target}
-                  checked={clearSelected.has(target.key)}
-                  onToggle={() => setClearSelected((prev) => {
-                    const next = new Set(prev);
-                    if (next.has(target.key)) next.delete(target.key);
-                    else next.add(target.key);
-                    return next;
-                  })}
-                />
-              ))}
+              {clearTargets.map((target) => <ClearTargetRow key={target.key} target={target} checked={clearSelected.has(target.key)} onToggle={() => setClearSelected((prev) => { const next = new Set(prev); if (next.has(target.key)) next.delete(target.key); else next.add(target.key); return next; })} />)}
             </div>
-          )}
+          ) : null}
           <DialogFooter>
             <Button variant="ghost" size="sm" onClick={() => setClearOpen(false)}>{t("cancel")}</Button>
-            <Button
-              size="sm"
-              disabled={clearTargets ? clearSelected.size === 0 : false}
-              onClick={() => {
-                if (clearTargets) {
-                  for (const target of clearTargets) if (clearSelected.has(target.key)) target.store.getState().clear();
-                } else {
-                  clear();
-                }
-                setClearOpen(false);
-              }}
-            >
-              {t("clear")}
-            </Button>
+            <Button size="sm" disabled={clearTargets ? clearSelected.size === 0 : false} onClick={() => { if (clearTargets) { for (const target of clearTargets) if (clearSelected.has(target.key)) target.store.getState().clear(); } else clear(); setClearOpen(false); }}>{t("clear")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

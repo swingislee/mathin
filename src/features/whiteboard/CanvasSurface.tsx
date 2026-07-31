@@ -1,11 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useStore } from "zustand";
 import { boardBus, type BoardBus } from "./bus";
+import { BoardObjectLayer } from "./BoardObjectLayer";
+import { FormulaRecognitionDialog, type FormulaRecognitionState } from "./FormulaRecognitionDialog";
+import { createFormulaRecognitionImage, recognizeFormula } from "./formula-recognition";
+import { createShapeFromDrag, inkStrokesInRect, rectFromPoints, sanitizeLatex } from "./geometry";
+import { InstrumentLayer } from "./InstrumentLayer";
 import { colorVar, drawItem, hitStrokeId, newStrokeId, renderAll, resolveColor } from "./strokes";
 import { useWhiteboardStore, type WhiteboardStore } from "./store";
-import { COLOR_TOKENS, type StrokeItem, type Tool } from "./types";
+import { COLOR_TOKENS, isStrokeItem, type FormulaItem, type ShapeItem, type StrokeItem, type Tool } from "./types";
 
 /** S/M/L 碎擦宽度（相对逻辑画布宽），沿旧版手感微调。 */
 const ERASER_NORM: Partial<Record<Tool, number>> = { eraserS: 0.012, eraserM: 0.025, eraserL: 0.05 };
@@ -19,13 +25,12 @@ interface RemoteCursor {
   at: number;
 }
 
-/**
- * 双层画布：base 落定笔迹（由 store.items 全量重放），draft 画进行中的笔迹
- * （本地 + 远端 progress 流）。组件自身无笔迹状态（08-§7：canvas 无状态化）。
- * 坐标契约：一切读写坐标先除以容器 CSS 尺寸归一化；组件对容器纵横比无感知，
- * 独立白板 16:9、课堂主板书 4:3 都由父容器决定。
- * store/bus 可注入：默认全局单例（独立白板）；课堂主/副板书各传自己的实例。
- */
+interface FormulaSelection {
+  ids: string[];
+  bounds: { x: number; y: number; width: number; height: number };
+}
+
+/** 双层笔迹画布 + SVG 对象/尺规层。所有持久内容继续使用 0–1 归一化坐标。 */
 export function CanvasSurface({
   editable,
   store = useWhiteboardStore,
@@ -35,10 +40,10 @@ export function CanvasSurface({
   editable: boolean;
   store?: WhiteboardStore;
   bus?: BoardBus;
-  /** 线宽换算的参照宽度（像素）：不传则用画布自身宽度（独立白板默认行为）；
-   *  课堂场景传入统一值（主板书宽度），让同屏两块板上的同一支笔粗细一致。 */
+  /** 课堂场景传统一参照宽度，让同屏两块板书的画笔粗细一致。 */
   strokeWidthBasis?: number;
 }) {
+  const t = useTranslations("whiteboard.board.tools");
   const containerRef = useRef<HTMLDivElement | null>(null);
   const baseRef = useRef<HTMLCanvasElement | null>(null);
   const draftRef = useRef<HTMLCanvasElement | null>(null);
@@ -47,18 +52,28 @@ export function CanvasSurface({
   useEffect(() => {
     basisRef.current = strokeWidthBasis;
   }, [strokeWidthBasis]);
-  // 稳定引用（只读 ref，不随 strokeWidthBasis 变化重建）：line-width 换算的参照宽度。
   const basisW = useCallback(() => (basisRef.current && basisRef.current > 0 ? basisRef.current : dimsRef.current.w), []);
   const strokeRef = useRef<StrokeItem | null>(null);
   const remotePendingRef = useRef<Map<string, StrokeItem>>(new Map());
+  const formulaSelectionRef = useRef<FormulaSelection | null>(null);
+  const formulaRequestRef = useRef(0);
   const [cursor, setCursor] = useState<[number, number] | null>(null);
-  const [cssWidth, setCssWidth] = useState(0);
+  const [canvasSize, setCanvasSize] = useState({ width: 1, height: 1 });
   const [remoteCursors, setRemoteCursors] = useState<Record<string, RemoteCursor>>({});
+  const [shapePreview, setShapePreview] = useState<ShapeItem | null>(null);
+  const [marquee, setMarquee] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+  const [formulaOpen, setFormulaOpen] = useState(false);
+  const [formulaState, setFormulaState] = useState<FormulaRecognitionState>("idle");
+  const [formulaLatex, setFormulaLatex] = useState("");
+  const [formulaError, setFormulaError] = useState<string | null>(null);
 
   const items = useStore(store, (state) => state.items);
   const tool = useStore(store, (state) => state.tool);
   const color = useStore(store, (state) => state.color);
+  const fill = useStore(store, (state) => state.fill);
   const sizeNorm = useStore(store, (state) => state.sizeNorm);
+  const shapeKind = useStore(store, (state) => state.shapeKind);
+  const selectedIds = useStore(store, (state) => state.selectedIds);
 
   const redrawBase = useCallback(() => {
     const base = baseRef.current;
@@ -67,7 +82,6 @@ export function CanvasSurface({
     renderAll(ctx, store.getState().items, dimsRef.current.w, dimsRef.current.h, base, basisW());
   }, [store, basisW]);
 
-  /** draft = 本地进行中的墨迹 + 远端 progress 预览（碎擦不预览，见 08-§3.2）。 */
   const redrawDraft = useCallback(() => {
     const draft = draftRef.current;
     const ctx = draft?.getContext("2d");
@@ -75,15 +89,12 @@ export function CanvasSurface({
     const { w, h } = dimsRef.current;
     ctx.clearRect(0, 0, w, h);
     const local = strokeRef.current;
-    if (local && local.mode === "ink") {
-      drawItem(ctx, local, w, h, resolveColor(draft, local.color), basisW());
-    }
+    if (local && local.mode === "ink") drawItem(ctx, local, w, h, resolveColor(draft, local.color), basisW());
     for (const pending of remotePendingRef.current.values()) {
       if (pending.mode === "ink") drawItem(ctx, pending, w, h, resolveColor(draft, pending.color), basisW());
     }
   }, [basisW]);
 
-  /* 尺寸自适应：backing store 用设备像素，绘制坐标一律 CSS 像素（08-§3.2 坐标契约）。 */
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -92,7 +103,7 @@ export function CanvasSurface({
       const h = Math.max(container.clientHeight, 1);
       const dpr = window.devicePixelRatio || 1;
       dimsRef.current = { w, h };
-      setCssWidth(w);
+      setCanvasSize({ width: w, height: h });
       for (const canvas of [baseRef.current, draftRef.current]) {
         if (!canvas) continue;
         canvas.width = Math.round(w * dpr);
@@ -108,21 +119,17 @@ export function CanvasSurface({
     return () => observer.disconnect();
   }, [redrawBase, redrawDraft]);
 
-  /* 线宽参照宽度变化（如主板书随窗口调整）→ 重放，保持同屏两板粗细一致。 */
   useEffect(() => {
     redrawBase();
     redrawDraft();
   }, [strokeWidthBasis, redrawBase, redrawDraft]);
 
-  /* 笔迹变更（提交/撤销/清空/远端 op）→ 全量重放。 */
   useEffect(() => {
-    // 已入 items 的远端笔迹不再需要 progress 预览
-    for (const item of items) remotePendingRef.current.delete(item.id);
+    for (const item of items) if (isStrokeItem(item)) remotePendingRef.current.delete(item.id);
     redrawBase();
     redrawDraft();
   }, [items, redrawBase, redrawDraft]);
 
-  /* 主题切换时 token 色值变化，需重放一次。 */
   useEffect(() => {
     const observer = new MutationObserver(() => {
       redrawBase();
@@ -130,10 +137,7 @@ export function CanvasSurface({
     });
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "data-theme"] });
     const media = window.matchMedia("(prefers-color-scheme: dark)");
-    const onChange = () => {
-      redrawBase();
-      redrawDraft();
-    };
+    const onChange = () => { redrawBase(); redrawDraft(); };
     media.addEventListener("change", onChange);
     return () => {
       observer.disconnect();
@@ -141,7 +145,6 @@ export function CanvasSurface({
     };
   }, [redrawBase, redrawDraft]);
 
-  /* 远端事件：progress 预览与协作光标。 */
   useEffect(() => {
     const offProgress = bus.on("remote-progress", (chunk) => {
       const pending = remotePendingRef.current;
@@ -150,14 +153,10 @@ export function CanvasSurface({
         redrawDraft();
         return;
       }
-      // progress 尾包晚于 commit 到达的兜底：已落定的笔迹不再预览
       if (store.getState().items.some((item) => item.id === chunk.id)) return;
       const existing = pending.get(chunk.id);
-      if (existing) {
-        existing.points.push(...chunk.points);
-      } else {
-        pending.set(chunk.id, { id: chunk.id, mode: chunk.mode, color: chunk.color, wNorm: chunk.wNorm, points: [...chunk.points] });
-      }
+      if (existing) existing.points.push(...chunk.points);
+      else pending.set(chunk.id, { id: chunk.id, mode: chunk.mode, color: chunk.color, wNorm: chunk.wNorm, points: [...chunk.points] });
       redrawDraft();
     });
     const offCursor = bus.on("remote-cursor", (payload) => {
@@ -170,14 +169,26 @@ export function CanvasSurface({
         return alive.length === Object.keys(prev).length ? prev : Object.fromEntries(alive);
       });
     }, 2000);
-    return () => {
-      offProgress();
-      offCursor();
-      clearInterval(prune);
-    };
+    return () => { offProgress(); offCursor(); clearInterval(prune); };
   }, [redrawDraft, bus, store]);
 
-  /* 指针逻辑 */
+  useEffect(() => {
+    if (!editable || selectedIds.length === 0) return;
+    const onKey = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("input, textarea, [contenteditable=true]")) return;
+      if (event.key === "Delete" || event.key === "Backspace") {
+        event.preventDefault();
+        store.getState().removeItems(store.getState().selectedIds);
+      } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "d") {
+        event.preventDefault();
+        store.getState().duplicateSelected();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [editable, selectedIds.length, store]);
+
   useEffect(() => {
     const draft = draftRef.current;
     const base = baseRef.current;
@@ -186,12 +197,18 @@ export function CanvasSurface({
     if (!baseCtx) return;
     const actions = store.getState();
     let capturedPointerId: number | null = null;
+    let gestureStart: [number, number] | null = null;
+    let gestureEnd: [number, number] | null = null;
 
     const toPoint = (event: PointerEvent): [number, number] => {
       const rect = draft.getBoundingClientRect();
       return [event.clientX - rect.left, event.clientY - rect.top];
     };
-
+    const toNorm = (event: PointerEvent): [number, number] => {
+      const [x, y] = toPoint(event);
+      const { w, h } = dimsRef.current;
+      return [x / w, y / h];
+    };
     const eraseHit = (x: number, y: number) => {
       const { w, h } = dimsRef.current;
       const id = hitStrokeId(store.getState().items, x, y, w, h, STROKE_ERASER_THRESHOLD_PX, basisW());
@@ -200,6 +217,19 @@ export function CanvasSurface({
 
     const down = (event: PointerEvent) => {
       const [x, y] = toPoint(event);
+      const norm = toNorm(event);
+      gestureStart = norm;
+      gestureEnd = norm;
+      draft.setPointerCapture(event.pointerId);
+      capturedPointerId = event.pointerId;
+      if (tool === "formula") {
+        setMarquee({ x: norm[0], y: norm[1], width: 0, height: 0 });
+        return;
+      }
+      if (tool === "shape") {
+        setShapePreview(createShapeFromDrag("shape-preview", shapeKind, norm, norm, color, fill, sizeNorm, dimsRef.current.h / dimsRef.current.w));
+        return;
+      }
       if (tool === "strokeEraser") {
         eraseHit(x, y);
         return;
@@ -207,22 +237,28 @@ export function CanvasSurface({
       const { w, h } = dimsRef.current;
       const erase = tool.startsWith("eraser");
       const stroke: StrokeItem = {
-        id: newStrokeId(),
-        mode: erase ? "erase" : "ink",
-        color,
+        id: newStrokeId(), mode: erase ? "erase" : "ink", color,
         wNorm: erase ? ERASER_NORM[tool] ?? 0.02 : sizeNorm,
         points: [[x / w, y / h]],
       };
       strokeRef.current = stroke;
       if (stroke.mode === "ink") bus.emit("local-progress-start", stroke);
-      draft.setPointerCapture(event.pointerId);
-      capturedPointerId = event.pointerId;
     };
 
     const move = (event: PointerEvent) => {
       const [x, y] = toPoint(event);
       const { w, h } = dimsRef.current;
-      bus.emit("local-cursor", { x: x / w, y: y / h });
+      const norm: [number, number] = [x / w, y / h];
+      bus.emit("local-cursor", { x: norm[0], y: norm[1] });
+      gestureEnd = norm;
+      if (tool === "formula" && gestureStart) {
+        setMarquee(rectFromPoints(gestureStart, norm));
+        return;
+      }
+      if (tool === "shape" && gestureStart) {
+        setShapePreview(createShapeFromDrag("shape-preview", shapeKind, gestureStart, norm, color, fill, sizeNorm, dimsRef.current.h / dimsRef.current.w));
+        return;
+      }
       if (tool.startsWith("eraser")) setCursor([x, y]);
       if (tool === "strokeEraser") {
         if (event.buttons & 1) eraseHit(x, y);
@@ -231,25 +267,62 @@ export function CanvasSurface({
       const stroke = strokeRef.current;
       if (!stroke) return;
       const prev = stroke.points[stroke.points.length - 1];
-      stroke.points.push([x / w, y / h]);
-      if (stroke.mode === "ink") {
-        redrawDraft();
-      } else {
-        // 碎擦：直接在 base 上增量挖除做即时反馈；提交后由全量重放收敛到同一结果。
-        drawItem(baseCtx, { ...stroke, points: [prev, [x / w, y / h]] }, w, h, "#000", basisW());
-      }
+      stroke.points.push(norm);
+      if (stroke.mode === "ink") redrawDraft();
+      else drawItem(baseCtx, { ...stroke, points: [prev, norm] }, w, h, "#000", basisW());
     };
 
-    const finish = () => {
-      if (capturedPointerId !== null) {
-        // pointercancel、热更新或节点迁移可能已由浏览器隐式释放 capture。
-        // 先检测再释放，避免 Safari/Chromium 抛 NotFoundError。
+    const releaseCapture = () => {
+      if (capturedPointerId === null) return;
+      try {
+        if (draft.hasPointerCapture(capturedPointerId)) draft.releasePointerCapture(capturedPointerId);
+      } catch {
+        // 节点卸载时 capture 已隐式释放。
+      }
+      capturedPointerId = null;
+    };
+
+    const finish = async () => {
+      releaseCapture();
+      if (tool === "shape") {
+        const start = gestureStart;
+        const end = gestureEnd;
+        const preview = start && end ? createShapeFromDrag(newStrokeId(), shapeKind, start, end, color, fill, sizeNorm, dimsRef.current.h / dimsRef.current.w) : null;
+        gestureStart = null;
+        gestureEnd = null;
+        setShapePreview(null);
+        if (preview && Math.hypot(end![0] - start![0], end![1] - start![1]) > 0.006) store.getState().commitItem(preview);
+        return;
+      }
+      if (tool === "formula") {
+        const selectionRect = gestureStart && gestureEnd ? rectFromPoints(gestureStart, gestureEnd) : null;
+        gestureStart = null;
+        gestureEnd = null;
+        setMarquee(null);
+        if (!selectionRect || selectionRect.width < 0.006 || selectionRect.height < 0.006) return;
+        const strokes = inkStrokesInRect(store.getState().items, selectionRect);
+        if (strokes.length === 0) return;
+        const requestId = ++formulaRequestRef.current;
+        setFormulaOpen(true);
+        setFormulaState("recognizing");
+        setFormulaLatex("");
+        setFormulaError(null);
         try {
-          if (draft.hasPointerCapture(capturedPointerId)) draft.releasePointerCapture(capturedPointerId);
-        } catch {
-          // 检测与释放之间节点仍可能被卸载；capture 已失效时无需处理。
+          const image = await createFormulaRecognitionImage(strokes, dimsRef.current.h / dimsRef.current.w);
+          if (formulaRequestRef.current !== requestId) return;
+          formulaSelectionRef.current = { ids: strokes.map((stroke) => stroke.id), bounds: image.bounds };
+          const latex = sanitizeLatex(await recognizeFormula(image.blob));
+          if (formulaRequestRef.current !== requestId) return;
+          setFormulaLatex(latex);
+          setFormulaState("ready");
+        } catch (error) {
+          if (formulaRequestRef.current !== requestId) return;
+          formulaSelectionRef.current = { ids: strokes.map((stroke) => stroke.id), bounds: selectionRect };
+          const code = error instanceof Error ? error.message : "RECOGNITION_FAILED";
+          setFormulaError(code === "FORMULA_SERVICE_UNAVAILABLE" ? t("formulaServiceUnavailable") : t("formulaFailed"));
+          setFormulaState("error");
         }
-        capturedPointerId = null;
+        return;
       }
       const stroke = strokeRef.current;
       if (!stroke) return;
@@ -259,7 +332,6 @@ export function CanvasSurface({
     };
 
     const leave = () => setCursor(null);
-
     draft.addEventListener("pointerdown", down);
     draft.addEventListener("pointermove", move);
     draft.addEventListener("pointerleave", leave);
@@ -272,49 +344,74 @@ export function CanvasSurface({
       window.removeEventListener("pointerup", finish);
       window.removeEventListener("pointercancel", finish);
     };
-  }, [editable, tool, color, sizeNorm, redrawDraft, store, bus, basisW]);
+  }, [editable, tool, color, fill, sizeNorm, shapeKind, redrawDraft, store, bus, basisW, t]);
 
   const interactive = editable && tool !== "pointer";
-  const cursorStyle = !interactive ? "default" : tool.startsWith("eraser") ? "none" : "crosshair";
-  const eraserSize = (ERASER_NORM[tool] ?? 0) * (strokeWidthBasis && strokeWidthBasis > 0 ? strokeWidthBasis : cssWidth);
+  const cursorStyle = !interactive ? "default" : tool.startsWith("eraser") ? "none" : tool === "formula" ? "cell" : "crosshair";
+  const eraserSize = (ERASER_NORM[tool] ?? 0) * (strokeWidthBasis && strokeWidthBasis > 0 ? strokeWidthBasis : canvasSize.width);
+
+  const cancelFormula = () => {
+    formulaRequestRef.current += 1;
+    setFormulaOpen(false);
+    setFormulaState("idle");
+    setFormulaLatex("");
+    setFormulaError(null);
+    formulaSelectionRef.current = null;
+  };
+  const confirmFormula = () => {
+    const selection = formulaSelectionRef.current;
+    const latex = sanitizeLatex(formulaLatex);
+    if (!selection || !latex) return;
+    const bounds = selection.bounds;
+    const formula: FormulaItem = {
+      id: newStrokeId(), kind: "formula", latex, color,
+      x: bounds.x + bounds.width / 2,
+      y: bounds.y + bounds.height / 2,
+      width: Math.max(bounds.width, 0.12),
+      height: Math.max(bounds.height * 1.35, 0.06),
+      rotation: 0,
+    };
+    store.getState().replaceItemsWithFormula(selection.ids, formula);
+    cancelFormula();
+  };
 
   return (
-    // 容器不拦截指针：只有 draft 画布按工具态自行开启（课堂里下层还有课件/游戏要点）
     <div ref={containerRef} className="pointer-events-none absolute inset-0">
       <canvas ref={baseRef} className="absolute inset-0 h-full w-full touch-none" style={{ pointerEvents: "none" }} />
+      <BoardObjectLayer store={store} editable={editable} width={canvasSize.width} height={canvasSize.height} preview={shapePreview} />
       <canvas
         ref={draftRef}
         className="absolute inset-0 h-full w-full touch-none"
         style={{ pointerEvents: interactive ? "auto" : "none", cursor: cursorStyle }}
       />
-      {Object.entries(remoteCursors).map(([key, value]) => (
+      <InstrumentLayer store={store} editable={editable} width={canvasSize.width} height={canvasSize.height} />
+      {marquee ? (
         <div
-          key={key}
           aria-hidden
-          className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-1/2"
-          style={{ left: `${value.x * 100}%`, top: `${value.y * 100}%` }}
-        >
-          <span
-            className="block size-2.5 rounded-full border border-paper shadow"
-            style={{ background: colorVar(COLOR_TOKENS[Math.abs([...key].reduce((acc, ch) => acc + ch.charCodeAt(0), 0)) % COLOR_TOKENS.length]) }}
-          />
-          <span className="mt-1 block max-w-28 truncate rounded-full bg-ink/80 px-1.5 py-0.5 text-[10px] leading-none text-paper">
-            {value.name}
-          </span>
+          className="absolute border border-dashed border-crater bg-crater/10"
+          style={{ left: `${marquee.x * 100}%`, top: `${marquee.y * 100}%`, width: `${marquee.width * 100}%`, height: `${marquee.height * 100}%` }}
+        />
+      ) : null}
+      {Object.entries(remoteCursors).map(([key, value]) => (
+        <div key={key} aria-hidden className="pointer-events-none absolute z-30 -translate-x-1/2 -translate-y-1/2" style={{ left: `${value.x * 100}%`, top: `${value.y * 100}%` }}>
+          <span className="block size-2.5 rounded-full border border-paper shadow" style={{ background: colorVar(COLOR_TOKENS[Math.abs([...key].reduce((acc, ch) => acc + ch.charCodeAt(0), 0)) % COLOR_TOKENS.length]) }} />
+          <span className="mt-1 block max-w-28 truncate rounded-full bg-ink/80 px-1.5 py-0.5 text-[10px] leading-none text-paper">{value.name}</span>
         </div>
       ))}
-      {interactive && tool.startsWith("eraser") && cursor && eraserSize > 0 && (
-        <div
-          aria-hidden
-          className="pointer-events-none absolute box-border border border-muted"
-          style={{
-            left: cursor[0] - eraserSize / 2,
-            top: cursor[1] - eraserSize / 2,
-            width: eraserSize,
-            height: eraserSize,
-          }}
+      {interactive && tool.startsWith("eraser") && cursor && eraserSize > 0 ? (
+        <div aria-hidden className="pointer-events-none absolute box-border border border-muted" style={{ left: cursor[0] - eraserSize / 2, top: cursor[1] - eraserSize / 2, width: eraserSize, height: eraserSize }} />
+      ) : null}
+      <div className="pointer-events-auto">
+        <FormulaRecognitionDialog
+          open={formulaOpen}
+          state={formulaState}
+          latex={formulaLatex}
+          error={formulaError}
+          onLatexChange={setFormulaLatex}
+          onCancel={cancelFormula}
+          onConfirm={confirmFormula}
         />
-      )}
+      </div>
     </div>
   );
 }

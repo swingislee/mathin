@@ -40,6 +40,7 @@ import type { SessionLearningSetup } from "@/features/school/session-learning-co
 import { CanvasSurface } from "@/features/whiteboard/CanvasSurface";
 import { Toolbar } from "@/features/whiteboard/Toolbar";
 import type { WhiteboardStore } from "@/features/whiteboard/store";
+import { isStrokeItem, type StrokeItem } from "@/features/whiteboard/types";
 
 import type { InteractionTrigger } from "@/features/courseware-doc/interactions";
 import type { ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
@@ -471,7 +472,7 @@ export function LiveShell({
         frames.delete(frame);
         const viewport = sideViewportRef.current;
         const items = sideBoard.store.getState().items;
-        const lastItem = items[items.length - 1];
+        const lastItem = items.findLast((item): item is StrokeItem => isStrokeItem(item));
         const lastPoint = lastItem?.points[lastItem.points.length - 1];
         if (!viewport || !lastPoint) return;
         const targetTop = Math.max(0, lastPoint[1] * viewport.scrollHeight - viewport.clientHeight * 0.72);

@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { boardBus } from "./bus";
 import { newStrokeId } from "./strokes";
 import { useWhiteboardStore } from "./store";
-import type { BoardOp, CursorPayload, PeerInfo, ProgressChunk, StrokeItem } from "./types";
+import { isStrokeItem, type BoardItem, type BoardOp, type CursorPayload, type PeerInfo, type ProgressChunk, type StrokeItem } from "./types";
 
 const PROGRESS_INTERVAL_MS = 50;
 const CURSOR_MIN_INTERVAL_MS = 90;
@@ -44,7 +44,7 @@ export function useBoardSync(boardId: string, canEdit: boolean, selfName: string
       .on("broadcast", { event: "op" }, ({ payload }) => {
         const op = payload as BoardOp;
         store.getState().applyRemote(op);
-        if (op.t === "commit") {
+        if (op.t === "commit" && isStrokeItem(op.item)) {
           // 清掉对应的绘制中预览（若 progress 尾包晚于 commit 到达，items 判重兜底）
           boardBus.emit("remote-progress", { id: op.item.id, mode: op.item.mode, color: op.item.color, wNorm: op.item.wNorm, points: [], done: true });
         }
@@ -62,7 +62,7 @@ export function useBoardSync(boardId: string, canEdit: boolean, selfName: string
         }
       })
       .on("broadcast", { event: "sync-res" }, ({ payload }) => {
-        store.getState().applyRemote({ t: "restore", items: (payload as { items: StrokeItem[] }).items });
+        store.getState().applyRemote({ t: "restore", items: (payload as { items: BoardItem[] }).items });
       })
       .on("presence", { event: "sync" }, () => {
         const state = channel.presenceState<{ name: string }>();

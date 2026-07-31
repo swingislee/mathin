@@ -10,7 +10,7 @@ import { ToolView } from "@/features/tools/components";
 import { getTool, tools } from "@/features/tools/registry";
 import { CanvasSurface } from "@/features/whiteboard/CanvasSurface";
 import type { WhiteboardStore } from "@/features/whiteboard/store";
-import type { StrokeItem } from "@/features/whiteboard/types";
+import type { BoardItem } from "@/features/whiteboard/types";
 import { cn } from "@/lib/utils";
 import type { SessionEventLog } from "../sync/eventlog";
 import type { CoursewarePage } from "../types";
@@ -31,7 +31,7 @@ export function MainBoard({
   log: SessionEventLog | null;
   boardKey: string;
   editable: boolean;
-  initialItems: StrokeItem[] | undefined;
+  initialItems: BoardItem[] | undefined;
   strokeWidthBasis?: number;
   onStore: (store: WhiteboardStore) => void;
 }) {

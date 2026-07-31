@@ -69,7 +69,7 @@ export type SessionEventType =
   | "star"           // {studentId} 教师加星
   | "star_undo"      // {studentId} 撤销该生最新一颗星（原子语义：删事件不减计数）
   | "session_ctl"    // {action:"start"|"end"|"quiz_open"|"quiz_close", ...}
-  | "board_snapshot" // {pageKey:string, items:StrokeItem[]}（main=页 uuid、side="side"）
+  | "board_snapshot" // {pageKey:string, items:BoardItem[]}（main=页 uuid、side="side"）
   | "game_state"     // {pageId, state:{values,selected}} 游戏页镜像（单写者=教师）
   | "video_ctl"      // {pageId, action:"play"|"pause"|"seek", time} 视频同步（仅教师）
   | "doc_step"       // {pageId, scope:"node"|"page", id} doc 页点击步进转发（仅教师，P6-5）
