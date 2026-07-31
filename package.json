@@ -20,6 +20,7 @@
     "r1:admin-manifest:check": "node scripts/verify-production-admin-manifest.mjs",
     "r1:family-fixtures": "node scripts/ensure-r1-family-test-fixtures.mjs",
     "r1:family-journey-fixture": "node scripts/ensure-r1-family-journey-fixture.mjs",
+    "r1:family-boundary-check": "node scripts/verify-r1-family-auth-boundaries.mjs",
     "p4h:delete-guard": "node scripts/verify-p4h-delete-guard.mjs",
     "p4i1:boundary-audit": "node scripts/verify-p4i1-environment-boundary.mjs",
     "doc21:audit": "node scripts/verify-doc21-coordinates.mjs",

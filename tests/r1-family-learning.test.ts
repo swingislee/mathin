@@ -213,4 +213,26 @@ describe("R1-5 family learning contracts", () => {
     expect(fixtures).not.toContain("deleteUser");
   });
 
+  it("checks fixed-account family boundaries through authenticated clients without writes", () => {
+    const boundaryCheck = read("scripts/verify-r1-family-auth-boundaries.mjs");
+    const pkg = JSON.parse(read("package.json"));
+    expect(pkg.scripts["r1:family-boundary-check"]).toBe("node scripts/verify-r1-family-auth-boundaries.mjs");
+    expect(boundaryCheck).toContain('process.env.R1_DEV_TEST_FIXTURES !== "1"');
+    expect(boundaryCheck).toContain('import { lookup } from "node:dns/promises"');
+    expect(boundaryCheck).toContain("assertPrivateDevelopmentTarget");
+    expect(boundaryCheck).toContain("test-student@mathin.local");
+    expect(boundaryCheck).toContain("test-student-2@mathin.local");
+    expect(boundaryCheck).toContain("test-parent-unbound@mathin.local");
+    expect(boundaryCheck).toContain('client.rpc("get_my_students")');
+    expect(boundaryCheck).toContain('client.rpc("get_my_schedule"');
+    expect(boundaryCheck).toContain('client.rpc("get_my_session_review_states"');
+    expect(boundaryCheck).toContain('clients.studentOne.rpc("get_customer_assignment"');
+    expect(boundaryCheck).toContain('clients.unboundParent.rpc("get_customer_submission"');
+    expect(boundaryCheck).toContain("requireDirectReadRejected");
+    expect(boundaryCheck).not.toContain("submit_assignment_for_student");
+    expect(boundaryCheck).not.toContain(".insert(");
+    expect(boundaryCheck).not.toContain(".update(");
+    expect(boundaryCheck).not.toContain(".delete(");
+  });
+
 });
