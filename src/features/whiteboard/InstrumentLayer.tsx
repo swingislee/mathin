@@ -20,29 +20,111 @@ function compassRadiusNorm(item: InstrumentItem, boardWidth: number): number {
 }
 
 function RulerTicks({ width, height }: { width: number; height: number }) {
-  const count = 20;
+  const subdivisions = 200;
+  const labelSize = Math.max(7, Math.min(10, height * 0.17));
   return (
-    <>
-      {Array.from({ length: count + 1 }, (_, index) => {
-        const x = -width / 2 + index * width / count;
-        const tick = index % 5 === 0 ? height * 0.42 : index % 2 === 0 ? height * 0.28 : height * 0.18;
-        return <line key={index} x1={x} y1={-height / 2} x2={x} y2={-height / 2 + tick} stroke="currentColor" strokeWidth={1} opacity={0.7} />;
+    <g pointerEvents="none">
+      {Array.from({ length: subdivisions + 1 }, (_, index) => {
+        const x = -width / 2 + index * width / subdivisions;
+        const isCentimeter = index % 10 === 0;
+        const isHalf = !isCentimeter && index % 5 === 0;
+        const tick = isCentimeter ? height * 0.4 : isHalf ? height * 0.25 : height * 0.16;
+        return (
+          <line
+            key={index}
+            x1={x}
+            y1={-height / 2}
+            x2={x}
+            y2={-height / 2 + tick}
+            stroke="currentColor"
+            strokeWidth={isCentimeter ? 1.25 : 0.7}
+            opacity={isCentimeter ? 0.82 : 0.52}
+          />
+        );
       })}
-    </>
+      {Array.from({ length: 5 }, (_, index) => {
+        const value = index * 5;
+        const x = -width / 2 + value * width / 20;
+        const anchor = index === 0 ? "start" : index === 4 ? "end" : "middle";
+        return (
+          <text
+            key={value}
+            x={x}
+            y={-height * 0.02}
+            textAnchor={anchor}
+            fontSize={labelSize}
+            fill="currentColor"
+            opacity={0.74}
+          >
+            {value}
+          </text>
+        );
+      })}
+    </g>
   );
 }
 
 function ProtractorTicks({ width, height }: { width: number; height: number }) {
+  const centerY = height / 2;
+  const labelSize = Math.max(7, Math.min(10, height * 0.105));
   return (
-    <>
-      {Array.from({ length: 19 }, (_, index) => {
-        const angle = Math.PI + index * Math.PI / 18;
+    <g pointerEvents="none">
+      {Array.from({ length: 37 }, (_, index) => {
+        const degrees = index * 5;
+        const angle = Math.PI + degrees * Math.PI / 180;
+        const major = degrees % 10 === 0;
+        const ratio = major ? 0.84 : 0.91;
         const outerX = Math.cos(angle) * width / 2;
-        const outerY = Math.sin(angle) * height;
-        const ratio = index % 3 === 0 ? 0.78 : 0.88;
-        return <line key={index} x1={outerX * ratio} y1={outerY * ratio} x2={outerX} y2={outerY} stroke="currentColor" strokeWidth={1} opacity={0.65} />;
+        const outerY = centerY + Math.sin(angle) * height;
+        const innerX = Math.cos(angle) * width / 2 * ratio;
+        const innerY = centerY + Math.sin(angle) * height * ratio;
+        return (
+          <line
+            key={degrees}
+            x1={innerX}
+            y1={innerY}
+            x2={outerX}
+            y2={outerY}
+            stroke="currentColor"
+            strokeWidth={major ? 1.15 : 0.65}
+            opacity={major ? 0.76 : 0.48}
+          />
+        );
       })}
-    </>
+      {[0, 30, 60, 90, 120, 150, 180].map((degrees) => {
+        const angle = Math.PI + degrees * Math.PI / 180;
+        const outerRatio = degrees === 0 || degrees === 180 ? 0.76 : 0.72;
+        const innerRatio = degrees === 0 || degrees === 180 ? 0.61 : 0.58;
+        return (
+          <g key={degrees}>
+            <text
+              x={Math.cos(angle) * width / 2 * outerRatio}
+              y={centerY + Math.sin(angle) * height * outerRatio}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fontSize={labelSize}
+              fill="currentColor"
+              opacity={0.76}
+            >
+              {degrees}
+            </text>
+            {degrees === 90 ? null : (
+              <text
+                x={Math.cos(angle) * width / 2 * innerRatio}
+                y={centerY + Math.sin(angle) * height * innerRatio}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fontSize={labelSize * 0.88}
+                fill="currentColor"
+                opacity={0.52}
+              >
+                {180 - degrees}
+              </text>
+            )}
+          </g>
+        );
+      })}
+    </g>
   );
 }
 
@@ -289,9 +371,57 @@ export function InstrumentLayer({ store, editable, width, height }: { store: Whi
         if (item.kind === "ruler") {
           return (
             <g key={item.id} className="pointer-events-auto text-ink drop-shadow-sm" transform={`translate(${item.x * width} ${item.y * height}) rotate(${item.rotation})`}>
-              <rect x={-instrumentWidth / 2} y={-instrumentHeight / 2} width={instrumentWidth} height={instrumentHeight} rx={6} fill="color-mix(in srgb, var(--crater) 24%, transparent)" stroke="var(--crater)" strokeWidth={1.5} onPointerDown={(event) => beginAdjust(event, item, "move")} />
+              <rect
+                x={-instrumentWidth / 2}
+                y={-instrumentHeight / 2}
+                width={instrumentWidth}
+                height={instrumentHeight}
+                rx={5}
+                fill="color-mix(in srgb, var(--moon) 42%, transparent)"
+                stroke="var(--crater)"
+                strokeWidth={1.5}
+                className="cursor-move"
+                onPointerDown={(event) => beginAdjust(event, item, "move")}
+              />
+              <rect
+                x={-instrumentWidth / 2 + 4}
+                y={-instrumentHeight / 2 + 4}
+                width={Math.max(0, instrumentWidth - 8)}
+                height={Math.max(0, instrumentHeight - 8)}
+                rx={3}
+                fill="none"
+                stroke="color-mix(in srgb, var(--paper) 70%, transparent)"
+                strokeWidth={1}
+                pointerEvents="none"
+              />
+              <path
+                d={`M ${-instrumentWidth / 2 + 5} ${-instrumentHeight * 0.13} H ${instrumentWidth / 2 - 5}`}
+                stroke="color-mix(in srgb, var(--crater) 35%, transparent)"
+                strokeWidth={1}
+                pointerEvents="none"
+              />
               <RulerTicks width={instrumentWidth} height={instrumentHeight} />
-              <text x={0} y={instrumentHeight * 0.27} textAnchor="middle" fontSize={Math.max(10, instrumentHeight * 0.22)} fill="currentColor">20 cm · {Math.round(item.rotation)}°</text>
+              <rect
+                x={-instrumentWidth * 0.14}
+                y={instrumentHeight * 0.16}
+                width={instrumentWidth * 0.28}
+                height={Math.max(5, instrumentHeight * 0.16)}
+                rx={instrumentHeight * 0.08}
+                fill="color-mix(in srgb, var(--paper) 58%, transparent)"
+                stroke="color-mix(in srgb, var(--crater) 55%, transparent)"
+                pointerEvents="none"
+              />
+              <text
+                x={instrumentWidth * 0.22}
+                y={instrumentHeight * 0.32}
+                textAnchor="middle"
+                fontSize={Math.max(8, instrumentHeight * 0.16)}
+                fill="currentColor"
+                opacity={0.68}
+                pointerEvents="none"
+              >
+                20 cm · {Math.round(item.rotation)}°
+              </text>
               <rect x={-instrumentWidth / 2} y={-instrumentHeight / 2 - 10} width={instrumentWidth} height={18} fill="transparent" className="cursor-crosshair" onPointerDown={(event) => beginRulerLine(event, item)} />
               <circle cx={instrumentWidth / 2 + 10} cy={0} r={8} fill="var(--paper)" stroke="var(--crater)" className="cursor-ew-resize" onPointerDown={(event) => beginAdjust(event, item, "resize")} />
               <circle cx={-instrumentWidth / 2} cy={-instrumentHeight / 2 - 22} r={7} fill="var(--paper)" stroke="var(--crater)" className="cursor-grab" onPointerDown={(event) => beginAdjust(event, item, "rotate")} />
@@ -303,36 +433,86 @@ export function InstrumentLayer({ store, editable, width, height }: { store: Whi
           const radiusPx = compassRadiusNorm(item, width) * width;
           const angle = item.armAngle ?? -25;
           const tip = rotatePoint(radiusPx, 0, angle);
+          const centerX = item.x * width;
+          const centerY = item.y * height;
+          const hingeLift = clamp(radiusPx * 0.5, 38, 72);
+          const hingeX = centerX;
+          const hingeY = centerY - hingeLift;
+          const pencilTopX = hingeX + (centerX + tip[0] - hingeX) * 0.62;
+          const pencilTopY = hingeY + (centerY + tip[1] - hingeY) * 0.62;
+          const needleBraceX = hingeX + (centerX - hingeX) * 0.52;
+          const needleBraceY = hingeY + (centerY - hingeY) * 0.52;
+          const pencilBraceX = hingeX + (centerX + tip[0] - hingeX) * 0.52;
+          const pencilBraceY = hingeY + (centerY + tip[1] - hingeY) * 0.52;
+          const braceMidX = (needleBraceX + pencilBraceX) / 2;
+          const braceMidY = (needleBraceY + pencilBraceY) / 2;
           return (
             <g key={item.id} className="pointer-events-auto touch-none text-ink drop-shadow-sm" onPointerDown={(event) => beginCompassControl(event, item)}>
+              <line x1={hingeX} y1={hingeY} x2={centerX} y2={centerY - 3} stroke="var(--ink)" strokeWidth={13} strokeLinecap="round" opacity={0.24} pointerEvents="none" />
+              <line x1={hingeX} y1={hingeY} x2={centerX} y2={centerY - 3} stroke="color-mix(in srgb, var(--paper) 64%, var(--crater))" strokeWidth={9} strokeLinecap="round" pointerEvents="none" />
+              <line x1={hingeX} y1={hingeY} x2={centerX + tip[0]} y2={centerY + tip[1]} stroke="var(--ink)" strokeWidth={14} strokeLinecap="round" opacity={0.22} pointerEvents="none" />
+              <line x1={hingeX} y1={hingeY} x2={centerX + tip[0]} y2={centerY + tip[1]} stroke="color-mix(in srgb, var(--paper) 58%, var(--crater))" strokeWidth={10} strokeLinecap="round" pointerEvents="none" />
+              <line x1={pencilTopX} y1={pencilTopY} x2={centerX + tip[0]} y2={centerY + tip[1]} stroke="var(--rose)" strokeWidth={9} strokeLinecap="round" pointerEvents="none" />
+              <line x1={pencilTopX} y1={pencilTopY} x2={centerX + tip[0]} y2={centerY + tip[1]} stroke="color-mix(in srgb, var(--moon) 58%, transparent)" strokeWidth={4} strokeLinecap="round" pointerEvents="none" />
+              <line x1={needleBraceX} y1={needleBraceY} x2={pencilBraceX} y2={pencilBraceY} stroke="var(--ink)" strokeWidth={5} strokeLinecap="round" opacity={0.62} pointerEvents="none" />
+              <circle cx={braceMidX} cy={braceMidY} r={6} fill="var(--paper)" stroke="var(--crater)" strokeWidth={2} pointerEvents="none" />
+              <circle cx={braceMidX} cy={braceMidY} r={2} fill="var(--crater)" pointerEvents="none" />
+              <line x1={centerX} y1={centerY - 4} x2={centerX} y2={centerY + 12} stroke="var(--ink)" strokeWidth={3} strokeLinecap="round" pointerEvents="none" />
+              <path d={`M ${centerX - 4} ${centerY + 5} L ${centerX} ${centerY + 14} L ${centerX + 4} ${centerY + 5} Z`} fill="var(--ink)" pointerEvents="none" />
+              <rect x={hingeX - 5} y={hingeY - 25} width={10} height={17} rx={4} fill="color-mix(in srgb, var(--paper) 55%, var(--crater))" stroke="var(--crater)" pointerEvents="none" />
+              <circle cx={hingeX} cy={hingeY} r={16} fill="var(--crater)" opacity={0.28} pointerEvents="none" />
+              <circle cx={hingeX} cy={hingeY} r={12} fill="color-mix(in srgb, var(--moon) 68%, var(--paper))" stroke="var(--crater)" strokeWidth={2} pointerEvents="none" />
+              <circle cx={hingeX} cy={hingeY} r={4} fill="var(--paper)" stroke="var(--ink)" pointerEvents="none" />
+              <line x1={hingeX - 3} y1={hingeY} x2={hingeX + 3} y2={hingeY} stroke="var(--ink)" strokeWidth={1.5} pointerEvents="none" />
+              <line x1={centerX} y1={centerY} x2={centerX + tip[0]} y2={centerY + tip[1]} stroke="var(--crater)" strokeWidth={1} strokeDasharray="4 4" opacity={0.4} pointerEvents="none" />
               <g className="cursor-move">
-                <circle cx={item.x * width} cy={item.y * height} r={22} fill="transparent" />
-                <circle cx={item.x * width} cy={item.y * height} r={13} fill="var(--paper)" stroke="var(--crater)" strokeWidth={2} />
-                <Move x={item.x * width - 7} y={item.y * height - 7} width={14} height={14} pointerEvents="none" />
+                <circle cx={centerX} cy={centerY} r={22} fill="transparent" />
+                <circle cx={centerX - 15} cy={centerY - 1} r={9} fill="var(--paper)" stroke="var(--line)" strokeWidth={1.5} />
+                <Move x={centerX - 20} y={centerY - 6} width={10} height={10} pointerEvents="none" />
               </g>
-              <line x1={item.x * width} y1={item.y * height} x2={item.x * width + tip[0]} y2={item.y * height + tip[1]} stroke="color-mix(in srgb, var(--crater) 70%, var(--paper))" strokeWidth={12} strokeLinecap="round" />
-              <line x1={item.x * width} y1={item.y * height} x2={item.x * width - tip[0] * 0.62} y2={item.y * height - tip[1] * 0.62} stroke="var(--ink)" strokeWidth={5} strokeLinecap="round" />
               <g className="cursor-ew-resize">
-                <circle cx={item.x * width + tip[0] * 0.55} cy={item.y * height + tip[1] * 0.55} r={17} fill="transparent" />
-                <circle cx={item.x * width + tip[0] * 0.55} cy={item.y * height + tip[1] * 0.55} r={8} fill="var(--paper)" stroke="var(--crater)" strokeWidth={2} />
+                <circle cx={centerX + tip[0] * 0.55} cy={centerY + tip[1] * 0.55} r={17} fill="transparent" />
+                <circle cx={centerX + tip[0] * 0.55} cy={centerY + tip[1] * 0.55} r={8} fill="var(--paper)" stroke="var(--crater)" strokeWidth={2} />
+                <circle cx={centerX + tip[0] * 0.55} cy={centerY + tip[1] * 0.55} r={2} fill="var(--crater)" pointerEvents="none" />
               </g>
               <g className="cursor-crosshair">
-                <circle cx={item.x * width + tip[0]} cy={item.y * height + tip[1]} r={24} fill="transparent" />
-                <circle cx={item.x * width + tip[0]} cy={item.y * height + tip[1]} r={15} fill="var(--paper)" stroke="var(--rose)" strokeWidth={2} strokeDasharray="3 2" />
-                <Pencil x={item.x * width + tip[0] - 7} y={item.y * height + tip[1] - 7} width={14} height={14} color="var(--rose)" pointerEvents="none" />
+                <circle cx={centerX + tip[0]} cy={centerY + tip[1]} r={24} fill="transparent" />
+                <circle cx={centerX + tip[0]} cy={centerY + tip[1]} r={13} fill="color-mix(in srgb, var(--paper) 82%, transparent)" stroke="var(--rose)" strokeWidth={2} strokeDasharray="3 2" />
+                <Pencil x={centerX + tip[0] - 7} y={centerY + tip[1] - 7} width={14} height={14} color="var(--rose)" pointerEvents="none" />
               </g>
-              <g transform={`translate(${item.x * width + 22} ${item.y * height - 22})`} className="cursor-pointer" onPointerDown={(event) => { event.stopPropagation(); store.getState().removeInstrument(item.id); }}><circle r={9} fill="var(--paper)" stroke="var(--line)" /><X x={-6} y={-6} width={12} height={12} /></g>
+              <g transform={`translate(${hingeX + 27} ${hingeY - 18})`} className="cursor-pointer" onPointerDown={(event) => { event.stopPropagation(); store.getState().removeInstrument(item.id); }}><circle r={9} fill="var(--paper)" stroke="var(--line)" /><X x={-6} y={-6} width={12} height={12} /></g>
               <title>{t("compassHint")}</title>
             </g>
           );
         }
         return (
           <g key={item.id} className="pointer-events-auto text-ink drop-shadow-sm" transform={`translate(${item.x * width} ${item.y * height}) rotate(${item.rotation})`}>
-            <path d={`M ${-instrumentWidth / 2} ${instrumentHeight / 2} A ${instrumentWidth / 2} ${instrumentHeight} 0 0 1 ${instrumentWidth / 2} ${instrumentHeight / 2} L 0 ${instrumentHeight / 2} Z`} fill="color-mix(in srgb, var(--leaf) 20%, transparent)" stroke="var(--leaf-deep)" strokeWidth={1.5} onPointerDown={(event) => beginAdjust(event, item, "move")} />
+            <path
+              d={`M ${-instrumentWidth / 2} ${instrumentHeight / 2} A ${instrumentWidth / 2} ${instrumentHeight} 0 0 1 ${instrumentWidth / 2} ${instrumentHeight / 2} L ${-instrumentWidth / 2} ${instrumentHeight / 2} Z`}
+              fill="color-mix(in srgb, var(--moon) 34%, transparent)"
+              stroke="var(--crater)"
+              strokeWidth={1.5}
+              className="cursor-move"
+              onPointerDown={(event) => beginAdjust(event, item, "move")}
+            />
+            <path
+              d={`M ${-instrumentWidth * 0.34} ${instrumentHeight / 2} A ${instrumentWidth * 0.34} ${instrumentHeight * 0.66} 0 0 1 ${instrumentWidth * 0.34} ${instrumentHeight / 2} L ${-instrumentWidth * 0.34} ${instrumentHeight / 2} Z`}
+              fill="color-mix(in srgb, var(--paper) 48%, transparent)"
+              stroke="color-mix(in srgb, var(--crater) 65%, transparent)"
+              strokeWidth={1}
+              pointerEvents="none"
+            />
             <ProtractorTicks width={instrumentWidth} height={instrumentHeight} />
-            <line x1={-instrumentWidth / 2} x2={instrumentWidth / 2} y1={instrumentHeight / 2} y2={instrumentHeight / 2} stroke="var(--leaf-deep)" />
-            <circle cx={0} cy={instrumentHeight / 2} r={12} fill="transparent" stroke="var(--leaf-deep)" strokeDasharray="3 2" className="cursor-crosshair" onPointerDown={(event) => beginProtractorRay(event, item)} />
-            <circle cx={0} cy={-instrumentHeight - 18} r={7} fill="var(--paper)" stroke="var(--leaf-deep)" className="cursor-grab" onPointerDown={(event) => beginAdjust(event, item, "rotate")} />
+            <line x1={-instrumentWidth / 2} x2={instrumentWidth / 2} y1={instrumentHeight / 2} y2={instrumentHeight / 2} stroke="var(--crater)" strokeWidth={1.5} pointerEvents="none" />
+            {Array.from({ length: 21 }, (_, index) => {
+              const x = -instrumentWidth / 2 + index * instrumentWidth / 20;
+              const tick = index % 5 === 0 ? instrumentHeight * 0.1 : instrumentHeight * 0.055;
+              return <line key={index} x1={x} x2={x} y1={instrumentHeight / 2} y2={instrumentHeight / 2 - tick} stroke="var(--crater)" strokeWidth={index % 5 === 0 ? 1 : 0.65} opacity={0.62} pointerEvents="none" />;
+            })}
+            <line x1={-instrumentWidth * 0.08} x2={instrumentWidth * 0.08} y1={instrumentHeight / 2} y2={instrumentHeight / 2} stroke="var(--ink)" strokeWidth={1} pointerEvents="none" />
+            <line x1={0} x2={0} y1={instrumentHeight / 2 - instrumentHeight * 0.12} y2={instrumentHeight / 2 + instrumentHeight * 0.03} stroke="var(--ink)" strokeWidth={1} pointerEvents="none" />
+            <circle cx={0} cy={instrumentHeight / 2} r={12} fill="color-mix(in srgb, var(--paper) 70%, transparent)" stroke="var(--crater)" strokeDasharray="3 2" className="cursor-crosshair" onPointerDown={(event) => beginProtractorRay(event, item)} />
+            <circle cx={0} cy={-instrumentHeight / 2 - 18} r={7} fill="var(--paper)" stroke="var(--crater)" className="cursor-grab" onPointerDown={(event) => beginAdjust(event, item, "rotate")} />
             <g transform={`translate(${instrumentWidth / 2 + 18} ${instrumentHeight / 2})`} className="cursor-pointer" onPointerDown={() => store.getState().removeInstrument(item.id)}><circle r={9} fill="var(--paper)" stroke="var(--line)" /><X x={-6} y={-6} width={12} height={12} /></g>
             <title>{t("protractorHint")}</title>
           </g>
