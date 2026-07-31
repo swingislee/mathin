@@ -10,9 +10,20 @@
 Python 3.10～3.12 环境中安装开源服务：
 
 ```powershell
-python -m pip install "pix2text>=1.1.4,<2"
-p2t serve -l en,ch_sim -H 127.0.0.1 -p 8503
+python -m pip install "pix2text>=1.1.4,<2" fastapi uvicorn python-multipart
+pnpm formula:ocr
 ```
+
+`fastapi`、`uvicorn` 与 `python-multipart` 是 `p2t serve` 的运行依赖；Pix2Text 1.1.6
+不会随主包自动安装这三项。项目启动器按以下顺序寻找服务命令：
+
+1. `FORMULA_OCR_EXECUTABLE` 指定的 `p2t`；
+2. Windows 的 `.tmp/formula-ocr/Scripts/p2t.exe` 或 POSIX 的 `.tmp/formula-ocr/bin/p2t`；
+3. `PATH` 中的 `p2t`。
+
+Windows 只有 Python 3.13 时，可先运行
+`conda create --prefix .tmp/formula-ocr python=3.12 -y`，再用
+`.\.tmp\formula-ocr\python.exe -m pip install ...` 安装上述依赖。`.tmp/` 已被 Git 忽略。
 
 首次启动会下载模型。无 GPU 时可用 CPU 运行；课堂主机若配置 CUDA，按 Pix2Text 文档安装对应的 ONNX Runtime GPU 依赖。
 
@@ -23,6 +34,12 @@ FORMULA_OCR_URL=http://127.0.0.1:8503/pix2text
 ```
 
 修改环境变量后重启 `pnpm dev`。服务应只监听环回地址；生产环境若单独部署识别服务，应使用受控内网 HTTPS 地址与网络访问策略，不向公网开放 Pix2Text 端口。
+
+启动完成后先做健康检查：
+
+```powershell
+pnpm formula:ocr:check
+```
 
 ## 验证
 
