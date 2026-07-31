@@ -453,6 +453,22 @@ export const DASHBOARD_ROUTES = {
     createSurface: "none",
     nav: { labelKey: "assignments" },
   },
+  coursework: {
+    // 学生按真实课务流程查看上课安排、考勤，并发起请假/跟进补课。
+    href: "/dashboard/coursework",
+    kind: "queue",
+    environments: ["learning"],
+    createSurface: "none",
+    nav: { labelKey: "coursework" },
+  },
+  progress: {
+    // 学习记录只承载已授权给学生的成绩、课评与课堂成果。
+    href: "/dashboard/progress",
+    kind: "collection",
+    environments: ["learning"],
+    createSurface: "none",
+    nav: { labelKey: "progress" },
+  },
   assignmentDetail: {
     hrefPattern: "/dashboard/assignments/[assignmentId]",
     kind: "object",

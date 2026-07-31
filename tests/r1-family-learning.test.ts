@@ -12,6 +12,7 @@ const leaveMakeupMigration = read("supabase/migrations/20260730010200_r1_leave_m
 const leaveNotificationMigration = read("supabase/migrations/20260730010300_r1_leave_notification_owner_fix.sql");
 const availabilityMigration = read("supabase/migrations/20260730010400_r1_family_result_availability.sql");
 const notificationLinksMigration = read("supabase/migrations/20260731000300_r1_family_notification_links.sql");
+const studentIaMigration = read("supabase/migrations/20260731000500_r1_student_information_architecture.sql");
 
 describe("R1-5 family learning contracts", () => {
   it("lets students and authorized guardians act on the same learning workflow", () => {
@@ -58,23 +59,33 @@ describe("R1-5 family learning contracts", () => {
     expect(migration).toContain("/dashboard/children?child=");
   });
 
-  it("keeps student notification links inside the learning environment", () => {
+  it("keeps student notifications inside task-oriented learning destinations", () => {
     const assignmentPage = read("src/app/[locale]/dashboard/assignments/page.tsx");
+    const courseworkPage = read("src/app/[locale]/dashboard/coursework/page.tsx");
+    const progressPage = read("src/app/[locale]/dashboard/progress/page.tsx");
     const notifications = read("src/features/events/notifications.ts");
     const studentHome = read("src/features/school/home/StudentHome.tsx");
+    const routes = read("src/features/school/dashboard-routes.ts");
     expect(notificationLinksMigration).toContain("recipient_is_student");
-    expect(notificationLinksMigration).toContain("student_row.user_id = new.recipient_id");
-    expect(notificationLinksMigration).toContain("'/dashboard/assignments#leave'");
-    expect(notificationLinksMigration).toContain("'/dashboard/assignments#learning-results'");
-    expect(notificationLinksMigration).toContain("update public.notifications notification_row");
+    expect(studentIaMigration).toContain("'/dashboard/coursework#leave'");
+    expect(studentIaMigration).toContain("'/dashboard/progress#learning-results'");
+    expect(studentIaMigration).toContain("update public.notifications notification_row");
     expect(notifications).toContain('environment === "learning"');
     expect(notifications).toContain("studentLearningLink(type)");
-    expect(assignmentPage).toContain('id="attendance"');
-    expect(assignmentPage).toContain('id="learning-results"');
-    expect(assignmentPage).toContain("<LeaveRequestPanel");
-    expect(studentHome).toContain('/dashboard/assignments#leave');
-    expect(studentHome).toContain('/dashboard/assignments#learning-results');
+    expect(assignmentPage).not.toContain('id="attendance"');
+    expect(assignmentPage).not.toContain("<LeaveRequestPanel");
+    expect(assignmentPage).not.toContain("FamilyLearningResults");
+    expect(courseworkPage).toContain('id="attendance"');
+    expect(courseworkPage).toContain("<LeaveRequestPanel");
+    expect(progressPage).toContain('id="learning-results"');
+    expect(progressPage).toContain("<FamilyLearningResults");
+    expect(studentHome).toContain('/dashboard/coursework#leave');
+    expect(studentHome).toContain('/dashboard/progress#learning-results');
+    expect(studentHome).toContain("schoolTileKeys");
+    expect(routes).toContain('href: "/dashboard/coursework"');
+    expect(routes).toContain('href: "/dashboard/progress"');
   });
+
   it("keeps draft learning results out of family projections", () => {
     expect(privacyMigration).toContain("session_reviews_invalidate_family_brief");
     expect(privacyMigration).toContain("published_at = null");

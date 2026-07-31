@@ -1,16 +1,10 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { buttonVariants } from "@/components/ui/button";
-import { getWeekSchedule } from "@/features/school/actions/schedule";
 import { BindCodeForm } from "@/features/school/BindCodeForm";
 import {
-  getMyAttendance,
   getMyPendingAssignments,
   getMyPublishedVideoTasks,
-  getMyReviewedVideos,
-  getMySessionReviews,
-  getMySessionReviewStates,
   getMyStudents,
-  listMySessionLeaveRequests,
 } from "@/features/school/customer";
 import {
   DashboardCard,
@@ -19,10 +13,6 @@ import {
   DashboardMainColumn,
   DashboardPage,
 } from "@/features/school/dashboard-page";
-import { FamilyLearningResults } from "@/features/school/FamilyLearningResults";
-import { LeaveRequestPanel } from "@/features/school/LeaveRequestPanel";
-import { summarizeAttendance } from "@/features/school/learning";
-import { addDays } from "@/features/school/schedule";
 import { ManagedVideoUploadPanel } from "@/features/school/ManagedVideoUploadPanel";
 import { Link } from "@/i18n/navigation";
 import { requireDashboardEnvironment } from "@/lib/auth";
@@ -45,11 +35,8 @@ export default async function AssignmentsPage({
 }) {
   const [{ locale }, query] = await Promise.all([params, searchParams]);
   setRequestLocale(locale);
-  const { environment } = await requireDashboardEnvironment(locale, ["learning", "family"]);
-  const [t, studentsT] = await Promise.all([
-    getTranslations("school.customer"),
-    getTranslations("school.students"),
-  ]);
+  await requireDashboardEnvironment(locale, ["learning", "family"]);
+  const t = await getTranslations("school.customer");
   const myStudents = await safe(getMyStudents, []);
   const isBound = myStudents.length > 0;
   const [assignments, videoTasks] = isBound
@@ -61,21 +48,6 @@ export default async function AssignmentsPage({
   const visibleVideoTasks = selectedChild ? videoTasks.filter((task) => task.studentId === selectedChild) : videoTasks;
   const rawVideoSession = Array.isArray(query.videoSession) ? query.videoSession[0] : query.videoSession;
   const rawVideoStudent = Array.isArray(query.videoStudent) ? query.videoStudent[0] : query.videoStudent;
-  const learningStudentId = environment === "learning" ? myStudents[0]?.id ?? null : null;
-  const now = new Date();
-  const [scheduleEntries, attendanceRows, reviewRows, reviewStates, reviewedVideos, leaveRequests] = learningStudentId
-    ? await Promise.all([
-        safe(() => getWeekSchedule(now.toISOString(), addDays(now, 30).toISOString()), []),
-        safe(() => getMyAttendance(addDays(now, -60).toISOString(), now.toISOString()), []),
-        safe(() => getMySessionReviews(addDays(now, -180).toISOString(), now.toISOString()), []),
-        safe(() => getMySessionReviewStates(addDays(now, -180).toISOString(), now.toISOString()), []),
-        safe(getMyReviewedVideos, []),
-        safe(listMySessionLeaveRequests, []),
-      ])
-    : [[], [], [], [], [], []];
-  const learningSchedule = scheduleEntries.filter((entry) => entry.studentId === learningStudentId);
-  const learningAttendanceRows = attendanceRows.filter((row) => row.studentId === learningStudentId);
-  const attendance = summarizeAttendance(learningAttendanceRows.map((row) => row.status));
 
   return (
     <DashboardPage title={t("learningActionsTitle")} description={t("learningActionsIntro")}>
@@ -88,43 +60,6 @@ export default async function AssignmentsPage({
             </DashboardCard>
           ) : (
             <>
-              {learningStudentId && (
-                <>
-                  <div id="attendance" className="scroll-mt-24">
-                    <DashboardCard title={studentsT("attendanceRate")}>
-                      <p className="text-lg font-medium tabular-nums">
-                        {attendance.total > 0 ? `${Math.round(attendance.rate * 100)}%` : "—"}
-                      </p>
-                      <p className="mt-1 text-xs text-muted">
-                        {studentsT("attendanceBreakdown", {
-                          present: attendance.present,
-                          absent: attendance.absent,
-                          late: attendance.late,
-                          leave: attendance.leave,
-                        })}
-                      </p>
-                    </DashboardCard>
-                  </div>
-                  <div id="learning-results" className="scroll-mt-24">
-                    <DashboardCard title={studentsT("recentReviews")}>
-                      <FamilyLearningResults
-                        locale={locale}
-                        reviews={reviewRows.filter((row) => row.studentId === learningStudentId)}
-                        states={reviewStates.filter((row) => row.studentId === learningStudentId)}
-                        videos={reviewedVideos.filter((video) => video.studentId === learningStudentId)}
-                      />
-                    </DashboardCard>
-                  </div>
-                  <LeaveRequestPanel
-                    studentId={learningStudentId}
-                    sessions={learningSchedule.map((session) => ({
-                      id: session.sessionId,
-                      label: `${new Intl.DateTimeFormat(locale, { dateStyle: "short", timeStyle: "short" }).format(new Date(session.scheduledAt))} · ${session.classroomName} · ${session.lectureName}`,
-                    }))}
-                    requests={leaveRequests.filter((request) => request.studentId === learningStudentId)}
-                  />
-                </>
-              )}
               {myStudents.length > 1 && (
                 <nav aria-label={t("chooseChild")} className="flex flex-wrap gap-2">
                   <Link href="/dashboard/assignments" className={cn(buttonVariants({ size: "sm", variant: selectedChild ? "secondary" : "primary" }))}>{t("allChildren")}</Link>

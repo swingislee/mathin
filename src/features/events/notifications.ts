@@ -16,14 +16,14 @@ export interface ChangeEvent {
 
 function studentLearningLink(type: string): string | null {
   if (type.startsWith("leave_request.") || type === "session_change.makeup") {
-    return "/dashboard/assignments#leave";
+    return "/dashboard/coursework#leave";
   }
   if (
     type.startsWith("knowledge_summary.")
     || type.startsWith("review.")
     || type.startsWith("attendance.")
   ) {
-    return "/dashboard/assignments#learning-results";
+    return "/dashboard/progress#learning-results";
   }
   return null;
 }

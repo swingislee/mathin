@@ -73,7 +73,7 @@ export function filterSchoolNav(perms: ReadonlySet<PermissionKey>): SchoolNavIte
 }
 
 /** 学生端去财务（P4C-1 §4.4）：家长管钱，学生只关心课/作业/成绩。 */
-export const STUDENT_NAV_ITEMS: readonly SchoolNavItem[] = (["home", "learningClasses", "assignments", "schedule", "accountSecurity"] as const).map((key) =>
+export const STUDENT_NAV_ITEMS: readonly SchoolNavItem[] = (["home", "coursework", "assignments", "progress", "learningClasses", "accountSecurity"] as const).map((key) =>
   navItem(key, { withGroup: false }),
 );
 

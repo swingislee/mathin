@@ -31,6 +31,8 @@ const ICONS: Record<string, ComponentType<{ size?: number; strokeWidth?: number 
   registrationInvites: KeyRound,
   children: Baby,
   assignments: ClipboardList,
+  coursework: CalendarDays,
+  progress: ClipboardCheck,
   operations: ShieldAlert,
   accountSecurity: ShieldCheck,
   accountSupport: UserRoundCog,

@@ -75,7 +75,7 @@ export async function StudentHome({ locale, user, profile }: HomeProps) {
   if (isBound) {
     labels.set("mySchedule", customerT("myScheduleTitle"));
     extras.set("mySchedule", {
-      href: "/dashboard/schedule",
+      href: "/dashboard/coursework",
       minimal: <MinimalBody value={nextWeekSchedule.length} />,
       compact: (
         <CompactBody
@@ -87,7 +87,7 @@ export async function StudentHome({ locale, user, profile }: HomeProps) {
     contents.set(
       "mySchedule",
       !nextSession ? (
-        <EmptyBody text={customerT("myScheduleEmpty")} href="/dashboard/schedule" linkLabel={schoolT("nav.schedule")} />
+        <EmptyBody text={customerT("myScheduleEmpty")} href="/dashboard/coursework" linkLabel={schoolT("nav.coursework")} />
       ) : (
         <div className="flex min-h-0 flex-1 flex-col gap-1">
           <div className="flex flex-wrap items-center gap-3 py-1 text-sm">
@@ -112,7 +112,7 @@ export async function StudentHome({ locale, user, profile }: HomeProps) {
             </ul>
           )}
           <div className="mt-auto flex justify-end pt-2">
-            <Link href="/dashboard/assignments#leave" className="text-xs text-crater underline underline-offset-2">
+            <Link href="/dashboard/coursework#leave" className="text-xs text-crater underline underline-offset-2">
               {customerT("leaveAction")}
             </Link>
           </div>
@@ -168,7 +168,7 @@ export async function StudentHome({ locale, user, profile }: HomeProps) {
       const rateText = myStar.attendanceRate30d !== null ? `${myStar.attendanceRate30d}%` : "—";
       labels.set("myStars", customerT("myStarsTitle"));
       extras.set("myStars", {
-        href: "/dashboard/assignments#learning-results",
+        href: "/dashboard/progress#learning-results",
         minimal: <MinimalBody value={myStar.starTotal} />,
         compact: <CompactBody value={myStar.starTotal} line={`${customerT("attendanceRate30d")} ${rateText}`} />,
       });
@@ -188,8 +188,9 @@ export async function StudentHome({ locale, user, profile }: HomeProps) {
     }
   }
 
+  const schoolTileKeys = new Set(["mySchedule", "pendingAssignments", "myStars", "myClassrooms"]);
   const eligible = pickEligible("student", perms).filter(
-    (tile) => isBound || (tile.key !== "mySchedule" && tile.key !== "pendingAssignments" && tile.key !== "myStars"),
+    (tile) => schoolTileKeys.has(tile.key) && (isBound || tile.key === "myClassrooms"),
   );
   const merged = mergeTileLayout(eligible, userTiles, STUDENT_ORDER);
   const { items, hidden } = buildTileItems(merged, eligible, labels, contents, extras);
