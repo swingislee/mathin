@@ -2,7 +2,7 @@
 
 import { Bell } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -46,6 +46,7 @@ export function ChangeBell({
   const [dismissedEventIds, setDismissedEventIds] = useState<Set<string>>(() => new Set());
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [pending, startTransition] = useTransition();
+  const navigatingRef = useRef(false);
   const events = initialEvents.filter((event) => !dismissedEventIds.has(event.id));
   const unread = events.length;
   const badgeCount = totalWorkItems + unread;
@@ -61,6 +62,7 @@ export function ChangeBell({
         "postgres_changes",
         { event: "*", schema: "public", table: "notifications", filter: `recipient_id=eq.${userId}` },
         () => {
+          if (navigatingRef.current) return;
           if (refreshTimer) window.clearTimeout(refreshTimer);
           refreshTimer = window.setTimeout(() => router.refresh(), 80);
         },
@@ -86,13 +88,14 @@ export function ChangeBell({
   }, [router, userId]);
 
   const openEvent = (event: ChangeEvent) => {
+    navigatingRef.current = Boolean(event.link);
     setDismissedEventIds((current) => new Set(current).add(event.id));
     setPopoverOpen(false);
     if (event.link) {
       router.push(event.link);
       const hash = event.link.split("#")[1];
       if (hash) {
-        window.setTimeout(() => document.getElementById(hash)?.scrollIntoView({ block: "start" }), 120);
+        window.setTimeout(() => document.getElementById(hash)?.scrollIntoView({ block: "start" }), 600);
       }
     }
     startTransition(async () => {
@@ -204,12 +207,15 @@ export function ChangeBell({
 
   function Event({ event }: { event: ChangeEvent }) {
     const key = event.type.replaceAll(".", "_");
+    const resultKind = typeof event.payload.resultKind === "string" ? event.payload.resultKind : null;
+    const specificKey = resultKind ? `${key}_${resultKind}` : null;
+    const labelKey = specificKey && t.has(`types.${specificKey}`) ? specificKey : t.has(`types.${key}`) ? key : null;
     const title = typeof event.payload.title === "string" ? event.payload.title : null;
     return (
       <span className="block min-w-0 flex-1">
         <span className="flex items-center gap-2">
           <span className="size-1.5 shrink-0 rounded-full bg-rose" aria-hidden />
-          <span className="truncate text-sm">{t.has(`types.${key}`) ? t(`types.${key}`) : t("unknownType")}</span>
+          <span className="truncate text-sm">{labelKey ? t(`types.${labelKey}`) : t("unknownType")}</span>
         </span>
         {title ? <span className="mt-1 block truncate pl-3.5 text-xs text-ink">{title}</span> : null}
         <time className="mt-1 block pl-3.5 text-xs text-muted">

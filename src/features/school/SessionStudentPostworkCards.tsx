@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { CheckCircle2, CircleDashed, Star } from "lucide-react";
+import { CheckCircle2, CircleDashed, LoaderCircle, Star } from "lucide-react";
 import { useAction } from "@/components/action-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -61,25 +61,56 @@ export function SessionStudentPostworkCards({
   const router = useRouter();
   const [reviews, setReviews] = useState(initialReviews);
   const [followups, setFollowups] = useState<Record<string, string>>({});
+  const [status, setStatus] = useState(resultStatus);
+  const [reviewSaveState, setReviewSaveState] = useState<"saved" | "saving" | "error">("saved");
+  const reviewsRef = useRef(reviews);
+  const sequenceRef = useRef(0);
+  const savedSequenceRef = useRef(0);
+  const timerRef = useRef<number | null>(null);
+  const savingRef = useRef<Promise<boolean> | null>(null);
+  const flushRef = useRef<() => Promise<boolean>>(async () => true);
 
-  const saveReviews = useAction(
-    (records: ReviewRecord[]) => saveSessionReviewsAction(sessionId, records),
-    {
-      successMessage: reviewT("saved"),
-      errorMessage: { default: reviewT("failed") },
-      onSuccess: () => router.refresh(),
-    },
-  );
+  const flushReviews = useCallback(async (): Promise<boolean> => {
+    if (savingRef.current) await savingRef.current;
+    if (savedSequenceRef.current === sequenceRef.current) return true;
+    const sequence = sequenceRef.current;
+    setReviewSaveState("saving");
+    const request = saveSessionReviewsAction(sessionId, reviewsRef.current).then((result) => {
+      if (!result.ok) {
+        setReviewSaveState("error");
+        return false;
+      }
+      savedSequenceRef.current = sequence;
+      setReviewSaveState("saved");
+      setStatus((current) => current === "published" || current === "withdrawn" ? "revised" : current);
+      if (sequenceRef.current !== sequence) {
+        timerRef.current = window.setTimeout(() => void flushRef.current(), 1_000);
+      }
+      return true;
+    }).catch(() => {
+      setReviewSaveState("error");
+      return false;
+    }).finally(() => {
+      savingRef.current = null;
+    });
+    savingRef.current = request;
+    return request;
+  }, [sessionId]);
+
+  useEffect(() => { flushRef.current = flushReviews; }, [flushReviews]);
+
   const publishReviews = useAction(
-    async (records: ReviewRecord[]) => {
-      const saved = await saveSessionReviewsAction(sessionId, records);
-      if (!saved.ok) return saved;
+    async () => {
+      if (!(await flushReviews())) return { ok: false as const, code: "SAVE_FAILED" };
       return publishSessionReviewsAction(sessionId);
     },
     {
       successMessage: t("studentReviewsPublishedToast"),
       errorMessage: { default: reviewT("failed") },
-      onSuccess: () => router.refresh(),
+      onSuccess: () => {
+        setStatus("published");
+        router.refresh();
+      },
     },
   );
   const recordFollowup = useAction(
@@ -106,11 +137,24 @@ export function SessionStudentPostworkCards({
     },
   );
 
+  useEffect(() => () => {
+    if (timerRef.current) window.clearTimeout(timerRef.current);
+    void flushReviews();
+  }, [flushReviews]);
+
   const reviewByStudent = new Map(reviews.map((review) => [review.studentId, review]));
-  const pending = saveReviews.pending || publishReviews.pending;
-  const isRepublish = resultStatus === "published" || resultStatus === "withdrawn" || resultStatus === "revised";
+  const pending = reviewSaveState === "saving" || publishReviews.pending;
+  const isRepublish = status === "published" || status === "withdrawn" || status === "revised";
   const updateComment = (studentId: string, comment: string) => {
-    setReviews((current) => current.map((review) => review.studentId === studentId ? { ...review, comment } : review));
+    setReviews((current) => {
+      const next = current.map((review) => review.studentId === studentId ? { ...review, comment } : review);
+      reviewsRef.current = next;
+      return next;
+    });
+    sequenceRef.current += 1;
+    setReviewSaveState("saving");
+    if (timerRef.current) window.clearTimeout(timerRef.current);
+    timerRef.current = window.setTimeout(() => void flushRef.current(), 1_000);
   };
 
   if (rows.length === 0) {
@@ -120,8 +164,8 @@ export function SessionStudentPostworkCards({
   return (
     <>
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <Badge variant={resultStatus === "published" ? "default" : "outline"}>
-          {t("learningResultStatus_" + resultStatus)}
+        <Badge variant={status === "published" ? "default" : "outline"}>
+          {t("learningResultStatus_" + status)}
         </Badge>
         <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
           {followupTask?.status === "pending" && (
@@ -132,15 +176,19 @@ export function SessionStudentPostworkCards({
               skipLabel={t("followupSkip")}
             />
           )}
-          {canWriteReview && resultStatus === "published" && (
-            <LearningResultWithdrawButton mode="sessionReviews" targetId={sessionId} disabled={pending} />
+          {canWriteReview && status === "published" && (
+            <LearningResultWithdrawButton mode="sessionReviews" targetId={sessionId} disabled={pending} onSuccess={() => setStatus("withdrawn")} />
           )}
           {canWriteReview && (
             <>
-              <Button size="sm" variant="secondary" disabled={pending} onClick={() => saveReviews.run(reviews)}>
-                {t("saveStudentReviews")}
-              </Button>
-              <Button size="sm" disabled={pending} onClick={() => publishReviews.run(reviews)}>
+              <span className={reviewSaveState === "error" ? "text-xs text-rose" : "text-xs text-muted"} aria-live="polite">
+                {reviewSaveState === "saving" ? <LoaderCircle size={13} className="mr-1 inline animate-spin motion-reduce:animate-none" /> : null}
+                {reviewSaveState === "saving" ? t("studentReviewsSaving") : reviewSaveState === "error" ? t("studentReviewsSaveFailed") : t("studentReviewsSavedAuto")}
+              </span>
+              {reviewSaveState === "error" && (
+                <Button size="sm" variant="ghost" onClick={() => void flushReviews()}>{t("retry")}</Button>
+              )}
+              <Button size="sm" disabled={pending} onClick={() => publishReviews.run()}>
                 {isRepublish ? t("republish") : t("publishStudentReviews")}
               </Button>
             </>

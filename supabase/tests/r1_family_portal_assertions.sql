@@ -241,17 +241,19 @@ update public.learning_result_heads
  where kind in ('knowledge_summary', 'session_review')
    and session_id = :'family_session_id'::uuid;
 insert into public.session_family_briefs (
-  session_id, lesson_title, learning_summary, teacher_public_comment,
+  session_id, lesson_title, learning_summary, document, teacher_public_comment,
   published_by, published_at
 )
 values (
   :'family_session_id'::uuid, '__R1_FAMILY_DRAFT__',
-  '__R1_FAMILY_DRAFT_SUMMARY__', '__R1_FAMILY_PUBLIC_COMMENT__',
+  '__R1_FAMILY_DRAFT_SUMMARY__',
+  jsonb_build_array(jsonb_build_object('type', 'paragraph', 'props', '{}'::jsonb, 'content', jsonb_build_array(jsonb_build_object('type', 'text', 'text', '__R1_FAMILY_DRAFT_SUMMARY__', 'styles', '{}'::jsonb)), 'children', '[]'::jsonb)), '__R1_FAMILY_PUBLIC_COMMENT__',
   null, null
 )
 on conflict (session_id) do update
 set lesson_title = excluded.lesson_title,
     learning_summary = excluded.learning_summary,
+    document = excluded.document,
     teacher_public_comment = excluded.teacher_public_comment,
     published_by = null,
     published_at = null,

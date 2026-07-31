@@ -242,6 +242,8 @@ export interface MyKnowledgeSummary {
   lectureName: string;
   scheduledAt: string;
   lessonTitle: string;
+  document: unknown[];
+  templateVersion: string;
   learningSummary: string;
   homeworkSummary: string;
   materialsNote: string;
@@ -251,7 +253,7 @@ export interface MyKnowledgeSummary {
 
 export async function getMyKnowledgeSummaries(fromIso: string, toIso: string): Promise<MyKnowledgeSummary[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("get_my_knowledge_summaries", { p_from: fromIso, p_to: toIso });
+  const { data, error } = await supabase.rpc("get_my_knowledge_summaries_v2", { p_from: fromIso, p_to: toIso });
   if (error) throw new Error(error.message);
   return (data ?? []).map((row) => ({
     headId: row.head_id,
@@ -262,6 +264,8 @@ export async function getMyKnowledgeSummaries(fromIso: string, toIso: string): P
     lectureName: row.lecture_name,
     scheduledAt: row.scheduled_at,
     lessonTitle: row.lesson_title,
+    document: Array.isArray(row.document) ? row.document : [],
+    templateVersion: row.template_version,
     learningSummary: row.learning_summary,
     homeworkSummary: row.homework_summary,
     materialsNote: row.materials_note,

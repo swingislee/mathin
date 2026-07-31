@@ -23,10 +23,12 @@ export function LearningResultWithdrawButton({
   mode,
   targetId,
   disabled = false,
+  onSuccess,
 }: {
   mode: "head" | "session" | "sessionReviews";
   targetId: string;
   disabled?: boolean;
+  onSuccess?: () => void;
 }) {
   const t = useTranslations("school.learningResults");
   const router = useRouter();
@@ -44,6 +46,7 @@ export function LearningResultWithdrawButton({
       onSuccess: () => {
         setOpen(false);
         setReason("");
+        onSuccess?.();
         router.refresh();
       },
     },

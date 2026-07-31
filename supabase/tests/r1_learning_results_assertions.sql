@@ -7,6 +7,9 @@ declare
   failures text[] := '{}';
   review_definition text := pg_get_functiondef('public.get_my_session_reviews(timestamptz,timestamptz)'::regprocedure);
   knowledge_definition text := pg_get_functiondef('public.get_my_knowledge_summaries(timestamptz,timestamptz)'::regprocedure);
+  knowledge_v2_definition text := pg_get_functiondef('public.get_my_knowledge_summaries_v2(timestamptz,timestamptz)'::regprocedure);
+  summary_draft_definition text := pg_get_functiondef('public.save_session_knowledge_summary(uuid,text,jsonb,text,integer,text)'::regprocedure);
+  stage_auto_definition text := pg_get_functiondef('public.save_stage_report_autodraft(uuid,uuid,date,date,text,text,text,timestamptz,uuid)'::regprocedure);
   stage_definition text := pg_get_functiondef('public.save_stage_report_draft(uuid,uuid,date,date,text,text,text,timestamptz,uuid)'::regprocedure);
   transition_definition text := pg_get_functiondef('public.record_learning_result_transition(uuid,uuid,text,text,text,uuid,boolean)'::regprocedure);
   notification_definition text := pg_get_functiondef('public.stage_notification_for_domain_event()'::regprocedure);
@@ -45,6 +48,16 @@ begin
      or stage_definition not ilike '%report_timezone%'
      or stage_definition not ilike '%session_attendance%' then
     failures := array_append(failures, 'stage report snapshot metadata or dataset is incomplete');
+  end if;
+  if to_regclass('public.stage_report_drafts') is null
+     or stage_auto_definition not ilike '%stage_report_drafts%'
+     or stage_auto_definition ilike '%append_learning_result_revision%' then
+    failures := array_append(failures, 'stage report autosave is missing or mutates immutable revisions');
+  end if;
+  if knowledge_v2_definition not ilike '%revision_row.content -> ''document''%'
+     or summary_draft_definition not ilike '%VERSION_CONFLICT%'
+     or summary_draft_definition not ilike '%mark_session_result_kind_changed%' then
+    failures := array_append(failures, 'BlockNote knowledge summary draft or projection contract is incomplete');
   end if;
   if transition_definition not ilike '%insert into public.domain_events%'
      or transition_definition not ilike '%target_user_id%'
@@ -126,10 +139,33 @@ select public.save_session_reviews_v2(
     'focus', 4, 'participation', 5, 'mastery', 4, 'comment', '__R1_6_REVIEW_V1__'
   ))
 );
-select public.save_session_family_brief(
-  :'session_id'::uuid, '__R1_6_LESSON__', '__R1_6_PUBLIC_SUMMARY__',
-  '__R1_6_HOMEWORK__', '__R1_6_MATERIALS__', '__R1_6_PUBLIC_COMMENT__'
-);
+select result_revision as summary_draft_revision
+  from public.save_session_knowledge_summary(
+    :'session_id'::uuid,
+    '__R1_6_LESSON__',
+    jsonb_build_array(jsonb_build_object(
+      'type', 'paragraph', 'props', '{}'::jsonb,
+      'content', jsonb_build_array(jsonb_build_object(
+        'type', 'text', 'text', '__R1_6_PUBLIC_SUMMARY__', 'styles', '{}'::jsonb
+      )),
+      'children', '[]'::jsonb
+    )),
+    'mathin-knowledge-summary-v1', 0, '__R1_6_PUBLIC_SUMMARY__'
+  ) \gset
+
+do $$
+begin
+  begin
+    perform public.save_session_knowledge_summary(
+      current_setting('test.r16_session_id')::uuid,
+      '__R1_6_CONFLICT__', '[]'::jsonb, 'mathin-knowledge-summary-v1', 0, ''
+    );
+    raise exception 'R1_6_SUMMARY_CONFLICT_ACCEPTED';
+  exception when others then
+    if SQLERRM <> 'VERSION_CONFLICT' then raise; end if;
+  end;
+end
+$$;
 reset role;
 
 set local role authenticated;
@@ -199,8 +235,10 @@ select set_config('request.jwt.claim.sub', :'parent_id', true);
 do $$
 begin
   if not exists(
-    select 1 from public.get_my_knowledge_summaries('2000-01-01', '2100-01-01')
-     where session_id = current_setting('test.r16_session_id')::uuid and learning_summary = '__R1_6_PUBLIC_SUMMARY__'
+    select 1 from public.get_my_knowledge_summaries_v2('2000-01-01', '2100-01-01')
+     where session_id = current_setting('test.r16_session_id')::uuid
+       and learning_summary = '__R1_6_PUBLIC_SUMMARY__'
+       and document #>> '{0,content,0,text}' = '__R1_6_PUBLIC_SUMMARY__'
   ) then raise exception 'R1_6_SUMMARY_NOT_VISIBLE'; end if;
   if exists(
     select 1 from public.get_my_session_reviews('2000-01-01', '2100-01-01')
@@ -354,10 +392,30 @@ select not exists(
 reset role;
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', :'teacher_id', true);select result_head_id as stage_head_id, result_revision_id as stage_revision_1
-  from public.save_stage_report_draft(
+select set_config('request.jwt.claim.sub', :'teacher_id', true);
+select result_head_id as stage_head_id
+  from public.save_stage_report_autodraft(
     :'student_id'::uuid, :'term_id'::uuid, :'term_start'::date, :'report_end'::date,
     '__R1_6_STAGE_TITLE__', '__R1_6_STAGE_SUMMARY_V1__', '__R1_6_STAGE_COMMENT__', now(), null
+  ) \gset
+select set_config('test.r16_stage_head_id', :'stage_head_id', true);
+reset role;
+
+do $$
+begin
+  if exists(
+    select 1 from public.learning_result_revisions revision_row
+     where revision_row.head_id = current_setting('test.r16_stage_head_id')::uuid
+  ) then raise exception 'R1_6_AUTODRAFT_APPENDED_IMMUTABLE_REVISION'; end if;
+end
+$$;
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'teacher_id', true);
+select result_revision_id as stage_revision_1
+  from public.save_stage_report_draft(
+    :'student_id'::uuid, :'term_id'::uuid, :'term_start'::date, :'report_end'::date,
+    '__R1_6_STAGE_TITLE__', '__R1_6_STAGE_SUMMARY_V1__', '__R1_6_STAGE_COMMENT__', now(), :'stage_head_id'::uuid
   ) \gset
 reset role;
 select set_config('test.r16_stage_head_id', :'stage_head_id', true);

@@ -1,7 +1,6 @@
 import { getTranslations } from "next-intl/server";
-import { Badge } from "@/components/ui/badge";
 import type { SessionWorkspaceDetail } from "./classes";
-import { SessionFamilyBriefForm } from "./SessionFamilyBriefForm";
+import { KnowledgeSummaryDocumentView, SessionFamilyBriefForm } from "./SessionFamilyBriefClient";
 
 export async function SessionFamilyBriefPanel({ detail }: { detail: SessionWorkspaceDetail }) {
   const t = await getTranslations("school.session");
@@ -30,7 +29,11 @@ export async function SessionFamilyBriefPanel({ detail }: { detail: SessionWorks
     return (
       <section className="rounded-2xl border border-line bg-card p-4 text-sm">
         <h3 className="font-medium text-ink">{detail.familyBrief.lessonTitle || t("knowledgeSummaryTitle")}</h3>
-        <p className="mt-2 whitespace-pre-wrap text-muted">{detail.familyBrief.learningSummary}</p>
+        {detail.familyBrief.document.length > 0 ? (
+          <KnowledgeSummaryDocumentView document={detail.familyBrief.document} />
+        ) : (
+          <p className="mt-2 whitespace-pre-wrap text-muted">{detail.familyBrief.learningSummary}</p>
+        )}
       </section>
     );
   }
@@ -42,13 +45,12 @@ export async function SessionFamilyBriefPanel({ detail }: { detail: SessionWorks
           <h3 className="font-medium text-ink">{t("knowledgeSummaryTitle")}</h3>
           <p className="mt-1 text-xs text-muted">{t("knowledgeSummaryHint")}</p>
         </div>
-        <Badge variant={resultStatus === "published" ? "default" : "outline"}>
-          {t(`learningResultStatus_${resultStatus}`)}
-        </Badge>
       </div>
       <SessionFamilyBriefForm
         sessionId={detail.id}
+        userId={detail.viewerId}
         brief={detail.familyBrief}
+        sources={detail.knowledgeSummarySources}
         resultStatus={resultStatus}
       />
       {latestPublishedAt && (

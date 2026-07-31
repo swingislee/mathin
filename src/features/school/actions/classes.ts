@@ -833,6 +833,71 @@ export async function saveSessionFamilyBriefAction(input: {
   }
 }
 
+const knowledgeSummaryDocumentSchema = z.object({
+  sessionId: uuid,
+  lessonTitle: text(200),
+  document: z.array(z.unknown()).max(1000).refine((value) => {
+    try {
+      return new TextEncoder().encode(JSON.stringify(value)).byteLength <= 1_048_576;
+    } catch {
+      return false;
+    }
+  }),
+  templateVersion: requiredText(100),
+  baseRevision: z.number().int().nonnegative(),
+});
+
+function documentPlainText(document: unknown[]) {
+  const parts: string[] = [];
+  const visit = (value: unknown) => {
+    if (Array.isArray(value)) {
+      for (const item of value) visit(item);
+      return;
+    }
+    if (!value || typeof value !== "object") return;
+    const row = value as Record<string, unknown>;
+    if (typeof row.text === "string" && row.text.trim()) parts.push(row.text.trim());
+    if (Array.isArray(row.content)) visit(row.content);
+    if (Array.isArray(row.children)) visit(row.children);
+  };
+  visit(document);
+  return parts.join("\n").slice(0, 50_000);
+}
+
+export interface SaveSessionKnowledgeSummaryInput {
+  sessionId: string;
+  lessonTitle: string;
+  document: unknown[];
+  templateVersion: string;
+  baseRevision: number;
+}
+
+export async function saveSessionKnowledgeSummaryAction(
+  input: SaveSessionKnowledgeSummaryInput,
+): Promise<ActionResult<{ revision: number; status: string }>> {
+  try {
+    const value = parse(knowledgeSummaryDocumentSchema, input);
+    const { supabase } = await authorizedClient("review.write");
+    const { data, error } = await supabase.rpc("save_session_knowledge_summary", {
+      p_session_id: value.sessionId,
+      p_lesson_title: value.lessonTitle,
+      p_document: value.document as Json,
+      p_template_version: value.templateVersion,
+      p_base_revision: value.baseRevision,
+      p_plain_text: documentPlainText(value.document),
+    });
+    if (error) throw new Error(error.message);
+    const result = data?.[0];
+    if (!result) throw new Error("RESULT_NOT_FOUND");
+    return {
+      ok: true,
+      data: { revision: result.result_revision, status: result.result_status },
+    };
+  } catch (error) {
+    return actionError(error, ["SESSION_NOT_FOUND", "VERSION_CONFLICT", "RESULT_NOT_FOUND", ...COMMON_CODES]);
+  }
+}
+
 export async function publishSessionFamilyBriefAction(sessionId: string): Promise<ActionResult> {
   try {
     const id = parse(uuid, sessionId);

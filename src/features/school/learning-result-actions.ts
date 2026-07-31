@@ -22,6 +22,18 @@ const reviewDecisionSchema = z.object({
   decision: z.enum(["publish", "changes_requested"]),
   note: text(1000),
 });
+const stageAutoDraftSchema = z.object({
+  headId: optionalUuid,
+  studentId: uuid,
+  termId: uuid,
+  periodStart: dateOnly,
+  periodEnd: dateOnly,
+  title: text(200),
+  summary: text(10000),
+  teacherComment: text(5000),
+  dataCutoffAt: datetime,
+});
+
 const stageReportSchema = z.object({
   headId: optionalUuid,
   studentId: uuid,
@@ -51,6 +63,40 @@ export interface SavedStageReport {
   revisionId: string;
   revisionNo: number;
   status: string;
+}
+
+export async function autosaveStageReportDraftAction(
+  input: SaveStageReportInput,
+): Promise<ActionResult<{ headId: string; status: string }>> {
+  try {
+    const value = parse(stageAutoDraftSchema, input);
+    const { supabase } = await authorizedClient("review.write");
+    const { data, error } = await supabase.rpc("save_stage_report_autodraft", {
+      p_student_id: value.studentId,
+      p_term_id: value.termId,
+      p_period_start: value.periodStart,
+      p_period_end: value.periodEnd,
+      p_title: value.title,
+      p_summary: value.summary,
+      p_teacher_comment: value.teacherComment,
+      p_data_cutoff_at: value.dataCutoffAt,
+      ...(value.headId ? { p_head_id: value.headId } : {}),
+    });
+    if (error) throw new Error(error.message);
+    const result = data?.[0];
+    if (!result) throw new Error("RESULT_NOT_FOUND");
+    return { ok: true, data: { headId: result.result_head_id, status: result.result_status } };
+  } catch (error) {
+    return actionError(error, [
+      "TERM_NOT_FOUND",
+      "STUDENT_NOT_FOUND",
+      "PERIOD_OUTSIDE_TERM",
+      "RESULT_SCOPE_MISMATCH",
+      "RESULT_NOT_FOUND",
+      "INVALID_STATE",
+      ...COMMON_CODES,
+    ]);
+  }
 }
 
 export async function saveStageReportDraftAction(input: SaveStageReportInput): Promise<ActionResult<SavedStageReport>> {

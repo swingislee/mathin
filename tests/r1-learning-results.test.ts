@@ -10,6 +10,7 @@ describe("R1-6 learning result application contracts", () => {
     const actions = read("src/features/school/learning-result-actions.ts");
     for (const rpc of [
       "save_stage_report_draft",
+      "save_stage_report_autodraft",
       "submit_learning_result_review",
       "decide_learning_result_review",
       "withdraw_learning_result",
@@ -29,13 +30,19 @@ describe("R1-6 learning result application contracts", () => {
   it("keeps session publications explicit and withdrawable", () => {
     const form = read("src/features/school/SessionFamilyBriefForm.tsx");
     const panel = read("src/features/school/SessionFamilyBriefPanel.tsx");
+    const clientEditor = read("src/features/school/SessionFamilyBriefClient.tsx");
     const data = read("src/features/school/classes.ts");
     const actions = read("src/features/school/learning-result-actions.ts");
-    expect(form).toContain("saveSessionFamilyBriefAction(fields)");
+    expect(form).toContain("saveSessionKnowledgeSummaryAction");
+    expect(form).toContain("BlockNoteView");
+    expect(clientEditor).toContain("ssr: false");
+    expect(form).toContain("createNoteUpload");
+    expect(form).toContain("knowledgeTemplate");
     expect(form).toContain("publishSessionFamilyBriefAction(sessionId)");
+    expect(panel).toContain("knowledgeSummarySources");
     expect(actions).toContain('rpc("publish_session_reviews"');
     expect(form).toContain('mode="session"');
-    expect(panel).toContain("learningResultStatus_");
+    expect(form).toContain("learningResultStatus_");
     expect(data).toContain('.from("learning_result_heads")');
     expect(data).toContain('.in("kind", ["knowledge_summary", "session_review"])');
   });
@@ -59,6 +66,8 @@ describe("R1-6 learning result application contracts", () => {
     expect(panel).toContain("submitLearningResultReviewAction");
     expect(panel).toContain("decideLearningResultReviewAction");
     expect(panel).toContain("metricVersion");
+    expect(panel).toContain("autosaveStageReportDraftAction");
+    expect(panel).toContain("stageReportSavedAuto");
     expect(panel).toContain("dataCutoffAt");
     expect(panel).toContain("editorOpen");
     expect(panel).toContain("StageReportEvidence");
@@ -83,11 +92,16 @@ describe("R1-6 learning result application contracts", () => {
       expect(messages.school.learningResults.stageReportsTitle).toBeTruthy();
       expect(messages.school.learningResults.metricVersionMathinLearningReportV1).toBeTruthy();
       expect(messages.school.learningResults.evidenceTitle).toBeTruthy();
+      expect(messages.school.learningResults.stageReportSavedAuto).toBeTruthy();
+      expect(messages.school.session.knowledgeSummarySavedAuto).toBeTruthy();
+      expect(messages.school.session.studentReviewsSavedAuto).toBeTruthy();
       expect(messages.school.learningResults.status_revised).toBeTruthy();
       expect(messages.school.learningResults.withdrawReason).toBeTruthy();
       expect(messages.school.session.learningResultStatus_withdrawn).toBeTruthy();
       expect(messages.school.videos.publishReview).toBeTruthy();
       expect(messages.school.videos.resultStatus_published).toBeTruthy();
+      expect(messages.classroom.list.title).toBeTruthy();
+      expect(messages.changes.types.learning_result_published_stage_report).toBeTruthy();
     }
   });
 });

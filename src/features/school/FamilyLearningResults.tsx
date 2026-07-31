@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
 import { CustomerVideoButton } from "./CustomerVideoButton";
+import { KnowledgeSummaryDocumentView } from "./SessionFamilyBriefClient";
 import type {
   MyKnowledgeSummary,
   MySessionReview,
@@ -63,7 +64,7 @@ export async function FamilyLearningResults({
                       })}
                     </p>
                   </div>
-                  <Badge variant="default">{t("published")}</Badge>
+                  <Badge variant="default">{t("reviewStatus_published")}</Badge>
                 </div>
                 <p className="mt-2 whitespace-pre-wrap">{report.summary}</p>
                 {report.teacherComment && <p className="mt-2 text-xs text-muted">{report.teacherComment}</p>}
@@ -92,7 +93,11 @@ export async function FamilyLearningResults({
                   </p>
                   <time className="text-xs text-muted">{shortDateFormatter.format(new Date(summary.scheduledAt))}</time>
                 </div>
-                <p className="mt-2 whitespace-pre-wrap">{summary.learningSummary}</p>
+                {summary.document.length > 0 ? (
+                  <KnowledgeSummaryDocumentView document={summary.document} />
+                ) : (
+                  <p className="mt-2 whitespace-pre-wrap">{summary.learningSummary}</p>
+                )}
                 {summary.materialsNote && <p className="mt-2 text-xs text-muted">{summary.materialsNote}</p>}
                 {summary.teacherPublicComment && <p className="mt-2 text-xs text-muted">{summary.teacherPublicComment}</p>}
               </li>

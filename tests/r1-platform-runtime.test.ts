@@ -38,7 +38,9 @@ describe("R1-2 platform runtime contracts", () => {
     expect(changeBell).toContain("supabase.realtime.setAuth");
     expect(changeBell).toContain("notifications:${userId}");
     expect(changeBell).toContain("initialEvents.filter");
-    expect(changeBell.indexOf("if (event.link) router.push(event.link);")).toBeLessThan(
+    expect(changeBell).toContain("const navigatingRef = useRef(false)");
+    expect(changeBell).toContain("if (navigatingRef.current) return;");
+    expect(changeBell.indexOf("router.push(event.link)")).toBeLessThan(
       changeBell.indexOf("await markChangeFeedItemRead(event.id)"),
     );
     expect(actions).toContain('.from("notifications")');

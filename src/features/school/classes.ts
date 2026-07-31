@@ -454,7 +454,19 @@ export interface SessionFamilyBrief {
   homeworkSummary: string;
   materialsNote: string;
   teacherPublicComment: string;
+  document: unknown[];
+  templateVersion: string;
+  revision: number;
   publishedAt: string | null;
+}
+
+export interface KnowledgeSummarySource {
+  sessionId: string;
+  sessionTitle: string;
+  scheduledAt: string | null;
+  lessonTitle: string;
+  document: unknown[];
+  templateVersion: string;
 }
 
 export interface SessionLearningResult {
@@ -482,6 +494,7 @@ export interface SessionVideoTask {
 }
 
 export interface SessionWorkspaceDetail {
+  viewerId: string;
   id: string;
   classroomId: string;
   classroomName: string;
@@ -516,6 +529,7 @@ export interface SessionWorkspaceDetail {
   pendingVideoCount: number;
   postworkCompletedAt: string | null;
   familyBrief: SessionFamilyBrief;
+  knowledgeSummarySources: KnowledgeSummarySource[];
   learningResults: SessionLearningResult[];
   publishedAssignments: SessionPublishedAssignment[];
   videoTask: SessionVideoTask | null;
@@ -616,7 +630,7 @@ export async function getSessionWorkspaceDetail(sessionId: string): Promise<Sess
       }>>(),
     supabase
       .from("session_family_briefs")
-      .select("lesson_title,learning_summary,homework_summary,materials_note,teacher_public_comment,published_at")
+      .select("lesson_title,learning_summary,homework_summary,materials_note,teacher_public_comment,document,template_version,revision,published_at")
       .eq("session_id", sessionId)
       .maybeSingle<{
         lesson_title: string;
@@ -624,6 +638,9 @@ export async function getSessionWorkspaceDetail(sessionId: string): Promise<Sess
         homework_summary: string;
         materials_note: string;
         teacher_public_comment: string;
+        document: unknown;
+        template_version: string;
+        revision: number;
         published_at: string | null;
       }>(),
     supabase
@@ -706,6 +723,22 @@ export async function getSessionWorkspaceDetail(sessionId: string): Promise<Sess
   if (publicationError) throw new Error(publicationError.message);
   if (videoTaskError) throw new Error(videoTaskError.message);
 
+  const { data: knowledgeSourceRows, error: knowledgeSourceError } = await supabase
+    .from("session_family_briefs")
+    .select("session_id,lesson_title,document,template_version,class_sessions!inner(title,scheduled_at,classroom_id)")
+    .eq("class_sessions.classroom_id", session.classroom_id)
+    .neq("session_id", sessionId)
+    .order("updated_at", { ascending: false })
+    .limit(8)
+    .returns<Array<{
+      session_id: string;
+      lesson_title: string;
+      document: unknown;
+      template_version: string;
+      class_sessions: { title: string; scheduled_at: string | null; classroom_id: string } | null;
+    }>>();
+  if (knowledgeSourceError) throw new Error(knowledgeSourceError.message);
+
   const myResponsibilities = (assignmentRows ?? []).filter((row) => row.user_id === user.id).map((row) => row.responsibility);
   const isTeaching = myResponsibilities.includes("primary_teacher") || myResponsibilities.includes("assistant_teacher");
   const hasClassViewAll = perms.has("class.view.all");
@@ -749,6 +782,7 @@ export async function getSessionWorkspaceDetail(sessionId: string): Promise<Sess
   }
 
   return {
+    viewerId: user.id,
     id: session.id,
     classroomId: session.classroom_id,
     classroomName: session.classrooms?.name || "-",
@@ -824,8 +858,21 @@ export async function getSessionWorkspaceDetail(sessionId: string): Promise<Sess
       homeworkSummary: briefRow?.homework_summary ?? "",
       materialsNote: briefRow?.materials_note ?? "",
       teacherPublicComment: briefRow?.teacher_public_comment ?? "",
+      document: Array.isArray(briefRow?.document) ? briefRow.document : [],
+      templateVersion: briefRow?.template_version ?? "mathin-knowledge-summary-v1",
+      revision: briefRow?.revision ?? 0,
       publishedAt: briefRow?.published_at ?? null,
     },
+    knowledgeSummarySources: (knowledgeSourceRows ?? [])
+      .filter((row) => Array.isArray(row.document) && row.document.length > 0)
+      .map((row) => ({
+        sessionId: row.session_id,
+        sessionTitle: row.class_sessions?.title ?? "-",
+        scheduledAt: row.class_sessions?.scheduled_at ?? null,
+        lessonTitle: row.lesson_title,
+        document: row.document as unknown[],
+        templateVersion: row.template_version,
+      })),
     learningResults: (learningResultRows ?? []).map((row) => ({
       kind: row.kind,
       headId: row.id,
