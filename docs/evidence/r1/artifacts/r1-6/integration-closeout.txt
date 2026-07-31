@@ -1,0 +1,17 @@
+R1-6 integration closeout
+finished_at=2026-08-01T03:14:30+08:00
+commit_sha=f716a886312988911aacbb4b54bf159712ac7c1c
+migration_head=20260801000400_r1_stage_report_autodrafts.sql
+ci_checks=14/14
+production_build_pages=314/314
+r1_tests=67/67
+offline_tests=2/2
+targeted_tests=29/29
+message_keys=3574x2
+database_types=current
+r1_learning_results_assertions=pass_rollback
+r1_family_portal_assertions=pass_rollback
+browser_teacher_review_family_student_chain=pass
+browser_notification_deep_links=pass
+browser_student_learning_classes_route=pass
+formal_playwright_artifacts=R1-14
