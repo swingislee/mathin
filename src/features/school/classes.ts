@@ -24,6 +24,7 @@ import type {
 } from "./teaching-operations/types";
 import type { WorkItemRow } from "./stage/types";
 import type { SupportTaskKind } from "./support-tasks";
+import type { LearningResultStatus } from "./learning-results";
 
 export interface StaffOption {
   id: string;
@@ -456,6 +457,14 @@ export interface SessionFamilyBrief {
   publishedAt: string | null;
 }
 
+export interface SessionLearningResult {
+  headId: string;
+  studentId: string;
+  status: LearningResultStatus;
+  publishedAt: string | null;
+  updatedAt: string;
+}
+
 export interface SessionPublishedAssignment {
   id: string;
   title: string;
@@ -506,6 +515,7 @@ export interface SessionWorkspaceDetail {
   pendingVideoCount: number;
   postworkCompletedAt: string | null;
   familyBrief: SessionFamilyBrief;
+  learningResults: SessionLearningResult[];
   publishedAssignments: SessionPublishedAssignment[];
   videoTask: SessionVideoTask | null;
 }
@@ -560,6 +570,7 @@ export async function getSessionWorkspaceDetail(sessionId: string): Promise<Sess
     { data: leaveRows, error: leaveError },
     { data: taskRows, error: taskError },
     { data: briefRow, error: briefError },
+    { data: learningResultRows, error: learningResultError },
     { data: rosterRows, error: rosterError },
     { data: supportTaskRows, error: supportTaskError },
     { count: pendingVideoCount, error: videoError },
@@ -614,6 +625,18 @@ export async function getSessionWorkspaceDetail(sessionId: string): Promise<Sess
         teacher_public_comment: string;
         published_at: string | null;
       }>(),
+    supabase
+      .from("learning_result_heads")
+      .select("id,student_id,status,published_at,updated_at")
+      .eq("kind", "session_result")
+      .eq("session_id", sessionId)
+      .returns<Array<{
+        id: string;
+        student_id: string;
+        status: LearningResultStatus;
+        published_at: string | null;
+        updated_at: string;
+      }>>(),
     supabase
       .from("enrollments")
       .select("student_id,students(name)")
@@ -674,6 +697,7 @@ export async function getSessionWorkspaceDetail(sessionId: string): Promise<Sess
   if (leaveError) throw new Error(leaveError.message);
   if (taskError) throw new Error(taskError.message);
   if (briefError) throw new Error(briefError.message);
+  if (learningResultError) throw new Error(learningResultError.message);
   if (rosterError) throw new Error(rosterError.message);
   if (supportTaskError) throw new Error(supportTaskError.message);
   if (videoError) throw new Error(videoError.message);
@@ -800,6 +824,13 @@ export async function getSessionWorkspaceDetail(sessionId: string): Promise<Sess
       teacherPublicComment: briefRow?.teacher_public_comment ?? "",
       publishedAt: briefRow?.published_at ?? null,
     },
+    learningResults: (learningResultRows ?? []).map((row) => ({
+      headId: row.id,
+      studentId: row.student_id,
+      status: row.status,
+      publishedAt: row.published_at,
+      updatedAt: row.updated_at,
+    })),
     publishedAssignments: (publicationRows ?? []).map((row) => ({
       id: row.id,
       title: row.title,

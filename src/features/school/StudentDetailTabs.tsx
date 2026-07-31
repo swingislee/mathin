@@ -1,6 +1,9 @@
 import { getTranslations } from "next-intl/server";
 import { CustomerVideoButton } from "./CustomerVideoButton";
 import { FollowUpForm } from "./FollowUpForm";
+import { StageReportPanel } from "./StageReportPanel";
+import type { SchoolTermRow } from "./courses";
+import type { StaffLearningResult } from "./learning-results";
 import type { StudentDetail, StudentLearning } from "./students";
 
 /**
@@ -66,7 +69,21 @@ export async function StudentFollowUpsTab({
 }
 
 /** 学习：报名、未来课次、出勤与课评。视频拆到自己的 Tab——那是一条独立的审阅工作流。 */
-export async function StudentLearningTab({ learning, locale }: { learning: StudentLearning; locale: string }) {
+export async function StudentLearningTab({
+  studentId,
+  learning,
+  locale,
+  stageReports,
+  terms,
+  canWriteStageReports,
+}: {
+  studentId: string;
+  learning: StudentLearning;
+  locale: string;
+  stageReports: StaffLearningResult[];
+  terms: SchoolTermRow[];
+  canWriteStageReports: boolean;
+}) {
   const t = await getTranslations("school.students");
   const dateTime = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" });
   const shortDate = new Intl.DateTimeFormat(locale, { dateStyle: "short" });
@@ -125,6 +142,13 @@ export async function StudentLearningTab({ learning, locale }: { learning: Stude
           </div>
         </div>
       </Section>
+
+      <StageReportPanel
+        studentId={studentId}
+        reports={stageReports}
+        terms={terms}
+        canWrite={canWriteStageReports}
+      />
 
       <Section title={t("recentReviews")}>
         {learning.reviews.length === 0 ? (

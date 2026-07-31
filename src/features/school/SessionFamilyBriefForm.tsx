@@ -10,8 +10,18 @@ import { useAction } from "@/components/action-form";
 import { useRouter } from "@/i18n/navigation";
 import { publishSessionFamilyBriefAction, saveSessionFamilyBriefAction } from "./actions/classes";
 import type { SessionFamilyBrief } from "./classes";
+import { LearningResultWithdrawButton } from "./LearningResultWithdrawButton";
+import type { LearningResultStatus } from "./learning-results";
 
-export function SessionFamilyBriefForm({ sessionId, brief }: { sessionId: string; brief: SessionFamilyBrief }) {
+export function SessionFamilyBriefForm({
+  sessionId,
+  brief,
+  resultStatus,
+}: {
+  sessionId: string;
+  brief: SessionFamilyBrief;
+  resultStatus: LearningResultStatus;
+}) {
   const t = useTranslations("school.session");
   const router = useRouter();
   const [lessonTitle, setLessonTitle] = useState(brief.lessonTitle);
@@ -24,11 +34,18 @@ export function SessionFamilyBriefForm({ sessionId, brief }: { sessionId: string
     errorMessage: { default: t("actionFailed") },
     onSuccess: () => router.refresh(),
   });
-  const publishRun = useAction(publishSessionFamilyBriefAction, {
-    successMessage: t("knowledgeSummaryPublishedToast"),
-    errorMessage: { default: t("actionFailed") },
-    onSuccess: () => router.refresh(),
-  });
+  const publishRun = useAction(
+    async (fields: Parameters<typeof saveSessionFamilyBriefAction>[0]) => {
+      const saved = await saveSessionFamilyBriefAction(fields);
+      if (!saved.ok) return saved;
+      return publishSessionFamilyBriefAction(sessionId);
+    },
+    {
+      successMessage: t("knowledgeSummaryPublishedToast"),
+      errorMessage: { default: t("actionFailed") },
+      onSuccess: () => router.refresh(),
+    },
+  );
 
   const fields = {
     sessionId,
@@ -39,6 +56,7 @@ export function SessionFamilyBriefForm({ sessionId, brief }: { sessionId: string
     teacherPublicComment,
   };
   const pending = saveRun.pending || publishRun.pending;
+  const isRepublish = resultStatus === "published" || resultStatus === "withdrawn" || resultStatus === "revised";
 
   return (
     <div className="flex flex-col gap-3">
@@ -58,16 +76,19 @@ export function SessionFamilyBriefForm({ sessionId, brief }: { sessionId: string
         {t("knowledgeSummaryCommentLabel")}
         <Textarea value={teacherPublicComment} onChange={(event) => setTeacherPublicComment(event.target.value)} maxLength={2000} rows={3} />
       </Label>
-      <div className="flex justify-end gap-2">
+      <div className="flex flex-wrap justify-end gap-2">
+        {resultStatus === "published" && (
+          <LearningResultWithdrawButton mode="session" targetId={sessionId} disabled={pending} />
+        )}
         <Button size="sm" variant="secondary" disabled={pending} onClick={() => saveRun.run(fields)}>
           {t("saveDraft")}
         </Button>
         <Button
           size="sm"
           disabled={pending || !lessonTitle.trim() || !learningSummary.trim()}
-          onClick={() => publishRun.run(sessionId)}
+          onClick={() => publishRun.run(fields)}
         >
-          {brief.publishedAt ? t("republish") : t("publishKnowledgeSummary")}
+          {isRepublish ? t("republish") : t("publishKnowledgeSummary")}
         </Button>
       </div>
     </div>

@@ -28,6 +28,8 @@ import { GuardianScopePanel } from "@/features/school/GuardianScopePanel";
 import { StudentMergePanel } from "@/features/school/StudentMergePanel";
 import { parseReturnTo, preserveReturnTo } from "@/features/school/object-workspace";
 import { getStudentDetail, getStudentLearning } from "@/features/school/students";
+import { listSchoolTerms } from "@/features/school/courses";
+import { listLearningResultsForStaff } from "@/features/school/learning-results";
 import { Link } from "@/i18n/navigation";
 import { getActiveEnvironment, getMyPerms, requireAnyPerm } from "@/lib/auth";
 
@@ -80,6 +82,14 @@ export default async function StudentDetailPage({
   const tabs: StudentTab[] = showFinance ? [...BASE_TABS, "finance"] : [...BASE_TABS];
   const requested = rawSearchParams.tab as StudentTab | undefined;
   const activeTab: StudentTab = requested && tabs.includes(requested) ? requested : "overview";
+
+  const canWriteStageReports = perms.has("review.write");
+  const [stageReports, schoolTerms] = activeTab === "learning"
+    ? await Promise.all([
+        listLearningResultsForStaff({ studentId, kind: "stage_report" }),
+        canWriteStageReports ? listSchoolTerms() : Promise.resolve([]),
+      ])
+    : [[], []];
 
   const [orders, account] = showFinance && activeTab === "finance"
     ? await Promise.all([getStudentOrders(studentId), getStudentAccount(studentId)])
@@ -150,7 +160,16 @@ export default async function StudentDetailPage({
             <StudentFollowUpsTab student={student} locale={locale} canWrite={perms.has("followup.write") && !student.deletedAt} />
           )}
 
-          {activeTab === "learning" && <StudentLearningTab learning={learning} locale={locale} />}
+          {activeTab === "learning" && (
+            <StudentLearningTab
+              studentId={studentId}
+              learning={learning}
+              locale={locale}
+              stageReports={stageReports}
+              terms={schoolTerms}
+              canWriteStageReports={canWriteStageReports}
+            />
+          )}
 
           {activeTab === "videos" && <StudentVideosTab videos={learning.videos} />}
 

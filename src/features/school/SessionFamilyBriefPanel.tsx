@@ -5,9 +5,27 @@ import { SessionFamilyBriefForm } from "./SessionFamilyBriefForm";
 
 export async function SessionFamilyBriefPanel({ detail }: { detail: SessionWorkspaceDetail }) {
   const t = await getTranslations("school.session");
+  const statuses = new Set(detail.learningResults.map((result) => result.status));
+  const resultStatus = statuses.size === 1
+    ? detail.learningResults[0].status
+    : statuses.has("revised")
+      ? "revised"
+      : statuses.has("withdrawn")
+        ? "withdrawn"
+        : statuses.has("review")
+          ? "review"
+          : statuses.has("published")
+            ? "published"
+            : detail.familyBrief.publishedAt
+              ? "published"
+              : "draft";
+  const latestPublishedAt = detail.learningResults
+    .flatMap((result) => result.publishedAt ? [result.publishedAt] : [])
+    .sort()
+    .at(-1) ?? detail.familyBrief.publishedAt;
 
   if (!detail.capabilities.canWriteReview) {
-    if (!detail.familyBrief.publishedAt) return null;
+    if (resultStatus !== "published") return null;
     return (
       <section className="rounded-2xl border border-line bg-card p-4 text-sm">
         <h3 className="font-medium text-ink">{detail.familyBrief.lessonTitle || t("knowledgeSummaryTitle")}</h3>
@@ -23,14 +41,18 @@ export async function SessionFamilyBriefPanel({ detail }: { detail: SessionWorks
           <h3 className="font-medium text-ink">{t("knowledgeSummaryTitle")}</h3>
           <p className="mt-1 text-xs text-muted">{t("knowledgeSummaryHint")}</p>
         </div>
-        <Badge variant={detail.familyBrief.publishedAt ? "default" : "outline"}>
-          {detail.familyBrief.publishedAt ? t("published") : t("draft")}
+        <Badge variant={resultStatus === "published" ? "default" : "outline"}>
+          {t(`learningResultStatus_${resultStatus}`)}
         </Badge>
       </div>
-      <SessionFamilyBriefForm sessionId={detail.id} brief={detail.familyBrief} />
-      {detail.familyBrief.publishedAt && (
+      <SessionFamilyBriefForm
+        sessionId={detail.id}
+        brief={detail.familyBrief}
+        resultStatus={resultStatus}
+      />
+      {latestPublishedAt && (
         <p className="mt-3 text-xs text-muted">
-          {t("knowledgeSummaryPublishedAt", { date: new Date(detail.familyBrief.publishedAt).toLocaleString() })}
+          {t("knowledgeSummaryPublishedAt", { date: new Date(latestPublishedAt).toLocaleString() })}
         </p>
       )}
     </section>
