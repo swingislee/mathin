@@ -125,10 +125,12 @@ export function Toolbar({
   title,
   store = useWhiteboardStore,
   clearTargets,
+  className,
 }: {
   title: string;
   store?: WhiteboardStore;
   clearTargets?: ClearTarget[];
+  className?: string;
 }) {
   const t = useTranslations("whiteboard.board.tools");
   const colorNames = useTranslations("whiteboard.board.colors");
@@ -174,14 +176,13 @@ export function Toolbar({
   };
 
   return (
-    <div className="flex max-w-[calc(100vw-1rem)] items-center gap-0.5 overflow-x-auto rounded-2xl border border-line bg-paper/90 p-1.5 shadow-lg backdrop-blur select-none">
+    <div className={cn("flex max-w-[calc(100vw-1rem)] items-center gap-0.5 overflow-x-auto rounded-2xl border border-line bg-paper/90 p-1.5 shadow-lg backdrop-blur select-none", className)}>
       <ToolButton active={tool === "pointer"} label={t("pointer")} onClick={() => setTool("pointer")}>
         <MousePointer2 size={18} />
       </ToolButton>
-      <ToolButton active={tool === "pen"} label={t("pen")} onClick={() => setTool("pen")}>
-        <Pencil size={18} />
-      </ToolButton>
 
+      <div aria-hidden className="mx-0.5 h-6 w-px shrink-0 bg-line" />
+      <div role="group" data-tool-group="construction" aria-label={`${t("shape")} · ${t("instruments")} · ${t("formula")}`} className="flex shrink-0 items-center gap-0.5 rounded-xl bg-moon/20 p-0.5">
       <Popover>
         <PopoverTrigger asChild>
           <button type="button" aria-label={t("shape")} title={t("shape")} aria-pressed={tool === "shape"} className={cn("grid size-9 shrink-0 place-items-center rounded-full transition-colors", tool === "shape" ? "bg-moon/60 text-ink" : "text-muted hover:bg-moon/30 hover:text-ink")}>
@@ -191,7 +192,7 @@ export function Toolbar({
         <PopoverContent side="top" className="w-64 p-2">
           <div className="grid grid-cols-5 gap-1">
             {INSERT_SHAPES.map((shape) => (
-              <button key={shape} type="button" aria-label={t(`shape_${shape}`)} title={t(`shape_${shape}`)} className="grid size-10 place-items-center rounded-lg text-muted hover:bg-moon/40 hover:text-ink" onClick={() => setShapeKind(shape)}>
+              <button key={shape} type="button" aria-label={t(`shape_${shape}`)} title={t(`shape_${shape}`)} className="grid size-10 place-items-center rounded-lg text-muted hover:bg-moon/40 hover:text-ink" onClick={() => { setShapeKind(shape); setTool("shape"); }}>
                 <ShapeIcon shape={shape} />
               </button>
             ))}
@@ -217,6 +218,27 @@ export function Toolbar({
 
       <ToolButton active={tool === "formula"} label={t("formula")} onClick={() => setTool("formula")}>
         <Sigma size={18} />
+      </ToolButton>
+
+      <Popover>
+        <PopoverTrigger asChild>
+          <button type="button" aria-label={t("fill")} title={t("fill")} className="grid size-9 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-moon/30 hover:text-ink"><PaintBucket size={18} /></button>
+        </PopoverTrigger>
+        <PopoverContent side="top" className="w-auto p-2">
+          <div className="grid grid-cols-4 gap-2">
+            <button type="button" aria-label={t("fillNone")} title={t("fillNone")} onClick={() => pickFill(null)} className={cn("relative size-7 rounded-full border border-line bg-paper", fill === null && "ring-2 ring-crater ring-offset-2 ring-offset-paper")}><span className="absolute inset-1/2 h-px w-6 -translate-x-1/2 -rotate-45 bg-rose" /></button>
+            {COLOR_TOKENS.map((token) => (
+              <button key={token} type="button" aria-label={colorNames(token)} title={colorNames(token)} onClick={() => pickFill(token)} className={cn("size-7 rounded-full border border-line", fill === token && "ring-2 ring-crater ring-offset-2 ring-offset-paper")} style={{ background: colorVar(token) }} />
+            ))}
+          </div>
+        </PopoverContent>
+      </Popover>
+      </div>
+
+      <div aria-hidden className="mx-0.5 h-6 w-px shrink-0 bg-line" />
+      <div role="group" data-tool-group="drawing" aria-label={`${t("pen")} · ${t("eraser")} · ${t("color")} · ${t("size")}`} className="flex shrink-0 items-center gap-0.5 rounded-xl bg-card/70 p-0.5">
+      <ToolButton active={tool === "pen"} label={t("pen")} onClick={() => setTool("pen")}>
+        <Pencil size={18} />
       </ToolButton>
 
       <Popover>
@@ -252,20 +274,6 @@ export function Toolbar({
 
       <Popover>
         <PopoverTrigger asChild>
-          <button type="button" aria-label={t("fill")} title={t("fill")} className="grid size-9 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-moon/30 hover:text-ink"><PaintBucket size={18} /></button>
-        </PopoverTrigger>
-        <PopoverContent side="top" className="w-auto p-2">
-          <div className="grid grid-cols-4 gap-2">
-            <button type="button" aria-label={t("fillNone")} title={t("fillNone")} onClick={() => pickFill(null)} className={cn("relative size-7 rounded-full border border-line bg-paper", fill === null && "ring-2 ring-crater ring-offset-2 ring-offset-paper")}><span className="absolute inset-1/2 h-px w-6 -translate-x-1/2 -rotate-45 bg-rose" /></button>
-            {COLOR_TOKENS.map((token) => (
-              <button key={token} type="button" aria-label={colorNames(token)} title={colorNames(token)} onClick={() => pickFill(token)} className={cn("size-7 rounded-full border border-line", fill === token && "ring-2 ring-crater ring-offset-2 ring-offset-paper")} style={{ background: colorVar(token) }} />
-            ))}
-          </div>
-        </PopoverContent>
-      </Popover>
-
-      <Popover>
-        <PopoverTrigger asChild>
           <button type="button" aria-label={t("size")} title={t("size")} className="grid size-9 shrink-0 place-items-center rounded-full text-ink transition-colors hover:bg-moon/30"><span aria-hidden className="rounded-full bg-current" style={{ width: 4 + sizeIndex * 3, height: 4 + sizeIndex * 3 }} /></button>
         </PopoverTrigger>
         <PopoverContent side="top" className="w-auto p-1.5">
@@ -277,8 +285,9 @@ export function Toolbar({
           </div>
         </PopoverContent>
       </Popover>
+      </div>
 
-      <div aria-hidden className="mx-1 h-6 w-px shrink-0 bg-line" />
+      <div aria-hidden className="mx-0.5 h-6 w-px shrink-0 bg-line" />
       <ToolButton label={t("undo")} onClick={undo} disabled={!canUndo}><Undo2 size={18} /></ToolButton>
       <ToolButton label={t("clear")} onClick={() => setClearOpen(true)} disabled={clearTargets ? false : !hasItems}><Trash2 size={18} /></ToolButton>
       <ToolButton label={t("export")} onClick={() => { void exportPng(store.getState().items, title, document.documentElement); }} disabled={!hasItems}><Download size={18} /></ToolButton>

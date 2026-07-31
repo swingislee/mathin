@@ -17,6 +17,41 @@ export function normalizeDegrees(value: number): number {
   return normalized < 0 ? normalized + 360 : normalized;
 }
 
+/** 返回相邻两次指针角度之间的最短增量，避免跨过 ±180° 时圆规反向跳转。 */
+export function shortestAngleDelta(previous: number, next: number): number {
+  return ((next - previous + 540) % 360) - 180;
+}
+
+/**
+ * 用多个小于 180° 的 SVG arc 段生成椭圆弧。
+ * 单个 SVG A 命令无法表达整圆，也无法可靠表达超过一圈的圆规轨迹。
+ */
+export function ellipseArcPath(
+  width: number,
+  height: number,
+  startAngle: number,
+  sweepAngle: number,
+): string {
+  const radiusX = Math.abs(width) / 2;
+  const radiusY = Math.abs(height) / 2;
+  if (radiusX === 0 || radiusY === 0 || sweepAngle === 0) return "";
+
+  const segmentCount = Math.max(1, Math.ceil(Math.abs(sweepAngle) / 179.999));
+  const segmentSweep = sweepAngle / segmentCount;
+  const startRadians = startAngle * Math.PI / 180;
+  const commands = [
+    `M ${Math.cos(startRadians) * radiusX} ${Math.sin(startRadians) * radiusY}`,
+  ];
+
+  for (let index = 1; index <= segmentCount; index += 1) {
+    const angle = (startAngle + segmentSweep * index) * Math.PI / 180;
+    commands.push(
+      `A ${radiusX} ${radiusY} 0 0 ${segmentSweep >= 0 ? 1 : 0} ${Math.cos(angle) * radiusX} ${Math.sin(angle) * radiusY}`,
+    );
+  }
+  return commands.join(" ");
+}
+
 export function rectFromPoints(a: [number, number], b: [number, number]): NormalizedRect {
   const x = Math.min(a[0], b[0]);
   const y = Math.min(a[1], b[1]);

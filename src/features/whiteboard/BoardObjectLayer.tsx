@@ -6,7 +6,7 @@ import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useStore } from "zustand";
 import { colorVar } from "./strokes";
-import { isEditableObject, resizeObject } from "./geometry";
+import { ellipseArcPath, isEditableObject, resizeObject } from "./geometry";
 import type { WhiteboardStore } from "./store";
 import {
   isShapeItem,
@@ -53,16 +53,7 @@ function ShapeGraphic({ item, canvasWidth, canvasHeight }: { item: ShapeItem; ca
   if (item.shape === "rectangle") return <rect x={-width / 2} y={-height / 2} width={width} height={height} rx={Math.min(8, width * 0.06, height * 0.12)} {...common} />;
   if (item.shape === "ellipse") return <ellipse cx={0} cy={0} rx={width / 2} ry={height / 2} {...common} />;
   if (item.shape === "arc") {
-    const radiusX = width / 2;
-    const radiusY = height / 2;
-    const start = (item.startAngle ?? 0) * Math.PI / 180;
-    const sweep = item.sweepAngle ?? 360;
-    const end = start + sweep * Math.PI / 180;
-    const startPoint = [Math.cos(start) * radiusX, Math.sin(start) * radiusY];
-    const endPoint = [Math.cos(end) * radiusX, Math.sin(end) * radiusY];
-    const large = Math.abs(sweep) > 180 ? 1 : 0;
-    const sweepFlag = sweep >= 0 ? 1 : 0;
-    return <path d={`M ${startPoint[0]} ${startPoint[1]} A ${radiusX} ${radiusY} 0 ${large} ${sweepFlag} ${endPoint[0]} ${endPoint[1]}`} {...common} fill="none" />;
+    return <path d={ellipseArcPath(width, height, item.startAngle ?? 0, item.sweepAngle ?? 360)} {...common} fill="none" />;
   }
   const points = shapePolygonPoints(item.shape)
     .map(([x, y]) => `${(x - 0.5) * width},${(y - 0.5) * height}`)

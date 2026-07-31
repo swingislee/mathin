@@ -1,11 +1,11 @@
 "use client";
 
-import { X } from "lucide-react";
+import { Move, Pencil, X } from "lucide-react";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useStore } from "zustand";
 import { newId } from "@/lib/uuid";
-import { clamp, normalizeDegrees } from "./geometry";
+import { clamp, ellipseArcPath, normalizeDegrees, shortestAngleDelta } from "./geometry";
 import type { WhiteboardStore } from "./store";
 import type { InstrumentItem, ShapeItem } from "./types";
 
@@ -150,7 +150,7 @@ export function InstrumentLayer({ store, editable, width, height }: { store: Whi
     window.addEventListener("pointercancel", finish, { once: true });
   };
 
-  const beginCompassArc = (event: React.PointerEvent<SVGCircleElement>, item: InstrumentItem) => {
+  const beginCompassArc = (event: React.PointerEvent<SVGElement>, item: InstrumentItem) => {
     event.preventDefault();
     event.stopPropagation();
     const rect = boardRect(event.currentTarget);
@@ -159,29 +159,29 @@ export function InstrumentLayer({ store, editable, width, height }: { store: Whi
     const radius = item.radius ?? item.width / 2;
     const angleAt = (pointerEvent: Pick<PointerEvent, "clientX" | "clientY">) => Math.atan2(pointerEvent.clientY - centerY, pointerEvent.clientX - centerX) * 180 / Math.PI;
     const start = angleAt(event.nativeEvent);
-    let current = start;
+    let previous = start;
+    let sweep = 0;
+    let finalArc: ShapeItem | null = null;
     const move = (pointerEvent: PointerEvent) => {
-      current = angleAt(pointerEvent);
-      const sweep = current - start;
-      store.getState().updateInstrument({ ...item, armAngle: current });
-      setPreview({
+      pointerEvent.preventDefault();
+      const current = angleAt(pointerEvent);
+      sweep += shortestAngleDelta(previous, current);
+      previous = current;
+      store.getState().updateInstrument({ ...item, armAngle: normalizeDegrees(current) });
+      finalArc = {
         id: "instrument-preview", kind: "shape", shape: "arc", color, fill: null, strokeWidthNorm: sizeNorm,
         x: item.x, y: item.y, width: radius * 2, height: radius * 2 * rect.width / rect.height,
         rotation: 0, startAngle: start, sweepAngle: sweep,
-      });
+      };
+      setPreview(finalArc);
     };
     const finish = () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", finish);
       window.removeEventListener("pointercancel", finish);
-      const sweep = current - start;
       setPreview(null);
-      if (Math.abs(sweep) > 3) {
-        store.getState().commitItem({
-          id: newId(), kind: "shape", shape: "arc", color, fill: null, strokeWidthNorm: sizeNorm,
-          x: item.x, y: item.y, width: radius * 2, height: radius * 2 * rect.width / rect.height,
-          rotation: 0, startAngle: start, sweepAngle: sweep,
-        });
+      if (finalArc && Math.abs(finalArc.sweepAngle ?? 0) > 3) {
+        store.getState().commitItem({ ...finalArc, id: newId() });
       }
     };
     window.addEventListener("pointermove", move);
@@ -239,7 +239,13 @@ export function InstrumentLayer({ store, editable, width, height }: { store: Whi
       {preview ? (
         <g transform={`translate(${preview.x * width} ${preview.y * height}) rotate(${preview.rotation})`} opacity={0.7}>
           {preview.shape === "arc" ? (
-            <ellipse rx={preview.width * width / 2} ry={preview.height * height / 2} fill="none" stroke={`var(--${preview.color})`} strokeWidth={Math.max(preview.strokeWidthNorm * width, 1)} strokeDasharray="4 3" />
+            <path
+              d={ellipseArcPath(preview.width * width, preview.height * height, preview.startAngle ?? 0, preview.sweepAngle ?? 0)}
+              fill="none"
+              stroke={`var(--${preview.color})`}
+              strokeWidth={Math.max(preview.strokeWidthNorm * width, 1)}
+              strokeLinecap="round"
+            />
           ) : (
             <line x1={-preview.width * width / 2} x2={preview.width * width / 2} stroke={`var(--${preview.color})`} strokeWidth={Math.max(preview.strokeWidthNorm * width, 1)} />
           )}
@@ -266,12 +272,23 @@ export function InstrumentLayer({ store, editable, width, height }: { store: Whi
           const angle = item.armAngle ?? -25;
           const tip = rotatePoint(radiusPx, 0, angle);
           return (
-            <g key={item.id} className="pointer-events-auto text-ink drop-shadow-sm">
-              <circle cx={item.x * width} cy={item.y * height} r={10} fill="var(--paper)" stroke="var(--crater)" strokeWidth={2} className="cursor-move" onPointerDown={(event) => beginAdjust(event, item, "move")} />
+            <g key={item.id} className="pointer-events-auto touch-none text-ink drop-shadow-sm">
+              <g className="cursor-move" onPointerDown={(event) => beginAdjust(event, item, "move")}>
+                <circle cx={item.x * width} cy={item.y * height} r={22} fill="transparent" />
+                <circle cx={item.x * width} cy={item.y * height} r={13} fill="var(--paper)" stroke="var(--crater)" strokeWidth={2} />
+                <Move x={item.x * width - 7} y={item.y * height - 7} width={14} height={14} pointerEvents="none" />
+              </g>
               <line x1={item.x * width} y1={item.y * height} x2={item.x * width + tip[0]} y2={item.y * height + tip[1]} stroke="color-mix(in srgb, var(--crater) 70%, var(--paper))" strokeWidth={12} strokeLinecap="round" />
               <line x1={item.x * width} y1={item.y * height} x2={item.x * width - tip[0] * 0.62} y2={item.y * height - tip[1] * 0.62} stroke="var(--ink)" strokeWidth={5} strokeLinecap="round" />
-              <circle cx={item.x * width + tip[0] * 0.55} cy={item.y * height + tip[1] * 0.55} r={7} fill="var(--paper)" stroke="var(--crater)" className="cursor-ew-resize" onPointerDown={(event) => beginAdjust(event, item, "radius")} />
-              <circle cx={item.x * width + tip[0]} cy={item.y * height + tip[1]} r={11} fill="transparent" stroke="var(--crater)" strokeDasharray="3 2" className="cursor-crosshair" onPointerDown={(event) => beginCompassArc(event, item)} />
+              <g className="cursor-ew-resize" onPointerDown={(event) => beginAdjust(event, item, "radius")}>
+                <circle cx={item.x * width + tip[0] * 0.55} cy={item.y * height + tip[1] * 0.55} r={17} fill="transparent" />
+                <circle cx={item.x * width + tip[0] * 0.55} cy={item.y * height + tip[1] * 0.55} r={8} fill="var(--paper)" stroke="var(--crater)" strokeWidth={2} />
+              </g>
+              <g className="cursor-crosshair" onPointerDown={(event) => beginCompassArc(event, item)}>
+                <circle cx={item.x * width + tip[0]} cy={item.y * height + tip[1]} r={24} fill="transparent" />
+                <circle cx={item.x * width + tip[0]} cy={item.y * height + tip[1]} r={15} fill="var(--paper)" stroke="var(--rose)" strokeWidth={2} strokeDasharray="3 2" />
+                <Pencil x={item.x * width + tip[0] - 7} y={item.y * height + tip[1] - 7} width={14} height={14} color="var(--rose)" pointerEvents="none" />
+              </g>
               <g transform={`translate(${item.x * width + 22} ${item.y * height - 22})`} className="cursor-pointer" onPointerDown={() => store.getState().removeInstrument(item.id)}><circle r={9} fill="var(--paper)" stroke="var(--line)" /><X x={-6} y={-6} width={12} height={12} /></g>
               <title>{t("compassHint")}</title>
             </g>

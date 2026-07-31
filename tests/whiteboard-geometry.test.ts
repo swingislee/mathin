@@ -1,10 +1,13 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   cloneBoardItem,
   createShapeFromDrag,
+  ellipseArcPath,
   inkStrokesInRect,
   normalizeDegrees,
   sanitizeLatex,
+  shortestAngleDelta,
 } from "@/features/whiteboard/geometry";
 import { extractPix2TextLatex } from "@/features/whiteboard/formula-service";
 import type { BoardItem, StrokeItem } from "@/features/whiteboard/types";
@@ -52,7 +55,31 @@ describe("whiteboard geometry objects", () => {
 
   it("normalizes angles and strips common math delimiters", () => {
     expect(normalizeDegrees(-30)).toBe(330);
+    expect(shortestAngleDelta(179, -179)).toBe(2);
+    expect(shortestAngleDelta(-179, 179)).toBe(-2);
     expect(sanitizeLatex("  $$x^2+y^2=r^2$$  ")).toBe("x^2+y^2=r^2");
     expect(sanitizeLatex("\\[\\frac{1}{2}\\]")).toBe("\\frac{1}{2}");
+  });
+
+  it("renders compass previews and saved full turns with the same segmented arc path", () => {
+    const quarter = ellipseArcPath(200, 200, 0, 90);
+    const fullTurn = ellipseArcPath(200, 200, 0, 360);
+
+    expect(quarter.match(/\bA\b/g)).toHaveLength(1);
+    expect(fullTurn.match(/\bA\b/g)).toHaveLength(3);
+    expect(fullTurn).not.toContain("NaN");
+  });
+
+  it("keeps compass feedback and construction tools wired to their dedicated UI contracts", () => {
+    const instrumentLayer = readFileSync("src/features/whiteboard/InstrumentLayer.tsx", "utf8");
+    const toolbar = readFileSync("src/features/whiteboard/Toolbar.tsx", "utf8");
+
+    expect(instrumentLayer).toContain("shortestAngleDelta(previous, current)");
+    expect(instrumentLayer).toContain("ellipseArcPath(preview.width * width");
+    expect(instrumentLayer).toContain('r={22} fill="transparent"');
+    expect(instrumentLayer).toContain('r={24} fill="transparent"');
+    expect(toolbar).toContain('data-tool-group="construction"');
+    expect(toolbar).toContain('data-tool-group="drawing"');
+    expect(toolbar.indexOf('data-tool-group="construction"')).toBeLessThan(toolbar.indexOf('data-tool-group="drawing"'));
   });
 });
