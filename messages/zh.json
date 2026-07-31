@@ -3151,7 +3151,7 @@
         "compass": "圆规",
         "protractor": "量角器",
         "compassHint": "拖动针脚腿移动圆规，拖动调节钮改变开口；拖动铅笔腿，让整个人字架绕针脚画圆。",
-        "protractorHint": "拖动中心定位，拖动刻度盘旋转；从圆心开始画角。",
+        "protractorHint": "拖动中心十字对准画图点，再拖动上方旋转柄绕该点旋转；拖动旁边的铅笔柄从圆心画角。",
         "formula": "手写转公式",
         "formulaDialogTitle": "手写转公式",
         "formulaDialogHint": "对照原笔迹调整 LaTeX，确认后才生成可移动、缩放和旋转的公式。",

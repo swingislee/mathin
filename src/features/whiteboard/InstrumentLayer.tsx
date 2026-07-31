@@ -1,6 +1,6 @@
 "use client";
 
-import { Move, Pencil, X } from "lucide-react";
+import { Move, Pencil, RotateCw, X } from "lucide-react";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useStore } from "zustand";
@@ -138,10 +138,48 @@ export function InstrumentLayer({ store, editable, width, height }: { store: Whi
 
   const boardRect = (target: SVGElement) => target.ownerSVGElement?.getBoundingClientRect() ?? target.getBoundingClientRect();
 
+  const beginAnchoredRotate = (
+    event: React.PointerEvent<SVGElement>,
+    item: InstrumentItem,
+    pivotLocal: [number, number],
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const rect = boardRect(event.currentTarget);
+    const centerX = rect.left + item.x * rect.width;
+    const centerY = rect.top + item.y * rect.height;
+    const pivotOffset = rotatePoint(pivotLocal[0], pivotLocal[1], item.rotation);
+    const pivotX = centerX + pivotOffset[0];
+    const pivotY = centerY + pivotOffset[1];
+    let previousPointerAngle = Math.atan2(event.clientY - pivotY, event.clientX - pivotX) * 180 / Math.PI;
+    let rotationDelta = 0;
+    const move = (pointerEvent: PointerEvent) => {
+      const pointerAngle = Math.atan2(pointerEvent.clientY - pivotY, pointerEvent.clientX - pivotX) * 180 / Math.PI;
+      rotationDelta += shortestAngleDelta(previousPointerAngle, pointerAngle);
+      previousPointerAngle = pointerAngle;
+      const rotation = normalizeDegrees(item.rotation + rotationDelta);
+      const nextPivotOffset = rotatePoint(pivotLocal[0], pivotLocal[1], rotation);
+      store.getState().updateInstrument({
+        ...item,
+        x: (pivotX - rect.left - nextPivotOffset[0]) / rect.width,
+        y: (pivotY - rect.top - nextPivotOffset[1]) / rect.height,
+        rotation,
+      });
+    };
+    const finish = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", finish);
+      window.removeEventListener("pointercancel", finish);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", finish, { once: true });
+    window.addEventListener("pointercancel", finish, { once: true });
+  };
+
   const beginAdjust = (
     event: React.PointerEvent<SVGElement>,
     item: InstrumentItem,
-    mode: "move" | "rotate" | "resize" | "radius",
+    mode: "move" | "resize" | "radius",
   ) => {
     event.preventDefault();
     event.stopPropagation();
@@ -150,7 +188,6 @@ export function InstrumentLayer({ store, editable, width, height }: { store: Whi
     const startY = event.clientY;
     const centerX = rect.left + item.x * rect.width;
     const centerY = rect.top + item.y * rect.height;
-    const initialAngle = Math.atan2(startY - centerY, startX - centerX) * 180 / Math.PI;
     const initialRadius = compassRadiusNorm(item, rect.width);
     const initialPointerRadius = Math.hypot(startX - centerX, startY - centerY) / rect.width;
     const move = (pointerEvent: PointerEvent) => {
@@ -161,9 +198,6 @@ export function InstrumentLayer({ store, editable, width, height }: { store: Whi
           x: clamp(item.x + (pointerEvent.clientX - startX) / rect.width),
           y: clamp(item.y + (pointerEvent.clientY - startY) / rect.height),
         };
-      } else if (mode === "rotate") {
-        const angle = Math.atan2(pointerEvent.clientY - centerY, pointerEvent.clientX - centerX) * 180 / Math.PI;
-        next = { ...item, rotation: normalizeDegrees(item.rotation + angle - initialAngle) };
       } else if (mode === "resize") {
         const dx = pointerEvent.clientX - centerX;
         const dy = pointerEvent.clientY - centerY;
@@ -278,11 +312,11 @@ export function InstrumentLayer({ store, editable, width, height }: { store: Whi
     window.addEventListener("pointerup", finish, { once: true });
     window.addEventListener("pointercancel", finish, { once: true });
   };
-  const beginProtractorRay = (event: React.PointerEvent<SVGCircleElement>, item: InstrumentItem) => {
+  const beginProtractorRay = (event: React.PointerEvent<SVGElement>, item: InstrumentItem) => {
     event.preventDefault();
     event.stopPropagation();
     const rect = boardRect(event.currentTarget);
-    const pivotLocal: [number, number] = [0, item.height * rect.height / 2];
+    const pivotLocal: [number, number] = [0, item.width * rect.width / 4];
     const centerX = rect.left + item.x * rect.width;
     const centerY = rect.top + item.y * rect.height;
     const globalPivotOffset = rotatePoint(pivotLocal[0], pivotLocal[1], item.rotation);
@@ -398,8 +432,15 @@ export function InstrumentLayer({ store, editable, width, height }: { store: Whi
                 20 cm · {Math.round(item.rotation)}°
               </text>
               <rect x={-instrumentWidth / 2} y={-instrumentHeight / 2 - 10} width={instrumentWidth} height={18} fill="transparent" className="cursor-crosshair" onPointerDown={(event) => beginRulerLine(event, item)} />
+              <g transform={`translate(${-instrumentWidth / 2} ${-instrumentHeight / 2})`} className="cursor-move" onPointerDown={(event) => beginAdjust(event, item, "move")}>
+                <circle r={9} fill="var(--paper)" stroke="var(--crater)" strokeWidth={1.5} />
+                <Move x={-5} y={-5} width={10} height={10} pointerEvents="none" />
+              </g>
+              <g transform={`translate(${instrumentWidth / 2} ${-instrumentHeight / 2})`} className="cursor-grab" onPointerDown={(event) => beginAnchoredRotate(event, item, [-instrumentWidth / 2, -instrumentHeight / 2])}>
+                <circle r={9} fill="var(--paper)" stroke="var(--crater)" strokeWidth={1.5} />
+                <RotateCw x={-5} y={-5} width={10} height={10} pointerEvents="none" />
+              </g>
               <circle cx={instrumentWidth / 2 + 10} cy={0} r={8} fill="var(--paper)" stroke="var(--crater)" className="cursor-ew-resize" onPointerDown={(event) => beginAdjust(event, item, "resize")} />
-              <circle cx={-instrumentWidth / 2} cy={-instrumentHeight / 2 - 22} r={7} fill="var(--paper)" stroke="var(--crater)" className="cursor-grab" onPointerDown={(event) => beginAdjust(event, item, "rotate")} />
               <g transform={`translate(${instrumentWidth / 2 + 26} ${-instrumentHeight / 2})`} className="cursor-pointer" onPointerDown={() => store.getState().removeInstrument(item.id)}><circle r={9} fill="var(--paper)" stroke="var(--line)" /><X x={-6} y={-6} width={12} height={12} /></g>
             </g>
           );
@@ -487,10 +528,14 @@ export function InstrumentLayer({ store, editable, width, height }: { store: Whi
             </g>
           );
         }
+        const protractorRadius = instrumentWidth / 2;
+        const protractorHeight = protractorRadius;
+        const baselineY = protractorHeight / 2;
+        const innerRadius = protractorRadius * 0.66;
         return (
           <g key={item.id} className="pointer-events-auto text-ink drop-shadow-sm" transform={`translate(${item.x * width} ${item.y * height}) rotate(${item.rotation})`}>
             <path
-              d={`M ${-instrumentWidth / 2} ${instrumentHeight / 2} A ${instrumentWidth / 2} ${instrumentHeight} 0 0 1 ${instrumentWidth / 2} ${instrumentHeight / 2} L ${-instrumentWidth / 2} ${instrumentHeight / 2} Z`}
+              d={`M ${-protractorRadius} ${baselineY} A ${protractorRadius} ${protractorRadius} 0 0 1 ${protractorRadius} ${baselineY} L ${-protractorRadius} ${baselineY} Z`}
               fill="color-mix(in srgb, var(--moon) 34%, transparent)"
               stroke="var(--crater)"
               strokeWidth={1.5}
@@ -498,24 +543,31 @@ export function InstrumentLayer({ store, editable, width, height }: { store: Whi
               onPointerDown={(event) => beginAdjust(event, item, "move")}
             />
             <path
-              d={`M ${-instrumentWidth * 0.34} ${instrumentHeight / 2} A ${instrumentWidth * 0.34} ${instrumentHeight * 0.66} 0 0 1 ${instrumentWidth * 0.34} ${instrumentHeight / 2} L ${-instrumentWidth * 0.34} ${instrumentHeight / 2} Z`}
+              d={`M ${-innerRadius} ${baselineY} A ${innerRadius} ${innerRadius} 0 0 1 ${innerRadius} ${baselineY} L ${-innerRadius} ${baselineY} Z`}
               fill="color-mix(in srgb, var(--paper) 48%, transparent)"
               stroke="color-mix(in srgb, var(--crater) 65%, transparent)"
               strokeWidth={1}
               pointerEvents="none"
             />
-            <ProtractorTicks width={instrumentWidth} height={instrumentHeight} />
-            <line x1={-instrumentWidth / 2} x2={instrumentWidth / 2} y1={instrumentHeight / 2} y2={instrumentHeight / 2} stroke="var(--crater)" strokeWidth={1.5} pointerEvents="none" />
+            <ProtractorTicks width={instrumentWidth} height={protractorHeight} />
+            <line x1={-protractorRadius} x2={protractorRadius} y1={baselineY} y2={baselineY} stroke="var(--crater)" strokeWidth={1.5} pointerEvents="none" />
             {Array.from({ length: 21 }, (_, index) => {
-              const x = -instrumentWidth / 2 + index * instrumentWidth / 20;
-              const tick = index % 5 === 0 ? instrumentHeight * 0.1 : instrumentHeight * 0.055;
-              return <line key={index} x1={x} x2={x} y1={instrumentHeight / 2} y2={instrumentHeight / 2 - tick} stroke="var(--crater)" strokeWidth={index % 5 === 0 ? 1 : 0.65} opacity={0.62} pointerEvents="none" />;
+              const x = -protractorRadius + index * instrumentWidth / 20;
+              const tick = index % 5 === 0 ? protractorHeight * 0.1 : protractorHeight * 0.055;
+              return <line key={index} x1={x} x2={x} y1={baselineY} y2={baselineY - tick} stroke="var(--crater)" strokeWidth={index % 5 === 0 ? 1 : 0.65} opacity={0.62} pointerEvents="none" />;
             })}
-            <line x1={-instrumentWidth * 0.08} x2={instrumentWidth * 0.08} y1={instrumentHeight / 2} y2={instrumentHeight / 2} stroke="var(--ink)" strokeWidth={1} pointerEvents="none" />
-            <line x1={0} x2={0} y1={instrumentHeight / 2 - instrumentHeight * 0.12} y2={instrumentHeight / 2 + instrumentHeight * 0.03} stroke="var(--ink)" strokeWidth={1} pointerEvents="none" />
-            <circle cx={0} cy={instrumentHeight / 2} r={12} fill="color-mix(in srgb, var(--paper) 70%, transparent)" stroke="var(--crater)" strokeDasharray="3 2" className="cursor-crosshair" onPointerDown={(event) => beginProtractorRay(event, item)} />
-            <circle cx={0} cy={-instrumentHeight / 2 - 18} r={7} fill="var(--paper)" stroke="var(--crater)" className="cursor-grab" onPointerDown={(event) => beginAdjust(event, item, "rotate")} />
-            <g transform={`translate(${instrumentWidth / 2 + 18} ${instrumentHeight / 2})`} className="cursor-pointer" onPointerDown={() => store.getState().removeInstrument(item.id)}><circle r={9} fill="var(--paper)" stroke="var(--line)" /><X x={-6} y={-6} width={12} height={12} /></g>
+            <line x1={-instrumentWidth * 0.08} x2={instrumentWidth * 0.08} y1={baselineY} y2={baselineY} stroke="var(--ink)" strokeWidth={1} pointerEvents="none" />
+            <line x1={0} x2={0} y1={baselineY - protractorHeight * 0.12} y2={baselineY + protractorHeight * 0.03} stroke="var(--ink)" strokeWidth={1} pointerEvents="none" />
+            <circle cx={0} cy={baselineY} r={12} fill="color-mix(in srgb, var(--paper) 70%, transparent)" stroke="var(--crater)" strokeDasharray="3 2" className="cursor-move" onPointerDown={(event) => beginAdjust(event, item, "move")} />
+            <g transform={`translate(${22} ${baselineY + 15})`} className="cursor-crosshair" onPointerDown={(event) => beginProtractorRay(event, item)}>
+              <circle r={9} fill="var(--paper)" stroke="var(--rose)" strokeWidth={1.5} />
+              <Pencil x={-5} y={-5} width={10} height={10} color="var(--rose)" pointerEvents="none" />
+            </g>
+            <g transform={`translate(0 ${-protractorHeight / 2 - 18})`} className="cursor-grab" onPointerDown={(event) => beginAnchoredRotate(event, item, [0, baselineY])}>
+              <circle r={9} fill="var(--paper)" stroke="var(--crater)" strokeWidth={1.5} />
+              <RotateCw x={-5} y={-5} width={10} height={10} pointerEvents="none" />
+            </g>
+            <g transform={`translate(${protractorRadius + 18} ${baselineY})`} className="cursor-pointer" onPointerDown={() => store.getState().removeInstrument(item.id)}><circle r={9} fill="var(--paper)" stroke="var(--line)" /><X x={-6} y={-6} width={12} height={12} /></g>
             <title>{t("protractorHint")}</title>
           </g>
         );
