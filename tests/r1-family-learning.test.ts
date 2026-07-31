@@ -140,6 +140,8 @@ describe("R1-5 family learning contracts", () => {
     expect(leaveMakeupMigration).toContain("'session_change.makeup'");
     expect(customer).toContain("makeupSessionId: row.makeup_session_id");
     expect(panel).toContain("leaveMakeup_");
+    expect(panel).toContain("useLocale()");
+    expect(panel).not.toContain("Intl.DateTimeFormat(undefined");
     expect(leaveNotificationMigration).toContain("notify_leave_request_roles_r1");
     expect(leaveNotificationMigration).not.toContain("assignment_row.classroom_id = classroom_id");
     expect(leaveNotificationMigration).toContain("select guardian_row.guardian_id");

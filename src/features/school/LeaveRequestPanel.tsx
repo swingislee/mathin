@@ -1,7 +1,7 @@
 "use client";
 
 import { CalendarClock, LoaderCircle } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -24,6 +24,7 @@ export function LeaveRequestPanel({
   sessions: LeaveSessionOption[];
   requests: MyLeaveRequest[];
 }) {
+  const locale = useLocale();
   const t = useTranslations("school.customer");
   const router = useRouter();
   const pendingSessionIds = useMemo(() => new Set(requests.filter((request) => request.status === "pending").map((request) => request.sessionId)), [requests]);
@@ -72,7 +73,7 @@ export function LeaveRequestPanel({
                   {request.makeupScheduledAt && request.makeupStatus !== "to_schedule" && (
                     <>
                       {" · "}
-                      {new Intl.DateTimeFormat(undefined, { dateStyle: "short", timeStyle: "short" }).format(new Date(request.makeupScheduledAt))}
+                      {new Intl.DateTimeFormat(locale, { dateStyle: "short", timeStyle: "short" }).format(new Date(request.makeupScheduledAt))}
                       {request.makeupClassroomName ? ` · ${request.makeupClassroomName}` : ""}
                       {request.makeupSessionTitle ? ` · ${request.makeupSessionTitle}` : ""}
                     </>
