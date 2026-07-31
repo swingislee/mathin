@@ -34,13 +34,19 @@ describe("R1-5 family learning contracts", () => {
     expect(compression).toContain("canvas.toBlob");
   });
 
-  it("gives parents direct assignment, video, and leave entry points", () => {
+  it("keeps the parent home centered on children, tasks, and leave", () => {
     const parentHome = read("src/features/school/home/ParentHome.tsx");
     const assignmentPage = read("src/app/[locale]/dashboard/assignments/page.tsx");
     const leavePanel = read("src/features/school/LeaveRequestPanel.tsx");
+    const tiles = read("src/features/school/tiles.ts");
+    expect(parentHome).toContain('/dashboard/children?child=');
     expect(parentHome).toContain('/dashboard/assignments?child=');
-    expect(parentHome).toContain('#video-upload');
     expect(parentHome).toContain('#leave');
+    expect(parentHome).toContain('customerT("goChildDetail")');
+    expect(parentHome).not.toContain('from("game_leaderboard")');
+    expect(parentHome).not.toContain('from("posts")');
+    expect(parentHome).not.toContain('pickEligible("parent"');
+    expect(tiles).toContain('return [...childKeys, "bindChild"]');
     expect(assignmentPage).toContain("ManagedVideoUploadPanel");
     expect(leavePanel).toContain("submitSessionLeaveRequestAction");
   });

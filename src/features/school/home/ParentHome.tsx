@@ -1,10 +1,9 @@
 import { getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
 import { buttonVariants } from "@/components/ui/button";
-import { listMyClassrooms } from "@/features/classroom/actions";
 import { BindCodeForm } from "@/features/school/BindCodeForm";
-import { getMyLearningSummary, getMySessionReviews, getMySessionReviewStates } from "@/features/school/customer";
 import { getWeekSchedule } from "@/features/school/actions/schedule";
+import { getMyLearningSummary, getMySessionReviews, getMySessionReviewStates } from "@/features/school/customer";
 import { addDays } from "@/features/school/schedule";
 import {
   CHILD_TILE_PREFIX,
@@ -14,100 +13,110 @@ import {
   type EligibleTile,
 } from "@/features/school/tiles";
 import { TileWorkspace } from "@/features/school/TileWorkspace";
-import type { PermissionKey } from "@/features/school/permissions";
 import { Link } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 import {
-  buildSharedCustomerTiles,
   buildTileItems,
   CompactBody,
   MinimalBody,
-  pickEligible,
   safe,
-  type BestRow,
   type HomeProps,
-  type RecentPostRow,
   type TileExtra,
 } from "./shared";
 
-/** 家长首屏（原 dashboard/page.tsx 的 parent 分支，P4G-7 拆出）。 */
+/** 家长首屏：以孩子为中心组织课表、待办与风险，不混入家长自己的内容产品数据。 */
 export async function ParentHome({ locale, user, profile }: HomeProps) {
   const supabase = await createClient();
-  const [t, gamesT, schoolT, customerT, bestsRes, recentRes, myClassroomList, layoutRow] = await Promise.all([
-    getTranslations("dashboard"),
-    getTranslations("games"),
+  const [schoolT, customerT, studentsT, layoutRow] = await Promise.all([
     getTranslations("school"),
     getTranslations("school.customer"),
-    supabase.from("game_leaderboard").select("game_id, difficulty, duration_ms").eq("user_id", user.id).returns<BestRow[]>(),
-    supabase.from("posts").select("id,title,published_at,like_count").eq("author_id", user.id).order("published_at", { ascending: false }).limit(3).returns<RecentPostRow[]>(),
-    listMyClassrooms(),
+    getTranslations("school.students"),
     supabase.from("dashboard_layouts").select("tiles").eq("user_id", user.id).maybeSingle<{ tiles: unknown }>(),
   ]);
-  const bests = bestsRes.data ?? [];
-  const recentPosts = recentRes.data ?? [];
-  const classrooms = myClassroomList.slice(0, 5);
   const userTiles = layoutRow.data?.tiles ?? null;
-  const perms = new Set<PermissionKey>();
   const dateLine = new Intl.DateTimeFormat(locale, { dateStyle: "full" }).format(new Date());
   const subtitle = `${schoolT("home.staffGreeting", { name: profile?.displayName || "" })} · ${dateLine}`;
   const shortFmt = new Intl.DateTimeFormat(locale, { dateStyle: "short", timeStyle: "short" });
   const labels = new Map<string, string>();
   const contents = new Map<string, ReactNode>();
   const extras = new Map<string, TileExtra>();
-  buildSharedCustomerTiles({ t, gamesT, locale, bests, recentPosts, classrooms, labels, contents, extras });
+  const now = new Date();
+  const [summaries, parentWeekSchedule, parentReviews, parentReviewStates] = await Promise.all([
+    safe(getMyLearningSummary, []),
+    safe(() => getWeekSchedule(now.toISOString(), addDays(now, 7).toISOString()), []),
+    safe(() => getMySessionReviews(addDays(now, -180).toISOString(), now.toISOString()), []),
+    safe(() => getMySessionReviewStates(addDays(now, -180).toISOString(), now.toISOString()), []),
+  ]);
+  const weekFmt = new Intl.DateTimeFormat(locale, { weekday: "short", hour: "2-digit", minute: "2-digit" });
 
-    const studentsT = await getTranslations("school.students");
-    const [summaries, parentWeekSchedule, parentReviews, parentReviewStates] = await Promise.all([
-      safe(getMyLearningSummary, []),
-      safe(() => getWeekSchedule(new Date().toISOString(), addDays(new Date(), 7).toISOString()), []),
-      safe(()=>getMySessionReviews(addDays(new Date(),-180).toISOString(),new Date().toISOString()),[]),
-      safe(() => getMySessionReviewStates(addDays(new Date(), -180).toISOString(), new Date().toISOString()), []),
-    ]);
-    const weekFmt = new Intl.DateTimeFormat(locale, { weekday: "short", hour: "2-digit", minute: "2-digit" });
+  for (const child of summaries) {
+    const key = `${CHILD_TILE_PREFIX}${child.studentId}`;
+    const nextAt = child.nextSessionAt ? shortFmt.format(new Date(child.nextSessionAt)) : "—";
+    const pendingCount = child.pendingAssignmentCount ?? 0;
+    const needsAttention = pendingCount > 0 || child.paymentStatus === "overdue";
+    const childTimes = parentWeekSchedule
+      .filter((entry) => entry.studentId === child.studentId)
+      .slice(0, 2)
+      .map((entry) => weekFmt.format(new Date(entry.scheduledAt)))
+      .join(locale === "zh" ? "、" : ", ");
+    const weekLine = child.weekSessionCount > 0 && childTimes
+      ? customerT("weekSessionsValue", { count: child.weekSessionCount, times: childTimes })
+      : customerT("weekSessionsCount", { count: child.weekSessionCount });
+    const recentReview = parentReviews.find((review) => review.studentId === child.studentId);
+    const recentReviewState = parentReviewStates.find((state) => state.studentId === child.studentId);
 
-    for (const child of summaries) {
-      const key = `${CHILD_TILE_PREFIX}${child.studentId}`;
-      const nextAt = child.nextSessionAt ? shortFmt.format(new Date(child.nextSessionAt)) : "-";
-      // §0.8：本周 N 节 + 首两个时刻（时刻串按课表在 TS 侧拼，RPC 只给数）。
-      const childTimes = parentWeekSchedule
-        .filter((entry) => entry.studentId === child.studentId)
-        .slice(0, 2)
-        .map((entry) => weekFmt.format(new Date(entry.scheduledAt)))
-        .join(locale === "zh" ? "、" : ", ");
-      const weekLine =
-        child.weekSessionCount > 0 && childTimes
-          ? customerT("weekSessionsValue", { count: child.weekSessionCount, times: childTimes })
-          : customerT("weekSessionsCount", { count: child.weekSessionCount });
-      const recentReview=parentReviews.find(review=>review.studentId===child.studentId);
-      const recentReviewState = parentReviewStates.find((state) => state.studentId === child.studentId);
-      labels.set(key, child.studentName);
-      extras.set(key, {
-        href: `/dashboard/children?child=${child.studentId}`,
-        // §5.8c：childCard 的 minimal 关键数 = 下次上课时间。
-        minimal: <MinimalBody value={nextAt} />,
-        compact: <CompactBody value={nextAt} line={`${customerT("paymentStatus")} · ${customerT(`payment_${child.paymentStatus}`)}`} />,
-      });
-      contents.set(
-        key,
-        <>
-          {child.grade !== null && <p className="shrink-0 text-xs text-muted">{studentsT("grade", { grade: child.grade })}</p>}
-          <dl className="mt-2 grid flex-1 content-start gap-2 text-sm">
+    labels.set(key, child.studentName);
+    extras.set(key, {
+      href: `/dashboard/children?child=${child.studentId}`,
+      tone: needsAttention ? "rose" : undefined,
+      minimal: <MinimalBody value={nextAt} rose={needsAttention} />,
+      compact: (
+        <CompactBody
+          value={nextAt}
+          rose={needsAttention}
+          line={`${customerT("pendingAssignmentsTitle")} · ${child.pendingAssignmentCount ?? "—"}`}
+        />
+      ),
+    });
+    contents.set(
+      key,
+      <>
+        {child.grade !== null && <p className="shrink-0 text-xs text-muted">{studentsT("grade", { grade: child.grade })}</p>}
+        <dl className="mt-2 grid flex-1 content-start gap-2 text-sm">
+          <div className="flex justify-between gap-3">
+            <dt className="text-muted">{customerT("nextSession")}</dt>
+            <dd>{nextAt}</dd>
+          </div>
+          <div className="flex justify-between gap-3">
+            <dt className="shrink-0 text-muted">{customerT("weekSessions")}</dt>
+            <dd className="min-w-0 truncate text-right">{weekLine}</dd>
+          </div>
+          <div className="flex justify-between gap-3">
+            <dt className="text-muted">{customerT("pendingAssignmentsTitle")}</dt>
+            <dd className={cn("tabular-nums", pendingCount > 0 && "font-medium text-rose")}>
+              {child.pendingAssignmentCount ?? "—"}
+            </dd>
+          </div>
+          {recentReview ? (
             <div className="flex justify-between gap-3">
-              <dt className="text-muted">{customerT("nextSession")}</dt>
-              <dd>{child.nextSessionAt ? shortFmt.format(new Date(child.nextSessionAt)) : "-"}</dd>
-            </div>
-            <div className="flex justify-between gap-3">
-              <dt className="shrink-0 text-muted">{customerT("weekSessions")}</dt>
-              <dd className="min-w-0 truncate text-right">{weekLine}</dd>
-            </div>
-            <div className="flex justify-between gap-3">
-              <dt className="text-muted">{customerT("pendingAssignmentsTitle")}</dt>
-              <dd className={cn("tabular-nums", (child.pendingAssignmentCount ?? 0) > 0 && "text-rose")}>
-                {child.pendingAssignmentCount ?? "—"}
+              <dt className="text-muted">{customerT("recentReview")}</dt>
+              <dd className="min-w-0 truncate text-right">
+                {customerT("recentReviewValue", { entry: recentReview.entryScore ?? "—", exit: recentReview.exitScore ?? "—" })}
               </dd>
             </div>
-            {recentReview?<div className="flex justify-between gap-3"><dt className="text-muted">{customerT("recentReview")}</dt><dd className="min-w-0 truncate text-right">{customerT("recentReviewValue",{entry:recentReview.entryScore??"—",exit:recentReview.exitScore??"—"})}</dd></div>:recentReviewState?<div className="flex justify-between gap-3"><dt className="text-muted">{customerT("recentReview")}</dt><dd className="min-w-0 truncate text-right">{studentsT(`reviewStatus_${recentReviewState.availabilityState}`)}</dd></div>:<div className="flex justify-between gap-3"><dt className="text-muted">{customerT("starTotal")}</dt><dd className="tabular-nums">{child.starTotal}</dd></div>}
+          ) : recentReviewState ? (
+            <div className="flex justify-between gap-3">
+              <dt className="text-muted">{customerT("recentReview")}</dt>
+              <dd className="min-w-0 truncate text-right">{studentsT(`reviewStatus_${recentReviewState.availabilityState}`)}</dd>
+            </div>
+          ) : (
+            <div className="flex justify-between gap-3">
+              <dt className="text-muted">{customerT("starTotal")}</dt>
+              <dd className="tabular-nums">{child.starTotal}</dd>
+            </div>
+          )}
+          {child.paymentStatus !== "closed" && (
             <div className="flex justify-between gap-3">
               <dt className="text-muted">{customerT("paymentStatus")}</dt>
               <dd>
@@ -118,36 +127,41 @@ export async function ParentHome({ locale, user, profile }: HomeProps) {
                 )}
               </dd>
             </div>
-          </dl>
-          <div className="mt-auto flex flex-wrap gap-2 pt-3">
-            <Link href={`/dashboard/assignments?child=${child.studentId}`} className={cn(buttonVariants({ size: "sm" }), "grow")}>{customerT("homeworkAction")}</Link>
-            <Link href={`/dashboard/assignments?child=${child.studentId}#video-upload`} className={cn(buttonVariants({ size: "sm", variant: "secondary" }), "grow")}>{customerT("videoAction")}</Link>
-            <Link href={`/dashboard/children?child=${child.studentId}#leave`} className={cn(buttonVariants({ size: "sm", variant: "secondary" }), "grow")}>{customerT("leaveAction")}</Link>
-          </div>
-        </>,
-      );
-    }
-
-    // 家长大欢迎卡删除（§5.6）：parentIntro 收进绑定贴一句话。
-    labels.set("bindChild", customerT("bindChildTitle"));
-    contents.set(
-      "bindChild",
-      <>
-        <p className="truncate text-sm text-muted">{summaries.length === 0 ? customerT("noChildren") : customerT("parentIntro")}</p>
-        <div className="mt-2">
-          <BindCodeForm mode="guardian" />
+          )}
+        </dl>
+        <div className="mt-auto flex flex-wrap gap-2 pt-3">
+          <Link href={`/dashboard/children?child=${child.studentId}`} className={cn(buttonVariants({ size: "sm" }), "grow")}>
+            {customerT("goChildDetail")}
+          </Link>
+          <Link href={`/dashboard/assignments?child=${child.studentId}`} className={cn(buttonVariants({ size: "sm", variant: "secondary" }), "grow")}>
+            {customerT("homeworkAction")}
+          </Link>
+          <Link href={`/dashboard/children?child=${child.studentId}#leave`} className={cn(buttonVariants({ size: "sm", variant: "secondary" }), "grow")}>
+            {customerT("leaveAction")}
+          </Link>
         </div>
       </>,
     );
+  }
 
-    const childKeys = summaries.map((child) => `${CHILD_TILE_PREFIX}${child.studentId}`);
-    const childDef = TILE_REGISTRY.find((def) => def.key === "childCard")!;
-    const eligible: EligibleTile[] = [
-      ...childKeys.map((key) => ({ key, allowedSizes: childDef.allowedSizes })),
-      ...pickEligible("parent", perms).filter((tile) => tile.key !== "childCard"),
-    ];
-    const merged = mergeTileLayout(eligible, userTiles, parentDefaultOrder(childKeys));
-    const { items, hidden } = buildTileItems(merged, eligible, labels, contents, extras);
+  labels.set("bindChild", customerT("bindChildTitle"));
+  contents.set(
+    "bindChild",
+    <>
+      <p className="truncate text-sm text-muted">{summaries.length === 0 ? customerT("noChildren") : customerT("parentIntro")}</p>
+      <div className="mt-2"><BindCodeForm mode="guardian" /></div>
+    </>,
+  );
 
-    return <TileWorkspace title={customerT("parentTitle")} subtitle={subtitle} items={items} hidden={hidden} />;
+  const childKeys = summaries.map((child) => `${CHILD_TILE_PREFIX}${child.studentId}`);
+  const childDef = TILE_REGISTRY.find((def) => def.key === "childCard")!;
+  const bindDef = TILE_REGISTRY.find((def) => def.key === "bindChild")!;
+  const eligible: EligibleTile[] = [
+    ...childKeys.map((key) => ({ key, allowedSizes: childDef.allowedSizes })),
+    { key: "bindChild", allowedSizes: bindDef.allowedSizes },
+  ];
+  const merged = mergeTileLayout(eligible, userTiles, parentDefaultOrder(childKeys));
+  const { items, hidden } = buildTileItems(merged, eligible, labels, contents, extras);
+
+  return <TileWorkspace title={customerT("parentTitle")} subtitle={subtitle} items={items} hidden={hidden} />;
 }

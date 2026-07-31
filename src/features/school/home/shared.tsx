@@ -1,10 +1,8 @@
-import { Crown, School } from "lucide-react";
+import { School } from "lucide-react";
 import type { getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
 import { buttonVariants } from "@/components/ui/button";
 import type { ClassroomMeta } from "@/features/classroom/types";
-import { formatMs } from "@/features/games/format";
-import { games } from "@/features/games/registry";
 import type { PermissionKey } from "@/features/school/permissions";
 import { sizeToWH, type TilePlacement } from "@/features/school/tile-layout";
 import {
@@ -36,19 +34,6 @@ export async function safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
   } catch {
     return fallback;
   }
-}
-
-export interface BestRow {
-  game_id: string;
-  difficulty: string;
-  duration_ms: number;
-}
-
-export interface RecentPostRow {
-  id: string;
-  title: string;
-  published_at: string;
-  like_count: number;
 }
 
 export type Translator = Awaited<ReturnType<typeof getTranslations>>;
@@ -156,96 +141,20 @@ export function EmptyBody({ text, href, linkLabel }: { text: string; href?: stri
   );
 }
 
-/** 学生/家长共用的成绩/笔记/教室三贴内容（原 CustomerSharedSections 拆磁贴）。 */
-export function buildSharedCustomerTiles({
+/** 学生学习首页唯一保留的共享磁贴：当前在读班级。 */
+export function buildCustomerClassroomTile({
   t,
-  gamesT,
-  locale,
-  bests,
-  recentPosts,
   classrooms,
   labels,
   contents,
   extras,
 }: {
   t: Translator;
-  gamesT: Translator;
-  locale: string;
-  bests: BestRow[];
-  recentPosts: RecentPostRow[];
   classrooms: ClassroomMeta[];
   labels: Map<string, string>;
   contents: Map<string, ReactNode>;
   extras: Map<string, TileExtra>;
 }) {
-  labels.set("myScores", t("scoresTitle"));
-  extras.set("myScores", {
-    href: "/games",
-    minimal: <MinimalBody value={bests.length} />,
-    compact: (
-      <CompactBody
-        value={bests.length}
-        line={bests[0] ? `${gamesT(`items.${bests[0].game_id}.name`)} ${formatMs(bests[0].duration_ms)}` : t("noScores")}
-      />
-    ),
-  });
-  contents.set(
-    "myScores",
-    bests.length === 0 ? (
-      <EmptyBody text={t("noScores")} href="/games" linkLabel={t("goPlay")} />
-    ) : (
-      <ul className="min-h-0 flex-1 divide-y overflow-hidden">
-        {games.map((def) =>
-          def.difficulties.map((difficulty, i) => {
-            const row = bests.find((b) => b.game_id === def.id && b.difficulty === difficulty);
-            if (!row) return null;
-            return (
-              <li key={`${def.id}:${difficulty}`} className="flex items-center gap-3 py-2 text-sm">
-                <def.icon size={16} className="text-muted" />
-                <span className="min-w-0 flex-1 truncate font-medium">{gamesT(`items.${def.id}.name`)}</span>
-                <span className="flex shrink-0 items-center gap-1 text-xs text-muted">
-                  {Array.from({ length: i + 1 }, (_, k) => (
-                    <Crown key={k} size={10} />
-                  ))}
-                  {gamesT(`difficulty.${difficulty}`)}
-                </span>
-                <span className="shrink-0 font-serif tabular-nums">{formatMs(row.duration_ms)}</span>
-              </li>
-            );
-          }),
-        )}
-      </ul>
-    ),
-  );
-
-  labels.set("myNotes", t("notesTitle"));
-  extras.set("myNotes", {
-    href: "/notebook/me",
-    minimal: <MinimalBody value={recentPosts.length} />,
-    compact: (
-      <CompactBody value={recentPosts.length} line={recentPosts[0] ? recentPosts[0].title || t("untitled") : t("noNotes")} />
-    ),
-  });
-  contents.set(
-    "myNotes",
-    recentPosts.length === 0 ? (
-      <EmptyBody text={t("noNotes")} href="/notebook/me" linkLabel={t("goWrite")} />
-    ) : (
-      <ul className="min-h-0 flex-1 divide-y overflow-hidden">
-        {recentPosts.map((post) => (
-          <li key={post.id} className="flex flex-wrap items-center gap-3 py-2 text-sm">
-            <Link href={`/notebook/${post.id}`} className="min-w-0 flex-1 truncate font-medium hover:underline">
-              {post.title || t("untitled")}
-            </Link>
-            <time className="shrink-0 text-xs text-muted">
-              {new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(post.published_at))}
-            </time>
-          </li>
-        ))}
-      </ul>
-    ),
-  );
-
   labels.set("myClassrooms", t("classroomsTitle"));
   extras.set("myClassrooms", {
     href: "/classroom",

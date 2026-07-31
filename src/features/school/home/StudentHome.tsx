@@ -13,34 +13,27 @@ import { Link } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 import {
-  buildSharedCustomerTiles,
+  buildCustomerClassroomTile,
   buildTileItems,
   CompactBody,
   EmptyBody,
   MinimalBody,
   pickEligible,
   safe,
-  type BestRow,
   type HomeProps,
-  type RecentPostRow,
   type TileExtra,
 } from "./shared";
 
 /** 学生首屏（原 dashboard/page.tsx 的 student/isBound 分支，P4G-7 拆出）。 */
 export async function StudentHome({ locale, user, profile }: HomeProps) {
   const supabase = await createClient();
-  const [t, gamesT, schoolT, customerT, bestsRes, recentRes, myClassroomList, layoutRow] = await Promise.all([
+  const [t, schoolT, customerT, myClassroomList, layoutRow] = await Promise.all([
     getTranslations("dashboard"),
-    getTranslations("games"),
     getTranslations("school"),
     getTranslations("school.customer"),
-    supabase.from("game_leaderboard").select("game_id, difficulty, duration_ms").eq("user_id", user.id).returns<BestRow[]>(),
-    supabase.from("posts").select("id,title,published_at,like_count").eq("author_id", user.id).order("published_at", { ascending: false }).limit(3).returns<RecentPostRow[]>(),
     listMyClassrooms(),
     supabase.from("dashboard_layouts").select("tiles").eq("user_id", user.id).maybeSingle<{ tiles: unknown }>(),
   ]);
-  const bests = bestsRes.data ?? [];
-  const recentPosts = recentRes.data ?? [];
   const classrooms = myClassroomList.slice(0, 5);
   const userTiles = layoutRow.data?.tiles ?? null;
   const perms = new Set<PermissionKey>();
@@ -50,7 +43,7 @@ export async function StudentHome({ locale, user, profile }: HomeProps) {
   const labels = new Map<string, string>();
   const contents = new Map<string, ReactNode>();
   const extras = new Map<string, TileExtra>();
-  buildSharedCustomerTiles({ t, gamesT, locale, bests, recentPosts, classrooms, labels, contents, extras });
+  buildCustomerClassroomTile({ t, classrooms, labels, contents, extras });
 
   const myStudents = await safe(getMyStudents, []);
   const isBound = myStudents.length > 0;

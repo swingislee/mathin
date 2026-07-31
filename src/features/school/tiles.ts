@@ -60,10 +60,8 @@ export const TILE_REGISTRY: readonly TileDef[] = [
   // ---- parent 池（§0.8） ----
   { key: CHILD_TILE_BASE, audiences: ["parent"], allowedSizes: ["2x2", "3x2", "2x1", "1x1"], icon: "Baby" },
   { key: "bindChild", audiences: ["parent"], allowedSizes: ["2x1", "2x2"], icon: "Link2" },
-  // ---- 学生/家长共享三贴（原成绩/笔记/教室卡） ----
-  { key: "myScores", audiences: ["student", "parent"], allowedSizes: ["2x2", "3x2", "2x1", "1x1"], icon: "Trophy" },
-  { key: "myNotes", audiences: ["student", "parent"], allowedSizes: ["2x1", "3x2", "2x2", "1x1"], icon: "NotebookPen" },
-  { key: "myClassrooms", audiences: ["student", "parent"], allowedSizes: ["2x2", "3x2", "2x1", "1x1"], icon: "School" },
+  // ---- 学生学习运行时入口；游戏与 Notebook 留在公开产品导航。 ----
+  { key: "myClassrooms", audiences: ["student"], allowedSizes: ["2x2", "3x2", "2x1", "1x1"], icon: "School" },
 ];
 
 /** 按键找注册表定义；childCard:<uuid> 动态键归到 childCard 占位定义。 */
@@ -81,14 +79,12 @@ export const STUDENT_ORDER: readonly string[] = [
   "mySchedule",
   "pendingAssignments",
   "myStars",
-  "myScores",
-  "myNotes",
   "myClassrooms",
 ];
 
 /** 家长默认序：孩子卡在前（页面按孩子列表展开动态键后传入）。 */
 export function parentDefaultOrder(childKeys: readonly string[]): readonly string[] {
-  return [...childKeys, "bindChild", "myScores", "myNotes", "myClassrooms"];
+  return [...childKeys, "bindChild"];
 }
 
 // ---------------------------------------------------------------------------
