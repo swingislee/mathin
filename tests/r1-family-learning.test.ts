@@ -13,6 +13,7 @@ const leaveNotificationMigration = read("supabase/migrations/20260730010300_r1_l
 const availabilityMigration = read("supabase/migrations/20260730010400_r1_family_result_availability.sql");
 const notificationLinksMigration = read("supabase/migrations/20260731000300_r1_family_notification_links.sql");
 const studentIaMigration = read("supabase/migrations/20260731000600_r1_student_information_architecture.sql");
+const taskBoundVideoMigration = read("supabase/migrations/20260731000900_r1_task_bound_video_submissions.sql");
 
 describe("R1-5 family learning contracts", () => {
   it("lets students and authorized guardians act on the same learning workflow", () => {
@@ -51,6 +52,20 @@ describe("R1-5 family learning contracts", () => {
     expect(tiles).toContain('return [...childKeys, "bindChild"]');
     expect(assignmentPage).toContain("ManagedVideoUploadPanel");
     expect(leavePanel).toContain("submitSessionLeaveRequestAction");
+  });
+
+  it("opens video submission only from a published, incomplete task", () => {
+    const assignmentPage = read("src/app/[locale]/dashboard/assignments/page.tsx");
+    const panel = read("src/features/school/ManagedVideoUploadPanel.tsx");
+    expect(assignmentPage).toContain("rawVideoTask");
+    expect(assignmentPage).toContain("!task.submitted");
+    expect(assignmentPage).toContain("videoTaskId: task.videoTaskId");
+    expect(assignmentPage).not.toContain("query.videoSession");
+    expect(panel).toContain("video_task_id: task.videoTaskId");
+    expect(panel).not.toContain('rpc("get_my_video_sessions")');
+    expect(taskBoundVideoMigration).toContain("session_videos.video_task_id is not null");
+    expect(taskBoundVideoMigration).toContain("task_row.published_at is not null");
+    expect(taskBoundVideoMigration).toContain("video_row.video_task_id = task_row.id");
   });
 
   it("targets assignment and leave notifications to students, guardians, and staff", () => {

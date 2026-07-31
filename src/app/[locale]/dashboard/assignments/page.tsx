@@ -46,13 +46,16 @@ export default async function AssignmentsPage({
   const selectedChild = myStudents.some((student) => student.id === rawChild) ? rawChild : null;
   const visibleAssignments = selectedChild ? assignments.filter((assignment) => assignment.studentId === selectedChild) : assignments;
   const visibleVideoTasks = selectedChild ? videoTasks.filter((task) => task.studentId === selectedChild) : videoTasks;
-  const rawVideoSession = Array.isArray(query.videoSession) ? query.videoSession[0] : query.videoSession;
+  const rawVideoTask = Array.isArray(query.videoTask) ? query.videoTask[0] : query.videoTask;
   const rawVideoStudent = Array.isArray(query.videoStudent) ? query.videoStudent[0] : query.videoStudent;
+  const selectedVideoTask = visibleVideoTasks.find((task) =>
+    !task.submitted && task.videoTaskId === rawVideoTask && task.studentId === rawVideoStudent
+  ) ?? null;
 
   return (
     <DashboardPage title={t("learningActionsTitle")} description={t("learningActionsIntro")}>
       <DashboardContentGrid>
-        <DashboardMainColumn className="space-y-6">
+        <DashboardMainColumn className="space-y-6 @4xl/page:col-span-12">
           {!isBound ? (
             <DashboardCard>
               <p className="text-sm text-muted">{t("notBound")}</p>
@@ -88,35 +91,41 @@ export default async function AssignmentsPage({
               <DashboardCard title={t("videoTasksTitle")}>
                 <div id="video-tasks" className="scroll-mt-24">
                   {visibleVideoTasks.length === 0 ? (
-                    <DashboardEmptyCard>{t("videoTasksEmpty")}</DashboardEmptyCard>
+                    <DashboardEmptyCard className="min-h-20 p-4">{t("videoTasksEmpty")}</DashboardEmptyCard>
                   ) : (
                     <ul className="divide-y divide-line">
-                      {visibleVideoTasks.map((task) => (
-                        <li key={task.videoTaskId + ":" + task.studentId} className="py-3 text-sm">
-                          <div className="flex flex-wrap items-center gap-3">
-                            <span className="min-w-0 flex-1 truncate font-medium">{task.title}</span>
-                            {myStudents.length > 1 && <span className="text-xs text-muted">{task.studentName}</span>}
-                            <span className="text-xs text-muted">{task.classroomName} · {task.lectureName}</span>
-                            <span className="text-xs text-muted">{task.submitted ? t("videoTaskSubmitted") : t("videoTaskPending")}</span>
-                            {!task.submitted && (
-                              <Link
-                                href={"/dashboard/assignments?videoSession=" + task.sessionId + "&videoStudent=" + task.studentId + "#video-upload"}
-                                className="text-xs text-crater underline underline-offset-2"
-                              >
-                                {t("goUploadVideo")}
-                              </Link>
+                      {visibleVideoTasks.map((task) => {
+                        const uploadOpen = selectedVideoTask?.videoTaskId === task.videoTaskId
+                          && selectedVideoTask.studentId === task.studentId;
+                        const taskAnchor = `video-task-${task.videoTaskId}-${task.studentId}`;
+                        const uploadHref = `/dashboard/assignments?videoTask=${task.videoTaskId}&videoStudent=${task.studentId}${selectedChild ? `&child=${selectedChild}` : ""}#${taskAnchor}`;
+                        return (
+                          <li id={taskAnchor} key={task.videoTaskId + ":" + task.studentId} className="scroll-mt-24 py-3 text-sm">
+                            <div className="flex flex-wrap items-center gap-3">
+                              <span className="min-w-0 flex-1 truncate font-medium">{task.title}</span>
+                              {myStudents.length > 1 && <span className="text-xs text-muted">{task.studentName}</span>}
+                              <span className="text-xs text-muted">{task.classroomName} · {task.lectureName}</span>
+                              <span className="text-xs text-muted">{task.submitted ? t("videoTaskSubmitted") : t("videoTaskPending")}</span>
+                              {!task.submitted && !uploadOpen && <Link href={uploadHref} className="text-xs text-crater underline underline-offset-2">{t("goUploadVideo")}</Link>}
+                            </div>
+                            {task.instructions && <p className="mt-2 whitespace-pre-wrap text-xs text-muted">{task.instructions}</p>}
+                            {uploadOpen && (
+                              <ManagedVideoUploadPanel task={{
+                                videoTaskId: task.videoTaskId,
+                                sessionId: task.sessionId,
+                                studentId: task.studentId,
+                                classroomId: task.classroomId,
+                                classroomName: task.classroomName,
+                                lectureName: task.lectureName,
+                              }} />
                             )}
-                          </div>
-                          {task.instructions && <p className="mt-2 whitespace-pre-wrap text-xs text-muted">{task.instructions}</p>}
-                        </li>
-                      ))}
+                          </li>
+                        );
+                      })}
                     </ul>
                   )}
                 </div>
               </DashboardCard>
-              <div id="video-upload" className="scroll-mt-24">
-                <ManagedVideoUploadPanel initialSessionId={rawVideoSession} initialStudentId={rawVideoStudent} />
-              </div>
             </>
           )}
         </DashboardMainColumn>
