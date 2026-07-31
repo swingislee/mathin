@@ -12,7 +12,7 @@ const leaveMakeupMigration = read("supabase/migrations/20260730010200_r1_leave_m
 const leaveNotificationMigration = read("supabase/migrations/20260730010300_r1_leave_notification_owner_fix.sql");
 const availabilityMigration = read("supabase/migrations/20260730010400_r1_family_result_availability.sql");
 const notificationLinksMigration = read("supabase/migrations/20260731000300_r1_family_notification_links.sql");
-const studentIaMigration = read("supabase/migrations/20260731000500_r1_student_information_architecture.sql");
+const studentIaMigration = read("supabase/migrations/20260731000600_r1_student_information_architecture.sql");
 
 describe("R1-5 family learning contracts", () => {
   it("lets students and authorized guardians act on the same learning workflow", () => {
