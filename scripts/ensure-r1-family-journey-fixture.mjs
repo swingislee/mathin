@@ -5,8 +5,10 @@ import { createClient } from "@supabase/supabase-js";
 
 const STUDENT_EMAIL = "test-student@mathin.local";
 const TEACHER_EMAIL = "test-teacher@mathin.local";
-const SOURCE_TITLE = "R1_BROWSER_FIXTURE_FAMILY_JOURNEY_SOURCE";
-const TARGET_TITLE = "R1_BROWSER_FIXTURE_FAMILY_JOURNEY_TARGET";
+const SOURCE_TITLE = "家庭学习旅程·常规课";
+const TARGET_TITLE = "家庭学习旅程·补课";
+const LEGACY_SOURCE_TITLE = "R1_BROWSER_FIXTURE_FAMILY_JOURNEY_SOURCE";
+const LEGACY_TARGET_TITLE = "R1_BROWSER_FIXTURE_FAMILY_JOURNEY_TARGET";
 const EXTERNAL_CHANNELS = ["email", "sms", "wechat", "webhook"];
 
 function loadLocalEnv() {
@@ -131,11 +133,17 @@ async function resolveJourneyActors(admin) {
   return { student, teacherId: teacherUser.id, sourceClass, sourceLecture, targetClass };
 }
 
-async function ensureSession(admin, { title, classroomId, daysFromNow, lecture = null }) {
+async function ensureSession(admin, {
+  title,
+  legacyTitles = [],
+  classroomId,
+  daysFromNow,
+  lecture = null,
+}) {
   const { data: existing, error: existingError } = await admin
     .from("class_sessions")
     .select("id,classroom_id,title,lecture_id,lecture_no,scheduled_at,started_at,ended_at,deleted_at")
-    .eq("title", title)
+    .in("title", [title, ...legacyTitles])
     .limit(2);
   if (existingError) throw existingError;
   if ((existing ?? []).length > 1) throw new Error(`Duplicate fixture sessions found for ${title}`);
@@ -147,17 +155,29 @@ async function ensureSession(admin, { title, classroomId, daysFromNow, lecture =
     if (!session.scheduled_at || Date.parse(session.scheduled_at) <= Date.now()) {
       throw new Error(`Existing fixture session is no longer in the future: ${title}`);
     }
-    if (lecture && (session.lecture_id !== lecture.id || session.lecture_no !== lecture.no)) {
+    const needsTitleMigration = session.title !== title;
+    const needsLectureLink = Boolean(
+      lecture && (session.lecture_id !== lecture.id || session.lecture_no !== lecture.no),
+    );
+    if (needsTitleMigration || needsLectureLink) {
       const { data: updated, error: updateError } = await admin
         .from("class_sessions")
-        .update({ lecture_id: lecture.id, lecture_no: lecture.no })
+        .update({
+          title,
+          ...(needsLectureLink ? { lecture_id: lecture.id, lecture_no: lecture.no } : {}),
+        })
         .eq("id", session.id)
         .select("id,classroom_id,title,lecture_id,lecture_no,scheduled_at,started_at,ended_at,deleted_at")
         .single();
       if (updateError) throw updateError;
-      return { ...updated, created: false, lectureLinked: true };
+      return {
+        ...updated,
+        created: false,
+        titleMigrated: needsTitleMigration,
+        lectureLinked: needsLectureLink,
+      };
     }
-    return { ...session, created: false, lectureLinked: false };
+    return { ...session, created: false, titleMigrated: false, lectureLinked: false };
   }
 
   const scheduledAt = new Date(Date.now() + daysFromNow * 24 * 60 * 60 * 1000).toISOString();
@@ -210,12 +230,14 @@ await assertExternalChannelsDisabled(admin);
 const actors = await resolveJourneyActors(admin);
 const source = await ensureSession(admin, {
   title: SOURCE_TITLE,
+  legacyTitles: [LEGACY_SOURCE_TITLE],
   classroomId: actors.sourceClass.id,
   daysFromNow: 3,
   lecture: actors.sourceLecture,
 });
 const target = await ensureSession(admin, {
   title: TARGET_TITLE,
+  legacyTitles: [LEGACY_TARGET_TITLE],
   classroomId: actors.targetClass.id,
   daysFromNow: 10,
 });

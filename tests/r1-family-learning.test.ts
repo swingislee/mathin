@@ -262,6 +262,10 @@ describe("R1-5 family learning contracts", () => {
     expect(fixtures).toContain('statuses.get(channel) !== "disabled"');
     expect(fixtures).toContain("R1_BROWSER_FIXTURE_FAMILY_JOURNEY_SOURCE");
     expect(fixtures).toContain("R1_BROWSER_FIXTURE_FAMILY_JOURNEY_TARGET");
+    expect(fixtures).toContain('const SOURCE_TITLE = "家庭学习旅程·常规课"');
+    expect(fixtures).toContain('const TARGET_TITLE = "家庭学习旅程·补课"');
+    expect(fixtures).toContain('.in("title", [title, ...legacyTitles])');
+    expect(fixtures).toContain("titleMigrated: needsTitleMigration");
     expect(fixtures).toContain('.from("course_lectures")');
     expect(fixtures).toContain('lecture_id: lecture?.id ?? null');
     expect(fixtures).toContain('eq("kind", "makeup")');
