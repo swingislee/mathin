@@ -5,6 +5,7 @@
 - Linux 生产入口已迁至 Xiaomi：`mathin.service` 在 `127.0.0.1:3131` 运行 immutable standalone release，由 Caddy 以 HTTPS 暴露 `mathin.club`。
 - `scripts/ops/deploy-mathin-linux.sh`：在 Linux 构建独立 release、原子切换 `current`、成功后记录 `previous`、验活失败时自动恢复上个 release，并以锁阻止并发部署。
 - `scripts/ops/publish-mathin-xiaomi.ps1`：检查本地 commit、将 Git archive 传到 Xiaomi、在交互 shell 中运行 `proxy_on` 后构建和发布；支持状态检查与回滚。
+- `deploy/formula-ocr/` 与 `scripts/ops/deploy-formula-ocr-linux.sh`：在 Xiaomi 以受限 Docker 容器运行 Pix2Text 1.1.6，固定监听 `127.0.0.1:8503`；Mathin 发布前会检查生产环境变量和 OCR 回环健康，不把 OCR 暴露给 Caddy、FRP 或浏览器。
 - `scripts/ops/switch-supabase-route.ps1`：供根目录 `Supabase路由切换.cmd` 调用，在 LAN 直连与完整公网链路之间切换 Supabase 路由。
 - 根目录仅保留两个双击入口：`Supabase路由切换.cmd` 与 `发布到生产.cmd`。部署报告整理在 `docs/runbooks/public-deployment-2026-07-17/`。
 - Kong 的宿主机 `8000/8443` 映射已收紧为 `127.0.0.1`；Caddy 是 Supabase 的唯一 HTTP(S) 入口。变更前 Compose 备份位于 Xiaomi 的 `deployment-backups/20260717-192022-kong-loopback-hardening/`。

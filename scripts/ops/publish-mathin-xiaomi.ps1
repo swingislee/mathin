@@ -139,6 +139,14 @@ if [[ -f "`$previous/release.json" ]]; then
 fi
 printf 'Service: '
 systemctl --user is-active mathin.service || true
+printf 'Formula OCR container: '
+docker inspect --format '{{.State.Status}}/{{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}' mathin-formula-ocr 2>/dev/null || printf 'unavailable\n'
+printf 'Formula OCR loopback health: '
+if curl --noproxy '*' -fsS --max-time 5 http://127.0.0.1:8503/docs >/dev/null; then
+  printf 'ok\n'
+else
+  printf 'unavailable\n'
+fi
 printf 'Loopback health: '
 curl --noproxy '*' -fsS --max-time 5 http://127.0.0.1:3131/api/health || true
 printf '\nCaddy health: '

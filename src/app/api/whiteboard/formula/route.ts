@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { extractPix2TextLatex } from "@/features/whiteboard/formula-service";
+import { extractPix2TextLatex, resolveFormulaOcrUrl } from "@/features/whiteboard/formula-service";
 
 export const runtime = "nodejs";
 
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
-const DEFAULT_FORMULA_OCR_URL = "http://127.0.0.1:8503/pix2text";
+const MAX_CONCURRENT_FORMULA_REQUESTS = 1;
+let activeFormulaRequests = 0;
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -18,13 +19,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ code: "INVALID_IMAGE" }, { status: 400 });
   }
 
-  const configuredUrl = process.env.FORMULA_OCR_URL?.trim() || DEFAULT_FORMULA_OCR_URL;
-  let serviceUrl: URL;
-  try {
-    serviceUrl = new URL(configuredUrl);
-    if (!["http:", "https:"].includes(serviceUrl.protocol)) throw new Error("INVALID_PROTOCOL");
-  } catch {
+  const service = resolveFormulaOcrUrl(process.env.FORMULA_OCR_URL, process.env.NODE_ENV);
+  if (!service.ok) {
     return NextResponse.json({ code: "FORMULA_SERVICE_MISCONFIGURED" }, { status: 503 });
+  }
+  if (activeFormulaRequests >= MAX_CONCURRENT_FORMULA_REQUESTS) {
+    return NextResponse.json(
+      { code: "FORMULA_SERVICE_BUSY" },
+      { status: 429, headers: { "Retry-After": "3" } },
+    );
   }
 
   const serviceForm = new FormData();
@@ -33,11 +36,12 @@ export async function POST(request: Request) {
   serviceForm.set("return_text", "true");
   serviceForm.set("image", image, "formula.png");
 
+  activeFormulaRequests += 1;
   try {
-    const response = await fetch(serviceUrl, {
+    const response = await fetch(service.url, {
       method: "POST",
       body: serviceForm,
-      signal: AbortSignal.timeout(25_000),
+      signal: AbortSignal.timeout(60_000),
       cache: "no-store",
     });
     if (!response.ok) {
@@ -48,5 +52,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ latex });
   } catch {
     return NextResponse.json({ code: "FORMULA_SERVICE_UNAVAILABLE" }, { status: 503 });
+  } finally {
+    activeFormulaRequests -= 1;
   }
 }
