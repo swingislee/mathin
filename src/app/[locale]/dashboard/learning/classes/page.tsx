@@ -35,7 +35,7 @@ export default async function LearningClassesPage({ params }: { params: Promise<
                   <Link href={"/dashboard/learning/classes/" + classroom.id} className="block h-full">
                     <DashboardCard className="h-full transition-colors hover:border-crater">
                       <div className="flex items-center gap-2">
-                        <h2 className="min-w-0 flex-1 truncate font-medium">{classroom.name || t("untitled")}</h2>
+                        <h2 className="min-w-0 flex-1 truncate text-base font-medium">{classroom.name || t("untitled")}</h2>
                         <span className="shrink-0 rounded-full bg-moon/50 px-2 py-0.5 text-xs text-ink">
                           {t("studying")}
                         </span>

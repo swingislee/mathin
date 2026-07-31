@@ -248,7 +248,7 @@ export function SessionFamilyBriefForm({
   return (
     <div className="flex min-h-[34rem] min-w-0 flex-col rounded-2xl border border-line bg-card">
       <div className="flex flex-wrap items-end gap-2 border-b border-line p-3">
-        <Label className="min-w-56 flex-1 text-xs font-normal text-muted">
+        <Label className="basis-56 grow text-xs font-normal text-muted">
           <span className="mb-1 block">{t("knowledgeSummaryTitleLabel")}</span>
           <Input value={lessonTitle} onChange={(event) => changeTitle(event.target.value)} maxLength={200} />
         </Label>

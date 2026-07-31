@@ -24,7 +24,7 @@ function formatMetric(value: number | null) {
 
 function EvidenceSection({ title, count, children }: { title: string; count: number; children: React.ReactNode }) {
   return (
-    <section className="rounded-xl border border-line bg-card p-4">
+    <section className="rounded-2xl border border-line bg-card p-4">
       <div className="flex items-center justify-between gap-3">
         <h4 className="text-sm font-medium text-ink">{title}</h4>
         <Badge variant="outline">{count}</Badge>
