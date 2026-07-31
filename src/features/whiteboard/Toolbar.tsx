@@ -182,6 +182,58 @@ export function Toolbar({
       </ToolButton>
 
       <div aria-hidden className="mx-0.5 h-6 w-px shrink-0 bg-line" />
+      <div role="group" data-tool-group="drawing" aria-label={`${t("pen")} · ${t("eraser")} · ${t("color")} · ${t("size")}`} className="flex shrink-0 items-center gap-0.5 rounded-xl bg-card/70 p-0.5">
+      <ToolButton active={tool === "pen"} label={t("pen")} onClick={() => setTool("pen")}>
+        <Pencil size={18} />
+      </ToolButton>
+
+      <Popover>
+        <div className="flex items-center">
+          <ToolButton active={isEraser} label={t("eraser")} onClick={() => setTool(lastEraser)}><Eraser size={18} /></ToolButton>
+          <PopoverTrigger asChild>
+            <button type="button" aria-label={t("eraserOptions")} className="-ml-1.5 rounded-full p-0.5 text-muted transition-colors hover:text-ink"><ChevronUp size={13} /></button>
+          </PopoverTrigger>
+        </div>
+        <PopoverContent side="top" className="w-auto p-1.5">
+          <div className="flex flex-col gap-0.5">
+            {ERASER_TOOLS.map((eraser) => (
+              <button key={eraser} type="button" onClick={() => pickEraser(eraser)} className={cn("flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-colors", tool === eraser ? "bg-moon/60 text-ink" : "text-muted hover:bg-moon/30 hover:text-ink")}>
+                {eraser === "strokeEraser" ? <Scissors size={15} /> : <Eraser size={15} />}{t(eraser)}
+              </button>
+            ))}
+          </div>
+        </PopoverContent>
+      </Popover>
+
+      <Popover>
+        <PopoverTrigger asChild>
+          <button type="button" aria-label={t("color")} title={t("color")} className="grid size-9 shrink-0 place-items-center rounded-full transition-colors hover:bg-moon/30"><span aria-hidden className="size-4.5 rounded-full border border-line" style={{ background: colorVar(color) }} /></button>
+        </PopoverTrigger>
+        <PopoverContent side="top" className="w-auto p-2">
+          <div className="grid grid-cols-3 gap-2">
+            {COLOR_TOKENS.map((token) => (
+              <button key={token} type="button" aria-label={colorNames(token)} title={colorNames(token)} onClick={() => pickColor(token)} className={cn("size-7 rounded-full border border-line transition-transform hover:scale-110", color === token && "ring-2 ring-crater ring-offset-2 ring-offset-paper")} style={{ background: colorVar(token) }} />
+            ))}
+          </div>
+        </PopoverContent>
+      </Popover>
+
+      <Popover>
+        <PopoverTrigger asChild>
+          <button type="button" aria-label={t("size")} title={t("size")} className="grid size-9 shrink-0 place-items-center rounded-full text-ink transition-colors hover:bg-moon/30"><span aria-hidden className="rounded-full bg-current" style={{ width: 4 + sizeIndex * 3, height: 4 + sizeIndex * 3 }} /></button>
+        </PopoverTrigger>
+        <PopoverContent side="top" className="w-auto p-1.5">
+          <div className="flex items-center gap-1">
+            {SIZE_ORDER.map((key, index) => {
+              const labelKey = `size${key.charAt(0).toUpperCase()}${key.slice(1)}` as SizeLabelKey;
+              return <button key={key} type="button" aria-label={t(labelKey)} title={t(labelKey)} onClick={() => setSizeNorm(SIZE_PRESETS[key])} className={cn("grid size-9 place-items-center rounded-lg transition-colors", sizeNorm === SIZE_PRESETS[key] ? "bg-moon/60" : "hover:bg-moon/30")}><span className="rounded-full bg-ink" style={{ width: 4 + index * 4, height: 4 + index * 4 }} /></button>;
+            })}
+          </div>
+        </PopoverContent>
+      </Popover>
+      </div>
+
+      <div aria-hidden className="mx-0.5 h-6 w-px shrink-0 bg-line" />
       <div role="group" data-tool-group="construction" aria-label={`${t("shape")} · ${t("instruments")} · ${t("formula")}`} className="flex shrink-0 items-center gap-0.5 rounded-xl bg-moon/20 p-0.5">
       <Popover>
         <PopoverTrigger asChild>
@@ -230,58 +282,6 @@ export function Toolbar({
             {COLOR_TOKENS.map((token) => (
               <button key={token} type="button" aria-label={colorNames(token)} title={colorNames(token)} onClick={() => pickFill(token)} className={cn("size-7 rounded-full border border-line", fill === token && "ring-2 ring-crater ring-offset-2 ring-offset-paper")} style={{ background: colorVar(token) }} />
             ))}
-          </div>
-        </PopoverContent>
-      </Popover>
-      </div>
-
-      <div aria-hidden className="mx-0.5 h-6 w-px shrink-0 bg-line" />
-      <div role="group" data-tool-group="drawing" aria-label={`${t("pen")} · ${t("eraser")} · ${t("color")} · ${t("size")}`} className="flex shrink-0 items-center gap-0.5 rounded-xl bg-card/70 p-0.5">
-      <ToolButton active={tool === "pen"} label={t("pen")} onClick={() => setTool("pen")}>
-        <Pencil size={18} />
-      </ToolButton>
-
-      <Popover>
-        <div className="flex items-center">
-          <ToolButton active={isEraser} label={t("eraser")} onClick={() => setTool(lastEraser)}><Eraser size={18} /></ToolButton>
-          <PopoverTrigger asChild>
-            <button type="button" aria-label={t("eraserOptions")} className="-ml-1.5 rounded-full p-0.5 text-muted transition-colors hover:text-ink"><ChevronUp size={13} /></button>
-          </PopoverTrigger>
-        </div>
-        <PopoverContent side="top" className="w-auto p-1.5">
-          <div className="flex flex-col gap-0.5">
-            {ERASER_TOOLS.map((eraser) => (
-              <button key={eraser} type="button" onClick={() => pickEraser(eraser)} className={cn("flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-colors", tool === eraser ? "bg-moon/60 text-ink" : "text-muted hover:bg-moon/30 hover:text-ink")}>
-                {eraser === "strokeEraser" ? <Scissors size={15} /> : <Eraser size={15} />}{t(eraser)}
-              </button>
-            ))}
-          </div>
-        </PopoverContent>
-      </Popover>
-
-      <Popover>
-        <PopoverTrigger asChild>
-          <button type="button" aria-label={t("color")} title={t("color")} className="grid size-9 shrink-0 place-items-center rounded-full transition-colors hover:bg-moon/30"><span aria-hidden className="size-4.5 rounded-full border border-line" style={{ background: colorVar(color) }} /></button>
-        </PopoverTrigger>
-        <PopoverContent side="top" className="w-auto p-2">
-          <div className="grid grid-cols-3 gap-2">
-            {COLOR_TOKENS.map((token) => (
-              <button key={token} type="button" aria-label={colorNames(token)} title={colorNames(token)} onClick={() => pickColor(token)} className={cn("size-7 rounded-full border border-line transition-transform hover:scale-110", color === token && "ring-2 ring-crater ring-offset-2 ring-offset-paper")} style={{ background: colorVar(token) }} />
-            ))}
-          </div>
-        </PopoverContent>
-      </Popover>
-
-      <Popover>
-        <PopoverTrigger asChild>
-          <button type="button" aria-label={t("size")} title={t("size")} className="grid size-9 shrink-0 place-items-center rounded-full text-ink transition-colors hover:bg-moon/30"><span aria-hidden className="rounded-full bg-current" style={{ width: 4 + sizeIndex * 3, height: 4 + sizeIndex * 3 }} /></button>
-        </PopoverTrigger>
-        <PopoverContent side="top" className="w-auto p-1.5">
-          <div className="flex items-center gap-1">
-            {SIZE_ORDER.map((key, index) => {
-              const labelKey = `size${key.charAt(0).toUpperCase()}${key.slice(1)}` as SizeLabelKey;
-              return <button key={key} type="button" aria-label={t(labelKey)} title={t(labelKey)} onClick={() => setSizeNorm(SIZE_PRESETS[key])} className={cn("grid size-9 place-items-center rounded-lg transition-colors", sizeNorm === SIZE_PRESETS[key] ? "bg-moon/60" : "hover:bg-moon/30")}><span className="rounded-full bg-ink" style={{ width: 4 + index * 4, height: 4 + index * 4 }} /></button>;
-            })}
           </div>
         </PopoverContent>
       </Popover>
