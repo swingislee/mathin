@@ -73,13 +73,19 @@ describe("whiteboard geometry objects", () => {
   it("keeps compass feedback and construction tools wired to their dedicated UI contracts", () => {
     const instrumentLayer = readFileSync("src/features/whiteboard/InstrumentLayer.tsx", "utf8");
     const toolbar = readFileSync("src/features/whiteboard/Toolbar.tsx", "utf8");
+    const store = readFileSync("src/features/whiteboard/store.ts", "utf8");
 
     expect(instrumentLayer).toContain("shortestAngleDelta(previous, current)");
     expect(instrumentLayer).toContain("ellipseArcPath(preview.width * width");
     expect(instrumentLayer).toContain('r={22} fill="transparent"');
     expect(instrumentLayer).toContain('r={24} fill="transparent"');
     expect(toolbar).toContain('data-tool-group="construction"');
+    expect(instrumentLayer).toContain("compassRadiusNorm(item, width)");
+    expect(instrumentLayer).toContain("beginCompassControl(event, item)");
     expect(toolbar).toContain('data-tool-group="drawing"');
+    expect(instrumentLayer).toContain("absolute inset-0 z-40");
     expect(toolbar.indexOf('data-tool-group="construction"')).toBeLessThan(toolbar.indexOf('data-tool-group="drawing"'));
+    expect(store).toContain('kind, x: 0.5, y: 0.32, width: 0.24');
+    expect(store).not.toContain('kind, x: 0.5, y: 0.5, width: 0.24');
   });
 });

@@ -91,12 +91,12 @@ function restoreAt(items: BoardItem[], restored: BoardItem[], indexes: number[])
 
 function defaultInstrument(kind: InstrumentKind): InstrumentItem {
   if (kind === "compass") {
-    return { id: newId(), kind, x: 0.5, y: 0.5, width: 0.24, height: 0.3, rotation: 0, radius: 0.12, armAngle: -25 };
+    return { id: newId(), kind, x: 0.5, y: 0.32, width: 0.24, height: 0.3, rotation: 0, radius: 0.12, armAngle: -25 };
   }
   if (kind === "protractor") {
-    return { id: newId(), kind, x: 0.5, y: 0.55, width: 0.34, height: 0.18, rotation: 0 };
+    return { id: newId(), kind, x: 0.5, y: 0.38, width: 0.34, height: 0.18, rotation: 0 };
   }
-  return { id: newId(), kind, x: 0.5, y: 0.55, width: 0.46, height: 0.1, rotation: 0 };
+  return { id: newId(), kind, x: 0.5, y: 0.32, width: 0.46, height: 0.1, rotation: 0 };
 }
 
 const stateCreator: StateCreator<WhiteboardState> = (set, get) => ({

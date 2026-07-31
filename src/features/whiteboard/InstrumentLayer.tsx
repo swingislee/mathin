@@ -14,6 +14,11 @@ function rotatePoint(x: number, y: number, degrees: number): [number, number] {
   return [x * Math.cos(angle) - y * Math.sin(angle), x * Math.sin(angle) + y * Math.cos(angle)];
 }
 
+function compassRadiusNorm(item: InstrumentItem, boardWidth: number): number {
+  const configured = item.radius ?? item.width / 2;
+  return Math.max(configured, Math.min(0.22, 44 / Math.max(boardWidth, 1)));
+}
+
 function RulerTicks({ width, height }: { width: number; height: number }) {
   const count = 20;
   return (
@@ -156,7 +161,7 @@ export function InstrumentLayer({ store, editable, width, height }: { store: Whi
     const rect = boardRect(event.currentTarget);
     const centerX = rect.left + item.x * rect.width;
     const centerY = rect.top + item.y * rect.height;
-    const radius = item.radius ?? item.width / 2;
+    const radius = compassRadiusNorm(item, rect.width);
     const angleAt = (pointerEvent: Pick<PointerEvent, "clientX" | "clientY">) => Math.atan2(pointerEvent.clientY - centerY, pointerEvent.clientX - centerX) * 180 / Math.PI;
     const start = angleAt(event.nativeEvent);
     let previous = start;
@@ -188,6 +193,33 @@ export function InstrumentLayer({ store, editable, width, height }: { store: Whi
     window.addEventListener("pointerup", finish, { once: true });
     window.addEventListener("pointercancel", finish, { once: true });
   };
+  const beginCompassControl = (event: React.PointerEvent<SVGGElement>, item: InstrumentItem) => {
+    const rect = boardRect(event.currentTarget);
+    const centerX = rect.left + item.x * rect.width;
+    const centerY = rect.top + item.y * rect.height;
+    const radiusPx = compassRadiusNorm(item, rect.width) * rect.width;
+    const tip = rotatePoint(radiusPx, 0, item.armAngle ?? -25);
+    const points = {
+      move: [centerX, centerY],
+      radius: [centerX + tip[0] * 0.55, centerY + tip[1] * 0.55],
+      draw: [centerX + tip[0], centerY + tip[1]],
+    } satisfies Record<"move" | "radius" | "draw", [number, number]>;
+    const distance = (point: [number, number]) => Math.hypot(event.clientX - point[0], event.clientY - point[1]);
+    const distances = {
+      move: distance(points.move),
+      radius: distance(points.radius),
+      draw: distance(points.draw),
+    };
+
+    if (distances.draw <= distances.move && distances.draw <= distances.radius) {
+      beginCompassArc(event, item);
+    } else if (distances.radius <= distances.move) {
+      beginAdjust(event, item, "radius");
+    } else {
+      beginAdjust(event, item, "move");
+    }
+  };
+
 
   const beginProtractorRay = (event: React.PointerEvent<SVGCircleElement>, item: InstrumentItem) => {
     event.preventDefault();
@@ -235,7 +267,7 @@ export function InstrumentLayer({ store, editable, width, height }: { store: Whi
   };
 
   return (
-    <svg className="pointer-events-none absolute inset-0 z-20 size-full overflow-visible" viewBox={`0 0 ${Math.max(width, 1)} ${Math.max(height, 1)}`}>
+    <svg className="pointer-events-none absolute inset-0 z-40 size-full overflow-visible" viewBox={`0 0 ${Math.max(width, 1)} ${Math.max(height, 1)}`}>
       {preview ? (
         <g transform={`translate(${preview.x * width} ${preview.y * height}) rotate(${preview.rotation})`} opacity={0.7}>
           {preview.shape === "arc" ? (
@@ -268,28 +300,28 @@ export function InstrumentLayer({ store, editable, width, height }: { store: Whi
           );
         }
         if (item.kind === "compass") {
-          const radiusPx = (item.radius ?? item.width / 2) * width;
+          const radiusPx = compassRadiusNorm(item, width) * width;
           const angle = item.armAngle ?? -25;
           const tip = rotatePoint(radiusPx, 0, angle);
           return (
-            <g key={item.id} className="pointer-events-auto touch-none text-ink drop-shadow-sm">
-              <g className="cursor-move" onPointerDown={(event) => beginAdjust(event, item, "move")}>
+            <g key={item.id} className="pointer-events-auto touch-none text-ink drop-shadow-sm" onPointerDown={(event) => beginCompassControl(event, item)}>
+              <g className="cursor-move">
                 <circle cx={item.x * width} cy={item.y * height} r={22} fill="transparent" />
                 <circle cx={item.x * width} cy={item.y * height} r={13} fill="var(--paper)" stroke="var(--crater)" strokeWidth={2} />
                 <Move x={item.x * width - 7} y={item.y * height - 7} width={14} height={14} pointerEvents="none" />
               </g>
               <line x1={item.x * width} y1={item.y * height} x2={item.x * width + tip[0]} y2={item.y * height + tip[1]} stroke="color-mix(in srgb, var(--crater) 70%, var(--paper))" strokeWidth={12} strokeLinecap="round" />
               <line x1={item.x * width} y1={item.y * height} x2={item.x * width - tip[0] * 0.62} y2={item.y * height - tip[1] * 0.62} stroke="var(--ink)" strokeWidth={5} strokeLinecap="round" />
-              <g className="cursor-ew-resize" onPointerDown={(event) => beginAdjust(event, item, "radius")}>
+              <g className="cursor-ew-resize">
                 <circle cx={item.x * width + tip[0] * 0.55} cy={item.y * height + tip[1] * 0.55} r={17} fill="transparent" />
                 <circle cx={item.x * width + tip[0] * 0.55} cy={item.y * height + tip[1] * 0.55} r={8} fill="var(--paper)" stroke="var(--crater)" strokeWidth={2} />
               </g>
-              <g className="cursor-crosshair" onPointerDown={(event) => beginCompassArc(event, item)}>
+              <g className="cursor-crosshair">
                 <circle cx={item.x * width + tip[0]} cy={item.y * height + tip[1]} r={24} fill="transparent" />
                 <circle cx={item.x * width + tip[0]} cy={item.y * height + tip[1]} r={15} fill="var(--paper)" stroke="var(--rose)" strokeWidth={2} strokeDasharray="3 2" />
                 <Pencil x={item.x * width + tip[0] - 7} y={item.y * height + tip[1] - 7} width={14} height={14} color="var(--rose)" pointerEvents="none" />
               </g>
-              <g transform={`translate(${item.x * width + 22} ${item.y * height - 22})`} className="cursor-pointer" onPointerDown={() => store.getState().removeInstrument(item.id)}><circle r={9} fill="var(--paper)" stroke="var(--line)" /><X x={-6} y={-6} width={12} height={12} /></g>
+              <g transform={`translate(${item.x * width + 22} ${item.y * height - 22})`} className="cursor-pointer" onPointerDown={(event) => { event.stopPropagation(); store.getState().removeInstrument(item.id); }}><circle r={9} fill="var(--paper)" stroke="var(--line)" /><X x={-6} y={-6} width={12} height={12} /></g>
               <title>{t("compassHint")}</title>
             </g>
           );
