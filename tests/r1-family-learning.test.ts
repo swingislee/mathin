@@ -164,6 +164,14 @@ describe("R1-5 family learning contracts", () => {
     expect(parentHome).toContain("entry.studentId === child.studentId");
   });
 
+  it("does not present an unloaded guardian list as an empty relationship", () => {
+    const panel = read("src/features/school/GuardianScopePanel.tsx");
+    expect(panel).toContain("const loading = loaded.studentId !== studentId");
+    expect(panel).toContain("loading &&");
+    expect(panel).toContain("!loading && rows.length === 0");
+    expect(panel).toContain('loadingT("loading")');
+  });
+
   it("lets a guardian revoke only their own relationship without window.confirm", () => {
     const actions = read("src/features/school/customer-actions.ts");
     const childrenPage = read("src/app/[locale]/dashboard/children/page.tsx");
