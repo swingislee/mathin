@@ -81,6 +81,7 @@ export function CoursewareOverlayEditor({
   learningChecksLocked,
   learningChecksConfigured,
   readOnly = false,
+  structureReadOnly = readOnly,
 }: {
   classroomId: string;
   sessionId: string;
@@ -94,6 +95,7 @@ export function CoursewareOverlayEditor({
   learningChecksLocked: boolean;
   learningChecksConfigured: boolean;
   readOnly?: boolean;
+  structureReadOnly?: boolean;
 }) {
   const t = useTranslations("school.overlay");
   const ts = useTranslations("school.session");
@@ -161,7 +163,7 @@ export function CoursewareOverlayEditor({
   }, [selectedPage]);
 
   const persist = useCallback(async () => {
-    if (readOnly) return;
+    if (structureReadOnly) return;
     setSaveState("saving");
     try {
       await saveCoursewareOverlay(sessionId, overlayRef.current);
@@ -169,22 +171,22 @@ export function CoursewareOverlayEditor({
     } catch {
       setSaveState("error");
     }
-  }, [readOnly, sessionId]);
+  }, [sessionId, structureReadOnly]);
 
   const mutate = useCallback((updater: (prev: OverlaySlot[]) => OverlaySlot[]) => {
-    if (readOnly) return;
+    if (structureReadOnly) return;
     setOverlay(updater);
     setSaveState("dirty");
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => void persist(), 1200);
-  }, [persist, readOnly]);
+  }, [persist, structureReadOnly]);
 
   useEffect(() => () => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
   }, []);
 
   const addFiles = async (files: FileList | null) => {
-    if (readOnly) return;
+    if (structureReadOnly) return;
     if (!files || files.length === 0) return;
     setUploading(true);
     try {
@@ -204,7 +206,7 @@ export function CoursewareOverlayEditor({
   };
 
   const move = (index: number, delta: number) => {
-    if (readOnly) return;
+    if (structureReadOnly) return;
     mutate((prev) => {
       const next = [...prev];
       const target = index + delta;
@@ -324,7 +326,7 @@ export function CoursewareOverlayEditor({
         leading: page?.type === "doc"
           ? checkMarker(page)
           : <span className="grid size-7 shrink-0 place-items-center text-muted"><Icon size={15} aria-hidden /></span>,
-        trailing: readOnly ? undefined : (
+        trailing: structureReadOnly ? undefined : (
           <div className="flex shrink-0 items-center opacity-40 transition group-hover:opacity-100">
             <button type="button" aria-label={t("moveUp")} disabled={index === 0} onClick={(event) => { event.stopPropagation(); move(index, -1); }} className="rounded-full p-1 text-muted hover:bg-moon/30 hover:text-ink disabled:opacity-20">
               <ArrowUp size={12} />
@@ -344,7 +346,7 @@ export function CoursewareOverlayEditor({
       leading: page.type === "doc"
         ? checkMarker(page)
         : <span className="grid size-7 shrink-0 place-items-center text-muted"><Icon size={15} aria-hidden /></span>,
-      titleContent: readOnly ? (
+      titleContent: structureReadOnly ? (
         <span className="min-w-0 flex-1 truncate px-1 text-xs">{page.title}</span>
       ) : (
         <Input
@@ -364,7 +366,7 @@ export function CoursewareOverlayEditor({
           className="h-8 min-w-0 border-0 bg-transparent px-1 text-xs shadow-none"
         />
       ),
-      trailing: readOnly ? undefined : (
+      trailing: structureReadOnly ? undefined : (
         <div className="flex shrink-0 items-center opacity-40 transition group-hover:opacity-100">
           <button type="button" aria-label={t("moveUp")} disabled={index === 0} onClick={(event) => { event.stopPropagation(); move(index, -1); }} className="rounded-full p-1 text-muted hover:bg-moon/30 hover:text-ink disabled:opacity-20">
             <ArrowUp size={12} />
@@ -426,8 +428,8 @@ export function CoursewareOverlayEditor({
     <section className="flex min-h-0 flex-1 flex-col">
       <div className="flex flex-wrap items-center gap-3">
         <h3 className="text-sm font-medium text-muted">{t("title", { count: overlay.length })}</h3>
-        {!readOnly ? <span className={`text-xs ${saveState === "error" ? "text-rose" : "text-muted"}`}>{saveLabel}</span> : null}
-        {!readOnly ? <div className="ml-auto flex flex-wrap items-center gap-2">
+        {!structureReadOnly ? <span className={`text-xs ${saveState === "error" ? "text-rose" : "text-muted"}`}>{saveLabel}</span> : null}
+        {!structureReadOnly ? <div className="ml-auto flex flex-wrap items-center gap-2">
           <Input
             ref={fileInputRef}
             type="file"
@@ -466,7 +468,11 @@ export function CoursewareOverlayEditor({
           </button>
         </div> : null}
       </div>
-      <p className="mt-2 text-xs text-muted">{readOnly ? ts("prepArchiveCoursewareHint") : t("hint")}</p>
+      <p className="mt-2 text-xs text-muted">
+        {structureReadOnly
+          ? ts(readOnly ? "prepArchiveCoursewareHint" : "prepArchiveUnlockedCoursewareHint")
+          : t("hint")}
+      </p>
 
       <CoursewarePreviewWorkspace
         className="mt-3 flex-1"
@@ -474,7 +480,7 @@ export function CoursewareOverlayEditor({
         items={previewItems}
         selectedIndex={safeSelectedIndex}
         onSelectedIndexChange={setSelectedIndex}
-        directoryLabel={readOnly ? ts("coursewareArchivePageRailTitle") : ts("coursewarePageRailTitle")}
+        directoryLabel={structureReadOnly ? ts("coursewareArchivePageRailTitle") : ts("coursewarePageRailTitle")}
         previewLabel={t("visualPreview")}
         previousLabel={ts("coursewarePreviousPage")}
         nextLabel={ts("coursewareNextPage")}

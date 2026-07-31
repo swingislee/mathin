@@ -957,11 +957,13 @@
       "flag_notifications_sms": "SMS notifications",
       "flag_notifications_wechat": "WeChat notifications",
       "flag_public_content_publish": "Public content publishing",
+      "flag_teaching_preparation_archive_edit": "Edit locked preparation archives",
       "flagHelp_finance_enabled": "Controls orders, payments, refunds, accounts, reports, and finance work items.",
       "flagHelp_notifications_email": "Allows notification jobs to choose email; the provider is configured in R1-2.",
       "flagHelp_notifications_sms": "Allows notification jobs to choose SMS; the provider is configured in R1-2.",
       "flagHelp_notifications_wechat": "Allows notification jobs to choose WeChat; the provider is configured in R1-2.",
-      "flagHelp_public_content_publish": "Allows public content to enter the production publish action; drafts and previews remain available."
+      "flagHelp_public_content_publish": "Allows public content to enter the production publish action; drafts and previews remain available.",
+      "flagHelp_teaching_preparation_archive_edit": "Temporarily lets assigned teachers update locked preparation artifacts, board solutions, lesson plans, and learning checks. Frozen courseware structure and the formal release remain unchanged."
     },
     "registration": {
       "title": "Registration invites",
@@ -2214,8 +2216,11 @@
       "overlayFrozen": "This session's courseware is frozen as a read-only final version.",
       "prepArchiveFrozenTitle": "Session final and preparation archive locked",
       "prepArchiveFrozenBody": "The confirmed preparation artifacts, review states, learning checks, and final courseware remain here. New releases do not rewrite this session automatically.",
+      "prepArchiveUnlockedTitle": "Preparation archive temporarily unlocked",
+      "prepArchiveUnlockedBody": "An administrator has temporarily allowed teachers to update preparation artifacts, board solutions, lesson plans, and learning checks. Frozen courseware and the formal release remain immutable.",
       "prepArchiveReadOnly": "Preparation archive is read-only",
       "prepArchiveCoursewareHint": "Viewing the frozen session version. The page list, learning checks, and courseware remain as confirmed for this session.",
+      "prepArchiveUnlockedCoursewareHint": "The frozen courseware page structure remains unchanged. You can add board work and adjust this session's learning checks.",
       "openCoursewareWorkspace": "Open courseware workspace",
       "startPrep": "Start prep",
       "copyPrep": "Copy prep",

@@ -957,11 +957,13 @@
       "flag_notifications_sms": "短信通知",
       "flag_notifications_wechat": "微信通知",
       "flag_public_content_publish": "公开内容发布",
+      "flag_teaching_preparation_archive_edit": "临时编辑已锁定备课档案",
       "flagHelp_finance_enabled": "控制订单、收款、退款、账户、报表和财务工作项。",
       "flagHelp_notifications_email": "允许通知任务选择邮件渠道；供应商仍需在 R1-2 配置。",
       "flagHelp_notifications_sms": "允许通知任务选择短信渠道；供应商仍需在 R1-2 配置。",
       "flagHelp_notifications_wechat": "允许通知任务选择微信渠道；供应商仍需在 R1-2 配置。",
-      "flagHelp_public_content_publish": "允许公共内容进入正式发布动作；草稿与预览不受影响。"
+      "flagHelp_public_content_publish": "允许公共内容进入正式发布动作；草稿与预览不受影响。",
+      "flagHelp_teaching_preparation_archive_edit": "允许任课教师临时补改已锁定课次的备课产物、板书解析、教案和逐题检查；冻结课件页结构与正式 release 保持不变。"
     },
     "registration": {
       "title": "注册邀请码",
@@ -2214,8 +2216,11 @@
       "overlayFrozen": "本课课件已冻结并保留为只读定稿。",
       "prepArchiveFrozenTitle": "本课定稿与备课档案已锁定",
       "prepArchiveFrozenBody": "这里保留本课已确认的备课产物、审核状态、逐题检查项和课件定稿。新的正式 release 不会自动改写本课。",
+      "prepArchiveUnlockedTitle": "备课档案已临时解除只读",
+      "prepArchiveUnlockedBody": "管理员已允许教师临时补改备课产物、板书解析、教案和逐题检查。本课冻结课件与正式 release 仍保持不可变。",
       "prepArchiveReadOnly": "备课档案只读",
       "prepArchiveCoursewareHint": "正在查看本课冻结定稿；页面目录、逐题检查项和课件内容保持为本课确认时的版本。",
+      "prepArchiveUnlockedCoursewareHint": "冻结课件页结构保持不变；可在当前页补写板书，并调整本课逐题检查。",
       "openCoursewareWorkspace": "打开课件工作区",
       "startPrep": "开始备课",
       "copyPrep": "复制备课",
