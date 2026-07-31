@@ -34,6 +34,20 @@ export interface SessionLearningSetup {
   results: SessionLearningResult[];
 }
 
+export function moveLearningStudent(
+  students: SessionLearningSetup["students"],
+  activeStudentId: string,
+  overStudentId: string,
+): SessionLearningSetup["students"] {
+  const activeIndex = students.findIndex((student) => student.id === activeStudentId);
+  const overIndex = students.findIndex((student) => student.id === overStudentId);
+  if (activeIndex < 0 || overIndex < 0 || activeIndex === overIndex) return students;
+  const next = [...students];
+  const [activeStudent] = next.splice(activeIndex, 1);
+  next.splice(overIndex, 0, activeStudent);
+  return next;
+}
+
 export function learningResultKey(checkId: string, studentId: string): string {
   return checkId + ":" + studentId;
 }

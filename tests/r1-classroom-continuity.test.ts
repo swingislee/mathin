@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   learningCheckIdAfterPageChange,
   learningCheckIdForPage,
+  moveLearningStudent,
 } from "../src/features/school/session-learning-contract";
 
 const root = process.cwd();
@@ -17,6 +18,7 @@ const prepArtifactMigration = read("supabase/migrations/20260730000300_r1_sessio
 const prepReviewMigration = read("supabase/migrations/20260730000500_r1_session_preparation_review.sql");
 const prepUnlockMigration = read("supabase/migrations/20260731000500_r1_preparation_archive_unlock.sql");
 const prepUnlockNarrowingMigration = read("supabase/migrations/20260731000800_r1_narrow_preparation_archive_unlock.sql");
+const learningSeatOrderMigration = read("supabase/migrations/20260731001000_r1_learning_check_seat_order.sql");
 
 describe("R1 classroom continuity contracts", () => {
   it("bridges active enrollments and claimed student accounts into live classroom membership", () => {
@@ -182,6 +184,8 @@ describe("R1 classroom continuity contracts", () => {
     const liveShell = read("src/features/classroom/live/LiveShell.tsx");
     const video = read("src/features/classroom/live/VideoStage.tsx");
     const panel = read("src/features/school/SessionLearningCheckPanel.tsx");
+    const learningSetup = read("src/features/school/session-learning.ts");
+    const learningActions = read("src/features/school/session-learning-actions.ts");
     expect(liveShell).toContain("PanelsTopLeft");
     expect(liveShell).toContain('t("pageList")');
     expect(liveShell).toContain('page?.type === "doc"');
@@ -196,12 +200,40 @@ describe("R1 classroom continuity contracts", () => {
     expect(panel).toContain("LEARNING_CHECK_STATUSES.map");
     expect(panel).toContain("mark([student.id], candidate)");
     expect(panel).toContain("selectedStudentIds");
-    expect(panel).toContain("lg:grid-cols-5");
+    expect(panel).toContain("data-learning-check-toolbar");
+    expect(panel).toContain("data-learning-check-strip");
+    expect(panel).toContain("data-ipad-roster-grid");
+    expect(panel).toContain("repeat(auto-fill, minmax(11rem, 1fr))");
+    expect(panel).toContain("GripVertical");
+    expect(panel).toContain("learningStatusShort_");
+    expect(panel).toContain("min-h-11");
+    expect(panel).toContain("saveClassroomStudentSeatOrderAction");
     expect(panel).toContain("learningCheckIdForPage");
+    expect(learningActions).toContain('rpc("save_classroom_student_seat_order"');
+    expect(learningSetup).toContain('.from("classroom_student_seat_order")');
+    expect(learningSetup).toContain("seatPositionByStudentId");
+    expect(learningSeatOrderMigration).toContain("create table public.classroom_student_seat_order");
+    expect(learningSeatOrderMigration).toContain("save_classroom_student_seat_order");
+    expect(learningSeatOrderMigration).toContain("ROSTER_CHANGED");
+    expect(learningSeatOrderMigration).toContain("classroom.student_seat_order.updated");
+    expect(learningSeatOrderMigration).toContain("is_session_teacher");
     expect(liveShell).toContain("activePageDocId");
     expect(liveShell).not.toContain("operateCourseware");
     expect(learningCheckMarkFixMigration).toContain("v_classroom_id");
     expect(learningCheckMarkFixMigration).toContain("enrollment_row.classroom_id = v_classroom_id");
+  });
+
+  it("moves a student card without mutating the saved class roster", () => {
+    const students = [
+      { id: "student-a", name: "A" },
+      { id: "student-b", name: "B" },
+      { id: "student-c", name: "C" },
+    ];
+    const moved = moveLearningStudent(students, "student-a", "student-b");
+    expect(moved.map((student) => student.id)).toEqual(["student-b", "student-a", "student-c"]);
+    expect(students.map((student) => student.id)).toEqual(["student-a", "student-b", "student-c"]);
+    expect(moveLearningStudent(moved, "student-c", "student-b").map((student) => student.id))
+      .toEqual(["student-c", "student-b", "student-a"]);
   });
 
   it("maps the shared live page identity to a learning check without overriding manual-only legacy items", () => {

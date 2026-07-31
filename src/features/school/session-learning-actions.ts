@@ -63,3 +63,26 @@ export async function markSessionLearningChecksAction(input: {
     return actionError(error, ["NOT_FOUND", "STUDENT_NOT_ENROLLED", "FORBIDDEN", ...COMMON_CODES]);
   }
 }
+
+const saveSeatOrderSchema = z.object({
+  sessionId: uuid,
+  studentIds: z.array(uuid).min(1).max(60),
+});
+
+export async function saveClassroomStudentSeatOrderAction(input: {
+  sessionId: string;
+  studentIds: string[];
+}): Promise<ActionResult> {
+  try {
+    const value = parse(saveSeatOrderSchema, input);
+    const { supabase } = await authorizedClient("attendance.mark");
+    const { error } = await supabase.rpc("save_classroom_student_seat_order", {
+      p_session_id: value.sessionId,
+      p_student_ids: value.studentIds,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["SESSION_NOT_FOUND", "ROSTER_CHANGED", ...COMMON_CODES]);
+  }
+}

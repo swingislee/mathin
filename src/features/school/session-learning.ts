@@ -26,7 +26,11 @@ export async function getSessionLearningSetup(sessionId: string): Promise<Sessio
   if (sessionError) throw new Error(sessionError.message);
   if (!session) throw new Error("SESSION_NOT_FOUND");
 
-  const [{ data: checkRows, error: checkError }, { data: enrollmentRows, error: enrollmentError }] = await Promise.all([
+  const [
+    { data: checkRows, error: checkError },
+    { data: enrollmentRows, error: enrollmentError },
+    { data: seatOrderRows, error: seatOrderError },
+  ] = await Promise.all([
     supabase
       .from("session_learning_checks")
       .select("id,position,title,source_page_doc_id")
@@ -38,10 +42,19 @@ export async function getSessionLearningSetup(sessionId: string): Promise<Sessio
       .select("student_id,students(name)")
       .eq("classroom_id", session.classroom_id)
       .eq("status", "active")
+      .order("joined_at", { ascending: true })
+      .order("student_id", { ascending: true })
       .returns<Array<{ student_id: string; students: { name: string } | null }>>(),
+    supabase
+      .from("classroom_student_seat_order")
+      .select("student_id,position")
+      .eq("classroom_id", session.classroom_id)
+      .order("position", { ascending: true })
+      .returns<Array<{ student_id: string; position: number }>>(),
   ]);
   if (checkError) throw new Error(checkError.message);
   if (enrollmentError) throw new Error(enrollmentError.message);
+  if (seatOrderError) throw new Error(seatOrderError.message);
 
   const checkIds = (checkRows ?? []).map((row) => row.id);
   const resultRows = await collectPostgrestRowsInBatches<string, {
@@ -58,6 +71,26 @@ export async function getSessionLearningSetup(sessionId: string): Promise<Sessio
       status: Exclude<LearningCheckStatus, "unchecked">;
     }>>());
 
+  const seatPositionByStudentId = new Map(
+    (seatOrderRows ?? []).map((row) => [row.student_id, row.position]),
+  );
+  const students = (enrollmentRows ?? [])
+    .map((row, enrollmentIndex) => ({
+      id: row.student_id,
+      name: row.students?.name ?? "—",
+      enrollmentIndex,
+      seatPosition: seatPositionByStudentId.get(row.student_id),
+    }))
+    .sort((left, right) => {
+      if (left.seatPosition !== undefined && right.seatPosition !== undefined) {
+        return left.seatPosition - right.seatPosition;
+      }
+      if (left.seatPosition !== undefined) return -1;
+      if (right.seatPosition !== undefined) return 1;
+      return left.enrollmentIndex - right.enrollmentIndex;
+    })
+    .map(({ id, name }) => ({ id, name }));
+
   return {
     configured: session.learning_checks_configured_at !== null,
     checks: (checkRows ?? []).map((row) => ({
@@ -66,7 +99,7 @@ export async function getSessionLearningSetup(sessionId: string): Promise<Sessio
       title: row.title,
       sourcePageId: row.source_page_doc_id,
     })),
-    students: (enrollmentRows ?? []).map((row) => ({ id: row.student_id, name: row.students?.name ?? "—" })),
+    students,
     results: resultRows.map((row) => ({ checkId: row.check_id, studentId: row.student_id, status: row.status })),
   };
 }
