@@ -1,0 +1,25 @@
+R1-5 integrated closeout summary
+Date: 2026-07-31
+Commit under test: a9725ddf33cc7cc306b348090562071404066a04
+Migration head: 20260731001200_r1_learning_check_seat_layout.sql
+
+- CI source gates: 14/14 passed.
+- Next.js production build: 312/312 pages generated.
+- R1 Vitest contracts: 62/62 passed.
+- Offline replay tests: 2/2 passed.
+- Locale message parity: 3448 keys x 2 locales.
+- Development database R1/doc26 assertions: 6/6 passed and rolled back.
+- Isolated database replay: 144/144 bootstrap, seed, migration, and fixture files passed.
+- Isolated database audits: migration ledger plus 13/13 P4E, P6, P4H, and R1 audits passed.
+- R1-4 synthetic work-item probe in the isolated database: 30,000 rows, p95 15.92 ms.
+- The isolated database was removed after verification.
+
+Browser evidence scope:
+- Existing fixed-role sub-gates cover teacher, student, parent, and unbound-parent journeys in zh/en.
+- Responsive classroom checks cover 1600x900, 1280x720, 1024x768, and 768x1024.
+- Final read-only smoke check opened the teacher dashboard and unified session workspace in zh/en.
+- At 1280x720, the session workspace root measured 1280x720 for both client and scroll dimensions; browser error logs were empty.
+- No save, upload, notification, or other business mutation was triggered.
+- Formal repeatable Playwright artifacts remain assigned to R1-14.
+
+This summary contains no secrets, tokens, test credentials, or identifiable minor data.
