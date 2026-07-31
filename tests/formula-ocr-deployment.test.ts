@@ -29,6 +29,7 @@ describe("formula OCR production boundary", () => {
     expect(compose).toContain("- 127.0.0.1");
     expect(compose).not.toContain("ports:");
     expect(compose).toContain("working_dir: /tmp");
+    expect(compose).toContain("HOME: /models");
     expect(compose).toContain('mem_limit: 3g');
     expect(compose).toContain('cpus: "3.0"');
     expect(compose).toContain("no-new-privileges:true");
