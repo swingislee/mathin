@@ -36,13 +36,15 @@ begin
   if attendance_result not ilike '%student_id uuid%' then
     failures := array_append(failures, 'attendance projection has no student_id');
   end if;
-  if review_definition not ilike '%join public.session_family_briefs%'
-     or review_definition not ilike '%published_at is not null%'
+  if review_definition not ilike '%public.learning_result_heads%'
+     or review_definition not ilike '%public.learning_result_revisions%'
+     or review_definition not ilike '%head_row.status = ''published''%'
      or review_definition ilike '%coalesce(brief_row.learning_summary, session_row.knowledge_summary)%' then
     failures := array_append(failures, 'review projection can expose an unpublished summary');
   end if;
   if review_state_result not ilike '%availability_state text%'
-     or review_state_definition not ilike '%family_visibility_state%'
+     or review_state_definition not ilike '%public.learning_result_heads%'
+     or review_state_definition not ilike '%head_row.status%'
      or review_state_definition ilike '%review_row.comment%'
      or review_state_definition ilike '%learning_summary%' then
     failures := array_append(failures, 'review availability projection leaks draft fields or omits state');
@@ -56,7 +58,8 @@ begin
   ) then
     failures := array_append(failures, 'family result visibility state is not synchronized');
   end if;
-  if brief_definition not ilike '%guardian_can(student_row.id, uid, ''grades''%'
+  if brief_definition not ilike '%public.learning_result_revisions%'
+     or brief_definition not ilike '%guardian_can(student_row.id, auth.uid(), ''grades''%'
      or brief_definition ilike '%family_of_student%' then
     failures := array_append(failures, 'family brief ignores guardian grades scope');
   end if;
@@ -233,6 +236,10 @@ set comment = excluded.comment, updated_at = now();
 delete from public.session_family_briefs
  where session_id = :'family_session_id'::uuid;
 
+update public.learning_result_heads
+   set status = 'draft'
+ where kind = 'session_result'
+   and session_id = :'family_session_id'::uuid;
 insert into public.session_family_briefs (
   session_id, lesson_title, learning_summary, teacher_public_comment,
   published_by, published_at
@@ -445,9 +452,10 @@ end
 $$;
 
 reset role;
-update public.session_family_briefs
-   set published_by = :'teacher_id'::uuid, published_at = now()
- where session_id = :'family_session_id'::uuid;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'admin_id', true);
+select public.publish_session_family_brief(:'family_session_id'::uuid);
+reset role;
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', :'parent_id', true);
