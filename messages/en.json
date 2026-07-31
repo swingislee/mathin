@@ -3143,7 +3143,7 @@
         "ruler": "Ruler",
         "compass": "Compass",
         "protractor": "Protractor",
-        "compassHint": "Move the needle, adjust the radius with the pencil leg, then draw from the pencil tip.",
+        "compassHint": "Drag the needle leg to move the compass, use the adjuster to set its opening, then drag the pencil leg to rotate the whole frame and draw.",
         "protractorHint": "Move from the center, rotate the scale, then draw a snapped ray from the origin.",
         "formula": "Ink to formula",
         "formulaDialogTitle": "Ink to formula",

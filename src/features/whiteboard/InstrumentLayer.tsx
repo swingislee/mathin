@@ -151,6 +151,8 @@ export function InstrumentLayer({ store, editable, width, height }: { store: Whi
     const centerX = rect.left + item.x * rect.width;
     const centerY = rect.top + item.y * rect.height;
     const initialAngle = Math.atan2(startY - centerY, startX - centerX) * 180 / Math.PI;
+    const initialRadius = compassRadiusNorm(item, rect.width);
+    const initialPointerRadius = Math.hypot(startX - centerX, startY - centerY) / rect.width;
     const move = (pointerEvent: PointerEvent) => {
       let next = item;
       if (mode === "move") {
@@ -168,7 +170,8 @@ export function InstrumentLayer({ store, editable, width, height }: { store: Whi
         const local = rotatePoint(dx, dy, -item.rotation);
         next = { ...item, width: clamp(Math.abs(local[0]) * 2 / rect.width, 0.16, 0.85) };
       } else {
-        const radius = Math.hypot(pointerEvent.clientX - centerX, pointerEvent.clientY - centerY) / rect.width;
+        const pointerRadius = Math.hypot(pointerEvent.clientX - centerX, pointerEvent.clientY - centerY) / rect.width;
+        const radius = initialRadius + pointerRadius - initialPointerRadius;
         next = { ...item, radius: clamp(radius, 0.04, 0.34), width: clamp(radius * 2, 0.1, 0.7) };
       }
       store.getState().updateInstrument(next);
@@ -245,16 +248,16 @@ export function InstrumentLayer({ store, editable, width, height }: { store: Whi
     const centerY = rect.top + item.y * rect.height;
     const radius = compassRadiusNorm(item, rect.width);
     const angleAt = (pointerEvent: Pick<PointerEvent, "clientX" | "clientY">) => Math.atan2(pointerEvent.clientY - centerY, pointerEvent.clientX - centerX) * 180 / Math.PI;
-    const start = angleAt(event.nativeEvent);
-    let previous = start;
+    const start = item.armAngle ?? -25;
+    let previousPointerAngle = angleAt(event.nativeEvent);
     let sweep = 0;
     let finalArc: ShapeItem | null = null;
     const move = (pointerEvent: PointerEvent) => {
       pointerEvent.preventDefault();
-      const current = angleAt(pointerEvent);
-      sweep += shortestAngleDelta(previous, current);
-      previous = current;
-      store.getState().updateInstrument({ ...item, armAngle: normalizeDegrees(current) });
+      const pointerAngle = angleAt(pointerEvent);
+      sweep += shortestAngleDelta(previousPointerAngle, pointerAngle);
+      previousPointerAngle = pointerAngle;
+      store.getState().updateInstrument({ ...item, armAngle: normalizeDegrees(start + sweep) });
       finalArc = {
         id: "instrument-preview", kind: "shape", shape: "arc", color, fill: null, strokeWidthNorm: sizeNorm,
         x: item.x, y: item.y, width: radius * 2, height: radius * 2 * rect.width / rect.height,
@@ -275,34 +278,6 @@ export function InstrumentLayer({ store, editable, width, height }: { store: Whi
     window.addEventListener("pointerup", finish, { once: true });
     window.addEventListener("pointercancel", finish, { once: true });
   };
-  const beginCompassControl = (event: React.PointerEvent<SVGGElement>, item: InstrumentItem) => {
-    const rect = boardRect(event.currentTarget);
-    const centerX = rect.left + item.x * rect.width;
-    const centerY = rect.top + item.y * rect.height;
-    const radiusPx = compassRadiusNorm(item, rect.width) * rect.width;
-    const tip = rotatePoint(radiusPx, 0, item.armAngle ?? -25);
-    const points = {
-      move: [centerX, centerY],
-      radius: [centerX + tip[0] * 0.55, centerY + tip[1] * 0.55],
-      draw: [centerX + tip[0], centerY + tip[1]],
-    } satisfies Record<"move" | "radius" | "draw", [number, number]>;
-    const distance = (point: [number, number]) => Math.hypot(event.clientX - point[0], event.clientY - point[1]);
-    const distances = {
-      move: distance(points.move),
-      radius: distance(points.radius),
-      draw: distance(points.draw),
-    };
-
-    if (distances.draw <= distances.move && distances.draw <= distances.radius) {
-      beginCompassArc(event, item);
-    } else if (distances.radius <= distances.move) {
-      beginAdjust(event, item, "radius");
-    } else {
-      beginAdjust(event, item, "move");
-    }
-  };
-
-
   const beginProtractorRay = (event: React.PointerEvent<SVGCircleElement>, item: InstrumentItem) => {
     event.preventDefault();
     event.stopPropagation();
@@ -432,55 +407,82 @@ export function InstrumentLayer({ store, editable, width, height }: { store: Whi
         if (item.kind === "compass") {
           const radiusPx = compassRadiusNorm(item, width) * width;
           const angle = item.armAngle ?? -25;
-          const tip = rotatePoint(radiusPx, 0, angle);
+          const angleRadians = angle * Math.PI / 180;
+          const directionX = Math.cos(angleRadians);
+          const directionY = Math.sin(angleRadians);
+          const outwardX = Math.sin(angleRadians);
+          const outwardY = -Math.cos(angleRadians);
           const centerX = item.x * width;
           const centerY = item.y * height;
-          const hingeLift = clamp(radiusPx * 0.5, 38, 72);
-          const hingeX = centerX;
-          const hingeY = centerY - hingeLift;
-          const pencilTopX = hingeX + (centerX + tip[0] - hingeX) * 0.62;
-          const pencilTopY = hingeY + (centerY + tip[1] - hingeY) * 0.62;
+          const tipX = centerX + directionX * radiusPx;
+          const tipY = centerY + directionY * radiusPx;
+          const hingeLift = clamp(radiusPx * 0.52, 40, 76);
+          const hingeX = centerX + directionX * radiusPx / 2 + outwardX * hingeLift;
+          const hingeY = centerY + directionY * radiusPx / 2 + outwardY * hingeLift;
+          const needleLegLength = Math.max(1, Math.hypot(centerX - hingeX, centerY - hingeY));
+          const needleDirectionX = (centerX - hingeX) / needleLegLength;
+          const needleDirectionY = (centerY - hingeY) / needleLegLength;
+          const needleSideX = -needleDirectionY;
+          const needleSideY = needleDirectionX;
+          const needleShoulderX = centerX - needleDirectionX * 9;
+          const needleShoulderY = centerY - needleDirectionY * 9;
+          const pencilTopX = hingeX + (tipX - hingeX) * 0.62;
+          const pencilTopY = hingeY + (tipY - hingeY) * 0.62;
           const needleBraceX = hingeX + (centerX - hingeX) * 0.52;
           const needleBraceY = hingeY + (centerY - hingeY) * 0.52;
-          const pencilBraceX = hingeX + (centerX + tip[0] - hingeX) * 0.52;
-          const pencilBraceY = hingeY + (centerY + tip[1] - hingeY) * 0.52;
+          const pencilBraceX = hingeX + (tipX - hingeX) * 0.52;
+          const pencilBraceY = hingeY + (tipY - hingeY) * 0.52;
           const braceMidX = (needleBraceX + pencilBraceX) / 2;
           const braceMidY = (needleBraceY + pencilBraceY) / 2;
+          const moveBadgeX = hingeX + (centerX - hingeX) * 0.67 + needleSideX * 13;
+          const moveBadgeY = hingeY + (centerY - hingeY) * 0.67 + needleSideY * 13;
+          const pencilHitStartX = hingeX + (tipX - hingeX) * 0.17;
+          const pencilHitStartY = hingeY + (tipY - hingeY) * 0.17;
+          const radiusHandleX = centerX + directionX * radiusPx * 0.55;
+          const radiusHandleY = centerY + directionY * radiusPx * 0.55;
+          const closeX = hingeX + outwardX * 24 + directionX * 18;
+          const closeY = hingeY + outwardY * 24 + directionY * 18;
           return (
-            <g key={item.id} className="pointer-events-auto touch-none text-ink drop-shadow-sm" onPointerDown={(event) => beginCompassControl(event, item)}>
-              <line x1={hingeX} y1={hingeY} x2={centerX} y2={centerY - 3} stroke="var(--ink)" strokeWidth={13} strokeLinecap="round" opacity={0.24} pointerEvents="none" />
-              <line x1={hingeX} y1={hingeY} x2={centerX} y2={centerY - 3} stroke="color-mix(in srgb, var(--paper) 64%, var(--crater))" strokeWidth={9} strokeLinecap="round" pointerEvents="none" />
-              <line x1={hingeX} y1={hingeY} x2={centerX + tip[0]} y2={centerY + tip[1]} stroke="var(--ink)" strokeWidth={14} strokeLinecap="round" opacity={0.22} pointerEvents="none" />
-              <line x1={hingeX} y1={hingeY} x2={centerX + tip[0]} y2={centerY + tip[1]} stroke="color-mix(in srgb, var(--paper) 58%, var(--crater))" strokeWidth={10} strokeLinecap="round" pointerEvents="none" />
-              <line x1={pencilTopX} y1={pencilTopY} x2={centerX + tip[0]} y2={centerY + tip[1]} stroke="var(--rose)" strokeWidth={9} strokeLinecap="round" pointerEvents="none" />
-              <line x1={pencilTopX} y1={pencilTopY} x2={centerX + tip[0]} y2={centerY + tip[1]} stroke="color-mix(in srgb, var(--moon) 58%, transparent)" strokeWidth={4} strokeLinecap="round" pointerEvents="none" />
+            <g key={item.id} className="pointer-events-auto touch-none text-ink drop-shadow-sm">
+              <line x1={hingeX} y1={hingeY} x2={needleShoulderX} y2={needleShoulderY} stroke="var(--ink)" strokeWidth={13} strokeLinecap="round" opacity={0.24} pointerEvents="none" />
+              <line x1={hingeX} y1={hingeY} x2={needleShoulderX} y2={needleShoulderY} stroke="color-mix(in srgb, var(--paper) 64%, var(--crater))" strokeWidth={9} strokeLinecap="round" pointerEvents="none" />
+              <line x1={hingeX} y1={hingeY} x2={tipX} y2={tipY} stroke="var(--ink)" strokeWidth={14} strokeLinecap="round" opacity={0.22} pointerEvents="none" />
+              <line x1={hingeX} y1={hingeY} x2={tipX} y2={tipY} stroke="color-mix(in srgb, var(--paper) 58%, var(--crater))" strokeWidth={10} strokeLinecap="round" pointerEvents="none" />
+              <line x1={pencilTopX} y1={pencilTopY} x2={tipX} y2={tipY} stroke="var(--rose)" strokeWidth={9} strokeLinecap="round" pointerEvents="none" />
+              <line x1={pencilTopX} y1={pencilTopY} x2={tipX} y2={tipY} stroke="color-mix(in srgb, var(--moon) 58%, transparent)" strokeWidth={4} strokeLinecap="round" pointerEvents="none" />
               <line x1={needleBraceX} y1={needleBraceY} x2={pencilBraceX} y2={pencilBraceY} stroke="var(--ink)" strokeWidth={5} strokeLinecap="round" opacity={0.62} pointerEvents="none" />
               <circle cx={braceMidX} cy={braceMidY} r={6} fill="var(--paper)" stroke="var(--crater)" strokeWidth={2} pointerEvents="none" />
               <circle cx={braceMidX} cy={braceMidY} r={2} fill="var(--crater)" pointerEvents="none" />
-              <line x1={centerX} y1={centerY - 4} x2={centerX} y2={centerY + 12} stroke="var(--ink)" strokeWidth={3} strokeLinecap="round" pointerEvents="none" />
-              <path d={`M ${centerX - 4} ${centerY + 5} L ${centerX} ${centerY + 14} L ${centerX + 4} ${centerY + 5} Z`} fill="var(--ink)" pointerEvents="none" />
-              <rect x={hingeX - 5} y={hingeY - 25} width={10} height={17} rx={4} fill="color-mix(in srgb, var(--paper) 55%, var(--crater))" stroke="var(--crater)" pointerEvents="none" />
+              <path
+                d={`M ${needleShoulderX + needleSideX * 4} ${needleShoulderY + needleSideY * 4} L ${centerX} ${centerY} L ${needleShoulderX - needleSideX * 4} ${needleShoulderY - needleSideY * 4} Z`}
+                fill="var(--ink)"
+                pointerEvents="none"
+              />
+              <g transform={`translate(${hingeX} ${hingeY}) rotate(${angle})`} pointerEvents="none">
+                <rect x={-5} y={-25} width={10} height={17} rx={4} fill="color-mix(in srgb, var(--paper) 55%, var(--crater))" stroke="var(--crater)" />
+              </g>
               <circle cx={hingeX} cy={hingeY} r={16} fill="var(--crater)" opacity={0.28} pointerEvents="none" />
               <circle cx={hingeX} cy={hingeY} r={12} fill="color-mix(in srgb, var(--moon) 68%, var(--paper))" stroke="var(--crater)" strokeWidth={2} pointerEvents="none" />
               <circle cx={hingeX} cy={hingeY} r={4} fill="var(--paper)" stroke="var(--ink)" pointerEvents="none" />
-              <line x1={hingeX - 3} y1={hingeY} x2={hingeX + 3} y2={hingeY} stroke="var(--ink)" strokeWidth={1.5} pointerEvents="none" />
-              <line x1={centerX} y1={centerY} x2={centerX + tip[0]} y2={centerY + tip[1]} stroke="var(--crater)" strokeWidth={1} strokeDasharray="4 4" opacity={0.4} pointerEvents="none" />
-              <g className="cursor-move">
-                <circle cx={centerX} cy={centerY} r={22} fill="transparent" />
-                <circle cx={centerX - 15} cy={centerY - 1} r={9} fill="var(--paper)" stroke="var(--line)" strokeWidth={1.5} />
-                <Move x={centerX - 20} y={centerY - 6} width={10} height={10} pointerEvents="none" />
+              <line x1={hingeX - directionX * 3} y1={hingeY - directionY * 3} x2={hingeX + directionX * 3} y2={hingeY + directionY * 3} stroke="var(--ink)" strokeWidth={1.5} pointerEvents="none" />
+              <line x1={centerX} y1={centerY} x2={tipX} y2={tipY} stroke="var(--crater)" strokeWidth={1} strokeDasharray="4 4" opacity={0.4} pointerEvents="none" />
+              <g className="cursor-move" onPointerDown={(event) => beginAdjust(event, item, "move")}>
+                <line x1={hingeX} y1={hingeY} x2={centerX} y2={centerY} stroke="transparent" strokeWidth={28} strokeLinecap="round" />
+                <circle cx={moveBadgeX} cy={moveBadgeY} r={9} fill="var(--paper)" stroke="var(--line)" strokeWidth={1.5} />
+                <Move x={moveBadgeX - 5} y={moveBadgeY - 5} width={10} height={10} pointerEvents="none" />
               </g>
-              <g className="cursor-ew-resize">
-                <circle cx={centerX + tip[0] * 0.55} cy={centerY + tip[1] * 0.55} r={17} fill="transparent" />
-                <circle cx={centerX + tip[0] * 0.55} cy={centerY + tip[1] * 0.55} r={8} fill="var(--paper)" stroke="var(--crater)" strokeWidth={2} />
-                <circle cx={centerX + tip[0] * 0.55} cy={centerY + tip[1] * 0.55} r={2} fill="var(--crater)" pointerEvents="none" />
+              <g className="cursor-crosshair" onPointerDown={(event) => beginCompassArc(event, item)}>
+                <line x1={pencilHitStartX} y1={pencilHitStartY} x2={tipX} y2={tipY} stroke="transparent" strokeWidth={28} strokeLinecap="round" />
+                <circle cx={tipX} cy={tipY} r={24} fill="transparent" />
+                <circle cx={tipX} cy={tipY} r={13} fill="color-mix(in srgb, var(--paper) 82%, transparent)" stroke="var(--rose)" strokeWidth={2} strokeDasharray="3 2" />
+                <Pencil x={tipX - 7} y={tipY - 7} width={14} height={14} color="var(--rose)" pointerEvents="none" />
               </g>
-              <g className="cursor-crosshair">
-                <circle cx={centerX + tip[0]} cy={centerY + tip[1]} r={24} fill="transparent" />
-                <circle cx={centerX + tip[0]} cy={centerY + tip[1]} r={13} fill="color-mix(in srgb, var(--paper) 82%, transparent)" stroke="var(--rose)" strokeWidth={2} strokeDasharray="3 2" />
-                <Pencil x={centerX + tip[0] - 7} y={centerY + tip[1] - 7} width={14} height={14} color="var(--rose)" pointerEvents="none" />
+              <g className="cursor-ew-resize" onPointerDown={(event) => beginAdjust(event, item, "radius")}>
+                <circle cx={radiusHandleX} cy={radiusHandleY} r={17} fill="transparent" />
+                <circle cx={radiusHandleX} cy={radiusHandleY} r={8} fill="var(--paper)" stroke="var(--crater)" strokeWidth={2} />
+                <circle cx={radiusHandleX} cy={radiusHandleY} r={2} fill="var(--crater)" pointerEvents="none" />
               </g>
-              <g transform={`translate(${hingeX + 27} ${hingeY - 18})`} className="cursor-pointer" onPointerDown={(event) => { event.stopPropagation(); store.getState().removeInstrument(item.id); }}><circle r={9} fill="var(--paper)" stroke="var(--line)" /><X x={-6} y={-6} width={12} height={12} /></g>
+              <g transform={`translate(${closeX} ${closeY})`} className="cursor-pointer" onPointerDown={(event) => { event.stopPropagation(); store.getState().removeInstrument(item.id); }}><circle r={9} fill="var(--paper)" stroke="var(--line)" /><X x={-6} y={-6} width={12} height={12} /></g>
               <title>{t("compassHint")}</title>
             </g>
           );
