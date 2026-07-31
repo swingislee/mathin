@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import { Crown } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { SiteHeader } from "@/components/site-header";
@@ -44,18 +43,11 @@ export default async function GamesPage({ params }: { params: Promise<{ locale: 
   const bests = await fetchPersonalBests();
 
   return (
-    <div className="scene-day min-h-dvh bg-[#f2e9d7]">
+    <div className="scene-day scene-adaptive scene-games min-h-dvh">
       <SiteHeader />
-      <main className="relative min-h-[980px] overflow-hidden text-[#44372d] md:h-dvh md:min-h-[650px]">
-        <Image
-          src="/illustrations/games-royal-hall.png"
-          alt=""
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover object-center"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#fffaf0]/20 via-transparent to-[#3e1515]/10" />
+      <main className="relative min-h-[980px] overflow-hidden text-[var(--scene-ink)] md:h-dvh md:min-h-[650px]">
+        <div className="scene-illustration" aria-hidden />
+        <div className="scene-illustration-wash" aria-hidden />
 
         <ThemePageIdentity
           sectionName={nav("games")}
@@ -68,7 +60,7 @@ export default async function GamesPage({ params }: { params: Promise<{ locale: 
           {games.map(({ id, no, crowns, icon: Icon }, index) => (
             <article
               key={id}
-              className="scene-enter group relative mx-auto flex min-h-[330px] w-full max-w-[300px] flex-col rounded-t-[5rem] rounded-b-2xl border border-[#b98b50] bg-[#fff9eb]/92 px-5 pb-5 pt-9 text-center shadow-[0_20px_45px_rgba(80,35,22,0.2)] ring-1 ring-inset ring-[#dfc08a]/60 backdrop-blur-[2px] transition duration-300 hover:-translate-y-2"
+              className="scene-enter group relative mx-auto flex min-h-[330px] w-full max-w-[300px] flex-col rounded-t-[5rem] rounded-b-2xl border border-[#b98b50] bg-[#fff9eb]/92 px-5 pb-5 pt-9 text-center text-[#44372d] shadow-[0_20px_45px_rgba(8,12,28,0.28)] ring-1 ring-inset ring-[#dfc08a]/60 backdrop-blur-[2px] transition duration-300 hover:-translate-y-2"
               style={{ animationDelay: `${120 + index * 120}ms` }}
             >
               {id in bests && (
@@ -88,7 +80,7 @@ export default async function GamesPage({ params }: { params: Promise<{ locale: 
               </div>
               <div className="mt-4 flex items-center justify-center gap-3">
                 <Link href={`/games/${id}/ranks`} className="text-xs text-[#756455] underline-offset-4 hover:underline">{t("ranks")}</Link>
-                <Link href={`/games/${id}`} className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "border-[#9d6547] bg-[#fff8e7]/90")}>{t("start")}</Link>
+                <Link href={`/games/${id}`} className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "border-[#9d6547] bg-[#fff8e7]/90 text-[#44372d]")}>{t("start")}</Link>
               </div>
             </article>
           ))}

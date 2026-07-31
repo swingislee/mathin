@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import { Compass, Footprints, Sparkles } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import type { CSSProperties } from "react";
@@ -27,18 +26,11 @@ export default async function StoryPage({ params }: { params: Promise<{ locale: 
   const t = await getTranslations("storyScene");
 
   return (
-    <div className="scene-day min-h-dvh bg-[#f5ead7]">
+    <div className="scene-day scene-adaptive scene-story min-h-dvh">
       <SiteHeader />
-      <main className="relative min-h-[980px] overflow-hidden text-[#493b2d] md:h-dvh md:min-h-[620px]">
-        <Image
-          src="/illustrations/story-journey.png"
-          alt=""
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover object-center"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#fff9ed]/35 via-transparent to-[#cfa66d]/15" />
+      <main className="relative min-h-[980px] overflow-hidden text-[var(--scene-ink)] md:h-dvh md:min-h-[620px]">
+        <div className="scene-illustration" aria-hidden />
+        <div className="scene-illustration-wash" aria-hidden />
 
         <ThemePageIdentity
           sectionName={nav("story")}
@@ -51,7 +43,7 @@ export default async function StoryPage({ params }: { params: Promise<{ locale: 
           {chapters.map(([key, Icon, position], index) => (
             <article
               key={key}
-              className={`scene-enter scene-drift relative mx-auto w-full max-w-[280px] rounded-[1.4rem_1.1rem_1.5rem_1rem] border border-[#bfa57e]/70 bg-[#fffaf0]/88 p-5 shadow-[0_16px_38px_rgba(103,72,38,0.16)] backdrop-blur-[2px] md:absolute ${position}`}
+              className={`scene-enter scene-drift relative mx-auto w-full max-w-[280px] rounded-[1.4rem_1.1rem_1.5rem_1rem] border border-[#bfa57e]/70 bg-[#fffaf0]/88 p-5 text-[#493b2d] shadow-[0_16px_38px_rgba(9,13,30,0.24)] backdrop-blur-[2px] md:absolute ${position}`}
               style={{ animationDelay: `${140 + index * 140}ms`, "--scene-rotate": `${index === 1 ? 2 : -1}deg` } as CSSProperties}
             >
               <div className="flex items-center justify-between gap-3 text-[#8f603e]">
@@ -64,7 +56,7 @@ export default async function StoryPage({ params }: { params: Promise<{ locale: 
           ))}
         </section>
 
-        <p className="absolute bottom-5 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap text-xs tracking-[0.16em] text-[#705b42]">
+        <p className="absolute bottom-5 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap text-xs tracking-[0.16em] text-[var(--scene-muted)]">
           {t("soon")}
         </p>
       </main>

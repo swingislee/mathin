@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import { ArrowUpRight } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { SiteHeader } from "@/components/site-header";
@@ -23,18 +22,11 @@ export default async function ToolsPage({ params }: { params: Promise<{ locale: 
   const nav = await getTranslations("nav");
 
   return (
-    <div className="scene-day min-h-dvh bg-[#c79b61]" data-planet="businessman">
+    <div className="scene-day scene-adaptive scene-tools min-h-dvh" data-planet="businessman">
       <SiteHeader />
-      <main className="relative min-h-[920px] overflow-hidden text-[#473827] md:h-dvh md:min-h-[650px]">
-        <Image
-          src="/illustrations/tools-workbench.png"
-          alt=""
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover object-center"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#fff4d9]/10 via-transparent to-[#4b2f17]/10" />
+      <main className="relative min-h-[920px] overflow-hidden text-[var(--scene-ink)] md:h-dvh md:min-h-[650px]">
+        <div className="scene-illustration" aria-hidden />
+        <div className="scene-illustration-wash" aria-hidden />
 
         <ThemePageIdentity
           sectionName={nav("tools")}
@@ -48,7 +40,7 @@ export default async function ToolsPage({ params }: { params: Promise<{ locale: 
             <Link
               key={id}
               href={`/tools/${id}`}
-              className="scene-enter group mx-auto w-full max-w-[300px] rounded-2xl border border-[#b88e59]/70 bg-[#fffaf0]/90 p-3 shadow-[0_15px_38px_rgba(75,46,20,0.16)] backdrop-blur-[2px] transition duration-300 hover:-translate-y-2"
+              className="scene-enter group mx-auto w-full max-w-[300px] rounded-2xl border border-[#b88e59]/70 bg-[#fffaf0]/90 p-3 text-[#473827] shadow-[0_15px_38px_rgba(7,11,25,0.26)] backdrop-blur-[2px] transition duration-300 hover:-translate-y-2"
               style={{ animationDelay: `${140 + index * 130}ms` }}
             >
               <div className="relative aspect-[5/3] overflow-hidden rounded-xl border border-[#c9a87b] bg-[#f5ead5]">

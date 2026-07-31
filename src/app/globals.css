@@ -419,7 +419,7 @@ html:lang(zh-CN) {
 @media (prefers-reduced-motion: reduce) {
   .edge-control, .drawer-nav-row, .scene-enter, .scene-drift { transition: none; animation: none; }
 }
-/* Illustrated public scenes stay daylight spaces even when the global preference is dark. */
+/* Legacy illustrated scenes stay daylight unless they explicitly opt into scene-adaptive. */
 .scene-day {
   color-scheme: light;
   --paper: #fffaf0;
@@ -438,3 +438,153 @@ html:lang(zh-CN) {
   color: var(--ink);
 }
 .scene-day .edge-control { background: color-mix(in srgb, #fffaf0 84%, transparent); }
+
+/* Public scene identity colors are page-level tokens so the title follows the illustration. */
+.theme-page-title { color: var(--scene-ink, var(--ink)); }
+.theme-page-eyebrow { color: var(--scene-eyebrow, var(--muted)); }
+.theme-page-description { color: var(--scene-description, var(--muted)); }
+.night .theme-page-eyebrow { color: #aeb5cc; }
+.night .theme-page-description { color: #c8cbda; }
+
+/*
+ * Adaptive public scenes use a single active CSS background. Browsers fetch only the
+ * selected day/night WebP, and a manual theme toggle swaps it without client JavaScript.
+ */
+.scene-day.scene-adaptive {
+  --scene-ink: var(--scene-ink-day);
+  --scene-muted: var(--scene-muted-day);
+  --scene-eyebrow: var(--scene-eyebrow-day);
+  --scene-description: var(--scene-description-day);
+  background-color: var(--scene-bg-day);
+}
+.scene-adaptive .scene-illustration,
+.scene-adaptive .scene-illustration-wash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.scene-adaptive .scene-illustration {
+  background-image: var(--scene-art-day);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+.scene-adaptive .scene-illustration-wash { background: var(--scene-wash-day); }
+.scene-day.scene-adaptive .edge-control { background: color-mix(in srgb, var(--card) 84%, transparent); }
+
+.scene-story {
+  --scene-art-day: url("/illustrations/story-journey-day.webp");
+  --scene-art-night: url("/illustrations/story-journey-night.webp");
+  --scene-bg-day: #f5ead7;
+  --scene-bg-night: #11172a;
+  --scene-ink-day: #493b2d;
+  --scene-ink-night: #f4eddf;
+  --scene-muted-day: #705b42;
+  --scene-muted-night: #c8c2b6;
+  --scene-eyebrow-day: #816948;
+  --scene-eyebrow-night: #e3c88c;
+  --scene-description-day: #6c5a43;
+  --scene-description-night: #d5d8e3;
+  --scene-wash-day: linear-gradient(to bottom, rgb(255 249 237 / 35%), transparent 50%, rgb(207 166 109 / 15%));
+  --scene-wash-night: linear-gradient(to bottom, rgb(7 12 29 / 8%), transparent 50%, rgb(3 7 19 / 18%));
+}
+.scene-games {
+  --scene-art-day: url("/illustrations/games-royal-hall-day.webp");
+  --scene-art-night: url("/illustrations/games-royal-hall-night.webp");
+  --scene-bg-day: #f2e9d7;
+  --scene-bg-night: #11172a;
+  --scene-ink-day: #44372d;
+  --scene-ink-night: #f5eddd;
+  --scene-muted-day: #69574b;
+  --scene-muted-night: #d0d4df;
+  --scene-eyebrow-day: #895d4e;
+  --scene-eyebrow-night: #e3bd7c;
+  --scene-description-day: #69574b;
+  --scene-description-night: #d3d6e2;
+  --scene-wash-day: linear-gradient(to bottom, rgb(255 250 240 / 20%), transparent 50%, rgb(62 21 21 / 10%));
+  --scene-wash-night: linear-gradient(to bottom, rgb(7 12 29 / 4%), transparent 50%, rgb(3 7 19 / 18%));
+}
+.scene-minds {
+  --scene-art-day: url("/illustrations/minds-lamplighter-day.webp");
+  --scene-art-night: url("/illustrations/minds-lamplighter-night.webp");
+  --scene-bg-day: #eee9df;
+  --scene-bg-night: #0d1528;
+  --scene-ink-day: #413b45;
+  --scene-ink-night: #f2eddf;
+  --scene-muted-day: #716875;
+  --scene-muted-night: #b7bdcc;
+  --scene-eyebrow-day: #6d6376;
+  --scene-eyebrow-night: #e0bf7d;
+  --scene-description-day: #6f6670;
+  --scene-description-night: #cbd0dd;
+  --scene-wash-day: linear-gradient(to right, rgb(247 239 227 / 5%), transparent 50%, rgb(247 241 232 / 35%));
+  --scene-wash-night: linear-gradient(to right, rgb(6 12 28 / 4%), transparent 48%, rgb(5 10 25 / 22%));
+}
+.scene-tools {
+  --scene-art-day: url("/illustrations/tools-workbench-day.webp");
+  --scene-art-night: url("/illustrations/tools-workbench-night.webp");
+  --scene-bg-day: #c79b61;
+  --scene-bg-night: #0c1426;
+  --scene-ink-day: #473827;
+  --scene-ink-night: #f2eddf;
+  --scene-muted-day: #6d5940;
+  --scene-muted-night: #c0b9ab;
+  --scene-eyebrow-day: #74583b;
+  --scene-eyebrow-night: #dcbf86;
+  --scene-description-day: #6d5940;
+  --scene-description-night: #cbc8c1;
+  --scene-wash-day: linear-gradient(to bottom, rgb(255 244 217 / 10%), transparent 50%, rgb(75 47 23 / 10%));
+  --scene-wash-night: linear-gradient(to bottom, rgb(5 10 24 / 4%), transparent 55%, rgb(2 6 17 / 18%));
+}
+
+.dark .scene-day.scene-adaptive {
+  color-scheme: dark;
+  --paper: #191d2b;
+  --ink: #f2eddf;
+  --muted: #9ba0b0;
+  --line: #333a4e;
+  --card: #212637;
+  --moon: #d9be7e;
+  --star: #e8d9a8;
+  --crater: #8f7a64;
+  --rose: #e06a6e;
+  --rose-deep: #c94a4f;
+  --leaf: #8fa968;
+  --leaf-deep: #a9c284;
+  --cheek: #b98883;
+  --scene-ink: var(--scene-ink-night);
+  --scene-muted: var(--scene-muted-night);
+  --scene-eyebrow: var(--scene-eyebrow-night);
+  --scene-description: var(--scene-description-night);
+  background-color: var(--scene-bg-night);
+  color: var(--scene-ink);
+}
+.dark .scene-adaptive .scene-illustration { background-image: var(--scene-art-night); }
+.dark .scene-adaptive .scene-illustration-wash { background: var(--scene-wash-night); }
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) .scene-day.scene-adaptive {
+    color-scheme: dark;
+    --paper: #191d2b;
+    --ink: #f2eddf;
+    --muted: #9ba0b0;
+    --line: #333a4e;
+    --card: #212637;
+    --moon: #d9be7e;
+    --star: #e8d9a8;
+    --crater: #8f7a64;
+    --rose: #e06a6e;
+    --rose-deep: #c94a4f;
+    --leaf: #8fa968;
+    --leaf-deep: #a9c284;
+    --cheek: #b98883;
+    --scene-ink: var(--scene-ink-night);
+    --scene-muted: var(--scene-muted-night);
+    --scene-eyebrow: var(--scene-eyebrow-night);
+    --scene-description: var(--scene-description-night);
+    background-color: var(--scene-bg-night);
+    color: var(--scene-ink);
+  }
+  :root:not(.light) .scene-adaptive .scene-illustration { background-image: var(--scene-art-night); }
+  :root:not(.light) .scene-adaptive .scene-illustration-wash { background: var(--scene-wash-night); }
+}
