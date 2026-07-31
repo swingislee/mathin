@@ -75,21 +75,11 @@ export async function getSessionLearningSetup(sessionId: string): Promise<Sessio
     (seatOrderRows ?? []).map((row) => [row.student_id, row.position]),
   );
   const students = (enrollmentRows ?? [])
-    .map((row, enrollmentIndex) => ({
+    .map((row) => ({
       id: row.student_id,
       name: row.students?.name ?? "—",
-      enrollmentIndex,
-      seatPosition: seatPositionByStudentId.get(row.student_id),
-    }))
-    .sort((left, right) => {
-      if (left.seatPosition !== undefined && right.seatPosition !== undefined) {
-        return left.seatPosition - right.seatPosition;
-      }
-      if (left.seatPosition !== undefined) return -1;
-      if (right.seatPosition !== undefined) return 1;
-      return left.enrollmentIndex - right.enrollmentIndex;
-    })
-    .map(({ id, name }) => ({ id, name }));
+      seatPosition: seatPositionByStudentId.get(row.student_id) ?? null,
+    }));
 
   return {
     configured: session.learning_checks_configured_at !== null,

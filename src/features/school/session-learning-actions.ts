@@ -64,21 +64,32 @@ export async function markSessionLearningChecksAction(input: {
   }
 }
 
-const saveSeatOrderSchema = z.object({
+const saveSeatLayoutSchema = z.object({
   sessionId: uuid,
-  studentIds: z.array(uuid).min(1).max(60),
+  assignments: z.array(z.object({
+    studentId: uuid,
+    position: z.number().int().min(0).max(59),
+  })).min(1).max(60),
+}).superRefine((value, context) => {
+  if (new Set(value.assignments.map((assignment) => assignment.studentId)).size !== value.assignments.length) {
+    context.addIssue({ code: "custom", path: ["assignments"], message: "Duplicate student" });
+  }
+  if (new Set(value.assignments.map((assignment) => assignment.position)).size !== value.assignments.length) {
+    context.addIssue({ code: "custom", path: ["assignments"], message: "Duplicate position" });
+  }
 });
 
-export async function saveClassroomStudentSeatOrderAction(input: {
+export async function saveClassroomStudentSeatLayoutAction(input: {
   sessionId: string;
-  studentIds: string[];
+  assignments: Array<{ studentId: string; position: number }>;
 }): Promise<ActionResult> {
   try {
-    const value = parse(saveSeatOrderSchema, input);
+    const value = parse(saveSeatLayoutSchema, input);
     const { supabase } = await authorizedClient("attendance.mark");
-    const { error } = await supabase.rpc("save_classroom_student_seat_order", {
+    const { error } = await supabase.rpc("save_classroom_student_seat_layout", {
       p_session_id: value.sessionId,
-      p_student_ids: value.studentIds,
+      p_student_ids: value.assignments.map((assignment) => assignment.studentId),
+      p_positions: value.assignments.map((assignment) => assignment.position),
     });
     if (error) throw new Error(error.message);
     return { ok: true };

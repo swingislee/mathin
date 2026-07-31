@@ -9,6 +9,9 @@ export const LEARNING_CHECK_STATUSES = [
 
 export type LearningCheckStatus = (typeof LEARNING_CHECK_STATUSES)[number];
 
+export const LEARNING_SEAT_CAPACITY = 20;
+export const LEARNING_SEAT_POSITION_LIMIT = 60;
+
 export interface SessionLearningCheck {
   id: string;
   position: number;
@@ -19,7 +22,10 @@ export interface SessionLearningCheck {
 export interface SessionLearningStudent {
   id: string;
   name: string;
+  seatPosition: number | null;
 }
+
+export type LearningSeatSlot = SessionLearningStudent | null;
 
 export interface SessionLearningResult {
   checkId: string;
@@ -34,18 +40,64 @@ export interface SessionLearningSetup {
   results: SessionLearningResult[];
 }
 
-export function moveLearningStudent(
+export function buildLearningSeatSlots(
   students: SessionLearningSetup["students"],
+  minimumCapacity = LEARNING_SEAT_CAPACITY,
+): LearningSeatSlot[] {
+  const highestSavedPosition = students.reduce(
+    (highest, student) => Math.max(highest, student.seatPosition ?? -1),
+    -1,
+  );
+  const slotCount = Math.max(minimumCapacity, students.length, highestSavedPosition + 1);
+  const slots: LearningSeatSlot[] = Array.from({ length: slotCount }, () => null);
+  const unseated: SessionLearningStudent[] = [];
+
+  for (const student of students) {
+    const position = student.seatPosition;
+    if (
+      position !== null
+      && position >= 0
+      && position < slotCount
+      && slots[position] === null
+    ) {
+      slots[position] = student;
+    } else {
+      unseated.push(student);
+    }
+  }
+
+  for (const student of unseated) {
+    const emptyPosition = slots.indexOf(null);
+    if (emptyPosition < 0) break;
+    slots[emptyPosition] = student;
+  }
+  return slots;
+}
+
+export function moveLearningStudentToSeat(
+  slots: readonly LearningSeatSlot[],
   activeStudentId: string,
-  overStudentId: string,
-): SessionLearningSetup["students"] {
-  const activeIndex = students.findIndex((student) => student.id === activeStudentId);
-  const overIndex = students.findIndex((student) => student.id === overStudentId);
-  if (activeIndex < 0 || overIndex < 0 || activeIndex === overIndex) return students;
-  const next = [...students];
-  const [activeStudent] = next.splice(activeIndex, 1);
-  next.splice(overIndex, 0, activeStudent);
+  targetPosition: number,
+): LearningSeatSlot[] {
+  const activePosition = slots.findIndex((student) => student?.id === activeStudentId);
+  if (
+    activePosition < 0
+    || targetPosition < 0
+    || targetPosition >= slots.length
+    || activePosition === targetPosition
+  ) return [...slots];
+  const next = [...slots];
+  [next[activePosition], next[targetPosition]] = [next[targetPosition], next[activePosition]];
   return next;
+}
+
+export function learningSeatAssignments(slots: readonly LearningSeatSlot[]): Array<{
+  studentId: string;
+  position: number;
+}> {
+  return slots.flatMap((student, position) => student
+    ? [{ studentId: student.id, position }]
+    : []);
 }
 
 export function learningResultKey(checkId: string, studentId: string): string {

@@ -1,21 +1,25 @@
 "use client";
 
-import { CheckSquare2, ClipboardCheck, GripVertical, LoaderCircle, Square } from "lucide-react";
+import { Armchair, CheckSquare2, ClipboardCheck, GripVertical, LoaderCircle, Square } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useRef, useState, useTransition, type KeyboardEvent, type PointerEvent } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { markSessionLearningChecksAction, saveClassroomStudentSeatOrderAction } from "./session-learning-actions";
+import { markSessionLearningChecksAction, saveClassroomStudentSeatLayoutAction } from "./session-learning-actions";
 import {
+  buildLearningSeatSlots,
   LEARNING_CHECK_STATUSES,
   learningCheckIdAfterPageChange,
   learningCheckIdForPage,
   learningResultKey,
-  moveLearningStudent,
+  learningSeatAssignments,
+  moveLearningStudentToSeat,
   type LearningCheckStatus,
+  type LearningSeatSlot,
   type SessionLearningSetup,
+  type SessionLearningStudent,
 } from "./session-learning-contract";
 
 const STATUS_STYLE: Record<LearningCheckStatus, {
@@ -84,15 +88,16 @@ export function SessionLearningCheckPanel({
   const [results, setResults] = useState(() => new Map(
     setup.results.map((result) => [learningResultKey(result.checkId, result.studentId), result.status as LearningCheckStatus]),
   ));
-  const [orderedStudents, setOrderedStudents] = useState(() => setup.students);
-  const orderedStudentsRef = useRef(setup.students);
-  const savedStudentsRef = useRef(setup.students);
-  const dragStartStudentsRef = useRef(setup.students);
+  const [seatSlots, setSeatSlots] = useState(() => buildLearningSeatSlots(setup.students));
+  const seatSlotsRef = useRef(buildLearningSeatSlots(setup.students));
+  const savedSeatSlotsRef = useRef(buildLearningSeatSlots(setup.students));
+  const dragStartSeatSlotsRef = useRef(buildLearningSeatSlots(setup.students));
+  const seatGridRef = useRef<HTMLDivElement>(null);
   const draggingStudentIdRef = useRef<string | null>(null);
-  const dragOverStudentIdRef = useRef<string | null>(null);
+  const dragOverSeatPositionRef = useRef<number | null>(null);
   const seatOrderSavingRef = useRef(false);
   const [draggingStudentId, setDraggingStudentId] = useState<string | null>(null);
-  const [dragOverStudentId, setDragOverStudentId] = useState<string | null>(null);
+  const [dragOverSeatPosition, setDragOverSeatPosition] = useState<number | null>(null);
   const [seatOrderSaving, setSeatOrderSaving] = useState(false);
   const [studentSelection, setStudentSelection] = useState<{
     checkId: string;
@@ -101,6 +106,10 @@ export function SessionLearningCheckPanel({
   const [batchMode, setBatchMode] = useState(false);
   const [savingStudentIds, setSavingStudentIds] = useState<Set<string>>(() => new Set());
   const [pending, startTransition] = useTransition();
+  const orderedStudents = useMemo(
+    () => seatSlots.filter((student): student is SessionLearningStudent => student !== null),
+    [seatSlots],
+  );
   const automaticCheckId = learningCheckIdForPage(setup.checks, activePageDocId);
   if (manualSelection.pageDocId !== activePageDocId) {
     // React discards this render and retries with the new shared page. A marked
@@ -184,33 +193,33 @@ export function SessionLearningCheckPanel({
     });
   };
 
-  const updateStudentOrder = (next: SessionLearningSetup["students"]) => {
-    orderedStudentsRef.current = next;
-    setOrderedStudents(next);
+  const updateSeatSlots = (next: LearningSeatSlot[]) => {
+    seatSlotsRef.current = next;
+    setSeatSlots(next);
   };
 
-  const persistStudentOrder = async (next: SessionLearningSetup["students"]) => {
-    const previousSaved = savedStudentsRef.current;
+  const persistSeatLayout = async (next: LearningSeatSlot[]) => {
+    const previousSaved = savedSeatSlotsRef.current;
     if (
       seatOrderSavingRef.current
-      || next.every((student, index) => student.id === previousSaved[index]?.id)
+      || next.every((student, index) => student?.id === previousSaved[index]?.id)
     ) return;
     seatOrderSavingRef.current = true;
     setSeatOrderSaving(true);
     try {
-      const result = await saveClassroomStudentSeatOrderAction({
+      const result = await saveClassroomStudentSeatLayoutAction({
         sessionId,
-        studentIds: next.map((student) => student.id),
+        assignments: learningSeatAssignments(next),
       });
       if (!result.ok) {
-        updateStudentOrder(previousSaved);
+        updateSeatSlots(previousSaved);
         toast.error(t(result.code === "ROSTER_CHANGED" ? "learningSeatOrderRosterChanged" : "learningSeatOrderSaveFailed"));
         return;
       }
-      savedStudentsRef.current = next;
+      savedSeatSlotsRef.current = next;
       toast.success(t("learningSeatOrderSaved"));
     } catch {
-      updateStudentOrder(previousSaved);
+      updateSeatSlots(previousSaved);
       toast.error(t("learningSeatOrderSaveFailed"));
     } finally {
       seatOrderSavingRef.current = false;
@@ -221,55 +230,64 @@ export function SessionLearningCheckPanel({
   const finishDragging = (cancelled = false) => {
     if (!draggingStudentIdRef.current) return;
     draggingStudentIdRef.current = null;
-    dragOverStudentIdRef.current = null;
+    dragOverSeatPositionRef.current = null;
     setDraggingStudentId(null);
-    setDragOverStudentId(null);
+    setDragOverSeatPosition(null);
     if (cancelled) {
-      updateStudentOrder(dragStartStudentsRef.current);
+      updateSeatSlots(dragStartSeatSlotsRef.current);
       return;
     }
-    void persistStudentOrder(orderedStudentsRef.current);
+    void persistSeatLayout(seatSlotsRef.current);
   };
 
   const handleDragPointerDown = (event: PointerEvent<HTMLButtonElement>, studentId: string) => {
     if (seatOrderSavingRef.current || event.button !== 0) return;
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
-    dragStartStudentsRef.current = orderedStudentsRef.current;
+    dragStartSeatSlotsRef.current = seatSlotsRef.current;
     draggingStudentIdRef.current = studentId;
-    dragOverStudentIdRef.current = studentId;
+    dragOverSeatPositionRef.current = seatSlotsRef.current.findIndex((student) => student?.id === studentId);
     setDraggingStudentId(studentId);
-    setDragOverStudentId(studentId);
+    setDragOverSeatPosition(dragOverSeatPositionRef.current);
   };
 
   const handleDragPointerMove = (event: PointerEvent<HTMLButtonElement>) => {
     const activeStudentId = draggingStudentIdRef.current;
     if (!activeStudentId) return;
     const target = document.elementFromPoint(event.clientX, event.clientY)
-      ?.closest<HTMLElement>("[data-learning-student-id]");
-    const overStudentId = target?.dataset.learningStudentId;
-    if (!overStudentId || overStudentId === dragOverStudentIdRef.current) return;
-    dragOverStudentIdRef.current = overStudentId;
-    setDragOverStudentId(overStudentId);
-    updateStudentOrder(moveLearningStudent(orderedStudentsRef.current, activeStudentId, overStudentId));
+      ?.closest<HTMLElement>("[data-learning-seat-index]");
+    const overSeatPosition = Number(target?.dataset.learningSeatIndex);
+    if (!Number.isInteger(overSeatPosition) || overSeatPosition === dragOverSeatPositionRef.current) return;
+    dragOverSeatPositionRef.current = overSeatPosition;
+    setDragOverSeatPosition(overSeatPosition);
+    updateSeatSlots(moveLearningStudentToSeat(seatSlotsRef.current, activeStudentId, overSeatPosition));
   };
 
   const handleOrderKeyDown = (event: KeyboardEvent<HTMLButtonElement>, studentId: string) => {
     if (seatOrderSavingRef.current || !["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) return;
     event.preventDefault();
-    const current = orderedStudentsRef.current;
-    const currentIndex = current.findIndex((student) => student.id === studentId);
+    const current = seatSlotsRef.current;
+    const currentIndex = current.findIndex((student) => student?.id === studentId);
     if (currentIndex < 0) return;
+    const columnCount = seatGridRef.current
+      ? getComputedStyle(seatGridRef.current).gridTemplateColumns.split(" ").filter(Boolean).length
+      : 1;
+    const delta = event.key === "ArrowLeft"
+      ? -1
+      : event.key === "ArrowRight"
+        ? 1
+        : event.key === "ArrowUp"
+          ? -columnCount
+          : columnCount;
     const targetIndex = event.key === "Home"
       ? 0
       : event.key === "End"
         ? current.length - 1
-        : Math.max(0, Math.min(current.length - 1, currentIndex + (["ArrowLeft", "ArrowUp"].includes(event.key) ? -1 : 1)));
+        : Math.max(0, Math.min(current.length - 1, currentIndex + delta));
     if (targetIndex === currentIndex) return;
-    const target = current[targetIndex];
-    const next = moveLearningStudent(current, studentId, target.id);
-    updateStudentOrder(next);
-    void persistStudentOrder(next);
+    const next = moveLearningStudentToSeat(current, studentId, targetIndex);
+    updateSeatSlots(next);
+    void persistSeatLayout(next);
   };
 
   return (
@@ -347,7 +365,7 @@ export function SessionLearningCheckPanel({
           </div>
         </DialogHeader>
 
-        <main className="min-h-0 flex-1 overflow-y-auto p-2 sm:p-2.5">
+        <main className="flex min-h-0 flex-1 flex-col overflow-y-auto p-2 sm:p-2.5">
           {batchMode && (
             <div className="sticky top-0 z-20 mb-2 flex flex-wrap items-center gap-1.5 rounded-xl border border-line bg-paper/95 p-1.5 shadow-sm backdrop-blur">
               <span className="mr-1 text-xs text-muted">{t("learningBatchSelected", { count: selectedStudentIds.size })}</span>
@@ -369,11 +387,33 @@ export function SessionLearningCheckPanel({
           )}
 
           <div
-            className="grid gap-2"
-            style={{ gridTemplateColumns: "repeat(auto-fill, minmax(11rem, 1fr))" }}
+            ref={seatGridRef}
+            className="grid min-h-0 flex-1 grid-cols-4 auto-rows-[minmax(8.5rem,1fr)] gap-2 min-[900px]:grid-cols-5"
+            data-learning-seat-grid
             data-ipad-roster-grid
           >
-            {orderedStudents.map((student, studentIndex) => {
+            {seatSlots.map((student, seatPosition) => {
+              if (!student) {
+                return (
+                  <article
+                    key={`empty-seat-${seatPosition}`}
+                    data-learning-seat-index={seatPosition}
+                    data-learning-empty-seat
+                    aria-label={t("learningEmptySeatNumber", { number: seatPosition + 1 })}
+                    className={cn(
+                      "relative flex min-h-[8.5rem] min-w-0 flex-col items-center justify-center rounded-xl border border-dashed border-line/80 bg-card/25 p-2 text-center text-muted transition-[border-color,background-color,box-shadow]",
+                      draggingStudentId && dragOverSeatPosition === seatPosition && "border-crater bg-moon/35 ring-2 ring-crater/30",
+                    )}
+                  >
+                    <span className="absolute left-2 top-2 text-[9px] tabular-nums opacity-70" aria-hidden="true">
+                      {String(seatPosition + 1).padStart(2, "0")}
+                    </span>
+                    <Armchair size={20} className="mb-1 opacity-45" aria-hidden="true" />
+                    <span className="text-[11px] font-medium">{t("learningEmptySeat")}</span>
+                    <span className="mt-0.5 text-[9px] opacity-70">{t("learningEmptySeatDrop")}</span>
+                  </article>
+                );
+              }
               const status = activeCheck
                 ? results.get(learningResultKey(activeCheck.id, student.id)) ?? "unchecked"
                 : "unchecked";
@@ -384,13 +424,14 @@ export function SessionLearningCheckPanel({
                 <article
                   key={student.id}
                   data-learning-student-id={student.id}
+                  data-learning-seat-index={seatPosition}
                   className={cn(
-                    "min-w-0 rounded-xl border p-1.5 transition-[border-color,background-color,box-shadow,opacity]",
+                    "flex min-h-[8.5rem] min-w-0 flex-col rounded-xl border p-1.5 transition-[border-color,background-color,box-shadow,opacity]",
                     batchMode && selected
                       ? "border-rose bg-rose/10 ring-2 ring-rose/20"
                       : statusStyle.card,
                     draggingStudentId === student.id && "opacity-65 shadow-sm",
-                    dragOverStudentId === student.id && draggingStudentId !== student.id && "ring-2 ring-crater/35",
+                    dragOverSeatPosition === seatPosition && draggingStudentId !== student.id && "ring-2 ring-crater/35",
                   )}
                 >
                   <div className={cn(
@@ -414,7 +455,7 @@ export function SessionLearningCheckPanel({
                     >
                       <GripVertical size={14} />
                       <span className="text-[9px] tabular-nums" aria-hidden="true">
-                        {String(studentIndex + 1).padStart(2, "0")}
+                        {String(seatPosition + 1).padStart(2, "0")}
                       </span>
                     </Button>
                     <Button
@@ -434,7 +475,7 @@ export function SessionLearningCheckPanel({
                     </Button>
                   </div>
                   {!batchMode && (
-                    <div className="mt-1 grid grid-cols-3 gap-1">
+                    <div className="mt-1 grid flex-1 grid-cols-3 auto-rows-[minmax(2.75rem,4rem)] content-center gap-1">
                       {LEARNING_CHECK_STATUSES.map((candidate) => (
                         <button
                           key={candidate}

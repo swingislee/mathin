@@ -2,9 +2,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  buildLearningSeatSlots,
   learningCheckIdAfterPageChange,
   learningCheckIdForPage,
-  moveLearningStudent,
+  learningSeatAssignments,
+  moveLearningStudentToSeat,
 } from "../src/features/school/session-learning-contract";
 
 const root = process.cwd();
@@ -19,6 +21,7 @@ const prepReviewMigration = read("supabase/migrations/20260730000500_r1_session_
 const prepUnlockMigration = read("supabase/migrations/20260731000500_r1_preparation_archive_unlock.sql");
 const prepUnlockNarrowingMigration = read("supabase/migrations/20260731000800_r1_narrow_preparation_archive_unlock.sql");
 const learningSeatOrderMigration = read("supabase/migrations/20260731001000_r1_learning_check_seat_order.sql");
+const learningSeatLayoutMigration = read("supabase/migrations/20260731001200_r1_learning_check_seat_layout.sql");
 
 describe("R1 classroom continuity contracts", () => {
   it("bridges active enrollments and claimed student accounts into live classroom membership", () => {
@@ -203,13 +206,18 @@ describe("R1 classroom continuity contracts", () => {
     expect(panel).toContain("data-learning-check-toolbar");
     expect(panel).toContain("data-learning-check-strip");
     expect(panel).toContain("data-ipad-roster-grid");
-    expect(panel).toContain("repeat(auto-fill, minmax(11rem, 1fr))");
+    expect(panel).toContain("grid-cols-4");
+    expect(panel).toContain("min-[900px]:grid-cols-5");
+    expect(panel).toContain("auto-rows-[minmax(8.5rem,1fr)]");
+    expect(panel).toContain("data-learning-seat-index");
+    expect(panel).toContain("data-learning-empty-seat");
+    expect(panel).toContain("Armchair");
     expect(panel).toContain("GripVertical");
     expect(panel).toContain("learningStatusShort_");
     expect(panel).toContain("min-h-11");
-    expect(panel).toContain("saveClassroomStudentSeatOrderAction");
+    expect(panel).toContain("saveClassroomStudentSeatLayoutAction");
     expect(panel).toContain("learningCheckIdForPage");
-    expect(learningActions).toContain('rpc("save_classroom_student_seat_order"');
+    expect(learningActions).toContain('rpc("save_classroom_student_seat_layout"');
     expect(learningSetup).toContain('.from("classroom_student_seat_order")');
     expect(learningSetup).toContain("seatPositionByStudentId");
     expect(learningSeatOrderMigration).toContain("create table public.classroom_student_seat_order");
@@ -217,23 +225,41 @@ describe("R1 classroom continuity contracts", () => {
     expect(learningSeatOrderMigration).toContain("ROSTER_CHANGED");
     expect(learningSeatOrderMigration).toContain("classroom.student_seat_order.updated");
     expect(learningSeatOrderMigration).toContain("is_session_teacher");
+    expect(learningSeatLayoutMigration).toContain("save_classroom_student_seat_layout");
+    expect(learningSeatLayoutMigration).toContain("p_positions integer[]");
+    expect(learningSeatLayoutMigration).toContain("submitted_count <> distinct_position_count");
+    expect(learningSeatLayoutMigration).toContain("seatCapacity', 20");
+    expect(learningSeatLayoutMigration).toContain("revoke execute on function public.save_classroom_student_seat_order");
     expect(liveShell).toContain("activePageDocId");
     expect(liveShell).not.toContain("operateCourseware");
     expect(learningCheckMarkFixMigration).toContain("v_classroom_id");
     expect(learningCheckMarkFixMigration).toContain("enrollment_row.classroom_id = v_classroom_id");
   });
 
-  it("moves a student card without mutating the saved class roster", () => {
+  it("builds a stable 20-seat plan and moves students through occupied or empty seats", () => {
     const students = [
-      { id: "student-a", name: "A" },
-      { id: "student-b", name: "B" },
-      { id: "student-c", name: "C" },
+      { id: "student-a", name: "A", seatPosition: 0 },
+      { id: "student-b", name: "B", seatPosition: 3 },
+      { id: "student-c", name: "C", seatPosition: null },
     ];
-    const moved = moveLearningStudent(students, "student-a", "student-b");
-    expect(moved.map((student) => student.id)).toEqual(["student-b", "student-a", "student-c"]);
-    expect(students.map((student) => student.id)).toEqual(["student-a", "student-b", "student-c"]);
-    expect(moveLearningStudent(moved, "student-c", "student-b").map((student) => student.id))
-      .toEqual(["student-c", "student-b", "student-a"]);
+    const slots = buildLearningSeatSlots(students);
+    expect(slots).toHaveLength(20);
+    expect(slots.map((student) => student?.id ?? null).slice(0, 5))
+      .toEqual(["student-a", "student-c", null, "student-b", null]);
+
+    const movedToEmptySeat = moveLearningStudentToSeat(slots, "student-a", 2);
+    expect(movedToEmptySeat[0]).toBeNull();
+    expect(movedToEmptySeat[2]?.id).toBe("student-a");
+    expect(slots[0]?.id).toBe("student-a");
+
+    const swapped = moveLearningStudentToSeat(movedToEmptySeat, "student-a", 3);
+    expect(swapped[2]?.id).toBe("student-b");
+    expect(swapped[3]?.id).toBe("student-a");
+    expect(learningSeatAssignments(swapped)).toEqual([
+      { studentId: "student-c", position: 1 },
+      { studentId: "student-b", position: 2 },
+      { studentId: "student-a", position: 3 },
+    ]);
   });
 
   it("maps the shared live page identity to a learning check without overriding manual-only legacy items", () => {
