@@ -2,6 +2,7 @@ import "server-only";
 
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { collectPostgrestRowsInBatches } from "@/lib/supabase/postgrest-batches";
 import type { AdaptClass, AdaptRejectionCode } from "./adapt-review-shared";
 
 export const ADAPT_REVIEW_PAGE_SIZE = 24;
@@ -214,22 +215,28 @@ export async function loadAdaptReviewQueue(requestedPage: number, filters: Adapt
 
   const revisionIds = [...new Set(rows.flatMap((row) => [row.source_asset_revision_id, row.derived_asset_revision_id]))];
   if (revisionIds.length === 0) return { items: [], page, total, totalPages };
-  const { data: revisions, error: revisionsError } = await supabase
+  const revisions = await collectPostgrestRowsInBatches<string, { id: string; object_id: string }>(revisionIds, (batch) => supabase
     .from("cw_asset_revisions")
     .select("id,object_id")
-    .in("id", revisionIds);
-  if (revisionsError) throw new Error(revisionsError.message);
-  const revisionById = new Map((revisions ?? []).map((revision) => [revision.id, revision]));
+    .in("id", batch)
+    .returns<Array<{ id: string; object_id: string }>>());
+  const revisionById = new Map(revisions.map((revision) => [revision.id, revision]));
   if (revisionById.size !== revisionIds.length) throw new Error("ADAPT_REVIEW_REVISION_MISSING");
   const objectIds = [...new Set(revisionIds.map((id) => revisionById.get(id)?.object_id).filter((id): id is string => Boolean(id)))];
   if (objectIds.length !== revisionIds.length) throw new Error("ADAPT_REVIEW_REVISION_OBJECT_MISSING");
 
-  const { data: objects, error: objectsError } = await supabase
+  const objects = await collectPostgrestRowsInBatches<string, {
+    id: string;
+    storage_path: string;
+    width: number;
+    height: number;
+    mime: string;
+  }>(objectIds, (batch) => supabase
     .from("cw_asset_objects")
     .select("id,storage_path,width,height,mime")
-    .in("id", objectIds);
-  if (objectsError) throw new Error(objectsError.message);
-  const objectById = new Map((objects ?? []).map((object) => [object.id, object]));
+    .in("id", batch)
+    .returns<Array<{ id: string; storage_path: string; width: number; height: number; mime: string }>>());
+  const objectById = new Map(objects.map((object) => [object.id, object]));
   if (objectById.size !== objectIds.length) throw new Error("ADAPT_REVIEW_OBJECT_MISSING");
 
   const paths = [...new Set(objectIds.map((id) => objectById.get(id)?.storage_path).filter((path): path is string => Boolean(path)))];
@@ -375,21 +382,27 @@ async function loadSignedAdaptImageMap(revisionIds: string[]): Promise<Map<strin
   const supabase = await createClient();
   const uniqueRevisionIds = [...new Set(revisionIds)];
   if (uniqueRevisionIds.length === 0) return new Map();
-  const { data: revisions, error: revisionsError } = await supabase
+  const revisions = await collectPostgrestRowsInBatches<string, { id: string; object_id: string }>(uniqueRevisionIds, (batch) => supabase
     .from("cw_asset_revisions")
     .select("id,object_id")
-    .in("id", uniqueRevisionIds);
-  if (revisionsError) throw new Error(revisionsError.message);
-  const revisionById = new Map((revisions ?? []).map((revision) => [revision.id, revision]));
+    .in("id", batch)
+    .returns<Array<{ id: string; object_id: string }>>());
+  const revisionById = new Map(revisions.map((revision) => [revision.id, revision]));
   if (revisionById.size !== uniqueRevisionIds.length) throw new Error("ADAPT_REVIEW_REVISION_MISSING");
   const objectIds = [...new Set(uniqueRevisionIds.map((id) => revisionById.get(id)?.object_id).filter((id): id is string => Boolean(id)))];
-  const { data: objects, error: objectsError } = await supabase
+  const objects = await collectPostgrestRowsInBatches<string, {
+    id: string;
+    storage_path: string;
+    width: number;
+    height: number;
+    mime: string;
+  }>(objectIds, (batch) => supabase
     .from("cw_asset_objects")
     .select("id,storage_path,width,height,mime")
-    .in("id", objectIds);
-  if (objectsError) throw new Error(objectsError.message);
-  const objectById = new Map((objects ?? []).map((object) => [object.id, object]));
-  const paths = [...new Set(objects?.map((object) => object.storage_path) ?? [])];
+    .in("id", batch)
+    .returns<Array<{ id: string; storage_path: string; width: number; height: number; mime: string }>>());
+  const objectById = new Map(objects.map((object) => [object.id, object]));
+  const paths = [...new Set(objects.map((object) => object.storage_path))];
   const { data: signed, error: signedError } = await supabase.storage.from("cw-objects").createSignedUrls(paths, 60 * 60);
   if (signedError) throw new Error(signedError.message);
   const urlByPath = new Map<string, string>();

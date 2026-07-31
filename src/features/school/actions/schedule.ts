@@ -8,6 +8,7 @@
 import { z } from "zod";
 import { getProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { collectPostgrestRowsInBatches } from "@/lib/supabase/postgrest-batches";
 import type { ScheduleEntry } from "../schedule";
 import { datetime, parse } from "./schemas";
 
@@ -72,15 +73,17 @@ export async function getWeekSchedule(fromIso: string, toIso: string): Promise<S
   if (rows.length === 0) return [];
 
   const classroomIds = Array.from(new Set(rows.map((row) => row.classroom_id)));
-  const { data: teacherRows, error: teacherError } = await supabase
+  const teacherRows = await collectPostgrestRowsInBatches<string, {
+    classroom_id: string;
+    profiles: { display_name: string } | null;
+  }>(classroomIds, (batch) => supabase
     .from("classroom_members")
     .select("classroom_id,profiles(display_name)")
-    .in("classroom_id", classroomIds)
+    .in("classroom_id", batch)
     .eq("role", "teacher")
-    .returns<Array<{ classroom_id: string; profiles: { display_name: string } | null }>>();
-  if (teacherError) throw new Error(teacherError.message);
+    .returns<Array<{ classroom_id: string; profiles: { display_name: string } | null }>>());
   const teacherByClassroom = new Map<string, string>();
-  for (const row of teacherRows ?? []) {
+  for (const row of teacherRows) {
     if (!teacherByClassroom.has(row.classroom_id)) teacherByClassroom.set(row.classroom_id, row.profiles?.display_name ?? "");
   }
 

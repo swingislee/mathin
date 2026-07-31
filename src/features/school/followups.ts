@@ -1,11 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
+import { collectPostgrestRowsInBatches } from "@/lib/supabase/postgrest-batches";
 import { addDays, startOfDay, startOfWeek } from "./schedule";
 import { FOLLOW_UP_STATUSES, type FollowUpStatus, type StudentStatus } from "./students";
 
 // ---------------------------------------------------------------------------
 // 学辅跟进工作台数据层（P4C-6 §6）。零权限分支：scope=mine 只是 assigned_to 过滤，
 // scope=all 交给 students RLS 自然收窄（无 student.view.all 的人本来就只见名下）。
-// 取数固定 4 查以内：students 一次 + 最近跟进一次 + 今日试听桶两次辅查，无 N+1。
+// 大 UUID 集统一分批，避免 PostgREST 过滤器突破网关请求行限制。
 // ---------------------------------------------------------------------------
 
 export const BOARD_SCOPES = ["mine", "all"] as const;
@@ -87,52 +88,64 @@ export async function listFollowUpBoard(userId: string, scope: BoardScope, bucke
   const students = studentRows ?? [];
   const studentIds = students.map((row) => row.id);
 
-  // 每生最近一条跟进：一次 in 查询按时间倒序，内存去重取首条（§6 明令别 N+1）。
-  const latestByStudent = new Map<string, string>();
-  if (studentIds.length > 0) {
-    const { data: followUpRows, error: followUpError } = await supabase
+  const [followUpRows, enrollmentRows] = await Promise.all([
+    collectPostgrestRowsInBatches<string, { student_id: string; content: string }>(studentIds, (batch) => supabase
       .from("student_follow_ups")
       .select("student_id,content")
-      .in("student_id", studentIds)
+      .in("student_id", batch)
       .order("created_at", { ascending: false })
-      .limit(2000);
-    if (followUpError) throw new Error(followUpError.message);
-    for (const row of (followUpRows ?? []) as Array<{ student_id: string; content: string }>) {
-      if (!latestByStudent.has(row.student_id)) latestByStudent.set(row.student_id, row.content);
-    }
-  }
-
-  // 今日试听桶（§0.5）：trialing 且其 active enrollment 班级今天有未删课次——试听当天必跟。
-  const trialTodayIds = new Set<string>();
-  const trialingIds = students.filter((row) => row.status === "trialing").map((row) => row.id);
-  if (trialingIds.length > 0) {
-    const { data: enrollmentRows, error: enrollmentError } = await supabase
+      .limit(2000)
+      .returns<Array<{ student_id: string; content: string }>>()),
+    collectPostgrestRowsInBatches<string, { student_id: string; classroom_id: string }>(studentIds, (batch) => supabase
       .from("enrollments")
       .select("student_id,classroom_id")
       .eq("status", "active")
-      .in("student_id", trialingIds)
-      .returns<Array<{ student_id: string; classroom_id: string }>>();
-    if (enrollmentError) throw new Error(enrollmentError.message);
-    const classroomIds = Array.from(new Set((enrollmentRows ?? []).map((row) => row.classroom_id)));
-    if (classroomIds.length > 0) {
-      const { data: sessionRows, error: sessionError } = await supabase
+      .in("student_id", batch)
+      .returns<Array<{ student_id: string; classroom_id: string }>>()),
+  ]);
+
+  const latestByStudent = new Map<string, string>();
+  for (const row of followUpRows) {
+    if (!latestByStudent.has(row.student_id)) latestByStudent.set(row.student_id, row.content);
+  }
+
+  const classroomIds = [...new Set(enrollmentRows.map((row) => row.classroom_id))];
+  const [todaySessionRows, futureSessionRows] = classroomIds.length > 0
+    ? await Promise.all([
+      collectPostgrestRowsInBatches<string, { classroom_id: string }>(classroomIds, (batch) => supabase
         .from("class_sessions")
         .select("classroom_id")
-        .in("classroom_id", classroomIds)
+        .in("classroom_id", batch)
         .is("deleted_at", null)
         .gte("scheduled_at", dayStart)
         .lt("scheduled_at", dayEnd)
-        .returns<Array<{ classroom_id: string }>>();
-      if (sessionError) throw new Error(sessionError.message);
-      const todayClassrooms = new Set((sessionRows ?? []).map((row) => row.classroom_id));
-      for (const row of enrollmentRows ?? []) {
-        if (todayClassrooms.has(row.classroom_id)) trialTodayIds.add(row.student_id);
-      }
-    }
+        .returns<Array<{ classroom_id: string }>>()),
+      collectPostgrestRowsInBatches<string, { classroom_id: string }>(classroomIds, (batch) => supabase
+        .from("class_sessions")
+        .select("classroom_id")
+        .in("classroom_id", batch)
+        .is("deleted_at", null)
+        .gte("scheduled_at", nowIso)
+        .returns<Array<{ classroom_id: string }>>()),
+    ])
+    : [[], []];
+
+  const todayClassrooms = new Set(todaySessionRows.map((row) => row.classroom_id));
+  const futureSessionCountByClassroom = new Map<string, number>();
+  for (const row of futureSessionRows) {
+    futureSessionCountByClassroom.set(
+      row.classroom_id,
+      (futureSessionCountByClassroom.get(row.classroom_id) ?? 0) + 1,
+    );
   }
 
-  const renewalIds=new Set<string>();
-  if(studentIds.length>0){const{data:ers,error:ee}=await supabase.from("enrollments").select("student_id,classroom_id").eq("status","active").in("student_id",studentIds).returns<Array<{student_id:string;classroom_id:string}>>();if(ee)throw new Error(ee.message);const cids=Array.from(new Set((ers??[]).map(x=>x.classroom_id)));if(cids.length){const{data:ss,error:se}=await supabase.from("class_sessions").select("classroom_id").in("classroom_id",cids).is("deleted_at",null).gte("scheduled_at",nowIso).returns<Array<{classroom_id:string}>>();if(se)throw new Error(se.message);const counts=new Map<string,number>();for(const x of ss??[])counts.set(x.classroom_id,(counts.get(x.classroom_id)??0)+1);for(const e of ers??[])if((counts.get(e.classroom_id)??0)<=3)renewalIds.add(e.student_id)}}
+  const trialTodayIds = new Set<string>();
+  const renewalIds = new Set<string>();
+  const trialingIds = new Set(students.filter((row) => row.status === "trialing").map((row) => row.id));
+  for (const row of enrollmentRows) {
+    if (trialingIds.has(row.student_id) && todayClassrooms.has(row.classroom_id)) trialTodayIds.add(row.student_id);
+    if ((futureSessionCountByClassroom.get(row.classroom_id) ?? 0) <= 3) renewalIds.add(row.student_id);
+  }
 
   const inBucket = (row: BoardStudentRow, key: BoardBucket): boolean => {
     const next = row.next_follow_up_at;

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
+import { collectPostgrestRowsInBatches } from "@/lib/supabase/postgrest-batches";
 import type { CoursewareTrack } from "@/features/courseware-studio/data";
 import type {
   LearningCheckStatus,
@@ -43,17 +44,19 @@ export async function getSessionLearningSetup(sessionId: string): Promise<Sessio
   if (enrollmentError) throw new Error(enrollmentError.message);
 
   const checkIds = (checkRows ?? []).map((row) => row.id);
-  const resultRows = checkIds.length === 0
-    ? []
-    : (await supabase
-        .from("session_learning_check_results")
-        .select("check_id,student_id,status")
-        .in("check_id", checkIds)
-        .returns<Array<{
-          check_id: string;
-          student_id: string;
-          status: Exclude<LearningCheckStatus, "unchecked">;
-        }>>()).data ?? [];
+  const resultRows = await collectPostgrestRowsInBatches<string, {
+    check_id: string;
+    student_id: string;
+    status: Exclude<LearningCheckStatus, "unchecked">;
+  }>(checkIds, (batch) => supabase
+    .from("session_learning_check_results")
+    .select("check_id,student_id,status")
+    .in("check_id", batch)
+    .returns<Array<{
+      check_id: string;
+      student_id: string;
+      status: Exclude<LearningCheckStatus, "unchecked">;
+    }>>());
 
   return {
     configured: session.learning_checks_configured_at !== null,
@@ -131,13 +134,15 @@ export async function getSessionCoursewareLearningCheckPages(sessionId: string):
   });
   if (snapshotPages.length === 0) return [];
 
-  const { data: pageRows, error: pageError } = await supabase
-    .from("cw_page_docs")
-    .select("id,page_no,title")
-    .in("id", snapshotPages.map((page) => page.pageDocId))
-    .returns<Array<{ id: string; page_no: number; title: string }>>();
-  if (pageError) throw new Error(pageError.message);
-  const pageById = new Map((pageRows ?? []).map((page) => [page.id, page]));
+  const pageRows = await collectPostgrestRowsInBatches<string, { id: string; page_no: number; title: string }>(
+    snapshotPages.map((page) => page.pageDocId),
+    (batch) => supabase
+      .from("cw_page_docs")
+      .select("id,page_no,title")
+      .in("id", batch)
+      .returns<Array<{ id: string; page_no: number; title: string }>>(),
+  );
+  const pageById = new Map(pageRows.map((page) => [page.id, page]));
   return snapshotPages.flatMap((metadata) => {
     const page = pageById.get(metadata.pageDocId);
     if (!page) return [];

@@ -5,6 +5,7 @@ import { materializeSessionResolved, type CoursewareTrack } from "@/features/cou
 import { resolveCourseware, type CoursewareTemplatePage, type OverlaySlot } from "@/features/school/courseware-overlay";
 import type { Json } from "@/lib/database.types";
 import { createClient } from "@/lib/supabase/server";
+import { collectPostgrestRowsInBatches } from "@/lib/supabase/postgrest-batches";
 import { buildSessionReport } from "./report";
 import type {
   AssignmentContent,
@@ -473,20 +474,21 @@ export async function getSessionReport(sessionId: string): Promise<SessionReport
   });
 
   const checkIds = (checkRows ?? []).map((row) => row.id);
-  const { data: resultRows, error: resultError } = checkIds.length === 0
-    ? { data: [], error: null }
-    : await supabase
-        .from("session_learning_check_results")
-        .select("check_id,student_id,status")
-        .in("check_id", checkIds)
-        .returns<Array<{
-          check_id: string;
-          student_id: string;
-          status: Exclude<SessionLearningReportStatus, "unchecked">;
-        }>>();
-  if (resultError) throw new Error(resultError.message);
+  const resultRows = await collectPostgrestRowsInBatches<string, {
+    check_id: string;
+    student_id: string;
+    status: Exclude<SessionLearningReportStatus, "unchecked">;
+  }>(checkIds, (batch) => supabase
+    .from("session_learning_check_results")
+    .select("check_id,student_id,status")
+    .in("check_id", batch)
+    .returns<Array<{
+      check_id: string;
+      student_id: string;
+      status: Exclude<SessionLearningReportStatus, "unchecked">;
+    }>>());
 
-  const resultByKey = new Map((resultRows ?? []).map((row) => [
+  const resultByKey = new Map(resultRows.map((row) => [
     row.check_id + ":" + row.student_id,
     row.status as SessionLearningReportStatus,
   ]));

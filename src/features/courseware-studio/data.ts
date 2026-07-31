@@ -3,14 +3,11 @@ import "server-only";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getSupabaseConfig } from "@/lib/supabase/config";
+import { collectPostgrestRowsInBatches } from "@/lib/supabase/postgrest-batches";
 import { pageDocSchema, type PageDoc } from "@/features/courseware-doc/schema";
 import { buildH5EntryUrl, type H5LaunchQuery, type ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 
 const SIGNED_URL_TTL_SECONDS = 60 * 60;
-// PostgREST serializes `.in()` filters into the GET request URI. A full lecture
-// can contain 200+ revision UUIDs, so keep each filter comfortably below the
-// self-hosted gateway's request-line limit.
-const POSTGREST_IN_FILTER_BATCH_SIZE = 40;
 export const COURSEWARE_TRACKS = ["native-16x9", "adapted-4x3"] as const;
 export type CoursewareTrack = (typeof COURSEWARE_TRACKS)[number];
 
@@ -173,18 +170,19 @@ export async function loadCoursewareSharedAssets(filters: AssetLibraryFilters) {
     .map((asset) => asset.published_revision_id);
   const previewByRevisionId = new Map<string, string>();
   if (imageRevisionIds.length > 0) {
-    const { data: revisions, error: revisionError } = await supabase
+    const revisions = await collectPostgrestRowsInBatches<string, { id: string; object_id: string }>(imageRevisionIds, (batch) => supabase
       .from("cw_asset_revisions")
       .select("id, object_id")
-      .in("id", imageRevisionIds);
-    if (revisionError) throw new Error(revisionError.message);
-    const objectIds = (revisions ?? []).map((revision) => revision.object_id);
-    const { data: objects, error: objectError } = objectIds.length > 0
-      ? await supabase.from("cw_asset_objects").select("id, storage_path").in("id", objectIds)
-      : { data: [], error: null };
-    if (objectError) throw new Error(objectError.message);
-    const objectById = new Map((objects ?? []).map((object) => [object.id, object.storage_path]));
-    const paths = (revisions ?? []).flatMap((revision) => {
+      .in("id", batch)
+      .returns<Array<{ id: string; object_id: string }>>());
+    const objectIds = revisions.map((revision) => revision.object_id);
+    const objects = await collectPostgrestRowsInBatches<string, { id: string; storage_path: string }>(objectIds, (batch) => supabase
+      .from("cw_asset_objects")
+      .select("id, storage_path")
+      .in("id", batch)
+      .returns<Array<{ id: string; storage_path: string }>>());
+    const objectById = new Map(objects.map((object) => [object.id, object.storage_path]));
+    const paths = revisions.flatMap((revision) => {
       const path = objectById.get(revision.object_id);
       return path ? [path] : [];
     });
@@ -499,19 +497,40 @@ export async function loadCoursewareStudioPage(lectureId: string, pageDocId: str
     .order("page_no");
   if (pagesError) throw new Error(pagesError.message);
   const pageIds = (pages ?? []).map((page) => page.id);
-  const [
-    { data: trackHeads, error: trackHeadsError },
-    { data: learningCheckRows, error: learningCheckError },
-  ] = pageIds.length
+  const [trackHeads, learningCheckRows] = pageIds.length
     ? await Promise.all([
-      supabase.from("cw_page_track_heads").select("page_doc_id,draft_revision_id,current_revision_id").eq("track", track).in("page_doc_id", pageIds),
-      supabase.from("cw_page_learning_check_flags").select("page_doc_id,draft_enabled,published_enabled").eq("track", track).in("page_doc_id", pageIds),
+      collectPostgrestRowsInBatches<string, {
+        page_doc_id: string;
+        draft_revision_id: string | null;
+        current_revision_id: string | null;
+      }>(pageIds, (batch) => supabase
+        .from("cw_page_track_heads")
+        .select("page_doc_id,draft_revision_id,current_revision_id")
+        .eq("track", track)
+        .in("page_doc_id", batch)
+        .returns<Array<{
+          page_doc_id: string;
+          draft_revision_id: string | null;
+          current_revision_id: string | null;
+        }>>()),
+      collectPostgrestRowsInBatches<string, {
+        page_doc_id: string;
+        draft_enabled: boolean;
+        published_enabled: boolean;
+      }>(pageIds, (batch) => supabase
+        .from("cw_page_learning_check_flags")
+        .select("page_doc_id,draft_enabled,published_enabled")
+        .eq("track", track)
+        .in("page_doc_id", batch)
+        .returns<Array<{
+          page_doc_id: string;
+          draft_enabled: boolean;
+          published_enabled: boolean;
+        }>>()),
     ])
-    : [{ data: [], error: null }, { data: [], error: null }];
-  if (trackHeadsError) throw new Error(trackHeadsError.message);
-  if (learningCheckError) throw new Error(learningCheckError.message);
-  const headByPage = new Map((trackHeads ?? []).map((head) => [head.page_doc_id, head]));
-  const learningCheckByPage = new Map((learningCheckRows ?? []).map((metadata) => [metadata.page_doc_id, metadata]));
+    : [[], []];
+  const headByPage = new Map(trackHeads.map((head) => [head.page_doc_id, head]));
+  const learningCheckByPage = new Map(learningCheckRows.map((metadata) => [metadata.page_doc_id, metadata]));
   const typedPages: StudioPageSummary[] = (pages ?? []).flatMap((page) => {
     const head = headByPage.get(page.id);
     if (!head) return [];
@@ -604,17 +623,24 @@ async function loadImageAssetUsage(supabase: Supabase, pageDocId: string, track:
   const sharedAssetIds = [...new Set((pageBindings ?? []).map((binding) => binding.shared_asset_id))];
   if (sharedAssetIds.length === 0) return {};
 
-  const [{ data: allBindings, error: allBindingsError }, { data: assets, error: assetsError }] = await Promise.all([
-    supabase.from("cw_page_asset_bindings").select("shared_asset_id").eq("track", track).in("shared_asset_id", sharedAssetIds),
-    supabase.from("cw_shared_assets").select("id, name").in("id", sharedAssetIds),
+  const [allBindings, assets] = await Promise.all([
+    collectPostgrestRowsInBatches<string, { shared_asset_id: string }>(sharedAssetIds, (batch) => supabase
+      .from("cw_page_asset_bindings")
+      .select("shared_asset_id")
+      .eq("track", track)
+      .in("shared_asset_id", batch)
+      .returns<Array<{ shared_asset_id: string }>>()),
+    collectPostgrestRowsInBatches<string, { id: string; name: string }>(sharedAssetIds, (batch) => supabase
+      .from("cw_shared_assets")
+      .select("id, name")
+      .in("id", batch)
+      .returns<Array<{ id: string; name: string }>>()),
   ]);
-  if (allBindingsError) throw new Error(allBindingsError.message);
-  if (assetsError) throw new Error(assetsError.message);
   const useCountByAsset = new Map<string, number>();
-  for (const binding of allBindings ?? []) {
+  for (const binding of allBindings) {
     useCountByAsset.set(binding.shared_asset_id, (useCountByAsset.get(binding.shared_asset_id) ?? 0) + 1);
   }
-  const assetNameById = new Map((assets ?? []).map((asset) => [asset.id, asset.name]));
+  const assetNameById = new Map(assets.map((asset) => [asset.id, asset.name]));
   return Object.fromEntries((pageBindings ?? []).map((binding) => [binding.binding_key, {
     sharedAssetId: binding.shared_asset_id,
     name: assetNameById.get(binding.shared_asset_id) ?? binding.shared_asset_id,
@@ -632,14 +658,29 @@ async function resolveEditorBindingUrls(supabase: Supabase, pageDocId: string, t
   if (bindingError) throw new Error(bindingError.message);
   if (!bindings?.length) return {};
   const sharedIds = [...new Set(bindings.map((binding) => binding.shared_asset_id))];
-  const [{ data: assets, error: assetError }, { data: variantHeads, error: variantError }] = await Promise.all([
-    supabase.from("cw_shared_assets").select("id, published_revision_id").in("id", sharedIds),
-    supabase.from("cw_asset_variant_heads").select("shared_asset_id,draft_revision_id,published_revision_id").eq("track", track).in("shared_asset_id", sharedIds),
+  const [assets, variantHeads] = await Promise.all([
+    collectPostgrestRowsInBatches<string, { id: string; published_revision_id: string | null }>(sharedIds, (batch) => supabase
+      .from("cw_shared_assets")
+      .select("id, published_revision_id")
+      .in("id", batch)
+      .returns<Array<{ id: string; published_revision_id: string | null }>>()),
+    collectPostgrestRowsInBatches<string, {
+      shared_asset_id: string;
+      draft_revision_id: string | null;
+      published_revision_id: string | null;
+    }>(sharedIds, (batch) => supabase
+      .from("cw_asset_variant_heads")
+      .select("shared_asset_id,draft_revision_id,published_revision_id")
+      .eq("track", track)
+      .in("shared_asset_id", batch)
+      .returns<Array<{
+        shared_asset_id: string;
+        draft_revision_id: string | null;
+        published_revision_id: string | null;
+      }>>()),
   ]);
-  if (assetError) throw new Error(assetError.message);
-  if (variantError) throw new Error(variantError.message);
-  const publishedByAsset = new Map((assets ?? []).map((asset) => [asset.id, asset.published_revision_id]));
-  const variantByAsset = new Map((variantHeads ?? []).map((head) => [head.shared_asset_id, head.draft_revision_id ?? head.published_revision_id]));
+  const publishedByAsset = new Map(assets.map((asset) => [asset.id, asset.published_revision_id]));
+  const variantByAsset = new Map(variantHeads.map((head) => [head.shared_asset_id, head.draft_revision_id ?? head.published_revision_id]));
   const entries = bindings.map((binding) => ({
     pageDocId,
     revisionId: "00000000-0000-0000-0000-000000000000",
@@ -689,13 +730,18 @@ export async function loadLecturePreview(
 
   const snapshot = releaseSnapshotSchema.parse(release.snapshot);
   const pageDocIds = snapshot.map((entry) => entry.pageDocId);
-  const { data: pageRows, error: pageRowsError } = await supabase
+  const pageRows = await collectPostgrestRowsInBatches<string, {
+    id: string;
+    page_no: number;
+    title: string;
+    aspect: string;
+  }>(pageDocIds, (batch) => supabase
     .from("cw_page_docs")
     .select("id, page_no, title, aspect")
-    .in("id", pageDocIds);
-  if (pageRowsError) throw new Error(pageRowsError.message);
+    .in("id", batch)
+    .returns<Array<{ id: string; page_no: number; title: string; aspect: string }>>());
 
-  const pageById = new Map((pageRows ?? []).map((page) => [page.id, page]));
+  const pageById = new Map(pageRows.map((page) => [page.id, page]));
   const pages: CoursewarePreviewPageMeta[] = snapshot.map((entry) => {
     const page = pageById.get(entry.pageDocId);
     if (!page) throw new Error(`RELEASE_SNAPSHOT_INCOMPLETE: ${entry.pageDocId}`);
@@ -750,12 +796,18 @@ async function resolveSnapshotBindingUrls(
   const assetRevisionIds = [...new Set(revisionByBindingKey.values())];
   if (assetRevisionIds.length === 0) return {};
 
-  const { data: revisions, error } = await supabase
+  const revisions = await collectPostgrestRowsInBatches<string, {
+    id: string;
+    object: { sha256: string; storage_path: string; kind: string } | null;
+  }>(assetRevisionIds, (batch) => supabase
     .from("cw_asset_revisions")
     .select("id, object:cw_asset_objects!cw_asset_revisions_object_id_fkey(sha256, storage_path, kind)")
-    .in("id", assetRevisionIds);
-  if (error) throw new Error(error.message);
-  const objectByRevisionId = new Map((revisions ?? []).map((revision) => [revision.id, revision.object]));
+    .in("id", batch)
+    .returns<Array<{
+      id: string;
+      object: { sha256: string; storage_path: string; kind: string } | null;
+    }>>());
+  const objectByRevisionId = new Map(revisions.map((revision) => [revision.id, revision.object]));
 
   const launchQueryByBindingKey = new Map<string, H5LaunchQuery | null>();
   const kindByBindingKey = new Map<string, string>();
@@ -825,17 +877,16 @@ export async function materializeSessionResolved(releaseId: string, track: Cours
 
   const snapshot = releaseSnapshotSchema.parse(release.snapshot);
   const assetRevisionIds = [...new Set(snapshot.flatMap((entry) => entry.bindings.map((binding) => binding.assetRevisionId)))];
+  const revisions = await collectPostgrestRowsInBatches<string, {
+    id: string;
+    object: { sha256: string } | null;
+  }>(assetRevisionIds, (batch) => supabase
+    .from("cw_asset_revisions")
+    .select("id, object:cw_asset_objects!cw_asset_revisions_object_id_fkey(sha256)")
+    .in("id", batch));
   const hashByRevisionId = new Map<string, string>();
-  for (let offset = 0; offset < assetRevisionIds.length; offset += POSTGREST_IN_FILTER_BATCH_SIZE) {
-    const revisionIdBatch = assetRevisionIds.slice(offset, offset + POSTGREST_IN_FILTER_BATCH_SIZE);
-    const { data: revisions, error: revisionError } = await supabase
-      .from("cw_asset_revisions")
-      .select("id, object:cw_asset_objects!cw_asset_revisions_object_id_fkey(sha256)")
-      .in("id", revisionIdBatch);
-    if (revisionError) throw new Error(revisionError.message);
-    for (const revision of revisions ?? []) {
-      if (revision.object?.sha256) hashByRevisionId.set(revision.id, revision.object.sha256);
-    }
+  for (const revision of revisions) {
+    if (revision.object?.sha256) hashByRevisionId.set(revision.id, revision.object.sha256);
   }
   const bindings = snapshot.flatMap((entry) =>
     entry.bindings.map((binding) => {

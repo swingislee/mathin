@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { collectPostgrestRowsInBatches } from "@/lib/supabase/postgrest-batches";
 import type { Json } from "@/lib/database.types";
 import { ServerBlockNoteEditor } from "@blocknote/server-util";
 import type { PartialBlock } from "@blocknote/core";
@@ -112,7 +113,7 @@ function collectSubtree(rows: TreeRow[], rootId: string) {
 export async function setNoteArchived(id: string, archived: boolean): Promise<NoteMeta[]> {
   const { supabase, user } = await authenticatedClient();
   const rows = await ownedTreeRows(supabase, user.id);
-  const subtree = collectSubtree(rows, id);
+  const subtree = [...collectSubtree(rows, id)];
   // 恢复时若父级仍在回收站，把本篇挂回根部，否则恢复后在树里不可见。
   if (!archived) {
     const root = rows.find((row) => row.id === id);
@@ -122,36 +123,34 @@ export async function setNoteArchived(id: string, archived: boolean): Promise<No
       if (error) throw new Error(error.message);
     }
   }
-  const { data, error } = await supabase
+  const updatedNotes = await collectPostgrestRowsInBatches<string, NoteRow>(subtree, (batch) => supabase
     .from("notes")
     .update({ is_archived: archived })
-    .in("id", [...subtree])
+    .in("id", batch)
     .eq("owner_id", user.id)
     .select(META_COLUMNS)
-    .returns<NoteRow[]>();
-  if (error) throw new Error(error.message);
+    .returns<NoteRow[]>());
   // 帖子快照与源笔记联动：入回收站即从瀑布流隐藏，恢复即回归（保留点赞）。
-  const { error: postError } = await supabase
+  await collectPostgrestRowsInBatches<string, never>(subtree, (batch) => supabase
     .from("posts")
     .update({ hidden: archived })
-    .in("note_id", [...subtree])
-    .eq("author_id", user.id);
-  if (postError) throw new Error(postError.message);
-  return (data ?? []).map(toMeta);
+    .in("note_id", batch)
+    .eq("author_id", user.id));
+  return updatedNotes.map(toMeta);
 }
 
 export async function deleteNoteForever(id: string): Promise<{ id: string; removedIds: string[] }> {
   const { supabase, user } = await authenticatedClient();
-  const subtree = collectSubtree(await ownedTreeRows(supabase, user.id), id);
+  const removedIds = [...collectSubtree(await ownedTreeRows(supabase, user.id), id)];
   // 彻底删除时公开快照一并删除（点赞随行级联清理）。
-  const { error: postsError } = await supabase
+  await collectPostgrestRowsInBatches<string, never>(removedIds, (batch) => supabase
     .from("posts")
     .delete()
-    .in("note_id", [...subtree])
-    .eq("author_id", user.id);
-  if (postsError) throw new Error(postsError.message);
+    .in("note_id", batch)
+    .eq("author_id", user.id));
+
   // Storage 清理是次要目标：失败只记录，不能反过来卡死笔记删除本身。
-  for (const noteId of subtree) {
+  for (const noteId of removedIds) {
     const prefix = `${user.id}/${noteId}`;
     try {
       const { data: files, error: storageError } = await supabase.storage.from("note-assets").list(prefix, { limit: 1000 });
@@ -166,7 +165,7 @@ export async function deleteNoteForever(id: string): Promise<{ id: string; remov
   }
   const { error } = await supabase.from("notes").delete().eq("id", id).eq("owner_id", user.id);
   if (error) throw new Error(error.message);
-  return { id, removedIds: [...subtree] };
+  return { id, removedIds };
 }
 
 const documentSchema = z.array(z.unknown());

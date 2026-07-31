@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { collectPostgrestRowsInBatches } from "@/lib/supabase/postgrest-batches";
 import { SELECT_ALL_VALUE } from "./controls";
 import { summarizeAttendance, sumStars, type AttendanceStatus, type AttendanceSummary } from "./learning";
 
@@ -301,22 +302,24 @@ export async function getStudentLearning(studentId: string): Promise<StudentLear
 
   let upcomingSessions: StudentUpcomingSession[] = [];
   if (activeClassroomIds.length > 0) {
-    const { data: sessionRows, error: sessionError } = await supabase
+    const sessionRows = await collectPostgrestRowsInBatches<string, UpcomingSessionRow>(activeClassroomIds, (batch) => supabase
       .from("class_sessions")
       .select("id,title,scheduled_at,classrooms(name)")
-      .in("classroom_id", activeClassroomIds)
+      .in("classroom_id", batch)
       .is("deleted_at", null)
       .gte("scheduled_at", new Date().toISOString())
       .order("scheduled_at", { ascending: true })
       .limit(10)
-      .returns<UpcomingSessionRow[]>();
-    if (sessionError) throw new Error(sessionError.message);
-    upcomingSessions = (sessionRows ?? []).map((row) => ({
-      sessionId: row.id,
-      classroomName: row.classrooms?.name || "",
-      lectureName: row.title,
-      scheduledAt: row.scheduled_at,
-    }));
+      .returns<UpcomingSessionRow[]>());
+    upcomingSessions = sessionRows
+      .sort((left, right) => left.scheduled_at.localeCompare(right.scheduled_at))
+      .slice(0, 10)
+      .map((row) => ({
+        sessionId: row.id,
+        classroomName: row.classrooms?.name || "",
+        lectureName: row.title,
+        scheduledAt: row.scheduled_at,
+      }));
   }
 
   let starTotal = 0;
