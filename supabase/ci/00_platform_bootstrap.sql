@@ -129,7 +129,15 @@ grant execute on function storage.foldername(text) to anon, authenticated, servi
 
 -- ---------------------------------------------------------------------------
 -- realtime：私有频道授权走 realtime.messages 的 RLS，topic 从会话变量读取。
+-- Supabase 平台预建同名 publication；原生 PostgreSQL CI 需要补齐该平台对象。
 -- ---------------------------------------------------------------------------
+do $$
+begin
+  if not exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
+    execute 'create publication supabase_realtime';
+  end if;
+end $$;
+
 create schema if not exists realtime;
 grant usage on schema realtime to anon, authenticated, service_role;
 

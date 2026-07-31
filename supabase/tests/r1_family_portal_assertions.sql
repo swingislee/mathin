@@ -178,24 +178,31 @@ select session_row.id as family_session_id
   select 1 / 0;
 \endif
 
-select student_row.id as foreign_student_id
-  from public.students student_row
- where student_row.deleted_at is null
-   and student_row.id <> :'family_student_id'::uuid
-   and student_row.user_id is distinct from :'parent_id'::uuid
-   and not exists (
-     select 1
-       from public.student_guardians guardian_row
-      where guardian_row.student_id = student_row.id
-        and guardian_row.guardian_id = :'parent_id'::uuid
-   )
- limit 1 \gset
-
-\if :{?foreign_student_id}
-\else
-  \echo R1-5 fixtures missing: no foreign student
-  select 1 / 0;
-\endif
+with existing_foreign_student as (
+  select student_row.id
+    from public.students student_row
+   where student_row.deleted_at is null
+     and student_row.id <> :'family_student_id'::uuid
+     and student_row.user_id is distinct from :'parent_id'::uuid
+     and not exists (
+       select 1
+         from public.student_guardians guardian_row
+        where guardian_row.student_id = student_row.id
+          and guardian_row.guardian_id = :'parent_id'::uuid
+     )
+   limit 1
+), inserted_foreign_student as (
+  insert into public.students(name, bind_code, created_by)
+  select '__R1_FOREIGN_STUDENT__',
+         'r1' || replace(gen_random_uuid()::text, '-', ''),
+         :'admin_id'::uuid
+   where not exists (select 1 from existing_foreign_student)
+  returning id
+)
+select id as foreign_student_id from existing_foreign_student
+union all
+select id as foreign_student_id from inserted_foreign_student
+limit 1 \gset
 
 insert into public.classrooms(owner_id, name, invite_code, purpose)
 values (

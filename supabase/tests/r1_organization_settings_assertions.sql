@@ -22,7 +22,20 @@ begin
   if (select count(*) from public.campuses where is_default and status = 'active') <> 1 then failures := array_append(failures, 'default campus missing'); end if;
   if exists(select 1 from public.school_terms where campus_id is null) then failures := array_append(failures, 'term campus backfill missing'); end if;
   if (select count(*) from public.organization_rule_versions where campus_id is null) <> 6 then failures := array_append(failures, 'rule defaults incomplete'); end if;
-  if (select count(*) from public.feature_flag_versions where campus_id is null and not enabled) <> 5 then failures := array_append(failures, 'flag defaults incomplete'); end if;
+  if (
+    select count(*)
+    from public.feature_flag_versions
+    where campus_id is null
+      and version = 1
+      and not enabled
+      and flag_key in (
+        'finance.enabled',
+        'notifications.email',
+        'notifications.sms',
+        'notifications.wechat',
+        'public_content.publish'
+      )
+  ) <> 5 then failures := array_append(failures, 'flag defaults incomplete'); end if;
   if has_table_privilege('authenticated', 'public.organizations', 'SELECT') then failures := array_append(failures, 'organizations direct SELECT granted'); end if;
   if has_table_privilege('authenticated', 'public.organization_rule_versions', 'INSERT') then failures := array_append(failures, 'rule direct INSERT granted'); end if;
   if has_table_privilege('authenticated', 'public.feature_flag_versions', 'UPDATE') then failures := array_append(failures, 'flag direct UPDATE granted'); end if;

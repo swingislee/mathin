@@ -115,7 +115,8 @@ if (!routeTabs) {
 // ---------------------------------------------------------------------------
 
 /**
- * §7.2 允许四类内容拥有自己的横向滚动区：宽表格、课表、时间轴、课件画布。
+ * §7.2 允许五类内容拥有自己的横向滚动区：宽表格、课表、时间轴、课件画布，
+ * 以及具名的分页/分段导航条。
  * 允许的是**这些容器**，不是"哪里放不下就在哪里加一句 overflow-x-auto"——后者
  * 会让横向滚动从一个明确的产品决定退化成随手的兜底，而兜底出来的滚动条在桌面端
  * 是没有提示的，用户根本不知道右边还有东西。新增确实需要横向滚动的容器时，
@@ -123,6 +124,7 @@ if (!routeTabs) {
  */
 const HORIZONTAL_SCROLL_ALLOWLIST = new Set([
   path.join(SCHOOL_DIR, "ScheduleWeekView.tsx"), // 课表
+  path.join(SCHOOL_DIR, "SessionLearningCheckPanel.tsx"), // 课堂逐题检查项导航（doc 25 §4.3.1）
   path.join(SCHOOL_DIR, "teaching-operations", "VariantMatrix.tsx"), // 版本矩阵（宽表格）
   path.join(STUDIO_DIR, "CoursewarePageEditor.tsx"), // 课件画布工具条
 ]);
@@ -131,7 +133,7 @@ eachLine((file, lineNo, line) => {
   if (!/overflow-x-(auto|scroll)/.test(line)) return;
   if (HORIZONTAL_SCROLL_ALLOWLIST.has(file)) return;
   fail(
-    `${relative(file)}:${lineNo} 新增了未登记的横向滚动容器；§7.2 只允许宽表格/课表/时间轴/课件画布，` +
+    `${relative(file)}:${lineNo} 新增了未登记的横向滚动容器；§7.2 只允许宽表格/课表/时间轴/课件画布/具名分页导航，` +
       `其余情况用 min-w-0 / flex-wrap 解决（表格走 components/ui/table 的统一容器）`,
   );
 });
