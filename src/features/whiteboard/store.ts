@@ -5,17 +5,14 @@ import { createStore, type StoreApi } from "zustand/vanilla";
 import { newId } from "@/lib/uuid";
 import { cloneBoardItem } from "./geometry";
 import {
-  isShapeItem,
   isStrokeItem,
   type BoardItem,
   type BoardOp,
   type ColorToken,
-  type FormulaItem,
   type InstrumentItem,
   type InstrumentKind,
   type ShapeItem,
   type ShapeKind,
-  type StrokeItem,
   type Tool,
 } from "./types";
 
@@ -24,7 +21,6 @@ type UndoEntry =
   | { kind: "erase"; ids: string[] }
   | { kind: "restore"; items: BoardItem[]; indexes: number[] }
   | { kind: "replace"; items: BoardItem[] }
-  | { kind: "group"; removeIds: string[]; restore: BoardItem[]; indexes: number[] };
 
 export type SaveState = "saved" | "saving" | "error";
 
@@ -53,14 +49,11 @@ interface WhiteboardState {
   setShapeKind: (shapeKind: ShapeKind) => void;
   setSelectedIds: (ids: string[]) => void;
   commitItem: (item: BoardItem) => void;
-  commitItems: (items: BoardItem[]) => void;
-  commitFormulaFromInk: (strokes: StrokeItem[], formula: FormulaItem) => void;
   updateItem: (item: BoardItem) => void;
   eraseLine: (id: string) => void;
   removeItems: (ids: string[]) => void;
   duplicateSelected: () => void;
   styleSelected: (style: { color?: ColorToken; fill?: ColorToken | null }) => void;
-  replaceItemsWithFormula: (ids: string[], formula: FormulaItem) => void;
   clear: () => void;
   undo: () => void;
   /** 应用远端 op：不进撤销栈、不置脏（八股见 08-§3.2）。 */
@@ -145,30 +138,6 @@ const stateCreator: StateCreator<WhiteboardState> = (set, get) => ({
     undoStack: [...state.undoStack, { kind: "erase", ids: [item.id] }],
     outbox: [...state.outbox, { t: "commit", item }],
   })),
-  commitItems: (items) => set((state) => items.length === 0 ? state : ({
-    items: [...state.items, ...items],
-    revision: state.revision + 1,
-    selectedIds: [],
-    undoStack: [...state.undoStack, { kind: "erase", ids: items.map((item) => item.id) }],
-    outbox: [...state.outbox, ...items.map((item): BoardOp => ({ t: "commit", item }))],
-  })),
-  commitFormulaFromInk: (strokes, formula) => set((state) => {
-    if (strokes.length === 0) return state;
-    const startIndex = state.items.length;
-    return {
-      items: [...state.items, formula],
-      revision: state.revision + 1,
-      tool: "pointer",
-      selectedIds: [formula.id],
-      undoStack: [...state.undoStack, {
-        kind: "group",
-        removeIds: [formula.id],
-        restore: strokes,
-        indexes: strokes.map((_, index) => startIndex + index),
-      }],
-      outbox: [...state.outbox, { t: "commit", item: formula }],
-    };
-  }),
   updateItem: (item) => set((state) => {
     const index = state.items.findIndex((existing) => existing.id === item.id);
     if (index < 0) return state;
@@ -226,16 +195,11 @@ const stateCreator: StateCreator<WhiteboardState> = (set, get) => ({
         replacements.push(replacement);
         return replacement;
       }
-      if (isShapeItem(item)) {
-        const replacement: ShapeItem = {
-          ...item,
-          ...(style.color ? { color: style.color } : {}),
-          ...(style.fill !== undefined ? { fill: style.fill } : {}),
-        };
-        replacements.push(replacement);
-        return replacement;
-      }
-      const replacement = style.color ? { ...item, color: style.color } : item;
+      const replacement: ShapeItem = {
+        ...item,
+        ...(style.color ? { color: style.color } : {}),
+        ...(style.fill !== undefined ? { fill: style.fill } : {}),
+      };
       replacements.push(replacement);
       return replacement;
     });
@@ -245,30 +209,6 @@ const stateCreator: StateCreator<WhiteboardState> = (set, get) => ({
       revision: state.revision + 1,
       undoStack: [...state.undoStack, { kind: "replace", items: previous }],
       outbox: [...state.outbox, ...replacements.map((item): BoardOp => ({ t: "replace", item }))],
-    };
-  }),
-  replaceItemsWithFormula: (ids, formula) => set((state) => {
-    const idSet = new Set(ids);
-    const restored: BoardItem[] = [];
-    const indexes: number[] = [];
-    state.items.forEach((item, index) => {
-      if (idSet.has(item.id)) {
-        restored.push(item);
-        indexes.push(index);
-      }
-    });
-    if (restored.length === 0) return state;
-    return {
-      items: [...state.items.filter((item) => !idSet.has(item.id)), formula],
-      revision: state.revision + 1,
-      tool: "pointer",
-      selectedIds: [formula.id],
-      undoStack: [...state.undoStack, { kind: "group", removeIds: [formula.id], restore: restored, indexes }],
-      outbox: [
-        ...state.outbox,
-        ...restored.map((item): BoardOp => ({ t: "erase", id: item.id })),
-        { t: "commit", item: formula },
-      ],
     };
   }),
   clear: () => set((state) => state.items.length === 0 ? state : ({
@@ -304,26 +244,12 @@ const stateCreator: StateCreator<WhiteboardState> = (set, get) => ({
         outbox: [...state.outbox, { t: "restore", items: entry.items }],
       };
     }
-    if (entry.kind === "replace") {
-      const previousById = new Map(entry.items.map((item) => [item.id, item]));
-      return {
-        items: state.items.map((item) => previousById.get(item.id) ?? item),
-        revision: state.revision + 1,
-        undoStack,
-        outbox: [...state.outbox, ...entry.items.map((item): BoardOp => ({ t: "replace", item }))],
-      };
-    }
-    const removeIds = new Set(entry.removeIds);
+    const previousById = new Map(entry.items.map((item) => [item.id, item]));
     return {
-      items: restoreAt(state.items.filter((item) => !removeIds.has(item.id)), entry.restore, entry.indexes),
+      items: state.items.map((item) => previousById.get(item.id) ?? item),
       revision: state.revision + 1,
-      selectedIds: [],
       undoStack,
-      outbox: [
-        ...state.outbox,
-        ...entry.removeIds.map((id): BoardOp => ({ t: "erase", id })),
-        { t: "restore", items: entry.restore },
-      ],
+      outbox: [...state.outbox, ...entry.items.map((item): BoardOp => ({ t: "replace", item }))],
     };
   }),
   replaceItems: (items) => set({ items, selectedIds: [] }),

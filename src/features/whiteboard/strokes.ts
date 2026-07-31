@@ -1,14 +1,11 @@
 import { getStroke } from "perfect-freehand";
-import { renderToString } from "katex";
 import { newId } from "@/lib/uuid";
 import { shapePolygonPoints } from "./geometry";
 import {
-  isFormulaItem,
   isShapeItem,
   isStrokeItem,
   type BoardItem,
   type ColorToken,
-  type FormulaItem,
   type ShapeItem,
   type StrokeItem,
 } from "./types";
@@ -66,7 +63,7 @@ export function drawItem(
   ctx.restore();
 }
 
-/** 按序重放笔迹；几何/公式由 SVG 对象层绘制。 */
+/** 按序重放笔迹；几何对象由 SVG 对象层绘制。 */
 export function renderAll(
   ctx: CanvasRenderingContext2D,
   items: BoardItem[],
@@ -171,40 +168,6 @@ function drawShapeCanvas(
   ctx.restore();
 }
 
-function formulaMathMl(latex: string): string {
-  return renderToString(latex, { output: "mathml", throwOnError: false, strict: "ignore" });
-}
-
-async function drawFormulaCanvas(
-  ctx: CanvasRenderingContext2D,
-  item: FormulaItem,
-  canvasWidth: number,
-  canvasHeight: number,
-  colorEl: Element,
-): Promise<void> {
-  const width = Math.max(item.width * canvasWidth, 1);
-  const height = Math.max(item.height * canvasHeight, 1);
-  const color = resolveColor(colorEl, item.color);
-  const math = formulaMathMl(item.latex);
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:${color};font-size:${Math.max(height * 0.55, 12)}px;overflow:hidden">${math}</div></foreignObject></svg>`;
-  const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
-  try {
-    const image = new Image();
-    await new Promise<void>((resolve, reject) => {
-      image.onload = () => resolve();
-      image.onerror = () => reject(new Error("FORMULA_RENDER_FAILED"));
-      image.src = url;
-    });
-    ctx.save();
-    ctx.translate(item.x * canvasWidth, item.y * canvasHeight);
-    ctx.rotate(item.rotation * Math.PI / 180);
-    ctx.drawImage(image, -width / 2, -height / 2, width, height);
-    ctx.restore();
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
-
 const EXPORT_WIDTH = 1920;
 const EXPORT_HEIGHT = 1080;
 
@@ -222,8 +185,6 @@ export async function exportPng(items: BoardItem[], fileName: string, colorEl: E
       drawItem(ctx, item, EXPORT_WIDTH, EXPORT_HEIGHT, item.mode === "erase" ? "#000" : resolveColor(colorEl, item.color));
     } else if (isShapeItem(item)) {
       drawShapeCanvas(ctx, item, EXPORT_WIDTH, EXPORT_HEIGHT, colorEl);
-    } else if (isFormulaItem(item)) {
-      await drawFormulaCanvas(ctx, item, EXPORT_WIDTH, EXPORT_HEIGHT, colorEl);
     }
   }
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));

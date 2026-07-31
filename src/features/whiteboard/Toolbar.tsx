@@ -18,7 +18,6 @@ import {
   Ruler,
   Scissors,
   Shapes,
-  Sigma,
   Square,
   Star,
   Trash2,
@@ -234,7 +233,7 @@ export function Toolbar({
       </div>
 
       <div aria-hidden className="mx-0.5 h-6 w-px shrink-0 bg-line" />
-      <div role="group" data-tool-group="construction" aria-label={`${t("shape")} · ${t("instruments")} · ${t("formula")}`} className="flex shrink-0 items-center gap-0.5 rounded-xl bg-moon/20 p-0.5">
+      <div role="group" data-tool-group="construction" aria-label={`${t("shape")} · ${t("instruments")}`} className="flex shrink-0 items-center gap-0.5 rounded-xl bg-moon/20 p-0.5">
       <Popover>
         <PopoverTrigger asChild>
           <button type="button" aria-label={t("shape")} title={t("shape")} aria-pressed={tool === "shape"} className={cn("grid size-9 shrink-0 place-items-center rounded-full transition-colors", tool === "shape" ? "bg-moon/60 text-ink" : "text-muted hover:bg-moon/30 hover:text-ink")}>
@@ -267,10 +266,6 @@ export function Toolbar({
           </div>
         </PopoverContent>
       </Popover>
-
-      <ToolButton active={tool === "formula"} label={t("formula")} onClick={() => setTool("formula")}>
-        <Sigma size={18} />
-      </ToolButton>
 
       <Popover>
         <PopoverTrigger asChild>

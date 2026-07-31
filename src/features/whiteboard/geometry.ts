@@ -1,5 +1,5 @@
-import type { BoardItem, FormulaItem, ShapeItem, ShapeKind, StrokeItem } from "./types";
-import { isFormulaItem, isShapeItem, isStrokeItem } from "./types";
+import type { BoardItem, ShapeItem, ShapeKind } from "./types";
+import { isShapeItem, isStrokeItem } from "./types";
 
 export interface NormalizedRect {
   x: number;
@@ -126,51 +126,6 @@ function starPoints(points: number): Array<[number, number]> {
   });
 }
 
-export function itemBounds(item: BoardItem): NormalizedRect {
-  if (isStrokeItem(item)) {
-    const xs = item.points.map((point) => point[0]);
-    const ys = item.points.map((point) => point[1]);
-    const pad = Math.max(item.wNorm, 0.003);
-    const x = Math.min(...xs) - pad;
-    const y = Math.min(...ys) - pad;
-    return {
-      x,
-      y,
-      width: Math.max(Math.max(...xs) - Math.min(...xs) + pad * 2, 0.006),
-      height: Math.max(Math.max(...ys) - Math.min(...ys) + pad * 2, 0.006),
-    };
-  }
-  return {
-    x: item.x - item.width / 2,
-    y: item.y - item.height / 2,
-    width: item.width,
-    height: item.height,
-  };
-}
-
-export function boundsForItems(items: BoardItem[]): NormalizedRect | null {
-  if (items.length === 0) return null;
-  const bounds = items.map(itemBounds);
-  const left = Math.min(...bounds.map((rect) => rect.x));
-  const top = Math.min(...bounds.map((rect) => rect.y));
-  const right = Math.max(...bounds.map((rect) => rect.x + rect.width));
-  const bottom = Math.max(...bounds.map((rect) => rect.y + rect.height));
-  return { x: left, y: top, width: right - left, height: bottom - top };
-}
-
-export function rectsIntersect(a: NormalizedRect, b: NormalizedRect): boolean {
-  return a.x <= b.x + b.width
-    && a.x + a.width >= b.x
-    && a.y <= b.y + b.height
-    && a.y + a.height >= b.y;
-}
-
-export function inkStrokesInRect(items: BoardItem[], rect: NormalizedRect): StrokeItem[] {
-  return items.filter((item): item is StrokeItem => (
-    isStrokeItem(item) && item.mode === "ink" && rectsIntersect(itemBounds(item), rect)
-  ));
-}
-
 export function cloneBoardItem(item: BoardItem, id: string, offset = 0.025): BoardItem {
   if (isStrokeItem(item)) {
     return {
@@ -189,7 +144,7 @@ export function translateItem(item: BoardItem, dx: number, dy: number): BoardIte
   return { ...item, x: clamp(item.x + dx), y: clamp(item.y + dy) };
 }
 
-export function resizeObject(item: ShapeItem | FormulaItem, width: number, height: number): ShapeItem | FormulaItem {
+export function resizeObject(item: ShapeItem, width: number, height: number): ShapeItem {
   return {
     ...item,
     width: clamp(Math.abs(width), 0.02, 1.5),
@@ -197,21 +152,10 @@ export function resizeObject(item: ShapeItem | FormulaItem, width: number, heigh
   };
 }
 
-export function objectWithRotation(item: ShapeItem | FormulaItem, rotation: number): ShapeItem | FormulaItem {
+export function objectWithRotation(item: ShapeItem, rotation: number): ShapeItem {
   return { ...item, rotation: normalizeDegrees(rotation) };
 }
 
-export function sanitizeLatex(value: string): string {
-  return value
-    .trim()
-    .replace(/^\$\$?/, "")
-    .replace(/\$\$?$/, "")
-    .replace(/^\\\[/, "")
-    .replace(/\\\]$/, "")
-    .trim()
-    .slice(0, 4000);
-}
-
-export function isEditableObject(item: BoardItem): item is ShapeItem | FormulaItem {
-  return isShapeItem(item) || isFormulaItem(item);
+export function isEditableObject(item: BoardItem): item is ShapeItem {
+  return isShapeItem(item);
 }

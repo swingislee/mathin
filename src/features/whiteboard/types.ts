@@ -2,7 +2,6 @@ export type Tool =
   | "pointer"
   | "pen"
   | "shape"
-  | "formula"
   | "eraserS"
   | "eraserM"
   | "eraserL"
@@ -62,19 +61,7 @@ export interface ShapeItem {
   sweepAngle?: number;
 }
 
-export interface FormulaItem {
-  id: string;
-  kind: "formula";
-  latex: string;
-  color: ColorToken;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  rotation: number;
-}
-
-export type BoardItem = StrokeItem | ShapeItem | FormulaItem;
+export type BoardItem = StrokeItem | ShapeItem;
 
 export const INSTRUMENT_KINDS = ["ruler", "compass", "protractor"] as const;
 export type InstrumentKind = (typeof INSTRUMENT_KINDS)[number];
@@ -98,10 +85,6 @@ export function isStrokeItem(item: BoardItem): item is StrokeItem {
 
 export function isShapeItem(item: BoardItem): item is ShapeItem {
   return "kind" in item && item.kind === "shape";
-}
-
-export function isFormulaItem(item: BoardItem): item is FormulaItem {
-  return "kind" in item && item.kind === "formula";
 }
 
 export interface WhiteboardMeta {

@@ -6,8 +6,6 @@
     "dev": "next dev --hostname 0.0.0.0 --port 3130",
     "build": "next build",
     "start": "next start",
-    "formula:ocr": "node scripts/formula-ocr.mjs serve",
-    "formula:ocr:check": "node scripts/formula-ocr.mjs check",
     "jobs:worker": "node scripts/r1-job-worker.mjs",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",

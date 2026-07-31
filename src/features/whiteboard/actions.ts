@@ -37,18 +37,7 @@ const shapeSchema = z.object({
   startAngle: z.number().min(-3600).max(3600).optional(),
   sweepAngle: z.number().min(-3600).max(3600).optional(),
 });
-const formulaSchema = z.object({
-  id: baseIdSchema,
-  kind: z.literal("formula"),
-  latex: z.string().min(1).max(4000),
-  color: z.enum(COLOR_TOKENS),
-  x: coordinateSchema,
-  y: coordinateSchema,
-  width: sizeSchema,
-  height: sizeSchema,
-  rotation: z.number().min(-3600).max(3600),
-});
-const snapshotSchema = z.array(z.union([strokeSchema, shapeSchema, formulaSchema])).max(4000);
+const snapshotSchema = z.array(z.union([strokeSchema, shapeSchema])).max(4000);
 
 interface WhiteboardRow {
   id: string;

@@ -1,33 +1,14 @@
 "use client";
 
-import { renderToString } from "katex";
 import { Copy, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useStore } from "zustand";
 import { colorVar } from "./strokes";
 import { ellipseArcPath, isEditableObject, resizeObject } from "./geometry";
 import type { WhiteboardStore } from "./store";
-import {
-  isShapeItem,
-  type FormulaItem,
-  type ShapeItem,
-} from "./types";
+import type { ShapeItem } from "./types";
 import { shapePolygonPoints } from "./geometry";
-
-function FormulaContent({ item }: { item: FormulaItem }) {
-  const markup = useMemo(
-    () => renderToString(item.latex, { output: "mathml", throwOnError: false, strict: "ignore" }),
-    [item.latex],
-  );
-  return (
-    <div
-      className="flex size-full items-center justify-center overflow-hidden"
-      style={{ color: colorVar(item.color), fontSize: "clamp(12px, 4cqw, 48px)" }}
-      dangerouslySetInnerHTML={{ __html: markup }}
-    />
-  );
-}
 
 function ShapeGraphic({ item, canvasWidth, canvasHeight }: { item: ShapeItem; canvasWidth: number; canvasHeight: number }) {
   const width = item.width * canvasWidth;
@@ -61,15 +42,8 @@ function ShapeGraphic({ item, canvasWidth, canvasHeight }: { item: ShapeItem; ca
   return <polygon points={points} {...common} />;
 }
 
-function ObjectGraphic({ item, canvasWidth, canvasHeight }: { item: ShapeItem | FormulaItem; canvasWidth: number; canvasHeight: number }) {
-  const width = item.width * canvasWidth;
-  const height = item.height * canvasHeight;
-  if (isShapeItem(item)) return <ShapeGraphic item={item} canvasWidth={canvasWidth} canvasHeight={canvasHeight} />;
-  return (
-    <foreignObject x={-width / 2} y={-height / 2} width={width} height={height} className="pointer-events-none">
-      <FormulaContent item={item} />
-    </foreignObject>
-  );
+function ObjectGraphic({ item, canvasWidth, canvasHeight }: { item: ShapeItem; canvasWidth: number; canvasHeight: number }) {
+  return <ShapeGraphic item={item} canvasWidth={canvasWidth} canvasHeight={canvasHeight} />;
 }
 
 function pointerAngle(event: PointerEvent, centerX: number, centerY: number): number {
@@ -93,14 +67,14 @@ export function BoardObjectLayer({
   const items = useStore(store, (state) => state.items);
   const tool = useStore(store, (state) => state.tool);
   const selectedIds = useStore(store, (state) => state.selectedIds);
-  const [transient, setTransient] = useState<ShapeItem | FormulaItem | null>(null);
-  const selected = items.find((item): item is ShapeItem | FormulaItem => selectedIds.includes(item.id) && isEditableObject(item));
+  const [transient, setTransient] = useState<ShapeItem | null>(null);
+  const selected = items.find((item): item is ShapeItem => selectedIds.includes(item.id) && isEditableObject(item));
   const objects = items.filter(isEditableObject).map((item) => transient?.id === item.id ? transient : item);
   const visibleSelected = transient?.id === selected?.id ? transient : selected;
 
   const beginTransform = (
     event: React.PointerEvent<SVGGElement | SVGCircleElement>,
-    item: ShapeItem | FormulaItem,
+    item: ShapeItem,
     mode: "move" | "resize" | "rotate",
   ) => {
     if (!editable || tool !== "pointer") return;
@@ -113,7 +87,7 @@ export function BoardObjectLayer({
     const centerX = rect.left + item.x * rect.width;
     const centerY = rect.top + item.y * rect.height;
     const initialAngle = pointerAngle(event.nativeEvent, centerX, centerY);
-    let latest: ShapeItem | FormulaItem = item;
+    let latest: ShapeItem = item;
     const move = (pointerEvent: PointerEvent) => {
       if (mode === "move") {
         latest = {
@@ -129,7 +103,7 @@ export function BoardObjectLayer({
         const dy = pointerEvent.clientY - centerY;
         const localX = dx * Math.cos(angle) + dy * Math.sin(angle);
         const localY = -dx * Math.sin(angle) + dy * Math.cos(angle);
-        latest = resizeObject(item, Math.abs(localX * 2 / rect.width), Math.abs(localY * 2 / rect.height)) as ShapeItem | FormulaItem;
+        latest = resizeObject(item, Math.abs(localX * 2 / rect.width), Math.abs(localY * 2 / rect.height));
       }
       setTransient(latest);
     };

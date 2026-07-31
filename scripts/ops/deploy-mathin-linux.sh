@@ -24,17 +24,6 @@ if [[ ! -f "$runtime_env" ]]; then
   exit 1
 fi
 
-formula_ocr_url="$(sed -n 's/^FORMULA_OCR_URL=//p' "$runtime_env" | tail -n 1 | tr -d '\r')"
-if [[ "$formula_ocr_url" != "http://127.0.0.1:8503/pix2text" ]]; then
-  echo "Production FORMULA_OCR_URL must be http://127.0.0.1:8503/pix2text on the Xiaomi host." >&2
-  exit 1
-fi
-if ! curl --noproxy '*' -fsS --max-time 5 http://127.0.0.1:8503/docs >/dev/null; then
-  echo "Formula OCR is unavailable on Xiaomi loopback; deploy it before Mathin." >&2
-  echo "See docs/runbooks/formula-ocr.md." >&2
-  exit 1
-fi
-
 source_root="$(cd "$source_root" && pwd)"
 service_root="$(mkdir -p "$service_root" && cd "$service_root" && pwd)"
 releases_root="$service_root/releases"

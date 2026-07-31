@@ -4,13 +4,10 @@ import {
   cloneBoardItem,
   createShapeFromDrag,
   ellipseArcPath,
-  inkStrokesInRect,
   normalizeDegrees,
-  sanitizeLatex,
   shortestAngleDelta,
 } from "@/features/whiteboard/geometry";
-import { extractPix2TextLatex } from "@/features/whiteboard/formula-service";
-import type { BoardItem, StrokeItem } from "@/features/whiteboard/types";
+import type { StrokeItem } from "@/features/whiteboard/types";
 
 const inkStroke: StrokeItem = {
   id: "stroke-1",
@@ -29,14 +26,6 @@ describe("whiteboard geometry objects", () => {
     expect(line.rotation).toBeCloseTo(36.87, 2);
   });
 
-  it("selects only intersecting ink for formula recognition", () => {
-    const eraser: StrokeItem = { ...inkStroke, id: "eraser", mode: "erase" };
-    const far: StrokeItem = { ...inkStroke, id: "far", points: [[0.8, 0.8], [0.9, 0.9]] };
-    const items: BoardItem[] = [inkStroke, eraser, far];
-
-    expect(inkStrokesInRect(items, { x: 0.15, y: 0.15, width: 0.3, height: 0.3 }).map((item) => item.id)).toEqual(["stroke-1"]);
-  });
-
   it("duplicates strokes without sharing point arrays", () => {
     const copy = cloneBoardItem(inkStroke, "stroke-copy") as StrokeItem;
 
@@ -47,18 +36,10 @@ describe("whiteboard geometry objects", () => {
     expect(copy.points).not.toBe(inkStroke.points);
   });
 
-  it("reads both Pix2Text formula response variants", () => {
-    expect(extractPix2TextLatex({ results: "$$x+1$$" })).toBe("x+1");
-    expect(extractPix2TextLatex({ results: [{ text: "x" }, { text: "+1" }] })).toBe("x +1");
-    expect(extractPix2TextLatex({ results: null })).toBe("");
-  });
-
-  it("normalizes angles and strips common math delimiters", () => {
+  it("normalizes drawing angles", () => {
     expect(normalizeDegrees(-30)).toBe(330);
     expect(shortestAngleDelta(179, -179)).toBe(2);
     expect(shortestAngleDelta(-179, 179)).toBe(-2);
-    expect(sanitizeLatex("  $$x^2+y^2=r^2$$  ")).toBe("x^2+y^2=r^2");
-    expect(sanitizeLatex("\\[\\frac{1}{2}\\]")).toBe("\\frac{1}{2}");
   });
 
   it("renders compass previews and saved full turns with the same segmented arc path", () => {
