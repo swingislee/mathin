@@ -46,6 +46,8 @@ describe("R1-5 family learning contracts", () => {
     expect(parentHome).not.toContain('from("game_leaderboard")');
     expect(parentHome).not.toContain('from("posts")');
     expect(parentHome).not.toContain('pickEligible("parent"');
+    expect(parentHome).toContain("childKeys.every((key) => shownKeys.has(key))");
+    expect(parentHome).toContain("mergeTileLayout(eligible, null");
     expect(tiles).toContain('return [...childKeys, "bindChild"]');
     expect(assignmentPage).toContain("ManagedVideoUploadPanel");
     expect(leavePanel).toContain("submitSessionLeaveRequestAction");

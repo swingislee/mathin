@@ -160,7 +160,11 @@ export async function ParentHome({ locale, user, profile }: HomeProps) {
     ...childKeys.map((key) => ({ key, allowedSizes: childDef.allowedSizes })),
     { key: "bindChild", allowedSizes: bindDef.allowedSizes },
   ];
-  const merged = mergeTileLayout(eligible, userTiles, parentDefaultOrder(childKeys));
+  const savedLayout = mergeTileLayout(eligible, userTiles, parentDefaultOrder(childKeys));
+  const shownKeys = new Set(savedLayout.result.map((entry) => entry.k));
+  const merged = childKeys.every((key) => shownKeys.has(key))
+    ? savedLayout
+    : mergeTileLayout(eligible, null, parentDefaultOrder(childKeys));
   const { items, hidden } = buildTileItems(merged, eligible, labels, contents, extras);
 
   return <TileWorkspace title={customerT("parentTitle")} subtitle={subtitle} items={items} hidden={hidden} />;
