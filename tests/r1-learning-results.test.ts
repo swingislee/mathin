@@ -60,10 +60,20 @@ describe("R1-6 learning result application contracts", () => {
     expect(panel).toContain("decideLearningResultReviewAction");
     expect(panel).toContain("metricVersion");
     expect(panel).toContain("dataCutoffAt");
+    expect(panel).toContain("editorOpen");
+    expect(panel).toContain("StageReportEvidence");
+    expect(panel).toContain("initialReportId");
+    expect(read("src/features/school/StageReportEvidence.tsx")).toContain("learning.reviews.filter");
+    expect(read("src/features/school/StageReportEvidence.tsx")).toContain("learning.submissions.filter");
+    expect(read("src/features/school/StageReportEvidence.tsx")).toContain("learning.videos.filter");
     expect(panel).toContain('decision: "changes_requested"');
     expect(panel).toContain('decision: "publish"');
     expect(studentPage).toContain('kind: "stage_report"');
     expect(studentPage).toContain("canWriteStageReports");
+    expect(studentPage).toContain('activeTab !== "learning"');
+    const studentTabs = read("src/features/school/StudentDetailTabs.tsx");
+    expect(studentTabs).not.toContain('<Section title={t("enrollments")}');
+    expect(studentTabs).not.toContain('<Section title={t("upcomingSessions")}');
   });
 
   it("keeps all new workflow copy bilingual", () => {
@@ -71,6 +81,8 @@ describe("R1-6 learning result application contracts", () => {
     const en = JSON.parse(read("messages/en.json"));
     for (const messages of [zh, en]) {
       expect(messages.school.learningResults.stageReportsTitle).toBeTruthy();
+      expect(messages.school.learningResults.metricVersionMathinLearningReportV1).toBeTruthy();
+      expect(messages.school.learningResults.evidenceTitle).toBeTruthy();
       expect(messages.school.learningResults.status_revised).toBeTruthy();
       expect(messages.school.learningResults.withdrawReason).toBeTruthy();
       expect(messages.school.session.learningResultStatus_withdrawn).toBeTruthy();

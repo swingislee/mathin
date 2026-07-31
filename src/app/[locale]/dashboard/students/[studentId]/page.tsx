@@ -54,7 +54,7 @@ export default async function StudentDetailPage({
   searchParams,
 }: {
   params: Promise<{ locale: string; studentId: string }>;
-  searchParams: Promise<{ tab?: string; returnTo?: string | string[] }>;
+  searchParams: Promise<{ tab?: string; report?: string; returnTo?: string | string[] }>;
 }) {
   const [{ locale, studentId }, rawSearchParams] = await Promise.all([params, searchParams]);
   setRequestLocale(locale);
@@ -140,7 +140,7 @@ export default async function StudentDetailPage({
       }
     >
       <DashboardContentGrid>
-        <DashboardMainColumn className="flex flex-col gap-6">
+        <DashboardMainColumn className={activeTab === "learning" ? "flex flex-col gap-6 @4xl/page:col-span-12" : "flex flex-col gap-6"}>
           {student.deletedAt && (
             <div className="rounded-xl border border-rose/30 bg-rose/5 p-4 text-sm text-rose">
               {t("deletedBanner", { date: new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(student.deletedAt)) })}
@@ -168,6 +168,7 @@ export default async function StudentDetailPage({
               stageReports={stageReports}
               terms={schoolTerms}
               canWriteStageReports={canWriteStageReports}
+              initialReportId={rawSearchParams.report}
             />
           )}
 
@@ -197,12 +198,14 @@ export default async function StudentDetailPage({
           )}
         </DashboardMainColumn>
 
-        <DashboardAside>
-          <StudentSummary student={student} ownerName={student.assignedName || null} />
-          <StudentNextFollowUp student={student} locale={locale} />
-          <StudentCurrentClasses enrollments={learning.enrollments} returnTo={tabHref(activeTab)} />
-          <StudentAccountStatus student={student} learning={learning} />
-        </DashboardAside>
+        {activeTab !== "learning" && (
+          <DashboardAside>
+            <StudentSummary student={student} ownerName={student.assignedName || null} />
+            <StudentNextFollowUp student={student} locale={locale} />
+            <StudentCurrentClasses enrollments={learning.enrollments} returnTo={tabHref(activeTab)} />
+            <StudentAccountStatus student={student} learning={learning} />
+          </DashboardAside>
+        )}
       </DashboardContentGrid>
     </DashboardPage>
   );

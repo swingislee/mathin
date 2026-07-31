@@ -339,7 +339,7 @@ export async function getStudentLearning(studentId: string): Promise<StudentLear
         .select("assignment_id,score,feedback,submitted_at,graded_at,assignments(title)")
         .eq("user_id", userId)
         .order("submitted_at", { ascending: false, nullsFirst: false })
-        .limit(20)
+        .limit(200)
         .returns<SubmissionLearningRow[]>(),
     ]);
     if (eventError) throw new Error(eventError.message);
@@ -355,9 +355,9 @@ export async function getStudentLearning(studentId: string): Promise<StudentLear
     }));
   }
 
-  const {data:reviewRows,error:reviewError}=await supabase.from("session_reviews").select("session_id,entry_score,exit_score,focus,participation,mastery,comment,class_sessions(title,scheduled_at)").eq("student_id",studentId).order("updated_at",{ascending:false}).limit(5).returns<Array<{session_id:string;entry_score:number|null;exit_score:number|null;focus:number|null;participation:number|null;mastery:number|null;comment:string;class_sessions:{title:string;scheduled_at:string}|null}>>();
+  const {data:reviewRows,error:reviewError}=await supabase.from("session_reviews").select("session_id,entry_score,exit_score,focus,participation,mastery,comment,class_sessions(title,scheduled_at)").eq("student_id",studentId).order("updated_at",{ascending:false}).limit(200).returns<Array<{session_id:string;entry_score:number|null;exit_score:number|null;focus:number|null;participation:number|null;mastery:number|null;comment:string;class_sessions:{title:string;scheduled_at:string}|null}>>();
   if(reviewError)throw new Error(reviewError.message);
-  const{data:videoRows,error:videoError}=await supabase.from("session_videos").select("id,session_id,submitted_at,reviewed_at,review_score,review_comment,class_sessions(title)").eq("student_id",studentId).is("deleted_at",null).order("submitted_at",{ascending:false}).limit(20).returns<Array<{id:string;session_id:string;submitted_at:string;reviewed_at:string|null;review_score:number|null;review_comment:string;class_sessions:{title:string}|null}>>();if(videoError)throw new Error(videoError.message);
+  const{data:videoRows,error:videoError}=await supabase.from("session_videos").select("id,session_id,submitted_at,reviewed_at,review_score,review_comment,class_sessions(title)").eq("student_id",studentId).is("deleted_at",null).order("submitted_at",{ascending:false}).limit(200).returns<Array<{id:string;session_id:string;submitted_at:string;reviewed_at:string|null;review_score:number|null;review_comment:string;class_sessions:{title:string}|null}>>();if(videoError)throw new Error(videoError.message);
 
   return {
     hasAccount: Boolean(userId),
