@@ -14,6 +14,7 @@ const availabilityMigration = read("supabase/migrations/20260730010400_r1_family
 const notificationLinksMigration = read("supabase/migrations/20260731000300_r1_family_notification_links.sql");
 const studentIaMigration = read("supabase/migrations/20260731000600_r1_student_information_architecture.sql");
 const taskBoundVideoMigration = read("supabase/migrations/20260731000900_r1_task_bound_video_submissions.sql");
+const studentLearningChecksMigration = read("supabase/migrations/20260731001100_r1_student_learning_check_results.sql");
 
 describe("R1-5 family learning contracts", () => {
   it("lets students and authorized guardians act on the same learning workflow", () => {
@@ -22,6 +23,15 @@ describe("R1-5 family learning contracts", () => {
     expect(migration).toContain("'grades' = any(guardian_row.scope)");
     expect(migration).toContain("create or replace function public.can_upload_student_media");
     expect(migration).toContain("'video' = any(guardian_row.scope)");
+  });
+
+  it("shows students only their own learning checks after the session ends", () => {
+    expect(studentLearningChecksMigration).toContain("create or replace function public.is_student_account");
+    expect(studentLearningChecksMigration).toContain("create or replace function public.get_my_learning_check_results");
+    expect(studentLearningChecksMigration).toContain("session_row.ended_at is not null");
+    expect(studentLearningChecksMigration).toContain("student_row.user_id = auth.uid()");
+    expect(studentLearningChecksMigration).toContain("session_learning_check_results.student_id");
+    expect(studentLearningChecksMigration).not.toContain("public.guardian_can");
   });
 
   it("accepts photographed paper homework through governed private storage", () => {
@@ -206,6 +216,7 @@ describe("R1-5 family learning contracts", () => {
       "get_my_schedule",
       "get_my_attendance",
       "get_my_learning_summary",
+      "get_my_learning_check_results",
       "get_my_account",
       "get_my_pending_assignments",
       "get_my_session_reviews",
@@ -285,6 +296,8 @@ describe("R1-5 family learning contracts", () => {
     expect(boundaryCheck).toContain('client.rpc("get_my_students")');
     expect(boundaryCheck).toContain('client.rpc("get_my_schedule"');
     expect(boundaryCheck).toContain('client.rpc("get_my_session_review_states"');
+    expect(boundaryCheck).toContain('client.rpc("get_my_learning_check_results"');
+    expect(boundaryCheck).toContain("Student one has no ended-session learning check results");
     expect(boundaryCheck).toContain('clients.studentOne.rpc("get_customer_assignment"');
     expect(boundaryCheck).toContain('clients.unboundParent.rpc("get_customer_submission"');
     expect(boundaryCheck).toContain("requireDirectReadRejected");

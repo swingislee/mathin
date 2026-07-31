@@ -22,7 +22,14 @@ declare
   orders_definition text := pg_get_functiondef('public.get_my_orders()'::regprocedure);
   account_definition text := pg_get_functiondef('public.get_my_account()'::regprocedure);
   video_upload_definition text := pg_get_functiondef('public.get_my_video_uploads()'::regprocedure);
+  learning_check_definition text := pg_get_functiondef('public.get_my_learning_check_results(uuid,timestamptz,timestamptz)'::regprocedure);
+  learning_result_policy text;
 begin
+  select policy_row.qual into learning_result_policy
+    from pg_policies policy_row
+   where policy_row.schemaname = 'public'
+     and policy_row.tablename = 'session_learning_check_results'
+     and policy_row.policyname = 'session_learning_results_select_scope';
   if schedule_result not ilike '%student_id uuid%' then
     failures := array_append(failures, 'schedule projection has no student_id');
   end if;
@@ -98,6 +105,15 @@ begin
   end if;
   if video_upload_definition not ilike '%uploaded_by = auth.uid()%' then
     failures := array_append(failures, 'video upload history is not caller-scoped');
+  end if;
+  if learning_check_definition not ilike '%student_row.user_id = auth.uid()%'
+     or learning_check_definition not ilike '%session_row.ended_at is not null%'
+     or learning_check_definition ilike '%guardian_can%' then
+    failures := array_append(failures, 'student learning-check projection has the wrong visibility boundary');
+  end if;
+  if learning_result_policy not ilike '%is_student_account%'
+     or learning_result_policy not ilike '%ended_at is not null%' then
+    failures := array_append(failures, 'learning-check result RLS does not allow ended-session self reads');
   end if;
   if cardinality(failures) > 0 then
     raise exception 'R1-5 family portal structure assertions failed: %', array_to_string(failures, ', ');
@@ -274,6 +290,10 @@ begin
      where session_id = current_setting('test.family_session_id', true)::uuid
        and availability_state = 'pending'
   ) then raise exception 'R1_DRAFT_REVIEW_STATE_WAS_NOT_PENDING'; end if;
+  if exists (
+    select 1
+      from public.get_my_learning_check_results(null, '2000-01-01'::timestamptz, '2100-01-01'::timestamptz)
+  ) then raise exception 'R1_PARENT_RECEIVED_STUDENT_ONLY_LEARNING_CHECKS'; end if;
   if exists (
     select 1
       from public.get_family_session_brief(current_setting('test.foreign_session_id', true)::uuid)

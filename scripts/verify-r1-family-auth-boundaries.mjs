@@ -92,6 +92,11 @@ async function readProjectionSnapshot(client, allowedIds, label) {
     ["schedule", client.rpc("get_my_schedule", { p_from: from, p_to: to }), "student_id"],
     ["attendance", client.rpc("get_my_attendance", { p_from: from, p_to: to }), "student_id"],
     ["learningSummary", client.rpc("get_my_learning_summary"), "student_id"],
+    ["learningChecks", client.rpc("get_my_learning_check_results", {
+      p_classroom_id: null,
+      p_from: from,
+      p_to: to,
+    }), "student_id"],
     ["pendingAssignments", client.rpc("get_my_pending_assignments"), "student_id"],
     ["sessionReviews", client.rpc("get_my_session_reviews", { p_from: from, p_to: to }), "student_id"],
     ["sessionReviewStates", client.rpc("get_my_session_review_states", { p_from: from, p_to: to }), "student_id"],
@@ -180,6 +185,22 @@ try {
     throw new Error("Each fixed student account must resolve exactly one student profile");
   }
   if (projectionRows.parent.students !== 2) throw new Error("The fixed parent must resolve exactly two child profiles");
+  if (projectionRows.studentOne.learningChecks === 0) {
+    throw new Error("Student one has no ended-session learning check results");
+  }
+  if (projectionRows.parent.learningChecks !== 0) {
+    throw new Error("The parent received student-only raw learning check results");
+  }
+  const ownDirectLearningChecks = await requireRows(
+    await clients.studentOne
+      .from("session_learning_check_results")
+      .select("check_id,student_id")
+      .eq("student_id", studentOne.id),
+    "studentOne.ownLearningCheckResults",
+  );
+  if (ownDirectLearningChecks.length !== projectionRows.studentOne.learningChecks) {
+    throw new Error("Student self-read RLS disagrees with the ended-session learning-check projection");
+  }
   if (Object.values(projectionRows.unboundParent).some((count) => count !== 0)) {
     throw new Error("The unbound parent received family projection rows");
   }
@@ -207,6 +228,10 @@ try {
     requireDirectReadRejected(clients.studentOne.from("student_guardians").select("student_id").eq("student_id", studentTwo.id), "studentOne.guardians"),
     requireDirectReadRejected(clients.studentOne.from("submissions").select("id").eq("user_id", users.studentTwo.id), "studentOne.submissions"),
     requireDirectReadRejected(clients.studentOne.from("session_reviews").select("student_id").eq("student_id", studentTwo.id), "studentOne.reviews"),
+    requireDirectReadRejected(
+      clients.studentOne.from("session_learning_check_results").select("student_id").eq("student_id", studentTwo.id),
+      "studentOne.learningCheckResults",
+    ),
     requireDirectReadRejected(clients.unboundParent.from("students").select("id").eq("id", studentOne.id), "unboundParent.students"),
     requireDirectReadRejected(clients.unboundParent.from("submissions").select("id").eq("user_id", users.studentOne.id), "unboundParent.submissions"),
   ]);
