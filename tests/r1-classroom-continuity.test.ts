@@ -16,6 +16,7 @@ const learningCheckMarkFixMigration = read("supabase/migrations/20260730000700_r
 const prepArtifactMigration = read("supabase/migrations/20260730000300_r1_session_preparation_artifacts.sql");
 const prepReviewMigration = read("supabase/migrations/20260730000500_r1_session_preparation_review.sql");
 const prepUnlockMigration = read("supabase/migrations/20260731000500_r1_preparation_archive_unlock.sql");
+const prepUnlockNarrowingMigration = read("supabase/migrations/20260731000800_r1_narrow_preparation_archive_unlock.sql");
 
 describe("R1 classroom continuity contracts", () => {
   it("bridges active enrollments and claimed student accounts into live classroom membership", () => {
@@ -53,7 +54,7 @@ describe("R1 classroom continuity contracts", () => {
     expect(prep).toContain("canViewPrepArchive");
     expect(prep).toContain("prepArchiveFrozenTitle");
     expect(prep).toContain("detail.courseware.map((page) => ({ page }))");
-    expect(prep).toContain("readOnly={prepReadOnly}");
+    expect(prep).toContain("readOnly={preparationWorkflowReadOnly}");
     expect(prep).not.toContain('t("overlayFrozen")');
     expect(prepFlow).toContain("readOnly?: boolean");
     expect(prepFlow).toContain('t("prepArchiveReadOnly")');
@@ -62,21 +63,33 @@ describe("R1 classroom continuity contracts", () => {
     expect(classes).toContain("courseware_frozen_at,courseware,courseware_overlay");
   });
 
-  it("temporarily unlocks preparation records without mutating frozen courseware structure", () => {
+  it("temporarily amends the current session snapshot and post-class archive without mutating the formal release", () => {
     const prep = read("src/features/school/SessionPrepPanel.tsx");
     const overlayEditor = read("src/features/school/CoursewareOverlayEditor.tsx");
+    const coursewareAction = read("src/features/school/actions/courseware.ts");
     expect(prep).toContain('isFeatureEnabled("teaching.preparation_archive_edit")');
     expect(prep).toContain("canEditPreparationArchive");
-    expect(prep).toContain("structureReadOnly={!canEditCoursewareStructure}");
+    expect(prep).toContain("canAmendSessionArchive");
+    expect(prep).toContain("readOnly={preparationWorkflowReadOnly}");
+    expect(prep).toContain("learningChecksLocked={!canAmendSessionArchive}");
+    expect(prep).toContain("readOnly={!canAmendSessionArchive}");
+    expect(prep).toContain("structureReadOnly={!canEditSessionCourseware}");
+    expect(prep).not.toContain("openCoursewareWorkspace");
     expect(overlayEditor).toContain("structureReadOnly = readOnly");
     expect(overlayEditor).toContain("prepArchiveUnlockedCoursewareHint");
-    expect(prepUnlockMigration).toContain("guard_locked_session_preparation_artifact");
+    expect(coursewareAction).toContain('rpc("amend_session_courseware_snapshot"');
     expect(prepUnlockMigration).toContain("replace_session_learning_checks");
     expect(prepUnlockMigration).toContain("save_courseware_annotation");
-    expect(prepUnlockMigration).toContain("save_session_lesson_plan");
-    expect(prepUnlockMigration).toContain("set_session_preparation_reviewer");
-    expect(prepUnlockMigration).toContain("withdraw_session_lesson_plan");
     expect(prepUnlockMigration).toContain("and not public.is_feature_enabled('teaching.preparation_archive_edit')");
+    expect(prepUnlockNarrowingMigration).toContain("guard_locked_session_preparation_artifact");
+    expect(prepUnlockNarrowingMigration).toContain("save_session_lesson_plan");
+    expect(prepUnlockNarrowingMigration).toContain("set_session_preparation_reviewer");
+    expect(prepUnlockNarrowingMigration).toContain("withdraw_session_lesson_plan");
+    expect(prepUnlockNarrowingMigration).toContain("amend_session_courseware_snapshot");
+    expect(prepUnlockNarrowingMigration).toContain("courseware = p_courseware");
+    expect(prepUnlockNarrowingMigration).toContain("session.courseware.snapshot.amended");
+    expect(prepUnlockNarrowingMigration).not.toContain("replace_session_learning_checks");
+    expect(prepUnlockNarrowingMigration).not.toContain("save_courseware_annotation");
   });
 
   it("binds learning-check defaults to published courseware page identity instead of reusable title templates", () => {

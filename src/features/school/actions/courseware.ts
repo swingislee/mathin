@@ -36,8 +36,17 @@ export async function saveCoursewareOverlay(sessionId: string, overlay: OverlayS
     .maybeSingle<{ lecture_id: string | null; courseware_frozen_at: string | null }>();
   if (sessionError) throw new Error(sessionError.message);
   if (!session) throw new Error("NOT_FOUND");
-  if (session.courseware_frozen_at) throw new Error("ALREADY_FROZEN");
   if (!session.lecture_id) throw new Error("NO_LECTURE");
+  if (session.courseware_frozen_at) {
+    const frozenPages = shapeCheck.data.flatMap((slot) => ("page" in slot ? [slot.page] : []));
+    if (frozenPages.length !== shapeCheck.data.length) throw new Error("INVALID_FROZEN_COURSEWARE");
+    const { error } = await supabase.rpc("amend_session_courseware_snapshot", {
+      p_session_id: id,
+      p_courseware: frozenPages,
+    });
+    if (error) throw new Error(error.message);
+    return;
+  }
 
   const { data: lecture, error: lectureError } = await supabase
     .from("course_lectures")

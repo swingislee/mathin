@@ -543,7 +543,7 @@ template_version:
 - 复用白板 `CanvasSurface` 保存归一化 Vector Stroke，按稳定 `page_doc_id` 绑定并生成统一解析记录；
 - 上传解析继续保留，并投影到 `solution_records(solution_source='upload')`；迁移补投影旧上传记录，非解析字段保存不增加其 revision；
 - 复用 `session_preparation_reviews`、通知和备课完成门；审核决定同步结构化教案状态；
-- 组织设置新增默认关闭的 `teaching.preparation_archive_edit` 开关。管理员临时开启后，任课教师可补改冻结/已开课课次的生产材料、板书解析、结构化教案、审校人与本课逐题检查；课件页结构、冻结快照和正式 release 始终不可变，关闭开关即恢复只读。
+- 组织设置新增默认关闭的 `teaching.preparation_archive_edit` 开关。管理员临时开启后，任课教师可补改当前课次快照与档案：重排页面，增删白板、视频和图片，补勾本课逐生检查页，补写板书并重新生成/导出解析，修订包含课后反思的结构化教案，以及替换或删除磨课百度网盘链接。保存后重新进入教室读取新版课次快照；正式 release、正式页面文档与课次审校人始终不变，关闭开关即恢复只读。
 - 审核页直接渲染只读 BlockNote 教案和 Vector 解析。
 
 当前未实现：

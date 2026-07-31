@@ -304,24 +304,36 @@ export function SessionPreparationFlow({
             </div>
             <ReviewStatus review={reviews.rehearsal_video} present={Boolean(rehearsalVideoUrl)} />
           </header>
-          <label className="mt-3 grid gap-1 text-xs text-muted">
+          <div className="mt-3 grid gap-1 text-xs text-muted">
             <span className="flex items-center gap-1"><Link2 size={13} />{t("rehearsalVideoLinkTitle")}</span>
-            <Input
-              type="url"
-              value={rehearsalVideoUrl}
-              readOnly={readOnly}
-              onChange={(event) => setRehearsalVideoUrl(event.target.value)}
-              onBlur={() => {
-                if (readOnly) return;
-                const value = rehearsalVideoUrl.trim();
-                if (value && !value.startsWith("https://")) { toast.error(t("invalidRehearsalVideoLink")); return; }
-                const changed = value !== initial.rehearsalVideoUrl;
-                persist({ ...latest.current, rehearsalVideoUrl: value }, value && changed ? "rehearsal_video" : undefined);
-              }}
-              maxLength={1000}
-              placeholder="https://pan.baidu.com/..."
-            />
-          </label>
+            <span className="flex min-w-0 gap-2">
+              <Input
+                aria-label={t("rehearsalVideoLinkTitle")}
+                type="url"
+                value={rehearsalVideoUrl}
+                readOnly={readOnly}
+                onChange={(event) => setRehearsalVideoUrl(event.target.value)}
+                onBlur={() => {
+                  if (readOnly) return;
+                  const value = rehearsalVideoUrl.trim();
+                  if (value && !value.startsWith("https://")) { toast.error(t("invalidRehearsalVideoLink")); return; }
+                  const changed = value !== initial.rehearsalVideoUrl;
+                  persist({ ...latest.current, rehearsalVideoUrl: value }, value && changed ? "rehearsal_video" : undefined);
+                }}
+                maxLength={1000}
+                placeholder="https://pan.baidu.com/..."
+              />
+              {!readOnly && rehearsalVideoUrl ? (
+                <Button type="button" size="sm" variant="ghost" className="shrink-0 text-rose" onClick={() => {
+                  setRehearsalVideoUrl("");
+                  persist({ ...latest.current, rehearsalVideoUrl: "" });
+                }}>
+                  <Trash2 size={13} />
+                  {t("removeRehearsalVideoLink")}
+                </Button>
+              ) : null}
+            </span>
+          </div>
           {reviews.rehearsal_video?.status === "changes_requested" && reviews.rehearsal_video.reviewNote ? <p className="mt-2 text-xs text-rose">{reviews.rehearsal_video.reviewNote}</p> : null}
         </article>
       </TabsContent>

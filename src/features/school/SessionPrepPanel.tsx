@@ -1,10 +1,7 @@
 import { getSessionAssetUrls, getSessionH5BindingUrls, getSessionPageDocs } from "@/features/classroom/courseware/session-assets";
-import { ArrowUpRight, LockKeyhole, LockKeyholeOpen } from "lucide-react";
+import { LockKeyhole, LockKeyholeOpen } from "lucide-react";
 import { getTranslations } from "next-intl/server";
-import { buttonVariants } from "@/components/ui/button";
 import { DashboardEmptyCard } from "@/features/school/dashboard-page";
-import { Link } from "@/i18n/navigation";
-import { cn } from "@/lib/utils";
 import type { SessionWorkspaceDetail } from "./classes";
 import { getLectureCoursewareTemplate } from "./courses";
 import { CoursewareOverlayEditor } from "./CoursewareOverlayEditor";
@@ -32,8 +29,9 @@ export async function SessionPrepPanel({ detail }: { detail: SessionWorkspaceDet
       && lockedPreparationEditingEnabled
       && detail.capabilities.canEditPreparationArchive,
   );
-  const canEditPrepArchive = Boolean(detail.capabilities.canPrepare || prepArchiveUnlocked);
-  const prepReadOnly = !canEditPrepArchive;
+  const regularPreparationEditing = Boolean(detail.capabilities.canPrepare && !detail.coursewareFrozenAt);
+  const canAmendSessionArchive = Boolean(regularPreparationEditing || prepArchiveUnlocked);
+  const preparationWorkflowReadOnly = !canAmendSessionArchive;
 
   const [template, learningSetup, coursewareLearningCheckPages, sessionDocs, sessionAssets, prepArtifacts, teacherPreparation] = await Promise.all([
     detail.lectureId && !detail.coursewareFrozenAt ? getLectureCoursewareTemplate(detail.lectureId) : Promise.resolve([]),
@@ -66,7 +64,7 @@ export async function SessionPrepPanel({ detail }: { detail: SessionWorkspaceDet
     pageNo: pageDoc.pageNo,
     title: titleByPageDocId.get(pageDoc.pageDocId) ?? t("learningCheckPageOption", { no: pageDoc.pageNo, title: t("learningCheckUntitledPage") }),
   }));
-  const canEditCoursewareStructure = Boolean(detail.capabilities.canPrepare && !detail.coursewareFrozenAt && detail.lectureId);
+  const canEditSessionCourseware = Boolean(detail.lectureId && canAmendSessionArchive);
 
   if (!detail.lectureId) {
     return <DashboardEmptyCard>{t("stageEmpty")}</DashboardEmptyCard>;
@@ -89,13 +87,6 @@ export async function SessionPrepPanel({ detail }: { detail: SessionWorkspaceDet
                 {t(prepArchiveUnlocked ? "prepArchiveUnlockedBody" : "prepArchiveFrozenBody")}
               </p>
             </div>
-            <Link
-              href={`/dashboard/courseware/lectures/${detail.lectureId}?track=${detail.coursewareTrack}`}
-              className={cn(buttonVariants({ size: "sm", variant: "ghost" }), "shrink-0 gap-1.5")}
-            >
-              {t("openCoursewareWorkspace")}
-              <ArrowUpRight size={14} aria-hidden />
-            </Link>
           </section>
         ) : null}
 
@@ -119,10 +110,10 @@ export async function SessionPrepPanel({ detail }: { detail: SessionWorkspaceDet
                   lessonPlan={teacherPreparation.lessonPlan}
                   pageNotes={teacherPreparation.pageNotes}
                   pages={lessonPlanReferencePages}
-                  readOnly={prepReadOnly}
+                  readOnly={preparationWorkflowReadOnly}
                 />
               )}
-              readOnly={prepReadOnly}
+              readOnly={preparationWorkflowReadOnly}
             />
           ) : null}
 
@@ -166,10 +157,10 @@ export async function SessionPrepPanel({ detail }: { detail: SessionWorkspaceDet
               solutionRecords={teacherPreparation.solutionRecords}
               learningCheckPages={coursewareLearningCheckPages}
               initialLearningChecks={learningSetup?.checks ?? []}
-              learningChecksLocked={prepReadOnly}
+              learningChecksLocked={!canAmendSessionArchive}
               learningChecksConfigured={learningSetup?.configured ?? false}
-              readOnly={prepReadOnly}
-              structureReadOnly={!canEditCoursewareStructure}
+              readOnly={!canAmendSessionArchive}
+              structureReadOnly={!canEditSessionCourseware}
             />
           ) : null}
         </section>
