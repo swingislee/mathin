@@ -15,6 +15,7 @@ import {
   type InstrumentKind,
   type ShapeItem,
   type ShapeKind,
+  type StrokeItem,
   type Tool,
 } from "./types";
 
@@ -52,6 +53,8 @@ interface WhiteboardState {
   setShapeKind: (shapeKind: ShapeKind) => void;
   setSelectedIds: (ids: string[]) => void;
   commitItem: (item: BoardItem) => void;
+  commitItems: (items: BoardItem[]) => void;
+  commitFormulaFromInk: (strokes: StrokeItem[], formula: FormulaItem) => void;
   updateItem: (item: BoardItem) => void;
   eraseLine: (id: string) => void;
   removeItems: (ids: string[]) => void;
@@ -142,6 +145,30 @@ const stateCreator: StateCreator<WhiteboardState> = (set, get) => ({
     undoStack: [...state.undoStack, { kind: "erase", ids: [item.id] }],
     outbox: [...state.outbox, { t: "commit", item }],
   })),
+  commitItems: (items) => set((state) => items.length === 0 ? state : ({
+    items: [...state.items, ...items],
+    revision: state.revision + 1,
+    selectedIds: [],
+    undoStack: [...state.undoStack, { kind: "erase", ids: items.map((item) => item.id) }],
+    outbox: [...state.outbox, ...items.map((item): BoardOp => ({ t: "commit", item }))],
+  })),
+  commitFormulaFromInk: (strokes, formula) => set((state) => {
+    if (strokes.length === 0) return state;
+    const startIndex = state.items.length;
+    return {
+      items: [...state.items, formula],
+      revision: state.revision + 1,
+      tool: "pointer",
+      selectedIds: [formula.id],
+      undoStack: [...state.undoStack, {
+        kind: "group",
+        removeIds: [formula.id],
+        restore: strokes,
+        indexes: strokes.map((_, index) => startIndex + index),
+      }],
+      outbox: [...state.outbox, { t: "commit", item: formula }],
+    };
+  }),
   updateItem: (item) => set((state) => {
     const index = state.items.findIndex((existing) => existing.id === item.id);
     if (index < 0) return state;

@@ -5,9 +5,10 @@ import { useTranslations } from "next-intl";
 import { useStore } from "zustand";
 import { boardBus, type BoardBus } from "./bus";
 import { BoardObjectLayer } from "./BoardObjectLayer";
+import { fitFormulaPadBounds, FormulaInkPad, type FormulaPadBounds } from "./FormulaInkPad";
 import { FormulaRecognitionDialog, type FormulaRecognitionState } from "./FormulaRecognitionDialog";
 import { createFormulaRecognitionImage, recognizeFormula } from "./formula-recognition";
-import { createShapeFromDrag, inkStrokesInRect, rectFromPoints, sanitizeLatex } from "./geometry";
+import { createShapeFromDrag, rectFromPoints, sanitizeLatex } from "./geometry";
 import { InstrumentLayer } from "./InstrumentLayer";
 import { colorVar, drawItem, hitStrokeId, newStrokeId, renderAll, resolveColor } from "./strokes";
 import { useWhiteboardStore, type WhiteboardStore } from "./store";
@@ -26,8 +27,12 @@ interface RemoteCursor {
 }
 
 interface FormulaSelection {
-  ids: string[];
-  bounds: { x: number; y: number; width: number; height: number };
+  bounds: FormulaPadBounds;
+}
+
+interface FormulaPadState {
+  bounds: FormulaPadBounds;
+  strokes: StrokeItem[];
 }
 
 /** 双层笔迹画布 + SVG 对象/尺规层。所有持久内容继续使用 0–1 归一化坐标。 */
@@ -56,16 +61,19 @@ export function CanvasSurface({
   const strokeRef = useRef<StrokeItem | null>(null);
   const remotePendingRef = useRef<Map<string, StrokeItem>>(new Map());
   const formulaSelectionRef = useRef<FormulaSelection | null>(null);
+  const formulaInkPreviewUrlRef = useRef<string | null>(null);
   const formulaRequestRef = useRef(0);
   const [cursor, setCursor] = useState<[number, number] | null>(null);
   const [canvasSize, setCanvasSize] = useState({ width: 1, height: 1 });
   const [remoteCursors, setRemoteCursors] = useState<Record<string, RemoteCursor>>({});
   const [shapePreview, setShapePreview] = useState<ShapeItem | null>(null);
   const [marquee, setMarquee] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+  const [formulaPad, setFormulaPad] = useState<FormulaPadState | null>(null);
   const [formulaOpen, setFormulaOpen] = useState(false);
   const [formulaState, setFormulaState] = useState<FormulaRecognitionState>("idle");
   const [formulaLatex, setFormulaLatex] = useState("");
   const [formulaError, setFormulaError] = useState<string | null>(null);
+  const [formulaInkPreviewUrl, setFormulaInkPreviewUrl] = useState<string | null>(null);
 
   const items = useStore(store, (state) => state.items);
   const tool = useStore(store, (state) => state.tool);
@@ -74,6 +82,20 @@ export function CanvasSurface({
   const sizeNorm = useStore(store, (state) => state.sizeNorm);
   const shapeKind = useStore(store, (state) => state.shapeKind);
   const selectedIds = useStore(store, (state) => state.selectedIds);
+
+  const updateFormulaInkPreview = useCallback((next: string | null) => {
+    const previous = formulaInkPreviewUrlRef.current;
+    if (previous && previous !== next) URL.revokeObjectURL(previous);
+    formulaInkPreviewUrlRef.current = next;
+    setFormulaInkPreviewUrl(next);
+  }, []);
+
+  useEffect(() => () => {
+    if (formulaInkPreviewUrlRef.current) {
+      URL.revokeObjectURL(formulaInkPreviewUrlRef.current);
+      formulaInkPreviewUrlRef.current = null;
+    }
+  }, []);
 
   const redrawBase = useCallback(() => {
     const base = baseRef.current;
@@ -189,10 +211,11 @@ export function CanvasSurface({
     return () => window.removeEventListener("keydown", onKey);
   }, [editable, selectedIds.length, store]);
 
+  const formulaPadActive = formulaPad !== null;
   useEffect(() => {
     const draft = draftRef.current;
     const base = baseRef.current;
-    if (!draft || !base || !editable || tool === "pointer") return;
+    if (!draft || !base || !editable || tool === "pointer" || formulaPadActive) return;
     const baseCtx = base.getContext("2d");
     if (!baseCtx) return;
     const actions = store.getState();
@@ -300,28 +323,10 @@ export function CanvasSurface({
         gestureEnd = null;
         setMarquee(null);
         if (!selectionRect || selectionRect.width < 0.006 || selectionRect.height < 0.006) return;
-        const strokes = inkStrokesInRect(store.getState().items, selectionRect);
-        if (strokes.length === 0) return;
-        const requestId = ++formulaRequestRef.current;
-        setFormulaOpen(true);
-        setFormulaState("recognizing");
-        setFormulaLatex("");
-        setFormulaError(null);
-        try {
-          const image = await createFormulaRecognitionImage(strokes, dimsRef.current.h / dimsRef.current.w);
-          if (formulaRequestRef.current !== requestId) return;
-          formulaSelectionRef.current = { ids: strokes.map((stroke) => stroke.id), bounds: image.bounds };
-          const latex = sanitizeLatex(await recognizeFormula(image.blob));
-          if (formulaRequestRef.current !== requestId) return;
-          setFormulaLatex(latex);
-          setFormulaState("ready");
-        } catch (error) {
-          if (formulaRequestRef.current !== requestId) return;
-          formulaSelectionRef.current = { ids: strokes.map((stroke) => stroke.id), bounds: selectionRect };
-          const code = error instanceof Error ? error.message : "RECOGNITION_FAILED";
-          setFormulaError(code === "FORMULA_SERVICE_UNAVAILABLE" ? t("formulaServiceUnavailable") : t("formulaFailed"));
-          setFormulaState("error");
-        }
+        setFormulaPad({
+          bounds: fitFormulaPadBounds(selectionRect, dimsRef.current.w, dimsRef.current.h),
+          strokes: [],
+        });
         return;
       }
       const stroke = strokeRef.current;
@@ -344,35 +349,85 @@ export function CanvasSurface({
       window.removeEventListener("pointerup", finish);
       window.removeEventListener("pointercancel", finish);
     };
-  }, [editable, tool, color, fill, sizeNorm, shapeKind, redrawDraft, store, bus, basisW, t]);
+  }, [editable, tool, color, fill, sizeNorm, shapeKind, redrawDraft, store, bus, basisW, formulaPadActive]);
 
-  const interactive = editable && tool !== "pointer";
+  const interactive = editable && tool !== "pointer" && !formulaPadActive;
   const cursorStyle = !interactive ? "default" : tool.startsWith("eraser") ? "none" : tool === "formula" ? "cell" : "crosshair";
   const eraserSize = (ERASER_NORM[tool] ?? 0) * (strokeWidthBasis && strokeWidthBasis > 0 ? strokeWidthBasis : canvasSize.width);
 
-  const cancelFormula = () => {
+  const closeFormulaReview = () => {
     formulaRequestRef.current += 1;
     setFormulaOpen(false);
     setFormulaState("idle");
     setFormulaLatex("");
     setFormulaError(null);
+    updateFormulaInkPreview(null);
     formulaSelectionRef.current = null;
   };
+
+  const recognizeFormulaPad = async () => {
+    const pad = formulaPad;
+    if (!pad || pad.strokes.length === 0) return;
+    const requestId = ++formulaRequestRef.current;
+    setFormulaOpen(true);
+    setFormulaState("recognizing");
+    setFormulaLatex("");
+    setFormulaError(null);
+    updateFormulaInkPreview(null);
+    try {
+      const image = await createFormulaRecognitionImage(pad.strokes, dimsRef.current.h / dimsRef.current.w);
+      if (formulaRequestRef.current !== requestId) return;
+      formulaSelectionRef.current = { bounds: image.bounds };
+      updateFormulaInkPreview(URL.createObjectURL(image.blob));
+      const latex = sanitizeLatex(await recognizeFormula(image.blob));
+      if (formulaRequestRef.current !== requestId) return;
+      setFormulaLatex(latex);
+      setFormulaState("ready");
+    } catch (error) {
+      if (formulaRequestRef.current !== requestId) return;
+      formulaSelectionRef.current = { bounds: pad.bounds };
+      const code = error instanceof Error ? error.message : "RECOGNITION_FAILED";
+      setFormulaError(code === "FORMULA_SERVICE_UNAVAILABLE" ? t("formulaServiceUnavailable") : t("formulaFailed"));
+      setFormulaState("error");
+    }
+  };
+
   const confirmFormula = () => {
     const selection = formulaSelectionRef.current;
+    const pad = formulaPad;
     const latex = sanitizeLatex(formulaLatex);
-    if (!selection || !latex) return;
+    if (!selection || !pad || pad.strokes.length === 0 || !latex) return;
     const bounds = selection.bounds;
     const formula: FormulaItem = {
-      id: newStrokeId(), kind: "formula", latex, color,
+      id: newStrokeId(), kind: "formula", latex, color: pad.strokes[0]?.color ?? color,
       x: bounds.x + bounds.width / 2,
       y: bounds.y + bounds.height / 2,
       width: Math.max(bounds.width, 0.12),
       height: Math.max(bounds.height * 1.35, 0.06),
       rotation: 0,
     };
-    store.getState().replaceItemsWithFormula(selection.ids, formula);
-    cancelFormula();
+    store.getState().commitFormulaFromInk(pad.strokes, formula);
+    setFormulaPad(null);
+    closeFormulaReview();
+  };
+
+  const keepFormulaInk = () => {
+    if (!formulaPad || formulaPad.strokes.length === 0) return;
+    store.getState().commitItems(formulaPad.strokes);
+    setFormulaPad(null);
+    closeFormulaReview();
+  };
+
+  const discardFormulaPad = () => {
+    setFormulaPad(null);
+    closeFormulaReview();
+  };
+
+  const updateFormulaPadStrokes = (updater: (strokes: StrokeItem[]) => StrokeItem[]) => {
+    setFormulaPad((current) => current ? {
+      ...current,
+      strokes: updater(current.strokes),
+    } : current);
   };
 
   return (
@@ -385,6 +440,28 @@ export function CanvasSurface({
         style={{ pointerEvents: interactive ? "auto" : "none", cursor: cursorStyle }}
       />
       <InstrumentLayer store={store} editable={editable} width={canvasSize.width} height={canvasSize.height} />
+      {editable && tool === "formula" && !formulaPad && !formulaOpen ? (
+        <p className="pointer-events-none absolute left-1/2 top-3 z-30 -translate-x-1/2 rounded-full border border-line bg-paper/90 px-3 py-1.5 text-xs text-muted shadow-sm">
+          {t("formulaSelectAreaHint")}
+        </p>
+      ) : null}
+      {formulaPad ? (
+        <FormulaInkPad
+          bounds={formulaPad.bounds}
+          canvasWidth={canvasSize.width}
+          strokeWidthBasis={strokeWidthBasis}
+          color={color}
+          sizeNorm={sizeNorm}
+          strokes={formulaPad.strokes}
+          disabled={formulaOpen}
+          onAppend={(stroke) => updateFormulaPadStrokes((strokes) => [...strokes, stroke])}
+          onUndo={() => updateFormulaPadStrokes((strokes) => strokes.slice(0, -1))}
+          onClear={() => updateFormulaPadStrokes(() => [])}
+          onRecognize={recognizeFormulaPad}
+          onKeepInk={keepFormulaInk}
+          onDiscard={discardFormulaPad}
+        />
+      ) : null}
       {marquee ? (
         <div
           aria-hidden
@@ -407,8 +484,9 @@ export function CanvasSurface({
           state={formulaState}
           latex={formulaLatex}
           error={formulaError}
+          inkPreviewUrl={formulaInkPreviewUrl}
           onLatexChange={setFormulaLatex}
-          onCancel={cancelFormula}
+          onCancel={closeFormulaReview}
           onConfirm={confirmFormula}
         />
       </div>
