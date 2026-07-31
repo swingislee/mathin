@@ -220,21 +220,22 @@ R1-1 以 `20260728000100_r1_organization_settings.sql` 与 `20260728000200_r1_pu
 | 课程页面文档 | revision/binding、native 16:9、adapted 4:3、review 分层 | 研发读取可编辑状态；课堂不读取草稿 |
 | 课程 release | 发布前检查对象可读、binding、snapshot 和并发版本；发布后不可变 | track head 指向当前 release；legacy 字段指向 native release |
 
-报告保存指标版本、数据截止时间、机构时区和生成数据集。发布/撤回/修订提交领域事务后创建幂等通知 job；通知失败不回滚已发布事实。
+报告保存指标版本、数据截止时间、机构时区和生成数据集。教师在学生学情页选择日期范围，右栏查看范围内的已上课课评、作业记录和视频讲解，左栏新建或打开报告；未选择报告时不常驻空编辑器。稳定指标 ID 在界面显示本地化名称。发布/撤回/修订提交领域事务后创建幂等通知 job；通知失败不回滚已发布事实。
 
 R1-6 以现有业务表作为编辑来源，以统一发布头和不可变 revision 作为学生/家庭读取边界：
 
 | 成果类型 | 编辑来源 | 发布单元 |
 | --- | --- | --- |
-| 课堂记录与逐生评价 | `class_sessions`、`session_family_briefs`、`session_reviews` | 每个课次、学生一份 `session_result`，revision 同时固定课堂公共摘要和该生评价 |
+| 知识总结 | `session_family_briefs` 的 BlockNote JSON 文档 | 每个课次、学生一份 `knowledge_summary` 投递；可从版本化模板新建或复制历史总结，保存不依赖逐生课评 |
+| 逐生课评 | `session_reviews` | 每个课次、学生一份 `session_review`；保存和发布不依赖知识总结 |
 | 视频复盘 | `session_videos` 的审阅字段 | 每个已审视频一份 `video_review`，未审视频不能发布 |
 | 阶段报告 | R1-6 新增的报告草稿 | 每个学生、学期和报告周期一份 `stage_report` |
 
 `learning_result_heads` 保存成果类型、学生、来源对象、当前状态、当前 revision、已发布 revision 和各状态操作者/时间；`learning_result_revisions` 按 `(head_id, revision_no)` 追加内容快照，已创建行不得更新或删除。编辑已发布来源后，头进入 `revised` 并立即退出学生/家庭 published 投影；原 revision 继续保留，重新发布创建下一 revision。人工撤回进入 `withdrawn`，保存撤回原因并立即退出投影。
 
-`draft` 可保存但不可对外读取；需要复核的成果经 `review` 后发布，退回恢复 `draft`；无需复核的成果可由具备发布权限的教师直接从 `draft` 或 `revised` 发布。每次状态变化追加领域事件，事件 payload 固定 head、revision、成果类型和学生；面向学生及有效监护人的发布、撤回和修订事件使用稳定幂等键进入既有通知与 job 管线。
+`draft` 可自动保存但不可对外读取；知识总结、逐生课评和阶段报告编辑器以修订号处理并发，提交/发布前必须冲刷待保存内容。需要复核的成果经 `review` 后发布，退回恢复 `draft`；无需复核的成果可由具备发布权限的教师直接从 `draft` 或 `revised` 发布。每次状态变化追加领域事件，事件 payload 固定 head、revision、成果类型、学生和可读标题。提交审核通知可处理该成果的员工，退回通知作者；面向学生及有效监护人的发布、撤回和修订事件使用稳定幂等键进入既有通知与 job 管线。每条站内通知提供能打开对应教师工作区或学生/家庭成果区的 deep link。
 
-阶段报告 revision 必须保存 `metric_version`、`data_cutoff_at`、`timezone`、周期起止和生成数据集快照。时区取报告所属学期校区的时区，校区未覆盖时回退机构时区；发布后不得按最新源数据重新计算历史 revision。
+阶段报告 revision 必须保存 `metric_version`、`data_cutoff_at`、`timezone`、周期起止和生成数据集快照。时区取报告所属学期校区的时区，校区未覆盖时回退机构时区；发布后不得按最新源数据重新计算历史 revision。学生和家庭成果区分别展示已发布的知识总结、逐生课评、视频复盘和阶段报告；草稿、撤回或已被源数据修订的成果不可见。学生班级入口使用当前 Dashboard 学习工作区，旧班级展示路由仅保留兼容跳转。
 
 资源记录来源/许可、hash、MIME、尺寸、轨道和生命周期。公开页面不引用临时或私有 URL。英文内容与中文共用实体 ID，分别保存翻译状态。
 
