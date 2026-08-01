@@ -977,6 +977,8 @@
       "flag_public_content_publish": "Public content publishing",
       "flag_teaching_preparation_archive_edit": "Amend session courseware and archive",
       "flagHelp_finance_enabled": "Controls orders, payments, refunds, accounts, reports, and finance work items.",
+      "financeReleaseClosed": "Finance release gate locked for 1.0",
+      "financeReleaseClosedHelp": "R1-8 uses the safe-close path. Routes, navigation, data, work items, notifications, metrics, and background jobs stay unavailable; a later reviewed migration must open the release gate after the full accounting gates pass.",
       "flagHelp_notifications_email": "Allows notification jobs to choose email; the provider is configured in R1-2.",
       "flagHelp_notifications_sms": "Allows notification jobs to choose SMS; the provider is configured in R1-2.",
       "flagHelp_notifications_wechat": "Allows notification jobs to choose WeChat; the provider is configured in R1-2.",

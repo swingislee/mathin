@@ -167,28 +167,20 @@ select (
   select 1 / 0;
 \endif
 
-select id as finance_off_id from public.feature_flag_versions
- where flag_key = 'finance.enabled' and campus_id is null order by version desc limit 1 \gset
-select public.set_feature_flag('finance.enabled', null, true, now(), 'CI enable finance') as finance_on_id \gset
-select (public.is_feature_enabled('finance.enabled') and public.has_perm(auth.uid(), 'finance.order.view')) as r1_finance_enabled_ok \gset
-\if :r1_finance_enabled_ok
-\else
-  \echo R1-1 finance enable assertion failed
-  select 1 / 0;
-\endif
-
-select public.rollback_feature_flag(:'finance_off_id'::uuid, now(), 'CI rollback finance') as finance_rollback_id \gset
-select (
-  not public.is_feature_enabled('finance.enabled')
-  and not public.has_perm(auth.uid(), 'finance.order.view')
-  and (select version = 3 and not enabled from public.feature_flag_versions where id = :'finance_rollback_id'::uuid)
-) as r1_finance_rollback_ok \gset
-\if :r1_finance_rollback_ok
-\else
-  \echo R1-1 finance rollback/fail-closed assertion failed
-  select 1 / 0;
-\endif
-
+do $$
+begin
+  begin
+    perform public.set_feature_flag('finance.enabled', null, true, now(), 'CI forbidden finance enable');
+    raise exception 'R1_FINANCE_ENABLE_WAS_ACCEPTED';
+  exception when others then
+    if SQLERRM <> 'FINANCE_RELEASE_CLOSED' then raise; end if;
+  end;
+  if public.is_feature_enabled('finance.enabled')
+     or public.has_perm(auth.uid(), 'finance.order.view') then
+    raise exception 'R1_FINANCE_RELEASE_GATE_FAILED';
+  end if;
+end
+$$;
 select public.create_campus('ci-campus', 'CI Campus', 'Asia/Shanghai') as ci_campus_id \gset
 select public.create_campus_room(:'ci_campus_id'::uuid, 'R101', 'Room 101', 30) as ci_room_id \gset
 select public.create_school_holiday(:'ci_campus_id'::uuid, 'CI Holiday', 'closed', current_date, current_date) as ci_holiday_id \gset

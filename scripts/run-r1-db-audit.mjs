@@ -19,6 +19,7 @@ const files = [
   "r1_export_artifacts_assertions.sql",
   "doc26_teacher_workflow_assertions.sql",
   "r1_work_items_assertions.sql",
+  "r1_finance_close_assertions.sql",
 ].map((name) => path.join(process.cwd(), "supabase", "tests", name));
 
 for (const file of files) {

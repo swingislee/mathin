@@ -6,9 +6,9 @@
   "projectId": "example-production-project",
   "databaseId": "example-production-database",
   "migration": {
-    "head": "20260801000900_r1_export_artifacts",
-    "digest": "85403bb8bafc9b620b3dd85a5611a6e3a5eb1e8f1492591451ac0dc5dcae0f1c",
-    "fileCount": 155
+    "head": "20260801001000_r1_finance_safe_close",
+    "digest": "fdc9b97e22302500dbea546345247c557c9f788d2bb8e0ec5a4d592450609a23",
+    "fileCount": 156
   },
   "platform": {
     "source": "supabase/ci/00_platform_bootstrap.sql",

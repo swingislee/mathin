@@ -977,6 +977,8 @@
       "flag_public_content_publish": "公开内容发布",
       "flag_teaching_preparation_archive_edit": "课中/课后补改本课课件与档案",
       "flagHelp_finance_enabled": "控制订单、收款、退款、账户、报表和财务工作项。",
+      "financeReleaseClosed": "1.0 财务发布门已锁定关闭",
+      "financeReleaseClosedHelp": "R1-8 采用安全关闭方案。路由、导航、数据、任务、通知、指标和后台任务均不可启用；未来完成完整账务验收后，需通过新迁移显式打开发布门。",
       "flagHelp_notifications_email": "允许通知任务选择邮件渠道；供应商仍需在 R1-2 配置。",
       "flagHelp_notifications_sms": "允许通知任务选择短信渠道；供应商仍需在 R1-2 配置。",
       "flagHelp_notifications_wechat": "允许通知任务选择微信渠道；供应商仍需在 R1-2 配置。",
