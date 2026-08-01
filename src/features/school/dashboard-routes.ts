@@ -420,11 +420,11 @@ export const DASHBOARD_ROUTES = {
     nav: { labelKey: "operations", group: "system" },
   },
   dataMaintenance: {
-    // 跨资源维护工具：测试数据清理、零引用素材、课程产品/班级清理与级联影响（§5.26）。
+    // R1-7：audit.view 可运行只读质量扫描；永久清理仍由页面内 testdata.purge 单独裁剪。
     href: "/dashboard/data-maintenance",
     kind: "tool",
     environments: STAFF_ONLY,
-    permission: "testdata.purge",
+    permission: "audit.view",
     createSurface: "none",
     nav: { labelKey: "testdata", group: "system" },
   },

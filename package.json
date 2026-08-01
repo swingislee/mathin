@@ -15,7 +15,7 @@
     "p6:db-audit": "node scripts/run-p6-db-audit.mjs",
     "p4h:db-audit": "node scripts/run-p4h-db-audit.mjs",
     "r1:db-audit": "node scripts/run-r1-db-audit.mjs",
-    "r1:test": "vitest run tests/r1-organization-settings.test.ts tests/r1-platform-runtime.test.ts tests/r1-account-security.test.ts tests/r1-work-items.test.ts tests/r1-family-learning.test.ts tests/r1-learning-results.test.ts tests/r1-data-governance.test.ts tests/r1-initialization-manifest.test.ts tests/r1-classroom-continuity.test.ts tests/doc26-teacher-workflow.test.ts tests/client-uuid.test.ts",
+    "r1:test": "vitest run tests/r1-organization-settings.test.ts tests/r1-platform-runtime.test.ts tests/r1-account-security.test.ts tests/r1-work-items.test.ts tests/r1-family-learning.test.ts tests/r1-learning-results.test.ts tests/r1-data-governance.test.ts tests/r1-data-quality.test.ts tests/r1-initialization-manifest.test.ts tests/r1-classroom-continuity.test.ts tests/doc26-teacher-workflow.test.ts tests/client-uuid.test.ts",
     "doc26:test": "vitest run tests/doc26-teacher-workflow.test.ts",
     "r1:admin-manifest:check": "node scripts/verify-production-admin-manifest.mjs",
     "r1:init-plan": "node scripts/plan-r1-initialization.mjs",

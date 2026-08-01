@@ -270,6 +270,8 @@ R1-7 不建立可任意写表的通用维护入口；初始化、导入、质量
 R1-7A 的 dry-run 也写批次审计，但原始行最多保留 30 天；错误 CSV 在浏览器按当前批次生成，不进入公开 Storage。批次只保存规范化输入、行状态、目标 ID 和标准错误码，不保存账号凭据、token 或文件二进制。正式初始化和破坏性清理仍分别受 R1-15/R1-18 环境与人工批准限制。
 R1-7B 的期望状态入口是 `docs/manifests/r1-initialization.example.json`，结构由 `schemas/r1-initialization-manifest.schema.json` 固定，`pnpm r1:init-plan` 只输出可复现计划，不连接数据库、不写表。manifest 只允许课程 `productCode`、配置 `domain/flagKey` 等自然键，UUID 必须由目标数据库生成；课程源文件、配置源迁移、CI 平台垫片和独立管理员 manifest 均固定 LF 归一化 SHA-256。可选 inventory 在 preflight 必须为 0 行，在 post-apply 必须与 72 个课程、865 讲、6 个规则域和 5 个 fail-closed flag 对账；再次执行时任一自然键对应 ID 或数量变化都停止。CI 平台垫片只用于空库重建验证，禁止作为生产平台初始化脚本。
 
+R1-7C 的规则集入口是 `mathin-data-quality-v1`。`data_quality_rule_versions` 按规则集、规则键和版本保持不可变且规则集内唯一；`data_quality_runs`/`data_quality_findings` 保存快照时间、严重度、对象、最小证据、规则/结果 SHA-256，直接写权限关闭。`run_data_quality_scan()` 在同一语句快照内检测在读报名关联已删除学生、学生手机号重复、非法课次状态、订单金额/状态不平和课件对象缺少 Storage 文件；手机号证据只保存对象 ID 与规范化键 hash。`/dashboard/data-maintenance` 对 `audit.view` 开放历史扫描与最多 200 条发现，触发新扫描另需 `system.operations.manage`；零引用报告和永久清理继续按 `courseware.asset.manage`/`testdata.purge` 裁剪。数据库断言覆盖重复扫描稳定、五类命中、规则不可变、无通知噪音和学生负向边界；扫描不自动修复，发现项进入 R1-7D。
+
 ### 4.6 合规、帮助与安全事件
 
 - 隐私、条款和监护同意保存版本、主体、时间、来源与撤回。需要同意的功能在记录缺失时 fail-closed。
