@@ -1,15 +1,17 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { CoursewareZeroReferenceReport } from "@/features/school/CoursewareZeroReferenceReport";
 import { DataQualityPanel } from "@/features/school/DataQualityPanel";
+import { DataRepairPanel } from "@/features/school/DataRepairPanel";
 import { PurgeConfirmDialog } from "@/features/school/PurgeConfirmDialog";
 import { purgeTestClassroomAction, purgeTestCourseFamilyAction } from "@/features/school/actions/testdata";
 import { getLatestDataQualityRun } from "@/features/school/data-quality";
+import { listDataRepairCapabilities, listDataRepairPlans } from "@/features/school/data-repair";
 import { DashboardCard, DashboardPage } from "@/features/school/dashboard-page";
 import { listPurgeableClassrooms, listPurgeableCourseFamilies, listZeroReferenceAssets } from "@/features/school/testdata";
 import { getMyPerms, requirePerm } from "@/lib/auth";
 
-// R1-7：审计员可运行只读质量扫描；零引用报告与永久清理继续按各自权限裁剪。
-// 页面把检测和维护放在同一入口，但扫描不会自动修复或删除业务数据。
+// R1-7：audit.view 可读取质量与修复账本；扫描/修复、零引用报告和永久清理继续按各自权限裁剪。
+// 页面把检测和维护放在同一入口；修复只经显式预览计划执行，扫描本身不会自动改写业务数据。
 export default async function DataMaintenancePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
@@ -19,9 +21,11 @@ export default async function DataMaintenancePage({ params }: { params: Promise<
   const canPurge = perms.has("testdata.purge");
   const canViewAssets = canPurge || perms.has("courseware.asset.manage");
 
-  const [t, latestQualityRun, zeroReferenceAssets, purgeableFamilies, purgeableClassrooms] = await Promise.all([
+  const [t, latestQualityRun, repairCapabilities, repairPlans, zeroReferenceAssets, purgeableFamilies, purgeableClassrooms] = await Promise.all([
     getTranslations("school.testdata"),
     getLatestDataQualityRun(),
+    listDataRepairCapabilities(),
+    listDataRepairPlans(),
     canViewAssets ? listZeroReferenceAssets() : Promise.resolve([]),
     canPurge ? listPurgeableCourseFamilies() : Promise.resolve([]),
     canPurge ? listPurgeableClassrooms() : Promise.resolve([]),
@@ -43,6 +47,12 @@ export default async function DataMaintenancePage({ params }: { params: Promise<
     >
       <div className="grid gap-6">
         <DataQualityPanel initialRun={latestQualityRun} canRun={canRunQualityScan} />
+        <DataRepairPanel
+          latestRun={latestQualityRun}
+          initialCapabilities={repairCapabilities}
+          initialPlans={repairPlans}
+          canManage={canRunQualityScan}
+        />
 
         {canViewAssets ? <CoursewareZeroReferenceReport assets={zeroReferenceAssets} /> : null}
 

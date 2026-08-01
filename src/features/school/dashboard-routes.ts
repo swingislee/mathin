@@ -420,7 +420,7 @@ export const DASHBOARD_ROUTES = {
     nav: { labelKey: "operations", group: "system" },
   },
   dataMaintenance: {
-    // R1-7：audit.view 可运行只读质量扫描；永久清理仍由页面内 testdata.purge 单独裁剪。
+    // R1-7：audit.view 可读取扫描/修复账本；扫描和修复另需 system.operations.manage，永久清理另需 testdata.purge。
     href: "/dashboard/data-maintenance",
     kind: "tool",
     environments: STAFF_ONLY,
