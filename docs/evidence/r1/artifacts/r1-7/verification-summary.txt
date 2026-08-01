@@ -1,13 +1,15 @@
 R1-7 verification summary
 date: 2026-08-01
 implementation_commit: a6159f144c3da2ee168704a2949e5acf7cc04def
+ci_fix_commit: 7ba9cb8bd83dbf5aa5b94713979edd44a1849c86
 migration_head: 20260801000900_r1_export_artifacts
 migration_text_sha256: 18e69f7b547598452d09586841f7157635c2233473cbb43d9c59f943cc601ec8
 database_types_text_sha256: 85403bb8bafc9b620b3dd85a5611a6e3a5eb1e8f1492591451ac0dc5dcae0f1c
 empty_rebuild: pass (158 replay inputs; 155 repository migrations)
 r1_database_assertions: pass (11/11)
-r1_contract_tests: pass (14 files; 92/92 tests)
+r1_contract_tests: pass (14 files; 93/93 tests)
 ci_checks: pass (14/14)
+remote_ci: pass (GitHub Actions run 30682780479; database replay and audits, checks, and supply-chain jobs)
 production_build: pass (314/314 pages)
 message_parity: pass (3707 keys x 2 locales)
 browser_user_rights_journey: pass (request, identity verification, approval, generation, subject download, audited count 0 to 1)
