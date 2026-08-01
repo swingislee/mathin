@@ -114,7 +114,7 @@ command_or_runbook, artifact_url_or_path, artifact_hash, failure_ticket
 | 学生门户 | M3 | M4 | R1-5 已完成本人课务/考勤/请假补课/作业/视频/成果/逐题学情/通知、草稿隔离、跨学生拒绝与 zh/en 开发环境旅程；M4 仍需 R1-14 正式 Playwright、R1-16 独立生产、R1-17 RC 与 R1-18 发布证据 | 5/14/16/17/18 |
 | 家庭门户 | M3 | M4 | R1-5 已完成稳定学生 ID 多子女切换、未绑定/待审核/撤回/财务关闭、关系撤销、请假补课、成果通知、跨家庭拒绝与 zh/en 开发环境旅程；M4 仍需 R1-14 正式 Playwright、R1-16 独立生产、R1-17 RC 与 R1-18 发布证据 | 5/14/16/17/18 |
 | 教学成果/报告 | M3 | M4 | R1-6 已完成独立成果生命周期、三类草稿自动保存、阶段报告证据工作台、审核通知和学生/家庭读取；M4 仍需 R1-14/16/17/18 环境与运营证据 | 6/14/16/17/18 |
-| 初始化/导入/质量/导出 | M1 | M4 | dry-run、幂等、错误报告、恢复点 | 7 |
+| 初始化/导入/质量/导出 | M3 | M4 | R1-7 已完成 dry-run/幂等导入、可复现初始化、版本化质量扫描、带恢复点的领域修复、字段白名单导出/过期/审计及开发环境旅程；M4 仍需 R1-14/15/16/18 的正式 E2E、隔离演练和生产证据 | 7/14/15/16/18 |
 | 财务 | M2 | M4 或安全关闭 | 对账、异常、正式报表、启用决定 | 8 |
 | Terms | M2 | M4 | 图谱、内容、搜索、SEO、跨链全验 | 9 |
 | 公共内容发布 | M1～M2 | M4 | 统一状态机、资源、稳定关系、本地化状态 | 9～11 |
@@ -261,18 +261,20 @@ R1-7 不建立可任意写表的通用维护入口；初始化、导入、质量
 
 | 子阶段 | 现有输入 | R1-7 产物 | 退出条件 |
 | --- | --- | --- | --- |
-| R1-7A 学生 CSV 导入 | `/dashboard/students/import`、`import_students(jsonb)` | `mathin-students-v1` 模板；服务端 dry-run；逐行错误/重复；批次账本；错误 CSV；幂等应用 | dry-run 与 apply 共用校验；存在错误时写入 0；同 key 同 payload 返回同批次，不同 payload 冲突；重复执行新增 0 |
-| R1-7B 初始化 manifest | migration/CI bootstrap、课程 seed、生产管理员 manifest | 版本化 reference/config manifest schema、校验器和只读计划 | 干净库计划可重放；不复制开发 UUID；实际 ID 和数量差异使流程停止 |
-| R1-7C 数据质量 | CI SQL 断言、零引用课件报告 | 持久 run/finding；孤儿、重复主体、非法状态、金额不平和缺失内容对象规则 | 同一快照重复扫描结果稳定；规则带版本、严重度、对象和证据；查询服从权限边界 |
+| R1-7A 学生 CSV 导入（已完成） | `/dashboard/students/import`、`import_students(jsonb)` | `mathin-students-v1` 模板；服务端 dry-run；逐行错误/重复；批次账本；错误 CSV；幂等应用 | dry-run 与 apply 共用校验；存在错误时写入 0；同 key 同 payload 返回同批次，不同 payload 冲突；重复执行新增 0 |
+| R1-7B 初始化 manifest（已完成） | migration/CI bootstrap、课程 seed、生产管理员 manifest | 版本化 reference/config manifest schema、校验器和只读计划 | 干净库计划可重放；不复制开发 UUID；实际 ID 和数量差异使流程停止 |
+| R1-7C 数据质量（已完成） | CI SQL 断言、零引用课件报告 | 持久 run/finding；孤儿、重复主体、非法状态、金额不平和缺失内容对象规则 | 同一快照重复扫描结果稳定；规则带版本、严重度、对象和证据；查询服从权限边界 |
 | R1-7D 修复（已完成） | 学生合并、课件 replacement rollback、测试数据清理 | 领域修复计划、影响计数、恢复点、执行/回滚审计 | 先预览后执行；目标集合 hash 不变才允许写；失败不留半成品；可恢复动作实际回滚 |
-| R1-7E 导出 | 用户权利请求流程、教案/解析导出 | 用户权利 artifact 与运营导出分流；字段裁剪、hash、下载审计和自动过期 | 跨角色/跨学生负向查询拒绝；过期 artifact 不可下载；导出不暴露内部备注和非必要未成年人资料 |
+| R1-7E 导出（已完成） | 用户权利请求流程、教案/解析导出 | 用户权利 artifact 与运营导出分流；字段裁剪、hash、下载审计和自动过期 | 跨角色/跨学生负向查询拒绝；过期 artifact 不可下载；导出不暴露内部备注和非必要未成年人资料 |
 
 R1-7A 的 dry-run 也写批次审计，但原始行最多保留 30 天；错误 CSV 在浏览器按当前批次生成，不进入公开 Storage。批次只保存规范化输入、行状态、目标 ID 和标准错误码，不保存账号凭据、token 或文件二进制。正式初始化和破坏性清理仍分别受 R1-15/R1-18 环境与人工批准限制。
 R1-7B 的期望状态入口是 `docs/manifests/r1-initialization.example.json`，结构由 `schemas/r1-initialization-manifest.schema.json` 固定，`pnpm r1:init-plan` 只输出可复现计划，不连接数据库、不写表。manifest 只允许课程 `productCode`、配置 `domain/flagKey` 等自然键，UUID 必须由目标数据库生成；课程源文件、配置源迁移、CI 平台垫片和独立管理员 manifest 均固定 LF 归一化 SHA-256。可选 inventory 在 preflight 必须为 0 行，在 post-apply 必须与 72 个课程、865 讲、6 个规则域和 5 个 fail-closed flag 对账；再次执行时任一自然键对应 ID 或数量变化都停止。CI 平台垫片只用于空库重建验证，禁止作为生产平台初始化脚本。
 
 R1-7C 的规则集入口是 `mathin-data-quality-v1`。`data_quality_rule_versions` 按规则集、规则键和版本保持不可变且规则集内唯一；`data_quality_runs`/`data_quality_findings` 保存快照时间、严重度、对象、最小证据、规则/结果 SHA-256，直接写权限关闭。`run_data_quality_scan()` 在同一语句快照内检测在读报名关联已删除学生、学生手机号重复、非法课次状态、订单金额/状态不平和课件对象缺少 Storage 文件；手机号证据只保存对象 ID 与规范化键 hash。`/dashboard/data-maintenance` 对 `audit.view` 开放历史扫描与最多 200 条发现，触发新扫描另需 `system.operations.manage`；零引用报告和永久清理继续按 `courseware.asset.manage`/`testdata.purge` 裁剪。数据库断言覆盖重复扫描稳定、五类命中、规则不可变、无通知噪音和学生负向边界；扫描不自动修复，发现项由 R1-7D 的显式领域计划接收。
 
-R1-7D 以 `data_repair_capability_versions` 登记订单状态重算、学生合并、课件 replacement 回滚和测试数据清理四类能力，并明确 `automatic_rollback`、`domain_rollback` 或 `backup_required` 恢复边界；仅订单派生状态重算进入计划调度，未建立任意表写入口。`data_repair_plans` 在预览时保存影响计数、24 小时执行期限、执行前/预期执行后 SHA-256 与恢复快照；执行和回滚重新锁定订单、复算目标 hash、校验后置条件，并分别写入不可变 `data_repair_events` 与非通知型领域事件。金额字段不匹配时计划拒绝生成，学生合并和永久清理继续要求外部备份，课件替换继续使用既有领域账本。`/dashboard/data-maintenance` 对 `audit.view` 开放能力与计划历史，预览/执行/回滚另需 `system.operations.manage`。开发库固定 principal 浏览器旅程已实际执行、回滚并再次执行同一订单状态修复；最终质量复扫为 0 条异常，中英文界面和学生负向边界通过。当前进入 R1-7E 导出。
+R1-7D 以 `data_repair_capability_versions` 登记订单状态重算、学生合并、课件 replacement 回滚和测试数据清理四类能力，并明确 `automatic_rollback`、`domain_rollback` 或 `backup_required` 恢复边界；仅订单派生状态重算进入计划调度，未建立任意表写入口。`data_repair_plans` 在预览时保存影响计数、24 小时执行期限、执行前/预期执行后 SHA-256 与恢复快照；执行和回滚重新锁定订单、复算目标 hash、校验后置条件，并分别写入不可变 `data_repair_events` 与非通知型领域事件。金额字段不匹配时计划拒绝生成，学生合并和永久清理继续要求外部备份，课件替换继续使用既有领域账本。`/dashboard/data-maintenance` 对 `audit.view` 开放能力与计划历史，预览/执行/回滚另需 `system.operations.manage`。开发库固定 principal 浏览器旅程已实际执行、回滚并再次执行同一订单状态修复；最终质量复扫为 0 条异常，中英文界面和学生负向边界通过。
+
+R1-7E 以 `user_rights_export_artifacts` 保存与请求绑定的精确 JSON 字节、SHA-256、字段 manifest 和 7 天到期时间；支持人员只能查看元数据，正文仅由主体通过审计 RPC 下载，过期后拒绝并由受控清理 RPC 擦除。学生可导出本人账号、同意、权利请求及所选范围内的本人报名、考勤、提交和已发布学习成果；家长只导出家庭关系，不携带孩子联系方式、生日或学习明细；staff/admin 只导出本人岗位。板书解析 WebP 属于即时运营导出，在浏览器触发下载前记录同一 Blob 的 hash、字节数、资源和操作者，不创建用户权利 artifact。开发库固定 student→principal→student 与 teacher 浏览器旅程、跨主体/过期/家长字段/未授权运营导出负向断言、155 个迁移空库重放和 14/14 CI 已通过。R1-7 整体关闭，当前进入 R1-8；这些开发证据不替代 R1-15/16/18 的隔离与生产验收。
 
 ### 4.6 合规、帮助与安全事件
 
