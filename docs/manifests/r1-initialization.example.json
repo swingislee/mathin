@@ -12,7 +12,7 @@
   },
   "platform": {
     "source": "supabase/ci/00_platform_bootstrap.sql",
-    "sourceSha256": "76b73a95b07d53e324e2887dad5681782e881e5c853eb63f62882b0f01a0061c",
+    "sourceSha256": "f7df9909486485e7a2c692b9cffb0b54d7c6e83685e963818e7a402cb085b857",
     "scope": "ci-verification-only"
   },
   "referenceData": {

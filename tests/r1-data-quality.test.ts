@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 const root = process.cwd();
 const read = (file: string) => fs.readFileSync(path.join(root, file), "utf8");
 const migration = read("supabase/migrations/20260801000700_r1_data_quality_runs.sql");
+const platformBootstrap = read("supabase/ci/00_platform_bootstrap.sql");
 
 describe("R1-7C data quality contracts", () => {
   it("persists an immutable, versioned and RLS-protected quality ledger", () => {
@@ -32,6 +33,12 @@ describe("R1-7C data quality contracts", () => {
     expect(migration).toContain("extensions.digest");
     expect(migration).toContain("normalizedKeyHash");
     expect(migration).not.toContain("'phone', phone_group.normalized_phone");
+  });
+
+  it("reproduces the Supabase pgcrypto schema in standard PostgreSQL CI", () => {
+    expect(platformBootstrap).toContain("create schema if not exists extensions");
+    expect(platformBootstrap).toContain("create extension if not exists pgcrypto with schema extensions");
+    expect(platformBootstrap).toContain("alter database %I set search_path = public, extensions");
   });
 
   it("exposes the scan through the audit-scoped bilingual maintenance UI", () => {

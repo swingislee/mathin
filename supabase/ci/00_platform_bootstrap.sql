@@ -17,6 +17,21 @@ begin
   if not exists (select 1 from pg_roles where rolname = 'service_role') then create role service_role nologin noinherit bypassrls; end if;
 end $$;
 
+-- Supabase installs pgcrypto in `extensions` and includes that schema in the
+-- database search path. Standard postgres:15 does neither, so reproduce both
+-- facts before replaying migrations in their separate psql sessions.
+create schema if not exists extensions;
+create extension if not exists pgcrypto with schema extensions;
+grant usage on schema extensions to anon, authenticated, service_role;
+set search_path = public, extensions;
+do $$
+begin
+  execute format(
+    'alter database %I set search_path = public, extensions',
+    current_database()
+  );
+end $$;
+
 grant usage on schema public to anon, authenticated, service_role;
 
 -- Supabase 的默认授权：public 下新建对象自动授予三个角色。RLS 断言里
