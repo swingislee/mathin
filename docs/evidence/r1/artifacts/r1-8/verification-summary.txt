@@ -1,0 +1,32 @@
+R1-8 finance safe-close verification summary
+Date: 2026-08-01 Asia/Shanghai
+Implementation commit: 9b77c31aa80c450501ca88ac2ea363ce2b45279f
+Migration head: 20260801001000_r1_finance_safe_close
+Migration normalized-text checksum: 720b5d2f4c10224cb5d9ce8b4dafd287bfb6bf5b91eb0f7190c7656892907807
+Migration-set digest: fdc9b97e22302500dbea546345247c557c9f788d2bb8e0ec5a4d592450609a23
+
+Database verification
+- Clean PostgreSQL 15 replay passed: platform bootstrap, 156 migrations, pre-family seed, and CI fixtures (159 files total).
+- All 12 R1 SQL assertion files passed in the disposable database and rolled back their fixtures.
+- The migration was applied to the self-hosted development Supabase as supabase_admin and registered in schema_migrations.
+- The R1-8 development assertion passed and rolled back. The migration found zero legacy finance jobs requiring cancellation.
+- The disposable container mathin-r1-8-db was removed after verification.
+
+Application verification
+- pnpm ci:checks passed 14/14.
+- Next.js 16.2.11 production build passed with 314/314 pages generated.
+- R1 Vitest contract passed: 15 files, 98/98 tests.
+- zh/en message parity passed: 3709 keys in each locale.
+- Generated database types match the 156-migration digest; SSH Meta generation is restricted to the public schema.
+
+Safe-close invariants
+- Route and navigation: finance remains feature-gated; teacher and admin browser navigation exposed no finance entry.
+- Configuration: the 1.0 finance release gate is immutable false; enabling the feature flag raises FINANCE_RELEASE_CLOSED; zh/en settings UI disables finance version creation and rollback.
+- Data and metrics: nine finance tables have a restrictive select gate; order/student scope helpers also require the closed feature; unified work summaries receive only the filtered work-item stream.
+- Work items and approvals: new finance coordination records are rejected; historical finance records remain stored but are filtered from actionable lists.
+- Notifications: finance events remain auditable, but staging and authenticated reads suppress finance notifications and deliveries.
+- Jobs: new finance jobs are rejected; queued legacy finance jobs are cancelled before claims and their reserved effects are released.
+
+Known verification boundary
+- A newly logged-in admin browser session correctly stopped at the existing MFA AAL2 gate, so the settings control was not interactively changed. Component contracts and live database rejection cover that action without bypassing MFA.
+- The older R1-7 export SQL file embeds CI-only fixed user UUIDs; it passed in the disposable CI database but is not portable to random-UUID development accounts. Its development run failed and rolled back before the R1-8 assertion, which then passed independently.
