@@ -37,7 +37,11 @@ function canvasBlob(canvas: HTMLCanvasElement): Promise<Blob> {
   });
 }
 
-export async function exportSolutionRecordWebp(target: HTMLElement, fileName: string): Promise<void> {
+export async function exportSolutionRecordWebp(
+  target: HTMLElement,
+  fileName: string,
+  beforeDownload?: (artifact: { artifactHash: string; sizeBytes: number }) => Promise<void>,
+): Promise<void> {
   await waitForPreview(target);
   const { toCanvas } = await import("html-to-image");
   const backgroundColor = getComputedStyle(target).backgroundColor || "#fff";
@@ -49,6 +53,12 @@ export async function exportSolutionRecordWebp(target: HTMLElement, fileName: st
     pixelRatio: 1,
   });
   const blob = await canvasBlob(canvas);
+  const digest = await crypto.subtle.digest("SHA-256", await blob.arrayBuffer());
+  const artifactHash = [...new Uint8Array(digest)]
+    .map((value) => value.toString(16).padStart(2, "0"))
+    .join("");
+  await beforeDownload?.({ artifactHash, sizeBytes: blob.size });
+
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;

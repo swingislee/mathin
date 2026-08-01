@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { KeyRound, LoaderCircle, LogOut, ShieldCheck } from "lucide-react";
+import { Download, KeyRound, LoaderCircle, LogOut, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,7 @@ import { useAction } from "@/components/action-form";
 import { Link, useRouter } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { AccountRequestKind, AccountSecuritySnapshot, ConsentKind } from "./account-security";
-import { recordAccountConsentAction, requestUserRightAction } from "./actions";
+import { downloadUserRightsExportAction, recordAccountConsentAction, requestUserRightAction } from "./actions";
 
 type Factor = { id: string; friendly_name?: string; factor_type: "totp"; status: "verified" | "unverified"; created_at: string };
 
@@ -57,6 +57,23 @@ export function AccountSecurityPanel({ snapshot, isAdmin }: { snapshot: AccountS
     successMessage: t("requestSaved"),
     errorMessage: { REQUEST_ALREADY_OPEN: t("requestAlreadyOpen"), default: t("actionFailed") },
     onSuccess: () => { setRequestReason(""); router.refresh(); },
+  });
+  const downloadRun = useAction(downloadUserRightsExportAction, {
+    successMessage: t("exportDownloaded"),
+    errorMessage: {
+      EXPORT_EXPIRED: t("exportExpired"),
+      EXPORT_PURGED: t("exportExpired"),
+      default: t("actionFailed"),
+    },
+    onSuccess: (value) => {
+      const url = URL.createObjectURL(new Blob([value.contentText], { type: "application/json;charset=utf-8" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = value.fileName;
+      link.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 0);
+      router.refresh();
+    },
   });
 
   const updatePassword = async () => {
@@ -181,11 +198,27 @@ export function AccountSecurityPanel({ snapshot, isAdmin }: { snapshot: AccountS
         <p className="mt-1 text-sm text-muted">{t("rightsIntro")}</p>
         <div className="mt-4 grid gap-3">
           <Select value={requestKind} onValueChange={(value) => setRequestKind(value as AccountRequestKind)}><SelectTrigger aria-label={t("requestKind")}><SelectValue /></SelectTrigger><SelectContent>{(["access","correct","export","restrict","delete"] as const).map((kind) => <SelectItem key={kind} value={kind}>{t(`request_${kind}`)}</SelectItem>)}</SelectContent></Select>
-          <Input value={requestScope} maxLength={200} onChange={(event) => setRequestScope(event.target.value)} placeholder={t("dataScope")} />
+          <Select value={requestScope} onValueChange={setRequestScope}><SelectTrigger aria-label={t("dataScope")}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="account">{t("scope_account")}</SelectItem><SelectItem value="account_and_learning">{t("scope_account_and_learning")}</SelectItem></SelectContent></Select>
           <Input value={requestReason} maxLength={1000} onChange={(event) => setRequestReason(event.target.value)} placeholder={t("requestReason")} />
           <Button className="w-fit" disabled={requestRun.pending || !requestScope.trim()} onClick={() => requestRun.run({ kind: requestKind, reason: requestReason, dataScope: requestScope })}>{t("submitRequest")}</Button>
         </div>
         {snapshot.requests.length > 0 && <ul className="mt-5 space-y-2 border-t border-line pt-4">{snapshot.requests.map((request) => <li key={request.id} className="flex flex-wrap items-center gap-2 text-sm"><span className="font-medium">{t(`request_${request.kind}`)}</span><span className="text-muted">{t(`status_${request.status}`)}</span><span className="ml-auto text-xs text-muted">{new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(request.createdAt))}</span></li>)}</ul>}
+        {snapshot.exports.length > 0 && <div className="mt-5 border-t border-line pt-4">
+          <h3 className="text-sm font-medium text-ink">{t("exportsTitle")}</h3>
+          <ul className="mt-3 space-y-3">{snapshot.exports.map((artifact) => <li key={artifact.id} className="rounded-xl border border-line bg-background/45 p-3">
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <span className="font-medium">{t("exportJson")}</span>
+              <span className="rounded-full bg-line/50 px-2 py-0.5 text-xs">{t(`exportStatus_${artifact.status}`)}</span>
+              <span className="text-xs text-muted">{t("exportSize", { size: Math.max(1, Math.ceil(artifact.sizeBytes / 1024)) })}</span>
+              <Button className="ml-auto" size="sm" variant="secondary" disabled={artifact.status !== "ready" || downloadRun.pending} onClick={() => downloadRun.run(artifact.id)}>
+                {downloadRun.pending ? <LoaderCircle className="size-4 animate-spin" /> : <Download className="size-4" />}
+                {t("downloadExport")}
+              </Button>
+            </div>
+            <p className="mt-2 break-all font-mono text-[11px] text-muted">{t("exportHash", { hash: artifact.artifactHash })}</p>
+            <p className="mt-1 text-xs text-muted">{t("exportExpires", { date: new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(artifact.expiresAt)) })} · {t("exportDownloads", { count: artifact.downloadCount })}</p>
+          </li>)}</ul>
+        </div>}
       </section>
     </div>
   );

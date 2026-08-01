@@ -94,7 +94,7 @@ values('00000000-0000-4000-8000-000000000903',:'admin_id','totp','verified',now(
 
 
 -- Admin support: invitation is email-bound, last-admin lock is rejected, and
--- rights completion requires verified identity plus an evidence SHA-256.
+-- rights completion requires verified identity; R1-7E export completion also requires a generated artifact.
 set local role authenticated;
 select set_config('request.jwt.claim.sub', :'admin_id', true);
 
@@ -127,7 +127,18 @@ begin
 end
 $$;
 
-select public.manage_account_request(:'request_id'::uuid,'completed','verified','verified in R1 assertion','completed',repeat('a',64));
+select public.manage_account_request(:'request_id'::uuid,'approved','verified','verified in R1 assertion',null,null);
+select artifact_id,artifact_hash
+  from public.prepare_user_rights_export(:'request_id'::uuid) \gset rights_export_
+select (
+  select request_row.status='completed' and request_row.evidence_hash=:'rights_export_artifact_hash'
+  from public.account_requests request_row where request_row.id=:'request_id'::uuid
+) as rights_export_completed \gset
+\if :rights_export_completed
+\else
+  \echo R1-7E artifact did not complete the verified export request
+  select 1 / 0;
+\endif
 
 select public.revoke_user_sessions(:'student_id'::uuid,'R1 assertion') as revoked_sessions \gset
 select (:'revoked_sessions'::bigint>=1) as sessions_revoked \gset

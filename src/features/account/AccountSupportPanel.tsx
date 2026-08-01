@@ -16,6 +16,7 @@ import {
   issueStaffInvitationAction,
   lookupAccountSupportTargetAction,
   manageAccountRequestAction,
+  prepareUserRightsExportAction,
   revokeStaffInvitationAction,
   revokeUserSessionsAction,
   sendRecoveryAction,
@@ -47,6 +48,8 @@ export function AccountSupportPanel({ snapshot }: { snapshot: AccountSupportSnap
     INVITATION_ALREADY_PENDING: t("invitePending"),
     IDENTITY_NOT_VERIFIED: t("identityRequired"),
     EVIDENCE_REQUIRED: t("evidenceRequired"),
+    EXPORT_ARTIFACT_REQUIRED: t("exportArtifactRequired"),
+    REQUEST_NOT_APPROVED: t("exportApprovalRequired"),
     default: t("actionFailed"),
   };
   const lookupRun = useAction(lookupAccountSupportTargetAction, {
@@ -60,6 +63,7 @@ export function AccountSupportPanel({ snapshot }: { snapshot: AccountSupportSnap
   const inviteRun = useAction(issueStaffInvitationAction, { successMessage: t("inviteCreated"), errorMessage: errors, onSuccess: (value) => { setInviteCode(value.inviteCode); setInviteEmail(""); router.refresh(); } });
   const revokeInviteRun = useAction(revokeStaffInvitationAction, { successMessage: t("inviteRevoked"), errorMessage: errors, onSuccess: () => router.refresh() });
   const requestRun = useAction(manageAccountRequestAction, { successMessage: t("requestSaved"), errorMessage: errors, onSuccess: () => { setRequest(null); router.refresh(); } });
+  const prepareExportRun = useAction(prepareUserRightsExportAction, { successMessage: t("exportPrepared"), errorMessage: errors, onSuccess: () => { setRequest(null); router.refresh(); } });
   const pending = lookupRun.pending || lockRun.pending || revokeRun.pending || recoveryRun.pending;
 
   const openRequest = (row: OpenRequest) => {
@@ -99,10 +103,17 @@ export function AccountSupportPanel({ snapshot }: { snapshot: AccountSupportSnap
     </section>
 
     <section className="overflow-hidden rounded-2xl border border-line bg-card">
+      <div className="p-5"><h2 className="font-medium">{t("exportsTitle")}</h2><p className="mt-1 text-sm text-muted">{t("exportsIntro")}</p></div>
+      <Table><TableHeader><TableRow><TableHead>{t("requestUser")}</TableHead><TableHead>{t("exportSubjectRole")}</TableHead><TableHead>{t("exportScope")}</TableHead><TableHead>{t("exportState")}</TableHead><TableHead>{t("exportExpiry")}</TableHead><TableHead>{t("exportDownloads")}</TableHead></TableRow></TableHeader><TableBody>{snapshot.recentExports.length === 0 ? <TableRow><TableCell colSpan={6} className="text-muted">{t("exportsEmpty")}</TableCell></TableRow> : snapshot.recentExports.map((row) => <TableRow key={row.id}><TableCell className="font-mono text-xs">{row.userId.slice(0,8)}</TableCell><TableCell>{t(`identity_${row.subjectRole}`)}</TableCell><TableCell>{t(`scope_${row.dataScope}`)}</TableCell><TableCell>{t(`exportStatus_${row.status}`)}</TableCell><TableCell>{new Intl.DateTimeFormat(locale,{dateStyle:"medium",timeStyle:"short"}).format(new Date(row.expiresAt))}</TableCell><TableCell>{row.downloadCount}</TableCell></TableRow>)}</TableBody></Table>
+      {snapshot.recentOperationalExports.length > 0 && <div className="border-t border-line p-5"><h3 className="text-sm font-medium">{t("operationalExportsTitle")}</h3><ul className="mt-3 space-y-2">{snapshot.recentOperationalExports.map((row) => <li key={row.id} className="flex flex-wrap items-center gap-2 text-xs text-muted"><span>{t("solutionRecordWebp")}</span><span className="font-mono">{row.resourceId.slice(0,8)}</span><span>{Math.max(1,Math.ceil(row.sizeBytes/1024))} KB</span><span className="ml-auto">{new Intl.DateTimeFormat(locale,{dateStyle:"short",timeStyle:"short"}).format(new Date(row.downloadedAt))}</span></li>)}</ul></div>}
+    </section>
+
+    <section className="overflow-hidden rounded-2xl border border-line bg-card">
       <div className="p-5"><h2 className="font-medium">{t("auditTitle")}</h2><p className="mt-1 text-sm text-muted">{t("auditIntro")}</p></div>
       <Table><TableHeader><TableRow><TableHead>{t("auditTime")}</TableHead><TableHead>{t("auditAction")}</TableHead><TableHead>{t("auditTarget")}</TableHead><TableHead>{t("auditResult")}</TableHead></TableRow></TableHeader><TableBody>{snapshot.recentAudits.length === 0 ? <TableRow><TableCell colSpan={4} className="text-muted">{t("auditEmpty")}</TableCell></TableRow> : snapshot.recentAudits.map((row) => <TableRow key={row.id}><TableCell>{new Intl.DateTimeFormat(locale,{dateStyle:"short",timeStyle:"short"}).format(new Date(row.createdAt))}</TableCell><TableCell>{t(`action_${row.actionType}`)}</TableCell><TableCell className="font-mono text-xs">{row.targetUserId.slice(0,8)}</TableCell><TableCell>{t(`result_${row.result}`)}</TableCell></TableRow>)}</TableBody></Table>
     </section>
 
-    <Dialog open={Boolean(request)} onOpenChange={(open) => !open && setRequest(null)}><DialogContent><DialogHeader><DialogTitle>{t("manageRequest")}</DialogTitle></DialogHeader><div className="grid gap-3"><Label>{t("requestState")}</Label><Select value={requestStatus} onValueChange={setRequestStatus}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{["identity_verified","approved","processing","completed","rejected","cancelled"].map((value)=><SelectItem key={value} value={value}>{t(`status_${value}`)}</SelectItem>)}</SelectContent></Select><Label>{t("identityVerification")}</Label><Select value={verification} onValueChange={setVerification}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{["pending","verified","rejected"].map((value)=><SelectItem key={value} value={value}>{t(`verification_${value}`)}</SelectItem>)}</SelectContent></Select><Input value={decisionReason} onChange={(event)=>setDecisionReason(event.target.value)} placeholder={t("decisionReason")}/><Input value={resultSummary} onChange={(event)=>setResultSummary(event.target.value)} placeholder={t("resultSummary")}/><Input value={evidenceHash} onChange={(event)=>setEvidenceHash(event.target.value.toLowerCase())} maxLength={64} placeholder={t("evidenceHash")}/></div><DialogFooter><Button variant="ghost" onClick={()=>setRequest(null)}>{t("cancel")}</Button><Button disabled={requestRun.pending} onClick={()=>request&&requestRun.run({requestId:request.id,status:requestStatus,identityVerification:verification,decisionReason,resultSummary,evidenceHash})}>{t("save")}</Button></DialogFooter></DialogContent></Dialog>
+    <Dialog open={Boolean(request)} onOpenChange={(open) => !open && setRequest(null)}><DialogContent><DialogHeader><DialogTitle>{t("manageRequest")}</DialogTitle></DialogHeader><div className="grid gap-3"><Label>{t("requestState")}</Label><Select value={requestStatus} onValueChange={setRequestStatus}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{(request?.kind === "export" ? ["identity_verified","approved","processing","rejected","cancelled"] : ["identity_verified","approved","processing","completed","rejected","cancelled"]).map((value)=><SelectItem key={value} value={value}>{t(`status_${value}`)}</SelectItem>)}</SelectContent></Select><Label>{t("identityVerification")}</Label><Select value={verification} onValueChange={setVerification}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{["pending","verified","rejected"].map((value)=><SelectItem key={value} value={value}>{t(`verification_${value}`)}</SelectItem>)}</SelectContent></Select><Input value={decisionReason} onChange={(event)=>setDecisionReason(event.target.value)} placeholder={t("decisionReason")}/><Input value={resultSummary} onChange={(event)=>setResultSummary(event.target.value)} placeholder={t("resultSummary")}/>{request?.kind !== "export" && <Input value={evidenceHash} onChange={(event)=>setEvidenceHash(event.target.value.toLowerCase())} maxLength={64} placeholder={t("evidenceHash")}/>}
+{request?.kind === "export" && <p className="text-xs text-muted">{t("exportArtifactHint")}</p>}</div><DialogFooter><Button variant="ghost" onClick={()=>setRequest(null)}>{t("cancel")}</Button>{request?.kind === "export" && ["approved","processing"].includes(request.status) && <Button variant="secondary" disabled={prepareExportRun.pending} onClick={()=>prepareExportRun.run(request.id)}>{prepareExportRun.pending && <LoaderCircle className="size-4 animate-spin"/>}{t("prepareExport")}</Button>}<Button disabled={requestRun.pending} onClick={()=>request&&requestRun.run({requestId:request.id,status:requestStatus,identityVerification:verification,decisionReason,resultSummary,evidenceHash})}>{t("save")}</Button></DialogFooter></DialogContent></Dialog>
   </div>;
 }

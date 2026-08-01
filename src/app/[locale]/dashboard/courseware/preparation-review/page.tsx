@@ -235,6 +235,7 @@ async function ArtifactContent({
               <SolutionRecordExportButton
                 previewId={previewId}
                 fileName={`solution-${record.pageDocId ?? record.id}-r${record.revision}`}
+                solutionRecordId={record.id}
                 disabled={!pagePreview}
               />
             </div>

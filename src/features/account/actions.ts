@@ -29,11 +29,32 @@ const requestDecisionSchema = z.object({
   resultSummary: text(2000),
   evidenceHash: z.union([z.literal(""), z.string().regex(/^[a-f0-9]{64}$/)]),
 });
+const exportArtifactSchema = z.object({ artifactId: uuid });
 
-const SELF_CODES = ["INVALID_DECISION", "POLICY_NOT_FOUND", "REQUEST_ALREADY_OPEN", "INVALID_KIND", "INVALID_SCOPE", ...COMMON_CODES];
+export interface PreparedUserRightsExport {
+  artifactId: string;
+  artifactHash: string;
+  sizeBytes: number;
+  expiresAt: string;
+  subjectRole: "student" | "parent" | "staff" | "admin";
+  dataScope: "account" | "account_and_learning";
+}
+
+export interface UserRightsExportDownload {
+  fileName: string;
+  artifactHash: string;
+  contentText: string;
+  expiresAt: string;
+}
+
+const SELF_CODES = [
+  "INVALID_DECISION", "POLICY_NOT_FOUND", "REQUEST_ALREADY_OPEN", "INVALID_KIND", "INVALID_SCOPE",
+  "EXPORT_NOT_FOUND", "EXPORT_EXPIRED", "EXPORT_PURGED", "EXPORT_HASH_MISMATCH", ...COMMON_CODES,
+];
 const SUPPORT_CODES = [
   "TARGET_NOT_FOUND", "LAST_ACTIVE_ADMIN", "INVALID_ACTION", "INVALID_REASON", "INVALID_STATUS",
-  "IDENTITY_NOT_VERIFIED", "EVIDENCE_REQUIRED", "REQUEST_NOT_FOUND", "REQUEST_TERMINAL",
+  "IDENTITY_NOT_VERIFIED", "EVIDENCE_REQUIRED", "EXPORT_ARTIFACT_REQUIRED", "REQUEST_NOT_APPROVED",
+  "EXPORT_TOO_LARGE", "INVALID_SCOPE", "REQUEST_NOT_FOUND", "REQUEST_TERMINAL",
   "ACCOUNT_EXISTS", "INVITATION_ALREADY_PENDING", "INVITATION_NOT_PENDING", "INVALID_EMAIL", "INVALID_EXPIRY",
   ...COMMON_CODES,
 ];
@@ -208,5 +229,68 @@ export async function manageAccountRequestAction(input: unknown): Promise<Action
     return { ok: true };
   } catch (error) {
     return actionError(error, SUPPORT_CODES);
+  }
+}
+
+export async function prepareUserRightsExportAction(input: unknown): Promise<ActionResult<PreparedUserRightsExport>> {
+  try {
+    const requestId = parse(z.object({ requestId: uuid }), { requestId: input }).requestId;
+    const { supabase } = await authorizedClient("account.support.manage");
+    const { data, error } = await supabase.rpc("prepare_user_rights_export", { p_request_id: requestId });
+    if (error) throw new Error(error.message);
+    const row = (data ?? [])[0] as {
+      artifact_id: string;
+      artifact_hash: string;
+      size_bytes: number;
+      expires_at: string;
+      subject_role: PreparedUserRightsExport["subjectRole"];
+      data_scope: PreparedUserRightsExport["dataScope"];
+    } | undefined;
+    if (!row) throw new Error("EXPORT_PREPARE_FAILED");
+    revalidatePath("/[locale]/dashboard/account-support", "page");
+    revalidatePath("/[locale]/dashboard/account-security", "page");
+    return {
+      ok: true,
+      data: {
+        artifactId: row.artifact_id,
+        artifactHash: row.artifact_hash,
+        sizeBytes: Number(row.size_bytes),
+        expiresAt: row.expires_at,
+        subjectRole: row.subject_role,
+        dataScope: row.data_scope,
+      },
+    };
+  } catch (error) {
+    return actionError<PreparedUserRightsExport>(error, [...SUPPORT_CODES, "EXPORT_PREPARE_FAILED"]);
+  }
+}
+
+export async function downloadUserRightsExportAction(input: unknown): Promise<ActionResult<UserRightsExportDownload>> {
+  try {
+    const { artifactId } = parse(exportArtifactSchema, { artifactId: input });
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("UNAUTHENTICATED");
+    const { data, error } = await supabase.rpc("download_user_rights_export", { p_artifact_id: artifactId });
+    if (error) throw new Error(error.message);
+    const row = (data ?? [])[0] as {
+      file_name: string;
+      artifact_hash: string;
+      content_text: string;
+      expires_at: string;
+    } | undefined;
+    if (!row) throw new Error("EXPORT_NOT_FOUND");
+    revalidatePath("/[locale]/dashboard/account-security", "page");
+    return {
+      ok: true,
+      data: {
+        fileName: row.file_name,
+        artifactHash: row.artifact_hash,
+        contentText: row.content_text,
+        expiresAt: row.expires_at,
+      },
+    };
+  } catch (error) {
+    return actionError<UserRightsExportDownload>(error, SELF_CODES);
   }
 }

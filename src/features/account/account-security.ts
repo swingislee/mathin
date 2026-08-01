@@ -25,6 +25,17 @@ export interface AccountSecuritySnapshot {
     dueAt: string;
     createdAt: string;
   }>;
+  exports: Array<{
+    id: string;
+    requestId: string;
+    schemaVersion: string;
+    artifactHash: string;
+    sizeBytes: number;
+    expiresAt: string;
+    createdAt: string;
+    status: "ready" | "expired" | "purged";
+    downloadCount: number;
+  }>;
 }
 
 export interface AccountSupportTarget {
@@ -48,6 +59,28 @@ export interface AccountSupportSnapshot {
     dataScope: string;
     dueAt: string;
     createdAt: string;
+  }>;
+  recentExports: Array<{
+    id: string;
+    requestId: string;
+    userId: string;
+    subjectRole: "student" | "parent" | "staff" | "admin";
+    dataScope: "account" | "account_and_learning";
+    artifactHash: string;
+    sizeBytes: number;
+    expiresAt: string;
+    createdAt: string;
+    status: "ready" | "expired" | "purged";
+    downloadCount: number;
+  }>;
+  recentOperationalExports: Array<{
+    id: string;
+    exportKind: "solution_record_webp";
+    resourceId: string;
+    actorUserId: string;
+    artifactHash: string;
+    sizeBytes: number;
+    downloadedAt: string;
   }>;
   recentAudits: Array<{
     id: string;

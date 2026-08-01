@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 
 import { createClient } from "@/lib/supabase/client";
+import { recordSolutionRecordExportDownloadAction } from "./actions/exports";
 import { cn } from "@/lib/utils";
 import {
   SolutionRecordPreview,
@@ -37,10 +38,12 @@ function ReviewBadge({ review }: { review?: PrepArtifactReview }) {
 export function SolutionRecordExportButton({
   previewId,
   fileName,
+  solutionRecordId,
   disabled = false,
 }: {
   previewId: string;
   fileName: string;
+  solutionRecordId: string;
   disabled?: boolean;
 }) {
   const t = useTranslations("school.session");
@@ -53,7 +56,14 @@ export function SolutionRecordExportButton({
     }
     setExporting(true);
     try {
-      await exportSolutionRecordWebp(target, fileName);
+      await exportSolutionRecordWebp(target, fileName, async ({ artifactHash, sizeBytes }) => {
+        const result = await recordSolutionRecordExportDownloadAction({
+          solutionRecordId,
+          artifactHash,
+          sizeBytes,
+        });
+        if (!result.ok) throw new Error(result.code);
+      });
     } catch {
       toast.error(t("solutionArchiveExportFailed"));
     } finally {
@@ -200,6 +210,7 @@ export function SessionSolutionArchive({
                           <SolutionRecordExportButton
                             previewId={previewId}
                             fileName={`solution-${sessionId}-${record.pageDocId ?? record.id}-r${record.revision}`}
+                            solutionRecordId={record.id}
                             disabled={!pagePreview}
                           />
                         </div>
