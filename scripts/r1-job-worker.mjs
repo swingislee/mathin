@@ -5,7 +5,7 @@ import path from "node:path";
 import process from "node:process";
 import { createClient } from "@supabase/supabase-js";
 
-const VERSION = "r1-2.1";
+const VERSION = "r1-7.1";
 const MAX_BATCH = 100;
 
 async function loadLocalEnv() {
@@ -183,6 +183,8 @@ async function cycle() {
   if (heartbeatError) throw new Error(`WORKER_HEARTBEAT:${heartbeatError.message}`);
   const { error: cleanupError } = await admin.rpc("enqueue_file_cleanup_jobs", { p_limit: batchSize });
   if (cleanupError) throw new Error(`CLEANUP_ENQUEUE:${cleanupError.message}`);
+  const { error: importCleanupError } = await admin.rpc("purge_expired_data_import_payloads", { p_limit: batchSize * 50 });
+  if (importCleanupError) throw new Error(`IMPORT_CLEANUP:${importCleanupError.message}`);
   const { data: jobs, error: claimError } = await admin.rpc("claim_jobs", {
     p_worker_id: workerId,
     p_limit: batchSize,

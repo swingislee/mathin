@@ -6,6 +6,7 @@
 // 来源与备注是 students 直列，由 RPC 内部补写。
 // ---------------------------------------------------------------------------
 
+import { createHash } from "node:crypto";
 import { z } from "zod";
 import { actionError, type ActionResult } from "@/lib/action-result";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -13,12 +14,15 @@ import type { Json } from "@/lib/database.types";
 import type { PermissionKey } from "../permissions";
 import { STUDENT_STATUSES, type StudentStatus } from "../students";
 import { authorizedClient } from "./guards";
+import { STUDENT_IMPORT_TEMPLATE_VERSION } from "./types";
 import { COMMON_CODES, dateOnly, intInRange, parse, requiredText, text, uuid } from "./schemas";
 import type {
   CreateStudentInput,
   DuplicateStudentRow,
   ImportStudentRow,
   ImportStudentsResult,
+  PreviewStudentImportInput,
+  StudentImportBatchResult,
   UpdateStudentInput,
 } from "./types";
 
@@ -222,6 +226,56 @@ const importRowsSchema = z
   )
   .max(500);
 
+const previewStudentImportSchema = z.object({
+  templateVersion: z.literal(STUDENT_IMPORT_TEMPLATE_VERSION),
+  idempotencyKey: requiredText(200),
+  rows: importRowsSchema,
+});
+
+const DATA_IMPORT_CODES = [
+  "INVALID_TEMPLATE",
+  "INVALID_IDEMPOTENCY",
+  "INVALID_ROWS",
+  "IDEMPOTENCY_CONFLICT",
+  "BATCH_NOT_FOUND",
+  "BATCH_EXPIRED",
+  "BATCH_HAS_ERRORS",
+  ...COMMON_CODES,
+] as const;
+
+export async function previewStudentImportAction(
+  input: PreviewStudentImportInput,
+): Promise<ActionResult<StudentImportBatchResult>> {
+  try {
+    const value = parse(previewStudentImportSchema, input);
+    const inputHash = createHash("sha256").update(JSON.stringify(value.rows)).digest("hex");
+    const { supabase } = await authorizedClient("student.import");
+    const { data, error } = await supabase.rpc("preview_student_import", {
+      p_template_version: value.templateVersion,
+      p_rows: value.rows as unknown as Json,
+      p_idempotency_key: value.idempotencyKey,
+      p_input_hash: inputHash,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true, data: data as unknown as StudentImportBatchResult };
+  } catch (error) {
+    return actionError<StudentImportBatchResult>(error, DATA_IMPORT_CODES);
+  }
+}
+
+export async function applyStudentImportAction(batchId: string): Promise<ActionResult<StudentImportBatchResult>> {
+  try {
+    const id = parse(uuid, batchId);
+    const { supabase } = await authorizedClient("student.import");
+    const { data, error } = await supabase.rpc("apply_student_import", { p_batch_id: id });
+    if (error) throw new Error(error.message);
+    return { ok: true, data: data as unknown as StudentImportBatchResult };
+  } catch (error) {
+    return actionError<StudentImportBatchResult>(error, DATA_IMPORT_CODES);
+  }
+}
+
+/** Legacy single-call importer retained for API compatibility; the dashboard uses the audited two-step flow. */
 export async function importStudentsAction(rows: ImportStudentRow[]): Promise<ActionResult<ImportStudentsResult>> {
   try {
     if (rows.length > 500) throw new Error("TOO_MANY_ROWS");

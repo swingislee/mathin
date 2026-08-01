@@ -111,6 +111,35 @@ export interface ImportStudentsResult {
   errors: Array<{ row: number; reason: string }>;
 }
 
+export const STUDENT_IMPORT_TEMPLATE_VERSION = "mathin-students-v1" as const;
+
+export interface StudentImportBatchRow {
+  row: number;
+  status: "valid" | "duplicate" | "error" | "inserted";
+  errors: string[];
+  targetId: string | null;
+}
+
+export interface StudentImportBatchResult {
+  batchId: string;
+  status: "validated" | "completed";
+  templateVersion: typeof STUDENT_IMPORT_TEMPLATE_VERSION;
+  inputHash: string;
+  total: number;
+  valid: number;
+  dup: number;
+  errorCount: number;
+  inserted: number;
+  expiresAt: string;
+  rows: StudentImportBatchRow[];
+}
+
+export interface PreviewStudentImportInput {
+  templateVersion: typeof STUDENT_IMPORT_TEMPLATE_VERSION;
+  idempotencyKey: string;
+  rows: ImportStudentRow[];
+}
+
 export interface CourseWriteInput {
   title: string;
   productCode: string;
