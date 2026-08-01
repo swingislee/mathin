@@ -1,0 +1,50 @@
+{
+  "$schema": "../../schemas/r1-initialization-manifest.schema.json",
+  "schemaVersion": "mathin-r1-initialization-v1",
+  "environment": "production",
+  "mode": "plan-only",
+  "projectId": "example-production-project",
+  "databaseId": "example-production-database",
+  "migration": {
+    "head": "20260801000600_r1_data_import_notification_noise",
+    "digest": "4dddbac73059e1600214b46d1f02e5c956b9a86c361c3b4e4fe8e0fac72028cd",
+    "fileCount": 152
+  },
+  "platform": {
+    "source": "supabase/ci/00_platform_bootstrap.sql",
+    "sourceSha256": "76b73a95b07d53e324e2887dad5681782e881e5c853eb63f62882b0f01a0061c",
+    "scope": "ci-verification-only"
+  },
+  "referenceData": {
+    "kind": "course_catalog",
+    "source": "supabase/seed/teaching-plans.json",
+    "sourceSha256": "793982b7a675bd5e07daab75ec1b85709bb1342dfe6c66dae18026ad07b7c517",
+    "familySlug": "xueersi-e-primary-math-cn",
+    "naturalKey": "productCode",
+    "expectedCourseCount": 72,
+    "expectedLectureCount": 865,
+    "naturalKeysSha256": "6e40ced9fc8766ba0412604bd343437dc97669f0de8bee8c6e555fae5c4d0fcf"
+  },
+  "configuration": [
+    {
+      "kind": "organization_rules",
+      "source": "supabase/migrations/20260728000100_r1_organization_settings.sql",
+      "sourceSha256": "fa460d331147ea367e13dba272c6f84610325eb854551ac31d050d2df1bc6254",
+      "naturalKey": "domain",
+      "expectedKeys": ["calendar", "finance", "lesson", "notification", "public_publishing", "scheduling"]
+    },
+    {
+      "kind": "feature_flags",
+      "source": "supabase/migrations/20260728000100_r1_organization_settings.sql",
+      "sourceSha256": "fa460d331147ea367e13dba272c6f84610325eb854551ac31d050d2df1bc6254",
+      "naturalKey": "flagKey",
+      "expectedKeys": ["finance.enabled", "notifications.email", "notifications.sms", "notifications.wechat", "public_content.publish"]
+    }
+  ],
+  "administrator": {
+    "manifestPath": "docs/manifests/production-admin.example.json",
+    "manifestSha256": "c0e41ffa51222f7ffbe1866727d9ac8b85a1f9838fd4b335acacbbb37f83c9fa"
+  },
+  "generatedAt": "2026-08-01T00:00:00.000Z",
+  "approvedBy": ["release-owner", "security-reviewer"]
+}

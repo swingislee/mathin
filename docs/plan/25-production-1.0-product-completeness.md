@@ -268,6 +268,7 @@ R1-7 不建立可任意写表的通用维护入口；初始化、导入、质量
 | R1-7E 导出 | 用户权利请求流程、教案/解析导出 | 用户权利 artifact 与运营导出分流；字段裁剪、hash、下载审计和自动过期 | 跨角色/跨学生负向查询拒绝；过期 artifact 不可下载；导出不暴露内部备注和非必要未成年人资料 |
 
 R1-7A 的 dry-run 也写批次审计，但原始行最多保留 30 天；错误 CSV 在浏览器按当前批次生成，不进入公开 Storage。批次只保存规范化输入、行状态、目标 ID 和标准错误码，不保存账号凭据、token 或文件二进制。正式初始化和破坏性清理仍分别受 R1-15/R1-18 环境与人工批准限制。
+R1-7B 的期望状态入口是 `docs/manifests/r1-initialization.example.json`，结构由 `schemas/r1-initialization-manifest.schema.json` 固定，`pnpm r1:init-plan` 只输出可复现计划，不连接数据库、不写表。manifest 只允许课程 `productCode`、配置 `domain/flagKey` 等自然键，UUID 必须由目标数据库生成；课程源文件、配置源迁移、CI 平台垫片和独立管理员 manifest 均固定 LF 归一化 SHA-256。可选 inventory 在 preflight 必须为 0 行，在 post-apply 必须与 72 个课程、865 讲、6 个规则域和 5 个 fail-closed flag 对账；再次执行时任一自然键对应 ID 或数量变化都停止。CI 平台垫片只用于空库重建验证，禁止作为生产平台初始化脚本。
 
 ### 4.6 合规、帮助与安全事件
 

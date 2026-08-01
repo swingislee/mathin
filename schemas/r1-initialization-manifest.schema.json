@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mathin.local/schemas/r1-initialization-manifest.schema.json",
+  "title": "Mathin R1 initialization manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schemaVersion", "environment", "mode", "projectId", "databaseId", "migration", "platform", "referenceData", "configuration", "administrator", "generatedAt", "approvedBy"],
+  "properties": {
+    "$schema": { "type": "string", "minLength": 3 },
+    "schemaVersion": { "const": "mathin-r1-initialization-v1" },
+    "environment": { "const": "production" },
+    "mode": { "const": "plan-only" },
+    "projectId": { "type": "string", "minLength": 3, "maxLength": 100 },
+    "databaseId": { "type": "string", "minLength": 3, "maxLength": 100 },
+    "migration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["head", "digest", "fileCount"],
+      "properties": {
+        "head": { "type": "string", "pattern": "^[0-9]{14}_[a-z0-9_]+$" },
+        "digest": { "$ref": "#/$defs/sha256" },
+        "fileCount": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "platform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "sourceSha256", "scope"],
+      "properties": {
+        "source": { "$ref": "#/$defs/repoPath" },
+        "sourceSha256": { "$ref": "#/$defs/sha256" },
+        "scope": { "const": "ci-verification-only" }
+      }
+    },
+    "referenceData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "source", "sourceSha256", "familySlug", "naturalKey", "expectedCourseCount", "expectedLectureCount", "naturalKeysSha256"],
+      "properties": {
+        "kind": { "const": "course_catalog" },
+        "source": { "$ref": "#/$defs/repoPath" },
+        "sourceSha256": { "$ref": "#/$defs/sha256" },
+        "familySlug": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+        "naturalKey": { "const": "productCode" },
+        "expectedCourseCount": { "type": "integer", "minimum": 1 },
+        "expectedLectureCount": { "type": "integer", "minimum": 1 },
+        "naturalKeysSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "configuration": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "source", "sourceSha256", "naturalKey", "expectedKeys"],
+        "properties": {
+          "kind": { "enum": ["organization_rules", "feature_flags"] },
+          "source": { "$ref": "#/$defs/repoPath" },
+          "sourceSha256": { "$ref": "#/$defs/sha256" },
+          "naturalKey": { "type": "string", "enum": ["domain", "flagKey"] },
+          "expectedKeys": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "type": "string", "minLength": 1, "maxLength": 100 }
+          }
+        }
+      }
+    },
+    "administrator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["manifestPath", "manifestSha256"],
+      "properties": {
+        "manifestPath": { "$ref": "#/$defs/repoPath" },
+        "manifestSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "approvedBy": {
+      "type": "array",
+      "minItems": 2,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 2, "maxLength": 100 }
+    }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "repoPath": { "type": "string", "pattern": "^(?![A-Za-z]:|/|.*(?:^|/)\\.\\.(?:/|$)).+$" }
+  }
+}
