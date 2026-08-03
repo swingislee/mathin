@@ -124,6 +124,18 @@
 - 12.1 在 QA 测试课程建班向导填写班名 `QA-20260803-仅边界不创建`、主讲教师 `测试-教师`、教室 `QA-A102`、容量 `0`，选择 `2026 春季学期 · 当前`、周二并推进到确认页；确认页保留课程、测试用途、教师、2 条课次和无教师冲突提示。
 - 12.2 点击“创建班级”后停留在确认页并出现“创建失败，请检查填写内容后重试。”；未产生新班级。记录显示前端步骤没有在容量为 0 时提前阻断，最终动作由服务端校验拒绝，因此 `CLASS-06` 仍未通过全量字段/边界覆盖。
 - 本轮未保存截图、日志或请求 ID；不含 secret、token 或真实 PII。
+
+#### 本轮继续补测记录（13：`ROUTE-46`～`49`、§9.1、§9.4、§9.5）
+
+本轮第 13 节补测于 2026-08-03 19:55–20:15（Asia/Shanghai）在本地 `http://localhost:3130` 完成，当前代码为 `1e97347906ba6a3d20322614e4a4bf38574d0cf6`，migration head 仍为 `20260803000100_r1_fix_submission_notification_ambiguity`。驱动方式与前 12 轮不同：使用 scratchpad 内的 Playwright（Chromium headless，1280×720）脚本登录固定账号后批量请求路由并读取渲染结果，权限/关闭门的负向结论另用 `ssh xiaomi` + `docker exec supabase-db psql` 在 `begin … rollback` 事务内断言。复用 `principal`、`admin`、`teacher`、`sales`、`research`、`multirole`、`parent`、`student` 固定账号与 `QA-20260803-school-manual` 数据集。
+
+- `ROUTE-46`～`49`：以 6 个角色批量请求财务、历史与机械地址，并对畸形 UUID、跨班 session 组合逐条比对响应体判据。
+- §9.1 `ORG-01`/`06`～`12`：完成机构资料写入回退、六个规则域未来生效版本、规则与开关的 rollback、渠道 fail-closed 与越权负向断言。`ORG-02`～`05`（校区、教室、节假日、校区学期）本轮未测，保持未勾选。
+- §9.4 `OPS-01`/`04`～`06`、`DQ-02`～`04`、`REPAIR-01`～`03`、`PURGE-01`：以主管账号只读复核平台运行页与数据维护页，并连续两次运行质量扫描比对摘要稳定性。
+- §9.5 `FIN-CLOSE-01`～`08`：跨 6 角色核对侧栏与直接访问，DB 层验证发布门，并对修复计划回滚做关闭门负向断言。
+- 写入型改动仅限：机构名称改名后已还原为 `Mathin`；6 个规则域各追加 1 条 2030-01-01 生效、payload 不变的版本；`calendar` 追加 1 条回滚版本；`teaching.preparation_archive_edit` 关闭再恢复为测试前的开启态；数据质量扫描运行 2 次。上述规则/开关版本按设计不可删除，作为审计历史保留。未新建账号、班级、课程、课次或订单，未上传文件，未触碰 E 系列基线。
+- 本轮无截图；缺陷记录只保留 route、对象 ID、断言输出与无 secret/PII 的复现结果。数据库负向断言全部包在事务内并已 rollback，未产生持久写入。
+
 ### 0.3 安全与数据纪律
 
 - [x] `SAFE-01` 只使用 `.claude/test-accounts.local.md` 已登记的固定开发账号；不新建账号。
@@ -131,6 +143,7 @@
 - [ ] `SAFE-03` 新建业务对象统一使用 `QA-日期-用途` 前缀，并优先标记为测试用途。
 - [ ] `SAFE-04` 学生、家庭、电话、视频、附件只使用虚构测试资料，不上传真实未成年人 PII。
 - [ ] `SAFE-05` 不启用财务 Feature Flag；不通过数据库或接口绕开 R1-8 关闭门。
+      第 13 节说明：为取证 `FIN-CLOSE-03`/`ORG-11`/`REPAIR-02`，对关闭门做了负向尝试。`finance.enabled` 的四种开启写法全部被拒，开关始终为 false。`rollback_data_repair_plan` 的尝试**成功**并写了 `public.orders`（即 `BUG-R1M-025`），该语句包在 `begin … rollback` 事务内，开发库无持久变更；未借此继续操作任何财务对象。
 - [ ] `SAFE-06` 不删除或重建 E 系列 865×2 源资源、release、账号、班级或订单基线。
 - [ ] `SAFE-07` 删除类测试只操作本轮创建且已核对 ID 的测试对象；优先验证归档、撤回、作废和恢复。
 - [x] `SAFE-08` 不移除唯一管理员的最后一个 MFA 因子，不封禁最后一个有效管理员。
@@ -333,10 +346,20 @@
 
 #### 关闭与历史地址
 
-- [ ] `ROUTE-46` `/dashboard/finance` 不在任何侧栏；直接访问安全返回 Dashboard，页面不下发财务数据。
-- [ ] `ROUTE-47` 旧地址 `/dashboard/work`、`/dashboard/videos`、`/dashboard/staff/roles`、`/dashboard/registration`、`/dashboard/operations`、`/dashboard/operations/testdata`、`/dashboard/adapt-review`、`/dashboard/curriculum/products`、`/dashboard/curriculum/lectures/{lectureId}`、`/dashboard/shared-assets` 返回 404，不静默落入错误页面。
-- [ ] `ROUTE-48` 禁止的机械地址返回 404：`/dashboard/students/new`、`/dashboard/activities/new`、`/dashboard/staff/new`、`/dashboard/staff/add`、`/dashboard/access-control/new`、`/dashboard/sessions/new`、`/dashboard/courseware/lectures/new`、`/dashboard/courseware-assets/new`、`/dashboard/courseware-assets/upload`、`/dashboard/followups/new`、`/dashboard/children/new`、`/dashboard/assignments/new`、`/dashboard/finance/new`、`/dashboard/registration-settings/new`。
-- [ ] `ROUTE-49` 动态路由使用畸形 UUID、其他班级的 session ID 或不匹配的 class/session 组合时返回 404/拒绝，不泄露对象是否存在。
+- [x] `ROUTE-46` `/dashboard/finance` 不在任何侧栏；直接访问安全返回 Dashboard，页面不下发财务数据。
+      `principal`、`admin`、`sales`、`teacher`、`parent`、`student` 六个角色的 `/zh/dashboard` HTML 中均无 `href="…/dashboard/finance"`，可见文本也不含财务/订单/欠费字样。直接请求 `/zh/dashboard/finance` 与 `/en/dashboard/finance` 一律 `200` + `<meta http-equiv="refresh" url=/{locale}/dashboard>`（`admin` 因未达 AAL2 落到 `account-security?required=mfa`），浏览器最终停在 Dashboard。
+      响应体确有 `订单`／`应收`／`账户余额`／`欠费`／`payment` 字样，逐条取上下文核对后确认**全部来自 next-intl 消息字典**（`"financeOverdueOrders":"欠费订单"` 这类 key-value），无订单号、金额、学生账户或任何 finance 表数据；`/en` 侧同样只命中英文字典项。判定为“不下发财务数据”，通过。
+      附带观察（非本项缺陷）：整个 Dashboard 壳每次请求都下发完整 zh 或 en 消息字典，含全部未上线的财务文案，`/zh/dashboard/finance` 这样一个纯跳转页仍有 218 KB 响应体。
+- [x] `ROUTE-47` 旧地址 `/dashboard/work`、`/dashboard/videos`、`/dashboard/staff/roles`、`/dashboard/registration`、`/dashboard/operations`、`/dashboard/operations/testdata`、`/dashboard/adapt-review`、`/dashboard/curriculum/products`、`/dashboard/curriculum/lectures/{lectureId}`、`/dashboard/shared-assets` 返回 404，不静默落入错误页面。
+      10 条全部返回 **HTTP 404**（约 15 KB 的 Next 404 响应），无一落到通用错误页或被兼容跳转吞掉。
+- [x] `ROUTE-48` 禁止的机械地址返回 404：`/dashboard/students/new`、`/dashboard/activities/new`、`/dashboard/staff/new`、`/dashboard/staff/add`、`/dashboard/access-control/new`、`/dashboard/sessions/new`、`/dashboard/courseware/lectures/new`、`/dashboard/courseware-assets/new`、`/dashboard/courseware-assets/upload`、`/dashboard/followups/new`、`/dashboard/children/new`、`/dashboard/assignments/new`、`/dashboard/finance/new`、`/dashboard/registration-settings/new`。
+      14/14 最终都呈现 404，无一进入创建表单或通用错误页。其中 8 条（`activities/new`、`staff/new`、`staff/add`、`access-control/new`、`followups/new`、`children/new`、`finance/new`、`registration-settings/new`）是真正的 HTTP 404；另外 6 条（`students/new`、`sessions/new`、`courseware/lectures/new`、`courseware-assets/new`、`courseware-assets/upload`、`assignments/new`）落在对应的 `[id]` 动态段上，由页面内 `notFound()` 渲染“这一页走丢了 / 404”页，因页面壳先流式输出而**状态码仍是 200**——与 `ENV-09` 记录的判据一致，回归时须读响应体而非状态码。`assignments/new` 以 `principal` 请求时先被权限跳转拦下，改用 `student` 复测得到同样的 404 页。
+- [x] `ROUTE-49` 动态路由使用畸形 UUID、其他班级的 session ID 或不匹配的 class/session 组合时返回 404/拒绝，不泄露对象是否存在。
+      畸形 UUID：对 `students`／`classes`／`sessions`／`courseware/lectures` 四条动态路由各注入 `not-a-uuid`、`123`、`abc-def`、截断 UUID、`'%20or%201=1--`、`%2520` 六种取值，全部呈现 404 页，无 SQL 错误、无对象标题泄漏。
+      不存在的合法 UUID（`00000000-0000-4000-8000-000000000000`）与畸形值呈现一致的 404 页，未区分“不存在”与“无权限”。
+      跨对象组合：以 `teacher` 请求 `/zh/classroom/{QA班}/session/{P4课次}`、`/…/live`、`/…/report`、`/zh/classroom/{P4班}/session/{QA课次}`、不存在班+真实课次、真实班+不存在课次，六种组合全部返回 **HTTP 404**；同一账号的合法配对返回 `307 → /zh/dashboard/sessions/{id}?stage=pre&returnTo=…`，证明 404 不是无差别拒绝。
+      存在性旁路检查：把 URL 中的 UUID 归一化后比对四种 404 响应体，差异全部落在 Next dev overlay 的 `<template>` 堆栈片段内，无应用数据参与；“不存在班+不存在课次”与“不存在班+真实课次”的响应体长度完全相同（151918）。dev 模式下无法排除该模板差异，**生产构建须复测一次字节长度差**再最终签收本条。
+      `FAIL · BUG-R1M-023`：纯空白的动态段（`%20` 空格、`%09` 制表符）被路径归一化吃掉，`/zh/dashboard/classes/%20`、`/zh/dashboard/students/%20` 不返回 404，而是在保留畸形 URL 的前提下渲染**上级集合页**（班级列表 8 个班、学生列表全量）。`%2520`（字面量 `%20`）正确 404。
 
 ## 3. 第二轮：今日工作、协同、通知与审批
 
@@ -835,18 +858,39 @@
 
 ### 9.1 机构、校区和规则
 
-- [ ] `ORG-01` 机构名称、默认时区等基础资料保存后刷新一致，并记录操作者。
+- [x] `ORG-01` 机构名称、默认时区等基础资料保存后刷新一致，并记录操作者。
+      主管账号在 `/zh/dashboard/organization-settings` → 机构 tab：填入非法时区 `Not/AZone` 保存返回“操作失败，请检查输入后重试。”，刷新后仍为 `Asia/Shanghai`；清空机构名称保存返回“输入有误，请检查后重试。”（VALIDATION），刷新后仍为 `Mathin`；改名为 `Mathin QA-20260803` 保存返回“机构资料已保存”，刷新后持久为新值；改回 `Mathin` 后刷新一致。
+      操作者记录：`public.organizations.updated_by = cbe5d951-…`（test-principal），`updated_at` 同步推进。
+      `Sev3` 非法时区只返回通用“操作失败”，未指出是时区字段；空名称走的是 VALIDATION 文案。两类失败在 UI 上无法区分字段。
 - [ ] `ORG-02` 新建/编辑校区，启用状态和校区时区生效；非法时区或空名称被拒绝。
 - [ ] `ORG-03` 校区教室新建、停用和恢复后，建班/课表候选同步变化；历史课次仍显示原教室。
 - [ ] `ORG-04` 节假日创建、归档后排课预览使用生效版本；历史日历不被无痕改写。
 - [ ] `ORG-05` 校区学期创建、激活和日期边界正确；同一 scope 的当前学期唯一。
-- [ ] `ORG-06` calendar、lesson、scheduling、notification、finance、public_publishing 六个规则域可创建未来生效版本。
-- [ ] `ORG-07` 规则历史显示 version、生效时间、原因和操作者；rollback 创建新版本，不删除历史。
-- [ ] `ORG-08` Feature Flag 历史、未来生效和 rollback 正确；未启用能力 fail-closed。
-- [ ] `ORG-09` email/sms/wechat 未配置供应商时保持关闭；不能仅打开 flag 造成假成功。
-- [ ] `ORG-10` `teaching.preparation_archive_edit` 打开/关闭只影响课后备课档案补改能力。
-- [ ] `ORG-11` `finance.enabled` 控件禁用并明确“1.0 安全关闭”；创建/回滚版本都不能开启。
-- [ ] `ORG-12` 没有 organization.settings.manage 的员工看不到页面且直接 action 被拒绝。
+- [x] `ORG-06` calendar、lesson、scheduling、notification、finance、public_publishing 六个规则域可创建未来生效版本。
+      规则域下拉恰有 6 项（教学周／课时／排课／通知／财务／公开发布），与 `ORGANIZATION_RULE_DOMAINS` 一致。逐个选中后填 `2030-01-01 00:00`、原因 `QA-20260803-规则版本验证（未来生效，payload 不变）`、payload 保持当前值提交，6 域均返回“规则新版本已创建”并在历史出现 v2。
+      DB 复核：6 条新版本 `effective_from = 2029-12-31 16:00+00`（Asia/Shanghai 本地时间正确换算），`created_by` 为 test-principal，对应 v1 的 `effective_until` 被同步收口到同一时刻。
+- [x] `ORG-07` 规则历史显示 version、生效时间、原因和操作者；rollback 创建新版本，不删除历史。
+      历史行形如 `v2 2030年1月1日 00:00 · QA-20260803-规则版本验证… · 测试-主管`，当前生效行带“当前生效”徽标且其 rollback 按钮被禁用。对 `calendar` 的 v2 执行“回滚到此版本”返回“已用旧值创建新的回滚版本”，历史变为 v3/v2/v1 三行，v1、v2 均保留，v3 标记为当前生效。
+      `FAIL · BUG-R1M-022`：回滚生成的 v3 未收口，与仍排在 2029-12-31 的 v2 形成两个开口区间。以 `2030-06-01` 为时点查询，`calendar` 有 **2 条**版本同时命中生效窗口（v2、v3）。
+- [x] `ORG-08` Feature Flag 历史、未来生效和 rollback 正确；未启用能力 fail-closed。
+      能力下拉恰有 6 项（财务／邮件通知／短信通知／微信通知／公开内容发布／课中·课后补改本课课件与档案），与 `ORGANIZATION_FEATURE_KEYS` 一致。在 `teaching.preparation_archive_edit` 上连续创建 v3（关闭）、v4（开启）均返回“功能开关新版本已创建”，历史保留 v1～v4 且显示开启/关闭徽标、生效时间、原因和操作者。当前生效行的 rollback 按钮禁用，历史行可用。
+      fail-closed 已在 `ORG-09` 与 `ORG-11` 单独取证。
+      `FAIL · BUG-R1M-022`：v3、v4 的 `effective_from` 同为 `2026-08-03 12:05:00+00`（datetime-local 只有分钟精度），`set_feature_flag` 的收口条件是严格 `<`，导致 v3 未被 v4 收口，两行 `effective_until` 同为 NULL，UI 上两行同时显示“当前生效”、两行 rollback 均被禁用。
+- [x] `ORG-09` email/sms/wechat 未配置供应商时保持关闭；不能仅打开 flag 造成假成功。
+      `public.integration_channels` 四条记录（email/sms/wechat/webhook）均为 `provider_key = null`、`secret_ref = null`、`status = 'disabled'`。平台运行页对应显示“邮件/短信/Webhook/微信 未选择供应商 · 已关闭”。
+      负向断言（事务内执行后 rollback）：插入一条 `notifications.email` 的 enabled 版本后，`is_feature_enabled('notifications.email')` 变为 true，但 `notification_channel_enabled('email')` 仍为 **false**——`notification_channel_enabled` 要求 flag 与 `provider_key is not null and secret_ref is not null and status='enabled'` 同时成立，因此 `stage_notification_for_domain_event` 不会为该渠道排队任何 delivery 或 job。仅开 flag 无法制造假成功。
+- [x] `ORG-10` `teaching.preparation_archive_edit` 打开/关闭只影响课后备课档案补改能力。
+      对照对象：已结束课次 `38ca35a4-63f8-4600-a4f5-cc8701a352b6`（测试班-P4 第 2 讲）的 `?stage=pre` 课前档案，教师账号。
+      开关开启（进入本轮时的既有状态）：可见「上传解析记录」「上传图片 / 视频」「插入游戏页」「插入白板页」四个写入动作。
+      开关关闭（本轮创建 v3）：上述四个写入动作全部消失，仅剩禁用态的「查看与导出解析（0）」与课件页目录，档案退回只读；课次抬头、阶段、班级和讲次信息不变。
+      恢复开启（v4）后写入动作立即回归。开关开合期间未观察到其他模块可见变化。
+      基线提示：开发库当前是 v2「开发测试：临时补改已锁定备课档案」留下的**开启**态；R1-5 的 fail-closed 默认为关闭。doc 25 的 1.0 生产基线须显式确认该开关为关闭。
+- [x] `ORG-11` `finance.enabled` 控件禁用并明确“1.0 安全关闭”；创建/回滚版本都不能开启。
+      UI：选中「财务」后开关复选框 `disabled`，文案为“1.0 财务发布门已锁定关闭”＋R1-8 说明，「创建新版本」与全部「回滚到此版本」按钮均 `disabled`。
+      DB 负向断言（事务内执行后 rollback）：`finance_release_gate_open()` 与 `is_feature_enabled('finance.enabled')` 均为 false；插入即时生效的 enabled 版本、插入未来生效的 enabled 版本、插入 campus 级 enabled 覆盖三种写法全部被 `reject_closed_finance_release_enable()` 以 `FINANCE_RELEASE_CLOSED` 拒绝；直接 `update … set enabled = true` 被 `guard_rule_version_immutable()` 以 `RULE_VERSION_IMMUTABLE` 拒绝。对照组：同一事务内插入 `notifications.email` 的 enabled 版本成功（`INSERT 0 1`），证明拒绝来自财务发布门而非语句本身。
+- [x] `ORG-12` 没有 organization.settings.manage 的员工看不到页面且直接 action 被拒绝。
+      UI：`research`、`multirole` 直接请求 `organization-settings`／`staff`／`access-control`／`registration-settings`／`account-support`／`system-health`／`data-maintenance` 七条路由，全部被拒并跳 `/zh/dashboard`（仅 `account-security` 放行）；`principal` 七条全部放行，构成对照。
+      DB：以 test-research 身份（`request.jwt.claims.sub` + `set local role authenticated`）访问，`staff_has_perm(…, 'organization.settings.manage')` 为 false，且 `organizations`、`organization_rule_versions`、`feature_flag_versions` 三张表对 `authenticated` **没有任何表级 GRANT**——SELECT/INSERT/UPDATE 一律 `permission denied for table`，在 RLS 之前即被拒。写入只能经 `assert_organization_manager()` 的 SECURITY DEFINER RPC。
 
 ### 9.2 员工、岗位与权限
 
@@ -882,35 +926,57 @@
 
 ### 9.4 系统运行、文件和数据治理
 
-- [ ] `OPS-01` 系统运行页显示 jobs pending/running/dead、失败通知、待清理文件和 roster mismatch。
-- [ ] `OPS-02` dead-letter 展示 kind、尝试次数和失败原因；人工重放要求权限并产生审计。
-- [ ] `OPS-03` 同一 dead job 重放不会重复领域副作用；成功后状态和 worker 统计更新。
-- [ ] `OPS-04` email/sms/wechat/webhook 渠道显示 provider 未选择/disabled，不显示可用假象。
-- [ ] `OPS-05` 文件策略显示 bucket、访问级别、TUS/协议、最大尺寸和保留期。
-- [ ] `OPS-06` worker last_seen、处理/失败数可理解；没有 worker 时显示明确空状态。
-- [ ] `DQ-01` audit.view 可看最近质量扫描；无 system.operations.manage 时不能触发扫描。
-- [ ] `DQ-02` 扫描结果显示规则集版本、快照时间、rules/findings hash、总数和严重度。
-- [ ] `DQ-03` 0 finding 显示 clean；超过 200 条显示截断，不假装全量。
-- [ ] `DQ-04` 同一数据快照重复扫描结果稳定；扫描不自动修改业务数据或产生通知噪音。
-- [ ] `REPAIR-01` 历史修复计划只显示必要审计元数据：能力、恢复边界、影响数量、hash、状态和事件；不泄露已关闭财务正文。
-- [ ] `REPAIR-02` 财务关闭期间不能新建、执行或 rollback 订单状态修复；旧页面、旧请求和直接 action 均被关闭门拒绝。
-- [ ] `REPAIR-03` 学生合并、课件替换 rollback 和测试数据清理分别从对应领域 UI 操作，不出现可任意写表的通用修复入口。
-- [ ] `REPAIR-04` 无 system.operations.manage 的账号只能查看允许的审计元数据，不能通过构造 plan ID 执行或回滚。
-- [ ] `PURGE-01` 零引用课件报告只显示授权范围和真实使用计数。
+- [x] `OPS-01` 系统运行页显示 jobs pending/running/dead、失败通知、待清理文件和 roster mismatch。
+      `/zh/dashboard/system-health`（principal）顶部六个计数齐备：报名未进教室 1、进教室无报名 0、待领取 Job 3、运行中 Job 0、Dead-letter 0、投递失败 0、待清理文件 0，并附“最近 24 小时成功 0 项”。
+- [ ] `OPS-02` dead-letter 展示 kind、尝试次数和失败原因；人工重放要求权限并产生审计。 BLOCKED · 当前 dead-letter 为 0，页面显示“当前没有未处置的 dead-letter。”，无对象可核对 kind/尝试次数/失败原因，也无法执行重放。需要先构造可失败的 job。
+- [ ] `OPS-03` 同一 dead job 重放不会重复领域副作用；成功后状态和 worker 统计更新。 BLOCKED · 同 `OPS-02`，无 dead job 可重放。
+- [x] `OPS-04` email/sms/wechat/webhook 渠道显示 provider 未选择/disabled，不显示可用假象。
+      四个渠道均显示“未选择供应商 · 已关闭”，页面说明为“只有 Feature Flag、供应商和环境 Secret 同时就绪时才会启用；未选渠道保持关闭”，与 `public.integration_channels` 的四条 `provider_key=null / secret_ref=null / status=disabled` 一致。判据取自 `ORG-09` 的 `notification_channel_enabled` 断言，不只依赖页面文案。
+- [x] `OPS-05` 文件策略显示 bucket、访问级别、TUS/协议、最大尺寸和保留期。
+      7 个 bucket 逐行给出访问级别与协议：`assignment-submissions` 签名/STANDARD/12 MB/730 天、`course-assets` 签名/TUS/200 MB/随业务对象、`courseware` 签名/TUS/200 MB/随业务对象、`cw-h5` **公开**/SERVICE/200 MB、`cw-objects` 签名/SERVICE/200 MB、`note-assets` **公开**/STANDARD/10 MB、`session-videos` 签名/TUS/200 MB/365 天；另显示 3 个活跃上传会话、0 个到期孤儿、0 个校验拒绝文件。
+- [x] `OPS-06` worker last_seen、处理/失败数可理解；没有 worker 时显示明确空状态。
+      Worker 心跳区显示 `dev-validation` / `r1-2.1` / 成功 0 · 失败 0 / 2026-07-28 20:52:03，字段可读。「没有 worker 时的空状态」本轮无法制造（该行常驻），此半项未取证。
+- [ ] `DQ-01` audit.view 可看最近质量扫描；无 system.operations.manage 时不能触发扫描。 BLOCKED · 正向已验证（principal 可见最近扫描并可触发）；负向缺账号——固定账号中 `sales`/`teacher`/`research`/`multirole` 在 `data-maintenance` 路由级即被拒，没有“有 audit.view、无 system.operations.manage”的账号可用于区分两种权限。需新增此类岗位后复测。
+- [x] `DQ-02` 扫描结果显示规则集版本、快照时间、rules/findings hash、总数和严重度。
+      页面给出规则集 `mathin-data-quality-v1`、规则摘要 `94e1e78b…5c4aa0`、结果摘要 `e3b0c442…852b855`、快照时间，以及异常总数 0 与严重/错误/警告/提示四级分档。
+- [x] `DQ-03` 0 finding 显示 clean；超过 200 条显示截断，不假装全量。
+      0 finding 时显示“本次扫描未发现异常。”，四级分档全为 0。>200 条截断分支本轮无数据可触发，未取证。
+- [x] `DQ-04` 同一数据快照重复扫描结果稳定；扫描不自动修改业务数据或产生通知噪音。
+      连续点击「运行质量扫描」两次：规则摘要与结果摘要在三次读数（基线、run#1、run#2）中完全一致，异常总数恒为 0，只有快照时间从 `2026-08-01 10:25:32` 推进到 `20:11:03`、`20:11:13`。扫描后 Dashboard 正常，未出现新的通知或工作项。
+- [ ] `REPAIR-01` 历史修复计划只显示必要审计元数据：能力、恢复边界、影响数量、hash、状态和事件；不泄露已关闭财务正文。 `FAIL · BUG-R1M-024`
+      可见 UI 部分符合要求：四类修复能力各自标注版本、恢复边界与 RPC 链；两条历史计划显示状态、影响数量、目标对象 ID、执行前/预期执行后摘要 hash、有效期与审计事件数，正文只呈现“状态：refunding → partial”。
+      但 `/zh/dashboard/data-maintenance` 的**服务端响应体**携带了完整订单财务正文：`amountDue:2800`、`amountOriginal:3000`、`amountDiscount:200`、`paidTotal:1501.01`、`netPaid:1501`、`refundedTotal:0.01`，随 `recoverySnapshot`／`afterSnapshot`／`expectedAfterSnapshot` 各出现 6 次。请求者 test-principal 的 `has_perm(…, 'finance.order.view')` 为 false，`finance.enabled` 为 false。
+- [ ] `REPAIR-02` 财务关闭期间不能新建、执行或 rollback 订单状态修复；旧页面、旧请求和直接 action 均被关闭门拒绝。 `FAIL · BUG-R1M-025`
+      `rollback_data_repair_plan` 在 `finance.enabled = false` 下对已执行计划 `b2d3cde1-…` 调用**成功**，实际执行了 `update public.orders set status = 'refunding'` 并返回含全部金额字段的计划快照，同时追加 `rolled_back` 审计事件。该断言在事务内执行并已 rollback，开发库未留下持久变更。
+      三个 Server Action（`previewOrderStatusRepairAction`／`executeDataRepairPlanAction`／`rollbackDataRepairPlanAction`）只过 `authorizedClient("system.operations.manage")`，无财务关闭门；对应 RPC 为 SECURITY DEFINER，绕过 `orders` 上的 `finance_release_gate` restrictive 策略。页面上「回滚」按钮对 principal 处于可用态。
+- [x] `REPAIR-03` 学生合并、课件替换 rollback 和测试数据清理分别从对应领域 UI 操作，不出现可任意写表的通用修复入口。
+      「领域修复计划」只登记四项能力（课件替换回滚 `rollback_cw_asset_replacement`、订单派生状态重算、重复学生合并 `merge_students`、测试数据永久清理 `purge_test_course_family / purge_test_classroom`），页面本身仅对订单状态重算开放生成入口，说明为“当前只开放订单派生状态重算；金额字段不会被修复计划改写”；无自由 SQL、无通用写表控件。
+- [ ] `REPAIR-04` 无 system.operations.manage 的账号只能查看允许的审计元数据，不能通过构造 plan ID 执行或回滚。 BLOCKED · 同 `DQ-01`，缺少“可查看审计元数据但无 system.operations.manage”的账号；现有非主管员工在路由级即被拒，无法区分“看不到页面”与“看得到但不能执行”。
+- [x] `PURGE-01` 零引用课件报告只显示授权范围和真实使用计数。
+      「零引用共享资源（0）」区块显示“暂无零引用资源”，并注明“本期只报告，不会自动删除 Storage 对象”。当前无零引用对象，计数与 `PURGE` 相关的删除动作均未出现。
 - [ ] `PURGE-02` testdata purge 只列出测试对象；确认时再次显示精确对象和影响范围。
 - [ ] `PURGE-03` 无 testdata.purge 权限不能执行永久清理；普通 audit.view 只能查看。
 - [ ] `PURGE-04` 本轮若执行 purge，只处理本轮 QA 对象，并验证无法误选正式课程/班级。
 
 ### 9.5 财务 1.0 安全关闭
 
-- [ ] `FIN-CLOSE-01` staff、admin、sales 和 parent 侧栏均无财务入口。
-- [ ] `FIN-CLOSE-02` 直接访问 `/dashboard/finance` 安全返回首页且浏览器响应不含订单/支付/账户正文。
-- [ ] `FIN-CLOSE-03` 机构设置的财务开关禁用，创建版本和 rollback 都不能开启。
-- [ ] `FIN-CLOSE-04` 今日工作、协同、审批和通知中无可操作 finance 项。
-- [ ] `FIN-CLOSE-05` 系统运行页无可新建/领取 finance job；历史 finance 事件仅按审计权限存在。
-- [ ] `FIN-CLOSE-06` 学生对象页和家庭门户不显示余额、订单、欠费操作或财务导出。
-- [ ] `FIN-CLOSE-07` 历史 finance deep link 不泄露数据，不出现“开关关闭但表格已加载”的闪烁。
-- [ ] `FIN-CLOSE-08` 数据维护页不能通过订单质量 finding 进入预览、执行或 rollback 财务修复；审计元数据与可操作入口明确分离。
+- [x] `FIN-CLOSE-01` staff、admin、sales 和 parent 侧栏均无财务入口。
+      六个角色（principal、admin、sales、teacher、parent、student）的 Dashboard HTML 中均无指向 `/dashboard/finance` 的链接，可见文本也无财务/订单/欠费入口。
+- [x] `FIN-CLOSE-02` 直接访问 `/dashboard/finance` 安全返回首页且浏览器响应不含订单/支付/账户正文。
+      同 `ROUTE-46`：六角色 × zh/en 全部安全跳回 Dashboard，响应体的财务字样逐条核对后确认全部来自 next-intl 消息字典，无任何 finance 表数据。
+- [x] `FIN-CLOSE-03` 机构设置的财务开关禁用，创建版本和 rollback 都不能开启。
+      同 `ORG-11`：UI 控件与两个按钮全部 `disabled`；DB 层三种插入写法被 `FINANCE_RELEASE_CLOSED` 拒绝、UPDATE 被 `RULE_VERSION_IMMUTABLE` 拒绝，非财务 flag 的对照插入成功。
+- [x] `FIN-CLOSE-04` 今日工作、协同、审批和通知中无可操作 finance 项。
+      principal 的 `/zh/dashboard`（今日工作）与 `/zh/dashboard/coordination` 可见文本均不含财务/订单/收款/退费/欠费/应收/催缴等字样，无可操作 finance 项。通知铃内的历史 finance 事件本轮未逐条展开，该半项未取证。
+- [x] `FIN-CLOSE-05` 系统运行页无可新建/领取 finance job；历史 finance 事件仅按审计权限存在。
+      `/zh/dashboard/system-health` 无任何新建/领取 job 的控件（页面内可交互按钮仅导航类），Job 计数为待领取 3 / 运行中 0 / dead 0，渠道区四项均关闭；可见文本无财务字样。迁移 `20260801001000` 的 `guard_closed_finance_job()` 触发器构成写入侧关闭门。
+- [x] `FIN-CLOSE-06` 学生对象页和家庭门户不显示余额、订单、欠费操作或财务导出。
+      员工侧学生对象页 `/zh/dashboard/students/3172e2bd-…` 可见文本无财务字样；student 首页同样为空。
+      家庭门户 `/zh/dashboard/children` 出现「缴费状态：**财务未启用**」磁贴——只是关闭态占位，不含余额、订单、欠费动作或导出入口，判定通过。
+      `Sev3` 对外家庭门户仍向家长展示一个 1.0 不会上线的「缴费状态」磁贴，等于提前暴露未发布能力；建议 1.0 生产基线整体隐藏该磁贴而非显示“未启用”。
+- [ ] `FIN-CLOSE-07` 历史 finance deep link 不泄露数据，不出现“开关关闭但表格已加载”的闪烁。 SKIP · 本轮只覆盖 `/dashboard/finance` 根路径与数据维护页，未构造历史 finance 通知/工作项的 deep link，也未做首屏闪烁观察。注意 `BUG-R1M-024` 已在数据维护页命中同类“正文随响应体一起下发”的问题。
+- [ ] `FIN-CLOSE-08` 数据维护页不能通过订单质量 finding 进入预览、执行或 rollback 财务修复；审计元数据与可操作入口明确分离。 `FAIL · BUG-R1M-024` `BUG-R1M-025`
+      审计元数据与可操作入口**未**分离：`/zh/dashboard/data-maintenance` 对持有 `system.operations.manage` 的 principal 同时下发完整订单金额正文并提供可用的「回滚」按钮，`rollback_data_repair_plan` 在财务关闭下实测可成功写 `public.orders`。详见 `REPAIR-01` / `REPAIR-02`。
 
 ## 10. 第九轮：白板、跨设备和失败恢复
 
@@ -1263,6 +1329,17 @@
 | BUG ID / 严重度 | 对应检查项与角色 | route / 最短复现步骤 | 期望结果 / 实际结果 | 稳定性、数据与证据 |
 | --- | --- | --- | --- | --- |
 | `BUG-R1M-021` / `Sev2` | `LIVE-20`；teacher；zh；试讲课堂 | `/zh/classroom/5e0897eb-6c7d-4b8f-bc0f-30dd96b09804/session/ebfd615a-e772-4b09-9d48-bfbfd70332f5/live?mode=rehearsal`；将视口设为 1024×768 或 1194×834 | 期望课堂控件在常用桌面/iPad 视口内无遮挡且可达；实际 document 无横向溢出，但内层布局的上一页/下一页/页面列表/更多控制条 bottom 坐标分别超过视口底部（1024×768 时约至 y=782，1194×834 时约至 y=848），截图中出现底部裁切，PageDown/页面滚动未推进该内层区域。 | 两个窄高度尺寸稳定复现；仅试讲壳、未写入课堂事实；无越权/泄露；截图未保存为仓库证据，缺陷记录无 secret、token 或真实 PII。 |
+
+### 13.5 本轮第 13 节新增缺陷
+
+| BUG ID / 严重度 | 对应检查项与角色 | route / 最短复现步骤 | 期望结果 / 实际结果 | 稳定性、数据与证据 |
+| --- | --- | --- | --- | --- |
+| `BUG-R1M-024` / `Sev1` | `REPAIR-01`、`FIN-CLOSE-08`；principal（`system.operations.manage`，无 `finance.order.view`）；zh | `GET /zh/dashboard/data-maintenance` → 检索响应体 | 期望财务关闭期间页面只下发审计元数据（能力、恢复边界、影响数量、hash、状态、事件）；实际服务端响应体含完整订单财务正文 `amountDue:2800`、`amountOriginal:3000`、`amountDiscount:200`、`paidTotal:1501.01`、`netPaid:1501`、`refundedTotal:0.01`，随 `recoverySnapshot`/`afterSnapshot`/`expectedAfterSnapshot` 各出现 6 次；可见 UI 只渲染“状态：refunding → partial”，金额靠“没渲染”而非“没下发”遮蔽。 | 稳定复现（只读请求）；未写入；`finance.enabled=false`、请求者无任何 finance 权限；证据为响应体片段，不含 secret/token/PII。根因方向：`data_repair_plans` 的计划快照整体投影给客户端，未按财务关闭门裁剪。 |
+| `BUG-R1M-025` / `Sev1` | `REPAIR-02`、`FIN-CLOSE-08`；principal；zh | 事务内以 test-principal 身份调用 `public.rollback_data_repair_plan('b2d3cde1-3667-446d-898d-293508a72ae4')` | 期望财务关闭期间预览/执行/回滚订单状态修复一律被关闭门拒绝；实际调用成功，执行 `update public.orders set status='refunding'`（目标订单 `f385ba0d-…`），返回含全部金额字段的计划快照并追加 `rolled_back` 审计事件。三个 Server Action 只过 `authorizedClient("system.operations.manage")`，RPC 为 SECURITY DEFINER，绕过 `orders` 上的 `finance_release_gate` restrictive 策略；数据维护页的「回滚」按钮对 principal 可用。 | 稳定复现；断言包在 `begin … rollback` 内，开发库无持久变更；`is_feature_enabled('finance.enabled')=false`、`has_perm(principal,'finance.order.view')=false`；无 secret/PII。 |
+| `BUG-R1M-022` / `Sev2` | `ORG-07`、`ORG-08`；principal；zh | 机构设置 → 业务规则/功能开关，在同一分钟内连续创建两个版本，或对一个未来生效版本执行回滚 | 期望任一时点最多一个版本生效、`effective_until` 构成连续不重叠链；实际 `set_organization_rule` / `set_feature_flag` 的收口条件是严格 `previous_row.effective_from < p_effective_from`，等于或早于既有版本时不收口。实测 `teaching.preparation_archive_edit` v3、v4 `effective_from` 同为 `2026-08-03 12:05:00+00`、`effective_until` 同为 NULL，UI 两行同显“当前生效”且两行 rollback 均被禁用；`calendar` v2（2029-12-31 生效）与回滚产生的 v3（2026-08-03 生效）在 `2030-06-01` 时点同时命中生效窗口。 | 稳定复现；`datetime-local` 只有分钟精度，同分钟内两次变更即触发，非边缘场景。运行期取值仍确定（`order by effective_from desc, version desc` 取 v4/v2，实测与 UI 行为一致），受影响的是审计可读性与 rollback 控件可用性。无 secret/PII。 |
+| `BUG-R1M-023` / `Sev3` | `ROUTE-49`；principal；zh | `GET /zh/dashboard/classes/%20`、`GET /zh/dashboard/students/%20`、`GET /zh/dashboard/classes/%09` | 期望畸形动态段返回 404；实际纯空白段被路径归一化吃掉，URL 保留 `%20`/`%09` 的同时渲染**上级集合页**（班级列表 8 个班、学生列表全量）。`%2520`（字面量 `%20`）与其他畸形值均正确 404。 | 稳定复现；只读，无写入；展示范围不超出该角色本就可见的集合，无越权泄露；影响是“对象路由静默降级为集合页”，深链带多余空格时看到的不是自己以为的对象。 |
+
+以上缺陷均未涉及 secret、token、真实未成年人资料或 E 系列源资源。`BUG-R1M-024`、`BUG-R1M-025` 同属 R1-8 财务安全关闭的缺口，应合并交由 R1-8 owner 处置并补 db-audit 负向断言；`BUG-R1M-022` 属 R1-1 机构配置版本链；`BUG-R1M-023` 属路由层。
 
 ## 14. 本轮退出条件
 
