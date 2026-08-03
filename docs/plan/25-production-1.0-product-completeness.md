@@ -329,14 +329,14 @@ R1-7E 以 `user_rights_export_artifacts` 保存与请求绑定的精确 JSON 字
 | PROD-08 | Tools | 2/2 独立页和既定 embed 场景通过 |
 | PROD-09 | Minds | 2/2 中文文章发布；无效 Terms 关系=0 |
 | PROD-10 | Notebook | 私有写作、审核、发布/撤回、公开阅读、互动和越权 E2E 通过 |
-| PROD-11 | E 系列 | 865 讲×2 轨源资源完整；正式 release 恰为 1730 条 `release_no=1`；缺失/悬空=0。2026 秋季导入后按 §5.1.1 改判为 1135 讲 / 2270 条 |
+| PROD-11 | E 系列 | 1135 讲×2 轨源资源完整；正式 release 恰为 2270 条 `release_no=1`；缺失/悬空=0 |
 | PROD-12 | 爱学习 G+ 秋季 | 三至六年级 52 讲×2 轨源资源完整；正式 release 恰为 104 条 `release_no=1`；第 7/15 讲显式记为来源缺口；其他范围不伪造；缺失/悬空=0 |
 
 #### 5.1.1 教材年度换代后的基线重新固定
 
 课程目录版本层（迁移 `20260803000300`/`20260803000400`，2026-08-03 落库）把「教材年度版本」建成 `course_catalog_versions` 一层，`courses` 的唯一性从 `(family_id, grade, term, class_type)` 收敛为 `(family_id, catalog_version_id, grade, term, class_type)`，`product_code` 的唯一性从全局收敛为版本内。E 系列现状归类为 2026新版 18 门（暑期）、2025旧版 54 门（秋季/寒假/春季），讲次数量未变。
 
-来源包 `mofaxiao-e-math-2026-autumn-2026-08-03`（270 讲、16,451 页、审计全绿）尚未导入。导入任务必须在同一次提交里同步下列全部数字，不允许只改库不改门：
+来源包 `mofaxiao-e-math-2026-autumn-2026-08-03`（270 讲、16,451 页、审计全绿）已于 2026-08-04 导入开发库，下列数字为正式基线目标：
 
 | 对象 | 导入前 | 导入后 |
 | --- | --- | --- |
@@ -346,7 +346,9 @@ R1-7E 以 `user_rights_export_artifacts` 保存与请求绑定的精确 JSON 字
 | 含爱学习 G+ 的讲次合计 | 917 | 1,187 |
 | 含爱学习 G+ 的正式 release 合计 | 1,834 | 2,374 |
 
-导入任务的连带修改点：`supabase/seed/teaching-plans.json` 追加 18 门课程（`catalogVersion` 为 `2026`）、`docs/manifests/r1-initialization.example.json` 的 `expectedCourseCount`/`expectedLectureCount`/`naturalKeysSha256`/`sourceSha256`、doc 00 的正式数据基线行、doc 04 §1、本节表格与 PROD-11。旧秋季 18 门保留 `enabled` 并写入 `superseded_by_course_id`；已有班级继续固定旧 `course_id`，不迁移。
+导入已同步的连带修改点：`supabase/seed/teaching-plans.json` 追加 18 门课程（`catalogVersion` 为 `2026`，讲次 72→90、865→1135）、`docs/manifests/r1-initialization.example.json` 的 `expectedCourseCount`/`expectedLectureCount`/`naturalKeysSha256`/`sourceSha256`、doc 00 的正式数据基线行、doc 04 §1、本节表格与 PROD-11。旧秋季 18 门保留 `enabled` 并已写入 `superseded_by_course_id`；已有班级继续固定旧 `course_id`，不迁移。
+
+开发库实测 E 系列 `release_no=1` 为 2269 条而非 2270：样本讲 `MFHK02039` 第 3 讲《迷宫连线》的 `adapted-4x3` 轨在 P6-3/P6-6 样本期清除重导中用掉了 1 号，现存 10 条 release 起始号为 2。上表是正式基线目标——R1-18 按本节把每讲两轨重建为 `release_no=1` 后该差异消失，不需要在开发库返工。
 
 ### 5.2 小王子视觉与交互
 

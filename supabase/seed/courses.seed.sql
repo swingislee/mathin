@@ -581,6 +581,185 @@ on conflict (course_id, no) do update set
 
 insert into public.courses (family_id, catalog_version_id, title, product_code, grade, term, class_type, status)
 select family_row.id, version_row.id,
+       'E系列数学一年级秋季A[全国版]', 'MFHK00007', 1, 2, 'A', 'enabled'
+  from public.course_catalog_versions version_row
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (catalog_version_id, product_code) where product_code is not null do update set
+  family_id = excluded.family_id,
+  title = excluded.title,
+  grade = excluded.grade,
+  term = excluded.term,
+  class_type = excluded.class_type;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 1, '图形规律初步'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00007'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 2, '加减巧算初步'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00007'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 3, '平面图形计数初步'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00007'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 4, '加减应用题'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00007'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 5, '立体图形计数'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00007'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 6, '火柴棒与图形'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00007'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 7, '数串规律初步'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00007'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 8, '天平代换'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00007'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 9, '中奖的可能性'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00007'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 10, '立体七巧板运动'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00007'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 11, '立体七巧板双拼'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00007'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 12, '排队问题初步'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00007'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 13, '数织'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00007'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 14, '比多比少应用题'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00007'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 15, '横式数字谜'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00007'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.courses (family_id, catalog_version_id, title, product_code, grade, term, class_type, status)
+select family_row.id, version_row.id,
        'E系列数学一年级秋季B[全国版]', 'MFHK00008', 1, 2, 'B', 'enabled'
   from public.course_catalog_versions version_row
   join public.course_families family_row on family_row.id = version_row.family_id
@@ -760,6 +939,185 @@ on conflict (course_id, no) do update set
 
 insert into public.courses (family_id, catalog_version_id, title, product_code, grade, term, class_type, status)
 select family_row.id, version_row.id,
+       'E系列数学一年级秋季B[全国版]', 'MFHK00008', 1, 2, 'B', 'enabled'
+  from public.course_catalog_versions version_row
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (catalog_version_id, product_code) where product_code is not null do update set
+  family_id = excluded.family_id,
+  title = excluded.title,
+  grade = excluded.grade,
+  term = excluded.term,
+  class_type = excluded.class_type;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 1, '图形规律初步'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00008'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 2, '加减巧算初步'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00008'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 3, '平面图形计数初步'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00008'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 4, '加减应用题'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00008'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 5, '立体图形计数'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00008'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 6, '火柴棒与图形'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00008'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 7, '数串规律初步'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00008'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 8, '天平代换'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00008'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 9, '中奖的可能性'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00008'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 10, '立体七巧板运动'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00008'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 11, '立体七巧板双拼'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00008'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 12, '排队问题初步'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00008'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 13, '数织'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00008'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 14, '比多比少应用题'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00008'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 15, '横式数字谜'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00008'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.courses (family_id, catalog_version_id, title, product_code, grade, term, class_type, status)
+select family_row.id, version_row.id,
        'E系列数学一年级秋季S[全国版]', 'MFHK00009', 1, 2, 'S', 'enabled'
   from public.course_catalog_versions version_row
   join public.course_families family_row on family_row.id = version_row.family_id
@@ -934,6 +1292,185 @@ select course_row.id, 15, '横式数字谜'
  where course_row.product_code = 'MFHK00009'
    and family_row.slug = 'xueersi-e-primary-math-cn'
    and version_row.slug = '2025'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.courses (family_id, catalog_version_id, title, product_code, grade, term, class_type, status)
+select family_row.id, version_row.id,
+       'E系列数学一年级秋季S[全国版]', 'MFHK00009', 1, 2, 'S', 'enabled'
+  from public.course_catalog_versions version_row
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (catalog_version_id, product_code) where product_code is not null do update set
+  family_id = excluded.family_id,
+  title = excluded.title,
+  grade = excluded.grade,
+  term = excluded.term,
+  class_type = excluded.class_type;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 1, '图形规律初步'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00009'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 2, '加减巧算初步'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00009'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 3, '平面图形计数初步'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00009'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 4, '加减应用题'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00009'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 5, '立体图形计数'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00009'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 6, '火柴棒与图形'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00009'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 7, '数串规律初步'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00009'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 8, '天平代换'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00009'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 9, '中奖的可能性'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00009'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 10, '立体七巧板运动'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00009'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 11, '立体七巧板双拼'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00009'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 12, '排队问题初步'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00009'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 13, '数织'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00009'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 14, '比多比少应用题'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00009'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 15, '横式数字谜'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00009'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
 on conflict (course_id, no) do update set
   name = excluded.name;
 
@@ -2300,6 +2837,185 @@ on conflict (course_id, no) do update set
 
 insert into public.courses (family_id, catalog_version_id, title, product_code, grade, term, class_type, status)
 select family_row.id, version_row.id,
+       'E系列数学二年级秋季A[全国版]', 'MFHK00010', 2, 2, 'A', 'enabled'
+  from public.course_catalog_versions version_row
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (catalog_version_id, product_code) where product_code is not null do update set
+  family_id = excluded.family_id,
+  title = excluded.title,
+  grade = excluded.grade,
+  term = excluded.term,
+  class_type = excluded.class_type;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 1, '图形规律进阶'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00010'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 2, '趣味数串速算'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00010'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 3, '平面图形计数进阶'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00010'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 4, '一笔画问题'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00010'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 5, '加减巧算综合'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00010'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 6, '华容道'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00010'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 7, '乘法竖式初步'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00010'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 8, '数串规律进阶'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00010'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 9, '翻杯子'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00010'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 10, '还原问题进阶'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00010'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 11, '巧填算符进阶'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00010'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 12, '排队问题进阶'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00010'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 13, '立体七巧板多拼'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00010'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 14, '立体七巧板拼切'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00010'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 15, '四则运算综合应用'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00010'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.courses (family_id, catalog_version_id, title, product_code, grade, term, class_type, status)
+select family_row.id, version_row.id,
        'E系列数学二年级秋季B[全国版]', 'MFHK00011', 2, 2, 'B', 'enabled'
   from public.course_catalog_versions version_row
   join public.course_families family_row on family_row.id = version_row.family_id
@@ -2479,6 +3195,185 @@ on conflict (course_id, no) do update set
 
 insert into public.courses (family_id, catalog_version_id, title, product_code, grade, term, class_type, status)
 select family_row.id, version_row.id,
+       'E系列数学二年级秋季B[全国版]', 'MFHK00011', 2, 2, 'B', 'enabled'
+  from public.course_catalog_versions version_row
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (catalog_version_id, product_code) where product_code is not null do update set
+  family_id = excluded.family_id,
+  title = excluded.title,
+  grade = excluded.grade,
+  term = excluded.term,
+  class_type = excluded.class_type;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 1, '图形规律进阶'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00011'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 2, '趣味数串速算'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00011'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 3, '平面图形计数进阶'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00011'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 4, '一笔画问题'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00011'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 5, '加减巧算综合'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00011'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 6, '华容道'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00011'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 7, '乘法竖式初步'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00011'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 8, '数串规律进阶'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00011'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 9, '翻杯子'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00011'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 10, '还原问题进阶'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00011'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 11, '巧填算符进阶'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00011'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 12, '排队问题进阶'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00011'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 13, '立体七巧板多拼'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00011'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 14, '立体七巧板拼切'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00011'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 15, '四则运算综合应用'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00011'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.courses (family_id, catalog_version_id, title, product_code, grade, term, class_type, status)
+select family_row.id, version_row.id,
        'E系列数学二年级秋季S[全国版]', 'MFHK00012', 2, 2, 'S', 'enabled'
   from public.course_catalog_versions version_row
   join public.course_families family_row on family_row.id = version_row.family_id
@@ -2653,6 +3548,185 @@ select course_row.id, 15, '四则运算综合应用'
  where course_row.product_code = 'MFHK00012'
    and family_row.slug = 'xueersi-e-primary-math-cn'
    and version_row.slug = '2025'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.courses (family_id, catalog_version_id, title, product_code, grade, term, class_type, status)
+select family_row.id, version_row.id,
+       'E系列数学二年级秋季S[全国版]', 'MFHK00012', 2, 2, 'S', 'enabled'
+  from public.course_catalog_versions version_row
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (catalog_version_id, product_code) where product_code is not null do update set
+  family_id = excluded.family_id,
+  title = excluded.title,
+  grade = excluded.grade,
+  term = excluded.term,
+  class_type = excluded.class_type;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 1, '图形规律进阶'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00012'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 2, '趣味数串速算'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00012'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 3, '平面图形计数进阶'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00012'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 4, '一笔画问题'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00012'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 5, '加减巧算综合'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00012'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 6, '华容道'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00012'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 7, '乘法竖式初步'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00012'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 8, '数串规律进阶'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00012'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 9, '翻杯子'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00012'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 10, '还原问题进阶'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00012'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 11, '巧填算符进阶'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00012'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 12, '排队问题进阶'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00012'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 13, '立体七巧板多拼'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00012'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 14, '立体七巧板拼切'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00012'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 15, '四则运算综合应用'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00012'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
 on conflict (course_id, no) do update set
   name = excluded.name;
 
@@ -4019,6 +5093,185 @@ on conflict (course_id, no) do update set
 
 insert into public.courses (family_id, catalog_version_id, title, product_code, grade, term, class_type, status)
 select family_row.id, version_row.id,
+       'E系列数学三年级秋季A[全国版]', 'MFHK00013', 3, 2, 'A', 'enabled'
+  from public.course_catalog_versions version_row
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (catalog_version_id, product_code) where product_code is not null do update set
+  family_id = excluded.family_id,
+  title = excluded.title,
+  grade = excluded.grade,
+  term = excluded.term,
+  class_type = excluded.class_type;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 1, '从树形图谈起'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00013'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 2, '周期问题'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00013'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 3, '奇数与偶数'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00013'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 4, '乘法巧算'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00013'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 5, '除法巧算'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00013'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 6, '长方形与正方形的面积'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00013'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 7, '和倍问题'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00013'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 8, '差倍问题'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00013'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 9, '日期中的周期'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00013'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 10, '幻方'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00013'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 11, '统计问题'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00013'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 12, '多笔画问题'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00013'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 13, '鸡兔同笼初步'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00013'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 14, '包含与排除'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00013'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 15, '倒推与图示'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00013'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.courses (family_id, catalog_version_id, title, product_code, grade, term, class_type, status)
+select family_row.id, version_row.id,
        'E系列数学三年级秋季B[全国版]', 'MFHK00014', 3, 2, 'B', 'enabled'
   from public.course_catalog_versions version_row
   join public.course_families family_row on family_row.id = version_row.family_id
@@ -4198,6 +5451,185 @@ on conflict (course_id, no) do update set
 
 insert into public.courses (family_id, catalog_version_id, title, product_code, grade, term, class_type, status)
 select family_row.id, version_row.id,
+       'E系列数学三年级秋季B[全国版]', 'MFHK00014', 3, 2, 'B', 'enabled'
+  from public.course_catalog_versions version_row
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (catalog_version_id, product_code) where product_code is not null do update set
+  family_id = excluded.family_id,
+  title = excluded.title,
+  grade = excluded.grade,
+  term = excluded.term,
+  class_type = excluded.class_type;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 1, '从树形图谈起'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00014'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 2, '周期问题进阶'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00014'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 3, '奇数与偶数'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00014'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 4, '乘法巧算'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00014'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 5, '除法巧算'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00014'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 6, '长方形与正方形的面积'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00014'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 7, '和倍问题'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00014'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 8, '差倍问题'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00014'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 9, '日期中的周期'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00014'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 10, '幻方'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00014'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 11, '统计问题'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00014'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 12, '多笔画问题'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00014'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 13, '鸡兔同笼初步'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00014'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 14, '包含与排除'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00014'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 15, '倒推与图示'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00014'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.courses (family_id, catalog_version_id, title, product_code, grade, term, class_type, status)
+select family_row.id, version_row.id,
        'E系列数学三年级秋季S[全国版]', 'MFHK00015', 3, 2, 'S', 'enabled'
   from public.course_catalog_versions version_row
   join public.course_families family_row on family_row.id = version_row.family_id
@@ -4372,6 +5804,185 @@ select course_row.id, 15, '倒推与图示'
  where course_row.product_code = 'MFHK00015'
    and family_row.slug = 'xueersi-e-primary-math-cn'
    and version_row.slug = '2025'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.courses (family_id, catalog_version_id, title, product_code, grade, term, class_type, status)
+select family_row.id, version_row.id,
+       'E系列数学三年级秋季S[全国版]', 'MFHK00015', 3, 2, 'S', 'enabled'
+  from public.course_catalog_versions version_row
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (catalog_version_id, product_code) where product_code is not null do update set
+  family_id = excluded.family_id,
+  title = excluded.title,
+  grade = excluded.grade,
+  term = excluded.term,
+  class_type = excluded.class_type;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 1, '从树形图谈起'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00015'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 2, '周期问题进阶'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00015'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 3, '奇数与偶数'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00015'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 4, '乘法巧算'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00015'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 5, '除法巧算'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00015'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 6, '长方形与正方形面积'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00015'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 7, '和倍问题'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00015'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 8, '差倍问题'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00015'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 9, '日期中的周期'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00015'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 10, '幻方'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00015'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 11, '统计问题'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00015'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 12, '多笔画问题'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00015'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 13, '鸡兔同笼初步'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00015'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 14, '包含与排除'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00015'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 15, '倒推与图示'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00015'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
 on conflict (course_id, no) do update set
   name = excluded.name;
 
@@ -5782,6 +7393,185 @@ on conflict (course_id, no) do update set
 
 insert into public.courses (family_id, catalog_version_id, title, product_code, grade, term, class_type, status)
 select family_row.id, version_row.id,
+       'E系列数学四年级秋季A[全国版]', 'MFHK00016', 4, 2, 'A', 'enabled'
+  from public.course_catalog_versions version_row
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (catalog_version_id, product_code) where product_code is not null do update set
+  family_id = excluded.family_id,
+  title = excluded.title,
+  grade = excluded.grade,
+  term = excluded.term,
+  class_type = excluded.class_type;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 1, '巧求面积'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00016'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 2, '体育比赛中的数学'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00016'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 3, '进位制初步'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00016'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 4, '加乘原理进阶'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00016'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 5, '小数乘除'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00016'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 6, '行程问题进阶'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00016'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 7, '操作类智巧趣题'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00016'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 8, '格点与割补'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00016'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 9, '整除特征初步'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00016'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 10, '最值问题初步'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00016'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 11, '最不利原则'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00016'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 12, '鸡兔同笼进阶'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00016'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 13, '平均数进阶'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00016'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 14, '乘除法数字谜'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00016'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 15, '火车过桥'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00016'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.courses (family_id, catalog_version_id, title, product_code, grade, term, class_type, status)
+select family_row.id, version_row.id,
        'E系列数学四年级秋季B[全国版]', 'MFHK00017', 4, 2, 'B', 'enabled'
   from public.course_catalog_versions version_row
   join public.course_families family_row on family_row.id = version_row.family_id
@@ -5961,6 +7751,185 @@ on conflict (course_id, no) do update set
 
 insert into public.courses (family_id, catalog_version_id, title, product_code, grade, term, class_type, status)
 select family_row.id, version_row.id,
+       'E系列数学四年级秋季B[全国版]', 'MFHK00017', 4, 2, 'B', 'enabled'
+  from public.course_catalog_versions version_row
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (catalog_version_id, product_code) where product_code is not null do update set
+  family_id = excluded.family_id,
+  title = excluded.title,
+  grade = excluded.grade,
+  term = excluded.term,
+  class_type = excluded.class_type;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 1, '巧求面积'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00017'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 2, '体育比赛中的数学'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00017'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 3, '进位制初步'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00017'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 4, '加乘原理进阶'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00017'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 5, '小数乘除'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00017'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 6, '行程问题进阶'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00017'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 7, '操作类智巧趣题'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00017'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 8, '格点与割补'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00017'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 9, '整除特征初步'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00017'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 10, '最值问题初步'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00017'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 11, '最不利原则'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00017'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 12, '鸡兔同笼进阶'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00017'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 13, '平均数进阶'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00017'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 14, '乘除法数字谜'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00017'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 15, '火车过桥'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00017'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.courses (family_id, catalog_version_id, title, product_code, grade, term, class_type, status)
+select family_row.id, version_row.id,
        'E系列数学四年级秋季S[全国版]', 'MFHK00018', 4, 2, 'S', 'enabled'
   from public.course_catalog_versions version_row
   join public.course_families family_row on family_row.id = version_row.family_id
@@ -6135,6 +8104,185 @@ select course_row.id, 15, '火车过桥'
  where course_row.product_code = 'MFHK00018'
    and family_row.slug = 'xueersi-e-primary-math-cn'
    and version_row.slug = '2025'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.courses (family_id, catalog_version_id, title, product_code, grade, term, class_type, status)
+select family_row.id, version_row.id,
+       'E系列数学四年级秋季S[全国版]', 'MFHK00018', 4, 2, 'S', 'enabled'
+  from public.course_catalog_versions version_row
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (catalog_version_id, product_code) where product_code is not null do update set
+  family_id = excluded.family_id,
+  title = excluded.title,
+  grade = excluded.grade,
+  term = excluded.term,
+  class_type = excluded.class_type;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 1, '巧求面积'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00018'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 2, '体育比赛中的数学'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00018'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 3, '进位制初步'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00018'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 4, '加乘原理进阶'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00018'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 5, '小数乘除'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00018'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 6, '行程问题进阶'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00018'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 7, '操作类智巧趣题'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00018'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 8, '格点与割补'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00018'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 9, '整除特征初步'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00018'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 10, '最值问题初步'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00018'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 11, '最不利原则'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00018'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 12, '鸡兔同笼进阶（二）'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00018'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 13, '平均数进阶'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00018'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 14, '乘除法数字谜'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00018'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 15, '火车过桥'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00018'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
 on conflict (course_id, no) do update set
   name = excluded.name;
 
@@ -7666,6 +9814,185 @@ on conflict (course_id, no) do update set
 
 insert into public.courses (family_id, catalog_version_id, title, product_code, grade, term, class_type, status)
 select family_row.id, version_row.id,
+       'E系列数学五年级秋季A[全国版]', 'MFHK01911', 5, 2, 'A', 'enabled'
+  from public.course_catalog_versions version_row
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (catalog_version_id, product_code) where product_code is not null do update set
+  family_id = excluded.family_id,
+  title = excluded.title,
+  grade = excluded.grade,
+  term = excluded.term,
+  class_type = excluded.class_type;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 1, '循环小数的认识'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK01911'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 2, '相同的余数'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK01911'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 3, '分类枚举应用'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK01911'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 4, '染色与覆盖'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK01911'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 5, '分小混合运算'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK01911'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 6, '特殊图形'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK01911'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 7, '四边形中的面积关系'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK01911'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 8, '梯形中的面积关系'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK01911'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 9, '分数系数方程'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK01911'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 10, '扶梯与发车'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK01911'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 11, '最值问题进阶'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK01911'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 12, '方程法解行程'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK01911'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 13, '工程问题（一）'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK01911'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 14, '加乘原理综合'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK01911'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 15, '长方体与正方体'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK01911'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.courses (family_id, catalog_version_id, title, product_code, grade, term, class_type, status)
+select family_row.id, version_row.id,
        'E系列数学五年级秋季B[全国版]', 'MFHK01912', 5, 2, 'B', 'enabled'
   from public.course_catalog_versions version_row
   join public.course_families family_row on family_row.id = version_row.family_id
@@ -7845,6 +10172,185 @@ on conflict (course_id, no) do update set
 
 insert into public.courses (family_id, catalog_version_id, title, product_code, grade, term, class_type, status)
 select family_row.id, version_row.id,
+       'E系列数学五年级秋季B[全国版]', 'MFHK01912', 5, 2, 'B', 'enabled'
+  from public.course_catalog_versions version_row
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (catalog_version_id, product_code) where product_code is not null do update set
+  family_id = excluded.family_id,
+  title = excluded.title,
+  grade = excluded.grade,
+  term = excluded.term,
+  class_type = excluded.class_type;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 1, '循环小数的认识'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK01912'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 2, '相同的余数'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK01912'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 3, '分类枚举应用'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK01912'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 4, '染色与覆盖'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK01912'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 5, '分小混合运算'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK01912'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 6, '特殊图形'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK01912'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 7, '四边形中的面积关系'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK01912'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 8, '梯形中的面积关系'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK01912'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 9, '分数系数方程'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK01912'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 10, '扶梯与发车'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK01912'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 11, '最值问题进阶'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK01912'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 12, '方程法解行程'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK01912'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 13, '工程问题（一）'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK01912'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 14, '加乘原理综合'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK01912'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 15, '长方体与正方体'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK01912'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.courses (family_id, catalog_version_id, title, product_code, grade, term, class_type, status)
+select family_row.id, version_row.id,
        'E系列数学五年级秋季S[全国版]', 'MFHK00021', 5, 2, 'S', 'enabled'
   from public.course_catalog_versions version_row
   join public.course_families family_row on family_row.id = version_row.family_id
@@ -8019,6 +10525,185 @@ select course_row.id, 15, '长方体与正方体'
  where course_row.product_code = 'MFHK00021'
    and family_row.slug = 'xueersi-e-primary-math-cn'
    and version_row.slug = '2025'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.courses (family_id, catalog_version_id, title, product_code, grade, term, class_type, status)
+select family_row.id, version_row.id,
+       'E系列数学五年级秋季S[全国版]', 'MFHK00021', 5, 2, 'S', 'enabled'
+  from public.course_catalog_versions version_row
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (catalog_version_id, product_code) where product_code is not null do update set
+  family_id = excluded.family_id,
+  title = excluded.title,
+  grade = excluded.grade,
+  term = excluded.term,
+  class_type = excluded.class_type;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 1, '循环小数'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00021'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 2, '相同的余数'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00021'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 3, '排列组合'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00021'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 4, '染色与覆盖'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00021'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 5, '分小混合'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00021'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 6, '比较与估算'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00021'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 7, '四边形中的面积关系'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00021'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 8, '共边三角形'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00021'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 9, '计数综合'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00021'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 10, '扶梯与发车'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00021'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 11, '不定方程'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00021'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 12, '方程法解行程'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00021'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 13, '工程问题'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00021'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 14, '比例法解行程'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00021'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 15, '长方体与正方体'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00021'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
 on conflict (course_id, no) do update set
   name = excluded.name;
 
@@ -9550,6 +12235,185 @@ on conflict (course_id, no) do update set
 
 insert into public.courses (family_id, catalog_version_id, title, product_code, grade, term, class_type, status)
 select family_row.id, version_row.id,
+       'E系列数学六年级秋季A[全国版]', 'MFHK00022', 6, 2, 'A', 'enabled'
+  from public.course_catalog_versions version_row
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (catalog_version_id, product_code) where product_code is not null do update set
+  family_id = excluded.family_id,
+  title = excluded.title,
+  grade = excluded.grade,
+  term = excluded.term,
+  class_type = excluded.class_type;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 1, '公式类计算'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00022'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 2, '定义新运算进阶'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00022'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 3, '工程问题（二）'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00022'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 4, '圆与扇形综合'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00022'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 5, '最值原理综合'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00022'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 6, '方案选择类问题'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00022'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 7, '比例法解行程'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00022'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 8, '探究短除'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00022'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 9, '圆柱圆锥初步'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00022'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 10, '圆柱圆锥进阶'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00022'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 11, '整数裂项与通项归纳'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00022'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 12, '图解行程'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00022'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 13, '方程法解百分数应用题'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00022'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 14, '旋转与轨迹应用'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00022'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 15, '进位制进阶'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00022'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.courses (family_id, catalog_version_id, title, product_code, grade, term, class_type, status)
+select family_row.id, version_row.id,
        'E系列数学六年级秋季B[全国版]', 'MFHK00023', 6, 2, 'B', 'enabled'
   from public.course_catalog_versions version_row
   join public.course_families family_row on family_row.id = version_row.family_id
@@ -9729,6 +12593,185 @@ on conflict (course_id, no) do update set
 
 insert into public.courses (family_id, catalog_version_id, title, product_code, grade, term, class_type, status)
 select family_row.id, version_row.id,
+       'E系列数学六年级秋季B[全国版]', 'MFHK00023', 6, 2, 'B', 'enabled'
+  from public.course_catalog_versions version_row
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (catalog_version_id, product_code) where product_code is not null do update set
+  family_id = excluded.family_id,
+  title = excluded.title,
+  grade = excluded.grade,
+  term = excluded.term,
+  class_type = excluded.class_type;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 1, '公式类计算'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00023'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 2, '定义新运算进阶'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00023'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 3, '工程问题（二）'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00023'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 4, '圆与扇形综合'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00023'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 5, '最值原理综合'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00023'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 6, '方案选择类问题'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00023'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 7, '比例法解行程'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00023'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 8, '探究短除'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00023'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 9, '圆柱圆锥初步'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00023'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 10, '圆柱圆锥进阶'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00023'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 11, '整数裂项与通项归纳'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00023'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 12, '图解行程'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00023'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 13, '方程法解百分数应用题'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00023'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 14, '旋转与轨迹应用'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00023'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 15, '进位制进阶'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK00023'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.courses (family_id, catalog_version_id, title, product_code, grade, term, class_type, status)
+select family_row.id, version_row.id,
        'E系列数学六年级秋季S[全国版]', 'MFHK01913', 6, 2, 'S', 'enabled'
   from public.course_catalog_versions version_row
   join public.course_families family_row on family_row.id = version_row.family_id
@@ -9903,6 +12946,185 @@ select course_row.id, 15, '最值问题综合'
  where course_row.product_code = 'MFHK01913'
    and family_row.slug = 'xueersi-e-primary-math-cn'
    and version_row.slug = '2025'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.courses (family_id, catalog_version_id, title, product_code, grade, term, class_type, status)
+select family_row.id, version_row.id,
+       'E系列数学六年级秋季S[全国版]', 'MFHK01913', 6, 2, 'S', 'enabled'
+  from public.course_catalog_versions version_row
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (catalog_version_id, product_code) where product_code is not null do update set
+  family_id = excluded.family_id,
+  title = excluded.title,
+  grade = excluded.grade,
+  term = excluded.term,
+  class_type = excluded.class_type;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 1, '分数裂项与分拆'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK01913'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 2, '高斯记号'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK01913'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 3, '分数比例应用题二'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK01913'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 4, '消点法'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK01913'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 5, '工程问题综合'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK01913'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 6, '神秘的金字塔'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK01913'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 7, '余数问题（上）'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK01913'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 8, '余数问题（下）'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK01913'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 9, '递推与归纳'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK01913'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 10, '行程综合'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK01913'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 11, '数字谜综合'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK01913'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 12, '构造论证上'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK01913'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 13, '曲线几何'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK01913'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 14, '图解行程'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK01913'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
+on conflict (course_id, no) do update set
+  name = excluded.name;
+
+insert into public.course_lectures (course_id, no, name)
+select course_row.id, 15, '最值问题综合'
+  from public.courses course_row
+  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id
+  join public.course_families family_row on family_row.id = version_row.family_id
+ where course_row.product_code = 'MFHK01913'
+   and family_row.slug = 'xueersi-e-primary-math-cn'
+   and version_row.slug = '2026'
 on conflict (course_id, no) do update set
   name = excluded.name;
 

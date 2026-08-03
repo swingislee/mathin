@@ -2128,7 +2128,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.course_lectures (course_id, no, name)
-select id, 6, '长方形与正方形面积'
+select id, 6, '长方形与正方形的面积'
   from public.courses where product_code = 'MFHK00013'
 on conflict (course_id, no) do update set
   name = excluded.name;
@@ -2202,7 +2202,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.course_lectures (course_id, no, name)
-select id, 2, '周期问题'
+select id, 2, '周期问题进阶'
   from public.courses where product_code = 'MFHK00014'
 on conflict (course_id, no) do update set
   name = excluded.name;
@@ -2226,7 +2226,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.course_lectures (course_id, no, name)
-select id, 6, '长方形与正方形面积'
+select id, 6, '长方形与正方形的面积'
   from public.courses where product_code = 'MFHK00014'
 on conflict (course_id, no) do update set
   name = excluded.name;
@@ -2300,7 +2300,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.course_lectures (course_id, no, name)
-select id, 2, '周期问题'
+select id, 2, '周期问题进阶'
   from public.courses where product_code = 'MFHK00015'
 on conflict (course_id, no) do update set
   name = excluded.name;
@@ -3326,7 +3326,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.course_lectures (course_id, no, name)
-select id, 12, '鸡兔同笼进阶'
+select id, 12, '鸡兔同笼进阶（二）'
   from public.courses where product_code = 'MFHK00018'
 on conflict (course_id, no) do update set
   name = excluded.name;
@@ -4108,7 +4108,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.course_lectures (course_id, no, name)
-select id, 3, '分类枚举'
+select id, 3, '分类枚举应用'
   from public.courses where product_code = 'MFHK01911'
 on conflict (course_id, no) do update set
   name = excluded.name;
@@ -4206,7 +4206,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.course_lectures (course_id, no, name)
-select id, 3, '分类枚举'
+select id, 3, '分类枚举应用'
   from public.courses where product_code = 'MFHK01912'
 on conflict (course_id, no) do update set
   name = excluded.name;
@@ -5206,7 +5206,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.course_lectures (course_id, no, name)
-select id, 14, '旋转与轨迹'
+select id, 14, '旋转与轨迹应用'
   from public.courses where product_code = 'MFHK00022'
 on conflict (course_id, no) do update set
   name = excluded.name;
@@ -5304,7 +5304,7 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.course_lectures (course_id, no, name)
-select id, 14, '旋转与轨迹'
+select id, 14, '旋转与轨迹应用'
   from public.courses where product_code = 'MFHK00023'
 on conflict (course_id, no) do update set
   name = excluded.name;
@@ -5360,25 +5360,25 @@ on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.course_lectures (course_id, no, name)
-select id, 7, '余数问题上'
+select id, 7, '余数问题（上）'
   from public.courses where product_code = 'MFHK01913'
 on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.course_lectures (course_id, no, name)
-select id, 8, '余数问题下'
+select id, 8, '余数问题（下）'
   from public.courses where product_code = 'MFHK01913'
 on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.course_lectures (course_id, no, name)
-select id, 9, '经济与浓度'
+select id, 9, '递推与归纳'
   from public.courses where product_code = 'MFHK01913'
 on conflict (course_id, no) do update set
   name = excluded.name;
 
 insert into public.course_lectures (course_id, no, name)
-select id, 10, '一般行程'
+select id, 10, '行程综合'
   from public.courses where product_code = 'MFHK01913'
 on conflict (course_id, no) do update set
   name = excluded.name;

@@ -18,12 +18,12 @@
   "referenceData": {
     "kind": "course_catalog",
     "source": "supabase/seed/teaching-plans.json",
-    "sourceSha256": "4a9ca3f87452620135dc826dea3f5da07c2dea62c7e6b2ddbe8039efe3c4e4c7",
+    "sourceSha256": "6f89722d555d32600826a85a0ebcd31f72dd163b8f5ffa62d15fd6b7012cfe08",
     "familySlug": "xueersi-e-primary-math-cn",
     "naturalKey": "catalogVersion+productCode",
-    "expectedCourseCount": 72,
-    "expectedLectureCount": 865,
-    "naturalKeysSha256": "0dc72c6ee370c70c7d8fa7848758f4eeff8e939917b2c19822d862e3c1bc8778"
+    "expectedCourseCount": 90,
+    "expectedLectureCount": 1135,
+    "naturalKeysSha256": "b4a67b81345a2a73992fb513579447ca3037245716d5d10e3ad9259b27fa856e"
   },
   "configuration": [
     {

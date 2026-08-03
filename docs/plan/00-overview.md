@@ -61,7 +61,7 @@ Story、Minds、Games、Tools 和 Notebook 使用稳定 ID 关联 Terms。课程
 | 授权 | 数据库 RLS；前端隐藏按钮不构成授权 |
 | 业务状态 | 领域表和领域 RPC；今日工作、通知、搜索和统计只读取投影 |
 | 课程发布 | 可编辑文档/revision/binding 与不可变 release 分层；课堂读取 track head 指向的 release |
-| 正式数据基线 | 只保留 1 个生产管理员；删除测试运营数据；保留 E 系列 865 讲的 16:9/4:3 源资源；重建 1730 条 `release_no=1`。2026 秋季 270 讲导入后按 doc 25 §5.1.1 改为 1135 讲 / 2270 条 |
+| 正式数据基线 | 只保留 1 个生产管理员；删除测试运营数据；保留 E 系列 1135 讲的 16:9/4:3 源资源；重建 2270 条 `release_no=1`（2026 秋季 270 讲已于 2026-08-04 导入，见 doc 25 §5.1.1） |
 | 课程目录版本 | 教材年度版本是 `course_catalog_versions` 一层，与 `course_families.edition`（地域版本）和 `cw_lecture_releases.release_no`（讲次内发布迭代）互不替代；`courses.product_code` 只在版本内唯一 |
 
 现行显式路由覆盖旧文档中的“九板块统一动态路由”描述。新增入口时同时更新路由、Proxy/鉴权、导航、sitemap、SEO、registry 和 zh/en messages。

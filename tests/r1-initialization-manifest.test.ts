@@ -56,8 +56,8 @@ describe("R1-7B initialization manifest", () => {
     expect(first.guards.productionExecutionStage).toContain("R1-15/R1-18");
     expect(first.phases.find((phase) => phase.kind === "course_catalog")).toMatchObject({
       naturalKey: "catalogVersion+productCode",
-      expectedCount: 72,
-      expectedChildCount: 865,
+      expectedCount: 90,
+      expectedChildCount: 1135,
     });
     expect(JSON.stringify(first)).not.toMatch(/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/i);
   });
@@ -101,7 +101,7 @@ describe("R1-7B initialization manifest", () => {
 
     const postApply = inventoryFor(context, "post_apply");
     expect(validateInitializationInventory(context, postApply).counts).toEqual({
-      course_catalog: 72,
+      course_catalog: 90,
       organization_rules: 6,
       feature_flags: 5,
     });
