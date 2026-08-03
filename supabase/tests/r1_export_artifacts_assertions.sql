@@ -51,17 +51,25 @@ select artifact_id,artifact_hash,size_bytes,expires_at
   from public.prepare_user_rights_export(:'student_request_id'::uuid) \gset student_export_
 reset role;
 
+-- psql 变量不会插值进 dollar-quoted 的 DO 体，身份与 artifact id 经事务级 GUC 传入，
+-- 使断言不依赖某一套固定 UUID：CI 夹具库和自托管开发库都能执行。
+select set_config('r1.student_user_id', :'student_user_id', true);
+select set_config('r1.parent_id', :'parent_id', true);
+select set_config('r1.student_export_artifact_id', :'student_export_artifact_id', true);
+
 do $$
-declare payload text; manifest jsonb; stored_hash text; subject_student_id uuid;
+declare payload text; manifest jsonb; stored_hash text; subject_student_id uuid; subject_user_id uuid;
 begin
-  select id into subject_student_id from public.students
-   where user_id='00000000-0000-4000-8000-000000000004';
+  subject_user_id := current_setting('r1.student_user_id')::uuid;
+  select id into subject_student_id from public.students where user_id=subject_user_id;
   select content_text,field_manifest,artifact_hash into payload,manifest,stored_hash
     from public.user_rights_export_artifacts
-   where user_id='00000000-0000-4000-8000-000000000004';
+   where id=current_setting('r1.student_export_artifact_id')::uuid;
+  -- 没取到 artifact 时 payload 为 NULL，下面所有 `not like` 都会静默为真、泄漏检查假通过。
+  if payload is null then raise exception 'R1_STUDENT_EXPORT_ARTIFACT_MISSING'; end if;
   if payload not like '%"schemaVersion": "mathin-user-rights-export-v1"%'
   then raise exception 'R1_STUDENT_EXPORT_SCHEMA_MISSING'; end if;
-  if payload not like '%00000000-0000-4000-8000-000000000004%'
+  if payload not like '%'||subject_user_id::text||'%'
      or payload not like '%'||subject_student_id::text||'%'
   then raise exception 'R1_STUDENT_EXPORT_OWN_SUBJECT_MISSING'; end if;
   if payload like '%R1_INTERNAL_OTHER_STUDENT_REMARK%'
@@ -83,14 +91,17 @@ select file_name,artifact_hash,expires_at
   from public.download_user_rights_export(:'student_export_artifact_id'::uuid) \gset downloaded_
 do $$
 begin
+  -- 只看本次事务产生的 artifact：开发库里同一账号可能留有历史导出与历史下载审计，
+  -- 按 user_id 计数会把环境状态当成断言失败。
   if exists(
     select 1 from public.export_download_events event_row
     join public.user_rights_export_artifacts artifact_row on artifact_row.id=event_row.artifact_id
-    where artifact_row.user_id=auth.uid() and event_row.artifact_hash<>artifact_row.artifact_hash
+    where artifact_row.id=current_setting('r1.student_export_artifact_id')::uuid
+      and event_row.artifact_hash<>artifact_row.artifact_hash
   ) then raise exception 'R1_SUBJECT_DOWNLOAD_HASH_CHANGED'; end if;
   if (select count(*) from public.export_download_events event_row
-      join public.user_rights_export_artifacts artifact_row on artifact_row.id=event_row.artifact_id
-      where artifact_row.user_id=auth.uid() and event_row.actor_user_id=auth.uid()) <> 1
+      where event_row.artifact_id=current_setting('r1.student_export_artifact_id')::uuid
+        and event_row.actor_user_id=auth.uid()) <> 1
   then raise exception 'R1_SUBJECT_DOWNLOAD_NOT_AUDITED'; end if;
   begin
     insert into public.export_download_events(
@@ -105,7 +116,6 @@ reset role;
 -- A linked parent still cannot download the student's personal-rights artifact.
 set local role authenticated;
 select set_config('request.jwt.claim.sub', :'parent_id', true);
-select set_config('r1.student_export_artifact_id', :'student_export_artifact_id', true);
 do $$
 begin
   begin
@@ -122,12 +132,14 @@ select set_config('request.jwt.claim.sub', :'admin_id', true);
 select public.manage_account_request(:'parent_request_id'::uuid,'approved','verified','R1-7E verified',null,null);
 select artifact_id from public.prepare_user_rights_export(:'parent_request_id'::uuid) \gset parent_export_
 reset role;
+select set_config('r1.parent_export_artifact_id', :'parent_export_artifact_id', true);
 
 do $$
 declare payload text;
 begin
   select content_text into payload from public.user_rights_export_artifacts
-   where user_id='00000000-0000-4000-8000-000000000005';
+   where id=current_setting('r1.parent_export_artifact_id')::uuid;
+  if payload is null then raise exception 'R1_PARENT_EXPORT_ARTIFACT_MISSING'; end if;
   if payload not like '%"familyLinks"%' then raise exception 'R1_PARENT_EXPORT_FAMILY_LINKS_MISSING'; end if;
   if payload like '%"birthday"%' or payload like '%"phone"%' or payload like '%"wechat"%'
      or payload like '%"learningResults"%' or payload like '%"submissions"%'
@@ -144,7 +156,7 @@ select set_config('request.jwt.claim.sub', :'student_user_id', true);
 do $$
 begin
   begin
-    perform public.download_user_rights_export((select id from public.user_rights_export_artifacts where user_id='00000000-0000-4000-8000-000000000004'));
+    perform public.download_user_rights_export(current_setting('r1.student_export_artifact_id')::uuid);
     raise exception 'R1_EXPIRED_EXPORT_DOWNLOAD_ACCEPTED';
   exception when others then if SQLERRM <> 'EXPORT_EXPIRED' then raise; end if; end;
 end
@@ -157,7 +169,7 @@ reset role;
 do $$
 begin
   if exists(select 1 from public.user_rights_export_artifacts
-    where user_id='00000000-0000-4000-8000-000000000004'
+    where id=current_setting('r1.student_export_artifact_id')::uuid
       and (content_text is not null or purged_at is null))
   then raise exception 'R1_EXPIRED_EXPORT_PAYLOAD_RETAINED'; end if;
 end
