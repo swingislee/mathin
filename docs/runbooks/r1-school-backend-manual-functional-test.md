@@ -147,29 +147,53 @@
       门禁补强：本项此前无任何自动化覆盖，已补 `tests/auth-safe-redirect.test.ts`（17 例，含「白名单通过的 `/zh//example.com/` 解析后仍同源」断言），后续回归不再依赖人工。
 - [x] `AUTH-05` 登出后受保护页不可通过后退按钮或刷新继续读取；再次访问要求登录。
 - [x] `AUTH-06` `/zh` 与 `/en` 登录、错误、忘记密码页面语言一致，URL 始终保留 locale。
-- [ ] `AUTH-07` 忘记密码提交后显示不枚举账号的成功态；恢复链接回到正确环境和语言。
+- [x] `AUTH-07` 忘记密码提交后显示不枚举账号的成功态；恢复链接回到正确环境和语言。
+      **成功态不枚举：通过。** 存在账号（`test-student`／`test-admin`）、不存在账号（`no-such-user-20260803@mathin.local`／`definitely-not-here@example.org`）四组提交的响应完全一致：`303`＋`Location: /zh/forgot-password?sent=1`＋body 1794 字符，无任何可区分内容。
+      **恢复链接落点：`localhost` 与生产域名正常，局域网 IP 环境失效。** GoTrue（`gotrue:v2.189.0`）`URI_ALLOW_LIST` 实测：`https://mathin.club/**` 生效且完整保留深层路径与 `?next=`，`https://evil.example.com/` 被正确拒绝，`localhost`／`127.0.0.1` 经内建本地例外放行；但同在白名单里的 `http://192.168.5.213:3130/**` **不匹配**，一律回落到 `GOTRUE_SITE_URL=https://mathin.club`。因 `NEXT_PUBLIC_SITE_URL=http://192.168.5.213:3130`，本机验收时恢复链接会跳到生产站并丢失 `next`。验收此项请临时将 `NEXT_PUBLIC_SITE_URL` 设为 `http://localhost:3130`。生产侧 GoTrue 已验证接受 `https://mathin.club/{locale}/auth/callback?next=...`，上线后需实测复验一次。
+      `Sev2` `requestPasswordRecovery`（`(auth)/actions.ts:88`）完全忽略 `resetPasswordForEmail` 的返回错误。实测 29 次请求中 12 次被 GoTrue 以 `429 over_email_send_rate_limit` 拒绝，页面仍每次显示"已发送"，合法用户会永远等不到邮件且无任何提示。向用户隐藏"该邮箱不存在"是刻意的反枚举设计，但限流与账号是否存在无关，应可安全地提示"请求过于频繁，请稍后重试"。
+      `Sev3` 存在账号的响应耗时稳定高于不存在账号（交错取样 16 次零重叠：114–198ms vs 38–87ms），构成单请求即可分类的账号枚举时间旁路。根因在 GoTrue（不存在的账号直接返回、不进入发信路径），应用侧无法消除，缓解手段是接入层限流。
+      `Sev3` `if (siteUrl)` 使 `NEXT_PUBLIC_SITE_URL` 缺失时静默跳过发信但仍显示成功态，找回密码会全线静默失效。应在启动期断言该变量，或至少纳入上线检查表。
+      运维注意：固定测试账号使用不可投递的 `@mathin.local` 域名，触发邮件类操作会向 `mathinclub@qq.com` 产生退信，累积会损害发信信誉。验收邮件链路请改用真实可投递地址，或避免对测试账号触发发信。
+      `Sev2`发送邮件后，应该重定向进入code输入页面，方便直接输入。
+      `Sev3`忘记密码默认邮件语言未跟随 中英文切换
 - [ ] `AUTH-08` 手机登录在服务可用时完成 OTP 请求与验证；未配置时显示具体不可用状态，不无限 loading 或假成功。
       `Sev3`手机号登录错误提示面板文案改成："抱歉，我们暂时还未配置手机号验证码登录功能，请使用邮箱验证注册。"
-      `Sev1`手机号验证码登录页面无返回邮箱登录页面入口
+      `Sev1`手机号验证码登录页面无返回邮箱登录页面入口，且手机号验证码登录、账号密码登录应该是一个登录页面form中的可切换的两张登录卡。
 - [ ] `AUTH-09` 注册邀请码关闭时不能注册；错误、过期或停用邀请码被拒绝。
-- [ ] `AUTH-10` 注册必须同时确认隐私政策与儿童个人信息保护政策；缺任一同意不能提交。
+      `Sev3`邀请码对应的所有提示删除"主管"相关描述。
+      `Sev2`注册密码加入一个强制确认：二次输入密码和一次输入密码相同。      
+- [x] `AUTH-10` 注册必须同时确认隐私政策与儿童个人信息保护政策；缺任一同意不能提交。
 - [ ] `AUTH-11` 注册成功、邮箱确认和重复邮箱行为符合页面提示。此项需要新账号授权；未授权时记录 `BLOCKED`。
+      `Sev2` 当前supabase未开启注册邮箱确认邮件，但预期也并没有做中英文切换模板。
 - [ ] `AUTH-12` 锁定账号登录时看到“账号受限”状态和恢复入口，不进入普通 Dashboard。
+      `Sev3` 账号受限提示不明显，受限用户很容易看不清下一步动作
 
 ### 2.2 使用环境与侧栏
 
-- [ ] `ENV-01` staff 账号进入 `/dashboard` 显示“今日工作”，不是学生/家长磁贴首页。
-- [ ] `ENV-02` student 账号进入 `/dashboard` 显示学习首页及学习侧栏。
-- [ ] `ENV-03` parent 账号进入 `/dashboard` 显示家庭首页及家庭侧栏。
-- [ ] `ENV-04` 未绑定家长只看到明确的绑定空状态，不显示空白页面或其他家庭数据。
-- [ ] `ENV-05` 双环境账号可在 staff/family 间切换；切换只改变工作环境，不改变岗位和数据库角色。
-- [ ] `ENV-06` 切换环境后首页、侧栏、页面标题和数据范围同步刷新，不残留上一环境的 RSC/浏览器缓存内容。
-- [ ] `ENV-07` 手工提交账号不具备的目标环境时回到安全首页，不进入目标页面。
-- [ ] `ENV-08` 桌面侧栏只显示当前权限允许的入口；移除权限并刷新后入口立即消失。
-- [ ] `ENV-09` 直接输入无权限页面 URL 时仍被拒绝或安全跳转；隐藏侧栏不是唯一权限控制。
-- [ ] `ENV-10` 任一页面只有一个侧栏项高亮；课程课件子路由、课次对象路由不会双重高亮或全灭。
-- [ ] `ENV-11` 手机侧栏可打开、滚动、点击并自动收起；所有可见入口均可达。
-- [ ] `ENV-12` 页面刷新、复制深链到新标签页、从通知进入时，当前对象和环境保持正确。
+- [x] `ENV-01` staff 账号进入 `/dashboard` 显示“今日工作”，不是学生/家长磁贴首页。
+- [x] `ENV-02` student 账号进入 `/dashboard` 显示学习首页及学习侧栏。
+- [x] `ENV-03` parent 账号进入 `/dashboard` 显示家庭首页及家庭侧栏。
+      `Sev3`家长首页的磁贴"学生卡"显示内容不完整
+- [x] `ENV-04` 未绑定家长只看到明确的绑定空状态，不显示空白页面或其他家庭数据。
+- [x] `ENV-05` 双环境账号可在 staff/family 间切换；切换只改变工作环境，不改变岗位和数据库角色。
+      `Sev3`双环境账号的使用环境将"工作台"改为"工作"，避免和仪表盘语义冲突。
+- [x] `ENV-06` 切换环境后首页、侧栏、页面标题和数据范围同步刷新，不残留上一环境的 RSC/浏览器缓存内容。
+- [x] `ENV-07` 手工提交账号不具备的目标环境时回到安全首页，不进入目标页面。
+      绕过 UI 直接向 `setActiveEnvironmentAction` 提交伪造表单（`test-student` 可用环境仅 `learning`，`test-teacher` 仅 `staff`/`family`）：`student→staff`、`student→family`、`teacher→learning`，以及非法枚举值 `env=admin`、`env=` 空值，共 7 次提交全部 `303 → /{locale}/dashboard`，无一进入目标环境。连续 4 次越权提交后 `profiles.last_active_environment` 保持 `learning` 不变——**拒绝路径不写库**，前端隐藏按钮之外确有服务端复核（`environment-actions.ts:35`）。合法对照：`teacher→family` 与 `teacher→staff` 均成功并正确落库。`locale=en` 时回落目标同步变为 `/en/dashboard`。
+      观察（非缺陷）：`envSchema` 的 `returnTo` 实测恒不生效，手工提交任何合法站内 `returnTo` 都仍落在 `/{locale}/dashboard`；`utility-sheet.tsx:113` 的真实表单也只发送 `locale` 与 `env`、从不发送 `returnTo`。即该字段目前是死代码，对本项而言结果只会更保守。
+      数据变动说明：`test-student` 的 `last_active_environment` 原为历史遗留的无效值 `staff`（学生不具备该环境，读取侧由 `pickActiveEnvironment` 兜底），验证过程中被合法切换改为正确值 `learning`，未回填无效值；`test-teacher` 已复位为 `staff`。
+- [x] `ENV-08` 桌面侧栏只显示当前权限允许的入口；移除权限并刷新后入口立即消失。
+- [x] `ENV-09` 直接输入无权限页面 URL 时仍被拒绝或安全跳转；隐藏侧栏不是唯一权限控制。
+      5 个角色 × 14 条权限门控路由（students／students/import／followups／classes／courses／courseware／courseware-assets／finance／staff／access-control／organization-settings／account-support／registration-settings／system-health）逐一直接请求：
+      · `student`、`parent`：14/14 全部被拒并跳 `/zh/dashboard`，零渗透。
+      · `sales`：students、students/import、followups、classes、courses 放行，其余 9 条被拒——与 sales 权限集一致。
+      · `teacher`：students、followups、classes、courses 放行，`students/import`（需 `student.import`）与全部管理页被拒——与 teacher 权限集一致。
+      · `admin`：14/14 全部跳 `/zh/dashboard/account-security?required=mfa`。经查 `auth.mfa_factors`，`test-admin` 已有 `totp/verified` 因子，因此这不是"未注册 MFA"，而是**密码会话只到 AAL1、未完成二次验证的管理员无法进入任何管理页**，属正确的强制升级门。
+      · 未登录基线：`307 → /zh/login?next=%2Fzh%2Fdashboard%2Fstaff`（`proxy.ts` 乐观跳转）。
+      方法说明：本项不能以 HTTP 状态码判定。页面壳先流式输出，权限 `redirect()` 发生在 Suspense 子树内，因此**被拒页面同样返回 `200`**；真实判据是响应体内的 `<meta http-equiv="refresh" content="1;url=...">` 跳转目标。后续回归请沿用此判据，勿用状态码。
+- [x] `ENV-10` 任一页面只有一个侧栏项高亮；课程课件子路由、课次对象路由不会双重高亮或全灭。
+- [x] `ENV-11` 手机侧栏可打开、滚动、点击并自动收起；所有可见入口均可达。
+- [x] `ENV-12` 页面刷新、复制深链到新标签页、从通知进入时，当前对象和环境保持正确。
 
 ### 2.3 当前路由逐页烟测
 
@@ -177,54 +201,54 @@
 
 #### 员工与通用 Dashboard
 
-- [ ] `ROUTE-01` `/dashboard`：按当前环境显示正确首页。
-- [ ] `ROUTE-02` `/dashboard/coordination`：员工协同历史可打开。
-- [ ] `ROUTE-03` `/dashboard/schedule`：课表可打开，当前用户只能看到允许范围。
-- [ ] `ROUTE-04` `/dashboard/followups`：跟进队列可打开。
-- [ ] `ROUTE-05` `/dashboard/students`：学生集合可打开。
-- [ ] `ROUTE-06` `/dashboard/students/import`：导入工作流可打开。
-- [ ] `ROUTE-07` `/dashboard/students/{studentId}`：学生对象页可打开。
-- [ ] `ROUTE-08` `/dashboard/activities`：活动管理可打开。
-- [ ] `ROUTE-09` `/dashboard/classes`：班级集合可打开。
-- [ ] `ROUTE-10` `/dashboard/classes/new`：建班向导可打开。
-- [ ] `ROUTE-11` `/dashboard/classes/{classId}`：班级对象页可打开。
-- [ ] `ROUTE-12` `/dashboard/sessions/{sessionId}`：课次工作区可打开且自身页面不产生 window 滚动冲突。
-- [ ] `ROUTE-13` `/dashboard/courses`：课程产品库可打开。
-- [ ] `ROUTE-14` `/dashboard/courses/new`：课程产品向导可打开。
-- [ ] `ROUTE-15` `/dashboard/courses/{courseFamilyId}`：产品/版本工作区可打开。
-- [ ] `ROUTE-16` `/dashboard/courseware`：研发任务队列可打开。
-- [ ] `ROUTE-17` `/dashboard/courseware/review`：适配校对队列可打开。
-- [ ] `ROUTE-18` `/dashboard/courseware/preparation-review`：备课产物审核队列可打开。
-- [ ] `ROUTE-19` `/dashboard/courseware/lectures/{lectureId}`：讲次工作区可打开。
-- [ ] `ROUTE-20` `/studio/courseware/{lectureId}`：课件 Studio 可打开。
-- [ ] `ROUTE-21` `/dashboard/courseware-assets`：共享素材库可打开。
-- [ ] `ROUTE-22` `/dashboard/courseware-assets/{assetId}`：素材替换工作区可打开。
-- [ ] `ROUTE-23` `/dashboard/organization-settings`：机构设置可打开。
-- [ ] `ROUTE-24` `/dashboard/staff`：员工管理可打开。
-- [ ] `ROUTE-25` `/dashboard/access-control`：岗位权限矩阵可打开。
-- [ ] `ROUTE-26` `/dashboard/registration-settings`：注册邀请设置可打开。
-- [ ] `ROUTE-27` `/dashboard/account-security`：本人账号安全可打开。
-- [ ] `ROUTE-28` `/dashboard/account-support`：管理员支持可打开。
-- [ ] `ROUTE-29` `/dashboard/system-health`：系统运行状态可打开。
-- [ ] `ROUTE-30` `/dashboard/data-maintenance`：数据质量、修复和测试数据治理可打开。
+- [x] `ROUTE-01` `/dashboard`：按当前环境显示正确首页。
+- [x] `ROUTE-02` `/dashboard/coordination`：员工协同历史可打开。
+- [x] `ROUTE-03` `/dashboard/schedule`：课表可打开，当前用户只能看到允许范围。
+- [x] `ROUTE-04` `/dashboard/followups`：跟进队列可打开。
+- [x] `ROUTE-05` `/dashboard/students`：学生集合可打开。
+- [x] `ROUTE-06` `/dashboard/students/import`：导入工作流可打开。
+- [x] `ROUTE-07` `/dashboard/students/{studentId}`：学生对象页可打开。
+- [x] `ROUTE-08` `/dashboard/activities`：活动管理可打开。
+- [x] `ROUTE-09` `/dashboard/classes`：班级集合可打开。
+- [x] `ROUTE-10` `/dashboard/classes/new`：建班向导可打开。
+- [x] `ROUTE-11` `/dashboard/classes/{classId}`：班级对象页可打开。
+- [x] `ROUTE-12` `/dashboard/sessions/{sessionId}`：课次工作区可打开且自身页面不产生 window 滚动冲突。
+- [x] `ROUTE-13` `/dashboard/courses`：课程产品库可打开。
+- [x] `ROUTE-14` `/dashboard/courses/new`：课程产品向导可打开。
+- [x] `ROUTE-15` `/dashboard/courses/{courseFamilyId}`：产品/版本工作区可打开。
+- [x] `ROUTE-16` `/dashboard/courseware`：研发任务队列可打开。
+- [x] `ROUTE-17` `/dashboard/courseware/review`：适配校对队列可打开。
+- [x] `ROUTE-18` `/dashboard/courseware/preparation-review`：备课产物审核队列可打开。
+- [x] `ROUTE-19` `/dashboard/courseware/lectures/{lectureId}`：讲次工作区可打开。
+- [x] `ROUTE-20` `/studio/courseware/{lectureId}`：课件 Studio 可打开。
+- [x] `ROUTE-21` `/dashboard/courseware-assets`：共享素材库可打开。
+- [x] `ROUTE-22` `/dashboard/courseware-assets/{assetId}`：素材替换工作区可打开。
+- [x] `ROUTE-23` `/dashboard/organization-settings`：机构设置可打开。
+- [x] `ROUTE-24` `/dashboard/staff`：员工管理可打开。
+- [x] `ROUTE-25` `/dashboard/access-control`：岗位权限矩阵可打开。
+- [x] `ROUTE-26` `/dashboard/registration-settings`：注册邀请设置可打开。
+- [x] `ROUTE-27` `/dashboard/account-security`：本人账号安全可打开。
+- [x] `ROUTE-28` `/dashboard/account-support`：管理员支持可打开。
+- [x] `ROUTE-29` `/dashboard/system-health`：系统运行状态可打开。
+- [x] `ROUTE-30` `/dashboard/data-maintenance`：数据质量、修复和测试数据治理可打开。
 
 #### 学生、家长与课堂
 
-- [ ] `ROUTE-31` `/dashboard/children`：家庭子女工作区可打开。
-- [ ] `ROUTE-32` `/dashboard/learning/classes`：学生班级集合可打开。
-- [ ] `ROUTE-33` `/dashboard/learning/classes/{classId}`：学生班级详情可打开。
-- [ ] `ROUTE-34` `/dashboard/coursework`：学生课务、考勤和请假可打开。
-- [ ] `ROUTE-35` `/dashboard/assignments`：学生/家庭任务列表可打开。
-- [ ] `ROUTE-36` `/dashboard/assignments/{assignmentId}`：任务详情与提交状态可打开。
-- [ ] `ROUTE-37` `/dashboard/progress`：学生成果与逐题学情可打开。
-- [ ] `ROUTE-38` `/classroom`：staff 兼容跳转到班级后台，student 跳到学习班级入口。
-- [ ] `ROUTE-39` `/classroom/{classId}`：教师与学生分别跳到自己的 canonical 班级页。
-- [ ] `ROUTE-40` `/classroom/{classId}/session/{sessionId}`：教师进入课次工作区，学生进入 live。
-- [ ] `ROUTE-41` `/classroom/{classId}/session/{sessionId}/live`：授权课堂成员可进入实时课堂。
-- [ ] `ROUTE-42` `/classroom/{classId}/session/{sessionId}/report`：授权成员可读取对应课堂报告。
-- [ ] `ROUTE-43` `/classroom/{classId}/assignment/{assignmentId}`：授权学生/教师可读取对应作业。
-- [ ] `ROUTE-44` `/whiteboard`：白板列表可打开。
-- [ ] `ROUTE-45` `/whiteboard/{boardId}`：白板对象可打开并按成员权限进入编辑/只读。
+- [x] `ROUTE-31` `/dashboard/children`：家庭子女工作区可打开。
+- [x] `ROUTE-32` `/dashboard/learning/classes`：学生班级集合可打开。
+- [x] `ROUTE-33` `/dashboard/learning/classes/{classId}`：学生班级详情可打开。
+- [x] `ROUTE-34` `/dashboard/coursework`：学生课务、考勤和请假可打开。
+- [x] `ROUTE-35` `/dashboard/assignments`：学生/家庭任务列表可打开。
+- [x] `ROUTE-36` `/dashboard/assignments/{assignmentId}`：任务详情与提交状态可打开。
+- [x] `ROUTE-37` `/dashboard/progress`：学生成果与逐题学情可打开。
+- [x] `ROUTE-38` `/classroom`：staff 兼容跳转到班级后台，student 跳到学习班级入口。
+- [x] `ROUTE-39` `/classroom/{classId}`：教师与学生分别跳到自己的 canonical 班级页。
+- [x] `ROUTE-40` `/classroom/{classId}/session/{sessionId}`：教师进入课次工作区，学生进入 live。
+- [x] `ROUTE-41` `/classroom/{classId}/session/{sessionId}/live`：授权课堂成员可进入实时课堂。
+- [x] `ROUTE-42` `/classroom/{classId}/session/{sessionId}/report`：授权成员可读取对应课堂报告。
+- [x] `ROUTE-43` `/classroom/{classId}/assignment/{assignmentId}`：授权学生/教师可读取对应作业。
+- [x] `ROUTE-44` `/whiteboard`：白板列表可打开。
+- [x] `ROUTE-45` `/whiteboard/{boardId}`：白板对象可打开并按成员权限进入编辑/只读。
 
 #### 关闭与历史地址
 
@@ -237,46 +261,48 @@
 
 ### 3.1 今日工作
 
-- [ ] `WORK-01` “现在”只包含进行中、30 分钟内授课、24 小时内阻断教学或需要立即决定的事项，最多三个对象组。
-- [ ] `WORK-02` “我的工作”包含本人 owner/editor/校对人、主讲/助教/学辅、学生跟进人和审批责任项。
-- [ ] `WORK-03` “今天的安排”只显示时间事件，不重复普通截止任务。
-- [ ] `WORK-04` 有管理范围的账号看到无负责人、排课冲突、花名册异常、未来课件风险和久未推进委派项；普通教师不看到全校风险。
-- [ ] `WORK-05` now、overdue、today、upcoming、backlog 分桶符合时间，桶内显示可解释原因而非不可解释分数。
-- [ ] `WORK-06` 点击领域 work item 进入对应对象与操作位置；完成必须走领域动作，不能在通用层假完成。
-- [ ] `WORK-07` 标记已读只改变个人阅读状态，不改变领域状态。
-- [ ] `WORK-08` 稍后处理 6 小时/1/3/7/14 天后，真实 due date 不变；到期后重新出现。
-- [ ] `WORK-09` 置顶只改变同一紧急桶内顺序；取消置顶恢复稳定排序。
-- [ ] `WORK-10` 关注/取消关注、确认已知、刷新和跨标签页后的个人状态一致。
+- [x] `WORK-01` “现在”只包含进行中、30 分钟内授课、24 小时内阻断教学或需要立即决定的事项，最多三个对象组。
+      `Sev2`总览部分现在整个页面利用率、信息密度很低，需要大范围重构
+- [x] `WORK-02` “我的工作”包含本人 owner/editor/校对人、主讲/助教/学辅、学生跟进人和审批责任项。
+- [x] `WORK-03` “今天的安排”只显示时间事件，不重复普通截止任务。
+- [x] `WORK-04` 有管理范围的账号看到无负责人、排课冲突、花名册异常、未来课件风险和久未推进委派项；普通教师不看到全校风险。
+- [x] `WORK-05` now、overdue、today、upcoming、backlog 分桶符合时间，桶内显示可解释原因而非不可解释分数。
+- [x] `WORK-06` 点击领域 work item 进入对应对象与操作位置；完成必须走领域动作，不能在通用层假完成。
+- [x] `WORK-07` 标记已读只改变个人阅读状态，不改变领域状态。
+- [x] `WORK-08` 稍后处理 6 小时/1/3/7/14 天后，真实 due date 不变；到期后重新出现。
+- [x] `WORK-09` 置顶只改变同一紧急桶内顺序；取消置顶恢复稳定排序。
+- [x] `WORK-10` 关注/取消关注、确认已知、刷新和跨标签页后的个人状态一致。
 
 ### 3.2 持久协同与轻审批
 
-- [ ] `COORD-01` 创建持久协同项时标题、描述、领域、来源、负责人、截止时间、优先级和原因均被保存。
-- [ ] `COORD-02` 相同幂等键重试不生成第二条协同项。
-- [ ] `COORD-03` 指派后接收人得到 direct 项，管理者看到 delegated/历史记录。
-- [ ] `COORD-04` 关闭协同项必须填写原因；关闭后不可再次当作未完成项出现。
-- [ ] `COORD-05` 请求审批后审批人看到申请，申请人看到等待状态。
-- [ ] `COORD-06` 审批人批准/拒绝必须保存决定与原因；重复决定被拒绝且原决定不变。
-- [ ] `COORD-07` 无审批权限或非指定审批人不能决定。
-- [ ] `COORD-08` 协同历史按对象展示创建、分派、决定和关闭顺序，操作者与时间正确。
+- [x] `COORD-01` 创建持久协同项时标题、描述、领域、来源、负责人、截止时间、优先级和原因均被保存。
+- [x] `COORD-02` 相同幂等键重试不生成第二条协同项。
+- [x] `COORD-03` 指派后接收人得到 direct 项，管理者看到 delegated/历史记录。
+- [x] `COORD-04` 关闭协同项必须填写原因；关闭后不可再次当作未完成项出现。
+- [x] `COORD-05` 请求审批后审批人看到申请，申请人看到等待状态。
+- [x] `COORD-06` 审批人批准/拒绝必须保存决定与原因；重复决定被拒绝且原决定不变。
+- [x] `COORD-07` 无审批权限或非指定审批人不能决定。
+- [x] `COORD-08` 协同历史按对象展示创建、分派、决定和关闭顺序，操作者与时间正确。
 
 ### 3.3 站内通知与 deep link
 
-- [ ] `NOTICE-01` 通知铃显示未读数量、通知列表和任务入口；空状态明确。
-- [ ] `NOTICE-02` 点击单条通知后立即标记已读并进入正确 locale、对象、tab/stage 和锚点。
-- [ ] `NOTICE-03` “全部已读”只处理当前用户可见通知，不影响其他账号。
-- [ ] `NOTICE-04` 同一领域事件重试不产生重复通知。
-- [ ] `NOTICE-05` 提交审核通知审核人；退回通知作者；批准/发布/撤回通知对应角色。
-- [ ] `NOTICE-06` 作业、视频任务、知识总结、逐生课评和阶段报告通知使用具体标题，不显示笼统“系统状态已更新”。
-- [ ] `NOTICE-07` 学生和有效监护人收到发布/撤回/修订事件；失效监护关系不再收到。
-- [ ] `NOTICE-08` deep link 指向已撤回内容时显示明确失效状态，不展示旧正文或死链接。
-- [ ] `NOTICE-09` Realtime 正常时第二个已登录窗口无需整页刷新收到通知；断线恢复后可补齐。
-- [ ] `NOTICE-10` 通知投递失败不回滚已提交的领域事实，并能在 job/系统运行页追踪。
+- [x] `NOTICE-01` 通知铃显示未读数量、通知列表和任务入口；空状态明确。
+- [x] `NOTICE-02` 点击单条通知后立即标记已读并进入正确 locale、对象、tab/stage 和锚点。
+- [x] `NOTICE-03` “全部已读”只处理当前用户可见通知，不影响其他账号。
+- [x] `NOTICE-04` 同一领域事件重试不产生重复通知。
+- [x] `NOTICE-05` 提交审核通知审核人；退回通知作者；批准/发布/撤回通知对应角色。
+- [x] `NOTICE-06` 作业、视频任务、知识总结、逐生课评和阶段报告通知使用具体标题，不显示笼统“系统状态已更新”。
+- [x] `NOTICE-07` 学生和有效监护人收到发布/撤回/修订事件；失效监护关系不再收到。
+- [x] `NOTICE-08` deep link 指向已撤回内容时显示明确失效状态，不展示旧正文或死链接。
+- [x] `NOTICE-09` Realtime 正常时第二个已登录窗口无需整页刷新收到通知；断线恢复后可补齐。
+- [x] `NOTICE-10` 通知投递失败不回滚已提交的领域事实，并能在 job/系统运行页追踪。
 
 ## 4. 第三轮：学员服务、家庭关系与活动
 
 ### 4.1 学生集合与学生对象页
 
 - [ ] `STU-01` 学生列表搜索姓名/手机号片段、状态、跟进状态和更多筛选，清空筛选可恢复列表。
+     `Sev2`学生列表无法使用手机号片段搜索
 - [ ] `STU-02` “我的学生”与“全部学生”范围符合 assigned/all 权限；教师/学辅不能通过 query 切到全量。
 - [ ] `STU-03` 新建学生只创建最小线索档案；必填、长度、非法日期/枚举有中文和英文校验。
 - [ ] `STU-04` 疑似重复时显示候选和判定依据；取消不创建，确认“仍然创建”只创建一次。
