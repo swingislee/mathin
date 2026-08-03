@@ -220,6 +220,8 @@ R1-1 以 `20260728000100_r1_organization_settings.sql` 与 `20260728000200_r1_pu
 | 课程页面文档 | revision/binding、native 16:9、adapted 4:3、review 分层 | 研发读取可编辑状态；课堂不读取草稿 |
 | 课程 release | 发布前检查对象可读、binding、snapshot 和并发版本；发布后不可变 | track head 指向当前 release；legacy 字段指向 native release |
 
+爱学习课程与 E 系列共享课程族/课程/讲次、CAS、revision/release、双轨 head 和课次冻结，不共享页面文档接口。首批生产范围固定为 2026 秋季、苏教版数学、G+、三至六年级 52 讲；页面使用 `aixuexi-page-doc-v1`，第 7、15 讲是每个年级的来源缺口。其他年级、季节和难度未进入 1.0，不得用空课程或占位讲次代替。
+
 报告保存指标版本、数据截止时间、机构时区和生成数据集。教师在学生学情页选择日期范围，右栏查看范围内的已上课课评、作业记录和视频讲解，左栏新建或打开报告；未选择报告时不常驻空编辑器。稳定指标 ID 在界面显示本地化名称。发布/撤回/修订提交领域事务后创建幂等通知 job；通知失败不回滚已发布事实。
 
 R1-6 以现有业务表作为编辑来源，以统一发布头和不可变 revision 作为学生/家庭读取边界：
@@ -328,6 +330,7 @@ R1-7E 以 `user_rights_export_artifacts` 保存与请求绑定的精确 JSON 字
 | PROD-09 | Minds | 2/2 中文文章发布；无效 Terms 关系=0 |
 | PROD-10 | Notebook | 私有写作、审核、发布/撤回、公开阅读、互动和越权 E2E 通过 |
 | PROD-11 | E 系列 | 865 讲×2 轨源资源完整；正式 release 恰为 1730 条 `release_no=1`；缺失/悬空=0 |
+| PROD-12 | 爱学习 G+ 秋季 | 三至六年级 52 讲×2 轨源资源完整；正式 release 恰为 104 条 `release_no=1`；第 7/15 讲显式记为来源缺口；其他范围不伪造；缺失/悬空=0 |
 
 ### 5.2 小王子视觉与交互
 
@@ -391,7 +394,7 @@ R1-7E 以 `user_rights_export_artifacts` 保存与请求绑定的精确 JSON 字
 | R1-15 | 生产快照的隔离副本 | 运行 manifest、dry-run、备份恢复、清理和 release 重建；不得连接正式写端点 |
 | R1-18 | 正式生产 | 人工批准、维护窗、备份验证和目标二次确认后执行同一版本脚本 |
 
-脚本输入使用审核过的明确 ID manifest：生产项目/数据库标识、唯一管理员 auth/profile UUID、E 系列 course/lecture ID、Storage bucket/prefix。邮箱后缀、名称、glob 和未解析环境变量不得决定删除目标。每阶段记录预期数量和实际数量；差异非 0 时停止。
+脚本输入使用审核过的明确 ID manifest：生产项目/数据库标识、唯一管理员 auth/profile UUID、E 系列和爱学习 G+ 秋季的 course/lecture ID、Storage bucket/prefix。邮箱后缀、名称、glob 和未解析环境变量不得决定删除目标。每阶段记录预期数量和实际数量；差异非 0 时停止。
 
 ### 6.2 账号与运营数据
 
@@ -407,16 +410,18 @@ R1-7E 以 `user_rights_export_artifacts` 保存与请求绑定的精确 JSON 字
 | 保留 | migration、角色/权限定义、必要 reference/config schema |
 | 保留 | E 系列课程/课程族、865 个稳定 lecture ID、顺序和元数据 |
 | 保留 | 865 讲的 native 16:9、approved adapted 4:3 文档、revision/binding、CAS/Storage 对象、H5 资产和可复现适配记录 |
+| 保留 | 爱学习 G+ 秋季课程/课程族、三至六年级 52 个稳定 lecture ID、来源编号缺口和 `cw_source_*` provenance |
+| 保留 | 爱学习 52 讲的 native 16:9、顶置 adapted 4:3 文档、revision/binding、CAS/Storage 对象、离线 H5/ITV 资产和可复现导入记录 |
 | 保留 | 资源来源/许可、hash、MIME、尺寸、轨道和校验元数据 |
 
 审计/日志按合规和外键策略处理。需要保留时匿名化主体，并验证测试 PII 无法回指。数据库内置角色、service role 和 migration owner 不属于业务 auth 用户。
 
 ### 6.3 release 清除与重建
 
-1. 冻结内容写入；导出 865×2 manifest：lecture ID、track、source revision/binding、对象 hash、预期 snapshot hash。
+1. 冻结内容写入；分别导出 E 系列 865×2 和爱学习 52×2 manifest：课程体系、lecture ID、track、source revision/binding、对象 hash、预期 snapshot hash。
 2. 读取全部 16:9/4:3 源对象并比对 hash；缺失对象、悬空 binding 或未批准 4:3 资源使流程停止。
 3. 创建并验证备份；按实际外键顺序清除 `cw_lecture_releases`，置空/清除 `cw_lecture_track_heads.current_release_id`、`course_lectures.current_release_id` 和审核流程 release 引用。
-4. 每讲创建 native 16:9 `release_no=1` 和 adapted 4:3 `release_no=1`；release note=`production-v1.0-baseline`；snapshot 不可变。
+4. 两套课程体系的每讲都创建 native 16:9 `release_no=1` 和 adapted 4:3 `release_no=1`；release note=`production-v1.0-baseline`；snapshot 不可变。
 5. 每个 track head 指向本轨 release-1；`course_lectures.current_release_id` 指向 native release-1。
 6. 使用同一 manifest 重跑；第二次写入数=0，所有 snapshot hash 不变。
 
@@ -429,10 +434,11 @@ R1-7E 以 `user_rights_export_artifacts` 保存与请求绑定的精确 JSON 字
 | 班级/成员/排课/session/考勤/作业等运营数据 | 0 |
 | 订单/支付/退款/账户/台账 | 0 |
 | E 系列 lecture | 865；ID 和顺序与清理前 manifest 相同 |
-| native heads | 865；全部指向 native `release_no=1` |
-| adapted heads | 865；全部指向 adapted `release_no=1` |
-| `cw_lecture_releases` | 1730；每讲每轨 1 条；`release_no>1` 为 0 |
-| legacy current release | 865 个指向对应 native release-1 |
+| 爱学习 G+ 秋季 lecture | 52；三至六年级各 13 讲；第 7、15 讲缺口与 manifest 相同 |
+| native heads | 917；全部指向 native `release_no=1` |
+| adapted heads | 917；全部指向 adapted `release_no=1` |
+| `cw_lecture_releases` | 1834；每讲每轨 1 条；`release_no>1` 为 0 |
+| legacy current release | 917 个指向对应 native release-1 |
 | 缺失/悬空文档、binding、CAS/Storage 对象、H5 | 0 |
 | 第二次运行差异 | 插入、更新、删除均为 0；hash 差异=0 |
 
