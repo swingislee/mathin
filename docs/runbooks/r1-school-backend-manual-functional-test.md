@@ -32,27 +32,27 @@
 
 | 字段 | 填写值 |
 | --- | --- |
-| 执行日期/时区 |  |
-| 测试人 |  |
-| commit SHA |  |
-| migration head |  |
-| 环境与应用地址 |  |
-| 浏览器/版本/设备 |  |
-| 数据集标识 |  |
-| 开始/结束时间 |  |
+| 执行日期/时区 | 2026-08-03 12:00 |
+| 测试人 | 李成浩 |
+| commit SHA | `db9e14eff94917f406f1562ad7d0bb04f59c5742`（基线 `56c18ae`＋BUG-R1M-001 修复） |
+| migration head | `20260803000100_r1_fix_submission_notification_ambiguity`；157 个 migration，集合 digest `0966126c59a470a03e911aca6fcb0535b2afa470ddeca09b7a080763399801da` |
+| 环境与应用地址 | 本地 |
+| 浏览器/版本/设备 | chrome |
+| 数据集标识 | `QA-20260803-school-manual`（`pnpm r1:manual-dataset` 幂等重建，见 §1.2） |
+| 开始/结束时间 | 2026-08-03 12:00 |
 | 通过/失败/阻塞/跳过 |  |
 | 证据目录或链接 |  |
 
 ### 0.3 安全与数据纪律
 
-- [ ] `SAFE-01` 只使用 `.claude/test-accounts.local.md` 已登记的固定开发账号；不新建账号。
-- [ ] `SAFE-02` 只在开发/RC 环境执行；地址、项目标识和数据库标识已经人工确认，不是正式生产。
+- [x] `SAFE-01` 只使用 `.claude/test-accounts.local.md` 已登记的固定开发账号；不新建账号。
+- [x] `SAFE-02` 只在开发/RC 环境执行；地址、项目标识和数据库标识已经人工确认，不是正式生产。
 - [ ] `SAFE-03` 新建业务对象统一使用 `QA-日期-用途` 前缀，并优先标记为测试用途。
 - [ ] `SAFE-04` 学生、家庭、电话、视频、附件只使用虚构测试资料，不上传真实未成年人 PII。
 - [ ] `SAFE-05` 不启用财务 Feature Flag；不通过数据库或接口绕开 R1-8 关闭门。
 - [ ] `SAFE-06` 不删除或重建 E 系列 865×2 源资源、release、账号、班级或订单基线。
 - [ ] `SAFE-07` 删除类测试只操作本轮创建且已核对 ID 的测试对象；优先验证归档、撤回、作废和恢复。
-- [ ] `SAFE-08` 不移除唯一管理员的最后一个 MFA 因子，不封禁最后一个有效管理员。
+- [x] `SAFE-08` 不移除唯一管理员的最后一个 MFA 因子，不封禁最后一个有效管理员。
 - [ ] `SAFE-09` 永久清理、测试数据 purge、账号停用和学生合并前，先记录目标、影响数量和可恢复边界。
 - [ ] `SAFE-10` 截图、日志和缺陷记录不包含密码、OTP、TOTP secret、邀请/绑定码、token、签名 URL、完整手机号或可识别未成年人信息。
 
@@ -60,9 +60,20 @@
 
 人工开始前先确认相同 commit 的自动化基线，避免把已知工程失败混进人工体验缺陷。数据库命令由能确认目标环境的人执行。
 
-- [ ] `AUTO-01` `pnpm ci:checks` 通过，记录 checks 数量与 build 页面数量。
-- [ ] `AUTO-02` `pnpm r1:test` 通过，记录测试文件数和断言数。
+- [x] `AUTO-01` `pnpm ci:checks` 通过，记录 checks 数量与 build 页面数量。
+  ✓ Generating static pages using 31 workers (314/314) in 1012ms
+  === CI checks 汇总：14/14 通过 ===
+  数据集提交 `db9e14e`（含 BUG-R1M-001 修复、重新生成的 `database.types.ts` 与更新后的初始化 manifest）重跑：14/14 通过。
+- [x] `AUTO-02` `pnpm r1:test` 通过，记录测试文件数和断言数。
+   Test Files  15 passed (15)
+      Tests  98 passed (98)
+   Start at  12:08:09
+   Duration  434ms (transform 832ms, setup 0ms, import 1.19s, tests 272ms, environment 1ms)
+   `db9e14e` 重跑：15 files / 98 tests 全部通过。
 - [ ] `AUTO-03` `pnpm r1:db-audit` 在明确的开发/一次性数据库通过；测试事务已回滚，未连接正式生产。
+  $ node scripts/run-r1-db-audit.mjs
+    DATABASE_URL is required for r1:db-audit
+    [ELIFECYCLE] Command failed with exit code 2.
 - [ ] `AUTO-04` 权限结论引用对应 RLS/Auth/Storage 负向断言；没有把“按钮不可见”记作安全通过。
 - [ ] `AUTO-05` 当前仍没有正式 Playwright 发布套件；本轮浏览器结果明确标记为人工 E3 候选证据，R1-14 再固化为可重复 E2E。
 - [ ] `AUTO-06` `pnpm plan:audit` 通过；本清单没有擅自改变 doc 04 当前施工阶段。
@@ -73,31 +84,43 @@
 
 从 `.claude/test-accounts.local.md` 选择已存在的账号，不在本文件抄录凭据和 UUID。
 
-- [ ] `DATA-01` admin：系统管理员，可验证管理员 MFA 门与兜底权限。
-- [ ] `DATA-02` principal：主管/校长，可验证全校范围、委派、员工、配置和审计。
-- [ ] `DATA-03` registrar：教务，可验证课程、班级、排课、考勤和异常处理。
-- [ ] `DATA-04` research：教研，可验证课程研发、制作、校对与发布。
-- [ ] `DATA-05` teacher：教师，可验证备课、课堂、作业、课评和成果发布。
-- [ ] `DATA-06` sales：学辅/前台，可验证线索、家庭、通知、请假、补课和跟进。
-- [ ] `DATA-07` hybrid：至少一个双岗位员工，验证同一账号多岗位权限并集。
-- [ ] `DATA-08` student A：有账号、有在读班级、有课次和任务。
-- [ ] `DATA-09` student B：属于不同家庭或班级，用于越权负向验证。
-- [ ] `DATA-10` parent A：与 student A 有有效监护关系。
-- [ ] `DATA-11` unbound parent：未绑定任何学生，用于空状态与越权验证。
-- [ ] `DATA-12` 如现有数据允许，准备一个多子女家长；若没有，标记 `BLOCKED`，不要擅自创建账号。
+- [x] `DATA-01` admin：系统管理员，可验证管理员 MFA 门与兜底权限。
+- [x] `DATA-02` principal：主管/校长，可验证全校范围、委派、员工、配置和审计。
+- [x] `DATA-03` registrar：教务，可验证课程、班级、排课、考勤和异常处理。
+- [x] `DATA-04` research：教研，可验证课程研发、制作、校对与发布。
+- [x] `DATA-05` teacher：教师，可验证备课、课堂、作业、课评和成果发布。
+- [x] `DATA-06` sales：学辅/前台，可验证线索、家庭、通知、请假、补课和跟进。
+- [x] `DATA-07` hybrid：至少一个双岗位员工，验证同一账号多岗位权限并集。
+- [x] `DATA-08` student A：有账号、有在读班级、有课次和任务。
+- [x] `DATA-09` student B：属于不同家庭或班级，用于越权负向验证。
+- [x] `DATA-10` parent A：与 student A 有有效监护关系。
+- [x] `DATA-11` unbound parent：未绑定任何学生，用于空状态与越权验证。
+- [x] `DATA-12` 如现有数据允许，准备一个多子女家长；若没有，标记 `BLOCKED`，不要擅自创建账号。
 
 ### 1.2 最小业务数据集
 
-- [ ] `DATA-13` 一个可只读抽样的正式用途课程产品、版本、讲次和 native/adapted release。
-- [ ] `DATA-14` 一个本轮可修改的测试课程产品，至少包含一个版本和两个讲次。
-- [ ] `DATA-15` 一个 planning 测试班和一个 active 测试班；均有主讲、学辅、学期、教室和课次。
-- [ ] `DATA-16` 至少两名测试学生，分别覆盖有账号/无账号、有监护人/无监护人、在读/历史报名。
-- [ ] `DATA-17` 课次状态可覆盖 scheduled、ready、live/ended、post_pending、completed、cancelled 或 voided；不足状态通过同一测试课次线性推进，不伪造数据库行。
-- [ ] `DATA-18` 一个已发布作业、一个未提交学生、一个已提交未批改学生、一个已批改学生。
-- [ ] `DATA-19` 一个视频任务和一个待审视频；附件仅用无敏感信息的小型测试文件。
-- [ ] `DATA-20` 一个知识总结、逐生课评、视频复盘和阶段报告链路可用的数据周期。
-- [ ] `DATA-21` 一个可验证通知、work item、审批和 deep link 的跨角色事件。
-- [ ] `DATA-22` 如存在历史修复计划，仅将其作为审计样本；财务关闭期间不制造订单异常，也不执行订单修复。
+数据集标识 `QA-20260803-school-manual`，由 `R1_DEV_TEST_FIXTURES=1 pnpm r1:manual-dataset`（`scripts/ensure-r1-manual-test-dataset.mjs`）幂等重建。脚本执行前断言 `finance.enabled` 关闭、email/sms/wechat/webhook 四个外部渠道均为 `disabled`，并拒绝非私网目标；只复用 `.claude/test-accounts.local.md` 的固定账号，不新建 auth 用户，不改动 E 系列生产课程、release 与既有班级。连续运行两次对象数量不变（1 课程族 / 1 版本 / 2 讲次 / 2 班 / 8 课次 / 2 学生 / 4 报名 / 1 作业 / 2 提交 / 1 视频任务 / 1 待审视频 / 1 work item / 1 审批 / 1 通知）。完整对象清单以脚本 stdout 的 JSON manifest 为准，本节只登记入口对象。
+
+- [x] `DATA-13` 一个可只读抽样的正式用途课程产品、版本、讲次和 native/adapted release。
+  产品族 `E 系列小学数学`（`xueersi-e-primary-math-cn`），版本 `E系列数学一年级暑期A[全国版]`（product code `MFHK00621`），第 1 讲「数的组成和比较」；native-16x9 与 adapted-4x3 各有 `release_no=1`，native track head 已指向对应 release。脚本只读校验，不写入。
+- [x] `DATA-14` 一个本轮可修改的测试课程产品，至少包含一个版本和两个讲次。
+  `QA-20260803-人工验收课程`（purpose=test）→ 版本 `QA-20260803-人工验收课程·一年级暑期A`（product code `QA-20260803-A`，purpose=test）→ 讲次 `QA-20260803-第1讲 数与运算基础`、`QA-20260803-第2讲 图形认识入门`。两讲**均无 release**，用于 `CLASS-04`／`CLASS-21`／`CLASS-22` 的课件风险分支。责任人：教研 owner、教师 editor、主管 reviewer。
+- [x] `DATA-15` 一个 planning 测试班和一个 active 测试班；均有主讲、学辅、学期、教室和课次。
+  `QA-20260803-筹备测试班`（planning，教室 `QA-A101`，2 节课次）与 `QA-20260803-在读测试班`（active，教室 `QA-A102`，6 节课次）；两班均 purpose=test、绑定 QA 课程版本与当前学期「2026 春季学期」，主讲 `test-teacher`、学辅 `test-sales`（`is_primary`）。
+- [x] `DATA-16` 至少两名测试学生，分别覆盖有账号/无账号、有监护人/无监护人、在读/历史报名。
+  有账号＋有监护人＋在读：`测试学生`；有账号＋在读：`测试学生2`；无账号＋无监护人＋在读：`QA-20260803-学员甲·无账号无监护人`；无账号＋无监护人＋历史报名：`QA-20260803-学员乙·历史报名`（`enrollments.status=completed`、`left_at` 已置，学生 `status=alumni`）。四人报名均落在 `QA-20260803-在读测试班`。
+- [x] `DATA-17` 课次状态可覆盖 scheduled、ready、live/ended、post_pending、completed、cancelled 或 voided；不足状态通过同一测试课次线性推进，不伪造数据库行。
+  脚本只写 `scheduled`：在读测试班 6 节课次按用途预留——`课次1·生命周期主线`（备课→行课→课后→完成）、`课次2·调课代课`、`课次3·取消恢复`、`课次4·作废`、`课次5·请假补课`、`课次6·备用`；筹备测试班 2 节。`started_at`／`ended_at`／`cancelled_by`／`voided_at`／`postwork_completed_at` 全部为空，ready 及之后的状态由 §6.4、§7 的真实动作推进。既有 `E系列数学一年级暑期S班[全国版]` 另有 6 节已结束课次可作只读对照。
+- [x] `DATA-18` 一个已发布作业、一个未提交学生、一个已提交未批改学生、一个已批改学生。
+  作业 `QA-20260803-作业·提交三态样本`（在读测试班，7 天后截止）：`测试学生` 已提交且已批改（88 分＋反馈），`测试学生2` 已提交未批改，`QA-20260803-学员甲` 未提交。**建立此项时命中 `BUG-R1M-001`：`insert into public.submissions` 必然被触发器拒绝，学生提交作业整条链路不可用；已修复（migration `20260803000100`）并回归，详见 §13.1。**
+- [x] `DATA-19` 一个视频任务和一个待审视频；附件仅用无敏感信息的小型测试文件。
+  视频任务 `QA-20260803-视频任务·待审样本` 挂在已结束课次「数方」（`E系列数学一年级暑期S班[全国版]`，`测试学生` 在读、`test-teacher` 主讲），选已结束课次是为了当轮就能走通「待审→审核」。待审视频 `note=QA-20260803-待审视频样本`，`reviewed_at` 为空；字节由既有 1.1 MB 测试上传在 `session-videos` 桶内复制，不引入新素材、不含真实人物。
+- [x] `DATA-20` 一个知识总结、逐生课评、视频复盘和阶段报告链路可用的数据周期。
+  对象学生 `测试学生`，周期取当前学期 2026-02-01～2026-08-31。已发布 head 覆盖 `knowledge_summary`（2 条，课次「突破进退位加减法」「排列中的枚举」）、`session_review`、`session_result`、`video_review`、`stage_report`（period 与学期一致），`missingKinds` 为空。只读盘点，脚本不新增成果。
+- [x] `DATA-21` 一个可验证通知、work item、审批和 deep link 的跨角色事件。
+  同一 deep link `/dashboard/classes/{在读测试班}` 上：work item `QA-20260803-跨角色事件·在读测试班待确认`（主管创建 → 教师 assignee，open）、审批 `QA-20260803-跨角色审批·测试班课次调整`（教师 requester → 主管 approver，pending）、站内通知 `classroom.staff.assigned`（收件人教师）。通知由插入 `domain_events` 后经 `stage_notification_for_domain_event()` 触发器生成，不直接写 `notifications`；`payload.datasetId` 用作幂等键。
+- [x] `DATA-22` 如存在历史修复计划，仅将其作为审计样本；财务关闭期间不制造订单异常，也不执行订单修复。
+  库内 2 条 `data_repair_plans`，同为 `order_status_recompute` v1、`target_object_type=order`、`impact_count=1`，状态分别 `executed` 与 `rolled_back`。本轮只读引用，脚本执行前已断言 `finance.enabled=false`，未新建、未执行、未 rollback 任何修复计划。
 
 ## 2. 第一轮：入口、认证、环境和路由
 
@@ -723,6 +746,25 @@
 | 是否存在越权/泄露 |  |
 | 截图/视频/请求 ID |  |
 | 处理决定/owner |  |
+
+### 13.1 本轮已记录缺陷
+
+| 字段 | 内容 |
+| --- | --- |
+| BUG ID / 严重度 | `BUG-R1M-001` / `Sev1` |
+| 对应检查项 | 建立 `DATA-18` 时命中；影响面覆盖 `POST-10`～`POST-13`、`LEARN-05`、`NOTICE-06`、`JOURNEY-06` |
+| 角色/环境/locale | student（提交）与 staff（收通知）；自托管开发库；与 locale 无关 |
+| route 与对象类型 | `/dashboard/assignments/{assignmentId}`、`/classroom/{classId}/assignment/{assignmentId}`；`public.submissions` |
+| 前置数据 | 任一已发布作业 ＋ 任一有账号的在读学生 |
+| 最短复现步骤 | 学生打开作业详情提交内容（`submitAssignment` → RPC `submit_assignment` → `submit_assignment_for_student` → `insert into public.submissions`） |
+| 期望结果 | 提交写入，教师端出现 `assignment.submitted` 通知 |
+| 实际结果 | 数据库抛 `column reference "classroom_id" is ambiguous`，插入回滚，提交永远失败 |
+| 是否可稳定复现 | 是，100%；直接 `insert into public.submissions` 即可复现，与 RLS、角色无关 |
+| 数据是否已写入 | 否，整个事务回滚 |
+| 是否存在越权/泄露 | 否 |
+| 截图/视频/请求 ID | 复现与修复后验证均为 psql 事务（`begin; insert …; rollback;`），无截图 |
+| 根因 | `notify_family_learning_change()` 的 submissions 分支把 `classroom_id`／`student_id` 同时用作 plpgsql 变量名与被查询表（`classroom_members`、`student_guardians`）的列名；PostgreSQL 默认 `variable_conflict=error`，触发器在计划阶段即报错。assignments 分支因为全部用 `new.` 限定而未受影响，所以「发布作业」正常、「提交作业」必失败 |
+| 处理决定/owner | 已修复并合入 `db9e14e`（migration `20260803000100_r1_fix_submission_notification_ambiguity`）：局部变量改 `v_` 前缀消歧，收件人、事件类型、payload 与 deep link 不变；同批删除带同一歧义且已被 `notify_leave_request_roles_r1()` 取代的 `notify_leave_request_change()`。回归：插入成功且产生 `assignment.submitted` 事件；`pnpm ci:checks` 14/14、`pnpm r1:test` 98/98 通过。R1-14 需补一条覆盖「学生提交作业」的自动化断言，防止同类触发器歧义再次只在人工阶段暴露 |
 
 ## 14. 本轮退出条件
 
