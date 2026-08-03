@@ -317,17 +317,32 @@
 
 ### 4.2 CSV 导入、重复与合并
 
-- [ ] `IMPORT-01` 模板下载包含版本和要求字段，中文 Excel 打开无乱码。
-- [ ] `IMPORT-02` dry-run 展示总行数、有效、重复和错误数，不创建学生。
-- [ ] `IMPORT-03` 行号、字段和标准错误原因能定位空值、非法日期、超长文本、重复手机号等问题。
-- [ ] `IMPORT-04` 只要存在错误，apply 写入 0 行；修复后重新 dry-run 才能应用。
-- [ ] `IMPORT-05` 错误 CSV 可下载、UTF-8 正确且不包含密码/token。
-- [ ] `IMPORT-06` 相同 idempotency key + 相同内容返回同一批次；相同 key + 不同内容明确冲突。
-- [ ] `IMPORT-07` 成功批次重复应用新增 0；页面显示创建/匹配/跳过统计。
-- [ ] `IMPORT-08` 过期批次不能应用；原始行保留边界有明确提示。
-- [ ] `MERGE-01` 合并前列出疑似重复对象，并明确“保留当前学生”。
-- [ ] `MERGE-02` 合并预览/确认只作用于选定两个 ID；取消不写入。
-- [ ] `MERGE-03` 合并后报名、跟进、监护关系和历史归于保留 ID，来源学生不可继续作为独立对象使用。
+> 本节证据：RPC 断言在自托管开发库以单事务执行后 `rollback`（`preview_student_import`／`apply_student_import`／`merge_students`，身份经 `set local role authenticated` ＋ `request.jwt.claim.sub` 模拟 admin/teacher/student），13 条断言全绿；客户端 CSV 生成与解析对 `ImportStudentsPanel.tsx` 中 `splitLine`／`parseInput`／`csvCell` 的函数原文求值实测。全程未在开发库落库。
+
+- [x] `IMPORT-01` 模板下载包含版本和要求字段，中文 Excel 打开无乱码。
+      模板首 3 字节 `EF BB BF`（UTF-8 BOM），Excel 不乱码；6 个字段齐全。
+      `Sev3`版本只在文件名 `mathin-students-v1.csv` 与页面文案里，文件内容只有一行 `name,phone,grade,region,source,remark`：无版本行、无必填标注、无示例行，且表头是英文标识符而界面为中文。文件离开浏览器后无法自证版本。
+- [x] `IMPORT-02` dry-run 展示总行数、有效、重复和错误数，不创建学生。
+      11 行样本：`status=validated total=11 valid=1 dup=2 error=8 inserted=0`，学生数 5→5。
+- [x] `IMPORT-03` 行号、字段和标准错误原因能定位空值、非法日期、超长文本、重复手机号等问题。
+      逐行：`#1 EMPTY_NAME` `#2/#3 INVALID_GRADE` `#4 NAME_TOO_LONG` `#5 REMARK_TOO_LONG` `#6 PHONE_TOO_LONG` `#7 REGION_TOO_LONG+SOURCE_TOO_LONG` `#8 valid` `#9 DUPLICATE_PHONE`（批内 `139-0000-0106` 与 `13900000106` 归一化后同号）`#10 DUPLICATE_PHONE`（与库内既有学生同号）`#11 MALFORMED_ROW`。模板无日期字段，非法日期串 `2026-13-40` 落在 grade 列并按 `INVALID_GRADE` 报出。
+- [x] `IMPORT-04` 只要存在错误，apply 写入 0 行；修复后重新 dry-run 才能应用。
+      对含 8 个错误行的批次 apply 抛 `BATCH_HAS_ERRORS`，学生数 5→5，批次停在 `validated`，`inserted` 行 0。前端在文本框内容变化时重置 `idempotencyKey` 并清空批次，因此修改后只能重新 dry-run。
+- [x] `IMPORT-05` 错误 CSV 可下载、UTF-8 正确且不包含密码/token。
+      带 BOM；含逗号字段被引号包裹、内嵌双引号转义为 `""`；中文完整往返；字段仅 `line,status,error_codes` ＋ 6 个业务列，无密码/token/绑定码。
+      `Sev3`该文件不能直接粘回文本框修复回流：表头首格是 `line` 不在 `HEADER_NAMES` 内，不会被当表头跳过，且前 3 列使所有业务列右移一位（`name` 读到行号、`phone` 读到状态）。另外 `parseInput` 先按换行切行再解析引号，备注里的引号内换行会被拆成两行。
+- [x] `IMPORT-06` 相同 idempotency key + 相同内容返回同一批次；相同 key + 不同内容明确冲突。
+      同 key 同内容返回同一 `batchId` 且批次实例数保持 1；同 key 异内容、同 key 异 `input_hash` 均抛 `IDEMPOTENCY_CONFLICT`；`templateVersion` 非 `mathin-students-v1` 抛 `INVALID_TEMPLATE`。
+- [x] `IMPORT-07` 成功批次重复应用新增 0；页面显示创建/匹配/跳过统计。
+      3 行干净批次首次 apply `inserted=2 dup=1`，学生数 5→7；重复 apply 返回 `status=completed inserted=2`，学生数仍 7（已完成批次直接返回快照，不再进入写循环）。统计经 `importSummary`/`importDryRunCounts` 展示，zh/en 均有文案。apply 完成即把 `data_import_rows.payload` 清空。
+- [x] `IMPORT-08` 过期批次不能应用；原始行保留边界有明确提示。
+      把批次时间线整体前移至过期后 apply 抛 `BATCH_EXPIRED`，学生数不变，批次仍为 `validated`；`purge_expired_data_import_payloads` 清空过期批次残留 payload（清后 0 行）。默认保留期 30 天写在 `expires_at` 默认值，前端文案 `importBatchExpired` 明确提示需重新验证。
+- [x] `MERGE-01` 合并前列出疑似重复对象，并明确“保留当前学生”。
+      同名同号候选 1 条、无关学生 0 条（判定依据为手机号去非数字后相等，或姓名 trim/lower 相等）；`mergeKeepsCurrent`／`mergeStudentConfirm` 明示保留当前档案且候选将变为不可用留痕。
+- [x] `MERGE-02` 合并预览/确认只作用于选定两个 ID；取消不写入。
+      合并期间旁观学生跟进 1→1、`deleted_at` 仍为 null、未进入 `student_merges`；确认走 `ConfirmDialog`，取消不触发 action。
+- [x] `MERGE-03` 合并后报名、跟进、监护关系和历史归于保留 ID，来源学生不可继续作为独立对象使用。
+      保留档案：跟进 1、报名 1、监护 1、余额 100/课时 8（来源账户合并后删除）；来源档案：监护 0、账户 0、`deleted_at` 已写入，且不再出现在重复候选中；`student_merges` 留痕 1 条并记录 `operated_by`。
 - [ ] `MERGE-04` 无合并权限、跨范围目标和并发变化时拒绝，不能留下半合并状态。
 
 ### 4.3 监护关系与范围
@@ -851,6 +866,23 @@
 - [ ] `EXIT-04` Sev0=0、Sev1=0、未接受 Sev2=0；接受 Sev2 有 owner、截止日、影响和缓解措施。
 - [ ] `EXIT-05` 所有 `BLOCKED` 已判断为环境缺口、数据缺口或产品缺口，并建立后续任务；没有用 N/A 掩盖缺陷。
 - [ ] `EXIT-06` 至少完成 zh/en、light/dark、desktop/mobile 的关键旅程抽样，截图不含 secret/PII。
+| 字段 | 内容 |
+| --- | --- |
+| BUG ID / 严重度 | `BUG-R1M-004` / `Sev2` |
+| 对应检查项 | `MERGE-04`；影响面波及 `MERGE-03`、`STU-10`、`STU-12`（恢复入口） |
+| 角色/环境/locale | 任意持 `student.edit` 且对两个学生都在范围内的 staff/admin；自托管开发库；与 locale 无关 |
+| route 与对象类型 | `/dashboard/students/{studentId}` 的 `StudentMergePanel` → `mergeStudentsAction` → RPC `merge_students`；`public.students` |
+| 前置数据 | 两个互为疑似重复的在读/线索学生 A、B（同手机号或同姓名） |
+| 最短复现步骤 | 员工甲在 A 的学生页把 B 合并进 A；员工乙的浏览器停留在 B 的学生页（候选列表已在挂载时取好，不会重取），点击“合并到当前档案”，即发出 `merge_students(kept=B, merged=A)` |
+| 期望结果 | 第二次合并被拒绝（来源或保留档案已软删／已被合并），提示对方档案已变化并要求刷新 |
+| 实际结果 | 第二次合并成功返回，无任何错误。A 被软删，A 的跟进、报名、监护、账户余额全部迁移到已软删的 B；实测 A、B `deleted_at` 均非空，B 上聚合了两份跟进与 500 元余额，而两个学生都从正常列表消失 |
+| 是否可稳定复现 | 是，100%。直接 `select public.merge_students(B, A)`（B 已软删）即可复现，与 RLS、角色无关 |
+| 数据是否已写入 | 是（复现在 `begin; … rollback;` 事务内，开发库未落库）。数据未物理删除，可经恢复入口找回，但需要人工判断哪份档案才是应保留的 |
+| 是否存在越权/泄露 | 否。两侧都要求 `has_perm('student.edit')` ＋ `can_access_student` |
+| 截图/视频/请求 ID | psql 事务输出：`stale_result=NO_ERROR a_deleted=t b_deleted=t a_followups=0 b_followups=2 b_balance=500.00` |
+| 根因 | `merge_students` 只校验 `p_kept_id <> p_merged_id`、`student.edit` 与 `can_access_student`，两侧都不检查 `deleted_at is null`；`can_access_student` 同样不过滤软删。反向重复合并因 `student_merges.merged_id` 唯一约束才会被拦（且报的是原始唯一约束报错文本，前端只能显示通用 `actionFailed`），而“保留档案已是墓碑”这条方向完全没有防线。客户端候选列表在 `useEffect` 挂载时取一次，之后不再校验新鲜度 |
+| 处理决定/owner | 待定。建议在 `merge_students` 开头加 `deleted_at is null` 双侧校验并抛领域码（如 `STUDENT_DELETED`／`ALREADY_MERGED`），由 `mergeStudentsAction` 映射成明确文案；R1-14 补一条「对已软删档案的正反向合并都必须拒绝」的自动化断言 |
+
 - [ ] `EXIT-07` 测试产生的对象、通知、邀请、artifact、文件和异常均已登记；需要保留到 R1-15 的数据有 manifest。
 - [ ] `EXIT-08` 人工结果与当前自动化证据分开记录；没有用“页面看起来正常”替代权限、并发、性能和恢复证据。
 - [ ] `EXIT-09` 对所有失败完成修复和针对性回归后，再决定继续 R1-9；未通过时不把 R1-9 标成学校后台已验收。
