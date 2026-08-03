@@ -34,7 +34,7 @@
 | --- | --- |
 | 执行日期/时区 | 2026-08-03 12:00 |
 | 测试人 | 李成浩 |
-| commit SHA | `db9e14eff94917f406f1562ad7d0bb04f59c5742`（基线 `56c18ae`＋BUG-R1M-001 修复） |
+| commit SHA | `d801c16`（基线 `56c18ae`＋BUG-R1M-001 修复 `db9e14e`＋§1.2 数据集 `a214f03`＋BUG-R1M-002/003 门禁修复 `d801c16`；后者只改断言脚本，不改产品代码） |
 | migration head | `20260803000100_r1_fix_submission_notification_ambiguity`；157 个 migration，集合 digest `0966126c59a470a03e911aca6fcb0535b2afa470ddeca09b7a080763399801da` |
 | 环境与应用地址 | 本地 |
 | 浏览器/版本/设备 | chrome |
@@ -64,19 +64,30 @@
   ✓ Generating static pages using 31 workers (314/314) in 1012ms
   === CI checks 汇总：14/14 通过 ===
   数据集提交 `db9e14e`（含 BUG-R1M-001 修复、重新生成的 `database.types.ts` 与更新后的初始化 manifest）重跑：14/14 通过。
+  门禁修复提交 `d801c16` 重跑：14/14 通过；`pnpm build` 预渲染 314 个静态页面、路由表 80 条。
 - [x] `AUTO-02` `pnpm r1:test` 通过，记录测试文件数和断言数。
    Test Files  15 passed (15)
       Tests  98 passed (98)
    Start at  12:08:09
    Duration  434ms (transform 832ms, setup 0ms, import 1.19s, tests 272ms, environment 1ms)
    `db9e14e` 重跑：15 files / 98 tests 全部通过。
-- [ ] `AUTO-03` `pnpm r1:db-audit` 在明确的开发/一次性数据库通过；测试事务已回滚，未连接正式生产。
+   `d801c16` 重跑：15 files / 98 tests 全部通过。
+- [x] `AUTO-03` `pnpm r1:db-audit` 在明确的开发/一次性数据库通过；测试事务已回滚，未连接正式生产。
   $ node scripts/run-r1-db-audit.mjs
     DATABASE_URL is required for r1:db-audit
     [ELIFECYCLE] Command failed with exit code 2.
-- [ ] `AUTO-04` 权限结论引用对应 RLS/Auth/Storage 负向断言；没有把“按钮不可见”记作安全通过。
-- [ ] `AUTO-05` 当前仍没有正式 Playwright 发布套件；本轮浏览器结果明确标记为人工 E3 候选证据，R1-14 再固化为可重复 E2E。
-- [ ] `AUTO-06` `pnpm plan:audit` 通过；本清单没有擅自改变 doc 04 当前施工阶段。
+  BUG-R1M-002（Sev2，工程门禁，已修复 `d801c16`）：四个 db-audit 脚本只支持 `DATABASE_URL`＋本机 psql，本机既无该变量也未安装 psql（自托管库在 `xiaomi` 的 `supabase-db` 容器内），门禁无法执行。已抽出 `scripts/lib/db-audit-runner.mjs` 并新增 `SUPABASE_DB_SSH` 通道（与 `db:types` 的 `SUPABASE_META_SSH` 同构），CI 的 `DATABASE_URL` 通道不变。
+  BUG-R1M-003（Sev1，断言假通过，已修复 `d801c16`）：`r1_export_artifacts_assertions.sql` 硬编码 `supabase/ci/10_fixtures.sql` 的夹具身份 UUID，只能在 CI 夹具库执行；且取不到 artifact 时 `payload` 为 NULL，其后 4 条 `payload not like '%…%'` 泄漏检查全部静默为真——用户权利导出的越权/内部字段泄漏门在什么都没检查的情况下会显示通过。已改为经事务级 GUC 传入 `\gset` 得到的身份与 artifact id，并在 artifact 缺失时立即失败。
+  $ SUPABASE_DB_SSH=xiaomi pnpm r1:db-audit
+    R1-1/R1-2/R1-3/R1-6/R1-7E/R1-4/R1-8 assertions passed（其余 5 个文件无 `\echo`，以 exit=0 判定）
+    12/12 通过，exit=0
+  目标环境：自托管**开发库**（非一次性 CI 库，非生产；当前尚无生产环境）。12 个断言文件均以 `rollback` 结尾，执行后无写入残留。一次性库通道由 CI `database` job（`ci:db-rebuild` → migration 账本 → p4e/p6/p4h/r1 断言）覆盖，推送后引用其 run URL 作为 E2 证据。
+- [x] `AUTO-04` 权限结论引用对应 RLS/Auth/Storage 负向断言；没有把“按钮不可见”记作安全通过。
+  同 commit 负向断言基线全部通过：`p4e:db-audit`（RLS 越权）、`p6:db-audit`（课件资产 5 个文件）、`p4h:db-audit`（教学运营生命周期）、`r1:db-audit`（12 个文件）。本轮任何权限结论必须引用其中的具体断言，UI 不可见只作为体验观察记录。
+- [x] `AUTO-05` 当前仍没有正式 Playwright 发布套件；本轮浏览器结果明确标记为人工 E3 候选证据，R1-14 再固化为可重复 E2E。
+  已核对：仓库无 Playwright 配置文件，无 `e2e/` 目录。
+- [x] `AUTO-06` `pnpm plan:audit` 通过；本清单没有擅自改变 doc 04 当前施工阶段。
+  规划治理审计通过：00～26 状态、唯一阶段、索引与 1.0 契约一致。doc 04 当前施工阶段仍为 R1-9。
 
 ## 1. 账号与测试数据准备
 
@@ -765,6 +776,40 @@
 | 截图/视频/请求 ID | 复现与修复后验证均为 psql 事务（`begin; insert …; rollback;`），无截图 |
 | 根因 | `notify_family_learning_change()` 的 submissions 分支把 `classroom_id`／`student_id` 同时用作 plpgsql 变量名与被查询表（`classroom_members`、`student_guardians`）的列名；PostgreSQL 默认 `variable_conflict=error`，触发器在计划阶段即报错。assignments 分支因为全部用 `new.` 限定而未受影响，所以「发布作业」正常、「提交作业」必失败 |
 | 处理决定/owner | 已修复并合入 `db9e14e`（migration `20260803000100_r1_fix_submission_notification_ambiguity`）：局部变量改 `v_` 前缀消歧，收件人、事件类型、payload 与 deep link 不变；同批删除带同一歧义且已被 `notify_leave_request_roles_r1()` 取代的 `notify_leave_request_change()`。回归：插入成功且产生 `assignment.submitted` 事件；`pnpm ci:checks` 14/14、`pnpm r1:test` 98/98 通过。R1-14 需补一条覆盖「学生提交作业」的自动化断言，防止同类触发器歧义再次只在人工阶段暴露 |
+
+| 字段 | 内容 |
+| --- | --- |
+| BUG ID / 严重度 | `BUG-R1M-002` / `Sev2`（工程门禁不可执行，非产品缺陷） |
+| 对应检查项 | `AUTO-03` |
+| 角色/环境/locale | 执行者本机（Windows）＋ 自托管开发库；与角色、locale 无关 |
+| route 与对象类型 | 无路由；`scripts/run-{r1,p4e,p4h,p6}-db-audit.mjs` |
+| 前置数据 | 无 |
+| 最短复现步骤 | 在开发机执行 `pnpm r1:db-audit` |
+| 期望结果 | 12 个 R1 SQL 断言在明确的开发/一次性库执行并给出结论 |
+| 实际结果 | `DATABASE_URL is required for r1:db-audit`，exit 2；门禁一次都跑不了 |
+| 是否可稳定复现 | 是。四个脚本只读 `process.env.DATABASE_URL`（不加载 `.env.local`）并调用本机 `psql -f`；开发机无该变量、`which psql` 亦为 not found，自托管库运行在 `xiaomi` 的 `supabase-db` 容器内 |
+| 数据是否已写入 | 否，未执行任何 SQL |
+| 是否存在越权/泄露 | 否 |
+| 截图/视频/请求 ID | 终端输出见 §0.4 `AUTO-03` |
+| 根因 | 脚本只实现了 CI 的 `DATABASE_URL`＋本机 psql 一条通道。R1-5/R1-7/R1-8 证据记录的「通过 SSH/psql 执行断言」是手工绕过脚本完成的，这条断层从未补进脚本 |
+| 处理决定/owner | 已修复并合入 `d801c16`：抽出 `scripts/lib/db-audit-runner.mjs`，新增 `SUPABASE_DB_SSH` 通道（与 `db:types` 的 `SUPABASE_META_SSH` 同构），断言文件从 stdin 透传给容器内 psql；CI 的 `DATABASE_URL` 通道不变，psql 非零退出码经 ssh 原样返回（已用 `select 1/0` 实测 exit=3），并输出失败文件名。四个 db-audit 均已在开发库通过 |
+
+| 字段 | 内容 |
+| --- | --- |
+| BUG ID / 严重度 | `BUG-R1M-003` / `Sev1`（安全门禁静默假通过，非产品缺陷） |
+| 对应检查项 | `AUTO-03`、`AUTO-04` |
+| 角色/环境/locale | 断言内模拟 student/parent/admin；任意库；与 locale 无关 |
+| route 与对象类型 | 无路由；`supabase/tests/r1_export_artifacts_assertions.sql`（R1-7E 用户权利导出泄漏门） |
+| 前置数据 | 任何非 `ci:db-rebuild` 夹具库 |
+| 最短复现步骤 | 对开发库执行该断言文件 |
+| 期望结果 | 逐条校验导出内容不含其他学生数据、不含内部字段，或明确报告无法校验 |
+| 实际结果 | 报 `R1_EXPORT_EXCLUSION_MANIFEST_MISSING`；而在此之前的 4 条泄漏检查已经全部「通过」——它们并没有检查任何东西 |
+| 是否可稳定复现 | 是 |
+| 数据是否已写入 | 否，文件以 `rollback` 结尾 |
+| 是否存在越权/泄露 | 未发现真实泄露；风险在于该门禁在 artifact 缺失时会把「未检查」报告成「已通过」 |
+| 截图/视频/请求 ID | 终端输出见 §0.4 `AUTO-03` |
+| 根因 | 两处环境耦合叠加：①文件硬编码 `supabase/ci/10_fixtures.sql` 的夹具身份 UUID（`…0004`/`…0005`），开发库中 `测试-学生` 为随机 UUID，取不到 artifact；②取不到时 `payload` 为 NULL，其后 `payload not like '%…%'` 全部求值为 NULL 而非真，`if` 不成立，四条泄漏断言静默放行。另有两处按 `user_id` 的全量计数（`R1_SUBJECT_DOWNLOAD_NOT_AUDITED` 期望恰好 1 条）会把开发库既有的历史导出记录误判为失败 |
+| 处理决定/owner | 已修复并合入 `d801c16`：身份与 artifact id 改经事务级 GUC 传入（psql 变量不会插值进 dollar-quoted 的 DO 体，只能走 `set_config`/`current_setting`）；artifact 缺失时立即 `raise`；两处计数收敛到本次事务产生的 artifact。CI 夹具使用同一批 `测试-*` display_name，`\gset` 解析结果不变，CI 行为不受影响——该结论需下次推送由 CI `database` job 实测确认。R1-14 应把「断言在目标对象缺失时必须失败而不是静默通过」纳入门禁自检 |
 
 ## 14. 本轮退出条件
 
