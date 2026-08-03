@@ -137,14 +137,20 @@
 
 ### 2.1 未登录、登录、注册与找回
 
-- [ ] `AUTH-01` 未登录访问 `/zh/dashboard`，跳转到 `/zh/login?next=...`；登录后返回原站内路径。
-- [ ] `AUTH-02` 未登录访问 classroom、whiteboard、studio 的深层路径，同样进入对应语言登录页，不泄露页面数据。
-- [ ] `AUTH-03` 正确邮箱和密码可登录；错误密码显示明确错误且不暴露账号是否存在。
-- [ ] `AUTH-04` `next` 使用站内路径时有效；外部 URL、协议相对 URL 和畸形值不能形成开放重定向。
-- [ ] `AUTH-05` 登出后受保护页不可通过后退按钮或刷新继续读取；再次访问要求登录。
-- [ ] `AUTH-06` `/zh` 与 `/en` 登录、错误、忘记密码页面语言一致，URL 始终保留 locale。
+- [x] `AUTH-01` 未登录访问 `/zh/dashboard`，跳转到 `/zh/login?next=...`；登录后返回原站内路径。
+- [x] `AUTH-02` 未登录访问 classroom、whiteboard、studio 的深层路径，同样进入对应语言登录页，不泄露页面数据。
+- [x] `AUTH-03` 正确邮箱和密码可登录；错误密码显示明确错误且不暴露账号是否存在。
+- [x] `AUTH-04` `next` 使用站内路径时有效；外部 URL、协议相对 URL 和畸形值不能形成开放重定向。
+      两个消费点各测一轮，共 21 例全部符合预期。登录 Server Action（`(auth)/actions.ts`，走无 JS 表单 POST）11 例：`/zh/dashboard/students`、`/zh/dashboard/students?status=on` 保留原值并保留 query；`https://example.com/`、`//example.com/`、`///example.com/`、`javascript:alert(1)`、`/en/dashboard`、`/zh`、`/dashboard`、`/zhang/dashboard`、无 `next` 字段共 9 例全部回落 `/zh/dashboard`，且 `Location` 一律是相对路径，无跨域跳转。回调路由（`auth/callback/route.ts`）10 例结论一致，另含 `/%2f%2fexample.com/` 编码绕过被拒；`/en/auth/callback` 侧对称验证 `/zh/dashboard` 回落到 `/en/dashboard`。
+      附带确认：`?next=` 的值原样进入登录表单隐藏域（攻击链路真实存在，本项非空测），XSS payload `"><img src=x onerror=alert(1)>` 被 React 转义为实体，无 HTML 注入。
+      跨 locale 的 `next` 一律回落是 `resolveSafeReturnTo` 按 locale 前缀比对的设计结果，不记缺陷。
+      门禁补强：本项此前无任何自动化覆盖，已补 `tests/auth-safe-redirect.test.ts`（17 例，含「白名单通过的 `/zh//example.com/` 解析后仍同源」断言），后续回归不再依赖人工。
+- [x] `AUTH-05` 登出后受保护页不可通过后退按钮或刷新继续读取；再次访问要求登录。
+- [x] `AUTH-06` `/zh` 与 `/en` 登录、错误、忘记密码页面语言一致，URL 始终保留 locale。
 - [ ] `AUTH-07` 忘记密码提交后显示不枚举账号的成功态；恢复链接回到正确环境和语言。
 - [ ] `AUTH-08` 手机登录在服务可用时完成 OTP 请求与验证；未配置时显示具体不可用状态，不无限 loading 或假成功。
+      `Sev3`手机号登录错误提示面板文案改成："抱歉，我们暂时还未配置手机号验证码登录功能，请使用邮箱验证注册。"
+      `Sev1`手机号验证码登录页面无返回邮箱登录页面入口
 - [ ] `AUTH-09` 注册邀请码关闭时不能注册；错误、过期或停用邀请码被拒绝。
 - [ ] `AUTH-10` 注册必须同时确认隐私政策与儿童个人信息保护政策；缺任一同意不能提交。
 - [ ] `AUTH-11` 注册成功、邮箱确认和重复邮箱行为符合页面提示。此项需要新账号授权；未授权时记录 `BLOCKED`。
