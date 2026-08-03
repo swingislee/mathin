@@ -934,6 +934,7 @@ export function LiveShell({
                 onStep={(trigger) => onDocStep(page.id, trigger)}
                 videoCtl={state.video[page.id]}
                 onVideoCtl={(action, time) => append("video_ctl", { pageId: page.id, action, time })}
+                onAdvance={() => gotoPage(state.currentPage + 1, state.pages.length)}
               />
             ) : null}
 

@@ -35,7 +35,7 @@ import {
 import { games } from "@/features/games/registry";
 import { CoursewarePreviewWorkspace, type CoursewarePreviewListItem } from "@/features/courseware-preview/CoursewarePreviewWorkspace";
 import { StagePreview } from "@/features/courseware-studio/StagePreview";
-import type { PageDoc } from "@/features/courseware-doc/schema";
+import type { CoursewareDoc } from "@/features/courseware-doc/document";
 import type { ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 import type { Difficulty } from "@/features/games/types";
 import { newId } from "@/lib/uuid";
@@ -91,7 +91,7 @@ export function CoursewareOverlayEditor({
   sessionId: string;
   template: CoursewareTemplatePage[];
   initialOverlay: OverlaySlot[];
-  docPreviews: Array<{ pageDocId: string; doc: PageDoc; bindingUrls: ResolvedBindingUrls }>;
+  docPreviews: Array<{ pageDocId: string; doc: CoursewareDoc; bindingUrls: ResolvedBindingUrls }>;
   annotations: CoursewareAnnotation[];
   solutionRecords: SolutionRecord[];
   learningCheckPages: CoursewareLearningCheckPage[];

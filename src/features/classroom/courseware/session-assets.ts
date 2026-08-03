@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { buildH5EntryUrl, type ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
-import { pageDocSchema, type PageDoc } from "@/features/courseware-doc/schema";
+import { parseCoursewareDoc, type CoursewareDoc } from "@/features/courseware-doc/document";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSupabaseConfig } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
@@ -32,7 +32,7 @@ export type SessionDocBinding = z.infer<typeof sessionDocBindingSchema>;
 export interface SessionPageDoc {
   pageDocId: string;
   pageNo: number;
-  doc: PageDoc;
+  doc: CoursewareDoc;
   bindings: SessionDocBinding[];
 }
 
@@ -93,7 +93,7 @@ export async function getSessionPageDocs(sessionId: string): Promise<SessionPage
   return (data ?? []).map((row) => ({
     pageDocId: row.page_doc_id,
     pageNo: row.page_no,
-    doc: pageDocSchema.parse(row.doc),
+    doc: parseCoursewareDoc(row.doc),
     bindings: z.array(sessionDocBindingSchema).parse(row.bindings),
   }));
 }

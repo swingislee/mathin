@@ -2,12 +2,16 @@ import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { buttonVariants } from "@/components/ui/button";
 import { CoursewarePageEditor } from "@/features/courseware-studio/CoursewarePageEditor";
+import { AixuexiStudioViewer } from "@/features/courseware-studio/AixuexiStudioViewer";
 import {
   loadCoursewareStudioPage,
   loadCoursewareWorkbenchContext,
   parseCoursewareTrack,
 } from "@/features/courseware-studio/data";
 import { getLectureWorkspaceDetail } from "@/features/school/curriculum/lecture-workspace-detail";
+import { isAixuexiPageDoc } from "@/features/courseware-doc/aixuexi-schema";
+import type { PageDoc } from "@/features/courseware-doc/schema";
+import type { StudioRevision } from "@/features/courseware-studio/data";
 import { resolveLectureReviewCapabilities } from "@/features/school/teaching-operations/capabilities";
 import { Link } from "@/i18n/navigation";
 import { getMyPerms, requirePerm } from "@/lib/auth";
@@ -56,6 +60,17 @@ export default async function StudioCoursewarePage({
     editor = await loadCoursewareStudioPage(lectureId, context.firstPageDocId, track);
   }
   if (!editor) notFound();
+  if (isAixuexiPageDoc(editor.activeRevision.doc)) {
+    return <AixuexiStudioViewer
+      lecture={editor.lecture}
+      track={editor.track}
+      page={editor.page}
+      pages={editor.pages}
+      doc={editor.activeRevision.doc}
+      bindingUrls={editor.bindingUrls}
+      lectureWorkspaceHref={lectureWorkspaceHref}
+    />;
+  }
 
   const detail = await getLectureWorkspaceDetail(lectureId).catch((error) => {
     if (error instanceof Error && (error.message.includes("LECTURE_NOT_FOUND") || error.message.includes("FORBIDDEN_SCOPE"))) return null;
@@ -74,6 +89,10 @@ export default async function StudioCoursewarePage({
       currentUserId: user.id,
     }).canSubmit
     : false;
+  const pageDocRevisions = editor.revisions.filter(
+    (revision): revision is Omit<StudioRevision, "doc"> & { doc: PageDoc } =>
+      !isAixuexiPageDoc(revision.doc),
+  );
 
   return <CoursewarePageEditor
     lecture={editor.lecture}
@@ -82,7 +101,7 @@ export default async function StudioCoursewarePage({
     pages={editor.pages}
     initialDoc={editor.activeRevision.doc}
     baseRevisionNo={editor.activeRevision.revisionNo}
-    revisions={editor.revisions}
+    revisions={pageDocRevisions}
     releases={editor.releaseHistory}
     bindingUrls={editor.bindingUrls}
     imageAssetUsage={editor.imageAssetUsage}

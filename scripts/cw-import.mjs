@@ -9,6 +9,8 @@ import sanitizeHtml from "sanitize-html";
 
 const PACKAGE_SCHEMA_VERSION = "mathin-package-export-v1";
 const PAGE_DOC_VERSION = "page-doc-v1";
+const AIXUEXI_PAGE_DOC_VERSION = "aixuexi-page-doc-v1";
+const AIXUEXI_DOCUMENT_ADAPTER = "aixuexi-page-v1";
 const HASH = /^[0-9a-f]{64}$/;
 const ASSET_KINDS = new Set(["image", "video", "audio", "svg", "h5"]);
 const DEFAULT_SSH_HOST = "xiaomi";
@@ -20,11 +22,13 @@ const storageDirectoryCache = new Map();
 // 文档永远原样入库——绝不静默改写已过导出侧 audit 的内容。
 const COURSEWARE_MARKUP_OPTIONS = {
   allowedTags: [
-    "div", "span", "br", "img", "sup", "sub", "ul", "ol", "li",
+    "div", "p", "span", "br", "img", "b", "i", "em", "strong", "hr",
+    "sup", "sub", "ul", "ol", "li",
     "table", "thead", "tbody", "tfoot", "tr", "th", "td", "col", "colgroup",
     "svg", "g", "defs", "path", "text", "tspan", "title", "use", "foreignObject",
     "rect", "circle", "ellipse", "line", "polyline", "polygon", "marker",
     "linearGradient", "radialGradient", "stop", "clipPath", "pattern", "mask",
+    "math", "mrow", "mi", "mn", "mo", "mfrac", "msup", "msub",
     "tal-readonly",
   ],
   allowedAttributes: {
@@ -36,6 +40,7 @@ const COURSEWARE_MARKUP_OPTIONS = {
       "text-decoration", "dominant-baseline", "letter-spacing", "dx", "dy",
       "opacity", "fill-opacity", "fill-rule", "stroke-opacity", "stroke-dasharray",
       "stroke-linecap", "stroke-linejoin", "clip-path", "clip-rule", "display", "version",
+      "vector-effect", "pointer-events",
       "x1", "x2", "y1", "y2", "cx", "cy", "r", "rx", "ry", "points",
       "offset", "stop-color", "stop-opacity", "gradientUnits", "gradientTransform",
       "preserveAspectRatio", "refX", "refY", "orient", "markerWidth", "markerHeight",
@@ -173,6 +178,17 @@ function assertMarkupLossless(markup, label) {
 }
 
 export function assertPageDocMarkupSafe(doc, label) {
+  if (doc.docVersion === AIXUEXI_PAGE_DOC_VERSION) {
+    for (const node of doc.nodes ?? []) {
+      if (typeof node.html === "string") assertMarkupLossless(node.html, `${label} html`);
+    }
+    for (const event of doc.itvInteraction?.events ?? []) {
+      for (const widget of event.stage?.widgets ?? []) {
+        if (typeof widget.html === "string") assertMarkupLossless(widget.html, `${label} ITV html`);
+      }
+    }
+    return;
+  }
   const walk = (nodes) => {
     if (!Array.isArray(nodes)) fail("page doc nodes must be an array");
     for (const node of nodes) {
@@ -189,7 +205,43 @@ export function assertPageDocMarkupSafe(doc, label) {
 
 function validatePageDoc(doc, label) {
   const value = assertObject(doc, label);
-  if (value.docVersion !== PAGE_DOC_VERSION) fail(`${label}.docVersion must be ${PAGE_DOC_VERSION}`);
+  if (value.docVersion === AIXUEXI_PAGE_DOC_VERSION) {
+    if (value.adapter !== AIXUEXI_DOCUMENT_ADAPTER || value.projectionVersion !== 5) {
+      fail(`${label} has an unsupported Aixuexi adapter/projection`);
+    }
+    const source = assertObject(value.source, `${label}.source`);
+    assertString(source.coursewareId, `${label}.source.coursewareId`);
+    if (!Number.isInteger(source.pageDatabaseId) || source.pageDatabaseId <= 0) {
+      fail(`${label}.source.pageDatabaseId must be a positive integer`);
+    }
+    assertHash(source.sourceContentHash, `${label}.source.sourceContentHash`);
+    const keys = new Set();
+    const add = (key, keyLabel) => {
+      if (key === null || key === undefined) return;
+      keys.add(assertHash(key, keyLabel));
+    };
+    add(value.canvas?.backgroundBindingKey, `${label}.canvas.backgroundBindingKey`);
+    for (const node of value.nodes ?? []) {
+      add(node.resourceBindingKey, `${label}.node.resourceBindingKey`);
+      for (const key of node.resourceBindingKeys ?? []) add(key, `${label}.node.resourceBindingKeys`);
+    }
+    add(value.topicInteraction?.bindingKey, `${label}.topicInteraction.bindingKey`);
+    const itv = value.itvInteraction;
+    if (itv) {
+      add(itv.videoBindingKey, `${label}.itv.videoBindingKey`);
+      add(itv.posterBindingKey, `${label}.itv.posterBindingKey`);
+      for (const event of itv.events ?? []) {
+        add(event.previewBindingKey, `${label}.itv.previewBindingKey`);
+        for (const widget of event.stage?.widgets ?? []) {
+          add(widget.resourceBindingKey, `${label}.itv.widget.resourceBindingKey`);
+        }
+      }
+    }
+    return keys;
+  }
+  if (value.docVersion !== PAGE_DOC_VERSION) {
+    fail(`${label}.docVersion must be ${PAGE_DOC_VERSION} or ${AIXUEXI_PAGE_DOC_VERSION}`);
+  }
   assertString(value.sourceCoursewareId, `${label}.sourceCoursewareId`);
   if (!(typeof value.sourcePageId === "string" || value.sourcePageId === null)) fail(`${label}.sourcePageId must be string|null`);
   if (!Number.isInteger(value.sourcePageDatabaseId) || value.sourcePageDatabaseId <= 0) fail(`${label}.sourcePageDatabaseId must be positive integer`);
@@ -236,6 +288,16 @@ function normalizeLecture(row) {
     lessonIndex: lecture.lessonIndex,
     lessonName: typeof lecture.lessonName === "string" ? lecture.lessonName : "",
     pageCount: lecture.pageCount,
+    documentAdapter: lecture.documentAdapter ?? null,
+    sourceSystem: lecture.sourceSystem ?? null,
+    sourcePackageKey: lecture.sourcePackageKey ?? null,
+    sourcePackageManifestSha256: lecture.sourcePackageManifestSha256 ?? null,
+    sourcePackageLabels: lecture.sourcePackageLabels ?? null,
+    sourcePackageScope: lecture.sourcePackageScope ?? null,
+    sourcePackageCounts: lecture.sourcePackageCounts ?? null,
+    sourceProductCode: lecture.sourceProductCode ?? null,
+    offlineStatus: lecture.offlineStatus ?? null,
+    verificationSha256: lecture.verificationSha256 ?? null,
   };
 }
 
@@ -263,7 +325,11 @@ function storagePathForObject(object) {
  * the same mapping when resolving browser requests back to Storage.
  */
 function h5StorageSegment(segment) {
-  return /[^\x20-\x7E]/.test(segment) ? `u_${encodeURIComponent(segment).replaceAll("%", "_")}` : segment;
+  let logical = segment;
+  try { logical = decodeURIComponent(segment); } catch {}
+  return /[^\x20-\x7E]|[:%]/.test(logical)
+    ? `u_${encodeURIComponent(logical).replaceAll("%", "_")}`
+    : logical;
 }
 
 export function h5StoragePath(packageHash, packagePath) {
@@ -350,6 +416,13 @@ export async function loadImportPlan({ packageRoot, coursewareId }) {
       assertHash(file.sha256, `H5 ${hash} file hash`);
       if (!Number.isInteger(file.byteCount) || file.byteCount < 0) fail(`H5 ${hash} file byteCount invalid`);
       assertString(file.mime, `H5 ${hash} file mime`);
+      if (file.storeRelativePath !== undefined) {
+        assertString(file.storeRelativePath, `H5 ${hash} file storeRelativePath`);
+        resolveInside("/cw-import-path-check", file.storeRelativePath);
+      }
+      if (file.storeScope !== undefined && !["source", "package"].includes(file.storeScope)) {
+        fail(`H5 ${hash} file storeScope must be source|package`);
+      }
       resolveInside("/cw-import-path-check", file.packagePath);
     }
     h5Manifests.set(hash, h5);
@@ -365,6 +438,9 @@ export async function loadImportPlan({ packageRoot, coursewareId }) {
     if (!ASSET_KINDS.has(object.kind) || object.kind === "h5") fail(`invalid CAS object kind for ${hash}`);
     assertString(object.mime, `asset ${hash} mime`);
     assertString(object.storeRelativePath, `asset ${hash} store path`);
+    if (object.storeScope !== undefined && !["source", "package"].includes(object.storeScope)) {
+      fail(`asset ${hash} storeScope must be source|package`);
+    }
     if (!Number.isInteger(object.byteCount) || object.byteCount < 0) fail(`asset ${hash} byteCount invalid`);
     resolveInside("/cw-import-path-check", object.storeRelativePath);
     objects.set(hash, { ...object, storagePath: storagePathForObject(object) });
@@ -407,7 +483,15 @@ export async function loadImportPlan({ packageRoot, coursewareId }) {
     const doc = page.doc;
     assertPageDocMarkupSafe(assertObject(doc, `page ${page.pageIndex} doc`), `page ${page.pageIndex}`);
     const docBindingKeys = validatePageDoc(doc, `page ${page.pageIndex} doc`);
-    if (doc.sourceCoursewareId !== coursewareId || doc.sourcePageDatabaseId !== page.pageDatabaseId) fail(`page ${page.pageIndex} provenance mismatch`);
+    const provenanceCoursewareId = doc.docVersion === AIXUEXI_PAGE_DOC_VERSION
+      ? doc.source?.coursewareId
+      : doc.sourceCoursewareId;
+    const provenancePageDatabaseId = doc.docVersion === AIXUEXI_PAGE_DOC_VERSION
+      ? doc.source?.pageDatabaseId
+      : doc.sourcePageDatabaseId;
+    if (provenanceCoursewareId !== coursewareId || provenancePageDatabaseId !== page.pageDatabaseId) {
+      fail(`page ${page.pageIndex} provenance mismatch`);
+    }
     const pageUsages = usagesByPage.get(page.pageDatabaseId) ?? [];
     const expectedKeys = new Set(pageUsages.map((usage) => usage.usageKey));
     if (page.thumbnailBindingKey !== null) {
@@ -420,7 +504,9 @@ export async function loadImportPlan({ packageRoot, coursewareId }) {
     pages.push({
       pageNo: page.pageIndex,
       title: typeof page.name === "string" ? page.name : "",
-      sourcePageId: doc.sourcePageId,
+      sourcePageId: doc.docVersion === AIXUEXI_PAGE_DOC_VERSION
+        ? (typeof page.sourcePageId === "string" ? page.sourcePageId : `page-db:${page.pageDatabaseId}`)
+        : doc.sourcePageId,
       sourcePageDatabaseId: page.pageDatabaseId,
       doc,
       ...(adaptByPage.get(page.pageDatabaseId) ?? { adaptClass: null, adaptReason: "", adaptReport: null }),
@@ -455,6 +541,16 @@ export async function loadImportPlan({ packageRoot, coursewareId }) {
 }
 
 export function buildImportSql(plan) {
+  const isAixuexi = plan.lecture.documentAdapter === AIXUEXI_DOCUMENT_ADAPTER;
+  if (isAixuexi) {
+    assertString(plan.lecture.sourceSystem, "lecture.sourceSystem");
+    assertString(plan.lecture.sourcePackageKey, "lecture.sourcePackageKey");
+    assertHash(plan.lecture.sourcePackageManifestSha256, "lecture.sourcePackageManifestSha256");
+    assertString(plan.lecture.sourceProductCode, "lecture.sourceProductCode");
+    if (plan.lecture.verificationSha256 !== null) {
+      assertHash(plan.lecture.verificationSha256, "lecture.verificationSha256");
+    }
+  }
   const objectValues = values(plan.objects, (object) => [
     sqlText(object.objectHash), sqlText(object.mime), String(object.byteCount), sqlText(object.kind), sqlText(object.storagePath),
   ]);
@@ -471,6 +567,133 @@ export function buildImportSql(plan) {
     sqlText(binding.candidateKey), binding.launchQuery === null ? "NULL" : sqlJson(binding.launchQuery),
   ]);
   const importNote = `P6-3 import baseline ${plan.exportId}`;
+  const sourceProvenanceSql = isAixuexi ? `
+do $$ begin
+  if exists (
+    select 1 from public.cw_source_packages
+     where source_system = ${sqlText(plan.lecture.sourceSystem)}
+       and package_key = ${sqlText(plan.lecture.sourcePackageKey)}
+       and manifest_sha256 <> ${sqlText(plan.lecture.sourcePackageManifestSha256)}
+  ) then raise exception 'AIXUEXI_SOURCE_PACKAGE_MANIFEST_DRIFT'; end if;
+end $$;
+insert into public.cw_source_packages(
+  source_system,package_key,document_adapter,manifest_sha256,labels,scope,counts,status
+)
+values (
+  ${sqlText(plan.lecture.sourceSystem)},${sqlText(plan.lecture.sourcePackageKey)},
+  ${sqlText(plan.lecture.documentAdapter)},${sqlText(plan.lecture.sourcePackageManifestSha256)},
+  ${sqlJson(plan.lecture.sourcePackageLabels ?? {})},${sqlJson(plan.lecture.sourcePackageScope ?? {})},
+  ${sqlJson(plan.lecture.sourcePackageCounts ?? {})},'importing'
+)
+on conflict(source_system,package_key) do update set
+  labels=excluded.labels,scope=excluded.scope,counts=excluded.counts,
+  status=case when public.cw_source_packages.status='imported' then 'imported' else 'importing' end;
+insert into public.cw_source_lectures(
+  source_package_id,lecture_id,source_product_code,source_courseware_id,
+  source_lesson_index,offline_status,page_count,verification_sha256
+)
+select package.id,context.lecture_id,${sqlText(plan.lecture.sourceProductCode)},
+       ${sqlText(plan.lecture.coursewareId)},${plan.lecture.lessonIndex},
+       ${sqlText(plan.lecture.offlineStatus ?? "complete")},${plan.pages.length},
+       ${plan.lecture.verificationSha256 === null ? "NULL" : sqlText(plan.lecture.verificationSha256)}
+  from public.cw_source_packages package cross join cw_import_context context
+ where package.source_system=${sqlText(plan.lecture.sourceSystem)}
+   and package.package_key=${sqlText(plan.lecture.sourcePackageKey)}
+on conflict(source_package_id,source_courseware_id) do update set
+  lecture_id=excluded.lecture_id,source_product_code=excluded.source_product_code,
+  source_lesson_index=excluded.source_lesson_index,offline_status=excluded.offline_status,
+  page_count=excluded.page_count,verification_sha256=excluded.verification_sha256;
+` : "";
+  const adaptedAssetHeadsSql = isAixuexi ? `
+insert into public.cw_asset_variant_heads(shared_asset_id,track,published_revision_id)
+select asset.id,'adapted-4x3',revision.id
+  from cw_import_assets input
+  join public.cw_shared_assets asset on asset.candidate_key=input.candidate_key
+  join public.cw_asset_revisions revision on revision.shared_asset_id=asset.id and revision.revision_no=1
+on conflict(shared_asset_id,track) do update set
+  published_revision_id=coalesce(public.cw_asset_variant_heads.published_revision_id,excluded.published_revision_id),
+  updated_at=now();
+` : "";
+  const adaptedPageHeadsSql = isAixuexi ? `
+insert into public.cw_page_track_heads(page_doc_id,track,current_revision_id)
+select page.id,'adapted-4x3',revision.id
+  from cw_import_context context
+  join public.cw_page_docs page on page.lecture_id=context.lecture_id
+  join public.cw_page_revisions revision on revision.page_doc_id=page.id and revision.revision_no=1
+on conflict(page_doc_id,track) do nothing;
+` : "";
+  const adaptedBindingsSql = isAixuexi ? `
+insert into public.cw_page_asset_bindings(
+  page_doc_id,binding_key,role,kind,shared_asset_id,pinned_revision_id,launch_query,track
+)
+select binding.page_doc_id,binding.binding_key,binding.role,binding.kind,binding.shared_asset_id,
+       binding.pinned_revision_id,binding.launch_query,'adapted-4x3'
+  from public.cw_page_asset_bindings binding
+  join public.cw_page_docs page on page.id=binding.page_doc_id
+  join cw_import_context context on context.lecture_id=page.lecture_id
+ where binding.track='native-16x9'
+on conflict(page_doc_id,binding_key,track) do nothing;
+` : "";
+  const adaptedReleaseSql = isAixuexi ? `
+create temporary table cw_import_inserted_adapted_release (id uuid primary key) on commit drop;
+with snapshot as (
+  select jsonb_agg(jsonb_build_object(
+    'pageDocId',page.id,
+    'revisionId',revision.id,
+    'bindings',coalesce((
+      select jsonb_agg(jsonb_strip_nulls(jsonb_build_object(
+        'bindingKey',binding.binding_key,
+        'assetRevisionId',coalesce(binding.pinned_revision_id,variant.published_revision_id,asset.published_revision_id),
+        'launchQuery',binding.launch_query
+      )) order by binding.binding_key)
+        from public.cw_page_asset_bindings binding
+        join public.cw_shared_assets asset on asset.id=binding.shared_asset_id
+        left join public.cw_asset_variant_heads variant
+          on variant.shared_asset_id=asset.id and variant.track='adapted-4x3'
+       where binding.page_doc_id=page.id and binding.track='adapted-4x3'
+    ),'[]'::jsonb)
+  ) order by page.page_no) value
+    from cw_import_context context
+    join public.cw_page_docs page on page.lecture_id=context.lecture_id and page.deleted_at is null
+    join public.cw_page_revisions revision on revision.page_doc_id=page.id and revision.revision_no=1
+), inserted as (
+  insert into public.cw_lecture_releases(lecture_id,release_no,note,snapshot,track)
+  select context.lecture_id,1,${sqlText(`${importNote} · 4:3 top-aligned compatibility`)},
+         snapshot.value,'adapted-4x3'
+    from cw_import_context context cross join snapshot
+   where not exists (
+     select 1 from public.cw_lecture_releases release
+      where release.lecture_id=context.lecture_id and release.track='adapted-4x3'
+   )
+  returning id
+)
+insert into cw_import_inserted_adapted_release select id from inserted;
+insert into public.cw_lecture_track_heads(lecture_id,track,current_release_id)
+select context.lecture_id,'adapted-4x3',release.id
+  from cw_import_context context
+  join public.cw_lecture_releases release
+    on release.lecture_id=context.lecture_id and release.track='adapted-4x3' and release.release_no=1
+on conflict(lecture_id,track) do update set current_release_id=excluded.current_release_id,updated_at=now();
+` : "";
+  const sourceFinalizeSql = isAixuexi ? `
+update public.cw_source_packages package
+   set status=case
+         when (select count(*) from public.cw_source_lectures source_lecture
+                where source_lecture.source_package_id=package.id)
+              >= coalesce((package.counts->>'lectureCount')::int,2147483647)
+           then 'imported'
+         else 'importing'
+       end,
+       imported_at=case
+         when (select count(*) from public.cw_source_lectures source_lecture
+                where source_lecture.source_package_id=package.id)
+              >= coalesce((package.counts->>'lectureCount')::int,2147483647)
+           then now()
+         else null
+       end
+ where package.source_system=${sqlText(plan.lecture.sourceSystem)}
+   and package.package_key=${sqlText(plan.lecture.sourcePackageKey)};
+` : "";
 
   return `begin;
 create temporary table cw_import_context (lecture_id uuid primary key) on commit drop;
@@ -486,6 +709,7 @@ do $$ begin
     raise exception 'CW_IMPORT_LECTURE_MAPPING_MISSING_OR_AMBIGUOUS';
   end if;
 end $$;
+${sourceProvenanceSql}
 
 create temporary table cw_import_objects (
   object_hash text primary key, mime text not null, byte_count bigint not null, kind text not null, storage_path text not null
@@ -583,6 +807,7 @@ select asset.id,'native-16x9',revision.id
 from cw_import_assets input join public.cw_shared_assets asset on asset.candidate_key=input.candidate_key
 join public.cw_asset_revisions revision on revision.shared_asset_id=asset.id and revision.revision_no=1
 on conflict(shared_asset_id,track) do update set published_revision_id=coalesce(public.cw_asset_variant_heads.published_revision_id,excluded.published_revision_id),updated_at=now();
+${adaptedAssetHeadsSql}
 
 create temporary table cw_import_inserted_pages (page_no int primary key) on commit drop;
 with inserted as (
@@ -656,6 +881,7 @@ select page.id,'native-16x9',revision.id
 from cw_import_context context join public.cw_page_docs page on page.lecture_id=context.lecture_id
 join public.cw_page_revisions revision on revision.page_doc_id=page.id and revision.revision_no=1
 on conflict(page_doc_id,track) do nothing;
+${adaptedPageHeadsSql}
 
 create temporary table cw_import_binding_conflicts (binding_key text primary key) on commit drop;
 insert into cw_import_binding_conflicts
@@ -684,6 +910,7 @@ with inserted as (
   returning binding_key
 )
 insert into cw_import_inserted_bindings select binding_key from inserted;
+${adaptedBindingsSql}
 
 create temporary table cw_import_template (value jsonb not null) on commit drop;
 insert into cw_import_template (value)
@@ -754,6 +981,8 @@ update public.course_lectures lecture
 insert into public.cw_lecture_track_heads(lecture_id,track,current_release_id)
 select context.lecture_id,'native-16x9',release.id from cw_import_context context join cw_import_inserted_release release on true
 on conflict(lecture_id,track) do update set current_release_id=excluded.current_release_id,updated_at=now();
+${adaptedReleaseSql}
+${sourceFinalizeSql}
 
 select jsonb_build_object(
   'lectureId', (select lecture_id from cw_import_context),
@@ -764,6 +993,7 @@ select jsonb_build_object(
   'bindings', jsonb_build_object('expected', (select count(*) from cw_import_bindings), 'inserted', (select count(*) from cw_import_inserted_bindings), 'existing', (select count(*) from cw_import_bindings) - (select count(*) from cw_import_inserted_bindings), 'conflicts', (select count(*) from cw_import_binding_conflicts)),
   'templateUpdated', (select updated from cw_import_template_updated),
   'releaseInserted', exists(select 1 from cw_import_inserted_release),
+  'adaptedReleaseInserted', ${isAixuexi ? "exists(select 1 from cw_import_inserted_adapted_release)" : "false"},
   'releaseId', (select id from cw_import_inserted_release limit 1)
 )::text;
 commit;`;
@@ -993,7 +1223,8 @@ async function uploadPlan(plan, storeRoot, client, uploadConfig) {
     if (index === 0 || (index + 1) % 25 === 0 || index + 1 === normalObjects.length) {
       process.stderr.write(`CW_IMPORT: cw-objects ${index + 1}/${normalObjects.length}\n`);
     }
-    const file = resolveInside(storeRoot, object.storeRelativePath);
+    const objectRoot = object.storeScope === "package" ? plan.packageRoot : storeRoot;
+    const file = resolveInside(objectRoot, object.storeRelativePath);
     await verifyLocalFile(file, object.objectHash, object.byteCount, `CAS ${object.objectHash}`);
     const state = await uploadOne(client, uploadConfig, "cw-objects", object.storagePath, file, object.mime, "31536000");
     result.cwObjects[state] += 1;
@@ -1005,7 +1236,11 @@ async function uploadPlan(plan, storeRoot, client, uploadConfig) {
     const manifestState = await uploadOne(client, uploadConfig, "cw-h5", `packages/${hash}/__mathin_manifest.json`, manifestFile, "application/json", "31536000");
     result.cwH5[`manifests${manifestState[0].toUpperCase()}${manifestState.slice(1)}`] += 1;
     for (const file of manifest.files) {
-      const source = resolveInside(storeRoot, `h5/packages/${hash}/patched/${file.packagePath}`);
+      const fileRoot = file.storeScope === "package" ? plan.packageRoot : storeRoot;
+      const source = resolveInside(
+        fileRoot,
+        file.storeRelativePath ?? `h5/packages/${hash}/patched/${file.packagePath}`,
+      );
       await verifyLocalFile(source, file.sha256, file.byteCount, `H5 ${hash}/${file.packagePath}`);
       const state = await uploadOne(client, uploadConfig, "cw-h5", h5StoragePath(hash, file.packagePath), source, file.mime, "31536000");
       result.cwH5[state] += 1;

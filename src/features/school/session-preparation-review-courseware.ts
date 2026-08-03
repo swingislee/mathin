@@ -6,7 +6,7 @@ import {
   type SessionDocBinding,
   type SessionPageDoc,
 } from "@/features/classroom/courseware/session-assets";
-import { pageDocSchema, type PageDoc } from "@/features/courseware-doc/schema";
+import { coursewareDocSchema, type CoursewareDoc } from "@/features/courseware-doc/document";
 import type { ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -43,7 +43,7 @@ const layoutSchema = z.object({
 const pageRowSchema = z.object({
   page_doc_id: z.uuid(),
   page_no: z.number().int().positive(),
-  doc: pageDocSchema,
+  doc: coursewareDocSchema,
   bindings: z.array(bindingSchema),
 });
 
@@ -55,7 +55,7 @@ const assetRowSchema = z.object({
 
 export interface PreparationReviewCoursewareDoc {
   pageDocId: string;
-  doc: PageDoc;
+  doc: CoursewareDoc;
   bindingUrls: ResolvedBindingUrls;
 }
 

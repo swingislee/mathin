@@ -73,14 +73,14 @@ const nextConfig: NextConfig = {
         headers: [...baseHeaders, { key: "Content-Security-Policy-Report-Only", value: contentSecurityPolicy("*") }],
       },
       {
-        // H5 课件包由 DocStage 以同源沙箱 iframe 嵌入，DENY 会让 iframe 拒绝
-        // 渲染整个包；收敛为仅允许同源嵌套。默认 report-only CSP 的
-        // default-src 'self' 也会对包内 308 到 storage 的子资源刷无意义报告，
-        // 一并覆盖成只申明 frame-ancestors。
+        // H5 课件包由 DocStage 以沙箱 iframe 嵌入。入口页的 SAMEORIGIN 与
+        // 所有 HTML 的强制 sandbox 由 Route Handler 按请求区分；这里不能
+        // 全局下发 SAMEORIGIN，否则 opaque-origin 入口里的二级 iframe 会被拒绝。
+        // 默认 report-only CSP 的 default-src 'self' 也会对包内 308 到 storage
+        // 的子资源刷无意义报告，因此这里只保留观测用 frame-ancestors。
         source: "/api/cw-h5/:path*",
         headers: [
           ...baseHeaders,
-          { key: "X-Frame-Options", value: "SAMEORIGIN" },
           { key: "Content-Security-Policy-Report-Only", value: "frame-ancestors 'self'" },
         ],
       },

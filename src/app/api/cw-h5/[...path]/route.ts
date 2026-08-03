@@ -1,6 +1,7 @@
 import { getSupabaseConfig } from "@/lib/supabase/config";
 import {
   H5_IMMUTABLE_CACHE,
+  h5HtmlSecurityHeaders,
   h5ObjectPath,
   h5PublicUrl,
   injectH5Runtime,
@@ -15,8 +16,9 @@ import {
  * - `__h5_backend__/get?courseware_id=X`:关卡配置接口的离线改写目标,
  *   改写为包内 `__h5_fixtures__/get/X.json` 并代理直出(该 XHR 老代码带
  *   withCredentials,凭据模式下不能吃 storage 的通配符 CORS,故不走 308);
- * - 其余扩展名:可缓存的 308 到 storage 公开 URL——内容寻址路径永不变,
- *   让浏览器把重定向本身缓存住,二次加载不再穿透 mathin。
+ * - 其余扩展名:同源代理 storage 公开对象并永久缓存。爱学习离线引擎自带
+ *   `script-src 'self'` 等 CSP，308 到 Storage 会在最终 URL 被浏览器拒绝；
+ *   同源代理同时保留 Range 请求，视频跳播不退化。
  * 三个特殊路径的语义以镜像 `src/h5/offline-server.ts` 为准。
  * iframe 侧必须 sandbox="allow-scripts"(不含 allow-same-origin),见 DocStage。
  *
@@ -89,12 +91,29 @@ export async function GET(
 
   const publicUrl = h5PublicUrl(getSupabaseConfig().url, objectPath);
   if (!isHtmlObjectPath(objectPath)) {
-    return new Response(null, {
-      status: 308,
+    const range = request.headers.get("range");
+    const upstream = await fetch(publicUrl, {
+      cache: "no-store",
+      headers: range ? { Range: range } : undefined,
+    });
+    if (!upstream.ok && upstream.status !== 206) {
+      return new Response("Not found", { status: 404, headers: cors });
+    }
+    const headers = new Headers({
+      ...cors,
+      "Cache-Control": H5_IMMUTABLE_CACHE,
+      "X-Content-Type-Options": "nosniff",
+    });
+    // Node fetch 会自动解压 gzip/br 响应，但保留上游压缩态 Content-Length；
+    // 转发该长度会让浏览器把已解压脚本截断。由 Response 重新确定实体长度。
+    for (const name of ["Content-Type", "Content-Range", "Accept-Ranges", "ETag"]) {
+      const value = upstream.headers.get(name);
+      if (value) headers.set(name, value);
+    }
+    return new Response(upstream.body, {
+      status: upstream.status,
       headers: {
-        ...cors,
-        Location: publicUrl,
-        "Cache-Control": H5_IMMUTABLE_CACHE,
+        ...Object.fromEntries(headers.entries()),
       },
     });
   }
@@ -105,6 +124,7 @@ export async function GET(
     status: 200,
     headers: {
       ...cors,
+      ...h5HtmlSecurityHeaders(request.url),
       "Content-Type": "text/html; charset=utf-8",
       // The package bytes are immutable, but this response also contains the
       // app-owned runtime shim and must be revalidated after app deployments.

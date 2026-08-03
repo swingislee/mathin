@@ -4,7 +4,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getSupabaseConfig } from "@/lib/supabase/config";
 import { collectPostgrestRowsInBatches } from "@/lib/supabase/postgrest-batches";
-import { pageDocSchema, type PageDoc } from "@/features/courseware-doc/schema";
+import { parseCoursewareDoc, type CoursewareDoc } from "@/features/courseware-doc/document";
 import { buildH5EntryUrl, type H5LaunchQuery, type ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 
 const SIGNED_URL_TTL_SECONDS = 60 * 60;
@@ -366,7 +366,7 @@ export interface CoursewarePreviewPage {
   pageNo: number;
   title: string;
   aspect: string;
-  doc: PageDoc;
+  doc: CoursewareDoc;
 }
 
 export interface CoursewarePreviewPageMeta {
@@ -461,7 +461,7 @@ export interface StudioRevision {
   note: string;
   createdAt: string;
   createdBy: string | null;
-  doc: PageDoc;
+  doc: CoursewareDoc;
 }
 
 export interface StudioRelease {
@@ -576,7 +576,7 @@ export async function loadCoursewareStudioPage(lectureId: string, pageDocId: str
     note: revision.note,
     createdAt: revision.created_at,
     createdBy: revision.created_by,
-    doc: pageDocSchema.parse(revision.doc),
+    doc: parseCoursewareDoc(revision.doc),
   }));
   const activeRevision = revisions.find((revision) => revision.id === baseRevisionId);
   if (!activeRevision) throw new Error("PAGE_REVISION_MISSING");
@@ -778,7 +778,7 @@ export async function loadLecturePreview(
     lecture: { id: lecture.id, no: lecture.no, name: lecture.name, courseId: lecture.course_id },
     release: { id: release.id, releaseNo: release.release_no, publishedAt: release.published_at },
     pages,
-    page: { ...pageMeta, doc: pageDocSchema.parse(revision.doc) },
+    page: { ...pageMeta, doc: parseCoursewareDoc(revision.doc) },
     pageIndex,
     bindingUrls,
   };

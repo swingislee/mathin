@@ -56,6 +56,9 @@ describe("P6 courseware importer", () => {
     expect(h5StoragePath("a".repeat(64), "images/位图12.png")).toBe(
       `packages/${"a".repeat(64)}/images/u__E4_BD_8D_E5_9B_BE12.png`,
     );
+    expect(h5StoragePath("a".repeat(64), "images/169%3A%E6%8C%82%E4%BB%B6.png")).toBe(
+      `packages/${"a".repeat(64)}/images/u_169_3A_E6_8C_82_E4_BB_B6.png`,
+    );
   });
   it("builds a complete sample import plan and preserves H5 launch query", async () => {
     const fixture = await createPackageFixture();

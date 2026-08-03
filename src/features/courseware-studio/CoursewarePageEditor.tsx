@@ -41,7 +41,7 @@ type Props = {
   pages: StudioPageSummary[];
   initialDoc: PageDoc;
   baseRevisionNo: number;
-  revisions: StudioRevision[];
+  revisions: Array<Omit<StudioRevision, "doc"> & { doc: PageDoc }>;
   releases: StudioRelease[];
   bindingUrls: ResolvedBindingUrls;
   imageAssetUsage: Record<string, StudioImageAssetUsage>;

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   h5ObjectPath,
+  h5HtmlSecurityHeaders,
   h5PublicUrl,
   h5StorageObjectPath,
   injectH5Runtime,
@@ -55,5 +56,17 @@ describe("P6-4 H5 shim", () => {
     expect(html).toContain('Object.defineProperty(window, name');
     expect(html).toContain('frame.contentWindow?.postMessage(data');
     expect(html).toContain('source: "mathin-h5-media"');
+  });
+
+  it("keeps entry pages same-origin-only while allowing sandboxed nested HTML", () => {
+    expect(h5HtmlSecurityHeaders(`https://mathin.example/api/cw-h5/packages/${HASH}/index.html?mathin_h5_runtime=2`))
+      .toEqual({
+        "Content-Security-Policy": "sandbox allow-scripts allow-forms allow-pointer-lock allow-modals",
+        "X-Frame-Options": "SAMEORIGIN",
+      });
+    expect(h5HtmlSecurityHeaders(`https://mathin.example/api/cw-h5/packages/${HASH}/interactive/game.html`))
+      .toEqual({
+        "Content-Security-Policy": "sandbox allow-scripts allow-forms allow-pointer-lock allow-modals",
+      });
   });
 });

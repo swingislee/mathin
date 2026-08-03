@@ -10,6 +10,15 @@ const PACKAGE_HASH = /^[0-9a-f]{64}$/;
 const HTML_EXTENSIONS = new Set(["html", "htm"]);
 
 export const H5_IMMUTABLE_CACHE = "public, max-age=31536000, immutable";
+export const H5_SANDBOX_CSP = "sandbox allow-scripts allow-forms allow-pointer-lock allow-modals";
+
+export function h5HtmlSecurityHeaders(requestUrl: string): Record<string, string> {
+  const entrypoint = new URL(requestUrl).searchParams.get("mathin_h5_runtime") === "2";
+  return {
+    "Content-Security-Policy": H5_SANDBOX_CSP,
+    ...(entrypoint ? { "X-Frame-Options": "SAMEORIGIN" } : {}),
+  };
+}
 
 /**
  * Runtime injected before package scripts. Opaque-origin sandbox documents throw
@@ -94,7 +103,15 @@ export const H5_OPAQUE_ORIGIN_RUNTIME = `<script data-mathin-h5-runtime>
  * relative URL continues to resolve through the shim with the original name.
  */
 function h5StorageSegment(segment: string): string {
-  return /[^\x20-\x7E]/.test(segment) ? `u_${encodeURIComponent(segment).replaceAll("%", "_")}` : segment;
+  let logical = segment;
+  try {
+    logical = decodeURIComponent(segment);
+  } catch {
+    // 非法百分号序列按原逻辑名继续投影，不能让请求逃出内容寻址包。
+  }
+  return /[^\x20-\x7E]|[:%]/.test(logical)
+    ? `u_${encodeURIComponent(logical).replaceAll("%", "_")}`
+    : logical;
 }
 
 export function h5StorageObjectPath(objectPath: string): string {

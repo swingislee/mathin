@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { toast } from "sonner";
 import { useStore } from "zustand";
 import { Button } from "@/components/ui/button";
-import type { PageDoc } from "@/features/courseware-doc/schema";
+import type { CoursewareDoc } from "@/features/courseware-doc/document";
 import type { ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 import { StagePreview } from "@/features/courseware-studio/StagePreview";
 import { CanvasSurface } from "@/features/whiteboard/CanvasSurface";
@@ -136,7 +136,7 @@ export function CoursewareAnnotationBoard({
 
 export interface SolutionRecordPagePreview {
   pageDocId: string;
-  doc: PageDoc;
+  doc: CoursewareDoc;
   bindingUrls: ResolvedBindingUrls;
 }
 
