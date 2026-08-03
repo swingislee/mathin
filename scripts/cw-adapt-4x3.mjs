@@ -12,7 +12,7 @@ import { mkdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { createClient } from "@supabase/supabase-js";
-import { loadImportPlan, resolveInside, uploadOne } from "./cw-import.mjs";
+import { catalogVersionFilterSql, loadImportPlan, resolveInside, uploadOne } from "./cw-import.mjs";
 
 const AUTOMATIC_CLASSES = new Set(["A", "B", "C", "E", "F"]);
 const DEFAULT_SSH_HOST = "xiaomi";
@@ -130,8 +130,8 @@ async function deriveBackground(source, output, mime, magick, crop) {
   return { hash: sha256(bytes), byteCount: bytes.length, mime, extension };
 }
 
-export async function buildAdaptPlan({ packageRoot, storeRoot, coursewareId, outputRoot, buildAssets, magickBin = process.env.CW_MAGICK_BIN ?? "magick" }) {
-  const plan = await loadImportPlan({ packageRoot, coursewareId });
+export async function buildAdaptPlan({ packageRoot, storeRoot, coursewareId, outputRoot, buildAssets, catalogVersionSlug = null, magickBin = process.env.CW_MAGICK_BIN ?? "magick" }) {
+  const plan = await loadImportPlan({ packageRoot, coursewareId, catalogVersionSlug });
   const classifications = await readAdaptations(plan.packageRoot, plan.lecture.coursewareId);
   if (classifications.size !== plan.pages.length) fail(`classification/page mismatch: ${classifications.size}/${plan.pages.length}`);
   const usageByPageAndKey = new Map(plan.usages.map((usage) => [`${usage.pageDatabaseId}/${usage.usageKey}`, usage]));
@@ -195,7 +195,7 @@ function buildApplySql(adapt) {
 create temporary table cw_adapt_context(lecture_id uuid primary key) on commit drop;
 insert into cw_adapt_context
 select lecture.id from public.course_lectures lecture join public.courses course on course.id=lecture.course_id
-where course.product_code=${sqlText(plan.lecture.mathinProductCode)} and lecture.no=${plan.lecture.lessonIndex} for update;
+where course.product_code=${sqlText(plan.lecture.mathinProductCode)} and lecture.no=${plan.lecture.lessonIndex}${catalogVersionFilterSql(plan, "course")} for update;
 do $$ begin if (select count(*) from cw_adapt_context) <> 1 then raise exception 'CW_ADAPT_LECTURE_MAPPING_MISSING_OR_AMBIGUOUS'; end if; end $$;
 create temporary table cw_adapt_classifications(page_no int primary key, adapt_class text not null, adapt_reason text not null) on commit drop;
 insert into cw_adapt_classifications values ${classificationValues};
@@ -330,14 +330,14 @@ export function parseArgs(argv) {
     if (arg === "--") continue;
     if (arg === "--dry-run") { options.dryRun = true; continue; }
     if (arg === "--apply") { options.apply = true; continue; }
-    if (["--package-root", "--store-root", "--courseware-id", "--output-root", "--ssh-host"].includes(arg)) {
+    if (["--package-root", "--store-root", "--courseware-id", "--output-root", "--ssh-host", "--catalog-version"].includes(arg)) {
       const value = argv[++i]; if (!value || value.startsWith("--")) fail(`${arg} requires a value`);
       options[arg.slice(2).replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = value; continue;
     }
     fail(`unknown argument ${arg}`);
   }
   options.packageRoot ??= process.env.CW_PACKAGE_ROOT; options.storeRoot ??= process.env.CW_STORE_ROOT;
-  if (!options.packageRoot || !options.storeRoot || !options.coursewareId) fail("usage: pnpm cw:adapt-4x3 -- --package-root <dir> --store-root <dir> --courseware-id <id> [--output-root <dir>] [--dry-run] [--apply]");
+  if (!options.packageRoot || !options.storeRoot || !options.coursewareId) fail("usage: pnpm cw:adapt-4x3 -- --package-root <dir> --store-root <dir> --courseware-id <id> [--output-root <dir>] [--catalog-version <slug>] [--dry-run] [--apply]");
   if ((options.apply || !options.dryRun) && !options.outputRoot) fail("--output-root is required when deriving assets");
   if (options.apply && options.dryRun) fail("--apply cannot be combined with --dry-run");
   return options;
@@ -345,7 +345,7 @@ export function parseArgs(argv) {
 
 async function main() {
   const options = parseArgs(process.argv.slice(2));
-  const adapt = await buildAdaptPlan({ packageRoot: options.packageRoot, storeRoot: options.storeRoot, coursewareId: options.coursewareId, outputRoot: options.outputRoot ?? path.join(process.cwd(), ".tmp", "cw-adapt-4x3"), buildAssets: !options.dryRun });
+  const adapt = await buildAdaptPlan({ packageRoot: options.packageRoot, storeRoot: options.storeRoot, coursewareId: options.coursewareId, outputRoot: options.outputRoot ?? path.join(process.cwd(), ".tmp", "cw-adapt-4x3"), buildAssets: !options.dryRun, catalogVersionSlug: options.catalogVersion ?? null });
   const summary = { exportId: adapt.plan.exportId, coursewareId: adapt.plan.lecture.coursewareId, automaticPages: adapt.pages.length, classifications: Object.fromEntries(["A", "B", "C", "D", "E", "F"].map((key) => [key, adapt.classifications.filter((item) => item.adaptClass === key).length])), derivedBackgrounds: adapt.objects.length };
   if (options.dryRun) { process.stdout.write(`${JSON.stringify({ dryRun: true, ...summary }, null, 2)}\n`); return; }
   if (!options.apply) { process.stdout.write(`${JSON.stringify({ built: true, ...summary }, null, 2)}\n`); return; }

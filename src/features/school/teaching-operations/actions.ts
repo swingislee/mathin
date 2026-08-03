@@ -107,6 +107,7 @@ export async function restoreLectureAction(lectureId: string): Promise<ActionRes
 
 const createVariantSchema = z.object({
   familyId: uuid,
+  catalogVersionId: uuid.nullable().default(null),
   title: requiredText(100),
   productCode: text(40),
   grade: z.number().int().min(1).max(9),
@@ -114,10 +115,16 @@ const createVariantSchema = z.object({
   classType: text(20),
 });
 
-const VARIANT_CODES = [...COMMON_CODES, "COURSE_FAMILY_NOT_FOUND", "VARIANT_ALREADY_EXISTS"] as const;
+const VARIANT_CODES = [
+  ...COMMON_CODES,
+  "COURSE_FAMILY_NOT_FOUND",
+  "VARIANT_ALREADY_EXISTS",
+  "COURSE_CATALOG_VERSION_NOT_IN_FAMILY",
+] as const;
 
 export async function createCourseVariantAction(input: {
   familyId: string;
+  catalogVersionId?: string | null;
   title: string;
   productCode: string;
   grade: number;
@@ -129,6 +136,7 @@ export async function createCourseVariantAction(input: {
     const { supabase } = await authorizedClient("course.manage");
     const { data, error } = await supabase.rpc("create_course_variant", {
       p_family_id: value.familyId,
+      p_catalog_version_id: value.catalogVersionId ?? undefined,
       p_title: value.title,
       p_product_code: value.productCode,
       p_grade: value.grade,

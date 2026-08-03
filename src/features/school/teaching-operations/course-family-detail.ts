@@ -40,10 +40,23 @@ const detailSchema = z.object({
     purpose: z.enum(["production", "test"]),
     status: courseStatusSchema,
   }),
+  catalogVersions: z.array(z.object({
+    id: uuidSchema,
+    slug: z.string(),
+    title: z.string(),
+    editionYear: z.number().int().nullable(),
+    isCurrent: z.boolean(),
+    status: courseStatusSchema,
+    variantCount: z.number().int().nonnegative(),
+  })),
   variants: z.array(z.object({
     id: uuidSchema,
     title: z.string(),
     productCode: z.string().nullable(),
+    catalogVersionId: uuidSchema,
+    catalogVersionSlug: z.string(),
+    catalogVersionTitle: z.string(),
+    supersededByCourseId: uuidSchema.nullable(),
     grade: z.number().int().min(1).max(9),
     courseSeason: courseSeasonSchema,
     classType: z.string(),
@@ -59,6 +72,10 @@ const detailSchema = z.object({
     id: uuidSchema,
     title: z.string(),
     productCode: z.string().nullable(),
+    catalogVersionId: uuidSchema,
+    catalogVersionSlug: z.string(),
+    catalogVersionTitle: z.string(),
+    supersededByCourseId: uuidSchema.nullable(),
     grade: z.number().int().min(1).max(9),
     courseSeason: courseSeasonSchema,
     classType: z.string(),
@@ -100,10 +117,24 @@ export interface CourseFamilyDetail {
     purpose: "production" | "test";
     status: CourseStatus;
   };
+  /** 课程族的教材年度版本；长度 >= 2 时界面必须先按版本分面，三维矩阵才不会重叠。 */
+  catalogVersions: Array<{
+    id: string;
+    slug: string;
+    title: string;
+    editionYear: number | null;
+    isCurrent: boolean;
+    status: CourseStatus;
+    variantCount: number;
+  }>;
   variants: Array<{
     id: string;
     title: string;
     productCode: string | null;
+    catalogVersionId: string;
+    catalogVersionSlug: string;
+    catalogVersionTitle: string;
+    supersededByCourseId: string | null;
     grade: number;
     courseSeason: CourseSeason;
     classType: string;
@@ -119,6 +150,10 @@ export interface CourseFamilyDetail {
     id: string;
     title: string;
     productCode: string | null;
+    catalogVersionId: string;
+    catalogVersionSlug: string;
+    catalogVersionTitle: string;
+    supersededByCourseId: string | null;
     grade: number;
     courseSeason: CourseSeason;
     classType: string;

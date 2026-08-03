@@ -6,9 +6,9 @@
   "projectId": "example-production-project",
   "databaseId": "example-production-database",
   "migration": {
-    "head": "20260803000100_r1_fix_submission_notification_ambiguity",
-    "digest": "0966126c59a470a03e911aca6fcb0535b2afa470ddeca09b7a080763399801da",
-    "fileCount": 157
+    "head": "20260803000400_p6_catalog_version_surfaces",
+    "digest": "31b04cb7e902a6e06240e9fffb289d3920335dd753cdbb0676f4207c7900f868",
+    "fileCount": 160
   },
   "platform": {
     "source": "supabase/ci/00_platform_bootstrap.sql",
@@ -18,12 +18,12 @@
   "referenceData": {
     "kind": "course_catalog",
     "source": "supabase/seed/teaching-plans.json",
-    "sourceSha256": "793982b7a675bd5e07daab75ec1b85709bb1342dfe6c66dae18026ad07b7c517",
+    "sourceSha256": "4a9ca3f87452620135dc826dea3f5da07c2dea62c7e6b2ddbe8039efe3c4e4c7",
     "familySlug": "xueersi-e-primary-math-cn",
-    "naturalKey": "productCode",
+    "naturalKey": "catalogVersion+productCode",
     "expectedCourseCount": 72,
     "expectedLectureCount": 865,
-    "naturalKeysSha256": "6e40ced9fc8766ba0412604bd343437dc97669f0de8bee8c6e555fae5c4d0fcf"
+    "naturalKeysSha256": "0dc72c6ee370c70c7d8fa7848758f4eeff8e939917b2c19822d862e3c1bc8778"
   },
   "configuration": [
     {

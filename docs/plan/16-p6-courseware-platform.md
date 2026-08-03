@@ -6,7 +6,7 @@
 >
 > **已落地**：P6-1～P6-8 主体；开发数据已有 E 系列 865 讲与爱学习 G+ 秋季 52 讲双轨资源，P6-5 有课堂集成证据。
 >
-> **剩余项**：P6-9 全局量化验收和正式生产 release-1 重建，见 doc 25 R1-9/15/18。
+> **剩余项**：P6-9 全局量化验收和正式生产 release-1 重建，见 doc 25 R1-9/15/18；P6-10 E 系列 2026 秋季导入，见 §11。
 >
 > **最后核对**：2026-08-03。
 
@@ -425,3 +425,33 @@ F 类按页面节点的结构特征判定，与页码无关：任意讲次中，
 3. **页级预览分享链接：不做**。外部人看草稿走窄权限 staff 账号顶；将来要做是纯增量（token 表 + 公开路由），不留架构欠账。
 4. **`cw_asset_objects` 读范围：收紧**。桶私有，staff 直读；学生仅经候课批签 signed URL 取本课次资源（D3/D4，P6-2 的 `getSessionAssetUrls`）。注意 `cw-h5` 因技术不可行（iframe 子请求无法鉴权）例外地保持 public——两桶策略不一致是**已知且接受**的，不是疏漏。
 5. **镜像项目转维护模式，不做增量导出**。反悔路径低成本保留：P6-1 导出包每页带 `sourceContentHash`（D8 ⑥），将来若需对接源站更新，只补 diff 工具即可，不必重建导出体系。届时的合并原则预登记：源更新页若在 mathin 已被教研编辑（origin≠'import'），一律走「新基线 revision + 人工调和」，管线永不覆盖教研判断。
+
+## 11. P6-10 E 系列 2026 秋季接入（课程目录版本层已就位，导入待执行）
+
+2026 秋季这一版属于 E 系列同一课程族，但教材年度版本从 2025 换到 2026。E 系列的年度版本此前是按季节分裂的现状：暑期 18 个班型已经是 2026 新版，秋季/寒假/春季 54 个班型仍是 2025 旧版。因此版本既不能记在 `course_families.edition`（它表示「全国版」这类教材地域版本），也不能做成新的课程族。
+
+### 11.1 已完成（2026-08-03）
+
+| 迁移 | 内容 |
+| --- | --- |
+| `20260803000300_p6_course_catalog_versions` | 新建 `course_catalog_versions`；`courses` 增加 `catalog_version_id`（NOT NULL）与 `superseded_by_course_id`；唯一性收敛为 `(family_id, catalog_version_id, grade, term, class_type)` 与 `(catalog_version_id, product_code)`；回填 E 系列 2025旧版 54 门 / 2026新版 18 门，其余课程族各一条 `default` 版本；`course_families` 插入触发器自动建默认版本，`courses` 插入触发器补齐当前版本，既有写入路径无需改造 |
+| `20260803000400_p6_catalog_version_surfaces` | `create_course_variant` 可显式指定版本；`get_course_family_detail` 返回 `catalogVersions` 与逐版本字段；`list_course_families` 支持 `catalogVersion` 筛选并在 `matched_variants` 带版本；`list_class_build_course_variants` 默认排除已被替代的课程并返回版本与 `is_superseded`；`get_class_build_course_detail` 带 `isSuperseded` |
+
+配套改造：`scripts/cw-import.mjs`/`scripts/cw-adapt-4x3.mjs` 的讲次定位新增可选 `catalogVersionSlug`（CLI `--catalog-version`），不带该维度时定位到多行会被既有 `count <> 1` 断言挡下，不会误写；`supabase/seed/teaching-plans.json` 每条增加 `catalogVersion`；R1 正式初始化自然键升为 `catalogVersion+productCode`（`scripts/plan-r1-initialization.mjs`、`schemas/r1-initialization-manifest.schema.json`）；课程库版本筛选与徽标、版本矩阵页签、建班选择器「包含已被替代的历史版本」开关已接入 zh/en。
+
+CI 重放不受影响：`scripts/ci-rebuild-db.mjs` 只回放 `courses.pre-family.seed.sql`，且回放点在 P4H-3 之前，那时 `product_code` 仍是全局唯一且 `family_id` 尚不存在。
+
+### 11.2 待执行的导入
+
+来源包 `D:/code/2026/2026-07_mofaxiao_courseware/inputs/mofaxiao-e-math-2026-autumn-2026-08-03`：1—6 年级 A/B/S 共 18 个班型、270 讲、16,451 页；下载、H5 离线、物化与页面模型审计全绿。其中 30 讲（1A、2A 各 15 讲）的 courseware_id 相对旧目录被替换，其余 240 讲入口 URL 未变但已强制重抓。
+
+导入必须按新版独立讲次处理，不得复用旧秋季 270 讲，也不得做成旧讲次的 `release_no=2`：源课件标题里的 `MS2023`/`MS2026` 是命名残留，不能作为版本判断依据；入口 URL 相同也不能证明内容未刷新。
+
+执行顺序：
+
+1. 在 E 系列 2026新版下创建 18 个课程班型与 270 个 `course_lectures`，产品编码沿用旧秋季的 MFHK 编码（版本内唯一，不冲突）。
+2. 给旧秋季 18 门写入 `superseded_by_course_id`；旧课程保持 `enabled`，已有班级继续固定旧 `course_id`，不迁移历史课次。
+3. `pnpm cw:import -- --catalog-version 2026 …` 导入 native 16:9，再 `pnpm cw:adapt-4x3 -- --catalog-version 2026 …` 生成并人工确认 4:3；两条轨道都从 `release_no=1` 开始。
+4. 按 doc 25 §5.1.1 同步 seed、manifest 哈希、doc 00/04/25 的基线数字与 `20260720000300` 之后的任何计数断言。
+
+资源仍按 SHA-256 全局去重，新旧版本并存不会重复存储相同图片、视频与 H5 包。

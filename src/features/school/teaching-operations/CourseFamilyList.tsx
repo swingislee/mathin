@@ -41,7 +41,9 @@ export async function CourseFamilyList({
             <div className="flex gap-1.5"><Badge variant={family.status === "enabled" ? "secondary" : "outline"}>{t(family.status)}</Badge>{family.purpose === "test" && <Badge variant="outline">{t("test")}</Badge>}</div>
           </div>
           <div className="mt-3 flex flex-wrap gap-1.5" aria-label={t("availableVariants")}>
-            {family.matchedVariants.slice(0, 12).map((variant) => <Badge key={variant.id} variant="outline">{t("grade", { grade: variant.grade })} · {courseSeasonLabel(variant.courseSeason, t)} · {variant.classType || t("defaultClassType")}</Badge>)}
+            {/* 教材年度版本只在该产品真的换过代时才写进徽标：单一版本的产品加一个
+                "默认版本" 前缀是纯噪声。 */}
+            {family.matchedVariants.slice(0, 12).map((variant) => <Badge key={variant.id} variant="outline">{variant.catalogVersionSlug === "default" ? null : `${variant.catalogVersionTitle} · `}{t("grade", { grade: variant.grade })} · {courseSeasonLabel(variant.courseSeason, t)} · {variant.classType || t("defaultClassType")}</Badge>)}
             {family.matchedVariants.length > 12 && <Badge variant="outline">+{family.matchedVariants.length - 12}</Badge>}
           </div>
           <dl className="mt-4 grid grid-cols-3 gap-2 text-xs">

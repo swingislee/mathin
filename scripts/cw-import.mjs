@@ -14,6 +14,7 @@ const AIXUEXI_DOCUMENT_ADAPTER = "aixuexi-page-v1";
 const HASH = /^[0-9a-f]{64}$/;
 const ASSET_KINDS = new Set(["image", "video", "audio", "svg", "h5"]);
 const DEFAULT_SSH_HOST = "xiaomi";
+const CATALOG_VERSION_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const RESUMABLE_UPLOAD_BYTES = 6 * 1024 * 1024;
 const storageDirectoryCache = new Map();
 
@@ -285,6 +286,7 @@ function normalizeLecture(row) {
   return {
     coursewareId: assertString(lecture.coursewareId, "lecture.coursewareId"),
     mathinProductCode: assertString(lecture.mathinProductCode, "lecture.mathinProductCode"),
+    catalogVersionSlug: lecture.catalogVersionSlug ?? null,
     lessonIndex: lecture.lessonIndex,
     lessonName: typeof lecture.lessonName === "string" ? lecture.lessonName : "",
     pageCount: lecture.pageCount,
@@ -336,7 +338,7 @@ export function h5StoragePath(packageHash, packagePath) {
   return `packages/${packageHash}/${packagePath.split("/").map(h5StorageSegment).join("/")}`;
 }
 
-export async function loadImportPlan({ packageRoot, coursewareId }) {
+export async function loadImportPlan({ packageRoot, coursewareId, catalogVersionSlug = null }) {
   const manifest = JSON.parse(await readFile(resolveInside(packageRoot, "manifest.json"), "utf8"));
   if (manifest?.schemaVersion !== PACKAGE_SCHEMA_VERSION) fail(`unsupported package schema ${manifest?.schemaVersion ?? "<missing>"}`);
   assertString(manifest.exportId, "manifest.exportId");
@@ -355,6 +357,16 @@ export async function loadImportPlan({ packageRoot, coursewareId }) {
   const lecture = lectureRows.map(normalizeLecture).find((item) => item.coursewareId === coursewareId);
   if (!lecture) fail(`courseware ${coursewareId} is absent from lectures.ndjson`);
   if (!Number.isInteger(lecture.lessonIndex) || lecture.lessonIndex <= 0) fail("lecture.lessonIndex must be a positive integer");
+  // CLI 覆盖优先于包内声明：现有 E 系列导出包早于版本层存在，不带 catalogVersionSlug。
+  if (catalogVersionSlug !== null && catalogVersionSlug !== undefined) {
+    if (lecture.catalogVersionSlug !== null && lecture.catalogVersionSlug !== catalogVersionSlug) {
+      fail(`catalog version conflict: package declares ${lecture.catalogVersionSlug}, CLI requested ${catalogVersionSlug}`);
+    }
+    lecture.catalogVersionSlug = catalogVersionSlug;
+  }
+  if (lecture.catalogVersionSlug !== null && !CATALOG_VERSION_SLUG.test(String(lecture.catalogVersionSlug))) {
+    fail("lecture.catalogVersionSlug must be a slug");
+  }
 
   const pageRows = await readNdjson(packageRoot, `page-docs/${coursewareId}.ndjson`);
   if (pageRows.length !== lecture.pageCount) fail(`page count mismatch: lecture=${lecture.pageCount}, rows=${pageRows.length}`);
@@ -540,6 +552,23 @@ export async function loadImportPlan({ packageRoot, coursewareId }) {
   };
 }
 
+// 讲次定位维度。产品编码在 2026 版 E 系列接入后只在课程目录版本内唯一（迁移
+// 20260803000300），因此新旧版本共用编码的季节必须带 catalogVersionSlug 才能定位到
+// 唯一一讲；不带该维度时定位仍会命中多行，由调用方的 count<>1 断言挡下，不会误写。
+export function catalogVersionFilterSql(plan, courseAlias) {
+  const slug = plan.lecture.catalogVersionSlug;
+  if (slug === null || slug === undefined) return "";
+  if (typeof slug !== "string" || !CATALOG_VERSION_SLUG.test(slug)) {
+    fail(`lecture.catalogVersionSlug must be a slug, received ${JSON.stringify(slug)}`);
+  }
+  return `
+   and exists (
+     select 1 from public.course_catalog_versions catalog_version
+      where catalog_version.id = ${courseAlias}.catalog_version_id
+        and catalog_version.slug = ${sqlText(slug)}
+   )`;
+}
+
 export function buildImportSql(plan) {
   const isAixuexi = plan.lecture.documentAdapter === AIXUEXI_DOCUMENT_ADAPTER;
   if (isAixuexi) {
@@ -702,7 +731,7 @@ select lecture.id
   from public.course_lectures lecture
   join public.courses course on course.id = lecture.course_id
  where course.product_code = ${sqlText(plan.lecture.mathinProductCode)}
-   and lecture.no = ${plan.lecture.lessonIndex}
+   and lecture.no = ${plan.lecture.lessonIndex}${catalogVersionFilterSql(plan, "course")}
  for update;
 do $$ begin
   if (select count(*) from cw_import_context) <> 1 then
@@ -1017,7 +1046,7 @@ function buildPreflightSql(plan) {
     from public.course_lectures lecture
     join public.courses course on course.id = lecture.course_id
    where course.product_code = ${sqlText(plan.lecture.mathinProductCode)}
-     and lecture.no = ${plan.lecture.lessonIndex}
+     and lecture.no = ${plan.lecture.lessonIndex}${catalogVersionFilterSql(plan, "course")}
 )
 select jsonb_build_object(
   'matches', (select count(*) from matches),
@@ -1255,7 +1284,7 @@ export function parseArgs(argv) {
     const arg = argv[index];
     if (arg === "--") continue;
     if (arg === "--dry-run") { options.dryRun = true; continue; }
-    if (arg === "--package-root" || arg === "--store-root" || arg === "--courseware-id" || arg === "--ssh-host") {
+    if (arg === "--package-root" || arg === "--store-root" || arg === "--courseware-id" || arg === "--ssh-host" || arg === "--catalog-version") {
       const value = argv[index + 1];
       if (!value || value.startsWith("--")) fail(`${arg} requires a value`);
       options[arg.slice(2).replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())] = value;
@@ -1267,20 +1296,28 @@ export function parseArgs(argv) {
   options.packageRoot ??= process.env.CW_PACKAGE_ROOT;
   options.storeRoot ??= process.env.CW_STORE_ROOT;
   if (!options.packageRoot || !options.storeRoot || !options.coursewareId) {
-    fail("usage: pnpm cw:import -- --package-root <dir> --store-root <dir> --courseware-id <id> [--dry-run] [--ssh-host xiaomi]");
+    fail("usage: pnpm cw:import -- --package-root <dir> --store-root <dir> --courseware-id <id> [--catalog-version <slug>] [--dry-run] [--ssh-host xiaomi]");
+  }
+  if (options.catalogVersion !== undefined && !CATALOG_VERSION_SLUG.test(options.catalogVersion)) {
+    fail("--catalog-version must be a slug such as 2026");
   }
   return options;
 }
 
 async function main() {
   const options = parseArgs(process.argv.slice(2));
-  const plan = await loadImportPlan({ packageRoot: options.packageRoot, coursewareId: options.coursewareId });
+  const plan = await loadImportPlan({
+    packageRoot: options.packageRoot,
+    coursewareId: options.coursewareId,
+    catalogVersionSlug: options.catalogVersion ?? null,
+  });
   const preflight = JSON.parse(runRemoteSql(buildPreflightSql(plan), options.sshHost));
   if (preflight.matches !== 1) fail(`target lecture mapping returned ${preflight.matches} rows`);
   const summary = {
     exportId: plan.exportId,
     coursewareId: plan.lecture.coursewareId,
     mathinProductCode: plan.lecture.mathinProductCode,
+    catalogVersionSlug: plan.lecture.catalogVersionSlug,
     lessonIndex: plan.lecture.lessonIndex,
     expected: {
       pages: plan.pages.length,

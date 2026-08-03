@@ -58,6 +58,10 @@ export interface CourseVariantSummary {
   id: string;
   title: string;
   productCode: string | null;
+  /** 教材年度版本标题（如「2026新版」）。单版本课程族也会返回，界面按需决定是否展示。 */
+  catalogVersionSlug: string;
+  catalogVersionTitle: string;
+  supersededByCourseId: string | null;
   grade: number;
   courseSeason: CourseSeason;
   classType: string;

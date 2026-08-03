@@ -14,6 +14,11 @@ export interface ClassBuildCourseCandidate {
   familyTitle: string;
   title: string;
   productCode: string | null;
+  /** 教材年度版本（course_catalog_versions）。同一年级/季节/班型在换代后会有多个版本。 */
+  catalogVersionSlug: string;
+  catalogVersionTitle: string;
+  /** 已被同族同维度的更新版本替代；建班候选默认不返回这类课程。 */
+  isSuperseded: boolean;
   grade: number;
   courseSeason: number;
   classType: string;

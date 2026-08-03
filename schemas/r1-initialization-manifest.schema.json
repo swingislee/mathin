@@ -41,7 +41,7 @@
         "source": { "$ref": "#/$defs/repoPath" },
         "sourceSha256": { "$ref": "#/$defs/sha256" },
         "familySlug": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
-        "naturalKey": { "const": "productCode" },
+        "naturalKey": { "const": "catalogVersion+productCode" },
         "expectedCourseCount": { "type": "integer", "minimum": 1 },
         "expectedLectureCount": { "type": "integer", "minimum": 1 },
         "naturalKeysSha256": { "$ref": "#/$defs/sha256" }

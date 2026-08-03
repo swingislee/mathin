@@ -154,15 +154,24 @@ export function loadInitializationContext({ root = process.cwd(), manifestPath =
 
   assertExactKeys(manifest.referenceData, ["kind", "source", "sourceSha256", "familySlug", "naturalKey", "expectedCourseCount", "expectedLectureCount", "naturalKeysSha256"], "referenceData");
   assert(manifest.referenceData.kind === "course_catalog", "referenceData.kind must be course_catalog");
-  assert(manifest.referenceData.naturalKey === "productCode", "course catalog natural key must be productCode");
+  // product_code 自 2026 版 E 系列接入起只在课程目录版本内唯一（迁移 20260803000300），
+  // 单独用它已经无法在正式库里唯一定位一门课程版本。
+  assert(
+    manifest.referenceData.naturalKey === "catalogVersion+productCode",
+    "course catalog natural key must be catalogVersion+productCode",
+  );
   assert(/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(manifest.referenceData.familySlug ?? ""), "referenceData.familySlug must be a slug");
   const referenceFile = resolveRepoPath(repositoryRoot, manifest.referenceData.source, "referenceData.source");
   assertHash(textFileSha256(referenceFile), manifest.referenceData.sourceSha256, "reference data source hash");
   const teachingPlans = readJson(referenceFile, "reference data source");
   assert(Array.isArray(teachingPlans), "reference data source must contain an array");
   assert(!UUID_ANYWHERE.test(JSON.stringify(teachingPlans)), "reference data source must not contain copied UUIDs");
-  const courseKeys = teachingPlans.map((plan, index) => assertString(plan?.productCode, `reference course ${index + 1} productCode`)).sort();
-  assert(new Set(courseKeys).size === courseKeys.length, "reference course productCode values must be unique");
+  const courseKeys = teachingPlans.map((plan, index) => {
+    const catalogVersion = assertString(plan?.catalogVersion, `reference course ${index + 1} catalogVersion`);
+    const productCode = assertString(plan?.productCode, `reference course ${index + 1} productCode`);
+    return `${catalogVersion}/${productCode}`;
+  }).sort();
+  assert(new Set(courseKeys).size === courseKeys.length, "reference course catalogVersion+productCode values must be unique");
   const lectureCount = teachingPlans.reduce((total, plan) => total + (Array.isArray(plan.lectures) ? plan.lectures.length : 0), 0);
   assert(manifest.referenceData.expectedCourseCount === teachingPlans.length, `course count mismatch: expected ${manifest.referenceData.expectedCourseCount}, actual ${teachingPlans.length}`);
   assert(manifest.referenceData.expectedLectureCount === lectureCount, `lecture count mismatch: expected ${manifest.referenceData.expectedLectureCount}, actual ${lectureCount}`);

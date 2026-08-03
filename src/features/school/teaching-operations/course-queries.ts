@@ -18,6 +18,8 @@ export interface CourseFamilyFilters {
   grade?: number;
   courseSeason?: CourseSeason;
   classType?: string;
+  /** 教材年度版本 slug（如 `2026`）。跨课程族按 slug 匹配，因此只在版本命名一致时有意义。 */
+  catalogVersion?: string;
   familyStatus?: CourseStatus;
   variantStatus?: CourseStatus;
   purpose?: CoursePurpose;
@@ -64,14 +66,21 @@ function parseMatchedVariants(value: Json): CourseVariantSummary[] {
     const id = string(item.id);
     const title = string(item.title);
     const productCode = string(item.productCode);
+    const catalogVersionSlug = string(item.catalogVersionSlug);
+    const catalogVersionTitle = string(item.catalogVersionTitle);
+    const supersededByCourseId = string(item.supersededByCourseId);
     const grade = number(item.grade);
     const courseSeason = number(item.courseSeason);
     const classType = string(item.classType);
     const lectureCount = number(item.lectureCount);
     const releasedLectureCount = number(item.releasedLectureCount);
     if (!id || !title || grade === null || courseSeason === null || !isCourseSeason(courseSeason)
-      || classType === null || lectureCount === null || releasedLectureCount === null) continue;
-    variants.push({ id, title, productCode, grade, courseSeason, classType, lectureCount, releasedLectureCount });
+      || classType === null || lectureCount === null || releasedLectureCount === null
+      || catalogVersionSlug === null || catalogVersionTitle === null) continue;
+    variants.push({
+      id, title, productCode, catalogVersionSlug, catalogVersionTitle, supersededByCourseId,
+      grade, courseSeason, classType, lectureCount, releasedLectureCount,
+    });
   }
   return variants;
 }
@@ -90,12 +99,39 @@ export function parseCourseFamilyFilters(input: Record<string, string | string[]
     grade: Number.isInteger(grade) && grade >= 1 && grade <= 9 ? grade : undefined,
     courseSeason: isCourseSeason(courseSeason) ? courseSeason : undefined,
     classType: first(input.classType)?.trim().slice(0, 20) || undefined,
+    catalogVersion: first(input.catalogVersion)?.trim().toLowerCase().slice(0, 40) || undefined,
     familyStatus: familyStatus === "draft" || familyStatus === "enabled" || familyStatus === "disabled" ? familyStatus : undefined,
     variantStatus: variantStatus === "draft" || variantStatus === "enabled" || variantStatus === "disabled" ? variantStatus : undefined,
     purpose: purpose === "production" || purpose === "test" ? purpose : undefined,
     readiness: readiness === "ready" || readiness === "incomplete" ? readiness : undefined,
     page,
   };
+}
+
+export interface CourseCatalogVersionOption {
+  slug: string;
+  title: string;
+}
+
+/**
+ * 课程库的跨课程族版本筛选项。
+ *
+ * `default` 是「该课程族尚未发生教材年度换代」的占位版本，把它列成筛选项等于让用户
+ * 在两个都表示"全部"的选项之间选，因此排除。同一个 slug（如 `2026`）可能出现在多个
+ * 课程族里，按 slug 去重后取首个标题。
+ */
+export async function listCourseCatalogVersionOptions(): Promise<CourseCatalogVersionOption[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("course_catalog_versions")
+    .select("slug,title,sort_order")
+    .neq("slug", "default")
+    .order("sort_order", { ascending: true })
+    .order("slug", { ascending: true });
+  if (error) throw new Error(error.message);
+  const bySlug = new Map<string, string>();
+  for (const row of data ?? []) if (!bySlug.has(row.slug)) bySlug.set(row.slug, row.title);
+  return [...bySlug].map(([slug, title]) => ({ slug, title }));
 }
 
 export async function listCourseFamilies(filters: CourseFamilyFilters): Promise<CourseFamilyListResult> {
@@ -106,6 +142,7 @@ export async function listCourseFamilies(filters: CourseFamilyFilters): Promise<
       grade: filters.grade?.toString() ?? "",
       courseSeason: filters.courseSeason?.toString() ?? "",
       classType: filters.classType ?? "",
+      catalogVersion: filters.catalogVersion ?? "",
       familyStatus: filters.familyStatus ?? "",
       variantStatus: filters.variantStatus ?? "",
       purpose: filters.purpose ?? "",

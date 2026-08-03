@@ -1565,7 +1565,11 @@
       "pagesLabel": "Template pages",
       "familyDescription": "About this product",
       "familyDescriptionEmpty": "This course product has no description yet.",
-      "variantContextLabel": "Current variant"
+      "variantContextLabel": "Current variant",
+      "catalogVersion": "Catalog version",
+      "allCatalogVersions": "All catalog versions",
+      "superseded": "Superseded by a newer version",
+      "supersededShort": "Superseded"
     },
     "courseProduct": {
       "title": "New course product",
@@ -2148,7 +2152,9 @@
       "scheduledAt": "Scheduled at",
       "submit": "Create class",
       "submitting": "Creating…",
-      "submitFailed": "Failed to create, check the form and try again."
+      "submitFailed": "Failed to create, check the form and try again.",
+      "includeSupersededCourses": "Include superseded versions",
+      "supersededCourse": "Superseded"
     },
     "classes": {
       "title": "Classes",

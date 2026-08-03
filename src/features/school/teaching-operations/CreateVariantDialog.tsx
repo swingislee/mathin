@@ -19,11 +19,14 @@ const CLASS_TYPES = ["A", "B", "S"] as const;
 export function CreateVariantDialog({
   trigger,
   familyId,
+  catalogVersionId = null,
   initialGrade,
   initialSeason,
 }: {
   trigger: ReactNode;
   familyId: string;
+  /** 新版本落在哪一个教材年度版本上；不传时由数据库落到课程族的当前版本。 */
+  catalogVersionId?: string | null;
   initialGrade?: number;
   initialSeason?: CourseSeason;
 }) {
@@ -70,7 +73,7 @@ export function CreateVariantDialog({
         <Button
           type="button"
           disabled={createRun.pending || !title.trim()}
-          onClick={() => createRun.run({ familyId, title, productCode, grade, courseSeason, classType })}
+          onClick={() => createRun.run({ familyId, catalogVersionId, title, productCode, grade, courseSeason, classType })}
         >
           {createRun.pending && <LoaderCircle className="size-4 animate-spin" />}
           {t("create")}

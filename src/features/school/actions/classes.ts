@@ -58,6 +58,7 @@ const courseSearchSchema = z.object({
   courseSeason: intInRange(1, 4).nullable(),
   classType: text(20),
   purpose: z.enum(["production", "test"]),
+  includeSuperseded: z.boolean().default(false),
 });
 
 const classBuildCandidateSchema = z.object({
@@ -66,6 +67,9 @@ const classBuildCandidateSchema = z.object({
   familyTitle: z.string(),
   title: z.string(),
   productCode: z.string().nullable(),
+  catalogVersionSlug: z.string(),
+  catalogVersionTitle: z.string(),
+  isSuperseded: z.boolean(),
   grade: z.number().int(),
   courseSeason: z.number().int(),
   classType: z.string(),
@@ -103,6 +107,7 @@ export async function searchClassBuildCoursesAction(input: {
   courseSeason: number | null;
   classType: string;
   purpose: ClassBuildPurpose;
+  includeSuperseded?: boolean;
 }): Promise<ClassBuildCourseCandidate[]> {
   const value = parse(courseSearchSchema, input);
   const { supabase } = await authorizedClient("class.create");
@@ -113,6 +118,7 @@ export async function searchClassBuildCoursesAction(input: {
     p_class_type: value.classType || null,
     p_purpose: value.purpose,
     p_limit: 30,
+    p_include_superseded: value.includeSuperseded,
   });
   if (error) throw new Error(error.message);
   const rows = z.array(z.object({
@@ -121,6 +127,9 @@ export async function searchClassBuildCoursesAction(input: {
     family_title: z.string(),
     variant_title: z.string(),
     product_code: z.string().nullable(),
+    catalog_version_slug: z.string(),
+    catalog_version_title: z.string(),
+    is_superseded: z.boolean(),
     grade: z.number().int(),
     course_season: z.number().int(),
     class_type: z.string(),
@@ -133,6 +142,9 @@ export async function searchClassBuildCoursesAction(input: {
     familyTitle: row.family_title,
     title: row.variant_title,
     productCode: row.product_code,
+    catalogVersionSlug: row.catalog_version_slug,
+    catalogVersionTitle: row.catalog_version_title,
+    isSuperseded: row.is_superseded,
     grade: row.grade,
     courseSeason: row.course_season,
     classType: row.class_type,
@@ -158,6 +170,9 @@ export async function getClassBuildCourseDetailAction(
     familyTitle: z.string(),
     title: z.string(),
     productCode: z.string().nullable(),
+    catalogVersionSlug: z.string(),
+    catalogVersionTitle: z.string(),
+    isSuperseded: z.boolean(),
     grade: z.number().int(),
     courseSeason: z.number().int(),
     classType: z.string(),

@@ -138,7 +138,7 @@ async function CourseFamilyProductPage({
               <p className="text-sm leading-6 text-muted">{detail.family.description || t("familyDescriptionEmpty")}</p>
             </DashboardReadingColumn>
           </DashboardCard>
-          <VariantMatrix familyId={detail.family.id} variants={detail.variants} canManage={canManage} />
+          <VariantMatrix familyId={detail.family.id} variants={detail.variants} catalogVersions={detail.catalogVersions} canManage={canManage} />
         </DashboardMainColumn>
 
         <DashboardAside>
@@ -194,13 +194,20 @@ async function CourseFamilyProductPage({
       backLabel={t("backToOverview")}
       // 只留产品码。年级 / 季节 / 班型这三维就在下面的 ObjectContextSwitcher 里高亮着，
       // 在身份行再说一遍是同一屏两份同样的信息（§15），移动端还要多占一整行 sticky 高度。
-      context={[{ value: selectedVariant.productCode ?? "—" }]}
-      status={<Badge variant={selectedVariant.status === "enabled" ? "secondary" : "outline"}>{t(selectedVariant.status)}</Badge>}
+      // 换代后同一枚产品编码在新旧两个年度版本里各有一门课，只显示编码分辨不出是哪一门。
+      context={[
+        ...(selectedVariant.catalogVersionSlug === "default" ? [] : [{ value: selectedVariant.catalogVersionTitle }]),
+        { value: selectedVariant.productCode ?? "—" },
+      ]}
+      status={<>
+        <Badge variant={selectedVariant.status === "enabled" ? "secondary" : "outline"}>{t(selectedVariant.status)}</Badge>
+        {selectedVariant.supersededByCourseId && <Badge variant="outline">{t("superseded")}</Badge>}
+      </>}
       primaryAction={primaryAction}
       overflowSlot={capabilities.canTransitionVariant ? <StatusOverflowMenu id={selectedVariant.id} status={selectedVariant.status} action={transitionCourseVariantStatusAction} ariaLabel={t("moreActions")} /> : undefined}
     />}
     navigation={<ObjectContextSwitcher label={t("variantContextLabel")}>
-      <VariantSelector familyId={detail.family.id} variants={detail.variants} current={selectedVariant} />
+      <VariantSelector familyId={detail.family.id} variants={detail.variants} catalogVersions={detail.catalogVersions} current={selectedVariant} />
     </ObjectContextSwitcher>}
   >
     {/* doc23 §8.2 Variant 蓝图：主栏只有教学计划——这一页的工作就是它；

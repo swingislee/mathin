@@ -5,7 +5,9 @@ import { Check, ChevronsUpDown, LoaderCircle, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
@@ -23,6 +25,9 @@ function CourseCandidateLabel({ candidate }: { candidate: ClassBuildCourseCandid
   return <div className="min-w-0 flex-1">
     <div className="flex min-w-0 items-center gap-2">
       <span className="truncate font-medium">{candidate.title}</span>
+      {/* `default` 版本表示该课程族尚未发生教材年度换代，此时版本徽标没有区分作用。 */}
+      {candidate.catalogVersionSlug !== "default" && <Badge variant="outline">{candidate.catalogVersionTitle}</Badge>}
+      {candidate.isSuperseded && <Badge variant="outline" className="border-line text-muted">{t("supersededCourse")}</Badge>}
       {!isReady(candidate) && <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300">{t("incomplete")}</Badge>}
     </div>
     <p className="mt-0.5 truncate text-xs text-muted">
@@ -55,6 +60,9 @@ export function CoursePicker({
   const [grade, setGrade] = useState<number | null>(null);
   const [courseSeason, setCourseSeason] = useState<number | null>(null);
   const [classType, setClassType] = useState("");
+  // 已被新版替代的课程默认不出现：教务在同一年级/季节/班型下几乎总是要最新教材版本，
+  // 需要沿用旧版开班时才显式打开。
+  const [includeSuperseded, setIncludeSuperseded] = useState(false);
   const [results, setResults] = useState<ClassBuildCourseCandidate[]>([]);
   const [searching, setSearching] = useState(false);
   const [selectingId, setSelectingId] = useState<string | null>(null);
@@ -75,13 +83,13 @@ export function CoursePicker({
     const timer = window.setTimeout(() => {
       setSearching(true);
       setFailed(false);
-      void searchClassBuildCoursesAction({ query, grade, courseSeason, classType, purpose })
+      void searchClassBuildCoursesAction({ query, grade, courseSeason, classType, purpose, includeSuperseded })
         .then((next) => { if (active) setResults(next); })
         .catch(() => { if (active) { setResults([]); setFailed(true); } })
         .finally(() => { if (active) setSearching(false); });
     }, 250);
     return () => { active = false; window.clearTimeout(timer); };
-  }, [classType, courseSeason, grade, open, purpose, query]);
+  }, [classType, courseSeason, grade, includeSuperseded, open, purpose, query]);
 
   const visibleResults = open ? grouped : [];
   const showSearching = open && searching;
@@ -126,6 +134,10 @@ export function CoursePicker({
               <SelectContent><SelectItem value={ALL}>{t("allClassTypes")}</SelectItem>{["A", "B", "S"].map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent>
             </Select>
           </div>
+          <Label className="flex items-center gap-2 border-b px-2 py-2 text-xs font-normal text-muted">
+            <Checkbox checked={includeSuperseded} onCheckedChange={(value) => setIncludeSuperseded(value === true)} />
+            {t("includeSupersededCourses")}
+          </Label>
           <CommandList className="max-h-80">
             {showSearching && <div className="flex items-center justify-center gap-2 px-3 py-8 text-sm text-muted"><LoaderCircle className="size-4 animate-spin" />{t("searchingCourses")}</div>}
             {!showSearching && visibleResults.map(([familyTitle, candidates]) => <CommandGroup key={familyTitle} heading={familyTitle}>

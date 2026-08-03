@@ -22,7 +22,7 @@
 | Notebook | 私有列表、编辑、公开详情路由存在 | 私人写作、审核、发布/撤回、公开阅读和互动完成权限/E2E 验收 |
 | 学校运营 | 学生、监护关系、员工权限、课程、班级、排课、考勤、作业、订单/支付/退款等迁移和 UI 已存在 | 管理员、教务、教师、学辅、教研/内容、学生、家长及启用时的财务旅程闭环 |
 | 内容发布 | Terms/Minds 文件内容、Notebook、课程研发和 release 机制分别存在 | Terms/Story/Minds/Notebook 共用草稿/审核/发布/撤回/版本合同；课堂只读取不可变课件 release |
-| E 系列 | 开发数据有 865 讲、16:9/4:3 双轨资源和 release 机制 | 保留 865×2 源资源；正式基线包含 1730 条 `release_no=1` |
+| E 系列 | 开发数据有 865 讲、16:9/4:3 双轨资源和 release 机制；课程目录版本层已就位（2025旧版 54 门 / 2026新版 18 门） | 保留 865×2 源资源；正式基线包含 1730 条 `release_no=1`。2026 秋季 270 讲导入后按 §5.1.1 重新固定 |
 | 语言 | `messages/zh.json` 与 `messages/en.json` 各 3000 个 key；`content/en` 仅 README | UI 永久 zh/en；英文课程/文章可延期，缺失内容显示明确回退或“尚未发布”状态 |
 | 视觉 | `public/Main.png`、五星球 token/场景、`dashboard-observatory.png` 和公开场景插画已在仓库使用 | 小王子作为全站视觉基础；公开场景、内容/Notebook、运营工作区按三档强度验收 |
 
@@ -272,7 +272,7 @@ R1-7 不建立可任意写表的通用维护入口；初始化、导入、质量
 | R1-7E 导出（已完成） | 用户权利请求流程、教案/解析导出 | 用户权利 artifact 与运营导出分流；字段裁剪、hash、下载审计和自动过期 | 跨角色/跨学生负向查询拒绝；过期 artifact 不可下载；导出不暴露内部备注和非必要未成年人资料 |
 
 R1-7A 的 dry-run 也写批次审计，但原始行最多保留 30 天；错误 CSV 在浏览器按当前批次生成，不进入公开 Storage。批次只保存规范化输入、行状态、目标 ID 和标准错误码，不保存账号凭据、token 或文件二进制。正式初始化和破坏性清理仍分别受 R1-15/R1-18 环境与人工批准限制。
-R1-7B 的期望状态入口是 `docs/manifests/r1-initialization.example.json`，结构由 `schemas/r1-initialization-manifest.schema.json` 固定，`pnpm r1:init-plan` 只输出可复现计划，不连接数据库、不写表。manifest 只允许课程 `productCode`、配置 `domain/flagKey` 等自然键，UUID 必须由目标数据库生成；课程源文件、配置源迁移、CI 平台垫片和独立管理员 manifest 均固定 LF 归一化 SHA-256。可选 inventory 在 preflight 必须为 0 行，在 post-apply 必须与 72 个课程、865 讲、6 个规则域和 5 个 fail-closed flag 对账；再次执行时任一自然键对应 ID 或数量变化都停止。CI 平台垫片只用于空库重建验证，禁止作为生产平台初始化脚本。
+R1-7B 的期望状态入口是 `docs/manifests/r1-initialization.example.json`，结构由 `schemas/r1-initialization-manifest.schema.json` 固定，`pnpm r1:init-plan` 只输出可复现计划，不连接数据库、不写表。manifest 只允许课程 `catalogVersion+productCode`、配置 `domain/flagKey` 等自然键，UUID 必须由目标数据库生成（`productCode` 自迁移 `20260803000300` 起只在课程目录版本内唯一，单独用它无法定位一门课程版本）；课程源文件、配置源迁移、CI 平台垫片和独立管理员 manifest 均固定 LF 归一化 SHA-256。可选 inventory 在 preflight 必须为 0 行，在 post-apply 必须与 72 个课程、865 讲、6 个规则域和 5 个 fail-closed flag 对账；再次执行时任一自然键对应 ID 或数量变化都停止。CI 平台垫片只用于空库重建验证，禁止作为生产平台初始化脚本。
 
 R1-7C 的规则集入口是 `mathin-data-quality-v1`。`data_quality_rule_versions` 按规则集、规则键和版本保持不可变且规则集内唯一；`data_quality_runs`/`data_quality_findings` 保存快照时间、严重度、对象、最小证据、规则/结果 SHA-256，直接写权限关闭。`run_data_quality_scan()` 在同一语句快照内检测在读报名关联已删除学生、学生手机号重复、非法课次状态、订单金额/状态不平和课件对象缺少 Storage 文件；手机号证据只保存对象 ID 与规范化键 hash。`/dashboard/data-maintenance` 对 `audit.view` 开放历史扫描与最多 200 条发现，触发新扫描另需 `system.operations.manage`；零引用报告和永久清理继续按 `courseware.asset.manage`/`testdata.purge` 裁剪。数据库断言覆盖重复扫描稳定、五类命中、规则不可变、无通知噪音和学生负向边界；扫描不自动修复，发现项由 R1-7D 的显式领域计划接收。
 
@@ -329,8 +329,24 @@ R1-7E 以 `user_rights_export_artifacts` 保存与请求绑定的精确 JSON 字
 | PROD-08 | Tools | 2/2 独立页和既定 embed 场景通过 |
 | PROD-09 | Minds | 2/2 中文文章发布；无效 Terms 关系=0 |
 | PROD-10 | Notebook | 私有写作、审核、发布/撤回、公开阅读、互动和越权 E2E 通过 |
-| PROD-11 | E 系列 | 865 讲×2 轨源资源完整；正式 release 恰为 1730 条 `release_no=1`；缺失/悬空=0 |
+| PROD-11 | E 系列 | 865 讲×2 轨源资源完整；正式 release 恰为 1730 条 `release_no=1`；缺失/悬空=0。2026 秋季导入后按 §5.1.1 改判为 1135 讲 / 2270 条 |
 | PROD-12 | 爱学习 G+ 秋季 | 三至六年级 52 讲×2 轨源资源完整；正式 release 恰为 104 条 `release_no=1`；第 7/15 讲显式记为来源缺口；其他范围不伪造；缺失/悬空=0 |
+
+#### 5.1.1 教材年度换代后的基线重新固定
+
+课程目录版本层（迁移 `20260803000300`/`20260803000400`，2026-08-03 落库）把「教材年度版本」建成 `course_catalog_versions` 一层，`courses` 的唯一性从 `(family_id, grade, term, class_type)` 收敛为 `(family_id, catalog_version_id, grade, term, class_type)`，`product_code` 的唯一性从全局收敛为版本内。E 系列现状归类为 2026新版 18 门（暑期）、2025旧版 54 门（秋季/寒假/春季），讲次数量未变。
+
+来源包 `mofaxiao-e-math-2026-autumn-2026-08-03`（270 讲、16,451 页、审计全绿）尚未导入。导入任务必须在同一次提交里同步下列全部数字，不允许只改库不改门：
+
+| 对象 | 导入前 | 导入后 |
+| --- | --- | --- |
+| E 系列课程版本 | 72 | 90 |
+| E 系列讲次 | 865 | 1,135 |
+| E 系列正式 release（双轨 `release_no=1`） | 1,730 | 2,270 |
+| 含爱学习 G+ 的讲次合计 | 917 | 1,187 |
+| 含爱学习 G+ 的正式 release 合计 | 1,834 | 2,374 |
+
+导入任务的连带修改点：`supabase/seed/teaching-plans.json` 追加 18 门课程（`catalogVersion` 为 `2026`）、`docs/manifests/r1-initialization.example.json` 的 `expectedCourseCount`/`expectedLectureCount`/`naturalKeysSha256`/`sourceSha256`、doc 00 的正式数据基线行、doc 04 §1、本节表格与 PROD-11。旧秋季 18 门保留 `enabled` 并写入 `superseded_by_course_id`；已有班级继续固定旧 `course_id`，不迁移。
 
 ### 5.2 小王子视觉与交互
 

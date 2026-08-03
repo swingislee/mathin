@@ -7,6 +7,14 @@ const outputPath = path.join(root, "supabase", "seed", "courses.seed.sql");
 const preFamilyOutputPath = path.join(root, "supabase", "seed", "courses.pre-family.seed.sql");
 const familySlug = "xueersi-e-primary-math-cn";
 
+// 课程目录版本元数据（迁移 20260803000300）。teaching-plans.json 只携带 catalogVersion
+// 这一枚自然键，标题/年份/当前版本这类展示与默认值属性集中在这里，避免把同一事实
+// 抄进 72 行参考数据。新增年度版本时必须显式登记，未登记的 slug 直接失败。
+const catalogVersions = new Map([
+  ["2025", { title: "2025旧版", editionYear: 2025, sortOrder: 0, isCurrent: false }],
+  ["2026", { title: "2026新版", editionYear: 2026, sortOrder: 1, isCurrent: true }],
+]);
+
 function sqlString(value) {
   if (value === null || value === undefined) return "null";
   return `'${String(value).replaceAll("'", "''")}'`;
@@ -21,13 +29,47 @@ function sqlNumber(value) {
 const raw = await readFile(inputPath, "utf8");
 const plans = JSON.parse(raw);
 if (!Array.isArray(plans)) throw new Error("teaching-plans.json must contain an array");
+for (const plan of plans) {
+  if (!catalogVersions.has(plan.catalogVersion)) {
+    throw new Error(`${plan.productCode}: unregistered catalogVersion ${JSON.stringify(plan.catalogVersion)}`);
+  }
+}
+const usedVersions = [...new Set(plans.map((plan) => plan.catalogVersion))]
+  .sort((left, right) => catalogVersions.get(left).sortOrder - catalogVersions.get(right).sortOrder);
 
+// 版本内定位：product_code 自 2026 版接入起只在 catalog_version 内唯一。
+function versionScopedCourse(plan) {
+  return [
+    `  from public.courses course_row`,
+    `  join public.course_catalog_versions version_row on version_row.id = course_row.catalog_version_id`,
+    `  join public.course_families family_row on family_row.id = version_row.family_id`,
+    ` where course_row.product_code = ${sqlString(plan.productCode)}`,
+    `   and family_row.slug = ${sqlString(familySlug)}`,
+    `   and version_row.slug = ${sqlString(plan.catalogVersion)}`,
+  ];
+}
+
+// CI 重放里这份 seed 在 P4H-3 之前执行，那时既没有课程族也没有版本层，
+// product_code 仍是全局唯一，因此保持原样定位。
 function appendLectures(lines, plan) {
   for (const lecture of plan.lectures ?? []) {
     lines.push(
       "insert into public.course_lectures (course_id, no, name)",
       `select id, ${sqlNumber(lecture.no)}, ${sqlString(lecture.name)}`,
       `  from public.courses where product_code = ${sqlString(plan.productCode)}`,
+      "on conflict (course_id, no) do update set",
+      "  name = excluded.name;",
+      "",
+    );
+  }
+}
+
+function appendVersionedLectures(lines, plan) {
+  for (const lecture of plan.lectures ?? []) {
+    lines.push(
+      "insert into public.course_lectures (course_id, no, name)",
+      `select course_row.id, ${sqlNumber(lecture.no)}, ${sqlString(lecture.name)}`,
+      ...versionScopedCourse(plan),
       "on conflict (course_id, no) do update set",
       "  name = excluded.name;",
       "",
@@ -75,11 +117,30 @@ const lines = [
   "",
 ];
 
+for (const slug of usedVersions) {
+  const version = catalogVersions.get(slug);
+  lines.push(
+    "insert into public.course_catalog_versions (family_id, slug, title, edition_year, sort_order, is_current)",
+    `values ((select id from public.course_families where slug = ${sqlString(familySlug)}), ${sqlString(slug)}, ${sqlString(version.title)}, ${sqlNumber(version.editionYear)}, ${sqlNumber(version.sortOrder)}, ${version.isCurrent})`,
+    "on conflict (family_id, slug) do update set",
+    "  title = excluded.title,",
+    "  edition_year = excluded.edition_year,",
+    "  sort_order = excluded.sort_order,",
+    "  is_current = excluded.is_current;",
+    "",
+  );
+}
+
 for (const plan of plans) {
   lines.push(
-    "insert into public.courses (family_id, title, product_code, grade, term, class_type, status)",
-    `values ((select id from public.course_families where slug = ${sqlString(familySlug)}), ${sqlString(plan.title)}, ${sqlString(plan.productCode)}, ${sqlNumber(plan.grade)}, ${sqlNumber(plan.termIndex)}, ${sqlString(plan.classType)}, 'enabled')`,
-    "on conflict (product_code) do update set",
+    "insert into public.courses (family_id, catalog_version_id, title, product_code, grade, term, class_type, status)",
+    "select family_row.id, version_row.id,",
+    `       ${sqlString(plan.title)}, ${sqlString(plan.productCode)}, ${sqlNumber(plan.grade)}, ${sqlNumber(plan.termIndex)}, ${sqlString(plan.classType)}, 'enabled'`,
+    "  from public.course_catalog_versions version_row",
+    "  join public.course_families family_row on family_row.id = version_row.family_id",
+    ` where family_row.slug = ${sqlString(familySlug)}`,
+    `   and version_row.slug = ${sqlString(plan.catalogVersion)}`,
+    "on conflict (catalog_version_id, product_code) where product_code is not null do update set",
     "  family_id = excluded.family_id,",
     "  title = excluded.title,",
     "  grade = excluded.grade,",
@@ -88,7 +149,7 @@ for (const plan of plans) {
     "",
   );
 
-  appendLectures(lines, plan);
+  appendVersionedLectures(lines, plan);
 }
 
 lines.push("commit;", "");

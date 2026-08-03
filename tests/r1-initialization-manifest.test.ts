@@ -55,7 +55,7 @@ describe("R1-7B initialization manifest", () => {
     expect(first.guards.idStrategy).toBe("database-generated");
     expect(first.guards.productionExecutionStage).toContain("R1-15/R1-18");
     expect(first.phases.find((phase) => phase.kind === "course_catalog")).toMatchObject({
-      naturalKey: "productCode",
+      naturalKey: "catalogVersion+productCode",
       expectedCount: 72,
       expectedChildCount: 865,
     });

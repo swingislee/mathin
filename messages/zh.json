@@ -1565,7 +1565,11 @@
       "pagesLabel": "模板页数",
       "familyDescription": "产品说明",
       "familyDescriptionEmpty": "这个课程产品还没有填写说明。",
-      "variantContextLabel": "当前版本"
+      "variantContextLabel": "当前版本",
+      "catalogVersion": "教材版本",
+      "allCatalogVersions": "全部教材版本",
+      "superseded": "已被新版替代",
+      "supersededShort": "已替代"
     },
     "courseProduct": {
       "title": "新建课程产品",
@@ -2148,7 +2152,9 @@
       "scheduledAt": "上课时间",
       "submit": "创建班级",
       "submitting": "创建中…",
-      "submitFailed": "创建失败，请检查填写内容后重试。"
+      "submitFailed": "创建失败，请检查填写内容后重试。",
+      "includeSupersededCourses": "包含已被替代的历史版本",
+      "supersededCourse": "历史版本"
     },
     "classes": {
       "title": "班级",
