@@ -155,6 +155,52 @@ select (public.purge_expired_data_import_payloads(100) > 0) as r1_expired_payloa
   select 1 / 0;
 \endif
 
+-- BUG-R1M-004：merge_students 曾对两侧都不校验 deleted_at，过期页面可以把学生合并进
+-- 已软删的墓碑档案，结果两个学生一起从正常列表消失。正反向都必须被拒。
+reset role;
+insert into public.students(name, phone, status, created_by, bind_code)
+values ('__R1M004_A__', '13900009001', 'lead', :'admin_id'::uuid, '__R1M004A__')
+returning id as r1m004_a \gset
+insert into public.students(name, phone, status, created_by, bind_code)
+values ('__R1M004_B__', '13900009001', 'lead', :'admin_id'::uuid, '__R1M004B__')
+returning id as r1m004_b \gset
+select set_config('r1m004.a', :'r1m004_a', true), set_config('r1m004.b', :'r1m004_b', true);
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'admin_id', true);
+do $$
+declare v_a uuid := current_setting('r1m004.a')::uuid; v_b uuid := current_setting('r1m004.b')::uuid;
+begin
+  perform public.merge_students(v_a, v_b);
+  if (select deleted_at from public.students where id = v_b) is null
+     or (select deleted_at from public.students where id = v_a) is not null then
+    raise exception 'R1M004_FIRST_MERGE_INCOMPLETE';
+  end if;
+
+  -- 反向：把仍然存活的保留档案合并进墓碑。
+  begin
+    perform public.merge_students(v_b, v_a);
+    raise exception 'R1M004_TOMBSTONE_MERGE_ACCEPTED';
+  exception when others then
+    if SQLERRM not in ('STUDENT_DELETED', 'ALREADY_MERGED') then raise; end if;
+  end;
+  -- 正向重复：来源已被合并过。
+  begin
+    perform public.merge_students(v_a, v_b);
+    raise exception 'R1M004_REPEAT_MERGE_ACCEPTED';
+  exception when others then
+    if SQLERRM not in ('STUDENT_DELETED', 'ALREADY_MERGED') then raise; end if;
+  end;
+
+  -- 保留档案不得被拖成墓碑，也不得反过来成为合并来源；第一次合并的留痕仍应只有一条。
+  if (select deleted_at from public.students where id = v_a) is not null
+     or exists(select 1 from public.student_merges where merged_id = v_a)
+     or (select count(*) from public.student_merges where kept_id = v_a) <> 1 then
+    raise exception 'R1M004_TOMBSTONE_MERGE_LEFT_PARTIAL_WRITES';
+  end if;
+end
+$$;
+
 select set_config('request.jwt.claim.sub', :'student_user_id', true);
 do $$
 begin

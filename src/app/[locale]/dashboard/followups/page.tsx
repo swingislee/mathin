@@ -7,6 +7,7 @@ import {
   DashboardCommandTabs,
   DashboardPage,
 } from "@/features/school/dashboard-page";
+import { FilterBar, FilterBarReset, FilterBarSubmit, FilterSearchInput } from "@/features/school/FilterBar";
 import { FollowUpBoardList } from "@/features/school/FollowUpBoardList";
 import {
   BOARD_BUCKETS,
@@ -51,15 +52,17 @@ export default async function FollowUpsPage({
   const canEditStatus = perms.has("student.edit");
   const canOrder = perms.has("finance.order.create");
 
-  const { scope, bucket } = parseBoardParams(rawSearchParams, canScopeAll);
-  const board = await safe(() => listFollowUpBoard(user.id, scope, bucket), EMPTY_BOARD);
+  const { scope, bucket, q } = parseBoardParams(rawSearchParams, canScopeAll);
+  const board = await safe(() => listFollowUpBoard(user.id, scope, bucket, q), EMPTY_BOARD);
 
-  const boardHref = (next: { scope?: typeof scope; bucket?: BoardBucket | undefined }) => {
+  const boardHref = (next: { scope?: typeof scope; bucket?: BoardBucket | undefined; q?: string | undefined }) => {
     const query = new URLSearchParams();
     const nextScope = "scope" in next ? next.scope : scope;
     const nextBucket = "bucket" in next ? next.bucket : bucket;
+    const nextQ = "q" in next ? next.q : q;
     if (nextScope === "all") query.set("scope", "all");
     if (nextBucket) query.set("bucket", nextBucket);
+    if (nextQ) query.set("q", nextQ);
     const qs = query.toString();
     return `/dashboard/followups${qs ? `?${qs}` : ""}`;
   };
@@ -89,6 +92,18 @@ export default async function FollowUpsPage({
             换行只多一行 32px，滚动却是直接把一半量表藏起来。
           */}
           <DashboardCommandFilters>
+            {/*
+              BUG-R1M-005：队列此前只能按时间桶和状态分组翻找。学辅接到来电时要在几十条
+              里定位一个人，姓名/学校/本人或家长手机号片段都得能命中（见 studentSearchFilter）。
+              走 GET 表单：结果可深链、可后退，且与 scope/bucket 叠加而不是互斥。
+            */}
+            <FilterBar action={`/${locale}/dashboard/followups`} method="get">
+              {scope === "all" ? <input type="hidden" name="scope" value="all" /> : null}
+              {bucket ? <input type="hidden" name="bucket" value={bucket} /> : null}
+              <FilterSearchInput name="q" defaultValue={q ?? ""} placeholder={t("searchPlaceholder")} aria-label={t("searchPlaceholder")} />
+              <FilterBarSubmit>{t("searchSubmit")}</FilterBarSubmit>
+              {q ? <FilterBarReset href={boardHref({ q: undefined })} label={t("searchReset")} /> : null}
+            </FilterBar>
             <div role="group" aria-label={t("title")} className="flex min-w-0 flex-wrap items-center gap-1">
               {BOARD_BUCKETS.map((key) => {
                 const active = bucket === key;

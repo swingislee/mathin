@@ -82,6 +82,10 @@ export async function findDuplicateStudentsForMergeAction(name: string, phone: s
   return findDuplicateStudents("student.edit", name, phone);
 }
 
+// BUG-R1M-004：候选列表在挂载时取一次，页面可能已过期。服务端把「对方档案已软删/已被
+// 合并」抛成领域码，这里映射出来让 UI 提示刷新，而不是通用 actionFailed。
+const MERGE_CODES = ["SAME_STUDENT", "STUDENT_DELETED", "ALREADY_MERGED", ...COMMON_CODES] as const;
+
 export async function mergeStudentsAction(keptId: string, mergedId: string): Promise<ActionResult> {
   try {
     const value = parse(z.object({ keptId: uuid, mergedId: uuid }), { keptId, mergedId });
@@ -90,7 +94,7 @@ export async function mergeStudentsAction(keptId: string, mergedId: string): Pro
     if (error) throw new Error(error.message);
     return { ok: true };
   } catch (error) {
-    return actionError(error, COMMON_CODES);
+    return actionError(error, MERGE_CODES);
   }
 }
 

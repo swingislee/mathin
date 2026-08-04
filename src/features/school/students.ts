@@ -116,6 +116,29 @@ export function parseStudentFilters(searchParams: Record<string, string | string
   };
 }
 
+/**
+ * 学生检索的统一 PostgREST or-filter（跟进台与学生集合共用）。
+ *
+ * STU-01：原来只覆盖 `name`/`school`，学辅拿着来电号码查不到人——而"来电显示后 3 秒内
+ * 找到这个人"正是这两页最高频的动作。这里同时覆盖学生手机号与家长手机号；输入含分隔符
+ * （`139-0000-0106`）时再补一条去分隔符的 ilike，让号码抄写格式不影响命中。
+ */
+export function studentSearchFilter(raw: string): string {
+  const escape = (value: string) => value.replaceAll("\\", "\\\\").replaceAll("%", "\\%").replaceAll("_", "\\_");
+  const escaped = escape(raw);
+  const clauses = [
+    `name.ilike.%${escaped}%`,
+    `school.ilike.%${escaped}%`,
+    `phone.ilike.%${escaped}%`,
+    `parent_phone.ilike.%${escaped}%`,
+  ];
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length >= 3 && digits !== raw) {
+    clauses.push(`phone.ilike.%${digits}%`, `parent_phone.ilike.%${digits}%`);
+  }
+  return clauses.join(",");
+}
+
 function toSummary(row: StudentRow): StudentSummary {
   return {
     id: row.id,
@@ -143,10 +166,7 @@ export async function listStudents(filters: StudentFilters): Promise<{ students:
   if (filters.status) query = query.eq("status", filters.status);
   if (filters.followUpStatus) query = query.eq("follow_up_status", filters.followUpStatus);
   if (filters.grade) query = query.eq("grade", filters.grade);
-  if (filters.q) {
-    const escaped = filters.q.replaceAll("\\", "\\\\").replaceAll("%", "\\%").replaceAll("_", "\\_");
-    query = query.or(`name.ilike.%${escaped}%,school.ilike.%${escaped}%`);
-  }
+  if (filters.q) query = query.or(studentSearchFilter(filters.q));
 
   const { data, error, count } = await query
     .order("updated_at", { ascending: false })

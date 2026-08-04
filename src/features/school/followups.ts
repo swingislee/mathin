@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { collectPostgrestRowsInBatches } from "@/lib/supabase/postgrest-batches";
 import { addDays, startOfDay, startOfWeek } from "./schedule";
-import { FOLLOW_UP_STATUSES, type FollowUpStatus, type StudentStatus } from "./students";
+import { FOLLOW_UP_STATUSES, studentSearchFilter, type FollowUpStatus, type StudentStatus } from "./students";
 
 // ---------------------------------------------------------------------------
 // 学辅跟进工作台数据层（P4C-6 §6）。零权限分支：scope=mine 只是 assigned_to 过滤，
@@ -43,7 +43,7 @@ export interface FollowUpBoard {
 export function parseBoardParams(
   searchParams: Record<string, string | string[] | undefined>,
   canScopeAll: boolean,
-): { scope: BoardScope; bucket: BoardBucket | undefined } {
+): { scope: BoardScope; bucket: BoardBucket | undefined; q: string | undefined } {
   const pick = (key: string) => {
     const value = searchParams[key];
     return Array.isArray(value) ? value[0] : value;
@@ -54,6 +54,8 @@ export function parseBoardParams(
     // 默认我名下；无 student.view.all 的人强制 mine（即便手改 URL，RLS 也只回名下）。
     scope: canScopeAll && rawScope === "all" ? "all" : "mine",
     bucket: (BOARD_BUCKETS as readonly string[]).includes(rawBucket ?? "") ? (rawBucket as BoardBucket) : undefined,
+    // 检索串不入库，超长截断而不是拒绝（AGENTS.md「Server Action 入参校验」同一原则）。
+    q: pick("q")?.trim().slice(0, 80) || undefined,
   };
 }
 
@@ -67,7 +69,7 @@ interface BoardStudentRow {
   next_follow_up_at: string | null;
 }
 
-export async function listFollowUpBoard(userId: string, scope: BoardScope, bucket?: BoardBucket): Promise<FollowUpBoard> {
+export async function listFollowUpBoard(userId: string, scope: BoardScope, bucket?: BoardBucket, q?: string): Promise<FollowUpBoard> {
   const supabase = await createClient();
   const now = new Date();
   const nowIso = now.toISOString();
@@ -83,6 +85,9 @@ export async function listFollowUpBoard(userId: string, scope: BoardScope, bucke
     .order("next_follow_up_at", { ascending: true, nullsFirst: false })
     .limit(500);
   if (scope === "mine") query = query.eq("assigned_to", userId);
+  // 检索下沉到查询而不是在 500 行上限之后做内存过滤：全量学辅的队列会超过这个上限，
+  // 内存过滤会让"搜得到的人"取决于排序截断位置。
+  if (q) query = query.or(studentSearchFilter(q));
   const { data: studentRows, error } = await query.returns<BoardStudentRow[]>();
   if (error) throw new Error(error.message);
   const students = studentRows ?? [];
