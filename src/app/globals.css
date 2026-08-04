@@ -217,6 +217,26 @@ button, a { -webkit-tap-highlight-color: transparent; }
   :root:not(:has([data-dashboard-nav-floating])) { --main-floating-control-safe-inline-size: 0px; }
 }
 
+/*
+ * panel 工作区的"定高不滚动"开关（docs/plan/27 §3 D4）。
+ *
+ * 这条判据从来不是"视口够不够宽"，而是"工作区拿到的宽度够不够"。侧栏展开时
+ * 1280 视口只留 976px，1280 是合理阈值；侧栏收起到图标或隐藏之后，1024 视口就有
+ * 904–960px，与前者等价。写成一组类而不是散落各页的 `xl:` 前缀，是因为它同时出现在
+ * 外壳（main 与内容容器）和四条 panel 路由的页面壳上，任何一处漏改都会让工作区
+ * 在收起侧栏后半高塌陷。未分层规则优先级高于 utilities 层，正是这里需要的。
+ */
+@media (min-width: 1280px) {
+  .panel-canvas { height: 100%; min-height: 0; }
+  .panel-canvas-flex { display: flex; }
+  .panel-canvas-clip { overflow: hidden; }
+}
+@media (min-width: 1024px) {
+  :root:not(:has([data-dashboard-sidebar="expanded"])) .panel-canvas { height: 100%; min-height: 0; }
+  :root:not(:has([data-dashboard-sidebar="expanded"])) .panel-canvas-flex { display: flex; }
+  :root:not(:has([data-dashboard-sidebar="expanded"])) .panel-canvas-clip { overflow: hidden; }
+}
+
 /* 纸纹：极轻的灰度噪点覆盖全页（docs/plan/01：纸感） */
 body::after {
   content: "";

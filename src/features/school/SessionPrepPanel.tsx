@@ -11,6 +11,7 @@ import { getSessionCoursewareLearningCheckPages, getSessionLearningSetup } from 
 import { SessionPreparationFlow } from "./SessionPreparationFlow";
 import { getSessionPreparationArtifacts } from "./session-preparation-artifacts";
 import { SessionPrepAutostart } from "./SessionPrepAutostart";
+import { SessionPrepSplit } from "./SessionPrepSplit";
 import { SessionLessonPlanWorkspace } from "./SessionLessonPlanWorkspace";
 import { getTeacherPreparationWorkspace } from "./teacher-preparation";
 import { isFeatureEnabled } from "./organization-settings";
@@ -106,32 +107,34 @@ export async function SessionPrepPanel({
           </section>
         ) : null}
 
-        <div className="grid min-h-0 min-w-0 flex-1 gap-4 xl:grid-cols-[minmax(24rem,30rem)_minmax(0,1fr)]">
-          <aside className="flex min-h-0 min-w-0 flex-col">
-            {canViewPrepArchive ? (
-              <SessionPreparationFlow
-                key={Object.entries(prepArtifacts.reviews)
-                  .map(([kind, review]) => `${kind}:${review?.revision ?? 0}:${review?.status ?? "none"}`)
-                  .join("|")}
-                sessionId={detail.id}
-                initial={prepArtifacts}
-                solutionRecords={teacherPreparation.solutionRecords}
-                solutionPageLabels={solutionPageLabels}
-                solutionPagePreviews={docPreviews}
-                lessonPlanEditor={(
-                  <SessionLessonPlanWorkspace
-                    lessonPlan={teacherPreparation.lessonPlan}
-                    readOnly={preparationWorkflowReadOnly}
-                  />
-                )}
-                initialStage={initialStep}
-                readOnly={preparationWorkflowReadOnly}
-                reviewerReadOnly={!regularPreparationEditing}
-              />
-            ) : null}
-          </aside>
-
-          <section className="flex min-h-0 min-w-0 flex-col">
+        <SessionPrepSplit
+          flow={(
+            <aside className="flex min-h-0 min-w-0 flex-1 flex-col">
+              {canViewPrepArchive ? (
+                <SessionPreparationFlow
+                  key={Object.entries(prepArtifacts.reviews)
+                    .map(([kind, review]) => `${kind}:${review?.revision ?? 0}:${review?.status ?? "none"}`)
+                    .join("|")}
+                  sessionId={detail.id}
+                  initial={prepArtifacts}
+                  solutionRecords={teacherPreparation.solutionRecords}
+                  solutionPageLabels={solutionPageLabels}
+                  solutionPagePreviews={docPreviews}
+                  lessonPlanEditor={(
+                    <SessionLessonPlanWorkspace
+                      lessonPlan={teacherPreparation.lessonPlan}
+                      readOnly={preparationWorkflowReadOnly}
+                    />
+                  )}
+                  initialStage={initialStep}
+                  readOnly={preparationWorkflowReadOnly}
+                  reviewerReadOnly={!regularPreparationEditing}
+                />
+              ) : null}
+            </aside>
+          )}
+          courseware={(
+            <section className="flex min-h-0 min-w-0 flex-1 flex-col">
             {detail.lectureObjectives && (
               <div className="mb-3 flex min-w-0 items-baseline gap-2 border-l-2 border-crater/50 pl-3 text-xs">
                 <span className="shrink-0 text-muted">{t("lectureObjectives")}</span>
@@ -173,8 +176,9 @@ export async function SessionPrepPanel({
                 structureReadOnly={!canEditSessionCourseware}
               />
             ) : null}
-          </section>
-        </div>
+            </section>
+          )}
+        />
       </div>
     </>
   );

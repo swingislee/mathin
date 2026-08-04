@@ -17,7 +17,7 @@ export default async function LectureWorkspacePage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  return <div className="flex w-full min-w-0 flex-1 flex-col xl:h-full xl:min-h-0">
+  return <div className="flex w-full min-w-0 flex-1 flex-col panel-canvas">
     <Suspense fallback={<div className="mt-6 h-96 animate-pulse rounded-2xl border border-line bg-card" />}>
       <LectureWorkspaceContent locale={locale} params={params} searchParams={searchParams} />
     </Suspense>

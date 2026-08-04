@@ -118,7 +118,9 @@ export function SessionPreparationCoursewareReview({
 
   return (
     <section
-      className="flex h-[calc(100vh-6rem)] max-h-[42rem] min-h-[36rem] min-w-0 flex-col"
+      // doc 27 §5.1：min-h-[36rem] 超出 1024×768 去掉页头后的可用高度，强制外层再滚一层；
+      // 高度上限也改用 dvh（与 dialog/sheet 一致），移动端地址栏收起时 vh 会多算一截。
+      className="flex h-[calc(100dvh-12rem)] max-h-[42rem] min-h-[26rem] min-w-0 flex-col"
       data-preparation-review-courseware
     >
       <div className="mb-2 flex min-h-8 items-center justify-between gap-3">
@@ -134,7 +136,8 @@ export function SessionPreparationCoursewareReview({
         ) : null}
       </div>
       <CoursewarePreviewWorkspace
-        className="min-h-0 flex-1 xl:grid-cols-1 xl:grid-rows-[minmax(10rem,32%)_minmax(0,1fr)]"
+        className="min-h-0 flex-1"
+        layoutId="preparation-review-courseware"
         railWidth="standard"
         items={items}
         selectedIndex={safeSelectedIndex}

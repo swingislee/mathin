@@ -78,10 +78,13 @@ async function PreparationReviewContent({
       {rows.length === 0 || !detail ? (
         <DashboardEmptyCard>{t("prepReviewQueueEmpty")}</DashboardEmptyCard>
       ) : (
-        <div className="grid gap-5 xl:grid-cols-[17rem_minmax(0,1fr)]">
+        // doc 27 §5.1 H3：三层网格原先都按 xl:(1280 视口) 判断，而那一刻正文只有 976px，
+        // 复核区被逐层钳到 380px。改按正文容器自身宽度分栏，队列列从 17rem 收到 14rem。
+        <div className="grid gap-5 @4xl/page:grid-cols-[14rem_minmax(0,1fr)]">
           <aside className="overflow-hidden rounded-2xl border border-line bg-card">
             <div className="border-b border-line px-4 py-3 text-xs font-medium text-muted">{t("prepReviewQueueTitle")}</div>
-            <ol className="max-h-[38rem] divide-y divide-line overflow-y-auto">
+            {/* 窄容器时队列在复核区上方，38rem 会占满 768 高度的整屏；此时压到 45dvh。 */}
+            <ol className="max-h-[45dvh] divide-y divide-line overflow-y-auto @4xl/page:max-h-[38rem]">
               {rows.map((row) => (
                 <li key={row.sessionId + row.artifactKind}>
                   <Link
@@ -104,7 +107,7 @@ async function PreparationReviewContent({
               <h2 className="font-display text-lg text-ink">{selectedRows[0]?.classroomName} · {selectedRows[0]?.sessionTitle}</h2>
               <p className="mt-1 text-xs text-muted">{t("prepReviewSessionIntro")}</p>
             </div>
-            <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(18rem,0.85fr)_minmax(0,1.15fr)]">
+            <div className="grid min-w-0 items-start gap-4 @5xl/page:grid-cols-[minmax(16rem,0.8fr)_minmax(0,1.2fr)]">
               <div className="grid min-w-0 gap-4">
                 {selectedRows.map((row) => (
                   <div

@@ -186,7 +186,7 @@ export function ScheduleWeekView({
       // 就只剩三个按钮，390px 下不会被日期串挤到换行。
       meta={<span>{dayFormatter.format(weekStart)} – {dayFormatter.format(addDays(weekStart, 6))}</span>}
       density="compact"
-      className="flex w-full min-w-0 flex-1 flex-col xl:h-full xl:min-h-0"
+      className="flex w-full min-w-0 flex-1 flex-col panel-canvas"
       bodyClassName="min-h-0 flex-1"
       contentClassName="flex min-h-0 flex-1 flex-col"
       commandPanel={

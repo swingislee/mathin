@@ -3,9 +3,27 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import { usePanelLayout } from "@/hooks/use-panel-layout";
+import { useSplitOrientation } from "@/hooks/use-split-orientation";
 import { Link } from "@/i18n/navigation";
 import { useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
+
+/**
+ * 目录与预览并排所需的最小工作区宽度（docs/plan/27 §4）。
+ *
+ * 阈值是按 4:3 舞台的实际边长算出来的，不是按"看起来够宽"。舞台边长
+ * `min(预览宽, 预览高 × 4/3)`：上下分栏时预览只拿到约 2/3 的高度，横向分栏时拿到全高。
+ * 在 800 高的视口上，两者的交叉点落在工作区宽约 500px——比这更宽，横向分栏的舞台更大。
+ * 取 560 留一档余量。
+ */
+const SIDE_BY_SIDE_MIN_WIDTH = 560;
+
+/** 目录列的像素合同：wide 用于备课工作区（行内有勾选与状态），standard 用于只读复核。 */
+const RAIL_DEFAULT_SIZE = { standard: 200, wide: 224 } as const;
+const RAIL_MIN_SIZE = 180;
+const PREVIEW_MIN_SIZE = 320;
 
 export interface CoursewarePreviewListItem {
   id: string;
@@ -43,6 +61,7 @@ export function CoursewarePreviewWorkspace({
   preview,
   previewAspect = 4 / 3,
   railWidth = "standard",
+  layoutId = "courseware-preview",
   className,
 }: {
   items: CoursewarePreviewListItem[];
@@ -59,11 +78,18 @@ export function CoursewarePreviewWorkspace({
   preview: ReactNode;
   previewAspect?: number;
   railWidth?: "standard" | "wide";
+  /** 拖拽布局的持久化标识；同一页面里的两个预览工作区必须给不同值。 */
+  layoutId?: string;
   className?: string;
 }) {
   const router = useRouter();
   const previewBodyRef = useRef<HTMLDivElement>(null);
   const [stageWidth, setStageWidth] = useState<number | null>(null);
+  const [elementRef, orientation] = useSplitOrientation(SIDE_BY_SIDE_MIN_WIDTH);
+  const horizontal = orientation === "horizontal";
+  // 两个方向各存一份：横向记的是目录的像素宽，纵向记的是目录占的高度比例，
+  // 混在一起会让转屏后的第一帧拿到一个属于另一个方向的数字。
+  const { groupRef, onLayoutChanged } = usePanelLayout(`${layoutId}:${orientation}`);
 
   useEffect(() => {
     const body = previewBodyRef.current;
@@ -115,17 +141,26 @@ export function CoursewarePreviewWorkspace({
   };
 
   return (
-    <div
-      className={cn(
-        "grid h-full min-h-0 min-w-0 grid-rows-[minmax(10rem,32%)_minmax(0,1fr)] gap-3 xl:grid-rows-1",
-        railWidth === "wide"
-          ? "xl:grid-cols-[17rem_minmax(0,1fr)]"
-          : "xl:grid-cols-[13rem_minmax(0,1fr)]",
-        className,
-      )}
+    <ResizablePanelGroup
+      elementRef={elementRef}
+      groupRef={groupRef}
+      orientation={orientation}
+      onLayoutChanged={onLayoutChanged}
+      className={cn("h-full min-h-0 min-w-0", className)}
       data-courseware-preview-workspace
+      data-orientation={orientation}
     >
-      <section className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-line bg-card" data-courseware-page-rail>
+      <ResizablePanel
+        id="rail"
+        minSize={horizontal ? RAIL_MIN_SIZE : "18%"}
+        maxSize={horizontal ? "45%" : "50%"}
+        defaultSize={horizontal ? RAIL_DEFAULT_SIZE[railWidth] : "32%"}
+        // 目录是一份定宽列表：窗口变宽时多出来的像素应该全部给舞台，
+        // 默认的等比分配会让目录一起变宽，4:3 舞台反而拿不到增量。
+        groupResizeBehavior={horizontal ? "preserve-pixel-size" : undefined}
+        className="overflow-hidden rounded-2xl border border-line bg-card"
+        data-courseware-page-rail
+      >
         <div className="flex min-h-10 shrink-0 items-center gap-2 border-b border-line px-3 py-2">
           <span className="min-w-0 flex-1 truncate text-xs font-medium text-muted">{directoryLabel}</span>
           {railStatus}
@@ -174,9 +209,16 @@ export function CoursewarePreviewWorkspace({
           })}
         </ol>
         {railFooter ? <div className="shrink-0 border-t border-line p-1.5">{railFooter}</div> : null}
-      </section>
+      </ResizablePanel>
 
-      <section className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-line bg-moon/10" data-courseware-preview>
+      <ResizableHandle withHandle orientation={orientation} className={horizontal ? "mx-1.5" : "my-1.5"} />
+
+      <ResizablePanel
+        id="preview"
+        minSize={horizontal ? PREVIEW_MIN_SIZE : "30%"}
+        className="overflow-hidden rounded-2xl border border-line bg-moon/10"
+        data-courseware-preview
+      >
         <div className="flex min-h-10 shrink-0 items-center justify-between border-b border-line px-3 py-2">
           <span className="text-xs font-medium text-muted">{previewLabel}</span>
           {selectedPageLabel ? <span className="min-w-0 truncate pl-4 text-xs text-muted">{selectedPageLabel}</span> : null}
@@ -218,7 +260,7 @@ export function CoursewarePreviewWorkspace({
             <ChevronRight size={15} />
           </Button>
         </div>
-      </section>
-    </div>
+      </ResizablePanel>
+    </ResizablePanelGroup>
   );
 }

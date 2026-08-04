@@ -37,7 +37,7 @@ export default async function CoursewareAssetDetailPage({
   });
 
   return (
-    <div className="flex w-full min-w-0 flex-1 flex-col xl:h-full xl:min-h-0">
+    <div className="flex w-full min-w-0 flex-1 flex-col panel-canvas">
       <AssetReplacementController detail={detail} backHref={backHref} />
     </div>
   );

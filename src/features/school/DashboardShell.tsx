@@ -261,16 +261,15 @@ export function DashboardShell({
         data-dashboard-canvas
         className={cn(
           "flex min-w-0 flex-1 flex-col overflow-y-auto pb-5 [--dashboard-gutter:1rem] px-(--dashboard-gutter) md:[--dashboard-gutter:1.5rem] lg:pb-6 lg:[--dashboard-gutter:2rem] 2xl:[--dashboard-gutter:2.5rem]",
-          // panel 工作区的"定高不滚动"需要一份够用的宽度，而不是一个够大的视口。
-          // 侧栏收起后 1024 的视口就已经有 960px 可用，和展开态的 1280 视口等价；
-          // 继续按 xl 判断会让收起侧栏这个动作对工作区完全没有效果（doc 27 §3 D4）。
-          workspace && (sidebarMode === "expanded" ? "xl:overflow-hidden" : "lg:overflow-hidden"),
+          // panel 工作区的"定高不滚动"需要一份够用的宽度，而不是一个够大的视口；
+          // 阈值随侧栏状态变化，规则写在 globals.css 的 .panel-canvas-* 里（doc 27 §3 D4）。
+          workspace && "panel-canvas-clip",
         )}
       >
         <div
           data-dashboard-content
           data-dashboard-workspace={workspace ? "true" : undefined}
-          className={cn("min-w-0", workspace && (sidebarMode === "expanded" ? "min-h-0 flex-1 xl:flex" : "min-h-0 flex-1 lg:flex"))}
+          className={cn("min-w-0", workspace && "min-h-0 flex-1 panel-canvas-flex")}
         >
           {children}
         </div>
