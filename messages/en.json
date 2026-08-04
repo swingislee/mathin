@@ -314,7 +314,10 @@
     "shell": {
       "openNav": "Open navigation",
       "title": "Navigation",
-      "closeNav": "Close navigation"
+      "closeNav": "Close navigation",
+      "collapseNav": "Collapse to icons",
+      "hideNav": "Hide navigation",
+      "expandNav": "Show navigation"
     }
   },
   "coursewareStudio": {
@@ -1705,7 +1708,11 @@
       "changeFailed": "Failed to update status, please retry.",
       "expandAll": "Show all {count}",
       "collapse": "Collapse",
-      "emptyGroup": "No students in this stage yet."
+      "emptyGroup": "No students in this stage yet.",
+      "searchPlaceholder": "Search name, school, or phone fragment",
+      "searchSubmit": "Search",
+      "searchReset": "Clear search",
+      "searchEmpty": "No students match this search."
     },
     "students": {
       "title": "Students",
@@ -1995,7 +2002,9 @@
       "statusLabel": "Status",
       "accountLabel": "Account",
       "absentCount": "Absences",
-      "ungradedCount": "Ungraded"
+      "ungradedCount": "Ungraded",
+      "mergeStale": "That record was merged or deleted by someone else. Refresh the page and confirm again.",
+      "mergeAlreadyMerged": "That record has already been merged and cannot be merged again."
     },
     "courseware": {
       "backToCourse": "Back to course",

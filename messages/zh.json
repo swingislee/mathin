@@ -314,7 +314,10 @@
     "shell": {
       "openNav": "打开导航",
       "title": "导航",
-      "closeNav": "关闭导航"
+      "closeNav": "关闭导航",
+      "collapseNav": "收起为图标",
+      "hideNav": "隐藏导航",
+      "expandNav": "展开导航"
     }
   },
   "coursewareStudio": {
@@ -1705,7 +1708,11 @@
       "changeFailed": "改状态失败，请重试。",
       "expandAll": "展开全部 {count} 人",
       "collapse": "收起",
-      "emptyGroup": "这一档暂时没有学生。"
+      "emptyGroup": "这一档暂时没有学生。",
+      "searchPlaceholder": "搜索姓名、学校或手机号片段",
+      "searchSubmit": "搜索",
+      "searchReset": "清除搜索",
+      "searchEmpty": "没有匹配的学生。"
     },
     "students": {
       "title": "学生",
@@ -1995,7 +2002,9 @@
       "statusLabel": "状态",
       "accountLabel": "账号",
       "absentCount": "缺勤次数",
-      "ungradedCount": "待批作业"
+      "ungradedCount": "待批作业",
+      "mergeStale": "对方档案已被其他同事合并或删除，请刷新页面后重新确认。",
+      "mergeAlreadyMerged": "该档案已经合并过，不能再次作为合并来源。"
     },
     "courseware": {
       "backToCourse": "返回课程",

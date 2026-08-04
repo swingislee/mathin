@@ -197,7 +197,13 @@ button, a { -webkit-tap-highlight-color: transparent; }
  * 因此按钮增减、身份切换、缩放和断点变化都不需要人工调 pr-*。
  *
  * 默认值按当前实现取整：右上是两个 44px 圆形控件 + gap-2 + 视口内边距 + 12px 呼吸；
- * 左上主入口只在 lg 以下存在（桌面端导航常驻侧栏），所以 lg 起归零。
+ * 左上主入口在 lg 以下始终存在（无常驻侧栏），在 lg 及以上只有侧栏被隐藏时才出现
+ * （docs/plan/27 §3 D2）。因此 lg 起的归零要跟着侧栏状态走，不能按断点一刀切——
+ * 否则隐藏侧栏后，恢复按钮会压住页头标题。
+ *
+ * 判据用 :has() 而不是给 Shell 加一层 class：这些变量必须留在 :root，运行时由
+ * useFloatingControlMetrics 写在 documentElement 的行内样式上覆盖（行内优先级更高）。
+ * 一旦改成在 Shell 那一层声明，它离页头更近，反而会把实测值挡掉。
  */
 :root {
   --main-floating-control-safe-inline-size: 64px;
@@ -208,7 +214,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
   :root { --global-floating-controls-safe-inline-size: 136px; }
 }
 @media (min-width: 1024px) {
-  :root { --main-floating-control-safe-inline-size: 0px; }
+  :root:not(:has([data-dashboard-nav-floating])) { --main-floating-control-safe-inline-size: 0px; }
 }
 
 /* 纸纹：极轻的灰度噪点覆盖全页（docs/plan/01：纸感） */
