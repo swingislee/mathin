@@ -15,15 +15,18 @@ export interface DataRepairCapability {
   definitionHash: string;
 }
 
+// 财务关闭期间（或调用者无 finance.order.view 时）服务端会裁剪金额字段并置
+// `amountsRedacted`，投影里只剩审计元数据与状态迁移，因此金额一律是可选的。
 export interface OrderStatusRepairSnapshot {
   orderId: string;
-  amountOriginal: number;
-  amountDiscount: number;
-  amountDue: number;
-  expectedDue: number;
-  paidTotal: number;
-  refundedTotal: number;
-  netPaid: number;
+  amountOriginal?: number;
+  amountDiscount?: number;
+  amountDue?: number;
+  expectedDue?: number;
+  paidTotal?: number;
+  refundedTotal?: number;
+  netPaid?: number;
+  amountsRedacted?: boolean;
   hasPendingRefund: boolean;
   status: string;
   expectedStatus: string;

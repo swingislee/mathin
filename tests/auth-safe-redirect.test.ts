@@ -15,7 +15,9 @@ describe("resolveSafeReturnTo", () => {
     expect(resolveSafeReturnTo(raw, "zh", FALLBACK)).toBe(raw);
   });
 
-  it.each([
+  // 显式标注成同一个元组类型：混入 null/undefined 会让 it.each 推断出元组联合，
+  // 而联合类型下 vitest 的回调不能再省略参数，typecheck 会报 arity 不符。
+  const rejected: Array<[string | null | undefined, string]> = [
     ["https://example.com/", "绝对外部 URL"],
     ["http://example.com/", "绝对外部 URL（http）"],
     ["//example.com/", "协议相对 URL"],
@@ -28,7 +30,8 @@ describe("resolveSafeReturnTo", () => {
     ["", "空串"],
     [null, "缺省"],
     [undefined, "缺省"],
-  ])("rejects %s (%s)", (raw) => {
+  ];
+  it.each(rejected)("rejects %s (%s)", (raw) => {
     expect(resolveSafeReturnTo(raw, "zh", FALLBACK)).toBe(FALLBACK);
   });
 

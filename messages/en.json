@@ -1217,8 +1217,12 @@
       "rollbackSuccess": "Repair rolled back.",
       "rollbackFailed": "Repair rollback failed.",
       "rollbackTargetChanged": "The target changed after execution. Rollback was refused to avoid overwriting newer data.",
-      "cancel": "Cancel"
-    },    "activities": {
+      "cancel": "Cancel",
+      "financeClosed": "Finance is safely closed for 1.0: order-status repairs cannot be previewed, executed, or rolled back. This section keeps audit metadata only.",
+      "financeClosedError": "Finance is safely closed for 1.0. The release gate rejected this order repair action.",
+      "amountsRedacted": "Monetary fields are withheld while finance is closed"
+    },
+    "activities": {
       "title": "Activities",
       "intro": "Manage trials, assessments, workshops, lectures and competitions. Results are added to each student's follow-up timeline.",
       "new": "New activity",
@@ -1837,7 +1841,7 @@
       "sessionReviews": "Per-student reviews",
       "videoReviews": "Video explanations",
       "noVideoReviews": "No video explanations have been published yet.",
-      "videoReviewed": "Teacher explanation available",
+      "videoReviewed": "Reviewed · score {score}",
       "videoReviewScore": "Explanation score {score}",
       "noLearningResults": "No learning results have been published yet.",
       "learningChecksTitle": "In-class learning checks",
@@ -1854,7 +1858,6 @@
       "reviewStatusHint_withdrawn": "This result was withdrawn for revision and will return after it is republished.",
       "sessionVideos": "Session videos",
       "noVideos": "No session videos yet.",
-      "videoReviewed": "Reviewed · score {score}",
       "videoPending": "Pending review",
       "untitledAssignment": "Untitled assignment",
       "ungraded": "Ungraded",

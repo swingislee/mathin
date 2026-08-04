@@ -7,6 +7,7 @@ import { purgeTestClassroomAction, purgeTestCourseFamilyAction } from "@/feature
 import { getLatestDataQualityRun } from "@/features/school/data-quality";
 import { listDataRepairCapabilities, listDataRepairPlans } from "@/features/school/data-repair";
 import { DashboardCard, DashboardPage } from "@/features/school/dashboard-page";
+import { isFeatureEnabled } from "@/features/school/organization-settings";
 import { listPurgeableClassrooms, listPurgeableCourseFamilies, listZeroReferenceAssets } from "@/features/school/testdata";
 import { getMyPerms, requirePerm } from "@/lib/auth";
 
@@ -21,11 +22,12 @@ export default async function DataMaintenancePage({ params }: { params: Promise<
   const canPurge = perms.has("testdata.purge");
   const canViewAssets = canPurge || perms.has("courseware.asset.manage");
 
-  const [t, latestQualityRun, repairCapabilities, repairPlans, zeroReferenceAssets, purgeableFamilies, purgeableClassrooms] = await Promise.all([
+  const [t, latestQualityRun, repairCapabilities, repairPlans, financeEnabled, zeroReferenceAssets, purgeableFamilies, purgeableClassrooms] = await Promise.all([
     getTranslations("school.testdata"),
     getLatestDataQualityRun(),
     listDataRepairCapabilities(),
     listDataRepairPlans(),
+    isFeatureEnabled("finance.enabled").catch(() => false),
     canViewAssets ? listZeroReferenceAssets() : Promise.resolve([]),
     canPurge ? listPurgeableCourseFamilies() : Promise.resolve([]),
     canPurge ? listPurgeableClassrooms() : Promise.resolve([]),
@@ -52,6 +54,7 @@ export default async function DataMaintenancePage({ params }: { params: Promise<
           initialCapabilities={repairCapabilities}
           initialPlans={repairPlans}
           canManage={canRunQualityScan}
+          financeEnabled={financeEnabled}
         />
 
         {canViewAssets ? <CoursewareZeroReferenceReport assets={zeroReferenceAssets} /> : null}

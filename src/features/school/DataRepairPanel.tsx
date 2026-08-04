@@ -47,18 +47,26 @@ export function DataRepairPanel({
   initialCapabilities,
   initialPlans,
   canManage,
+  financeEnabled,
 }: {
   latestRun: DataQualityRun | null;
   initialCapabilities: DataRepairCapability[];
   initialPlans: DataRepairPlan[];
   canManage: boolean;
+  /** R1-8 关闭门：为 false 时 finance 域的修复能力只保留审计视图，不提供预览/执行/回滚入口。 */
+  financeEnabled: boolean;
 }) {
   const t = useTranslations("school.dataRepair");
   const locale = useLocale();
   const router = useRouter();
   const [localPlans, setLocalPlans] = useState<DataRepairPlan[]>([]);
   const dateFormatter = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" });
-  const candidates = latestRun?.findings.filter(isOrderStatusCandidate) ?? [];
+  const financeRepairKeys = new Set(
+    initialCapabilities.filter((capability) => capability.domain === "finance").map((capability) => capability.repairKey),
+  );
+  // 订单状态重算是 finance 域能力：关闭期间不生成候选，也不显示执行/回滚入口。
+  const candidates = financeEnabled ? (latestRun?.findings.filter(isOrderStatusCandidate) ?? []) : [];
+  const canActOn = (plan: DataRepairPlan) => canManage && (financeEnabled || !financeRepairKeys.has(plan.repairKey));
 
   const plans = [...localPlans, ...initialPlans]
     .filter((plan, index, all) => all.findIndex((candidate) => candidate.id === plan.id) === index)
@@ -72,6 +80,7 @@ export function DataRepairPanel({
     successMessage: t("previewSuccess"),
     errorMessage: {
       default: t("previewFailed"),
+      FINANCE_RELEASE_CLOSED: t("financeClosedError"),
       REPAIR_NOT_APPLICABLE: t("notApplicable"),
       QUALITY_FINDING_NOT_FOUND: t("findingExpired"),
     },
@@ -81,6 +90,7 @@ export function DataRepairPanel({
     successMessage: t("executeSuccess"),
     errorMessage: {
       default: t("executeFailed"),
+      FINANCE_RELEASE_CLOSED: t("financeClosedError"),
       REPAIR_TARGET_CHANGED: t("targetChanged"),
       REPAIR_PLAN_EXPIRED: t("planExpired"),
       REPAIR_PLAN_STATE_CONFLICT: t("stateConflict"),
@@ -91,6 +101,7 @@ export function DataRepairPanel({
     successMessage: t("rollbackSuccess"),
     errorMessage: {
       default: t("rollbackFailed"),
+      FINANCE_RELEASE_CLOSED: t("financeClosedError"),
       REPAIR_TARGET_CHANGED: t("rollbackTargetChanged"),
       REPAIR_PLAN_STATE_CONFLICT: t("stateConflict"),
     },
@@ -119,7 +130,9 @@ export function DataRepairPanel({
               <h3 id="repair-candidates-title" className="flex items-center gap-2 text-sm font-semibold text-ink"><Wrench size={16} />{t("candidatesTitle")}</h3>
               <p className="mt-1 text-xs text-muted">{t("candidatesHint")}</p>
             </div>
-            {candidates.length === 0 ? (
+            {!financeEnabled ? (
+              <DashboardEmptyCard className="border-0 bg-moon/10">{t("financeClosed")}</DashboardEmptyCard>
+            ) : candidates.length === 0 ? (
               <DashboardEmptyCard className="border-0 bg-moon/10">{t("candidatesEmpty")}</DashboardEmptyCard>
             ) : (
               <ul className="divide-y divide-line rounded-xl border border-line px-4">
@@ -166,7 +179,7 @@ export function DataRepairPanel({
                         {" · "}{dateFormatter.format(new Date(plan.createdAt))}
                       </p>
                     </div>
-                    {canManage && plan.status === "previewed" ? (
+                    {canActOn(plan) && plan.status === "previewed" ? (
                       <AlertDialog>
                         <AlertDialogTrigger asChild><Button type="button" size="sm" disabled={execute.pending}><Play size={15} />{t("executeAction")}</Button></AlertDialogTrigger>
                         <AlertDialogContent>
@@ -181,7 +194,7 @@ export function DataRepairPanel({
                         </AlertDialogContent>
                       </AlertDialog>
                     ) : null}
-                    {canManage && plan.status === "executed" ? (
+                    {canActOn(plan) && plan.status === "executed" ? (
                       <AlertDialog>
                         <AlertDialogTrigger asChild><Button type="button" size="sm" variant="secondary" disabled={rollback.pending}><RotateCcw size={15} />{t("rollbackAction")}</Button></AlertDialogTrigger>
                         <AlertDialogContent>

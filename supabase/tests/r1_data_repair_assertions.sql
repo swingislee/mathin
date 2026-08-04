@@ -85,11 +85,14 @@ select :'teacher_id'::uuid, role_row.id, :'admin_id'::uuid
   from public.staff_roles role_row where role_row.key = 'principal'
 on conflict do nothing;
 
-create function public.r17d_test_set_order_status(p_order_id uuid, p_status text)
-returns void language sql security definer set search_path = public, pg_temp
-as $$ update public.orders set status = p_status where id = p_order_id $$;
-revoke all on function public.r17d_test_set_order_status(uuid, text) from public, anon, authenticated;
-grant execute on function public.r17d_test_set_order_status(uuid, text) to authenticated;
+-- BUG-R1M-025 后：order_status_recompute 登记在 finance 域，R1-8 关闭门会在
+-- preview/execute/rollback 三个入口拒绝它。`finance_release_gate_open()` 是硬编码
+-- `select false` 的发布门，测试不应替换它（也无法跨环境替换：开发库上该函数属主是
+-- supabase_admin）。因此本文件的执行链断言按关闭态重写：
+--   · 结构、账本不可变、直接写权限、越权读取 —— 与关闭无关，继续全量校验；
+--   · preview/execute/rollback 的目标摘要、stale 拒绝、回滚幂等 —— 关闭期间无法驱动，
+--     改为断言三个入口一律被 FINANCE_RELEASE_CLOSED 拒绝且不留半写。
+-- 未来打开财务发布门的迁移必须同时恢复本文件的执行链断言（见 doc 25 财务发布门）。
 
 insert into public.orders(order_no, student_id, amount_original, amount_discount, amount_due, status, created_by, term_id)
 values('__R1_7D_ORDER__' || left(replace(gen_random_uuid()::text, '-', ''), 10), :'student_id'::uuid,
@@ -115,89 +118,43 @@ select set_config('test.r17d_due_mismatch_finding', :'due_mismatch_finding_id', 
 
 do $$
 declare
-  preview jsonb;
-  executed jsonb;
-  rolled_back jsonb;
-  final_execution jsonb;
-  v_plan_id uuid;
-  final_plan_id uuid;
-  stale_status text;
+  v_order_status_before text;
+  v_plan_count_before bigint;
 begin
   if jsonb_array_length(public.list_data_repair_capabilities()) <> 4 then
     raise exception 'R1_7D_CAPABILITY_PROJECTION_INCORRECT';
   end if;
-  preview := public.preview_order_status_repair(current_setting('test.r17d_repair_finding')::uuid);
-  v_plan_id := (preview ->> 'id')::uuid;
-  if preview ->> 'status' <> 'previewed'
-     or (preview ->> 'impactCount')::integer <> 1
-     or preview ->> 'targetHash' = preview ->> 'expectedAfterHash'
-     or jsonb_array_length(preview -> 'events') <> 1
-     or preview #>> '{recoverySnapshot,status}' <> 'refunding'
-     or preview #>> '{expectedAfterSnapshot,status}' <> 'unpaid' then
-    raise exception 'R1_7D_PREVIEW_INCOMPLETE';
-  end if;
 
-  perform public.r17d_test_set_order_status(current_setting('test.r17d_repair_order')::uuid, 'partial');
+  select status into v_order_status_before from public.orders where id = current_setting('test.r17d_repair_order')::uuid;
+  select count(*) into v_plan_count_before from public.data_repair_plans;
+
+  -- 关闭门先于 finding 解析生效：可修复的异常与不可修复的异常都拿到同一个拒绝码，
+  -- 不泄露该订单是否属于可修复集合。
   begin
-    perform public.execute_data_repair_plan(v_plan_id);
-    raise exception 'R1_7D_STALE_EXECUTION_ACCEPTED';
+    perform public.preview_order_status_repair(current_setting('test.r17d_repair_finding')::uuid);
+    raise exception 'R1_7D_CLOSED_PREVIEW_ACCEPTED';
   exception when others then
-    if SQLERRM <> 'REPAIR_TARGET_CHANGED' then raise; end if;
+    if SQLERRM <> 'FINANCE_RELEASE_CLOSED' then raise; end if;
   end;
-  select status into stale_status from public.orders where id = current_setting('test.r17d_repair_order')::uuid;
-  if stale_status <> 'partial'
-     or (select repair_plan.status from public.data_repair_plans repair_plan where repair_plan.id = v_plan_id) <> 'previewed'
-     or exists(select 1 from public.data_repair_events repair_event where repair_event.plan_id = v_plan_id and repair_event.event_type = 'executed') then
-    raise exception 'R1_7D_STALE_EXECUTION_LEFT_PARTIAL_WRITES';
-  end if;
-
-  perform public.r17d_test_set_order_status(current_setting('test.r17d_repair_order')::uuid, 'refunding');
-  executed := public.execute_data_repair_plan(v_plan_id);
-  if executed ->> 'status' <> 'executed'
-     or executed #>> '{afterSnapshot,status}' <> 'unpaid'
-     or executed ->> 'afterHash' <> executed ->> 'expectedAfterHash'
-     or jsonb_array_length(executed -> 'events') <> 2 then
-    raise exception 'R1_7D_EXECUTION_INCOMPLETE';
-  end if;
-
-  rolled_back := public.rollback_data_repair_plan(v_plan_id);
-  if rolled_back ->> 'status' <> 'rolled_back'
-     or rolled_back ->> 'rollbackHash' <> rolled_back ->> 'targetHash'
-     or jsonb_array_length(rolled_back -> 'events') <> 3
-     or (select status from public.orders where id = current_setting('test.r17d_repair_order')::uuid) <> 'refunding' then
-    raise exception 'R1_7D_ROLLBACK_INCOMPLETE';
-  end if;
-  begin
-    perform public.execute_data_repair_plan(v_plan_id);
-    raise exception 'R1_7D_REEXECUTION_ACCEPTED';
-  exception when others then
-    if SQLERRM <> 'REPAIR_PLAN_STATE_CONFLICT' then raise; end if;
-  end;
-
-  final_execution := public.preview_order_status_repair(current_setting('test.r17d_repair_finding')::uuid);
-  final_plan_id := (final_execution ->> 'id')::uuid;
-  final_execution := public.execute_data_repair_plan(final_plan_id);
-  if (select status from public.orders where id = current_setting('test.r17d_repair_order')::uuid) <> 'unpaid'
-     or final_execution ->> 'status' <> 'executed' then
-    raise exception 'R1_7D_FINAL_EXECUTION_INCOMPLETE';
-  end if;
-  if exists(
-    select 1 from public.domain_events event_row
-    join public.notifications notification_row on notification_row.source_event_id = event_row.id
-      where event_row.entity_id in (v_plan_id, final_plan_id)
-  ) or exists(
-    select 1 from public.domain_events event_row
-      where event_row.entity_id in (v_plan_id, final_plan_id) and event_row.target_user_id is not null
-  ) then
-    raise exception 'R1_7D_REPAIR_CREATED_NOTIFICATION_NOISE';
-  end if;
-
   begin
     perform public.preview_order_status_repair(current_setting('test.r17d_due_mismatch_finding')::uuid);
-    raise exception 'R1_7D_DUE_REWRITE_PLAN_ACCEPTED';
+    raise exception 'R1_7D_CLOSED_DUE_PREVIEW_ACCEPTED';
   exception when others then
-    if SQLERRM <> 'REPAIR_NOT_APPLICABLE' then raise; end if;
+    if SQLERRM <> 'FINANCE_RELEASE_CLOSED' then raise; end if;
   end;
+
+  if (select count(*) from public.data_repair_plans) <> v_plan_count_before
+     or (select status from public.orders where id = current_setting('test.r17d_repair_order')::uuid) <> v_order_status_before then
+    raise exception 'R1_7D_CLOSED_PREVIEW_LEFT_WRITES';
+  end if;
+
+  -- 关闭门必须挂在三个入口上，而不是只挂在 preview。
+  if pg_get_functiondef('public.preview_order_status_repair(uuid)'::regprocedure) not ilike '%assert_data_repair_release_open%'
+     or pg_get_functiondef('public.execute_data_repair_plan(uuid)'::regprocedure) not ilike '%assert_data_repair_release_open%'
+     or pg_get_functiondef('public.rollback_data_repair_plan(uuid)'::regprocedure) not ilike '%assert_data_repair_release_open%'
+     or pg_get_functiondef('public.assert_data_repair_release_open(text, integer)'::regprocedure) not ilike '%FINANCE_RELEASE_CLOSED%' then
+    raise exception 'R1_7D_RELEASE_GATE_NOT_WIRED';
+  end if;
 end
 $$;
 

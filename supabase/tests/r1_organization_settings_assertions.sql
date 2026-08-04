@@ -21,7 +21,26 @@ begin
   if (select count(*) from public.organizations) <> 1 then failures := array_append(failures, 'organization singleton missing'); end if;
   if (select count(*) from public.campuses where is_default and status = 'active') <> 1 then failures := array_append(failures, 'default campus missing'); end if;
   if exists(select 1 from public.school_terms where campus_id is null) then failures := array_append(failures, 'term campus backfill missing'); end if;
-  if (select count(*) from public.organization_rule_versions where campus_id is null) <> 6 then failures := array_append(failures, 'rule defaults incomplete'); end if;
+  -- 只校验 6 个默认版本存在。原断言数的是全部行数，任何一次合法的「创建未来生效版本」
+  -- 都会把它打红（人工验收 §9.1 ORG-06 即触发）；与下方 flag 断言一样按 version = 1 收敛。
+  if (select count(*) from public.organization_rule_versions where campus_id is null and version = 1) <> 6 then failures := array_append(failures, 'rule defaults incomplete'); end if;
+  -- BUG-R1M-022：任一时点最多一个版本生效，区间链不得出现重叠开口。
+  if exists(
+    select 1 from public.organization_rule_versions a
+      join public.organization_rule_versions b
+        on b.organization_id = a.organization_id
+       and b.campus_id is not distinct from a.campus_id
+       and b.domain = a.domain and b.id <> a.id
+     where a.effective_until is null and b.effective_until is null
+  ) then failures := array_append(failures, 'rule interval chain has multiple open versions'); end if;
+  if exists(
+    select 1 from public.feature_flag_versions a
+      join public.feature_flag_versions b
+        on b.organization_id = a.organization_id
+       and b.campus_id is not distinct from a.campus_id
+       and b.flag_key = a.flag_key and b.id <> a.id
+     where a.effective_until is null and b.effective_until is null
+  ) then failures := array_append(failures, 'flag interval chain has multiple open versions'); end if;
   if (
     select count(*)
     from public.feature_flag_versions
@@ -137,18 +156,31 @@ $$;
 reset role;
 
 
-select id as old_calendar_id from public.organization_rule_versions
- where domain = 'calendar' and campus_id is null order by version desc limit 1 \gset
+-- 断言写成相对事实：取「当前生效」的版本而不是 max(version)，并用它自己的版本号和值
+-- 作为基线。原写法硬编码 version = 2/3 与 teachingWeekStartsOn = '1'，只能在一次性 CI
+-- 夹具库成立；开发库上任何一次合法的规则变更都会把它打红（人工验收 §9.1 即触发）。
+select id as old_calendar_id, version as old_calendar_version, value ->> 'teachingWeekStartsOn' as old_calendar_start
+  from public.organization_rule_versions
+ where domain = 'calendar' and campus_id is null
+   and effective_from <= now() and (effective_until is null or effective_until > now())
+ order by effective_from desc, version desc limit 1 \gset
+select coalesce(max(version), 0) as calendar_version_before
+  from public.organization_rule_versions where domain = 'calendar' and campus_id is null \gset
 select public.set_organization_rule(
   'calendar', null, '{"teachingWeekStartsOn":2,"weekendDays":[0,6]}'::jsonb,
   now(), 'CI change calendar start'
 ) as new_calendar_id \gset
 select (
-  (select version = 2 and value ->> 'teachingWeekStartsOn' = '2' and supersedes_id = :'old_calendar_id'::uuid
+  (select version = :calendar_version_before + 1 and value ->> 'teachingWeekStartsOn' = '2'
+       and supersedes_id = :'old_calendar_id'::uuid
      from public.organization_rule_versions where id = :'new_calendar_id'::uuid)
-  and (select payload -> 'oldValue' ->> 'teachingWeekStartsOn' = '1'
+  and (select payload -> 'oldValue' ->> 'teachingWeekStartsOn' = :'old_calendar_start'
          and payload -> 'newValue' ->> 'teachingWeekStartsOn' = '2'
        from public.domain_events where entity_id = :'new_calendar_id'::uuid and event_type = 'organization_rule.versioned')
+  -- BUG-R1M-022：新版本必须把上一版本收口，任一时点只剩一条开口区间。
+  and (select effective_until is not null from public.organization_rule_versions where id = :'old_calendar_id'::uuid)
+  and (select count(*) = 1 from public.organization_rule_versions
+        where domain = 'calendar' and campus_id is null and effective_until is null)
 ) as r1_rule_version_ok \gset
 \if :r1_rule_version_ok
 \else
@@ -158,8 +190,11 @@ select (
 
 select public.rollback_organization_rule(:'old_calendar_id'::uuid, now(), 'CI rollback calendar') as rollback_calendar_id \gset
 select (
-  (select version = 3 and value ->> 'teachingWeekStartsOn' = '1' from public.organization_rule_versions where id = :'rollback_calendar_id'::uuid)
-  and public.get_effective_organization_rule('calendar') ->> 'teachingWeekStartsOn' = '1'
+  (select version = :calendar_version_before + 2 and value ->> 'teachingWeekStartsOn' = :'old_calendar_start'
+     from public.organization_rule_versions where id = :'rollback_calendar_id'::uuid)
+  and public.get_effective_organization_rule('calendar') ->> 'teachingWeekStartsOn' = :'old_calendar_start'
+  and (select count(*) = 1 from public.organization_rule_versions
+        where domain = 'calendar' and campus_id is null and effective_until is null)
 ) as r1_rule_rollback_ok \gset
 \if :r1_rule_rollback_ok
 \else

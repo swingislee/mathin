@@ -11,6 +11,7 @@ const findingSchema = z.object({ findingId: uuid });
 const planSchema = z.object({ planId: uuid });
 const repairCodes = [
   ...COMMON_CODES,
+  "FINANCE_RELEASE_CLOSED",
   "QUALITY_FINDING_NOT_FOUND",
   "REPAIR_NOT_APPLICABLE",
   "REPAIR_TARGET_NOT_FOUND",
