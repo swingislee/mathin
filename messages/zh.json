@@ -61,7 +61,9 @@
     "retry": "重试",
     "invalidInput": "输入有误，请检查后重试。",
     "moreFilters": "更多筛选",
-    "clearFilters": "清除筛选"
+    "clearFilters": "清除筛选",
+    "enterFullscreen": "全屏",
+    "exitFullscreen": "退出全屏"
   },
   "notFound": {
     "title": "这一页走丢了",

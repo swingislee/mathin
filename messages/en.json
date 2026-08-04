@@ -61,7 +61,9 @@
     "retry": "Retry",
     "invalidInput": "Invalid input. Please check the form and try again.",
     "moreFilters": "More filters",
-    "clearFilters": "Clear filters"
+    "clearFilters": "Clear filters",
+    "enterFullscreen": "Full screen",
+    "exitFullscreen": "Exit full screen"
   },
   "notFound": {
     "title": "This page wandered off",

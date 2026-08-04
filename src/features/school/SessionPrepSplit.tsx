@@ -34,7 +34,9 @@ export function SessionPrepSplit({ flow, courseware }: { flow: ReactNode; course
       groupRef={groupRef}
       orientation={orientation}
       onLayoutChanged={onLayoutChanged}
-      className="min-h-0 min-w-0 flex-1"
+      // 定高画布之外（窄屏、整页滚动）父级不是 flex，只给 flex-1 会让分栏塌成 0 高。
+      // .panel-canvas 在定高档把 min-height 重置为 0 并接管高度，两档各有一份可用高度。
+      className="min-h-[36rem] min-w-0 flex-1 panel-canvas"
       data-session-prep-split
       data-orientation={orientation}
     >

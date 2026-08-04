@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Maximize2, Minimize2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { usePanelLayout } from "@/hooks/use-panel-layout";
@@ -37,7 +38,19 @@ export interface CoursewarePreviewListItem {
 function isEditableTarget(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) return false;
   return target.isContentEditable
-    || target.matches("input, textarea, select, button, [role='textbox']");
+    || target.matches("input, textarea, select, [role='textbox']");
+}
+
+/**
+ * 按钮只挡空格，不挡方向键。
+ *
+ * 空格是按钮的激活键，抢过来会让"点一下全屏、再按空格"变成翻页而不是再次全屏。
+ * 方向键对按钮没有语义，而全屏之后焦点几乎必然停在刚点过的全屏按钮上——
+ * 把方向键一起挡掉，等于全屏后就翻不了页了。
+ */
+function blocksPaging(target: EventTarget | null, key: string) {
+  if (isEditableTarget(target)) return true;
+  return key === " " && target instanceof HTMLElement && target.matches("button, [role='button']");
 }
 
 /**
@@ -85,8 +98,10 @@ export function CoursewarePreviewWorkspace({
   const router = useRouter();
   const previewBodyRef = useRef<HTMLDivElement>(null);
   const [stageWidth, setStageWidth] = useState<number | null>(null);
+  const commonT = useTranslations("common");
   const [elementRef, orientation] = useSplitOrientation(SIDE_BY_SIDE_MIN_WIDTH);
   const horizontal = orientation === "horizontal";
+  const [fullscreen, setFullscreen] = useState(false);
   // 两个方向各存一份：横向记的是目录的像素宽，纵向记的是目录占的高度比例，
   // 混在一起会让转屏后的第一帧拿到一个属于另一个方向的数字。
   const { groupRef, onLayoutChanged } = usePanelLayout(`${layoutId}:${orientation}`);
@@ -104,6 +119,32 @@ export function CoursewarePreviewWorkspace({
     return () => observer.disconnect();
   }, [previewAspect]);
 
+  /*
+   * 全屏（docs/plan/27 §3 D5/D6）。整块工作区进入全屏，目录、白板工具栏和翻页一起带上，
+   * 教师在 iPad 上写板书时不必为了看清楚而牺牲跳讲能力。
+   *
+   * 纵横比必须保持等比：标注是逐轴归一化存的（x/w、y/h），直线与箭头的旋转角还按创建时的
+   * 宽高比烘焙进了数据。舞台的 `aspectRatio` 与"取 min(宽, 高×比例)"的拟合逻辑在全屏下
+   * 原样生效，所以放大后历史笔迹严格贴合，不需要迁移数据。
+   *
+   * 不接管手势翻页：舞台被 touch-none 的标注 canvas 完整覆盖，滑动会被识别成画笔。
+   */
+  useEffect(() => {
+    const sync = () => setFullscreen(document.fullscreenElement === elementRef.current);
+    document.addEventListener("fullscreenchange", sync);
+    return () => document.removeEventListener("fullscreenchange", sync);
+  }, [elementRef]);
+
+  const toggleFullscreen = useCallback(() => {
+    const element = elementRef.current;
+    if (!element) return;
+    if (document.fullscreenElement === element) {
+      void document.exitFullscreen().catch(() => undefined);
+      return;
+    }
+    void element.requestFullscreen().catch(() => undefined);
+  }, [elementRef]);
+
   const goTo = useCallback((index: number) => {
     const item = items[index];
     if (!item) return;
@@ -119,7 +160,8 @@ export function CoursewarePreviewWorkspace({
 
   useEffect(() => {
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || isEditableTarget(event.target)) return;
+      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+      if (blocksPaging(event.target, event.key)) return;
       if (event.key === "ArrowLeft" || event.key === "PageUp") {
         if (selectedIndex <= 0) return;
         event.preventDefault();
@@ -146,9 +188,11 @@ export function CoursewarePreviewWorkspace({
       groupRef={groupRef}
       orientation={orientation}
       onLayoutChanged={onLayoutChanged}
-      className={cn("h-full min-h-0 min-w-0", className)}
+      // 全屏元素默认是黑底且没有内边距；补上纸色与一圈呼吸，否则圆角卡片贴死屏幕边缘。
+      className={cn("h-full min-h-0 min-w-0", fullscreen && "bg-paper p-3", className)}
       data-courseware-preview-workspace
       data-orientation={orientation}
+      data-fullscreen={fullscreen ? "true" : undefined}
     >
       <ResizablePanel
         id="rail"
@@ -219,9 +263,22 @@ export function CoursewarePreviewWorkspace({
         className="overflow-hidden rounded-2xl border border-line bg-moon/10"
         data-courseware-preview
       >
-        <div className="flex min-h-10 shrink-0 items-center justify-between border-b border-line px-3 py-2">
-          <span className="text-xs font-medium text-muted">{previewLabel}</span>
-          {selectedPageLabel ? <span className="min-w-0 truncate pl-4 text-xs text-muted">{selectedPageLabel}</span> : null}
+        <div className="flex min-h-10 shrink-0 items-center gap-2 border-b border-line px-3 py-1.5">
+          <span className="shrink-0 text-xs font-medium text-muted">{previewLabel}</span>
+          {selectedPageLabel ? <span className="min-w-0 flex-1 truncate text-right text-xs text-muted">{selectedPageLabel}</span> : <span className="flex-1" />}
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            data-courseware-preview-fullscreen
+            className="size-7 shrink-0 rounded-full p-0 text-muted hover:text-ink"
+            aria-pressed={fullscreen}
+            aria-label={commonT(fullscreen ? "exitFullscreen" : "enterFullscreen")}
+            title={commonT(fullscreen ? "exitFullscreen" : "enterFullscreen")}
+            onClick={toggleFullscreen}
+          >
+            {fullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+          </Button>
         </div>
         <div ref={previewBodyRef} className="flex min-h-0 flex-1 items-start justify-center overflow-hidden">
           <div
