@@ -106,7 +106,7 @@ export function SessionPreparationArtifactsForm({
         <h3 className="text-sm font-medium text-ink">{t("prepArtifactsTitle")}</h3>
         <p className="mt-1 text-xs text-muted">{t("prepArtifactsHint")}</p>
       </div>
-      <div className="mt-4 grid gap-5 lg:grid-cols-2">
+      <div className="mt-4 grid gap-5 @2xl:grid-cols-2">
         <div>
           <Label className="text-xs text-muted">{t("solutionRecordTitle")}</Label>
           <Textarea className="mt-2" value={solutionNotes} onChange={(event) => setSolutionNotes(event.target.value)} maxLength={5000} rows={4} placeholder={t("solutionRecordPlaceholder")} />

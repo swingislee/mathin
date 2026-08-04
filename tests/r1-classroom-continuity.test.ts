@@ -47,7 +47,9 @@ describe("R1 classroom continuity contracts", () => {
     expect(prep).toContain("SessionPreparationFlow");
     expect(prep).not.toContain("SessionPreparationArtifactsForm");
     expect(prep).not.toContain("SessionTrackOverrideSelect");
-    expect(prep).toContain("xl:grid-cols-[minmax(24rem,30rem)_minmax(0,1fr)]");
+    // doc 27 §3 D3：固定轨道换成可拖拽分栏。原来的 minmax(24rem,30rem) 是硬下限 384px，
+    // 与课件目录的 272px 串联后，1280 视口下 4:3 舞台只剩约 180×135px。
+    expect(prep).toContain("SessionPrepSplit");
     expect(prep).not.toContain("SessionLearningCheckEditor");
   });
 
@@ -160,7 +162,9 @@ describe("R1 classroom continuity contracts", () => {
     expect(sessionAssets).toContain("getSessionH5BindingUrls");
     expect(sessionAssets).toContain("buildH5EntryUrl");
     expect(prep).toContain("getSessionH5BindingUrls");
-    expect(sharedPreview).toContain("grid h-full min-h-0");
+    // doc 27 §3 D3：目录与预览的固定轨道换成可拖拽分栏，方向按容器实宽决定。
+    expect(sharedPreview).toContain("ResizablePanelGroup");
+    expect(sharedPreview).toContain("useSplitOrientation");
     expect(sharedPreview).toContain("overflow-y-auto");
     expect(sharedPreview).toContain('aria-keyshortcuts="ArrowLeft PageUp"');
     expect(sharedPreview).toContain('aria-keyshortcuts="ArrowRight PageDown Space"');
@@ -209,9 +213,11 @@ describe("R1 classroom continuity contracts", () => {
     expect(panel).toContain("data-learning-check-toolbar");
     expect(panel).toContain("data-learning-check-strip");
     expect(panel).toContain("data-ipad-roster-grid");
-    expect(panel).toContain("grid-cols-4");
-    expect(panel).toContain("min-[900px]:grid-cols-5");
-    expect(panel).toContain("auto-rows-[minmax(8.5rem,1fr)]");
+    // doc 27 §5.2：座位网格的列数改由这块全屏画布自己的宽度决定。原先的 min-[900px]
+    // 是视口查询，iPad 横屏 1024 上直接排 5 列 × 8.5rem 行高，768 的高度里只露得出三行多。
+    expect(panel).toContain("@2xl:grid-cols-4");
+    expect(panel).toContain("@4xl:grid-cols-5");
+    expect(panel).toContain("@4xl:auto-rows-[minmax(8.5rem,1fr)]");
     expect(panel).toContain("data-learning-seat-index");
     expect(panel).toContain("data-learning-empty-seat");
     expect(panel).toContain("Armchair");
@@ -289,7 +295,9 @@ describe("R1 classroom continuity contracts", () => {
   it("prioritizes 4:3 courseware and keeps both collapsible teacher docks on the right", () => {
     const liveShell = read("src/features/classroom/live/LiveShell.tsx");
     const toolbar = read("src/features/whiteboard/Toolbar.tsx");
-    expect(liveShell).toContain("flex-col gap-2 overflow-y-auto xl:flex-row");
+    // doc 27 §5.1 H4：分栏阈值从 xl 提到 lg。1024 横屏是直播课堂最典型的教师终端，
+    // 落在 xl 之下时主板书、副板书、名录与控制条全部纵向堆叠，上课要滚动才看得到名录。
+    expect(liveShell).toContain("flex-col gap-2 overflow-y-auto lg:flex-row");
     expect(liveShell).toContain("data-side-board-viewport");
     expect(liveShell).toContain("sideZoom * 100");
     expect(liveShell).toContain("lastPoint[1] * viewport.scrollHeight");
@@ -297,7 +305,7 @@ describe("R1 classroom continuity contracts", () => {
     expect(liveShell).toContain('t("showClassmates")');
     expect(liveShell).toContain("sideCollapsed && rosterCollapsed");
     expect(liveShell).toContain("5.25rem");
-    expect(liveShell).toContain("xl:justify-end");
+    expect(liveShell).toContain("lg:justify-end");
     expect(liveShell).toContain("transition-[width] duration-200");
     expect(liveShell).toContain('t("moreClassroomTools")');
     expect(liveShell).not.toContain("compact");

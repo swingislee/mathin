@@ -88,7 +88,7 @@ export async function PlatformOperationsPanel({ canManage }: { canManage: boolea
   return (
     <div className="grid gap-5">
       <StatusStrip items={status} />
-      <div className="grid gap-5 xl:grid-cols-2">
+      <div className="grid gap-5 @4xl/page:grid-cols-2">
         <DashboardCardShell>
           <div className="border-b border-line px-5 py-4">
             <h2 className="text-base font-medium text-ink">{t("jobRuntimeTitle")}</h2>

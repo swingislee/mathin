@@ -105,7 +105,7 @@ export async function SessionPostworkPanel({ detail }: { detail: SessionWorkspac
       <section>
         <h3 className="mb-3 font-medium text-ink">{t("independentPublicationsTitle")}</h3>
         <p className="-mt-2 mb-3 text-xs text-muted">{t("independentPublicationsHint")}</p>
-        <div className="grid gap-4 xl:grid-cols-3">
+        <div className="grid gap-4 @4xl/page:grid-cols-3">
           <SessionFamilyBriefPanel detail={detail} />
           {detail.capabilities.canWriteReview && (
             <>
@@ -155,7 +155,7 @@ export async function SessionPostworkPanel({ detail }: { detail: SessionWorkspac
       {detail.supportTasks.length > 0 && (
         <section className="rounded-2xl border border-line bg-card p-4 text-sm">
           <h3 className="mb-2 text-xs font-medium uppercase text-muted">{t("supportTasksTitle")}</h3>
-          <ul className="grid gap-3 lg:grid-cols-2">
+          <ul className="grid gap-3 @3xl/page:grid-cols-2">
             {detail.supportTasks.map((task) => (
               <li key={task.id} className="rounded-xl border border-line p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">

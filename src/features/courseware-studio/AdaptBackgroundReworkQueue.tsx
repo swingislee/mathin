@@ -108,7 +108,7 @@ export function AdaptBackgroundReworkQueue({ items, page, total, totalPages, can
       <h2 className="text-base font-medium text-ink">{t("adaptReworkQueueTitle")}</h2>
       <p className="mt-1 text-sm text-muted">{t("adaptReworkQueueIntro")}</p>
     </div>
-    {items.length === 0 ? <DashboardEmptyCard className="mt-4">{t("adaptReworkQueueEmpty")}</DashboardEmptyCard> : <div className="mt-4 grid gap-4 xl:grid-cols-2">
+    {items.length === 0 ? <DashboardEmptyCard className="mt-4">{t("adaptReworkQueueEmpty")}</DashboardEmptyCard> : <div className="mt-4 grid gap-4 @4xl/page:grid-cols-2">
       {items.map((item) => <article key={item.id} className="overflow-hidden rounded-2xl border border-line bg-card">
         <header className="border-b border-line px-4 py-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -154,12 +154,12 @@ function RepairDialog({ item, cropX, cropY, note, pending, setCropX, setCropY, s
     top: `${-cropY / geometry.cropHeight * 100}%`,
   } : undefined;
   return <Dialog open={item !== null} onOpenChange={(open) => { if (!open && !pending) close(); }}>
-    <DialogContent className="max-h-[90dvh] max-w-4xl overflow-y-auto">
+    <DialogContent className="@container max-h-[90dvh] max-w-4xl overflow-y-auto">
       <DialogHeader>
         <DialogTitle>{t("adaptRepairDialogTitle")}</DialogTitle>
         <DialogDescription>{t("adaptRepairDialogDescription")}</DialogDescription>
       </DialogHeader>
-      {item && geometry ? <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_18rem]">
+      {item && geometry ? <div className="grid gap-5 @3xl:grid-cols-[minmax(0,1fr)_18rem]">
         <div>
           <div className="relative aspect-[4/3] overflow-hidden rounded-xl border border-line bg-paper">
             <img src={item.source.url} alt={t("adaptRepairPreview")} className="absolute max-w-none object-fill" style={previewStyle} />

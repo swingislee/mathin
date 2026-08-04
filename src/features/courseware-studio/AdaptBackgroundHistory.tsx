@@ -36,7 +36,7 @@ export function AdaptBackgroundHistory({ items, page, total, totalPages, courseI
           </div>
           {item.lectureId && item.pageNo !== null ? <Link href={`/studio/courseware/${item.lectureId}?track=adapted-4x3`} className={buttonVariants({ variant: "ghost", size: "sm" })}>{t("adaptOpenLecture")}<ExternalLink className="size-3" /></Link> : null}
         </div>
-        <dl className="mt-3 grid gap-2 text-xs text-muted sm:grid-cols-2 lg:grid-cols-4">
+        <dl className="mt-3 grid gap-2 text-xs text-muted @xl/page:grid-cols-2 @4xl/page:grid-cols-4">
           <div><dt>{t("adaptHistoryRecord")}</dt><dd className="mt-1 truncate font-mono">{item.id}</dd></div>
           <div><dt>{t("adaptHistoryCrop")}</dt><dd className="mt-1">x {item.cropX}, y {item.cropY}</dd></div>
           <div><dt>{t("adaptHistorySuccessor")}</dt><dd className="mt-1 truncate font-mono">{item.supersededById ?? "—"}</dd></div>

@@ -29,7 +29,7 @@ export default async function LearningClassesPage({ params }: { params: Promise<
               <p className="text-sm text-muted">{t("empty")}</p>
             </DashboardCard>
           ) : (
-            <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <ul className="grid gap-4 @xl/page:grid-cols-2 @5xl/page:grid-cols-3">
               {classrooms.map((classroom) => (
                 <li key={classroom.id}>
                   <Link href={"/dashboard/learning/classes/" + classroom.id} className="block h-full">

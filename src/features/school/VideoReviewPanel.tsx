@@ -72,7 +72,7 @@ export function VideoReviewPanel({ rows, canDelete = false }: { rows: VideoRow[]
   const numericScore = Number(score);
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_1.3fr]">
+    <div className="grid gap-6 @4xl/page:grid-cols-[1fr_1.3fr]">
       <section className="rounded-2xl border border-line bg-card p-5">
         <h2 className="text-base font-medium text-ink">{t("queue")}</h2>
         <ul className="mt-3 divide-y divide-line">

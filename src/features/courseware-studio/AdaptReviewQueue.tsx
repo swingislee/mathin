@@ -109,7 +109,7 @@ export function AdaptReviewQueue({ items, page, total, totalPages, canManageAsse
           </Button>
         </div>
       </div> : null}
-      <div className="mt-4 grid gap-4 xl:grid-cols-2">
+      <div className="mt-4 grid gap-4 @4xl/page:grid-cols-2">
         {items.map((item) => <article key={item.id} className="overflow-hidden rounded-2xl border border-line bg-card">
           <header className="flex items-start gap-3 border-b border-line px-4 py-3">
             {canManageAssets ? <Checkbox aria-label={t("adaptSelectItem")} checked={selected.has(item.id)} onCheckedChange={() => toggle(item.id)} disabled={pending} /> : null}

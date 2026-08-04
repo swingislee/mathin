@@ -100,7 +100,7 @@ export function TeachingPlanEditor({
   });
 
   return <Dialog open onOpenChange={(open) => { if (!open && !pending) onClose(); }}>
-    <DialogContent className="flex h-[min(92dvh,56rem)] max-w-6xl flex-col overflow-hidden p-0">
+    <DialogContent className="@container flex h-[min(92dvh,56rem)] max-w-6xl flex-col overflow-hidden p-0">
       <DialogHeader className="border-b border-line px-6 py-5 pr-14">
         <DialogTitle>{t("editingTeachingPlan")}</DialogTitle>
         <DialogDescription>{t("editingTeachingPlanHint")}</DialogDescription>
@@ -109,7 +109,7 @@ export function TeachingPlanEditor({
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-muted">{selectedVariant.title} · {selectedVariant.productCode ?? "—"}</p><Dialog open={addOpen} onOpenChange={setAddOpen}><DialogTrigger asChild><Button type="button" size="sm" variant="secondary"><Plus className="size-4" />{t("addLecture")}</Button></DialogTrigger><DialogContent><DialogHeader><DialogTitle>{t("addLecture")}</DialogTitle><DialogDescription>{t("newLectureHint")}</DialogDescription></DialogHeader><div className="grid gap-3"><Label className="grid gap-1 text-sm">{t("lectureName")}<Input value={newName} onChange={(event) => setNewName(event.target.value)} maxLength={100} /></Label><Label className="grid gap-1 text-sm">{t("objectives")}<Textarea value={newObjectives} onChange={(event) => setNewObjectives(event.target.value)} maxLength={2000} rows={4} /></Label></div><DialogFooter><Button type="button" variant="secondary" onClick={() => setAddOpen(false)}>{t("cancel")}</Button><Button type="button" disabled={!newName.trim()} onClick={addLecture}>{t("addLecture")}</Button></DialogFooter></DialogContent></Dialog></div>
         <div className="space-y-3">
           {lectures.map((lecture, index) => <article key={lecture.id} className="rounded-2xl border border-line bg-paper p-3">
-            <div className="grid gap-3 md:grid-cols-[3rem_minmax(11rem,1fr)_minmax(16rem,1.4fr)_auto] md:items-start">
+            <div className="grid gap-3 @4xl:grid-cols-[3rem_minmax(11rem,1fr)_minmax(16rem,1.4fr)_auto] @4xl:items-start">
               <div className="pt-2 font-mono text-sm text-muted">{String(index + 1).padStart(2, "0")}</div>
               <Label className="grid gap-1 text-xs font-normal text-muted">{t("lectureName")}<Input value={lecture.name} maxLength={100} disabled={pending} onChange={(event) => updateLecture(lecture.id, { name: event.target.value })} /></Label>
               <Label className="grid gap-1 text-xs font-normal text-muted">{t("objectives")}<Textarea value={lecture.objectives} maxLength={2000} rows={2} disabled={pending} onChange={(event) => updateLecture(lecture.id, { objectives: event.target.value })} /></Label>

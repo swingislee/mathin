@@ -6,9 +6,11 @@
 >
 > **权威边界**：只处理横向/纵向空间分配、断点选择与面板可见性。不改数据模型、权限、路由合同与业务流程；不重开 doc 21～24 的坐标系、命令面板、路由信息架构和对象页骨架。
 >
-> **剩余项**：全部，见 §6 阶段表。
+> **已落地**：S1～S5 全部。侧栏三态、备课与课件预览的可拖拽分栏、4:3 全屏、§5 缺陷清零、视口断点防回退门禁。
 >
-> **最后核对**：2026-08-04；依据 `DashboardShell.tsx`、`SessionPrepPanel.tsx`、`CoursewarePreviewWorkspace.tsx`、`LiveShell.tsx`、`FullScreenToolShell.tsx` 与 `OrganizationSettingsPanel.tsx` 的实测宽度推导。
+> **剩余项**：真实设备走查（iPad 横屏触控拖拽与全屏）尚未进行，浏览器实测只覆盖 Chromium 桌面模拟视口。
+>
+> **最后核对**：2026-08-04；依据 `DashboardShell.tsx`、`SessionPrepSplit.tsx`、`CoursewarePreviewWorkspace.tsx`、`LiveShell.tsx`、`FullScreenToolShell.tsx`、`OrganizationSettingsPanel.tsx` 与 Playwright 实测（11 路由 × 3 视口 × 2 侧栏态）。
 
 ---
 
@@ -100,13 +102,21 @@ Windows 经典滚动条再扣约 15px。`/studio` 与 classroom live 走独立�
 
 ## 6. 阶段
 
-| 阶段 | 动作 | 退出证据 |
+| 阶段 | 动作 | 结果 |
 | --- | --- | --- |
-| **S1 侧栏三态** | D1、D2；`globals.css` 的 `--main-floating-control-safe-inline-size` 解除与 1024 断点的硬耦合；zh/en 文案 | 三态在 1024/1280/1440 下切换正确；页头标题不被左上按钮覆盖；`pnpm ci:checks` 通过 |
-| **S2 备课分栏** | D3、D4 应用于 `SessionPrepPanel` 与 `CoursewarePreviewWorkspace`；§4 最小尺寸合同 | 1024 下三栏并存且 4:3 舞台短边 ≥ 420px；拖拽后刷新保持布局 |
-| **S3 4:3 全屏** | D5、D6；全屏内保留可拖拽 rail、工具栏与翻页 | 全屏前后同一条笔迹的归一化坐标不变；退出全屏后布局复原 |
-| **S4 缺陷清零** | §5 高、中、低逐项修复 | 逐项复测；1024/1280/1440 × 亮暗横向溢出为 0 |
-| **S5 防回退** | 扩展 `scripts/verify-doc24-dashboard-closeout.mjs`：dashboard 画布内禁止视口前缀的多栏声明，白名单登记例外 | 审计脚本对修复前的代码报错、对修复后的代码通过 |
+| **S1 侧栏三态（已关闭）** | D1、D2；`globals.css` 的 `--main-floating-control-safe-inline-size` 改按 `:has([data-dashboard-nav-floating])` 判定；zh/en 文案 | 主画布宽度 1024：784 / 968 / 1024，1280：1040 / 1224 / 1280；安全区变量仅隐藏态为 72px；两档视口横向溢出 0 |
+| **S2 备课分栏（已关闭）** | D3、D4；`SessionPrepSplit` 与 `CoursewarePreviewWorkspace` 改 `react-resizable-panels`；§4 最小尺寸合同 | 4:3 舞台由约 180×135 提升到 1280 展开 352×264、1280 隐藏 494×371、1024 隐藏 336×252、1440 隐藏 628×471；分隔条 `role=separator`、`tabindex=0`，方向键可调、拖拽夹在下限、刷新保持、双击复位 |
+| **S3 4:3 全屏（已关闭）** | D5、D6；全屏内保留目录、工具栏与翻页 | 1024×768 下舞台 154×116 → 755×566，全屏前后纵横比同为 1.3333；全屏内方向键 1/57 → 2/57；退出后复原 |
+| **S4 缺陷清零（已关闭）** | §5 高、中、低逐项修复 | 11 条 dashboard 路由 × 1024/1280/1440 × 侧栏展开/隐藏 = 66 次检查，根节点与主画布横向溢出均为 0，无越界元素 |
+| **S5 防回退（已关闭）** | `scripts/verify-doc24-dashboard-closeout.mjs` 新增规则 3b | 拦 `xl:`/`2xl:` 多栏、`md:`/`lg:` 三列及以上与自定义轨道、`min-[NNNpx]:` 多栏；放行 `sm:` 与两列。17 条正负样本符合预期 |
+
+### 6.1 遗留判断
+
+| 项 | 判断 |
+| --- | --- |
+| 布局持久化有一帧默认宽度 | 接受。`useDefaultLayout` 内部是 `useSyncExternalStore`，hydration 用服务端快照，存档要到挂载后才读得到；命令式回填换来的是没拖过的人拿到正确的像素默认值。改成 cookie 可消除这一帧，代价是每个工作区都要从服务端透传初值 |
+| 1024 + 侧栏展开时舞台仍只有 154×116 | 接受。该组合下正文只有 720px，三栏并存本就不成立；出口是收起侧栏（S1）或全屏（S3），两条都已具备 |
+| iPad 真机未走查 | 未做。Playwright 只覆盖 Chromium 桌面模拟视口，触控拖拽分隔条、Apple Pencil 与全屏行为需要真实设备复核 |
 
 ## 7. 与既有门禁的关系
 

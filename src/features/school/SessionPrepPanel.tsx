@@ -109,7 +109,7 @@ export async function SessionPrepPanel({
 
         <SessionPrepSplit
           flow={(
-            <aside className="flex min-h-0 min-w-0 flex-1 flex-col">
+            <aside className="@container flex min-h-0 min-w-0 flex-1 flex-col">
               {canViewPrepArchive ? (
                 <SessionPreparationFlow
                   key={Object.entries(prepArtifacts.reviews)
@@ -134,7 +134,7 @@ export async function SessionPrepPanel({
             </aside>
           )}
           courseware={(
-            <section className="flex min-h-0 min-w-0 flex-1 flex-col">
+            <section className="@container flex min-h-0 min-w-0 flex-1 flex-col">
             {detail.lectureObjectives && (
               <div className="mb-3 flex min-w-0 items-baseline gap-2 border-l-2 border-crater/50 pl-3 text-xs">
                 <span className="shrink-0 text-muted">{t("lectureObjectives")}</span>

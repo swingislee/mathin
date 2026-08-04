@@ -50,7 +50,7 @@ async function CoordinationHistoryContent({
     <div className="space-y-6">
       <NotificationFocus target={focusTarget} />
       <p className="max-w-3xl text-sm text-muted">{t("intro")}</p>
-      <div className="grid gap-6 xl:grid-cols-2 xl:items-start">
+      <div className="grid gap-6 @4xl/page:grid-cols-2 @4xl/page:items-start">
         <DashboardCard title={t("workItemsTitle")} description={t("workItemsIntro")}>
           {history.workItems.length === 0 ? (
             <p className="text-sm text-muted">{t("emptyWorkItems")}</p>

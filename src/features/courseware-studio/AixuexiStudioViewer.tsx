@@ -33,7 +33,7 @@ export async function AixuexiStudioViewer({
   const next = currentIndex >= 0 && currentIndex < pages.length - 1 ? pages[currentIndex + 1] : null;
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-card">
+    <div className="@container flex h-full min-h-0 flex-col bg-card">
       <header className="flex min-h-14 shrink-0 items-center gap-3 border-b border-line px-4">
         <Link href={lectureWorkspaceHref} className={buttonVariants({ variant: "ghost", size: "sm" })}>
           {t("backToLectureWorkspace")}
@@ -45,7 +45,7 @@ export async function AixuexiStudioViewer({
         <Badge>{t("aixuexiAdapterBadge")}</Badge>
       </header>
 
-      <div className="grid min-h-0 flex-1 lg:grid-cols-[17rem_minmax(0,1fr)]">
+      <div className="grid min-h-0 flex-1 @4xl:grid-cols-[17rem_minmax(0,1fr)]">
         <aside className="min-h-0 overflow-y-auto border-r border-line p-3">
           <p className="mb-2 px-2 text-xs font-medium text-muted">{t("pageNavigation")}</p>
           <nav className="space-y-1" aria-label={t("pageNavigation")}>

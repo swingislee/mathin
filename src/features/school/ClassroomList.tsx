@@ -37,7 +37,7 @@ export async function ClassroomList({
 
   return <div className="space-y-4">
     <p className="text-sm text-muted">{t("results", { count: totalCount })}</p>
-    <div className="grid gap-4 xl:grid-cols-2">
+    <div className="grid gap-4 @4xl/page:grid-cols-2">
       {classrooms.map((classroom) => <article key={classroom.id} className="flex min-w-0 flex-col gap-4 rounded-2xl border border-line bg-card p-4 sm:flex-row">
         <div className="flex size-24 shrink-0 items-center justify-center rounded-xl border border-crater/40 bg-moon/30 text-crater" aria-hidden="true"><School className="size-9" strokeWidth={1.5} /></div>
         <div className="min-w-0 flex-1">
