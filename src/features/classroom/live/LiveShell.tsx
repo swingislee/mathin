@@ -877,9 +877,9 @@ export function LiveShell({
         </div>
       )}
 
-      <div className="mt-2 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto xl:flex-row xl:gap-3 xl:overflow-hidden">
+      <div className="mt-2 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto lg:flex-row lg:gap-3 lg:overflow-hidden">
         {/* 左：4:3 课件层 + 主板书覆盖层，尽量占满可压缩空间（08-§3.2 归一化坐标） */}
-        <main className="relative flex min-w-0 shrink-0 items-center justify-center xl:min-h-0 xl:flex-1 xl:shrink">
+        <main className="relative flex min-w-0 shrink-0 items-center justify-center lg:min-h-0 lg:flex-1 lg:shrink">
           <div
             ref={stageRef}
             className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-line bg-card"
@@ -973,26 +973,29 @@ export function LiveShell({
         {/* 右：副板书（长条，固定宽，用户 2026-07-08 要求加宽一倍）+ 学生名录（固定宽，容纳多人）+ 控制条，三段式 */}
         <div
           className={cn(
-            "flex min-h-0 w-full flex-1 flex-col gap-2 transition-[width] duration-200 xl:ml-auto xl:flex-none xl:shrink-0",
+            "flex min-h-0 w-full flex-1 flex-col gap-2 transition-[width] duration-200 lg:ml-auto lg:flex-none lg:shrink-0",
+            // 分栏阈值从 xl 提到 lg（doc 27 §5.1 H4）：1024 横屏是直播课堂最典型的教师终端，
+            // 原先落在 xl 之下，主板书、副板书、名录与控制条全部纵向堆叠，上课要滚动才看得到名录。
+            // 但 1024 上留 34rem 会把主板书压到 480px，所以两栏全展开时 lg 档先给 26rem，xl 才放到 34rem。
             sideCollapsed && rosterCollapsed
-              ? "xl:w-[5.25rem]"
+              ? "lg:w-[5.25rem]"
               : sideCollapsed
-                ? "xl:w-[18rem]"
+                ? "lg:w-[16rem] xl:w-[18rem]"
                 : rosterCollapsed
-                  ? "xl:w-[22rem]"
-                  : "xl:w-[34rem]",
+                  ? "lg:w-[18rem] xl:w-[22rem]"
+                  : "lg:w-[26rem] xl:w-[34rem]",
           )}
         >
-          <div className="flex min-h-0 flex-1 flex-col gap-2 xl:flex-row xl:justify-end">
+          <div className="flex min-h-0 flex-1 flex-col gap-2 lg:flex-row lg:justify-end">
             {/* 副板书：默认展开固定宽；折叠为窄条腾出空间；名录折叠时改吃 flex-1（用户 2026-07-08 要求可折叠） */}
             <div
               className={cn(
                 "relative min-h-0 overflow-hidden rounded-2xl border border-line bg-card transition-[width,height] duration-150",
                 sideCollapsed
-                  ? "h-9 shrink-0 xl:h-auto xl:w-10"
+                  ? "h-9 shrink-0 lg:h-auto lg:w-10"
                   : rosterCollapsed
                     ? "flex-1"
-                    : "min-h-48 flex-1 xl:w-[18rem] xl:flex-none",
+                    : "min-h-48 flex-1 lg:w-[14rem] lg:flex-none xl:w-[18rem]",
               )}
               onPointerDownCapture={() => !sideCollapsed && setActiveArea("side")}
             >
@@ -1071,7 +1074,7 @@ export function LiveShell({
             <div
               className={cn(
                 "flex min-h-0 flex-col overflow-hidden rounded-2xl border border-line transition-[width,height] duration-150",
-                rosterCollapsed ? "h-9 shrink-0 xl:h-auto xl:w-10" : "max-h-28 shrink-0 xl:max-h-none xl:w-60 xl:flex-none",
+                rosterCollapsed ? "h-9 shrink-0 lg:h-auto lg:w-10" : "max-h-28 shrink-0 lg:max-h-none lg:w-44 lg:flex-none xl:w-60",
               )}
             >
               <div className="flex shrink-0 items-center gap-1 border-b border-line px-2 py-1.5">
@@ -1098,7 +1101,7 @@ export function LiveShell({
                 </button>}
               </div>
               {!rosterCollapsed && (
-                <ul className="flex min-h-0 flex-1 gap-1.5 overflow-x-auto p-1.5 [&>li]:min-w-48 xl:block xl:space-y-1 xl:overflow-y-auto xl:[&>li]:min-w-0">
+                <ul className="flex min-h-0 flex-1 gap-1.5 overflow-x-auto p-1.5 [&>li]:min-w-48 lg:block lg:space-y-1 lg:overflow-y-auto lg:[&>li]:min-w-0">
                   {visibleStudents.map((student) => {
                     const count = state.stars[student.userId] ?? 0;
                     const answered = state.quiz ? state.answers[state.quiz.id]?.[student.userId] : undefined;

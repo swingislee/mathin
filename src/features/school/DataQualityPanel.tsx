@@ -53,7 +53,7 @@ export function DataQualityPanel({ initialRun, canRun }: { initialRun: DataQuali
         <DashboardEmptyCard className="border-0 bg-moon/10">{t("empty")}</DashboardEmptyCard>
       ) : (
         <div className="space-y-5">
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <div className="grid gap-3 @xl/page:grid-cols-2 @4xl/page:grid-cols-3 @6xl/page:grid-cols-5">
             <div className="rounded-xl border border-line bg-paper/40 p-3">
               <p className="text-xs text-muted">{t("total")}</p>
               <p className="mt-1 text-2xl font-semibold text-ink">{run.total}</p>

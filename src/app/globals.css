@@ -88,13 +88,17 @@
 
 /* P4C-4b §5.8a 磁贴真二维定位：服务端算好 lg(6列)/md(4列) 两套坐标写进 CSS 变量，
    媒体查询选用——SSR 首屏两断点都不闪；sm 单列时变量不生效，按 DOM 序纵排。 */
-@media (min-width: 768px) {
+/* 判据换成正文容器宽度（docs/plan/27 §3 D4）：1024 视口下正文只有 720–960px，
+   按视口切到六列会让每格只剩约 110px，磁贴文案必然截断。容器名 page 由
+   DashboardPageBody / WorkspaceMain 的 @container/page 提供，与 Tailwind 的
+   @3xl/page（768px）、@6xl/page（1152px）两档对齐。 */
+@container page (min-width: 48rem) {
   .tile-cell {
     grid-column: var(--tx-md) / span var(--tw-md);
     grid-row: var(--ty-md) / span var(--th-md);
   }
 }
-@media (min-width: 1024px) {
+@container page (min-width: 72rem) {
   .tile-cell {
     grid-column: var(--tx-lg) / span var(--tw-lg);
     grid-row: var(--ty-lg) / span var(--th-lg);

@@ -148,7 +148,7 @@ export function SessionSolutionArchive({
         {t("solutionArchiveOpen", { count: recordCount })}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="flex max-h-[86vh] flex-col sm:max-w-3xl" data-solution-record-archive>
+        <DialogContent className="flex max-h-[86dvh] flex-col sm:max-w-3xl" data-solution-record-archive>
           <DialogHeader>
             <div className="flex flex-wrap items-center gap-2">
               <DialogTitle>{t("solutionArchiveTitle")}</DialogTitle>

@@ -109,7 +109,9 @@ export async function TodayWorkHome({ locale, user, profile, focusTarget }: Home
           页面级重新居中会让总览在宽屏上比其他页窄一截，切页时横向跳动。 */}
       <div className="space-y-6">
         <NotificationFocus target={focusTarget} />
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4 xl:items-start">
+        {/* doc 27 §5.1 H2：原来是 xl:grid-cols-4，而 xl 生效时正文只有 976px，
+            每列 226px 装不下"标题 + 一排操作按钮"。按正文容器判断，四列推到 @6xl。 */}
+        <div className="grid grid-cols-1 gap-6 @2xl/page:grid-cols-2 @6xl/page:grid-cols-4 @6xl/page:items-start">
           {spotlightGroups.length > 0 ? (
             <WorkColumn title={t("nowTitle")}>
               <div className="flex flex-col gap-3">

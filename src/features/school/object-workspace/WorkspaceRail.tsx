@@ -30,7 +30,7 @@ export function WorkspaceRail({
       data-workspace-rail
       className={cn(
         // 窄容器：有限高度 + 自身滚动，堆在主区下面，不继承 h-full。
-        "flex max-h-[45vh] w-full shrink-0 flex-col border-t border-line",
+        "flex max-h-[45dvh] w-full shrink-0 flex-col border-t border-line",
         "@4xl/workspace:h-full @4xl/workspace:max-h-none @4xl/workspace:w-[320px] @4xl/workspace:border-l @4xl/workspace:border-t-0",
         className,
       )}

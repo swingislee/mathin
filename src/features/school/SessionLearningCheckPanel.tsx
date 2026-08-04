@@ -298,7 +298,12 @@ export function SessionLearningCheckPanel({
           {t("learningPanelOpen")}
         </button>
       </DialogTrigger>
-      <DialogContent className="flex h-dvh w-screen max-w-none flex-col gap-0 overflow-hidden rounded-none p-0 sm:rounded-none [&>button]:right-2.5 [&>button]:top-2.5">
+      {/*
+        doc 27 §5.2：`w-screen` 是 100vw，在有经典滚动条的 Windows 上比可用宽度多约 15px；
+        fixed 元素的 `w-full` 按初始包含块算，正好排除滚动条。
+        `@container`：座位网格的列数该由这块画布的实宽决定，原先用的是 min-[900px] 视口查询。
+      */}
+      <DialogContent className="@container flex h-dvh w-full max-w-none flex-col gap-0 overflow-hidden rounded-none p-0 sm:rounded-none [&>button]:right-2.5 [&>button]:top-2.5">
         <DialogHeader className="shrink-0 space-y-0 border-b border-line px-2 pb-1 pr-11 pt-1.5 text-left">
           <div className="flex min-h-8 min-w-0 items-center gap-2" data-learning-check-toolbar>
             <DialogTitle className="flex shrink-0 items-center gap-1.5 text-sm">
@@ -388,7 +393,10 @@ export function SessionLearningCheckPanel({
 
           <div
             ref={seatGridRef}
-            className="grid min-h-0 flex-1 grid-cols-4 auto-rows-[minmax(8.5rem,1fr)] gap-2 min-[900px]:grid-cols-5"
+            // doc 27 §5.2：座位网格活在全屏 Dialog 里，列数该由这块画布自己的宽度决定，
+            // 而不是 min-[900px] 这样的视口查询——iPad 横屏 1024 上原先直接排 5 列 × 8.5rem 行高，
+            // 768 的高度里只露得出三行多一点。
+            className="grid min-h-0 flex-1 grid-cols-3 auto-rows-[minmax(7rem,1fr)] gap-2 @2xl:grid-cols-4 @4xl:grid-cols-5 @4xl:auto-rows-[minmax(8.5rem,1fr)]"
             data-learning-seat-grid
             data-ipad-roster-grid
           >

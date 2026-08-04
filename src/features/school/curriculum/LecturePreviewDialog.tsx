@@ -21,7 +21,7 @@ export function LecturePreviewDialog({
   const router = useRouter();
   return (
     <Dialog open onOpenChange={(open) => { if (!open) router.replace(closeHref); }}>
-      <DialogContent className="flex h-[min(94vh,58rem)] max-w-6xl flex-col gap-0 overflow-hidden p-0">
+      <DialogContent className="flex h-[min(94dvh,58rem)] max-w-6xl flex-col gap-0 overflow-hidden p-0">
         <DialogTitle className="sr-only">{title}</DialogTitle>
         {children}
       </DialogContent>

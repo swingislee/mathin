@@ -194,7 +194,7 @@ export function OrganizationSettingsPanel({ initial }: { initial: OrganizationSe
 
       <TabsContent value="profile">
         <SectionCard title={t("profileTitle")} description={t("profileIntro")} icon={<Building2 size={19} />}>
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 @2xl/page:grid-cols-2 @5xl/page:grid-cols-3">
             <Label className="grid gap-2">{t("organizationName")}<Input value={organizationName} maxLength={100} onChange={(event) => setOrganizationName(event.target.value)} /></Label>
             <Label className="grid gap-2">{t("timezone")}<Input value={organizationTimezone} maxLength={64} onChange={(event) => setOrganizationTimezone(event.target.value)} /></Label>
             <Label className="grid gap-2">{t("defaultLocale")}<Select value={defaultLocale} onValueChange={(value) => setDefaultLocale(value as "zh" | "en")}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="zh">中文</SelectItem><SelectItem value="en">English</SelectItem></SelectContent></Select></Label>
@@ -205,7 +205,7 @@ export function OrganizationSettingsPanel({ initial }: { initial: OrganizationSe
 
       <TabsContent value="locations" className="space-y-5">
         <SectionCard title={t("campusTitle")} description={t("campusIntro")} icon={<MapPin size={19} />}>
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-4 @3xl/page:grid-cols-2">
             <div className="rounded-xl border border-line p-4">
               <Label className="grid gap-2">{t("selectCampus")}<Select value={campusId} onValueChange={chooseCampus}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{initial.campuses.map((campus) => <SelectItem key={campus.id} value={campus.id}>{campus.name} · {campus.code}</SelectItem>)}</SelectContent></Select></Label>
               {selectedCampus && <div className="mt-4 grid gap-3">
@@ -231,9 +231,9 @@ export function OrganizationSettingsPanel({ initial }: { initial: OrganizationSe
         <SectionCard title={t("roomTitle")} description={t("roomIntro")} icon={<Building2 size={19} />}>
           {!selectedCampus ? <p className="text-sm text-muted">{t("noCampus")}</p> : <>
             <ul className="divide-y divide-line">{selectedCampus.rooms.map((room) => <li key={room.id} className="flex flex-wrap items-center gap-3 py-3 text-sm"><span className="min-w-0 flex-1"><strong>{room.name}</strong> · {room.code} · {room.capacity ?? t("capacityUnset")}</span><Badge variant={room.isActive ? "secondary" : "outline"}>{room.isActive ? t("active") : t("inactive")}</Badge><Button size="sm" variant="secondary" disabled={pending} onClick={() => roomActiveRun.run(room.id, !room.isActive)}>{room.isActive ? t("disable") : t("enable")}</Button></li>)}</ul>
-            <div className="mt-4 grid gap-3 md:grid-cols-4">
+            <div className="mt-4 grid gap-3 @2xl/page:grid-cols-2 @5xl/page:grid-cols-4">
               <Label className="grid gap-2">{t("roomCode")}<Input value={roomCode} maxLength={40} onChange={(event) => setRoomCode(event.target.value)} /></Label>
-              <Label className="grid gap-2 md:col-span-2">{t("roomName")}<Input value={roomName} maxLength={100} onChange={(event) => setRoomName(event.target.value)} /></Label>
+              <Label className="grid gap-2 @5xl/page:col-span-2">{t("roomName")}<Input value={roomName} maxLength={100} onChange={(event) => setRoomName(event.target.value)} /></Label>
               <Label className="grid gap-2">{t("capacity")}<Input type="number" min={1} max={500} value={roomCapacity} onChange={(event) => setRoomCapacity(event.target.value)} /></Label>
             </div>
             <div className="mt-3 flex justify-end"><Button variant="secondary" disabled={pending || !roomCode.trim() || !roomName.trim()} onClick={() => roomRun.run({ campusId: selectedCampus.id, code: roomCode, name: roomName, capacity: roomCapacity ? Number(roomCapacity) : null })}>{t("createRoom")}</Button></div>
@@ -241,13 +241,13 @@ export function OrganizationSettingsPanel({ initial }: { initial: OrganizationSe
         </SectionCard>
 
         <SectionCard title={t("calendarTitle")} description={t("calendarIntro")} icon={<CalendarDays size={19} />}>
-          <div className="grid gap-5 xl:grid-cols-2">
+          <div className="grid gap-5 @4xl/page:grid-cols-2">
             <div><h3 className="font-medium">{t("holidays")}</h3><ul className="mt-2 divide-y divide-line">{initial.holidays.map((holiday) => <li key={holiday.id} className="flex items-center gap-3 py-3 text-sm"><span className="min-w-0 flex-1">{holiday.name} · {holiday.startsOn} — {holiday.endsOn}</span><Badge variant="outline">{t(`holiday_${holiday.kind}`)}</Badge><Button size="sm" variant="secondary" disabled={pending} onClick={() => archiveHolidayRun.run(holiday.id)}>{t("archive")}</Button></li>)}</ul>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2"><ScopeSelect campuses={activeCampuses} value={holidayCampusId} onChange={setHolidayCampusId} globalLabel={t("allCampuses")} /><Select value={holidayKind} onValueChange={(value) => setHolidayKind(value as typeof holidayKind)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="closed">{t("holiday_closed")}</SelectItem><SelectItem value="teaching">{t("holiday_teaching")}</SelectItem><SelectItem value="makeup">{t("holiday_makeup")}</SelectItem></SelectContent></Select><Input value={holidayName} maxLength={100} placeholder={t("holidayName")} onChange={(event) => setHolidayName(event.target.value)} /><span className="grid grid-cols-2 gap-2"><Input type="date" value={holidayStart} onChange={(event) => setHolidayStart(event.target.value)} /><Input type="date" value={holidayEnd} onChange={(event) => setHolidayEnd(event.target.value)} /></span></div>
+              <div className="mt-3 grid gap-3 @xl/page:grid-cols-2"><ScopeSelect campuses={activeCampuses} value={holidayCampusId} onChange={setHolidayCampusId} globalLabel={t("allCampuses")} /><Select value={holidayKind} onValueChange={(value) => setHolidayKind(value as typeof holidayKind)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="closed">{t("holiday_closed")}</SelectItem><SelectItem value="teaching">{t("holiday_teaching")}</SelectItem><SelectItem value="makeup">{t("holiday_makeup")}</SelectItem></SelectContent></Select><Input value={holidayName} maxLength={100} placeholder={t("holidayName")} onChange={(event) => setHolidayName(event.target.value)} /><span className="grid grid-cols-2 gap-2"><Input type="date" value={holidayStart} onChange={(event) => setHolidayStart(event.target.value)} /><Input type="date" value={holidayEnd} onChange={(event) => setHolidayEnd(event.target.value)} /></span></div>
               <Button className="mt-3" size="sm" variant="secondary" disabled={pending || !holidayName.trim() || !holidayStart || !holidayEnd} onClick={() => holidayRun.run({ campusId: holidayCampusId, name: holidayName, kind: holidayKind, startsOn: holidayStart, endsOn: holidayEnd })}>{t("createHoliday")}</Button>
             </div>
             <div><h3 className="font-medium">{t("terms")}</h3><ul className="mt-2 divide-y divide-line">{initial.terms.map((term) => <li key={term.id} className="flex items-center gap-3 py-3 text-sm"><span className="min-w-0 flex-1">{term.name} · {term.startsOn} — {term.endsOn}</span>{term.isCurrent ? <Badge variant="secondary">{t("current")}</Badge> : <Button size="sm" variant="secondary" disabled={pending} onClick={() => activateTermRun.run(term.id)}>{t("activate")}</Button>}</li>)}</ul>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2"><Select value={termCampusId} onValueChange={setTermCampusId}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{activeCampuses.map((campus) => <SelectItem key={campus.id} value={campus.id}>{campus.name}</SelectItem>)}</SelectContent></Select><Input type="number" min={2020} max={2100} value={termYear} onChange={(event) => setTermYear(Number(event.target.value))} /><Select value={String(termHalf)} onValueChange={(value) => setTermHalf(Number(value) as 1 | 2)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="1">{t("termFirst")}</SelectItem><SelectItem value="2">{t("termSecond")}</SelectItem></SelectContent></Select><Input value={termName} maxLength={100} placeholder={t("termName")} onChange={(event) => setTermName(event.target.value)} /><Input type="date" value={termStart} onChange={(event) => setTermStart(event.target.value)} /><Input type="date" value={termEnd} onChange={(event) => setTermEnd(event.target.value)} /></div>
+              <div className="mt-3 grid gap-3 @xl/page:grid-cols-2"><Select value={termCampusId} onValueChange={setTermCampusId}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{activeCampuses.map((campus) => <SelectItem key={campus.id} value={campus.id}>{campus.name}</SelectItem>)}</SelectContent></Select><Input type="number" min={2020} max={2100} value={termYear} onChange={(event) => setTermYear(Number(event.target.value))} /><Select value={String(termHalf)} onValueChange={(value) => setTermHalf(Number(value) as 1 | 2)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="1">{t("termFirst")}</SelectItem><SelectItem value="2">{t("termSecond")}</SelectItem></SelectContent></Select><Input value={termName} maxLength={100} placeholder={t("termName")} onChange={(event) => setTermName(event.target.value)} /><Input type="date" value={termStart} onChange={(event) => setTermStart(event.target.value)} /><Input type="date" value={termEnd} onChange={(event) => setTermEnd(event.target.value)} /></div>
               <Button className="mt-3" size="sm" variant="secondary" disabled={pending || !termCampusId || !termName.trim() || !termStart || !termEnd} onClick={() => termRun.run({ campusId: termCampusId, year: termYear, term: termHalf, name: termName, startsOn: termStart, endsOn: termEnd })}>{t("createTerm")}</Button>
             </div>
           </div>
@@ -256,7 +256,7 @@ export function OrganizationSettingsPanel({ initial }: { initial: OrganizationSe
 
       <TabsContent value="rules">
         <SectionCard title={t("rulesTitle")} description={t("rulesIntro")} icon={<Settings2 size={19} />}>
-          <div className="grid gap-4 lg:grid-cols-[220px_220px_1fr]">
+          <div className="grid gap-4 @2xl/page:grid-cols-2 @5xl/page:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)]">
             <Label className="grid gap-2">{t("ruleDomain")}<Select value={ruleDomain} onValueChange={(value) => chooseRule(value as OrganizationRuleDomain, ruleCampusId)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{ORGANIZATION_RULE_DOMAINS.map((domain) => <SelectItem key={domain} value={domain}>{t(`rule_${domain}`)}</SelectItem>)}</SelectContent></Select></Label>
             <Label className="grid gap-2">{t("scope")}<ScopeSelect campuses={activeCampuses} value={ruleCampusId} onChange={(scope) => chooseRule(ruleDomain, scope)} globalLabel={t("allCampuses")} /></Label>
             <Label className="grid gap-2">{t("effectiveAt")}<Input type="datetime-local" value={ruleEffectiveAt} onChange={(event) => setRuleEffectiveAt(event.target.value)} /></Label>
@@ -271,7 +271,7 @@ export function OrganizationSettingsPanel({ initial }: { initial: OrganizationSe
       <TabsContent value="features">
         <SectionCard title={t("featuresTitle")} description={t("featuresIntro")} icon={<Flag size={19} />}>
           <div className="rounded-xl border border-line bg-paper/45 p-4 text-sm text-muted">{t("failClosedNotice")}</div>
-          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(220px,1fr)_minmax(220px,1fr)_minmax(260px,1fr)]">
+          <div className="mt-4 grid gap-4 @2xl/page:grid-cols-2 @5xl/page:grid-cols-3">
             <Label className="grid gap-2">{t("feature")}<Select value={flagKey} onValueChange={(value) => chooseFlag(value as OrganizationFeatureKey, flagCampusId)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{ORGANIZATION_FEATURE_KEYS.map((key) => <SelectItem key={key} value={key}>{t(`flag_${key.replaceAll(".", "_")}`)}</SelectItem>)}</SelectContent></Select></Label>
             <Label className="grid gap-2">{t("scope")}<ScopeSelect campuses={activeCampuses} value={flagCampusId} onChange={(scope) => chooseFlag(flagKey, scope)} globalLabel={t("allCampuses")} /></Label>
             <Label className="grid gap-2">{t("effectiveAt")}<Input type="datetime-local" value={flagEffectiveAt} onChange={(event) => setFlagEffectiveAt(event.target.value)} /></Label>

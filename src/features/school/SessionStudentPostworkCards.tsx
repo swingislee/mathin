@@ -196,7 +196,7 @@ export function SessionStudentPostworkCards({
         </div>
       </div>
 
-      <div className="mt-3 grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
+      <div className="mt-3 grid gap-3 @2xl/page:grid-cols-2 @6xl/page:grid-cols-3">
         {rows.map((row) => {
           const review = reviewByStudent.get(row.studentId);
           const followup = followups[row.studentId] ?? "";

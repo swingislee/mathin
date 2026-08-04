@@ -154,7 +154,7 @@ function RepairDialog({ item, cropX, cropY, note, pending, setCropX, setCropY, s
     top: `${-cropY / geometry.cropHeight * 100}%`,
   } : undefined;
   return <Dialog open={item !== null} onOpenChange={(open) => { if (!open && !pending) close(); }}>
-    <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
+    <DialogContent className="max-h-[90dvh] max-w-4xl overflow-y-auto">
       <DialogHeader>
         <DialogTitle>{t("adaptRepairDialogTitle")}</DialogTitle>
         <DialogDescription>{t("adaptRepairDialogDescription")}</DialogDescription>

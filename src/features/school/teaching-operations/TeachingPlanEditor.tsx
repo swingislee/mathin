@@ -100,7 +100,7 @@ export function TeachingPlanEditor({
   });
 
   return <Dialog open onOpenChange={(open) => { if (!open && !pending) onClose(); }}>
-    <DialogContent className="flex h-[min(92vh,56rem)] max-w-6xl flex-col overflow-hidden p-0">
+    <DialogContent className="flex h-[min(92dvh,56rem)] max-w-6xl flex-col overflow-hidden p-0">
       <DialogHeader className="border-b border-line px-6 py-5 pr-14">
         <DialogTitle>{t("editingTeachingPlan")}</DialogTitle>
         <DialogDescription>{t("editingTeachingPlanHint")}</DialogDescription>

@@ -112,8 +112,8 @@ export function RolesMatrixPanel({ roles, isAdmin }: { roles: StaffRoleInfo[]; i
   const pending = saveRun.pending || createRun.pending || renameRun.pending || removeRun.pending;
 
   return (
-    <div className="flex flex-col gap-6 lg:flex-row">
-      <aside className="w-full shrink-0 lg:w-72">
+    <div className="flex flex-col gap-6 @4xl/page:flex-row">
+      <aside className="w-full shrink-0 @4xl/page:w-60 @6xl/page:w-72">
         <section className="rounded-2xl border border-line bg-card p-4">
           <ul className="space-y-1">
             {roles.map((role) => (

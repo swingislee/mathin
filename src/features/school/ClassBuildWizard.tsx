@@ -213,7 +213,7 @@ export function ClassBuildWizard({
 
     {step === 3 && <section className="rounded-2xl border border-line bg-card p-5">
       <h2 className="text-base font-medium text-ink">{t("stepSchedule")}</h2><p className="mt-1 text-sm text-muted">{t("scheduleStepHint")}</p>
-      <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-5 grid gap-4 @2xl/page:grid-cols-2 @6xl/page:grid-cols-4">
         <div><Label className="text-xs font-normal text-muted">{t("schoolTerm")}</Label><Select value={schoolTermId} onValueChange={setSchoolTermId}><SelectTrigger className="mt-1"><SelectValue placeholder={t("chooseSchoolTerm")} /></SelectTrigger><SelectContent>{schoolTerms.map((term) => <SelectItem key={term.id} value={term.id}>{term.name}{term.isCurrent ? ` · ${t("current")}` : ""}</SelectItem>)}</SelectContent></Select></div>
         <div><Label htmlFor="schedule-start" className="text-xs font-normal text-muted">{t("startDate")}</Label><Input id="schedule-start" type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} className={cn("mt-1", inputClass)} /></div>
         <div><Label htmlFor="schedule-time" className="text-xs font-normal text-muted">{t("time")}</Label><Input id="schedule-time" type="time" value={time} onChange={(event) => setTime(event.target.value)} className={cn("mt-1", inputClass)} /></div>

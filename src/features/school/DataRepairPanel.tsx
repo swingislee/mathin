@@ -111,7 +111,7 @@ export function DataRepairPanel({
   return (
     <DashboardCard title={t("title")} description={t("description")}>
       <div className="space-y-6">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 @2xl/page:grid-cols-2 @6xl/page:grid-cols-4">
           {initialCapabilities.map((capability) => (
             <div key={`${capability.repairKey}:${capability.version}`} className="rounded-xl border border-line bg-paper/40 p-3">
               <div className="flex items-start justify-between gap-2">

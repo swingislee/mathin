@@ -329,7 +329,7 @@ export function StageReportPanel({
         {reports.length === 0 ? (
           <p className="mt-4 text-sm text-muted">{t("noStageReports")}</p>
         ) : (
-          <ul className="mt-4 grid gap-2 md:grid-cols-2 @6xl/page:grid-cols-3">
+          <ul className="mt-4 grid gap-2 @2xl/page:grid-cols-2 @6xl/page:grid-cols-3">
             {reports.map((report) => (
               <li key={report.headId}>
                 <button

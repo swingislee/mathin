@@ -491,7 +491,7 @@ export function TileWorkspace({
         </div>
       ) : (
         // 展示态 / 移动端编辑态：CSS grid，lg/md 两套坐标走 .tile-cell 变量（SSR 直出）。
-        <div ref={containerRef} data-tile-canvas="grid" className="grid grid-cols-1 gap-3 md:grid-cols-4 md:[grid-auto-rows:6rem] lg:grid-cols-6">
+        <div ref={containerRef} data-tile-canvas="grid" className="grid grid-cols-1 gap-3 @3xl/page:grid-cols-4 @3xl/page:[grid-auto-rows:6rem] @6xl/page:grid-cols-6">
           {visibleItems.map((tile) => {
             const item = itemByKey.get(tile.k);
             if (!item) return null;
@@ -553,7 +553,7 @@ export function TileWorkspace({
             <DialogTitle>{zoomItem?.label ?? ""}</DialogTitle>
           </DialogHeader>
           {zoomItem && (
-            <div className="flex max-h-[60vh] min-h-40 flex-col overflow-y-auto">{zoomItem.node}</div>
+            <div className="flex max-h-[60dvh] min-h-40 flex-col overflow-y-auto">{zoomItem.node}</div>
           )}
           {zoomItem?.href && (
             <Link
