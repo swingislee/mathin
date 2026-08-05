@@ -11,6 +11,8 @@ const PACKAGE_SCHEMA_VERSION = "mathin-package-export-v1";
 const PAGE_DOC_VERSION = "page-doc-v1";
 const AIXUEXI_PAGE_DOC_VERSION = "aixuexi-page-doc-v1";
 const AIXUEXI_DOCUMENT_ADAPTER = "aixuexi-page-v1";
+/** 与 `src/features/courseware-doc/aixuexi-schema.ts` 及构建器同步;母版为 1200×900。 */
+const AIXUEXI_PROJECTION_VERSION = 11;
 const HASH = /^[0-9a-f]{64}$/;
 const ASSET_KINDS = new Set(["image", "video", "audio", "svg", "h5"]);
 const DEFAULT_SSH_HOST = "xiaomi";
@@ -24,7 +26,8 @@ const storageDirectoryCache = new Map();
 const COURSEWARE_MARKUP_OPTIONS = {
   allowedTags: [
     "div", "p", "span", "br", "img", "b", "i", "em", "strong", "hr",
-    "sup", "sub", "ul", "ol", "li",
+    // u 承载爱学习填空的分步揭示(behaviors.stagedReveal 就是按它计数的),丢掉即丢一类交互。
+    "sup", "sub", "ul", "ol", "li", "u", "figure",
     "table", "thead", "tbody", "tfoot", "tr", "th", "td", "col", "colgroup",
     "svg", "g", "defs", "path", "text", "tspan", "title", "use", "foreignObject",
     "rect", "circle", "ellipse", "line", "polyline", "polygon", "marker",
@@ -45,7 +48,8 @@ const COURSEWARE_MARKUP_OPTIONS = {
       "x1", "x2", "y1", "y2", "cx", "cy", "r", "rx", "ry", "points",
       "offset", "stop-color", "stop-opacity", "gradientUnits", "gradientTransform",
       "preserveAspectRatio", "refX", "refY", "orient", "markerWidth", "markerHeight",
-      "marker-start", "marker-mid", "marker-end",
+      "marker-start", "marker-mid", "marker-end", "markerUnits",
+      "overflow", "stroke-miterlimit", "baseProfile",
       "border", "cellpadding", "cellspacing", "align", "valign", "colspan", "rowspan",
       "span", "nowrap", "size", "draggable",
       "data", "text-id", "edit-key", "originsrc", "original-src", "ori-data",
@@ -207,7 +211,7 @@ export function assertPageDocMarkupSafe(doc, label) {
 function validatePageDoc(doc, label) {
   const value = assertObject(doc, label);
   if (value.docVersion === AIXUEXI_PAGE_DOC_VERSION) {
-    if (value.adapter !== AIXUEXI_DOCUMENT_ADAPTER || value.projectionVersion !== 5) {
+    if (value.adapter !== AIXUEXI_DOCUMENT_ADAPTER || value.projectionVersion !== AIXUEXI_PROJECTION_VERSION) {
       fail(`${label} has an unsupported Aixuexi adapter/projection`);
     }
     const source = assertObject(value.source, `${label}.source`);
@@ -231,10 +235,15 @@ function validatePageDoc(doc, label) {
     if (itv) {
       add(itv.videoBindingKey, `${label}.itv.videoBindingKey`);
       add(itv.posterBindingKey, `${label}.itv.posterBindingKey`);
+      add(itv.lastFrameBindingKey, `${label}.itv.lastFrameBindingKey`);
       for (const event of itv.events ?? []) {
         add(event.previewBindingKey, `${label}.itv.previewBindingKey`);
+        add(event.pauseFrameBindingKey, `${label}.itv.pauseFrameBindingKey`);
         for (const widget of event.stage?.widgets ?? []) {
           add(widget.resourceBindingKey, `${label}.itv.widget.resourceBindingKey`);
+          for (const [state, key] of Object.entries(widget.stateBindingKeys ?? {})) {
+            add(key, `${label}.itv.widget.stateBindingKeys.${state}`);
+          }
         }
       }
     }

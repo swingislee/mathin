@@ -1,24 +1,33 @@
-.stage {
-  position: absolute;
-  inset: 0 auto auto 0;
+/*
+ * 爱学习成品页的呈现规则。
+ *
+ * 页面 JSON 只描述节点几何与源站 HTML;真正让页面「长得像源站」的相当一部分规则
+ * 只存在于源播放器的运行时样式里(富文本内联图 2 倍放大、答案面板配色、题头皮肤、
+ * 形状文字自适应等)。镜像项目阶段 49～61 把这些规则从课件页 HAR 里逐条还原并做过
+ * 版式巡检;本文件是那套规则在 Mathin 侧的落点,改动前先读
+ * `docs/plan/16-p6-courseware-platform.md` §11.4。
+ *
+ * 母版是 1200×900(4:3),坐标与源站 1:1。16:9 是源播放器把母版 contain 进画框的结果,
+ * 由 doc.presentation 描述,不是内容自身的比例。
+ */
+
+.frame {
+  position: relative;
+  width: 100%;
   overflow: hidden;
   color: #111827;
   color-scheme: light;
   font-family: Inter, "Microsoft YaHei", system-ui, sans-serif;
   line-height: normal;
   background: #fff;
-  transform-origin: top left;
 }
 
-.boardBand {
-  position: absolute;
-  inset: auto 0 0;
-  height: 25%;
-  background:
-    linear-gradient(rgb(148 163 184 / 10%) 1px, transparent 1px) 0 0 / 100% 28px,
-    #fffdf7;
-}
-
+/*
+ * 16:9 轨背景与画框同为 16:9,cover 即精确贴合。
+ * 4:3 轨的画框是母版内容区,cover 把 16:9 背景裁到中央 4:3 —— 这个裁切窗口
+ * 恰好等于源站放置内容的那 900×675 区域((1200−1200×0.75)/2 = 150),
+ * 所以背景的内容井与舞台边界天然对齐,不需要任何特例代码。
+ */
 .background {
   position: absolute;
   inset: 0;
@@ -27,14 +36,41 @@
   object-fit: cover;
 }
 
-.node,
-.questionNode {
+.stage {
   position: absolute;
-  transform-origin: center;
+  top: 0;
+  left: 0;
+  transform-origin: top left;
+}
+
+.node {
+  position: absolute;
+  overflow: hidden;
 }
 
 .questionNode {
+  position: absolute;
   overflow: auto;
+  padding: 14px 18px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 24px;
+  line-height: 1.5;
+  background: rgb(255 255 255 / 95%);
+}
+
+.questionNode > .html :global(p) {
+  margin: 0.35em 0;
+}
+
+.questionNode > .html :global(img) {
+  display: block;
+  margin: 8px auto;
+  object-fit: contain;
+}
+
+.widgetNode {
+  overflow: visible;
 }
 
 .html {
@@ -42,50 +78,545 @@
   height: 100%;
 }
 
-.html :global(.question-tk-container) {
+.node :global(img) {
+  border-width: 0;
+}
+
+/* 源站分栏题:题头固定,题干与选项在独立滚动区里。 */
+.questionScroll {
+  position: absolute;
+  left: 0;
+  width: 1200px;
+  overflow-x: hidden;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scrollbar-width: none;
 }
 
-.html :global(.tk-panel-stem),
-.html :global(.tk-panel-answers) {
+.questionScroll::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.questionScrollContent {
+  position: relative;
+  width: 1200px;
+}
+
+/* ---- 源站部件通用 ---- */
+
+.widgetNode :global(.axx_piece) {
+  display: flow-root;
+  overflow: visible !important;
+}
+
+.widgetNode :global(.content-axx p),
+.widgetNode :global(.axx_piece p) {
+  margin: 0;
+}
+
+.widgetNode :global(.shape-editable-container) {
+  left: 0 !important;
+  width: 100% !important;
+}
+
+.widgetNode :global(.shape-editable-element) {
+  width: 100% !important;
+}
+
+/* a44 形状部件:文字在形状框内居中并按框高收敛字号(下限 16px,见 behaviors.shapeTextFit)。 */
+.widgetNode[data-aix-source-type="a44"] :global(.shape-editable-container) {
+  height: 100% !important;
+}
+
+.widgetNode[data-aix-source-type="a44"] :global(.shape-editable-element) {
+  display: flex !important;
+  overflow: hidden !important;
+  height: 100% !important;
+  box-sizing: border-box !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  padding: 4px 8px !important;
+  line-height: 1.05 !important;
+}
+
+/* ---- 题目部件(question-tk) ---- */
+
+.widgetNode[data-aix-source-type="question-tk"] {
+  overflow: hidden;
+}
+
+.widgetNode[data-aix-source-type="question-tk"] > .html {
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  height: 100%;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scrollbar-width: none;
+}
+
+.widgetNode[data-aix-source-type="question-tk"] > .html::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.widgetNode[data-aix-source-type="question-tk"] :global(.question-tk-container) {
+  display: block !important;
   height: auto !important;
-  overflow-y: visible !important;
+  min-height: 100%;
 }
 
-.html :global(.tk-answer-toggle),
-.html :global(.tk-analysis-toggle) {
+.widgetNode[data-aix-source-type="question-tk"] :global(.tk-panel-stem),
+.widgetNode[data-aix-source-type="question-tk"] :global(.tk-panel-answers) {
+  position: static !important;
+  height: auto !important;
+  min-height: 0 !important;
+  padding: 10px !important;
+  overflow: visible !important;
+  font-weight: 700;
+}
+
+.widgetNode[data-aix-source-type="question-tk"] :global(.tk-panel-answers) {
+  display: block !important;
+  margin-top: 15px !important;
+  padding-bottom: 18px;
+}
+
+.widgetNode[data-aix-source-type="question-tk"] :global(.tk-option--index),
+.widgetNode[data-aix-source-type="question-tk"] :global(.tk-judge--index) {
+  white-space: break-spaces;
+}
+
+.widgetNode[data-aix-source-type="question-tk"] :global(.tk-a-option),
+.widgetNode[data-aix-source-type="question-tk"] :global(.tk-a-judge) {
+  display: flex;
+  min-height: 80px;
+  align-items: baseline;
+}
+
+.widgetNode[data-aix-source-type="question-tk"] :global(.tk-a-option) > :global(.tiku_piece),
+.widgetNode[data-aix-source-type="question-tk"] :global(.tk-a-judge) > :global(.tiku_piece) {
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+/* ---- 题头皮肤(question-tk-head):源站用三段式背景拼出木牌 ---- */
+
+.widgetNode[data-aix-source-type="question-tk-head"] {
+  overflow: visible;
+}
+
+.widgetNode[data-aix-source-type="question-tk-head"] > .html {
+  position: relative;
+  isolation: isolate;
+}
+
+.widgetNode[data-aix-source-type="question-tk-head"] :global(.question-tk-head) {
+  position: absolute !important;
+  z-index: 2 !important;
+  display: flex !important;
+  width: 100% !important;
+  height: 100% !important;
+  align-items: center;
+  justify-content: center;
+  border: 0 !important;
+  border-radius: 0 !important;
+  padding: 0 30px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: #fff !important;
+  inset: 0 !important;
+  line-height: 72px !important;
+  text-shadow: none !important;
+}
+
+.widgetNode[data-aix-source-type="question-tk-head"] :global(.question-tk-head + .widget-background) {
+  position: absolute !important;
+  z-index: 1 !important;
+  display: flex !important;
+  width: 100% !important;
+  height: 100% !important;
+  inset: 0 !important;
+  pointer-events: none;
+}
+
+.widgetNode[data-aix-source-type="question-tk-head"] :global(.widget-background > .start),
+.widgetNode[data-aix-source-type="question-tk-head"] :global(.widget-background > .end) {
+  height: 100% !important;
+  flex: 0 0 auto;
+  background-repeat: no-repeat !important;
+}
+
+.widgetNode[data-aix-source-type="question-tk-head"] :global(.widget-background > .middle) {
+  position: relative;
+  height: 100%;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.widgetNode[data-aix-source-type="question-tk-head"] :global(.widget-background .middle-piece) {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  inset: 0;
+  transform-origin: center;
+}
+
+/* 非题头节点里出现的题头结构走源站默认木牌样式。 */
+.node:not([data-aix-source-type="question-tk-head"]) :global(.question-tk-head) {
+  position: relative;
+  z-index: 2;
+  display: flex !important;
+  width: 100% !important;
+  height: 100% !important;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid #a95d16 !important;
+  border-radius: 28px !important;
+  padding: 0 24px !important;
+  background: linear-gradient(#e8a844, #bd6a1f) !important;
+  box-shadow: inset 0 0 0 3px #f5c16d;
+  color: #fff !important;
+  line-height: 1.2 !important;
+  text-shadow: 0 1px 2px #71350f;
+}
+
+.node:not([data-aix-source-type="question-tk-head"]) :global(.question-tk-head + .widget-background) {
+  display: none !important;
+}
+
+/* ---- 答案/解析折叠 ---- */
+
+.node :global(.tk-answer-toggle),
+.node :global(.tk-analysis-toggle) {
+  display: inline-block;
+  border: 1px solid rgb(0 0 0 / 15%);
+  border-radius: 32px;
+  padding: 8px 16px;
+  background: rgb(255 255 255 / 60%);
   cursor: pointer;
   user-select: none;
+  white-space: nowrap;
+}
+
+.node :global(.tk-answer-toggle:hover),
+.node :global(.tk-analysis-toggle:hover) {
+  background: rgb(255 255 255 / 80%);
+}
+
+.node :global(.tk-answer-toggle:focus-visible),
+.node :global(.tk-analysis-toggle:focus-visible) {
+  outline: 4px solid #38bdf8;
+  outline-offset: 2px;
+}
+
+.node :global(.tk-answer-toggle.tk-answer-toggle-origin) {
+  border: none;
+  border-radius: unset;
+  padding: 0;
+  background: none;
+}
+
+.node :global(.tk-answer-analysis) {
+  position: relative;
+  padding: 5px 0;
+}
+
+.node :global(.tk-answer-analysis .tk-answer-moden25),
+.node :global(.tk-answer-analysis .tk-analysis-moden25) {
+  display: flex;
+  align-items: baseline;
+}
+
+.node :global(.tk-answer-analysis .tk-answer-moden25 [role="button"]),
+.node :global(.tk-answer-analysis .tk-analysis-moden25 [role="button"]) {
+  width: 136px;
+  height: 62px;
+  flex: 0 0 auto;
+  border-width: 2px;
+  border-style: solid;
+  border-radius: 31px;
+  margin-right: 8px;
+  margin-bottom: 4px;
+  padding: 0;
+  color: #333;
+  cursor: pointer;
+  font-size: 32px;
+  line-height: 62px;
+  text-align: center;
+}
+
+.node :global(.tk-answer-analysis .tk-answer-moden25 [role="button"] > span),
+.node :global(.tk-answer-analysis .tk-analysis-moden25 [role="button"] > span) {
+  padding-left: 6px;
+  letter-spacing: 6px;
+}
+
+.node :global(.tk-answer-analysis .tk-answer-moden25 [role="button"]) {
+  border-color: #82db9b;
+  background-color: #e3ffdd;
+  box-shadow: 0 4px 0 0 #82db9b;
+}
+
+.node :global(.tk-answer-analysis .tk-analysis-moden25) {
+  margin-top: 12px;
+}
+
+.node :global(.tk-answer-analysis .tk-analysis-moden25 [role="button"]) {
+  border-color: #7cd4fa;
+  background-color: #ddf6ff;
+  box-shadow: 0 4px 0 0 #7cd4fa;
+}
+
+/* ---- 知识总结部件(tk-summary) ---- */
+
+.widgetNode[data-aix-source-type="tk-summary"] :global(.tk-summary-no-answer) {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 12px !important;
+  padding: 10px 10px 10px 0 !important;
+}
+
+.widgetNode[data-aix-source-type="tk-summary"] :global(.tk-summary-no-answer img) {
+  max-width: none !important;
+}
+
+.widgetNode[data-aix-source-type="tk-summary"] :global(.summary-no-answer-left) {
+  position: relative !important;
+  display: block !important;
+  flex: 0 0 auto;
+}
+
+.widgetNode[data-aix-source-type="tk-summary"] :global(.summary-no-answer-left .xkh-icon) {
+  width: 112px !important;
+}
+
+.widgetNode[data-aix-source-type="tk-summary"] :global(.summary-no-answer-right) {
+  position: relative !important;
+  display: block !important;
+  flex: 0 1 auto;
+  border: 1px solid #fedd78;
+  border-radius: 8px;
+  padding: 8px 2px 8px 8px !important;
+  background: #fff9e2;
+}
+
+.widgetNode[data-aix-source-type="tk-summary"] :global(.summary-no-answer-right .dialog-icon) {
+  position: absolute !important;
+  top: -18px !important;
+  left: 12px !important;
+  width: 77px !important;
+}
+
+.widgetNode[data-aix-source-type="tk-summary"] :global(.dialog-content) {
+  display: block !important;
+  width: fit-content;
+  min-width: 200px;
+  max-width: 100%;
+  min-height: 82px;
+  padding: 18px 10px 0 28px !important;
+}
+
+/* ---- interact-plus 引导页(content-type-131/132/133) ---- */
+
+.widgetNode :global(.interact-plus__guide) {
+  font-family: "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+  text-align: center;
+}
+
+.widgetNode :global(.interact-plus__guide.ct-131) {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 32px;
+  color: #fff;
+  font-size: 28px;
+  line-height: 34px;
+}
+
+.widgetNode :global(.interact-plus__guide.ct-131 .sub-title) {
+  font-weight: 400;
+}
+
+.widgetNode :global(.interact-plus__guide.ct-131.ver-2) {
+  display: block;
+  height: auto;
+  padding: 0;
+}
+
+.widgetNode :global(.interact-plus__guide.ct-131.ver-2 .sub-title) {
+  display: flex;
+  height: 170px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: #fff;
+  font-size: 37px;
+  font-weight: 700;
+  line-height: 50px;
+}
+
+.widgetNode :global(.interact-plus__guide.ct-131.ver-2 .child-num) {
+  margin-top: 0;
+  color: #fff;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: 0.5em;
+}
+
+.widgetNode :global(.interact-plus__guide.ct-132 .sub-title) {
+  display: flex;
+  height: 62px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 26px;
+  color: #36302d;
+  font-size: 23px;
+  font-weight: 600;
+  line-height: 28px;
+}
+
+.widgetNode :global(.interact-plus__guide.ct-132 .child-num) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 6px;
+  color: rgb(54 48 45 / 70%);
+  font-size: 27px;
+}
+
+.widgetNode :global(.interact-plus__guide.ct-132.ver-2) {
+  font-weight: 700;
+}
+
+.widgetNode :global(.interact-plus__guide.ct-132.ver-2 .sub-title) {
+  height: 150px;
+  padding: 0;
+  color: #fff;
+  font-size: 37px;
+  line-height: 50px;
+}
+
+.widgetNode :global(.interact-plus__guide.ct-132.ver-2 .child-num) {
+  margin-top: 20px;
+  color: #975c20;
+  font-size: 30px;
+  letter-spacing: 0.5em;
+}
+
+.widgetNode :global(.interact-plus__guide.ct-133 .sub-title) {
+  display: flex;
+  height: 80px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 26px;
+  color: #313131;
+  font-size: 33px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.widgetNode :global(.interact-plus__guide.ct-133 .child-num) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 52px;
+  color: rgb(54 48 45 / 70%);
+  font-size: 27px;
+}
+
+.widgetNode :global(.interact-plus__guide.ct-133.ver-2 .sub-title) {
+  height: 130px;
+  padding: 0;
+  color: #fff;
+  font-size: 37px;
+  line-height: 50px;
+}
+
+.widgetNode :global(.interact-plus__guide.ct-133.ver-2 .child-num) {
+  margin-top: 0;
+  color: #fff;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: 0.5em;
+}
+
+.widgetNode :global(.interact-plus__guide.ct-131.ver-2 [data-shadow-text]),
+.widgetNode :global(.interact-plus__guide.ct-132.ver-2 .sub-title [data-shadow-text]),
+.widgetNode :global(.interact-plus__guide.ct-133.ver-2 [data-shadow-text]) {
+  position: relative;
+  z-index: 0;
+}
+
+.widgetNode :global(.interact-plus__guide.ct-131.ver-2 [data-shadow-text])::after,
+.widgetNode :global(.interact-plus__guide.ct-132.ver-2 .sub-title [data-shadow-text])::after,
+.widgetNode :global(.interact-plus__guide.ct-133.ver-2 [data-shadow-text])::after {
+  position: absolute;
+  z-index: -1;
+  color: transparent;
+  content: attr(data-shadow-text);
+  inset: 0;
+  paint-order: stroke fill;
+  pointer-events: none;
+  -webkit-text-stroke: 8px #9b5b18;
+}
+
+/* ---- 分步揭示(stagedReveal):填空先只留下划线,逐次点击显形 ---- */
+
+.node :global(u.aix-staged-underline) {
+  color: transparent !important;
+  text-decoration-color: #111 !important;
+  text-decoration-thickness: 2px;
+}
+
+.node :global(u.aix-staged-underline.aix-revealed) {
+  color: inherit !important;
+}
+
+/* 源站富文本里的内联小图按 2 倍呈现(规则在播放器运行时,不在页面 JSON 里)。 */
+.node :global(img.axx_inlineimage) {
+  max-width: 260px !important;
+  height: auto !important;
+}
+
+.advanceable {
+  cursor: pointer;
+}
+
+/* ---- 题目互动入口 ---- */
+
+.topicButton {
+  position: absolute;
+  z-index: 1000;
+  bottom: 32px;
+  left: 50%;
+  min-width: 210px;
+  transform: translateX(-50%);
 }
 
 .entryButton {
   width: 100%;
   height: 100%;
   flex-direction: column;
-  border-radius: 18px;
-  font-size: 24px;
+  border-radius: 28px;
+  font-size: 22px;
 }
 
 .entryButton small {
-  font-size: 14px;
-  opacity: 0.78;
-}
-
-.topicButton {
-  position: absolute;
-  z-index: 1000;
-  right: 36px;
-  bottom: 28px;
-  min-width: 150px;
+  font-size: 13px;
+  font-weight: 400;
+  opacity: 0.85;
 }
 
 .overlay {
   position: absolute;
   z-index: 2000;
-  inset: 0;
   display: flex;
   flex-direction: column;
   background: #eef2f7;
+  inset: 0;
 }
 
 .overlayToolbar {
@@ -106,46 +637,167 @@
   border: 0;
 }
 
+/* ---- 互动视频(ITV)播放器 ---- */
+
+.itvOverlay {
+  position: absolute;
+  z-index: 2100;
+  color: #fff;
+  background: #000;
+  inset: 0;
+}
+
 .itvPlayer {
-  position: relative;
-  min-height: 0;
-  flex: 1;
+  position: absolute;
   overflow: hidden;
-  background: #020617;
+  background: #000;
+  inset: 0;
 }
 
 .fillMedia {
+  position: absolute;
   width: 100%;
   height: 100%;
+  background: #000;
+  inset: 0;
   object-fit: contain;
 }
 
-.itvTimeline {
-  display: flex;
-  min-height: 56px;
-  gap: 8px;
-  overflow-x: auto;
-  padding: 8px 12px;
-  background: #fff;
+/* 停帧图遮住 video 的解码帧,避免互动期间露出下一帧。 */
+.itvFrameOverlay {
+  position: absolute;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  inset: 0;
+  object-fit: contain;
 }
 
-.itvGame {
+.itvSideClose {
   position: absolute;
-  inset: 0;
+  z-index: 9;
+  top: 50%;
+  width: 52px;
+  height: 92px;
+  border: 1px solid #64748b;
+  margin-top: -46px;
+  padding: 0;
+  color: #fff;
+  background: rgb(51 65 85 / 91%);
+  font-size: 30px;
+  line-height: 1;
+  transition: opacity 0.25s;
+}
+
+.itvSideCloseLeft {
+  left: 0;
+  border-radius: 0 8px 8px 0;
+}
+
+.itvSideCloseRight {
+  right: 0;
+  border-radius: 8px 0 0 8px;
+}
+
+.itvControls {
+  position: absolute;
+  z-index: 9;
+  right: 44px;
+  bottom: 24px;
+  left: 44px;
   display: flex;
-  flex-direction: column;
-  background: rgb(2 6 23 / 76%);
+  height: 70px;
+  align-items: center;
+  gap: 14px;
+  border-radius: 14px;
+  padding: 8px 18px;
+  background: rgb(17 19 24 / 91%);
+  transition: opacity 0.25s;
+}
+
+.itvChromeHidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.itvPlay {
+  width: 58px;
+  height: 58px;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 50%;
+  color: #fff;
+  background: #a3a3a3;
+  font-size: 25px;
+}
+
+.itvProgress {
+  position: relative;
+  display: flex;
+  height: 34px;
+  flex: 1;
+  align-items: center;
+}
+
+.itvSeek {
+  width: 100%;
+  height: 4px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0;
+  accent-color: #10b981;
+}
+
+.itvMarker {
+  position: absolute;
+  top: 10px;
+  width: 12px;
+  height: 12px;
+  min-width: 0;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  padding: 0;
+  background: #10b981;
+  transform: translateX(-50%);
+}
+
+.itvTime {
+  min-width: 82px;
+  font-variant-numeric: tabular-nums;
+}
+
+.itvControlButton {
+  flex: 0 0 auto;
+  border: 0;
+  color: #fff;
+  background: transparent;
+}
+
+.itvSpeed {
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 8px 10px;
+  color: #fff;
+  background: transparent;
+}
+
+.itvGamePanel {
+  position: absolute;
+  z-index: 6;
+  background: transparent;
+  inset: 0;
 }
 
 .itvGameFrame {
-  position: relative;
-  min-height: 0;
-  flex: 1;
+  position: absolute;
   overflow: hidden;
+  inset: 0;
 }
 
 .itvGameStage {
   position: absolute;
+  z-index: 1;
   top: 0;
   left: 0;
   transform-origin: top left;
@@ -153,47 +805,133 @@
 
 .itvWidget {
   position: absolute;
-  overflow: hidden;
-  transform-origin: center;
+  border: 0 !important;
+  background: transparent !important;
 }
 
-.itvChoice {
-  cursor: pointer;
-  border: 4px solid transparent;
-  border-radius: 12px;
-}
-
-.itvCorrect {
-  border-color: #22c55e;
-}
-
-.itvIncorrect {
-  border-color: #ef4444;
+.itvWidget :global(img),
+.itvWidget > .fillMedia {
+  position: static;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
 }
 
 .itvTimer {
   display: grid;
   width: 100%;
   height: 100%;
-  place-items: center;
   border-radius: 999px;
-  color: #fff;
-  background: rgb(15 23 42 / 82%);
+  color: #0f172a;
+  background: #fff;
+  font-weight: 700;
+  place-items: center;
 }
 
-.itvGameFooter {
+/*
+ * 选项命中框覆盖在题板图之上。源站给了三态素材时直接换图,没有素材才退回描边反馈
+ * (`data-itv-has-state` 为 true 即已有素材)。
+ */
+.itvChoiceHitbox {
+  position: absolute;
+  z-index: 5;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.itvChoiceHitbox[data-itv-has-state="false"].itvCorrect,
+.itvChoiceHitbox[data-itv-has-state="false"].itvIncorrect {
+  border-radius: 999px;
+}
+
+.itvChoiceHitbox[data-itv-has-state="false"].itvCorrect {
+  border: 5px solid #10b981;
+}
+
+.itvChoiceHitbox[data-itv-has-state="false"].itvIncorrect {
+  border: 5px solid #ff5964;
+}
+
+.itvChoiceHitbox[data-itv-has-state="false"].itvCorrect::after,
+.itvChoiceHitbox[data-itv-has-state="false"].itvIncorrect::after {
+  position: absolute;
+  top: -18px;
+  right: -14px;
   display: flex;
-  min-height: 52px;
+  width: 42px;
+  height: 42px;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 6px 16px;
-  background: #fff;
+  justify-content: center;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 31px;
+  font-weight: 900;
+}
+
+.itvChoiceHitbox[data-itv-has-state="false"].itvCorrect::after {
+  background: #10b981;
+  content: "✓";
+}
+
+.itvChoiceHitbox[data-itv-has-state="false"].itvIncorrect::after {
+  background: #ff5964;
+  content: "×";
+}
+
+/* 答错时把真正的答案圈出来。 */
+.itvChoiceHitbox.itvAnswer {
+  border: 5px solid #10b981;
+  border-radius: 999px;
+}
+
+.itvChoiceHitbox.itvAnswer::after {
+  position: absolute;
+  top: -18px;
+  right: -14px;
+  display: flex;
+  width: 42px;
+  height: 42px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: #fff;
+  background: #10b981;
+  content: "✓";
+  font-size: 31px;
+  font-weight: 900;
+}
+
+.itvAnswerTag {
+  position: absolute;
+  top: -58px;
+  left: 14px;
+  border-radius: 12px;
+  padding: 9px 14px;
+  color: #8a4b16;
+  background: #fff8df;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 13%);
+  font-size: 23px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.srOnly {
+  position: absolute !important;
+  overflow: hidden !important;
+  width: 1px !important;
+  height: 1px !important;
+  border: 0 !important;
+  margin: -1px !important;
+  padding: 0 !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .stage,
-  .itvGameStage {
+  .itvSideClose,
+  .itvControls {
     transition: none;
   }
 }

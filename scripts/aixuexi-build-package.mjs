@@ -16,6 +16,20 @@ const PRODUCT_CODE = new Map([
 ]);
 const TEXT_EXTENSIONS = new Set([".css", ".html", ".htm", ".js", ".json", ".mjs", ".svg", ".txt"]);
 
+/**
+ * 爱学习内容母版是 1200×900（正好 4:3），坐标 1:1，不做任何纵向压缩。
+ * 源播放器自己把它 contain 进 1200×675 的 16:9 画框（0.75 缩放 + 左右各 150 留白），
+ * 这条规则由 layout.presentation 携带，供 16:9 轨还原源站所见。
+ */
+const SOURCE_PROJECTION_VERSION = 11;
+const SOURCE_ITV_PROJECTION_VERSION = 4;
+const SOURCE_CANVAS_WIDTH = 1200;
+const SOURCE_CANVAS_HEIGHT = 900;
+const PRESENTATION_WIDTH = 1200;
+const PRESENTATION_HEIGHT = 675;
+const PRESENTATION_CONTENT_SCALE = 0.75;
+const PRESENTATION_OFFSET_X = 150;
+
 function fail(message) {
   throw new Error(`AIXUEXI_BUILD: ${message}`);
 }
@@ -77,22 +91,31 @@ function mimeFor(file) {
   }[extension] ?? "application/octet-stream";
 }
 
+/**
+ * 允许清单按「移植过来的呈现规则实际选择到的标签/属性」定档，不是按源站原样放行。
+ * `u` 承载 stagedReveal 的填空揭示，`role`/`data-shadow-text` 是 tk-answer-moden25 按钮与
+ * interact-plus 描边文字的 CSS 命中点，删掉任何一个都会静默丢一类呈现。
+ */
 const MARKUP_OPTIONS = {
   allowedTags: [
-    "div", "p", "span", "br", "img", "b", "i", "em", "strong", "sub", "sup", "hr",
-    "svg", "path", "g", "defs", "marker", "line", "polyline", "polygon", "circle",
-    "ellipse", "rect", "text", "tspan", "clipPath", "table", "tbody", "thead", "tr",
-    "td", "th", "ol", "ul", "li", "math", "mrow", "mi", "mn", "mo", "mfrac", "msup", "msub",
+    "div", "p", "span", "br", "img", "b", "i", "em", "strong", "sub", "sup", "hr", "u",
+    "figure", "svg", "path", "g", "defs", "marker", "line", "polyline", "polygon", "circle",
+    "ellipse", "rect", "text", "tspan", "clipPath", "foreignObject", "table", "tbody", "thead",
+    "tr", "td", "th", "ol", "ul", "li", "math", "mrow", "mi", "mn", "mo", "mfrac", "msup", "msub",
   ],
   allowedAttributes: {
     "*": [
       "style", "class", "id", "src", "alt", "width", "height", "viewBox", "xmlns",
-      "fill", "fill-opacity", "stroke", "stroke-width", "stroke-dasharray", "stroke-linejoin",
-      "stroke-linecap", "stroke-opacity", "vector-effect", "pointer-events", "transform", "d",
+      "fill", "fill-opacity", "fill-rule", "clip-rule", "stroke", "stroke-width",
+      "stroke-dasharray", "stroke-linejoin", "stroke-linecap", "stroke-opacity",
+      "stroke-miterlimit", "vector-effect", "pointer-events", "transform", "d",
       "x", "y", "x1", "y1", "x2", "y2", "cx", "cy", "r", "rx", "ry", "points",
-      "marker-end", "marker-start", "refX", "refY", "orient", "markerWidth", "markerHeight",
-      "preserveAspectRatio", "text-anchor", "dominant-baseline", "font-family", "font-size",
-      "clip-path", "colspan", "rowspan",
+      "marker-end", "marker-start", "markerUnits", "refX", "refY", "orient",
+      "markerWidth", "markerHeight", "preserveAspectRatio", "text-anchor",
+      "dominant-baseline", "font-family", "font-size", "clip-path", "overflow",
+      "colspan", "rowspan", "role", "data-shadow-text", "data-shadow-path",
+      "data-role", "data-kit", "data-tk-img-key", "data-placeholder-type",
+      "data-size-scale", "data-child-index", "version", "baseProfile",
     ],
   },
   allowedSchemes: ["asset", "data"],
@@ -218,11 +241,57 @@ function assertSourceScope(siteManifest, catalog) {
   }
   if (catalog.courseCount !== 52 || catalog.courses?.length !== 52) fail("catalog must contain 52 lectures");
   for (const course of catalog.courses) {
-    if (!GRADE.has(course.grade) || course.term !== "秋季" || course.level !== "能力强化 G+" || course.status !== "complete") {
+    // catalog.status 复制自目录快照的年级覆盖状态（partial = 该次采集未覆盖全部年级），
+    // 不描述讲次本身。讲次准入门槛压在每讲 offline-verification 的 complete + 三项零计数上。
+    if (!GRADE.has(course.grade) || course.term !== "秋季" || course.level !== "能力强化 G+"
+        || !["complete", "partial"].includes(course.status)) {
       fail(`lecture ${course.coursewareId} is outside the approved 3-6 / Autumn / G+ scope`);
     }
     if ([7, 15].includes(course.lessonIndex)) fail("missing lesson slots must not be fabricated");
   }
+}
+
+function assertSourceCanvas(layout, label) {
+  const { canvas, presentation } = layout;
+  if (canvas?.width !== SOURCE_CANVAS_WIDTH || canvas?.height !== SOURCE_CANVAS_HEIGHT
+      || canvas?.sourceWidth !== SOURCE_CANVAS_WIDTH || canvas?.sourceHeight !== SOURCE_CANVAS_HEIGHT
+      || canvas?.coordinateScaleX !== 1 || canvas?.coordinateScaleY !== 1) {
+    fail(`${label} does not use the unscaled ${SOURCE_CANVAS_WIDTH}x${SOURCE_CANVAS_HEIGHT} master canvas`);
+  }
+  if (presentation?.width !== PRESENTATION_WIDTH || presentation?.height !== PRESENTATION_HEIGHT
+      || presentation?.contentScale !== PRESENTATION_CONTENT_SCALE
+      || presentation?.offsetX !== PRESENTATION_OFFSET_X
+      || !Number.isFinite(presentation?.offsetY)) {
+    fail(`${label} carries an unexpected source presentation rule`);
+  }
+  if (!layout.behaviors || typeof layout.behaviors !== "object") fail(`${label} is missing source behaviors`);
+}
+
+function projectBehaviors(behaviors, label) {
+  const scroll = (value, extraKey) => {
+    if (value === null || value === undefined) return null;
+    if (value.enabled !== true) fail(`${label} has a disabled scroll behavior with a body`);
+    const projected = {
+      top: value.top,
+      height: value.height,
+      [extraKey]: value[extraKey],
+    };
+    for (const [key, item] of Object.entries(projected)) {
+      if (!Number.isFinite(item)) fail(`${label} scroll behavior has a non-finite ${key}`);
+    }
+    return projected;
+  };
+  return {
+    splitQuestionScroll: scroll(behaviors.splitQuestionScroll, "contentHeight"),
+    singleQuestionScroll: scroll(behaviors.singleQuestionScroll, "clampWidth"),
+    stagedReveal: {
+      underlineCount: behaviors.stagedReveal?.underlineCount ?? 0,
+      summaryWidgetCount: behaviors.stagedReveal?.summaryWidgetCount ?? 0,
+    },
+    shapeTextFit: behaviors.shapeTextFit
+      ? { minFontSize: behaviors.shapeTextFit.minFontSize }
+      : null,
+  };
 }
 
 export async function buildAixuexiPackage(options) {
@@ -317,10 +386,11 @@ export async function buildAixuexiPackage(options) {
       const nextPage = course.pages[index + 1] ?? null;
       const sourcePage = await readJson(resolveInside(siteRoot, pageMeta.dataPath));
       if (sourcePage.layout?.adapter !== "aixuexi_page_v1"
-          || sourcePage.layout?.projectionVersion !== 5
+          || sourcePage.layout?.projectionVersion !== SOURCE_PROJECTION_VERSION
           || sourcePage.reviewState?.mappingStatus !== "mapped") {
-        fail(`${course.coursewareId}/${pageMeta.pageDatabaseId} is not a mapped projection v5 page`);
+        fail(`${course.coursewareId}/${pageMeta.pageDatabaseId} is not a mapped projection v${SOURCE_PROJECTION_VERSION} page`);
       }
+      assertSourceCanvas(sourcePage.layout, `${course.coursewareId}/${pageMeta.pageDatabaseId}`);
       const resources = new Map((sourcePage.assets?.resources ?? []).map((resource) => [resource.resourceRefId, resource]));
       const keyByRef = new Map();
       const bindingForRef = (resourceRefId, role) => {
@@ -375,7 +445,19 @@ export async function buildAixuexiPackage(options) {
       });
 
       let topicInteraction = null;
-      if (sourcePage.topicInteraction) {
+      if (sourcePage.topicInteraction?.status === "capture_required") {
+        // 来源包的明确缺口：该页引用了 queryTopic 互动，但授权 HAR 未捕获到响应，
+        // 因此没有离线包可发布。原样带出状态，让课堂/Studio 呈现「待补采」而不是假装无互动。
+        topicInteraction = {
+          status: "capture_required",
+          topicId: sourcePage.topicInteraction.topicId,
+          entryKind: sourcePage.topicInteraction.entryKind,
+          bindingKey: null,
+        };
+      } else if (sourcePage.topicInteraction) {
+        if (sourcePage.topicInteraction.status !== "offline") {
+          fail(`${course.coursewareId}/${pageMeta.pageDatabaseId} has unknown topic status ${sourcePage.topicInteraction.status}`);
+        }
         const h5 = await buildTopicPackage({
           sourcePackageRoot,
           outputRoot,
@@ -415,15 +497,19 @@ export async function buildAixuexiPackage(options) {
       }
 
       const sourceItv = sourcePage.itvInteraction;
+      if (sourceItv && sourceItv.projectionVersion !== SOURCE_ITV_PROJECTION_VERSION) {
+        fail(`${course.coursewareId}/${pageMeta.pageDatabaseId} carries ITV projection v${sourceItv.projectionVersion}`);
+      }
       const itvInteraction = sourceItv ? {
         schemaVersion: 1,
-        projectionVersion: 1,
+        projectionVersion: SOURCE_ITV_PROJECTION_VERSION,
         status: "offline",
         name: sourceItv.name,
         version: sourceItv.version,
         durationSeconds: sourceItv.durationSeconds,
         videoBindingKey: bindingForRef(sourceItv.videoResourceRefId, "itv_video"),
         posterBindingKey: bindingForRef(sourceItv.posterResourceRefId, "itv_poster"),
+        lastFrameBindingKey: bindingForRef(sourceItv.lastFrameResourceRefId, "itv_last_frame"),
         eventCount: sourceItv.eventCount,
         events: sourceItv.events.map((event) => ({
           eventIndex: event.eventIndex,
@@ -456,22 +542,29 @@ export async function buildAixuexiPackage(options) {
                 ? sanitizeMarkup(widget.html, defaultBindingForRef, `${course.coursewareId}/ITV/${event.eventIndex}/${widget.id}`)
                 : null,
               resourceBindingKey: bindingForRef(widget.resourceRefId, "itv_widget"),
+              stateBindingKeys: {
+                selected: bindingForRef(widget.stateResourceRefIds?.selected, "itv_choice_selected"),
+                right: bindingForRef(widget.stateResourceRefIds?.right, "itv_choice_right"),
+                wrong: bindingForRef(widget.stateResourceRefIds?.wrong, "itv_choice_wrong"),
+              },
               known: widget.known,
               warnings: widget.warnings ?? [],
             })),
             groups: event.stage.groups,
           },
           previewBindingKey: bindingForRef(event.previewResourceRefId, "itv_preview"),
+          pauseFrameBindingKey: bindingForRef(event.pauseFrameResourceRefId, "itv_pause_frame"),
           warnings: event.warnings ?? [],
         })),
         warnings: sourceItv.warnings ?? [],
       } : null;
 
       const canvas = sourcePage.layout.canvas;
+      const presentation = sourcePage.layout.presentation;
       const doc = {
         docVersion: "aixuexi-page-doc-v1",
         adapter: "aixuexi-page-v1",
-        projectionVersion: 5,
+        projectionVersion: SOURCE_PROJECTION_VERSION,
         source: {
           sourceSystem: "aixuexi_bsk",
           packageKey: options.packageKey,
@@ -483,14 +576,19 @@ export async function buildAixuexiPackage(options) {
           groupName: sourcePage.normalized.groupName ?? null,
         },
         canvas: {
-          width: 1200,
-          height: 675,
-          sourceWidth: 1200,
-          sourceHeight: 900,
-          coordinateScaleY: 0.75,
+          width: SOURCE_CANVAS_WIDTH,
+          height: SOURCE_CANVAS_HEIGHT,
           widgetOffsetX: canvas.widgetOffsetX,
           backgroundBindingKey: bindingForRef(canvas.backgroundResourceRefId, "background"),
         },
+        presentation: {
+          width: PRESENTATION_WIDTH,
+          height: PRESENTATION_HEIGHT,
+          contentScale: PRESENTATION_CONTENT_SCALE,
+          offsetX: PRESENTATION_OFFSET_X,
+          offsetY: presentation.offsetY,
+        },
+        behaviors: projectBehaviors(sourcePage.layout.behaviors, `${course.coursewareId}/${pageMeta.pageDatabaseId}`),
         sourceKind: sourcePage.layout.sourceKind,
         nodes,
         topicInteraction,

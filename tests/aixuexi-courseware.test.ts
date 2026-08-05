@@ -14,7 +14,7 @@ function doc(): AixuexiPageDoc {
   return {
     docVersion: "aixuexi-page-doc-v1",
     adapter: "aixuexi-page-v1",
-    projectionVersion: 5,
+    projectionVersion: 11,
     source: {
       sourceSystem: "aixuexi_bsk",
       packageKey: "2026-gplus-sujiao-math",
@@ -27,12 +27,22 @@ function doc(): AixuexiPageDoc {
     },
     canvas: {
       width: 1200,
-      height: 675,
-      sourceWidth: 1200,
-      sourceHeight: 900,
-      coordinateScaleY: 0.75,
+      height: 900,
       widgetOffsetX: 0,
       backgroundBindingKey: key("b"),
+    },
+    presentation: {
+      width: 1200,
+      height: 675,
+      contentScale: 0.75,
+      offsetX: 150,
+      offsetY: 0,
+    },
+    behaviors: {
+      splitQuestionScroll: null,
+      singleQuestionScroll: null,
+      stagedReveal: { underlineCount: 0, summaryWidgetCount: 0 },
+      shapeTextFit: null,
     },
     sourceKind: "slide_widgets",
     nodes: [{
@@ -44,7 +54,7 @@ function doc(): AixuexiPageDoc {
       x: 0,
       y: 0,
       width: 1200,
-      height: 675,
+      height: 900,
       zIndex: -1000,
       rotation: 0,
       known: true,
@@ -61,9 +71,39 @@ function doc(): AixuexiPageDoc {
 }
 
 describe("Aixuexi courseware adapter", () => {
-  it("freezes projection v5 separately from the E-series schema", () => {
+  it("freezes projection v11 separately from the E-series schema", () => {
     const parsed = aixuexiPageDocSchema.parse(doc());
     expect(parsed.docVersion).toBe("aixuexi-page-doc-v1");
+    expect([...collectAixuexiBindingKeys(parsed)]).toEqual([key("b")]);
+  });
+
+  it("keeps the 4:3 master canvas unscaled and carries the source 16:9 presentation rule", () => {
+    const parsed = aixuexiPageDocSchema.parse(doc());
+    // 母版就是 4:3；16:9 是源播放器 contain 出来的画框，不是内容的原始比例。
+    expect(parsed.canvas.width / parsed.canvas.height).toBeCloseTo(4 / 3, 10);
+    expect(parsed.presentation.width / parsed.presentation.height).toBeCloseTo(16 / 9, 10);
+    expect(parsed.presentation.contentScale)
+      .toBeCloseTo(parsed.presentation.height / parsed.canvas.height, 10);
+    expect(parsed.presentation.offsetX)
+      .toBeCloseTo((parsed.presentation.width - parsed.canvas.width * parsed.presentation.contentScale) / 2, 10);
+  });
+
+  it("rejects a doc that squashes the master into the 16:9 frame", () => {
+    const squashed = { ...doc(), canvas: { ...doc().canvas, height: 675 } };
+    expect(aixuexiPageDocSchema.safeParse(squashed).success).toBe(false);
+  });
+
+  it("carries an uncaptured topic interaction as a null-binding gap", () => {
+    const parsed = aixuexiPageDocSchema.parse({
+      ...doc(),
+      topicInteraction: {
+        status: "capture_required",
+        topicId: "7392129",
+        entryKind: "quick_wit_answer",
+        bindingKey: null,
+      },
+    });
+    expect(parsed.topicInteraction?.status).toBe("capture_required");
     expect([...collectAixuexiBindingKeys(parsed)]).toEqual([key("b")]);
   });
 
