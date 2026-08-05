@@ -230,6 +230,77 @@ export function applyLayoutCorrections(stage: HTMLElement) {
   clearControlOverlaps(stage);
 }
 
+export interface PresentationOptions {
+  shapeTextMinFontSize: number | null;
+  stagedReveal: { underlineCount: number; summaryWidgetCount: number };
+  disclosureLabels: { answer: string; analysis: string };
+  onRevealSteps: (steps: HTMLElement[]) => void;
+}
+
+/**
+ * 完整施加一遍呈现规则。幂等:接过线的折叠开关带 `data-aix-disclosure`,放大过的图带
+ * `data-aix-size-scaled`,重复调用不会二次放大或二次接线。
+ */
+export function applyPresentation(stage: HTMLElement, options: PresentationOptions) {
+  wireDisclosures(stage, options.disclosureLabels);
+  scaleSmallInlineImages(stage);
+  if (options.shapeTextMinFontSize !== null) fitShapeText(stage, options.shapeTextMinFontSize);
+  options.onRevealSteps(collectRevealSteps(stage, options.stagedReveal));
+  applyLayoutCorrections(stage);
+}
+
+/** 超过这个次数就停手:呈现规则本身是自收敛的,还在抖说明有规则互相打架,不要无限重排。 */
+const MAX_PRESENTATION_PASSES = 40;
+
+/**
+ * 挂载后按几个节拍复算,并监听舞台子树。
+ *
+ * 必须监听:注入的源站 HTML 是 React 托管的子树,React 在后续渲染里会重建它,
+ * 把接过线的折叠开关、放大过的图和矫正过的坐标一起抹掉;字体与图片落位的时机也各不相同。
+ * 重入标志 + 次数上限保证不会和 React 或规则自身来回打架。
+ */
+export function observePresentation(stage: HTMLElement, options: PresentationOptions) {
+  let running = false;
+  let passes = 0;
+  let queued = false;
+
+  const run = () => {
+    if (running) return;
+    running = true;
+    try {
+      applyPresentation(stage, options);
+    } finally {
+      running = false;
+    }
+  };
+
+  run();
+  void document.fonts?.ready?.then(run);
+  const timers = [80, 200, 400].map((delay) => window.setTimeout(run, delay));
+
+  const observer = new MutationObserver(() => {
+    if (running || queued || passes > MAX_PRESENTATION_PASSES) return;
+    queued = true;
+    requestAnimationFrame(() => {
+      queued = false;
+      passes += 1;
+      run();
+    });
+  });
+  observer.observe(stage, {
+    subtree: true,
+    childList: true,
+    characterData: true,
+    attributes: true,
+    attributeFilter: ["style", "src", "class"],
+  });
+
+  return () => {
+    observer.disconnect();
+    timers.forEach((timer) => window.clearTimeout(timer));
+  };
+}
+
 /**
  * 答案/解析折叠接线。源站有两种结构:切换按钮与内容同为 `.tk-answer` 的直接子元素,
  * 或再深嵌一层(`.tk-answer-moden25`)。统一以折叠内容为锚点、在其父级里找兄弟按钮,
@@ -260,6 +331,19 @@ export function wireDisclosures(stage: HTMLElement, labels: { answer: string; an
       toggle.setAttribute("tabindex", "0");
       toggle.setAttribute("aria-expanded", "false");
       content.style.display = "none";
+
+      const activate = (event: Event) => {
+        event.preventDefault();
+        // 折叠开关不参与舞台的分步揭示/翻页,否则点开答案会顺带翻页。
+        event.stopPropagation();
+        const opening = getComputedStyle(content).display === "none";
+        content.style.display = opening ? "block" : "none";
+        toggle.setAttribute("aria-expanded", String(opening));
+      };
+      toggle.addEventListener("click", activate);
+      toggle.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") activate(event);
+      });
     }
   }
 }

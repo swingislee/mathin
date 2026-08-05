@@ -6,14 +6,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Button } from "@/components/ui/button";
 import { AixuexiItvPlayer } from "./AixuexiItvPlayer";
 import { renderAixuexiMathHtml } from "./aixuexi-math";
-import {
-  applyLayoutCorrections,
-  collectRevealSteps,
-  fitShapeText,
-  revealStep,
-  scaleSmallInlineImages,
-  wireDisclosures,
-} from "./aixuexi-presentation";
+import { observePresentation, revealStep } from "./aixuexi-presentation";
 import type { AixuexiPageDoc } from "./aixuexi-schema";
 import type { DocVideoControl } from "./DocStage";
 import { injectBindingUrls, type ResolvedBindingUrls } from "./resolve";
@@ -94,22 +87,26 @@ export default function AixuexiStage({
     return () => observer.disconnect();
   }, []);
 
-  // 源站 HTML 注入后才能量几何,呈现规则一律在这里施加。
+  // 源站 HTML 注入后才能量几何,呈现规则一律在这里施加并持续跟随子树变化。
+  const answerLabel = t("disclosureAnswer");
+  const analysisLabel = t("disclosureAnalysis");
   useEffect(() => {
     const stage = stageRef.current;
     if (!stage) return;
-    wireDisclosures(stage, { answer: t("disclosureAnswer"), analysis: t("disclosureAnalysis") });
-    scaleSmallInlineImages(stage);
-    if (doc.behaviors.shapeTextFit) fitShapeText(stage, doc.behaviors.shapeTextFit.minFontSize);
-    revealRef.current = { steps: collectRevealSteps(stage, doc.behaviors.stagedReveal), cursor: 0 };
-
-    const run = () => applyLayoutCorrections(stage);
-    run();
-    void document.fonts?.ready?.then(run);
-    // 字体、图片与 KaTeX 落位的时机各不相同,按几个节拍复算一次即可收敛。
-    const timers = [80, 200, 400].map((delay) => window.setTimeout(run, delay));
-    return () => timers.forEach((timer) => window.clearTimeout(timer));
-  }, [doc, t]);
+    // 供浏览器验收断言「呈现规则已施加」,不参与渲染。
+    stage.dataset.aixPresentation = "applied";
+    return observePresentation(stage, {
+      shapeTextMinFontSize: doc.behaviors.shapeTextFit?.minFontSize ?? null,
+      stagedReveal: doc.behaviors.stagedReveal,
+      disclosureLabels: { answer: answerLabel, analysis: analysisLabel },
+      onRevealSteps: (steps) => {
+        // 重排后步骤列表会重建,已揭示的部分按游标补回,不让进度倒退。
+        const cursor = Math.min(revealRef.current.cursor, steps.length);
+        for (let index = 0; index < cursor; index += 1) revealStep(steps[index]);
+        revealRef.current = { steps, cursor };
+      },
+    });
+  }, [doc, answerLabel, analysisLabel]);
 
   const html = (raw: string) => renderAixuexiMathHtml(injectBindingUrls(raw, bindingUrls));
 
