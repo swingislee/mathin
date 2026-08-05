@@ -10,14 +10,15 @@
 
 爱学习页面不转换成 E 系列 `page-doc-v1`。构建器把来源资源 ID 转为 Mathin binding key，并以独立的 `aixuexi-page-doc-v1` / `aixuexi-page-v1` 保存布局、题目、ITV 与离线 H5 语义。课程族、课程、讲次、CAS、revision、release、双轨 head 和课次冻结继续复用 P6 数据层。
 
-16:9 使用来源语义画布。4:3 不伪造重新排版的来源内容；同一不可变页面 revision 进入 `adapted-4x3` release，在 4:3 舞台顶部显示 16:9 内容，下方保留 25% 板书带。
+**内容母版是 1200×900，正好 4:3**；来源包同时给出源播放器把母版 contain 进 16:9 画框的规则（`presentation`：缩 0.75、左右各留 150）。因此两轨关系与 E 系列相反：`adapted-4x3` 是母版 1:1 铺满、**没有板书带**（板书带是 E 系列 16:9 内容进 4:3 的补偿）；`native-16x9` 才是缩放居中的那一轨。两轨共用同一条不可变页面 revision，差别只在渲染换算。详见 `docs/plan/16-p6-courseware-platform.md` §12。
 
 ## 3. 前置条件
 
 1. 从 `.env.example` 配置本地 `.env.local`，只在运行环境保存 Supabase URL 与 secret key。
 2. 开发库已应用并登记 `20260803000200_p6_aixuexi_course_system.sql`。迁移 checksum 必须使用 `scripts/lib/text-hash.mjs` 的标准化文本摘要。
-3. 来源包的 `site-package-manifest.json`、catalog、layout projection 与 offline verification 均存在，且 verification 中 remote/missing/fatal 都为 0。
-4. 不得在本流程中执行 R1-15/R1-18 的生产数据清理或 release 重建。
+3. 来源包的 `site/manifest.json`、catalog、layout projection（**projectionVersion 11**）与 offline verification 均存在，且 verification 中 remote/missing/fatal 都为 0。`catalog.status` 的 `partial` 是目录快照的年级覆盖状态，不是讲次缺陷，准入以每讲 offline-verification 为准。
+4. `courses`（4 门 `AXX26G-SJ-0{3,4,5,6}-AUT`）与 `course_lectures`（52 讲）必须已存在——导入器按 `product_code + no` 定位，不会自建。
+5. 不得在本流程中执行 R1-15/R1-18 的生产数据清理或 release 重建。
 
 ## 4. 构建与预检
 
@@ -26,7 +27,7 @@ pnpm cw:aixuexi:build
 pnpm cw:aixuexi:import -- --dry-run
 ```
 
-构建预期为 52 讲、1525 页、4863 bindings、56 个 H5 包。`--metadata-only` 可验证合同而不复制约 294 MB 的 H5 文件：
+构建预期为 52 讲、1525 页、4934 bindings、815 个 CAS 对象、58 个 H5 包（2471 个包内文件）。`--metadata-only` 可验证合同而不复制约 294 MB 的 H5 文件：
 
 ```powershell
 pnpm cw:aixuexi:build -- --metadata-only
@@ -56,7 +57,24 @@ $env:SUPABASE_META_SSH='xiaomi'; pnpm db:types:check
 pnpm build
 ```
 
-开发库预期：1 个课程族、4 个年级课程、52 讲、1525 页；`native-16x9` 与 `adapted-4x3` 各 52 个 release 和 4863 个 binding；104 个讲次轨道 head；56 个题目互动页、10 个 ITV 页、55 个 ITV 事件。浏览器至少抽查普通题目页、题目 H5 页、ITV 页及两种轨道，确认 4:3 舞台比例为 4/3、内容顶置且板书带为 25%。
+开发库预期：1 个课程族、4 个年级课程、52 讲、1525 页，页面文档全部为 `1200x900 / projectionVersion 11`；`native-16x9` 与 `adapted-4x3` 各 52 个 release 和 4934 个 binding；104 个讲次轨道 head、3050 个页面轨道 head；58 个 `offline` 题目互动页 + 1 个 `capture_required`、10 个 ITV 页、55 个 ITV 事件。
+
+浏览器抽查（Studio，两轨各一遍）须确认：4:3 轨画框比例 4/3、舞台声明 1200×900 且 `translate(0,0)`、**无板书带**；16:9 轨画框比例 16/9、缩放为 `fit×0.75`、水平位移 `150×fit`（xmind 页另有 `offsetY×fit`）；背景 1920×1080 且 `object-fit: cover`。行为面抽查折叠开关（点击 `display` 由 none→block 且 `aria-expanded=true`）、分步揭示逐次显形、分栏滚动区、a44 形状字号收敛、内联小图 2 倍、题目 H5 iframe 未放开 `allow-same-origin`、ITV 播放器就绪与选项三态素材换图。
+
+### 6.1 重导入（来源包语义变更时）
+
+来源包的画布/投影语义变更时不能只重跑导入——旧文档不会被覆盖（导入按稳定键 upsert-if-absent）。须先确认零外部引用（`courseware_annotations`、`cw_replacement_items`、`lesson_page_notes`、`solution_records`、`session_learning_checks`、`session_preparations`、`cw_review_cycles` 全为 0，且 shared asset 未与 E 系列共享），再在**单个事务**内按序清理，事务内二次断言任一外部引用不为 0 即整笔回滚：
+
+```text
+course_lectures.current_release_id 置空
+→ cw_lecture_track_heads / cw_lecture_releases / cw_lecture_workflows
+→ cw_page_asset_bindings → cw_page_docs（级联 revisions/track heads）
+→ cw_asset_variant_heads → cw_shared_assets.{published,draft}_revision_id 置空
+→ cw_asset_revisions → cw_shared_assets → 无引用的 cw_asset_objects
+→ cw_source_lectures → cw_source_packages
+```
+
+`courses` 与 `course_lectures` 保留。Storage 里的内容寻址对象不删：它们按 SHA-256 去重，重新导入会命中已有对象并报告为 existing。
 
 ## 7. 故障处理
 

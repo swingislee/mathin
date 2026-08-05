@@ -24,7 +24,7 @@ import styles from "./aixuexi-stage.module.css";
  * - `natural`(native-16x9 轨):按 presentation 还原源站画框,内容居中 pillarbox。
  *
  * 曾经把画布写成 1200×675 并让节点沿用 900 空间的坐标,结果 1525 页里有 876 页
- * 底部内容被裁掉 —— 改动画布语义前请先读 `docs/plan/16-p6-courseware-platform.md` §11.4。
+ * 底部内容被裁掉 —— 改动画布语义前请先读 `docs/plan/16-p6-courseware-platform.md` §12。
  */
 
 export interface AixuexiStageProps {

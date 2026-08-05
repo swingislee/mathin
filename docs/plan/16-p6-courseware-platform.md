@@ -4,11 +4,11 @@
 >
 > **当前用途**：E 系列与爱学习 G+ 秋季课程研发、16:9/4:3 双轨资源与 release 契约。
 >
-> **已落地**：P6-1～P6-8 主体与 P6-10；开发数据已有 E 系列 1135 讲与爱学习 G+ 秋季 52 讲双轨资源，P6-5 有课堂集成证据。
+> **已落地**：P6-1～P6-8 主体与 P6-10；开发数据已有 E 系列 1135 讲与爱学习 G+ 秋季 52 讲双轨资源，P6-5 有课堂集成证据。爱学习双轨语义与 4:3 母版归位见 §12（2026-08-05 重导入）。
 >
 > **剩余项**：P6-9 全局量化验收和正式生产 release-1 重建，见 doc 25 R1-9/15/18。
 >
-> **最后核对**：2026-08-04。
+> **最后核对**：2026-08-05。
 
 > 本文是 P6 的权威执行计划，地位等同 `08-p4-classroom-whiteboard.md` 之于 P4。前置阅读：`00-overview.md`、`04-roadmap.md`、`10-school-backend.md` §4.3（模板/覆盖层/冻结）、`08-p4-classroom-whiteboard.md` §3.4/§3.6（课堂离线栈与课件页模型）。
 >
@@ -393,7 +393,7 @@ F 类按页面节点的结构特征判定，与页码无关：任意讲次中，
 - **P6-7 教研中台第一期（✅ 2026-07-19 实现与数据库验收完成）**（mathin）：§7.2 全部第一期能力。教研编辑页支持节点属性实时预览、结构化 JSON、新增元素、页排序/插入/复制/软删除、页修订预览与前向回退、整讲发布与回滚；图片仅本页替换会新建 shared asset 分支，并在服务端完成格式、解码、尺寸与 hash 校验。**同日双轨补强完成**：16:9/4:3 各自维护页头、讲 release、binding 与资源 variant；编辑器可切轨并在本页直接做轨内批量背景替换；班级可设默认轨、单讲可覆盖，开课冻结选择结果。`p6_courseware_tracks_assertions.sql` 实证双轨 release/资源隔离、班级/单讲优先级与冻结后不可切换；既有 studio/security/replacement 断言复跑通过。
 - **P6-8 公共资源批量替换（✅ 2026-07-19 实现与数据库验收完成；2026-07-23 双轨补强）**（mathin）：`cw_replacement_uploads` 两阶段 staging（服务端图片格式/尺寸/hash 门禁 → 不可变 CAS）+ `cw_replacement_batches` / `cw_replacement_items` 审计；资源库提供服务端筛选/分页、图片详情使用树（课程→讲→页）、固定 revision 与冻结课次标记、上传新图对比确认、全量推 published 指针 / 部分新建 semantic branch 批量重绑及冲突安全的一键回滚。**公共资源库同样必须显式切换 16:9 原生版 / 4:3 稳定版：筛选计数、使用树、当前 variant、替换批次与回滚全部带 track；4:3 操作只能改 4:3 variant/binding，绝不推进 16:9 指针（反之亦然）。**`p6_courseware_replacement_assertions.sql` 在事务中实证：学生不能读取/写入；同一背景跨 3 讲的部分替换只改选中两讲、全量替换不重写 binding 且仅推进一个指针；两类批次审计完整且都可回滚。已发布 release 和已冻结课次仍 pin 到原 revision，需在受影响讲次另发 release 才生效。
 - **P6-9 全量迁移与总验收**(两仓)：全量包导入（分年级分批，每批对账）；随机抽样 ≥60 页视觉比对（顶置模式下）；性能检查（页 doc 加载、Storage 出流、批签 action 延迟）；roadmap/memory 收尾。**不依赖 P6-6 完成**——全量以 16:9 顶置形态验收，4:3 增强按 §6.4 节奏后续推进。数据导入可在 doc 18 P4H-3 完成后执行；“865 讲可浏览”的 UI 总验收等待 P4H-5/6，统一从课程产品教学计划和 canonical workbench 进入，不再扩写旧 `/courseware/[courseId]/...` 目录。验收：865 讲全部可经新入口浏览、可开课；对账零 silent missing。
-- **P6-9 爱学习补充（✅ 2026-08-03 首批 G+ 秋季接入完成；R1-9 总门仍未关闭）**：本地最新安全范围为 `aixuexi_bsk / 2026-gplus-sujiao-math`，只含苏教版数学 G+ 秋季三至六年级，每年级 13 讲；来源明确缺第 7、15 讲，不补造一二年级、其他季节或其他难度。接口裁决为“复用 P6 版本/发布基础设施 + 独立文档适配层”：页面保存为 `aixuexi-page-doc-v1`，不强转 E 系列 `page-doc-v1`；布局、答案/解析、ITV 和离线题目 H5 由专用 React runtime 消费，Studio 以只读来源页呈现，更新通过重新校验来源包。开发库已导入 1 个课程族、4 个课程、52 讲、1525 页、4863 bindings/轨；native 16:9 与 adapted 4:3 各 52 条 release，4:3 复用同一不可变语义页并顶置 16:9 内容，下方固定 25% 板书带。56 个题目 H5 页、10 个 ITV 页/55 个事件已进入 CAS/离线包；浏览器实测 H5 1/7→2/7、ITV 节点作答、16:9=1.778、4:3=1.333。运行手册与支持证据见 [`docs/runbooks/aixuexi-courseware-import.md`](../runbooks/aixuexi-courseware-import.md) 和 [`docs/evidence/r1/r1-9-aixuexi-courseware.md`](../evidence/r1/r1-9-aixuexi-courseware.md)。
+- **P6-9 爱学习补充（✅ 2026-08-05 按 4:3 母版重导入；R1-9 总门仍未关闭）**：本地最新安全范围为 `aixuexi_bsk / 2026-gplus-sujiao-math`，只含苏教版数学 G+ 秋季三至六年级，每年级 13 讲；来源明确缺第 7、15 讲，不补造一二年级、其他季节或其他难度。接口裁决为“复用 P6 版本/发布基础设施 + 独立文档适配层”：页面保存为 `aixuexi-page-doc-v1`，不强转 E 系列 `page-doc-v1`；布局、答案/解析、ITV 和离线题目 H5 由专用 React runtime 消费，Studio 以只读来源页呈现，更新通过重新校验来源包。开发库现有 1 个课程族、4 个课程、52 讲、1525 页、4934 bindings/轨；native 16:9 与 adapted 4:3 各 52 条 release。58 个题目 H5 页（另 1 页为来源 HAR 未捕获的 `capture_required` 缺口）、10 个 ITV 页/55 个事件已进入 CAS/离线包。**首批（2026-08-03）的画布语义有误，已于 2026-08-05 清库重导入**，详见 §12。运行手册与支持证据见 [`docs/runbooks/aixuexi-courseware-import.md`](../runbooks/aixuexi-courseware-import.md) 和 [`docs/evidence/r1/r1-9-aixuexi-courseware.md`](../evidence/r1/r1-9-aixuexi-courseware.md)。
 
 排序理由：垂直切片优先——P6-1→P6-5 用同一条样本讲打穿「导出→导入→渲染→上课」，任何格式/存储问题在 1 讲规模暴露，而不是 55,110 页返工；**P6-1（镜像仓）与 P6-2（mathin 数据层）无相互依赖，可并行推进**；4:3 增强轨（P6-6）与中台（P6-7）都依赖渲染器与版本层，且互不阻塞可并行；全量导入放最后，因为幂等 CLI 让「早导入」没有收益、只有返工风险。
 
@@ -470,3 +470,63 @@ CI 重放不受影响：`scripts/ci-rebuild-db.mjs` 只回放 `courses.pre-famil
 
 - **4:3 背景未经人工逐张核验即发布**。P6-6 的既定闸门是背景 `approved` 后由人工发布（§6.3「绝不因背景确认自动发布」）。本批次按运营指示跳过该环节：3 条新增待审背景以系统批注一次性确认，270 讲的 `adapted-4x3` 轨道随即批量发布。240 讲与旧秋季共用已核验过的派生背景，实际未经人眼的只有这 3 张，但发布动作本身绕过了闸门，后续如发现裁切问题需走 §6.3 的退回与 successor 流程修复。
 - **13 讲共 45 条 `H5_NOT_OFFLINE` 排除**。全部是 `development_pending` 终态（Math3D 模块、xiaohoucode 登录墙），属镜像阶段 18/20/21 已裁决的历史遗留。旧 865 讲此项为 0，是因为那批页面在镜像阶段 21 已由 `library_page_exclusions` 移除；新秋季没有页排除记录，这些页以「只有背景、无互动」的空页形式入库，页文档 `nodes` 为空、无悬空绑定，导出侧双向对账仍平。
+
+## 12. 爱学习双轨语义与 4:3 母版归位（2026-08-05 重导入）
+
+### 12.1 首批为什么要推翻
+
+爱学习的**内容母版是 1200×900，正好 4:3**。2026-08-03 首批把它当成 16:9：文档画布写成 `1200×675 / coordinateScaleY 0.75`，节点坐标却原样留在 900 空间。渲染时舞台按 675 高裁剪，**1525 页里 876 页（1007 个节点）的底部内容被 `overflow:hidden` 吃掉**；同时源播放器的呈现规则几乎没有移植，页面等于裸渲染源 HTML。两项叠加即人工复查判定的“效果不好”。
+
+来源包本身也已重做，合同随之升级到 projection v11：
+
+| 项 | 首批（v5） | 当前（v11） |
+| --- | --- | --- |
+| `canvas` | 1200×675，`coordinateScaleY 0.75` | 1200×900，坐标 1:1，无缩放字段 |
+| `presentation` | 无 | `1200×675 / contentScale 0.75 / offsetX 150 / offsetY 0\|70`（289 页为 70） |
+| `behaviors` | 无 | `splitQuestionScroll` 75 页、`singleQuestionScroll` 699 页、`stagedReveal` 187 页、`shapeTextFit` 290 页 |
+| ITV | 投影 v1 | 投影 v4，增 `lastFrameBindingKey`、每节点 `pauseFrameBindingKey`、选项 `stateBindingKeys{selected,right,wrong}` |
+| 题目互动 | 56 个离线包 | 58 个离线包 + 1 页 `capture_required`（来源 HAR 未捕获，原样带出，不静默丢弃） |
+| bindings/轨 | 4863 | 4934 |
+
+`catalog.status` 有 4 讲为 `partial`，那是**目录快照的年级覆盖状态**（`coverage_status`），不描述讲次本身；这 4 讲的 `offline-verification` 均为 `complete` 且 remote/missing/fatal 全 0。因此准入门槛压在每讲 offline-verification 上，catalog status 只作参考。
+
+### 12.2 双轨语义与 E 系列相反
+
+母版是 4:3，16:9 是源播放器 contain 出来的画框。两者的换算完全由 `presentation` 决定，且自洽：`contentScale 0.75 = 675/900`，`offsetX 150 = (1200 − 1200×0.75)/2`。
+
+| 轨道 | 画框 | 内容 | 背景 |
+| --- | --- | --- | --- |
+| `adapted-4x3`（课堂舞台 / 默认好画质） | 4:3 | 母版 1:1 铺满，比源站大 33% 线性；**无板书带** | 16:9 装饰图 `object-fit: cover` |
+| `native-16x9` | 16:9 | 缩 0.75、居中 pillarbox，xmind 页另加 `offsetY` | 同一张图精确贴合 |
+
+**板书带只属于 E 系列**：那是 16:9 内容进 4:3 舞台的补偿（doc 16 §6.1）。爱学习内容本来就是 4:3，加带子只会平白缩小内容。
+
+背景是 1920×1080 的 16:9 装饰图（木框 + 标题牌 + 中央白色内容井）。4:3 画框上 `object-fit: cover` 裁出的中央区域，宽度恰好是原 16:9 画框的中间 900/1200 —— **正是源站放内容的那块**，与背景设计的白色内容井对齐。所以 4:3 不需要任何特例代码，这也是本轮“4:3 适配非常简单”的根据。
+
+**代价（已知并接受）**：cover 裁掉了背景左右各 12.5%，框架式背景的左右木柱与右下角吉祥物会被裁掉，场景式背景只丢边缘植被。替代方案是把整幅 16:9 contain 进 4:3（保住全部装饰，但内容面积只剩 56%），本轮按“课堂可读性优先”取前者。若后续要改判，只需换 `AixuexiStage` 的画框换算，页面 revision 不受影响。
+
+### 12.3 移植过来的源播放器呈现规则
+
+页面 JSON 只描述几何与源 HTML；让页面“长得像源站”的规则相当一部分只存在于播放器运行时。镜像项目阶段 49～61 把它们逐条还原并做过版式巡检，Mathin 侧落点是 `aixuexi-stage.module.css` 与 `aixuexi-presentation.ts`：
+
+- **纯样式**：question-tk 滚动容器与面板展开、question-tk-head 三段式木牌皮肤、tk-summary 对话框、a44 形状文字盒、interact-plus 引导页（ct-131/132/133 含 `data-shadow-text` 描边）、答案/解析 moden25 药丸按钮、内联小图上限。
+- **需实测**：a44 形状文字按框收敛字号（下限取 `behaviors.shapeTextFit.minFontSize`）、富文本内联小图 2 倍放大、分步揭示、折叠开关接线。
+- **自收敛矫正（阶段 61 口径，只平移不缩放）**：答案面板负边距回收、节点夹回母版、控件让位。口径是**溢出与遮挡即使源站也有，本地化产物也要消掉**。
+
+sanitize 白名单按“移植过来的规则实际选择到的标签/属性”定档，不是按源站原样放行。`<u>` 承载 `stagedReveal` 的填空揭示（416 处），`role` / `data-shadow-text` 是 moden25 按钮与描边文字的 CSS 命中点，删掉任何一个都会静默丢一类呈现；构建器与 `scripts/cw-import.mjs` 的两份白名单必须同步，导入侧的无损断言会挡下漂移。
+
+### 12.4 实现坑（改这块前必读）
+
+- **React 会重建注入的子树**。源站 HTML 经 `dangerouslySetInnerHTML` 注入，挂载后的重渲染会把已接线的折叠开关、已放大的内联图和已矫正的坐标一起抹掉（effect 内实测 `aria-expanded=2`，1.8 秒后为 0）。呈现规则必须整体幂等，并由 MutationObserver 跟随重建重复施加（重入标志 + 40 次上限），与镜像 `scheduleAixuexiLayoutCorrections` 同口径。
+- **折叠开关必须自带 click/keydown**，靠舞台冒泡接不住——舞台的点击已经被分步揭示/翻页占用。渲染后没有 `aria-expanded` 的折叠开关会被镜像巡检判为死按钮（`control_inert`，阻断级）。
+- **画布语义是数据合同**。`aixuexi-schema.ts` 用字面量把 canvas 钉死在 1200×900、presentation 钉死在 1200×675/0.75/150；`tests/aixuexi-courseware.test.ts` 有一条专门拒绝“把母版压进 16:9 画框”的用例。改这些数字等于改全部 1525 页的语义，必须连同重导入一起做。
+
+### 12.5 重导入执行记录（2026-08-05）
+
+前置对账确认零外部引用：`courseware_annotations` / `cw_replacement_items` / `lesson_page_notes` / `solution_records` / `session_learning_checks` / `session_preparations` / `cw_review_cycles` 均为 0；804 个 shared asset 全部为爱学习独占（与 E 系列共享 0、被替换批次引用 0、被派生背景引用 0）。
+
+单事务清理（`courses` 4 门与 `course_lectures` 52 讲保留，导入器按 `product_code + no` 定位）：releases 104、track heads 104、bindings 9726、pages 1525、asset variant heads 1608、asset revisions 804、shared assets 804、asset objects 804、source lectures 52、source package 1。事务内二次断言任一外部引用不为 0 即整笔回滚。
+
+重建：`pnpm cw:aixuexi:build` 得 52 讲 / 1525 页 / 4934 usages / 815 对象 / 58 个 H5 包 / 2471 个包内文件；分 4 批各 13 讲导入，`conflicts` 与 `baselineDrift` 全程 0，重跑单讲报告全部 existing、inserted 0（幂等）。
+
+库内复核：1525 页文档全部为 `1200x900 / projectionVersion 11`；两轨各 52 release、52 讲头、1525 页头、4934 binding；58 `offline` + 1 `capture_required`；10 个 ITV 页 55 个事件。
