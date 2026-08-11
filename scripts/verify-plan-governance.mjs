@@ -166,6 +166,38 @@ if (existsSync(productionBaselineSchemaPath)) {
   }
 }
 
+const productionDeploymentFiles = [
+  "schemas/r1-production-deployment-manifest.schema.json",
+  "docs/manifests/r1-production-deployment.example.json",
+  "docs/runbooks/r1-production-deployment-preflight.md",
+  "scripts/plan-r1-production-deployment.mjs",
+  "tests/r1-production-deployment.test.ts",
+];
+for (const relativePath of productionDeploymentFiles) {
+  if (!existsSync(path.join(ROOT, relativePath))) fail(`缺少 R1-16 只读部署 preflight 合同：${relativePath}`);
+}
+const productionDeploymentSchemaPath = path.join(ROOT, productionDeploymentFiles[0]);
+if (existsSync(productionDeploymentSchemaPath)) {
+  const schema = JSON.parse(readFileSync(productionDeploymentSchemaPath, "utf8"));
+  const properties = schema?.properties ?? {};
+  if (properties.mode?.const !== "plan-only" || properties.writesAllowed?.const !== false || properties.networkAllowed?.const !== false) {
+    fail("R1-16 部署 manifest 必须保持 plan-only、writesAllowed=false、networkAllowed=false");
+  }
+  if (properties.target?.$ref !== "#/$defs/productionEnvironment") {
+    fail("R1-16 部署 manifest 必须使用独立 productionEnvironment 目标");
+  }
+  if (properties.recovery?.properties?.supabaseProjectFingerprint?.$ref !== "#/$defs/sha256") {
+    fail("R1-16 隔离恢复目标缺少 Supabase project 指纹");
+  }
+  if (properties.rollback?.properties?.automaticProductionDatabaseRestoreAllowed?.const !== false) {
+    fail("R1-16 planner 必须禁止自动恢复生产数据库");
+  }
+  if (properties.backup?.properties?.database?.$ref !== "#/$defs/databaseBackup"
+    || properties.backup?.properties?.storage?.$ref !== "#/$defs/storageBackup") {
+    fail("R1-16 部署 manifest 缺少数据库/Storage 恢复目标合同");
+  }
+}
+
 const EVIDENCE_DIR = path.join(ROOT, "docs", "evidence", "r1");
 const evidenceIndexPath = path.join(EVIDENCE_DIR, "README.md");
 if (!existsSync(evidenceIndexPath)) fail("缺少 R1 证据索引：docs/evidence/r1/README.md");
@@ -186,15 +218,11 @@ const ARTIFACT_PAIR =
   /^\|\s*`artifact_url_or_path`\s*\|\s*`([^`]+)`\s*\|[^\n]*\n\|\s*`artifact_hash`\s*\|[^`\n]*`([0-9A-Fa-f]{64})`\s*\|/gm;
 
 const referencedArtifacts = new Set();
-for (const stage of closedStages) {
-  const relativeEvidence = `docs/evidence/r1/r1-${stage}.md`;
-  const evidencePath = path.join(EVIDENCE_DIR, `r1-${stage}.md`);
-  if (!existsSync(evidencePath)) {
-    fail(`缺少已关闭阶段 R1-${stage} 的证据：${relativeEvidence}`);
-    continue;
-  }
+const validatedEvidencePaths = new Set();
+function validateEvidenceArtifacts(evidencePath, requirePair = false) {
+  const relativeEvidence = path.relative(ROOT, evidencePath).replaceAll("\\", "/");
   const pairs = [...readFileSync(evidencePath, "utf8").matchAll(ARTIFACT_PAIR)];
-  if (pairs.length === 0) {
+  if (requirePair && pairs.length === 0) {
     fail(`${relativeEvidence} 缺少可校验的 artifact_url_or_path/artifact_hash 配对`);
   }
   for (const [, artifactRelativePath, recordedHash] of pairs) {
@@ -210,6 +238,27 @@ for (const stage of closedStages) {
     if (actualHash !== recordedHash.toUpperCase()) {
       fail(`${relativeEvidence} 记录的 artifact_hash 与 ${path.basename(artifactRelativePath)} 不一致：记录 ${recordedHash}，实际 ${actualHash}`);
     }
+  }
+  validatedEvidencePaths.add(path.resolve(evidencePath));
+}
+
+for (const stage of closedStages) {
+  const relativeEvidence = `docs/evidence/r1/r1-${stage}.md`;
+  const evidencePath = path.join(EVIDENCE_DIR, `r1-${stage}.md`);
+  if (!existsSync(evidencePath)) {
+    fail(`缺少已关闭阶段 R1-${stage} 的证据：${relativeEvidence}`);
+    continue;
+  }
+  validateEvidenceArtifacts(evidencePath, true);
+}
+
+// 当前施工顺序允许先登记依赖已满足的跨阶段子门；它们仍保持 pending，但其 artifact
+// 也必须立即校验，不能等阶段关闭后才发现摘要或路径失真。
+for (const entry of readdirSync(EVIDENCE_DIR, { withFileTypes: true })) {
+  if (!entry.isFile() || entry.name === "README.md" || !entry.name.endsWith(".md")) continue;
+  const evidencePath = path.join(EVIDENCE_DIR, entry.name);
+  if (!validatedEvidencePaths.has(path.resolve(evidencePath))) {
+    validateEvidenceArtifacts(evidencePath);
   }
 }
 

@@ -1,0 +1,363 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mathin.local/schemas/r1-production-deployment-manifest.schema.json",
+  "title": "Mathin R1-16 independent production deployment read-only preflight manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schemaVersion",
+    "example",
+    "mode",
+    "writesAllowed",
+    "networkAllowed",
+    "current",
+    "target",
+    "configuration",
+    "monitoring",
+    "backup",
+    "recovery",
+    "rollback",
+    "artifacts",
+    "evidence"
+  ],
+  "properties": {
+    "$schema": { "type": "string", "minLength": 3 },
+    "schemaVersion": { "const": "mathin-r1-production-deployment-v1" },
+    "example": { "type": "boolean" },
+    "mode": { "const": "plan-only" },
+    "writesAllowed": { "const": false },
+    "networkAllowed": { "const": false },
+    "current": { "$ref": "#/$defs/currentEnvironment" },
+    "target": { "$ref": "#/$defs/productionEnvironment" },
+    "configuration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runtimeEnvironmentFile",
+        "ownerOnly",
+        "environmentFileExcludedFromRelease",
+        "repositorySecretScanRequired",
+        "buildTimePublicConfigPinned",
+        "bindings"
+      ],
+      "properties": {
+        "runtimeEnvironmentFile": {
+          "type": "string",
+          "pattern": "^/(?!.*(?:^|/)\\.\\.(?:/|$))[A-Za-z0-9._/-]+$",
+          "maxLength": 300
+        },
+        "ownerOnly": { "const": true },
+        "environmentFileExcludedFromRelease": { "const": true },
+        "repositorySecretScanRequired": { "const": true },
+        "buildTimePublicConfigPinned": { "const": true },
+        "bindings": {
+          "type": "array",
+          "minItems": 10,
+          "maxItems": 10,
+          "items": { "$ref": "#/$defs/configBinding" }
+        }
+      }
+    },
+    "monitoring": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "alertRouteReference",
+        "checkIntervalSeconds",
+        "consecutiveFailures",
+        "appHealthPath",
+        "supabaseHealthPath",
+        "databaseRecoveryPointMaxAgeMinutes",
+        "storageRecoveryPointMaxAgeMinutes",
+        "diskWarningPercent",
+        "diskCriticalPercent",
+        "certificateMinimumRemainingDays",
+        "jobDeadLetterAlertRequired",
+        "controlledFailureTestRequired"
+      ],
+      "properties": {
+        "alertRouteReference": { "$ref": "#/$defs/reference" },
+        "checkIntervalSeconds": { "type": "integer", "minimum": 30, "maximum": 300 },
+        "consecutiveFailures": { "type": "integer", "minimum": 1, "maximum": 3 },
+        "appHealthPath": { "const": "/api/health" },
+        "supabaseHealthPath": { "const": "/auth/v1/" },
+        "databaseRecoveryPointMaxAgeMinutes": { "type": "integer", "minimum": 1, "maximum": 15 },
+        "storageRecoveryPointMaxAgeMinutes": { "type": "integer", "minimum": 1, "maximum": 1440 },
+        "diskWarningPercent": { "const": 75 },
+        "diskCriticalPercent": { "const": 85 },
+        "certificateMinimumRemainingDays": { "type": "integer", "minimum": 14 },
+        "jobDeadLetterAlertRequired": { "const": true },
+        "controlledFailureTestRequired": { "const": true }
+      }
+    },
+    "backup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["retentionDays", "database", "storage"],
+      "properties": {
+        "retentionDays": { "type": "integer", "minimum": 30 },
+        "database": { "$ref": "#/$defs/databaseBackup" },
+        "storage": { "$ref": "#/$defs/storageBackup" }
+      }
+    },
+    "recovery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "environment",
+        "hostFingerprint",
+        "supabaseProjectFingerprint",
+        "databaseFingerprint",
+        "storageFingerprint",
+        "productionEndpointAllowed",
+        "executionByPlannerAllowed",
+        "postRestoreSmokeRequired",
+        "nonExecutorReviewerRequired"
+      ],
+      "properties": {
+        "environment": { "const": "isolated-restore-drill" },
+        "hostFingerprint": { "$ref": "#/$defs/sha256" },
+        "supabaseProjectFingerprint": { "$ref": "#/$defs/sha256" },
+        "databaseFingerprint": { "$ref": "#/$defs/sha256" },
+        "storageFingerprint": { "$ref": "#/$defs/sha256" },
+        "productionEndpointAllowed": { "const": false },
+        "executionByPlannerAllowed": { "const": false },
+        "postRestoreSmokeRequired": { "const": true },
+        "nonExecutorReviewerRequired": { "const": true }
+      }
+    },
+    "rollback": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "applicationMaxMinutes",
+        "previousReleaseRequired",
+        "atomicSwitchRequired",
+        "healthPath",
+        "databaseStrategy",
+        "automaticProductionDatabaseRestoreAllowed",
+        "humanConfirmationRequired"
+      ],
+      "properties": {
+        "applicationMaxMinutes": { "type": "integer", "minimum": 1, "maximum": 30 },
+        "previousReleaseRequired": { "const": true },
+        "atomicSwitchRequired": { "const": true },
+        "healthPath": { "const": "/api/health" },
+        "databaseStrategy": { "const": "backward-compatible-and-forward-fix" },
+        "automaticProductionDatabaseRestoreAllowed": { "const": false },
+        "humanConfirmationRequired": { "const": true }
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "items": { "$ref": "#/$defs/artifact" }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "r1_14",
+        "r1_15",
+        "environmentIsolation",
+        "repositorySecretScan",
+        "monitoringProbes",
+        "databaseRecoveryDrill",
+        "storageRecoveryDrill",
+        "applicationRollbackDrill",
+        "nonExecutorReview"
+      ],
+      "properties": {
+        "r1_14": { "$ref": "#/$defs/evidence" },
+        "r1_15": { "$ref": "#/$defs/evidence" },
+        "environmentIsolation": { "$ref": "#/$defs/evidence" },
+        "repositorySecretScan": { "$ref": "#/$defs/evidence" },
+        "monitoringProbes": { "$ref": "#/$defs/evidence" },
+        "databaseRecoveryDrill": { "$ref": "#/$defs/evidence" },
+        "storageRecoveryDrill": { "$ref": "#/$defs/evidence" },
+        "applicationRollbackDrill": { "$ref": "#/$defs/evidence" },
+        "nonExecutorReview": { "$ref": "#/$defs/evidence" }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "domain": {
+      "type": "string",
+      "minLength": 4,
+      "maxLength": 253,
+      "pattern": "^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$"
+    },
+    "reference": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 160,
+      "pattern": "^(?!.*(?:^|/)\\.\\.(?:/|$))[a-z0-9][a-z0-9._/-]+$"
+    },
+    "currentEnvironment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "environment",
+        "hostFingerprint",
+        "supabaseProjectFingerprint",
+        "databaseFingerprint",
+        "storageFingerprint",
+        "appDomain",
+        "supabaseDomain"
+      ],
+      "properties": {
+        "environment": { "const": "shared-development-baseline" },
+        "hostFingerprint": { "$ref": "#/$defs/sha256" },
+        "supabaseProjectFingerprint": { "$ref": "#/$defs/sha256" },
+        "databaseFingerprint": { "$ref": "#/$defs/sha256" },
+        "storageFingerprint": { "$ref": "#/$defs/sha256" },
+        "appDomain": { "$ref": "#/$defs/domain" },
+        "supabaseDomain": { "$ref": "#/$defs/domain" }
+      }
+    },
+    "productionEnvironment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "environment",
+        "hostFingerprint",
+        "supabaseProjectFingerprint",
+        "databaseFingerprint",
+        "storageFingerprint",
+        "appDomain",
+        "supabaseDomain"
+      ],
+      "properties": {
+        "environment": { "const": "independent-production-candidate" },
+        "hostFingerprint": { "$ref": "#/$defs/sha256" },
+        "supabaseProjectFingerprint": { "$ref": "#/$defs/sha256" },
+        "databaseFingerprint": { "$ref": "#/$defs/sha256" },
+        "storageFingerprint": { "$ref": "#/$defs/sha256" },
+        "appDomain": { "$ref": "#/$defs/domain" },
+        "supabaseDomain": { "$ref": "#/$defs/domain" }
+      }
+    },
+    "configBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "scope", "exposure", "source", "reference"],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]+$" },
+        "scope": { "enum": ["application", "infrastructure"] },
+        "exposure": { "enum": ["public", "server-only"] },
+        "source": {
+          "enum": [
+            "target-app-origin",
+            "target-supabase-origin",
+            "secret-reference",
+            "config-reference",
+            "release-metadata",
+            "instance-identity"
+          ]
+        },
+        "reference": {
+          "oneOf": [
+            { "$ref": "#/$defs/reference" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "databaseBackup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rpoMinutes",
+        "rtoMinutes",
+        "continuousProtectionRequired",
+        "offHost",
+        "encryptedAtRest",
+        "immutableOrVersioned",
+        "integrityCheckRequired"
+      ],
+      "properties": {
+        "rpoMinutes": { "type": "integer", "minimum": 1, "maximum": 15 },
+        "rtoMinutes": { "type": "integer", "minimum": 1, "maximum": 240 },
+        "continuousProtectionRequired": { "const": true },
+        "offHost": { "const": true },
+        "encryptedAtRest": { "const": true },
+        "immutableOrVersioned": { "const": true },
+        "integrityCheckRequired": { "const": true }
+      }
+    },
+    "storageBackup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rpoMinutes",
+        "rtoMinutes",
+        "offHost",
+        "encryptedAtRest",
+        "immutableOrVersioned",
+        "objectManifestHashRequired"
+      ],
+      "properties": {
+        "rpoMinutes": { "type": "integer", "minimum": 1, "maximum": 1440 },
+        "rtoMinutes": { "type": "integer", "minimum": 1, "maximum": 480 },
+        "offHost": { "const": true },
+        "encryptedAtRest": { "const": true },
+        "immutableOrVersioned": { "const": true },
+        "objectManifestHashRequired": { "const": true }
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "path", "sha256"],
+      "properties": {
+        "key": {
+          "enum": [
+            "app-health-route",
+            "backup-script",
+            "backup-timer",
+            "deploy-script",
+            "disk-monitor-script",
+            "linux-service-unit",
+            "operations-runbook",
+            "rollback-controller"
+          ]
+        },
+        "path": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 300,
+          "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*[*?])[A-Za-z0-9._/-]+$"
+        },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "artifactPath", "artifactSha256"],
+      "properties": {
+        "status": { "enum": ["pending", "passed"] },
+        "artifactPath": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 300,
+              "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*[*?])[A-Za-z0-9._/-]+$"
+            },
+            { "type": "null" }
+          ]
+        },
+        "artifactSha256": {
+          "oneOf": [
+            { "$ref": "#/$defs/sha256" },
+            { "type": "null" }
+          ]
+        }
+      }
+    }
+  }
+}

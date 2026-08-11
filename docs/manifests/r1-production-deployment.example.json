@@ -1,0 +1,212 @@
+{
+  "$schema": "../../schemas/r1-production-deployment-manifest.schema.json",
+  "schemaVersion": "mathin-r1-production-deployment-v1",
+  "example": true,
+  "mode": "plan-only",
+  "writesAllowed": false,
+  "networkAllowed": false,
+  "current": {
+    "environment": "shared-development-baseline",
+    "hostFingerprint": "1111111111111111111111111111111111111111111111111111111111111111",
+    "supabaseProjectFingerprint": "2222222222222222222222222222222222222222222222222222222222222222",
+    "databaseFingerprint": "3333333333333333333333333333333333333333333333333333333333333333",
+    "storageFingerprint": "4444444444444444444444444444444444444444444444444444444444444444",
+    "appDomain": "dev.mathin.invalid",
+    "supabaseDomain": "supabase-dev.mathin.invalid"
+  },
+  "target": {
+    "environment": "independent-production-candidate",
+    "hostFingerprint": "5555555555555555555555555555555555555555555555555555555555555555",
+    "supabaseProjectFingerprint": "6666666666666666666666666666666666666666666666666666666666666666",
+    "databaseFingerprint": "7777777777777777777777777777777777777777777777777777777777777777",
+    "storageFingerprint": "8888888888888888888888888888888888888888888888888888888888888888",
+    "appDomain": "app.mathin.invalid",
+    "supabaseDomain": "supabase.mathin.invalid"
+  },
+  "configuration": {
+    "runtimeEnvironmentFile": "/srv/mathin/config/.env.production.local",
+    "ownerOnly": true,
+    "environmentFileExcludedFromRelease": true,
+    "repositorySecretScanRequired": true,
+    "buildTimePublicConfigPinned": true,
+    "bindings": [
+      {
+        "name": "ALERT_WEBHOOK_URL",
+        "scope": "infrastructure",
+        "exposure": "server-only",
+        "source": "secret-reference",
+        "reference": "secrets/production/alerts/webhook"
+      },
+      {
+        "name": "BACKUP_ROOT",
+        "scope": "infrastructure",
+        "exposure": "server-only",
+        "source": "config-reference",
+        "reference": "config/production/backup/off-host-root"
+      },
+      {
+        "name": "MATHIN_ERROR_REPORT_TOKEN",
+        "scope": "application",
+        "exposure": "server-only",
+        "source": "secret-reference",
+        "reference": "secrets/production/mathin/error-report-token"
+      },
+      {
+        "name": "MATHIN_ERROR_REPORT_URL",
+        "scope": "application",
+        "exposure": "server-only",
+        "source": "config-reference",
+        "reference": "config/production/mathin/error-report-target"
+      },
+      {
+        "name": "MATHIN_RELEASE",
+        "scope": "application",
+        "exposure": "server-only",
+        "source": "release-metadata",
+        "reference": null
+      },
+      {
+        "name": "NEXT_PUBLIC_SITE_URL",
+        "scope": "application",
+        "exposure": "public",
+        "source": "target-app-origin",
+        "reference": null
+      },
+      {
+        "name": "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+        "scope": "application",
+        "exposure": "public",
+        "source": "secret-reference",
+        "reference": "secrets/production/supabase/publishable-key"
+      },
+      {
+        "name": "NEXT_PUBLIC_SUPABASE_URL",
+        "scope": "application",
+        "exposure": "public",
+        "source": "target-supabase-origin",
+        "reference": null
+      },
+      {
+        "name": "R1_JOB_WORKER_ID",
+        "scope": "application",
+        "exposure": "server-only",
+        "source": "instance-identity",
+        "reference": null
+      },
+      {
+        "name": "SUPABASE_SECRET_KEY",
+        "scope": "application",
+        "exposure": "server-only",
+        "source": "secret-reference",
+        "reference": "secrets/production/supabase/secret-key"
+      }
+    ]
+  },
+  "monitoring": {
+    "alertRouteReference": "production/alerts/primary",
+    "checkIntervalSeconds": 300,
+    "consecutiveFailures": 2,
+    "appHealthPath": "/api/health",
+    "supabaseHealthPath": "/auth/v1/",
+    "databaseRecoveryPointMaxAgeMinutes": 15,
+    "storageRecoveryPointMaxAgeMinutes": 1440,
+    "diskWarningPercent": 75,
+    "diskCriticalPercent": 85,
+    "certificateMinimumRemainingDays": 14,
+    "jobDeadLetterAlertRequired": true,
+    "controlledFailureTestRequired": true
+  },
+  "backup": {
+    "retentionDays": 30,
+    "database": {
+      "rpoMinutes": 15,
+      "rtoMinutes": 240,
+      "continuousProtectionRequired": true,
+      "offHost": true,
+      "encryptedAtRest": true,
+      "immutableOrVersioned": true,
+      "integrityCheckRequired": true
+    },
+    "storage": {
+      "rpoMinutes": 1440,
+      "rtoMinutes": 480,
+      "offHost": true,
+      "encryptedAtRest": true,
+      "immutableOrVersioned": true,
+      "objectManifestHashRequired": true
+    }
+  },
+  "recovery": {
+    "environment": "isolated-restore-drill",
+    "hostFingerprint": "9999999999999999999999999999999999999999999999999999999999999999",
+    "supabaseProjectFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "databaseFingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "storageFingerprint": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "productionEndpointAllowed": false,
+    "executionByPlannerAllowed": false,
+    "postRestoreSmokeRequired": true,
+    "nonExecutorReviewerRequired": true
+  },
+  "rollback": {
+    "applicationMaxMinutes": 30,
+    "previousReleaseRequired": true,
+    "atomicSwitchRequired": true,
+    "healthPath": "/api/health",
+    "databaseStrategy": "backward-compatible-and-forward-fix",
+    "automaticProductionDatabaseRestoreAllowed": false,
+    "humanConfirmationRequired": true
+  },
+  "artifacts": [
+    {
+      "key": "app-health-route",
+      "path": "src/app/api/health/route.ts",
+      "sha256": "d56157060bafbb35a2537a8ddc7e1a04a21355f6806ead8ea233f359bbc5f8d2"
+    },
+    {
+      "key": "backup-script",
+      "path": "scripts/infra/p4e-backup.sh",
+      "sha256": "6520e2c8def2d7089e637005fc2aaa96040bc1bc9731790ac99e7c967867176f"
+    },
+    {
+      "key": "backup-timer",
+      "path": "deploy/p4e-ops/mathin-p4e-backup.timer",
+      "sha256": "4cde418a931e7a65cf8ffb98f7fe7ce96e5ba679ab2f6d483bc5b9bae3ea7488"
+    },
+    {
+      "key": "deploy-script",
+      "path": "scripts/ops/deploy-mathin-linux.sh",
+      "sha256": "1c9462557d6ab57818f8ad9a408e45b6505ebc8cebad38d88bb750e3c7e7359c"
+    },
+    {
+      "key": "disk-monitor-script",
+      "path": "scripts/infra/p4e-disk-check.sh",
+      "sha256": "47b6d8d49ad7350238566f43978610c49e85c6d4f02cc2b4ea3a849d160ca7be"
+    },
+    {
+      "key": "linux-service-unit",
+      "path": "deploy/mathin-linux/mathin.service",
+      "sha256": "d2a3021a676eca18420da536a6dfe4f2ea4dd6e7e421dc780c61f29955663581"
+    },
+    {
+      "key": "operations-runbook",
+      "path": "docs/runbooks/r1-production-deployment-preflight.md",
+      "sha256": "1c87cf6ded3c38ffa295b96b93544a85525f73f68ec28e9154d9d7c209f4c135"
+    },
+    {
+      "key": "rollback-controller",
+      "path": "scripts/ops/publish-mathin-xiaomi.ps1",
+      "sha256": "199c0d496ac53454c569ca363da6cd97c3b08c4b43d00b9f611572da0926daf2"
+    }
+  ],
+  "evidence": {
+    "r1_14": { "status": "pending", "artifactPath": null, "artifactSha256": null },
+    "r1_15": { "status": "pending", "artifactPath": null, "artifactSha256": null },
+    "environmentIsolation": { "status": "pending", "artifactPath": null, "artifactSha256": null },
+    "repositorySecretScan": { "status": "pending", "artifactPath": null, "artifactSha256": null },
+    "monitoringProbes": { "status": "pending", "artifactPath": null, "artifactSha256": null },
+    "databaseRecoveryDrill": { "status": "pending", "artifactPath": null, "artifactSha256": null },
+    "storageRecoveryDrill": { "status": "pending", "artifactPath": null, "artifactSha256": null },
+    "applicationRollbackDrill": { "status": "pending", "artifactPath": null, "artifactSha256": null },
+    "nonExecutorReview": { "status": "pending", "artifactPath": null, "artifactSha256": null }
+  }
+}
