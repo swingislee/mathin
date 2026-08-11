@@ -111,8 +111,11 @@ const requiredProductTerms = [
   "Terms",
   "Tools",
   "Notebook",
-  "865",
-  "1730",
+  "90",
+  "1135",
+  "52",
+  "1187",
+  "2374",
   "release_no=1",
   "唯一生产管理员",
   "work_items",
@@ -128,6 +131,39 @@ if (!production.includes("`swingislee`") || !production.includes("实际人员/�
 }
 if (production.includes("pending location") || production.includes("最终位置在 R1-0 确定")) {
   fail("doc 25 的 R1 证据位置仍未冻结");
+}
+
+const productionBaselineFiles = [
+  "schemas/r1-production-baseline-manifest.schema.json",
+  "docs/manifests/r1-production-baseline.example.json",
+  "scripts/plan-r1-production-baseline.mjs",
+  "tests/r1-production-baseline.test.ts",
+];
+for (const relativePath of productionBaselineFiles) {
+  if (!existsSync(path.join(ROOT, relativePath))) fail(`缺少 R1-15 只读生产基线合同：${relativePath}`);
+}
+const productionBaselineSchemaPath = path.join(ROOT, productionBaselineFiles[0]);
+if (existsSync(productionBaselineSchemaPath)) {
+  const schema = JSON.parse(readFileSync(productionBaselineSchemaPath, "utf8"));
+  const properties = schema?.properties ?? {};
+  const counts = properties.expected?.properties ?? {};
+  if (properties.mode?.const !== "plan-only" || properties.writesAllowed?.const !== false) {
+    fail("R1-15 生产基线 manifest 必须保持 plan-only 且 writesAllowed=false");
+  }
+  if (properties.target?.properties?.environment?.const !== "isolated-production-snapshot") {
+    fail("R1-15 生产基线 manifest 只能接受 isolated-production-snapshot 目标");
+  }
+  for (const [name, expected] of Object.entries({
+    courseCount: 94,
+    lectureCount: 1187,
+    nativeHeadCount: 1187,
+    adaptedHeadCount: 1187,
+    releaseCount: 2374,
+    legacyCurrentReleaseCount: 1187,
+    releaseNoGreaterThanOneCount: 0,
+  })) {
+    if (counts[name]?.const !== expected) fail(`R1-15 生产基线 schema 的 ${name} 应为 ${expected}`);
+  }
 }
 
 const EVIDENCE_DIR = path.join(ROOT, "docs", "evidence", "r1");

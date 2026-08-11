@@ -1,0 +1,169 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mathin.local/schemas/r1-production-baseline-manifest.schema.json",
+  "title": "Mathin R1 production baseline read-only plan manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schemaVersion",
+    "example",
+    "mode",
+    "writesAllowed",
+    "source",
+    "target",
+    "administrator",
+    "courseSystems",
+    "expected",
+    "replay"
+  ],
+  "properties": {
+    "$schema": { "type": "string", "minLength": 3 },
+    "schemaVersion": { "const": "mathin-r1-production-baseline-v1" },
+    "example": { "type": "boolean" },
+    "mode": { "const": "plan-only" },
+    "writesAllowed": { "const": false },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["environment", "projectFingerprint", "databaseFingerprint"],
+      "properties": {
+        "environment": { "const": "production-snapshot-source" },
+        "projectFingerprint": { "$ref": "#/$defs/sha256" },
+        "databaseFingerprint": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["environment", "projectFingerprint", "databaseFingerprint"],
+      "properties": {
+        "environment": { "const": "isolated-production-snapshot" },
+        "projectFingerprint": { "$ref": "#/$defs/sha256" },
+        "databaseFingerprint": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "administrator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["manifestPath", "manifestSha256"],
+      "properties": {
+        "manifestPath": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 500,
+          "pattern": "^(?!https?://|postgres(?:ql)?://).+$"
+        },
+        "manifestSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "courseSystems": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["key", "courseCount", "lectureIds", "lectureIdsSha256", "storage"],
+            "properties": {
+              "key": { "const": "e-series" },
+              "courseCount": { "const": 90 },
+              "lectureIds": {
+                "type": "array",
+                "minItems": 1135,
+                "maxItems": 1135,
+                "uniqueItems": true,
+                "items": { "$ref": "#/$defs/lectureId" }
+              },
+              "lectureIdsSha256": { "$ref": "#/$defs/sha256" },
+              "storage": { "$ref": "#/$defs/storage" }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["key", "courseCount", "lectureIds", "lectureIdsSha256", "storage"],
+            "properties": {
+              "key": { "const": "aixuexi-gplus-autumn" },
+              "courseCount": { "const": 4 },
+              "lectureIds": {
+                "type": "array",
+                "minItems": 52,
+                "maxItems": 52,
+                "uniqueItems": true,
+                "items": { "$ref": "#/$defs/lectureId" }
+              },
+              "lectureIdsSha256": { "$ref": "#/$defs/sha256" },
+              "storage": { "$ref": "#/$defs/storage" }
+            }
+          }
+        ]
+      }
+    },
+    "expected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "courseCount",
+        "lectureCount",
+        "nativeHeadCount",
+        "adaptedHeadCount",
+        "releaseCount",
+        "legacyCurrentReleaseCount",
+        "releaseNoGreaterThanOneCount"
+      ],
+      "properties": {
+        "courseCount": { "const": 94 },
+        "lectureCount": { "const": 1187 },
+        "nativeHeadCount": { "const": 1187 },
+        "adaptedHeadCount": { "const": 1187 },
+        "releaseCount": { "const": 2374 },
+        "legacyCurrentReleaseCount": { "const": 1187 },
+        "releaseNoGreaterThanOneCount": { "const": 0 }
+      }
+    },
+    "replay": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required", "inserted", "updated", "deleted", "hashDifferences"],
+      "properties": {
+        "required": { "const": true },
+        "inserted": { "const": 0 },
+        "updated": { "const": 0 },
+        "deleted": { "const": 0 },
+        "hashDifferences": { "const": 0 }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "lectureId": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]+$"
+    },
+    "storage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bucket", "prefix", "objectsManifestSha256"],
+      "properties": {
+        "bucket": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 63,
+          "pattern": "^[a-z0-9][a-z0-9._-]+$"
+        },
+        "prefix": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 300,
+          "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*[*?])[A-Za-z0-9._/-]+/$"
+        },
+        "objectsManifestSha256": { "$ref": "#/$defs/sha256" }
+      }
+    }
+  }
+}
