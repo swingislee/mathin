@@ -21,6 +21,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v5
         with:
@@ -44,6 +46,9 @@ jobs:
       - name: 仓库高置信 secret 扫描（值不回显）
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm secrets:check
+      - name: Git 历史高置信 secret 扫描（值不回显）
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: pnpm secrets:history
       - name: 数据库类型与 migrations 同步
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm db:types:check

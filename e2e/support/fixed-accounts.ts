@@ -3,6 +3,7 @@ import path from "node:path";
 
 export const FIXED_ACCOUNT_SKIP_REASON =
   "fixed development account credentials are unavailable; set MATHIN_E2E_* variables or provide .claude/test-accounts.local.md";
+export const RELEASE_MODE = "release";
 
 export type FixedAccountRole = "admin" | "teacher" | "student" | "parent";
 
@@ -92,4 +93,16 @@ export function loadFixedAccount(
   const document = readLocalAccountDocument(environment, options.cwd ?? process.cwd());
   const email = document?.emails[role];
   return validEmail(email) && document?.password ? { email, password: document.password } : null;
+}
+
+export function loadFixedAccountForMode(
+  role: FixedAccountRole,
+  options: { environment?: NodeJS.ProcessEnv; cwd?: string } = {},
+): FixedAccount | null {
+  const environment = options.environment ?? process.env;
+  const account = loadFixedAccount(role, { ...options, environment });
+  if (!account && environment.MATHIN_E2E_MODE === RELEASE_MODE) {
+    throw new Error(`release mode requires the fixed ${role} account`);
+  }
+  return account;
 }

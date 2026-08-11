@@ -1,7 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
+import { resolveE2ETarget } from "./scripts/lib/r1-e2e-target-policy.mjs";
 
-const baseURL = (process.env.MATHIN_E2E_BASE_URL ?? "http://127.0.0.1:3130").replace(/\/$/, "");
-const manageWebServer = process.env.MATHIN_E2E_NO_WEBSERVER !== "1";
+const target = resolveE2ETarget();
+const manageWebServer = process.env.MATHIN_E2E_NO_WEBSERVER !== "1" && target.localNetwork && !target.releaseMode;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -18,17 +19,17 @@ export default defineConfig({
     ? [["line"], ["html", { outputFolder: "playwright-report", open: "never" }]]
     : [["list"], ["html", { outputFolder: "playwright-report", open: "never" }]],
   use: {
-    baseURL,
+    baseURL: target.baseURL,
     locale: "zh-CN",
     timezoneId: "Asia/Shanghai",
-    trace: "retain-on-failure",
-    screenshot: "only-on-failure",
-    video: "retain-on-failure",
+    trace: "off",
+    screenshot: "off",
+    video: "off",
   },
   webServer: manageWebServer
     ? {
         command: "pnpm dev",
-        url: `${baseURL}/api/health`,
+        url: `${target.baseURL}/api/health`,
         reuseExistingServer: !process.env.CI,
         timeout: 180_000,
         stdout: "pipe",
@@ -37,8 +38,24 @@ export default defineConfig({
     : undefined,
   projects: [
     {
-      name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
+      name: "anonymous-chromium",
+      testMatch: ["auth-boundaries.spec.ts", "lan-smoke.spec.ts", "notebook-public.spec.ts"],
+      use: {
+        ...devices["Desktop Chrome"],
+        trace: "retain-on-failure",
+        screenshot: "only-on-failure",
+        video: "retain-on-failure",
+      },
+    },
+    {
+      name: "credentialed-chromium",
+      testMatch: ["school-portals.spec.ts", "notebook-authenticated.spec.ts"],
+      use: {
+        ...devices["Desktop Chrome"],
+        trace: "off",
+        screenshot: "off",
+        video: "off",
+      },
     },
   ],
 });

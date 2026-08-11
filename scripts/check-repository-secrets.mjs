@@ -18,24 +18,51 @@ const TOKEN_RULES = [
 
 const CREDENTIAL_URL = /\b(?:postgres(?:ql)?|mysql|mariadb|mongodb(?:\+srv)?):\/\/([^:\s/@]+):([^@\s/]+)@([^/\s'"`]+)/gi;
 const JWT = /\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g;
-const ENV_ASSIGNMENT = /^(?:export[ \t]+)?([A-Z][A-Z0-9_]*(?:PASSWORD|PASS|SECRET|TOKEN|PRIVATE_KEY|SERVICE_ROLE_KEY|API_KEY)[A-Z0-9_]*)[ \t]*=[ \t]*([^\s#]{8,})[ \t]*$/gm;
+const ENV_ASSIGNMENT = /^(?:export[ \t]+)?([A-Z][A-Z0-9_]*)[ \t]*=[ \t]*([^\s#]{8,})[ \t]*$/gm;
+const SENSITIVE_ENV_NAME = /PASSWORD|PASS|SECRET|TOKEN|PRIVATE_KEY|SERVICE_ROLE_KEY|API_KEY/;
+const STRICT_PLACEHOLDERS = new Set([
+  "not-a-secret",
+  "not-a-real-secret",
+  "ci-placeholder-publishable-key",
+]);
+const HIGH_RISK_EXTENSIONS = new Set([
+  ".7z",
+  ".bz2",
+  ".der",
+  ".gz",
+  ".jks",
+  ".kdbx",
+  ".key",
+  ".p12",
+  ".pem",
+  ".pfx",
+  ".rar",
+  ".tar",
+  ".tgz",
+  ".xz",
+  ".zip",
+]);
 
 function lineNumber(text, index) {
   return text.slice(0, index).split("\n").length;
 }
 
-function placeholder(value) {
-  const normalized = value.replace(/^['"]|['"]$/g, "").toLowerCase();
-  return normalized === ""
-    || normalized.includes("placeholder")
-    || normalized.includes("replace-with")
-    || normalized.includes("example")
-    || normalized.includes("changeme")
-    || normalized.includes("not-a-secret")
-    || (normalized.startsWith("<") && normalized.endsWith(">"))
-    || normalized.startsWith("${")
-    || normalized.startsWith("$(")
-    || normalized.startsWith("process.env.");
+export function placeholder(value) {
+  const unquoted = value.replace(/^(?:'([^']*)'|"([^"]*)")$/, "$1$2");
+  const normalized = unquoted.toLowerCase();
+  return STRICT_PLACEHOLDERS.has(normalized)
+    || /^replace-with(?:[-_.][a-z0-9]+)+$/i.test(unquoted)
+    || /^<[^<>\r\n]+>$/.test(unquoted);
+}
+
+function runtimeReference(value) {
+  const unquoted = value.replace(/^(?:'([^']*)'|"([^"]*)")$/, "$1$2");
+  return /^\$\{[A-Z_][A-Z0-9_]*\}$/.test(unquoted)
+    || /^process\.env\.[A-Z_][A-Z0-9_]*$/.test(unquoted);
+}
+
+function nonLiteralValue(value) {
+  return placeholder(value) || runtimeReference(value);
 }
 
 function addFinding(findings, filePath, text, index, rule) {
@@ -63,7 +90,7 @@ export function scanText(filePath, text) {
       || normalizedHost === "127.0.0.1"
       || normalizedHost === "::1"
       || normalizedHost.endsWith(".invalid");
-    if (!localOrDocumentation && !placeholder(password)) {
+    if (!localOrDocumentation && !nonLiteralValue(password)) {
       addFinding(findings, filePath, text, match.index, "credential-url");
     }
   }
@@ -76,7 +103,9 @@ export function scanText(filePath, text) {
   }
 
   for (const match of text.matchAll(ENV_ASSIGNMENT)) {
-    if (!placeholder(match[2])) addFinding(findings, filePath, text, match.index, "literal-secret-assignment");
+    if (SENSITIVE_ENV_NAME.test(match[1]) && !nonLiteralValue(match[2])) {
+      addFinding(findings, filePath, text, match.index, "literal-secret-assignment");
+    }
   }
 
   return findings;
@@ -87,8 +116,29 @@ export function forbiddenTrackedPath(filePath) {
   const basename = path.posix.basename(normalized).toLowerCase();
   if (basename !== ".env.example"
     && (basename === ".env" || basename.startsWith(".env.") || basename.endsWith(".env"))) return true;
-  if ([".pem", ".key", ".p12", ".pfx", ".jks"].includes(path.posix.extname(basename))) return true;
+  if (HIGH_RISK_EXTENSIONS.has(path.posix.extname(basename))) return true;
   return ["id_rsa", "id_dsa", "id_ecdsa", "id_ed25519"].includes(basename);
+}
+
+export function extractPrintableAscii(bytes, minimumLength = 4) {
+  const strings = [];
+  let current = [];
+  const flush = () => {
+    if (current.length >= minimumLength) strings.push(Buffer.from(current).toString("ascii"));
+    current = [];
+  };
+
+  for (const byte of bytes) {
+    if (byte === 9 || byte === 10 || byte === 13 || (byte >= 32 && byte <= 126)) current.push(byte);
+    else flush();
+  }
+  flush();
+  return strings.join("\n");
+}
+
+export function scanBytes(filePath, bytes) {
+  if (bytes.includes(0)) return { binary: true, findings: scanText(filePath, extractPrintableAscii(bytes)) };
+  return { binary: false, findings: scanText(filePath, bytes.toString("utf8")) };
 }
 
 function trackedFiles(root) {
@@ -108,13 +158,12 @@ export function scanRepository(root = process.cwd(), files = trackedFiles(root))
       continue;
     }
     const absolutePath = path.join(root, filePath);
+    if (!fs.existsSync(absolutePath)) continue;
     const bytes = fs.readFileSync(absolutePath);
-    if (bytes.includes(0)) {
-      binaryFileCount += 1;
-      continue;
-    }
-    textFileCount += 1;
-    findings.push(...scanText(filePath, bytes.toString("utf8")));
+    const scanned = scanBytes(filePath, bytes);
+    if (scanned.binary) binaryFileCount += 1;
+    else textFileCount += 1;
+    findings.push(...scanned.findings);
   }
 
   return { trackedFileCount: files.length, textFileCount, binaryFileCount, findings };
@@ -129,7 +178,7 @@ function main() {
     }
     process.exit(1);
   }
-  console.log(`Repository secret scan passed (${result.trackedFileCount} tracked files; ${result.textFileCount} text; ${result.binaryFileCount} binary skipped; high-confidence hits=0)`);
+  console.log(`Repository secret scan passed (${result.trackedFileCount} tracked files; ${result.textFileCount} text; ${result.binaryFileCount} binary ASCII-scanned; high-confidence hits=0)`);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) main();

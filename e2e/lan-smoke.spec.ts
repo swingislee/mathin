@@ -1,7 +1,8 @@
 import { expect, test } from "@playwright/test";
+import { resolveLanTarget } from "../scripts/lib/r1-e2e-target-policy.mjs";
 
 test("LAN browser reaches the anonymous protected-route boundary", async ({ page }) => {
-  const lanBaseURL = process.env.MATHIN_E2E_LAN_BASE_URL?.replace(/\/$/, "");
+  const lanBaseURL = resolveLanTarget();
   test.skip(!lanBaseURL, "MATHIN_E2E_LAN_BASE_URL is unset; LAN secure-context verification is explicit opt-in");
   if (!lanBaseURL) return;
 

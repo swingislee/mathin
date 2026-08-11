@@ -1,10 +1,10 @@
-import { expect, test } from "@playwright/test";
-import { FIXED_ACCOUNT_SKIP_REASON, loadFixedAccount } from "./support/fixed-accounts";
+import { expect, test } from "./support/credential-test";
+import { FIXED_ACCOUNT_SKIP_REASON, loadFixedAccountForMode } from "./support/fixed-accounts";
 import { loginWithFixedAccount } from "./support/login";
 
 test.describe("fixed-account school portals", () => {
   test("student reaches learning classes and is rejected by a staff-only route", async ({ page }) => {
-    const student = loadFixedAccount("student");
+    const student = loadFixedAccountForMode("student");
     test.skip(!student, FIXED_ACCOUNT_SKIP_REASON);
     if (!student) return;
 
@@ -18,7 +18,7 @@ test.describe("fixed-account school portals", () => {
   });
 
   test("parent reaches the bound children portal", async ({ page }) => {
-    const parent = loadFixedAccount("parent");
+    const parent = loadFixedAccountForMode("parent");
     test.skip(!parent, FIXED_ACCOUNT_SKIP_REASON);
     if (!parent) return;
 
@@ -28,7 +28,7 @@ test.describe("fixed-account school portals", () => {
   });
 
   test("teacher reaches the staff classroom portal", async ({ page }) => {
-    const teacher = loadFixedAccount("teacher");
+    const teacher = loadFixedAccountForMode("teacher");
     test.skip(!teacher, FIXED_ACCOUNT_SKIP_REASON);
     if (!teacher) return;
 
