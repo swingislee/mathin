@@ -514,7 +514,7 @@ R1-0 已完成责任角色到 `swingislee` 的映射。增加人员或发生交�
 
 - 补齐英文课程、Minds 和 Story 正文；UI、路由和回退已在 1.0 完成。
 - 执行 `cacheComponents` + `use cache` 专项；继续禁止 `unstable_cache`。
-- 评估原生 App、更多游戏/工具/章节、复杂营销和高级 BI。
+- 评估原生 App、更多游戏/章节、复杂营销和高级 BI；空间数学实验室按 doc 28 延后到 `v1.0.0` 后，不计入当前 PROD-08 或 R1 发布门。
 - 查询优化无法使 work-items 达到 PERF-04 时，再评估物化投影。
 
 ## 8. 证据与文档维护

@@ -6,7 +6,7 @@
 >
 > **阶段来源**：`04-roadmap.md` 顶部的“当前施工阶段”。
 >
-> **核对日期**：2026-07-31；依据代码、迁移、内容目录、CI 与 doc 00～26。
+> **核对日期**：2026-08-11；依据代码、迁移、内容目录、CI 与 doc 00～28。
 
 ## 1. 1.0 产品合同
 
@@ -86,7 +86,7 @@ Story、Minds、Games、Tools 和 Notebook 使用稳定 ID 关联 Terms。课程
 | `deferred` | 当前发布不实施 |
 | `superseded` | 只用于追查历史决定 |
 
-## 6. doc 00～27 状态索引
+## 6. doc 00～28 状态索引
 
 | 文档 | 状态 | 有效内容 |
 | --- | --- | --- |
@@ -118,6 +118,7 @@ Story、Minds、Games、Tools 和 Notebook 使用稳定 ID 关联 Terms。课程
 | `25-production-1.0-product-completeness.md` | active | 1.0 事实、缺口、发布门和生产初始化 |
 | `26-teacher-workflow-upgrade.md` | partial | 左侧备课步骤、右侧常驻课件预览、板书解析与结构化教案；独立教案管理入口和派生输出待补 |
 | `27-small-screen-workspace-adaptation.md` | active | 1024–1280px 窄屏与平板横屏的侧栏三态、工作区可拖拽分栏、4:3 全屏与容器查询收敛 |
+| `28-spatial-mathematics-lab.md` | deferred | 1.0 后空间数学实验室的课程能力、数学内核、场景协议、教研创作、课堂同步与分阶段验收 |
 
 ## 7. 当前发布纪律
 
