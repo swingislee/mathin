@@ -66,9 +66,11 @@ describe("P4H-10 test-data bulk archive, CAS report, and controlled permanent cl
     expect(page).toContain("ClassroomTestBulkPanel");
   });
 
-  it("gates the admin cleanup page behind testdata.purge and does not use a client-side delete loop", () => {
-    const page = read("src", "app", "[locale]", "dashboard", "operations", "testdata", "page.tsx");
-    expect(page).toContain('requirePerm(locale, "testdata.purge")');
+  it("gates the maintenance ledger behind audit.view and destructive controls behind testdata.purge", () => {
+    const page = read("src", "app", "[locale]", "dashboard", "data-maintenance", "page.tsx");
+    expect(page).toContain('requirePerm(locale, "audit.view")');
+    expect(page).toContain('perms.has("testdata.purge")');
+    expect(page).toContain("canPurge ?");
     const panel = read("src", "features", "school", "ClassroomTestBulkPanel.tsx");
     expect(panel).toContain("bulkArchiveClassroomsAction");
     expect(panel).not.toMatch(/for\s*\(.*archiveClassroomAction/);

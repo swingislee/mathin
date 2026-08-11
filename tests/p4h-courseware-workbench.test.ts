@@ -16,7 +16,7 @@ describe("P4H/P4I-12 courseware workbench contract", () => {
     expect(migration).toContain("bounded_limit integer := least(greatest(coalesce(p_limit, 60), 1), 100)");
     expect(data).toContain('rpc("list_courseware_tasks"');
     expect(data).not.toContain("loadCoursewareCourses");
-    expect(queue).toContain("/dashboard/curriculum/lectures/");
+    expect(queue).toContain("/dashboard/courseware/lectures/");
   });
 
   it("Studio 壳层是脱离 Dashboard 的独立编辑路由（P4I-12）", () => {
@@ -32,21 +32,22 @@ describe("P4H/P4I-12 courseware workbench contract", () => {
     expect(editor).toContain("FullScreenToolShell");
     expect(editor).toContain("StageViewport");
     expect(editor).toContain("submitCoursewareReviewAction");
-    expect(editor).not.toContain("publishCoursewareReleaseAction");
+    expect(editor).toContain("publishCoursewareReleaseAction");
+    expect(editor).toContain("rollbackCoursewareReleaseAction");
     expect(editor).not.toContain("<h1");
     expect(editor).toContain("beforeunload");
   });
 
-  it("retired the 5 P4H-era legacy redirect shells (P4I-19: dev-stage old addresses 404, no redirects kept)", () => {
+  it("retires the four P4H-era redirect shells and keeps the canonical lecture workspace", () => {
     const root = process.cwd();
     for (const segments of [
       ["src", "app", "[locale]", "dashboard", "courseware", "[courseId]", "page.tsx"],
       ["src", "app", "[locale]", "dashboard", "courseware", "[courseId]", "[lectureId]", "page.tsx"],
       ["src", "app", "[locale]", "dashboard", "courseware", "[courseId]", "[lectureId]", "[pageId]", "page.tsx"],
       ["src", "app", "[locale]", "dashboard", "courses", "[id]", "lectures", "[lectureId]", "page.tsx"],
-      ["src", "app", "[locale]", "dashboard", "courseware", "lectures", "[lectureId]", "page.tsx"],
     ]) {
       expect(fs.existsSync(path.join(root, ...segments))).toBe(false);
     }
+    expect(fs.existsSync(path.join(root, "src", "app", "[locale]", "dashboard", "courseware", "lectures", "[lectureId]", "page.tsx"))).toBe(true);
   });
 });

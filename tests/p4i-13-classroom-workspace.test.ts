@@ -7,10 +7,11 @@ const read = (...segments: string[]) => fs.readFileSync(path.join(root, ...segme
 
 describe("P4I-13 classroom workspace contract", () => {
   it("班级页面用舞台原语拼装，不再是 P4H 时代的自制 header/tab", () => {
-    const page = read("src", "app", "[locale]", "dashboard", "classes", "[id]", "page.tsx");
+    const page = read("src", "app", "[locale]", "dashboard", "classes", "[classId]", "page.tsx");
     expect(page).toContain("ObjectBar");
     expect(page).toContain("ObjectWorkspace");
-    expect(page).toContain("ContextBar");
+    expect(page).toContain("ObjectTabs");
+    expect(page).toContain("context={contextItems}");
     expect(page).not.toContain("SchoolPageHeader");
   });
 
@@ -23,7 +24,7 @@ describe("P4I-13 classroom workspace contract", () => {
 
   it("课次工作区路由存在且鉴权正确（P4I-14 起深化为课前/课堂/课后，见 p4i-14 测试）", () => {
     const route = read("src", "app", "[locale]", "dashboard", "sessions", "[sessionId]", "page.tsx");
-    expect(route).toContain("requireUser");
+    expect(route).toContain("requireDashboardEnvironment");
     expect(route).toContain("getSessionWorkspaceDetail");
     expect(route).toContain("SessionWorkspaceBody");
   });

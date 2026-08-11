@@ -20,10 +20,10 @@ describe("P4H course family detail contract", () => {
     );
   });
 
-  it("canonicalizes legacy variant links and keeps the product shell server-rendered", () => {
-    const page = read("src", "app", "[locale]", "dashboard", "courses", "[id]", "page.tsx");
+  it("hard-cuts legacy variant links and keeps the product shell server-rendered", () => {
+    const page = read("src", "app", "[locale]", "dashboard", "courses", "[courseFamilyId]", "page.tsx");
 
-    expect(page).toContain("permanentRedirect");
+    expect(page).not.toContain("permanentRedirect");
     expect(page).toContain("TeachingPlanEditorLauncher");
     expect(page).toContain("LecturePreviewDialog");
     expect(page).toContain("loadLecturePreview");

@@ -39,17 +39,22 @@ describe("P4I-16 schedule and quick drawer contract", () => {
     expect(view).not.toContain("function startOfWeek");
   });
 
-  it("DashboardShell 把课表页纳入全高内部滚动的 workspace 白名单", () => {
+  it("路由合同把课表页纳入全高内部滚动模式", () => {
     const shell = read("src", "features", "school", "DashboardShell.tsx");
-    expect(shell).toContain('segments[1] === "schedule"');
+    const routes = read("src", "features", "school", "dashboard-routes.ts");
+    const scheduleRoute = routes.slice(routes.indexOf("schedule: {"), routes.indexOf("// ── 学员服务"));
+    expect(shell).toContain("resolveDashboardShellMode(pathname)");
+    expect(scheduleRoute).toContain('href: "/dashboard/schedule"');
+    expect(scheduleRoute).toContain('shellMode: "panel"');
   });
 
   it("classes/[id] 和课表页共用同一个瘦身后的快速抽屉，参数一致", () => {
-    const classesPage = read("src", "app", "[locale]", "dashboard", "classes", "[id]", "page.tsx");
+    const classesPage = read("src", "app", "[locale]", "dashboard", "classes", "[classId]", "page.tsx");
     const schedulePage = read("src", "app", "[locale]", "dashboard", "schedule", "page.tsx");
     expect(classesPage).toContain("classroomName={classroom.name}");
     expect(classesPage).toContain("classroomRoom={classroom.room}");
     expect(schedulePage).toContain("getSessionQuickRow");
-    expect(schedulePage).toContain('scroll="internal"');
+    expect(schedulePage).toContain("classroomName={quickRow?.classroomName");
+    expect(schedulePage).toContain('closeHref="/dashboard/schedule"');
   });
 });

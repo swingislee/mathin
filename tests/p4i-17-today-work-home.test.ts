@@ -17,9 +17,11 @@ describe("P4I-17 today's work becomes the default staff home", () => {
     expect(nav).not.toContain("/dashboard/work");
   });
 
-  it("/dashboard/work 变成到 /dashboard 的重定向", () => {
-    const workPage = read("src", "app", "[locale]", "dashboard", "work", "page.tsx");
-    expect(workPage).toContain("redirect(`/${locale}/dashboard`)");
+  it("/dashboard/work 已硬切删除并纳入旧路由审计", () => {
+    const workPage = path.join(root, "src", "app", "[locale]", "dashboard", "work", "page.tsx");
+    const routeAudit = read("scripts", "verify-doc22-routes.mjs");
+    expect(fs.existsSync(workPage)).toBe(false);
+    expect(routeAudit).toContain('"/dashboard/work"');
   });
 
   it("work-items.ts 的兜底路由不再指向已废弃的 /dashboard/work", () => {

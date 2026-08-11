@@ -23,7 +23,7 @@ describe("P6 adaptation background rework contract", () => {
   it("requires a structured rejection reason and exposes crop repair plus adjacent editing paths", () => {
     const review = read("src", "features", "courseware-studio", "AdaptReviewQueue.tsx");
     const rework = read("src", "features", "courseware-studio", "AdaptBackgroundReworkQueue.tsx");
-    const page = read("src", "app", "[locale]", "dashboard", "adapt-review", "page.tsx");
+    const page = read("src", "app", "[locale]", "dashboard", "courseware", "review", "page.tsx");
 
     expect(review).toContain("ADAPT_REJECTION_CODES");
     expect(review).toContain("adaptRejectReasonRequired");

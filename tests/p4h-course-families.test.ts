@@ -9,13 +9,16 @@ const migration = fs.readFileSync(
 );
 const seed = JSON.parse(fs.readFileSync(path.join(root, "supabase", "seed", "teaching-plans.json"), "utf8")) as Array<{
   productCode: string;
+  catalogVersion: string;
   lectures: unknown[];
 }>;
 
 describe("P4H course-family migration contract", () => {
-  it("pins the exact E-series seed set and preserves product-code lookup", () => {
-    expect(seed).toHaveLength(72);
-    expect(seed.flatMap((plan) => plan.lectures)).toHaveLength(865);
+  it("pins the current E-series seed set and preserves versioned product-code lookup", () => {
+    expect(seed).toHaveLength(90);
+    expect(seed.flatMap((plan) => plan.lectures)).toHaveLength(1135);
+    expect(seed.filter((plan) => plan.catalogVersion === "2025")).toHaveLength(54);
+    expect(seed.filter((plan) => plan.catalogVersion === "2026")).toHaveLength(36);
     for (const plan of seed) expect(migration).toContain(`'${plan.productCode}'`);
     expect(migration).toContain("on delete restrict");
     expect(migration).toContain("courses_active_family_variant_idx");
@@ -27,6 +30,8 @@ describe("P4H course-family migration contract", () => {
     const generator = fs.readFileSync(path.join(root, "scripts", "seed-courses.mjs"), "utf8");
     const importer = fs.readFileSync(path.join(root, "scripts", "cw-import.mjs"), "utf8");
     expect(generator).toContain("course_families");
+    expect(generator).toContain("course_catalog_versions");
+    expect(generator).toContain("on conflict (catalog_version_id, product_code)");
     expect(generator).toContain("family_id");
     expect(importer).toContain("product_code");
     expect(migration).toContain("function public.list_course_families");

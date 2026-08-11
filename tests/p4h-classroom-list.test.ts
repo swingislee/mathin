@@ -30,7 +30,7 @@ describe("P4H-8 classroom list, detail tabs and session drawer contract", () => 
 
   it("consolidates session actions into a single URL-driven drawer that reuses existing dialogs", () => {
     const drawer = read("src", "features", "school", "SessionManagementDrawer.tsx");
-    const detailPage = read("src", "app", "[locale]", "dashboard", "classes", "[id]", "page.tsx");
+    const detailPage = read("src", "app", "[locale]", "dashboard", "classes", "[classId]", "page.tsx");
 
     // P4I-16 起瘦身为"快速抽屉"（doc19 §15.2）：点名/课评已移交课后 tab 专属表单
     // （见 tests/p4i-16-schedule-drawer.test.ts），此处不再断言 AttendanceDrawer/ReviewDrawer。
@@ -45,13 +45,13 @@ describe("P4H-8 classroom list, detail tabs and session drawer contract", () => 
   it("groups cancelled sessions into a collapsible group instead of a separate recycle-bin route", () => {
     const grouped = read("src", "features", "school", "SessionGroupList.tsx");
     expect(grouped).toContain('"cancelled"');
-    expect(grouped).toContain("cancelledGroup");
+    expect(grouped).toContain('titleKey="groupCancelled"');
     expect(fs.existsSync(path.join(root, "src", "features", "school", "SessionRecycleBin.tsx"))).toBe(false);
     expect(fs.existsSync(path.join(root, "src", "features", "school", "SessionListPanel.tsx"))).toBe(false);
   });
 
   it("keeps no third-level session route under the classes detail page", () => {
-    const classesDetailDir = path.join(root, "src", "app", "[locale]", "dashboard", "classes", "[id]");
+    const classesDetailDir = path.join(root, "src", "app", "[locale]", "dashboard", "classes", "[classId]");
     const entries = fs.readdirSync(classesDetailDir);
     expect(entries).not.toContain("session");
   });

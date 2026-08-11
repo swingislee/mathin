@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createInteractionRuntime } from "../src/features/courseware-doc/interactions";
+import { H5_RUNTIME_VERSION } from "../src/features/courseware-doc/resolve";
 import type { PageDoc } from "../src/features/courseware-doc/schema";
 import { reduceEvent, type LiveState } from "../src/features/classroom/live/liveState";
 import type { SessionEvent } from "../src/features/classroom/types";
@@ -76,7 +77,10 @@ describe("P6-5 doc preload assembly", () => {
     expect(urls["2".repeat(64)]).toBe("blob:audio");
     expect(urls["4".repeat(64)]).toBe("blob:img");
     // 漏拼 launch query 会全部打开第一关(doc 16 P6-1 发现②)
-    expect(urls["3".repeat(64)]).toBe(`/api/cw-h5/packages/${HASH_H5}/index.html?coursewareId=5518`);
+    const h5Url = new URL(urls["3".repeat(64)], "https://mathin.local");
+    expect(h5Url.pathname).toBe(`/api/cw-h5/packages/${HASH_H5}/index.html`);
+    expect(h5Url.searchParams.get("coursewareId")).toBe("5518");
+    expect(h5Url.searchParams.get("mathin_h5_runtime")).toBe(H5_RUNTIME_VERSION);
   });
 
   it("omits bindings whose object blob or manifest is unavailable (renderer shows a visible fallback)", () => {

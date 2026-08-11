@@ -7,7 +7,7 @@ const read = (...segments: string[]) => fs.readFileSync(path.join(root, ...segme
 
 describe("P6 adaptation review and release workflow", () => {
   it("keeps background, page and release queues filterable by course and lecture", () => {
-    const page = read("src", "app", "[locale]", "dashboard", "adapt-review", "page.tsx");
+    const page = read("src", "app", "[locale]", "dashboard", "courseware", "review", "page.tsx");
     const data = read("src", "features", "courseware-studio", "adapt-review-data.ts");
     const migration = read("supabase", "migrations", "20260726000100_p6_adapt_release_and_class_builder.sql");
 

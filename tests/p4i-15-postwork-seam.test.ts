@@ -41,8 +41,8 @@ describe("P4I-15 postwork seam contract", () => {
 
   it("逐生课评保存不再误完成独立知识总结任务", () => {
     const actions = read("src", "features", "school", "review-actions.ts");
-    expect(actions).toContain('.eq("kind","reviews")');
-    expect(actions).not.toContain('.in("kind",["reviews","summary"])');
+    expect(actions).toContain('.eq("kind", "reviews")');
+    expect(actions).not.toContain('.in("kind", ["reviews", "summary"])');
   });
 
   it("support-tasks.ts 的类型与数据库枚举同步（renewal_followup/invalidated）", () => {
@@ -61,7 +61,7 @@ describe("P4I-15 postwork seam contract", () => {
 
   it("视频审阅只保留所属课次的查询，不恢复已删除的无入口全校队列", () => {
     const videos = read("src", "features", "school", "videos.ts");
-    expect(videos).toContain("export async function listSessionVideos(sessionId:string)");
+    expect(videos).toContain("export async function listSessionVideos(sessionId: string)");
     expect(videos).not.toContain("export async function listReviewVideos()");
   });
 
