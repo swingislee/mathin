@@ -57,7 +57,7 @@ Mathin 建设一套“空间数学实验室”，服务从小学直观认识立�
 ### 2.2 当前缺口
 
 1. 2026-08-11 已建立无生产依赖的体素内核 spike：严格整数坐标、分层、六向投影、隐藏块、连通分量、封闭空腔、内外表面和染色分类；面邻接、展开折叠、截面、单位和公式求值内核仍未落地。
-2. 已实现预生产 `spatial-scene-v1` 严格 schema、规范有理数、canonical JSON/hash 和引用校验；它尚未经教研金标/发布链冻结，`spatial-page-v1`、教研编辑器、课堂受控状态和题型模板仍未落地。
+2. 已实现预生产 `spatial-scene-v1` 严格 schema、规范有理数、canonical JSON/hash 和引用校验，并录入 20 道体素工程金标候选；候选题尚未经教研签名与跨领域复核，scene 也尚未进入发布链冻结，`spatial-page-v1`、教研编辑器、课堂受控状态和题型模板仍未落地。
 3. 当前课堂 `tool_ctl` 只同步工具开关，各端工具内部状态独立，不能承载权威课程页。
 4. Terms 的 `interactive` 目前只有一个工具字符串，无法区分同一工具的活动、preset 或 release。
 5. 课件创建/保存 RPC 主要面向 `page-doc-v1`；新增版本必须严格分发，不能放宽成任意 JSON。
@@ -81,6 +81,8 @@ Mathin 建设一套“空间数学实验室”，服务从小学直观认识立�
 2026-08-11 的首个施工增量只增加 `src/features/spatial-math/domain/` 纯 TypeScript 体素合同/内核与 `tests/spatial-math-voxel.test.ts`，未增加路由、数据库、课件版本、公开 Tool 或生产开关。它验证了 SML-1 的数学方向，但不关闭 SML-0 或 SML-1：20 道教研签名金标、scene/page/command 合同、目标设备性能、WebGL/fallback 和课堂纵向链仍是退出必需项。
 
 同日第二个增量增加 `spatial-scene-v1` 的五类 entity、相机/分层、白名单步骤、checkpoint、公式 AST、三视图可达性、来源版本、512 KiB 门和跨端 canonical SHA-256。该 schema 仍是无数据库/无路由的预生产合同；只有与 20 道金标、`spatial-page-v1`、immutable release/session freeze 和历史回放共同通过后，才能在 SML-0 标记冻结。
+
+同日第三个增量建立 20 道 `engineering-candidate` 体素题合同，覆盖 P1/P2/P3/P5 的观察、分层计数、隐藏块、染色、挖空、表面积与体积；每个期望值同时通过正式数学内核和独立测试 oracle 复核。该候选集只证明当前体素算法与人工期望一致，尚未经过教研签名，也未覆盖 P0 实体认识、P4 展开折叠和中学 M1/M2，因此不关闭 SML-0 或 SML-1。
 
 ## 3. 产品目标、用户与非目标
 
