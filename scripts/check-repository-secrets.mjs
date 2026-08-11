@@ -85,7 +85,8 @@ export function scanText(filePath, text) {
 export function forbiddenTrackedPath(filePath) {
   const normalized = filePath.replaceAll("\\", "/");
   const basename = path.posix.basename(normalized).toLowerCase();
-  if ((basename === ".env" || basename.startsWith(".env.")) && basename !== ".env.example") return true;
+  if (basename !== ".env.example"
+    && (basename === ".env" || basename.startsWith(".env.") || basename.endsWith(".env"))) return true;
   if ([".pem", ".key", ".p12", ".pfx", ".jks"].includes(path.posix.extname(basename))) return true;
   return ["id_rsa", "id_dsa", "id_ecdsa", "id_ed25519"].includes(basename);
 }

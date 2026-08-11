@@ -47,7 +47,7 @@ describe("R1 repository secret scan", () => {
 
   it("rejects tracked environment and private-key container filenames", () => {
     expect(forbiddenTrackedPath(".env.local")).toBe(true);
-    expect(forbiddenTrackedPath("config/production.env")).toBe(false);
+    expect(forbiddenTrackedPath("config/production.env")).toBe(true);
     expect(forbiddenTrackedPath("secrets/recovery.p12")).toBe(true);
     expect(forbiddenTrackedPath(".env.example")).toBe(false);
   });
