@@ -38,6 +38,6 @@ failure_ticket
 | R1-5 | passed | 2026-07-31 | [学生/家庭门户、课堂连续性与集成 CI 总门](r1-5.md) |
 | R1-6 | passed | 2026-08-01 | [教学成果、阶段报告、通知与客户读取](r1-6.md) |
 | R1-7 | passed | 2026-08-01 | [初始化、导入、质量、修复与导出](r1-7.md) |
-| R1-8 | passed（有未关闭缺口） | 2026-08-01 | [财务安全关闭](r1-8.md)；2026-08-03 人工验收在数据维护链路发现 `BUG-R1M-024`（`/dashboard/data-maintenance` 响应体下发订单金额正文）与 `BUG-R1M-025`（`rollback_data_repair_plan` 在 `finance.enabled=false` 下仍可写 `public.orders`），见 [人工功能验收清单 §13.5](../../runbooks/r1-school-backend-manual-functional-test.md)。两项修复并补 db-audit 负向断言后才能维持本阶段的 passed 结论 |
-| R1-9 | in progress | 2026-08-03 | [爱学习 G+ 秋季课程支持证据](r1-9-aixuexi-courseware.md)；Terms、公共内容发布链与两套课程正式 manifest 尚未关闭 |
-| R1-10～R1-18 | pending | — | 各阶段关闭时新增对应索引；当前阶段 R1-9 |
+| R1-8 | passed | 2026-08-12 | [财务安全关闭](r1-8.md)；`BUG-R1M-024` 与 `BUG-R1M-025` 已由迁移 `20260804000100` 修复，并在 commit `e231d7c` 复验：`pnpm r1:test` 15 个文件、99 项全绿，`SUPABASE_DB_SSH=xiaomi pnpm r1:db-audit` 的 12 个 SQL 断言文件全部通过并输出 `R1-8 finance safe-close assertions passed`；脚本均在事务中回滚，不留写入。具体 artifact 与 hash 由 r1-8 阶段证据登记 |
+| R1-9 | in progress | 2026-08-12 | 当前阶段为 `R1-9 · P6-9 与跨阶段非五模块生产准备`；继续 Notebook、学校运营、课程课件和生产底座，并保留 [爱学习 G+ 秋季课程支持证据](r1-9-aixuexi-courseware.md)。Story、Games、Minds、Terms、Tools 仅暂缓模块生产巡检；两套课程正式 manifest 与相关生产准备尚未关闭 |
+| R1-10～R1-18 | pending | — | 各阶段关闭时新增对应索引；五条公开线仍在 1.0 范围，恢复并通过原发布门前不得关闭 R1-12 或 R1-18 |

@@ -22,21 +22,30 @@
 | Notebook | 私有列表、编辑、公开详情路由存在 | 私人写作、审核、发布/撤回、公开阅读和互动完成权限/E2E 验收 |
 | 学校运营 | 学生、监护关系、员工权限、课程、班级、排课、考勤、作业、订单/支付/退款等迁移和 UI 已存在 | 管理员、教务、教师、学辅、教研/内容、学生、家长及启用时的财务旅程闭环 |
 | 内容发布 | Terms/Minds 文件内容、Notebook、课程研发和 release 机制分别存在 | Terms/Story/Minds/Notebook 共用草稿/审核/发布/撤回/版本合同；课堂只读取不可变课件 release |
-| E 系列 | 开发数据有 865 讲、16:9/4:3 双轨资源和 release 机制；课程目录版本层已就位（2025旧版 54 门 / 2026新版 18 门） | 保留 865×2 源资源；正式基线包含 1730 条 `release_no=1`。2026 秋季 270 讲导入后按 §5.1.1 重新固定 |
+| E 系列 | 开发数据有 1135 讲、16:9/4:3 双轨资源和 release 机制；课程目录版本层已就位（2025旧版 54 门 / 2026新版 36 门） | 保留 1135×2 源资源；正式基线包含 2270 条 `release_no=1`，见 §5.1.1 |
+| 爱学习 G+ 秋季 | 三至六年级 52 讲、16:9/4:3 双轨资源和 release 机制 | 保留 52×2 源资源；正式基线包含 104 条 `release_no=1`；第 7/15 讲保持显式来源缺口 |
 | 语言 | `messages/zh.json` 与 `messages/en.json` 各 3000 个 key；`content/en` 仅 README | UI 永久 zh/en；英文课程/文章可延期，缺失内容显示明确回退或“尚未发布”状态 |
 | 视觉 | `public/Main.png`、五星球 token/场景、`dashboard-observatory.png` 和公开场景插画已在仓库使用 | 小王子作为全站视觉基础；公开场景、内容/Notebook、运营工作区按三档强度验收 |
 
 Terms 使用稳定 ID 接收 Story、Minds、Games、Tools、Notebook 和课程的关联。修改 slug 或删除内容前检查反向引用、重定向、canonical 和 sitemap。
 
+### 1.1.1 2026-08-12 施工顺序
+
+本轮只调整施工顺序，不调整 1.0 交付对象或量化发布门。
+
+- 继续 Notebook、学校运营和角色门户、Classroom/Whiteboard/Courseware Studio、P6-9 与两套课程双轨资源，以及账户、安全、Jobs、通知、文件、Work-items、指标/E2E 和生产底座中不依赖五条公开线的准备。
+- 暂缓 Story、Games、Minds、Terms、Tools 的模块生产巡检，以及依赖这些模块的访客旅程、英文回退、公共视觉、SEO、浏览器、CWV 和 WCAG 子门。Notebook 所需共享发布状态机不在暂缓范围。
+- 依赖已满足的后续子项可以先形成 E1/E2/E3，所属 R1 阶段仍保持 pending；最终 production build、环境、浏览器、性能和恢复证据在五条线恢复后重跑。五条线全部恢复并通过前，R1-12、R1-18 和 `v1.0.0` 均不得关闭。
+
 ### 1.2 工程与验证基线
 
-| 对象 | 2026-07-28 可核对事实 | 尚不能支持的结论 |
+| 对象 | 最近可核对事实（截至 2026-08-12） | 尚不能支持的结论 |
 | --- | --- | --- |
 | 应用 | Next.js 16.2.11、React 19、Tailwind 4、next-intl、Supabase SSR | production build 通过不证明角色旅程、容量或恢复达标 |
 | 权限 | 顶层角色为 `student`、`parent`、`staff`、`admin`；受保护页使用 `requireUser`；数据库使用 RLS | Proxy 跳转和前端隐藏不能证明授权 |
 | Dashboard | P4I 已将首页和对象页改为工作流入口 | 页面存在不证明跨域工作项、人工协同或 p95 达标 |
 | CI | lint、typecheck、build、消息、数据库重建/RLS、安全、doc21～24 与规划审计已配置 | 尚无正式 Playwright 发布套件 |
-| Vitest | 24 个文件、109 项：93 通过，16 失败，分布在 10 个文件 | 全量套件尚未达到发布门；失败需在 R1-14 判定为过期断言或产品回归 |
+| Vitest | commit `cbb2a0f` 已将本轮修复前 19 项失败清零；当前 59 个测试文件、358/358 全绿，其中 R1 非 spatial 基线 251/251 | 单元/合同套件已恢复全绿；R1-14 仍需在后续实现后维持 100%，并补正式 Playwright、并发、文件和竞争矩阵 |
 | 部署 | doc 17 已将目标生产主机改为小米 Linux | 尚无独立生产、RPO/RTO、回滚和 14 天 RC 证据 |
 
 ### 1.3 已裁决的历史冲突
@@ -124,9 +133,9 @@ command_or_runbook, artifact_url_or_path, artifact_hash, failure_ticket
 | Minds | M2 | M4 | Terms 关系、内容回退 | 11/12 |
 | Tools | M2～M3 | M4 | 嵌入、浏览器、性能 | 11/12 |
 | Notebook | M2 | M4 | 隐私、审核、互动、旅途笔记视觉 | 11/12 |
-| 全站视觉/SEO/a11y | M2 | M4 | 三档小王子语言、96 份代表页视觉证据、WCAG/CWV | 12 |
+| 全站视觉/SEO/a11y | M2 | M4 | 三档小王子语言、104 份代表页视觉证据、WCAG/CWV | 12 |
 | 指标/报表/遥测 | M1～M2 | M4 | 口径、版本、查询、告警 | 13 |
-| 幂等/并发/事务/E2E | M2 | M4 | Playwright、16 项 Vitest 失败、大文件/竞争矩阵 | 14 |
+| 幂等/并发/事务/E2E | M2 | M4 | 本轮修复前 19 项 Vitest 失败已在 commit `cbb2a0f` 清零；仍缺正式 Playwright、大文件和竞争矩阵 | 14 |
 | 生产清理/release-1 | M1 | M4 | 快照副本演练、可逆脚本、正式计数 | 15/18 |
 | 部署/备份/恢复 | M1～M2 | M4 | 独立生产、RPO/RTO、回滚实操 | 16 |
 | 真实运营 RC | M0 | M4 | 14 天、5 节真实课堂、支持/告警记录 | 17 |
@@ -272,7 +281,7 @@ R1-7 不建立可任意写表的通用维护入口；初始化、导入、质量
 | R1-7E 导出（已完成） | 用户权利请求流程、教案/解析导出 | 用户权利 artifact 与运营导出分流；字段裁剪、hash、下载审计和自动过期 | 跨角色/跨学生负向查询拒绝；过期 artifact 不可下载；导出不暴露内部备注和非必要未成年人资料 |
 
 R1-7A 的 dry-run 也写批次审计，但原始行最多保留 30 天；错误 CSV 在浏览器按当前批次生成，不进入公开 Storage。批次只保存规范化输入、行状态、目标 ID 和标准错误码，不保存账号凭据、token 或文件二进制。正式初始化和破坏性清理仍分别受 R1-15/R1-18 环境与人工批准限制。
-R1-7B 的期望状态入口是 `docs/manifests/r1-initialization.example.json`，结构由 `schemas/r1-initialization-manifest.schema.json` 固定，`pnpm r1:init-plan` 只输出可复现计划，不连接数据库、不写表。manifest 只允许课程 `catalogVersion+productCode`、配置 `domain/flagKey` 等自然键，UUID 必须由目标数据库生成（`productCode` 自迁移 `20260803000300` 起只在课程目录版本内唯一，单独用它无法定位一门课程版本）；课程源文件、配置源迁移、CI 平台垫片和独立管理员 manifest 均固定 LF 归一化 SHA-256。可选 inventory 在 preflight 必须为 0 行，在 post-apply 必须与 72 个课程、865 讲、6 个规则域和 5 个 fail-closed flag 对账；再次执行时任一自然键对应 ID 或数量变化都停止。CI 平台垫片只用于空库重建验证，禁止作为生产平台初始化脚本。
+R1-7B 的期望状态入口是 `docs/manifests/r1-initialization.example.json`，结构由 `schemas/r1-initialization-manifest.schema.json` 固定，`pnpm r1:init-plan` 只输出可复现计划，不连接数据库、不写表。manifest 只允许课程 `catalogVersion+productCode`、配置 `domain/flagKey` 等自然键，UUID 必须由目标数据库生成（`productCode` 自迁移 `20260803000300` 起只在课程目录版本内唯一，单独用它无法定位一门课程版本）；课程源文件、配置源迁移、CI 平台垫片和独立管理员 manifest 均固定 LF 归一化 SHA-256。R1-7 关闭时的历史可选 inventory 在 preflight 必须为 0 行，在 post-apply 与当时的 72 个课程、865 讲、6 个规则域和 5 个 fail-closed flag 对账；当前正式基线改用 §5.1.1 的数量。再次执行时任一自然键对应 ID 或数量变化都停止。CI 平台垫片只用于空库重建验证，禁止作为生产平台初始化脚本。
 
 R1-7C 的规则集入口是 `mathin-data-quality-v1`。`data_quality_rule_versions` 按规则集、规则键和版本保持不可变且规则集内唯一；`data_quality_runs`/`data_quality_findings` 保存快照时间、严重度、对象、最小证据、规则/结果 SHA-256，直接写权限关闭。`run_data_quality_scan()` 在同一语句快照内检测在读报名关联已删除学生、学生手机号重复、非法课次状态、订单金额/状态不平和课件对象缺少 Storage 文件；手机号证据只保存对象 ID 与规范化键 hash。`/dashboard/data-maintenance` 对 `audit.view` 开放历史扫描与最多 200 条发现，触发新扫描另需 `system.operations.manage`；零引用报告和永久清理继续按 `courseware.asset.manage`/`testdata.purge` 裁剪。数据库断言覆盖重复扫描稳定、五类命中、规则不可变、无通知噪音和学生负向边界；扫描不自动修复，发现项由 R1-7D 的显式领域计划接收。
 
@@ -334,7 +343,7 @@ R1-7E 以 `user_rights_export_artifacts` 保存与请求绑定的精确 JSON 字
 
 #### 5.1.1 教材年度换代后的基线重新固定
 
-课程目录版本层（迁移 `20260803000300`/`20260803000400`，2026-08-03 落库）把「教材年度版本」建成 `course_catalog_versions` 一层，`courses` 的唯一性从 `(family_id, grade, term, class_type)` 收敛为 `(family_id, catalog_version_id, grade, term, class_type)`，`product_code` 的唯一性从全局收敛为版本内。E 系列现状归类为 2026新版 18 门（暑期）、2025旧版 54 门（秋季/寒假/春季），讲次数量未变。
+课程目录版本层（迁移 `20260803000300`/`20260803000400`，2026-08-03 落库）把「教材年度版本」建成 `course_catalog_versions` 一层，`courses` 的唯一性从 `(family_id, grade, term, class_type)` 收敛为 `(family_id, catalog_version_id, grade, term, class_type)`，`product_code` 的唯一性从全局收敛为版本内。导入前历史基线为 E 系列 865 讲、865×2=1730 条双轨 release；当时 E 系列归类为 2026新版 18 门（暑期）、2025旧版 54 门（秋季/寒假/春季）。
 
 来源包 `mofaxiao-e-math-2026-autumn-2026-08-03`（270 讲、16,451 页、审计全绿）已于 2026-08-04 导入开发库，下列数字为正式基线目标：
 
@@ -426,8 +435,8 @@ R1-7E 以 `user_rights_export_artifacts` 保存与请求绑定的精确 JSON 字
 | 删除 | 订单、收款、退款、学生账户、台账、对账/异常及相关 work item |
 | 删除 | 测试通知、`work_item_user_state`、持久 work item、测试 domain event、导入批次和测试派生错误数据 |
 | 保留 | migration、角色/权限定义、必要 reference/config schema |
-| 保留 | E 系列课程/课程族、865 个稳定 lecture ID、顺序和元数据 |
-| 保留 | 865 讲的 native 16:9、approved adapted 4:3 文档、revision/binding、CAS/Storage 对象、H5 资产和可复现适配记录 |
+| 保留 | E 系列课程/课程族、1135 个稳定 lecture ID、顺序和元数据 |
+| 保留 | E 系列 1135 讲的 native 16:9、approved adapted 4:3 文档、revision/binding、CAS/Storage 对象、H5 资产和可复现适配记录 |
 | 保留 | 爱学习 G+ 秋季课程/课程族、三至六年级 52 个稳定 lecture ID、来源编号缺口和 `cw_source_*` provenance |
 | 保留 | 爱学习 52 讲的 native 16:9、顶置 adapted 4:3 文档、revision/binding、CAS/Storage 对象、离线 H5/ITV 资产和可复现导入记录 |
 | 保留 | 资源来源/许可、hash、MIME、尺寸、轨道和校验元数据 |
@@ -436,7 +445,7 @@ R1-7E 以 `user_rights_export_artifacts` 保存与请求绑定的精确 JSON 字
 
 ### 6.3 release 清除与重建
 
-1. 冻结内容写入；分别导出 E 系列 865×2 和爱学习 52×2 manifest：课程体系、lecture ID、track、source revision/binding、对象 hash、预期 snapshot hash。
+1. 冻结内容写入；分别导出 E 系列 1135×2 和爱学习 52×2 manifest：课程体系、lecture ID、track、source revision/binding、对象 hash、预期 snapshot hash。
 2. 读取全部 16:9/4:3 源对象并比对 hash；缺失对象、悬空 binding 或未批准 4:3 资源使流程停止。
 3. 创建并验证备份；按实际外键顺序清除 `cw_lecture_releases`，置空/清除 `cw_lecture_track_heads.current_release_id`、`course_lectures.current_release_id` 和审核流程 release 引用。
 4. 两套课程体系的每讲都创建 native 16:9 `release_no=1` 和 adapted 4:3 `release_no=1`；release note=`production-v1.0-baseline`；snapshot 不可变。
@@ -451,12 +460,12 @@ R1-7E 以 `user_rights_export_artifacts` 保存与请求绑定的精确 JSON 字
 | 其他 profile/业务角色绑定 | 0 |
 | 班级/成员/排课/session/考勤/作业等运营数据 | 0 |
 | 订单/支付/退款/账户/台账 | 0 |
-| E 系列 lecture | 865；ID 和顺序与清理前 manifest 相同 |
+| E 系列 lecture | 1135；ID 和顺序与清理前 manifest 相同 |
 | 爱学习 G+ 秋季 lecture | 52；三至六年级各 13 讲；第 7、15 讲缺口与 manifest 相同 |
-| native heads | 917；全部指向 native `release_no=1` |
-| adapted heads | 917；全部指向 adapted `release_no=1` |
-| `cw_lecture_releases` | 1834；每讲每轨 1 条；`release_no>1` 为 0 |
-| legacy current release | 917 个指向对应 native release-1 |
+| native heads | 1187；全部指向 native `release_no=1` |
+| adapted heads | 1187；全部指向 adapted `release_no=1` |
+| `cw_lecture_releases` | 2374；每讲每轨 1 条；`release_no>1` 为 0 |
+| legacy current release | 1187 个指向对应 native release-1 |
 | 缺失/悬空文档、binding、CAS/Storage 对象、H5 | 0 |
 | 第二次运行差异 | 插入、更新、删除均为 0；hash 差异=0 |
 
@@ -477,6 +486,7 @@ R1-7E 以 `user_rights_export_artifacts` 保存与请求绑定的精确 JSON 字
 | 事项 | 1.0 决定 | 责任角色 | 最迟完成 | 状态 |
 | --- | --- | --- | --- | --- |
 | 产品 | 六个对外模块与学校运营/内容发布同步上线；Terms 为关系中心 | 产品负责人 | 已定 | decided |
+| 施工顺序 | 先完成 Notebook、学校运营、课程课件、平台横切与非破坏性生产底座；Story、Games、Minds、Terms、Tools 随后恢复生产巡检，并在 `v1.0.0` 前通过全部原发布门 | 产品+QA/发布负责人 | R1-18 前 | temporary sequencing |
 | 视觉 | 小王子为全站基础；场景/内容/工作区三级强度；Notebook=旅途笔记 | 产品+设计负责人 | 已定 | decided |
 | 语言 | UI 永久 zh/en；缺英文长内容时显式回退 | 产品+内容负责人 | 已定 | decided |
 | 财务 | 1.0 安全关闭；未来启用必须以新迁移打开发布门并重新通过完整账务门 | 产品+财务负责人 | R1-8 | closed for 1.0 |
@@ -486,8 +496,8 @@ R1-7E 以 `user_rights_export_artifacts` 保存与请求绑定的精确 JSON 字
 | E2E | Playwright；临时浏览脚本不进入发布证据 | QA/发布负责人 | R1-14 | decided |
 | 生产 | 独立小米 Linux；环境数据、secret、Storage 和域名隔离 | 运维负责人 | R1-16 | decided |
 | 正式管理员 | 保留 1 个非测试 auth UUID | 产品所有者+安全负责人 | R1-15 | pending manifest |
-| 数据清理 | 删除测试身份和运营数据；保留 E 系列两轨源资源 | 数据库+课程研发负责人 | 已定 | decided |
-| release | 865×2=1730 条 `release_no=1`；legacy 指向 native | 课程研发+数据库负责人 | 已定 | decided |
+| 数据清理 | 删除测试身份和运营数据；保留 E 系列 1135 讲与爱学习 52 讲的两轨源资源 | 数据库+课程研发负责人 | 已定 | decided |
+| release | E 系列 1135×2 与爱学习 52×2，共 2374 条 `release_no=1`；1187 个 legacy current release 均指向对应 native | 课程研发+数据库负责人 | 已定 | decided |
 | 证据位置 | 小摘要/索引固定在 `docs/evidence/r1/`；大日志/截图保存 CI artifact 或受控对象存储并记录 SHA-256、保留期和访问角色 | QA/发布负责人 | R1-0 | decided |
 
 R1-0 已完成责任角色到 `swingislee` 的映射。增加人员或发生交接时先更新本节，并在证据索引记录生效日期；改变 decided 项时，同一变更更新 doc 00、04、25、README 和受影响发布门。
@@ -497,6 +507,7 @@ R1-0 已完成责任角色到 `swingislee` 的映射。增加人员或发生交�
 | 风险 | 当前证据 | 影响 | Owner | 关闭阶段 |
 | --- | --- | --- | --- | --- |
 | Story 无完整章节 | 路由存在；无完整独立章节内容目录 | 对外 1.0 缺一模块 | 内容+产品 | R1-10 |
+| 五条公开线巡检后移 | Story、Games、Minds、Terms、Tools 的产品门和依赖它们的公共质量门仍为 pending | 发布末端形成集中关键路径；提前采集的 build/环境型 E3 可能过期 | 产品+QA/发布 | 恢复后的 R1-9～12，并在 R1-18 前重跑最终证据 |
 | 英文正文缺失 | `content/en` 仅 README | `/en` 可能空白或混排 | 内容+前端 | R1-9～12 |
 | 平台运行内核尚无生产验收 | R1-2 已完成 Job/通知/文件/集成的开发库断言、空库重放、Worker 单次运行和 zh/en 浏览器验证（M3） | 开发合同不证明生产 Worker、选中供应商、大文件容量、告警恢复和最终成功率 | 平台+运维+QA | R1-14/16/17 |
 | 全站视觉强度合同刚固定 | doc 05 曾把工作区排除在星球主题外 | 公开站与后台品牌断裂或装饰侵入控件 | 设计+前端 | R1-12 |
@@ -504,7 +515,7 @@ R1-0 已完成责任角色到 `swingislee` 的映射。增加人员或发生交�
 | 账户安全尚无生产验收 | R1-3 已完成账户/同意/支持的空库重放、负向断言与开发浏览器验证（M3） | 开发门控不证明正式唯一管理员、生产 MFA=100%、速率限制与恢复演练 | 安全+发布+QA | R1-14/16/17/18 |
 | Work-items 尚无生产候选/RC 负载证据 | R1-4 已在开发/一次性库完成 30,000 条持久项、300 名员工、40 次采样，p95≤18.87ms、p99≤20.71ms（M3） | 开发合成负载不能证明生产长尾、并发与 14 天稳定性 | 学校产品+数据库+QA | R1-14/17 |
 | 财务安全关闭尚无生产复核 | R1-8 已完成发布门、数据、任务/审批、通知、指标和 job 的开发/一次性库关闭证据（M3） | 开发环境关闭不变量不能证明生产初始化或正式清理后仍保持关闭 | 产品+财务+数据库+发布 | R1-15/18 |
-| Vitest 16 项失败 | 93/109 通过 | 过期测试遮蔽真实回归 | 技术+QA | R1-14 |
+| Vitest 基线需在最终 build 复验 | commit `cbb2a0f` 已清零本轮修复前 19 项失败；当前 59 个测试文件、358/358 全绿 | 后续实现可能重新引入合同回归 | 技术+QA | R1-14 保持全量 100% |
 | 无正式 Playwright 套件 | 只有临时浏览脚本 | 角色/浏览器回归不可重复 | QA/发布 | R1-14 |
 | 清理/release 未演练 | 只有规划与开发数据 | 正式数据或 4:3 资源损失 | 数据库+课程研发 | R1-15 |
 | 生产恢复未实操 | Linux 目标已定，无 RPO/RTO 证据 | 故障后恢复时间未知 | 运维+安全 | R1-16 |

@@ -6,7 +6,7 @@
 >
 > **阶段来源**：`04-roadmap.md` 顶部的“当前施工阶段”。
 >
-> **核对日期**：2026-08-11；依据代码、迁移、内容目录、CI 与 doc 00～28。
+> **核对日期**：2026-08-12；依据代码、迁移、内容目录、CI 与 doc 00～28。
 
 ## 1. 1.0 产品合同
 
@@ -61,7 +61,7 @@ Story、Minds、Games、Tools 和 Notebook 使用稳定 ID 关联 Terms。课程
 | 授权 | 数据库 RLS；前端隐藏按钮不构成授权 |
 | 业务状态 | 领域表和领域 RPC；今日工作、通知、搜索和统计只读取投影 |
 | 课程发布 | 可编辑文档/revision/binding 与不可变 release 分层；课堂读取 track head 指向的 release |
-| 正式数据基线 | 只保留 1 个生产管理员；删除测试运营数据；保留 E 系列 1135 讲的 16:9/4:3 源资源；重建 2270 条 `release_no=1`（2026 秋季 270 讲已于 2026-08-04 导入，见 doc 25 §5.1.1） |
+| 正式数据基线 | 只保留 1 个生产管理员；删除测试运营数据；保留 E 系列 1135 讲与爱学习 G+ 秋季 52 讲的 16:9/4:3 源资源；为 1187 个 lecture 的两条 track head 重建 2374 条 `release_no=1`，其中 E 系列 2270 条、爱学习 104 条（见 doc 25 §5.1.1） |
 | 课程目录版本 | 教材年度版本是 `course_catalog_versions` 一层，与 `course_families.edition`（地域版本）和 `cw_lecture_releases.release_no`（讲次内发布迭代）互不替代；`courses.product_code` 只在版本内唯一 |
 
 现行显式路由覆盖旧文档中的“九板块统一动态路由”描述。新增入口时同时更新路由、Proxy/鉴权、导航、sitemap、SEO、registry 和 zh/en messages。
@@ -123,6 +123,7 @@ Story、Minds、Games、Tools 和 Notebook 使用稳定 ID 关联 Terms。课程
 ## 7. 当前发布纪律
 
 - 当前子阶段以 doc 04 顶部为准。
+- 2026-08-12 起先推进 Notebook、学校运营、Classroom/Whiteboard/Courseware Studio、课程双轨资源和生产底座；Story、Games、Minds、Terms、Tools 的模块生产巡检随后恢复。该调整只改变施工顺序，不改变 §1 的 1.0 合同，也不豁免 doc 25 的对应产品门、跨模块质量门和 No-Go 条件。
 - R1 实际责任映射由 doc 25 §7.1 维护；阶段证据统一从 `docs/evidence/r1/README.md` 索引，Agent 只能作为执行者，不能代替人员 owner 或批准人。
 - R1-15 在生产快照的隔离副本演练数据清理；R1-18 经人工批准后处理正式生产。其他阶段禁止执行账号、班级、订单或 release 删除。
 - 阶段关闭时更新实现证据、专题文档状态头、doc 04、doc 25 和 README，并运行 `pnpm plan:audit`。
