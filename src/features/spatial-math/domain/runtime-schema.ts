@@ -35,7 +35,7 @@ export const spatialRuntimeBranchSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("student-local"), studentActorId: stableIdSchema }).strict(),
 ]);
 
-const spatialCommandActorSchema = z.discriminatedUnion("kind", [
+export const spatialCommandActorSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("teacher-controller"), actorId: stableIdSchema }).strict(),
   z.object({ kind: z.literal("student"), actorId: stableIdSchema }).strict(),
 ]);

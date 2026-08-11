@@ -444,6 +444,19 @@ export function createInitialSpatialRuntimeState(
   return state;
 }
 
+export function validateSpatialRuntimeStateForPage(
+  pageInput: unknown,
+  stateInput: unknown,
+): SpatialRuntimeState {
+  const page = parseSpatialPageDoc(pageInput);
+  const state = parseSpatialRuntimeState(stateInput);
+  if (state.sceneRevisionHash !== page.sceneHash) {
+    fail(SPATIAL_RUNTIME_ERROR_CODES.stateSceneMismatch, "runtime state scene hash does not match page scene hash");
+  }
+  validateStateReferences(page, state);
+  return state;
+}
+
 export function forkStudentLocalRuntimeState(
   pageInput: unknown,
   authorityStateInput: unknown,
