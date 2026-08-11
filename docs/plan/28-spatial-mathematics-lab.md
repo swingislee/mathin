@@ -56,8 +56,8 @@ Mathin 建设一套“空间数学实验室”，服务从小学直观认识立�
 
 ### 2.2 当前缺口
 
-1. 2026-08-11 已建立无生产依赖的体素内核 spike：严格整数坐标、分层、六向投影、隐藏块、连通分量、封闭空腔、内外表面和染色分类；面邻接、展开折叠、截面、完整单位检查和参数/函数求值内核仍未落地。
-2. 已实现预生产 `spatial-scene-v1`、4:3 原生优先的 `spatial-page-v1`、`spatial-runtime-state-v1`、`spatial-command-v1` 和学生私有 `spatial-attempt-v1` 严格 schema，以及单写者 reducer、reset epoch、命令指纹、学生本地分支、确定性重放与 pinned-kernel 作答判定，并录入 20 道体素工程金标候选；候选题尚未经教研签名与跨领域复核，新合同也尚未加入生产 `CoursewareDoc`、数据库/RPC/RLS、课堂 transport 或发布链冻结，教研编辑器和题型模板仍未落地。
+1. 2026-08-11 已建立无生产依赖的体素内核和正方体展开图 spike：体素覆盖整数坐标、分层、六向投影、隐藏块、连通分量、封闭空腔、内外表面和染色分类；展开图覆盖单位方格网规范化、自由多连方枚举和正方体 90° 精确折叠。通用多面体面/棱邻接、任意面铰链、自相交、连续折叠、截面、完整单位检查和参数/函数求值内核仍未落地。
+2. 已实现预生产 `spatial-scene-v1`、4:3 原生优先的 `spatial-page-v1`、`spatial-runtime-state-v1`、`spatial-command-v1` 和学生私有 `spatial-attempt-v1` 严格 schema，以及单写者 reducer、reset epoch、命令指纹、学生本地分支、确定性重放与 pinned-kernel 作答判定，并录入 20 道体素和 11 种正方体展开图工程金标候选；候选题尚未经教研签名与跨领域复核，新合同也尚未加入生产 `CoursewareDoc`、数据库/RPC/RLS、课堂 transport 或发布链冻结，教研编辑器和题型模板仍未落地。
 3. 当前课堂 `tool_ctl` 只同步工具开关，各端工具内部状态独立，不能承载权威课程页。
 4. Terms 的 `interactive` 目前只有一个工具字符串，无法区分同一工具的活动、preset 或 release。
 5. 课件创建/保存 RPC 主要面向 `page-doc-v1`；新增版本必须严格分发，不能放宽成任意 JSON。
@@ -82,7 +82,7 @@ Mathin 建设一套“空间数学实验室”，服务从小学直观认识立�
 
 同日第二个增量增加 `spatial-scene-v1` 的五类 entity、相机/分层、白名单步骤、checkpoint、公式 AST、三视图可达性、来源版本、512 KiB 门和跨端 canonical SHA-256。该 schema 仍是无数据库/无路由的预生产合同；只有与 20 道金标、`spatial-page-v1`、immutable release/session freeze 和历史回放共同通过后，才能在 SML-0 标记冻结。
 
-同日第三个增量建立 20 道 `engineering-candidate` 体素题合同，覆盖 P1/P2/P3/P5 的观察、分层计数、隐藏块、染色、挖空、表面积与体积；每个期望值同时通过正式数学内核和独立测试 oracle 复核。该候选集只证明当前体素算法与人工期望一致，尚未经过教研签名，也未覆盖 P0 实体认识、P4 展开折叠和中学 M1/M2，因此不关闭 SML-0 或 SML-1。
+同日第三个增量建立 20 道 `engineering-candidate` 体素题合同，覆盖 P1/P2/P3/P5 的观察、分层计数、隐藏块、染色、挖空、表面积与体积；每个期望值同时通过正式数学内核和独立测试 oracle 复核。该体素候选集只证明当前体素算法与人工期望一致，尚未经过教研签名，也不覆盖 P0 实体认识、P4 展开折叠和中学 M1/M2，因此不关闭 SML-0 或 SML-1。
 
 同日第四个增量增加预生产 `spatial-page-v1`：物化 scene/hash、来源、课堂 ownership、学习检查和 fallback 与 presentation 分层；合同同时固定 640 KiB 门、语义事件持久化、教师 reset 权威、学生本地探索/提交边界、服务端 pinned-kernel 形成性检查与逐 checkpoint 二维降级。生产 `CoursewareDoc` 仍显式拒绝该版本，因此该增量不构成发布链接入，也不关闭 SML-0。
 
@@ -91,6 +91,8 @@ Mathin 建设一套“空间数学实验室”，服务从小学直观认识立�
 同日第五个增量增加 `spatial-runtime-state-v1`、`spatial-command-v1` 与纯 reducer：教师权威和单个学生本地探索使用独立单写者 branch；命令按 scene hash、reset epoch、连续 sequence、actor 和 ownership 校验；精确重复通过 command ID + 确定性指纹幂等，复用 ID 改 payload、旧 epoch、序号缺口和跨 branch 写入均拒绝。snapshot 只保存可变覆盖与体素 delta，不复制完整 scene；状态/命令分别受 256 KiB/32 KiB 门约束。该增量未接 `session_events`、realtime、outbox、RPC 或 RLS，因此只证明领域状态机，不构成课堂纵向闭环。
 
 同日第六个增量增加学生私有 `spatial-attempt-v1`、可信提交 binding、最小化 `spatial-attempt-evaluation-v1` 与 pinned-kernel 纯判定器。attempt 严格绑定 frozen scene hash、session/page/student、reset epoch、runtime state hash 和服务端已知的下一次提交序号；选择集合使用确定性顺序，正文受 256 KiB 门约束，幂等 key 只有在完整规范内容一致时才接受重试。判定器覆盖整数/有理数、单多选、实体/体素选择、自由解释证据、六类体素派生量和现有白名单公式子集；结果不回显原始作答、学生/课堂 ID 或标准答案。该增量未建立持久表、专用 RPC、RLS、授权教师查询、离线 outbox 或课堂 adapter，因此不构成可收集真实学生数据的生产能力。
+
+同日第七个增量增加 `unit-square-net-v1` 与 `cube-net-kernel-v1`：输入使用有界整数方格、唯一且稳定顺序；规范化消除平移、四次旋转和镜像差异；有界枚举得到自由多连方序列 1/1/2/5/12/35；折叠沿方格邻接传播右手整数朝向，并以 `CELL_COUNT`、`DISCONNECTED`、`ORIENTATION_CONFLICT`、`FACE_OVERLAP` 显式拒绝非法网。35 种自由六连方中接受集合与 11 个独立固化的 `engineering-candidate` 金标规范键逐项一致，所有旋转、镜像和平移变体保持相同结论。该增量只覆盖正方体单位方格网的最终 90° 折叠，不含通用 polyhedron 面/棱拓扑、任意铰链、连续动画、自相交几何、scene/page 集成或触控 renderer，因此不关闭 SML-4。
 
 ## 3. 产品目标、用户与非目标
 
@@ -316,6 +318,8 @@ H5/iframe、任意网页模型和客户端临时 URL 不作为空间数学资产
 4. 将连续动画视为确定性进度参数的呈现；最终合法性由拓扑内核判定。
 
 正方体金标必须枚举 35 种自由六连方，接受且只接受 11 种展开图；旋转和镜像等价归一化。
+
+当前预生产 spike 已完成上述 35/11 离散合同，并保留 11 个教研待签名候选。SML-4 后续仍需把结果提升为通用面/棱/铰链图，接入 `spatial-scene-v1`、连续折叠 renderer、相邻/相对面题型、4:3 课堂交互和触控证据；不得把正方体专用方格算法冒充通用多面体内核。
 
 ### 7.3 截面
 
