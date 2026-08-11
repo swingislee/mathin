@@ -110,6 +110,8 @@ Mathin 建设一套“空间数学实验室”，服务从小学直观认识立�
 
 同日第十五个增量增加 `voxel-scene-adapter-v1`、runtime 体素物化、`voxel-teaching-controller-v1` 与首个 4:3 体素教学舞台。adapter 从稳定有序的单位块坐标生成 P2 双语场景、正面/右面/上面/立体相机、按轴互斥分层、预测—三视图—逐层—验证步骤、总数 numeric checkpoint 和不提前泄露答案的 accessibility 摘要，并物化为 1200×900 `standard-4x3` page。runtime 物化器以同一 page/state 合并体素增删 delta、实体/层显隐和材质；纯 render model 与内核共享当前体素集合及正投影结果。R3F 使用单个 `InstancedMesh`、`frameloop="demand"`、DPR 1～1.5、已创作相机、context lost/restored 和模块级 `ssr:false`；二维 fallback 显示当前正投影、按揭示策略控制的堆叠数、分层表和坐标对象树。教学舞台提供相机书签、步骤播放、单层显隐、教师 reset 和学生私有整数 attempt 草稿；`student-submit` 可以观察与提交，但不能自行跳入最终答案揭示步骤。专项合同增至 16 个文件/122 项并通过。该舞台仍未挂入 Studio、生产 CoursewareDoc、课堂 transport 或公开路由，也没有目标设备的 1,000 体素帧预算、触控和真实浏览器证据，因此不关闭 SML-1 或 SML-2。
 
+同日第十六个增量增加预生产 `voxel-template-editor-v1`。纯编辑控制器把教研操作限制为层轴、层号和二维格点画笔，确定性映射到稳定排序的三维整数体素；支持最多 50 步撤销/重做、恢复初始模板、边界/最后一个体素/场景上限拒绝和 2,000 体素性能提示。client 叶子只使用既有 shadcn 控件，左侧按层增删单位块，右侧即时物化与教学 runtime 相同的 1200×900 `standard-4x3` 页面并复用 3D/fallback renderer；教研无需输入 JSON、代码或三维坐标。专项合同增至 17 个文件/128 项并通过。该编辑器尚未接 Studio 路由、草稿保存、评审发布、数据库/RPC/RLS 或课堂纵向链，因此仍是算法/UI spike，不关闭 SML-0、SML-1 或 SML-2。
+
 ## 3. 产品目标、用户与非目标
 
 ### 3.1 目标结果

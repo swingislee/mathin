@@ -1,8 +1,6 @@
 import {
-  SPATIAL_PAGE_DOC_VERSION,
   VOXEL_SCENE_ADAPTER_VERSION,
-  buildVoxelCountingScene,
-  materializeSpatialPageDoc,
+  buildVoxelCountingPage,
   type SpatialPageDoc,
   type VoxelSceneAdapterInput,
 } from "@/features/spatial-math/domain";
@@ -38,50 +36,5 @@ export function voxelCountingAdapterInput(): VoxelSceneAdapterInput {
 }
 
 export async function voxelCountingSpatialPage(): Promise<SpatialPageDoc> {
-  const built = await buildVoxelCountingScene(voxelCountingAdapterInput());
-  return materializeSpatialPageDoc({
-    docVersion: SPATIAL_PAGE_DOC_VERSION,
-    layout: { profile: "standard-4x3" },
-    scene: built.scene,
-    source: { kind: "scratch" },
-    presentation: {
-      viewport: { width: 1_200, height: 900, safeFrame: { x: 0.04, y: 0.04, width: 0.92, height: 0.92 } },
-      camera: {
-        defaultCameraId: "camera.perspective",
-        interaction: "orbit",
-        transition: "smooth",
-        reducedMotion: "jump",
-      },
-      labelPlacements: [],
-      panels: [
-        { panelId: "teacher-controls", dock: "bottom", sizePx: 140, initiallyCollapsed: false },
-        { panelId: "checkpoint", dock: "right", sizePx: 300, initiallyCollapsed: false },
-      ],
-    },
-    classroom: {
-      ownership: {
-        defaultMode: "teacher-follow",
-        allowedModes: ["teacher-follow", "student-local-explore", "student-submit"],
-      },
-      cameraSync: "bookmark-and-opt-in-fx",
-      durableStatePolicy: "semantic-events-only",
-      resetAuthority: "teacher-controller",
-      boardPointerPolicy: "mutually-exclusive-tools",
-    },
-    learningCheck: {
-      mode: "formative-only",
-      items: [{ checkpointId: "checkpoint.total-count", required: true, evaluation: "server-pinned-kernel" }],
-      maxSubmissions: 3,
-      responseVisibility: "student-and-authorized-staff",
-    },
-    fallback: {
-      strategy: "scene-accessibility-v1",
-      defaultView: "front",
-      checkpoints: [{ checkpointId: "checkpoint.total-count", mode: "interactive-2d" }],
-      unavailableMessage: {
-        zh: "三维画面不可用，已切换到等价二维投影和分层表。",
-        en: "The 3D view is unavailable. Equivalent projections and a layer table are shown.",
-      },
-    },
-  });
+  return (await buildVoxelCountingPage(voxelCountingAdapterInput())).page;
 }

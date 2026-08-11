@@ -1,5 +1,10 @@
 import { canonicalSha256 } from "./canonical-json";
 import { rational } from "./exact";
+import {
+  SPATIAL_PAGE_DOC_VERSION,
+  materializeSpatialPageDoc,
+  type SpatialPageDoc,
+} from "./page-schema";
 import { countVoxelLayers, primaryOrthographicProjections } from "./voxel-kernel";
 import { parseSpatialScene, type SpatialScene } from "./scene-schema";
 import { createVoxelSet } from "./voxel-schema";
@@ -17,6 +22,10 @@ export interface VoxelCountingSceneBuildResult {
   readonly totalCount: number;
   readonly layerCounts: readonly { readonly coordinate: number; readonly count: number }[];
   readonly projections: readonly OrthographicProjection[];
+}
+
+export interface VoxelCountingPageBuildResult extends VoxelCountingSceneBuildResult {
+  readonly page: SpatialPageDoc;
 }
 
 function encodedCoordinate(value: number): string {
@@ -176,4 +185,64 @@ export async function buildVoxelCountingScene(inputValue: unknown): Promise<Voxe
     layerCounts,
     projections,
   };
+}
+
+/**
+ * Materializes the standard authored page used by the editor, preview and later
+ * classroom adapters. Spatial voxel pages are 4:3-first; a wide layout is a
+ * separate, explicit exception and is intentionally absent from this builder.
+ */
+export async function buildVoxelCountingPage(inputValue: unknown): Promise<VoxelCountingPageBuildResult> {
+  const built = await buildVoxelCountingScene(inputValue);
+  const page = await materializeSpatialPageDoc({
+    docVersion: SPATIAL_PAGE_DOC_VERSION,
+    layout: { profile: "standard-4x3" },
+    scene: built.scene,
+    source: { kind: "scratch" },
+    presentation: {
+      viewport: {
+        width: 1_200,
+        height: 900,
+        safeFrame: { x: 0.04, y: 0.04, width: 0.92, height: 0.92 },
+      },
+      camera: {
+        defaultCameraId: "camera.perspective",
+        interaction: "orbit",
+        transition: "smooth",
+        reducedMotion: "jump",
+      },
+      labelPlacements: [],
+      panels: [
+        { panelId: "teacher-controls", dock: "bottom", sizePx: 140, initiallyCollapsed: false },
+        { panelId: "checkpoint", dock: "right", sizePx: 300, initiallyCollapsed: false },
+      ],
+    },
+    classroom: {
+      ownership: {
+        defaultMode: "teacher-follow",
+        allowedModes: ["teacher-follow", "student-local-explore", "student-submit"],
+      },
+      cameraSync: "bookmark-and-opt-in-fx",
+      durableStatePolicy: "semantic-events-only",
+      resetAuthority: "teacher-controller",
+      boardPointerPolicy: "mutually-exclusive-tools",
+    },
+    learningCheck: {
+      mode: "formative-only",
+      items: [{ checkpointId: "checkpoint.total-count", required: true, evaluation: "server-pinned-kernel" }],
+      maxSubmissions: 3,
+      responseVisibility: "student-and-authorized-staff",
+    },
+    fallback: {
+      strategy: "scene-accessibility-v1",
+      defaultView: "front",
+      checkpoints: [{ checkpointId: "checkpoint.total-count", mode: "interactive-2d" }],
+      unavailableMessage: {
+        zh: "三维画面不可用，已切换到等价二维投影和分层表。",
+        en: "The 3D view is unavailable. Equivalent projections and a layer table are shown.",
+      },
+    },
+  });
+
+  return { ...built, page };
 }
