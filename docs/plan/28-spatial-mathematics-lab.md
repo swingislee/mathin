@@ -56,8 +56,8 @@ Mathin 建设一套“空间数学实验室”，服务从小学直观认识立�
 
 ### 2.2 当前缺口
 
-1. 2026-08-11 已建立无生产依赖的体素内核 spike：严格整数坐标、分层、六向投影、隐藏块、连通分量、封闭空腔、内外表面和染色分类；scene/page 合同、面邻接、展开折叠、截面、单位和公式内核仍未落地。
-2. 没有版本化 scene 文档、教研编辑器、课堂受控状态、题型模板和数学金标集。
+1. 2026-08-11 已建立无生产依赖的体素内核 spike：严格整数坐标、分层、六向投影、隐藏块、连通分量、封闭空腔、内外表面和染色分类；面邻接、展开折叠、截面、单位和公式求值内核仍未落地。
+2. 已实现预生产 `spatial-scene-v1` 严格 schema、规范有理数、canonical JSON/hash 和引用校验；它尚未经教研金标/发布链冻结，`spatial-page-v1`、教研编辑器、课堂受控状态和题型模板仍未落地。
 3. 当前课堂 `tool_ctl` 只同步工具开关，各端工具内部状态独立，不能承载权威课程页。
 4. Terms 的 `interactive` 目前只有一个工具字符串，无法区分同一工具的活动、preset 或 release。
 5. 课件创建/保存 RPC 主要面向 `page-doc-v1`；新增版本必须严格分发，不能放宽成任意 JSON。
@@ -76,9 +76,11 @@ Mathin 建设一套“空间数学实验室”，服务从小学直观认识立�
 
 必须增加一条纵向集成测试：Studio 创建/重排空间页 → 双轨发布 → 课次备课 → freeze → live → 学生重连回放。该测试同时证明页面顺序、revision、scene hash 和权限没有漂移。
 
-### 2.4 预施工算法 spike 记录
+### 2.4 预施工合同与算法 spike 记录
 
 2026-08-11 的首个施工增量只增加 `src/features/spatial-math/domain/` 纯 TypeScript 体素合同/内核与 `tests/spatial-math-voxel.test.ts`，未增加路由、数据库、课件版本、公开 Tool 或生产开关。它验证了 SML-1 的数学方向，但不关闭 SML-0 或 SML-1：20 道教研签名金标、scene/page/command 合同、目标设备性能、WebGL/fallback 和课堂纵向链仍是退出必需项。
+
+同日第二个增量增加 `spatial-scene-v1` 的五类 entity、相机/分层、白名单步骤、checkpoint、公式 AST、三视图可达性、来源版本、512 KiB 门和跨端 canonical SHA-256。该 schema 仍是无数据库/无路由的预生产合同；只有与 20 道金标、`spatial-page-v1`、immutable release/session freeze 和历史回放共同通过后，才能在 SML-0 标记冻结。
 
 ## 3. 产品目标、用户与非目标
 
@@ -213,7 +215,7 @@ scene 同时声明 `kernelVersion` 与 `minRuntimeVersion`。部署新 runtime �
 | checkpoints | 问题类型、输入约束、答案策略、反馈与 reveal | 标准答案由内核重算；高风险评分另行授权 |
 | formulas | 测量绑定、表达式 AST、单位、显示步骤 | M2 前可为空；禁止表达式字符串 `eval` |
 | accessibility | 文字摘要、三视图、分层表、颜色标签、键盘顺序 | 发布必填；可由内核生成后由教研确认 |
-| provenance | 模板/活动 release、创建者、内核版本、内容 hash | 进入 revision 后不可变 |
+| provenance | 模板/活动 release、创建者、内核版本；内容 hash 由外层 revision 保存 | 避免文档内自引用 hash；进入 revision 后不可变 |
 
 确定性规则：对象按稳定 ID 排序，体素坐标用规范整数三元组，颜色使用语义 token，数值禁止 NaN/Infinity，数学量优先用整数或约分有理数。hash 输入采用仓库 `normalizeNewlines` / `textFileSha256` 相同的规范化纪律；JSON canonicalization 在 SML-0 固定并提供跨端测试向量。
 
