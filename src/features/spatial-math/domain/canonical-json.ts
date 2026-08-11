@@ -48,3 +48,15 @@ export async function canonicalSha256(value: unknown): Promise<string> {
   const digest = await globalThis.crypto.subtle.digest("SHA-256", bytes);
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
+
+/** Compact deterministic fingerprint for correlation; never use it as a security digest. */
+export function canonicalFingerprint64(value: unknown): string {
+  const bytes = new TextEncoder().encode(canonicalJsonStringify(value));
+  let hash = BigInt("14695981039346656037");
+  const prime = BigInt("1099511628211");
+  bytes.forEach((byte) => {
+    hash ^= BigInt(byte);
+    hash = BigInt.asUintN(64, hash * prime);
+  });
+  return hash.toString(16).padStart(16, "0");
+}

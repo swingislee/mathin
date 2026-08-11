@@ -56,8 +56,8 @@ Mathin 建设一套“空间数学实验室”，服务从小学直观认识立�
 
 ### 2.2 当前缺口
 
-1. 2026-08-11 已建立无生产依赖的体素内核 spike：严格整数坐标、分层、六向投影、隐藏块、连通分量、封闭空腔、内外表面和染色分类；面邻接、展开折叠、截面、单位和公式求值内核仍未落地。
-2. 已实现预生产 `spatial-scene-v1`、4:3 原生优先的 `spatial-page-v1`、`spatial-runtime-state-v1` 和 `spatial-command-v1` 严格 schema，以及单写者 reducer、reset epoch、命令指纹、学生本地分支与确定性重放，并录入 20 道体素工程金标候选；候选题尚未经教研签名与跨领域复核，新合同也尚未加入生产 `CoursewareDoc`、数据库/RPC、课堂 transport 或发布链冻结，教研编辑器和题型模板仍未落地。
+1. 2026-08-11 已建立无生产依赖的体素内核 spike：严格整数坐标、分层、六向投影、隐藏块、连通分量、封闭空腔、内外表面和染色分类；面邻接、展开折叠、截面、完整单位检查和参数/函数求值内核仍未落地。
+2. 已实现预生产 `spatial-scene-v1`、4:3 原生优先的 `spatial-page-v1`、`spatial-runtime-state-v1`、`spatial-command-v1` 和学生私有 `spatial-attempt-v1` 严格 schema，以及单写者 reducer、reset epoch、命令指纹、学生本地分支、确定性重放与 pinned-kernel 作答判定，并录入 20 道体素工程金标候选；候选题尚未经教研签名与跨领域复核，新合同也尚未加入生产 `CoursewareDoc`、数据库/RPC/RLS、课堂 transport 或发布链冻结，教研编辑器和题型模板仍未落地。
 3. 当前课堂 `tool_ctl` 只同步工具开关，各端工具内部状态独立，不能承载权威课程页。
 4. Terms 的 `interactive` 目前只有一个工具字符串，无法区分同一工具的活动、preset 或 release。
 5. 课件创建/保存 RPC 主要面向 `page-doc-v1`；新增版本必须严格分发，不能放宽成任意 JSON。
@@ -89,6 +89,8 @@ Mathin 建设一套“空间数学实验室”，服务从小学直观认识立�
 随后按用户拍板把页面合同收敛为 4:3 原生优先：普通场景只有 `standard-4x3`，不要求教研重复创作 16:9；确需横向并列等特殊教学布局时，额外 revision 使用 `wide-16x9-exception` 并填写双语理由。平台仍可维护既有两条 track head，但默认两条 head 物化相同 4:3 文档；宽屏例外的 native head 指向 16:9，adapted head 仍指向必需的 4:3 主版本。
 
 同日第五个增量增加 `spatial-runtime-state-v1`、`spatial-command-v1` 与纯 reducer：教师权威和单个学生本地探索使用独立单写者 branch；命令按 scene hash、reset epoch、连续 sequence、actor 和 ownership 校验；精确重复通过 command ID + 确定性指纹幂等，复用 ID 改 payload、旧 epoch、序号缺口和跨 branch 写入均拒绝。snapshot 只保存可变覆盖与体素 delta，不复制完整 scene；状态/命令分别受 256 KiB/32 KiB 门约束。该增量未接 `session_events`、realtime、outbox、RPC 或 RLS，因此只证明领域状态机，不构成课堂纵向闭环。
+
+同日第六个增量增加学生私有 `spatial-attempt-v1`、可信提交 binding、最小化 `spatial-attempt-evaluation-v1` 与 pinned-kernel 纯判定器。attempt 严格绑定 frozen scene hash、session/page/student、reset epoch、runtime state hash 和服务端已知的下一次提交序号；选择集合使用确定性顺序，正文受 256 KiB 门约束，幂等 key 只有在完整规范内容一致时才接受重试。判定器覆盖整数/有理数、单多选、实体/体素选择、自由解释证据、六类体素派生量和现有白名单公式子集；结果不回显原始作答、学生/课堂 ID 或标准答案。该增量未建立持久表、专用 RPC、RLS、授权教师查询、离线 outbox 或课堂 adapter，因此不构成可收集真实学生数据的生产能力。
 
 ## 3. 产品目标、用户与非目标
 
@@ -205,7 +207,7 @@ R3F Canvas 保持为 `next/dynamic`、`ssr:false` 的 client leaf。Server Compo
 | `spatial-page-v1` | CoursewareDoc 分支，包含物化 scene、来源、4:3 原生 presentation 和可选宽屏例外 | 沿现有 page revision/release/freeze 发布 |
 | `spatial-runtime-state-v1` | 当前步骤、显隐、层、教师镜头书签和 reset epoch | 课堂 snapshot + reducer |
 | `spatial-command-v1` | 可审计语义命令 | 持久事件或教师/学生本地分支 |
-| `spatial-attempt-v1` | 学生答案、构造结果和服务端评定 | 学生私有、教师按权限读取 |
+| `spatial-attempt-v1` / `spatial-attempt-evaluation-v1` | 学生答案、构造结果，以及不回显答案正文的服务端判定结果 | 学生私有；生产接入后由学生本人和具备班级关系的授权教师读取 |
 
 所有 schema 使用 `.strict()`、显式版本、大小/数量/深度上限和迁移适配器。旧版本永久可读；升级产生新 revision，不原地改写 release 或已冻结 session。
 
@@ -339,7 +341,7 @@ M1 先支持规则实体和凸多面体：以平面方程与语义边/面求交�
 - `voxel.add/remove/paint`、`entity.select`、`net.foldTo`、`section.plane.set`；
 - `parameter.set`、`step.go`、`ownership.set`、`scene.reset`。
 
-`checkpoint.submit` 不进入可广播 runtime command；它属于后续私有 `spatial-attempt-v1` 与专用 RPC/RLS，避免把原始学生答案混入课堂状态。
+`checkpoint.submit` 不进入可广播 runtime command；它使用已建立的私有 `spatial-attempt-v1` 领域合同，生产接入仍须专用 RPC/RLS，避免把原始学生答案混入课堂状态。
 
 每条命令包含 `commandId`、`sceneRevisionHash`、`resetEpoch`、branch、actor、连续序号和 payload schema。reducer 仅把 command ID、序号和确定性指纹都相同的请求视为幂等重试；旧 revision、旧 epoch、序号缺口、复用 ID 改 payload、非法 actor、跨 branch 或越界 payload 均以稳定错误码拒绝。snapshot 保存 scene 默认值之上的可变状态和体素 delta，不复制完整 scene。
 
@@ -447,7 +449,7 @@ M1 先支持规则实体和凸多面体：以平面方程与语义边/面求交�
 
 ### 10.4 学习检查
 
-首版支持：单选/多选、整数/有理数填空、选择语义面/棱/点、提交体素集合差异、给定选项中的展开图/截面。服务器用同版本纯内核重算结构化答案；客户端即时反馈仅作体验，不作成绩权威。
+首版支持：单选/多选、整数/有理数填空、选择语义面/棱/点、提交体素集合差异、给定选项中的展开图/截面。已建立的预生产 attempt 判定器由冻结 page 的 scene hash 与 `kernelVersion` 决定答案语义，并复核可信 session/page/student、reset epoch、runtime state hash、提交序号、checkpoint 开启状态和响应类型；客户端不得上传分数或标准答案。生产 RPC 必须在事务内生成可信 binding、执行同版本纯内核、按 idempotency key 写入私有 attempt，再返回不含原始作答和标准答案的最小结果；客户端即时反馈仅作体验，不作成绩权威。
 
 自由文本解释保存为课程学习证据，不自动判定数学正确。若未来进入正式成绩，必须另建评分量规、人工复核、申诉和版本追溯门。
 

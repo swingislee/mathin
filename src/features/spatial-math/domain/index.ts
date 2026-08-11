@@ -1,4 +1,6 @@
 export * from "./canonical-json";
+export * from "./attempt-schema";
+export * from "./attempt-evaluator";
 export * from "./exact";
 export * from "./page-schema";
 export * from "./runtime-schema";

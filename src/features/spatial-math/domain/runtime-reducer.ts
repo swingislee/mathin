@@ -1,4 +1,4 @@
-import { canonicalJsonStringify } from "./canonical-json";
+import { canonicalFingerprint64, canonicalJsonStringify } from "./canonical-json";
 import { compareRationals, type Rational } from "./exact";
 import { parseSpatialPageDoc, type SpatialPageDoc } from "./page-schema";
 import {
@@ -544,13 +544,5 @@ export function spatialCommand(
 }
 
 export function spatialCommandFingerprint(commandInput: unknown): string {
-  const command = parseSpatialCommand(commandInput);
-  const bytes = new TextEncoder().encode(canonicalJsonStringify(command));
-  let hash = BigInt("14695981039346656037");
-  const prime = BigInt("1099511628211");
-  bytes.forEach((byte) => {
-    hash ^= BigInt(byte);
-    hash = BigInt.asUintN(64, hash * prime);
-  });
-  return hash.toString(16).padStart(16, "0");
+  return canonicalFingerprint64(parseSpatialCommand(commandInput));
 }
