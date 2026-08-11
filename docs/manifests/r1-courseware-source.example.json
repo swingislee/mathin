@@ -1,6 +1,6 @@
 {
   "$schema": "../../schemas/r1-courseware-source-manifest.schema.json",
-  "schemaVersion": "mathin-r1-courseware-source-manifest-v1",
+  "schemaVersion": "mathin-r1-courseware-source-manifest-v2",
   "example": true,
   "mode": "plan-only",
   "writesAllowed": false,
@@ -9,7 +9,7 @@
   "capturedFrom": {
     "environment": "offline-read-only-export",
     "readOnly": true,
-    "databaseFingerprint": "1111111111111111111111111111111111111111111111111111111111111111",
+    "databaseFingerprint": "e28feb1f2007167befaabe272ac9e6f44acae6cb9d3f979c47005f069aa14ccd",
     "migrationHead": "20260812000100_r1_notebook_interaction_privacy",
     "exportedAt": "2026-08-12T00:00:00Z"
   },
@@ -17,34 +17,30 @@
     {
       "courseSystem": "aixuexi-gplus-autumn",
       "path": "docs/manifests/r1-courseware-aixuexi.example.ndjson",
-      "sha256": "fccd454083b9a273d690353f02c980be995f88b13e5d83a419c85ef688aaf588"
+      "sha256": "9fa660e536d05bed689f482db89debe6a844e202679de55dcb811b49e9bccd45"
     },
     {
       "courseSystem": "e-series",
       "path": "docs/manifests/r1-courseware-e-series.example.ndjson",
-      "sha256": "7bd3d10cf04430e99d4c056a2e8a05d2426f6cba19547a11acf4de99f401becd"
+      "sha256": "4a48d085d6e38effaaa9f85403bcd71a8490d51e841ecdc0323cf574c6507732",
+      "roster": {
+        "path": "supabase/seed/teaching-plans.json",
+        "sha256": "6f89722d555d32600826a85a0ebcd31f72dd163b8f5ffa62d15fd6b7012cfe08"
+      }
     }
   ],
   "storageAudits": [
     {
       "bucket": "cw-h5",
       "prefix": "packages/",
-      "status": "pending",
-      "scopeResourceCount": 1,
-      "scopeResourceSetSha256": "06bc4712898b14d4dd3e9d9a75ac39fba370d6fcc2fba03a9166ec7bd45bfedc",
-      "objectsManifestSha256": "2222222222222222222222222222222222222222222222222222222222222222",
-      "missingObjectCount": 0,
-      "hashMismatchCount": 0
+      "objectsManifestPath": "docs/manifests/r1-courseware-cw-h5-objects.example.ndjson",
+      "objectsManifestSha256": "87e0da498d6ff0c126cd7471d5ec3c89181e3833688c1958fe98054931d7a95b"
     },
     {
       "bucket": "cw-objects",
       "prefix": "sha256/",
-      "status": "pending",
-      "scopeResourceCount": 3,
-      "scopeResourceSetSha256": "2d5e6da4f535823e8c68ef7fcac57327a09751379601f362da094024383a2633",
-      "objectsManifestSha256": "3333333333333333333333333333333333333333333333333333333333333333",
-      "missingObjectCount": 0,
-      "hashMismatchCount": 0
+      "objectsManifestPath": "docs/manifests/r1-courseware-cw-objects.example.ndjson",
+      "objectsManifestSha256": "d9ae9965876e8581ebeb069d8a405b644832e594ac8da327fbd7d31c8eace952"
     }
   ],
   "expected": {

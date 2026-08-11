@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "mathin-h5-manifest-v1",
+  "packageHash": "da794525df2684266e43cfa59027924b54a6f0e512c90ab12edec9ff96a5a99c",
+  "entryPath": "index.html",
+  "byteCount": 100,
+  "files": [
+    {
+      "packagePath": "index.html",
+      "sha256": "a86f26dcf5ae6a9fdea2d69b53a7384232b26f369f92a61ea637e21829f1cb7f",
+      "byteCount": 100,
+      "mime": "text/html"
+    }
+  ]
+}

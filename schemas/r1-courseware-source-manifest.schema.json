@@ -19,7 +19,7 @@
   ],
   "properties": {
     "$schema": { "type": "string", "minLength": 3 },
-    "schemaVersion": { "const": "mathin-r1-courseware-source-manifest-v1" },
+    "schemaVersion": { "const": "mathin-r1-courseware-source-manifest-v2" },
     "example": { "type": "boolean" },
     "mode": { "const": "plan-only" },
     "writesAllowed": { "const": false },
@@ -83,12 +83,20 @@
     }
   },
   "$defs": {
-    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "not": { "pattern": "^([0-9a-f])\\1{63}$" }
+    },
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89aAbB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+    },
     "localPath": {
       "type": "string",
       "minLength": 3,
       "maxLength": 500,
-      "pattern": "^(?!https?://|postgres(?:ql)?://).+$"
+      "pattern": "^(?!/)(?![A-Za-z][A-Za-z0-9+.-]*:)(?!.*\\\\).+$"
     },
     "inventoryBase": {
       "type": "object",
@@ -107,10 +115,23 @@
       ]
     },
     "eSeriesInventory": {
-      "allOf": [
-        { "$ref": "#/$defs/inventoryBase" },
-        { "properties": { "courseSystem": { "const": "e-series" } } }
-      ]
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["courseSystem", "path", "sha256", "roster"],
+      "properties": {
+        "courseSystem": { "const": "e-series" },
+        "path": { "$ref": "#/$defs/localPath" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "roster": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "sha256"],
+          "properties": {
+            "path": { "const": "supabase/seed/teaching-plans.json" },
+            "sha256": { "const": "6f89722d555d32600826a85a0ebcd31f72dd163b8f5ffa62d15fd6b7012cfe08" }
+          }
+        }
+      }
     },
     "storageAuditBase": {
       "type": "object",
@@ -118,22 +139,14 @@
       "required": [
         "bucket",
         "prefix",
-        "status",
-        "scopeResourceCount",
-        "scopeResourceSetSha256",
-        "objectsManifestSha256",
-        "missingObjectCount",
-        "hashMismatchCount"
+        "objectsManifestPath",
+        "objectsManifestSha256"
       ],
       "properties": {
         "bucket": { "type": "string" },
         "prefix": { "type": "string" },
-        "status": { "enum": ["pending", "passed"] },
-        "scopeResourceCount": { "type": "integer", "minimum": 0 },
-        "scopeResourceSetSha256": { "$ref": "#/$defs/sha256" },
-        "objectsManifestSha256": { "$ref": "#/$defs/sha256" },
-        "missingObjectCount": { "type": "integer", "minimum": 0 },
-        "hashMismatchCount": { "type": "integer", "minimum": 0 }
+        "objectsManifestPath": { "$ref": "#/$defs/localPath" },
+        "objectsManifestSha256": { "$ref": "#/$defs/sha256" }
       }
     },
     "h5StorageAudit": {
@@ -170,15 +183,17 @@
           "additionalProperties": false,
           "required": ["id", "no"],
           "properties": {
-            "id": { "type": "string", "minLength": 3, "maxLength": 128 },
+            "id": { "$ref": "#/$defs/uuid" },
             "no": { "type": "integer", "minimum": 1 }
           }
         },
         "source": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["packageManifestSha256", "lectureVerificationSha256", "offlineStatus"],
+          "required": ["packageKey", "packageVersion", "packageManifestSha256", "lectureVerificationSha256", "offlineStatus"],
           "properties": {
+            "packageKey": { "type": "string", "minLength": 3, "maxLength": 160 },
+            "packageVersion": { "type": "string", "minLength": 3, "maxLength": 160 },
             "packageManifestSha256": { "$ref": "#/$defs/sha256" },
             "lectureVerificationSha256": { "$ref": "#/$defs/sha256" },
             "offlineStatus": { "const": "complete" }
@@ -236,14 +251,16 @@
     "page": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["pageNo", "pageDocId", "sourceRevisionId", "docSha256", "documentBindingKeysSha256", "bindings"],
+      "required": ["pageNo", "pageDocId", "sourceRevisionId", "docSha256", "learningCheckEnabled", "requiredBindingKeys", "documentBindingKeysSha256", "bindings"],
       "properties": {
         "pageNo": { "type": "integer", "minimum": 1 },
-        "pageDocId": { "type": "string", "minLength": 3, "maxLength": 128 },
-        "sourceRevisionId": { "type": "string", "minLength": 3, "maxLength": 128 },
+        "pageDocId": { "$ref": "#/$defs/uuid" },
+        "sourceRevisionId": { "$ref": "#/$defs/uuid" },
         "docSha256": { "$ref": "#/$defs/sha256" },
+        "learningCheckEnabled": { "type": "boolean" },
+        "requiredBindingKeys": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/sha256" } },
         "documentBindingKeysSha256": { "$ref": "#/$defs/sha256" },
-        "bindings": { "type": "array", "items": { "$ref": "#/$defs/binding" } }
+        "bindings": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/binding" } }
       }
     },
     "binding": {
@@ -260,12 +277,13 @@
         "byteCount",
         "storageBucket",
         "storagePath",
+        "h5ManifestPath",
         "h5ManifestSha256",
         "adaptationStatus"
       ],
       "properties": {
         "bindingKey": { "$ref": "#/$defs/sha256" },
-        "assetRevisionId": { "type": "string", "minLength": 3, "maxLength": 128 },
+        "assetRevisionId": { "$ref": "#/$defs/uuid" },
         "objectSha256": { "$ref": "#/$defs/sha256" },
         "kind": { "enum": ["image", "video", "audio", "svg", "h5"] },
         "role": { "type": "string", "pattern": "^[a-z][a-z0-9_-]{0,49}$" },
@@ -274,6 +292,7 @@
         "byteCount": { "type": "integer", "minimum": 1 },
         "storageBucket": { "enum": ["cw-objects", "cw-h5"] },
         "storagePath": { "type": "string", "minLength": 10, "maxLength": 500 },
+        "h5ManifestPath": { "oneOf": [{ "$ref": "#/$defs/localPath" }, { "type": "null" }] },
         "h5ManifestSha256": { "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }] },
         "adaptationStatus": { "enum": ["approved", "not-required"] }
       }

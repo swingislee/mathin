@@ -10,7 +10,7 @@
 node scripts/plan-r1-courseware-source.mjs
 ```
 
-仓库 example 只有每套课程各 1 讲，输出必须包含 `example-manifest`、两项 `incomplete-inventory:*` 和两项 `storage-audit-pending:*` blocker。它用于展示格式，不能作为 R1-9、R1-15 或 R1-18 通过证据。
+仓库 example 只有每套课程各 1 讲，输出必须包含 `example-manifest` 和两项 `incomplete-inventory:*` blocker。示例 Storage/H5 审计文件自身可完整核对，但课程数量仍明确阻断；它不能作为 R1-9、R1-15 或 R1-18 通过证据。
 
 实际只读导出的入口：
 
@@ -26,6 +26,9 @@ planner 即使无 blocker 也固定 `stageClosureAllowed=false`。无 blocker �
 | --- | --- |
 | `r1-courseware-source-manifest.schema.json` | 顶层只读边界、1187/2374 目标和 NDJSON 行结构 |
 | 顶层 manifest | 数据库只读导出指纹、两份 inventory 文件 LF 归一化 SHA-256、两类 Storage 审计和最终计数 |
+| `supabase/seed/teaching-plans.json` | E 系列固定 90 门/1135 讲 roster；路径和 LF 摘要均由 validator 固定 |
+| Storage objects NDJSON | 与 binding 范围逐对象对应的可读审计文件；顶层只记录文件路径和 LF 摘要，不接受自报 passed/count |
+| H5 package manifest JSON | `mathin-h5-manifest-v1` 包清单；每个 H5 binding 显式记录本地审计路径和 LF 摘要 |
 | 爱学习 inventory NDJSON | 4 门、52 讲，每讲固定两轨、页、revision、binding、对象和 snapshot hash |
 | E 系列 inventory NDJSON | 90 门、1135 讲，每讲固定两轨、页、revision、binding、对象和 snapshot hash |
 
@@ -33,13 +36,15 @@ planner 即使无 blocker 也固定 `stageClosureAllowed=false`。无 blocker �
 
 ## 3. 必须由只读导出器产生的事实
 
-1. 课程使用 `catalogVersion + productCode` 自然键，lecture、page、revision、asset revision 使用目标数据集里的稳定 UUID。实际 manifest 禁止 placeholder。
-2. 每个 page 记录源 revision、规范化文档 SHA-256、文档 binding key 集摘要和解析后的 binding 明细。文档 key 集与解析明细不一致时停止。
-3. 每个 binding 固定 `bindingKey → assetRevisionId → objectSha256 → bucket/path`。普通 CAS 必须位于 `cw-objects/sha256/<前两位>/<sha256>`；H5 必须位于 `cw-h5/packages/<packageHash>`，并记录 `__mathin_manifest.json` 的 SHA-256。
-4. 每轨分别计算 page set、binding set、resource set 和目标 release snapshot 的 canonical JSON SHA-256。snapshot 的数组顺序与 `publish_cw_track_release` 一致：页按 `page_no`，binding 按 `binding_key`。
-5. E 系列 `adapted-4x3` 中 `role=background` 且 `variant=mathin-4x3` 的资源必须逐项为 `approved`；未批准、pending、rejected 或悬空资源使导出失败。爱学习按 4:3 母版合同使用 `verified-4x3-source-master`，不伪装成 E 系列派生背景。
-6. 爱学习只允许四个固定产品码；每个年级恰为 13 讲，编号必须是 `1—6、8—14`，从而显式保存第 7、15 讲的来源缺口。
-7. Storage 审计必须读取清单范围内全部对象，报告 `missingObjectCount=0`、`hashMismatchCount=0`，并让审计的 resource set hash 与 inventory 逐项重算结果一致。H5 审计还需逐包核对 manifest；只检查数据库行存在不够。
+1. 课程使用 `catalogVersion + productCode` 自然键，lecture、page、revision、asset revision 一律使用目标数据集里的 UUID；example 字符串 ID 和重复字符 SHA-256 在任何模式下都拒绝。
+2. E 系列每行必须逐项匹配固定 roster 的 product、catalog version、grade、lecture.no，并匹配两个已冻结来源包版本。`(catalogVersion, productCode, lecture.no)` 必须唯一，禁止复制一行只换 UUID 来维持聚合数量。
+3. 每个 page 显式记录非空 `requiredBindingKeys`、源 revision、规范化文档 SHA-256、`learningCheckEnabled` 和解析后的非空 binding 明细。required set 缺失或出现额外 binding 时停止，`missingBindingCount` 从集合差值计算。
+4. 每个 binding 固定 `bindingKey → assetRevisionId → objectSha256 → bucket/path`。普通 CAS 必须位于 `cw-objects/sha256/<前两位>/<sha256>`；H5 必须位于 `cw-h5/packages/<packageHash>`，其本地 `mathin-h5-manifest-v1` 必须可读、LF 摘要匹配、`packageHash`/`byteCount`/入口与文件集合自洽。
+5. 每轨分别计算 page set、binding set、resource set 和目标 release snapshot 的 canonical JSON SHA-256。snapshot 精确对应现役 `publish_cw_track_release` 合同：页按 `page_no`，binding 按 `binding_key`，每页包含 `pageDocId`、`revisionId`、`bindings`、`learningCheckEnabled`。
+6. E 系列每一讲的 `adapted-4x3` 必须至少显式绑定一项 `role=background`、`variant=mathin-4x3`、`adaptationStatus=approved` 资源；删除、改名或改成 not-required 均停止。爱学习按 4:3 母版合同使用 `verified-4x3-source-master`。
+7. 爱学习只允许四个固定产品码；每个年级恰为 13 讲，编号必须是 `1—6、8—14`，从而显式保存第 7、15 讲的来源缺口。
+8. 两个 Storage objects manifest 必须是可读 NDJSON 且 LF 摘要与顶层声明一致；validator 将其逐项与 binding 资源集合比较后自行计算 missing/hash mismatch，不信任自报状态或计数。
+9. manifest 内所有文件路径只允许相对路径；URI、UNC、盘符绝对路径、根外路径和符号链接逃逸在读取前拒绝。CLI 默认只读仓库内文件；受控调用方可显式提供预批准的本地 artifact root。
 
 ## 4. 固定数量
 
