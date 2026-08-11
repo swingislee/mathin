@@ -5,6 +5,8 @@ export * from "./cube-net-kernel";
 export * from "./exact";
 export * from "./net-schema";
 export * from "./page-schema";
+export * from "./polyhedron-topology-kernel";
+export * from "./polyhedron-topology-schema";
 export * from "./runtime-schema";
 export * from "./runtime-reducer";
 export * from "./scene-schema";
