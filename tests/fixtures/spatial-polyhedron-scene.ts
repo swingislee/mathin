@@ -1,8 +1,12 @@
 import {
   POLYHEDRON_FOLD_SIMULATION_VERSION,
   POLYHEDRON_SCENE_ADAPTER_VERSION,
+  SPATIAL_PAGE_DOC_VERSION,
+  buildPolyhedronFoldScene,
+  materializeSpatialPageDoc,
   rational,
   type PolyhedronSceneAdapterInput,
+  type SpatialPageDoc,
 } from "@/features/spatial-math/domain";
 import {
   cubeGeometry,
@@ -72,4 +76,47 @@ export function cubeFoldSceneAdapterInput(): PolyhedronSceneAdapterInput {
       minRuntimeVersion: "1.0.0",
     },
   };
+}
+
+export async function cubeFoldSpatialPage(): Promise<SpatialPageDoc> {
+  const built = await buildPolyhedronFoldScene(cubeFoldSceneAdapterInput());
+  return materializeSpatialPageDoc({
+    docVersion: SPATIAL_PAGE_DOC_VERSION,
+    layout: { profile: "standard-4x3" },
+    scene: built.scene,
+    source: { kind: "scratch" },
+    presentation: {
+      viewport: { width: 1_200, height: 900, safeFrame: { x: 0.04, y: 0.04, width: 0.92, height: 0.92 } },
+      camera: {
+        defaultCameraId: "camera.front",
+        interaction: "orbit",
+        transition: "smooth",
+        reducedMotion: "jump",
+      },
+      labelPlacements: [],
+      panels: [],
+    },
+    classroom: {
+      ownership: {
+        defaultMode: "teacher-follow",
+        allowedModes: ["teacher-follow", "student-local-explore", "student-submit"],
+      },
+      cameraSync: "bookmark-only",
+      durableStatePolicy: "semantic-events-only",
+      resetAuthority: "teacher-controller",
+      boardPointerPolicy: "mutually-exclusive-tools",
+    },
+    learningCheck: {
+      mode: "formative-only",
+      items: [{ checkpointId: "checkpoint.opposite-face", required: true, evaluation: "server-pinned-kernel" }],
+      maxSubmissions: 2,
+      responseVisibility: "student-and-authorized-staff",
+    },
+    fallback: {
+      strategy: "scene-accessibility-v1",
+      defaultView: "front",
+      checkpoints: [{ checkpointId: "checkpoint.opposite-face", mode: "interactive-2d" }],
+      unavailableMessage: { zh: "三维不可用时使用二维展开图。", en: "Use the planar net when 3D is unavailable." },
+    },
+  });
 }

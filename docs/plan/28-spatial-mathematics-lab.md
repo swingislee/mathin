@@ -104,6 +104,8 @@ Mathin 建设一套“空间数学实验室”，服务从小学直观认识立�
 
 同日第十二个增量增加首个 4:3 多面体呈现 spike。折叠内核在每个 face frame 中输出稳定的三角顶点索引，R3F 不再从浮点 mesh 反推或重新三角化数学面；纯 render model 负责把同一 frame 物化为面、边、标签、碰撞/选择状态、bounds 和已创作 camera bookmark。`renderer-r3f/` 提供模块级 `ssr:false` 懒加载的 `aspect-[4/3]` 舞台、`frameloop="demand"`、DPR 1～1.5、设计 token 调色、面命中、受控目标进度的本地折叠过渡和 reduced-motion 跳转；WebGL 不可用或 context lost 时切换到同一 artifact 生成的 SVG 展开图，保留全部面标签、铰链顺序和键盘面选择。专项合同增至 12 个文件/102 项并通过；该组件尚未挂到路由、Studio、课堂或生产 CoursewareDoc，也没有真实浏览器、目标设备、触控、context restored 和 bundle 证据，因此不关闭 SML-1 或 SML-4。
 
+同日第十三个增量增加 `polyhedron-teaching-controller-v1` 和 4:3 教学交互舞台。纯 controller 从已校验的 `spatial-page-v1`、runtime state、actor 与 locale 派生当前步骤、相机、折叠进度、面选择 checkpoint 和权限，不复制权威状态；上一/下一步、指定步骤、相机、折叠终点和 reset 只输出严格 `SpatialCommandPayload` 意图，由未来宿主补 command ID、序号、branch、RPC/RLS 与持久化。面选择保持受控本地值，只有匹配 `student-submit` 私有分支时才能形成 choice attempt draft，仍不构造或发送正式 attempt。交互舞台在单个 `standard-4x3` 画布内提供步骤自动播放/暂停、相机书签、折叠滑杆、教师 reset、面选项与提交入口；滑杆拖动只做本地预览，`onValueCommit` 才产生一个语义终点，教师跟随学生保持只读，local explore/submit 只在匹配学生分支开放。专项合同增至 13 个文件/107 项并通过；本增量仍未接 classroom transport、attempt RPC、Studio、生产路由或浏览器 E2E，因此不构成 SML-2 课堂纵向切片。
+
 ## 3. 产品目标、用户与非目标
 
 ### 3.1 目标结果
