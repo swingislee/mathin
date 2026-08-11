@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const POLYHEDRON_FOLD_SIMULATION_VERSION = "polyhedron-fold-simulation-v1" as const;
+export const POLYHEDRON_FOLD_SIMULATION_KERNEL_VERSION = "polyhedron-fold-simulation-kernel-v1" as const;
 export const POLYHEDRON_FOLD_PROGRESS_SCALE = 1_000_000;
 
 export const POLYHEDRON_FOLD_SIMULATION_LIMITS = {

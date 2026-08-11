@@ -56,8 +56,8 @@ Mathin 建设一套“空间数学实验室”，服务从小学直观认识立�
 
 ### 2.2 当前缺口
 
-1. 2026-08-11 已建立无生产依赖的体素、正方体展开图和多面体拓扑/几何 spike：体素覆盖整数坐标、分层、六向投影、隐藏块、连通分量、封闭空腔、内外表面和染色分类；展开图覆盖单位方格网规范化、自由多连方枚举和正方体 90° 精确折叠；通用多面体覆盖显式顶点/棱/有序面、闭合可定向球面壳、精确有理数顶点位置、面法向/共面性、相对面确认、铰链生成树、整数平面布局、自交/面重叠、目标二面角反解、层级三维刚体变换、最终闭合误差和确定性采样的非相邻面碰撞。连续时间碰撞无漏检证明、相邻面异常穿透、截面、完整单位检查和参数/函数求值内核仍未落地。
-2. 已实现预生产 `spatial-scene-v1`、4:3 原生优先的 `spatial-page-v1`、`spatial-runtime-state-v1`、`spatial-command-v1`、学生私有 `spatial-attempt-v1`、`polyhedron-topology-v1`、`polyhedron-hinge-graph-v1`、`polyhedron-geometry-v1`、`polyhedron-net-layout-v1` 和 `polyhedron-fold-simulation-v1` 严格 schema，以及单写者 reducer、reset epoch、命令指纹、学生本地分支、确定性重放与 pinned-kernel 作答判定，并录入 20 道体素和 11 种正方体展开图工程金标候选；候选题尚未经教研签名与跨领域复核，新合同也尚未加入生产 `CoursewareDoc`、数据库/RPC/RLS、课堂 transport 或发布链冻结，教研编辑器和题型模板仍未落地。
+1. 2026-08-11 已建立无生产依赖的体素、正方体展开图和多面体拓扑/几何 spike：体素覆盖整数坐标、分层、六向投影、隐藏块、连通分量、封闭空腔、内外表面和染色分类；展开图覆盖单位方格网规范化、自由多连方枚举和正方体 90° 精确折叠；通用多面体覆盖显式顶点/棱/有序面、闭合可定向球面壳、精确有理数顶点位置、面法向/共面性、相对面确认、铰链生成树、整数平面布局、自交/面重叠、目标二面角反解、层级三维刚体变换、最终闭合误差、确定性采样的非相邻面碰撞，以及自包含场景/4:3 页面/runtime 合同适配。连续时间碰撞无漏检证明、相邻面异常穿透、截面、完整单位检查和参数/函数求值内核仍未落地。
+2. 已实现预生产 `spatial-scene-v1`、4:3 原生优先的 `spatial-page-v1`、`spatial-runtime-state-v1`、`spatial-command-v1`、学生私有 `spatial-attempt-v1`、`polyhedron-topology-v1`、`polyhedron-hinge-graph-v1`、`polyhedron-geometry-v1`、`polyhedron-net-layout-v1`、`polyhedron-fold-simulation-v1`、`polyhedron-fold-artifact-v1` 和 `polyhedron-scene-adapter-v1` 严格 schema，以及单写者 reducer、reset epoch、命令指纹、学生本地分支、确定性重放与 pinned-kernel 作答判定，并录入 20 道体素和 11 种正方体展开图工程金标候选；候选题尚未经教研签名与跨领域复核，新合同也尚未加入生产 `CoursewareDoc`、数据库/RPC/RLS、课堂 transport 或发布链冻结，教研编辑器和题型模板仍未落地。
 3. 当前课堂 `tool_ctl` 只同步工具开关，各端工具内部状态独立，不能承载权威课程页。
 4. Terms 的 `interactive` 目前只有一个工具字符串，无法区分同一工具的活动、preset 或 release。
 5. 课件创建/保存 RPC 主要面向 `page-doc-v1`；新增版本必须严格分发，不能放宽成任意 JSON。
@@ -99,6 +99,8 @@ Mathin 建设一套“空间数学实验室”，服务从小学直观认识立�
 同日第九个增量增加 `polyhedron-geometry-v1`、`polyhedron-net-layout-v1` 与纯几何分析器。三维顶点使用规范有理数坐标，内核以 BigInt 分数精确检查重复位置、面退化、共面性、法向方向和平行且分离的相对面；二维展开布局使用有界整数坐标，逐面固定拓扑顶点周期，检查非零面积、面内自交、面间内部重叠、非铰链边界重叠、铰链端点对齐、根面和折角覆盖。合法布局沿铰链树输出稳定广度优先折叠程序，固定父面、子面、二维轴、山/谷折符号、微度目标角和线性角度进度；正方体十字展开正例及身份漂移、自交、重叠、错位和缺折角负例均通过。该增量尚未根据三维几何反解目标二面角，也未计算连续三维面变换、折叠过程碰撞或最终闭合误差，因此仍不关闭 SML-4。
 
 同日第十个增量增加 `polyhedron-fold-simulation-v1` 与纯折叠模拟内核。请求固定从 0 到 1,000,000 的严格递增采样点、闭合微单位容差、101 帧/64 面/512 三角形预算；内核先用有理数精确比较每面全部点对距离，再把二维根面刚体对齐到目标三维面，按铰链树组合轴角变换。目标折角从父子面法向和稳定方向铰链轴反解为带符号微度，山/谷折或角度漂移单独报告；最终帧按全部语义顶点计算闭合误差。碰撞检测对每个指定进度三角化面片并诊断非相邻面内部穿透，输出明确的 `deterministic-samples-only` 证据等级，未采样时刻不得据此宣称无碰撞。正确正方体闭合、错误折向/角度、度量缩放、非法前置条件和 85% 进度可复现穿透均通过。该增量未接 renderer/scene/page，未证明连续时间无碰撞，也不关闭 SML-4。
+
+同日第十一个增量增加 `polyhedron-fold-artifact-v1` 与 `polyhedron-scene-adapter-v1`。fold artifact 在单个 `polyhedron` entity 内物化 topology、geometry、hinge graph、二维 layout、采样请求、目标折角、闭合摘要及可直接绘制的二维展开图 fallback；`spatial-scene-v1` 解析时再次对账实体顶点/面与 artifact，拒绝双份几何漂移。adapter 只接受稳定有序的双语教学元数据和已通过模拟的折叠输入，生成 P4 场景、正交/立体相机、预测—观察—半折—验证步骤、相对面选择 checkpoint 和二维摘要，并提供 runtime 进度到折叠帧的纯解析器。正方体样例重复构建 hash 相同，且已物化为 1200×900 的 `standard-4x3` 预生产 page，初始 `net.foldTo=0` 可被既有 runtime 读取；生产 `CoursewareDoc` union 仍拒绝该页，因此本增量不构成发布链接入，也不关闭 SML-4。
 
 ## 3. 产品目标、用户与非目标
 
@@ -325,7 +327,7 @@ H5/iframe、任意网页模型和客户端临时 URL 不作为空间数学资产
 
 正方体金标必须枚举 35 种自由六连方，接受且只接受 11 种展开图；旋转和镜像等价归一化。
 
-当前预生产 spike 已完成上述 35/11 离散合同、通用闭壳面/棱邻接、铰链生成树、有理数三维面几何、整数平面展开布局、自交/重叠诊断、目标二面角反解、层级三维刚体变换、最终闭合误差和确定性采样的非相邻面碰撞，并保留 11 个教研待签名候选。拓扑层的“相对面候选”只表示两面无公共顶点；几何层再以位置、法向、平行性和面间分离确认相对面。SML-4 后续仍需连续时间碰撞或保守 swept-volume 证明、相邻面异常穿透诊断，并接入 `spatial-scene-v1`、相邻/相对面题型、4:3 renderer、课堂交互和触控证据；不得用离散采样未命中碰撞替代连续过程合法性。
+当前预生产 spike 已完成上述 35/11 离散合同、通用闭壳面/棱邻接、铰链生成树、有理数三维面几何、整数平面展开布局、自交/重叠诊断、目标二面角反解、层级三维刚体变换、最终闭合误差、确定性采样的非相邻面碰撞，以及 `spatial-scene-v1`/4:3 page/runtime 的自包含适配，并保留 11 个教研待签名候选。拓扑层的“相对面候选”只表示两面无公共顶点；几何层再以位置、法向、平行性和面间分离确认相对面。SML-4 后续仍需连续时间碰撞或保守 swept-volume 证明、相邻面异常穿透诊断、4:3 renderer、课堂交互和触控证据；不得用离散采样未命中碰撞替代连续过程合法性。
 
 ### 7.3 截面
 
@@ -354,6 +356,8 @@ M1 先支持规则实体和凸多面体：以平面方程与语义边/面求交�
 `checkpoint.submit` 不进入可广播 runtime command；它使用已建立的私有 `spatial-attempt-v1` 领域合同，生产接入仍须专用 RPC/RLS，避免把原始学生答案混入课堂状态。
 
 每条命令包含 `commandId`、`sceneRevisionHash`、`resetEpoch`、branch、actor、连续序号和 payload schema。reducer 仅把 command ID、序号和确定性指纹都相同的请求视为幂等重试；旧 revision、旧 epoch、序号缺口、复用 ID 改 payload、非法 actor、跨 branch 或越界 payload 均以稳定错误码拒绝。snapshot 保存 scene 默认值之上的可变状态和体素 delta，不复制完整 scene。
+
+当前多面体 scene adapter 已把 runtime 的 `net.foldTo` 浮点进度规范到百万分之一，并从 entity 内的 immutable fold artifact 重算对应面变换；adapter 结果可以进入预生产 4:3 page/runtime，但尚未进入生产课堂 transport、renderer 或发布链。
 
 ### 8.2 课堂 ownership
 

@@ -19,6 +19,7 @@ import {
   ORTHOGRAPHIC_VIEWS,
   SPATIAL_VOXEL_LIMITS,
 } from "./voxel-types";
+import { polyhedronFoldArtifactSchema } from "./polyhedron-fold-artifact-schema";
 
 export const SPATIAL_SCENE_VERSION = "spatial-scene-v1" as const;
 
@@ -156,6 +157,7 @@ const polyhedronEntitySchema = z
     materialToken: semanticTokenSchema,
     vertices: z.array(polyhedronVertexSchema).min(4).max(512),
     faces: z.array(polyhedronFaceSchema).min(4).max(512),
+    folding: polyhedronFoldArtifactSchema.optional(),
   })
   .strict();
 
@@ -667,6 +669,31 @@ export const spatialSceneSchema = z
             }
           });
         });
+        if (entity.folding) {
+          const geometryVertices = entity.folding.geometry.vertices;
+          if (
+            entity.vertices.length !== geometryVertices.length ||
+            entity.vertices.some((vertex, index) => {
+              const geometryVertex = geometryVertices[index];
+              return (
+                vertex.id !== geometryVertex?.vertexId ||
+                canonicalJsonStringify(vertex.position) !== canonicalJsonStringify(geometryVertex.position)
+              );
+            })
+          ) {
+            addIssue("polyhedron vertices must match folding geometry", ["model", "entities", entityIndex, "folding", "geometry"]);
+          }
+          const topologyFaces = entity.folding.topology.faces;
+          if (
+            entity.faces.length !== topologyFaces.length ||
+            entity.faces.some((face, index) => {
+              const topologyFace = topologyFaces[index];
+              return face.id !== topologyFace?.id || face.vertexIds.join("|") !== topologyFace.vertexIds.join("|");
+            })
+          ) {
+            addIssue("polyhedron faces must match folding topology", ["model", "entities", entityIndex, "folding", "topology"]);
+          }
+        }
       }
 
       if (entity.type === "guide") {

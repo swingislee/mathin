@@ -12,6 +12,7 @@ import {
 } from "./polyhedron-net-geometry-schema";
 import {
   POLYHEDRON_FOLD_PROGRESS_SCALE,
+  POLYHEDRON_FOLD_SIMULATION_KERNEL_VERSION,
   POLYHEDRON_FOLD_SIMULATION_LIMITS,
   POLYHEDRON_FOLD_SIMULATION_VERSION,
   parsePolyhedronFoldProgress,
@@ -28,8 +29,6 @@ import {
   type PolyhedronHingeGraph,
   type PolyhedronTopology,
 } from "./polyhedron-topology-schema";
-
-export const POLYHEDRON_FOLD_SIMULATION_KERNEL_VERSION = "polyhedron-fold-simulation-kernel-v1" as const;
 
 const GEOMETRY_EPSILON = 1e-9;
 const OUTPUT_DECIMALS = 12;
