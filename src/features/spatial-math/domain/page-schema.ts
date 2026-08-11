@@ -7,7 +7,7 @@ import {
 } from "./scene-schema";
 
 export const SPATIAL_PAGE_DOC_VERSION = "spatial-page-v1" as const;
-export const SPATIAL_PAGE_TRACKS = ["native-16x9", "adapted-4x3"] as const;
+export const SPATIAL_PAGE_LAYOUT_PROFILES = ["standard-4x3", "wide-16x9-exception"] as const;
 export const SPATIAL_OWNERSHIP_MODES = [
   "teacher-follow",
   "student-local-explore",
@@ -46,6 +46,16 @@ const spatialPageSourceSchema = z.discriminatedUnion("kind", [
       releaseId: stableIdSchema,
       releaseNo: z.number().int().positive(),
       sourceSceneHash: sha256Schema,
+    })
+    .strict(),
+]);
+
+const spatialPageLayoutSchema = z.discriminatedUnion("profile", [
+  z.object({ profile: z.literal("standard-4x3") }).strict(),
+  z
+    .object({
+      profile: z.literal("wide-16x9-exception"),
+      reason: localizedTextSchema,
     })
     .strict(),
 ]);
@@ -93,7 +103,7 @@ const panelPlacementSchema = z
   })
   .strict();
 
-const trackPresentationSchema = z
+const layoutPresentationSchema = z
   .object({
     viewport: z
       .object({
@@ -198,22 +208,22 @@ function addDuplicateOrOrderIssues(
 export const spatialPageDocSchema = z
   .object({
     docVersion: z.literal(SPATIAL_PAGE_DOC_VERSION),
-    track: z.enum(SPATIAL_PAGE_TRACKS),
+    layout: spatialPageLayoutSchema,
     sceneHash: sha256Schema,
     scene: spatialSceneSchema,
     source: spatialPageSourceSchema,
-    presentation: trackPresentationSchema,
+    presentation: layoutPresentationSchema,
     classroom: classroomPolicySchema,
     learningCheck: learningCheckPolicySchema,
     fallback: fallbackPolicySchema,
   })
   .strict()
   .superRefine((page, context) => {
-    const expectedRatio = page.track === "native-16x9" ? [16, 9] : [4, 3];
+    const expectedRatio = page.layout.profile === "standard-4x3" ? [4, 3] : [16, 9];
     if (page.presentation.viewport.width * expectedRatio[1] !== page.presentation.viewport.height * expectedRatio[0]) {
       context.addIssue({
         code: "custom",
-        message: `viewport must match ${expectedRatio[0]}:${expectedRatio[1]} track`,
+        message: `viewport must match ${expectedRatio[0]}:${expectedRatio[1]} layout profile`,
         path: ["presentation", "viewport"],
       });
     }
@@ -362,8 +372,8 @@ export type SpatialPageDocDraft = Omit<SpatialPageDoc, "sceneHash">;
 
 export const SPATIAL_PAGE_ERROR_CODES = {
   sceneHashMismatch: "SPATIAL_PAGE_SCENE_HASH_MISMATCH",
-  trackPairOrder: "SPATIAL_PAGE_TRACK_PAIR_ORDER",
-  trackPairMismatch: "SPATIAL_PAGE_TRACK_PAIR_MISMATCH",
+  layoutSetOrder: "SPATIAL_PAGE_LAYOUT_SET_ORDER",
+  layoutSetMismatch: "SPATIAL_PAGE_LAYOUT_SET_MISMATCH",
 } as const;
 
 export type SpatialPageErrorCode = (typeof SPATIAL_PAGE_ERROR_CODES)[keyof typeof SPATIAL_PAGE_ERROR_CODES];
@@ -396,7 +406,7 @@ export async function verifySpatialPageDoc(input: unknown): Promise<SpatialPageD
   return page;
 }
 
-function sharedTrackContent(page: SpatialPageDoc): Omit<SpatialPageDoc, "track" | "presentation"> {
+function sharedLayoutContent(page: SpatialPageDoc): Omit<SpatialPageDoc, "layout" | "presentation"> {
   return {
     docVersion: page.docVersion,
     sceneHash: page.sceneHash,
@@ -408,25 +418,33 @@ function sharedTrackContent(page: SpatialPageDoc): Omit<SpatialPageDoc, "track" 
   };
 }
 
-export async function verifySpatialPageTrackPair(
-  nativeInput: unknown,
-  adaptedInput: unknown,
-): Promise<{ native: SpatialPageDoc; adapted: SpatialPageDoc }> {
-  const native = await verifySpatialPageDoc(nativeInput);
-  const adapted = await verifySpatialPageDoc(adaptedInput);
-  if (native.track !== "native-16x9" || adapted.track !== "adapted-4x3") {
+export async function verifySpatialPageLayoutSet(
+  standardInput: unknown,
+  wideInput?: unknown,
+): Promise<{ standard: SpatialPageDoc; wide?: SpatialPageDoc }> {
+  const standard = await verifySpatialPageDoc(standardInput);
+  if (standard.layout.profile !== "standard-4x3") {
     throw new SpatialPageContractError(
-      SPATIAL_PAGE_ERROR_CODES.trackPairOrder,
-      "track pair must contain native-16x9 first and adapted-4x3 second",
+      SPATIAL_PAGE_ERROR_CODES.layoutSetOrder,
+      "layout set must start with the standard-4x3 page",
     );
   }
-  if (canonicalJsonStringify(sharedTrackContent(native)) !== canonicalJsonStringify(sharedTrackContent(adapted))) {
+  if (wideInput === undefined) return { standard };
+
+  const wide = await verifySpatialPageDoc(wideInput);
+  if (wide.layout.profile !== "wide-16x9-exception") {
     throw new SpatialPageContractError(
-      SPATIAL_PAGE_ERROR_CODES.trackPairMismatch,
-      "track pair may differ only in track presentation",
+      SPATIAL_PAGE_ERROR_CODES.layoutSetOrder,
+      "the optional second layout must be a wide-16x9-exception page",
     );
   }
-  return { native, adapted };
+  if (canonicalJsonStringify(sharedLayoutContent(standard)) !== canonicalJsonStringify(sharedLayoutContent(wide))) {
+    throw new SpatialPageContractError(
+      SPATIAL_PAGE_ERROR_CODES.layoutSetMismatch,
+      "layout variants may differ only in layout metadata and presentation",
+    );
+  }
+  return { standard, wide };
 }
 
 export function spatialPageScene(page: SpatialPageDoc): SpatialScene {

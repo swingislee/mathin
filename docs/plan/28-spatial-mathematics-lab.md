@@ -37,7 +37,7 @@ Mathin 建设一套“空间数学实验室”，服务从小学直观认识立�
 | D8 | 持久化语义命令与检查点；相机拖动、hover 等瞬时状态走限频 realtime | 事件可审计、可回放，避免逐帧写数据库或离线 outbox |
 | D9 | 第一期只支持程序化体素、规则实体和拓扑多面体，不上传任意 GLB/网格 | 减少内容消毒、体积、离线、版权和不可靠布尔运算风险 |
 | D10 | 每个场景必须有正投影视图、分层/测量表和文字摘要 | WebGL 失败、低端设备、键盘和读屏用户仍能获得等价数学信息 |
-| D11 | 场景同时生成 16:9 与 4:3 课件 track revision | 共享数学模型，分别保存视口、相机、标注与布局，满足现有双轨发布门 |
+| D11 | 空间页默认只创作 `standard-4x3` 原生布局；确有教学必要时才增加带双语理由的 `wide-16x9-exception` | 课堂、平板和板书区域统一按 4:3 设计；现有平台双 head 默认复用同一份 4:3 内容，宽屏例外也必须保留 4:3 主版本 |
 | D12 | 系统按 `SML-0`～`SML-8` 分段交付 | 先证明数学正确和第一条课堂闭环，再扩展题型、公共内容与中学能力 |
 
 ## 2. 现有基础、缺口与施工约束
@@ -50,14 +50,14 @@ Mathin 建设一套“空间数学实验室”，服务从小学直观认识立�
 | Tools registry、独立页和 `/embed/[tool]` | 当前 2 个工具使用模块级动态加载，Terms 可引用工具 | `spatial-lab` 在 1.0 后成为第三个第一方工具 |
 | 稳定 Terms ID 与关系 | 已有立体图形、观察物体、长方体和正方体、展开图、表面积、体积与容积、圆柱和圆锥 | 公开活动、模板和题型关联稳定概念，不以教材标题作主键 |
 | CoursewareDoc 版本分发 | 已有 `page-doc-v1` 与 `aixuexi-page-doc-v1` | 新增独立 `spatial-page-v1` schema、编辑器和 renderer adapter |
-| P6 发布链 | stable page → append-only revision → immutable lecture release → session freeze | 场景内容、双轨布局和资产进入同一不可变课堂合同 |
+| P6 发布链 | stable page → append-only revision → immutable lecture release → session freeze | 4:3 原生场景进入同一不可变课堂合同；平台双 head 默认物化相同 4:3 文档，宽屏例外才分布局 |
 | 课堂事件、realtime `fx`、离线 outbox | `doc_step` 可确定性重放；持久事件与瞬时通道已分层 | 语义场景命令持久化，相机连续变化只瞬时同步 |
 | 二维白板叠加 | pointer 模式可把事件交给底层，画笔模式捕获指针 | 同一课件页切换“操作模型 / 板书标注” |
 
 ### 2.2 当前缺口
 
 1. 2026-08-11 已建立无生产依赖的体素内核 spike：严格整数坐标、分层、六向投影、隐藏块、连通分量、封闭空腔、内外表面和染色分类；面邻接、展开折叠、截面、单位和公式求值内核仍未落地。
-2. 已实现预生产 `spatial-scene-v1` 与 `spatial-page-v1` 严格 schema、规范有理数、canonical JSON/hash、单轨 revision/双轨配对、课堂 ownership、学习检查和 fallback 引用校验，并录入 20 道体素工程金标候选；候选题尚未经教研签名与跨领域复核，新 page 版本也尚未加入生产 `CoursewareDoc`、数据库/RPC 或发布链冻结，教研编辑器、课堂受控状态和题型模板仍未落地。
+2. 已实现预生产 `spatial-scene-v1` 与 4:3 原生优先的 `spatial-page-v1` 严格 schema、规范有理数、canonical JSON/hash、可选宽屏例外、课堂 ownership、学习检查和 fallback 引用校验，并录入 20 道体素工程金标候选；候选题尚未经教研签名与跨领域复核，新 page 版本也尚未加入生产 `CoursewareDoc`、数据库/RPC 或发布链冻结，教研编辑器、课堂受控状态和题型模板仍未落地。
 3. 当前课堂 `tool_ctl` 只同步工具开关，各端工具内部状态独立，不能承载权威课程页。
 4. Terms 的 `interactive` 目前只有一个工具字符串，无法区分同一工具的活动、preset 或 release。
 5. 课件创建/保存 RPC 主要面向 `page-doc-v1`；新增版本必须严格分发，不能放宽成任意 JSON。
@@ -74,7 +74,7 @@ Mathin 建设一套“空间数学实验室”，服务从小学直观认识立�
 | release 与 legacy template 权威漂移 | Studio 新建/重排页面可能已进入 release，却未进入课次页面列表 | 课堂页面顺序和内容以所选 release snapshot 为唯一权威；legacy template 只作兼容投影，并在 publish 时原子重建 |
 | lecture capability 校验不统一 | 部分 Studio/RPC 主要检查广义权限，未统一验证课程责任关系与状态 | 共享 capability resolver：身份 + permission + `course_staff_assignments` 责任关系 + lecture/release 状态；所有文档版本共用 |
 
-必须增加一条纵向集成测试：Studio 创建/重排空间页 → 双轨发布 → 课次备课 → freeze → live → 学生重连回放。该测试同时证明页面顺序、revision、scene hash 和权限没有漂移。
+必须增加一条纵向集成测试：Studio 创建/重排 4:3 空间页 → 平台双 head 发布（默认物化同一 4:3 文档）→ 课次备课 → freeze → live → 学生重连回放。该测试同时证明页面顺序、revision、scene hash、布局映射和权限没有漂移。
 
 ### 2.4 预施工合同与算法 spike 记录
 
@@ -84,7 +84,9 @@ Mathin 建设一套“空间数学实验室”，服务从小学直观认识立�
 
 同日第三个增量建立 20 道 `engineering-candidate` 体素题合同，覆盖 P1/P2/P3/P5 的观察、分层计数、隐藏块、染色、挖空、表面积与体积；每个期望值同时通过正式数学内核和独立测试 oracle 复核。该候选集只证明当前体素算法与人工期望一致，尚未经过教研签名，也未覆盖 P0 实体认识、P4 展开折叠和中学 M1/M2，因此不关闭 SML-0 或 SML-1。
 
-同日第四个增量增加预生产 `spatial-page-v1`：每条 page revision 只承载一个 track，双轨配对必须共享完全一致的物化 scene/hash、来源、课堂 ownership、学习检查和 fallback，只有 viewport、相机、标签和面板 presentation 可以不同。合同同时固定 16:9/4:3 比例、640 KiB 门、语义事件持久化、教师 reset 权威、学生本地探索/提交边界、服务端 pinned-kernel 形成性检查与逐 checkpoint 二维降级；生产 `CoursewareDoc` 仍显式拒绝该版本，因此该增量不构成发布链接入，也不关闭 SML-0。
+同日第四个增量增加预生产 `spatial-page-v1`：物化 scene/hash、来源、课堂 ownership、学习检查和 fallback 与 presentation 分层；合同同时固定 640 KiB 门、语义事件持久化、教师 reset 权威、学生本地探索/提交边界、服务端 pinned-kernel 形成性检查与逐 checkpoint 二维降级。生产 `CoursewareDoc` 仍显式拒绝该版本，因此该增量不构成发布链接入，也不关闭 SML-0。
+
+随后按用户拍板把页面合同收敛为 4:3 原生优先：普通场景只有 `standard-4x3`，不要求教研重复创作 16:9；确需横向并列等特殊教学布局时，额外 revision 使用 `wide-16x9-exception` 并填写双语理由。平台仍可维护既有两条 track head，但默认两条 head 物化相同 4:3 文档；宽屏例外的 native head 指向 16:9，adapted head 仍指向必需的 4:3 主版本。
 
 ## 3. 产品目标、用户与非目标
 
@@ -96,7 +98,7 @@ Mathin 建设一套“空间数学实验室”，服务从小学直观认识立�
 | 授课老师 | 临时工具不随课件冻结，课堂同步与板书割裂 | 正常翻到空间页，一键锁视角、切层、播放、重置、开放探索或收回答案 |
 | 小学生 | 隐藏块、相邻面和空间旋转依赖想象，容易把透视图当作数量依据 | 用正投影、分层、透视/显隐、拼拆和精确计数建立空间表象 |
 | 中学生 | 截面和参数变化停留在静态图，公式与几何量脱节 | 操作合法截平面或参数，看到几何量、表格、公式和函数图像一致变化 |
-| 审核者 | 动画可播放不等于数学正确，发布后难追溯 | 查看 scene diff、派生答案、双轨预览、可达性摘要和金标测试结果 |
+| 审核者 | 动画可播放不等于数学正确，发布后难追溯 | 查看 scene diff、派生答案、4:3 主预览、宽屏例外理由、可达性摘要和金标测试结果 |
 
 ### 3.2 非目标
 
@@ -186,7 +188,7 @@ flowchart TB
 | Expression kernel | `.../kernels/expression/` | 白名单 AST、单位检查、求值和采样 | `eval`、任意 JS |
 | Renderer | `.../renderer-r3f/` | InstancedMesh、Edges、选取、高亮、相机、视觉 clipping | 答案判定、数据库 |
 | Runtime | `.../runtime/` | `scene/state/readOnly/onCommand`、模式和 surface adapter | 可变全局课程状态 |
-| Editor | `.../editor/` | 模板、属性面板、步骤、检查点、双轨预览、校验 | 通用 CAD 功能 |
+| Editor | `.../editor/` | 模板、属性面板、步骤、检查点、4:3 主预览、宽屏例外与校验 | 通用 CAD 功能 |
 | Presets | `.../presets/` | 内建活动与金标 scene；稳定 ID 和版本 | 教材标题硬编码 |
 
 R3F Canvas 保持为 `next/dynamic`、`ssr:false` 的 client leaf。Server Component 负责鉴权、读取文档、静态壳和 fallback；非空间路由不得下载空间 renderer chunk。
@@ -198,14 +200,14 @@ R3F Canvas 保持为 `next/dynamic`、`ssr:false` 的 client leaf。Server Compo
 | 合同 | 用途 | 生命周期 |
 | --- | --- | --- |
 | `spatial-scene-v1` | 数学模型、呈现、步骤、检查点和可达性摘要 | 被 activity/page revision 不可变保存 |
-| `spatial-page-v1` | CoursewareDoc 分支，包含物化 scene、来源和双轨 presentation | 沿现有 page revision/release/freeze 发布 |
+| `spatial-page-v1` | CoursewareDoc 分支，包含物化 scene、来源、4:3 原生 presentation 和可选宽屏例外 | 沿现有 page revision/release/freeze 发布 |
 | `spatial-runtime-state-v1` | 当前步骤、显隐、层、教师镜头书签和 reset epoch | 课堂 snapshot + reducer |
 | `spatial-command-v1` | 可审计语义命令 | 持久事件或教师/学生本地分支 |
 | `spatial-attempt-v1` | 学生答案、构造结果和服务端评定 | 学生私有、教师按权限读取 |
 
 所有 schema 使用 `.strict()`、显式版本、大小/数量/深度上限和迁移适配器。旧版本永久可读；升级产生新 revision，不原地改写 release 或已冻结 session。
 
-`spatial-page-v1` 遵守现有 `cw_page_revisions.track` 模型：一个 revision 只保存一条轨道的 presentation；同一 stable page identity 下的 native/adapted 两条 head 通过 pair validator 校验，除 `track` 与 `presentation` 外的物化内容必须逐字节规范一致。这样既允许 16:9/4:3 独立布局，又阻止两轨数学模型、答案策略或课堂权限漂移。
+`spatial-page-v1` 本身使用内容布局 profile，不把平台 track 名写入文档：`standard-4x3` 是每页必需且默认唯一的原生布局；`wide-16x9-exception` 只在填写双语理由后作为可选第二 revision。layout-set validator 要求两种布局除 `layout` 与 `presentation` 外逐字节规范一致，阻止宽屏例外改变数学模型、答案策略或课堂权限。接入现有 `cw_page_revisions.track` 时，普通页的 native/adapted head 各自保存内容相同的 4:3 revision；有宽屏例外时仅 native head 使用宽屏 revision。
 
 scene 同时声明 `kernelVersion` 与 `minRuntimeVersion`。部署新 runtime 前用全部历史金标和仍在保留期内的 release 做兼容回放；需要改变数学语义时发布新 scene/schema 或 kernel major，保留旧 evaluator，不能让同一 revision 因部署时间不同得到不同答案。客户端不下载或执行历史代码，所有兼容 evaluator 随受信任应用版本发布。
 
@@ -327,7 +329,7 @@ M1 先支持规则实体和凸多面体：以平面方程与语义边/面求交�
 
 ### 8.1 受控运行时
 
-统一运行时最小接口：`scene`、`state`、`mode`、`readOnly`、`onCommand`、`onAttempt`、`locale`、`track`。独立工具、Terms、Studio 预览和课堂只实现 adapter，不复制数学状态机。
+统一运行时最小接口：`scene`、`state`、`mode`、`readOnly`、`onCommand`、`onAttempt`、`locale`、`layoutProfile`。独立工具、Terms、Studio 预览和课堂只实现 adapter，不复制数学状态机。
 
 白名单语义命令包括：
 
@@ -376,7 +378,7 @@ M1 先支持规则实体和凸多面体：以平面方程与语义边/面求交�
 2. 选择题型模板或已发布活动，可搜索 Term、能力层、年级和教材元数据；
 3. 通过尺寸、体素画笔、颜色、面、层、相机和合法参数建立模型；
 4. 用时间线添加预测、操作、验证、揭示和 checkpoint；
-5. 同时预览教师/学生模式与 16:9/4:3 两轨；
+5. 预览教师/学生模式下的 4:3 主布局；只有选择“宽屏例外”时才增加 16:9 对照预览并填写理由；
 6. 运行 schema、数学、可达性、大小和性能预算校验；
 7. 保存 draft，提交 reviewer，按现有权限发布 lecture release；
 8. 课次备课只选择 release、编排 overlay、批注和排练；完成备课后冻结 exact release、scene hash 与资产。
@@ -386,15 +388,17 @@ M1 先支持规则实体和凸多面体：以平面方程与语义边/面求交�
 空间编辑器是 Studio 内的重型 client 交互叶子：
 
 - 左侧：模板、模型树、体素/实体和属性；
-- 中央：16:9/4:3 舞台、相机书签、操作/板书预览；
+- 中央：4:3 主舞台、相机书签、操作/板书预览；宽屏例外开启后显示 16:9 对照；
 - 右侧：教学目标、步骤、问题、答案、提示与 accessibility summary；
 - 底部：步骤时间线、错误/警告、派生量和版本 diff。
 
 基础路径只显示题型所需控件；“高级”仍只允许 schema 中的合法字段。教研不接触原始 JSON、Three scene graph 或表达式代码。
 
-### 9.3 双轨与保存合同
+### 9.3 4:3 原生布局与平台 track 映射
 
-新建空间页在同一事务创建 stable page identity 和两条 track head。数学 scene 可共享 canonical hash；`presentation` 为每轨独立 revision，包含 viewport、相机、标签布局和教师工具位置。缺任一轨、hash 不一致、fallback 缺失或校验未通过时禁止 publish。
+新建空间页先创建 stable page identity 和唯一 `standard-4x3` 内容 revision，viewport、相机、标签布局和教师工具位置全部以 4:3 为原生坐标。为兼容现有发布链，同一事务仍建立两条平台 track head，并分别物化内容相同、hash 相同的 4:3 revision；教研不需要维护两份布局。
+
+只有教研明确选择“宽屏例外”并填写双语理由时，才额外生成 `wide-16x9-exception` revision：native head 指向宽屏 revision，adapted head 继续指向 4:3 主 revision。两种 layout 的 scene/hash、来源、ownership、学习检查和 fallback 必须一致。缺 4:3 主版、fallback 缺失、hash 漂移或宽屏理由缺失时禁止 publish。
 
 为 `spatial-page-v1` 建专用或严格 version-aware 的 create/save RPC 和 Server Action。入参先过 zod；数据库再次检查 docVersion、大小、权限、责任关系、状态和 optimistic `lock_version`。禁止让旧 `pageDocSchema` 接受任意新字段。
 
@@ -466,7 +470,7 @@ M1 先支持规则实体和凸多面体：以平面方程与语义边/面求交�
 | --- | --- | --- |
 | 创建/编辑空间页或活动 | `courseware.page.edit` | 课程责任关系；draft/revision 可编辑状态 |
 | 提交/审核活动 | `courseware.review` | reviewer 责任或显式分配；不能审核自己时由组织策略决定 |
-| 发布 lecture/activity | `courseware.release.publish` | 责任关系、双轨和所有门通过 |
+| 发布 lecture/activity | `courseware.release.publish` | 责任关系、4:3 主版、平台 head 映射和所有门通过 |
 | 紧急发布 | `courseware.emergency_publish` | 原因、审计、到期复核；不能跳过 schema/RLS/数学安全门 |
 | 启动/控制课堂 | 现有 session controller 合同 | session membership、课次状态、frozen release |
 | 学生提交 | session student membership | 只写本人 attempt；不能写教师 runtime state |
@@ -488,7 +492,7 @@ M1 先支持规则实体和凸多面体：以平面方程与语义边/面求交�
 
 沿用 doc 27 的 1024～1280 工作区收敛：
 
-- 16:9 和 4:3 舞台都必须在 1024px 横屏完成旋转、切层、重置和提交；
+- 4:3 主舞台必须在 1024px 横屏完成旋转、切层、重置和提交；宽屏例外另做同等验收；
 - 触控旋转、缩放与体素编辑使用互斥工具，避免双指页面滚动和模型缩放冲突；
 - 小屏属性面板折叠为 drawer，关键课堂控制不隐藏在二级菜单；
 - fullscreen 不依赖浏览器地址栏高度，安全区和软键盘不遮挡提交按钮。
@@ -551,7 +555,7 @@ WebGL 不可用时仍允许观察、切层、查看表格和完成适合二维�
 | --- | --- | --- | --- |
 | **SML-0 合同与金标冻结** | v1.0.0；R1-9 公共内容合同 | 解决 release/template 和 capability 两个阻断项；冻结能力图谱、20 道代表题、五个 schema、canonical hash、ownership、上限、路由和非目标 | 20 道题由教研签名；跨端 hash 向量 100%；create→publish→prep→freeze→live 空壳纵向测试通过 |
 | **SML-1 精确内核与技术 spike** | SML-0 | voxel kernel、正投影、分层、外露面；R3F instancing、picking、worker、context recovery、2D fallback、低端设备基准 | 生成式测试 100% 对 oracle；1,000 体素达到性能门；WebGL 禁用/丢失可恢复；非空间 bundle 无重型 chunk |
-| **SML-2 首条课堂纵向切片** | SML-1 | “多角度观察 + 分层计数”；Studio 模板编辑、`spatial-page-v1`、双轨、评审发布、freeze、教师跟随、板书和重连 | 教研 P90 ≤5 分钟；两轨发布；1 教师+30 学生重连 3 秒内一致；离线预载/回放 E2E 通过 |
+| **SML-2 首条课堂纵向切片** | SML-1 | “多角度观察 + 分层计数”；Studio 4:3 模板编辑、`spatial-page-v1`、平台 head 映射、评审发布、freeze、教师跟随、板书和重连 | 教研 P90 ≤5 分钟；一份 4:3 创作完成平台发布；1 教师+30 学生重连 3 秒内一致；离线预载/回放 E2E 通过 |
 | **SML-3 小学体素题型扩展** | SML-2 | 染色、隐藏块、挖去/挖空、外/内表面、体积、表面积和组合体；学生构造/提交 | 所有派生量金标与生成式测试 100%；attempt RLS 负向测试通过；至少 6 个生产模板 |
 | **SML-4 展开图与折叠** | SML-1、SML-3 的面语义 | polyhedron/topology kernel、面邻接、连续折叠、相邻/相对面和方向题 | 35 种自由六连方/11 种正方体展开图合同通过；重叠/非法网显式拒绝；两轨/触控可用 |
 | **SML-5 教研库与课堂硬化** | SML-2～4 | activity draft/revision/release、Terms 关系、语义 diff、复制升级、offline/outbox、容量和运营指标 | 至少 12 个小学金标模板；发布/升级不改变历史课次；连续 3 次 30 人 E2E 无 flaky；安全/性能/a11y 门通过 |
@@ -576,7 +580,7 @@ SML-2 是最小可上线纵向切片；SML-3/4 才覆盖完整小学核心范围
 - 从模板创建模型、添加一个演示步骤和一个 checkpoint、插入讲次的 P90 ≤5 分钟；
 - 核心路径不要求 JSON、代码、三维坐标或外部模型上传；
 - SML-0 有 20 道代表题；小学发布时至少 12 个金标模板，覆盖 P0～P5，每个含 demo/explore/checkpoint；
-- 每个模板关联稳定 Term、目标、前置、误解、答案策略、审核人和双轨预览；
+- 每个模板关联稳定 Term、目标、前置、误解、答案策略、审核人和 4:3 主预览；宽屏例外另含理由与对照；
 - 草稿、审核、发布、升级、回滚和课次冻结全部可追溯；新 release 不改变已开始或历史课次。
 
 ### 15.3 课堂
