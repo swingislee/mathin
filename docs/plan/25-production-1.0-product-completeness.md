@@ -19,7 +19,7 @@
 | Games | registry 3 个游戏 | 3/3 可玩；需要排名的客户端成绩经服务端验证后入榜 |
 | Minds | `content/zh/minds` 2 篇 MDX | 2/2 发布，并关联稳定 Terms ID |
 | Tools | registry 2 个工具；存在 `/embed/[tool]` | 2/2 独立使用；既定嵌入场景通过 |
-| Notebook | 私有列表、编辑、公开详情路由存在 | 私人写作、审核、发布/撤回、公开阅读和互动完成权限/E2E 验收 |
+| Notebook | 私有列表、编辑、公开详情路由存在；commit `11885f7` 已关闭发布归属、归档发布拒绝、点赞身份隐私和不可见内容互动边界 | 私人写作、完整审核状态机、发布/撤回/修订、公开阅读和互动完成权限/E2E 验收 |
 | 学校运营 | 学生、监护关系、员工权限、课程、班级、排课、考勤、作业、订单/支付/退款等迁移和 UI 已存在 | 管理员、教务、教师、学辅、教研/内容、学生、家长及启用时的财务旅程闭环 |
 | 内容发布 | Terms/Minds 文件内容、Notebook、课程研发和 release 机制分别存在 | Terms/Story/Minds/Notebook 共用草稿/审核/发布/撤回/版本合同；课堂只读取不可变课件 release |
 | E 系列 | 开发数据有 1135 讲、16:9/4:3 双轨资源和 release 机制；课程目录版本层已就位（2025旧版 54 门 / 2026新版 36 门） | 保留 1135×2 源资源；正式基线包含 2270 条 `release_no=1`，见 §5.1.1 |
@@ -45,8 +45,8 @@ Terms 使用稳定 ID 接收 Story、Minds、Games、Tools、Notebook 和课程�
 | 权限 | 顶层角色为 `student`、`parent`、`staff`、`admin`；受保护页使用 `requireUser`；数据库使用 RLS | Proxy 跳转和前端隐藏不能证明授权 |
 | Dashboard | P4I 已将首页和对象页改为工作流入口 | 页面存在不证明跨域工作项、人工协同或 p95 达标 |
 | CI | lint、typecheck、build、消息、数据库重建/RLS、安全、doc21～24 与规划审计已配置 | 尚无正式 Playwright 发布套件 |
-| Vitest | commit `cbb2a0f` 已将本轮修复前 19 项失败清零；加入 R1-15 只读生产基线合同后为 60 个测试文件、363/363 全绿，其中 R1 非 spatial 基线 256/256 | 单元/合同套件已恢复全绿；R1-14 仍需在后续实现后维持 100%，并补正式 Playwright、并发、文件和竞争矩阵 |
-| 部署 | doc 17 已将目标生产主机改为小米 Linux | 尚无独立生产、RPO/RTO、回滚和 14 天 RC 证据 |
+| Vitest | commit `cbb2a0f` 已将本轮修复前 19 项失败清零；加入 R1-15、Notebook 权限子门、R1-16 只读合同与已提交 spatial 增量后，提交态为 64 个测试文件、386/386 全绿，其中非 spatial 基线 264/264，`pnpm r1:test` 为 17 个文件、112/112 | 单元/合同套件已恢复全绿；R1-14 仍需在后续实现后维持 100%，并补正式 Playwright、并发、文件和竞争矩阵 |
+| 部署 | doc 17 已将目标生产主机改为小米 Linux；commit `35b9f60` 已固定独立环境、监控、恢复和回滚的只读 preflight | 9 项 E3 均 pending，尚无独立生产、RPO/RTO 实操、回滚演练和 14 天 RC 证据 |
 
 ### 1.3 已裁决的历史冲突
 
@@ -132,12 +132,12 @@ command_or_runbook, artifact_url_or_path, artifact_hash, failure_ticket
 | Games | M2～M3 | M4 | 排名可信、浏览器、容量 | 11/12 |
 | Minds | M2 | M4 | Terms 关系、内容回退 | 11/12 |
 | Tools | M2～M3 | M4 | 嵌入、浏览器、性能 | 11/12 |
-| Notebook | M2 | M4 | 隐私、审核、互动、旅途笔记视觉 | 11/12 |
+| Notebook | M2（发布归属与互动隐私子门已通过） | M4 | commit `11885f7` 与 [子门证据](../evidence/r1/r1-11-notebook-readiness.md)已关闭跨用户/归档发布、点赞身份泄露和不可见内容互动；完整 draft→review→published→withdrawn/revised、显式失败反馈、角色 Playwright 与旅途笔记视觉仍缺 | 11/12 |
 | 全站视觉/SEO/a11y | M2 | M4 | 三档小王子语言、104 份代表页视觉证据、WCAG/CWV | 12 |
 | 指标/报表/遥测 | M1～M2 | M4 | 口径、版本、查询、告警 | 13 |
 | 幂等/并发/事务/E2E | M2 | M4 | 本轮修复前 19 项 Vitest 失败已在 commit `cbb2a0f` 清零；仍缺正式 Playwright、大文件和竞争矩阵 | 14 |
 | 生产清理/release-1 | M1 | M4 | 快照副本演练、可逆脚本、正式计数 | 15/18 |
-| 部署/备份/恢复 | M1～M2 | M4 | 独立生产、RPO/RTO、回滚实操 | 16 |
+| 部署/备份/恢复 | M2（只读 preflight） | M4 | commit `35b9f60` 与 [子门证据](../evidence/r1/r1-16-deployment-preflight.md)已固定 fail-closed 合同；独立环境、secret scan、监控探针、数据库/Storage 恢复、应用回滚与非执行者复核仍缺 | 16 |
 | 真实运营 RC | M0 | M4 | 14 天、5 节真实课堂、支持/告警记录 | 17 |
 
 ## 4. 业务合同
@@ -425,6 +425,8 @@ R1-7E 以 `user_rights_export_artifacts` 保存与请求绑定的精确 JSON 字
 
 R1-15 的只读 preflight 入口是 `docs/manifests/r1-production-baseline.example.json`，结构由 `schemas/r1-production-baseline-manifest.schema.json` 固定，`pnpm r1:baseline-plan` 只输出可复现计划，不连接网络或数据库、不生成 SQL、不执行清理。实际 manifest 只能声明 `isolated-production-snapshot`，要求 source/target 项目与数据库指纹不同、1187 个显式 lecture UUID、唯一管理员 manifest 的归一化 SHA-256、两套课程各自的 Storage bucket/prefix/object-manifest hash，以及 2374 条 release 的最终计数和第二次运行零差异。仓库中的 example 只含占位 ID 和占位 hash，不能作为 R1-15 演练通过证据。
 
+R1-16 的只读 preflight 入口是 `docs/manifests/r1-production-deployment.example.json`，结构和操作边界分别由 `schemas/r1-production-deployment-manifest.schema.json` 与 `docs/runbooks/r1-production-deployment-preflight.md` 固定。`pnpm r1:deployment-plan` 只读取 manifest 和仓库内无 secret/PII 的摘要，不联网、不读取环境 secret，也不执行 SSH、部署、备份、恢复、回滚或 DNS 变更。R1-14、R1-15、环境隔离、仓库 secret scan、监控探针、数据库恢复、Storage 恢复、应用回滚、非执行者复核共 9 项证据未全部通过时必须阻断；即使全部通过，planner 也不允许阶段关闭或生产执行。
+
 ### 6.2 账号与运营数据
 
 唯一生产管理员 manifest 包含 auth UUID、profile UUID、邮箱、admin/staff 权限、MFA 状态和恢复联系人。删除其他身份前验证该账号登录、权限、审计和离线恢复材料，并撤销现有会话。
@@ -517,10 +519,10 @@ R1-0 已完成责任角色到 `swingislee` 的映射。增加人员或发生交�
 | 账户安全尚无生产验收 | R1-3 已完成账户/同意/支持的空库重放、负向断言与开发浏览器验证（M3） | 开发门控不证明正式唯一管理员、生产 MFA=100%、速率限制与恢复演练 | 安全+发布+QA | R1-14/16/17/18 |
 | Work-items 尚无生产候选/RC 负载证据 | R1-4 已在开发/一次性库完成 30,000 条持久项、300 名员工、40 次采样，p95≤18.87ms、p99≤20.71ms（M3） | 开发合成负载不能证明生产长尾、并发与 14 天稳定性 | 学校产品+数据库+QA | R1-14/17 |
 | 财务安全关闭尚无生产复核 | R1-8 已完成发布门、数据、任务/审批、通知、指标和 job 的开发/一次性库关闭证据（M3） | 开发环境关闭不变量不能证明生产初始化或正式清理后仍保持关闭 | 产品+财务+数据库+发布 | R1-15/18 |
-| Vitest 基线需在最终 build 复验 | commit `cbb2a0f` 已清零本轮修复前 19 项失败；加入 R1-15 只读生产基线合同后为 60 个测试文件、363/363 全绿 | 后续实现可能重新引入合同回归 | 技术+QA | R1-14 保持全量 100% |
+| Vitest 基线需在最终 build 复验 | commit `cbb2a0f` 已清零本轮修复前 19 项失败；加入 R1-15、Notebook 权限子门、R1-16 只读合同与已提交 spatial 增量后，提交态为 64 个测试文件、386/386 全绿，R1 定向 112/112 | 后续实现可能重新引入合同回归 | 技术+QA | R1-14 保持全量 100% |
 | 无正式 Playwright 套件 | 只有临时浏览脚本 | 角色/浏览器回归不可重复 | QA/发布 | R1-14 |
 | 清理/release 未演练 | 只有规划与开发数据 | 正式数据或 4:3 资源损失 | 数据库+课程研发 | R1-15 |
-| 生产恢复未实操 | Linux 目标已定，无 RPO/RTO 证据 | 故障后恢复时间未知 | 运维+安全 | R1-16 |
+| 生产恢复未实操 | Linux 目标与 fail-closed preflight 已定，9 项 E3 仍为 pending | 尚无独立环境、告警链路、RPO/RTO、数据库/Storage 恢复或应用回滚的实操证据 | 运维+安全 | R1-16 |
 | 无真实 RC | 尚未运行 14 天/5 节课堂 | 容量、通知、支持指标无 E4 | 教学运营+发布 | R1-17 |
 
 ### 7.3 1.0 后处理

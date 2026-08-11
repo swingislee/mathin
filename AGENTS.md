@@ -91,10 +91,10 @@ pnpm dev        # 开发服务器 0.0.0.0:3130（局域网：http://192.168.5.21
 pnpm lint       # eslint . —— Next.js 16 的 next build 不再执行 lint
 pnpm typecheck  # tsc --noEmit
 pnpm build
-pnpm test       # 全量 Vitest；当前基线 60 个文件、363/363 通过
+pnpm test       # 全量 Vitest；当前提交态基线 64 个文件、386/386 通过
 pnpm plan:audit # 00～25 状态头、索引与唯一阶段审计
 pnpm ci:checks  # 本地复现 CI checks job 的全部门禁（清单从 ci.yml 解析），推送前跑一次
-pnpm r1:test    # R1 定向合同诊断；当前基线 16 个文件、104/104 通过
+pnpm r1:test    # R1 定向合同诊断；当前基线 17 个文件、112/112 通过
 ```
 
 CI 的 checks job 不 fail-fast：所有静态门禁一次跑完再判定，`pnpm ci:checks` 行为一致，因此一次运行就能看到全部失败，不要只跑单个审计就推送。

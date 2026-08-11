@@ -40,4 +40,4 @@ failure_ticket
 | R1-7 | passed | 2026-08-01 | [初始化、导入、质量、修复与导出](r1-7.md) |
 | R1-8 | passed | 2026-08-12 | [财务安全关闭](r1-8.md)；`BUG-R1M-024` 与 `BUG-R1M-025` 已由迁移 `20260804000100` 修复，并在 commit `e231d7c` 复验：`pnpm r1:test` 15 个文件、99 项全绿，`SUPABASE_DB_SSH=xiaomi pnpm r1:db-audit` 的 12 个 SQL 断言文件全部通过并输出 `R1-8 finance safe-close assertions passed`；脚本均在事务中回滚，不留写入。具体 artifact 与 hash 由 r1-8 阶段证据登记 |
 | R1-9 | in progress | 2026-08-12 | 当前阶段为 `R1-9 · P6-9 与跨阶段非五模块生产准备`；继续 Notebook、学校运营、课程课件和生产底座，并保留 [爱学习 G+ 秋季课程支持证据](r1-9-aixuexi-courseware.md)。Story、Games、Minds、Terms、Tools 仅暂缓模块生产巡检；两套课程正式 manifest 与相关生产准备尚未关闭 |
-| R1-10～R1-18 | pending | — | 各阶段关闭时新增对应索引；R1-15 已具备 `pnpm r1:baseline-plan` 只读隔离目标 preflight（E1/E2），尚未执行快照副本清理或恢复演练，不构成阶段通过。五条公开线仍在 1.0 范围，恢复并通过原发布门前不得关闭 R1-12 或 R1-18 |
+| R1-10～R1-18 | pending | — | 各阶段关闭时新增对应索引；[Notebook 生产准备子门](r1-11-notebook-readiness.md)已关闭发布归属与互动隐私边界，但完整审核状态机、失败反馈和浏览器 E2E 仍待完成；R1-15 已具备 `pnpm r1:baseline-plan` 只读隔离目标 preflight；[R1-16 部署 Preflight 子门](r1-16-deployment-preflight.md)已固定独立环境、监控、恢复和回滚的 fail-closed 合同。两者均只有 E1/E2，尚未执行快照清理、部署或恢复演练，不构成阶段通过。五条公开线仍在 1.0 范围，恢复并通过原发布门前不得关闭 R1-12 或 R1-18 |

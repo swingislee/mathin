@@ -1,0 +1,11 @@
+gate_id=NOTEBOOK-R1-11-INTERACTION-PRIVACY-20260812
+result=pass
+scope=Notebook publish ownership, archived-note fail-closed behavior, liker UUID privacy, visible-approved like boundary
+implementation_commit=11885f7
+database_types_commit=9db7b0d
+migration=20260812000100_r1_notebook_interaction_privacy.sql
+environment=xiaomi self-hosted development Supabase; not production
+validation=targeted Vitest 1 file/6 tests passed; temporary migration plus negative SQL assertions passed in one rollback transaction; migration then applied to development; r1:db-audit 13 assertion files passed with fixture writes rolled back; database types regenerated from development pg-meta; final pnpm ci:checks 15/15 passed with full Vitest 64/386, R1 Vitest 17 files/112 tests, and 314-page production build
+persistent_change=development schema only: RLS policies and column privileges tightened; no production connection and no business-row mutation retained
+threshold=anon post_likes SELECT denied; authenticated like rows visible only to owner; hidden/rejected/pending likes accepted=0; foreign/archived note publishes accepted=0; posts.note_id rebinds accepted=0; flag-off restore republishes=0
+limitations=does not close the full draft-review-published-withdrawn-revised audit state machine, explicit failure UI, Playwright role E2E, R1-11, or v1.0.0
