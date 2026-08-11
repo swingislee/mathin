@@ -302,6 +302,8 @@ export const spatialSceneActionSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("scene.reset") }).strict(),
 ]);
 
+export type SpatialSceneAction = z.infer<typeof spatialSceneActionSchema>;
+
 const sceneStepSchema = z
   .object({
     id: stableIdSchema,

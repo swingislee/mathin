@@ -57,7 +57,7 @@ Mathin 建设一套“空间数学实验室”，服务从小学直观认识立�
 ### 2.2 当前缺口
 
 1. 2026-08-11 已建立无生产依赖的体素内核 spike：严格整数坐标、分层、六向投影、隐藏块、连通分量、封闭空腔、内外表面和染色分类；面邻接、展开折叠、截面、单位和公式求值内核仍未落地。
-2. 已实现预生产 `spatial-scene-v1` 与 4:3 原生优先的 `spatial-page-v1` 严格 schema、规范有理数、canonical JSON/hash、可选宽屏例外、课堂 ownership、学习检查和 fallback 引用校验，并录入 20 道体素工程金标候选；候选题尚未经教研签名与跨领域复核，新 page 版本也尚未加入生产 `CoursewareDoc`、数据库/RPC 或发布链冻结，教研编辑器、课堂受控状态和题型模板仍未落地。
+2. 已实现预生产 `spatial-scene-v1`、4:3 原生优先的 `spatial-page-v1`、`spatial-runtime-state-v1` 和 `spatial-command-v1` 严格 schema，以及单写者 reducer、reset epoch、命令指纹、学生本地分支与确定性重放，并录入 20 道体素工程金标候选；候选题尚未经教研签名与跨领域复核，新合同也尚未加入生产 `CoursewareDoc`、数据库/RPC、课堂 transport 或发布链冻结，教研编辑器和题型模板仍未落地。
 3. 当前课堂 `tool_ctl` 只同步工具开关，各端工具内部状态独立，不能承载权威课程页。
 4. Terms 的 `interactive` 目前只有一个工具字符串，无法区分同一工具的活动、preset 或 release。
 5. 课件创建/保存 RPC 主要面向 `page-doc-v1`；新增版本必须严格分发，不能放宽成任意 JSON。
@@ -87,6 +87,8 @@ Mathin 建设一套“空间数学实验室”，服务从小学直观认识立�
 同日第四个增量增加预生产 `spatial-page-v1`：物化 scene/hash、来源、课堂 ownership、学习检查和 fallback 与 presentation 分层；合同同时固定 640 KiB 门、语义事件持久化、教师 reset 权威、学生本地探索/提交边界、服务端 pinned-kernel 形成性检查与逐 checkpoint 二维降级。生产 `CoursewareDoc` 仍显式拒绝该版本，因此该增量不构成发布链接入，也不关闭 SML-0。
 
 随后按用户拍板把页面合同收敛为 4:3 原生优先：普通场景只有 `standard-4x3`，不要求教研重复创作 16:9；确需横向并列等特殊教学布局时，额外 revision 使用 `wide-16x9-exception` 并填写双语理由。平台仍可维护既有两条 track head，但默认两条 head 物化相同 4:3 文档；宽屏例外的 native head 指向 16:9，adapted head 仍指向必需的 4:3 主版本。
+
+同日第五个增量增加 `spatial-runtime-state-v1`、`spatial-command-v1` 与纯 reducer：教师权威和单个学生本地探索使用独立单写者 branch；命令按 scene hash、reset epoch、连续 sequence、actor 和 ownership 校验；精确重复通过 command ID + 确定性指纹幂等，复用 ID 改 payload、旧 epoch、序号缺口和跨 branch 写入均拒绝。snapshot 只保存可变覆盖与体素 delta，不复制完整 scene；状态/命令分别受 256 KiB/32 KiB 门约束。该增量未接 `session_events`、realtime、outbox、RPC 或 RLS，因此只证明领域状态机，不构成课堂纵向闭环。
 
 ## 3. 产品目标、用户与非目标
 
@@ -335,17 +337,19 @@ M1 先支持规则实体和凸多面体：以平面方程与语义边/面求交�
 
 - `view.set`、`camera.bookmark.apply`、`layer.set`、`visibility.set`；
 - `voxel.add/remove/paint`、`entity.select`、`net.foldTo`、`section.plane.set`；
-- `parameter.set`、`step.go`、`checkpoint.submit`、`scene.reset`。
+- `parameter.set`、`step.go`、`ownership.set`、`scene.reset`。
 
-每条命令包含 `commandId`、`sceneRevisionHash`、`resetEpoch`、actor、序号和 payload schema。reducer 幂等应用；旧 revision、旧 epoch、非法 actor 或越界 payload 被拒绝并记录诊断。
+`checkpoint.submit` 不进入可广播 runtime command；它属于后续私有 `spatial-attempt-v1` 与专用 RPC/RLS，避免把原始学生答案混入课堂状态。
+
+每条命令包含 `commandId`、`sceneRevisionHash`、`resetEpoch`、branch、actor、连续序号和 payload schema。reducer 仅把 command ID、序号和确定性指纹都相同的请求视为幂等重试；旧 revision、旧 epoch、序号缺口、复用 ID 改 payload、非法 actor、跨 branch 或越界 payload 均以稳定错误码拒绝。snapshot 保存 scene 默认值之上的可变状态和体素 delta，不复制完整 scene。
 
 ### 8.2 课堂 ownership
 
 | 模式 | 权威写者 | 学生体验 | 持久结果 |
 | --- | --- | --- | --- |
-| 教师跟随 `teacher_follow` | controller | 接收步骤、显隐、层与可选相机书签；默认只读 | 教师语义命令、周期 snapshot |
-| 本地探索 `student_explore` | 每名学生的本地分支 | 可旋转、切层和执行允许操作；一键回到教师态 | 默认不广播；需要续接时仅保存最小个人状态 |
-| 学生提交 `student_submit` | 学生写 attempt，服务端验证 | 构造、选择、填数或标面后提交 | 私有 attempt；教师按班级关系读取聚合/明细 |
+| 教师跟随 `teacher-follow` | controller | 接收步骤、显隐、层与可选相机书签；默认只读 | 教师语义命令、周期 snapshot |
+| 本地探索 `student-local-explore` | 每名学生的本地分支 | 可旋转、切层和执行允许操作；一键回到教师态 | 默认不广播；需要续接时仅保存最小个人状态 |
+| 学生提交 `student-submit` | 学生写 attempt，服务端验证 | 构造、选择、填数或标面后提交 | 私有 attempt；教师按班级关系读取聚合/明细 |
 
 教师可在三个模式间切换，并决定是否“跟随镜头”。相机连续拖动不持久化；教师点击“锁定当前视角/加入步骤”才生成 durable bookmark 命令。
 
