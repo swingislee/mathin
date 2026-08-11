@@ -3373,7 +3373,38 @@
       "moderationReason": "Moderation reason (stored in audit event)",
       "hidePost": "Remove from public",
       "restorePost": "Restore public access",
-      "moderationFailed": "Moderation failed. Please retry."
+      "moderationFailed": "Moderation failed. Please retry.",
+      "reviewQueueTitle": "Notebook review queue",
+      "reviewQueueEmpty": "There are no revisions awaiting review.",
+      "revisionNumber": "Revision {number}",
+      "reviewPendingHelp": "This revision is awaiting administrator review and stays private until approved.",
+      "reviewReason": "Review note; required when returning a revision",
+      "approveRevision": "Approve and publish",
+      "returnRevision": "Return for revision",
+      "previewNotPublic": "This is an author/administrator preview. The public cannot read or interact with it.",
+      "moderationSucceeded": "The review state was updated.",
+      "lifecycle": {
+        "draft": "Draft",
+        "review": "In review",
+        "published": "Published",
+        "withdrawn": "Withdrawn",
+        "revised": "Being revised"
+      },
+      "moderation": {
+        "active": "Platform visible",
+        "hidden": "Removed by platform"
+      },
+      "actionErrors": {
+        "VALIDATION": "Invalid input. A reason is required when returning or removing content.",
+        "UNAUTHENTICATED": "Your session expired. Sign in again.",
+        "FORBIDDEN": "This account cannot perform that review.",
+        "NOT_FOUND": "The post or revision no longer exists.",
+        "PUBLIC_PUBLISHING_DISABLED": "Public publishing is disabled.",
+        "NOTE_ARCHIVED": "The source note is archived and cannot be published.",
+        "INVALID_STATE": "The state changed. Refresh and retry.",
+        "MODERATION_LOCKED": "The post is still platform-locked and cannot be published.",
+        "SERVER": "The action failed. Please retry later."
+      }
     },
     "workspace": {
       "workspaceName": "Notebook workspace",
@@ -3401,6 +3432,10 @@
       "publishDisabled": "Public publishing is currently disabled in organization settings",
       "updatePublish": "Update post",
       "unpublish": "Unpublish",
+      "submitForReview": "Submit for review",
+      "submitRevision": "Submit new revision",
+      "resubmitForReview": "Resubmit for review",
+      "withdraw": "Withdraw public post",
       "copyPublicLink": "Copy public link",
       "copied": "Copied",
       "closeTrash": "Close trash",
@@ -3422,7 +3457,30 @@
       "archivedBanner": "This note is in the trash and shown read-only",
       "inTrash": "In trash",
       "preview": "Preview",
-      "actionFailed": "Action failed: {message}"
+      "actionFailed": "Action failed: {message}",
+      "publicationStatus": {
+        "draft": "Draft",
+        "review": "In review",
+        "published": "Published",
+        "withdrawn": "Withdrawn",
+        "revised": "Needs revision",
+        "moderationHidden": "Removed by platform"
+      },
+      "publicationSuccess": {
+        "submitted": "Submitted for review",
+        "withdrawn": "The public post was withdrawn"
+      },
+      "publicationErrors": {
+        "VALIDATION": "The publication request is invalid",
+        "UNAUTHENTICATED": "Your session expired",
+        "FORBIDDEN": "You do not have permission",
+        "NOT_FOUND": "The note or post no longer exists",
+        "PUBLIC_PUBLISHING_DISABLED": "Public publishing is disabled",
+        "NOTE_ARCHIVED": "Archived notes cannot be published",
+        "INVALID_STATE": "The state changed; refresh the page",
+        "MODERATION_LOCKED": "An administrator must restore this platform-removed post first",
+        "SERVER": "Publication failed; please retry"
+      }
     },
     "editor": {
       "titlePlaceholder": "Untitled",

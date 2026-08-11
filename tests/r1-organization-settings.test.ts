@@ -7,6 +7,7 @@ const read = (file: string) => fs.readFileSync(path.join(root, file), "utf8");
 const migration = read("supabase/migrations/20260728000100_r1_organization_settings.sql");
 const publishGuard = read("supabase/migrations/20260728000200_r1_public_publish_guard.sql");
 const notebookPrivacy = read("supabase/migrations/20260812000100_r1_notebook_interaction_privacy.sql");
+const notebookLifecycle = read("supabase/migrations/20260812000200_r1_notebook_publication_lifecycle.sql");
 const notebookAssertions = read("supabase/tests/r1_notebook_assertions.sql");
 const preparationUnlock = read("supabase/migrations/20260731000500_r1_preparation_archive_unlock.sql");
 
@@ -52,6 +53,11 @@ describe("R1-1 organization settings contracts", () => {
 
   it("keeps Notebook publication ownership and interaction privacy at the database boundary", () => {
     const notebookActions = read("src/features/notebook/actions.ts");
+    const notebookTopbar = read("src/features/notebook/workspace/WorkspaceTopbar.tsx");
+    const moderationPanel = read("src/features/notebook/post/ModerationPanel.tsx");
+    const notebookFeed = read("src/app/[locale]/notebook/page.tsx");
+    const notebookPost = read("src/app/[locale]/notebook/[postId]/page.tsx");
+    const notebookHtml = read("src/features/notebook/html.ts");
     const dbAudit = read("scripts/run-r1-db-audit.mjs");
     expect(notebookPrivacy).toContain('revoke select on public.post_likes from anon');
     expect(notebookPrivacy).toContain('create policy "post_likes_select_own"');
@@ -61,13 +67,44 @@ describe("R1-1 organization settings contracts", () => {
     expect(notebookPrivacy).toMatch(/posts_update_own[\s\S]*hidden[\s\S]*public\.is_feature_enabled\('public_content\.publish'\)/);
     expect(notebookActions).toContain('const entityIdSchema = z.string().uuid()');
     expect(notebookActions).toContain('if (note.is_archived) throw new Error("NOTE_ARCHIVED")');
-    expect(notebookActions).toContain('update({ ...values, hidden: false })');
-    expect(notebookActions).toContain("if (archived || publishingEnabled)");
-    expect(notebookActions).toContain("publishingEnabled = !error && data === true");
+    expect(notebookLifecycle).toContain("create table public.notebook_post_revisions");
+    expect(notebookLifecycle).toContain("create table public.notebook_post_lifecycle_events");
+    expect(notebookLifecycle).toContain("submit_notebook_post_revision");
+    expect(notebookLifecycle).toContain("review_notebook_post_revision");
+    expect(notebookLifecycle).toContain("withdraw_notebook_post");
+    expect(notebookLifecycle).toMatch(/revoke all on public\.posts from anon, authenticated/);
+    expect(notebookLifecycle).toMatch(/moderation_status = 'hidden'[\s\S]*raise exception 'MODERATION_LOCKED'/);
+    expect(notebookLifecycle).toMatch(/lifecycle_status = 'review'[\s\S]*r\.content = p_content[\s\S]*return jsonb_build_object/);
+    expect(notebookLifecycle).toMatch(/notes_sync_notebook_post_state[\s\S]*after update of is_archived/);
+    expect(notebookActions).toContain("publicationStatusSchema");
+    expect(notebookActions).toContain("NotebookPublicationActionResult");
+    expect(notebookActions).not.toContain("export const NOTEBOOK_PUBLICATION_STATUSES");
+    expect(notebookActions).toContain('rpc("submit_notebook_post_revision"');
+    expect(notebookActions).toContain('rpc("review_notebook_post_revision"');
+    expect(notebookActions).toContain('rpc("withdraw_notebook_post"');
+    expect(notebookTopbar).toContain('role={feedback.kind === "error" ? "alert" : "status"}');
+    expect(moderationPanel).toContain('reviewNotebookPostAction');
+    expect(moderationPanel).toContain('moderatePostAction');
+    expect(notebookFeed).toMatch(/\.eq\("lifecycle_status", "published"\)[\s\S]*\.eq\("moderation_status", "active"\)/);
+    expect(notebookPost).toContain("sanitizeNotebookHtml(post.content_html)");
+    expect(notebookHtml).toContain('allowedSchemes: ["http", "https"]');
     expect(dbAudit).toContain('"r1_notebook_assertions.sql"');
     expect(notebookAssertions).toContain('R1_HIDDEN_POST_LIKE_WAS_ACCEPTED');
-    expect(notebookAssertions).toContain('R1_FOREIGN_NOTE_PUBLISH_WAS_ACCEPTED');
-    expect(notebookAssertions).toContain('R1_ARCHIVED_NOTE_PUBLISH_WAS_ACCEPTED');
+    expect(notebookAssertions).toContain('R1_DIRECT_POST_INSERT_WAS_ACCEPTED');
+    expect(notebookAssertions).toContain('R1_ARCHIVED_NOTE_SUBMIT_WAS_ACCEPTED');
+    expect(notebookAssertions).toContain('R1_PLATFORM_HIDE_WAS_BYPASSED');
+    expect(notebookAssertions).toContain('history_is_traceable');
+    for (const locale of ["zh", "en"] as const) {
+      const messages = JSON.parse(read(`messages/${locale}.json`));
+      for (const status of ["draft", "review", "published", "withdrawn", "revised"]) {
+        expect(messages.notebook.workspace.publicationStatus[status]).toBeTruthy();
+        expect(messages.notebook.public.lifecycle[status]).toBeTruthy();
+      }
+      for (const code of ["VALIDATION", "FORBIDDEN", "PUBLIC_PUBLISHING_DISABLED", "INVALID_STATE", "MODERATION_LOCKED", "SERVER"]) {
+        expect(messages.notebook.workspace.publicationErrors[code]).toBeTruthy();
+        expect(messages.notebook.public.actionErrors[code]).toBeTruthy();
+      }
+    }
   });
 
   it("registers preparation archive editing as a fail-closed administrator switch", () => {

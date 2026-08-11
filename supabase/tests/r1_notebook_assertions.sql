@@ -1,5 +1,5 @@
 \set ON_ERROR_STOP on
--- R1-11：Notebook 发布所有权、归档和点赞隐私边界。全程回滚。
+-- R1-11：Notebook 生命周期、审核、平台下架、归档与互动边界。全程回滚。
 begin;
 
 select id as admin_id from public.profiles where display_name = '测试-管理员' limit 1 \gset
@@ -26,9 +26,30 @@ begin
      where schemaname = 'public' and tablename = 'post_likes'
        and policyname = 'post_likes_select_own'
   ) then failures := array_append(failures, 'own-like select policy missing'); end if;
-  if has_column_privilege('authenticated', 'public.posts', 'note_id', 'UPDATE') then
-    failures := array_append(failures, 'authenticated can rebind posts.note_id');
+  if has_table_privilege('authenticated', 'public.posts', 'INSERT')
+     or has_table_privilege('authenticated', 'public.posts', 'UPDATE')
+     or has_table_privilege('authenticated', 'public.posts', 'DELETE') then
+    failures := array_append(failures, 'authenticated retains direct posts writes');
   end if;
+  if has_column_privilege('authenticated', 'public.posts', 'content', 'UPDATE')
+     or has_column_privilege('authenticated', 'public.posts', 'hidden', 'UPDATE')
+     or has_column_privilege('authenticated', 'public.posts', 'note_id', 'UPDATE') then
+    failures := array_append(failures, 'authenticated retains column-level posts writes');
+  end if;
+  if has_table_privilege('authenticated', 'public.notebook_post_revisions', 'INSERT')
+     or has_table_privilege('authenticated', 'public.notebook_post_lifecycle_events', 'INSERT') then
+    failures := array_append(failures, 'authenticated can forge notebook history');
+  end if;
+  if not exists (
+    select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public' and p.proname = 'submit_notebook_post_revision'
+  ) or not exists (
+    select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public' and p.proname = 'review_notebook_post_revision'
+  ) or not exists (
+    select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public' and p.proname = 'withdraw_notebook_post'
+  ) then failures := array_append(failures, 'notebook lifecycle RPC missing'); end if;
   if cardinality(failures) > 0 then
     raise exception 'R1 Notebook structure assertions failed: %', array_to_string(failures, ', ');
   end if;
@@ -38,7 +59,7 @@ $$;
 -- 临时打开发布开关；版本、事件和夹具随事务一起回滚。
 set local role authenticated;
 select set_config('request.jwt.claim.sub', :'admin_id', true);
-select public.set_feature_flag('public_content.publish', null, true, now(), 'R1 Notebook boundary audit');
+select public.set_feature_flag('public_content.publish', null, true, now(), 'R1 Notebook lifecycle audit');
 reset role;
 
 insert into public.notes(owner_id, title, document)
@@ -56,6 +77,7 @@ select id as teacher_active_note_id from public.notes where title = '__R1_NOTEBO
 select id as teacher_archived_note_id from public.notes where title = '__R1_NOTEBOOK_TEACHER_ARCHIVED__' \gset
 update public.notes set is_archived = true where id = :'teacher_archived_note_id';
 
+-- 数据库所有者夹具用于互动隐私负向断言；应用角色没有这些直写权限。
 insert into public.posts(note_id, author_id, title, content, content_html, excerpt, hidden, review_status)
 values
   (:'admin_visible_note_id', :'admin_id', '__R1_NOTEBOOK_VISIBLE_POST__', '[]'::jsonb, '<p>visible</p>', 'visible', false, 'approved'),
@@ -70,10 +92,10 @@ values
   (:'visible_post_id', :'admin_id'),
   (:'visible_post_id', :'teacher_id');
 
--- psql variables cannot be interpolated inside dollar-quoted blocks; expose fixture UUIDs as transaction-local settings.
 select set_config('r1.hidden_post_id', :'hidden_post_id', true);
 select set_config('r1.rejected_post_id', :'rejected_post_id', true);
 select set_config('r1.admin_visible_note_id', :'admin_visible_note_id', true);
+select set_config('r1.teacher_active_note_id', :'teacher_active_note_id', true);
 select set_config('r1.teacher_archived_note_id', :'teacher_archived_note_id', true);
 
 set local role authenticated;
@@ -101,68 +123,168 @@ begin
     raise exception 'R1_REJECTED_POST_LIKE_WAS_ACCEPTED';
   exception when insufficient_privilege or check_violation then null;
   end;
+  begin
+    insert into public.posts(note_id, author_id, title, content, content_html, excerpt)
+    values (current_setting('r1.admin_visible_note_id')::uuid, auth.uid(), 'foreign note', '[]'::jsonb, '<p>x</p>', 'x');
+    raise exception 'R1_DIRECT_POST_INSERT_WAS_ACCEPTED';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    perform public.submit_notebook_post_revision(
+      current_setting('r1.teacher_archived_note_id')::uuid,
+      'archived note', '[]'::jsonb, '<p>x</p>', 'x'
+    );
+    raise exception 'R1_ARCHIVED_NOTE_SUBMIT_WAS_ACCEPTED';
+  exception when others then
+    if sqlerrm not like '%NOTE_ARCHIVED%' then raise; end if;
+  end;
 end
 $$;
+
+-- 初稿：draft（私人 note）→ review → published。
+select (public.submit_notebook_post_revision(
+  :'teacher_active_note_id'::uuid,
+  '__R1_NOTEBOOK_OWN_POST_V1__',
+  '[{"type":"paragraph","content":[{"type":"text","text":"v1"}]}]'::jsonb,
+  '<p>v1</p>', 'v1'
+) ->> 'postId') as own_post_id \gset
+select set_config('r1.own_post_id', :'own_post_id', true);
+select public.submit_notebook_post_revision(
+  :'teacher_active_note_id'::uuid,
+  '__R1_NOTEBOOK_OWN_POST_V1__',
+  '[{"type":"paragraph","content":[{"type":"text","text":"v1"}]}]'::jsonb,
+  '<p>v1</p>', 'v1'
+);
+
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'admin_id', true);
+select public.review_notebook_post_revision(:'own_post_id'::uuid, 'approved', 'initial review');
+select public.review_notebook_post_revision(:'own_post_id'::uuid, 'approved', 'initial review retry');
+
+-- 作者撤回后提交 revision-2；管理员退回后头状态必须为 revised。
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'teacher_id', true);
+select public.withdraw_notebook_post(:'own_post_id'::uuid, 'author withdrawal test');
+select public.withdraw_notebook_post(:'own_post_id'::uuid, 'author withdrawal retry');
+select public.submit_notebook_post_revision(
+  :'teacher_active_note_id'::uuid,
+  '__R1_NOTEBOOK_OWN_POST_V2__', '[]'::jsonb, '<p>v2</p>', 'v2'
+);
+
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'admin_id', true);
+select public.review_notebook_post_revision(:'own_post_id'::uuid, 'rejected', 'needs revision');
 
 reset role;
 set local role authenticated;
 select set_config('request.jwt.claim.sub', :'teacher_id', true);
+select (lifecycle_status = 'revised' and review_status = 'rejected') as rejection_is_revised
+  from public.posts where id = :'own_post_id'::uuid \gset
+\if :rejection_is_revised
+\else
+  \echo R1 Notebook failed: rejected published revision did not enter revised
+  select 1 / 0;
+\endif
 
+-- revision-3 重新审核通过；平台下架后作者不能靠 revision-4 绕过。
+select public.submit_notebook_post_revision(
+  :'teacher_active_note_id'::uuid,
+  '__R1_NOTEBOOK_OWN_POST_V3__', '[]'::jsonb, '<p>v3</p>', 'v3'
+);
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'admin_id', true);
+select public.review_notebook_post_revision(:'own_post_id'::uuid, 'approved', 'revision approved');
+select public.moderate_post(:'own_post_id'::uuid, 'hidden', 'platform safety hold');
+
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'teacher_id', true);
 do $$
 begin
   begin
-    insert into public.posts(note_id, author_id, title, content, content_html, excerpt)
-    values (current_setting('r1.admin_visible_note_id')::uuid, auth.uid(), 'foreign note', '[]'::jsonb, '<p>x</p>', 'x');
-    raise exception 'R1_FOREIGN_NOTE_PUBLISH_WAS_ACCEPTED';
-  exception when insufficient_privilege or check_violation then null;
+    perform public.submit_notebook_post_revision(
+      current_setting('r1.teacher_active_note_id')::uuid,
+      '__R1_NOTEBOOK_BYPASS__', '[]'::jsonb, '<p>bypass</p>', 'bypass'
+    );
+    raise exception 'R1_PLATFORM_HIDE_WAS_BYPASSED';
+  exception when others then
+    if sqlerrm not like '%MODERATION_LOCKED%' then raise; end if;
   end;
   begin
-    insert into public.posts(note_id, author_id, title, content, content_html, excerpt)
-    values (current_setting('r1.teacher_archived_note_id')::uuid, auth.uid(), 'archived note', '[]'::jsonb, '<p>x</p>', 'x');
-    raise exception 'R1_ARCHIVED_NOTE_PUBLISH_WAS_ACCEPTED';
-  exception when insufficient_privilege or check_violation then null;
+    update public.posts set moderation_status = 'active', hidden = false
+     where id = current_setting('r1.own_post_id')::uuid;
+    raise exception 'R1_DIRECT_MODERATION_UNLOCK_WAS_ACCEPTED';
+  exception when insufficient_privilege then null;
   end;
-end
-$$;
-
-insert into public.posts(note_id, author_id, title, content, content_html, excerpt)
-values (:'teacher_active_note_id', :'teacher_id', '__R1_NOTEBOOK_OWN_POST__', '[]'::jsonb, '<p>own</p>', 'own');
-
-do $$
-begin
   begin
-    update public.posts
-       set note_id = current_setting('r1.admin_visible_note_id')::uuid
-     where title = '__R1_NOTEBOOK_OWN_POST__';
-    raise exception 'R1_POST_NOTE_REBIND_WAS_ACCEPTED';
+    delete from public.posts where id = current_setting('r1.own_post_id')::uuid;
+    raise exception 'R1_DIRECT_POST_DELETE_WAS_ACCEPTED';
   exception when insufficient_privilege then null;
   end;
 end
 $$;
 
--- 发布关闭时，归档仍能隐藏；恢复源笔记后不得把快照重新公开。
 reset role;
 set local role authenticated;
 select set_config('request.jwt.claim.sub', :'admin_id', true);
--- `is_feature_enabled()` defaults to transaction-time `now()`. Keep the
--- replacement version on that same effective timestamp so this rollback-only
--- audit observes the latest version instead of scheduling it in the future.
+select public.moderate_post(:'own_post_id'::uuid, 'approved', 'platform hold cleared');
+
+reset role;
+select (
+  (select count(*) from public.notebook_post_revisions where post_id = :'own_post_id'::uuid) = 3
+  and (select count(*) from public.notebook_post_lifecycle_events where post_id = :'own_post_id'::uuid) >= 9
+  and exists (
+    select 1 from public.notebook_post_lifecycle_events
+     where post_id = :'own_post_id'::uuid
+       and from_status = 'draft'
+       and to_status = 'review'
+  )
+  and (select current_revision_no from public.posts where id = :'own_post_id'::uuid) = 3
+) as history_is_traceable \gset
+\if :history_is_traceable
+\else
+  \echo R1 Notebook failed: revision/event history incomplete
+  select 1 / 0;
+\endif
+
+-- 发布关闭时，归档仍会隐藏；恢复不能重发，作者撤回仍可执行。
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'admin_id', true);
 select public.set_feature_flag('public_content.publish', null, false, now(), 'R1 Notebook fail-closed restore audit');
 reset role;
 set local role authenticated;
 select set_config('request.jwt.claim.sub', :'teacher_id', true);
 update public.notes set is_archived = true where id = :'teacher_active_note_id';
-update public.posts set hidden = true where title = '__R1_NOTEBOOK_OWN_POST__';
 update public.notes set is_archived = false where id = :'teacher_active_note_id';
-do $$
-begin
-  begin
-    update public.posts set hidden = false where title = '__R1_NOTEBOOK_OWN_POST__';
-    raise exception 'R1_FLAG_OFF_RESTORE_REPUBLISHED_POST';
-  exception when insufficient_privilege or check_violation then null;
-  end;
-end
-$$;
+select hidden as flag_off_restore_hidden from public.posts where id = :'own_post_id'::uuid \gset
+\if :flag_off_restore_hidden
+\else
+  \echo R1 Notebook failed: flag-off note restore republished post
+  select 1 / 0;
+\endif
+
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'admin_id', true);
+select public.moderate_post(:'own_post_id'::uuid, 'approved', 'retry while publishing disabled');
+select public.set_feature_flag('public_content.publish', null, true, now(), 'R1 Notebook restore retry audit');
+select public.moderate_post(:'own_post_id'::uuid, 'approved', 'retry after publishing restored');
+select not hidden as recovered_restore_visible from public.posts where id = :'own_post_id'::uuid \gset
+\if :recovered_restore_visible
+\else
+  \echo R1 Notebook failed: approved retry did not recover visibility
+  select 1 / 0;
+\endif
+select public.set_feature_flag('public_content.publish', null, false, now(), 'R1 Notebook withdrawal remains available');
+
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'teacher_id', true);
+select public.withdraw_notebook_post(:'own_post_id'::uuid, 'withdraw while publishing disabled');
 
 rollback;
 \echo R1 Notebook database assertions passed

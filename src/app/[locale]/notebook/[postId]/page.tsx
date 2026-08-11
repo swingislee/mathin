@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import { ArrowLeft } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
+import { Badge } from "@/components/ui/badge";
 import { SectionShell } from "@/components/section-shell";
 import { LikeButton } from "@/features/notebook/post/LikeButton";
 import { ModerationPanel } from "@/features/notebook/post/ModerationPanel";
+import { sanitizeNotebookHtml } from "@/features/notebook/html";
 import { getProfile } from "@/lib/auth";
 import { Link } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -17,7 +19,10 @@ interface DetailRow {
   like_count: number;
   published_at: string;
   updated_at: string;
+  hidden: boolean;
+  lifecycle_status: string;
   review_status: string;
+  moderation_status: string;
   author: { display_name: string; avatar_url: string | null } | Array<{ display_name: string; avatar_url: string | null }>;
 }
 
@@ -25,7 +30,7 @@ async function loadPost(postId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("posts")
-    .select("id,title,excerpt,content_html,like_count,published_at,updated_at,review_status,author:profiles!posts_author_id_fkey(display_name,avatar_url)")
+    .select("id,title,excerpt,content_html,like_count,published_at,updated_at,hidden,lifecycle_status,review_status,moderation_status,author:profiles!posts_author_id_fkey(display_name,avatar_url)")
     .eq("id", postId)
     .maybeSingle<DetailRow>();
   if (error) throw new Error(error.message);
@@ -55,6 +60,10 @@ export default async function NotebookPostPage({ params }: { params: Promise<{ l
   const author = Array.isArray(post.author) ? post.author[0] : post.author;
   const displayName = author?.display_name || t("anonymous");
   const nextPath = `/${locale}/notebook/${post.id}`;
+  const isPublic = !post.hidden
+    && post.lifecycle_status === "published"
+    && post.review_status === "approved"
+    && post.moderation_status === "active";
   return (
     <SectionShell section="notebook">
       <article>
@@ -65,11 +74,27 @@ export default async function NotebookPostPage({ params }: { params: Promise<{ l
           <span className="text-ink">{displayName}</span>
           <time dateTime={post.published_at}>{new Intl.DateTimeFormat(locale, { dateStyle: "long" }).format(new Date(post.published_at))}</time>
         </div>
-        <div className="notebook-post-content mt-10" dangerouslySetInnerHTML={{ __html: post.content_html }} />
-        {profile?.role === "admin" && <ModerationPanel postId={post.id} status={post.review_status} />}
-        <div className="mt-10 border-t pt-6">
-          <LikeButton postId={post.id} initialLiked={liked} initialCount={post.like_count} isLoggedIn={Boolean(user)} loginHref={`/login?next=${encodeURIComponent(nextPath)}`} />
-        </div>
+        {!isPublic && (
+          <div className="mt-6 flex flex-wrap items-center gap-2 rounded-2xl border border-dashed p-4 text-sm text-muted">
+            <Badge variant="outline">{t(`lifecycle.${post.lifecycle_status}`)}</Badge>
+            <Badge variant={post.moderation_status === "hidden" ? "danger" : "secondary"}>{t(`moderation.${post.moderation_status}`)}</Badge>
+            <span>{t("previewNotPublic")}</span>
+          </div>
+        )}
+        <div className="notebook-post-content mt-10" dangerouslySetInnerHTML={{ __html: sanitizeNotebookHtml(post.content_html) }} />
+        {profile?.role === "admin" && (
+          <ModerationPanel
+            postId={post.id}
+            lifecycleStatus={post.lifecycle_status}
+            reviewStatus={post.review_status}
+            moderationStatus={post.moderation_status}
+          />
+        )}
+        {isPublic && (
+          <div className="mt-10 border-t pt-6">
+            <LikeButton postId={post.id} initialLiked={liked} initialCount={post.like_count} isLoggedIn={Boolean(user)} loginHref={`/login?next=${encodeURIComponent(nextPath)}`} />
+          </div>
+        )}
       </article>
     </SectionShell>
   );

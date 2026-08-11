@@ -5,8 +5,8 @@ import { collectPostgrestRowsInBatches } from "@/lib/supabase/postgrest-batches"
 import type { Json } from "@/lib/database.types";
 import { ServerBlockNoteEditor } from "@blocknote/server-util";
 import type { PartialBlock } from "@blocknote/core";
-import sanitizeHtml from "sanitize-html";
 import { z } from "zod";
+import { sanitizeNotebookHtml } from "./html";
 import type { NoteMeta, NoteRecord } from "./types";
 
 interface NoteRow {
@@ -130,32 +130,16 @@ export async function setNoteArchived(id: string, archived: boolean): Promise<No
     .eq("owner_id", user.id)
     .select(META_COLUMNS)
     .returns<NoteRow[]>());
-  // 归档始终 fail-closed 地隐藏公开快照。恢复只有在公共发布开关开启时才重新公开；
-  // 开关关闭或读取失败时保持 hidden=true，但不能让私有笔记恢复动作失败一半。
-  let publishingEnabled = false;
-  if (!archived) {
-    const { data, error } = await supabase.rpc("is_feature_enabled", { p_flag_key: "public_content.publish" });
-    publishingEnabled = !error && data === true;
-  }
-  if (archived || publishingEnabled) {
-    await collectPostgrestRowsInBatches<string, never>(subtree, (batch) => supabase
-      .from("posts")
-      .update({ hidden: archived })
-      .in("note_id", batch)
-      .eq("author_id", user.id));
-  }
+  // 发布可见性由 notes_sync_notebook_post_state trigger 在同一数据库事务中同步；
+  // 平台下架、未审核、已撤回或发布开关关闭时，恢复笔记也不会重新公开。
   return updatedNotes.map(toMeta);
 }
 
 export async function deleteNoteForever(id: string): Promise<{ id: string; removedIds: string[] }> {
   const { supabase, user } = await authenticatedClient();
   const removedIds = [...collectSubtree(await ownedTreeRows(supabase, user.id), id)];
-  // 彻底删除时公开快照一并删除（点赞随行级联清理）。
-  await collectPostgrestRowsInBatches<string, never>(removedIds, (batch) => supabase
-    .from("posts")
-    .delete()
-    .in("note_id", batch)
-    .eq("author_id", user.id));
+  // 数据库 BEFORE DELETE trigger 在同一事务删除发布头、revision、事件与点赞；
+  // 应用层不再持有 posts 的直写权限。
 
   // Storage 清理是次要目标：失败只记录，不能反过来卡死笔记删除本身。
   for (const noteId of removedIds) {
@@ -178,6 +162,81 @@ export async function deleteNoteForever(id: string): Promise<{ id: string; remov
 
 const documentSchema = z.array(z.unknown());
 const entityIdSchema = z.string().uuid();
+
+const NOTEBOOK_PUBLICATION_STATUSES = ["draft", "review", "published", "withdrawn", "revised"] as const;
+export type NotebookPublicationStatus = {
+  postId: string;
+  revisionNo: number;
+  lifecycleStatus: (typeof NOTEBOOK_PUBLICATION_STATUSES)[number];
+  reviewStatus: "pending" | "approved" | "rejected";
+  moderationStatus: "active" | "hidden";
+};
+
+export type NotebookPublicationActionCode =
+  | "VALIDATION"
+  | "UNAUTHENTICATED"
+  | "FORBIDDEN"
+  | "NOT_FOUND"
+  | "PUBLIC_PUBLISHING_DISABLED"
+  | "NOTE_ARCHIVED"
+  | "INVALID_STATE"
+  | "MODERATION_LOCKED"
+  | "SERVER";
+
+export type NotebookPublicationActionResult =
+  | { ok: true; data: NotebookPublicationStatus }
+  | { ok: false; code: NotebookPublicationActionCode };
+
+const publicationStatusSchema = z.object({
+  postId: entityIdSchema,
+  revisionNo: z.number().int().positive(),
+  lifecycleStatus: z.enum(NOTEBOOK_PUBLICATION_STATUSES),
+  reviewStatus: z.enum(["pending", "approved", "rejected"]),
+  moderationStatus: z.enum(["active", "hidden"]),
+});
+
+const reviewPublicationSchema = z.discriminatedUnion("decision", [
+  z.object({ postId: entityIdSchema, decision: z.literal("approved"), reason: z.string().trim().max(1000).default("") }),
+  z.object({ postId: entityIdSchema, decision: z.literal("rejected"), reason: z.string().trim().min(1).max(1000) }),
+]);
+
+const moderatePublicationSchema = z.discriminatedUnion("status", [
+  z.object({ postId: entityIdSchema, status: z.literal("approved"), reason: z.string().trim().max(1000).default("") }),
+  z.object({ postId: entityIdSchema, status: z.literal("hidden"), reason: z.string().trim().min(1).max(1000) }),
+]);
+
+const KNOWN_PUBLICATION_ERRORS = [
+  "UNAUTHENTICATED",
+  "FORBIDDEN",
+  "NOT_FOUND",
+  "PUBLIC_PUBLISHING_DISABLED",
+  "NOTE_ARCHIVED",
+  "INVALID_STATE",
+  "ALREADY_IN_REVIEW",
+  "MODERATION_LOCKED",
+] as const;
+
+function publicationErrorCode(error: unknown): NotebookPublicationActionCode {
+  if (error instanceof z.ZodError) return "VALIDATION";
+  const message = error instanceof Error
+    ? error.message
+    : typeof error === "object" && error && "message" in error
+      ? String(error.message)
+      : "";
+  const matched = KNOWN_PUBLICATION_ERRORS.find((code) => message.includes(code));
+  if (matched === "ALREADY_IN_REVIEW") return "INVALID_STATE";
+  return matched ?? "SERVER";
+}
+
+async function publicationAction(
+  operation: () => Promise<NotebookPublicationStatus>,
+): Promise<NotebookPublicationActionResult> {
+  try {
+    return { ok: true, data: await operation() };
+  } catch (error) {
+    return { ok: false, code: publicationErrorCode(error) };
+  }
+}
 
 export type SaveNoteResult =
   | { ok: true; version: number; updatedAt: string }
@@ -221,11 +280,30 @@ function excerptFromDocument(document: unknown[]) {
   return plain.length > 200 ? `${plain.slice(0, 200).trimEnd()}…` : plain;
 }
 
-export async function getPublishStatus(noteId: string): Promise<string | null> {
+export async function getPublishStatus(noteId: string): Promise<NotebookPublicationStatus | null> {
+  const parsedNoteId = entityIdSchema.parse(noteId);
   const { supabase, user } = await authenticatedClient();
-  const { data, error } = await supabase.from("posts").select("id").eq("note_id", noteId).eq("author_id", user.id).maybeSingle<{ id: string }>();
+  const { data, error } = await supabase
+    .from("posts")
+    .select("id,current_revision_no,lifecycle_status,review_status,moderation_status")
+    .eq("note_id", parsedNoteId)
+    .eq("author_id", user.id)
+    .maybeSingle<{
+      id: string;
+      current_revision_no: number;
+      lifecycle_status: string;
+      review_status: string;
+      moderation_status: string;
+    }>();
   if (error) throw new Error(error.message);
-  return data?.id ?? null;
+  if (!data) return null;
+  return publicationStatusSchema.parse({
+    postId: data.id,
+    revisionNo: data.current_revision_no,
+    lifecycleStatus: data.lifecycle_status,
+    reviewStatus: data.review_status,
+    moderationStatus: data.moderation_status,
+  });
 }
 
 export async function getPublicPublishingEnabled(): Promise<boolean> {
@@ -234,76 +312,82 @@ export async function getPublicPublishingEnabled(): Promise<boolean> {
   return !error && data === true;
 }
 
-export async function moderatePostAction(postId: string, status: "approved" | "hidden", reason: string): Promise<void> {
-  const { supabase, user } = await authenticatedClient();
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle<{ role: string }>();
-  if (profile?.role !== "admin") throw new Error("FORBIDDEN");
-  const { error } = await supabase.rpc("moderate_post", { p_post_id: postId, p_status: status, p_reason: reason.trim().slice(0, 1000) });
-  if (error) throw new Error(error.message);
-}
-
-export async function publishNote(noteId: string): Promise<{ postId: string }> {
-  const parsedNoteId = entityIdSchema.parse(noteId);
-  const { supabase, user } = await authenticatedClient();
-  const { data: publishingEnabled, error: flagError } = await supabase.rpc("is_feature_enabled", { p_flag_key: "public_content.publish" });
-  if (flagError || publishingEnabled !== true) throw new Error("PUBLIC_PUBLISHING_DISABLED");
-
-  const { data: note, error: noteError } = await supabase
-    .from("notes")
-    .select("id,title,document,is_archived")
-    .eq("id", parsedNoteId)
-    .eq("owner_id", user.id)
-    .single<{ id: string; title: string; document: unknown[] | null; is_archived: boolean }>();
-  if (noteError) throw new Error(noteError.message);
-  if (note.is_archived) throw new Error("NOTE_ARCHIVED");
-  const parsed = documentSchema.parse(note.document ?? []);
-  const editor = ServerBlockNoteEditor.create();
-  const generated = await editor.blocksToFullHTML(parsed as PartialBlock[]);
-  const contentHtml = sanitizeHtml(generated, {
-    allowedTags: [...sanitizeHtml.defaults.allowedTags, "img", "figure", "figcaption", "picture", "source"],
-    allowedAttributes: {
-      "*": ["class", "data-*"],
-      a: ["href", "title", "target", "rel"],
-      img: ["src", "alt", "title", "width", "height", "loading"],
-      source: ["src", "srcset", "type"],
-    },
-    allowedSchemes: ["http", "https"],
-    allowProtocolRelative: false,
-    transformTags: {
-      a: sanitizeHtml.simpleTransform("a", { rel: "nofollow noopener noreferrer" }, true),
-    },
-  });
-  const values = {
-    title: note.title.trim(),
-    content: parsed as Json,
-    content_html: contentHtml,
-    excerpt: excerptFromDocument(parsed),
-  };
-  const { data: existing, error: existingError } = await supabase
-    .from("posts")
-    .select("id")
-    .eq("note_id", parsedNoteId)
-    .eq("author_id", user.id)
-    .maybeSingle<{ id: string }>();
-  if (existingError) throw new Error(existingError.message);
-  if (existing) {
-    const { error } = await supabase.from("posts").update({ ...values, hidden: false }).eq("id", existing.id).eq("author_id", user.id);
+export async function moderatePostAction(input: {
+  postId: string;
+  status: "approved" | "hidden";
+  reason: string;
+}): Promise<NotebookPublicationActionResult> {
+  return publicationAction(async () => {
+    const parsed = moderatePublicationSchema.parse(input);
+    const { supabase } = await authenticatedClient();
+    const { data, error } = await supabase.rpc("moderate_post", {
+      p_post_id: parsed.postId,
+      p_status: parsed.status,
+      p_reason: parsed.reason,
+    });
     if (error) throw new Error(error.message);
-    return { postId: existing.id };
-  }
-  const { data: created, error } = await supabase
-    .from("posts")
-    .insert({ note_id: parsedNoteId, author_id: user.id, ...values })
-    .select("id")
-    .single<{ id: string }>();
-  if (error) throw new Error(error.message);
-  return { postId: created.id };
+    return publicationStatusSchema.parse(data);
+  });
 }
 
-export async function unpublishNote(noteId: string): Promise<void> {
-  const { supabase, user } = await authenticatedClient();
-  const { error } = await supabase.from("posts").delete().eq("note_id", noteId).eq("author_id", user.id);
-  if (error) throw new Error(error.message);
+export async function reviewNotebookPostAction(input: {
+  postId: string;
+  decision: "approved" | "rejected";
+  reason: string;
+}): Promise<NotebookPublicationActionResult> {
+  return publicationAction(async () => {
+    const parsed = reviewPublicationSchema.parse(input);
+    const { supabase } = await authenticatedClient();
+    const { data, error } = await supabase.rpc("review_notebook_post_revision", {
+      p_post_id: parsed.postId,
+      p_decision: parsed.decision,
+      p_reason: parsed.reason,
+    });
+    if (error) throw new Error(error.message);
+    return publicationStatusSchema.parse(data);
+  });
+}
+
+export async function submitNoteForReview(noteId: string): Promise<NotebookPublicationActionResult> {
+  return publicationAction(async () => {
+    const parsedNoteId = entityIdSchema.parse(noteId);
+    const { supabase, user } = await authenticatedClient();
+    const { data: note, error: noteError } = await supabase
+      .from("notes")
+      .select("id,title,document,is_archived")
+      .eq("id", parsedNoteId)
+      .eq("owner_id", user.id)
+      .maybeSingle<{ id: string; title: string; document: unknown[] | null; is_archived: boolean }>();
+    if (noteError) throw new Error(noteError.message);
+    if (!note) throw new Error("NOT_FOUND");
+    if (note.is_archived) throw new Error("NOTE_ARCHIVED");
+    const parsedDocument = documentSchema.parse(note.document ?? []);
+    const editor = ServerBlockNoteEditor.create();
+    const generated = await editor.blocksToFullHTML(parsedDocument as PartialBlock[]);
+    const contentHtml = sanitizeNotebookHtml(generated);
+    const { data, error } = await supabase.rpc("submit_notebook_post_revision", {
+      p_note_id: parsedNoteId,
+      p_title: note.title.trim().slice(0, 200),
+      p_content: parsedDocument as Json,
+      p_content_html: contentHtml,
+      p_excerpt: excerptFromDocument(parsedDocument),
+    });
+    if (error) throw new Error(error.message);
+    return publicationStatusSchema.parse(data);
+  });
+}
+
+export async function withdrawNotebookPostAction(postId: string): Promise<NotebookPublicationActionResult> {
+  return publicationAction(async () => {
+    const parsedPostId = entityIdSchema.parse(postId);
+    const { supabase } = await authenticatedClient();
+    const { data, error } = await supabase.rpc("withdraw_notebook_post", {
+      p_post_id: parsedPostId,
+      p_reason: "author withdrawal",
+    });
+    if (error) throw new Error(error.message);
+    return publicationStatusSchema.parse(data);
+  });
 }
 
 export async function toggleLike(postId: string): Promise<{ liked: boolean; likeCount: number }> {

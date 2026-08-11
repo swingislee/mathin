@@ -3373,7 +3373,38 @@
       "moderationReason": "审核原因（写入审计事件）",
       "hidePost": "平台下架",
       "restorePost": "恢复公开",
-      "moderationFailed": "审核操作失败，请重试。"
+      "moderationFailed": "审核操作失败，请重试。",
+      "reviewQueueTitle": "Notebook 审核队列",
+      "reviewQueueEmpty": "当前没有待审核版本。",
+      "revisionNumber": "版本 {number}",
+      "reviewPendingHelp": "当前版本等待管理员审核；通过后才会进入公开流。",
+      "reviewReason": "审核意见；退回时必填",
+      "approveRevision": "审核通过并发布",
+      "returnRevision": "退回修订",
+      "previewNotPublic": "这是作者/管理员预览；公众当前无法读取或互动。",
+      "moderationSucceeded": "审核状态已更新。",
+      "lifecycle": {
+        "draft": "草稿",
+        "review": "待审核",
+        "published": "已发布",
+        "withdrawn": "已撤回",
+        "revised": "修订中"
+      },
+      "moderation": {
+        "active": "平台可见",
+        "hidden": "平台已下架"
+      },
+      "actionErrors": {
+        "VALIDATION": "输入无效；退回或下架时请填写原因。",
+        "UNAUTHENTICATED": "登录已失效，请重新登录。",
+        "FORBIDDEN": "当前账号没有执行该审核的权限。",
+        "NOT_FOUND": "目标文章或版本不存在。",
+        "PUBLIC_PUBLISHING_DISABLED": "公开发布开关已关闭。",
+        "NOTE_ARCHIVED": "源笔记已归档，不能发布。",
+        "INVALID_STATE": "状态已变化，请刷新后重试。",
+        "MODERATION_LOCKED": "文章仍被平台锁定，不能审核发布。",
+        "SERVER": "操作失败，请稍后重试。"
+      }
     },
     "workspace": {
       "workspaceName": "笔记工作区",
@@ -3401,6 +3432,10 @@
       "publishDisabled": "公开发布当前由机构设置关闭",
       "updatePublish": "更新发布",
       "unpublish": "取消发布",
+      "submitForReview": "提交审核",
+      "submitRevision": "提交新修订",
+      "resubmitForReview": "重新提交审核",
+      "withdraw": "撤回公开文章",
       "copyPublicLink": "复制公开链接",
       "copied": "已复制",
       "closeTrash": "关闭回收站",
@@ -3422,7 +3457,30 @@
       "archivedBanner": "这篇笔记在回收站中，当前为只读预览",
       "inTrash": "回收站",
       "preview": "预览",
-      "actionFailed": "操作失败：{message}"
+      "actionFailed": "操作失败：{message}",
+      "publicationStatus": {
+        "draft": "草稿",
+        "review": "审核中",
+        "published": "已发布",
+        "withdrawn": "已撤回",
+        "revised": "待修订",
+        "moderationHidden": "平台已下架"
+      },
+      "publicationSuccess": {
+        "submitted": "已提交审核",
+        "withdrawn": "已撤回公开文章"
+      },
+      "publicationErrors": {
+        "VALIDATION": "发布请求无效",
+        "UNAUTHENTICATED": "登录已失效",
+        "FORBIDDEN": "没有操作权限",
+        "NOT_FOUND": "笔记或文章不存在",
+        "PUBLIC_PUBLISHING_DISABLED": "公开发布已关闭",
+        "NOTE_ARCHIVED": "归档笔记不能发布",
+        "INVALID_STATE": "状态已变化，请刷新",
+        "MODERATION_LOCKED": "平台下架后需管理员先恢复",
+        "SERVER": "发布操作失败，请重试"
+      }
     },
     "editor": {
       "titlePlaceholder": "无标题",

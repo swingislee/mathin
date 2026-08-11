@@ -114,6 +114,7 @@ select id as public_publish_off_id from public.feature_flag_versions
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', :'admin_id', true);
+select set_config('r1.organization_publish_note_id', :'publish_note_id', true);
 do $$
 begin
   begin
@@ -124,6 +125,15 @@ begin
   exception when insufficient_privilege then
     null;
   end;
+  begin
+    perform public.submit_notebook_post_revision(
+      current_setting('r1.organization_publish_note_id')::uuid,
+      'R1 blocked publish', '[]'::jsonb, '<p>blocked</p>', 'blocked'
+    );
+    raise exception 'R1_PUBLIC_PUBLISH_RPC_WAS_ACCEPTED_WHILE_DISABLED';
+  exception when others then
+    if sqlerrm not like '%PUBLIC_PUBLISHING_DISABLED%' then raise; end if;
+  end;
 end
 $$;
 reset role;
@@ -131,16 +141,21 @@ reset role;
 select public.set_feature_flag('public_content.publish', null, true, now(), 'CI enable public publishing') as public_publish_on_id \gset
 set local role authenticated;
 select set_config('request.jwt.claim.sub', :'admin_id', true);
-insert into public.posts(note_id, author_id, title, content, content_html, excerpt)
-values (:'publish_note_id'::uuid, :'admin_id'::uuid, 'R1 enabled publish', '[]'::jsonb, '<p>enabled</p>', 'enabled')
-returning id as publish_post_id \gset
+select (public.submit_notebook_post_revision(
+  :'publish_note_id'::uuid,
+  'R1 enabled publish',
+  '[]'::jsonb,
+  '<p>enabled</p>',
+  'enabled'
+) ->> 'postId') as publish_post_id \gset
+select public.review_notebook_post_revision(:'publish_post_id'::uuid, 'approved', 'R1 publish guard approval');
 reset role;
 
 select public.rollback_feature_flag(:'public_publish_off_id'::uuid, now(), 'CI rollback public publishing') as public_publish_rollback_id \gset
 set local role authenticated;
 select set_config('request.jwt.claim.sub', :'admin_id', true);
+select set_config('r1.organization_publish_post_id', :'publish_post_id', true);
 do $$
-declare affected integer;
 begin
   begin
     update public.posts set title = 'R1 blocked update' where author_id = auth.uid() and title = 'R1 enabled publish';
@@ -148,9 +163,17 @@ begin
   exception when insufficient_privilege then
     null;
   end;
-  delete from public.posts where author_id = auth.uid() and title = 'R1 enabled publish';
-  get diagnostics affected = row_count;
-  if affected <> 1 then raise exception 'R1_PUBLIC_UNPUBLISH_WAS_BLOCKED'; end if;
+  perform public.withdraw_notebook_post(
+    current_setting('r1.organization_publish_post_id')::uuid,
+    'R1 flag-off withdrawal'
+  );
+  if not exists (
+    select 1 from public.posts
+     where id = current_setting('r1.organization_publish_post_id')::uuid
+       and author_id = auth.uid()
+       and lifecycle_status = 'withdrawn'
+       and hidden
+  ) then raise exception 'R1_PUBLIC_WITHDRAWAL_WAS_BLOCKED'; end if;
 end
 $$;
 reset role;
