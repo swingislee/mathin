@@ -57,7 +57,7 @@ Mathin 建设一套“空间数学实验室”，服务从小学直观认识立�
 ### 2.2 当前缺口
 
 1. 2026-08-11 已建立无生产依赖的体素内核 spike：严格整数坐标、分层、六向投影、隐藏块、连通分量、封闭空腔、内外表面和染色分类；面邻接、展开折叠、截面、单位和公式求值内核仍未落地。
-2. 已实现预生产 `spatial-scene-v1` 严格 schema、规范有理数、canonical JSON/hash 和引用校验，并录入 20 道体素工程金标候选；候选题尚未经教研签名与跨领域复核，scene 也尚未进入发布链冻结，`spatial-page-v1`、教研编辑器、课堂受控状态和题型模板仍未落地。
+2. 已实现预生产 `spatial-scene-v1` 与 `spatial-page-v1` 严格 schema、规范有理数、canonical JSON/hash、单轨 revision/双轨配对、课堂 ownership、学习检查和 fallback 引用校验，并录入 20 道体素工程金标候选；候选题尚未经教研签名与跨领域复核，新 page 版本也尚未加入生产 `CoursewareDoc`、数据库/RPC 或发布链冻结，教研编辑器、课堂受控状态和题型模板仍未落地。
 3. 当前课堂 `tool_ctl` 只同步工具开关，各端工具内部状态独立，不能承载权威课程页。
 4. Terms 的 `interactive` 目前只有一个工具字符串，无法区分同一工具的活动、preset 或 release。
 5. 课件创建/保存 RPC 主要面向 `page-doc-v1`；新增版本必须严格分发，不能放宽成任意 JSON。
@@ -83,6 +83,8 @@ Mathin 建设一套“空间数学实验室”，服务从小学直观认识立�
 同日第二个增量增加 `spatial-scene-v1` 的五类 entity、相机/分层、白名单步骤、checkpoint、公式 AST、三视图可达性、来源版本、512 KiB 门和跨端 canonical SHA-256。该 schema 仍是无数据库/无路由的预生产合同；只有与 20 道金标、`spatial-page-v1`、immutable release/session freeze 和历史回放共同通过后，才能在 SML-0 标记冻结。
 
 同日第三个增量建立 20 道 `engineering-candidate` 体素题合同，覆盖 P1/P2/P3/P5 的观察、分层计数、隐藏块、染色、挖空、表面积与体积；每个期望值同时通过正式数学内核和独立测试 oracle 复核。该候选集只证明当前体素算法与人工期望一致，尚未经过教研签名，也未覆盖 P0 实体认识、P4 展开折叠和中学 M1/M2，因此不关闭 SML-0 或 SML-1。
+
+同日第四个增量增加预生产 `spatial-page-v1`：每条 page revision 只承载一个 track，双轨配对必须共享完全一致的物化 scene/hash、来源、课堂 ownership、学习检查和 fallback，只有 viewport、相机、标签和面板 presentation 可以不同。合同同时固定 16:9/4:3 比例、640 KiB 门、语义事件持久化、教师 reset 权威、学生本地探索/提交边界、服务端 pinned-kernel 形成性检查与逐 checkpoint 二维降级；生产 `CoursewareDoc` 仍显式拒绝该版本，因此该增量不构成发布链接入，也不关闭 SML-0。
 
 ## 3. 产品目标、用户与非目标
 
@@ -202,6 +204,8 @@ R3F Canvas 保持为 `next/dynamic`、`ssr:false` 的 client leaf。Server Compo
 | `spatial-attempt-v1` | 学生答案、构造结果和服务端评定 | 学生私有、教师按权限读取 |
 
 所有 schema 使用 `.strict()`、显式版本、大小/数量/深度上限和迁移适配器。旧版本永久可读；升级产生新 revision，不原地改写 release 或已冻结 session。
+
+`spatial-page-v1` 遵守现有 `cw_page_revisions.track` 模型：一个 revision 只保存一条轨道的 presentation；同一 stable page identity 下的 native/adapted 两条 head 通过 pair validator 校验，除 `track` 与 `presentation` 外的物化内容必须逐字节规范一致。这样既允许 16:9/4:3 独立布局，又阻止两轨数学模型、答案策略或课堂权限漂移。
 
 scene 同时声明 `kernelVersion` 与 `minRuntimeVersion`。部署新 runtime 前用全部历史金标和仍在保留期内的 release 做兼容回放；需要改变数学语义时发布新 scene/schema 或 kernel major，保留旧 evaluator，不能让同一 revision 因部署时间不同得到不同答案。客户端不下载或执行历史代码，所有兼容 evaluator 随受信任应用版本发布。
 
