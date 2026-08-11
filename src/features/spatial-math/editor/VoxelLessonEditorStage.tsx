@@ -29,6 +29,7 @@ import {
   type SpatialPageDoc,
   type SpatialRuntimeState,
   type VoxelLessonCamera,
+  type VoxelLessonPageBuildResult,
   type VoxelLessonPlan,
   type VoxelLessonStep,
   type VoxelSceneAdapterInput,
@@ -42,9 +43,11 @@ import {
   createVoxelLessonEditorState,
   deriveVoxelLessonEditorView,
   type VoxelLessonEditorAction,
+  type VoxelLessonEditorState,
   type VoxelLessonEditorStepView,
 } from "./voxel-lesson-editor";
 import { createVoxelLessonPreviewState } from "./voxel-lesson-preview";
+import { assertVoxelEditorStandard4x3Page } from "./voxel-editor-page-contract";
 
 export interface VoxelLessonEditorMessages extends VoxelTeachingMessages {
   readonly editorTitle: string;
@@ -92,6 +95,10 @@ export interface VoxelLessonEditorMessages extends VoxelTeachingMessages {
 export interface VoxelLessonEditorStageProps {
   readonly modelInput: VoxelSceneAdapterInput;
   readonly initialPlan?: VoxelLessonPlan;
+  readonly editorState?: VoxelLessonEditorState;
+  readonly onEditorAction?: (action: VoxelLessonEditorAction) => void;
+  readonly pageBuilder?: VoxelLessonEditorPageBuilder;
+  readonly requirePredictPrompt?: boolean;
   readonly locale: "zh" | "en";
   readonly messages: VoxelLessonEditorMessages;
   readonly onPlanChange?: (plan: VoxelLessonPlan) => void;
@@ -100,20 +107,39 @@ export interface VoxelLessonEditorStageProps {
   readonly className?: string;
 }
 
+export type VoxelLessonEditorPageBuilder = (
+  modelInput: VoxelSceneAdapterInput,
+  lessonPlan: VoxelLessonPlan,
+) => Promise<VoxelLessonPageBuildResult>;
+
 type BuiltLessonState =
   | { readonly status: "building" }
   | {
       readonly status: "ready";
       readonly key: string;
+      readonly builder: VoxelLessonEditorPageBuilder;
       readonly page: SpatialPageDoc;
       readonly compiledSteps: readonly CompiledVoxelLessonStep[];
     }
-  | { readonly status: "error"; readonly key: string };
+  | {
+      readonly status: "error";
+      readonly key: string;
+      readonly builder: VoxelLessonEditorPageBuilder;
+    };
 
 type PreviewState =
   | { readonly status: "building" }
-  | { readonly status: "ready"; readonly key: string; readonly runtime: SpatialRuntimeState }
-  | { readonly status: "error"; readonly key: string };
+  | {
+      readonly status: "ready";
+      readonly key: string;
+      readonly builder: VoxelLessonEditorPageBuilder;
+      readonly runtime: SpatialRuntimeState;
+    }
+  | {
+      readonly status: "error";
+      readonly key: string;
+      readonly builder: VoxelLessonEditorPageBuilder;
+    };
 
 const PREVIEW_ACTOR = {
   kind: "teacher-controller" as const,
@@ -148,11 +174,13 @@ function LessonTextFields({
   locale,
   messages,
   onAction,
+  requirePredictPrompt,
 }: {
   readonly step: VoxelLessonEditorStepView;
   readonly locale: "zh" | "en";
   readonly messages: VoxelLessonEditorMessages;
   readonly onAction: (action: VoxelLessonEditorAction) => void;
+  readonly requirePredictPrompt: boolean;
 }) {
   const instanceId = useId();
   const [tab, setTab] = useState({ sourceLocale: locale, activeLocale: locale });
@@ -219,7 +247,13 @@ function LessonTextFields({
   const commitPrompt = (fieldLocale: "zh" | "en", currentValue: string) => {
     const value = fields.values.prompt[fieldLocale].trim();
     const field = `prompt-${fieldLocale}`;
-    const error = validatePlainText(value, VOXEL_LESSON_LIMITS.maxTextCharacters, false, messages)
+    const promptIsRequired = requirePredictPrompt && step.kind === "predict" && fieldLocale === "zh";
+    const error = validatePlainText(
+      value,
+      VOXEL_LESSON_LIMITS.maxTextCharacters,
+      promptIsRequired,
+      messages,
+    )
       ?? (fieldLocale === "en" && value && !step.teacherPrompt?.zh
         ? messages.chineseRequiredBeforeEnglish
         : null);
@@ -249,6 +283,7 @@ function LessonTextFields({
         const promptFallbackId = fieldLocale === "en" && !step.teacherPrompt?.en && step.teacherPrompt?.zh
           ? `${promptId}-fallback`
           : null;
+        const promptRequired = requirePredictPrompt && step.kind === "predict" && fieldLocale === "zh";
         return (
           <TabsContent key={fieldLocale} value={fieldLocale} className="space-y-3">
             <div className="space-y-1.5">
@@ -277,6 +312,7 @@ function LessonTextFields({
                 maxLength={VOXEL_LESSON_LIMITS.maxTextCharacters}
                 className="min-h-24"
                 aria-invalid={Boolean(promptError)}
+                aria-required={promptRequired || undefined}
                 aria-describedby={describedBy(promptFallbackId, promptError ? `${promptId}-error` : null)}
                 onChange={(event) => updateField("prompt", fieldLocale, event.currentTarget.value)}
                 onBlur={() => commitPrompt(fieldLocale, prompt)}
@@ -382,6 +418,10 @@ function CheckpointPromptFields({
 export function VoxelLessonEditorStage({
   modelInput,
   initialPlan,
+  editorState,
+  onEditorAction,
+  pageBuilder,
+  requirePredictPrompt = false,
   locale,
   messages,
   onPlanChange,
@@ -389,63 +429,105 @@ export function VoxelLessonEditorStage({
   materialColors,
   className,
 }: VoxelLessonEditorStageProps) {
-  const [editor, setEditor] = useState(() =>
+  const [uncontrolledEditor, setUncontrolledEditor] = useState(() =>
     createVoxelLessonEditorState(initialPlan, modelInput.teacherPrompt),
   );
+  const editor = editorState ?? uncontrolledEditor;
   const [builtLesson, setBuiltLesson] = useState<BuiltLessonState>({ status: "building" });
   const [preview, setPreview] = useState<PreviewState>({ status: "building" });
   const instanceId = useId();
-  const onReadyPageRef = useRef(onReadyPage);
   const view = useMemo(() => deriveVoxelLessonEditorView(editor), [editor]);
+  const buildPage = pageBuilder ?? buildVoxelLessonPage;
   const buildKey = useMemo(
     () => canonicalJsonStringify({ modelInput, lessonPlan: editor.plan }),
     [editor.plan, modelInput],
   );
-  const previewKey = `${buildKey}\n${editor.selectedStepId}`;
-  const readyLesson = builtLesson.status === "ready" && builtLesson.key === buildKey
+  const readyLesson = builtLesson.status === "ready"
+    && builtLesson.key === buildKey
+    && builtLesson.builder === buildPage
     ? builtLesson
     : null;
-  const readyPreview = preview.status === "ready" && preview.key === previewKey
+  const previewKey = `${buildKey}\n${readyLesson?.page.sceneHash ?? "pending"}\n${editor.selectedStepId}`;
+  const readyPreview = preview.status === "ready"
+    && preview.key === previewKey
+    && preview.builder === buildPage
     ? preview
     : null;
   const previewFailed = (
-    builtLesson.status === "error" && builtLesson.key === buildKey
+    builtLesson.status === "error"
+    && builtLesson.key === buildKey
+    && builtLesson.builder === buildPage
   ) || (
-    preview.status === "error" && preview.key === previewKey
+    preview.status === "error"
+    && preview.key === previewKey
+    && preview.builder === buildPage
   );
   const previewStatus = previewFailed ? "error" : readyLesson && readyPreview ? "ready" : "building";
   const previousSelectionRef = useRef(editor.selectedStepId);
   const apply = useCallback((action: VoxelLessonEditorAction) => {
-    setEditor((current) => applyVoxelLessonEditorAction(current, action));
-  }, []);
+    if (editorState !== undefined) {
+      onEditorAction?.(action);
+      return;
+    }
+    setUncontrolledEditor((current) => applyVoxelLessonEditorAction(current, action));
+  }, [editorState, onEditorAction]);
+  const completeLessonBuild = useEffectEvent((
+    requestKey: string,
+    requestBuilder: VoxelLessonEditorPageBuilder,
+    built: VoxelLessonPageBuildResult | null,
+  ) => {
+    if (requestKey !== buildKey || requestBuilder !== buildPage) return;
+    if (!built) {
+      setBuiltLesson({ status: "error", key: requestKey, builder: requestBuilder });
+      return;
+    }
+    try {
+      assertVoxelEditorStandard4x3Page(built.page);
+    } catch {
+      setBuiltLesson({ status: "error", key: requestKey, builder: requestBuilder });
+      return;
+    }
+    setBuiltLesson({
+      status: "ready",
+      key: requestKey,
+      builder: requestBuilder,
+      page: built.page,
+      compiledSteps: built.compiledSteps,
+    });
+    onReadyPage?.(built.page);
+  });
   const startLessonBuild = useEffectEvent((requestKey: string) => {
     let active = true;
-    void buildVoxelLessonPage(modelInput, editor.plan)
+    const requestBuilder = buildPage;
+    void requestBuilder(modelInput, editor.plan)
       .then((built) => {
         if (!active) return;
-        setBuiltLesson({
-          status: "ready",
-          key: requestKey,
-          page: built.page,
-          compiledSteps: built.compiledSteps,
-        });
-        onReadyPageRef.current?.(built.page);
+        completeLessonBuild(requestKey, requestBuilder, built);
       })
       .catch(() => {
-        if (active) setBuiltLesson({ status: "error", key: requestKey });
+        if (active) completeLessonBuild(requestKey, requestBuilder, null);
       });
     return () => {
       active = false;
     };
   });
+  const completeLessonPreview = useEffectEvent((
+    requestKey: string,
+    requestBuilder: VoxelLessonEditorPageBuilder,
+    runtime: SpatialRuntimeState | null,
+  ) => {
+    if (requestKey !== previewKey || requestBuilder !== buildPage || !readyLesson) return;
+    if (requestBuilder !== readyLesson.builder) return;
+    if (!runtime) {
+      setPreview({ status: "error", key: requestKey, builder: requestBuilder });
+      return;
+    }
+    setPreview({ status: "ready", key: requestKey, builder: requestBuilder, runtime });
+  });
 
   useEffect(() => {
     onPlanChange?.(editor.plan);
   }, [editor.plan, onPlanChange]);
-
-  useEffect(() => {
-    onReadyPageRef.current = onReadyPage;
-  }, [onReadyPage]);
 
   useEffect(() => {
     if (previousSelectionRef.current === editor.selectedStepId) return;
@@ -455,21 +537,23 @@ export function VoxelLessonEditorStage({
 
   useEffect(() => {
     return startLessonBuild(buildKey);
-  }, [buildKey]);
+  }, [buildKey, pageBuilder]);
 
   useEffect(() => {
     if (!readyLesson) return;
     let active = true;
+    const requestKey = previewKey;
+    const requestBuilder = readyLesson.builder;
     void createVoxelLessonPreviewState(
       readyLesson.page,
       readyLesson.compiledSteps,
       editor.selectedStepId,
     )
       .then((runtime) => {
-        if (active) setPreview({ status: "ready", key: previewKey, runtime });
+        if (active) completeLessonPreview(requestKey, requestBuilder, runtime);
       })
       .catch(() => {
-        if (active) setPreview({ status: "error", key: previewKey });
+        if (active) completeLessonPreview(requestKey, requestBuilder, null);
       });
     return () => {
       active = false;
@@ -589,7 +673,13 @@ export function VoxelLessonEditorStage({
               <CardDescription>{messages.formatStepKind(selected.kind)}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 p-4 pt-0">
-              <LessonTextFields step={selected} locale={locale} messages={messages} onAction={apply} />
+              <LessonTextFields
+                step={selected}
+                locale={locale}
+                messages={messages}
+                onAction={apply}
+                requirePredictPrompt={requirePredictPrompt}
+              />
               {selected.kind === "layer-scan" && layerStep?.kind === "layer-scan" ? (
                 <div className="space-y-2 border-t border-line pt-3">
                   <p className="text-xs font-medium text-muted">{messages.layerOrder}</p>

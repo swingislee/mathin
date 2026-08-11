@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
   AXES,
   SPATIAL_VOXEL_LIMITS,
+  canonicalJsonStringify,
   compareVoxelCoordinates,
   parseVoxelSceneAdapterInput,
   voxelKey,
@@ -352,4 +353,14 @@ export function deriveVoxelTemplateEditorView(state: VoxelTemplateEditorState): 
 
 export function voxelTemplateAdapterInput(state: VoxelTemplateEditorState): VoxelSceneAdapterInput {
   return parseVoxelSceneAdapterInput(state.draft);
+}
+
+export function voxelTemplateEditorPreviewKey(
+  draftValue: unknown,
+  builder: "default" | "injected",
+): string {
+  return canonicalJsonStringify({
+    builder,
+    draft: parseVoxelSceneAdapterInput(draftValue),
+  });
 }

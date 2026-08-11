@@ -1,10 +1,10 @@
 import { canonicalSha256 } from "./canonical-json";
 import { parseSpatialScene, type SpatialSceneAction } from "./scene-schema";
 import {
-  buildVoxelCountingScene,
+  compileVoxelCountingScene,
   materializeVoxelCountingPage,
   type VoxelCountingPageBuildResult,
-  type VoxelCountingSceneBuildResult,
+  type VoxelCountingSceneCompileResult,
 } from "./voxel-scene-adapter";
 import { parseVoxelSceneAdapterInput } from "./voxel-scene-adapter-schema";
 import {
@@ -18,9 +18,13 @@ export interface CompiledVoxelLessonStep {
   readonly sceneStepIds: readonly string[];
 }
 
-export interface VoxelLessonSceneBuildResult extends VoxelCountingSceneBuildResult {
+export interface VoxelLessonSceneCompileResult extends VoxelCountingSceneCompileResult {
   readonly lessonPlan: VoxelLessonPlan;
   readonly compiledSteps: readonly CompiledVoxelLessonStep[];
+}
+
+export interface VoxelLessonSceneBuildResult extends VoxelLessonSceneCompileResult {
+  readonly sceneHash: string;
 }
 
 export interface VoxelLessonPageBuildResult extends VoxelLessonSceneBuildResult {
@@ -42,12 +46,12 @@ function ordinalTitle(step: VoxelLessonStep, canonicalIndex: number) {
   };
 }
 
-export async function buildVoxelLessonScene(
+export function compileVoxelLessonScene(
   inputValue: unknown,
   lessonValue: unknown,
-): Promise<VoxelLessonSceneBuildResult> {
+): VoxelLessonSceneCompileResult {
   const input = parseVoxelSceneAdapterInput(inputValue);
-  const built = await buildVoxelCountingScene(input);
+  const built = compileVoxelCountingScene(input);
   const lessonPlan = parseVoxelLessonPlan(lessonValue);
   const layerIds = built.scene.presentation.layers.map((layer) => layer.id);
   const compiledSteps: CompiledVoxelLessonStep[] = [];
@@ -112,9 +116,25 @@ export async function buildVoxelLessonScene(
   return {
     ...built,
     scene,
-    sceneHash: await canonicalSha256(scene),
     lessonPlan,
     compiledSteps,
+  };
+}
+
+export async function buildVoxelLessonScene(
+  inputValue: unknown,
+  lessonValue: unknown,
+): Promise<VoxelLessonSceneBuildResult> {
+  const compiled = compileVoxelLessonScene(inputValue, lessonValue);
+  return {
+    adapterVersion: compiled.adapterVersion,
+    scene: compiled.scene,
+    sceneHash: await canonicalSha256(compiled.scene),
+    totalCount: compiled.totalCount,
+    layerCounts: compiled.layerCounts,
+    projections: compiled.projections,
+    lessonPlan: compiled.lessonPlan,
+    compiledSteps: compiled.compiledSteps,
   };
 }
 

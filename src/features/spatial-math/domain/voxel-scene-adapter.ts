@@ -15,13 +15,16 @@ import {
   type VoxelSceneAdapterInput,
 } from "./voxel-scene-adapter-schema";
 
-export interface VoxelCountingSceneBuildResult {
+export interface VoxelCountingSceneCompileResult {
   readonly adapterVersion: typeof VOXEL_SCENE_ADAPTER_VERSION;
   readonly scene: SpatialScene;
-  readonly sceneHash: string;
   readonly totalCount: number;
   readonly layerCounts: readonly { readonly coordinate: number; readonly count: number }[];
   readonly projections: readonly OrthographicProjection[];
+}
+
+export interface VoxelCountingSceneBuildResult extends VoxelCountingSceneCompileResult {
+  readonly sceneHash: string;
 }
 
 export interface VoxelCountingPageBuildResult extends VoxelCountingSceneBuildResult {
@@ -71,7 +74,7 @@ function modelCenter(input: VoxelSceneAdapterInput) {
   };
 }
 
-export async function buildVoxelCountingScene(inputValue: unknown): Promise<VoxelCountingSceneBuildResult> {
+export function compileVoxelCountingScene(inputValue: unknown): VoxelCountingSceneCompileResult {
   const input = parseVoxelSceneAdapterInput(inputValue);
   const voxels = createVoxelSet(input.cells);
   const layerCounts = countVoxelLayers(voxels, input.layerAxis);
@@ -180,10 +183,21 @@ export async function buildVoxelCountingScene(inputValue: unknown): Promise<Voxe
   return {
     adapterVersion: VOXEL_SCENE_ADAPTER_VERSION,
     scene,
-    sceneHash: await canonicalSha256(scene),
     totalCount: voxels.size,
     layerCounts,
     projections,
+  };
+}
+
+export async function buildVoxelCountingScene(inputValue: unknown): Promise<VoxelCountingSceneBuildResult> {
+  const compiled = compileVoxelCountingScene(inputValue);
+  return {
+    adapterVersion: compiled.adapterVersion,
+    scene: compiled.scene,
+    sceneHash: await canonicalSha256(compiled.scene),
+    totalCount: compiled.totalCount,
+    layerCounts: compiled.layerCounts,
+    projections: compiled.projections,
   };
 }
 

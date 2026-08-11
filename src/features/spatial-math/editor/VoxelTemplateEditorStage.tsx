@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useMemo, useState } from "react";
 import { Box, Layers3, Redo2, RotateCcw, Undo2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,9 +21,12 @@ import {
   applyVoxelTemplateEditorAction,
   createVoxelTemplateEditorState,
   deriveVoxelTemplateEditorView,
+  voxelTemplateEditorPreviewKey,
   type VoxelTemplateEditorAction,
   type VoxelTemplateEditorBounds,
+  type VoxelTemplateEditorState,
 } from "./voxel-template-editor";
+import { assertVoxelEditorStandard4x3Page } from "./voxel-editor-page-contract";
 
 export interface VoxelTemplateEditorMessages extends VoxelRendererMessages {
   readonly editorTitle: string;
@@ -50,6 +53,9 @@ export interface VoxelTemplateEditorMessages extends VoxelRendererMessages {
 export interface VoxelTemplateEditorStageProps {
   readonly initialInput: VoxelSceneAdapterInput;
   readonly bounds?: VoxelTemplateEditorBounds;
+  readonly editorState?: VoxelTemplateEditorState;
+  readonly onEditorAction?: (action: VoxelTemplateEditorAction) => void;
+  readonly pageBuilder?: VoxelTemplateEditorPageBuilder;
   readonly locale: "zh" | "en";
   readonly messages: VoxelTemplateEditorMessages;
   readonly onDraftChange?: (draft: VoxelSceneAdapterInput) => void;
@@ -58,14 +64,28 @@ export interface VoxelTemplateEditorStageProps {
   readonly className?: string;
 }
 
+export type VoxelTemplateEditorPageBuilder = (
+  draft: VoxelSceneAdapterInput,
+) => Promise<{ readonly page: SpatialPageDoc }>;
+
 type PreviewState =
-  | { readonly status: "building" }
+  | {
+      readonly status: "building";
+      readonly key: string;
+      readonly builder: VoxelTemplateEditorPageBuilder;
+    }
   | {
       readonly status: "ready";
+      readonly key: string;
+      readonly builder: VoxelTemplateEditorPageBuilder;
       readonly page: SpatialPageDoc;
       readonly runtime: ReturnType<typeof createInitialSpatialRuntimeState>;
     }
-  | { readonly status: "error" };
+  | {
+      readonly status: "error";
+      readonly key: string;
+      readonly builder: VoxelTemplateEditorPageBuilder;
+    };
 
 function localizedText(input: { readonly zh: string; readonly en?: string }, locale: "zh" | "en"): string {
   return locale === "en" ? input.en ?? input.zh : input.zh;
@@ -74,6 +94,9 @@ function localizedText(input: { readonly zh: string; readonly en?: string }, loc
 export function VoxelTemplateEditorStage({
   initialInput,
   bounds,
+  editorState,
+  onEditorAction,
+  pageBuilder,
   locale,
   messages,
   onDraftChange,
@@ -81,43 +104,77 @@ export function VoxelTemplateEditorStage({
   materialColors,
   className,
 }: VoxelTemplateEditorStageProps) {
-  const [editor, setEditor] = useState(() => createVoxelTemplateEditorState(initialInput, bounds));
-  const [preview, setPreview] = useState<PreviewState>({ status: "building" });
-  const onReadyPageRef = useRef(onReadyPage);
+  const [uncontrolledEditor, setUncontrolledEditor] = useState(() =>
+    createVoxelTemplateEditorState(initialInput, bounds),
+  );
+  const editor = editorState ?? uncontrolledEditor;
   const view = useMemo(() => deriveVoxelTemplateEditorView(editor), [editor]);
   const draft = editor.draft;
+  const buildPage = pageBuilder ?? buildVoxelCountingPage;
+  const buildKey = useMemo(
+    () => voxelTemplateEditorPreviewKey(draft, pageBuilder ? "injected" : "default"),
+    [draft, pageBuilder],
+  );
+  const [preview, setPreview] = useState<PreviewState>(() => ({
+    status: "building",
+    key: buildKey,
+    builder: buildPage,
+  }));
+  const previewIsCurrent = preview.key === buildKey && preview.builder === buildPage;
+  const readyPreview = previewIsCurrent && preview.status === "ready" ? preview : null;
+  const previewStatus = previewIsCurrent ? preview.status : "building";
+  const completePreviewBuild = useEffectEvent((
+    requestKey: string,
+    requestBuilder: VoxelTemplateEditorPageBuilder,
+    built: { readonly page: SpatialPageDoc } | null,
+  ) => {
+    if (requestKey !== buildKey || requestBuilder !== buildPage) return;
+    if (!built) {
+      setPreview({ status: "error", key: requestKey, builder: requestBuilder });
+      return;
+    }
+    try {
+      assertVoxelEditorStandard4x3Page(built.page);
+    } catch {
+      setPreview({ status: "error", key: requestKey, builder: requestBuilder });
+      return;
+    }
+    const ready = {
+      status: "ready" as const,
+      key: requestKey,
+      builder: requestBuilder,
+      page: built.page,
+      runtime: createInitialSpatialRuntimeState(built.page),
+    };
+    setPreview(ready);
+    onReadyPage?.(built.page);
+  });
   const apply = useCallback((action: VoxelTemplateEditorAction) => {
-    setEditor((current) => applyVoxelTemplateEditorAction(current, action));
-  }, []);
+    if (editorState !== undefined) {
+      onEditorAction?.(action);
+      return;
+    }
+    setUncontrolledEditor((current) => applyVoxelTemplateEditorAction(current, action));
+  }, [editorState, onEditorAction]);
 
   useEffect(() => {
     onDraftChange?.(draft);
   }, [draft, onDraftChange]);
 
   useEffect(() => {
-    onReadyPageRef.current = onReadyPage;
-  }, [onReadyPage]);
-
-  useEffect(() => {
     let active = true;
-    void buildVoxelCountingPage(draft)
+    void buildPage(draft)
       .then((built) => {
         if (!active) return;
-        const ready = {
-          status: "ready" as const,
-          page: built.page,
-          runtime: createInitialSpatialRuntimeState(built.page),
-        };
-        setPreview(ready);
-        onReadyPageRef.current?.(built.page);
+        completePreviewBuild(buildKey, buildPage, built);
       })
       .catch(() => {
-        if (active) setPreview({ status: "error" });
+        if (active) completePreviewBuild(buildKey, buildPage, null);
       });
     return () => {
       active = false;
     };
-  }, [draft]);
+  }, [buildKey, buildPage, draft]);
 
   const title = localizedText(draft.title, locale);
   const learningGoal = localizedText(draft.learningGoal, locale);
@@ -252,9 +309,9 @@ export function VoxelTemplateEditorStage({
             <div>
               <CardTitle className="text-base">{messages.previewLabel}</CardTitle>
               <CardDescription>
-                {preview.status === "ready"
+                {previewStatus === "ready"
                   ? messages.previewReady
-                  : preview.status === "error"
+                  : previewStatus === "error"
                     ? messages.previewError
                     : messages.previewBuilding}
               </CardDescription>
@@ -263,11 +320,11 @@ export function VoxelTemplateEditorStage({
           </CardHeader>
           <CardContent className="p-4 pt-0">
             <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-line bg-paper" data-editor-preview="standard-4x3">
-              {preview.status === "ready" ? (
+              {readyPreview ? (
                 <VoxelView
                   className="absolute inset-0 h-full aspect-auto rounded-none border-0 shadow-none"
-                  page={preview.page}
-                  state={preview.runtime}
+                  page={readyPreview.page}
+                  state={readyPreview.runtime}
                   entityId={draft.entityId}
                   locale={locale}
                   readOnly
@@ -276,7 +333,7 @@ export function VoxelTemplateEditorStage({
                 />
               ) : (
                 <div className="grid h-full place-items-center p-6 text-center text-sm text-muted" role="status">
-                  {preview.status === "error" ? messages.previewError : messages.previewBuilding}
+                  {previewStatus === "error" ? messages.previewError : messages.previewBuilding}
                 </div>
               )}
             </div>
@@ -284,7 +341,7 @@ export function VoxelTemplateEditorStage({
         </Card>
       </div>
       <p className="sr-only" aria-live="polite">
-        {messages.formatCounts(view.totalCount, view.activeLayerCount)} · {preview.status === "ready" ? messages.previewReady : preview.status === "error" ? messages.previewError : messages.previewBuilding}
+        {messages.formatCounts(view.totalCount, view.activeLayerCount)} · {previewStatus === "ready" ? messages.previewReady : previewStatus === "error" ? messages.previewError : messages.previewBuilding}
       </p>
     </section>
   );

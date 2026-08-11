@@ -57,7 +57,7 @@ Mathin 建设一套“空间数学实验室”，服务从小学直观认识立�
 ### 2.2 当前缺口
 
 1. 2026-08-11 已建立无生产依赖的体素、正方体展开图和多面体拓扑/几何 spike：体素覆盖整数坐标、分层、六向投影、隐藏块、连通分量、封闭空腔、内外表面和染色分类；展开图覆盖单位方格网规范化、自由多连方枚举和正方体 90° 精确折叠；通用多面体覆盖显式顶点/棱/有序面、闭合可定向球面壳、精确有理数顶点位置、面法向/共面性、相对面确认、铰链生成树、整数平面布局、自交/面重叠、目标二面角反解、层级三维刚体变换、最终闭合误差、确定性采样的非相邻面碰撞，以及自包含场景/4:3 页面/runtime 合同适配。连续时间碰撞无漏检证明、相邻面异常穿透、截面、完整单位检查和参数/函数求值内核仍未落地。
-2. 已实现未接生产链的本地 `spatial-scene-v1`、4:3 原生优先的 `spatial-page-v1`、`spatial-runtime-state-v1`、`spatial-command-v1`、学生私有 `spatial-attempt-v1`、多面体系列严格 schema、单写者 reducer、确定性重放与 pinned-kernel 作答判定，并录入 20 道体素和 11 种正方体展开图工程金标候选；本地 `voxel-template-editor-v1` 与 `voxel-lesson-editor-v1` spike 已存在，但候选题尚未经教研签名与跨领域复核，Studio 集成、可复用题型模板库、生产 `CoursewareDoc`、数据库/RPC/RLS、课堂 transport 和发布链冻结仍未落地。
+2. 已实现未接生产链的本地 `spatial-scene-v1`、4:3 原生优先的 `spatial-page-v1`、`spatial-runtime-state-v1`、`spatial-command-v1`、学生私有 `spatial-attempt-v1`、多面体系列严格 schema、单写者 reducer、确定性重放与 pinned-kernel 作答判定，并录入 20 道体素和 11 种正方体展开图工程金标候选；本地 `voxel-template-editor-v1`、`voxel-lesson-editor-v1`、`voxel-authoring-draft-v1` 与 `voxel-authoring-workflow-v1` spike 已存在，但候选题尚未经教研签名与跨领域复核，Studio 集成、可复用题型模板库、生产 `CoursewareDoc`、数据库/RPC/RLS、课堂 transport 和发布链冻结仍未落地。
 3. 当前课堂 `tool_ctl` 只同步工具开关，各端工具内部状态独立，不能承载权威课程页。
 4. Terms 的 `interactive` 目前只有一个工具字符串，无法区分同一工具的活动、preset 或 release。
 5. 课件创建/保存 RPC 主要面向 `page-doc-v1`；新增版本必须严格分发，不能放宽成任意 JSON。
@@ -116,6 +116,8 @@ Mathin 建设一套“空间数学实验室”，服务从小学直观认识立�
 同日第十六个增量增加未接生产链的本地 `voxel-template-editor-v1`。纯编辑控制器把教研操作限制为层轴、层号和二维格点画笔，确定性映射到稳定排序的三维整数体素；支持最多 50 步撤销/重做、恢复初始模板、边界/最后一个体素/场景上限拒绝和 2,000 体素性能提示。client 叶子只使用既有 shadcn 控件，左侧按层增删单位块，右侧即时物化与教学 runtime 相同的 1200×900 `standard-4x3` 页面并复用 3D/fallback renderer；教研无需输入 JSON、代码或三维坐标。专项合同增至 17 个文件/128 项并通过。该编辑器尚未接 Studio 路由、草稿保存、评审发布、数据库/RPC/RLS 或课堂纵向链，因此仍是算法/UI spike，不关闭 SML-0、SML-1 或 SML-2。
 
 同日第十七个增量增加未接生产链的本地 `voxel-lesson-plan-v1`、lesson compiler、`voxel-lesson-editor-v1` 和选中步骤预览。严格 plan 只允许“预测 → 1～3 个唯一正交视图 → 逐层 → 验证”，逐层宏按当前模型即时展开而不保存易漂移的 layer ID；每个编译步骤都完整设置相机和全部层显隐，可从任意 runtime 状态直接应用。默认 plan 复用当前 `voxel-scene-adapter-v1` 的模型、呈现、步骤与检查点，但由新 lesson 合同独立物化步骤提示元数据和 scene hash，不改变旧 adapter 的既有输出；升序/降序标题均引用真实层号，共享步骤语义判断收口了 renderer/controller 对 `step.layer.*` 和 `step.verify` 的答案揭示边界。教研可用 shadcn 控件重排/增删视图、设置升降层序、编辑双语标题和提示，以及修改固定总数检查点的双语题干、必做状态和 1～10 次提交上限；检查点 ID、numeric/integer 类型、`voxel.total` evaluator、`after-submit` 和二维 fallback 不可改写。英文缺失保持显式中文回退，英文提示不能反向污染中文，非法/过长文本保留 last-good 预览并给出行内错误。右侧唯一 1200×900 `standard-4x3` 预览复用只读课堂教学舞台并通过真实 reducer 跳到选中的逻辑步骤；page 构建与步骤预览分离，异步旧结果不会覆盖新编辑或重复触发 page 回调。专项合同增至 18 个文件/140 项并通过。该增量未接 Studio、生产 CoursewareDoc、保存/评审/发布或课堂 transport，仍不关闭 SML-0、SML-1 或 SML-2。
+
+同日第十八个增量把体素模型与教学编排收口为未接生产链的本地统一创作草稿和组合工作流。严格 `voxel-authoring-draft-v1` 只保存 model 与 lesson，使用 canonical UTF-8 512 KiB 上限和确定性 SHA-256，不保存 page、scene hash、runtime、编译步骤或 preset；lesson 的预测提示是唯一权威，旧 model 字段只保留同步镜像，模型或 lesson 替换必须整体解析后原子提交。scene/lesson adapter 提取不含 hash 的同步 compiler 供草稿保存前精确预检，99 层的超预算展开会稳定拒绝，85 层固定边界向量可完成 4:3 page 构建；旧 async builder 只为同一 scene 补 SHA-256，既有 base/lesson hash 不变。`voxel-authoring-workflow-v1` 复用两个既有纯编辑 reducer，在模型/教案面板往返时保留各自选择、历史与双语内容；模型删层后逐层宏从当前规范层重新展开，不残留旧 layer ID。未挂载的 shadcn Tabs 组合叶子一次只挂载一个编辑器和一个 4:3 舞台，模型与教案预览都委托同一 unified draft 构建唯一 1200×900 `standard-4x3` page；canonical request key、scene hash 与 builder 身份共同阻止慢旧请求回显或向外触发过期 page，编辑器完成边界也拒绝宽屏或非 1200×900 的注入页。专项合同增至 20 个文件/154 项并通过。该增量没有新增 messages、路由、registry、数据库、生产 `CoursewareDoc`、Studio、发布/freeze 或课堂 transport，仍不关闭 SML-0、SML-1 或 SML-2。
 
 ## 3. 产品目标、用户与非目标
 
