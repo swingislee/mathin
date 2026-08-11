@@ -44,7 +44,7 @@ Mathin 是一个中英双语（zh/en，中文为默认语言）、以 Terms 为�
 - Node.js >= 20.9（当前开发环境 Node.js 22），TypeScript >= 5.1，pnpm。
 - **Next.js 锁定稳定版 16.2.11**（App Router、React 19、Turbopack 默认构建器）。禁止使用 16.3 canary/preview。
 - Tailwind CSS 4、next-intl、Supabase SSR、shadcn/ui（`components.json`）。
-- 已有 Vitest、CI 静态/构建审计、数据库重建与 RLS/安全检查；正式浏览器 E2E 框架仍在 R1-14 建设。需要 `.env.local`（从 `.env.example` 复制），填入自托管 Supabase 的 URL 与 publishable key。
+- 已有 Vitest、CI 静态/构建审计、数据库重建与 RLS/安全检查；R1-14 已建立正式 Playwright 配置与 fail-closed release runner，发布目标、写态、zh/en、跨浏览器和连续无 flaky 矩阵仍待完成。需要 `.env.local`（从 `.env.example` 复制），填入自托管 Supabase 的 URL 与 publishable key。
 - 路由边界逻辑写在 `src/proxy.ts`（导出 `proxy`），**禁止新增 `middleware.ts`**——它在 Next.js 16 中已废弃。
 
 ### UI 组件约束
@@ -91,10 +91,14 @@ pnpm dev        # 开发服务器 0.0.0.0:3130（局域网：http://192.168.5.21
 pnpm lint       # eslint . —— Next.js 16 的 next build 不再执行 lint
 pnpm typecheck  # tsc --noEmit
 pnpm build
-pnpm test       # 全量 Vitest；当前提交态基线 64 个文件、386/386 通过
+pnpm test       # 全量 Vitest；当前提交态基线 71 个文件、444/444 通过
 pnpm plan:audit # 00～25 状态头、索引与唯一阶段审计
 pnpm ci:checks  # 本地复现 CI checks job 的全部门禁（清单从 ci.yml 解析），推送前跑一次
-pnpm r1:test    # R1 定向合同诊断；当前基线 17 个文件、112/112 通过
+pnpm r1:test    # R1 定向合同诊断；当前基线 18 个文件、121/121 通过
+pnpm secrets:check   # 当前跟踪树、binary ASCII 与高风险容器 secret scan
+pnpm secrets:history # 完整可达 Git 历史 high-confidence secret scan
+pnpm e2e        # 本地/开发目标 Playwright；复用固定开发账号，不注册新账号
+pnpm e2e:release # 仅允许明确非生产 target attestation，缺角色/skip/flaky 均失败
 ```
 
 CI 的 checks job 不 fail-fast：所有静态门禁一次跑完再判定，`pnpm ci:checks` 行为一致，因此一次运行就能看到全部失败，不要只跑单个审计就推送。

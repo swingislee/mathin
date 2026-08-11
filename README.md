@@ -30,7 +30,12 @@ pnpm lint
 pnpm typecheck
 pnpm build
 pnpm plan:audit
-pnpm test # 全量诊断；commit cbb2a0f 已将本轮修复前 19 项清零，当前提交态 64 文件、386/386 全绿
+pnpm test             # 全量诊断；当前提交态 71 文件、444/444 全绿
+pnpm r1:test          # R1 定向合同；18 文件、121/121 全绿
+pnpm secrets:check    # 当前跟踪树与 binary ASCII 高置信 secret 扫描
+pnpm secrets:history  # 完整可达 Git 历史 high-confidence secret 扫描
+pnpm e2e              # 本地/开发目标 Playwright；固定账号从 Git 忽略文件读取
+pnpm e2e:release      # 仅在明确非生产 target attestation 下运行的 fail-closed 发布套件
 ```
 
 正式 1.0 发布前会在隔离副本演练数据初始化：生产最终仅保留唯一管理员，清除测试账号、班级、订单及依赖运营数据；完整保留 E 系列 1135 讲与爱学习 G+ 秋季 52 讲的 16:9/4:3 资源，为 1187 个 lecture 的两条轨道重建 2374 条 `release_no=1`。除规划规定的演练/发布阶段和人工授权外，不得执行该清理。

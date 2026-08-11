@@ -1,0 +1,8 @@
+gate_id=R1-14-NON-MODULE-PLAYWRIGHT-BASELINE-20260812
+result=pending; local non-module Chromium baseline passed, release target attestation and remaining matrices are pending
+implementation_commits=0d55044,8e5c076
+environment=local loopback plus RFC1918 LAN development target; fixed Git-ignored development accounts; not production
+validation=static Playwright/target/scanner contracts 16/16; ESLint and TypeScript passed; Playwright listed exactly 9 tests; real Chromium 8/9 then Notebook product fix ffe3ec6 rerun 1/1, giving green evidence for all 9; release runner without target attestation failed closed
+coverage=anonymous auth and Notebook boundaries; invalid credentials; LAN health/redirect; student learning portal and staff-route rejection; parent children; teacher classes; private and public Notebook reads
+privacy=the first failing run used the earlier retention policy, and its temporary artifact was deleted and never committed; after 8e5c076 fixed-account trace,screenshot,video are permanently off; credentials read only from environment or ignored local account file; no account registration
+pending=explicit non-production release target origin/fingerprint/LAN attestation; zero-skip release rerun; write-state business journeys; zh/en; cross-browser; three consecutive no-flake runs

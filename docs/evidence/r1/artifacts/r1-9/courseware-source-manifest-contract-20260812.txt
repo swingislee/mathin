@@ -1,0 +1,8 @@
+gate_id=R1-9-COURSEWARE-SOURCE-MANIFEST-CONTRACT-20260812
+result=pending; E1/E2 contract passed, approved read-only production-source inventory E3 remains pending
+implementation_commits=0cd8b13,f4a7444
+environment=local Windows Node.js 22; plan-only; no network, database, SQL, cleanup, release, or production connection
+validation=planner v2 example returned example/incomplete blockers; complete 1187-lecture/2374-release fixture passed; targeted Vitest 10/10; TypeScript, ESLint, node syntax, schema/example parse passed
+plan_hash=0a671f38a104070c37688a5e85b1dfa92449583844c76e5d369412abe6672cdf
+guards=fixed 90-course/1135-lecture E roster; 4-course/52-lecture Aixuexi roster; exact two tracks; learningCheckEnabled snapshot; readable local cw-objects/cw-h5 inventories; approved E adapted background; URI/UNC/root/symlink escape rejected; stageClosureAllowed=false
+pending=approved read-only 1187-row real inventory; real cw-objects/cw-h5 object audit; non-executor review; R1-15 isolated drill; R1-18 authorization

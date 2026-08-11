@@ -1,0 +1,9 @@
+gate_id=NOTEBOOK-R1-11-PUBLICATION-LIFECYCLE-20260812
+result=pass for E1/E2 lifecycle and database boundary; full write-state release E2E and visual sign-off remain pending
+implementation_commits=8c9cb8c,ffe3ec6
+migrations=20260812000200_r1_notebook_publication_lifecycle.sql,20260812000300_r1_notebook_lifecycle_security_followup.sql
+environment=xiaomi self-hosted development Supabase; not production
+validation=both migrations passed BEGIN/ROLLBACK preflight before development apply; R1 DB audit 13/13; Notebook Vitest 6/6; TypeScript and targeted ESLint passed; messages 3808 keys x2; initialization manifest and generated database types passed; /zh/notebook/me Chromium rerun 1/1
+contracts=draft-review-published-withdrawn/revised; immutable revision content fields and append-only events; admin review; platform moderation lock; archived cascade guard; NULL decisions rejected; new submissions bind locked note version/title/content and SHA-256 of title plus canonical JSON content; legacy source version may be unknown; no authenticated direct table writes
+pending=write-state browser journey private-write-submit-admin-review-public-read-interact-withdraw; cross-user/role denial; visual sign-off; remaining ordinary note CRUD ActionResult normalization
+persistent_change=development schema only; no production connection or production data mutation
