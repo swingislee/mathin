@@ -9,6 +9,8 @@ export * from "./polyhedron-topology-kernel";
 export * from "./polyhedron-topology-schema";
 export * from "./polyhedron-net-geometry-kernel";
 export * from "./polyhedron-net-geometry-schema";
+export * from "./polyhedron-fold-simulation-kernel";
+export * from "./polyhedron-fold-simulation-schema";
 export * from "./runtime-schema";
 export * from "./runtime-reducer";
 export * from "./scene-schema";
