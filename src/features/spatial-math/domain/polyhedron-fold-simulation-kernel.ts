@@ -557,6 +557,12 @@ export type PolyhedronFoldTransformMatrix = readonly [
 export interface PolyhedronFoldFaceFrame {
   readonly faceId: string;
   readonly transformMatrix: PolyhedronFoldTransformMatrix;
+  /**
+   * Stable indices into `vertices`. The exact kernel owns triangulation so the
+   * renderer never has to reinterpret a mathematical face from floating mesh
+   * coordinates.
+   */
+  readonly triangleVertexIndices: readonly (readonly [number, number, number])[];
   readonly vertices: readonly { readonly vertexId: string; readonly position: PolyhedronFoldVector3 }[];
 }
 
@@ -569,6 +575,11 @@ export interface PolyhedronFoldFrame {
   readonly faces: readonly PolyhedronFoldFaceFrame[];
   readonly collisionPairs: readonly PolyhedronFoldCollisionPair[];
   readonly collisionPairsTruncated: boolean;
+}
+
+export interface PolyhedronFoldFrameResolver {
+  /** Resolve a validated progress value without reparsing and preparing the fold graph. */
+  readonly resolve: (progressInput: unknown) => PolyhedronFoldFrame;
 }
 
 export interface PolyhedronFoldTargetAngleAnalysis {
@@ -816,6 +827,7 @@ function computeFrameInternal(prepared: PreparedFold, progressMillionths: number
       return {
         faceId: face.faceId,
         transformMatrix: transformMatrix(transform),
+        triangleVertexIndices: prepared.trianglesByFaceId.get(face.faceId) ?? [],
         vertices: face.vertices.map((vertex) => ({
           vertexId: vertex.vertexId,
           position: roundedVector(applyTransform(transform, planarVector(vertex.position))),
@@ -854,18 +866,16 @@ function analyzeClosure(
   };
 }
 
-export function computePolyhedronFoldFrame(
+export function createPolyhedronFoldFrameResolver(
   topologyInput: unknown,
   geometryInput: unknown,
   hingeInput: unknown,
   layoutInput: unknown,
-  progressInput: unknown,
-): PolyhedronFoldFrame {
+): PolyhedronFoldFrameResolver {
   const topology = parsePolyhedronTopology(topologyInput);
   const geometry = parsePolyhedronGeometry(geometryInput);
   const hingeGraph = parsePolyhedronHingeGraph(hingeInput);
   const layout = parsePolyhedronNetLayout(layoutInput);
-  const progressMillionths = parsePolyhedronFoldProgress(progressInput);
   const issues: PolyhedronFoldSimulationIssue[] = [];
   if (!analyzePolyhedronGeometry(topology, geometry).validGeometry) {
     issues.push({
@@ -886,7 +896,19 @@ export function computePolyhedronFoldFrame(
     issues.push({ code, subjectId, relatedId }),
   );
   if (!prepared) throw new Error(`fold frame prerequisites failed: ${issues.map((issue) => issue.code).join(",")}`);
-  return computeFrameInternal(prepared, progressMillionths);
+  return {
+    resolve: (progressInput) => computeFrameInternal(prepared, parsePolyhedronFoldProgress(progressInput)),
+  };
+}
+
+export function computePolyhedronFoldFrame(
+  topologyInput: unknown,
+  geometryInput: unknown,
+  hingeInput: unknown,
+  layoutInput: unknown,
+  progressInput: unknown,
+): PolyhedronFoldFrame {
+  return createPolyhedronFoldFrameResolver(topologyInput, geometryInput, hingeInput, layoutInput).resolve(progressInput);
 }
 
 export function analyzePolyhedronFoldSimulation(

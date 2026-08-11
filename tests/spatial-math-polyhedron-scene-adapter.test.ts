@@ -1,9 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { coursewareDocSchema } from "@/features/courseware-doc/document";
 import {
-  POLYHEDRON_FOLD_SIMULATION_VERSION,
   POLYHEDRON_SCENE_ADAPTER_ERROR_CODES,
-  POLYHEDRON_SCENE_ADAPTER_VERSION,
   SPATIAL_PAGE_DOC_VERSION,
   buildPolyhedronFoldScene,
   canonicalSha256,
@@ -15,71 +13,10 @@ import {
   rational,
   resolvePolyhedronFoldFrameFromScene,
 } from "@/features/spatial-math/domain";
-import {
-  cubeGeometry,
-  cubeHingeGraph,
-  cubeTopology,
-  cubeUnitNetLayout,
-} from "./fixtures/spatial-polyhedron-cube";
+import { cubeHingeGraph } from "./fixtures/spatial-polyhedron-cube";
+import { cubeFoldSceneAdapterInput } from "./fixtures/spatial-polyhedron-scene";
 
-function adapterInput() {
-  return {
-    adapterVersion: POLYHEDRON_SCENE_ADAPTER_VERSION,
-    sceneId: "scene.cube-net.001",
-    entityId: "polyhedron.cube",
-    title: { zh: "正方体展开与折叠", en: "Cube nets and folding" },
-    entityLabel: { zh: "正方体", en: "Cube" },
-    localePolicy: "bilingual" as const,
-    learning: {
-      learningGoal: { zh: "通过折叠判断正方体的相对面", en: "Identify opposite cube faces by folding a net" },
-      termIds: ["nets-of-solids", "solid-figures"],
-      prerequisiteTermIds: ["solid-figures"],
-      misconceptions: [{ zh: "把展开图中相隔最远的面直接当作相对面", en: "Assuming the farthest net faces are opposite" }],
-      teacherPrompts: [{ zh: "先预测，再折到一半验证方向。", en: "Predict first, then fold halfway to check direction." }],
-    },
-    appearance: { materialToken: "solid.primary", background: "paper" as const, lighting: "flat" as const },
-    space: { unit: "unit" as const, gridStep: rational(1) },
-    topology: cubeTopology(),
-    geometry: cubeGeometry(),
-    hingeGraph: cubeHingeGraph(),
-    layout: cubeUnitNetLayout(),
-    simulationRequest: {
-      simulationVersion: POLYHEDRON_FOLD_SIMULATION_VERSION,
-      sampleProgressMillionths: [0, 250_000, 500_000, 750_000, 1_000_000],
-      closureToleranceMicrounits: 5,
-    },
-    faceLabels: [
-      { faceId: "face.x.neg", label: { zh: "左面", en: "Left" } },
-      { faceId: "face.x.pos", label: { zh: "右面", en: "Right" } },
-      { faceId: "face.y.neg", label: { zh: "下面", en: "Bottom" } },
-      { faceId: "face.y.pos", label: { zh: "上面", en: "Top" } },
-      { faceId: "face.z.neg", label: { zh: "后面", en: "Back" } },
-      { faceId: "face.z.pos", label: { zh: "前面", en: "Front" } },
-    ],
-    teaching: {
-      referenceFaceId: "face.z.pos",
-      optionFaceIds: ["face.x.neg", "face.x.pos", "face.z.neg"],
-      checkpointId: "checkpoint.opposite-face",
-      checkpointPrompt: { zh: "哪个面与前面相对？", en: "Which face is opposite the front face?" },
-      revealPolicy: "teacher" as const,
-      fallbackSummary: {
-        zh: "二维展开图由六个正方形组成；前面沿四条铰链连接四个侧面，后面连接在右面外侧。",
-        en: "The planar net has six squares; four side faces hinge around the front face and the back attaches beyond the right face.",
-      },
-      orthographicSummaries: {
-        front: { zh: "折叠后正面是一个正方形。", en: "The folded front view is one square." },
-        right: { zh: "折叠后右面是一个正方形。", en: "The folded right view is one square." },
-        top: { zh: "折叠后上面是一个正方形。", en: "The folded top view is one square." },
-      },
-    },
-    provenance: {
-      source: { kind: "scratch" as const },
-      createdBy: "00000000-0000-4000-8000-000000000001",
-      createdAt: "2026-08-11T22:00:00+08:00",
-      minRuntimeVersion: "1.0.0",
-    },
-  };
-}
+const adapterInput = cubeFoldSceneAdapterInput;
 
 describe("polyhedron-scene-adapter-v1", () => {
   it("materializes one self-contained fold artifact, teaching sequence, checkpoint and 2D fallback", async () => {

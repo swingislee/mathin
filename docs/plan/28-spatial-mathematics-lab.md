@@ -102,6 +102,8 @@ Mathin 建设一套“空间数学实验室”，服务从小学直观认识立�
 
 同日第十一个增量增加 `polyhedron-fold-artifact-v1` 与 `polyhedron-scene-adapter-v1`。fold artifact 在单个 `polyhedron` entity 内物化 topology、geometry、hinge graph、二维 layout、采样请求、目标折角、闭合摘要及可直接绘制的二维展开图 fallback；`spatial-scene-v1` 解析时再次对账实体顶点/面与 artifact，拒绝双份几何漂移。adapter 只接受稳定有序的双语教学元数据和已通过模拟的折叠输入，生成 P4 场景、正交/立体相机、预测—观察—半折—验证步骤、相对面选择 checkpoint 和二维摘要，并提供 runtime 进度到折叠帧的纯解析器。正方体样例重复构建 hash 相同，且已物化为 1200×900 的 `standard-4x3` 预生产 page，初始 `net.foldTo=0` 可被既有 runtime 读取；生产 `CoursewareDoc` union 仍拒绝该页，因此本增量不构成发布链接入，也不关闭 SML-4。
 
+同日第十二个增量增加首个 4:3 多面体呈现 spike。折叠内核在每个 face frame 中输出稳定的三角顶点索引，R3F 不再从浮点 mesh 反推或重新三角化数学面；纯 render model 负责把同一 frame 物化为面、边、标签、碰撞/选择状态、bounds 和已创作 camera bookmark。`renderer-r3f/` 提供模块级 `ssr:false` 懒加载的 `aspect-[4/3]` 舞台、`frameloop="demand"`、DPR 1～1.5、设计 token 调色、面命中、受控目标进度的本地折叠过渡和 reduced-motion 跳转；WebGL 不可用或 context lost 时切换到同一 artifact 生成的 SVG 展开图，保留全部面标签、铰链顺序和键盘面选择。专项合同增至 12 个文件/102 项并通过；该组件尚未挂到路由、Studio、课堂或生产 CoursewareDoc，也没有真实浏览器、目标设备、触控、context restored 和 bundle 证据，因此不关闭 SML-1 或 SML-4。
+
 ## 3. 产品目标、用户与非目标
 
 ### 3.1 目标结果
@@ -327,7 +329,7 @@ H5/iframe、任意网页模型和客户端临时 URL 不作为空间数学资产
 
 正方体金标必须枚举 35 种自由六连方，接受且只接受 11 种展开图；旋转和镜像等价归一化。
 
-当前预生产 spike 已完成上述 35/11 离散合同、通用闭壳面/棱邻接、铰链生成树、有理数三维面几何、整数平面展开布局、自交/重叠诊断、目标二面角反解、层级三维刚体变换、最终闭合误差、确定性采样的非相邻面碰撞，以及 `spatial-scene-v1`/4:3 page/runtime 的自包含适配，并保留 11 个教研待签名候选。拓扑层的“相对面候选”只表示两面无公共顶点；几何层再以位置、法向、平行性和面间分离确认相对面。SML-4 后续仍需连续时间碰撞或保守 swept-volume 证明、相邻面异常穿透诊断、4:3 renderer、课堂交互和触控证据；不得用离散采样未命中碰撞替代连续过程合法性。
+当前预生产 spike 已完成上述 35/11 离散合同、通用闭壳面/棱邻接、铰链生成树、有理数三维面几何、整数平面展开布局、自交/重叠诊断、目标二面角反解、层级三维刚体变换、最终闭合误差、确定性采样的非相邻面碰撞，以及 `spatial-scene-v1`/4:3 page/runtime 的自包含适配，并保留 11 个教研待签名候选。拓扑层的“相对面候选”只表示两面无公共顶点；几何层再以位置、法向、平行性和面间分离确认相对面。首个 4:3 R3F/二维 fallback 组件只证明渲染合同可编译且纯物化测试通过；SML-4 后续仍需连续时间碰撞或保守 swept-volume 证明、相邻面异常穿透诊断、课堂交互，以及真实浏览器/触控/context recovery/bundle 证据；不得用离散采样未命中碰撞替代连续过程合法性。
 
 ### 7.3 截面
 

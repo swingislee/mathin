@@ -88,6 +88,7 @@ describe("polyhedron-fold-simulation-kernel-v1", () => {
 
     const directFrame = computePolyhedronFoldFrame(topology, geometry, hinges, layout, 500_000);
     expect(directFrame).toEqual(first.frames[2]);
+    expect(directFrame.faces.every((face) => face.triangleVertexIndices.length === 2)).toBe(true);
     expect(directFrame.faces.find((face) => face.faceId === "face.z.pos")?.transformMatrix).toEqual(
       first.frames[0].faces.find((face) => face.faceId === "face.z.pos")?.transformMatrix,
     );
