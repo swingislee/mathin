@@ -8,6 +8,7 @@ const migration = read("supabase/migrations/20260728000100_r1_organization_setti
 const publishGuard = read("supabase/migrations/20260728000200_r1_public_publish_guard.sql");
 const notebookPrivacy = read("supabase/migrations/20260812000100_r1_notebook_interaction_privacy.sql");
 const notebookLifecycle = read("supabase/migrations/20260812000200_r1_notebook_publication_lifecycle.sql");
+const notebookLifecycleSecurity = read("supabase/migrations/20260812000300_r1_notebook_lifecycle_security_followup.sql");
 const notebookAssertions = read("supabase/tests/r1_notebook_assertions.sql");
 const preparationUnlock = read("supabase/migrations/20260731000500_r1_preparation_archive_unlock.sql");
 
@@ -76,10 +77,20 @@ describe("R1-1 organization settings contracts", () => {
     expect(notebookLifecycle).toMatch(/moderation_status = 'hidden'[\s\S]*raise exception 'MODERATION_LOCKED'/);
     expect(notebookLifecycle).toMatch(/lifecycle_status = 'review'[\s\S]*r\.content = p_content[\s\S]*return jsonb_build_object/);
     expect(notebookLifecycle).toMatch(/notes_sync_notebook_post_state[\s\S]*after update of is_archived/);
+    expect(notebookLifecycleSecurity).toContain("notes_00_require_archived_before_delete");
+    expect(notebookLifecycleSecurity).toMatch(/if not old\.is_archived[\s\S]*NOTE_NOT_ARCHIVED/);
+    expect(notebookLifecycleSecurity).toContain("source_note_version");
+    expect(notebookLifecycleSecurity).toContain("source_snapshot_hash");
+    expect(notebookLifecycleSecurity).toMatch(/note_row\.version <> p_expected_note_version[\s\S]*NOTE_VERSION_CONFLICT/);
+    expect(notebookLifecycleSecurity).toMatch(/p_title is distinct from note_row\.title[\s\S]*SOURCE_SNAPSHOT_MISMATCH/);
+    expect(notebookLifecycleSecurity).toMatch(/p_decision is null[\s\S]*raise exception 'VALIDATION'/);
+    expect(notebookLifecycleSecurity).toMatch(/p_status is null[\s\S]*raise exception 'VALIDATION'/);
+    expect(notebookLifecycleSecurity).toContain("drop function public.submit_notebook_post_revision(uuid, text, jsonb, text, text)");
     expect(notebookActions).toContain("publicationStatusSchema");
     expect(notebookActions).toContain("NotebookPublicationActionResult");
     expect(notebookActions).not.toContain("export const NOTEBOOK_PUBLICATION_STATUSES");
     expect(notebookActions).toContain('rpc("submit_notebook_post_revision"');
+    expect(notebookActions).toContain("p_expected_note_version: note.version");
     expect(notebookActions).toContain('rpc("review_notebook_post_revision"');
     expect(notebookActions).toContain('rpc("withdraw_notebook_post"');
     expect(notebookTopbar).toContain('role={feedback.kind === "error" ? "alert" : "status"}');
@@ -100,7 +111,7 @@ describe("R1-1 organization settings contracts", () => {
         expect(messages.notebook.workspace.publicationStatus[status]).toBeTruthy();
         expect(messages.notebook.public.lifecycle[status]).toBeTruthy();
       }
-      for (const code of ["VALIDATION", "FORBIDDEN", "PUBLIC_PUBLISHING_DISABLED", "INVALID_STATE", "MODERATION_LOCKED", "SERVER"]) {
+      for (const code of ["VALIDATION", "FORBIDDEN", "PUBLIC_PUBLISHING_DISABLED", "NOTE_VERSION_CONFLICT", "SOURCE_SNAPSHOT_MISMATCH", "INVALID_STATE", "MODERATION_LOCKED", "SERVER"]) {
         expect(messages.notebook.workspace.publicationErrors[code]).toBeTruthy();
         expect(messages.notebook.public.actionErrors[code]).toBeTruthy();
       }

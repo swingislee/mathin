@@ -128,6 +128,7 @@ begin
   begin
     perform public.submit_notebook_post_revision(
       current_setting('r1.organization_publish_note_id')::uuid,
+      0,
       'R1 blocked publish', '[]'::jsonb, '<p>blocked</p>', 'blocked'
     );
     raise exception 'R1_PUBLIC_PUBLISH_RPC_WAS_ACCEPTED_WHILE_DISABLED';
@@ -139,10 +140,12 @@ $$;
 reset role;
 
 select public.set_feature_flag('public_content.publish', null, true, now(), 'CI enable public publishing') as public_publish_on_id \gset
+update public.notes set title = 'R1 enabled publish' where id = :'publish_note_id'::uuid;
 set local role authenticated;
 select set_config('request.jwt.claim.sub', :'admin_id', true);
 select (public.submit_notebook_post_revision(
   :'publish_note_id'::uuid,
+  0,
   'R1 enabled publish',
   '[]'::jsonb,
   '<p>enabled</p>',

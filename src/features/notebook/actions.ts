@@ -179,6 +179,8 @@ export type NotebookPublicationActionCode =
   | "NOT_FOUND"
   | "PUBLIC_PUBLISHING_DISABLED"
   | "NOTE_ARCHIVED"
+  | "NOTE_VERSION_CONFLICT"
+  | "SOURCE_SNAPSHOT_MISMATCH"
   | "INVALID_STATE"
   | "MODERATION_LOCKED"
   | "SERVER";
@@ -211,6 +213,8 @@ const KNOWN_PUBLICATION_ERRORS = [
   "NOT_FOUND",
   "PUBLIC_PUBLISHING_DISABLED",
   "NOTE_ARCHIVED",
+  "NOTE_VERSION_CONFLICT",
+  "SOURCE_SNAPSHOT_MISMATCH",
   "INVALID_STATE",
   "ALREADY_IN_REVIEW",
   "MODERATION_LOCKED",
@@ -354,10 +358,10 @@ export async function submitNoteForReview(noteId: string): Promise<NotebookPubli
     const { supabase, user } = await authenticatedClient();
     const { data: note, error: noteError } = await supabase
       .from("notes")
-      .select("id,title,document,is_archived")
+      .select("id,title,document,is_archived,version")
       .eq("id", parsedNoteId)
       .eq("owner_id", user.id)
-      .maybeSingle<{ id: string; title: string; document: unknown[] | null; is_archived: boolean }>();
+      .maybeSingle<{ id: string; title: string; document: unknown[] | null; is_archived: boolean; version: number }>();
     if (noteError) throw new Error(noteError.message);
     if (!note) throw new Error("NOT_FOUND");
     if (note.is_archived) throw new Error("NOTE_ARCHIVED");
@@ -367,7 +371,8 @@ export async function submitNoteForReview(noteId: string): Promise<NotebookPubli
     const contentHtml = sanitizeNotebookHtml(generated);
     const { data, error } = await supabase.rpc("submit_notebook_post_revision", {
       p_note_id: parsedNoteId,
-      p_title: note.title.trim().slice(0, 200),
+      p_expected_note_version: note.version,
+      p_title: note.title,
       p_content: parsedDocument as Json,
       p_content_html: contentHtml,
       p_excerpt: excerptFromDocument(parsedDocument),

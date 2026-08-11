@@ -3401,6 +3401,8 @@
         "NOT_FOUND": "目标文章或版本不存在。",
         "PUBLIC_PUBLISHING_DISABLED": "公开发布开关已关闭。",
         "NOTE_ARCHIVED": "源笔记已归档，不能发布。",
+        "NOTE_VERSION_CONFLICT": "源笔记已被更新，请刷新后重新提交。",
+        "SOURCE_SNAPSHOT_MISMATCH": "提交内容与源笔记不一致，请刷新后重试。",
         "INVALID_STATE": "状态已变化，请刷新后重试。",
         "MODERATION_LOCKED": "文章仍被平台锁定，不能审核发布。",
         "SERVER": "操作失败，请稍后重试。"
@@ -3477,6 +3479,8 @@
         "NOT_FOUND": "笔记或文章不存在",
         "PUBLIC_PUBLISHING_DISABLED": "公开发布已关闭",
         "NOTE_ARCHIVED": "归档笔记不能发布",
+        "NOTE_VERSION_CONFLICT": "笔记已更新，请刷新后重试",
+        "SOURCE_SNAPSHOT_MISMATCH": "发布内容与当前笔记不一致",
         "INVALID_STATE": "状态已变化，请刷新",
         "MODERATION_LOCKED": "平台下架后需管理员先恢复",
         "SERVER": "发布操作失败，请重试"

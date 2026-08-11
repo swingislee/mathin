@@ -3401,6 +3401,8 @@
         "NOT_FOUND": "The post or revision no longer exists.",
         "PUBLIC_PUBLISHING_DISABLED": "Public publishing is disabled.",
         "NOTE_ARCHIVED": "The source note is archived and cannot be published.",
+        "NOTE_VERSION_CONFLICT": "The source note changed. Refresh before submitting again.",
+        "SOURCE_SNAPSHOT_MISMATCH": "The submitted snapshot does not match the source note.",
         "INVALID_STATE": "The state changed. Refresh and retry.",
         "MODERATION_LOCKED": "The post is still platform-locked and cannot be published.",
         "SERVER": "The action failed. Please retry later."
@@ -3477,6 +3479,8 @@
         "NOT_FOUND": "The note or post no longer exists",
         "PUBLIC_PUBLISHING_DISABLED": "Public publishing is disabled",
         "NOTE_ARCHIVED": "Archived notes cannot be published",
+        "NOTE_VERSION_CONFLICT": "The note changed; refresh before retrying",
+        "SOURCE_SNAPSHOT_MISMATCH": "The publication does not match the current note",
         "INVALID_STATE": "The state changed; refresh the page",
         "MODERATION_LOCKED": "An administrator must restore this platform-removed post first",
         "SERVER": "Publication failed; please retry"
