@@ -6,6 +6,8 @@ const root = process.cwd();
 const read = (file: string) => fs.readFileSync(path.join(root, file), "utf8");
 const migration = read("supabase/migrations/20260728000100_r1_organization_settings.sql");
 const publishGuard = read("supabase/migrations/20260728000200_r1_public_publish_guard.sql");
+const notebookPrivacy = read("supabase/migrations/20260812000100_r1_notebook_interaction_privacy.sql");
+const notebookAssertions = read("supabase/tests/r1_notebook_assertions.sql");
 const preparationUnlock = read("supabase/migrations/20260731000500_r1_preparation_archive_unlock.sql");
 
 describe("R1-1 organization settings contracts", () => {
@@ -46,6 +48,26 @@ describe("R1-1 organization settings contracts", () => {
     expect(migration).toContain("default gen_random_uuid()");
     expect(migration).toContain("R1-1 explicit default");
     expect(migration).toContain("R1-1 fail-closed default");
+  });
+
+  it("keeps Notebook publication ownership and interaction privacy at the database boundary", () => {
+    const notebookActions = read("src/features/notebook/actions.ts");
+    const dbAudit = read("scripts/run-r1-db-audit.mjs");
+    expect(notebookPrivacy).toContain('revoke select on public.post_likes from anon');
+    expect(notebookPrivacy).toContain('create policy "post_likes_select_own"');
+    expect(notebookPrivacy).toMatch(/post_likes_insert_own[\s\S]*not p\.hidden[\s\S]*p\.review_status = 'approved'/);
+    expect(notebookPrivacy).toContain('revoke update (note_id) on public.posts from authenticated');
+    expect(notebookPrivacy).toMatch(/posts_insert_own[\s\S]*n\.owner_id = \(select auth\.uid\(\)\)[\s\S]*not n\.is_archived/);
+    expect(notebookPrivacy).toMatch(/posts_update_own[\s\S]*hidden[\s\S]*public\.is_feature_enabled\('public_content\.publish'\)/);
+    expect(notebookActions).toContain('const entityIdSchema = z.string().uuid()');
+    expect(notebookActions).toContain('if (note.is_archived) throw new Error("NOTE_ARCHIVED")');
+    expect(notebookActions).toContain('update({ ...values, hidden: false })');
+    expect(notebookActions).toContain("if (archived || publishingEnabled)");
+    expect(notebookActions).toContain("publishingEnabled = !error && data === true");
+    expect(dbAudit).toContain('"r1_notebook_assertions.sql"');
+    expect(notebookAssertions).toContain('R1_HIDDEN_POST_LIKE_WAS_ACCEPTED');
+    expect(notebookAssertions).toContain('R1_FOREIGN_NOTE_PUBLISH_WAS_ACCEPTED');
+    expect(notebookAssertions).toContain('R1_ARCHIVED_NOTE_PUBLISH_WAS_ACCEPTED');
   });
 
   it("registers preparation archive editing as a fail-closed administrator switch", () => {

@@ -6,9 +6,9 @@
   "projectId": "example-production-project",
   "databaseId": "example-production-database",
   "migration": {
-    "head": "20260804000300_r1_merge_students_tombstone_guard",
-    "digest": "f40b1a3faf5d86916a90312ae87dd4f66113e2419b615da4366717c88326db2b",
-    "fileCount": 163
+    "head": "20260812000100_r1_notebook_interaction_privacy",
+    "digest": "e8e8193c7a64a68919d1b8f305238073da9cce07faa9158783464f07c607f529",
+    "fileCount": 164
   },
   "platform": {
     "source": "supabase/ci/00_platform_bootstrap.sql",

@@ -130,12 +130,20 @@ export async function setNoteArchived(id: string, archived: boolean): Promise<No
     .eq("owner_id", user.id)
     .select(META_COLUMNS)
     .returns<NoteRow[]>());
-  // 帖子快照与源笔记联动：入回收站即从瀑布流隐藏，恢复即回归（保留点赞）。
-  await collectPostgrestRowsInBatches<string, never>(subtree, (batch) => supabase
-    .from("posts")
-    .update({ hidden: archived })
-    .in("note_id", batch)
-    .eq("author_id", user.id));
+  // 归档始终 fail-closed 地隐藏公开快照。恢复只有在公共发布开关开启时才重新公开；
+  // 开关关闭或读取失败时保持 hidden=true，但不能让私有笔记恢复动作失败一半。
+  let publishingEnabled = false;
+  if (!archived) {
+    const { data, error } = await supabase.rpc("is_feature_enabled", { p_flag_key: "public_content.publish" });
+    publishingEnabled = !error && data === true;
+  }
+  if (archived || publishingEnabled) {
+    await collectPostgrestRowsInBatches<string, never>(subtree, (batch) => supabase
+      .from("posts")
+      .update({ hidden: archived })
+      .in("note_id", batch)
+      .eq("author_id", user.id));
+  }
   return updatedNotes.map(toMeta);
 }
 
@@ -169,6 +177,7 @@ export async function deleteNoteForever(id: string): Promise<{ id: string; remov
 }
 
 const documentSchema = z.array(z.unknown());
+const entityIdSchema = z.string().uuid();
 
 export type SaveNoteResult =
   | { ok: true; version: number; updatedAt: string }
@@ -234,17 +243,19 @@ export async function moderatePostAction(postId: string, status: "approved" | "h
 }
 
 export async function publishNote(noteId: string): Promise<{ postId: string }> {
+  const parsedNoteId = entityIdSchema.parse(noteId);
   const { supabase, user } = await authenticatedClient();
   const { data: publishingEnabled, error: flagError } = await supabase.rpc("is_feature_enabled", { p_flag_key: "public_content.publish" });
   if (flagError || publishingEnabled !== true) throw new Error("PUBLIC_PUBLISHING_DISABLED");
 
   const { data: note, error: noteError } = await supabase
     .from("notes")
-    .select("id,title,document")
-    .eq("id", noteId)
+    .select("id,title,document,is_archived")
+    .eq("id", parsedNoteId)
     .eq("owner_id", user.id)
-    .single<{ id: string; title: string; document: unknown[] | null }>();
+    .single<{ id: string; title: string; document: unknown[] | null; is_archived: boolean }>();
   if (noteError) throw new Error(noteError.message);
+  if (note.is_archived) throw new Error("NOTE_ARCHIVED");
   const parsed = documentSchema.parse(note.document ?? []);
   const editor = ServerBlockNoteEditor.create();
   const generated = await editor.blocksToFullHTML(parsed as PartialBlock[]);
@@ -271,18 +282,18 @@ export async function publishNote(noteId: string): Promise<{ postId: string }> {
   const { data: existing, error: existingError } = await supabase
     .from("posts")
     .select("id")
-    .eq("note_id", noteId)
+    .eq("note_id", parsedNoteId)
     .eq("author_id", user.id)
     .maybeSingle<{ id: string }>();
   if (existingError) throw new Error(existingError.message);
   if (existing) {
-    const { error } = await supabase.from("posts").update(values).eq("id", existing.id).eq("author_id", user.id);
+    const { error } = await supabase.from("posts").update({ ...values, hidden: false }).eq("id", existing.id).eq("author_id", user.id);
     if (error) throw new Error(error.message);
     return { postId: existing.id };
   }
   const { data: created, error } = await supabase
     .from("posts")
-    .insert({ note_id: noteId, author_id: user.id, ...values })
+    .insert({ note_id: parsedNoteId, author_id: user.id, ...values })
     .select("id")
     .single<{ id: string }>();
   if (error) throw new Error(error.message);
@@ -296,22 +307,23 @@ export async function unpublishNote(noteId: string): Promise<void> {
 }
 
 export async function toggleLike(postId: string): Promise<{ liked: boolean; likeCount: number }> {
+  const parsedPostId = entityIdSchema.parse(postId);
   const { supabase, user } = await authenticatedClient();
   const { data: existing, error: selectError } = await supabase
     .from("post_likes")
     .select("post_id")
-    .eq("post_id", postId)
+    .eq("post_id", parsedPostId)
     .eq("user_id", user.id)
     .maybeSingle();
   if (selectError) throw new Error(selectError.message);
   if (existing) {
-    const { error } = await supabase.from("post_likes").delete().eq("post_id", postId).eq("user_id", user.id);
+    const { error } = await supabase.from("post_likes").delete().eq("post_id", parsedPostId).eq("user_id", user.id);
     if (error) throw new Error(error.message);
   } else {
-    const { error } = await supabase.from("post_likes").insert({ post_id: postId, user_id: user.id });
+    const { error } = await supabase.from("post_likes").insert({ post_id: parsedPostId, user_id: user.id });
     if (error) throw new Error(error.message);
   }
-  const { data: post, error: postError } = await supabase.from("posts").select("like_count").eq("id", postId).single<{ like_count: number }>();
+  const { data: post, error: postError } = await supabase.from("posts").select("like_count").eq("id", parsedPostId).single<{ like_count: number }>();
   if (postError) throw new Error(postError.message);
   return { liked: !existing, likeCount: post.like_count };
 }

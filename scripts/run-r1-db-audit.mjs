@@ -2,6 +2,7 @@ import { runAssertionFiles } from "./lib/db-audit-runner.mjs";
 
 runAssertionFiles("r1:db-audit", [
   "r1_organization_settings_assertions.sql",
+  "r1_notebook_assertions.sql",
   "r1_platform_runtime_assertions.sql",
   "r1_account_security_assertions.sql",
   "r1_family_portal_assertions.sql",
