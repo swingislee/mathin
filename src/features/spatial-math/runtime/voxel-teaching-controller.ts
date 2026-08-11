@@ -1,5 +1,7 @@
 import {
   materializeSpatialRuntimeVoxelEntity,
+  isVoxelLayerSceneStepId,
+  isVoxelVerifySceneStepId,
   parseSpatialPageDoc,
   parseSpatialRuntimeState,
   spatialAttemptResponseSchema,
@@ -135,7 +137,7 @@ export function deriveVoxelTeachingControllerView(
     durationMs: step.durationMs,
   }));
   const activeStepIndex = steps.findIndex((step) => step.id === state.activeStepId);
-  const revealLayerCounts = state.activeStepId?.startsWith("step.layer.") || state.activeStepId === "step.verify";
+  const revealLayerCounts = isVoxelLayerSceneStepId(state.activeStepId) || isVoxelVerifySceneStepId(state.activeStepId);
   const checkpoint = page.scene.checkpoints.find(
     (item) =>
       item.type === "numeric" &&
@@ -172,7 +174,7 @@ export function deriveVoxelTeachingControllerView(
     }),
     steps,
     activeStep: activeStepIndex >= 0 ? steps[activeStepIndex] : null,
-    totalCount: state.activeStepId === "step.verify" ? runtimeEntity.cells.length : null,
+    totalCount: isVoxelVerifySceneStepId(state.activeStepId) ? runtimeEntity.cells.length : null,
     countCheckpoint: checkpoint
       ? { checkpointId: checkpoint.id, prompt: localizedText(checkpoint.prompt, locale) }
       : null,
@@ -185,7 +187,7 @@ export function deriveVoxelTeachingControllerView(
       canManipulateScene &&
       activeStepIndex >= 0 &&
       activeStepIndex < steps.length - 1 &&
-      !(studentSubmitRevealRestricted && nextStep?.id === "step.verify"),
+      !(studentSubmitRevealRestricted && isVoxelVerifySceneStepId(nextStep?.id)),
   };
 }
 
@@ -229,7 +231,7 @@ export function createVoxelTeachingCommandIntent(
         ? view.steps[activeIndex - 1]
         : view.steps[activeIndex + 1];
   if (!target) return null;
-  if (actor.kind === "student" && state.ownershipMode === "student-submit" && target.id === "step.verify") {
+  if (actor.kind === "student" && state.ownershipMode === "student-submit" && isVoxelVerifySceneStepId(target.id)) {
     fail(VOXEL_TEACHING_CONTROLLER_ERROR_CODES.actionNotAllowed, "student submit branch cannot reveal the answer step");
   }
   return spatialCommandPayloadSchema.parse({ kind: "step.go", stepId: target.id });

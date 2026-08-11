@@ -36,6 +36,7 @@ Terms 使用稳定 ID 接收 Story、Minds、Games、Tools、Notebook 和课程�
 - 继续 Notebook、学校运营和角色门户、Classroom/Whiteboard/Courseware Studio、P6-9 与两套课程双轨资源，以及账户、安全、Jobs、通知、文件、Work-items、指标/E2E 和生产底座中不依赖五条公开线的准备。
 - 暂缓 Story、Games、Minds、Terms、Tools 的模块生产巡检，以及依赖这些模块的访客旅程、英文回退、公共视觉、SEO、浏览器、CWV 和 WCAG 子门。Notebook 所需共享发布状态机不在暂缓范围。
 - 依赖已满足的后续子项可以先形成 E1/E2/E3，所属 R1 阶段仍保持 pending；最终 production build、环境、浏览器、性能和恢复证据在五条线恢复后重跑。五条线全部恢复并通过前，R1-12、R1-18 和 `v1.0.0` 均不得关闭。
+- 用户明确授权的空间数学工作在 1.0 前仅限 doc 28 所列、未挂载且无生产依赖的本地合同/算法/renderer/editor spike；它不增加 1.0 Tools 或发布范围，不进入生产路由、数据、课件、课堂 transport 与真实学生链，也不作为本文 M1～M4 或 R1 发布证据。
 
 ### 1.2 工程与验证基线
 

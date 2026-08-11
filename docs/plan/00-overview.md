@@ -118,7 +118,7 @@ Story、Minds、Games、Tools 和 Notebook 使用稳定 ID 关联 Terms。课程
 | `25-production-1.0-product-completeness.md` | active | 1.0 事实、缺口、发布门和生产初始化 |
 | `26-teacher-workflow-upgrade.md` | partial | 左侧备课步骤、右侧常驻课件预览、板书解析与结构化教案；独立教案管理入口和派生输出待补 |
 | `27-small-screen-workspace-adaptation.md` | active | 1024–1280px 窄屏与平板横屏的侧栏三态、工作区可拖拽分栏、4:3 全屏与容器查询收敛 |
-| `28-spatial-mathematics-lab.md` | deferred | 1.0 后空间数学实验室的课程能力、数学内核、场景协议、教研创作、课堂同步与分阶段验收 |
+| `28-spatial-mathematics-lab.md` | deferred | 1.0 后空间数学实验室的课程能力、数学内核、场景协议、教研创作、课堂同步与分阶段验收；1.0 前仅允许用户明确授权、未挂载且无生产依赖的本地合同/算法/renderer/editor spike，不计入 R1 证据或阶段关闭 |
 
 ## 7. 当前发布纪律
 

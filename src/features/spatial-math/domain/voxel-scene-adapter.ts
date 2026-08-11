@@ -194,10 +194,32 @@ export async function buildVoxelCountingScene(inputValue: unknown): Promise<Voxe
  */
 export async function buildVoxelCountingPage(inputValue: unknown): Promise<VoxelCountingPageBuildResult> {
   const built = await buildVoxelCountingScene(inputValue);
-  const page = await materializeSpatialPageDoc({
+  const page = await materializeVoxelCountingPage(built.scene);
+
+  return { ...built, page };
+}
+
+export interface VoxelCountingPageOptions {
+  readonly checkpointRequired?: boolean;
+  readonly maxSubmissions?: number;
+}
+
+export async function materializeVoxelCountingPage(
+  sceneValue: unknown,
+  options: VoxelCountingPageOptions = {},
+): Promise<SpatialPageDoc> {
+  const scene = parseSpatialScene(sceneValue);
+  const countCheckpoint = scene.checkpoints.find(
+    (checkpoint) =>
+      checkpoint.type === "numeric" &&
+      checkpoint.evaluator.kind === "derived" &&
+      checkpoint.evaluator.query.kind === "voxel.total",
+  );
+  const learningCheckEnabled = countCheckpoint !== undefined;
+  return materializeSpatialPageDoc({
     docVersion: SPATIAL_PAGE_DOC_VERSION,
     layout: { profile: "standard-4x3" },
-    scene: built.scene,
+    scene,
     source: { kind: "scratch" },
     presentation: {
       viewport: {
@@ -212,37 +234,43 @@ export async function buildVoxelCountingPage(inputValue: unknown): Promise<Voxel
         reducedMotion: "jump",
       },
       labelPlacements: [],
-      panels: [
-        { panelId: "teacher-controls", dock: "bottom", sizePx: 140, initiallyCollapsed: false },
-        { panelId: "checkpoint", dock: "right", sizePx: 300, initiallyCollapsed: false },
-      ],
+      panels: learningCheckEnabled
+        ? [
+            { panelId: "teacher-controls", dock: "bottom", sizePx: 140, initiallyCollapsed: false },
+            { panelId: "checkpoint", dock: "right", sizePx: 300, initiallyCollapsed: false },
+          ]
+        : [{ panelId: "teacher-controls", dock: "bottom", sizePx: 140, initiallyCollapsed: false }],
     },
     classroom: {
       ownership: {
         defaultMode: "teacher-follow",
-        allowedModes: ["teacher-follow", "student-local-explore", "student-submit"],
+        allowedModes: learningCheckEnabled
+          ? ["teacher-follow", "student-local-explore", "student-submit"]
+          : ["teacher-follow", "student-local-explore"],
       },
       cameraSync: "bookmark-and-opt-in-fx",
       durableStatePolicy: "semantic-events-only",
       resetAuthority: "teacher-controller",
       boardPointerPolicy: "mutually-exclusive-tools",
     },
-    learningCheck: {
-      mode: "formative-only",
-      items: [{ checkpointId: "checkpoint.total-count", required: true, evaluation: "server-pinned-kernel" }],
-      maxSubmissions: 3,
-      responseVisibility: "student-and-authorized-staff",
-    },
+    learningCheck: countCheckpoint
+      ? {
+          mode: "formative-only",
+          items: [{ checkpointId: countCheckpoint.id, required: options.checkpointRequired ?? true, evaluation: "server-pinned-kernel" }],
+          maxSubmissions: options.maxSubmissions ?? 3,
+          responseVisibility: "student-and-authorized-staff",
+        }
+      : { mode: "disabled" },
     fallback: {
       strategy: "scene-accessibility-v1",
       defaultView: "front",
-      checkpoints: [{ checkpointId: "checkpoint.total-count", mode: "interactive-2d" }],
+      checkpoints: countCheckpoint
+        ? [{ checkpointId: countCheckpoint.id, mode: "interactive-2d" }]
+        : [],
       unavailableMessage: {
         zh: "三维画面不可用，已切换到等价二维投影和分层表。",
         en: "The 3D view is unavailable. Equivalent projections and a layer table are shown.",
       },
     },
   });
-
-  return { ...built, page };
 }

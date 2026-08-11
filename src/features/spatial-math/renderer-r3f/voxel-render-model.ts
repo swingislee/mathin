@@ -1,4 +1,6 @@
 import {
+  isVoxelLayerSceneStepId,
+  isVoxelVerifySceneStepId,
   createVoxelSet,
   materializeSpatialRuntimeVoxelEntity,
   parseSpatialPageDoc,
@@ -112,7 +114,7 @@ export function buildVoxelRenderModel(
   );
   if (!cameraDefinition) throw new Error(`unknown voxel camera: ${state.cameraBookmarkId}`);
   const projectionView = orthographicViewForVoxelCamera(cameraDefinition.id);
-  const countRevealed = state.activeStepId?.startsWith("step.layer.") || state.activeStepId === "step.verify";
+  const countRevealed = isVoxelLayerSceneStepId(state.activeStepId) || isVoxelVerifySceneStepId(state.activeStepId);
 
   return {
     profile: VOXEL_RENDERER_PROFILE,
@@ -132,7 +134,7 @@ export function buildVoxelRenderModel(
     })),
     totalCellCount: runtimeEntity.cells.length,
     hiddenByLayerCount: runtimeEntity.cells.length - runtimeEntity.visibleCells.length,
-    totalCountRevealed: state.activeStepId === "step.verify",
+    totalCountRevealed: isVoxelVerifySceneStepId(state.activeStepId),
     layers: runtimeEntity.layers.map((layer) => {
       const definition = page.scene.presentation.layers.find((candidate) => candidate.id === layer.layerId);
       return {
