@@ -1,0 +1,282 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mathin.local/schemas/r1-courseware-source-manifest.schema.json",
+  "title": "Mathin R1 P6-9 courseware source manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schemaVersion",
+    "example",
+    "mode",
+    "writesAllowed",
+    "networkAllowed",
+    "databaseConnectionAllowed",
+    "capturedFrom",
+    "inventories",
+    "storageAudits",
+    "expected"
+  ],
+  "properties": {
+    "$schema": { "type": "string", "minLength": 3 },
+    "schemaVersion": { "const": "mathin-r1-courseware-source-manifest-v1" },
+    "example": { "type": "boolean" },
+    "mode": { "const": "plan-only" },
+    "writesAllowed": { "const": false },
+    "networkAllowed": { "const": false },
+    "databaseConnectionAllowed": { "const": false },
+    "capturedFrom": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["environment", "readOnly", "databaseFingerprint", "migrationHead", "exportedAt"],
+      "properties": {
+        "environment": { "const": "offline-read-only-export" },
+        "readOnly": { "const": true },
+        "databaseFingerprint": { "$ref": "#/$defs/sha256" },
+        "migrationHead": { "type": "string", "pattern": "^[0-9]{14}_[a-z0-9_]+$" },
+        "exportedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "inventories": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "prefixItems": [
+        { "$ref": "#/$defs/aixuexiInventory" },
+        { "$ref": "#/$defs/eSeriesInventory" }
+      ],
+      "items": false
+    },
+    "storageAudits": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "prefixItems": [
+        { "$ref": "#/$defs/h5StorageAudit" },
+        { "$ref": "#/$defs/objectStorageAudit" }
+      ],
+      "items": false
+    },
+    "expected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "courseCount",
+        "lectureCount",
+        "nativeTrackCount",
+        "adaptedTrackCount",
+        "releaseCount",
+        "missingBindingCount",
+        "missingResourceCount",
+        "storageHashMismatchCount"
+      ],
+      "properties": {
+        "courseCount": { "const": 94 },
+        "lectureCount": { "const": 1187 },
+        "nativeTrackCount": { "const": 1187 },
+        "adaptedTrackCount": { "const": 1187 },
+        "releaseCount": { "const": 2374 },
+        "missingBindingCount": { "const": 0 },
+        "missingResourceCount": { "const": 0 },
+        "storageHashMismatchCount": { "const": 0 }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "localPath": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 500,
+      "pattern": "^(?!https?://|postgres(?:ql)?://).+$"
+    },
+    "inventoryBase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["courseSystem", "path", "sha256"],
+      "properties": {
+        "courseSystem": { "type": "string" },
+        "path": { "$ref": "#/$defs/localPath" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "aixuexiInventory": {
+      "allOf": [
+        { "$ref": "#/$defs/inventoryBase" },
+        { "properties": { "courseSystem": { "const": "aixuexi-gplus-autumn" } } }
+      ]
+    },
+    "eSeriesInventory": {
+      "allOf": [
+        { "$ref": "#/$defs/inventoryBase" },
+        { "properties": { "courseSystem": { "const": "e-series" } } }
+      ]
+    },
+    "storageAuditBase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bucket",
+        "prefix",
+        "status",
+        "scopeResourceCount",
+        "scopeResourceSetSha256",
+        "objectsManifestSha256",
+        "missingObjectCount",
+        "hashMismatchCount"
+      ],
+      "properties": {
+        "bucket": { "type": "string" },
+        "prefix": { "type": "string" },
+        "status": { "enum": ["pending", "passed"] },
+        "scopeResourceCount": { "type": "integer", "minimum": 0 },
+        "scopeResourceSetSha256": { "$ref": "#/$defs/sha256" },
+        "objectsManifestSha256": { "$ref": "#/$defs/sha256" },
+        "missingObjectCount": { "type": "integer", "minimum": 0 },
+        "hashMismatchCount": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "h5StorageAudit": {
+      "allOf": [
+        { "$ref": "#/$defs/storageAuditBase" },
+        { "properties": { "bucket": { "const": "cw-h5" }, "prefix": { "const": "packages/" } } }
+      ]
+    },
+    "objectStorageAudit": {
+      "allOf": [
+        { "$ref": "#/$defs/storageAuditBase" },
+        { "properties": { "bucket": { "const": "cw-objects" }, "prefix": { "const": "sha256/" } } }
+      ]
+    },
+    "lectureInventoryEntry": {
+      "description": "Each LF-delimited inventory line. The executable validator applies the cross-line cardinality, ordering, hash, Storage, readiness, and source-gap invariants that JSON Schema cannot express over NDJSON.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["courseSystem", "course", "lecture", "source", "tracks"],
+      "properties": {
+        "courseSystem": { "enum": ["e-series", "aixuexi-gplus-autumn"] },
+        "course": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["catalogVersion", "productCode", "grade"],
+          "properties": {
+            "catalogVersion": { "enum": ["2025", "2026", "default"] },
+            "productCode": { "type": "string", "minLength": 3, "maxLength": 160 },
+            "grade": { "type": "integer", "minimum": 1, "maximum": 6 }
+          }
+        },
+        "lecture": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "no"],
+          "properties": {
+            "id": { "type": "string", "minLength": 3, "maxLength": 128 },
+            "no": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "source": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["packageManifestSha256", "lectureVerificationSha256", "offlineStatus"],
+          "properties": {
+            "packageManifestSha256": { "$ref": "#/$defs/sha256" },
+            "lectureVerificationSha256": { "$ref": "#/$defs/sha256" },
+            "offlineStatus": { "const": "complete" }
+          }
+        },
+        "tracks": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "prefixItems": [
+            { "$ref": "#/$defs/nativeTrack" },
+            { "$ref": "#/$defs/adaptedTrack" }
+          ],
+          "items": false
+        }
+      }
+    },
+    "trackBase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["track", "readiness", "pages", "pageSetSha256", "bindingSetSha256", "resourceSetSha256", "release"],
+      "properties": {
+        "track": { "type": "string" },
+        "readiness": {
+          "enum": ["native-source-verified", "approved-adaptation", "verified-16x9-projection", "verified-4x3-source-master"]
+        },
+        "pages": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/page" } },
+        "pageSetSha256": { "$ref": "#/$defs/sha256" },
+        "bindingSetSha256": { "$ref": "#/$defs/sha256" },
+        "resourceSetSha256": { "$ref": "#/$defs/sha256" },
+        "release": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["releaseNo", "note", "snapshotSha256"],
+          "properties": {
+            "releaseNo": { "const": 1 },
+            "note": { "const": "production-v1.0-baseline" },
+            "snapshotSha256": { "$ref": "#/$defs/sha256" }
+          }
+        }
+      }
+    },
+    "nativeTrack": {
+      "allOf": [
+        { "$ref": "#/$defs/trackBase" },
+        { "properties": { "track": { "const": "native-16x9" } } }
+      ]
+    },
+    "adaptedTrack": {
+      "allOf": [
+        { "$ref": "#/$defs/trackBase" },
+        { "properties": { "track": { "const": "adapted-4x3" } } }
+      ]
+    },
+    "page": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pageNo", "pageDocId", "sourceRevisionId", "docSha256", "documentBindingKeysSha256", "bindings"],
+      "properties": {
+        "pageNo": { "type": "integer", "minimum": 1 },
+        "pageDocId": { "type": "string", "minLength": 3, "maxLength": 128 },
+        "sourceRevisionId": { "type": "string", "minLength": 3, "maxLength": 128 },
+        "docSha256": { "$ref": "#/$defs/sha256" },
+        "documentBindingKeysSha256": { "$ref": "#/$defs/sha256" },
+        "bindings": { "type": "array", "items": { "$ref": "#/$defs/binding" } }
+      }
+    },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bindingKey",
+        "assetRevisionId",
+        "objectSha256",
+        "kind",
+        "role",
+        "variant",
+        "mime",
+        "byteCount",
+        "storageBucket",
+        "storagePath",
+        "h5ManifestSha256",
+        "adaptationStatus"
+      ],
+      "properties": {
+        "bindingKey": { "$ref": "#/$defs/sha256" },
+        "assetRevisionId": { "type": "string", "minLength": 3, "maxLength": 128 },
+        "objectSha256": { "$ref": "#/$defs/sha256" },
+        "kind": { "enum": ["image", "video", "audio", "svg", "h5"] },
+        "role": { "type": "string", "pattern": "^[a-z][a-z0-9_-]{0,49}$" },
+        "variant": { "type": "string", "pattern": "^[a-z][a-z0-9._-]{0,79}$" },
+        "mime": { "type": "string", "minLength": 3, "maxLength": 160 },
+        "byteCount": { "type": "integer", "minimum": 1 },
+        "storageBucket": { "enum": ["cw-objects", "cw-h5"] },
+        "storagePath": { "type": "string", "minLength": 10, "maxLength": 500 },
+        "h5ManifestSha256": { "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }] },
+        "adaptationStatus": { "enum": ["approved", "not-required"] }
+      }
+    }
+  }
+}

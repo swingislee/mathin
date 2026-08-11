@@ -1,0 +1,60 @@
+{
+  "$schema": "../../schemas/r1-courseware-source-manifest.schema.json",
+  "schemaVersion": "mathin-r1-courseware-source-manifest-v1",
+  "example": true,
+  "mode": "plan-only",
+  "writesAllowed": false,
+  "networkAllowed": false,
+  "databaseConnectionAllowed": false,
+  "capturedFrom": {
+    "environment": "offline-read-only-export",
+    "readOnly": true,
+    "databaseFingerprint": "1111111111111111111111111111111111111111111111111111111111111111",
+    "migrationHead": "20260812000100_r1_notebook_interaction_privacy",
+    "exportedAt": "2026-08-12T00:00:00Z"
+  },
+  "inventories": [
+    {
+      "courseSystem": "aixuexi-gplus-autumn",
+      "path": "docs/manifests/r1-courseware-aixuexi.example.ndjson",
+      "sha256": "fccd454083b9a273d690353f02c980be995f88b13e5d83a419c85ef688aaf588"
+    },
+    {
+      "courseSystem": "e-series",
+      "path": "docs/manifests/r1-courseware-e-series.example.ndjson",
+      "sha256": "7bd3d10cf04430e99d4c056a2e8a05d2426f6cba19547a11acf4de99f401becd"
+    }
+  ],
+  "storageAudits": [
+    {
+      "bucket": "cw-h5",
+      "prefix": "packages/",
+      "status": "pending",
+      "scopeResourceCount": 1,
+      "scopeResourceSetSha256": "06bc4712898b14d4dd3e9d9a75ac39fba370d6fcc2fba03a9166ec7bd45bfedc",
+      "objectsManifestSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+      "missingObjectCount": 0,
+      "hashMismatchCount": 0
+    },
+    {
+      "bucket": "cw-objects",
+      "prefix": "sha256/",
+      "status": "pending",
+      "scopeResourceCount": 3,
+      "scopeResourceSetSha256": "2d5e6da4f535823e8c68ef7fcac57327a09751379601f362da094024383a2633",
+      "objectsManifestSha256": "3333333333333333333333333333333333333333333333333333333333333333",
+      "missingObjectCount": 0,
+      "hashMismatchCount": 0
+    }
+  ],
+  "expected": {
+    "courseCount": 94,
+    "lectureCount": 1187,
+    "nativeTrackCount": 1187,
+    "adaptedTrackCount": 1187,
+    "releaseCount": 2374,
+    "missingBindingCount": 0,
+    "missingResourceCount": 0,
+    "storageHashMismatchCount": 0
+  }
+}
