@@ -3,3 +3,8 @@ export * from "./PolyhedronFoldTeachingStage";
 export * from "./PolyhedronFoldView";
 export * from "./PolyhedronNetFallback";
 export * from "./polyhedron-fold-render-model";
+export * from "./VoxelCanvas";
+export * from "./VoxelFallback";
+export * from "./VoxelTeachingStage";
+export * from "./VoxelView";
+export * from "./voxel-render-model";

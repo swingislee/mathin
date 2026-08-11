@@ -108,6 +108,8 @@ Mathin 建设一套“空间数学实验室”，服务从小学直观认识立�
 
 同日第十四个增量增加传输无关的 `spatial-classroom-host-v1`、`spatial-runtime-snapshot-v1` 与 `spatial-replay-bundle-v1`。宿主把教学 payload 意图封装为携带 frozen scene hash、branch、actor、当前 reset epoch 和下一连续序号的正式领域命令；教师 authority 与每名学生 local branch 使用独立宿主日志。snapshot 复用严格 runtime state，并保存 canonical SHA-256；重放包只允许同 scene/branch、连续序号、正确 epoch、唯一 command ID，命令尾最多 512 条且整体最多 2 MiB，64 条后建议生成新 snapshot。纯重放器校验 frozen page、snapshot hash，再从 snapshot 依序归约尾部命令；checkpoint、宿主恢复和继续发令保持 sequence/epoch 连续，reset 后的旧学生 outbox 命令显式失败。30 个模拟晚加入端从同一 4:3 page snapshot + command tail 得到完全相同 canonical state hash；专项合同增至 14 个文件/112 项并通过。该宿主未连接 `session_events`、realtime、IndexedDB outbox、签名 freeze、RPC/RLS 或真实 30 人浏览器，因此只证明预生产重放与收敛合同，不构成 SML-2 课堂容量或重连证据。
 
+同日第十五个增量增加 `voxel-scene-adapter-v1`、runtime 体素物化、`voxel-teaching-controller-v1` 与首个 4:3 体素教学舞台。adapter 从稳定有序的单位块坐标生成 P2 双语场景、正面/右面/上面/立体相机、按轴互斥分层、预测—三视图—逐层—验证步骤、总数 numeric checkpoint 和不提前泄露答案的 accessibility 摘要，并物化为 1200×900 `standard-4x3` page。runtime 物化器以同一 page/state 合并体素增删 delta、实体/层显隐和材质；纯 render model 与内核共享当前体素集合及正投影结果。R3F 使用单个 `InstancedMesh`、`frameloop="demand"`、DPR 1～1.5、已创作相机、context lost/restored 和模块级 `ssr:false`；二维 fallback 显示当前正投影、按揭示策略控制的堆叠数、分层表和坐标对象树。教学舞台提供相机书签、步骤播放、单层显隐、教师 reset 和学生私有整数 attempt 草稿；`student-submit` 可以观察与提交，但不能自行跳入最终答案揭示步骤。专项合同增至 16 个文件/122 项并通过。该舞台仍未挂入 Studio、生产 CoursewareDoc、课堂 transport 或公开路由，也没有目标设备的 1,000 体素帧预算、触控和真实浏览器证据，因此不关闭 SML-1 或 SML-2。
+
 ## 3. 产品目标、用户与非目标
 
 ### 3.1 目标结果
