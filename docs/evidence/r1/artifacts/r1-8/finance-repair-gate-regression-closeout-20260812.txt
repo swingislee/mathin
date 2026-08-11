@@ -1,0 +1,31 @@
+R1-8 finance repair gate regression closeout
+date=2026-08-12
+scope=BUG-R1M-024,BUG-R1M-025
+environment=self-hosted development database via SUPABASE_DB_SSH=xiaomi
+production_connected=false
+transaction_policy=every SQL assertion file uses begin/rollback
+
+implementation_migration=20260804000100_r1_finance_close_data_repair_gate.sql
+implementation_commit=e231d7c
+verification_commit=cbb2a0f0bfe0b3edac297283a5e8efcc43d00f74
+
+command=pnpm r1:test
+result=pass
+measured=15 test files, 99 tests, 0 failures
+
+command=SUPABASE_DB_SSH=xiaomi pnpm r1:db-audit
+result=pass
+measured=12 assertion files passed; final assertion: R1-8 finance safe-close assertions passed
+
+verified_contracts:
+- finance.enabled remained closed
+- preview_order_status_repair rejected with FINANCE_RELEASE_CLOSED
+- execute_data_repair_plan rejected with FINANCE_RELEASE_CLOSED
+- rollback_data_repair_plan rejected with FINANCE_RELEASE_CLOSED
+- rejected calls left plan status, order status, and repair events unchanged
+- recoverySnapshot, expectedAfterSnapshot, and afterSnapshot omitted finance amount fields
+- redacted snapshots retained audit identity, status transition, hashes, impact count, and amountsRedacted=true
+- list_data_repair_plans did not expose amountDue or equivalent finance detail
+
+secrets_or_pii_recorded=false
+database_writes_persisted=false

@@ -5,10 +5,12 @@ import { describe, expect, it } from "vitest";
 const root = process.cwd();
 const read = (file: string) => fs.readFileSync(path.join(root, file), "utf8");
 const migration = read("supabase/migrations/20260801001000_r1_finance_safe_close.sql");
+const repairGateMigration = read("supabase/migrations/20260804000100_r1_finance_close_data_repair_gate.sql");
 
 describe("R1-8 finance safe-close contracts", () => {
   it("locks the release gate and prevents feature-flag-only enablement", () => {
     const panel = read("src/features/school/OrganizationSettingsPanel.tsx");
+    const repairPanel = read("src/features/school/DataRepairPanel.tsx");
     const financePage = read("src/app/[locale]/dashboard/finance/page.tsx");
     expect(migration).toContain("create or replace function public.finance_release_gate_open()");
     expect(migration).toContain("as $$ select false $$");
@@ -17,6 +19,12 @@ describe("R1-8 finance safe-close contracts", () => {
     expect(panel).toContain('const financeReleaseClosed = flagKey === "finance.enabled"');
     expect(panel).toContain("disabled={financeReleaseClosed}");
     expect(financePage).toContain('isFeatureEnabled("finance.enabled")');
+    expect(repairGateMigration).toContain("perform public.assert_data_repair_release_open('order_status_recompute', 1)");
+    expect(repairGateMigration).toMatch(/execute_data_repair_plan[\s\S]*assert_data_repair_release_open/);
+    expect(repairGateMigration).toMatch(/rollback_data_repair_plan[\s\S]*assert_data_repair_release_open/);
+    expect(repairGateMigration).toContain("public.redact_finance_repair_snapshot");
+    expect(repairGateMigration).toContain("'amountsRedacted', true");
+    expect(repairPanel).toContain("financeEnabled || !financeRepairKeys.has(plan.repairKey)");
   });
 
   it("applies a restrictive read gate to every finance table", () => {
