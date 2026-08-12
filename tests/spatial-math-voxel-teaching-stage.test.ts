@@ -150,6 +150,13 @@ describe("voxel-teaching-controller-v1 and 4:3 render model", () => {
     const stage = readFileSync(resolve(process.cwd(), "src/features/spatial-math/renderer-r3f/VoxelTeachingStage.tsx"), "utf8");
 
     expect(renderer).toContain("<instancedMesh");
+    expect(renderer).toContain("VOXEL_SOLID_SIZE");
+    expect(renderer).toContain("buildVoxelEdgeInstances");
+    expect(renderer).toContain("meshBasicMaterial color={color}");
+    expect(renderer).toContain("interpolateVoxelCameraPose");
+    expect(renderer).toContain('data-camera-transition="orbit-ease-in-out"');
+    expect(renderer).toContain('data-camera-transition-state="idle"');
+    expect(renderer).not.toContain("0.92, 0.92, 0.92");
     expect(renderer).toContain("computeBoundingSphere()");
     expect(renderer).toContain("invalidate()");
     expect(renderer).toContain('frameloop="demand"');

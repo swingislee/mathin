@@ -8,3 +8,5 @@ export * from "./VoxelFallback";
 export * from "./VoxelTeachingStage";
 export * from "./VoxelView";
 export * from "./voxel-render-model";
+export * from "./voxel-camera-transition";
+export * from "./voxel-visual-model";

@@ -5,6 +5,7 @@ import {
   SPATIAL_SCENE_VERSION,
   canonicalJsonStringify,
   canonicalSha256,
+  sha256BytesFallback,
   compareRationals,
   parseSpatialScene,
   rational,
@@ -213,6 +214,15 @@ describe("spatial scene exact values and canonical JSON", () => {
     const expected = createHash("sha256").update(canonicalJsonStringify(value), "utf8").digest("hex");
 
     await expect(canonicalSha256(value)).resolves.toBe(expected);
+  });
+
+  it("preserves SHA-256 identity without Web Crypto on an HTTP LAN origin", () => {
+    expect(sha256BytesFallback(new TextEncoder().encode("abc"))).toBe(
+      "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    );
+    expect(sha256BytesFallback(new TextEncoder().encode("数学课堂"))).toBe(
+      createHash("sha256").update("数学课堂", "utf8").digest("hex"),
+    );
   });
 });
 

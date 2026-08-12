@@ -79,7 +79,7 @@ Mathin 建设一套“空间数学实验室”，服务从小学直观认识立�
 
 ### 2.4 隔离本地 spike 记录
 
-以下增量都是未挂载的本地 E1/E2 研究资产，只能说明各自被测试覆盖的合同成立；它们不进入生产路由、messages、数据库、课件或课堂链，不计入 R1 证据，也不改变本文件 `deferred` 状态。
+前十九个增量都是未挂载的本地 E1/E2 研究资产，只能说明各自被测试覆盖的合同成立。第二十个增量起按用户授权把同一批成果挂为纯内存 Tools 验收样机，但仍不进入数据库、生产课件或课堂链，不计入 R1 证据，也不改变本文件 `deferred` 状态。
 
 2026-08-11 的首个本地研究增量只增加 `src/features/spatial-math/domain/` 纯 TypeScript 体素合同/内核与 `tests/spatial-math-voxel.test.ts`，未增加路由、数据库、课件版本、公开 Tool 或生产开关。它验证了 SML-1 的数学方向，但不关闭 SML-0 或 SML-1：20 道教研签名金标、scene/page/command 合同、目标设备性能、WebGL/fallback 和课堂纵向链仍是退出必需项。
 
@@ -122,6 +122,8 @@ Mathin 建设一套“空间数学实验室”，服务从小学直观认识立�
 同日第十九个增量增加未接生产链的本地 `voxel-authoring-diff-v1`。纯 builder 对 before/after 两份严格 `voxel-authoring-draft-v1` 分别完成解析与 `standard-4x3` page 构建，以 canonical SHA-256 绑定 draft、scene 与 page；严格 diff 文档只保存这些 hash、固定顺序的 authored 变化，以及由相关 authored 变化触发的派生快照和 `changed` 标记，不保存 page、runtime 或 scene actions。authored 区覆盖体素增删、模型身份/层轴/材质/创建元数据、双语标题/目标/误区、Term 引用、lesson 步骤增删/重排/字段与 checkpoint，预测提示只在 lesson 权威处报告；派生区覆盖总数、分层、三视图投影指纹和逐层播放序列。before/after preview 只随 builder 结果以 `entityId` + build 成对返回，供未来未挂载的 4:3 预览复用，并排除在 diff 文档及 diff hash 外；相同草稿生成空 diff，单层升降序意图变化可显式记录为派生结果未变，canonical UTF-8 diff 上限为 2.5 MiB。专项合同增至 21 个文件/165 项并通过，全量 Vitest 为 72 个文件/455 项通过。该增量没有新增 UI、messages、路由、registry、数据库、生产 `CoursewareDoc`、Studio review/release/freeze 或课堂 transport，不登记 R1 证据，也不关闭任何 SML-* 阶段。
 
 同日第二十个增量按用户授权把纯内存验收样机注册为第三个第一方工具 `spatial-lab`。现有通用工具详情页和 `/embed/[tool]` 自动提供中文、英文与无导航嵌入入口；重型 3D/编辑模块继续按工具 ID 动态加载。内建双语 10 单位块 preset 生成唯一 1200×900 `standard-4x3` page；“建模与编排”复用统一草稿工作流，“课堂试演”在本页内存中归约教师语义命令，“变化摘要”把修改后的体素、层数与模型/步骤/checkpoint 变化同初始模板比较。页面显式标注刷新即恢复、无 Studio 保存/审核发布/多人同步，代码没有数据库、RPC/RLS、生产 `CoursewareDoc`、课堂 transport 或真实学生数据依赖。专项合同为 22 个文件/169 项通过，全量 Vitest 为 73 个文件/459 项通过；真实浏览器已在 localhost 验证中文详情页、英文详情页、嵌入页、1440×1000 桌面、390×844 手机、WebGL canvas、10→11 单位块差异和教师步骤 1→2，手机主标签栏可横向触控且页面无横向溢出。局域网 `192.168.5.213:3130` 的 HTTP 200 已验证，但应用内自动化浏览器两次连接超时，因此不登记 LAN 视觉通过；本增量也不登记 R1 证据、不关闭任何 `SML-*` 阶段。
+
+同日第二十一个增量根据用户对 Tools 样机的初审修正体素视觉和视角切换。体素面恢复为边长 1 的无缝纯色 `meshBasicMaterial`，按实际材质色分组实例化；独立的三轴 `InstancedMesh` 生成深色粗边条，并对相邻单位块共享的同向边去重，替代旧的 0.92 缩小方块及由间隙形成的黑块观感。相机从当前姿态沿目标中心做 720ms 球面轨道插值，并同步正交/透视 framing；手动拖动可取消过渡，`prefers-reduced-motion` 下直接到位。为保证教室 HTTP 局域网与安全源生成相同 scene/replay identity，canonical SHA-256 在 Web Crypto 不可用时改走等价纯 TypeScript 回退。专项合同为 23 个文件/174 项通过，全量 Vitest 为 74 个文件/464 项通过；真实 Chromium 验证浅色/深色 × 1440×900/390×844 四组均有一个 WebGL canvas、无横向溢出，局域网 `192.168.5.213:3130` 返回 200 并加载相同纯色粗边 renderer。视角切换在普通动态偏好下取得前/中/后三个不同截图哈希，180ms 时仍处于旋转中间姿态、830ms 已收敛且控制台错误为 0；该验收仍只证明当前样机与 Chromium 目标，不登记 R1 证据、不关闭任何 `SML-*` 阶段。
 
 ## 3. 产品目标、用户与非目标
 
