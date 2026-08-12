@@ -4,6 +4,8 @@ export * from "./attempt-evaluator";
 export * from "./cube-net-kernel";
 export * from "./cube-net-gallery";
 export * from "./cube-net-gallery-schema";
+export * from "./cube-net-gallery-folding";
+export * from "./cube-net-gallery-folding-schema";
 export * from "./cube-net-folding-preset";
 export * from "./cube-net-folding-preset-schema";
 export * from "./exact";

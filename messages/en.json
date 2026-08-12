@@ -336,8 +336,8 @@
       "foldToVerify": "Move the fold progress or play the lesson steps to verify your prediction.",
       "verifiedConclusion": "Fold complete: face F is opposite face A.",
       "folded": "Folded into a cube",
-      "foldingDemoTitle": "Fixed-net folding check",
-      "foldingDemoDescription": "The A–F example below remains available for continuous folding and opposite-face verification; the gallery and quiz do not alter it.",
+      "foldingDemoTitle": "Folding check for form {ordinal}",
+      "foldingDemoDescription": "Selecting a valid form above rebuilds the continuous fold below from the same square layout and A–F face mapping.",
       "gallery": {
         "title": "The 11 cube nets among 35 hexominoes",
         "description": "The mathematics kernel enumerates all 35 free hexominoes and identifies 11 cube nets and 24 shapes that cannot fold into a cube.",
@@ -349,6 +349,7 @@
         "pendingReview": "The kernel verifies this form mathematically; all 11 candidates still await individual curriculum sign-off.",
         "sixSquares": "6 unit squares",
         "sharedEdges": "{count} shared edges",
+        "selectedForFolding": "Loaded in the folding stage below",
         "questionAlt": "Hexomino for question {current}",
         "questionPosition": "Question {current}/{total}",
         "questionPrompt": "Can this hexomino fold into a cube?",

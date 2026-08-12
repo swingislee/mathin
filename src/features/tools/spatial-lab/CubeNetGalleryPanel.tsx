@@ -70,7 +70,13 @@ function resultReasonKey(result: CubeNetGalleryEvaluation): "validReason" | "ori
   return "faceOverlapReason";
 }
 
-export function CubeNetGalleryPanel() {
+export function CubeNetGalleryPanel({
+  selectedLegalId,
+  onSelectedLegalIdChange,
+}: {
+  readonly selectedLegalId: string;
+  readonly onSelectedLegalIdChange: (entryId: string) => void;
+}) {
   const t = useTranslations("tools.spatialLab.cubeNet.gallery");
   const catalog = useMemo(() => createCubeNetGalleryCatalog(), []);
   const legalEntries = useMemo(
@@ -78,7 +84,6 @@ export function CubeNetGalleryPanel() {
     [catalog],
   );
   const judgmentDeck = useMemo(() => cubeNetGalleryJudgmentDeck(catalog), [catalog]);
-  const [selectedLegalId, setSelectedLegalId] = useState(legalEntries[0].id);
   const [questionIndex, setQuestionIndex] = useState(0);
   const [evaluation, setEvaluation] = useState<CubeNetGalleryEvaluation | null>(null);
   const selectedLegal = legalEntries.find((entry) => entry.id === selectedLegalId) ?? legalEntries[0];
@@ -129,7 +134,7 @@ export function CubeNetGalleryPanel() {
                       className="h-auto min-h-28 w-full flex-col gap-1 border border-line p-2"
                       aria-label={label}
                       aria-pressed={selected}
-                      onClick={() => setSelectedLegalId(entry.id)}
+                      onClick={() => onSelectedLegalIdChange(entry.id)}
                     >
                       <NetDiagram entry={entry} label={label} compact />
                       <span className="text-xs">{label}</span>
@@ -147,6 +152,7 @@ export function CubeNetGalleryPanel() {
                 <div className="mt-3 flex flex-wrap gap-2">
                   <Badge variant="secondary">{t("sixSquares")}</Badge>
                   <Badge variant="outline">{t("sharedEdges", { count: selectedLegal.adjacencyEdgeCount })}</Badge>
+                  <Badge variant="outline">{t("selectedForFolding")}</Badge>
                 </div>
               </div>
               <div className="order-1 rounded-xl bg-paper/70 p-2 sm:order-2">

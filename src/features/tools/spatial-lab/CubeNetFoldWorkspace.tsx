@@ -12,12 +12,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
+  CUBE_NET_GALLERY_FOLDING_VERSION,
   SPATIAL_COMMAND_VERSION,
-  buildCubeNetFoldingPreset,
-  createCubeNetFoldingPresetRequest,
+  buildCubeNetGalleryFolding,
+  createCubeNetGalleryCatalog,
+  createCubeNetGalleryFoldingRequest,
   createInitialSpatialRuntimeState,
   reduceSpatialRuntimeState,
-  type CubeNetFoldingPresetBuild,
+  type CubeNetGalleryFoldingBuild,
   type SpatialCommandActor,
   type SpatialCommandPayload,
   type SpatialRuntimeState,
@@ -34,16 +36,16 @@ const TOOL_TEACHER: SpatialCommandActor = {
 };
 
 type CubeNetBuildState =
-  | { readonly status: "building" }
-  | { readonly status: "error" }
-  | { readonly status: "ready"; readonly build: CubeNetFoldingPresetBuild };
+  | { readonly status: "building"; readonly entryId: string }
+  | { readonly status: "error"; readonly entryId: string }
+  | { readonly status: "ready"; readonly entryId: string; readonly build: CubeNetGalleryFoldingBuild };
 
 function CubeNetFoldRehearsal({
   build,
   locale,
   messages,
 }: {
-  readonly build: CubeNetFoldingPresetBuild;
+  readonly build: CubeNetGalleryFoldingBuild;
   readonly locale: "zh" | "en";
   readonly messages: PolyhedronFoldTeachingMessages;
 }) {
@@ -85,7 +87,8 @@ function CubeNetFoldRehearsal({
   return (
     <div
       className="space-y-4"
-      data-cube-net-fold="cube-net-folding-preset-v1"
+      data-cube-net-fold={CUBE_NET_GALLERY_FOLDING_VERSION}
+      data-folding-entry={build.entry.id}
       data-fold-progress={progress.toFixed(2)}
       data-selected-face={selectedFaceIds[0] ?? ""}
     >
@@ -129,21 +132,36 @@ function CubeNetFoldRehearsal({
 
 export function CubeNetFoldWorkspace({ locale }: { readonly locale: "zh" | "en" }) {
   const t = useTranslations("tools.spatialLab");
-  const [buildState, setBuildState] = useState<CubeNetBuildState>({ status: "building" });
+  const catalog = useMemo(() => createCubeNetGalleryCatalog(), []);
+  const legalEntries = useMemo(
+    () => catalog.entries.filter((entry) => entry.classification === "legal"),
+    [catalog],
+  );
+  const [selectedEntryId, setSelectedEntryId] = useState(legalEntries[0].id);
+  const selectedEntry = legalEntries.find((entry) => entry.id === selectedEntryId) ?? legalEntries[0];
+  const [buildState, setBuildState] = useState<CubeNetBuildState>({
+    status: "building",
+    entryId: selectedEntryId,
+  });
 
   useEffect(() => {
     let current = true;
-    void buildCubeNetFoldingPreset(createCubeNetFoldingPresetRequest()).then(
+    void buildCubeNetGalleryFolding(createCubeNetGalleryFoldingRequest(selectedEntryId)).then(
       (build) => {
-        if (current) setBuildState({ status: "ready", build });
+        if (current) setBuildState({ status: "ready", entryId: selectedEntryId, build });
       },
       () => {
-        if (current) setBuildState({ status: "error" });
+        if (current) setBuildState({ status: "error", entryId: selectedEntryId });
       },
     );
     return () => {
       current = false;
     };
+  }, [selectedEntryId]);
+
+  const selectEntry = useCallback((entryId: string) => {
+    setSelectedEntryId(entryId);
+    setBuildState({ status: "building", entryId });
   }, []);
 
   const teachingMessages = useMemo<PolyhedronFoldTeachingMessages>(() => ({
@@ -189,14 +207,21 @@ export function CubeNetFoldWorkspace({ locale }: { readonly locale: "zh" | "en" 
           </CardContent>
         </Card>
 
-        <CubeNetGalleryPanel />
+        <CubeNetGalleryPanel
+          selectedLegalId={selectedEntryId}
+          onSelectedLegalIdChange={selectEntry}
+        />
 
         <div>
-          <h2 className="text-base font-medium text-ink">{t("cubeNet.foldingDemoTitle")}</h2>
-          <p className="mt-1 text-sm leading-6 text-muted">{t("cubeNet.foldingDemoDescription")}</p>
+          <h2 className="text-base font-medium text-ink">
+            {t("cubeNet.foldingDemoTitle", { ordinal: selectedEntry.classificationOrdinal })}
+          </h2>
+          <p className="mt-1 text-sm leading-6 text-muted">
+            {t("cubeNet.foldingDemoDescription", { ordinal: selectedEntry.classificationOrdinal })}
+          </p>
         </div>
 
-        {buildState.status === "ready" ? (
+        {buildState.status === "ready" && buildState.entryId === selectedEntryId ? (
           <CubeNetFoldRehearsal
             key={buildState.build.page.sceneHash}
             build={buildState.build}

@@ -132,6 +132,8 @@ describe("spatial-lab Tools acceptance prototype", () => {
     expect(source).toContain('data-layout-profile="standard-4x3"');
     expect(source).toContain('controlslayout="external"');
     expect(source).toContain('data-cube-net-gallery={cube_net_gallery_version}');
+    expect(source).toContain("buildcubenetgalleryfolding");
+    expect(source).toContain("data-folding-entry={build.entry.id}");
     expect(gallerySource).not.toContain("<input");
     expect(gallerySource).not.toContain("<select");
   });

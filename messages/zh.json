@@ -336,8 +336,8 @@
       "foldToVerify": "拖动折叠进度，或播放教学步骤来验证预测。",
       "verifiedConclusion": "折叠完成：F 面与 A 面相对。",
       "folded": "已折成正方体",
-      "foldingDemoTitle": "固定展开图折叠验证",
-      "foldingDemoDescription": "下面保留 A～F 面示例，用连续折叠验证相对面；图库与判断练习不会改写这个示例。",
+      "foldingDemoTitle": "第{ordinal}种展开图折叠验证",
+      "foldingDemoDescription": "上方选择哪一种合法形态，下方就用同一方格布局和 A～F 面映射重新生成连续折叠。",
       "gallery": {
         "title": "35种六连方中的11种正方体展开图",
         "description": "数学内核穷举全部35种自由六连方，识别11种合法展开图和24种不能折成立方体的形态。",
@@ -349,6 +349,7 @@
         "pendingReview": "该形态已通过数学内核验证；11种候选仍待教研逐项签名。",
         "sixSquares": "6个单位正方形",
         "sharedEdges": "{count}条公共边",
+        "selectedForFolding": "已载入下方折叠舞台",
         "questionAlt": "第{current}题的六连方",
         "questionPosition": "第{current}/{total}题",
         "questionPrompt": "这个六连方能折成正方体吗？",
