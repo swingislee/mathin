@@ -5,6 +5,9 @@ import type { SpatialPageDoc } from "@/features/spatial-math/domain/page-schema"
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import type { CoursewareTrack, StudioPageSummary } from "./data";
+import { CoursewarePageCreateDialog } from "./CoursewarePageCreateDialog";
+import { CoursewarePageDeleteButton } from "./CoursewarePageDeleteButton";
+import { CoursewarePageOrderControls } from "./CoursewarePageOrderControls";
 import { StagePreview } from "./StagePreview";
 
 export async function SpatialStudioViewer({
@@ -28,6 +31,7 @@ export async function SpatialStudioViewer({
     `/studio/courseware/${lecture.id}?track=${track}&page=${target.id}`;
   const previous = currentIndex > 0 ? pages[currentIndex - 1] : null;
   const next = currentIndex >= 0 && currentIndex < pages.length - 1 ? pages[currentIndex + 1] : null;
+  const nextPageAfterDelete = next?.id ?? previous?.id ?? null;
 
   return (
     <div className="@container flex h-full min-h-0 flex-col bg-card">
@@ -38,6 +42,22 @@ export async function SpatialStudioViewer({
         <span className="min-w-0 flex-1 truncate text-sm text-ink">
           {t("lectureTitle", { no: lecture.no, name: lecture.name })}
         </span>
+        <CoursewarePageOrderControls
+          lectureId={lecture.id}
+          pageId={page.id}
+          pageIds={pages.map((item) => item.id)}
+        />
+        <CoursewarePageCreateDialog
+          lectureId={lecture.id}
+          afterPageDocId={page.id}
+          track={track}
+        />
+        <CoursewarePageDeleteButton
+          lectureId={lecture.id}
+          pageId={page.id}
+          nextPageId={nextPageAfterDelete}
+          track={track}
+        />
         <Badge variant="outline">{page.aspect}</Badge>
         <Badge>{t("spatialPageBadge")}</Badge>
       </header>

@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import type { AixuexiPageDoc } from "@/features/courseware-doc/aixuexi-schema";
 import type { ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 import type { CoursewareTrack, StudioPageSummary } from "./data";
+import { CoursewarePageCreateDialog } from "./CoursewarePageCreateDialog";
 import { StagePreview } from "./StagePreview";
 
 export async function AixuexiStudioViewer({
@@ -41,6 +42,11 @@ export async function AixuexiStudioViewer({
         <span className="min-w-0 flex-1 truncate text-sm text-ink">
           {t("lectureTitle", { no: lecture.no, name: lecture.name })}
         </span>
+        <CoursewarePageCreateDialog
+          lectureId={lecture.id}
+          afterPageDocId={page.id}
+          track={track}
+        />
         <Badge variant="outline">{track === "adapted-4x3" ? "4:3" : "16:9"}</Badge>
         <Badge>{t("aixuexiAdapterBadge")}</Badge>
       </header>

@@ -7,6 +7,8 @@ import {
   spatialPageDocSchema,
   verifySpatialPageDoc,
 } from "@/features/spatial-math/domain/page-schema";
+import { SPATIAL_COURSEWARE_TEMPLATE_ID } from "@/features/spatial-math/presets/courseware-template-contract";
+import { buildSpatialCoursewareTemplatePage } from "@/features/spatial-math/presets/courseware-template";
 import { actionError, type ActionResult } from "@/lib/action-result";
 import { authorizedClient } from "@/features/school/actions/guards";
 import { COMMON_CODES, intInRange, parse, requiredText, text, uuid } from "@/features/school/actions/schemas";
@@ -103,7 +105,7 @@ export async function createBlankCoursewarePageAction(input: { lectureId: string
   try {
     const value = parse(z.object({ lectureId: uuid, afterPageDocId: uuid.nullable(), title: requiredText(500) }), input); const { supabase } = await authorizedClient("courseware.page.edit");
     const { data, error } = await rpc<string>(supabase, "create_blank_cw_page", { p_lecture_id: value.lectureId, p_after_page_doc_id: value.afterPageDocId, p_title: value.title }); if (error) throw new Error(error.message); return { ok: true, data: { pageId: data } };
-  } catch (error) { return actionError(error, ["AFTER_PAGE_NOT_FOUND", ...COMMON_CODES]); }
+  } catch (error) { return actionError(error, ["AFTER_PAGE_NOT_FOUND", "RESPONSIBILITY_REQUIRED", ...COMMON_CODES]); }
 }
 
 const createSpatialPageSchema = z.object({
@@ -135,6 +137,41 @@ export async function createSpatialCoursewarePageAction(
       "SPATIAL_PAGE_SCENE_HASH_MISMATCH",
       "PAGE_LIMIT_EXCEEDED",
       "AFTER_PAGE_NOT_FOUND",
+      "RESPONSIBILITY_REQUIRED",
+      ...COMMON_CODES,
+    ]);
+  }
+}
+
+const createSpatialTemplatePageSchema = z.object({
+  lectureId: uuid,
+  afterPageDocId: uuid.nullable(),
+  templateId: z.literal(SPATIAL_COURSEWARE_TEMPLATE_ID),
+});
+
+export async function createSpatialCoursewareTemplatePageAction(
+  input: z.input<typeof createSpatialTemplatePageSchema>,
+): Promise<ActionResult<{ pageId: string }>> {
+  try {
+    const value = parse(createSpatialTemplatePageSchema, input);
+    const built = await buildSpatialCoursewareTemplatePage(value.templateId);
+    const { supabase } = await authorizedClient("courseware.page.edit");
+    const { data, error } = await rpc<string>(supabase, "create_cw_spatial_page", {
+      p_lecture_id: value.lectureId,
+      p_after_page_doc_id: value.afterPageDocId,
+      p_title: built.title.zh,
+      p_doc: built.page,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true, data: { pageId: data } };
+  } catch (error) {
+    return actionError(error, [
+      "INVALID_SPATIAL_PAGE_DOC",
+      "SPATIAL_PAGE_SCENE_HASH_MISMATCH",
+      "INVALID_PAGE_TITLE",
+      "PAGE_LIMIT_EXCEEDED",
+      "AFTER_PAGE_NOT_FOUND",
+      "RESPONSIBILITY_REQUIRED",
       ...COMMON_CODES,
     ]);
   }

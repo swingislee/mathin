@@ -6,7 +6,7 @@
 >
 > **R1 暂停位置**：`R1-9 · P6-9 与跨阶段非五模块生产准备`；R1-9 未关闭，R1-10～18 仍为 pending。
 >
-> **当前未结项**：2026-08-12 用户正式决定启动空间数学专题，SML-0 成为唯一当前施工阶段。release/template 权威、lecture capability 与 docVersion-aware track/layout 三个结构阻断项均已关闭；当前继续冻结 20 道代表题的教研金标、跨端 hash 向量、真实 Studio 创建入口和 4:3 freeze/live 空壳验收。该切换不等于 R1-9 或 `v1.0.0` 已完成，不授权清理真实生产数据，也不豁免恢复 R1 后仍须完成的原发布门。
+> **当前未结项**：2026-08-12 用户正式决定启动空间数学专题，SML-0 成为唯一当前施工阶段。release/template 权威、lecture capability、docVersion-aware track/layout 与首个可信模板的真实 Studio 创建/重排入口均已关闭；当前继续冻结 20 道代表题的教研金标、跨端 hash 向量，以及 create→publish→prep→freeze→live 的 4:3 浏览器空壳验收。该切换不等于 R1-9 或 `v1.0.0` 已完成，不授权清理真实生产数据，也不豁免恢复 R1 后仍须完成的原发布门。
 >
 > **核对日期**：2026-08-13；依据代码、迁移、内容目录、CI、Git、R1-6 教学成果链路、R1-7 导出链路、R1-8 财务安全关闭复验证据、R1-9 两套课程来源 manifest、Notebook 生命周期、非五模块 Playwright、仓库 secret scan 与 doc 00～28。
 
@@ -19,7 +19,7 @@
 | Terms 现有 71 篇中文 MDX；Games 3 个；Tools 3 个（2 个既有工具 + `spatial-lab` 验收样机）；Minds 2 篇；Story 无完整章节内容目录 | Story 是内容阻断项；其他模块需要关系、权限、性能和浏览器证据 |
 | E 系列开发数据有 1135 讲双轨资源；爱学习 G+ 秋季有三至六年级 52 讲双轨资源（4934 bindings/轨，母版 1200×900 即 4:3） | R1-9 分别验证两套文档合同与资源；R1-15 演练；R1-18 重建 2374 条正式 release-1 |
 | 课程目录版本层已落库（2026-08-03，迁移 `20260803000300`/`20260803000400`）；2026 秋季 270 讲已于 2026-08-04 导入：E 系列 2026新版 36 门（暑期 18 + 秋季 18）、2025旧版 54 门，讲次 1135 | 旧秋季 18 门保留 `enabled` 并已写 `superseded_by_course_id`；本批 4:3 背景按运营指示未经人工逐张核验直接发布，见 doc 16 §11.3 |
-| 当前全量 Vitest 共 86 个测试文件、560 项；其中非 spatial 基线为 51 个文件、290/290，空间数学/SML-0 专项为 35 个文件、270/270，`pnpm r1:test` 既有基线为 18 个文件、121/121 | SML-0 与 R1-14 均保持全量 100% 通过；正式 Playwright 框架已有本地基线，仍须补发布目标、写态、zh/en、跨浏览器、连续无 flaky、并发、文件和竞争矩阵 |
+| 当前全量 Vitest 共 87 个测试文件、565 项；其中非 spatial 基线为 51 个文件、290/290，空间数学/SML-0 专项为 36 个文件、275/275，`pnpm r1:test` 既有基线为 18 个文件、121/121 | SML-0 与 R1-14 均保持全量 100% 通过；正式 Playwright 框架已有本地基线，仍须补发布目标、写态、zh/en、跨浏览器、连续无 flaky、并发、文件和竞争矩阵 |
 | 小王子是全站视觉基础 | R1-12 验证三种强度：公开场景、内容/Notebook、运营工作区 |
 
 阶段按编号关闭。实现可在依赖满足后并行准备；04 顶部只记录一个正在关闭的阶段。后续 Agent 不能用“代码已存在”跳过该阶段的退出证据。
@@ -31,8 +31,8 @@
 - **首条退出测试**：Studio 创建/重排 4:3 空间页 → 双 head → 一次审核原子发布双 release → 课次备课/freeze → 4:3 live 空壳 → 重连回放 → 回退后仍共享历史 revision；任一步失败整体回滚。
 - **暂缓范围**：不继续增加 Tools 题型、截面、函数或任意模型导入，不提前进入 SML-1～8；既有 `spatial-lab` 只作合同回归与金标候选预览。R1-9～18、Story/Games/Minds/Terms/Tools/Notebook 的 1.0 发布缺口保持 pending，待显式切回 R1 后继续。
 - **权限与数据边界**：SML-0 可以修改生产代码、迁移、RPC/RLS、Courseware Studio、发布与 freeze 合同，但只能使用开发/一次性验证库；不得执行 R1-15/R1-18 的真实生产清理、release 重建或真实学生数据动作。
-- **已完成的正式增量**：`spatial-page-delivery-v1` 已冻结 4:3 内容与兼容 track 的映射；migrations `20260812000400`～`20260812000600` 已统一 lecture/release capability；migration `20260813000100` 让 immutable release 保存有序 `courseware_pages`，并让备课、冻结、直播、学习检查、资产解析和回退以 selected/frozen release 为权威；migration `20260813000200` 增加显式 docVersion/layout 元数据、空间页 create/copy/save/revert、一次审核原子双 release、成对 rollback 与 freeze/reconnect 断言。生产 `CoursewareDoc`、Studio/课堂分发按文档 layout 读取，普通空间页在两条兼容轨中仍保持原生 4:3。legacy `courseware_template` 只保留为 native current release 的受控兼容投影。三个结构阻断项均已关闭。
-- **当前 SML-0 剩余项**：20 道代表题的教研签名与跨领域复核、跨端 canonical hash 向量、Studio 可操作创建入口，以及 create→publish→prep→freeze→live 的真实浏览器 4:3 空壳验收；这些未完成前不得关闭 SML-0。
+- **已完成的正式增量**：`spatial-page-delivery-v1` 已冻结 4:3 内容与兼容 track 的映射；migrations `20260812000400`～`20260812000600` 已统一 lecture/release capability；migration `20260813000100` 让 immutable release 保存有序 `courseware_pages`，并让备课、冻结、直播、学习检查、资产解析和回退以 selected/frozen release 为权威；migration `20260813000200` 增加显式 docVersion/layout 元数据、空间页 create/copy/save/revert、一次审核原子双 release、成对 rollback 与 freeze/reconnect 断言。生产 `CoursewareDoc`、Studio/课堂分发按文档 layout 读取，普通空间页在两条兼容轨中仍保持原生 4:3。首个可信分层计数模板已能在空讲次、普通页、导入页和空间页 Studio 状态中创建，并支持跨类型重排与删除；浏览器已证明 native/adapted 兼容选择均读取同一 4:3 文档。legacy `courseware_template` 只保留为 native current release 的受控兼容投影。三个结构阻断项与 Studio 创建入口均已关闭。
+- **当前 SML-0 剩余项**：20 道代表题的教研签名与跨领域复核、跨端 canonical hash 向量，以及 create→publish→prep→freeze→live 的真实浏览器 4:3 空壳验收；这些未完成前不得关闭 SML-0。
 
 ## 2. 历史阶段的有效范围
 
@@ -83,7 +83,7 @@
 | 阶段 | 依赖 | 动作与产物 | 退出证据 |
 | --- | --- | --- | --- |
 | **R1-13 指标、报表与产品遥测** | R1-5～12 | 为招生、在读/流失、排课/到课/补课、作业/成果、内容消费、运营 SLA 和启用时的财务定义分子/分母、去重键、时区、延迟、权限和版本；采集错误、性能、job、通知、发布事件 | Dashboard/导出/报告使用同一指标版本；doc 25 的运行门可查询、告警且不采集非必要未成年人 PII |
-| **R1-14 幂等、并发、事务、文件与 E2E** | R1-2～13 | commit `cbb2a0f` 已清零本轮修复前 19 项 Vitest 失败；commits `0d55044`、`8e5c076` 已建立正式 Playwright 配置、匿名/固定角色隔离、loopback/LAN 目标策略和 fail-closed release runner，9 条非五模块本地 Chromium 旅程分别取得绿色证据，见[基线子门](../evidence/r1/r1-14-playwright-baseline.md)。继续修复关键写操作双击/重试/竞争，保证领域事实与审计同事务，外部调用走 job/outbox | 当前 Vitest 554/554；仍须在明确非生产发布目标完整重跑 9/9 零 skip，并补写态、zh/en、跨浏览器、连续 3 次无 flaky、大文件和竞争矩阵；这些门及 R1-13 依赖未齐前 R1-14 不关闭 |
+| **R1-14 幂等、并发、事务、文件与 E2E** | R1-2～13 | commit `cbb2a0f` 已清零本轮修复前 19 项 Vitest 失败；commits `0d55044`、`8e5c076` 已建立正式 Playwright 配置、匿名/固定角色隔离、loopback/LAN 目标策略和 fail-closed release runner，9 条非五模块本地 Chromium 旅程分别取得绿色证据，见[基线子门](../evidence/r1/r1-14-playwright-baseline.md)。继续修复关键写操作双击/重试/竞争，保证领域事实与审计同事务，外部调用走 job/outbox | 当前 Vitest 565/565；仍须在明确非生产发布目标完整重跑 9/9 零 skip，并补写态、zh/en、跨浏览器、连续 3 次无 flaky、大文件和竞争矩阵；这些门及 R1-13 依赖未齐前 R1-14 不关闭 |
 | **R1-15 生产清理与 release-1 隔离演练** | R1-14 | `pnpm r1:baseline-plan` 已提供只读、确定性的隔离目标 preflight；后续只在生产快照副本执行审核 manifest、dry-run、备份、账号/运营数据清理，并为 E 系列 1135×2 与爱学习 52×2 重建共 2374 条 release-1；第二次运行必须 no-op | 当前 planner 仅证明输入、计数、hash 与环境拒绝合同；仍需 1 次全量演练成功、计数满足 doc 25 不变量、备份可恢复，且本阶段未修改真实生产 |
 | **R1-16 独立生产、监控、备份与恢复** | R1-14～15 | commit `35b9f60` 已提供 `pnpm r1:deployment-plan` 只读 fail-closed preflight，固定 current/target/recovery 指纹隔离、受控 secret/config 引用、监控、RPO/RTO、隔离恢复和应用回滚合同，见[部署 Preflight](../evidence/r1/r1-16-deployment-preflight.md)。commits `3077fee`、`82c0920`、`8e5c076` 已让当前树、binary ASCII、高风险容器及完整可达 Git 历史的高置信 secret scan 均为 0，见[仓库扫描子门](../evidence/r1/r1-16-repository-secret-scan.md) | 仓库扫描不证明开发/预生产/生产环境、数据、secret、Storage 和域名隔离。R1-14、R1-15、环境隔离、监控探针、数据库恢复、Storage 恢复、应用回滚和非执行者复核未通过前保持 blocker；数据库 RPO≤15min/RTO≤4h，Storage RPO≤24h/RTO≤8h，应用回滚≤30min |
 | **R1-17 14 天真实班级 RC** | R1-16 | 在生产候选环境运行连续 14 天、至少 5 节真实课堂；覆盖请假/补课、作业、成果/视频、家长查看和启用时的财务 | 可用性≥99.5%；关键 action 系统错误率<0.5%；jobs/通知最终成功≥99%；发布时未处置 dead-letter=0 |

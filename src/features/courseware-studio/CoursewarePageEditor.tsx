@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { BookOpenCheck, Plus, Rocket, RotateCcw, Save, Send, Trash2 } from "lucide-react";
+import { BookOpenCheck, Rocket, RotateCcw, Save, Send, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -16,7 +16,6 @@ import type { DocNode, PageDoc } from "@/features/courseware-doc/schema";
 import type { ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 import type { CoursewareTrack, StudioImageAssetUsage, StudioPageSummary, StudioRelease, StudioRevision } from "./data";
 import {
-  createBlankCoursewarePageAction,
   copyCoursewarePageAction,
   deleteCoursewarePageAction,
   replaceCoursewarePageImageAction,
@@ -28,6 +27,7 @@ import {
   setCoursewarePageLearningCheckFlagAction,
   submitCoursewareReviewAction,
 } from "./actions";
+import { CoursewarePageCreateDialog } from "./CoursewarePageCreateDialog";
 import { setAdaptPageClassificationAction } from "./adapt-actions";
 import { ADAPT_CLASSES, type AdaptClass } from "./adapt-review-shared";
 import { useRouter } from "@/i18n/navigation";
@@ -221,10 +221,12 @@ export function CoursewarePageEditor({ lecture, track, page, pages, initialDoc, 
     <div className="ml-auto flex shrink-0 items-center gap-2">
       <Button variant="secondary" size="sm" disabled={pending} onClick={() => move(-1)}>{t("moveUp")}</Button>
       <Button variant="secondary" size="sm" disabled={pending} onClick={() => move(1)}>{t("moveDown")}</Button>
-      <Button variant="secondary" size="sm" disabled={pending} onClick={() => startTransition(async () => {
-        const result = await createBlankCoursewarePageAction({ lectureId: lecture.id, afterPageDocId: page.id, title: t("newPage") });
-        if (result.ok) navigatePage(result.data.pageId); else setMessage(t("insertFailed", { code: result.code }));
-      })}><Plus className="size-4" />{t("insertPage")}</Button>
+      <CoursewarePageCreateDialog
+        lectureId={lecture.id}
+        afterPageDocId={page.id}
+        track={track}
+        disabled={pending || isDirty}
+      />
       <Button variant="secondary" size="sm" disabled={pending} onClick={() => startTransition(async () => {
         const result = await deleteCoursewarePageAction(page.id);
         if (result.ok) router.push(studioHref(null)); else setMessage(t("deleteFailed", { code: result.code }));

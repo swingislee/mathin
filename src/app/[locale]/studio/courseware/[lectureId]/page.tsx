@@ -4,6 +4,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { CoursewarePageEditor } from "@/features/courseware-studio/CoursewarePageEditor";
 import { AixuexiStudioViewer } from "@/features/courseware-studio/AixuexiStudioViewer";
 import { SpatialStudioViewer } from "@/features/courseware-studio/SpatialStudioViewer";
+import { CoursewarePageCreateDialog } from "@/features/courseware-studio/CoursewarePageCreateDialog";
 import {
   loadCoursewareStudioPage,
   loadCoursewareWorkbenchContext,
@@ -52,7 +53,10 @@ export default async function StudioCoursewarePage({
         <span className="truncate text-sm text-ink">{t("lectureTitle", { no: context.lecture.no, name: context.lecture.name })}</span>
       </div>
       <div className="flex flex-1 items-center justify-center p-6">
-        <p className="max-w-sm text-center text-sm text-muted">{t("workbenchNoPages")}</p>
+        <div className="flex max-w-sm flex-col items-center gap-4 text-center">
+          <p className="text-sm text-muted">{t("workbenchNoPages")}</p>
+          <CoursewarePageCreateDialog lectureId={lectureId} afterPageDocId={null} track={track} />
+        </div>
       </div>
     </div>;
   }
