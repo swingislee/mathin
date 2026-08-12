@@ -21,6 +21,8 @@ export * from "./scene-schema";
 export * from "./voxel-kernel";
 export * from "./voxel-face-paint";
 export * from "./voxel-face-paint-schema";
+export * from "./voxel-carving";
+export * from "./voxel-carving-schema";
 export * from "./voxel-authoring-draft";
 export * from "./voxel-authoring-draft-schema";
 export * from "./voxel-authoring-diff";

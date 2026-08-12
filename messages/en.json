@@ -316,7 +316,8 @@
           "layeredCounting": "Layer counting · 10 cubes",
           "hiddenCubes": "Hidden cubes · 14 cubes",
           "threeViews": "Three-view observation · 12 cubes",
-          "surfacePainting": "Surface painting · 27 cubes"
+          "surfacePainting": "Surface painting · 27 cubes",
+          "hollowing": "Hollowing and area · 27 cubes"
         }
       },
       "paint": {
@@ -327,6 +328,26 @@
         "paintedFaces": "Painted {painted}/{total} exposed faces",
         "histogramLabel": "Classify cubes by the number of painted faces",
         "histogramItem": "{faces} faces · {count}"
+      },
+      "carving": {
+        "title": "Carving and hollowing lab",
+        "description": "Compare volume and surface area after each carving; hide the top layer to inspect the sealed center cavity.",
+        "profilesLabel": "Carving profile",
+        "profiles": {
+          "solid": "Restore solid",
+          "topDent": "Top dent",
+          "sealed": "Sealed cavity",
+          "opened": "Open top",
+          "tunnel": "Through tunnel"
+        },
+        "originalVolume": "Original volume",
+        "removedVolume": "Removed volume",
+        "remainingVolume": "Remaining volume",
+        "totalSurface": "Total area",
+        "exteriorSurface": "Exterior area",
+        "interiorSurface": "Interior area",
+        "cavityVolume": "Enclosed cavity",
+        "metric": "{label}: {value}"
       },
       "common": {
         "previewBuilding": "Building the 4:3 preview…",

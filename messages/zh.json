@@ -316,7 +316,8 @@
           "layeredCounting": "分层计数 · 10块",
           "hiddenCubes": "遮挡计数 · 14块",
           "threeViews": "三视图观察 · 12块",
-          "surfacePainting": "表面染色 · 27块"
+          "surfacePainting": "表面染色 · 27块",
+          "hollowing": "挖空与表面积 · 27块"
         }
       },
       "paint": {
@@ -327,6 +328,26 @@
         "paintedFaces": "已染 {painted}/{total} 个外露面",
         "histogramLabel": "按每个单位块被染的面数分类",
         "histogramItem": "{faces}面 {count}块"
+      },
+      "carving": {
+        "title": "挖去与挖空实验",
+        "description": "切换挖法后比较体积和表面积；封闭挖空可隐藏顶层观察中心空腔。",
+        "profilesLabel": "挖空方案",
+        "profiles": {
+          "solid": "恢复实心",
+          "topDent": "顶部挖一块",
+          "sealed": "封闭挖空",
+          "opened": "顶部开口",
+          "tunnel": "贯穿方孔"
+        },
+        "originalVolume": "原体积",
+        "removedVolume": "挖去体积",
+        "remainingVolume": "剩余体积",
+        "totalSurface": "总表面积",
+        "exteriorSurface": "外表面积",
+        "interiorSurface": "内表面积",
+        "cavityVolume": "封闭空腔",
+        "metric": "{label}：{value}"
       },
       "common": {
         "previewBuilding": "正在生成4:3预览…",

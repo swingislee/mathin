@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Beaker, Eraser, GitCompareArrows, Paintbrush, Palette, Presentation, Shapes } from "lucide-react";
+import { Beaker, Box, Eraser, GitCompareArrows, Hammer, Paintbrush, Palette, Presentation, Shapes } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,12 +18,15 @@ import {
   SPATIAL_COMMAND_VERSION,
   buildVoxelAuthoringDiff,
   clearVoxelFacePaint,
+  createVoxelCarvingState,
   createVoxelFacePaintState,
   createInitialSpatialRuntimeState,
   createVoxelSet,
   paintAllExteriorVoxelFaces,
+  replaceVoxelCarvingCells,
   reduceSpatialRuntimeState,
   summarizeVoxelFacePaint,
+  summarizeVoxelCarving,
   toggleExteriorVoxelFacePaint,
   type Axis,
   type OrthographicView,
@@ -33,6 +36,7 @@ import {
   type VoxelAuthoringDiffBuildResult,
   type VoxelAuthoringDraft,
   type VoxelCoordinate,
+  type VoxelCarvingState,
   type VoxelFaceSelection,
   type VoxelLessonCamera,
   type VoxelLessonStep,
@@ -52,6 +56,7 @@ import type { ToolComponentProps } from "../types";
 import {
   SPATIAL_LAB_DEFAULT_PRESET_ID,
   SPATIAL_LAB_PRESETS,
+  SPATIAL_LAB_HOLLOWING_PRESET_ID,
   SPATIAL_LAB_SURFACE_PAINT_PRESET_ID,
   createSpatialLabPresetDraft,
   type SpatialLabPresetId,
@@ -89,6 +94,54 @@ interface SurfacePaintMessages {
   readonly histogramItem: (faces: number, count: number) => string;
 }
 
+type CarvingProfileId = "solid" | "topDent" | "sealed" | "opened" | "tunnel";
+
+const CARVING_PROFILES: readonly {
+  readonly id: CarvingProfileId;
+  readonly removedCells: readonly VoxelCoordinate[];
+}[] = [
+  { id: "solid", removedCells: [] },
+  { id: "topDent", removedCells: [{ x: 1, y: 2, z: 1 }] },
+  { id: "sealed", removedCells: [{ x: 1, y: 1, z: 1 }] },
+  { id: "opened", removedCells: [{ x: 1, y: 1, z: 1 }, { x: 1, y: 2, z: 1 }] },
+  { id: "tunnel", removedCells: [{ x: 1, y: 1, z: 0 }, { x: 1, y: 1, z: 1 }, { x: 1, y: 1, z: 2 }] },
+];
+
+interface CarvingMessages {
+  readonly title: string;
+  readonly description: string;
+  readonly profilesLabel: string;
+  readonly profile: (profileId: CarvingProfileId) => string;
+  readonly originalVolume: string;
+  readonly removedVolume: string;
+  readonly remainingVolume: string;
+  readonly totalSurface: string;
+  readonly exteriorSurface: string;
+  readonly interiorSurface: string;
+  readonly cavityVolume: string;
+  readonly formatMetric: (label: string, value: number) => string;
+}
+
+function runtimeForCarving(
+  page: SpatialLabPage,
+  entityId: string,
+  removedCells: readonly VoxelCoordinate[],
+): SpatialRuntimeState {
+  const initial = createInitialSpatialRuntimeState(page);
+  if (removedCells.length === 0) return initial;
+  return reduceSpatialRuntimeState(page, initial, {
+    commandVersion: SPATIAL_COMMAND_VERSION,
+    commandId: "tool.spatial-lab.carving.1",
+    sceneRevisionHash: page.sceneHash,
+    resetEpoch: initial.resetEpoch,
+    sequence: initial.lastAppliedSequence + 1,
+    delivery: "durable-semantic",
+    branch: initial.branch,
+    actor: TEACHER_ACTOR,
+    payload: { kind: "voxel.remove", entityId, cells: [...removedCells] },
+  });
+}
+
 function ClassroomRehearsal({
   page,
   entityId,
@@ -97,6 +150,8 @@ function ClassroomRehearsal({
   cells,
   paintEnabled,
   paintMessages,
+  carvingEnabled,
+  carvingMessages,
 }: {
   readonly page: SpatialLabPage;
   readonly entityId: string;
@@ -105,6 +160,8 @@ function ClassroomRehearsal({
   readonly cells: readonly VoxelCoordinate[];
   readonly paintEnabled: boolean;
   readonly paintMessages: SurfacePaintMessages;
+  readonly carvingEnabled: boolean;
+  readonly carvingMessages: CarvingMessages;
 }) {
   const [runtime, setRuntime] = useState<SpatialRuntimeState>(() =>
     createInitialSpatialRuntimeState(page),
@@ -115,8 +172,15 @@ function ClassroomRehearsal({
     materialToken: "voxel.paint",
   }));
   const paintSummary = useMemo(() => summarizeVoxelFacePaint(voxels, paint), [paint, voxels]);
+  const [carving, setCarving] = useState<VoxelCarvingState>(() => createVoxelCarvingState({ entityId }));
+  const [carvingProfile, setCarvingProfile] = useState<CarvingProfileId>("solid");
+  const carvingSummary = useMemo(() => summarizeVoxelCarving(voxels, carving), [carving, voxels]);
 
   const applyCommandIntent = useCallback((payload: SpatialCommandPayload) => {
+    if (carvingEnabled && payload.kind === "scene.reset") {
+      setCarving(createVoxelCarvingState({ entityId }));
+      setCarvingProfile("solid");
+    }
     setRuntime((current) => {
       const sequence = current.lastAppliedSequence + 1;
       return reduceSpatialRuntimeState(page, current, {
@@ -131,11 +195,20 @@ function ClassroomRehearsal({
         payload,
       });
     });
-  }, [page]);
+  }, [carvingEnabled, entityId, page]);
 
   const togglePaintedFace = useCallback((face: VoxelFaceSelection) => {
     setPaint((current) => toggleExteriorVoxelFacePaint(voxels, current, face));
   }, [voxels]);
+
+  const applyCarvingProfile = useCallback((profileId: CarvingProfileId) => {
+    const profile = CARVING_PROFILES.find((candidate) => candidate.id === profileId);
+    if (!profile) return;
+    const next = replaceVoxelCarvingCells(voxels, carving, profile.removedCells);
+    setCarving(next);
+    setCarvingProfile(profileId);
+    setRuntime(runtimeForCarving(page, entityId, next.removedCells));
+  }, [carving, entityId, page, voxels]);
 
   return (
     <div className="space-y-4">
@@ -188,6 +261,57 @@ function ClassroomRehearsal({
                   </Badge>
                 ))}
               </div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+      {carvingEnabled ? (
+        <Card
+          data-carving-controls="voxel-carving-v1"
+          data-carving-profile={carvingProfile}
+          data-removed-voxel-count={carvingSummary.removedVolume}
+        >
+          <CardHeader className="p-4 pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Hammer aria-hidden="true" className="size-4 text-rose" />
+              {carvingMessages.title}
+            </CardTitle>
+            <CardDescription>{carvingMessages.description}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3 p-4 pt-2">
+            <div className="flex flex-wrap gap-2" aria-label={carvingMessages.profilesLabel}>
+              {CARVING_PROFILES.map((profile) => (
+                <Button
+                  key={profile.id}
+                  type="button"
+                  size="sm"
+                  variant={carvingProfile === profile.id ? "secondary" : "ghost"}
+                  className={carvingProfile === profile.id ? "bg-moon/70" : undefined}
+                  aria-pressed={carvingProfile === profile.id}
+                  onClick={() => applyCarvingProfile(profile.id)}
+                >
+                  {profile.id === "solid" ? <Box aria-hidden="true" className="size-4" /> : null}
+                  {carvingMessages.profile(profile.id)}
+                </Button>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7" role="status">
+              {[
+                [carvingMessages.originalVolume, carvingSummary.originalVolume],
+                [carvingMessages.removedVolume, carvingSummary.removedVolume],
+                [carvingMessages.remainingVolume, carvingSummary.remainingVolume],
+                [carvingMessages.totalSurface, carvingSummary.totalSurfaceArea],
+                [carvingMessages.exteriorSurface, carvingSummary.exteriorSurfaceArea],
+                [carvingMessages.interiorSurface, carvingSummary.interiorSurfaceArea],
+                [carvingMessages.cavityVolume, carvingSummary.enclosedCavityVolume],
+              ].map(([label, value]) => (
+                <div key={String(label)} className="rounded-xl border border-line bg-moon/10 px-3 py-2">
+                  <p className="text-xs text-muted">{label}</p>
+                  <p className="mt-0.5 text-lg font-medium tabular-nums" aria-label={carvingMessages.formatMetric(String(label), Number(value))}>
+                    {value}
+                  </p>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
@@ -300,6 +424,21 @@ export function SpatialLab({ embedded = false }: ToolComponentProps) {
     paintedFaces: (painted: number, total: number) => t("paint.paintedFaces", { painted, total }),
     histogramLabel: t("paint.histogramLabel"),
     histogramItem: (faces: number, count: number) => t("paint.histogramItem", { faces, count }),
+  }), [t]);
+
+  const carvingMessages = useMemo<CarvingMessages>(() => ({
+    title: t("carving.title"),
+    description: t("carving.description"),
+    profilesLabel: t("carving.profilesLabel"),
+    profile: (profileId: CarvingProfileId) => t(`carving.profiles.${profileId}`),
+    originalVolume: t("carving.originalVolume"),
+    removedVolume: t("carving.removedVolume"),
+    remainingVolume: t("carving.remainingVolume"),
+    totalSurface: t("carving.totalSurface"),
+    exteriorSurface: t("carving.exteriorSurface"),
+    interiorSurface: t("carving.interiorSurface"),
+    cavityVolume: t("carving.cavityVolume"),
+    formatMetric: (label: string, value: number) => t("carving.metric", { label, value }),
   }), [t]);
 
   const modelMessages = useMemo<VoxelTemplateEditorMessages>(() => ({
@@ -507,6 +646,8 @@ export function SpatialLab({ embedded = false }: ToolComponentProps) {
                 cells={draft.model.cells}
                 paintEnabled={activePresetId === SPATIAL_LAB_SURFACE_PAINT_PRESET_ID}
                 paintMessages={paintMessages}
+                carvingEnabled={activePresetId === SPATIAL_LAB_HOLLOWING_PRESET_ID}
+                carvingMessages={carvingMessages}
               />
             ) : (
               <Card className="grid aspect-[4/3] place-items-center">

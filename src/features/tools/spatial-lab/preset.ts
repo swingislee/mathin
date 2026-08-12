@@ -8,12 +8,14 @@ import {
 export const SPATIAL_LAB_PRESET_ID = "spatial-lab.voxel-counting.v1" as const;
 export const SPATIAL_LAB_DEFAULT_PRESET_ID = SPATIAL_LAB_PRESET_ID;
 export const SPATIAL_LAB_SURFACE_PAINT_PRESET_ID = "spatial-lab.surface-paint.v1" as const;
+export const SPATIAL_LAB_HOLLOWING_PRESET_ID = "spatial-lab.hollowing.v1" as const;
 
 export const SPATIAL_LAB_PRESETS = [
   { id: SPATIAL_LAB_PRESET_ID, messageKey: "layeredCounting" },
   { id: "spatial-lab.hidden-cubes.v1", messageKey: "hiddenCubes" },
   { id: "spatial-lab.three-views.v1", messageKey: "threeViews" },
   { id: SPATIAL_LAB_SURFACE_PAINT_PRESET_ID, messageKey: "surfacePainting" },
+  { id: SPATIAL_LAB_HOLLOWING_PRESET_ID, messageKey: "hollowing" },
 ] as const;
 
 export type SpatialLabPresetId = (typeof SPATIAL_LAB_PRESETS)[number]["id"];
@@ -29,6 +31,29 @@ function cellsFromColumns(
 }
 
 function presetContent(presetId: SpatialLabPresetId) {
+  if (presetId === SPATIAL_LAB_HOLLOWING_PRESET_ID) {
+    return {
+      sceneId: "scene.spatial-lab.hollowing",
+      title: { zh: "挖去与挖空正方体", en: "Carve and hollow a cube" },
+      learningGoal: {
+        zh: "比较挖去单位块前后的体积、外表面、内表面和空腔",
+        en: "Compare volume, exterior area, interior area, and cavities before and after carving",
+      },
+      teacherPrompt: {
+        zh: "切换不同挖法，再隐藏顶层观察内部结构，解释表面积为什么可能增加。",
+        en: "Switch carving profiles, hide the top layer to inspect the inside, and explain why surface area can increase.",
+      },
+      misconception: {
+        zh: "认为每挖去一个单位块，表面积都固定减少6",
+        en: "Assume removing one unit cube always reduces surface area by six",
+      },
+      cells: cellsFromColumns(
+        Array.from({ length: 3 }, (_, x) =>
+          Array.from({ length: 3 }, (_, z) => ({ x, z, height: 3 })),
+        ).flat(),
+      ),
+    };
+  }
   if (presetId === SPATIAL_LAB_SURFACE_PAINT_PRESET_ID) {
     return {
       sceneId: "scene.spatial-lab.surface-paint",
