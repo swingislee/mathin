@@ -9,6 +9,7 @@ export const SPATIAL_LAB_PRESET_ID = "spatial-lab.voxel-counting.v1" as const;
 export const SPATIAL_LAB_DEFAULT_PRESET_ID = SPATIAL_LAB_PRESET_ID;
 export const SPATIAL_LAB_SURFACE_PAINT_PRESET_ID = "spatial-lab.surface-paint.v1" as const;
 export const SPATIAL_LAB_HOLLOWING_PRESET_ID = "spatial-lab.hollowing.v1" as const;
+export const SPATIAL_LAB_MEASUREMENT_PRESET_ID = "spatial-lab.rectangular-prism-measurement.v1" as const;
 
 export const SPATIAL_LAB_PRESETS = [
   { id: SPATIAL_LAB_PRESET_ID, messageKey: "layeredCounting" },
@@ -16,6 +17,7 @@ export const SPATIAL_LAB_PRESETS = [
   { id: "spatial-lab.three-views.v1", messageKey: "threeViews" },
   { id: SPATIAL_LAB_SURFACE_PAINT_PRESET_ID, messageKey: "surfacePainting" },
   { id: SPATIAL_LAB_HOLLOWING_PRESET_ID, messageKey: "hollowing" },
+  { id: SPATIAL_LAB_MEASUREMENT_PRESET_ID, messageKey: "volumeSurface" },
 ] as const;
 
 export type SpatialLabPresetId = (typeof SPATIAL_LAB_PRESETS)[number]["id"];
@@ -31,6 +33,29 @@ function cellsFromColumns(
 }
 
 function presetContent(presetId: SpatialLabPresetId) {
+  if (presetId === SPATIAL_LAB_MEASUREMENT_PRESET_ID) {
+    return {
+      sceneId: "scene.spatial-lab.rectangular-prism-measurement",
+      title: { zh: "长方体的体积与表面积", en: "Volume and surface area of a rectangular prism" },
+      learningGoal: {
+        zh: "让长、宽、高与单位块模型、体积公式和表面积公式同步变化",
+        en: "Connect length, width, and height to the unit-cube model, volume, and surface-area formulas",
+      },
+      teacherPrompt: {
+        zh: "先改变一个尺寸，预测体积和表面积会怎样变化，再用单位块与三组相对面验证。",
+        en: "Change one dimension, predict how volume and surface area will change, then verify with unit cubes and three pairs of opposite faces.",
+      },
+      misconception: {
+        zh: "把表面积误算成长、宽、高的乘积，或只计算三个面的面积",
+        en: "Use the volume product for surface area, or count only three faces",
+      },
+      cells: cellsFromColumns(
+        Array.from({ length: 4 }, (_, x) =>
+          Array.from({ length: 3 }, (_, z) => ({ x, z, height: 2 })),
+        ).flat(),
+      ),
+    };
+  }
   if (presetId === SPATIAL_LAB_HOLLOWING_PRESET_ID) {
     return {
       sceneId: "scene.spatial-lab.hollowing",
@@ -175,7 +200,9 @@ export function createSpatialLabVoxelInput(
     cells: content.cells,
     layerAxis: "y",
     materialToken: "voxel.base",
-    termIds: ["solid-figures", "views-of-objects"],
+    termIds: presetId === SPATIAL_LAB_MEASUREMENT_PRESET_ID
+      ? ["rectangular-prism-and-cube", "surface-area", "volume-and-capacity"]
+      : ["solid-figures", "views-of-objects"],
     prerequisiteTermIds: ["solid-figures"],
     createdBy: "spatial-lab.prototype",
     createdAt: "2026-08-12T00:00:00+08:00",

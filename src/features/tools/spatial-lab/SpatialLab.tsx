@@ -22,7 +22,10 @@ import {
   createVoxelFacePaintState,
   createInitialSpatialRuntimeState,
   createVoxelSet,
+  buildRectangularPrismMeasurement,
+  measureRectangularPrismCells,
   paintAllExteriorVoxelFaces,
+  replaceVoxelAuthoringModel,
   replaceVoxelCarvingCells,
   reduceSpatialRuntimeState,
   summarizeVoxelFacePaint,
@@ -30,6 +33,8 @@ import {
   toggleExteriorVoxelFacePaint,
   type Axis,
   type OrthographicView,
+  type RectangularPrismDimensions,
+  type RectangularPrismMeasurement,
   type SpatialCommandActor,
   type SpatialCommandPayload,
   type SpatialRuntimeState,
@@ -57,10 +62,15 @@ import {
   SPATIAL_LAB_DEFAULT_PRESET_ID,
   SPATIAL_LAB_PRESETS,
   SPATIAL_LAB_HOLLOWING_PRESET_ID,
+  SPATIAL_LAB_MEASUREMENT_PRESET_ID,
   SPATIAL_LAB_SURFACE_PAINT_PRESET_ID,
   createSpatialLabPresetDraft,
   type SpatialLabPresetId,
 } from "./preset";
+import {
+  RectangularPrismMeasurementPanel,
+  type RectangularPrismMeasurementMessages,
+} from "./RectangularPrismMeasurementPanel";
 
 const TEACHER_ACTOR: SpatialCommandActor = {
   kind: "teacher-controller",
@@ -339,6 +349,7 @@ export function SpatialLab({ embedded = false }: ToolComponentProps) {
   const [activePresetId, setActivePresetId] = useState<SpatialLabPresetId>(SPATIAL_LAB_DEFAULT_PRESET_ID);
   const initialDraft = useMemo(() => createSpatialLabPresetDraft(activePresetId), [activePresetId]);
   const [draft, setDraft] = useState<VoxelAuthoringDraft>(initialDraft);
+  const [workflowRevision, setWorkflowRevision] = useState(0);
   const [activeTab, setActiveTab] = useState<LabTab>("authoring");
   const [artifacts, setArtifacts] = useState<ArtifactState>({
     draft: initialDraft,
@@ -367,8 +378,37 @@ export function SpatialLab({ embedded = false }: ToolComponentProps) {
     const nextDraft = createSpatialLabPresetDraft(presetId);
     setActivePresetId(presetId);
     setDraft(nextDraft);
+    setWorkflowRevision((current) => current + 1);
     setArtifacts({ draft: nextDraft, status: "building" });
   };
+
+  const measurementEnabled = activePresetId === SPATIAL_LAB_MEASUREMENT_PRESET_ID;
+  const measurement = useMemo<RectangularPrismMeasurement | null | undefined>(() => {
+    if (!measurementEnabled) return undefined;
+    try {
+      return measureRectangularPrismCells({ unit: "unit", occupiedCells: draft.model.cells });
+    } catch {
+      return null;
+    }
+  }, [draft.model.cells, measurementEnabled]);
+
+  const updateMeasurementDimensions = useCallback((dimensions: RectangularPrismDimensions) => {
+    const nextMeasurement = buildRectangularPrismMeasurement({ dimensions, unit: "unit" });
+    setDraft((current) => replaceVoxelAuthoringModel(current, {
+      ...current.model,
+      cells: nextMeasurement.occupiedCells,
+    }));
+    setWorkflowRevision((current) => current + 1);
+  }, []);
+
+  const restoreMeasurement = useCallback(() => {
+    const restored = createSpatialLabPresetDraft(SPATIAL_LAB_MEASUREMENT_PRESET_ID);
+    setDraft((current) => replaceVoxelAuthoringModel(current, {
+      ...current.model,
+      cells: restored.model.cells,
+    }));
+    setWorkflowRevision((current) => current + 1);
+  }, []);
 
   const rendererMessages = useMemo<VoxelRendererMessages>(() => ({
     webglUnavailable: t("renderer.webglUnavailable"),
@@ -439,6 +479,50 @@ export function SpatialLab({ embedded = false }: ToolComponentProps) {
     interiorSurface: t("carving.interiorSurface"),
     cavityVolume: t("carving.cavityVolume"),
     formatMetric: (label: string, value: number) => t("carving.metric", { label, value }),
+  }), [t]);
+
+  const measurementMessages = useMemo<RectangularPrismMeasurementMessages>(() => ({
+    title: t("measurement.title"),
+    description: t("measurement.description"),
+    dimensionsLabel: t("measurement.dimensionsLabel"),
+    dimension: {
+      length: t("measurement.length"),
+      width: t("measurement.width"),
+      height: t("measurement.height"),
+    },
+    decreaseDimension: (dimension: string) => t("measurement.decreaseDimension", { dimension }),
+    increaseDimension: (dimension: string) => t("measurement.increaseDimension", { dimension }),
+    restorePrism: t("measurement.restorePrism"),
+    invalidShapeTitle: t("measurement.invalidShapeTitle"),
+    invalidShapeDescription: t("measurement.invalidShapeDescription"),
+    boundary: t("measurement.boundary"),
+    volume: t("measurement.volume"),
+    surfaceArea: t("measurement.surfaceArea"),
+    volumeValue: (value: number) => t("measurement.volumeValue", { value }),
+    surfaceValue: (value: number) => t("measurement.surfaceValue", { value }),
+    liveSummary: (value: RectangularPrismMeasurement) => t("measurement.liveSummary", {
+      ...value.dimensions,
+      volume: value.volume.value,
+      surface: value.surfaceArea.value,
+    }),
+    volumeFormula: (value: RectangularPrismMeasurement) => t("measurement.volumeFormula", {
+      ...value.dimensions,
+      volume: value.volume.value,
+    }),
+    surfaceFormula: (value: RectangularPrismMeasurement) => t("measurement.surfaceFormula", {
+      lengthWidth: value.dimensions.length * value.dimensions.width,
+      lengthHeight: value.dimensions.length * value.dimensions.height,
+      widthHeight: value.dimensions.width * value.dimensions.height,
+      surface: value.surfaceArea.value,
+    }),
+    facePairs: t("measurement.facePairs"),
+    facePairLabel: {
+      "length-width": t("measurement.lengthWidthFaces"),
+      "length-height": t("measurement.lengthHeightFaces"),
+      "width-height": t("measurement.widthHeightFaces"),
+    },
+    facePairFormula: (label: string, first: number, second: number, value: number) =>
+      t("measurement.facePairFormula", { label, first, second, value }),
   }), [t]);
 
   const modelMessages = useMemo<VoxelTemplateEditorMessages>(() => ({
@@ -614,14 +698,33 @@ export function SpatialLab({ embedded = false }: ToolComponentProps) {
 
         <TabsContent value="authoring" className="mt-0 min-h-0 flex-1 overflow-auto p-3 md:p-5">
           <div className="mx-auto max-w-[1500px]">
-            <VoxelAuthoringWorkflowStage
-              key={activePresetId}
-              initialDraft={initialDraft}
-              locale={locale}
-              messages={workflowMessages}
-              onDraftChange={setDraft}
-              materialColors={{ "voxel.base": "#8fbf88" }}
-            />
+            {measurementEnabled ? (
+              <div className="space-y-4">
+                <RectangularPrismMeasurementPanel
+                  measurement={measurement ?? null}
+                  messages={measurementMessages}
+                  onDimensionsChange={updateMeasurementDimensions}
+                  onRestore={restoreMeasurement}
+                />
+                <VoxelAuthoringWorkflowStage
+                  key={`${activePresetId}:${workflowRevision}`}
+                  initialDraft={draft}
+                  locale={locale}
+                  messages={workflowMessages}
+                  onDraftChange={setDraft}
+                  materialColors={{ "voxel.base": "#8fbf88" }}
+                />
+              </div>
+            ) : (
+              <VoxelAuthoringWorkflowStage
+                key={`${activePresetId}:${workflowRevision}`}
+                initialDraft={draft}
+                locale={locale}
+                messages={workflowMessages}
+                onDraftChange={setDraft}
+                materialColors={{ "voxel.base": "#8fbf88" }}
+              />
+            )}
           </div>
         </TabsContent>
 
@@ -636,6 +739,14 @@ export function SpatialLab({ embedded = false }: ToolComponentProps) {
                 <CardDescription>{t("classroom.description")}</CardDescription>
               </CardHeader>
             </Card>
+            {measurementEnabled ? (
+              <RectangularPrismMeasurementPanel
+                measurement={measurement ?? null}
+                messages={measurementMessages}
+                onDimensionsChange={updateMeasurementDimensions}
+                onRestore={restoreMeasurement}
+              />
+            ) : null}
             {page ? (
               <ClassroomRehearsal
                 key={page.sceneHash}

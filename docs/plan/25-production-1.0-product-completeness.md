@@ -24,7 +24,7 @@
 | 内容发布 | Terms/Minds 文件内容、Notebook、课程研发和 release 机制分别存在 | Terms/Story/Minds/Notebook 共用草稿/审核/发布/撤回/版本合同；课堂只读取不可变课件 release |
 | E 系列 | 开发数据有 1135 讲、16:9/4:3 双轨资源和 release 机制；课程目录版本层已就位（2025旧版 54 门 / 2026新版 36 门） | 保留 1135×2 源资源；正式基线包含 2270 条 `release_no=1`，见 §5.1.1 |
 | 爱学习 G+ 秋季 | 三至六年级 52 讲、16:9/4:3 双轨资源和 release 机制 | 保留 52×2 源资源；正式基线包含 104 条 `release_no=1`；第 7/15 讲保持显式来源缺口 |
-| 语言 | `messages/zh.json` 与 `messages/en.json` 各 3959 个 key；`content/en` 仅 README | UI 永久 zh/en；英文课程/文章可延期，缺失内容显示明确回退或“尚未发布”状态 |
+| 语言 | `messages/zh.json` 与 `messages/en.json` 各 3984 个 key；`content/en` 仅 README | UI 永久 zh/en；英文课程/文章可延期，缺失内容显示明确回退或“尚未发布”状态 |
 | 视觉 | `public/Main.png`、五星球 token/场景、`dashboard-observatory.png` 和公开场景插画已在仓库使用 | 小王子作为全站视觉基础；公开场景、内容/Notebook、运营工作区按三档强度验收 |
 
 Terms 使用稳定 ID 接收 Story、Minds、Games、Tools、Notebook 和课程的关联。修改 slug 或删除内容前检查反向引用、重定向、canonical 和 sitemap。
@@ -46,7 +46,7 @@ Terms 使用稳定 ID 接收 Story、Minds、Games、Tools、Notebook 和课程�
 | 权限 | 顶层角色为 `student`、`parent`、`staff`、`admin`；受保护页使用 `requireUser`；数据库使用 RLS | Proxy 跳转和前端隐藏不能证明授权 |
 | Dashboard | P4I 已将首页和对象页改为工作流入口 | 页面存在不证明跨域工作项、人工协同或 p95 达标 |
 | CI | lint、typecheck、build、消息、数据库重建/RLS、安全、当前树与 Git 历史 secret scan、doc21～24 与规划审计已配置；正式 Playwright 配置和 release runner 已落地 | 固定凭据旅程不接通用 CI；仍须在明确非生产发布目标执行零 skip 套件，并补写态、zh/en、跨浏览器与连续无 flaky 证据 |
-| Vitest | commit `cbb2a0f` 已将本轮修复前 19 项失败清零；当前为 76 个测试文件、477/477 全绿，其中非 spatial 基线 51 个文件、290/290，空间数学/Tools 样机专项 25 个文件、187/187，`pnpm r1:test` 为 18 个文件、121/121 | 单元/合同套件已恢复全绿；R1-14 仍需在后续实现后维持 100%，并补发布目标、并发、文件和竞争矩阵 |
+| Vitest | commit `cbb2a0f` 已将本轮修复前 19 项失败清零；当前为 77 个测试文件、487/487 全绿，其中非 spatial 基线 51 个文件、290/290，空间数学/Tools 样机专项 26 个文件、197/197，`pnpm r1:test` 为 18 个文件、121/121 | 单元/合同套件已恢复全绿；R1-14 仍需在后续实现后维持 100%，并补发布目标、并发、文件和竞争矩阵 |
 | 部署 | doc 17 已将目标生产主机改为小米 Linux；commit `35b9f60` 已固定独立环境、监控、恢复和回滚的只读 preflight；当前树与完整可达 Git 历史的高置信 secret scan 为 0 | 仓库扫描不证明环境隔离；尚无独立生产、RPO/RTO 实操、回滚演练和 14 天 RC 证据 |
 
 ### 1.3 已裁决的历史冲突
@@ -524,7 +524,7 @@ R1-0 已完成责任角色到 `swingislee` 的映射。增加人员或发生交�
 | 账户安全尚无生产验收 | R1-3 已完成账户/同意/支持的空库重放、负向断言与开发浏览器验证（M3） | 开发门控不证明正式唯一管理员、生产 MFA=100%、速率限制与恢复演练 | 安全+发布+QA | R1-14/16/17/18 |
 | Work-items 尚无生产候选/RC 负载证据 | R1-4 已在开发/一次性库完成 30,000 条持久项、300 名员工、40 次采样，p95≤18.87ms、p99≤20.71ms（M3） | 开发合成负载不能证明生产长尾、并发与 14 天稳定性 | 学校产品+数据库+QA | R1-14/17 |
 | 财务安全关闭尚无生产复核 | R1-8 已完成发布门、数据、任务/审批、通知、指标和 job 的开发/一次性库关闭证据（M3） | 开发环境关闭不变量不能证明生产初始化或正式清理后仍保持关闭 | 产品+财务+数据库+发布 | R1-15/18 |
-| Vitest 基线需在最终 build 复验 | commit `cbb2a0f` 已清零本轮修复前 19 项失败；当前为 76 个测试文件、477/477 全绿，非 spatial 290/290，空间数学/Tools 样机专项 187/187，R1 定向 121/121 | 后续实现可能重新引入合同回归 | 技术+QA | R1-14 保持全量 100% |
+| Vitest 基线需在最终 build 复验 | commit `cbb2a0f` 已清零本轮修复前 19 项失败；当前为 77 个测试文件、487/487 全绿，非 spatial 290/290，空间数学/Tools 样机专项 197/197，R1 定向 121/121 | 后续实现可能重新引入合同回归 | 技术+QA | R1-14 保持全量 100% |
 | 正式 Playwright 发布门尚未完成 | 正式配置、target policy 和 fail-closed release runner 已落地；9 条非五模块本地 Chromium 旅程分别取绿 | 尚无明确非生产 release target 的单次 9/9 零 skip、写态、zh/en、跨浏览器和连续 3 次无 flaky 证据 | QA/发布 | R1-14 |
 | 清理/release 未演练 | 只有规划与开发数据 | 正式数据或 4:3 资源损失 | 数据库+课程研发 | R1-15 |
 | 生产恢复未实操 | Linux 目标与 fail-closed preflight 已定；当前树与 Git 历史 secret scan 为 0，但环境隔离和恢复 E3 仍为 pending | 尚无独立环境、运行时 secret 复核、告警链路、RPO/RTO、数据库/Storage 恢复或应用回滚的实操证据 | 运维+安全 | R1-16 |

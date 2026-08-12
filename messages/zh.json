@@ -317,7 +317,8 @@
           "hiddenCubes": "遮挡计数 · 14块",
           "threeViews": "三视图观察 · 12块",
           "surfacePainting": "表面染色 · 27块",
-          "hollowing": "挖空与表面积 · 27块"
+          "hollowing": "挖空与表面积 · 27块",
+          "volumeSurface": "体积与表面积 · 4×3×2"
         }
       },
       "paint": {
@@ -348,6 +349,32 @@
         "interiorSurface": "内表面积",
         "cavityVolume": "封闭空腔",
         "metric": "{label}：{value}"
+      },
+      "measurement": {
+        "title": "长方体体积与表面积",
+        "description": "改变长、宽、高；单位块模型、体积和三组相对面的面积会由同一组尺寸重新计算。",
+        "dimensionsLabel": "长方体尺寸",
+        "length": "长",
+        "width": "宽",
+        "height": "高",
+        "decreaseDimension": "减小{dimension}",
+        "increaseDimension": "增大{dimension}",
+        "restorePrism": "恢复4×3×2长方体",
+        "invalidShapeTitle": "当前模型不是完整长方体",
+        "invalidShapeDescription": "模型中存在缺块、偏移或额外单位块，长方体公式已暂停。恢复标准长方体后可继续调节尺寸。",
+        "boundary": "每个尺寸可调为1～6个单位长度。",
+        "volume": "体积",
+        "surfaceArea": "表面积",
+        "volumeValue": "{value} 立方单位",
+        "surfaceValue": "{value} 平方单位",
+        "liveSummary": "长{length}，宽{width}，高{height}；体积{volume}，表面积{surface}",
+        "volumeFormula": "V = 长 × 宽 × 高 = {length} × {width} × {height} = {volume}",
+        "surfaceFormula": "S = 2 × (长×宽 + 长×高 + 宽×高) = 2 × ({lengthWidth} + {lengthHeight} + {widthHeight}) = {surface}",
+        "facePairs": "三组相对面",
+        "lengthWidthFaces": "上面与下面",
+        "lengthHeightFaces": "前面与后面",
+        "widthHeightFaces": "左面与右面",
+        "facePairFormula": "{label}：2 × {first} × {second} = {value}"
       },
       "common": {
         "previewBuilding": "正在生成4:3预览…",

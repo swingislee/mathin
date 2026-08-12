@@ -14,6 +14,8 @@ export * from "./polyhedron-fold-simulation-schema";
 export * from "./polyhedron-fold-artifact-schema";
 export * from "./polyhedron-scene-adapter";
 export * from "./polyhedron-scene-adapter-schema";
+export * from "./rectangular-prism-measurement";
+export * from "./rectangular-prism-measurement-schema";
 export * from "./runtime-schema";
 export * from "./runtime-reducer";
 export * from "./runtime-voxel";

@@ -317,7 +317,8 @@
           "hiddenCubes": "Hidden cubes · 14 cubes",
           "threeViews": "Three-view observation · 12 cubes",
           "surfacePainting": "Surface painting · 27 cubes",
-          "hollowing": "Hollowing and area · 27 cubes"
+          "hollowing": "Hollowing and area · 27 cubes",
+          "volumeSurface": "Volume and surface area · 4×3×2"
         }
       },
       "paint": {
@@ -348,6 +349,32 @@
         "interiorSurface": "Interior area",
         "cavityVolume": "Enclosed cavity",
         "metric": "{label}: {value}"
+      },
+      "measurement": {
+        "title": "Rectangular-prism volume and surface area",
+        "description": "Change length, width, or height. The unit-cube model, volume, and three opposite face-pair areas are recomputed from the same dimensions.",
+        "dimensionsLabel": "Rectangular-prism dimensions",
+        "length": "Length",
+        "width": "Width",
+        "height": "Height",
+        "decreaseDimension": "Decrease {dimension}",
+        "increaseDimension": "Increase {dimension}",
+        "restorePrism": "Restore the 4×3×2 prism",
+        "invalidShapeTitle": "The current model is not a complete rectangular prism",
+        "invalidShapeDescription": "The model has a missing, shifted, or extra unit cube, so the prism formulas are paused. Restore the standard prism to continue changing dimensions.",
+        "boundary": "Each dimension can be 1–6 unit lengths.",
+        "volume": "Volume",
+        "surfaceArea": "Surface area",
+        "volumeValue": "{value} cubic units",
+        "surfaceValue": "{value} square units",
+        "liveSummary": "Length {length}, width {width}, height {height}; volume {volume}, surface area {surface}",
+        "volumeFormula": "V = length × width × height = {length} × {width} × {height} = {volume}",
+        "surfaceFormula": "S = 2 × (length×width + length×height + width×height) = 2 × ({lengthWidth} + {lengthHeight} + {widthHeight}) = {surface}",
+        "facePairs": "Three pairs of opposite faces",
+        "lengthWidthFaces": "Top and bottom",
+        "lengthHeightFaces": "Front and back",
+        "widthHeightFaces": "Left and right",
+        "facePairFormula": "{label}: 2 × {first} × {second} = {value}"
       },
       "common": {
         "previewBuilding": "Building the 4:3 preview…",

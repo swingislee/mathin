@@ -53,8 +53,8 @@ describe("spatial-lab Tools acceptance prototype", () => {
     expect(result.diff.derived).toEqual({});
   });
 
-  it("offers deterministic 4:3 templates for counting, views, and surface painting", async () => {
-    const expectedCounts = [10, 14, 12, 27, 27];
+  it("offers deterministic 4:3 templates for counting, views, painting, hollowing, and measurement", async () => {
+    const expectedCounts = [10, 14, 12, 27, 27, 24];
     const builds = await Promise.all(
       SPATIAL_LAB_PRESETS.map(async (preset, index) => {
         const first = createSpatialLabPresetDraft(preset.id);
@@ -75,8 +75,9 @@ describe("spatial-lab Tools acceptance prototype", () => {
       "spatial-lab.three-views.v1",
       "spatial-lab.surface-paint.v1",
       "spatial-lab.hollowing.v1",
+      "spatial-lab.rectangular-prism-measurement.v1",
     ]);
-    expect(new Set(builds).size).toBe(5);
+    expect(new Set(builds).size).toBe(6);
   });
 
   it("keeps the prototype bilingual and exposes the same message surface in zh and en", () => {
