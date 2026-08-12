@@ -21,6 +21,8 @@ export * from "./scene-schema";
 export * from "./voxel-kernel";
 export * from "./voxel-authoring-draft";
 export * from "./voxel-authoring-draft-schema";
+export * from "./voxel-authoring-diff";
+export * from "./voxel-authoring-diff-schema";
 export * from "./voxel-lesson-adapter";
 export * from "./voxel-lesson-schema";
 export * from "./voxel-schema";

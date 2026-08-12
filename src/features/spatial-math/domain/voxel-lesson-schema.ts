@@ -21,7 +21,7 @@ const lessonStepBase = {
   teacherPrompt: localizedTextSchema.optional(),
 };
 
-const layerTitleSchema = localizedTextSchema.superRefine((title, context) => {
+export const voxelLessonLayerTitleSchema = localizedTextSchema.superRefine((title, context) => {
   if (title.zh.length > VOXEL_LESSON_LIMITS.maxLayerTitleCharacters) {
     context.addIssue({ code: "custom", message: "layer title is too long", path: ["zh"] });
   }
@@ -45,7 +45,7 @@ export const voxelLessonStepSchema = z.discriminatedUnion("kind", [
       ...lessonStepBase,
       kind: z.literal("layer-scan"),
       order: z.enum(["ascending", "descending"]),
-      title: layerTitleSchema,
+      title: voxelLessonLayerTitleSchema,
     })
     .strict(),
   z.object({ ...lessonStepBase, kind: z.literal("verify"), title: localizedTextSchema }).strict(),
