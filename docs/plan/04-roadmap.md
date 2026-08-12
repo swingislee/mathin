@@ -19,7 +19,7 @@
 | Terms 现有 71 篇中文 MDX；Games 3 个；Tools 3 个（2 个既有工具 + `spatial-lab` 验收样机）；Minds 2 篇；Story 无完整章节内容目录 | Story 是内容阻断项；其他模块需要关系、权限、性能和浏览器证据 |
 | E 系列开发数据有 1135 讲双轨资源；爱学习 G+ 秋季有三至六年级 52 讲双轨资源（4934 bindings/轨，母版 1200×900 即 4:3） | R1-9 分别验证两套文档合同与资源；R1-15 演练；R1-18 重建 2374 条正式 release-1 |
 | 课程目录版本层已落库（2026-08-03，迁移 `20260803000300`/`20260803000400`）；2026 秋季 270 讲已于 2026-08-04 导入：E 系列 2026新版 36 门（暑期 18 + 秋季 18）、2025旧版 54 门，讲次 1135 | 旧秋季 18 门保留 `enabled` 并已写 `superseded_by_course_id`；本批 4:3 背景按运营指示未经人工逐张核验直接发布，见 doc 16 §11.3 |
-| 当前全量 Vitest 共 83 个测试文件、535 项，commit `cbb2a0f` 已将本轮修复前 19 项失败清零；其中非 spatial 基线为 51 个文件、290/290，空间数学/SML-0 专项为 32 个文件、245/245，`pnpm r1:test` 为 18 个文件、121/121 | SML-0 与 R1-14 均保持全量 100% 通过；正式 Playwright 框架已有本地基线，仍须补发布目标、写态、zh/en、跨浏览器、连续无 flaky、并发、文件和竞争矩阵 |
+| 当前全量 Vitest 共 84 个测试文件、544 项，commit `cbb2a0f` 已将本轮修复前 19 项失败清零；其中非 spatial 基线为 51 个文件、290/290，空间数学/SML-0 专项为 33 个文件、254/254，`pnpm r1:test` 为 18 个文件、121/121 | SML-0 与 R1-14 均保持全量 100% 通过；正式 Playwright 框架已有本地基线，仍须补发布目标、写态、zh/en、跨浏览器、连续无 flaky、并发、文件和竞争矩阵 |
 | 小王子是全站视觉基础 | R1-12 验证三种强度：公开场景、内容/Notebook、运营工作区 |
 
 阶段按编号关闭。实现可在依赖满足后并行准备；04 顶部只记录一个正在关闭的阶段。后续 Agent 不能用“代码已存在”跳过该阶段的退出证据。
@@ -31,7 +31,7 @@
 - **首条退出测试**：Studio 创建/重排 4:3 空间页 → 双 head → 一次审核原子发布双 release → 课次备课/freeze → 4:3 live 空壳 → 重连回放 → 回退后仍共享历史 revision；任一步失败整体回滚。
 - **暂缓范围**：不继续增加 Tools 题型、截面、函数或任意模型导入，不提前进入 SML-1～8；既有 `spatial-lab` 只作合同回归与金标候选预览。R1-9～18、Story/Games/Minds/Terms/Tools/Notebook 的 1.0 发布缺口保持 pending，待显式切回 R1 后继续。
 - **权限与数据边界**：SML-0 可以修改生产代码、迁移、RPC/RLS、Courseware Studio、发布与 freeze 合同，但只能使用开发/一次性验证库；不得执行 R1-15/R1-18 的真实生产清理、release 重建或真实学生数据动作。
-- **已完成的正式增量**：`spatial-page-delivery-v1` 已冻结 4:3 内容与兼容 track 的映射；migration `20260812000400` 已建立统一讲次 capability resolver；migration `20260812000500` 已在不改变公开签名的前提下，把 8 个页面编辑 RPC 与 5 个提交/评审 RPC 接入该 resolver，并以开发库事务回滚断言验证 permission-first、有效责任、归档拒绝、纯 reviewer、revision 与 workflow 正向路径。发布、紧急发布、rollback、freeze、批量适配以及双 head/release 原子映射仍未接线，三个阻断项尚未关闭。
+- **已完成的正式增量**：`spatial-page-delivery-v1` 已冻结 4:3 内容与兼容 track 的映射；migration `20260812000400` 建立统一讲次 capability resolver；migration `20260812000500` 把 8 个页面编辑 RPC 与 5 个提交/评审 RPC 接入 resolver；migration `20260812000600` 继续收口直接发布、评审发布、紧急发布、双轨/旧签名回滚和批量 4:3 发布共 6 个入口。课程研发写入现统一验证 permission、有效责任与 lifecycle；课堂 freeze 保留独立的 `is_session_teacher` 边界，并已证明无研发 assignment 的任课教师仍可冻结精确 release。lecture capability 阻断项已关闭；release/template 权威与 docVersion-aware track/layout 双 head/release 原子映射仍未关闭。
 
 ## 2. 历史阶段的有效范围
 
@@ -82,7 +82,7 @@
 | 阶段 | 依赖 | 动作与产物 | 退出证据 |
 | --- | --- | --- | --- |
 | **R1-13 指标、报表与产品遥测** | R1-5～12 | 为招生、在读/流失、排课/到课/补课、作业/成果、内容消费、运营 SLA 和启用时的财务定义分子/分母、去重键、时区、延迟、权限和版本；采集错误、性能、job、通知、发布事件 | Dashboard/导出/报告使用同一指标版本；doc 25 的运行门可查询、告警且不采集非必要未成年人 PII |
-| **R1-14 幂等、并发、事务、文件与 E2E** | R1-2～13 | commit `cbb2a0f` 已清零本轮修复前 19 项 Vitest 失败；commits `0d55044`、`8e5c076` 已建立正式 Playwright 配置、匿名/固定角色隔离、loopback/LAN 目标策略和 fail-closed release runner，9 条非五模块本地 Chromium 旅程分别取得绿色证据，见[基线子门](../evidence/r1/r1-14-playwright-baseline.md)。继续修复关键写操作双击/重试/竞争，保证领域事实与审计同事务，外部调用走 job/outbox | 当前 Vitest 535/535；仍须在明确非生产发布目标完整重跑 9/9 零 skip，并补写态、zh/en、跨浏览器、连续 3 次无 flaky、大文件和竞争矩阵；这些门及 R1-13 依赖未齐前 R1-14 不关闭 |
+| **R1-14 幂等、并发、事务、文件与 E2E** | R1-2～13 | commit `cbb2a0f` 已清零本轮修复前 19 项 Vitest 失败；commits `0d55044`、`8e5c076` 已建立正式 Playwright 配置、匿名/固定角色隔离、loopback/LAN 目标策略和 fail-closed release runner，9 条非五模块本地 Chromium 旅程分别取得绿色证据，见[基线子门](../evidence/r1/r1-14-playwright-baseline.md)。继续修复关键写操作双击/重试/竞争，保证领域事实与审计同事务，外部调用走 job/outbox | 当前 Vitest 544/544；仍须在明确非生产发布目标完整重跑 9/9 零 skip，并补写态、zh/en、跨浏览器、连续 3 次无 flaky、大文件和竞争矩阵；这些门及 R1-13 依赖未齐前 R1-14 不关闭 |
 | **R1-15 生产清理与 release-1 隔离演练** | R1-14 | `pnpm r1:baseline-plan` 已提供只读、确定性的隔离目标 preflight；后续只在生产快照副本执行审核 manifest、dry-run、备份、账号/运营数据清理，并为 E 系列 1135×2 与爱学习 52×2 重建共 2374 条 release-1；第二次运行必须 no-op | 当前 planner 仅证明输入、计数、hash 与环境拒绝合同；仍需 1 次全量演练成功、计数满足 doc 25 不变量、备份可恢复，且本阶段未修改真实生产 |
 | **R1-16 独立生产、监控、备份与恢复** | R1-14～15 | commit `35b9f60` 已提供 `pnpm r1:deployment-plan` 只读 fail-closed preflight，固定 current/target/recovery 指纹隔离、受控 secret/config 引用、监控、RPO/RTO、隔离恢复和应用回滚合同，见[部署 Preflight](../evidence/r1/r1-16-deployment-preflight.md)。commits `3077fee`、`82c0920`、`8e5c076` 已让当前树、binary ASCII、高风险容器及完整可达 Git 历史的高置信 secret scan 均为 0，见[仓库扫描子门](../evidence/r1/r1-16-repository-secret-scan.md) | 仓库扫描不证明开发/预生产/生产环境、数据、secret、Storage 和域名隔离。R1-14、R1-15、环境隔离、监控探针、数据库恢复、Storage 恢复、应用回滚和非执行者复核未通过前保持 blocker；数据库 RPO≤15min/RTO≤4h，Storage RPO≤24h/RTO≤8h，应用回滚≤30min |
 | **R1-17 14 天真实班级 RC** | R1-16 | 在生产候选环境运行连续 14 天、至少 5 节真实课堂；覆盖请假/补课、作业、成果/视频、家长查看和启用时的财务 | 可用性≥99.5%；关键 action 系统错误率<0.5%；jobs/通知最终成功≥99%；发布时未处置 dead-letter=0 |

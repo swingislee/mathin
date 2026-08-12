@@ -15,6 +15,8 @@ values('__P6_TRACKS__','__P6_TRACKS__'||replace(gen_random_uuid()::text,'-',''),
 returning id as course_id \gset
 insert into public.course_lectures(course_id,no,name)
 values(:'course_id',1,'__P6_TRACKS_LECTURE__') returning id as lecture_id \gset
+insert into public.course_staff_assignments(user_id,scope_type,course_id,responsibility,created_by)
+values(:'admin_id','variant',:'course_id','editor',:'admin_id');
 
 select repeat('1',64) source_hash,repeat('2',64) replacement_hash \gset
 insert into public.cw_asset_objects(sha256,mime,byte_count,width,height,kind,storage_path)
