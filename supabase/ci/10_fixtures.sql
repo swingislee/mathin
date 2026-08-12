@@ -2,8 +2,9 @@
 -- CI 断言夹具（docs/plan/15-§5）。
 --
 -- supabase/tests/p4e_security_assertions.sql 依赖一组固定的「测试-*」账号：一个
--- 管理员、一个教师、一个学辅（岗位角色 sales，作用域 view.assigned）、一个学生
--- （在某教室的某课次里）和一个家长。开发库里这些账号由注册流程产生；一次性 CI
+-- 管理员、一个教师、一个教务 reviewer、一个学辅（岗位角色 sales，作用域
+-- view.assigned）、一个学生（在某教室的某课次里）和一个家长。开发库里这些账号
+-- 由注册流程产生；一次性 CI
 -- 库里必须由本文件种出来，否则断言拿不到主体、也就证明不了越权被拒。
 --
 -- 只在一次性 CI 容器里执行。
@@ -60,12 +61,22 @@ values
       'privacy_consent', true,
       'children_privacy_consent', true
     )
+  ),
+  (
+    '00000000-0000-4000-8000-000000000006',
+    'ci-reviewer@mathin.local',
+    jsonb_build_object(
+      'display_name', '测试-教务',
+      'registration_invite_code', (select code from public.registration_invite_settings where id = 1),
+      'privacy_consent', true,
+      'children_privacy_consent', true
+    )
   )
 on conflict (id) do nothing;
 
 -- handle_new_user 触发器已按 display_name 建好 profiles；这里只补身份类角色。
 update public.profiles set role = 'admin'   where id = '00000000-0000-4000-8000-000000000001';
-update public.profiles set role = 'staff'   where id in ('00000000-0000-4000-8000-000000000002', '00000000-0000-4000-8000-000000000003');
+update public.profiles set role = 'staff'   where id in ('00000000-0000-4000-8000-000000000002', '00000000-0000-4000-8000-000000000003', '00000000-0000-4000-8000-000000000006');
 update public.profiles set role = 'student' where id = '00000000-0000-4000-8000-000000000004';
 update public.profiles set role = 'parent'  where id = '00000000-0000-4000-8000-000000000005';
 
@@ -85,12 +96,16 @@ values (
 )
 on conflict do nothing;
 
--- 岗位角色：教师、学辅。学辅的 student.view.assigned 是「读不到非名下学生」断言的前提。
+-- 岗位角色：教师、学辅、教务 reviewer。学辅的 student.view.assigned 是
+-- 「读不到非名下学生」断言的前提；reviewer 的精确权限由 SML 事务断言临时构造。
 insert into public.staff_role_members (user_id, role_id)
 select '00000000-0000-4000-8000-000000000002', id from public.staff_roles where key = 'teacher'
 on conflict do nothing;
 insert into public.staff_role_members (user_id, role_id)
 select '00000000-0000-4000-8000-000000000003', id from public.staff_roles where key = 'sales'
+on conflict do nothing;
+insert into public.staff_role_members (user_id, role_id)
+select '00000000-0000-4000-8000-000000000006', id from public.staff_roles where key = 'research'
 on conflict do nothing;
 
 -- doc 26 需要一堂尚未开始、带正式 release 页的教师课次。
