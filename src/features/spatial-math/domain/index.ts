@@ -2,6 +2,8 @@ export * from "./canonical-json";
 export * from "./attempt-schema";
 export * from "./attempt-evaluator";
 export * from "./cube-net-kernel";
+export * from "./cube-net-folding-preset";
+export * from "./cube-net-folding-preset-schema";
 export * from "./exact";
 export * from "./net-schema";
 export * from "./page-schema";

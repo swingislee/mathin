@@ -1,5 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { buildPolyhedronFoldScene } from "@/features/spatial-math/domain";
 import { PolyhedronNetFallback } from "@/features/spatial-math/renderer-r3f/PolyhedronNetFallback";
@@ -10,6 +12,9 @@ import {
   buildPolyhedronNetFallbackModel,
   createPolyhedronFoldRenderModelResolver,
   interpolatePolyhedronFoldProgress,
+  isPolyhedronFoldFaceSelectable,
+  matchPolyhedronFoldProjectionValue,
+  polyhedronFoldProjectionVisibleHalfHeight,
 } from "@/features/spatial-math/renderer-r3f/polyhedron-fold-render-model";
 import { cubeFoldSceneAdapterInput } from "./fixtures/spatial-polyhedron-scene";
 
@@ -32,10 +37,13 @@ describe("polyhedron fold 4:3 render model", () => {
     expect(POLYHEDRON_FOLD_RENDERER_MAX_DPR).toBe(1.5);
     expect(first.progressMillionths).toBe(500_000);
     expect(first.camera.id).toBe("camera.front");
+    expect(first.camera.projection).toBe("orthographic");
+    expect(first.displayTarget).toEqual(first.camera.target);
     expect(first.faces).toHaveLength(6);
     expect(first.faces.every((face) => face.triangleVertexIndices.length === 2)).toBe(true);
     expect(first.faces.every((face) => face.trianglePositions.length === 18)).toBe(true);
     expect(first.faces.every((face) => face.edgePositions.length === 24)).toBe(true);
+    expect(first.faces.reduce((total, face) => total + face.edgePositions.length / 6, 0)).toBe(24);
     expect(first.faces.find((face) => face.faceId === "face.z.neg")).toMatchObject({
       label: "后面",
       selected: true,
@@ -59,6 +67,45 @@ describe("polyhedron fold 4:3 render model", () => {
     expect(() =>
       buildPolyhedronFoldRenderModel(built.scene, "polyhedron.cube", 0, "zh", { cameraId: "camera.missing" }),
     ).toThrow("unknown spatial camera bookmark");
+  });
+
+  it("preserves vertical framing when camera bookmarks cross projection types", () => {
+    const halfHeight = 3;
+    const distance = 8;
+    const perspectiveFov = 50;
+    const visibleBefore = polyhedronFoldProjectionVisibleHalfHeight(
+      "perspective",
+      perspectiveFov,
+      halfHeight,
+      distance,
+    );
+    const matchedZoom = matchPolyhedronFoldProjectionValue(
+      "perspective",
+      "orthographic",
+      perspectiveFov,
+      halfHeight,
+      distance,
+    );
+    const visibleAfter = polyhedronFoldProjectionVisibleHalfHeight(
+      "orthographic",
+      matchedZoom,
+      halfHeight,
+      distance,
+    );
+
+    expect(visibleAfter).toBeCloseTo(visibleBefore, 10);
+    expect(
+      matchPolyhedronFoldProjectionValue(
+        "orthographic",
+        "perspective",
+        matchedZoom,
+        halfHeight,
+        distance,
+      ),
+    ).toBeCloseTo(perspectiveFov, 10);
+    expect(() => polyhedronFoldProjectionVisibleHalfHeight("perspective", 180, halfHeight, distance)).toThrow(
+      RangeError,
+    );
   });
 });
 
@@ -109,5 +156,67 @@ describe("polyhedron-net-2d-v1 fallback", () => {
     expect(interactive).toContain('aria-pressed="true"');
     expect(interactive).toContain("二维模式");
     expect(readOnly).not.toContain('role="button"');
+  });
+
+  it("exposes only an explicit checkpoint option set as interactive faces", async () => {
+    const built = await buildPolyhedronFoldScene(cubeFoldSceneAdapterInput());
+    const markup = renderToStaticMarkup(
+      createElement(PolyhedronNetFallback, {
+        scene: built.scene,
+        entityId: "polyhedron.cube",
+        locale: "en",
+        selectableFaceIds: ["face.x.neg", "face.x.pos", "face.z.neg"],
+        onFaceSelect: () => undefined,
+      }),
+    );
+
+    expect(markup.match(/data-face-selectable="true"/g)).toHaveLength(3);
+    expect(markup.match(/data-face-selectable="false"/g)).toHaveLength(3);
+    expect(markup.match(/role="button"/g)).toHaveLength(3);
+    expect(markup.match(/tabindex="0"/g)).toHaveLength(3);
+    expect(isPolyhedronFoldFaceSelectable("face.x.neg", ["face.x.neg"])).toBe(true);
+    expect(isPolyhedronFoldFaceSelectable("face.x.pos", ["face.x.neg"])).toBe(false);
+    expect(isPolyhedronFoldFaceSelectable("face.x.pos", [])).toBe(false);
+    expect(isPolyhedronFoldFaceSelectable("face.x.pos")).toBe(true);
+  });
+
+  it("reuses the accepted orbit transition for authored camera bookmarks", () => {
+    const source = readFileSync(
+      resolve(process.cwd(), "src/features/spatial-math/renderer-r3f/PolyhedronFoldCanvas.tsx"),
+      "utf8",
+    );
+
+    expect(source).toContain("VOXEL_CAMERA_TRANSITION_MS");
+    expect(source).toContain("interpolateVoxelCameraPose");
+    expect(source).toContain("voxelCameraTransitionProgress");
+    expect(source).toContain("matchPolyhedronFoldProjectionValue");
+    expect(source).toContain('data-camera-transition="orbit-ease-in-out"');
+    expect(source).toContain('data-camera-transition-state="idle"');
+    expect(source).toContain("if (reducedMotion)");
+  });
+
+  it("uses opaque solid faces and one instanced ink-edge draw instead of WebGL line widths", () => {
+    const source = readFileSync(
+      resolve(process.cwd(), "src/features/spatial-math/renderer-r3f/PolyhedronFoldCanvas.tsx"),
+      "utf8",
+    );
+
+    expect(source).toContain("<meshBasicMaterial");
+    expect(source).toContain("toneMapped={false}");
+    expect(source).toContain("<FoldEdges faces={model.faces}");
+    expect(source.match(/<instancedMesh/g)).toHaveLength(1);
+    expect(source).toContain("<boxGeometry");
+    expect(source).toContain("computeBoundingSphere()");
+    expect(source).toContain("raycast={() => null}");
+    expect(source).toContain("event.stopPropagation()");
+    expect(source).toContain("if (selectable) onFaceSelect(face.faceId)");
+    expect(source).toContain("model.displayTarget.x - model.bounds.center.x");
+    expect(source).not.toContain("distanceFactor={6}");
+    expect(source).toContain("min-w-7");
+    expect(source).not.toContain("<meshStandardMaterial");
+    expect(source).not.toContain("!selectable || !onFaceSelect");
+    expect(source).not.toContain("<lineBasicMaterial");
+    expect(source).not.toContain("transparent={true}");
+    expect(source).not.toContain("opacity={");
   });
 });

@@ -58,6 +58,8 @@ export interface PolyhedronTeachingControllerView {
   readonly controllerVersion: typeof POLYHEDRON_TEACHING_CONTROLLER_VERSION;
   readonly entityId: string;
   readonly entityLabel: string;
+  readonly accessibilitySummary: string;
+  readonly faceLabels: readonly { readonly id: string; readonly label: string }[];
   readonly ownershipMode: SpatialRuntimeState["ownershipMode"];
   readonly cameraId: string;
   readonly cameras: readonly PolyhedronTeachingCameraView[];
@@ -124,6 +126,7 @@ function parsedControllerInputs(pageInput: unknown, stateInput: unknown, entityI
       `spatial page entity is not foldable: ${entityId}`,
     );
   }
+  const folding = entity.folding;
   if (!page.classroom.ownership.allowedModes.includes(state.ownershipMode)) {
     fail(
       POLYHEDRON_TEACHING_CONTROLLER_ERROR_CODES.stateReferenceInvalid,
@@ -142,7 +145,7 @@ function parsedControllerInputs(pageInput: unknown, stateInput: unknown, entityI
       `runtime step does not exist: ${state.activeStepId}`,
     );
   }
-  return { page, state, entity };
+  return { page, state, entity, folding };
 }
 
 function faceCheckpoint(page: SpatialPageDoc, entityId: string, locale: PolyhedronTeachingLocale) {
@@ -184,7 +187,7 @@ export function derivePolyhedronTeachingControllerView(
   locale: PolyhedronTeachingLocale,
   readOnly = false,
 ): PolyhedronTeachingControllerView {
-  const { page, state, entity } = parsedControllerInputs(pageInput, stateInput, entityId);
+  const { page, state, entity, folding } = parsedControllerInputs(pageInput, stateInput, entityId);
   const matchesBranch = actorMatchesBranch(state, actor);
   const studentModeOpen = state.ownershipMode === "student-local-explore" || state.ownershipMode === "student-submit";
   const canManipulateScene =
@@ -203,6 +206,11 @@ export function derivePolyhedronTeachingControllerView(
     controllerVersion: POLYHEDRON_TEACHING_CONTROLLER_VERSION,
     entityId,
     entityLabel: localizedText(entity.label, locale, entityId),
+    accessibilitySummary: localizedText(folding.fallback.summary, locale, entityId),
+    faceLabels: folding.fallback.faceLabels.map((face) => ({
+      id: face.faceId,
+      label: localizedText(face.label, locale, face.faceId),
+    })),
     ownershipMode: state.ownershipMode,
     cameraId: state.cameraBookmarkId,
     cameras: page.scene.presentation.cameraBookmarks.map((camera) => ({

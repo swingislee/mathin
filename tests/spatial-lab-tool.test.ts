@@ -5,10 +5,13 @@ import { buildVoxelAuthoringDiff } from "@/features/spatial-math/domain";
 import { toolThumbs } from "@/features/tools/thumbs";
 import { getTool, tools } from "@/features/tools/registry";
 import {
+  SPATIAL_LAB_ACTIVITIES,
+  SPATIAL_LAB_CUBE_NET_FOLD_PRESET_ID,
   SPATIAL_LAB_PRESET_ID,
   SPATIAL_LAB_PRESETS,
   createSpatialLabInitialDraft,
   createSpatialLabPresetDraft,
+  isSpatialLabVoxelPresetId,
 } from "@/features/tools/spatial-lab/preset";
 
 function leafKeys(value: unknown, prefix = ""): string[] {
@@ -80,6 +83,22 @@ describe("spatial-lab Tools acceptance prototype", () => {
     expect(new Set(builds).size).toBe(6);
   });
 
+  it("routes the seventh cube-net activity away from the voxel draft factory", () => {
+    expect(SPATIAL_LAB_ACTIVITIES.map((activity) => [activity.id, activity.kind])).toEqual([
+      ["spatial-lab.voxel-counting.v1", "voxel"],
+      ["spatial-lab.hidden-cubes.v1", "voxel"],
+      ["spatial-lab.three-views.v1", "voxel"],
+      ["spatial-lab.surface-paint.v1", "voxel"],
+      ["spatial-lab.hollowing.v1", "voxel"],
+      ["spatial-lab.rectangular-prism-measurement.v1", "voxel"],
+      ["spatial-lab.cube-net-fold.v1", "polyhedron-fold"],
+    ]);
+    expect(isSpatialLabVoxelPresetId(SPATIAL_LAB_CUBE_NET_FOLD_PRESET_ID)).toBe(false);
+    expect(() =>
+      (createSpatialLabPresetDraft as (value: string) => unknown)(SPATIAL_LAB_CUBE_NET_FOLD_PRESET_ID),
+    ).toThrow(/unknown spatial-lab voxel preset/);
+  });
+
   it("keeps the prototype bilingual and exposes the same message surface in zh and en", () => {
     const zh = JSON.parse(readFileSync(resolve("messages/zh.json"), "utf8"));
     const en = JSON.parse(readFileSync(resolve("messages/en.json"), "utf8"));
@@ -90,10 +109,10 @@ describe("spatial-lab Tools acceptance prototype", () => {
   });
 
   it("keeps the mounted client leaf isolated from persistence and classroom transport", () => {
-    const source = readFileSync(
+    const source = [
       resolve("src/features/tools/spatial-lab/SpatialLab.tsx"),
-      "utf8",
-    ).toLowerCase();
+      resolve("src/features/tools/spatial-lab/CubeNetFoldWorkspace.tsx"),
+    ].map((path) => readFileSync(path, "utf8").toLowerCase()).join("\n");
 
     for (const forbidden of [
       "supabase",
@@ -105,5 +124,6 @@ describe("spatial-lab Tools acceptance prototype", () => {
       expect(source).not.toContain(forbidden);
     }
     expect(source).toContain('data-layout-profile="standard-4x3"');
+    expect(source).toContain('controlslayout="external"');
   });
 });

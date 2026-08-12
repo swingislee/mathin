@@ -14,6 +14,55 @@ export const POLYHEDRON_FOLD_RENDERER_MAX_TRANSITION_MS = 10_000;
 
 export type SpatialRendererLocale = "zh" | "en";
 export type PolyhedronFoldEasing = "linear" | "ease-in-out";
+export type PolyhedronFoldProjection = "orthographic" | "perspective";
+
+/** Omitted preserves the standalone renderer's legacy all-face interaction; an empty list disables every face. */
+export function isPolyhedronFoldFaceSelectable(
+  faceId: string,
+  selectableFaceIds?: readonly string[],
+): boolean {
+  return selectableFaceIds === undefined || selectableFaceIds.includes(faceId);
+}
+
+export function polyhedronFoldProjectionVisibleHalfHeight(
+  projection: PolyhedronFoldProjection,
+  projectionValue: number,
+  orthographicHalfHeight: number,
+  distanceToTarget: number,
+): number {
+  if (
+    ![projectionValue, orthographicHalfHeight, distanceToTarget].every(Number.isFinite) ||
+    projectionValue <= 0 ||
+    (projection === "perspective" && projectionValue >= 180) ||
+    orthographicHalfHeight <= 0 ||
+    distanceToTarget <= 0
+  ) {
+    throw new RangeError("fold camera projection values must be finite and positive");
+  }
+  return projection === "orthographic"
+    ? orthographicHalfHeight / projectionValue
+    : Math.tan(projectionValue * Math.PI / 360) * distanceToTarget;
+}
+
+/** Matches the outgoing vertical framing before a cross-projection orbit begins. */
+export function matchPolyhedronFoldProjectionValue(
+  fromProjection: PolyhedronFoldProjection,
+  toProjection: PolyhedronFoldProjection,
+  fromProjectionValue: number,
+  orthographicHalfHeight: number,
+  distanceToTarget: number,
+): number {
+  const visibleHalfHeight = polyhedronFoldProjectionVisibleHalfHeight(
+    fromProjection,
+    fromProjectionValue,
+    orthographicHalfHeight,
+    distanceToTarget,
+  );
+  if (fromProjection === toProjection) return fromProjectionValue;
+  return toProjection === "orthographic"
+    ? orthographicHalfHeight / visibleHalfHeight
+    : (Math.atan(visibleHalfHeight / distanceToTarget) * 360) / Math.PI;
+}
 
 export function interpolatePolyhedronFoldProgress(
   from: number,
@@ -72,6 +121,7 @@ export interface PolyhedronFoldRenderModel {
   readonly lighting: SpatialScene["presentation"]["lighting"];
   readonly showEdges: boolean;
   readonly camera: SpatialScene["presentation"]["cameraBookmarks"][number];
+  readonly displayTarget: SpatialScene["presentation"]["cameraBookmarks"][number]["target"];
   readonly faces: readonly PolyhedronFoldRenderFace[];
   readonly bounds: PolyhedronFoldRenderBounds;
 }
@@ -191,6 +241,10 @@ export function createPolyhedronFoldRenderModelResolver(
   const resolvedCameraId = cameraId ?? scene.presentation.defaultCameraId;
   const camera = scene.presentation.cameraBookmarks.find((bookmark) => bookmark.id === resolvedCameraId);
   if (!camera) throw new Error(`unknown spatial camera bookmark: ${resolvedCameraId}`);
+  const displayTarget = scene.presentation.cameraBookmarks.find(
+    (bookmark) => bookmark.id === scene.presentation.defaultCameraId,
+  )?.target;
+  if (!displayTarget) throw new Error(`unknown default spatial camera bookmark: ${scene.presentation.defaultCameraId}`);
   return {
     resolve: (progress, selectedFaceIds = []) => {
       const progressMillionths = foldProgressMillionths(progress);
@@ -240,6 +294,7 @@ export function createPolyhedronFoldRenderModelResolver(
         lighting: scene.presentation.lighting,
         showEdges: scene.presentation.showEdges,
         camera,
+        displayTarget,
         faces,
         bounds: renderBounds(faces.flatMap((face) => face.vertices.map((vertex) => vertex.position))),
       };

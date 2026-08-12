@@ -59,14 +59,17 @@ import {
 import type { VoxelRendererMessages } from "@/features/spatial-math/renderer-r3f/VoxelFallback";
 import type { ToolComponentProps } from "../types";
 import {
+  SPATIAL_LAB_ACTIVITIES,
+  SPATIAL_LAB_CUBE_NET_FOLD_PRESET_ID,
   SPATIAL_LAB_DEFAULT_PRESET_ID,
-  SPATIAL_LAB_PRESETS,
   SPATIAL_LAB_HOLLOWING_PRESET_ID,
   SPATIAL_LAB_MEASUREMENT_PRESET_ID,
   SPATIAL_LAB_SURFACE_PAINT_PRESET_ID,
   createSpatialLabPresetDraft,
-  type SpatialLabPresetId,
+  isSpatialLabVoxelPresetId,
+  type SpatialLabActivityId,
 } from "./preset";
+import { CubeNetFoldWorkspace } from "./CubeNetFoldWorkspace";
 import {
   RectangularPrismMeasurementPanel,
   type RectangularPrismMeasurementMessages,
@@ -346,8 +349,12 @@ function ClassroomRehearsal({
 export function SpatialLab({ embedded = false }: ToolComponentProps) {
   const t = useTranslations("tools.spatialLab");
   const locale = useLocale() === "en" ? "en" : "zh";
-  const [activePresetId, setActivePresetId] = useState<SpatialLabPresetId>(SPATIAL_LAB_DEFAULT_PRESET_ID);
-  const initialDraft = useMemo(() => createSpatialLabPresetDraft(activePresetId), [activePresetId]);
+  const [activeActivityId, setActiveActivityId] = useState<SpatialLabActivityId>(SPATIAL_LAB_DEFAULT_PRESET_ID);
+  const activeVoxelPresetId = isSpatialLabVoxelPresetId(activeActivityId) ? activeActivityId : null;
+  const initialDraft = useMemo(
+    () => createSpatialLabPresetDraft(activeVoxelPresetId ?? SPATIAL_LAB_DEFAULT_PRESET_ID),
+    [activeVoxelPresetId],
+  );
   const [draft, setDraft] = useState<VoxelAuthoringDraft>(initialDraft);
   const [workflowRevision, setWorkflowRevision] = useState(0);
   const [activeTab, setActiveTab] = useState<LabTab>("authoring");
@@ -357,6 +364,7 @@ export function SpatialLab({ embedded = false }: ToolComponentProps) {
   });
 
   useEffect(() => {
+    if (!activeVoxelPresetId) return;
     let current = true;
     void buildVoxelAuthoringDiff(initialDraft, draft).then(
       (result) => {
@@ -369,20 +377,22 @@ export function SpatialLab({ embedded = false }: ToolComponentProps) {
     return () => {
       current = false;
     };
-  }, [draft, initialDraft]);
+  }, [activeVoxelPresetId, draft, initialDraft]);
 
   const visibleArtifacts = artifacts.draft === draft ? artifacts : { draft, status: "building" } as const;
   const readyResult = visibleArtifacts.status === "ready" ? visibleArtifacts.result : null;
   const page = readyResult?.afterPreview.build.page ?? null;
-  const selectPreset = (presetId: SpatialLabPresetId) => {
-    const nextDraft = createSpatialLabPresetDraft(presetId);
-    setActivePresetId(presetId);
+  const selectActivity = (activityId: SpatialLabActivityId) => {
+    setActiveActivityId(activityId);
+    if (!isSpatialLabVoxelPresetId(activityId)) return;
+    const nextDraft = createSpatialLabPresetDraft(activityId);
     setDraft(nextDraft);
+    setActiveTab("authoring");
     setWorkflowRevision((current) => current + 1);
     setArtifacts({ draft: nextDraft, status: "building" });
   };
 
-  const measurementEnabled = activePresetId === SPATIAL_LAB_MEASUREMENT_PRESET_ID;
+  const measurementEnabled = activeActivityId === SPATIAL_LAB_MEASUREMENT_PRESET_ID;
   const measurement = useMemo<RectangularPrismMeasurement | null | undefined>(() => {
     if (!measurementEnabled) return undefined;
     try {
@@ -640,7 +650,7 @@ export function SpatialLab({ embedded = false }: ToolComponentProps) {
       className="flex min-h-0 flex-1 flex-col overflow-hidden bg-paper text-ink"
       data-tool="spatial-lab"
       data-layout-profile="standard-4x3"
-      data-spatial-preset={activePresetId}
+      data-spatial-preset={activeActivityId}
     >
       <div className="border-b border-line bg-moon/15 px-4 py-3 md:px-6">
         <div className="mx-auto flex max-w-[1500px] flex-wrap items-start justify-between gap-3">
@@ -657,14 +667,14 @@ export function SpatialLab({ embedded = false }: ToolComponentProps) {
               <p className="text-xs font-medium text-ink">{t("presets.label")}</p>
               <p className="mt-0.5 text-xs leading-5 text-muted">{t("presets.description")}</p>
             </div>
-            <Select value={activePresetId} onValueChange={(value) => selectPreset(value as SpatialLabPresetId)}>
+            <Select value={activeActivityId} onValueChange={(value) => selectActivity(value as SpatialLabActivityId)}>
               <SelectTrigger className="w-full" aria-label={t("presets.label")}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {SPATIAL_LAB_PRESETS.map((preset) => (
-                  <SelectItem key={preset.id} value={preset.id}>
-                    {t(`presets.options.${preset.messageKey}`)}
+                {SPATIAL_LAB_ACTIVITIES.map((activity) => (
+                  <SelectItem key={activity.id} value={activity.id}>
+                    {t(`presets.options.${activity.messageKey}`)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -674,7 +684,9 @@ export function SpatialLab({ embedded = false }: ToolComponentProps) {
         </div>
       </div>
 
-      <Tabs
+      {activeActivityId === SPATIAL_LAB_CUBE_NET_FOLD_PRESET_ID ? (
+        <CubeNetFoldWorkspace locale={locale} />
+      ) : <Tabs
         value={activeTab}
         onValueChange={(value) => setActiveTab(value as LabTab)}
         className="flex min-h-0 flex-1 flex-col"
@@ -707,7 +719,7 @@ export function SpatialLab({ embedded = false }: ToolComponentProps) {
                   onRestore={restoreMeasurement}
                 />
                 <VoxelAuthoringWorkflowStage
-                  key={`${activePresetId}:${workflowRevision}`}
+                  key={`${activeActivityId}:${workflowRevision}`}
                   initialDraft={draft}
                   locale={locale}
                   messages={workflowMessages}
@@ -717,7 +729,7 @@ export function SpatialLab({ embedded = false }: ToolComponentProps) {
               </div>
             ) : (
               <VoxelAuthoringWorkflowStage
-                key={`${activePresetId}:${workflowRevision}`}
+                key={`${activeActivityId}:${workflowRevision}`}
                 initialDraft={draft}
                 locale={locale}
                 messages={workflowMessages}
@@ -755,9 +767,9 @@ export function SpatialLab({ embedded = false }: ToolComponentProps) {
                 locale={locale}
                 messages={teachingMessages}
                 cells={draft.model.cells}
-                paintEnabled={activePresetId === SPATIAL_LAB_SURFACE_PAINT_PRESET_ID}
+                paintEnabled={activeActivityId === SPATIAL_LAB_SURFACE_PAINT_PRESET_ID}
                 paintMessages={paintMessages}
-                carvingEnabled={activePresetId === SPATIAL_LAB_HOLLOWING_PRESET_ID}
+                carvingEnabled={activeActivityId === SPATIAL_LAB_HOLLOWING_PRESET_ID}
                 carvingMessages={carvingMessages}
               />
             ) : (
@@ -828,7 +840,7 @@ export function SpatialLab({ embedded = false }: ToolComponentProps) {
             ) : null}
           </div>
         </TabsContent>
-      </Tabs>
+      </Tabs>}
     </div>
   );
 }

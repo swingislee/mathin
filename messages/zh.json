@@ -303,7 +303,7 @@
     "spatialLab": {
       "prototypeBadge": "验收样机",
       "memoryOnly": "仅保存在本页",
-      "prototypeNote": "先验收单位块建模、教学编排与4:3课堂试演；当前操作不会写入课程或数据库。",
+    "prototypeNote": "先验收立体图形建模、展开折叠、教学编排与4:3课堂试演；当前操作不会写入课程或数据库。",
       "boundaryNote": "刷新页面会恢复初始模型。Studio保存、审核发布和多人课堂同步尚未接入。",
       "workspaceTabs": "空间数学验收工作台",
       "authoringTab": "建模与编排",
@@ -311,16 +311,32 @@
       "changesTab": "变化摘要",
       "presets": {
         "label": "题型模板",
-        "description": "切换模板会重置当前页面内的模型和教学步骤。",
+      "description": "切换活动会重置当前页面内的模型和教学步骤。",
         "options": {
           "layeredCounting": "分层计数 · 10块",
           "hiddenCubes": "遮挡计数 · 14块",
           "threeViews": "三视图观察 · 12块",
           "surfacePainting": "表面染色 · 27块",
           "hollowing": "挖空与表面积 · 27块",
-          "volumeSurface": "体积与表面积 · 4×3×2"
-        }
-      },
+        "volumeSurface": "体积与表面积 · 4×3×2",
+        "cubeNetFold": "正方体展开与折叠 · A—F面"
+      }
+    },
+    "cubeNet": {
+      "title": "正方体展开图与折叠",
+      "description": "先预测 A 面的相对面，再把六个正方形从平面逐步折成正方体，用半折状态追踪每个面的方向。",
+      "legalNet": "已验证的合法展开图",
+      "facesAndHinges": "6个面 · 5条折叠边",
+      "localOnly": "预测、折叠进度和选面只保存在当前页面。",
+      "foldProgress": "折叠进度",
+      "progressValue": "已折叠{percent}%",
+      "keepPrediction": "保留预测",
+      "predictionPending": "请先预测：哪个面与 A 面相对？",
+      "predictionSelected": "当前预测：{face} 面",
+      "foldToVerify": "拖动折叠进度，或播放教学步骤来验证预测。",
+      "verifiedConclusion": "折叠完成：F 面与 A 面相对。",
+      "folded": "已折成正方体"
+    },
       "paint": {
         "title": "外表面染色实验",
         "description": "点击模型的外露面可以逐面染色或取消；内部相邻面不能被染色。",

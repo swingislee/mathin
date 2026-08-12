@@ -303,7 +303,7 @@
     "spatialLab": {
       "prototypeBadge": "Acceptance prototype",
       "memoryOnly": "This page only",
-      "prototypeNote": "Review unit-cube modeling, lesson authoring, and the 4:3 classroom rehearsal. Nothing here is written to a course or database yet.",
+    "prototypeNote": "Review solid modeling, net folding, lesson authoring, and the 4:3 classroom rehearsal. Nothing here is written to a course or database yet.",
       "boundaryNote": "Refreshing restores the starter model. Studio saving, review, publishing, and multi-user classroom sync are not connected yet.",
       "workspaceTabs": "Spatial mathematics acceptance workspace",
       "authoringTab": "Model & lesson",
@@ -311,16 +311,32 @@
       "changesTab": "Change summary",
       "presets": {
         "label": "Problem template",
-        "description": "Switching templates resets the in-page model and lesson steps.",
+      "description": "Switching activities resets the in-page model and lesson steps.",
         "options": {
           "layeredCounting": "Layer counting · 10 cubes",
           "hiddenCubes": "Hidden cubes · 14 cubes",
           "threeViews": "Three-view observation · 12 cubes",
           "surfacePainting": "Surface painting · 27 cubes",
           "hollowing": "Hollowing and area · 27 cubes",
-          "volumeSurface": "Volume and surface area · 4×3×2"
-        }
-      },
+        "volumeSurface": "Volume and surface area · 4×3×2",
+        "cubeNetFold": "Cube net and folding · faces A–F"
+      }
+    },
+    "cubeNet": {
+      "title": "Cube net and folding",
+      "description": "Predict the face opposite A, then fold the six squares from a plane into a cube and use the half-folded state to track each face.",
+      "legalNet": "Verified valid cube net",
+      "facesAndHinges": "6 faces · 5 fold edges",
+      "localOnly": "Your prediction, fold progress, and face choice stay on this page.",
+      "foldProgress": "Fold progress",
+      "progressValue": "{percent}% folded",
+      "keepPrediction": "Keep prediction",
+      "predictionPending": "Predict first: which face is opposite A?",
+      "predictionSelected": "Current prediction: face {face}",
+      "foldToVerify": "Move the fold progress or play the lesson steps to verify your prediction.",
+      "verifiedConclusion": "Fold complete: face F is opposite face A.",
+      "folded": "Folded into a cube"
+    },
       "paint": {
         "title": "Exterior surface painting",
         "description": "Select exposed faces on the model to paint or clear them; shared internal faces cannot be painted.",

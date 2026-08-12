@@ -10,6 +10,7 @@ export const SPATIAL_LAB_DEFAULT_PRESET_ID = SPATIAL_LAB_PRESET_ID;
 export const SPATIAL_LAB_SURFACE_PAINT_PRESET_ID = "spatial-lab.surface-paint.v1" as const;
 export const SPATIAL_LAB_HOLLOWING_PRESET_ID = "spatial-lab.hollowing.v1" as const;
 export const SPATIAL_LAB_MEASUREMENT_PRESET_ID = "spatial-lab.rectangular-prism-measurement.v1" as const;
+export const SPATIAL_LAB_CUBE_NET_FOLD_PRESET_ID = "spatial-lab.cube-net-fold.v1" as const;
 
 export const SPATIAL_LAB_PRESETS = [
   { id: SPATIAL_LAB_PRESET_ID, messageKey: "layeredCounting" },
@@ -21,6 +22,22 @@ export const SPATIAL_LAB_PRESETS = [
 ] as const;
 
 export type SpatialLabPresetId = (typeof SPATIAL_LAB_PRESETS)[number]["id"];
+
+export const SPATIAL_LAB_ACTIVITIES = [
+  ...SPATIAL_LAB_PRESETS.map((preset) => ({ ...preset, kind: "voxel" as const })),
+  {
+    id: SPATIAL_LAB_CUBE_NET_FOLD_PRESET_ID,
+    messageKey: "cubeNetFold",
+    kind: "polyhedron-fold" as const,
+  },
+] as const;
+
+export type SpatialLabActivity = (typeof SPATIAL_LAB_ACTIVITIES)[number];
+export type SpatialLabActivityId = SpatialLabActivity["id"];
+
+export function isSpatialLabVoxelPresetId(value: string): value is SpatialLabPresetId {
+  return SPATIAL_LAB_PRESETS.some((preset) => preset.id === value);
+}
 
 function cellsFromColumns(
   columns: readonly { readonly x: number; readonly z: number; readonly height: number }[],
@@ -155,34 +172,37 @@ function presetContent(presetId: SpatialLabPresetId) {
       ]),
     };
   }
-  return {
-    sceneId: "scene.spatial-lab.voxel-counting",
-    title: { zh: "分层数单位正方体", en: "Count unit cubes by layer" },
-    learningGoal: {
-      zh: "结合三视图和分层完整计数",
-      en: "Count completely using orthographic views and layers",
-    },
-    teacherPrompt: {
-      zh: "先估一估，再找出可能被挡住的单位块。",
-      en: "Estimate first, then find cubes that may be hidden.",
-    },
-    misconception: {
-      zh: "只数正面能看到的单位块",
-      en: "Count only cubes visible from the front",
-    },
-    cells: [
-      { x: 0, y: 0, z: 0 },
-      { x: 0, y: 0, z: 1 },
-      { x: 0, y: 1, z: 0 },
-      { x: 0, y: 1, z: 1 },
-      { x: 0, y: 2, z: 0 },
-      { x: 1, y: 0, z: 0 },
-      { x: 1, y: 0, z: 1 },
-      { x: 1, y: 1, z: 0 },
-      { x: 2, y: 0, z: 0 },
-      { x: 2, y: 0, z: 1 },
-    ],
-  };
+  if (presetId === SPATIAL_LAB_PRESET_ID) {
+    return {
+      sceneId: "scene.spatial-lab.voxel-counting",
+      title: { zh: "分层数单位正方体", en: "Count unit cubes by layer" },
+      learningGoal: {
+        zh: "结合三视图和分层完整计数",
+        en: "Count completely using orthographic views and layers",
+      },
+      teacherPrompt: {
+        zh: "先估一估，再找出可能被挡住的单位块。",
+        en: "Estimate first, then find cubes that may be hidden.",
+      },
+      misconception: {
+        zh: "只数正面能看到的单位块",
+        en: "Count only cubes visible from the front",
+      },
+      cells: [
+        { x: 0, y: 0, z: 0 },
+        { x: 0, y: 0, z: 1 },
+        { x: 0, y: 1, z: 0 },
+        { x: 0, y: 1, z: 1 },
+        { x: 0, y: 2, z: 0 },
+        { x: 1, y: 0, z: 0 },
+        { x: 1, y: 0, z: 1 },
+        { x: 1, y: 1, z: 0 },
+        { x: 2, y: 0, z: 0 },
+        { x: 2, y: 0, z: 1 },
+      ],
+    };
+  }
+  throw new RangeError(`unknown spatial-lab voxel preset: ${String(presetId)}`);
 }
 
 export function createSpatialLabVoxelInput(

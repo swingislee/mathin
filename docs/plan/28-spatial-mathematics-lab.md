@@ -137,6 +137,8 @@ Mathin 建设一套“空间数学实验室”，服务从小学直观认识立�
 
 同日第二十七个增量进入 P5 长方体体积与表面积的首条可见闭环。新增严格 `rectangular-prism-measurement-v1` 纯函数合同，只接受 1～6 的整数长、宽、高和固定 `unit` 单位；它从规范、原点对齐的实际单位体素占用集合重新确认尺寸，缺块、偏移、额外块、非规范顺序和超界输入显式拒绝。体积使用单位块总数与 `V=l×w×h` 对账，表面积使用既有外露面内核与三组相对面 `S=2×(l×w+l×h+w×h)` 对账。第六个双语内建模板为长 4、宽 3、高 2，共 24 个单位块，得到体积 24、表面积 52；长、宽、高调整只更新当前 Tools 页面内存中的模型，并沿既有工作流重建唯一 1200×900 `standard-4x3` page。专项合同增至 26 个文件/197 项，全量 Vitest 增至 77 个文件/487 项，messages 为 3984 keys × 2 locales，`pnpm sml:test`、`pnpm test` 与 `pnpm messages:check` 通过。真实 Chromium 在 localhost 中文、英文详情和中文 embed 验证 4×3×2→24/52、5×4×2→40/76、1×4×2→8/28、模型截图 hash 随尺寸改变、快速调整后活动 DOM 只有一个 Canvas、非长方体 fail closed、恢复后的键盘焦点、390×844 深色页面无横向溢出和 `standard-4x3`；局域网 `192.168.5.213:3130` 返回 HTTP 200 并显示同一模板，console error 为 0。开发态仍只有前一增量已记录的依赖 `THREE.Clock` 弃用和截图 `ReadPixels` 性能 warning。该样机仍不进入持久化 authoring 合同、Studio、发布/freeze、课堂 transport、attempt 或真实学生数据；固定 `unit` 只证明单位体素长方体样例，不代表完整单位检查、单位换算、复合体、圆柱圆锥或 SML-3 已验收。
 
+同日第二十八个增量进入 P4 正方体展开与折叠的首条 Tools 可见闭环。第七个双语内建活动 `spatial-lab.cube-net-fold.v1` 使用 `src` 内自包含、确定性的 `cube-net-folding-preset-v1`，固定 preset 为 `cube-net.cross-opposite-face.v1`；单位方格集合直接从同一 polyhedron fold layout 派生并由 `cube-net-kernel-v1` 确认为合法，A～F 六个语义面、二维 SVG fallback 与三维折叠复用同一 fold artifact。活动构建唯一 1200×900 `standard-4x3` page，复用既有 `PolyhedronFoldTeachingStage` 和页内 reducer，提供预测—观察—半折—验证、0～100% 折叠、相机书签、A 面相对面的本地选择与 reset；WebGL 与 SVG 只允许 checkpoint option 面被选择，外置控制区为指针、键盘和 reduced-motion 提供等价操作，且不创建或发送正式 attempt。专项合同增至 27 个文件/208 项，全量 Vitest 增至 78 个文件/498 项，messages 为 3998 keys × 2 locales，`pnpm sml:test`、`pnpm test`、`pnpm messages:check`、`pnpm typecheck` 与 `pnpm lint` 通过。真实 Chromium 在 localhost 中文/英文详情页、中文/英文 embed、1440×1200 桌面和 390×844 暗色手机验证唯一 Canvas、`standard-4x3`、控制区下置、无横向溢出、画布内 A～F 六标签可读、非 option 的 A 面点击不穿透、折叠早/中/终帧与相机过渡中/终帧截图 hash 不同、F 面与 A 面相对的结论、reset、slider 键盘操作和 reduced-motion 回到 idle；局域网 `192.168.5.213:3130` 返回 HTTP 200，console error 为 0。开发态仍只有已知的依赖 `THREE.Clock` 弃用和截图 `ReadPixels` 性能 warning。该活动仍只存在于现有 `spatial-lab` 当前页面内存，不进入持久化 authoring 合同、Studio、评审/发布/freeze、课堂 transport、attempt 或真实学生数据；折叠动画只是确定性进度参数的呈现，当前碰撞证据仍为 `deterministic-samples-only`，不代表连续时域无碰撞、11 个候选已经教研签名或 SML-4 已验收。
+
 ## 3. 产品目标、用户与非目标
 
 ### 3.1 目标结果
@@ -362,7 +364,7 @@ H5/iframe、任意网页模型和客户端临时 URL 不作为空间数学资产
 
 正方体金标必须枚举 35 种自由六连方，接受且只接受 11 种展开图；旋转和镜像等价归一化。
 
-当前未接生产链的本地 spike 已完成上述 35/11 离散合同、通用闭壳面/棱邻接、铰链生成树、有理数三维面几何、整数平面展开布局、自交/重叠诊断、目标二面角反解、层级三维刚体变换、最终闭合误差、确定性采样的非相邻面碰撞，以及 `spatial-scene-v1`/4:3 page/runtime 的自包含适配，并保留 11 个教研待签名候选。拓扑层的“相对面候选”只表示两面无公共顶点；几何层再以位置、法向、平行性和面间分离确认相对面。首个 4:3 R3F/二维 fallback 组件只证明渲染合同可编译且纯物化测试通过；SML-4 后续仍需连续时间碰撞或保守 swept-volume 证明、相邻面异常穿透诊断、课堂交互，以及真实浏览器/触控/context recovery/bundle 证据；不得用离散采样未命中碰撞替代连续过程合法性。
+当前未接生产链的本地 spike 已完成上述 35/11 离散合同、通用闭壳面/棱邻接、铰链生成树、有理数三维面几何、整数平面展开布局、自交/重叠诊断、目标二面角反解、层级三维刚体变换、最终闭合误差、确定性采样的非相邻面碰撞，以及 `spatial-scene-v1`/4:3 page/runtime 的自包含适配，并保留 11 个教研待签名候选。拓扑层的“相对面候选”只表示两面无公共顶点；几何层再以位置、法向、平行性和面间分离确认相对面。现有 `spatial-lab` 纯内存样机已挂载一个固定正方体展开/折叠活动，复用同一 fold artifact 的 4:3 R3F、二维 SVG fallback 和教学控制器；真实 Chromium 已覆盖中文/英文详情与 embed、桌面/暗色手机布局、控制区下置、移动端无横向溢出、键盘、reduced-motion、相对面选择、折叠与相机过渡，但这些结果只证明该固定样例和已覆盖环境。SML-4 仍需连续时间碰撞或保守 swept-volume 证明、相邻面异常穿透诊断、生产课堂交互，以及 context recovery、bundle 和未覆盖设备证据；不得用离散采样未命中碰撞替代连续过程合法性。
 
 ### 7.3 截面
 
@@ -604,7 +606,7 @@ WebGL 不可用时仍允许观察、切层、查看表格和完成适合二维�
 
 ## 14. 实施阶段
 
-下列编号是本专题的正式依赖顺序；只有 doc 04 将其中一项写为唯一当前施工阶段后，才能接入路由、数据、Studio、发布或课堂生产链并推进阶段退出。1.0 前仅可按本文状态头和 doc 04 的隔离研究例外继续未挂载本地 spike，这些结果不能关闭阶段。每个正式阶段完成时同步本文件状态、doc 00/04/25、证据索引和 `pnpm plan:audit`。
+下列编号是本专题的正式依赖顺序；只有 doc 04 将其中一项写为唯一当前施工阶段后，才能接入数据、Studio、发布或课堂生产链并推进阶段退出。1.0 前只允许未挂载的本地研究 spike，以及状态头和 doc 04 明确授权的现有 `spatial-lab` 纯内存 Tools 增量；两者均不得进入生产课件或课堂链，也不能关闭任何 `SML-*` 阶段。每个正式阶段完成时同步本文件状态、doc 00/04/25、证据索引和 `pnpm plan:audit`。
 
 | 阶段 | 依赖 | 动作与产物 | 退出证据 |
 | --- | --- | --- | --- |

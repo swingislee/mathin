@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import type { SpatialScene } from "../domain";
 import {
   buildPolyhedronNetFallbackModel,
+  isPolyhedronFoldFaceSelectable,
   type SpatialRendererLocale,
 } from "./polyhedron-fold-render-model";
 
@@ -13,6 +14,7 @@ export interface PolyhedronNetFallbackProps {
   readonly entityId: string;
   readonly locale: SpatialRendererLocale;
   readonly selectedFaceIds?: readonly string[];
+  readonly selectableFaceIds?: readonly string[];
   readonly readOnly?: boolean;
   readonly onFaceSelect?: (faceId: string) => void;
   readonly statusMessage?: string;
@@ -24,6 +26,7 @@ export function PolyhedronNetFallback({
   entityId,
   locale,
   selectedFaceIds = [],
+  selectableFaceIds,
   readOnly = false,
   onFaceSelect,
   statusMessage,
@@ -33,7 +36,6 @@ export function PolyhedronNetFallback({
     () => buildPolyhedronNetFallbackModel(scene, entityId, locale, selectedFaceIds),
     [entityId, locale, scene, selectedFaceIds],
   );
-  const interactive = !readOnly && Boolean(onFaceSelect);
   const viewBox = `${model.viewBox.x} ${model.viewBox.y} ${model.viewBox.width} ${model.viewBox.height}`;
 
   return (
@@ -54,8 +56,11 @@ export function PolyhedronNetFallback({
       >
         <title>{model.label}</title>
         <desc>{model.summary}</desc>
-        {model.faces.map((face) => (
-          <g key={face.faceId} data-face-id={face.faceId}>
+        {model.faces.map((face) => {
+          const interactive = !readOnly && Boolean(onFaceSelect) &&
+            isPolyhedronFoldFaceSelectable(face.faceId, selectableFaceIds);
+          return (
+          <g key={face.faceId} data-face-id={face.faceId} data-face-selectable={interactive ? "true" : "false"}>
             <polygon
               points={face.points.map((point) => `${point.x},${point.y}`).join(" ")}
               fill={face.selected ? "var(--moon)" : "var(--leaf)"}
@@ -91,7 +96,8 @@ export function PolyhedronNetFallback({
               {face.label}
             </text>
           </g>
-        ))}
+          );
+        })}
         {model.hinges.map((hinge) => {
           const centerX = (hinge.from.x + hinge.to.x) / 2;
           const centerY = (hinge.from.y + hinge.to.y) / 2;

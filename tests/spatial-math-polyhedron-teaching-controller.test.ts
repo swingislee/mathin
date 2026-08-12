@@ -77,6 +77,9 @@ describe("polyhedron-teaching-controller-v1", () => {
       prompt: "Which face is opposite the front face?",
       multiple: false,
     });
+    expect(view.accessibilitySummary).toContain("six squares");
+    expect(view.faceLabels).toHaveLength(6);
+    expect(view.faceLabels.find((face) => face.id === "face.z.neg")?.label).toBe("Back");
   });
 
   it("turns previous/next controls into semantic step intents and replays authored camera/fold actions", async () => {
@@ -164,6 +167,12 @@ describe("polyhedron-teaching-controller-v1", () => {
     expect(source).toContain("onValueChange=");
     expect(source).toContain("onValueCommit=");
     expect(source).toContain("onCommandIntent(payload)");
+    expect(source).toContain('controlsLayout = "overlay"');
+    expect(source).toContain('data-controls-layout="external"');
+    expect(source).toContain("selectableFaceIds={selectableFaceIds}");
+    expect(source).toContain('aria-valuetext={messages.formatProgress(visibleProgressPercent)}');
+    expect(source).toContain('aria-live="polite"');
     expect(source).not.toContain("session_events");
+    expect(source).not.toContain("<input");
   });
 });
