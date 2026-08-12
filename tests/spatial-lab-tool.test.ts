@@ -109,9 +109,14 @@ describe("spatial-lab Tools acceptance prototype", () => {
   });
 
   it("keeps the mounted client leaf isolated from persistence and classroom transport", () => {
+    const gallerySource = readFileSync(
+      resolve("src/features/tools/spatial-lab/CubeNetGalleryPanel.tsx"),
+      "utf8",
+    );
     const source = [
       resolve("src/features/tools/spatial-lab/SpatialLab.tsx"),
       resolve("src/features/tools/spatial-lab/CubeNetFoldWorkspace.tsx"),
+      resolve("src/features/tools/spatial-lab/CubeNetGalleryPanel.tsx"),
     ].map((path) => readFileSync(path, "utf8").toLowerCase()).join("\n");
 
     for (const forbidden of [
@@ -120,10 +125,14 @@ describe("spatial-lab Tools acceptance prototype", () => {
       "coursewaredoc",
       "server action",
       "fetch(",
+      "localstorage",
     ]) {
       expect(source).not.toContain(forbidden);
     }
     expect(source).toContain('data-layout-profile="standard-4x3"');
     expect(source).toContain('controlslayout="external"');
+    expect(source).toContain('data-cube-net-gallery={cube_net_gallery_version}');
+    expect(gallerySource).not.toContain("<input");
+    expect(gallerySource).not.toContain("<select");
   });
 });

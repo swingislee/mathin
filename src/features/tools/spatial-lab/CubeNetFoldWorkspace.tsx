@@ -26,6 +26,7 @@ import {
   PolyhedronFoldTeachingStage,
   type PolyhedronFoldTeachingMessages,
 } from "@/features/spatial-math/renderer-r3f/PolyhedronFoldTeachingStage";
+import { CubeNetGalleryPanel } from "./CubeNetGalleryPanel";
 
 const TOOL_TEACHER: SpatialCommandActor = {
   kind: "teacher-controller",
@@ -187,6 +188,13 @@ export function CubeNetFoldWorkspace({ locale }: { readonly locale: "zh" | "en" 
             <span className="text-xs leading-5 text-muted">{t("cubeNet.localOnly")}</span>
           </CardContent>
         </Card>
+
+        <CubeNetGalleryPanel />
+
+        <div>
+          <h2 className="text-base font-medium text-ink">{t("cubeNet.foldingDemoTitle")}</h2>
+          <p className="mt-1 text-sm leading-6 text-muted">{t("cubeNet.foldingDemoDescription")}</p>
+        </div>
 
         {buildState.status === "ready" ? (
           <CubeNetFoldRehearsal
