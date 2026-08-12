@@ -43,6 +43,7 @@ export interface VoxelCanvasProps {
   readonly locale: VoxelRendererLocale;
   readonly selectedCellKeys?: readonly string[];
   readonly readOnly?: boolean;
+  readonly axisSnapEnabled?: boolean;
   readonly onCellSelect?: (cellKey: string) => void;
   readonly messages: VoxelRendererMessages;
   readonly materialColors?: Readonly<Record<string, string>>;
@@ -153,10 +154,12 @@ function applyProjectionValue(camera: VoxelCamera, value: number) {
 function VoxelCameraRig({
   model,
   interactive,
+  axisSnapEnabled,
   onTransitionStateChange,
 }: {
   readonly model: VoxelRenderModel;
   readonly interactive: boolean;
+  readonly axisSnapEnabled: boolean;
   readonly onTransitionStateChange: (active: boolean) => void;
 }) {
   const size = useThree((state) => state.size);
@@ -335,6 +338,7 @@ function VoxelCameraRig({
         }
       }}
       onEnd={() => {
+        if (!axisSnapEnabled) return;
         const camera = activeCamera.current;
         const orbitControls = controls.current;
         if (!camera || !orbitControls) return;
@@ -502,6 +506,7 @@ function VoxelScene({
   readOnly,
   materialColors,
   onCellSelect,
+  axisSnapEnabled,
   onCameraTransitionStateChange,
 }: {
   readonly model: VoxelRenderModel;
@@ -509,6 +514,7 @@ function VoxelScene({
   readonly readOnly: boolean;
   readonly materialColors?: Readonly<Record<string, string>>;
   readonly onCellSelect?: (cellKey: string) => void;
+  readonly axisSnapEnabled: boolean;
   readonly onCameraTransitionStateChange: (active: boolean) => void;
 }) {
   return (
@@ -517,6 +523,7 @@ function VoxelScene({
       <VoxelCameraRig
         model={model}
         interactive={!readOnly}
+        axisSnapEnabled={axisSnapEnabled}
         onTransitionStateChange={onCameraTransitionStateChange}
       />
       <VoxelInstances model={model} palette={palette} readOnly={readOnly} materialColors={materialColors} onCellSelect={onCellSelect} />
@@ -533,6 +540,7 @@ export function VoxelCanvas({
   locale,
   selectedCellKeys = [],
   readOnly = false,
+  axisSnapEnabled = false,
   onCellSelect,
   messages,
   materialColors,
@@ -578,7 +586,7 @@ export function VoxelCanvas({
       data-spatial-renderer="voxel-instanced-r3f-v1"
       data-camera-transition="orbit-ease-in-out"
       data-camera-transition-state="idle"
-      data-camera-axis-snap="principal-axes"
+      data-camera-axis-snap={axisSnapEnabled ? "enabled" : "disabled"}
       data-camera-projection="orthographic-only"
       data-voxel-visual="solid-fill-thick-edge"
     >
@@ -601,6 +609,7 @@ export function VoxelCanvas({
           readOnly={readOnly}
           materialColors={materialColors}
           onCellSelect={onCellSelect}
+          axisSnapEnabled={axisSnapEnabled}
           onCameraTransitionStateChange={setCameraTransitionState}
         />
       </Canvas>

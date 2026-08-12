@@ -158,7 +158,8 @@ describe("voxel-teaching-controller-v1 and 4:3 render model", () => {
     expect(renderer).toContain("snapVoxelCameraPoseToPrincipalAxis");
     expect(renderer).toContain('data-camera-transition="orbit-ease-in-out"');
     expect(renderer).toContain('data-camera-transition-state="idle"');
-    expect(renderer).toContain('data-camera-axis-snap="principal-axes"');
+    expect(renderer).toContain('axisSnapEnabled = false');
+    expect(renderer).toContain('data-camera-axis-snap={axisSnapEnabled ? "enabled" : "disabled"}');
     expect(renderer).toContain('data-camera-projection="orthographic-only"');
     expect(renderer).not.toContain("0.92, 0.92, 0.92");
     expect(renderer).toContain("computeBoundingSphere()");
@@ -170,6 +171,8 @@ describe("voxel-teaching-controller-v1 and 4:3 render model", () => {
     expect(view).toContain("ssr: false");
     expect(stage).toContain('data-layout-profile="standard-4x3"');
     expect(stage).toContain("<Input");
+    expect(stage).toContain("<Magnet");
+    expect(stage).toContain("aria-pressed={axisSnapEnabled}");
     expect(stage).toContain("onCommandIntent(payload)");
     expect(stage).not.toContain("session_events");
   });

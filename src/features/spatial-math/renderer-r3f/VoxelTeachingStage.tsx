@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Camera, ChevronLeft, ChevronRight, Eye, EyeOff, Layers3, Pause, Play, RotateCcw } from "lucide-react";
+import { Camera, ChevronLeft, ChevronRight, Eye, EyeOff, Layers3, Magnet, Pause, Play, RotateCcw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +27,9 @@ export interface VoxelTeachingMessages extends VoxelRendererMessages {
   readonly pauseSteps: string;
   readonly resetScene: string;
   readonly cameraBookmarks: string;
+  readonly axisSnap: string;
+  readonly enableAxisSnap: string;
+  readonly disableAxisSnap: string;
   readonly layers: string;
   readonly countPlaceholder: string;
   readonly submitCount: string;
@@ -70,6 +73,7 @@ export function VoxelTeachingStage({
   );
   const [playing, setPlaying] = useState(false);
   const [countValue, setCountValue] = useState("");
+  const [axisSnapEnabled, setAxisSnapEnabled] = useState(false);
   const emit = useCallback(
     (action: VoxelTeachingAction) => {
       const payload = createVoxelTeachingCommandIntent(page, state, entityId, actor, locale, action, readOnly);
@@ -119,6 +123,7 @@ export function VoxelTeachingStage({
         entityId={entityId}
         locale={locale}
         readOnly={!view.canManipulateScene}
+        axisSnapEnabled={axisSnapEnabled}
         messages={messages}
         materialColors={materialColors}
       />
@@ -150,6 +155,19 @@ export function VoxelTeachingStage({
               {camera.label}
             </Button>
           ))}
+          <Button
+            type="button"
+            size="sm"
+            variant={axisSnapEnabled ? "secondary" : "ghost"}
+            className="h-7 gap-1 px-2 text-xs"
+            disabled={!view.canManipulateScene}
+            aria-label={axisSnapEnabled ? messages.disableAxisSnap : messages.enableAxisSnap}
+            aria-pressed={axisSnapEnabled}
+            onClick={() => setAxisSnapEnabled((current) => !current)}
+          >
+            <Magnet aria-hidden="true" className="size-3.5" />
+            {messages.axisSnap}
+          </Button>
         </div>
       </header>
 
