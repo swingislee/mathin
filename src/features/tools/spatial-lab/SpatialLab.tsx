@@ -12,6 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   SPATIAL_COMMAND_VERSION,
   buildVoxelAuthoringDiff,
@@ -40,7 +41,12 @@ import {
 } from "@/features/spatial-math/renderer-r3f/VoxelTeachingStage";
 import type { VoxelRendererMessages } from "@/features/spatial-math/renderer-r3f/VoxelFallback";
 import type { ToolComponentProps } from "../types";
-import { createSpatialLabInitialDraft } from "./preset";
+import {
+  SPATIAL_LAB_DEFAULT_PRESET_ID,
+  SPATIAL_LAB_PRESETS,
+  createSpatialLabPresetDraft,
+  type SpatialLabPresetId,
+} from "./preset";
 
 const TEACHER_ACTOR: SpatialCommandActor = {
   kind: "teacher-controller",
@@ -113,7 +119,8 @@ function ClassroomRehearsal({
 export function SpatialLab({ embedded = false }: ToolComponentProps) {
   const t = useTranslations("tools.spatialLab");
   const locale = useLocale() === "en" ? "en" : "zh";
-  const initialDraft = useMemo(() => createSpatialLabInitialDraft(), []);
+  const [activePresetId, setActivePresetId] = useState<SpatialLabPresetId>(SPATIAL_LAB_DEFAULT_PRESET_ID);
+  const initialDraft = useMemo(() => createSpatialLabPresetDraft(activePresetId), [activePresetId]);
   const [draft, setDraft] = useState<VoxelAuthoringDraft>(initialDraft);
   const [activeTab, setActiveTab] = useState<LabTab>("authoring");
   const [artifacts, setArtifacts] = useState<ArtifactState>({
@@ -139,6 +146,12 @@ export function SpatialLab({ embedded = false }: ToolComponentProps) {
   const visibleArtifacts = artifacts.draft === draft ? artifacts : { draft, status: "building" } as const;
   const readyResult = visibleArtifacts.status === "ready" ? visibleArtifacts.result : null;
   const page = readyResult?.afterPreview.build.page ?? null;
+  const selectPreset = (presetId: SpatialLabPresetId) => {
+    const nextDraft = createSpatialLabPresetDraft(presetId);
+    setActivePresetId(presetId);
+    setDraft(nextDraft);
+    setArtifacts({ draft: nextDraft, status: "building" });
+  };
 
   const rendererMessages = useMemo<VoxelRendererMessages>(() => ({
     webglUnavailable: t("renderer.webglUnavailable"),
@@ -301,6 +314,7 @@ export function SpatialLab({ embedded = false }: ToolComponentProps) {
       className="flex min-h-0 flex-1 flex-col overflow-hidden bg-paper text-ink"
       data-tool="spatial-lab"
       data-layout-profile="standard-4x3"
+      data-spatial-preset={activePresetId}
     >
       <div className="border-b border-line bg-moon/15 px-4 py-3 md:px-6">
         <div className="mx-auto flex max-w-[1500px] flex-wrap items-start justify-between gap-3">
@@ -312,7 +326,25 @@ export function SpatialLab({ embedded = false }: ToolComponentProps) {
             </div>
             {!embedded ? <p className="mt-2 text-sm leading-6 text-muted">{t("prototypeNote")}</p> : null}
           </div>
-          <p className="max-w-md text-xs leading-5 text-muted">{t("boundaryNote")}</p>
+          <div className="grid w-full gap-2 sm:w-80">
+            <div>
+              <p className="text-xs font-medium text-ink">{t("presets.label")}</p>
+              <p className="mt-0.5 text-xs leading-5 text-muted">{t("presets.description")}</p>
+            </div>
+            <Select value={activePresetId} onValueChange={(value) => selectPreset(value as SpatialLabPresetId)}>
+              <SelectTrigger className="w-full" aria-label={t("presets.label")}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SPATIAL_LAB_PRESETS.map((preset) => (
+                  <SelectItem key={preset.id} value={preset.id}>
+                    {t(`presets.options.${preset.messageKey}`)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs leading-5 text-muted">{t("boundaryNote")}</p>
+          </div>
         </div>
       </div>
 
@@ -341,6 +373,7 @@ export function SpatialLab({ embedded = false }: ToolComponentProps) {
         <TabsContent value="authoring" className="mt-0 min-h-0 flex-1 overflow-auto p-3 md:p-5">
           <div className="mx-auto max-w-[1500px]">
             <VoxelAuthoringWorkflowStage
+              key={activePresetId}
               initialDraft={initialDraft}
               locale={locale}
               messages={workflowMessages}

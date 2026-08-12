@@ -6,7 +6,9 @@ import { toolThumbs } from "@/features/tools/thumbs";
 import { getTool, tools } from "@/features/tools/registry";
 import {
   SPATIAL_LAB_PRESET_ID,
+  SPATIAL_LAB_PRESETS,
   createSpatialLabInitialDraft,
+  createSpatialLabPresetDraft,
 } from "@/features/tools/spatial-lab/preset";
 
 function leafKeys(value: unknown, prefix = ""): string[] {
@@ -49,6 +51,30 @@ describe("spatial-lab Tools acceptance prototype", () => {
     expect(page.presentation.viewport).toMatchObject({ width: 1_200, height: 900 });
     expect(result.diff.before).toEqual(result.diff.after);
     expect(result.diff.derived).toEqual({});
+  });
+
+  it("offers deterministic 4:3 templates for layers, occlusion, and three-view observation", async () => {
+    const expectedCounts = [10, 14, 12];
+    const builds = await Promise.all(
+      SPATIAL_LAB_PRESETS.map(async (preset, index) => {
+        const first = createSpatialLabPresetDraft(preset.id);
+        const second = createSpatialLabPresetDraft(preset.id);
+        const result = await buildVoxelAuthoringDiff(first, second);
+        expect(first).toEqual(second);
+        expect(first.model.cells).toHaveLength(expectedCounts[index]);
+        expect(result.afterPreview.build.page.layout).toEqual({ profile: "standard-4x3" });
+        expect(result.afterPreview.build.page.presentation.viewport).toMatchObject({ width: 1_200, height: 900 });
+        expect(result.diff.before).toEqual(result.diff.after);
+        return result.diff.after.draftHash;
+      }),
+    );
+
+    expect(SPATIAL_LAB_PRESETS.map((preset) => preset.id)).toEqual([
+      "spatial-lab.voxel-counting.v1",
+      "spatial-lab.hidden-cubes.v1",
+      "spatial-lab.three-views.v1",
+    ]);
+    expect(new Set(builds).size).toBe(3);
   });
 
   it("keeps the prototype bilingual and exposes the same message surface in zh and en", () => {

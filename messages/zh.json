@@ -309,6 +309,15 @@
       "authoringTab": "建模与编排",
       "classroomTab": "课堂试演",
       "changesTab": "变化摘要",
+      "presets": {
+        "label": "题型模板",
+        "description": "切换模板会重置当前页面内的模型和教学步骤。",
+        "options": {
+          "layeredCounting": "分层计数 · 10块",
+          "hiddenCubes": "遮挡计数 · 14块",
+          "threeViews": "三视图观察 · 12块"
+        }
+      },
       "common": {
         "previewBuilding": "正在生成4:3预览…",
         "previewReady": "4:3预览已就绪",

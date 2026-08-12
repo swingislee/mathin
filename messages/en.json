@@ -309,6 +309,15 @@
       "authoringTab": "Model & lesson",
       "classroomTab": "Classroom rehearsal",
       "changesTab": "Change summary",
+      "presets": {
+        "label": "Problem template",
+        "description": "Switching templates resets the in-page model and lesson steps.",
+        "options": {
+          "layeredCounting": "Layer counting · 10 cubes",
+          "hiddenCubes": "Hidden cubes · 14 cubes",
+          "threeViews": "Three-view observation · 12 cubes"
+        }
+      },
       "common": {
         "previewBuilding": "Building the 4:3 preview…",
         "previewReady": "4:3 preview ready",
