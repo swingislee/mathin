@@ -11,6 +11,8 @@ export * from "./cube-net-folding-preset-schema";
 export * from "./exact";
 export * from "./net-schema";
 export * from "./page-schema";
+export * from "./page-delivery";
+export * from "./page-delivery-schema";
 export * from "./polyhedron-topology-kernel";
 export * from "./polyhedron-topology-schema";
 export * from "./polyhedron-net-geometry-kernel";

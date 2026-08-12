@@ -143,6 +143,8 @@ Mathin 建设一套“空间数学实验室”，服务从小学直观认识立�
 
 同日第三十个增量把 11 种合法图库形态全部接入同一 4:3 连续折叠舞台。新增严格 `cube-net-gallery-folding-v1` 请求和编译器：每个方格使用 `cube-net-kernel-v1` 给出的 normal/right/up 正交基映射到固定正方体语义面，五组平面公共边再映射到真实拓扑棱；A 固定为根面、F 固定为 A 的几何相对面，最终山谷折向从目标几何反解，不由 UI 或像素猜测。11 个 canonical 形态分别产生不同 scene hash，并各自通过五铰链生成树、0/50/100% 帧解析、确定性采样无碰撞和最终闭合误差 0；非法或未知图库项 fail closed，原 `cube-net-folding-preset-v1` 固定样例保持不变。图库选项改为受控选择，切换第 n 种会异步重建该形态的唯一 1200×900 `standard-4x3` page，旧请求不会覆盖最终选择，折叠进度、选面和步骤随新场景重置。专项合同增至 29 个文件/221 项，全量 Vitest 增至 80 个文件/511 项，messages 为 4028 keys × 2 locales，`pnpm sml:test`、`pnpm test`、`pnpm messages:check` 与 `pnpm typecheck` 通过。真实 Chromium 在 localhost 验证默认形态与第 11 种展开状态截图 hash 不同，第 11 种 0%→100% 后画面再次变化且得到 F/A 相对结论，快速选择第 3→7→2 种后只保留最终第 2 种和一个 Canvas；英文详情、中文/英文 embed、390×844 暗色 reduced-motion 手机、无横向溢出和局域网 `192.168.5.213:3130` 均通过，console error 为 0。该增量仍只是现有 Tools 页内存样机；11 种候选尚未教研签名，碰撞证据仍为 `deterministic-samples-only`，也未进入持久化 authoring、Studio、评审/发布/freeze、课堂 transport、attempt 或真实学生数据，不关闭 SML-4。
 
+正式启动 SML-0 后的首个工程增量冻结 `spatial-page-delivery-v1`。严格请求把 stable `pageDocId`、标准 4:3 revision 和可选宽屏例外 revision 绑定到同一已验证 layout set；纯计划固定 `native-16x9`、`adapted-4x3` 的稳定顺序和原子双 head 语义。普通空间页两条兼容 head 必须引用同一 `standard-4x3` revision，`native-16x9` 不得反向改写文档比例；只有提供语义与 scene hash 完全一致、revision identity 独立且含双语理由的 `wide-16x9-exception` 时，native head 才指向宽屏 revision，adapted head 始终保留标准 4:3 revision。伪造 scene hash、布局语义漂移、宽屏 revision identity 复用、非原子计划、轨道乱序和内部映射矛盾均 fail closed；相同请求的计划与 canonical hash 确定一致。专项合同增至 30 个文件/229 项，全量 Vitest 增至 81 个文件/519 项，`pnpm sml:test`、`pnpm test` 与 `pnpm typecheck` 通过。该纯计划尚未进入生产 `CoursewareDoc` union、数据库、RPC、审核、双 release、rollback 或 freeze，因此只冻结第三阻断项的输入/输出合同，不能据此宣称 track/layout 阻断项已关闭或 SML-0 已验收。
+
 ## 3. 产品目标、用户与非目标
 
 ### 3.1 目标结果
