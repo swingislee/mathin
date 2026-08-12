@@ -494,7 +494,7 @@ describe("R1-9 P6 courseware source manifest", () => {
         changed.inventories[0].path = unsafePath;
         expect(() => loadCoursewareSourceContext({ root: temp, manifestPath: writeExampleManifest(temp, changed) })).toThrow(error);
       }
-      expect(() => loadCoursewareSourceContext({ root: temp, manifestPath: path.join(temp, exampleManifestPath) })).toThrow(/manifestPath must use repository-relative forward slashes|manifestPath must not be a URI or drive-qualified path/);
+      expect(() => loadCoursewareSourceContext({ root: temp, manifestPath: path.join(temp, exampleManifestPath) })).toThrow(/manifestPath must use repository-relative forward slashes|manifestPath must not be a URI or drive-qualified path|manifestPath must not be absolute or UNC/);
     } finally {
       fs.rmSync(temp, { recursive: true, force: true });
     }

@@ -108,6 +108,19 @@ values (
 )
 on conflict (id) do nothing;
 
+-- SML-0 发布入口要求 permission + 当前课程研发责任；管理员身份不绕过责任关系。
+insert into public.course_staff_assignments (
+  user_id, scope_type, lecture_id, responsibility, created_by
+)
+values (
+  '00000000-0000-4000-8000-000000000001',
+  'lecture',
+  '00000000-0000-4000-8000-000000000302',
+  'owner',
+  '00000000-0000-4000-8000-000000000001'
+)
+on conflict do nothing;
+
 insert into public.cw_page_docs (
   id, lecture_id, page_no, title, source_courseware_id, source_page_id
 )
