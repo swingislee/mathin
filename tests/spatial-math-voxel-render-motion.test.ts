@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   interpolateVoxelCameraPose,
+  snapVoxelCameraPoseToPrincipalAxis,
   voxelCameraTransitionProgress,
   type VoxelCameraPose,
 } from "@/features/spatial-math/renderer-r3f/voxel-camera-transition";
@@ -73,5 +74,24 @@ describe("voxel solid visual and camera transition", () => {
     expect(midpoint.position.z).toBeCloseTo(Math.SQRT1_2 * 10, 8);
     expect(distance(midpoint)).toBeCloseTo(10, 8);
     expect(midpoint.position).not.toEqual({ x: 5, y: 0, z: 5 });
+  });
+
+  it("snaps a near-front manual orbit to an exact principal axis", () => {
+    const fiveDegrees = Math.PI / 36;
+    const nearFront: VoxelCameraPose = {
+      position: { x: Math.sin(fiveDegrees) * 10, y: 0, z: Math.cos(fiveDegrees) * 10 },
+      target: { x: 0, y: 0, z: 0 },
+      up: { x: 0, y: 1, z: 0 },
+    };
+
+    expect(snapVoxelCameraPoseToPrincipalAxis(nearFront)).toEqual({
+      position: { x: 0, y: 0, z: 10 },
+      target: { x: 0, y: 0, z: 0 },
+      up: { x: 0, y: 1, z: 0 },
+    });
+    expect(snapVoxelCameraPoseToPrincipalAxis({
+      ...nearFront,
+      position: { x: Math.sin(Math.PI / 6) * 10, y: 0, z: Math.cos(Math.PI / 6) * 10 },
+    })).toBeNull();
   });
 });

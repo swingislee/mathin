@@ -1,4 +1,6 @@
 export const VOXEL_CAMERA_TRANSITION_MS = 720;
+export const VOXEL_AXIS_SNAP_TRANSITION_MS = 240;
+export const VOXEL_AXIS_SNAP_DEGREES = 10;
 
 export interface VoxelCameraVector {
   readonly x: number;
@@ -106,6 +108,54 @@ function slerpDirection(
     x: from.x * Math.cos(angle) + relative.x * Math.sin(angle),
     y: from.y * Math.cos(angle) + relative.y * Math.sin(angle),
     z: from.z * Math.cos(angle) + relative.z * Math.sin(angle),
+  };
+}
+
+const PRINCIPAL_CAMERA_AXES: ReadonlyArray<{
+  readonly direction: VoxelCameraVector;
+  readonly up: VoxelCameraVector;
+}> = [
+  { direction: { x: 0, y: 0, z: 1 }, up: { x: 0, y: 1, z: 0 } },
+  { direction: { x: 0, y: 0, z: -1 }, up: { x: 0, y: 1, z: 0 } },
+  { direction: { x: 1, y: 0, z: 0 }, up: { x: 0, y: 1, z: 0 } },
+  { direction: { x: -1, y: 0, z: 0 }, up: { x: 0, y: 1, z: 0 } },
+  { direction: { x: 0, y: 1, z: 0 }, up: { x: 0, y: 0, z: -1 } },
+  { direction: { x: 0, y: -1, z: 0 }, up: { x: 0, y: 0, z: 1 } },
+];
+
+/** Returns an exact principal-axis pose when a manual orbit ends near one. */
+export function snapVoxelCameraPoseToPrincipalAxis(
+  pose: VoxelCameraPose,
+  maxAngleDegrees = VOXEL_AXIS_SNAP_DEGREES,
+): VoxelCameraPose | null {
+  if (!Number.isFinite(maxAngleDegrees) || maxAngleDegrees < 0 || maxAngleDegrees > 45) {
+    throw new RangeError("camera axis snap angle must be between 0 and 45 degrees");
+  }
+  assertVector(pose.position, "camera position");
+  assertVector(pose.target, "camera target");
+  assertVector(pose.up, "camera up");
+  const offset = subtract(pose.position, pose.target);
+  const radius = length(offset);
+  const direction = normalize(offset, "camera direction");
+  let nearest = PRINCIPAL_CAMERA_AXES[0]!;
+  let nearestCosine = dot(direction, nearest.direction);
+  for (const candidate of PRINCIPAL_CAMERA_AXES.slice(1)) {
+    const cosine = dot(direction, candidate.direction);
+    if (cosine > nearestCosine) {
+      nearest = candidate;
+      nearestCosine = cosine;
+    }
+  }
+  const angleDegrees = Math.acos(Math.max(-1, Math.min(1, nearestCosine))) * 180 / Math.PI;
+  if (angleDegrees > maxAngleDegrees) return null;
+  return {
+    target: pose.target,
+    up: nearest.up,
+    position: {
+      x: pose.target.x + nearest.direction.x * radius,
+      y: pose.target.y + nearest.direction.y * radius,
+      z: pose.target.z + nearest.direction.z * radius,
+    },
   };
 }
 

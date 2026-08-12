@@ -44,6 +44,7 @@ describe("voxel-teaching-controller-v1 and 4:3 render model", () => {
       hiddenByLayerCount: 0,
       totalCountRevealed: false,
       projectionDepthRevealed: false,
+      camera: { projection: "orthographic" },
     });
     expect(model.cells).toHaveLength(10);
   });
@@ -154,8 +155,11 @@ describe("voxel-teaching-controller-v1 and 4:3 render model", () => {
     expect(renderer).toContain("buildVoxelEdgeInstances");
     expect(renderer).toContain("meshBasicMaterial color={color}");
     expect(renderer).toContain("interpolateVoxelCameraPose");
+    expect(renderer).toContain("snapVoxelCameraPoseToPrincipalAxis");
     expect(renderer).toContain('data-camera-transition="orbit-ease-in-out"');
     expect(renderer).toContain('data-camera-transition-state="idle"');
+    expect(renderer).toContain('data-camera-axis-snap="principal-axes"');
+    expect(renderer).toContain('data-camera-projection="orthographic-only"');
     expect(renderer).not.toContain("0.92, 0.92, 0.92");
     expect(renderer).toContain("computeBoundingSphere()");
     expect(renderer).toContain("invalidate()");

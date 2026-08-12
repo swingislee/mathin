@@ -16,8 +16,10 @@ import * as THREE from "three";
 import type { SpatialPageDoc, SpatialRuntimeState } from "../domain";
 import { VoxelFallback, type VoxelRendererMessages } from "./VoxelFallback";
 import {
+  VOXEL_AXIS_SNAP_TRANSITION_MS,
   VOXEL_CAMERA_TRANSITION_MS,
   interpolateVoxelCameraPose,
+  snapVoxelCameraPoseToPrincipalAxis,
   voxelCameraTransitionProgress,
   type VoxelCameraPose,
 } from "./voxel-camera-transition";
@@ -112,6 +114,7 @@ interface ActiveCameraTransition {
   readonly projectionFrom: number;
   readonly projectionTo: number;
   readonly startedAtMs: number;
+  readonly durationMs: number;
 }
 
 function cameraPose(camera: VoxelCamera, target: VoxelCameraPose["target"]): VoxelCameraPose {
@@ -265,6 +268,7 @@ function VoxelCameraRig({
       projectionFrom: projectionValue(nextCamera),
       projectionTo,
       startedAtMs: performance.now(),
+      durationMs: VOXEL_CAMERA_TRANSITION_MS,
     };
     onTransitionStateChange(true);
     invalidate();
@@ -286,7 +290,7 @@ function VoxelCameraRig({
     if (!activeTransition) return;
     const progress = voxelCameraTransitionProgress(
       Math.max(0, performance.now() - activeTransition.startedAtMs),
-      VOXEL_CAMERA_TRANSITION_MS,
+      activeTransition.durationMs,
     );
     const pose = interpolateVoxelCameraPose(
       activeTransition.from,
@@ -329,6 +333,36 @@ function VoxelCameraRig({
             z: controls.current.target.z,
           };
         }
+      }}
+      onEnd={() => {
+        const camera = activeCamera.current;
+        const orbitControls = controls.current;
+        if (!camera || !orbitControls) return;
+        const target = {
+          x: orbitControls.target.x,
+          y: orbitControls.target.y,
+          z: orbitControls.target.z,
+        };
+        currentTarget.current = target;
+        const snappedPose = snapVoxelCameraPoseToPrincipalAxis(cameraPose(camera, target));
+        if (!snappedPose) return;
+        if (reducedMotion) {
+          applyCameraPose(camera, snappedPose, orbitControls);
+          onTransitionStateChange(false);
+          invalidate();
+          return;
+        }
+        transition.current = {
+          camera,
+          from: cameraPose(camera, target),
+          to: snappedPose,
+          projectionFrom: projectionValue(camera),
+          projectionTo: projectionValue(camera),
+          startedAtMs: performance.now(),
+          durationMs: VOXEL_AXIS_SNAP_TRANSITION_MS,
+        };
+        onTransitionStateChange(true);
+        invalidate();
       }}
     />
   );
@@ -544,6 +578,8 @@ export function VoxelCanvas({
       data-spatial-renderer="voxel-instanced-r3f-v1"
       data-camera-transition="orbit-ease-in-out"
       data-camera-transition-state="idle"
+      data-camera-axis-snap="principal-axes"
+      data-camera-projection="orthographic-only"
       data-voxel-visual="solid-fill-thick-edge"
     >
       <Canvas

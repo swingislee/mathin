@@ -37,6 +37,7 @@ export interface VoxelRenderLayer {
 
 export interface VoxelRenderCamera {
   readonly id: string;
+  /** Voxel teaching always renders with parallel projection, including its angled 3D bookmark. */
   readonly projection: "orthographic" | "perspective";
   readonly position: { readonly x: number; readonly y: number; readonly z: number };
   readonly target: { readonly x: number; readonly y: number; readonly z: number };
@@ -150,7 +151,7 @@ export function buildVoxelRenderModel(
     projectionDepthRevealed: cameraDefinition.projection === "orthographic" || Boolean(countRevealed),
     camera: {
       id: cameraDefinition.id,
-      projection: cameraDefinition.projection,
+      projection: "orthographic",
       position: cameraDefinition.position,
       target: cameraDefinition.target,
       up: cameraDefinition.up,
