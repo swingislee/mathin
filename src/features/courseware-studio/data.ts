@@ -465,10 +465,17 @@ export interface StudioRevision {
   revisionNo: number;
   origin: string;
   track: CoursewareTrack;
+  layoutProfile: "legacy-16x9-import" | "legacy-4x3-adaptation" | "standard-4x3" | "wide-16x9-exception";
   note: string;
   createdAt: string;
   createdBy: string | null;
   doc: CoursewareDoc;
+}
+
+function aspectForLayoutProfile(layoutProfile: string | null | undefined, track: CoursewareTrack): string {
+  if (layoutProfile === "standard-4x3" || layoutProfile === "legacy-4x3-adaptation") return "4:3";
+  if (layoutProfile === "wide-16x9-exception" || layoutProfile === "legacy-16x9-import") return "16:9";
+  return track === "adapted-4x3" ? "4:3" : "16:9";
 }
 
 export interface StudioRelease {
@@ -510,15 +517,19 @@ export async function loadCoursewareStudioPage(lectureId: string, pageDocId: str
         page_doc_id: string;
         draft_revision_id: string | null;
         current_revision_id: string | null;
+        draft_layout_profile: string | null;
+        current_layout_profile: string | null;
       }>(pageIds, (batch) => supabase
         .from("cw_page_track_heads")
-        .select("page_doc_id,draft_revision_id,current_revision_id")
+        .select("page_doc_id,draft_revision_id,current_revision_id,draft_layout_profile,current_layout_profile")
         .eq("track", track)
         .in("page_doc_id", batch)
         .returns<Array<{
           page_doc_id: string;
           draft_revision_id: string | null;
           current_revision_id: string | null;
+          draft_layout_profile: string | null;
+          current_layout_profile: string | null;
         }>>()),
       collectPostgrestRowsInBatches<string, {
         page_doc_id: string;
@@ -546,7 +557,7 @@ export async function loadCoursewareStudioPage(lectureId: string, pageDocId: str
     id: page.id,
     pageNo: page.page_no,
     title: page.title,
-    aspect: track === "adapted-4x3" ? "4:3" : "16:9",
+    aspect: aspectForLayoutProfile(head.draft_layout_profile ?? head.current_layout_profile, track),
     draftRevisionId: head.draft_revision_id,
     currentRevisionId: head.current_revision_id,
     adaptClass: page.adapt_class as StudioPageSummary["adaptClass"],
@@ -563,7 +574,7 @@ export async function loadCoursewareStudioPage(lectureId: string, pageDocId: str
   const [{ data: revisionRows, error: revisionError }, { data: releases, error: releaseError }] = await Promise.all([
     supabase
       .from("cw_page_revisions")
-      .select("id, revision_no, origin, note, created_at, created_by, doc, track")
+      .select("id, revision_no, origin, note, created_at, created_by, doc, track, doc_version, layout_profile")
       .eq("page_doc_id", pageDocId)
       .order("revision_no", { ascending: false }),
     supabase
@@ -575,11 +586,17 @@ export async function loadCoursewareStudioPage(lectureId: string, pageDocId: str
   ]);
   if (revisionError) throw new Error(revisionError.message);
   if (releaseError) throw new Error(releaseError.message);
-  const revisions: StudioRevision[] = (revisionRows ?? []).filter((revision) => revision.track === track || revision.id === baseRevisionId).map((revision) => ({
+  const revisions: StudioRevision[] = (revisionRows ?? []).filter((revision) =>
+    revision.id === baseRevisionId
+    || (revision.doc_version === "spatial-page-v1"
+      ? revision.layout_profile === "standard-4x3" || track === "native-16x9"
+      : revision.track === track),
+  ).map((revision) => ({
     id: revision.id,
     revisionNo: revision.revision_no,
     origin: revision.origin,
     track: revision.track as CoursewareTrack,
+    layoutProfile: revision.layout_profile as StudioRevision["layoutProfile"],
     note: revision.note,
     createdAt: revision.created_at,
     createdBy: revision.created_by,
@@ -738,6 +755,16 @@ export async function loadLecturePreview(
   const snapshot = releaseSnapshotSchema.parse(release.snapshot);
   const releasePages = releaseCoursewarePagesSchema.parse(release.courseware_pages);
   if (releasePages.length !== snapshot.length) throw new Error("RELEASE_SNAPSHOT_INCOMPLETE");
+  const revisionIds = snapshot.map((entry) => entry.revisionId);
+  const revisionLayouts = await collectPostgrestRowsInBatches<string, { id: string; layout_profile: string }>(
+    revisionIds,
+    (batch) => supabase
+      .from("cw_page_revisions")
+      .select("id,layout_profile")
+      .in("id", batch)
+      .returns<Array<{ id: string; layout_profile: string }>>(),
+  );
+  const layoutByRevision = new Map(revisionLayouts.map((revision) => [revision.id, revision.layout_profile]));
   const pages: CoursewarePreviewPageMeta[] = snapshot.map((entry, index) => {
     const page = releasePages[index];
     if (!page || page.id !== entry.pageDocId || page.docId !== entry.pageDocId) {
@@ -747,7 +774,7 @@ export async function loadLecturePreview(
       pageDocId: page.id,
       pageNo: index + 1,
       title: page.title,
-      aspect: track === "adapted-4x3" ? "4:3" : "16:9",
+      aspect: aspectForLayoutProfile(layoutByRevision.get(entry.revisionId), track),
     };
   });
 

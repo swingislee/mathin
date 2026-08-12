@@ -17,13 +17,13 @@ import {
 } from "./fixtures/spatial-page";
 
 describe("spatial-page-v1 structure", () => {
-  it("materializes and verifies a strict page without enabling the production CoursewareDoc union", async () => {
+  it("materializes and verifies a strict page through the production CoursewareDoc union", async () => {
     const page = await validStandardSpatialPage();
 
     expect(page.docVersion).toBe(SPATIAL_PAGE_DOC_VERSION);
     expect(page.sceneHash).toBe(await canonicalSha256(page.scene));
     await expect(verifySpatialPageDoc(page)).resolves.toEqual(page);
-    expect(coursewareDocSchema.safeParse(page).success).toBe(false);
+    expect(coursewareDocSchema.safeParse(page).success).toBe(true);
   });
 
   it("rejects unknown fields, a wrong layout ratio, an unknown camera and a non-label placement", async () => {

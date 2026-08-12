@@ -3,6 +3,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { buttonVariants } from "@/components/ui/button";
 import { CoursewarePageEditor } from "@/features/courseware-studio/CoursewarePageEditor";
 import { AixuexiStudioViewer } from "@/features/courseware-studio/AixuexiStudioViewer";
+import { SpatialStudioViewer } from "@/features/courseware-studio/SpatialStudioViewer";
 import {
   loadCoursewareStudioPage,
   loadCoursewareWorkbenchContext,
@@ -10,6 +11,7 @@ import {
 } from "@/features/courseware-studio/data";
 import { getLectureWorkspaceDetail } from "@/features/school/curriculum/lecture-workspace-detail";
 import { isAixuexiPageDoc } from "@/features/courseware-doc/aixuexi-schema";
+import { isSpatialPageDoc } from "@/features/courseware-doc/spatial";
 import type { PageDoc } from "@/features/courseware-doc/schema";
 import type { StudioRevision } from "@/features/courseware-studio/data";
 import { resolveLectureReviewCapabilities } from "@/features/school/teaching-operations/capabilities";
@@ -71,6 +73,16 @@ export default async function StudioCoursewarePage({
       lectureWorkspaceHref={lectureWorkspaceHref}
     />;
   }
+  if (isSpatialPageDoc(editor.activeRevision.doc)) {
+    return <SpatialStudioViewer
+      lecture={editor.lecture}
+      track={editor.track}
+      page={editor.page}
+      pages={editor.pages}
+      doc={editor.activeRevision.doc}
+      lectureWorkspaceHref={lectureWorkspaceHref}
+    />;
+  }
 
   const detail = await getLectureWorkspaceDetail(lectureId).catch((error) => {
     if (error instanceof Error && (error.message.includes("LECTURE_NOT_FOUND") || error.message.includes("FORBIDDEN_SCOPE"))) return null;
@@ -91,7 +103,7 @@ export default async function StudioCoursewarePage({
     : false;
   const pageDocRevisions = editor.revisions.filter(
     (revision): revision is Omit<StudioRevision, "doc"> & { doc: PageDoc } =>
-      !isAixuexiPageDoc(revision.doc),
+      !isAixuexiPageDoc(revision.doc) && !isSpatialPageDoc(revision.doc),
   );
 
   return <CoursewarePageEditor

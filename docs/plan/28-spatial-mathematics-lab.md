@@ -57,7 +57,7 @@ Mathin 建设一套“空间数学实验室”，服务从小学直观认识立�
 ### 2.2 当前缺口
 
 1. 2026-08-11 已建立无生产依赖的体素、正方体展开图和多面体拓扑/几何 spike：体素覆盖整数坐标、分层、六向投影、隐藏块、连通分量、封闭空腔、内外表面和染色分类；展开图覆盖单位方格网规范化、自由多连方枚举和正方体 90° 精确折叠；通用多面体覆盖显式顶点/棱/有序面、闭合可定向球面壳、精确有理数顶点位置、面法向/共面性、相对面确认、铰链生成树、整数平面布局、自交/面重叠、目标二面角反解、层级三维刚体变换、最终闭合误差、确定性采样的非相邻面碰撞，以及自包含场景/4:3 页面/runtime 合同适配。连续时间碰撞无漏检证明、相邻面异常穿透、截面、完整单位检查和参数/函数求值内核仍未落地。
-2. 已实现未接生产链的本地 `spatial-scene-v1`、4:3 原生优先的 `spatial-page-v1`、`spatial-runtime-state-v1`、`spatial-command-v1`、学生私有 `spatial-attempt-v1`、多面体系列严格 schema、单写者 reducer、确定性重放与 pinned-kernel 作答判定，并录入 20 道体素和 11 种正方体展开图工程金标候选；本地 `voxel-template-editor-v1`、`voxel-lesson-editor-v1`、`voxel-authoring-draft-v1`、`voxel-authoring-workflow-v1`、`voxel-authoring-diff-v1` 与 `cube-net-gallery-v1` spike 已存在，但候选题尚未经教研签名与跨领域复核，Studio 集成、可复用题型模板库、生产 `CoursewareDoc`、数据库/RPC/RLS、课堂 transport 和发布链冻结仍未落地。
+2. `spatial-scene-v1`、4:3 原生优先的 `spatial-page-v1`、`spatial-runtime-state-v1`、`spatial-command-v1`、学生私有 `spatial-attempt-v1`、多面体系列严格 schema、单写者 reducer、确定性重放与 pinned-kernel 作答判定已经存在；`spatial-page-v1` 已进入生产 `CoursewareDoc`、docVersion-aware 数据库/RPC、一次审核原子双 release、成对 rollback、selected-release freeze/reconnect 与 Studio/课堂只读分发。20 道体素和 11 种正方体展开图仍只是工程金标候选，尚未经教研签名与跨领域复核；可复用题型模板库、Studio 可操作创建/编辑器、课堂语义 transport、学生 attempt 持久化与真实浏览器纵向验收仍未落地。
 3. 当前课堂 `tool_ctl` 只同步工具开关，各端工具内部状态独立，不能承载权威课程页。
 4. Terms 的 `interactive` 目前只有一个工具字符串，无法区分同一工具的活动、preset 或 release。
 5. 课件创建/保存 RPC 主要面向 `page-doc-v1`；新增版本必须严格分发，不能放宽成任意 JSON。
@@ -73,9 +73,9 @@ Mathin 建设一套“空间数学实验室”，服务从小学直观认识立�
 | --- | --- | --- |
 | ~~release 与 legacy template 权威漂移~~（2026-08-13 已关闭） | Studio 新建/重排页面可能已进入 release，却未进入课次页面列表 | migration `20260813000100_sml0_release_courseware_authority` 让 release 保存有序 `courseware_pages`，备课、冻结、直播、学习检查、资产解析与回退均以 selected/frozen release 为权威；legacy template 只作 native current release 的受控兼容投影 |
 | lecture capability 校验不统一（已关闭 2026-08-12） | migrations `20260812000400`～`20260812000600` 已让页面、评审、发布、紧急发布、回滚和批量发布入口统一检查课程研发责任与 lifecycle；freeze 继续使用独立课堂教师关系 | 共享 capability resolver：身份 + permission + `course_staff_assignments` 责任关系 + lecture/release 状态；所有文档版本共用；真实 DB 断言同时证明任课教师不需要课程研发 assignment |
-| 导入轨名称与原生布局耦合 | 旧保存、历史/回退、审核/发布 RPC 和 Studio 以 `native-16x9`/`adapted-4x3` 过滤或推断 `page-doc-v1` 比例，`perform_cw_publish` 还会把 native 页身份投影为 16:9；未来自研 4:3 文档若沿用会被错误改写或半发布 | docVersion-aware create/save/review/revert/publish/rollback/freeze 全生命周期与显式 `layout.profile`；普通空间页一次审核/发布在同一事务推进双 head 与双 release，失败整体回滚，回退后仍共享同一 4:3 revision；宽屏例外才分叉，Studio/Stage 按文档布局渲染，旧导入合同保持不变 |
+| ~~导入轨名称与原生布局耦合~~（2026-08-13 已关闭） | 旧保存、历史/回退、审核/发布 RPC 和 Studio 以 `native-16x9`/`adapted-4x3` 过滤或推断 `page-doc-v1` 比例，`perform_cw_publish` 还会把 native 页身份投影为 16:9；未来自研 4:3 文档若沿用会被错误改写或半发布 | migration `20260813000200_sml0_spatial_delivery_lifecycle` 增加显式 docVersion/layout 元数据、空间页 create/copy/save/revert、一次审核原子双 release 与成对 rollback；普通页两条兼容 head 共享 `standard-4x3` revision，宽屏例外才分叉。开发库事务断言继续覆盖 selected-release freeze/reconnect，Studio/Stage 按文档 layout 渲染，完整 P6 数据库审计证明旧导入合同未回归 |
 
-必须增加一条纵向集成测试：Studio 创建/重排一份 4:3 空间页 → 两条兼容 head 指向同一 revision → 一次审核原子发布两条 release → 课次备课 → freeze → 既有 4:3 live 舞台 → 学生重连回放 → 回退后两条 head 仍指向同一历史 revision。该测试同时证明教研没有重复创作、双 release 无半发布、页面顺序、revision、scene hash、布局映射、回退和权限没有漂移。现有 `save_cw_track_page_draft` 只接受 `page-doc-v1` 并按导入轨检查 16:9/4:3，Studio 也按 track 推断比例；空间页必须使用严格 version-aware 的全生命周期分发，按 doc layout 而非轨道名决定编辑/预览比例，不得放宽旧 RPC 或绕过校验。
+纵向合同测试必须覆盖：Studio 创建/重排一份 4:3 空间页 → 两条兼容 head 指向同一 revision → 一次审核原子发布两条 release → 课次备课 → freeze → 既有 4:3 live 舞台 → 学生重连回放 → 回退后两条 head 仍指向同一历史 revision。当前开发库事务断言已覆盖 create/copy/save/revert、双 head、一次审核、双 release、freeze/reconnect 和成对 rollback；TypeScript 合同已覆盖严格 `CoursewareDoc` 解析与按 layout 分发。真实 Studio UI 创建/重排、备课和浏览器 live 尚未完成，因此该纵向测试仍是 SML-0 退出项，不得以数据库断言替代浏览器证据。
 
 ### 2.4 隔离本地 spike 记录
 
@@ -152,6 +152,8 @@ Mathin 建设一套“空间数学实验室”，服务从小学直观认识立�
 正式启动 SML-0 后的第四个工程增量以 migration `20260812000600_sml0_courseware_release_capability` 收口 release 权限生命周期。原 6 个公开签名保持不变：直接轨道发布、评审通过后发布和批量 4:3 发布要求 `release.publish` 与 effective owner/editor；轨道回滚和旧签名回滚要求 `release.rollback` 与 owner/editor；紧急发布要求独立 permission 与 effective owner。旧实现全部改为未授 authenticated execute 的内部函数；旧无 track 回滚签名先在 permission-first 断言后从不可变 source release 解析真实 track，再委托当前轨道回滚，避免维护第二套历史头逻辑；批量发布在进入旧循环前先验证整批 lecture，任一讲无责任时不开始发布。`freeze_session_courseware` 不改用课程研发 assignment，继续由 `is_session_teacher` 覆盖任课/代课关系。开发库事务回滚断言覆盖无责任 admin、reviewer 职责错配、直接发布、两种回滚、批量全量预检、评审发布、owner 紧急发布，以及没有研发 assignment 的任课教师冻结精确 release；SML 与完整 P6 数据库审计均通过。专项合同增至 33 个文件/254 项，全量 Vitest 增至 84 个文件/544 项，数据库类型与初始化 manifest 同步。lecture capability 阻断项至此关闭；release/template 权威和 docVersion-aware track/layout 双 head/release 原子映射仍未改动，因此 SML-0 尚未验收。
 
 正式启动 SML-0 后的第五个工程增量以 migration `20260813000100_sml0_release_courseware_authority` 关闭 release/template 权威漂移。每条 immutable release 新增有序、受大小约束的 `courseware_pages` 投影；它在 release 建立时从同一 revision snapshot 原子生成，并保存稳定页面 ID、类型、标题和 doc 引用。native current release 更新时，legacy `courseware_template` 只作为该投影的受控兼容镜像，authenticated 角色不能直接改写；历史回退会复制 source release 的 snapshot 和页面投影，不再用当前可变 page metadata 重建。备课编辑读取当前 selected-track release，开课后读取 frozen release；overlay 合并、保存和冻结均由数据库按权威 base 重算并拒绝伪造的 projection。课堂 doc、资产、审核预览与学习检查按 release snapshot 序号和标题解析，不再依赖可变 `cw_page_docs.page_no` 或 adapted 缺省时的 legacy native pin。开发库完成 2397 条既有 release 回填和 1187 个讲次兼容投影，事务回滚断言覆盖双轨不同顺序、历史回退、可变元数据隔离、overlay 治愈、伪造冻结拒绝及权限收口；SML 与完整 P6 数据库审计均通过。专项合同增至 34 个文件/264 项，全量 Vitest 增至 85 个文件/554 项，生成数据库类型和初始化 manifest 同步。release/template 阻断项至此关闭；SML-0 当前只剩 docVersion-aware track/layout 双 head、双 release 全生命周期原子映射这一项结构阻断，阶段尚未验收。
+
+正式启动 SML-0 后的第六个工程增量以 migration `20260813000200_sml0_spatial_delivery_lifecycle` 关闭 track/layout 结构阻断。`cw_page_docs`、revision 与 head 显式保存 docVersion 和 layout profile；普通 `standard-4x3` 空间 revision 原子服务 native/adapted 两条兼容 head，带双语理由的 `wide-16x9-exception` 只分叉 native，复制操作保留完整 layout set。空间 create/save/revert 与学习检查按 stable page identity 串行；含空间页的讲次一次提交同步两条 workflow，一次发布在同一事务生成同 delivery group 的双 release，回退也成对恢复，内部 helper 不授 authenticated execute。生产 `CoursewareDoc`、Studio 列表、release 预览和课堂舞台按文档 layout 分发，native 选择不再把普通空间页改成 16:9；体素与多面体页复用现有 R3F/SVG fallback 的只读初始状态。开发库事务断言覆盖 create/copy/save/revert、标准/宽屏映射、一次审核、双 release、selected-release freeze/reconnect、冻结后回退隔离和 helper 权限，完整 P6 数据库审计通过；专项合同为 35 个文件/270 项，全量 Vitest 为 86 个文件/560 项，messages 为 4031 keys × 2 locales，`pnpm sml:test`、`pnpm test`、`pnpm messages:check`、`pnpm typecheck`、`pnpm lint`、`pnpm build`、`pnpm bundle:report` 与 `pnpm plan:audit` 通过。三个结构阻断项至此均关闭；真实 Studio 创建/重排、浏览器 4:3 live、金标签名和跨端 hash 向量仍是 SML-0 退出项，阶段尚未验收。
 
 ## 3. 产品目标、用户与非目标
 
@@ -265,7 +267,7 @@ R3F Canvas 保持为 `next/dynamic`、`ssr:false` 的 client leaf。Server Compo
 | 合同 | 用途 | 生命周期 |
 | --- | --- | --- |
 | `spatial-scene-v1` | 数学模型、呈现、步骤、检查点和可达性摘要 | 被 activity/page revision 不可变保存 |
-| `spatial-page-v1` | 拟接入的 CoursewareDoc 分支（当前生产 union 外），包含物化 scene、来源、4:3 原生 presentation 和可选宽屏例外 | 正式接入后沿 page revision/release/freeze 发布 |
+| `spatial-page-v1` | 生产 `CoursewareDoc` 分支，包含物化 scene、来源、4:3 原生 presentation 和可选宽屏例外 | 沿 stable page revision、paired release 与 selected-release freeze 发布；课堂 transport 仍待后续接入 |
 | `spatial-runtime-state-v1` | 当前步骤、显隐、层、教师镜头书签和 reset epoch | 课堂 snapshot + reducer |
 | `spatial-command-v1` | 可审计语义命令 | 持久事件或教师/学生本地分支 |
 | `spatial-attempt-v1` / `spatial-attempt-evaluation-v1` | 学生答案、构造结果，以及不回显答案正文的服务端判定结果 | 学生私有；生产接入后由学生本人和具备班级关系的授权教师读取 |

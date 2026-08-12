@@ -58,14 +58,14 @@ describe("polyhedron-scene-adapter-v1", () => {
     );
   });
 
-  it("fits the existing 4:3 page and runtime contracts without enabling the production doc union", async () => {
+  it("fits the existing 4:3 page, runtime and production CoursewareDoc contracts", async () => {
     const page = await cubeFoldSpatialPage();
     const state = createInitialSpatialRuntimeState(page);
 
     expect(page.layout.profile).toBe("standard-4x3");
     expect(page.presentation.viewport).toMatchObject({ width: 1_200, height: 900 });
     expect(state.netFoldProgress).toEqual([{ entityId: "polyhedron.cube", progress: 0 }]);
-    expect(coursewareDocSchema.safeParse(page).success).toBe(false);
+    expect(coursewareDocSchema.safeParse(page).success).toBe(true);
   });
 
   it("rejects scene/artifact drift, incomplete face metadata and invalid authored folds", async () => {

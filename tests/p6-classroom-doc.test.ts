@@ -125,6 +125,8 @@ describe("P6-5 getSessionPageDocs action", () => {
     expect(rpc).toHaveBeenCalledWith("get_session_page_docs", expect.anything());
     expect(result).toHaveLength(1);
     expect(result[0].pageDocId).toBe(pageDocId);
+    expect(result[0].doc.docVersion).toBe("page-doc-v1");
+    if (result[0].doc.docVersion !== "page-doc-v1") throw new Error("EXPECTED_PAGE_DOC_V1");
     expect(result[0].doc.canvas.width).toBe(1280);
   });
 

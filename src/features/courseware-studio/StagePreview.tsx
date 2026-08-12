@@ -6,6 +6,8 @@ import { isAixuexiPageDoc } from "@/features/courseware-doc/aixuexi-schema";
 import type { AixuexiStageProps } from "@/features/courseware-doc/AixuexiStage";
 import type { CoursewareDoc } from "@/features/courseware-doc/document";
 import type { DocStageProps } from "@/features/courseware-doc/DocStage";
+import { isSpatialPageDoc } from "@/features/courseware-doc/spatial";
+import type { SpatialCoursewareStageProps } from "@/features/courseware-doc/SpatialCoursewareStage";
 
 /**
  * DocStage 的懒加载 client 叶子(games/boards.tsx 模式):渲染器只在预览页
@@ -21,6 +23,14 @@ const AixuexiStage = dynamic<AixuexiStageProps>(() => import("@/features/coursew
   loading: () => <Skeleton className="aspect-video w-full rounded-xl" />,
 });
 
+const SpatialCoursewareStage = dynamic<SpatialCoursewareStageProps>(
+  () => import("@/features/courseware-doc/SpatialCoursewareStage"),
+  {
+    ssr: false,
+    loading: () => <Skeleton className="aspect-[4/3] w-full rounded-xl" />,
+  },
+);
+
 export type StagePreviewProps = Omit<DocStageProps, "doc"> & {
   doc: CoursewareDoc;
   onAdvance?: () => void;
@@ -34,6 +44,9 @@ export function StagePreview(props: StagePreviewProps) {
         {...props as AixuexiStageProps}
       />
     );
+  }
+  if (isSpatialPageDoc(props.doc)) {
+    return <SpatialCoursewareStage doc={props.doc} className={props.className} />;
   }
   return <DocStage {...props as DocStageProps} />;
 }

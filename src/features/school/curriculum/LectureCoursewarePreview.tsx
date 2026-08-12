@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 import { CoursewarePreviewWorkspace } from "@/features/courseware-preview/CoursewarePreviewWorkspace";
 import { StagePreview } from "@/features/courseware-studio/StagePreview";
 import type { CoursewareLecturePreview } from "@/features/courseware-studio/data";
+import { isSpatialPageDoc } from "@/features/courseware-doc/spatial";
 import { cn } from "@/lib/utils";
 
 /**
@@ -20,10 +21,12 @@ export async function LectureCoursewarePreview({
   fillAvailable?: boolean;
 }) {
   const t = await getTranslations("school.courses");
-  const track = preview.page.aspect === "4:3" ? "adapted-4x3" : "native-16x9";
-  const previewAspect = track === "adapted-4x3"
+  const isFourThree = preview.page.aspect === "4:3";
+  const previewAspect = isFourThree
     ? 4 / 3
-    : preview.page.doc.canvas.width / preview.page.doc.canvas.height;
+    : isSpatialPageDoc(preview.page.doc)
+      ? 16 / 9
+      : preview.page.doc.canvas.width / preview.page.doc.canvas.height;
 
   return (
     <div className={cn("flex min-h-0 flex-col", fillAvailable ? "h-full" : "h-[min(70dvh,44rem)] min-h-[28rem]")}>
@@ -46,7 +49,7 @@ export async function LectureCoursewarePreview({
           <StagePreview
             doc={preview.page.doc}
             bindingUrls={preview.bindingUrls}
-            stageMode={track === "adapted-4x3" ? "board43" : "natural"}
+            stageMode={isFourThree ? "board43" : "natural"}
             className="size-full"
           />
         )}

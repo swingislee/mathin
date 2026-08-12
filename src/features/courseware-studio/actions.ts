@@ -2,6 +2,11 @@
 
 import { z } from "zod";
 import { pageDocSchema } from "@/features/courseware-doc/schema";
+import {
+  SpatialPageContractError,
+  spatialPageDocSchema,
+  verifySpatialPageDoc,
+} from "@/features/spatial-math/domain/page-schema";
 import { actionError, type ActionResult } from "@/lib/action-result";
 import { authorizedClient } from "@/features/school/actions/guards";
 import { COMMON_CODES, intInRange, parse, requiredText, text, uuid } from "@/features/school/actions/schemas";
@@ -16,14 +21,33 @@ function rpc<T>(client: RpcClient, name: string, args: Record<string, unknown>) 
 }
 
 const trackSchema = z.enum(COURSEWARE_TRACKS);
-const draftSchema = z.object({ pageDocId: uuid, track: trackSchema, doc: pageDocSchema, baseRevisionNo: intInRange(1, 100_000), note: text(1000) });
+const editableCoursewareDocSchema = z.discriminatedUnion("docVersion", [pageDocSchema, spatialPageDocSchema]);
+const draftSchema = z.object({ pageDocId: uuid, track: trackSchema, doc: editableCoursewareDocSchema, baseRevisionNo: intInRange(1, 100_000), note: text(1000) });
+
+async function verifySpatialDocForAction(doc: z.infer<typeof spatialPageDocSchema>) {
+  try {
+    return await verifySpatialPageDoc(doc);
+  } catch (error) {
+    if (error instanceof SpatialPageContractError) throw new Error(error.code);
+    throw error;
+  }
+}
+
 export async function saveCoursewareDraftAction(input: z.input<typeof draftSchema>): Promise<ActionResult<{ revisionNo: number }>> {
   try {
     const value = parse(draftSchema, input); const { supabase } = await authorizedClient("courseware.page.edit");
+    if (value.doc.docVersion === "spatial-page-v1") await verifySpatialDocForAction(value.doc);
     const { data, error } = await rpc<Array<{ revision_no: number }>>(supabase, "save_cw_track_page_draft", { p_page_doc_id: value.pageDocId, p_track: value.track, p_doc: value.doc, p_base_revision_no: value.baseRevisionNo, p_note: value.note });
     if (error || !data?.[0]) throw new Error(error?.message ?? "SAVE_FAILED");
     return { ok: true, data: { revisionNo: data[0].revision_no } };
-  } catch (error) { return actionError(error, ["VERSION_CONFLICT", "SAVE_FAILED", ...COMMON_CODES]); }
+  } catch (error) { return actionError(error, [
+    "SPATIAL_PAGE_SCENE_HASH_MISMATCH",
+    "LAYOUT_TRACK_INCOMPATIBLE",
+    "SOURCE_PROVENANCE_IMMUTABLE",
+    "VERSION_CONFLICT",
+    "SAVE_FAILED",
+    ...COMMON_CODES,
+  ]); }
 }
 
 const learningCheckFlagSchema = z.object({
@@ -57,7 +81,15 @@ export async function publishCoursewareReleaseAction(lectureId: string, track: C
     const value = parse(z.object({ lectureId: uuid, track: trackSchema, note: text(1000) }), { lectureId, track, note }); const { supabase } = await authorizedClient("courseware.release.publish");
     const { data, error } = await rpc<string>(supabase, "publish_cw_track_release", { p_lecture_id: value.lectureId, p_track: value.track, p_note: value.note });
     if (error) throw new Error(error.message); return { ok: true, data: { releaseId: data } };
-  } catch (error) { return actionError(error, ["LECTURE_HAS_NO_PAGES", "UNRESOLVED_ASSET_BINDING", ...COMMON_CODES]); }
+  } catch (error) { return actionError(error, [
+    "LECTURE_HAS_NO_PAGES",
+    "UNRESOLVED_ASSET_BINDING",
+    "PAIRED_TRACKS_NOT_READY",
+    "INVALID_PAIRED_SNAPSHOT",
+    "PAIRED_SNAPSHOT_TOO_LARGE",
+    "RELEASE_SNAPSHOT_TOO_LARGE_OR_INVALID",
+    ...COMMON_CODES,
+  ]); }
 }
 
 export async function reorderCoursewarePagesAction(input: { lectureId: string; pageIds: string[] }): Promise<ActionResult> {
@@ -72,6 +104,40 @@ export async function createBlankCoursewarePageAction(input: { lectureId: string
     const value = parse(z.object({ lectureId: uuid, afterPageDocId: uuid.nullable(), title: requiredText(500) }), input); const { supabase } = await authorizedClient("courseware.page.edit");
     const { data, error } = await rpc<string>(supabase, "create_blank_cw_page", { p_lecture_id: value.lectureId, p_after_page_doc_id: value.afterPageDocId, p_title: value.title }); if (error) throw new Error(error.message); return { ok: true, data: { pageId: data } };
   } catch (error) { return actionError(error, ["AFTER_PAGE_NOT_FOUND", ...COMMON_CODES]); }
+}
+
+const createSpatialPageSchema = z.object({
+  lectureId: uuid,
+  afterPageDocId: uuid.nullable(),
+  title: requiredText(100),
+  doc: spatialPageDocSchema,
+});
+
+export async function createSpatialCoursewarePageAction(
+  input: z.input<typeof createSpatialPageSchema>,
+): Promise<ActionResult<{ pageId: string }>> {
+  try {
+    const value = parse(createSpatialPageSchema, input);
+    const doc = await verifySpatialDocForAction(value.doc);
+    const { supabase } = await authorizedClient("courseware.page.edit");
+    const { data, error } = await rpc<string>(supabase, "create_cw_spatial_page", {
+      p_lecture_id: value.lectureId,
+      p_after_page_doc_id: value.afterPageDocId,
+      p_title: value.title,
+      p_doc: doc,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true, data: { pageId: data } };
+  } catch (error) {
+    return actionError(error, [
+      "INVALID_SPATIAL_PAGE_DOC",
+      "INVALID_PAGE_TITLE",
+      "SPATIAL_PAGE_SCENE_HASH_MISMATCH",
+      "PAGE_LIMIT_EXCEEDED",
+      "AFTER_PAGE_NOT_FOUND",
+      ...COMMON_CODES,
+    ]);
+  }
 }
 
 export async function copyCoursewarePageAction(input: { sourcePageDocId: string; targetLectureId: string; afterPageDocId: string | null; title: string }): Promise<ActionResult<{ pageId: string }>> {
@@ -99,7 +165,12 @@ export async function rollbackCoursewareReleaseAction(lectureId: string, track: 
   try {
     const value = parse(z.object({ lectureId: uuid, track: trackSchema, releaseId: uuid, note: text(1000) }), { lectureId, track, releaseId, note }); const { supabase } = await authorizedClient("courseware.release.publish");
     const { data, error } = await rpc<string>(supabase, "rollback_cw_track_release", { p_lecture_id: value.lectureId, p_track: value.track, p_release_id: value.releaseId, p_note: value.note }); if (error) throw new Error(error.message); return { ok: true, data: { releaseId: data } };
-  } catch (error) { return actionError(error, ["RELEASE_NOT_FOUND", ...COMMON_CODES]); }
+  } catch (error) { return actionError(error, [
+    "RELEASE_NOT_FOUND",
+    "PAIRED_RELEASE_REQUIRED",
+    "PAIRED_RELEASE_INCOMPLETE",
+    ...COMMON_CODES,
+  ]); }
 }
 
 const imageReplacementSchema = z.object({
@@ -286,6 +357,10 @@ export async function replaceCoursewarePageImageAction(input: { pageDocId: strin
 
 const REVIEW_CODES = [
   "PAGE_TRACK_NOT_READY",
+  "PAIRED_TRACKS_NOT_READY",
+  "PAIRED_WORKFLOW_CONFLICT",
+  "INVALID_PAIRED_SNAPSHOT",
+  "PAIRED_SNAPSHOT_TOO_LARGE",
   "INVALID_STAGE_FOR_SUBMIT",
   "REVIEW_CYCLE_NOT_FOUND",
   "INVALID_CYCLE_STATUS",
