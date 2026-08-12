@@ -15,6 +15,8 @@ values ('__P6_STUDIO_AUDIT__', '__P6_STUDIO__' || replace(gen_random_uuid()::tex
 returning id as course_id \gset
 insert into public.course_lectures (course_id, no, name) values (:'course_id', 1, '__P6_STUDIO_LECTURE__')
 returning id as lecture_id \gset
+insert into public.course_staff_assignments(user_id, scope_type, course_id, responsibility, created_by)
+values(:'admin_id', 'variant', :'course_id', 'editor', :'admin_id');
 
 select repeat('a', 64) as binding_key \gset
 insert into public.cw_asset_objects (sha256,mime,byte_count,width,height,kind,storage_path)
@@ -49,7 +51,7 @@ do $$ begin
     perform public.create_blank_cw_page(current_setting('p6_studio.lecture_id')::uuid, null, 'forbidden');
     raise exception 'P6_STUDIO_STUDENT_WRITE_ACCEPTED';
   exception when others then
-    if SQLERRM <> 'FORBIDDEN' then raise; end if;
+    if SQLERRM <> 'INACTIVE_ACTOR' then raise; end if;
   end;
 end $$;
 reset role;
