@@ -11,6 +11,10 @@ const assertions = fs.readFileSync(path.join(
   root,
   "supabase/tests/sml0_release_courseware_authority_assertions.sql",
 ), "utf8");
+const substituteMembershipMigration = fs.readFileSync(path.join(
+  root,
+  "supabase/migrations/20260813000400_sml0_substitute_session_membership.sql",
+), "utf8");
 const classroomActions = fs.readFileSync(path.join(
   root,
   "src/features/classroom/actions.ts",
@@ -70,6 +74,50 @@ describe("SML-0 release-backed courseware authority", () => {
     expect(migration).toContain("grant execute on function public.get_session_courseware_template(uuid) to authenticated");
     expect(migration).toContain("revoke all on function public.resolve_cw_courseware_overlay(jsonb, jsonb)");
     expect(migration).toContain("revoke all on function public.cw_session_courseware_template(uuid)");
+  });
+
+  it("grants member-scoped reads only to the active substitute for that session", () => {
+    expect(substituteMembershipMigration).toContain(
+      "session.teacher_override = uid and substitute.id is not null",
+    );
+    expect(substituteMembershipMigration).toContain("substitute.is_active");
+    expect(substituteMembershipMigration).not.toContain("is_session_teacher(sid, uid)");
+    expect(substituteMembershipMigration).not.toContain("is_admin(uid)");
+    expect(substituteMembershipMigration).toContain(
+      'drop policy if exists "sessions_select_member" on public.class_sessions',
+    );
+    expect(substituteMembershipMigration).toContain(
+      "using (public.is_session_member(id, (select auth.uid())))",
+    );
+    expect(substituteMembershipMigration).toContain(
+      'create policy "classrooms_select_session_substitute"',
+    );
+    expect(substituteMembershipMigration).toContain(
+      'create policy "cls_members_select_session_substitute"',
+    );
+    expect(assertions).toContain("unrelated_staff_not_member");
+    expect(assertions).toContain("substitute_session_reads_ok");
+    expect(assertions).toContain("substitute_session_row_ok");
+    expect(assertions).toContain("substitute_classroom_row_ok");
+    expect(assertions).toContain("substitute_roster_ok");
+    expect(assertions).toContain("removed_substitute_session_hidden");
+    expect(assertions).toContain("removed_substitute_classroom_hidden");
+    expect(assertions).toContain("removed_substitute_roster_hidden");
+    expect(assertions).toContain("removed_substitute_not_member");
+  });
+
+  it("derives teacher role from the exact substitute session only on the live route", () => {
+    expect(classroomActions).toContain(
+      "getClassroom(id: string, sessionId?: string)",
+    );
+    expect(classroomActions).toContain('.eq("teacher_override", user.id)');
+    expect(classroomActions).toContain(
+      'const myRole = classroomRole ?? (sessionSubstitute ? "teacher" : null)',
+    );
+    expect(classroomActions).toContain(
+      'if (myRole === "teacher" && !sessionSubstitute)',
+    );
+    expect(livePage).toContain("getClassroom(classId, sessionId)");
   });
 
   it("recomputes the authoritative overlay in both preparation and start freeze RPCs", () => {

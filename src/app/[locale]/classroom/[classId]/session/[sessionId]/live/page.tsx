@@ -25,7 +25,7 @@ export default async function LiveClassPage({
 
   // 全量类型：P4-5 起晚加入者要还原板书快照/游戏镜像/视频进度/临时插页等一切基线
   const [classroom, session, events] = await Promise.all([
-    getClassroom(classId),
+    getClassroom(classId, sessionId),
     getClassSession(sessionId),
     listSessionEvents(sessionId),
   ]);

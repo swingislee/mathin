@@ -67,7 +67,7 @@ export async function joinClassroom(code: string): Promise<string | null> {
   return (data as string | null) ?? null;
 }
 
-export async function getClassroom(id: string): Promise<ClassroomRecord | null> {
+export async function getClassroom(id: string, sessionId?: string): Promise<ClassroomRecord | null> {
   const { supabase, user } = await authenticatedClient();
   const { data, error } = await supabase
     .from("classrooms")
@@ -90,12 +90,26 @@ export async function getClassroom(id: string): Promise<ClassroomRecord | null> 
     displayName: row.profiles?.display_name || "",
     role: row.role,
   }));
-  const myRole = members.find((member) => member.userId === user.id)?.role
+  const classroomRole = members.find((member) => member.userId === user.id)?.role
     ?? (data.owner_id === user.id ? "teacher" : null);
+  let sessionSubstitute = false;
+  if (!classroomRole && sessionId) {
+    const { data: substituteSession, error: substituteError } = await supabase
+      .from("class_sessions")
+      .select("id")
+      .eq("id", sessionId)
+      .eq("classroom_id", id)
+      .eq("teacher_override", user.id)
+      .is("deleted_at", null)
+      .maybeSingle<{ id: string }>();
+    if (substituteError) throw new Error(substituteError.message);
+    sessionSubstitute = Boolean(substituteSession);
+  }
+  const myRole = classroomRole ?? (sessionSubstitute ? "teacher" : null);
   if (!myRole) return null;
 
   let inviteCode: string | null = null;
-  if (myRole === "teacher") {
+  if (myRole === "teacher" && !sessionSubstitute) {
     const { data: code } = await supabase.rpc("get_classroom_invite", { cid: id });
     inviteCode = (code as string | null) ?? null;
   }

@@ -15,6 +15,25 @@ select id as teacher_id from public.profiles where display_name = '测试-教师
   select 1 / 0;
 \endif
 
+-- Transaction-local staff without any classroom membership, RBAC view-all
+-- permission or course assignment. This keeps substitute RLS assertions
+-- independent from the fixed admin/staff fixture's broad permissions.
+select gen_random_uuid() as substitute_id \gset
+insert into auth.users(id, email, raw_user_meta_data)
+values (
+  :'substitute_id',
+  'sml0-substitute-' || replace(:'substitute_id', '-', '') || '@example.invalid',
+  jsonb_build_object(
+    'display_name', '__SML0_SUBSTITUTE__',
+    'registration_invite_code', (select code from public.registration_invite_settings where id = 1),
+    'privacy_consent', true,
+    'children_privacy_consent', true
+  )
+);
+update public.profiles
+set role = 'staff', account_status = 'active', is_active = true
+where id = :'substitute_id';
+
 insert into public.courses(title, product_code, grade, term, class_type, status, created_by)
 values (
   '__SML0_AUTHORITY__',
@@ -232,6 +251,81 @@ insert into public.class_sessions(
   )
 )
 returning id as session_id \gset
+
+-- A staff/admin who is not in classroom_members is not a session member merely
+-- because of platform role. Assigning the same active profile as this session's
+-- substitute grants only this session's member-scoped courseware reads.
+select not public.is_session_member(:'session_id', :'substitute_id')
+  as unrelated_staff_not_member \gset
+\if :unrelated_staff_not_member
+\else
+  \echo SML-0 release authority failed: unrelated admin/staff became a session member
+  select 1 / 0;
+\endif
+
+update public.class_sessions
+set teacher_override = :'substitute_id'
+where id = :'session_id';
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'substitute_id', true);
+select public.get_session_courseware_template(:'session_id') substitute_template \gset
+select count(*) = 2 as substitute_page_docs_ok
+from public.get_session_page_docs(:'session_id') \gset
+select exists (
+  select 1 from public.class_sessions where id = :'session_id'
+) as substitute_session_row_ok \gset
+select exists (
+  select 1 from public.classrooms where id = :'classroom_id'
+) as substitute_classroom_row_ok \gset
+select count(*) = 1 as substitute_roster_ok
+from public.classroom_members where classroom_id = :'classroom_id' \gset
+reset role;
+
+select (
+  public.is_session_member(:'session_id', :'substitute_id')
+  and :'substitute_template'::jsonb = (
+    select courseware_pages from public.cw_lecture_releases where id = :'adapted_release'
+  )
+  and :'substitute_page_docs_ok'::boolean
+  and :'substitute_session_row_ok'::boolean
+  and :'substitute_classroom_row_ok'::boolean
+  and :'substitute_roster_ok'::boolean
+) substitute_session_reads_ok \gset
+\if :substitute_session_reads_ok
+\else
+  \echo SML-0 release authority failed: assigned substitute could not read session courseware
+  select 1 / 0;
+\endif
+
+update public.class_sessions
+set teacher_override = null
+where id = :'session_id';
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'substitute_id', true);
+select not exists (
+  select 1 from public.class_sessions where id = :'session_id'
+) as removed_substitute_session_hidden \gset
+select not exists (
+  select 1 from public.classrooms where id = :'classroom_id'
+) as removed_substitute_classroom_hidden \gset
+select not exists (
+  select 1 from public.classroom_members where classroom_id = :'classroom_id'
+) as removed_substitute_roster_hidden \gset
+reset role;
+
+select (
+  not public.is_session_member(:'session_id', :'substitute_id')
+  and :'removed_substitute_session_hidden'::boolean
+  and :'removed_substitute_classroom_hidden'::boolean
+  and :'removed_substitute_roster_hidden'::boolean
+) as removed_substitute_not_member \gset
+\if :removed_substitute_not_member
+\else
+  \echo SML-0 release authority failed: removed substitute retained session membership
+  select 1 / 0;
+\endif
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', :'teacher_id', true);
