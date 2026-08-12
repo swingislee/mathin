@@ -315,8 +315,18 @@
         "options": {
           "layeredCounting": "分层计数 · 10块",
           "hiddenCubes": "遮挡计数 · 14块",
-          "threeViews": "三视图观察 · 12块"
+          "threeViews": "三视图观察 · 12块",
+          "surfacePainting": "表面染色 · 27块"
         }
+      },
+      "paint": {
+        "title": "外表面染色实验",
+        "description": "点击模型的外露面可以逐面染色或取消；内部相邻面不能被染色。",
+        "paintAll": "涂满外表面",
+        "clear": "清空染色",
+        "paintedFaces": "已染 {painted}/{total} 个外露面",
+        "histogramLabel": "按每个单位块被染的面数分类",
+        "histogramItem": "{faces}面 {count}块"
       },
       "common": {
         "previewBuilding": "正在生成4:3预览…",

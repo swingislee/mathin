@@ -326,6 +326,14 @@ function partitionBoundaryFaces(voxels: VoxelSet): BoundaryPartition {
   return { all, exterior, interior };
 }
 
+export function exteriorVoxelFaces(voxels: VoxelSet): readonly VoxelFace[] {
+  return partitionBoundaryFaces(voxels).exterior;
+}
+
+export function interiorVoxelFaces(voxels: VoxelSet): readonly VoxelFace[] {
+  return partitionBoundaryFaces(voxels).interior;
+}
+
 export function analyzeVoxelSurfaceArea(voxels: VoxelSet): VoxelSurfaceArea {
   const faces = partitionBoundaryFaces(voxels);
   return {

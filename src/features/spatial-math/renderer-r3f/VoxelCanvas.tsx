@@ -13,7 +13,7 @@ import {
   type ComponentRef,
 } from "react";
 import * as THREE from "three";
-import type { SpatialPageDoc, SpatialRuntimeState } from "../domain";
+import type { SpatialPageDoc, SpatialRuntimeState, VoxelFaceSelection } from "../domain";
 import { VoxelFallback, type VoxelRendererMessages } from "./VoxelFallback";
 import {
   VOXEL_AXIS_SNAP_TRANSITION_MS,
@@ -33,6 +33,8 @@ import {
   VOXEL_EDGE_COLOR,
   VOXEL_SOLID_SIZE,
   buildVoxelEdgeInstances,
+  buildVoxelPaintFaceInstances,
+  voxelFaceDirectionFromNormal,
   type VoxelEdgeInstance,
 } from "./voxel-visual-model";
 
@@ -45,6 +47,9 @@ export interface VoxelCanvasProps {
   readonly readOnly?: boolean;
   readonly axisSnapEnabled?: boolean;
   readonly onCellSelect?: (cellKey: string) => void;
+  readonly paintedFaces?: readonly VoxelFaceSelection[];
+  readonly paintedFaceMaterialToken?: string;
+  readonly onFaceSelect?: (face: VoxelFaceSelection) => void;
   readonly messages: VoxelRendererMessages;
   readonly materialColors?: Readonly<Record<string, string>>;
 }
@@ -53,6 +58,7 @@ interface VoxelPalette {
   readonly paper: string;
   readonly leaf: string;
   readonly moon: string;
+  readonly rose: string;
   readonly workspacePanel: string;
 }
 
@@ -69,6 +75,7 @@ function readPalette(): VoxelPalette {
     paper: read("--paper"),
     leaf: read("--leaf"),
     moon: read("--moon"),
+    rose: read("--rose"),
     workspacePanel: read("--ws-panel"),
   };
   probe.remove();
@@ -378,12 +385,14 @@ function VoxelInstances({
   readOnly,
   materialColors,
   onCellSelect,
+  onFaceSelect,
 }: {
   readonly model: VoxelRenderModel;
   readonly palette: VoxelPalette;
   readonly readOnly: boolean;
   readonly materialColors?: Readonly<Record<string, string>>;
   readonly onCellSelect?: (cellKey: string) => void;
+  readonly onFaceSelect?: (face: VoxelFaceSelection) => void;
 }) {
   const groups = useMemo(() => {
     const grouped = new Map<string, Array<VoxelRenderModel["cells"][number]>>();
@@ -407,6 +416,7 @@ function VoxelInstances({
           color={color}
           readOnly={readOnly}
           onCellSelect={onCellSelect}
+          onFaceSelect={onFaceSelect}
         />
       ))}
     </group>
@@ -418,11 +428,13 @@ function VoxelMaterialInstances({
   color,
   readOnly,
   onCellSelect,
+  onFaceSelect,
 }: {
   readonly cells: VoxelRenderModel["cells"];
   readonly color: string;
   readonly readOnly: boolean;
   readonly onCellSelect?: (cellKey: string) => void;
+  readonly onFaceSelect?: (face: VoxelFaceSelection) => void;
 }) {
   const mesh = useRef<THREE.InstancedMesh>(null);
   const matrix = useMemo(() => new THREE.Matrix4(), []);
@@ -439,9 +451,17 @@ function VoxelMaterialInstances({
     invalidate();
   }, [cells, invalidate, matrix]);
   const select = (event: ThreeEvent<MouseEvent>) => {
-    if (readOnly || !onCellSelect || event.instanceId === undefined) return;
+    if (readOnly || event.instanceId === undefined) return;
     const cell = cells[event.instanceId];
     if (!cell) return;
+    if (onFaceSelect && event.face) {
+      const direction = voxelFaceDirectionFromNormal(event.face.normal);
+      if (!direction) return;
+      event.stopPropagation();
+      onFaceSelect({ cell: { x: cell.x, y: cell.y, z: cell.z }, direction });
+      return;
+    }
+    if (!onCellSelect) return;
     event.stopPropagation();
     onCellSelect(cell.key);
   };
@@ -449,6 +469,81 @@ function VoxelMaterialInstances({
     <instancedMesh ref={mesh} args={[undefined, undefined, cells.length]} onClick={select}>
       <boxGeometry args={[VOXEL_SOLID_SIZE, VOXEL_SOLID_SIZE, VOXEL_SOLID_SIZE]} />
       <meshBasicMaterial color={color} toneMapped={false} />
+    </instancedMesh>
+  );
+}
+
+function VoxelPaintFaceInstances({
+  model,
+  faces,
+  color,
+}: {
+  readonly model: VoxelRenderModel;
+  readonly faces: readonly VoxelFaceSelection[];
+  readonly color: string;
+}) {
+  const instances = useMemo(() => buildVoxelPaintFaceInstances(model.cells, faces), [faces, model.cells]);
+  const groups = useMemo(() => {
+    const grouped = new Map<VoxelFaceSelection["direction"], typeof instances>();
+    for (const direction of ["x-", "x+", "y-", "y+", "z-", "z+"] as const) {
+      const matching = instances.filter((instance) => instance.direction === direction);
+      if (matching.length > 0) grouped.set(direction, matching);
+    }
+    return [...grouped.entries()];
+  }, [instances]);
+  if (instances.length === 0) return null;
+  return (
+    <group renderOrder={1}>
+      {groups.map(([direction, directionInstances]) => (
+        <VoxelPaintFaceDirectionInstances
+          key={direction}
+          instances={directionInstances}
+          color={color}
+        />
+      ))}
+    </group>
+  );
+}
+
+function VoxelPaintFaceDirectionInstances({
+  instances,
+  color,
+}: {
+  readonly instances: readonly ReturnType<typeof buildVoxelPaintFaceInstances>[number][];
+  readonly color: string;
+}) {
+  const mesh = useRef<THREE.InstancedMesh>(null);
+  const matrix = useMemo(() => new THREE.Matrix4(), []);
+  const quaternion = useMemo(() => new THREE.Quaternion(), []);
+  const euler = useMemo(() => new THREE.Euler(), []);
+  const invalidate = useThree((state) => state.invalidate);
+  useLayoutEffect(() => {
+    if (!mesh.current) return;
+    instances.forEach((instance, index) => {
+      euler.set(instance.rotation.x, instance.rotation.y, instance.rotation.z);
+      quaternion.setFromEuler(euler);
+      matrix.compose(
+        new THREE.Vector3(instance.center.x, instance.center.y, instance.center.z),
+        quaternion,
+        new THREE.Vector3(1, 1, 1),
+      );
+      mesh.current?.setMatrixAt(index, matrix);
+    });
+    mesh.current.instanceMatrix.needsUpdate = true;
+    mesh.current.computeBoundingBox();
+    mesh.current.computeBoundingSphere();
+    invalidate();
+  }, [euler, instances, invalidate, matrix, quaternion]);
+  return (
+    <instancedMesh ref={mesh} args={[undefined, undefined, instances.length]} raycast={() => null}>
+      <planeGeometry args={[VOXEL_SOLID_SIZE, VOXEL_SOLID_SIZE]} />
+      <meshBasicMaterial
+        color={color}
+        side={THREE.DoubleSide}
+        toneMapped={false}
+        polygonOffset
+        polygonOffsetFactor={-1}
+      />
     </instancedMesh>
   );
 }
@@ -506,6 +601,9 @@ function VoxelScene({
   readOnly,
   materialColors,
   onCellSelect,
+  paintedFaces,
+  paintedFaceColor,
+  onFaceSelect,
   axisSnapEnabled,
   onCameraTransitionStateChange,
 }: {
@@ -514,6 +612,9 @@ function VoxelScene({
   readonly readOnly: boolean;
   readonly materialColors?: Readonly<Record<string, string>>;
   readonly onCellSelect?: (cellKey: string) => void;
+  readonly paintedFaces: readonly VoxelFaceSelection[];
+  readonly paintedFaceColor: string;
+  readonly onFaceSelect?: (face: VoxelFaceSelection) => void;
   readonly axisSnapEnabled: boolean;
   readonly onCameraTransitionStateChange: (active: boolean) => void;
 }) {
@@ -526,7 +627,8 @@ function VoxelScene({
         axisSnapEnabled={axisSnapEnabled}
         onTransitionStateChange={onCameraTransitionStateChange}
       />
-      <VoxelInstances model={model} palette={palette} readOnly={readOnly} materialColors={materialColors} onCellSelect={onCellSelect} />
+      <VoxelInstances model={model} palette={palette} readOnly={readOnly} materialColors={materialColors} onCellSelect={onCellSelect} onFaceSelect={onFaceSelect} />
+      <VoxelPaintFaceInstances model={model} faces={paintedFaces} color={paintedFaceColor} />
       <VoxelEdgeInstances model={model} />
       {model.showAxes ? <axesHelper args={[Math.max(2, model.bounds.radius * 1.5)]} /> : null}
     </>
@@ -542,6 +644,9 @@ export function VoxelCanvas({
   readOnly = false,
   axisSnapEnabled = false,
   onCellSelect,
+  paintedFaces = [],
+  paintedFaceMaterialToken = "voxel.paint",
+  onFaceSelect,
   messages,
   materialColors,
 }: VoxelCanvasProps) {
@@ -589,6 +694,7 @@ export function VoxelCanvas({
       data-camera-axis-snap={axisSnapEnabled ? "enabled" : "disabled"}
       data-camera-projection="orthographic-only"
       data-voxel-visual="solid-fill-thick-edge"
+      data-voxel-face-paint={paintedFaces.length}
     >
       <Canvas
         className="!absolute !inset-0"
@@ -609,6 +715,9 @@ export function VoxelCanvas({
           readOnly={readOnly}
           materialColors={materialColors}
           onCellSelect={onCellSelect}
+          paintedFaces={paintedFaces}
+          paintedFaceColor={materialColors?.[paintedFaceMaterialToken] ?? palette.rose}
+          onFaceSelect={onFaceSelect}
           axisSnapEnabled={axisSnapEnabled}
           onCameraTransitionStateChange={setCameraTransitionState}
         />

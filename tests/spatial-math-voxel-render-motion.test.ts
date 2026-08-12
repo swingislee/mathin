@@ -9,8 +9,11 @@ import {
   VOXEL_EDGE_COLOR,
   VOXEL_EDGE_LENGTH,
   VOXEL_EDGE_THICKNESS,
+  VOXEL_PAINT_FACE_OFFSET,
   VOXEL_SOLID_SIZE,
   buildVoxelEdgeInstances,
+  buildVoxelPaintFaceInstances,
+  voxelFaceDirectionFromNormal,
 } from "@/features/spatial-math/renderer-r3f/voxel-visual-model";
 
 function distance(pose: VoxelCameraPose): number {
@@ -45,6 +48,34 @@ describe("voxel solid visual and camera transition", () => {
     expect(adjacent.z).toHaveLength(6);
     expect(new Set([...adjacent.x, ...adjacent.y, ...adjacent.z].map((edge) => edge.key)).size)
       .toBe(20);
+  });
+
+  it("places painted faces just above the six exact cube surfaces", () => {
+    const faces = (["x-", "x+", "y-", "y+", "z-", "z+"] as const).map((direction) => ({
+      cell: { x: 2, y: 3, z: 4 },
+      direction,
+    }));
+    const instances = buildVoxelPaintFaceInstances([{ x: 2, y: 3, z: 4 }], faces);
+
+    expect(VOXEL_PAINT_FACE_OFFSET).toBeGreaterThan(0.5);
+    expect(instances).toHaveLength(6);
+    expect(instances.map((instance) => instance.key)).toEqual([
+      "2,3,4:x-",
+      "2,3,4:x+",
+      "2,3,4:y-",
+      "2,3,4:y+",
+      "2,3,4:z-",
+      "2,3,4:z+",
+    ]);
+    expect(instances.find((instance) => instance.direction === "x+")?.center.x)
+      .toBe(2 + VOXEL_PAINT_FACE_OFFSET);
+  });
+
+  it("maps raycast normals to semantic face directions", () => {
+    expect(voxelFaceDirectionFromNormal({ x: 1, y: 0, z: 0 })).toBe("x+");
+    expect(voxelFaceDirectionFromNormal({ x: 0, y: -1, z: 0 })).toBe("y-");
+    expect(voxelFaceDirectionFromNormal({ x: 0.02, y: 0.01, z: 0.99 })).toBe("z+");
+    expect(voxelFaceDirectionFromNormal({ x: 0.1, y: 0.1, z: 0.1 })).toBeNull();
   });
 
   it("eases deterministically and preserves exact endpoints", () => {

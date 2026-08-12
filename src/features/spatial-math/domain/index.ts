@@ -19,6 +19,8 @@ export * from "./runtime-reducer";
 export * from "./runtime-voxel";
 export * from "./scene-schema";
 export * from "./voxel-kernel";
+export * from "./voxel-face-paint";
+export * from "./voxel-face-paint-schema";
 export * from "./voxel-authoring-draft";
 export * from "./voxel-authoring-draft-schema";
 export * from "./voxel-authoring-diff";

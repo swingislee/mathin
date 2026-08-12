@@ -38,13 +38,13 @@ export const SPATIAL_SCENE_LIMITS = {
   maxActionVoxels: 512,
 } as const;
 
-const stableIdSchema = z
+export const stableIdSchema = z
   .string()
   .min(1)
   .max(80)
   .regex(/^[A-Za-z0-9][A-Za-z0-9._:-]*$/, "invalid stable id");
 
-const semanticTokenSchema = z
+export const semanticTokenSchema = z
   .string()
   .min(1)
   .max(64)

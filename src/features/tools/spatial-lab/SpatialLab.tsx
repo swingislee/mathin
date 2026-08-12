@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Beaker, GitCompareArrows, Presentation, Shapes } from "lucide-react";
+import { Beaker, Eraser, GitCompareArrows, Paintbrush, Palette, Presentation, Shapes } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -16,8 +17,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   SPATIAL_COMMAND_VERSION,
   buildVoxelAuthoringDiff,
+  clearVoxelFacePaint,
+  createVoxelFacePaintState,
   createInitialSpatialRuntimeState,
+  createVoxelSet,
+  paintAllExteriorVoxelFaces,
   reduceSpatialRuntimeState,
+  summarizeVoxelFacePaint,
+  toggleExteriorVoxelFacePaint,
   type Axis,
   type OrthographicView,
   type SpatialCommandActor,
@@ -26,6 +33,7 @@ import {
   type VoxelAuthoringDiffBuildResult,
   type VoxelAuthoringDraft,
   type VoxelCoordinate,
+  type VoxelFaceSelection,
   type VoxelLessonCamera,
   type VoxelLessonStep,
 } from "@/features/spatial-math/domain";
@@ -44,6 +52,7 @@ import type { ToolComponentProps } from "../types";
 import {
   SPATIAL_LAB_DEFAULT_PRESET_ID,
   SPATIAL_LAB_PRESETS,
+  SPATIAL_LAB_SURFACE_PAINT_PRESET_ID,
   createSpatialLabPresetDraft,
   type SpatialLabPresetId,
 } from "./preset";
@@ -70,20 +79,42 @@ function localizedKindKey(kind: VoxelLessonStep["kind"]): string {
 
 type SpatialLabPage = VoxelAuthoringDiffBuildResult["afterPreview"]["build"]["page"];
 
+interface SurfacePaintMessages {
+  readonly title: string;
+  readonly description: string;
+  readonly paintAll: string;
+  readonly clear: string;
+  readonly paintedFaces: (painted: number, total: number) => string;
+  readonly histogramLabel: string;
+  readonly histogramItem: (faces: number, count: number) => string;
+}
+
 function ClassroomRehearsal({
   page,
   entityId,
   locale,
   messages,
+  cells,
+  paintEnabled,
+  paintMessages,
 }: {
   readonly page: SpatialLabPage;
   readonly entityId: string;
   readonly locale: "zh" | "en";
   readonly messages: VoxelTeachingMessages;
+  readonly cells: readonly VoxelCoordinate[];
+  readonly paintEnabled: boolean;
+  readonly paintMessages: SurfacePaintMessages;
 }) {
   const [runtime, setRuntime] = useState<SpatialRuntimeState>(() =>
     createInitialSpatialRuntimeState(page),
   );
+  const voxels = useMemo(() => createVoxelSet(cells), [cells]);
+  const [paint, setPaint] = useState(() => createVoxelFacePaintState({
+    entityId,
+    materialToken: "voxel.paint",
+  }));
+  const paintSummary = useMemo(() => summarizeVoxelFacePaint(voxels, paint), [paint, voxels]);
 
   const applyCommandIntent = useCallback((payload: SpatialCommandPayload) => {
     setRuntime((current) => {
@@ -102,17 +133,79 @@ function ClassroomRehearsal({
     });
   }, [page]);
 
+  const togglePaintedFace = useCallback((face: VoxelFaceSelection) => {
+    setPaint((current) => toggleExteriorVoxelFacePaint(voxels, current, face));
+  }, [voxels]);
+
   return (
-    <VoxelTeachingStage
-      page={page}
-      state={runtime}
-      entityId={entityId}
-      actor={TEACHER_ACTOR}
-      locale={locale}
-      messages={messages}
-      onCommandIntent={applyCommandIntent}
-      materialColors={{ "voxel.base": "#8fbf88" }}
-    />
+    <div className="space-y-4">
+      {paintEnabled ? (
+        <Card
+          data-surface-paint-controls="voxel-face-paint-v1"
+          data-painted-face-count={paintSummary.paintedUnitFaces}
+        >
+          <CardHeader className="p-4 pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Palette aria-hidden="true" className="size-4 text-rose" />
+              {paintMessages.title}
+            </CardTitle>
+            <CardDescription>{paintMessages.description}</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3 p-4 pt-2 lg:grid-cols-[auto_1fr] lg:items-end">
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                disabled={paintSummary.complete}
+                onClick={() => setPaint((current) => paintAllExteriorVoxelFaces(voxels, current))}
+              >
+                <Paintbrush aria-hidden="true" className="size-4" />
+                {paintMessages.paintAll}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                disabled={paintSummary.paintedUnitFaces === 0}
+                onClick={() => setPaint((current) => clearVoxelFacePaint(current))}
+              >
+                <Eraser aria-hidden="true" className="size-4" />
+                {paintMessages.clear}
+              </Button>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-ink" role="status">
+                {paintMessages.paintedFaces(
+                  paintSummary.paintedUnitFaces,
+                  paintSummary.totalExteriorUnitFaces,
+                )}
+              </p>
+              <p className="mt-1 text-xs text-muted">{paintMessages.histogramLabel}</p>
+              <div className="mt-2 grid grid-cols-4 gap-1.5 sm:grid-cols-7">
+                {paintSummary.histogram.map((count, faces) => (
+                  <Badge key={faces} variant={count > 0 ? "secondary" : "outline"} className="justify-center tabular-nums">
+                    {paintMessages.histogramItem(faces, count)}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+      <VoxelTeachingStage
+        page={page}
+        state={runtime}
+        entityId={entityId}
+        actor={TEACHER_ACTOR}
+        locale={locale}
+        messages={messages}
+        onCommandIntent={applyCommandIntent}
+        materialColors={{ "voxel.base": "#8fbf88" }}
+        paintedFaces={paintEnabled ? paint.faces : undefined}
+        paintedFaceMaterialToken={paint.materialToken}
+        onFaceSelect={paintEnabled ? togglePaintedFace : undefined}
+      />
+    </div>
   );
 }
 
@@ -198,6 +291,16 @@ export function SpatialLab({ embedded = false }: ToolComponentProps) {
         ? t("teaching.hideLayer", { label })
         : t("teaching.showLayer", { label }),
   }), [rendererMessages, t]);
+
+  const paintMessages = useMemo<SurfacePaintMessages>(() => ({
+    title: t("paint.title"),
+    description: t("paint.description"),
+    paintAll: t("paint.paintAll"),
+    clear: t("paint.clear"),
+    paintedFaces: (painted: number, total: number) => t("paint.paintedFaces", { painted, total }),
+    histogramLabel: t("paint.histogramLabel"),
+    histogramItem: (faces: number, count: number) => t("paint.histogramItem", { faces, count }),
+  }), [t]);
 
   const modelMessages = useMemo<VoxelTemplateEditorMessages>(() => ({
     ...rendererMessages,
@@ -401,6 +504,9 @@ export function SpatialLab({ embedded = false }: ToolComponentProps) {
                 entityId={draft.model.entityId}
                 locale={locale}
                 messages={teachingMessages}
+                cells={draft.model.cells}
+                paintEnabled={activePresetId === SPATIAL_LAB_SURFACE_PAINT_PRESET_ID}
+                paintMessages={paintMessages}
               />
             ) : (
               <Card className="grid aspect-[4/3] place-items-center">

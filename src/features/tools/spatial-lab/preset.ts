@@ -7,11 +7,13 @@ import {
 
 export const SPATIAL_LAB_PRESET_ID = "spatial-lab.voxel-counting.v1" as const;
 export const SPATIAL_LAB_DEFAULT_PRESET_ID = SPATIAL_LAB_PRESET_ID;
+export const SPATIAL_LAB_SURFACE_PAINT_PRESET_ID = "spatial-lab.surface-paint.v1" as const;
 
 export const SPATIAL_LAB_PRESETS = [
   { id: SPATIAL_LAB_PRESET_ID, messageKey: "layeredCounting" },
   { id: "spatial-lab.hidden-cubes.v1", messageKey: "hiddenCubes" },
   { id: "spatial-lab.three-views.v1", messageKey: "threeViews" },
+  { id: SPATIAL_LAB_SURFACE_PAINT_PRESET_ID, messageKey: "surfacePainting" },
 ] as const;
 
 export type SpatialLabPresetId = (typeof SPATIAL_LAB_PRESETS)[number]["id"];
@@ -27,6 +29,29 @@ function cellsFromColumns(
 }
 
 function presetContent(presetId: SpatialLabPresetId) {
+  if (presetId === SPATIAL_LAB_SURFACE_PAINT_PRESET_ID) {
+    return {
+      sceneId: "scene.spatial-lab.surface-paint",
+      title: { zh: "正方体表面染色", en: "Paint the surface of a cube" },
+      learningGoal: {
+        zh: "根据外露面数量分类染色后的单位块",
+        en: "Classify painted unit cubes by their number of exposed faces",
+      },
+      teacherPrompt: {
+        zh: "点击外露面逐面染色，或一次涂满外表面，再观察角、棱、面心和内部单位块。",
+        en: "Paint exposed faces one by one or coat the full exterior, then compare corner, edge, face-center, and interior cubes.",
+      },
+      misconception: {
+        zh: "把被相邻单位块遮住的内部面也算作染色面",
+        en: "Count shared internal faces as painted faces",
+      },
+      cells: cellsFromColumns(
+        Array.from({ length: 3 }, (_, x) =>
+          Array.from({ length: 3 }, (_, z) => ({ x, z, height: 3 })),
+        ).flat(),
+      ),
+    };
+  }
   if (presetId === "spatial-lab.hidden-cubes.v1") {
     return {
       sceneId: "scene.spatial-lab.hidden-cubes",

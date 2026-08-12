@@ -6,7 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import type { SpatialCommandActor, SpatialCommandPayload, SpatialPageDoc, SpatialRuntimeState } from "../domain";
+import type {
+  SpatialCommandActor,
+  SpatialCommandPayload,
+  SpatialPageDoc,
+  SpatialRuntimeState,
+  VoxelFaceSelection,
+} from "../domain";
 import {
   createVoxelCountAttemptDraft,
   createVoxelTeachingCommandIntent,
@@ -51,6 +57,9 @@ export interface VoxelTeachingStageProps {
   readonly onCommandIntent: (payload: SpatialCommandPayload) => void;
   readonly onAttemptDraft?: (draft: VoxelCountAttemptDraft) => void;
   readonly materialColors?: Readonly<Record<string, string>>;
+  readonly paintedFaces?: readonly VoxelFaceSelection[];
+  readonly paintedFaceMaterialToken?: string;
+  readonly onFaceSelect?: (face: VoxelFaceSelection) => void;
   readonly className?: string;
 }
 
@@ -65,6 +74,9 @@ export function VoxelTeachingStage({
   onCommandIntent,
   onAttemptDraft,
   materialColors,
+  paintedFaces,
+  paintedFaceMaterialToken,
+  onFaceSelect,
   className,
 }: VoxelTeachingStageProps) {
   const view = useMemo(
@@ -126,6 +138,9 @@ export function VoxelTeachingStage({
         axisSnapEnabled={axisSnapEnabled}
         messages={messages}
         materialColors={materialColors}
+        paintedFaces={paintedFaces}
+        paintedFaceMaterialToken={paintedFaceMaterialToken}
+        onFaceSelect={onFaceSelect}
       />
 
       <header className="pointer-events-none absolute inset-x-3 top-3 z-20 flex items-start justify-between gap-3">

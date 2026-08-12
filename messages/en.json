@@ -315,8 +315,18 @@
         "options": {
           "layeredCounting": "Layer counting · 10 cubes",
           "hiddenCubes": "Hidden cubes · 14 cubes",
-          "threeViews": "Three-view observation · 12 cubes"
+          "threeViews": "Three-view observation · 12 cubes",
+          "surfacePainting": "Surface painting · 27 cubes"
         }
+      },
+      "paint": {
+        "title": "Exterior surface painting",
+        "description": "Select exposed faces on the model to paint or clear them; shared internal faces cannot be painted.",
+        "paintAll": "Paint full exterior",
+        "clear": "Clear paint",
+        "paintedFaces": "Painted {painted}/{total} exposed faces",
+        "histogramLabel": "Classify cubes by the number of painted faces",
+        "histogramItem": "{faces} faces · {count}"
       },
       "common": {
         "previewBuilding": "Building the 4:3 preview…",
