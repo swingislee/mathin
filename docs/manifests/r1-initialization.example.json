@@ -6,9 +6,9 @@
   "projectId": "example-production-project",
   "databaseId": "example-production-database",
   "migration": {
-    "head": "20260812000300_r1_notebook_lifecycle_security_followup",
-    "digest": "71b04ba7c5b2c7b4e22a6a02a2574c4656eb8bf85957e67cbb2caa23bf462106",
-    "fileCount": 166
+    "head": "20260812000400_sml0_courseware_lecture_capability",
+    "digest": "94eac3a6336015b18308c26f2e2a3767efc3dc82fbe7cfd7ae14424a68675385",
+    "fileCount": 167
   },
   "platform": {
     "source": "supabase/ci/00_platform_bootstrap.sql",
