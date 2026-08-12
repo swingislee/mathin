@@ -140,7 +140,7 @@ select (
   select 1 / 0;
 \endif
 
-set constraints cw_page_docs_lecture_id_page_no_key deferred;
+set constraints cw_page_docs_active_lecture_page_key deferred;
 update public.cw_page_docs set page_no = page_no + 100 where lecture_id = :'lecture_id';
 update public.cw_page_docs
 set page_no = case id when :'page_2'::uuid then 1 else 2 end,

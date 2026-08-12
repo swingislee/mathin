@@ -178,6 +178,33 @@ select set_config('request.jwt.claim.sub', :'admin_id', true);
 select public.soft_delete_cw_page(:'copied_page_id');
 reset role;
 
+-- A deleted stable page may keep its historical page_no. Creating a new page at
+-- the same active position must succeed and must not resurrect or overwrite it.
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'admin_id', true);
+select public.create_cw_spatial_page(
+  :'lecture_id', :'page_id', 'Replacement after soft delete',
+  (select doc from sml0_spatial_docs where name = 'standard-2')
+) as replacement_page_id \gset
+reset role;
+
+select (
+  (select page_no = 2 and deleted_at is null
+   from public.cw_page_docs where id = :'replacement_page_id')
+  and (select page_no = 2 and deleted_at is not null
+       from public.cw_page_docs where id = :'copied_page_id')
+) as recreate_after_soft_delete_ok \gset
+\if :recreate_after_soft_delete_ok
+\else
+  \echo SML-0 spatial delivery failed: a soft-deleted page blocked reuse of the active page position
+  select 1 / 0;
+\endif
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'admin_id', true);
+select public.soft_delete_cw_page(:'replacement_page_id');
+reset role;
+
 set local role authenticated;
 select set_config('request.jwt.claim.sub', :'admin_id', true);
 select * from public.revert_cw_track_page_revision(

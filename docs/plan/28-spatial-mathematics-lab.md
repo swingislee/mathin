@@ -157,6 +157,8 @@ Mathin 建设一套“空间数学实验室”，服务从小学直观认识立�
 
 正式启动 SML-0 后的第七个工程增量关闭首个可信模板的真实 Studio 创建入口。`sml0.voxel-layered-counting.v1` 在生产 `src` 内确定性物化一份 10 单位块、1200×900 `standard-4x3` 页面；客户端只提交稳定 template ID，Server Action 负责构建、校验并调用严格 `create_cw_spatial_page`，不接受任意场景 JSON。空讲次、普通编辑器、导入页和空间页均可打开同一双语插页对话框；空间页支持稳定 ID 的跨类型重排、软删除和删除后兼容轨回退。固定模板 scene/page hash 分别冻结为 `73a789fcfb57a204b7f32c38eb59b721193efd676815b746fd6a805a3f818a97` 与 `da51fb5cc3baa07a71d9496150431ca1a8a65d3fb94ef613a96066203161d06d`。真实 Chromium 使用固定开发账号在 QA 空讲次中临时建立编辑责任，完成空间页创建、普通页插入、跨类型重排，并确认 native/adapted 两兼容选择都显示同一空间页、单一 Canvas 和原生 4:3 舞台；console error 为 0，随后软删除两张验收页、移除临时责任，讲次恢复 0 页。英文 Studio 的空间/普通模板选择文案也已验证。专项合同为 36 个文件/275 项，全量 Vitest 为 87 个文件/565 项，messages 为 4042 keys × 2 locales，`pnpm sml:test`、`pnpm test`、`pnpm messages:check`、`pnpm typecheck` 与 `pnpm lint` 通过。本增量只关闭 Studio 创建/重排入口；模型与教学编排编辑、20 道题教研签名、完整跨端 hash 向量，以及审核发布→备课→freeze→live→重连→回退的一次性浏览器纵向证据仍未完成，SML-0 保持当前阶段。
 
+正式启动 SML-0 后的第八个工程增量修复软删除页占用活动顺序位置。真实 Chromium 在已软删除两张验收页的 QA 讲次再次创建空间页时复现唯一键冲突；migration `20260813000300_sml0_active_courseware_page_order` 让历史页继续保留原 `page_no`，同时以生成的 `active_page_no` 把删除行映射为 `NULL`，并用可延迟唯一约束保持跨类型批量重排的事务语义。开发库断言覆盖“删除旧页后在同一活动位置创建新空间页”，同时确认旧 stable page identity 与页码历史未被覆盖；release authority 断言改用新的可延迟约束。专项合同为 37 个文件/277 项，全量 Vitest 为 88 个文件/567 项，`pnpm sml:test`、`pnpm test`、`pnpm sml:db-audit`、`pnpm typecheck`、`pnpm lint`、数据库类型与初始化 manifest 检查均通过。本增量只关闭纵向浏览器验收暴露的活动页序阻断；审核发布后的备课→freeze→live→重连→回退旅程、20 道题教研签名和跨端 hash 向量仍未完成，SML-0 保持当前阶段。
+
 ## 3. 产品目标、用户与非目标
 
 ### 3.1 目标结果
