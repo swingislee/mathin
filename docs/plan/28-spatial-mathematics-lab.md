@@ -1,12 +1,12 @@
 # Mathin 整体规划 · 28 空间数学实验室（立体几何教学系统）
 
-> **规划状态**：`deferred`
+> **规划状态**：`active`
 >
 > **用途**：冻结空间数学实验室的产品边界、课程能力、数学内核、场景协议、教研工作流、课堂合同、阶段顺序和量化验收门。
 >
-> **权威边界**：本文件不改变 R1-9、不重开已完成的 P4/P6；用户已授权把无持久化的 `spatial-lab` 验收样机作为第三个 Tools 工具挂入既有通用路由，其他课件、发布和课堂生产能力仍延期；与 1.0 发布冲突时以 doc 00、04、25 为准。
+> **权威边界**：2026-08-12 用户正式启动 SML-0；R1-9 暂停但未关闭。SML-0 可以接入严格的空间课件、权限、评审发布与 freeze 合同，但不得执行真实生产清理、提前进入 SML-1～8，或把既有 Tools 样机证据冒充阶段退出证据；与 1.0 发布冲突时以 doc 00、04、25 为准。
 >
-> **最早正式施工入口**：R1-18 与 `v1.0.0` 完成后，由 doc 04 显式切换到后续 `SML-*` 阶段。此前除本地合同、题型金标、算法、renderer/editor spike 外，只额外授权 `spatial-lab` 通过既有 Tools registry、通用详情/embed 路由和 zh/en messages 提供纯内存验收；它不得新增数据库、RPC/RLS、生产课件/课堂接入或真实学生数据，也不构成 `SML-*` 阶段关闭证据。
+> **当前子阶段**：`SML-0 · 合同与金标冻结`。本次用户决定显式覆盖原“v1.0.0 后启动”的顺序依赖；覆盖只改变施工先后，不等于 R1 或 1.0 已完成。阶段退出仍须满足 §14～15 的全部 SML-0 证据。
 >
 > **核对日期**：2026-08-12；依据现有 Three/R3F、Tools、Terms、Courseware Studio、Classroom、P6 release/freeze 代码与义务教育数学课程标准核对。
 
@@ -79,7 +79,7 @@ Mathin 建设一套“空间数学实验室”，服务从小学直观认识立�
 
 ### 2.4 隔离本地 spike 记录
 
-前十九个增量都是未挂载的本地 E1/E2 研究资产，只能说明各自被测试覆盖的合同成立。第二十个增量起按用户授权把同一批成果挂为纯内存 Tools 验收样机，但仍不进入数据库、生产课件或课堂链，不计入 R1 证据，也不改变本文件 `deferred` 状态。
+前十九个增量都是未挂载的本地 E1/E2 研究资产，只能说明各自被测试覆盖的合同成立。第二十至三十个增量把同一批成果挂为纯内存 Tools 验收样机，但均未进入数据库、生产课件或课堂链，不计入 R1 或 SML 阶段退出证据。2026-08-12 正式启动 SML-0 后，后续增量必须围绕三个阻断项、金标签名和纵向空壳合同，不再横向扩张 Tools 题型。
 
 2026-08-11 的首个本地研究增量只增加 `src/features/spatial-math/domain/` 纯 TypeScript 体素合同/内核与 `tests/spatial-math-voxel.test.ts`，未增加路由、数据库、课件版本、公开 Tool 或生产开关。它验证了 SML-1 的数学方向，但不关闭 SML-0 或 SML-1：20 道教研签名金标、scene/page/command 合同、目标设备性能、WebGL/fallback 和课堂纵向链仍是退出必需项。
 
@@ -310,7 +310,7 @@ SML-1 可依据目标设备测试向下收紧；放宽任何上限需要新性�
 | `spatial_activity_term_links` | term_id、relation_kind、sort_order | demonstrates / practices / requires |
 | `spatial_page_revision_sources` | page_revision_id、activity_release_id、source_hash | 追溯来源；课件运行不依赖来源仍可读取 |
 
-精确表名在 R1-9 公共内容发布合同关闭后由 SML-0 最终决定。关键不变量保持不变：把活动插入讲次时复制规范 scene 到 `spatial-page-v1` revision；之后活动发布新版本不会改变该讲次，教研通过“升级来源”显式生成新 page revision 并查看 diff。
+精确表名由当前 SML-0 在复用现有 R1/P6 发布合同的前提下决定；不得改写 R1 已冻结的历史 release 或生产基线。关键不变量保持不变：把活动插入讲次时复制规范 scene 到 `spatial-page-v1` revision；之后活动发布新版本不会改变该讲次，教研通过“升级来源”显式生成新 page revision 并查看 diff。
 
 一次性课堂模型允许直接在 Studio 的空间页中创建，不要求先发布到共享库。课次备课页只选择、编排、预览、批注和排练，不再放置第二套完整建模器。
 
@@ -610,11 +610,11 @@ WebGL 不可用时仍允许观察、切层、查看表格和完成适合二维�
 
 ## 14. 实施阶段
 
-下列编号是本专题的正式依赖顺序；只有 doc 04 将其中一项写为唯一当前施工阶段后，才能接入数据、Studio、发布或课堂生产链并推进阶段退出。1.0 前只允许未挂载的本地研究 spike，以及状态头和 doc 04 明确授权的现有 `spatial-lab` 纯内存 Tools 增量；两者均不得进入生产课件或课堂链，也不能关闭任何 `SML-*` 阶段。每个正式阶段完成时同步本文件状态、doc 00/04/25、证据索引和 `pnpm plan:audit`。
+下列编号是本专题的正式依赖顺序。doc 04 已于 2026-08-12 把 SML-0 写为唯一当前施工阶段，因此本阶段可以接入开发/验证环境的数据、Studio、发布和课堂空壳合同；仍不得操作真实生产清理、跳过退出证据或提前施工 SML-1～8。每个正式阶段完成时同步本文件状态、doc 00/04/25、证据索引和 `pnpm plan:audit`。
 
 | 阶段 | 依赖 | 动作与产物 | 退出证据 |
 | --- | --- | --- | --- |
-| **SML-0 合同与金标冻结** | v1.0.0；R1-9 公共内容合同 | 解决 release/template、capability 与 track/layout 解耦三个阻断项；新增 `spatial-page-v1` 的 docVersion-aware 映射，让两条兼容 head 默认共享 4:3 revision；冻结能力图谱、20 道代表题、五个 schema、canonical hash、ownership、上限、路由和非目标 | 20 道题由教研签名；跨端 hash 向量 100%；一份 4:3 创作完成双 head/release 且课堂仍为 4:3，create→publish→prep→freeze→live 空壳纵向测试通过 |
+| **SML-0 合同与金标冻结（当前）** | 用户正式启动决定；复用现有 R1/P6 发布合同，R1-9 保持 pending | 解决 release/template、capability 与 track/layout 解耦三个阻断项；新增 `spatial-page-v1` 的 docVersion-aware 映射，让两条兼容 head 默认共享 4:3 revision；冻结能力图谱、20 道代表题、五个 schema、canonical hash、ownership、上限、路由和非目标 | 20 道题由教研签名；跨端 hash 向量 100%；一份 4:3 创作完成双 head/release 且课堂仍为 4:3，create→publish→prep→freeze→live 空壳纵向测试通过 |
 | **SML-1 精确内核与技术 spike** | SML-0 | voxel kernel、正投影、分层、外露面；R3F instancing、picking、worker、context recovery、2D fallback、低端设备基准 | 生成式测试 100% 对 oracle；1,000 体素达到性能门；WebGL 禁用/丢失可恢复；非空间 bundle 无重型 chunk |
 | **SML-2 首条课堂纵向切片** | SML-1 | “多角度观察 + 分层计数”；Studio 4:3 模板编辑、`spatial-page-v1`、平台 head 映射、评审发布、freeze、教师跟随、板书和重连 | 教研 P90 ≤5 分钟；一份 4:3 创作完成平台发布；1 教师+30 学生重连 3 秒内一致；离线预载/回放 E2E 通过 |
 | **SML-3 小学体素题型扩展** | SML-2 | 染色、隐藏块、挖去/挖空、外/内表面、体积、表面积和组合体；学生构造/提交 | 所有派生量金标与生成式测试 100%；attempt RLS 负向测试通过；至少 6 个生产模板 |

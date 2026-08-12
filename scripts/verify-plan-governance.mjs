@@ -43,7 +43,7 @@ const expectedStatuses = new Map([
   ["25", "active"],
   ["26", "partial"],
   ["27", "active"],
-  ["28", "deferred"],
+  ["28", "active"],
 ]);
 
 const planFiles = readdirSync(PLAN_DIR)
@@ -202,14 +202,23 @@ const EVIDENCE_DIR = path.join(ROOT, "docs", "evidence", "r1");
 const evidenceIndexPath = path.join(EVIDENCE_DIR, "README.md");
 if (!existsSync(evidenceIndexPath)) fail("缺少 R1 证据索引：docs/evidence/r1/README.md");
 
-// 阶段推进到 R1-N 即代表 R1-0～R1-(N-1) 已关闭，其证据不得缺失或被删除。
-// 由 doc 04 推导而非在此硬编码：关闭新阶段时无需再改本脚本。
-const currentStageNumber = Number(currentStage?.match(/^R1-(\d+)\b/)?.[1] ?? NaN);
-if (!Number.isInteger(currentStageNumber)) {
-  fail(`无法从当前施工阶段解析 R1 序号：${currentStage ?? "无"}`);
+// 当前阶段可以是 R1-N 或后续专题阶段。切到专题时，doc 04 必须显式保留尚未
+// 关闭的 R1 暂停位置；暂停不能被误判为已经关闭余下 R1 阶段。
+const currentR1StageNumber = Number(currentStage?.match(/^R1-(\d+)\b/)?.[1] ?? NaN);
+const pausedR1Stage = roadmap.match(/^> \*\*R1 暂停位置\*\*：`R1-(\d+)\b[^`]*`/m)?.[1];
+const pausedR1StageNumber = Number(pausedR1Stage ?? NaN);
+const isTopicStage = /^SML-\d+\b/.test(currentStage ?? "");
+if (!Number.isInteger(currentR1StageNumber) && !isTopicStage) {
+  fail(`当前施工阶段必须是 R1-N 或 SML-N：${currentStage ?? "无"}`);
 }
-const closedStages = Number.isInteger(currentStageNumber)
-  ? Array.from({ length: currentStageNumber }, (_, index) => index)
+if (isTopicStage && !Number.isInteger(pausedR1StageNumber)) {
+  fail("SML 当前阶段必须在 doc 04 显式记录 R1 暂停位置");
+}
+const evidenceStageNumber = Number.isInteger(currentR1StageNumber)
+  ? currentR1StageNumber
+  : pausedR1StageNumber;
+const closedStages = Number.isInteger(evidenceStageNumber)
+  ? Array.from({ length: evidenceStageNumber }, (_, index) => index)
   : [];
 
 // 表格里 `artifact_hash` 紧跟在 `artifact_url_or_path` 之后，逐对匹配即可把 hash 绑到具体

@@ -118,12 +118,12 @@ Story、Minds、Games、Tools 和 Notebook 使用稳定 ID 关联 Terms。课程
 | `25-production-1.0-product-completeness.md` | active | 1.0 事实、缺口、发布门和生产初始化 |
 | `26-teacher-workflow-upgrade.md` | partial | 左侧备课步骤、右侧常驻课件预览、板书解析与结构化教案；独立教案管理入口和派生输出待补 |
 | `27-small-screen-workspace-adaptation.md` | active | 1024–1280px 窄屏与平板横屏的侧栏三态、工作区可拖拽分栏、4:3 全屏与容器查询收敛 |
-| `28-spatial-mathematics-lab.md` | deferred | 1.0 后空间数学实验室的课程能力、数学内核、场景协议、教研创作、课堂同步与分阶段验收；用户已授权 1.0 前把无持久化的 `spatial-lab` 验收样机挂入 Tools，其他课件/课堂生产链仍延期，不计入 SML 阶段关闭 |
+| `28-spatial-mathematics-lab.md` | active | 当前唯一专题 SML-0：冻结空间数学课程能力、4:3 文档、金标、hash、权限、发布/冻结与纵向空壳合同；R1-9 暂停但未关闭 |
 
 ## 7. 当前发布纪律
 
 - 当前子阶段以 doc 04 顶部为准。
-- 2026-08-12 起先推进 Notebook、学校运营、Classroom/Whiteboard/Courseware Studio、课程双轨资源和生产底座；Story、Games、Minds、Terms、Tools 的模块生产巡检随后恢复。该调整只改变施工顺序，不改变 §1 的 1.0 合同，也不豁免 doc 25 的对应产品门、跨模块质量门和 No-Go 条件。
+- 2026-08-12 用户正式启动 SML-0；当前只推进空间数学合同与金标冻结，R1-9 保留为未关闭的暂停位置。该切换不改变 §1 的 1.0 合同，也不豁免未来切回 R1 后仍须完成的 doc 25 产品门、跨模块质量门和 No-Go 条件。
 - R1 实际责任映射由 doc 25 §7.1 维护；阶段证据统一从 `docs/evidence/r1/README.md` 索引，Agent 只能作为执行者，不能代替人员 owner 或批准人。
 - R1-15 在生产快照的隔离副本演练数据清理；R1-18 经人工批准后处理正式生产。其他阶段禁止执行账号、班级、订单或 release 删除。
 - 阶段关闭时更新实现证据、专题文档状态头、doc 04、doc 25 和 README，并运行 `pnpm plan:audit`。

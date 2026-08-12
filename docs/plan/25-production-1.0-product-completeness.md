@@ -31,12 +31,12 @@ Terms 使用稳定 ID 接收 Story、Minds、Games、Tools、Notebook 和课程�
 
 ### 1.1.1 2026-08-12 施工顺序
 
-本轮只调整施工顺序，不调整 1.0 交付对象或量化发布门。
+本轮正式切换到 SML-0，但不调整 1.0 原交付对象或量化发布门，也不把尚未关闭的 R1-9 记为完成。
 
-- 继续 Notebook、学校运营和角色门户、Classroom/Whiteboard/Courseware Studio、P6-9 与两套课程双轨资源，以及账户、安全、Jobs、通知、文件、Work-items、指标/E2E 和生产底座中不依赖五条公开线的准备。
-- 暂缓 Story、Games、Minds、Terms、Tools 的模块生产巡检，以及依赖这些模块的访客旅程、英文回退、公共视觉、SEO、浏览器、CWV 和 WCAG 子门。Notebook 所需共享发布状态机不在暂缓范围。
-- 依赖已满足的后续子项可以先形成 E1/E2/E3，所属 R1 阶段仍保持 pending；最终 production build、环境、浏览器、性能和恢复证据在五条线恢复后重跑。五条线全部恢复并通过前，R1-12、R1-18 和 `v1.0.0` 均不得关闭。
-- 用户明确授权把空间数学本地成果作为第三个 Tools 验收样机 `spatial-lab` 挂入既有公开/嵌入路由。它只保存浏览器内存状态，不进入数据库、生产课件、课堂 transport 与真实学生链，也不作为 SML 阶段关闭证据；进入 registry 后按 PROD-03/08、VIS/UX/PERF 和浏览器门验收。
+- SML-0 成为唯一施工阶段：先冻结 4:3 空间文档、金标、canonical hash、ownership 和 release/freeze 全生命周期，并关闭 doc 28 §2.3 的三个平台阻断项。
+- R1-9～18 与 Story、Games、Minds、Terms、Tools、Notebook 的剩余发布门全部暂停且保持 pending；切回 R1 后继续，全部恢复并通过前 `v1.0.0` 不得关闭。
+- 既有 `spatial-lab` 继续作为无持久化验收表面和金标候选预览；SML-0 不再用它横向增加题型。正式生产接入只沿严格 `spatial-page-v1`、现有 Courseware release/freeze 和专用权限/RPC/RLS 合同推进。
+- 当前阶段不得执行 R1-15/R1-18 的真实生产清理或 release 重建；迁移和纵向验证只使用开发库或一次性验证库。
 
 ### 1.2 工程与验证基线
 
@@ -495,7 +495,7 @@ R1-16 的只读 preflight 入口是 `docs/manifests/r1-production-deployment.exa
 | 事项 | 1.0 决定 | 责任角色 | 最迟完成 | 状态 |
 | --- | --- | --- | --- | --- |
 | 产品 | 六个对外模块与学校运营/内容发布同步上线；Terms 为关系中心 | 产品负责人 | 已定 | decided |
-| 施工顺序 | 先完成 Notebook、学校运营、课程课件、平台横切与非破坏性生产底座；Story、Games、Minds、Terms、Tools 随后恢复生产巡检，并在 `v1.0.0` 前通过全部原发布门 | 产品+QA/发布负责人 | R1-18 前 | temporary sequencing |
+| 施工顺序 | 当前正式推进 SML-0；R1-9 暂停但未关闭。SML-0 完成后由 doc 04 明确选择继续 SML 或切回 R1；`v1.0.0` 前仍须通过全部原发布门 | 产品+QA/发布负责人 | SML-0 关闭时复核 | active sequencing |
 | 视觉 | 小王子为全站基础；场景/内容/工作区三级强度；Notebook=旅途笔记 | 产品+设计负责人 | 已定 | decided |
 | 语言 | UI 永久 zh/en；缺英文长内容时显式回退 | 产品+内容负责人 | 已定 | decided |
 | 财务 | 1.0 安全关闭；未来启用必须以新迁移打开发布门并重新通过完整账务门 | 产品+财务负责人 | R1-8 | closed for 1.0 |
@@ -516,7 +516,7 @@ R1-0 已完成责任角色到 `swingislee` 的映射。增加人员或发生交�
 | 风险 | 当前证据 | 影响 | Owner | 关闭阶段 |
 | --- | --- | --- | --- | --- |
 | Story 无完整章节 | 路由存在；无完整独立章节内容目录 | 对外 1.0 缺一模块 | 内容+产品 | R1-10 |
-| 五条公开线巡检后移 | Story、Games、Minds、Terms、Tools 的产品门和依赖它们的公共质量门仍为 pending | 发布末端形成集中关键路径；提前采集的 build/环境型 E3 可能过期 | 产品+QA/发布 | 恢复后的 R1-9～12，并在 R1-18 前重跑最终证据 |
+| R1-9 在 SML-0 期间暂停 | R1-9～18 与 Story、Games、Minds、Terms、Tools、Notebook 的剩余产品门仍为 pending | 发布末端形成集中关键路径；提前采集的 build/环境型 E3 可能过期 | 产品+QA/发布 | 切回 R1-9～12 后继续，并在 R1-18 前重跑最终证据 |
 | 英文正文缺失 | `content/en` 仅 README | `/en` 可能空白或混排 | 内容+前端 | R1-9～12 |
 | 平台运行内核尚无生产验收 | R1-2 已完成 Job/通知/文件/集成的开发库断言、空库重放、Worker 单次运行和 zh/en 浏览器验证（M3） | 开发合同不证明生产 Worker、选中供应商、大文件容量、告警恢复和最终成功率 | 平台+运维+QA | R1-14/16/17 |
 | 全站视觉强度合同刚固定 | doc 05 曾把工作区排除在星球主题外 | 公开站与后台品牌断裂或装饰侵入控件 | 设计+前端 | R1-12 |
@@ -530,11 +530,12 @@ R1-0 已完成责任角色到 `swingislee` 的映射。增加人员或发生交�
 | 生产恢复未实操 | Linux 目标与 fail-closed preflight 已定；当前树与 Git 历史 secret scan 为 0，但环境隔离和恢复 E3 仍为 pending | 尚无独立环境、运行时 secret 复核、告警链路、RPO/RTO、数据库/Storage 恢复或应用回滚的实操证据 | 运维+安全 | R1-16 |
 | 无真实 RC | 尚未运行 14 天/5 节课堂 | 容量、通知、支持指标无 E4 | 教学运营+发布 | R1-17 |
 
-### 7.3 1.0 后处理
+### 7.3 当前专题与 1.0 后处理
 
+- 空间数学实验室已于 2026-08-12 正式进入 SML-0；当前只承诺 doc 28 的合同与金标冻结，不因阶段启动自动关闭 SML-1～8 或扩写 PROD-08。
 - 补齐英文课程、Minds 和 Story 正文；UI、路由和回退已在 1.0 完成。
 - 执行 `cacheComponents` + `use cache` 专项；继续禁止 `unstable_cache`。
-- 评估原生 App、更多游戏/章节、复杂营销和高级 BI；空间数学实验室按 doc 28 延后到 `v1.0.0` 后，不计入当前 PROD-08 或 R1 发布门。
+- 评估原生 App、更多游戏/章节、复杂营销和高级 BI。
 - 查询优化无法使 work-items 达到 PERF-04 时，再评估物化投影。
 
 ## 8. 证据与文档维护
