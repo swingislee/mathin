@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Route, Ruler } from "lucide-react";
+import { Boxes, Route, Ruler } from "lucide-react";
 
 export type ToolCategory = "number" | "geometry" | "motion" | "misc";
 
@@ -21,6 +21,7 @@ export interface ToolMeta {
 export const tools: ToolMeta[] = [
   { id: "fraction-line", no: 1, category: "number", grades: [3, 6], icon: Ruler },
   { id: "motion-lab", no: 2, category: "motion", grades: [4, 6], icon: Route },
+  { id: "spatial-lab", no: 3, category: "geometry", grades: [1, 9], icon: Boxes },
 ];
 
 export function getTool(id: string): ToolMeta | undefined {

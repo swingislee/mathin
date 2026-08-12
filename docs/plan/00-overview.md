@@ -18,7 +18,7 @@ Mathin 以 Terms 数学概念及其关系为内容中心。1.0 同时发布下�
 | Story | 从章节入口连续阅读或交互到结尾 | 一个完整数学故事章节，并关联所涉及的 Terms |
 | Games | 进入游戏、提交成绩、查看排名 | 3 个可玩游戏；需要排名的成绩由服务端验证 |
 | Minds | 阅读数学人物/思想文章、跳转相关概念 | 2 篇中文文章及其 Terms 关系 |
-| Tools | 独立使用工具或嵌入内容/课堂 | 2 个工具的独立页、嵌入页和输入结果 |
+| Tools | 独立使用工具或嵌入内容/课堂 | 2 个既有工具与 1 个空间数学验收样机的独立页、嵌入页和输入结果 |
 | Notebook | 私人写作、发布、撤回、审核、公开阅读和互动 | 私有笔记与公开文章使用同一身份和权限体系 |
 | 学校运营 | 管理学生、家庭、员工、课程、班级、排课、考勤、作业、成果及启用时的财务 | Dashboard 工作流、审计记录、通知和角色门户 |
 | 内容发布 | 编辑、审核、发布、撤回 Terms/Story/Minds/Notebook 和课程课件 | 可追溯内容版本；课堂只读取不可变 release |
@@ -118,7 +118,7 @@ Story、Minds、Games、Tools 和 Notebook 使用稳定 ID 关联 Terms。课程
 | `25-production-1.0-product-completeness.md` | active | 1.0 事实、缺口、发布门和生产初始化 |
 | `26-teacher-workflow-upgrade.md` | partial | 左侧备课步骤、右侧常驻课件预览、板书解析与结构化教案；独立教案管理入口和派生输出待补 |
 | `27-small-screen-workspace-adaptation.md` | active | 1024–1280px 窄屏与平板横屏的侧栏三态、工作区可拖拽分栏、4:3 全屏与容器查询收敛 |
-| `28-spatial-mathematics-lab.md` | deferred | 1.0 后空间数学实验室的课程能力、数学内核、场景协议、教研创作、课堂同步与分阶段验收；1.0 前仅允许用户明确授权、未挂载且无生产依赖的本地合同/算法/renderer/editor spike，不计入 R1 证据或阶段关闭 |
+| `28-spatial-mathematics-lab.md` | deferred | 1.0 后空间数学实验室的课程能力、数学内核、场景协议、教研创作、课堂同步与分阶段验收；用户已授权 1.0 前把无持久化的 `spatial-lab` 验收样机挂入 Tools，其他课件/课堂生产链仍延期，不计入 SML 阶段关闭 |
 
 ## 7. 当前发布纪律
 

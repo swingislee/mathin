@@ -12,6 +12,7 @@ function ToolSkeleton() {
 
 const FractionLine = dynamic(() => import("./fraction-line/FractionLine").then((m) => m.FractionLine), { loading: ToolSkeleton });
 const MotionLab = dynamic(() => import("./motion-lab/MotionLab").then((m) => m.MotionLab), { loading: ToolSkeleton });
+const SpatialLab = dynamic(() => import("./spatial-lab/SpatialLab").then((m) => m.SpatialLab), { loading: ToolSkeleton });
 
 /** 按 id 分发工具。id 取自 `./registry` 的元数据，未知 id 渲染空。 */
 export function ToolView({ id, ...props }: ToolComponentProps & { id: string }) {
@@ -20,6 +21,8 @@ export function ToolView({ id, ...props }: ToolComponentProps & { id: string }) 
       return <FractionLine {...props} />;
     case "motion-lab":
       return <MotionLab {...props} />;
+    case "spatial-lab":
+      return <SpatialLab {...props} />;
     default:
       return null;
   }

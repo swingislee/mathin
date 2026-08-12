@@ -4,9 +4,9 @@
 >
 > **用途**：冻结空间数学实验室的产品边界、课程能力、数学内核、场景协议、教研工作流、课堂合同、阶段顺序和量化验收门。
 >
-> **权威边界**：本文件不改变 R1-9、不增加 1.0 的 2 个 Tools、不重开已完成的 P4/P6；与 1.0 发布冲突时以 doc 00、04、25 为准。
+> **权威边界**：本文件不改变 R1-9、不重开已完成的 P4/P6；用户已授权把无持久化的 `spatial-lab` 验收样机作为第三个 Tools 工具挂入既有通用路由，其他课件、发布和课堂生产能力仍延期；与 1.0 发布冲突时以 doc 00、04、25 为准。
 >
-> **最早正式施工入口**：R1-18 与 `v1.0.0` 完成后，由 doc 04 显式切换到后续 `SML-*` 阶段；在此之前仅按用户明确授权进行未挂载、无生产依赖的本地合同、题型金标、算法、renderer 和 editor spike。它们不得新增路由、registry、messages、数据库、RPC/RLS、生产课件/课堂接入或真实学生数据，也不构成 `SML-*` 阶段关闭证据。
+> **最早正式施工入口**：R1-18 与 `v1.0.0` 完成后，由 doc 04 显式切换到后续 `SML-*` 阶段。此前除本地合同、题型金标、算法、renderer/editor spike 外，只额外授权 `spatial-lab` 通过既有 Tools registry、通用详情/embed 路由和 zh/en messages 提供纯内存验收；它不得新增数据库、RPC/RLS、生产课件/课堂接入或真实学生数据，也不构成 `SML-*` 阶段关闭证据。
 >
 > **核对日期**：2026-08-12；依据现有 Three/R3F、Tools、Terms、Courseware Studio、Classroom、P6 release/freeze 代码与义务教育数学课程标准核对。
 
@@ -47,7 +47,7 @@ Mathin 建设一套“空间数学实验室”，服务从小学直观认识立�
 | 现有能力 | 证据范围 | 本系统的用法 |
 | --- | --- | --- |
 | Three.js、React Three Fiber、Drei 已为直接依赖 | Terms 星球场景已有 Canvas、OrbitControls、动态加载、响应式相机和 reduced-motion | 复用客户端叶子、资源释放和交互经验；不复用星球的领域模型 |
-| Tools registry、独立页和 `/embed/[tool]` | 当前 2 个工具使用模块级动态加载，Terms 可引用工具 | `spatial-lab` 在 1.0 后成为第三个第一方工具 |
+| Tools registry、独立页和 `/embed/[tool]` | 当前 2 个既有工具使用模块级动态加载，Terms 可引用工具 | `spatial-lab` 作为第三个第一方工具先承载无持久化验收样机；正式 activity/release 与课程关系仍在 SML-5/6 完成 |
 | 稳定 Terms ID 与关系 | 已有立体图形、观察物体、长方体和正方体、展开图、表面积、体积与容积、圆柱和圆锥 | 公开活动、模板和题型关联稳定概念，不以教材标题作主键 |
 | CoursewareDoc 版本分发 | 已有 `page-doc-v1` 与 `aixuexi-page-doc-v1` | 新增独立 `spatial-page-v1` schema、编辑器和 renderer adapter |
 | P6 发布链 | stable page → append-only revision → immutable lecture release → session freeze | 复用不可变发布与冻结语义；SML-0 先补 docVersion-aware 映射，让两条兼容 head 默认 pin 同一 4:3 空间 revision，宽屏例外才分 revision；课堂继续由既有 4:3 外层舞台承载 |
@@ -120,6 +120,8 @@ Mathin 建设一套“空间数学实验室”，服务从小学直观认识立�
 同日第十八个增量把体素模型与教学编排收口为未接生产链的本地统一创作草稿和组合工作流。严格 `voxel-authoring-draft-v1` 只保存 model 与 lesson，使用 canonical UTF-8 512 KiB 上限和确定性 SHA-256，不保存 page、scene hash、runtime、编译步骤或 preset；lesson 的预测提示是唯一权威，旧 model 字段只保留同步镜像，模型或 lesson 替换必须整体解析后原子提交。scene/lesson adapter 提取不含 hash 的同步 compiler 供草稿保存前精确预检，99 层的超预算展开会稳定拒绝，85 层固定边界向量可完成 4:3 page 构建；旧 async builder 只为同一 scene 补 SHA-256，既有 base/lesson hash 不变。`voxel-authoring-workflow-v1` 复用两个既有纯编辑 reducer，在模型/教案面板往返时保留各自选择、历史与双语内容；模型删层后逐层宏从当前规范层重新展开，不残留旧 layer ID。未挂载的 shadcn Tabs 组合叶子一次只挂载一个编辑器和一个 4:3 舞台，模型与教案预览都委托同一 unified draft 构建唯一 1200×900 `standard-4x3` page；canonical request key、scene hash 与 builder 身份共同阻止慢旧请求回显或向外触发过期 page，编辑器完成边界也拒绝宽屏或非 1200×900 的注入页。专项合同增至 20 个文件/154 项并通过。该增量没有新增 messages、路由、registry、数据库、生产 `CoursewareDoc`、Studio、发布/freeze 或课堂 transport，仍不关闭 SML-0、SML-1 或 SML-2。
 
 同日第十九个增量增加未接生产链的本地 `voxel-authoring-diff-v1`。纯 builder 对 before/after 两份严格 `voxel-authoring-draft-v1` 分别完成解析与 `standard-4x3` page 构建，以 canonical SHA-256 绑定 draft、scene 与 page；严格 diff 文档只保存这些 hash、固定顺序的 authored 变化，以及由相关 authored 变化触发的派生快照和 `changed` 标记，不保存 page、runtime 或 scene actions。authored 区覆盖体素增删、模型身份/层轴/材质/创建元数据、双语标题/目标/误区、Term 引用、lesson 步骤增删/重排/字段与 checkpoint，预测提示只在 lesson 权威处报告；派生区覆盖总数、分层、三视图投影指纹和逐层播放序列。before/after preview 只随 builder 结果以 `entityId` + build 成对返回，供未来未挂载的 4:3 预览复用，并排除在 diff 文档及 diff hash 外；相同草稿生成空 diff，单层升降序意图变化可显式记录为派生结果未变，canonical UTF-8 diff 上限为 2.5 MiB。专项合同增至 21 个文件/165 项并通过，全量 Vitest 为 72 个文件/455 项通过。该增量没有新增 UI、messages、路由、registry、数据库、生产 `CoursewareDoc`、Studio review/release/freeze 或课堂 transport，不登记 R1 证据，也不关闭任何 SML-* 阶段。
+
+同日第二十个增量按用户授权把纯内存验收样机注册为第三个第一方工具 `spatial-lab`。现有通用工具详情页和 `/embed/[tool]` 自动提供中文、英文与无导航嵌入入口；重型 3D/编辑模块继续按工具 ID 动态加载。内建双语 10 单位块 preset 生成唯一 1200×900 `standard-4x3` page；“建模与编排”复用统一草稿工作流，“课堂试演”在本页内存中归约教师语义命令，“变化摘要”把修改后的体素、层数与模型/步骤/checkpoint 变化同初始模板比较。页面显式标注刷新即恢复、无 Studio 保存/审核发布/多人同步，代码没有数据库、RPC/RLS、生产 `CoursewareDoc`、课堂 transport 或真实学生数据依赖。专项合同为 22 个文件/169 项通过，全量 Vitest 为 73 个文件/459 项通过；真实浏览器已在 localhost 验证中文详情页、英文详情页、嵌入页、1440×1000 桌面、390×844 手机、WebGL canvas、10→11 单位块差异和教师步骤 1→2，手机主标签栏可横向触控且页面无横向溢出。局域网 `192.168.5.213:3130` 的 HTTP 200 已验证，但应用内自动化浏览器两次连接超时，因此不登记 LAN 视觉通过；本增量也不登记 R1 证据、不关闭任何 `SML-*` 阶段。
 
 ## 3. 产品目标、用户与非目标
 
@@ -492,8 +494,8 @@ M1 先支持规则实体和凸多面体：以平面方程与语义边/面求交�
 
 | 路由 | 角色 | 内容合同 |
 | --- | --- | --- |
-| `/[locale]/tools/spatial-lab` | 公开 | 内建 preset 与公开 activity release；动态加载 runtime |
-| `/embed/spatial-lab` | 公开嵌入 | 仅公开 release/preset；locale 和 mode 为受限参数 |
+| `/[locale]/tools/spatial-lab` | 公开 | 当前为内建 preset、纯内存建模/编排和 4:3 预览验收样机；未来再消费公开 activity release |
+| `/embed/spatial-lab` | 公开嵌入 | 当前复用同一纯内存样机并受 locale 参数约束；未来只允许公开 release/preset |
 | `/[locale]/terms/concepts/[slug]` | 公开 | 通过结构化 relation 加载指定活动 |
 | `/[locale]/dashboard/courseware/lectures/[lectureId]` | 授权 staff | 讲次工作区、空间页入口、状态和发布 |
 | `/[locale]/studio/courseware/[lectureId]` | 授权 staff | 现有 Studio 内分发空间编辑器，不建立平行课件系统 |

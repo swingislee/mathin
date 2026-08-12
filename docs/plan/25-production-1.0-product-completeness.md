@@ -18,7 +18,7 @@
 | Story | `/story` 路由和场景壳存在；未发现完整独立章节内容目录 | 至少 1 个从入口到结尾的章节；阅读/交互 10～20 分钟或达到产品签收的完整最小章节 |
 | Games | registry 3 个游戏 | 3/3 可玩；需要排名的客户端成绩经服务端验证后入榜 |
 | Minds | `content/zh/minds` 2 篇 MDX | 2/2 发布，并关联稳定 Terms ID |
-| Tools | registry 2 个工具；存在 `/embed/[tool]` | 2/2 独立使用；既定嵌入场景通过 |
+| Tools | registry 3 个工具，其中 `spatial-lab` 是无持久化的空间数学验收样机；存在 `/embed/[tool]` | 3/3 独立使用；既定嵌入场景通过；样机不误示保存、发布或课堂同步已经可用 |
 | Notebook | 私有列表、编辑、公开详情路由存在；commit `11885f7` 已关闭发布归属与互动隐私边界，commits `8c9cb8c`、`ffe3ec6` 已在开发库建立可追溯审核发布生命周期、平台锁、归档删除守卫和源笔记快照绑定 | 私人写作、完整审核状态机、发布/撤回/修订、公开阅读和互动完成权限/E2E 验收 |
 | 学校运营 | 学生、监护关系、员工权限、课程、班级、排课、考勤、作业、订单/支付/退款等迁移和 UI 已存在 | 管理员、教务、教师、学辅、教研/内容、学生、家长及启用时的财务旅程闭环 |
 | 内容发布 | Terms/Minds 文件内容、Notebook、课程研发和 release 机制分别存在 | Terms/Story/Minds/Notebook 共用草稿/审核/发布/撤回/版本合同；课堂只读取不可变课件 release |
@@ -36,7 +36,7 @@ Terms 使用稳定 ID 接收 Story、Minds、Games、Tools、Notebook 和课程�
 - 继续 Notebook、学校运营和角色门户、Classroom/Whiteboard/Courseware Studio、P6-9 与两套课程双轨资源，以及账户、安全、Jobs、通知、文件、Work-items、指标/E2E 和生产底座中不依赖五条公开线的准备。
 - 暂缓 Story、Games、Minds、Terms、Tools 的模块生产巡检，以及依赖这些模块的访客旅程、英文回退、公共视觉、SEO、浏览器、CWV 和 WCAG 子门。Notebook 所需共享发布状态机不在暂缓范围。
 - 依赖已满足的后续子项可以先形成 E1/E2/E3，所属 R1 阶段仍保持 pending；最终 production build、环境、浏览器、性能和恢复证据在五条线恢复后重跑。五条线全部恢复并通过前，R1-12、R1-18 和 `v1.0.0` 均不得关闭。
-- 用户明确授权的空间数学工作在 1.0 前仅限 doc 28 所列、未挂载且无生产依赖的本地合同/算法/renderer/editor spike；它不增加 1.0 Tools 或发布范围，不进入生产路由、数据、课件、课堂 transport 与真实学生链，也不作为本文 M1～M4 或 R1 发布证据。
+- 用户明确授权把空间数学本地成果作为第三个 Tools 验收样机 `spatial-lab` 挂入既有公开/嵌入路由。它只保存浏览器内存状态，不进入数据库、生产课件、课堂 transport 与真实学生链，也不作为 SML 阶段关闭证据；进入 registry 后按 PROD-03/08、VIS/UX/PERF 和浏览器门验收。
 
 ### 1.2 工程与验证基线
 
@@ -46,7 +46,7 @@ Terms 使用稳定 ID 接收 Story、Minds、Games、Tools、Notebook 和课程�
 | 权限 | 顶层角色为 `student`、`parent`、`staff`、`admin`；受保护页使用 `requireUser`；数据库使用 RLS | Proxy 跳转和前端隐藏不能证明授权 |
 | Dashboard | P4I 已将首页和对象页改为工作流入口 | 页面存在不证明跨域工作项、人工协同或 p95 达标 |
 | CI | lint、typecheck、build、消息、数据库重建/RLS、安全、当前树与 Git 历史 secret scan、doc21～24 与规划审计已配置；正式 Playwright 配置和 release runner 已落地 | 固定凭据旅程不接通用 CI；仍须在明确非生产发布目标执行零 skip 套件，并补写态、zh/en、跨浏览器与连续无 flaky 证据 |
-| Vitest | commit `cbb2a0f` 已将本轮修复前 19 项失败清零；提交态为 71 个测试文件、444/444 全绿，其中非 spatial 基线 51 个文件、290/290，`pnpm r1:test` 为 18 个文件、121/121 | 单元/合同套件已恢复全绿；R1-14 仍需在后续实现后维持 100%，并补发布目标、并发、文件和竞争矩阵 |
+| Vitest | commit `cbb2a0f` 已将本轮修复前 19 项失败清零；当前为 73 个测试文件、459/459 全绿，其中非 spatial 基线 51 个文件、290/290，空间数学/Tools 样机专项 22 个文件、169/169，`pnpm r1:test` 为 18 个文件、121/121 | 单元/合同套件已恢复全绿；R1-14 仍需在后续实现后维持 100%，并补发布目标、并发、文件和竞争矩阵 |
 | 部署 | doc 17 已将目标生产主机改为小米 Linux；commit `35b9f60` 已固定独立环境、监控、恢复和回滚的只读 preflight；当前树与完整可达 Git 历史的高置信 secret scan 为 0 | 仓库扫描不证明环境隔离；尚无独立生产、RPO/RTO 实操、回滚演练和 14 天 RC 证据 |
 
 ### 1.3 已裁决的历史冲突
@@ -336,7 +336,7 @@ R1-7E 以 `user_rights_export_artifacts` 保存与请求绑定的精确 JSON 字
 | PROD-05 | Terms | 71/71 中文概念可发布；slug、公式、依赖、引用、站内链接错误=0 |
 | PROD-06 | Story | ≥1 个完整章节；入口、进度、结尾、Terms 关系和移动端阅读通过；无“即将推出”占位 |
 | PROD-07 | Games | 3/3 可玩；需要排名的伪造客户端成绩入榜数=0 |
-| PROD-08 | Tools | 2/2 独立页和既定 embed 场景通过 |
+| PROD-08 | Tools | 3/3 独立页和既定 embed 场景通过；`spatial-lab` 明示验收样机与无持久化边界 |
 | PROD-09 | Minds | 2/2 中文文章发布；无效 Terms 关系=0 |
 | PROD-10 | Notebook | 私有写作、审核、发布/撤回、公开阅读、互动和越权 E2E 通过 |
 | PROD-11 | E 系列 | 1135 讲×2 轨源资源完整；正式 release 恰为 2270 条 `release_no=1`；缺失/悬空=0 |
@@ -524,7 +524,7 @@ R1-0 已完成责任角色到 `swingislee` 的映射。增加人员或发生交�
 | 账户安全尚无生产验收 | R1-3 已完成账户/同意/支持的空库重放、负向断言与开发浏览器验证（M3） | 开发门控不证明正式唯一管理员、生产 MFA=100%、速率限制与恢复演练 | 安全+发布+QA | R1-14/16/17/18 |
 | Work-items 尚无生产候选/RC 负载证据 | R1-4 已在开发/一次性库完成 30,000 条持久项、300 名员工、40 次采样，p95≤18.87ms、p99≤20.71ms（M3） | 开发合成负载不能证明生产长尾、并发与 14 天稳定性 | 学校产品+数据库+QA | R1-14/17 |
 | 财务安全关闭尚无生产复核 | R1-8 已完成发布门、数据、任务/审批、通知、指标和 job 的开发/一次性库关闭证据（M3） | 开发环境关闭不变量不能证明生产初始化或正式清理后仍保持关闭 | 产品+财务+数据库+发布 | R1-15/18 |
-| Vitest 基线需在最终 build 复验 | commit `cbb2a0f` 已清零本轮修复前 19 项失败；提交态为 71 个测试文件、444/444 全绿，非 spatial 290/290，R1 定向 121/121 | 后续实现可能重新引入合同回归 | 技术+QA | R1-14 保持全量 100% |
+| Vitest 基线需在最终 build 复验 | commit `cbb2a0f` 已清零本轮修复前 19 项失败；当前为 73 个测试文件、459/459 全绿，非 spatial 290/290，空间数学/Tools 样机专项 169/169，R1 定向 121/121 | 后续实现可能重新引入合同回归 | 技术+QA | R1-14 保持全量 100% |
 | 正式 Playwright 发布门尚未完成 | 正式配置、target policy 和 fail-closed release runner 已落地；9 条非五模块本地 Chromium 旅程分别取绿 | 尚无明确非生产 release target 的单次 9/9 零 skip、写态、zh/en、跨浏览器和连续 3 次无 flaky 证据 | QA/发布 | R1-14 |
 | 清理/release 未演练 | 只有规划与开发数据 | 正式数据或 4:3 资源损失 | 数据库+课程研发 | R1-15 |
 | 生产恢复未实操 | Linux 目标与 fail-closed preflight 已定；当前树与 Git 历史 secret scan 为 0，但环境隔离和恢复 E3 仍为 pending | 尚无独立环境、运行时 secret 复核、告警链路、RPO/RTO、数据库/Storage 恢复或应用回滚的实操证据 | 运维+安全 | R1-16 |

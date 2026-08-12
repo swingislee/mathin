@@ -252,6 +252,10 @@
       "motion-lab": {
         "name": "行程演示",
         "desc": "多角色同场出发，演示相遇与追及，用测距尺实时查看间距。"
+      },
+      "spatial-lab": {
+        "name": "空间数学实验室",
+        "desc": "4:3验收样机：按层搭建立体模型，编排多角度与逐层教学步骤，并立即试演。"
       }
     },
     "fractionLine": {
@@ -295,6 +299,148 @@
       "position": "位置",
       "dragHint": "拖动角色即可移动与实测：拖动方向就是运动方向，松手自动填入路程、时间与速度",
       "editHint": "点击头像上传照片、长按恢复默认；点击载具换乘（自动带速度）、长按恢复默认；点击位置数字可直接输入；◀ ▶ 原地换向"
+    },
+    "spatialLab": {
+      "prototypeBadge": "验收样机",
+      "memoryOnly": "仅保存在本页",
+      "prototypeNote": "先验收单位块建模、教学编排与4:3课堂试演；当前操作不会写入课程或数据库。",
+      "boundaryNote": "刷新页面会恢复初始模型。Studio保存、审核发布和多人课堂同步尚未接入。",
+      "workspaceTabs": "空间数学验收工作台",
+      "authoringTab": "建模与编排",
+      "classroomTab": "课堂试演",
+      "changesTab": "变化摘要",
+      "common": {
+        "previewBuilding": "正在生成4:3预览…",
+        "previewReady": "4:3预览已就绪",
+        "previewError": "预览生成失败，请恢复初始版本后重试",
+        "undo": "撤销",
+        "redo": "重做",
+        "resetDraft": "恢复初始版本",
+        "modified": "已修改",
+        "initialState": "初始版本"
+      },
+      "renderer": {
+        "webglUnavailable": "此设备无法使用WebGL，已切换为二维投影视图。",
+        "contextLost": "三维画布暂时不可用，已切换为二维投影视图。",
+        "unrevealedCount": "尚未揭示",
+        "visible": "显示",
+        "hidden": "隐藏",
+        "layerCount": "{label} · {count}块 · {visibility}",
+        "layerCountUnrevealed": "{label} · 数量尚未揭示",
+        "totalCount": "共{count}个单位正方体",
+        "hiddenByLayer": "其中{count}个在当前投影中被遮挡",
+        "projectedCell": "投影格({u}, {v})叠放{count}块",
+        "projectedCellUnrevealed": "投影格({u}, {v})，叠放数尚未揭示",
+        "projections": {
+          "front": "正面",
+          "back": "背面",
+          "left": "左面",
+          "right": "右面",
+          "top": "上面",
+          "bottom": "下面"
+        }
+      },
+      "model": {
+        "editorTitle": "单位块模型",
+        "editorDescription": "选择分层方向和层号，再点击二维格点增删单位正方体。",
+        "axisLabel": "分层方向",
+        "layersLabel": "层",
+        "gridLabel": "当前层格点",
+        "previewLabel": "模型预览",
+        "performanceWarning": "当前模型较大，低性能设备上的三维交互可能变慢。",
+        "axes": {
+          "x": "左右分层（x）",
+          "y": "上下分层（y）",
+          "z": "前后分层（z）"
+        },
+        "layer": "第{coordinate}层 · {count}块",
+        "addCell": "在坐标({x}, {y}, {z})添加单位块",
+        "removeCell": "删除坐标({x}, {y}, {z})的单位块",
+        "counts": "共{total}块 · 当前层{activeLayer}块"
+      },
+      "teaching": {
+        "previousStep": "上一步",
+        "nextStep": "下一步",
+        "playSteps": "播放教学步骤",
+        "pauseSteps": "暂停播放",
+        "resetScene": "重置课堂场景",
+        "cameraBookmarks": "观察方向",
+        "layers": "分层控制",
+        "countPlaceholder": "输入单位块总数",
+        "submitCount": "提交答案",
+        "teacherFollow": "教师演示",
+        "studentLocalExplore": "学生本地探索",
+        "studentSubmit": "学生提交",
+        "stepPosition": "第{current}/{total}步",
+        "hideLayer": "隐藏{label}",
+        "showLayer": "显示{label}"
+      },
+      "lesson": {
+        "editorTitle": "教学步骤",
+        "editorDescription": "编排预测、观察、逐层和验证流程，并维护中英双语课堂提示。",
+        "stepsLabel": "步骤列表",
+        "addView": "添加观察方向",
+        "inspectorLabel": "步骤设置",
+        "chinese": "中文",
+        "english": "English",
+        "titleLabel": "步骤标题",
+        "promptLabel": "教师提示",
+        "titlePlaceholder": "输入步骤标题",
+        "promptPlaceholder": "输入课堂提示",
+        "moveUp": "上移步骤",
+        "moveDown": "下移步骤",
+        "removeStep": "删除步骤",
+        "layerOrder": "逐层顺序",
+        "ascending": "由下到上",
+        "descending": "由上到下",
+        "checkpointTitle": "总数检查点",
+        "checkpointDescription": "固定使用精确的单位块总数判定。",
+        "checkpointRequired": "必做",
+        "checkpointOptional": "选做",
+        "maxSubmissions": "最多提交次数",
+        "decreaseSubmissions": "减少提交次数",
+        "increaseSubmissions": "增加提交次数",
+        "previewLabel": "步骤预览",
+        "invalidText": "请输入有效纯文本，且不要超过长度限制。",
+        "chineseRequiredBeforeEnglish": "请先填写对应的中文提示。",
+        "englishFallback": "英文缺失时回退到中文",
+        "cameras": {
+          "front": "正面",
+          "right": "右面",
+          "top": "上面"
+        },
+        "stepKinds": {
+          "predict": "预测",
+          "view": "观察方向",
+          "layerScan": "逐层观察",
+          "verify": "验证"
+        },
+        "stepPosition": "第{current}/{total}个逻辑步骤",
+        "expandedLayers": "展开为{count}层"
+      },
+      "workflow": {
+        "title": "4:3空间课件创作",
+        "description": "一份草稿同时承载单位块模型与教学步骤；两个面板共用同一个4:3页面。",
+        "panelsLabel": "创作面板",
+        "modelTab": "搭模型",
+        "lessonTab": "编步骤"
+      },
+      "classroom": {
+        "title": "课堂试演",
+        "description": "使用刚才的模型和步骤试演教师控制。此处只归约本页内存中的语义命令，不发送课堂事件。"
+      },
+      "changes": {
+        "title": "相对初始模板的语义变化",
+        "changed": "草稿已经修改；这里只比较数学和教学语义，不比较像素。",
+        "unchanged": "当前草稿与初始模板一致。",
+        "modelChanges": "模型变化",
+        "lessonChanges": "步骤变化",
+        "checkpointChanges": "检查点变化",
+        "totalChanges": "变化合计",
+        "voxelCount": "单位块总数",
+        "layerCount": "层数",
+        "diffHash": "差异摘要"
+      }
     }
   },
   "dashboard": {

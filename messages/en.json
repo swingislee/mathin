@@ -252,6 +252,10 @@
       "motion-lab": {
         "name": "Motion lab",
         "desc": "Characters travel on parallel tracks — meet, chase, and watch the gaps live with the ruler."
+      },
+      "spatial-lab": {
+        "name": "Spatial Mathematics Lab",
+        "desc": "A 4:3 acceptance prototype for building layered solids, authoring views and lesson steps, and rehearsing them immediately."
       }
     },
     "fractionLine": {
@@ -295,6 +299,148 @@
       "position": "Position",
       "dragHint": "Drag a character to move and measure: the drag direction sets the travel direction; distance, time and speed fill in on release",
       "editHint": "Click the avatar to upload a photo (long-press to reset); click the vehicle to switch (sets its speed, long-press to reset); click the position number to type a position; ◀ ▶ turns in place"
+    },
+    "spatialLab": {
+      "prototypeBadge": "Acceptance prototype",
+      "memoryOnly": "This page only",
+      "prototypeNote": "Review unit-cube modeling, lesson authoring, and the 4:3 classroom rehearsal. Nothing here is written to a course or database yet.",
+      "boundaryNote": "Refreshing restores the starter model. Studio saving, review, publishing, and multi-user classroom sync are not connected yet.",
+      "workspaceTabs": "Spatial mathematics acceptance workspace",
+      "authoringTab": "Model & lesson",
+      "classroomTab": "Classroom rehearsal",
+      "changesTab": "Change summary",
+      "common": {
+        "previewBuilding": "Building the 4:3 preview…",
+        "previewReady": "4:3 preview ready",
+        "previewError": "Preview failed. Restore the starter version and try again.",
+        "undo": "Undo",
+        "redo": "Redo",
+        "resetDraft": "Restore starter",
+        "modified": "Modified",
+        "initialState": "Starter version"
+      },
+      "renderer": {
+        "webglUnavailable": "WebGL is unavailable on this device. Showing the equivalent 2D projection.",
+        "contextLost": "The 3D canvas is temporarily unavailable. Showing the equivalent 2D projection.",
+        "unrevealedCount": "Not revealed",
+        "visible": "visible",
+        "hidden": "hidden",
+        "layerCount": "{label} · {count} cubes · {visibility}",
+        "layerCountUnrevealed": "{label} · count not revealed",
+        "totalCount": "{count} unit cubes in total",
+        "hiddenByLayer": "{count} cubes are hidden in this projection",
+        "projectedCell": "Projection cell ({u}, {v}) stacks {count} cubes",
+        "projectedCellUnrevealed": "Projection cell ({u}, {v}); stack count not revealed",
+        "projections": {
+          "front": "Front",
+          "back": "Back",
+          "left": "Left",
+          "right": "Right",
+          "top": "Top",
+          "bottom": "Bottom"
+        }
+      },
+      "model": {
+        "editorTitle": "Unit-cube model",
+        "editorDescription": "Choose a layer axis and layer, then add or remove cubes on the 2D grid.",
+        "axisLabel": "Layer axis",
+        "layersLabel": "Layers",
+        "gridLabel": "Active-layer grid",
+        "previewLabel": "Model preview",
+        "performanceWarning": "This model is large and 3D interaction may slow down on lower-end devices.",
+        "axes": {
+          "x": "Left–right layers (x)",
+          "y": "Bottom–top layers (y)",
+          "z": "Front–back layers (z)"
+        },
+        "layer": "Layer {coordinate} · {count} cubes",
+        "addCell": "Add a cube at ({x}, {y}, {z})",
+        "removeCell": "Remove the cube at ({x}, {y}, {z})",
+        "counts": "{total} cubes · {activeLayer} on this layer"
+      },
+      "teaching": {
+        "previousStep": "Previous step",
+        "nextStep": "Next step",
+        "playSteps": "Play lesson steps",
+        "pauseSteps": "Pause playback",
+        "resetScene": "Reset classroom scene",
+        "cameraBookmarks": "Views",
+        "layers": "Layer controls",
+        "countPlaceholder": "Enter the total cube count",
+        "submitCount": "Submit answer",
+        "teacherFollow": "Teacher demo",
+        "studentLocalExplore": "Student local exploration",
+        "studentSubmit": "Student submission",
+        "stepPosition": "Step {current} of {total}",
+        "hideLayer": "Hide {label}",
+        "showLayer": "Show {label}"
+      },
+      "lesson": {
+        "editorTitle": "Lesson steps",
+        "editorDescription": "Author a predict, observe, scan, and verify sequence with bilingual classroom prompts.",
+        "stepsLabel": "Step list",
+        "addView": "Add a view",
+        "inspectorLabel": "Step settings",
+        "chinese": "中文",
+        "english": "English",
+        "titleLabel": "Step title",
+        "promptLabel": "Teacher prompt",
+        "titlePlaceholder": "Enter a step title",
+        "promptPlaceholder": "Enter a classroom prompt",
+        "moveUp": "Move step up",
+        "moveDown": "Move step down",
+        "removeStep": "Remove step",
+        "layerOrder": "Layer order",
+        "ascending": "Bottom to top",
+        "descending": "Top to bottom",
+        "checkpointTitle": "Total-count checkpoint",
+        "checkpointDescription": "Always evaluated from the exact unit-cube total.",
+        "checkpointRequired": "Required",
+        "checkpointOptional": "Optional",
+        "maxSubmissions": "Maximum submissions",
+        "decreaseSubmissions": "Decrease submissions",
+        "increaseSubmissions": "Increase submissions",
+        "previewLabel": "Step preview",
+        "invalidText": "Enter valid plain text within the length limit.",
+        "chineseRequiredBeforeEnglish": "Add the corresponding Chinese prompt first.",
+        "englishFallback": "Falls back to Chinese when English is missing",
+        "cameras": {
+          "front": "Front",
+          "right": "Right",
+          "top": "Top"
+        },
+        "stepKinds": {
+          "predict": "Predict",
+          "view": "View",
+          "layerScan": "Layer scan",
+          "verify": "Verify"
+        },
+        "stepPosition": "Logical step {current} of {total}",
+        "expandedLayers": "Expands to {count} layers"
+      },
+      "workflow": {
+        "title": "4:3 spatial lesson authoring",
+        "description": "One draft carries both the unit-cube model and lesson steps; both panels build the same 4:3 page.",
+        "panelsLabel": "Authoring panels",
+        "modelTab": "Build model",
+        "lessonTab": "Author steps"
+      },
+      "classroom": {
+        "title": "Classroom rehearsal",
+        "description": "Rehearse teacher controls with the current model and steps. Commands are reduced in this page only and are not sent to a classroom session."
+      },
+      "changes": {
+        "title": "Semantic changes from the starter template",
+        "changed": "The draft has changed. This comparison tracks mathematical and lesson semantics, not pixels.",
+        "unchanged": "The current draft matches the starter template.",
+        "modelChanges": "Model changes",
+        "lessonChanges": "Step changes",
+        "checkpointChanges": "Checkpoint changes",
+        "totalChanges": "Total changes",
+        "voxelCount": "Unit-cube count",
+        "layerCount": "Layer count",
+        "diffHash": "Diff fingerprint"
+      }
     }
   },
   "dashboard": {

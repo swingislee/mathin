@@ -1,0 +1,80 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { describe, expect, it } from "vitest";
+import { buildVoxelAuthoringDiff } from "@/features/spatial-math/domain";
+import { toolThumbs } from "@/features/tools/thumbs";
+import { getTool, tools } from "@/features/tools/registry";
+import {
+  SPATIAL_LAB_PRESET_ID,
+  createSpatialLabInitialDraft,
+} from "@/features/tools/spatial-lab/preset";
+
+function leafKeys(value: unknown, prefix = ""): string[] {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return [prefix];
+  }
+  return Object.entries(value).flatMap(([key, nested]) =>
+    leafKeys(nested, prefix ? `${prefix}.${key}` : key),
+  );
+}
+
+describe("spatial-lab Tools acceptance prototype", () => {
+  it("registers a stable geometry tool without changing the generic Tools route contract", () => {
+    expect(getTool("spatial-lab")).toMatchObject({
+      id: "spatial-lab",
+      no: 3,
+      category: "geometry",
+      grades: [1, 9],
+    });
+    expect(tools.map((tool) => tool.id)).toContain("spatial-lab");
+    expect(new Set(tools.map((tool) => tool.id)).size).toBe(tools.length);
+    expect(new Set(tools.map((tool) => tool.no)).size).toBe(tools.length);
+    expect(toolThumbs["spatial-lab"]).toBeTruthy();
+  });
+
+  it("builds the fixed bilingual voxel preset as one 1200 by 900 4:3 page", async () => {
+    const draft = createSpatialLabInitialDraft();
+    const result = await buildVoxelAuthoringDiff(draft, draft);
+    const page = result.afterPreview.build.page;
+
+    expect(SPATIAL_LAB_PRESET_ID).toBe("spatial-lab.voxel-counting.v1");
+    expect(draft.model).toMatchObject({
+      sceneId: "scene.spatial-lab.voxel-counting",
+      entityId: "voxel.main",
+      layerAxis: "y",
+      title: { zh: "分层数单位正方体", en: "Count unit cubes by layer" },
+    });
+    expect(draft.model.cells).toHaveLength(10);
+    expect(page.layout).toEqual({ profile: "standard-4x3" });
+    expect(page.presentation.viewport).toMatchObject({ width: 1_200, height: 900 });
+    expect(result.diff.before).toEqual(result.diff.after);
+    expect(result.diff.derived).toEqual({});
+  });
+
+  it("keeps the prototype bilingual and exposes the same message surface in zh and en", () => {
+    const zh = JSON.parse(readFileSync(resolve("messages/zh.json"), "utf8"));
+    const en = JSON.parse(readFileSync(resolve("messages/en.json"), "utf8"));
+
+    expect(zh.tools.items["spatial-lab"]).toBeTruthy();
+    expect(en.tools.items["spatial-lab"]).toBeTruthy();
+    expect(leafKeys(zh.tools.spatialLab).sort()).toEqual(leafKeys(en.tools.spatialLab).sort());
+  });
+
+  it("keeps the mounted client leaf isolated from persistence and classroom transport", () => {
+    const source = readFileSync(
+      resolve("src/features/tools/spatial-lab/SpatialLab.tsx"),
+      "utf8",
+    ).toLowerCase();
+
+    for (const forbidden of [
+      "supabase",
+      "session_events",
+      "coursewaredoc",
+      "server action",
+      "fetch(",
+    ]) {
+      expect(source).not.toContain(forbidden);
+    }
+    expect(source).toContain('data-layout-profile="standard-4x3"');
+  });
+});

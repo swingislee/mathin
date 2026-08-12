@@ -39,4 +39,22 @@ export const toolThumbs: Record<string, ReactNode> = {
       <line x1={123} y1={18} x2={123} y2={26} stroke="var(--ink)" strokeWidth={1.2} />
     </svg>
   ),
+  "spatial-lab": (
+    <svg viewBox="0 0 200 120" className="h-full w-full" aria-hidden>
+      <g stroke="var(--ink)" strokeWidth={1.3} strokeLinejoin="round">
+        <path d="M44 65 64 54 84 65 64 77Z" fill="var(--leaf)" />
+        <path d="M44 65v23l20 12V77Z" fill="var(--moon)" />
+        <path d="M84 65v23l-20 12V77Z" fill="var(--leaf-deep)" opacity={0.72} />
+        <path d="M78 37 98 26l20 11-20 12Z" fill="var(--leaf)" />
+        <path d="M78 37v23l20 12V49Z" fill="var(--moon)" />
+        <path d="M118 37v23L98 72V49Z" fill="var(--leaf-deep)" opacity={0.72} />
+        <path d="M112 65l20-11 20 11-20 12Z" fill="var(--leaf)" />
+        <path d="M112 65v23l20 12V77Z" fill="var(--moon)" />
+        <path d="M152 65v23l-20 12V77Z" fill="var(--leaf-deep)" opacity={0.72} />
+      </g>
+      <path d="M29 101h142" stroke="var(--crater)" strokeWidth={1.2} strokeDasharray="2 5" />
+      <circle cx={163} cy={28} r={4} fill="var(--rose)" />
+      <path d="m163 18 1.5 6.5L171 26l-6.5 1.5L163 34l-1.5-6.5L155 26l6.5-1.5Z" fill="var(--rose)" opacity={0.35} />
+    </svg>
+  ),
 };
