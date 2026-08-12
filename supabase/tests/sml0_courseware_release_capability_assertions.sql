@@ -441,7 +441,7 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub', :'teacher_id', true);
 select public.freeze_session_courseware(
   :'session_id',
-  '[]'::jsonb,
+  (select courseware_pages from public.cw_lecture_releases where id = :'emergency_release_id'),
   jsonb_build_object(
     'version', 'cw-session-resolved-v1',
     'track', 'adapted-4x3',

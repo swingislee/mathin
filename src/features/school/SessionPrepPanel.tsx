@@ -3,7 +3,7 @@ import { LockKeyhole, LockKeyholeOpen } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { DashboardEmptyCard } from "@/features/school/dashboard-page";
 import type { SessionWorkspaceDetail } from "./classes";
-import { getLectureCoursewareTemplate } from "./courses";
+import { getSessionCoursewareTemplate } from "./courses";
 import { CoursewareOverlayEditor } from "./CoursewareOverlayEditor";
 import { coursewareEditorStateFromFrozenSnapshot } from "./courseware-overlay";
 import { LeaveRequestActions } from "./LeaveRequestActions";
@@ -44,7 +44,7 @@ export async function SessionPrepPanel({
   const preparationWorkflowReadOnly = !canAmendSessionArchive;
 
   const [template, learningSetup, coursewareLearningCheckPages, sessionDocs, sessionAssets, prepArtifacts, teacherPreparation] = await Promise.all([
-    detail.lectureId && !detail.coursewareFrozenAt ? getLectureCoursewareTemplate(detail.lectureId) : Promise.resolve([]),
+    detail.lectureId && !detail.coursewareFrozenAt ? getSessionCoursewareTemplate(detail.id) : Promise.resolve([]),
     canViewPrepArchive ? getSessionLearningSetup(detail.id) : Promise.resolve(null),
     canViewPrepArchive ? getSessionCoursewareLearningCheckPages(detail.id) : Promise.resolve([]),
     canViewPrepArchive ? getSessionPageDocs(detail.id).catch(() => []) : Promise.resolve([]),

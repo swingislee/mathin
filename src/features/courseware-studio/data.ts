@@ -35,6 +35,13 @@ const releaseSnapshotSchema = z.array(
   }),
 );
 
+const releaseCoursewarePagesSchema = z.array(z.object({
+  id: z.uuid(),
+  type: z.literal("doc"),
+  docId: z.uuid(),
+  title: z.string().trim().min(1).max(100),
+}).strict()).min(1).max(200);
+
 const launchQuerySchema = z.object({
   query: z.record(z.string(), z.array(z.string())),
   coursewareIdParam: z.string().nullable(),
@@ -722,37 +729,27 @@ export async function loadLecturePreview(
 
   const { data: release, error: releaseError } = await supabase
     .from("cw_lecture_releases")
-    .select("id, release_no, published_at, snapshot")
+    .select("id, release_no, published_at, snapshot, courseware_pages")
     .eq("id", releaseHead.current_release_id)
     .maybeSingle();
   if (releaseError) throw new Error(releaseError.message);
   if (!release) return null;
 
   const snapshot = releaseSnapshotSchema.parse(release.snapshot);
-  const pageDocIds = snapshot.map((entry) => entry.pageDocId);
-  const pageRows = await collectPostgrestRowsInBatches<string, {
-    id: string;
-    page_no: number;
-    title: string;
-    aspect: string;
-  }>(pageDocIds, (batch) => supabase
-    .from("cw_page_docs")
-    .select("id, page_no, title, aspect")
-    .in("id", batch)
-    .returns<Array<{ id: string; page_no: number; title: string; aspect: string }>>());
-
-  const pageById = new Map(pageRows.map((page) => [page.id, page]));
-  const pages: CoursewarePreviewPageMeta[] = snapshot.map((entry) => {
-    const page = pageById.get(entry.pageDocId);
-    if (!page) throw new Error(`RELEASE_SNAPSHOT_INCOMPLETE: ${entry.pageDocId}`);
+  const releasePages = releaseCoursewarePagesSchema.parse(release.courseware_pages);
+  if (releasePages.length !== snapshot.length) throw new Error("RELEASE_SNAPSHOT_INCOMPLETE");
+  const pages: CoursewarePreviewPageMeta[] = snapshot.map((entry, index) => {
+    const page = releasePages[index];
+    if (!page || page.id !== entry.pageDocId || page.docId !== entry.pageDocId) {
+      throw new Error(`RELEASE_SNAPSHOT_INCOMPLETE: ${entry.pageDocId}`);
+    }
     return {
       pageDocId: page.id,
-      pageNo: page.page_no,
+      pageNo: index + 1,
       title: page.title,
       aspect: track === "adapted-4x3" ? "4:3" : "16:9",
     };
   });
-  pages.sort((a, b) => a.pageNo - b.pageNo);
 
   const requestedPageIndex = typeof requestedPage === "string"
     ? pages.findIndex((page) => page.pageDocId === requestedPage) + 1

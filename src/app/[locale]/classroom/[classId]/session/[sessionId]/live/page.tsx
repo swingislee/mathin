@@ -3,7 +3,7 @@ import { setRequestLocale } from "next-intl/server";
 import { getClassroom, getClassSession, listSessionEvents } from "@/features/classroom/actions";
 import type { CoursewarePage } from "@/features/classroom/types";
 import { LiveShell } from "@/features/classroom/live/LiveShell";
-import { getLectureCoursewareTemplate } from "@/features/school/courses";
+import { getSessionCoursewareTemplate } from "@/features/school/courses";
 import { getAttendanceDrawerData } from "@/features/school/actions/attendance";
 import { getSessionLearningSetup } from "@/features/school/session-learning";
 import { resolveCourseware, type OverlaySlot } from "@/features/school/courseware-overlay";
@@ -36,7 +36,7 @@ export default async function LiveClassPage({
   // 学生端 RLS 读不到讲次模板时保持空数组,行为同未开课等待页。
   let effectiveSession = session;
   if (session.lectureId && !session.coursewareFrozenAt) {
-    const template = await getLectureCoursewareTemplate(session.lectureId);
+    const template = await getSessionCoursewareTemplate(sessionId);
     if (template.length > 0) {
       effectiveSession = {
         ...session,

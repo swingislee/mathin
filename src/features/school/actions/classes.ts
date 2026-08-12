@@ -10,7 +10,7 @@ import { actionError, type ActionResult } from "@/lib/action-result";
 import { createClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/database.types";
 import { materializeSessionResolved } from "@/features/courseware-studio/data";
-import { getLectureCoursewareTemplate } from "../courses";
+import { getSessionCoursewareTemplate } from "../courses";
 import { resolveCourseware, type OverlaySlot } from "../courseware-overlay";
 import { authorizedClient, nullableRpcArg } from "./guards";
 import { COMMON_CODES, datetime, intInRange, parse, requiredText, searchQuery, text, uuid } from "./schemas";
@@ -696,7 +696,7 @@ export async function completeSessionPreparationAction(sessionId: string, fallba
       if (fallbackError) throw new Error(fallbackError.message);
     }
 
-    const template = await getLectureCoursewareTemplate(session.lecture_id);
+    const template = await getSessionCoursewareTemplate(value.sessionId);
     const merged = resolveCourseware(template, session.courseware_overlay ?? []);
     const resolvedMeta = resolved.release_id
       ? await materializeSessionResolved(resolved.release_id, resolved.track)

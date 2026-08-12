@@ -13,6 +13,7 @@ import {
 } from "../courseware-overlay";
 import { authorizedClient } from "./guards";
 import { parse, uuid } from "./schemas";
+import { getSessionCoursewareTemplate } from "../courses";
 
 export async function updateLectureTemplate(lectureId: string, pages: CoursewareTemplatePage[]): Promise<void> {
   const id = parse(uuid, lectureId);
@@ -48,15 +49,8 @@ export async function saveCoursewareOverlay(sessionId: string, overlay: OverlayS
     return;
   }
 
-  const { data: lecture, error: lectureError } = await supabase
-    .from("course_lectures")
-    .select("courseware_template")
-    .eq("id", session.lecture_id)
-    .maybeSingle<{ courseware_template: CoursewareTemplatePage[] }>();
-  if (lectureError) throw new Error(lectureError.message);
-  if (!lecture) throw new Error("NOT_FOUND");
-
-  const healed = parseOverlayForSave(lecture.courseware_template ?? [], shapeCheck.data);
+  const template = await getSessionCoursewareTemplate(id);
+  const healed = parseOverlayForSave(template, shapeCheck.data);
   const { error } = await supabase
     .from("class_sessions")
     .update({ courseware_overlay: healed })

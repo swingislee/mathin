@@ -2,7 +2,8 @@
 
 import { z } from "zod";
 import { materializeSessionResolved, type CoursewareTrack } from "@/features/courseware-studio/data";
-import { resolveCourseware, type CoursewareTemplatePage, type OverlaySlot } from "@/features/school/courseware-overlay";
+import { resolveCourseware, type OverlaySlot } from "@/features/school/courseware-overlay";
+import { getSessionCoursewareTemplate } from "@/features/school/courses";
 import type { Json } from "@/lib/database.types";
 import { createClient } from "@/lib/supabase/server";
 import { collectPostgrestRowsInBatches } from "@/lib/supabase/postgrest-batches";
@@ -290,12 +291,6 @@ export async function startClassSession(sessionId: string): Promise<void> {
   if ((attendanceCount ?? 0) < (rosterCount ?? 0)) throw new Error("ATTENDANCE_REQUIRED");
 
   if (session.lecture_id && !session.courseware_frozen_at) {
-    const { data: lecture, error: lectureError } = await supabase
-      .from("course_lectures")
-      .select("courseware_template")
-      .eq("id", session.lecture_id)
-      .maybeSingle<{ courseware_template: CoursewareTemplatePage[] }>();
-    if (lectureError) throw new Error(lectureError.message);
     const { data: resolvedRelease, error: resolvedReleaseError } = await supabase.rpc("resolve_session_courseware_release", {
       p_session_id: sessionId,
     });
@@ -303,7 +298,8 @@ export async function startClassSession(sessionId: string): Promise<void> {
     const selected = resolvedRelease?.[0] as { track: CoursewareTrack; release_id: string | null } | undefined;
     if (!selected) throw new Error("COURSEWARE_TRACK_NOT_RESOLVED");
     if (selected.track === "adapted-4x3" && !selected.release_id) throw new Error("COURSEWARE_TRACK_UNPUBLISHED");
-    const resolved = resolveCourseware(lecture?.courseware_template ?? [], session.courseware_overlay ?? []);
+    const template = await getSessionCoursewareTemplate(sessionId);
+    const resolved = resolveCourseware(template, session.courseware_overlay ?? []);
     // P6-2：同一 DB 事务同时冻结页数组、解析对象 pin 与开课时间。
     // 讲次已发布 release 时必须物化 releaseId + objectHash 清单——
     // freeze RPC 校验 RELEASE_MISMATCH,课堂资产签发按该清单授权(D3')。

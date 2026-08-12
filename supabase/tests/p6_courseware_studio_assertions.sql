@@ -89,7 +89,7 @@ returning id as classroom_id \gset
 insert into public.class_sessions(classroom_id,lecture_id,title) values(:'classroom_id',:'lecture_id','__P6_STUDIO_SESSION__')
 returning id as session_id \gset
 select public.freeze_session_courseware(
-  :'session_id', '[]'::jsonb,
+  :'session_id', (select courseware_pages from public.cw_lecture_releases where id=:'release_1'),
   jsonb_build_object('version','cw-session-resolved-v1','track','native-16x9','releaseId',:'release_1','bindings','[]'::jsonb)
 );
 select revision_id as later_draft_id, revision_no as later_draft_no from public.save_cw_track_page_draft(

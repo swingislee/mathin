@@ -110,7 +110,8 @@ select (:'resolved_default'::uuid=:'adapted_release'::uuid and :'resolved_overri
   select 1 / 0;
 \endif
 
-select public.freeze_session_courseware(:'session_id','[]'::jsonb,jsonb_build_object(
+select public.freeze_session_courseware(:'session_id',
+  (select courseware_pages from public.cw_lecture_releases where id=:'native_release'),jsonb_build_object(
   'version','cw-session-resolved-v1','track','native-16x9','releaseId',:'native_release','bindings','[]'::jsonb
 ));
 select set_config('p6_tracks.session_id', :'session_id', true);

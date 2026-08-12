@@ -3,6 +3,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { collectPostgrestRowsInBatches } from "@/lib/supabase/postgrest-batches";
 import type { CoursewareTrack } from "@/features/courseware-studio/data";
+import { courseware_template_array_schema } from "./courseware-overlay";
 import type {
   LearningCheckStatus,
   SessionLearningSetup,
@@ -137,13 +138,14 @@ export async function getSessionCoursewareLearningCheckPages(sessionId: string):
 
   const { data: release, error: releaseError } = await supabase
     .from("cw_lecture_releases")
-    .select("snapshot")
+    .select("snapshot,courseware_pages")
     .eq("id", releaseId)
     .eq("lecture_id", session.lecture_id)
     .eq("track", track)
-    .maybeSingle<{ snapshot: unknown }>();
+    .maybeSingle<{ snapshot: unknown; courseware_pages: unknown }>();
   if (releaseError) throw new Error(releaseError.message);
   if (!Array.isArray(release?.snapshot)) return [];
+  const releasePages = courseware_template_array_schema.parse(release.courseware_pages);
 
   const snapshotPages = release.snapshot.flatMap((raw, index) => {
     const item = record(raw);
@@ -157,21 +159,12 @@ export async function getSessionCoursewareLearningCheckPages(sessionId: string):
   });
   if (snapshotPages.length === 0) return [];
 
-  const pageRows = await collectPostgrestRowsInBatches<string, { id: string; page_no: number; title: string }>(
-    snapshotPages.map((page) => page.pageDocId),
-    (batch) => supabase
-      .from("cw_page_docs")
-      .select("id,page_no,title")
-      .in("id", batch)
-      .returns<Array<{ id: string; page_no: number; title: string }>>(),
-  );
-  const pageById = new Map(pageRows.map((page) => [page.id, page]));
   return snapshotPages.flatMap((metadata) => {
-    const page = pageById.get(metadata.pageDocId);
-    if (!page) return [];
+    const page = releasePages[metadata.snapshotIndex];
+    if (!page || page.type !== "doc" || page.docId !== metadata.pageDocId) return [];
     return [{
       pageDocId: metadata.pageDocId,
-      pageNo: page.page_no,
+      pageNo: metadata.snapshotIndex + 1,
       title: page.title,
 
       learningCheckEnabled: metadata.learningCheckEnabled,
