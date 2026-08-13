@@ -25,14 +25,14 @@ function uuid(seed: string | number) {
   return `${digest.slice(0, 8)}-${digest.slice(8, 12)}-4${digest.slice(13, 16)}-8${digest.slice(17, 20)}-${digest.slice(20, 32)}`;
 }
 
-type CourseSystem = "e-series" | "aixuexi-gplus-autumn";
+type CourseSystem = "e-series" | "aixuexi-autumn";
 type Track = "native-16x9" | "adapted-4x3";
 type Course = { catalogVersion: string; productCode: string; grade: number };
 type SourcePackage = { packageKey: string; packageVersion: string };
 type H5Evidence = { path: string; sha256: string };
 
 function binding(system: CourseSystem, track: Track, index: number, h5Evidence: H5Evidence) {
-  const h5 = system === "aixuexi-gplus-autumn" && track === "native-16x9" && index === 1;
+  const h5 = system === "aixuexi-autumn" && track === "native-16x9" && index === 1;
   const objectSha256 = hash(`${system}:${track}:${index}:object`);
   const adaptedBackground = system === "e-series" && track === "adapted-4x3";
   return {
@@ -116,7 +116,7 @@ function prepareFixtureRoot(temp: string) {
 
 function writeH5Manifest(temp: string): H5Evidence {
   const relativePath = "artifacts/h5-package.json";
-  const packageHash = hash("aixuexi-gplus-autumn:native-16x9:1:object");
+  const packageHash = hash("aixuexi-autumn:native-16x9:1:object");
   const manifest = {
     schemaVersion: "mathin-h5-manifest-v1",
     packageHash,
@@ -132,12 +132,17 @@ function writeH5Manifest(temp: string): H5Evidence {
 function buildFullEntries(h5Evidence: H5Evidence) {
   let index = 1;
   const aixuexi: Array<ReturnType<typeof lectureEntry>> = [];
-  const lectureNos = [1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 13, 14];
-  for (const grade of [3, 4, 5, 6]) {
-    const productCode = `AXX26G-SJ-0${grade}-AUT`;
-    const sourcePackage = { packageKey: `aixuexi-gplus-autumn-grade-${grade}`, packageVersion: "offline-export-2026-08-05" };
-    for (const lectureNo of lectureNos) {
-      aixuexi.push(lectureEntry("aixuexi-gplus-autumn", index++, { catalogVersion: "default", productCode, grade }, lectureNo, sourcePackage, h5Evidence));
+  const fullLectureNos = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+  const gapLectureNos = [1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 13, 14];
+  const courses = [
+    ...[3, 4, 5, 6].map((grade) => ({ productCode: `AXX26G-SJ-0${grade}-AUT`, grade, packageKey: "2026-gplus-sujiao-math", lectureNos: [3, 4].includes(grade) ? fullLectureNos : gapLectureNos })),
+    ...[1, 2, 3, 4, 5, 6].map((grade) => ({ productCode: `AXX26X-SJ-0${grade}-AUT`, grade, packageKey: "2026-xplus-sujiao-math", lectureNos: [1, 3, 4].includes(grade) ? fullLectureNos : gapLectureNos })),
+    ...[1, 2].map((grade) => ({ productCode: `AXX26A-QG-0${grade}-AUT`, grade, packageKey: "2026-aplus-quanguo-math", lectureNos: fullLectureNos })),
+  ];
+  for (const course of courses) {
+    const sourcePackage = { packageKey: course.packageKey, packageVersion: "projection-v31-2026-08-13" };
+    for (const lectureNo of course.lectureNos) {
+      aixuexi.push(lectureEntry("aixuexi-autumn", index++, { catalogVersion: "default", productCode: course.productCode, grade: course.grade }, lectureNo, sourcePackage, h5Evidence));
     }
   }
 
@@ -240,7 +245,7 @@ function writeFullFixture(temp: string) {
       exportedAt: "2026-08-12T00:00:00Z",
     },
     inventories: [
-      { courseSystem: "aixuexi-gplus-autumn", path: "artifacts/aixuexi.ndjson", sha256: textFileSha256(aixuexiPath) },
+      { courseSystem: "aixuexi-autumn", path: "artifacts/aixuexi.ndjson", sha256: textFileSha256(aixuexiPath) },
       {
         courseSystem: "e-series",
         path: "artifacts/e-series.ndjson",
@@ -253,11 +258,11 @@ function writeFullFixture(temp: string) {
       { bucket: "cw-objects", prefix: "sha256/", objectsManifestPath: "artifacts/cw-objects.ndjson", objectsManifestSha256: textFileSha256(objectAuditPath) },
     ],
     expected: {
-      courseCount: 94,
-      lectureCount: 1187,
-      nativeTrackCount: 1187,
-      adaptedTrackCount: 1187,
-      releaseCount: 2374,
+      courseCount: 102,
+      lectureCount: 1305,
+      nativeTrackCount: 1305,
+      adaptedTrackCount: 1305,
+      releaseCount: 2610,
       missingBindingCount: 0,
       missingResourceCount: 0,
       storageHashMismatchCount: 0,
@@ -309,10 +314,10 @@ describe("R1-9 P6 courseware source manifest", () => {
     expect(first).toEqual(second);
     expect(first.planHash).toMatch(/^[0-9a-f]{64}$/);
     expect(first.actual).toMatchObject({ courseCount: 2, lectureCount: 2, nativeTrackCount: 2, adaptedTrackCount: 2, releaseCount: 4 });
-    expect(first.expected).toMatchObject({ courseCount: 94, lectureCount: 1187, releaseCount: 2374 });
+    expect(first.expected).toMatchObject({ courseCount: 102, lectureCount: 1305, releaseCount: 2610 });
     expect(first.blockers).toEqual([
       "example-manifest",
-      "incomplete-inventory:aixuexi-gplus-autumn",
+      "incomplete-inventory:aixuexi-autumn",
       "incomplete-inventory:e-series",
     ]);
     expect(first.p6SourceManifestReady).toBe(false);
@@ -338,7 +343,7 @@ describe("R1-9 P6 courseware source manifest", () => {
     expect(migration).toMatch(/'learningCheckEnabled',\s*rows\.learning_check_enabled/);
   });
 
-  it("accepts the exact 90+4 course, 1135+52 lecture, two-track, 2374 release-1 target", () => {
+  it("accepts the exact 90+12 course, 1135+170 lecture, two-track, 2610 release-1 target", () => {
     const temp = fs.mkdtempSync(path.join(os.tmpdir(), "mathin-r1-courseware-source-"));
     try {
       const fixture = writeFullFixture(temp);
@@ -350,10 +355,10 @@ describe("R1-9 P6 courseware source manifest", () => {
       expect(first.stageClosureAllowed).toBe(false);
       expect(first.actual).toEqual(first.expected);
       expect(first.courseSystems).toEqual([
-        expect.objectContaining({ key: "aixuexi-gplus-autumn", courseCount: 4, lectureCount: 52, releaseCount: 104 }),
+        expect.objectContaining({ key: "aixuexi-autumn", courseCount: 12, lectureCount: 170, releaseCount: 340 }),
         expect.objectContaining({ key: "e-series", courseCount: 90, lectureCount: 1135, releaseCount: 2270 }),
       ]);
-      expect(first.releaseTarget).toEqual({ releaseNo: 1, note: "production-v1.0-baseline", count: 2374, legacyNativeHeadCount: 1187 });
+      expect(first.releaseTarget).toEqual({ releaseNo: 1, note: "production-v1.0-baseline", count: 2610, legacyNativeHeadCount: 1305 });
 
       const objectRows = fs.readFileSync(fixture.paths.objectAuditPath, "utf8").trim().split("\n").map((line) => JSON.parse(line));
       objectRows[0].byteCount += 1;
@@ -528,11 +533,11 @@ describe("R1-9 P6 courseware source manifest", () => {
     expect(schema.properties.networkAllowed.const).toBe(false);
     expect(schema.properties.databaseConnectionAllowed.const).toBe(false);
     expect(schema.properties.expected.properties).toMatchObject({
-      courseCount: { const: 94 },
-      lectureCount: { const: 1187 },
-      nativeTrackCount: { const: 1187 },
-      adaptedTrackCount: { const: 1187 },
-      releaseCount: { const: 2374 },
+      courseCount: { const: 102 },
+      lectureCount: { const: 1305 },
+      nativeTrackCount: { const: 1305 },
+      adaptedTrackCount: { const: 1305 },
+      releaseCount: { const: 2610 },
     });
     expect(source).not.toMatch(/from ["']node:(?:http|https|net|tls|child_process)["']/);
     expect(source).not.toContain("fetch(");

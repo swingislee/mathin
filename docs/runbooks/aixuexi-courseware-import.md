@@ -1,86 +1,92 @@
-# 爱学习 G+ 秋季课程导入
+# 爱学习 projection v31 多难度课程导入
 
 ## 1. 固定范围
 
-当前适配只接受本地离线包 `2026-gplus-sujiao-math`：2026 年、苏教版数学、G+、秋季、三至六年级。每个年级存在第 1～6、8～14 讲，共 13 讲；第 7、15 讲是来源包的明确缺口。不得补造一二年级、其他季节、其他难度或缺失讲次。
+默认来源仓库是 Mathin 同级目录 `../2026-07_mofaxiao_courseware`。构建器只读该仓库，产物写入 Mathin 的 `.tmp/aixuexi-import/<package-key>`。
 
-默认来源仓库为 Mathin 同级目录 `../2026-07_mofaxiao_courseware`，来源包位于 `exports/packages/2026-gplus-sujiao-math`。导入过程只读来源仓库；构建产物写入 Mathin 的 `.tmp/aixuexi-import/2026-gplus-sujiao-math`。
+| package key | 难度/版本 | 年级 | 课程 | 讲次 | 页面 | 来源显式第 7/15 讲占位 |
+| --- | --- | --- | ---: | ---: | ---: | ---: |
+| `2026-gplus-sujiao-math` | G+ / 苏教版 | 3～6 | 4 | 56 | 1641 | 三、四年级共 4 讲 |
+| `2026-xplus-sujiao-math` | X+ / 苏教版 | 1～6 | 6 | 84 | 2767 | 一、三、四年级共 6 讲 |
+| `2026-aplus-quanguo-math` | A+ / 全国版 | 1～2 | 2 | 30 | 1034 | 一、二年级共 4 讲 |
+| 合计 |  |  | 12 | 170 | 5442 | 14 讲 |
 
-## 2. 接口边界
+来源没有提供的第 7/15 讲保持缺失。只有 catalog 中真实存在且逐讲 `offline-verification=complete` 的占位会被导入；不得生成空讲次或伪页面。
 
-爱学习页面不转换成 E 系列 `page-doc-v1`。构建器把来源资源 ID 转为 Mathin binding key，并以独立的 `aixuexi-page-doc-v1` / `aixuexi-page-v1` 保存布局、题目、ITV 与离线 H5 语义。课程族、课程、讲次、CAS、revision、release、双轨 head 和课次冻结继续复用 P6 数据层。
+## 2. 页面与 4:3 合同
 
-**内容母版是 1200×900，正好 4:3**；来源包同时给出源播放器把母版 contain 进 16:9 画框的规则（`presentation`：缩 0.75、左右各留 150）。因此两轨关系与 E 系列相反：`adapted-4x3` 是母版 1:1 铺满、**没有板书带**（板书带是 E 系列 16:9 内容进 4:3 的补偿）；`native-16x9` 才是缩放居中的那一轨。两轨共用同一条不可变页面 revision，差别只在渲染换算。详见 `docs/plan/16-p6-courseware-platform.md` §12。
+爱学习页面保存为 projection v31 的 `aixuexi-page-doc-v1`，不转换成 E 系列 `page-doc-v1`。课程族、课程、讲次、CAS、revision/release、双轨 head 和课次冻结继续复用 P6 数据层。
+
+普通源母版是 1200×900。源播放器则用 1920×1080 外层承载背景和 `slideClass`，把 1200×900 内层居中并放大 1.2 倍，再以 0.625 呈现为 1200×675。分类器按页面结构选择 4:3 策略：
+
+| 模式 | 判定 | adapted 4:3 |
+| --- | --- | --- |
+| `source-master` | 1200×900 且没有源动画、embedded H5 或 1920×1080 原生游戏 | 直接铺满 1200×900；共 5020 页 |
+| `source-player-compat` | 有动画、embedded H5，或画布/原生游戏为 1920×1080 | 保持源 1200×675 交互比例置于上部，底部 225 逻辑像素为课堂兼容区；共 422 页 |
+
+422 页来自 X+ 381 页和 A+ 41 页；G+ 1641 页全部直接复用。分类不得编码成 package、年级、讲次或页面白名单。
+
+运行时必须消费来源包的 `slide-runtime.css`、captured player 图片模块、完整 transform/transform-origin、动画 step/group/effect/phase/duration/delay、embedded H5、TrueOrFalse 和 TopicClassification。旧手工小图放大、xmind 偏移和近似游戏实现不得恢复。
 
 ## 3. 前置条件
 
-1. 从 `.env.example` 配置本地 `.env.local`，只在运行环境保存 Supabase URL 与 secret key。
-2. 开发库已应用并登记 `20260803000200_p6_aixuexi_course_system.sql`。迁移 checksum 必须使用 `scripts/lib/text-hash.mjs` 的标准化文本摘要。
-3. 来源包的 `site/manifest.json`、catalog、layout projection（**projectionVersion 11**）与 offline verification 均存在，且 verification 中 remote/missing/fatal 都为 0。`catalog.status` 的 `partial` 是目录快照的年级覆盖状态，不是讲次缺陷，准入以每讲 offline-verification 为准。
-4. `courses`（4 门 `AXX26G-SJ-0{3,4,5,6}-AUT`）与 `course_lectures`（52 讲）必须已存在——导入器按 `product_code + no` 定位，不会自建。
-5. 不得在本流程中执行 R1-15/R1-18 的生产数据清理或 release 重建。
+1. `.env.local` 指向开发 Supabase，并具备导入所需 server key；凭据不得写入日志或仓库。
+2. 开发库已应用并登记 `20260813000500_p6_aixuexi_v31_levels.sql`；课程 roster 必须精确为 G+/X+/A+ 的 4/6/2 门和 56/84/30 讲。
+3. 三包的 `site/manifest.json`、catalog、projection v31、slide/player runtime 和逐讲 offline verification 都存在，且 remote/missing/fatal 为 0。
+4. 本流程只允许开发库导入。R1-15/R1-18 的生产清理与 release-1 重建需要独立授权。
 
 ## 4. 构建与预检
 
-```powershell
-pnpm cw:aixuexi:build
-pnpm cw:aixuexi:import -- --dry-run
-```
-
-构建预期为 52 讲、1525 页、4934 bindings、815 个 CAS 对象、58 个 H5 包（2471 个包内文件）。`--metadata-only` 可验证合同而不复制约 294 MB 的 H5 文件：
+每个 package 分别执行：
 
 ```powershell
-pnpm cw:aixuexi:build -- --metadata-only
+pnpm cw:aixuexi:build -- --package-key 2026-gplus-sujiao-math
+pnpm cw:aixuexi:build -- --package-key 2026-xplus-sujiao-math
+pnpm cw:aixuexi:build -- --package-key 2026-aplus-quanguo-math
+
+pnpm cw:aixuexi:import -- --package-key 2026-gplus-sujiao-math --dry-run
+pnpm cw:aixuexi:import -- --package-key 2026-xplus-sujiao-math --dry-run
+pnpm cw:aixuexi:import -- --package-key 2026-aplus-quanguo-math --dry-run
 ```
 
-构建器遇到范围漂移、来源不完整、外部 URL、缺失资源、hash/字节数不符或不安全标记时必须非零退出，不允许带警告继续写库。
+只校验合同而不复制 H5 文件时，在 build 命令末尾加 `--metadata-only`。当前完整构建结果：
 
-## 5. 分批导入
+| package | 讲次/页面 | usages | CAS 对象 | H5 包/包内文件 |
+| --- | ---: | ---: | ---: | ---: |
+| G+ | 56/1641 | 6981 | 838 | 59/2484 |
+| X+ | 84/2767 | 14889 | 2424 | 70/3021 |
+| A+ | 30/1034 | 5671 | 1335 | 87/4864 |
+
+范围漂移、projection 版本错误、离线验证不完整、外部 URL、缺失资源、hash/字节数不符或不安全标记都必须非零退出。
+
+## 5. 导入与幂等重跑
 
 ```powershell
-pnpm cw:aixuexi:import -- --start-at 1 --limit 10
-pnpm cw:aixuexi:import -- --start-at 11 --limit 10
-pnpm cw:aixuexi:import -- --start-at 21 --limit 10
-pnpm cw:aixuexi:import -- --start-at 31 --limit 10
-pnpm cw:aixuexi:import -- --start-at 41 --limit 12
+pnpm cw:aixuexi:import -- --package-key 2026-gplus-sujiao-math
+pnpm cw:aixuexi:import -- --package-key 2026-xplus-sujiao-math
+pnpm cw:aixuexi:import -- --package-key 2026-aplus-quanguo-math
 ```
 
-`--start-at` 按 `lectures.ndjson` 的稳定顺序计数，不是讲次编号。每讲先上传内容寻址对象，再在单个数据库事务中写来源映射、页面、revision、两轨 binding、两轨 release 和 head。中断后从失败项重跑；已存在对象和数据库行必须报告为 existing/零新增，`conflicts` 与 `baselineDrift` 必须为 0。
+可追加 `--start-at <1-based-index> --limit <count>` 分批运行；索引按 `lectures.ndjson` 稳定顺序，不是讲号。每讲先上传内容寻址对象，再用单个数据库事务写来源映射、页面、revision、两轨 binding/release/head。中断后从失败项重跑；`conflicts`、`baselineDrift` 必须为 0，已存在对象和行只报告 existing。
 
-## 6. 验收
+## 6. 重导入安全边界
+
+来源语义或 projection 版本变化时，旧文档不会被覆盖。先只读确认以下外部引用均为 0：annotations、replacement items/batches、lesson notes、solution records、learning checks、preparations、review cycles、派生背景和外部 asset binding。
+
+随后在单事务内清除旧爱学习 page data、两轨 release/head 和 source mapping，保留 `courses`、`course_lectures` 以及内容寻址的 CAS/Storage 对象和元数据。事务内再次断言外部引用；任一非 0 整笔回滚。开发库本轮先完成了 1525 页旧 G+ 数据的回滚试验，再提交清理；没有执行生产清理。
+
+## 7. 验收
 
 ```powershell
 pnpm exec vitest run tests/aixuexi-courseware.test.ts tests/cw-import.test.ts tests/cw-h5-shim.test.ts
+pnpm typecheck
 pnpm lint
 pnpm messages:check
-$env:SUPABASE_META_SSH='xiaomi'; pnpm db:types:check
 pnpm build
 ```
 
-开发库预期：1 个课程族、4 个年级课程、52 讲、1525 页，页面文档全部为 `1200x900 / projectionVersion 11`；`native-16x9` 与 `adapted-4x3` 各 52 个 release 和 4934 个 binding；104 个讲次轨道 head、3050 个页面轨道 head；58 个 `offline` 题目互动页 + 1 个 `capture_required`、10 个 ITV 页、55 个 ITV 事件。
+开发库必须精确满足：3 个 imported source package、12 门课程、170 讲、5442 页且全部 projection v31；两轨各 170 release/head、5442 页面 head、27541 binding；8 个原生游戏、9 个 embedded H5；runtime binding 缺失=0；重复导入零新增/零 drift。
 
-浏览器抽查（Studio，两轨各一遍）须确认：4:3 轨画框比例 4/3、舞台声明 1200×900 且 `translate(0,0)`、**无板书带**；16:9 轨画框比例 16/9、缩放为 `fit×0.75`、水平位移 `150×fit`（xmind 页另有 `offsetY×fit`）；背景 1920×1080 且 `object-fit: cover`。行为面抽查折叠开关（点击 `display` 由 none→block 且 `aria-expanded=true`）、分步揭示逐次显形、分栏滚动区、a44 形状字号收敛、内联小图 2 倍、题目 H5 iframe 未放开 `allow-same-origin`、ITV 播放器就绪与选项三态素材换图。
+浏览器至少抽查：G+ `source-master` 4:3；A+ 动画兼容页逐步揭示；X+ embedded H5 的 opaque-origin sandbox；TrueOrFalse 和 TopicClassification 的源样式与交互；显式第 7/15 讲占位；zh/en Studio 标签。H5 不得添加 `allow-same-origin`，原生游戏 shadow root 必须可在 React Strict Mode 重挂载。
 
-### 6.1 重导入（来源包语义变更时）
-
-来源包的画布/投影语义变更时不能只重跑导入——旧文档不会被覆盖（导入按稳定键 upsert-if-absent）。须先确认零外部引用（`courseware_annotations`、`cw_replacement_items`、`lesson_page_notes`、`solution_records`、`session_learning_checks`、`session_preparations`、`cw_review_cycles` 全为 0，且 shared asset 未与 E 系列共享），再在**单个事务**内按序清理，事务内二次断言任一外部引用不为 0 即整笔回滚：
-
-```text
-course_lectures.current_release_id 置空
-→ cw_lecture_track_heads / cw_lecture_releases / cw_lecture_workflows
-→ cw_page_asset_bindings → cw_page_docs（级联 revisions/track heads）
-→ cw_asset_variant_heads → cw_shared_assets.{published,draft}_revision_id 置空
-→ cw_asset_revisions → cw_shared_assets → 无引用的 cw_asset_objects
-→ cw_source_lectures → cw_source_packages
-```
-
-`courses` 与 `course_lectures` 保留。Storage 里的内容寻址对象不删：它们按 SHA-256 去重，重新导入会命中已有对象并报告为 existing。
-
-## 7. 故障处理
-
-- H5 文件名含中文、冒号或百分号时，逻辑路径保持原名，Storage 物理 key 由 `h5StoragePath` 投影；禁止手工重命名包内引用。
-- H5 HTML 保持 opaque-origin sandbox。入口页带 `X-Frame-Options: SAMEORIGIN`，二级 HTML 依靠响应级 CSP sandbox；不得添加 `allow-same-origin`。
-- H5 子资源经 Mathin 同源代理读取。代理不得转发上游压缩态 `Content-Length`，否则解压后的脚本会被浏览器截断；Range 请求必须保留 `Content-Range`/`Accept-Ranges`。
-- 来源内容更新时重新构建并比较 package/source hash。既有非 import revision 受保护；不得覆盖人工编辑，也不得通过清库绕过 drift。
-
-R1 支持证据见 `docs/evidence/r1/r1-9-aixuexi-courseware.md`。
+支持证据见 [R1-9 爱学习 v31 证据](../evidence/r1/r1-9-aixuexi-courseware.md)。

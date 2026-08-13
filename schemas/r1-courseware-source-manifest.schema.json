@@ -71,11 +71,11 @@
         "storageHashMismatchCount"
       ],
       "properties": {
-        "courseCount": { "const": 94 },
-        "lectureCount": { "const": 1187 },
-        "nativeTrackCount": { "const": 1187 },
-        "adaptedTrackCount": { "const": 1187 },
-        "releaseCount": { "const": 2374 },
+        "courseCount": { "const": 102 },
+        "lectureCount": { "const": 1305 },
+        "nativeTrackCount": { "const": 1305 },
+        "adaptedTrackCount": { "const": 1305 },
+        "releaseCount": { "const": 2610 },
         "missingBindingCount": { "const": 0 },
         "missingResourceCount": { "const": 0 },
         "storageHashMismatchCount": { "const": 0 }
@@ -111,7 +111,7 @@
     "aixuexiInventory": {
       "allOf": [
         { "$ref": "#/$defs/inventoryBase" },
-        { "properties": { "courseSystem": { "const": "aixuexi-gplus-autumn" } } }
+        { "properties": { "courseSystem": { "const": "aixuexi-autumn" } } }
       ]
     },
     "eSeriesInventory": {
@@ -167,7 +167,7 @@
       "additionalProperties": false,
       "required": ["courseSystem", "course", "lecture", "source", "tracks"],
       "properties": {
-        "courseSystem": { "enum": ["e-series", "aixuexi-gplus-autumn"] },
+        "courseSystem": { "enum": ["e-series", "aixuexi-autumn"] },
         "course": {
           "type": "object",
           "additionalProperties": false,

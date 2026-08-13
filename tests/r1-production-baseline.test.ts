@@ -15,12 +15,12 @@ const readJson = (file: string) => JSON.parse(fs.readFileSync(path.join(root, fi
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value));
 
 const expectedCounts = {
-  courseCount: 94,
-  lectureCount: 1187,
-  nativeHeadCount: 1187,
-  adaptedHeadCount: 1187,
-  releaseCount: 2374,
-  legacyCurrentReleaseCount: 1187,
+  courseCount: 102,
+  lectureCount: 1305,
+  nativeHeadCount: 1305,
+  adaptedHeadCount: 1305,
+  releaseCount: 2610,
+  legacyCurrentReleaseCount: 1305,
   releaseNoGreaterThanOneCount: 0,
 };
 
@@ -53,7 +53,7 @@ function resultFor(
 }
 
 describe("R1-15 production baseline read-only planner", () => {
-  it("builds the same plan and plan hash for the same explicit 1187-lecture input", () => {
+  it("builds the same plan and plan hash for the same explicit 1305-lecture input", () => {
     const firstContext = loadProductionBaselineContext({ root, manifestPath });
     const secondContext = loadProductionBaselineContext({ root, manifestPath });
     const first = buildProductionBaselinePlan(firstContext);
@@ -73,7 +73,7 @@ describe("R1-15 production baseline read-only planner", () => {
     expect(first.baseline.expected).toEqual(expectedCounts);
     expect(first.baseline.courseSystems).toEqual(expect.arrayContaining([
       expect.objectContaining({ key: "e-series", courseCount: 90, lectureCount: 1135, releaseCount: 2270 }),
-      expect.objectContaining({ key: "aixuexi-gplus-autumn", courseCount: 4, lectureCount: 52, releaseCount: 104 }),
+      expect.objectContaining({ key: "aixuexi-autumn", courseCount: 12, lectureCount: 170, releaseCount: 340 }),
     ]));
     expect(JSON.stringify(first)).not.toContain("example-e-0001");
     expect(JSON.stringify(first)).not.toContain("manifestPath");
@@ -143,8 +143,8 @@ describe("R1-15 production baseline read-only planner", () => {
   it("accepts one post-apply inventory and only an identical zero-difference second run", () => {
     const context = loadProductionBaselineContext({ root, manifestPath });
     const postApply = resultFor(context, "post_apply", {
-      inserted: 2374,
-      updated: 2374,
+      inserted: 2610,
+      updated: 2610,
       deleted: 19,
       hashDifferences: 0,
     });
@@ -172,7 +172,7 @@ describe("R1-15 production baseline read-only planner", () => {
 
     const wrongCount = clone(postApply);
     wrongCount.counts.releaseCount = 1834;
-    expect(() => validateProductionBaselineResult(context, wrongCount)).toThrow(/releaseCount must be 2374/);
+    expect(() => validateProductionBaselineResult(context, wrongCount)).toThrow(/releaseCount must be 2610/);
 
     const postApplyHashDrift = clone(postApply);
     postApplyHashDrift.changes.hashDifferences = 1;
@@ -186,9 +186,9 @@ describe("R1-15 production baseline read-only planner", () => {
     expect(schema.properties.target.properties.environment.const).toBe("isolated-production-snapshot");
     expect(schema.properties.writesAllowed.const).toBe(false);
     expect(schema.properties.expected.properties).toMatchObject({
-      courseCount: { const: 94 },
-      lectureCount: { const: 1187 },
-      releaseCount: { const: 2374 },
+      courseCount: { const: 102 },
+      lectureCount: { const: 1305 },
+      releaseCount: { const: 2610 },
     });
     expect(source).not.toMatch(/from ["']node:(?:http|https|net|tls|child_process)["']/);
     expect(source).not.toContain("fetch(");

@@ -113,9 +113,9 @@ const requiredProductTerms = [
   "Notebook",
   "90",
   "1135",
-  "52",
-  "1187",
-  "2374",
+  "170",
+  "1305",
+  "2610",
   "release_no=1",
   "唯一生产管理员",
   "work_items",
@@ -154,12 +154,12 @@ if (existsSync(productionBaselineSchemaPath)) {
     fail("R1-15 生产基线 manifest 只能接受 isolated-production-snapshot 目标");
   }
   for (const [name, expected] of Object.entries({
-    courseCount: 94,
-    lectureCount: 1187,
-    nativeHeadCount: 1187,
-    adaptedHeadCount: 1187,
-    releaseCount: 2374,
-    legacyCurrentReleaseCount: 1187,
+    courseCount: 102,
+    lectureCount: 1305,
+    nativeHeadCount: 1305,
+    adaptedHeadCount: 1305,
+    releaseCount: 2610,
+    legacyCurrentReleaseCount: 1305,
     releaseNoGreaterThanOneCount: 0,
   })) {
     if (counts[name]?.const !== expected) fail(`R1-15 生产基线 schema 的 ${name} 应为 ${expected}`);

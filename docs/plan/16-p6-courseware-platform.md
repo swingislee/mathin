@@ -4,11 +4,11 @@
 >
 > **当前用途**：E 系列与爱学习 G+/X+/A+ 秋季课程研发、16:9/4:3 双轨资源与 release 契约。
 >
-> **已落地**：P6-1～P6-8 主体与 P6-10；开发数据已有 E 系列 1135 讲与旧爱学习 G+ 秋季 52 讲双轨资源，P6-5 有课堂集成证据。旧爱学习双轨语义与 4:3 母版归位见 §12（2026-08-05 重导入）。
+> **已落地**：P6-1～P6-8 主体与 P6-10；开发数据已有 E 系列 1135 讲与爱学习 G+/X+/A+ 秋季 170 讲双轨资源，P6-5 有课堂集成证据。旧 v11 导入仅作为 §12 历史记录，projection v31 的现行合同与证据见 §13。
 >
-> **当前施工**：P6-AIX-2 消费 G+/X+/A+ projection v31 三包，移除手工放大逻辑，接入源 CSS/player/动画/H5/原生游戏，并按结构能力重建 4:3 双轨；见 §13。
+> **当前施工**：P6-AIX-2 已于 2026-08-13 关闭；当前由 R1-9/P6-9 采集 1305 讲正式来源 inventory、Storage/H5 对象审计与非执行者复核。
 >
-> **剩余项**：P6-AIX-2 开发库重导入与浏览器证据；P6-9 全局量化验收和正式生产 release-1 重建见 doc 25 R1-9/15/18。
+> **剩余项**：P6-9 全局量化验收和正式生产 release-1 重建见 doc 25 R1-9/15/18；本阶段未授权任何生产清理。
 >
 > **最后核对**：2026-08-13。
 
@@ -395,7 +395,7 @@ F 类按页面节点的结构特征判定，与页码无关：任意讲次中，
 - **P6-7 教研中台第一期（✅ 2026-07-19 实现与数据库验收完成）**（mathin）：§7.2 全部第一期能力。教研编辑页支持节点属性实时预览、结构化 JSON、新增元素、页排序/插入/复制/软删除、页修订预览与前向回退、整讲发布与回滚；图片仅本页替换会新建 shared asset 分支，并在服务端完成格式、解码、尺寸与 hash 校验。**同日双轨补强完成**：16:9/4:3 各自维护页头、讲 release、binding 与资源 variant；编辑器可切轨并在本页直接做轨内批量背景替换；班级可设默认轨、单讲可覆盖，开课冻结选择结果。`p6_courseware_tracks_assertions.sql` 实证双轨 release/资源隔离、班级/单讲优先级与冻结后不可切换；既有 studio/security/replacement 断言复跑通过。
 - **P6-8 公共资源批量替换（✅ 2026-07-19 实现与数据库验收完成；2026-07-23 双轨补强）**（mathin）：`cw_replacement_uploads` 两阶段 staging（服务端图片格式/尺寸/hash 门禁 → 不可变 CAS）+ `cw_replacement_batches` / `cw_replacement_items` 审计；资源库提供服务端筛选/分页、图片详情使用树（课程→讲→页）、固定 revision 与冻结课次标记、上传新图对比确认、全量推 published 指针 / 部分新建 semantic branch 批量重绑及冲突安全的一键回滚。**公共资源库同样必须显式切换 16:9 原生版 / 4:3 稳定版：筛选计数、使用树、当前 variant、替换批次与回滚全部带 track；4:3 操作只能改 4:3 variant/binding，绝不推进 16:9 指针（反之亦然）。**`p6_courseware_replacement_assertions.sql` 在事务中实证：学生不能读取/写入；同一背景跨 3 讲的部分替换只改选中两讲、全量替换不重写 binding 且仅推进一个指针；两类批次审计完整且都可回滚。已发布 release 和已冻结课次仍 pin 到原 revision，需在受影响讲次另发 release 才生效。
 - **P6-9 全量迁移与总验收**(两仓)：全量包导入（分年级分批，每批对账）；随机抽样 ≥60 页视觉比对（顶置模式下）；性能检查（页 doc 加载、Storage 出流、批签 action 延迟）；roadmap/memory 收尾。**不依赖 P6-6 完成**——全量以 16:9 顶置形态验收，4:3 增强按 §6.4 节奏后续推进。数据导入可在 doc 18 P4H-3 完成后执行；“865 讲可浏览”的 UI 总验收等待 P4H-5/6，统一从课程产品教学计划和 canonical workbench 进入，不再扩写旧 `/courseware/[courseId]/...` 目录。验收：865 讲全部可经新入口浏览、可开课；对账零 silent missing。
-- **P6-9 爱学习补充（✅ 2026-08-05 按 4:3 母版重导入；R1-9 总门仍未关闭）**：本地最新安全范围为 `aixuexi_bsk / 2026-gplus-sujiao-math`，只含苏教版数学 G+ 秋季三至六年级，每年级 13 讲；来源明确缺第 7、15 讲，不补造一二年级、其他季节或其他难度。接口裁决为“复用 P6 版本/发布基础设施 + 独立文档适配层”：页面保存为 `aixuexi-page-doc-v1`，不强转 E 系列 `page-doc-v1`；布局、答案/解析、ITV 和离线题目 H5 由专用 React runtime 消费，Studio 以只读来源页呈现，更新通过重新校验来源包。开发库现有 1 个课程族、4 个课程、52 讲、1525 页、4934 bindings/轨；native 16:9 与 adapted 4:3 各 52 条 release。58 个题目 H5 页（另 1 页为来源 HAR 未捕获的 `capture_required` 缺口）、10 个 ITV 页/55 个事件已进入 CAS/离线包。**首批（2026-08-03）的画布语义有误，已于 2026-08-05 清库重导入**，详见 §12。运行手册与支持证据见 [`docs/runbooks/aixuexi-courseware-import.md`](../runbooks/aixuexi-courseware-import.md) 和 [`docs/evidence/r1/r1-9-aixuexi-courseware.md`](../evidence/r1/r1-9-aixuexi-courseware.md)。
+- **P6-9 爱学习历史补充（✅ 2026-08-05 v11 重导入；已由 §13 v31 取代）**：该记录只解释旧 G+ 52 讲/1525 页的画布语义和当时修复，不再定义现行范围或运行时。现行 G+/X+/A+ 170 讲合同、导入手册和证据分别见 §13、[`docs/runbooks/aixuexi-courseware-import.md`](../runbooks/aixuexi-courseware-import.md) 与 [`docs/evidence/r1/r1-9-aixuexi-courseware.md`](../evidence/r1/r1-9-aixuexi-courseware.md)。
 
 排序理由：垂直切片优先——P6-1→P6-5 用同一条样本讲打穿「导出→导入→渲染→上课」，任何格式/存储问题在 1 讲规模暴露，而不是 55,110 页返工；**P6-1（镜像仓）与 P6-2（mathin 数据层）无相互依赖，可并行推进**；4:3 增强轨（P6-6）与中台（P6-7）都依赖渲染器与版本层，且互不阻塞可并行；全量导入放最后，因为幂等 CLI 让「早导入」没有收益、只有返工风险。
 
@@ -570,7 +570,8 @@ sanitize 白名单按“移植过来的规则实际选择到的标签/属性”�
 
 ### 13.4 阶段退出证据
 
-- 三包构建器对 package key、课程/页面计数、年级/难度/版本、逐讲离线状态和 v31 文档做 fail-closed 校验。
-- 开发库精确拥有 3 个 source package、12 门爱学习课程、170 个 source lecture、5442 页；双轨各 170 个 release/head，并对每轨 binding、CAS、H5 做集合对账。
-- 构建与重导入 `baselineDrift=0`、`binding conflicts=0`；同一讲重跑只返回 existing，不新增 revision/release。
-- 浏览器至少覆盖普通 G+ 页、X+ 一年级动画页、embedded H5、两类原生游戏、A+ 动画/H5、显式第 7/15 讲占位，并分别核对 native 16:9 与 adapted 4:3。
+- **已通过**：三包构建器对 package key、课程/页面计数、年级/难度/版本、逐讲离线状态和 v31 文档做 fail-closed 校验。
+- **已通过**：开发库精确拥有 3 个 source package、12 门爱学习课程、170 个 source lecture、5442 页；双轨各 170 个 release/head、5442 个页面 head 和 27541 个 binding。5020 页为 `source-master`，422 页为 `source-player-compat`。
+- **已通过**：构建与重导入 `baselineDrift=0`、`binding conflicts=0`；X+ 首讲重跑只返回 existing，不新增对象、revision 或 release。
+- **已通过**：浏览器覆盖普通 G+ 4:3、A+ 动画、X+ embedded H5、TrueOrFalse、TopicClassification、A+ 显式第 7 讲占位和 `/en` Studio；源运行时错误为 0。
+- **范围裁决**：G+/X+/A+ 170 讲及来源明确提供的 14 个第 7/15 讲复习占位进入 1.0；未提供的讲次继续缺失。正式总基线变为 1305 讲/2610 条 release-1，执行仍受 R1-9/15/18 约束。

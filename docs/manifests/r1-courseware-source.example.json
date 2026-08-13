@@ -10,14 +10,14 @@
     "environment": "offline-read-only-export",
     "readOnly": true,
     "databaseFingerprint": "e28feb1f2007167befaabe272ac9e6f44acae6cb9d3f979c47005f069aa14ccd",
-    "migrationHead": "20260812000100_r1_notebook_interaction_privacy",
-    "exportedAt": "2026-08-12T00:00:00Z"
+    "migrationHead": "20260813000500_p6_aixuexi_v31_levels",
+    "exportedAt": "2026-08-13T00:00:00Z"
   },
   "inventories": [
     {
-      "courseSystem": "aixuexi-gplus-autumn",
+      "courseSystem": "aixuexi-autumn",
       "path": "docs/manifests/r1-courseware-aixuexi.example.ndjson",
-      "sha256": "9fa660e536d05bed689f482db89debe6a844e202679de55dcb811b49e9bccd45"
+      "sha256": "d4c4ec2c1875d1149ec3c6f08373761af35110ae1327a1cdc7aee0db1dbdb731"
     },
     {
       "courseSystem": "e-series",
@@ -44,11 +44,11 @@
     }
   ],
   "expected": {
-    "courseCount": 94,
-    "lectureCount": 1187,
-    "nativeTrackCount": 1187,
-    "adaptedTrackCount": 1187,
-    "releaseCount": 2374,
+    "courseCount": 102,
+    "lectureCount": 1305,
+    "nativeTrackCount": 1305,
+    "adaptedTrackCount": 1305,
+    "releaseCount": 2610,
     "missingBindingCount": 0,
     "missingResourceCount": 0,
     "storageHashMismatchCount": 0

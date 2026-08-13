@@ -31,20 +31,29 @@ const E_SERIES_PACKAGES = Object.freeze({
   },
 });
 
+const AIXUEXI_FULL_LECTURE_NOS = Object.freeze([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+const AIXUEXI_GAP_LECTURE_NOS = Object.freeze([1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 13, 14]);
 const AIXUEXI_PRODUCTS = new Map([
-  ["AXX26G-SJ-03-AUT", 3],
-  ["AXX26G-SJ-04-AUT", 4],
-  ["AXX26G-SJ-05-AUT", 5],
-  ["AXX26G-SJ-06-AUT", 6],
+  ["AXX26G-SJ-03-AUT", { grade: 3, packageKey: "2026-gplus-sujiao-math", lectureNos: AIXUEXI_FULL_LECTURE_NOS }],
+  ["AXX26G-SJ-04-AUT", { grade: 4, packageKey: "2026-gplus-sujiao-math", lectureNos: AIXUEXI_FULL_LECTURE_NOS }],
+  ["AXX26G-SJ-05-AUT", { grade: 5, packageKey: "2026-gplus-sujiao-math", lectureNos: AIXUEXI_GAP_LECTURE_NOS }],
+  ["AXX26G-SJ-06-AUT", { grade: 6, packageKey: "2026-gplus-sujiao-math", lectureNos: AIXUEXI_GAP_LECTURE_NOS }],
+  ["AXX26X-SJ-01-AUT", { grade: 1, packageKey: "2026-xplus-sujiao-math", lectureNos: AIXUEXI_FULL_LECTURE_NOS }],
+  ["AXX26X-SJ-02-AUT", { grade: 2, packageKey: "2026-xplus-sujiao-math", lectureNos: AIXUEXI_GAP_LECTURE_NOS }],
+  ["AXX26X-SJ-03-AUT", { grade: 3, packageKey: "2026-xplus-sujiao-math", lectureNos: AIXUEXI_FULL_LECTURE_NOS }],
+  ["AXX26X-SJ-04-AUT", { grade: 4, packageKey: "2026-xplus-sujiao-math", lectureNos: AIXUEXI_FULL_LECTURE_NOS }],
+  ["AXX26X-SJ-05-AUT", { grade: 5, packageKey: "2026-xplus-sujiao-math", lectureNos: AIXUEXI_GAP_LECTURE_NOS }],
+  ["AXX26X-SJ-06-AUT", { grade: 6, packageKey: "2026-xplus-sujiao-math", lectureNos: AIXUEXI_GAP_LECTURE_NOS }],
+  ["AXX26A-QG-01-AUT", { grade: 1, packageKey: "2026-aplus-quanguo-math", lectureNos: AIXUEXI_FULL_LECTURE_NOS }],
+  ["AXX26A-QG-02-AUT", { grade: 2, packageKey: "2026-aplus-quanguo-math", lectureNos: AIXUEXI_FULL_LECTURE_NOS }],
 ]);
-const AIXUEXI_LECTURE_NOS = [1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 13, 14];
 
 const SYSTEM_SPECS = new Map([
-  ["aixuexi-gplus-autumn", {
-    courseCount: 4,
-    lectureCount: 52,
-    releaseCount: 104,
-    versions: { default: { courseCount: 4, lectureCount: 52 } },
+  ["aixuexi-autumn", {
+    courseCount: 12,
+    lectureCount: 170,
+    releaseCount: 340,
+    versions: { default: { courseCount: 12, lectureCount: 170 } },
   }],
   ["e-series", {
     courseCount: 90,
@@ -58,11 +67,11 @@ const SYSTEM_SPECS = new Map([
 ]);
 
 const EXPECTED = Object.freeze({
-  courseCount: 94,
-  lectureCount: 1187,
-  nativeTrackCount: 1187,
-  adaptedTrackCount: 1187,
-  releaseCount: 2374,
+  courseCount: 102,
+  lectureCount: 1305,
+  nativeTrackCount: 1305,
+  adaptedTrackCount: 1305,
+  releaseCount: 2610,
   missingBindingCount: 0,
   missingResourceCount: 0,
   storageHashMismatchCount: 0,
@@ -409,8 +418,8 @@ function validateCourse(entry, label, courseSystem) {
   integer(entry.course.grade, `${label}.course.grade`, 1);
   const spec = SYSTEM_SPECS.get(courseSystem);
   assert(Object.hasOwn(spec.versions, version), `${label}.course.catalogVersion is outside the production baseline`);
-  if (courseSystem === "aixuexi-gplus-autumn") {
-    assert(AIXUEXI_PRODUCTS.get(productCode) === entry.course.grade, `${label}.course must be one of the four fixed AIXUEXI G+ autumn products`);
+  if (courseSystem === "aixuexi-autumn") {
+    assert(AIXUEXI_PRODUCTS.get(productCode)?.grade === entry.course.grade, `${label}.course must be one of the twelve fixed AIXUEXI v31 autumn products`);
   }
   return `${version}\0${productCode}`;
 }
@@ -434,6 +443,16 @@ function validateLectureEntry(entry, label, expectedSystem, globalState) {
   sha256(entry.source.packageManifestSha256, `${label}.source.packageManifestSha256`);
   sha256(entry.source.lectureVerificationSha256, `${label}.source.lectureVerificationSha256`);
   assert(entry.source.offlineStatus === "complete", `${label}.source.offlineStatus must be complete`);
+  const packageIdentity = `${entry.source.packageKey}\0${entry.source.packageVersion}`;
+  const priorPackageHash = globalState.sourcePackageHashes.get(packageIdentity);
+  assert(!priorPackageHash || priorPackageHash === entry.source.packageManifestSha256, `${label}.source.packageManifestSha256 drifts within one fixed source package`);
+  globalState.sourcePackageHashes.set(packageIdentity, entry.source.packageManifestSha256);
+
+  if (expectedSystem === "aixuexi-autumn") {
+    const product = AIXUEXI_PRODUCTS.get(entry.course.productCode);
+    assert(product.packageKey === entry.source.packageKey, `${label}.source.packageKey does not match the fixed AIXUEXI product`);
+    assert(product.lectureNos.includes(entry.lecture.no), `${label}.lecture.no is absent from the AIXUEXI v31 source catalog`);
+  }
 
   assert(Array.isArray(entry.tracks) && entry.tracks.length === 2, `${label}.tracks must contain exactly two tracks`);
   assert(JSON.stringify(entry.tracks.map((track) => track.track)) === JSON.stringify(TRACKS), `${label}.tracks must be ordered native-16x9 then adapted-4x3`);
@@ -447,9 +466,7 @@ function validateLectureEntry(entry, label, expectedSystem, globalState) {
     globalState.pageOwners.set(pageDocId, entry.lecture.id);
   }
 
-  if (expectedSystem === "aixuexi-gplus-autumn") {
-    assert(AIXUEXI_LECTURE_NOS.includes(entry.lecture.no), `${label}.lecture.no must preserve the explicit 7/15 source gaps`);
-  } else {
+  if (expectedSystem === "e-series") {
     const rosterCourse = globalState.eSeriesRoster.get(courseKey);
     assert(rosterCourse, `${label}.course.productCode is absent from the fixed E-series roster`);
     assert(entry.course.catalogVersion === rosterCourse.catalogVersion, `${label}.course.catalogVersion does not match the fixed E-series roster`);
@@ -457,10 +474,6 @@ function validateLectureEntry(entry, label, expectedSystem, globalState) {
     assert(rosterCourse.lectureNos.includes(entry.lecture.no), `${label}.lecture.no is absent from the fixed E-series course roster`);
     assert(entry.source.packageKey === rosterCourse.packageKey, `${label}.source.packageKey does not match the fixed E-series package roster`);
     assert(entry.source.packageVersion === rosterCourse.packageVersion, `${label}.source.packageVersion does not match the fixed E-series package roster`);
-    const packageIdentity = `${entry.source.packageKey}\0${entry.source.packageVersion}`;
-    const priorPackageHash = globalState.sourcePackageHashes.get(packageIdentity);
-    assert(!priorPackageHash || priorPackageHash === entry.source.packageManifestSha256, `${label}.source.packageManifestSha256 drifts within one fixed source package`);
-    globalState.sourcePackageHashes.set(packageIdentity, entry.source.packageManifestSha256);
     const adaptedBackgrounds = tracks[1].pages.flatMap((page) => page.bindings).filter((binding) => (
       binding.role === "background"
       && binding.variant === "mathin-4x3"
@@ -564,12 +577,12 @@ function validateSystemCardinality(courseSystem, entries, example, eSeriesRoster
     }
   }
 
-  if (courseSystem === "aixuexi-gplus-autumn" && !example) {
-    for (const [productCode, grade] of AIXUEXI_PRODUCTS) {
+  if (courseSystem === "aixuexi-autumn" && !example) {
+    for (const [productCode, product] of AIXUEXI_PRODUCTS) {
       const rows = entries.filter((entry) => entry.course.productCode === productCode);
-      assert(rows.length === 13, `${productCode} must contain 13 lectures`);
-      assert(rows.every((entry) => entry.course.grade === grade), `${productCode} grade mismatch`);
-      assert(canonicalJson(rows.map((entry) => entry.lecture.no)) === canonicalJson(AIXUEXI_LECTURE_NOS), `${productCode} must preserve source gaps 7 and 15`);
+      assert(rows.length === product.lectureNos.length, `${productCode} must contain ${product.lectureNos.length} lectures`);
+      assert(rows.every((entry) => entry.course.grade === product.grade), `${productCode} grade mismatch`);
+      assert(canonicalJson(rows.map((entry) => entry.lecture.no)) === canonicalJson(product.lectureNos), `${productCode} must match the v31 source catalog`);
     }
   }
   if (courseSystem === "e-series" && !example) {
@@ -723,7 +736,7 @@ export function loadCoursewareSourceContext({
   assert(ISO_DATE_TIME.test(manifest.capturedFrom.exportedAt ?? ""), "capturedFrom.exportedAt must be an ISO UTC date-time");
 
   assert(Array.isArray(manifest.inventories) && manifest.inventories.length === 2, "inventories must contain exactly two systems");
-  assert(canonicalJson(manifest.inventories.map((item) => item.courseSystem)) === canonicalJson([...SYSTEM_SPECS.keys()]), "inventories must be ordered aixuexi-gplus-autumn then e-series");
+  assert(canonicalJson(manifest.inventories.map((item) => item.courseSystem)) === canonicalJson([...SYSTEM_SPECS.keys()]), "inventories must be ordered aixuexi-autumn then e-series");
   const globalState = {
     lectureIds: new Set(),
     pageOwners: new Map(),
@@ -850,8 +863,8 @@ export function buildCoursewareSourcePlan(context) {
     releaseTarget: {
       releaseNo: 1,
       note: RELEASE_NOTE,
-      count: 2374,
-      legacyNativeHeadCount: 1187,
+      count: EXPECTED.releaseCount,
+      legacyNativeHeadCount: EXPECTED.lectureCount,
     },
     blockers: [...context.blockers],
     p6SourceManifestReady: context.blockers.length === 0,

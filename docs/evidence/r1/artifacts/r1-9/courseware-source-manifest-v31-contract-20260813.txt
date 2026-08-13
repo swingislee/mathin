@@ -1,0 +1,6 @@
+gate=R1-9-COURSEWARE-SOURCE-MANIFEST-V31-CONTRACT-20260813
+scope=e-series 90/1135; aixuexi G+/X+/A+ 12/170; total 102/1305; release-1 2610
+validation=production baseline planner and source manifest planner are plan-only; 2 targeted files/15 tests passed; source complete 1305-row synthetic fixture passed
+example=two rows; blockers example-manifest,incomplete-inventory:aixuexi-autumn,incomplete-inventory:e-series
+source-plan-hash=3e6b23dde0b5da3cba97662bf433c474c587b63eacc7fe7f177d2d67cbae0848
+pending=approved read-only 1305-row real inventory; real cw-objects/cw-h5 audit; non-executor review; R1-15 isolated drill; R1-18 authorization

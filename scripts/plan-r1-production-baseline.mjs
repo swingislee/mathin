@@ -18,16 +18,16 @@ const URL_OR_CONNECTION = /(?:https?|postgres(?:ql)?):\/\//i;
 
 const SYSTEM_SPECS = new Map([
   ["e-series", { courseCount: 90, lectureCount: 1135, placeholder: /^example-e-\d{4}$/ }],
-  ["aixuexi-gplus-autumn", { courseCount: 4, lectureCount: 52, placeholder: /^example-aixuexi-\d{2}$/ }],
+  ["aixuexi-autumn", { courseCount: 12, lectureCount: 170, placeholder: /^example-aixuexi-\d{3}$/ }],
 ]);
 
 const EXPECTED_COUNTS = Object.freeze({
-  courseCount: 94,
-  lectureCount: 1187,
-  nativeHeadCount: 1187,
-  adaptedHeadCount: 1187,
-  releaseCount: 2374,
-  legacyCurrentReleaseCount: 1187,
+  courseCount: 102,
+  lectureCount: 1305,
+  nativeHeadCount: 1305,
+  adaptedHeadCount: 1305,
+  releaseCount: 2610,
+  legacyCurrentReleaseCount: 1305,
   releaseNoGreaterThanOneCount: 0,
 });
 
@@ -237,8 +237,8 @@ export function loadProductionBaselineContext({
 
   const calculatedCourseCount = courseSystems.reduce((total, system) => total + system.courseCount, 0);
   const calculatedLectureCount = courseSystems.reduce((total, system) => total + system.lectureCount, 0);
-  assert(calculatedCourseCount === EXPECTED_COUNTS.courseCount, "course system counts do not total 94");
-  assert(calculatedLectureCount === EXPECTED_COUNTS.lectureCount, "explicit lecture IDs do not total 1187");
+  assert(calculatedCourseCount === EXPECTED_COUNTS.courseCount, `course system counts do not total ${EXPECTED_COUNTS.courseCount}`);
+  assert(calculatedLectureCount === EXPECTED_COUNTS.lectureCount, `explicit lecture IDs do not total ${EXPECTED_COUNTS.lectureCount}`);
 
   return {
     root: repositoryRoot,
@@ -341,10 +341,10 @@ export function buildProductionBaselinePlan(context, resultSummary = null) {
     },
     phases: [
       { order: 1, action: "verify-isolated-target", writesAllowed: false },
-      { order: 2, action: "verify-explicit-lecture-inventory", writesAllowed: false, expectedLectureCount: 1187 },
+      { order: 2, action: "verify-explicit-lecture-inventory", writesAllowed: false, expectedLectureCount: EXPECTED_COUNTS.lectureCount },
       { order: 3, action: "verify-storage-object-manifests", writesAllowed: false, expectedCourseSystemCount: 2 },
       { order: 4, action: "describe-account-and-operations-cleanup-boundary", writesAllowed: false },
-      { order: 5, action: "describe-release-1-baseline", writesAllowed: false, expectedReleaseCount: 2374 },
+      { order: 5, action: "describe-release-1-baseline", writesAllowed: false, expectedReleaseCount: EXPECTED_COUNTS.releaseCount },
       { order: 6, action: "require-second-run-no-op", writesAllowed: false, expectedChanges: { ...ZERO_CHANGES } },
     ],
     guards: {

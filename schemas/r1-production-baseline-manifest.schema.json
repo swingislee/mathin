@@ -86,12 +86,12 @@
             "additionalProperties": false,
             "required": ["key", "courseCount", "lectureIds", "lectureIdsSha256", "storage"],
             "properties": {
-              "key": { "const": "aixuexi-gplus-autumn" },
-              "courseCount": { "const": 4 },
+              "key": { "const": "aixuexi-autumn" },
+              "courseCount": { "const": 12 },
               "lectureIds": {
                 "type": "array",
-                "minItems": 52,
-                "maxItems": 52,
+                "minItems": 170,
+                "maxItems": 170,
                 "uniqueItems": true,
                 "items": { "$ref": "#/$defs/lectureId" }
               },
@@ -115,12 +115,12 @@
         "releaseNoGreaterThanOneCount"
       ],
       "properties": {
-        "courseCount": { "const": 94 },
-        "lectureCount": { "const": 1187 },
-        "nativeHeadCount": { "const": 1187 },
-        "adaptedHeadCount": { "const": 1187 },
-        "releaseCount": { "const": 2374 },
-        "legacyCurrentReleaseCount": { "const": 1187 },
+        "courseCount": { "const": 102 },
+        "lectureCount": { "const": 1305 },
+        "nativeHeadCount": { "const": 1305 },
+        "adaptedHeadCount": { "const": 1305 },
+        "releaseCount": { "const": 2610 },
+        "legacyCurrentReleaseCount": { "const": 1305 },
         "releaseNoGreaterThanOneCount": { "const": 0 }
       }
     },

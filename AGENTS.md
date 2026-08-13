@@ -91,7 +91,7 @@ pnpm dev        # 开发服务器 0.0.0.0:3130（局域网：http://192.168.5.21
 pnpm lint       # eslint . —— Next.js 16 的 next build 不再执行 lint
 pnpm typecheck  # tsc --noEmit
 pnpm build
-pnpm test       # 全量 Vitest；当前提交态基线 71 个文件、444/444 通过
+pnpm test       # 全量 Vitest；当前提交态基线 88 个文件、571/571 通过
 pnpm plan:audit # 00～25 状态头、索引与唯一阶段审计
 pnpm ci:checks  # 本地复现 CI checks job 的全部门禁（清单从 ci.yml 解析），推送前跑一次
 pnpm r1:test    # R1 定向合同诊断；当前基线 18 个文件、121/121 通过
@@ -111,7 +111,7 @@ CI 的 checks job 不 fail-fast：所有静态门禁一次跑完再判定，`pnp
 
 自托管开发库上已存在一套固定的 5 个可复用测试账号（admin / teacher / sales / student / parent，均为 `@mathin.local`），角色/staff_role_members/学生档案/监护人关联均已预绑定。凭据与 ID 见 `.claude/test-accounts.local.md`（已 gitignore，不在仓库中，需要登录或模拟这些用户时读取该文件）。**所有人工/agent 开发测试复用这套账号，不要新建。** 如果任务确实需要新账号或不同账号（如测试未认领的绑定码流程、多子女家长、越权场景），先向用户确认。
 
-这些账号只属于开发/RC 数据，不得进入正式 1.0 基线。正式发布按 doc 25 只保留唯一生产管理员并清除其余账号、班级、订单等运营数据；同时保留 E 系列 1135 讲与爱学习 G+ 秋季 52 讲的 16:9/4:3 资源，为 1187 个 lecture 的两条轨道重建 2374 条 `release_no=1`。除 R1-15 隔离演练或 R1-18 明确人工授权外，任何 Agent 都不得执行该破坏性清理。
+这些账号只属于开发/RC 数据，不得进入正式 1.0 基线。正式发布按 doc 25 只保留唯一生产管理员并清除其余账号、班级、订单等运营数据；同时保留 E 系列 1135 讲与爱学习 G+/X+/A+ 秋季 170 讲的 16:9/4:3 资源，为 1305 个 lecture 的两条轨道重建 2610 条 `release_no=1`。除 R1-15 隔离演练或 R1-18 明确人工授权外，任何 Agent 都不得执行该破坏性清理。
 
 ## 架构
 

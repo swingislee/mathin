@@ -61,7 +61,7 @@ Story、Minds、Games、Tools 和 Notebook 使用稳定 ID 关联 Terms。课程
 | 授权 | 数据库 RLS；前端隐藏按钮不构成授权 |
 | 业务状态 | 领域表和领域 RPC；今日工作、通知、搜索和统计只读取投影 |
 | 课程发布 | 可编辑文档/revision/binding 与不可变 release 分层；课堂读取 track head 指向的 release |
-| 正式数据基线 | 只保留 1 个生产管理员；删除测试运营数据；保留 E 系列 1135 讲与爱学习 G+ 秋季 52 讲的 16:9/4:3 源资源；为 1187 个 lecture 的两条 track head 重建 2374 条 `release_no=1`，其中 E 系列 2270 条、爱学习 104 条（见 doc 25 §5.1.1） |
+| 正式数据基线 | 只保留 1 个生产管理员；删除测试运营数据；保留 E 系列 1135 讲与爱学习 G+/X+/A+ 秋季 170 讲的 16:9/4:3 源资源；为 1305 个 lecture 的两条 track head 重建 2610 条 `release_no=1`，其中 E 系列 2270 条、爱学习 340 条（见 doc 25 §5.1.1） |
 | 课程目录版本 | 教材年度版本是 `course_catalog_versions` 一层，与 `course_families.edition`（地域版本）和 `cw_lecture_releases.release_no`（讲次内发布迭代）互不替代；`courses.product_code` 只在版本内唯一 |
 
 现行显式路由覆盖旧文档中的“九板块统一动态路由”描述。新增入口时同时更新路由、Proxy/鉴权、导航、sitemap、SEO、registry 和 zh/en messages。
@@ -118,12 +118,12 @@ Story、Minds、Games、Tools 和 Notebook 使用稳定 ID 关联 Terms。课程
 | `25-production-1.0-product-completeness.md` | active | 1.0 事实、缺口、发布门和生产初始化 |
 | `26-teacher-workflow-upgrade.md` | partial | 左侧备课步骤、右侧常驻课件预览、板书解析与结构化教案；独立教案管理入口和派生输出待补 |
 | `27-small-screen-workspace-adaptation.md` | active | 1024–1280px 窄屏与平板横屏的侧栏三态、工作区可拖拽分栏、4:3 全屏与容器查询收敛 |
-| `28-spatial-mathematics-lab.md` | active | 当前唯一专题 SML-0：冻结空间数学课程能力、4:3 文档、金标、hash、权限、发布/冻结与纵向空壳合同；R1-9 暂停但未关闭 |
+| `28-spatial-mathematics-lab.md` | active | SML-0 暂停点：空间数学课程能力、4:3 文档、金标、hash、权限、发布/冻结与纵向空壳合同仍未关闭；当前主线已切回 R1-9 |
 
 ## 7. 当前发布纪律
 
 - 当前子阶段以 doc 04 顶部为准。
-- 2026-08-12 用户正式启动 SML-0；当前只推进空间数学合同与金标冻结，R1-9 保留为未关闭的暂停位置。该切换不改变 §1 的 1.0 合同，也不豁免未来切回 R1 后仍须完成的 doc 25 产品门、跨模块质量门和 No-Go 条件。
+- 2026-08-13 用户显式切回 R1-9；P6-AIX-2 已关闭，当前继续 P6-9 的正式来源 manifest 与对象证据。SML-0 保留学生重连、成对回退、20 道代表题签名和跨端 hash 向量的暂停点。
 - R1 实际责任映射由 doc 25 §7.1 维护；阶段证据统一从 `docs/evidence/r1/README.md` 索引，Agent 只能作为执行者，不能代替人员 owner 或批准人。
 - R1-15 在生产快照的隔离副本演练数据清理；R1-18 经人工批准后处理正式生产。其他阶段禁止执行账号、班级、订单或 release 删除。
 - 阶段关闭时更新实现证据、专题文档状态头、doc 04、doc 25 和 README，并运行 `pnpm plan:audit`。
