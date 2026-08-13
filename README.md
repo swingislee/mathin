@@ -30,8 +30,8 @@ pnpm lint
 pnpm typecheck
 pnpm build
 pnpm plan:audit
-pnpm test             # 全量诊断；当前提交态 88 文件、571/571 全绿
-pnpm r1:test          # R1 定向合同；18 文件、121/121 全绿
+pnpm test             # 全量诊断；当前提交态 89 文件、587 项通过、1 项条件跳过
+pnpm r1:test          # R1 定向合同；20 文件、148/148 通过
 pnpm secrets:check    # 当前跟踪树与 binary ASCII 高置信 secret 扫描
 pnpm secrets:history  # 完整可达 Git 历史 high-confidence secret 扫描
 pnpm e2e              # 本地/开发目标 Playwright；固定账号从 Git 忽略文件读取
