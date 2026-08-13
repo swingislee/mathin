@@ -4,11 +4,11 @@
 >
 > **用途**：冻结空间数学实验室的产品边界、课程能力、数学内核、场景协议、教研工作流、课堂合同、阶段顺序和量化验收门。
 >
-> **权威边界**：2026-08-12 用户正式启动 SML-0；R1-9 暂停但未关闭。SML-0 可以接入严格的空间课件、权限、评审发布与 freeze 合同，但不得执行真实生产清理、提前进入 SML-1～8，或把既有 Tools 样机证据冒充阶段退出证据；与 1.0 发布冲突时以 doc 00、04、25 为准。
+> **权威边界**：SML-0 已于 2026-08-12 正式启动，并于 2026-08-13 按用户决定暂停且未关闭；当前唯一施工阶段已切回 R1-9/P6-9。暂停期间只保留已落地合同与待补证据，不继续接入空间课件、Studio、发布、freeze 或课堂生产链，也不得提前进入 SML-1～8；恢复施工仍以 doc 04 顶部为唯一授权。
 >
-> **当前子阶段**：`SML-0 · 合同与金标冻结`。本次用户决定显式覆盖原“v1.0.0 后启动”的顺序依赖；覆盖只改变施工先后，不等于 R1 或 1.0 已完成。阶段退出仍须满足 §14～15 的全部 SML-0 证据。
+> **暂停位置**：`SML-0 · 合同与金标冻结`。三个结构阻断项和教师侧纵向旅程已落地；学生身份重连、成对 release 回退、20 道代表题教研签名和跨端 hash 向量仍 pending。既有成果不等于 SML-0 或 1.0 已完成。
 >
-> **核对日期**：2026-08-12；依据现有 Three/R3F、Tools、Terms、Courseware Studio、Classroom、P6 release/freeze 代码与义务教育数学课程标准核对。
+> **核对日期**：2026-08-13；依据 doc 00/04/25 当前阶段、现有 Three/R3F、Tools、Terms、Courseware Studio、Classroom、P6 release/freeze 代码与义务教育数学课程标准核对。
 
 ## 1. 执行结论
 
@@ -628,11 +628,11 @@ WebGL 不可用时仍允许观察、切层、查看表格和完成适合二维�
 
 ## 14. 实施阶段
 
-下列编号是本专题的正式依赖顺序。doc 04 已于 2026-08-12 把 SML-0 写为唯一当前施工阶段，因此本阶段可以接入开发/验证环境的数据、Studio、发布和课堂空壳合同；仍不得操作真实生产清理、跳过退出证据或提前施工 SML-1～8。每个正式阶段完成时同步本文件状态、doc 00/04/25、证据索引和 `pnpm plan:audit`。
+下列编号是本专题的正式依赖顺序。SML-0 曾于 2026-08-12 获得施工授权，2026-08-13 已按用户决定暂停；当前唯一施工阶段以 doc 04 顶部的 R1-9/P6-9 为准。暂停期间不得继续接入空间数据、Studio、发布或课堂链，也不得提前施工 SML-1～8。未来恢复时仍须逐项补齐退出证据，并同步本文件、doc 00/04/25、证据索引和 `pnpm plan:audit`。
 
 | 阶段 | 依赖 | 动作与产物 | 退出证据 |
 | --- | --- | --- | --- |
-| **SML-0 合同与金标冻结（当前）** | 用户正式启动决定；复用现有 R1/P6 发布合同，R1-9 保持 pending | 解决 release/template、capability 与 track/layout 解耦三个阻断项；新增 `spatial-page-v1` 的 docVersion-aware 映射，让两条兼容 head 默认共享 4:3 revision；冻结能力图谱、20 道代表题、五个 schema、canonical hash、ownership、上限、路由和非目标 | 20 道题由教研签名；跨端 hash 向量 100%；一份 4:3 创作完成双 head/release 且课堂仍为 4:3，create→publish→prep→freeze→live 空壳纵向测试通过 |
+| **SML-0 合同与金标冻结（暂停）** | 用户正式启动决定；复用现有 R1/P6 发布合同；恢复授权以 doc 04 为准 | 解决 release/template、capability 与 track/layout 解耦三个阻断项；新增 `spatial-page-v1` 的 docVersion-aware 映射，让两条兼容 head 默认共享 4:3 revision；冻结能力图谱、20 道代表题、五个 schema、canonical hash、ownership、上限、路由和非目标 | 20 道题由教研签名；跨端 hash 向量 100%；一份 4:3 创作完成双 head/release 且课堂仍为 4:3，create→publish→prep→freeze→live 空壳纵向测试通过 |
 | **SML-1 精确内核与技术 spike** | SML-0 | voxel kernel、正投影、分层、外露面；R3F instancing、picking、worker、context recovery、2D fallback、低端设备基准 | 生成式测试 100% 对 oracle；1,000 体素达到性能门；WebGL 禁用/丢失可恢复；非空间 bundle 无重型 chunk |
 | **SML-2 首条课堂纵向切片** | SML-1 | “多角度观察 + 分层计数”；Studio 4:3 模板编辑、`spatial-page-v1`、平台 head 映射、评审发布、freeze、教师跟随、板书和重连 | 教研 P90 ≤5 分钟；一份 4:3 创作完成平台发布；1 教师+30 学生重连 3 秒内一致；离线预载/回放 E2E 通过 |
 | **SML-3 小学体素题型扩展** | SML-2 | 染色、隐藏块、挖去/挖空、外/内表面、体积、表面积和组合体；学生构造/提交 | 所有派生量金标与生成式测试 100%；attempt RLS 负向测试通过；至少 6 个生产模板 |
