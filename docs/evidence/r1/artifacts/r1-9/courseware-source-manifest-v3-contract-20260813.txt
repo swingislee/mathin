@@ -1,0 +1,9 @@
+gate=R1-9-COURSEWARE-SOURCE-MANIFEST-V3-CONTRACT-20260813
+scope=e-series 90/1135; aixuexi G+/X+/A+ 12/170; total 102/1305; target release-1 2610
+contract=mathin-r1-courseware-source-manifest-v3; every track binds a globally unique captured release from current_release_id and includes source release identity in content state
+validation=2 targeted files/17 tests passed; r1:test 19 files/133 tests passed; typecheck and plan:audit passed
+example=two rows; blockers example-manifest,incomplete-inventory:aixuexi-autumn,incomplete-inventory:e-series
+manifest-hash=245cc56a8d175d4da8503dd7dae1b49800b7c63730cd2722f2c111c7972ea941
+content-state-sha256=57f7ba85d0b4caddbf8d970fb7d2cd317c261a4b021b73e91ec91a7ab5f2f631
+source-plan-hash=0d5ba1ee92846c778fe70097c514f68fb458522f0beb60fd8a0acb8e052e5bd4
+pending=read-only exporter producer; approved 1305-row real capture; actual cw-objects/cw-h5 byte audit; non-executor review; R1-15 isolated drill; R1-18 authorization
