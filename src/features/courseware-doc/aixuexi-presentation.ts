@@ -112,25 +112,6 @@ export function fitShapeText(stage: HTMLElement, minFontSize: number) {
   }
 }
 
-/** 源播放器把富文本内联小图按 2 倍呈现;规则只在运行时,页面 JSON 里没有。 */
-export function scaleSmallInlineImages(stage: HTMLElement) {
-  for (const image of stage.querySelectorAll<HTMLImageElement>(".aix-html img")) {
-    if (image.dataset.aixSizeScaled) continue;
-    const declared = (value: string) => {
-      if (!value || value.includes("%")) return null;
-      const number = Number.parseFloat(value);
-      if (!Number.isFinite(number) || number <= 0) return null;
-      return value.includes("pt") ? (number * 4) / 3 : number;
-    };
-    const width = declared(image.style.width);
-    if (width === null || width >= 350) continue;
-    const height = declared(image.style.height);
-    image.style.width = `${2 * width}px`;
-    if (height !== null) image.style.height = `${2 * height}px`;
-    image.dataset.aixSizeScaled = "true";
-  }
-}
-
 /** 答案面板的负 margin 在本地字体下会把内容推出节点左边界,按亏空回收到刚好不越界。 */
 function clampPanelOffsets(stage: HTMLElement) {
   const scale = stageScale(stage);
@@ -238,12 +219,11 @@ export interface PresentationOptions {
 }
 
 /**
- * 完整施加一遍呈现规则。幂等:接过线的折叠开关带 `data-aix-disclosure`,放大过的图带
- * `data-aix-size-scaled`,重复调用不会二次放大或二次接线。
+ * 完整施加一遍宿主交互规则。题目图片尺寸由 projection v31 绑定的 captured player
+ * module 执行，不再在这里手工放大。
  */
 export function applyPresentation(stage: HTMLElement, options: PresentationOptions) {
   wireDisclosures(stage, options.disclosureLabels);
-  scaleSmallInlineImages(stage);
   if (options.shapeTextMinFontSize !== null) fitShapeText(stage, options.shapeTextMinFontSize);
   options.onRevealSteps(collectRevealSteps(stage, options.stagedReveal));
   applyLayoutCorrections(stage);

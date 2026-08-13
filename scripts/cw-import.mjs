@@ -11,8 +11,8 @@ const PACKAGE_SCHEMA_VERSION = "mathin-package-export-v1";
 const PAGE_DOC_VERSION = "page-doc-v1";
 const AIXUEXI_PAGE_DOC_VERSION = "aixuexi-page-doc-v1";
 const AIXUEXI_DOCUMENT_ADAPTER = "aixuexi-page-v1";
-/** 与 `src/features/courseware-doc/aixuexi-schema.ts` 及构建器同步;母版为 1200×900。 */
-const AIXUEXI_PROJECTION_VERSION = 11;
+/** 与 `src/features/courseware-doc/aixuexi-schema.ts` 及构建器同步。 */
+const AIXUEXI_PROJECTION_VERSION = 31;
 const HASH = /^[0-9a-f]{64}$/;
 const ASSET_KINDS = new Set(["image", "video", "audio", "svg", "h5"]);
 const DEFAULT_SSH_HOST = "xiaomi";
@@ -25,7 +25,7 @@ const storageDirectoryCache = new Map();
 // 文档永远原样入库——绝不静默改写已过导出侧 audit 的内容。
 const COURSEWARE_MARKUP_OPTIONS = {
   allowedTags: [
-    "div", "p", "span", "br", "img", "b", "i", "em", "strong", "hr",
+    "a", "div", "p", "span", "br", "img", "b", "i", "em", "strong", "hr",
     // u 承载爱学习填空的分步揭示(behaviors.stagedReveal 就是按它计数的),丢掉即丢一类交互。
     "sup", "sub", "ul", "ol", "li", "u", "figure",
     "table", "thead", "tbody", "tfoot", "tr", "th", "td", "col", "colgroup",
@@ -33,32 +33,13 @@ const COURSEWARE_MARKUP_OPTIONS = {
     "rect", "circle", "ellipse", "line", "polyline", "polygon", "marker",
     "linearGradient", "radialGradient", "stop", "clipPath", "pattern", "mask",
     "math", "mrow", "mi", "mn", "mo", "mfrac", "msup", "msub",
-    "tal-readonly",
+    "tal-readonly", "font", "ruby", "rt", "style", "title", "video",
   ],
-  allowedAttributes: {
-    "*": [
-      "class", "style", "id", "role", "aria-*", "data-*", "contenteditable", "spellcheck",
-      "xmlns", "xmlns:xlink", "viewBox", "width", "height", "x", "y", "d", "fill", "stroke",
-      "stroke-width", "transform", "focusable", "alt", "src", "xlink:href", "title",
-      "font-family", "font-size", "font-weight", "font-style", "text-anchor", "text-rendering",
-      "text-decoration", "dominant-baseline", "letter-spacing", "dx", "dy",
-      "opacity", "fill-opacity", "fill-rule", "stroke-opacity", "stroke-dasharray",
-      "stroke-linecap", "stroke-linejoin", "clip-path", "clip-rule", "display", "version",
-      "vector-effect", "pointer-events",
-      "x1", "x2", "y1", "y2", "cx", "cy", "r", "rx", "ry", "points",
-      "offset", "stop-color", "stop-opacity", "gradientUnits", "gradientTransform",
-      "preserveAspectRatio", "refX", "refY", "orient", "markerWidth", "markerHeight",
-      "marker-start", "marker-mid", "marker-end", "markerUnits",
-      "overflow", "stroke-miterlimit", "baseProfile",
-      "border", "cellpadding", "cellspacing", "align", "valign", "colspan", "rowspan",
-      "span", "nowrap", "size", "draggable",
-      "data", "text-id", "edit-key", "originsrc", "original-src", "ori-data",
-      "original-width", "original-height", "res_perstans_id",
-    ],
-  },
+  allowedAttributes: false,
   allowedSchemes: ["http", "https", "data", "asset"],
   allowedSchemesByTag: { img: ["http", "https", "data", "asset" ], use: ["asset"] },
   allowProtocolRelative: false,
+  allowVulnerableTags: true,
   parser: { lowerCaseTags: false, lowerCaseAttributeNames: false },
 };
 
@@ -186,6 +167,15 @@ export function assertPageDocMarkupSafe(doc, label) {
   if (doc.docVersion === AIXUEXI_PAGE_DOC_VERSION) {
     for (const node of doc.nodes ?? []) {
       if (typeof node.html === "string") assertMarkupLossless(node.html, `${label} html`);
+      if (typeof node.trueOrFalse?.contentHtml === "string") {
+        assertMarkupLossless(node.trueOrFalse.contentHtml, `${label} TrueOrFalse question html`);
+      }
+      for (const option of node.trueOrFalse?.options ?? []) {
+        if (typeof option.html === "string") assertMarkupLossless(option.html, `${label} TrueOrFalse option html`);
+      }
+      if (typeof node.topicClassification?.stageHtml === "string") {
+        assertMarkupLossless(node.topicClassification.stageHtml, `${label} TopicClassification stage html`);
+      }
     }
     for (const event of doc.itvInteraction?.events ?? []) {
       for (const widget of event.stage?.widgets ?? []) {
@@ -226,9 +216,18 @@ function validatePageDoc(doc, label) {
       keys.add(assertHash(key, keyLabel));
     };
     add(value.canvas?.backgroundBindingKey, `${label}.canvas.backgroundBindingKey`);
+    add(value.sourceRuntime?.runtimeBindingKey, `${label}.sourceRuntime.runtimeBindingKey`);
     for (const node of value.nodes ?? []) {
       add(node.resourceBindingKey, `${label}.node.resourceBindingKey`);
       for (const key of node.resourceBindingKeys ?? []) add(key, `${label}.node.resourceBindingKeys`);
+      add(node.embeddedH5?.bindingKey, `${label}.node.embeddedH5.bindingKey`);
+      for (const [asset, key] of Object.entries(node.trueOrFalse?.assets ?? {})) {
+        add(key, `${label}.node.trueOrFalse.assets.${asset}`);
+      }
+      add(node.topicClassification?.backgroundBindingKey, `${label}.node.topicClassification.backgroundBindingKey`);
+      for (const [asset, key] of Object.entries(node.topicClassification?.assets ?? {})) {
+        add(key, `${label}.node.topicClassification.assets.${asset}`);
+      }
     }
     add(value.topicInteraction?.bindingKey, `${label}.topicInteraction.bindingKey`);
     const itv = value.itvInteraction;
@@ -605,6 +604,13 @@ export function buildImportSql(plan) {
     sqlText(binding.candidateKey), binding.launchQuery === null ? "NULL" : sqlJson(binding.launchQuery),
   ]);
   const importNote = `P6-3 import baseline ${plan.exportId}`;
+  const sourceLectureNameSql = isAixuexi ? `
+update public.course_lectures lecture
+   set name = ${sqlText(plan.lecture.lessonName)}
+  from cw_import_context context
+ where lecture.id = context.lecture_id
+   and lecture.name is distinct from ${sqlText(plan.lecture.lessonName)};
+` : "";
   const sourceProvenanceSql = isAixuexi ? `
 do $$ begin
   if exists (
@@ -747,6 +753,7 @@ do $$ begin
     raise exception 'CW_IMPORT_LECTURE_MAPPING_MISSING_OR_AMBIGUOUS';
   end if;
 end $$;
+${sourceLectureNameSql}
 ${sourceProvenanceSql}
 
 create temporary table cw_import_objects (

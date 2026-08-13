@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import sanitizeHtml from "sanitize-html";
@@ -7,28 +7,35 @@ import { textFileSha256 } from "./lib/text-hash.mjs";
 
 const PACKAGE_KEY = "2026-gplus-sujiao-math";
 const HASH = /^[0-9a-f]{64}$/;
-const GRADE = new Map([["三年级", 3], ["四年级", 4], ["五年级", 5], ["六年级", 6]]);
-const PRODUCT_CODE = new Map([
-  [3, "AXX26G-SJ-03-AUT"],
-  [4, "AXX26G-SJ-04-AUT"],
-  [5, "AXX26G-SJ-05-AUT"],
-  [6, "AXX26G-SJ-06-AUT"],
+const GRADE = new Map([
+  ["一年级", 1], ["二年级", 2], ["三年级", 3],
+  ["四年级", 4], ["五年级", 5], ["六年级", 6],
+]);
+const PACKAGE_CONFIGS = new Map([
+  ["2026-gplus-sujiao-math", {
+    lectureCount: 56, pageCount: 1641, grades: [3, 4, 5, 6],
+    level: "G+", sourceLevel: "能力强化 G+", edition: "苏教版", productPrefix: "AXX26G-SJ",
+  }],
+  ["2026-xplus-sujiao-math", {
+    lectureCount: 84, pageCount: 2767, grades: [1, 2, 3, 4, 5, 6],
+    level: "X+", sourceLevel: "能力提高 X+", edition: "苏教版", productPrefix: "AXX26X-SJ",
+  }],
+  ["2026-aplus-quanguo-math", {
+    lectureCount: 30, pageCount: 1034, grades: [1, 2],
+    level: "A+", sourceLevel: "思维突破 A+", edition: "全国版", productPrefix: "AXX26A-QG",
+  }],
 ]);
 const TEXT_EXTENSIONS = new Set([".css", ".html", ".htm", ".js", ".json", ".mjs", ".svg", ".txt"]);
 
 /**
- * 爱学习内容母版是 1200×900（正好 4:3），坐标 1:1，不做任何纵向压缩。
- * 源播放器自己把它 contain 进 1200×675 的 16:9 画框（0.75 缩放 + 左右各 150 留白），
- * 这条规则由 layout.presentation 携带，供 16:9 轨还原源站所见。
+ * projection v31 同时支持普通 1200×900 页与 1920×1080 原生游戏页。
+ * 普通页的源播放器是 1920×1080 外层 + 水平居中的 1200×900 内层，最终由
+ * layout.playerStage/layout.presentation 描述；Mathin 不再复制旧的手工放大或 xmind 偏移。
  */
-const SOURCE_PROJECTION_VERSION = 11;
+const SOURCE_PROJECTION_VERSION = 31;
 const SOURCE_ITV_PROJECTION_VERSION = 4;
-const SOURCE_CANVAS_WIDTH = 1200;
-const SOURCE_CANVAS_HEIGHT = 900;
-const PRESENTATION_WIDTH = 1200;
-const PRESENTATION_HEIGHT = 675;
-const PRESENTATION_CONTENT_SCALE = 0.75;
-const PRESENTATION_OFFSET_X = 150;
+const SOURCE_PRESENTATION_WIDTH = 1200;
+const SOURCE_PRESENTATION_HEIGHT = 675;
 
 function fail(message) {
   throw new Error(`AIXUEXI_BUILD: ${message}`);
@@ -36,6 +43,10 @@ function fail(message) {
 
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
+}
+
+async function sha256File(file) {
+  return sha256(await readFile(file));
 }
 
 function resolveInside(root, relativePath) {
@@ -98,28 +109,18 @@ function mimeFor(file) {
  */
 const MARKUP_OPTIONS = {
   allowedTags: [
-    "div", "p", "span", "br", "img", "b", "i", "em", "strong", "sub", "sup", "hr", "u",
+    "a", "div", "p", "span", "br", "img", "b", "i", "em", "strong", "sub", "sup", "hr", "u",
     "figure", "svg", "path", "g", "defs", "marker", "line", "polyline", "polygon", "circle",
     "ellipse", "rect", "text", "tspan", "clipPath", "foreignObject", "table", "tbody", "thead",
     "tr", "td", "th", "ol", "ul", "li", "math", "mrow", "mi", "mn", "mo", "mfrac", "msup", "msub",
+    "font", "ruby", "rt", "style", "title", "video",
   ],
-  allowedAttributes: {
-    "*": [
-      "style", "class", "id", "src", "alt", "width", "height", "viewBox", "xmlns",
-      "fill", "fill-opacity", "fill-rule", "clip-rule", "stroke", "stroke-width",
-      "stroke-dasharray", "stroke-linejoin", "stroke-linecap", "stroke-opacity",
-      "stroke-miterlimit", "vector-effect", "pointer-events", "transform", "d",
-      "x", "y", "x1", "y1", "x2", "y2", "cx", "cy", "r", "rx", "ry", "points",
-      "marker-end", "marker-start", "markerUnits", "refX", "refY", "orient",
-      "markerWidth", "markerHeight", "preserveAspectRatio", "text-anchor",
-      "dominant-baseline", "font-family", "font-size", "clip-path", "overflow",
-      "colspan", "rowspan", "role", "data-shadow-text", "data-shadow-path",
-      "data-role", "data-kit", "data-tk-img-key", "data-placeholder-type",
-      "data-size-scale", "data-child-index", "version", "baseProfile",
-    ],
-  },
+  // 来源 review export 已完成节点级消毒；这里保留源 CSS/player 选择器依赖的完整
+  // data-/SVG/MathML 属性，并在 sanitizeMarkup 中额外拒绝事件处理器与外部 URL。
+  allowedAttributes: { "*": ["*"] },
   allowedSchemes: ["asset", "data"],
   allowProtocolRelative: false,
+  allowVulnerableTags: true,
   parser: { lowerCaseTags: false, lowerCaseAttributeNames: false },
 };
 
@@ -129,12 +130,12 @@ function sanitizeMarkup(raw, bindingForResource, label) {
     if (!key) fail(`${label} references missing resource ${rawId}`);
     return `asset://binding/${key}`;
   });
-  if (/(?:expression\s*\(|javascript:|-moz-binding|@import)/i.test(localized)) {
+  if (/(?:expression\s*\(|javascript:|-moz-binding|@import|\son[a-z]+\s*=)/i.test(localized)) {
     fail(`${label} contains unsafe CSS/script syntax`);
   }
   const sanitized = sanitizeHtml(localized, MARKUP_OPTIONS);
   if (/asset:\/\/resource\//.test(sanitized)) fail(`${label} retains a local resource id`);
-  if (/(?:src|href)\s*=\s*["']https?:\/\/|url\(\s*["']?https?:\/\//i.test(sanitized)) {
+  if (/(?<![A-Za-z0-9_-])(?:src|href)\s*=\s*["']https?:\/\/|url\(\s*["']?https?:\/\//i.test(sanitized)) {
     fail(`${label} retains an external URL`);
   }
   return sanitized;
@@ -145,7 +146,7 @@ function parseArgs(argv) {
     packageKey: PACKAGE_KEY,
     stageH5: true,
     sourceRoot: path.resolve(process.cwd(), "..", "2026-07_mofaxiao_courseware"),
-    outputRoot: path.resolve(process.cwd(), ".tmp", "aixuexi-import", PACKAGE_KEY),
+    outputRoot: null,
   };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -163,7 +164,9 @@ function parseArgs(argv) {
     fail(`unknown argument ${arg}`);
   }
   options.sourceRoot = path.resolve(options.sourceRoot);
-  options.outputRoot = path.resolve(options.outputRoot);
+  options.outputRoot = path.resolve(
+    options.outputRoot ?? path.join(process.cwd(), ".tmp", "aixuexi-import", options.packageKey),
+  );
   return options;
 }
 
@@ -234,35 +237,59 @@ async function buildTopicPackage({ sourcePackageRoot, outputRoot, topic, stageH5
   };
 }
 
-function assertSourceScope(siteManifest, catalog) {
+function assertSourceScope(siteManifest, catalog, config) {
   if (siteManifest.sourceSystem !== "aixuexi_bsk") fail("unexpected source system");
-  if (siteManifest.courseCount !== 52 || siteManifest.pageCount !== 1525) {
+  if (siteManifest.schemaVersion !== 1 || catalog.schemaVersion !== 1) fail("unsupported source manifest schema");
+  if (siteManifest.courseCount !== config.lectureCount || siteManifest.pageCount !== config.pageCount) {
     fail(`unexpected source counts: ${siteManifest.courseCount} lectures / ${siteManifest.pageCount} pages`);
   }
-  if (catalog.courseCount !== 52 || catalog.courses?.length !== 52) fail("catalog must contain 52 lectures");
+  if (siteManifest.projectedPageCount !== config.pageCount
+      || siteManifest.unsupportedLayoutNodeCount !== 0
+      || siteManifest.unmappedLayoutResourceCount !== 0
+      || siteManifest.registeredGapNodeCount !== 0
+      || siteManifest.registeredGapResourceCount !== 0) {
+    fail("source manifest carries projection gaps");
+  }
+  if (catalog.courseCount !== config.lectureCount || catalog.courses?.length !== config.lectureCount) {
+    fail(`catalog must contain ${config.lectureCount} lectures`);
+  }
   for (const course of catalog.courses) {
-    // catalog.status 复制自目录快照的年级覆盖状态（partial = 该次采集未覆盖全部年级），
-    // 不描述讲次本身。讲次准入门槛压在每讲 offline-verification 的 complete + 三项零计数上。
-    if (!GRADE.has(course.grade) || course.term !== "秋季" || course.level !== "能力强化 G+"
-        || !["complete", "partial"].includes(course.status)) {
-      fail(`lecture ${course.coursewareId} is outside the approved 3-6 / Autumn / G+ scope`);
+    const grade = GRADE.get(course.grade);
+    if (!config.grades.includes(grade) || course.term !== "秋季" || course.level !== config.sourceLevel
+        || course.status !== "complete") {
+      fail(`lecture ${course.coursewareId} is outside the approved ${config.level} scope`);
     }
-    if ([7, 15].includes(course.lessonIndex)) fail("missing lesson slots must not be fabricated");
   }
 }
 
 function assertSourceCanvas(layout, label) {
-  const { canvas, presentation } = layout;
-  if (canvas?.width !== SOURCE_CANVAS_WIDTH || canvas?.height !== SOURCE_CANVAS_HEIGHT
-      || canvas?.sourceWidth !== SOURCE_CANVAS_WIDTH || canvas?.sourceHeight !== SOURCE_CANVAS_HEIGHT
+  const { canvas, playerStage, presentation } = layout;
+  const canvasPair = `${canvas?.width}x${canvas?.height}`;
+  if (!new Set(["1200x900", "1920x1080"]).has(canvasPair)
+      || canvas?.sourceWidth !== canvas?.width || canvas?.sourceHeight !== canvas?.height
       || canvas?.coordinateScaleX !== 1 || canvas?.coordinateScaleY !== 1) {
-    fail(`${label} does not use the unscaled ${SOURCE_CANVAS_WIDTH}x${SOURCE_CANVAS_HEIGHT} master canvas`);
+    fail(`${label} carries an unsupported source canvas`);
   }
-  if (presentation?.width !== PRESENTATION_WIDTH || presentation?.height !== PRESENTATION_HEIGHT
-      || presentation?.contentScale !== PRESENTATION_CONTENT_SCALE
-      || presentation?.offsetX !== PRESENTATION_OFFSET_X
-      || !Number.isFinite(presentation?.offsetY)) {
+  if (playerStage?.width !== 1920 || playerStage?.height !== 1080
+      || playerStage?.presentationScale !== 0.625
+      || !Number.isFinite(playerStage?.offsetX) || !Number.isFinite(playerStage?.offsetY)
+      || playerStage?.backgroundSize !== "auto 1080px"
+      || playerStage?.backgroundPosition !== "center center"
+      || playerStage?.backgroundRepeat !== "no-repeat"
+      || !playerStage?.contentPadding || Object.values(playerStage.contentPadding).some((value) => !Number.isFinite(value))) {
+    fail(`${label} carries an unexpected source player stage`);
+  }
+  if (presentation?.width !== SOURCE_PRESENTATION_WIDTH || presentation?.height !== SOURCE_PRESENTATION_HEIGHT
+      || !Number.isFinite(presentation?.contentScale)
+      || !Number.isFinite(presentation?.offsetX) || !Number.isFinite(presentation?.offsetY)) {
     fail(`${label} carries an unexpected source presentation rule`);
+  }
+  if (canvasPair === "1200x900" && presentation.contentScale !== 0.75) {
+    fail(`${label} ordinary slide must use presentation scale 0.75`);
+  }
+  if (canvasPair === "1920x1080" && (presentation.contentScale !== 0.625
+      || presentation.offsetX !== 0 || presentation.offsetY !== 0)) {
+    fail(`${label} native game must use the 1920x1080 source presentation`);
   }
   if (!layout.behaviors || typeof layout.behaviors !== "object") fail(`${label} is missing source behaviors`);
 }
@@ -288,6 +315,7 @@ function projectBehaviors(behaviors, label) {
       underlineCount: behaviors.stagedReveal?.underlineCount ?? 0,
       summaryWidgetCount: behaviors.stagedReveal?.summaryWidgetCount ?? 0,
     },
+    widgetReveal: { steps: behaviors.widgetReveal?.steps ?? 0 },
     shapeTextFit: behaviors.shapeTextFit
       ? { minFontSize: behaviors.shapeTextFit.minFontSize }
       : null,
@@ -297,13 +325,27 @@ function projectBehaviors(behaviors, label) {
 export async function buildAixuexiPackage(options) {
   const sourceRoot = path.resolve(options.sourceRoot);
   const outputRoot = path.resolve(options.outputRoot);
+  const config = PACKAGE_CONFIGS.get(options.packageKey);
+  if (!config) fail(`unsupported package key ${options.packageKey}`);
   const sourcePackageRoot = path.join(sourceRoot, "exports", "packages", options.packageKey);
   const siteRoot = path.join(sourcePackageRoot, "site");
-  const [siteManifest, catalog] = await Promise.all([
+  const [siteManifest, catalog, slideRuntime, playerRuntime] = await Promise.all([
     readJson(path.join(siteRoot, "manifest.json")),
     readJson(path.join(siteRoot, "catalog.json")),
+    readJson(path.join(siteRoot, "slide-runtime.json")),
+    readJson(path.join(siteRoot, "player-runtime.json")),
   ]);
-  assertSourceScope(siteManifest, catalog);
+  assertSourceScope(siteManifest, catalog, config);
+  if (slideRuntime.schemaVersion !== 1 || slideRuntime.packageKey !== options.packageKey
+      || slideRuntime.stylesheetPath !== "slide-runtime.css" || !HASH.test(slideRuntime.cssSha256 ?? "")
+      || siteManifest.slideRuntime?.cssSha256 !== slideRuntime.cssSha256) {
+    fail("invalid slide runtime contract");
+  }
+  if (playerRuntime.schemaVersion !== 3 || playerRuntime.packageKey !== options.packageKey
+      || playerRuntime.derivationVersion !== 3
+      || playerRuntime.lessonBindings?.length !== config.lectureCount) {
+    fail("invalid player runtime contract");
+  }
 
   await rm(outputRoot, { recursive: true, force: true });
   await mkdir(path.join(outputRoot, "page-docs"), { recursive: true });
@@ -317,24 +359,131 @@ export async function buildAixuexiPackage(options) {
   const objects = new Map();
   const h5Manifests = new Map();
 
+  const addH5Package = async ({ packageHash, entryPath, sourceDirectory, source }) => {
+    if (!HASH.test(packageHash ?? "")) fail(`invalid H5 package hash ${packageHash}`);
+    if (h5Manifests.has(packageHash)) return h5Manifests.get(packageHash);
+    const files = [];
+    const walk = async (directory, prefix = "") => {
+      for (const entry of await readdir(directory, { withFileTypes: true })) {
+        const relative = prefix ? `${prefix}/${entry.name}` : entry.name;
+        const absolute = path.join(directory, entry.name);
+        if (entry.isDirectory()) await walk(absolute, relative);
+        else if (entry.isFile()) {
+          const info = await stat(absolute);
+          const hash = await sha256File(absolute);
+          files.push({
+            packagePath: relative.replaceAll("\\", "/"),
+            sha256: hash,
+            byteCount: info.size,
+            mime: mimeFor(relative),
+            storeRelativePath: path.relative(sourceRoot, absolute).replaceAll("\\", "/"),
+            storeScope: "source",
+          });
+        }
+      }
+    };
+    await walk(sourceDirectory);
+    if (!files.some((file) => file.packagePath === entryPath)) fail(`${packageHash} misses H5 entry ${entryPath}`);
+    const manifest = {
+      schemaVersion: "mathin-h5-manifest-v1",
+      packageHash,
+      entryPath,
+      byteCount: files.reduce((sum, file) => sum + file.byteCount, 0),
+      files: files.sort((left, right) => left.packagePath.localeCompare(right.packagePath, "en")),
+      source,
+    };
+    h5Manifests.set(packageHash, manifest);
+    return manifest;
+  };
+
+  let lottieRuntimeResource = null;
+  for (const item of siteManifest.items.filter((entry) => entry.kind === "page")) {
+    const page = await readJson(resolveInside(siteRoot, item.path));
+    lottieRuntimeResource = (page.assets?.resources ?? []).find((resource) =>
+      resource.kind === "script" && /(?:^|\/)lottie(?:\.min)?\.js(?:$|\?)/i.test(resource.normalizedUrl ?? resource.sourceUrl ?? ""),
+    ) ?? null;
+    if (lottieRuntimeResource) break;
+  }
+  const runtimeSourcePaths = [...new Set([
+    "slide-runtime.css", "itv-runtime.css", "player-runtime.json",
+    ...playerRuntime.questionImageSizingVariants.flatMap((item) => [item.jqueryRuntimePath, item.executionRuntimePath]),
+  ])].sort((left, right) => left.localeCompare(right, "en"));
+  const sourceCss = await readFile(path.join(siteRoot, "slide-runtime.css"), "utf8");
+  const runtimeAssetMatches = [...sourceCss.matchAll(/\/api\/slide-(?:asset|font)\/([0-9a-f]{64})(\.[A-Za-z0-9]+)?/g)];
+  const runtimeAssets = [...new Map(runtimeAssetMatches.map((match) => [match[1], {
+    objectHash: match[1], extension: match[2] ?? "",
+  }])).values()];
+  const runtimePackageHash = domainHash(
+    "aixuexi-slide-runtime-v1", options.packageKey, slideRuntime.cssSha256,
+    ...runtimeSourcePaths, ...runtimeAssets.map((item) => `${item.objectHash}${item.extension}`),
+    lottieRuntimeResource?.objectSha256 ?? "no-lottie-runtime",
+  );
+  const runtimeStageRoot = path.join(outputRoot, "h5-staging", runtimePackageHash);
+  const runtimeFiles = [];
+  const stageRuntimeFile = async (packagePath, sourceFile, content = null) => {
+    const target = resolveInside(runtimeStageRoot, packagePath);
+    await mkdir(path.dirname(target), { recursive: true });
+    if (content === null) content = await readFile(sourceFile);
+    await writeFile(target, content);
+    const bytes = Buffer.isBuffer(content) ? content : Buffer.from(content, "utf8");
+    runtimeFiles.push({
+      packagePath,
+      sha256: sha256(bytes),
+      byteCount: bytes.byteLength,
+      mime: mimeFor(packagePath),
+      storeRelativePath: `h5-staging/${runtimePackageHash}/${packagePath}`,
+      storeScope: "package",
+    });
+  };
+  for (const relativePath of runtimeSourcePaths) {
+    const sourceFile = resolveInside(siteRoot, relativePath);
+    if (relativePath === "slide-runtime.css") {
+      const rewritten = sourceCss.replace(
+        /\/api\/slide-(?:asset|font)\/([0-9a-f]{64})(\.[A-Za-z0-9]+)?/g,
+        (_all, hash, extension = "") => `./runtime-assets/${hash}${extension}`,
+      );
+      await stageRuntimeFile(relativePath, sourceFile, rewritten);
+    } else {
+      await stageRuntimeFile(relativePath, sourceFile);
+    }
+  }
+  for (const asset of runtimeAssets) {
+    const sourceFile = path.join(sourceRoot, "store", "objects", "sha256", asset.objectHash.slice(0, 2), asset.objectHash);
+    if (await sha256File(sourceFile) !== asset.objectHash) fail(`runtime asset ${asset.objectHash} failed CAS verification`);
+    await stageRuntimeFile(`runtime-assets/${asset.objectHash}${asset.extension}`, sourceFile);
+  }
+  if (lottieRuntimeResource) {
+    const sourceFile = path.join(sourceRoot, "store", lottieRuntimeResource.objectRelativePath);
+    if (await sha256File(sourceFile) !== lottieRuntimeResource.objectSha256) fail("lottie runtime failed CAS verification");
+    await stageRuntimeFile("lottie.min.js", sourceFile);
+  }
+  h5Manifests.set(runtimePackageHash, {
+    schemaVersion: "mathin-h5-manifest-v1",
+    packageHash: runtimePackageHash,
+    entryPath: "slide-runtime.css",
+    byteCount: runtimeFiles.reduce((sum, file) => sum + file.byteCount, 0),
+    files: runtimeFiles.sort((left, right) => left.packagePath.localeCompare(right.packagePath, "en")),
+    source: { kind: "aixuexi_slide_runtime", packageKey: options.packageKey, cssSha256: slideRuntime.cssSha256 },
+  });
+
   const addUsage = ({ coursewareId, pageDatabaseId, resource, role }) => {
     if (!resource || !HASH.test(resource.objectSha256 ?? "")) {
       fail(`${coursewareId}/${pageDatabaseId} has an unresolved ${role} resource`);
     }
-    if (!["image", "video", "audio", "svg"].includes(resource.kind)) {
-      fail(`${coursewareId}/${pageDatabaseId} uses unsupported ${resource.kind} resource ${resource.resourceRefId}`);
-    }
+    const projectedKind = resource.kind === "svg" ? "svg"
+      : resource.kind === "video" ? "video"
+        : resource.kind === "audio" ? "audio" : "image";
     const usageKey = domainHash(
       "aixuexi-usage-v1", coursewareId, String(pageDatabaseId),
       String(resource.resourceRefId), role, resource.objectSha256,
     );
-    const candidateKey = domainHash("aixuexi-candidate-v1", resource.kind, role, resource.objectSha256);
+    const candidateKey = domainHash("aixuexi-candidate-v1", projectedKind, role, resource.objectSha256);
     usages.set(usageKey, {
       usageKey, coursewareId, pageDatabaseId, objectHash: resource.objectSha256,
-      objectKind: "cas", candidateKey, role, kind: resource.kind,
+      objectKind: "cas", candidateKey, role, kind: projectedKind,
     });
     candidates.set(candidateKey, {
-      candidateKey, objectHash: resource.objectSha256, kind: resource.kind, role,
+      candidateKey, objectHash: resource.objectSha256, kind: projectedKind, role,
     });
     objects.set(resource.objectSha256, {
       objectHash: resource.objectSha256,
@@ -342,8 +491,23 @@ export async function buildAixuexiPackage(options) {
       byteCount: resource.byteCount,
       storeRelativePath: `store/${resource.objectRelativePath}`,
       storeScope: "source",
-      kind: resource.kind,
+      kind: projectedKind,
     });
+    return usageKey;
+  };
+
+  const addPackageUsage = ({ coursewareId, pageDatabaseId, packageHash, role, discriminator = "" }) => {
+    if (!h5Manifests.has(packageHash)) fail(`${coursewareId}/${pageDatabaseId} misses H5 package ${packageHash}`);
+    const usageKey = domainHash(
+      "aixuexi-h5-usage-v2", coursewareId, String(pageDatabaseId), role, discriminator, packageHash,
+    );
+    const candidateKey = domainHash("aixuexi-h5-candidate-v2", role, packageHash);
+    usages.set(usageKey, {
+      usageKey, coursewareId, pageDatabaseId, objectHash: packageHash,
+      objectKind: "h5_package", candidateKey, role, kind: "h5",
+      launchQuery: {}, coursewareIdParam: null,
+    });
+    candidates.set(candidateKey, { candidateKey, objectHash: packageHash, kind: "h5", role });
     return usageKey;
   };
 
@@ -364,7 +528,7 @@ export async function buildAixuexiPackage(options) {
     }
     lectures.push({
       coursewareId: course.coursewareId,
-      mathinProductCode: PRODUCT_CODE.get(grade),
+      mathinProductCode: `${config.productPrefix}-${String(grade).padStart(2, "0")}-AUT`,
       lessonIndex: catalogCourse.lessonIndex,
       lessonName: catalogCourse.lessonName,
       pageCount: catalogCourse.pageCount,
@@ -372,9 +536,10 @@ export async function buildAixuexiPackage(options) {
       sourceSystem: "aixuexi_bsk",
       sourcePackageKey: options.packageKey,
       sourcePackageManifestSha256: packageManifestSha256,
-      sourcePackageLabels: { year: 2026, level: "G+", edition: "苏教版", subject: "数学", term: "秋季" },
-      sourcePackageScope: { grades: [3, 4, 5, 6], term: "秋季", level: "G+", missingLessonNumbers: [7, 15] },
-      sourcePackageCounts: { lectureCount: 52, pageCount: 1525 },
+      sourcePackageLabels: { year: 2026, level: config.level, edition: config.edition, subject: "数学", term: "秋季" },
+      sourcePackageScope: { grades: config.grades, term: "秋季", level: config.level, placeholders: "source_catalog_only" },
+      sourcePackageCounts: { lectureCount: config.lectureCount, pageCount: config.pageCount },
+      sourceRuntimePackageHash: runtimePackageHash,
       sourceProductCode: catalogCourse.productCode,
       offlineStatus: verification.status,
       verificationSha256: textFileSha256(verificationPath),
@@ -412,7 +577,19 @@ export async function buildAixuexiPackage(options) {
         return bindingForRef(resourceRefId, resource?.role || "source");
       };
 
-      const nodes = sourcePage.layout.nodes.map((node) => {
+      const runtimeBindingKey = addPackageUsage({
+        coursewareId: course.coursewareId,
+        pageDatabaseId: pageMeta.pageDatabaseId,
+        packageHash: runtimePackageHash,
+        role: "aixuexi_source_runtime",
+      });
+
+      const projectResourceMap = (record, rolePrefix) => Object.fromEntries(
+        Object.entries(record ?? {}).map(([key, value]) => [key, bindingForRef(value, `${rolePrefix}:${key}`)]),
+      );
+
+      const nodes = [];
+      for (const node of sourcePage.layout.nodes) {
         const roleFor = (resourceRefId) => {
           if (node.kind === "background") return "background";
           if (node.kind === "itv_video") return "itv_video";
@@ -422,7 +599,35 @@ export async function buildAixuexiPackage(options) {
         const resourceBindingKey = node.resourceRefId === undefined
           ? null
           : bindingForRef(node.resourceRefId, roleFor(node.resourceRefId));
-        return {
+        let embeddedH5 = null;
+        if (node.kind === "embedded_h5" && node.embeddedH5) {
+          const packageHash = node.embeddedH5.packageHash;
+          const patchedRoot = path.join(sourceRoot, "store", "h5", "packages", packageHash, "patched");
+          const originalRoot = path.join(sourceRoot, "store", "h5", "packages", packageHash, "original");
+          let sourceDirectory;
+          try {
+            sourceDirectory = (await stat(patchedRoot)).isDirectory() ? patchedRoot : originalRoot;
+          } catch {
+            sourceDirectory = originalRoot;
+          }
+          await addH5Package({
+            packageHash,
+            entryPath: node.embeddedH5.entryPackagePath,
+            sourceDirectory,
+            source: { kind: "aixuexi_embedded_h5", packageKey: options.packageKey },
+          });
+          embeddedH5 = {
+            ...node.embeddedH5,
+            bindingKey: addPackageUsage({
+              coursewareId: course.coursewareId,
+              pageDatabaseId: pageMeta.pageDatabaseId,
+              packageHash,
+              role: "embedded_h5",
+              discriminator: node.id,
+            }),
+          };
+        }
+        nodes.push({
           id: node.id,
           sourcePath: node.sourcePath,
           sourceType: node.sourceType,
@@ -434,15 +639,51 @@ export async function buildAixuexiPackage(options) {
           height: node.height,
           zIndex: node.zIndex,
           rotation: node.rotation,
+          transform: node.transform ?? "",
+          transformOrigin: node.transformOrigin ?? "",
           known: node.known,
           html: typeof node.html === "string"
             ? sanitizeMarkup(node.html, defaultBindingForRef, `${course.coursewareId}/${pageMeta.pageDatabaseId}/${node.id}`)
             : null,
           resourceBindingKey,
           resourceBindingKeys,
+          revealStep: node.revealStep ?? 0,
+          animations: node.animations ?? [],
+          questionTkRuntime: node.questionTkRuntime ?? null,
+          embeddedH5,
+          trueOrFalse: node.trueOrFalse ? {
+            ...node.trueOrFalse,
+            contentHtml: sanitizeMarkup(
+              node.trueOrFalse.contentHtml,
+              defaultBindingForRef,
+              `${course.coursewareId}/${pageMeta.pageDatabaseId}/${node.id}/true-or-false`,
+            ),
+            options: node.trueOrFalse.options.map((option, optionIndex) => ({
+              ...option,
+              html: sanitizeMarkup(
+                option.html,
+                defaultBindingForRef,
+                `${course.coursewareId}/${pageMeta.pageDatabaseId}/${node.id}/option-${optionIndex}`,
+              ),
+            })),
+            assets: projectResourceMap(node.trueOrFalse.assets, "true_or_false"),
+          } : null,
+          topicClassification: node.topicClassification ? {
+            ...node.topicClassification,
+            stageHtml: sanitizeMarkup(
+              node.topicClassification.stageHtml,
+              defaultBindingForRef,
+              `${course.coursewareId}/${pageMeta.pageDatabaseId}/${node.id}/topic-classification`,
+            ),
+            backgroundBindingKey: bindingForRef(
+              node.topicClassification.backgroundResourceRefId,
+              "topic_classification_background",
+            ),
+            assets: projectResourceMap(node.topicClassification.assets, "topic_classification"),
+          } : null,
           warnings: node.warnings ?? [],
-        };
-      });
+        });
+      }
 
       let topicInteraction = null;
       if (sourcePage.topicInteraction?.status === "capture_required") {
@@ -576,17 +817,28 @@ export async function buildAixuexiPackage(options) {
           groupName: sourcePage.normalized.groupName ?? null,
         },
         canvas: {
-          width: SOURCE_CANVAS_WIDTH,
-          height: SOURCE_CANVAS_HEIGHT,
+          width: canvas.width,
+          height: canvas.height,
           widgetOffsetX: canvas.widgetOffsetX,
+          slideClass: canvas.slideClass ?? "",
           backgroundBindingKey: bindingForRef(canvas.backgroundResourceRefId, "background"),
         },
+        playerStage: sourcePage.layout.playerStage,
         presentation: {
-          width: PRESENTATION_WIDTH,
-          height: PRESENTATION_HEIGHT,
-          contentScale: PRESENTATION_CONTENT_SCALE,
-          offsetX: PRESENTATION_OFFSET_X,
+          width: presentation.width,
+          height: presentation.height,
+          contentScale: presentation.contentScale,
+          offsetX: presentation.offsetX,
           offsetY: presentation.offsetY,
+        },
+        sourceRuntime: {
+          runtimeBindingKey,
+          slideStylesheetPath: "slide-runtime.css",
+          itvStylesheetPath: "itv-runtime.css",
+          lottieRuntimePath: lottieRuntimeResource ? "lottie.min.js" : null,
+          lottieRuntimeSha256: lottieRuntimeResource?.objectSha256 ?? null,
+          questionImageSizing: sourcePage.layout.sourceRuntime?.questionImageSizing ?? null,
+          questionImageSizingInput: sourcePage.layout.sourceRuntime?.questionImageSizingInput ?? { imgs: {} },
         },
         behaviors: projectBehaviors(sourcePage.layout.behaviors, `${course.coursewareId}/${pageMeta.pageDatabaseId}`),
         sourceKind: sourcePage.layout.sourceKind,
@@ -597,6 +849,17 @@ export async function buildAixuexiPackage(options) {
           advanceOnCanvasClick: Boolean(nextPage && nextPage.name === pageMeta.name),
         },
         warnings: sourcePage.layout.warnings ?? [],
+      };
+      const compatibilityReasons = [];
+      if (canvas.width !== 1200 || canvas.height !== 900) compatibilityReasons.push("wide_canvas");
+      if (nodes.some((node) => node.animations.length > 0)) compatibilityReasons.push("source_animation");
+      if (nodes.some((node) => node.kind === "embedded_h5")) compatibilityReasons.push("embedded_h5");
+      if (nodes.some((node) => ["true_or_false_game", "topic_classification_game"].includes(node.kind))) {
+        compatibilityReasons.push("native_game");
+      }
+      doc.fourByThree = {
+        mode: compatibilityReasons.length > 0 ? "source-player-compat" : "source-master",
+        reasons: compatibilityReasons,
       };
       rows.push({
         coursewareId: course.coursewareId,
@@ -635,7 +898,7 @@ export async function buildAixuexiPackage(options) {
   }
   await writeFile(path.join(outputRoot, "manifest.json"), JSON.stringify({
     schemaVersion: "mathin-package-export-v1",
-    exportId: `aixuexi-${options.packageKey}-projection-v5`,
+    exportId: `aixuexi-${options.packageKey}-projection-v31`,
     files: writeRecords.sort((a, b) => a.path.localeCompare(b.path, "en")),
   }, null, 2), "utf8");
 

@@ -8,9 +8,9 @@ function fail(message) {
 }
 
 function parseArgs(argv) {
-  const packageKey = "2026-gplus-sujiao-math";
   const options = {
-    packageRoot: path.resolve(process.cwd(), ".tmp", "aixuexi-import", packageKey),
+    packageKey: "2026-gplus-sujiao-math",
+    packageRoot: null,
     storeRoot: path.resolve(process.cwd(), "..", "2026-07_mofaxiao_courseware"),
     sshHost: process.env.CW_IMPORT_SSH_HOST ?? "xiaomi",
     startAt: 1,
@@ -24,7 +24,7 @@ function parseArgs(argv) {
       options.dryRun = true;
       continue;
     }
-    if (["--package-root", "--store-root", "--ssh-host", "--start-at", "--limit"].includes(arg)) {
+    if (["--package-key", "--package-root", "--store-root", "--ssh-host", "--start-at", "--limit"].includes(arg)) {
       const value = argv[++index];
       if (!value || value.startsWith("--")) fail(arg + " requires a value");
       const key = arg.slice(2).replace(/-([a-z])/g, (_all, letter) => letter.toUpperCase());
@@ -37,6 +37,7 @@ function parseArgs(argv) {
   if (!(options.limit === Number.POSITIVE_INFINITY || Number.isInteger(options.limit) && options.limit > 0)) {
     fail("--limit must be a positive integer");
   }
+  options.packageRoot ??= path.resolve(process.cwd(), ".tmp", "aixuexi-import", options.packageKey);
   return options;
 }
 

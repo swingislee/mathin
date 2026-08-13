@@ -2,29 +2,29 @@
 
 import "katex/dist/katex.min.css";
 import { useTranslations } from "next-intl";
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Button } from "@/components/ui/button";
 import { AixuexiItvPlayer } from "./AixuexiItvPlayer";
+import { AixuexiNativeGame } from "./AixuexiNativeGame";
 import { renderAixuexiMathHtml } from "./aixuexi-math";
 import { observePresentation, revealStep } from "./aixuexi-presentation";
+import {
+  aixuexiRuntimeFileUrl,
+  hydrateAixuexiSourceRuntime,
+  installAixuexiWidgetReveal,
+  type WidgetRevealController,
+} from "./aixuexi-runtime";
 import type { AixuexiPageDoc } from "./aixuexi-schema";
 import type { DocVideoControl } from "./DocStage";
 import { injectBindingUrls, type ResolvedBindingUrls } from "./resolve";
 import styles from "./aixuexi-stage.module.css";
 
 /**
- * 爱学习成品页舞台。
+ * 爱学习 projection v31 成品页舞台。
  *
- * **母版是 1200×900,正好 4:3**;16:9 只是源播放器把母版 contain 进画框的结果
- * (缩 0.75、左右各留 150),由 `doc.presentation` 描述。因此两轨的关系与 E 系列相反:
- *
- * - `board43`(课堂 4:3 舞台 / adapted-4x3 轨):母版 1:1 铺满,内容比源站大 33%,
- *   **没有板书带** —— 板书带是 E 系列 16:9 内容进 4:3 的补偿,这里内容本来就是 4:3。
- *   背景是 16:9 装饰图,`object-fit: cover` 裁出的中央 4:3 恰好等于源站放内容的那块区域。
- * - `natural`(native-16x9 轨):按 presentation 还原源站画框,内容居中 pillarbox。
- *
- * 曾经把画布写成 1200×675 并让节点沿用 900 空间的坐标,结果 1525 页里有 876 页
- * 底部内容被裁掉 —— 改动画布语义前请先读 `docs/plan/16-p6-courseware-platform.md` §12。
+ * ordinary slide 仍以 1200×900 建模，但源站实际是 1920×1080 player stage 承载
+ * 背景/slideClass，再把 1200×900 child 以 1.2 倍居中；原生游戏则直接使用
+ * 1920×1080。这里消费 doc.playerStage/doc.presentation，不再重造放大或 xmind 位移。
  */
 
 export interface AixuexiStageProps {
@@ -37,6 +37,10 @@ export interface AixuexiStageProps {
   onAdvance?: () => void;
 }
 
+function sourceClassNames(value: string): string {
+  return value.split(/\s+/).filter((token) => /^[A-Za-z][A-Za-z0-9_-]*$/.test(token)).join(" ");
+}
+
 function nodeStyle(node: AixuexiPageDoc["nodes"][number], yOffset: number, width: number): CSSProperties {
   return {
     left: node.x,
@@ -44,7 +48,25 @@ function nodeStyle(node: AixuexiPageDoc["nodes"][number], yOffset: number, width
     width,
     height: node.height,
     zIndex: node.zIndex,
-    transform: `rotate(${node.rotation}deg)`,
+    transform: node.transform.trim() || `rotate(${node.rotation}deg)`,
+    transformOrigin: node.transformOrigin || undefined,
+  };
+}
+
+type PresentationGeometry = { width: number; height: number; contentScale: number; offsetX: number; offsetY: number };
+
+function sourcePresentation(doc: AixuexiPageDoc): PresentationGeometry {
+  const nodes = doc.nodes.filter((node) => node.kind !== "background");
+  const wide = nodes.find((node) => node.kind === "embedded_h5"
+    && node.embeddedH5?.presentationMode === "wide_crop"
+    && node.x <= 1 && node.y <= 1 && node.width >= 1190 && node.height >= 890);
+  const companions = nodes.filter((node) => node !== wide);
+  if (!wide || companions.some((node) => node.width * node.height > 21600)) return doc.presentation;
+  return {
+    ...doc.presentation,
+    contentScale: 1,
+    offsetX: 0,
+    offsetY: (doc.presentation.height - doc.canvas.height) / 2,
   };
 }
 
@@ -61,20 +83,44 @@ export default function AixuexiStage({
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const revealRef = useRef<{ steps: HTMLElement[]; cursor: number }>({ steps: [], cursor: 0 });
+  const widgetRevealRef = useRef<WidgetRevealController | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const [topicOpen, setTopicOpen] = useState(false);
   const [itvOpen, setItvOpen] = useState(false);
+  const [runtimeError, setRuntimeError] = useState<string | null>(null);
 
-  const sourceFramed = stageMode !== "board43";
-  const frameWidth = sourceFramed ? doc.presentation.width : doc.canvas.width;
-  const frameHeight = sourceFramed ? doc.presentation.height : doc.canvas.height;
+  const directFourByThree = stageMode === "board43" && doc.fourByThree.mode === "source-master";
+  const compatibilityFourByThree = stageMode === "board43" && !directFourByThree;
+  const frameWidth = 1200;
+  const frameHeight = stageMode === "board43" ? 900 : 675;
   const fit = containerWidth > 0 ? containerWidth / frameWidth : 0;
-  const contentScale = sourceFramed ? fit * doc.presentation.contentScale : fit;
-  const offsetX = sourceFramed ? doc.presentation.offsetX * fit : 0;
-  const offsetY = sourceFramed ? doc.presentation.offsetY * fit : 0;
+  const presentation = useMemo(() => sourcePresentation(doc), [doc]);
+  const playerScale = directFourByThree ? 1 : doc.playerStage.presentationScale;
+  const outerScale = fit * playerScale;
+  const innerScale = directFourByThree ? 1 : presentation.contentScale / doc.playerStage.presentationScale;
+  const visualLeft = directFourByThree
+    ? 0
+    : (presentation.offsetX - doc.playerStage.offsetX) / doc.playerStage.presentationScale;
+  const visualTop = directFourByThree
+    ? doc.playerStage.contentPadding.top
+    : (presentation.offsetY - doc.playerStage.offsetY) / doc.playerStage.presentationScale;
+  const innerLeft = directFourByThree
+    ? 0
+    : visualLeft - (1 - innerScale) * doc.canvas.width / 2;
+  const viewportHeight = Math.max(
+    0,
+    doc.canvas.height - doc.playerStage.contentPadding.top - doc.playerStage.contentPadding.bottom,
+  );
 
   const url = (key: string | null) => (key ? bindingUrls[key] : undefined);
   const background = url(doc.canvas.backgroundBindingKey);
+  const runtimeEntry = bindingUrls[doc.sourceRuntime.runtimeBindingKey];
+  const runtimeCss = runtimeEntry
+    ? aixuexiRuntimeFileUrl(runtimeEntry, doc.sourceRuntime.slideStylesheetPath)
+    : null;
+  const itvRuntimeCss = runtimeEntry
+    ? aixuexiRuntimeFileUrl(runtimeEntry, doc.sourceRuntime.itvStylesheetPath)
+    : null;
   const split = doc.behaviors.splitQuestionScroll;
   const clampWidth = doc.behaviors.singleQuestionScroll?.clampWidth ?? null;
 
@@ -87,20 +133,17 @@ export default function AixuexiStage({
     return () => observer.disconnect();
   }, []);
 
-  // 源站 HTML 注入后才能量几何,呈现规则一律在这里施加并持续跟随子树变化。
   const answerLabel = t("disclosureAnswer");
   const analysisLabel = t("disclosureAnalysis");
   useEffect(() => {
     const stage = stageRef.current;
     if (!stage) return;
-    // 供浏览器验收断言「呈现规则已施加」,不参与渲染。
     stage.dataset.aixPresentation = "applied";
     return observePresentation(stage, {
       shapeTextMinFontSize: doc.behaviors.shapeTextFit?.minFontSize ?? null,
       stagedReveal: doc.behaviors.stagedReveal,
       disclosureLabels: { answer: answerLabel, analysis: analysisLabel },
       onRevealSteps: (steps) => {
-        // 重排后步骤列表会重建,已揭示的部分按游标补回,不让进度倒退。
         const cursor = Math.min(revealRef.current.cursor, steps.length);
         for (let index = 0; index < cursor; index += 1) revealStep(steps[index]);
         revealRef.current = { steps, cursor };
@@ -108,24 +151,52 @@ export default function AixuexiStage({
     });
   }, [doc, answerLabel, analysisLabel]);
 
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    widgetRevealRef.current = installAixuexiWidgetReveal(stage);
+    let cleanup: () => void = () => undefined;
+    let disposed = false;
+    setRuntimeError(null);
+    hydrateAixuexiSourceRuntime(stage, doc, bindingUrls)
+      .then((nextCleanup) => {
+        if (disposed) nextCleanup();
+        else cleanup = nextCleanup;
+      })
+      .catch((error: unknown) => {
+        if (!disposed) setRuntimeError(error instanceof Error ? error.message : String(error));
+      });
+    return () => {
+      disposed = true;
+      cleanup();
+      widgetRevealRef.current = null;
+    };
+  }, [doc, bindingUrls]);
+
   const html = (raw: string) => renderAixuexiMathHtml(injectBindingUrls(raw, bindingUrls));
 
   const renderNode = (node: AixuexiPageDoc["nodes"][number], yOffset = 0) => {
     if (node.kind === "background") return null;
-    // 源站单题页把题目部件宽度夹到画布右边界,防止长题横向溢出。
     const width = node.sourceType === "question-tk" && clampWidth !== null
       ? Math.min(node.width, clampWidth)
       : node.width;
     const isQuestion = node.kind === "inline_question" || node.kind.startsWith("question_");
+    const classes = [
+      "aix-layout-node",
+      isQuestion ? "aix-question-node" : "aix-widget-node",
+      node.kind === "itv_video" ? "aix-itv-node" : "",
+      styles.node,
+    ].filter(Boolean).join(" ");
     return (
       <div
         key={node.id}
-        className={[
-          "aix-layout-node",
-          styles.node,
-          isQuestion ? styles.questionNode : styles.widgetNode,
-        ].join(" ")}
+        className={classes}
         data-aix-source-type={node.sourceType}
+        data-aix-source-path={node.sourcePath}
+        data-aix-animations={node.animations.length > 0 ? JSON.stringify(node.animations) : undefined}
+        data-aix-reveal-step={node.revealStep > 0 ? node.revealStep : undefined}
+        data-aix-question-kit={node.questionTkRuntime?.kit}
+        data-aix-page-click-boundary={node.embeddedH5 ? "embedded_h5" : node.trueOrFalse || node.topicClassification ? "game" : undefined}
         style={nodeStyle(node, yOffset, width)}
       >
         {node.kind === "itv_video" ? (
@@ -138,12 +209,18 @@ export default function AixuexiStage({
             }}
           >
             {t("enterItv")}
-            <small>
-              {doc.itvInteraction
-                ? t("itvNodeCount", { count: doc.itvInteraction.eventCount })
-                : t("itvNotReady")}
-            </small>
+            <small>{doc.itvInteraction ? t("itvNodeCount", { count: doc.itvInteraction.eventCount }) : t("itvNotReady")}</small>
           </Button>
+        ) : node.embeddedH5 ? (
+          <iframe
+            title={node.title || doc.source.pageName}
+            src={bindingUrls[node.embeddedH5.bindingKey]}
+            sandbox="allow-scripts allow-forms allow-pointer-lock allow-modals"
+            className={styles.embeddedFrame}
+            data-aix-h5-presentation={node.embeddedH5.presentationMode}
+          />
+        ) : node.trueOrFalse || node.topicClassification ? (
+          <AixuexiNativeGame node={node} bindingUrls={bindingUrls} interactive={interactive} />
         ) : node.html ? (
           <div className={`aix-html ${styles.html}`} dangerouslySetInnerHTML={{ __html: html(node.html) }} />
         ) : null}
@@ -161,8 +238,12 @@ export default function AixuexiStage({
   const advance = (event: React.MouseEvent) => {
     const target = event.target as HTMLElement;
     if (!interactive) return;
-    if (target.closest('button,a,input,select,textarea,video,audio,iframe,[role="button"]')) return;
-    // 分步揭示优先于翻页:先把填空/总结逐个显形,走完才允许推进页面。
+    if (target.closest('button,a,input,select,textarea,video,audio,iframe,[role="button"],[data-aix-page-click-boundary]')) return;
+    if (widgetRevealRef.current?.runNext()) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
     const reveal = revealRef.current;
     if (reveal.cursor < reveal.steps.length) {
       event.preventDefault();
@@ -174,47 +255,70 @@ export default function AixuexiStage({
     if (doc.behavior.advanceOnCanvasClick) onAdvance?.();
   };
 
-  const hasReveal = doc.behaviors.stagedReveal.underlineCount + doc.behaviors.stagedReveal.summaryWidgetCount > 0;
+  const directBackgroundSize = doc.playerStage.backgroundSize.replace(/1080px\b/, "900px");
+  const playerStyle: CSSProperties = directFourByThree ? {
+    width: 1200,
+    height: 900,
+    backgroundImage: background ? `url(${background})` : undefined,
+    backgroundSize: directBackgroundSize,
+    backgroundPosition: doc.playerStage.backgroundPosition,
+    backgroundRepeat: doc.playerStage.backgroundRepeat,
+    backgroundColor: doc.playerStage.backgroundColor ?? undefined,
+    transform: `scale(${outerScale})`,
+  } : {
+    width: doc.playerStage.width,
+    height: doc.playerStage.height,
+    backgroundImage: background ? `url(${background})` : undefined,
+    backgroundSize: doc.playerStage.backgroundSize,
+    backgroundPosition: doc.playerStage.backgroundPosition,
+    backgroundRepeat: doc.playerStage.backgroundRepeat,
+    backgroundColor: doc.playerStage.backgroundColor ?? undefined,
+    transform: `scale(${outerScale})`,
+  };
 
   return (
     <div
       ref={containerRef}
-      className={[styles.frame, className].filter(Boolean).join(" ")}
+      className={["aix-layout-frame", styles.frame, className].filter(Boolean).join(" ")}
       data-aixuexi-stage-mode={stageMode}
+      data-aixuexi-four-by-three={doc.fourByThree.mode}
       style={{ aspectRatio: String(frameWidth / frameHeight) }}
     >
-      {background ? (
-        // eslint-disable-next-line @next/next/no-img-element -- 课件 CAS signed URL
-        <img alt="" src={background} className={styles.background} />
-      ) : null}
+      {runtimeCss ? <link rel="stylesheet" href={runtimeCss} data-aixuexi-slide-runtime /> : null}
+      {itvRuntimeCss ? <link rel="stylesheet" href={itvRuntimeCss} data-aixuexi-itv-runtime /> : null}
+      {compatibilityFourByThree ? <div className={styles.compatibilityBand} aria-hidden="true" /> : null}
       <div
-        ref={stageRef}
-        className={[
-          styles.stage,
-          interactive && (hasReveal || doc.behavior.advanceOnCanvasClick) ? styles.advanceable : "",
-        ].filter(Boolean).join(" ")}
-        data-aixuexi-stage
-        style={{
-          width: doc.canvas.width,
-          height: doc.canvas.height,
-          transform: `translate(${offsetX}px, ${offsetY}px) scale(${contentScale})`,
-          visibility: contentScale > 0 ? "visible" : "hidden",
-        }}
-        onClick={advance}
+        className={["aix-player-stage", sourceClassNames(doc.canvas.slideClass), styles.playerStage].filter(Boolean).join(" ")}
+        data-aix-player-stage
+        style={playerStyle}
       >
-        {fixedNodes.map((node) => renderNode(node))}
-        {split ? (
-          <div
-            className={styles.questionScroll}
-            data-aix-question-scroll
-            style={{ top: split.top, height: split.height }}
-          >
-            <div className={styles.questionScrollContent} style={{ height: split.contentHeight }}>
-              {scrollNodes.map((node) => renderNode(node, split.top))}
+        <div
+          ref={stageRef}
+          className={["aix-layout-stage", styles.stage].join(" ")}
+          data-aix-stage
+          style={{
+            width: doc.canvas.width,
+            height: viewportHeight,
+            left: innerLeft,
+            top: visualTop,
+            overflow: doc.playerStage.contentPadding.top || doc.playerStage.contentPadding.bottom ? "auto" : "visible",
+            transform: `scale(${innerScale})`,
+            visibility: outerScale > 0 ? "visible" : "hidden",
+          }}
+          onClick={advance}
+        >
+          {fixedNodes.map((node) => renderNode(node))}
+          {split ? (
+            <div className={styles.questionScroll} data-aix-question-scroll style={{ top: split.top, height: split.height }}>
+              <div className={styles.questionScrollContent} style={{ height: split.contentHeight }}>
+                {scrollNodes.map((node) => renderNode(node, split.top))}
+              </div>
             </div>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
       </div>
+
+      {runtimeError ? <div className={styles.runtimeError} role="alert">{runtimeError}</div> : null}
 
       {doc.topicInteraction ? (
         <Button

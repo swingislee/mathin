@@ -1,3 +1,5 @@
+import { readFileSync, readdirSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   aixuexiPageDocSchema,
@@ -14,7 +16,7 @@ function doc(): AixuexiPageDoc {
   return {
     docVersion: "aixuexi-page-doc-v1",
     adapter: "aixuexi-page-v1",
-    projectionVersion: 11,
+    projectionVersion: 31,
     source: {
       sourceSystem: "aixuexi_bsk",
       packageKey: "2026-gplus-sujiao-math",
@@ -29,7 +31,20 @@ function doc(): AixuexiPageDoc {
       width: 1200,
       height: 900,
       widgetOffsetX: 0,
+      slideClass: "light-slide slide",
       backgroundBindingKey: key("b"),
+    },
+    playerStage: {
+      width: 1920,
+      height: 1080,
+      presentationScale: 0.625,
+      offsetX: 0,
+      offsetY: 0,
+      backgroundSize: "auto 1080px",
+      backgroundPosition: "center center",
+      backgroundRepeat: "no-repeat",
+      backgroundColor: null,
+      contentPadding: { top: 0, right: 0, bottom: 0, left: 0 },
     },
     presentation: {
       width: 1200,
@@ -38,10 +53,20 @@ function doc(): AixuexiPageDoc {
       offsetX: 150,
       offsetY: 0,
     },
+    sourceRuntime: {
+      runtimeBindingKey: key("c"),
+      slideStylesheetPath: "slide-runtime.css",
+      itvStylesheetPath: "itv-runtime.css",
+      lottieRuntimePath: null,
+      lottieRuntimeSha256: null,
+      questionImageSizing: null,
+      questionImageSizingInput: { imgs: {} },
+    },
     behaviors: {
       splitQuestionScroll: null,
       singleQuestionScroll: null,
       stagedReveal: { underlineCount: 0, summaryWidgetCount: 0 },
+      widgetReveal: { steps: 0 },
       shapeTextFit: null,
     },
     sourceKind: "slide_widgets",
@@ -57,24 +82,33 @@ function doc(): AixuexiPageDoc {
       height: 900,
       zIndex: -1000,
       rotation: 0,
+      transform: "",
+      transformOrigin: "",
       known: true,
       html: null,
       resourceBindingKey: key("b"),
       resourceBindingKeys: [key("b")],
+      revealStep: 0,
+      animations: [],
+      questionTkRuntime: null,
+      embeddedH5: null,
+      trueOrFalse: null,
+      topicClassification: null,
       warnings: [],
     }],
     topicInteraction: null,
     itvInteraction: null,
     behavior: { advanceOnCanvasClick: false },
+    fourByThree: { mode: "source-master", reasons: [] },
     warnings: [],
   };
 }
 
 describe("Aixuexi courseware adapter", () => {
-  it("freezes projection v11 separately from the E-series schema", () => {
+  it("freezes projection v31 separately from the E-series schema", () => {
     const parsed = aixuexiPageDocSchema.parse(doc());
     expect(parsed.docVersion).toBe("aixuexi-page-doc-v1");
-    expect([...collectAixuexiBindingKeys(parsed)]).toEqual([key("b")]);
+    expect([...collectAixuexiBindingKeys(parsed)]).toEqual([key("b"), key("c")]);
   });
 
   it("keeps the 4:3 master canvas unscaled and carries the source 16:9 presentation rule", () => {
@@ -104,7 +138,7 @@ describe("Aixuexi courseware adapter", () => {
       },
     });
     expect(parsed.topicInteraction?.status).toBe("capture_required");
-    expect([...collectAixuexiBindingKeys(parsed)]).toEqual([key("b")]);
+    expect([...collectAixuexiBindingKeys(parsed)]).toEqual([key("b"), key("c")]);
   });
 
   it("rewrites root runtime URLs relative to each offline topic file", () => {
@@ -179,5 +213,35 @@ describe("Aixuexi courseware adapter", () => {
     expect(sql).toContain("'adapted-4x3'");
     expect(sql).toContain("cw_import_inserted_adapted_release");
     expect(sql).toContain("adaptedReleaseInserted");
+  });
+});
+
+const contractRoot = process.env.AIXUEXI_CONTRACT_ROOT;
+
+describe.skipIf(!contractRoot)("Aixuexi generated v31 packages", () => {
+  it("parses every page and reconciles every document binding with usages.ndjson", () => {
+    let pageCount = 0;
+    let compatibilityCount = 0;
+    for (const directory of readdirSync(contractRoot!, { withFileTypes: true }).filter((entry) => entry.isDirectory())) {
+      const packageRoot = path.join(contractRoot!, directory.name);
+      const usages = new Set(
+        readFileSync(path.join(packageRoot, "usages.ndjson"), "utf8")
+          .trim().split(/\r?\n/).filter(Boolean).map((line) => JSON.parse(line).usageKey as string),
+      );
+      for (const file of readdirSync(path.join(packageRoot, "page-docs"))) {
+        const rows = readFileSync(path.join(packageRoot, "page-docs", file), "utf8")
+          .trim().split(/\r?\n/).filter(Boolean).map((line) => JSON.parse(line) as { pageIndex: number; doc: unknown });
+        for (const row of rows) {
+          const parsed = aixuexiPageDocSchema.parse(row.doc);
+          for (const binding of collectAixuexiBindingKeys(parsed)) {
+            expect(usages.has(binding), `${directory.name}/${file}/${row.pageIndex}/${binding}`).toBe(true);
+          }
+          pageCount += 1;
+          if (parsed.fourByThree.mode === "source-player-compat") compatibilityCount += 1;
+        }
+      }
+    }
+    expect(pageCount).toBe(5442);
+    expect(compatibilityCount).toBe(422);
   });
 });
