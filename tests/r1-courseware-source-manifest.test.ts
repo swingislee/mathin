@@ -49,6 +49,7 @@ function binding(system: CourseSystem, track: Track, index: number, h5Evidence: 
     storagePath: h5 ? `packages/${objectSha256}` : `sha256/${objectSha256.slice(0, 2)}/${objectSha256}`,
     h5ManifestPath: h5 ? h5Evidence.path : null,
     h5ManifestSha256: h5 ? h5Evidence.sha256 : null,
+    launchQuery: h5 ? { query: {}, coursewareIdParam: null } : null,
     adaptationStatus: adaptedBackground ? "approved" : "not-required",
   };
 }
@@ -79,6 +80,7 @@ function track(system: CourseSystem, name: Track, index: number, pageDocId: stri
     capturedRelease: {
       id: uuid(`${system}:${name}:${index}:captured-release`),
       releaseNo: 1,
+      rawSnapshotSha256: digests.snapshotSha256,
       snapshotSha256: digests.snapshotSha256,
     },
     release: { releaseNo: 1, note: "production-v1.0-baseline", snapshotSha256: digests.snapshotSha256 },
@@ -237,7 +239,7 @@ function writeFullFixture(temp: string) {
   writeNdjson(objectAuditPath, resourceRows(allEntries, "cw-objects"));
   const manifest = {
     $schema: schemaRelativePath,
-    schemaVersion: "mathin-r1-courseware-source-manifest-v3",
+    schemaVersion: "mathin-r1-courseware-source-manifest-v4",
     example: false,
     mode: "plan-only",
     writesAllowed: false,
@@ -318,6 +320,7 @@ describe("R1-9 P6 courseware source manifest", () => {
     const second = buildCoursewareSourcePlan(loadCoursewareSourceContext({ root: repositoryRoot, manifestPath: exampleManifestPath }));
 
     expect(first).toEqual(second);
+    expect(first.schemaVersion).toBe("mathin-r1-courseware-source-plan-v4");
     expect(first.planHash).toMatch(/^[0-9a-f]{64}$/);
     expect(first.actual).toMatchObject({ courseCount: 2, lectureCount: 2, nativeTrackCount: 2, adaptedTrackCount: 2, releaseCount: 4 });
     expect(first.expected).toMatchObject({ courseCount: 102, lectureCount: 1305, releaseCount: 2610 });
@@ -330,15 +333,29 @@ describe("R1-9 P6 courseware source manifest", () => {
     expect(first.stageClosureAllowed).toBe(false);
   });
 
-  it("uses the active release snapshot canonical contract including learningCheckEnabled", () => {
+  it("fails closed on the superseded v3 manifest contract", () => {
+    const temp = fs.mkdtempSync(path.join(os.tmpdir(), "mathin-r1-courseware-source-"));
+    try {
+      const source = copyExampleFixture(temp);
+      source.schemaVersion = "mathin-r1-courseware-source-manifest-v3";
+      expect(() => loadCoursewareSourceContext({ root: temp, manifestPath: writeExampleManifest(temp, source) })).toThrow(
+        /schemaVersion must be mathin-r1-courseware-source-manifest-v4/,
+      );
+    } finally {
+      fs.rmSync(temp, { recursive: true, force: true });
+    }
+  });
+
+  it("uses the active release snapshot canonical contract including launchQuery and learningCheckEnabled", () => {
     const entry = JSON.parse(fs.readFileSync(path.join(repositoryRoot, "docs/manifests/r1-courseware-e-series.example.ndjson"), "utf8"));
     const page = entry.tracks[0].pages[0];
     expect(deriveReleaseSnapshot([page])).toEqual([{
       pageDocId: page.pageDocId,
       revisionId: page.sourceRevisionId,
-      bindings: page.bindings.map((item: { bindingKey: string; assetRevisionId: string }) => ({
+      bindings: page.bindings.map((item: { bindingKey: string; assetRevisionId: string; launchQuery: null }) => ({
         bindingKey: item.bindingKey,
         assetRevisionId: item.assetRevisionId,
+        launchQuery: item.launchQuery,
       })),
       learningCheckEnabled: page.learningCheckEnabled,
     }]);
@@ -347,6 +364,67 @@ describe("R1-9 P6 courseware source manifest", () => {
     expect(deriveTrackDigests([changed]).snapshotSha256).not.toBe(deriveTrackDigests([page]).snapshotSha256);
     const migration = fs.readFileSync(path.join(repositoryRoot, "supabase/migrations/20260730000400_r1_courseware_page_learning_check_flags.sql"), "utf8");
     expect(migration).toMatch(/'learningCheckEnabled',\s*rows\.learning_check_enabled/);
+  });
+
+  it("binds H5 launchQuery into the normalized release snapshot and content state", () => {
+    const temp = fs.mkdtempSync(path.join(os.tmpdir(), "mathin-r1-courseware-source-"));
+    try {
+      const source = copyExampleFixture(temp);
+      const inventoryPath = path.join(temp, "docs/manifests/r1-courseware-aixuexi.example.ndjson");
+      const original = JSON.parse(fs.readFileSync(inventoryPath, "utf8"));
+      const before = buildCoursewareSourcePlan(loadCoursewareSourceContext({ root: temp, manifestPath: exampleManifestPath }));
+      const oldSnapshotSha256 = original.tracks[0].capturedRelease.snapshotSha256;
+
+      const changed = clone(original);
+      const changedTrack = changed.tracks[0];
+      changedTrack.pages[0].bindings[0].launchQuery = {
+        query: { level: ["3"] },
+        coursewareIdParam: "lesson",
+      };
+      const changedDigests = deriveTrackDigests(changedTrack.pages);
+      changedTrack.capturedRelease.rawSnapshotSha256 = changedDigests.snapshotSha256;
+      changedTrack.capturedRelease.snapshotSha256 = changedDigests.snapshotSha256;
+      changedTrack.release.snapshotSha256 = changedDigests.snapshotSha256;
+      writeNdjson(inventoryPath, [changed]);
+      source.inventories[0].sha256 = textFileSha256(inventoryPath);
+
+      const after = buildCoursewareSourcePlan(loadCoursewareSourceContext({
+        root: temp,
+        manifestPath: writeExampleManifest(temp, source),
+      }));
+      expect(changedDigests.snapshotSha256).not.toBe(oldSnapshotSha256);
+      expect(after.contentStateSha256).not.toBe(before.contentStateSha256);
+    } finally {
+      fs.rmSync(temp, { recursive: true, force: true });
+    }
+  });
+
+  it("requires a strict launchQuery object for H5 and null for every other binding kind", () => {
+    const temp = fs.mkdtempSync(path.join(os.tmpdir(), "mathin-r1-courseware-source-"));
+    try {
+      const source = copyExampleFixture(temp);
+      const inventoryPath = path.join(temp, "docs/manifests/r1-courseware-aixuexi.example.ndjson");
+      const original = JSON.parse(fs.readFileSync(inventoryPath, "utf8"));
+      const cases: Array<[string, (entry: typeof original) => void, RegExp]> = [
+        ["missing", (entry) => { delete entry.tracks[0].pages[0].bindings[0].launchQuery; }, /is missing keys: launchQuery/],
+        ["null-h5", (entry) => { entry.tracks[0].pages[0].bindings[0].launchQuery = null; }, /launchQuery must be an object/],
+        ["invalid-query", (entry) => {
+          entry.tracks[0].pages[0].bindings[0].launchQuery = { query: { level: "3" }, coursewareIdParam: null };
+        }, /launchQuery\.query\.level must be an array/],
+        ["non-h5", (entry) => {
+          entry.tracks[1].pages[0].bindings[0].launchQuery = { query: {}, coursewareIdParam: null };
+        }, /launchQuery must be null outside H5/],
+      ];
+      for (const [, mutate, error] of cases) {
+        const entry = clone(original);
+        mutate(entry);
+        writeNdjson(inventoryPath, [entry]);
+        source.inventories[0].sha256 = textFileSha256(inventoryPath);
+        expect(() => loadCoursewareSourceContext({ root: temp, manifestPath: writeExampleManifest(temp, source) })).toThrow(error);
+      }
+    } finally {
+      fs.rmSync(temp, { recursive: true, force: true });
+    }
   });
 
   it("accepts the exact 90+12 course, 1135+170 lecture, two-track, 2610 release-1 target", () => {
@@ -419,7 +497,7 @@ describe("R1-9 P6 courseware source manifest", () => {
       wrongSnapshot.tracks[0].capturedRelease.snapshotSha256 = hash("a different immutable release snapshot");
       writeNdjson(inventoryPath, [wrongSnapshot]);
       source.inventories[1].sha256 = textFileSha256(inventoryPath);
-      expect(() => loadCoursewareSourceContext({ root: temp, manifestPath: writeExampleManifest(temp, source) })).toThrow(/capturedRelease\.snapshotSha256 does not match the current immutable release snapshot/);
+      expect(() => loadCoursewareSourceContext({ root: temp, manifestPath: writeExampleManifest(temp, source) })).toThrow(/capturedRelease\.snapshotSha256 does not match the normalized current release projection/);
 
       const missingIdentity = clone(original);
       delete missingIdentity.tracks[0].capturedRelease.id;
@@ -443,7 +521,41 @@ describe("R1-9 P6 courseware source manifest", () => {
       forgedTrack.release.snapshotSha256 = forgedDigests.snapshotSha256;
       writeNdjson(inventoryPath, [forgedFromDraft]);
       source.inventories[1].sha256 = textFileSha256(inventoryPath);
-      expect(() => loadCoursewareSourceContext({ root: temp, manifestPath: writeExampleManifest(temp, source) })).toThrow(/capturedRelease\.snapshotSha256 does not match the current immutable release snapshot/);
+      expect(() => loadCoursewareSourceContext({ root: temp, manifestPath: writeExampleManifest(temp, source) })).toThrow(/capturedRelease\.snapshotSha256 does not match the normalized current release projection/);
+    } finally {
+      fs.rmSync(temp, { recursive: true, force: true });
+    }
+  });
+
+  it("requires an exporter-bound raw snapshot hash without pretending to reconstruct it offline", () => {
+    const temp = fs.mkdtempSync(path.join(os.tmpdir(), "mathin-r1-courseware-source-"));
+    try {
+      const source = copyExampleFixture(temp);
+      const inventoryPath = path.join(temp, "docs/manifests/r1-courseware-e-series.example.ndjson");
+      const original = JSON.parse(fs.readFileSync(inventoryPath, "utf8"));
+      const originalPlan = buildCoursewareSourcePlan(loadCoursewareSourceContext({ root: temp, manifestPath: exampleManifestPath }));
+      const cases: Array<[string, (entry: typeof original) => void, RegExp]> = [
+        ["invalid", (entry) => { entry.tracks[0].capturedRelease.rawSnapshotSha256 = "not-a-hash"; }, /rawSnapshotSha256 must be a lowercase SHA-256/],
+        ["placeholder", (entry) => { entry.tracks[0].capturedRelease.rawSnapshotSha256 = "a".repeat(64); }, /rawSnapshotSha256 must not be a repeated-character placeholder/],
+      ];
+      for (const [, mutate, error] of cases) {
+        const entry = clone(original);
+        mutate(entry);
+        writeNdjson(inventoryPath, [entry]);
+        source.inventories[1].sha256 = textFileSha256(inventoryPath);
+        expect(() => loadCoursewareSourceContext({ root: temp, manifestPath: writeExampleManifest(temp, source) })).toThrow(error);
+      }
+
+      const opaqueRawHash = clone(original);
+      opaqueRawHash.tracks[0].capturedRelease.rawSnapshotSha256 = hash("exporter-captured-raw-snapshot-with-legacy-fields");
+      expect(opaqueRawHash.tracks[0].capturedRelease.snapshotSha256).toBe(original.tracks[0].capturedRelease.snapshotSha256);
+      writeNdjson(inventoryPath, [opaqueRawHash]);
+      source.inventories[1].sha256 = textFileSha256(inventoryPath);
+      const opaquePlan = buildCoursewareSourcePlan(loadCoursewareSourceContext({
+        root: temp,
+        manifestPath: writeExampleManifest(temp, source),
+      }));
+      expect(opaquePlan.contentStateSha256).not.toBe(originalPlan.contentStateSha256);
     } finally {
       fs.rmSync(temp, { recursive: true, force: true });
     }
@@ -591,6 +703,7 @@ describe("R1-9 P6 courseware source manifest", () => {
     const schema = JSON.parse(fs.readFileSync(schemaPath, "utf8"));
     const source = fs.readFileSync(path.join(repositoryRoot, "scripts/plan-r1-courseware-source.mjs"), "utf8");
     expect(schema.additionalProperties).toBe(false);
+    expect(schema.properties.schemaVersion.const).toBe("mathin-r1-courseware-source-manifest-v4");
     expect(schema.properties.writesAllowed.const).toBe(false);
     expect(schema.properties.networkAllowed.const).toBe(false);
     expect(schema.properties.databaseConnectionAllowed.const).toBe(false);
@@ -601,6 +714,8 @@ describe("R1-9 P6 courseware source manifest", () => {
       adaptedTrackCount: { const: 1305 },
       releaseCount: { const: 2610 },
     });
+    expect(schema.$defs.binding.required).toContain("launchQuery");
+    expect(schema.$defs.trackBase.properties.capturedRelease.required).toContain("rawSnapshotSha256");
     expect(source).not.toMatch(/from ["']node:(?:http|https|net|tls|child_process)["']/);
     expect(source).not.toContain("fetch(");
     expect(source).not.toContain("DATABASE_URL");

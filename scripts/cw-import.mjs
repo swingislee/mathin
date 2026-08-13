@@ -6,6 +6,9 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { createClient } from "@supabase/supabase-js";
 import sanitizeHtml from "sanitize-html";
+import { h5StoragePath } from "./lib/courseware-storage-paths.mjs";
+
+export { h5StoragePath } from "./lib/courseware-storage-paths.mjs";
 
 const PACKAGE_SCHEMA_VERSION = "mathin-package-export-v1";
 const PAGE_DOC_VERSION = "page-doc-v1";
@@ -326,24 +329,6 @@ function values(rows, map) {
 
 function storagePathForObject(object) {
   return object.kind === "h5" ? `packages/${object.objectHash}` : `sha256/${object.objectHash.slice(0, 2)}/${object.objectHash}`;
-}
-
-/**
- * Storage API rejects some raw Unicode object keys. Keep the H5 package's
- * logical filenames untouched (the HTML relies on them), but store each path
- * segment under its deterministic percent-encoded key. The H5 shim applies
- * the same mapping when resolving browser requests back to Storage.
- */
-function h5StorageSegment(segment) {
-  let logical = segment;
-  try { logical = decodeURIComponent(segment); } catch {}
-  return /[^\x20-\x7E]|[:%]/.test(logical)
-    ? `u_${encodeURIComponent(logical).replaceAll("%", "_")}`
-    : logical;
-}
-
-export function h5StoragePath(packageHash, packagePath) {
-  return `packages/${packageHash}/${packagePath.split("/").map(h5StorageSegment).join("/")}`;
 }
 
 export async function loadImportPlan({ packageRoot, coursewareId, catalogVersionSlug = null }) {

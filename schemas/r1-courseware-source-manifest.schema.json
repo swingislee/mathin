@@ -19,7 +19,7 @@
   ],
   "properties": {
     "$schema": { "type": "string", "minLength": 3 },
-    "schemaVersion": { "const": "mathin-r1-courseware-source-manifest-v3" },
+    "schemaVersion": { "const": "mathin-r1-courseware-source-manifest-v4" },
     "example": { "type": "boolean" },
     "mode": { "const": "plan-only" },
     "writesAllowed": { "const": false },
@@ -227,11 +227,18 @@
         "capturedRelease": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["id", "releaseNo", "snapshotSha256"],
+          "required": ["id", "releaseNo", "rawSnapshotSha256", "snapshotSha256"],
           "properties": {
             "id": { "$ref": "#/$defs/uuid" },
             "releaseNo": { "type": "integer", "minimum": 1 },
-            "snapshotSha256": { "$ref": "#/$defs/sha256" }
+            "rawSnapshotSha256": {
+              "description": "Canonical SHA-256 of the exact immutable cw_lecture_releases.snapshot JSON captured by the read-only exporter; it is exporter-bound and cannot be reconstructed from this offline inventory.",
+              "$ref": "#/$defs/sha256"
+            },
+            "snapshotSha256": {
+              "description": "Canonical SHA-256 of the normalized, inventory-reconstructable release snapshot projection.",
+              "$ref": "#/$defs/sha256"
+            }
           }
         },
         "release": {
@@ -289,6 +296,7 @@
         "storagePath",
         "h5ManifestPath",
         "h5ManifestSha256",
+        "launchQuery",
         "adaptationStatus"
       ],
       "properties": {
@@ -304,7 +312,38 @@
         "storagePath": { "type": "string", "minLength": 10, "maxLength": 500 },
         "h5ManifestPath": { "oneOf": [{ "$ref": "#/$defs/localPath" }, { "type": "null" }] },
         "h5ManifestSha256": { "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }] },
+        "launchQuery": { "oneOf": [{ "$ref": "#/$defs/h5LaunchQuery" }, { "type": "null" }] },
         "adaptationStatus": { "enum": ["approved", "not-required"] }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "h5" } }, "required": ["kind"] },
+          "then": { "properties": { "launchQuery": { "$ref": "#/$defs/h5LaunchQuery" } } },
+          "else": { "properties": { "launchQuery": { "type": "null" } } }
+        }
+      ]
+    },
+    "h5LaunchQuery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["query", "coursewareIdParam"],
+      "properties": {
+        "query": {
+          "type": "object",
+          "maxProperties": 100,
+          "propertyNames": { "type": "string", "minLength": 1, "maxLength": 100 },
+          "additionalProperties": {
+            "type": "array",
+            "maxItems": 100,
+            "items": { "type": "string", "maxLength": 500 }
+          }
+        },
+        "coursewareIdParam": {
+          "oneOf": [
+            { "type": "string", "minLength": 1, "maxLength": 100 },
+            { "type": "null" }
+          ]
+        }
       }
     }
   }

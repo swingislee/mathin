@@ -6,8 +6,8 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { normalizeNewlines, textFileSha256 } from "./lib/text-hash.mjs";
 
-const MANIFEST_VERSION = "mathin-r1-courseware-source-manifest-v3";
-const PLAN_VERSION = "mathin-r1-courseware-source-plan-v3";
+const MANIFEST_VERSION = "mathin-r1-courseware-source-manifest-v4";
+const PLAN_VERSION = "mathin-r1-courseware-source-plan-v4";
 const RELEASE_NOTE = "production-v1.0-baseline";
 const TRACKS = ["native-16x9", "adapted-4x3"];
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -210,6 +210,7 @@ export function deriveReleaseSnapshot(pages) {
     bindings: page.bindings.map((binding) => ({
       bindingKey: binding.bindingKey,
       assetRevisionId: binding.assetRevisionId,
+      launchQuery: binding.launchQuery,
     })),
     learningCheckEnabled: page.learningCheckEnabled,
   }));
@@ -289,10 +290,29 @@ function validateH5ManifestEvidence(binding, label, globalState) {
   globalState.h5Manifests.set(binding.h5ManifestPath, binding.h5ManifestSha256);
 }
 
+function validateLaunchQuery(value, label) {
+  exactKeys(value, ["query", "coursewareIdParam"], label);
+  assertObject(value.query, `${label}.query`);
+  const queryKeys = Object.keys(value.query);
+  assert(queryKeys.length <= 100, `${label}.query has too many keys`);
+  for (const key of queryKeys) {
+    string(key, `${label}.query key`, 1, 100);
+    const values = value.query[key];
+    assert(Array.isArray(values) && values.length <= 100, `${label}.query.${key} must be an array with at most 100 values`);
+    values.forEach((entry, index) => string(entry, `${label}.query.${key}[${index}]`, 0, 500));
+  }
+  assert(
+    value.coursewareIdParam === null
+      || (typeof value.coursewareIdParam === "string" && value.coursewareIdParam.length >= 1 && value.coursewareIdParam.length <= 100),
+    `${label}.coursewareIdParam must be string|null`,
+  );
+  return value;
+}
+
 function validateBinding(binding, label, courseSystem, track, globalState) {
   exactKeys(binding, [
     "bindingKey", "assetRevisionId", "objectSha256", "kind", "role", "variant", "mime", "byteCount",
-    "storageBucket", "storagePath", "h5ManifestPath", "h5ManifestSha256", "adaptationStatus",
+    "storageBucket", "storagePath", "h5ManifestPath", "h5ManifestSha256", "launchQuery", "adaptationStatus",
   ], label);
   sha256(binding.bindingKey, `${label}.bindingKey`);
   stableId(binding.assetRevisionId, `${label}.assetRevisionId`);
@@ -310,12 +330,14 @@ function validateBinding(binding, label, courseSystem, track, globalState) {
     assert(binding.mime === "application/x-mathin-h5-package", `${label}.mime must be the Mathin H5 package MIME`);
     safeRelativePath(binding.h5ManifestPath, `${label}.h5ManifestPath`);
     sha256(binding.h5ManifestSha256, `${label}.h5ManifestSha256`);
+    validateLaunchQuery(binding.launchQuery, `${label}.launchQuery`);
     validateH5ManifestEvidence(binding, label, globalState);
   } else {
     assert(binding.storageBucket === "cw-objects", `${label}.storageBucket must be cw-objects for CAS objects`);
     assert(binding.storagePath === `sha256/${binding.objectSha256.slice(0, 2)}/${binding.objectSha256}`, `${label}.storagePath must be content addressed by objectSha256`);
     assert(binding.h5ManifestPath === null, `${label}.h5ManifestPath must be null outside H5`);
     assert(binding.h5ManifestSha256 === null, `${label}.h5ManifestSha256 must be null outside H5`);
+    assert(binding.launchQuery === null, `${label}.launchQuery must be null outside H5`);
   }
 
   const requiresApproval = courseSystem === "e-series"
@@ -398,11 +420,12 @@ function validateTrack(track, label, courseSystem, globalState) {
   assert(JSON.stringify(pageOrder) === JSON.stringify([...pageOrder].sort(compareTuple)), `${label}.pages must be sorted by pageNo and pageDocId`);
 
   for (const key of ["pageSetSha256", "bindingSetSha256", "resourceSetSha256"]) sha256(track[key], `${label}.${key}`);
-  exactKeys(track.capturedRelease, ["id", "releaseNo", "snapshotSha256"], `${label}.capturedRelease`);
+  exactKeys(track.capturedRelease, ["id", "releaseNo", "rawSnapshotSha256", "snapshotSha256"], `${label}.capturedRelease`);
   stableId(track.capturedRelease.id, `${label}.capturedRelease.id`);
   assert(!globalState.sourceReleaseIds.has(track.capturedRelease.id), `${label}.capturedRelease.id is selected by more than one track head`);
   globalState.sourceReleaseIds.add(track.capturedRelease.id);
   integer(track.capturedRelease.releaseNo, `${label}.capturedRelease.releaseNo`, 1);
+  sha256(track.capturedRelease.rawSnapshotSha256, `${label}.capturedRelease.rawSnapshotSha256`);
   sha256(track.capturedRelease.snapshotSha256, `${label}.capturedRelease.snapshotSha256`);
   exactKeys(track.release, ["releaseNo", "note", "snapshotSha256"], `${label}.release`);
   assert(track.release.releaseNo === 1, `${label}.release.releaseNo must be 1`);
@@ -413,7 +436,7 @@ function validateTrack(track, label, courseSystem, globalState) {
   for (const key of ["pageSetSha256", "bindingSetSha256", "resourceSetSha256"]) {
     assert(track[key] === derived[key], `${label}.${key} does not match the explicit page/binding/resource set`);
   }
-  assert(track.capturedRelease.snapshotSha256 === derived.snapshotSha256, `${label}.capturedRelease.snapshotSha256 does not match the current immutable release snapshot`);
+  assert(track.capturedRelease.snapshotSha256 === derived.snapshotSha256, `${label}.capturedRelease.snapshotSha256 does not match the normalized current release projection`);
   assert(track.release.snapshotSha256 === derived.snapshotSha256, `${label}.release.snapshotSha256 does not match the deterministic release snapshot`);
   return { ...track, resourceCount: derived.resources.length };
 }
@@ -803,6 +826,7 @@ export function loadCoursewareSourceContext({
         track: track.track,
         releaseId: track.capturedRelease.id,
         releaseNo: track.capturedRelease.releaseNo,
+        rawSnapshotSha256: track.capturedRelease.rawSnapshotSha256,
         snapshotSha256: track.capturedRelease.snapshotSha256,
       })))),
     });
