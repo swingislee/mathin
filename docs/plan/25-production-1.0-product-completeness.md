@@ -29,13 +29,13 @@
 
 Terms 使用稳定 ID 接收 Story、Minds、Games、Tools、Notebook 和课程的关联。修改 slug 或删除内容前检查反向引用、重定向、canonical 和 sitemap。
 
-### 1.1.1 2026-08-12 施工顺序
+### 1.1.1 2026-08-13 施工顺序
 
-本轮正式切换到 SML-0，但不调整 1.0 原交付对象或量化发布门，也不把尚未关闭的 R1-9 记为完成。
+本轮按用户指令从 SML-0 切回 R1-9，并先推进 P6-AIX-2 子门。该子门先证明 G+/X+/A+ 三包的真实开发清单、源运行时与双轨结果，不预先改写 1.0 正式数量，也不把 SML-0 或 R1-9 记为完成。
 
-- SML-0 成为唯一施工阶段：先冻结 4:3 空间文档、金标、canonical hash、ownership 和 release/freeze 全生命周期，并关闭 doc 28 §2.3 的三个平台阻断项。
-- R1-9～18 与 Story、Games、Minds、Terms、Tools、Notebook 的剩余发布门全部暂停且保持 pending；切回 R1 后继续，全部恢复并通过前 `v1.0.0` 不得关闭。
-- 既有 `spatial-lab` 继续作为无持久化验收表面和金标候选预览；SML-0 不再用它横向增加题型。正式生产接入只沿严格 `spatial-page-v1`、现有 Courseware release/freeze 和专用权限/RPC/RLS 合同推进。
+- R1-9 成为唯一施工阶段，当前只关闭 P6-AIX-2：按 doc 16 §13 消费 projection v31，移除旧手工放大，接入源 CSS/player/动画/H5/原生游戏，并在开发库重建 170 讲双轨。
+- SML-0 保留学生重连、成对回退、20 道代表题教研签名与跨端 hash 向量的暂停点；R1-9 的 Terms/来源 manifest/生产对象证据及 R1-10～18、Story、Games、Minds、Tools、Notebook 的剩余发布门保持 pending。
+- 当前表格仍是进入本阶段前的 1.0 正式基线。P6-AIX-2 退出时依据数据库清单与浏览器证据，明确裁决 G+ 显式占位及 X+/A+ 是否进入 1.0，再同步修改 §1.1、§5、PROD-12 与 R1 来源 manifest；在此之前不得用候选输入冒充正式范围。
 - 当前阶段不得执行 R1-15/R1-18 的真实生产清理或 release 重建；迁移和纵向验证只使用开发库或一次性验证库。
 
 ### 1.2 工程与验证基线

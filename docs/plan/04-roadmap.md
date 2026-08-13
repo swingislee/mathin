@@ -2,11 +2,11 @@
 
 > **规划状态**：`active`
 >
-> **当前施工阶段**：`SML-0 · 合同与金标冻结`
+> **当前施工阶段**：`R1-9 · P6-9 与跨阶段非五模块生产准备`
 >
-> **R1 暂停位置**：`R1-9 · P6-9 与跨阶段非五模块生产准备`；R1-9 未关闭，R1-10～18 仍为 pending。
+> **SML 暂停位置**：`SML-0 · 合同与金标冻结`；学生重连、成对回退、20 道代表题教研签名与跨端 hash 向量保持 pending。
 >
-> **当前未结项**：2026-08-12 用户正式决定启动空间数学专题，SML-0 成为唯一当前施工阶段。release/template 权威、lecture capability、docVersion-aware track/layout、首个可信模板的真实 Studio 创建/重排入口，以及替课教师按课次进入备课/live 的权限断层均已关闭；同一 QA 纵向链已完成创建、审核发布、备课、freeze、4:3 live 与教师刷新重连，当前继续完成学生重连、成对回退、20 道代表题教研签名和跨端 hash 向量。该切换不等于 R1-9 或 `v1.0.0` 已完成，不授权清理真实生产数据，也不豁免恢复 R1 后仍须完成的原发布门。
+> **当前未结项**：2026-08-13 用户显式切回 R1-9 的爱学习来源发布链，先关闭 P6-AIX-2 子门。当前输入为 G+/X+/A+ 三个 projection v31 离线包，共 170 讲、5442 页；旧的手工放大与排版补偿必须退出，Mathin 改为消费源 CSS、源 player 运行时、动画/H5/原生游戏合同。普通 1200×900 页直接复用为 4:3；命中动画、embedded H5 或 1920×1080 原生游戏的页走结构能力驱动的 4:3 兼容适配。第 7/15 讲仅保留来源明确提供的占位，不补造缺失课程。本阶段只允许开发库重导入和验证，不授权 R1-15/R1-18 的生产清理；R1-9 未关闭，R1-10～18 与 SML-0 均保留 pending。
 >
 > **核对日期**：2026-08-13；依据代码、迁移、内容目录、CI、Git、R1-6 教学成果链路、R1-7 导出链路、R1-8 财务安全关闭复验证据、R1-9 两套课程来源 manifest、Notebook 生命周期、非五模块 Playwright、仓库 secret scan 与 doc 00～28。
 
@@ -17,22 +17,22 @@
 | P0～P4E、P4H、P4I、UI-L1～L4 已关闭 | 不按历史正文重做；只处理 doc 25 登记的发布缺口 |
 | P4F、P4G、P6 为 partial | R1 接管仍影响 1.0 的项目；`cacheComponents` 等非发布项延后 |
 | Terms 现有 71 篇中文 MDX；Games 3 个；Tools 3 个（2 个既有工具 + `spatial-lab` 验收样机）；Minds 2 篇；Story 无完整章节内容目录 | Story 是内容阻断项；其他模块需要关系、权限、性能和浏览器证据 |
-| E 系列开发数据有 1135 讲双轨资源；爱学习 G+ 秋季有三至六年级 52 讲双轨资源（4934 bindings/轨，母版 1200×900 即 4:3） | R1-9 分别验证两套文档合同与资源；R1-15 演练；R1-18 重建 2374 条正式 release-1 |
+| E 系列开发数据有 1135 讲双轨资源；爱学习开发库仍是旧 G+ 三至六年级 52 讲，待按 G+/X+/A+ v31 三包重导入为 170 讲、5442 页 | P6-AIX-2 先完成来源合同、结构化 4:3 分类、开发库重导入与浏览器证据；生产 1.0 数量在阶段退出后由 R1-9/15/18 重新冻结 |
 | 课程目录版本层已落库（2026-08-03，迁移 `20260803000300`/`20260803000400`）；2026 秋季 270 讲已于 2026-08-04 导入：E 系列 2026新版 36 门（暑期 18 + 秋季 18）、2025旧版 54 门，讲次 1135 | 旧秋季 18 门保留 `enabled` 并已写 `superseded_by_course_id`；本批 4:3 背景按运营指示未经人工逐张核验直接发布，见 doc 16 §11.3 |
 | 当前全量 Vitest 共 88 个测试文件、569 项；其中非 spatial 基线为 51 个文件、290/290，空间数学/SML-0 专项为 37 个文件、279/279，`pnpm r1:test` 既有基线为 18 个文件、121/121 | SML-0 与 R1-14 均保持全量 100% 通过；正式 Playwright 框架已有本地基线，仍须补发布目标、写态、zh/en、跨浏览器、连续无 flaky、并发、文件和竞争矩阵 |
 | 小王子是全站视觉基础 | R1-12 验证三种强度：公开场景、内容/Notebook、运营工作区 |
 
 阶段按编号关闭。实现可在依赖满足后并行准备；04 顶部只记录一个正在关闭的阶段。后续 Agent 不能用“代码已存在”跳过该阶段的退出证据。
 
-### 1.1 2026-08-12 SML-0 正式施工顺序
+### 1.1 2026-08-13 P6-AIX-2 正式施工顺序
 
-- **唯一主线**：只推进 doc 28 的 SML-0；R1-9 保留暂停点和既有证据，不能因切换专题而标记关闭。
-- **本阶段范围**：解决 release/template 权威漂移、统一 lecture capability、建立 docVersion-aware 的 create/save/review/revert/publish/rollback/freeze；普通空间页的两条兼容 head 与两条 release 原子共享同一 `standard-4x3` revision，宽屏例外才分叉。同步冻结 20 道代表题、五个版本合同、canonical hash、ownership、大小上限、路由和非目标。
-- **首条退出测试**：Studio 创建/重排 4:3 空间页 → 双 head → 一次审核原子发布双 release → 课次备课/freeze → 4:3 live 空壳 → 重连回放 → 回退后仍共享历史 revision；任一步失败整体回滚。
-- **暂缓范围**：不继续增加 Tools 题型、截面、函数或任意模型导入，不提前进入 SML-1～8；既有 `spatial-lab` 只作合同回归与金标候选预览。R1-9～18、Story/Games/Minds/Terms/Tools/Notebook 的 1.0 发布缺口保持 pending，待显式切回 R1 后继续。
-- **权限与数据边界**：SML-0 可以修改生产代码、迁移、RPC/RLS、Courseware Studio、发布与 freeze 合同，但只能使用开发/一次性验证库；不得执行 R1-15/R1-18 的真实生产清理、release 重建或真实学生数据动作。
-- **已完成的正式增量**：`spatial-page-delivery-v1` 已冻结 4:3 内容与兼容 track 的映射；migrations `20260812000400`～`20260812000600` 已统一 lecture/release capability；migration `20260813000100` 让 immutable release 保存有序 `courseware_pages`，并让备课、冻结、直播、学习检查、资产解析和回退以 selected/frozen release 为权威；migration `20260813000200` 增加显式 docVersion/layout 元数据、空间页 create/copy/save/revert、一次审核原子双 release、成对 rollback 与 freeze/reconnect 断言；migration `20260813000300` 让软删除页保留历史页码但不再占用活动顺序位置，并继续保留事务内可延迟重排；migration `20260813000400` 让 active `teacher_override` 只在指定课次取得 session、class shell、roster 与 member-scoped courseware 读取，未关联 staff 不获得班级权限。生产 `CoursewareDoc`、Studio/课堂分发按文档 layout 读取，普通空间页在两条兼容轨中仍保持原生 4:3。首个可信分层计数模板已能在空讲次、普通页、导入页和空间页 Studio 状态中创建，并支持跨类型重排与删除；浏览器已证明 native/adapted 兼容选择均读取同一 4:3 文档，并完成审核发布、备课、freeze、live 与教师刷新重连。legacy `courseware_template` 只保留为 native current release 的受控兼容投影。三个结构阻断项、Studio 创建入口与替课 live 权限断层均已关闭。
-- **当前 SML-0 剩余项**：20 道代表题的教研签名与跨领域复核、跨端 canonical hash 向量、学生身份重连，以及同一纵向浏览器旅程中的成对 release 回退；这些未完成前不得关闭 SML-0。
+- **唯一主线**：在 R1-9 内只推进 doc 16 §13 的 P6-AIX-2；SML-0 保留暂停点，R1-9 在本子门完成后仍须继续其余退出门。
+- **来源合同**：只接受三个明确 package key：G+ 苏教版 56 讲/1641 页、X+ 苏教版 84 讲/2767 页、A+ 全国版 30 讲/1034 页；三包均须 projection v31、offline verification complete，且远程请求、本地缺失和 fatal console error 为 0。
+- **4:3 分类**：普通 1200×900 页直接复用源母版；动画、embedded H5 和 1920×1080 原生游戏页使用源 16:9 呈现逻辑进入 4:3 兼容区。分类只读结构能力，不按 package、年级、讲次或页面 ID 特判。
+- **运行时边界**：导入源 `slide-runtime.css`、每讲绑定的 captured player 图片模块、完整 transform/transform-origin、动画 step/group/phase/duration/delay，以及 embedded H5/TrueOrFalse/TopicClassification 数据；删除 Mathin 旧的手工小图放大与近似布局逻辑。
+- **占位边界**：只导入来源 catalog 中显式存在且通过离线验证的第 7/15 讲占位；未提供的年级/讲次保持缺失，不生成空课程或伪页面。
+- **退出测试**：三包构建合同通过；开发库 170 讲/5442 页双轨 release、head、binding、CAS/H5 对账；普通页、X+ 一二年级动画/H5/原生游戏、显式占位在 16:9 与 4:3 课堂/Studio 旅程通过；缺失、远程依赖、baseline drift 与 binding conflict 为 0。
+- **权限与数据边界**：允许修改生产代码、迁移和开发数据；不得执行 R1-15/R1-18 的生产清理或正式 release 重建。生产 1.0 是否吸收 X+/A+ 及显式占位，在本阶段真实清单和证据完成后更新 doc 25 与 R1 manifest 决定。
 
 ## 2. 历史阶段的有效范围
 

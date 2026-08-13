@@ -2,13 +2,15 @@
 
 > **规划状态**：`partial`
 >
-> **当前用途**：E 系列与爱学习 G+ 秋季课程研发、16:9/4:3 双轨资源与 release 契约。
+> **当前用途**：E 系列与爱学习 G+/X+/A+ 秋季课程研发、16:9/4:3 双轨资源与 release 契约。
 >
-> **已落地**：P6-1～P6-8 主体与 P6-10；开发数据已有 E 系列 1135 讲与爱学习 G+ 秋季 52 讲双轨资源，P6-5 有课堂集成证据。爱学习双轨语义与 4:3 母版归位见 §12（2026-08-05 重导入）。
+> **已落地**：P6-1～P6-8 主体与 P6-10；开发数据已有 E 系列 1135 讲与旧爱学习 G+ 秋季 52 讲双轨资源，P6-5 有课堂集成证据。旧爱学习双轨语义与 4:3 母版归位见 §12（2026-08-05 重导入）。
 >
-> **剩余项**：P6-9 全局量化验收和正式生产 release-1 重建，见 doc 25 R1-9/15/18。
+> **当前施工**：P6-AIX-2 消费 G+/X+/A+ projection v31 三包，移除手工放大逻辑，接入源 CSS/player/动画/H5/原生游戏，并按结构能力重建 4:3 双轨；见 §13。
 >
-> **最后核对**：2026-08-05。
+> **剩余项**：P6-AIX-2 开发库重导入与浏览器证据；P6-9 全局量化验收和正式生产 release-1 重建见 doc 25 R1-9/15/18。
+>
+> **最后核对**：2026-08-13。
 
 > 本文是 P6 的权威执行计划，地位等同 `08-p4-classroom-whiteboard.md` 之于 P4。前置阅读：`00-overview.md`、`04-roadmap.md`、`10-school-backend.md` §4.3（模板/覆盖层/冻结）、`08-p4-classroom-whiteboard.md` §3.4/§3.6（课堂离线栈与课件页模型）。
 >
@@ -530,3 +532,45 @@ sanitize 白名单按“移植过来的规则实际选择到的标签/属性”�
 重建：`pnpm cw:aixuexi:build` 得 52 讲 / 1525 页 / 4934 usages / 815 对象 / 58 个 H5 包 / 2471 个包内文件；分 4 批各 13 讲导入，`conflicts` 与 `baselineDrift` 全程 0，重跑单讲报告全部 existing、inserted 0（幂等）。
 
 库内复核：1525 页文档全部为 `1200x900 / projectionVersion 11`；两轨各 52 release、52 讲头、1525 页头、4934 binding；58 `offline` + 1 `capture_required`；10 个 ITV 页 55 个事件。
+
+## 13. 爱学习 projection v31 多难度升级（P6-AIX-2）
+
+### 13.1 输入清单与占位边界
+
+2026-08-13 的三个来源包都通过逐讲离线验证，`remoteRequests`、`localMissing`、`fatalConsoleErrors` 均为 0：
+
+| package | 课程 | 讲次 | 页面 | 显式第 7/15 讲占位 |
+| --- | ---: | ---: | ---: | ---: |
+| `2026-gplus-sujiao-math` | 4 | 56 | 1641 | 三、四年级各 2 讲，共 4 讲 |
+| `2026-xplus-sujiao-math` | 6 | 84 | 2767 | 一、三、四年级各 2 讲，共 6 讲 |
+| `2026-aplus-quanguo-math` | 2 | 30 | 1034 | 一、二年级各 2 讲，共 4 讲 |
+| 合计 | 12 | 170 | 5442 | 14 讲 |
+
+来源没有提供的第 7/15 讲继续保持缺失；导入器只接受 catalog 中真实存在、`offline-verification=complete` 的讲次，不推断或生成占位。
+
+### 13.2 v31 取代 v11 的呈现合同
+
+§12 的 v11 结论只解释 2026-08-05 的旧导入，不能继续作为运行时实现依据。v31 固定以下来源事实：
+
+- 普通页内容坐标仍是 1200×900，但源播放器有两级舞台：1920×1080 外层承载 `slideClass`、背景与 padding，1200×900 内层水平居中并 `scale(1.2)`；外层再以 0.625 呈现到 1200×675。Mathin 必须消费 `playerStage` 与 `presentation`，不能把背景作为内容层 `object-fit: cover`，也不能恢复旧 xmind 平移特判。
+- 部件保留完整 `transform` / `transformOrigin`；动画保留 step、group、effect、phase、showType、duration、delay；分步揭示读取 `revealStep` 与 `behaviors.widgetReveal.steps`。
+- 题目图片尺寸由每讲绑定的 captured player module 执行。`sourceRuntime.questionImageSizing` 同时固定源模块、jQuery、执行包和证据 hash；旧 `aixuexi-presentation.ts` 的手工小图放大必须删除。
+- `slide-runtime.css`、ITV runtime、embedded H5、TrueOrFalse 与 TopicClassification 都是来源包合同的一部分。Mathin 可以换宿主和资源寻址方式，不能用手抄 CSS、近似游戏或静态截图代替。
+
+### 13.3 4:3 能力分类
+
+分类器只检查页面结构；同一规则适用于三个 package：
+
+| 模式 | 判定 | 4:3 呈现 |
+| --- | --- | --- |
+| `source-master` | 1200×900，且没有源动画、embedded H5、1920×1080 原生游戏 | 直接使用 1200×900 内容母版；背景按源外层舞台规则换算到 4:3 |
+| `source-player-compat` | 任一节点有动画，或含 embedded H5，或画布/原生游戏为 1920×1080 | 保持源 1200×675 呈现与交互比例，置于 4:3 舞台上部，底部 225 逻辑像素留作课堂兼容区 |
+
+当前来源命中结果：G+ 1641 页全部 `source-master`；X+ 一年级 208/665、二年级 173/517 页进入兼容轨，三至六年级为 0；A+ 一年级 10/497、二年级 31/537 页进入兼容轨。该结果是来源快照审计值，不得编码成 grade/package 白名单。
+
+### 13.4 阶段退出证据
+
+- 三包构建器对 package key、课程/页面计数、年级/难度/版本、逐讲离线状态和 v31 文档做 fail-closed 校验。
+- 开发库精确拥有 3 个 source package、12 门爱学习课程、170 个 source lecture、5442 页；双轨各 170 个 release/head，并对每轨 binding、CAS、H5 做集合对账。
+- 构建与重导入 `baselineDrift=0`、`binding conflicts=0`；同一讲重跑只返回 existing，不新增 revision/release。
+- 浏览器至少覆盖普通 G+ 页、X+ 一年级动画页、embedded H5、两类原生游戏、A+ 动画/H5、显式第 7/15 讲占位，并分别核对 native 16:9 与 adapted 4:3。
