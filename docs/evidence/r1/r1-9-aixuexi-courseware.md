@@ -11,7 +11,7 @@ P6-AIX-2 已于 2026-08-13 关闭：G+/X+/A+ 三包已按源站真实运行逻�
 | `result` | `passed`（P6-AIX-2 子门） |
 | `measured_value` | 12 门/170 讲/5442 页；`source-master` 5020 页、`source-player-compat` 422 页；两轨各 170 release/head、5442 页面 head、27541 binding；8 原生游戏、9 embedded H5；conflict/drift/runtime missing=0 |
 | `threshold` | 三个固定 package 全量 projection v31；逐讲 remote/missing/fatal=0；只保留 catalog 明确讲次；源运行时保真；两轨集合相等；幂等重跑零新增；代表性 zh/en 浏览器旅程无应用错误 |
-| `commit_sha` | 规划 `08f28eb`；实现 `ce07671`；原生游戏 Strict Mode 修复 `e8573b4` |
+| `commit_sha` | 规划 `08f28eb`；实现 `ce07671`；原生游戏 Strict Mode 修复 `e8573b4`；1.0 baseline/manifest 收口 `7123a0b` |
 | `migration_head` | `20260813000500_p6_aixuexi_v31_levels.sql`；标准化 SHA-256 `ea8e81b8d9cdb3cdca3b7fe2a3831bb38bb9340f5b382a36bef51a79cef37e91` |
 | `environment` | Windows / Node.js 22 / Next.js 16.2.11；自托管开发 Supabase；Codex 应用内 Chromium；非生产 |
 | `dataset_manifest` | 只读来源 `../2026-07_mofaxiao_courseware/exports/packages/{2026-gplus-sujiao-math,2026-xplus-sujiao-math,2026-aplus-quanguo-math}`；无 secret/PII |

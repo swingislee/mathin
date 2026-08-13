@@ -11,7 +11,7 @@
 | `result` | `pending`（E1/E2 合同通过；真实只读 inventory 与 Storage/H5 E3 未产生） |
 | `measured_value` | 完整合成 fixture 为 102 门、1305 讲、2610 条 release-1；生产 baseline + 来源 manifest 定向 Vitest 2 文件/15 项通过。仓库 example 只含 2 行并输出三项 blocker；source `planHash=3e6b23dde0b5da3cba97662bf433c474c587b63eacc7fe7f177d2d67cbae0848`。 |
 | `threshold` | 固定 E roster 和爱学习 v31 12 产品 roster；`(course, lecture.no)` 唯一；每讲两轨；现役 snapshot 字段；可读对象清单 hash；爱学习显式占位/缺口精确匹配；E adapted 4:3 审批；缺失/漂移=0。`stageClosureAllowed=false` 始终成立。 |
-| `commit_sha` | 原 v2 合同 `0cd8b13`、安全复核 `f4a7444`；v31 基线同步为本次 P6-AIX-2 收尾提交。 |
+| `commit_sha` | 原 v2 合同 `0cd8b13`、安全复核 `f4a7444`；v31 基线同步 `7123a0b`。 |
 | `migration_head` | planner 不连接数据库；v31 roster 来源迁移为 `20260813000500_p6_aixuexi_v31_levels.sql`。 |
 | `environment` | Windows Node.js 22；本地只读 planner；非生产。 |
 | `dataset_manifest` | 仓库 example 与合成完整 fixture；真实 1305 行来源 inventory 尚未从批准只读副本导出。 |
