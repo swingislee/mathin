@@ -46,7 +46,7 @@ Terms 使用稳定 ID 接收 Story、Minds、Games、Tools、Notebook 和课程�
 | 权限 | 顶层角色为 `student`、`parent`、`staff`、`admin`；受保护页使用 `requireUser`；数据库使用 RLS | Proxy 跳转和前端隐藏不能证明授权 |
 | Dashboard | P4I 已将首页和对象页改为工作流入口 | 页面存在不证明跨域工作项、人工协同或 p95 达标 |
 | CI | lint、typecheck、build、消息、数据库重建/RLS、安全、当前树与 Git 历史 secret scan、doc21～24 与规划审计已配置；正式 Playwright 配置和 release runner 已落地 | 固定凭据旅程不接通用 CI；仍须在明确非生产发布目标执行零 skip 套件，并补写态、zh/en、跨浏览器与连续无 flaky 证据 |
-| Vitest | 当前为 89 个测试文件、587 项通过、1 项因未提供爱学习生成包根而条件跳过；非 spatial 为 52 个文件、308 项通过、1 项条件跳过，空间数学/SML-0 专项 37 个文件、279/279；`pnpm r1:test` 为 20 个文件、148/148 | 已执行的单元/合同保持通过；条件跳过不能替代真实包或发布证据，并仍须补发布目标、并发、文件和竞争矩阵 |
+| Vitest | 当前为 90 个测试文件、595 项通过、1 项因未提供爱学习生成包根而条件跳过；非 spatial 为 53 个文件、316 项通过、1 项条件跳过，空间数学/SML-0 专项 37 个文件、279/279；`pnpm r1:test` 为 21 个文件、156/156 | 已执行的单元/合同保持通过；条件跳过不能替代真实包或发布证据，并仍须补发布目标、并发、文件和竞争矩阵 |
 | 部署 | doc 17 已将目标生产主机改为小米 Linux；commit `35b9f60` 已固定独立环境、监控、恢复和回滚的只读 preflight；当前树与完整可达 Git 历史的高置信 secret scan 为 0 | 仓库扫描不证明环境隔离；尚无独立生产、RPO/RTO 实操、回滚演练和 14 天 RC 证据 |
 
 ### 1.3 已裁决的历史冲突
@@ -128,7 +128,7 @@ command_or_runbook, artifact_url_or_path, artifact_hash, failure_ticket
 | 财务 | M3（安全关闭） | M4 安全关闭 | R1-8 已锁定发布门并关闭路由/导航、数据、work item/审批、通知、指标和 job；R1-15/18 在隔离副本和正式环境复核关闭不变量 | 8/15/18 |
 | Terms | M2 | M4 | 图谱、内容、搜索、SEO、跨链全验 | 9 |
 | 公共内容发布 | M1～M2 | M4 | 统一状态机、资源、稳定关系、本地化状态 | 9～11 |
-| 课程研发/双轨 release | M3 | M4 | P6-AIX-2 已在开发库固定 G+/X+/A+ 170 讲/5442 页；[来源 manifest 子门](../evidence/r1/r1-9-courseware-source-manifest.md)已同步 102 门/1305 讲/2610 条 release-1 的 v4 确定性合同与只读导出/对象校验核心；受控 runner、真实 inventory、Storage/H5 审计、隔离演练和正式 release-1 仍缺 | 9/15/18 |
+| 课程研发/双轨 release | M3 | M4 | P6-AIX-2 已在开发库固定 G+/X+/A+ 170 讲/5442 页；[来源 manifest 子门](../evidence/r1/r1-9-courseware-source-manifest.md)已同步 102 门/1305 讲/2610 条 release-1 的 v4 确定性合同、只读导出/对象校验核心与受控 runner；批准副本真实 inventory、Storage/H5 审计、隔离演练和正式 release-1 仍缺 | 9/15/18 |
 | Story | M1 | M4 | 完整章节和内容生产记录 | 10 |
 | Games | M2～M3 | M4 | 排名可信、浏览器、容量 | 11/12 |
 | Minds | M2 | M4 | Terms 关系、内容回退 | 11/12 |
@@ -430,7 +430,7 @@ R1-7E 以 `user_rights_export_artifacts` 保存与请求绑定的精确 JSON 字
 
 R1-15 的只读 preflight 入口是 `docs/manifests/r1-production-baseline.example.json`，结构由 `schemas/r1-production-baseline-manifest.schema.json` 固定，`pnpm r1:baseline-plan` 只输出可复现计划，不连接网络或数据库、不生成 SQL、不执行清理。实际 manifest 只能声明 `isolated-production-snapshot`，要求 source/target 项目与数据库指纹不同、1305 个显式 lecture UUID、唯一管理员 manifest 的归一化 SHA-256、两套课程体系各自的 Storage bucket/prefix/object-manifest hash，以及 2610 条 release 的最终计数和第二次运行零差异。仓库中的 example 只含占位 ID 和占位 hash，不能作为 R1-15 演练通过证据。
 
-P6-9 的来源 preflight 入口是 `docs/manifests/r1-courseware-source.example.json`，它引用 `r1-courseware-e-series.example.ndjson` 与 `r1-courseware-aixuexi.example.ndjson` 两份 inventory；结构和操作边界由 `schemas/r1-courseware-source-manifest.schema.json` 与 `docs/runbooks/r1-courseware-source-manifest.md` 固定。`node scripts/plan-r1-courseware-source.mjs` 只读本地受控清单，固定 E 系列 90 门/1135 讲、爱学习 12 门/170 讲、每讲双轨与 2610 条 release-1 snapshot，并核对 source revision/binding、CAS、H5、本地对象 hash、爱学习 v31 catalog 和 E adapted 4:3 审批；URI、UNC、绝对路径、仓库/批准根外路径和符号链接逃逸均拒绝。v4 另提供固定只读 SQL 与纯导出核心，绑定 head 选中的 raw/normalized release snapshot、H5 `launchQuery`、普通对象流式 hash 和 H5 manifest/逐文件实际字节。仓库 example 与合成 1305 行 fixture 只证明合同；受控 runner、真实批准副本的全量 inventory、`cw-objects`/`cw-h5` 审计和非执行者复核仍是 R1-9/R1-15 blocker。
+P6-9 的来源 preflight 入口是 `docs/manifests/r1-courseware-source.example.json`，它引用 `r1-courseware-e-series.example.ndjson` 与 `r1-courseware-aixuexi.example.ndjson` 两份 inventory；结构和操作边界由 `schemas/r1-courseware-source-manifest.schema.json` 与 `docs/runbooks/r1-courseware-source-manifest.md` 固定。`node scripts/plan-r1-courseware-source.mjs` 只读本地受控清单，固定 E 系列 90 门/1135 讲、爱学习 12 门/170 讲、每讲双轨与 2610 条 release-1 snapshot，并核对 source revision/binding、CAS、H5、本地对象 hash、爱学习 v31 catalog 和 E adapted 4:3 审批；URI、UNC、绝对路径、仓库/批准根外路径和符号链接逃逸均拒绝。v4 另提供固定只读 SQL、纯导出核心和 `pnpm r1:courseware-source:export` 受控 runner，绑定 head 选中的 raw/normalized release snapshot、H5 `launchQuery`、普通对象流式 hash 和 H5 manifest/逐文件实际字节，并在离线 planner 自验通过后原子写出 artifact。仓库 example 与合成 1305 行 fixture 只证明合同；批准副本配置、经审核的 E 系列 provenance、真实全量 inventory、`cw-objects`/`cw-h5` 审计和非执行者复核仍是 R1-9/R1-15 blocker。
 
 R1-16 的只读 preflight 入口是 `docs/manifests/r1-production-deployment.example.json`，结构和操作边界分别由 `schemas/r1-production-deployment-manifest.schema.json` 与 `docs/runbooks/r1-production-deployment-preflight.md` 固定。`pnpm r1:deployment-plan` 只读取 manifest 和仓库内无 secret/PII 的摘要，不联网、不读取环境 secret，也不执行 SSH、部署、备份、恢复、回滚或 DNS 变更。R1-14、R1-15、环境隔离、仓库 secret scan、监控探针、数据库恢复、Storage 恢复、应用回滚、非执行者复核共 9 项证据未全部通过时必须阻断；即使全部通过，planner 也不允许阶段关闭或生产执行。
 
@@ -518,7 +518,7 @@ R1-0 已完成责任角色到 `swingislee` 的映射。增加人员或发生交�
 | 风险 | 当前证据 | 影响 | Owner | 关闭阶段 |
 | --- | --- | --- | --- | --- |
 | Story 无完整章节 | 路由存在；无完整独立章节内容目录 | 对外 1.0 缺一模块 | 内容+产品 | R1-10 |
-| R1-9 来源实物证据未完成 | P6-AIX-2 开发库证据与 v4 只读导出/对象校验核心已通过；受控 runner、真实 1305 行 inventory、Storage/H5 审计与非执行者复核仍 pending | 生产 release 清单可能缺对象或 snapshot 漂移 | 产品+课程研发+QA/发布 | R1-9 完成真实只读导出与复核，并在 R1-18 前重跑最终证据 |
+| R1-9 来源实物证据未完成 | P6-AIX-2 开发库证据与 v4 只读导出/对象校验核心、受控 runner 已通过；批准副本配置、外部 provenance、真实 1305 行 inventory、Storage/H5 审计与非执行者复核仍 pending | 生产 release 清单可能缺对象或 snapshot 漂移 | 产品+课程研发+QA/发布 | R1-9 完成真实只读导出与复核，并在 R1-18 前重跑最终证据 |
 | 英文正文缺失 | `content/en` 仅 README | `/en` 可能空白或混排 | 内容+前端 | R1-9～12 |
 | 平台运行内核尚无生产验收 | R1-2 已完成 Job/通知/文件/集成的开发库断言、空库重放、Worker 单次运行和 zh/en 浏览器验证（M3） | 开发合同不证明生产 Worker、选中供应商、大文件容量、告警恢复和最终成功率 | 平台+运维+QA | R1-14/16/17 |
 | 全站视觉强度合同刚固定 | doc 05 曾把工作区排除在星球主题外 | 公开站与后台品牌断裂或装饰侵入控件 | 设计+前端 | R1-12 |
@@ -526,7 +526,7 @@ R1-0 已完成责任角色到 `swingislee` 的映射。增加人员或发生交�
 | 账户安全尚无生产验收 | R1-3 已完成账户/同意/支持的空库重放、负向断言与开发浏览器验证（M3） | 开发门控不证明正式唯一管理员、生产 MFA=100%、速率限制与恢复演练 | 安全+发布+QA | R1-14/16/17/18 |
 | Work-items 尚无生产候选/RC 负载证据 | R1-4 已在开发/一次性库完成 30,000 条持久项、300 名员工、40 次采样，p95≤18.87ms、p99≤20.71ms（M3） | 开发合成负载不能证明生产长尾、并发与 14 天稳定性 | 学校产品+数据库+QA | R1-14/17 |
 | 财务安全关闭尚无生产复核 | R1-8 已完成发布门、数据、任务/审批、通知、指标和 job 的开发/一次性库关闭证据（M3） | 开发环境关闭不变量不能证明生产初始化或正式清理后仍保持关闭 | 产品+财务+数据库+发布 | R1-15/18 |
-| Vitest 基线需在最终 build 复验 | 当前为 89 个测试文件、587 项通过、1 项条件跳过；非 spatial 308 项通过、1 项条件跳过，空间数学/SML-0 专项 279/279；R1 定向 148/148 | 后续实现可能重新引入合同回归 | 技术+QA | 已执行套件保持通过；发布前补齐条件跳过对应的真实包证据 |
+| Vitest 基线需在最终 build 复验 | 当前为 90 个测试文件、595 项通过、1 项条件跳过；非 spatial 316 项通过、1 项条件跳过，空间数学/SML-0 专项 279/279；R1 定向 156/156 | 后续实现可能重新引入合同回归 | 技术+QA | 已执行套件保持通过；发布前补齐条件跳过对应的真实包证据 |
 | 正式 Playwright 发布门尚未完成 | 正式配置、target policy 和 fail-closed release runner 已落地；9 条非五模块本地 Chromium 旅程分别取绿 | 尚无明确非生产 release target 的单次 9/9 零 skip、写态、zh/en、跨浏览器和连续 3 次无 flaky 证据 | QA/发布 | R1-14 |
 | 清理/release 未演练 | 只有规划与开发数据 | 正式数据或 4:3 资源损失 | 数据库+课程研发 | R1-15 |
 | 生产恢复未实操 | Linux 目标与 fail-closed preflight 已定；当前树与 Git 历史 secret scan 为 0，但环境隔离和恢复 E3 仍为 pending | 尚无独立环境、运行时 secret 复核、告警链路、RPO/RTO、数据库/Storage 恢复或应用回滚的实操证据 | 运维+安全 | R1-16 |

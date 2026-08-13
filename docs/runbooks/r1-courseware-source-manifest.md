@@ -12,6 +12,17 @@ node scripts/plan-r1-courseware-source.mjs <reviewed-manifest.json> --artifact-r
 
 仓库 example 每套课程体系各含 1 讲，必须输出 `example-manifest` 和两项 `incomplete-inventory:*` blocker。即使真实 manifest 无 blocker，planner 也固定 `stageClosureAllowed=false`；它只证明 P6 来源清单满足 E1/E2 合同，不能关闭 R1-9、R1-15 或 R1-18。
 
+真实捕获入口为：
+
+```powershell
+$env:R1_COURSEWARE_SOURCE_ENVIRONMENT='approved-read-only-copy'
+# DATABASE_URL 与 SUPABASE_DB_SSH 必须且只能配置一个。
+# 同时在进程环境配置 NEXT_PUBLIC_SUPABASE_URL 与 SUPABASE_SECRET_KEY。
+pnpm r1:courseware-source:export -- --artifact-root D:\approved-artifacts --output-name r1-courseware-source-20260813 --provenance reviewed\courseware-provenance.json
+```
+
+`--provenance` 必须相对 `--artifact-root`，包含全部 1305 讲经审核的 package/version/manifest/lecture verification 来源；E 系列来源不存在于 `cw_source_*`，不得从数据库现态猜测。`--output-name` 必须是尚不存在的单个目录名。runner 只在显式 `approved-read-only-copy` attestation 下启动：直连把 URL 拆为 libpq 环境变量而不放入 argv；SSH 使用受限 target 且 `shell=false`；子进程不继承 Storage secret。输出先写同卷临时目录，完成 DB、Storage、H5 与离线 planner 自验后再原子 rename，失败不会覆盖既有目录。
+
 ## 2. 文件组成
 
 | 文件 | 内容 |
@@ -55,8 +66,8 @@ node scripts/plan-r1-courseware-source.mjs <reviewed-manifest.json> --artifact-r
 
 ## 5. 仍需真实环境完成的 E3
 
-- 仓库已冻结 v4 consumer、固定只读 SQL 和纯导出/对象校验核心。仍需补受控 CLI runner：安全建立只读数据库/Storage 连接、注入经审核的 E 系列外部 provenance，并以同卷临时目录加原子 rename 写出 artifact；runner 不得把 URL、token 或连接串写入日志和产物。
-- 在批准的只读数据副本中以单个 `REPEATABLE READ READ ONLY` 快照运行该 runner，产出 1305 行全量 inventory；记录数据集指纹、migration head、执行人、复核人和时间。
+- 仓库已冻结 v4 consumer、固定只读 SQL、导出/对象校验核心和受控 CLI runner。仍需取得批准只读副本的数据库与 Storage 读取配置，并提供经审核的 E 系列外部 provenance；URL、token 或连接串不得写入日志和产物。
+- 在批准的只读数据副本中以单个 `REPEATABLE READ READ ONLY` 快照运行 `pnpm r1:courseware-source:export`，产出 1305 行全量 inventory；记录数据集指纹、migration head、执行人、复核人和时间。
 - 对 `cw-objects` 与 `cw-h5` 执行真实对象读取和 SHA-256 核对；H5 必须读取 `__mathin_manifest.json` 并逐文件核验。大清单保存到受控 artifact，并在 R1 证据索引登记摘要、保留期和访问角色。
 - 由非执行者复核 E 系列 90/1135、爱学习 12/170、2610 个 snapshot、14 个来源显式复习占位、其余讲号缺口及 Storage 零缺失/零漂移。
 - R1-15 只能在生产快照隔离副本使用同一来源 manifest 演练；R1-18 仍需人工批准、备份验证和目标二次确认。本手册不授权写操作。
