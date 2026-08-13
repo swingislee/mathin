@@ -6,8 +6,8 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { normalizeNewlines, textFileSha256 } from "./lib/text-hash.mjs";
 
-const MANIFEST_VERSION = "mathin-r1-courseware-source-manifest-v2";
-const PLAN_VERSION = "mathin-r1-courseware-source-plan-v2";
+const MANIFEST_VERSION = "mathin-r1-courseware-source-manifest-v3";
+const PLAN_VERSION = "mathin-r1-courseware-source-plan-v3";
 const RELEASE_NOTE = "production-v1.0-baseline";
 const TRACKS = ["native-16x9", "adapted-4x3"];
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -383,7 +383,7 @@ function expectedReadiness(courseSystem, track) {
 }
 
 function validateTrack(track, label, courseSystem, globalState) {
-  exactKeys(track, ["track", "readiness", "pages", "pageSetSha256", "bindingSetSha256", "resourceSetSha256", "release"], label);
+  exactKeys(track, ["track", "readiness", "pages", "pageSetSha256", "bindingSetSha256", "resourceSetSha256", "capturedRelease", "release"], label);
   assert(TRACKS.includes(track.track), `${label}.track is invalid`);
   assert(track.readiness === expectedReadiness(courseSystem, track.track), `${label}.readiness does not match ${courseSystem}/${track.track}`);
   assert(Array.isArray(track.pages) && track.pages.length > 0, `${label}.pages must be non-empty`);
@@ -398,6 +398,12 @@ function validateTrack(track, label, courseSystem, globalState) {
   assert(JSON.stringify(pageOrder) === JSON.stringify([...pageOrder].sort(compareTuple)), `${label}.pages must be sorted by pageNo and pageDocId`);
 
   for (const key of ["pageSetSha256", "bindingSetSha256", "resourceSetSha256"]) sha256(track[key], `${label}.${key}`);
+  exactKeys(track.capturedRelease, ["id", "releaseNo", "snapshotSha256"], `${label}.capturedRelease`);
+  stableId(track.capturedRelease.id, `${label}.capturedRelease.id`);
+  assert(!globalState.sourceReleaseIds.has(track.capturedRelease.id), `${label}.capturedRelease.id is selected by more than one track head`);
+  globalState.sourceReleaseIds.add(track.capturedRelease.id);
+  integer(track.capturedRelease.releaseNo, `${label}.capturedRelease.releaseNo`, 1);
+  sha256(track.capturedRelease.snapshotSha256, `${label}.capturedRelease.snapshotSha256`);
   exactKeys(track.release, ["releaseNo", "note", "snapshotSha256"], `${label}.release`);
   assert(track.release.releaseNo === 1, `${label}.release.releaseNo must be 1`);
   assert(track.release.note === RELEASE_NOTE, `${label}.release.note must be ${RELEASE_NOTE}`);
@@ -407,6 +413,7 @@ function validateTrack(track, label, courseSystem, globalState) {
   for (const key of ["pageSetSha256", "bindingSetSha256", "resourceSetSha256"]) {
     assert(track[key] === derived[key], `${label}.${key} does not match the explicit page/binding/resource set`);
   }
+  assert(track.capturedRelease.snapshotSha256 === derived.snapshotSha256, `${label}.capturedRelease.snapshotSha256 does not match the current immutable release snapshot`);
   assert(track.release.snapshotSha256 === derived.snapshotSha256, `${label}.release.snapshotSha256 does not match the deterministic release snapshot`);
   return { ...track, resourceCount: derived.resources.length };
 }
@@ -702,12 +709,12 @@ function validateExpected(expected) {
 export function loadCoursewareSourceContext({
   root = process.cwd(),
   manifestPath = "docs/manifests/r1-courseware-source.example.json",
-  approvedArtifactRoots = [],
+  approvedArtifactRoots = /** @type {string[]} */ ([]),
 } = {}) {
   const repositoryRoot = assertLocalRoot(root, "root");
   assert(Array.isArray(approvedArtifactRoots), "approvedArtifactRoots must be an array");
   const localApprovedArtifactRoots = approvedArtifactRoots.map((approvedRoot, index) => assertLocalRoot(approvedRoot, `approvedArtifactRoots[${index}]`));
-  const manifestFile = resolveInputPath(repositoryRoot, manifestPath, "manifestPath");
+  const manifestFile = resolveInputPath(repositoryRoot, manifestPath, "manifestPath", localApprovedArtifactRoots);
   assert(fs.existsSync(manifestFile), `courseware source manifest not found: ${manifestPath}`);
   const manifest = readJson(manifestFile, "courseware source manifest");
   exactKeys(manifest, ["$schema", "schemaVersion", "example", "mode", "writesAllowed", "networkAllowed", "databaseConnectionAllowed", "capturedFrom", "inventories", "storageAudits", "expected"], "courseware source manifest");
@@ -720,12 +727,8 @@ export function loadCoursewareSourceContext({
   scanForSensitiveMaterial(manifest);
 
   const schemaFile = fs.realpathSync(path.join(repositoryRoot, "schemas", "r1-courseware-source-manifest.schema.json"));
-  safeRelativePath(manifest.$schema ?? "", "$schema");
-  const declaredSchemaCandidate = path.resolve(path.dirname(manifestFile), manifest.$schema);
-  assert(isWithin(repositoryRoot, declaredSchemaCandidate), "$schema must remain inside the repository");
-  assert(fs.existsSync(declaredSchemaCandidate), "$schema does not exist");
-  const declaredSchema = fs.realpathSync(declaredSchemaCandidate);
-  assert(isWithin(fs.realpathSync(repositoryRoot), declaredSchema), "$schema resolves outside the repository");
+  assert(manifest.$schema === "schemas/r1-courseware-source-manifest.schema.json", "$schema must reference schemas/r1-courseware-source-manifest.schema.json from the repository root");
+  const declaredSchema = fs.realpathSync(path.join(repositoryRoot, manifest.$schema));
   assert(declaredSchema === schemaFile, "manifest $schema must reference schemas/r1-courseware-source-manifest.schema.json");
 
   exactKeys(manifest.capturedFrom, ["environment", "readOnly", "databaseFingerprint", "migrationHead", "exportedAt"], "capturedFrom");
@@ -745,6 +748,7 @@ export function loadCoursewareSourceContext({
     resources: new Map(),
     naturalLectureKeys: new Set(),
     sourcePackageHashes: new Map(),
+    sourceReleaseIds: new Set(),
     eSeriesRoster: new Map(),
     missingBindingCount: 0,
     h5Manifests: new Map(),
@@ -794,6 +798,13 @@ export function loadCoursewareSourceContext({
         nativeSnapshotSha256: entry.tracks[0].release.snapshotSha256,
         adaptedSnapshotSha256: entry.tracks[1].release.snapshotSha256,
       }))),
+      sourceReleaseSetSha256: canonicalSha256(entries.flatMap((entry) => entry.tracks.map((track) => ({
+        lectureId: entry.lecture.id,
+        track: track.track,
+        releaseId: track.capturedRelease.id,
+        releaseNo: track.capturedRelease.releaseNo,
+        snapshotSha256: track.capturedRelease.snapshotSha256,
+      })))),
     });
     allEntries.push(...entries);
   }
@@ -833,6 +844,7 @@ export function loadCoursewareSourceContext({
     blockers,
     contentStateSha256: canonicalSha256({
       systems: systems.map((system) => ({ key: system.key, entrySetSha256: system.entrySetSha256 })),
+      sourceReleases: systems.map((system) => ({ key: system.key, sourceReleaseSetSha256: system.sourceReleaseSetSha256 })),
       storage: storageAudits.map((audit) => ({ bucket: audit.bucket, scopeResourceSetSha256: audit.scopeResourceSetSha256, objectsManifestSha256: audit.objectsManifestSha256 })),
     }),
   };
@@ -858,6 +870,7 @@ export function buildCoursewareSourcePlan(context) {
       releaseCount: system.releaseCount,
       inventorySha256: system.inventorySha256,
       entrySetSha256: system.entrySetSha256,
+      sourceReleaseSetSha256: system.sourceReleaseSetSha256,
     })),
     storage: context.storageAudits.map((audit) => ({ ...audit })),
     releaseTarget: {
@@ -887,10 +900,29 @@ export function buildCoursewareSourcePlan(context) {
   return { ...plan, planHash: canonicalSha256(plan) };
 }
 
+export function parseCoursewareSourceCliArguments(argv) {
+  const approvedArtifactRoots = [];
+  let manifestPath;
+  for (let index = 0; index < argv.length; index += 1) {
+    const value = argv[index];
+    if (value === "--artifact-root") {
+      const approvedRoot = argv[index + 1];
+      assert(approvedRoot, "--artifact-root requires a local directory");
+      approvedArtifactRoots.push(assertLocalRoot(approvedRoot, `--artifact-root[${approvedArtifactRoots.length}]`));
+      index += 1;
+      continue;
+    }
+    assert(!value.startsWith("-"), `unsupported option: ${value}`);
+    assert(manifestPath === undefined, "only one manifest path is allowed");
+    manifestPath = value;
+  }
+  return { manifestPath, approvedArtifactRoots };
+}
+
 export function main(argv = process.argv.slice(2)) {
   try {
-    assert(argv.length <= 1, "usage: plan-r1-courseware-source.mjs [manifest.json]");
-    const context = loadCoursewareSourceContext({ manifestPath: argv[0] ?? undefined });
+    const options = parseCoursewareSourceCliArguments(argv);
+    const context = loadCoursewareSourceContext(options);
     process.stdout.write(`${JSON.stringify(buildCoursewareSourcePlan(context), null, 2)}\n`);
   } catch (error) {
     console.error(`R1 courseware source preflight failed: ${error.message}`);

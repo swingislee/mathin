@@ -19,7 +19,7 @@
   ],
   "properties": {
     "$schema": { "type": "string", "minLength": 3 },
-    "schemaVersion": { "const": "mathin-r1-courseware-source-manifest-v2" },
+    "schemaVersion": { "const": "mathin-r1-courseware-source-manifest-v3" },
     "example": { "type": "boolean" },
     "mode": { "const": "plan-only" },
     "writesAllowed": { "const": false },
@@ -214,7 +214,7 @@
     "trackBase": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["track", "readiness", "pages", "pageSetSha256", "bindingSetSha256", "resourceSetSha256", "release"],
+      "required": ["track", "readiness", "pages", "pageSetSha256", "bindingSetSha256", "resourceSetSha256", "capturedRelease", "release"],
       "properties": {
         "track": { "type": "string" },
         "readiness": {
@@ -224,6 +224,16 @@
         "pageSetSha256": { "$ref": "#/$defs/sha256" },
         "bindingSetSha256": { "$ref": "#/$defs/sha256" },
         "resourceSetSha256": { "$ref": "#/$defs/sha256" },
+        "capturedRelease": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "releaseNo", "snapshotSha256"],
+          "properties": {
+            "id": { "$ref": "#/$defs/uuid" },
+            "releaseNo": { "type": "integer", "minimum": 1 },
+            "snapshotSha256": { "$ref": "#/$defs/sha256" }
+          }
+        },
         "release": {
           "type": "object",
           "additionalProperties": false,

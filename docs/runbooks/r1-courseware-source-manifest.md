@@ -7,6 +7,7 @@
 ```bash
 node scripts/plan-r1-courseware-source.mjs
 node scripts/plan-r1-courseware-source.mjs <reviewed-manifest.json>
+node scripts/plan-r1-courseware-source.mjs <reviewed-manifest.json> --artifact-root <approved-local-directory>
 ```
 
 仓库 example 每套课程体系各含 1 讲，必须输出 `example-manifest` 和两项 `incomplete-inventory:*` blocker。即使真实 manifest 无 blocker，planner 也固定 `stageClosureAllowed=false`；它只证明 P6 来源清单满足 E1/E2 合同，不能关闭 R1-9、R1-15 或 R1-18。
@@ -15,7 +16,7 @@ node scripts/plan-r1-courseware-source.mjs <reviewed-manifest.json>
 
 | 文件 | 内容 |
 | --- | --- |
-| `schemas/r1-courseware-source-manifest.schema.json` | 顶层只读边界、1305/2610 目标和 NDJSON 行结构 |
+| `schemas/r1-courseware-source-manifest.schema.json` | v3 顶层只读边界、1305/2610 目标、现役 release 身份和 NDJSON 行结构 |
 | 顶层 manifest | 数据库只读导出指纹、两份 inventory 的 LF 归一化 SHA-256、两类 Storage 审计和最终计数 |
 | `supabase/seed/teaching-plans.json` | E 系列固定 90 门/1135 讲 roster；路径和 LF 摘要均由 validator 固定 |
 | 爱学习 inventory NDJSON | G+/X+/A+ 12 门/170 讲，每讲固定两轨、页、revision、binding、对象和 snapshot hash |
@@ -32,10 +33,10 @@ node scripts/plan-r1-courseware-source.mjs <reviewed-manifest.json>
 3. 爱学习显式讲号合同为：G+ 三/四年级、X+ 一/三/四年级和 A+ 一/二年级各 1～15 讲；G+ 五/六年级与 X+ 二/五/六年级只含 1～6、8～14。前者的第 7/15 讲是来源占位，后者是来源缺失，两者不得混淆。
 4. 每个 page 显式记录源 revision、规范化文档 SHA-256、`learningCheckEnabled`、非空 `requiredBindingKeys` 和解析后的 binding 明细；required set 差异使流程停止。
 5. 每个 binding 固定 `bindingKey → assetRevisionId → objectSha256 → bucket/path`。普通 CAS 位于 `cw-objects/sha256/<前两位>/<sha256>`；H5 位于 `cw-h5/packages/<packageHash>`，包 manifest 的入口、字节数和文件集合必须自洽。
-6. 每轨分别计算 page set、binding set、resource set 和 release snapshot 的 canonical JSON SHA-256。snapshot 精确对应现役 `publish_cw_track_release` 字段。
+6. 每轨分别计算 page set、binding set、resource set 和 release snapshot 的 canonical JSON SHA-256。`capturedRelease` 必须来自 `cw_lecture_track_heads.current_release_id → cw_lecture_releases` 的严格连接，记录唯一 release UUID、实际 release number 和 immutable snapshot hash；页面、revision 与 binding 只沿该 snapshot 解析，禁止从 draft/current page head、可变 binding 或任意历史 release 拼装。目标 `release` 仍描述未来 `production-v1.0-baseline` release-1，两套 snapshot hash 必须与显式页面内容一致。
 7. E 系列 `adapted-4x3` 每讲至少绑定一个 approved `mathin-4x3` 背景；爱学习使用 v31 的 `verified-4x3-source-master`/源播放器兼容结果，不要求 E 系列背景合同。
 8. Storage objects manifest 必须可读，LF 摘要与顶层声明一致；validator 从 binding 集合计算 missing/hash mismatch，不信任自报状态。
-9. 所有路径必须为批准根内的相对路径；URI、UNC、盘符绝对路径、根外路径和符号链接逃逸在读取前拒绝。
+9. 所有声明路径必须为仓库或 `--artifact-root` 明确批准根内的相对路径；URI、UNC、盘符路径、根外路径和符号链接逃逸在读取前拒绝。顶层 `$schema` 固定从仓库根解析，受控 artifact 不得替换 validator schema。
 
 ## 4. 固定数量
 
@@ -52,7 +53,7 @@ node scripts/plan-r1-courseware-source.mjs <reviewed-manifest.json>
 
 ## 5. 仍需真实环境完成的 E3
 
-- 在批准的只读数据副本中运行导出器，产出 1305 行全量 inventory；记录数据集指纹、migration head、执行人、复核人和时间。
+- 在批准的只读数据副本中以单个 `REPEATABLE READ READ ONLY` 快照运行待补 exporter，产出 1305 行全量 inventory；记录数据集指纹、migration head、执行人、复核人和时间。当前仓库已冻结 v3 consumer/validator，真实数据库与 Storage producer 仍 pending。
 - 对 `cw-objects` 与 `cw-h5` 执行真实对象读取和 SHA-256 核对；大清单保存到受控 artifact，并在 R1 证据索引登记摘要、保留期和访问角色。
 - 由非执行者复核 E 系列 90/1135、爱学习 12/170、2610 个 snapshot、14 个来源显式复习占位、其余讲号缺口及 Storage 零缺失/零漂移。
 - R1-15 只能在生产快照隔离副本使用同一来源 manifest 演练；R1-18 仍需人工批准、备份验证和目标二次确认。本手册不授权写操作。

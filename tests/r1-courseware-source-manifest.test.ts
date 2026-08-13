@@ -9,6 +9,7 @@ import {
   deriveReleaseSnapshot,
   deriveTrackDigests,
   loadCoursewareSourceContext,
+  parseCoursewareSourceCliArguments,
 } from "../scripts/plan-r1-courseware-source.mjs";
 import { textFileSha256 } from "../scripts/lib/text-hash.mjs";
 
@@ -75,6 +76,11 @@ function track(system: CourseSystem, name: Track, index: number, pageDocId: stri
     pageSetSha256: digests.pageSetSha256,
     bindingSetSha256: digests.bindingSetSha256,
     resourceSetSha256: digests.resourceSetSha256,
+    capturedRelease: {
+      id: uuid(`${system}:${name}:${index}:captured-release`),
+      releaseNo: 1,
+      snapshotSha256: digests.snapshotSha256,
+    },
     release: { releaseNo: 1, note: "production-v1.0-baseline", snapshotSha256: digests.snapshotSha256 },
   };
 }
@@ -231,7 +237,7 @@ function writeFullFixture(temp: string) {
   writeNdjson(objectAuditPath, resourceRows(allEntries, "cw-objects"));
   const manifest = {
     $schema: schemaRelativePath,
-    schemaVersion: "mathin-r1-courseware-source-manifest-v2",
+    schemaVersion: "mathin-r1-courseware-source-manifest-v3",
     example: false,
     mode: "plan-only",
     writesAllowed: false,
@@ -355,8 +361,8 @@ describe("R1-9 P6 courseware source manifest", () => {
       expect(first.stageClosureAllowed).toBe(false);
       expect(first.actual).toEqual(first.expected);
       expect(first.courseSystems).toEqual([
-        expect.objectContaining({ key: "aixuexi-autumn", courseCount: 12, lectureCount: 170, releaseCount: 340 }),
-        expect.objectContaining({ key: "e-series", courseCount: 90, lectureCount: 1135, releaseCount: 2270 }),
+        expect.objectContaining({ key: "aixuexi-autumn", courseCount: 12, lectureCount: 170, releaseCount: 340, sourceReleaseSetSha256: expect.stringMatching(/^[0-9a-f]{64}$/) }),
+        expect.objectContaining({ key: "e-series", courseCount: 90, lectureCount: 1135, releaseCount: 2270, sourceReleaseSetSha256: expect.stringMatching(/^[0-9a-f]{64}$/) }),
       ]);
       expect(first.releaseTarget).toEqual({ releaseNo: 1, note: "production-v1.0-baseline", count: 2610, legacyNativeHeadCount: 1305 });
 
@@ -397,6 +403,47 @@ describe("R1-9 P6 courseware source manifest", () => {
       writeNdjson(inventoryPath, [empty]);
       source.inventories[1].sha256 = textFileSha256(inventoryPath);
       expect(() => loadCoursewareSourceContext({ root: temp, manifestPath: writeExampleManifest(temp, source) })).toThrow(/bindings must be non-empty/);
+    } finally {
+      fs.rmSync(temp, { recursive: true, force: true });
+    }
+  });
+
+  it("binds every exported track to the immutable release selected by its current head", () => {
+    const temp = fs.mkdtempSync(path.join(os.tmpdir(), "mathin-r1-courseware-source-"));
+    try {
+      const source = copyExampleFixture(temp);
+      const inventoryPath = path.join(temp, "docs/manifests/r1-courseware-e-series.example.ndjson");
+      const original = JSON.parse(fs.readFileSync(inventoryPath, "utf8"));
+
+      const wrongSnapshot = clone(original);
+      wrongSnapshot.tracks[0].capturedRelease.snapshotSha256 = hash("a different immutable release snapshot");
+      writeNdjson(inventoryPath, [wrongSnapshot]);
+      source.inventories[1].sha256 = textFileSha256(inventoryPath);
+      expect(() => loadCoursewareSourceContext({ root: temp, manifestPath: writeExampleManifest(temp, source) })).toThrow(/capturedRelease\.snapshotSha256 does not match the current immutable release snapshot/);
+
+      const missingIdentity = clone(original);
+      delete missingIdentity.tracks[0].capturedRelease.id;
+      writeNdjson(inventoryPath, [missingIdentity]);
+      source.inventories[1].sha256 = textFileSha256(inventoryPath);
+      expect(() => loadCoursewareSourceContext({ root: temp, manifestPath: writeExampleManifest(temp, source) })).toThrow(/capturedRelease is missing keys: id/);
+
+      const duplicateHead = clone(original);
+      duplicateHead.tracks[1].capturedRelease.id = duplicateHead.tracks[0].capturedRelease.id;
+      writeNdjson(inventoryPath, [duplicateHead]);
+      source.inventories[1].sha256 = textFileSha256(inventoryPath);
+      expect(() => loadCoursewareSourceContext({ root: temp, manifestPath: writeExampleManifest(temp, source) })).toThrow(/selected by more than one track head/);
+
+      const forgedFromDraft = clone(original);
+      const forgedTrack = forgedFromDraft.tracks[0];
+      forgedTrack.pages[0].sourceRevisionId = uuid("unpublished-draft-revision");
+      const forgedDigests = deriveTrackDigests(forgedTrack.pages);
+      forgedTrack.pageSetSha256 = forgedDigests.pageSetSha256;
+      forgedTrack.bindingSetSha256 = forgedDigests.bindingSetSha256;
+      forgedTrack.resourceSetSha256 = forgedDigests.resourceSetSha256;
+      forgedTrack.release.snapshotSha256 = forgedDigests.snapshotSha256;
+      writeNdjson(inventoryPath, [forgedFromDraft]);
+      source.inventories[1].sha256 = textFileSha256(inventoryPath);
+      expect(() => loadCoursewareSourceContext({ root: temp, manifestPath: writeExampleManifest(temp, source) })).toThrow(/capturedRelease\.snapshotSha256 does not match the current immutable release snapshot/);
     } finally {
       fs.rmSync(temp, { recursive: true, force: true });
     }
@@ -504,6 +551,21 @@ describe("R1-9 P6 courseware source manifest", () => {
       fs.rmSync(temp, { recursive: true, force: true });
     }
   });
+
+  it("loads a relative manifest and evidence only from an explicitly approved local artifact root", () => {
+    const temp = fs.mkdtempSync(path.join(os.tmpdir(), "mathin-r1-courseware-source-root-"));
+    try {
+      const fixture = writeFullFixture(temp);
+      const options = parseCoursewareSourceCliArguments([fixture.manifestPath, "--artifact-root", temp]);
+      const plan = buildCoursewareSourcePlan(loadCoursewareSourceContext({ root: repositoryRoot, ...options }));
+      expect(plan.p6SourceManifestReady).toBe(true);
+      expect(options.approvedArtifactRoots).toEqual([path.resolve(temp)]);
+      expect(() => parseCoursewareSourceCliArguments(["manifest.json", "--artifact-root", "//server/share"])).toThrow(/must not be a UNC path/);
+      expect(() => parseCoursewareSourceCliArguments(["manifest.json", "--unknown"])).toThrow(/unsupported option/);
+    } finally {
+      fs.rmSync(temp, { recursive: true, force: true });
+    }
+  }, 30_000);
 
   it("rejects example IDs and repeated-character hash placeholders", () => {
     const temp = fs.mkdtempSync(path.join(os.tmpdir(), "mathin-r1-courseware-source-"));

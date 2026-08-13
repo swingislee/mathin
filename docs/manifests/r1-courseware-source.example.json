@@ -1,6 +1,6 @@
 {
-  "$schema": "../../schemas/r1-courseware-source-manifest.schema.json",
-  "schemaVersion": "mathin-r1-courseware-source-manifest-v2",
+  "$schema": "schemas/r1-courseware-source-manifest.schema.json",
+  "schemaVersion": "mathin-r1-courseware-source-manifest-v3",
   "example": true,
   "mode": "plan-only",
   "writesAllowed": false,
@@ -17,12 +17,12 @@
     {
       "courseSystem": "aixuexi-autumn",
       "path": "docs/manifests/r1-courseware-aixuexi.example.ndjson",
-      "sha256": "d4c4ec2c1875d1149ec3c6f08373761af35110ae1327a1cdc7aee0db1dbdb731"
+      "sha256": "a0c8440b46e2530cd659c2e16757882a8b2a98cf62f737b2af98d2b1299d5596"
     },
     {
       "courseSystem": "e-series",
       "path": "docs/manifests/r1-courseware-e-series.example.ndjson",
-      "sha256": "4a48d085d6e38effaaa9f85403bcd71a8490d51e841ecdc0323cf574c6507732",
+      "sha256": "45d11c334d9be96a6b81246b2855810b0e3ca5d447355d7f7fb6beff96354920",
       "roster": {
         "path": "supabase/seed/teaching-plans.json",
         "sha256": "6f89722d555d32600826a85a0ebcd31f72dd163b8f5ffa62d15fd6b7012cfe08"
