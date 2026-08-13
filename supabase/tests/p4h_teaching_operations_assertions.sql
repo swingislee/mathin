@@ -75,6 +75,43 @@ insert into public.course_lectures (course_id, no, name, objectives, status)
 values (:'audit_course_id', 1, '__P4H_AUDIT_LECTURE__', 'original objective', 'active')
 returning id as audit_lecture_id \gset
 
+insert into public.cw_page_docs (
+  lecture_id, page_no, title, source_courseware_id, source_page_id
+)
+values (
+  :'audit_lecture_id', 1, '__P4H_AUDIT_PAGE__', '__P4H_AUDIT__', 'page-1'
+)
+returning id as audit_page_doc_id \gset
+
+insert into public.cw_page_revisions (
+  page_doc_id, revision_no, doc, origin, created_by
+)
+values (
+  :'audit_page_doc_id',
+  1,
+  jsonb_build_object(
+    'docVersion', 'page-doc-v1',
+    'sourceCoursewareId', '__P4H_AUDIT__',
+    'sourcePageId', 'page-1',
+    'sourcePageDatabaseId', 1,
+    'sourceSnapshotId', 1,
+    'sourceContentHash', repeat('4', 64),
+    'canvas', jsonb_build_object(
+      'width', 1280, 'height', 720,
+      'backgroundColor', null, 'backgroundBindingKey', null
+    ),
+    'nodes', '[]'::jsonb,
+    'interactions', '[]'::jsonb
+  ),
+  'import',
+  :'admin_id'
+)
+returning id as audit_page_revision_id \gset
+
+update public.cw_page_docs
+set current_revision_id = :'audit_page_revision_id'
+where id = :'audit_page_doc_id';
+
 insert into public.classrooms (owner_id, name, invite_code, course_id, purpose, operational_status)
 values (:'teacher_id', '__P4H_AUDIT_CLASS__', 'P4H' || upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 4)), :'audit_course_id', 'test', 'planning')
 returning id as audit_classroom_id \gset
@@ -88,7 +125,15 @@ values (:'audit_classroom_id', :'audit_lecture_id', 1, '__P4H_AUDIT_SESSION__')
 returning id as audit_session_id \gset
 
 insert into public.cw_lecture_releases (lecture_id, release_no, snapshot, published_by)
-values (:'audit_lecture_id', 1, '[]'::jsonb, :'admin_id')
+values (
+  :'audit_lecture_id',
+  1,
+  jsonb_build_array(jsonb_build_object(
+    'pageDocId', :'audit_page_doc_id',
+    'revisionId', :'audit_page_revision_id'
+  )),
+  :'admin_id'
+)
 returning id as audit_release_id \gset
 update public.course_lectures set current_release_id = :'audit_release_id' where id = :'audit_lecture_id';
 
