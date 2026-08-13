@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
-import type { AixuexiPageDoc } from "@/features/courseware-doc/aixuexi-schema";
+import { aixuexiPackageLevel, type AixuexiPageDoc } from "@/features/courseware-doc/aixuexi-schema";
 import type { ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 import type { CoursewareTrack, StudioPageSummary } from "./data";
 import { CoursewarePageCreateDialog } from "./CoursewarePageCreateDialog";
@@ -32,6 +32,7 @@ export async function AixuexiStudioViewer({
     `/studio/courseware/${lecture.id}?track=${track}&page=${target.id}`;
   const previous = currentIndex > 0 ? pages[currentIndex - 1] : null;
   const next = currentIndex >= 0 && currentIndex < pages.length - 1 ? pages[currentIndex + 1] : null;
+  const packageLevel = aixuexiPackageLevel(doc.source.packageKey);
 
   return (
     <div className="@container flex h-full min-h-0 flex-col bg-card">
@@ -48,7 +49,7 @@ export async function AixuexiStudioViewer({
           track={track}
         />
         <Badge variant="outline">{track === "adapted-4x3" ? "4:3" : "16:9"}</Badge>
-        <Badge>{t("aixuexiAdapterBadge")}</Badge>
+        <Badge>{packageLevel ? t("aixuexiAdapterBadge", { level: packageLevel }) : t("aixuexiAdapterBadgeFallback")}</Badge>
       </header>
 
       <div className="grid min-h-0 flex-1 @4xl:grid-cols-[17rem_minmax(0,1fr)]">

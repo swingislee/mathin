@@ -98,7 +98,8 @@ function installTrueOrFalse(
   bindingUrls: ResolvedBindingUrls,
   interactive: boolean,
 ) {
-  const shadow = host.attachShadow({ mode: "open" });
+  const shadow = host.shadowRoot ?? host.attachShadow({ mode: "open" });
+  shadow.replaceChildren();
   const asset = (key: string) => bindingUrls[model.assets[key]] ?? "";
   const stopStyles = installLocalizedStyles(shadow, [
     "styles/audio.css", "styles/bubble.css", "styles/button.css", "styles/game-board.css",
@@ -207,7 +208,8 @@ function installTopicClassification(
   bindingUrls: ResolvedBindingUrls,
   interactive: boolean,
 ) {
-  const shadow = host.attachShadow({ mode: "open" });
+  const shadow = host.shadowRoot ?? host.attachShadow({ mode: "open" });
+  shadow.replaceChildren();
   const stopStyles = installLocalizedStyles(
     shadow,
     Object.keys(model.assets).filter((key) => key.endsWith(".css")),
@@ -294,6 +296,7 @@ export function AixuexiNativeGame({ node, bindingUrls, interactive }: AixuexiNat
     const host = ref.current;
     if (!host) return;
     host.replaceChildren();
+    delete host.dataset.aixSourceStyleError;
     if (node.trueOrFalse) return installTrueOrFalse(host, node.trueOrFalse, bindingUrls, interactive);
     if (node.topicClassification) return installTopicClassification(host, node.topicClassification, bindingUrls, interactive);
   }, [node, bindingUrls, interactive]);

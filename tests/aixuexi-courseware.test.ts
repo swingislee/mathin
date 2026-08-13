@@ -3,6 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   aixuexiPageDocSchema,
+  aixuexiPackageLevel,
   collectAixuexiBindingKeys,
   type AixuexiPageDoc,
 } from "../src/features/courseware-doc/aixuexi-schema";
@@ -105,6 +106,13 @@ function doc(): AixuexiPageDoc {
 }
 
 describe("Aixuexi courseware adapter", () => {
+  it("derives the displayed level from every supported package key", () => {
+    expect(aixuexiPackageLevel("2026-gplus-sujiao-math")).toBe("G+");
+    expect(aixuexiPackageLevel("2026-xplus-sujiao-math")).toBe("X+");
+    expect(aixuexiPackageLevel("2026-aplus-quanguo-math")).toBe("A+");
+    expect(aixuexiPackageLevel("future-package")).toBeNull();
+  });
+
   it("freezes projection v31 separately from the E-series schema", () => {
     const parsed = aixuexiPageDocSchema.parse(doc());
     expect(parsed.docVersion).toBe("aixuexi-page-doc-v1");

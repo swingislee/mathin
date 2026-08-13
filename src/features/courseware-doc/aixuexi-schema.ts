@@ -9,6 +9,13 @@ import { z } from "zod";
 export const AIXUEXI_PAGE_DOC_VERSION = "aixuexi-page-doc-v1";
 export const AIXUEXI_PAGE_ADAPTER = "aixuexi-page-v1";
 
+export function aixuexiPackageLevel(packageKey: string): "G+" | "X+" | "A+" | null {
+  if (packageKey.includes("-gplus-")) return "G+";
+  if (packageKey.includes("-xplus-")) return "X+";
+  if (packageKey.includes("-aplus-")) return "A+";
+  return null;
+}
+
 const finite = z.number().finite();
 const bindingKey = z.string().regex(/^[0-9a-f]{64}$/);
 const hash = z.string().regex(/^[0-9a-f]{64}$/);
