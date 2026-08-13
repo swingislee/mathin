@@ -1,6 +1,8 @@
 # Mathin R1 发布证据索引
 
-本目录是 R1-0～R1-18 的唯一仓库内证据入口。它保存可审查的小摘要、结构化结果和外部 artifact 索引，不把大日志、视频、截图、secret、token、测试凭据或可识别未成年人 PII 提交到 Git。
+本目录是 R1-Live 与 R1-0～R1-18 的唯一仓库内证据入口。它保存可审查的小摘要、结构化结果和外部 artifact 索引，不把大日志、视频、截图、secret、token、测试凭据或可识别未成年人 PII 提交到 Git。
+
+当前唯一施工阶段为 **R1-Live-1 · 正式身份与真实数据**。首个闭环固定为正式教师整班点名；Gate 0 `PASS`、Gate 1 `BLOCKED`、Gate 2 `BLOCKED`、Gate 3 `UNKNOWN`、Gate 4 `BLOCKED`，见 [R1-Live 差距表](r1-live.md)。原 R1 暂停在 R1-9，SML-0 为独立并行轨道。
 
 ## 存储合同
 
@@ -30,6 +32,7 @@ failure_ticket
 
 | 阶段 | 状态 | 日期 | 证据 |
 | --- | --- | --- | --- |
+| R1-Live | Gate 0 passed；Gate 1 current/blocking | 2026-08-14 | [真实教师点名闭环差距表、代码路径、运行未知项和最小修复范围](r1-live.md)；当前只有 E0/E1，不证明正式身份、真实数据或生产保险丝已成立 |
 | R1-0 | passed | 2026-07-28 | [规划真相源与发布边界冻结](r1-0.md) |
 | R1-1 | passed | 2026-07-28 | [机构配置、规则与 Feature Flag](r1-1.md) |
 | R1-2 | passed | 2026-07-28 | [Jobs、通知、文件与外部集成](r1-2.md) |
@@ -39,5 +42,5 @@ failure_ticket
 | R1-6 | passed | 2026-08-01 | [教学成果、阶段报告、通知与客户读取](r1-6.md) |
 | R1-7 | passed | 2026-08-01 | [初始化、导入、质量、修复与导出](r1-7.md) |
 | R1-8 | passed | 2026-08-12 | [财务安全关闭](r1-8.md)；`BUG-R1M-024` 与 `BUG-R1M-025` 已由迁移 `20260804000100` 修复，并在 commit `e231d7c` 复验：`pnpm r1:test` 15 个文件、99 项全绿，`SUPABASE_DB_SSH=xiaomi pnpm r1:db-audit` 的 12 个 SQL 断言文件全部通过并输出 `R1-8 finance safe-close assertions passed`；脚本均在事务中回滚，不留写入。具体 artifact 与 hash 由 r1-8 阶段证据登记 |
-| R1-9 | in progress | 2026-08-13 | 当前阶段为 `R1-9 · P6-9 与跨阶段非五模块生产准备`；[P6-AIX-2 爱学习 v31 多难度子门](r1-9-aixuexi-courseware.md)已关闭，开发库为 G+/X+/A+ 12 门/170 讲/5442 页；[两套课程来源 manifest v4 与受控导出 runner](r1-9-courseware-source-manifest.md)已同步正式 102 门/1305 讲/2610 条目标 release-1，严格绑定 head 选中的不可变 release、raw/normalized snapshot 和 H5 `launchQuery`，并具备只读 SQL、普通对象流式 hash、H5 逐文件校验及原子 artifact 输出。批准副本配置、经审核的 E 系列 provenance、真实 1305 行 inventory、Storage/H5 实际字节审计与非执行者复核仍 pending；Story、Games、Minds、Terms、Tools 巡检暂缓，R1-9 尚未关闭 |
-| R1-10～R1-18 | pending | — | 各阶段关闭时新增对应索引；Notebook 的[发布归属与互动隐私](r1-11-notebook-readiness.md)及[审核发布生命周期](r1-11-notebook-lifecycle.md)数据库子门已通过，完整私有写作/审核/公开互动/撤回与越权 release E2E、视觉签字仍待完成；[非五模块 Playwright 基线](r1-14-playwright-baseline.md)已有本地 9 条绿证据但 release target attestation、写态、zh/en、跨浏览器仍 pending；R1-15 只读 baseline preflight、[R1-16 部署 Preflight](r1-16-deployment-preflight.md)和[仓库 Secret Scan](r1-16-repository-secret-scan.md)已形成 E1/E2 子门，尚未执行快照清理、独立部署或恢复演练。五条公开线仍在 1.0 范围，恢复并通过原发布门前不得关闭 R1-12 或 R1-18 |
+| R1-9 | paused for R1-Live | 2026-08-14 | [P6-AIX-2 爱学习 v31 多难度子门](r1-9-aixuexi-courseware.md)已关闭，开发库为 G+/X+/A+ 12 门/170 讲/5442 页；[两套课程来源 manifest v4 与受控导出 runner](r1-9-courseware-source-manifest.md)已同步 102 门/1305 讲/2610 条 Production 1.0 目标。批准副本、E 系列 provenance、真实 inventory、Storage/H5 字节审计和非执行者复核仍 pending；除首个真实课次所用讲次可读外，不阻塞 R1-Live |
+| R1-10～R1-18 | queued after R1-Live | — | Notebook 两个数据库子门和非五模块 Playwright 本地基线等已完成增量继续保留。完整公开模块、视觉、全量 E2E、指标、清理/release、恢复和 14 天观察移入 R1-Live 后；R1-15 旧“只保留管理员”planner 在增加正式对象保护 manifest 前不可执行，R1-18 不得删除 R1-Live 真实数据 |

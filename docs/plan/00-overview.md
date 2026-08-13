@@ -6,7 +6,7 @@
 >
 > **阶段来源**：`04-roadmap.md` 顶部的“当前施工阶段”。
 >
-> **核对日期**：2026-08-13；依据代码、迁移、内容目录、CI 与 doc 00～28。
+> **核对日期**：2026-08-14；依据代码、迁移、内容目录、CI、R1-Live 差距审阅与 doc 00～28。
 
 ## 1. 1.0 产品合同
 
@@ -26,6 +26,15 @@ Mathin 以 Terms 数学概念及其关系为内容中心。1.0 同时发布下�
 Classroom、Whiteboard 和 Courseware Studio 承载教学与课件制作。它们与 Dashboard 属于对内系统，不减少六个对外模块的 1.0 范围。
 
 Story、Minds、Games、Tools 和 Notebook 使用稳定 ID 关联 Terms。课程研发复用相同概念标识；改 slug 或删除内容前检查反向引用和重定向。
+
+### 1.1 进入真实使用与 Production 1.0
+
+| 里程碑 | 完成定义 | 对后续范围的影响 |
+| --- | --- | --- |
+| **R1-Live · 内部生产试运行** | 1 名公司教师使用正式身份、真实班级/课次/花名册，独立完成整班点名；记录刷新和重登后仍存在；正式管理员可见，无权限主体不可见；当前备份、应用回退、错误定位和防误清可执行 | 完成即向第一批公司教师开放。Terms/Story 等内容深度、全量课件审计、全量视觉/E2E、14 天观察和完整恢复不再作为第一次使用的前置条件 |
+| **Production 1.0 · `v1.0.0`** | 本节完整产品合同与 doc 25 的量化发布门全部成立 | R1-Live 的正式身份和业务事实继续保留；仅显式标记为测试的数据可按受控 manifest 清理 |
+
+R1-Live 不缩减 1.0 产品合同。它把“开始真实工作”从完整成熟度认证中拆出，使内容、体验和工程收口能按真实反馈继续排序。当前唯一阶段、Gate 状态和首个闭环见 doc 04；Production 1.0 的成熟度与硬门继续由 doc 25 管理。
 
 ## 2. 全站视觉语言
 
@@ -61,7 +70,7 @@ Story、Minds、Games、Tools 和 Notebook 使用稳定 ID 关联 Terms。课程
 | 授权 | 数据库 RLS；前端隐藏按钮不构成授权 |
 | 业务状态 | 领域表和领域 RPC；今日工作、通知、搜索和统计只读取投影 |
 | 课程发布 | 可编辑文档/revision/binding 与不可变 release 分层；课堂读取 track head 指向的 release |
-| 正式数据基线 | 只保留 1 个生产管理员；删除测试运营数据；保留 E 系列 1135 讲与爱学习 G+/X+/A+ 秋季 170 讲的 16:9/4:3 源资源；为 1305 个 lecture 的两条 track head 重建 2610 条 `release_no=1`，其中 E 系列 2270 条、爱学习 340 条（见 doc 25 §5.1.1） |
+| 正式数据基线 | R1-Live 开始前登记 1 个正式管理员，随后按正式身份 manifest 增加真实教师；真实班级、课次、学生、考勤及课次冻结/引用的 immutable release、snapshot 和对象一经产生即受保护，不得作为测试/RC 数据清理。Production 1.0 仍保留 E 系列 1135 讲与爱学习 G+/X+/A+ 秋季 170 讲的 16:9/4:3 源资源，并为 1305 个 lecture 的两条 track head 建立 2610 条 baseline `release_no=1`（见 doc 25 §5.1.1） |
 | 课程目录版本 | 教材年度版本是 `course_catalog_versions` 一层，与 `course_families.edition`（地域版本）和 `cw_lecture_releases.release_no`（讲次内发布迭代）互不替代；`courses.product_code` 只在版本内唯一 |
 
 现行显式路由覆盖旧文档中的“九板块统一动态路由”描述。新增入口时同时更新路由、Proxy/鉴权、导航、sitemap、SEO、registry 和 zh/en messages。
@@ -118,13 +127,14 @@ Story、Minds、Games、Tools 和 Notebook 使用稳定 ID 关联 Terms。课程
 | `25-production-1.0-product-completeness.md` | active | 1.0 事实、缺口、发布门和生产初始化 |
 | `26-teacher-workflow-upgrade.md` | partial | 左侧备课步骤、右侧常驻课件预览、板书解析与结构化教案；独立教案管理入口和派生输出待补 |
 | `27-small-screen-workspace-adaptation.md` | active | 1024–1280px 窄屏与平板横屏的侧栏三态、工作区可拖拽分栏、4:3 全屏与容器查询收敛 |
-| `28-spatial-mathematics-lab.md` | active | SML-0 暂停点：空间数学课程能力、4:3 文档、金标、hash、权限、发布/冻结与纵向空壳合同仍未关闭；当前主线已切回 R1-9 |
+| `28-spatial-mathematics-lab.md` | active | SML-0 暂停点：空间数学课程能力、4:3 文档、金标、hash、权限、发布/冻结与纵向空壳合同仍未关闭；当前主线已切到 R1-Live |
 
 ## 7. 当前发布纪律
 
-- 当前子阶段以 doc 04 顶部为准。
-- 2026-08-13 用户显式切回 R1-9；P6-AIX-2 已关闭，当前继续 P6-9 的正式来源 manifest 与对象证据。SML-0 保留学生重连、成对回退、20 道代表题签名和跨端 hash 向量的暂停点。
+- 当前子阶段以 doc 04 顶部为准；2026-08-14 主线切为 R1-Live，首个闭环固定为正式教师整班点名。
+- 原 R1 暂停在 R1-9。P6-AIX-2、来源 manifest 和导出器结果保留；1305 讲全量对象证据及 R1-10～18 进入 Production 1.0/上线后池，不再阻塞第一名教师开始工作。SML-0 作为独立并行轨道保留暂停点。
 - R1 实际责任映射由 doc 25 §7.1 维护；阶段证据统一从 `docs/evidence/r1/README.md` 索引，Agent 只能作为执行者，不能代替人员 owner 或批准人。
-- R1-15 在生产快照的隔离副本演练数据清理；R1-18 经人工批准后处理正式生产。其他阶段禁止执行账号、班级、订单或 release 删除。
+- R1-Live 规划不授权创建真实账号、写入真实数据或部署。执行 Gate 1～4 的环境动作前需产品负责人明确目标、真实教师/班级输入和授权。
+- R1-15 的旧 planner 仍只允许生产快照隔离副本；其“只保留管理员”假设在保护 R1-Live 正式身份/业务 manifest 前不得用于后续正式清理。R1-18 即使经人工批准也只能删除 manifest 明确标记的测试对象，禁止删除真实试运行数据。
 - 阶段关闭时更新实现证据、专题文档状态头、doc 04、doc 25 和 README，并运行 `pnpm plan:audit`。
-- 英文长内容、原生移动端和 `cacheComponents` 迁移可延后；安全、数据正确性、六个对外模块和全站小王子视觉验收不可延后。
+- R1-Live 只允许延后不影响首个点名闭环的内容、视觉和完整性工作；正式身份、授权、数据持久化、错误可见、备份、回退和防误清不可延后。六个对外模块、全站小王子视觉与完整 Production 1.0 门仍须在 `v1.0.0` 前完成。

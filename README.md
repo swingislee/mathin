@@ -2,12 +2,12 @@
 
 Mathin 是一个中英双语、以 Terms 为核心的数学探索网站。小王子世界观是全站主要视觉语言：公开首页使用 B-612/五星球场景，内容与 Notebook 使用绘本/旅途笔记语法，运营工作区保留纸色、星夜、书卷字体和克制的品牌锚点。1.0 同时交付 Story、Games、Minds、Terms、Tools、Notebook，以及 `/dashboard` 下的学校运营与内容发布系统。UI 永远维护 zh/en；英文课程和文章内容可在明确回退的前提下延后。
 
-当前处于 **R1-9 · P6-9 与跨阶段非五模块生产准备**。P6-AIX-2 已按 projection v31 完成爱学习 G+/X+/A+ 三包重导入、源 CSS/player/动画/H5/原生游戏接入和结构化 4:3 适配；当前继续补 1305 讲正式来源 inventory、Storage/H5 对象审计和非执行者复核。SML-0 保留原暂停点；该切换不代表 `v1.0.0` 已完成，也不授权真实生产清理。规划入口：
+当前处于 **R1-Live-1 · 正式身份与真实数据**。首个内部生产闭环固定为：正式教师进入自己的 production 班级/课次，完成整班点名，刷新和重登后仍可读取，管理员可见且无权限主体不可见。原 R1 暂停在 R1-9，P6-AIX-2 和 1305 讲来源合同结果保留；全量课件/公开模块/视觉/E2E/恢复门进入 R1-Live 后的 Production 1.0 队列。SML-0 独立并行，不阻塞首次真实使用。规划入口：
 
 - [00 总览与信息架构](docs/plan/00-overview.md)：产品宪章、文档状态和冲突裁决；
-- [04 分期路线图](docs/plan/04-roadmap.md)：唯一当前阶段与 R1 顺序；
-- [25 生产 1.0 产品完整性](docs/plan/25-production-1.0-product-completeness.md)：成熟度证据、缺口、量化发布门和生产初始化。
-- [R1 证据索引](docs/evidence/r1/README.md)：阶段关闭记录，以及 CI artifact/受控对象存储中的大日志、截图和视频索引。
+- [04 分期路线图](docs/plan/04-roadmap.md)：R1-Live Gate、唯一当前阶段、首个教师闭环和旧 R1 重新定位；
+- [25 生产 1.0 产品完整性](docs/plan/25-production-1.0-product-completeness.md)：R1-Live 后的成熟度证据、量化硬门和受保护生产初始化。
+- [R1 证据索引](docs/evidence/r1/README.md)：R1-Live 差距表、阶段关闭记录，以及 CI artifact/受控对象存储中的大日志、截图和视频索引。
 
 其他 01～24 文档先看顶部状态头：`complete` 是历史竣工记录，不代表应按旧清单返工；`partial` 的剩余项以 04/25 重新收录为准。
 
@@ -38,6 +38,6 @@ pnpm e2e              # 本地/开发目标 Playwright；固定账号从 Git 忽
 pnpm e2e:release      # 仅在明确非生产 target attestation 下运行的 fail-closed 发布套件
 ```
 
-正式 1.0 发布前会在隔离副本演练数据初始化：生产最终仅保留唯一管理员，清除测试账号、班级、订单及依赖运营数据；完整保留 E 系列 1135 讲与爱学习 G+/X+/A+ 秋季 170 讲的 16:9/4:3 资源，为 1305 个 lecture 的两条轨道重建 2610 条 `release_no=1`。除规划规定的演练/发布阶段和人工授权外，不得执行该清理。
+R1-Live 开始前登记唯一 admin 角色账号，随后按正式身份清单增加真实教师和业务用户。真实班级、课次、学生、点名及课次引用的 immutable release/snapshot/object 一经产生即受保护，任何测试清理都不得触达。Production 1.0 仍会在隔离副本演练显式测试数据清理，并完整保留 E 系列 1135 讲与爱学习 G+/X+/A+ 秋季 170 讲的 16:9/4:3 资源，为 1305 个 lecture 的两条轨道建立 2610 条 baseline `release_no=1`；旧“生产只留一个 auth 用户”的 planner 在增加正式对象保护 manifest 前不可执行。
 
 自托管 Supabase 的配置、备份和上线注意事项见 [docs/supabase-self-hosting.md](docs/supabase-self-hosting.md)。

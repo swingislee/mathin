@@ -117,7 +117,9 @@ const requiredProductTerms = [
   "1305",
   "2610",
   "release_no=1",
-  "唯一生产管理员",
+  "R1-Live",
+  "admin 角色账号",
+  "受保护",
   "work_items",
   "证据等级",
   "量化发布门",
@@ -202,17 +204,19 @@ const EVIDENCE_DIR = path.join(ROOT, "docs", "evidence", "r1");
 const evidenceIndexPath = path.join(EVIDENCE_DIR, "README.md");
 if (!existsSync(evidenceIndexPath)) fail("缺少 R1 证据索引：docs/evidence/r1/README.md");
 
-// 当前阶段可以是 R1-N 或后续专题阶段。切到专题时，doc 04 必须显式保留尚未
-// 关闭的 R1 暂停位置；暂停不能被误判为已经关闭余下 R1 阶段。
+// 当前阶段可以是历史 R1-N、R1-Live-N 或后续专题阶段。切到 R1-Live/专题时，
+// doc 04 必须显式保留尚未关闭的历史 R1 暂停位置；暂停不能被误判为已经关闭余下阶段。
 const currentR1StageNumber = Number(currentStage?.match(/^R1-(\d+)\b/)?.[1] ?? NaN);
 const pausedR1Stage = roadmap.match(/^> \*\*R1 暂停位置\*\*：`R1-(\d+)\b[^`]*`/m)?.[1];
 const pausedR1StageNumber = Number(pausedR1Stage ?? NaN);
+const isR1LiveStage = /^R1-Live-[0-4]\b/.test(currentStage ?? "");
 const isTopicStage = /^SML-\d+\b/.test(currentStage ?? "");
-if (!Number.isInteger(currentR1StageNumber) && !isTopicStage) {
-  fail(`当前施工阶段必须是 R1-N 或 SML-N：${currentStage ?? "无"}`);
+const requiresPausedR1Stage = isR1LiveStage || isTopicStage;
+if (!Number.isInteger(currentR1StageNumber) && !requiresPausedR1Stage) {
+  fail(`当前施工阶段必须是 R1-N、R1-Live-0～4 或 SML-N：${currentStage ?? "无"}`);
 }
-if (isTopicStage && !Number.isInteger(pausedR1StageNumber)) {
-  fail("SML 当前阶段必须在 doc 04 显式记录 R1 暂停位置");
+if (requiresPausedR1Stage && !Number.isInteger(pausedR1StageNumber)) {
+  fail("R1-Live/SML 当前阶段必须在 doc 04 显式记录 R1 暂停位置");
 }
 const evidenceStageNumber = Number.isInteger(currentR1StageNumber)
   ? currentR1StageNumber
@@ -301,8 +305,8 @@ for (const [name, source] of [
       fail(`${name} 缺少 doc ${number} 的规划入口`);
     }
   }
-  if (!source.includes("唯一") || !source.includes("release_no=1")) {
-    fail(`${name} 缺少正式生产唯一管理员/release-1 安全提示`);
+  if (!source.includes("R1-Live") || !source.includes("admin 角色") || !source.includes("release_no=1")) {
+    fail(`${name} 缺少 R1-Live 正式身份/release-1 安全提示`);
   }
   for (const term of ["Story", "Games", "Minds", "Terms", "Tools", "Notebook", "zh/en"]) {
     if (!source.includes(term)) fail(`${name} 缺少 1.0 产品/双语契约：${term}`);

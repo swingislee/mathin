@@ -2,11 +2,11 @@
 
 > **规划状态**：`active`
 >
-> **用途**：记录仓库事实、M0～M4 成熟度、业务合同、量化发布门和生产初始化步骤。
+> **用途**：记录 Production 1.0 的仓库事实、M0～M4 成熟度、业务合同、量化发布门和生产初始化步骤；R1-Live 的当前 Gate 与施工顺序由 doc 04 管理。
 >
-> **基线日期**：2026-07-28；每次验收另记 commit、migration head、环境和数据 manifest。
+> **基线日期**：2026-08-14；每次验收另记 commit、migration head、环境和数据 manifest。
 >
-> **删除限制**：R1-15 只操作生产快照副本；R1-18 经人工批准后操作正式生产。
+> **删除限制**：R1-15 只操作生产快照副本；R1-18 经人工批准后也只能处理 manifest 明确标记的测试对象。R1-Live 产生的正式身份、班级、课次、学生、业务记录及课次引用的 immutable release/snapshot/object 永久排除在测试清理之外。
 
 ## 1. 范围与当前事实
 
@@ -29,14 +29,25 @@
 
 Terms 使用稳定 ID 接收 Story、Minds、Games、Tools、Notebook 和课程的关联。修改 slug 或删除内容前检查反向引用、重定向、canonical 和 sitemap。
 
-### 1.1.1 2026-08-13 施工顺序
+### 1.1.1 2026-08-14 施工顺序
 
-本轮按用户指令从 SML-0 切回 R1-9。P6-AIX-2 已证明 G+/X+/A+ 三包的真实开发清单、源运行时与双轨结果，并据此把爱学习正式范围从旧 G+ 52 讲改为 v31 三档 170 讲；SML-0 与 R1-9 都未因此关闭。
+当前唯一施工阶段切为 `R1-Live-1 · 正式身份与真实数据`。R1-Live 先让一名公司教师以正式身份和真实数据完成整班点名，再在真实使用中继续 Production 1.0；本文件的完整性矩阵与量化硬门仍有效，但除 doc 04 明确抽取的子集外，不阻塞内部生产试运行。
 
-- R1-9 是唯一施工阶段；P6-AIX-2 已按 doc 16 §13 消费 projection v31，移除旧手工放大，接入源 CSS/player/动画/H5/原生游戏，并在开发库重建 170 讲双轨。
-- SML-0 保留学生重连、成对回退、20 道代表题教研签名与跨端 hash 向量的暂停点；R1-9 的 Terms/来源 manifest/生产对象证据及 R1-10～18、Story、Games、Minds、Tools、Notebook 的剩余发布门保持 pending。
-- 范围裁决已完成：G+/X+/A+ 170 讲及 14 个来源显式复习占位进入 1.0；来源没有提供的讲次不补造。§1.1、§5、PROD-12、R1 来源 manifest 和生产 baseline planner 均固定 102 门/1305 讲/2610 条 release-1；真实只读 inventory 和生产对象证据仍是 blocker。
-- 当前阶段不得执行 R1-15/R1-18 的真实生产清理或 release 重建；迁移和纵向验证只使用开发库或一次性验证库。
+- R1-Live Gate 0 已冻结首个闭环：正式教师登录 → 找到自己的 production 班级/课次 → 整班点名 → 保存 → 刷新和重登后再读 → 管理员可见 → 无权限主体不可见。
+- R1-Live Gate 1 当前 `BLOCKED`：正式目标指纹、防误清、正式管理员/教师、真实班级/课次/花名册及课次引用内容保护尚未在同一环境成立。Gate 2 `BLOCKED`，Gate 3 `UNKNOWN`，Gate 4 `BLOCKED`，详见 doc 04 和 [`r1-live.md`](../evidence/r1/r1-live.md)。
+- 原 R1 暂停在 R1-9。P6-AIX-2、G+/X+/A+ 170 讲和 102 门/1305 讲/2610 条目标 release-1 合同保留；真实全量 inventory、Storage/H5 审计、Terms/Story/其他公开模块、完整视觉/E2E/恢复门转入 R1-Live 后继续。
+- SML-0 为独立并行轨道；普通教师默认不可见未完成能力，只有破坏共享认证、授权、数据或点名黄金路径时才阻塞 R1-Live。
+- R1-Live 的正式业务事实及课次引用的 immutable release/snapshot/object 不得在后续 R1-15/R1-18 中删除或改写。旧 planner 在增加正式对象保护 manifest 并重新验收前保持 plan-only、不可执行。
+
+### 1.1.2 R1-Live 与本文件硬门的关系
+
+| 范围 | R1-Live 前必须 | R1-Live 后、`v1.0.0` 前完成 |
+| --- | --- | --- |
+| 产品 | 正式教师点名闭环涉及的登录、班级、课次和错误状态 | §1.1 的全部公开模块、内容发布和角色旅程 |
+| 身份/数据 | 正式管理员、正式教师、最小真实数据、课次内容依赖保护、RLS 负向、正式对象防误清 | 全正式身份 manifest、完整角色旅程与数据治理 |
+| 测试 | 点名 Golden Path、管理员读取、越权拒绝 | PROD-01、完整 R1-14 矩阵、容量/文件/竞争 |
+| 运维 | 当前备份可用、应用可回退、错误可定位、危险开发动作拒绝目标 | §5.4 的 RPO/RTO、全量恢复、监控与发布审批 |
+| 观察 | 1 名真实教师独立完成 | R1-Live 后连续 14 天、至少 5 节真实课堂，作为扩大范围和 `v1.0.0` 证据 |
 
 ### 1.2 工程与验证基线
 
@@ -112,14 +123,14 @@ command_or_runbook, artifact_url_or_path, artifact_hash, failure_ticket
 
 ## 3. 成熟度矩阵
 
-当前等级截至 2026-08-12，并按已登记的阶段或子门证据更新；后续 R1 阶段仍须生成对应 E2/E3/E4 才能提升至 M4。
+当前等级截至 2026-08-14，并按已登记的阶段或子门证据更新；本矩阵衡量 Production 1.0，不是 R1-Live 的前置清单。R1-Live 只提升实际覆盖的身份、点名和最小运维证据，不能据此把整个领域提升至 M4。
 
 | 领域 | 当前 | 1.0 | 已知缺口 | R1 |
 | --- | --- | --- | --- | --- |
-| 规划/变更治理 | M3 | M4 | R1-0 已冻结实际 owner 与证据位置；后续阶段持续维护索引并在 R1-18 汇总审批 | 0/18 |
+| 规划/变更治理 | M3 | M4 | R1-0 已冻结实际 owner 与证据位置；2026-08-14 增加 R1-Live Gate，后续持续维护索引并在 Production 1.0 汇总审批 | 0/Live/18 |
 | 机构配置/Feature Flag | M3 | M4 | R1-1 已完成规则/开关版本、生效、权限、回滚、fail-closed 与开发环境验证；M4 仍需生产初始化、正式角色旅程和发布门 | 1/15/18 |
 | Jobs/通知/文件/集成 | M3 | M4 | R1-2 已完成 durable job/dead-letter/重放、第一方通知、TUS/文件策略、webhook 防重放与开发环境验证；M4 仍需生产 Worker、选中供应商（如有）、大文件并发/容量、告警恢复和 14 天 RC | 2/14/16/17 |
-| 账户/Auth/同意/支持 | M3 | M4 | R1-3 已完成版本化同意、MFA/会话、权利请求、员工邀请、封禁/恢复和审计支持；M4 仍需正式唯一管理员清单、生产 MFA/速率限制与 R1-14/16/17/18 环境证据 | 3/14/16/17/18 |
+| 账户/Auth/同意/支持 | M3 | M4 | R1-3 已完成版本化同意、MFA/会话、权利请求、员工邀请、封禁/恢复和审计支持；R1-Live 先建立正式管理员/教师并验证恢复，M4 仍需正式身份清单、生产 MFA/速率限制与完整环境证据 | 3/Live/14/16/17/18 |
 | Work-items/审批 | M3 | M4 | R1-4 已完成混合投影、持久协同、独立审批、动态逾期、幂等/通知与开发规模 PERF-04；M4 仍需正式 E2E、生产候选负载和 RC 指标 | 4/14/17 |
 | 学生门户 | M3 | M4 | R1-5 已完成本人课务/考勤/请假补课/作业/视频/成果/逐题学情/通知、草稿隔离、跨学生拒绝与 zh/en 开发环境旅程；M4 仍需 R1-14 正式 Playwright、R1-16 独立生产、R1-17 RC 与 R1-18 发布证据 | 5/14/16/17/18 |
 | 家庭门户 | M3 | M4 | R1-5 已完成稳定学生 ID 多子女切换、未绑定/待审核/撤回/财务关闭、关系撤销、请假补课、成果通知、跨家庭拒绝与 zh/en 开发环境旅程；M4 仍需 R1-14 正式 Playwright、R1-16 独立生产、R1-17 RC 与 R1-18 发布证据 | 5/14/16/17/18 |
@@ -137,9 +148,9 @@ command_or_runbook, artifact_url_or_path, artifact_hash, failure_ticket
 | 全站视觉/SEO/a11y | M2 | M4 | 三档小王子语言、104 份代表页视觉证据、WCAG/CWV | 12 |
 | 指标/报表/遥测 | M1～M2 | M4 | 口径、版本、查询、告警 | 13 |
 | 幂等/并发/事务/E2E | M2～M3（正式基线/开发目标） | M4 | 本轮修复前 19 项 Vitest 失败已在 commit `cbb2a0f` 清零；commits `0d55044`、`8e5c076` 与[Playwright 子门](../evidence/r1/r1-14-playwright-baseline.md)已让 9 条本地非五模块 Chromium 旅程分别取绿并固定 release fail-closed 合同；仍缺发布目标完整重跑、写态、zh/en、跨浏览器、连续无 flaky、大文件和竞争矩阵 | 14 |
-| 生产清理/release-1 | M1 | M4 | 快照副本演练、可逆脚本、正式计数 | 15/18 |
-| 部署/备份/恢复 | M2（只读 preflight） | M4 | commit `35b9f60` 与[部署子门](../evidence/r1/r1-16-deployment-preflight.md)已固定 fail-closed 合同；commits `3077fee`、`82c0920`、`8e5c076` 与[仓库扫描子门](../evidence/r1/r1-16-repository-secret-scan.md)已关闭当前树/历史 high-confidence secret scan。独立环境、运行时 secret、监控探针、数据库/Storage 恢复、应用回滚与非执行者复核仍缺 | 16 |
-| 真实运营 RC | M0 | M4 | 14 天、5 节真实课堂、支持/告警记录 | 17 |
+| 生产清理/release-1 | M1（旧 planner） | M4 | 旧 planner 假定只保留管理员且无正式历史 release，与 R1-Live 后正式教师/业务数据/课次内容引用冲突；须增加正式对象保护 manifest 后再做快照副本演练、测试数据清理、可逆脚本和正式计数 | Live/15/18 |
+| 部署/备份/恢复 | M2（只读 preflight） | M4 | commit `35b9f60` 与[部署子门](../evidence/r1/r1-16-deployment-preflight.md)已固定 fail-closed 合同；仓库/历史 secret scan 已关闭。R1-Live Gate 3 先核实当前备份、应用回退、错误定位和防误清；独立环境、监控、数据库/Storage 全量恢复与非执行者复核仍缺 | Live/16 |
+| 真实运营 RC | M0 | M4 | R1-Live Gate 4 先取得 1 名真实教师 E4；开放后连续 14 天、至少 5 节真实课堂形成扩围和 Production 1.0 证据 | Live/17 |
 
 ## 4. 业务合同
 
@@ -321,9 +332,9 @@ R1-7E 以 `user_rights_export_artifacts` 保存与请求绑定的精确 JSON 字
 - loading、empty、error、forbidden、withdrawn、closed 和 partial success 使用不同 UI 状态。
 - 数据库存储可比较时间；业务展示和截止计算使用机构时区；`overdue` 由 `due_at` 派生。
 
-## 5. 1.0 量化发布门
+## 5. Production 1.0 量化发布门
 
-所有比率排除 schema 已识别的用户输入校验失败；系统错误、超时、越权、重复写入和数据不一致不得排除。
+本节约束 `v1.0.0` 和扩大到完整产品范围，不作为 R1-Live 开放前的整包清单。R1-Live 只采用 doc 04 明确列出的身份、点名、越权、备份、回退、错误可见和防误清子门。所有比率排除 schema 已识别的用户输入校验失败；系统错误、超时、越权、重复写入和数据不一致不得排除。
 
 ### 5.1 产品、内容与语言
 
@@ -339,8 +350,8 @@ R1-7E 以 `user_rights_export_artifacts` 保存与请求绑定的精确 JSON 字
 | PROD-08 | Tools | 3/3 独立页和既定 embed 场景通过；`spatial-lab` 明示验收样机与无持久化边界 |
 | PROD-09 | Minds | 2/2 中文文章发布；无效 Terms 关系=0 |
 | PROD-10 | Notebook | 私有写作、审核、发布/撤回、公开阅读、互动和越权 E2E 通过 |
-| PROD-11 | E 系列 | 1135 讲×2 轨源资源完整；正式 release 恰为 2270 条 `release_no=1`；缺失/悬空=0 |
-| PROD-12 | 爱学习 G+/X+/A+ 秋季 | 12 门/170 讲×2 轨源资源完整；正式 release 恰为 340 条 `release_no=1`；14 个来源显式第 7/15 讲占位保留、来源未提供的讲次保持缺失；缺失对象/悬空 binding=0 |
+| PROD-11 | E 系列 | 1135 讲×2 轨源资源完整；正式 baseline 恰有 2270 条 `release_no=1`；缺失/悬空=0；正式课次引用的额外历史 release 按保护 manifest 保留 |
+| PROD-12 | 爱学习 G+/X+/A+ 秋季 | 12 门/170 讲×2 轨源资源完整；正式 baseline 恰有 340 条 `release_no=1`；14 个来源显式第 7/15 讲占位保留、来源未提供的讲次保持缺失；缺失对象/悬空 binding=0；正式课次引用的额外历史 release 按保护 manifest 保留 |
 
 #### 5.1.1 教材年度换代后的基线重新固定
 
@@ -358,7 +369,7 @@ R1-7E 以 `user_rights_export_artifacts` 保存与请求绑定的精确 JSON 字
 
 导入已同步的连带修改点：`supabase/seed/teaching-plans.json` 追加 18 门课程（`catalogVersion` 为 `2026`，讲次 72→90、865→1135）、`docs/manifests/r1-initialization.example.json` 的 `expectedCourseCount`/`expectedLectureCount`/`naturalKeysSha256`/`sourceSha256`、doc 00 的正式数据基线行、doc 04 §1、本节表格与 PROD-11。旧秋季 18 门保留 `enabled` 并已写入 `superseded_by_course_id`；已有班级继续固定旧 `course_id`，不迁移。
 
-开发库实测 E 系列 `release_no=1` 为 2269 条而非 2270：样本讲 `MFHK02039` 第 3 讲《迷宫连线》的 `adapted-4x3` 轨在 P6-3/P6-6 样本期清除重导中用掉了 1 号，现存 10 条 release 起始号为 2。上表是正式基线目标——R1-18 按本节把每讲两轨重建为 `release_no=1` 后该差异消失，不需要在开发库返工。
+开发库实测 E 系列 `release_no=1` 为 2269 条而非 2270：样本讲 `MFHK02039` 第 3 讲《迷宫连线》的 `adapted-4x3` 轨在 P6-3/P6-6 样本期清除重导中用掉了 1 号，现存 10 条 release 起始号为 2。上表是正式基线目标——R1-18 按本节建立并核验每讲两轨的 `release_no=1` baseline；R1-Live 正式课次已经引用的 immutable release 作为额外历史记录保留，不需要在开发库返工。
 
 2026-08-13 的 P6-AIX-2 把爱学习从旧 G+ 52 讲升级为 G+/X+/A+ 170 讲，因此现行正式基线为 E 系列 1135 讲 + 爱学习 170 讲 = 1305 讲，双轨 release-1 为 2270 + 340 = 2610 条。旧表只保留 E 系列年度换代的历史对账语义，不再代表当前总量。
 
@@ -404,83 +415,81 @@ R1-7E 以 `user_rights_export_artifacts` 保存与请求绑定的精确 JSON 字
 | REC-03 | 应用 | 前一稳定 build 恢复≤30min；schema 兼容/forward-fix runbook 可执行 |
 | REC-04 | 演练 | 隔离环境全量恢复≥1 次；恢复后应用烟测通过；非执行者复核证据 |
 | SEC-01 | Auth/RLS/Storage | 跨角色、校区、家庭和学生负向用例 100% 通过 |
-| SEC-02 | 管理员 | 正式业务 auth 用户=1 且为 admin；MFA=100%；恢复凭据离线保管 |
+| SEC-02 | 正式身份 | admin 角色账号恰为 1 且 MFA=100%；全部正式 auth 用户与已批准身份 manifest 一致；教师/staff 不得被误算为测试账号；恢复凭据离线保管 |
 | SEC-03 | 依赖 | production dependency critical=0、high=0；medium 逐项记录接受/缓解和截止日 |
 | SEC-04 | 环境/密钥 | 开发、预生产、生产数据和 secret 完全隔离；仓库 secret 扫描命中=0 |
-| SEC-05 | 清理 | 非保留身份、测试 PII、班级、订单及依赖运营数据残留=0 |
+| SEC-05 | 清理 | cleanup manifest 明确标记的测试身份、测试 PII、测试班级、测试订单及依赖运营数据残留=0；未列对象和受保护正式对象变更=0 |
 
 截至 2026-08-12，[仓库扫描子门](../evidence/r1/r1-16-repository-secret-scan.md)已对当前 tracked tree、binary ASCII、高风险容器和完整可达 Git 历史给出 high-confidence 0 命中；该结果只满足 SEC-04 的仓库半门，不证明开发、预生产、生产的运行时 secret、数据、Storage 与域名已隔离。
 
 ### 5.5 Go/No-Go
 
-- **Go**：全部硬门通过；财务若关闭，页面、导航、work item、通知、指标和 job 同时关闭；发布审批签字。
+- **R1-Live Go**：仅按 doc 04 Gate 0～4；全部 `PASS` 后立即开放第一批内部教师，不等待本节其他硬门。
+- **Production 1.0 Go**：本节全部硬门通过；财务若关闭，页面、导航、work item、通知、指标和 job 同时关闭；发布审批签字。
 - **Conditional Go**：只接受不影响安全、数据正确性、核心旅程、视觉可用性和恢复能力的 Sev2/medium 风险；记录 owner、到期日和缓解措施。
-- **No-Go**：存在 Sev0/Sev1、越权、数据丢失、恢复失败、管理员/MFA 不符、公开模块占位、104 份视觉矩阵未签收或 release 计数/对象 hash 不符。
+- **Production 1.0 No-Go**：存在 Sev0/Sev1、越权、数据丢失、恢复失败、正式身份/MFA 不符、公开模块占位、104 份视觉矩阵未签收或 release 计数/对象 hash 不符。R1-Live No-Go 仅由 doc 04 的 P0/核心 P1 触发。
 
-## 6. 正式生产初始化与双轨 release-1
+## 6. 正式生产数据保护与双轨 release-1
 
 ### 6.1 执行窗口与保护条件
 
 | 阶段 | 环境 | 允许动作 |
 | --- | --- | --- |
-| R1-15 | 生产快照的隔离副本 | 运行 manifest、dry-run、备份恢复、清理和 release 重建；不得连接正式写端点 |
-| R1-18 | 正式生产 | 人工批准、维护窗、备份验证和目标二次确认后执行同一版本脚本 |
+| R1-Live Gate 1/3 | 明确登记的内部生产目标 | 目标/部署指纹只读确认、正式身份和最小真实业务数据的显式创建、备份/回退/错误定位验证；禁止批量清理和 release 重建 |
+| R1-15 | 生产快照的隔离副本 | 在正式对象保护 manifest 生效后运行 dry-run、备份恢复、显式测试数据清理和 release 重建；不得连接正式写端点 |
+| R1-18 | 正式生产 | 人工批准、维护窗、备份验证、正式对象保护和目标二次确认后，执行与隔离演练相同版本的受限动作 |
 
-脚本输入使用审核过的明确 ID manifest：生产项目/数据库标识、唯一管理员 auth/profile UUID、E 系列和爱学习 G+/X+/A+ 秋季的 course/lecture ID、Storage bucket/prefix。邮箱后缀、名称、glob 和未解析环境变量不得决定删除目标。每阶段记录预期数量和实际数量；差异非 0 时停止。
+所有可能删除或覆盖对象的脚本同时读取三类明确 ID：生产项目/数据库/Storage 指纹、受保护正式身份与业务对象、允许处理的测试对象。邮箱后缀、名称、glob、`purpose` 单字段和未解析环境变量都不能单独决定删除目标。任一正式对象进入删除集合、预期/实际数量不一致或 manifest hash 漂移时停止。
 
-R1-15 的只读 preflight 入口是 `docs/manifests/r1-production-baseline.example.json`，结构由 `schemas/r1-production-baseline-manifest.schema.json` 固定，`pnpm r1:baseline-plan` 只输出可复现计划，不连接网络或数据库、不生成 SQL、不执行清理。实际 manifest 只能声明 `isolated-production-snapshot`，要求 source/target 项目与数据库指纹不同、1305 个显式 lecture UUID、唯一管理员 manifest 的归一化 SHA-256、两套课程体系各自的 Storage bucket/prefix/object-manifest hash，以及 2610 条 release 的最终计数和第二次运行零差异。仓库中的 example 只含占位 ID 和占位 hash，不能作为 R1-15 演练通过证据。
+现有 R1-15 只读 preflight 位于 `docs/manifests/r1-production-baseline.example.json`、`schemas/r1-production-baseline-manifest.schema.json` 和 `pnpm r1:baseline-plan`。它保持 plan-only、无网络、无写入，但仍使用“唯一管理员且运营数据为零”的 R1-Live 前旧假设。R1-Live 产生真实身份/业务数据后，在 schema 增加 protected-live manifest、修改最终不变量并在隔离副本重新验收前，该 planner 只能作为历史合同检查，不能授权 R1-15/R1-18 执行。
 
-P6-9 的来源 preflight 入口是 `docs/manifests/r1-courseware-source.example.json`，它引用 `r1-courseware-e-series.example.ndjson` 与 `r1-courseware-aixuexi.example.ndjson` 两份 inventory；结构和操作边界由 `schemas/r1-courseware-source-manifest.schema.json` 与 `docs/runbooks/r1-courseware-source-manifest.md` 固定。`node scripts/plan-r1-courseware-source.mjs` 只读本地受控清单，固定 E 系列 90 门/1135 讲、爱学习 12 门/170 讲、每讲双轨与 2610 条 release-1 snapshot，并核对 source revision/binding、CAS、H5、本地对象 hash、爱学习 v31 catalog 和 E adapted 4:3 审批；URI、UNC、绝对路径、仓库/批准根外路径和符号链接逃逸均拒绝。v4 另提供固定只读 SQL、纯导出核心和 `pnpm r1:courseware-source:export` 受控 runner，绑定 head 选中的 raw/normalized release snapshot、H5 `launchQuery`、普通对象流式 hash 和 H5 manifest/逐文件实际字节，并在离线 planner 自验通过后原子写出 artifact。仓库 example 与合成 1305 行 fixture 只证明合同；批准副本配置、经审核的 E 系列 provenance、真实全量 inventory、`cw-objects`/`cw-h5` 审计和非执行者复核仍是 R1-9/R1-15 blocker。
+P6-9 的来源 preflight 入口是 `docs/manifests/r1-courseware-source.example.json`，它引用两份 inventory 并由 `schemas/r1-courseware-source-manifest.schema.json`、`docs/runbooks/r1-courseware-source-manifest.md` 和 `pnpm r1:courseware-source:export` 固定 E 系列 90 门/1135 讲、爱学习 12 门/170 讲、双轨 2610 条 release-1 目标。仓库 example 与合成 1305 行 fixture 只证明合同；批准副本配置、E 系列 provenance、真实 inventory、`cw-objects`/`cw-h5` 审计和非执行者复核继续作为 Production 1.0 blocker，不阻塞 R1-Live 首个课次。
 
-R1-16 的只读 preflight 入口是 `docs/manifests/r1-production-deployment.example.json`，结构和操作边界分别由 `schemas/r1-production-deployment-manifest.schema.json` 与 `docs/runbooks/r1-production-deployment-preflight.md` 固定。`pnpm r1:deployment-plan` 只读取 manifest 和仓库内无 secret/PII 的摘要，不联网、不读取环境 secret，也不执行 SSH、部署、备份、恢复、回滚或 DNS 变更。R1-14、R1-15、环境隔离、仓库 secret scan、监控探针、数据库恢复、Storage 恢复、应用回滚、非执行者复核共 9 项证据未全部通过时必须阻断；即使全部通过，planner 也不允许阶段关闭或生产执行。
+R1-16 的只读 preflight 位于 `docs/manifests/r1-production-deployment.example.json`、`schemas/r1-production-deployment-manifest.schema.json` 和 `docs/runbooks/r1-production-deployment-preflight.md`。`pnpm r1:deployment-plan` 继续保持 plan-only、无网络、无 secret 读取和无执行能力。其完整 9 项证据用于 Production 1.0；R1-Live Gate 3 只抽取当前备份、应用回退、错误定位和防误清四个最小保险丝。
 
-### 6.2 账号与运营数据
+### 6.2 正式身份与运营数据
 
-唯一生产管理员 manifest 包含 auth UUID、profile UUID、邮箱、admin/staff 权限、MFA 状态和恢复联系人。删除其他身份前验证该账号登录、权限、审计和离线恢复材料，并撤销现有会话。
+正式身份 manifest 包含恰好 1 个 admin 角色账号，以及所有已批准教师/staff/学生/家长的 auth/profile UUID、角色、状态和必要恢复责任。正式对象保护 manifest 以明确 UUID 列出 R1-Live 及后续真实使用产生的班级、成员、课次、学生、考勤和关联业务根，并记录正式课次冻结/引用的 immutable release、snapshot 与对象 hash；不得把真实对象按创建日期、邮箱后缀或环境名称推断为测试数据。
 
 | 处理 | 对象 |
 | --- | --- |
-| 删除 | 其他测试/RC/员工/学生/家长 auth identity、profile、个人设置和角色绑定 |
-| 删除 | 班级、成员、排课、session、实时状态、考勤、请假/补课 |
-| 删除 | 作业、提交、评分/评语、成果、复盘、视频关联、支持/跟进任务 |
-| 删除 | 订单、收款、退款、学生账户、台账、对账/异常及相关 work item |
-| 删除 | 测试通知、`work_item_user_state`、持久 work item、测试 domain event、导入批次和测试派生错误数据 |
+| 删除 | 只允许 manifest 明确标记为测试且不被任何正式对象引用的 auth identity、profile、个人设置和角色绑定 |
+| 删除 | 只允许显式测试班级、成员、排课、session、考勤、请假/补课、作业、成果、订单、work item、通知和派生数据 |
+| 保留 | R1-Live 与后续真实使用的全部正式身份、班级、课次、学生、考勤、作业、成果、通知、审计和支持记录 |
+| 保留 | 正式课次冻结/引用的 immutable release、snapshot、binding 和依赖 CAS/Storage/H5 对象；即使它们不是 Production 1.0 baseline release-1 也不得删除或改写 |
 | 保留 | migration、角色/权限定义、必要 reference/config schema |
-| 保留 | E 系列课程/课程族、1135 个稳定 lecture ID、顺序和元数据 |
-| 保留 | E 系列 1135 讲的 native 16:9、approved adapted 4:3 文档、revision/binding、CAS/Storage 对象、H5 资产和可复现适配记录 |
-| 保留 | 爱学习 G+/X+/A+ 秋季 3 个课程族、12 门课程、170 个稳定 lecture ID、显式占位/来源缺口和 `cw_source_*` provenance |
-| 保留 | 爱学习 170 讲的 native 16:9、adapted 4:3 文档、revision/binding、CAS/Storage 对象、源 CSS/player、动画、离线 H5/ITV/原生游戏资产和可复现导入记录 |
-| 保留 | 资源来源/许可、hash、MIME、尺寸、轨道和校验元数据 |
+| 保留 | E 系列 90 门/1135 讲、爱学习 G+/X+/A+ 12 门/170 讲的稳定 ID、来源/许可、双轨文档、revision/binding、CAS/Storage/H5 对象与可复现记录 |
 
-审计/日志按合规和外键策略处理。需要保留时匿名化主体，并验证测试 PII 无法回指。数据库内置角色、service role 和 migration owner 不属于业务 auth 用户。
+审计/日志按合规和外键策略处理。测试证据需要保留时先匿名化，并验证无法回指；数据库内置角色、service role 和 migration owner 不属于业务 auth 用户。
 
 ### 6.3 release 清除与重建
 
-1. 冻结内容写入；分别导出 E 系列 1135×2 和爱学习 170×2 manifest：课程体系、lecture ID、track、source revision/binding、对象 hash、预期 snapshot hash。
-2. 读取全部 16:9/4:3 源对象并比对 hash；缺失对象、悬空 binding 或未批准 4:3 资源使流程停止。
-3. 创建并验证备份；按实际外键顺序清除 `cw_lecture_releases`，置空/清除 `cw_lecture_track_heads.current_release_id`、`course_lectures.current_release_id` 和审核流程 release 引用。
-4. 两套课程体系的每讲都创建 native 16:9 `release_no=1` 和 adapted 4:3 `release_no=1`；release note=`production-v1.0-baseline`；snapshot 不可变。
-5. 每个 track head 指向本轨 release-1；`course_lectures.current_release_id` 指向 native release-1。
-6. 使用同一 manifest 重跑；第二次写入数=0，所有 snapshot hash 不变。
+1. 冻结课程内容发布，不冻结教师对既有正式班级的只读访问；为维护窗提供明确降级提示。
+2. 分别导出 E 系列 1135×2 和爱学习 170×2 manifest：课程体系、lecture ID、track、source revision/binding、对象 hash、预期 snapshot hash。
+3. 读取全部 16:9/4:3 源对象并比对 hash；缺失对象、悬空 binding 或未批准 4:3 资源使流程停止。
+4. 创建并验证备份；建立 `cw_lecture_releases`、track heads、legacy current release、审核流程和正式课次冻结引用的完整反向引用图。正式课次引用的 release ID、release_no、snapshot、binding 和对象均不可删除、重编号、改写或重指向；任何冲突使流程停止。
+5. 每讲每轨确保存在且仅存在一条匹配批准 source/snapshot hash 的 `release_no=1` baseline；缺失时创建，已存在但 hash 不符时停止，禁止覆盖。release note=`production-v1.0-baseline`；各 track head 指向本轨 baseline，legacy 指向 native；历史正式课次继续引用其原 immutable release。
+6. 只删除 manifest 显式标记且不在正式反向引用图中的测试 release/对象。使用同一 manifest 重跑；第二次写入数=0，所有 baseline、正式历史 release 和受保护业务对象 hash 不变。
 
 ### 6.4 最终不变量
 
 | 检查 | 预期 |
 | --- | --- |
-| 业务 auth 用户 | 1；UUID 与 manifest 相同；角色=admin；MFA 已启用 |
-| 其他 profile/业务角色绑定 | 0 |
-| 班级/成员/排课/session/考勤/作业等运营数据 | 0 |
-| 订单/支付/退款/账户/台账 | 0 |
-| E 系列 lecture | 1135；ID 和顺序与清理前 manifest 相同 |
+| admin 角色账号 | 1；UUID 与正式身份 manifest 相同；MFA 已启用 |
+| 其他正式 auth/profile/角色绑定 | 与已批准正式身份 manifest 完全一致；教师和真实用户保留 |
+| 受保护 R1-Live/真实运营数据 | 身份、班级、成员、课次、学生、考勤及关联事实的 ID、计数和内容 hash 与维护前一致；正式课次引用的 release/snapshot/object 不变 |
+| 显式测试数据 | 清理 manifest 列出的对象残留=0；未列对象不处理 |
+| E 系列 lecture | 1135；ID 和顺序与维护前 manifest 相同 |
 | 爱学习 G+/X+/A+ 秋季 lecture | 170；G+/X+/A+ 分别 56/84/30；14 个显式复习占位与其余讲号缺口和 manifest 相同 |
 | native heads | 1305；全部指向 native `release_no=1` |
 | adapted heads | 1305；全部指向 adapted `release_no=1` |
-| `cw_lecture_releases` | 2610；每讲每轨 1 条；`release_no>1` 为 0 |
+| baseline `cw_lecture_releases` | `release_no=1` 共 2610 条；每讲每轨恰好 1 条，snapshot hash 与批准 manifest 相同 |
+| 正式历史 `cw_lecture_releases` | R1-Live/真实课次引用的额外 immutable release ID、release_no、snapshot 和对象 hash 与保护 manifest 相同；未受保护的测试 extra 残留=0 |
 | legacy current release | 1305 个指向对应 native release-1 |
 | 缺失/悬空文档、binding、CAS/Storage 对象、H5 | 0 |
-| 第二次运行差异 | 插入、更新、删除均为 0；hash 差异=0 |
+| 第二次运行差异 | 插入、更新、删除均为 0；课程与受保护业务 hash 差异=0 |
 
-生产烟测使用唯一管理员执行登录、公开内容读取、Dashboard 只读和 release 读取。需要创建班级/订单的旅程在预生产完成；正式烟测不留下运营数据。
+生产烟测使用正式管理员和一名正式教师执行登录、公开内容读取、Dashboard/班级只读、点名历史读取和 release 读取。烟测不创建一次性测试身份或虚假运营数据。
 
 ## 7. 决策、风险与延期
 
@@ -497,7 +506,8 @@ R1-16 的只读 preflight 入口是 `docs/manifests/r1-production-deployment.exa
 | 事项 | 1.0 决定 | 责任角色 | 最迟完成 | 状态 |
 | --- | --- | --- | --- | --- |
 | 产品 | 六个对外模块与学校运营/内容发布同步上线；Terms 为关系中心 | 产品负责人 | 已定 | decided |
-| 施工顺序 | 当前正式推进 R1-9/P6-9；P6-AIX-2 已关闭，SML-0 保留暂停点。R1-9 关闭前不得进入 R1-10 或恢复 SML；`v1.0.0` 前仍须通过全部发布门 | 产品+QA/发布负责人 | R1-9 关闭时复核 | active sequencing |
+| R1-Live 首个闭环 | 正式教师登录 → production 班级/课次 → 整班点名 → 保存/刷新/重登再读 → 管理员可见 → 无权限拒绝；Gate 0～4 全 `PASS` 后立即内部开放 | 产品+教学运营+QA/发布负责人 | 当前 | active sequencing |
+| Production 1.0 施工顺序 | 原 R1 暂停在 R1-9；P6-AIX-2 和来源 manifest 结果保留。R1-Live 开放后按真实问题恢复 R1-9～18；`v1.0.0` 前仍须通过本文件全部适用硬门 | 产品+QA/发布负责人 | R1-Live 14 天观察后复核 | queued after live |
 | 视觉 | 小王子为全站基础；场景/内容/工作区三级强度；Notebook=旅途笔记 | 产品+设计负责人 | 已定 | decided |
 | 语言 | UI 永久 zh/en；缺英文长内容时显式回退 | 产品+内容负责人 | 已定 | decided |
 | 财务 | 1.0 安全关闭；未来启用必须以新迁移打开发布门并重新通过完整账务门 | 产品+财务负责人 | R1-8 | closed for 1.0 |
@@ -506,19 +516,22 @@ R1-16 的只读 preflight 入口是 `docs/manifests/r1-production-deployment.exa
 | Work-items | 领域真相+领域投影+有限持久协同项；审批独立 | 学校产品+数据库负责人 | 已定 | decided |
 | E2E | Playwright；临时浏览脚本不进入发布证据 | QA/发布负责人 | R1-14 | decided |
 | 生产 | 独立小米 Linux；环境数据、secret、Storage 和域名隔离 | 运维负责人 | R1-16 | decided |
-| 正式管理员 | 保留 1 个非测试 auth UUID | 产品所有者+安全负责人 | R1-15 | pending manifest |
-| 数据清理 | 删除测试身份和运营数据；保留 E 系列 1135 讲与爱学习 G+/X+/A+ 170 讲的两轨源资源 | 数据库+课程研发负责人 | 已定 | decided |
-| release | E 系列 1135×2 与爱学习 170×2，共 2610 条 `release_no=1`；1305 个 legacy current release 均指向对应 native | 课程研发+数据库负责人 | 已定 | decided |
+| 正式身份 | admin 角色账号恰为 1；R1-Live 增加真实教师和业务用户；全部正式 UUID 进入受保护身份 manifest，管理员 MFA/恢复材料另行验证 | 产品所有者+安全负责人 | R1-Live Gate 1 | pending manifest |
+| 数据清理 | 只删除 manifest 显式标记的测试身份/运营数据；R1-Live 和后续真实业务事实及课次引用内容永久保护；保留 E 系列 1135 讲与爱学习 G+/X+/A+ 170 讲两轨源资源 | 数据库+课程研发负责人 | R1-15 schema 修订时 | decided boundary / implementation pending |
+| release | E 系列 1135×2 与爱学习 170×2，共 2610 条 baseline `release_no=1`；1305 个 legacy current release 均指向对应 native；正式课次引用的额外 immutable release 原样保留 | 课程研发+数据库负责人 | 已定 | decided |
 | 证据位置 | 小摘要/索引固定在 `docs/evidence/r1/`；大日志/截图保存 CI artifact 或受控对象存储并记录 SHA-256、保留期和访问角色 | QA/发布负责人 | R1-0 | decided |
 
-R1-0 已完成责任角色到 `swingislee` 的映射。增加人员或发生交接时先更新本节，并在证据索引记录生效日期；改变 decided 项时，同一变更更新 doc 00、04、25、README 和受影响发布门。
+R1-0 已完成责任角色到 `swingislee` 的映射。增加人员或发生交接时先更新本节，并在证据索引记录生效日期；改变 decided 项时，同一变更更新 doc 00、04、25、README 和受影响发布门。R1-Live Gate 4 的真实教师、恢复复核人和 Production 1.0 非执行者复核人必须登记为实际人员，Agent 不能代替。
 
 ### 7.2 发布风险
 
 | 风险 | 当前证据 | 影响 | Owner | 关闭阶段 |
 | --- | --- | --- | --- | --- |
+| R1-Live 正式目标/身份/数据未成立 | 公网部署、员工邀请和业务对象实现存在；尚无同一目标的运行指纹、正式管理员/教师、真实班级/课次/花名册、课次内容引用保护和防误清证据 | Mathin 仍只有测试身份，无法进入真实工作 | 产品+教学运营+运维+安全 | R1-Live Gate 1 |
+| R1-Live 点名 Golden Path 未执行 | 点名 action、表/RLS 和源码合同存在；无正式目标保存/重登再读、管理员对照和越权对照 | 代码存在不能证明教师可独立完成首个工作 | 教学运营+QA/发布 | R1-Live Gate 2/4 |
+| R1-Live 最小保险丝运行状态未知 | 历史公网部署、备份、回退和错误手册存在；当前 commit、最近备份、恢复抽查、日志查询和生产防误清未复核 | 首批真实数据可能缺乏可恢复性和故障定位 | 运维+安全+QA | R1-Live Gate 3 |
 | Story 无完整章节 | 路由存在；无完整独立章节内容目录 | 对外 1.0 缺一模块 | 内容+产品 | R1-10 |
-| R1-9 来源实物证据未完成 | P6-AIX-2 开发库证据与 v4 只读导出/对象校验核心、受控 runner 已通过；批准副本配置、外部 provenance、真实 1305 行 inventory、Storage/H5 审计与非执行者复核仍 pending | 生产 release 清单可能缺对象或 snapshot 漂移 | 产品+课程研发+QA/发布 | R1-9 完成真实只读导出与复核，并在 R1-18 前重跑最终证据 |
+| R1-9 来源实物证据未完成 | P6-AIX-2 开发库证据与 v4 只读导出/对象校验核心、受控 runner 已通过；批准副本配置、外部 provenance、真实 1305 行 inventory、Storage/H5 审计与非执行者复核仍 pending | Production 1.0 release 清单可能缺对象或 snapshot 漂移；不影响 R1-Live 所选课次已读验证 | 产品+课程研发+QA/发布 | R1-Live 后恢复 R1-9，并在 R1-18 前重跑最终证据 |
 | 英文正文缺失 | `content/en` 仅 README | `/en` 可能空白或混排 | 内容+前端 | R1-9～12 |
 | 平台运行内核尚无生产验收 | R1-2 已完成 Job/通知/文件/集成的开发库断言、空库重放、Worker 单次运行和 zh/en 浏览器验证（M3） | 开发合同不证明生产 Worker、选中供应商、大文件容量、告警恢复和最终成功率 | 平台+运维+QA | R1-14/16/17 |
 | 全站视觉强度合同刚固定 | doc 05 曾把工作区排除在星球主题外 | 公开站与后台品牌断裂或装饰侵入控件 | 设计+前端 | R1-12 |
@@ -528,13 +541,13 @@ R1-0 已完成责任角色到 `swingislee` 的映射。增加人员或发生交�
 | 财务安全关闭尚无生产复核 | R1-8 已完成发布门、数据、任务/审批、通知、指标和 job 的开发/一次性库关闭证据（M3） | 开发环境关闭不变量不能证明生产初始化或正式清理后仍保持关闭 | 产品+财务+数据库+发布 | R1-15/18 |
 | Vitest 基线需在最终 build 复验 | 当前为 90 个测试文件、595 项通过、1 项条件跳过；非 spatial 316 项通过、1 项条件跳过，空间数学/SML-0 专项 279/279；R1 定向 156/156 | 后续实现可能重新引入合同回归 | 技术+QA | 已执行套件保持通过；发布前补齐条件跳过对应的真实包证据 |
 | 正式 Playwright 发布门尚未完成 | 正式配置、target policy 和 fail-closed release runner 已落地；9 条非五模块本地 Chromium 旅程分别取绿 | 尚无明确非生产 release target 的单次 9/9 零 skip、写态、zh/en、跨浏览器和连续 3 次无 flaky 证据 | QA/发布 | R1-14 |
-| 清理/release 未演练 | 只有规划与开发数据 | 正式数据或 4:3 资源损失 | 数据库+课程研发 | R1-15 |
+| 清理/release 未演练且旧 planner 会误删正式 Live 数据 | 只有旧“唯一管理员/运营数据为零”规划与开发数据 | 若不先增加受保护 manifest，可能删除真实教师、班级、考勤及课次引用 release；也可能损失 4:3 资源 | 数据库+课程研发 | R1-Live 后先修订合同，再在 R1-15 演练 |
 | 生产恢复未实操 | Linux 目标与 fail-closed preflight 已定；当前树与 Git 历史 secret scan 为 0，但环境隔离和恢复 E3 仍为 pending | 尚无独立环境、运行时 secret 复核、告警链路、RPO/RTO、数据库/Storage 恢复或应用回滚的实操证据 | 运维+安全 | R1-16 |
-| 无真实 RC | 尚未运行 14 天/5 节课堂 | 容量、通知、支持指标无 E4 | 教学运营+发布 | R1-17 |
+| 无真实运行观察 | 尚无真实教师；R1-Live Gate 4 未执行 | 容量、通知、支持指标无 E4 | 教学运营+发布 | Gate 4 后启动 14 天/5 节观察，R1-17 汇总 |
 
 ### 7.3 当前专题与 1.0 后处理
 
-- 空间数学实验室于 2026-08-12 进入 SML-0，2026-08-13 因用户切回 R1-9 而暂停；不因已有增量自动关闭 SML-0～8 或扩写 PROD-08。
+- 空间数学实验室保留 SML-0 暂停点，可按独立路由、权限或 Feature Flag 并行；不因已有增量自动关闭 SML-0～8，不进入 R1-Live Gate，也不扩写 PROD-08。
 - 补齐英文课程、Minds 和 Story 正文；UI、路由和回退已在 1.0 完成。
 - 执行 `cacheComponents` + `use cache` 专项；继续禁止 `unstable_cache`。
 - 评估原生 App、更多游戏/章节、复杂营销和高级 BI。
@@ -542,7 +555,7 @@ R1-0 已完成责任角色到 `swingislee` 的映射。增加人员或发生交�
 
 ## 8. 证据与文档维护
 
-R1 使用固定的版本化证据索引 [`docs/evidence/r1/README.md`](../evidence/r1/README.md)。仓库保存无 secret/PII 的小摘要、结构化结果和外部 artifact 索引；大日志、视频和截图存 CI artifact 或受控对象存储，索引保存 artifact URL/path、SHA-256、保留期和访问角色。
+R1-Live 与 Production 1.0 共用固定的版本化证据索引 [`docs/evidence/r1/README.md`](../evidence/r1/README.md)。R1-Live 的当前差距和 Gate 证据登记在 [`r1-live.md`](../evidence/r1/r1-live.md)。仓库保存无 secret/PII 的小摘要、结构化结果和外部 artifact 索引；大日志、视频和截图存 CI artifact 或受控对象存储，索引保存 artifact URL/path、SHA-256、保留期和访问角色。
 
 每次阶段关闭提交：
 
@@ -552,4 +565,4 @@ R1 使用固定的版本化证据索引 [`docs/evidence/r1/README.md`](../eviden
 4. 专题文档状态头、doc 04 当前阶段和 README；
 5. `pnpm plan:audit`、相关测试、typecheck 和 production build 结果。
 
-正式发布证据包包含 commit/migration head、依赖锁与 SBOM、环境配置、数据 manifest、104 份视觉签收索引、E2E/性能/无障碍/安全报告、备份恢复/回滚、14 天 RC、生产清理/release-1 报告、Go/No-Go 审批和 `v1.0.0` tag。
+R1-Live 证据包只包含当前 Gate 所需的目标/commit、正式身份与受保护业务/课次内容引用 manifest、点名 Golden Path、权限对照、备份/回退/错误定位、防误清和真实教师观察。Production 1.0 证据包另包含依赖锁与 SBOM、104 份视觉签收索引、完整 E2E/性能/无障碍/安全报告、恢复演练、上线后 14 天观察、受保护清理/release-1 报告、Go/No-Go 审批和 `v1.0.0` tag。
