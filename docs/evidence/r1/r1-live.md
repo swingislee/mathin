@@ -2,21 +2,21 @@
 
 ## 结论
 
-截至 2026-08-14，仓库已经具备正式员工邀请、staff 权限、班级/学生/课次、考勤持久化、RLS、公网部署、备份与应用回退的实现基础，但没有证据证明正式身份、真实业务数据和当前生产保险丝已经在同一目标环境成立。R1-Live 当前状态为 Gate 0 `PASS`、Gate 1 `BLOCKED`、Gate 2 `BLOCKED`、Gate 3 `UNKNOWN`、Gate 4 `BLOCKED`。
+截至 2026-08-14，`mathin.club` / `supabase.mathin.club` 的应用、数据库、Storage、compose 和部署 commit 已完成只读指纹登记，但开发写入口仍可能把该私网目标误判为开发环境；正式身份和业务对象也尚未与现有数据分类。目标机没有可核验的数据库/Storage 最近备份，应用与数据库相差 73 条迁移，因此 R1-Live 当前状态为 Gate 0 `PASS`、Gate 1 `BLOCKED`、Gate 2 `BLOCKED`、Gate 3 `BLOCKED`、Gate 4 `BLOCKED`。
 
-本文件是 E0/E1 差距审阅，不是生产验收。审阅基线为 commit `7ab92f2`；用户提供的 `docs/plan/mathin-R1-Live-讨论稿.md` 为产品裁决输入，现行施工顺序以 doc 04 为准。
+本文件是 E0/E1 差距审阅，不是生产验收。2026-08-14 的目标 E1/E3 运行事实见 [`r1-live-target-audit.md`](r1-live-target-audit.md)；用户提供的 `docs/plan/mathin-R1-Live-讨论稿.md` 为产品裁决输入，现行施工顺序以 doc 04 为准。
 
 ## Gate 状态表
 
 | Gate | 当前状态 | 已完成证据 | 缺失项 | 是否阻塞 | 最小修复范围 |
 | --- | --- | --- | --- | --- | --- |
 | Gate 0 · 上线范围冻结 | `PASS` | doc 04 已冻结“正式教师整班点名”为首个闭环，并将旧 R1-9～18 重新分类 | 无 | 否 | 范围改变只接受产品负责人显式裁决 |
-| Gate 1 · 正式身份与真实数据 | `BLOCKED` | `staff_invitations`、`issue_staff_invitation`、`handle_new_user`；staff role/RLS；production/test 班级 purpose；学生创建/导入、分班和班级构建 UI/RPC | 未登记目标指纹；无正式管理员/教师/真实班级/课次/花名册；未登记课次引用的 release/snapshot/object；未证明开发 reset/seed/rebuild 不触达目标 | 是 | 先做目标 attestation 与防误清，再用正式 UI/RPC 建立最小身份和数据，并保护课次内容依赖 |
+| Gate 1 · 正式身份与真实数据 | `BLOCKED` | 组合目标指纹 `799d…63e39`、部署 commit、Storage 摘要、身份/业务对象匿名基线已登记；员工邀请、staff role/RLS、production/test purpose、学生/分班/课次 UI/RPC 已实现 | 开发配置直连目标，多个 fixture/rebuild/import/purge 缺生产指纹拒绝；现有身份和 `purpose=production` 对象未分正式/测试；无正式教师/真实闭环对象 manifest；未登记首个课次 release/snapshot/object | 是 | 先统一 target policy 与受保护 manifest，再使用正式 UI/RPC 建立或认领最小身份和数据 |
 | Gate 2 · 真实工作闭环 | `BLOCKED` | `AttendanceDrawer`、`saveAttendanceAction`、`session_attendance`、`can_mark_attendance`/`can_view_attendance`、开课前 `ATTENDANCE_REQUIRED`；`tests/r1-classroom-continuity.test.ts` 有静态合同 | 无正式目标写态运行；无保存→刷新→重登→再读、管理员可见、无权限拒绝的单条 Golden Path | 是 | 补一条聚焦 Playwright 等价链，并在正式账号/真实数据下人工完整执行一次 |
-| Gate 3 · 最小生产保险丝 | `UNKNOWN` | 2026-07 公网部署记录；`current/previous` immutable release 回退；`p4e-backup.sh`、历史恢复演练和 `src/instrumentation.ts` 结构化错误路径存在 | 当前部署 commit、最近备份及可恢复性、错误查询位置、生产指纹防误清均需运行确认 | 是 | 在同一目标上记录四个答案并主动触发一次可定位的受控错误 |
+| Gate 3 · 最小生产保险丝 | `BLOCKED` | current/previous release 结构、回退脚本、当前 commit、服务健康和 `operational_errors` 查询位置已确认 | 没有 backup timer 或可校验的数据备份；current 应用源码时代比数据库少 73 条迁移，previous commit 未知；全部 1,946 条错误缺 release；未做恢复抽查、兼容回退或受控错误 | 是 | 先建立数据库+Storage 备份并抽查恢复，再对齐应用/数据库、验证 rollback、注入 release 标识并在另行授权下定位一次受控错误 |
 | Gate 4 · 真实教师独立验收 | `BLOCKED` | 无 E4 | 未选择首名教师；未进行无指导观察；P0/P1 未形成关闭记录 | 是 | 选 1 名真实教师独立执行 Gate 2，清零 P0/核心 P1，P2 入池 |
 
-状态只允许 `PASS`、`BLOCKED`、`UNKNOWN`、`NOT REQUIRED`。Gate 3 使用 `UNKNOWN`，因为仓库只能证明脚本和历史记录存在，不能证明 2026-08-14 的目标运行状态。
+状态只允许 `PASS`、`BLOCKED`、`UNKNOWN`、`NOT REQUIRED`。Gate 3 已完成目标运行核查并得到明确失败事实，因此从 `UNKNOWN` 改为 `BLOCKED`，不能再用仓库脚本或历史演练替代当前备份与回退证据。
 
 ## 首个真实闭环选择
 
@@ -43,7 +43,7 @@
 
 | 范围 | 位置 | 当前判断 |
 | --- | --- | --- |
-| 正式员工注册 | `src/features/account/AccountSupportPanel.tsx`、`src/features/account/actions.ts`、`src/app/[locale]/(auth)/actions.ts`、迁移 `20260728000400_r1_account_security.sql` | 一次性代码绑定邮箱；注册后身份为 `staff`；仍需管理员分配 teacher staff role |
+| 正式员工注册 | `src/features/account/AccountSupportPanel.tsx`、`src/features/account/actions.ts`、`src/app/[locale]/(auth)/actions.ts`、迁移 `20260728000400_r1_account_security.sql` | 当前一次性代码只绑定邮箱；注册后身份为 `staff`，仍需分配 teacher role。邮箱/手机号/password、验证码与微信/QQ 的唯一账号合同见 [`r1-live-auth-identities.md`](../../plan/r1-live-auth-identities.md) |
 | 教师入口 | `src/app/[locale]/dashboard/classes/**`、`src/app/[locale]/dashboard/sessions/[sessionId]/page.tsx`、课堂 live route | 路由存在；现有 Playwright 只证明固定 teacher 能打开班级门户，没有点名写态 |
 | 点名 UI/action | `src/features/school/AttendanceDrawer.tsx`、`src/features/school/actions/attendance.ts` | 读取失败显示 action failed；写入使用 zod 和 upsert；缺真实目标 E3 |
 | 点名事实 | `public.session_attendance` | 主键防重复；触发器写 `marked_by/marked_at`；note 最长 500 字符由 action 限制 |
@@ -54,8 +54,8 @@
 ## 真实正式账号与数据路径
 
 1. 先记录目标的前端域名、Supabase project/database 指纹、Storage namespace、部署 commit 和环境责任人。
-2. 正式管理员从 `/dashboard/account-support` 为真实教师邮箱生成一次性员工邀请码，通过受控渠道交付。
-3. 教师在 `/signup` 自行注册并完成登录/找回验证；管理员在 `/dashboard/staff` 分配内置 teacher staff role。
+2. 正式管理员从 `/dashboard/account-support` 为首名真实教师邮箱生成一次性员工邀请码，通过受控渠道交付；手机号邀请需等待兼容迁移和非生产验证。
+3. 教师在 `/signup` 自行注册并完成 password 登录/恢复核对；管理员在 `/dashboard/staff` 分配内置 teacher staff role。邮箱、手机号、微信和 QQ 最终都绑定同一 `auth.users.id`，不得为登录方式复制 profile。
 4. 管理员使用 `/dashboard/students` 创建/导入真实花名册；原始 CSV 和可识别信息不进入 Git/聊天证据。
 5. 管理员使用 `/dashboard/classes/new` 创建 `purpose=production` 班级，选择一门当前 release 可读的课程、正式教师、学期和课次；再从班级花名册完成分班。记录该课次冻结/引用的 release ID、snapshot hash 和依赖对象 hash，并纳入正式保护 manifest。
 6. 固定开发账号继续只用于开发验证；正式教师只分配 production 班级。任何 reset、seed、rebuild 或 testdata purge 在命中目标指纹或受保护对象 manifest 时必须拒绝。
@@ -66,10 +66,10 @@
 
 | ID | 等级 | 原因 | 最小修复 | 人工操作 | 验收 |
 | --- | --- | --- | --- | --- | --- |
-| LIVE-P1-01 | 核心 P1 | 没有正式目标 attestation，现有文档显示开发入口与公网应用曾使用同一 Supabase 地址；无法证明真实数据不会被开发动作影响 | 固定目标指纹；让开发写入路径与正式目标分离，或对所有危险入口增加生产指纹拒绝；登记正式身份、业务对象及课次引用 release/snapshot/object 的保护 manifest | 产品负责人确认哪个运行目标承载内部生产 | 对 reset/seed/rebuild/testdata purge 做只读/拒绝验证，正式对象及内容依赖不出现在删除集合 |
-| LIVE-P1-02 | 核心 P1 | 正式管理员、教师和最小真实业务数据不存在 | 走员工邀请、角色分配、学生、production 班级、课次和分班正式 UI/RPC | 提供真实教师邮箱、班级/课次和花名册，并授权写入 | 教师登录后只看到自己的真实班级；账号恢复可用 |
+| LIVE-P1-01 | 核心 P1 | 目标指纹已固定，但本机 `.env.local` 直连正式 Supabase；私网 DNS 会通过三个开发 fixture 的目标检查，另有 fixture/rebuild/import/purge 缺统一指纹拒绝 | 建立公共 target policy；危险写入口命中正式指纹或缺非生产 attestation 时 fail-closed；登记正式身份、业务对象及课次内容保护 manifest | 无需生产写入即可先完成代码与拒绝测试 | 对账号/fixture/reset/seed/rebuild/import/testdata purge 做拒绝验证，正式对象及内容依赖不进入删除/覆盖集合 |
+| LIVE-P1-02 | 核心 P1 | 目标已有 12 个账号、6 个 production 班级等对象，但尚未分正式/测试；没有经 manifest 确认的正式管理员、教师和最小真实业务数据 | 先分类保护现有对象，再走员工邀请、角色分配、学生、production 班级、课次和分班正式 UI/RPC | 提供真实教师邮箱、班级/课次和花名册，并另行授权写入 | 教师登录后只看到自己的真实班级；账号恢复可用；现有对象无误认/误清 |
 | LIVE-P1-03 | 核心 P1 | 点名只在开发合同层有证据，没有目标环境 Golden Path | 增加单条聚焦 Smoke；正式教师人工执行保存/刷新/重登/再读，管理员与无权限角色作对照 | 教师和管理员各执行对应步骤 | 写入恰好一行/学生；重新读取一致；越权查询 0 泄露 |
-| LIVE-P1-04 | 核心 P1 | 当前备份、回退和报错定位状态未知 | 对同一目标记录最近备份、恢复抽查、current/previous release、日志查询和一次受控错误 | 运维目标访问与生产动作需明确授权 | 四个问题都有可执行答案；证据不含 secret/PII |
+| LIVE-P1-04 | 核心 P1 | 当前没有数据库/Storage 数据备份；应用/数据库漂移 73 条迁移使旧 release 回退兼容性未知；错误可查但 release 全空 | 安装并执行备份、校验和隔离恢复抽查；对齐部署与 migration head；验证 previous；配置 `MATHIN_RELEASE`；经授权定位一次受控错误 | 备份/恢复、部署/回退和制造错误均需另行授权 | 有最近可恢复备份；回退兼容；错误可按 time/route/release/digest 定位；证据不含 secret/PII |
 | LIVE-P1-05 | 核心 P1 | 没有真实教师独立验收 | 选 1 名教师无逐步指导完成闭环 | 产品负责人选择并观察 | P0=0、影响闭环的 P1=0；P2 已登记 |
 
 仓库审阅没有发现一个已证实的开放 P0；这不等于生产 P0=0，因为 Gate 1～3 尚未在目标环境执行。
@@ -88,5 +88,5 @@
 
 - Gate 1 只有在正式目标、身份、production 班级/课次/花名册、课次内容依赖保护和防误清证据全部成立后才能改为 `PASS`。
 - Gate 2 只有在同一目标完成正式教师写态、持久再读、管理员可见和越权拒绝后才能改为 `PASS`。
-- Gate 3 的运行核对可与 Gate 1/2 准备交错，但不能凭历史 2026-07 记录直接改为 `PASS`。
+- Gate 3 已由 `UNKNOWN` 变为 `BLOCKED`；只有最近可恢复备份、兼容回退、release 关联错误定位和危险入口指纹拒绝全部成立后才能改为 `PASS`。
 - Gate 4 需要真实教师 E4，Agent、固定测试账号和产品负责人代操作都不能替代。

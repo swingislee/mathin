@@ -2,7 +2,7 @@
 
 本目录是 R1-Live 与 R1-0～R1-18 的唯一仓库内证据入口。它保存可审查的小摘要、结构化结果和外部 artifact 索引，不把大日志、视频、截图、secret、token、测试凭据或可识别未成年人 PII 提交到 Git。
 
-当前唯一施工阶段为 **R1-Live-1 · 正式身份与真实数据**。首个闭环固定为正式教师整班点名；Gate 0 `PASS`、Gate 1 `BLOCKED`、Gate 2 `BLOCKED`、Gate 3 `UNKNOWN`、Gate 4 `BLOCKED`，见 [R1-Live 差距表](r1-live.md)。原 R1 暂停在 R1-9，SML-0 为独立并行轨道。
+当前唯一施工阶段为 **R1-Live-1 · 正式身份与真实数据**。首个闭环固定为正式教师整班点名；Gate 0 `PASS`、Gate 1 `BLOCKED`、Gate 2 `BLOCKED`、Gate 3 `BLOCKED`、Gate 4 `BLOCKED`，见 [R1-Live 差距表](r1-live.md)与[目标只读核查](r1-live-target-audit.md)。原 R1 暂停在 R1-9，SML-0 为独立并行轨道。
 
 ## 存储合同
 
@@ -32,7 +32,7 @@ failure_ticket
 
 | 阶段 | 状态 | 日期 | 证据 |
 | --- | --- | --- | --- |
-| R1-Live | Gate 0 passed；Gate 1 current/blocking | 2026-08-14 | [真实教师点名闭环差距表、代码路径、运行未知项和最小修复范围](r1-live.md)；当前只有 E0/E1，不证明正式身份、真实数据或生产保险丝已成立 |
+| R1-Live | Gate 0 passed；Gate 1 current/blocking；Gate 3 read-only audit blocked | 2026-08-14 | [真实教师点名闭环差距表](r1-live.md)；[目标指纹、防误清、备份、回退与错误定位只读核查](r1-live-target-audit.md)。目标已识别，但不证明正式身份/真实数据、备份可恢复或旧 release 可安全回退 |
 | R1-0 | passed | 2026-07-28 | [规划真相源与发布边界冻结](r1-0.md) |
 | R1-1 | passed | 2026-07-28 | [机构配置、规则与 Feature Flag](r1-1.md) |
 | R1-2 | passed | 2026-07-28 | [Jobs、通知、文件与外部集成](r1-2.md) |

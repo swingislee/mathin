@@ -66,6 +66,7 @@ R1-Live 不缩减 1.0 产品合同。它把“开始真实工作”从完整成�
 | 公开入口 | `/[locale]/story`、`games`、`minds`、`terms`、`tools`；Notebook 公开详情允许未登录阅读 |
 | 登录入口 | `/[locale]/notebook/me`、`classroom`、`whiteboard`、`dashboard/**`、`studio/courseware/**` |
 | 顶层身份 | `student`、`parent`、`staff`、`admin`；教师、教务、教研、学辅、销售、财务属于 staff 权限/角色 |
+| 登录身份 | `auth.users.id` 是唯一账号/业务主体；邮箱、手机号、微信和 QQ 只作为可绑定到该 UUID 的 identity，不得为同一人创建四个 profile。密码属于账号；验证码登录不得隐式注册；OAuth 新身份只在已有会话或完成账号恢复后绑定，详见 [`r1-live-auth-identities.md`](r1-live-auth-identities.md) |
 | 服务端认证 | `requireUser(locale)` → `supabase.auth.getUser()`；Proxy 只刷新 Cookie 和做乐观跳转 |
 | 授权 | 数据库 RLS；前端隐藏按钮不构成授权 |
 | 业务状态 | 领域表和领域 RPC；今日工作、通知、搜索和统计只读取投影 |

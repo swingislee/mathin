@@ -34,7 +34,7 @@ Terms 使用稳定 ID 接收 Story、Minds、Games、Tools、Notebook 和课程�
 当前唯一施工阶段切为 `R1-Live-1 · 正式身份与真实数据`。R1-Live 先让一名公司教师以正式身份和真实数据完成整班点名，再在真实使用中继续 Production 1.0；本文件的完整性矩阵与量化硬门仍有效，但除 doc 04 明确抽取的子集外，不阻塞内部生产试运行。
 
 - R1-Live Gate 0 已冻结首个闭环：正式教师登录 → 找到自己的 production 班级/课次 → 整班点名 → 保存 → 刷新和重登后再读 → 管理员可见 → 无权限主体不可见。
-- R1-Live Gate 1 当前 `BLOCKED`：正式目标指纹、防误清、正式管理员/教师、真实班级/课次/花名册及课次引用内容保护尚未在同一环境成立。Gate 2 `BLOCKED`，Gate 3 `UNKNOWN`，Gate 4 `BLOCKED`，详见 doc 04 和 [`r1-live.md`](../evidence/r1/r1-live.md)。
+- R1-Live Gate 1 当前 `BLOCKED`：正式目标指纹已只读登记，但危险开发写入口尚未统一拒绝该目标，现有身份/业务对象也未完成正式/测试 manifest 分类；正式教师、真实班级/课次/花名册及课次引用内容保护仍缺。Gate 2 `BLOCKED`，Gate 3 因无可核验数据备份、应用/数据库漂移和错误缺 release 已由 `UNKNOWN` 改为 `BLOCKED`，Gate 4 `BLOCKED`，详见 doc 04、[`r1-live.md`](../evidence/r1/r1-live.md)和[目标只读核查](../evidence/r1/r1-live-target-audit.md)。
 - 原 R1 暂停在 R1-9。P6-AIX-2、G+/X+/A+ 170 讲和 102 门/1305 讲/2610 条目标 release-1 合同保留；真实全量 inventory、Storage/H5 审计、Terms/Story/其他公开模块、完整视觉/E2E/恢复门转入 R1-Live 后继续。
 - SML-0 为独立并行轨道；普通教师默认不可见未完成能力，只有破坏共享认证、授权、数据或点名黄金路径时才阻塞 R1-Live。
 - R1-Live 的正式业务事实及课次引用的 immutable release/snapshot/object 不得在后续 R1-15/R1-18 中删除或改写。旧 planner 在增加正式对象保护 manifest 并重新验收前保持 plan-only、不可执行。
@@ -149,7 +149,7 @@ command_or_runbook, artifact_url_or_path, artifact_hash, failure_ticket
 | 指标/报表/遥测 | M1～M2 | M4 | 口径、版本、查询、告警 | 13 |
 | 幂等/并发/事务/E2E | M2～M3（正式基线/开发目标） | M4 | 本轮修复前 19 项 Vitest 失败已在 commit `cbb2a0f` 清零；commits `0d55044`、`8e5c076` 与[Playwright 子门](../evidence/r1/r1-14-playwright-baseline.md)已让 9 条本地非五模块 Chromium 旅程分别取绿并固定 release fail-closed 合同；仍缺发布目标完整重跑、写态、zh/en、跨浏览器、连续无 flaky、大文件和竞争矩阵 | 14 |
 | 生产清理/release-1 | M1（旧 planner） | M4 | 旧 planner 假定只保留管理员且无正式历史 release，与 R1-Live 后正式教师/业务数据/课次内容引用冲突；须增加正式对象保护 manifest 后再做快照副本演练、测试数据清理、可逆脚本和正式计数 | Live/15/18 |
-| 部署/备份/恢复 | M2（只读 preflight） | M4 | commit `35b9f60` 与[部署子门](../evidence/r1/r1-16-deployment-preflight.md)已固定 fail-closed 合同；仓库/历史 secret scan 已关闭。R1-Live Gate 3 先核实当前备份、应用回退、错误定位和防误清；独立环境、监控、数据库/Storage 全量恢复与非执行者复核仍缺 | Live/16 |
+| 部署/备份/恢复 | M2（只读 preflight） | M4 | commit `35b9f60` 与[部署子门](../evidence/r1/r1-16-deployment-preflight.md)已固定 fail-closed 合同；仓库/历史 secret scan 已关闭。2026-08-14 R1-Live 只读核查确认目标无可校验数据备份、current 应用落后数据库 73 条迁移、错误缺 release，Gate 3 为 `BLOCKED`；独立环境、监控、数据库/Storage 全量恢复与非执行者复核仍缺 | Live/16 |
 | 真实运营 RC | M0 | M4 | R1-Live Gate 4 先取得 1 名真实教师 E4；开放后连续 14 天、至少 5 节真实课堂形成扩围和 Production 1.0 证据 | Live/17 |
 
 ## 4. 业务合同
@@ -189,6 +189,8 @@ R1-4 以 `20260728000500_r1_work_items_approvals.sql` 落地上述三层模型�
 登录、登出、找回、改密、MFA、邮箱确认、封禁和速率限制提供 zh/en 结果。未绑定、待审核、多子女、内容撤回和财务关闭均有独立状态，不能显示为空列表。
 
 R1-3 以 `20260728000400_r1_account_security.sql` 落地账户锁、版本化且追加式同意、用户权利请求、邮箱绑定的一次性员工邀请和支持审计；共享 `requireUser` 对锁定、必要同意与管理员 AAL2 fail-closed。zh/en 账户安全/支持 UI、唯一生产管理员 manifest schema/校验器和双人恢复手册已通过 115 文件空库重放、开发库/一次性库 Auth-RLS-Storage 负向断言、14 项 R1 合同和开发浏览器验证，见 [`docs/evidence/r1/r1-3.md`](../evidence/r1/r1-3.md)。本证据不证明生产管理员已初始化或生产 MFA 达到 SEC-02。
+
+R1-Live 冻结“单账号、多登录身份”：`auth.users.id` 是唯一业务主体，邮箱、手机号、微信和 QQ 只能绑定为同一 UUID 的 identity；密码属于账号，验证码登录不得隐式创建用户，OAuth 新身份只允许在已有会话或完成账号恢复后绑定。初期无验证码 provider 时隐藏验证码入口并继续使用邀请门；正式手机号/password 启用前先把员工邀请从 email-only 泛化为 email/phone，并在非生产目标证明两种登录返回同一 UUID。首名真实教师继续可走现有邮箱/password 邀请，不让手机号、验证码或 OAuth 延迟首次点名。完整接口与冲突合同见 [`r1-live-auth-identities.md`](r1-live-auth-identities.md)。
 
 R1-5 已关闭学生与家庭门户及其课堂连续性依赖：固定角色浏览器子门覆盖学生/家长 zh/en、多子女与特殊状态、请假补课、任务驱动视频、已结束课次逐题学情和监护关系；跨家庭/跨学生真实身份负向查询 100% 拒绝。集成基线通过 14/14 静态 CI、62/62 R1 合同、144 文件空库重放、迁移账本和 13/13 数据库审计，见 [`docs/evidence/r1/r1-5.md`](../evidence/r1/r1-5.md)。学生与家庭门户据此达到 M3；本证据不替代 R1-14 正式 Playwright、R1-16 独立生产、R1-17 RC 或 R1-18 发布审批。
 
@@ -516,7 +518,7 @@ R1-16 的只读 preflight 位于 `docs/manifests/r1-production-deployment.exampl
 | Work-items | 领域真相+领域投影+有限持久协同项；审批独立 | 学校产品+数据库负责人 | 已定 | decided |
 | E2E | Playwright；临时浏览脚本不进入发布证据 | QA/发布负责人 | R1-14 | decided |
 | 生产 | 独立小米 Linux；环境数据、secret、Storage 和域名隔离 | 运维负责人 | R1-16 | decided |
-| 正式身份 | admin 角色账号恰为 1；R1-Live 增加真实教师和业务用户；全部正式 UUID 进入受保护身份 manifest，管理员 MFA/恢复材料另行验证 | 产品所有者+安全负责人 | R1-Live Gate 1 | pending manifest |
+| 正式身份 | admin 角色账号恰为 1；R1-Live 增加真实教师和业务用户；`auth.users.id` 是唯一账号，邮箱/手机号/微信/QQ 只作为其 identity；全部正式 UUID 进入受保护身份 manifest，管理员 MFA/恢复材料另行验证 | 产品所有者+安全负责人 | R1-Live Gate 1 | target aggregate audited / manifest pending |
 | 数据清理 | 只删除 manifest 显式标记的测试身份/运营数据；R1-Live 和后续真实业务事实及课次引用内容永久保护；保留 E 系列 1135 讲与爱学习 G+/X+/A+ 170 讲两轨源资源 | 数据库+课程研发负责人 | R1-15 schema 修订时 | decided boundary / implementation pending |
 | release | E 系列 1135×2 与爱学习 170×2，共 2610 条 baseline `release_no=1`；1305 个 legacy current release 均指向对应 native；正式课次引用的额外 immutable release 原样保留 | 课程研发+数据库负责人 | 已定 | decided |
 | 证据位置 | 小摘要/索引固定在 `docs/evidence/r1/`；大日志/截图保存 CI artifact 或受控对象存储并记录 SHA-256、保留期和访问角色 | QA/发布负责人 | R1-0 | decided |
@@ -527,9 +529,9 @@ R1-0 已完成责任角色到 `swingislee` 的映射。增加人员或发生交�
 
 | 风险 | 当前证据 | 影响 | Owner | 关闭阶段 |
 | --- | --- | --- | --- | --- |
-| R1-Live 正式目标/身份/数据未成立 | 公网部署、员工邀请和业务对象实现存在；尚无同一目标的运行指纹、正式管理员/教师、真实班级/课次/花名册、课次内容引用保护和防误清证据 | Mathin 仍只有测试身份，无法进入真实工作 | 产品+教学运营+运维+安全 | R1-Live Gate 1 |
+| R1-Live 正式身份/数据和防误清未成立 | 目标组合指纹、现有 12 个账号及 6 个 production 班级等匿名计数已登记；但本机开发配置直连目标，多个 fixture/rebuild/import/purge 缺统一指纹拒绝，现有对象未分正式/测试，正式教师/真实闭环对象和课次内容保护 manifest 仍缺 | 开发动作可能污染/清理目标，也不能把现有开发对象误认成真实业务 | 产品+教学运营+运维+安全 | R1-Live Gate 1 |
 | R1-Live 点名 Golden Path 未执行 | 点名 action、表/RLS 和源码合同存在；无正式目标保存/重登再读、管理员对照和越权对照 | 代码存在不能证明教师可独立完成首个工作 | 教学运营+QA/发布 | R1-Live Gate 2/4 |
-| R1-Live 最小保险丝运行状态未知 | 历史公网部署、备份、回退和错误手册存在；当前 commit、最近备份、恢复抽查、日志查询和生产防误清未复核 | 首批真实数据可能缺乏可恢复性和故障定位 | 运维+安全+QA | R1-Live Gate 3 |
+| R1-Live 最小保险丝明确失败 | 当前 commit/current+previous 和错误表已只读核查；目标无 backup timer/可校验数据备份，current 应用源码时代比数据库少 73 条迁移，previous commit 未知，1,946 条错误 release 全空 | 首批真实数据目前不可证明可恢复；旧应用回退可能与现数据库不兼容；错误无法关联部署版本 | 运维+安全+QA | R1-Live Gate 3 |
 | Story 无完整章节 | 路由存在；无完整独立章节内容目录 | 对外 1.0 缺一模块 | 内容+产品 | R1-10 |
 | R1-9 来源实物证据未完成 | P6-AIX-2 开发库证据与 v4 只读导出/对象校验核心、受控 runner 已通过；批准副本配置、外部 provenance、真实 1305 行 inventory、Storage/H5 审计与非执行者复核仍 pending | Production 1.0 release 清单可能缺对象或 snapshot 漂移；不影响 R1-Live 所选课次已读验证 | 产品+课程研发+QA/发布 | R1-Live 后恢复 R1-9，并在 R1-18 前重跑最终证据 |
 | 英文正文缺失 | `content/en` 仅 README | `/en` 可能空白或混排 | 内容+前端 | R1-9～12 |

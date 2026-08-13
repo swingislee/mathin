@@ -1,0 +1,106 @@
+# R1-Live · `mathin.club` 目标只读核查
+
+> **核查结果**：Gate 1 `BLOCKED`；Gate 3 `BLOCKED`
+>
+> **核查时间**：2026-08-14（目标机 UTC 采样时间从 2026-08-13 20:48 起）
+>
+> **目标**：应用 `https://mathin.club`；Supabase `https://supabase.mathin.club`
+>
+> **授权边界**：只允许健康检查、目标指纹、匿名汇总、备份/回退结构和错误位置查询；未创建账号、未触发验证码、未写业务数据、未制造受控错误、未部署、未回退、未恢复或清理。
+
+## 1. E1 目标指纹
+
+应用进程的 `NEXT_PUBLIC_SITE_URL` 与 `NEXT_PUBLIC_SUPABASE_URL` 分别精确指向上述两个域名。公网应用健康接口和 `/zh/login` 返回 HTTP 200；Supabase Auth/REST 网关在缺少 API key 时返回 HTTP 401，符合匿名探测预期。
+
+| 项 | 只读结果 |
+| --- | --- |
+| 目标机 | `xiaomi`；组件指纹只保存 SHA-256，不保存数据库原始 system identifier |
+| 当前应用 release | `20260724-051318`；commit `b833c4d814d5a0ecc6aad69df25d2c6831094f00`；构建时间 `2026-07-24T05:14:33Z` |
+| 数据库迁移账本 | 174 条；head `20260814000200_p6_qa_student_cleanup` |
+| Storage namespace | 8 个 bucket；123,602 个 object；仅保存按 bucket 排序的匿名汇总摘要 |
+| `mathin.club` 证书 | SHA-256 `B7:C2:7A:61:6F:C6:FF:A8:6D:FE:A5:73:37:8E:BF:36:24:B6:E9:58:69:77:C7:87:F4:C5:CD:29:CF:98:BB:F1`；到期日 2026-10-15 |
+| `supabase.mathin.club` 证书 | SHA-256 `00:36:EB:6A:58:6A:0D:F6:B6:E8:8A:4D:BE:2F:39:48:28:E0:2F:61:75:2C:0D:34:12:A5:07:85:97:63:DA:F2`；到期日 2026-10-15 |
+
+### 1.1 可复核的匿名组件摘要
+
+| 组件 | SHA-256 |
+| --- | --- |
+| hostname | `c608c4787821de1b383d87ca8b2711d3d171b5a6c017c45a8523e9ae904d495e` |
+| PostgreSQL system identifier | `10e3f97e32b018403c9074efa4e258d699530a487c47de89b5d307ab7ff21a0c` |
+| compose 文本（按 `normalizeNewlines` 等价规则规范为 LF） | `734a92a5fe279277573bcc27a0fafe2dd727d677364e08fc23dd5dd872f00067` |
+| Storage bucket/object 匿名汇总 | `ba45e1ee6f2cd6fe14c4acb16c2d0c3c3dd16693acafa2c1fcfd04e1002ba688` |
+| 组合目标指纹 | `799d6a9c5d2a6fd5ec8d5ff3bef7f36a251d3488a7b387ce01d057b096463e39` |
+
+组合指纹材料固定为四行 `host=<hash>`、`database=<hash>`、`compose=<hash>`、`storage=<hash>`，每行 LF 结尾后取 SHA-256。Storage 摘要材料固定为 bucket 数、object 总数及按 bucket ID 排序的 `bucket_id:count`；仓库只登记摘要与总数，不登记 bucket 名称。
+
+目标 attestation 已完成，但它还没有被所有危险入口强制校验，因此不能单独使 Gate 1 通过。
+
+## 2. E1 防误清核查
+
+### 2.1 已有保护
+
+- `r1:baseline-plan` 与生产部署 planner 均为 plan-only，拒绝生产写入。
+- release E2E 目标策略明确拒绝 `mathin.club`/`supabase.mathin.club` 生产主机。
+- `purge_test_classroom`、`purge_test_course_family` 要求 `testdata.purge` 权限、`purpose='test'`、名称二次确认及引用检查；权限默认不授予。
+- R1-Live 正式对象保护 manifest 的产品合同已经写入 doc 00/04/25，但实现尚未覆盖所有写入口。
+
+### 2.2 失败项
+
+- 本机 `.env.local` 当前直接指向 `https://supabase.mathin.club`。
+- 该域名在本机解析为私网地址；`r1:family-fixtures`、`r1:family-journey-fixture`、`r1:manual-dataset` 只用“私网地址 + 环境开关”判定开发目标，因此会把本目标误判为可造数的开发环境。
+- `p4e:offline-fixture` 没有目标指纹/环境拒绝，会创建并删除 auth user、班级和课次。
+- `ci:db-rebuild` 只检查 `CI_ALLOW_DB_REBUILD`，没有校验数据库指纹；若 `DATABASE_URL` 被错误指向本目标，现有门不足以 fail-closed。
+- 课程导入/适配写入口从 `.env.local` 读取本目标并可写数据库或 Storage；当前没有统一生产目标拒绝层。
+- 数据库内 testdata purge RPC 只按权限、`purpose` 和局部引用保护，不读取组合目标指纹或受保护正式对象 manifest。仅凭 `purpose` 不能满足 R1-Live 正式对象保护合同。
+
+结论：目标已被唯一识别，但开发与生产仍共享连接入口，危险脚本也没有统一强制指纹拒绝。Gate 1 继续 `BLOCKED`，下一项代码工作必须先建立公共 target policy，并让所有账号/fixture/reset/rebuild/import/purge 写入口复用。
+
+## 3. E1 身份与业务对象匿名基线
+
+| 项 | 只读汇总 | 判断边界 |
+| --- | --- | --- |
+| auth users | 12；全部为 email/password；phone 0；OAuth identity 0 | 11 个邮箱属于固定开发域，另 1 个不能仅凭邮箱判定为正式身份 |
+| profiles | admin 1、staff 6、student 3、parent 2 | 角色计数不替代正式身份 manifest |
+| admin MFA | 1 个 admin profile；1 个存在 verified MFA factor | 仍缺正式 UUID manifest、恢复联系人和责任确认 |
+| staff role members | teacher 3、research 2、principal 1、registrar 1、sales 1 | 不能据角色名推断哪一个是真实首名教师 |
+| staff invitations | 0 | 当前没有待处理、接受、撤销或过期邀请记录 |
+| `purpose=production` 业务对象 | 班级 6、未删除课次 61、active enrollment 3（2 名 distinct student）、点名 5 | 这些对象尚未进入正式/测试保护 manifest；`purpose=production` 本身不能证明是真实数据 |
+| 学生档案 | 4；其中 2 个绑定 auth user | 未读取姓名或其他 PII |
+| production 课次内容引用 | 61 个课次中 58 个有 lecture，9 个已记录 `courseware_frozen_at` | 尚未选定首个真实课次，也未登记其 release/snapshot/object hash |
+
+全局注册码单例处于 active，最近更新时间为 `2026-08-03T05:25:56.694284Z`；核查未读取或输出注册码本身。
+
+## 4. E3 备份、回退和错误定位
+
+### 4.1 最近备份：`BLOCKED`
+
+- 系统级与用户级均未安装/启用 `p4e-backup.service`、`p4e-backup.timer` 或对应 disk timer。
+- crontab 只有每 15 分钟磁盘检查，没有数据库/Storage 备份任务。
+- 已知备份目录中仅见 2026-07-04 的环境配置备份；没有可核验的 `database.dump`、`storage.tar.gz`、`SHA256SUMS` 或 manifest。
+- 已挂载备份磁盘存在，但在 runbook 指定和已知运维目录中没有找到可证明当前数据库/Storage 可恢复的最近备份。
+- 因此不存在可登记的最近成功时间、内容 hash 或恢复抽查结果。未执行备份或恢复，因为本轮只读授权不包含生产写入。
+
+### 4.2 应用回退：结构存在，当前不可直接宣称可用
+
+| 指针 | release | commit | 构建时间 |
+| --- | --- | --- | --- |
+| current | `20260724-051318` | `b833c4d814d5a0ecc6aad69df25d2c6831094f00` | `2026-07-24T05:14:33Z` |
+| previous | `20260717-180746` | `unknown` | `2026-07-17T18:08:37Z` |
+
+`mathin.service` active/enabled，current 与 previous 是两个不同 immutable release；loopback 和 Caddy 路径健康检查均通过。但 current release 源码时代只有 101 个迁移文件，head 为 `20260723000300_p6_courseware_replacement_track_list_guard.sql`，当前目标数据库账本为 174 条，领先 73 条。previous commit 也没有登记。回退脚本虽可切换 symlink 和复核健康，当前证据不能证明旧应用兼容现数据库；在隔离副本完成兼容烟测或部署与数据库版本重新对齐前，不得直接执行生产回退。
+
+### 4.3 错误定位：可查询，但 release 关联缺失
+
+- `public.operational_errors` 共 1,946 条：`request.error` 1,945 条、`infra.disk_alert` 1 条；最近一条为 `2026-08-12T18:00:23.405Z`。
+- 请求错误可按 `occurred_at`、`route_path`、`digest` 查询；最高频路由为 courseware（1,002 条）和 session detail（388 条）。本轮只读核查没有读取 `message`，避免带出 PII。
+- 应用进程具备服务端写入条件，错误能够落入该表；但 `MATHIN_RELEASE`、`MATHIN_ERROR_REPORT_URL` 和 report token 均未配置。1,946 条现存记录的 `release` 全为空，无法按部署版本定位回归。
+- 未主动制造错误，因为该动作会新增生产错误记录，超出本轮“无写入”边界。
+
+## 5. Gate 差距结论
+
+| Gate | 状态 | 已关闭 | 仍缺 |
+| --- | --- | --- | --- |
+| Gate 1 | `BLOCKED` | 目标域名、应用/数据库/Storage/compose 匿名指纹和部署 commit 已登记；现有身份/业务对象完成匿名盘点 | 公共生产目标 fail-closed；本机开发连接与生产隔离；正式身份/对象 manifest；正式管理员责任与恢复确认；正式教师、真实班级/课次/花名册；课次 release/snapshot/object 保护；授权范围复核 |
+| Gate 3 | `BLOCKED` | current/previous 结构和回退命令位置已确认；错误表和查询维度已确认 | 立即建立并验证数据库+Storage 备份；恢复抽查；消除 73 条迁移的应用/数据库漂移并验证 rollback；配置 release 标识；在另行授权下制造并定位一次受控错误；所有危险入口指纹拒绝 |
+
+这份证据只证明 2026-08-14 的只读观察。它不证明现有 `purpose=production` 对象是真实业务数据，也不证明备份可恢复、旧 release 可回退或正式账号可登录。
