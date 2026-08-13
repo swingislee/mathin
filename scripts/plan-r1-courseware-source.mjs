@@ -158,6 +158,8 @@ function isWithin(root, target) {
 }
 
 function assertLocalRoot(root, label) {
+  assert(typeof root === "string" && root.length > 0, `${label} must be a local directory`);
+  assert(!root.startsWith("\\\\") && !root.startsWith("//"), `${label} must not be a UNC path`);
   const resolved = path.resolve(root);
   assert(!resolved.startsWith("\\\\") && !resolved.startsWith("//"), `${label} must not be a UNC path`);
   return resolved;
