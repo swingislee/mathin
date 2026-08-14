@@ -129,6 +129,7 @@ Gate 3 只回答四个问题：正式数据在哪里、最近可用备份在哪�
 
 - Spatial Math / 3D 继续独立路由、权限或 Feature Flag；默认普通教师不可见未完成能力。修改共享认证、导航、数据库或课堂链路时回归 R1-Live Smoke。
 - Terms/Minds/Story 长内容、1305 讲全量审计、Notebook 完整写态、完整视觉矩阵、全量 E2E、容量、指标、复杂恢复、财务/活动深化和长期重构进入上线后池。
+- `POST-LIVE-AUTH-01`：为 student/parent/staff/admin 及各 Dashboard 环境建立一致、可发现的账号中心入口，完善资料、密码、MFA、会话、恢复方式和多 identity 绑定管理；当前学生端无入口的观察不阻塞 R1-Live，完整合同见 [`r1-live-auth-identities.md`](r1-live-auth-identities.md) §6E。
 - R1-Live 开放后的真实问题按 P0/P1/P2 排序；14 天观察用于决定扩大用户范围和恢复 Production 1.0 施工顺序。
 - `cacheComponents`、原生 App、更多游戏/章节和高级 BI 继续延期。
 

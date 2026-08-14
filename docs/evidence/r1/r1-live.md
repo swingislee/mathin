@@ -123,6 +123,7 @@
 - 全量 Playwright 写态、zh/en、跨浏览器、连续无 flaky、文件/并发/竞争矩阵。
 - 全量指标、容量、监控、数据库/Storage RPO/RTO 和恢复演练。
 - 14 天/5 节真实使用观察；观察从 R1-Live 开放当天开始，不作为开放前等待。
+- `POST-LIVE-AUTH-01`：补齐 student/parent/staff/admin 在桌面、移动和各可用环境中的统一账号中心入口，并完善资料、密码、MFA、会话、恢复和多 identity 绑定；2026-08-15 已确认学生 Dashboard 无可发现入口，本轮不保存含姓名的用户截图。
 - Spatial Math / 3D 增强、长期重构、财务/活动深化和更多内容。
 
 ## 下一次状态变化
