@@ -31,7 +31,7 @@
 ## 3. 前置条件
 
 1. `.env.local` 指向开发 Supabase，并具备导入所需 server key；凭据不得写入日志或仓库。
-2. 开发库已应用并登记 `20260814000200_p6_qa_student_cleanup.sql`；爱学习必须收敛为一个课程族、12 门课程、180 条教学计划讲次，其中 170 条有源站课件、10 条为第 7/15 讲计划补充占位；难度顺序为 X+ < G+ < A+。
+2. 开发库已应用并登记 `20260814000300_p6_six_classroom_cleanup.sql`；爱学习必须收敛为一个课程族、12 门课程、180 条教学计划讲次，其中 170 条有源站课件、10 条为第 7/15 讲计划补充占位；难度顺序为 X+ < G+ < A+。
 3. 三包的 `site/manifest.json`、catalog、projection v31、slide/player runtime 和逐讲 offline verification 都存在，且 remote/missing/fatal 为 0。
 4. 本流程只允许开发库导入。R1-15/R1-18 的生产清理与 release-1 重建需要独立授权。
 

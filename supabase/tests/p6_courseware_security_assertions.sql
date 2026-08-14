@@ -5,13 +5,40 @@ begin;
 select id as admin_id from public.profiles where display_name='测试-管理员' limit 1 \gset
 select id as teacher_id from public.profiles where display_name='测试-教师' limit 1 \gset
 select id as student_user_id from public.profiles where display_name='测试-学生' limit 1 \gset
-select id as member_session_id from public.class_sessions cs
- join public.classroom_members cm on cm.classroom_id=cs.classroom_id
- where cm.user_id=:'student_user_id' and cm.role='student' and cs.deleted_at is null limit 1 \gset
 \if :{?admin_id}
 \else
   \echo P6 fixtures missing: 测试-管理员
   select 1 / 0;
+\endif
+\if :{?student_user_id}
+\else
+  \echo P6 fixtures missing: 测试-学生
+  select 1 / 0;
+\endif
+select exists (
+  select 1
+    from public.class_sessions cs
+    join public.classroom_members cm on cm.classroom_id=cs.classroom_id
+   where cm.user_id=:'student_user_id' and cm.role='student' and cs.deleted_at is null
+) as member_session_found \gset
+\if :member_session_found
+  select id as member_session_id from public.class_sessions cs
+   join public.classroom_members cm on cm.classroom_id=cs.classroom_id
+   where cm.user_id=:'student_user_id' and cm.role='student' and cs.deleted_at is null limit 1 \gset
+\else
+  -- 固定开发班级可以被清理；本审计在事务内补最小成员课次，末尾统一回滚。
+  insert into public.classrooms(owner_id, name, invite_code, purpose)
+  values (:'admin_id', '__P6_SECURITY_FIXTURE_CLASS__', substr(md5(gen_random_uuid()::text), 1, 8), 'test')
+  returning id as fixture_classroom_id \gset
+  insert into public.classroom_members(classroom_id, user_id, role)
+  values (:'fixture_classroom_id', :'teacher_id', 'teacher')
+  on conflict do nothing;
+  insert into public.classroom_members(classroom_id, user_id, role)
+  values (:'fixture_classroom_id', :'student_user_id', 'student')
+  on conflict do nothing;
+  insert into public.class_sessions(classroom_id, title)
+  values (:'fixture_classroom_id', '__P6_SECURITY_FIXTURE_SESSION__')
+  returning id as member_session_id \gset
 \endif
 \if :{?member_session_id}
 \else
