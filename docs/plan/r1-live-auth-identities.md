@@ -4,9 +4,9 @@
 >
 > **当前用途**：冻结邮箱、手机号、验证码、微信和 QQ 的账号边界与分阶段接口；当前施工顺序仍由 doc 04 决定。
 >
-> **当前实现状态**：生产只启用邮箱/password；手机号、验证码、微信、QQ 均未达到可用状态。本文不授权修改生产 Auth 配置、创建账号或合并身份。
+> **当前实现状态**：生产只启用邮箱/password；手机号、验证码、微信、QQ 均未达到可用状态。本机隔离目标已独立初始化 11 个固定 email/password 开发身份并通过登录，不包含手机号/OAuth identity。本文不授权修改生产 Auth 配置、创建正式账号或合并生产身份。
 >
-> **最后核对**：2026-08-14；运行事实见 [`r1-live-target-audit.md`](../evidence/r1/r1-live-target-audit.md)。
+> **最后核对**：2026-08-15；运行事实见 [`r1-live-target-audit.md`](../evidence/r1/r1-live-target-audit.md)。
 
 ## 1. 产品裁决
 

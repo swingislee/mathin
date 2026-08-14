@@ -28,6 +28,7 @@
     "r1:baseline-plan": "node scripts/plan-r1-production-baseline.mjs",
     "r1:courseware-source:export": "node scripts/export-r1-courseware-source.mjs",
     "r1:deployment-plan": "node scripts/plan-r1-production-deployment.mjs",
+    "r1:fixed-accounts": "node scripts/ensure-r1-fixed-test-accounts.mjs",
     "r1:family-fixtures": "node scripts/ensure-r1-family-test-fixtures.mjs",
     "r1:family-journey-fixture": "node scripts/ensure-r1-family-journey-fixture.mjs",
     "r1:manual-dataset": "node scripts/ensure-r1-manual-test-dataset.mjs",

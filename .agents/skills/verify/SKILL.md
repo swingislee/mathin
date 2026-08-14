@@ -12,7 +12,7 @@ description: 本仓库的端到端验证配方。用于复用或启动本地 dev
 
 ## 账号
 
-- 复用 `.claude/test-accounts.local.md` 中的 5 个固定开发账号；该文件已 gitignore，禁止复制账号、密码、UUID 或 Cookie 到日志、截图、测试源码和提交。
+- 复用 `.claude/test-accounts.local.md` 中当前登记的 11 个固定开发账号；以该 gitignored manifest 的唯一邮箱集合为准，不在 skill 或测试源码重复维护清单。禁止复制账号、密码、UUID 或 Cookie 到日志、截图、测试源码和提交。
 - 不得为普通 E2E 新建账号。只有验证未认领绑定码、多子女等必须依赖新身份的流程时，先向用户确认，再在隔离开发数据中创建并清理。
 - 登录后的等待条件使用精确 dashboard/目标 URL 或明确错误状态，不要用会立即匹配当前页的宽松 locale 正则。
 
