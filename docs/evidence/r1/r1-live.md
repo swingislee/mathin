@@ -2,16 +2,16 @@
 
 ## 结论
 
-截至 2026-08-15，`mathin.club` / `supabase.mathin.club` 的应用、数据库、Storage、compose 和部署 commit 已完成只读指纹登记，仓库级写入口保险丝也已把 Xiaomi 固定为当前生产目标；测试造数/重建不能写入它，课程内容写入默认拒绝并使用独立受控通道。仓库 migration 已为 purge 增加数据库指纹、protected/准删条目、hash/计数漂移和删除闭包 fail-closed 合同，并在一次性 PostgreSQL 15 通过从零重放与回滚式断言；该 migration 尚未部署到 Xiaomi，现有身份和业务对象也尚未分类或写入 active manifest。目标机仍没有可核验的数据库/Storage 最近备份，应用与数据库相差 73 条迁移，因此 R1-Live 当前状态仍为 Gate 0 `PASS`、Gate 1 `BLOCKED`、Gate 2 `BLOCKED`、Gate 3 `BLOCKED`、Gate 4 `BLOCKED`。
+截至 2026-08-15，`mathin.club` / `supabase.mathin.club` 的应用、数据库、Storage、compose 和部署 commit 已完成只读指纹登记，仓库级写入口保险丝也已把 Xiaomi 固定为当前生产目标；测试造数/重建不能写入它，课程内容写入默认拒绝并使用独立受控通道。本机已建立只绑定 `127.0.0.1` 的隔离 Supabase，应用本地环境和非生产写目标 attestation 已切换，注册关闭且账号/profile 均为 0；没有连接或复制 Xiaomi 数据。仓库 migration 已为 purge 增加数据库指纹、protected/准删条目、hash/计数漂移和删除闭包 fail-closed 合同，并在一次性 PostgreSQL 15 通过从零重放与回滚式断言；该 migration 尚未部署到 Xiaomi，现有身份和业务对象也尚未分类或写入 active manifest。目标机仍没有可核验的数据库/Storage 最近备份，应用与数据库相差 73 条迁移，因此 R1-Live 当前状态仍为 Gate 0 `PASS`、Gate 1 `BLOCKED`、Gate 2 `BLOCKED`、Gate 3 `BLOCKED`、Gate 4 `BLOCKED`。
 
-本文件是 E0/E1 差距审阅，不是生产验收。2026-08-14 的目标 E1/E3 运行事实见 [`r1-live-target-audit.md`](r1-live-target-audit.md)；用户提供的 `docs/plan/mathin-R1-Live-讨论稿.md` 为产品裁决输入，现行施工顺序以 doc 04 为准。
+本文件是 E0/E1 差距审阅，不是生产验收。2026-08-14 的 Xiaomi E1/E3 运行事实和 2026-08-15 的本机隔离目标补充证据见 [`r1-live-target-audit.md`](r1-live-target-audit.md)；用户提供的 `docs/plan/mathin-R1-Live-讨论稿.md` 为产品裁决输入，现行施工顺序以 doc 04 为准。
 
 ## Gate 状态表
 
 | Gate | 当前状态 | 已完成证据 | 缺失项 | 是否阻塞 | 最小修复范围 |
 | --- | --- | --- | --- | --- | --- |
 | Gate 0 · 上线范围冻结 | `PASS` | doc 04 已冻结“正式教师整班点名”为首个闭环，并将旧 R1-9～18 重新分类 | 无 | 否 | 范围改变只接受产品负责人显式裁决 |
-| Gate 1 · 正式身份与真实数据 | `BLOCKED` | 组合目标指纹 `799d…63e39`、部署 commit、Storage 摘要、身份/业务对象匿名基线已登记；仓库 fixture/rebuild/import 已接入公共 target policy；migration `20260815000100` 已建立目标绑定的 protected/准删 manifest 和 purge fail-closed 合同；员工邀请、staff role/RLS、production/test purpose、学生/分班/课次 UI/RPC 已实现 | 本机无隔离开发写目标；migration 未部署到 Xiaomi；现有身份和 `purpose=production` 对象未分正式/测试且无 active manifest；无正式教师/真实闭环对象 manifest；未登记首个课次 release/snapshot/object | 是 | 先隔离开发写入口；另行授权后部署 migration、分类对象并激活 protected-only manifest，再使用正式 UI/RPC 建立或认领最小身份和数据 |
+| Gate 1 · 正式身份与真实数据 | `BLOCKED` | 组合目标指纹 `799d…63e39`、部署 commit、Storage 摘要、身份/业务对象匿名基线已登记；仓库 fixture/rebuild/import 已接入公共 target policy；本机已建立只绑定 `127.0.0.1` 的隔离 Supabase，注册关闭、账号/profile 为 0，应用与非生产写 attestation 已切换；migration `20260815000100` 已建立目标绑定的 protected/准删 manifest 和 purge fail-closed 合同；员工邀请、staff role/RLS、production/test purpose、学生/分班/课次 UI/RPC 已实现 | migration 未部署到 Xiaomi；现有身份和 `purpose=production` 对象未分正式/测试且无 active manifest；无正式教师/真实闭环对象 manifest；未登记首个课次 release/snapshot/object | 是 | 另行授权后部署 migration、分类对象并激活 protected-only manifest，再使用正式 UI/RPC 建立或认领最小身份和数据 |
 | Gate 2 · 真实工作闭环 | `BLOCKED` | `AttendanceDrawer`、`saveAttendanceAction`、`session_attendance`、`can_mark_attendance`/`can_view_attendance`、开课前 `ATTENDANCE_REQUIRED`；`tests/r1-classroom-continuity.test.ts` 有静态合同 | 无正式目标写态运行；无保存→刷新→重登→再读、管理员可见、无权限拒绝的单条 Golden Path | 是 | 补一条聚焦 Playwright 等价链，并在正式账号/真实数据下人工完整执行一次 |
 | Gate 3 · 最小生产保险丝 | `BLOCKED` | current/previous release 结构、回退脚本、当前 commit、服务健康和 `operational_errors` 查询位置已确认 | 没有 backup timer 或可校验的数据备份；current 应用源码时代比数据库少 73 条迁移，previous commit 未知；全部 1,946 条错误缺 release；未做恢复抽查、兼容回退或受控错误 | 是 | 先建立数据库+Storage 备份并抽查恢复，再对齐应用/数据库、验证 rollback、注入 release 标识并在另行授权下定位一次受控错误 |
 | Gate 4 · 真实教师独立验收 | `BLOCKED` | 无 E4 | 未选择首名教师；未进行无指导观察；P0/P1 未形成关闭记录 | 是 | 选 1 名真实教师独立执行 Gate 2，清零 P0/核心 P1，P2 入池 |
@@ -24,6 +24,23 @@
 - 一次性 PostgreSQL 15 从零重放 181 个 bootstrap/migration/seed/fixture 输入成功；`r1_live_object_protection_assertions.sql` 在事务回滚中覆盖无 manifest、错误目标/hash、重复管理员、计数漂移、active 不可变、protected 子对象和精确准删根。
 - 14/14 份 R1 数据库断言通过；manifest/purge 定向 Vitest 为 2 个文件、17/17；`pnpm r1:test` 为 23 个文件、178/178；全量 Vitest 为 92 个文件、618 项通过、1 项条件跳过；`pnpm ci:checks` 17/17 通过。
 - 本轮数据库验证和类型生成只连接 disposable loopback 容器；没有连接、部署或写入 Xiaomi。目标运行状态仍只采用 2026-08-14 的只读证据。
+
+### 本机隔离开发目标证据
+
+2026-08-15 在用户明确授权后，以 Supabase 官方 self-hosted `v0.8.0`（上游 commit `241bb11c0627f2981746d37033f57dbfa81d29b0`）建立名为 `mathin-isolated` 的本机开发栈。运行文件和 secret 只保存在 gitignored 的 `.tmp/mathin-supabase-selfhosted/` 与 `.env.local`，未提交凭据；Xiaomi 全程未连接、未复制、未写入。
+
+| 证据字段 | 值 |
+| --- | --- |
+| `gate_id`, `domain`, `result` | `R1-Live Gate 1`；开发/生产连接隔离；该子项 `PASS`，Gate 1 整体仍 `BLOCKED` |
+| `measured_value`, `threshold` | 11/11 个服务 healthy；所有已发布端口 Host IP 恰为 `127.0.0.1`；`auth.users=0`、`profiles=0`；email/phone signup 均关闭。阈值为无非 loopback 发布、无账号、无 Xiaomi 数据，全部满足 |
+| `commit_sha`, `migration_head`, `environment` | `commit_sha=not_applicable`（本机运行态，仓库证据由本文件 Git 历史固定）；head `20260815000100_r1_live_object_protection_manifest`；Windows Docker Desktop / `mathin-isolated-loopback` |
+| `dataset_manifest` | PostgreSQL 15.8；178 个 migration SQL + `courses.pre-family.seed.sql`；明确排除 `supabase/ci/10_fixtures.sql`；ledger 175 条（3 个 snapshot SQL 按现有账本规则排除），课程 84、讲次 1045、Storage bucket 8、active protection manifest 0 |
+| `started_at`, `finished_at`, `actor`, `approver` | 2026-08-15（Asia/Shanghai）；2026-08-15（Asia/Shanghai）；Codex；`swingislee`（对话授权“允许创建隔离 Supabase”） |
+| `command_or_runbook` | 官方 self-hosted Compose + 本机 override；API `127.0.0.1:35421`、数据库 `127.0.0.1:35422`、Studio `127.0.0.1:35423`、transaction pool `127.0.0.1:35429`；应用 `.env.local` 指向 API，target policy 以 development/loopback/本地数据库指纹通过 |
+| `artifact_url_or_path`, `artifact_hash` | `.tmp/mathin-supabase-selfhosted/docker-compose.local.yml`（gitignored 本机 artifact）；规范化文本 SHA-256 `28a7db50a165e5f34cd6f9dc46cc0e47931d6597a7143a99003a8dd5a2d46653`；本地数据库指纹 `5af56ae69b51ca0a78b9357ec4792533a6e59f0a529a9a918f6ba4c93da68d0f` |
+| `retention`, `access_roles`, `failure_ticket` | 保留至隔离开发目标被明确替换；本机所有者；`not_applicable` |
+
+仓库 migration 重放到 `20260728000300_r1_platform_runtime.sql` 时，官方 self-hosted Storage 已存在 `storage.buckets.allowed_mime_types text[]`，但该表由 `supabase_storage_admin` 持有，仓库 `postgres` 角色无权重复执行 `ADD COLUMN IF NOT EXISTS`。核实列型后从下一条语句继续，未改变 Storage 表 owner，剩余迁移全部完成；此兼容偏差不涉及 Xiaomi。
 
 ## 首个真实闭环选择
 

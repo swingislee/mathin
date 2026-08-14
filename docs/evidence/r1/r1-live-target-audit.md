@@ -66,7 +66,19 @@
 
 在不连接、不部署和不写 Xiaomi 的边界内，migration `20260815000100_r1_live_object_protection_manifest.sql` 已让现有两个 `purge_test_*` 读取当前 PostgreSQL cluster 指纹、active protected/准删清单、条目 hash/计数、显示名和实际影响计数；无 manifest、目标不符、内容漂移或保护闭包命中均在事件和删除前拒绝。迁移不 seed 任何目标 UUID，不激活 manifest，也没有生产放行参数；合同与授权边界见 [`r1-live-object-protection-manifest.md`](../../runbooks/r1-live-object-protection-manifest.md)。
 
-这项仓库实现没有改变 2026-08-14 的目标快照：Xiaomi 尚未部署该 migration，也没有 active 正式清单。开发/生产连接隔离和目标运行态保护仍未成立，Gate 1/3 保持 `BLOCKED`。
+这项仓库实现没有改变 2026-08-14 的目标快照：Xiaomi 尚未部署该 migration，也没有 active 正式清单。目标运行态保护仍未成立，Gate 1/3 保持 `BLOCKED`。
+
+### 2.5 2026-08-15 本机隔离开发目标
+
+用户另行授权后，以 Supabase 官方 self-hosted `v0.8.0`（上游 commit `241bb11c0627f2981746d37033f57dbfa81d29b0`）建立独立 `mathin-isolated` 栈；它不改变本文件 2026-08-14 的 Xiaomi 只读快照。
+
+- 11 个服务全部 healthy，并只加入 `mathin-isolated-loopback`；实际 Docker port binding 逐容器核对后，所有发布端口的 Host IP 均恰为 `127.0.0.1`：API `35421`、数据库 `35422`、Studio `35423`、transaction pool `35429`。
+- PostgreSQL 15.8 从零加载 178 个 migration SQL 与必要的 `courses.pre-family.seed.sql`，明确排除会创建账号的 `supabase/ci/10_fixtures.sql`；ledger 为 175 条、head 为 `20260815000100_r1_live_object_protection_manifest`。
+- `auth.users=0`、`profiles=0`、active protection manifest 0；email/phone signup 均关闭。当前匿名内容基线为课程 84、讲次 1045、Storage bucket 8，均来自仓库迁移/必要 seed，不含 Xiaomi 副本或真实业务数据。
+- 本地数据库指纹为 `5af56ae69b51ca0a78b9357ec4792533a6e59f0a529a9a918f6ba4c93da68d0f`，与 Xiaomi 数据库摘要 `10e3…1a0c` 和组合目标指纹 `799d…63e39` 均不同；应用 `.env.local` 与非生产写目标 attestation 已切到 loopback 并通过 target policy。
+- 本机 Compose override 的规范化文本 SHA-256 为 `28a7db50a165e5f34cd6f9dc46cc0e47931d6597a7143a99003a8dd5a2d46653`。运行文件和 secret 只位于 gitignored `.tmp/`、`.env.local`，未提交凭据。
+
+本次创建没有连接、复制或修改 Xiaomi，没有创建账号，没有写入真实数据。它关闭 Gate 1 的“本机开发连接与生产隔离”子项，不代表 Xiaomi 的 manifest、正式身份/数据或 Gate 3 保险丝已通过。
 
 ## 3. E1 身份与业务对象匿名基线
 
@@ -113,7 +125,7 @@
 
 | Gate | 状态 | 已关闭 | 仍缺 |
 | --- | --- | --- | --- |
-| Gate 1 | `BLOCKED` | 目标域名、应用/数据库/Storage/compose 匿名指纹和部署 commit 已登记；仓库 fixture/rebuild/import 写入口及两个现有 purge RPC 合同已 fail-closed；现有身份/业务对象完成匿名盘点 | 本机开发连接与生产隔离；另行授权部署 manifest migration、分类真实对象并激活 protected-only 清单；正式管理员责任与恢复确认；正式教师、真实班级/课次/花名册；课次 release/snapshot/object 保护；授权范围复核 |
+| Gate 1 | `BLOCKED` | 目标域名、应用/数据库/Storage/compose 匿名指纹和部署 commit 已登记；仓库 fixture/rebuild/import 写入口及两个现有 purge RPC 合同已 fail-closed；本机已建立只绑定 `127.0.0.1`、禁用注册且不含账号/真实数据的隔离 Supabase；现有身份/业务对象完成匿名盘点 | 另行授权部署 manifest migration、分类真实对象并激活 protected-only 清单；正式管理员责任与恢复确认；正式教师、真实班级/课次/花名册；课次 release/snapshot/object 保护；授权范围复核 |
 | Gate 3 | `BLOCKED` | 仓库危险写入口已拒绝误指 Xiaomi；两个现有 purge RPC 的目标绑定 manifest 合同已实现；current/previous 结构和回退命令位置已确认；错误表和查询维度已确认 | 另行授权部署并激活 protected-only manifest；立即建立并验证数据库+Storage 备份；恢复抽查；消除 73 条迁移的应用/数据库漂移并验证 rollback；配置 release 标识；在另行授权下制造并定位一次受控错误 |
 
-这份证据只证明 2026-08-14 的只读观察。它不证明现有 `purpose=production` 对象是真实业务数据，也不证明备份可恢复、旧 release 可回退或正式账号可登录。
+这份证据证明 2026-08-14 的 Xiaomi 只读观察与 2026-08-15 的本机隔离目标补充事实。它不证明现有 `purpose=production` 对象是真实业务数据，也不证明备份可恢复、旧 release 可回退或正式账号可登录。
