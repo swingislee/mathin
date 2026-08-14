@@ -10,7 +10,7 @@
     "environment": "offline-read-only-export",
     "readOnly": true,
     "databaseFingerprint": "e28feb1f2007167befaabe272ac9e6f44acae6cb9d3f979c47005f069aa14ccd",
-    "migrationHead": "20260813000500_p6_aixuexi_v31_levels",
+    "migrationHead": "20260814000200_p6_qa_student_cleanup",
     "exportedAt": "2026-08-13T00:00:00Z"
   },
   "inventories": [

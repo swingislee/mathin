@@ -23,7 +23,7 @@
 | 学校运营 | 学生、监护关系、员工权限、课程、班级、排课、考勤、作业、订单/支付/退款等迁移和 UI 已存在 | 管理员、教务、教师、学辅、教研/内容、学生、家长及启用时的财务旅程闭环 |
 | 内容发布 | Terms/Minds 文件内容、Notebook、课程研发和 release 机制分别存在 | Terms/Story/Minds/Notebook 共用草稿/审核/发布/撤回/版本合同；课堂只读取不可变课件 release |
 | E 系列 | 开发数据有 1135 讲、16:9/4:3 双轨资源和 release 机制；课程目录版本层已就位（2025旧版 54 门 / 2026新版 36 门） | 保留 1135×2 源资源；正式基线包含 2270 条 `release_no=1`，见 §5.1.1 |
-| 爱学习 G+/X+/A+ 秋季 | G+ 苏教版 56 讲、X+ 苏教版 84 讲、A+ 全国版 30 讲；16:9/4:3 双轨资源和 release 机制 | 保留 170×2 源资源；正式基线包含 340 条 `release_no=1`；14 个来源显式第 7/15 讲复习占位保留，来源未提供的相同讲号保持缺失 |
+| 爱学习 G+/X+/A+ 秋季 | G+ 苏教版 56 讲、X+ 苏教版 84 讲、A+ 全国版 30 讲；16:9/4:3 双轨资源和 release 机制 | 保留 170×2 源资源；正式基线包含 340 条 `release_no=1`；另有 10 条教学计划第 7/15 讲补充占位（G+ 五/六年级、X+ 二/五/六年级），占位无 release 且准备状态为“未发布” |
 | 语言 | `messages/zh.json` 与 `messages/en.json` 各 4042 个 key；`content/en` 仅 README | UI 永久 zh/en；英文课程/文章可延期，缺失内容显示明确回退或“尚未发布”状态 |
 | 视觉 | `public/Main.png`、五星球 token/场景、`dashboard-observatory.png` 和公开场景插画已在仓库使用 | 小王子作为全站视觉基础；公开场景、内容/Notebook、运营工作区按三档强度验收 |
 
@@ -243,7 +243,7 @@ R1-1 以 `20260728000100_r1_organization_settings.sql` 与 `20260728000200_r1_pu
 | 课程页面文档 | revision/binding、native 16:9、adapted 4:3、review 分层 | 研发读取可编辑状态；课堂不读取草稿 |
 | 课程 release | 发布前检查对象可读、binding、snapshot 和并发版本；发布后不可变 | track head 指向当前 release；legacy 字段指向 native release |
 
-爱学习课程与 E 系列共享课程族/课程/讲次、CAS、revision/release、双轨 head 和课次冻结，不共享页面文档接口。1.0 范围固定为 2026 秋季数学：G+ 苏教版三至六年级 56 讲、X+ 苏教版一至六年级 84 讲、A+ 全国版一至二年级 30 讲；页面使用 projection v31 的 `aixuexi-page-doc-v1`。来源 catalog 明确提供的 14 个第 7/15 讲复习占位保留；其他缺失讲次、年级、季节和难度不生成空课程或伪页面。
+爱学习课程与 E 系列共享课程族/课程/讲次、CAS、revision/release、双轨 head 和课次冻结，不共享页面文档接口。1.0 范围固定为 2026 秋季数学：G+ 苏教版三至六年级 56 条源站讲次、X+ 苏教版一至六年级 84 条源站讲次、A+ 全国版一至二年级 30 条源站讲次；页面使用 projection v31 的 `aixuexi-page-doc-v1`。G+ 五/六年级与 X+ 二/五/六年级缺少第 7/15 讲源站课件，教学计划补充 10 条占位，不创建 release，课件准备状态为“未发布”；其他缺失讲次、年级、季节和难度不生成空课程或伪页面。
 
 报告保存指标版本、数据截止时间、机构时区和生成数据集。教师在学生学情页选择日期范围，右栏查看范围内的已上课课评、作业记录和视频讲解，左栏新建或打开报告；未选择报告时不常驻空编辑器。稳定指标 ID 在界面显示本地化名称。发布/撤回/修订提交领域事务后创建幂等通知 job；通知失败不回滚已发布事实。
 
@@ -353,7 +353,7 @@ R1-7E 以 `user_rights_export_artifacts` 保存与请求绑定的精确 JSON 字
 | PROD-09 | Minds | 2/2 中文文章发布；无效 Terms 关系=0 |
 | PROD-10 | Notebook | 私有写作、审核、发布/撤回、公开阅读、互动和越权 E2E 通过 |
 | PROD-11 | E 系列 | 1135 讲×2 轨源资源完整；正式 baseline 恰有 2270 条 `release_no=1`；缺失/悬空=0；正式课次引用的额外历史 release 按保护 manifest 保留 |
-| PROD-12 | 爱学习 G+/X+/A+ 秋季 | 12 门/170 讲×2 轨源资源完整；正式 baseline 恰有 340 条 `release_no=1`；14 个来源显式第 7/15 讲占位保留、来源未提供的讲次保持缺失；缺失对象/悬空 binding=0；正式课次引用的额外历史 release 按保护 manifest 保留 |
+| PROD-12 | 爱学习 G+/X+/A+ 秋季 | 12 门/170 讲×2 轨源资源完整；正式 baseline 恰有 340 条 `release_no=1`；另有 10 条教学计划第 7/15 讲补充占位且无 release；缺失对象/悬空 binding=0；正式课次引用的额外历史 release 按保护 manifest 保留 |
 
 #### 5.1.1 教材年度换代后的基线重新固定
 
@@ -482,7 +482,7 @@ R1-16 的只读 preflight 位于 `docs/manifests/r1-production-deployment.exampl
 | 受保护 R1-Live/真实运营数据 | 身份、班级、成员、课次、学生、考勤及关联事实的 ID、计数和内容 hash 与维护前一致；正式课次引用的 release/snapshot/object 不变 |
 | 显式测试数据 | 清理 manifest 列出的对象残留=0；未列对象不处理 |
 | E 系列 lecture | 1135；ID 和顺序与维护前 manifest 相同 |
-| 爱学习 G+/X+/A+ 秋季 lecture | 170；G+/X+/A+ 分别 56/84/30；14 个显式复习占位与其余讲号缺口和 manifest 相同 |
+| 爱学习 G+/X+/A+ 秋季 lecture | 170 条源站讲次；G+/X+/A+ 分别 56/84/30；另有 10 条教学计划补充第 7/15 讲占位，无 release、准备状态为“未发布” |
 | native heads | 1305；全部指向 native `release_no=1` |
 | adapted heads | 1305；全部指向 adapted `release_no=1` |
 | baseline `cw_lecture_releases` | `release_no=1` 共 2610 条；每讲每轨恰好 1 条，snapshot hash 与批准 manifest 相同 |

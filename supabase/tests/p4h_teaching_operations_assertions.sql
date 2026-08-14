@@ -15,7 +15,7 @@ select id as teacher_id from public.profiles where display_name = '测试-教师
   select 1 / 0;
 \endif
 
--- P4H-3：72 个明确的 E 系列版本归入唯一 family；非空关系、元数据和唯一索引均须成立。
+-- P4H-3：90 个明确的 E 系列版本归入唯一 family；非空关系、元数据和唯一索引均须成立。
 select id as e_family_id from public.course_families where slug = 'xueersi-e-primary-math-cn' limit 1 \gset
 \if :{?e_family_id}
 \else
@@ -30,8 +30,8 @@ select (
   and edition = '全国版'
   and purpose = 'production'
   and status = 'enabled'
-  and (select count(*) from public.courses where family_id = :'e_family_id'::uuid) = 72
-  and (select count(*) from public.course_lectures lecture_row join public.courses course_row on course_row.id = lecture_row.course_id where course_row.family_id = :'e_family_id'::uuid) = 865
+  and (select count(*) from public.courses where family_id = :'e_family_id'::uuid) = 90
+  and (select count(*) from public.course_lectures lecture_row join public.courses course_row on course_row.id = lecture_row.course_id where course_row.family_id = :'e_family_id'::uuid) = 1135
   and not exists (select 1 from public.courses where family_id is null)
 ) as p4h_family_backfill_ok
 from public.course_families where id = :'e_family_id'::uuid \gset
@@ -189,14 +189,14 @@ select (
     select 1
       from public.list_course_families('all', '{"q":"E 系列小学数学"}'::jsonb, 1) family_row
      where family_row.id = :'e_family_id'::uuid
-       and family_row.variant_count = 72
-       and jsonb_array_length(family_row.matched_variants) = 72
+        and family_row.variant_count = 90
+        and jsonb_array_length(family_row.matched_variants) = 90
   )
-  and (select jsonb_array_length(value -> 'variants') = 72 from family_detail)
+  and (select jsonb_array_length(value -> 'variants') = 90 from family_detail)
   and (select value -> 'selectedVariant' = 'null'::jsonb from family_detail)
   and (select jsonb_array_length(value -> 'teachingPlan') = 0 from family_detail)
   and (select value -> 'readiness' = '{"lectureCount":0,"releasedLectureCount":0,"pageCount":0}'::jsonb from family_detail)
-  and (select variant_count = 72 and lecture_count = 865 from family_impact)
+   and (select variant_count = 90 and lecture_count = 1135 from family_impact)
 ) as p4h_family_query_contract_ok \gset
 \if :p4h_family_query_contract_ok
 \else

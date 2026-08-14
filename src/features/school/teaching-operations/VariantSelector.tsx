@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { COURSE_SEASONS } from "./course-queries";
+import { compareCourseDifficulty } from "./course-difficulty";
 import type { CourseFamilyDetail, SelectedCourseVariant } from "./course-family-detail";
 import type { CourseSeason } from "./types";
 
@@ -56,7 +57,7 @@ export async function VariantSelector({
   // 只换了个年级时把课程换成另一套教材，这正是版本层要防的事。换版本是显式的第四组。
   const scoped = variants.filter((variant) => variant.catalogVersionId === current.catalogVersionId);
   const grades = Array.from(new Set(scoped.map((variant) => variant.grade))).sort((a, b) => a - b);
-  const classTypes = Array.from(new Set(scoped.map((variant) => variant.classType))).sort();
+  const classTypes = Array.from(new Set(scoped.map((variant) => variant.classType))).sort(compareCourseDifficulty);
 
   // doc23 §8.2：三行按钮阵列压成一条。它现在住在 sticky 的导航行里（ObjectContextSwitcher），
   // 原来那种"每维一整行 + h-9 药丸"会把顶部撑到接近 200px，移动端预算是整条不超过视口约四分之一。

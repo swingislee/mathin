@@ -18,11 +18,7 @@ course_scope as (
   select
     case
       when family.slug = 'xueersi-e-primary-math-cn' then 'e-series'
-      when family.slug in (
-        'aixuexi-gplus-primary-math-sujiao',
-        'aixuexi-xplus-primary-math-sujiao',
-        'aixuexi-aplus-primary-math-quanguo'
-      ) then 'aixuexi-autumn'
+      when family.slug = 'aixuexi-primary-math' then 'aixuexi-autumn'
     end as course_system,
     catalog.slug as catalog_version,
     course.product_code,
@@ -35,10 +31,17 @@ course_scope as (
   join public.course_families family on family.id = course.family_id
   where family.slug in (
     'xueersi-e-primary-math-cn',
-    'aixuexi-gplus-primary-math-sujiao',
-    'aixuexi-xplus-primary-math-sujiao',
-    'aixuexi-aplus-primary-math-quanguo'
+    'aixuexi-primary-math'
   )
+    -- 第 7/15 讲计划占位没有源站 release，不进入 source capture；它们仍保留在教学计划。
+    and (
+      family.slug = 'xueersi-e-primary-math-cn'
+      or exists (
+        select 1
+          from public.cw_source_lectures source_lecture
+         where source_lecture.lecture_id = lecture.id
+      )
+    )
 ),
 lecture_rows as (
   select
@@ -112,7 +115,7 @@ records as (
       'recordType', 'meta',
       'captureVersion', 'mathin-r1-courseware-source-capture-v1',
       'transactionReadOnly', current_setting('transaction_read_only') = 'on',
-      'migrationVersion', (select max(version)::text from supabase_migrations.schema_migrations)
+      'migrationVersion', (select max(version)::text from public.schema_migrations)
     ) as record
 
   union all

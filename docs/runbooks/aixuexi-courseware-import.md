@@ -8,10 +8,10 @@
 | --- | --- | --- | ---: | ---: | ---: | ---: |
 | `2026-gplus-sujiao-math` | G+ / 苏教版 | 3～6 | 4 | 56 | 1641 | 三、四年级共 4 讲 |
 | `2026-xplus-sujiao-math` | X+ / 苏教版 | 1～6 | 6 | 84 | 2767 | 一、三、四年级共 6 讲 |
-| `2026-aplus-quanguo-math` | A+ / 全国版 | 1～2 | 2 | 30 | 1034 | 一、二年级共 4 讲 |
-| 合计 |  |  | 12 | 170 | 5442 | 14 讲 |
+| `2026-aplus-quanguo-math` | A+ / 全国版 | 1～2 | 2 | 30 | 1034 | 无缺口 |
+| 合计 |  |  | 12 | 170 | 5442 | 10 讲由教学计划补充占位 |
 
-来源没有提供的第 7/15 讲保持缺失。只有 catalog 中真实存在且逐讲 `offline-verification=complete` 的占位会被导入；不得生成空讲次或伪页面。
+源包没有提供的第 7/15 讲不导入课件；合并后的课程包在数据库教学计划中补充 10 条占位讲次。占位讲次不创建 release，课件准备状态保持“未发布”。
 
 ## 2. 页面与 4:3 合同
 
@@ -31,7 +31,7 @@
 ## 3. 前置条件
 
 1. `.env.local` 指向开发 Supabase，并具备导入所需 server key；凭据不得写入日志或仓库。
-2. 开发库已应用并登记 `20260813000500_p6_aixuexi_v31_levels.sql`；课程 roster 必须精确为 G+/X+/A+ 的 4/6/2 门和 56/84/30 讲。
+2. 开发库已应用并登记 `20260814000200_p6_qa_student_cleanup.sql`；爱学习必须收敛为一个课程族、12 门课程、180 条教学计划讲次，其中 170 条有源站课件、10 条为第 7/15 讲计划补充占位；难度顺序为 X+ < G+ < A+。
 3. 三包的 `site/manifest.json`、catalog、projection v31、slide/player runtime 和逐讲 offline verification 都存在，且 remote/missing/fatal 为 0。
 4. 本流程只允许开发库导入。R1-15/R1-18 的生产清理与 release-1 重建需要独立授权。
 
@@ -85,7 +85,7 @@ pnpm messages:check
 pnpm build
 ```
 
-开发库必须精确满足：3 个 imported source package、12 门课程、170 讲、5442 页且全部 projection v31；两轨各 170 release/head、5442 页面 head、27541 binding；8 个原生游戏、9 个 embedded H5；runtime binding 缺失=0；重复导入零新增/零 drift。
+开发库必须精确满足：3 个 imported source package、12 门课程、180 条教学计划讲次（170 条 source-backed、10 条未发布占位）、5442 页且全部 projection v31；两轨各 170 release/head、5442 页面 head、27541 binding；8 个原生游戏、9 个 embedded H5；runtime binding 缺失=0；重复导入零新增/零 drift。
 
 浏览器至少抽查：G+ `source-master` 4:3；A+ 动画兼容页逐步揭示；X+ embedded H5 的 opaque-origin sandbox；TrueOrFalse 和 TopicClassification 的源样式与交互；显式第 7/15 讲占位；zh/en Studio 标签。H5 不得添加 `allow-same-origin`，原生游戏 shadow root 必须可在 React Strict Mode 重挂载。
 

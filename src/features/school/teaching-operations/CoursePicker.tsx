@@ -12,9 +12,11 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { getClassBuildCourseDetailAction, searchClassBuildCoursesAction } from "../actions/classes";
+import { compareCourseDifficulty } from "./course-difficulty";
 import type { ClassBuildCourseCandidate, ClassBuildCourseDetail, ClassBuildPurpose } from "./course-picker-types";
 
 const ALL = "__all__";
+const CLASS_TYPES = ["X+", "G+", "A+", "A", "B", "S"];
 
 function isReady(course: Pick<ClassBuildCourseCandidate, "lectureCount" | "releasedLectureCount">) {
   return course.lectureCount > 0 && course.lectureCount === course.releasedLectureCount;
@@ -72,6 +74,10 @@ export function CoursePicker({
     for (const candidate of results) {
       const current = groups.get(candidate.familyTitle) ?? [];
       current.push(candidate);
+      current.sort((left, right) => left.grade - right.grade
+        || left.courseSeason - right.courseSeason
+        || compareCourseDifficulty(left.classType, right.classType)
+        || (left.productCode ?? "").localeCompare(right.productCode ?? "", "en"));
       groups.set(candidate.familyTitle, current);
     }
     return Array.from(groups.entries());
@@ -131,7 +137,7 @@ export function CoursePicker({
             </Select>
             <Select value={classType || ALL} onValueChange={(value) => setClassType(value === ALL ? "" : value)}>
               <SelectTrigger className="h-9 text-xs"><SelectValue placeholder={t("allClassTypes")} /></SelectTrigger>
-              <SelectContent><SelectItem value={ALL}>{t("allClassTypes")}</SelectItem>{["A", "B", "S"].map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent>
+              <SelectContent><SelectItem value={ALL}>{t("allClassTypes")}</SelectItem>{CLASS_TYPES.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <Label className="flex items-center gap-2 border-b px-2 py-2 text-xs font-normal text-muted">

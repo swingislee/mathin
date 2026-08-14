@@ -10,6 +10,7 @@ import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { CreateVariantDialog } from "./CreateVariantDialog";
 import type { CourseFamilyDetail } from "./course-family-detail";
+import { compareCourseDifficulty } from "./course-difficulty";
 import { COURSE_SEASONS, type CourseSeason } from "./types";
 
 type Variant = CourseFamilyDetail["variants"][number];
@@ -122,7 +123,9 @@ export function VariantMatrix({ familyId, variants, catalogVersions, canManage }
       {grades.map((grade) => <Fragment key={grade}>
         <div className="flex items-center px-2 text-sm font-medium text-ink">{t("gradeRowLabel", { grade })}</div>
         {COURSE_SEASONS.map((season) => {
-          const cellVariants = scopedVariants.filter((variant) => variant.grade === grade && variant.courseSeason === season.value);
+          const cellVariants = scopedVariants
+            .filter((variant) => variant.grade === grade && variant.courseSeason === season.value)
+            .sort((left, right) => compareCourseDifficulty(left.classType, right.classType));
           return <div key={season.value} className="flex flex-wrap items-center justify-center gap-1.5 rounded-lg bg-paper/60 p-1.5">
             {cellVariants.length === 0
               ? <EmptyCell familyId={familyId} catalogVersionId={createVersionId} grade={grade} courseSeason={season.value} canManage={canManage} />

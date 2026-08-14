@@ -10,6 +10,7 @@ import {
 import { buildImportSql } from "../scripts/cw-import.mjs";
 import { rewriteTopicRootUrls } from "../scripts/aixuexi-build-package.mjs";
 import { renderAixuexiMathHtml } from "../src/features/courseware-doc/aixuexi-math";
+import { compareCourseDifficulty } from "../src/features/school/teaching-operations/course-difficulty";
 
 const key = (character: string) => character.repeat(64);
 
@@ -111,6 +112,10 @@ describe("Aixuexi courseware adapter", () => {
     expect(aixuexiPackageLevel("2026-xplus-sujiao-math")).toBe("X+");
     expect(aixuexiPackageLevel("2026-aplus-quanguo-math")).toBe("A+");
     expect(aixuexiPackageLevel("future-package")).toBeNull();
+  });
+
+  it("keeps the merged course package difficulty order", () => {
+    expect(["A+", "G+", "X+"].sort(compareCourseDifficulty)).toEqual(["X+", "G+", "A+"]);
   });
 
   it("freezes projection v31 separately from the E-series schema", () => {

@@ -539,14 +539,14 @@ sanitize 白名单按“移植过来的规则实际选择到的标签/属性”�
 
 2026-08-13 的三个来源包都通过逐讲离线验证，`remoteRequests`、`localMissing`、`fatalConsoleErrors` 均为 0：
 
-| package | 课程 | 讲次 | 页面 | 显式第 7/15 讲占位 |
+| package | 课程 | 源站讲次 | 页面 | 教学计划补充占位 |
 | --- | ---: | ---: | ---: | ---: |
-| `2026-gplus-sujiao-math` | 4 | 56 | 1641 | 三、四年级各 2 讲，共 4 讲 |
-| `2026-xplus-sujiao-math` | 6 | 84 | 2767 | 一、三、四年级各 2 讲，共 6 讲 |
-| `2026-aplus-quanguo-math` | 2 | 30 | 1034 | 一、二年级各 2 讲，共 4 讲 |
-| 合计 | 12 | 170 | 5442 | 14 讲 |
+| `2026-gplus-sujiao-math` | 4 | 56 | 1641 | 五、六年级各 2 讲，共 4 讲 |
+| `2026-xplus-sujiao-math` | 6 | 84 | 2767 | 二、五、六年级各 2 讲，共 6 讲 |
+| `2026-aplus-quanguo-math` | 2 | 30 | 1034 | 无 |
+| 合计 | 12 | 170 | 5442 | 10 讲 |
 
-来源没有提供的第 7/15 讲继续保持缺失；导入器只接受 catalog 中真实存在、`offline-verification=complete` 的讲次，不推断或生成占位。
+来源没有提供的第 7/15 讲不导入课件；合并课程包的教学计划补充 10 条占位，状态为 active、无 release、课件准备状态为“未发布”。导入器只接受 catalog 中真实存在、`offline-verification=complete` 的讲次，不生成课件占位。
 
 ### 13.2 v31 取代 v11 的呈现合同
 
@@ -573,5 +573,5 @@ sanitize 白名单按“移植过来的规则实际选择到的标签/属性”�
 - **已通过**：三包构建器对 package key、课程/页面计数、年级/难度/版本、逐讲离线状态和 v31 文档做 fail-closed 校验。
 - **已通过**：开发库精确拥有 3 个 source package、12 门爱学习课程、170 个 source lecture、5442 页；双轨各 170 个 release/head、5442 个页面 head 和 27541 个 binding。5020 页为 `source-master`，422 页为 `source-player-compat`。
 - **已通过**：构建与重导入 `baselineDrift=0`、`binding conflicts=0`；X+ 首讲重跑只返回 existing，不新增对象、revision 或 release。
-- **已通过**：浏览器覆盖普通 G+ 4:3、A+ 动画、X+ embedded H5、TrueOrFalse、TopicClassification、A+ 显式第 7 讲占位和 `/en` Studio；源运行时错误为 0。
-- **范围裁决**：G+/X+/A+ 170 讲及来源明确提供的 14 个第 7/15 讲复习占位进入 1.0；未提供的讲次继续缺失。正式总基线变为 1305 讲/2610 条 release-1，执行仍受 R1-9/15/18 约束。
+- **已通过**：浏览器覆盖普通 G+ 4:3、A+ 动画、X+ embedded H5、TrueOrFalse、TopicClassification、计划第 7/15 讲占位和 `/en` Studio；源运行时错误为 0。
+- **范围裁决**：G+/X+/A+ 170 条源站讲次进入 1.0；G+ 五/六年级与 X+ 二/五/六年级的第 7/15 讲共 10 条由教学计划补充占位，均无 release、准备状态为“未发布”。正式总基线仍为 1305 讲/2610 条 release-1，执行仍受 R1-9/15/18 约束。
