@@ -34,7 +34,7 @@ Terms 使用稳定 ID 接收 Story、Minds、Games、Tools、Notebook 和课程�
 当前唯一施工阶段切为 `R1-Live-1 · 正式身份与真实数据`。R1-Live 先让一名公司教师以正式身份和真实数据完成整班点名，再在真实使用中继续 Production 1.0；本文件的完整性矩阵与量化硬门仍有效，但除 doc 04 明确抽取的子集外，不阻塞内部生产试运行。
 
 - R1-Live Gate 0 已冻结首个闭环：正式教师登录 → 找到自己的 production 班级/课次 → 整班点名 → 保存 → 刷新和重登后再读 → 管理员可见 → 无权限主体不可见。
-- R1-Live Gate 1 当前 `BLOCKED`：正式目标指纹已只读登记，仓库级 fixture/rebuild/import 写入口已统一 fail-closed 并把 Xiaomi 固定为当前生产目标；本机已建立只绑定 `127.0.0.1` 且关闭自助注册的隔离 Supabase，应用本地连接和写目标 attestation 已切换，11 个固定开发身份/profile、8 条 staff-role 绑定和 11/11 密码登录已验证，学生/班级/课次等业务表仍为空。migration `20260815000100` 已让现有两个 `purge_test_*` 读取数据库指纹、protected/准删条目、条目 hash 和实际影响计数，但尚未部署到 Xiaomi，现有身份/业务对象也未完成正式/测试分类或写入 active manifest，正式教师、真实班级/课次/花名册及课次引用内容保护仍缺。Gate 2 `BLOCKED`，Gate 3 因无可核验数据备份、应用/数据库漂移和错误缺 release 保持 `BLOCKED`，Gate 4 `BLOCKED`，详见 doc 04、[`r1-live.md`](../evidence/r1/r1-live.md)和[目标核查](../evidence/r1/r1-live-target-audit.md)。
+- R1-Live Gate 1 当前 `BLOCKED`：正式目标指纹已登记，仓库级 fixture/rebuild/import 写入口已统一 fail-closed 并把 Xiaomi 固定为当前生产目标；本机已建立只绑定 `127.0.0.1` 且关闭自助注册的隔离 Supabase，应用本地连接和写目标 attestation 已切换，11 个固定开发身份/profile、8 条 staff-role 绑定和 11/11 密码登录已验证，学生/班级/课次等业务表仍为空。migration `20260815000100` 已让现有两个 `purge_test_*` 读取数据库指纹、protected/准删条目、条目 hash 和实际影响计数，但尚未部署到 Xiaomi，现有身份/业务对象也未完成正式/测试分类或写入 active manifest，正式教师、真实班级/课次/花名册及课次引用内容保护仍缺。生产 current 已应用-only 发布为 `20260814-221135` / `023f5167…`，previous 已知为 `20260724-051318` / `b833c4d…`，服务及内外健康探针通过；没有执行 migration 或数据写入。Gate 2 `BLOCKED`，Gate 3 因无可核验数据备份、previous 未验证兼容回退、生产缺 manifest migration 和错误缺 release 保持 `BLOCKED`，Gate 4 `BLOCKED`，详见 doc 04、[`r1-live.md`](../evidence/r1/r1-live.md)和[目标核查](../evidence/r1/r1-live-target-audit.md)。
 - 原 R1 暂停在 R1-9。P6-AIX-2、G+/X+/A+ 170 讲和 102 门/1305 讲/2610 条目标 release-1 合同保留；真实全量 inventory、Storage/H5 审计、Terms/Story/其他公开模块、完整视觉/E2E/恢复门转入 R1-Live 后继续。
 - SML-0 为独立并行轨道；普通教师默认不可见未完成能力，只有破坏共享认证、授权、数据或点名黄金路径时才阻塞 R1-Live。
 - R1-Live 的正式业务事实及课次引用的 immutable release/snapshot/object 不得在后续 R1-15/R1-18 中删除或改写。现有两个数据库 purge RPC 已接入正式对象保护合同；旧全库 planner 尚未接入同一合同，在完成 schema 修订并于隔离副本重新验收前保持 plan-only、不可执行。
@@ -123,7 +123,7 @@ command_or_runbook, artifact_url_or_path, artifact_hash, failure_ticket
 
 ## 3. 成熟度矩阵
 
-当前等级截至 2026-08-14，并按已登记的阶段或子门证据更新；本矩阵衡量 Production 1.0，不是 R1-Live 的前置清单。R1-Live 只提升实际覆盖的身份、点名和最小运维证据，不能据此把整个领域提升至 M4。
+当前等级截至 2026-08-15，并按已登记的阶段或子门证据更新；本矩阵衡量 Production 1.0，不是 R1-Live 的前置清单。R1-Live 只提升实际覆盖的身份、点名和最小运维证据，不能据此把整个领域提升至 M4。
 
 | 领域 | 当前 | 1.0 | 已知缺口 | R1 |
 | --- | --- | --- | --- | --- |
@@ -149,7 +149,7 @@ command_or_runbook, artifact_url_or_path, artifact_hash, failure_ticket
 | 指标/报表/遥测 | M1～M2 | M4 | 口径、版本、查询、告警 | 13 |
 | 幂等/并发/事务/E2E | M2～M3（正式基线/开发目标） | M4 | 本轮修复前 19 项 Vitest 失败已在 commit `cbb2a0f` 清零；commits `0d55044`、`8e5c076` 与[Playwright 子门](../evidence/r1/r1-14-playwright-baseline.md)已让 9 条本地非五模块 Chromium 旅程分别取绿并固定 release fail-closed 合同；仍缺发布目标完整重跑、写态、zh/en、跨浏览器、连续无 flaky、大文件和竞争矩阵 | 14 |
 | 生产清理/release-1 | M1（旧 planner） | M4 | 旧 planner 假定只保留管理员且无正式历史 release，与 R1-Live 后正式教师/业务数据/课次内容引用冲突；须增加正式对象保护 manifest 后再做快照副本演练、测试数据清理、可逆脚本和正式计数 | Live/15/18 |
-| 部署/备份/恢复 | M2（只读 preflight） | M4 | commit `35b9f60` 与[部署子门](../evidence/r1/r1-16-deployment-preflight.md)已固定 fail-closed 合同；仓库/历史 secret scan 已关闭。2026-08-14 R1-Live 只读核查确认目标无可校验数据备份、current 应用落后数据库 73 条迁移、错误缺 release，Gate 3 为 `BLOCKED`；独立环境、监控、数据库/Storage 全量恢复与非执行者复核仍缺 | Live/16 |
+| 部署/备份/恢复 | M2（生产应用发布/运行核查） | M4 | commit `35b9f60` 与[部署子门](../evidence/r1/r1-16-deployment-preflight.md)已固定 fail-closed 合同；仓库/历史 secret scan 已关闭。2026-08-15 current 已发布为 `20260814-221135` / `023f5167…`，previous commit 已知，原子切换及内外健康门通过；目标仍无可校验数据备份，previous 未做兼容回退，错误缺 release，Gate 3 为 `BLOCKED`；独立环境、监控、数据库/Storage 全量恢复与非执行者复核仍缺 | Live/16 |
 | 真实运营 RC | M0 | M4 | R1-Live Gate 4 先取得 1 名真实教师 E4；开放后连续 14 天、至少 5 节真实课堂形成扩围和 Production 1.0 证据 | Live/17 |
 
 ## 4. 业务合同
@@ -531,7 +531,7 @@ R1-0 已完成责任角色到 `swingislee` 的映射。增加人员或发生交�
 | --- | --- | --- | --- | --- |
 | R1-Live 正式身份/数据和防误清未成立 | 目标组合指纹、现有 12 个账号及 6 个 production 班级等匿名计数已登记；仓库 fixture/rebuild/import 已有统一 target policy，两个现有 purge RPC 的 manifest 合同已在仓库实现；本机隔离 Supabase 已只绑定 `127.0.0.1`、关闭自助注册并完成 11 个固定开发身份的独立初始化和登录验证。migration 未部署、现有对象未分正式/测试且无 active manifest，正式教师/真实闭环对象和课次内容保护仍缺 | 本机可恢复进行固定账号开发验证，但 Xiaomi 在部署并激活 protected-only manifest 前仍没有数据库运行态保护，也不能把现有开发对象误认成真实业务 | 产品+教学运营+运维+安全 | R1-Live Gate 1 |
 | R1-Live 点名 Golden Path 未执行 | 点名 action、表/RLS 和源码合同存在；无正式目标保存/重登再读、管理员对照和越权对照 | 代码存在不能证明教师可独立完成首个工作 | 教学运营+QA/发布 | R1-Live Gate 2/4 |
-| R1-Live 最小保险丝明确失败 | 当前 commit/current+previous 和错误表已只读核查；目标无 backup timer/可校验数据备份，current 应用源码时代比数据库少 73 条迁移，previous commit 未知，1,946 条错误 release 全空 | 首批真实数据目前不可证明可恢复；旧应用回退可能与现数据库不兼容；错误无法关联部署版本 | 运维+安全+QA | R1-Live Gate 3 |
+| R1-Live 最小保险丝明确失败 | current 已应用-only 发布为 `20260814-221135` / `023f5167…`，previous commit `b833c4d…` 已知，原子切换与健康门通过；目标仍无 backup timer/可校验数据备份，production 缺 manifest migration，previous 未做兼容回退，1,946 条错误 release 全空 | 首批真实数据目前不可证明可恢复；previous 回退可能与现数据库不兼容；错误无法关联部署版本 | 运维+安全+QA | R1-Live Gate 3 |
 | Story 无完整章节 | 路由存在；无完整独立章节内容目录 | 对外 1.0 缺一模块 | 内容+产品 | R1-10 |
 | R1-9 来源实物证据未完成 | P6-AIX-2 开发库证据与 v4 只读导出/对象校验核心、受控 runner 已通过；批准副本配置、外部 provenance、真实 1305 行 inventory、Storage/H5 审计与非执行者复核仍 pending | Production 1.0 release 清单可能缺对象或 snapshot 漂移；不影响 R1-Live 所选课次已读验证 | 产品+课程研发+QA/发布 | R1-Live 后恢复 R1-9，并在 R1-18 前重跑最终证据 |
 | 英文正文缺失 | `content/en` 仅 README | `/en` 可能空白或混排 | 内容+前端 | R1-9～12 |

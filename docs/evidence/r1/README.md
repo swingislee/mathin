@@ -32,7 +32,7 @@ failure_ticket
 
 | 阶段 | 状态 | 日期 | 证据 |
 | --- | --- | --- | --- |
-| R1-Live | Gate 0 passed；Gate 1 current/blocking；Gate 3 blocked | 2026-08-15 | [真实教师点名闭环差距表](r1-live.md)；[目标指纹、防误清、备份、回退与错误定位核查](r1-live-target-audit.md)；[仓库写入目标保险丝](../../runbooks/r1-write-target-policy.md)；[正式对象保护 manifest](../../runbooks/r1-live-object-protection-manifest.md)。Xiaomi 已固定为当前生产目标；仓库危险写入口与 purge 数据库合同均 fail-closed；本机已建立只绑定 `127.0.0.1` 且关闭自助注册的隔离 Supabase，应用本地连接与写目标 attestation 已切换，11 个固定开发身份/profile 与 8 条 staff-role 绑定已独立初始化，11/11 Auth 密码登录及 1 条应用登录通过，真实业务表仍为空。migration 尚未部署、无 active 正式清单，仍不证明正式身份/真实数据、目标 purge 运行安全、备份可恢复或旧 release 可安全回退 |
+| R1-Live | Gate 0 passed；Gate 1 current/blocking；Gate 3 blocked | 2026-08-15 | [真实教师点名闭环差距表](r1-live.md)；[目标核查与应用发布复核](r1-live-target-audit.md)；[仓库写入目标保险丝](../../runbooks/r1-write-target-policy.md)；[正式对象保护 manifest](../../runbooks/r1-live-object-protection-manifest.md)。Xiaomi 已固定为当前生产目标；仓库危险写入口与 purge 数据库合同均 fail-closed；本机已建立只绑定 `127.0.0.1` 且关闭自助注册的隔离 Supabase，应用本地连接与写目标 attestation 已切换，11 个固定开发身份/profile 与 8 条 staff-role 绑定已独立初始化，11/11 Auth 密码登录及 1 条应用登录通过，真实业务表仍为空。生产 current 已应用-only 发布为 `20260814-221135` / `023f5167…`，previous 为 `20260724-051318` / `b833c4d…`，服务及内外健康探针通过；未执行 migration 或数据写入。manifest migration 尚未部署、无 active 正式清单，也没有可恢复备份或已验证 previous rollback，仍不证明正式身份/真实数据或 Gate 3 通过 |
 | R1-0 | passed | 2026-07-28 | [规划真相源与发布边界冻结](r1-0.md) |
 | R1-1 | passed | 2026-07-28 | [机构配置、规则与 Feature Flag](r1-1.md) |
 | R1-2 | passed | 2026-07-28 | [Jobs、通知、文件与外部集成](r1-2.md) |

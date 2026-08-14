@@ -8,7 +8,7 @@
 >
 > **SML 暂停位置**：`SML-0 · 合同与金标冻结`；空间数学可按独立权限或 Feature Flag 并行，不进入 R1-Live Gate。
 >
-> **当前阻塞**：`mathin.club` / `supabase.mathin.club` 的运行指纹已完成只读登记；仓库级 target policy 已把 Xiaomi 固定为当前生产目标，并覆盖 fixture、离线夹具、CI 重建和课程导入/适配入口。迁移 `20260815000100_r1_live_object_protection_manifest.sql` 已在仓库实现数据库指纹、protected/准删条目、hash/计数漂移和删除闭包保护，但尚未部署到 Xiaomi，也没有真实 active manifest。本机隔离开发目标已建立：Supabase 只发布到 `127.0.0.1`，自助注册关闭；Xiaomi 的 11 个固定开发邮箱与 gitignored manifest 完全一致，本机已据此独立创建 11 个开发身份/profile 和 8 条 staff-role 绑定，11/11 密码登录及 1 条应用登录通过，未复制 Xiaomi UUID、密码哈希或业务数据。正式身份/对象、正式教师、真实班级/课次/花名册仍未登记，因此 Gate 1 仍为 `BLOCKED`。目标机没有可核验的数据库/Storage 最近备份，应用与数据库相差 73 条迁移，Gate 3 保持 `BLOCKED`。本阶段不授权创建真实账号、写入真实业务数据、部署、激活 manifest 或清理。
+> **当前阻塞**：`mathin.club` / `supabase.mathin.club` 的运行指纹已完成登记；仓库级 target policy 已把 Xiaomi 固定为当前生产目标，并覆盖 fixture、离线夹具、CI 重建和课程导入/适配入口。迁移 `20260815000100_r1_live_object_protection_manifest.sql` 已在仓库实现数据库指纹、protected/准删条目、hash/计数漂移和删除闭包保护，但尚未部署到 Xiaomi，也没有真实 active manifest。本机隔离开发目标已建立：Supabase 只发布到 `127.0.0.1`，自助注册关闭；Xiaomi 的 11 个固定开发邮箱与 gitignored manifest 完全一致，本机已据此独立创建 11 个开发身份/profile 和 8 条 staff-role 绑定，11/11 密码登录及 1 条应用登录通过，未复制 Xiaomi UUID、密码哈希或业务数据。生产 current 已经用户明确授权更新为 `20260814-221135` / `023f5167…`，previous 为 `20260724-051318` / `b833c4d…`，服务、内外健康和 MFA 路由匿名鉴权探针通过；该次未执行 migration、账号或业务数据写入。正式身份/对象、正式教师、真实班级/课次/花名册仍未登记，因此 Gate 1 仍为 `BLOCKED`。目标机没有可核验的数据库/Storage 最近备份，production 账本仍缺 manifest migration，previous 尚未验证兼容回退，Gate 3 保持 `BLOCKED`。本阶段不授权创建真实账号、写入真实业务数据、部署其他变更、激活 manifest 或清理。
 >
 > **核对日期**：2026-08-15；目标运行事实采样于 2026-08-14，本机隔离目标采样于 2026-08-15，仓库实现依据代码、迁移、一次性数据库断言、现有 R1 证据及 `mathin-R1-Live-讨论稿.md`。
 
@@ -36,7 +36,7 @@ R1-Live 完成即代表 Mathin 进入公司内部生产使用。Production 1.0 �
 | **Gate 0 · 上线范围冻结** | **PASS** | 本文件冻结首个闭环为“正式教师整班点名”；旧 R1 工作已分入本次必需、上线后、独立并行三类 | 范围改变只能由产品负责人显式裁决，并在同一变更同步 doc 00/04/25 和证据索引 |
 | **Gate 1 · 正式身份与真实数据** | **BLOCKED** | 目标组合指纹 `799d…63e39`、仓库写入口 target policy、部署 commit、Storage 匿名摘要和现有身份/业务对象计数已登记；测试造数/重建拒绝 Xiaomi；本机已建立只绑定 `127.0.0.1` 的隔离 Supabase，自助注册关闭，11 个固定开发身份/profile、8 条 staff-role 绑定、11/11 Auth 密码登录及 1 条应用登录已通过；数据库 purge 的目标指纹、protected/准删清单、hash/计数漂移和闭包拒绝合同已在 migration + 一次性库断言实现；员工邀请、staff 角色/RLS、production/test purpose、学生/分班/课次 UI/RPC 已实现 | 经另行授权部署 manifest migration，分类现有对象并激活 `purge_entry_count=0` 的正式保护 manifest；建立 1 个正式管理员责任与恢复记录、1 个正式教师、1 个真实 production 班级、至少 1 个真实课次和真实花名册；登记课次 release/snapshot/object hash；教师只见授权范围 |
 | **Gate 2 · 真实点名闭环** | **BLOCKED** | `AttendanceDrawer`、`saveAttendanceAction`、`session_attendance` upsert、`can_mark_attendance`/`can_view_attendance` RLS 和开课前点名门已落地；开发合同测试覆盖存在性 | 用正式教师在目标环境完成登录→班级→课次→整班点名→保存→刷新→退出/重登→再次读取；正式管理员可见；无权限主体不可见；增加一条等价的最小 Smoke/Golden Path，P0/核心 P1=0 |
-| **Gate 3 · 最小生产保险丝** | **BLOCKED** | 仓库级危险写入口已统一拒绝误指 Xiaomi；数据库 purge 的 fail-closed manifest 合同已实现且未默认激活；current `20260724-051318` / previous `20260717-180746` 指针和回退脚本存在；`operational_errors` 可按时间/route/digest 查询；只读运行核查见 [`r1-live-target-audit.md`](../evidence/r1/r1-live-target-audit.md) | manifest migration 尚未部署且无真实 active 保护清单；目标机没有数据库/Storage 备份 timer 或可校验的数据备份；数据库比 current 应用源码时代领先 73 条迁移，previous commit 未登记；1,946 条错误均缺 release；仍需备份+恢复抽查、应用/数据库对齐后的回退验证、release 标识和受控错误定位 |
+| **Gate 3 · 最小生产保险丝** | **BLOCKED** | 仓库级危险写入口已统一拒绝误指 Xiaomi；数据库 purge 的 fail-closed manifest 合同已实现且未默认激活；current 已发布为 `20260814-221135` / `023f5167…`，previous 已知为 `20260724-051318` / `b833c4d…`；原子切换、自动失败回退、服务及内外健康探针通过；`operational_errors` 可按时间/route/digest 查询；运行核查见 [`r1-live-target-audit.md`](../evidence/r1/r1-live-target-audit.md) | manifest migration 尚未部署且无真实 active 保护清单；目标机没有数据库/Storage 备份 timer 或可校验的数据备份；previous 未做兼容烟测或受控回退；1,946 条错误均缺 release；仍需备份+恢复抽查、账本核对、previous rollback、release 标识和受控错误定位 |
 | **Gate 4 · 真实教师独立验收** | **BLOCKED** | 尚无 E4 真实教师记录 | 产品负责人选择 1 名真实教师；教师在不接受逐步指导的情况下完成 Gate 2；P0=0、影响闭环的 P1=0，P2 记录后立即向第一批公司教师开放 |
 
 `R1-Live-N` 表示当前只关闭 Gate N。Gate 0～3 取得退出证据后，在同一提交把当前阶段推进到下一 Gate；Gate 4 通过后标记 R1-Live 开放，并由产品负责人按真实问题选择下一个 Production 1.0 阶段。后续 Gate 可以并行准备，但不能越级记为 `PASS`。
@@ -100,7 +100,7 @@ Gate 3 只回答四个问题：正式数据在哪里、最近可用备份在哪�
 - `mathin.service`/结构化错误接收端的查询方式，以及一次受控保存失败的定位记录；
 - 生产指纹对 reset、seed、rebuild、testdata purge 的拒绝结果。
 
-2026-08-14 只读核查已确认“目标在哪里”和“错误去哪里查”，也确认 Gate 3 不能通过：没有最近数据备份，旧 release 与当前数据库兼容性未知，错误缺少 release 关联。修复与复验清单见 [`r1-live-target-audit.md`](../evidence/r1/r1-live-target-audit.md)。
+2026-08-14 只读核查已确认“目标在哪里”和“错误去哪里查”。2026-08-15 已把当前提交以 immutable release 原子发布，旧 current 成为 commit 已知的 previous，服务和内外健康探针通过；Gate 3 仍不能通过，因为没有最近数据备份、previous 与当前数据库兼容性未经回退验证、生产未部署 manifest migration，且错误缺少 release 关联。修复与复验清单见 [`r1-live-target-audit.md`](../evidence/r1/r1-live-target-audit.md)。
 
 完整异机灾备、RPO/RTO、全量监控、全量恢复演练继续属于 Production 1.0。
 

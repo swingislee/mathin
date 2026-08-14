@@ -1,12 +1,12 @@
-# R1-Live · `mathin.club` 目标只读核查
+# R1-Live · `mathin.club` 目标核查与应用发布复核
 
 > **核查结果**：Gate 1 `BLOCKED`；Gate 3 `BLOCKED`
 >
-> **核查时间**：2026-08-14（目标机 UTC 采样时间从 2026-08-13 20:48 起）
+> **核查时间**：2026-08-14 初次只读核查；2026-08-15 应用发布与发布后只读复核
 >
 > **目标**：应用 `https://mathin.club`；Supabase `https://supabase.mathin.club`
 >
-> **2026-08-14 Xiaomi 核查授权边界**：只允许健康检查、目标指纹、匿名汇总、备份/回退结构和错误位置查询；后续 §2.2 只修改仓库代码、测试与文档。该次目标核查未创建账号、未触发验证码、未写业务数据、未制造受控错误、未部署、未回退、未恢复或清理。2026-08-15 本机隔离目标及固定开发账号为后续独立授权，见 §2.5。
+> **授权边界**：2026-08-14 Xiaomi 核查只允许健康检查、目标指纹、匿名汇总、备份/回退结构和错误位置查询；后续 §2.2 只修改仓库代码、测试与文档。2026-08-15 本机隔离目标及固定开发账号为后续独立授权，见 §2.5。2026-08-15 用户另行明确授权把当前开发前端部署到生产；该次变更只发布提交态应用，没有执行数据库 migration、创建/修改账号、写业务数据、制造受控错误、恢复或清理。
 
 ## 1. E1 目标指纹
 
@@ -15,8 +15,9 @@
 | 项 | 只读结果 |
 | --- | --- |
 | 目标机 | `xiaomi`；组件指纹只保存 SHA-256，不保存数据库原始 system identifier |
-| 当前应用 release | `20260724-051318`；commit `b833c4d814d5a0ecc6aad69df25d2c6831094f00`；构建时间 `2026-07-24T05:14:33Z` |
-| 数据库迁移账本 | 174 条；head `20260814000200_p6_qa_student_cleanup` |
+| 当前应用 release | `20260814-221135`；commit `023f5167f330935b4951d28a1b33a0cd28cd4fa9`；构建时间 `2026-08-14T22:13:01Z` |
+| previous 应用 release | `20260724-051318`；commit `b833c4d814d5a0ecc6aad69df25d2c6831094f00`；构建时间 `2026-07-24T05:14:33Z` |
+| 数据库迁移账本 | 175 条；head `20260814000200_p6_qa_student_cleanup`。与部署 commit 的 175 条账本名相比，生产缺 `20260815000100_r1_live_object_protection_manifest`，并多历史短名 `20260726000100`，集合尚未完全对齐 |
 | Storage namespace | 8 个 bucket；123,602 个 object；仅保存按 bucket 排序的匿名汇总摘要 |
 | `mathin.club` 证书 | SHA-256 `B7:C2:7A:61:6F:C6:FF:A8:6D:FE:A5:73:37:8E:BF:36:24:B6:E9:58:69:77:C7:87:F4:C5:CD:29:CF:98:BB:F1`；到期日 2026-10-15 |
 | `supabase.mathin.club` 证书 | SHA-256 `00:36:EB:6A:58:6A:0D:F6:B6:E8:8A:4D:BE:2F:39:48:28:E0:2F:61:75:2C:0D:34:12:A5:07:85:97:63:DA:F2`；到期日 2026-10-15 |
@@ -106,14 +107,27 @@
 - 已挂载备份磁盘存在，但在 runbook 指定和已知运维目录中没有找到可证明当前数据库/Storage 可恢复的最近备份。
 - 因此不存在可登记的最近成功时间、内容 hash 或恢复抽查结果。未执行备份或恢复，因为本轮只读授权不包含生产写入。
 
-### 4.2 应用回退：结构存在，当前不可直接宣称可用
+### 4.2 应用发布与回退：发布通过，受控回退仍待验证
 
 | 指针 | release | commit | 构建时间 |
 | --- | --- | --- | --- |
-| current | `20260724-051318` | `b833c4d814d5a0ecc6aad69df25d2c6831094f00` | `2026-07-24T05:14:33Z` |
-| previous | `20260717-180746` | `unknown` | `2026-07-17T18:08:37Z` |
+| current | `20260814-221135` | `023f5167f330935b4951d28a1b33a0cd28cd4fa9` | `2026-08-14T22:13:01Z` |
+| previous | `20260724-051318` | `b833c4d814d5a0ecc6aad69df25d2c6831094f00` | `2026-07-24T05:14:33Z` |
 
-`mathin.service` active/enabled，current 与 previous 是两个不同 immutable release；loopback 和 Caddy 路径健康检查均通过。但 current release 源码时代只有 101 个迁移文件，head 为 `20260723000300_p6_courseware_replacement_track_list_guard.sql`，当前目标数据库账本为 174 条，领先 73 条。previous commit 也没有登记。回退脚本虽可切换 symlink 和复核健康，当前证据不能证明旧应用兼容现数据库；在隔离副本完成兼容烟测或部署与数据库版本重新对齐前，不得直接执行生产回退。
+用户授权后，`scripts/ops/publish-mathin-xiaomi.ps1 -Action Publish` 对提交 `023f5167…` 先后完成本地 lint/typecheck/build、Git archive 传输、远端 lockfile 安装与 production build，再创建 immutable release、原子切换 `current`、重启服务并执行失败自动回退健康门。发布成功后再次独立运行 status：`mathin.service` active，loopback 与 Caddy `/api/health` 均返回 production `ok`；公网 `/api/health` 和 `/zh/login` 返回 HTTP 200，匿名访问 `/zh/dashboard/account-security` 返回 HTTP 307，并精确跳转到 `/zh/login?next=%2Fzh%2Fdashboard%2Faccount-security`。这证明包含 MFA 设置入口的当前应用已上线且匿名鉴权边界存在，不替代正式账号登录后的 MFA 人工验收。
+
+本次没有执行 migration。部署 commit 的 migration 账本与生产均为 175 个名称，但生产仍缺 manifest migration 且多一个历史短名条目；运行时页面没有读取尚未部署的 manifest 表，发布健康检查通过。原有 current 与数据库相差 73 条迁移的应用时代差已消除，旧 current 的 commit 也已随 previous 指针登记；但没有实际切回 previous，也没有在隔离副本证明 `b833c4d…` 与当前数据库兼容，因此 Gate 3 的 rollback 子项仍不能记为通过。
+
+| 证据字段 | 值 |
+| --- | --- |
+| `gate_id`, `domain`, `result` | `R1-Live Gate 3`；生产应用发布与健康；该子项 `PASS`，Gate 3 整体仍 `BLOCKED` |
+| `measured_value`, `threshold` | current=`20260814-221135` / `023f5167…`，previous=`20260724-051318` / `b833c4d…`；service active；loopback、Caddy、公网 health 与 login 全部成功；MFA 路由匿名跳转正确。阈值为提交态不可变发布、原子指针、健康门与旧 current 可识别，全部满足 |
+| `commit_sha`, `migration_head`, `environment` | `023f5167f330935b4951d28a1b33a0cd28cd4fa9`；生产 head `20260814000200_p6_qa_student_cleanup`，`20260815000100` 未部署；Xiaomi / production |
+| `dataset_manifest` | `not_applicable`；应用-only 发布，没有数据库、Storage、账号或业务对象写入 |
+| `started_at`, `finished_at`, `actor`, `approver` | `2026-08-14T22:11:35Z`；`2026-08-14T22:13:02Z` 后完成健康复核；Codex；`swingislee`（对话明确要求部署当前开发前端） |
+| `command_or_runbook` | `scripts/ops/publish-mathin-xiaomi.ps1 -Action Publish`；随后 `-Action Status` 和三个公网只读 HTTP 探针 |
+| `artifact_url_or_path`, `artifact_hash` | `/home/swing/services/mathin/releases/20260814-221135/release.json`；`not_applicable`（远端 immutable release metadata，由 status 原样复核，仓库不复制远端 artifact） |
+| `retention`, `access_roles`, `failure_ticket` | immutable release 目录由发布脚本保留；下次成功发布时 current 指针转为 previous，脚本不删除历史 release；Xiaomi 运维 SSH 角色；`not_applicable` |
 
 ### 4.3 错误定位：可查询，但 release 关联缺失
 
@@ -127,6 +141,6 @@
 | Gate | 状态 | 已关闭 | 仍缺 |
 | --- | --- | --- | --- |
 | Gate 1 | `BLOCKED` | 目标域名、应用/数据库/Storage/compose 匿名指纹和部署 commit 已登记；仓库 fixture/rebuild/import 写入口及两个现有 purge RPC 合同已 fail-closed；本机已建立只绑定 `127.0.0.1` 且关闭自助注册的隔离 Supabase，11 个固定开发身份/profile、8 条 staff-role 绑定、11/11 Auth 密码登录及 1 条应用登录已验证；现有身份/业务对象完成匿名盘点 | 另行授权部署 manifest migration、分类真实对象并激活 protected-only 清单；正式管理员责任与恢复确认；正式教师、真实班级/课次/花名册；课次 release/snapshot/object 保护；授权范围复核 |
-| Gate 3 | `BLOCKED` | 仓库危险写入口已拒绝误指 Xiaomi；两个现有 purge RPC 的目标绑定 manifest 合同已实现；current/previous 结构和回退命令位置已确认；错误表和查询维度已确认 | 另行授权部署并激活 protected-only manifest；立即建立并验证数据库+Storage 备份；恢复抽查；消除 73 条迁移的应用/数据库漂移并验证 rollback；配置 release 标识；在另行授权下制造并定位一次受控错误 |
+| Gate 3 | `BLOCKED` | 仓库危险写入口已拒绝误指 Xiaomi；两个现有 purge RPC 的目标绑定 manifest 合同已实现；current 已发布为 `20260814-221135` / `023f5167…`，previous 已知为 `20260724-051318` / `b833c4d…`；原子切换、服务及内外健康探针通过；错误表和查询维度已确认 | 另行授权部署并激活 protected-only manifest；立即建立并验证数据库+Storage 备份；恢复抽查；对 previous 做兼容烟测和受控 rollback；配置 release 标识；在另行授权下制造并定位一次受控错误 |
 
-这份证据证明 2026-08-14 的 Xiaomi 只读观察与 2026-08-15 的本机隔离目标补充事实。它不证明现有 `purpose=production` 对象是真实业务数据，也不证明备份可恢复、旧 release 可回退或正式账号可登录。
+这份证据证明 2026-08-14 的 Xiaomi 初次只读观察、2026-08-15 的本机隔离目标，以及 2026-08-15 当前提交的应用-only 生产发布和发布后只读健康事实。它不证明现有 `purpose=production` 对象是真实业务数据，也不证明备份可恢复、previous 可兼容回退或正式账号完成了 MFA/业务登录。
