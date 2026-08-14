@@ -1,12 +1,12 @@
-# R1-Live · `mathin.club` 目标核查与应用发布复核
+# R1-Live · `mathin.club` 目标核查、应用发布与身份引导
 
 > **核查结果**：Gate 1 `BLOCKED`；Gate 3 `BLOCKED`
 >
-> **核查时间**：2026-08-14 初次只读核查；2026-08-15 应用发布与发布后只读复核
+> **核查时间**：2026-08-14 初次只读核查；2026-08-15 应用发布、正式管理员候选 staff 引导与发布后复核
 >
 > **目标**：应用 `https://mathin.club`；Supabase `https://supabase.mathin.club`
 >
-> **授权边界**：2026-08-14 Xiaomi 核查只允许健康检查、目标指纹、匿名汇总、备份/回退结构和错误位置查询；后续 §2.2 只修改仓库代码、测试与文档。2026-08-15 本机隔离目标及固定开发账号为后续独立授权，见 §2.5。2026-08-15 用户另行明确授权把当前开发前端部署到生产；该次变更只发布提交态应用，没有执行数据库 migration、创建/修改账号、写业务数据、制造受控错误、恢复或清理。
+> **授权边界**：2026-08-14 Xiaomi 核查只允许健康检查、目标指纹、匿名汇总、备份/回退结构和错误位置查询；后续 §2.2 只修改仓库代码、测试与文档。2026-08-15 本机隔离目标及固定开发账号为后续独立授权，见 §2.5。2026-08-15 用户另行明确授权把当前开发前端部署到生产；该次变更只发布提交态应用，没有执行数据库 migration、创建/修改账号、写业务数据、制造受控错误、恢复或清理。用户随后再次明确授权把唯一非固定 Gmail 正式管理员候选从 student 改为 staff；该单事务只更新 `profiles.role` 一行，没有授予 staff 岗位、提升 admin、修改 Auth 或写业务表。
 
 ## 1. E1 目标指纹
 
@@ -82,12 +82,12 @@
 
 固定账号初始化前只读核对 Xiaomi：12 个 auth user 中有 11 个 `@mathin.local`，与本机固定清单逐一完全匹配；另 1 个非固定域账号未复制。账号在本机由 Auth Admin API 使用本地 manifest 凭据重新创建，本机 UUID 独立生成，不读取或复制 Xiaomi 密码哈希。仓库 runner 验证 11/11 Auth 密码登录，Playwright 固定学生账号进入私有 Notebook 为 1/1。整个过程没有修改 Xiaomi、没有创建正式账号、没有写入真实业务数据；它关闭 Gate 1 的“本机开发连接与生产隔离/固定账号登录”子项，不代表 Xiaomi 的 manifest、正式身份/数据或 Gate 3 保险丝已通过。
 
-## 3. E1 身份与业务对象匿名基线
+## 3. E1 身份与业务对象状态
 
 | 项 | 只读汇总 | 判断边界 |
 | --- | --- | --- |
-| auth users | 12；全部为 email/password；phone 0；OAuth identity 0 | 11 个邮箱属于固定开发域，另 1 个不能仅凭邮箱判定为正式身份 |
-| profiles | admin 1、staff 6、student 3、parent 2 | 角色计数不替代正式身份 manifest |
+| auth users | 12；全部为 email/password；phone 0；OAuth identity 0 | 11 个邮箱属于固定开发域；另 1 个已由产品负责人明确指定为正式管理员候选 |
+| profiles | admin 1、staff 7、student 2、parent 2 | 2026-08-14 初始快照为 admin 1/staff 6/student 3/parent 2；2026-08-15 候选账号 `student→staff` 后只改变这两个计数，角色计数仍不替代正式身份 manifest |
 | admin MFA | 1 个 admin profile；1 个存在 verified MFA factor | 仍缺正式 UUID manifest、恢复联系人和责任确认 |
 | staff role members | teacher 3、research 2、principal 1、registrar 1、sales 1 | 不能据角色名推断哪一个是真实首名教师 |
 | staff invitations | 0 | 当前没有待处理、接受、撤销或过期邀请记录 |
@@ -97,6 +97,12 @@
 
 全局注册码单例处于 active，最近更新时间为 `2026-08-03T05:25:56.694284Z`；核查未读取或输出注册码本身。
 
+### 3.1 正式管理员候选 staff 引导
+
+候选账号以 UUID SHA-256 `aa21999cfdc116f1846b205e6d83e2e679e91b88014ded573d60dd7366241f8e`、email SHA-256 `cbe8df0d0869c63c8a27be2ecfa35e36255a22c4292bff89bfe5e06a7fddad4a` 匿名登记。写前 target=1、role=student、active/account_status=active，学生档案、监护关系、staff-role、verified MFA 均为 0；写后 role=staff，其余值不变。现有 active admin=1、verified admin MFA=1，前后未变化。
+
+现有 `admin_set_identity` RPC 会设置旧版 `app.allow_profile_role_update` GUC，但 migration `20260728000400_r1_account_security.sql` 已把触发器改为对任何 authenticated 受保护字段变更一律拒绝，导致 RPC 调用失败；失败事务已回滚，无部分写入。随后在用户明确批准下，由受信任 PostgreSQL 管理连接直接更新同一 profile 行，并在一个事务中执行唯一性、旧值、零关联、admin/MFA 前置断言和新值/零岗位后置断言。`BUG-R1-LIVE-001` 保持开放：后续 admin 交接前必须用 migration 修复 RPC/触发器合同并在隔离库验证。
+
 ## 4. E3 备份、回退和错误定位
 
 ### 4.1 最近备份：`BLOCKED`
@@ -105,7 +111,7 @@
 - crontab 只有每 15 分钟磁盘检查，没有数据库/Storage 备份任务。
 - 已知备份目录中仅见 2026-07-04 的环境配置备份；没有可核验的 `database.dump`、`storage.tar.gz`、`SHA256SUMS` 或 manifest。
 - 已挂载备份磁盘存在，但在 runbook 指定和已知运维目录中没有找到可证明当前数据库/Storage 可恢复的最近备份。
-- 因此不存在可登记的最近成功时间、内容 hash 或恢复抽查结果。未执行备份或恢复，因为本轮只读授权不包含生产写入。
+- 因此不存在可登记的最近成功时间、内容 hash 或恢复抽查结果。未执行备份或恢复，因为该次备份核查授权不包含生产写入。
 
 ### 4.2 应用发布与回退：发布通过，受控回退仍待验证
 
@@ -140,7 +146,7 @@
 
 | Gate | 状态 | 已关闭 | 仍缺 |
 | --- | --- | --- | --- |
-| Gate 1 | `BLOCKED` | 目标域名、应用/数据库/Storage/compose 匿名指纹和部署 commit 已登记；仓库 fixture/rebuild/import 写入口及两个现有 purge RPC 合同已 fail-closed；本机已建立只绑定 `127.0.0.1` 且关闭自助注册的隔离 Supabase，11 个固定开发身份/profile、8 条 staff-role 绑定、11/11 Auth 密码登录及 1 条应用登录已验证；现有身份/业务对象完成匿名盘点 | 另行授权部署 manifest migration、分类真实对象并激活 protected-only 清单；正式管理员责任与恢复确认；正式教师、真实班级/课次/花名册；课次 release/snapshot/object 保护；授权范围复核 |
+| Gate 1 | `BLOCKED` | 目标域名、应用/数据库/Storage/compose 匿名指纹和部署 commit 已登记；仓库 fixture/rebuild/import 写入口及两个现有 purge RPC 合同已 fail-closed；本机隔离 Supabase 和固定账号登录已验证；唯一非固定 Gmail 已由产品负责人指定为正式管理员候选并从 student 引导为无岗位 active staff，匿名 hash、零业务关联和现有 admin/MFA 不变证据已登记 | 候选账号绑定 verified MFA；修复 `BUG-R1-LIVE-001` 并以 admin 恰好为 1 完成原子交接和恢复责任确认；另行授权部署 manifest migration、分类真实对象并激活 protected-only 清单；正式教师、真实班级/课次/花名册；课次 release/snapshot/object 保护；授权范围复核 |
 | Gate 3 | `BLOCKED` | 仓库危险写入口已拒绝误指 Xiaomi；两个现有 purge RPC 的目标绑定 manifest 合同已实现；current 已发布为 `20260814-221135` / `023f5167…`，previous 已知为 `20260724-051318` / `b833c4d…`；原子切换、服务及内外健康探针通过；错误表和查询维度已确认 | 另行授权部署并激活 protected-only manifest；立即建立并验证数据库+Storage 备份；恢复抽查；对 previous 做兼容烟测和受控 rollback；配置 release 标识；在另行授权下制造并定位一次受控错误 |
 
-这份证据证明 2026-08-14 的 Xiaomi 初次只读观察、2026-08-15 的本机隔离目标，以及 2026-08-15 当前提交的应用-only 生产发布和发布后只读健康事实。它不证明现有 `purpose=production` 对象是真实业务数据，也不证明备份可恢复、previous 可兼容回退或正式账号完成了 MFA/业务登录。
+这份证据证明 2026-08-14 的 Xiaomi 初次只读观察，以及 2026-08-15 的本机隔离目标、当前提交应用-only 生产发布、发布后健康和正式管理员候选 staff 引导事实。它不证明现有 `purpose=production` 对象是真实业务数据，也不证明备份可恢复、previous 可兼容回退、候选账号完成 MFA/admin 交接或正式教师业务登录。
