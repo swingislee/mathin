@@ -6,7 +6,7 @@
 >
 > **目标**：应用 `https://mathin.club`；Supabase `https://supabase.mathin.club`
 >
-> **授权边界**：只允许健康检查、目标指纹、匿名汇总、备份/回退结构和错误位置查询；未创建账号、未触发验证码、未写业务数据、未制造受控错误、未部署、未回退、未恢复或清理。
+> **运行核查授权边界**：只允许健康检查、目标指纹、匿名汇总、备份/回退结构和错误位置查询；后续 §2.2 只修改仓库代码、测试与文档。全程未创建账号、未触发验证码、未写业务数据、未制造受控错误、未部署、未回退、未恢复或清理。
 
 ## 1. E1 目标指纹
 
@@ -44,16 +44,25 @@
 - `purge_test_classroom`、`purge_test_course_family` 要求 `testdata.purge` 权限、`purpose='test'`、名称二次确认及引用检查；权限默认不授予。
 - R1-Live 正式对象保护 manifest 的产品合同已经写入 doc 00/04/25，但实现尚未覆盖所有写入口。
 
-### 2.2 失败项
+### 2.2 仓库写入口修复
 
-- 本机 `.env.local` 当前直接指向 `https://supabase.mathin.club`。
-- 该域名在本机解析为私网地址；`r1:family-fixtures`、`r1:family-journey-fixture`、`r1:manual-dataset` 只用“私网地址 + 环境开关”判定开发目标，因此会把本目标误判为可造数的开发环境。
-- `p4e:offline-fixture` 没有目标指纹/环境拒绝，会创建并删除 auth user、班级和课次。
-- `ci:db-rebuild` 只检查 `CI_ALLOW_DB_REBUILD`，没有校验数据库指纹；若 `DATABASE_URL` 被错误指向本目标，现有门不足以 fail-closed。
-- 课程导入/适配写入口从 `.env.local` 读取本目标并可写数据库或 Storage；当前没有统一生产目标拒绝层。
+2026-08-14 在不连接、不部署和不写生产目标的边界内完成公共 target policy：
+
+- `xiaomi`、正式域名、稳定数据库 system identifier 摘要和组合证据摘要均被识别为当前生产目标；私网 DNS 和历史“开发库”用途不再构成开发 attestation。
+- `r1:family-fixtures`、`r1:family-journey-fixture`、`r1:manual-dataset`、`p4e:offline-fixture` 和 `ci:db-rebuild` 没有生产放行参数，命中 Xiaomi 或缺少精确非生产 attestation 时在创建客户端或启动写 SQL 前拒绝。
+- 当前非生产写目标只登记 loopback；任意 LAN/远程地址和临时填写的任意 SHA-256 均不构成批准目标。
+- `cw:import`、`cw:aixuexi:import` 和 `cw:adapt-4x3 --apply` 默认拒绝生产；未来只有精确域名/SSH/稳定指纹、显式 `--allow-production-target` 与当前 Shell 的按操作确认同时成立，才可进入课程内容写阶段。该通道不适用于 fixture、重建或 purge。
+- `.env.example` 已改为 loopback 安全默认值；现有 `.env.local` 未改动，线上应用和 Xiaomi 服务也未改动。
+
+定向合同为 4 个文件、48 项通过、1 项条件跳过；`pnpm r1:test` 为 22 个文件、169/169 通过；全量 Vitest 为 91 个文件、609 项通过、1 项条件跳过；`pnpm ci:checks` 的 lint、typecheck、build、规划、secret/history scan 及其余门禁 17/17 通过。操作边界见 [`r1-write-target-policy.md`](../../runbooks/r1-write-target-policy.md)。
+
+### 2.3 仍未关闭
+
+- 本机 `.env.local` 仍直接指向 `https://supabase.mathin.club`，因此开发写态必须保持关闭，直到另行登记隔离的 loopback/RC 目标。
 - 数据库内 testdata purge RPC 只按权限、`purpose` 和局部引用保护，不读取组合目标指纹或受保护正式对象 manifest。仅凭 `purpose` 不能满足 R1-Live 正式对象保护合同。
+- 仓库保险丝不覆盖线上应用的正常业务写入，也不替代 RLS、领域权限、备份门或人工生产变更审批。
 
-结论：目标已被唯一识别，但开发与生产仍共享连接入口，危险脚本也没有统一强制指纹拒绝。Gate 1 继续 `BLOCKED`，下一项代码工作必须先建立公共 target policy，并让所有账号/fixture/reset/rebuild/import/purge 写入口复用。
+结论：仓库侧误写 Xiaomi 的 blocker 已关闭，但开发/生产连接隔离和数据库正式对象保护仍未成立。Gate 1 继续 `BLOCKED`；下一项代码工作是建立受保护 manifest 并让 purge fail-closed。
 
 ## 3. E1 身份与业务对象匿名基线
 
@@ -100,7 +109,7 @@
 
 | Gate | 状态 | 已关闭 | 仍缺 |
 | --- | --- | --- | --- |
-| Gate 1 | `BLOCKED` | 目标域名、应用/数据库/Storage/compose 匿名指纹和部署 commit 已登记；现有身份/业务对象完成匿名盘点 | 公共生产目标 fail-closed；本机开发连接与生产隔离；正式身份/对象 manifest；正式管理员责任与恢复确认；正式教师、真实班级/课次/花名册；课次 release/snapshot/object 保护；授权范围复核 |
-| Gate 3 | `BLOCKED` | current/previous 结构和回退命令位置已确认；错误表和查询维度已确认 | 立即建立并验证数据库+Storage 备份；恢复抽查；消除 73 条迁移的应用/数据库漂移并验证 rollback；配置 release 标识；在另行授权下制造并定位一次受控错误；所有危险入口指纹拒绝 |
+| Gate 1 | `BLOCKED` | 目标域名、应用/数据库/Storage/compose 匿名指纹和部署 commit 已登记；仓库 fixture/rebuild/import 写入口已 fail-closed；现有身份/业务对象完成匿名盘点 | 本机开发连接与生产隔离；数据库 purge 读取正式身份/对象 manifest；正式管理员责任与恢复确认；正式教师、真实班级/课次/花名册；课次 release/snapshot/object 保护；授权范围复核 |
+| Gate 3 | `BLOCKED` | 仓库危险写入口已拒绝误指 Xiaomi；current/previous 结构和回退命令位置已确认；错误表和查询维度已确认 | 立即建立并验证数据库+Storage 备份；恢复抽查；数据库 purge 正式对象保护；消除 73 条迁移的应用/数据库漂移并验证 rollback；配置 release 标识；在另行授权下制造并定位一次受控错误 |
 
 这份证据只证明 2026-08-14 的只读观察。它不证明现有 `purpose=production` 对象是真实业务数据，也不证明备份可恢复、旧 release 可回退或正式账号可登录。

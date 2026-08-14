@@ -16,12 +16,17 @@ function parseArgs(argv) {
     startAt: 1,
     limit: Number.POSITIVE_INFINITY,
     dryRun: false,
+    allowProductionTarget: false,
   };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === "--") continue;
     if (arg === "--dry-run") {
       options.dryRun = true;
+      continue;
+    }
+    if (arg === "--allow-production-target") {
+      options.allowProductionTarget = true;
       continue;
     }
     if (["--package-key", "--package-root", "--store-root", "--ssh-host", "--start-at", "--limit"].includes(arg)) {
@@ -60,6 +65,7 @@ export async function importAll(options) {
       "--ssh-host", options.sshHost,
     ];
     if (options.dryRun) args.push("--dry-run");
+    if (options.allowProductionTarget) args.push("--allow-production-target");
     const child = spawnSync(process.execPath, args, {
       cwd: process.cwd(),
       encoding: "utf8",

@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { createClient } from "@supabase/supabase-js";
+import { assertNonProductionWriteTarget } from "./lib/r1-write-target-policy.mjs";
 
 function loadLocalEnv() {
   const file = path.join(process.cwd(), ".env.local");
@@ -19,10 +20,16 @@ function loadLocalEnv() {
 }
 
 loadLocalEnv();
+const command = process.argv[2];
+if (!new Set(["create", "verify", "cleanup"]).has(command)) {
+  throw new Error("Usage: node scripts/p4e-offline-fixture.mjs <create|verify|cleanup>");
+}
 const fixtureFile = process.env.P4E_FIXTURE_FILE;
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+if (!fixtureFile || !url) throw new Error("P4E_FIXTURE_FILE and NEXT_PUBLIC_SUPABASE_URL are required");
+assertNonProductionWriteTarget({ operation: `p4e:offline-fixture:${command}`, supabaseUrl: url });
 const key = process.env.SUPABASE_SECRET_KEY;
-if (!fixtureFile || !url || !key) throw new Error("P4E_FIXTURE_FILE and Supabase server environment are required");
+if (!key) throw new Error("SUPABASE_SECRET_KEY is required");
 const admin = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 
 async function createFixture() {
@@ -83,9 +90,7 @@ async function verifyFixture() {
   console.log(`P4E offline fixture stored events: ${count ?? 0}`);
 }
 
-const command = process.argv[2];
 if (command === "create") await createFixture();
 else if (command === "cleanup") await cleanupFixture();
 else if (command === "verify") await verifyFixture();
-else throw new Error("Usage: node scripts/p4e-offline-fixture.mjs <create|verify|cleanup>");
 console.log(`P4E offline fixture ${command} complete`);

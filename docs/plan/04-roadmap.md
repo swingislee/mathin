@@ -8,7 +8,7 @@
 >
 > **SML 暂停位置**：`SML-0 · 合同与金标冻结`；空间数学可按独立权限或 Feature Flag 并行，不进入 R1-Live Gate。
 >
-> **当前阻塞**：`mathin.club` / `supabase.mathin.club` 的运行指纹已完成只读登记，但本机开发配置直连该目标，多个 fixture/rebuild/import 入口没有统一生产指纹拒绝；正式身份/对象 manifest、正式教师、真实班级/课次/花名册也尚未登记，因此 Gate 1 仍为 `BLOCKED`。目标机没有可核验的数据库/Storage 最近备份，应用与数据库相差 73 条迁移，Gate 3 已由 `UNKNOWN` 收敛为 `BLOCKED`。本阶段不授权创建真实账号、写入真实业务数据、部署或清理。
+> **当前阻塞**：`mathin.club` / `supabase.mathin.club` 的运行指纹已完成只读登记；仓库级 target policy 已把 Xiaomi 固定为当前生产目标，并覆盖 fixture、离线夹具、CI 重建和课程导入/适配入口。本机仍无隔离开发写目标，数据库 purge 仍缺正式对象保护 manifest，正式身份/对象、正式教师、真实班级/课次/花名册也尚未登记，因此 Gate 1 仍为 `BLOCKED`。目标机没有可核验的数据库/Storage 最近备份，应用与数据库相差 73 条迁移，Gate 3 保持 `BLOCKED`。本阶段不授权创建真实账号、写入真实业务数据、部署或清理。
 >
 > **核对日期**：2026-08-14；依据代码、迁移、现有 R1 证据、公网部署/备份/回滚手册及 `mathin-R1-Live-讨论稿.md`。
 
@@ -34,9 +34,9 @@ R1-Live 完成即代表 Mathin 进入公司内部生产使用。Production 1.0 �
 | Gate | 状态 | 已完成证据 | 缺失项与最小退出条件 |
 | --- | --- | --- | --- |
 | **Gate 0 · 上线范围冻结** | **PASS** | 本文件冻结首个闭环为“正式教师整班点名”；旧 R1 工作已分入本次必需、上线后、独立并行三类 | 范围改变只能由产品负责人显式裁决，并在同一变更同步 doc 00/04/25 和证据索引 |
-| **Gate 1 · 正式身份与真实数据** | **BLOCKED** | 目标组合指纹 `799d…63e39`、部署 commit、Storage 匿名摘要和现有身份/业务对象计数已只读登记；一次性邮箱绑定员工邀请、staff 角色/RLS、生产/测试班级 `purpose`、学生创建/导入、分班和课次对象均已实现 | 让 fixture/reset/rebuild/import/purge 对目标指纹 fail-closed；隔离本机开发写入口；建立正式身份/对象 manifest、1 个正式管理员责任与恢复记录、1 个正式教师、1 个真实 production 班级、至少 1 个真实课次和真实花名册；登记课次 release/snapshot/object hash；教师只见授权范围 |
+| **Gate 1 · 正式身份与真实数据** | **BLOCKED** | 目标组合指纹 `799d…63e39`、仓库写入口 target policy、部署 commit、Storage 匿名摘要和现有身份/业务对象计数已登记；测试造数/重建拒绝 Xiaomi，课程导入默认拒绝且只有指纹+双重人工确认的独立通道；一次性邮箱绑定员工邀请、staff 角色/RLS、生产/测试班级 `purpose`、学生创建/导入、分班和课次对象均已实现 | 隔离本机开发写入口；让数据库 purge 读取正式身份/对象 manifest 并 fail-closed；建立 1 个正式管理员责任与恢复记录、1 个正式教师、1 个真实 production 班级、至少 1 个真实课次和真实花名册；登记课次 release/snapshot/object hash；教师只见授权范围 |
 | **Gate 2 · 真实点名闭环** | **BLOCKED** | `AttendanceDrawer`、`saveAttendanceAction`、`session_attendance` upsert、`can_mark_attendance`/`can_view_attendance` RLS 和开课前点名门已落地；开发合同测试覆盖存在性 | 用正式教师在目标环境完成登录→班级→课次→整班点名→保存→刷新→退出/重登→再次读取；正式管理员可见；无权限主体不可见；增加一条等价的最小 Smoke/Golden Path，P0/核心 P1=0 |
-| **Gate 3 · 最小生产保险丝** | **BLOCKED** | current `20260724-051318` / previous `20260717-180746` 指针和回退脚本存在；`operational_errors` 可按时间/route/digest 查询；只读运行核查见 [`r1-live-target-audit.md`](../evidence/r1/r1-live-target-audit.md) | 目标机没有数据库/Storage 备份 timer 或可校验的数据备份；数据库比 current 应用源码时代领先 73 条迁移，previous commit 未登记；1,946 条错误均缺 release；仍需备份+恢复抽查、应用/数据库对齐后的回退验证、release 标识、受控错误定位和所有危险入口指纹拒绝 |
+| **Gate 3 · 最小生产保险丝** | **BLOCKED** | 仓库级危险写入口已统一拒绝误指 Xiaomi；current `20260724-051318` / previous `20260717-180746` 指针和回退脚本存在；`operational_errors` 可按时间/route/digest 查询；只读运行核查见 [`r1-live-target-audit.md`](../evidence/r1/r1-live-target-audit.md) | 目标机没有数据库/Storage 备份 timer 或可校验的数据备份；数据库比 current 应用源码时代领先 73 条迁移，previous commit 未登记；1,946 条错误均缺 release；仍需数据库 purge 的正式对象保护、备份+恢复抽查、应用/数据库对齐后的回退验证、release 标识和受控错误定位 |
 | **Gate 4 · 真实教师独立验收** | **BLOCKED** | 尚无 E4 真实教师记录 | 产品负责人选择 1 名真实教师；教师在不接受逐步指导的情况下完成 Gate 2；P0=0、影响闭环的 P1=0，P2 记录后立即向第一批公司教师开放 |
 
 `R1-Live-N` 表示当前只关闭 Gate N。Gate 0～3 取得退出证据后，在同一提交把当前阶段推进到下一 Gate；Gate 4 通过后标记 R1-Live 开放，并由产品负责人按真实问题选择下一个 Production 1.0 阶段。后续 Gate 可以并行准备，但不能越级记为 `PASS`。
@@ -73,7 +73,7 @@ R1-Live 完成即代表 Mathin 进入公司内部生产使用。Production 1.0 �
 按以下顺序关闭 Gate 1：
 
 1. **目标确认（只读已完成）**：应用 `mathin.club`、Supabase `supabase.mathin.club`、目标组合指纹 `799d6a9c5d2a6fd5ec8d5ff3bef7f36a251d3488a7b387ce01d057b096463e39`、Storage 匿名摘要、部署 commit 和数据库 migration head 已登记在 [`r1-live-target-audit.md`](../evidence/r1/r1-live-target-audit.md)。
-2. **防误清（当前最先实施）**：本机 `.env.local` 直连正式 Supabase，且域名解析为私网地址，会通过现有开发 fixture 的“私网目标”检查；`p4e:offline-fixture` 和 `ci:db-rebuild` 也缺组合指纹拒绝。建立一个公共 target policy，让账号/fixture/reset/rebuild/import/purge 写入口在命中正式指纹或缺少明确非生产 attestation 时默认拒绝；随后把 R1-Live 正式对象加入受保护 manifest。
+2. **防误清（仓库入口已完成，manifest 待实施）**：公共 target policy 已把 `xiaomi` / 正式域名 / 稳定数据库指纹视为同一生产目标；fixture、离线夹具和 CI 重建没有生产放行，课程导入/适配只有精确指纹、显式 CLI 开关和当前 Shell 确认同时成立才可进入生产写阶段，见 [`r1-write-target-policy.md`](../runbooks/r1-write-target-policy.md)。下一步隔离开发写入口，并让数据库 purge 读取 R1-Live 正式对象保护 manifest。
 3. **正式管理员**：登记 1 个正式管理员及 MFA/恢复联系人。这里的“唯一管理员”表示 admin 角色人数为 1，不表示生产只能有 1 个 auth 用户。
 4. **正式教师**：首名教师按现有邮箱绑定一次性邀请注册，管理员在 `/dashboard/staff` 分配 teacher staff role。邮箱/手机号通用 password 接口、重复密码、login-only OTP 与微信/QQ 绑定边界已冻结在 [`r1-live-auth-identities.md`](r1-live-auth-identities.md)；手机号生产启用需先完成邀请迁移、非生产验证和 Gate 1/3 保险丝，不作为首名教师开始点名的前置条件。
 5. **最小真实数据**：产品负责人提供真实教师、班级、课次和花名册；管理员使用现有 UI/RPC 创建或导入学生、选择一个已可读课程/讲次、创建 `purpose=production` 班级与课次并分班；把课次冻结/引用的 release ID、snapshot hash 和依赖对象纳入保护清单。不得用一次性 SQL 或复制开发 UUID 代替正式路径。

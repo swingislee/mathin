@@ -13,6 +13,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { createClient } from "@supabase/supabase-js";
 import { catalogVersionFilterSql, loadImportPlan, resolveInside, uploadOne } from "./cw-import.mjs";
+import { assertControlledContentWriteTarget } from "./lib/r1-write-target-policy.mjs";
 
 const AUTOMATIC_CLASSES = new Set(["A", "B", "C", "E", "F"]);
 const DEFAULT_SSH_HOST = "xiaomi";
@@ -324,12 +325,13 @@ async function uploadDerivedObjects(objects, url, key) {
 }
 
 export function parseArgs(argv) {
-  const options = { dryRun: false, apply: false, sshHost: process.env.CW_ADAPT_SSH_HOST ?? DEFAULT_SSH_HOST };
+  const options = { dryRun: false, apply: false, allowProductionTarget: false, sshHost: process.env.CW_ADAPT_SSH_HOST ?? DEFAULT_SSH_HOST };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === "--") continue;
     if (arg === "--dry-run") { options.dryRun = true; continue; }
     if (arg === "--apply") { options.apply = true; continue; }
+    if (arg === "--allow-production-target") { options.allowProductionTarget = true; continue; }
     if (["--package-root", "--store-root", "--courseware-id", "--output-root", "--ssh-host", "--catalog-version"].includes(arg)) {
       const value = argv[++i]; if (!value || value.startsWith("--")) fail(`${arg} requires a value`);
       options[arg.slice(2).replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = value; continue;
@@ -337,7 +339,7 @@ export function parseArgs(argv) {
     fail(`unknown argument ${arg}`);
   }
   options.packageRoot ??= process.env.CW_PACKAGE_ROOT; options.storeRoot ??= process.env.CW_STORE_ROOT;
-  if (!options.packageRoot || !options.storeRoot || !options.coursewareId) fail("usage: pnpm cw:adapt-4x3 -- --package-root <dir> --store-root <dir> --courseware-id <id> [--output-root <dir>] [--catalog-version <slug>] [--dry-run] [--apply]");
+  if (!options.packageRoot || !options.storeRoot || !options.coursewareId) fail("usage: pnpm cw:adapt-4x3 -- --package-root <dir> --store-root <dir> --courseware-id <id> [--output-root <dir>] [--catalog-version <slug>] [--dry-run] [--apply] [--allow-production-target]");
   if ((options.apply || !options.dryRun) && !options.outputRoot) fail("--output-root is required when deriving assets");
   if (options.apply && options.dryRun) fail("--apply cannot be combined with --dry-run");
   return options;
@@ -349,8 +351,20 @@ async function main() {
   const summary = { exportId: adapt.plan.exportId, coursewareId: adapt.plan.lecture.coursewareId, automaticPages: adapt.pages.length, classifications: Object.fromEntries(["A", "B", "C", "D", "E", "F"].map((key) => [key, adapt.classifications.filter((item) => item.adaptClass === key).length])), derivedBackgrounds: adapt.objects.length };
   if (options.dryRun) { process.stdout.write(`${JSON.stringify({ dryRun: true, ...summary }, null, 2)}\n`); return; }
   if (!options.apply) { process.stdout.write(`${JSON.stringify({ built: true, ...summary }, null, 2)}\n`); return; }
-  const env = await readLocalEnv(); const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? env.NEXT_PUBLIC_SUPABASE_URL; const key = process.env.SUPABASE_SECRET_KEY ?? env.SUPABASE_SECRET_KEY;
-  if (!url || !key) fail("NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY are required for --apply");
+  const env = { ...await readLocalEnv(), ...process.env }; const url = env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!url) fail("NEXT_PUBLIC_SUPABASE_URL is required for --apply");
+  assertControlledContentWriteTarget({
+    operation: "cw:adapt-4x3",
+    supabaseUrl: url,
+    sshHost: options.sshHost,
+    environment: env,
+    allowProduction: options.allowProductionTarget,
+    productionConfirmation: options.allowProductionTarget
+      ? process.env.MATHIN_PRODUCTION_WRITE_CONFIRMATION
+      : undefined,
+  });
+  const key = env.SUPABASE_SECRET_KEY;
+  if (!key) fail("SUPABASE_SECRET_KEY is required for --apply");
   const storage = await uploadDerivedObjects(adapt.objects, url, key);
   const database = JSON.parse(runRemoteSql(buildApplySql(adapt), options.sshHost));
   if (database.pages.inserted !== database.pages.expected || database.objects.present !== database.objects.expected) fail("database reconciliation failed");

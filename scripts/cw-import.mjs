@@ -7,6 +7,7 @@ import { pathToFileURL } from "node:url";
 import { createClient } from "@supabase/supabase-js";
 import sanitizeHtml from "sanitize-html";
 import { h5StoragePath } from "./lib/courseware-storage-paths.mjs";
+import { assertControlledContentWriteTarget } from "./lib/r1-write-target-policy.mjs";
 
 export { h5StoragePath } from "./lib/courseware-storage-paths.mjs";
 
@@ -1280,11 +1281,12 @@ async function uploadPlan(plan, storeRoot, client, uploadConfig) {
 }
 
 export function parseArgs(argv) {
-  const options = { dryRun: false, sshHost: process.env.CW_IMPORT_SSH_HOST ?? DEFAULT_SSH_HOST };
+  const options = { dryRun: false, allowProductionTarget: false, sshHost: process.env.CW_IMPORT_SSH_HOST ?? DEFAULT_SSH_HOST };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === "--") continue;
     if (arg === "--dry-run") { options.dryRun = true; continue; }
+    if (arg === "--allow-production-target") { options.allowProductionTarget = true; continue; }
     if (arg === "--package-root" || arg === "--store-root" || arg === "--courseware-id" || arg === "--ssh-host" || arg === "--catalog-version") {
       const value = argv[index + 1];
       if (!value || value.startsWith("--")) fail(`${arg} requires a value`);
@@ -1297,7 +1299,7 @@ export function parseArgs(argv) {
   options.packageRoot ??= process.env.CW_PACKAGE_ROOT;
   options.storeRoot ??= process.env.CW_STORE_ROOT;
   if (!options.packageRoot || !options.storeRoot || !options.coursewareId) {
-    fail("usage: pnpm cw:import -- --package-root <dir> --store-root <dir> --courseware-id <id> [--catalog-version <slug>] [--dry-run] [--ssh-host xiaomi]");
+    fail("usage: pnpm cw:import -- --package-root <dir> --store-root <dir> --courseware-id <id> [--catalog-version <slug>] [--dry-run] [--ssh-host <host>] [--allow-production-target]");
   }
   if (options.catalogVersion !== undefined && !CATALOG_VERSION_SLUG.test(options.catalogVersion)) {
     fail("--catalog-version must be a slug such as 2026");
@@ -1335,10 +1337,23 @@ async function main() {
     return;
   }
   const localEnv = await loadLocalEnv(process.cwd());
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? localEnv.NEXT_PUBLIC_SUPABASE_URL;
-  const resumableUrl = process.env.CW_STORAGE_RESUMABLE_URL ?? localEnv.CW_STORAGE_RESUMABLE_URL ?? url;
-  const key = process.env.SUPABASE_SECRET_KEY ?? localEnv.SUPABASE_SECRET_KEY;
-  if (!url || !key) fail("NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY are required for Storage upload");
+  const writeEnvironment = { ...localEnv, ...process.env };
+  const url = writeEnvironment.NEXT_PUBLIC_SUPABASE_URL;
+  if (!url) fail("NEXT_PUBLIC_SUPABASE_URL is required for Storage upload");
+  const resumableUrl = writeEnvironment.CW_STORAGE_RESUMABLE_URL ?? url;
+  assertControlledContentWriteTarget({
+    operation: "cw:import",
+    supabaseUrl: url,
+    additionalSupabaseUrls: [resumableUrl],
+    sshHost: options.sshHost,
+    environment: writeEnvironment,
+    allowProduction: options.allowProductionTarget,
+    productionConfirmation: options.allowProductionTarget
+      ? process.env.MATHIN_PRODUCTION_WRITE_CONFIRMATION
+      : undefined,
+  });
+  const key = writeEnvironment.SUPABASE_SECRET_KEY;
+  if (!key) fail("SUPABASE_SECRET_KEY is required for Storage upload");
   const client = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
   const storage = await uploadPlan(plan, path.resolve(options.storeRoot), client, { url: resumableUrl, key });
   const database = JSON.parse(runRemoteSql(buildImportSql(plan), options.sshHost));

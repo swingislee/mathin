@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
-import { lookup } from "node:dns/promises";
 import { createClient } from "@supabase/supabase-js";
+import { assertNonProductionWriteTarget } from "./lib/r1-write-target-policy.mjs";
 
 const UNBOUND_PARENT_EMAIL = "test-parent-unbound@mathin.local";
 const EXISTING_PARENT_EMAIL = "test-parent@mathin.local";
@@ -23,25 +23,6 @@ function loadLocalEnv() {
       value = value.slice(1, -1);
     }
     process.env[key] ??= value;
-  }
-}
-
-function isPrivateDevelopmentHost(hostname) {
-  return hostname === "localhost"
-    || hostname === "127.0.0.1"
-    || hostname === "::1"
-    || /^10\./.test(hostname)
-    || /^192\.168\./.test(hostname)
-    || /^172\.(1[6-9]|2\d|3[01])\./.test(hostname)
-    || /^(fc|fd|fe8|fe9|fea|feb)[0-9a-f]*:/i.test(hostname);
-}
-
-async function assertPrivateDevelopmentTarget(url) {
-  const hostname = new URL(url).hostname;
-  if (isPrivateDevelopmentHost(hostname)) return;
-  const addresses = await lookup(hostname, { all: true });
-  if (addresses.length === 0 || addresses.some(({ address }) => !isPrivateDevelopmentHost(address))) {
-    throw new Error("R1 family fixtures are restricted to private development hosts");
   }
 }
 
@@ -228,9 +209,10 @@ async function ensureMultiChildRelationship(admin) {
 loadLocalEnv();
 if (process.env.R1_DEV_TEST_FIXTURES !== "1") throw new Error("Set R1_DEV_TEST_FIXTURES=1 to modify development fixtures");
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+if (!url) throw new Error("NEXT_PUBLIC_SUPABASE_URL is required");
+assertNonProductionWriteTarget({ operation: "r1:family-fixtures", supabaseUrl: url });
 const key = process.env.SUPABASE_SECRET_KEY;
-if (!url || !key) throw new Error("Supabase server environment is required");
-await assertPrivateDevelopmentTarget(url);
+if (!key) throw new Error("SUPABASE_SECRET_KEY is required");
 
 const admin = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 const unbound = await ensureUnboundParent(admin, readUnifiedTestPassword());

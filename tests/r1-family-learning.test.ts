@@ -279,10 +279,10 @@ describe("R1-5 family learning contracts", () => {
     const pkg = JSON.parse(read("package.json"));
     expect(pkg.scripts["r1:family-fixtures"]).toBe("node scripts/ensure-r1-family-test-fixtures.mjs");
     expect(fixtures).toContain('process.env.R1_DEV_TEST_FIXTURES !== "1"');
-    expect(fixtures).toContain('import { lookup } from "node:dns/promises"');
+    expect(fixtures).toContain("assertNonProductionWriteTarget");
     expect(fixtures).toContain('markdownValue.startsWith("`")');
     expect(fixtures).toContain('updateUserById(user.id, { password, email_confirm: true })');
-    expect(fixtures).toContain("isPrivateDevelopmentHost");
+    expect(fixtures).not.toContain("isPrivateDevelopmentHost");
     expect(fixtures).toContain("test-parent-unbound@mathin.local");
     expect(fixtures).toContain("test-parent@mathin.local");
     expect(fixtures).toContain("test-student-2@mathin.local");
@@ -298,8 +298,8 @@ describe("R1-5 family learning contracts", () => {
     const pkg = JSON.parse(read("package.json"));
     expect(pkg.scripts["r1:family-journey-fixture"]).toBe("node scripts/ensure-r1-family-journey-fixture.mjs");
     expect(fixtures).toContain('process.env.R1_DEV_TEST_FIXTURES !== "1"');
-    expect(fixtures).toContain('import { lookup } from "node:dns/promises"');
-    expect(fixtures).toContain("assertPrivateDevelopmentTarget");
+    expect(fixtures).toContain("assertNonProductionWriteTarget");
+    expect(fixtures).not.toContain("assertPrivateDevelopmentTarget");
     expect(fixtures).toContain("assertExternalChannelsDisabled");
     expect(fixtures).toContain('["email", "sms", "wechat", "webhook"]');
     expect(fixtures).toContain('statuses.get(channel) !== "disabled"');

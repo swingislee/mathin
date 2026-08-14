@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { assertNonProductionWriteTarget } from "./lib/r1-write-target-policy.mjs";
 
 /** 在一次性 CI 容器里从零重建整个库：平台垫片 → 全部 migration（文件名序）→ 断言夹具。
  *  顺带每次 CI 都验证「从零重建库」这条路径没断（docs/plan/15-§5）。 */
@@ -10,8 +11,17 @@ if (!databaseUrl) {
   console.error("DATABASE_URL is required for ci:db-rebuild");
   process.exit(2);
 }
-if (!process.env.CI_ALLOW_DB_REBUILD) {
+if (process.env.CI_ALLOW_DB_REBUILD !== "1") {
   console.error("ci:db-rebuild refuses to run without CI_ALLOW_DB_REBUILD=1 (it is destructive; never point it at a real database)");
+  process.exit(2);
+}
+try {
+  assertNonProductionWriteTarget({
+    operation: "ci:db-rebuild",
+    databaseUrl,
+  });
+} catch (error) {
+  console.error(error instanceof Error ? error.message : String(error));
   process.exit(2);
 }
 

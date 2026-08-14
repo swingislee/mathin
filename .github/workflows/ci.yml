@@ -99,6 +99,8 @@ jobs:
       # 一次性容器，凭据即弃。自托管库的密钥绝不进 workflow（CLAUDE.md 密钥纪律）。
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
       CI_ALLOW_DB_REBUILD: "1"
+      MATHIN_WRITE_TARGET_ENVIRONMENT: test
+      MATHIN_WRITE_ALLOWED_DATABASE_TARGET: "127.0.0.1:5432/postgres"
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v6
