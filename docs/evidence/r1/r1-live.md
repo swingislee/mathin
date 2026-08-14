@@ -2,7 +2,7 @@
 
 ## 结论
 
-截至 2026-08-14，`mathin.club` / `supabase.mathin.club` 的应用、数据库、Storage、compose 和部署 commit 已完成只读指纹登记，仓库级写入口保险丝也已把 Xiaomi 固定为当前生产目标；测试造数/重建不能写入它，课程内容写入默认拒绝并使用独立受控通道。正式身份和业务对象尚未与现有数据分类，数据库 purge 尚未读取保护 manifest；目标机也没有可核验的数据库/Storage 最近备份，应用与数据库相差 73 条迁移，因此 R1-Live 当前状态仍为 Gate 0 `PASS`、Gate 1 `BLOCKED`、Gate 2 `BLOCKED`、Gate 3 `BLOCKED`、Gate 4 `BLOCKED`。
+截至 2026-08-15，`mathin.club` / `supabase.mathin.club` 的应用、数据库、Storage、compose 和部署 commit 已完成只读指纹登记，仓库级写入口保险丝也已把 Xiaomi 固定为当前生产目标；测试造数/重建不能写入它，课程内容写入默认拒绝并使用独立受控通道。仓库 migration 已为 purge 增加数据库指纹、protected/准删条目、hash/计数漂移和删除闭包 fail-closed 合同，并在一次性 PostgreSQL 15 通过从零重放与回滚式断言；该 migration 尚未部署到 Xiaomi，现有身份和业务对象也尚未分类或写入 active manifest。目标机仍没有可核验的数据库/Storage 最近备份，应用与数据库相差 73 条迁移，因此 R1-Live 当前状态仍为 Gate 0 `PASS`、Gate 1 `BLOCKED`、Gate 2 `BLOCKED`、Gate 3 `BLOCKED`、Gate 4 `BLOCKED`。
 
 本文件是 E0/E1 差距审阅，不是生产验收。2026-08-14 的目标 E1/E3 运行事实见 [`r1-live-target-audit.md`](r1-live-target-audit.md)；用户提供的 `docs/plan/mathin-R1-Live-讨论稿.md` 为产品裁决输入，现行施工顺序以 doc 04 为准。
 
@@ -11,12 +11,19 @@
 | Gate | 当前状态 | 已完成证据 | 缺失项 | 是否阻塞 | 最小修复范围 |
 | --- | --- | --- | --- | --- | --- |
 | Gate 0 · 上线范围冻结 | `PASS` | doc 04 已冻结“正式教师整班点名”为首个闭环，并将旧 R1-9～18 重新分类 | 无 | 否 | 范围改变只接受产品负责人显式裁决 |
-| Gate 1 · 正式身份与真实数据 | `BLOCKED` | 组合目标指纹 `799d…63e39`、部署 commit、Storage 摘要、身份/业务对象匿名基线已登记；仓库 fixture/rebuild/import 已接入公共 target policy；员工邀请、staff role/RLS、production/test purpose、学生/分班/课次 UI/RPC 已实现 | 本机无隔离开发写目标；数据库 purge 缺正式对象 manifest；现有身份和 `purpose=production` 对象未分正式/测试；无正式教师/真实闭环对象 manifest；未登记首个课次 release/snapshot/object | 是 | 先建立受保护 manifest 并隔离开发写入口，再使用正式 UI/RPC 建立或认领最小身份和数据 |
+| Gate 1 · 正式身份与真实数据 | `BLOCKED` | 组合目标指纹 `799d…63e39`、部署 commit、Storage 摘要、身份/业务对象匿名基线已登记；仓库 fixture/rebuild/import 已接入公共 target policy；migration `20260815000100` 已建立目标绑定的 protected/准删 manifest 和 purge fail-closed 合同；员工邀请、staff role/RLS、production/test purpose、学生/分班/课次 UI/RPC 已实现 | 本机无隔离开发写目标；migration 未部署到 Xiaomi；现有身份和 `purpose=production` 对象未分正式/测试且无 active manifest；无正式教师/真实闭环对象 manifest；未登记首个课次 release/snapshot/object | 是 | 先隔离开发写入口；另行授权后部署 migration、分类对象并激活 protected-only manifest，再使用正式 UI/RPC 建立或认领最小身份和数据 |
 | Gate 2 · 真实工作闭环 | `BLOCKED` | `AttendanceDrawer`、`saveAttendanceAction`、`session_attendance`、`can_mark_attendance`/`can_view_attendance`、开课前 `ATTENDANCE_REQUIRED`；`tests/r1-classroom-continuity.test.ts` 有静态合同 | 无正式目标写态运行；无保存→刷新→重登→再读、管理员可见、无权限拒绝的单条 Golden Path | 是 | 补一条聚焦 Playwright 等价链，并在正式账号/真实数据下人工完整执行一次 |
 | Gate 3 · 最小生产保险丝 | `BLOCKED` | current/previous release 结构、回退脚本、当前 commit、服务健康和 `operational_errors` 查询位置已确认 | 没有 backup timer 或可校验的数据备份；current 应用源码时代比数据库少 73 条迁移，previous commit 未知；全部 1,946 条错误缺 release；未做恢复抽查、兼容回退或受控错误 | 是 | 先建立数据库+Storage 备份并抽查恢复，再对齐应用/数据库、验证 rollback、注入 release 标识并在另行授权下定位一次受控错误 |
 | Gate 4 · 真实教师独立验收 | `BLOCKED` | 无 E4 | 未选择首名教师；未进行无指导观察；P0/P1 未形成关闭记录 | 是 | 选 1 名真实教师独立执行 Gate 2，清零 P0/核心 P1，P2 入池 |
 
 状态只允许 `PASS`、`BLOCKED`、`UNKNOWN`、`NOT REQUIRED`。Gate 3 已完成目标运行核查并得到明确失败事实，因此从 `UNKNOWN` 改为 `BLOCKED`，不能再用仓库脚本或历史演练替代当前备份与回退证据。
+
+### 仓库 manifest 实现证据
+
+- migration head `20260815000100_r1_live_object_protection_manifest.sql` 不包含 manifest seed 或 Xiaomi 指纹，只建立表、trigger、内部校验与现有两个 purge RPC 的 fail-closed 合同。
+- 一次性 PostgreSQL 15 从零重放 181 个 bootstrap/migration/seed/fixture 输入成功；`r1_live_object_protection_assertions.sql` 在事务回滚中覆盖无 manifest、错误目标/hash、重复管理员、计数漂移、active 不可变、protected 子对象和精确准删根。
+- 14/14 份 R1 数据库断言通过；manifest/purge 定向 Vitest 为 2 个文件、17/17；`pnpm r1:test` 为 23 个文件、178/178；全量 Vitest 为 92 个文件、618 项通过、1 项条件跳过；`pnpm ci:checks` 17/17 通过。
+- 本轮数据库验证和类型生成只连接 disposable loopback 容器；没有连接、部署或写入 Xiaomi。目标运行状态仍只采用 2026-08-14 的只读证据。
 
 ## 首个真实闭环选择
 
@@ -66,7 +73,7 @@
 
 | ID | 等级 | 原因 | 最小修复 | 人工操作 | 验收 |
 | --- | --- | --- | --- | --- | --- |
-| LIVE-P1-01 | 核心 P1 | 仓库级 target policy 已阻断私网 DNS 误判，fixture/rebuild 拒绝 Xiaomi，课程导入默认拒绝并要求精确生产指纹与双重人工确认；但本机无隔离开发写目标，数据库 purge 尚未读取正式对象 manifest | 建立正式身份、业务对象及课次内容保护 manifest，让 `purge_test_*` fail-closed；另行登记隔离开发目标后才恢复开发造数 | manifest 和隔离配置不需要生产业务写入；迁移/部署需另行授权 | fixture/reset/seed/rebuild 在 Xiaomi 拒绝；课程生产写通道缺任一控制即拒绝；正式对象及内容依赖不进入 purge 集合 |
+| LIVE-P1-01 | 核心 P1 | 仓库级 target policy 已阻断私网 DNS 误判，fixture/rebuild 拒绝 Xiaomi，课程导入默认拒绝并要求精确生产指纹与双重人工确认；purge manifest/fail-closed migration 已实现但未部署，Xiaomi 无 active 保护清单，本机也无隔离开发写目标 | 先登记隔离开发目标；另行授权部署 migration，按真实 UUID 建立正式身份、业务对象及课次内容 protected-only manifest | 迁移部署、读取真实 UUID 和激活 manifest 均需另行授权；R1-Live 不加入准删对象、不执行清理 | 无 manifest/错误目标/hash 或计数漂移/保护对象命中均拒绝；正式数据不出现在候选列表；fixture/reset/seed/rebuild 在 Xiaomi 拒绝 |
 | LIVE-P1-02 | 核心 P1 | 目标已有 12 个账号、6 个 production 班级等对象，但尚未分正式/测试；没有经 manifest 确认的正式管理员、教师和最小真实业务数据 | 先分类保护现有对象，再走员工邀请、角色分配、学生、production 班级、课次和分班正式 UI/RPC | 提供真实教师邮箱、班级/课次和花名册，并另行授权写入 | 教师登录后只看到自己的真实班级；账号恢复可用；现有对象无误认/误清 |
 | LIVE-P1-03 | 核心 P1 | 点名只在开发合同层有证据，没有目标环境 Golden Path | 增加单条聚焦 Smoke；正式教师人工执行保存/刷新/重登/再读，管理员与无权限角色作对照 | 教师和管理员各执行对应步骤 | 写入恰好一行/学生；重新读取一致；越权查询 0 泄露 |
 | LIVE-P1-04 | 核心 P1 | 当前没有数据库/Storage 数据备份；应用/数据库漂移 73 条迁移使旧 release 回退兼容性未知；错误可查但 release 全空 | 安装并执行备份、校验和隔离恢复抽查；对齐部署与 migration head；验证 previous；配置 `MATHIN_RELEASE`；经授权定位一次受控错误 | 备份/恢复、部署/回退和制造错误均需另行授权 | 有最近可恢复备份；回退兼容；错误可按 time/route/release/digest 定位；证据不含 secret/PII |

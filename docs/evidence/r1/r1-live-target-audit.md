@@ -56,13 +56,17 @@
 
 定向合同为 4 个文件、48 项通过、1 项条件跳过；`pnpm r1:test` 为 22 个文件、169/169 通过；全量 Vitest 为 91 个文件、609 项通过、1 项条件跳过；`pnpm ci:checks` 的 lint、typecheck、build、规划、secret/history scan 及其余门禁 17/17 通过。操作边界见 [`r1-write-target-policy.md`](../../runbooks/r1-write-target-policy.md)。
 
-### 2.3 仍未关闭
+### 2.3 2026-08-14 目标侧仍未关闭
 
 - 本机 `.env.local` 仍直接指向 `https://supabase.mathin.club`，因此开发写态必须保持关闭，直到另行登记隔离的 loopback/RC 目标。
-- 数据库内 testdata purge RPC 只按权限、`purpose` 和局部引用保护，不读取组合目标指纹或受保护正式对象 manifest。仅凭 `purpose` 不能满足 R1-Live 正式对象保护合同。
+- 核查时目标数据库内的 testdata purge RPC 只按权限、`purpose` 和局部引用保护，不读取组合目标指纹或受保护正式对象 manifest。仅凭 `purpose` 不能满足 R1-Live 正式对象保护合同。
 - 仓库保险丝不覆盖线上应用的正常业务写入，也不替代 RLS、领域权限、备份门或人工生产变更审批。
 
-结论：仓库侧误写 Xiaomi 的 blocker 已关闭，但开发/生产连接隔离和数据库正式对象保护仍未成立。Gate 1 继续 `BLOCKED`；下一项代码工作是建立受保护 manifest 并让 purge fail-closed。
+### 2.4 2026-08-15 仓库后续实现
+
+在不连接、不部署和不写 Xiaomi 的边界内，migration `20260815000100_r1_live_object_protection_manifest.sql` 已让现有两个 `purge_test_*` 读取当前 PostgreSQL cluster 指纹、active protected/准删清单、条目 hash/计数、显示名和实际影响计数；无 manifest、目标不符、内容漂移或保护闭包命中均在事件和删除前拒绝。迁移不 seed 任何目标 UUID，不激活 manifest，也没有生产放行参数；合同与授权边界见 [`r1-live-object-protection-manifest.md`](../../runbooks/r1-live-object-protection-manifest.md)。
+
+这项仓库实现没有改变 2026-08-14 的目标快照：Xiaomi 尚未部署该 migration，也没有 active 正式清单。开发/生产连接隔离和目标运行态保护仍未成立，Gate 1/3 保持 `BLOCKED`。
 
 ## 3. E1 身份与业务对象匿名基线
 
@@ -109,7 +113,7 @@
 
 | Gate | 状态 | 已关闭 | 仍缺 |
 | --- | --- | --- | --- |
-| Gate 1 | `BLOCKED` | 目标域名、应用/数据库/Storage/compose 匿名指纹和部署 commit 已登记；仓库 fixture/rebuild/import 写入口已 fail-closed；现有身份/业务对象完成匿名盘点 | 本机开发连接与生产隔离；数据库 purge 读取正式身份/对象 manifest；正式管理员责任与恢复确认；正式教师、真实班级/课次/花名册；课次 release/snapshot/object 保护；授权范围复核 |
-| Gate 3 | `BLOCKED` | 仓库危险写入口已拒绝误指 Xiaomi；current/previous 结构和回退命令位置已确认；错误表和查询维度已确认 | 立即建立并验证数据库+Storage 备份；恢复抽查；数据库 purge 正式对象保护；消除 73 条迁移的应用/数据库漂移并验证 rollback；配置 release 标识；在另行授权下制造并定位一次受控错误 |
+| Gate 1 | `BLOCKED` | 目标域名、应用/数据库/Storage/compose 匿名指纹和部署 commit 已登记；仓库 fixture/rebuild/import 写入口及两个现有 purge RPC 合同已 fail-closed；现有身份/业务对象完成匿名盘点 | 本机开发连接与生产隔离；另行授权部署 manifest migration、分类真实对象并激活 protected-only 清单；正式管理员责任与恢复确认；正式教师、真实班级/课次/花名册；课次 release/snapshot/object 保护；授权范围复核 |
+| Gate 3 | `BLOCKED` | 仓库危险写入口已拒绝误指 Xiaomi；两个现有 purge RPC 的目标绑定 manifest 合同已实现；current/previous 结构和回退命令位置已确认；错误表和查询维度已确认 | 另行授权部署并激活 protected-only manifest；立即建立并验证数据库+Storage 备份；恢复抽查；消除 73 条迁移的应用/数据库漂移并验证 rollback；配置 release 标识；在另行授权下制造并定位一次受控错误 |
 
 这份证据只证明 2026-08-14 的只读观察。它不证明现有 `purpose=production` 对象是真实业务数据，也不证明备份可恢复、旧 release 可回退或正式账号可登录。

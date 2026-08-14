@@ -14,4 +14,5 @@ runAssertionFiles("r1:db-audit", [
   "doc26_teacher_workflow_assertions.sql",
   "r1_work_items_assertions.sql",
   "r1_finance_close_assertions.sql",
+  "r1_live_object_protection_assertions.sql",
 ]);

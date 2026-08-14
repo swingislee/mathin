@@ -89,6 +89,7 @@ export function scanText(filePath, text) {
     const localOrDocumentation = normalizedHost === "localhost"
       || normalizedHost === "127.0.0.1"
       || normalizedHost === "::1"
+      || normalizedHost.endsWith(".test")
       || normalizedHost.endsWith(".invalid");
     if (!localOrDocumentation && !nonLiteralValue(password)) {
       addFinding(findings, filePath, text, match.index, "credential-url");

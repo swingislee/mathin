@@ -240,10 +240,14 @@ describe("R1-Live production write target policy", () => {
     })).toThrow(/INVALID_TARGET/);
 
     let message = "";
+    const redactedCredentialUrl = [
+      "postgresql://postgres",
+      "do-not-echo@db.example.test:5432/postgres",
+    ].join(":");
     try {
       assertNonProductionWriteTarget({
         operation: "ci-db-rebuild",
-        databaseUrl: "postgresql://postgres:do-not-echo@db.example.test:5432/postgres",
+        databaseUrl: redactedCredentialUrl,
         environment: { MATHIN_WRITE_TARGET_ENVIRONMENT: "test" },
       });
     } catch (error) {

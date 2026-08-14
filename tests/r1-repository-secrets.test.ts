@@ -51,6 +51,7 @@ describe("R1 repository secret scan", () => {
       "SUPABASE_SECRET_KEY=replace-with-your-secret-key",
       "RUNTIME_SECRET=${RUNTIME_SECRET}",
       "DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/postgres",
+      "EXAMPLE_TEST_URL=postgresql://user:password@db.example.test/example",
       "EXAMPLE_URL=postgresql://user:password@docs.invalid/example",
       jwt({ role: "anon", ref: "public-example" }),
     ].join("\n");

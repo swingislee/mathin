@@ -10,6 +10,17 @@ import { actionError, type ActionResult } from "@/lib/action-result";
 import { authorizedClient } from "./guards";
 import { COMMON_CODES, parse, requiredText, uuid } from "./schemas";
 
+const PURGE_MANIFEST_CODES = [
+  "PROTECTION_MANIFEST_REQUIRED",
+  "PROTECTION_MANIFEST_TARGET_MISMATCH",
+  "PROTECTION_MANIFEST_COUNT_MISMATCH",
+  "PROTECTION_MANIFEST_HASH_MISMATCH",
+  "PURGE_MANIFEST_TARGET_NOT_ALLOWED",
+  "PURGE_MANIFEST_LABEL_MISMATCH",
+  "PURGE_MANIFEST_COUNT_MISMATCH",
+  "PROTECTED_OBJECT_IN_PURGE_SET",
+] as const;
+
 const bulkArchiveSchema = z.object({
   classroomIds: z.array(uuid).min(1).max(200),
   archived: z.boolean(),
@@ -46,6 +57,7 @@ export async function purgeTestCourseFamilyAction(familyId: string, confirmName:
     return actionError(error, [
       "PRODUCTION_DATA_PROTECTED", "VARIANT_NOT_TRASHED", "COURSE_IN_USE",
       "COURSE_HAS_REPLACEMENT_HISTORY", "NAME_MISMATCH", "COURSE_FAMILY_NOT_FOUND",
+      ...PURGE_MANIFEST_CODES,
       ...COMMON_CODES,
     ]);
   }
@@ -66,7 +78,7 @@ export async function purgeTestClassroomAction(classroomId: string, confirmName:
   } catch (error) {
     return actionError(error, [
       "PRODUCTION_DATA_PROTECTED", "CLASSROOM_NOT_TRASHED", "CLASSROOM_HAS_HISTORY",
-      "NAME_MISMATCH", "CLASSROOM_NOT_FOUND", ...COMMON_CODES,
+      "NAME_MISMATCH", "CLASSROOM_NOT_FOUND", ...PURGE_MANIFEST_CODES, ...COMMON_CODES,
     ]);
   }
 }
