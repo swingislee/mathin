@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-仓库迁移 `20260815000100_r1_live_object_protection_manifest.sql` 已建立数据库内的保护合同，但尚未部署到 Xiaomi，也没有写入或激活任何真实 manifest。当前生产 `purge_test_*` 的运行状态不能由仓库实现证据推断，R1-Live Gate 1/3 继续 `BLOCKED`。
+迁移 `20260815000100_r1_live_object_protection_manifest.sql` 已于 2026-08-15 部署到 Xiaomi，并与 `20260815000200_r1_profile_role_update_guard.sql` 在同一事务登记。独立只读 postflight 确认两个 manifest 表均为 0 行、active manifest=0，14 个相关函数定义与本机隔离库一致；本次没有写入 UUID、激活清单或执行清理。保护合同已在生产生效为“无 active manifest 时列表为空、永久清理 fail-closed”，但正式对象仍未进入 active protected-only manifest，因此 R1-Live Gate 1/3 继续 `BLOCKED`。
 
 本合同只覆盖现有两个永久清理 RPC：`purge_test_classroom` 与 `purge_test_course_family`。R1-15/R1-18 的全库清理与 release 重建仍保持不可执行，直到它们也读取同一目标、保护对象和准删对象集合，并在隔离副本完成验收。
 
