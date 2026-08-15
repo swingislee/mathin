@@ -2,7 +2,9 @@
 
 ## 当前状态
 
-迁移 `20260815000100_r1_live_object_protection_manifest.sql` 已于 2026-08-15 部署到 Xiaomi，并与 `20260815000200_r1_profile_role_update_guard.sql` 在同一事务登记。独立只读 postflight 确认两个 manifest 表均为 0 行、active manifest=0，14 个相关函数定义与本机隔离库一致；本次没有写入 UUID、激活清单或执行清理。保护合同已在生产生效为“无 active manifest 时列表为空、永久清理 fail-closed”，但正式对象仍未进入 active protected-only manifest，因此 R1-Live Gate 1/3 继续 `BLOCKED`。
+迁移 `20260815000100_r1_live_object_protection_manifest.sql` 已于 2026-08-15 部署到 Xiaomi，并与 `20260815000200_r1_profile_role_update_guard.sql` 在同一事务登记。随后根据 R1-Live 当前 Gate 的既定步骤生成 protected-only artifact，经完整激活事务回滚演练后正式激活。独立新连接 postflight 确认 manifest=1、entry=4、active=1：保护 1 个正式管理员的 `auth_user`/`profile` 和 2 个现有 production `course_family` 根，`purge_allowed=0`，两个 purge 候选列表均为 0；账号和业务匿名计数无变化，也没有执行清理。
+
+精确 artifact 保存在 Xiaomi `/home/swing/services/mathin/evidence/r1/r1-live-protected-only-manifest-3cd327ac685f81182fad403519bf1bbf7075f1feb434638d8ae71bd1e06e0102.json`，文件 mode `600`、owner/group `swing`、规范化 SHA-256 `3cd327ac685f81182fad403519bf1bbf7075f1feb434638d8ae71bd1e06e0102`；条目集 SHA-256 为 `e62d27094fa63c91d5fa57669e1a06a006b733fb3478cd276266c8553b582514`。仓库只登记去标识化摘要，不保存原始 UUID。
 
 本合同只覆盖现有两个永久清理 RPC：`purge_test_classroom` 与 `purge_test_course_family`。R1-15/R1-18 的全库清理与 release 重建仍保持不可执行，直到它们也读取同一目标、保护对象和准删对象集合，并在隔离副本完成验收。
 
@@ -60,4 +62,4 @@ R1-15 只在生产快照的隔离副本创建替代 manifest，并明确加入�
 
 仓库验证使用一次性 PostgreSQL 15 从零重放全部 migrations，再运行 `supabase/tests/r1_live_object_protection_assertions.sql`；断言包在 `BEGIN/ROLLBACK` 中。它覆盖无 manifest、错误目标、错误 hash、计数漂移、active 不可变、受保护子课次和精确准删对象。
 
-部署 migration、读取真实 UUID、生成/激活正式 manifest、加入任何 `purge_allowed` 条目或执行 purge，都需要新的明确授权。仓库合同通过不构成这些生产动作的授权或完成证据。
+当前 Gate 已计划且不扩张范围的只读核查、manifest 维护和可逆验证，按 doc 04 的 standing execution direction 由 Agent 在每轮目标/写态/漂移自检后直接推进，不再拆成重复确认。需要产品负责人提供真实身份/班级信息、执行人工验收，或加入任何 `purge_allowed` 条目、执行 purge、扩大目标或进行不可逆动作时必须停下；仓库合同通过本身不构成这些计划外生产动作的完成证据。
