@@ -4,6 +4,8 @@
 
 迁移 `20260815000100_r1_live_object_protection_manifest.sql` 已于 2026-08-15 部署到 Xiaomi，并与 `20260815000200_r1_profile_role_update_guard.sql` 在同一事务登记。随后根据 R1-Live 当前 Gate 的既定步骤生成 protected-only artifact，经完整激活事务回滚演练后正式激活。独立新连接 postflight 确认 manifest=1、entry=4、active=1：保护 1 个正式管理员的 `auth_user`/`profile` 和 2 个现有 production `course_family` 根，`purge_allowed=0`，两个 purge 候选列表均为 0；账号和业务匿名计数无变化，也没有执行清理。
 
+首名真实教师于同日通过一次性员工邀请注册后，现有 active manifest 仍保持 4 条且不可原位更新；只读核查明确显示该教师 coverage=0。管理员完成 teacher 岗位分配后，应创建包含原 4 条及教师 `auth_user`、`profile`、`staff_role_member` 的完整 replacement manifest，在同一事务激活新版本并把旧版本转为 `retired`；replacement 仍必须是 protected-only、`purge_entry_count=0`，不得趁机推断或加入其他既有账号。
+
 精确 artifact 保存在 Xiaomi `/home/swing/services/mathin/evidence/r1/r1-live-protected-only-manifest-3cd327ac685f81182fad403519bf1bbf7075f1feb434638d8ae71bd1e06e0102.json`，文件 mode `600`、owner/group `swing`、规范化 SHA-256 `3cd327ac685f81182fad403519bf1bbf7075f1feb434638d8ae71bd1e06e0102`；条目集 SHA-256 为 `e62d27094fa63c91d5fa57669e1a06a006b733fb3478cd276266c8553b582514`。仓库只登记去标识化摘要，不保存原始 UUID。
 
 本合同只覆盖现有两个永久清理 RPC：`purge_test_classroom` 与 `purge_test_course_family`。R1-15/R1-18 的全库清理与 release 重建仍保持不可执行，直到它们也读取同一目标、保护对象和准删对象集合，并在隔离副本完成验收。
