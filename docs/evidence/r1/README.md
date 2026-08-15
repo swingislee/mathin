@@ -32,7 +32,7 @@ failure_ticket
 
 | 阶段 | 状态 | 日期 | 证据 |
 | --- | --- | --- | --- |
-| R1-Live | Gate 0 passed；Gate 1 current/blocking；Gate 3 blocked | 2026-08-15 | [真实教师点名闭环差距表](r1-live.md)；[目标核查、应用发布与正式管理员候选引导](r1-live-target-audit.md)；[仓库写入目标保险丝](../../runbooks/r1-write-target-policy.md)；[正式对象保护 manifest](../../runbooks/r1-live-object-protection-manifest.md)。Xiaomi 已固定为当前生产目标；仓库危险写入口与 purge 数据库合同均 fail-closed；本机隔离 Supabase 与固定账号登录已验证。生产 current 已发布为 `20260814-221135` / `023f5167…`，服务及内外健康探针通过。唯一非固定 Gmail 已由产品负责人指定为正式管理员候选并从 student 引导为无岗位 active staff；候选 MFA/admin 原子交接、`admin_set_identity` 兼容修复和正式身份 manifest 仍待完成。manifest migration 尚未部署、无 active 正式清单，也没有可恢复备份或已验证 previous rollback，Gate 1/3 仍未通过 |
+| R1-Live | Gate 0 passed；Gate 1 current/blocking；Gate 3 blocked | 2026-08-15 | [真实教师点名闭环差距表](r1-live.md)；[目标核查、应用发布与正式管理员身份交接](r1-live-target-audit.md)；[仓库写入目标保险丝](../../runbooks/r1-write-target-policy.md)；[正式对象保护 manifest](../../runbooks/r1-live-object-protection-manifest.md)。Xiaomi 已固定为当前生产目标；仓库危险写入口与 purge 数据库合同均 fail-closed；本机隔离 Supabase 与固定账号登录已验证。生产 current 已发布为 `20260814-221135` / `023f5167…`，服务及内外健康探针通过。唯一非固定 Gmail 已完成 verified MFA 和正式 admin 原子交接，提交后唯一 active admin=1，原固定开发 admin 已降为无岗位 active staff；新会话 MFA/AAL2/admin 路由验收、恢复登记、`admin_set_identity` 兼容修复和正式身份 manifest 仍待完成。manifest migration 尚未部署、无 active 正式清单，也没有可恢复备份或已验证 previous rollback，Gate 1/3 仍未通过 |
 | R1-0 | passed | 2026-07-28 | [规划真相源与发布边界冻结](r1-0.md) |
 | R1-1 | passed | 2026-07-28 | [机构配置、规则与 Feature Flag](r1-1.md) |
 | R1-2 | passed | 2026-07-28 | [Jobs、通知、文件与外部集成](r1-2.md) |

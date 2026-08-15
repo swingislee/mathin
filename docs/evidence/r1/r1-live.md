@@ -2,16 +2,16 @@
 
 ## 结论
 
-截至 2026-08-15，`mathin.club` / `supabase.mathin.club` 的应用、数据库、Storage、compose 和部署 commit 已完成目标登记，仓库级写入口保险丝也已把 Xiaomi 固定为当前生产目标；测试造数/重建不能写入它，课程内容写入默认拒绝并使用独立受控通道。本机已建立只绑定 `127.0.0.1` 的隔离 Supabase，应用本地环境和非生产写目标 attestation 已切换，自助注册关闭；Xiaomi 上的 11 个固定开发邮箱与 gitignored manifest 完全一致，本机据此独立创建 11 个开发身份/profile 和 8 条 staff-role 绑定，11/11 密码登录及 1 条应用登录通过，学生、班级、课次、报名和点名表仍为 0；该本机初始化没有复制或修改 Xiaomi 数据。仓库 migration 已为 purge 增加数据库指纹、protected/准删条目、hash/计数漂移和删除闭包 fail-closed 合同，并在一次性 PostgreSQL 15 通过从零重放与回滚式断言；该 migration 尚未部署到 Xiaomi，除管理员候选的产品裁决外，其余身份和业务对象尚未分类，所有对象也均未写入 active manifest。经用户明确授权，当前提交 `023f5167f330935b4951d28a1b33a0cd28cd4fa9` 已作为仅应用发布切换到生产 release `20260814-221135`，旧 current `20260724-051318`（commit `b833c4d…`）成为 previous；服务、loopback/Caddy 健康检查及公网健康/登录/MFA 路由探针均通过，该应用发布未执行数据库 migration、账号写入或业务数据写入。随后用户明确指定唯一非固定 Gmail 身份为正式管理员候选；生产库已在 fail-closed 单事务内把其 profile 从 `student` 改为 `staff`，保持 active、无 staff 岗位、无学生/监护关联、MFA=0，现有唯一 admin 及其 verified MFA 不变。目标机仍没有可核验的数据库/Storage 最近备份，previous 尚未做兼容烟测或受控回退，错误记录仍缺 release 关联，因此 R1-Live 当前状态仍为 Gate 0 `PASS`、Gate 1 `BLOCKED`、Gate 2 `BLOCKED`、Gate 3 `BLOCKED`、Gate 4 `BLOCKED`。
+截至 2026-08-15，`mathin.club` / `supabase.mathin.club` 的应用、数据库、Storage、compose 和部署 commit 已完成目标登记，仓库级写入口保险丝也已把 Xiaomi 固定为当前生产目标；测试造数/重建不能写入它，课程内容写入默认拒绝并使用独立受控通道。本机已建立只绑定 `127.0.0.1` 的隔离 Supabase，应用本地环境和非生产写目标 attestation 已切换，自助注册关闭；Xiaomi 上的 11 个固定开发邮箱与 gitignored manifest 完全一致，本机据此独立创建 11 个开发身份/profile 和 8 条 staff-role 绑定，11/11 密码登录及 1 条应用登录通过，学生、班级、课次、报名和点名表仍为 0；该本机初始化没有复制或修改 Xiaomi 数据。仓库 migration 已为 purge 增加数据库指纹、protected/准删条目、hash/计数漂移和删除闭包 fail-closed 合同，并在一次性 PostgreSQL 15 通过从零重放与回滚式断言；该 migration 尚未部署到 Xiaomi，除正式管理员的产品裁决外，其余身份和业务对象尚未分类，所有对象也均未写入 active manifest。经用户明确授权，当前提交 `023f5167f330935b4951d28a1b33a0cd28cd4fa9` 已作为仅应用发布切换到生产 release `20260814-221135`，旧 current `20260724-051318`（commit `b833c4d…`）成为 previous；服务、loopback/Caddy 健康检查及公网健康/登录/MFA 路由探针均通过，该应用发布未执行数据库 migration、账号写入或业务数据写入。随后用户明确指定唯一非固定 Gmail 身份为正式管理员：生产库先在 fail-closed 单事务内把其 profile 从 `student` 引导为无岗位 active `staff`；本人完成 MFA 后，只读核查确认 verified factor=1，再以一个 fail-closed PostgreSQL 事务同时把该账号从 `staff` 提升为 `admin`、把原固定开发 `admin` 降为无岗位 active `staff`。提交后目标账号是唯一 active admin 且 MFA=1，admin 总数/active admin 总数均恰好为 1；交接未修改 Auth identity、密码、MFA factor、session、staff-role 或业务表。目标机仍没有可核验的数据库/Storage 最近备份，previous 尚未做兼容烟测或受控回退，错误记录仍缺 release 关联，因此 R1-Live 当前状态仍为 Gate 0 `PASS`、Gate 1 `BLOCKED`、Gate 2 `BLOCKED`、Gate 3 `BLOCKED`、Gate 4 `BLOCKED`。
 
-本文件是 E0/E1 差距审阅，不是生产验收。2026-08-14 的 Xiaomi E1/E3 运行事实，以及 2026-08-15 的本机隔离目标、应用发布和正式管理员候选身份引导证据见 [`r1-live-target-audit.md`](r1-live-target-audit.md)；用户提供的 `docs/plan/mathin-R1-Live-讨论稿.md` 为产品裁决输入，现行施工顺序以 doc 04 为准。
+本文件是 E0/E1 差距审阅，不是完整生产验收。2026-08-14 的 Xiaomi E1/E3 运行事实，以及 2026-08-15 的本机隔离目标、应用发布、正式管理员身份引导和原子交接证据见 [`r1-live-target-audit.md`](r1-live-target-audit.md)；用户提供的 `docs/plan/mathin-R1-Live-讨论稿.md` 为产品裁决输入，现行施工顺序以 doc 04 为准。
 
 ## Gate 状态表
 
 | Gate | 当前状态 | 已完成证据 | 缺失项 | 是否阻塞 | 最小修复范围 |
 | --- | --- | --- | --- | --- | --- |
 | Gate 0 · 上线范围冻结 | `PASS` | doc 04 已冻结“正式教师整班点名”为首个闭环，并将旧 R1-9～18 重新分类 | 无 | 否 | 范围改变只接受产品负责人显式裁决 |
-| Gate 1 · 正式身份与真实数据 | `BLOCKED` | 组合目标指纹 `799d…63e39`、部署 commit、Storage 摘要、身份/业务对象匿名基线已登记；仓库 fixture/rebuild/import 已接入公共 target policy；本机已建立只绑定 `127.0.0.1` 的隔离 Supabase 并完成固定账号验证；唯一非固定 Gmail 已由产品负责人指定为正式管理员候选，生产 profile 已从 `student` 改为 active `staff`，无 staff 岗位、学生/监护关联或 MFA，现有唯一 admin/MFA 不变；migration `20260815000100` 已建立目标绑定的 protected/准删 manifest 和 purge fail-closed 合同；员工邀请、staff role/RLS、production/test purpose、学生/分班/课次 UI/RPC 已实现 | 候选账号尚未完成 MFA、admin 原子交接和恢复责任登记；`admin_set_identity` 与新 profile 保护触发器不兼容；migration 未部署到 Xiaomi；其余身份和 `purpose=production` 对象未分正式/测试且无 active manifest；无正式教师/真实闭环对象 manifest；未登记首个课次 release/snapshot/object | 是 | 先由候选账号绑定并验证 MFA，再修复/验证身份提升合同并以恰好 1 个 admin 完成原子交接；随后部署 migration、分类对象并激活 protected-only manifest，再建立最小真实身份和数据 |
+| Gate 1 · 正式身份与真实数据 | `BLOCKED` | 组合目标指纹 `799d…63e39`、部署 commit、Storage 摘要、身份/业务对象匿名基线已登记；仓库 fixture/rebuild/import 已接入公共 target policy；本机已建立只绑定 `127.0.0.1` 的隔离 Supabase 并完成固定账号验证；唯一非固定 Gmail 已由产品负责人指定为正式管理员，verified MFA=1，生产库已原子完成 `staff→admin` 与原固定开发 `admin→staff` 的双行交接，提交后唯一 active admin 恰好 1 个且未附带 staff 岗位或业务关联；migration `20260815000100` 已建立目标绑定的 protected/准删 manifest 和 purge fail-closed 合同；员工邀请、staff role/RLS、production/test purpose、学生/分班/课次 UI/RPC 已实现 | 尚缺正式管理员退出/重登后的 MFA challenge、AAL2/admin 路由验收和恢复责任登记；`admin_set_identity` 与新 profile 保护触发器仍不兼容；migration 未部署到 Xiaomi；其余身份和 `purpose=production` 对象未分正式/测试且无 active manifest；无正式教师/真实闭环对象 manifest；未登记首个课次 release/snapshot/object | 是 | 先完成正式管理员登录旅程与恢复登记，并修复/验证日常身份变更合同；随后部署 migration、分类对象并激活 protected-only manifest，再建立最小真实身份和数据 |
 | Gate 2 · 真实工作闭环 | `BLOCKED` | `AttendanceDrawer`、`saveAttendanceAction`、`session_attendance`、`can_mark_attendance`/`can_view_attendance`、开课前 `ATTENDANCE_REQUIRED`；`tests/r1-classroom-continuity.test.ts` 有静态合同 | 无正式目标写态运行；无保存→刷新→重登→再读、管理员可见、无权限拒绝的单条 Golden Path | 是 | 补一条聚焦 Playwright 等价链，并在正式账号/真实数据下人工完整执行一次 |
 | Gate 3 · 最小生产保险丝 | `BLOCKED` | current/previous immutable release、原子切换、自动失败回退脚本、commit 元数据、服务健康和 `operational_errors` 查询位置已确认；current 已部署为 `20260814-221135` / `023f5167…`，previous 已知为 `20260724-051318` / `b833c4d…`；loopback、Caddy 与公网探针通过 | 没有 backup timer 或可校验的数据备份；生产 migration 账本仍缺 `20260815000100` 且多一个历史短名条目；previous 未做兼容烟测或受控回退；全部 1,946 条错误缺 release；未做恢复抽查或受控错误 | 是 | 先建立数据库+Storage 备份并抽查恢复，再部署/核对 manifest migration、验证 previous rollback、注入 release 标识并在另行授权下定位一次受控错误 |
 | Gate 4 · 真实教师独立验收 | `BLOCKED` | 无 E4 | 未选择首名教师；未进行无指导观察；P0/P1 未形成关闭记录 | 是 | 选 1 名真实教师独立执行 Gate 2，清零 P0/核心 P1，P2 入池 |
@@ -44,7 +44,7 @@
 
 固定账号连接前先对 Xiaomi 做只读集合核对：目标共 12 个 auth user，其中 11 个 `@mathin.local` 身份与 `.claude/test-accounts.local.md` 的 11 个唯一邮箱完全一致，另 1 个非固定域账号未读取到仓库、未复制到本机。新 runner 从 manifest 的 12 条角色行合并为 11 个账号，不把邮箱、密码或 UUID 写入日志/源码；本机 profile 分布为 admin 1、staff 6、student 2、parent 2，staff-role 分布为 teacher 3、research 2、sales/principal/registrar 各 1，与 Xiaomi 匿名摘要一致。账号创建后逐一密码登录 11/11，通过仓库 Playwright 固定学生账号进入 `/zh/notebook/me` 为 1/1；该浏览器证据只证明本机应用与 Auth 连接，不证明正式身份或真实业务旅程。
 
-### 生产正式管理员候选身份引导证据
+### 生产正式管理员身份引导与原子交接证据
 
 2026-08-15，产品负责人明确指定 Xiaomi 上唯一非固定 Gmail 身份为未来正式管理员，并要求先改为 staff、本人绑定 MFA 后再做 admin 原子交接。写前脱敏核查确认目标恰好 1 个、当前为 active student、无学生档案/监护关系/staff 岗位、MFA=0；现有 active admin 恰好 1 个且 verified MFA=1。首次调用现有 `admin_set_identity` RPC 被 `20260728000400_r1_account_security.sql` 重定义的 profile 保护触发器拒绝，事务整体回滚；随后按用户明确授权通过受信任 PostgreSQL 管理连接直接更新这一行，事务同时锁定目标并重复全部前置/后置断言。
 
@@ -58,6 +58,19 @@
 | `command_or_runbook` | Xiaomi `supabase-db` 容器内 PostgreSQL；脱敏只读 preflight → fail-closed 单事务 role update → 脱敏 postflight；未触碰 auth identity、密码、session、staff-role 或业务表 |
 | `artifact_url_or_path`, `artifact_hash` | 本节 Git 证据；`not_applicable`（不保存含 PII 的原始 SQL 输出） |
 | `retention`, `access_roles`, `failure_ticket` | 候选身份永久保留并在 manifest 部署后纳入 protected 清单；产品/运维/安全；`BUG-R1-LIVE-001`：`admin_set_identity` 被后续 profile 保护触发器拒绝，需 migration 修复和非生产回归 |
+
+本人完成 MFA 后，先以只读查询确认目标 verified factor 恰好为 1、仍为 active staff、现有 active admin 恰好为 1，再按此前“提权为生产库 admin”的明确授权执行一次性原子交接。单个受信任 PostgreSQL 事务锁定两个 profile，以同一条受保护更新把目标提升为 admin、把原固定开发 admin 降为 staff，并在提交前断言角色、MFA、岗位和 admin 总数；任一断言失败都会整体回滚。
+
+| 证据字段 | 值 |
+| --- | --- |
+| `gate_id`, `domain`, `result` | `R1-Live Gate 1`；正式管理员 MFA 与原子交接；数据库子步骤 `PASS`，Gate 1 整体仍 `BLOCKED` |
+| `measured_value`, `threshold` | 目标 verified MFA=1；恰好 2 个 profile 角色行参与 `staff/admin` 对调；提交后目标为 active admin，原固定开发 admin 为 active staff；admin=1、active admin=1；双方 staff-role 均为 0。阈值为目标 MFA verified、只交换两个顶层角色、任一提交态唯一 admin、零附带岗位，全部满足 |
+| `commit_sha`, `migration_head`, `environment` | 操作基线 `e6ed987c849bcdfda6ebbf89a8e7850a51b87c95`；生产 head `20260814000200_p6_qa_student_cleanup`；Xiaomi / production |
+| `dataset_manifest` | auth user 总数仍为 12；profile 分布保持 admin 1/staff 7/student 2/parent 2；staff-role 绑定总数仍为 8。正式管理员 UUID SHA-256 `aa21999cfdc116f1846b205e6d83e2e679e91b88014ded573d60dd7366241f8e`、email SHA-256 `cbe8df0d0869c63c8a27be2ecfa35e36255a22c4292bff89bfe5e06a7fddad4a`；原固定开发管理员 UUID SHA-256 `fb8e182eb5dd55fb0dff11299dbc9e28cb375131d53f8f355ef99a52d1b45e48`、email SHA-256 `157d40c2b2389d34af03c8e44e9106b28c127e94acf493e776d063d35a80cc54`；仓库不记录原值 |
+| `started_at`, `finished_at`, `actor`, `approver` | 2026-08-15（Asia/Shanghai）；两个 profile `updated_at=2026-08-15T03:31:45.510Z`；Codex；`swingislee`（此前明确要求“将这个账号设置为生产库正式管理员账号”，本轮确认“已启用 MFA”） |
+| `command_or_runbook` | Xiaomi `supabase-db` 容器内 PostgreSQL；脱敏只读 MFA/角色 preflight → fail-closed 两行原子 role swap → 脱敏 postflight；未触碰 Auth identity、密码、MFA factor、session、staff-role 或业务表 |
+| `artifact_url_or_path`, `artifact_hash` | 本节 Git 证据；`not_applicable`（不保存含 PII 的原始 SQL 输出） |
+| `retention`, `access_roles`, `failure_ticket` | 正式管理员身份永久保留并在 manifest 部署后纳入 protected 清单；产品/运维/安全；`BUG-R1-LIVE-001` 继续开放，用于修复日常管理 UI/RPC 的 profile 角色变更合同，不否定本次受控原子交接证据 |
 
 ## 首个真实闭环选择
 
@@ -108,7 +121,7 @@
 | ID | 等级 | 原因 | 最小修复 | 人工操作 | 验收 |
 | --- | --- | --- | --- | --- | --- |
 | LIVE-P1-01 | 核心 P1 | 仓库级 target policy 已阻断私网 DNS 误判，fixture/rebuild 拒绝 Xiaomi，课程导入默认拒绝并要求精确生产指纹与双重人工确认；本机隔离开发写目标已登记并通过；purge manifest/fail-closed migration 已实现但未部署，Xiaomi 无 active 保护清单 | 另行授权部署 migration，按真实 UUID 建立正式身份、业务对象及课次内容 protected-only manifest | 迁移部署、读取真实 UUID 和激活 manifest 均需另行授权；R1-Live 不加入准删对象、不执行清理 | 无 manifest/错误目标/hash 或计数漂移/保护对象命中均拒绝；正式数据不出现在候选列表；fixture/reset/seed/rebuild 在 Xiaomi 拒绝 |
-| LIVE-P1-02 | 核心 P1 | 正式管理员候选已成为无岗位 staff，但 MFA=0、尚未完成唯一 admin 原子交接或恢复登记；`admin_set_identity` 与新 profile 保护触发器不兼容。目标其余身份、6 个 production 班级等对象尚未分正式/测试，也没有经 manifest 确认的正式教师和最小真实业务数据 | 候选本人先绑定 MFA；增加 migration 修复身份提升合同并在隔离库回归，再以 admin 总数始终为 1 的单事务交接；随后分类保护现有对象并走员工邀请、角色分配、学生、production 班级、课次和分班正式 UI/RPC | 本轮只要求候选本人绑定 MFA；后续 admin 交接、migration、真实教师/班级/课次/花名册均需逐项授权 | 候选 MFA verified；交接后 admin 恰好 1 且 MFA=100%；教师只见自己的真实班级；账号恢复可用；现有对象无误认/误清 |
+| LIVE-P1-02 | 核心 P1 | 正式管理员已完成 verified MFA 和唯一 admin 原子交接，但尚缺退出/重登后的 MFA challenge、AAL2/admin 路由验收及恢复责任登记；`admin_set_identity` 与新 profile 保护触发器仍不兼容。目标其余身份、6 个 production 班级等对象尚未分正式/测试，也没有经 manifest 确认的正式教师和最小真实业务数据 | 先完成人工登录旅程并登记恢复责任；增加 migration 修复日常身份变更合同并在隔离库回归；随后分类保护现有对象并走员工邀请、角色分配、学生、production 班级、课次和分班正式 UI/RPC | 本轮只要求正式管理员退出、重新登录、完成 MFA challenge 并打开 admin 路由；migration、真实教师/班级/课次/花名册仍需逐项授权 | admin 恰好 1 且 MFA=100%；新会话达到 AAL2 并可进入 admin 路由；教师只见自己的真实班级；账号恢复可用；现有对象无误认/误清 |
 | LIVE-P1-03 | 核心 P1 | 点名只在开发合同层有证据，没有目标环境 Golden Path | 增加单条聚焦 Smoke；正式教师人工执行保存/刷新/重登/再读，管理员与无权限角色作对照 | 教师和管理员各执行对应步骤 | 写入恰好一行/学生；重新读取一致；越权查询 0 泄露 |
 | LIVE-P1-04 | 核心 P1 | current 已更新到 `023f5167…` 且 previous commit 已知，原有 73 条应用时代差已消除；当前仍没有数据库/Storage 数据备份，生产账本未部署 `20260815000100`，previous 未经兼容回退验证，错误可查但 release 全空 | 安装并执行备份、校验和隔离恢复抽查；部署并核对 manifest migration；验证 previous；配置 `MATHIN_RELEASE`；经授权定位一次受控错误 | 备份/恢复、migration 部署、回退和制造错误均需另行授权 | 有最近可恢复备份；回退兼容；错误可按 time/route/release/digest 定位；证据不含 secret/PII |
 | LIVE-P1-05 | 核心 P1 | 没有真实教师独立验收 | 选 1 名教师无逐步指导完成闭环 | 产品负责人选择并观察 | P0=0、影响闭环的 P1=0；P2 已登记 |
