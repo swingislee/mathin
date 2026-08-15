@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 const root = process.cwd();
 const read = (file: string) => fs.readFileSync(path.join(root, file), "utf8");
 const migration = read("supabase/migrations/20260728000400_r1_account_security.sql");
+const roleGuardMigration = read("supabase/migrations/20260815000200_r1_profile_role_update_guard.sql");
 
 describe("R1-3 account security contracts", () => {
   it("versions exact consent records and rejects duplicate open rights requests without deleting history", () => {
@@ -48,6 +49,17 @@ describe("R1-3 account security contracts", () => {
     expect(actions).toContain("supportTargetSchema");
     expect(actions).toContain("updateUserById");
     expect(actions).toContain('rpc("record_account_support_action"');
+  });
+
+  it("allows trusted identity role changes without opening other protected profile fields", () => {
+    expect(roleGuardMigration).toContain("current_setting('app.allow_profile_role_update', true)");
+    expect(roleGuardMigration).toMatch(/new\.role is distinct from old\.role[\s\S]*not role_update_allowed/);
+    expect(roleGuardMigration).toMatch(/role_update_allowed[\s\S]*new\.account_status is distinct from old\.account_status/);
+
+    const sql = read("supabase/tests/r1_account_security_assertions.sql");
+    expect(sql).toContain("R1_DIRECT_PROFILE_ROLE_UPDATE_WAS_ACCEPTED");
+    expect(sql).toContain("R1_ROLE_BYPASS_CHANGED_ACCOUNT_STATUS");
+    expect(sql).toContain("R1_ADMIN_SET_IDENTITY_ROLE_UPDATE_FAILED");
   });
 
   it("ships executable Auth, RLS, Storage negatives and a dual-control production recovery contract", () => {

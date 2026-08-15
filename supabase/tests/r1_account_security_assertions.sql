@@ -97,6 +97,45 @@ values('00000000-0000-4000-8000-000000000903',:'admin_id','totp','verified',now(
 -- rights completion requires verified identity; R1-7E export completion also requires a generated artifact.
 set local role authenticated;
 select set_config('request.jwt.claim.sub', :'admin_id', true);
+select set_config('request.jwt.claim.role', 'authenticated', true);
+
+-- The trusted identity RPC may change only role. A direct authenticated update
+-- remains blocked, and the role bypass must not expose the other protected fields.
+do $$
+declare
+  actor_id uuid := auth.uid();
+  target_id uuid;
+begin
+  select id into target_id from public.profiles where display_name = '测试-学生' limit 1;
+
+  perform set_config('app.allow_profile_role_update', '', true);
+  begin
+    update public.profiles set role = 'staff' where id = actor_id;
+    raise exception 'R1_DIRECT_PROFILE_ROLE_UPDATE_WAS_ACCEPTED';
+  exception when others then
+    if SQLERRM <> 'protected profile fields can only be changed by a trusted operation' then raise; end if;
+  end;
+
+  perform set_config('app.allow_profile_role_update', '1', true);
+  begin
+    update public.profiles
+       set role = 'staff', account_status = 'locked'
+     where id = actor_id;
+    raise exception 'R1_ROLE_BYPASS_CHANGED_ACCOUNT_STATUS';
+  exception when others then
+    if SQLERRM <> 'protected profile fields can only be changed by a trusted operation' then raise; end if;
+  end;
+  perform set_config('app.allow_profile_role_update', '', true);
+
+  perform public.admin_set_identity(target_id, 'staff');
+  if (select role from public.profiles where id = target_id) <> 'staff' then
+    raise exception 'R1_ADMIN_SET_IDENTITY_ROLE_UPDATE_FAILED';
+  end if;
+  perform public.admin_set_identity(target_id, 'student');
+  perform set_config('app.allow_profile_role_update', '', true);
+end
+$$;
+select set_config('request.jwt.claim.role', '', true);
 
 select invitation_id,invite_code,expires_at
   from public.issue_staff_invitation('new-staff@example.invalid',7) \gset

@@ -17,7 +17,7 @@
 | 目标机 | `xiaomi`；组件指纹只保存 SHA-256，不保存数据库原始 system identifier |
 | 当前应用 release | `20260814-221135`；commit `023f5167f330935b4951d28a1b33a0cd28cd4fa9`；构建时间 `2026-08-14T22:13:01Z` |
 | previous 应用 release | `20260724-051318`；commit `b833c4d814d5a0ecc6aad69df25d2c6831094f00`；构建时间 `2026-07-24T05:14:33Z` |
-| 数据库迁移账本 | 175 条；head `20260814000200_p6_qa_student_cleanup`。与部署 commit 的 175 条账本名相比，生产缺 `20260815000100_r1_live_object_protection_manifest`，并多历史短名 `20260726000100`，集合尚未完全对齐 |
+| 数据库迁移账本 | 175 条；head `20260814000200_p6_qa_student_cleanup`。当前仓库有 176 个非 snapshot 账本名；生产缺 `20260815000100_r1_live_object_protection_manifest`、`20260815000200_r1_profile_role_update_guard`，并多历史短名 `20260726000100`，集合尚未完全对齐 |
 | Storage namespace | 8 个 bucket；123,602 个 object；仅保存按 bucket 排序的匿名汇总摘要 |
 | `mathin.club` 证书 | SHA-256 `B7:C2:7A:61:6F:C6:FF:A8:6D:FE:A5:73:37:8E:BF:36:24:B6:E9:58:69:77:C7:87:F4:C5:CD:29:CF:98:BB:F1`；到期日 2026-10-15 |
 | `supabase.mathin.club` 证书 | SHA-256 `00:36:EB:6A:58:6A:0D:F6:B6:E8:8A:4D:BE:2F:39:48:28:E0:2F:61:75:2C:0D:34:12:A5:07:85:97:63:DA:F2`；到期日 2026-10-15 |
@@ -101,7 +101,7 @@
 
 候选账号以 UUID SHA-256 `aa21999cfdc116f1846b205e6d83e2e679e91b88014ded573d60dd7366241f8e`、email SHA-256 `cbe8df0d0869c63c8a27be2ecfa35e36255a22c4292bff89bfe5e06a7fddad4a` 匿名登记。写前 target=1、role=student、active/account_status=active，学生档案、监护关系、staff-role、verified MFA 均为 0；写后 role=staff，其余值不变。现有 active admin=1、verified admin MFA=1，前后未变化。
 
-现有 `admin_set_identity` RPC 会设置旧版 `app.allow_profile_role_update` GUC，但 migration `20260728000400_r1_account_security.sql` 已把触发器改为对任何 authenticated 受保护字段变更一律拒绝，导致 RPC 调用失败；失败事务已回滚，无部分写入。随后在用户明确批准下，由受信任 PostgreSQL 管理连接直接更新同一 profile 行，并在一个事务中执行唯一性、旧值、零关联、admin/MFA 前置断言和新值/零岗位后置断言。`BUG-R1-LIVE-001` 保持开放：本次一次性管理员交接同样使用显式批准的受信任管理事务；日常管理 UI/RPC 的角色变更仍需 migration 修复和隔离库回归。
+现有 `admin_set_identity` RPC 会设置旧版 `app.allow_profile_role_update` GUC，但 migration `20260728000400_r1_account_security.sql` 已把触发器改为对任何 authenticated 受保护字段变更一律拒绝，导致 RPC 调用失败；失败事务已回滚，无部分写入。随后在用户明确批准下，由受信任 PostgreSQL 管理连接直接更新同一 profile 行，并在一个事务中执行唯一性、旧值、零关联、admin/MFA 前置断言和新值/零岗位后置断言。本次一次性管理员交接同样使用显式批准的受信任管理事务；`BUG-R1-LIVE-001` 后续已由 migration `20260815000200` 在仓库/隔离库修复并回归，生产部署前仍保持开放。
 
 ### 3.2 MFA 核验与正式管理员原子交接
 
@@ -116,7 +116,7 @@
 | `started_at`, `finished_at`, `actor`, `approver` | 2026-08-15（Asia/Shanghai）；两个 profile `updated_at=2026-08-15T03:31:45.510Z`；Codex；`swingislee`（此前明确授权正式管理员提权，本轮确认“已启用 MFA”） |
 | `command_or_runbook` | Xiaomi `supabase-db` 容器内 PostgreSQL；脱敏只读 preflight → fail-closed 两行原子 role swap → 脱敏 postflight；未触碰 Auth identity、密码、MFA factor、session、staff-role 或业务表 |
 | `artifact_url_or_path`, `artifact_hash` | 本节 Git 证据；`not_applicable`（不保存含 PII 的原始 SQL 输出） |
-| `retention`, `access_roles`, `failure_ticket` | 正式管理员身份永久保留并在 manifest 部署后纳入 protected 清单；产品/运维/安全；`BUG-R1-LIVE-001` 继续开放，用于日常身份管理合同修复 |
+| `retention`, `access_roles`, `failure_ticket` | 正式管理员身份永久保留并在 manifest 部署后纳入 protected 清单；产品/运维/安全；`BUG-R1-LIVE-001` 的仓库/隔离库修复已通过，生产部署前继续开放 |
 
 ### 3.3 应用层管理员登录验收
 
@@ -132,6 +132,21 @@
 | `command_or_runbook` | `/zh/login` → MFA challenge → `/zh/dashboard/system-health`；人工生产验收 |
 | `artifact_url_or_path`, `artifact_hash` | 本节 Git 证据；`not_applicable`（未保存含账号信息的截图或会话材料） |
 | `retention`, `access_roles`, `failure_ticket` | 去标识化结论随 R1-Live 证据永久保留；产品/运维/安全；`not_applicable` |
+
+### 3.4 日常身份角色管理兼容修复
+
+用户要求继续 R1-Live 后，只在仓库与本机隔离 Supabase 实现 migration `20260815000200_r1_profile_role_update_guard.sql`。它恢复 `admin_set_identity` 使用的 role-only 受信任旁路，同时继续拒绝直接角色更新以及借该旁路修改 privacy consent、account status/lock 等其他保护字段；未连接或修改 Xiaomi。
+
+| 证据字段 | 值 |
+| --- | --- |
+| `gate_id`, `domain`, `result` | `R1-Live Gate 1`；`BUG-R1-LIVE-001` 修复；仓库/隔离库子步骤 `PASS`，生产部署 `pending`，Gate 1 整体仍 `BLOCKED` |
+| `measured_value`, `threshold` | 本机前向 migration 1/1；真实 authenticated JWT 下直接 role 更新拒绝、role 旁路夹带 account status 拒绝、管理员 RPC role 往返成功；明确命名临时空库从零重放 182 个输入并通过同一账户安全断言；临时库删除后存在数=0；R1 Vitest 23 文件 179/179。阈值全部满足 |
+| `commit_sha`, `migration_head`, `environment` | 操作基线 `0c98ec5`；仓库/本机 head `20260815000200_r1_profile_role_update_guard`；生产仍为 `20260814000200_p6_qa_student_cleanup`；`mathin-isolated-loopback` + 临时空库 |
+| `dataset_manifest` | 本机主隔离库 ledger=176；auth user=11；profile admin 1/staff 6/student 2/parent 2；staff-role=8；active protection manifest=0；学生/班级/课次/报名/点名均为 0；断言事务回滚，数据无漂移 |
+| `started_at`, `finished_at`, `actor`, `approver` | 2026-08-15（Asia/Shanghai）；2026-08-15（Asia/Shanghai）；Codex；`swingislee`（“继续 R1-live”） |
+| `command_or_runbook` | 本机 Docker 前向 migration + `r1_account_security_assertions.sql`；临时空库 bootstrap→179 migrations→seed/fixture→断言→删除；`pnpm r1:test`、`pnpm lint`、`pnpm typecheck` |
+| `artifact_url_or_path`, `artifact_hash` | `supabase/migrations/20260815000200_r1_profile_role_update_guard.sql`；规范化文本 SHA-256 `45cbdf54ac5bc0ef30ad81d08bc72f1400fb6241ec02869b4800ef2bc215888f` |
+| `retention`, `access_roles`, `failure_ticket` | migration/tests 随 Git 永久保留；仓库维护者；`BUG-R1-LIVE-001` 仅待生产部署与目标 RPC 验收后关闭 |
 
 ## 4. E3 备份、回退和错误定位
 
@@ -152,13 +167,13 @@
 
 用户授权后，`scripts/ops/publish-mathin-xiaomi.ps1 -Action Publish` 对提交 `023f5167…` 先后完成本地 lint/typecheck/build、Git archive 传输、远端 lockfile 安装与 production build，再创建 immutable release、原子切换 `current`、重启服务并执行失败自动回退健康门。发布成功后再次独立运行 status：`mathin.service` active，loopback 与 Caddy `/api/health` 均返回 production `ok`；公网 `/api/health` 和 `/zh/login` 返回 HTTP 200，匿名访问 `/zh/dashboard/account-security` 返回 HTTP 307，并精确跳转到 `/zh/login?next=%2Fzh%2Fdashboard%2Faccount-security`。这证明包含 MFA 设置入口的当前应用已上线且匿名鉴权边界存在，不替代正式账号登录后的 MFA 人工验收。
 
-本次没有执行 migration。部署 commit 的 migration 账本与生产均为 175 个名称，但生产仍缺 manifest migration 且多一个历史短名条目；运行时页面没有读取尚未部署的 manifest 表，发布健康检查通过。原有 current 与数据库相差 73 条迁移的应用时代差已消除，旧 current 的 commit 也已随 previous 指针登记；但没有实际切回 previous，也没有在隔离副本证明 `b833c4d…` 与当前数据库兼容，因此 Gate 3 的 rollback 子项仍不能记为通过。
+应用发布当时没有执行 migration。部署 commit 的 migration 账本与生产均为 175 个名称，但生产缺 manifest migration 且多一个历史短名条目；运行时页面没有读取尚未部署的 manifest 表，发布健康检查通过。当前仓库随后又增加 role guard migration，因此现在有两个 R1-Live migration 待部署。原有 current 与数据库相差 73 条迁移的应用时代差已消除，旧 current 的 commit 也已随 previous 指针登记；但没有实际切回 previous，也没有在隔离副本证明 `b833c4d…` 与当前数据库兼容，因此 Gate 3 的 rollback 子项仍不能记为通过。
 
 | 证据字段 | 值 |
 | --- | --- |
 | `gate_id`, `domain`, `result` | `R1-Live Gate 3`；生产应用发布与健康；该子项 `PASS`，Gate 3 整体仍 `BLOCKED` |
 | `measured_value`, `threshold` | current=`20260814-221135` / `023f5167…`，previous=`20260724-051318` / `b833c4d…`；service active；loopback、Caddy、公网 health 与 login 全部成功；MFA 路由匿名跳转正确。阈值为提交态不可变发布、原子指针、健康门与旧 current 可识别，全部满足 |
-| `commit_sha`, `migration_head`, `environment` | `023f5167f330935b4951d28a1b33a0cd28cd4fa9`；生产 head `20260814000200_p6_qa_student_cleanup`，`20260815000100` 未部署；Xiaomi / production |
+| `commit_sha`, `migration_head`, `environment` | `023f5167f330935b4951d28a1b33a0cd28cd4fa9`；生产 head `20260814000200_p6_qa_student_cleanup`，`20260815000100`/`20260815000200` 未部署；Xiaomi / production |
 | `dataset_manifest` | `not_applicable`；应用-only 发布，没有数据库、Storage、账号或业务对象写入 |
 | `started_at`, `finished_at`, `actor`, `approver` | `2026-08-14T22:11:35Z`；`2026-08-14T22:13:02Z` 后完成健康复核；Codex；`swingislee`（对话明确要求部署当前开发前端） |
 | `command_or_runbook` | `scripts/ops/publish-mathin-xiaomi.ps1 -Action Publish`；随后 `-Action Status` 和三个公网只读 HTTP 探针 |
@@ -176,7 +191,7 @@
 
 | Gate | 状态 | 已关闭 | 仍缺 |
 | --- | --- | --- | --- |
-| Gate 1 | `BLOCKED` | 目标域名、应用/数据库/Storage/compose 匿名指纹和部署 commit 已登记；仓库 fixture/rebuild/import 写入口及两个现有 purge RPC 合同已 fail-closed；本机隔离 Supabase 和固定账号登录已验证；唯一非固定 Gmail 已完成 verified MFA、正式 admin 原子交接、新会话 MFA challenge 和 admin 路由验收，提交后唯一 active admin=1，原固定开发 admin 已降为无岗位 active staff | 修复日常身份管理的 `BUG-R1-LIVE-001`；另行授权部署 manifest migration、分类真实对象并激活 protected-only 清单；正式教师、真实班级/课次/花名册；课次 release/snapshot/object 保护；授权范围复核 |
+| Gate 1 | `BLOCKED` | 目标域名、应用/数据库/Storage/compose 匿名指纹和部署 commit 已登记；仓库 fixture/rebuild/import 写入口及两个现有 purge RPC 合同已 fail-closed；本机隔离 Supabase 和固定账号登录已验证；唯一非固定 Gmail 已完成 verified MFA、正式 admin 原子交接、新会话 MFA challenge 和 admin 路由验收；`BUG-R1-LIVE-001` 已在仓库/隔离库修复并通过从零重放 | 另行授权部署 `20260815000100`/`20260815000200`，验证生产 role RPC 后分类真实对象并激活 protected-only 清单；正式教师、真实班级/课次/花名册；课次 release/snapshot/object 保护；授权范围复核 |
 | Gate 3 | `BLOCKED` | 仓库危险写入口已拒绝误指 Xiaomi；两个现有 purge RPC 的目标绑定 manifest 合同已实现；current 已发布为 `20260814-221135` / `023f5167…`，previous 已知为 `20260724-051318` / `b833c4d…`；原子切换、服务及内外健康探针通过；错误表和查询维度已确认 | 另行授权部署并激活 protected-only manifest；立即建立并验证数据库+Storage 备份；恢复抽查；对 previous 做兼容烟测和受控 rollback；配置 release 标识；在另行授权下制造并定位一次受控错误 |
 
 这份证据证明 2026-08-14 的 Xiaomi 初次只读观察，以及 2026-08-15 的本机隔离目标、当前提交应用-only 生产发布、发布后健康、正式管理员身份引导、verified MFA 数据库核验、唯一 admin 原子交接和本人新会话 AAL2/admin 路由验收事实。它不证明现有 `purpose=production` 对象是真实业务数据，也不证明备份可恢复、previous 可兼容回退、正式对象保护 manifest 已成立或正式教师完成业务登录。
