@@ -88,7 +88,7 @@
 | --- | --- | --- |
 | auth users | 12；全部为 email/password；phone 0；OAuth identity 0 | 11 个邮箱属于固定开发域；另 1 个已由产品负责人明确指定并交接为正式管理员 |
 | profiles | admin 1、staff 7、student 2、parent 2 | 2026-08-14 初始快照为 admin 1/staff 6/student 3/parent 2；先执行正式账号 `student→staff`，再与原固定开发 admin 对调 `staff/admin`，第二步不改变聚合计数；角色计数仍不替代正式身份 manifest |
-| admin MFA | 1 个 active admin profile；该账号存在 1 个 verified MFA factor | 正式管理员的数据库角色与 MFA 数量已满足；仍缺退出/重登后的 AAL2/admin 路由验收、正式 UUID manifest、恢复联系人和责任确认 |
+| admin MFA | 1 个 active admin profile；该账号存在 1 个 verified MFA factor；本人已退出/重登、完成 MFA challenge 并进入 admin 路由 | 正式管理员的数据库角色、MFA 数量和新会话 AAL2/admin 路由均已验收；仍缺正式 UUID manifest、恢复联系人和责任确认 |
 | staff role members | teacher 3、research 2、principal 1、registrar 1、sales 1 | 不能据角色名推断哪一个是真实首名教师 |
 | staff invitations | 0 | 当前没有待处理、接受、撤销或过期邀请记录 |
 | `purpose=production` 业务对象 | 班级 6、未删除课次 61、active enrollment 3（2 名 distinct student）、点名 5 | 这些对象尚未进入正式/测试保护 manifest；`purpose=production` 本身不能证明是真实数据 |
@@ -117,6 +117,21 @@
 | `command_or_runbook` | Xiaomi `supabase-db` 容器内 PostgreSQL；脱敏只读 preflight → fail-closed 两行原子 role swap → 脱敏 postflight；未触碰 Auth identity、密码、MFA factor、session、staff-role 或业务表 |
 | `artifact_url_or_path`, `artifact_hash` | 本节 Git 证据；`not_applicable`（不保存含 PII 的原始 SQL 输出） |
 | `retention`, `access_roles`, `failure_ticket` | 正式管理员身份永久保留并在 manifest 部署后纳入 protected 清单；产品/运维/安全；`BUG-R1-LIVE-001` 继续开放，用于日常身份管理合同修复 |
+
+### 3.3 应用层管理员登录验收
+
+数据库交接完成后，正式管理员本人按验收步骤退出旧会话、重新登录、完成 MFA challenge，并确认可打开生产 `/zh/dashboard/system-health`。本节只登记本人回报的去标识化结果，不保存浏览器截图、邮箱、验证码、TOTP secret、cookie 或 token。
+
+| 证据字段 | 值 |
+| --- | --- |
+| `gate_id`, `domain`, `result` | `R1-Live Gate 1`；正式管理员新会话与应用授权；该子步骤 `PASS`，Gate 1 整体仍 `BLOCKED` |
+| `measured_value`, `threshold` | 退出旧会话→重新登录→MFA challenge→生产 admin 路由成功；阈值为新会话达到 AAL2 且 admin 页面可达，满足 |
+| `commit_sha`, `migration_head`, `environment` | 应用 `023f5167f330935b4951d28a1b33a0cd28cd4fa9`；生产 head `20260814000200_p6_qa_student_cleanup`；Xiaomi / production |
+| `dataset_manifest` | `not_applicable`；人工登录与只读页面验收，不创建账号、不修改角色或业务数据 |
+| `started_at`, `finished_at`, `actor`, `approver` | 2026-08-15（Asia/Shanghai）；2026-08-15（Asia/Shanghai）；`swingislee`；`swingislee`（对话回报“已成功设置”） |
+| `command_or_runbook` | `/zh/login` → MFA challenge → `/zh/dashboard/system-health`；人工生产验收 |
+| `artifact_url_or_path`, `artifact_hash` | 本节 Git 证据；`not_applicable`（未保存含账号信息的截图或会话材料） |
+| `retention`, `access_roles`, `failure_ticket` | 去标识化结论随 R1-Live 证据永久保留；产品/运维/安全；`not_applicable` |
 
 ## 4. E3 备份、回退和错误定位
 
@@ -161,7 +176,7 @@
 
 | Gate | 状态 | 已关闭 | 仍缺 |
 | --- | --- | --- | --- |
-| Gate 1 | `BLOCKED` | 目标域名、应用/数据库/Storage/compose 匿名指纹和部署 commit 已登记；仓库 fixture/rebuild/import 写入口及两个现有 purge RPC 合同已 fail-closed；本机隔离 Supabase 和固定账号登录已验证；唯一非固定 Gmail 已由产品负责人指定并完成 verified MFA、正式 admin 原子交接，提交后唯一 active admin=1，原固定开发 admin 已降为无岗位 active staff | 正式管理员退出/重登后的 MFA challenge、AAL2/admin 路由验收和恢复责任确认；修复日常身份管理的 `BUG-R1-LIVE-001`；另行授权部署 manifest migration、分类真实对象并激活 protected-only 清单；正式教师、真实班级/课次/花名册；课次 release/snapshot/object 保护；授权范围复核 |
+| Gate 1 | `BLOCKED` | 目标域名、应用/数据库/Storage/compose 匿名指纹和部署 commit 已登记；仓库 fixture/rebuild/import 写入口及两个现有 purge RPC 合同已 fail-closed；本机隔离 Supabase 和固定账号登录已验证；唯一非固定 Gmail 已完成 verified MFA、正式 admin 原子交接、新会话 MFA challenge 和 admin 路由验收，提交后唯一 active admin=1，原固定开发 admin 已降为无岗位 active staff | 正式管理员恢复责任确认；修复日常身份管理的 `BUG-R1-LIVE-001`；另行授权部署 manifest migration、分类真实对象并激活 protected-only 清单；正式教师、真实班级/课次/花名册；课次 release/snapshot/object 保护；授权范围复核 |
 | Gate 3 | `BLOCKED` | 仓库危险写入口已拒绝误指 Xiaomi；两个现有 purge RPC 的目标绑定 manifest 合同已实现；current 已发布为 `20260814-221135` / `023f5167…`，previous 已知为 `20260724-051318` / `b833c4d…`；原子切换、服务及内外健康探针通过；错误表和查询维度已确认 | 另行授权部署并激活 protected-only manifest；立即建立并验证数据库+Storage 备份；恢复抽查；对 previous 做兼容烟测和受控 rollback；配置 release 标识；在另行授权下制造并定位一次受控错误 |
 
-这份证据证明 2026-08-14 的 Xiaomi 初次只读观察，以及 2026-08-15 的本机隔离目标、当前提交应用-only 生产发布、发布后健康、正式管理员身份引导、verified MFA 数据库核验和唯一 admin 原子交接事实。它不证明现有 `purpose=production` 对象是真实业务数据，也不证明备份可恢复、previous 可兼容回退、正式管理员已用新会话通过 MFA challenge/AAL2/admin 路由验收或正式教师完成业务登录。
+这份证据证明 2026-08-14 的 Xiaomi 初次只读观察，以及 2026-08-15 的本机隔离目标、当前提交应用-only 生产发布、发布后健康、正式管理员身份引导、verified MFA 数据库核验、唯一 admin 原子交接和本人新会话 AAL2/admin 路由验收事实。它不证明现有 `purpose=production` 对象是真实业务数据，也不证明备份可恢复、previous 可兼容回退、管理员恢复责任/正式 manifest 已成立或正式教师完成业务登录。
