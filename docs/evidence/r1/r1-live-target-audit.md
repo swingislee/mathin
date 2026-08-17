@@ -2,11 +2,11 @@
 
 > **核查结果**：Gate 1 `BLOCKED`；Gate 3 `BLOCKED`
 >
-> **核查时间**：2026-08-14 初次只读核查；2026-08-15 应用发布、正式管理员身份引导、MFA 核验、原子交接、数据库 migration 部署、protected-only manifest 激活、首名真实教师注册与独立 postflight
+> **核查时间**：2026-08-14 初次只读核查；2026-08-15 应用发布、正式管理员身份引导、MFA 核验、原子交接、数据库 migration 部署、首份 protected-only manifest 激活、首名真实教师注册与独立 postflight；2026-08-17 教师双岗位核查与 replacement manifest 原子替换/postflight
 >
 > **目标**：应用 `https://mathin.club`；Supabase `https://supabase.mathin.club`
 >
-> **授权边界**：2026-08-14 Xiaomi 核查只允许健康检查、目标指纹、匿名汇总、备份/回退结构和错误位置查询；后续 §2.2 只修改仓库代码、测试与文档。2026-08-15 本机隔离目标、应用发布、正式管理员引导/MFA/原子交接，以及两个 R1-Live migration 部署分别由后续明确指令授权，边界见对应小节。产品负责人随后给出 standing execution direction：当前 R1-Live 规划内且不扩张范围的步骤由 Agent 每轮自检目标、写态、可逆性和漂移后直接推进，不再重复询问；需要真实信息、人工操作/验收、发现计划外差异或进入清理/不可逆动作时停下。§3.6 只写入目标绑定的 protected-only manifest；§3.7 在教师本人完成注册后只读核查邀请、身份、岗位、manifest coverage 与匿名业务计数，不读取或保存邮箱/邀请码，不执行额外写入。
+> **授权边界**：2026-08-14 Xiaomi 核查只允许健康检查、目标指纹、匿名汇总、备份/回退结构和错误位置查询；后续 §2.2 只修改仓库代码、测试与文档。2026-08-15 本机隔离目标、应用发布、正式管理员引导/MFA/原子交接，以及两个 R1-Live migration 部署分别由后续明确指令授权，边界见对应小节。产品负责人随后给出 standing execution direction：当前 R1-Live 规划内且不扩张范围的步骤由 Agent 每轮自检目标、写态、可逆性和漂移后直接推进，不再重复询问；需要真实信息、人工操作/验收、发现计划外差异或进入清理/不可逆动作时停下。§3.6 只写入首份目标绑定 protected-only manifest；§3.7 在教师本人完成注册后只读核查邀请、身份、岗位、manifest coverage 与匿名业务计数。§3.8 在产品确认 `research`/`teacher` 双岗位均属有意设置后，以同一边界创建 protected-only replacement，原子 retire 旧版本并激活新版本；不读取或保存邮箱/邀请码，不创建或修改账号/岗位/业务数据，不加入准删条目，不执行清理。
 
 ## 1. E1 目标指纹
 
@@ -42,8 +42,8 @@
 
 - `r1:baseline-plan` 与生产部署 planner 均为 plan-only，拒绝生产写入。
 - release E2E 目标策略明确拒绝 `mathin.club`/`supabase.mathin.club` 生产主机。
-- `purge_test_classroom`、`purge_test_course_family` 已同时要求 `testdata.purge` 权限、active 目标绑定 manifest、明确准删根、保护闭包、精确影响计数、`purpose='test'`、名称二次确认及引用检查。当前 active manifest 只有 4 个 protected 条目、0 个 `purge_allowed`，两个候选列表均为空，永久清理继续 fail-closed。
-- R1-Live 正式对象保护 manifest 的 schema/函数和首份 active header 已生效；正式 admin auth/profile 与两个 production 课程族根已保护。旧全库 planner 仍未接入该合同，继续保持 plan-only。
+- `purge_test_classroom`、`purge_test_course_family` 已同时要求 `testdata.purge` 权限、active 目标绑定 manifest、明确准删根、保护闭包、精确影响计数、`purpose='test'`、名称二次确认及引用检查。当前 replacement manifest 有 8 个 protected 条目、0 个 `purge_allowed`，两个候选列表均为空，永久清理继续 fail-closed。
+- R1-Live 正式对象保护 manifest 的 schema/函数和 replacement active header 已生效；正式 admin auth/profile、两个 production 课程族根及首名教师 auth/profile/两条岗位成员关系已保护，首份 header 已按不可变合同转为 `retired`。旧全库 planner 仍未接入该合同，继续保持 plan-only。
 
 ### 2.2 仓库写入口修复
 
@@ -180,7 +180,7 @@ standing execution direction 生效后，Agent 先做去标识化只读盘点：
 | `started_at`, `finished_at`, `actor`, `approver` | 2026-08-15（Asia/Shanghai）；`activated_at=2026-08-15T04:58:53.641463Z`；Codex；`swingislee`（standing execution direction） |
 | `command_or_runbook` | 去标识化只读盘点 → artifact 受控保存 → 完整激活事务 `ROLLBACK` → 独立零状态核查 → 同一 fail-closed 事务提交 → 新连接 postflight；未调用 purge、未创建/修改账号、未写业务表 |
 | `artifact_url_or_path`, `artifact_hash` | Xiaomi `/home/swing/services/mathin/evidence/r1/r1-live-protected-only-manifest-3cd327ac685f81182fad403519bf1bbf7075f1feb434638d8ae71bd1e06e0102.json`，mode `600`，owner/group `swing`；artifact SHA-256 `3cd327ac685f81182fad403519bf1bbf7075f1feb434638d8ae71bd1e06e0102`；entries SHA-256 `e62d27094fa63c91d5fa57669e1a06a006b733fb3478cd276266c8553b582514`；manifest ID 只登记 SHA-256 `e691e3c2b557ae6ce262751969d63a758ec535cfca0314624da2170fffe7d832` |
-| `retention`, `access_roles`, `failure_ticket` | 精确 artifact 保留到 manifest retired 后再按运维策略归档；`swing` 运维账号、产品/安全审核角色；`not_applicable` |
+| `retention`, `access_roles`, `failure_ticket` | 该版本已于 2026-08-17 转为 `retired`；artifact 与 retired header 继续作为不可变历史保留并按运维策略归档；`swing` 运维账号、产品/安全审核角色；`not_applicable` |
 
 ### 3.7 首名真实教师注册只读核查
 
@@ -188,7 +188,7 @@ standing execution direction 生效后，Agent 先做去标识化只读盘点：
 
 | 证据字段 | 值 |
 | --- | --- |
-| `gate_id`, `domain`, `result` | `R1-Live Gate 1`；首名真实教师邀请/注册；该子步骤 `PASS`，岗位与 Gate 1 整体仍 `BLOCKED` |
+| `gate_id`, `domain`, `result` | `R1-Live Gate 1`；首名真实教师邀请/注册；该子步骤 `PASS`；该次快照时岗位尚未分配，Gate 1 整体仍 `BLOCKED` |
 | `measured_value`, `threshold` | accepted=1、pending=0、最新 accepted 候选=1；邀请邮箱与 Auth 匹配；email confirmed=true；profile=`staff`/active；consent=2；staff-role=0；学生档案/监护关系=0。阈值全部满足 |
 | `commit_sha`, `migration_head`, `environment` | current 应用 `023f5167…`；head=`20260815000200_r1_profile_role_update_guard`；Xiaomi / production；数据库指纹 `10e3…1a0c` |
 | `dataset_manifest` | auth/profile=13；profile 为 admin 1/staff 8/student 2/parent 2；staff-role=8；active admin=1、verified active admin MFA=1；active manifest=1/entry=4，新教师 coverage=0；班级/课次/报名/点名=0 |
@@ -196,6 +196,23 @@ standing execution direction 生效后，Agent 先做去标识化只读盘点：
 | `command_or_runbook` | `/zh/signup` 正式注册路径；Xiaomi `supabase-db` `REPEATABLE READ READ ONLY` 去标识化查询；事务回滚结束，未修改账号、岗位、manifest 或业务数据 |
 | `artifact_url_or_path`, `artifact_hash` | 仓库内本节摘要；教师 UUID SHA-256 `38e6b6e359bdae69e27a142bf7e94f50df0d12391fc3938bb6a787d73f9ba5f1`；不保存原始输出 |
 | `retention`, `access_roles`, `failure_ticket` | 去标识化摘要永久保留；产品/运维/安全；`not_applicable` |
+
+### 3.8 首名真实教师双岗位与 replacement manifest
+
+用户报告教师岗位已分配后，生产去标识化只读核查确认目标仍为 active `staff`，active 岗位集合精确为 `research` 与 `teacher`，两条成员关系均由唯一正式管理员授予。产品负责人随后明确确认双岗位为有意设置。核查同时确认 auth/profile=13、staff-role=10、班级/课次/报名/点名仍为 0，首份 active manifest 对教师 coverage=0；未读取邮箱或原始 UUID。
+
+replacement artifact 只复制首份 manifest 的 4 个 protected 条目，并加入教师 auth/profile/两条 `staff_role_member`，共 8 个 protected、0 个 purge。写前以仓库 `textFileSha256` 规则在 Xiaomi 本机复核 artifact 规范化摘要、mode `600` 和 owner/group `swing`。同一 SERIALIZABLE 事务锁定旧 active header，重新断言目标指纹、migration head、正式 admin/MFA、教师双岗位、全部匿名基线和条目 hash，再插入新版本、retire 旧版本并激活 replacement；首次完整运行最终 `ROLLBACK`，独立连接确认旧状态未变，第二次正式提交。独立 postflight 验证 resolver、新旧 header、不可变约束、教师 coverage、完整对象计数和两个空候选列表。
+
+| 证据字段 | 值 |
+| --- | --- |
+| `gate_id`, `domain`, `result` | `R1-Live Gate 1/3`；首名真实教师岗位与正式对象保护；该子步骤 `PASS`，Gate 1/3 整体仍 `BLOCKED` |
+| `measured_value`, `threshold` | 岗位集合=`research`,`teacher`；header=2、active=1、retired=1；active entry=8：`auth_user=2`、`profile=2`、`course_family=2`、`staff_role_member=2`；教师 coverage=4；`purge_allowed=0`，两个候选列表为空；回滚演练、独立回滚核查、正式提交和独立 postflight 全通过 |
+| `commit_sha`, `migration_head`, `environment` | 操作基线 `30d02d0`；head=`20260815000200_r1_profile_role_update_guard`；Xiaomi / production；数据库指纹 `10e3…1a0c` |
+| `dataset_manifest` | pre/post 均为 auth/profile=13、staff-role=10、学生=4、监护关系=2、课程族=2、目录版本=3、课程=102、讲次=1315、release=2633、班级/课次/报名/点名=0、Storage bucket=8/object=123602；profile 为 admin 1/staff 8/student 2/parent 2；无身份、岗位或业务计数漂移 |
+| `started_at`, `finished_at`, `actor`, `approver` | 2026-08-17（Asia/Shanghai）；2026-08-17（Asia/Shanghai）；正式管理员 / Codex；`swingislee`（双岗位产品确认及 standing execution direction） |
+| `command_or_runbook` | 岗位只读核查 → artifact 受控保存与目标机摘要复核 → 完整 replacement 事务 `ROLLBACK` → 独立旧状态核查 → 同一事务提交 → 新连接 postflight；未创建/修改账号、岗位或业务数据，未执行 purge |
+| `artifact_url_or_path`, `artifact_hash` | Xiaomi `/home/swing/services/mathin/evidence/r1/r1-live-protected-only-manifest-219e7536c1a7769b40a81f619083f66c0ee8069021a64d697b47415c4c6bfdb3.json`，mode `600`，owner/group `swing`；artifact SHA-256 `219e7536c1a7769b40a81f619083f66c0ee8069021a64d697b47415c4c6bfdb3`；entries SHA-256 `d188085fd5c3ff99cd7da5586e8c46e3dbfe542e929883a45c9560f5978ad606`；active manifest ID SHA-256 `f0b0e760968ce0dbcabc27efbc920c59410dee1d6bf4eac57b1aeec2cd8c095a` |
+| `retention`, `access_roles`, `failure_ticket` | active artifact 在 Xiaomi 受控目录保留；首份 artifact/header 作为 retired 历史保留；`swing` 运维账号、产品/安全审核角色；`not_applicable` |
 
 ## 4. E3 备份、回退和错误定位
 
@@ -240,7 +257,7 @@ standing execution direction 生效后，Agent 先做去标识化只读盘点：
 
 | Gate | 状态 | 已关闭 | 仍缺 |
 | --- | --- | --- | --- |
-| Gate 1 | `BLOCKED` | 目标域名、应用/数据库/Storage/compose 匿名指纹和部署 commit 已登记；危险写入口及两个 purge RPC 合同 fail-closed；本机隔离 Supabase 和固定账号登录已验证；正式 admin 已完成 verified MFA、原子交接、新会话 MFA challenge 和 admin 路由验收；两个 R1-Live migration 与首份 active protected-only manifest 已生效；首名真实教师邀请已唯一消费，账号为已确认邮箱的 active `staff`，无意外业务身份或岗位 | 通过正式 UI/RPC 分配 teacher 岗位；建立真实班级/课次/花名册；把新增身份、岗位、业务事实及课次 release/snapshot/object 纳入替代 manifest；授权范围复核 |
+| Gate 1 | `BLOCKED` | 目标域名、应用/数据库/Storage/compose 匿名指纹和部署 commit 已登记；危险写入口及两个 purge RPC 合同 fail-closed；本机隔离 Supabase 和固定账号登录已验证；正式 admin 已完成 verified MFA、原子交接、新会话 MFA challenge 和 admin 路由验收；两个 R1-Live migration 已生效。首名真实教师邀请已唯一消费并注册为 active `staff`，`research`/`teacher` 双岗位均由正式 admin 授予；replacement manifest 已保护教师 auth/profile/两条岗位成员关系，0 个 purge、候选列表为空 | 建立真实班级/课次/花名册；把新增业务事实及课次 release/snapshot/object 纳入后续 replacement manifest；授权范围复核 |
 | Gate 3 | `BLOCKED` | 仓库危险写入口已拒绝误指 Xiaomi；两个 purge RPC 的目标绑定 active manifest 已生效且候选列表为空；生产 migration 集合无仓库缺失；current 已发布为 `20260814-221135` / `023f5167…`，previous 已知为 `20260724-051318` / `b833c4d…`；原子切换、服务及内外健康探针通过；错误表和查询维度已确认 | 建立并验证数据库+Storage 备份；恢复抽查；对 previous 做兼容烟测和受控 rollback；配置 release 标识；制造并定位一次受控错误 |
 
-这份证据证明 2026-08-14 的 Xiaomi 初次只读观察，以及 2026-08-15 的本机隔离目标、当前提交应用-only 生产发布、发布后健康、正式管理员身份引导、verified MFA 数据库核验、唯一 admin 原子交接、本人新会话 AAL2/admin 路由验收、两个 R1-Live migration 的生产部署/postflight、首份 protected-only manifest 激活和首名真实教师邀请注册事实。它不证明备份可恢复、previous 可兼容回退、teacher 岗位已经分配、首名教师已完成生产登录，或尚未创建的真实班级/课次/花名册及新增教师已经受替代 manifest 保护。
+这份证据证明 2026-08-14 的 Xiaomi 初次只读观察，2026-08-15 的本机隔离目标、应用-only 生产发布、发布后健康、正式管理员身份引导/MFA/原子交接、新会话 AAL2/admin 路由验收、两个 R1-Live migration、首份 protected-only manifest 和首名真实教师邀请注册，以及 2026-08-17 的 `research`/`teacher` 双岗位核查与 replacement manifest 原子替换。它不证明备份可恢复、previous 可兼容回退、首名教师已完成 production 登录，或尚未创建的真实班级/课次/花名册及课次引用内容已经受后续 replacement manifest 保护。

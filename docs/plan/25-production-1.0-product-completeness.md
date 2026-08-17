@@ -4,7 +4,7 @@
 >
 > **用途**：记录 Production 1.0 的仓库事实、M0～M4 成熟度、业务合同、量化发布门和生产初始化步骤；R1-Live 的当前 Gate 与施工顺序由 doc 04 管理。
 >
-> **基线日期**：2026-08-15；每次验收另记 commit、migration head、环境和数据 manifest。
+> **基线日期**：2026-08-17；每次验收另记 commit、migration head、环境和数据 manifest。
 >
 > **删除限制**：R1-15 只操作生产快照副本；R1-18 经人工批准后也只能处理 manifest 明确标记的测试对象。R1-Live 产生的正式身份、班级、课次、学生、业务记录及课次引用的 immutable release/snapshot/object 永久排除在测试清理之外。
 
@@ -34,7 +34,7 @@ Terms 使用稳定 ID 接收 Story、Minds、Games、Tools、Notebook 和课程�
 当前唯一施工阶段切为 `R1-Live-1 · 正式身份与真实数据`。R1-Live 先让一名公司教师以正式身份和真实数据完成整班点名，再在真实使用中继续 Production 1.0；本文件的完整性矩阵与量化硬门仍有效，但除 doc 04 明确抽取的子集外，不阻塞内部生产试运行。
 
 - R1-Live Gate 0 已冻结首个闭环：正式教师登录 → 找到自己的 production 班级/课次 → 整班点名 → 保存 → 刷新和重登后再读 → 管理员可见 → 无权限主体不可见。
-- R1-Live Gate 1 当前 `BLOCKED`：正式目标指纹已登记，仓库级 fixture/rebuild/import 写入口已统一 fail-closed 并把 Xiaomi 固定为当前生产目标；本机隔离 Supabase、固定账号初始化和登录已验证。唯一非固定 Gmail 已由产品负责人指定为正式管理员并完成 verified MFA、唯一 admin 原子交接、新会话 MFA challenge 和生产 admin 路由验收；双人恢复联系人和恢复演练继续由既有 Production 1.0/R1-18 门承接。`20260815000100`/`20260815000200` 已在生产部署；首份 active protected-only manifest 已经完整事务回滚演练后激活，保护正式 admin auth/profile 与 2 个 production 课程族根，manifest=1、entry=4、active=1、`purge_allowed=0`，两个候选列表为 0，受控 artifact hash 与数据零漂移 postflight 通过。首名真实教师已通过邮箱绑定的一次性员工邀请注册；生产只读核查确认邀请唯一消费、邮箱匹配、账号为已确认邮箱的 active `staff`，无学生/监护关系且尚无岗位。仍需通过正式 UI/RPC 分配 teacher 岗位，建立真实班级/课次/花名册，并用替代 manifest 保护新增身份、岗位和课次引用内容。生产 current 已应用-only 发布为 `20260814-221135` / `023f5167…`，previous 已知为 `20260724-051318` / `b833c4d…`，服务及内外健康探针通过。Gate 2 `BLOCKED`；Gate 3 因无可核验数据备份、previous 未验证兼容回退和错误缺 release 保持 `BLOCKED`；Gate 4 `BLOCKED`，详见 doc 04、[`r1-live.md`](../evidence/r1/r1-live.md)和[目标核查](../evidence/r1/r1-live-target-audit.md)。
+- R1-Live Gate 1 当前 `BLOCKED`：正式目标指纹已登记，仓库级 fixture/rebuild/import 写入口已统一 fail-closed 并把 Xiaomi 固定为当前生产目标；本机隔离 Supabase、固定账号初始化和登录已验证。唯一正式管理员已完成 verified MFA、唯一 admin 原子交接、新会话 MFA challenge 和生产 admin 路由验收；双人恢复联系人和恢复演练继续由既有 Production 1.0/R1-18 门承接。`20260815000100`/`20260815000200` 已在生产部署。首名真实教师已通过邮箱绑定的一次性员工邀请注册为 active `staff`，正式管理员按产品安排分配的 `research` 与 `teacher` 双岗位均已确认。replacement manifest 已经回滚演练后原子激活：header=2（active 1/retired 1）、active entry=8，保护正式 admin auth/profile、2 个 production 课程族根及教师 auth/profile/2 条岗位成员关系；`purge_allowed=0`，两个候选列表为 0，受控 artifact hash 与数据零漂移 postflight 通过。仍需建立真实班级/课次/花名册，并保护新增业务事实和课次引用内容。生产 current 已应用-only 发布为 `20260814-221135` / `023f5167…`，previous 已知为 `20260724-051318` / `b833c4d…`，服务及内外健康探针通过。Gate 2 `BLOCKED`；Gate 3 因无可核验数据备份、previous 未验证兼容回退和错误缺 release 保持 `BLOCKED`；Gate 4 `BLOCKED`，详见 doc 04、[`r1-live.md`](../evidence/r1/r1-live.md)和[目标核查](../evidence/r1/r1-live-target-audit.md)。
 - 原 R1 暂停在 R1-9。P6-AIX-2、G+/X+/A+ 170 讲和 102 门/1305 讲/2610 条目标 release-1 合同保留；真实全量 inventory、Storage/H5 审计、Terms/Story/其他公开模块、完整视觉/E2E/恢复门转入 R1-Live 后继续。
 - SML-0 为独立并行轨道；普通教师默认不可见未完成能力，只有破坏共享认证、授权、数据或点名黄金路径时才阻塞 R1-Live。
 - R1-Live 的正式业务事实及课次引用的 immutable release/snapshot/object 不得在后续 R1-15/R1-18 中删除或改写。现有两个数据库 purge RPC 已接入正式对象保护合同；旧全库 planner 尚未接入同一合同，在完成 schema 修订并于隔离副本重新验收前保持 plan-only、不可执行。
@@ -518,7 +518,7 @@ R1-16 的只读 preflight 位于 `docs/manifests/r1-production-deployment.exampl
 | Work-items | 领域真相+领域投影+有限持久协同项；审批独立 | 学校产品+数据库负责人 | 已定 | decided |
 | E2E | Playwright；临时浏览脚本不进入发布证据 | QA/发布负责人 | R1-14 | decided |
 | 生产 | 独立小米 Linux；环境数据、secret、Storage 和域名隔离 | 运维负责人 | R1-16 | decided |
-| 正式身份 | admin 角色账号恰为 1；R1-Live 增加真实教师和业务用户；`auth.users.id` 是唯一账号，邮箱/手机号/微信/QQ 只作为其 identity；全部正式 UUID 进入受保护身份 manifest，管理员 MFA/恢复材料另行验证 | 产品所有者+安全负责人 | R1-Live Gate 1；完整恢复为 Production 1.0/R1-18 | R1-Live 的正式 admin、verified MFA、唯一 admin 原子交接、新会话 AAL2/admin 路由和首份 active manifest 已完成；role guard 已部署生产且函数定义 postflight 通过，真实授权 RPC 验收与首名教师身份 pending；双人恢复沿既有后续门执行 |
+| 正式身份 | admin 角色账号恰为 1；R1-Live 增加真实教师和业务用户；`auth.users.id` 是唯一账号，邮箱/手机号/微信/QQ 只作为其 identity；全部正式 UUID 进入受保护身份 manifest，管理员 MFA/恢复材料另行验证 | 产品所有者+安全负责人 | R1-Live Gate 1；完整恢复为 Production 1.0/R1-18 | 正式 admin、verified MFA、唯一 admin 原子交接、新会话 AAL2/admin 路由、首名教师 active `staff` 身份、`research`/`teacher` 双岗位和 replacement manifest 保护均已完成；role guard 已部署生产且函数定义 postflight 通过。`admin_set_identity` 的真实授权 RPC 验收只在以后发生合法顶层身份变更时取证；双人恢复沿既有后续门执行 |
 | 数据清理 | 只删除 manifest 显式标记的测试身份/运营数据；R1-Live 和后续真实业务事实及课次引用内容永久保护；保留 E 系列 1135 讲与爱学习 G+/X+/A+ 170 讲两轨源资源 | 数据库+课程研发负责人 | R1-15 schema 修订时 | 两个现有 purge RPC 合同已实现；全库 planner/隔离演练 pending |
 | release | E 系列 1135×2 与爱学习 170×2，共 2610 条 baseline `release_no=1`；1305 个 legacy current release 均指向对应 native；正式课次引用的额外 immutable release 原样保留 | 课程研发+数据库负责人 | 已定 | decided |
 | 证据位置 | 小摘要/索引固定在 `docs/evidence/r1/`；大日志/截图保存 CI artifact 或受控对象存储并记录 SHA-256、保留期和访问角色 | QA/发布负责人 | R1-0 | decided |
@@ -529,9 +529,9 @@ R1-0 已完成责任角色到 `swingislee` 的映射。增加人员或发生交�
 
 | 风险 | 当前证据 | 影响 | Owner | 关闭阶段 |
 | --- | --- | --- | --- | --- |
-| R1-Live 正式身份/数据和防误清未成立 | 目标组合指纹与匿名计数已登记；危险写入口、两个 R1-Live migration 和 active protected-only manifest 已生效；正式 admin auth/profile 与 2 个 production 课程族根受保护，4 个 protected、0 个 purge 条目。首名真实教师已通过一次性员工邀请注册为 active `staff`，teacher 岗位、真实闭环对象和课次内容保护仍缺 | 正式管理员身份、migration、当前正式对象保护和首名教师注册已成立；岗位、业务数据与替代 manifest 尚未建立，Gate 1 仍不能通过；双人恢复不加入 R1-Live 当前执行链 | 产品+教学运营+运维+安全 | R1-Live Gate 1 |
+| R1-Live 正式数据和后续防误清未成立 | 目标组合指纹与匿名计数已登记；危险写入口和两个 R1-Live migration 已生效。首名真实教师已通过一次性员工邀请注册为 active `staff`，正式管理员分配的 `research`/`teacher` 双岗位已确认；replacement manifest 为 active 8 条 protected、0 条 purge，旧 4 条目 manifest 已 retired，教师 auth/profile/两条岗位成员关系均受保护，候选列表为空 | 正式管理员、首名教师、双岗位和当前正式对象保护已成立；真实班级/课次/花名册及课次引用内容尚未建立和保护，Gate 1 仍不能通过；双人恢复不加入 R1-Live 当前执行链 | 产品+教学运营+运维+安全 | R1-Live Gate 1 |
 | R1-Live 点名 Golden Path 未执行 | 点名 action、表/RLS 和源码合同存在；无正式目标保存/重登再读、管理员对照和越权对照 | 代码存在不能证明教师可独立完成首个工作 | 教学运营+QA/发布 | R1-Live Gate 2/4 |
-| R1-Live 最小保险丝明确失败 | current 已应用-only 发布为 `20260814-221135` / `023f5167…`，previous commit `b833c4d…` 已知，原子切换与健康门通过；两个 R1-Live migration 与 active protected-only manifest 已生效。目标仍无 backup timer/可校验数据备份，previous 未做兼容回退，1,946 条错误 release 全空 | 首批真实数据目前不可证明可恢复；previous 回退可能与现数据库不兼容；错误无法关联部署版本 | 运维+安全+QA | R1-Live Gate 3 |
+| R1-Live 最小保险丝明确失败 | current 已应用-only 发布为 `20260814-221135` / `023f5167…`，previous commit `b833c4d…` 已知，原子切换与健康门通过；两个 R1-Live migration 与 replacement protected-only manifest 已生效。目标仍无 backup timer/可校验数据备份，previous 未做兼容回退，1,946 条错误 release 全空 | 首批真实数据目前不可证明可恢复；previous 回退可能与现数据库不兼容；错误无法关联部署版本 | 运维+安全+QA | R1-Live Gate 3 |
 | Story 无完整章节 | 路由存在；无完整独立章节内容目录 | 对外 1.0 缺一模块 | 内容+产品 | R1-10 |
 | R1-9 来源实物证据未完成 | P6-AIX-2 开发库证据与 v4 只读导出/对象校验核心、受控 runner 已通过；批准副本配置、外部 provenance、真实 1305 行 inventory、Storage/H5 审计与非执行者复核仍 pending | Production 1.0 release 清单可能缺对象或 snapshot 漂移；不影响 R1-Live 所选课次已读验证 | 产品+课程研发+QA/发布 | R1-Live 后恢复 R1-9，并在 R1-18 前重跑最终证据 |
 | 英文正文缺失 | `content/en` 仅 README | `/en` 可能空白或混排 | 内容+前端 | R1-9～12 |
@@ -545,7 +545,7 @@ R1-0 已完成责任角色到 `swingislee` 的映射。增加人员或发生交�
 | 正式 Playwright 发布门尚未完成 | 正式配置、target policy 和 fail-closed release runner 已落地；9 条非五模块本地 Chromium 旅程分别取绿 | 尚无明确非生产 release target 的单次 9/9 零 skip、写态、zh/en、跨浏览器和连续 3 次无 flaky 证据 | QA/发布 | R1-14 |
 | 清理/release 未演练且旧 planner 会误删正式 Live 数据 | 两个现有 purge RPC 已接入目标绑定 manifest；旧“唯一管理员/运营数据为零”全库 planner 仍未修订 | 若绕过现有 RPC 或直接使用旧 planner，仍可能删除真实教师、班级、考勤及课次引用 release，也可能损失 4:3 资源 | 数据库+课程研发 | R1-Live 后修订全库合同，再在 R1-15 隔离演练 |
 | 生产恢复未实操 | Linux 目标与 fail-closed preflight 已定；当前树与 Git 历史 secret scan 为 0，但环境隔离和恢复 E3 仍为 pending | 尚无独立环境、运行时 secret 复核、告警链路、RPO/RTO、数据库/Storage 恢复或应用回滚的实操证据 | 运维+安全 | R1-16 |
-| 无真实运行观察 | 尚无真实教师；R1-Live Gate 4 未执行 | 容量、通知、支持指标无 E4 | 教学运营+发布 | Gate 4 后启动 14 天/5 节观察，R1-17 汇总 |
+| 无真实运行观察 | 首名正式教师身份与岗位已建立，但 R1-Live Gate 4 尚未执行 | 容量、通知、支持指标无 E4 | 教学运营+发布 | Gate 4 后启动 14 天/5 节观察，R1-17 汇总 |
 
 ### 7.3 当前专题与 1.0 后处理
 
