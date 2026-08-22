@@ -34,7 +34,7 @@ Terms 使用稳定 ID 接收 Story、Minds、Games、Tools、Notebook 和课程�
 当前唯一施工阶段为 `R1-Live-2 · 首个真实教师闭环`。R1-Live 只保留两个结果 Gate：Gate 1 合并正式目标/身份、当前备份、防误清、可识别的 current/previous 与错误查询位置；Gate 2 合并真实点名闭环和首次真实教师验收。原范围冻结成为永久规则，完整恢复/rollback、错误 release 标签、独立观察和 14 天 RC 回到 Production 1.0。
 
 - Gate 1 当前 `PASS`：Xiaomi 目标指纹、危险写拒绝、唯一正式 admin MFA、首名真实教师及双岗位、active 8 条 protected/0 条 purge manifest、current/previous、健康探针和错误查询位置均已确认。运行时门禁收敛 migration/UI 已部署为数据库 head `20260822000200` 和应用 current `20260822-072101` / `ef1eb77…`；当前 PostgreSQL+Storage 同批次备份 `mathin-20260822T093529Z` 的数据库目录、Storage 文件数、前后清单和全部 SHA-256 独立复核通过。
-- Gate 2 当前 `BLOCKED`：生产尚无真实班级、课次、报名和点名。当前用正式 UI/RPC 建立最小真实数据并让正式教师完成保存、刷新/重登再读、管理员读取和无权限拒绝。
+- Gate 2 当前 `BLOCKED`：本机隔离固定账号 Golden Path 已完成未完整课程建班、自动课次、`lead` 报名、教师点名保存和换页再读；由此发现的状态合同冲突已由 `20260822000300_r1_live_enrollment_status_transition` 在本机修复并通过。该 migration 尚未部署 Xiaomi，生产也尚无真实班级、课次、报名和点名；下一步先部署窄修复，再用正式 UI/RPC 建立最小真实数据并让正式教师完成保存、刷新/重登再读、管理员读取和无权限拒绝。
 - 班级启用是运营决定。正式自由班、未完整课程、教师冲突、备课产物/审核/检查项、点名前置、资源预载和无 release 都只提示；创建时的权限、主讲/学期、course/family/lecture 引用、状态和不可变历史继续硬阻断。无 release 课次可冻结 `releaseId=null` 的空白/本次覆盖快照。
 - 现有 purge 只接受 active manifest 明确的 `purge_allowed` test 根，当前准删数为 0。日常新增正式学生、班级、课次和考勤不要求逐行替换 manifest；只有未来授权具体清理根时才按当时删除闭包生成 replacement。
 - 原 R1 暂停在 R1-9。P6-AIX-2、G+/X+/A+ 170 讲和 102 门/1305 讲/2610 条目标 release-1 合同保留；真实全量 inventory、Storage/H5 审计、Terms/Story/其他公开模块、完整视觉/E2E/恢复门转入 R1-Live 后继续。
@@ -532,7 +532,7 @@ R1-0 已完成责任角色到 `swingislee` 的映射。增加人员或发生交�
 
 | 风险 | 当前证据 | 影响 | Owner | 关闭阶段 |
 | --- | --- | --- | --- | --- |
-| R1-Live 点名 Golden Path 未执行 | 点名 action、表/RLS 和源码合同存在；无正式目标保存/刷新或重登再读、管理员对照和越权对照 | 代码存在不能证明教师能在真实数据上完成首个工作 | 教学运营+QA/发布 | R1-Live Gate 2 |
+| R1-Live 正式目标 Golden Path 未执行 | 本机隔离 Golden Path 1/1 已通过并关闭 `lead → enrolled` 合同冲突；`20260822000300` 尚未部署生产，且仍无正式目标保存/刷新或重登再读、管理员对照和越权对照 | 隔离固定账号成功不能证明正式教师能在真实数据上完成首个工作 | 教学运营+QA/发布 | R1-Live Gate 2 |
 | Production 1.0 运维成熟度未完成 | current/previous、原子切换、健康门、错误查询位置和当前同批次备份已知；备份仍是同机外置 exFAT 明文工件，尚无恢复抽查/异机副本，previous 未做受控切回，1,946 条历史错误的 release 为空 | 不阻止第一名内部教师开始使用，但会阻止扩大范围和 `v1.0.0` | 运维+安全+QA | R1-16～18 |
 | Story 无完整章节 | 路由存在；无完整独立章节内容目录 | 对外 1.0 缺一模块 | 内容+产品 | R1-10 |
 | R1-9 来源实物证据未完成 | P6-AIX-2 开发库证据与 v4 只读导出/对象校验核心、受控 runner 已通过；批准副本配置、外部 provenance、真实 1305 行 inventory、Storage/H5 审计与非执行者复核仍 pending | Production 1.0 release 清单可能缺对象或 snapshot 漂移；不影响 R1-Live 所选课次已读验证 | 产品+课程研发+QA/发布 | R1-Live 后恢复 R1-9，并在 R1-18 前重跑最终证据 |

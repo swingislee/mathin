@@ -2,7 +2,7 @@
 
 ## 结论
 
-截至 2026-08-22，`mathin.club` / `supabase.mathin.club` 的应用、数据库、Storage、compose 和部署 commit 已完成目标登记，仓库级写入口保险丝也已把 Xiaomi 固定为当前生产目标；测试造数/重建不能写入它，课程内容写入默认拒绝并使用独立受控通道。本机已建立只绑定 `127.0.0.1` 的隔离 Supabase，完成固定开发账号、登录和数据库合同验证，且没有复制或修改 Xiaomi 数据。两条运行时 migration 已把生产账本推进到 `20260822000200_r1_live_operational_gate_simplification`，应用 current 为 `20260822-072101` / `ef1eb77…`，previous 为 `20260814-221135` / `023f5167…`；原子切换、失败回退命令、双层健康和 `operational_errors` 查询位置均已确认。唯一正式管理员已完成 verified MFA、唯一 admin 原子交接、新会话 MFA challenge 和生产 admin 路由验收；首名真实教师已注册为 active `staff`，`research` 与 `teacher` 双岗位经产品确认。active manifest 为 8 条 protected、0 条 `purge_allowed`，两个 purge 候选列表为空；这已经满足 R1-Live 防误清底线，日常正式业务写入不再要求逐条 replacement。运行时门禁收敛为权限/作用域、输入、引用、状态与不可变历史；课程完整度、自由班、教师冲突、备课产物/审核/检查项、点名时机、资源预载和无 release 均改为提示。当前 PostgreSQL+Storage 同批次备份 `mathin-20260822T093529Z` 已在 Xiaomi 外置盘完成，数据库 TOC、Storage 125135 个文件、源前后清单和全部 SHA-256 独立复核通过，生产指纹、账本和匿名对象计数无漂移，因此 Gate 1 `PASS`。Gate 2 因真实班级/课次/花名册及点名持久闭环尚未执行而保持 `BLOCKED`。
+截至 2026-08-22，`mathin.club` / `supabase.mathin.club` 的应用、数据库、Storage、compose 和部署 commit 已完成目标登记，仓库级写入口保险丝也已把 Xiaomi 固定为当前生产目标；测试造数/重建不能写入它，课程内容写入默认拒绝并使用独立受控通道。本机已建立只绑定 `127.0.0.1` 的隔离 Supabase，完成固定开发账号、登录和数据库合同验证，且没有复制或修改 Xiaomi 数据。两条运行时 migration 已把生产账本推进到 `20260822000200_r1_live_operational_gate_simplification`，应用 current 为 `20260822-072101` / `ef1eb77…`，previous 为 `20260814-221135` / `023f5167…`；原子切换、失败回退命令、双层健康和 `operational_errors` 查询位置均已确认。唯一正式管理员已完成 verified MFA、唯一 admin 原子交接、新会话 MFA challenge 和生产 admin 路由验收；首名真实教师已注册为 active `staff`，`research` 与 `teacher` 双岗位经产品确认。active manifest 为 8 条 protected、0 条 `purge_allowed`，两个 purge 候选列表为空；这已经满足 R1-Live 防误清底线，日常正式业务写入不再要求逐条 replacement。运行时门禁收敛为权限/作用域、输入、引用、状态与不可变历史；课程完整度、自由班、教师冲突、备课产物/审核/检查项、点名时机、资源预载和无 release 均改为提示。当前 PostgreSQL+Storage 同批次备份 `mathin-20260822T093529Z` 已在 Xiaomi 外置盘完成，数据库 TOC、Storage 125135 个文件、源前后清单和全部 SHA-256 独立复核通过，生产指纹、账本和匿名对象计数无漂移，因此 Gate 1 `PASS`。本机隔离 Golden Path 已完成未完整课程建班、自动课次、`lead` 报名、固定教师点名保存和换页再读，并以 `20260822000300_r1_live_enrollment_status_transition` 修复沿途发现的状态合同冲突；该 migration 尚未部署 Xiaomi，真实班级/课次/花名册及生产点名闭环也尚未执行，因此 Gate 2 保持 `BLOCKED`。
 
 本文件是 E0/E1 差距审阅，不是完整生产验收。2026-08-14～22 的 Xiaomi E1/E3 运行事实，以及本机隔离目标、应用/数据库发布、正式管理员交接和 manifest 激活证据见 [`r1-live-target-audit.md`](r1-live-target-audit.md)；用户提供的 `docs/plan/mathin-R1-Live-讨论稿.md` 为产品裁决输入，现行施工顺序以 doc 04 为准。
 
@@ -11,7 +11,7 @@
 | Gate | 当前状态 | 已完成证据 | 缺失项 | 是否阻塞 | 最小修复范围 |
 | --- | --- | --- | --- | --- | --- |
 | Gate 1 · 可安全开始 | `PASS` | 目标/身份、生产危险写拒绝、0 个 purge 候选、运行时 migration/应用、current/previous、回退命令、健康探针、错误查询位置和当前 PostgreSQL+Storage 同批次备份均已确认；备份独立 SHA 与可读性复核通过 | 无 | 否 | 已关闭；恢复、异机/静态加密备份和受控 rollback 进入 Production 1.0 |
-| Gate 2 · 首个真实教师闭环 | `BLOCKED` | 学生/班级/课次/分班/点名 UI、RPC、RLS 和持久化合同已实现；点名可在课前、课中或课后完成，不再阻断开课 | 无真实班级/课次/花名册；无正式教师保存→刷新或重登→再读、管理员可见、无权限拒绝的 Golden Path | 是 | 用正式 UI 建立最小真实数据，由正式教师完成一次点名并做权限对照 |
+| Gate 2 · 首个真实教师闭环 | `BLOCKED` | 学生/班级/课次/分班/点名 UI、RPC、RLS 和持久化合同已实现；点名可在课前、课中或课后完成，不再阻断开课；本机隔离固定账号 Golden Path 1/1 已完成建班→自动课次→报名→教师点名保存→换页再读，`lead → enrolled` 修复在本机通过，账号未增且可变业务残留为 0 | `20260822000300` 未部署 Xiaomi；无真实班级/课次/花名册；无正式教师保存→刷新或重登→再读、管理员可见、无权限拒绝的生产 Golden Path | 是 | 先部署窄 migration，再用正式 UI 建立最小真实数据，由正式教师完成一次点名并做权限对照 |
 
 状态只允许 `PASS`、`BLOCKED`、`UNKNOWN`、`NOT REQUIRED`。范围冻结是永久规则，不再单列 Gate；旧 Gate 3 的当前备份底线并入 Gate 1，恢复/受控 rollback 演练与 release 错误标签进入 Production 1.0；旧 Gate 4 的首个教师动作并入 Gate 2，独立观察和连续运行进入上线后证据。
 
@@ -28,18 +28,35 @@
 
 | 证据字段 | 值 |
 | --- | --- |
-| `gate_id`, `domain`, `result` | `R1-Live Gate 1`；开发/生产连接隔离；该子项 `PASS`，Gate 1 整体仍 `BLOCKED` |
+| `gate_id`, `domain`, `result` | `R1-Live Gate 1`；开发/生产连接隔离；该子项 `PASS`，Gate 1 整体 `PASS` |
 | `measured_value`, `threshold` | 11/11 个服务 healthy；所有已发布端口 Host IP 恰为 `127.0.0.1`；`auth.users=11`、`profiles=11`，11/11 password login 通过；全局自助注册关闭，email provider 只用于已有账号登录，phone provider 关闭。阈值为无非 loopback 发布、固定集合精确、无自助注册、无 Xiaomi/真实业务数据，全部满足 |
-| `commit_sha`, `migration_head`, `environment` | `commit_sha=not_applicable`（本机运行态，仓库证据由本文件 Git 历史固定）；当前 head `20260822000200_r1_live_operational_gate_simplification`；Windows Docker Desktop / `mathin-isolated-loopback` |
-| `dataset_manifest` | PostgreSQL 15.8；当前仓库 181 个 migration SQL；本机 ledger 178 条、head `20260822000200`；课程 84、讲次 1045、Storage bucket 8、active protection manifest 0；11 个固定开发身份/profile、8 条 staff-role；学生、班级、课次、报名、点名均为 0 |
+| `commit_sha`, `migration_head`, `environment` | `commit_sha=302a0523b0bf27e772618ca3c8c512b7b52166b2`；当前 head `20260822000300_r1_live_enrollment_status_transition`；Windows Docker Desktop / `mathin-isolated-loopback` |
+| `dataset_manifest` | PostgreSQL 15.8；当前仓库 182 个 migration SQL；本机 ledger 179 条、head `20260822000300`；课程基线沿用、Storage bucket 8、active protection manifest 0；11 个固定开发身份/profile、8 条 staff-role；Golden Path 清理后学生、班级、课次、报名、点名和课耗账本均为 0 |
 | `started_at`, `finished_at`, `actor`, `approver` | 2026-08-15（Asia/Shanghai）；2026-08-22（最新只读复核，Asia/Shanghai）；Codex；`swingislee`（对话授权“允许创建隔离 Supabase”） |
-| `command_or_runbook` | 官方 self-hosted Compose + 本机 override；API `127.0.0.1:35421`、数据库 `127.0.0.1:35422`、Studio `127.0.0.1:35423`、transaction pool `127.0.0.1:35429`；应用 `.env.local` 指向 API，target policy 以 development/loopback/本地数据库指纹通过；`R1_DEV_TEST_FIXTURES=1 pnpm r1:fixed-accounts`；`pnpm e2e e2e/notebook-authenticated.spec.ts --project=credentialed-chromium` |
+| `command_or_runbook` | 官方 self-hosted Compose + 本机 override；API `127.0.0.1:35421`、数据库 `127.0.0.1:35422`、Studio `127.0.0.1:35423`、transaction pool `127.0.0.1:35429`；应用 `.env.local` 指向 API，target policy 以 development/loopback/本地数据库指纹通过；`R1_DEV_TEST_FIXTURES=1 pnpm r1:fixed-accounts`；`pnpm e2e e2e/notebook-authenticated.spec.ts --project=credentialed-chromium`；`pnpm e2e:r1-live:golden` |
 | `artifact_url_or_path`, `artifact_hash` | `.tmp/mathin-supabase-selfhosted/docker-compose.local.yml`（gitignored 本机 artifact），规范化文本 SHA-256 `28a7db50a165e5f34cd6f9dc46cc0e47931d6597a7143a99003a8dd5a2d46653`；`scripts/ensure-r1-fixed-test-accounts.mjs`，规范化文本 SHA-256 `0e533c5c77ab635fd54405951dcb895b9aa4e66956d5da1a1b8f270fdca3804a`；本地数据库指纹 `5af56ae69b51ca0a78b9357ec4792533a6e59f0a529a9a918f6ba4c93da68d0f` |
 | `retention`, `access_roles`, `failure_ticket` | 保留至隔离开发目标被明确替换；本机所有者；`not_applicable` |
 
 仓库 migration 重放到 `20260728000300_r1_platform_runtime.sql` 时，官方 self-hosted Storage 已存在 `storage.buckets.allowed_mime_types text[]`，但该表由 `supabase_storage_admin` 持有，仓库 `postgres` 角色无权重复执行 `ADD COLUMN IF NOT EXISTS`。核实列型后从下一条语句继续，未改变 Storage 表 owner，剩余迁移全部完成；此兼容偏差不涉及 Xiaomi。
 
 固定账号连接前先对 Xiaomi 做只读集合核对：目标共 12 个 auth user，其中 11 个 `@mathin.local` 身份与 `.claude/test-accounts.local.md` 的 11 个唯一邮箱完全一致，另 1 个非固定域账号未读取到仓库、未复制到本机。新 runner 从 manifest 的 12 条角色行合并为 11 个账号，不把邮箱、密码或 UUID 写入日志/源码；本机 profile 分布为 admin 1、staff 6、student 2、parent 2，staff-role 分布为 teacher 3、research 2、sales/principal/registrar 各 1，与 Xiaomi 匿名摘要一致。账号创建后逐一密码登录 11/11，通过仓库 Playwright 固定学生账号进入 `/zh/notebook/me` 为 1/1；该浏览器证据只证明本机应用与 Auth 连接，不证明正式身份或真实业务旅程。
+
+### Gate 2 本机建班与点名 Golden Path 证据
+
+2026-08-22，固定主管和教师账号在 loopback 应用/数据库完成聚焦旅程：主管选择 `purpose=test` 的未完整课程，创建并立即启用班级，确认自动生成 1 个课次；随后把无 auth 账号的合成 `lead` 学生加入花名册；固定教师登录 live 课次，保存“迟到”和合成备注，再进入课后页重新打开点名抽屉，状态、备注和 `marked_by` 均一致。首次执行在报名阶段暴露 `enroll_student` 要求 `lead → enrolled`、而状态 trigger 拒绝该边的冲突；migration `20260822000300_r1_live_enrollment_status_transition.sql` 只补这一条既有受控 RPC 边，其余学生/跟进状态边保持不变。
+
+| 证据字段 | 值 |
+| --- | --- |
+| `gate_id`, `domain`, `result` | `R1-Live Gate 2`；本机建班/报名/点名持久闭环；隔离子步骤 `PASS`，Gate 2 整体仍 `BLOCKED` |
+| `measured_value`, `threshold` | `r1-live-local-chromium` 1/1 通过（业务旅程 15.3 秒，整次 runner 18.0 秒）；1 个未完整课程测试班、1 个自动课次、1 个 `lead` 学生、1 条迟到记录和 1 条备注均经 UI/RPC 写入并从独立页面再读；数据库额外核对 `marked_by` 等于固定教师。阈值为报名不报状态错误、再读完全一致、无账号创建、无外部通知、无可变残留，全部满足 |
+| `commit_sha`, `migration_head`, `environment` | `302a0523b0bf27e772618ca3c8c512b7b52166b2`；本机 `179` 条 ledger、head `20260822000300_r1_live_enrollment_status_transition`、checksum `f07a186b3cfc9395f071d14717c0c4eeae543c055fcf4124e0e022be08c6bffc`；Windows Docker Desktop / `mathin-isolated-loopback`；未连接 Xiaomi |
+| `dataset_manifest` | 执行前后 `auth.users=11`、`profiles=11`；email/SMS/微信/webhook 均 `disabled`，active protection manifest 0。夹具只创建随机标记的 `purpose=test` 课程族/版本/课程/讲次、无登录账号学生、班级/课次/报名/点名；对精确匹配的新测试班把四种课耗设为 0。最终学生、班级、课次、报名、点名、课耗账本和 Golden Path 课程族均为 0；每个已删除测试班的 `classroom.created` 审计事件保留 |
+| `started_at`, `finished_at`, `actor`, `approver` | 2026-08-22（Asia/Shanghai）；2026-08-22（Asia/Shanghai）；Codex；`swingislee`（回复“继续”，推进 doc 04 已规划的 Gate 2 隔离 Golden Path） |
+| `command_or_runbook` | `pnpm e2e:r1-live:golden`；runner 同时要求 loopback 应用目标、`R1_DEV_TEST_FIXTURES=1`、非 release mode 和 `assertNonProductionWriteTarget`；登录态 trace/screenshot/video 全关闭；`pnpm r1:live:test`、`pnpm test -- tests/r1-playwright-baseline.test.ts`、`pnpm ci:checks`（16/16） |
+| `artifact_url_or_path`, `artifact_hash` | `supabase/migrations/20260822000300_r1_live_enrollment_status_transition.sql` `f07a186b3cfc9395f071d14717c0c4eeae543c055fcf4124e0e022be08c6bffc`；`e2e/r1-live-golden-path.spec.ts` `d156a7c55cb21f083d2036389b5b485cf60bb53db8240d543b84d818b6454708`；`e2e/support/r1-live-golden-path-fixture.ts` `35352778fe2170cb052742f738bfb8fb79e574c99cfe6c21afa3b147292fbc56`；`scripts/run-r1-live-golden-path.mjs` `c4603a8d1321d1babeee9b0f247ef70cd72d529a2045ff758b6bdb3eb92b8e9e`（均为 LF 归一化 SHA-256） |
+| `retention`, `access_roles`, `failure_ticket` | migration、runner、合同和去标识化摘要随 Git 永久保留；仓库维护者；`BUG-R1-LIVE-003` 已在仓库/本机关闭，生产部署与正式目标复验 pending |
+
+首次完整业务链在收尾保护中发现测试班默认 `late_lessons=1` 会生成 1 条课耗账本；清理器先 fail-closed，没有继续删除关联对象。随后只对已核对的唯一 UUID、随机合成名称、`purpose=test`、合成来源和精确对象计数执行事务化清理，事务内 precheck/postcheck 均为 1，审计事件未删除；之后 runner 在点名前把精确匹配测试班的四种课耗置 0。该处理只约束本机合成夹具，不改变正式班默认课耗合同。
 
 ### 未完成课程可建班/启用的隔离回归证据
 
@@ -251,12 +268,12 @@ Agent 按 doc 04 的 standing execution direction 生成包含原 4 个 protecte
 | 范围 | 位置 | 当前判断 |
 | --- | --- | --- |
 | 正式员工注册 | `src/features/account/AccountSupportPanel.tsx`、`src/features/account/actions.ts`、`src/app/[locale]/(auth)/actions.ts`、迁移 `20260728000400_r1_account_security.sql` | 当前一次性代码只绑定邮箱；注册后身份为 `staff`，仍需分配 teacher role。邮箱/手机号/password、验证码与微信/QQ 的唯一账号合同见 [`r1-live-auth-identities.md`](../../plan/r1-live-auth-identities.md) |
-| 教师入口 | `src/app/[locale]/dashboard/classes/**`、`src/app/[locale]/dashboard/sessions/[sessionId]/page.tsx`、课堂 live route | 路由存在；现有 Playwright 只证明固定 teacher 能打开班级门户，没有点名写态 |
-| 点名 UI/action | `src/features/school/AttendanceDrawer.tsx`、`src/features/school/actions/attendance.ts` | 读取失败显示 action failed；写入使用 zod 和 upsert；缺真实目标 E3 |
+| 教师入口 | `src/app/[locale]/dashboard/classes/**`、`src/app/[locale]/dashboard/sessions/[sessionId]/page.tsx`、课堂 live route | 本机固定教师已完成 live 点名和课后页再读；缺正式目标 E3 |
+| 点名 UI/action | `src/features/school/AttendanceDrawer.tsx`、`src/features/school/actions/attendance.ts` | 读取失败显示 action failed；写入使用 zod 和 upsert；本机写态/再读通过，缺真实目标 E3 |
 | 点名事实 | `public.session_attendance` | 主键防重复；触发器写 `marked_by/marked_at`；note 最长 500 字符由 action 限制 |
 | RLS | 迁移 `20260709000700_school_attendance.sql` | admin、授权本班教师/全校 staff 可读写；可访问学生档案的员工可读；学生/家长只经裁剪 RPC 读本人/孩子 |
 | 开课提示 | `src/features/classroom/actions.ts`、课堂 live page、`src/features/classroom/live/LiveShell.tsx` | 点名、资源预载和 release 准备状态保持可见，但不再作为开课服务端门 |
-| 当前自动化 | `tests/r1-classroom-continuity.test.ts`、`e2e/school-portals.spec.ts` | 前者是源码合同，后者只到班级门户；均不能证明目标环境写态闭环 |
+| 当前自动化 | `tests/r1-classroom-continuity.test.ts`、`e2e/school-portals.spec.ts`、`e2e/r1-live-golden-path.spec.ts` | 源码合同和 loopback 固定账号写态均通过；不能替代正式目标真实数据闭环 |
 
 ## 真实正式账号与数据路径
 
@@ -273,7 +290,7 @@ Agent 按 doc 04 的 standing execution direction 生成包含原 4 个 protecte
 
 | ID | 等级 | 原因 | 最小修复 | 人工操作 | 验收 |
 | --- | --- | --- | --- | --- | --- |
-| LIVE-P1-03 | 核心 P1 | 点名只有开发合同证据，没有真实数据 Golden Path | 走正式 UI 建立花名册、production 班级和课次；正式教师保存点名并刷新或重登再读，管理员与既有无权限主体作对照 | 产品负责人提供真实花名册；正式教师执行一次登录与点名 | 每名在册学生恰好一条记录；再读一致；越权查询 0 泄露；P0/核心 P1=0 |
+| LIVE-P1-03 | 核心 P1 | 隔离固定账号写态已通过，但 `20260822000300` 未部署生产，也没有真实数据 Golden Path | 先部署窄 migration；再走正式 UI 建立花名册、production 班级和课次，正式教师保存点名并刷新或重登再读，管理员与既有无权限主体作对照 | migration 由 Agent 按既定发布约束部署；产品负责人提供真实花名册；正式教师执行一次登录与点名 | 生产函数允许受控 `lead → enrolled`；每名在册学生恰好一条记录；再读一致；越权查询 0 泄露；P0/核心 P1=0 |
 
 仓库审阅没有发现一个已证实的开放 P0；这不等于生产 P0=0，因为 Gate 2 尚未在目标环境执行。
 
