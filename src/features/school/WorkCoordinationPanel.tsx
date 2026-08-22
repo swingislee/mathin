@@ -6,6 +6,7 @@ import { FormEvent, useMemo, useState } from "react";
 import { useAction } from "@/components/action-form";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
@@ -170,7 +171,7 @@ export function WorkCoordinationPanel({
                 </Label>
                 <Label className="grid gap-1.5">{t("coordinationDomainLabel")}{domainSelect(workDomain, setWorkDomain)}</Label>
                 <Label className="grid gap-1.5">{t("coordinationPriorityLabel")}{prioritySelect(workPriority, setWorkPriority)}</Label>
-                <Label className="grid gap-1.5">{t("coordinationDueLabel")}<Input type="datetime-local" value={workDueAt} onChange={(event) => setWorkDueAt(event.target.value)} /></Label>
+                <Label className="grid gap-1.5">{t("coordinationDueLabel")}<DateTimePicker mode="datetime" value={workDueAt} onValueChange={setWorkDueAt} /></Label>
                 {canManageWorkItems ? (
                   <Label className="grid gap-1.5 sm:col-span-2">{t("coordinationAssigneeLabel")}
                     <Select value={assigneeId} onValueChange={setAssigneeId}>
@@ -201,7 +202,7 @@ export function WorkCoordinationPanel({
               <div className="grid gap-4 sm:grid-cols-2">
                 <Label className="grid gap-1.5">{t("coordinationDomainLabel")}{domainSelect(approvalDomain, setApprovalDomain)}</Label>
                 <Label className="grid gap-1.5">{t("coordinationPriorityLabel")}{prioritySelect(approvalPriority, setApprovalPriority)}</Label>
-                <Label className="grid gap-1.5">{t("coordinationDueLabel")}<Input type="datetime-local" value={approvalDueAt} onChange={(event) => setApprovalDueAt(event.target.value)} /></Label>
+                <Label className="grid gap-1.5">{t("coordinationDueLabel")}<DateTimePicker mode="datetime" value={approvalDueAt} onValueChange={setApprovalDueAt} /></Label>
                 <Label className="grid gap-1.5">{t("coordinationApproverLabel")}
                   <Select value={approverId} onValueChange={setApproverId}>
                     <SelectTrigger><SelectValue /></SelectTrigger>

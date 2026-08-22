@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
@@ -105,6 +105,8 @@ export function CoursewareOverlayEditor({
   const t = useTranslations("school.overlay");
   const ts = useTranslations("school.session");
   const tGames = useTranslations("games");
+  const generatedToolbarId = useId();
+  const toolbarTargetId = `courseware-annotation-toolbar-${generatedToolbarId.replaceAll(":", "")}`;
   const [overlay, setOverlay] = useState<OverlaySlot[]>(() => healOverlay(template, initialOverlay));
   const [saveState, setSaveState] = useState<SaveState>("saved");
   const [uploading, setUploading] = useState(false);
@@ -406,6 +408,7 @@ export function CoursewareOverlayEditor({
         initialVersion={selectedAnnotation?.version ?? 0}
         generated={selectedBoardGenerated}
         readOnly={readOnly}
+        toolbarTargetId={toolbarTargetId}
       >
         <StagePreview doc={selectedDoc.doc} bindingUrls={selectedDoc.bindingUrls} stageMode="board43" interactive={false} className="size-full" />
       </CoursewareAnnotationBoard>
@@ -509,7 +512,7 @@ export function CoursewareOverlayEditor({
         previewLabel={t("visualPreview")}
         previousLabel={ts("coursewarePreviousPage")}
         nextLabel={ts("coursewareNextPage")}
-        keyboardHint={ts("coursewareKeyboardHint")}
+        toolbarTargetId={!readOnly && selectedPage?.type === "doc" ? toolbarTargetId : undefined}
         selectedPageLabel={selectedPage ? safeSelectedIndex + 1 + " / " + resolvedPages.length + " · " + selectedPage.title : t("previewEmpty")}
         railStatus={(
           <>

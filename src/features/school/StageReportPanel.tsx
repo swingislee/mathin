@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { useAction } from "@/components/action-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -261,7 +262,7 @@ export function StageReportPanel({
         </Label>
         <Label className="grid gap-1 text-xs text-muted md:max-w-sm">
           {t("dataCutoffAt")}
-          <Input type="datetime-local" value={dataCutoffAt} onChange={(event) => setDataCutoffAt(event.target.value)} disabled={status === "review"} />
+          <DateTimePicker mode="datetime" value={dataCutoffAt} onValueChange={setDataCutoffAt} disabled={status === "review"} />
         </Label>
         {metricVersion && (
           <p className="rounded-xl bg-line/30 px-3 py-2 text-xs text-muted">

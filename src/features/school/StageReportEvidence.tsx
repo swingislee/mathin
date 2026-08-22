@@ -2,7 +2,7 @@
 
 import { useLocale, useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { Label } from "@/components/ui/label";
 import type { StudentLearning } from "./students";
 
@@ -70,11 +70,11 @@ export function StageReportEvidence({
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <Label className="grid gap-1 text-xs text-muted">
           {t("periodStart")}
-          <Input type="date" value={periodStart} onChange={(event) => onPeriodStartChange(event.target.value)} disabled={lockPeriod} />
+          <DateTimePicker value={periodStart} onValueChange={onPeriodStartChange} disabled={lockPeriod} />
         </Label>
         <Label className="grid gap-1 text-xs text-muted">
           {t("periodEnd")}
-          <Input type="date" value={periodEnd} onChange={(event) => onPeriodEndChange(event.target.value)} disabled={lockPeriod} />
+          <DateTimePicker value={periodEnd} onValueChange={onPeriodEndChange} disabled={lockPeriod} />
         </Label>
       </div>
 

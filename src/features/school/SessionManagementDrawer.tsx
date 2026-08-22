@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useAction } from "@/components/action-form";
@@ -107,12 +108,13 @@ export function SessionManagementDrawer({
             <section className="grid gap-2">
               <h3 className="text-xs font-medium uppercase text-muted">{t("zoneSchedule")}</h3>
               {capabilities.canReschedule && session.scheduledAt ? (
-                <Input
-                  type="datetime-local"
+                <DateTimePicker
+                  mode="datetime"
                   disabled={pending}
                   defaultValue={toDateTimeLocalValue(session.scheduledAt)}
-                  onChange={(event) => {
-                    const iso = new Date(event.target.value).toISOString();
+                  onValueChange={(value) => {
+                    if (!value) return;
+                    const iso = new Date(value).toISOString();
                     rescheduleRun.run(session.id, iso, session.durationMin ?? 90);
                   }}
                   className="rounded-lg border border-line bg-card px-2 py-1.5 text-sm"

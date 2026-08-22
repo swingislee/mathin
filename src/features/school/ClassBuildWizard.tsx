@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -309,12 +310,12 @@ export function ClassBuildWizard({
         </div>
         <div>
           <Label htmlFor="schedule-start" className="text-xs font-normal text-muted">{t("startDate")}</Label>
-          <Input id="schedule-start" type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} aria-invalid={mode === "course" && step3Attempted && !startDateValid} aria-describedby={mode === "course" && step3Attempted && !startDateValid ? "schedule-start-error" : undefined} className={cn("mt-1", inputClass)} />
+          <DateTimePicker id="schedule-start" value={startDate} onValueChange={setStartDate} aria-invalid={mode === "course" && step3Attempted && !startDateValid} aria-describedby={mode === "course" && step3Attempted && !startDateValid ? "schedule-start-error" : undefined} className={cn("mt-1", inputClass)} />
           {mode === "course" && step3Attempted && !startDateValid && <p id="schedule-start-error" role="alert" className="mt-1 text-xs text-rose">{t("startDateRequired")}</p>}
         </div>
         <div>
           <Label htmlFor="schedule-time" className="text-xs font-normal text-muted">{t("time")}</Label>
-          <Input id="schedule-time" type="time" value={time} onChange={(event) => setTime(event.target.value)} aria-invalid={mode === "course" && step3Attempted && !timeValid} aria-describedby={mode === "course" && step3Attempted && !timeValid ? "schedule-time-error" : undefined} className={cn("mt-1", inputClass)} />
+          <DateTimePicker id="schedule-time" mode="time" value={time} onValueChange={setTime} aria-invalid={mode === "course" && step3Attempted && !timeValid} aria-describedby={mode === "course" && step3Attempted && !timeValid ? "schedule-time-error" : undefined} className={cn("mt-1", inputClass)} />
           {mode === "course" && step3Attempted && !timeValid && <p id="schedule-time-error" role="alert" className="mt-1 text-xs text-rose">{t("timeRequired")}</p>}
         </div>
         <div>
@@ -324,7 +325,7 @@ export function ClassBuildWizard({
         </div>
       </div>
       {mode === "course" ? <><div className="mt-5"><Label className="text-xs font-normal text-muted">{t("weekdays")}</Label><div className="mt-2 flex flex-wrap gap-2">{WEEKDAYS.map((day) => <Button key={day} type="button" variant={weekdays.has(day) ? "primary" : "secondary"} onClick={() => toggleWeekday(day)}>{t(`weekday_${day}`)}</Button>)}</div>{step3Attempted && weekdays.size === 0 && <p role="alert" className="mt-2 text-xs text-rose">{t("weekdaysRequired")}</p>}</div>
-        {preview.length > 0 && <div className="mt-5 overflow-hidden rounded-xl border border-line"><Table><TableHeader><TableRow><TableHead className="w-16">No.</TableHead><TableHead>{t("lectureName")}</TableHead><TableHead>{t("scheduledAt")}</TableHead></TableRow></TableHeader><TableBody>{preview.map((item) => <TableRow key={item.lectureId}><TableCell className="font-mono text-xs text-muted">{item.no}</TableCell><TableCell>{item.name}</TableCell><TableCell><Input type="datetime-local" value={toDateTimeLocalValue(new Date(overrides[item.lectureId] ?? item.scheduledAt.toISOString()))} onChange={(event) => { const value = event.target.value; setOverrides((current) => ({ ...current, [item.lectureId]: value ? new Date(value).toISOString() : item.scheduledAt.toISOString() })); setActivateNow(false); }} className="h-8 max-w-60 text-xs" /></TableCell></TableRow>)}</TableBody></Table></div>}
+        {preview.length > 0 && <div className="mt-5 overflow-hidden rounded-xl border border-line"><Table><TableHeader><TableRow><TableHead className="w-16">No.</TableHead><TableHead>{t("lectureName")}</TableHead><TableHead>{t("scheduledAt")}</TableHead></TableRow></TableHeader><TableBody>{preview.map((item) => <TableRow key={item.lectureId}><TableCell className="font-mono text-xs text-muted">{item.no}</TableCell><TableCell>{item.name}</TableCell><TableCell><DateTimePicker mode="datetime" value={toDateTimeLocalValue(new Date(overrides[item.lectureId] ?? item.scheduledAt.toISOString()))} onValueChange={(value) => { setOverrides((current) => ({ ...current, [item.lectureId]: value ? new Date(value).toISOString() : item.scheduledAt.toISOString() })); setActivateNow(false); }} className="h-8 max-w-60 text-xs" /></TableCell></TableRow>)}</TableBody></Table></div>}
       </> : <p className="mt-5 rounded-xl bg-moon/30 px-3 py-2 text-sm text-muted">{t("freeScheduleHint")}</p>}
       {visibleConflictsLoading && <p className="mt-4 flex items-center gap-2 text-sm text-muted"><LoaderCircle className="size-4 animate-spin" />{t("checkingConflicts")}</p>}
       {!visibleConflictsLoading && visibleConflicts.length > 0 && <div role="alert" className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-950 dark:text-amber-100"><p className="flex items-center gap-2 font-medium"><AlertTriangle className="size-4" />{t("conflictsFound", { count: visibleConflicts.length })}</p><ul className="mt-2 space-y-1 text-xs">{visibleConflicts.map((conflict) => <li key={conflict.sessionId}>{conflict.classroomName} · {conflict.lectureName} · {new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(conflict.scheduledAt))}</li>)}</ul></div>}

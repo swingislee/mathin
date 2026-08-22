@@ -1,6 +1,7 @@
 "use client";
 
 import { Input } from "@/components/ui/input";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 
 import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
@@ -56,10 +57,9 @@ export function CreateAssignmentButton({ classroomId }: { classroomId: string })
           />
           <label className="flex items-center gap-2 text-xs text-muted">
             {t("dueLabel")}
-            <Input
-              type="date"
+            <DateTimePicker
               value={due}
-              onChange={(event) => setDue(event.target.value)}
+              onValueChange={setDue}
               className="rounded-lg border border-line bg-transparent px-2 py-1 text-sm outline-none focus:border-ink/40"
             />
           </label>

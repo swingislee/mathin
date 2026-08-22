@@ -67,7 +67,7 @@ export function CoursewarePreviewWorkspace({
   previewLabel,
   previousLabel,
   nextLabel,
-  keyboardHint,
+  toolbarTargetId,
   selectedPageLabel,
   railStatus,
   railFooter,
@@ -84,7 +84,8 @@ export function CoursewarePreviewWorkspace({
   previewLabel: string;
   previousLabel: string;
   nextLabel: string;
-  keyboardHint: string;
+  /** Optional mount point for an editable preview's drawing toolbar. */
+  toolbarTargetId?: string;
   selectedPageLabel?: string;
   railStatus?: ReactNode;
   railFooter?: ReactNode;
@@ -304,7 +305,7 @@ export function CoursewarePreviewWorkspace({
             <ChevronLeft size={15} />
             {previousLabel}
           </Button>
-          <span className="hidden min-w-0 truncate text-center text-[11px] text-muted sm:block">{keyboardHint}</span>
+          {toolbarTargetId ? <div id={toolbarTargetId} className="flex min-w-0 flex-1 items-center justify-center overflow-hidden" /> : <span className="flex-1" />}
           <Button
             type="button"
             size="sm"

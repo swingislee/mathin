@@ -27,6 +27,9 @@ import { SessionGroupList } from "@/features/school/SessionGroupList";
 import { SessionManagementDrawer } from "@/features/school/SessionManagementDrawer";
 import {
   DashboardAside,
+  DashboardCommandActions,
+  DashboardCommandPanel,
+  DashboardCommandState,
   DashboardContentGrid,
   DashboardEmptyCard,
   DashboardMainColumn,
@@ -157,14 +160,24 @@ async function ClassDetailBody({
           backLabel={t("back")}
           context={contextItems}
           status={lifecycleStatus}
-          primaryAction={primaryAction}
-          overflowSlot={isManagementView ? <ClassroomSettingsSheet classroom={classroom} staffOptions={staffOptions} teachingReadiness={teachingReadiness} /> : undefined}
         />}
-        navigation={<ObjectTabs
-          items={TABS.map((tab) => ({ value: tab, label: t(`tab_${tab}`), href: tabHref(tab) }))}
-          activeValue={activeTab}
-          ariaLabel={t("tabsLabel")}
-        />}
+        navigation={(
+          <DashboardCommandPanel>
+            <DashboardCommandState>
+              <ObjectTabs
+                items={TABS.map((tab) => ({ value: tab, label: t(`tab_${tab}`), href: tabHref(tab) }))}
+                activeValue={activeTab}
+                ariaLabel={t("tabsLabel")}
+              />
+            </DashboardCommandState>
+            {(primaryAction || isManagementView) ? (
+              <DashboardCommandActions>
+                {primaryAction}
+                {isManagementView ? <ClassroomSettingsSheet classroom={classroom} staffOptions={staffOptions} teachingReadiness={teachingReadiness} /> : null}
+              </DashboardCommandActions>
+            ) : null}
+          </DashboardCommandPanel>
+        )}
       >
         {/*
           §9：主栏只放当前 tab 的工作面，侧栏放跨 tab 不变的班级状况。

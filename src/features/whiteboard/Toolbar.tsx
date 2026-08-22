@@ -4,6 +4,7 @@ import { useState, type ComponentType, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import {
   ArrowRight,
+  ChevronDown,
   ChevronUp,
   Circle,
   Diamond,
@@ -150,6 +151,7 @@ export function Toolbar({
   const clear = useStore(store, (state) => state.clear);
   const addInstrument = useStore(store, (state) => state.addInstrument);
   const [lastEraser, setLastEraser] = useState<Tool>("strokeEraser");
+  const [collapsed, setCollapsed] = useState(false);
   const [clearOpen, setClearOpen] = useState(false);
   const [clearSelected, setClearSelected] = useState<Set<string>>(
     () => new Set(clearTargets?.filter((target) => target.defaultChecked).map((target) => target.key) ?? []),
@@ -174,10 +176,29 @@ export function Toolbar({
     setTool("pointer");
   };
 
+  if (collapsed) {
+    return (
+      <Button
+        type="button"
+        size="sm"
+        variant="secondary"
+        data-whiteboard-toolbar-toggle
+        aria-expanded="false"
+        aria-label={t("showToolbar")}
+        title={t("showToolbar")}
+        onClick={() => setCollapsed(false)}
+        className={cn("h-9 rounded-full bg-paper/95 px-3 text-xs shadow-sm backdrop-blur hover:-translate-y-0.5", className)}
+      >
+        <ChevronUp size={15} />
+        {t("showToolbar")}
+      </Button>
+    );
+  }
+
   return (
     // 上限按所在列算而不是按视口算（doc 27 §5.1）：工具栏浮在主板书列内居中，
     // 而 100vw 是整个视口——主板书只有 700px 时，工具栏会长到盖住右侧副板书。
-    <div className={cn("flex max-w-full items-center gap-0.5 overflow-x-auto rounded-2xl border border-line bg-paper/90 p-1.5 shadow-lg backdrop-blur select-none", className)}>
+    <div className={cn("flex max-w-full items-center gap-0.5 overflow-x-auto rounded-2xl border border-line bg-paper/90 p-1.5 shadow-lg backdrop-blur transition-[transform,opacity] duration-200 select-none", className)}>
       <ToolButton active={tool === "pointer"} label={t("pointer")} onClick={() => setTool("pointer")}>
         <MousePointer2 size={18} />
       </ToolButton>
@@ -288,6 +309,8 @@ export function Toolbar({
       <ToolButton label={t("undo")} onClick={undo} disabled={!canUndo}><Undo2 size={18} /></ToolButton>
       <ToolButton label={t("clear")} onClick={() => setClearOpen(true)} disabled={clearTargets ? false : !hasItems}><Trash2 size={18} /></ToolButton>
       <ToolButton label={t("export")} onClick={() => { void exportPng(store.getState().items, title, document.documentElement); }} disabled={!hasItems}><Download size={18} /></ToolButton>
+      <div aria-hidden className="mx-0.5 h-6 w-px shrink-0 bg-line" />
+      <ToolButton label={t("hideToolbar")} onClick={() => setCollapsed(true)}><ChevronDown size={18} /></ToolButton>
 
       <Dialog open={clearOpen} onOpenChange={setClearOpen}>
         <DialogContent>

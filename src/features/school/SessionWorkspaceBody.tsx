@@ -118,6 +118,11 @@ export async function SessionWorkspaceBody({
   ] satisfies (ObjectContextItem | null)[]).filter((item) => item !== null);
 
   const primaryAction = resolvePrimaryAction(detail, stageHref, t);
+  const prepSubmittedLate = Boolean(
+    detail.prepPreparedAt
+      && detail.scheduledAt
+      && new Date(detail.prepPreparedAt).getTime() > new Date(detail.scheduledAt).getTime(),
+  );
 
   return (
     <ObjectWorkspace
@@ -128,7 +133,12 @@ export async function SessionWorkspaceBody({
           backHref={backHref}
           backLabel={t("backToClassroom")}
           context={contextItems}
-          status={<Badge variant="secondary">{statusLabel}</Badge>}
+          status={(
+            <span className="flex items-center gap-1.5">
+              <Badge variant="secondary">{statusLabel}</Badge>
+              {prepSubmittedLate ? <Badge variant="outline" className="border-rose/40 text-rose">{t("prepSubmittedLate")}</Badge> : null}
+            </span>
+          )}
           primaryAction={primaryAction && (
             <Link href={primaryAction.href} className={cn(buttonVariants({ size: "sm" }))}>{primaryAction.label}</Link>
           )}

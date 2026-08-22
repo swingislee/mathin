@@ -3,6 +3,7 @@
 import { FileOutput, LoaderCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { useStore } from "zustand";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,7 @@ export function CoursewareAnnotationBoard({
   initialVersion,
   generated,
   readOnly,
+  toolbarTargetId,
   children,
 }: {
   sessionId: string;
@@ -37,6 +39,7 @@ export function CoursewareAnnotationBoard({
   initialVersion: number;
   generated: boolean;
   readOnly: boolean;
+  toolbarTargetId?: string;
   children: ReactNode;
 }) {
   const t = useTranslations("school.session");
@@ -50,6 +53,7 @@ export function CoursewareAnnotationBoard({
   const itemCount = useStore(store, (state) => state.items.length);
   const [saveState, setSaveState] = useState<SaveState>("saved");
   const [generating, setGenerating] = useState(false);
+  const [toolbarTarget, setToolbarTarget] = useState<HTMLElement | null>(null);
   const serverVersionRef = useRef(initialVersion);
   const savedLocalRevisionRef = useRef(0);
   const pendingSaveRef = useRef<Promise<boolean> | null>(null);
@@ -92,6 +96,12 @@ export function CoursewareAnnotationBoard({
     return () => window.clearTimeout(timer);
   }, [persist, readOnly, revision]);
 
+  useEffect(() => {
+    if (!toolbarTargetId) return;
+    const frame = window.requestAnimationFrame(() => setToolbarTarget(document.getElementById(toolbarTargetId)));
+    return () => window.cancelAnimationFrame(frame);
+  }, [toolbarTargetId]);
+
   const generate = async () => {
     setGenerating(true);
     const saved = await persist();
@@ -125,9 +135,18 @@ export function CoursewareAnnotationBoard({
               {generated ? t("annotationRegenerateSolution") : t("annotationGenerateSolution")}
             </Button>
           </div>
-          <div className="absolute inset-x-2 bottom-2 z-30 flex justify-center" data-courseware-annotation-toolbar>
-            <Toolbar title={`solution-${pageDocId}`} store={store} className="max-w-full shadow-sm" />
-          </div>
+          {toolbarTargetId ? (
+            toolbarTarget ? createPortal(
+              <div className="flex min-w-0 flex-1 justify-center" data-courseware-annotation-toolbar>
+                <Toolbar title={`solution-${pageDocId}`} store={store} className="max-w-full shadow-sm" />
+              </div>,
+              toolbarTarget,
+            ) : null
+          ) : (
+            <div className="absolute inset-x-2 bottom-2 z-30 flex justify-center" data-courseware-annotation-toolbar>
+              <Toolbar title={`solution-${pageDocId}`} store={store} className="max-w-full shadow-sm" />
+            </div>
+          )}
         </>
       ) : null}
     </div>

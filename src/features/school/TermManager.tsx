@@ -7,6 +7,7 @@ import { useAction } from "@/components/action-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -61,11 +62,11 @@ function PeriodDates({
       </div>
       <Label className="grid gap-1 text-xs font-normal text-muted">
         {t("startsOn")}
-        <Input className="h-9" type="date" value={startsOn} onChange={(event) => setStartsOn(event.target.value)} />
+        <DateTimePicker className="h-9" value={startsOn} onValueChange={setStartsOn} />
       </Label>
       <Label className="grid gap-1 text-xs font-normal text-muted">
         {t("endsOn")}
-        <Input className="h-9" type="date" value={endsOn} onChange={(event) => setEndsOn(event.target.value)} />
+        <DateTimePicker className="h-9" value={endsOn} onValueChange={setEndsOn} />
       </Label>
       <div className="flex min-h-9 items-center md:justify-end">
         {changed ? (
@@ -270,11 +271,10 @@ export function TermManager({ years }: { years: SchoolYearRow[] }) {
                       <div className="mt-3 flex flex-wrap items-end gap-3">
                         <Label className="grid min-w-48 flex-1 gap-1 text-xs font-normal text-muted sm:max-w-xs">
                           {t("gradeEffectiveDate")}
-                          <Input
+                          <DateTimePicker
                             className="h-9"
-                            type="date"
                             value={effectiveOn}
-                            onChange={(event) => setEffectiveDates((current) => ({ ...current, [selectedYear.id]: event.target.value }))}
+                            onValueChange={(value) => setEffectiveDates((current) => ({ ...current, [selectedYear.id]: value }))}
                           />
                         </Label>
                         <Button type="button" size="sm" disabled={pending || !effectiveDateValid} onClick={() => setActivationTarget(selectedYear)}>

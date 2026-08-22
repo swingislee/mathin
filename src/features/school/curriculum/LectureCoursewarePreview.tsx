@@ -42,7 +42,6 @@ export async function LectureCoursewarePreview({
         previewLabel={t("coursewarePreview")}
         previousLabel={t("previousPage")}
         nextLabel={t("nextPage")}
-        keyboardHint={t("previewKeyboardHint")}
         selectedPageLabel={t("previewPageIndicator", { current: preview.pageIndex, total: preview.pages.length })}
         previewAspect={previewAspect}
         preview={(

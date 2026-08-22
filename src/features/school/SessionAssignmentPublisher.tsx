@@ -6,6 +6,7 @@ import { BookOpenCheck } from "lucide-react";
 import { useAction } from "@/components/action-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -59,7 +60,7 @@ export function SessionAssignmentPublisher({
         </Label>
         <Label className="grid gap-1 text-xs font-normal text-muted sm:max-w-xs">
           {t("assignmentDueLabel")}
-          <Input type="datetime-local" value={dueAt} onChange={(event) => setDueAt(event.target.value)} />
+          <DateTimePicker mode="datetime" value={dueAt} onValueChange={setDueAt} />
         </Label>
         <div className="flex justify-end">
           <Button

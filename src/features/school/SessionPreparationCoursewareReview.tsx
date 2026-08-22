@@ -146,7 +146,6 @@ export function SessionPreparationCoursewareReview({
         previewLabel={t("prepReviewCoursewarePreview")}
         previousLabel={t("coursewarePreviousPage")}
         nextLabel={t("coursewareNextPage")}
-        keyboardHint={t("coursewareKeyboardHint")}
         selectedPageLabel={selectedPage
           ? `${safeSelectedIndex + 1} / ${pages.length} · ${selectedPage.title}`
           : t("prepReviewCoursewareEmpty")}

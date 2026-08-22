@@ -210,14 +210,26 @@ export function ChangeBell({
     const resultKind = typeof event.payload.resultKind === "string" ? event.payload.resultKind : null;
     const specificKey = resultKind ? `${key}_${resultKind}` : null;
     const labelKey = specificKey && t.has(`types.${specificKey}`) ? specificKey : t.has(`types.${key}`) ? key : null;
-    const title = typeof event.payload.title === "string" ? event.payload.title : null;
+    const changedFields = Array.isArray(event.payload.changedFields)
+      ? event.payload.changedFields.filter((value): value is string => typeof value === "string").join(" · ")
+      : null;
+    const detail = [
+      event.payload.title,
+      event.payload.message,
+      event.payload.studentName,
+      event.payload.classroomName,
+      event.payload.sessionTitle,
+      event.payload.status,
+      event.payload.reason,
+      changedFields,
+    ].find((value): value is string => typeof value === "string" && value.trim().length > 0) ?? null;
     return (
       <span className="block min-w-0 flex-1">
         <span className="flex items-center gap-2">
           <span className="size-1.5 shrink-0 rounded-full bg-rose" aria-hidden />
-          <span className="truncate text-sm">{labelKey ? t(`types.${labelKey}`) : t("unknownType")}</span>
+          <span className="truncate text-sm">{labelKey ? t(`types.${labelKey}`) : t("unknownType", { type: event.type })}</span>
         </span>
-        {title ? <span className="mt-1 block truncate pl-3.5 text-xs text-ink">{title}</span> : null}
+        {detail ? <span className="mt-1 block truncate pl-3.5 text-xs text-ink">{detail}</span> : null}
         <time className="mt-1 block pl-3.5 text-xs text-muted">
           {new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(event.occurredAt))}
         </time>

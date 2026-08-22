@@ -62,6 +62,13 @@
     "invalidInput": "Invalid input. Please check the form and try again.",
     "moreFilters": "More filters",
     "clearFilters": "Clear filters",
+    "chooseDate": "Choose a date",
+    "chooseDateTime": "Choose a date and time",
+    "chooseTime": "Choose a time",
+    "clearDate": "Clear date",
+    "today": "Today",
+    "time": "Time",
+    "done": "Done",
     "enterFullscreen": "Full screen",
     "exitFullscreen": "Exit full screen"
   },
@@ -81,7 +88,7 @@
     "markedAllRead": "Notifications marked as read.",
     "markReadFailed": "Could not update read status. Try again.",
     "empty": "There are no new changes relevant to you.",
-    "unknownType": "System status updated",
+    "unknownType": "System update: {type}",
     "focusFound": "The related content is focused and highlighted.",
     "focusUnavailable": "This item is no longer in the current list. Open coordination history to review it.",
     "types": {
@@ -2751,6 +2758,7 @@
       "actionFailed": "Action failed, please try again.",
       "status_scheduledNotReady": "Scheduled · Not prepared",
       "status_scheduledReady": "Scheduled · Ready",
+      "prepSubmittedLate": "Submitted late",
       "status_imminent": "Starting soon",
       "status_endedPending": "Ended · Postwork pending",
       "status_completed": "Completed",
@@ -3887,7 +3895,9 @@
         "clearConfirm": "Clear the whole board? You can still undo this once.",
         "clearTargetsHint": "Choose which boards to clear:",
         "cancel": "Cancel",
-        "export": "Export PNG"
+        "export": "Export PNG",
+        "hideToolbar": "Collapse toolbar downward",
+        "showToolbar": "Show drawing toolbar"
       },
       "colors": {
         "ink": "Ink",

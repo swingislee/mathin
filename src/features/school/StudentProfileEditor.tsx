@@ -1,6 +1,7 @@
 "use client";
 
 import { Input } from "@/components/ui/input";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -63,7 +64,7 @@ export function StudentProfileEditor({ student, canEdit }: { student: StudentDet
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <Field label={t("name")}><Input disabled={disabled} value={form.name} maxLength={100} onChange={(e) => set("name", e.target.value)} className={fieldClass} /></Field>
         <Field label={t("gender")}><Input disabled={disabled} value={form.gender} maxLength={30} onChange={(e) => set("gender", e.target.value)} className={fieldClass} /></Field>
-        <Field label={t("birthday")}><Input disabled={disabled} type="date" value={form.birthday ?? ""} onChange={(e) => set("birthday", e.target.value || null)} className={fieldClass} /></Field>
+        <Field label={t("birthday")}><DateTimePicker disabled={disabled} value={form.birthday ?? ""} onValueChange={(value) => set("birthday", value || null)} className={fieldClass} /></Field>
         <Field label={t("gradeCol")}>
           <Select disabled={disabled} value={toSelectValue(String(form.grade ?? ""))} onValueChange={(value) => { const raw = fromSelectValue(value); set("grade", raw ? Number(raw) : null); }}>
             <SelectTrigger><SelectValue /></SelectTrigger>

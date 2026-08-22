@@ -4,7 +4,7 @@ import { LoaderCircle, MessageSquarePlus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -78,7 +78,7 @@ export function FollowUpForm({ studentId, currentStatus, onSuccess }: { studentI
         </div>
         <Label className="flex items-center gap-1.5 text-xs font-normal text-muted">
           {t("nextFollowUp")}
-          <Input type="datetime-local" value={nextAt} onChange={(event) => setNextAt(event.target.value)} className="h-9 w-auto" />
+          <DateTimePicker mode="datetime" value={nextAt} onValueChange={setNextAt} className="h-9 w-auto" />
         </Label>
         <Select value={toSelectValue(statusAfter)} onValueChange={(value) => setStatusAfter(fromSelectValue(value))}>
           <SelectTrigger aria-label={t("followUpStatusAfter")}><SelectValue /></SelectTrigger>
