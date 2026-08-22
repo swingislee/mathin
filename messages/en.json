@@ -3126,6 +3126,7 @@
       "schoolYears": "Academic years and operating periods",
       "schoolYearsHint": "Academic years determine student grade attribution. Summer, autumn, winter break and spring drive scheduling, and their actual dates can be added later.",
       "schoolYearsEmpty": "No academic years yet.",
+      "selectSchoolYear": "View academic year",
       "createSchoolYear": "Create academic year",
       "createSchoolYearHint": "Creation only adds the year and four undated operating periods. It does not change any student grade.",
       "schoolYearStart": "Academic year start",

@@ -3126,6 +3126,7 @@
       "schoolYears": "学年与运营周期",
       "schoolYearsHint": "学年决定学生年级归属；暑期、秋季、寒假和春季用于排课，实际日期可以临近后再补。",
       "schoolYearsEmpty": "还没有学年。",
+      "selectSchoolYear": "查看学年",
       "createSchoolYear": "创建学年",
       "createSchoolYearHint": "创建只会建立学年和四个日期待定的运营周期，不会改变学生年级。",
       "schoolYearStart": "学年起始年份",

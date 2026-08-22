@@ -33,12 +33,20 @@ describe("R1-Live academic-year contract", () => {
     expect(manager).toContain("ConfirmDialog");
   });
 
+  it("shows one selected academic year at a time instead of expanding every year", () => {
+    expect(manager).toContain("selectedYearId");
+    expect(manager).toContain("setSelectedYearId");
+    expect(manager).toContain("<SelectItem");
+    expect(manager).toContain("selectedYear.periods.map");
+    expect(manager).not.toContain("max-h-[62vh] space-y-4");
+  });
+
   it("validates date pairs inline while leaving overlap as a non-blocking warning", () => {
     expect(manager).toContain('role="alert"');
     expect(manager).toContain("termDatesIncomplete");
     expect(manager).toContain("termDatesReversed");
     expect(manager).toContain("termDatesOverlap");
-    expect(manager).toContain("disabled={pending || !changed || incomplete || reversed}");
-    expect(manager).not.toContain("disabled={pending || !changed || incomplete || reversed || overlap}");
+    expect(manager).toContain("disabled={pending || incomplete || reversed}");
+    expect(manager).not.toContain("disabled={pending || incomplete || reversed || overlap}");
   });
 });

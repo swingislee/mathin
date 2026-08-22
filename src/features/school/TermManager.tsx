@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { AlertTriangle, CalendarRange, LoaderCircle, Save } from "lucide-react";
+import { useId, useState } from "react";
+import { AlertTriangle, CalendarRange, LoaderCircle, Plus, Save } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useAction } from "@/components/action-form";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +10,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useRouter } from "@/i18n/navigation";
 import {
   activateSchoolTermAction,
@@ -52,43 +53,42 @@ function PeriodDates({
   const periodLabel = t(`period${period.term}`);
 
   return (
-    <div className="rounded-xl border border-line bg-paper/35 p-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <p className="min-w-24 font-medium text-ink">{periodLabel}</p>
-        {period.isCurrent && <Badge variant="secondary">{t("currentSchoolPeriod")}</Badge>}
-        {!period.startsOn && !period.endsOn && <Badge variant="outline">{t("datesPending")}</Badge>}
-        <div className="ml-auto">
-          {yearActive && !period.isCurrent && (
-            <Button type="button" size="sm" variant="ghost" disabled={pending} onClick={() => onActivate(period)}>
-              {t("setCurrentPeriod")}
-            </Button>
-          )}
-        </div>
+    <div className="grid gap-2 rounded-xl border border-line bg-paper/35 p-3 md:grid-cols-[7rem_minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
+      <div className="flex min-w-0 flex-wrap items-center gap-1.5 md:self-center">
+        <p className="w-full font-medium text-ink">{periodLabel}</p>
+        {period.isCurrent && <Badge className="px-2 py-0 text-[11px]" variant="secondary">{t("currentSchoolPeriod")}</Badge>}
+        {!period.startsOn && !period.endsOn && <Badge className="px-2 py-0 text-[11px]" variant="outline">{t("datesPending")}</Badge>}
       </div>
-      <div className="mt-3 grid items-end gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
-        <Label className="grid gap-1 text-xs font-normal text-muted">
-          {t("startsOn")}
-          <Input type="date" value={startsOn} onChange={(event) => setStartsOn(event.target.value)} />
-        </Label>
-        <Label className="grid gap-1 text-xs font-normal text-muted">
-          {t("endsOn")}
-          <Input type="date" value={endsOn} onChange={(event) => setEndsOn(event.target.value)} />
-        </Label>
+      <Label className="grid gap-1 text-xs font-normal text-muted">
+        {t("startsOn")}
+        <Input className="h-9" type="date" value={startsOn} onChange={(event) => setStartsOn(event.target.value)} />
+      </Label>
+      <Label className="grid gap-1 text-xs font-normal text-muted">
+        {t("endsOn")}
+        <Input className="h-9" type="date" value={endsOn} onChange={(event) => setEndsOn(event.target.value)} />
+      </Label>
+      <div className="flex min-h-9 items-center md:justify-end">
+        {changed ? (
         <Button
           type="button"
           size="sm"
           variant="secondary"
-          disabled={pending || !changed || incomplete || reversed}
+          disabled={pending || incomplete || reversed}
           onClick={() => onSave(period, startsOn || null, endsOn || null)}
         >
           <Save className="size-3.5" />
           {t("saveDates")}
         </Button>
+        ) : yearActive && !period.isCurrent ? (
+          <Button type="button" size="sm" variant="ghost" disabled={pending} onClick={() => onActivate(period)}>
+            {t("setCurrentPeriod")}
+          </Button>
+        ) : null}
       </div>
-      {incomplete && <p role="alert" className="mt-2 text-xs text-rose">{t("termDatesIncomplete")}</p>}
-      {reversed && <p role="alert" className="mt-2 text-xs text-rose">{t("termDatesReversed")}</p>}
+      {incomplete && <p role="alert" className="text-xs text-rose md:col-span-3 md:col-start-2">{t("termDatesIncomplete")}</p>}
+      {reversed && <p role="alert" className="text-xs text-rose md:col-span-3 md:col-start-2">{t("termDatesReversed")}</p>}
       {overlap && (
-        <p className="mt-2 flex items-start gap-1.5 text-xs text-crater">
+        <p className="flex items-start gap-1.5 text-xs text-crater md:col-span-3 md:col-start-2">
           <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
           {t("termDatesOverlap")}
         </p>
@@ -101,7 +101,12 @@ function PeriodDates({
 export function TermManager({ years }: { years: SchoolYearRow[] }) {
   const t = useTranslations("school.schedule");
   const router = useRouter();
+  const yearSelectorId = useId();
   const [open, setOpen] = useState(false);
+  const [showCreate, setShowCreate] = useState(years.length === 0);
+  const [selectedYearId, setSelectedYearId] = useState(
+    years.find((row) => row.status === "active")?.id ?? years[0]?.id ?? "",
+  );
   const suggestedYear = Math.max(new Date().getFullYear(), ...years.map((row) => row.startYear + 1));
   const [startYear, setStartYear] = useState(suggestedYear);
   const [effectiveDates, setEffectiveDates] = useState<Record<string, string>>({});
@@ -116,7 +121,14 @@ export function TermManager({ years }: { years: SchoolYearRow[] }) {
     SCHOOL_YEAR_NOT_ACTIVE: t("schoolYearNotActive"),
   };
   const refresh = () => router.refresh();
-  const createRun = useAction(createSchoolYearAction, { successMessage: t("schoolYearCreated"), errorMessage: errors, onSuccess: refresh });
+  const createRun = useAction(createSchoolYearAction, {
+    successMessage: t("schoolYearCreated"),
+    errorMessage: errors,
+    onSuccess: () => {
+      setShowCreate(false);
+      refresh();
+    },
+  });
   const dateRun = useAction(updateSchoolTermDatesAction, { successMessage: t("termDatesSaved"), errorMessage: errors, onSuccess: refresh });
   const termRun = useAction(activateSchoolTermAction, { successMessage: t("schoolPeriodActivated"), errorMessage: errors, onSuccess: refresh });
   const yearRun = useAction(activateSchoolYearAction, {
@@ -130,6 +142,12 @@ export function TermManager({ years }: { years: SchoolYearRow[] }) {
   const pending = createRun.pending || dateRun.pending || termRun.pending || yearRun.pending;
   const duplicateYear = years.some((row) => row.startYear === startYear);
   const validNewYear = Number.isInteger(startYear) && startYear >= 2020 && startYear <= 2100 && !duplicateYear;
+  const selectedYear = years.find((row) => row.id === selectedYearId)
+    ?? years.find((row) => row.status === "active")
+    ?? years[0];
+  const effectiveOn = selectedYear ? (effectiveDates[selectedYear.id] ?? "") : "";
+  const effectiveDateValid = selectedYear ? effectiveOn.startsWith(`${selectedYear.startYear}-`) : false;
+  const allPeriods = years.flatMap((row) => row.periods);
 
   const confirmActivation = () => {
     if (!activationTarget?.activationPreview) return;
@@ -157,92 +175,120 @@ export function TermManager({ years }: { years: SchoolYearRow[] }) {
         {t("schoolYears")}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-4xl">
-          <DialogHeader>
+        <DialogContent className="grid max-h-[calc(100dvh-2rem)] grid-rows-[auto_auto_minmax(0,1fr)] gap-0 overflow-hidden p-0 sm:max-w-4xl">
+          <DialogHeader className="border-b border-line px-6 py-5 pr-12">
             <DialogTitle>{t("schoolYears")}</DialogTitle>
             <DialogDescription>{t("schoolYearsHint")}</DialogDescription>
           </DialogHeader>
 
-          <section className="rounded-2xl border border-line bg-card p-4">
-            <h3 className="font-medium text-ink">{t("createSchoolYear")}</h3>
-            <p className="mt-1 text-xs leading-5 text-muted">{t("createSchoolYearHint")}</p>
-            <div className="mt-3 flex flex-wrap items-end gap-3">
-              <Label className="grid min-w-48 gap-1 text-xs font-normal text-muted">
-                {t("schoolYearStart")}
-                <Input type="number" min={2020} max={2100} value={startYear} onChange={(event) => setStartYear(Number(event.target.value))} />
-              </Label>
-              <Button type="button" size="sm" disabled={pending || !validNewYear} onClick={() => createRun.run(startYear)}>
-                {createRun.pending && <LoaderCircle className="size-4 animate-spin" />}
+          <div className="border-b border-line bg-paper/30 px-6 py-3">
+            <div className="flex flex-wrap items-end gap-3">
+              {years.length > 0 && (
+                <div className="min-w-64 flex-1 sm:max-w-sm">
+                  <Label htmlFor={yearSelectorId} className="mb-1 block text-xs font-normal text-muted">{t("selectSchoolYear")}</Label>
+                  <Select value={selectedYear?.id ?? ""} onValueChange={setSelectedYearId}>
+                    <SelectTrigger id={yearSelectorId} className="h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {years.map((year) => (
+                        <SelectItem key={year.id} value={year.id}>
+                          {t("schoolYearName", { start: year.startYear, end: year.startYear + 1 })} · {t(`schoolYearStatus_${year.status}`)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                className="sm:ml-auto"
+                aria-expanded={showCreate}
+                onClick={() => setShowCreate((current) => !current)}
+              >
+                <Plus className="size-4" />
                 {t("createSchoolYear")}
               </Button>
             </div>
-            {duplicateYear && <p role="alert" className="mt-2 text-xs text-rose">{t("schoolYearAlreadyExists")}</p>}
-          </section>
+            {showCreate && (
+              <div className="mt-3 grid gap-3 border-t border-line pt-3 sm:grid-cols-[minmax(0,1fr)_12rem_auto] sm:items-end">
+                <p className="text-xs leading-5 text-muted">{t("createSchoolYearHint")}</p>
+                <Label className="grid gap-1 text-xs font-normal text-muted">
+                  {t("schoolYearStart")}
+                  <Input className="h-9" type="number" min={2020} max={2100} value={startYear} onChange={(event) => setStartYear(Number(event.target.value))} />
+                </Label>
+                <Button type="button" size="sm" disabled={pending || !validNewYear} onClick={() => createRun.run(startYear)}>
+                  {createRun.pending && <LoaderCircle className="size-4 animate-spin" />}
+                  {t("createSchoolYear")}
+                </Button>
+                {duplicateYear && <p role="alert" className="text-xs text-rose sm:col-span-3">{t("schoolYearAlreadyExists")}</p>}
+              </div>
+            )}
+          </div>
 
-          <div className="max-h-[62vh] space-y-4 overflow-y-auto pr-1">
-            {years.length === 0 && <p className="rounded-xl border border-line p-4 text-sm text-muted">{t("schoolYearsEmpty")}</p>}
-            {years.map((year) => {
-              const effectiveOn = effectiveDates[year.id] ?? "";
-              const effectiveDateValid = effectiveOn.startsWith(`${year.startYear}-`);
-              return (
-                <section key={year.id} className="rounded-2xl border border-line bg-card p-4">
-                  <div className="flex flex-wrap items-start gap-2">
-                    <div className="min-w-0 flex-1">
-                      <h3 className="font-display text-lg text-ink">{t("schoolYearName", { start: year.startYear, end: year.startYear + 1 })}</h3>
-                      <p className="mt-1 text-xs text-muted">{t("schoolYearGradeRule")}</p>
-                    </div>
-                    <Badge variant={year.status === "active" ? "secondary" : "outline"}>{t(`schoolYearStatus_${year.status}`)}</Badge>
+          <div className="min-h-0 overflow-y-auto px-6 py-4">
+            {!selectedYear && <p className="rounded-xl border border-line p-4 text-sm text-muted">{t("schoolYearsEmpty")}</p>}
+            {selectedYear && (
+              <section className="space-y-4">
+                <div className="flex flex-wrap items-start gap-2">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-display text-lg text-ink">{t("schoolYearName", { start: selectedYear.startYear, end: selectedYear.startYear + 1 })}</h3>
+                    <p className="mt-1 text-xs text-muted">{t("schoolYearGradeRule")}</p>
                   </div>
+                  <Badge variant={selectedYear.status === "active" ? "secondary" : "outline"}>{t(`schoolYearStatus_${selectedYear.status}`)}</Badge>
+                </div>
 
-                  <div className="mt-4 grid gap-3 lg:grid-cols-2">
-                    {year.periods.map((period) => (
-                      <PeriodDates
-                        key={`${period.id}:${period.startsOn ?? ""}:${period.endsOn ?? ""}`}
-                        period={period}
-                        allPeriods={years.flatMap((row) => row.periods)}
-                        yearActive={year.status === "active"}
-                        pending={pending}
-                        onSave={(row, startsOn, endsOn) => dateRun.run({ termId: row.id, startsOn, endsOn })}
-                        onActivate={(row) => termRun.run(row.id)}
-                      />
-                    ))}
+                <div className="grid gap-2">
+                  {selectedYear.periods.map((period) => (
+                    <PeriodDates
+                      key={`${period.id}:${period.startsOn ?? ""}:${period.endsOn ?? ""}`}
+                      period={period}
+                      allPeriods={allPeriods}
+                      yearActive={selectedYear.status === "active"}
+                      pending={pending}
+                      onSave={(row, startsOn, endsOn) => dateRun.run({ termId: row.id, startsOn, endsOn })}
+                      onActivate={(row) => termRun.run(row.id)}
+                    />
+                  ))}
+                </div>
+
+                {selectedYear.status === "active" && selectedYear.gradeEffectiveOn && (
+                  <p className="text-xs text-muted">{t("gradeEffectiveOn", { date: selectedYear.gradeEffectiveOn })}</p>
+                )}
+
+                {selectedYear.status === "planning" && selectedYear.activationPreview && (
+                  <div className="rounded-xl border border-star/55 bg-star/10 p-3">
+                    <p className="text-sm text-ink">
+                      {t("promotionPreview", {
+                        promoteCount: selectedYear.activationPreview.promoteCount,
+                        retainedCount: selectedYear.activationPreview.retainedCount,
+                      })}
+                    </p>
+                    {selectedYear.activationPreview.canActivate ? (
+                      <div className="mt-3 flex flex-wrap items-end gap-3">
+                        <Label className="grid min-w-48 flex-1 gap-1 text-xs font-normal text-muted sm:max-w-xs">
+                          {t("gradeEffectiveDate")}
+                          <Input
+                            className="h-9"
+                            type="date"
+                            value={effectiveOn}
+                            onChange={(event) => setEffectiveDates((current) => ({ ...current, [selectedYear.id]: event.target.value }))}
+                          />
+                        </Label>
+                        <Button type="button" size="sm" disabled={pending || !effectiveDateValid} onClick={() => setActivationTarget(selectedYear)}>
+                          {t("reviewAndActivateSchoolYear")}
+                        </Button>
+                      </div>
+                    ) : (
+                      <p className="mt-2 text-xs text-muted">{t("schoolYearSequenceHint")}</p>
+                    )}
+                    {effectiveOn && !effectiveDateValid && <p role="alert" className="mt-2 text-xs text-rose">{t("schoolYearEffectiveDateInvalid")}</p>}
                   </div>
-
-                  {year.status === "active" && year.gradeEffectiveOn && (
-                    <p className="mt-3 text-xs text-muted">{t("gradeEffectiveOn", { date: year.gradeEffectiveOn })}</p>
-                  )}
-
-                  {year.status === "planning" && year.activationPreview && (
-                    <div className="mt-4 rounded-xl border border-star/55 bg-star/10 p-3">
-                      <p className="text-sm text-ink">
-                        {t("promotionPreview", {
-                          promoteCount: year.activationPreview.promoteCount,
-                          retainedCount: year.activationPreview.retainedCount,
-                        })}
-                      </p>
-                      {year.activationPreview.canActivate ? (
-                        <div className="mt-3 flex flex-wrap items-end gap-3">
-                          <Label className="grid min-w-48 gap-1 text-xs font-normal text-muted">
-                            {t("gradeEffectiveDate")}
-                            <Input
-                              type="date"
-                              value={effectiveOn}
-                              onChange={(event) => setEffectiveDates((current) => ({ ...current, [year.id]: event.target.value }))}
-                            />
-                          </Label>
-                          <Button type="button" size="sm" disabled={pending || !effectiveDateValid} onClick={() => setActivationTarget(year)}>
-                            {t("reviewAndActivateSchoolYear")}
-                          </Button>
-                        </div>
-                      ) : (
-                        <p className="mt-2 text-xs text-muted">{t("schoolYearSequenceHint")}</p>
-                      )}
-                      {effectiveOn && !effectiveDateValid && <p role="alert" className="mt-2 text-xs text-rose">{t("schoolYearEffectiveDateInvalid")}</p>}
-                    </div>
-                  )}
-                </section>
-              );
-            })}
+                )}
+              </section>
+            )}
           </div>
         </DialogContent>
       </Dialog>
