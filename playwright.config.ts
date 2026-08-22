@@ -57,5 +57,15 @@ export default defineConfig({
         video: "off",
       },
     },
+    ...(target.releaseMode ? [] : [{
+      name: "r1-live-local-chromium",
+      testMatch: ["r1-live-golden-path.spec.ts"],
+      use: {
+        ...devices["Desktop Chrome"],
+        trace: "off" as const,
+        screenshot: "off" as const,
+        video: "off" as const,
+      },
+    }]),
   ],
 });

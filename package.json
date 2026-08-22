@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "e2e": "playwright test",
+    "e2e:r1-live:golden": "node scripts/run-r1-live-golden-path.mjs",
     "e2e:install": "playwright install chromium",
     "e2e:lan": "playwright test e2e/lan-smoke.spec.ts",
     "e2e:release": "node scripts/run-r1-playwright-release.mjs",

@@ -13,12 +13,14 @@ const read = (relativePath: string) => readFileSync(path.join(root, relativePath
 const suiteFiles = [
   "e2e/auth-boundaries.spec.ts",
   "e2e/school-portals.spec.ts",
+  "e2e/r1-live-golden-path.spec.ts",
   "e2e/notebook-public.spec.ts",
   "e2e/notebook-authenticated.spec.ts",
   "e2e/lan-smoke.spec.ts",
   "e2e/support/credential-test.ts",
   "e2e/support/fixed-accounts.ts",
   "e2e/support/login.ts",
+  "e2e/support/r1-live-golden-path-fixture.ts",
 ] as const;
 const environment = (values: Record<string, string | undefined> = {}): NodeJS.ProcessEnv => ({
   NODE_ENV: "test",
@@ -45,6 +47,9 @@ describe("R1-14 formal Playwright baseline", () => {
     expect(credentialTest).toContain('use[key] !== "off"');
     expect(read("e2e/school-portals.spec.ts")).toContain('from "./support/credential-test"');
     expect(read("e2e/notebook-authenticated.spec.ts")).toContain('from "./support/credential-test"');
+    expect(read("e2e/r1-live-golden-path.spec.ts")).toContain('from "./support/credential-test"');
+    expect(config).toContain("r1-live-local-chromium");
+    expect(config).toContain("target.releaseMode ? []");
   });
 
   it("covers auth, three school environments, Notebook, denial, and LAN boundaries", () => {
@@ -125,6 +130,8 @@ describe("R1-14 formal Playwright baseline", () => {
   it("never creates accounts and only local diagnostic mode may skip missing fixed credentials", () => {
     const suite = suiteFiles.map(read).join("\n");
     expect(suite).not.toMatch(/\/signup|signUp\s*\(|auth\.admin|createUser\s*\(/i);
+    expect(read("e2e/support/r1-live-golden-path-fixture.ts")).toContain("assertNonProductionWriteTarget");
+    expect(read("e2e/r1-live-golden-path.spec.ts")).toContain("finally");
     expect(read("e2e/school-portals.spec.ts")).toContain("test.skip(!");
     expect(read("e2e/notebook-authenticated.spec.ts")).toContain("test.skip(!");
     expect(read("e2e/support/fixed-accounts.ts")).toContain("release mode requires");

@@ -33,6 +33,8 @@ describe("P4H CoursePicker and class-builder contract", () => {
 
   it("validates availability and creates the correct staff responsibilities inside the controlled RPC", () => {
     const migration = read("supabase", "migrations", "20260720000800_p4h_class_builder.sql");
+    const enrollmentMigration = read("supabase", "migrations", "20260711000100_p4c_permission_correction.sql");
+    const transitionMigration = read("supabase", "migrations", "20260822000300_r1_live_enrollment_status_transition.sql");
     const actions = read("src", "features", "school", "actions", "classes.ts");
 
     expect(migration).toContain("course_candidate.status = 'enabled'");
@@ -46,6 +48,12 @@ describe("P4H CoursePicker and class-builder contract", () => {
     expect(actions).toContain('authorizedClient("class.create")');
     expect(actions).toContain('rpc(supabase)("create_class"');
     expect(actions).toContain(".bind(supabase)");
+
+    expect(enrollmentMigration).toContain("if cur_status in ('lead', 'trialing') then");
+    expect(enrollmentMigration).toContain("update public.students set status = 'enrolled'");
+    expect(transitionMigration).toContain("old.status='lead' and new.status in ('trialing','enrolled','invalid')");
+    expect(transitionMigration).toContain("old.status='trialing' and new.status in ('lead','enrolled','invalid')");
+    expect(transitionMigration).not.toContain("old.status='enrolled' and new.status in ('lead'");
   });
 
   it("keeps activation an operator choice while retaining create-time structural guards", () => {
