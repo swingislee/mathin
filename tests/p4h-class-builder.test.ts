@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { buildClassSchema } from "../src/features/school/actions/class-build-schema";
 
 const root = process.cwd();
 const read = (...segments: string[]) => fs.readFileSync(path.join(root, ...segments), "utf8");
@@ -29,6 +30,10 @@ describe("P4H CoursePicker and class-builder contract", () => {
     expect(wizard).toContain("overridesCleared");
     expect(wizard).toContain("schoolTermId");
     expect(wizard).toContain("activateNow");
+    expect(wizard).toContain("if (learningSupportId === value)");
+    expect(wizard).toContain('setLearningSupportId("")');
+    expect(wizard).toContain("primaryTeacherRequired");
+    expect(wizard).toContain("aria-invalid");
   });
 
   it("validates availability and creates the correct staff responsibilities inside the controlled RPC", () => {
@@ -49,6 +54,20 @@ describe("P4H CoursePicker and class-builder contract", () => {
     expect(actions).toContain('rpc(supabase)("create_class"');
     expect(actions).toContain(".bind(supabase)");
 
+    const baseInput = {
+      name: "R1 class",
+      courseId: null,
+      capacity: null,
+      room: "",
+      primaryTeacherId: "11111111-1111-4111-8111-111111111111",
+      schoolTermId: "22222222-2222-4222-8222-222222222222",
+      purpose: "test" as const,
+      activateNow: false,
+      sessions: [],
+    };
+    expect(buildClassSchema.parse({ ...baseInput, learningSupportId: "" }).learningSupportId).toBeNull();
+    expect(buildClassSchema.safeParse({ ...baseInput, learningSupportId: baseInput.primaryTeacherId }).success).toBe(false);
+
     expect(enrollmentMigration).toContain("if cur_status in ('lead', 'trialing') then");
     expect(enrollmentMigration).toContain("update public.students set status = 'enrolled'");
     expect(transitionMigration).toContain("old.status='lead' and new.status in ('trialing','enrolled','invalid')");
@@ -67,6 +86,8 @@ describe("P4H CoursePicker and class-builder contract", () => {
     expect(wizard).toContain('t("productionActivationWarning")');
     expect(zh).toContain('"productionActivationWarning"');
     expect(en).toContain('"productionActivationWarning"');
+    expect(zh).toContain('"learningSupportCleared"');
+    expect(en).toContain('"learningSupportCleared"');
 
     expect(migration).not.toContain("CLASSROOM_PREP_INCOMPLETE");
     expect(migration).not.toContain("active_lecture_count");

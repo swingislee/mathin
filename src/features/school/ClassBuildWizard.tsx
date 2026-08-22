@@ -22,6 +22,8 @@ import { CoursePicker } from "./teaching-operations/CoursePicker";
 import type { ClassBuildCourseDetail, ClassBuildPurpose, ClassBuildScheduleConflict } from "./teaching-operations/course-picker-types";
 
 const WEEKDAYS = [1, 2, 3, 4, 5, 6, 0] as const;
+const DATE_INPUT_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const TIME_INPUT_PATTERN = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
 
 function toDateInputValue(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -33,6 +35,10 @@ function toDateTimeLocalValue(date: Date): string {
 
 function courseReady(course: ClassBuildCourseDetail | null) {
   return Boolean(course && course.lectureCount > 0 && course.lectureCount === course.releasedLectureCount);
+}
+
+function validDateInput(value: string) {
+  return DATE_INPUT_PATTERN.test(value) && !Number.isNaN(new Date(`${value}T00:00:00`).getTime());
 }
 
 export function ClassBuildWizard({
@@ -60,7 +66,7 @@ export function ClassBuildWizard({
   const [startDate, setStartDate] = useState(() => toDateInputValue(new Date()));
   const [weekdays, setWeekdays] = useState<Set<number>>(() => new Set());
   const [time, setTime] = useState("19:00");
-  const [durationMin, setDurationMin] = useState(90);
+  const [durationMin, setDurationMin] = useState("90");
   const [overrides, setOverrides] = useState<Record<string, string>>({});
   const [notice, setNotice] = useState<string | null>(null);
   const [conflicts, setConflicts] = useState<ClassBuildScheduleConflict[]>([]);
@@ -68,6 +74,7 @@ export function ClassBuildWizard({
   const [activateNow, setActivateNow] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [attemptedSteps, setAttemptedSteps] = useState<Set<number>>(() => new Set());
 
   useEffect(() => {
     if (!initialCourseId || initialCourseHandled.current) return;
@@ -78,12 +85,23 @@ export function ClassBuildWizard({
   }, [initialCourseId, t]);
 
   const lectures = useMemo(() => mode === "course" ? course?.lectures ?? [] : [], [course, mode]);
+  const resolvedName = name.trim() || course?.title || "";
+  const capacityNumber = capacity === "" ? null : Number(capacity);
+  const classNameValid = resolvedName.length > 0 && resolvedName.length <= 100;
+  const capacityValid = capacityNumber === null || (Number.isInteger(capacityNumber) && capacityNumber >= 1 && capacityNumber <= 500);
+  const primaryTeacherValid = primaryTeacherId !== "";
+  const learningSupportValid = learningSupportId === "" || learningSupportId !== primaryTeacherId;
+  const startDateValid = validDateInput(startDate);
+  const timeValid = TIME_INPUT_PATTERN.test(time);
+  const durationNumber = Number(durationMin);
+  const durationValid = durationMin !== "" && Number.isInteger(durationNumber) && durationNumber >= 10 && durationNumber <= 600;
+  const scheduleInputsValid = startDateValid && timeValid && durationValid;
   const preview = useMemo(() => {
-    if (mode !== "course" || lectures.length === 0 || weekdays.size === 0) return [];
+    if (mode !== "course" || lectures.length === 0 || weekdays.size === 0 || !scheduleInputsValid) return [];
     const [hours, minutes] = time.split(":").map(Number);
     const slots = lectures.map((lecture) => ({ lectureId: lecture.id, no: lecture.no, name: lecture.name }));
-    return generateSchedulePreview(slots, new Date(`${startDate}T00:00:00`), Array.from(weekdays), hours || 0, minutes || 0, durationMin);
-  }, [durationMin, lectures, mode, startDate, time, weekdays]);
+    return generateSchedulePreview(slots, new Date(`${startDate}T00:00:00`), Array.from(weekdays), hours, minutes, durationNumber);
+  }, [durationNumber, lectures, mode, scheduleInputsValid, startDate, time, weekdays]);
 
   useEffect(() => {
     if (!primaryTeacherId || preview.length === 0) return;
@@ -98,14 +116,38 @@ export function ClassBuildWizard({
     return () => { active = false; window.clearTimeout(timer); };
   }, [overrides, preview, primaryTeacherId]);
 
-  const resolvedName = name.trim() || course?.title || "";
   const isReady = courseReady(course);
   const conflictsRelevant = Boolean(primaryTeacherId && preview.length > 0);
   const visibleConflicts = conflictsRelevant ? conflicts : [];
   const visibleConflictsLoading = conflictsRelevant && conflictsLoading;
   const step1Complete = mode === "free" || course !== null;
-  const step2Complete = Boolean(resolvedName && primaryTeacherId);
-  const step3Complete = Boolean(schoolTermId) && (mode === "free" || preview.length > 0);
+  const step2Complete = classNameValid && primaryTeacherValid && capacityValid && learningSupportValid;
+  const step3Complete = Boolean(schoolTermId) && (mode === "free" || (scheduleInputsValid && preview.length === lectures.length));
+  const step1Attempted = attemptedSteps.has(1);
+  const step2Attempted = attemptedSteps.has(2);
+  const step3Attempted = attemptedSteps.has(3);
+
+  const markStepAttempted = (targetStep: number) => {
+    setAttemptedSteps((current) => {
+      const next = new Set(current);
+      next.add(targetStep);
+      return next;
+    });
+  };
+
+  const advance = () => {
+    const complete = step === 1 ? step1Complete : step === 2 ? step2Complete : step3Complete;
+    markStepAttempted(step);
+    if (complete) setStep((current) => Math.min(4, current + 1));
+  };
+
+  const goToStep = (targetStep: number) => {
+    if (targetStep <= step) {
+      setStep(targetStep);
+      return;
+    }
+    if (targetStep === step + 1) advance();
+  };
 
   const updateCourse = (next: ClassBuildCourseDetail) => {
     if (course && course.id !== next.id && Object.keys(overrides).length > 0) setNotice(t("overridesCleared"));
@@ -139,8 +181,31 @@ export function ClassBuildWizard({
     setActivateNow(false);
   };
 
+  const updatePrimaryTeacher = (value: string) => {
+    setPrimaryTeacherId(value);
+    if (learningSupportId === value) {
+      setLearningSupportId("");
+      setNotice(t("learningSupportCleared"));
+    }
+    setActivateNow(false);
+  };
+
   const submit = async () => {
-    if (!step1Complete || !step2Complete || !step3Complete) return;
+    if (!step1Complete) {
+      markStepAttempted(1);
+      setStep(1);
+      return;
+    }
+    if (!step2Complete) {
+      markStepAttempted(2);
+      setStep(2);
+      return;
+    }
+    if (!step3Complete) {
+      markStepAttempted(3);
+      setStep(3);
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -156,7 +221,7 @@ export function ClassBuildWizard({
       const classroomId = await buildClass({
         name: resolvedName,
         courseId: mode === "course" ? course?.id ?? null : null,
-        capacity: capacity ? Number(capacity) : null,
+        capacity: capacityNumber,
         room: room.trim(),
         primaryTeacherId,
         learningSupportId: learningSupportId || null,
@@ -178,9 +243,7 @@ export function ClassBuildWizard({
     <ol className="grid gap-2 sm:grid-cols-4" aria-label={t("wizardSteps")}>
       {steps.map((label, index) => {
         const number = index + 1;
-        return <li key={label}><Button type="button" variant="secondary" onClick={() => {
-          if (number <= step || (number === 2 && step1Complete) || (number === 3 && step1Complete && step2Complete) || (number === 4 && step1Complete && step2Complete && step3Complete)) setStep(number);
-        }} aria-current={step === number ? "step" : undefined} className={cn("w-full justify-start", step === number && "border-moon bg-moon/50 font-medium text-ink")}>{number}. {label}</Button></li>;
+        return <li key={label}><Button type="button" variant="secondary" onClick={() => goToStep(number)} aria-current={step === number ? "step" : undefined} className={cn("w-full justify-start", step === number && "border-moon bg-moon/50 font-medium text-ink")}>{number}. {label}</Button></li>;
       })}
     </ol>
 
@@ -194,6 +257,7 @@ export function ClassBuildWizard({
       </div>
       <div className="mt-5"><Label className="text-xs font-normal text-muted">{t("course")}</Label><div className="mt-1"><CoursePicker purpose={purpose} selected={course} onSelect={updateCourse} onClear={clearCourse} /></div></div>
       <div className="mt-4 flex items-center gap-3 border-t border-line pt-4"><span className="text-sm text-muted">{t("or")}</span><Button type="button" variant={mode === "free" ? "secondary" : "ghost"} onClick={() => { clearCourse(); setMode("free"); }}>{t("modeFree")}</Button></div>
+      {step1Attempted && !step1Complete && <p role="alert" className="mt-3 text-xs text-rose">{t("courseRequired")}</p>}
       {mode === "free" && <p className="mt-3 rounded-xl bg-moon/30 px-3 py-2 text-sm text-muted">{t("freeClassHint")}</p>}
       {course && <div className="mt-5 rounded-xl border border-line p-4"><div className="flex flex-wrap items-center gap-2"><h3 className="font-medium">{course.familyTitle} · {course.title}</h3>{isReady ? <Badge variant="secondary">{t("ready")}</Badge> : <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300">{t("incomplete")}</Badge>}</div><p className="mt-1 text-sm text-muted">{t("courseSummary", { code: course.productCode || "—", ready: course.releasedLectureCount, total: course.lectureCount })}</p><ol className="mt-3 space-y-1.5 text-sm">{course.lectures.map((lecture) => <li key={lecture.id} className="flex gap-2"><span className="w-7 shrink-0 font-mono text-xs text-muted">{lecture.no}</span><span className="min-w-0 flex-1 truncate">{lecture.name}</span>{!lecture.ready && <span className="text-xs text-amber-800 dark:text-amber-300">{t("notReady")}</span>}</li>)}</ol></div>}
     </section>}
@@ -201,10 +265,33 @@ export function ClassBuildWizard({
     {step === 2 && <section className="rounded-2xl border border-line bg-card p-5">
       <h2 className="text-base font-medium text-ink">{t("stepInfo")}</h2><p className="mt-1 text-sm text-muted">{t("infoStepHint")}</p>
       <div className="mt-5 grid gap-4 md:grid-cols-2">
-        <div><Label htmlFor="class-name" className="text-xs font-normal text-muted">{t("name")}</Label><Input id="class-name" value={name} onChange={(event) => setName(event.target.value)} placeholder={course?.title ?? t("namePlaceholder")} maxLength={100} className={cn("mt-1", inputClass)} /></div>
-        <div><Label className="text-xs font-normal text-muted">{t("primaryTeacher")}</Label><Select value={primaryTeacherId} onValueChange={(value) => { setPrimaryTeacherId(value); setActivateNow(false); }}><SelectTrigger className="mt-1"><SelectValue placeholder={t("chooseTeacher")} /></SelectTrigger><SelectContent>{teachers.map((teacher) => <SelectItem key={teacher.id} value={teacher.id}>{teacher.name}</SelectItem>)}</SelectContent></Select></div>
-        <div><Label className="text-xs font-normal text-muted">{t("learningSupport")}</Label><Select value={learningSupportId || "__none__"} onValueChange={(value) => setLearningSupportId(value === "__none__" ? "" : value)}><SelectTrigger className="mt-1"><SelectValue placeholder={t("noLearningSupport")} /></SelectTrigger><SelectContent><SelectItem value="__none__">{t("noLearningSupport")}</SelectItem>{teachers.filter((teacher) => teacher.id !== primaryTeacherId).map((teacher) => <SelectItem key={teacher.id} value={teacher.id}>{teacher.name}</SelectItem>)}</SelectContent></Select></div>
-        <div><Label htmlFor="class-capacity" className="text-xs font-normal text-muted">{t("capacity")}</Label><Input id="class-capacity" type="number" min={1} max={500} value={capacity} onChange={(event) => setCapacity(event.target.value)} placeholder={t("capacityPlaceholder")} className={cn("mt-1", inputClass)} /></div>
+        <div>
+          <Label htmlFor="class-name" className="text-xs font-normal text-muted">{t("name")}</Label>
+          <Input id="class-name" value={name} onChange={(event) => setName(event.target.value)} placeholder={course?.title ?? t("namePlaceholder")} maxLength={100} aria-invalid={step2Attempted && !classNameValid} aria-describedby={step2Attempted && !classNameValid ? "class-name-error" : undefined} className={cn("mt-1", inputClass)} />
+          {step2Attempted && !classNameValid && <p id="class-name-error" role="alert" className="mt-1 text-xs text-rose">{t("classNameRequired")}</p>}
+        </div>
+        <div>
+          <Label htmlFor="primary-teacher" className="text-xs font-normal text-muted">{t("primaryTeacher")}</Label>
+          <Select value={primaryTeacherId} onValueChange={updatePrimaryTeacher}>
+            <SelectTrigger id="primary-teacher" aria-required="true" aria-invalid={step2Attempted && !primaryTeacherValid} aria-describedby={step2Attempted && !primaryTeacherValid ? "primary-teacher-error" : undefined} className="mt-1"><SelectValue placeholder={t("chooseTeacher")} /></SelectTrigger>
+            <SelectContent>{teachers.map((teacher) => <SelectItem key={teacher.id} value={teacher.id}>{teacher.name}</SelectItem>)}</SelectContent>
+          </Select>
+          {step2Attempted && !primaryTeacherValid && <p id="primary-teacher-error" role="alert" className="mt-1 text-xs text-rose">{t("primaryTeacherRequired")}</p>}
+        </div>
+        <div>
+          <Label htmlFor="learning-support" className="text-xs font-normal text-muted">{t("learningSupport")}</Label>
+          <Select value={learningSupportId || "__none__"} onValueChange={(value) => setLearningSupportId(value === "__none__" ? "" : value)}>
+            <SelectTrigger id="learning-support" aria-invalid={!learningSupportValid} aria-describedby="learning-support-hint" className="mt-1"><SelectValue placeholder={t("noLearningSupport")} /></SelectTrigger>
+            <SelectContent><SelectItem value="__none__">{t("noLearningSupport")}</SelectItem>{teachers.filter((teacher) => teacher.id !== primaryTeacherId).map((teacher) => <SelectItem key={teacher.id} value={teacher.id}>{teacher.name}</SelectItem>)}</SelectContent>
+          </Select>
+          <p id="learning-support-hint" className="mt-1 text-xs text-muted">{t("learningSupportOptional")}</p>
+          {!learningSupportValid && <p role="alert" className="mt-1 text-xs text-rose">{t("learningSupportConflict")}</p>}
+        </div>
+        <div>
+          <Label htmlFor="class-capacity" className="text-xs font-normal text-muted">{t("capacity")}</Label>
+          <Input id="class-capacity" type="number" min={1} max={500} step={1} value={capacity} onChange={(event) => setCapacity(event.target.value)} placeholder={t("capacityPlaceholder")} aria-invalid={!capacityValid} aria-describedby={!capacityValid ? "class-capacity-error" : undefined} className={cn("mt-1", inputClass)} />
+          {!capacityValid && <p id="class-capacity-error" role="alert" className="mt-1 text-xs text-rose">{t("capacityInvalid")}</p>}
+        </div>
         <div className="md:col-span-2"><Label htmlFor="class-room" className="text-xs font-normal text-muted">{t("room")}</Label><Input id="class-room" value={room} onChange={(event) => setRoom(event.target.value)} maxLength={100} className={cn("mt-1", inputClass)} /></div>
       </div>
       <p className="mt-4 text-sm text-muted">{t("purposeSummary", { purpose: purpose === "test" ? t("test") : t("production") })}</p>
@@ -213,12 +300,28 @@ export function ClassBuildWizard({
     {step === 3 && <section className="rounded-2xl border border-line bg-card p-5">
       <h2 className="text-base font-medium text-ink">{t("stepSchedule")}</h2><p className="mt-1 text-sm text-muted">{t("scheduleStepHint")}</p>
       <div className="mt-5 grid gap-4 @2xl/page:grid-cols-2 @6xl/page:grid-cols-4">
-        <div><Label className="text-xs font-normal text-muted">{t("schoolTerm")}</Label><Select value={schoolTermId} onValueChange={setSchoolTermId}><SelectTrigger className="mt-1"><SelectValue placeholder={t("chooseSchoolTerm")} /></SelectTrigger><SelectContent>{schoolTerms.map((term) => <SelectItem key={term.id} value={term.id}>{term.name}{term.isCurrent ? ` · ${t("current")}` : ""}</SelectItem>)}</SelectContent></Select></div>
-        <div><Label htmlFor="schedule-start" className="text-xs font-normal text-muted">{t("startDate")}</Label><Input id="schedule-start" type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} className={cn("mt-1", inputClass)} /></div>
-        <div><Label htmlFor="schedule-time" className="text-xs font-normal text-muted">{t("time")}</Label><Input id="schedule-time" type="time" value={time} onChange={(event) => setTime(event.target.value)} className={cn("mt-1", inputClass)} /></div>
-        <div><Label htmlFor="schedule-duration" className="text-xs font-normal text-muted">{t("duration")}</Label><Input id="schedule-duration" type="number" min={10} max={600} step={5} value={durationMin} onChange={(event) => setDurationMin(Number(event.target.value) || 90)} className={cn("mt-1", inputClass)} /></div>
+        <div>
+          <Label htmlFor="school-term" className="text-xs font-normal text-muted">{t("schoolTerm")}</Label>
+          <Select value={schoolTermId} onValueChange={setSchoolTermId}><SelectTrigger id="school-term" aria-required="true" aria-invalid={step3Attempted && !schoolTermId} aria-describedby={step3Attempted && !schoolTermId ? "school-term-error" : undefined} className="mt-1"><SelectValue placeholder={t("chooseSchoolTerm")} /></SelectTrigger><SelectContent>{schoolTerms.map((term) => <SelectItem key={term.id} value={term.id}>{term.name}{term.isCurrent ? ` · ${t("current")}` : ""}</SelectItem>)}</SelectContent></Select>
+          {step3Attempted && !schoolTermId && <p id="school-term-error" role="alert" className="mt-1 text-xs text-rose">{t("schoolTermRequired")}</p>}
+        </div>
+        <div>
+          <Label htmlFor="schedule-start" className="text-xs font-normal text-muted">{t("startDate")}</Label>
+          <Input id="schedule-start" type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} aria-invalid={mode === "course" && step3Attempted && !startDateValid} aria-describedby={mode === "course" && step3Attempted && !startDateValid ? "schedule-start-error" : undefined} className={cn("mt-1", inputClass)} />
+          {mode === "course" && step3Attempted && !startDateValid && <p id="schedule-start-error" role="alert" className="mt-1 text-xs text-rose">{t("startDateRequired")}</p>}
+        </div>
+        <div>
+          <Label htmlFor="schedule-time" className="text-xs font-normal text-muted">{t("time")}</Label>
+          <Input id="schedule-time" type="time" value={time} onChange={(event) => setTime(event.target.value)} aria-invalid={mode === "course" && step3Attempted && !timeValid} aria-describedby={mode === "course" && step3Attempted && !timeValid ? "schedule-time-error" : undefined} className={cn("mt-1", inputClass)} />
+          {mode === "course" && step3Attempted && !timeValid && <p id="schedule-time-error" role="alert" className="mt-1 text-xs text-rose">{t("timeRequired")}</p>}
+        </div>
+        <div>
+          <Label htmlFor="schedule-duration" className="text-xs font-normal text-muted">{t("duration")}</Label>
+          <Input id="schedule-duration" type="number" min={10} max={600} step={5} value={durationMin} onChange={(event) => setDurationMin(event.target.value)} aria-invalid={mode === "course" && !durationValid} aria-describedby={mode === "course" && !durationValid ? "schedule-duration-error" : undefined} className={cn("mt-1", inputClass)} />
+          {mode === "course" && !durationValid && <p id="schedule-duration-error" role="alert" className="mt-1 text-xs text-rose">{t("durationInvalid")}</p>}
+        </div>
       </div>
-      {mode === "course" ? <><div className="mt-5"><Label className="text-xs font-normal text-muted">{t("weekdays")}</Label><div className="mt-2 flex flex-wrap gap-2">{WEEKDAYS.map((day) => <Button key={day} type="button" variant={weekdays.has(day) ? "primary" : "secondary"} onClick={() => toggleWeekday(day)}>{t(`weekday_${day}`)}</Button>)}</div></div>
+      {mode === "course" ? <><div className="mt-5"><Label className="text-xs font-normal text-muted">{t("weekdays")}</Label><div className="mt-2 flex flex-wrap gap-2">{WEEKDAYS.map((day) => <Button key={day} type="button" variant={weekdays.has(day) ? "primary" : "secondary"} onClick={() => toggleWeekday(day)}>{t(`weekday_${day}`)}</Button>)}</div>{step3Attempted && weekdays.size === 0 && <p role="alert" className="mt-2 text-xs text-rose">{t("weekdaysRequired")}</p>}</div>
         {preview.length > 0 && <div className="mt-5 overflow-hidden rounded-xl border border-line"><Table><TableHeader><TableRow><TableHead className="w-16">No.</TableHead><TableHead>{t("lectureName")}</TableHead><TableHead>{t("scheduledAt")}</TableHead></TableRow></TableHeader><TableBody>{preview.map((item) => <TableRow key={item.lectureId}><TableCell className="font-mono text-xs text-muted">{item.no}</TableCell><TableCell>{item.name}</TableCell><TableCell><Input type="datetime-local" value={toDateTimeLocalValue(new Date(overrides[item.lectureId] ?? item.scheduledAt.toISOString()))} onChange={(event) => { const value = event.target.value; setOverrides((current) => ({ ...current, [item.lectureId]: value ? new Date(value).toISOString() : item.scheduledAt.toISOString() })); setActivateNow(false); }} className="h-8 max-w-60 text-xs" /></TableCell></TableRow>)}</TableBody></Table></div>}
       </> : <p className="mt-5 rounded-xl bg-moon/30 px-3 py-2 text-sm text-muted">{t("freeScheduleHint")}</p>}
       {visibleConflictsLoading && <p className="mt-4 flex items-center gap-2 text-sm text-muted"><LoaderCircle className="size-4 animate-spin" />{t("checkingConflicts")}</p>}
@@ -235,6 +338,6 @@ export function ClassBuildWizard({
     </section>}
 
     {error && <p role="alert" className="text-sm text-rose">{error}</p>}
-    <div className="flex items-center justify-between gap-3"><Button type="button" variant="secondary" onClick={() => setStep((current) => Math.max(1, current - 1))} disabled={step === 1 || submitting}><ChevronLeft className="size-4" />{t("previousStep")}</Button>{step < 4 ? <Button type="button" onClick={() => setStep((current) => current + 1)} disabled={submitting || (step === 1 && !step1Complete) || (step === 2 && !step2Complete) || (step === 3 && !step3Complete)}>{t("nextStep")}<ChevronRight className="size-4" /></Button> : <Button type="button" onClick={() => void submit()} disabled={submitting || !step1Complete || !step2Complete || !step3Complete}>{submitting && <LoaderCircle className="size-4 animate-spin" />}{submitting ? t("submitting") : t("submit")}</Button>}</div>
+    <div className="flex items-center justify-between gap-3"><Button type="button" variant="secondary" onClick={() => setStep((current) => Math.max(1, current - 1))} disabled={step === 1 || submitting}><ChevronLeft className="size-4" />{t("previousStep")}</Button>{step < 4 ? <Button type="button" onClick={advance} disabled={submitting}>{t("nextStep")}<ChevronRight className="size-4" /></Button> : <Button type="button" onClick={() => void submit()} disabled={submitting}>{submitting && <LoaderCircle className="size-4 animate-spin" />}{submitting ? t("submitting") : t("submit")}</Button>}</div>
   </div>;
 }
