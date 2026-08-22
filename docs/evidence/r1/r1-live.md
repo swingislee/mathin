@@ -2,7 +2,7 @@
 
 ## 结论
 
-截至 2026-08-23，`mathin.club` / `supabase.mathin.club` 的应用、数据库、Storage、compose 和部署 commit 已完成目标登记，仓库级写入口保险丝也已把 Xiaomi 固定为当前生产目标；测试造数/重建不能写入它，课程内容写入默认拒绝并使用独立受控通道。本机已建立只绑定 `127.0.0.1` 的隔离 Supabase，完成固定开发账号、登录和数据库合同验证，且没有复制或修改 Xiaomi 数据。运行时门禁与报名状态 migration 已把生产账本推进到 `20260822000300_r1_live_enrollment_status_transition`；应用 current 为 `20260822-162416` / `6dfb3af…`，previous 为 `20260822-072101` / `ef1eb77…`，原子切换、失败回退命令、双层健康和 `operational_errors` 查询位置均已确认。唯一正式管理员已完成 verified MFA、唯一 admin 原子交接、新会话 MFA challenge 和生产 admin 路由验收；首名真实教师已注册为 active `staff`，`research` 与 `teacher` 双岗位经产品确认。active manifest 为 8 条 protected、0 条 `purge_allowed`，两个 purge 候选列表为空；这已经满足 R1-Live 防误清底线，日常正式业务写入不再要求逐条 replacement。当前 PostgreSQL+Storage 同批次备份 `mathin-20260822T093529Z` 已在 Xiaomi 外置盘完成并独立复核，因此 Gate 1 `PASS`。本机隔离 Golden Path 已完成建班、自动课次、报名、教师点名保存和再读，相关 migration 已部署生产。产品负责人现已通过正式 UI 创建 1 个 production 班级和 15 个课次；建班页隐藏学辅 UUID 导致最终才报错的问题已修复为字段所在步骤就地校验并发布。生产报名和点名仍为 0，因此 Gate 2 保持 `BLOCKED`。
+截至 2026-08-23，`mathin.club` / `supabase.mathin.club` 的应用、数据库、Storage、compose 和部署 commit 已完成目标登记，仓库级写入口保险丝也已把 Xiaomi 固定为当前生产目标；测试造数/重建不能写入它，课程内容写入默认拒绝并使用独立受控通道。本机已建立只绑定 `127.0.0.1` 的隔离 Supabase，完成固定开发账号、登录和数据库合同验证，且没有复制或修改 Xiaomi 数据。生产账本现为 `20260823000100_r1_live_school_year_periods`；应用 current/previous 为 `20260822-181331` / `b899942…` 与 `20260822-162416` / `6dfb3af…`，原子切换、失败回退命令、双层健康和 `operational_errors` 查询位置均已确认。唯一正式管理员已完成 verified MFA、唯一 admin 原子交接、新会话 MFA challenge 和生产 admin 路由验收；首名真实教师已注册为 active `staff`，`research` 与 `teacher` 双岗位经产品确认。active manifest 为 8 条 protected、0 条 `purge_allowed`，两个 purge 候选列表为空；这已经满足 R1-Live 防误清底线，日常正式业务写入不再要求逐条 replacement。当前 PostgreSQL+Storage 同批次备份 `mathin-20260822T093529Z` 已在 Xiaomi 外置盘完成并独立复核，因此 Gate 1 `PASS`。本机隔离 Golden Path 已完成建班、自动课次、报名、教师点名保存和再读。生产已有 1 个 production 班级、15 个课次和 1 条 active 报名；春季结束日修正为 `2026-06-29` 后，三类对象均归到 `2026–2027` 秋季，2026 学年仍为 planning，学生仍为五年级。正式点名仍为 0，因此 Gate 2 保持 `BLOCKED`。
 
 本文件是 E0/E1 差距审阅，不是完整生产验收。2026-08-14～22 的 Xiaomi E1/E3 运行事实，以及本机隔离目标、应用/数据库发布、正式管理员交接和 manifest 激活证据见 [`r1-live-target-audit.md`](r1-live-target-audit.md)；用户提供的 `docs/plan/mathin-R1-Live-讨论稿.md` 为产品裁决输入，现行施工顺序以 doc 04 为准。
 
@@ -11,7 +11,7 @@
 | Gate | 当前状态 | 已完成证据 | 缺失项 | 是否阻塞 | 最小修复范围 |
 | --- | --- | --- | --- | --- | --- |
 | Gate 1 · 可安全开始 | `PASS` | 目标/身份、生产危险写拒绝、0 个 purge 候选、运行时 migration/应用、current/previous、回退命令、健康探针、错误查询位置和当前 PostgreSQL+Storage 同批次备份均已确认；备份独立 SHA 与可读性复核通过 | 无 | 否 | 已关闭；恢复、异机/静态加密备份和受控 rollback 进入 Production 1.0 |
-| Gate 2 · 首个真实教师闭环 | `BLOCKED` | 学生/班级/课次/分班/点名 UI、RPC、RLS 和持久化合同已实现；点名可在课前、课中或课后完成，不再阻断开课；本机隔离固定账号 Golden Path 1/1 已完成建班→自动课次→报名→教师点名保存→换页再读，`lead → enrolled` 修复已部署 Xiaomi。产品负责人已在正式目标创建 1 个 production 班级和 15 个课次；建班隐藏学辅冲突已修复并发布 | 无真实花名册/报名；无正式教师保存→刷新或重登→再读、管理员可见、无权限拒绝的生产 Golden Path | 是 | 为现有班级建立真实花名册/报名，由正式教师完成一次点名并做权限对照 |
+| Gate 2 · 首个真实教师闭环 | `BLOCKED` | 学生/班级/课次/分班/点名 UI、RPC、RLS 和持久化合同已实现；点名可在课前、课中或课后完成，不再阻断开课；本机隔离固定账号 Golden Path 1/1 已完成建班→自动课次→报名→教师点名保存→换页再读。生产已有 1 个 production 班级、15 个课次和 1 条 active 报名；学年/秋季归属修复已上线且未升年级 | 无正式教师保存→刷新或重登→再读、管理员可见、无权限拒绝的生产 Golden Path | 是 | 由正式教师完成一次点名并做权限对照 |
 
 状态只允许 `PASS`、`BLOCKED`、`UNKNOWN`、`NOT REQUIRED`。范围冻结是永久规则，不再单列 Gate；旧 Gate 3 的当前备份底线并入 Gate 1，恢复/受控 rollback 演练与 release 错误标签进入 Production 1.0；旧 Gate 4 的首个教师动作并入 Gate 2，独立观察和连续运行进入上线后证据。
 
@@ -163,6 +163,23 @@
 | `artifact_url_or_path`, `artifact_hash` | Git commit `6dfb3af96cc81ca09be9b662d7cb047025546019`；Xiaomi `/home/swing/services/mathin/releases/20260822-162416/release.json`；`artifact_hash=not_applicable` |
 | `retention`, `access_roles`, `failure_ticket` | Git 与 immutable release 按既有策略保留；仓库维护者/Xiaomi 运维角色；`BUG-R1-LIVE-004` 已关闭 |
 
+### 学年四周期与春季边界生产部署证据
+
+产品负责人确认 `2025–2026` 学年春季实际结束于 `2026-06-29`，并采用独立学年头部、暑/秋/寒/春四个日期可后补周期，以及显式预览后再升年级的方案。实现先在最终空库、旧库升级副本和回滚式晋级事务验证，再以固定主管账号完成 zh/en 只读页面旅程；完整 CI 为 16/16、全量 Vitest 93 文件 625 项通过及 1 项既有条件跳过。生产写前精确命中数据库指纹、180 条账本、旧春季、1 个班级、15 个课次、1 条报名、1 名五年级学生、active 8 条 protected/0 条 purge manifest 和 123602 个 Storage object。
+
+首次生产回滚演练在替换历史 `create_campus_school_term` 时因该函数为唯一的 `supabase_admin` owner 而被 PostgreSQL 拒绝；连接退出自动回滚，新连接确认 schema、账本、业务、年级、manifest 和 Storage 全部零漂移。修正后的事务由 `supabase_admin` 会话先把该函数 owner 原子归一到 `postgres`，再以 `postgres` 运行相同迁移；完整后置断言通过后先回滚并独立复核，第二次才提交。生产提交只新增学年结构、把旧春季改为 `2025–2026` 学年第 4 周期并结束于 `2026-06-29`，以及将全在该日期之后的 production 班级、课次和报名改挂到 `2026–2027` 秋季；没有启用 2026 学年、没有升年级，也没有创建业务事件。
+
+| 证据字段 | 值 |
+| --- | --- |
+| `gate_id`, `domain`, `result` | `R1-Live Gate 2`；学年/运营周期与现有班级归属；该子项 `PASS`，Gate 2 整体仍 `BLOCKED` |
+| `measured_value`, `threshold` | ledger `180→181`，head=`20260823000100_r1_live_school_year_periods`，checksum=`31441a83…9d67`；2025 学年 active/春季 current，春季=`2026-02-01～2026-06-29`；2026 学年 planning，四周期日期为空，promotion=0。生产班级/课次/报名/点名=`1/15/1/0`，三类对象秋季归属=`1/15/1`，学生仍为五年级；active manifest/entry/protected/purge=`1/8/8/0` 且 hash 有效；Storage=`8/123602`。应用 current/previous=`20260822-181331` / `b899942…` 与 `20260822-162416` / `6dfb3af…`；service、loopback/Caddy/公网 health、zh/en login 和匿名 schedule 重定向均通过，新 release 后 `operational_errors` 增量=0 |
+| `commit_sha`, `migration_head`, `environment` | `b8999422a217ecf83064bd9f02521a751d23f692`；`20260823000100_r1_live_school_year_periods`；本机隔离 Supabase + Xiaomi / production；数据库指纹 `10e3…1a0c` |
+| `dataset_manifest` | 写前/事务后置/独立 postflight 对班级、课次、报名除 `term_id` 外的行摘要和全部学生行摘要做等值断言；班级状态、教师、课次时间、时长、报名状态和学生年级不变。学年激活事件=0、升年级记录=0；未创建或修改账号、岗位、manifest、点名或 Storage |
+| `started_at`, `finished_at`, `actor`, `approver` | 2026-08-23 生产 preflight；`2026-08-23T02:16:29+08:00` 前完成独立 postflight；Codex；`swingislee`（确认春季结束日并采用该学年方案） |
+| `command_or_runbook` | LF 规范化 migration hash → 生产 `REPEATABLE READ READ ONLY` preflight → serializable 完整回滚演练 → 新连接回滚核查 → 相同事务正式提交/账本登记 → 独立只读函数、权限、业务、年级、manifest、Storage postflight → `publish-mathin-xiaomi.ps1 -Action Publish/Status` → 公网 health、zh/en login、匿名 schedule 重定向；无清理、无学年启用、无升年级 |
+| `artifact_url_or_path`, `artifact_hash` | `supabase/migrations/20260823000100_r1_live_school_year_periods.sql`，LF 规范化 SHA-256 `31441a83a802b35e4c6937f68d9418b58510a88343b6fad646f65761e7019d67`；Git commit `b8999422a217ecf83064bd9f02521a751d23f692`；Xiaomi `/home/swing/services/mathin/releases/20260822-181331/release.json` |
+| `retention`, `access_roles`, `failure_ticket` | migration、Git 与 immutable release 按既有策略保留；仓库维护者/Xiaomi 运维角色；首次 owner 差异由同一事务归一并以零漂移回滚证据关闭，`BUG-R1-LIVE-005` 已关闭 |
+
 ### 生产正式管理员身份引导与原子交接证据
 
 2026-08-15，产品负责人明确指定 Xiaomi 上唯一非固定 Gmail 身份为未来正式管理员，并要求先改为 staff、本人绑定 MFA 后再做 admin 原子交接。写前脱敏核查确认目标恰好 1 个、当前为 active student、无学生档案/监护关系/staff 岗位、MFA=0；现有 active admin 恰好 1 个且 verified MFA=1。首次调用现有 `admin_set_identity` RPC 被 `20260728000400_r1_account_security.sql` 重定义的 profile 保护触发器拒绝，事务整体回滚；随后按用户明确授权通过受信任 PostgreSQL 管理连接直接更新这一行，事务同时锁定目标并重复全部前置/后置断言。
@@ -310,8 +327,8 @@ Agent 按 doc 04 的 standing execution direction 生成包含原 4 个 protecte
 1. 先记录目标的前端域名、Supabase project/database 指纹、Storage namespace、部署 commit 和环境责任人。
 2. **已完成**：正式管理员从 `/dashboard/account-support` 为首名真实教师邮箱生成一次性员工邀请码并通过受控渠道交付；手机号邀请需等待兼容迁移和非生产验证。
 3. **注册与岗位已完成**：教师已在 `/signup` 自行注册；正式管理员分配的 `research` 与 `teacher` 双岗位均有效，现有 active manifest 已保护该身份。教师的 production password 登录与授权范围仍在后续人工闭环中核对。邮箱、手机号、微信和 QQ 最终都绑定同一 `auth.users.id`，不得为登录方式复制 profile。
-4. 管理员使用 `/dashboard/students` 创建/导入真实花名册；原始 CSV 和可识别信息不进入 Git/聊天证据。
-5. **建班已完成**：管理员已使用 `/dashboard/classes/new` 创建 1 个 `purpose=production` 班级和 15 个课次；学辅可留空。下一步从该班花名册完成分班；教师可使用 immutable release，也可冻结 `releaseId=null` 的空白/本次覆盖快照。
+4. **花名册/报名已有首条事实**：生产只读核查确认现有班级已有 1 条 active 报名；学生可识别字段不进入 Git/聊天证据。
+5. **建班与学年归属已完成**：管理员已使用 `/dashboard/classes/new` 创建 1 个 `purpose=production` 班级和 15 个课次；学辅可留空。班级、课次和报名现归 `2026–2027` 秋季；教师可使用 immutable release，也可冻结 `releaseId=null` 的空白/本次覆盖快照。
 6. 固定开发账号继续只用于开发验证；正式教师只分配 production 班级。任何 reset、seed、rebuild 或 testdata purge 在命中目标指纹或受保护对象 manifest 时必须拒绝。
 
 自由班可以直接启用，但不会自动生成课次。Gate 2 必须有至少 1 个可进入的真实课次，因此最小闭环可以选择一门启用中的 production 课程生成课次，或先建自由班再通过正式 UI 添加课次；不得用一次性 SQL 补造业务事实。
@@ -320,7 +337,7 @@ Agent 按 doc 04 的 standing execution direction 生成包含原 4 个 protecte
 
 | ID | 等级 | 原因 | 最小修复 | 人工操作 | 验收 |
 | --- | --- | --- | --- | --- | --- |
-| LIVE-P1-03 | 核心 P1 | production 班级和 15 个课次已建立，但还没有真实花名册/报名及生产点名 Golden Path | 为现有班级建立真实花名册/报名，正式教师保存点名并刷新或重登再读，管理员与既有无权限主体作对照 | 产品负责人提供真实花名册；正式教师执行一次登录与点名 | 每名在册学生恰好一条记录；再读一致；越权查询 0 泄露；P0/核心 P1=0 |
+| LIVE-P1-03 | 核心 P1 | production 班级、15 个课次和 1 条 active 报名已建立，但还没有生产点名 Golden Path | 正式教师保存点名并刷新或重登再读，管理员与既有无权限主体作对照 | 正式教师执行一次登录与点名 | 每名在册学生恰好一条记录；再读一致；越权查询 0 泄露；P0/核心 P1=0 |
 
 仓库审阅没有发现一个已证实的开放 P0；这不等于生产 P0=0，因为 Gate 2 尚未在目标环境执行。
 

@@ -4,7 +4,7 @@
 >
 > **用途**：记录 Production 1.0 的仓库事实、M0～M4 成熟度、业务合同、量化发布门和生产初始化步骤；R1-Live 的当前 Gate 与施工顺序由 doc 04 管理。
 >
-> **基线日期**：2026-08-22；每次验收另记 commit、migration head、环境和数据 manifest。
+> **基线日期**：2026-08-23；每次验收另记 commit、migration head、环境和数据 manifest。
 >
 > **删除限制**：R1-15 只操作生产快照副本；R1-18 经人工批准后也只能处理 manifest 明确标记的测试对象。R1-Live 产生的正式身份、班级、课次、学生、业务记录及课次引用的 immutable release/snapshot/object 永久排除在测试清理之外。
 
@@ -24,7 +24,7 @@
 | 内容发布 | Terms/Minds 文件内容、Notebook、课程研发和 release 机制分别存在 | Terms/Story/Minds/Notebook 共用草稿/审核/发布/撤回/版本合同；课堂只读取不可变课件 release |
 | E 系列 | 开发数据有 1135 讲、16:9/4:3 双轨资源和 release 机制；课程目录版本层已就位（2025旧版 54 门 / 2026新版 36 门） | 保留 1135×2 源资源；正式基线包含 2270 条 `release_no=1`，见 §5.1.1 |
 | 爱学习 G+/X+/A+ 秋季 | G+ 苏教版 56 讲、X+ 苏教版 84 讲、A+ 全国版 30 讲；16:9/4:3 双轨资源和 release 机制 | 保留 170×2 源资源；正式基线包含 340 条 `release_no=1`；另有 10 条教学计划第 7/15 讲补充占位（G+ 五/六年级、X+ 二/五/六年级），占位无 release 且准备状态为“未发布” |
-| 语言 | `messages/zh.json` 与 `messages/en.json` 各 4044 个 key；`content/en` 仅 README | UI 永久 zh/en；英文课程/文章可延期，缺失内容显示明确回退或“尚未发布”状态 |
+| 语言 | `messages/zh.json` 与 `messages/en.json` 各 4069 个 key；`content/en` 仅 README | UI 永久 zh/en；英文课程/文章可延期，缺失内容显示明确回退或“尚未发布”状态 |
 | 视觉 | `public/Main.png`、五星球 token/场景、`dashboard-observatory.png` 和公开场景插画已在仓库使用 | 小王子作为全站视觉基础；公开场景、内容/Notebook、运营工作区按三档强度验收 |
 
 Terms 使用稳定 ID 接收 Story、Minds、Games、Tools、Notebook 和课程的关联。修改 slug 或删除内容前检查反向引用、重定向、canonical 和 sitemap。
@@ -33,8 +33,8 @@ Terms 使用稳定 ID 接收 Story、Minds、Games、Tools、Notebook 和课程�
 
 当前唯一施工阶段为 `R1-Live-2 · 首个真实教师闭环`。R1-Live 只保留两个结果 Gate：Gate 1 合并正式目标/身份、当前备份、防误清、可识别的 current/previous 与错误查询位置；Gate 2 合并真实点名闭环和首次真实教师验收。原范围冻结成为永久规则，完整恢复/rollback、错误 release 标签、独立观察和 14 天 RC 回到 Production 1.0。
 
-- Gate 1 当前 `PASS`：Xiaomi 目标指纹、危险写拒绝、唯一正式 admin MFA、首名真实教师及双岗位、active 8 条 protected/0 条 purge manifest、current/previous、健康探针和错误查询位置均已确认。运行时门禁与报名状态 migration 已部署为数据库 head `20260822000300_r1_live_enrollment_status_transition`；应用 current 为 `20260822-162416` / `6dfb3af…`，previous 为 `20260822-072101` / `ef1eb77…`。当前 PostgreSQL+Storage 同批次备份 `mathin-20260822T093529Z` 的数据库目录、Storage 文件数、前后清单和全部 SHA-256 独立复核通过。
-- Gate 2 当前 `BLOCKED`：本机隔离固定账号 Golden Path 已完成未完整课程建班、自动课次、`lead` 报名、教师点名保存和换页再读；由此发现的状态合同冲突已由 `20260822000300_r1_live_enrollment_status_transition` 修复并部署 Xiaomi。产品负责人已用正式 UI 建立 1 个 production 班级和 15 个课次，主讲 1、学辅 0；学辅与主讲的隐藏状态冲突已改为填写时自动清除并就地提示，其他建班必填项也在所在步骤校验，修复应用已发布。当前报名和点名仍为 0；下一步为现有班级建立真实花名册/报名，再由正式教师完成保存、刷新/重登再读、管理员读取和无权限拒绝。
+- Gate 1 当前 `PASS`：Xiaomi 目标指纹、危险写拒绝、唯一正式 admin MFA、首名真实教师及双岗位、active 8 条 protected/0 条 purge manifest、current/previous、健康探针和错误查询位置均已确认。数据库 head 已部署为 `20260823000100_r1_live_school_year_periods`；应用 current 为 `20260822-181331` / `b899942…`，previous 为 `20260822-162416` / `6dfb3af…`。当前 PostgreSQL+Storage 同批次备份 `mathin-20260822T093529Z` 的数据库目录、Storage 文件数、前后清单和全部 SHA-256 独立复核通过。
+- Gate 2 当前 `BLOCKED`：本机隔离固定账号 Golden Path 已完成未完整课程建班、自动课次、`lead` 报名、教师点名保存和换页再读。生产已有 1 个 production 班级、15 个课次和 1 条 active 报名，主讲 1、学辅 0；建班字段校验修复已上线。学年迁移把春季边界修正为 `2026-06-29`，并只把班级/课次/报名改挂到 `2026–2027` 秋季，2026 学年仍为 planning，学生仍为五年级。下一步由正式教师完成点名保存、刷新/重登再读，再做管理员读取和无权限拒绝。
 - 班级启用是运营决定。正式自由班、未完整课程、教师冲突、备课产物/审核/检查项、点名前置、资源预载和无 release 都只提示；创建时的权限、主讲/学期、course/family/lecture 引用、状态和不可变历史继续硬阻断。无 release 课次可冻结 `releaseId=null` 的空白/本次覆盖快照。
 - 现有 purge 只接受 active manifest 明确的 `purge_allowed` test 根，当前准删数为 0。日常新增正式学生、班级、课次和考勤不要求逐行替换 manifest；只有未来授权具体清理根时才按当时删除闭包生成 replacement。
 - 原 R1 暂停在 R1-9。P6-AIX-2、G+/X+/A+ 170 讲和 102 门/1305 讲/2610 条目标 release-1 合同保留；真实全量 inventory、Storage/H5 审计、Terms/Story/其他公开模块、完整视觉/E2E/恢复门转入 R1-Live 后继续。
@@ -152,7 +152,7 @@ command_or_runbook, artifact_url_or_path, artifact_hash, failure_ticket
 | 指标/报表/遥测 | M1～M2 | M4 | 口径、版本、查询、告警 | 13 |
 | 幂等/并发/事务/E2E | M2～M3（正式基线/开发目标） | M4 | 本轮修复前 19 项 Vitest 失败已在 commit `cbb2a0f` 清零；commits `0d55044`、`8e5c076` 与[Playwright 子门](../evidence/r1/r1-14-playwright-baseline.md)已让 9 条本地非五模块 Chromium 旅程分别取绿并固定 release fail-closed 合同；仍缺发布目标完整重跑、写态、zh/en、跨浏览器、连续无 flaky、大文件和竞争矩阵 | 14 |
 | 生产清理/release-1 | M1（旧 planner） | M4 | 旧 planner 假定只保留管理员且无正式历史 release，与 R1-Live 后正式教师/业务数据/课次内容引用冲突；须增加正式对象保护 manifest 后再做快照副本演练、测试数据清理、可逆脚本和正式计数 | Live/15/18 |
-| 部署/备份/恢复 | M2（生产发布/当前备份） | M4 | commit `35b9f60` 与[部署子门](../evidence/r1/r1-16-deployment-preflight.md)已固定 fail-closed 合同；仓库/历史 secret scan 已关闭。2026-08-23 current 已发布为 `20260822-162416` / `6dfb3af…`，previous 为 `20260822-072101` / `ef1eb77…`，数据库保持 `20260822000300_r1_live_enrollment_status_transition`，原子切换及内外健康门通过；当前 PostgreSQL+Storage 同批次备份已独立通过 TOC、文件数、源前后清单与 SHA-256 校验，因此 R1-Live Gate 1 已通过。previous 兼容回退、恢复演练、异机/静态加密备份和错误 release 标签属于 M4 | Live/16 |
+| 部署/备份/恢复 | M2（生产发布/当前备份） | M4 | commit `35b9f60` 与[部署子门](../evidence/r1/r1-16-deployment-preflight.md)已固定 fail-closed 合同；仓库/历史 secret scan 已关闭。2026-08-23 current 已发布为 `20260822-181331` / `b899942…`，previous 为 `20260822-162416` / `6dfb3af…`，数据库 head 为 `20260823000100_r1_live_school_year_periods`，原子切换及内外健康门通过；当前 PostgreSQL+Storage 同批次备份已独立通过 TOC、文件数、源前后清单与 SHA-256 校验，因此 R1-Live Gate 1 已通过。previous 兼容回退、恢复演练、异机/静态加密备份和错误 release 标签属于 M4 | Live/16 |
 | 真实运营 RC | M0 | M4 | R1-Live Gate 2 先取得 1 名真实教师闭环；独立观察及开放后连续 14 天/至少 5 节真实课堂形成扩围和 Production 1.0 证据 | Live/17 |
 
 ## 4. 业务合同
@@ -202,7 +202,7 @@ R1-5 已关闭学生与家庭门户及其课堂连续性依赖：固定角色浏
 - 设置中心保存机构/校区、时区、学期/教学周、节假日、教室、课时、排课、通知、财务和公开发布规则。规则变更记录版本、生效时间、操作者和旧值；历史考勤、订单和报告继续使用发生时口径。
 R1-1 以 `20260728000100_r1_organization_settings.sql` 与 `20260728000200_r1_public_publish_guard.sql` 落地单机构、多校区模型和显式默认：6 个规则域、5 个 Feature Flag、版本追加/回滚 RPC、直接表访问拒绝、`organization.settings.manage` 权限、公开发布 RLS 门禁及 zh/en 设置页。空库全迁移重放、越权/失败/回滚 SQL 断言和开发环境浏览器证据见 [`docs/evidence/r1/r1-1.md`](../evidence/r1/r1-1.md)。
 
-学年与运营周期采用两层合同。`school_years` 是学生年级的年度归属，创建时只登记起始年并建立四个周期，不要求预先知道放假或开学日期，也不改学生年级；`school_terms` 固定为 `暑期 → 秋季 → 寒假 → 春季`，日期成对可空，临近后补，周期重叠只形成运营提示。暑期属于新学年，因此“二升三”的暑假按三年级归属。启用下一学年必须先显示一至十一年级晋级数和十二年级保留数，再填写该起始自然年内的生效日并显式确认；切换当前运营周期不触发晋级。课表页是唯一学年管理入口，机构设置只维护节假日，避免两处合同漂移。产品负责人确认 `2025–2026` 学年春季结束日为 `2026-06-29`；此前挂在旧春季、且全部课次晚于该日的 production 班级只迁移到 `2026–2027` 秋季归属，不改班级状态、教师、课次时间或学生年级。migration `20260823000100_r1_live_school_year_periods` 已通过最终空库重建、旧库升级和回滚式晋级演练，生产部署前仍按 Gate 1 目标指纹与业务不变量做 preflight。
+学年与运营周期采用两层合同。`school_years` 是学生年级的年度归属，创建时只登记起始年并建立四个周期，不要求预先知道放假或开学日期，也不改学生年级；`school_terms` 固定为 `暑期 → 秋季 → 寒假 → 春季`，日期成对可空，临近后补，周期重叠只形成运营提示。暑期属于新学年，因此“二升三”的暑假按三年级归属。启用下一学年必须先显示一至十一年级晋级数和十二年级保留数，再填写该起始自然年内的生效日并显式确认；切换当前运营周期不触发晋级。课表页是唯一学年管理入口，机构设置只维护节假日，避免两处合同漂移。产品负责人确认 `2025–2026` 学年春季结束日为 `2026-06-29`；此前挂在旧春季、且全部课次晚于该日的 production 班级只迁移到 `2026–2027` 秋季归属，不改班级状态、教师、课次时间或学生年级。migration `20260823000100_r1_live_school_year_periods` 已通过最终空库重建、旧库升级、回滚式晋级演练、生产 preflight、完整回滚演练和独立 postflight，并随应用 `b899942…` 上线；当前 2026 学年仍为 planning、promotion=0。
 
 - 学生主链覆盖活动/线索、学生档案、监护关系、报名/分班、课表、考勤、请假/补课、作业、评价、续费/流失跟进。改班、换老师、撤课、合班和补录产生历史记录，不覆盖旧事实。
 - 教师课堂旅程包括进入课次、点名、读取已发布课件、课堂记录、布置作业和课后动作；教务/学辅从异常 work item 进入对应领域页处理。
@@ -534,7 +534,7 @@ R1-0 已完成责任角色到 `swingislee` 的映射。增加人员或发生交�
 
 | 风险 | 当前证据 | 影响 | Owner | 关闭阶段 |
 | --- | --- | --- | --- | --- |
-| R1-Live 正式目标 Golden Path 未完成 | 本机隔离 Golden Path 1/1 已通过并关闭 `lead → enrolled` 合同冲突；`20260822000300` 已部署生产。产品负责人已在正式目标创建 1 个班级和 15 个课次，建班隐藏学辅冲突修复也已上线；仍缺真实花名册/报名、教师点名保存与刷新或重登再读、管理员对照和越权对照 | 已创建班级只能证明建班路径；尚不能证明正式教师能在真实花名册上完成点名闭环 | 教学运营+QA/发布 | R1-Live Gate 2 |
+| R1-Live 正式目标 Golden Path 未完成 | 本机隔离 Golden Path 1/1 已通过并关闭 `lead → enrolled` 合同冲突；生产已有 1 个班级、15 个课次和 1 条 active 报名，学年/秋季归属修复已上线；仍缺正式教师点名保存与刷新或重登再读、管理员对照和越权对照 | 班级、课次和报名存在只能证明闭环前半段；尚不能证明正式教师能完成持久点名及权限闭环 | 教学运营+QA/发布 | R1-Live Gate 2 |
 | Production 1.0 运维成熟度未完成 | current/previous、原子切换、健康门、错误查询位置和当前同批次备份已知；备份仍是同机外置 exFAT 明文工件，尚无恢复抽查/异机副本，previous 未做受控切回，1,949 条历史错误的 release 为空 | 不阻止第一名内部教师开始使用，但会阻止扩大范围和 `v1.0.0` | 运维+安全+QA | R1-16～18 |
 | Story 无完整章节 | 路由存在；无完整独立章节内容目录 | 对外 1.0 缺一模块 | 内容+产品 | R1-10 |
 | R1-9 来源实物证据未完成 | P6-AIX-2 开发库证据与 v4 只读导出/对象校验核心、受控 runner 已通过；批准副本配置、外部 provenance、真实 1305 行 inventory、Storage/H5 审计与非执行者复核仍 pending | Production 1.0 release 清单可能缺对象或 snapshot 漂移；不影响 R1-Live 所选课次已读验证 | 产品+课程研发+QA/发布 | R1-Live 后恢复 R1-9，并在 R1-18 前重跑最终证据 |
