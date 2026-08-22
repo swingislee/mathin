@@ -97,8 +97,8 @@ interface Props {
   rehearsal?: boolean;
   /** 离线演练：保留可靠 outbox，但主动禁用 T2 与服务端写入，退出后验证补同步。 */
   offlineDrill?: boolean;
-  /** 正式开课前必须完成整班点名；试讲/离线演练不触发此门。 */
-  attendanceRequired: boolean;
+  /** 正式课次显示点名提醒；试讲/离线演练不显示，且点名状态不阻断开课。 */
+  attendanceSuggested: boolean;
   initialAttendanceComplete: boolean;
   learningSetup: SessionLearningSetup | null;
 }
@@ -113,7 +113,7 @@ export function LiveShell({
   role,
   rehearsal = false,
   offlineDrill = false,
-  attendanceRequired,
+  attendanceSuggested,
   initialAttendanceComplete,
   learningSetup,
 }: Props) {
@@ -181,7 +181,7 @@ export function LiveShell({
   const [sideFollow, setSideFollow] = useState(myRole === "student");
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState(false);
-  const [attendanceComplete, setAttendanceComplete] = useState(initialAttendanceComplete);
+  const [attendanceSaved, setAttendanceSaved] = useState(initialAttendanceComplete);
   const logRef = useRef<SessionEventLog | null>(null);
   const preloadTick = useRef(0);
   const activePageDocIdRef = useRef(activePageDocId);
@@ -530,7 +530,6 @@ export function LiveShell({
   }, [gotoPage, isController, state.currentPage, state.pages.length]);
 
   const startClass = useCallback(async () => {
-    if (attendanceRequired && !attendanceComplete) return;
     // 挂了讲次的课次要先在服务端 resolve 模板+覆盖层冻结 courseware，
     // 成功后才广播 session_ctl:start（10-§5.4）；失败则留在候课页重试。
     setStarting(true);
@@ -544,7 +543,7 @@ export function LiveShell({
     }
     append("session_ctl", { action: "start" });
     setPhase("live");
-  }, [append, attendanceComplete, attendanceRequired, session.id]);
+  }, [append, session.id]);
 
   const insertBoardPage = useCallback(() => {
     const index = Math.min(state.currentPage + 1, state.pages.length);
@@ -764,21 +763,21 @@ export function LiveShell({
           {connectionBadges}
         </div>
 
-        {attendanceRequired && (
+        {attendanceSuggested && (
           <section className="mt-8 flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-card p-4">
             <div className="min-w-0 flex-1">
               <h2 className="text-sm font-medium">{tPrep("attendanceStepTitle")}</h2>
               <p className="mt-1 text-xs text-muted">
-                {attendanceComplete ? tPrep("attendanceComplete") : tPrep("attendanceStepBody")}
+                {attendanceSaved ? tPrep("attendanceComplete") : tPrep("attendanceStepBody")}
               </p>
             </div>
-            {attendanceComplete
+            {attendanceSaved
               ? <Badge variant="secondary">{tPrep("attendanceDone")}</Badge>
-              : <AttendanceDrawer sessionId={session.id} appearance="primary" onSaved={() => setAttendanceComplete(true)} />}
+              : <AttendanceDrawer sessionId={session.id} appearance="primary" onSaved={() => setAttendanceSaved(true)} />}
           </section>
         )}
 
-        <h2 className={attendanceRequired ? "mt-6 text-sm font-medium text-muted" : "mt-8 text-sm font-medium text-muted"}>{tPrep("title")}</h2>
+        <h2 className={attendanceSuggested ? "mt-6 text-sm font-medium text-muted" : "mt-8 text-sm font-medium text-muted"}>{tPrep("title")}</h2>
         <ul className="mt-3 divide-y divide-line rounded-2xl border border-line">
           {checklist.map((item) => (
             <li key={item.key} className="flex items-start gap-3 px-4 py-3">
@@ -814,14 +813,13 @@ export function LiveShell({
               </button>
               <button
                 type="button"
-                disabled={!assetsReady || starting || (attendanceRequired && !attendanceComplete)}
+                disabled={starting}
                 onClick={() => void startClass()}
                 className="inline-flex items-center gap-2 rounded-full bg-ink px-5 py-2 text-sm text-paper transition-opacity hover:opacity-85 disabled:opacity-40"
               >
                 {starting ? <LoaderCircle size={15} className="animate-spin motion-reduce:animate-none" /> : <MonitorPlay size={15} />}
                 {tPrep("start")}
               </button>
-              {attendanceRequired && !attendanceComplete && <p className="text-xs text-crater">{tPrep("startAfterAttendance")}</p>}
               {startError && <p className="text-xs text-rose">{tPrep("startFailed")}</p>}
             </>
           ) : (

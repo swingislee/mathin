@@ -12,6 +12,7 @@ const read = (file: string) => fs.readFileSync(path.join(root, file), "utf8");
 const migration = read("supabase/migrations/20260730010500_doc26_teacher_workflow.sql");
 const reviewFollowupMigration = read("supabase/migrations/20260731000200_doc26_review_courseware_and_withdrawal.sql");
 const boardItemsMigration = read("supabase/migrations/20260731000700_doc26_annotation_board_items.sql");
+const operationalGateMigration = read("supabase/migrations/20260822000200_r1_live_operational_gate_simplification.sql");
 
 describe("doc 26 teacher preparation workflow", () => {
   it("keeps the teaching plan template stable and complete", () => {
@@ -131,7 +132,7 @@ describe("doc 26 teacher preparation workflow", () => {
     expect(styles).toContain("height: 34px !important");
   });
 
-  it("reuses the existing preparation review and completion gates", () => {
+  it("reuses preparation review surfaces while making completion advisory", () => {
     const reviewPage = read("src/app/[locale]/dashboard/courseware/preparation-review/page.tsx");
     const reviewCourseware = read("src/features/school/SessionPreparationCoursewareReview.tsx");
     const sessionPage = read("src/app/[locale]/dashboard/sessions/[sessionId]/page.tsx");
@@ -146,6 +147,11 @@ describe("doc 26 teacher preparation workflow", () => {
     expect(reviewerMigration).toContain("preparation.reviewer_id = p_user_id");
     expect(migration).toContain("sync_lesson_plan_review_status");
     expect(migration).toContain("assert_session_preparation_complete");
+    expect(operationalGateMigration).toContain("create or replace function public.assert_session_preparation_complete");
+    expect(operationalGateMigration).not.toContain("solution_records");
+    expect(operationalGateMigration).not.toContain("lesson_plans");
+    expect(operationalGateMigration).not.toContain("session_preparation_reviews");
+    expect(operationalGateMigration).not.toContain("session_learning_checks");
     expect(reviewPage).toContain("SessionLessonPlanReview");
     expect(reviewPage).toContain("SolutionRecordPreview");
     expect(reviewPage).toContain("SolutionRecordExportButton");

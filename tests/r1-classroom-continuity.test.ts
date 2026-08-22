@@ -18,6 +18,7 @@ const learningCheckConfigurationMigration = read("supabase/migrations/2026073000
 const learningCheckMarkFixMigration = read("supabase/migrations/20260730000700_r1_fix_learning_check_mark.sql");
 const prepArtifactMigration = read("supabase/migrations/20260730000300_r1_session_preparation_artifacts.sql");
 const prepReviewMigration = read("supabase/migrations/20260730000500_r1_session_preparation_review.sql");
+const operationalGateMigration = read("supabase/migrations/20260822000200_r1_live_operational_gate_simplification.sql");
 const prepUnlockMigration = read("supabase/migrations/20260731000500_r1_preparation_archive_unlock.sql");
 const prepUnlockNarrowingMigration = read("supabase/migrations/20260731000800_r1_narrow_preparation_archive_unlock.sql");
 const learningSeatOrderMigration = read("supabase/migrations/20260731001000_r1_learning_check_seat_order.sql");
@@ -134,7 +135,7 @@ describe("R1 classroom continuity contracts", () => {
     expect(learningCheckConfigurationMigration).toContain("coalesce(learning_checks_configured_at,now())");
   });
 
-  it("auto-submits each preparation artifact for review and gates completion on approvals", () => {
+  it("keeps preparation artifacts and reviews as visible quality signals, not completion gates", () => {
     const prepFlow = read("src/features/school/SessionPreparationFlow.tsx");
     const reviewPage = read("src/app/[locale]/dashboard/courseware/preparation-review/page.tsx");
     expect(prepArtifactMigration).toContain("create table if not exists public.session_preparation_artifacts");
@@ -147,6 +148,10 @@ describe("R1 classroom continuity contracts", () => {
     expect(prepReviewMigration).toContain("session.preparation.submitted");
     expect(prepReviewMigration).toContain("review_session_preparation_artifact");
     expect(prepReviewMigration).toContain("PREP_REVIEW_REQUIRED");
+    expect(operationalGateMigration).toContain("create or replace function public.assert_session_preparation_complete");
+    expect(operationalGateMigration).not.toContain("PREP_ARTIFACTS_REQUIRED");
+    expect(operationalGateMigration).not.toContain("PREP_REVIEW_REQUIRED");
+    expect(operationalGateMigration).not.toContain("LEARNING_CHECKS_REQUIRED");
     expect(prepFlow).toContain("saveQueue");
     expect(prepFlow).toContain("latest.current = next");
     expect(prepFlow).not.toContain('type="submit"');
@@ -179,15 +184,20 @@ describe("R1 classroom continuity contracts", () => {
     expect(lecturePanel).not.toContain("flex-1 overflow-y-auto bg-paper");
   });
 
-  it("makes attendance the first persisted gate before a formal class starts", () => {
+  it("keeps attendance and preload visible without blocking a formal class start", () => {
     const livePage = read("src/app/[locale]/classroom/[classId]/session/[sessionId]/live/page.tsx");
     const liveShell = read("src/features/classroom/live/LiveShell.tsx");
     const actions = read("src/features/classroom/actions.ts");
     expect(livePage).toContain("getAttendanceDrawerData");
+    expect(livePage).toContain("attendanceSuggested");
     expect(livePage).toContain("initialAttendanceComplete");
-    expect(liveShell).toContain("attendanceRequired && !attendanceComplete");
+    expect(liveShell).not.toContain("attendanceRequired && !attendanceComplete");
+    expect(liveShell).toContain("attendanceSuggested");
     expect(liveShell).toContain("AttendanceDrawer");
-    expect(actions).toContain('throw new Error("ATTENDANCE_REQUIRED")');
+    expect(liveShell).toContain("disabled={starting}");
+    expect(liveShell).not.toContain("disabled={!assetsReady");
+    expect(actions).not.toContain('throw new Error("ATTENDANCE_REQUIRED")');
+    expect(actions).not.toContain('throw new Error("COURSEWARE_TRACK_UNPUBLISHED")');
   });
 
   it("ships a teacher page list, protected student media, and one-touch or batch learning checks", () => {

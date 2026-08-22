@@ -44,9 +44,13 @@ begin
      or save_plan_definition not ilike '%delete from public.session_preparation_reviews%' then
     failures := array_append(failures, 'lesson-plan save does not version/invalidate review');
   end if;
-  if completion_definition not ilike '%solution_records%'
-     or completion_definition not ilike '%lesson_plans%' then
-    failures := array_append(failures, 'completion gate ignores doc 26 production paths');
+  if completion_definition not ilike '%is_session_teacher%'
+     or completion_definition not ilike '%started_at is null%'
+     or completion_definition ilike '%solution_records%'
+     or completion_definition ilike '%lesson_plans%'
+     or completion_definition ilike '%session_preparation_reviews%'
+     or completion_definition ilike '%session_learning_checks%' then
+    failures := array_append(failures, 'preparation advisory contract drifted');
   end if;
   if not exists (
     select 1 from pg_trigger

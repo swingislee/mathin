@@ -2,7 +2,7 @@
 
 本目录是 R1-Live 与 R1-0～R1-18 的唯一仓库内证据入口。它保存可审查的小摘要、结构化结果和外部 artifact 索引，不把大日志、视频、截图、secret、token、测试凭据或可识别未成年人 PII 提交到 Git。
 
-当前唯一施工阶段为 **R1-Live-1 · 正式身份与真实数据**。首个闭环固定为正式教师整班点名；Gate 0 `PASS`、Gate 1 `BLOCKED`、Gate 2 `BLOCKED`、Gate 3 `BLOCKED`、Gate 4 `BLOCKED`，见 [R1-Live 差距表](r1-live.md)与[目标只读核查](r1-live-target-audit.md)。原 R1 暂停在 R1-9，SML-0 为独立并行轨道。
+当前唯一施工阶段为 **R1-Live-1 · 可安全开始**。R1-Live 只保留两个结果门：Gate 1 `BLOCKED`、Gate 2 `BLOCKED`；首个闭环固定为正式教师整班点名，见 [R1-Live 差距表](r1-live.md)与[目标只读核查](r1-live-target-audit.md)。原 R1 暂停在 R1-9，SML-0 为独立并行轨道。
 
 ## 存储合同
 
@@ -32,7 +32,7 @@ failure_ticket
 
 | 阶段 | 状态 | 日期 | 证据 |
 | --- | --- | --- | --- |
-| R1-Live | Gate 0 passed；Gate 1 current/blocking；Gate 3 blocked | 2026-08-22 | [真实教师点名闭环差距表](r1-live.md)；[目标核查、应用/数据库发布、正式管理员交接、manifest 激活与真实教师注册/岗位保护](r1-live-target-audit.md)；[仓库写入目标保险丝](../../runbooks/r1-write-target-policy.md)；[正式对象保护 manifest](../../runbooks/r1-live-object-protection-manifest.md)。Xiaomi 已固定为当前生产目标；仓库危险写入口与 purge 数据库合同均 fail-closed；本机隔离 Supabase 与固定账号登录已验证。生产 current 已发布为 `20260814-221135` / `023f5167…`，服务及内外健康探针通过。唯一正式管理员已完成 verified MFA、原子交接、新会话 MFA challenge 和 admin 路由验收。首名真实教师已注册为 active `staff`，正式管理员分配的 `research`/`teacher` 双岗位已确认；replacement manifest 为 active 8 条 protected、0 条 purge，保护教师 auth/profile/两条岗位成员关系，旧 manifest 已 retired。课程整体准备度改为非阻断告警的 migration/UI 已通过隔离验证但尚未部署生产；真实班级/课次/花名册、可恢复备份和 previous rollback 仍缺，Gate 1/3 未通过 |
+| R1-Live | Gate 1 current/blocking；Gate 2 blocked | 2026-08-22 | [真实教师点名闭环差距表](r1-live.md)；[目标核查、应用/数据库发布、正式管理员交接、manifest 激活与真实教师注册/岗位保护](r1-live-target-audit.md)；[仓库写入目标保险丝](../../runbooks/r1-write-target-policy.md)；[正式对象保护 manifest](../../runbooks/r1-live-object-protection-manifest.md)。Xiaomi 已固定为当前生产目标；仓库危险写入口与 purge 数据库合同均 fail-closed；本机隔离 Supabase 与固定账号登录已验证。生产 current 已发布为 `20260814-221135` / `023f5167…`，current/previous、回退命令、服务健康和错误查询位置均已知。唯一正式管理员已完成 verified MFA、原子交接、新会话 MFA challenge 和 admin 路由验收；首名真实教师已注册为 active `staff` 并取得有意设置的 `research`/`teacher` 双岗位。active manifest 为 8 条 protected、0 条 purge，日常业务写入不再要求 replacement。运行时软门 migration/UI 已通过本机隔离数据库与固定账号界面验证、尚未发布，当前 PostgreSQL+Storage 备份尚未建立，因此 Gate 1 未通过；真实班级/课次/花名册与点名闭环尚未执行，因此 Gate 2 未通过 |
 | R1-0 | passed | 2026-07-28 | [规划真相源与发布边界冻结](r1-0.md) |
 | R1-1 | passed | 2026-07-28 | [机构配置、规则与 Feature Flag](r1-1.md) |
 | R1-2 | passed | 2026-07-28 | [Jobs、通知、文件与外部集成](r1-2.md) |

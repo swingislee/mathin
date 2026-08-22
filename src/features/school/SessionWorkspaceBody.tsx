@@ -161,7 +161,6 @@ export async function SessionWorkspaceBody({
               <SessionPrepCompleteAction
                 sessionId={detail.id}
                 prepStatus={detail.prepStatus}
-                hasRelease={detail.currentReleaseNo !== null}
                 hasUnpublishedChanges={detail.hasUnpublishedChanges}
               />
             </div>

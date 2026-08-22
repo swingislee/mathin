@@ -289,21 +289,6 @@ export async function startClassSession(sessionId: string): Promise<void> {
   if (fetchError) throw new Error(fetchError.message);
   if (!session || session.started_at) return;
 
-  const [{ count: rosterCount, error: rosterError }, { count: attendanceCount, error: attendanceError }] = await Promise.all([
-    supabase
-      .from("enrollments")
-      .select("*", { count: "exact", head: true })
-      .eq("classroom_id", session.classroom_id)
-      .eq("status", "active"),
-    supabase
-      .from("session_attendance")
-      .select("*", { count: "exact", head: true })
-      .eq("session_id", sessionId),
-  ]);
-  if (rosterError) throw new Error(rosterError.message);
-  if (attendanceError) throw new Error(attendanceError.message);
-  if ((attendanceCount ?? 0) < (rosterCount ?? 0)) throw new Error("ATTENDANCE_REQUIRED");
-
   if (session.lecture_id && !session.courseware_frozen_at) {
     const { data: resolvedRelease, error: resolvedReleaseError } = await supabase.rpc("resolve_session_courseware_release", {
       p_session_id: sessionId,
@@ -311,7 +296,6 @@ export async function startClassSession(sessionId: string): Promise<void> {
     if (resolvedReleaseError) throw new Error(resolvedReleaseError.message);
     const selected = resolvedRelease?.[0] as { track: CoursewareTrack; release_id: string | null } | undefined;
     if (!selected) throw new Error("COURSEWARE_TRACK_NOT_RESOLVED");
-    if (selected.track === "adapted-4x3" && !selected.release_id) throw new Error("COURSEWARE_TRACK_UNPUBLISHED");
     const template = await getSessionCoursewareTemplate(sessionId);
     const resolved = resolveCourseware(template, session.courseware_overlay ?? []);
     // P6-2：同一 DB 事务同时冻结页数组、解析对象 pin 与开课时间。

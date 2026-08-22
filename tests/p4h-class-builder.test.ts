@@ -48,23 +48,25 @@ describe("P4H CoursePicker and class-builder contract", () => {
     expect(actions).toContain(".bind(supabase)");
   });
 
-  it("treats incomplete courseware as an activation warning while retaining structural guards", () => {
+  it("keeps activation an operator choice while retaining create-time structural guards", () => {
     const wizard = read("src", "features", "school", "ClassBuildWizard.tsx");
-    const migration = read("supabase", "migrations", "20260822000100_r1_live_incomplete_course_activation.sql");
+    const migration = read("supabase", "migrations", "20260822000200_r1_live_operational_gate_simplification.sql");
     const zh = read("messages", "zh.json");
     const en = read("messages", "en.json");
 
-    expect(wizard).toContain('(purpose === "test" || course !== null)');
-    expect(wizard).not.toContain('(purpose === "test" || isReady)');
+    expect(wizard).not.toContain("canActivateNow");
+    expect(wizard).toContain('checked={activateNow}');
     expect(wizard).toContain('t("productionActivationWarning")');
     expect(zh).toContain('"productionActivationWarning"');
     expect(en).toContain('"productionActivationWarning"');
 
-    expect(migration).toContain("p_course_id is null or active_lecture_count = 0");
+    expect(migration).not.toContain("CLASSROOM_PREP_INCOMPLETE");
+    expect(migration).not.toContain("active_lecture_count");
     expect(migration).not.toContain("active_lecture_count <> released_lecture_count");
     expect(migration).not.toContain("lecture_row.current_release_id is null");
-    expect(migration).toContain("session_row.lecture_id is null");
-    expect(migration).toContain("lecture_row.status <> 'active'");
+    expect(migration).toContain("course_candidate.status = 'enabled'");
+    expect(migration).toContain("and course_id = p_course_id");
+    expect(migration).toContain("and status = 'active'");
   });
 
   it("loads the versioned course seed after the catalog-version migration in CI replay", () => {

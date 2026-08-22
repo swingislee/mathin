@@ -414,10 +414,31 @@ select public.create_class(
   p_activate => false
 ) as r1_live_planning_classroom_id \gset
 select public.transition_classroom_status(:'r1_live_planning_classroom_id', 'active');
+select public.create_class(
+  p_name => '__R1_LIVE_FREE_IMMEDIATE_ACTIVE__',
+  p_course_id => null,
+  p_primary_teacher_id => :'teacher_id',
+  p_term_id => :'r1_live_term_id',
+  p_purpose => 'production',
+  p_sessions => '[]'::jsonb,
+  p_activate => true
+) as r1_live_free_immediate_classroom_id \gset
+select public.create_class(
+  p_name => '__R1_LIVE_FREE_PLANNING_THEN_ACTIVE__',
+  p_course_id => null,
+  p_primary_teacher_id => :'teacher_id',
+  p_term_id => :'r1_live_term_id',
+  p_purpose => 'production',
+  p_sessions => '[]'::jsonb,
+  p_activate => false
+) as r1_live_free_planning_classroom_id \gset
+select public.transition_classroom_status(:'r1_live_free_planning_classroom_id', 'active');
 select (
   (select current_release_id is null from public.course_lectures where id = :'r1_live_lecture_id')
   and (select operational_status = 'active' from public.classrooms where id = :'r1_live_immediate_classroom_id')
   and (select operational_status = 'active' from public.classrooms where id = :'r1_live_planning_classroom_id')
+  and (select operational_status = 'active' and course_id is null from public.classrooms where id = :'r1_live_free_immediate_classroom_id')
+  and (select operational_status = 'active' and course_id is null from public.classrooms where id = :'r1_live_free_planning_classroom_id')
   and (select count(*) = 2 from public.class_sessions where classroom_id in (
     :'r1_live_immediate_classroom_id'::uuid,
     :'r1_live_planning_classroom_id'::uuid
@@ -425,7 +446,7 @@ select (
 ) as r1_live_incomplete_course_activation_ok \gset
 \if :r1_live_incomplete_course_activation_ok
 \else
-  \echo R1-Live incomplete-course activation failed: readiness remained a hard gate
+  \echo R1-Live operational activation failed: an advisory remained a hard gate
   select 1 / 0;
 \endif
 

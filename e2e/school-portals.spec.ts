@@ -36,4 +36,31 @@ test.describe("fixed-account school portals", () => {
     await expect(page.locator("[data-dashboard-canvas]")).toBeVisible();
     await expect(page.locator("h1")).toBeVisible();
   });
+
+  test("principal can choose immediate activation for a production free class", async ({ page }) => {
+    const principal = loadFixedAccountForMode("principal");
+    test.skip(!principal, FIXED_ACCOUNT_SKIP_REASON);
+    if (!principal) return;
+
+    await loginWithFixedAccount(page, principal, "/zh/dashboard/classes/new");
+    await page.getByRole("button", { name: "自由建班", exact: true }).click();
+    await page.getByRole("button", { name: "下一步", exact: true }).click();
+
+    await page.getByLabel("班级名", { exact: true }).fill("R1-Live 门禁只读验证");
+    await page.getByRole("combobox").first().click();
+    await page.getByRole("option").first().click();
+    await page.getByRole("button", { name: "下一步", exact: true }).click();
+
+    await page.getByRole("combobox").first().click();
+    await page.getByRole("option").first().click();
+    await page.getByRole("button", { name: "下一步", exact: true }).click();
+
+    const activateNow = page.getByRole("checkbox", { name: "创建后立即启用" });
+    await expect(activateNow).toBeEnabled();
+    await activateNow.check();
+    await expect(activateNow).toBeChecked();
+    await expect(
+      page.getByText("将创建进行中的班级；准备度和时间冲突仍会保留为运营提醒。", { exact: true }),
+    ).toBeVisible();
+  });
 });

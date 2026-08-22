@@ -4,11 +4,11 @@
 >
 > **当前用途**：P4I 学校端工作流、对象页和今日工作的权威历史设计。
 >
-> **权威边界**：P4I 已关闭；领域状态仍以领域表/RPC 为真相，work-items 1.0 决策见 doc 25 §4.1。
+> **权威边界**：P4I 已关闭；领域状态仍以领域表/RPC 为真相，work-items 1.0 决策见 doc 25 §4.1。本文关于正式班课程准备度、备课完成门和空白课堂理由的旧硬门已被 2026-08-22 的 R1-Live 裁决覆盖：课程/备课质量、点名时机、资源预载与无 release 只提示，现行合同见 doc 04/25。
 >
 > **剩余项**：R1-4 已关闭人工协同、开发规模性能与独立审批；只保留 R1-14/17 的正式 E2E 和生产候选负载验收。
 >
-> **最后核对**：2026-07-28。
+> **最后核对**：2026-08-22；历史实现正文保留，不按旧硬门返工。
 
 > **与 doc 22 的关系（2026-07-27 追记）**：本文出现的 Dashboard URL 有一部分已被 `22-dashboard-route-information-architecture-refactor.md` 改名或删除（`staff/roles`→`access-control`、`registration`→`registration-settings`、`operations`→`system-health`、`operations/testdata`→`data-maintenance`、`adapt-review`→`courseware/review`、`curriculum/lectures/[id]`→`courseware/lectures/[lectureId]`、`shared-assets`→`courseware-assets`；`/dashboard/work` 与 `/dashboard/videos` 已删除）。**旧地址一律 404，不留重定向**。本文其余结论不受影响；路由的当前真相以 `src/features/school/dashboard-routes.ts` 的路由合同为准。
 >

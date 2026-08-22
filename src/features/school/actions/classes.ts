@@ -446,7 +446,6 @@ const LIFECYCLE_CODES = [
   "FORBIDDEN_SCOPE",
   "CLASSROOM_NOT_FOUND",
   "INVALID_TRANSITION",
-  "CLASSROOM_PREP_INCOMPLETE",
   "CLASSROOM_HAS_ACTIVE_ENROLLMENTS",
   "CLASSROOM_HAS_HISTORY",
   ...COMMON_CODES,
@@ -586,8 +585,7 @@ export async function listClassroomOptions(excludeId?: string): Promise<Array<{ 
 const PREP_CODES = [
   "SESSION_NOT_FOUND", "ALREADY_STARTED", "TRACK_MISMATCH", "RELEASE_MISMATCH",
   "LECTURE_MISMATCH", "SOURCE_PREPARATION_NOT_FOUND", "NO_LECTURE",
-  "COURSEWARE_TRACK_NOT_RESOLVED", "COURSEWARE_TRACK_UNPUBLISHED", "RELEASE_REQUIRED",
-  "INVALID_COURSEWARE_FREEZE", "REASON_REQUIRED", "PREP_ARTIFACTS_REQUIRED", "PREP_REVIEW_REQUIRED", "LEARNING_CHECKS_REQUIRED",
+  "COURSEWARE_TRACK_NOT_RESOLVED", "INVALID_COURSEWARE_FREEZE",
   ...COMMON_CODES,
 ] as const;
 
@@ -654,22 +652,19 @@ export async function copySessionPreparationAction(sessionId: string, fromSessio
   }
 }
 
-const completePrepSchema = z.object({ sessionId: uuid, fallbackReason: text(1000) });
+const completePrepSchema = z.object({ sessionId: uuid });
 
 /**
  * 完成备课/更新 release 编排（.claude/p4i-0-baseline.md「P4I-14 执行记录」记录的调用顺序）：
- * resolve_session_courseware_release → （无 release 且未给理由则 RELEASE_REQUIRED，UI 弹理由
- * 对话框后带理由重新提交）→ TS 层 resolveCourseware 合并 → materializeSessionResolved →
+ * resolve_session_courseware_release → TS 层 resolveCourseware 合并 → materializeSessionResolved →
  * save_session_prepared_courseware（只要 started_at 仍为空就能重复调用，同一个函数服务
- * "完成备课"首次调用和"更新 release"后续调用）。
+ * "完成备课"首次调用和"更新 release"后续调用）。无 release 时冻结空白/本次覆盖
+ * 快照；备课产物、审核和检查项继续显示质量状态，但不阻断教师确认。
  */
-export async function completeSessionPreparationAction(sessionId: string, fallbackReason = ""): Promise<ActionResult> {
+export async function completeSessionPreparationAction(sessionId: string): Promise<ActionResult> {
   try {
-    const value = parse(completePrepSchema, { sessionId, fallbackReason });
+    const value = parse(completePrepSchema, { sessionId });
     const { supabase } = await authorizedClient("courseware.overlay.edit");
-
-    const { error: artifactGateError } = await supabase.rpc("assert_session_preparation_complete", { p_session_id: value.sessionId });
-    if (artifactGateError) throw new Error(artifactGateError.message);
 
     const { data: session, error: sessionError } = await supabase
       .from("class_sessions")
@@ -686,15 +681,6 @@ export async function completeSessionPreparationAction(sessionId: string, fallba
     if (resolveError) throw new Error(resolveError.message);
     const resolved = (resolvedRows?.[0] ?? null) as { track: "native-16x9" | "adapted-4x3"; release_id: string | null } | null;
     if (!resolved) throw new Error("COURSEWARE_TRACK_NOT_RESOLVED");
-
-    if (!resolved.release_id) {
-      if (!value.fallbackReason) throw new Error("RELEASE_REQUIRED");
-      const { error: fallbackError } = await supabase.rpc("record_session_blank_fallback", {
-        p_session_id: value.sessionId,
-        p_reason: value.fallbackReason,
-      });
-      if (fallbackError) throw new Error(fallbackError.message);
-    }
 
     const template = await getSessionCoursewareTemplate(value.sessionId);
     const merged = resolveCourseware(template, session.courseware_overlay ?? []);

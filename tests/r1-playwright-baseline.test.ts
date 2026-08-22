@@ -138,6 +138,7 @@ describe("R1-14 formal Playwright baseline", () => {
 | 角色 | 邮箱 | 备注 |
 | --- | --- | --- |
 | 管理员 admin | admin@example.invalid | canonical |
+| 主管 staff/principal | principal@example.invalid | canonical |
 | 教师 staff/teacher | teacher@example.invalid | canonical |
 | 学生 student | student@example.invalid | canonical |
 | 学生2 student | second@example.invalid | ignored |
@@ -149,6 +150,7 @@ describe("R1-14 formal Playwright baseline", () => {
       password: "not-a-real-secret",
       emails: {
         admin: "admin@example.invalid",
+        principal: "principal@example.invalid",
         teacher: "teacher@example.invalid",
         student: "student@example.invalid",
         parent: "parent@example.invalid",

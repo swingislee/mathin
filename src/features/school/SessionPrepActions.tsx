@@ -12,7 +12,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { useAction } from "@/components/action-form";
 import { useRouter } from "@/i18n/navigation";
 import {
@@ -25,9 +24,8 @@ import type { SessionPrepStatus } from "./teaching-operations/scopes";
 
 /**
  * 进入课前阶段会自动开始备课；复制与完成是两个独立叶子，分别贴近阶段导航和试讲入口。
- * 完成备课时若讲次尚无可用 release，
- * 直接展示理由输入（doc19 §14.7"空白课堂降级"要求先填写原因），而不是等服务端
- * 报错后再弹窗——`hasRelease` 由页面用已加载的 `currentReleaseNo` 提前判断。
+ * 完成备课会冻结教师当前选择；产物、审核、检查项与 release 状态继续展示，
+ * 但 R1-Live 不再把这些质量信号变成阻止教师确认或开课的前置条件。
  */
 export function SessionPrepCopyAction({
   sessionId,
@@ -110,31 +108,19 @@ export function SessionPrepCopyAction({
 export function SessionPrepCompleteAction({
   sessionId,
   prepStatus,
-  hasRelease,
   hasUnpublishedChanges,
 }: {
   sessionId: string;
   prepStatus: SessionPrepStatus;
-  hasRelease: boolean;
   /** ready 状态下讲次是否已发布比当前采纳更新的 release（doc19 §14.6"显示 update_available"）。 */
   hasUnpublishedChanges: boolean;
 }) {
   const t = useTranslations("school.session");
   const router = useRouter();
-  const [fallbackOpen, setFallbackOpen] = useState(false);
-  const [fallbackReason, setFallbackReason] = useState("");
   const completeRun = useAction(completeSessionPreparationAction, {
     successMessage: t("prepCompleted"),
-    errorMessage: {
-      RELEASE_REQUIRED: t("releaseRequired"),
-      PREP_ARTIFACTS_REQUIRED: t("prepArtifactsRequired"),
-      PREP_REVIEW_REQUIRED: t("prepReviewRequired"),
-      LEARNING_CHECKS_REQUIRED: t("learningChecksRequired"),
-      default: t("actionFailed"),
-    },
+    errorMessage: { default: t("actionFailed") },
     onSuccess: () => {
-      setFallbackOpen(false);
-      setFallbackReason("");
       router.refresh();
     },
   });
@@ -142,38 +128,8 @@ export function SessionPrepCompleteAction({
   if (prepStatus === "ready" && !hasUnpublishedChanges) return null;
 
   return (
-    <>
-      <Button
-        size="sm"
-        disabled={completeRun.pending}
-        onClick={() => (hasRelease ? completeRun.run(sessionId, "") : setFallbackOpen(true))}
-      >
-        {prepStatus === "ready" ? t("updateRelease") : t("completePrep")}
-      </Button>
-      <Dialog open={fallbackOpen} onOpenChange={setFallbackOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t("blankFallbackTitle")}</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted">{t("blankFallbackBody")}</p>
-          <Textarea
-            value={fallbackReason}
-            onChange={(event) => setFallbackReason(event.target.value)}
-            placeholder={t("blankFallbackPlaceholder")}
-            maxLength={1000}
-          />
-          <DialogFooter>
-            <Button variant="ghost" size="sm" onClick={() => setFallbackOpen(false)}>{t("cancel")}</Button>
-            <Button
-              size="sm"
-              disabled={!fallbackReason.trim() || completeRun.pending}
-              onClick={() => completeRun.run(sessionId, fallbackReason)}
-            >
-              {t("blankFallbackConfirm")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+    <Button size="sm" disabled={completeRun.pending} onClick={() => completeRun.run(sessionId)}>
+      {prepStatus === "ready" ? t("updateRelease") : t("completePrep")}
+    </Button>
   );
 }

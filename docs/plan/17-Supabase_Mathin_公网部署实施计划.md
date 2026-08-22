@@ -6,7 +6,7 @@
 >
 > **权威边界**：目标生产运行环境已改为小米 Linux；Windows 生产章节仅为历史方案。
 >
-> **R1-Live 边界**：2026-08-15 已把当前提交 `023f5167…` 以 immutable release `20260814-221135` 发布到 Xiaomi，旧 current `20260724-051318` / `b833c4d…` 成为 previous，原子切换、服务和内外健康探针通过；该次未执行 migration 或数据写入。Gate 3 仍需最近备份及抽查、previous 兼容回退、错误 release 关联和生产防误清。独立环境、完整监控、数据库/Storage 全量恢复与 RPO/RTO 仍属 Production 1.0。
+> **R1-Live 边界**：2026-08-15 已把提交 `023f5167…` 以 immutable release `20260814-221135` 发布到 Xiaomi，旧 current `20260724-051318` / `b833c4d…` 成为 previous，原子切换、服务和内外健康探针通过；该次未执行 migration 或数据写入。现行 Gate 1 只要求危险写/清理 fail-closed、当前 PostgreSQL+Storage 备份、可识别的 current/previous 与回退命令、错误查询位置及本轮运行时版本部署。完整恢复、previous 实际回切、release 错误标签、监控和 RPO/RTO 属于 Production 1.0。
 >
 > **剩余项**：R1-Live 最小保险丝见 doc 04；完整部署、密钥隔离、监控、恢复和发布证据见 doc 25 R1-16。
 >

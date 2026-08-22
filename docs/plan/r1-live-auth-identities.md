@@ -128,7 +128,7 @@ beginIdentityLink(input: {
 
 ### A. R1-Live 最短路径
 
-1. 先关闭 Gate 1 的生产目标误写保护，并建立 Gate 3 最近备份；认证改造不得先于这两个保险丝修改生产配置。
+1. 先完成当前 Gate 1 的生产目标误写保护与当前 PostgreSQL+Storage 同批次备份；认证改造不得先于这两个保险丝修改生产配置。
 2. 首名真实教师可继续使用现有“邮箱绑定一次性邀请 + password”路径，避免手机号/验证码/OAuth 延迟第一次真实点名。
 3. 同一代码增量把登录/注册表单改为通用 identifier、补重复密码，隐藏当前不可用的 OTP 入口，并让登录 OTP 固定 `shouldCreateUser:false`。
 4. 手机号/password 保持功能开关关闭，直到员工邀请完成 email/phone 泛化并在非生产目标验证同一 UUID 合同。

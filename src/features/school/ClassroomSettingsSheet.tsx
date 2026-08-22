@@ -26,7 +26,6 @@ type LifecycleErrorCode =
   | "FORBIDDEN_SCOPE"
   | "CLASSROOM_NOT_FOUND"
   | "INVALID_TRANSITION"
-  | "CLASSROOM_PREP_INCOMPLETE"
   | "CLASSROOM_HAS_ACTIVE_ENROLLMENTS"
   | "CLASSROOM_HAS_HISTORY";
 
@@ -53,7 +52,6 @@ export function ClassroomSettingsSheet({
     FORBIDDEN_SCOPE: t("reasonForbiddenScope"),
     CLASSROOM_NOT_FOUND: t("lifecycleNotFound"),
     INVALID_TRANSITION: t("lifecycleInvalidTransition"),
-    CLASSROOM_PREP_INCOMPLETE: t("lifecyclePrepIncomplete"),
     CLASSROOM_HAS_ACTIVE_ENROLLMENTS: t("lifecycleHasActiveEnrollments"),
     CLASSROOM_HAS_HISTORY: t("lifecycleHasHistory"),
   } satisfies Record<LifecycleErrorCode | "default", string>;

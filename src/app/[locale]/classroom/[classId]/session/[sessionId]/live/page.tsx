@@ -48,11 +48,12 @@ export default async function LiveClassPage({
   // 试讲模式仅教师可用：本地临时事件流，不落库、不同步、不改课次状态
   const rehearsal = mode === "rehearsal" && classroom.myRole === "teacher";
   const offlineDrill = mode === "offline-drill" && classroom.myRole === "teacher";
-  const attendanceRequired = !rehearsal && !offlineDrill && classroom.myRole === "teacher" && !session.startedAt;
-  const attendanceResult = attendanceRequired ? await getAttendanceDrawerData(sessionId) : null;
+  const attendanceSuggested = !rehearsal && !offlineDrill && classroom.myRole === "teacher" && !session.startedAt;
+  const attendanceResult = attendanceSuggested ? await getAttendanceDrawerData(sessionId) : null;
+  const initialAttendanceComplete = Boolean(
+    attendanceResult?.ok && attendanceResult.data.length > 0 && attendanceResult.data.every((row) => row.marked),
+  );
   const learningSetup = classroom.myRole === "teacher" ? await getSessionLearningSetup(sessionId) : null;
-  const initialAttendanceComplete = !attendanceRequired
-    || Boolean(attendanceResult?.ok && attendanceResult.data.every((row) => row.marked));
   const role = !rehearsal && roleParam === "display"
     ? "display"
     : classroom.myRole === "teacher"
@@ -70,7 +71,7 @@ export default async function LiveClassPage({
       role={role}
       rehearsal={rehearsal}
       offlineDrill={offlineDrill}
-      attendanceRequired={attendanceRequired}
+      attendanceSuggested={attendanceSuggested}
       initialAttendanceComplete={initialAttendanceComplete}
       learningSetup={learningSetup}
     />

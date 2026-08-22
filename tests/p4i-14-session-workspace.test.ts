@@ -40,7 +40,8 @@ describe("P4I-14 session workspace contract", () => {
     expect(actions).toContain("completeSessionPostworkAction");
     expect(actions).toContain("reopenSessionPostworkAction");
     expect(actions).toContain("save_session_prepared_courseware");
-    expect(actions).toContain("record_session_blank_fallback");
+    expect(actions).not.toContain("assert_session_preparation_complete");
+    expect(actions).not.toContain("record_session_blank_fallback");
   });
 
   it("工作态与复合状态标签是独立于事件状态的纯函数", () => {

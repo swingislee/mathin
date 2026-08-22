@@ -6,7 +6,7 @@
 
 首名真实教师随后通过一次性员工邀请注册；正式管理员按产品安排分配的 `research` 与 `teacher` 双岗位均已确认。2026-08-17，完整 replacement manifest 复制原 4 条并加入教师 `auth_user`、`profile` 和两条 `staff_role_member`，经回滚演练、独立回滚核查、原子提交和新连接 postflight 后生效。当前 header=2（active 1/retired 1）、active entry=8，教师 coverage=4，`purge_entry_count=0`，两个 purge 候选列表均为空；旧版本已按不可变合同转为 `retired`，账号、岗位和业务匿名计数无漂移，也没有执行清理。active artifact 位于 Xiaomi 受控目录，规范化 SHA-256 为 `219e7536c1a7769b40a81f619083f66c0ee8069021a64d697b47415c4c6bfdb3`，mode `600`，owner/group `swing`。
 
-后续新增真实学生、班级、课次、成员、考勤或课次引用内容时继续创建完整 replacement；不得原位修改 active 条目，不得趁机推断或加入其他既有账号，也不得在同一变更加入未经单独审核的 `purge_allowed` 对象。
+日常新增真实学生、班级、课次、成员、考勤或课次引用内容时不再创建 replacement。现有 purge RPC 只有命中 active manifest 中显式 `purge_allowed` 的 test 根才可能继续，而当前准删条目为 0，production 根还会被数据库合同拒绝。只有未来准备授权某个具体清理根时，才按当时完整删除闭包生成 replacement；不得原位修改 active 条目，不得推断其他既有账号可清理，也不得夹带未经单独审核的准删对象。
 
 首份（现 `retired`）精确 artifact 保存在 Xiaomi `/home/swing/services/mathin/evidence/r1/r1-live-protected-only-manifest-3cd327ac685f81182fad403519bf1bbf7075f1feb434638d8ae71bd1e06e0102.json`，文件 mode `600`、owner/group `swing`、规范化 SHA-256 `3cd327ac685f81182fad403519bf1bbf7075f1feb434638d8ae71bd1e06e0102`；条目集 SHA-256 为 `e62d27094fa63c91d5fa57669e1a06a006b733fb3478cd276266c8553b582514`。仓库只登记去标识化摘要，不保存原始 UUID。
 
@@ -44,7 +44,7 @@ manifest 只能通过受评审 migration 或受控运维数据库连接创建；
 
 ## R1-Live 与后续清理
 
-R1-Live Gate 1/3 禁止批量清理。因此首次生产 manifest 应只有 protected 条目，`purge_entry_count=0`；部署后候选列表返回空，直接调用 purge 返回 `PURGE_MANIFEST_TARGET_NOT_ALLOWED`。
+R1-Live Gate 1 禁止批量清理。当前生产 manifest 只有 protected 条目，`purge_entry_count=0`；候选列表返回空，直接调用 purge 返回 `PURGE_MANIFEST_TARGET_NOT_ALLOWED`。Gate 1 只要求这一 fail-closed 状态成立，不要求随着正常业务写入维护对象级台账。
 
 R1-15 只在生产快照的隔离副本创建替代 manifest，并明确加入已核对的 `purge_allowed` 根。隔离目标的数据库指纹、外部 artifact hash、条目 hash、预期计数和非执行者复核都通过后，才能形成 R1-18 的候选变更；不得把隔离 manifest 复制为生产授权。
 
