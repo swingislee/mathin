@@ -30,9 +30,9 @@
 | --- | --- |
 | `gate_id`, `domain`, `result` | `R1-Live Gate 1`；开发/生产连接隔离；该子项 `PASS`，Gate 1 整体仍 `BLOCKED` |
 | `measured_value`, `threshold` | 11/11 个服务 healthy；所有已发布端口 Host IP 恰为 `127.0.0.1`；`auth.users=11`、`profiles=11`，11/11 password login 通过；全局自助注册关闭，email provider 只用于已有账号登录，phone provider 关闭。阈值为无非 loopback 发布、固定集合精确、无自助注册、无 Xiaomi/真实业务数据，全部满足 |
-| `commit_sha`, `migration_head`, `environment` | `commit_sha=not_applicable`（本机运行态，仓库证据由本文件 Git 历史固定）；当前 head `20260822000100_r1_live_incomplete_course_activation`；Windows Docker Desktop / `mathin-isolated-loopback` |
-| `dataset_manifest` | PostgreSQL 15.8；当前仓库 180 个 migration SQL；本机 ledger 177 条、head `20260822000100`；课程 84、讲次 1045、Storage bucket 8、active protection manifest 0；11 个固定开发身份/profile、8 条 staff-role；学生、班级、课次、报名、点名均为 0 |
-| `started_at`, `finished_at`, `actor`, `approver` | 2026-08-15（Asia/Shanghai）；2026-08-15（Asia/Shanghai）；Codex；`swingislee`（对话授权“允许创建隔离 Supabase”） |
+| `commit_sha`, `migration_head`, `environment` | `commit_sha=not_applicable`（本机运行态，仓库证据由本文件 Git 历史固定）；当前 head `20260822000200_r1_live_operational_gate_simplification`；Windows Docker Desktop / `mathin-isolated-loopback` |
+| `dataset_manifest` | PostgreSQL 15.8；当前仓库 181 个 migration SQL；本机 ledger 178 条、head `20260822000200`；课程 84、讲次 1045、Storage bucket 8、active protection manifest 0；11 个固定开发身份/profile、8 条 staff-role；学生、班级、课次、报名、点名均为 0 |
+| `started_at`, `finished_at`, `actor`, `approver` | 2026-08-15（Asia/Shanghai）；2026-08-22（最新只读复核，Asia/Shanghai）；Codex；`swingislee`（对话授权“允许创建隔离 Supabase”） |
 | `command_or_runbook` | 官方 self-hosted Compose + 本机 override；API `127.0.0.1:35421`、数据库 `127.0.0.1:35422`、Studio `127.0.0.1:35423`、transaction pool `127.0.0.1:35429`；应用 `.env.local` 指向 API，target policy 以 development/loopback/本地数据库指纹通过；`R1_DEV_TEST_FIXTURES=1 pnpm r1:fixed-accounts`；`pnpm e2e e2e/notebook-authenticated.spec.ts --project=credentialed-chromium` |
 | `artifact_url_or_path`, `artifact_hash` | `.tmp/mathin-supabase-selfhosted/docker-compose.local.yml`（gitignored 本机 artifact），规范化文本 SHA-256 `28a7db50a165e5f34cd6f9dc46cc0e47931d6597a7143a99003a8dd5a2d46653`；`scripts/ensure-r1-fixed-test-accounts.mjs`，规范化文本 SHA-256 `0e533c5c77ab635fd54405951dcb895b9aa4e66956d5da1a1b8f270fdca3804a`；本地数据库指纹 `5af56ae69b51ca0a78b9357ec4792533a6e59f0a529a9a918f6ba4c93da68d0f` |
 | `retention`, `access_roles`, `failure_ticket` | 保留至隔离开发目标被明确替换；本机所有者；`not_applicable` |
@@ -43,7 +43,7 @@
 
 ### 未完成课程可建班/启用的隔离回归证据
 
-2026-08-22，产品负责人确认部分后续讲次长期未完成是正常运营状态，不应阻止正式班创建或启用。migration `20260822000100_r1_live_incomplete_course_activation.sql` 只重定义 `create_class` 与 `transition_classroom_status`：移除 `current_release_id`/全课程 release 完整度硬门，继续拒绝正式自由班、无 active 讲次、不可用课程、空讲次引用和非 active 讲次；前端保留明确准备度告警和教师冲突检查。实际授课讲次在开课前具备可读 immutable release 的要求不变。
+2026-08-22，产品负责人确认部分后续讲次长期未完成是正常运营状态，不应阻止正式班创建或启用。migration `20260822000100_r1_live_incomplete_course_activation.sql` 是第一步：移除 `current_release_id`/全课程 release 完整度硬门，当时仍拒绝正式自由班、无 active 讲次、空讲次引用和非 active 讲次。随后 `20260822000200` 根据整轮门禁复核继续取消自由班、备课质量、点名前置、资源预载和无 release 硬门；现行合同见下一节。
 
 | 证据字段 | 值 |
 | --- | --- |
@@ -55,6 +55,21 @@
 | `command_or_runbook` | 本机 migration 原子应用与只读 postflight；`p4h_teaching_operations_assertions.sql` 的新增回滚合同；一次性空库顺序重放；固定开发账号只读 Playwright；`pnpm ci:checks` |
 | `artifact_url_or_path`, `artifact_hash` | `supabase/migrations/20260822000100_r1_live_incomplete_course_activation.sql`；规范化文本 SHA-256 `8b49dc3ebf94b00131405dcc74a073e449f630991d949565064b2d6d121dabd3` |
 | `retention`, `access_roles`, `failure_ticket` | migration、回归和去标识化摘要随 Git 永久保留；仓库维护者；`BUG-R1-LIVE-002` 的生产部署与人工复验待完成 |
+
+### 运行时门禁减法的隔离回归证据
+
+2026-08-22，产品负责人指出现有门禁数量过多，要求按真实生产需要重新判断。实现 commit `43db4ceb6972313719fc53bb675309d45ac7adbf` 将运行时检查分成两类：权限/作用域、畸形输入、无效引用、已删除或非法状态、冻结并发与不可变历史继续 fail-closed；课程完整度、正式自由班、教师时间冲突、备课产物/审核/检查项、点名时机、资源预载和无 release 只显示运营提示。migration `20260822000200_r1_live_operational_gate_simplification.sql` 重定义建班、班级状态和兼容备课 guard；应用允许教师冻结空白/本次覆盖快照并在课前、课中或课后点名。该轮没有连接或修改 Xiaomi。
+
+| 证据字段 | 值 |
+| --- | --- |
+| `gate_id`, `domain`, `result` | `R1-Live Gate 1`；运行时业务门禁；仓库、隔离数据库和固定账号 UI 子步骤 `PASS`，生产部署 `pending`，Gate 1 整体仍 `BLOCKED` |
+| `measured_value`, `threshold` | 明确命名的一次性数据库从 bootstrap 顺序重放 181 个 migration、两份既有课程 seed、平台垫片和固定夹具后，P4H 与 doc26 SQL 断言均通过并整体回滚；主隔离库 ledger=178、head=`20260822000200`、checksum 与 migration 规范化 hash 相同，active manifest=0。固定主管账号在正式自由班确认页选中“创建后立即启用”，测试未提交；学校门户固定账号 Playwright 4/4。`pnpm r1:test` 23 文件 179/179；完整 Vitest 92 文件 621 通过、1 项既有条件跳过；`pnpm ci:checks` 17/17（含 lint、typecheck、production build、secret scan、db types、双语消息与规划审计） |
+| `commit_sha`, `migration_head`, `environment` | `43db4ceb6972313719fc53bb675309d45ac7adbf`；本机 head `20260822000200_r1_live_operational_gate_simplification`；Windows Docker Desktop / `mathin-isolated-loopback`；未连接 Xiaomi |
+| `dataset_manifest` | 主隔离库沿用 11 个固定身份，UI 未点击“创建班级”；数据库断言写态均在一次性库事务中回滚。验证完成后精确临时数据库 `mathin_r1_gate_audit_20260822_01` 与 `/tmp/mathin_r1_gate_audit_20260822_01` 已删除，主隔离库仍为预期 head 且 active manifest=0 |
+| `started_at`, `finished_at`, `actor`, `approver` | 2026-08-22（Asia/Shanghai）；2026-08-22（Asia/Shanghai）；Codex；`swingislee`（产品裁决“门禁过多，需要按实际生产需要迭代”） |
+| `command_or_runbook` | 本机 migration 原子应用与只读 postflight；一次性空库顺序重放；`p4h_teaching_operations_assertions.sql`、`doc26_teacher_workflow_assertions.sql`；固定账号 `school-portals.spec.ts`；`pnpm r1:test`；`pnpm test`；`pnpm ci:checks` |
+| `artifact_url_or_path`, `artifact_hash` | `supabase/migrations/20260822000200_r1_live_operational_gate_simplification.sql`；规范化文本 SHA-256 `145acada7418b268c342ced431eddfbbb0b9e0e298b4bf52a6f92d2b320555a0` |
+| `retention`, `access_roles`, `failure_ticket` | migration、回归和去标识化摘要随 Git 永久保留；仓库维护者；生产部署与当前 PostgreSQL+Storage 备份仍是 Gate 1 阻塞项 |
 
 ### 生产正式管理员身份引导与原子交接证据
 
