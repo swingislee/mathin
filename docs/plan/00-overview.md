@@ -6,7 +6,7 @@
 >
 > **阶段来源**：`04-roadmap.md` 顶部的“当前施工阶段”。
 >
-> **核对日期**：2026-08-15；依据代码、迁移、内容目录、CI、R1-Live 差距审阅与 doc 00～28。
+> **核对日期**：2026-08-22；依据代码、迁移、内容目录、CI、R1-Live 差距审阅与 doc 00～28。
 
 ## 1. 1.0 产品合同
 
@@ -71,6 +71,7 @@ R1-Live 不缩减 1.0 产品合同。它把“开始真实工作”从完整成�
 | 授权 | 数据库 RLS；前端隐藏按钮不构成授权 |
 | 业务状态 | 领域表和领域 RPC；今日工作、通知、搜索和统计只读取投影 |
 | 课程发布 | 可编辑文档/revision/binding 与不可变 release 分层；课堂读取 track head 指向的 release |
+| 正式班启用 | 课程整体准备度是运营告警，不是建班或启用硬门；启用中的 production 课程可在后续讲次未发布时开始运营，但每个实际授课讲次必须在开课前具备可读 immutable release。正式自由班、无 active 讲次、无效讲次引用和教师时间冲突继续阻断 |
 | 正式数据基线 | R1-Live 开始前登记 1 个正式管理员，随后按正式身份 manifest 增加真实教师；真实班级、课次、学生、考勤及课次冻结/引用的 immutable release、snapshot 和对象一经产生即受保护，不得作为测试/RC 数据清理。Production 1.0 仍保留 E 系列 1135 讲与爱学习 G+/X+/A+ 秋季 170 讲的 16:9/4:3 源资源，并为 1305 个 lecture 的两条 track head 建立 2610 条 baseline `release_no=1`（见 doc 25 §5.1.1） |
 | 课程目录版本 | 教材年度版本是 `course_catalog_versions` 一层，与 `course_families.edition`（地域版本）和 `cw_lecture_releases.release_no`（讲次内发布迭代）互不替代；`courses.product_code` 只在版本内唯一 |
 

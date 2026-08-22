@@ -4,7 +4,7 @@
 >
 > **用途**：记录 Production 1.0 的仓库事实、M0～M4 成熟度、业务合同、量化发布门和生产初始化步骤；R1-Live 的当前 Gate 与施工顺序由 doc 04 管理。
 >
-> **基线日期**：2026-08-17；每次验收另记 commit、migration head、环境和数据 manifest。
+> **基线日期**：2026-08-22；每次验收另记 commit、migration head、环境和数据 manifest。
 >
 > **删除限制**：R1-15 只操作生产快照副本；R1-18 经人工批准后也只能处理 manifest 明确标记的测试对象。R1-Live 产生的正式身份、班级、课次、学生、业务记录及课次引用的 immutable release/snapshot/object 永久排除在测试清理之外。
 
@@ -24,7 +24,7 @@
 | 内容发布 | Terms/Minds 文件内容、Notebook、课程研发和 release 机制分别存在 | Terms/Story/Minds/Notebook 共用草稿/审核/发布/撤回/版本合同；课堂只读取不可变课件 release |
 | E 系列 | 开发数据有 1135 讲、16:9/4:3 双轨资源和 release 机制；课程目录版本层已就位（2025旧版 54 门 / 2026新版 36 门） | 保留 1135×2 源资源；正式基线包含 2270 条 `release_no=1`，见 §5.1.1 |
 | 爱学习 G+/X+/A+ 秋季 | G+ 苏教版 56 讲、X+ 苏教版 84 讲、A+ 全国版 30 讲；16:9/4:3 双轨资源和 release 机制 | 保留 170×2 源资源；正式基线包含 340 条 `release_no=1`；另有 10 条教学计划第 7/15 讲补充占位（G+ 五/六年级、X+ 二/五/六年级），占位无 release 且准备状态为“未发布” |
-| 语言 | `messages/zh.json` 与 `messages/en.json` 各 4042 个 key；`content/en` 仅 README | UI 永久 zh/en；英文课程/文章可延期，缺失内容显示明确回退或“尚未发布”状态 |
+| 语言 | `messages/zh.json` 与 `messages/en.json` 各 4043 个 key；`content/en` 仅 README | UI 永久 zh/en；英文课程/文章可延期，缺失内容显示明确回退或“尚未发布”状态 |
 | 视觉 | `public/Main.png`、五星球 token/场景、`dashboard-observatory.png` 和公开场景插画已在仓库使用 | 小王子作为全站视觉基础；公开场景、内容/Notebook、运营工作区按三档强度验收 |
 
 Terms 使用稳定 ID 接收 Story、Minds、Games、Tools、Notebook 和课程的关联。修改 slug 或删除内容前检查反向引用、重定向、canonical 和 sitemap。
@@ -34,7 +34,8 @@ Terms 使用稳定 ID 接收 Story、Minds、Games、Tools、Notebook 和课程�
 当前唯一施工阶段切为 `R1-Live-1 · 正式身份与真实数据`。R1-Live 先让一名公司教师以正式身份和真实数据完成整班点名，再在真实使用中继续 Production 1.0；本文件的完整性矩阵与量化硬门仍有效，但除 doc 04 明确抽取的子集外，不阻塞内部生产试运行。
 
 - R1-Live Gate 0 已冻结首个闭环：正式教师登录 → 找到自己的 production 班级/课次 → 整班点名 → 保存 → 刷新和重登后再读 → 管理员可见 → 无权限主体不可见。
-- R1-Live Gate 1 当前 `BLOCKED`：正式目标指纹已登记，仓库级 fixture/rebuild/import 写入口已统一 fail-closed 并把 Xiaomi 固定为当前生产目标；本机隔离 Supabase、固定账号初始化和登录已验证。唯一正式管理员已完成 verified MFA、唯一 admin 原子交接、新会话 MFA challenge 和生产 admin 路由验收；双人恢复联系人和恢复演练继续由既有 Production 1.0/R1-18 门承接。`20260815000100`/`20260815000200` 已在生产部署。首名真实教师已通过邮箱绑定的一次性员工邀请注册为 active `staff`，正式管理员按产品安排分配的 `research` 与 `teacher` 双岗位均已确认。replacement manifest 已经回滚演练后原子激活：header=2（active 1/retired 1）、active entry=8，保护正式 admin auth/profile、2 个 production 课程族根及教师 auth/profile/2 条岗位成员关系；`purge_allowed=0`，两个候选列表为 0，受控 artifact hash 与数据零漂移 postflight 通过。仍需建立真实班级/课次/花名册，并保护新增业务事实和课次引用内容。生产 current 已应用-only 发布为 `20260814-221135` / `023f5167…`，previous 已知为 `20260724-051318` / `b833c4d…`，服务及内外健康探针通过。Gate 2 `BLOCKED`；Gate 3 因无可核验数据备份、previous 未验证兼容回退和错误缺 release 保持 `BLOCKED`；Gate 4 `BLOCKED`，详见 doc 04、[`r1-live.md`](../evidence/r1/r1-live.md)和[目标核查](../evidence/r1/r1-live-target-audit.md)。
+- R1-Live Gate 1 当前 `BLOCKED`：正式目标指纹已登记，仓库级 fixture/rebuild/import 写入口已统一 fail-closed 并把 Xiaomi 固定为当前生产目标；本机隔离 Supabase、固定账号初始化和登录已验证。唯一正式管理员已完成 verified MFA、唯一 admin 原子交接、新会话 MFA challenge 和生产 admin 路由验收；双人恢复联系人和恢复演练继续由既有 Production 1.0/R1-18 门承接。`20260815000100`/`20260815000200` 已在生产部署。首名真实教师已通过邮箱绑定的一次性员工邀请注册为 active `staff`，正式管理员按产品安排分配的 `research` 与 `teacher` 双岗位均已确认。replacement manifest 已经回滚演练后原子激活：header=2（active 1/retired 1）、active entry=8，保护正式 admin auth/profile、2 个 production 课程族根及教师 auth/profile/2 条岗位成员关系；`purge_allowed=0`，两个候选列表为 0，受控 artifact hash 与数据零漂移 postflight 通过。课程准备度软门 migration/UI 已完成隔离验证，尚待部署 Xiaomi；随后仍需建立真实班级/课次/花名册，并保护新增业务事实和课次引用内容。生产 current 已应用-only 发布为 `20260814-221135` / `023f5167…`，previous 已知为 `20260724-051318` / `b833c4d…`，服务及内外健康探针通过。Gate 2 `BLOCKED`；Gate 3 因无可核验数据备份、previous 未验证兼容回退和错误缺 release 保持 `BLOCKED`；Gate 4 `BLOCKED`，详见 doc 04、[`r1-live.md`](../evidence/r1/r1-live.md)和[目标核查](../evidence/r1/r1-live-target-audit.md)。
+- R1-Live 建班合同允许启用中的 production 课程在部分后续讲次尚未发布时建班或启用；准备度继续显示为运营告警，结构无效、无 active 讲次、正式自由班和教师时间冲突仍阻断。每个实际授课讲次必须在开课前具备可读的 immutable release；Production 1.0 的 1305 讲/2610 条完整基线不因此降低。
 - 原 R1 暂停在 R1-9。P6-AIX-2、G+/X+/A+ 170 讲和 102 门/1305 讲/2610 条目标 release-1 合同保留；真实全量 inventory、Storage/H5 审计、Terms/Story/其他公开模块、完整视觉/E2E/恢复门转入 R1-Live 后继续。
 - SML-0 为独立并行轨道；普通教师默认不可见未完成能力，只有破坏共享认证、授权、数据或点名黄金路径时才阻塞 R1-Live。
 - R1-Live 的正式业务事实及课次引用的 immutable release/snapshot/object 不得在后续 R1-15/R1-18 中删除或改写。现有两个数据库 purge RPC 已接入正式对象保护合同；旧全库 planner 尚未接入同一合同，在完成 schema 修订并于隔离副本重新验收前保持 plan-only、不可执行。
@@ -57,7 +58,7 @@ Terms 使用稳定 ID 接收 Story、Minds、Games、Tools、Notebook 和课程�
 | 权限 | 顶层角色为 `student`、`parent`、`staff`、`admin`；受保护页使用 `requireUser`；数据库使用 RLS | Proxy 跳转和前端隐藏不能证明授权 |
 | Dashboard | P4I 已将首页和对象页改为工作流入口 | 页面存在不证明跨域工作项、人工协同或 p95 达标 |
 | CI | lint、typecheck、build、消息、数据库重建/RLS、安全、当前树与 Git 历史 secret scan、doc21～24 与规划审计已配置；正式 Playwright 配置和 release runner 已落地 | 固定凭据旅程不接通用 CI；仍须在明确非生产发布目标执行零 skip 套件，并补写态、zh/en、跨浏览器与连续无 flaky 证据 |
-| Vitest | 当前为 92 个测试文件、619 项通过、1 项因未提供爱学习生成包根而条件跳过；非 spatial 为 55 个文件、340 项通过、1 项条件跳过，空间数学/SML-0 专项 37 个文件、279/279；`pnpm r1:test` 为 23 个文件、179/179 | 已执行的单元/合同保持通过；条件跳过不能替代真实包或发布证据，并仍须补发布目标、并发、文件和竞争矩阵 |
+| Vitest | 当前为 92 个测试文件、621 项通过、1 项因未提供爱学习生成包根而条件跳过；非 spatial 为 55 个文件、342 项通过、1 项条件跳过，空间数学/SML-0 专项 37 个文件、279/279；`pnpm r1:test` 为 23 个文件、179/179 | 已执行的单元/合同保持通过；条件跳过不能替代真实包或发布证据，并仍须补发布目标、并发、文件和竞争矩阵 |
 | 部署 | doc 17 已将目标生产主机改为小米 Linux；commit `35b9f60` 已固定独立环境、监控、恢复和回滚的只读 preflight；当前树与完整可达 Git 历史的高置信 secret scan 为 0 | 仓库扫描不证明环境隔离；尚无独立生产、RPO/RTO 实操、回滚演练和 14 天 RC 证据 |
 
 ### 1.3 已裁决的历史冲突
@@ -67,6 +68,7 @@ Terms 使用稳定 ID 接收 Story、Minds、Games、Tools、Notebook 和课程�
 | 身份 | `student`、`parent`、`staff`、`admin`；教师等属于 staff 权限 | `profiles.role=teacher` |
 | 路由 | Story/Games/Minds/Terms/Tools/Notebook 使用现行显式路由 | 全部板块由单一 `[section]` 页面承载 |
 | Dashboard | P4H/P4I 工作流导航和对象工作区 | P4C 角色磁贴工作台 |
+| 正式班启用 | 课程整体准备度只告警；启用中的 production 课程可先建班和启用，未发布讲次在对应课次开课前补齐 | 正式课程未全部发布时只能创建为筹备中 |
 | P6 | P6-1～6 主体已落地；R1 处理 P6-9 和正式基线 | 从 P6-1 重新施工 |
 | UI | UI-L1～L4 工程阶段已关闭；R1 做三档小王子视觉、浏览器、无障碍和人工签收 | 重开整轮 Dashboard 视觉改造 |
 | 生产 | 独立小米 Linux 环境 | Windows 生产拓扑 |
@@ -541,7 +543,7 @@ R1-0 已完成责任角色到 `swingislee` 的映射。增加人员或发生交�
 | 账户安全尚无生产验收 | R1-3 已完成账户/同意/支持的空库重放、负向断言与开发浏览器验证（M3） | 开发门控不证明正式唯一管理员、生产 MFA=100%、速率限制与恢复演练 | 安全+发布+QA | R1-14/16/17/18 |
 | Work-items 尚无生产候选/RC 负载证据 | R1-4 已在开发/一次性库完成 30,000 条持久项、300 名员工、40 次采样，p95≤18.87ms、p99≤20.71ms（M3） | 开发合成负载不能证明生产长尾、并发与 14 天稳定性 | 学校产品+数据库+QA | R1-14/17 |
 | 财务安全关闭尚无生产复核 | R1-8 已完成发布门、数据、任务/审批、通知、指标和 job 的开发/一次性库关闭证据（M3） | 开发环境关闭不变量不能证明生产初始化或正式清理后仍保持关闭 | 产品+财务+数据库+发布 | R1-15/18 |
-| Vitest 基线需在最终 build 复验 | 当前为 92 个测试文件、619 项通过、1 项条件跳过；非 spatial 340 项通过、1 项条件跳过，空间数学/SML-0 专项 279/279；R1 定向 179/179 | 后续实现可能重新引入合同回归 | 技术+QA | 已执行套件保持通过；发布前补齐条件跳过对应的真实包证据 |
+| Vitest 基线需在最终 build 复验 | 当前为 92 个测试文件、621 项通过、1 项条件跳过；非 spatial 342 项通过、1 项条件跳过，空间数学/SML-0 专项 279/279；R1 定向 179/179 | 后续实现可能重新引入合同回归 | 技术+QA | 已执行套件保持通过；发布前补齐条件跳过对应的真实包证据 |
 | 正式 Playwright 发布门尚未完成 | 正式配置、target policy 和 fail-closed release runner 已落地；9 条非五模块本地 Chromium 旅程分别取绿 | 尚无明确非生产 release target 的单次 9/9 零 skip、写态、zh/en、跨浏览器和连续 3 次无 flaky 证据 | QA/发布 | R1-14 |
 | 清理/release 未演练且旧 planner 会误删正式 Live 数据 | 两个现有 purge RPC 已接入目标绑定 manifest；旧“唯一管理员/运营数据为零”全库 planner 仍未修订 | 若绕过现有 RPC 或直接使用旧 planner，仍可能删除真实教师、班级、考勤及课次引用 release，也可能损失 4:3 资源 | 数据库+课程研发 | R1-Live 后修订全库合同，再在 R1-15 隔离演练 |
 | 生产恢复未实操 | Linux 目标与 fail-closed preflight 已定；当前树与 Git 历史 secret scan 为 0，但环境隔离和恢复 E3 仍为 pending | 尚无独立环境、运行时 secret 复核、告警链路、RPO/RTO、数据库/Storage 恢复或应用回滚的实操证据 | 运维+安全 | R1-16 |

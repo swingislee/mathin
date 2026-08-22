@@ -103,7 +103,7 @@ export function ClassBuildWizard({
   const conflictsRelevant = Boolean(primaryTeacherId && preview.length > 0);
   const visibleConflicts = conflictsRelevant ? conflicts : [];
   const visibleConflictsLoading = conflictsRelevant && conflictsLoading;
-  const canActivateNow = !visibleConflictsLoading && visibleConflicts.length === 0 && (purpose === "test" || isReady);
+  const canActivateNow = !visibleConflictsLoading && visibleConflicts.length === 0 && (purpose === "test" || course !== null);
   const step1Complete = mode === "free" || course !== null;
   const step2Complete = Boolean(resolvedName && primaryTeacherId);
   const step3Complete = Boolean(schoolTermId) && (mode === "free" || preview.length > 0);
@@ -230,7 +230,7 @@ export function ClassBuildWizard({
     {step === 4 && <section className="rounded-2xl border border-line bg-card p-5">
       <h2 className="text-base font-medium text-ink">{t("stepConfirm")}</h2><p className="mt-1 text-sm text-muted">{t("confirmStepHint")}</p>
       <dl className="mt-5 grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2"><div><dt className="text-muted">{t("course")}</dt><dd className="mt-1 font-medium">{mode === "free" ? t("modeFree") : `${course?.familyTitle ?? ""} · ${course?.title ?? ""}`}</dd></div><div><dt className="text-muted">{t("courseReadiness")}</dt><dd className="mt-1">{mode === "free" ? t("notApplicable") : isReady ? t("readyCount", { ready: course?.releasedLectureCount ?? 0, total: course?.lectureCount ?? 0 }) : <span className="text-amber-800 dark:text-amber-300">{t("incompleteCount", { ready: course?.releasedLectureCount ?? 0, total: course?.lectureCount ?? 0 })}</span>}</dd></div><div><dt className="text-muted">{t("teacher")}</dt><dd className="mt-1 font-medium">{teachers.find((teacher) => teacher.id === primaryTeacherId)?.name || "—"}</dd></div><div><dt className="text-muted">{t("conflicts")}</dt><dd className="mt-1">{visibleConflictsLoading ? t("checking") : visibleConflicts.length ? t("conflictsFound", { count: visibleConflicts.length }) : t("noTeacherConflicts")}</dd></div><div><dt className="text-muted">{t("sessionCount")}</dt><dd className="mt-1">{preview.length}</dd></div><div><dt className="text-muted">{t("purpose")}</dt><dd className="mt-1">{purpose === "test" ? <Badge variant="outline" className="border-violet-500/40 bg-violet-500/10 text-violet-800 dark:text-violet-300">{t("testBadge")}</Badge> : t("production")}</dd></div></dl>
-      {purpose === "production" && !isReady && mode === "course" && <p className="mt-5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-950 dark:text-amber-100">{t("productionPlanningOnly")}</p>}
+      {purpose === "production" && !isReady && mode === "course" && <p className="mt-5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-950 dark:text-amber-100">{t("productionActivationWarning")}</p>}
       {purpose === "test" && !isReady && <p className="mt-5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-950 dark:text-amber-100">{t("testActivationWarning")}</p>}
       <div className="mt-5 flex items-start gap-3"><Checkbox id="activate-now" checked={activateNow} onCheckedChange={(value) => setActivateNow(value === true)} disabled={!canActivateNow} /><div><Label htmlFor="activate-now" className={cn("cursor-pointer", !canActivateNow && "text-muted")}>{t("activateNow")}</Label><p className="mt-1 text-xs text-muted">{canActivateNow ? t("activateNowHint") : t("activateNowUnavailable")}</p></div></div>
     </section>}

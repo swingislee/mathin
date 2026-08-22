@@ -349,4 +349,84 @@ from public.course_lectures where id = :'audit_lecture_id' \gset
   select 1 / 0;
 \endif
 
+-- R1-Live：未完成讲次是运营告警，不阻止正式班立即启用或从筹备中启用。
+reset role;
+select id as r1_live_term_id from public.school_terms order by starts_on nulls last, created_at limit 1 \gset
+\if :{?r1_live_term_id}
+\else
+  \echo R1-Live incomplete-course activation failed: school term fixture missing
+  select 1 / 0;
+\endif
+insert into public.course_families (slug, title, purpose, status, created_by)
+values (
+  'r1-live-readiness-' || replace(gen_random_uuid()::text, '-', ''),
+  '__R1_LIVE_READINESS_FAMILY__',
+  'production',
+  'enabled',
+  :'admin_id'
+)
+returning id as r1_live_family_id \gset
+insert into public.courses (
+  family_id, title, product_code, grade, term, class_type, status, purpose, created_by
+)
+values (
+  :'r1_live_family_id',
+  '__R1_LIVE_INCOMPLETE_COURSE__',
+  '__R1_LIVE__' || replace(gen_random_uuid()::text, '-', ''),
+  1,
+  1,
+  'r1-live-readiness',
+  'enabled',
+  'production',
+  :'admin_id'
+)
+returning id as r1_live_course_id \gset
+insert into public.course_lectures (course_id, no, name, objectives, status)
+values (:'r1_live_course_id', 1, '__R1_LIVE_UNRELEASED_LECTURE__', '', 'active')
+returning id as r1_live_lecture_id \gset
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'admin_id', true);
+select public.create_class(
+  p_name => '__R1_LIVE_IMMEDIATE_ACTIVE__',
+  p_course_id => :'r1_live_course_id',
+  p_primary_teacher_id => :'teacher_id',
+  p_term_id => :'r1_live_term_id',
+  p_purpose => 'production',
+  p_sessions => jsonb_build_array(jsonb_build_object(
+    'lecture_id', :'r1_live_lecture_id',
+    'scheduled_at', now() + interval '7 days',
+    'duration_min', 90
+  )),
+  p_activate => true
+) as r1_live_immediate_classroom_id \gset
+select public.create_class(
+  p_name => '__R1_LIVE_PLANNING_THEN_ACTIVE__',
+  p_course_id => :'r1_live_course_id',
+  p_primary_teacher_id => :'teacher_id',
+  p_term_id => :'r1_live_term_id',
+  p_purpose => 'production',
+  p_sessions => jsonb_build_array(jsonb_build_object(
+    'lecture_id', :'r1_live_lecture_id',
+    'scheduled_at', now() + interval '14 days',
+    'duration_min', 90
+  )),
+  p_activate => false
+) as r1_live_planning_classroom_id \gset
+select public.transition_classroom_status(:'r1_live_planning_classroom_id', 'active');
+select (
+  (select current_release_id is null from public.course_lectures where id = :'r1_live_lecture_id')
+  and (select operational_status = 'active' from public.classrooms where id = :'r1_live_immediate_classroom_id')
+  and (select operational_status = 'active' from public.classrooms where id = :'r1_live_planning_classroom_id')
+  and (select count(*) = 2 from public.class_sessions where classroom_id in (
+    :'r1_live_immediate_classroom_id'::uuid,
+    :'r1_live_planning_classroom_id'::uuid
+  ))
+) as r1_live_incomplete_course_activation_ok \gset
+\if :r1_live_incomplete_course_activation_ok
+\else
+  \echo R1-Live incomplete-course activation failed: readiness remained a hard gate
+  select 1 / 0;
+\endif
+
 rollback;

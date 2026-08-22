@@ -32,7 +32,7 @@ failure_ticket
 
 | 阶段 | 状态 | 日期 | 证据 |
 | --- | --- | --- | --- |
-| R1-Live | Gate 0 passed；Gate 1 current/blocking；Gate 3 blocked | 2026-08-17 | [真实教师点名闭环差距表](r1-live.md)；[目标核查、应用/数据库发布、正式管理员交接、manifest 激活与真实教师注册/岗位保护](r1-live-target-audit.md)；[仓库写入目标保险丝](../../runbooks/r1-write-target-policy.md)；[正式对象保护 manifest](../../runbooks/r1-live-object-protection-manifest.md)。Xiaomi 已固定为当前生产目标；仓库危险写入口与 purge 数据库合同均 fail-closed；本机隔离 Supabase 与固定账号登录已验证。生产 current 已发布为 `20260814-221135` / `023f5167…`，服务及内外健康探针通过。唯一正式管理员已完成 verified MFA、原子交接、新会话 MFA challenge 和 admin 路由验收。首名真实教师已注册为 active `staff`，正式管理员分配的 `research`/`teacher` 双岗位已确认；replacement manifest 为 active 8 条 protected、0 条 purge，保护教师 auth/profile/两条岗位成员关系，旧 manifest 已 retired。真实班级/课次/花名册、可恢复备份和 previous rollback 仍缺，Gate 1/3 未通过 |
+| R1-Live | Gate 0 passed；Gate 1 current/blocking；Gate 3 blocked | 2026-08-22 | [真实教师点名闭环差距表](r1-live.md)；[目标核查、应用/数据库发布、正式管理员交接、manifest 激活与真实教师注册/岗位保护](r1-live-target-audit.md)；[仓库写入目标保险丝](../../runbooks/r1-write-target-policy.md)；[正式对象保护 manifest](../../runbooks/r1-live-object-protection-manifest.md)。Xiaomi 已固定为当前生产目标；仓库危险写入口与 purge 数据库合同均 fail-closed；本机隔离 Supabase 与固定账号登录已验证。生产 current 已发布为 `20260814-221135` / `023f5167…`，服务及内外健康探针通过。唯一正式管理员已完成 verified MFA、原子交接、新会话 MFA challenge 和 admin 路由验收。首名真实教师已注册为 active `staff`，正式管理员分配的 `research`/`teacher` 双岗位已确认；replacement manifest 为 active 8 条 protected、0 条 purge，保护教师 auth/profile/两条岗位成员关系，旧 manifest 已 retired。课程整体准备度改为非阻断告警的 migration/UI 已通过隔离验证但尚未部署生产；真实班级/课次/花名册、可恢复备份和 previous rollback 仍缺，Gate 1/3 未通过 |
 | R1-0 | passed | 2026-07-28 | [规划真相源与发布边界冻结](r1-0.md) |
 | R1-1 | passed | 2026-07-28 | [机构配置、规则与 Feature Flag](r1-1.md) |
 | R1-2 | passed | 2026-07-28 | [Jobs、通知、文件与外部集成](r1-2.md) |

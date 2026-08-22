@@ -47,4 +47,33 @@ describe("P4H CoursePicker and class-builder contract", () => {
     expect(actions).toContain('rpc(supabase)("create_class"');
     expect(actions).toContain(".bind(supabase)");
   });
+
+  it("treats incomplete courseware as an activation warning while retaining structural guards", () => {
+    const wizard = read("src", "features", "school", "ClassBuildWizard.tsx");
+    const migration = read("supabase", "migrations", "20260822000100_r1_live_incomplete_course_activation.sql");
+    const zh = read("messages", "zh.json");
+    const en = read("messages", "en.json");
+
+    expect(wizard).toContain('(purpose === "test" || course !== null)');
+    expect(wizard).not.toContain('(purpose === "test" || isReady)');
+    expect(wizard).toContain('t("productionActivationWarning")');
+    expect(zh).toContain('"productionActivationWarning"');
+    expect(en).toContain('"productionActivationWarning"');
+
+    expect(migration).toContain("p_course_id is null or active_lecture_count = 0");
+    expect(migration).not.toContain("active_lecture_count <> released_lecture_count");
+    expect(migration).not.toContain("lecture_row.current_release_id is null");
+    expect(migration).toContain("session_row.lecture_id is null");
+    expect(migration).toContain("lecture_row.status <> 'active'");
+  });
+
+  it("loads the versioned course seed after the catalog-version migration in CI replay", () => {
+    const replay = read("scripts", "ci-rebuild-db.mjs");
+
+    expect(replay).toContain('const versionedCourseSeed = path.join(root, "supabase", "seed", "courses.seed.sql")');
+    expect(replay).toContain('const catalogVersionMigration = "20260803000300_p6_course_catalog_versions.sql"');
+    expect(replay).toContain("migrations.slice(familyMigrationIndex, catalogVersionMigrationIndex + 1)");
+    expect(replay).toContain("versionedCourseSeed,");
+    expect(replay).toContain("migrations.slice(catalogVersionMigrationIndex + 1)");
+  });
 });
