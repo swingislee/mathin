@@ -1,12 +1,14 @@
 # R1-Live · `mathin.club` 目标核查、应用/数据库发布、身份与保护清单
 
-> **当前两 Gate 口径**：Gate 1 `BLOCKED`；Gate 2 `BLOCKED`。下文保留 2026-08-14～17 操作当时的旧 Gate 编号作为历史证据；旧 Gate 3 的当前备份底线已并入 Gate 1，其余恢复/rollback/release 标签进入 Production 1.0。
+> **当前两 Gate 口径**：Gate 1 `PASS`；Gate 2 `BLOCKED`。下文保留 2026-08-14～17 操作当时的旧 Gate 编号作为历史证据；旧 Gate 3 的当前备份底线已并入并关闭 Gate 1，其余恢复/rollback/release 标签进入 Production 1.0。
 >
-> **核查时间**：2026-08-14 初次只读核查；2026-08-15 应用发布、正式管理员身份引导、MFA 核验、原子交接、数据库 migration 部署、首份 protected-only manifest 激活、首名真实教师注册与独立 postflight；2026-08-17 教师双岗位核查与 replacement manifest 原子替换/postflight；2026-08-22 运行时门禁 migration 与对应应用同步发布/postflight
+> **核查时间**：2026-08-14 初次只读核查；2026-08-15 应用发布、正式管理员身份引导、MFA 核验、原子交接、数据库 migration 部署、首份 protected-only manifest 激活、首名真实教师注册与独立 postflight；2026-08-17 教师双岗位核查与 replacement manifest 原子替换/postflight；2026-08-22 运行时门禁 migration 与对应应用同步发布/postflight、当前 PostgreSQL+Storage 同批次备份及独立复核
 >
 > **目标**：应用 `https://mathin.club`；Supabase `https://supabase.mathin.club`
 >
 > **授权边界**：2026-08-14 Xiaomi 核查只允许健康检查、目标指纹、匿名汇总、备份/回退结构和错误位置查询；后续 §2.2 只修改仓库代码、测试与文档。2026-08-15 本机隔离目标、应用发布、正式管理员引导/MFA/原子交接，以及两个 R1-Live migration 部署分别由后续明确指令授权，边界见对应小节。产品负责人随后给出 standing execution direction：当前 R1-Live 规划内且不扩张范围的步骤由 Agent 每轮自检目标、写态、可逆性和漂移后直接推进，不再重复询问；需要真实信息、人工操作/验收、发现计划外差异或进入清理/不可逆动作时停下。§3.6 只写入首份目标绑定 protected-only manifest；§3.7 在教师本人完成注册后只读核查邀请、身份、岗位、manifest coverage 与匿名业务计数。§3.8 在产品确认 `research`/`teacher` 双岗位均属有意设置后，以同一边界创建 protected-only replacement，原子 retire 旧版本并激活新版本；不读取或保存邮箱/邀请码，不创建或修改账号/岗位/业务数据，不加入准删条目，不执行清理。2026-08-22 发布只允许依次部署两个已验证 migration 与对应提交，再做账本、函数、权限、匿名计数、release 和 HTTP postflight；不创建/修改账号、岗位、manifest、备份或业务数据，不执行清理。
+>
+> **2026-08-22 备份边界**：用户对已规划的当前 PostgreSQL+Storage 同批次备份项回复“继续”。该轮只允许创建和核验一份新备份；不恢复、不切换服务、不修改账号/岗位/manifest/业务数据、不执行历史备份清理。现有 runner 含自动 retention prune，因此改用不删除任何目录的一次性 fail-closed runner。
 
 ## 1. E1 目标指纹
 
@@ -216,13 +218,20 @@ replacement artifact 只复制首份 manifest 的 4 个 protected 条目，并�
 
 ## 4. E3 备份、回退和错误定位
 
-### 4.1 最近备份：`BLOCKED`
+### 4.1 当前备份：`PASS`
 
-- 系统级与用户级均未安装/启用 `p4e-backup.service`、`p4e-backup.timer` 或对应 disk timer。
-- crontab 只有每 15 分钟磁盘检查，没有数据库/Storage 备份任务。
-- 已知备份目录中仅见 2026-07-04 的环境配置备份；没有可核验的 `database.dump`、`storage.tar.gz`、`SHA256SUMS` 或 manifest。
-- 已挂载备份磁盘存在，但在 runbook 指定和已知运维目录中没有找到可证明当前数据库/Storage 可恢复的最近备份。
-- 因此不存在可登记的最近成功时间、内容 hash 或恢复抽查结果。未执行备份或恢复，因为该次备份核查授权不包含生产写入。
+2026-08-14 的首次只读核查确实没有找到当前数据库/Storage 备份。2026-08-22 在 standing execution direction 下执行已规划的下一项后，`/mnt/openlist-disk/Backups/Mathin/mathin-20260822T093529Z` 已成为当前同批次备份：先写入 `.partial`，源前后匿名数据库计数及 Storage 路径/大小/mtime 清单完全一致、两类工件可读且 SHA 生成成功后才原子转正。独立 postflight 再次运行 `sha256sum -c`，9/9 工件均为 `OK`；没有残留 `.partial`，生产数据库指纹、179 条账本、应用 release、匿名业务/Storage/manifest 计数与备份前一致，10 个 Supabase 容器均健康。
+
+| 证据字段 | 值 |
+| --- | --- |
+| `gate_id`, `domain`, `result` | `R1-Live Gate 1`；当前 PostgreSQL+Storage 同批次备份；`PASS`，Gate 1 整体 `PASS` |
+| `measured_value`, `threshold` | `database.dump=249508019 bytes`、TOC=3661；Storage 源=`50887768212 bytes/125135 files`，归档=`47869458194 bytes/125135 files`；数据库计数前后相同、Storage 清单前后相同；独立 checksum=9/9 `OK`；正式目录 1、`.partial=0`。阈值全部满足 |
+| `commit_sha`, `migration_head`, `environment` | `ef1eb77cfbb1b5714191c0455dbf5fdc7313f208`；`20260822000200_r1_live_operational_gate_simplification`；Xiaomi / production；数据库指纹 `10e3…1a0c` |
+| `dataset_manifest` | auth/profile=13、staff-role=10、学生=4、监护关系=2、课程族/课程/讲次/release=`2/102/1315/2633`、班级/课次/报名/点名=`0/0/0/0`、Storage bucket/object=`8/123602`、active manifest/entry/purge=`1/8/0`；工件含正式数据，只在 Git 登记无 PII 摘要 |
+| `started_at`, `finished_at`, `actor`, `approver` | `2026-08-22T09:35:29Z`；落盘 `2026-08-22T10:32:18Z`，独立 SHA 复核不晚于 `2026-08-22T10:51:55Z`；Codex；`swingislee`（回复“继续”） |
+| `command_or_runbook` | mount/容量/指纹/账本 preflight；不含 retention prune 的单次 `.partial` runner；容器内 custom `pg_dump`/`pg_restore -l`；低优先级 `tar`/`pigz`；源前后 `cmp`；完整 Storage tar 读取/计数；SHA-256、原子转正、`sync`；独立 `sha256sum -c` 与生产 postflight。`restore_executed=false`、`retention_prune_executed=false`。仓库侧 plan audit、R1-Live 48/48、secret scan、typecheck 和 production build 均通过 |
+| `artifact_url_or_path`, `artifact_hash` | Xiaomi `/mnt/openlist-disk/Backups/Mathin/mathin-20260822T093529Z/`；DB `dc26579cf02c3d50de9961e831636c48562fb8a6b6584e8670642038276cf5bb`；Storage `b736c5d78384b3c8e31a5ea81534b1ff6dec7ed0e91525222c4f4fd6743aab9c`；源清单 `cebbbe252fc636dcaf89237bccc32252b92516edecff89afbf2d1f400075b90f`；manifest `fa624ef33f66bc0ddb2830c887d67d31df61a3d9a2b296e3153624f027042196`；SHA 清单 `3c18aa352971493ce7d6f1d1952de1f9e462b559df74a026ba2e112d112d119b` |
+| `retention`, `access_roles`, `failure_ticket` | 当前无自动 prune，核验 replacement 前不得删除；外置 `/dev/sdb1` 与系统盘分离但仍同机。exFAT 挂载使工件有效 mode=`755`、owner=`swing:swing`；交互 shell 仅 root/swing，OpenList 未挂载 Backups，但工件未静态加密。恢复、异机/静态加密备份及 RPO/RTO 属于 Production 1.0；R1-Live ticket=`not_applicable` |
 
 ### 4.2 应用发布与回退：发布通过，受控回退仍待验证
 
@@ -254,7 +263,7 @@ replacement artifact 只复制首份 manifest 的 4 个 protected 条目，并�
 
 | 证据字段 | 值 |
 | --- | --- |
-| `gate_id`, `domain`, `result` | `R1-Live Gate 1`；生产运行时 schema + application；该子步骤 `PASS`，Gate 1 只因当前同批次备份保持 `BLOCKED` |
+| `gate_id`, `domain`, `result` | `R1-Live Gate 1`；生产运行时 schema + application；该子步骤完成时 `PASS`，后续当前备份关闭 Gate 1 |
 | `measured_value`, `threshold` | ledger `177→179`，head=`20260822000200_r1_live_operational_gate_simplification`；两条 checksum 分别为 `8b49dc3e…abd3`、`145acada…55a0`。三项目标函数定义 hash 与隔离库完全一致，anon execute=false、authenticated execute=true。current=`20260822-072101` / `ef1eb77…`、previous=`20260814-221135` / `023f5167…`；service active，loopback/Caddy/公网 health=production ok，zh/en login=200，zh/en 匿名建班页=307 并回到对应 login。阈值全部满足 |
 | `commit_sha`, `migration_head`, `environment` | `ef1eb77cfbb1b5714191c0455dbf5fdc7313f208`；`20260822000200_r1_live_operational_gate_simplification`；Xiaomi / production；数据库指纹 `10e3…1a0c` |
 | `dataset_manifest` | pre/post 均为 auth/profile=13、profile admin/staff/student/parent=`1/8/2/2`、verified admin MFA=1、staff-role=10、学生=4、监护关系=2、课程族=2、课程=102、讲次=1315、release=2633、班级/课次/报名/点名=`0/0/0/0`、Storage bucket/object=`8/123602`；active manifest/entry/protected/purge=`1/8/8/0`，条目 hash 与目标指纹一致 |
@@ -274,7 +283,7 @@ replacement artifact 只复制首份 manifest 的 4 个 protected 条目，并�
 
 | Gate | 状态 | 已关闭 | 仍缺 |
 | --- | --- | --- | --- |
-| Gate 1 · 可安全开始 | `BLOCKED` | 目标域名、应用/数据库/Storage/compose 匿名指纹和部署 commit 已登记；正式 admin/MFA 与首名教师岗位已建立；危险写入口和 purge RPC fail-closed，准删候选为 0；运行时 migration/应用已同步发布；current/previous、原子切换/失败回退命令、服务健康和错误查询位置已确认 | 建立当前 PostgreSQL+Storage 同批次备份 |
+| Gate 1 · 可安全开始 | `PASS` | 目标域名、应用/数据库/Storage/compose 匿名指纹和部署 commit 已登记；正式 admin/MFA 与首名教师岗位已建立；危险写入口和 purge RPC fail-closed，准删候选为 0；运行时 migration/应用已同步发布；current/previous、原子切换/失败回退命令、服务健康和错误查询位置已确认；当前 PostgreSQL+Storage 同批次备份已通过 TOC、完整文件计数、源前后清单和独立 SHA 复核 | 无；恢复、异机/静态加密备份和受控 rollback 属于 Production 1.0 |
 | Gate 2 · 首个真实教师闭环 | `BLOCKED` | 身份与岗位存在；本文件没有执行真实业务写态 | 建立真实班级/课次/花名册；正式教师完成点名保存与再读；管理员可见且既有无权限主体不可见 |
 
-这份证据证明 2026-08-14 的 Xiaomi 初次只读观察，2026-08-15 的本机隔离目标、应用-only 生产发布、发布后健康、正式管理员身份引导/MFA/原子交接、新会话 AAL2/admin 路由验收、两个早期 R1-Live migration、首份 protected-only manifest 和首名真实教师邀请注册，2026-08-17 的 `research`/`teacher` 双岗位核查与 replacement manifest 原子替换，以及 2026-08-22 两条运行时 migration/对应应用的同步生产发布和零漂移 postflight。它不证明当前 PostgreSQL+Storage 备份已经建立，或真实班级/课次/花名册及点名权限闭环已经完成；previous 兼容回退、恢复演练和 release 错误标签另属 Production 1.0 证据。
+这份证据证明 2026-08-14 的 Xiaomi 初次只读观察，2026-08-15 的本机隔离目标、应用-only 生产发布、发布后健康、正式管理员身份引导/MFA/原子交接、新会话 AAL2/admin 路由验收、两个早期 R1-Live migration、首份 protected-only manifest 和首名真实教师邀请注册，2026-08-17 的 `research`/`teacher` 双岗位核查与 replacement manifest 原子替换，以及 2026-08-22 两条运行时 migration/对应应用的同步生产发布、零漂移 postflight 和当前 PostgreSQL+Storage 同批次备份的独立可读性/SHA 复核。Gate 1 已通过；它仍不证明真实班级/课次/花名册及点名权限闭环已经完成。previous 兼容回退、恢复演练、异机/静态加密备份和 release 错误标签另属 Production 1.0 证据。

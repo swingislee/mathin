@@ -31,10 +31,10 @@ Terms 使用稳定 ID 接收 Story、Minds、Games、Tools、Notebook 和课程�
 
 ### 1.1.1 2026-08-22 施工顺序
 
-当前唯一施工阶段为 `R1-Live-1 · 可安全开始`。R1-Live 只保留两个结果 Gate：Gate 1 合并正式目标/身份、当前备份、防误清、可识别的 current/previous 与错误查询位置；Gate 2 合并真实点名闭环和首次真实教师验收。原范围冻结成为永久规则，完整恢复/rollback、错误 release 标签、独立观察和 14 天 RC 回到 Production 1.0。
+当前唯一施工阶段为 `R1-Live-2 · 首个真实教师闭环`。R1-Live 只保留两个结果 Gate：Gate 1 合并正式目标/身份、当前备份、防误清、可识别的 current/previous 与错误查询位置；Gate 2 合并真实点名闭环和首次真实教师验收。原范围冻结成为永久规则，完整恢复/rollback、错误 release 标签、独立观察和 14 天 RC 回到 Production 1.0。
 
-- Gate 1 当前 `BLOCKED`：Xiaomi 目标指纹、危险写拒绝、唯一正式 admin MFA、首名真实教师及双岗位、active 8 条 protected/0 条 purge manifest、current/previous、健康探针和错误查询位置均已确认。运行时门禁收敛 migration/UI 已部署为数据库 head `20260822000200` 和应用 current `20260822-072101` / `ef1eb77…`，只读 postflight 无身份、业务、manifest 或 Storage 漂移；只剩当前数据库/Storage 同批次备份阻塞 Gate 1。
-- Gate 2 当前 `BLOCKED`：生产尚无真实班级、课次、报名和点名。Gate 1 通过后，用正式 UI/RPC 建立最小真实数据并让正式教师完成保存、刷新/重登再读、管理员读取和无权限拒绝。
+- Gate 1 当前 `PASS`：Xiaomi 目标指纹、危险写拒绝、唯一正式 admin MFA、首名真实教师及双岗位、active 8 条 protected/0 条 purge manifest、current/previous、健康探针和错误查询位置均已确认。运行时门禁收敛 migration/UI 已部署为数据库 head `20260822000200` 和应用 current `20260822-072101` / `ef1eb77…`；当前 PostgreSQL+Storage 同批次备份 `mathin-20260822T093529Z` 的数据库目录、Storage 文件数、前后清单和全部 SHA-256 独立复核通过。
+- Gate 2 当前 `BLOCKED`：生产尚无真实班级、课次、报名和点名。当前用正式 UI/RPC 建立最小真实数据并让正式教师完成保存、刷新/重登再读、管理员读取和无权限拒绝。
 - 班级启用是运营决定。正式自由班、未完整课程、教师冲突、备课产物/审核/检查项、点名前置、资源预载和无 release 都只提示；创建时的权限、主讲/学期、course/family/lecture 引用、状态和不可变历史继续硬阻断。无 release 课次可冻结 `releaseId=null` 的空白/本次覆盖快照。
 - 现有 purge 只接受 active manifest 明确的 `purge_allowed` test 根，当前准删数为 0。日常新增正式学生、班级、课次和考勤不要求逐行替换 manifest；只有未来授权具体清理根时才按当时删除闭包生成 replacement。
 - 原 R1 暂停在 R1-9。P6-AIX-2、G+/X+/A+ 170 讲和 102 门/1305 讲/2610 条目标 release-1 合同保留；真实全量 inventory、Storage/H5 审计、Terms/Story/其他公开模块、完整视觉/E2E/恢复门转入 R1-Live 后继续。
@@ -152,7 +152,7 @@ command_or_runbook, artifact_url_or_path, artifact_hash, failure_ticket
 | 指标/报表/遥测 | M1～M2 | M4 | 口径、版本、查询、告警 | 13 |
 | 幂等/并发/事务/E2E | M2～M3（正式基线/开发目标） | M4 | 本轮修复前 19 项 Vitest 失败已在 commit `cbb2a0f` 清零；commits `0d55044`、`8e5c076` 与[Playwright 子门](../evidence/r1/r1-14-playwright-baseline.md)已让 9 条本地非五模块 Chromium 旅程分别取绿并固定 release fail-closed 合同；仍缺发布目标完整重跑、写态、zh/en、跨浏览器、连续无 flaky、大文件和竞争矩阵 | 14 |
 | 生产清理/release-1 | M1（旧 planner） | M4 | 旧 planner 假定只保留管理员且无正式历史 release，与 R1-Live 后正式教师/业务数据/课次内容引用冲突；须增加正式对象保护 manifest 后再做快照副本演练、测试数据清理、可逆脚本和正式计数 | Live/15/18 |
-| 部署/备份/恢复 | M2（生产应用发布/运行核查） | M4 | commit `35b9f60` 与[部署子门](../evidence/r1/r1-16-deployment-preflight.md)已固定 fail-closed 合同；仓库/历史 secret scan 已关闭。2026-08-22 current 已发布为 `20260822-072101` / `ef1eb77…`，previous 为 `20260814-221135` / `023f5167…`，数据库同步到 `20260822000200`，原子切换及内外健康门通过；R1-Live Gate 1 只因当前数据备份尚无而阻塞。previous 兼容回退、恢复演练和错误 release 标签属于 M4 | Live/16 |
+| 部署/备份/恢复 | M2（生产发布/当前备份） | M4 | commit `35b9f60` 与[部署子门](../evidence/r1/r1-16-deployment-preflight.md)已固定 fail-closed 合同；仓库/历史 secret scan 已关闭。2026-08-22 current 已发布为 `20260822-072101` / `ef1eb77…`，previous 为 `20260814-221135` / `023f5167…`，数据库同步到 `20260822000200`，原子切换及内外健康门通过；同日当前 PostgreSQL+Storage 同批次备份完成并独立通过 TOC、文件数、源前后清单与 SHA-256 校验，因此 R1-Live Gate 1 已通过。previous 兼容回退、恢复演练、异机/静态加密备份和错误 release 标签属于 M4 | Live/16 |
 | 真实运营 RC | M0 | M4 | R1-Live Gate 2 先取得 1 名真实教师闭环；独立观察及开放后连续 14 天/至少 5 节真实课堂形成扩围和 Production 1.0 证据 | Live/17 |
 
 ## 4. 业务合同
@@ -532,9 +532,8 @@ R1-0 已完成责任角色到 `swingislee` 的映射。增加人员或发生交�
 
 | 风险 | 当前证据 | 影响 | Owner | 关闭阶段 |
 | --- | --- | --- | --- | --- |
-| R1-Live Gate 1 尚未通过 | 目标组合指纹、正式管理员/MFA、首名教师、危险写拒绝、protected-only manifest、current/previous、回退命令和错误查询位置均已登记 | 运行时 migration/应用尚未发布，且当前 PostgreSQL 与 Storage 同批次备份尚未建立；缺备份会让首批真实数据没有最低恢复起点 | 产品+运维+安全 | R1-Live Gate 1 |
 | R1-Live 点名 Golden Path 未执行 | 点名 action、表/RLS 和源码合同存在；无正式目标保存/刷新或重登再读、管理员对照和越权对照 | 代码存在不能证明教师能在真实数据上完成首个工作 | 教学运营+QA/发布 | R1-Live Gate 2 |
-| Production 1.0 运维成熟度未完成 | current/previous、原子切换、健康门和错误查询位置已知；目标仍无恢复抽查，previous 未做受控切回，1,946 条历史错误的 release 为空 | 不阻止第一名内部教师开始使用，但会阻止扩大范围和 `v1.0.0` | 运维+安全+QA | R1-16～18 |
+| Production 1.0 运维成熟度未完成 | current/previous、原子切换、健康门、错误查询位置和当前同批次备份已知；备份仍是同机外置 exFAT 明文工件，尚无恢复抽查/异机副本，previous 未做受控切回，1,946 条历史错误的 release 为空 | 不阻止第一名内部教师开始使用，但会阻止扩大范围和 `v1.0.0` | 运维+安全+QA | R1-16～18 |
 | Story 无完整章节 | 路由存在；无完整独立章节内容目录 | 对外 1.0 缺一模块 | 内容+产品 | R1-10 |
 | R1-9 来源实物证据未完成 | P6-AIX-2 开发库证据与 v4 只读导出/对象校验核心、受控 runner 已通过；批准副本配置、外部 provenance、真实 1305 行 inventory、Storage/H5 审计与非执行者复核仍 pending | Production 1.0 release 清单可能缺对象或 snapshot 漂移；不影响 R1-Live 所选课次已读验证 | 产品+课程研发+QA/发布 | R1-Live 后恢复 R1-9，并在 R1-18 前重跑最终证据 |
 | 英文正文缺失 | `content/en` 仅 README | `/en` 可能空白或混排 | 内容+前端 | R1-9～12 |
@@ -547,7 +546,7 @@ R1-0 已完成责任角色到 `swingislee` 的映射。增加人员或发生交�
 | Vitest 基线需在最终 build 复验 | 全量为 92 个测试文件、621 项通过、1 项条件跳过；当前两 Gate 源码合同 48/48；历史 R1 回归 179/179；空间数学/SML-0 专项 279/279 | 后续实现可能重新引入合同回归；这些计数都不是生产运行证据 | 技术+QA | 已执行套件保持通过；发布前补齐条件跳过对应的真实包证据 |
 | 正式 Playwright 发布门尚未完成 | 正式配置、target policy 和 fail-closed release runner 已落地；9 条非五模块本地 Chromium 旅程分别取绿 | 尚无明确非生产 release target 的单次 9/9 零 skip、写态、zh/en、跨浏览器和连续 3 次无 flaky 证据 | QA/发布 | R1-14 |
 | 清理/release 未演练且旧 planner 会误删正式 Live 数据 | 两个现有 purge RPC 已接入目标绑定 manifest；旧“唯一管理员/运营数据为零”全库 planner 仍未修订 | 若绕过现有 RPC 或直接使用旧 planner，仍可能删除真实教师、班级、考勤及课次引用 release，也可能损失 4:3 资源 | 数据库+课程研发 | R1-Live 后修订全库合同，再在 R1-15 隔离演练 |
-| 生产恢复未实操 | Linux 目标与 fail-closed preflight 已定；当前树与 Git 历史 secret scan 为 0，但环境隔离和恢复 E3 仍为 pending | 尚无独立环境、运行时 secret 复核、告警链路、RPO/RTO、数据库/Storage 恢复或应用回滚的实操证据 | 运维+安全 | R1-16 |
+| 生产恢复未实操 | Linux 目标与 fail-closed preflight 已定；当前树与 Git 历史 secret scan 为 0，当前 PostgreSQL+Storage 同批次备份及独立 SHA/可读性复核已完成，但恢复 E3 仍为 pending | 尚无独立环境、运行时 secret 复核、告警链路、RPO/RTO、异机/静态加密副本、数据库/Storage 恢复或应用回滚的实操证据 | 运维+安全 | R1-16 |
 | 无连续真实运行观察 | R1-Live Gate 2 尚未执行；独立观察、14 天/5 节课堂和支持指标均无 E4 | 不阻止首个真实闭环，但会阻止扩大范围和 `v1.0.0` | 教学运营+发布 | Gate 2 后启动观察，R1-17 汇总 |
 
 ### 7.3 当前专题与 1.0 后处理

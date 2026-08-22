@@ -2,7 +2,7 @@
 
 本目录是 R1-Live 与 R1-0～R1-18 的唯一仓库内证据入口。它保存可审查的小摘要、结构化结果和外部 artifact 索引，不把大日志、视频、截图、secret、token、测试凭据或可识别未成年人 PII 提交到 Git。
 
-当前唯一施工阶段为 **R1-Live-1 · 可安全开始**。R1-Live 只保留两个结果门：Gate 1 `BLOCKED`、Gate 2 `BLOCKED`；首个闭环固定为正式教师整班点名，见 [R1-Live 差距表](r1-live.md)与[目标只读核查](r1-live-target-audit.md)。原 R1 暂停在 R1-9，SML-0 为独立并行轨道。
+当前唯一施工阶段为 **R1-Live-2 · 首个真实教师闭环**。R1-Live 只保留两个结果门：Gate 1 `PASS`、Gate 2 `BLOCKED`；首个闭环固定为正式教师整班点名，见 [R1-Live 差距表](r1-live.md)与[目标核查及生产备份](r1-live-target-audit.md)。原 R1 暂停在 R1-9，SML-0 为独立并行轨道。
 
 ## 存储合同
 
@@ -32,7 +32,7 @@ failure_ticket
 
 | 阶段 | 状态 | 日期 | 证据 |
 | --- | --- | --- | --- |
-| R1-Live | Gate 1 current/blocking；Gate 2 blocked | 2026-08-22 | [真实教师点名闭环差距表](r1-live.md)；[目标核查、应用/数据库发布、正式管理员交接、manifest 激活与真实教师注册/岗位保护](r1-live-target-audit.md)；[仓库写入目标保险丝](../../runbooks/r1-write-target-policy.md)；[正式对象保护 manifest](../../runbooks/r1-live-object-protection-manifest.md)。Xiaomi 已固定为当前生产目标；仓库危险写入口与 purge 数据库合同均 fail-closed；本机隔离 Supabase 与固定账号登录已验证。运行时软门 migration/UI 已发布为数据库 head `20260822000200_r1_live_operational_gate_simplification` 和应用 current `20260822-072101` / `ef1eb77…`，previous 为 `20260814-221135` / `023f5167…`；回退命令、服务健康和错误查询位置均已知。唯一正式管理员已完成 verified MFA、原子交接、新会话 MFA challenge 和 admin 路由验收；首名真实教师已注册为 active `staff` 并取得有意设置的 `research`/`teacher` 双岗位。active manifest 为 8 条 protected、0 条 purge，日常业务写入不再要求 replacement。当前测试口径为两 Gate 源码合同 5 文件/48 项、历史 R1 回归 23 文件/179 项、全量工程回归 92 文件/622 项；三者不替代目标环境证据，CI 已移除重复历史子集。当前 PostgreSQL+Storage 同批次备份尚未建立，因此 Gate 1 未通过；真实班级/课次/花名册与点名闭环尚未执行，因此 Gate 2 未通过 |
+| R1-Live | Gate 1 passed；Gate 2 current/blocking | 2026-08-22 | [真实教师点名闭环差距表](r1-live.md)；[目标核查、应用/数据库发布、正式管理员交接、manifest 激活、真实教师注册/岗位保护与当前生产备份](r1-live-target-audit.md)；[仓库写入目标保险丝](../../runbooks/r1-write-target-policy.md)；[正式对象保护 manifest](../../runbooks/r1-live-object-protection-manifest.md)。Xiaomi 已固定为当前生产目标；仓库危险写入口与 purge 数据库合同均 fail-closed；本机隔离 Supabase 与固定账号登录已验证。运行时软门 migration/UI 已发布为数据库 head `20260822000200_r1_live_operational_gate_simplification` 和应用 current `20260822-072101` / `ef1eb77…`，previous 为 `20260814-221135` / `023f5167…`；回退命令、服务健康和错误查询位置均已知。唯一正式管理员已完成 verified MFA、原子交接、新会话 MFA challenge 和 admin 路由验收；首名真实教师已注册为 active `staff` 并取得有意设置的 `research`/`teacher` 双岗位。active manifest 为 8 条 protected、0 条 purge，日常业务写入不再要求 replacement。当前 PostgreSQL+Storage 同批次备份 `mathin-20260822T093529Z` 已在外置盘生成；数据库 TOC 3661 项、Storage 125135 文件、源前后清单及全部 SHA-256 独立复核通过，生产指纹/账本/对象计数无漂移，因此 Gate 1 `PASS`。当前测试口径为两 Gate 源码合同 5 文件/48 项、历史 R1 回归 23 文件/179 项、全量工程回归 92 文件/622 项；三者不替代目标环境证据，CI 已移除重复历史子集。真实班级/课次/花名册与点名闭环尚未执行，因此 Gate 2 未通过 |
 | R1-0 | passed | 2026-07-28 | [规划真相源与发布边界冻结](r1-0.md) |
 | R1-1 | passed | 2026-07-28 | [机构配置、规则与 Feature Flag](r1-1.md) |
 | R1-2 | passed | 2026-07-28 | [Jobs、通知、文件与外部集成](r1-2.md) |
