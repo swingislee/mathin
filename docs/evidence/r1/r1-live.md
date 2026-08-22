@@ -2,7 +2,7 @@
 
 ## 结论
 
-截至 2026-08-23，`mathin.club` / `supabase.mathin.club` 的应用、数据库、Storage、compose 和部署 commit 已完成目标登记，仓库级写入口保险丝也已把 Xiaomi 固定为当前生产目标；测试造数/重建不能写入它，课程内容写入默认拒绝并使用独立受控通道。本机已建立只绑定 `127.0.0.1` 的隔离 Supabase，完成固定开发账号、登录和数据库合同验证，且没有复制或修改 Xiaomi 数据。生产账本现为 `20260823000100_r1_live_school_year_periods`；应用 current/previous 为 `20260822-181331` / `b899942…` 与 `20260822-162416` / `6dfb3af…`，原子切换、失败回退命令、双层健康和 `operational_errors` 查询位置均已确认。唯一正式管理员已完成 verified MFA、唯一 admin 原子交接、新会话 MFA challenge 和生产 admin 路由验收；首名真实教师已注册为 active `staff`，`research` 与 `teacher` 双岗位经产品确认。active manifest 为 8 条 protected、0 条 `purge_allowed`，两个 purge 候选列表为空；这已经满足 R1-Live 防误清底线，日常正式业务写入不再要求逐条 replacement。当前 PostgreSQL+Storage 同批次备份 `mathin-20260822T093529Z` 已在 Xiaomi 外置盘完成并独立复核，因此 Gate 1 `PASS`。本机隔离 Golden Path 已完成建班、自动课次、报名、教师点名保存和再读。生产已有 1 个 production 班级、15 个课次和 1 条 active 报名；春季结束日修正为 `2026-06-29` 后，三类对象均归到 `2026–2027` 秋季，2026 学年仍为 planning，学生仍为五年级。正式点名仍为 0，因此 Gate 2 保持 `BLOCKED`。
+截至 2026-08-23，`mathin.club` / `supabase.mathin.club` 的应用、数据库、Storage、compose 和部署 commit 已完成目标登记，仓库级写入口保险丝也已把 Xiaomi 固定为当前生产目标；测试造数/重建不能写入它，课程内容写入默认拒绝并使用独立受控通道。本机已建立只绑定 `127.0.0.1` 的隔离 Supabase，完成固定开发账号、登录和数据库合同验证，且没有复制或修改 Xiaomi 数据。生产账本现为 `20260823000200_r1_live_preparation_attention_window`；应用 current/previous 为 `20260822-193605` / `5041fe1…` 与 `20260822-185849` / `3fa5919…`，原子切换、失败回退命令、双层健康和 `operational_errors` 查询位置均已确认。唯一正式管理员已完成 verified MFA、唯一 admin 原子交接、新会话 MFA challenge 和生产 admin 路由验收；首名真实教师已注册为 active `staff`，`research` 与 `teacher` 双岗位经产品确认。active manifest 为 8 条 protected、0 条 `purge_allowed`，两个 purge 候选列表为空；这已经满足 R1-Live 防误清底线，日常正式业务写入不再要求逐条 replacement。当前 PostgreSQL+Storage 同批次备份 `mathin-20260822T093529Z` 已在 Xiaomi 外置盘完成并独立复核，因此 Gate 1 `PASS`。本机隔离 Golden Path 已完成建班、自动课次、报名、教师点名保存和再读。生产已有 1 个 production 班级、15 个课次和 1 条 active 报名；春季结束日修正为 `2026-06-29` 后，三类对象均归到 `2026–2027` 秋季，2026 学年仍为 planning，学生仍为五年级。日常运营体验改动已上线，当前教师备课投影从 15 条缩为窗口内 1 条，业务对象计数不变；相关页面按单项接受产品人工验收。正式点名仍为 0，因此 Gate 2 保持 `BLOCKED`。
 
 本文件是 E0/E1 差距审阅，不是完整生产验收。2026-08-14～22 的 Xiaomi E1/E3 运行事实，以及本机隔离目标、应用/数据库发布、正式管理员交接和 manifest 激活证据见 [`r1-live-target-audit.md`](r1-live-target-audit.md)；用户提供的 `docs/plan/mathin-R1-Live-讨论稿.md` 为产品裁决输入，现行施工顺序以 doc 04 为准。
 
@@ -179,6 +179,21 @@
 | `command_or_runbook` | LF 规范化 migration hash → 生产 `REPEATABLE READ READ ONLY` preflight → serializable 完整回滚演练 → 新连接回滚核查 → 相同事务正式提交/账本登记 → 独立只读函数、权限、业务、年级、manifest、Storage postflight → `publish-mathin-xiaomi.ps1 -Action Publish/Status` → 公网 health、zh/en login、匿名 schedule 重定向；无清理、无学年启用、无升年级 |
 | `artifact_url_or_path`, `artifact_hash` | `supabase/migrations/20260823000100_r1_live_school_year_periods.sql`，LF 规范化 SHA-256 `31441a83a802b35e4c6937f68d9418b58510a88343b6fad646f65761e7019d67`；Git commit `b8999422a217ecf83064bd9f02521a751d23f692`；Xiaomi `/home/swing/services/mathin/releases/20260822-181331/release.json` |
 | `retention`, `access_roles`, `failure_ticket` | migration、Git 与 immutable release 按既有策略保留；仓库维护者/Xiaomi 运维角色；首次 owner 差异由同一事务归一并以零漂移回滚证据关闭，`BUG-R1-LIVE-005` 已关闭 |
+
+### 日常运营体验收敛与备课提醒窗口证据
+
+产品负责人在生产试用中确认学年方案达标，并要求继续收敛班级管理命令区、下拉/日期控件、备课提醒、通知描述和绘图工具栏。实现使用 shadcn `Calendar` + `Popover` 组成共享日期/时间控件并替换业务表单中的原生 date/time/datetime-local；共享 Select 增加站点配色与悬浮反馈；班级详情把标签与动作合并为同一命令区；通知 fallback 显示事件类型和首个可读 payload 细节；共享绘图工具栏可向下收起，备课工具栏进入翻页工作区。migration `20260823000200_r1_live_preparation_attention_window` 将备课工作项设为开课前 14 天可见、前 7 天到期，逾期后向主管投影；课后备课提交在课次页标为“补交”。
+
+| 证据字段 | 值 |
+| --- | --- |
+| `gate_id`, `domain`, `result` | `R1-Live Gate 2` 支撑项；日常运营体验与备课提醒；实现、数据库和部署子项 `PASS`，逐项产品验收进行中，Gate 2 整体仍 `BLOCKED` |
+| `measured_value`, `threshold` | ledger `181→182`，head=`20260823000200_r1_live_preparation_attention_window`，LF checksum=`8014261e…6efff4`；函数新旧签名各 1 个，owner=`supabase_admin`，anon execute=false、authenticated=true。生产未完成课次=15，`T+14` 内=1、`T+7` 内=0、已开始=0；当前教师与管理员的备课投影均由 15 条变为 1 条，`due_at=scheduled_at-7 days`。班级/课次/报名/点名=`1/15/1/0`，active manifest/entry/protected/purge=`1/8/8/0`；应用 current/previous=`20260822-193605` / `5041fe1…` 与 `20260822-185849` / `3fa5919…`，发布后 `operational_errors` 增量=0 |
+| `commit_sha`, `migration_head`, `environment` | `5041fe1cfd6352e1a70cfb05559bf3b5ae530205`；`20260823000200_r1_live_preparation_attention_window`；本机隔离 Supabase + Xiaomi / production；数据库指纹 `10e3…1a0c` |
+| `dataset_manifest` | 生产 migration 前后班级/课次/报名/点名保持 `1/15/1/0`，manifest 保持 1 个 active、8 条 protected、0 条 purge；未创建或修改账号、岗位、班级、课次、报名、点名或 Storage，只更新函数定义和 migration 账本 |
+| `started_at`, `finished_at`, `actor`, `approver` | 2026-08-23；Codex 实现、验证和发布；`swingislee`（提出六项生产试用反馈并明确 shadcn-ui 日历约束） |
+| `command_or_runbook` | 定向 ESLint、`pnpm typecheck`、`pnpm messages:check`、5 个文件/36 项相关 Vitest；本机隔离 migration 编译与函数断言；生产只读 preflight → owner 核对 → fail-closed 事务部署/账本登记 → 独立只读 postflight → `publish-mathin-xiaomi.ps1 -Action Publish`。按产品要求未增加 Playwright、历史 179 项或全量 621/625 项回归 |
+| `artifact_url_or_path`, `artifact_hash` | `supabase/migrations/20260823000200_r1_live_preparation_attention_window.sql`，LF 规范化 SHA-256 `8014261e4c348b12719053371acf10ffd0c2fece10afd110850497ac6e6efff4`；Git commit `5041fe1cfd6352e1a70cfb05559bf3b5ae530205`；Xiaomi `/home/swing/services/mathin/releases/20260822-193605/release.json` |
+| `retention`, `access_roles`, `failure_ticket` | migration、Git 与 immutable release 按既有策略保留；仓库维护者/Xiaomi 运维角色；PowerShell 客户端替换与函数 owner 两次失败均在提交前停止或事务回滚，独立 postflight 证明无部分写；产品人工验收按一次一项继续 |
 
 ### 生产正式管理员身份引导与原子交接证据
 

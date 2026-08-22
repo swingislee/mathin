@@ -33,7 +33,7 @@ Terms 使用稳定 ID 接收 Story、Minds、Games、Tools、Notebook 和课程�
 
 当前唯一施工阶段为 `R1-Live-2 · 首个真实教师闭环`。R1-Live 只保留两个结果 Gate：Gate 1 合并正式目标/身份、当前备份、防误清、可识别的 current/previous 与错误查询位置；Gate 2 合并真实点名闭环和首次真实教师验收。原范围冻结成为永久规则，完整恢复/rollback、错误 release 标签、独立观察和 14 天 RC 回到 Production 1.0。
 
-- Gate 1 当前 `PASS`：Xiaomi 目标指纹、危险写拒绝、唯一正式 admin MFA、首名真实教师及双岗位、active 8 条 protected/0 条 purge manifest、current/previous、健康探针和错误查询位置均已确认。数据库 head 已部署为 `20260823000100_r1_live_school_year_periods`；应用 current 为 `20260822-181331` / `b899942…`，previous 为 `20260822-162416` / `6dfb3af…`。当前 PostgreSQL+Storage 同批次备份 `mathin-20260822T093529Z` 的数据库目录、Storage 文件数、前后清单和全部 SHA-256 独立复核通过。
+- Gate 1 当前 `PASS`：Xiaomi 目标指纹、危险写拒绝、唯一正式 admin MFA、首名真实教师及双岗位、active 8 条 protected/0 条 purge manifest、current/previous、健康探针和错误查询位置均已确认。数据库 head 已部署为 `20260823000200_r1_live_preparation_attention_window`；应用 current 为 `20260822-193605` / `5041fe1…`，previous 为 `20260822-185849` / `3fa5919…`。当前 PostgreSQL+Storage 同批次备份 `mathin-20260822T093529Z` 的数据库目录、Storage 文件数、前后清单和全部 SHA-256 独立复核通过。
 - Gate 2 当前 `BLOCKED`：本机隔离固定账号 Golden Path 已完成未完整课程建班、自动课次、`lead` 报名、教师点名保存和换页再读。生产已有 1 个 production 班级、15 个课次和 1 条 active 报名，主讲 1、学辅 0；建班字段校验修复已上线。学年迁移把春季边界修正为 `2026-06-29`，并只把班级/课次/报名改挂到 `2026–2027` 秋季，2026 学年仍为 planning，学生仍为五年级。下一步由正式教师完成点名保存、刷新/重登再读，再做管理员读取和无权限拒绝。
 - 班级启用是运营决定。正式自由班、未完整课程、教师冲突、备课产物/审核/检查项、点名前置、资源预载和无 release 都只提示；创建时的权限、主讲/学期、course/family/lecture 引用、状态和不可变历史继续硬阻断。无 release 课次可冻结 `releaseId=null` 的空白/本次覆盖快照。
 - 现有 purge 只接受 active manifest 明确的 `purge_allowed` test 根，当前准删数为 0。日常新增正式学生、班级、课次和考勤不要求逐行替换 manifest；只有未来授权具体清理根时才按当时删除闭包生成 replacement。
@@ -152,7 +152,7 @@ command_or_runbook, artifact_url_or_path, artifact_hash, failure_ticket
 | 指标/报表/遥测 | M1～M2 | M4 | 口径、版本、查询、告警 | 13 |
 | 幂等/并发/事务/E2E | M2～M3（正式基线/开发目标） | M4 | 本轮修复前 19 项 Vitest 失败已在 commit `cbb2a0f` 清零；commits `0d55044`、`8e5c076` 与[Playwright 子门](../evidence/r1/r1-14-playwright-baseline.md)已让 9 条本地非五模块 Chromium 旅程分别取绿并固定 release fail-closed 合同；仍缺发布目标完整重跑、写态、zh/en、跨浏览器、连续无 flaky、大文件和竞争矩阵 | 14 |
 | 生产清理/release-1 | M1（旧 planner） | M4 | 旧 planner 假定只保留管理员且无正式历史 release，与 R1-Live 后正式教师/业务数据/课次内容引用冲突；须增加正式对象保护 manifest 后再做快照副本演练、测试数据清理、可逆脚本和正式计数 | Live/15/18 |
-| 部署/备份/恢复 | M2（生产发布/当前备份） | M4 | commit `35b9f60` 与[部署子门](../evidence/r1/r1-16-deployment-preflight.md)已固定 fail-closed 合同；仓库/历史 secret scan 已关闭。2026-08-23 current 已发布为 `20260822-181331` / `b899942…`，previous 为 `20260822-162416` / `6dfb3af…`，数据库 head 为 `20260823000100_r1_live_school_year_periods`，原子切换及内外健康门通过；当前 PostgreSQL+Storage 同批次备份已独立通过 TOC、文件数、源前后清单与 SHA-256 校验，因此 R1-Live Gate 1 已通过。previous 兼容回退、恢复演练、异机/静态加密备份和错误 release 标签属于 M4 | Live/16 |
+| 部署/备份/恢复 | M2（生产发布/当前备份） | M4 | commit `35b9f60` 与[部署子门](../evidence/r1/r1-16-deployment-preflight.md)已固定 fail-closed 合同；仓库/历史 secret scan 已关闭。2026-08-23 current 已发布为 `20260822-193605` / `5041fe1…`，previous 为 `20260822-185849` / `3fa5919…`，数据库 head 为 `20260823000200_r1_live_preparation_attention_window`，原子切换及内外健康门通过；当前 PostgreSQL+Storage 同批次备份已独立通过 TOC、文件数、源前后清单与 SHA-256 校验，因此 R1-Live Gate 1 已通过。previous 兼容回退、恢复演练、异机/静态加密备份和错误 release 标签属于 M4 | Live/16 |
 | 真实运营 RC | M0 | M4 | R1-Live Gate 2 先取得 1 名真实教师闭环；独立观察及开放后连续 14 天/至少 5 节真实课堂形成扩围和 Production 1.0 证据 | Live/17 |
 
 ## 4. 业务合同
@@ -206,6 +206,8 @@ R1-1 以 `20260728000100_r1_organization_settings.sql` 与 `20260728000200_r1_pu
 
 - 学生主链覆盖活动/线索、学生档案、监护关系、报名/分班、课表、考勤、请假/补课、作业、评价、续费/流失跟进。改班、换老师、撤课、合班和补录产生历史记录，不覆盖旧事实。
 - 教师课堂旅程包括进入课次、点名、读取已发布课件、课堂记录、布置作业和课后动作；教务/学辅从异常 work item 进入对应领域页处理。
+
+2026-08-23 的生产试用反馈已形成一组不改变 Gate 的日常运营收敛：班级详情的标签、教室入口和设置动作进入同一水平命令区；共享 Select 增加纸色/星夜悬浮反馈，全部业务日期/时间输入改用 shadcn `Calendar` + `Popover` 的共享控件；未知通知显示事件类型和首个可读 payload 细节；共享绘图工具栏可向下收起，备课工具栏进入翻页工作区。migration `20260823000200_r1_live_preparation_attention_window` 把备课工作项改为开课前 14 天出现、前 7 天到期并在逾期后向主管投影，课后提交显示“补交”；生产当前教师投影由 15 条缩为 1 条，班级/课次/报名/点名仍为 `1/15/1/0`。实现随应用 `20260822-193605` / `5041fe1…` 上线，发布后错误增量为 0；产品验收按单项进行，不增加自动化门禁。
 
 #### 4.3.1 备课—行课—课后统一对象合同
 

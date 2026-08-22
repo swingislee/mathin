@@ -8,7 +8,7 @@
 >
 > **剩余项**：按场景级、内容级、工作区级完成 1.0 人工视觉/无障碍签收，见 doc 25。
 >
-> **最后核对**：2026-07-28。
+> **最后核对**：2026-08-23。
 
 小王子世界观是全站主要视觉语言。`public/Main.png` 提供 B-612 主视觉、纸色、墨线、月亮黄、玫瑰红和王子绿的取色依据。全站共享低饱和纸张、手绘线条、书卷字体、星夜暗色和克制运动；插画密度按页面任务分级。
 
@@ -156,7 +156,7 @@
 | 切换按钮/按钮组 | `toggle` / `toggle-group` | ○ |
 | 表单校验编排（RHF+zod） | `form` | ○（与 14 的 `<ActionForm>` 配合） |
 | 验证码输入 | `input-otp` | ◇ P4E-C3 手机验证码登录 |
-| 日期选择 | `calendar` + `date-picker` | ⚠️ 现用原生 `datetime-local` |
+| 日期选择 | `calendar` + `date-picker` | ✓ 已以 shadcn `Calendar` + `Popover` 建立共享 `DateTimePicker`，业务表单不再直接使用原生 date/time/datetime-local 控件 |
 
 **覆盖层与反馈**
 
