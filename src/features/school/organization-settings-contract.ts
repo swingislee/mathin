@@ -48,17 +48,6 @@ export interface HolidaySettings {
   createdAt: string;
 }
 
-export interface SchoolTermSettings {
-  id: string;
-  campusId: string;
-  year: number;
-  term: 1 | 2;
-  name: string;
-  startsOn: string;
-  endsOn: string;
-  isCurrent: boolean;
-}
-
 export interface OrganizationRuleVersion {
   id: string;
   campusId: string | null;
@@ -96,7 +85,6 @@ export interface OrganizationSettingsSnapshot {
   };
   campuses: CampusSettings[];
   holidays: HolidaySettings[];
-  terms: SchoolTermSettings[];
   rules: OrganizationRuleVersion[];
   featureFlags: FeatureFlagVersion[];
   changeToken: string;

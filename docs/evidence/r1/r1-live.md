@@ -19,7 +19,7 @@
 
 - migration `20260815000100_r1_live_object_protection_manifest.sql` 不包含 manifest seed 或 Xiaomi 指纹，只建立表、trigger、内部校验与现有两个 purge RPC 的 fail-closed 合同；`20260815000200_r1_profile_role_update_guard.sql` 只恢复受信任 role 更新旁路，其他 profile 保护字段继续拒绝。
 - 一次性 PostgreSQL 15 先前从零重放 181 个 bootstrap/migration/seed/fixture 输入并通过 manifest 断言；加入 role guard 后又在明确命名的临时空库重放 182 个输入（179 migrations + bootstrap/seed/fixture）并通过账户安全断言，临时库随后删除。
-- 14/14 份 R1 数据库断言既有基线通过；manifest/purge 定向 Vitest 为 2 个文件、17/17。当前 `pnpm r1:live:test` 为 5 个文件、48/48；历史 `pnpm r1:regression` 为 23 个文件、179/179；全量 Vitest 为 92 个文件、621 项通过、1 项条件跳过。三类计数分别表示当前源码合同、历史合同和工程回归，不替代目标环境证据。
+- 14/14 份 R1 数据库断言既有基线通过；学年断言加入后当前清单为 15 份。manifest/purge 定向 Vitest 为 2 个文件、17/17。当前 `pnpm r1:live:test` 为 6 个文件、52/52；历史 `pnpm r1:regression` 为 23 个文件、179/179；全量 Vitest 当前基线为 93 个文件、625 项通过、1 项条件跳过。三类计数分别表示当前源码合同、历史合同和工程回归，不替代目标环境证据。
 - 仓库实现阶段的数据库验证和类型生成只连接 disposable loopback 容器；之后按独立明确授权向 Xiaomi 部署两个 migration。生产部署边界、断言和只读 postflight 见下文及 [`r1-live-target-audit.md`](r1-live-target-audit.md#35-两个-r1-live-migration-的生产部署)。
 
 ### 本机隔离开发目标证据

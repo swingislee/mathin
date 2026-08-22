@@ -63,4 +63,29 @@ test.describe("fixed-account school portals", () => {
       page.getByText("将创建进行中的班级；准备度和时间冲突仍会保留为运营提醒。", { exact: true }),
     ).toBeVisible();
   });
+
+  test("principal sees the bilingual academic-year plan without triggering promotion", async ({ page }) => {
+    const principal = loadFixedAccountForMode("principal");
+    test.skip(!principal, FIXED_ACCOUNT_SKIP_REASON);
+    if (!principal) return;
+
+    await loginWithFixedAccount(page, principal, "/zh/dashboard/schedule");
+    await page.getByRole("button", { name: "学年与运营周期", exact: true }).click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByText("2025–2026 学年", { exact: true })).toBeVisible();
+    await expect(dialog.getByText("2026–2027 学年", { exact: true })).toBeVisible();
+    await expect(dialog.locator('input[value="2026-06-29"]')).toHaveCount(1);
+    await expect(dialog.getByRole("button", { name: "保存日期", exact: true })).toHaveCount(8);
+    await expect(dialog.getByText("创建只会建立学年和四个日期待定的运营周期，不会改变学生年级。", { exact: true })).toBeVisible();
+
+    const periodDateInputs = dialog.locator('input[type="date"]');
+    await periodDateInputs.first().fill("2026-07-01");
+    await expect(dialog.getByText("开始日期和结束日期需要同时填写；也可以同时留空。", { exact: true })).toBeVisible();
+    await dialog.getByLabel("学年起始年份", { exact: true }).fill("2026");
+    await expect(dialog.getByText("该学年已经存在，请直接编辑下方的运营周期。", { exact: true })).toBeVisible();
+
+    await page.goto("/en/dashboard/schedule");
+    await page.getByRole("button", { name: "Academic years and operating periods", exact: true }).click();
+    await expect(page.getByRole("dialog").getByText("Creation only adds the year and four undated operating periods. It does not change any student grade.", { exact: true })).toBeVisible();
+  });
 });

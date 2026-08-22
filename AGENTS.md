@@ -92,10 +92,10 @@ pnpm dev        # 开发服务器 0.0.0.0:3130（局域网：http://192.168.5.21
 pnpm lint       # eslint . —— Next.js 16 的 next build 不再执行 lint
 pnpm typecheck  # tsc --noEmit
 pnpm build
-pnpm test       # 全量 Vitest 回归；92 个文件、621 项通过、1 项条件跳过，不等同 R1-Live 门禁
+pnpm test       # 全量 Vitest 回归；93 个文件、625 项通过、1 项条件跳过，不等同 R1-Live 门禁
 pnpm plan:audit # 00～25 状态头、索引与唯一阶段审计
 pnpm ci:checks  # 本地复现 CI checks job 的工程门禁（清单从 ci.yml 解析），推送前跑一次
-pnpm r1:live:test  # 当前两个 R1-Live Gate 的源码合同；5 个文件、48/48
+pnpm r1:live:test  # 当前两个 R1-Live Gate 的源码合同；6 个文件、52/52
 pnpm r1:regression # 历史 R1-1～16 累积合同诊断；23 个文件、179/179
 pnpm r1:test       # 兼容入口，等同 pnpm r1:live:test
 pnpm secrets:check   # 当前跟踪树、binary ASCII 与高风险容器 secret scan

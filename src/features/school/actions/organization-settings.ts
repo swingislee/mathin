@@ -170,53 +170,6 @@ export async function archiveSchoolHolidayAction(holidayId: string): Promise<Act
   }
 }
 
-const termSchema = z.object({
-  campusId: uuid,
-  year: intInRange(2020, 2100),
-  term: z.union([z.literal(1), z.literal(2)]),
-  name: requiredText(100),
-  startsOn: dateOnly,
-  endsOn: dateOnly,
-}).refine((value) => value.endsOn >= value.startsOn);
-
-export async function createCampusSchoolTermAction(input: {
-  campusId: string;
-  year: number;
-  term: 1 | 2;
-  name: string;
-  startsOn: string;
-  endsOn: string;
-}): Promise<ActionResult> {
-  try {
-    const value = parse(termSchema, input);
-    const { supabase } = await authorizedClient("organization.settings.manage");
-    const { error } = await supabase.rpc("create_campus_school_term", {
-      p_campus_id: value.campusId,
-      p_year: value.year,
-      p_term: value.term,
-      p_name: value.name,
-      p_starts_on: value.startsOn,
-      p_ends_on: value.endsOn,
-    });
-    if (error) throw new Error(error.message);
-    return { ok: true };
-  } catch (error) {
-    return actionError(error, SETTINGS_CODES);
-  }
-}
-
-export async function activateCampusSchoolTermAction(termId: string): Promise<ActionResult> {
-  try {
-    const id = parse(uuid, termId);
-    const { supabase } = await authorizedClient("organization.settings.manage");
-    const { error } = await supabase.rpc("activate_school_term", { p_term_id: id });
-    if (error) throw new Error(error.message);
-    return { ok: true };
-  } catch (error) {
-    return actionError(error, SETTINGS_CODES);
-  }
-}
-
 const ruleSchemas = {
   calendar: z.object({ teachingWeekStartsOn: intInRange(1, 7), weekendDays: z.array(intInRange(0, 6)).max(7) }),
   lesson: z.object({ defaultDurationMinutes: intInRange(15, 300), billingUnitLessons: z.number().min(0.25).max(10) }),

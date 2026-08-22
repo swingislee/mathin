@@ -1,6 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { SELECT_ALL_VALUE } from "./controls";
 import { courseware_template_array_schema, type CoursewareTemplatePage } from "./courseware-overlay";
+import type { SchoolPeriod } from "./school-periods";
+
+export type { SchoolPeriod } from "./school-periods";
 
 export const COURSE_TERMS = [
   { value: 1, labelKey: "summer" },
@@ -9,8 +12,132 @@ export const COURSE_TERMS = [
   { value: 4, labelKey: "spring" },
 ] as const;
 
-export interface SchoolTermRow{id:string;year:number;term:number;name:string;startsOn:string;endsOn:string;isCurrent:boolean}
-export async function listSchoolTerms():Promise<SchoolTermRow[]>{const supabase=await createClient();const{data,error}=await supabase.from("school_terms").select("id,year,term,name,starts_on,ends_on,is_current").order("starts_on",{ascending:false}).returns<Array<{id:string;year:number;term:number;name:string;starts_on:string;ends_on:string;is_current:boolean}>>();if(error)throw new Error(error.message);return(data??[]).map(row=>({id:row.id,year:row.year,term:row.term,name:row.name,startsOn:row.starts_on,endsOn:row.ends_on,isCurrent:row.is_current}))}
+export type SchoolYearStatus = "planning" | "active" | "closed";
+
+export interface SchoolTermRow {
+  id: string;
+  schoolYearId: string;
+  year: number;
+  term: SchoolPeriod;
+  name: string;
+  startsOn: string | null;
+  endsOn: string | null;
+  isCurrent: boolean;
+}
+
+export interface SchoolYearActivationPreview {
+  promoteCount: number;
+  retainedCount: number;
+  canActivate: boolean;
+}
+
+export interface SchoolYearRow {
+  id: string;
+  startYear: number;
+  name: string;
+  status: SchoolYearStatus;
+  gradeEffectiveOn: string | null;
+  activatedAt: string | null;
+  periods: SchoolTermRow[];
+  activationPreview: SchoolYearActivationPreview | null;
+}
+
+interface SchoolTermDatabaseRow {
+  id: string;
+  school_year_id: string;
+  year: number;
+  term: number;
+  name: string;
+  starts_on: string | null;
+  ends_on: string | null;
+  is_current: boolean;
+}
+
+function schoolTermRow(row: SchoolTermDatabaseRow): SchoolTermRow {
+  return {
+    id: row.id,
+    schoolYearId: row.school_year_id,
+    year: row.year,
+    term: row.term as SchoolPeriod,
+    name: row.name,
+    startsOn: row.starts_on,
+    endsOn: row.ends_on,
+    isCurrent: row.is_current,
+  };
+}
+
+export async function listSchoolTerms(): Promise<SchoolTermRow[]> {
+  const supabase = await createClient();
+  const { data: campusId, error: campusError } = await supabase.rpc("default_campus_id");
+  if (campusError) throw new Error(campusError.message);
+  if (!campusId) return [];
+  const { data, error } = await supabase
+    .from("school_terms")
+    .select("id,school_year_id,year,term,name,starts_on,ends_on,is_current")
+    .eq("campus_id", campusId)
+    .order("year", { ascending: false })
+    .order("term", { ascending: true })
+    .returns<SchoolTermDatabaseRow[]>();
+  if (error) throw new Error(error.message);
+  return (data ?? []).map(schoolTermRow);
+}
+
+export async function listSchoolYears(): Promise<SchoolYearRow[]> {
+  const supabase = await createClient();
+  const { data: campusId, error: campusError } = await supabase.rpc("default_campus_id");
+  if (campusError) throw new Error(campusError.message);
+  if (!campusId) return [];
+
+  const [yearResult, termResult] = await Promise.all([
+    supabase
+      .from("school_years")
+      .select("id,start_year,name,status,grade_effective_on,activated_at")
+      .eq("campus_id", campusId)
+      .order("start_year", { ascending: false })
+      .returns<Array<{
+        id: string;
+        start_year: number;
+        name: string;
+        status: SchoolYearStatus;
+        grade_effective_on: string | null;
+        activated_at: string | null;
+      }>>(),
+    supabase
+      .from("school_terms")
+      .select("id,school_year_id,year,term,name,starts_on,ends_on,is_current")
+      .eq("campus_id", campusId)
+      .order("year", { ascending: false })
+      .order("term", { ascending: true })
+      .returns<SchoolTermDatabaseRow[]>(),
+  ]);
+  if (yearResult.error) throw new Error(yearResult.error.message);
+  if (termResult.error) throw new Error(termResult.error.message);
+
+  const previews = new Map<string, SchoolYearActivationPreview>();
+  await Promise.all((yearResult.data ?? []).filter((row) => row.status === "planning").map(async (row) => {
+    const { data, error } = await supabase.rpc("get_school_year_activation_preview", { p_school_year_id: row.id });
+    if (error) throw new Error(error.message);
+    if (!data || typeof data !== "object" || Array.isArray(data)) return;
+    const raw = data as Record<string, unknown>;
+    previews.set(row.id, {
+      promoteCount: Number(raw.promoteCount ?? 0),
+      retainedCount: Number(raw.retainedCount ?? 0),
+      canActivate: raw.canActivate === true,
+    });
+  }));
+
+  const terms = (termResult.data ?? []).map(schoolTermRow);
+  return (yearResult.data ?? []).map((row) => ({
+    id: row.id,
+    startYear: row.start_year,
+    name: row.name,
+    status: row.status,
+    gradeEffectiveOn: row.grade_effective_on,
+    activatedAt: row.activated_at,
+    periods: terms.filter((term) => term.schoolYearId === row.id),
+    activationPreview: previews.get(row.id) ?? null,
+  }));
+}
 
 export interface CourseSummary {
   id: string;

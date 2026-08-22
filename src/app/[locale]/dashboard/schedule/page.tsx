@@ -2,7 +2,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { ScheduleWeekView } from "@/features/school/ScheduleWeekView";
 import { SessionManagementDrawer } from "@/features/school/SessionManagementDrawer";
 import { TermManager } from "@/features/school/TermManager";
-import { listSchoolTerms } from "@/features/school/courses";
+import { listSchoolYears } from "@/features/school/courses";
 import { getSessionQuickRow } from "@/features/school/classes";
 import { getMyPerms, requireUser } from "@/lib/auth";
 
@@ -27,7 +27,7 @@ export default async function SchedulePage({
     getMyPerms(user.id),
     searchParams,
   ]);
-  const schoolTerms = perms.has("schedule.manage") ? await listSchoolTerms() : [];
+  const schoolYears = perms.has("schedule.manage") ? await listSchoolYears() : [];
 
   const requestedSessionId = first(rawSearchParams.session);
   const quickRow = requestedSessionId && UUID_PATTERN.test(requestedSessionId)
@@ -41,7 +41,7 @@ export default async function SchedulePage({
       <ScheduleWeekView
         title={t("title")}
         canFilterAll={perms.has("schedule.view.all")}
-        termManager={perms.has("schedule.manage") ? <TermManager terms={schoolTerms} /> : undefined}
+        termManager={perms.has("schedule.manage") ? <TermManager years={schoolYears} /> : undefined}
       />
 
       <SessionManagementDrawer

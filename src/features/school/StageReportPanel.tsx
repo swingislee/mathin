@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "@/i18n/navigation";
 import type { SchoolTermRow } from "./courses";
+import { schoolTermLabel } from "./school-periods";
 import {
   autosaveStageReportDraftAction,
   decideLearningResultReviewAction,
@@ -52,6 +53,7 @@ export function StageReportPanel({
   initialReportId?: string;
 }) {
   const t = useTranslations("school.learningResults");
+  const scheduleT = useTranslations("school.schedule");
   const router = useRouter();
   const defaultTerm = terms.find((term) => term.isCurrent) ?? terms[0] ?? null;
   const initialReport = reports.find((report) => report.headId === initialReportId) ?? null;
@@ -180,8 +182,8 @@ export function StageReportPanel({
     setTermId(value);
     const term = terms.find((item) => item.id === value);
     if (term) {
-      setPeriodStart(term.startsOn);
-      setPeriodEnd(term.endsOn);
+      setPeriodStart(term.startsOn ?? "");
+      setPeriodEnd(term.endsOn ?? "");
     }
   };
   useEffect(() => {
@@ -241,7 +243,7 @@ export function StageReportPanel({
           <Select value={termId} onValueChange={changeTerm} disabled={Boolean(headId)}>
             <SelectTrigger><SelectValue placeholder={t("chooseTerm")} /></SelectTrigger>
             <SelectContent>
-              {terms.map((term) => <SelectItem key={term.id} value={term.id}>{term.name}</SelectItem>)}
+              {terms.map((term) => <SelectItem key={term.id} value={term.id}>{schoolTermLabel(term, scheduleT(`period${term.term}`))}</SelectItem>)}
             </SelectContent>
           </Select>
         </Label>

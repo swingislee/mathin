@@ -14,11 +14,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "@/i18n/navigation";
 import {
-  activateCampusSchoolTermAction,
   archiveSchoolHolidayAction,
   createCampusAction,
   createCampusRoomAction,
-  createCampusSchoolTermAction,
   createSchoolHolidayAction,
   rollbackFeatureFlagAction,
   rollbackOrganizationRuleAction,
@@ -139,15 +137,6 @@ export function OrganizationSettingsPanel({ initial }: { initial: OrganizationSe
   const holidayRun = useAction(createSchoolHolidayAction, { successMessage: t("holidayCreated"), errorMessage: errors, onSuccess: refresh });
   const archiveHolidayRun = useAction(archiveSchoolHolidayAction, { successMessage: t("holidayArchived"), errorMessage: errors, onSuccess: refresh });
 
-  const [termCampusId, setTermCampusId] = useState(activeCampuses[0]?.id ?? "");
-  const [termYear, setTermYear] = useState(new Date().getFullYear());
-  const [termHalf, setTermHalf] = useState<1 | 2>(1);
-  const [termName, setTermName] = useState("");
-  const [termStart, setTermStart] = useState("");
-  const [termEnd, setTermEnd] = useState("");
-  const termRun = useAction(createCampusSchoolTermAction, { successMessage: t("termCreated"), errorMessage: errors, onSuccess: refresh });
-  const activateTermRun = useAction(activateCampusSchoolTermAction, { successMessage: t("termActivated"), errorMessage: errors, onSuccess: refresh });
-
   const [ruleDomain, setRuleDomain] = useState<OrganizationRuleDomain>("calendar");
   const [ruleCampusId, setRuleCampusId] = useState<string | null>(null);
   const firstRule = effectiveRule(initial.rules, "calendar", null);
@@ -179,7 +168,7 @@ export function OrganizationSettingsPanel({ initial }: { initial: OrganizationSe
   const financeReleaseClosed = flagKey === "finance.enabled";
 
   const pending = profileRun.pending || createCampusRun.pending || updateCampusRun.pending || roomRun.pending || roomActiveRun.pending
-    || holidayRun.pending || archiveHolidayRun.pending || termRun.pending || activateTermRun.pending || ruleRun.pending
+    || holidayRun.pending || archiveHolidayRun.pending || ruleRun.pending
     || rollbackRuleRun.pending || flagRun.pending || rollbackFlagRun.pending;
   const formatTime = (value: string) => new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 
@@ -241,14 +230,10 @@ export function OrganizationSettingsPanel({ initial }: { initial: OrganizationSe
         </SectionCard>
 
         <SectionCard title={t("calendarTitle")} description={t("calendarIntro")} icon={<CalendarDays size={19} />}>
-          <div className="grid gap-5 @4xl/page:grid-cols-2">
+          <div>
             <div><h3 className="font-medium">{t("holidays")}</h3><ul className="mt-2 divide-y divide-line">{initial.holidays.map((holiday) => <li key={holiday.id} className="flex items-center gap-3 py-3 text-sm"><span className="min-w-0 flex-1">{holiday.name} · {holiday.startsOn} — {holiday.endsOn}</span><Badge variant="outline">{t(`holiday_${holiday.kind}`)}</Badge><Button size="sm" variant="secondary" disabled={pending} onClick={() => archiveHolidayRun.run(holiday.id)}>{t("archive")}</Button></li>)}</ul>
               <div className="mt-3 grid gap-3 @xl/page:grid-cols-2"><ScopeSelect campuses={activeCampuses} value={holidayCampusId} onChange={setHolidayCampusId} globalLabel={t("allCampuses")} /><Select value={holidayKind} onValueChange={(value) => setHolidayKind(value as typeof holidayKind)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="closed">{t("holiday_closed")}</SelectItem><SelectItem value="teaching">{t("holiday_teaching")}</SelectItem><SelectItem value="makeup">{t("holiday_makeup")}</SelectItem></SelectContent></Select><Input value={holidayName} maxLength={100} placeholder={t("holidayName")} onChange={(event) => setHolidayName(event.target.value)} /><span className="grid grid-cols-2 gap-2"><Input type="date" value={holidayStart} onChange={(event) => setHolidayStart(event.target.value)} /><Input type="date" value={holidayEnd} onChange={(event) => setHolidayEnd(event.target.value)} /></span></div>
               <Button className="mt-3" size="sm" variant="secondary" disabled={pending || !holidayName.trim() || !holidayStart || !holidayEnd} onClick={() => holidayRun.run({ campusId: holidayCampusId, name: holidayName, kind: holidayKind, startsOn: holidayStart, endsOn: holidayEnd })}>{t("createHoliday")}</Button>
-            </div>
-            <div><h3 className="font-medium">{t("terms")}</h3><ul className="mt-2 divide-y divide-line">{initial.terms.map((term) => <li key={term.id} className="flex items-center gap-3 py-3 text-sm"><span className="min-w-0 flex-1">{term.name} · {term.startsOn} — {term.endsOn}</span>{term.isCurrent ? <Badge variant="secondary">{t("current")}</Badge> : <Button size="sm" variant="secondary" disabled={pending} onClick={() => activateTermRun.run(term.id)}>{t("activate")}</Button>}</li>)}</ul>
-              <div className="mt-3 grid gap-3 @xl/page:grid-cols-2"><Select value={termCampusId} onValueChange={setTermCampusId}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{activeCampuses.map((campus) => <SelectItem key={campus.id} value={campus.id}>{campus.name}</SelectItem>)}</SelectContent></Select><Input type="number" min={2020} max={2100} value={termYear} onChange={(event) => setTermYear(Number(event.target.value))} /><Select value={String(termHalf)} onValueChange={(value) => setTermHalf(Number(value) as 1 | 2)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="1">{t("termFirst")}</SelectItem><SelectItem value="2">{t("termSecond")}</SelectItem></SelectContent></Select><Input value={termName} maxLength={100} placeholder={t("termName")} onChange={(event) => setTermName(event.target.value)} /><Input type="date" value={termStart} onChange={(event) => setTermStart(event.target.value)} /><Input type="date" value={termEnd} onChange={(event) => setTermEnd(event.target.value)} /></div>
-              <Button className="mt-3" size="sm" variant="secondary" disabled={pending || !termCampusId || !termName.trim() || !termStart || !termEnd} onClick={() => termRun.run({ campusId: termCampusId, year: termYear, term: termHalf, name: termName, startsOn: termStart, endsOn: termEnd })}>{t("createTerm")}</Button>
             </div>
           </div>
         </SectionCard>

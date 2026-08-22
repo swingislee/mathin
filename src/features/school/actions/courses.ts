@@ -6,7 +6,7 @@
 
 import { z } from "zod";
 import { actionError, type ActionResult } from "@/lib/action-result";
-import { authorizedClient } from "./guards";
+import { authorizedClient, nullableRpcArg } from "./guards";
 import { COMMON_CODES, dateOnly, intInRange, parse, requiredText, text, uuid } from "./schemas";
 import type { CourseWriteInput } from "./types";
 
@@ -151,35 +151,58 @@ export async function reorderLecturesAction(courseId: string, lectureIds: string
   }
 }
 
-const termSchema = z.object({
-  year: intInRange(2020, 2100),
-  term: z.union([z.literal(1), z.literal(2)]),
-  name: requiredText(100),
-  startsOn: dateOnly,
-  endsOn: dateOnly,
-}).refine((input) => input.startsOn <= input.endsOn);
+const SCHOOL_YEAR_CODES = [
+  "SCHOOL_YEAR_ALREADY_EXISTS",
+  "INVALID_SCHOOL_YEAR",
+  "NON_DEFAULT_CAMPUS_SCHOOL_YEAR",
+  "TERM_DATES_INCOMPLETE",
+  "TERM_DATES_INVALID",
+  "SCHOOL_YEAR_NOT_ACTIVE",
+  "SCHOOL_YEAR_NOT_PLANNING",
+  "SCHOOL_YEAR_SEQUENCE_INVALID",
+  "SCHOOL_YEAR_EFFECTIVE_DATE_INVALID",
+  "SCHOOL_YEAR_PROMOTION_STALE",
+  "SCHOOL_YEAR_PERIODS_INCOMPLETE",
+  "NOT_FOUND",
+  ...COMMON_CODES,
+] as const;
 
-export async function createSchoolTermAction(input: {
-  year: number;
-  term: 1 | 2;
-  name: string;
-  startsOn: string;
-  endsOn: string;
+export async function createSchoolYearAction(startYear: number): Promise<ActionResult> {
+  try {
+    const value = parse(intInRange(2020, 2100), startYear);
+    const { supabase } = await authorizedClient("schedule.manage");
+    const { error } = await supabase.rpc("create_school_year", { p_start_year: value });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, SCHOOL_YEAR_CODES);
+  }
+}
+
+const termDatesSchema = z.object({
+  termId: uuid,
+  startsOn: dateOnly.nullable(),
+  endsOn: dateOnly.nullable(),
+}).refine((input) => (input.startsOn === null) === (input.endsOn === null))
+  .refine((input) => input.startsOn === null || input.endsOn === null || input.startsOn <= input.endsOn);
+
+export async function updateSchoolTermDatesAction(input: {
+  termId: string;
+  startsOn: string | null;
+  endsOn: string | null;
 }): Promise<ActionResult> {
   try {
-    const value = parse(termSchema, input);
+    const value = parse(termDatesSchema, input);
     const { supabase } = await authorizedClient("schedule.manage");
-    const { error } = await supabase.rpc("create_school_term", {
-      p_year: value.year,
-      p_term: value.term,
-      p_name: value.name,
-      p_starts_on: value.startsOn,
-      p_ends_on: value.endsOn,
+    const { error } = await supabase.rpc("update_school_term_dates", {
+      p_term_id: value.termId,
+      p_starts_on: nullableRpcArg(value.startsOn),
+      p_ends_on: nullableRpcArg(value.endsOn),
     });
     if (error) throw new Error(error.message);
     return { ok: true };
   } catch (error) {
-    return actionError(error, COMMON_CODES);
+    return actionError(error, SCHOOL_YEAR_CODES);
   }
 }
 
@@ -191,6 +214,32 @@ export async function activateSchoolTermAction(termId: string): Promise<ActionRe
     if (error) throw new Error(error.message);
     return { ok: true };
   } catch (error) {
-    return actionError(error, COMMON_CODES);
+    return actionError(error, SCHOOL_YEAR_CODES);
+  }
+}
+
+const activateSchoolYearSchema = z.object({
+  schoolYearId: uuid,
+  effectiveOn: dateOnly,
+  expectedPromoteCount: intInRange(0, 100_000),
+});
+
+export async function activateSchoolYearAction(input: {
+  schoolYearId: string;
+  effectiveOn: string;
+  expectedPromoteCount: number;
+}): Promise<ActionResult> {
+  try {
+    const value = parse(activateSchoolYearSchema, input);
+    const { supabase } = await authorizedClient("schedule.manage");
+    const { error } = await supabase.rpc("activate_school_year", {
+      p_school_year_id: value.schoolYearId,
+      p_effective_on: value.effectiveOn,
+      p_expected_promote_count: value.expectedPromoteCount,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, SCHOOL_YEAR_CODES);
   }
 }

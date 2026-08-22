@@ -16,6 +16,7 @@ import { buildClass, getClassBuildConflictsAction, getClassBuildCourseDetailActi
 import type { BuildClassSession } from "./actions/types";
 import type { StaffOption } from "./classes";
 import type { SchoolTermRow } from "./courses";
+import { schoolTermLabel } from "./school-periods";
 import { inputClass } from "./controls";
 import { generateSchedulePreview } from "./schedule-preview";
 import { CoursePicker } from "./teaching-operations/CoursePicker";
@@ -51,6 +52,7 @@ export function ClassBuildWizard({
   initialCourseId?: string;
 }) {
   const t = useTranslations("school.classBuild");
+  const scheduleT = useTranslations("school.schedule");
   const router = useRouter();
   const initialCourseHandled = useRef(false);
   const [step, setStep] = useState(1);
@@ -302,7 +304,7 @@ export function ClassBuildWizard({
       <div className="mt-5 grid gap-4 @2xl/page:grid-cols-2 @6xl/page:grid-cols-4">
         <div>
           <Label htmlFor="school-term" className="text-xs font-normal text-muted">{t("schoolTerm")}</Label>
-          <Select value={schoolTermId} onValueChange={setSchoolTermId}><SelectTrigger id="school-term" aria-required="true" aria-invalid={step3Attempted && !schoolTermId} aria-describedby={step3Attempted && !schoolTermId ? "school-term-error" : undefined} className="mt-1"><SelectValue placeholder={t("chooseSchoolTerm")} /></SelectTrigger><SelectContent>{schoolTerms.map((term) => <SelectItem key={term.id} value={term.id}>{term.name}{term.isCurrent ? ` · ${t("current")}` : ""}</SelectItem>)}</SelectContent></Select>
+          <Select value={schoolTermId} onValueChange={setSchoolTermId}><SelectTrigger id="school-term" aria-required="true" aria-invalid={step3Attempted && !schoolTermId} aria-describedby={step3Attempted && !schoolTermId ? "school-term-error" : undefined} className="mt-1"><SelectValue placeholder={t("chooseSchoolTerm")} /></SelectTrigger><SelectContent>{schoolTerms.map((term) => <SelectItem key={term.id} value={term.id}>{schoolTermLabel(term, scheduleT(`period${term.term}`))}{term.isCurrent ? ` · ${t("current")}` : ""}</SelectItem>)}</SelectContent></Select>
           {step3Attempted && !schoolTermId && <p id="school-term-error" role="alert" className="mt-1 text-xs text-rose">{t("schoolTermRequired")}</p>}
         </div>
         <div>

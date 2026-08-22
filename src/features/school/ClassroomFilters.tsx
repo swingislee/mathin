@@ -7,11 +7,13 @@ import { listSchoolTerms } from "./courses";
 import { listStaffOptions } from "./classes";
 import type { ClassroomListFilters as Filters } from "./teaching-operations/classroom-queries";
 import type { ClassroomScope } from "./teaching-operations/types";
+import { schoolTermLabel } from "./school-periods";
 
 /** scope 切换已上移到命令面板的状态区（ClassroomScopeSwitch），这里只留筛选本身。 */
 export async function ClassroomFilters({ filters, scope }: { filters: Filters; scope: ClassroomScope }) {
-  const [t, staff, terms] = await Promise.all([
+  const [t, scheduleT, staff, terms] = await Promise.all([
     getTranslations("school.classes"),
+    getTranslations("school.schedule"),
     listStaffOptions(),
     listSchoolTerms(),
   ]);
@@ -25,7 +27,7 @@ export async function ClassroomFilters({ filters, scope }: { filters: Filters; s
         <Select name="grade" defaultValue={toSelectValue(filters.grade?.toString() ?? "")}><FilterSelectTrigger className="w-full"><SelectValue placeholder={t("allGrades")} /></FilterSelectTrigger><SelectContent><SelectItem value={toSelectValue("")}>{t("allGrades")}</SelectItem>{Array.from({ length: 12 }, (_, index) => index + 1).map((grade) => <SelectItem key={grade} value={String(grade)}>{t("grade", { grade })}</SelectItem>)}</SelectContent></Select>
         <Select name="teacherId" defaultValue={toSelectValue(filters.teacherId ?? "")}><FilterSelectTrigger className="w-full"><SelectValue placeholder={t("allTeachers")} /></FilterSelectTrigger><SelectContent><SelectItem value={toSelectValue("")}>{t("allTeachers")}</SelectItem>{staff.map((option) => <SelectItem key={option.id} value={option.id}>{option.name}</SelectItem>)}</SelectContent></Select>
         <Select name="supportId" defaultValue={toSelectValue(filters.supportId ?? "")}><FilterSelectTrigger className="w-full"><SelectValue placeholder={t("allSupport")} /></FilterSelectTrigger><SelectContent><SelectItem value={toSelectValue("")}>{t("allSupport")}</SelectItem>{staff.map((option) => <SelectItem key={option.id} value={option.id}>{option.name}</SelectItem>)}</SelectContent></Select>
-        <Select name="schoolTermId" defaultValue={toSelectValue(filters.schoolTermId ?? "")}><FilterSelectTrigger className="w-full"><SelectValue placeholder={t("allSchoolTerms")} /></FilterSelectTrigger><SelectContent><SelectItem value={toSelectValue("")}>{t("allSchoolTerms")}</SelectItem>{terms.map((term) => <SelectItem key={term.id} value={term.id}>{term.name}</SelectItem>)}</SelectContent></Select>
+        <Select name="schoolTermId" defaultValue={toSelectValue(filters.schoolTermId ?? "")}><FilterSelectTrigger className="w-full"><SelectValue placeholder={t("allSchoolTerms")} /></FilterSelectTrigger><SelectContent><SelectItem value={toSelectValue("")}>{t("allSchoolTerms")}</SelectItem>{terms.map((term) => <SelectItem key={term.id} value={term.id}>{schoolTermLabel(term, scheduleT(`period${term.term}`))}</SelectItem>)}</SelectContent></Select>
         <Select name="operationalStatus" defaultValue={toSelectValue(filters.operationalStatus ?? "")}><FilterSelectTrigger className="w-full"><SelectValue placeholder={t("allOperationalStatuses")} /></FilterSelectTrigger><SelectContent><SelectItem value={toSelectValue("")}>{t("allOperationalStatuses")}</SelectItem><SelectItem value="planning">{t("planning")}</SelectItem><SelectItem value="active">{t("operationalActive")}</SelectItem><SelectItem value="completed">{t("completed")}</SelectItem></SelectContent></Select>
         <Select name="purpose" defaultValue={toSelectValue(filters.purpose ?? "")}><FilterSelectTrigger className="w-full"><SelectValue placeholder={t("allPurposes")} /></FilterSelectTrigger><SelectContent><SelectItem value={toSelectValue("")}>{t("allPurposes")}</SelectItem><SelectItem value="production">{t("production")}</SelectItem><SelectItem value="test">{t("test")}</SelectItem></SelectContent></Select>
         <Select name="readiness" defaultValue={toSelectValue(filters.readiness ?? "")}><FilterSelectTrigger className="w-full"><SelectValue placeholder={t("allReadiness")} /></FilterSelectTrigger><SelectContent><SelectItem value={toSelectValue("")}>{t("allReadiness")}</SelectItem><SelectItem value="ready">{t("ready")}</SelectItem><SelectItem value="incomplete">{t("incomplete")}</SelectItem></SelectContent></Select>

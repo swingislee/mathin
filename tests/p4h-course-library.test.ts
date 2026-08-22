@@ -34,6 +34,10 @@ describe("P4H course library contract", () => {
     expect(coursePage).not.toContain("TermManager");
     expect(coursePage).not.toContain("listSchoolTerms");
     expect(schedulePage).toContain("TermManager");
-    expect(actions.match(/authorizedClient\("schedule\.manage"\)/g)).toHaveLength(2);
+    expect(actions).toContain("createSchoolYearAction");
+    expect(actions).toContain("updateSchoolTermDatesAction");
+    expect(actions).toContain("activateSchoolTermAction");
+    expect(actions).toContain("activateSchoolYearAction");
+    expect(actions.match(/authorizedClient\("schedule\.manage"\)/g)).toHaveLength(4);
   });
 });

@@ -30,8 +30,8 @@ pnpm lint
 pnpm typecheck
 pnpm build
 pnpm plan:audit
-pnpm test             # 全量回归；92 文件、621 项通过、1 项条件跳过，不等同 R1-Live 门禁
-pnpm r1:live:test     # 当前两 Gate 的源码合同；5 文件、48/48
+pnpm test             # 全量回归；93 文件、625 项通过、1 项条件跳过，不等同 R1-Live 门禁
+pnpm r1:live:test     # 当前两 Gate 的源码合同；6 文件、52/52
 pnpm r1:regression    # 历史 R1-1～16 累积合同；23 文件、179/179
 pnpm r1:test          # 兼容入口，等同 pnpm r1:live:test
 pnpm secrets:check    # 当前跟踪树与 binary ASCII 高置信 secret 扫描
