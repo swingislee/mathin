@@ -30,7 +30,7 @@ jobs:
           cache: pnpm
       - id: install
         run: pnpm install --frozen-lockfile
-      # 以下步骤彼此独立（都是源码/文档静态扫描），只要装包成功就全部跑完再判定成败：
+      # 以下工程检查彼此独立，只要装包成功就全部跑完再判定成败：
       # fail-fast 会让第一个失败的门禁掩盖其余问题，把「修一个、推一次、再红一次」变成常态。
       - run: pnpm lint
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
@@ -58,9 +58,6 @@ jobs:
       - name: 规划状态、唯一阶段与 1.0 契约防漂移
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm plan:audit
-      - name: R1 平台静态合同
-        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        run: pnpm r1:test
       - name: Dashboard 内容坐标系防回退（doc21）
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm doc21:audit

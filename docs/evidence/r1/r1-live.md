@@ -19,7 +19,7 @@
 
 - migration `20260815000100_r1_live_object_protection_manifest.sql` 不包含 manifest seed 或 Xiaomi 指纹，只建立表、trigger、内部校验与现有两个 purge RPC 的 fail-closed 合同；仓库 head `20260815000200_r1_profile_role_update_guard.sql` 只恢复受信任 role 更新旁路，其他 profile 保护字段继续拒绝。
 - 一次性 PostgreSQL 15 先前从零重放 181 个 bootstrap/migration/seed/fixture 输入并通过 manifest 断言；加入 role guard 后又在明确命名的临时空库重放 182 个输入（179 migrations + bootstrap/seed/fixture）并通过账户安全断言，临时库随后删除。
-- 14/14 份 R1 数据库断言既有基线通过；manifest/purge 定向 Vitest 为 2 个文件、17/17；当前 `pnpm r1:test` 为 23 个文件、179/179；全量 Vitest 为 92 个文件、621 项通过、1 项条件跳过；`pnpm ci:checks` 17/17 通过。
+- 14/14 份 R1 数据库断言既有基线通过；manifest/purge 定向 Vitest 为 2 个文件、17/17。当前 `pnpm r1:live:test` 为 5 个文件、48/48；历史 `pnpm r1:regression` 为 23 个文件、179/179；全量 Vitest 为 92 个文件、621 项通过、1 项条件跳过。三类计数分别表示当前源码合同、历史合同和工程回归，不替代目标环境证据。
 - 仓库实现阶段的数据库验证和类型生成只连接 disposable loopback 容器；之后按独立明确授权向 Xiaomi 部署两个 migration。生产部署边界、断言和只读 postflight 见下文及 [`r1-live-target-audit.md`](r1-live-target-audit.md#35-两个-r1-live-migration-的生产部署)。
 
 ### 本机隔离开发目标证据
@@ -63,11 +63,11 @@
 | 证据字段 | 值 |
 | --- | --- |
 | `gate_id`, `domain`, `result` | `R1-Live Gate 1`；运行时业务门禁；仓库、隔离数据库和固定账号 UI 子步骤 `PASS`，生产部署 `pending`，Gate 1 整体仍 `BLOCKED` |
-| `measured_value`, `threshold` | 明确命名的一次性数据库从 bootstrap 顺序重放 181 个 migration、两份既有课程 seed、平台垫片和固定夹具后，P4H 与 doc26 SQL 断言均通过并整体回滚；主隔离库 ledger=178、head=`20260822000200`、checksum 与 migration 规范化 hash 相同，active manifest=0。固定主管账号在正式自由班确认页选中“创建后立即启用”，测试未提交；学校门户固定账号 Playwright 4/4。`pnpm r1:test` 23 文件 179/179；完整 Vitest 92 文件 621 通过、1 项既有条件跳过；`pnpm ci:checks` 17/17（含 lint、typecheck、production build、secret scan、db types、双语消息与规划审计） |
+| `measured_value`, `threshold` | 明确命名的一次性数据库从 bootstrap 顺序重放 181 个 migration、两份既有课程 seed、平台垫片和固定夹具后，P4H 与 doc26 SQL 断言均通过并整体回滚；主隔离库 ledger=178、head=`20260822000200`、checksum 与 migration 规范化 hash 相同，active manifest=0。固定主管账号在正式自由班确认页选中“创建后立即启用”，测试未提交；学校门户固定账号 Playwright 4/4。当时名为 `pnpm r1:test` 的历史集合为 23 文件 179/179；完整 Vitest 92 文件 621 通过、1 项既有条件跳过；当时 `pnpm ci:checks` 17/17 |
 | `commit_sha`, `migration_head`, `environment` | `43db4ceb6972313719fc53bb675309d45ac7adbf`；本机 head `20260822000200_r1_live_operational_gate_simplification`；Windows Docker Desktop / `mathin-isolated-loopback`；未连接 Xiaomi |
 | `dataset_manifest` | 主隔离库沿用 11 个固定身份，UI 未点击“创建班级”；数据库断言写态均在一次性库事务中回滚。验证完成后精确临时数据库 `mathin_r1_gate_audit_20260822_01` 与 `/tmp/mathin_r1_gate_audit_20260822_01` 已删除，主隔离库仍为预期 head 且 active manifest=0 |
 | `started_at`, `finished_at`, `actor`, `approver` | 2026-08-22（Asia/Shanghai）；2026-08-22（Asia/Shanghai）；Codex；`swingislee`（产品裁决“门禁过多，需要按实际生产需要迭代”） |
-| `command_or_runbook` | 本机 migration 原子应用与只读 postflight；一次性空库顺序重放；`p4h_teaching_operations_assertions.sql`、`doc26_teacher_workflow_assertions.sql`；固定账号 `school-portals.spec.ts`；`pnpm r1:test`；`pnpm test`；`pnpm ci:checks` |
+| `command_or_runbook` | 本机 migration 原子应用与只读 postflight；一次性空库顺序重放；`p4h_teaching_operations_assertions.sql`、`doc26_teacher_workflow_assertions.sql`；固定账号 `school-portals.spec.ts`；当时的 `pnpm r1:test`（现为 `pnpm r1:regression`）；`pnpm test`；`pnpm ci:checks` |
 | `artifact_url_or_path`, `artifact_hash` | `supabase/migrations/20260822000200_r1_live_operational_gate_simplification.sql`；规范化文本 SHA-256 `145acada7418b268c342ced431eddfbbb0b9e0e298b4bf52a6f92d2b320555a0` |
 | `retention`, `access_roles`, `failure_ticket` | migration、回归和去标识化摘要随 Git 永久保留；仓库维护者；生产部署与当前 PostgreSQL+Storage 备份仍是 Gate 1 阻塞项 |
 
