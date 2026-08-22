@@ -71,6 +71,21 @@
 | `artifact_url_or_path`, `artifact_hash` | `supabase/migrations/20260822000200_r1_live_operational_gate_simplification.sql`；规范化文本 SHA-256 `145acada7418b268c342ced431eddfbbb0b9e0e298b4bf52a6f92d2b320555a0` |
 | `retention`, `access_roles`, `failure_ticket` | migration、回归和去标识化摘要随 Git 永久保留；仓库维护者；生产部署与当前 PostgreSQL+Storage 备份仍是 Gate 1 阻塞项 |
 
+### 测试入口重分类证据
+
+2026-08-22，产品负责人质疑 179 项 R1 与 621 项全量通过是否真实对应当前产品体量。只读拆分确认：179 项是 R1-1～16 累积合同，且已包含在 622 项全量 Vitest 中；全量中的 279 项属于独立 SML 轨道。commit `017e7a93917d03b50a2b0890a38bf716fa71b7d2` 因此只重组入口和汇报，不删除测试：当前两 Gate 使用 5 个直接相关文件，历史集合改名，CI 保留全量回归并移除重复执行历史集合的步骤。隔离数据库 SQL、固定账号 Playwright、生产只读核查和真实教师闭环继续单列，不以 Vitest 数量替代。
+
+| 证据字段 | 值 |
+| --- | --- |
+| `gate_id`, `domain`, `result` | `R1-Live Gate 1/2`；测试治理与证据口径；仓库子步骤 `PASS`，不改变两个 Gate 的目标环境状态 |
+| `measured_value`, `threshold` | `pnpm r1:live:test` 精确运行 `r1-account-security`、`p4h-class-builder`、`r1-classroom-continuity`、`r1-write-target-policy`、`r1-live-object-protection`，5 文件 48/48；兼容命令 `pnpm r1:test` 同为 48/48。`pnpm r1:regression` 保留 23 文件 179/179；`pnpm test` 保留 92 文件、621 通过和 1 项既有条件跳过；去掉全量后的重复历史子集后 `pnpm ci:checks` 为 16/16 |
+| `commit_sha`, `migration_head`, `environment` | `017e7a93917d03b50a2b0890a38bf716fa71b7d2`；`20260822000200_r1_live_operational_gate_simplification`（未新增 migration）；Windows 本机仓库与 CI 等价 checks；未连接 Xiaomi |
+| `dataset_manifest` | `not_applicable`；未连接数据库、未运行账号旅程、未创建或修改数据 |
+| `started_at`, `finished_at`, `actor`, `approver` | 2026-08-22（Asia/Shanghai）；2026-08-22（Asia/Shanghai）；Codex；`swingislee`（回复“继续”，执行已提出的测试入口重分类） |
+| `command_or_runbook` | `pnpm r1:live:test`；`pnpm r1:regression`；`pnpm r1:test`；`pnpm ci:checks`；`pnpm plan:audit` |
+| `artifact_url_or_path`, `artifact_hash` | `package.json`，规范化文本 SHA-256 `2df2cc1ccc308a9ccd42a63cc32e7006e26e975cbfae2276ef6cd1bd85e48ae1`；`.github/workflows/ci.yml`，规范化文本 SHA-256 `4f25ec2893cb7bc2d72401fa0e6680b91a50f27c2586207cf31c2d7267a19a65` |
+| `retention`, `access_roles`, `failure_ticket` | 入口、规划与去标识化摘要随 Git 永久保留；仓库维护者；`not_applicable` |
+
 ### 生产正式管理员身份引导与原子交接证据
 
 2026-08-15，产品负责人明确指定 Xiaomi 上唯一非固定 Gmail 身份为未来正式管理员，并要求先改为 staff、本人绑定 MFA 后再做 admin 原子交接。写前脱敏核查确认目标恰好 1 个、当前为 active student、无学生档案/监护关系/staff 岗位、MFA=0；现有 active admin 恰好 1 个且 verified MFA=1。首次调用现有 `admin_set_identity` RPC 被 `20260728000400_r1_account_security.sql` 重定义的 profile 保护触发器拒绝，事务整体回滚；随后按用户明确授权通过受信任 PostgreSQL 管理连接直接更新这一行，事务同时锁定目标并重复全部前置/后置断言。
