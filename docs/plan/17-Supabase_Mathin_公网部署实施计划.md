@@ -6,7 +6,7 @@
 >
 > **权威边界**：目标生产运行环境已改为小米 Linux；Windows 生产章节仅为历史方案。
 >
-> **R1-Live 边界**：2026-08-22 数据库已同步到 `20260822000200`，应用 current=`20260822-072101` / `ef1eb77…`、previous=`20260814-221135` / `023f5167…`；原子切换、服务和内外健康探针通过。当前 PostgreSQL+Storage 同批次备份 `mathin-20260822T093529Z` 已在 Xiaomi 外置盘生成，并通过数据库 TOC、Storage 125135 文件、源前后清单和全部 SHA-256 独立复核，Gate 1 已通过。完整恢复、异机/静态加密备份、previous 实际回切、release 错误标签、监控和 RPO/RTO 属于 Production 1.0。
+> **R1-Live 边界**：2026-08-22 数据库已同步到 `20260822000300_r1_live_enrollment_status_transition`，应用 current=`20260822-072101` / `ef1eb77…`、previous=`20260814-221135` / `023f5167…`；原子切换、服务和内外健康探针通过。当前 PostgreSQL+Storage 同批次备份 `mathin-20260822T093529Z` 已在 Xiaomi 外置盘生成，并通过数据库 TOC、Storage 125135 文件、源前后清单和全部 SHA-256 独立复核，Gate 1 已通过。完整恢复、异机/静态加密备份、previous 实际回切、release 错误标签、监控和 RPO/RTO 属于 Production 1.0。
 >
 > **剩余项**：R1-Live 最小保险丝见 doc 04；完整部署、密钥隔离、监控、恢复和发布证据见 doc 25 R1-16。
 >

@@ -2,11 +2,11 @@
 
 > **当前两 Gate 口径**：Gate 1 `PASS`；Gate 2 `BLOCKED`。下文保留 2026-08-14～17 操作当时的旧 Gate 编号作为历史证据；旧 Gate 3 的当前备份底线已并入并关闭 Gate 1，其余恢复/rollback/release 标签进入 Production 1.0。
 >
-> **核查时间**：2026-08-14 初次只读核查；2026-08-15 应用发布、正式管理员身份引导、MFA 核验、原子交接、数据库 migration 部署、首份 protected-only manifest 激活、首名真实教师注册与独立 postflight；2026-08-17 教师双岗位核查与 replacement manifest 原子替换/postflight；2026-08-22 运行时门禁 migration 与对应应用同步发布/postflight、当前 PostgreSQL+Storage 同批次备份及独立复核
+> **核查时间**：2026-08-14 初次只读核查；2026-08-15 应用发布、正式管理员身份引导、MFA 核验、原子交接、数据库 migration 部署、首份 protected-only manifest 激活、首名真实教师注册与独立 postflight；2026-08-17 教师双岗位核查与 replacement manifest 原子替换/postflight；2026-08-22 运行时门禁 migration 与对应应用同步发布/postflight、当前 PostgreSQL+Storage 同批次备份及独立复核、报名状态窄修复 migration 回滚演练/正式部署/独立 postflight
 >
 > **目标**：应用 `https://mathin.club`；Supabase `https://supabase.mathin.club`
 >
-> **授权边界**：2026-08-14 Xiaomi 核查只允许健康检查、目标指纹、匿名汇总、备份/回退结构和错误位置查询；后续 §2.2 只修改仓库代码、测试与文档。2026-08-15 本机隔离目标、应用发布、正式管理员引导/MFA/原子交接，以及两个 R1-Live migration 部署分别由后续明确指令授权，边界见对应小节。产品负责人随后给出 standing execution direction：当前 R1-Live 规划内且不扩张范围的步骤由 Agent 每轮自检目标、写态、可逆性和漂移后直接推进，不再重复询问；需要真实信息、人工操作/验收、发现计划外差异或进入清理/不可逆动作时停下。§3.6 只写入首份目标绑定 protected-only manifest；§3.7 在教师本人完成注册后只读核查邀请、身份、岗位、manifest coverage 与匿名业务计数。§3.8 在产品确认 `research`/`teacher` 双岗位均属有意设置后，以同一边界创建 protected-only replacement，原子 retire 旧版本并激活新版本；不读取或保存邮箱/邀请码，不创建或修改账号/岗位/业务数据，不加入准删条目，不执行清理。2026-08-22 发布只允许依次部署两个已验证 migration 与对应提交，再做账本、函数、权限、匿名计数、release 和 HTTP postflight；不创建/修改账号、岗位、manifest、备份或业务数据，不执行清理。
+> **授权边界**：2026-08-14 Xiaomi 核查只允许健康检查、目标指纹、匿名汇总、备份/回退结构和错误位置查询；后续 §2.2 只修改仓库代码、测试与文档。2026-08-15 本机隔离目标、应用发布、正式管理员引导/MFA/原子交接，以及两个 R1-Live migration 部署分别由后续明确指令授权，边界见对应小节。产品负责人随后给出 standing execution direction：当前 R1-Live 规划内且不扩张范围的步骤由 Agent 每轮自检目标、写态、可逆性和漂移后直接推进，不再重复询问；需要真实信息、人工操作/验收、发现计划外差异或进入清理/不可逆动作时停下。§3.6 只写入首份目标绑定 protected-only manifest；§3.7 在教师本人完成注册后只读核查邀请、身份、岗位、manifest coverage 与匿名业务计数。§3.8 在产品确认 `research`/`teacher` 双岗位均属有意设置后，以同一边界创建 protected-only replacement，原子 retire 旧版本并激活新版本；不读取或保存邮箱/邀请码，不创建或修改账号/岗位/业务数据，不加入准删条目，不执行清理。2026-08-22 首次发布只允许依次部署两个已验证 migration 与对应提交，再做账本、函数、权限、匿名计数、release 和 HTTP postflight；报名状态窄修复按 standing direction 只部署 `20260822000300`、登记 checksum 并完成回滚演练/独立 postflight，不创建或修改账号、岗位、manifest、备份或业务数据，不执行清理。
 >
 > **2026-08-22 备份边界**：用户对已规划的当前 PostgreSQL+Storage 同批次备份项回复“继续”。该轮只允许创建和核验一份新备份；不恢复、不切换服务、不修改账号/岗位/manifest/业务数据、不执行历史备份清理。现有 runner 含自动 retention prune，因此改用不删除任何目录的一次性 fail-closed runner。
 
@@ -19,7 +19,7 @@
 | 目标机 | `xiaomi`；组件指纹只保存 SHA-256，不保存数据库原始 system identifier |
 | 当前应用 release | `20260822-072101`；commit `ef1eb77cfbb1b5714191c0455dbf5fdc7313f208`；构建时间 `2026-08-22T07:22:16Z` |
 | previous 应用 release | `20260814-221135`；commit `023f5167f330935b4951d28a1b33a0cd28cd4fa9`；构建时间 `2026-08-14T22:13:01Z` |
-| 数据库迁移账本 | 179 条；head `20260822000200_r1_live_operational_gate_simplification`。仓库 178 个非 snapshot migration 全部存在；生产另保留 1 个已知历史短名 `20260726000100`，无仓库 migration 缺失 |
+| 数据库迁移账本 | 180 条；head `20260822000300_r1_live_enrollment_status_transition`。仓库 179 个非 snapshot migration 全部存在；生产另保留 1 个已知历史短名 `20260726000100`，无仓库 migration 缺失 |
 | Storage namespace | 8 个 bucket；123,602 个 object；仅保存按 bucket 排序的匿名汇总摘要 |
 | `mathin.club` 证书 | SHA-256 `B7:C2:7A:61:6F:C6:FF:A8:6D:FE:A5:73:37:8E:BF:36:24:B6:E9:58:69:77:C7:87:F4:C5:CD:29:CF:98:BB:F1`；到期日 2026-10-15 |
 | `supabase.mathin.club` 证书 | SHA-256 `00:36:EB:6A:58:6A:0D:F6:B6:E8:8A:4D:BE:2F:39:48:28:E0:2F:61:75:2C:0D:34:12:A5:07:85:97:63:DA:F2`；到期日 2026-10-15 |
@@ -284,6 +284,6 @@ replacement artifact 只复制首份 manifest 的 4 个 protected 条目，并�
 | Gate | 状态 | 已关闭 | 仍缺 |
 | --- | --- | --- | --- |
 | Gate 1 · 可安全开始 | `PASS` | 目标域名、应用/数据库/Storage/compose 匿名指纹和部署 commit 已登记；正式 admin/MFA 与首名教师岗位已建立；危险写入口和 purge RPC fail-closed，准删候选为 0；运行时 migration/应用已同步发布；current/previous、原子切换/失败回退命令、服务健康和错误查询位置已确认；当前 PostgreSQL+Storage 同批次备份已通过 TOC、完整文件计数、源前后清单和独立 SHA 复核 | 无；恢复、异机/静态加密备份和受控 rollback 属于 Production 1.0 |
-| Gate 2 · 首个真实教师闭环 | `BLOCKED` | 身份与岗位存在；本文件没有执行真实业务写态 | 建立真实班级/课次/花名册；正式教师完成点名保存与再读；管理员可见且既有无权限主体不可见 |
+| Gate 2 · 首个真实教师闭环 | `BLOCKED` | 身份与岗位存在；报名状态窄修复已部署并通过零业务/Storage 漂移 postflight；本文件没有执行真实业务写态 | 建立真实班级/课次/花名册；正式教师完成点名保存与再读；管理员可见且既有无权限主体不可见 |
 
-这份证据证明 2026-08-14 的 Xiaomi 初次只读观察，2026-08-15 的本机隔离目标、应用-only 生产发布、发布后健康、正式管理员身份引导/MFA/原子交接、新会话 AAL2/admin 路由验收、两个早期 R1-Live migration、首份 protected-only manifest 和首名真实教师邀请注册，2026-08-17 的 `research`/`teacher` 双岗位核查与 replacement manifest 原子替换，以及 2026-08-22 两条运行时 migration/对应应用的同步生产发布、零漂移 postflight 和当前 PostgreSQL+Storage 同批次备份的独立可读性/SHA 复核。Gate 1 已通过；它仍不证明真实班级/课次/花名册及点名权限闭环已经完成。previous 兼容回退、恢复演练、异机/静态加密备份和 release 错误标签另属 Production 1.0 证据。
+这份证据证明 2026-08-14 的 Xiaomi 初次只读观察，2026-08-15 的本机隔离目标、应用-only 生产发布、发布后健康、正式管理员身份引导/MFA/原子交接、新会话 AAL2/admin 路由验收、两个早期 R1-Live migration、首份 protected-only manifest 和首名真实教师邀请注册，2026-08-17 的 `research`/`teacher` 双岗位核查与 replacement manifest 原子替换，以及 2026-08-22 两条运行时 migration/对应应用的同步生产发布、当前 PostgreSQL+Storage 同批次备份的独立可读性/SHA 复核和 `20260822000300` 报名状态窄修复的回滚演练/正式部署/零漂移 postflight。Gate 1 已通过；它仍不证明真实班级/课次/花名册及点名权限闭环已经完成。previous 兼容回退、恢复演练、异机/静态加密备份和 release 错误标签另属 Production 1.0 证据。

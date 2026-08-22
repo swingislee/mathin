@@ -8,7 +8,7 @@
 >
 > **SML 暂停位置**：`SML-0 · 合同与金标冻结`；空间数学可按独立权限或 Feature Flag 并行，不进入 R1-Live Gate。
 >
-> **当前阻塞**：Gate 1 已通过。Xiaomi 已固定为 `mathin.club` / `supabase.mathin.club` 生产目标；唯一正式管理员、首名真实教师、危险写拒绝、protected-only manifest、运行时 migration/应用、current/previous、健康与错误查询位置均已登记。当前 PostgreSQL+Storage 同批次备份 `mathin-20260822T093529Z` 已在外置盘生成，数据库 TOC、Storage 125135 个文件、源前后清单及全部 SHA-256 独立复核通过。本机隔离 Golden Path 已用固定主管/教师完成未完整课程建班、课次、报名、点名保存和重新读取，并发现/修复 `lead → enrolled` 状态合同冲突；修复 migration `20260822000300` 尚未部署 Xiaomi。生产仍无真实班级、课次、报名和点名，因此 Gate 2 `BLOCKED`。
+> **当前阻塞**：Gate 1 已通过。Xiaomi 已固定为 `mathin.club` / `supabase.mathin.club` 生产目标；唯一正式管理员、首名真实教师、危险写拒绝、protected-only manifest、运行时 migration/应用、current/previous、健康与错误查询位置均已登记。当前 PostgreSQL+Storage 同批次备份 `mathin-20260822T093529Z` 已在外置盘生成，数据库 TOC、Storage 125135 个文件、源前后清单及全部 SHA-256 独立复核通过。本机隔离 Golden Path 发现并修复的 `lead → enrolled` 状态合同冲突已由 migration `20260822000300` 部署 Xiaomi，生产账本、函数、权限、manifest、业务与 Storage 独立 postflight 通过。生产仍无真实班级、课次、报名和点名，因此 Gate 2 `BLOCKED`。
 >
 > **核对日期**：2026-08-22；依据 active doc 00/25、代码与迁移、本机隔离验证、Xiaomi 去标识化运行核查和 `mathin-R1-Live-讨论稿.md`。
 
@@ -50,7 +50,7 @@ R1-Live 完成即代表 Mathin 进入公司内部生产使用。它产生的身�
 | Gate | 状态 | 已完成证据 | 唯一退出差距 |
 | --- | --- | --- | --- |
 | **Gate 1 · 可安全开始** | **PASS** | 生产目标组合指纹、部署和匿名计数已登记；危险 fixture/rebuild/import 拒绝 Xiaomi；唯一正式 admin 已完成 verified MFA、原子交接、新会话 challenge 和 admin 路由验收；首名真实教师为 active `staff` 并有 `research`/`teacher` 岗位；生产 purge 只有当前数据库指纹、active manifest、显式 `purge_allowed` test 根和精确影响计数同时成立才可执行，当前准删数为 0；`20260822000100`/`20260822000200` 与应用 `ef1eb77…` 已生产发布，current/previous、原子发布健康门和 `operational_errors` 查询位置已知；当前 PostgreSQL+Storage 同批次备份的数据库目录、125135 个 Storage 文件、前后清单与全部 SHA-256 已独立复核 | 无。previous 实际回切、恢复演练、异机/静态加密备份和错误 release 标签属于 Production 1.0 |
-| **Gate 2 · 首个真实教师闭环** | **BLOCKED** | 学生、班级、课次、报名、点名 UI/RPC 与 RLS 已实现；本轮运行时合同允许自由班/未完整课程启用，备课质量项、点名前置、资源预载和无 release 均不阻断开课；本机隔离固定账号 Golden Path 1/1 已完成建班→自动课次→`lead` 报名→教师保存迟到/备注→换页再读，夹具清理后账号未增且业务残留为 0；`20260822000300` 已在本机修复报名状态跃迁冲突 | 先把 `20260822000300` 部署 Xiaomi 并做只读 postflight；再用正式 UI/RPC 建立 1 个真实 production 班级、至少 1 个真实课次和真实花名册；正式教师完成登录→进入课次→开课/点名→保存→刷新/重登再读；正式管理员可见，匿名及一个既有无权限主体不可见；P0/核心 P1=0 |
+| **Gate 2 · 首个真实教师闭环** | **BLOCKED** | 学生、班级、课次、报名、点名 UI/RPC 与 RLS 已实现；本轮运行时合同允许自由班/未完整课程启用，备课质量项、点名前置、资源预载和无 release 均不阻断开课；本机隔离固定账号 Golden Path 1/1 已完成建班→自动课次→`lead` 报名→教师保存迟到/备注→换页再读，夹具清理后账号未增且业务残留为 0；`20260822000300` 已部署 Xiaomi，账本、函数定义/权限、身份/业务计数、manifest 与 Storage postflight 全部通过 | 用正式 UI/RPC 建立 1 个真实 production 班级、至少 1 个真实课次和真实花名册；正式教师完成登录→进入课次→开课/点名→保存→刷新/重登再读；正式管理员可见，匿名及一个既有无权限主体不可见；P0/核心 P1=0 |
 
 `R1-Live-N` 表示当前只关闭 Gate N。Gate 1 通过后推进 `R1-Live-2`；Gate 2 通过后立即向第一批公司教师开放，不再追加新的上线 Gate。
 
@@ -88,7 +88,7 @@ Gate 1 已按以下顺序关闭：
 2. **运行时门禁收敛（生产部署完成）**：迁移 `20260822000100` 先移除全课程 release 完整度门；`20260822000200` 再把自由班/启用、备课产物审核、点名前置、资源预载和无 release 收敛为提示，同时保留权限、输入、引用、状态和冻结守卫。Xiaomi 账本、函数定义/权限、应用 release、双语登录、匿名重定向和业务/Storage 零漂移 postflight 均已通过。
 3. **当前备份（已完成）**：`mathin-20260822T093529Z` 同批次保存当前 PostgreSQL custom dump 与 Storage 归档；数据库 TOC 3661 项、Storage 125135 个文件、源前后清单和全部 SHA-256 均通过独立只读复核，生产指纹/账本/对象计数无漂移。备份位于 Xiaomi 外置 exFAT 盘，读取边界与未加密/同机限制已登记；恢复、异机副本和静态加密仍属 Production 1.0。
 
-当前进入 `R1-Live-2`。Agent 先把本机 Golden Path 发现的 `20260822000300` 窄修复部署到 Xiaomi 并完成只读 postflight；随后产品负责人在正式界面提供真实班级/课次/花名册信息并安排首名教师执行 Gate 2。正式业务写入不要求每新增一行就替换 active protection manifest：现有 purge 必须命中显式 `purge_allowed` test 根，且 production 根在数据库层永久拒绝。只有未来准备授权具体清理根时，才针对当时的删除闭包生成新的 replacement manifest 并单独审批。
+当前进入 `R1-Live-2`。`20260822000300` 窄修复已部署 Xiaomi 并完成独立只读 postflight；下一项由产品负责人在正式界面提供真实班级/课次/花名册信息并安排首名教师执行 Gate 2。正式业务写入不要求每新增一行就替换 active protection manifest：现有 purge 必须命中显式 `purge_allowed` test 根，且 production 根在数据库层永久拒绝。只有未来准备授权具体清理根时，才针对当时的删除闭包生成新的 replacement manifest 并单独审批。
 
 ## 5. Gate 2 最小施工
 

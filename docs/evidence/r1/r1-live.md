@@ -2,7 +2,7 @@
 
 ## 结论
 
-截至 2026-08-22，`mathin.club` / `supabase.mathin.club` 的应用、数据库、Storage、compose 和部署 commit 已完成目标登记，仓库级写入口保险丝也已把 Xiaomi 固定为当前生产目标；测试造数/重建不能写入它，课程内容写入默认拒绝并使用独立受控通道。本机已建立只绑定 `127.0.0.1` 的隔离 Supabase，完成固定开发账号、登录和数据库合同验证，且没有复制或修改 Xiaomi 数据。两条运行时 migration 已把生产账本推进到 `20260822000200_r1_live_operational_gate_simplification`，应用 current 为 `20260822-072101` / `ef1eb77…`，previous 为 `20260814-221135` / `023f5167…`；原子切换、失败回退命令、双层健康和 `operational_errors` 查询位置均已确认。唯一正式管理员已完成 verified MFA、唯一 admin 原子交接、新会话 MFA challenge 和生产 admin 路由验收；首名真实教师已注册为 active `staff`，`research` 与 `teacher` 双岗位经产品确认。active manifest 为 8 条 protected、0 条 `purge_allowed`，两个 purge 候选列表为空；这已经满足 R1-Live 防误清底线，日常正式业务写入不再要求逐条 replacement。运行时门禁收敛为权限/作用域、输入、引用、状态与不可变历史；课程完整度、自由班、教师冲突、备课产物/审核/检查项、点名时机、资源预载和无 release 均改为提示。当前 PostgreSQL+Storage 同批次备份 `mathin-20260822T093529Z` 已在 Xiaomi 外置盘完成，数据库 TOC、Storage 125135 个文件、源前后清单和全部 SHA-256 独立复核通过，生产指纹、账本和匿名对象计数无漂移，因此 Gate 1 `PASS`。本机隔离 Golden Path 已完成未完整课程建班、自动课次、`lead` 报名、固定教师点名保存和换页再读，并以 `20260822000300_r1_live_enrollment_status_transition` 修复沿途发现的状态合同冲突；该 migration 尚未部署 Xiaomi，真实班级/课次/花名册及生产点名闭环也尚未执行，因此 Gate 2 保持 `BLOCKED`。
+截至 2026-08-22，`mathin.club` / `supabase.mathin.club` 的应用、数据库、Storage、compose 和部署 commit 已完成目标登记，仓库级写入口保险丝也已把 Xiaomi 固定为当前生产目标；测试造数/重建不能写入它，课程内容写入默认拒绝并使用独立受控通道。本机已建立只绑定 `127.0.0.1` 的隔离 Supabase，完成固定开发账号、登录和数据库合同验证，且没有复制或修改 Xiaomi 数据。运行时门禁与报名状态 migration 已把生产账本推进到 `20260822000300_r1_live_enrollment_status_transition`，应用 current 为 `20260822-072101` / `ef1eb77…`，previous 为 `20260814-221135` / `023f5167…`；原子切换、失败回退命令、双层健康和 `operational_errors` 查询位置均已确认。唯一正式管理员已完成 verified MFA、唯一 admin 原子交接、新会话 MFA challenge 和生产 admin 路由验收；首名真实教师已注册为 active `staff`，`research` 与 `teacher` 双岗位经产品确认。active manifest 为 8 条 protected、0 条 `purge_allowed`，两个 purge 候选列表为空；这已经满足 R1-Live 防误清底线，日常正式业务写入不再要求逐条 replacement。运行时门禁收敛为权限/作用域、输入、引用、状态与不可变历史；课程完整度、自由班、教师冲突、备课产物/审核/检查项、点名时机、资源预载和无 release 均改为提示。当前 PostgreSQL+Storage 同批次备份 `mathin-20260822T093529Z` 已在 Xiaomi 外置盘完成，数据库 TOC、Storage 125135 个文件、源前后清单和全部 SHA-256 独立复核通过，生产指纹、账本和匿名对象计数无漂移，因此 Gate 1 `PASS`。本机隔离 Golden Path 已完成未完整课程建班、自动课次、`lead` 报名、固定教师点名保存和换页再读；沿途发现的状态合同冲突随后以回滚演练、正式单事务与独立只读 postflight 修复到 Xiaomi，账号、业务、manifest 与 Storage 均零漂移。真实班级/课次/花名册及生产点名闭环尚未执行，因此 Gate 2 保持 `BLOCKED`。
 
 本文件是 E0/E1 差距审阅，不是完整生产验收。2026-08-14～22 的 Xiaomi E1/E3 运行事实，以及本机隔离目标、应用/数据库发布、正式管理员交接和 manifest 激活证据见 [`r1-live-target-audit.md`](r1-live-target-audit.md)；用户提供的 `docs/plan/mathin-R1-Live-讨论稿.md` 为产品裁决输入，现行施工顺序以 doc 04 为准。
 
@@ -11,7 +11,7 @@
 | Gate | 当前状态 | 已完成证据 | 缺失项 | 是否阻塞 | 最小修复范围 |
 | --- | --- | --- | --- | --- | --- |
 | Gate 1 · 可安全开始 | `PASS` | 目标/身份、生产危险写拒绝、0 个 purge 候选、运行时 migration/应用、current/previous、回退命令、健康探针、错误查询位置和当前 PostgreSQL+Storage 同批次备份均已确认；备份独立 SHA 与可读性复核通过 | 无 | 否 | 已关闭；恢复、异机/静态加密备份和受控 rollback 进入 Production 1.0 |
-| Gate 2 · 首个真实教师闭环 | `BLOCKED` | 学生/班级/课次/分班/点名 UI、RPC、RLS 和持久化合同已实现；点名可在课前、课中或课后完成，不再阻断开课；本机隔离固定账号 Golden Path 1/1 已完成建班→自动课次→报名→教师点名保存→换页再读，`lead → enrolled` 修复在本机通过，账号未增且可变业务残留为 0 | `20260822000300` 未部署 Xiaomi；无真实班级/课次/花名册；无正式教师保存→刷新或重登→再读、管理员可见、无权限拒绝的生产 Golden Path | 是 | 先部署窄 migration，再用正式 UI 建立最小真实数据，由正式教师完成一次点名并做权限对照 |
+| Gate 2 · 首个真实教师闭环 | `BLOCKED` | 学生/班级/课次/分班/点名 UI、RPC、RLS 和持久化合同已实现；点名可在课前、课中或课后完成，不再阻断开课；本机隔离固定账号 Golden Path 1/1 已完成建班→自动课次→报名→教师点名保存→换页再读，`lead → enrolled` 修复已部署 Xiaomi，账号、业务、manifest 与 Storage postflight 零漂移 | 无真实班级/课次/花名册；无正式教师保存→刷新或重登→再读、管理员可见、无权限拒绝的生产 Golden Path | 是 | 用正式 UI 建立最小真实数据，由正式教师完成一次点名并做权限对照 |
 
 状态只允许 `PASS`、`BLOCKED`、`UNKNOWN`、`NOT REQUIRED`。范围冻结是永久规则，不再单列 Gate；旧 Gate 3 的当前备份底线并入 Gate 1，恢复/受控 rollback 演练与 release 错误标签进入 Production 1.0；旧 Gate 4 的首个教师动作并入 Gate 2，独立观察和连续运行进入上线后证据。
 
@@ -54,9 +54,24 @@
 | `started_at`, `finished_at`, `actor`, `approver` | 2026-08-22（Asia/Shanghai）；2026-08-22（Asia/Shanghai）；Codex；`swingislee`（回复“继续”，推进 doc 04 已规划的 Gate 2 隔离 Golden Path） |
 | `command_or_runbook` | `pnpm e2e:r1-live:golden`；runner 同时要求 loopback 应用目标、`R1_DEV_TEST_FIXTURES=1`、非 release mode 和 `assertNonProductionWriteTarget`；登录态 trace/screenshot/video 全关闭；`pnpm r1:live:test`、`pnpm test -- tests/r1-playwright-baseline.test.ts`、`pnpm ci:checks`（16/16） |
 | `artifact_url_or_path`, `artifact_hash` | `supabase/migrations/20260822000300_r1_live_enrollment_status_transition.sql` `f07a186b3cfc9395f071d14717c0c4eeae543c055fcf4124e0e022be08c6bffc`；`e2e/r1-live-golden-path.spec.ts` `d156a7c55cb21f083d2036389b5b485cf60bb53db8240d543b84d818b6454708`；`e2e/support/r1-live-golden-path-fixture.ts` `35352778fe2170cb052742f738bfb8fb79e574c99cfe6c21afa3b147292fbc56`；`scripts/run-r1-live-golden-path.mjs` `c4603a8d1321d1babeee9b0f247ef70cd72d529a2045ff758b6bdb3eb92b8e9e`（均为 LF 归一化 SHA-256） |
-| `retention`, `access_roles`, `failure_ticket` | migration、runner、合同和去标识化摘要随 Git 永久保留；仓库维护者；`BUG-R1-LIVE-003` 已在仓库/本机关闭，生产部署与正式目标复验 pending |
+| `retention`, `access_roles`, `failure_ticket` | migration、runner、合同和去标识化摘要随 Git 永久保留；仓库维护者；`BUG-R1-LIVE-003` 的生产数据库合同已关闭，正式业务 Golden Path 仍由 Gate 2 跟踪 |
 
 首次完整业务链在收尾保护中发现测试班默认 `late_lessons=1` 会生成 1 条课耗账本；清理器先 fail-closed，没有继续删除关联对象。随后只对已核对的唯一 UUID、随机合成名称、`purpose=test`、合成来源和精确对象计数执行事务化清理，事务内 precheck/postcheck 均为 1，审计事件未删除；之后 runner 在点名前把精确匹配测试班的四种课耗置 0。该处理只约束本机合成夹具，不改变正式班默认课耗合同。
+
+### Gate 2 报名状态窄修复的生产部署证据
+
+2026-08-22，先在 Xiaomi 新连接的 `REPEATABLE READ READ ONLY` 事务核对目标指纹、旧账本/head/checksum、旧函数定义/owner/ACL、身份与业务匿名计数、active manifest 摘要和 Storage 计数。migration 与 fail-closed 前后断言随后在同一 serializable 事务完整执行并显式 `ROLLBACK`；独立连接确认旧 head、旧函数和全部计数恢复后，完全相同的前三份 SQL 正式提交。提交后的新连接只读 postflight 验证新状态边存在、旧状态边不存在，且没有账号、业务、manifest 或 Storage 漂移。
+
+| 证据字段 | 值 |
+| --- | --- |
+| `gate_id`, `domain`, `result` | `R1-Live Gate 2`；`lead → enrolled` 受控报名状态合同；生产 migration 子步骤 `PASS`，Gate 2 整体仍 `BLOCKED` |
+| `measured_value`, `threshold` | ledger `179→180`，head=`20260822000300_r1_live_enrollment_status_transition`，checksum=`f07a186b3cfc9395f071d14717c0c4eeae543c055fcf4124e0e022be08c6bffc`；`guard_student_state_transition()` 定义 SHA-256 由 `ed1e0a7…64dfb` 变为 `00cd9471…64a5`，精确新边存在、旧边不存在，owner=`postgres`、ACL 原样保留。显式回滚演练、独立回滚核查、正式提交与独立 postflight 全部通过 |
+| `commit_sha`, `migration_head`, `environment` | migration source commit `302a0523b0bf27e772618ca3c8c512b7b52166b2`；`20260822000300_r1_live_enrollment_status_transition`；Xiaomi / production；数据库指纹 `10e3f97e32b018403c9074efa4e258d699530a487c47de89b5d307ab7ff21a0c` |
+| `dataset_manifest` | pre/post 均为 auth/profile=13、profile admin/staff/student/parent=`1/8/2/2`、verified active admin MFA=1、staff-role=10、学生=4、监护关系=2、课程族/目录版本/课程/讲次/release=`2/3/102/1315/2633`、班级/课次/报名/点名/课耗账本=`0/0/0/0/0`、Storage bucket/object=`8/123602`；manifest header/active/retired=`2/1/1`、active entry/protected/purge=`8/8/0`，目标与 entries hash 均匹配 |
+| `started_at`, `finished_at`, `actor`, `approver` | 2026-08-22（Asia/Shanghai）；独立 postflight 不晚于 `2026-08-22T15:18:57Z`；Codex；`swingislee`（在既定 R1-Live 下一项连续回复“继续”） |
+| `command_or_runbook` | 只读 preflight → 文件摘要/mode 核对 → `psql -1` 完整回滚演练 → 新连接只读回滚核查 → 同一 pre/migration/post 正式 `psql -1` → 新连接只读 postflight → 精确删除主机/容器 `/tmp` 副本；未创建或修改账号、业务数据、岗位、manifest、备份或 purge 状态。两次只读 manifest 查询因本轮临时 SQL 的别名/表名错误终止；第一次回滚演练因临时断言误用不存在的 `profiles.status` 在 migration 前终止，三次均无持久写入，修正后完整链通过 |
+| `artifact_url_or_path`, `artifact_hash` | `supabase/migrations/20260822000300_r1_live_enrollment_status_transition.sql`；LF 规范化 SHA-256 `f07a186b3cfc9395f071d14717c0c4eeae543c055fcf4124e0e022be08c6bffc`；修正后临时 pre/post/rollback 脚本传输 SHA-256 分别为 `5dccb426…14ff`、`8597842c…8b4`、`ca66ea84…192`，部署后不保留 |
+| `retention`, `access_roles`, `failure_ticket` | migration、账本和本 Git 摘要永久保留；临时脚本已从 Xiaomi 主机/容器删除；仓库维护者/Xiaomi 运维角色；`not_applicable`（三次前置脚本错误均在任何持久写入前 fail-closed） |
 
 ### 未完成课程可建班/启用的隔离回归证据
 
@@ -290,7 +305,7 @@ Agent 按 doc 04 的 standing execution direction 生成包含原 4 个 protecte
 
 | ID | 等级 | 原因 | 最小修复 | 人工操作 | 验收 |
 | --- | --- | --- | --- | --- | --- |
-| LIVE-P1-03 | 核心 P1 | 隔离固定账号写态已通过，但 `20260822000300` 未部署生产，也没有真实数据 Golden Path | 先部署窄 migration；再走正式 UI 建立花名册、production 班级和课次，正式教师保存点名并刷新或重登再读，管理员与既有无权限主体作对照 | migration 由 Agent 按既定发布约束部署；产品负责人提供真实花名册；正式教师执行一次登录与点名 | 生产函数允许受控 `lead → enrolled`；每名在册学生恰好一条记录；再读一致；越权查询 0 泄露；P0/核心 P1=0 |
+| LIVE-P1-03 | 核心 P1 | 生产函数已允许受控 `lead → enrolled`，但还没有真实数据 Golden Path | 走正式 UI 建立花名册、production 班级和课次，正式教师保存点名并刷新或重登再读，管理员与既有无权限主体作对照 | 产品负责人提供真实花名册；正式教师执行一次登录与点名 | 每名在册学生恰好一条记录；再读一致；越权查询 0 泄露；P0/核心 P1=0 |
 
 仓库审阅没有发现一个已证实的开放 P0；这不等于生产 P0=0，因为 Gate 2 尚未在目标环境执行。
 
