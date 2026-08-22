@@ -8,7 +8,7 @@
 >
 > **SML 暂停位置**：`SML-0 · 合同与金标冻结`；空间数学可按独立权限或 Feature Flag 并行，不进入 R1-Live Gate。
 >
-> **当前阻塞**：Xiaomi 已固定为 `mathin.club` / `supabase.mathin.club` 生产目标；唯一正式管理员已完成 MFA 和 admin 路由验收，首名真实教师已注册并获得 `research`/`teacher` 岗位；危险开发写入口拒绝生产，protected-only manifest 为 active 8 条、`purge_allowed=0`，生产 current/previous、健康探针和错误查询位置已知。运行时门禁迭代 `20260822000100`/`20260822000200` 与对应应用已完成本机隔离验证、尚未部署 Xiaomi；目标机仍无可核验的当前数据库/Storage 备份，因此 Gate 1 `BLOCKED`。生产尚无真实班级、课次、报名和点名，Gate 2 `BLOCKED`。
+> **当前阻塞**：Xiaomi 已固定为 `mathin.club` / `supabase.mathin.club` 生产目标；唯一正式管理员已完成 MFA 和 admin 路由验收，首名真实教师已注册并获得 `research`/`teacher` 岗位；危险开发写入口拒绝生产，protected-only manifest 为 active 8 条、`purge_allowed=0`。运行时门禁 migration `20260822000100`/`20260822000200` 已部署，生产数据库 head 为 `20260822000200_r1_live_operational_gate_simplification`；应用 current 为 `20260822-072101` / `ef1eb77…`，previous 为 `20260814-221135` / `023f5167…`，两层健康与匿名鉴权探针通过。目标机仍无可核验的当前数据库/Storage 同批次备份，因此 Gate 1 `BLOCKED`。生产尚无真实班级、课次、报名和点名，Gate 2 `BLOCKED`。
 >
 > **核对日期**：2026-08-22；依据 active doc 00/25、代码与迁移、本机隔离验证、Xiaomi 去标识化运行核查和 `mathin-R1-Live-讨论稿.md`。
 
@@ -49,7 +49,7 @@ R1-Live 完成即代表 Mathin 进入公司内部生产使用。它产生的身�
 
 | Gate | 状态 | 已完成证据 | 唯一退出差距 |
 | --- | --- | --- | --- |
-| **Gate 1 · 可安全开始** | **BLOCKED** | 生产目标组合指纹、部署和匿名计数已登记；危险 fixture/rebuild/import 拒绝 Xiaomi；唯一正式 admin 已完成 verified MFA、原子交接、新会话 challenge 和 admin 路由验收；首名真实教师为 active `staff` 并有 `research`/`teacher` 岗位；生产 purge 只有当前数据库指纹、active manifest、显式 `purge_allowed` test 根和精确影响计数同时成立才可执行，当前准删数为 0；current/previous、原子发布健康门和 `operational_errors` 查询位置已知 | 完成 `20260822000100`/`20260822000200` 与应用的生产部署；产生并核对一份当前数据库与 Storage 备份。previous 实际回切、恢复抽查和错误 release 标签移到 Production 1.0 |
+| **Gate 1 · 可安全开始** | **BLOCKED** | 生产目标组合指纹、部署和匿名计数已登记；危险 fixture/rebuild/import 拒绝 Xiaomi；唯一正式 admin 已完成 verified MFA、原子交接、新会话 challenge 和 admin 路由验收；首名真实教师为 active `staff` 并有 `research`/`teacher` 岗位；生产 purge 只有当前数据库指纹、active manifest、显式 `purge_allowed` test 根和精确影响计数同时成立才可执行，当前准删数为 0；`20260822000100`/`20260822000200` 与应用 `ef1eb77…` 已生产发布，current/previous、原子发布健康门和 `operational_errors` 查询位置已知 | 产生并核对一份当前数据库与 Storage 同批次备份。previous 实际回切、恢复抽查和错误 release 标签移到 Production 1.0 |
 | **Gate 2 · 首个真实教师闭环** | **BLOCKED** | 学生、班级、课次、报名、点名 UI/RPC 与 RLS 已实现；本轮运行时合同允许自由班/未完整课程启用，备课质量项、点名前置、资源预载和无 release 均不阻断开课 | 用正式 UI/RPC 建立 1 个真实 production 班级、至少 1 个真实课次和真实花名册；正式教师完成登录→进入课次→开课/点名→保存→刷新/重登再读；正式管理员可见，匿名及一个既有无权限主体不可见；P0/核心 P1=0 |
 
 `R1-Live-N` 表示当前只关闭 Gate N。Gate 1 通过后推进 `R1-Live-2`；Gate 2 通过后立即向第一批公司教师开放，不再追加新的上线 Gate。
@@ -85,7 +85,7 @@ R1-Live 完成即代表 Mathin 进入公司内部生产使用。它产生的身�
 按以下顺序关闭 Gate 1：
 
 1. **目标、身份和防误清（已完成）**：Xiaomi 目标指纹、唯一 admin MFA、真实教师岗位、写入口 target policy、current/previous、健康探针、错误查询位置和 protected-only active manifest 均已登记。当前 `purge_allowed=0`，所以没有任何永久清理候选。
-2. **运行时门禁收敛（本机验证完成）**：迁移 `20260822000100` 先移除全课程 release 完整度门；`20260822000200` 再把自由班/启用、备课产物审核、点名前置、资源预载和无 release 收敛为提示，同时保留权限、输入、引用、状态和冻结守卫。下一步按既定发布流程原子部署数据库函数与应用。
+2. **运行时门禁收敛（生产部署完成）**：迁移 `20260822000100` 先移除全课程 release 完整度门；`20260822000200` 再把自由班/启用、备课产物审核、点名前置、资源预载和无 release 收敛为提示，同时保留权限、输入、引用、状态和冻结守卫。Xiaomi 账本、函数定义/权限、应用 release、双语登录、匿名重定向和业务/Storage 零漂移 postflight 均已通过。
 3. **当前备份（待完成）**：为当前 PostgreSQL 和 Storage 生成同批次备份，登记完成时间、内容清单、规范化 hash/文件 hash、保存位置和读取权限。R1-Live 不要求先做全量恢复演练。
 
 Gate 1 通过后，产品负责人只需在正式界面提供真实班级/课次/花名册信息并安排首名教师执行 Gate 2。正式业务写入不要求每新增一行就替换 active protection manifest：现有 purge 必须命中显式 `purge_allowed` test 根，且 production 根在数据库层永久拒绝。只有未来准备授权具体清理根时，才针对当时的删除闭包生成新的 replacement manifest 并单独审批。

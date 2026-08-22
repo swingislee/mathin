@@ -2,22 +2,22 @@
 
 ## 结论
 
-截至 2026-08-22，`mathin.club` / `supabase.mathin.club` 的应用、数据库、Storage、compose 和部署 commit 已完成目标登记，仓库级写入口保险丝也已把 Xiaomi 固定为当前生产目标；测试造数/重建不能写入它，课程内容写入默认拒绝并使用独立受控通道。本机已建立只绑定 `127.0.0.1` 的隔离 Supabase，完成固定开发账号、登录和数据库合同验证，且没有复制或修改 Xiaomi 数据。生产 current 为 `20260814-221135` / `023f5167…`，previous 为 `20260724-051318` / `b833c4d…`；原子切换、失败回退命令、服务健康和 `operational_errors` 查询位置均已确认。唯一正式管理员已完成 verified MFA、唯一 admin 原子交接、新会话 MFA challenge 和生产 admin 路由验收；首名真实教师已注册为 active `staff`，`research` 与 `teacher` 双岗位经产品确认。active manifest 为 8 条 protected、0 条 `purge_allowed`，两个 purge 候选列表为空；这已经满足 R1-Live 防误清底线，日常正式业务写入不再要求逐条 replacement。运行时门禁收敛为权限/作用域、输入、引用、状态与不可变历史；课程完整度、自由班、教师冲突、备课产物/审核/检查项、点名时机、资源预载和无 release 均改为提示。Gate 1 仅因两条运行时 migration/对应应用尚未部署、当前 PostgreSQL+Storage 同批次备份尚未建立而保持 `BLOCKED`；Gate 2 因真实班级/课次/花名册及点名持久闭环尚未执行而保持 `BLOCKED`。
+截至 2026-08-22，`mathin.club` / `supabase.mathin.club` 的应用、数据库、Storage、compose 和部署 commit 已完成目标登记，仓库级写入口保险丝也已把 Xiaomi 固定为当前生产目标；测试造数/重建不能写入它，课程内容写入默认拒绝并使用独立受控通道。本机已建立只绑定 `127.0.0.1` 的隔离 Supabase，完成固定开发账号、登录和数据库合同验证，且没有复制或修改 Xiaomi 数据。两条运行时 migration 已把生产账本推进到 `20260822000200_r1_live_operational_gate_simplification`，应用 current 为 `20260822-072101` / `ef1eb77…`，previous 为 `20260814-221135` / `023f5167…`；原子切换、失败回退命令、双层健康和 `operational_errors` 查询位置均已确认。唯一正式管理员已完成 verified MFA、唯一 admin 原子交接、新会话 MFA challenge 和生产 admin 路由验收；首名真实教师已注册为 active `staff`，`research` 与 `teacher` 双岗位经产品确认。active manifest 为 8 条 protected、0 条 `purge_allowed`，两个 purge 候选列表为空；这已经满足 R1-Live 防误清底线，日常正式业务写入不再要求逐条 replacement。运行时门禁收敛为权限/作用域、输入、引用、状态与不可变历史；课程完整度、自由班、教师冲突、备课产物/审核/检查项、点名时机、资源预载和无 release 均改为提示。Gate 1 仅因当前 PostgreSQL+Storage 同批次备份尚未建立而保持 `BLOCKED`；Gate 2 因真实班级/课次/花名册及点名持久闭环尚未执行而保持 `BLOCKED`。
 
-本文件是 E0/E1 差距审阅，不是完整生产验收。2026-08-14～15 的 Xiaomi E1/E3 运行事实，以及本机隔离目标、应用/数据库发布、正式管理员交接和 manifest 激活证据见 [`r1-live-target-audit.md`](r1-live-target-audit.md)；用户提供的 `docs/plan/mathin-R1-Live-讨论稿.md` 为产品裁决输入，现行施工顺序以 doc 04 为准。
+本文件是 E0/E1 差距审阅，不是完整生产验收。2026-08-14～22 的 Xiaomi E1/E3 运行事实，以及本机隔离目标、应用/数据库发布、正式管理员交接和 manifest 激活证据见 [`r1-live-target-audit.md`](r1-live-target-audit.md)；用户提供的 `docs/plan/mathin-R1-Live-讨论稿.md` 为产品裁决输入，现行施工顺序以 doc 04 为准。
 
 ## Gate 状态表
 
 | Gate | 当前状态 | 已完成证据 | 缺失项 | 是否阻塞 | 最小修复范围 |
 | --- | --- | --- | --- | --- | --- |
-| Gate 1 · 可安全开始 | `BLOCKED` | 目标/身份、生产危险写拒绝、0 个 purge 候选、current/previous、回退命令和错误查询位置已确认 | `20260822000100`、`20260822000200` 及对应应用尚未部署；当前 PostgreSQL 与 Storage 同批次备份尚未建立 | 是 | 发布已验证的运行时改动，并生成一批当前数据库+Storage 备份与摘要 |
+| Gate 1 · 可安全开始 | `BLOCKED` | 目标/身份、生产危险写拒绝、0 个 purge 候选、运行时 migration/应用、current/previous、回退命令、健康探针和错误查询位置已确认 | 当前 PostgreSQL 与 Storage 同批次备份尚未建立 | 是 | 生成一批当前数据库+Storage 备份并登记摘要 |
 | Gate 2 · 首个真实教师闭环 | `BLOCKED` | 学生/班级/课次/分班/点名 UI、RPC、RLS 和持久化合同已实现；点名可在课前、课中或课后完成，不再阻断开课 | 无真实班级/课次/花名册；无正式教师保存→刷新或重登→再读、管理员可见、无权限拒绝的 Golden Path | 是 | 用正式 UI 建立最小真实数据，由正式教师完成一次点名并做权限对照 |
 
 状态只允许 `PASS`、`BLOCKED`、`UNKNOWN`、`NOT REQUIRED`。范围冻结是永久规则，不再单列 Gate；旧 Gate 3 的当前备份底线并入 Gate 1，恢复/受控 rollback 演练与 release 错误标签进入 Production 1.0；旧 Gate 4 的首个教师动作并入 Gate 2，独立观察和连续运行进入上线后证据。
 
 ### 仓库 manifest 实现证据
 
-- migration `20260815000100_r1_live_object_protection_manifest.sql` 不包含 manifest seed 或 Xiaomi 指纹，只建立表、trigger、内部校验与现有两个 purge RPC 的 fail-closed 合同；仓库 head `20260815000200_r1_profile_role_update_guard.sql` 只恢复受信任 role 更新旁路，其他 profile 保护字段继续拒绝。
+- migration `20260815000100_r1_live_object_protection_manifest.sql` 不包含 manifest seed 或 Xiaomi 指纹，只建立表、trigger、内部校验与现有两个 purge RPC 的 fail-closed 合同；`20260815000200_r1_profile_role_update_guard.sql` 只恢复受信任 role 更新旁路，其他 profile 保护字段继续拒绝。
 - 一次性 PostgreSQL 15 先前从零重放 181 个 bootstrap/migration/seed/fixture 输入并通过 manifest 断言；加入 role guard 后又在明确命名的临时空库重放 182 个输入（179 migrations + bootstrap/seed/fixture）并通过账户安全断言，临时库随后删除。
 - 14/14 份 R1 数据库断言既有基线通过；manifest/purge 定向 Vitest 为 2 个文件、17/17。当前 `pnpm r1:live:test` 为 5 个文件、48/48；历史 `pnpm r1:regression` 为 23 个文件、179/179；全量 Vitest 为 92 个文件、621 项通过、1 项条件跳过。三类计数分别表示当前源码合同、历史合同和工程回归，不替代目标环境证据。
 - 仓库实现阶段的数据库验证和类型生成只连接 disposable loopback 容器；之后按独立明确授权向 Xiaomi 部署两个 migration。生产部署边界、断言和只读 postflight 见下文及 [`r1-live-target-audit.md`](r1-live-target-audit.md#35-两个-r1-live-migration-的生产部署)。
@@ -47,29 +47,29 @@
 
 | 证据字段 | 值 |
 | --- | --- |
-| `gate_id`, `domain`, `result` | `R1-Live Gate 1`；正式班创建/启用；仓库与隔离数据库子步骤 `PASS`，生产部署 `pending`，Gate 1 整体仍 `BLOCKED` |
+| `gate_id`, `domain`, `result` | `R1-Live Gate 1`；正式班创建/启用；仓库、隔离数据库与生产部署子步骤 `PASS`，Gate 1 整体仍 `BLOCKED` |
 | `measured_value`, `threshold` | 本机 ledger 恰有目标 migration 且 checksum 匹配；两个函数的 release 完整度硬门均已移除、结构守卫均保留；active manifest 仍为 0。回滚事务分别验证未发布讲次可“创建即 active”和“planning→active”，两班各生成一条课次且事务无持久写入；180 个 migration、版本前/后两份既有课程 seed、平台垫片和固定夹具在明确命名的一次性数据库从零重放后，完整 P4H 断言通过并自动删除临时库。固定开发主管的只读 Playwright 选中准备度 `0/10` 的 production 课程，确认告警可见、“创建后立即启用”可用且 `submitted=false` |
 | `commit_sha`, `migration_head`, `environment` | `commit_sha=1187ee36863321eb3a0f07a25803c7c470073d63`；本机 head `20260822000100_r1_live_incomplete_course_activation`；Windows Docker Desktop / `mathin-isolated-loopback`；未连接 Xiaomi |
 | `dataset_manifest` | 主隔离库沿用 11 个固定身份且业务计数无漂移；一次性数据库只存活于验证过程，断言中的临时课程、讲次、班级和课次整体 `ROLLBACK`，验证结束数据库与 SQL 副本均删除 |
 | `started_at`, `finished_at`, `actor`, `approver` | 2026-08-22（Asia/Shanghai）；2026-08-22（Asia/Shanghai）；Codex；`swingislee`（产品裁决“讲次没有完全做完应在较长时间内允许”） |
 | `command_or_runbook` | 本机 migration 原子应用与只读 postflight；`p4h_teaching_operations_assertions.sql` 的新增回滚合同；一次性空库顺序重放；固定开发账号只读 Playwright；`pnpm ci:checks` |
 | `artifact_url_or_path`, `artifact_hash` | `supabase/migrations/20260822000100_r1_live_incomplete_course_activation.sql`；规范化文本 SHA-256 `8b49dc3ebf94b00131405dcc74a073e449f630991d949565064b2d6d121dabd3` |
-| `retention`, `access_roles`, `failure_ticket` | migration、回归和去标识化摘要随 Git 永久保留；仓库维护者；`BUG-R1-LIVE-002` 的生产部署与人工复验待完成 |
+| `retention`, `access_roles`, `failure_ticket` | migration、回归和去标识化摘要随 Git 永久保留；仓库维护者；`BUG-R1-LIVE-002` 已完成生产部署，真实教师行为复验并入 Gate 2 闭环 |
 
 ### 运行时门禁减法的隔离回归证据
 
-2026-08-22，产品负责人指出现有门禁数量过多，要求按真实生产需要重新判断。实现 commit `43db4ceb6972313719fc53bb675309d45ac7adbf` 将运行时检查分成两类：权限/作用域、畸形输入、无效引用、已删除或非法状态、冻结并发与不可变历史继续 fail-closed；课程完整度、正式自由班、教师时间冲突、备课产物/审核/检查项、点名时机、资源预载和无 release 只显示运营提示。migration `20260822000200_r1_live_operational_gate_simplification.sql` 重定义建班、班级状态和兼容备课 guard；应用允许教师冻结空白/本次覆盖快照并在课前、课中或课后点名。该轮没有连接或修改 Xiaomi。
+2026-08-22，产品负责人指出现有门禁数量过多，要求按真实生产需要重新判断。实现 commit `43db4ceb6972313719fc53bb675309d45ac7adbf` 将运行时检查分成两类：权限/作用域、畸形输入、无效引用、已删除或非法状态、冻结并发与不可变历史继续 fail-closed；课程完整度、正式自由班、教师时间冲突、备课产物/审核/检查项、点名时机、资源预载和无 release 只显示运营提示。migration `20260822000200_r1_live_operational_gate_simplification.sql` 重定义建班、班级状态和兼容备课 guard；应用允许教师冻结空白/本次覆盖快照并在课前、课中或课后点名。该实现轮没有连接或修改 Xiaomi，后续生产发布见“运行时门禁与应用的生产发布证据”。
 
 | 证据字段 | 值 |
 | --- | --- |
-| `gate_id`, `domain`, `result` | `R1-Live Gate 1`；运行时业务门禁；仓库、隔离数据库和固定账号 UI 子步骤 `PASS`，生产部署 `pending`，Gate 1 整体仍 `BLOCKED` |
+| `gate_id`, `domain`, `result` | `R1-Live Gate 1`；运行时业务门禁；仓库、隔离数据库、固定账号 UI 和生产部署子步骤 `PASS`，Gate 1 整体仍 `BLOCKED` |
 | `measured_value`, `threshold` | 明确命名的一次性数据库从 bootstrap 顺序重放 181 个 migration、两份既有课程 seed、平台垫片和固定夹具后，P4H 与 doc26 SQL 断言均通过并整体回滚；主隔离库 ledger=178、head=`20260822000200`、checksum 与 migration 规范化 hash 相同，active manifest=0。固定主管账号在正式自由班确认页选中“创建后立即启用”，测试未提交；学校门户固定账号 Playwright 4/4。当时名为 `pnpm r1:test` 的历史集合为 23 文件 179/179；完整 Vitest 92 文件 621 通过、1 项既有条件跳过；当时 `pnpm ci:checks` 17/17 |
 | `commit_sha`, `migration_head`, `environment` | `43db4ceb6972313719fc53bb675309d45ac7adbf`；本机 head `20260822000200_r1_live_operational_gate_simplification`；Windows Docker Desktop / `mathin-isolated-loopback`；未连接 Xiaomi |
 | `dataset_manifest` | 主隔离库沿用 11 个固定身份，UI 未点击“创建班级”；数据库断言写态均在一次性库事务中回滚。验证完成后精确临时数据库 `mathin_r1_gate_audit_20260822_01` 与 `/tmp/mathin_r1_gate_audit_20260822_01` 已删除，主隔离库仍为预期 head 且 active manifest=0 |
 | `started_at`, `finished_at`, `actor`, `approver` | 2026-08-22（Asia/Shanghai）；2026-08-22（Asia/Shanghai）；Codex；`swingislee`（产品裁决“门禁过多，需要按实际生产需要迭代”） |
 | `command_or_runbook` | 本机 migration 原子应用与只读 postflight；一次性空库顺序重放；`p4h_teaching_operations_assertions.sql`、`doc26_teacher_workflow_assertions.sql`；固定账号 `school-portals.spec.ts`；当时的 `pnpm r1:test`（现为 `pnpm r1:regression`）；`pnpm test`；`pnpm ci:checks` |
 | `artifact_url_or_path`, `artifact_hash` | `supabase/migrations/20260822000200_r1_live_operational_gate_simplification.sql`；规范化文本 SHA-256 `145acada7418b268c342ced431eddfbbb0b9e0e298b4bf52a6f92d2b320555a0` |
-| `retention`, `access_roles`, `failure_ticket` | migration、回归和去标识化摘要随 Git 永久保留；仓库维护者；生产部署与当前 PostgreSQL+Storage 备份仍是 Gate 1 阻塞项 |
+| `retention`, `access_roles`, `failure_ticket` | migration、回归和去标识化摘要随 Git 永久保留；仓库维护者；生产部署已完成，当前 PostgreSQL+Storage 同批次备份仍是 Gate 1 阻塞项 |
 
 ### 测试入口重分类证据
 
@@ -85,6 +85,21 @@
 | `command_or_runbook` | `pnpm r1:live:test`；`pnpm r1:regression`；`pnpm r1:test`；`pnpm ci:checks`；`pnpm plan:audit` |
 | `artifact_url_or_path`, `artifact_hash` | `package.json`，规范化文本 SHA-256 `2df2cc1ccc308a9ccd42a63cc32e7006e26e975cbfae2276ef6cd1bd85e48ae1`；`.github/workflows/ci.yml`，规范化文本 SHA-256 `4f25ec2893cb7bc2d72401fa0e6680b91a50f27c2586207cf31c2d7267a19a65` |
 | `retention`, `access_roles`, `failure_ticket` | 入口、规划与去标识化摘要随 Git 永久保留；仓库维护者；`not_applicable` |
+
+### 运行时门禁与应用的生产发布证据
+
+2026-08-22，在用户回复“继续”后按已明确的单一 R1-Live 执行项推进。写前只读核查精确匹配 Xiaomi 数据库指纹、177 条迁移账本、旧 head/checksum、三项旧函数 hash、active manifest 和全部匿名计数；两条 migration 在一个 serializable 事务中依次执行并登记，任一断言失败都会整体回滚。随后以独立连接复核账本、函数定义/权限、manifest 内容 hash 和所有计数，再使用不可变 release/原子指针脚本发布当前提交。该轮没有创建或修改账号、岗位、manifest、业务数据或备份，没有激活准删条目，也没有执行清理。
+
+| 证据字段 | 值 |
+| --- | --- |
+| `gate_id`, `domain`, `result` | `R1-Live Gate 1`；运行时数据库函数与生产应用同步发布；该子步骤 `PASS`，Gate 1 只因当前同批次备份保持 `BLOCKED` |
+| `measured_value`, `threshold` | 数据库 ledger `177→179`，head=`20260822000200_r1_live_operational_gate_simplification`；两个 migration checksum 与仓库规范化文本 hash 一致。`assert_session_preparation_complete`、`create_class`、`transition_classroom_status` 的生产定义 SHA-256 分别为 `59580998…09b82`、`84003eac…14b9`、`a01a1dc1…bf1a4`，三者均为 anon execute=false、authenticated execute=true。应用 current=`20260822-072101` / `ef1eb77…`、previous=`20260814-221135` / `023f5167…`；service active，loopback/Caddy/公网 health 为 production `ok`，zh/en login HTTP 200，zh/en 匿名建班页 HTTP 307 并精确回到对应语言 login。阈值全部满足 |
+| `commit_sha`, `migration_head`, `environment` | `ef1eb77cfbb1b5714191c0455dbf5fdc7313f208`；`20260822000200_r1_live_operational_gate_simplification`；Xiaomi / production；数据库指纹 `10e3…1a0c` |
+| `dataset_manifest` | pre/post 均为 auth/profile=13、profile admin/staff/student/parent=`1/8/2/2`、verified admin MFA=1、staff-role=10、学生=4、监护关系=2、课程族=2、课程=102、讲次=1315、release=2633、班级/课次/报名/点名=`0/0/0/0`、Storage bucket/object=`8/123602`；active manifest=`1`、entry/protected/purge=`8/8/0` 且 entries hash/目标指纹一致 |
+| `started_at`, `finished_at`, `actor`, `approver` | 2026-08-22（Asia/Shanghai）；2026-08-22 15:24（Asia/Shanghai）完成独立 postflight；Codex；`swingislee`（在既定单一部署项后回复“继续”） |
+| `command_or_runbook` | 精确 preflight + 两条 migration + ledger insert 的单事务 SSH/psql；独立 `REPEATABLE READ READ ONLY` 无锁 postflight；`scripts/ops/publish-mathin-xiaomi.ps1 -Action Publish` 与 `-Action Status`；公网 curl 健康/双语登录/匿名重定向探针。首次只读审计误调用内部含 `FOR SHARE` 的 manifest resolver，被 PostgreSQL 在写入前拒绝；随后改为等价无锁字段/条目 hash 查询并通过 |
+| `artifact_url_or_path`, `artifact_hash` | `supabase/migrations/20260822000100_r1_live_incomplete_course_activation.sql`，规范化文本 SHA-256 `8b49dc3ebf94b00131405dcc74a073e449f630991d949565064b2d6d121dabd3`；`supabase/migrations/20260822000200_r1_live_operational_gate_simplification.sql`，规范化文本 SHA-256 `145acada7418b268c342ced431eddfbbb0b9e0e298b4bf52a6f92d2b320555a0`；Xiaomi `/home/swing/services/mathin/releases/20260822-072101/release.json`（远端 immutable metadata，仓库不复制） |
+| `retention`, `access_roles`, `failure_ticket` | migration、Git 证据与 immutable release 目录按现有策略保留；仓库维护者/Xiaomi 运维角色；`not_applicable`（只读 resolver 审计调用错误未改变目标，等价复核已通过） |
 
 ### 生产正式管理员身份引导与原子交接证据
 
@@ -243,7 +258,6 @@ Agent 按 doc 04 的 standing execution direction 生成包含原 4 个 protecte
 
 | ID | 等级 | 原因 | 最小修复 | 人工操作 | 验收 |
 | --- | --- | --- | --- | --- | --- |
-| LIVE-P1-01 | 核心 P1 | 运行时软门 migration/UI 尚未发布到 Xiaomi | 发布 `20260822000100`、`20260822000200` 与对应应用并做只读 postflight | 无；按既定发布流程推进 | 生产函数与仓库一致，应用健康，匿名业务计数无漂移 |
 | LIVE-P1-02 | 核心 P1 | 当前 PostgreSQL 与 Storage 没有同批次可校验备份 | 生成当前备份并登记时间、范围、hash、位置和读取权限；R1-Live 不要求先恢复演练 | 无；若目标状态漂移则停下 | 两类备份来自同一批次且可读取，证据无 secret/PII |
 | LIVE-P1-03 | 核心 P1 | 点名只有开发合同证据，没有真实数据 Golden Path | 走正式 UI 建立花名册、production 班级和课次；正式教师保存点名并刷新或重登再读，管理员与既有无权限主体作对照 | 产品负责人提供真实花名册；正式教师执行一次登录与点名 | 每名在册学生恰好一条记录；再读一致；越权查询 0 泄露；P0/核心 P1=0 |
 
@@ -262,6 +276,6 @@ Agent 按 doc 04 的 standing execution direction 生成包含原 4 个 protecte
 
 ## 下一次状态变化
 
-- Gate 1 只有在运行时 migration/应用发布、当前 PostgreSQL+Storage 备份和既有目标/身份/防误清/current/previous/错误查询事实全部成立后才能改为 `PASS`。
+- Gate 1 只需再建立并核对当前 PostgreSQL+Storage 同批次备份；既有目标/身份/防误清、运行时 migration/应用、current/previous、健康和错误查询事实已经成立。
 - Gate 2 只有在同一目标完成正式教师写态、持久再读、管理员可见和越权拒绝后才能改为 `PASS`。
 - 完整恢复/受控 rollback 演练、错误 release 标签、独立观察与 14 天/5 节课堂属于 Production 1.0 扩围证据，不再改变 R1-Live Gate 状态。

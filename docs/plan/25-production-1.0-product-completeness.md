@@ -33,7 +33,7 @@ Terms 使用稳定 ID 接收 Story、Minds、Games、Tools、Notebook 和课程�
 
 当前唯一施工阶段为 `R1-Live-1 · 可安全开始`。R1-Live 只保留两个结果 Gate：Gate 1 合并正式目标/身份、当前备份、防误清、可识别的 current/previous 与错误查询位置；Gate 2 合并真实点名闭环和首次真实教师验收。原范围冻结成为永久规则，完整恢复/rollback、错误 release 标签、独立观察和 14 天 RC 回到 Production 1.0。
 
-- Gate 1 当前 `BLOCKED`：Xiaomi 目标指纹、危险写拒绝、唯一正式 admin MFA、首名真实教师及双岗位、active 8 条 protected/0 条 purge manifest、current/previous、健康探针和错误查询位置均已确认。运行时门禁收敛 migration/UI 已完成本机隔离验证，尚待部署生产；目标也没有当前数据库/Storage 备份。只有生产部署与当前备份仍阻塞 Gate 1。
+- Gate 1 当前 `BLOCKED`：Xiaomi 目标指纹、危险写拒绝、唯一正式 admin MFA、首名真实教师及双岗位、active 8 条 protected/0 条 purge manifest、current/previous、健康探针和错误查询位置均已确认。运行时门禁收敛 migration/UI 已部署为数据库 head `20260822000200` 和应用 current `20260822-072101` / `ef1eb77…`，只读 postflight 无身份、业务、manifest 或 Storage 漂移；只剩当前数据库/Storage 同批次备份阻塞 Gate 1。
 - Gate 2 当前 `BLOCKED`：生产尚无真实班级、课次、报名和点名。Gate 1 通过后，用正式 UI/RPC 建立最小真实数据并让正式教师完成保存、刷新/重登再读、管理员读取和无权限拒绝。
 - 班级启用是运营决定。正式自由班、未完整课程、教师冲突、备课产物/审核/检查项、点名前置、资源预载和无 release 都只提示；创建时的权限、主讲/学期、course/family/lecture 引用、状态和不可变历史继续硬阻断。无 release 课次可冻结 `releaseId=null` 的空白/本次覆盖快照。
 - 现有 purge 只接受 active manifest 明确的 `purge_allowed` test 根，当前准删数为 0。日常新增正式学生、班级、课次和考勤不要求逐行替换 manifest；只有未来授权具体清理根时才按当时删除闭包生成 replacement。
@@ -152,7 +152,7 @@ command_or_runbook, artifact_url_or_path, artifact_hash, failure_ticket
 | 指标/报表/遥测 | M1～M2 | M4 | 口径、版本、查询、告警 | 13 |
 | 幂等/并发/事务/E2E | M2～M3（正式基线/开发目标） | M4 | 本轮修复前 19 项 Vitest 失败已在 commit `cbb2a0f` 清零；commits `0d55044`、`8e5c076` 与[Playwright 子门](../evidence/r1/r1-14-playwright-baseline.md)已让 9 条本地非五模块 Chromium 旅程分别取绿并固定 release fail-closed 合同；仍缺发布目标完整重跑、写态、zh/en、跨浏览器、连续无 flaky、大文件和竞争矩阵 | 14 |
 | 生产清理/release-1 | M1（旧 planner） | M4 | 旧 planner 假定只保留管理员且无正式历史 release，与 R1-Live 后正式教师/业务数据/课次内容引用冲突；须增加正式对象保护 manifest 后再做快照副本演练、测试数据清理、可逆脚本和正式计数 | Live/15/18 |
-| 部署/备份/恢复 | M2（生产应用发布/运行核查） | M4 | commit `35b9f60` 与[部署子门](../evidence/r1/r1-16-deployment-preflight.md)已固定 fail-closed 合同；仓库/历史 secret scan 已关闭。2026-08-15 current 已发布为 `20260814-221135` / `023f5167…`，previous commit 已知，原子切换及内外健康门通过；R1-Live Gate 1 只因当前数据备份尚无而阻塞。previous 兼容回退、恢复演练和错误 release 标签属于 M4 | Live/16 |
+| 部署/备份/恢复 | M2（生产应用发布/运行核查） | M4 | commit `35b9f60` 与[部署子门](../evidence/r1/r1-16-deployment-preflight.md)已固定 fail-closed 合同；仓库/历史 secret scan 已关闭。2026-08-22 current 已发布为 `20260822-072101` / `ef1eb77…`，previous 为 `20260814-221135` / `023f5167…`，数据库同步到 `20260822000200`，原子切换及内外健康门通过；R1-Live Gate 1 只因当前数据备份尚无而阻塞。previous 兼容回退、恢复演练和错误 release 标签属于 M4 | Live/16 |
 | 真实运营 RC | M0 | M4 | R1-Live Gate 2 先取得 1 名真实教师闭环；独立观察及开放后连续 14 天/至少 5 节真实课堂形成扩围和 Production 1.0 证据 | Live/17 |
 
 ## 4. 业务合同
