@@ -1,27 +1,52 @@
 "use client";
 
-import { Eraser } from "lucide-react";
+import {
+  Columns3,
+  Eraser,
+  Hash,
+  MoveHorizontal,
+  MoveVertical,
+  RotateCcw,
+  Rows3,
+  SquareDashed,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useState, type KeyboardEvent } from "react";
 import { cn } from "@/lib/utils";
-import type { GameBoardProps, GameMirrorState } from "../types";
+import type { GameBoardProps, GameMirrorState, SudokuHighlightTool } from "../types";
 import { isSolvedGrid, sudokuPuzzle } from "./logic";
 import {
+  clearSudokuTeachingHighlights,
   chooseSudokuDigit,
   createSudokuBoardState,
   deleteSelectedSudokuCell,
+  hasSudokuTeachingHighlights,
   selectSudokuCell,
   setSudokuEntryMode,
+  setSudokuHighlightTool,
   SUDOKU_COLUMN_LABELS,
   SUDOKU_NUMBER_PAD_COLUMNS,
   SUDOKU_ROW_LABELS,
   sudokuCandidateDigits,
+  sudokuCellHighlightCount,
   toSudokuMirrorState,
   type SudokuBoardState,
   type SudokuEntryMode,
 } from "./state";
 
 const ENTRY_MODES: SudokuEntryMode[] = ["candidate", "value"];
+const HIGHLIGHT_TOOL_DEFS = [
+  { tool: "box", label: "highlightBox", Icon: SquareDashed },
+  { tool: "row", label: "highlightRow", Icon: Rows3 },
+  { tool: "column", label: "highlightColumn", Icon: Columns3 },
+  { tool: "row-block", label: "highlightRowBlock", Icon: MoveHorizontal },
+  { tool: "column-block", label: "highlightColumnBlock", Icon: MoveVertical },
+  { tool: "digit", label: "highlightDigit", Icon: Hash },
+] as const satisfies ReadonlyArray<{
+  tool: SudokuHighlightTool;
+  label: "highlightBox" | "highlightRow" | "highlightColumn" | "highlightRowBlock" | "highlightColumnBlock" | "highlightDigit";
+  Icon: typeof SquareDashed;
+}>;
 
 export function SudokuBoard({ seed, difficulty, finished, onComplete, mirror, onMirror, readOnly }: GameBoardProps) {
   const t = useTranslations("games.sudokuBoard");
@@ -42,6 +67,9 @@ export function SudokuBoard({ seed, difficulty, finished, onComplete, mirror, on
   }
 
   const inputDisabled = Boolean(readOnly || finished);
+  const digitHighlightMode = state.highlightTool === "digit";
+  const numberPadDisabled = inputDisabled || Boolean(state.highlightTool && !digitHighlightMode);
+  const deleteDisabled = inputDisabled || Boolean(state.highlightTool);
 
   function commit(next: SudokuBoardState) {
     if (next === state) return;
@@ -63,7 +91,7 @@ export function SudokuBoard({ seed, difficulty, finished, onComplete, mirror, on
   }
 
   function deleteEntry() {
-    if (inputDisabled) return;
+    if (deleteDisabled) return;
     commit(deleteSelectedSudokuCell(state, puzzle));
   }
 
@@ -79,6 +107,7 @@ export function SudokuBoard({ seed, difficulty, finished, onComplete, mirror, on
       deleteEntry();
       return;
     }
+    if (state.highlightTool) return;
     if (state.selected === null) return;
 
     const row = Math.floor(state.selected / 9);
@@ -102,73 +131,120 @@ export function SudokuBoard({ seed, difficulty, finished, onComplete, mirror, on
       tabIndex={inputDisabled ? -1 : 0}
       onKeyDown={onKeyDown}
     >
-      <div className="mx-auto grid h-full min-h-96 min-w-[34rem] max-w-4xl grid-cols-[minmax(6.75rem,8.5rem)_minmax(0,1fr)] items-center gap-4 p-1 sm:gap-6">
-        <aside className="flex w-full max-w-[8.5rem] flex-col gap-3 justify-self-center">
-          <div
-            aria-label={t("entryMode")}
-            className="grid grid-cols-2 rounded-xl border border-line bg-card p-1"
-            role="radiogroup"
-          >
-            {ENTRY_MODES.map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                role="radio"
-                aria-checked={state.entryMode === mode}
-                disabled={inputDisabled}
-                onClick={() => commit(setSudokuEntryMode(state, mode))}
-                className={cn(
-                  "min-h-10 rounded-lg px-1 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-crater disabled:cursor-default disabled:opacity-100",
-                  state.entryMode === mode ? "bg-ink text-paper" : "text-muted hover:bg-moon/30 hover:text-ink",
-                )}
-              >
-                {t(mode === "candidate" ? "candidateMode" : "valueMode")}
-              </button>
-            ))}
+      <div className="mx-auto grid h-full min-h-96 min-w-[38rem] max-w-5xl grid-cols-[minmax(9.5rem,10.5rem)_minmax(0,1fr)] items-center gap-4 p-1 sm:gap-6">
+        <aside className="grid w-full max-w-[10.5rem] grid-cols-[minmax(0,7.25rem)_2.75rem] items-center gap-2 justify-self-center">
+          <div className="flex min-w-0 flex-col gap-3">
+            <div
+              aria-label={t("entryMode")}
+              className="grid grid-cols-2 rounded-xl border border-line bg-card p-1"
+              role="radiogroup"
+            >
+              {ENTRY_MODES.map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  role="radio"
+                  aria-checked={state.entryMode === mode && state.highlightTool === null}
+                  disabled={inputDisabled}
+                  onClick={() => commit(setSudokuEntryMode(state, mode))}
+                  className={cn(
+                    "min-h-10 rounded-lg px-1 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-crater disabled:cursor-default disabled:opacity-100",
+                    state.entryMode === mode && state.highlightTool === null
+                      ? "bg-ink text-paper"
+                      : "text-muted hover:bg-moon/30 hover:text-ink",
+                  )}
+                >
+                  {t(mode === "candidate" ? "candidateMode" : "valueMode")}
+                </button>
+              ))}
+            </div>
+
+            <div aria-label={t("numberPad")} className="grid grid-cols-2 gap-2" role="group">
+              {SUDOKU_NUMBER_PAD_COLUMNS.map((column, columnIndex) => (
+                <div key={columnIndex} className="flex flex-col gap-2">
+                  {column.map((digit) => {
+                    if (digit === null) {
+                      return (
+                        <button
+                          key="delete"
+                          type="button"
+                          aria-label={t("deleteEntry")}
+                          title={t("deleteEntry")}
+                          disabled={deleteDisabled}
+                          onClick={deleteEntry}
+                          className="grid aspect-square min-h-11 w-full place-items-center rounded-xl border border-line bg-card text-muted outline-none transition-colors hover:border-ink/40 hover:bg-moon/30 hover:text-ink focus-visible:ring-2 focus-visible:ring-crater disabled:cursor-default disabled:opacity-45"
+                        >
+                          <Eraser aria-hidden size={20} />
+                        </button>
+                      );
+                    }
+                    const pressed = digitHighlightMode
+                      ? state.highlights.focusedDigit === digit
+                      : state.inputDigit === digit;
+                    return (
+                      <button
+                        key={digit}
+                        type="button"
+                        aria-label={t(digitHighlightMode ? "highlightDigitChoice" : "chooseDigit", { digit })}
+                        aria-pressed={pressed}
+                        disabled={numberPadDisabled}
+                        onClick={() => chooseDigit(digit)}
+                        className={cn(
+                          "aspect-square min-h-11 w-full rounded-xl border text-xl font-medium tabular-nums outline-none transition-colors focus-visible:ring-2 focus-visible:ring-crater disabled:cursor-default disabled:opacity-45",
+                          pressed && digitHighlightMode && "border-blue bg-blue text-white",
+                          pressed && !digitHighlightMode && "border-ink bg-ink text-paper",
+                          !pressed && "border-line bg-card text-ink hover:border-ink/40 hover:bg-moon/30",
+                        )}
+                      >
+                        {digit}
+                      </button>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
           </div>
 
-          <div aria-label={t("numberPad")} className="grid grid-cols-2 gap-2" role="group">
-            {SUDOKU_NUMBER_PAD_COLUMNS.map((column, columnIndex) => (
-              <div key={columnIndex} className="flex flex-col gap-2">
-                {column.map((digit) =>
-                  digit === null ? (
-                    <button
-                      key="delete"
-                      type="button"
-                      aria-label={t("deleteEntry")}
-                      title={t("deleteEntry")}
-                      disabled={inputDisabled}
-                      onClick={deleteEntry}
-                      className="grid aspect-square min-h-11 w-full place-items-center rounded-xl border border-line bg-card text-muted outline-none transition-colors hover:border-ink/40 hover:bg-moon/30 hover:text-ink focus-visible:ring-2 focus-visible:ring-crater disabled:cursor-default disabled:opacity-100"
-                    >
-                      <Eraser aria-hidden size={20} />
-                    </button>
-                  ) : (
-                    <button
-                      key={digit}
-                      type="button"
-                      aria-label={t("chooseDigit", { digit })}
-                      aria-pressed={state.inputDigit === digit}
-                      disabled={inputDisabled}
-                      onClick={() => chooseDigit(digit)}
-                      className={cn(
-                        "aspect-square min-h-11 w-full rounded-xl border text-xl font-medium tabular-nums outline-none transition-colors focus-visible:ring-2 focus-visible:ring-crater disabled:cursor-default disabled:opacity-100",
-                        state.inputDigit === digit
-                          ? "border-ink bg-ink text-paper"
-                          : "border-line bg-card text-ink hover:border-ink/40 hover:bg-moon/30",
-                      )}
-                    >
-                      {digit}
-                    </button>
-                  ),
+          <div
+            aria-label={t("highlightToolbar")}
+            className="flex flex-col items-center gap-1.5 rounded-xl border border-line bg-card p-1"
+            role="toolbar"
+          >
+            {HIGHLIGHT_TOOL_DEFS.map(({ tool, label, Icon }) => (
+              <button
+                key={tool}
+                type="button"
+                aria-label={t(label)}
+                aria-pressed={state.highlightTool === tool}
+                title={t(label)}
+                disabled={inputDisabled}
+                onClick={() => commit(setSudokuHighlightTool(state, tool))}
+                className={cn(
+                  "grid size-11 shrink-0 place-items-center rounded-lg border outline-none transition-colors focus-visible:ring-2 focus-visible:ring-crater disabled:cursor-default disabled:opacity-100",
+                  state.highlightTool === tool
+                    ? "border-blue bg-blue text-white"
+                    : "border-transparent text-muted hover:border-line hover:bg-moon/30 hover:text-ink",
                 )}
-              </div>
+              >
+                <Icon aria-hidden size={18} />
+              </button>
             ))}
+            <span aria-hidden className="h-px w-7 bg-line" />
+            <button
+              type="button"
+              aria-label={t("clearHighlights")}
+              title={t("clearHighlights")}
+              disabled={inputDisabled || !hasSudokuTeachingHighlights(state)}
+              onClick={() => commit(clearSudokuTeachingHighlights(state))}
+              className="grid size-11 shrink-0 place-items-center rounded-lg border border-transparent text-muted outline-none transition-colors hover:border-line hover:bg-moon/30 hover:text-ink focus-visible:ring-2 focus-visible:ring-crater disabled:cursor-default disabled:opacity-35"
+            >
+              <RotateCcw aria-hidden size={18} />
+            </button>
           </div>
         </aside>
 
         <div className="flex min-h-0 min-w-0 items-center justify-center self-stretch">
-          <div className="grid aspect-square h-auto max-h-full w-full max-w-[42rem] grid-cols-[clamp(1rem,3vw,1.65rem)_minmax(0,1fr)] grid-rows-[clamp(1rem,3vw,1.65rem)_minmax(0,1fr)]">
+          <div className="grid aspect-square h-auto max-h-full w-full max-w-[42rem] grid-cols-[1.125rem_minmax(0,1fr)] grid-rows-[1.125rem_minmax(0,1fr)]">
             <span aria-hidden />
             <div aria-hidden className="grid grid-cols-9 text-xs font-medium text-muted sm:text-sm">
               {SUDOKU_COLUMN_LABELS.map((label) => (
@@ -188,13 +264,17 @@ export function SudokuBoard({ seed, difficulty, finished, onComplete, mirror, on
                 const box = Math.floor(row / 3) * 3 + Math.floor(column / 3);
                 const coordinate = `${SUDOKU_ROW_LABELS[row]}${SUDOKU_COLUMN_LABELS[column]}`;
                 const candidateDigits = sudokuCandidateDigits(state.candidates[index]);
-                const label = given
+                const structuralHighlightCount = sudokuCellHighlightCount(state.highlights, row, column);
+                const digitHighlighted = Boolean(value && state.highlights.focusedDigit === value);
+                const teachingHighlighted = structuralHighlightCount > 0 || digitHighlighted;
+                const baseLabel = given
                   ? t("givenCell", { coordinate, value })
                   : value
                     ? t("filledCell", { coordinate, value })
                     : candidateDigits.length
                       ? t("candidateCell", { coordinate, values: candidateDigits.join(" ") })
                       : t("emptyCell", { coordinate });
+                const label = teachingHighlighted ? `${baseLabel}${t("highlightedSuffix")}` : baseLabel;
                 const greenBox = (Math.floor(row / 3) + Math.floor(column / 3)) % 2 === 0;
 
                 return (
@@ -209,23 +289,46 @@ export function SudokuBoard({ seed, difficulty, finished, onComplete, mirror, on
                     data-coordinate={coordinate}
                     data-digit={value || undefined}
                     data-given={given || undefined}
+                    data-highlight-count={structuralHighlightCount || undefined}
                     data-row={SUDOKU_ROW_LABELS[row]}
+                    data-teaching-highlight={teachingHighlighted || undefined}
                     onClick={() => selectCell(index)}
                     className={cn(
                       "relative flex aspect-square items-center justify-center tabular-nums outline-none transition-[background-color,filter,box-shadow] duration-100 focus-visible:z-20 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-crater disabled:cursor-default disabled:opacity-100",
                       greenBox ? "bg-leaf/20" : "bg-blue/10",
                       column < 8 && (column % 3 === 2 ? "border-r-2 border-r-ink/65" : "border-r border-r-line"),
                       row < 8 && (row % 3 === 2 ? "border-b-2 border-b-ink/65" : "border-b border-b-line"),
+                      structuralHighlightCount === 1 && "bg-moon/55",
+                      structuralHighlightCount > 1 && "bg-crater/45",
                       !inputDisabled && "hover:brightness-[0.97]",
-                      state.selected === index && "z-10 bg-moon/65 ring-2 ring-inset ring-crater",
+                      state.highlightTool && !inputDisabled && "cursor-crosshair",
+                      state.selected === index && state.highlightTool === null && "z-10 bg-moon/65 ring-2 ring-inset ring-crater",
                     )}
                   >
                     {value ? (
-                      <span className={cn("text-[clamp(1rem,3vw,2rem)] leading-none", given ? "font-semibold text-ink" : "font-medium text-blue")}>{value}</span>
+                      <span
+                        className={cn(
+                          "text-[clamp(1rem,3vw,2rem)] leading-none",
+                          given ? "font-semibold text-ink" : "font-medium text-blue",
+                          digitHighlighted && "grid size-[72%] place-items-center rounded-full bg-blue text-white shadow-sm ring-2 ring-blue/25",
+                        )}
+                      >
+                        {value}
+                      </span>
                     ) : candidateDigits.length ? (
                       <span aria-hidden className="grid size-full grid-cols-3 grid-rows-3 p-[5%] text-[clamp(0.48rem,1.2vw,0.72rem)] leading-none text-blue">
                         {Array.from({ length: 9 }, (_, candidateIndex) => candidateIndex + 1).map((digit) => (
-                          <span key={digit} className="grid place-items-center">{candidateDigits.includes(digit) ? digit : ""}</span>
+                          <span
+                            key={digit}
+                            className={cn(
+                              "grid place-items-center rounded-full",
+                              candidateDigits.includes(digit)
+                              && state.highlights.focusedDigit === digit
+                              && "bg-blue text-white",
+                            )}
+                          >
+                            {candidateDigits.includes(digit) ? digit : ""}
+                          </span>
                         ))}
                       </span>
                     ) : null}

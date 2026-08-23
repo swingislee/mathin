@@ -3,9 +3,26 @@ import type { ComponentType } from "react";
 
 export type Difficulty = "easy" | "medium" | "hard";
 
+export type SudokuHighlightTool = "box" | "row" | "column" | "row-block" | "column-block" | "digit";
+
+export interface SudokuTeachingHighlights {
+  /** 0–8：九宫编号，按从左到右、从上到下排列。 */
+  boxes: number[];
+  /** 0–8：整行。 */
+  rows: number[];
+  /** 0–8：整列。 */
+  columns: number[];
+  /** 0–26：每个宫内的三格横区块（box * 3 + 宫内行）。 */
+  rowBlocks: number[];
+  /** 0–26：每个宫内的三格竖区块（box * 3 + 宫内列）。 */
+  columnBlocks: number[];
+  /** 与正常 inputDigit 完全独立；null 表示不突出任何数字。 */
+  focusedDigit: number | null;
+}
+
 /**
  * 课堂镜像轻状态（08-§3.6 game_state）：三个游戏共用 values + selected；
- * 数独在 M2 起附带候选 bitmask、输入数字和输入模式。题面仍由 seed 推导，无需入镜像。
+ * 数独附带候选、输入和 M3 讲解突出状态。题面仍由 seed 推导，无需入镜像。
  */
 export interface GameMirrorState {
   values: number[];
@@ -16,6 +33,10 @@ export interface GameMirrorState {
   inputDigit?: number | null;
   /** 数独专用：候选/填数切换。 */
   entryMode?: "candidate" | "value";
+  /** 数独 M3：当前讲解工具；再次选择同一工具会退出。 */
+  highlightTool?: SudokuHighlightTool | null;
+  /** 数独 M3：可自由组合的结构/数字突出。 */
+  highlights?: SudokuTeachingHighlights;
 }
 
 export interface GameBoardProps {

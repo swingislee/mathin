@@ -5,15 +5,20 @@ import {
   SUDOKU_BOX_ELIMINATION_SEED,
 } from "@/features/games/sudoku/presets";
 import {
+  clearSudokuTeachingHighlights,
   chooseSudokuDigit,
   createSudokuBoardState,
   deleteSelectedSudokuCell,
+  hasSudokuTeachingHighlights,
   selectSudokuCell,
   setSudokuEntryMode,
+  setSudokuHighlightTool,
   SUDOKU_COLUMN_LABELS,
+  SUDOKU_HIGHLIGHT_TOOLS,
   SUDOKU_NUMBER_PAD_COLUMNS,
   SUDOKU_ROW_LABELS,
   sudokuCandidateDigits,
+  sudokuCellHighlightCount,
   toSudokuMirrorState,
 } from "@/features/games/sudoku/state";
 
@@ -83,7 +88,7 @@ describe("Sudoku teaching board M2", () => {
 
     const mirror = toSudokuMirrorState(state);
     expect(mirror.inputDigit).toBe(1);
-    expect(mirror).not.toHaveProperty("focusedDigit");
+    expect(mirror.highlights?.focusedDigit).toBeNull();
   });
 
   it("toggles candidates, clears them on fill, and mirrors the complete M2 state", () => {
@@ -111,5 +116,96 @@ describe("Sudoku teaching board M2", () => {
     expect(state.values[1]).toBe(0);
     expect(state.candidates[1]).toBe(0);
     expect(state.inputDigit).toBeNull();
+  });
+});
+
+describe("Sudoku teaching highlights M3", () => {
+  it("keeps ordinary digit input separate from the optional focused digit", () => {
+    const puzzle = [...SUDOKU_BOX_ELIMINATION_PUZZLE];
+    let state = createSudokuBoardState(puzzle);
+
+    state = chooseSudokuDigit(state, puzzle, 3);
+    expect(state.inputDigit).toBe(3);
+    expect(state.highlights.focusedDigit).toBeNull();
+
+    state = setSudokuHighlightTool(state, "digit");
+    state = chooseSudokuDigit(state, puzzle, 7);
+    expect(state.inputDigit).toBe(3);
+    expect(state.highlights.focusedDigit).toBe(7);
+    expect(state.values).toEqual(puzzle);
+
+    state = chooseSudokuDigit(state, puzzle, 7);
+    expect(state.highlights.focusedDigit).toBeNull();
+  });
+
+  it("combines box, row, column and both three-cell block highlights in any order", () => {
+    const puzzle = [...SUDOKU_BOX_ELIMINATION_PUZZLE];
+    const e5 = 4 * 9 + 4;
+    let state = createSudokuBoardState(puzzle);
+
+    expect(SUDOKU_HIGHLIGHT_TOOLS).toEqual([
+      "box",
+      "row",
+      "column",
+      "row-block",
+      "column-block",
+      "digit",
+    ]);
+
+    for (const tool of ["column-block", "box", "row", "row-block", "column"] as const) {
+      state = setSudokuHighlightTool(state, tool);
+      state = selectSudokuCell(state, puzzle, e5);
+    }
+
+    expect(state.highlights).toMatchObject({
+      boxes: [4],
+      rows: [4],
+      columns: [4],
+      rowBlocks: [13],
+      columnBlocks: [13],
+    });
+    expect(sudokuCellHighlightCount(state.highlights, 4, 4)).toBe(5);
+    expect(sudokuCellHighlightCount(state.highlights, 3, 3)).toBe(1);
+
+    // 同一工具点同一目标即取消，不强迫老师按固定步骤推进。
+    state = setSudokuHighlightTool(state, "box");
+    state = selectSudokuCell(state, puzzle, e5);
+    expect(state.highlights.boxes).toEqual([]);
+    expect(state.highlights.rows).toEqual([4]);
+  });
+
+  it("mirrors combined highlights and clears them without touching entries", () => {
+    const puzzle = [...SUDOKU_BOX_ELIMINATION_PUZZLE];
+    let state = createSudokuBoardState(puzzle);
+    state = selectSudokuCell(state, puzzle, 0);
+    state = chooseSudokuDigit(state, puzzle, 6);
+    state = setSudokuHighlightTool(state, "box");
+    state = selectSudokuCell(state, puzzle, 40);
+    state = setSudokuHighlightTool(state, "digit");
+    state = chooseSudokuDigit(state, puzzle, 7);
+
+    expect(hasSudokuTeachingHighlights(state)).toBe(true);
+    const restored = createSudokuBoardState(puzzle, toSudokuMirrorState(state));
+    expect(restored).toEqual(state);
+
+    const valuesBeforeClear = state.values;
+    state = clearSudokuTeachingHighlights(state);
+    expect(hasSudokuTeachingHighlights(state)).toBe(false);
+    expect(state.values).toEqual(valuesBeforeClear);
+    expect(state.values[0]).toBe(6);
+    expect(state.highlightTool).toBeNull();
+    expect(state.highlights.focusedDigit).toBeNull();
+  });
+
+  it("returns to normal input when the teacher chooses Candidates or Fill", () => {
+    const puzzle = [...SUDOKU_BOX_ELIMINATION_PUZZLE];
+    let state = createSudokuBoardState(puzzle);
+    state = setSudokuHighlightTool(state, "row");
+    state = selectSudokuCell(state, puzzle, 0);
+    state = setSudokuEntryMode(state, "candidate");
+
+    expect(state.highlightTool).toBeNull();
+    expect(state.entryMode).toBe("candidate");
+    expect(state.highlights.rows).toEqual([0]);
   });
 });
