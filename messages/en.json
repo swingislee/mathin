@@ -217,11 +217,24 @@
     "dateCol": "Date",
     "noRanks": "No one has finished this difficulty yet — the throne awaits.",
     "erase": "Erase",
+    "sudokuBoard": {
+      "boardLabel": "Sudoku board, rows A through I and columns 1 through 9",
+      "entryMode": "Entry mode",
+      "candidateMode": "Candidates",
+      "valueMode": "Fill",
+      "numberPad": "Number input",
+      "deleteEntry": "Delete",
+      "chooseDigit": "Choose digit {digit}",
+      "givenCell": "{coordinate}, given digit {value}",
+      "filledCell": "{coordinate}, entered digit {value}",
+      "candidateCell": "{coordinate}, candidates {values}",
+      "emptyCell": "{coordinate}, empty cell"
+    },
     "items": {
       "sudoku": {
         "name": "Sudoku",
         "desc": "Fill the 9×9 board with 1–9 so no row, column or box repeats.",
-        "rules": "Each row, column and 3×3 box must contain the digits 1–9 exactly once. Tap an empty cell, then enter a digit with the keyboard or the pad below — clashing digits turn red. Start with the cells that have the fewest candidates."
+        "rules": "Each row, column and 3×3 box must contain the digits 1–9 exactly once. Select a cell then a digit, or a digit then a cell; switch between Candidates and Fill to choose how it is recorded. Rows are A–I and columns are 1–9."
       },
       "kakuro": {
         "name": "Kakuro",
@@ -4028,6 +4041,8 @@
       "gameLabel": "Game",
       "seedLabel": "Puzzle seed",
       "seedHint": "The same seed produces the same puzzle on every device.",
+      "sudokuTeachingPresetHint": "Using the illustrated Box Elimination teaching puzzle; reroll for a random puzzle.",
+      "sudokuBoxEliminationTitle": "Box Elimination",
       "rollSeed": "Reroll",
       "insertPage": "Insert",
       "cancel": "Cancel"

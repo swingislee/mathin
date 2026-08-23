@@ -23,7 +23,8 @@ export interface ClassroomRecord extends ClassroomMeta {
 // ---------------------------------------------------------------------------
 // 课件页（08-§3.6）：有序页数组存 class_sessions.courseware jsonb。
 // image/video 存 Storage 路径（候课时预载为 blob）；
-// game 只存 {gameId, difficulty, seed}——题面由 createRng(seed) 确定性推导，零预载天然离线。
+// game 只存 {gameId, difficulty, seed}——题面由随机 seed 或教学 preset seed 确定性推导，
+// 零预载天然离线。
 // ---------------------------------------------------------------------------
 
 export type CoursewarePage =
@@ -70,7 +71,7 @@ export type SessionEventType =
   | "star_undo"      // {studentId} 撤销该生最新一颗星（原子语义：删事件不减计数）
   | "session_ctl"    // {action:"start"|"end"|"quiz_open"|"quiz_close", ...}
   | "board_snapshot" // {pageKey:string, items:BoardItem[]}（main=页 uuid、side="side"）
-  | "game_state"     // {pageId, state:{values,selected}} 游戏页镜像（单写者=教师）
+  | "game_state"     // {pageId, state:{values,selected,...gameFields}} 游戏页镜像（单写者=教师）
   | "video_ctl"      // {pageId, action:"play"|"pause"|"seek", time} 视频同步（仅教师）
   | "doc_step"       // {pageId, scope:"node"|"page", id} doc 页点击步进转发（仅教师，P6-5）
   | "tool_ctl"       // {action:"open"|"close", toolId?} 工具快捷窗（仅教师）

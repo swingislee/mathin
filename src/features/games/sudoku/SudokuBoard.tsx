@@ -2,122 +2,239 @@
 
 import { Eraser } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type KeyboardEvent } from "react";
 import { cn } from "@/lib/utils";
 import type { GameBoardProps, GameMirrorState } from "../types";
 import { isSolvedGrid, sudokuPuzzle } from "./logic";
+import {
+  chooseSudokuDigit,
+  createSudokuBoardState,
+  deleteSelectedSudokuCell,
+  selectSudokuCell,
+  setSudokuEntryMode,
+  SUDOKU_COLUMN_LABELS,
+  SUDOKU_NUMBER_PAD_COLUMNS,
+  SUDOKU_ROW_LABELS,
+  sudokuCandidateDigits,
+  toSudokuMirrorState,
+  type SudokuBoardState,
+  type SudokuEntryMode,
+} from "./state";
 
-/** 有冲突（行/列/宫重复）的格子下标集合，只做轻提示 */
-function findConflicts(values: number[]): Set<number> {
-  const bad = new Set<number>();
-  for (let i = 0; i < 81; i++) {
-    const v = values[i];
-    if (!v) continue;
-    const row = Math.floor(i / 9);
-    const col = i % 9;
-    const b = Math.floor(row / 3) * 27 + Math.floor(col / 3) * 3;
-    for (let k = 0; k < 9; k++) {
-      const peers = [row * 9 + k, k * 9 + col, b + Math.floor(k / 3) * 9 + (k % 3)];
-      for (const p of peers) {
-        if (p !== i && values[p] === v) {
-          bad.add(i);
-          bad.add(p);
-        }
-      }
-    }
-  }
-  return bad;
-}
+const ENTRY_MODES: SudokuEntryMode[] = ["candidate", "value"];
 
 export function SudokuBoard({ seed, difficulty, finished, onComplete, mirror, onMirror, readOnly }: GameBoardProps) {
-  const t = useTranslations("games");
+  const t = useTranslations("games.sudokuBoard");
+  const puzzleKey = `${seed}:${difficulty}`;
   const puzzle = useMemo(() => sudokuPuzzle(seed, difficulty), [seed, difficulty]);
-  const [values, setValues] = useState<number[]>(() => [...puzzle]);
-  const [selected, setSelected] = useState<number | null>(null);
-  const conflicts = useMemo(() => findConflicts(values), [values]);
-
-  // 课堂镜像：新状态对象到达即在渲染期对齐本地（React「adjust state during render」模式）
+  const [state, setState] = useState<SudokuBoardState>(() => createSudokuBoardState(puzzle, mirror));
   const [appliedMirror, setAppliedMirror] = useState<GameMirrorState | null | undefined>(mirror);
-  if (mirror !== appliedMirror) {
+  const [appliedPuzzleKey, setAppliedPuzzleKey] = useState(puzzleKey);
+
+  // 课堂镜像：新状态对象到达即在渲染期对齐本地（React「adjust state during render」模式）。
+  if (puzzleKey !== appliedPuzzleKey) {
+    setAppliedPuzzleKey(puzzleKey);
     setAppliedMirror(mirror);
-    if (mirror && Array.isArray(mirror.values) && mirror.values.length === puzzle.length) {
-      setValues([...mirror.values]);
-      setSelected(typeof mirror.selected === "number" ? mirror.selected : null);
+    setState(createSudokuBoardState(puzzle, mirror));
+  } else if (mirror !== appliedMirror) {
+    setAppliedMirror(mirror);
+    if (mirror) setState(createSudokuBoardState(puzzle, mirror));
+  }
+
+  const inputDisabled = Boolean(readOnly || finished);
+
+  function commit(next: SudokuBoardState) {
+    if (next === state) return;
+    setState(next);
+    onMirror?.(toSudokuMirrorState(next));
+    if (next.values !== state.values && next.values.every((value) => value > 0) && isSolvedGrid(next.values)) {
+      onComplete(next.values);
     }
   }
 
-  function select(i: number) {
-    if (readOnly) return;
-    setSelected(i);
-    onMirror?.({ values, selected: i });
+  function chooseDigit(digit: number) {
+    if (inputDisabled) return;
+    commit(chooseSudokuDigit(state, puzzle, digit));
   }
 
-  function put(n: number) {
-    if (readOnly || finished || selected === null || puzzle[selected] !== 0) return;
-    const next = [...values];
-    next[selected] = n;
-    setValues(next);
-    onMirror?.({ values: next, selected });
-    if (n && next.every((v) => v > 0) && isSolvedGrid(next)) onComplete(next);
+  function selectCell(index: number, applySelectedDigit = true) {
+    if (inputDisabled) return;
+    commit(selectSudokuCell(state, puzzle, index, applySelectedDigit));
   }
 
-  function onKeyDown(e: React.KeyboardEvent) {
-    if (e.key >= "1" && e.key <= "9") return put(Number(e.key));
-    if (e.key === "Backspace" || e.key === "Delete" || e.key === "0") return put(0);
-    const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -9, ArrowDown: 9 }[e.key];
-    if (step && selected !== null) {
-      e.preventDefault();
-      const next = selected + step;
-      if (next >= 0 && next < 81) select(next);
+  function deleteEntry() {
+    if (inputDisabled) return;
+    commit(deleteSelectedSudokuCell(state, puzzle));
+  }
+
+  function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (inputDisabled) return;
+    if (event.key >= "1" && event.key <= "9") {
+      event.preventDefault();
+      chooseDigit(Number(event.key));
+      return;
+    }
+    if (event.key === "Backspace" || event.key === "Delete" || event.key === "0") {
+      event.preventDefault();
+      deleteEntry();
+      return;
+    }
+    if (state.selected === null) return;
+
+    const row = Math.floor(state.selected / 9);
+    const column = state.selected % 9;
+    const target = {
+      ArrowLeft: column > 0 ? state.selected - 1 : null,
+      ArrowRight: column < 8 ? state.selected + 1 : null,
+      ArrowUp: row > 0 ? state.selected - 9 : null,
+      ArrowDown: row < 8 ? state.selected + 9 : null,
+    }[event.key];
+    if (typeof target === "number") {
+      event.preventDefault();
+      selectCell(target, false);
     }
   }
 
   return (
-    <div className="mx-auto max-w-md rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-crater focus-visible:ring-offset-2 focus-visible:ring-offset-paper" tabIndex={0} onKeyDown={onKeyDown}>
-      <div className="grid grid-cols-9 overflow-hidden rounded-lg border-2 border-ink/50 bg-card">
-        {values.map((v, i) => {
-          const given = puzzle[i] !== 0;
-          const col = i % 9;
-          const row = Math.floor(i / 9);
-          return (
-            <button
-              key={i}
-              aria-label={`r${row + 1}c${col + 1}`}
-              onClick={() => select(i)}
-              className={cn(
-                "flex aspect-square items-center justify-center text-lg tabular-nums transition-colors duration-100 sm:text-xl",
-                // 单边颜色类会被 border-line（shorthand）覆盖，因此四边颜色全部用单边类
-                col < 8 && (col % 3 === 2 ? "border-r-2 border-r-ink/70" : "border-r border-r-line"),
-                row < 8 && (row % 3 === 2 ? "border-b-2 border-b-ink/70" : "border-b border-b-line"),
-                given ? "font-semibold" : "text-(--p-accent)",
-                conflicts.has(i) && "text-rose",
-                selected === i && "bg-(--p-wash)",
-              )}
-            >
-              {v || ""}
-            </button>
-          );
-        })}
-      </div>
-      <div className="mt-4 flex flex-wrap justify-center gap-1.5">
-        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
-          <button
-            key={n}
-            onClick={() => put(n)}
-            disabled={finished}
-            className="flex size-9 items-center justify-center rounded-lg border bg-card text-base tabular-nums transition duration-150 hover:bg-(--p-wash) disabled:opacity-50"
+    <div
+      aria-label={t("boardLabel")}
+      className="mx-auto h-full w-full overflow-auto rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-crater focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
+      tabIndex={inputDisabled ? -1 : 0}
+      onKeyDown={onKeyDown}
+    >
+      <div className="mx-auto grid h-full min-h-96 min-w-[34rem] max-w-4xl grid-cols-[minmax(6.75rem,8.5rem)_minmax(0,1fr)] items-center gap-4 p-1 sm:gap-6">
+        <aside className="flex w-full max-w-[8.5rem] flex-col gap-3 justify-self-center">
+          <div
+            aria-label={t("entryMode")}
+            className="grid grid-cols-2 rounded-xl border border-line bg-card p-1"
+            role="radiogroup"
           >
-            {n}
-          </button>
-        ))}
-        <button
-          onClick={() => put(0)}
-          disabled={finished}
-          aria-label={t("erase")}
-          className="flex size-9 items-center justify-center rounded-lg border bg-card transition duration-150 hover:bg-(--p-wash) disabled:opacity-50"
-        >
-          <Eraser size={16} />
-        </button>
+            {ENTRY_MODES.map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                role="radio"
+                aria-checked={state.entryMode === mode}
+                disabled={inputDisabled}
+                onClick={() => commit(setSudokuEntryMode(state, mode))}
+                className={cn(
+                  "min-h-10 rounded-lg px-1 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-crater disabled:cursor-default disabled:opacity-100",
+                  state.entryMode === mode ? "bg-ink text-paper" : "text-muted hover:bg-moon/30 hover:text-ink",
+                )}
+              >
+                {t(mode === "candidate" ? "candidateMode" : "valueMode")}
+              </button>
+            ))}
+          </div>
+
+          <div aria-label={t("numberPad")} className="grid grid-cols-2 gap-2" role="group">
+            {SUDOKU_NUMBER_PAD_COLUMNS.map((column, columnIndex) => (
+              <div key={columnIndex} className="flex flex-col gap-2">
+                {column.map((digit) =>
+                  digit === null ? (
+                    <button
+                      key="delete"
+                      type="button"
+                      aria-label={t("deleteEntry")}
+                      title={t("deleteEntry")}
+                      disabled={inputDisabled}
+                      onClick={deleteEntry}
+                      className="grid aspect-square min-h-11 w-full place-items-center rounded-xl border border-line bg-card text-muted outline-none transition-colors hover:border-ink/40 hover:bg-moon/30 hover:text-ink focus-visible:ring-2 focus-visible:ring-crater disabled:cursor-default disabled:opacity-100"
+                    >
+                      <Eraser aria-hidden size={20} />
+                    </button>
+                  ) : (
+                    <button
+                      key={digit}
+                      type="button"
+                      aria-label={t("chooseDigit", { digit })}
+                      aria-pressed={state.inputDigit === digit}
+                      disabled={inputDisabled}
+                      onClick={() => chooseDigit(digit)}
+                      className={cn(
+                        "aspect-square min-h-11 w-full rounded-xl border text-xl font-medium tabular-nums outline-none transition-colors focus-visible:ring-2 focus-visible:ring-crater disabled:cursor-default disabled:opacity-100",
+                        state.inputDigit === digit
+                          ? "border-ink bg-ink text-paper"
+                          : "border-line bg-card text-ink hover:border-ink/40 hover:bg-moon/30",
+                      )}
+                    >
+                      {digit}
+                    </button>
+                  ),
+                )}
+              </div>
+            ))}
+          </div>
+        </aside>
+
+        <div className="flex min-h-0 min-w-0 items-center justify-center self-stretch">
+          <div className="grid aspect-square h-auto max-h-full w-full max-w-[42rem] grid-cols-[clamp(1rem,3vw,1.65rem)_minmax(0,1fr)] grid-rows-[clamp(1rem,3vw,1.65rem)_minmax(0,1fr)]">
+            <span aria-hidden />
+            <div aria-hidden className="grid grid-cols-9 text-xs font-medium text-muted sm:text-sm">
+              {SUDOKU_COLUMN_LABELS.map((label) => (
+                <span key={label} className="grid place-items-center tabular-nums">{label}</span>
+              ))}
+            </div>
+            <div aria-hidden className="grid grid-rows-9 text-xs font-medium text-muted sm:text-sm">
+              {SUDOKU_ROW_LABELS.map((label) => (
+                <span key={label} className="grid place-items-center">{label}</span>
+              ))}
+            </div>
+            <div className="grid grid-cols-9 overflow-hidden rounded-xl border-2 border-ink/55 bg-card shadow-sm">
+              {state.values.map((value, index) => {
+                const given = puzzle[index] !== 0;
+                const column = index % 9;
+                const row = Math.floor(index / 9);
+                const box = Math.floor(row / 3) * 3 + Math.floor(column / 3);
+                const coordinate = `${SUDOKU_ROW_LABELS[row]}${SUDOKU_COLUMN_LABELS[column]}`;
+                const candidateDigits = sudokuCandidateDigits(state.candidates[index]);
+                const label = given
+                  ? t("givenCell", { coordinate, value })
+                  : value
+                    ? t("filledCell", { coordinate, value })
+                    : candidateDigits.length
+                      ? t("candidateCell", { coordinate, values: candidateDigits.join(" ") })
+                      : t("emptyCell", { coordinate });
+                const greenBox = (Math.floor(row / 3) + Math.floor(column / 3)) % 2 === 0;
+
+                return (
+                  <button
+                    key={coordinate}
+                    type="button"
+                    aria-label={label}
+                    aria-pressed={state.selected === index}
+                    disabled={inputDisabled}
+                    data-box={box + 1}
+                    data-column={column + 1}
+                    data-coordinate={coordinate}
+                    data-digit={value || undefined}
+                    data-given={given || undefined}
+                    data-row={SUDOKU_ROW_LABELS[row]}
+                    onClick={() => selectCell(index)}
+                    className={cn(
+                      "relative flex aspect-square items-center justify-center tabular-nums outline-none transition-[background-color,filter,box-shadow] duration-100 focus-visible:z-20 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-crater disabled:cursor-default disabled:opacity-100",
+                      greenBox ? "bg-leaf/20" : "bg-blue/10",
+                      column < 8 && (column % 3 === 2 ? "border-r-2 border-r-ink/65" : "border-r border-r-line"),
+                      row < 8 && (row % 3 === 2 ? "border-b-2 border-b-ink/65" : "border-b border-b-line"),
+                      !inputDisabled && "hover:brightness-[0.97]",
+                      state.selected === index && "z-10 bg-moon/65 ring-2 ring-inset ring-crater",
+                    )}
+                  >
+                    {value ? (
+                      <span className={cn("text-[clamp(1rem,3vw,2rem)] leading-none", given ? "font-semibold text-ink" : "font-medium text-blue")}>{value}</span>
+                    ) : candidateDigits.length ? (
+                      <span aria-hidden className="grid size-full grid-cols-3 grid-rows-3 p-[5%] text-[clamp(0.48rem,1.2vw,0.72rem)] leading-none text-blue">
+                        {Array.from({ length: 9 }, (_, candidateIndex) => candidateIndex + 1).map((digit) => (
+                          <span key={digit} className="grid place-items-center">{candidateDigits.includes(digit) ? digit : ""}</span>
+                        ))}
+                      </span>
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -66,6 +66,7 @@ export function GamePage({
   return (
     <div className="size-full overflow-auto p-4">
       <GameBoard
+        key={`${page.id}:${page.seed}:${page.difficulty}`}
         id={game.id}
         seed={page.seed}
         difficulty={page.difficulty}

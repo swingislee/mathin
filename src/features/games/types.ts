@@ -4,12 +4,18 @@ import type { ComponentType } from "react";
 export type Difficulty = "easy" | "medium" | "hard";
 
 /**
- * 课堂镜像轻状态（08-§3.6 game_state）：三个游戏共用同一形状——
- * 盘面数值数组 + 当前选中格。题面本身由 seed 推导，无需入镜像。
+ * 课堂镜像轻状态（08-§3.6 game_state）：三个游戏共用 values + selected；
+ * 数独在 M2 起附带候选 bitmask、输入数字和输入模式。题面仍由 seed 推导，无需入镜像。
  */
 export interface GameMirrorState {
   values: number[];
   selected: number | null;
+  /** 数独专用：每格用 bit 1–9 表示候选数；其他游戏省略。 */
+  candidates?: number[];
+  /** 数独专用：正常输入数字，不等同于 M3 的可选突出数字。 */
+  inputDigit?: number | null;
+  /** 数独专用：候选/填数切换。 */
+  entryMode?: "candidate" | "value";
 }
 
 export interface GameBoardProps {

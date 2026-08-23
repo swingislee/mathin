@@ -1,5 +1,6 @@
 import { createRng, shuffle } from "../rng";
 import type { Difficulty } from "../types";
+import { sudokuPresetPuzzle } from "./presets";
 
 /** 0 = 待填格；数组长度恒为 81，行优先。 */
 export type SudokuGrid = number[];
@@ -43,6 +44,8 @@ function fillSolved(grid: SudokuGrid, pos: number, rng: () => number): boolean {
  * 不保证解唯一：verify 接受任何与题面一致的合法终盘，因此唯一性对反作弊无影响。
  */
 export function sudokuPuzzle(seed: string, difficulty: Difficulty): SudokuGrid {
+  const preset = sudokuPresetPuzzle(seed);
+  if (preset) return preset;
   const rng = createRng(`sudoku:${difficulty}:${seed}`);
   const grid: SudokuGrid = new Array(81).fill(0);
   fillSolved(grid, 0, rng);

@@ -217,11 +217,24 @@
     "dateCol": "日期",
     "noRanks": "这一难度还没有人完赛，虚位以待。",
     "erase": "擦除",
+    "sudokuBoard": {
+      "boardLabel": "数独棋盘，行标 A 到 I，列标 1 到 9",
+      "entryMode": "输入方式",
+      "candidateMode": "候选",
+      "valueMode": "填数",
+      "numberPad": "数字输入",
+      "deleteEntry": "删除",
+      "chooseDigit": "选择数字 {digit}",
+      "givenCell": "{coordinate}，题面数字 {value}",
+      "filledCell": "{coordinate}，填入数字 {value}",
+      "candidateCell": "{coordinate}，候选数 {values}",
+      "emptyCell": "{coordinate}，空格"
+    },
     "items": {
       "sudoku": {
         "name": "数独",
         "desc": "在 9×9 棋盘上填入 1–9，使每行、每列、每宫都不重复。",
-        "rules": "每行、每列和每个 3×3 宫内必须恰好出现 1–9 各一次。点击空格选中，用键盘数字或下方数字盘填入，重复的数字会标红。先从候选最少的格子入手。"
+        "rules": "每行、每列和每个 3×3 宫内必须恰好出现 1–9 各一次。可先选格再点数字，也可先选数字再点格子；用「候选 / 填数」切换记录方式。行标为 A–I，列标为 1–9。"
       },
       "kakuro": {
         "name": "数和",
@@ -4028,6 +4041,8 @@
       "gameLabel": "选择游戏",
       "seedLabel": "题目种子",
       "seedHint": "同一种子在所有设备上生成同一道题。",
+      "sudokuTeachingPresetHint": "已选用图示「宫区块摈除」教学题；点击换一题可改为随机题。",
+      "sudokuBoxEliminationTitle": "宫区块摈除",
       "rollSeed": "换一题",
       "insertPage": "插入",
       "cancel": "取消"
