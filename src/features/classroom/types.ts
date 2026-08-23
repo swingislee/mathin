@@ -45,7 +45,7 @@ export interface ClassSessionMeta {
   startedAt: string | null;
   endedAt: string | null;
   createdAt: string;
-  /** P4B-3：挂了课程讲次的课次（可空=自由课次，跳过模板/覆盖层/冻结整套机制）。 */
+  /** P4B-3：挂了课程讲次的课次；可空表示使用空模板和本课自定义页面。 */
   lectureId: string | null;
   lectureNo: number | null;
   scheduledAt: string | null;

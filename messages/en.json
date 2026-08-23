@@ -2380,6 +2380,7 @@
     "overlay": {
       "title": "This session's courseware ({count} pages)",
       "hint": "Grey pages come from the courseware template and can't be removed or edited. You can insert board/image/video/game pages between template pages, and reorder every page freely. Everything gets frozen into the official courseware when class starts.",
+      "freeHint": "A free session starts with blank courseware. Add board, image, video, or game pages and reorder them; they become this session's official courseware when class starts.",
       "templatePage": "Template page",
       "visualPreview": "Visual courseware preview",
       "previewEmpty": "No page to preview",

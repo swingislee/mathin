@@ -159,7 +159,7 @@ export async function SessionWorkspaceBody({
               />
             ) : null}
           </div>
-          {stage === "pre" && detail.capabilities.canPrepare && detail.state === "scheduled" && detail.lectureId ? (
+          {stage === "pre" && detail.capabilities.canPrepare && detail.state === "scheduled" ? (
             <div className="flex flex-wrap items-center justify-end gap-2">
               <Link
                 href={"/classroom/" + detail.classroomId + "/session/" + detail.id + "/live?mode=rehearsal"}

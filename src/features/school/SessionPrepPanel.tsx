@@ -1,7 +1,6 @@
 import { getSessionAssetUrls, getSessionH5BindingUrls, getSessionPageDocs } from "@/features/classroom/courseware/session-assets";
 import { LockKeyhole, LockKeyholeOpen } from "lucide-react";
 import { getTranslations } from "next-intl/server";
-import { DashboardEmptyCard } from "@/features/school/dashboard-page";
 import type { SessionWorkspaceDetail } from "./classes";
 import { getSessionCoursewareTemplate } from "./courses";
 import { CoursewareOverlayEditor } from "./CoursewareOverlayEditor";
@@ -76,16 +75,12 @@ export async function SessionPrepPanel({
       title: titleByPageDocId.get(pageDoc.pageDocId) ?? t("learningCheckUntitledPage"),
     }),
   ]));
-  const canEditSessionCourseware = Boolean(detail.lectureId && canAmendSessionArchive);
+  const canEditSessionCourseware = canAmendSessionArchive;
   const frozenEditorState = detail.coursewareFrozenAt
     ? coursewareEditorStateFromFrozenSnapshot(detail.courseware, detail.coursewareOverlay)
     : null;
   const editorTemplate = frozenEditorState?.template ?? template;
   const editorOverlay = frozenEditorState?.overlay ?? detail.coursewareOverlay;
-
-  if (!detail.lectureId) {
-    return <DashboardEmptyCard>{t("stageEmpty")}</DashboardEmptyCard>;
-  }
 
   return (
     <>
@@ -174,6 +169,7 @@ export async function SessionPrepPanel({
                 initialPageId={initialPageId}
                 readOnly={!canAmendSessionArchive}
                 structureReadOnly={!canEditSessionCourseware}
+                customOnly={!detail.lectureId}
               />
             ) : null}
             </section>

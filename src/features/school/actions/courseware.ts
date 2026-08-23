@@ -37,7 +37,6 @@ export async function saveCoursewareOverlay(sessionId: string, overlay: OverlayS
     .maybeSingle<{ lecture_id: string | null; courseware_frozen_at: string | null }>();
   if (sessionError) throw new Error(sessionError.message);
   if (!session) throw new Error("NOT_FOUND");
-  if (!session.lecture_id) throw new Error("NO_LECTURE");
   if (session.courseware_frozen_at) {
     const frozenPages = shapeCheck.data.flatMap((slot) => ("page" in slot ? [slot.page] : []));
     if (frozenPages.length !== shapeCheck.data.length) throw new Error("INVALID_FROZEN_COURSEWARE");
@@ -49,7 +48,7 @@ export async function saveCoursewareOverlay(sessionId: string, overlay: OverlayS
     return;
   }
 
-  const template = await getSessionCoursewareTemplate(id);
+  const template = session.lecture_id ? await getSessionCoursewareTemplate(id) : [];
   const healed = parseOverlayForSave(template, shapeCheck.data);
   const { error } = await supabase
     .from("class_sessions")

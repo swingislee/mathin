@@ -269,7 +269,8 @@ export async function saveCourseware(sessionId: string, pages: CoursewarePage[])
 
 /**
  * 开课：mode=rehearsal 不调用本函数（LiveShell 的 prep phase 对试讲直接跳过）。
- * 若课次挂了讲次且未冻结，先服务端 resolve(模板+覆盖层) 落 courseware，
+ * 若课次尚未冻结，先服务端 resolve(模板+覆盖层) 落 courseware；自由课次的
+ * 模板为空，覆盖层就是教师为本课创建的全部页面。
  * 与 started_at 一起原子写入（同一条 UPDATE ... WHERE started_at is null，
  * 天然充当行锁：并发开课只有一次真正生效，见 10-§5.4）。
  */
@@ -289,14 +290,14 @@ export async function startClassSession(sessionId: string): Promise<void> {
   if (fetchError) throw new Error(fetchError.message);
   if (!session || session.started_at) return;
 
-  if (session.lecture_id && !session.courseware_frozen_at) {
+  if (!session.courseware_frozen_at) {
     const { data: resolvedRelease, error: resolvedReleaseError } = await supabase.rpc("resolve_session_courseware_release", {
       p_session_id: sessionId,
     });
     if (resolvedReleaseError) throw new Error(resolvedReleaseError.message);
     const selected = resolvedRelease?.[0] as { track: CoursewareTrack; release_id: string | null } | undefined;
     if (!selected) throw new Error("COURSEWARE_TRACK_NOT_RESOLVED");
-    const template = await getSessionCoursewareTemplate(sessionId);
+    const template = session.lecture_id ? await getSessionCoursewareTemplate(sessionId) : [];
     const resolved = resolveCourseware(template, session.courseware_overlay ?? []);
     // P6-2：同一 DB 事务同时冻结页数组、解析对象 pin 与开课时间。
     // 讲次已发布 release 时必须物化 releaseId + objectHash 清单——

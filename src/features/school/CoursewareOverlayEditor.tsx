@@ -86,6 +86,7 @@ export function CoursewareOverlayEditor({
   initialPageId,
   readOnly = false,
   structureReadOnly = readOnly,
+  customOnly = false,
 }: {
   classroomId: string;
   sessionId: string;
@@ -101,6 +102,8 @@ export function CoursewareOverlayEditor({
   initialPageId?: string;
   readOnly?: boolean;
   structureReadOnly?: boolean;
+  /** 自由课次没有课程模板，全部页面都由本课教师创建。 */
+  customOnly?: boolean;
 }) {
   const t = useTranslations("school.overlay");
   const ts = useTranslations("school.session");
@@ -499,7 +502,7 @@ export function CoursewareOverlayEditor({
       <p className="mt-2 text-xs text-muted">
         {structureReadOnly
           ? ts(readOnly ? "prepArchiveCoursewareHint" : "prepArchiveUnlockedCoursewareHint")
-          : t("hint")}
+          : t(customOnly ? "freeHint" : "hint")}
       </p>
 
       <CoursewarePreviewWorkspace

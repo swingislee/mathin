@@ -715,7 +715,6 @@ export async function completeSessionPreparationAction(sessionId: string): Promi
       .maybeSingle<{ lecture_id: string | null; courseware_overlay: OverlaySlot[] }>();
     if (sessionError) throw new Error(sessionError.message);
     if (!session) throw new Error("SESSION_NOT_FOUND");
-    if (!session.lecture_id) throw new Error("NO_LECTURE");
 
     const { data: resolvedRows, error: resolveError } = await supabase.rpc("resolve_session_courseware_release", {
       p_session_id: value.sessionId,
