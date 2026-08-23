@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
-import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { GameBoardProps, GameMirrorState, SudokuHighlightTool } from "../types";
 import { isSolvedGrid, sudokuPuzzle } from "./logic";
@@ -39,6 +38,7 @@ import {
 const ENTRY_MODES: SudokuEntryMode[] = ["candidate", "value"];
 const INVALID_CELL_VISIBLE_MS = 1_100;
 const INVALID_MESSAGE_DELAY_MS = 440;
+const INVALID_MESSAGE_VISIBLE_MS = 2_600;
 const HIGHLIGHT_TOOL_DEFS = [
   { tool: "box", label: "highlightBox", Icon: SquareDashed },
   { tool: "row", label: "highlightRow", Icon: Rows3 },
@@ -64,35 +64,42 @@ export function SudokuBoard({ seed, difficulty, finished, onComplete, mirror, on
     : null;
   const invalidAttemptIndex = state.invalidAttempt?.index ?? null;
   const [invalidCell, setInvalidCell] = useState<number | null>(null);
+  const [reasoningVisible, setReasoningVisible] = useState(false);
   const seenInvalidAttempt = useRef(invalidAttemptKey);
   const reasoningOnlyMessage = t("reasoningOnly");
 
   useEffect(() => {
     if (!invalidAttemptKey || invalidAttemptIndex === null) {
       seenInvalidAttempt.current = null;
-      const clearTimer = window.setTimeout(() => setInvalidCell(null), 0);
+      const clearTimer = window.setTimeout(() => {
+        setInvalidCell(null);
+        setReasoningVisible(false);
+      }, 0);
       return () => window.clearTimeout(clearTimer);
     }
     if (seenInvalidAttempt.current === invalidAttemptKey) return;
     seenInvalidAttempt.current = invalidAttemptKey;
 
-    const resetTimer = window.setTimeout(() => setInvalidCell(null), 0);
+    const resetTimer = window.setTimeout(() => {
+      setInvalidCell(null);
+      setReasoningVisible(false);
+    }, 0);
     const animationTimer = window.setTimeout(() => setInvalidCell(invalidAttemptIndex), 20);
-    const messageTimer = window.setTimeout(() => {
-      toast.error(reasoningOnlyMessage, {
-        id: `sudoku-invalid-${puzzleKey}`,
-        duration: 2_600,
-      });
-    }, INVALID_MESSAGE_DELAY_MS);
-    const clearTimer = window.setTimeout(() => setInvalidCell(null), INVALID_CELL_VISIBLE_MS);
+    const messageTimer = window.setTimeout(() => setReasoningVisible(true), INVALID_MESSAGE_DELAY_MS);
+    const clearCellTimer = window.setTimeout(() => setInvalidCell(null), INVALID_CELL_VISIBLE_MS);
+    const clearMessageTimer = window.setTimeout(
+      () => setReasoningVisible(false),
+      INVALID_MESSAGE_DELAY_MS + INVALID_MESSAGE_VISIBLE_MS,
+    );
 
     return () => {
       window.clearTimeout(resetTimer);
       window.clearTimeout(animationTimer);
       window.clearTimeout(messageTimer);
-      window.clearTimeout(clearTimer);
+      window.clearTimeout(clearCellTimer);
+      window.clearTimeout(clearMessageTimer);
     };
-  }, [invalidAttemptIndex, invalidAttemptKey, puzzleKey, reasoningOnlyMessage]);
+  }, [invalidAttemptIndex, invalidAttemptKey]);
 
   // 课堂镜像：新状态对象到达即在渲染期对齐本地（React「adjust state during render」模式）。
   if (puzzleKey !== appliedPuzzleKey) {
@@ -165,16 +172,24 @@ export function SudokuBoard({ seed, difficulty, finished, onComplete, mirror, on
   return (
     <div
       aria-label={t("boardLabel")}
-      className="mx-auto h-full w-full overflow-auto rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-crater focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
+      className={cn(
+        styles.academyTheme,
+        "relative mx-auto h-full w-full overflow-auto rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-[var(--sudoku-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-paper",
+      )}
       tabIndex={inputDisabled ? -1 : 0}
       onKeyDown={onKeyDown}
     >
+      {reasoningVisible ? (
+        <div aria-live="assertive" className={styles.reasoningPrompt} role="alert">
+          {reasoningOnlyMessage}
+        </div>
+      ) : null}
       <div className="mx-auto grid h-full min-h-96 min-w-[38rem] max-w-5xl grid-cols-[minmax(9.5rem,10.5rem)_minmax(0,1fr)] items-center gap-4 p-1 sm:gap-6">
         <aside className="grid w-full max-w-[10.5rem] grid-cols-[minmax(0,7.25rem)_2.75rem] items-center gap-2 justify-self-center">
           <div className="flex min-w-0 flex-col gap-3">
             <div
               aria-label={t("entryMode")}
-              className="grid grid-cols-2 rounded-xl border border-line bg-card p-1"
+              className={cn(styles.controlGroup, "grid grid-cols-2 rounded-xl border p-1")}
               role="radiogroup"
             >
               {ENTRY_MODES.map((mode) => (
@@ -186,10 +201,11 @@ export function SudokuBoard({ seed, difficulty, finished, onComplete, mirror, on
                   disabled={inputDisabled}
                   onClick={() => commit(setSudokuEntryMode(state, mode))}
                   className={cn(
-                    "min-h-10 rounded-lg px-1 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-crater disabled:cursor-default disabled:opacity-100",
+                    styles.modeButton,
+                    "min-h-10 rounded-lg border border-transparent px-1 text-sm font-medium transition-colors disabled:cursor-default disabled:opacity-100",
                     state.entryMode === mode && state.highlightTool === null
-                      ? "bg-ink text-paper"
-                      : "text-muted hover:bg-moon/30 hover:text-ink",
+                      ? styles.controlActive
+                      : styles.controlIdle,
                   )}
                 >
                   {t(mode === "candidate" ? "candidateMode" : "valueMode")}
@@ -210,7 +226,10 @@ export function SudokuBoard({ seed, difficulty, finished, onComplete, mirror, on
                           title={t("deleteEntry")}
                           disabled={deleteDisabled}
                           onClick={deleteEntry}
-                          className="grid aspect-square min-h-11 w-full place-items-center rounded-xl border border-line bg-card text-muted outline-none transition-colors hover:border-ink/40 hover:bg-moon/30 hover:text-ink focus-visible:ring-2 focus-visible:ring-crater disabled:cursor-default disabled:opacity-45"
+                          className={cn(
+                            styles.numberButton,
+                            "grid aspect-square min-h-11 w-full place-items-center rounded-xl border transition-colors disabled:cursor-default disabled:opacity-45",
+                          )}
                         >
                           <Eraser aria-hidden size={20} />
                         </button>
@@ -228,10 +247,10 @@ export function SudokuBoard({ seed, difficulty, finished, onComplete, mirror, on
                         disabled={numberPadDisabled}
                         onClick={() => chooseDigit(digit)}
                         className={cn(
-                          "aspect-square min-h-11 w-full rounded-xl border text-xl font-medium tabular-nums outline-none transition-colors focus-visible:ring-2 focus-visible:ring-crater disabled:cursor-default disabled:opacity-45",
-                          pressed && digitHighlightMode && "border-blue bg-blue text-white",
-                          pressed && !digitHighlightMode && "border-ink bg-ink text-paper",
-                          !pressed && "border-line bg-card text-ink hover:border-ink/40 hover:bg-moon/30",
+                          styles.numberButton,
+                          "aspect-square min-h-11 w-full rounded-xl border text-xl font-medium tabular-nums transition-colors disabled:cursor-default disabled:opacity-45",
+                          pressed && digitHighlightMode && styles.numberHighlightActive,
+                          pressed && !digitHighlightMode && styles.numberActive,
                         )}
                       >
                         {digit}
@@ -245,7 +264,7 @@ export function SudokuBoard({ seed, difficulty, finished, onComplete, mirror, on
 
           <div
             aria-label={t("highlightToolbar")}
-            className="flex flex-col items-center gap-1.5 rounded-xl border border-line bg-card p-1"
+            className={cn(styles.toolBar, "flex flex-col items-center gap-1.5 rounded-xl border p-1")}
             role="toolbar"
           >
             {HIGHLIGHT_TOOL_DEFS.map(({ tool, label, Icon }) => (
@@ -258,23 +277,28 @@ export function SudokuBoard({ seed, difficulty, finished, onComplete, mirror, on
                 disabled={inputDisabled}
                 onClick={() => commit(setSudokuHighlightTool(state, tool))}
                 className={cn(
-                  "grid size-11 shrink-0 place-items-center rounded-lg border outline-none transition-colors focus-visible:ring-2 focus-visible:ring-crater disabled:cursor-default disabled:opacity-100",
+                  styles.toolButton,
+                  "grid size-11 shrink-0 place-items-center rounded-lg border transition-colors disabled:cursor-default disabled:opacity-100",
                   state.highlightTool === tool
-                    ? "border-blue bg-blue text-white"
-                    : "border-transparent text-muted hover:border-line hover:bg-moon/30 hover:text-ink",
+                    ? styles.toolActive
+                    : styles.controlIdle,
                 )}
               >
                 <Icon aria-hidden size={18} />
               </button>
             ))}
-            <span aria-hidden className="h-px w-7 bg-line" />
+            <span aria-hidden className={cn(styles.toolSeparator, "h-px w-7")} />
             <button
               type="button"
               aria-label={t("clearHighlights")}
               title={t("clearHighlights")}
               disabled={inputDisabled || !hasSudokuTeachingHighlights(state)}
               onClick={() => commit(clearSudokuTeachingHighlights(state))}
-              className="grid size-11 shrink-0 place-items-center rounded-lg border border-transparent text-muted outline-none transition-colors hover:border-line hover:bg-moon/30 hover:text-ink focus-visible:ring-2 focus-visible:ring-crater disabled:cursor-default disabled:opacity-35"
+              className={cn(
+                styles.toolButton,
+                styles.controlIdle,
+                "grid size-11 shrink-0 place-items-center rounded-lg border transition-colors disabled:cursor-default disabled:opacity-35",
+              )}
             >
               <RotateCcw aria-hidden size={18} />
             </button>
@@ -284,17 +308,17 @@ export function SudokuBoard({ seed, difficulty, finished, onComplete, mirror, on
         <div className="flex min-h-0 min-w-0 items-center justify-center self-stretch">
           <div className="grid aspect-square h-auto max-h-full w-full max-w-[42rem] grid-cols-[1.125rem_minmax(0,1fr)] grid-rows-[1.125rem_minmax(0,1fr)]">
             <span aria-hidden />
-            <div aria-hidden className="grid grid-cols-9 text-xs font-medium text-muted sm:text-sm">
+            <div aria-hidden className={cn(styles.coordinate, "grid grid-cols-9 text-xs font-medium sm:text-sm")}>
               {SUDOKU_COLUMN_LABELS.map((label) => (
                 <span key={label} className="grid place-items-center tabular-nums">{label}</span>
               ))}
             </div>
-            <div aria-hidden className="grid grid-rows-9 text-xs font-medium text-muted sm:text-sm">
+            <div aria-hidden className={cn(styles.coordinate, "grid grid-rows-9 text-xs font-medium sm:text-sm")}>
               {SUDOKU_ROW_LABELS.map((label) => (
                 <span key={label} className="grid place-items-center">{label}</span>
               ))}
             </div>
-            <div className="grid grid-cols-9 overflow-hidden rounded-xl border-2 border-ink/55 bg-card shadow-sm">
+            <div className={cn(styles.boardGrid, "grid grid-cols-9 overflow-hidden rounded-xl border-2")}>
               {state.values.map((value, index) => {
                 const given = puzzle[index] !== 0;
                 const column = index % 9;
@@ -334,31 +358,37 @@ export function SudokuBoard({ seed, difficulty, finished, onComplete, mirror, on
                     data-teaching-highlight={teachingHighlighted || undefined}
                     onClick={() => selectCell(index)}
                     className={cn(
-                      "relative flex aspect-square items-center justify-center tabular-nums outline-none transition-[background-color,filter,box-shadow] duration-100 focus-visible:z-20 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-crater disabled:cursor-default disabled:opacity-100",
-                      greenBox ? "bg-leaf/20" : "bg-blue/10",
-                      column < 8 && (column % 3 === 2 ? "border-r-2 border-r-ink/65" : "border-r border-r-line"),
-                      row < 8 && (row % 3 === 2 ? "border-b-2 border-b-ink/65" : "border-b border-b-line"),
-                      structuralHighlightCount === 1 && "bg-moon/55",
-                      structuralHighlightCount > 1 && "bg-crater/45",
+                      styles.cell,
+                      "relative flex aspect-square items-center justify-center tabular-nums outline-none transition-[background-color,filter,box-shadow] duration-100 disabled:cursor-default disabled:opacity-100",
+                      greenBox ? styles.greenCell : styles.blueCell,
+                      column < 8 && (column % 3 === 2 ? styles.majorRight : styles.minorRight),
+                      row < 8 && (row % 3 === 2 ? styles.majorBottom : styles.minorBottom),
+                      structuralHighlightCount === 1 && styles.highlightSingle,
+                      structuralHighlightCount > 1 && styles.highlightOverlap,
                       !inputDisabled && "hover:brightness-[0.97]",
                       state.highlightTool && !inputDisabled && "cursor-crosshair",
-                      state.selected === index && state.highlightTool === null && "z-10 bg-moon/65 ring-2 ring-inset ring-crater",
+                      state.selected === index && state.highlightTool === null && styles.selectedCell,
                       invalid && styles.invalidCell,
-                      invalid && "z-20 bg-rose/20 ring-2 ring-inset ring-rose",
                     )}
                   >
                     {value ? (
                       <span
                         className={cn(
                           "text-[clamp(1rem,3vw,2rem)] leading-none",
-                          given ? "font-semibold text-ink" : "font-medium text-blue",
-                          digitHighlighted && "grid size-[72%] place-items-center rounded-full bg-blue text-white shadow-sm ring-2 ring-blue/25",
+                          given ? cn(styles.givenTile, "font-semibold") : cn(styles.filledDigit, "font-medium"),
+                          digitHighlighted && styles.digitHighlight,
                         )}
                       >
                         {value}
                       </span>
                     ) : candidateDigits.length ? (
-                      <span aria-hidden className="grid size-full grid-cols-3 grid-rows-3 p-[5%] text-[clamp(0.48rem,1.2vw,0.72rem)] leading-none text-blue">
+                      <span
+                        aria-hidden
+                        className={cn(
+                          styles.candidateGrid,
+                          "grid size-full grid-cols-3 grid-rows-3 p-[5%] text-[clamp(0.48rem,1.2vw,0.72rem)] leading-none",
+                        )}
+                      >
                         {Array.from({ length: 9 }, (_, candidateIndex) => candidateIndex + 1).map((digit) => (
                           <span
                             key={digit}
@@ -366,7 +396,7 @@ export function SudokuBoard({ seed, difficulty, finished, onComplete, mirror, on
                               "grid place-items-center rounded-full",
                               candidateDigits.includes(digit)
                               && state.highlights.focusedDigit === digit
-                              && "bg-blue text-white",
+                              && styles.candidateFocused,
                             )}
                           >
                             {candidateDigits.includes(digit) ? digit : ""}

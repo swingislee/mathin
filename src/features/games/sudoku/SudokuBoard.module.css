@@ -1,15 +1,241 @@
+.academyTheme {
+  --sudoku-surface: #eef5f2;
+  --sudoku-control: #ffffff;
+  --sudoku-control-border: #d7e4df;
+  --sudoku-ink: #243532;
+  --sudoku-muted: #58716c;
+  --sudoku-green: #badbc4;
+  --sudoku-blue: #b9d1d8;
+  --sudoku-grid-soft: rgb(255 255 255 / 28%);
+  --sudoku-grid-strong: rgb(255 255 255 / 88%);
+  --sudoku-accent: #467772;
+  --sudoku-accent-deep: #376965;
+  --sudoku-accent-soft: #e4f1ed;
+  --sudoku-number: #2f7698;
+  --sudoku-number-deep: #205875;
+  --sudoku-highlight: rgb(255 255 255 / 38%);
+  --sudoku-highlight-overlap: rgb(53 105 101 / 18%);
+  --sudoku-error: #c96861;
+  --sudoku-error-soft: rgb(244 179 169 / 66%);
+  color: var(--sudoku-ink);
+  color-scheme: light;
+  background: var(--sudoku-surface);
+  box-shadow: inset 0 0 0 1px rgb(79 130 125 / 12%);
+}
+
+.controlGroup,
+.toolBar {
+  border-color: var(--sudoku-control-border);
+  background: var(--sudoku-control);
+  box-shadow: 0 1px 2px rgb(55 105 101 / 7%);
+}
+
+.modeButton,
+.numberButton,
+.toolButton {
+  color: var(--sudoku-muted);
+  outline: none;
+}
+
+.modeButton:focus-visible,
+.numberButton:focus-visible,
+.toolButton:focus-visible,
+.cell:focus-visible {
+  z-index: 20;
+  box-shadow: inset 0 0 0 2px var(--sudoku-accent-deep);
+}
+
+.controlIdle:hover:not(:disabled),
+.numberButton:hover:not(:disabled):not(.numberActive):not(.numberHighlightActive),
+.toolButton:hover:not(:disabled):not(.toolActive) {
+  color: var(--sudoku-ink);
+  background: var(--sudoku-accent-soft);
+}
+
+.numberButton {
+  border-color: var(--sudoku-control-border);
+  background: var(--sudoku-control);
+  box-shadow: 0 1px 2px rgb(55 105 101 / 6%);
+}
+
+.toolButton {
+  border-color: transparent;
+}
+
+.controlActive,
+.numberActive,
+.toolActive {
+  color: #ffffff;
+  border-color: var(--sudoku-accent);
+  background: var(--sudoku-accent);
+}
+
+.numberHighlightActive {
+  color: #ffffff;
+  border-color: var(--sudoku-number);
+  background: var(--sudoku-number);
+}
+
+.toolSeparator {
+  background: var(--sudoku-control-border);
+}
+
+.coordinate {
+  color: var(--sudoku-muted);
+}
+
+.boardGrid {
+  border-color: var(--sudoku-grid-strong);
+  background: var(--sudoku-green);
+  box-shadow: 0 2px 4px rgb(43 83 79 / 12%);
+}
+
+.cell {
+  isolation: isolate;
+  color: var(--sudoku-ink);
+}
+
+.cell::after {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+}
+
+.greenCell {
+  background: var(--sudoku-green);
+}
+
+.blueCell {
+  background: var(--sudoku-blue);
+}
+
+.minorRight {
+  border-right: 1px solid var(--sudoku-grid-soft);
+}
+
+.majorRight {
+  border-right: 2px solid var(--sudoku-grid-strong);
+}
+
+.minorBottom {
+  border-bottom: 1px solid var(--sudoku-grid-soft);
+}
+
+.majorBottom {
+  border-bottom: 2px solid var(--sudoku-grid-strong);
+}
+
+.highlightSingle::after {
+  background: var(--sudoku-highlight);
+}
+
+.highlightOverlap::after {
+  background: var(--sudoku-highlight-overlap);
+}
+
+.selectedCell {
+  z-index: 10;
+  box-shadow: inset 0 0 0 3px var(--sudoku-accent-deep);
+}
+
+.givenTile,
+.digitHighlight,
+.filledDigit,
+.candidateGrid {
+  position: relative;
+  z-index: 1;
+}
+
+.givenTile {
+  display: grid;
+  width: 84%;
+  height: 84%;
+  place-items: center;
+  border: 1px solid rgb(55 105 101 / 8%);
+  border-radius: 0.45rem;
+  color: #111715;
+  background: #ffffff;
+  box-shadow: 0 2px 0 rgb(55 82 78 / 10%);
+}
+
+.filledDigit {
+  color: var(--sudoku-number-deep);
+}
+
+.digitHighlight {
+  display: grid;
+  width: 84%;
+  height: 84%;
+  place-items: center;
+  border-radius: 0.45rem;
+  color: var(--sudoku-accent-deep);
+  background: #f5fbf9;
+  box-shadow: inset 0 0 0 2px var(--sudoku-accent);
+}
+
+.candidateGrid {
+  color: var(--sudoku-number-deep);
+}
+
+.candidateFocused {
+  color: #ffffff;
+  background: var(--sudoku-number);
+}
+
 .invalidCell {
+  z-index: 20;
+  box-shadow: inset 0 0 0 3px var(--sudoku-error);
   animation: sudoku-invalid-cell 420ms cubic-bezier(0.36, 0.07, 0.19, 0.97);
   transform-origin: center;
   will-change: transform;
 }
 
+.invalidCell::after {
+  background: var(--sudoku-error-soft);
+}
+
+.reasoningPrompt {
+  position: fixed;
+  z-index: 60;
+  bottom: 1.5rem;
+  left: 50%;
+  max-width: calc(100vw - 2rem);
+  padding: 0.7rem 1rem;
+  border: 1px solid rgb(201 104 97 / 48%);
+  border-radius: 999px;
+  color: #8d453f;
+  background: #fffaf8;
+  box-shadow: 0 4px 12px rgb(91 56 52 / 12%);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-align: center;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
 @keyframes sudoku-invalid-cell {
-  0%, 100% { transform: translateX(0); }
-  18% { transform: translateX(-5px); }
-  36% { transform: translateX(4px); }
-  54% { transform: translateX(-3px); }
-  72% { transform: translateX(2px); }
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  18% {
+    transform: translateX(-5px);
+  }
+
+  36% {
+    transform: translateX(4px);
+  }
+
+  54% {
+    transform: translateX(-3px);
+  }
+
+  72% {
+    transform: translateX(2px);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
