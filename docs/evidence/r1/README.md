@@ -2,7 +2,7 @@
 
 本目录是 R1-Live 与 R1-0～R1-18 的唯一仓库内证据入口。它保存可审查的小摘要、结构化结果和外部 artifact 索引，不把大日志、视频、截图、secret、token、测试凭据或可识别未成年人 PII 提交到 Git。
 
-当前唯一施工阶段为 **R1-Live-2 · 首个真实教师闭环**。R1-Live 只保留两个结果门：Gate 1 `PASS`、Gate 2 `BLOCKED`；首个闭环固定为正式教师整班点名，见 [R1-Live 差距表](r1-live.md)与[目标核查及生产备份](r1-live-target-audit.md)。原 R1 暂停在 R1-9，SML-0 为独立并行轨道。
+当前唯一施工阶段为 **R1-Live-2 · 生产单老师试用**。R1-Live 只保留两个结果门：Gate 1 `PASS`、Gate 2 `BLOCKED`；生产端已进入 1 名正式教师小范围试用，首个闭环仍固定为整班点名、持久再读与权限对照，见 [R1-Live 差距表](r1-live.md)与[目标核查及生产备份](r1-live-target-audit.md)。开发端可并行预演产品负责人选中的新功能，但只有开发初验、生产发布及 postflight 各自形成证据后才能提升对应环境结论。原 R1 暂停在 R1-9，SML-0 为独立并行轨道。
 
 ## 存储合同
 
@@ -32,7 +32,7 @@ failure_ticket
 
 | 阶段 | 状态 | 日期 | 证据 |
 | --- | --- | --- | --- |
-| R1-Live | Gate 1 passed；Gate 2 current/blocking | 2026-08-23 | [真实教师点名闭环差距表](r1-live.md)；[目标核查、应用/数据库发布、正式管理员交接、manifest 激活、真实教师注册/岗位保护与当前生产备份](r1-live-target-audit.md)；[仓库写入目标保险丝](../../runbooks/r1-write-target-policy.md)；[正式对象保护 manifest](../../runbooks/r1-live-object-protection-manifest.md)。Xiaomi 已固定为当前生产目标，危险写入口与 purge 数据库合同 fail-closed；唯一正式管理员、首名真实教师双岗位、active 8 条 protected/0 条 purge manifest 和当前 PostgreSQL+Storage 同批次备份均已核验，因此 Gate 1 `PASS`。学年 migration 已在完整生产回滚演练后部署为数据库 head `20260823000100_r1_live_school_year_periods`；应用 current/previous 为 `20260822-181331` / `b899942…` 与 `20260822-162416` / `6dfb3af…`，发布后错误增量为 0。春季结束日现为 `2026-06-29`，生产 1 个班级、15 个课次和 1 条 active 报名均归入 `2026–2027` 秋季；2026 学年仍为 planning、学生仍为五年级、promotion=0。正式教师点名保存/再读、管理员可见和无权限拒绝尚未执行，因此 Gate 2 未通过 |
+| R1-Live | Gate 1 passed；Gate 2 single-teacher production trial/blocking | 2026-08-23 | [真实教师点名闭环差距表](r1-live.md)；[目标核查、应用/数据库发布、正式管理员交接、manifest 激活、真实教师注册/岗位保护与当前生产备份](r1-live-target-audit.md)；[仓库写入目标保险丝](../../runbooks/r1-write-target-policy.md)；[正式对象保护 manifest](../../runbooks/r1-live-object-protection-manifest.md)。Xiaomi 已固定为当前生产目标，危险写入口与 purge 数据库合同 fail-closed；唯一正式管理员、首名真实教师双岗位、active 8 条 protected/0 条 purge manifest 和当前 PostgreSQL+Storage 同批次备份均已核验，因此 Gate 1 `PASS`。数据库 head 为 `20260823000200_r1_live_preparation_attention_window`；应用 current/previous 为 `20260822-193605` / `5041fe1…` 与 `20260822-185849` / `3fa5919…`，发布后错误增量为 0。春季结束日现为 `2026-06-29`，生产 1 个班级、15 个课次和 1 条 active 报名均归入 `2026–2027` 秋季；2026 学年仍为 planning、学生仍为五年级、promotion=0。产品负责人已启动生产单老师试用，并允许开发端新功能在初验后逐项晋级；该阶段指令是 E0 决策，不替代正式教师点名保存/再读、管理员可见和无权限拒绝的 E3 结果，因此 Gate 2 未通过 |
 | R1-0 | passed | 2026-07-28 | [规划真相源与发布边界冻结](r1-0.md) |
 | R1-1 | passed | 2026-07-28 | [机构配置、规则与 Feature Flag](r1-1.md) |
 | R1-2 | passed | 2026-07-28 | [Jobs、通知、文件与外部集成](r1-2.md) |

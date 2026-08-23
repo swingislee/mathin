@@ -29,12 +29,14 @@
 
 Terms 使用稳定 ID 接收 Story、Minds、Games、Tools、Notebook 和课程的关联。修改 slug 或删除内容前检查反向引用、重定向、canonical 和 sitemap。
 
-### 1.1.1 2026-08-22 施工顺序
+### 1.1.1 2026-08-23 施工顺序
 
-当前唯一施工阶段为 `R1-Live-2 · 首个真实教师闭环`。R1-Live 只保留两个结果 Gate：Gate 1 合并正式目标/身份、当前备份、防误清、可识别的 current/previous 与错误查询位置；Gate 2 合并真实点名闭环和首次真实教师验收。原范围冻结成为永久规则，完整恢复/rollback、错误 release 标签、独立观察和 14 天 RC 回到 Production 1.0。
+当前唯一施工阶段为 `R1-Live-2 · 生产单老师试用`。R1-Live 只保留两个结果 Gate：Gate 1 合并正式目标/身份、当前备份、防误清、可识别的 current/previous 与错误查询位置；Gate 2 合并真实点名闭环和首次真实教师验收。原范围冻结成为永久规则，完整恢复/rollback、错误 release 标签、独立观察和 14 天 RC 回到 Production 1.0。
 
 - Gate 1 当前 `PASS`：Xiaomi 目标指纹、危险写拒绝、唯一正式 admin MFA、首名真实教师及双岗位、active 8 条 protected/0 条 purge manifest、current/previous、健康探针和错误查询位置均已确认。数据库 head 已部署为 `20260823000200_r1_live_preparation_attention_window`；应用 current 为 `20260822-193605` / `5041fe1…`，previous 为 `20260822-185849` / `3fa5919…`。当前 PostgreSQL+Storage 同批次备份 `mathin-20260822T093529Z` 的数据库目录、Storage 文件数、前后清单和全部 SHA-256 独立复核通过。
-- Gate 2 当前 `BLOCKED`：本机隔离固定账号 Golden Path 已完成未完整课程建班、自动课次、`lead` 报名、教师点名保存和换页再读。生产已有 1 个 production 班级、15 个课次和 1 条 active 报名，主讲 1、学辅 0；建班字段校验修复已上线。学年迁移把春季边界修正为 `2026-06-29`，并只把班级/课次/报名改挂到 `2026–2027` 秋季，2026 学年仍为 planning，学生仍为五年级。下一步由正式教师完成点名保存、刷新/重登再读，再做管理员读取和无权限拒绝。
+- Gate 2 当前仍为 `BLOCKED`，但生产单老师试用已经启动：本机隔离固定账号 Golden Path 已完成未完整课程建班、自动课次、`lead` 报名、教师点名保存和换页再读。生产已有 1 个 production 班级、15 个课次和 1 条 active 报名，主讲 1、学辅 0；建班字段校验修复已上线。学年迁移把春季边界修正为 `2026-06-29`，并只把班级/课次/报名改挂到 `2026–2027` 秋季，2026 学年仍为 planning，学生仍为五年级。正式点名仍为 0；退出前仍由该教师完成点名保存、刷新/重登再读，再做管理员读取和无权限拒绝。
+- 生产轨保持 1 名正式教师小范围使用，真实反馈按 P0/核心 P1 优先；“试用已启动”只表示执行阶段变化，不代表 Gate 2、某项功能或 Production 1.0 已验收通过。
+- 开发轨允许产品负责人并行尝试新功能。每项功能须先在隔离开发目标完成相关机器检查和产品负责人初步验收，再以独立可回退提交登记精确 commit/migration，经过生产目标、备份/current/previous、数据影响与回退 preflight 后小增量发布；postflight 须核对健康、错误增量、核心 Smoke 和受影响业务不变量。开发通过、已部署待验收与生产通过分别记账。
 - 班级启用是运营决定。正式自由班、未完整课程、教师冲突、备课产物/审核/检查项、点名前置、资源预载和无 release 都只提示；创建时的权限、主讲/学期、course/family/lecture 引用、状态和不可变历史继续硬阻断。无 release 课次可冻结 `releaseId=null` 的空白/本次覆盖快照。
 - 现有 purge 只接受 active manifest 明确的 `purge_allowed` test 根，当前准删数为 0。日常新增正式学生、班级、课次和考勤不要求逐行替换 manifest；只有未来授权具体清理根时才按当时删除闭包生成 replacement。
 - 原 R1 暂停在 R1-9。P6-AIX-2、G+/X+/A+ 170 讲和 102 门/1305 讲/2610 条目标 release-1 合同保留；真实全量 inventory、Storage/H5 审计、Terms/Story/其他公开模块、完整视觉/E2E/恢复门转入 R1-Live 后继续。
@@ -515,7 +517,8 @@ R1-16 的只读 preflight 位于 `docs/manifests/r1-production-deployment.exampl
 | 事项 | 1.0 决定 | 责任角色 | 最迟完成 | 状态 |
 | --- | --- | --- | --- | --- |
 | 产品 | 六个对外模块与学校运营/内容发布同步上线；Terms 为关系中心 | 产品负责人 | 已定 | decided |
-| R1-Live 首个闭环 | Gate 1“可安全开始”→ Gate 2“正式教师登录、production 班级/课次、整班点名、保存/刷新/重登再读、管理员可见、无权限拒绝”；两 Gate 全 `PASS` 后立即内部开放 | 产品+教学运营+QA/发布负责人 | 当前 | active sequencing |
+| R1-Live 单老师试用 | Gate 1“可安全开始”已通过；当前由 1 名正式教师在 production 班级/课次/花名册上试用。Gate 2 仍要求整班点名、保存/刷新/重登再读、管理员可见和无权限拒绝；两 Gate 全 `PASS` 后再向第一批内部教师扩大开放 | 产品+教学运营+QA/发布负责人 | 当前 | active production trial |
+| 开发端新功能晋级 | 产品负责人可在单老师生产试用期间并行选择新功能；开发端定向机器检查和人工初验通过后，按独立提交、生产 preflight、可回退小增量发布和 postflight 晋级。未部署不得记为生产可用，已部署但未完成 postflight/人工复核只记“待验收” | 产品+技术+QA/发布负责人 | 单老师试用期间持续 | active development lane |
 | Production 1.0 施工顺序 | 原 R1 暂停在 R1-9；P6-AIX-2 和来源 manifest 结果保留。R1-Live 开放后按真实问题恢复 R1-9～18；`v1.0.0` 前仍须通过本文件全部适用硬门 | 产品+QA/发布负责人 | R1-Live 14 天观察后复核 | queued after live |
 | 视觉 | 小王子为全站基础；场景/内容/工作区三级强度；Notebook=旅途笔记 | 产品+设计负责人 | 已定 | decided |
 | 语言 | UI 永久 zh/en；缺英文长内容时显式回退 | 产品+内容负责人 | 已定 | decided |
@@ -551,7 +554,7 @@ R1-0 已完成责任角色到 `swingislee` 的映射。增加人员或发生交�
 | 正式 Playwright 发布门尚未完成 | 正式配置、target policy 和 fail-closed release runner 已落地；9 条非五模块本地 Chromium 旅程分别取绿 | 尚无明确非生产 release target 的单次 9/9 零 skip、写态、zh/en、跨浏览器和连续 3 次无 flaky 证据 | QA/发布 | R1-14 |
 | 清理/release 未演练且旧 planner 会误删正式 Live 数据 | 两个现有 purge RPC 已接入目标绑定 manifest；旧“唯一管理员/运营数据为零”全库 planner 仍未修订 | 若绕过现有 RPC 或直接使用旧 planner，仍可能删除真实教师、班级、考勤及课次引用 release，也可能损失 4:3 资源 | 数据库+课程研发 | R1-Live 后修订全库合同，再在 R1-15 隔离演练 |
 | 生产恢复未实操 | Linux 目标与 fail-closed preflight 已定；当前树与 Git 历史 secret scan 为 0，当前 PostgreSQL+Storage 同批次备份及独立 SHA/可读性复核已完成，但恢复 E3 仍为 pending | 尚无独立环境、运行时 secret 复核、告警链路、RPO/RTO、异机/静态加密副本、数据库/Storage 恢复或应用回滚的实操证据 | 运维+安全 | R1-16 |
-| 无连续真实运行观察 | R1-Live Gate 2 尚未执行；独立观察、14 天/5 节课堂和支持指标均无 E4 | 不阻止首个真实闭环，但会阻止扩大范围和 `v1.0.0` | 教学运营+发布 | Gate 2 后启动观察，R1-17 汇总 |
+| 无连续真实运行观察 | 生产单老师试用阶段已启动，但尚无正式点名持久再读与权限对照，Gate 2 仍未通过；独立观察、14 天/5 节课堂和支持指标均无 E4 | 不阻止当前单老师试用或开发端新功能预演，但会阻止扩大用户范围和 `v1.0.0` | 教学运营+发布 | Gate 2 后启动正式观察，R1-17 汇总 |
 
 ### 7.3 当前专题与 1.0 后处理
 

@@ -2,7 +2,7 @@
 
 ## 结论
 
-截至 2026-08-23，`mathin.club` / `supabase.mathin.club` 的应用、数据库、Storage、compose 和部署 commit 已完成目标登记，仓库级写入口保险丝也已把 Xiaomi 固定为当前生产目标；测试造数/重建不能写入它，课程内容写入默认拒绝并使用独立受控通道。本机已建立只绑定 `127.0.0.1` 的隔离 Supabase，完成固定开发账号、登录和数据库合同验证，且没有复制或修改 Xiaomi 数据。生产账本现为 `20260823000200_r1_live_preparation_attention_window`；应用 current/previous 为 `20260822-193605` / `5041fe1…` 与 `20260822-185849` / `3fa5919…`，原子切换、失败回退命令、双层健康和 `operational_errors` 查询位置均已确认。唯一正式管理员已完成 verified MFA、唯一 admin 原子交接、新会话 MFA challenge 和生产 admin 路由验收；首名真实教师已注册为 active `staff`，`research` 与 `teacher` 双岗位经产品确认。active manifest 为 8 条 protected、0 条 `purge_allowed`，两个 purge 候选列表为空；这已经满足 R1-Live 防误清底线，日常正式业务写入不再要求逐条 replacement。当前 PostgreSQL+Storage 同批次备份 `mathin-20260822T093529Z` 已在 Xiaomi 外置盘完成并独立复核，因此 Gate 1 `PASS`。本机隔离 Golden Path 已完成建班、自动课次、报名、教师点名保存和再读。生产已有 1 个 production 班级、15 个课次和 1 条 active 报名；春季结束日修正为 `2026-06-29` 后，三类对象均归到 `2026–2027` 秋季，2026 学年仍为 planning，学生仍为五年级。日常运营体验改动已上线，当前教师备课投影从 15 条缩为窗口内 1 条，业务对象计数不变；相关页面按单项接受产品人工验收。正式点名仍为 0，因此 Gate 2 保持 `BLOCKED`。
+截至 2026-08-23，`mathin.club` / `supabase.mathin.club` 的应用、数据库、Storage、compose 和部署 commit 已完成目标登记，仓库级写入口保险丝也已把 Xiaomi 固定为当前生产目标；测试造数/重建不能写入它，课程内容写入默认拒绝并使用独立受控通道。本机已建立只绑定 `127.0.0.1` 的隔离 Supabase，完成固定开发账号、登录和数据库合同验证，且没有复制或修改 Xiaomi 数据。生产账本现为 `20260823000200_r1_live_preparation_attention_window`；应用 current/previous 为 `20260822-193605` / `5041fe1…` 与 `20260822-185849` / `3fa5919…`，原子切换、失败回退命令、双层健康和 `operational_errors` 查询位置均已确认。唯一正式管理员已完成 verified MFA、唯一 admin 原子交接、新会话 MFA challenge 和生产 admin 路由验收；首名真实教师已注册为 active `staff`，`research` 与 `teacher` 双岗位经产品确认。active manifest 为 8 条 protected、0 条 `purge_allowed`，两个 purge 候选列表为空；这已经满足 R1-Live 防误清底线，日常正式业务写入不再要求逐条 replacement。当前 PostgreSQL+Storage 同批次备份 `mathin-20260822T093529Z` 已在 Xiaomi 外置盘完成并独立复核，因此 Gate 1 `PASS`。本机隔离 Golden Path 已完成建班、自动课次、报名、教师点名保存和再读。生产已有 1 个 production 班级、15 个课次和 1 条 active 报名；春季结束日修正为 `2026-06-29` 后，三类对象均归到 `2026–2027` 秋季，2026 学年仍为 planning，学生仍为五年级。日常运营体验改动已上线，当前教师备课投影从 15 条缩为窗口内 1 条，业务对象计数不变；相关页面按单项接受产品人工验收。产品负责人已把当前环节切换为生产端单老师试用，并允许开发端并行尝试新功能，在开发初验后逐项晋级生产；这是阶段与发布流程决策，不是目标环境运行证据。正式点名仍为 0，因此 Gate 2 保持 `BLOCKED`。
 
 本文件是 E0/E1 差距审阅，不是完整生产验收。2026-08-14～22 的 Xiaomi E1/E3 运行事实，以及本机隔离目标、应用/数据库发布、正式管理员交接和 manifest 激活证据见 [`r1-live-target-audit.md`](r1-live-target-audit.md)；用户提供的 `docs/plan/mathin-R1-Live-讨论稿.md` 为产品裁决输入，现行施工顺序以 doc 04 为准。
 
@@ -14,6 +14,12 @@
 | Gate 2 · 首个真实教师闭环 | `BLOCKED` | 学生/班级/课次/分班/点名 UI、RPC、RLS 和持久化合同已实现；点名可在课前、课中或课后完成，不再阻断开课；本机隔离固定账号 Golden Path 1/1 已完成建班→自动课次→报名→教师点名保存→换页再读。生产已有 1 个 production 班级、15 个课次和 1 条 active 报名；学年/秋季归属修复已上线且未升年级 | 无正式教师保存→刷新或重登→再读、管理员可见、无权限拒绝的生产 Golden Path | 是 | 由正式教师完成一次点名并做权限对照 |
 
 状态只允许 `PASS`、`BLOCKED`、`UNKNOWN`、`NOT REQUIRED`。范围冻结是永久规则，不再单列 Gate；旧 Gate 3 的当前备份底线并入 Gate 1，恢复/受控 rollback 演练与 release 错误标签进入 Production 1.0；旧 Gate 4 的首个教师动作并入 Gate 2，独立观察和连续运行进入上线后证据。
+
+## 当前执行方式
+
+- **生产轨**：1 名正式教师在现有 production 班级、课次和花名册上持续试用；真实问题按 P0/核心 P1 优先，正式数据继续受保护。
+- **开发轨**：产品负责人可选择新功能在本机隔离目标预演；相关机器检查和开发端人工初验通过后，才进入独立可回退的生产发布流程。
+- **证据边界**：开发通过、已部署待验收和生产通过分别登记。新功能若修改登录、授权、班级、课次、课堂或点名共享链路，生产发布后追加对应 R1-Live Smoke；任何开发结论都不替代 Gate 2 的正式点名与权限对照。
 
 ### 仓库 manifest 实现证据
 
@@ -371,4 +377,5 @@ Agent 按 doc 04 的 standing execution direction 生成包含原 4 个 protecte
 
 - Gate 1 已在当前 PostgreSQL+Storage 同批次备份完成并独立通过可读性/SHA 复核后改为 `PASS`；当前阶段为 `R1-Live-2`。
 - Gate 2 只有在同一目标完成正式教师写态、持久再读、管理员可见和越权拒绝后才能改为 `PASS`。
+- 开发端新功能只有在定向机器检查、产品负责人初验、生产 preflight/发布和 postflight 分别留证后，才能把对应结论从开发提升到生产；该晋级不自动改变 Gate 2。
 - 完整恢复/受控 rollback 演练、错误 release 标签、独立观察与 14 天/5 节课堂属于 Production 1.0 扩围证据，不再改变 R1-Live Gate 状态。
