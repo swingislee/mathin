@@ -8,7 +8,7 @@
 >
 > **SML 暂停位置**：`SML-0 · 合同与金标冻结`；空间数学可按独立权限或 Feature Flag 并行，不进入 R1-Live Gate。
 >
-> **当前运行状态**：Gate 1 已通过。Xiaomi 已固定为 `mathin.club` / `supabase.mathin.club` 生产目标；唯一正式管理员、首名真实教师、危险写拒绝、protected-only manifest、current/previous、健康、错误查询位置及当前 PostgreSQL+Storage 同批次备份均已登记。产品负责人已通过正式 UI 创建 1 个 production 班级和 15 个课次，当前另有 1 条 active 报名；建班字段校验修复已上线。学年 migration `20260823000100` 已把春季结束日修正为 `2026-06-29`，将该班、15 个课次和 1 条报名只改挂到 `2026–2027` 秋季；2026 学年仍为 planning，学生仍为五年级，promotion=0。日常运营体验收敛和 migration `20260823000200` 已上线，生产备课待办由全部 15 次课缩到当前窗口内 1 次课，业务对象计数不变。数据库 head 为 `20260823000200_r1_live_preparation_attention_window`，应用 current/previous 为 `20260822-193605` / `5041fe1…` 与 `20260822-185849` / `3fa5919…`，发布后错误增量为 0。2026-08-23 产品负责人已启动生产端单老师试用；正式点名仍为 0，故 Gate 2 保持 `BLOCKED`，不能据“试用已开始”记为通过。
+> **当前运行状态**：Gate 1 已通过。Xiaomi 已固定为 `mathin.club` / `supabase.mathin.club` 生产目标；唯一正式管理员、首名真实教师、危险写拒绝、protected-only manifest、current/previous、健康、错误查询位置及当前 PostgreSQL+Storage 同批次备份均已登记。生产业务计数为班级/课次/报名/点名=`1/15/1/0`，数据库 head=`20260823000300_r1_live_teacher_session_management`；应用 current/previous 为 `20260823-122633` / `ba5c991…` 与 `20260823-115657` / `7d06454…`，发布后错误增量为 0。自由课次课件工作区和固定宫区块摈除数独预设已部署，待教师实际插入及课堂验收。2026-08-23 产品负责人已启动生产端单老师试用；正式点名仍为 0，故 Gate 2 保持 `BLOCKED`，不能据“试用已开始”或“功能已部署”记为通过。
 >
 > **双轨执行**：生产端由 1 名正式教师在现有正式班级、课次和花名册上持续试用，优先反馈 P0/核心 P1；开发端可并行尝试产品负责人选中的新功能。新功能只有在开发目标完成受影响检查并由产品负责人初步验收后，才成为生产候选；完成精确版本/迁移登记、生产 preflight、可回退发布和 postflight 后，才能记为生产已部署。开发通过不等于生产通过，新功能也不改变 Gate 2 的点名与权限退出条件。
 >
@@ -53,7 +53,7 @@ R1-Live 完成即代表 Mathin 进入公司内部生产使用。它产生的身�
 
 | Gate | 状态 | 已完成证据 | 唯一退出差距 |
 | --- | --- | --- | --- |
-| **Gate 1 · 可安全开始** | **PASS** | 生产目标组合指纹、部署和匿名计数已登记；危险 fixture/rebuild/import 拒绝 Xiaomi；唯一正式 admin 已完成 verified MFA、原子交接、新会话 challenge 和 admin 路由验收；首名真实教师为 active `staff` 并有 `research`/`teacher` 岗位；生产 purge 只有当前数据库指纹、active manifest、显式 `purge_allowed` test 根和精确影响计数同时成立才可执行，当前准删数为 0；数据库 head 为 `20260823000200`，应用 current/previous 为 `20260822-193605` / `5041fe1…` 与 `20260822-185849` / `3fa5919…`，原子发布健康门和 `operational_errors` 查询位置已知；当前 PostgreSQL+Storage 同批次备份的数据库目录、125135 个 Storage 文件、前后清单与全部 SHA-256 已独立复核 | 无。previous 实际回切、恢复演练、异机/静态加密备份和错误 release 标签属于 Production 1.0 |
+| **Gate 1 · 可安全开始** | **PASS** | 生产目标组合指纹、部署和匿名计数已登记；危险 fixture/rebuild/import 拒绝 Xiaomi；唯一正式 admin 已完成 verified MFA、原子交接、新会话 challenge 和 admin 路由验收；首名真实教师为 active `staff` 并有 `research`/`teacher` 岗位；生产 purge 只有当前数据库指纹、active manifest、显式 `purge_allowed` test 根和精确影响计数同时成立才可执行，当前准删数为 0；数据库 head 为 `20260823000300`，应用 current/previous 为 `20260823-122633` / `ba5c991…` 与 `20260823-115657` / `7d06454…`，原子发布健康门和 `operational_errors` 查询位置已知；当前 PostgreSQL+Storage 同批次备份的数据库目录、125135 个 Storage 文件、前后清单与全部 SHA-256 已独立复核 | 无。previous 实际回切、恢复演练、异机/静态加密备份和错误 release 标签属于 Production 1.0 |
 | **Gate 2 · 首个真实教师闭环** | **BLOCKED** | 学生、班级、课次、报名、点名 UI/RPC 与 RLS 已实现；本轮运行时合同允许自由班/未完整课程启用，备课质量项、点名前置、资源预载和无 release 均不阻断开课；本机隔离固定账号 Golden Path 1/1 已完成建班→自动课次→`lead` 报名→教师保存迟到/备注→换页再读。生产已有 1 个 production 班级、15 个课次和 1 条 active 报名，主讲 1、学辅 0；学年修复只调整三类对象的周期引用，未升年级，应用已发布且健康 | 正式教师完成登录→进入课次→开课/点名→保存→刷新/重登再读；正式管理员可见，匿名及一个既有无权限主体不可见；P0/核心 P1=0 |
 
 `R1-Live-N` 表示当前只关闭 Gate N。Gate 1 通过后推进 `R1-Live-2`；Gate 2 通过后立即向第一批公司教师开放，不再追加新的上线 Gate。

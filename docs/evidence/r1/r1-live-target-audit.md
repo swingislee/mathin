@@ -338,6 +338,23 @@ replacement artifact 只复制首份 manifest 的 4 个 protected 条目，并�
 | `artifact_url_or_path`, `artifact_hash` | Git commit `7d064545356a2af09e5dfb81f68bb7ea4f5f48b6`；Xiaomi `/home/swing/services/mathin/releases/20260823-115657/release.json`；`artifact_hash=not_applicable` |
 | `retention`, `access_roles`, `failure_ticket` | Git 与 immutable release 按既有策略保留；仓库维护者/Xiaomi 运维角色；`BUG-R1-LIVE-007` 已部署，待教师添加一页并刷新确认后关闭 |
 
+#### 4.2.6 2026-08-23 数独教学课件页小增量发布
+
+产品负责人要求把本轮数独教学改动发布到生产，并能在自由课次课件中插入最初的宫区块摈除题。发布前发现 canonical 课次工作区仍为数独生成随机 8 位种子；应用增量将该入口改为固定种子 `teaching-box-elimination-01`、默认国王难度和“宫区块摈除”页名，其他游戏继续使用随机种子。数独棋盘同时包含 A–I/1–9 标注、左侧两列数字输入、右侧讲解突出工具、任意矩形单元格框选、撤销/清空、独立答案按钮和错误提示。
+
+本轮为 application-only 发布，没有数据库 migration，也没有由 Agent 创建或修改生产课件及其他业务对象。发布脚本从精确提交执行 lint、typecheck、本地和 Xiaomi production build，创建不可变 release、原子切换并通过双层健康门；独立 postflight 复核公网页面、匿名鉴权重定向、错误增量和业务匿名计数。生产浏览器自动化连接在公开页检查时超时，因此不把它计为通过证据；改以公网 HTTP 200、精确 release metadata 和当前 release 浏览器编译产物包含固定种子三项信号核对部署内容。功能状态仍待教师刷新页面、插入一页并在真实课堂验收。
+
+| 证据字段 | 值 |
+| --- | --- |
+| `gate_id`, `domain`, `result` | `R1-Live Gate 2`；数独教学课件页；`DEPLOYED / PENDING USER CLASSROOM ACCEPTANCE` |
+| `measured_value`, `threshold` | current=`20260823-122633` / `ba5c991…`、previous=`20260823-115657` / `7d06454…`；service active，loopback/Caddy health 为 production `ok`；公网 health、zh/en login、公开数独页均为 200，匿名 schedule 为精确 307 登录跳转。发布前后 ledger/head=`183` / `20260823000300_r1_live_teacher_session_management`，`operational_errors=1949`、latest=`2026-08-22T15:53:09.807Z`，班级/课次/报名/点名=`1/15/1/0`，全部无漂移；定向 Vitest 30/30 通过 |
+| `commit_sha`, `migration_head`, `environment` | `ba5c99156f433b7cbbb1b208fdb8ae19144a4c20`；数据库仍为 `20260823000300_r1_live_teacher_session_management`；Xiaomi / production |
+| `dataset_manifest` | `not_applicable`；应用-only 发布。Agent 未新增、修改或删除生产账号、班级、课次、课件、报名、点名、manifest 或 Storage 对象 |
+| `started_at`, `finished_at`, `actor`, `approver` | 2026-08-23（Asia/Shanghai）；release `builtAt=2026-08-23T12:27:46Z`；Codex；`swingislee`（明确要求把本轮改动推送生产并用于现实教室试用） |
+| `command_or_runbook` | 定向 ESLint、`pnpm typecheck`、`pnpm messages:check`、`git diff --check`、2 个文件/30 项 Vitest、本地公开数独页 DOM 检查 → 生产 release/备份/数据库只读 preflight → `scripts/ops/publish-mathin-xiaomi.ps1 -Action Publish/Status` → 公网 HTTP、数据库零漂移和当前 release 编译产物固定种子 postflight |
+| `artifact_url_or_path`, `artifact_hash` | Git commit `ba5c99156f433b7cbbb1b208fdb8ae19144a4c20`；Xiaomi `/home/swing/services/mathin/releases/20260823-122633/release.json`；`.next/server` 与 `.next/static` 编译产物均检出 `teaching-box-elimination-01`；`artifact_hash=not_applicable` |
+| `retention`, `access_roles`, `failure_ticket` | Git 与 immutable release 按既有策略保留；previous `20260823-115657` 为可识别回退点；仓库维护者/Xiaomi 运维角色；生产浏览器自动化超时不视为应用错误，教师实际插入与课堂使用仍待人工验收 |
+
 ### 4.3 错误定位：可查询，但 release 关联缺失
 
 - `public.operational_errors` 共 1,949 条：`request.error` 1,948 条、`infra.disk_alert` 1 条；最近一条为本轮建班校验错误 `2026-08-22T15:53:09.807Z`。
