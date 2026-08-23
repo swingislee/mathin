@@ -54,8 +54,8 @@ function PeriodDates({
   const periodLabel = t(`period${period.term}`);
 
   return (
-    <div className="grid gap-2 rounded-xl border border-line bg-paper/35 p-3 md:grid-cols-[7rem_minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
-      <div className="flex min-w-0 flex-wrap items-center gap-1.5 md:self-center">
+    <div className="grid gap-2 rounded-xl border border-line bg-paper/35 p-3 @2xl/term-manager:grid-cols-[7rem_minmax(0,1fr)_minmax(0,1fr)_auto] @2xl/term-manager:items-end">
+      <div className="flex min-w-0 flex-wrap items-center gap-1.5 @2xl/term-manager:self-center">
         <p className="w-full font-medium text-ink">{periodLabel}</p>
         {period.isCurrent && <Badge className="px-2 py-0 text-[11px]" variant="secondary">{t("currentSchoolPeriod")}</Badge>}
         {!period.startsOn && !period.endsOn && <Badge className="px-2 py-0 text-[11px]" variant="outline">{t("datesPending")}</Badge>}
@@ -68,7 +68,7 @@ function PeriodDates({
         {t("endsOn")}
         <DateTimePicker className="h-9" value={endsOn} onValueChange={setEndsOn} />
       </Label>
-      <div className="flex min-h-9 items-center md:justify-end">
+      <div className="flex min-h-9 items-center @2xl/term-manager:justify-end">
         {changed ? (
         <Button
           type="button"
@@ -86,10 +86,10 @@ function PeriodDates({
           </Button>
         ) : null}
       </div>
-      {incomplete && <p role="alert" className="text-xs text-rose md:col-span-3 md:col-start-2">{t("termDatesIncomplete")}</p>}
-      {reversed && <p role="alert" className="text-xs text-rose md:col-span-3 md:col-start-2">{t("termDatesReversed")}</p>}
+      {incomplete && <p role="alert" className="text-xs text-rose @2xl/term-manager:col-span-3 @2xl/term-manager:col-start-2">{t("termDatesIncomplete")}</p>}
+      {reversed && <p role="alert" className="text-xs text-rose @2xl/term-manager:col-span-3 @2xl/term-manager:col-start-2">{t("termDatesReversed")}</p>}
       {overlap && (
-        <p className="flex items-start gap-1.5 text-xs text-crater md:col-span-3 md:col-start-2">
+        <p className="flex items-start gap-1.5 text-xs text-crater @2xl/term-manager:col-span-3 @2xl/term-manager:col-start-2">
           <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
           {t("termDatesOverlap")}
         </p>
@@ -176,7 +176,7 @@ export function TermManager({ years }: { years: SchoolYearRow[] }) {
         {t("schoolYears")}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="grid max-h-[calc(100dvh-2rem)] grid-rows-[auto_auto_minmax(0,1fr)] gap-0 overflow-hidden p-0 sm:max-w-4xl">
+        <DialogContent className="@container/term-manager grid max-h-[calc(100dvh-2rem)] grid-rows-[auto_auto_minmax(0,1fr)] gap-0 overflow-hidden p-0 sm:max-w-4xl">
           <DialogHeader className="border-b border-line px-6 py-5 pr-12">
             <DialogTitle>{t("schoolYears")}</DialogTitle>
             <DialogDescription>{t("schoolYearsHint")}</DialogDescription>
@@ -185,7 +185,7 @@ export function TermManager({ years }: { years: SchoolYearRow[] }) {
           <div className="border-b border-line bg-paper/30 px-6 py-3">
             <div className="flex flex-wrap items-end gap-3">
               {years.length > 0 && (
-                <div className="min-w-64 flex-1 sm:max-w-sm">
+                <div className="min-w-0 basis-64 grow sm:max-w-sm">
                   <Label htmlFor={yearSelectorId} className="mb-1 block text-xs font-normal text-muted">{t("selectSchoolYear")}</Label>
                   <Select value={selectedYear?.id ?? ""} onValueChange={setSelectedYearId}>
                     <SelectTrigger id={yearSelectorId} className="h-9">
@@ -269,7 +269,7 @@ export function TermManager({ years }: { years: SchoolYearRow[] }) {
                     </p>
                     {selectedYear.activationPreview.canActivate ? (
                       <div className="mt-3 flex flex-wrap items-end gap-3">
-                        <Label className="grid min-w-48 flex-1 gap-1 text-xs font-normal text-muted sm:max-w-xs">
+                        <Label className="grid min-w-0 basis-48 grow gap-1 text-xs font-normal text-muted sm:max-w-xs">
                           {t("gradeEffectiveDate")}
                           <DateTimePicker
                             className="h-9"

@@ -6,9 +6,9 @@
   "projectId": "example-production-project",
   "databaseId": "example-production-database",
   "migration": {
-    "head": "20260823000100_r1_live_school_year_periods",
-    "digest": "155bd5a4146ad23cc6fbd3af2fcc9f9697c7ff105fa185b4dcb60fd092866448",
-    "fileCount": 183
+    "head": "20260823000200_r1_live_preparation_attention_window",
+    "digest": "7156b94c3a074a35522433ca30db161dd4b9c8c52f2e18fb95486713010646c6",
+    "fileCount": 184
   },
   "platform": {
     "source": "supabase/ci/00_platform_bootstrap.sql",

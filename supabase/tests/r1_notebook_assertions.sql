@@ -150,7 +150,7 @@ select (count(*) = 1 and bool_and(user_id = :'teacher_id')) as own_like_only
   from public.post_likes where post_id = :'visible_post_id' \gset
 \if :own_like_only
 \else
-  \echo R1 Notebook failed: authenticated user enumerated another user's like
+  \echo R1 Notebook failed: authenticated user enumerated a like owned by another user
   select 1 / 0;
 \endif
 

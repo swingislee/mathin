@@ -120,7 +120,7 @@ values(:'classroom_id'::uuid, :'teacher_id'::uuid, 'teacher');
 insert into public.enrollments(classroom_id, student_id, status, term_id, operated_by)
 values(:'classroom_id'::uuid, :'student_id'::uuid, 'active', :'term_id'::uuid, :'admin_id'::uuid);
 insert into public.class_sessions(classroom_id, title, scheduled_at, duration_min, term_id)
-values(:'classroom_id'::uuid, '__R1_6_RESULTS_SESSION__', now() - interval '1 day', 90, :'term_id'::uuid)
+values(:'classroom_id'::uuid, '__R1_6_RESULTS_SESSION__', :'report_end'::date::timestamptz, 90, :'term_id'::uuid)
 returning id as session_id \gset
 
 select set_config('test.r16_session_id', :'session_id', true);
@@ -129,6 +129,8 @@ select set_config('test.r16_parent_id', :'parent_id', true);
 select set_config('test.r16_teacher_id', :'teacher_id', true);
 select set_config('test.r16_admin_id', :'admin_id', true);
 select set_config('test.r16_term_id', :'term_id', true);
+select set_config('test.r16_term_start', :'term_start', true);
+select set_config('test.r16_report_end', :'report_end', true);
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', :'teacher_id', true);
@@ -650,8 +652,10 @@ begin
     perform public.save_stage_report_draft(
       current_setting('test.r16_student_id')::uuid,
       current_setting('test.r16_term_id')::uuid,
-      current_date - 1, current_date,
-      'forbidden', 'forbidden', '', now(), null
+      current_setting('test.r16_term_start')::date,
+      current_setting('test.r16_report_end')::date,
+      'forbidden', 'forbidden', '',
+      current_setting('test.r16_report_end')::date::timestamptz, null
     );
     raise exception 'R1_6_PARENT_STAGE_WRITE_ACCEPTED';
   exception when others then
