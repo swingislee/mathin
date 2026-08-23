@@ -8,6 +8,7 @@ import {
   learningSeatAssignments,
   moveLearningStudentToSeat,
 } from "../src/features/school/session-learning-contract";
+import { resolveCourseware } from "../src/features/school/courseware-overlay";
 
 const root = process.cwd();
 const read = (file: string) => fs.readFileSync(path.join(root, file), "utf8");
@@ -201,6 +202,25 @@ describe("R1 classroom continuity contracts", () => {
     expect(liveShell).not.toContain("disabled={!assetsReady");
     expect(actions).not.toContain('throw new Error("ATTENDANCE_REQUIRED")');
     expect(actions).not.toContain('throw new Error("COURSEWARE_TRACK_UNPUBLISHED")');
+  });
+
+  it("resolves free-session overlay pages for teacher rehearsal before the snapshot freezes", () => {
+    const livePage = read("src/app/[locale]/classroom/[classId]/session/[sessionId]/live/page.tsx");
+    const gamePage = {
+      id: "11111111-1111-4111-8111-111111111111",
+      type: "game" as const,
+      title: "宫区块摈除",
+      gameId: "sudoku",
+      difficulty: "hard" as const,
+      seed: "teaching-box-elimination-01",
+    };
+
+    expect(resolveCourseware([], [{ page: gamePage }])).toEqual([gamePage]);
+    expect(livePage).toContain('classroom.myRole === "teacher" && !session.coursewareFrozenAt');
+    expect(livePage).toContain("session.lectureId ? await getSessionCoursewareTemplate(sessionId) : []");
+    expect(livePage).toContain("courseware: resolveCourseware(template");
+    expect(livePage).not.toContain("session.lectureId && !session.coursewareFrozenAt");
+    expect(livePage).not.toContain("if (template.length > 0)");
   });
 
   it("ships a teacher page list, protected student media, and one-touch or batch learning checks", () => {
