@@ -13,6 +13,8 @@ const EVENT_LABEL_KEYS: Record<string, string> = {
   "classroom.staff.removed": "eventLabel_staffRemoved",
   "classroom.staff.primary_support_set": "eventLabel_primarySupportSet",
   "consume_rule.updated": "eventLabel_consumeRuleUpdated",
+  "session.schedule.created": "eventLabel_sessionCreated",
+  "session.schedule.updated": "eventLabel_sessionUpdated",
   "session.lifecycle.cancelled": "eventLabel_sessionCancelled",
   "session.lifecycle.restored": "eventLabel_sessionRestored",
   "session.lifecycle.voided": "eventLabel_sessionVoided",

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, LoaderCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, LoaderCircle, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,6 +43,8 @@ function validDateInput(value: string) {
   return DATE_INPUT_PATTERN.test(value) && !Number.isNaN(new Date(`${value}T00:00:00`).getTime());
 }
 
+type FreeSessionDraft = BuildClassSession & { key: string };
+
 export function ClassBuildWizard({
   schoolTerms,
   teachers,
@@ -70,6 +72,8 @@ export function ClassBuildWizard({
   const [weekdays, setWeekdays] = useState<Set<number>>(() => new Set());
   const [time, setTime] = useState("19:00");
   const [durationMin, setDurationMin] = useState("90");
+  const [freeSessionTitle, setFreeSessionTitle] = useState("");
+  const [freeSessions, setFreeSessions] = useState<FreeSessionDraft[]>([]);
   const [overrides, setOverrides] = useState<Record<string, string>>({});
   const [notice, setNotice] = useState<string | null>(null);
   const [conflicts, setConflicts] = useState<ClassBuildScheduleConflict[]>([]);
@@ -105,22 +109,29 @@ export function ClassBuildWizard({
     const slots = lectures.map((lecture) => ({ lectureId: lecture.id, no: lecture.no, name: lecture.name }));
     return generateSchedulePreview(slots, new Date(`${startDate}T00:00:00`), Array.from(weekdays), hours, minutes, durationNumber);
   }, [durationNumber, lectures, mode, scheduleInputsValid, startDate, time, weekdays]);
+  const conflictSlots = useMemo(() => mode === "course"
+    ? preview.map((item) => ({
+        scheduledAt: overrides[item.lectureId] ?? item.scheduledAt.toISOString(),
+        durationMin: item.durationMin,
+      }))
+    : freeSessions.map((item) => ({ scheduledAt: item.scheduledAt, durationMin: item.durationMin })),
+  [freeSessions, mode, overrides, preview]);
 
   useEffect(() => {
-    if (!primaryTeacherId || preview.length === 0) return;
+    if (!primaryTeacherId || conflictSlots.length === 0) return;
     let active = true;
     const timer = window.setTimeout(() => {
       setConflictsLoading(true);
-      void getClassBuildConflictsAction(primaryTeacherId, preview.map((item) => ({ scheduledAt: (overrides[item.lectureId] ?? item.scheduledAt.toISOString()), durationMin: item.durationMin })))
+      void getClassBuildConflictsAction(primaryTeacherId, conflictSlots)
         .then((rows) => { if (active) setConflicts(rows); })
         .catch(() => { if (active) setConflicts([]); })
         .finally(() => { if (active) setConflictsLoading(false); });
     }, 250);
     return () => { active = false; window.clearTimeout(timer); };
-  }, [overrides, preview, primaryTeacherId]);
+  }, [conflictSlots, primaryTeacherId]);
 
   const isReady = courseReady(course);
-  const conflictsRelevant = Boolean(primaryTeacherId && preview.length > 0);
+  const conflictsRelevant = Boolean(primaryTeacherId && conflictSlots.length > 0);
   const visibleConflicts = conflictsRelevant ? conflicts : [];
   const visibleConflictsLoading = conflictsRelevant && conflictsLoading;
   const step1Complete = mode === "free" || course !== null;
@@ -193,6 +204,22 @@ export function ClassBuildWizard({
     setActivateNow(false);
   };
 
+  const addFreeSession = () => {
+    if (!freeSessionTitle.trim() || !scheduleInputsValid) return;
+    const scheduledAt = new Date(`${startDate}T${time}`);
+    if (Number.isNaN(scheduledAt.getTime())) return;
+    setFreeSessions((current) => [...current, {
+      key: `${Date.now()}-${current.length}`,
+      lectureId: null,
+      no: null,
+      name: freeSessionTitle.trim(),
+      scheduledAt: scheduledAt.toISOString(),
+      durationMin: durationNumber,
+    }]);
+    setFreeSessionTitle("");
+    setActivateNow(false);
+  };
+
   const submit = async () => {
     if (!step1Complete) {
       markStepAttempted(1);
@@ -220,7 +247,13 @@ export function ClassBuildWizard({
             scheduledAt: overrides[item.lectureId] ?? item.scheduledAt.toISOString(),
             durationMin: item.durationMin,
           }))
-        : [];
+        : freeSessions.map((session) => ({
+            lectureId: session.lectureId,
+            no: session.no,
+            name: session.name,
+            scheduledAt: session.scheduledAt,
+            durationMin: session.durationMin,
+          }));
       const classroomId = await buildClass({
         name: resolvedName,
         courseId: mode === "course" ? course?.id ?? null : null,
@@ -326,15 +359,27 @@ export function ClassBuildWizard({
       </div>
       {mode === "course" ? <><div className="mt-5"><Label className="text-xs font-normal text-muted">{t("weekdays")}</Label><div className="mt-2 flex flex-wrap gap-2">{WEEKDAYS.map((day) => <Button key={day} type="button" variant={weekdays.has(day) ? "primary" : "secondary"} onClick={() => toggleWeekday(day)}>{t(`weekday_${day}`)}</Button>)}</div>{step3Attempted && weekdays.size === 0 && <p role="alert" className="mt-2 text-xs text-rose">{t("weekdaysRequired")}</p>}</div>
         {preview.length > 0 && <div className="mt-5 overflow-hidden rounded-xl border border-line"><Table><TableHeader><TableRow><TableHead className="w-16">No.</TableHead><TableHead>{t("lectureName")}</TableHead><TableHead>{t("scheduledAt")}</TableHead></TableRow></TableHeader><TableBody>{preview.map((item) => <TableRow key={item.lectureId}><TableCell className="font-mono text-xs text-muted">{item.no}</TableCell><TableCell>{item.name}</TableCell><TableCell><DateTimePicker mode="datetime" value={toDateTimeLocalValue(new Date(overrides[item.lectureId] ?? item.scheduledAt.toISOString()))} onValueChange={(value) => { setOverrides((current) => ({ ...current, [item.lectureId]: value ? new Date(value).toISOString() : item.scheduledAt.toISOString() })); setActivateNow(false); }} className="h-8 max-w-60 text-xs" /></TableCell></TableRow>)}</TableBody></Table></div>}
-      </> : <p className="mt-5 rounded-xl bg-moon/30 px-3 py-2 text-sm text-muted">{t("freeScheduleHint")}</p>}
+      </> : <div className="mt-5 space-y-4">
+        <p className="rounded-xl bg-moon/30 px-3 py-2 text-sm text-muted">{t("freeScheduleHint")}</p>
+        <div className="flex flex-col gap-3 rounded-xl border border-line p-4 sm:flex-row sm:items-end">
+          <div className="min-w-0 flex-1">
+            <Label htmlFor="free-session-title" className="text-xs font-normal text-muted">{t("freeSessionTitle")}</Label>
+            <Input id="free-session-title" value={freeSessionTitle} onChange={(event) => setFreeSessionTitle(event.target.value)} maxLength={100} placeholder={t("freeSessionTitlePlaceholder")} className={cn("mt-1", inputClass)} />
+          </div>
+          <Button type="button" onClick={addFreeSession} disabled={!freeSessionTitle.trim() || !scheduleInputsValid}>
+            <Plus className="size-4" />{t("addSession")}
+          </Button>
+        </div>
+        {freeSessions.length > 0 && <div className="overflow-hidden rounded-xl border border-line"><Table><TableHeader><TableRow><TableHead>{t("lectureName")}</TableHead><TableHead>{t("scheduledAt")}</TableHead><TableHead className="w-20" /></TableRow></TableHeader><TableBody>{freeSessions.map((item) => <TableRow key={item.key}><TableCell>{item.name}</TableCell><TableCell>{new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(item.scheduledAt))} · {t("durationMinutes", { count: item.durationMin })}</TableCell><TableCell><Button type="button" size="sm" variant="ghost" className="px-2" aria-label={t("removeSession")} onClick={() => setFreeSessions((current) => current.filter((row) => row.key !== item.key))}><Trash2 className="size-4" /></Button></TableCell></TableRow>)}</TableBody></Table></div>}
+      </div>}
       {visibleConflictsLoading && <p className="mt-4 flex items-center gap-2 text-sm text-muted"><LoaderCircle className="size-4 animate-spin" />{t("checkingConflicts")}</p>}
       {!visibleConflictsLoading && visibleConflicts.length > 0 && <div role="alert" className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-950 dark:text-amber-100"><p className="flex items-center gap-2 font-medium"><AlertTriangle className="size-4" />{t("conflictsFound", { count: visibleConflicts.length })}</p><ul className="mt-2 space-y-1 text-xs">{visibleConflicts.map((conflict) => <li key={conflict.sessionId}>{conflict.classroomName} · {conflict.lectureName} · {new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(conflict.scheduledAt))}</li>)}</ul></div>}
-      {!visibleConflictsLoading && primaryTeacherId && preview.length > 0 && visibleConflicts.length === 0 && <p className="mt-4 flex items-center gap-2 text-sm text-leaf"><CheckCircle2 className="size-4" />{t("noTeacherConflicts")}</p>}
+      {!visibleConflictsLoading && primaryTeacherId && conflictSlots.length > 0 && visibleConflicts.length === 0 && <p className="mt-4 flex items-center gap-2 text-sm text-leaf"><CheckCircle2 className="size-4" />{t("noTeacherConflicts")}</p>}
     </section>}
 
     {step === 4 && <section className="rounded-2xl border border-line bg-card p-5">
       <h2 className="text-base font-medium text-ink">{t("stepConfirm")}</h2><p className="mt-1 text-sm text-muted">{t("confirmStepHint")}</p>
-      <dl className="mt-5 grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2"><div><dt className="text-muted">{t("course")}</dt><dd className="mt-1 font-medium">{mode === "free" ? t("modeFree") : `${course?.familyTitle ?? ""} · ${course?.title ?? ""}`}</dd></div><div><dt className="text-muted">{t("courseReadiness")}</dt><dd className="mt-1">{mode === "free" ? t("notApplicable") : isReady ? t("readyCount", { ready: course?.releasedLectureCount ?? 0, total: course?.lectureCount ?? 0 }) : <span className="text-amber-800 dark:text-amber-300">{t("incompleteCount", { ready: course?.releasedLectureCount ?? 0, total: course?.lectureCount ?? 0 })}</span>}</dd></div><div><dt className="text-muted">{t("teacher")}</dt><dd className="mt-1 font-medium">{teachers.find((teacher) => teacher.id === primaryTeacherId)?.name || "—"}</dd></div><div><dt className="text-muted">{t("conflicts")}</dt><dd className="mt-1">{visibleConflictsLoading ? t("checking") : visibleConflicts.length ? t("conflictsFound", { count: visibleConflicts.length }) : t("noTeacherConflicts")}</dd></div><div><dt className="text-muted">{t("sessionCount")}</dt><dd className="mt-1">{preview.length}</dd></div><div><dt className="text-muted">{t("purpose")}</dt><dd className="mt-1">{purpose === "test" ? <Badge variant="outline" className="border-violet-500/40 bg-violet-500/10 text-violet-800 dark:text-violet-300">{t("testBadge")}</Badge> : t("production")}</dd></div></dl>
+      <dl className="mt-5 grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2"><div><dt className="text-muted">{t("course")}</dt><dd className="mt-1 font-medium">{mode === "free" ? t("modeFree") : `${course?.familyTitle ?? ""} · ${course?.title ?? ""}`}</dd></div><div><dt className="text-muted">{t("courseReadiness")}</dt><dd className="mt-1">{mode === "free" ? t("notApplicable") : isReady ? t("readyCount", { ready: course?.releasedLectureCount ?? 0, total: course?.lectureCount ?? 0 }) : <span className="text-amber-800 dark:text-amber-300">{t("incompleteCount", { ready: course?.releasedLectureCount ?? 0, total: course?.lectureCount ?? 0 })}</span>}</dd></div><div><dt className="text-muted">{t("teacher")}</dt><dd className="mt-1 font-medium">{teachers.find((teacher) => teacher.id === primaryTeacherId)?.name || "—"}</dd></div><div><dt className="text-muted">{t("conflicts")}</dt><dd className="mt-1">{visibleConflictsLoading ? t("checking") : visibleConflicts.length ? t("conflictsFound", { count: visibleConflicts.length }) : t("noTeacherConflicts")}</dd></div><div><dt className="text-muted">{t("sessionCount")}</dt><dd className="mt-1">{mode === "course" ? preview.length : freeSessions.length}</dd></div><div><dt className="text-muted">{t("purpose")}</dt><dd className="mt-1">{purpose === "test" ? <Badge variant="outline" className="border-violet-500/40 bg-violet-500/10 text-violet-800 dark:text-violet-300">{t("testBadge")}</Badge> : t("production")}</dd></div></dl>
       {purpose === "production" && !isReady && mode === "course" && <p className="mt-5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-950 dark:text-amber-100">{t("productionActivationWarning")}</p>}
       {purpose === "test" && !isReady && <p className="mt-5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-950 dark:text-amber-100">{t("testActivationWarning")}</p>}
       <div className="mt-5 flex items-start gap-3"><Checkbox id="activate-now" checked={activateNow} onCheckedChange={(value) => setActivateNow(value === true)} /><div><Label htmlFor="activate-now" className="cursor-pointer">{t("activateNow")}</Label><p className="mt-1 text-xs text-muted">{t("activateNowHint")}</p></div></div>

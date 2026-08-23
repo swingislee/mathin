@@ -22,16 +22,19 @@ export const buildClassSchema = z.object({
   sessions: z
     .array(
       z.object({
-        lectureId: uuid,
-        no: intInRange(1, 999),
-        name: text(100),
+        lectureId: uuid.nullable(),
+        no: intInRange(1, 999).nullable(),
+        name: requiredText(100),
         scheduledAt: datetime,
         durationMin: intInRange(1, 600),
       }),
     )
     .max(200),
 }).superRefine((value, ctx) => {
-  if (value.courseId === null && value.sessions.length > 0) {
+  const invalidSessionBinding = value.sessions.some((session) => value.courseId === null
+    ? session.lectureId !== null || session.no !== null
+    : session.lectureId === null || session.no === null);
+  if (invalidSessionBinding) {
     ctx.addIssue({ code: "custom", path: ["sessions"], message: "INVALID_SCHEDULE" });
   }
   if (value.learningSupportId !== null && value.learningSupportId === value.primaryTeacherId) {

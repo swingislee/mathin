@@ -107,10 +107,11 @@ export function resolveClassroomCapabilities(context: ClassroomCapabilityContext
   const reasons: ClassroomCapabilities["reasons"] = {};
   const canViewClassroom = context.isTeaching || context.isSupport || context.isManagement;
   const manageable = context.isManagement && !context.classroomTrashed;
+  const scheduleManageable = (context.isManagement || context.isTeaching) && !context.classroomTrashed;
 
   const canManageClassroom = classroomReason(reasons, "manage", manageable, context.classroomTrashed ? "CLASSROOM_TRASHED" : "FORBIDDEN");
   const canPrepareTeaching = classroomReason(reasons, "prepare", context.isTeaching, "FORBIDDEN");
-  const canManageSchedule = classroomReason(reasons, "schedule", manageable, context.classroomTrashed ? "CLASSROOM_TRASHED" : "FORBIDDEN");
+  const canManageSchedule = classroomReason(reasons, "schedule", scheduleManageable, context.classroomTrashed ? "CLASSROOM_TRASHED" : "FORBIDDEN");
 
   return {
     canViewClassroom,
@@ -125,7 +126,7 @@ export function resolveClassroomCapabilities(context: ClassroomCapabilityContext
 /** P4H 的唯一课次能力公式；状态由服务端查询层归一化后传入。 */
 export function resolveSessionCapabilities(context: SessionCapabilityContext): SessionCapabilities {
   const reasons: SessionCapabilities["reasons"] = {};
-  const openManagement = context.isManagement || context.isSupport;
+  const openManagement = context.isManagement || context.isSupport || context.isTeaching;
   const isScheduled = context.state === "scheduled";
   const isLiveEligible = context.state === "scheduled" || context.state === "started";
   const isCompleted = context.state === "ended" || context.state === "voided";
@@ -133,7 +134,7 @@ export function resolveSessionCapabilities(context: SessionCapabilityContext): S
   const canPrepare = sessionReason(reasons, "prepare", context.isTeaching && isScheduled, "FORBIDDEN_SCOPE");
   const canEditPreparationArchive = context.isTeaching;
   const canEnterLive = sessionReason(reasons, "live", context.isTeaching && isLiveEligible, "FORBIDDEN_SCOPE");
-  const canReschedule = sessionReason(reasons, "reschedule", context.isManagement && isScheduled, "FORBIDDEN_SCOPE");
+  const canReschedule = sessionReason(reasons, "reschedule", (context.isManagement || context.isTeaching) && isScheduled, "FORBIDDEN_SCOPE");
   const canAssignSubstitute = sessionReason(reasons, "substitute", context.isManagement && isScheduled, "FORBIDDEN_SCOPE");
   const canCancel = sessionReason(reasons, "cancel", context.isManagement && isScheduled, "SESSION_ALREADY_STARTED");
   const canRestore = sessionReason(reasons, "restore", context.isManagement && context.state === "cancelled", "SESSION_NOT_CANCELLED");

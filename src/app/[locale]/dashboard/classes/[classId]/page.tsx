@@ -187,7 +187,13 @@ async function ClassDetailBody({
         <DashboardContentGrid>
           <DashboardMainColumn>
             {activeTab === "sessions" && (
-              <SessionGroupList classroomId={classroom.id} sessions={classroom.sessions} workItems={sessionWorkItems} returnTo={tabHref("sessions")} />
+              <SessionGroupList
+                classroomId={classroom.id}
+                sessions={classroom.sessions}
+                workItems={sessionWorkItems}
+                returnTo={tabHref("sessions")}
+                canAddSession={classroom.courseId === null && classroom.capabilities.canManageSchedule}
+              />
             )}
             {activeTab === "students" && (
               <RosterPanel

@@ -232,22 +232,36 @@ export async function buildClass(input: BuildClassInput): Promise<string> {
   const value = parse(buildClassSchema, input);
   const { supabase } = await authorizedClient("class.create");
 
-  const { data: cid, error: rpcError } = await rpc(supabase)("create_class", {
-    p_name: value.name,
-    p_course_id: value.courseId,
-    p_capacity: value.capacity,
-    p_room: value.room,
-    p_primary_teacher_id: value.primaryTeacherId,
-    p_learning_support_id: value.learningSupportId,
-    p_term_id: value.schoolTermId,
-    p_purpose: value.purpose,
-    p_sessions: value.sessions.map((session) => ({
-      lecture_id: session.lectureId,
-      scheduled_at: session.scheduledAt,
-      duration_min: session.durationMin,
-    })),
-    p_activate: value.activateNow,
-  });
+  const sessions = value.sessions.map((session) => ({
+    lecture_id: session.lectureId,
+    title: session.name,
+    scheduled_at: session.scheduledAt,
+    duration_min: session.durationMin,
+  }));
+  const { data: cid, error: rpcError } = value.courseId === null
+    ? await rpc(supabase)("create_free_class_with_sessions", {
+        p_name: value.name,
+        p_capacity: value.capacity,
+        p_room: value.room,
+        p_primary_teacher_id: value.primaryTeacherId,
+        p_learning_support_id: value.learningSupportId,
+        p_term_id: value.schoolTermId,
+        p_purpose: value.purpose,
+        p_sessions: sessions,
+        p_activate: value.activateNow,
+      })
+    : await rpc(supabase)("create_class", {
+        p_name: value.name,
+        p_course_id: value.courseId,
+        p_capacity: value.capacity,
+        p_room: value.room,
+        p_primary_teacher_id: value.primaryTeacherId,
+        p_learning_support_id: value.learningSupportId,
+        p_term_id: value.schoolTermId,
+        p_purpose: value.purpose,
+        p_sessions: sessions,
+        p_activate: value.activateNow,
+      });
   if (rpcError) throw new Error(rpcError.message);
   return parse(uuid, cid);
 }
@@ -315,6 +329,63 @@ export async function withdrawStudentAction(enrollmentId: string, remark: string
 // 跨作用域操作时 RLS 会让 update/delete 静默命中 0 行而不报错，前端会误以为成功——
 // 这里额外 select 受影响行数，0 行时改抛 FORBIDDEN_SCOPE（10-§7 代码审查发现）。
 const SCOPED_CODES = ["FORBIDDEN_SCOPE", ...COMMON_CODES] as const;
+
+const managedSessionSchema = z.object({
+  title: requiredText(100),
+  scheduledAt: datetime,
+  durationMin: intInRange(1, 600),
+});
+
+const MANAGED_SESSION_CODES = [
+  "FORBIDDEN_SCOPE",
+  "CLASSROOM_NOT_FOUND",
+  "CLASSROOM_REQUIRES_LECTURE",
+  "CLASSROOM_NOT_ACTIVE",
+  "SESSION_NOT_FOUND",
+  "SESSION_ALREADY_STARTED",
+  "SESSION_NOT_EDITABLE",
+  ...COMMON_CODES,
+] as const;
+
+export async function createClassSessionAction(
+  classroomId: string,
+  input: { title: string; scheduledAt: string; durationMin: number },
+): Promise<ActionResult<{ id: string }>> {
+  try {
+    const value = parse(managedSessionSchema.extend({ classroomId: uuid }), { classroomId, ...input });
+    const supabase = await createClient();
+    const { data, error } = await rpc(supabase)("create_managed_class_session", {
+      p_classroom_id: value.classroomId,
+      p_title: value.title,
+      p_scheduled_at: value.scheduledAt,
+      p_duration_min: value.durationMin,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true, data: { id: parse(uuid, data) } };
+  } catch (error) {
+    return actionError<{ id: string }>(error, MANAGED_SESSION_CODES);
+  }
+}
+
+export async function updateClassSessionAction(
+  sessionId: string,
+  input: { title: string; scheduledAt: string; durationMin: number },
+): Promise<ActionResult> {
+  try {
+    const value = parse(managedSessionSchema.extend({ sessionId: uuid }), { sessionId, ...input });
+    const supabase = await createClient();
+    const { error } = await rpc(supabase)("update_managed_class_session", {
+      p_session_id: value.sessionId,
+      p_title: value.title,
+      p_scheduled_at: value.scheduledAt,
+      p_duration_min: value.durationMin,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, MANAGED_SESSION_CODES);
+  }
+}
 
 const rescheduleSchema = z.object({ sessionId: uuid, scheduledAt: datetime, durationMin: intInRange(1, 600) });
 

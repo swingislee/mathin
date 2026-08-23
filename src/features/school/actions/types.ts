@@ -11,8 +11,8 @@ export interface StudentSearchResult {
 }
 
 export interface BuildClassSession {
-  lectureId: string;
-  no: number;
+  lectureId: string | null;
+  no: number | null;
   name: string;
   scheduledAt: string;
   durationMin: number;

@@ -6,14 +6,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useAction } from "@/components/action-form";
 import { Link, useRouter } from "@/i18n/navigation";
 import type { SessionCapabilities } from "./teaching-operations/types";
 import {
   deleteUnstartedSessionAction,
-  rescheduleSessionAction,
   restoreSessionAction,
+  updateClassSessionAction,
   voidSessionAction,
 } from "./actions/classes";
 import type { SessionRow } from "./classes";
@@ -51,11 +52,14 @@ export function SessionManagementDrawer({
   const t = useTranslations("school.classes");
   const router = useRouter();
   const [reason, setReason] = useState("");
+  const [title, setTitle] = useState(session?.name ?? "");
+  const [scheduledAt, setScheduledAt] = useState(session?.scheduledAt ? toDateTimeLocalValue(session.scheduledAt) : "");
+  const [durationMin, setDurationMin] = useState(String(session?.durationMin ?? 90));
 
   const close = () => router.replace(closeHref);
 
-  const rescheduleRun = useAction(rescheduleSessionAction, {
-    successMessage: t("rescheduleSuccess"),
+  const updateRun = useAction(updateClassSessionAction, {
+    successMessage: t("sessionSaved"),
     errorMessage: { default: t("actionFailed") },
     onSuccess: () => router.refresh(),
   });
@@ -75,8 +79,15 @@ export function SessionManagementDrawer({
     onSuccess: () => router.refresh(),
   });
 
-  const pending = rescheduleRun.pending || cancelRun.pending || restoreRun.pending || voidRun.pending;
+  const pending = updateRun.pending || cancelRun.pending || restoreRun.pending || voidRun.pending;
   const capabilities: SessionCapabilities | undefined = session?.capabilities;
+  const duration = Number(durationMin);
+  const scheduleValid = title.trim().length > 0
+    && title.trim().length <= 100
+    && scheduledAt !== ""
+    && Number.isInteger(duration)
+    && duration >= 1
+    && duration <= 600;
 
   const stateLabel = session && (
     session.state === "ended" ? t("statusEnded")
@@ -107,18 +118,33 @@ export function SessionManagementDrawer({
 
             <section className="grid gap-2">
               <h3 className="text-xs font-medium uppercase text-muted">{t("zoneSchedule")}</h3>
-              {capabilities.canReschedule && session.scheduledAt ? (
-                <DateTimePicker
-                  mode="datetime"
-                  disabled={pending}
-                  defaultValue={toDateTimeLocalValue(session.scheduledAt)}
-                  onValueChange={(value) => {
-                    if (!value) return;
-                    const iso = new Date(value).toISOString();
-                    rescheduleRun.run(session.id, iso, session.durationMin ?? 90);
-                  }}
-                  className="rounded-lg border border-line bg-card px-2 py-1.5 text-sm"
-                />
+              {capabilities.canReschedule ? (
+                <div className="grid gap-3">
+                  <div>
+                    <Label htmlFor="edit-session-title" className="text-xs font-normal text-muted">{t("sessionTitle")}</Label>
+                    <Input id="edit-session-title" value={title} onChange={(event) => setTitle(event.target.value)} maxLength={100} disabled={pending} className="mt-1" />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-session-time" className="text-xs font-normal text-muted">{t("sessionScheduledAt")}</Label>
+                    <DateTimePicker id="edit-session-time" mode="datetime" disabled={pending} value={scheduledAt} onValueChange={setScheduledAt} className="mt-1" />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-session-duration" className="text-xs font-normal text-muted">{t("sessionDuration")}</Label>
+                    <Input id="edit-session-duration" type="number" min={1} max={600} step={5} value={durationMin} onChange={(event) => setDurationMin(event.target.value)} disabled={pending} className="mt-1" />
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={!scheduleValid || pending}
+                    onClick={() => updateRun.run(session.id, {
+                      title: title.trim(),
+                      scheduledAt: new Date(scheduledAt).toISOString(),
+                      durationMin: duration,
+                    })}
+                  >
+                    {t("saveSession")}
+                  </Button>
+                </div>
               ) : (
                 <p className="text-sm text-muted">{session.scheduledAt ? new Date(session.scheduledAt).toLocaleString() : t("notApplicable")}</p>
               )}
