@@ -2,7 +2,7 @@
 
 ## 结论
 
-截至 2026-08-23，Xiaomi 已固定为 `mathin.club` / `supabase.mathin.club` 生产目标，危险开发写入继续 fail-closed。数据库账本为 183 条，head=`20260823000300_r1_live_teacher_session_management`；应用 current/previous 为 `20260823-122633` / `ba5c991…` 与 `20260823-115657` / `7d06454…`，服务、loopback、Caddy 与公网健康均正常，最近同批次 PostgreSQL+Storage 备份仍为 `mathin-20260822T093529Z`。唯一正式管理员、首名真实教师双岗位和 active 8 条 protected/0 条 purge manifest 均已核验，因此 Gate 1 `PASS`。生产业务计数为班级/课次/报名/点名=`1/15/1/0`；自由课次课件工作区和固定宫区块摈除数独预设已部署，未由 Agent 写入生产课件，仍待教师实际插入及课堂验收。正式点名闭环仍未发生，因此 Gate 2 保持 `BLOCKED`。
+截至 2026-08-23，Xiaomi 已固定为 `mathin.club` / `supabase.mathin.club` 生产目标，危险开发写入继续 fail-closed。数据库账本为 183 条，head=`20260823000300_r1_live_teacher_session_management`；应用 current/previous 为 `20260823-123746` / `9bc9ff3…` 与 `20260823-122633` / `ba5c991…`，服务、loopback、Caddy 与公网健康均正常，最近同批次 PostgreSQL+Storage 备份仍为 `mathin-20260822T093529Z`。唯一正式管理员、首名真实教师双岗位和 active 8 条 protected/0 条 purge manifest 均已核验，因此 Gate 1 `PASS`。生产业务计数为班级/课次/报名/点名=`1/15/1/0`；自由课次课件工作区、固定宫区块摈除数独预设及试讲页面读取热修已部署，产品负责人保存的覆盖页保持 1 页，仍待重新进入试讲及真实课堂验收。正式点名闭环仍未发生，因此 Gate 2 保持 `BLOCKED`。
 
 本文件是 E0/E1 差距审阅，不是完整生产验收。2026-08-14～22 的 Xiaomi E1/E3 运行事实，以及本机隔离目标、应用/数据库发布、正式管理员交接和 manifest 激活证据见 [`r1-live-target-audit.md`](r1-live-target-audit.md)；用户提供的 `docs/plan/mathin-R1-Live-讨论稿.md` 为产品裁决输入，现行施工顺序以 doc 04 为准。
 

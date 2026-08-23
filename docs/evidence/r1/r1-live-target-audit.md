@@ -355,6 +355,23 @@ replacement artifact 只复制首份 manifest 的 4 个 protected 条目，并�
 | `artifact_url_or_path`, `artifact_hash` | Git commit `ba5c99156f433b7cbbb1b208fdb8ae19144a4c20`；Xiaomi `/home/swing/services/mathin/releases/20260823-122633/release.json`；`.next/server` 与 `.next/static` 编译产物均检出 `teaching-box-elimination-01`；`artifact_hash=not_applicable` |
 | `retention`, `access_roles`, `failure_ticket` | Git 与 immutable release 按既有策略保留；previous `20260823-115657` 为可识别回退点；仓库维护者/Xiaomi 运维角色；生产浏览器自动化超时不视为应用错误，教师实际插入与课堂使用仍待人工验收 |
 
+#### 4.2.7 2026-08-23 自由课次试讲页面读取热修
+
+产品负责人在生产备课页插入“宫区块摈除”游戏页后，备课目录与预览均显示 1 页，但重新进入试讲显示 `0/0` 和“本课次还没有课件页”。只读生产汇总确认保存没有丢失：当前唯一未冻结自由课次为 `overlay_pages=1`、`snapshot_pages=0`。根因是 live Server Component 仅在 `lectureId` 存在时展开“模板 + 覆盖层”；自由课次 `lectureId=null`，因此试讲仍收到空快照。热修后，教师进入任意未冻结课次都会解析当前页面；自由课次使用空模板加覆盖层，学生等待页仍不提前读取未冻结课件。
+
+本轮为 application-only 热修，没有数据库 migration，也没有修改产品负责人已保存的课件。发布器从精确提交运行全库 lint、typecheck、本地与 Xiaomi production build，创建不可变 release 并原子切换；独立 postflight 复核双层健康、公网入口、错误增量、业务计数和自由课次页面计数。功能状态仍待产品负责人退出旧试讲页、重新进入后确认 `1/1` 并完成真实课堂验收。
+
+| 证据字段 | 值 |
+| --- | --- |
+| `gate_id`, `domain`, `result` | `R1-Live Gate 2`；自由课次试讲/候课课件读取；`DEPLOYED / PENDING USER ACCEPTANCE` |
+| `measured_value`, `threshold` | current=`20260823-123746` / `9bc9ff3…`、previous=`20260823-122633` / `ba5c991…`；service active，loopback/Caddy health 为 production `ok`，公网 health 与 zh login=200。发布前后 ledger/head=`183` / `20260823000300_r1_live_teacher_session_management`，`operational_errors=1949`、latest=`2026-08-22T15:53:09.807Z`，班级/课次/报名/点名=`1/15/1/0`；全部自由未冻结课次=`1`、有覆盖页=`1`、overlay/snapshot pages=`1/0`，均无漂移。定向课堂连续性 Vitest 16/16 通过 |
+| `commit_sha`, `migration_head`, `environment` | `9bc9ff33eca3133e95493cf211f23fb74e66617b`；数据库仍为 `20260823000300_r1_live_teacher_session_management`；Xiaomi / production |
+| `dataset_manifest` | `not_applicable`；应用-only 热修。Agent 未新增、修改或删除生产账号、班级、课次、课件、报名、点名、manifest 或 Storage 对象；产品负责人原有覆盖页保持 1 页 |
+| `started_at`, `finished_at`, `actor`, `approver` | 2026-08-23（Asia/Shanghai）；release `builtAt=2026-08-23T12:38:58Z`；Codex；`swingislee`（提交生产备课 1 页/试讲 0 页截图并继续本轮真实课堂试用） |
+| `command_or_runbook` | 定向 ESLint、`pnpm typecheck`、`git diff --check`、1 个文件/16 项 Vitest → production current/previous、数据库 head、错误、业务及自由课次页面计数只读 preflight → `scripts/ops/publish-mathin-xiaomi.ps1 -Action Publish/Status` → 同一数据库匿名计数与公网 HTTP postflight |
+| `artifact_url_or_path`, `artifact_hash` | Git commit `9bc9ff33eca3133e95493cf211f23fb74e66617b`；Xiaomi `/home/swing/services/mathin/releases/20260823-123746/release.json`；`artifact_hash=not_applicable` |
+| `retention`, `access_roles`, `failure_ticket` | Git 与 immutable release 按既有策略保留；previous `20260823-122633` 为可识别回退点；仓库维护者/Xiaomi 运维角色；`BUG-R1-LIVE-008` 已部署，待教师重新进入试讲确认后关闭 |
+
 ### 4.3 错误定位：可查询，但 release 关联缺失
 
 - `public.operational_errors` 共 1,949 条：`request.error` 1,948 条、`infra.disk_alert` 1 条；最近一条为本轮建班校验错误 `2026-08-22T15:53:09.807Z`。
