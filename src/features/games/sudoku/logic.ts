@@ -40,10 +40,10 @@ function isValidPartialGrid(grid: SudokuGrid): boolean {
   return true;
 }
 
-/** 使用最少候选优先的回溯，只回答当前局面是否仍存在合法终盘。 */
-function hasSudokuSolution(values: SudokuGrid): boolean {
+/** 使用最少候选优先的回溯，返回与当前局面相容的一份确定性终盘。 */
+export function solveSudokuGrid(values: SudokuGrid): SudokuGrid | null {
   const grid = [...values];
-  if (!isValidPartialGrid(grid)) return false;
+  if (!isValidPartialGrid(grid)) return null;
 
   function search(): boolean {
     let target = -1;
@@ -70,7 +70,11 @@ function hasSudokuSolution(values: SudokuGrid): boolean {
     return false;
   }
 
-  return search();
+  return search() ? [...grid] : null;
+}
+
+function hasSudokuSolution(values: SudokuGrid): boolean {
+  return solveSudokuGrid(values) !== null;
 }
 
 function fillSolved(grid: SudokuGrid, pos: number, rng: () => number): boolean {

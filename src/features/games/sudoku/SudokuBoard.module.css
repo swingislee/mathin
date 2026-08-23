@@ -13,10 +13,15 @@
   --sudoku-accent-soft: #e4f1ed;
   --sudoku-number: #2f7698;
   --sudoku-number-deep: #205875;
-  --sudoku-highlight: rgb(255 255 255 / 38%);
-  --sudoku-highlight-overlap: rgb(53 105 101 / 18%);
+  --sudoku-region-outline: #51526d;
+  --sudoku-region-wash: rgb(81 82 109 / 3%);
+  --sudoku-dim-overlay: rgb(246 249 248 / 42%);
+  --sudoku-selection: #159b31;
+  --sudoku-digit-highlight: #e7506d;
+  --sudoku-digit-highlight-deep: #981e3a;
   --sudoku-error: #c96861;
   --sudoku-error-soft: rgb(244 179 169 / 66%);
+  --sudoku-number-font: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: var(--sudoku-ink);
   color-scheme: light;
   background: var(--sudoku-surface);
@@ -41,7 +46,7 @@
 .numberButton:focus-visible,
 .toolButton:focus-visible,
 .cell:focus-visible {
-  z-index: 20;
+  z-index: 30;
   box-shadow: inset 0 0 0 2px var(--sudoku-accent-deep);
 }
 
@@ -56,10 +61,18 @@
   border-color: var(--sudoku-control-border);
   background: var(--sudoku-control);
   box-shadow: 0 1px 2px rgb(55 105 101 / 6%);
+  font-family: var(--sudoku-number-font);
+  font-variant-numeric: tabular-nums;
 }
 
 .toolButton {
   border-color: transparent;
+}
+
+.answerButton:not(:disabled) {
+  color: var(--sudoku-number-deep);
+  border-color: rgb(47 118 152 / 16%);
+  background: rgb(237 246 250 / 92%);
 }
 
 .controlActive,
@@ -72,8 +85,9 @@
 
 .numberHighlightActive {
   color: #ffffff;
-  border-color: var(--sudoku-number);
-  background: var(--sudoku-number);
+  border-color: var(--sudoku-digit-highlight-deep);
+  background: var(--sudoku-digit-highlight);
+  font-weight: 700;
 }
 
 .toolSeparator {
@@ -82,15 +96,34 @@
 
 .coordinate {
   color: var(--sudoku-muted);
+  font-family: var(--sudoku-number-font);
+  font-variant-numeric: tabular-nums;
 }
 
 .boardGrid {
+  position: relative;
+  isolation: isolate;
+  contain: layout paint;
   border-color: var(--sudoku-grid-strong);
   background: var(--sudoku-green);
   box-shadow: 0 2px 4px rgb(43 83 79 / 12%);
+  font-family: var(--sudoku-number-font);
+  font-feature-settings: "tnum" 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.regionDragActive {
+  touch-action: none;
+  user-select: none;
+}
+
+.regionDragActive .cell,
+.regionDragActive .cell::before {
+  transition: none;
 }
 
 .cell {
+  z-index: 0;
   isolation: isolate;
   color: var(--sudoku-ink);
 }
@@ -101,6 +134,20 @@
   inset: 0;
   pointer-events: none;
   content: "";
+}
+
+.cell::before {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  pointer-events: none;
+  background: transparent;
+  content: "";
+  transition: background-color 140ms ease;
+}
+
+.dimmedCell::before {
+  background: var(--sudoku-dim-overlay);
 }
 
 .greenCell {
@@ -127,17 +174,38 @@
   border-bottom: 2px solid var(--sudoku-grid-strong);
 }
 
-.highlightSingle::after {
-  background: var(--sudoku-highlight);
-}
-
-.highlightOverlap::after {
-  background: var(--sudoku-highlight-overlap);
-}
-
 .selectedCell {
-  z-index: 10;
-  box-shadow: inset 0 0 0 3px var(--sudoku-accent-deep);
+  z-index: 20;
+  box-shadow: inset 0 0 0 3px var(--sudoku-selection);
+}
+
+.selectedCell::before,
+.invalidCell::before {
+  background: transparent;
+}
+
+.highlightLayer {
+  position: absolute;
+  z-index: 15;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  grid-template-rows: repeat(9, minmax(0, 1fr));
+  pointer-events: none;
+}
+
+.highlightRegion {
+  border-radius: 0.55rem;
+  background: var(--sudoku-region-wash);
+  box-shadow:
+    inset 0 0 0 3px var(--sudoku-region-outline),
+    0 1px 2px rgb(35 39 66 / 14%);
+}
+
+.highlightPreview {
+  background: rgb(81 82 109 / 8%);
+  outline: 2px dashed rgb(255 255 255 / 82%);
+  outline-offset: -5px;
 }
 
 .givenTile,
@@ -164,24 +232,35 @@
   color: var(--sudoku-number-deep);
 }
 
+.revealedDigit {
+  display: inline-grid;
+  place-items: center;
+  animation: sudoku-answer-reveal 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  will-change: opacity, transform;
+}
+
 .digitHighlight {
   display: grid;
   width: 84%;
   height: 84%;
   place-items: center;
   border-radius: 0.45rem;
-  color: var(--sudoku-accent-deep);
-  background: #f5fbf9;
-  box-shadow: inset 0 0 0 2px var(--sudoku-accent);
+  color: #ffffff;
+  background: var(--sudoku-digit-highlight);
+  box-shadow:
+    inset 0 0 0 1px rgb(197 47 77 / 34%),
+    0 2px 0 rgb(107 39 56 / 14%);
 }
 
 .candidateGrid {
   color: var(--sudoku-number-deep);
+  font-weight: 600;
 }
 
 .candidateFocused {
-  color: #ffffff;
-  background: var(--sudoku-number);
+  color: var(--sudoku-digit-highlight-deep);
+  background: transparent;
+  font-weight: 800;
 }
 
 .invalidCell {
@@ -238,8 +317,29 @@
   }
 }
 
+@keyframes sudoku-answer-reveal {
+  from {
+    opacity: 0.18;
+    transform: scale(0.76);
+  }
+
+  65% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .invalidCell {
+    animation: none;
+  }
+
+  .revealedDigit {
     animation: none;
   }
 }

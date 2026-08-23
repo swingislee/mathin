@@ -3,7 +3,15 @@ import type { ComponentType } from "react";
 
 export type Difficulty = "easy" | "medium" | "hard";
 
-export type SudokuHighlightTool = "box" | "row" | "column" | "row-block" | "column-block" | "digit";
+export type SudokuHighlightTool = "cell" | "box" | "row" | "column" | "digit";
+
+export interface SudokuCellHighlightRegion {
+  /** 0–8，均为规范化后的闭区间边界。 */
+  top: number;
+  left: number;
+  bottom: number;
+  right: number;
+}
 
 export interface SudokuTeachingHighlights {
   /** 0–8：九宫编号，按从左到右、从上到下排列。 */
@@ -12,10 +20,8 @@ export interface SudokuTeachingHighlights {
   rows: number[];
   /** 0–8：整列。 */
   columns: number[];
-  /** 0–26：每个宫内的三格横区块（box * 3 + 宫内行）。 */
-  rowBlocks: number[];
-  /** 0–26：每个宫内的三格竖区块（box * 3 + 宫内列）。 */
-  columnBlocks: number[];
+  /** 可叠加的任意轴对齐单元格矩形；单击等价于 1×1 矩形。 */
+  regions: SudokuCellHighlightRegion[];
   /** 与正常 inputDigit 完全独立；null 表示不突出任何数字。 */
   focusedDigit: number | null;
 }

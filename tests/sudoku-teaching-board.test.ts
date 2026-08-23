@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   isSudokuValuePossible,
+  solveSudokuGrid,
   sudokuPuzzle,
   verifySudoku,
 } from "@/features/games/sudoku/logic";
@@ -12,8 +13,10 @@ import {
   clearSudokuTeachingHighlights,
   chooseSudokuDigit,
   createSudokuBoardState,
+  createSudokuCellHighlightRegion,
   deleteSelectedSudokuCell,
   hasSudokuTeachingHighlights,
+  revealSelectedSudokuCell,
   selectSudokuCell,
   setSudokuEntryMode,
   setSudokuHighlightTool,
@@ -23,6 +26,8 @@ import {
   SUDOKU_ROW_LABELS,
   sudokuCandidateDigits,
   sudokuCellHighlightCount,
+  sudokuHighlightRegions,
+  toggleSudokuCellHighlightRegion,
   toSudokuMirrorState,
 } from "@/features/games/sudoku/state";
 
@@ -67,6 +72,12 @@ describe("Sudoku teaching board M2", () => {
       [1, 2, 3, 4, 5],
       [6, 7, 8, 9, null],
     ]);
+  });
+
+  it("finds a deterministic legal completion for direct teacher reveal", () => {
+    const solution = solveSudokuGrid([...SUDOKU_BOX_ELIMINATION_PUZZLE]);
+    expect(solution).toEqual(BOX_ELIMINATION_SOLUTION);
+    expect(solution && verifySudoku(SUDOKU_BOX_ELIMINATION_SEED, "hard", solution)).toBe(true);
   });
 
   it("supports both digit-first and cell-first value input", () => {
@@ -120,6 +131,26 @@ describe("Sudoku teaching board M2", () => {
     expect(state.candidates[1]).toBe(0);
     expect(state.inputDigit).toBeNull();
   });
+
+  it("reveals only the selected empty cell and clears its candidates", () => {
+    const puzzle = [...SUDOKU_BOX_ELIMINATION_PUZZLE];
+    let state = createSudokuBoardState(puzzle);
+    state = setSudokuEntryMode(state, "candidate");
+    state = selectSudokuCell(state, puzzle, 0, false);
+    state = chooseSudokuDigit(state, puzzle, 1);
+
+    expect(sudokuCandidateDigits(state.candidates[0])).toEqual([1]);
+    state = revealSelectedSudokuCell(state, puzzle);
+    expect(state.values[0]).toBe(3);
+    expect(state.candidates[0]).toBe(0);
+    expect(state.inputDigit).toBeNull();
+    expect(state.values.filter(Boolean)).toHaveLength(puzzle.filter(Boolean).length + 1);
+
+    const revealed = state;
+    expect(revealSelectedSudokuCell(state, puzzle)).toBe(revealed);
+    state = setSudokuHighlightTool(state, "row");
+    expect(revealSelectedSudokuCell(state, puzzle)).toBe(state);
+  });
 });
 
 describe("Sudoku teaching highlights M3", () => {
@@ -141,21 +172,22 @@ describe("Sudoku teaching highlights M3", () => {
     expect(state.highlights.focusedDigit).toBeNull();
   });
 
-  it("combines box, row, column and both three-cell block highlights in any order", () => {
+  it("combines a free cell rectangle with box, row and column highlights in any order", () => {
     const puzzle = [...SUDOKU_BOX_ELIMINATION_PUZZLE];
     const e5 = 4 * 9 + 4;
     let state = createSudokuBoardState(puzzle);
 
     expect(SUDOKU_HIGHLIGHT_TOOLS).toEqual([
+      "cell",
       "box",
       "row",
       "column",
-      "row-block",
-      "column-block",
       "digit",
     ]);
 
-    for (const tool of ["column-block", "box", "row", "row-block", "column"] as const) {
+    state = setSudokuHighlightTool(state, "cell");
+    state = toggleSudokuCellHighlightRegion(state, 2 * 9 + 2, 5 * 9 + 6);
+    for (const tool of ["box", "row", "column"] as const) {
       state = setSudokuHighlightTool(state, tool);
       state = selectSudokuCell(state, puzzle, e5);
     }
@@ -164,17 +196,42 @@ describe("Sudoku teaching highlights M3", () => {
       boxes: [4],
       rows: [4],
       columns: [4],
-      rowBlocks: [13],
-      columnBlocks: [13],
+      regions: [{ top: 2, left: 2, bottom: 5, right: 6 }],
     });
-    expect(sudokuCellHighlightCount(state.highlights, 4, 4)).toBe(5);
-    expect(sudokuCellHighlightCount(state.highlights, 3, 3)).toBe(1);
+    expect(sudokuCellHighlightCount(state.highlights, 4, 4)).toBe(4);
+    expect(sudokuCellHighlightCount(state.highlights, 2, 2)).toBe(1);
 
-    // 同一工具点同一目标即取消，不强迫老师按固定步骤推进。
-    state = setSudokuHighlightTool(state, "box");
-    state = selectSudokuCell(state, puzzle, e5);
-    expect(state.highlights.boxes).toEqual([]);
-    expect(state.highlights.rows).toEqual([4]);
+    // 反向拖拽会规范化；重复框选同一矩形即取消。
+    expect(createSudokuCellHighlightRegion(5 * 9 + 6, 2 * 9 + 2)).toEqual({
+      top: 2,
+      left: 2,
+      bottom: 5,
+      right: 6,
+    });
+    state = setSudokuHighlightTool(state, "cell");
+    state = toggleSudokuCellHighlightRegion(state, 5 * 9 + 6, 2 * 9 + 2);
+    expect(state.highlights.regions).toEqual([]);
+  });
+
+  it("keeps a complete outline rectangle for every freely combined highlight", () => {
+    const state = createSudokuBoardState([...SUDOKU_BOX_ELIMINATION_PUZZLE], {
+      values: [...SUDOKU_BOX_ELIMINATION_PUZZLE],
+      selected: null,
+      highlights: {
+        boxes: [4],
+        rows: [4],
+        columns: [4],
+        regions: [{ top: 3, left: 2, bottom: 5, right: 6 }],
+        focusedDigit: 2,
+      },
+    });
+
+    expect(sudokuHighlightRegions(state.highlights)).toEqual([
+      { key: "box-4", kind: "box", target: 4, rowStart: 4, columnStart: 4, rowSpan: 3, columnSpan: 3 },
+      { key: "row-4", kind: "row", target: 4, rowStart: 5, columnStart: 1, rowSpan: 1, columnSpan: 9 },
+      { key: "column-4", kind: "column", target: 4, rowStart: 1, columnStart: 5, rowSpan: 9, columnSpan: 1 },
+      { key: "cell-3-2-5-6", kind: "cell", target: 0, rowStart: 4, columnStart: 3, rowSpan: 3, columnSpan: 5 },
+    ]);
   });
 
   it("mirrors combined highlights and clears them without touching entries", () => {
@@ -182,6 +239,8 @@ describe("Sudoku teaching highlights M3", () => {
     let state = createSudokuBoardState(puzzle);
     state = selectSudokuCell(state, puzzle, 0);
     state = chooseSudokuDigit(state, puzzle, 3);
+    state = setSudokuHighlightTool(state, "cell");
+    state = toggleSudokuCellHighlightRegion(state, 10, 30);
     state = setSudokuHighlightTool(state, "box");
     state = selectSudokuCell(state, puzzle, 40);
     state = setSudokuHighlightTool(state, "digit");
@@ -196,8 +255,23 @@ describe("Sudoku teaching highlights M3", () => {
     expect(hasSudokuTeachingHighlights(state)).toBe(false);
     expect(state.values).toEqual(valuesBeforeClear);
     expect(state.values[0]).toBe(3);
-    expect(state.highlightTool).toBeNull();
+    expect(state.highlightTool).toBe("digit");
     expect(state.highlights.focusedDigit).toBeNull();
+  });
+
+  it("clears only actual highlight marks and keeps the selected teaching tool", () => {
+    const puzzle = [...SUDOKU_BOX_ELIMINATION_PUZZLE];
+    let state = createSudokuBoardState(puzzle);
+    state = setSudokuHighlightTool(state, "cell");
+
+    expect(hasSudokuTeachingHighlights(state)).toBe(false);
+    expect(clearSudokuTeachingHighlights(state)).toBe(state);
+
+    state = toggleSudokuCellHighlightRegion(state, 0, 10);
+    expect(hasSudokuTeachingHighlights(state)).toBe(true);
+    state = clearSudokuTeachingHighlights(state);
+    expect(hasSudokuTeachingHighlights(state)).toBe(false);
+    expect(state.highlightTool).toBe("cell");
   });
 
   it("returns to normal input when the teacher chooses Candidates or Fill", () => {

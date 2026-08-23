@@ -1,10 +1,11 @@
 import type {
   GameMirrorState,
+  SudokuCellHighlightRegion,
   SudokuHighlightTool,
   SudokuInvalidAttempt,
   SudokuTeachingHighlights,
 } from "../types";
-import { isSudokuValuePossible } from "./logic";
+import { isSudokuValuePossible, solveSudokuGrid } from "./logic";
 
 export type SudokuEntryMode = "candidate" | "value";
 
@@ -21,6 +22,16 @@ export interface SudokuBoardState {
   invalidAttempt: SudokuInvalidAttempt | null;
 }
 
+export interface SudokuHighlightRegion {
+  key: string;
+  kind: Exclude<SudokuHighlightTool, "digit">;
+  target: number;
+  rowStart: number;
+  columnStart: number;
+  rowSpan: number;
+  columnSpan: number;
+}
+
 export const SUDOKU_ROW_LABELS = ["A", "B", "C", "D", "E", "F", "G", "H", "I"] as const;
 export const SUDOKU_COLUMN_LABELS = ["1", "2", "3", "4", "5", "6", "7", "8", "9"] as const;
 export const SUDOKU_NUMBER_PAD_COLUMNS = [
@@ -28,11 +39,10 @@ export const SUDOKU_NUMBER_PAD_COLUMNS = [
   [6, 7, 8, 9, null],
 ] as const;
 export const SUDOKU_HIGHLIGHT_TOOLS = [
+  "cell",
   "box",
   "row",
   "column",
-  "row-block",
-  "column-block",
   "digit",
 ] as const satisfies readonly SudokuHighlightTool[];
 
@@ -55,13 +65,37 @@ function normalizedIndexes(value: unknown, max: number): number[] {
   return [...new Set(value.filter((item) => Number.isInteger(item) && Number(item) >= 0 && Number(item) <= max).map(Number))];
 }
 
+function normalizedCellRegions(value: unknown): SudokuCellHighlightRegion[] {
+  if (!Array.isArray(value)) return [];
+  const regions = new Map<string, SudokuCellHighlightRegion>();
+  for (const item of value) {
+    if (!item || typeof item !== "object") continue;
+    const candidate = item as Partial<SudokuCellHighlightRegion>;
+    if (
+      !Number.isInteger(candidate.top)
+      || !Number.isInteger(candidate.left)
+      || !Number.isInteger(candidate.bottom)
+      || !Number.isInteger(candidate.right)
+    ) {
+      continue;
+    }
+    const top = Math.min(Number(candidate.top), Number(candidate.bottom));
+    const left = Math.min(Number(candidate.left), Number(candidate.right));
+    const bottom = Math.max(Number(candidate.top), Number(candidate.bottom));
+    const right = Math.max(Number(candidate.left), Number(candidate.right));
+    if (top < 0 || left < 0 || bottom > 8 || right > 8) continue;
+    const region = { top, left, bottom, right };
+    regions.set(`${top}:${left}:${bottom}:${right}`, region);
+  }
+  return [...regions.values()];
+}
+
 function emptySudokuHighlights(): SudokuTeachingHighlights {
   return {
     boxes: [],
     rows: [],
     columns: [],
-    rowBlocks: [],
-    columnBlocks: [],
+    regions: [],
     focusedDigit: null,
   };
 }
@@ -73,8 +107,7 @@ function normalizedHighlights(mirror?: GameMirrorState | null): SudokuTeachingHi
     boxes: normalizedIndexes(highlights.boxes, 8),
     rows: normalizedIndexes(highlights.rows, 8),
     columns: normalizedIndexes(highlights.columns, 8),
-    rowBlocks: normalizedIndexes(highlights.rowBlocks, 26),
-    columnBlocks: normalizedIndexes(highlights.columnBlocks, 26),
+    regions: normalizedCellRegions(highlights.regions),
     focusedDigit: validDigit(highlights.focusedDigit) ? highlights.focusedDigit : null,
   };
 }
@@ -134,8 +167,7 @@ export function toSudokuMirrorState(state: SudokuBoardState): GameMirrorState {
       boxes: [...state.highlights.boxes],
       rows: [...state.highlights.rows],
       columns: [...state.highlights.columns],
-      rowBlocks: [...state.highlights.rowBlocks],
-      columnBlocks: [...state.highlights.columnBlocks],
+      regions: state.highlights.regions.map((region) => ({ ...region })),
       focusedDigit: state.highlights.focusedDigit,
     },
     invalidAttempt: state.invalidAttempt ? { ...state.invalidAttempt } : null,
@@ -198,6 +230,50 @@ function toggledIndex(values: number[], value: number): number[] {
   return values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
 }
 
+export function createSudokuCellHighlightRegion(
+  startIndex: number,
+  endIndex: number,
+): SudokuCellHighlightRegion | null {
+  if (!validCellIndex(startIndex) || !validCellIndex(endIndex)) return null;
+  const startRow = Math.floor(startIndex / 9);
+  const startColumn = startIndex % 9;
+  const endRow = Math.floor(endIndex / 9);
+  const endColumn = endIndex % 9;
+  return {
+    top: Math.min(startRow, endRow),
+    left: Math.min(startColumn, endColumn),
+    bottom: Math.max(startRow, endRow),
+    right: Math.max(startColumn, endColumn),
+  };
+}
+
+function sameCellRegion(left: SudokuCellHighlightRegion, right: SudokuCellHighlightRegion): boolean {
+  return left.top === right.top
+    && left.left === right.left
+    && left.bottom === right.bottom
+    && left.right === right.right;
+}
+
+export function toggleSudokuCellHighlightRegion(
+  state: SudokuBoardState,
+  startIndex: number,
+  endIndex: number,
+): SudokuBoardState {
+  if (state.highlightTool !== "cell") return state;
+  const region = createSudokuCellHighlightRegion(startIndex, endIndex);
+  if (!region) return state;
+  const exists = state.highlights.regions.some((item) => sameCellRegion(item, region));
+  return {
+    ...state,
+    highlights: {
+      ...state.highlights,
+      regions: exists
+        ? state.highlights.regions.filter((item) => !sameCellRegion(item, region))
+        : [...state.highlights.regions, region],
+    },
+  };
+}
+
 export function toggleSudokuHighlightTarget(state: SudokuBoardState, index: number): SudokuBoardState {
   if (!state.highlightTool || !validCellIndex(index)) return state;
   const row = Math.floor(index / 9);
@@ -216,7 +292,9 @@ export function toggleSudokuHighlightTarget(state: SudokuBoardState, index: numb
     };
   }
 
-  let field: "boxes" | "rows" | "columns" | "rowBlocks" | "columnBlocks";
+  if (state.highlightTool === "cell") return toggleSudokuCellHighlightRegion(state, index, index);
+
+  let field: "boxes" | "rows" | "columns";
   let value: number;
   switch (state.highlightTool) {
     case "box":
@@ -230,14 +308,6 @@ export function toggleSudokuHighlightTarget(state: SudokuBoardState, index: numb
     case "column":
       field = "columns";
       value = column;
-      break;
-    case "row-block":
-      field = "rowBlocks";
-      value = box * 3 + (row % 3);
-      break;
-    case "column-block":
-      field = "columnBlocks";
-      value = box * 3 + (column % 3);
       break;
     default:
       return state;
@@ -282,19 +352,17 @@ export function setSudokuHighlightTool(
 export function hasSudokuTeachingHighlights(state: SudokuBoardState): boolean {
   const highlights = state.highlights;
   return Boolean(
-    state.highlightTool
-    || highlights.focusedDigit
+    highlights.focusedDigit
     || highlights.boxes.length
     || highlights.rows.length
     || highlights.columns.length
-    || highlights.rowBlocks.length
-    || highlights.columnBlocks.length,
+    || highlights.regions.length,
   );
 }
 
 export function clearSudokuTeachingHighlights(state: SudokuBoardState): SudokuBoardState {
   if (!hasSudokuTeachingHighlights(state)) return state;
-  return { ...state, highlightTool: null, highlights: emptySudokuHighlights() };
+  return { ...state, highlights: emptySudokuHighlights() };
 }
 
 export function sudokuCellHighlightCount(
@@ -306,8 +374,58 @@ export function sudokuCellHighlightCount(
   return Number(highlights.boxes.includes(box))
     + Number(highlights.rows.includes(row))
     + Number(highlights.columns.includes(column))
-    + Number(highlights.rowBlocks.includes(box * 3 + (row % 3)))
-    + Number(highlights.columnBlocks.includes(box * 3 + (column % 3)));
+    + highlights.regions.filter((region) => (
+      row >= region.top
+      && row <= region.bottom
+      && column >= region.left
+      && column <= region.right
+    )).length;
+}
+
+/** 把可组合的教学突出转换成 9×9 视觉层上的矩形，保留每个区域自己的完整轮廓。 */
+export function sudokuHighlightRegions(highlights: SudokuTeachingHighlights): SudokuHighlightRegion[] {
+  const boxOrigin = (box: number) => ({
+    rowStart: Math.floor(box / 3) * 3 + 1,
+    columnStart: (box % 3) * 3 + 1,
+  });
+
+  return [
+    ...highlights.boxes.map((box) => ({
+      key: `box-${box}`,
+      kind: "box" as const,
+      target: box,
+      ...boxOrigin(box),
+      rowSpan: 3,
+      columnSpan: 3,
+    })),
+    ...highlights.rows.map((row) => ({
+      key: `row-${row}`,
+      kind: "row" as const,
+      target: row,
+      rowStart: row + 1,
+      columnStart: 1,
+      rowSpan: 1,
+      columnSpan: 9,
+    })),
+    ...highlights.columns.map((column) => ({
+      key: `column-${column}`,
+      kind: "column" as const,
+      target: column,
+      rowStart: 1,
+      columnStart: column + 1,
+      rowSpan: 9,
+      columnSpan: 1,
+    })),
+    ...highlights.regions.map((region, index) => ({
+      key: `cell-${region.top}-${region.left}-${region.bottom}-${region.right}`,
+      kind: "cell" as const,
+      target: index,
+      rowStart: region.top + 1,
+      columnStart: region.left + 1,
+      rowSpan: region.bottom - region.top + 1,
+      columnSpan: region.right - region.left + 1,
+    })),
+  ];
 }
 
 export function deleteSelectedSudokuCell(state: SudokuBoardState, puzzle: number[]): SudokuBoardState {
@@ -318,5 +436,28 @@ export function deleteSelectedSudokuCell(state: SudokuBoardState, puzzle: number
   const candidates = [...state.candidates];
   values[state.selected] = 0;
   candidates[state.selected] = 0;
+  return { ...state, values, candidates, inputDigit: null };
+}
+
+/** 教师快捷动作：只揭示当前选中空格，并沿用当前合法局面的一份终盘。 */
+export function revealSelectedSudokuCell(state: SudokuBoardState, puzzle: number[]): SudokuBoardState {
+  const index = state.selected;
+  if (
+    index === null
+    || !validCellIndex(index)
+    || puzzle[index]
+    || state.values[index]
+    || state.highlightTool
+  ) {
+    return state;
+  }
+  const solution = solveSudokuGrid(state.values);
+  const digit = solution?.[index];
+  if (!validDigit(digit)) return state;
+
+  const values = [...state.values];
+  const candidates = [...state.candidates];
+  values[index] = digit;
+  candidates[index] = 0;
   return { ...state, values, candidates, inputDigit: null };
 }
