@@ -304,6 +304,23 @@ replacement artifact 只复制首份 manifest 的 4 个 protected 条目，并�
 | `artifact_url_or_path`, `artifact_hash` | migration LF 规范化 SHA-256 `31441a83a802b35e4c6937f68d9418b58510a88343b6fad646f65761e7019d67`；Git commit `b8999422a217ecf83064bd9f02521a751d23f692`；Xiaomi `/home/swing/services/mathin/releases/20260822-181331/release.json` |
 | `retention`, `access_roles`, `failure_ticket` | migration、Git 与 immutable release 按既有策略保留；仓库维护者/Xiaomi 运维角色；owner 差异已以零漂移回滚证据关闭，`BUG-R1-LIVE-005` 已关闭 |
 
+#### 4.2.4 2026-08-23 教师课次管理 P0 修复发布
+
+生产单老师试用发现两个阻断：自由课程建班时及建班后没有添加课次入口，绑定课程的课次也没有标题、时间和时长编辑入口。修复后，自由课程建班向导可选填初始课次，已建自由班的任课教师可继续添加课次；任课教师可编辑本人班级中尚未开始且未冻结的课次标题、时间和时长。取消、恢复、作废和代课等生命周期操作仍只对管理岗位开放，已开始、已冻结、已结束、已取消、已删除或已作废的课次继续拒绝编辑。
+
+数据库迁移先在 Xiaomi 生产库完整执行后回滚，并由新连接确认账本、目标函数和业务计数恢复；随后正式提交。应用从只含本次修复的提交创建不可变 release 并原子切换，未包含同一工作区随后产生的数独提交。产品负责人明确要求快速上线并暂不运行更多测试，因此本轮没有运行 Playwright、Vitest、R1 regression、CI 或全量测试；只执行发布脚本要求的 lint、typecheck、本地/远端 production build 与健康门。自动化功能结论仍待教师实际操作验收。
+
+| 证据字段 | 值 |
+| --- | --- |
+| `gate_id`, `domain`, `result` | `R1-Live Gate 2`；教师课次创建与编辑；`DEPLOYED / PENDING USER ACCEPTANCE`，不据静态检查宣称业务验收通过 |
+| `measured_value`, `threshold` | ledger `182→183`，head=`20260823000300_r1_live_teacher_session_management`；3 个新 RPC 均为 owner=`postgres`、authenticated execute=true、anon execute=false。migration 前后班级/课次/报名/点名=`2/15/1/0`，active manifest=1。current=`20260823-113957` / `15e6e64…`、previous=`20260822-193605` / `5041fe1…`；service active，loopback 与 Caddy health 均为 production `ok` |
+| `commit_sha`, `migration_head`, `environment` | `15e6e644b4217a0b65e78ae93fd5dc25bdf87bc1`；`20260823000300_r1_live_teacher_session_management`；Xiaomi / production；数据库指纹沿用已核验生产目标 `10e3…1a0c` |
+| `dataset_manifest` | migration 只新增函数和账本，不创建或修改账号、岗位、manifest 或业务对象；正式提交前后班级/课次/报名/点名保持 `2/15/1/0`。后续教师人工添加或编辑课次属于产品正常使用写入，不包含在本条发布证据中 |
+| `started_at`, `finished_at`, `actor`, `approver` | 2026-08-23（Asia/Shanghai）；release `builtAt=2026-08-23T11:41:17Z`；Codex；`swingislee`（明确要求快速修复并上线、暂不跑更多测试） |
+| `command_or_runbook` | migration 单事务完整执行并 `ROLLBACK` → 独立只读恢复核查 → 正式提交与只读 postflight → `scripts/ops/publish-mathin-xiaomi.ps1 -Action Publish`；首次本机构建因 Windows `spawn EPERM` 在切换前中止，解除进程限制后同一脚本成功；未运行功能测试或回归套件 |
+| `artifact_url_or_path`, `artifact_hash` | migration LF 规范化 SHA-256 `d17cdc785299f19476ce7e37348f1e0b27bc226e7a8a4d47c65c1413f31b102a`；Git commit `15e6e644b4217a0b65e78ae93fd5dc25bdf87bc1`；Xiaomi `/home/swing/services/mathin/releases/20260823-113957/release.json` |
+| `retention`, `access_roles`, `failure_ticket` | migration、Git 与 immutable release 按既有策略保留；仓库维护者/Xiaomi 运维角色；`BUG-R1-LIVE-006` 已部署，待教师实际新增课次确认后关闭 |
+
 ### 4.3 错误定位：可查询，但 release 关联缺失
 
 - `public.operational_errors` 共 1,949 条：`request.error` 1,948 条、`infra.disk_alert` 1 条；最近一条为本轮建班校验错误 `2026-08-22T15:53:09.807Z`。
