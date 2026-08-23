@@ -7,6 +7,8 @@ import {
   normalizeDegrees,
   shortestAngleDelta,
 } from "@/features/whiteboard/geometry";
+import { colorVar } from "@/features/whiteboard/strokes";
+import { COLOR_TOKENS } from "@/features/whiteboard/types";
 import type { StrokeItem } from "@/features/whiteboard/types";
 
 const inkStroke: StrokeItem = {
@@ -70,5 +72,16 @@ describe("whiteboard geometry objects", () => {
     expect(toolbar.indexOf('data-tool-group="construction"')).toBeGreaterThan(toolbar.indexOf('data-tool-group="drawing"'));
     expect(store).toContain('kind, x: 0.5, y: 0.32, width: 0.24');
     expect(store).not.toContain('kind, x: 0.5, y: 0.5, width: 0.24');
+  });
+
+  it("keeps the three classroom pen colors visible and one-click", () => {
+    const toolbar = readFileSync("src/features/whiteboard/Toolbar.tsx", "utf8");
+
+    expect(COLOR_TOKENS).toContain("blue");
+    expect(colorVar("blue")).toBe("var(--blue)");
+    expect(toolbar).toContain('const QUICK_COLOR_TOKENS = ["ink", "rose", "blue"]');
+    expect(toolbar).toContain("data-quick-color={token}");
+    expect(toolbar).toContain('setTool("pen")');
+    expect(toolbar).toContain('t("moreColors")');
   });
 });

@@ -3882,6 +3882,10 @@
         "eraserM": "Medium eraser",
         "eraserL": "Large eraser",
         "color": "Color",
+        "moreColors": "More colors",
+        "quickColorPrimary": "Primary color",
+        "quickColorRed": "Red",
+        "quickColorBlue": "Blue",
         "fill": "Fill",
         "fillNone": "No fill",
         "size": "Thickness",
@@ -3902,6 +3906,7 @@
       "colors": {
         "ink": "Ink",
         "rose": "Rose",
+        "blue": "Blue",
         "leaf": "Leaf",
         "crater": "Crater",
         "cheek": "Cheek",

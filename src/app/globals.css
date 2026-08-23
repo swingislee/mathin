@@ -14,6 +14,7 @@
   --crater: #cbab8f;
   --rose: #e55c60;
   --rose-deep: #c94a4f;
+  --blue: #3f6fb6;
   --leaf: #bbcf87;
   --leaf-deep: #6f8b48;
   --cheek: #fbc9c3;
@@ -32,6 +33,7 @@
   --crater: #8f7a64;
   --rose: #e06a6e;
   --rose-deep: #c94a4f;
+  --blue: #7fa9e6;
   --leaf: #8fa968;
   --leaf-deep: #a9c284;
   --cheek: #b98883;
@@ -50,6 +52,7 @@
     --crater: #8f7a64;
     --rose: #e06a6e;
     --rose-deep: #c94a4f;
+    --blue: #7fa9e6;
     --leaf: #8fa968;
     --leaf-deep: #a9c284;
     --cheek: #b98883;
@@ -175,6 +178,7 @@
   --color-crater: var(--crater);
   --color-rose: var(--rose);
   --color-rose-deep: var(--rose-deep);
+  --color-blue: var(--blue);
   --color-leaf: var(--leaf);
   --color-leaf-deep: var(--leaf-deep);
   --color-cheek: var(--cheek);

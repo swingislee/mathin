@@ -3882,6 +3882,10 @@
         "eraserM": "中块擦除",
         "eraserL": "大块擦除",
         "color": "颜色",
+        "moreColors": "更多颜色",
+        "quickColorPrimary": "主色",
+        "quickColorRed": "红色",
+        "quickColorBlue": "蓝色",
         "fill": "填充",
         "fillNone": "无填充",
         "size": "粗细",
@@ -3902,6 +3906,7 @@
       "colors": {
         "ink": "墨色",
         "rose": "玫瑰",
+        "blue": "蓝色",
         "leaf": "深叶",
         "crater": "陨石",
         "cheek": "脸颊",

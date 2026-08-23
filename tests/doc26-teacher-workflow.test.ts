@@ -12,6 +12,7 @@ const read = (file: string) => fs.readFileSync(path.join(root, file), "utf8");
 const migration = read("supabase/migrations/20260730010500_doc26_teacher_workflow.sql");
 const reviewFollowupMigration = read("supabase/migrations/20260731000200_doc26_review_courseware_and_withdrawal.sql");
 const boardItemsMigration = read("supabase/migrations/20260731000700_doc26_annotation_board_items.sql");
+const blueColorMigration = read("supabase/migrations/20260823000300_whiteboard_blue_color.sql");
 const operationalGateMigration = read("supabase/migrations/20260822000200_r1_live_operational_gate_simplification.sql");
 
 describe("doc 26 teacher preparation workflow", () => {
@@ -34,6 +35,7 @@ describe("doc 26 teacher preparation workflow", () => {
       points: [[0.1, 0.2], [0.8, 0.9]],
     };
     expect(annotationContentSchema.safeParse([stroke]).success).toBe(true);
+    expect(annotationContentSchema.safeParse([{ ...stroke, color: "blue" }]).success).toBe(true);
     expect(annotationContentSchema.safeParse([{ ...stroke, points: [[-0.1, 1.2]] }]).success).toBe(false);
     expect(annotationContentSchema.safeParse([{ ...stroke, color: "#000" }]).success).toBe(false);
     const shape = {
@@ -50,6 +52,8 @@ describe("doc 26 teacher preparation workflow", () => {
       rotation: 0,
     };
     expect(annotationContentSchema.safeParse([stroke, shape]).success).toBe(true);
+    expect(blueColorMigration.match(/'blue'/g)?.length).toBeGreaterThanOrEqual(3);
+    expect(blueColorMigration).toContain("validate_courseware_annotation_content");
     expect(annotationContentSchema.safeParse([{ ...shape, width: 2 }]).success).toBe(false);
   });
 

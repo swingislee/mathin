@@ -4,6 +4,7 @@ import { useState, type ComponentType, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import {
   ArrowRight,
+  Check,
   ChevronDown,
   ChevronUp,
   Circle,
@@ -15,6 +16,7 @@ import {
   Minus,
   MousePointer2,
   PaintBucket,
+  Palette,
   Pencil,
   Ruler,
   Scissors,
@@ -40,11 +42,14 @@ import { useStore } from "zustand";
 import { cn } from "@/lib/utils";
 import { colorVar, exportPng } from "./strokes";
 import { SIZE_PRESETS, useWhiteboardStore, type WhiteboardStore } from "./store";
-import { COLOR_TOKENS, isShapeItem, type InstrumentKind, type ShapeKind, type Tool } from "./types";
+import { COLOR_TOKENS, isShapeItem, type ColorToken, type InstrumentKind, type ShapeKind, type Tool } from "./types";
 
 const ERASER_TOOLS: Tool[] = ["strokeEraser", "eraserS", "eraserM", "eraserL"];
 const SIZE_ORDER = ["thin", "medium", "thick"] as const;
+const QUICK_COLOR_TOKENS = ["ink", "rose", "blue"] as const satisfies readonly ColorToken[];
+const MORE_COLOR_TOKENS = COLOR_TOKENS.filter((token) => !QUICK_COLOR_TOKENS.includes(token as (typeof QUICK_COLOR_TOKENS)[number]));
 type SizeLabelKey = "sizeThin" | "sizeMedium" | "sizeThick";
+type QuickColorLabelKey = "quickColorPrimary" | "quickColorRed" | "quickColorBlue";
 const INSERT_SHAPES: ShapeKind[] = ["line", "arrow", "rectangle", "ellipse", "triangle", "rightTriangle", "diamond", "pentagon", "hexagon", "star"];
 
 const SHAPE_ICONS: Partial<Record<ShapeKind, ComponentType<{ size?: number }>>> = {
@@ -163,9 +168,10 @@ export function Toolbar({
     setLastEraser(next);
     setTool(next);
   };
-  const pickColor = (next: (typeof COLOR_TOKENS)[number]) => {
+  const pickColor = (next: ColorToken) => {
     setColor(next);
     if (selectedIds.length) store.getState().styleSelected({ color: next });
+    setTool("pen");
   };
   const pickFill = (next: (typeof COLOR_TOKENS)[number] | null) => {
     setFill(next);
@@ -227,13 +233,49 @@ export function Toolbar({
         </PopoverContent>
       </Popover>
 
+      <div role="group" data-quick-colors aria-label={t("color")} className="flex shrink-0 items-center gap-0.5">
+        {QUICK_COLOR_TOKENS.map((token) => {
+          const labelKey: QuickColorLabelKey = token === "ink"
+            ? "quickColorPrimary"
+            : token === "rose"
+              ? "quickColorRed"
+              : "quickColorBlue";
+          return (
+            <button
+              key={token}
+              type="button"
+              data-quick-color={token}
+              aria-label={t(labelKey)}
+              title={t(labelKey)}
+              aria-pressed={color === token}
+              onClick={() => pickColor(token)}
+              className={cn(
+                "relative grid size-9 shrink-0 place-items-center rounded-full transition-colors hover:bg-moon/30",
+                color === token && "bg-moon/30",
+              )}
+            >
+              <span
+                aria-hidden
+                className={cn(
+                  "grid size-5 place-items-center rounded-full border border-line shadow-sm transition-transform",
+                  color === token && "scale-110 ring-2 ring-ink/60 ring-offset-1 ring-offset-paper",
+                )}
+                style={{ background: colorVar(token) }}
+              >
+                {color === token ? <Check size={12} strokeWidth={3} className="text-paper" /> : null}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
       <Popover>
         <PopoverTrigger asChild>
-          <button type="button" aria-label={t("color")} title={t("color")} className="grid size-9 shrink-0 place-items-center rounded-full transition-colors hover:bg-moon/30"><span aria-hidden className="size-4.5 rounded-full border border-line" style={{ background: colorVar(color) }} /></button>
+          <button type="button" aria-label={t("moreColors")} title={t("moreColors")} className="grid size-9 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-moon/30 hover:text-ink"><Palette size={18} /></button>
         </PopoverTrigger>
         <PopoverContent side="top" className="w-auto p-2">
-          <div className="grid grid-cols-3 gap-2">
-            {COLOR_TOKENS.map((token) => (
+          <div className="grid grid-cols-2 gap-2">
+            {MORE_COLOR_TOKENS.map((token) => (
               <button key={token} type="button" aria-label={colorNames(token)} title={colorNames(token)} onClick={() => pickColor(token)} className={cn("size-7 rounded-full border border-line transition-transform hover:scale-110", color === token && "ring-2 ring-crater ring-offset-2 ring-offset-paper")} style={{ background: colorVar(token) }} />
             ))}
           </div>

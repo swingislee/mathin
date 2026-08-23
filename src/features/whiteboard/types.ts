@@ -7,8 +7,8 @@ export type Tool =
   | "eraserL"
   | "strokeEraser";
 
-/** 画笔六色：存 token 名而非色值，绘制时解析当前主题的 CSS 变量（08-§3.2）。 */
-export const COLOR_TOKENS = ["ink", "rose", "leaf", "crater", "cheek", "moon"] as const;
+/** 画笔七色：存 token 名而非色值，绘制时解析当前主题的 CSS 变量（08-§3.2）。 */
+export const COLOR_TOKENS = ["ink", "rose", "blue", "leaf", "crater", "cheek", "moon"] as const;
 export type ColorToken = (typeof COLOR_TOKENS)[number];
 
 export type StrokeMode = "ink" | "erase";

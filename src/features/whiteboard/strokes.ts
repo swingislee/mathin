@@ -15,6 +15,7 @@ export const newStrokeId = newId;
 const COLOR_VARS: Record<ColorToken, string> = {
   ink: "--ink",
   rose: "--rose",
+  blue: "--blue",
   leaf: "--leaf-deep",
   crater: "--crater",
   cheek: "--cheek",
