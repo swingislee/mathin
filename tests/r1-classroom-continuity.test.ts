@@ -120,6 +120,9 @@ describe("R1 classroom continuity contracts", () => {
     expect(overlayEditor).toContain("learningChecksConfigured");
     expect(overlayEditor).toContain("BadgeCheck");
     expect(overlayEditor).toContain("CoursewarePreviewWorkspace");
+    expect(overlayEditor).toContain("SUDOKU_BOX_ELIMINATION_SEED");
+    expect(overlayEditor).toContain("usingSudokuTeachingPreset");
+    expect(overlayEditor).toContain('t("sudokuBoxEliminationTitle")');
     expect(overlayEditor).toContain('railWidth="wide"');
     expect(overlayEditor).toContain("restoreLearningCheckDefaults");
     expect(overlayEditor).toContain("undoRestoreLearningCheckDefaults");

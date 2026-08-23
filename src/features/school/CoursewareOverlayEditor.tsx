@@ -33,6 +33,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { games } from "@/features/games/registry";
+import { SUDOKU_BOX_ELIMINATION_SEED } from "@/features/games/sudoku/presets";
 import { CoursewarePreviewWorkspace, type CoursewarePreviewListItem } from "@/features/courseware-preview/CoursewarePreviewWorkspace";
 import { StagePreview } from "@/features/courseware-studio/StagePreview";
 import type { CoursewareDoc } from "@/features/courseware-doc/document";
@@ -57,6 +58,10 @@ type LearningCheckSaveState = "saved" | "saving" | "error";
 type LearningCheckItem = { title: string; sourcePageId: string | null };
 
 const PAGE_ICONS = { image: ImageIcon, video: Film, game: Gamepad2, board: PenLine, doc: BookOpen } as const;
+
+function defaultGameSeed(gameId: string) {
+  return gameId === "sudoku" ? SUDOKU_BOX_ELIMINATION_SEED : newId().slice(0, 8);
+}
 
 function initialLearningCheckItems(
   checks: SessionLearningCheck[],
@@ -123,7 +128,7 @@ export function CoursewareOverlayEditor({
   const [gameDialog, setGameDialog] = useState(false);
   const [gameId, setGameId] = useState(games[0]?.id ?? "");
   const [difficulty, setDifficulty] = useState<Difficulty>("easy");
-  const [seed, setSeed] = useState(() => newId().slice(0, 8));
+  const [seed, setSeed] = useState(() => defaultGameSeed(games[0]?.id ?? ""));
   const [learningChecks, setLearningChecks] = useState<LearningCheckItem[]>(() =>
     initialLearningCheckItems(initialLearningChecks, learningCheckPages, learningChecksLocked, learningChecksConfigured));
   const coursewareDefaultLearningChecks = useMemo(
@@ -300,6 +305,7 @@ export function CoursewareOverlayEditor({
     dirty: t("unsaved"),
     error: t("saveFailed"),
   }[saveState];
+  const usingSudokuTeachingPreset = gameId === "sudoku" && seed === SUDOKU_BOX_ELIMINATION_SEED;
   const learningCheckSaveLabel = {
     saved: ts("learningChecksAutoSaved"),
     saving: ts("learningChecksSaving"),
@@ -481,7 +487,8 @@ export function CoursewareOverlayEditor({
           <button
             type="button"
             onClick={() => {
-              setSeed(newId().slice(0, 8));
+              setSeed(defaultGameSeed(gameId));
+              if (gameId === "sudoku") setDifficulty("hard");
               setGameDialog(true);
             }}
             className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-xs text-muted transition-colors hover:bg-moon/30 hover:text-ink"
@@ -565,7 +572,11 @@ export function CoursewareOverlayEditor({
                   <button
                     key={game.id}
                     type="button"
-                    onClick={() => setGameId(game.id)}
+                    onClick={() => {
+                      setGameId(game.id);
+                      setSeed(defaultGameSeed(game.id));
+                      setDifficulty(game.id === "sudoku" ? "hard" : "easy");
+                    }}
                     className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
                       gameId === game.id ? "border-ink/60 bg-moon/40" : "border-line text-muted hover:bg-moon/20"
                     }`}
@@ -605,7 +616,9 @@ export function CoursewareOverlayEditor({
                 >
                   <Dices size={15} />
                 </button>
-                <p className="text-xs text-muted">{t("seedHint")}</p>
+                <p className="text-xs text-muted">
+                  {t(usingSudokuTeachingPreset ? "sudokuTeachingPresetHint" : "seedHint")}
+                </p>
               </div>
             </div>
           </div>
@@ -616,7 +629,9 @@ export function CoursewareOverlayEditor({
               onClick={() => {
                 const game = games.find((item) => item.id === gameId);
                 if (!game) return;
-                const title = tGames(`items.${game.id}.name`);
+                const title = usingSudokuTeachingPreset
+                  ? t("sudokuBoxEliminationTitle")
+                  : tGames(`items.${game.id}.name`);
                 mutate((prev) => [...prev, { page: { id: newId(), type: "game", gameId: game.id, difficulty, seed, title } }]);
                 setGameDialog(false);
               }}

@@ -2408,6 +2408,8 @@
       "gameLabel": "Choose a game",
       "seedLabel": "Puzzle seed",
       "seedHint": "The same seed generates the same puzzle on every device.",
+      "sudokuTeachingPresetHint": "Using the illustrated Box Elimination teaching puzzle; reroll for a random puzzle.",
+      "sudokuBoxEliminationTitle": "Box Elimination",
       "rollSeed": "Reroll",
       "insertPage": "Insert",
       "cancel": "Cancel"

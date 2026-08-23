@@ -2408,6 +2408,8 @@
       "gameLabel": "选择游戏",
       "seedLabel": "题目种子",
       "seedHint": "同一种子在所有设备上生成同一道题。",
+      "sudokuTeachingPresetHint": "已选用图示「宫区块摈除」教学题；点击换一题可改为随机题。",
+      "sudokuBoxEliminationTitle": "宫区块摈除",
       "rollSeed": "换一题",
       "insertPage": "插入",
       "cancel": "取消"
