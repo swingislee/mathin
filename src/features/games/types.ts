@@ -20,9 +20,18 @@ export interface SudokuTeachingHighlights {
   focusedDigit: number | null;
 }
 
+export interface SudokuInvalidAttempt {
+  /** 被拒绝的格子，0–80、行优先。 */
+  index: number;
+  /** 被拒绝的数字，1–9。 */
+  digit: number;
+  /** 单调递增事件号；课堂跟随端据此只播放一次瞬时反馈。 */
+  sequence: number;
+}
+
 /**
  * 课堂镜像轻状态（08-§3.6 game_state）：三个游戏共用 values + selected；
- * 数独附带候选、输入和 M3 讲解突出状态。题面仍由 seed 推导，无需入镜像。
+ * 数独附带候选、输入、M3 讲解突出和 M4 错误事件。题面仍由 seed 推导，无需入镜像。
  */
 export interface GameMirrorState {
   values: number[];
@@ -37,6 +46,8 @@ export interface GameMirrorState {
   highlightTool?: SudokuHighlightTool | null;
   /** 数独 M3：可自由组合的结构/数字突出。 */
   highlights?: SudokuTeachingHighlights;
+  /** 数独 M4：最近一次错误填数的瞬时反馈标记；不写入 values。 */
+  invalidAttempt?: SudokuInvalidAttempt | null;
 }
 
 export interface GameBoardProps {

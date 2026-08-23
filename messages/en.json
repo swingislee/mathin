@@ -235,6 +235,7 @@
       "highlightDigitChoice": "Highlight digit {digit}",
       "clearHighlights": "Clear all highlights",
       "highlightedSuffix": ", highlighted",
+      "reasoningOnly": "No guessing — use reasoning only!",
       "givenCell": "{coordinate}, given digit {value}",
       "filledCell": "{coordinate}, entered digit {value}",
       "candidateCell": "{coordinate}, candidates {values}",

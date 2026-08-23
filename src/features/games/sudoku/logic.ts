@@ -26,6 +26,53 @@ function canPlace(grid: SudokuGrid, pos: number, n: number) {
   return true;
 }
 
+function isValidPartialGrid(grid: SudokuGrid): boolean {
+  if (grid.length !== 81) return false;
+  for (let pos = 0; pos < 81; pos++) {
+    const value = grid[pos];
+    if (!Number.isInteger(value) || value < 0 || value > 9) return false;
+    if (value === 0) continue;
+    grid[pos] = 0;
+    const valid = canPlace(grid, pos, value);
+    grid[pos] = value;
+    if (!valid) return false;
+  }
+  return true;
+}
+
+/** 使用最少候选优先的回溯，只回答当前局面是否仍存在合法终盘。 */
+function hasSudokuSolution(values: SudokuGrid): boolean {
+  const grid = [...values];
+  if (!isValidPartialGrid(grid)) return false;
+
+  function search(): boolean {
+    let target = -1;
+    let targetCandidates: number[] = [];
+
+    for (let pos = 0; pos < 81; pos++) {
+      if (grid[pos] !== 0) continue;
+      const candidates = Array.from({ length: 9 }, (_, index) => index + 1)
+        .filter((digit) => canPlace(grid, pos, digit));
+      if (candidates.length === 0) return false;
+      if (target === -1 || candidates.length < targetCandidates.length) {
+        target = pos;
+        targetCandidates = candidates;
+        if (candidates.length === 1) break;
+      }
+    }
+
+    if (target === -1) return true;
+    for (const digit of targetCandidates) {
+      grid[target] = digit;
+      if (search()) return true;
+    }
+    grid[target] = 0;
+    return false;
+  }
+
+  return search();
+}
+
 function fillSolved(grid: SudokuGrid, pos: number, rng: () => number): boolean {
   if (pos === 81) return true;
   const nums = shuffle(rng, [1, 2, 3, 4, 5, 6, 7, 8, 9]);
@@ -74,6 +121,36 @@ export function isSolvedGrid(grid: SudokuGrid): boolean {
     }
   }
   return true;
+}
+
+/**
+ * M4 逐格验证：接受所有仍可完成为合法终盘的填数。
+ * 这与 verifySudoku 的多解合同一致，不会把另一种合法解误判为错误。
+ */
+export function isSudokuValuePossible(
+  puzzle: SudokuGrid,
+  values: SudokuGrid,
+  index: number,
+  digit: number,
+): boolean {
+  if (
+    puzzle.length !== 81
+    || values.length !== 81
+    || !Number.isInteger(index)
+    || index < 0
+    || index >= 81
+    || !Number.isInteger(digit)
+    || digit < 1
+    || digit > 9
+    || puzzle[index] !== 0
+  ) {
+    return false;
+  }
+  if (!puzzle.every((given, position) => given === 0 || values[position] === given)) return false;
+
+  const attempted = [...values];
+  attempted[index] = digit;
+  return hasSudokuSolution(attempted);
 }
 
 /** 服务端校验：proof 是与该 seed 题面一致的合法终盘（GameDef.verify） */

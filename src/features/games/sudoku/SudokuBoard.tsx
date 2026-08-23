@@ -11,10 +11,12 @@ import {
   SquareDashed,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useMemo, useState, type KeyboardEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { GameBoardProps, GameMirrorState, SudokuHighlightTool } from "../types";
 import { isSolvedGrid, sudokuPuzzle } from "./logic";
+import styles from "./SudokuBoard.module.css";
 import {
   clearSudokuTeachingHighlights,
   chooseSudokuDigit,
@@ -35,6 +37,8 @@ import {
 } from "./state";
 
 const ENTRY_MODES: SudokuEntryMode[] = ["candidate", "value"];
+const INVALID_CELL_VISIBLE_MS = 1_100;
+const INVALID_MESSAGE_DELAY_MS = 440;
 const HIGHLIGHT_TOOL_DEFS = [
   { tool: "box", label: "highlightBox", Icon: SquareDashed },
   { tool: "row", label: "highlightRow", Icon: Rows3 },
@@ -55,6 +59,40 @@ export function SudokuBoard({ seed, difficulty, finished, onComplete, mirror, on
   const [state, setState] = useState<SudokuBoardState>(() => createSudokuBoardState(puzzle, mirror));
   const [appliedMirror, setAppliedMirror] = useState<GameMirrorState | null | undefined>(mirror);
   const [appliedPuzzleKey, setAppliedPuzzleKey] = useState(puzzleKey);
+  const invalidAttemptKey = state.invalidAttempt
+    ? `${puzzleKey}:${state.invalidAttempt.sequence}`
+    : null;
+  const invalidAttemptIndex = state.invalidAttempt?.index ?? null;
+  const [invalidCell, setInvalidCell] = useState<number | null>(null);
+  const seenInvalidAttempt = useRef(invalidAttemptKey);
+  const reasoningOnlyMessage = t("reasoningOnly");
+
+  useEffect(() => {
+    if (!invalidAttemptKey || invalidAttemptIndex === null) {
+      seenInvalidAttempt.current = null;
+      const clearTimer = window.setTimeout(() => setInvalidCell(null), 0);
+      return () => window.clearTimeout(clearTimer);
+    }
+    if (seenInvalidAttempt.current === invalidAttemptKey) return;
+    seenInvalidAttempt.current = invalidAttemptKey;
+
+    const resetTimer = window.setTimeout(() => setInvalidCell(null), 0);
+    const animationTimer = window.setTimeout(() => setInvalidCell(invalidAttemptIndex), 20);
+    const messageTimer = window.setTimeout(() => {
+      toast.error(reasoningOnlyMessage, {
+        id: `sudoku-invalid-${puzzleKey}`,
+        duration: 2_600,
+      });
+    }, INVALID_MESSAGE_DELAY_MS);
+    const clearTimer = window.setTimeout(() => setInvalidCell(null), INVALID_CELL_VISIBLE_MS);
+
+    return () => {
+      window.clearTimeout(resetTimer);
+      window.clearTimeout(animationTimer);
+      window.clearTimeout(messageTimer);
+      window.clearTimeout(clearTimer);
+    };
+  }, [invalidAttemptIndex, invalidAttemptKey, puzzleKey, reasoningOnlyMessage]);
 
   // 课堂镜像：新状态对象到达即在渲染期对齐本地（React「adjust state during render」模式）。
   if (puzzleKey !== appliedPuzzleKey) {
@@ -267,6 +305,7 @@ export function SudokuBoard({ seed, difficulty, finished, onComplete, mirror, on
                 const structuralHighlightCount = sudokuCellHighlightCount(state.highlights, row, column);
                 const digitHighlighted = Boolean(value && state.highlights.focusedDigit === value);
                 const teachingHighlighted = structuralHighlightCount > 0 || digitHighlighted;
+                const invalid = invalidCell === index;
                 const baseLabel = given
                   ? t("givenCell", { coordinate, value })
                   : value
@@ -290,6 +329,7 @@ export function SudokuBoard({ seed, difficulty, finished, onComplete, mirror, on
                     data-digit={value || undefined}
                     data-given={given || undefined}
                     data-highlight-count={structuralHighlightCount || undefined}
+                    data-invalid-attempt={invalid || undefined}
                     data-row={SUDOKU_ROW_LABELS[row]}
                     data-teaching-highlight={teachingHighlighted || undefined}
                     onClick={() => selectCell(index)}
@@ -303,6 +343,8 @@ export function SudokuBoard({ seed, difficulty, finished, onComplete, mirror, on
                       !inputDisabled && "hover:brightness-[0.97]",
                       state.highlightTool && !inputDisabled && "cursor-crosshair",
                       state.selected === index && state.highlightTool === null && "z-10 bg-moon/65 ring-2 ring-inset ring-crater",
+                      invalid && styles.invalidCell,
+                      invalid && "z-20 bg-rose/20 ring-2 ring-inset ring-rose",
                     )}
                   >
                     {value ? (

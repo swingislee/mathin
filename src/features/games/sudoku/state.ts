@@ -1,8 +1,10 @@
 import type {
   GameMirrorState,
   SudokuHighlightTool,
+  SudokuInvalidAttempt,
   SudokuTeachingHighlights,
 } from "../types";
+import { isSudokuValuePossible } from "./logic";
 
 export type SudokuEntryMode = "candidate" | "value";
 
@@ -16,6 +18,7 @@ export interface SudokuBoardState {
   entryMode: SudokuEntryMode;
   highlightTool: SudokuHighlightTool | null;
   highlights: SudokuTeachingHighlights;
+  invalidAttempt: SudokuInvalidAttempt | null;
 }
 
 export const SUDOKU_ROW_LABELS = ["A", "B", "C", "D", "E", "F", "G", "H", "I"] as const;
@@ -76,6 +79,20 @@ function normalizedHighlights(mirror?: GameMirrorState | null): SudokuTeachingHi
   };
 }
 
+function normalizedInvalidAttempt(mirror?: GameMirrorState | null): SudokuInvalidAttempt | null {
+  const attempt = mirror?.invalidAttempt;
+  if (
+    !attempt
+    || !validCellIndex(attempt.index)
+    || !validDigit(attempt.digit)
+    || !Number.isSafeInteger(attempt.sequence)
+    || attempt.sequence < 1
+  ) {
+    return null;
+  }
+  return { index: attempt.index, digit: attempt.digit, sequence: attempt.sequence };
+}
+
 function normalizedValues(puzzle: number[], mirror?: GameMirrorState | null): number[] {
   if (!mirror || !Array.isArray(mirror.values) || mirror.values.length !== 81) return [...puzzle];
   return puzzle.map((given, index) => {
@@ -101,6 +118,7 @@ export function createSudokuBoardState(puzzle: number[], mirror?: GameMirrorStat
     entryMode: mirror?.entryMode === "candidate" ? "candidate" : "value",
     highlightTool: validHighlightTool(mirror?.highlightTool) ? mirror.highlightTool : null,
     highlights: normalizedHighlights(mirror),
+    invalidAttempt: normalizedInvalidAttempt(mirror),
   };
 }
 
@@ -120,6 +138,7 @@ export function toSudokuMirrorState(state: SudokuBoardState): GameMirrorState {
       columnBlocks: [...state.highlights.columnBlocks],
       focusedDigit: state.highlights.focusedDigit,
     },
+    invalidAttempt: state.invalidAttempt ? { ...state.invalidAttempt } : null,
   };
 }
 
@@ -135,6 +154,20 @@ function applyDigitAt(state: SudokuBoardState, puzzle: number[], index: number, 
     const candidates = [...state.candidates];
     candidates[index] ^= 1 << digit;
     return { ...state, candidates };
+  }
+
+  if (!isSudokuValuePossible(puzzle, state.values, index, digit)) {
+    const previousSequence = state.invalidAttempt?.sequence ?? 0;
+    return {
+      ...state,
+      selected: index,
+      inputDigit: null,
+      invalidAttempt: {
+        index,
+        digit,
+        sequence: previousSequence >= Number.MAX_SAFE_INTEGER ? 1 : previousSequence + 1,
+      },
+    };
   }
 
   const values = [...state.values];

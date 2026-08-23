@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { sudokuPuzzle, verifySudoku } from "@/features/games/sudoku/logic";
+import {
+  isSudokuValuePossible,
+  sudokuPuzzle,
+  verifySudoku,
+} from "@/features/games/sudoku/logic";
 import {
   SUDOKU_BOX_ELIMINATION_PUZZLE,
   SUDOKU_BOX_ELIMINATION_SEED,
@@ -65,21 +69,20 @@ describe("Sudoku teaching board M2", () => {
     ]);
   });
 
-  it("supports both digit-first and cell-first value input without correctness hints", () => {
+  it("supports both digit-first and cell-first value input", () => {
     const puzzle = [...SUDOKU_BOX_ELIMINATION_PUZZLE];
     let state = createSudokuBoardState(puzzle);
 
-    state = chooseSudokuDigit(state, puzzle, 9);
-    expect(state.inputDigit).toBe(9);
+    state = chooseSudokuDigit(state, puzzle, 3);
+    expect(state.inputDigit).toBe(3);
     expect(state.values[0]).toBe(0);
 
-    // A1 的正确答案不是 9；M2 只负责录入，错误判断留给 M4。
     state = selectSudokuCell(state, puzzle, 0);
-    expect(state.values[0]).toBe(9);
+    expect(state.values[0]).toBe(3);
 
     state = selectSudokuCell(state, puzzle, 1, false);
-    state = chooseSudokuDigit(state, puzzle, 4);
-    expect(state.values[1]).toBe(4);
+    state = chooseSudokuDigit(state, puzzle, 6);
+    expect(state.values[1]).toBe(6);
 
     // A3 是题面给定数，任何输入都不能覆盖。
     state = selectSudokuCell(state, puzzle, 2);
@@ -108,8 +111,8 @@ describe("Sudoku teaching board M2", () => {
     expect(restored).toEqual(state);
 
     state = setSudokuEntryMode(state, "value");
-    state = chooseSudokuDigit(state, puzzle, 2);
-    expect(state.values[1]).toBe(2);
+    state = chooseSudokuDigit(state, puzzle, 6);
+    expect(state.values[1]).toBe(6);
     expect(state.candidates[1]).toBe(0);
 
     state = deleteSelectedSudokuCell(state, puzzle);
@@ -178,7 +181,7 @@ describe("Sudoku teaching highlights M3", () => {
     const puzzle = [...SUDOKU_BOX_ELIMINATION_PUZZLE];
     let state = createSudokuBoardState(puzzle);
     state = selectSudokuCell(state, puzzle, 0);
-    state = chooseSudokuDigit(state, puzzle, 6);
+    state = chooseSudokuDigit(state, puzzle, 3);
     state = setSudokuHighlightTool(state, "box");
     state = selectSudokuCell(state, puzzle, 40);
     state = setSudokuHighlightTool(state, "digit");
@@ -192,7 +195,7 @@ describe("Sudoku teaching highlights M3", () => {
     state = clearSudokuTeachingHighlights(state);
     expect(hasSudokuTeachingHighlights(state)).toBe(false);
     expect(state.values).toEqual(valuesBeforeClear);
-    expect(state.values[0]).toBe(6);
+    expect(state.values[0]).toBe(3);
     expect(state.highlightTool).toBeNull();
     expect(state.highlights.focusedDigit).toBeNull();
   });
@@ -207,5 +210,50 @@ describe("Sudoku teaching highlights M3", () => {
     expect(state.highlightTool).toBeNull();
     expect(state.entryMode).toBe("candidate");
     expect(state.highlights.rows).toEqual([0]);
+  });
+});
+
+describe("Sudoku answer validation M4", () => {
+  it("accepts a value only when the resulting board still has a legal completion", () => {
+    const puzzle = [...SUDOKU_BOX_ELIMINATION_PUZZLE];
+
+    expect(isSudokuValuePossible(puzzle, puzzle, 0, 3)).toBe(true);
+    expect(isSudokuValuePossible(puzzle, puzzle, 0, 1)).toBe(false);
+  });
+
+  it("rejects wrong value attempts, mirrors one transient marker, and keeps the cell empty", () => {
+    const puzzle = [...SUDOKU_BOX_ELIMINATION_PUZZLE];
+    let state = createSudokuBoardState(puzzle);
+    state = selectSudokuCell(state, puzzle, 0, false);
+    state = chooseSudokuDigit(state, puzzle, 1);
+
+    expect(state.values[0]).toBe(0);
+    expect(state.inputDigit).toBeNull();
+    expect(state.invalidAttempt).toEqual({ index: 0, digit: 1, sequence: 1 });
+
+    state = chooseSudokuDigit(state, puzzle, 1);
+    expect(state.invalidAttempt).toEqual({ index: 0, digit: 1, sequence: 2 });
+
+    const restored = createSudokuBoardState(puzzle, toSudokuMirrorState(state));
+    expect(restored).toEqual(state);
+
+    state = chooseSudokuDigit(state, puzzle, 3);
+    expect(state.values[0]).toBe(3);
+    expect(state.invalidAttempt?.sequence).toBe(2);
+  });
+
+  it("validates digit-first entry but never treats candidates as answer guesses", () => {
+    const puzzle = [...SUDOKU_BOX_ELIMINATION_PUZZLE];
+    let state = createSudokuBoardState(puzzle);
+    state = chooseSudokuDigit(state, puzzle, 1);
+    state = selectSudokuCell(state, puzzle, 0);
+
+    expect(state.values[0]).toBe(0);
+    expect(state.invalidAttempt).toEqual({ index: 0, digit: 1, sequence: 1 });
+
+    state = setSudokuEntryMode(state, "candidate");
+    state = chooseSudokuDigit(state, puzzle, 1);
+    expect(sudokuCandidateDigits(state.candidates[0])).toEqual([1]);
+    expect(state.invalidAttempt?.sequence).toBe(1);
   });
 });

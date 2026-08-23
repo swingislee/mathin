@@ -235,6 +235,7 @@
       "highlightDigitChoice": "突出数字 {digit}",
       "clearHighlights": "清除全部突出",
       "highlightedSuffix": "，已突出",
+      "reasoningOnly": "不能猜哦，只能靠推理！",
       "givenCell": "{coordinate}，题面数字 {value}",
       "filledCell": "{coordinate}，填入数字 {value}",
       "candidateCell": "{coordinate}，候选数 {values}",
