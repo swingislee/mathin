@@ -321,6 +321,23 @@ replacement artifact 只复制首份 manifest 的 4 个 protected 条目，并�
 | `artifact_url_or_path`, `artifact_hash` | migration LF 规范化 SHA-256 `d17cdc785299f19476ce7e37348f1e0b27bc226e7a8a4d47c65c1413f31b102a`；Git commit `15e6e644b4217a0b65e78ae93fd5dc25bdf87bc1`；Xiaomi `/home/swing/services/mathin/releases/20260823-113957/release.json` |
 | `retention`, `access_roles`, `failure_ticket` | migration、Git 与 immutable release 按既有策略保留；仓库维护者/Xiaomi 运维角色；`BUG-R1-LIVE-006` 已部署，待教师实际新增课次确认后关闭 |
 
+#### 4.2.5 2026-08-23 自由课次课件工作区 P0 修复发布
+
+教师在生产端成功添加自由课次后，进入 canonical 课次工作区只看到“这个阶段暂时没有需要处理的内容”。定位确认并非缺少编辑器：现有本课课件、教案、备课产物、试讲和开课冻结能力被前端 `lecture_id` 条件整体隐藏，覆盖层保存 Action 也拒绝无讲次课次，开课时则跳过覆盖层冻结。修复后，自由课次以空课程模板进入同一套本课课件工作区，教师可添加、排序和保存白板、图片、视频及游戏页，并可继续完成备课、试讲；正式开课会把当前自定义页面原子冻结为该课次课件。绑定课程课次继续使用不可修改的 release 模板页和本课覆盖层。
+
+本轮为 application-only 发布，没有数据库 migration，也没有由 Agent 写入生产业务数据。产品负责人此前要求该 P0 链路快速上线且不追加更多测试，因此只运行类型/双语消息检查与发布脚本强制的 lint、typecheck、本地和远端 production build、服务健康门；没有运行 Playwright、Vitest、R1 regression、CI 或全量测试，功能状态保持待教师实际操作验收。
+
+| 证据字段 | 值 |
+| --- | --- |
+| `gate_id`, `domain`, `result` | `R1-Live Gate 2`；自由课次课堂内容准备；`DEPLOYED / PENDING USER ACCEPTANCE` |
+| `measured_value`, `threshold` | current=`20260823-115657` / `7d06454…`、previous=`20260823-113957` / `15e6e64…`；service active，loopback 与 Caddy health 均为 production `ok`；release 安全门 lint/typecheck、本地和远端 build 均通过 |
+| `commit_sha`, `migration_head`, `environment` | `7d064545356a2af09e5dfb81f68bb7ea4f5f48b6`；数据库仍为 `20260823000300_r1_live_teacher_session_management`；Xiaomi / production |
+| `dataset_manifest` | `not_applicable`；应用-only 发布。Agent 未新增、修改或删除账号、班级、课次、课件、报名、点名、manifest 或 Storage 对象 |
+| `started_at`, `finished_at`, `actor`, `approver` | 2026-08-23（Asia/Shanghai）；release `builtAt=2026-08-23T11:58:10Z`；Codex；`swingislee`（提交生产空白课前页截图并指出缺少课堂讲义编辑页） |
+| `command_or_runbook` | 受影响文件静态实现与 typecheck/双语 JSON 校验 → 从精确提交创建隔离 worktree → `scripts/ops/publish-mathin-xiaomi.ps1 -Action Publish`；未执行页面自动化或业务写入 |
+| `artifact_url_or_path`, `artifact_hash` | Git commit `7d064545356a2af09e5dfb81f68bb7ea4f5f48b6`；Xiaomi `/home/swing/services/mathin/releases/20260823-115657/release.json`；`artifact_hash=not_applicable` |
+| `retention`, `access_roles`, `failure_ticket` | Git 与 immutable release 按既有策略保留；仓库维护者/Xiaomi 运维角色；`BUG-R1-LIVE-007` 已部署，待教师添加一页并刷新确认后关闭 |
+
 ### 4.3 错误定位：可查询，但 release 关联缺失
 
 - `public.operational_errors` 共 1,949 条：`request.error` 1,948 条、`infra.disk_alert` 1 条；最近一条为本轮建班校验错误 `2026-08-22T15:53:09.807Z`。
