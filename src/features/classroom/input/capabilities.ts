@@ -1,50 +1,29 @@
 import type { CoursewareDoc } from "@/features/courseware-doc/document";
 import { PAGE_DOC_VERSION, type DocNode, type PageDoc } from "@/features/courseware-doc/schema";
+import { getGame } from "@/features/games/registry";
+import { getTool } from "@/features/tools/registry";
 import type { CoursewarePage } from "../types";
 import type { ClassroomInputCapability } from "./router";
-
-export const CLASSROOM_INPUT_CAPABILITY_VERSION = 1;
-
-export const AUDITED_CLASSROOM_NATIVE_GAME_IDS = ["sudoku", "kakuro", "magic-square"] as const;
-export const AUDITED_CLASSROOM_TOOL_IDS = ["fraction-line"] as const;
-
-export type AuditedClassroomNativeGameId = (typeof AUDITED_CLASSROOM_NATIVE_GAME_IDS)[number];
-export type AuditedClassroomToolId = (typeof AUDITED_CLASSROOM_TOOL_IDS)[number];
-export type AuditedClassroomToolRenderer = `tool:${AuditedClassroomToolId}`;
-
-const auditedNativeGameIds = new Set<string>(AUDITED_CLASSROOM_NATIVE_GAME_IDS);
-const auditedToolIds = new Set<string>(AUDITED_CLASSROOM_TOOL_IDS);
-
-export function isAuditedClassroomNativeGame(gameId: string): gameId is AuditedClassroomNativeGameId {
-  return auditedNativeGameIds.has(gameId);
-}
-
-export function isAuditedClassroomTool(toolId: string): toolId is AuditedClassroomToolId {
-  return auditedToolIds.has(toolId);
-}
+import {
+  CLASSROOM_INK_INPUT_PROVIDER_V1,
+  matchesClassroomInputProviderBoundary,
+  type ClassroomInputCapabilityProvider,
+  type ClassroomInputProviderAttributeSource,
+} from "./provider";
 
 export interface ClassroomRendererInputProfile {
-  renderer:
-    | "board"
-    | "image"
-    | "video"
-    | "document"
-    | AuditedClassroomNativeGameId
-    | AuditedClassroomToolRenderer
-    | "unsupported";
-  version: number;
+  renderer: string;
   audited: boolean;
   /** True while a doc is still resolving; do not persist the temporary protection as a user lock choice. */
   provisional: boolean;
-  defaultCapability: ClassroomInputCapability;
+  provider: ClassroomInputCapabilityProvider | null;
 }
 
 const UNSUPPORTED_PROFILE: ClassroomRendererInputProfile = {
   renderer: "unsupported",
-  version: CLASSROOM_INPUT_CAPABILITY_VERSION,
   audited: false,
   provisional: false,
-  defaultCapability: "unknown",
+  provider: null,
 };
 
 const PROVISIONAL_PROFILE: ClassroomRendererInputProfile = {
@@ -74,6 +53,18 @@ function nodeRequiresInteractionProtection(node: DocNode): boolean {
     || node.children.some(nodeRequiresInteractionProtection);
 }
 
+function providerProfile(
+  renderer: string,
+  provider: ClassroomInputCapabilityProvider,
+): ClassroomRendererInputProfile {
+  return {
+    renderer,
+    audited: true,
+    provisional: false,
+    provider,
+  };
+}
+
 /** Only native page-doc-v1 DOM is audited here; Aixuexi, spatial, and H5 remain fail-closed. */
 export function isAuditedNativeCoursewareDoc(
   doc: CoursewareDoc | null | undefined,
@@ -85,70 +76,34 @@ export function isAuditedNativeCoursewareDoc(
   );
 }
 
-/** M3a registry: audited tool overlays take ownership before the underlying courseware renderer. */
+/** M3a provider resolution: an overlay provider takes ownership before the underlying renderer. */
 export function resolveClassroomRendererInputProfile(
   page: CoursewarePage | undefined,
   toolId: string | null | undefined,
   doc?: CoursewareDoc | null,
 ): ClassroomRendererInputProfile {
   if (toolId) {
-    if (!isAuditedClassroomTool(toolId)) return UNSUPPORTED_PROFILE;
-    return {
-      renderer: `tool:${toolId}`,
-      version: CLASSROOM_INPUT_CAPABILITY_VERSION,
-      audited: true,
-      provisional: false,
-      // Every audited tool emits a root capability. Missing markers stay protected.
-      defaultCapability: "unknown",
-    };
+    const provider = getTool(toolId)?.classroomInput;
+    return provider ? providerProfile(`tool:${toolId}`, provider) : UNSUPPORTED_PROFILE;
   }
   if (!page) return UNSUPPORTED_PROFILE;
   if (page.type === "board") {
-    return {
-      renderer: "board",
-      version: CLASSROOM_INPUT_CAPABILITY_VERSION,
-      audited: true,
-      provisional: false,
-      defaultCapability: "ink",
-    };
+    return providerProfile("board", CLASSROOM_INK_INPUT_PROVIDER_V1);
   }
   if (page.type === "image") {
-    return {
-      renderer: "image",
-      version: CLASSROOM_INPUT_CAPABILITY_VERSION,
-      audited: true,
-      provisional: false,
-      defaultCapability: "ink",
-    };
+    return providerProfile("image", CLASSROOM_INK_INPUT_PROVIDER_V1);
   }
   if (page.type === "video") {
-    return {
-      renderer: "video",
-      version: CLASSROOM_INPUT_CAPABILITY_VERSION,
-      audited: true,
-      provisional: false,
-      defaultCapability: "ink",
-    };
+    return providerProfile("video", CLASSROOM_INK_INPUT_PROVIDER_V1);
   }
   if (page.type === "doc") {
     if (!doc) return PROVISIONAL_PROFILE;
     if (!isAuditedNativeCoursewareDoc(doc)) return UNSUPPORTED_PROFILE;
-    return {
-      renderer: "document",
-      version: CLASSROOM_INPUT_CAPABILITY_VERSION,
-      audited: true,
-      provisional: false,
-      defaultCapability: "ink",
-    };
+    return providerProfile("document", CLASSROOM_INK_INPUT_PROVIDER_V1);
   }
-  if (page.type === "game" && isAuditedClassroomNativeGame(page.gameId)) {
-    return {
-      renderer: page.gameId,
-      version: CLASSROOM_INPUT_CAPABILITY_VERSION,
-      audited: true,
-      provisional: false,
-      defaultCapability: "ink",
-    };
+  if (page.type === "game") {
+    const provider = getGame(page.gameId)?.classroomInput;
+    return provider ? providerProfile(page.gameId, provider) : UNSUPPORTED_PROFILE;
   }
   return UNSUPPORTED_PROFILE;
 }
@@ -157,9 +112,39 @@ export function parseClassroomInputCapability(
   value: string | null | undefined,
   profile: ClassroomRendererInputProfile,
 ): ClassroomInputCapability {
-  if (!profile.audited) return "unknown";
-  if (!value) return profile.defaultCapability;
+  if (!profile.audited || !profile.provider) return "unknown";
+  if (!value) return profile.provider.defaultCapability;
   return value === "click" || value === "drag" || value === "native" || value === "ink"
     ? value
     : "unknown";
+}
+
+export interface ClassroomInputCapabilityMatch<T> {
+  capability: ClassroomInputCapability;
+  owner: T | null;
+}
+
+/**
+ * Conformance resolver shared by the browser router and pure tests. A target
+ * marker is trusted only inside a matching provider boundary; missing or stale
+ * schema/version/renderer attributes fail closed.
+ */
+export function resolveClassroomInputCapabilityFromPath<T extends ClassroomInputProviderAttributeSource>(
+  path: readonly T[],
+  profile: ClassroomRendererInputProfile,
+): ClassroomInputCapabilityMatch<T> {
+  let owner: T | null = null;
+  let value: string | null = null;
+  for (const source of path) {
+    if (!owner && source.getAttribute("data-classroom-input") !== null) {
+      owner = source;
+      value = source.getAttribute("data-classroom-input");
+    }
+    if (source.getAttribute("data-classroom-input-provider") === null) continue;
+    if (!matchesClassroomInputProviderBoundary(source, profile.renderer, profile.provider)) {
+      return { capability: "unknown", owner };
+    }
+    return { capability: parseClassroomInputCapability(value, profile), owner };
+  }
+  return { capability: "unknown", owner };
 }

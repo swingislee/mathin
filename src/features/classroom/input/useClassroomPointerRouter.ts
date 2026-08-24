@@ -7,7 +7,8 @@ import type {
 } from "@/features/whiteboard/CanvasSurface";
 import type { Tool } from "@/features/whiteboard/types";
 import {
-  parseClassroomInputCapability,
+  resolveClassroomInputCapabilityFromPath,
+  type ClassroomInputCapabilityMatch,
   type ClassroomRendererInputProfile,
 } from "./capabilities";
 import {
@@ -71,15 +72,9 @@ function eventPoints(event: PointerEvent, rect: FrozenGesture["rect"]): Normaliz
 function targetCapability(
   event: PointerEvent,
   profile: ClassroomRendererInputProfile,
-): { capability: ReturnType<typeof parseClassroomInputCapability>; owner: Element | null } {
-  for (const target of event.composedPath()) {
-    if (!(target instanceof Element) || !target.hasAttribute("data-classroom-input")) continue;
-    return {
-      capability: parseClassroomInputCapability(target.getAttribute("data-classroom-input"), profile),
-      owner: target,
-    };
-  }
-  return { capability: parseClassroomInputCapability(null, profile), owner: null };
+): ClassroomInputCapabilityMatch<Element> {
+  const path = event.composedPath().filter((target): target is Element => target instanceof Element);
+  return resolveClassroomInputCapabilityFromPath(path, profile);
 }
 
 function clickBelongsToToken(event: MouseEvent, token: ClickSuppressionToken): boolean {

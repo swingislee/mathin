@@ -1,5 +1,9 @@
 import type { LucideIcon } from "lucide-react";
 import { Boxes, Route, Ruler } from "lucide-react";
+import {
+  CLASSROOM_PARTITIONED_INPUT_PROVIDER_V1,
+  type ClassroomInputCapabilityProvider,
+} from "@/features/classroom/input/provider";
 
 export type ToolCategory = "number" | "geometry" | "motion" | "misc";
 
@@ -16,10 +20,19 @@ export interface ToolMeta {
   /** 适用年级区间 */
   grades: [number, number];
   icon: LucideIcon;
+  /** Present only when the tool implements the versioned classroom input provider contract. */
+  classroomInput?: ClassroomInputCapabilityProvider;
 }
 
 export const tools: ToolMeta[] = [
-  { id: "fraction-line", no: 1, category: "number", grades: [3, 6], icon: Ruler },
+  {
+    id: "fraction-line",
+    no: 1,
+    category: "number",
+    grades: [3, 6],
+    icon: Ruler,
+    classroomInput: CLASSROOM_PARTITIONED_INPUT_PROVIDER_V1,
+  },
   { id: "motion-lab", no: 2, category: "motion", grades: [4, 6], icon: Route },
   { id: "spatial-lab", no: 3, category: "geometry", grades: [1, 9], icon: Boxes },
 ];

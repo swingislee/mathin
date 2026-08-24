@@ -20,11 +20,7 @@ import { cn } from "@/lib/utils";
 import type { SessionEventLog } from "../sync/eventlog";
 import type { BoardCheckpointStatus, SessionBoardCheckpoint } from "../checkpoint/types";
 import type { CoursewarePage } from "../types";
-import {
-  CLASSROOM_INPUT_CAPABILITY_VERSION,
-  isAuditedClassroomNativeGame,
-  isAuditedClassroomTool,
-} from "../input/capabilities";
+import { classroomInputProviderAttributes } from "../input/provider";
 import { useClassBoard } from "./useClassBoard";
 import { MAX_INLINE_STARS } from "./liveState";
 
@@ -112,10 +108,7 @@ export function GamePage({
   return (
     <div
       className="size-full overflow-auto p-4"
-      data-classroom-renderer={game.id}
-      data-classroom-renderer-version={isAuditedClassroomNativeGame(game.id)
-        ? CLASSROOM_INPUT_CAPABILITY_VERSION
-        : undefined}
+      {...classroomInputProviderAttributes(game.id, game.classroomInput)}
     >
       <GameBoard
         key={`${page.id}:${page.seed}:${page.difficulty}`}
@@ -140,13 +133,13 @@ export function ToolOverlay({ toolId, onClose }: { toolId: string; onClose?: () 
   const tool = getTool(toolId);
   if (!tool) return null;
   const Icon = tool.icon;
-  const auditedInput = isAuditedClassroomTool(tool.id);
+  const auditedInput = Boolean(tool.classroomInput);
   return (
     <div
       className="absolute inset-0 z-30 flex flex-col bg-paper"
       data-classroom-tool={tool.id}
       data-classroom-input={auditedInput ? "ink" : undefined}
-      data-classroom-renderer-version={auditedInput ? CLASSROOM_INPUT_CAPABILITY_VERSION : undefined}
+      {...classroomInputProviderAttributes(`tool:${tool.id}`, tool.classroomInput)}
     >
       <div
         className="flex h-10 shrink-0 items-center gap-2 border-b border-line px-3"

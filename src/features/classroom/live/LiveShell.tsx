@@ -79,6 +79,7 @@ import {
 } from "../sync/transports";
 import type { ClassroomMember, ClassSessionRecord, CoursewarePage, SessionEvent } from "../types";
 import { resolveClassroomRendererInputProfile } from "../input/capabilities";
+import { classroomInputProviderAttributes } from "../input/provider";
 import { useClassroomPointerRouter } from "../input/useClassroomPointerRouter";
 import type { ClassroomRoutingMode } from "../input/router";
 import { useClassBoard } from "./useClassBoard";
@@ -1041,8 +1042,7 @@ export function LiveShell({
             ref={stageRef}
             className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-line bg-card"
             data-classroom-stage
-            data-classroom-renderer={rendererProfile.renderer}
-            data-classroom-renderer-version={rendererProfile.version}
+            {...classroomInputProviderAttributes(rendererProfile.renderer, rendererProfile.provider)}
             style={{ width: "min(100%, calc((100dvh - 6rem) * 4 / 3))" }}
             onPointerDownCapture={() => setActiveArea("main")}
           >

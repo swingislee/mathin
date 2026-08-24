@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import type { ComponentType } from "react";
+import type { ClassroomInputCapabilityProvider } from "@/features/classroom/input/provider";
 
 export type Difficulty = "easy" | "medium" | "hard";
 
@@ -86,6 +87,8 @@ export interface GameMeta {
   crowns: 1 | 2 | 3;
   icon: LucideIcon;
   difficulties: readonly Difficulty[];
+  /** Present only when the board implements the versioned classroom input provider contract. */
+  classroomInput?: ClassroomInputCapabilityProvider;
 }
 
 export type GameBoard = ComponentType<GameBoardProps>;

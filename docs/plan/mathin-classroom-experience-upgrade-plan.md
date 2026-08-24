@@ -1,6 +1,6 @@
 # Mathin 课堂体验升级规划
 
-> **状态**：M0–M2 已关闭并完成开发端人工验收；M3a 原生 renderer 智能输入路由施工中，暂不进入 M3b/M4/M5<br>
+> **状态**：M0–M2 与 M3a 已在开发端关闭；M3b H5 输入桥施工中，暂不进入 M4/M5<br>
 > **规划日期**：2026-08-24<br>
 > **仓库基线**：`swingislee/mathin`，本轮审阅基于 `main` 的 `0e30b33`<br>
 > **M1 验收基线**：`43ae587` + `67989c1`；只表示开发目标已验收，尚未部署生产<br>
@@ -550,7 +550,18 @@ data-classroom-input="ink"
 
 视频不得把整个元素永久登记为 `native`。控制端把画面区显式覆为 `click`：短点播放/暂停，移动超过阈值转为板书并抑制本次点击；底部原生控制条保留独立无遮挡安全区并继续为 `native`，其中进度拖动不被 Smart 接管。页面 DOM 必须通过两个实际命中区域表达该边界，router 不按坐标猜测浏览器 shadow DOM。
 
-建立版本化 `ClassroomInputCapability` registry，至少盘点：数独、原生文档点击步进、自研游戏拖拽、图片、视频原生控件、白板页、课堂工具覆盖层、爱学习/H5。`data-classroom-input` 是 renderer 输出的一部分，不是全局猜测器。未登记 renderer、能力版本不匹配或目标语义未知时 fail closed 到交互锁，并提供明确的书写锁入口；不能把任意 `button` 自动视为可被中途接管的点击目标。
+建立版本化 `ClassroomInputCapabilityProvider`。每个 renderer 在自己的 registry 记录或 adapter 模块声明 provider，不再由课堂模块维护另一份 renderer/tool ID 白名单；新增 renderer 已经必须修改的注册记录就是唯一启用点。共同舞台与 renderer 根输出 provider schema、version、renderer 和 default capability，目标继续输出 `data-classroom-input`。router 只信任匹配 provider 边界内的目标；未声明 provider、边界缺失、renderer/version 不匹配或目标语义未知时 fail closed 到交互锁，并提供明确的书写锁入口，不能把任意 `button` 自动视为可被中途接管的点击目标。
+
+provider 的“显式声明”和“人工逐个验收”是两层合同：显式声明仍是运行时安全边界；是否正确接入由统一 conformance 门禁自动验证，不再要求产品负责人对每个游戏、工具或未来互动重复同一轮轻点/拖写。普通新增 renderer 复用 `click/drag/native/ink`、共同舞台状态机、z-layer 和 provider v1 时，作者只需声明 provider、标注真实区域并通过统一自动门禁。
+
+只有以下变化触发新的人工输入 Gate：
+
+1. 增加 `click/drag/native/ink` 之外的新输入原语；
+2. 修改移动阈值、takeover、click suppression、pointer lifecycle 或 z-layer/输入所有权算法；
+3. 引入或升级跨 iframe/H5 bridge、嵌套 frame 或跨 origin 信任边界；
+4. 真实设备/浏览器出现可重复回归，需要验证机器无法判断的手感、原生控件或系统手势。
+
+普通 renderer 的业务体验可以在其自身功能里验收，但不得再次把已通过的 Smart 输入原语包装成独立课堂里程碑。CI 的通用 conformance 至少验证 provider schema/version、registry→profile 解析、边界匹配、四原语、未知/旧版本 fail closed、真实 click 一次和 takeover 后 click 为零；新增 provider 会自动进入同一门禁。
 
 Canvas base/draft、`BoardObjectLayer`、`InstrumentLayer`、课件 DOM 和课堂 ToolOverlay 需要一张明确的 z-layer/输入所有权表。Smart + pen 时 ink Canvas 只渲染；选择、图形、尺规或对象编辑启用时由 §6.4 的工具矩阵决定哪个板书层可交互，不能只把 draft Canvas 设为 none 后留下另一个透明层继续吞事件。
 
@@ -561,7 +572,7 @@ Canvas base/draft、`BoardObjectLayer`、`InstrumentLayer`、课件 DOM 和课�
 | 未审计或复杂工具覆盖层 | 主板书 `z-10` < ToolOverlay `z-30` | renderer fail closed 到交互锁；不得仅抬高 Canvas 后猜测工具内部语义 |
 | 教师板书工具栏 | 上述舞台层 < 工具栏 `z-50` | 工具栏位于共同舞台之外，保持自身按钮所有权且不被已抬高的板书层遮挡 |
 
-工具覆盖层的外层滚动容器与滚动条保持 `native`，内部可书写区再用更近的 `ink` 标记覆盖；按钮、表单、滑块和自定义拖拽手柄分别输出 `click/native/drag`。首版只登记已完成逐区审计且单屏验收成立的工具，其余工具继续保护。
+工具覆盖层的外层滚动容器与滚动条保持 `native`，内部可书写区再用更近的 `ink` 标记覆盖；按钮、表单、滑块和自定义拖拽手柄分别输出 `click/native/drag`。首版只给已完成逐区标注并通过 provider conformance 的工具声明 provider，其余工具继续保护；该声明不再自动产生一轮人工验收。
 
 ### 8.7 H5 课件
 
@@ -788,9 +799,9 @@ const dpr = resolveEffectiveDpr({
 
 状态全部放在 ref 中，消费白板暴露的 `BoardInputSink`；hook 本身不持有笔迹数据，也不在覆盖 Canvas 上命中底层节点。
 
-#### `classroom-input-capabilities.ts`
+#### `provider.ts` 与 `capabilities.ts`
 
-负责 renderer id/version、目标的 `click/drag/native/ink` 能力、动态能力读取和 fail-closed 默认。数独、文档、视频、自研游戏、H5、工具覆盖页逐项登记；不在 router 里堆标签名特例。
+`provider.ts` 冻结 schema/version、provider 元数据、renderer 边界属性和匹配规则；`capabilities.ts` 从游戏/工具 registry 与文档 adapter 解析 profile，读取目标的 `click/drag/native/ink` 并提供 fail-closed 默认。renderer 在自己的既有注册点声明 provider，router 不保存 ID 白名单或标签名特例。
 
 #### `ClassroomControlBar.tsx`
 
@@ -976,7 +987,7 @@ teaching.classroom_board_checkpoint_v2
 | --- | --- | --- |
 | DOM 输入所有权 | 共同舞台原生 capture；Smart 时 Canvas 纯渲染 | DOM 小原型、事件顺序记录、click-once 测试 |
 | 模式/工具矩阵 | Smart 首版只自动路由 `pen`，其他工具按表保守处理 | 中英文交互合同与恢复路径 |
-| renderer 能力 | 已审计清单逐页启用，未知 renderer 交互锁 | registry schema、现有 page type 盘点 |
+| renderer 能力 | renderer 在自身 registry/adapter 声明版本化 provider，未知 renderer 交互锁 | provider schema、现有 page type 盘点、统一 conformance |
 | 名单身份 | active enrollment + stable `students.id`，账号映射可空 | `SessionRosterEntry` 合同、v1/v2 差异表 |
 | 星星撤销 | v2 award/revoke set 语义 | migration/RLS/报告兼容设计 |
 | 星星视觉上限 | 推荐每生 10 颗，达到上限禁止继续并反馈；产品可在 M0 改值 | 0/1/上限/历史超限 fixture 与决定记录 |
@@ -994,7 +1005,7 @@ teaching.classroom_board_checkpoint_v2
 | --- | --- | --- |
 | 课堂结构 | 左侧严格 4:3 主板书；右侧依次为课程信息、副板书、4×5 学生积分；全宽底栏承载高频画笔与翻页 | M4 调整教师 control 布局；display/viewer 保持独立；实际右栏宽度由 M0-B viewport 原型校准 |
 | 默认输入 | Smart 只自动路由 `pen`；轻点已审计点击目标，移动后由共同舞台接管书写；其他工具按 §6.4 保守处理 | M3 建共同舞台 capture、`BoardInputSink` 与工具矩阵；未知 renderer fail closed 到交互锁 |
-| renderer 能力 | 只给版本化 registry 中已审计 renderer 启用；能力未知、版本不匹配或 H5 bridge 失联时进入交互锁 | 新增 capability schema；逐页登记数独、文档、媒体、自研游戏、白板、工具覆盖页与 H5 |
+| renderer 能力 | 只给自身 registry/adapter 已声明版本化 provider 的 renderer 启用；能力未知、版本不匹配或 H5 bridge 失联时进入交互锁 | 新增 provider schema 与统一 conformance；renderer 不在课堂模块维护第二份 ID 白名单；H5 另走 bridge Gate |
 | 名单身份 | active enrollment 决定名单，业务主键为稳定 `students.id`，`userId` 只作可空运行态映射 | `SessionRosterEntry`、数据库 migration、RLS、旧账号型事件/报表双读；未认领学生必须保留 |
 | 星星语义 | v2 award/revoke set；撤销指向具体 `awardId`，重复、晚到和跨 transport 顺序不改变结果 | 新事件 schema、writer、RLS、聚合器、报表、导出与 v1/v2 混合 fixture |
 | 星星超限 | 0–10 颗逐颗显示；第 11 颗起改为一个十星章加余星；奖励继续写入，不把视觉上限当业务上限；可访问名称包含精确总数 | M4 学生卡覆盖 0/1/10/11/13/历史高分；视觉表达与 v2 事件总数分离 |
@@ -1159,13 +1170,13 @@ M2-B 再交付方案 C 的恢复基础：
 
 ---
 
-### 12.3 M3：智能输入路由（M3a 施工中）
+### 12.3 M3：智能输入路由（M3a 已关闭，M3b 施工中）
 
 #### 内容
 
 1. 新增纯状态机、共同舞台 capture 与 `useClassroomPointerRouter`；
 2. Smart 模式让 Canvas 退为渲染层，通过 `BoardInputSink` 接管移动后的手势；
-3. 建立 renderer capability registry，只给已审计数独/文档/媒体/自研游戏逐项启用；
+3. 建立版本化 provider 合同；renderer 在自己的 registry/adapter 声明能力，统一 conformance 自动门禁，未知 provider fail closed；
 4. 增加持续可见的交互锁、书写锁与一键恢复智能；
 5. 固化精确 pointer lifecycle、click token、resize/page change 策略；
 6. M3a 先交付 native renderer；M3b 扩展现有 H5 runtime、握手、批量 bridge、watchdog 和未接桥兜底。
@@ -1192,17 +1203,14 @@ M2-B 再交付方案 C 的恢复基础：
 - 多指输入：只保留一个活动书写指针；
 - 交互锁和书写锁覆盖智能判断；
 - 点击目标若在 `pointerdown` 已有业务副作用，registry 拒绝中途接管；
+- registry 中每个 provider 都通过同一 schema/version/default capability 校验，profile 不再依赖课堂模块中的 renderer ID 白名单；
+- 目标能力只有位于匹配 schema/version/renderer 的 provider 边界内才生效，缺边界、旧版本和错 renderer 均 fail closed；
 - Playwright DOM harness 验证真实 target、原生 click 恰好一次、接管后 click 为零；
 - H5 验证 source/token/schema/rate limit、坐标变换、嵌套 relay、reload 与失联清理。
 
 #### 人工验收
 
-- 保持红笔状态，轻点数字 `5`；
-- 不切工具，轻点目标格；
-- 继续拖动画圈；
-- 在按钮上起笔并拖动时形成笔迹且不误触按钮；
-- 鼠标、触摸和笔输入均可完成同一流程；
-- 使用锁定模式时行为明确、可恢复。
+M3a 的 v1 原语已经用数独、普通文档、视频与分数数轴作为代表对象完成产品初验；后续 native renderer 复用相同 provider v1 时不再逐个复验。新的人工输入 Gate 只按 §8.6 的四类触发条件建立。M3b 属于跨 iframe 协议变化，下一次人工验收只交付兼容 H5 的 tap/takeover/reload 与不兼容 H5 的 fail-closed 降级，不重复 native renderer 对象。
 
 #### M3a 开发交付记录（2026-08-24）
 
@@ -1224,7 +1232,9 @@ M2-B 再交付方案 C 的恢复基础：
 
 同日，产品负责人确认上述文档与视频对象在开发端人工验收通过：文档拖写不再框选文字，视频画面短点/拖写与底部原生控制条分区成立。该结论不等同生产 iPad 通过；生产复核仍须等待开发端整体完成并按晋级流程迁移。文档与视频对象至此关闭，后续只交付课堂工具覆盖层的新验收对象，不重复前述流程。
 
-随后，课堂工具覆盖层先登记 `fraction-line`，没有把“工具窗已打开”继续当作单一未知布尔值。工具 DOM 保持真实命中，按钮允许 8px 后接管，缩放滑块和数轴原点/刻度保持原生拖拽，表单及滚动外壳保持原生语义，数轴空白区直接写入主板书；主板书在该已审计工具上方只渲染，使接管后的笔迹不再被 `z-30` 不透明工具窗遮住。试讲使用版本化的独立 `m3-tool-overlay-fixture-v1` board key，既不复用文档验收笔迹，也不删除旧诊断板书；当前只等待三个新人工对象：轻点“下一个点”只加分数点、拖动红色 0 点只平移数轴、空白区笔迹显示在工具上方。`motion-lab`、`spatial-lab` 和 H5 继续 fail closed，本轮不展示也不顺带放行。
+随后，课堂工具覆盖层先登记 `fraction-line`，没有把“工具窗已打开”继续当作单一未知布尔值。工具 DOM 保持真实命中，按钮允许 8px 后接管，缩放滑块和数轴原点/刻度保持原生拖拽，表单及滚动外壳保持原生语义，数轴空白区直接写入主板书；主板书在该已审计工具上方只渲染，使接管后的笔迹不再被 `z-30` 不透明工具窗遮住。版本化的独立 `m3-tool-overlay-fixture-v1` board key 不复用文档验收笔迹，也不删除旧诊断板书；“下一个点”、红色 0 点拖拽和空白区笔迹成为四原语/z-layer 的代表性 conformance 对象，不再单独等待一轮产品验收。`motion-lab`、`spatial-lab` 和 H5 继续 fail closed，未被顺带放行。
+
+2026-08-25，产品负责人否决继续按 renderer 逐个排队验收，并冻结 §8.6 的 provider/conformance 方向。实现随之移除课堂输入模块中的游戏/工具 ID 白名单：游戏和工具在各自既有 registry 记录声明 provider；共同舞台、游戏根与工具根发布统一 provider 边界；router 只接受匹配 schema/version/renderer 边界内的目标；registry 新增项自动进入同一纯合同测试。既有代表对象已覆盖 `click/drag/native/ink`、takeover、锁模式和 z-layer，故 `motion-lab`、`spatial-lab` 等未声明 provider 的 renderer 继续安全保护，但不再阻塞 M3a，也不产生逐个产品验收。M3a 在开发端关闭；这不等同生产部署或生产 iPad 通过，下一施工项为触发独立人工 Gate 的 M3b H5 bridge。
 
 ---
 
@@ -1346,6 +1356,9 @@ teaching.classroom_h5_pointer_v1
 ### 输入路由
 
 - 三种 `pointerType` 使用同一行为规则；
+- 游戏/工具在自身 registry 声明 provider；课堂输入模块不存在 renderer/tool ID 白名单；
+- registry→profile、provider schema/version/default capability 和共同舞台/嵌套根边界匹配由通用 conformance 覆盖，新增 provider 自动进入同一门禁；
+- 缺 provider 边界、错 renderer、旧版本和非法目标能力 fail closed；
 - 纯 reducer 覆盖 idle/pending/native/inking 的合法与非法转换；
 - Playwright DOM fixture 覆盖真实 target、点击与书写阈值；
 - 起笔点回填；
@@ -1427,7 +1440,7 @@ teaching.classroom_h5_pointer_v1
 7. 点击蓝笔继续写，切到橡皮并擦除，再点击蓝笔恢复；切主/副板书后确认一级界面显示正确目标，第一笔和撤销都作用于当前目标。
 8. 用点击、键盘和长按为学生加星/撤销；确认未认领学生可操作，达到视觉上限时按 M0 决策反馈，长按移动离开不误撤销。
 9. 翻页，确认主板书按页隔离、副板书持续；学情检查、点名、发题、工具覆盖和 pending 状态仍可到达。
-10. 在文档、视频控件和拖拽游戏上验证 registry 行为；未知 renderer 自动进入安全交互态并能明确切到书写锁。
+10. 用一组代表对象抽验 provider 的 `click/drag/native/ink`，不按 renderer 全量重复；未知 renderer 自动进入安全交互态并能明确切到书写锁。
 11. 在兼容 H5 上完成 tap、takeover ink 与 reload；在不兼容 H5 上确认不会坐标猜测或误点击。
 
 ### 14.2 恢复、角色与容量

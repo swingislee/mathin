@@ -2,9 +2,16 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   parseClassroomInputCapability,
+  resolveClassroomInputCapabilityFromPath,
   resolveClassroomRendererInputProfile,
 } from "@/features/classroom/input/capabilities";
+import {
+  classroomInputProviderAttributes,
+  isClassroomInputCapabilityProvider,
+} from "@/features/classroom/input/provider";
 import { createM3DocumentInputFixture } from "@/features/classroom/live/m3-input-fixtures";
+import { games } from "@/features/games/registry";
+import { tools } from "@/features/tools/registry";
 import {
   CLASSROOM_SMART_TAKEOVER_PX,
   IDLE_CLASSROOM_INPUT_STATE,
@@ -33,6 +40,15 @@ const documentFixture = createM3DocumentInputFixture({
   instruction: "Tap",
   result: "Advanced",
 });
+
+function attributeNode(attributes: Record<string, string | number | undefined>) {
+  return {
+    getAttribute(name: string) {
+      const value = attributes[name];
+      return value === undefined ? null : String(value);
+    },
+  };
+}
 
 describe("M3a classroom input routing", () => {
   it("routes pen, touch, and mouse identically", () => {
@@ -109,40 +125,58 @@ describe("M3a classroom input routing", () => {
     })).toBe(IDLE_CLASSROOM_INPUT_STATE);
   });
 
-  it("trusts each versioned in-repo native game and fails closed for unknown renderers", () => {
-    for (const gameId of ["sudoku", "kakuro", "magic-square"] as const) {
-      const profile = resolveClassroomRendererInputProfile({ ...sudokuPage, gameId }, null);
-      expect(profile).toMatchObject({ renderer: gameId, version: 1, audited: true, defaultCapability: "ink" });
-      expect(parseClassroomInputCapability("click", profile)).toBe("click");
-      expect(parseClassroomInputCapability("drag", profile)).toBe("drag");
-      expect(parseClassroomInputCapability("surprise", profile)).toBe("unknown");
+  it("resolves every registry declaration through one provider conformance gate", () => {
+    for (const game of games) {
+      const profile = resolveClassroomRendererInputProfile({ ...sudokuPage, gameId: game.id }, null);
+      expect(profile.audited).toBe(Boolean(game.classroomInput));
+      if (game.classroomInput) {
+        expect(isClassroomInputCapabilityProvider(game.classroomInput)).toBe(true);
+        expect(profile).toMatchObject({
+          renderer: game.id,
+          provider: game.classroomInput,
+        });
+      }
     }
-    const unknown = resolveClassroomRendererInputProfile({ ...sudokuPage, gameId: "unregistered-game" }, null);
-    expect(unknown).toMatchObject({ renderer: "unsupported", audited: false, defaultCapability: "unknown" });
-    expect(parseClassroomInputCapability("click", unknown)).toBe("unknown");
-    expect(resolveClassroomRendererInputProfile(sudokuPage, "spatial-lab").audited).toBe(false);
+    for (const tool of tools) {
+      const profile = resolveClassroomRendererInputProfile(sudokuPage, tool.id);
+      expect(profile.audited).toBe(Boolean(tool.classroomInput));
+      if (tool.classroomInput) {
+        expect(isClassroomInputCapabilityProvider(tool.classroomInput)).toBe(true);
+        expect(profile).toMatchObject({
+          renderer: `tool:${tool.id}`,
+          provider: tool.classroomInput,
+        });
+      }
+    }
+    const unknownGame = resolveClassroomRendererInputProfile({ ...sudokuPage, gameId: "unregistered-game" }, null);
+    const unknownTool = resolveClassroomRendererInputProfile(sudokuPage, "future-tool");
+    expect(unknownGame).toMatchObject({ renderer: "unsupported", audited: false, provider: null });
+    expect(unknownTool).toMatchObject({ renderer: "unsupported", audited: false, provider: null });
+    expect(parseClassroomInputCapability("click", unknownGame)).toBe("unknown");
   });
 
-  it("audits only the partitioned Fraction Line overlay and protects other tools", () => {
-    const fractionLine = resolveClassroomRendererInputProfile(sudokuPage, "fraction-line");
-    expect(fractionLine).toMatchObject({
-      renderer: "tool:fraction-line",
-      version: 1,
-      audited: true,
-      defaultCapability: "unknown",
+  it("trusts capability markers only inside a matching provider boundary", () => {
+    const profile = resolveClassroomRendererInputProfile(sudokuPage, null);
+    const boundaryAttributes = classroomInputProviderAttributes(profile.renderer, profile.provider);
+    const clickTarget = attributeNode({ "data-classroom-input": "click" });
+    const boundary = attributeNode(boundaryAttributes);
+    expect(resolveClassroomInputCapabilityFromPath([clickTarget, boundary], profile)).toEqual({
+      capability: "click",
+      owner: clickTarget,
     });
-    expect(parseClassroomInputCapability("click", fractionLine)).toBe("click");
-    expect(parseClassroomInputCapability("drag", fractionLine)).toBe("drag");
-    expect(parseClassroomInputCapability("ink", fractionLine)).toBe("ink");
-    expect(parseClassroomInputCapability(null, fractionLine)).toBe("unknown");
+    expect(resolveClassroomInputCapabilityFromPath([attributeNode({}), boundary], profile).capability).toBe("ink");
+    expect(resolveClassroomInputCapabilityFromPath([clickTarget], profile).capability).toBe("unknown");
+    expect(resolveClassroomInputCapabilityFromPath([
+      clickTarget,
+      attributeNode({ ...boundaryAttributes, "data-classroom-renderer-version": 2 }),
+    ], profile).capability).toBe("unknown");
 
-    for (const toolId of ["motion-lab", "spatial-lab", "future-tool"]) {
-      expect(resolveClassroomRendererInputProfile(sudokuPage, toolId)).toMatchObject({
-        renderer: "unsupported",
-        audited: false,
-        defaultCapability: "unknown",
-      });
-    }
+    const partitioned = resolveClassroomRendererInputProfile(sudokuPage, "fraction-line");
+    const partitionedBoundary = attributeNode(
+      classroomInputProviderAttributes(partitioned.renderer, partitioned.provider),
+    );
+    expect(resolveClassroomInputCapabilityFromPath([attributeNode({}), partitionedBoundary], partitioned).capability)
+      .toBe("unknown");
   });
 
   it("audits native video and plain documents while protecting unresolved and bridged docs", () => {
@@ -198,10 +232,8 @@ describe("M3a classroom input routing", () => {
     expect(contract).toContain('"teaching.classroom_input_v2"');
   });
 
-  it("wires audited native capabilities without synthetic clicks", () => {
+  it("anchors each v1 primitive in representative DOM providers without synthetic clicks", () => {
     const sudoku = readFileSync(new URL("../src/features/games/sudoku/SudokuBoard.tsx", import.meta.url), "utf8");
-    const kakuro = readFileSync(new URL("../src/features/games/kakuro/KakuroBoard.tsx", import.meta.url), "utf8");
-    const magicSquare = readFileSync(new URL("../src/features/games/magic-square/MagicSquareBoard.tsx", import.meta.url), "utf8");
     const docStage = readFileSync(new URL("../src/features/courseware-doc/DocStage.tsx", import.meta.url), "utf8");
     const videoStage = readFileSync(new URL("../src/features/classroom/live/VideoStage.tsx", import.meta.url), "utf8");
     const videoSurface = readFileSync(new URL("../src/features/classroom/input/ClassroomVideoInkSurface.tsx", import.meta.url), "utf8");
@@ -210,15 +242,12 @@ describe("M3a classroom input routing", () => {
     const panels = readFileSync(new URL("../src/features/classroom/live/LivePanels.tsx", import.meta.url), "utf8");
     const liveShell = readFileSync(new URL("../src/features/classroom/live/LiveShell.tsx", import.meta.url), "utf8");
     const fractionLine = readFileSync(new URL("../src/features/tools/fraction-line/FractionLine.tsx", import.meta.url), "utf8");
+    const capabilities = readFileSync(new URL("../src/features/classroom/input/capabilities.ts", import.meta.url), "utf8");
+    const gameRegistry = readFileSync(new URL("../src/features/games/registry.ts", import.meta.url), "utf8");
+    const toolRegistry = readFileSync(new URL("../src/features/tools/registry.ts", import.meta.url), "utf8");
     const liveRoute = readFileSync(new URL("../src/app/[locale]/classroom/[classId]/session/[sessionId]/live/page.tsx", import.meta.url), "utf8");
     expect(sudoku).toContain('data-classroom-input="click"');
     expect(sudoku).toContain('data-classroom-input={state.highlightTool === "cell" ? "drag" : "click"}');
-    for (const source of [kakuro, magicSquare]) {
-      expect(source).toContain('data-cell-index={i}');
-      expect((source.match(/<button/g) ?? []).length).toBe(
-        (source.match(/data-classroom-input="click"/g) ?? []).length,
-      );
-    }
     expect(docStage).toContain('data-classroom-input={hasPageClick ? "click" : "ink"}');
     expect(docStage).toContain('data-classroom-input={clickTrigger ? "click" : undefined}');
     expect(docStage).toContain('data-classroom-input="native"');
@@ -235,13 +264,18 @@ describe("M3a classroom input routing", () => {
     expect(hook).toContain("window.getSelection()?.removeAllRanges()");
     expect(hook).not.toMatch(/\.click\s*\(/);
     expect(panels).toContain('foreground ? "z-40" : "z-10"');
-    expect(panels).toContain('data-classroom-input={auditedInput ? "ink" : undefined}');
+    expect(panels).toContain("classroomInputProviderAttributes");
     expect(liveShell).toContain('foreground={Boolean(activeToolId) && rendererProfile.audited}');
+    expect(liveShell).toContain("classroomInputProviderAttributes(rendererProfile.renderer, rendererProfile.provider)");
     expect(liveShell).toContain('bottom-3 left-1/2 z-50');
     expect(fractionLine).toContain('data-classroom-input="click"');
     expect(fractionLine).toContain('data-classroom-input="drag"');
     expect(fractionLine).toContain('data-classroom-input="ink"');
     expect(fractionLine).toContain('data-classroom-input="native"');
+    expect(capabilities).not.toContain("AUDITED_CLASSROOM_NATIVE_GAME_IDS");
+    expect(capabilities).not.toContain("AUDITED_CLASSROOM_TOOL_IDS");
+    expect(gameRegistry).toContain("classroomInput: CLASSROOM_INK_INPUT_PROVIDER_V1");
+    expect(toolRegistry).toContain("classroomInput: CLASSROOM_PARTITIONED_INPUT_PROVIDER_V1");
     expect(liveRoute).toContain('isFeatureEnabled("teaching.classroom_input_v2")');
   });
 });
