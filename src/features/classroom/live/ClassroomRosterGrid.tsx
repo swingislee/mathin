@@ -69,12 +69,13 @@ export function ClassroomRosterGrid({
 
   return (
     <section
-      className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-line bg-paper"
+      className="flex min-h-0 flex-col overflow-hidden"
       aria-label={rosterLabel}
       data-classroom-roster-grid
+      data-roster-surface="cards-only"
       data-roster-scroll={slots.length > 20 ? "internal" : "none"}
     >
-      <ul className="grid min-h-0 flex-1 auto-rows-[minmax(2.75rem,auto)] grid-cols-4 gap-1 overflow-y-auto p-1 overscroll-contain" data-roster-slot-count={slots.length}>
+      <ul className="grid min-h-0 flex-1 auto-rows-[minmax(2.75rem,auto)] grid-cols-4 gap-1 overflow-y-auto overscroll-contain" data-roster-slot-count={slots.length}>
         {slots.map((entry, slotIndex) => {
           const seat = slotIndex + 1;
           if (!entry) {

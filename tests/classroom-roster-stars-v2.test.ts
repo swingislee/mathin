@@ -240,8 +240,10 @@ describe("M4a roster identity and star v2", () => {
     expect(shell).toContain("grid-cols-[minmax(0,1fr)_clamp(22rem,31vw,36rem)]");
     expect(rosterGrid).toContain("grid-cols-4");
     expect(rosterGrid).toContain('data-roster-scroll={slots.length > 20 ? "internal" : "none"}');
+    expect(rosterGrid).toContain('data-roster-surface="cards-only"');
     expect(rosterGrid).not.toContain("<h2");
     expect(rosterGrid).not.toContain("seatLabel");
+    expect(rosterGrid).not.toContain("rounded-2xl border border-line bg-paper");
     expect(panels).toContain('data-star-display={reward.total >= 10 ? "star-moon-sun" : "individual"}');
     expect(panels).toContain("fill-amber-400");
     expect(panels).toContain("<Moon");
