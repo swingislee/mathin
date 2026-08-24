@@ -1967,71 +1967,69 @@ export function LiveShell({
 
       {teacherLayoutV2 && showControlBar && (
         <TeacherClassroomControlBar
-          secondaryControls={(
-            <>
-              {inputV2Enabled && (
-                <ClassroomInputModeControl
-                  compact
-                  rail
-                  value={effectiveRoutingMode}
-                  protectedRenderer={!rendererProfile.audited}
-                  onChange={changeRoutingMode}
+          inputControls={inputV2Enabled ? (
+            <ClassroomInputModeControl
+              compact
+              rail
+              value={effectiveRoutingMode}
+              protectedRenderer={!rendererProfile.audited}
+              onChange={changeRoutingMode}
+            />
+          ) : null}
+          utilityControls={(
+            <div className="flex shrink-0 items-center gap-0.5 rounded-xl bg-card/70 p-0.5" data-classroom-rail-group="classroom-actions">
+              <AttendanceDrawer
+                sessionId={session.id}
+                appearance="rail"
+                mode="amend"
+              />
+              {classroomLearningSetup && classroomLearningSetup.checks.length > 0 && (
+                <SessionLearningCheckPanel
+                  key={classroomLearningSetupKey}
+                  sessionId={session.id}
+                  setup={classroomLearningSetup}
+                  activePageDocId={activePageDocId}
+                  ephemeral={rehearsal}
+                  triggerVariant="rail"
+                  onSummaryChange={handleLearningSummaryChange}
+                  onSeatOrderChange={handleLearningSeatOrderChange}
                 />
               )}
-              <div className="flex shrink-0 items-center gap-0.5 rounded-xl bg-card/70 p-0.5" data-classroom-rail-group="classroom-actions">
-                <AttendanceDrawer
-                  sessionId={session.id}
-                  appearance="rail"
-                  mode="amend"
+              {!state.ended && state.quiz && (
+                <button
+                  type="button"
+                  title={t("quizClose")}
+                  onClick={() => append("session_ctl", { action: "quiz_close", quizId: state.quiz?.id })}
+                  className="grid size-11 shrink-0 place-items-center rounded-full bg-moon/60 text-ink transition-colors hover:bg-moon/80"
+                  data-classroom-rail-button="quiz-close"
+                >
+                  <SquareCheckBig aria-hidden size={18} />
+                  <span className="sr-only">{t("quizClose")}</span>
+                </button>
+              )}
+              {!state.ended && (
+                <ClassroomToolsMenu
+                  open={classroomToolsOpen}
+                  quizOpen={Boolean(state.quiz)}
+                  largeTarget
+                  rail
+                  align="end"
+                  onOpenChange={setClassroomToolsOpen}
+                  onInsertBoard={() => {
+                    setClassroomToolsOpen(false);
+                    insertBoardPage();
+                  }}
+                  onOpenTool={(toolId) => {
+                    setClassroomToolsOpen(false);
+                    append("tool_ctl", { action: "open", toolId });
+                  }}
+                  onOpenQuiz={(options) => {
+                    setClassroomToolsOpen(false);
+                    append("session_ctl", { action: "quiz_open", quizId: newId(), options });
+                  }}
                 />
-                {classroomLearningSetup && classroomLearningSetup.checks.length > 0 && (
-                  <SessionLearningCheckPanel
-                    key={classroomLearningSetupKey}
-                    sessionId={session.id}
-                    setup={classroomLearningSetup}
-                    activePageDocId={activePageDocId}
-                    ephemeral={rehearsal}
-                    triggerVariant="rail"
-                    onSummaryChange={handleLearningSummaryChange}
-                    onSeatOrderChange={handleLearningSeatOrderChange}
-                  />
-                )}
-                {!state.ended && state.quiz && (
-                  <button
-                    type="button"
-                    title={t("quizClose")}
-                    onClick={() => append("session_ctl", { action: "quiz_close", quizId: state.quiz?.id })}
-                    className="grid size-11 shrink-0 place-items-center rounded-full bg-moon/60 text-ink transition-colors hover:bg-moon/80"
-                    data-classroom-rail-button="quiz-close"
-                  >
-                    <SquareCheckBig aria-hidden size={18} />
-                    <span className="sr-only">{t("quizClose")}</span>
-                  </button>
-                )}
-                {!state.ended && (
-                  <ClassroomToolsMenu
-                    open={classroomToolsOpen}
-                    quizOpen={Boolean(state.quiz)}
-                    largeTarget
-                    rail
-                    align="start"
-                    onOpenChange={setClassroomToolsOpen}
-                    onInsertBoard={() => {
-                      setClassroomToolsOpen(false);
-                      insertBoardPage();
-                    }}
-                    onOpenTool={(toolId) => {
-                      setClassroomToolsOpen(false);
-                      append("tool_ctl", { action: "open", toolId });
-                    }}
-                    onOpenQuiz={(options) => {
-                      setClassroomToolsOpen(false);
-                      append("session_ctl", { action: "quiz_open", quizId: newId(), options });
-                    }}
-                  />
-                )}
-              </div>
-            </>
+              )}
+            </div>
           )}
           drawingControls={toolbarStore ? (
             <Toolbar

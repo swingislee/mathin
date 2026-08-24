@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, ListTodo, MoreHorizontal, PanelsTopLeft, PenLine } from "lucide-react";
+import { ChevronLeft, ChevronRight, ListOrdered, ListTodo, MoreHorizontal, PenLine } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -25,6 +25,10 @@ export function ClassroomPageControls({
   const t = useTranslations("classroom.live");
   const targetClass = largeTargets ? "min-h-11" : "min-h-10";
   const roundClass = largeTargets ? "size-11" : "size-10";
+  const pageListLabel = t("pageListPosition", {
+    current: pages.length === 0 ? 0 : currentPage + 1,
+    total: pages.length,
+  });
 
   return (
     <div
@@ -44,11 +48,11 @@ export function ClassroomPageControls({
                 : "inline-flex items-center gap-1.5 rounded-full border border-line px-3 text-xs text-muted transition-colors hover:bg-moon/30 hover:text-ink",
               !rail && targetClass,
             )}
-            title={t("pageList")}
+            title={pageListLabel}
             data-classroom-rail-button={rail ? "page-list" : undefined}
           >
-            <PanelsTopLeft size={rail ? 18 : 14} />
-            <span className={rail ? "sr-only" : undefined}>{t("pageList")}</span>
+            <ListOrdered size={rail ? 19 : 15} />
+            <span className={rail ? "sr-only" : undefined}>{rail ? pageListLabel : t("pageList")}</span>
           </button>
         </PopoverTrigger>
         <PopoverContent side="top" align="end" className="w-72 p-2">

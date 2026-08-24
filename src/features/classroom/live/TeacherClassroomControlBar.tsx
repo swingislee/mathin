@@ -4,13 +4,15 @@ import type { ReactNode } from "react";
 
 /** Fixed full-width M4b flat rail aligned to the teacher body's two columns. */
 export function TeacherClassroomControlBar({
-  secondaryControls,
+  inputControls,
   drawingControls,
   pageControls,
+  utilityControls,
 }: {
-  secondaryControls: ReactNode;
+  inputControls: ReactNode;
   drawingControls: ReactNode;
   pageControls: ReactNode;
+  utilityControls: ReactNode;
 }) {
   return (
     <footer
@@ -19,13 +21,17 @@ export function TeacherClassroomControlBar({
       data-classroom-control-surface="flat-rail"
     >
       <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
-        <div className="flex shrink-0 items-center gap-1.5">{secondaryControls}</div>
+        <div className="flex shrink-0 items-center gap-1.5" data-classroom-control-zone="input">{inputControls}</div>
         <span aria-hidden className="mx-1 h-6 w-px shrink-0 bg-line" />
         <div className="ml-auto min-w-0 touch-pan-x overflow-x-auto overflow-y-hidden overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {drawingControls}
         </div>
       </div>
-      <div className="flex min-w-0 items-center justify-end gap-1.5 border-l border-line pl-3">{pageControls}</div>
+      <div className="flex min-w-0 items-center justify-end gap-1.5 border-l border-line pl-3">
+        <div className="flex shrink-0 items-center" data-classroom-control-zone="pages">{pageControls}</div>
+        <span aria-hidden className="h-6 w-px shrink-0 bg-line" />
+        <div className="flex shrink-0 items-center" data-classroom-control-zone="utility">{utilityControls}</div>
+      </div>
     </footer>
   );
 }

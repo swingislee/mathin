@@ -232,7 +232,7 @@ describe("R1 classroom continuity contracts", () => {
     const learningSetup = read("src/features/school/session-learning.ts");
     const learningActions = read("src/features/school/session-learning-actions.ts");
     expect(liveShell).toContain("<ClassroomPageControls");
-    expect(controlMenus).toContain("PanelsTopLeft");
+    expect(controlMenus).toContain("ListOrdered");
     expect(controlMenus).toContain('t("pageList")');
     expect(liveShell).toContain("activePageDocId={activePageDocId}");
     expect(video).toContain("pointer-events-none");
@@ -389,13 +389,17 @@ describe("R1 classroom continuity contracts", () => {
     expect(controlBar).not.toContain("shadow-lg");
     expect(controlBar).toContain("overflow-y-hidden");
     expect(controlBar).toContain("[scrollbar-width:none]");
+    expect(controlBar).toContain('data-classroom-control-zone="pages"');
+    expect(controlBar).toContain('data-classroom-control-zone="utility"');
     expect(controlMenus).toContain("data-classroom-rail-button");
+    expect(controlMenus).toContain("pageListPosition");
     expect(toolbar).toContain("largeTargets?: boolean");
     expect(toolbar).toContain('variant?: "floating" | "rail"');
     expect(toolbar).not.toContain("compact?: boolean");
     expect(liveShell).toContain('variant="rail"');
     expect(liveShell).toContain('triggerVariant="rail"');
     expect(liveShell).toContain('appearance="rail"');
+    expect(liveShell).toContain("utilityControls={(");
     expect(liveShell).toContain("activeLearningSummary");
     expect(liveShell).toContain("activeLearningSeatPositions.get(student.studentId)");
     expect(liveShell).not.toContain('activeArea === "side" ? t("boardSide") : t("boardMain")');
