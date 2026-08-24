@@ -21,7 +21,7 @@ export function ClassroomEndButton({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        "shrink-0 rounded-full border border-line px-3 py-1 text-xs text-muted transition-colors hover:bg-rose/10 hover:text-rose",
+        "shrink-0 rounded-full border border-rose bg-rose px-3 py-1 text-xs text-white transition-colors hover:bg-rose-deep",
         disabled && "cursor-not-allowed opacity-55",
       )}
     >
