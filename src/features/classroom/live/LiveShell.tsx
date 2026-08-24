@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useStore } from "zustand";
 import {
   ArrowLeft,
   Check,
@@ -37,13 +38,13 @@ import type { GameMirrorState } from "@/features/games/types";
 import { AttendanceDrawer } from "@/features/school/AttendanceDrawer";
 import { SessionLearningCheckPanel } from "@/features/school/SessionLearningCheckPanel";
 import type { SessionLearningSetup } from "@/features/school/session-learning-contract";
-import { CanvasSurface } from "@/features/whiteboard/CanvasSurface";
+import { CanvasSurface, type CanvasSurfaceInputPort } from "@/features/whiteboard/CanvasSurface";
 import { Toolbar } from "@/features/whiteboard/Toolbar";
 import type { WhiteboardStore } from "@/features/whiteboard/store";
 import { isStrokeItem, type StrokeItem } from "@/features/whiteboard/types";
 
 import type { InteractionTrigger } from "@/features/courseware-doc/interactions";
-import type { BoardCheckpointStatus, SessionBoardCheckpoint } from "../checkpoint/types";
+import type { SessionBoardCheckpoint } from "../checkpoint/types";
 import { shouldApplyLegacyBoardSnapshot } from "../checkpoint/selection";
 import type { ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 import { Link, useRouter } from "@/i18n/navigation";
@@ -77,11 +78,14 @@ import {
   type PresencePeer,
 } from "../sync/transports";
 import type { ClassroomMember, ClassSessionRecord, CoursewarePage, SessionEvent } from "../types";
+import { resolveClassroomRendererInputProfile } from "../input/capabilities";
+import { useClassroomPointerRouter } from "../input/useClassroomPointerRouter";
+import type { ClassroomRoutingMode } from "../input/router";
 import { useClassBoard } from "./useClassBoard";
 import { VideoStage } from "./VideoStage";
 import { GamePage, MainBoard, StudentCard, ToolOverlay, ToolPicker } from "./LivePanels";
+import { ClassroomInputModeControl } from "./ClassroomInputModeControl";
 import { OPTION_LABELS, reduceEvent, type LiveState, type Phase, type Role } from "./liveState";
-import { loadM2AcceptanceFixture } from "./m2-acceptance-fixture";
 
 // 上课页（08-§3.4/§5）：候课（预载/自检）→ 上课 全程页内状态切换，零路由跳转。
 // P4-5 正式舞台：4:3 课件/主板书 + 副板书 + 学生名录；主板书按页 uuid 隔离、
@@ -98,6 +102,8 @@ interface Props {
   initialCheckpoints: SessionBoardCheckpoint[];
   /** Writer gate only. The v2 reader remains active during rollback. */
   checkpointV2Writer: boolean;
+  /** Independent M3 input gate. Production stays fail-closed until explicitly enabled. */
+  inputV2Enabled: boolean;
   role: Role;
   /** 试讲：教师本地预演/复盘——事件不落库不同步，随时可进（包括已下课的课次）。 */
   rehearsal?: boolean;
@@ -109,19 +115,13 @@ interface Props {
   learningSetup: SessionLearningSetup | null;
 }
 
-function formatCheckpointBytes(bytes: number): string {
-  return bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} KiB`;
-}
-
-const EMPTY_CHECKPOINT_STATUS: BoardCheckpointStatus = {
-  state: "idle",
-  source: "memory",
-  version: null,
-  checkpointId: null,
-  chunkCount: 0,
-  itemCount: 0,
-  contentBytes: 0,
-  message: null,
+const M3_NATIVE_INPUT_FIXTURE: Extract<CoursewarePage, { type: "game" }> = {
+  id: "m3-native-input-fixture",
+  type: "game",
+  gameId: "sudoku",
+  difficulty: "medium",
+  seed: "m3-native-input-fixture-v1",
+  title: "M3 Smart Input",
 };
 
 export function LiveShell({
@@ -133,6 +133,7 @@ export function LiveShell({
   initialEvents,
   initialCheckpoints,
   checkpointV2Writer,
+  inputV2Enabled,
   role,
   rehearsal = false,
   offlineDrill = false,
@@ -201,13 +202,10 @@ export function LiveShell({
   const [log, setLog] = useState<SessionEventLog | null>(null);
   const [onlinePeers, setOnlinePeers] = useState<PresencePeer[]>([]);
   const [mainStore, setMainStore] = useState<WhiteboardStore | null>(null);
-  const [mainCheckpointControl, setMainCheckpointControl] = useState<{
-    boardKey: string;
-    flush: () => Promise<void>;
-  } | null>(null);
-  const [checkpointStatuses, setCheckpointStatuses] = useState<Record<string, BoardCheckpointStatus>>({});
   const [activeArea, setActiveArea] = useState<"main" | "side">("main");
-  const [m2Reloading, setM2Reloading] = useState(false);
+  const [routingMode, setRoutingMode] = useState<ClassroomRoutingMode>("smart");
+  const [inputRendererSignature, setInputRendererSignature] = useState("");
+  const [m3FixtureEnabled, setM3FixtureEnabled] = useState(() => rehearsal && inputV2Enabled);
   const [endOpen, setEndOpen] = useState(false);
   const [classroomToolsOpen, setClassroomToolsOpen] = useState(false);
   const [stageWidth, setStageWidth] = useState(0);
@@ -224,15 +222,10 @@ export function LiveShell({
   const preloadTick = useRef(0);
   const activePageDocIdRef = useRef(activePageDocId);
   const stageRef = useRef<HTMLDivElement | null>(null);
+  const mainInputPortRef = useRef<CanvasSurfaceInputPort | null>(null);
   const sideViewportRef = useRef<HTMLDivElement | null>(null);
-  const onCheckpointStatus = useCallback((boardKey: string, status: BoardCheckpointStatus) => {
-    setCheckpointStatuses((current) => current[boardKey] === status ? current : { ...current, [boardKey]: status });
-  }, []);
-  const onMainCheckpointFlush = useCallback((boardKey: string, flush: (() => Promise<void>) | null) => {
-    setMainCheckpointControl((current) => {
-      if (flush) return { boardKey, flush };
-      return current?.boardKey === boardKey ? null : current;
-    });
+  const onMainInputPort = useCallback((port: CanvasSurfaceInputPort | null) => {
+    mainInputPortRef.current = port;
   }, []);
 
   useEffect(() => {
@@ -512,7 +505,6 @@ export function LiveShell({
     cursorName: selfName,
     checkpointV2Writer,
     initialCheckpoint: checkpointByBoard.get("side"),
-    onCheckpointStatus,
   });
 
   // 学生端的副板书保持固定纵横比并允许平移/缩放；新笔迹落定后自动把最后一行带回视口。
@@ -661,16 +653,59 @@ export function LiveShell({
 
   // --- 派生 ----------------------------------------------------------------
   const page = state.pages[state.currentPage] as CoursewarePage | undefined;
+  const renderPage = rehearsal && inputV2Enabled && m3FixtureEnabled
+    ? M3_NATIVE_INPUT_FIXTURE
+    : page;
+  const displayedSessionTitle = renderPage?.id === M3_NATIVE_INPUT_FIXTURE.id
+    ? t("m3FixtureSessionTitle")
+    : session.title || t("untitled");
+  const rendererProfile = useMemo(
+    () => resolveClassroomRendererInputProfile(renderPage, Boolean(state.openTool)),
+    [renderPage, state.openTool],
+  );
+  const nextInputRendererSignature = `${renderPage?.id ?? "no-page"}:${rendererProfile.renderer}:${state.openTool ?? "no-tool"}`;
+  if (inputRendererSignature !== nextInputRendererSignature) {
+    setInputRendererSignature(nextInputRendererSignature);
+    if (routingMode === "smart" && !rendererProfile.audited) setRoutingMode("interaction-lock");
+  }
+  const mainTool = useStore(mainStore ?? sideBoard.store, (boardState) => boardState.tool);
+  const effectiveRoutingMode: ClassroomRoutingMode = inputV2Enabled && isController
+    ? routingMode === "smart" && !rendererProfile.audited
+      ? "interaction-lock"
+      : routingMode
+    : "ink-lock";
+  const activateMainInput = useCallback(() => setActiveArea("main"), []);
+  const changeRoutingMode = useCallback((nextMode: ClassroomRoutingMode) => {
+    if (nextMode === "smart" && !rendererProfile.audited) {
+      setRoutingMode("interaction-lock");
+      return;
+    }
+    setRoutingMode(nextMode);
+  }, [rendererProfile.audited]);
+  useClassroomPointerRouter({
+    stageRef,
+    inputPortRef: mainInputPortRef,
+    enabled: inputV2Enabled
+      && editable
+      && rendererProfile.audited
+      && effectiveRoutingMode === "smart"
+      && mainTool === "pen",
+    mode: effectiveRoutingMode,
+    tool: mainTool,
+    profile: rendererProfile,
+    gestureKey: renderPage?.id ?? "no-page",
+    onInkStart: activateMainInput,
+  });
   const assetsReady = preload.done >= preload.total;
   const docsById = useMemo(
     () => new Map((docBundle ?? []).map((item) => [item.pageDocId, item.doc])),
     [docBundle],
   );
-  const activeDocBindings = page?.type === "doc"
-    ? docBundle?.find((item) => item.pageDocId === page.docId)?.bindings
+  const activeDocBindings = renderPage?.type === "doc"
+    ? docBundle?.find((item) => item.pageDocId === renderPage.docId)?.bindings
     : undefined;
-  const activeDocAssetsLoading = page?.type === "doc" && (
-    !docsById.has(page.docId)
+  const activeDocAssetsLoading = renderPage?.type === "doc" && (
+    !docsById.has(renderPage.docId)
     || Boolean(
       activeDocBindings?.some((binding) => binding.kind !== "h5" && !docUrls[binding.bindingKey])
       && preload.done + preload.failed < preload.total,
@@ -706,29 +741,6 @@ export function LiveShell({
     return bucket;
   }, [state.quiz, state.answers]);
   const showControlBar = isController || (myRole === "student" && role === "viewer") || Boolean(state.quiz);
-  const activeBoardKey = activeArea === "side" ? "side" : activePage?.id ?? null;
-  const activeCheckpointStatus = activeBoardKey
-    ? checkpointStatuses[activeBoardKey] ?? (activeBoardKey === "side" ? sideBoard.checkpointStatus : EMPTY_CHECKPOINT_STATUS)
-    : EMPTY_CHECKPOINT_STATUS;
-  const activeBoardLabel = activeArea === "side" ? t("boardSide") : t("boardMain");
-  const activeCheckpointReady = activeArea === "side"
-    ? sideBoard.checkpointWriterReady
-    : activeBoardKey !== null && mainCheckpointControl?.boardKey === activeBoardKey;
-  const reloadActiveCheckpoint = async () => {
-    setM2Reloading(true);
-    try {
-      if (activeArea === "side") {
-        await sideBoard.flushCheckpoint();
-      } else if (activeBoardKey && mainCheckpointControl?.boardKey === activeBoardKey) {
-        await mainCheckpointControl.flush();
-      } else {
-        throw new Error("CHECKPOINT_WRITER_UNAVAILABLE");
-      }
-      window.location.reload();
-    } catch {
-      setM2Reloading(false);
-    }
-  };
 
   const connectionBadges = rehearsal ? (
     // 试讲没有任何同步通道，连接徽标只会误导——换成单一模式标识
@@ -919,7 +931,14 @@ export function LiveShell({
         >
           <ArrowLeft size={17} />
         </Link>
-        <h1 className="min-w-0 flex-1 truncate text-sm font-medium">{session.title || t("untitled")}</h1>
+        <h1 className="min-w-0 flex-1 truncate text-sm font-medium">{displayedSessionTitle}</h1>
+        {isController && inputV2Enabled && (
+          <ClassroomInputModeControl
+            value={effectiveRoutingMode}
+            protectedRenderer={!rendererProfile.audited}
+            onChange={changeRoutingMode}
+          />
+        )}
         {connectionBadges}
         {isController && !state.ended && !rehearsal && (
           <button
@@ -935,44 +954,32 @@ export function LiveShell({
         </span>
       </header>
 
-      {rehearsal && isController && checkpointV2Writer && (
-        <section aria-label={t("m2AcceptanceTitle")} className="mt-2 grid shrink-0 gap-2 rounded-xl border border-blue/30 bg-blue/5 p-2 text-xs lg:grid-cols-2">
-          <div className="rounded-lg bg-paper/80 px-3 py-2">
-            <p className="font-medium text-ink">{t("m2HandFeelTitle")}</p>
-            <p className="mt-0.5 text-muted">{t("m2HandFeelBody")}</p>
+      {rehearsal && isController && inputV2Enabled && (
+        <section
+          aria-label={t("m3AcceptanceTitle")}
+          className="mt-2 flex shrink-0 flex-wrap items-center gap-2 rounded-xl border border-blue/30 bg-blue/5 p-2 text-xs"
+          data-m3-native-input-acceptance
+        >
+          <div className="min-w-48 flex-1 px-2">
+            <p className="font-medium text-ink">{t("m3AcceptanceTitle")}</p>
+            <p className="mt-0.5 text-muted">{t("m3AcceptanceBody")}</p>
           </div>
-          <div className="flex flex-wrap items-center gap-2 rounded-lg bg-paper/80 px-3 py-2">
-            <div className="min-w-52 flex-1">
-              <p className="font-medium text-ink">{t("m2RecoveryTitle")} · {activeBoardLabel}</p>
-              <p className="mt-0.5 text-muted">{t("m2RecoveryBody")}</p>
-              <p className={cn("mt-1 font-mono", activeCheckpointStatus.state === "error" ? "text-rose" : "text-muted")} role={activeCheckpointStatus.state === "error" ? "alert" : "status"}>
-                {activeCheckpointStatus.state === "error"
-                  ? t("m2CheckpointError", { error: activeCheckpointStatus.message ?? "CHECKPOINT_SAVE_FAILED" })
-                  : t("m2CheckpointStatus", {
-                      state: t(`m2State_${activeCheckpointStatus.state}`),
-                      source: t(`m2Source_${activeCheckpointStatus.source}`),
-                      version: activeCheckpointStatus.version ?? "—",
-                      chunks: activeCheckpointStatus.chunkCount,
-                      items: activeCheckpointStatus.itemCount,
-                      size: formatCheckpointBytes(activeCheckpointStatus.contentBytes),
-                    })}
-              </p>
-            </div>
-            <Button size="sm" variant="secondary" onClick={() => {
-              setActiveArea("side");
-              loadM2AcceptanceFixture(sideBoard.store);
-            }}>
-              {t("m2Load500")}
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              disabled={m2Reloading || !activeCheckpointReady}
-              onClick={() => { void reloadActiveCheckpoint(); }}
-            >
-              {m2Reloading ? t("m2Reloading") : t("m2Reload")}
-            </Button>
-          </div>
+          <ol className="grid min-w-0 flex-[2] basis-full grid-cols-2 gap-1 lg:basis-auto lg:grid-cols-4">
+            {(["m3CheckTap", "m3CheckTakeover", "m3CheckInteraction", "m3CheckInk"] as const).map((key, index) => (
+              <li key={key} className="rounded-lg bg-paper/80 px-2 py-1.5 text-muted">
+                <span className="mr-1 font-mono text-ink">{index + 1}</span>
+                {t(key)}
+              </li>
+            ))}
+          </ol>
+          <Button
+            size="sm"
+            variant="secondary"
+            data-m3-fixture-toggle
+            onClick={() => setM3FixtureEnabled((enabled) => !enabled)}
+          >
+            {m3FixtureEnabled ? t("m3ReturnCourseware") : t("m3OpenFixture")}
+          </Button>
         </section>
       )}
 
@@ -997,41 +1004,44 @@ export function LiveShell({
           <div
             ref={stageRef}
             className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-line bg-card"
+            data-classroom-stage
+            data-classroom-renderer={rendererProfile.renderer}
+            data-classroom-renderer-version={rendererProfile.version}
             style={{ width: "min(100%, calc((100dvh - 6rem) * 4 / 3))" }}
             onPointerDownCapture={() => setActiveArea("main")}
           >
-            {!page ? (
+            {!renderPage ? (
               <p className="grid size-full place-items-center text-sm text-muted">{t("noPages")}</p>
-            ) : page.type === "image" ? (
-              assetUrls[page.path] ? (
+            ) : renderPage.type === "image" ? (
+              assetUrls[renderPage.path] ? (
                 // 离线舞台：预载 blob 直出，不走 next/image 优化器（08-§3.6 豁免）
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={assetUrls[page.path]} alt={page.title} className="size-full object-contain" />
+                <img src={assetUrls[renderPage.path]} alt={renderPage.title} className="size-full object-contain" />
               ) : (
                 <p className="grid size-full place-items-center text-sm text-muted">{t("assetMissing")}</p>
               )
-            ) : page.type === "video" ? (
-              assetUrls[page.path] ? (
+            ) : renderPage.type === "video" ? (
+              assetUrls[renderPage.path] ? (
                 <VideoStage
-                  pageId={page.id}
-                  src={assetUrls[page.path]}
+                  pageId={renderPage.id}
+                  src={assetUrls[renderPage.path]}
                   controller={isController}
-                  ctl={state.video[page.id]}
-                  onCtl={(action, time) => append("video_ctl", { pageId: page.id, action, time })}
+                  ctl={state.video[renderPage.id]}
+                  onCtl={(action, time) => append("video_ctl", { pageId: renderPage.id, action, time })}
                   log={log}
                 />
               ) : (
                 <p className="grid size-full place-items-center text-sm text-muted">{t("assetMissing")}</p>
               )
-            ) : page.type === "game" ? (
+            ) : renderPage.type === "game" ? (
               <GamePage
-                key={`game-${page.id}`}
-                page={page}
+                key={`game-${renderPage.id}`}
+                page={renderPage}
                 isController={isController}
-                mirror={state.games[page.id] ?? null}
+                mirror={state.games[renderPage.id] ?? null}
                 onMirror={onGameMirror}
               />
-            ) : page.type === "doc" ? (
+            ) : renderPage.type === "doc" ? (
               activeDocAssetsLoading ? (
                 <p className="grid size-full place-items-center text-sm text-muted">
                   <span className="inline-flex items-center gap-2">
@@ -1040,31 +1050,31 @@ export function LiveShell({
                   </span>
                 </p>
               ) : <DocCoursewarePage
-                key={`doc-${page.id}`}
-                doc={docsById.get(page.docId) ?? null}
+                key={`doc-${renderPage.id}`}
+                doc={docsById.get(renderPage.docId) ?? null}
                 bindingUrls={docUrls}
                 isController={isController}
-                steps={state.docSteps[page.id]}
-                onStep={(trigger) => onDocStep(page.id, trigger)}
-                videoCtl={state.video[page.id]}
-                onVideoCtl={(action, time) => append("video_ctl", { pageId: page.id, action, time })}
+                steps={state.docSteps[renderPage.id]}
+                onStep={(trigger) => onDocStep(renderPage.id, trigger)}
+                videoCtl={state.video[renderPage.id]}
+                onVideoCtl={(action, time) => append("video_ctl", { pageId: renderPage.id, action, time })}
                 onAdvance={() => gotoPage(state.currentPage + 1, state.pages.length)}
               />
             ) : null}
 
-            {page && (
+            {renderPage && (
               <MainBoard
-                key={`board-${page.id}`}
+                key={`board-${renderPage.id}`}
                 log={log}
-                boardKey={page.id}
+                boardKey={renderPage.id}
                 editable={editable}
-                initialItems={state.boards[page.id]}
+                initialItems={state.boards[renderPage.id]}
                 strokeWidthBasis={stageWidth}
                 cursorName={selfName}
                 checkpointV2Writer={checkpointV2Writer}
-                initialCheckpoint={checkpointByBoard.get(page.id)}
-                onCheckpointStatus={onCheckpointStatus}
-                onCheckpointFlush={onMainCheckpointFlush}
+                initialCheckpoint={checkpointByBoard.get(renderPage.id)}
+                inputMode={effectiveRoutingMode}
+                onInputPort={onMainInputPort}
                 onStore={setMainStore}
               />
             )}
@@ -1076,7 +1086,7 @@ export function LiveShell({
               />
             )}
 
-            {!isController && page?.type === "doc" && <div aria-hidden="true" className="absolute inset-0 z-40 touch-none" />}
+            {!isController && renderPage?.type === "doc" && <div aria-hidden="true" className="absolute inset-0 z-40 touch-none" />}
           </div>
 
           {isController && toolbarStore && (
@@ -1084,7 +1094,7 @@ export function LiveShell({
               <span className="rounded-full bg-ink/70 px-2 py-0.5 text-[10px] leading-none text-paper">
                 {activeArea === "side" ? t("boardSide") : t("boardMain")}
               </span>
-              <Toolbar title={`${session.title || t("untitled")}-${page?.title ?? ""}`} store={toolbarStore} clearTargets={clearTargets} />
+              <Toolbar title={`${displayedSessionTitle}-${renderPage?.title ?? ""}`} store={toolbarStore} clearTargets={clearTargets} />
             </div>
           )}
         </main>

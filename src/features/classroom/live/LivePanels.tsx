@@ -8,13 +8,18 @@ import { games } from "@/features/games/registry";
 import type { GameMirrorState } from "@/features/games/types";
 import { ToolView } from "@/features/tools/components";
 import { getTool, tools } from "@/features/tools/registry";
-import { CanvasSurface } from "@/features/whiteboard/CanvasSurface";
+import {
+  CanvasSurface,
+  type CanvasSurfaceInputMode,
+  type CanvasSurfaceInputPort,
+} from "@/features/whiteboard/CanvasSurface";
 import type { WhiteboardStore } from "@/features/whiteboard/store";
 import type { BoardItem } from "@/features/whiteboard/types";
 import { cn } from "@/lib/utils";
 import type { SessionEventLog } from "../sync/eventlog";
 import type { BoardCheckpointStatus, SessionBoardCheckpoint } from "../checkpoint/types";
 import type { CoursewarePage } from "../types";
+import { CLASSROOM_INPUT_CAPABILITY_VERSION } from "../input/capabilities";
 import { useClassBoard } from "./useClassBoard";
 import { MAX_INLINE_STARS } from "./liveState";
 
@@ -30,6 +35,8 @@ export function MainBoard({
   cursorName,
   checkpointV2Writer,
   initialCheckpoint,
+  inputMode,
+  onInputPort,
   onCheckpointStatus,
   onCheckpointFlush,
   onStore,
@@ -42,8 +49,10 @@ export function MainBoard({
   cursorName: string;
   checkpointV2Writer: boolean;
   initialCheckpoint?: SessionBoardCheckpoint;
-  onCheckpointStatus: (boardKey: string, status: BoardCheckpointStatus) => void;
-  onCheckpointFlush: (boardKey: string, flush: (() => Promise<void>) | null) => void;
+  inputMode?: CanvasSurfaceInputMode;
+  onInputPort?: (port: CanvasSurfaceInputPort | null) => void;
+  onCheckpointStatus?: (boardKey: string, status: BoardCheckpointStatus) => void;
+  onCheckpointFlush?: (boardKey: string, flush: (() => Promise<void>) | null) => void;
   onStore: (store: WhiteboardStore) => void;
 }) {
   const { store, bus, flushCheckpoint } = useClassBoard(log, boardKey, editable, initialItems, {
@@ -56,12 +65,21 @@ export function MainBoard({
     onStore(store);
   }, [store, onStore]);
   useEffect(() => {
+    if (!onCheckpointFlush) return;
     onCheckpointFlush(boardKey, flushCheckpoint);
     return () => onCheckpointFlush(boardKey, null);
   }, [boardKey, flushCheckpoint, onCheckpointFlush]);
   return (
     <div className="pointer-events-none absolute inset-0 z-10">
-      <CanvasSurface editable={editable} store={store} bus={bus} strokeWidthBasis={strokeWidthBasis} renderProfile="classroom" />
+      <CanvasSurface
+        editable={editable}
+        store={store}
+        bus={bus}
+        strokeWidthBasis={strokeWidthBasis}
+        renderProfile="classroom"
+        inputMode={inputMode}
+        onInputPort={onInputPort}
+      />
     </div>
   );
 }
@@ -84,7 +102,11 @@ export function GamePage({
   const game = games.find((item) => item.id === page.gameId);
   if (!game) return <p className="grid size-full place-items-center text-sm text-muted">{t("gameMissing")}</p>;
   return (
-    <div className="size-full overflow-auto p-4">
+    <div
+      className="size-full overflow-auto p-4"
+      data-classroom-renderer={game.id}
+      data-classroom-renderer-version={game.id === "sudoku" ? CLASSROOM_INPUT_CAPABILITY_VERSION : undefined}
+    >
       <GameBoard
         key={`${page.id}:${page.seed}:${page.difficulty}`}
         id={game.id}

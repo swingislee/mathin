@@ -338,6 +338,7 @@ export function SudokuBoard({ seed, difficulty, finished, onComplete, mirror, on
                 <button
                   key={mode}
                   type="button"
+                  data-classroom-input="click"
                   role="radio"
                   aria-checked={state.entryMode === mode && state.highlightTool === null}
                   disabled={inputDisabled}
@@ -364,6 +365,7 @@ export function SudokuBoard({ seed, difficulty, finished, onComplete, mirror, on
                         <button
                           key="delete"
                           type="button"
+                          data-classroom-input="click"
                           aria-label={t("deleteEntry")}
                           title={t("deleteEntry")}
                           disabled={deleteDisabled}
@@ -384,6 +386,7 @@ export function SudokuBoard({ seed, difficulty, finished, onComplete, mirror, on
                       <button
                         key={digit}
                         type="button"
+                        data-classroom-input="click"
                         aria-label={t(digitHighlightMode ? "highlightDigitChoice" : "chooseDigit", { digit })}
                         aria-pressed={pressed}
                         disabled={numberPadDisabled}
@@ -464,6 +467,7 @@ export function SudokuBoard({ seed, difficulty, finished, onComplete, mirror, on
                   <button
                     key={coordinate}
                     type="button"
+                    data-classroom-input={state.highlightTool === "cell" ? "drag" : "click"}
                     aria-label={label}
                     aria-pressed={state.selected === index}
                     disabled={inputDisabled}
@@ -567,6 +571,7 @@ export function SudokuBoard({ seed, difficulty, finished, onComplete, mirror, on
             <button
               key={tool}
               type="button"
+              data-classroom-input="click"
               aria-label={t(label)}
               aria-pressed={state.highlightTool === tool}
               title={t(label)}
@@ -586,6 +591,7 @@ export function SudokuBoard({ seed, difficulty, finished, onComplete, mirror, on
           <span aria-hidden className={cn(styles.toolSeparator, "h-px w-7")} />
           <button
             type="button"
+            data-classroom-input="click"
             aria-label={t("undoHighlight")}
             title={t("undoHighlight")}
             disabled={inputDisabled || highlightUndoStack.length === 0}
@@ -600,6 +606,7 @@ export function SudokuBoard({ seed, difficulty, finished, onComplete, mirror, on
           </button>
           <button
             type="button"
+            data-classroom-input="click"
             aria-label={t("clearHighlights")}
             title={t("clearHighlights")}
             disabled={inputDisabled || !hasSudokuTeachingHighlights(state)}
@@ -615,6 +622,7 @@ export function SudokuBoard({ seed, difficulty, finished, onComplete, mirror, on
           <span aria-hidden className={cn(styles.toolSeparator, "h-px w-7")} />
           <button
             type="button"
+            data-classroom-input="click"
             aria-label={t("revealSelectedAnswer")}
             title={t("revealSelectedAnswer")}
             disabled={answerDisabled}

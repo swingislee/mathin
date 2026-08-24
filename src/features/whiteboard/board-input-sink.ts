@@ -74,6 +74,16 @@ export class BoardInputSink {
     return true;
   }
 
+  /** Drops an active pointer without delivering its buffered tail. */
+  cancel(pointerId: number): boolean {
+    if (pointerId !== this.activePointerId) return false;
+    this.cancelFrame();
+    this.pending = [];
+    this.activePointerId = null;
+    this.lastDelivered = null;
+    return true;
+  }
+
   /** Flushes the active pointer when page lifecycle events have no PointerEvent. */
   drain(): number | null {
     const pointerId = this.activePointerId;

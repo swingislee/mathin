@@ -114,4 +114,17 @@ describe("M3a classroom input routing", () => {
     expect(migration).toMatch(/teaching\.classroom_input_v2', 1, false/);
     expect(contract).toContain('"teaching.classroom_input_v2"');
   });
+
+  it("wires audited native capabilities without synthetic clicks", () => {
+    const sudoku = readFileSync(new URL("../src/features/games/sudoku/SudokuBoard.tsx", import.meta.url), "utf8");
+    const canvas = readFileSync(new URL("../src/features/whiteboard/CanvasSurface.tsx", import.meta.url), "utf8");
+    const hook = readFileSync(new URL("../src/features/classroom/input/useClassroomPointerRouter.ts", import.meta.url), "utf8");
+    const liveRoute = readFileSync(new URL("../src/app/[locale]/classroom/[classId]/session/[sessionId]/live/page.tsx", import.meta.url), "utf8");
+    expect(sudoku).toContain('data-classroom-input="click"');
+    expect(sudoku).toContain('data-classroom-input={state.highlightTool === "cell" ? "drag" : "click"}');
+    expect(canvas).toContain('inputMode === "smart" && tool === "pen"');
+    expect(hook).toContain("event.composedPath()");
+    expect(hook).not.toMatch(/\.click\s*\(/);
+    expect(liveRoute).toContain('isFeatureEnabled("teaching.classroom_input_v2")');
+  });
 });

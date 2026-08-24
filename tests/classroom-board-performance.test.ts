@@ -39,6 +39,21 @@ describe("M2 board input batching", () => {
     expect(sink.finish(7)).toBe(true);
     expect(batches).toEqual([[[1, 0]], [[1.2, 0]]]);
   });
+
+  it("cancels a routed gesture without flushing its buffered tail", () => {
+    const batches: Array<Array<[number, number]>> = [];
+    const cancelFrame = vi.fn();
+    const sink = new BoardInputSink((points) => batches.push(points), {
+      scheduler: { request: () => 41, cancel: cancelFrame },
+    });
+    expect(sink.begin(8, [0, 0])).toBe(true);
+    expect(sink.push(8, [[4, 4]])).toBe(true);
+    expect(sink.cancel(9)).toBe(false);
+    expect(sink.cancel(8)).toBe(true);
+    expect(cancelFrame).toHaveBeenCalledWith(41);
+    expect(batches).toEqual([]);
+    expect(sink.begin(10, [1, 1])).toBe(true);
+  });
 });
 
 describe("M2 progress stream convergence", () => {

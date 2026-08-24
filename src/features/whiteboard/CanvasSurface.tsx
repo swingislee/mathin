@@ -26,6 +26,17 @@ interface RemoteCursor {
   at: number;
 }
 
+export type CanvasSurfaceInputMode = "smart" | "interaction-lock" | "ink-lock";
+export type NormalizedInputPoint = [number, number];
+
+/** Smart routing writes through this port while both Canvas layers stay render-only. */
+export interface CanvasSurfaceInputPort {
+  begin(pointerId: number, origin: NormalizedInputPoint): boolean;
+  append(pointerId: number, points: readonly NormalizedInputPoint[]): boolean;
+  finish(pointerId: number, points?: readonly NormalizedInputPoint[]): boolean;
+  cancel(pointerId: number): boolean;
+}
+
 /** 双层笔迹画布 + SVG 对象/尺规层。所有持久内容继续使用 0–1 归一化坐标。 */
 export function CanvasSurface({
   editable,
@@ -33,6 +44,8 @@ export function CanvasSurface({
   bus = boardBus,
   strokeWidthBasis,
   renderProfile = "default",
+  inputMode = "ink-lock",
+  onInputPort,
 }: {
   editable: boolean;
   store?: WhiteboardStore;
@@ -41,6 +54,9 @@ export function CanvasSurface({
   strokeWidthBasis?: number;
   /** 课堂 profile 启用 DPR、单 Canvas 与全课堂总像素三重护栏。 */
   renderProfile?: WhiteboardRenderProfile;
+  /** Main-stage ownership. Existing callers retain direct ink ownership by default. */
+  inputMode?: CanvasSurfaceInputMode;
+  onInputPort?: (port: CanvasSurfaceInputPort | null) => void;
 }) {
   const surfaceId = useId();
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -225,7 +241,11 @@ export function CanvasSurface({
   useEffect(() => {
     const draft = draftRef.current;
     const base = baseRef.current;
-    if (!draft || !base || !editable || tool === "pointer") return;
+    const externalRouting = inputMode === "smart" && tool === "pen";
+    if (!draft || !base || !editable || inputMode === "interaction-lock" || tool === "pointer") {
+      onInputPort?.(null);
+      return;
+    }
     const baseCtx = base.getContext("2d");
     if (!baseCtx) return;
     const actions = store.getState();
@@ -282,27 +302,19 @@ export function CanvasSurface({
       if (stroke.mode === "ink") drawLocalDraftTail();
     });
 
-    const down = (event: PointerEvent) => {
-      if (!event.isPrimary || event.button !== 0) return;
-      const [x, y] = toPoint(event);
-      if (!sink.begin(event.pointerId, [x, y])) return;
-      event.preventDefault();
-      const norm = toNorm([x, y]);
+    const beginGesture = (pointerId: number, point: InputPoint) => {
+      if (!sink.begin(pointerId, point)) return false;
+      const [x, y] = point;
+      const norm = toNorm(point);
       gestureStart = norm;
       gestureEnd = norm;
-      capturedPointerId = event.pointerId;
-      try {
-        draft.setPointerCapture(event.pointerId);
-      } catch {
-        // Some synthetic/test pointer sources do not expose pointer capture.
-      }
       if (tool === "shape") {
         setShapePreview(createShapeFromDrag("shape-preview", shapeKind, norm, norm, color, fill, sizeNorm, dimsRef.current.h / dimsRef.current.w));
-        return;
+        return true;
       }
       if (tool === "strokeEraser") {
         eraseHit(x, y);
-        return;
+        return true;
       }
       const { w, h } = dimsRef.current;
       const erase = tool.startsWith("eraser");
@@ -314,6 +326,19 @@ export function CanvasSurface({
       strokeRef.current = stroke;
       draftDrawnPointsRef.current = 0;
       if (stroke.mode === "ink") bus.emit("local-progress-start", stroke);
+      return true;
+    };
+
+    const down = (event: PointerEvent) => {
+      if (!event.isPrimary || event.button !== 0) return;
+      if (!beginGesture(event.pointerId, toPoint(event))) return;
+      event.preventDefault();
+      capturedPointerId = event.pointerId;
+      try {
+        draft.setPointerCapture(event.pointerId);
+      } catch {
+        // Some synthetic/test pointer sources do not expose pointer capture.
+      }
     };
 
     const move = (event: PointerEvent) => {
@@ -353,6 +378,18 @@ export function CanvasSurface({
       store.getState().commitItem(stroke);
     };
 
+    const discardGesture = () => {
+      const stroke = strokeRef.current;
+      strokeRef.current = null;
+      gestureStart = null;
+      gestureEnd = null;
+      draftDrawnPointsRef.current = 0;
+      setShapePreview(null);
+      if (stroke?.mode === "ink") bus.emit("local-progress-end", { id: stroke.id });
+      redrawBase();
+      redrawDraft();
+    };
+
     const finish = (event: PointerEvent) => {
       if (!sink.finish(event.pointerId, eventPoints(event))) return;
       releaseCapture(event.pointerId);
@@ -373,18 +410,47 @@ export function CanvasSurface({
       if (document.visibilityState === "hidden") drain();
     };
 
+    const fromNormalized = ([x, y]: NormalizedInputPoint): InputPoint => [
+      x * dimsRef.current.w,
+      y * dimsRef.current.h,
+    ];
+    const port: CanvasSurfaceInputPort = {
+      begin: (pointerId, origin) => beginGesture(pointerId, fromNormalized(origin)),
+      append: (pointerId, points) => sink.push(pointerId, points.map(fromNormalized)),
+      finish: (pointerId, points = []) => {
+        if (!sink.finish(pointerId, points.map(fromNormalized))) return false;
+        commitGesture();
+        return true;
+      },
+      cancel: (pointerId) => {
+        if (!sink.cancel(pointerId)) return false;
+        discardGesture();
+        return true;
+      },
+    };
+
+    if (externalRouting) onInputPort?.(port);
+
     const leave = () => setCursor(null);
-    draft.addEventListener("pointerdown", down);
-    draft.addEventListener("pointermove", move);
-    draft.addEventListener("pointerleave", leave);
-    draft.addEventListener("lostpointercapture", finishLostCapture);
-    window.addEventListener("pointerup", finish);
-    window.addEventListener("pointercancel", finish);
-    window.addEventListener("blur", drain);
-    window.addEventListener("pagehide", drain);
-    document.addEventListener("visibilitychange", visibility);
+    if (!externalRouting) {
+      draft.addEventListener("pointerdown", down);
+      draft.addEventListener("pointermove", move);
+      draft.addEventListener("pointerleave", leave);
+      draft.addEventListener("lostpointercapture", finishLostCapture);
+      window.addEventListener("pointerup", finish);
+      window.addEventListener("pointercancel", finish);
+      window.addEventListener("blur", drain);
+      window.addEventListener("pagehide", drain);
+      document.addEventListener("visibilitychange", visibility);
+    }
     return () => {
-      drain();
+      if (externalRouting) {
+        const pointerId = sink.pointerId;
+        if (pointerId !== null) port.cancel(pointerId);
+        onInputPort?.(null);
+      } else {
+        drain();
+      }
       sink.dispose();
       draft.removeEventListener("pointerdown", down);
       draft.removeEventListener("pointermove", move);
@@ -396,29 +462,34 @@ export function CanvasSurface({
       window.removeEventListener("pagehide", drain);
       document.removeEventListener("visibilitychange", visibility);
     };
-  }, [editable, tool, color, fill, sizeNorm, shapeKind, store, bus, basisW, drawLocalDraftTail]);
+  }, [editable, tool, color, fill, sizeNorm, shapeKind, store, bus, basisW, drawLocalDraftTail, inputMode, onInputPort, redrawBase, redrawDraft]);
 
-  const interactive = editable && tool !== "pointer";
-  const cursorStyle = !interactive ? "default" : tool.startsWith("eraser") ? "none" : "crosshair";
+  const externalPenRouting = inputMode === "smart" && tool === "pen";
+  const canvasInteractive = editable
+    && inputMode !== "interaction-lock"
+    && tool !== "pointer"
+    && !externalPenRouting;
+  const boardLayersEditable = editable && inputMode !== "interaction-lock" && !externalPenRouting;
+  const cursorStyle = !canvasInteractive ? "default" : tool.startsWith("eraser") ? "none" : "crosshair";
   const eraserSize = (ERASER_NORM[tool] ?? 0) * (strokeWidthBasis && strokeWidthBasis > 0 ? strokeWidthBasis : canvasSize.width);
 
   return (
-    <div ref={containerRef} className="pointer-events-none absolute inset-0" data-render-profile={renderProfile}>
+    <div ref={containerRef} className="pointer-events-none absolute inset-0" data-input-mode={inputMode} data-render-profile={renderProfile}>
       <canvas ref={baseRef} className="absolute inset-0 h-full w-full touch-none" style={{ pointerEvents: "none" }} />
-      <BoardObjectLayer store={store} editable={editable} width={canvasSize.width} height={canvasSize.height} preview={shapePreview} />
+      <BoardObjectLayer store={store} editable={boardLayersEditable} width={canvasSize.width} height={canvasSize.height} preview={shapePreview} />
       <canvas
         ref={draftRef}
         className="absolute inset-0 h-full w-full touch-none"
-        style={{ pointerEvents: interactive ? "auto" : "none", cursor: cursorStyle }}
+        style={{ pointerEvents: canvasInteractive ? "auto" : "none", cursor: cursorStyle }}
       />
-      <InstrumentLayer store={store} editable={editable} width={canvasSize.width} height={canvasSize.height} />
+      <InstrumentLayer store={store} editable={boardLayersEditable} width={canvasSize.width} height={canvasSize.height} />
       {Object.entries(remoteCursors).map(([key, value]) => (
         <div key={key} aria-hidden className="pointer-events-none absolute z-30 -translate-x-1/2 -translate-y-1/2" style={{ left: `${value.x * 100}%`, top: `${value.y * 100}%` }}>
           <span className="block size-2.5 rounded-full border border-paper shadow" style={{ background: colorVar(COLOR_TOKENS[Math.abs([...key].reduce((acc, ch) => acc + ch.charCodeAt(0), 0)) % COLOR_TOKENS.length]) }} />
           <span className="mt-1 block max-w-28 truncate rounded-full bg-ink/80 px-1.5 py-0.5 text-[10px] leading-none text-paper">{value.name}</span>
         </div>
       ))}
-      {interactive && tool.startsWith("eraser") && cursor && eraserSize > 0 ? (
+      {canvasInteractive && tool.startsWith("eraser") && cursor && eraserSize > 0 ? (
         <div aria-hidden className="pointer-events-none absolute box-border border border-muted" style={{ left: cursor[0] - eraserSize / 2, top: cursor[1] - eraserSize / 2, width: eraserSize, height: eraserSize }} />
       ) : null}
     </div>
