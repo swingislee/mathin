@@ -4,9 +4,9 @@ import {
   Columns3,
   Eraser,
   Eye,
-  Hash,
   Rows3,
   Scan,
+  Search,
   SquareDashed,
   Trash2,
   Undo2,
@@ -51,7 +51,7 @@ const HIGHLIGHT_TOOL_DEFS = [
   { tool: "box", label: "highlightBox", Icon: SquareDashed },
   { tool: "row", label: "highlightRow", Icon: Rows3 },
   { tool: "column", label: "highlightColumn", Icon: Columns3 },
-  { tool: "digit", label: "highlightDigit", Icon: Hash },
+  { tool: "digit", label: "highlightDigit", Icon: Search },
 ] as const satisfies ReadonlyArray<{
   tool: SudokuHighlightTool;
   label: "highlightCells" | "highlightBox" | "highlightRow" | "highlightColumn" | "highlightDigit";
@@ -140,8 +140,7 @@ export function SudokuBoard({ seed, difficulty, finished, onComplete, mirror, on
   }
 
   const inputDisabled = Boolean(readOnly || finished);
-  const digitHighlightMode = state.highlightTool === "digit";
-  const numberPadDisabled = inputDisabled || Boolean(state.highlightTool && !digitHighlightMode);
+  const numberPadDisabled = inputDisabled;
   const deleteDisabled = inputDisabled || Boolean(state.highlightTool);
   const answerDisabled = inputDisabled
     || state.highlightTool !== null
@@ -379,23 +378,20 @@ export function SudokuBoard({ seed, difficulty, finished, onComplete, mirror, on
                         </button>
                       );
                     }
-                    const pressed = digitHighlightMode
-                      ? state.highlights.focusedDigit === digit
-                      : state.inputDigit === digit;
+                    const pressed = state.inputDigit === digit;
                     return (
                       <button
                         key={digit}
                         type="button"
                         data-classroom-input="click"
-                        aria-label={t(digitHighlightMode ? "highlightDigitChoice" : "chooseDigit", { digit })}
+                        aria-label={t("chooseDigit", { digit })}
                         aria-pressed={pressed}
                         disabled={numberPadDisabled}
                         onClick={() => chooseDigit(digit)}
                         className={cn(
                           styles.numberButton,
                           "aspect-square min-h-11 w-full rounded-xl border text-xl font-medium tabular-nums transition-colors disabled:cursor-default disabled:opacity-45",
-                          pressed && digitHighlightMode && styles.numberHighlightActive,
-                          pressed && !digitHighlightMode && styles.numberActive,
+                          pressed && styles.numberActive,
                         )}
                       >
                         {digit}
@@ -585,7 +581,14 @@ export function SudokuBoard({ seed, difficulty, finished, onComplete, mirror, on
                   : styles.controlIdle,
               )}
             >
-              <Icon aria-hidden size={18} />
+              {tool === "digit" ? (
+                <span aria-hidden className="relative grid size-[18px] place-items-center">
+                  <Icon size={18} />
+                  <span className="absolute left-[5px] top-[3px] font-mono text-[7px] font-bold leading-none">7</span>
+                </span>
+              ) : (
+                <Icon aria-hidden size={18} />
+              )}
             </button>
           ))}
           <span aria-hidden className={cn(styles.toolSeparator, "h-px w-7")} />

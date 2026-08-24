@@ -51,7 +51,7 @@
 }
 
 .controlIdle:hover:not(:disabled),
-.numberButton:hover:not(:disabled):not(.numberActive):not(.numberHighlightActive),
+.numberButton:hover:not(:disabled):not(.numberActive),
 .toolButton:hover:not(:disabled):not(.toolActive) {
   color: var(--sudoku-ink);
   background: var(--sudoku-accent-soft);
@@ -81,13 +81,6 @@
   color: #ffffff;
   border-color: var(--sudoku-accent);
   background: var(--sudoku-accent);
-}
-
-.numberHighlightActive {
-  color: #ffffff;
-  border-color: var(--sudoku-digit-highlight-deep);
-  background: var(--sudoku-digit-highlight);
-  font-weight: 700;
 }
 
 .toolSeparator {

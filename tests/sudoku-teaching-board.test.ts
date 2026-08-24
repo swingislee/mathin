@@ -80,7 +80,7 @@ describe("Sudoku teaching board M2", () => {
     expect(solution && verifySudoku(SUDOKU_BOX_ELIMINATION_SEED, "hard", solution)).toBe(true);
   });
 
-  it("supports both digit-first and cell-first value input", () => {
+  it("uses one operation-first value input contract", () => {
     const puzzle = [...SUDOKU_BOX_ELIMINATION_PUZZLE];
     let state = createSudokuBoardState(puzzle);
 
@@ -93,11 +93,16 @@ describe("Sudoku teaching board M2", () => {
 
     state = selectSudokuCell(state, puzzle, 1, false);
     state = chooseSudokuDigit(state, puzzle, 6);
+    expect(state.values[1]).toBe(0);
+    expect(state.selected).toBeNull();
+    expect(state.inputDigit).toBe(6);
+
+    state = selectSudokuCell(state, puzzle, 1);
     expect(state.values[1]).toBe(6);
 
     // A3 是题面给定数，任何输入都不能覆盖。
-    state = selectSudokuCell(state, puzzle, 2);
     state = chooseSudokuDigit(state, puzzle, 1);
+    state = selectSudokuCell(state, puzzle, 2);
     expect(state.values[2]).toBe(8);
 
     const mirror = toSudokuMirrorState(state);
@@ -105,7 +110,7 @@ describe("Sudoku teaching board M2", () => {
     expect(mirror.highlights?.focusedDigit).toBeNull();
   });
 
-  it("keeps a filled selected cell focused while switching the persistent digit stamp", () => {
+  it("switches the persistent digit stamp without rewriting the focused cell", () => {
     const puzzle = [...SUDOKU_BOX_ELIMINATION_PUZZLE];
     let state = createSudokuBoardState(puzzle);
 
@@ -116,7 +121,7 @@ describe("Sudoku teaching board M2", () => {
 
     state = chooseSudokuDigit(state, puzzle, 6);
     expect(state.values[0]).toBe(3);
-    expect(state.selected).toBe(0);
+    expect(state.selected).toBeNull();
     expect(state.inputDigit).toBe(6);
     expect(state.invalidAttempt).toBeNull();
 
@@ -130,13 +135,13 @@ describe("Sudoku teaching board M2", () => {
     let state = createSudokuBoardState(puzzle);
 
     state = setSudokuEntryMode(state, "candidate");
-    state = selectSudokuCell(state, puzzle, 0, false);
     state = chooseSudokuDigit(state, puzzle, 3);
+    state = selectSudokuCell(state, puzzle, 0);
     state = chooseSudokuDigit(state, puzzle, 6);
+    state = selectSudokuCell(state, puzzle, 0);
     expect(sudokuCandidateDigits(state.candidates[0])).toEqual([3, 6]);
 
     state = setSudokuEntryMode(state, "value");
-    state = selectSudokuCell(state, puzzle, 2, false);
     state = chooseSudokuDigit(state, puzzle, 2);
     state = selectSudokuCell(state, puzzle, 1);
 
@@ -163,12 +168,14 @@ describe("Sudoku teaching board M2", () => {
     const puzzle = [...SUDOKU_BOX_ELIMINATION_PUZZLE];
     let state = createSudokuBoardState(puzzle);
     state = setSudokuEntryMode(state, "candidate");
-    state = selectSudokuCell(state, puzzle, 1, false);
     state = chooseSudokuDigit(state, puzzle, 4);
+    state = selectSudokuCell(state, puzzle, 1);
     state = chooseSudokuDigit(state, puzzle, 6);
+    state = selectSudokuCell(state, puzzle, 1);
 
     expect(sudokuCandidateDigits(state.candidates[1])).toEqual([4, 6]);
     state = chooseSudokuDigit(state, puzzle, 4);
+    state = selectSudokuCell(state, puzzle, 1);
     expect(sudokuCandidateDigits(state.candidates[1])).toEqual([6]);
 
     const mirror = toSudokuMirrorState(state);
@@ -177,6 +184,8 @@ describe("Sudoku teaching board M2", () => {
 
     state = setSudokuEntryMode(state, "value");
     state = chooseSudokuDigit(state, puzzle, 6);
+    expect(state.values[1]).toBe(0);
+    state = selectSudokuCell(state, puzzle, 1);
     expect(state.values[1]).toBe(6);
     expect(state.candidates[1]).toBe(0);
 
@@ -190,8 +199,8 @@ describe("Sudoku teaching board M2", () => {
     const puzzle = [...SUDOKU_BOX_ELIMINATION_PUZZLE];
     let state = createSudokuBoardState(puzzle);
     state = setSudokuEntryMode(state, "candidate");
-    state = selectSudokuCell(state, puzzle, 0, false);
     state = chooseSudokuDigit(state, puzzle, 1);
+    state = selectSudokuCell(state, puzzle, 0);
 
     expect(sudokuCandidateDigits(state.candidates[0])).toEqual([1]);
     state = revealSelectedSudokuCell(state, puzzle);
@@ -208,7 +217,7 @@ describe("Sudoku teaching board M2", () => {
 });
 
 describe("Sudoku teaching highlights M3", () => {
-  it("keeps ordinary digit input separate from the optional focused digit", () => {
+  it("chooses a matching-digit highlight from the board instead of the number pad", () => {
     const puzzle = [...SUDOKU_BOX_ELIMINATION_PUZZLE];
     let state = createSudokuBoardState(puzzle);
 
@@ -217,13 +226,49 @@ describe("Sudoku teaching highlights M3", () => {
     expect(state.highlights.focusedDigit).toBeNull();
 
     state = setSudokuHighlightTool(state, "digit");
-    state = chooseSudokuDigit(state, puzzle, 7);
-    expect(state.inputDigit).toBe(3);
+    expect(state.inputDigit).toBeNull();
+    state = selectSudokuCell(state, puzzle, 0);
+    expect(state.highlights.focusedDigit).toBeNull();
+
+    state = selectSudokuCell(state, puzzle, 3);
     expect(state.highlights.focusedDigit).toBe(7);
     expect(state.values).toEqual(puzzle);
 
-    state = chooseSudokuDigit(state, puzzle, 7);
+    state = selectSudokuCell(state, puzzle, 3);
     expect(state.highlights.focusedDigit).toBeNull();
+  });
+
+  it("keeps digit stamps and highlight tools mutually exclusive", () => {
+    const puzzle = [...SUDOKU_BOX_ELIMINATION_PUZZLE];
+    let state = createSudokuBoardState(puzzle);
+
+    state = chooseSudokuDigit(state, puzzle, 4);
+    state = setSudokuHighlightTool(state, "cell");
+    expect(state.inputDigit).toBeNull();
+    expect(state.highlightTool).toBe("cell");
+    expect(state.selected).toBeNull();
+
+    state = chooseSudokuDigit(state, puzzle, 6);
+    expect(state.inputDigit).toBe(6);
+    expect(state.highlightTool).toBeNull();
+
+    state = setSudokuHighlightTool(state, "digit");
+    state = selectSudokuCell(state, puzzle, 3);
+    expect(state.highlights.focusedDigit).toBe(7);
+    state = chooseSudokuDigit(state, puzzle, 2);
+    expect(state.inputDigit).toBe(2);
+    expect(state.highlightTool).toBeNull();
+    expect(state.highlights.focusedDigit).toBe(7);
+
+    const restoredLegacyConflict = createSudokuBoardState(puzzle, {
+      values: puzzle,
+      selected: 0,
+      inputDigit: 4,
+      highlightTool: "row",
+    });
+    expect(restoredLegacyConflict.highlightTool).toBe("row");
+    expect(restoredLegacyConflict.inputDigit).toBeNull();
+    expect(restoredLegacyConflict.selected).toBeNull();
   });
 
   it("combines a free cell rectangle with box, row and column highlights in any order", () => {
@@ -291,14 +336,14 @@ describe("Sudoku teaching highlights M3", () => {
   it("mirrors combined highlights and clears them without touching entries", () => {
     const puzzle = [...SUDOKU_BOX_ELIMINATION_PUZZLE];
     let state = createSudokuBoardState(puzzle);
-    state = selectSudokuCell(state, puzzle, 0);
     state = chooseSudokuDigit(state, puzzle, 3);
+    state = selectSudokuCell(state, puzzle, 0);
     state = setSudokuHighlightTool(state, "cell");
     state = toggleSudokuCellHighlightRegion(state, 10, 30);
     state = setSudokuHighlightTool(state, "box");
     state = selectSudokuCell(state, puzzle, 40);
     state = setSudokuHighlightTool(state, "digit");
-    state = chooseSudokuDigit(state, puzzle, 7);
+    state = selectSudokuCell(state, puzzle, 3);
 
     expect(hasSudokuTeachingHighlights(state)).toBe(true);
     const restored = createSudokuBoardState(puzzle, toSudokuMirrorState(state));
@@ -352,8 +397,8 @@ describe("Sudoku answer validation M4", () => {
   it("rejects wrong values, preserves the stamp, and requires a fresh cell click", () => {
     const puzzle = [...SUDOKU_BOX_ELIMINATION_PUZZLE];
     let state = createSudokuBoardState(puzzle);
-    state = selectSudokuCell(state, puzzle, 0, false);
     state = chooseSudokuDigit(state, puzzle, 1);
+    state = selectSudokuCell(state, puzzle, 0);
 
     expect(state.values[0]).toBe(0);
     expect(state.inputDigit).toBe(1);
@@ -386,7 +431,8 @@ describe("Sudoku answer validation M4", () => {
 
     state = setSudokuEntryMode(state, "candidate");
     state = chooseSudokuDigit(state, puzzle, 1);
+    state = selectSudokuCell(state, puzzle, 0);
     expect(sudokuCandidateDigits(state.candidates[0])).toEqual([1]);
-    expect(state.invalidAttempt?.sequence).toBe(1);
+    expect(state.invalidAttempt).toBeNull();
   });
 });

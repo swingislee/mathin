@@ -956,16 +956,21 @@ export function LiveShell({
 
       {rehearsal && isController && inputV2Enabled && (
         <section
-          aria-label={t("m3AcceptanceTitle")}
+          aria-label={t("sudokuOperationAcceptanceTitle")}
           className="mt-2 flex shrink-0 flex-wrap items-center gap-2 rounded-xl border border-blue/30 bg-blue/5 p-2 text-xs"
-          data-m3-native-input-acceptance
+          data-sudoku-operation-acceptance
         >
           <div className="min-w-48 flex-1 px-2">
-            <p className="font-medium text-ink">{t("m3AcceptanceTitle")}</p>
-            <p className="mt-0.5 text-muted">{t("m3AcceptanceBody")}</p>
+            <p className="font-medium text-ink">{t("sudokuOperationAcceptanceTitle")}</p>
+            <p className="mt-0.5 text-muted">{t("sudokuOperationAcceptanceBody")}</p>
           </div>
           <ol className="grid min-w-0 flex-[2] basis-full grid-cols-2 gap-1 lg:basis-auto lg:grid-cols-4">
-            {(["m3CheckTap", "m3CheckTakeover", "m3CheckInteraction", "m3CheckInk"] as const).map((key, index) => (
+            {([
+              "sudokuOperationCheckNoCellFirst",
+              "sudokuOperationCheckMutualExclusion",
+              "sudokuOperationCheckMatchingDigit",
+              "sudokuOperationCheckApply",
+            ] as const).map((key, index) => (
               <li key={key} className="rounded-lg bg-paper/80 px-2 py-1.5 text-muted">
                 <span className="mr-1 font-mono text-ink">{index + 1}</span>
                 {t(key)}

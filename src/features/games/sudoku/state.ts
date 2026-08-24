@@ -137,6 +137,7 @@ function normalizedValues(puzzle: number[], mirror?: GameMirrorState | null): nu
 
 export function createSudokuBoardState(puzzle: number[], mirror?: GameMirrorState | null): SudokuBoardState {
   const values = normalizedValues(puzzle, mirror);
+  const highlightTool = validHighlightTool(mirror?.highlightTool) ? mirror.highlightTool : null;
   const candidates = Array.from({ length: 81 }, (_, index) => {
     if (puzzle[index] || values[index]) return 0;
     const mask = mirror?.candidates?.[index];
@@ -146,12 +147,12 @@ export function createSudokuBoardState(puzzle: number[], mirror?: GameMirrorStat
   return {
     values,
     candidates,
-    selected: validCellIndex(mirror?.selected) ? mirror.selected : null,
-    inputDigit: validDigit(mirror?.inputDigit) ? mirror.inputDigit : null,
+    selected: highlightTool === null && validCellIndex(mirror?.selected) ? mirror.selected : null,
+    inputDigit: highlightTool === null && validDigit(mirror?.inputDigit) ? mirror.inputDigit : null,
     entryMode: mirror?.entryMode === "candidate" ? "candidate" : "value",
-    highlightTool: validHighlightTool(mirror?.highlightTool) ? mirror.highlightTool : null,
+    highlightTool,
     highlights: normalizedHighlights(mirror),
-    invalidAttempt: normalizedInvalidAttempt(mirror),
+    invalidAttempt: highlightTool === null ? normalizedInvalidAttempt(mirror) : null,
   };
 }
 
@@ -208,26 +209,22 @@ function applyDigitAt(state: SudokuBoardState, puzzle: number[], index: number, 
   return { ...state, values, candidates };
 }
 
-/** 数字点选既支持「先格后数」，也保留 inputDigit 供「先数后格」连续讲解。 */
-export function chooseSudokuDigit(state: SudokuBoardState, puzzle: number[], digit: number): SudokuBoardState {
+/** 数字按钮只切换持续印章；写入统一发生在随后点击目标格时。 */
+export function chooseSudokuDigit(state: SudokuBoardState, _puzzle: number[], digit: number): SudokuBoardState {
   if (!validDigit(digit)) return state;
-  if (state.highlightTool === "digit") {
-    return {
-      ...state,
-      highlights: {
-        ...state.highlights,
-        focusedDigit: state.highlights.focusedDigit === digit ? null : digit,
-      },
-    };
-  }
-  if (state.highlightTool) return state;
-  const withInput = { ...state, inputDigit: digit };
-  const selected = state.selected;
-  if (state.entryMode === "value" && state.invalidAttempt?.index === selected) {
-    return { ...withInput, selected: null, invalidAttempt: null };
-  }
-  if (selected === null || puzzle[selected] !== 0 || state.values[selected] !== 0) return withInput;
-  return applyDigitAt(withInput, puzzle, selected, digit);
+  if (
+    state.inputDigit === digit
+    && state.highlightTool === null
+    && state.selected === null
+    && state.invalidAttempt === null
+  ) return state;
+  return {
+    ...state,
+    inputDigit: digit,
+    highlightTool: null,
+    selected: null,
+    invalidAttempt: null,
+  };
 }
 
 function toggledIndex(values: number[], value: number): number[] {
@@ -339,8 +336,19 @@ export function selectSudokuCell(
 }
 
 export function setSudokuEntryMode(state: SudokuBoardState, entryMode: SudokuEntryMode): SudokuBoardState {
-  if (state.entryMode === entryMode && state.highlightTool === null) return state;
-  return { ...state, entryMode, highlightTool: null };
+  if (
+    state.entryMode === entryMode
+    && state.highlightTool === null
+    && state.selected === null
+    && state.invalidAttempt === null
+  ) return state;
+  return {
+    ...state,
+    entryMode,
+    highlightTool: null,
+    selected: null,
+    invalidAttempt: null,
+  };
 }
 
 export function setSudokuHighlightTool(
@@ -350,6 +358,9 @@ export function setSudokuHighlightTool(
   return {
     ...state,
     highlightTool: state.highlightTool === highlightTool ? null : highlightTool,
+    inputDigit: null,
+    selected: null,
+    invalidAttempt: null,
   };
 }
 
