@@ -4,6 +4,8 @@
 
 `xiaomi`、`https://mathin.club` 和 `https://supabase.mathin.club` 共同指向当前 R1-Live 生产系统。目标位于私网、曾作开发使用或在本机 `.env.local` 中配置，都不能降低其生产等级。
 
+当前本地开发系统运行在 Windows 主机 `192.168.5.213`：Next 使用 `localhost:3130` / LAN `192.168.5.213:3130`，本机 Docker Supabase 只从 `.env.local` 暴露为 loopback `127.0.0.1:35421`。本机与 Xiaomi 的 Docker 容器名称相同；只有执行主机和 endpoint 能区分环境，不能凭 `supabase-db` / `supabase-rest` 名称判断。
+
 保险丝只约束仓库中的写入命令，不改变线上应用、Supabase 服务、账号或现有数据。运行期正常业务写入继续由应用鉴权、RLS 和领域 RPC 控制。
 
 ## 命令分类
@@ -29,6 +31,8 @@
 LAN 或远程地址即使解析为私网、即使临时填写任意 SHA-256，也会以 `UNREGISTERED_REMOTE_TARGET` 拒绝。新增隔离开发/RC 目标时，先在代码评审中登记可复核的稳定指纹和精确入口，再扩展 policy；不得在本机临时绕过。
 
 安全的本机默认值见 [`.env.example`](../../.env.example)。现有 `.env.local` 不会被此实现修改。
+
+任何人工或 Agent 写入前必须输出并核对以下非敏感事实：命令运行主机、`.env.local` 的 Supabase origin、该端口的监听进程，以及是否使用 SSH。开发写入必须同时满足“Windows 本机 + loopback `127.0.0.1:35421` + 未使用 `ssh xiaomi`”；出现 `xiaomi`、`192.168.5.183` 或生产域名时立即转入生产门禁。数据库容器名称不得参与环境判定。
 
 ## 受控生产课程写入
 

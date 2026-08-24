@@ -1240,7 +1240,7 @@ M3a 的 v1 原语已经用数独、普通文档、视频与分数数轴作为代
 
 M3b 把指针协议扩展进既有 H5 注入 runtime，并把缓存版本从 v2 升到 v3，没有建立第二套平行脚本。兼容 H5 根声明 `mathin-classroom-input` provider v1 和默认能力；父页与 frame 先完成 `mathin-h5-pointer` v1 的 hello/capabilities/ack，再允许 Smart。父页同时校验 `event.source === iframe.contentWindow`、单次注册 token、schema/version、字段边界、每秒消息上限和 chunk 顺序；移动点按 animation frame 分批，每包最多 64 点。坐标从 frame viewport 归一化到冻结的课堂舞台，嵌套 frame 逐层转换；reload 会生成新 channel，ping/watchdog、失焦、隐藏、resize、切页和卸载都结束活动手势。旧 runtime、未声明 provider、握手超时或失联统一 fail closed，不猜测 H5 内部目标。
 
-独立开关 `teaching.classroom_h5_pointer_v1` 已加入 TypeScript 合同和默认 false migration；课堂只在服务端求值，非生产试讲可自动打开，生产环境未迁移、未启用。开发夹具只含一个兼容/不兼容可切换的 H5，不含账号、学生信息或笔迹坐标。定向机器合同覆盖协议解析边界、provider 状态、runtime v3、组织开关与既有 H5 shim；开发浏览器已确认兼容页轻点只计数一次且不产生板书、iframe reload 后重新握手并保持 Smart、不兼容页可见回退交互锁且 iframe 原生点击仍可用。这些事实不替代跨 frame 拖写的人工手感，也不证明生产 iPad。
+独立开关 `teaching.classroom_h5_pointer_v1` 已加入 TypeScript 合同和默认 false migration；课堂只在服务端求值，非生产试讲可自动打开。2026-08-25 该数据库 migration 因环境误判被提前应用到 Xiaomi 生产库，但开关保持 false、生产应用没有对应实现，故仍未启用，也不构成生产发布。开发夹具只含一个兼容/不兼容可切换的 H5，不含账号、学生信息或笔迹坐标。定向机器合同覆盖协议解析边界、provider 状态、runtime v3、组织开关与既有 H5 shim；开发浏览器已确认兼容页轻点只计数一次且不产生板书、iframe reload 后重新握手并保持 Smart、不兼容页可见回退交互锁且 iframe 原生点击仍可用。这些事实不替代跨 frame 拖写的人工手感，也不证明生产 iPad。
 
 本 Gate 只向产品负责人交付以下三个可见对象：
 
@@ -1248,7 +1248,9 @@ M3b 把指针协议扩展进既有 H5 注入 runtime，并把缓存版本从 v2 
 2. 从“轻点计数”按钮按下并拖出，计数不增加，只形成一条从按下位置开始的主板书笔迹；
 3. 点击“重载 iframe”后自动回到“已就绪”且 Smart 保持；再切到“不兼容 H5”，一级模式明确变为交互锁，iframe 内轻点仍正常计数。
 
-2026-08-25，产品负责人确认上述三项全部通过。M3b 与整个 M3 在开发端关闭；结论范围为 commit `61c6c70` 的兼容 H5 轻点/接管、reload 重握手和不兼容降级，不表示生产迁移、生产 iPad 或真实课堂已通过。后续复用同版 provider/bridge 的 H5 package 只进入统一 conformance，不逐包重复本轮；下一施工项为 M4a 正式名单与星星 v2 数据合同。
+2026-08-25，产品负责人确认上述三项全部通过。M3b 与整个 M3 在开发端关闭；结论范围为 commit `61c6c70` 的兼容 H5 轻点/接管、reload 重握手和不兼容降级，不表示生产应用部署、启用、生产 iPad 或真实课堂已通过。后续复用同版 provider/bridge 的 H5 package 只进入统一 conformance，不逐包重复本轮；下一施工项为 M4a 正式名单与星星 v2 数据合同。
+
+同日环境边界更正：`xiaomi` 是 R1-Live 生产库，`192.168.5.213` 上的 Windows Docker/`127.0.0.1:35421` 才是本地开发库。执行者此前误判目标，已把 `20260824000200`、`20260825000100–00500` 提前应用到生产数据库。只读审计显示三项开关均为 false、v2 星星事件与 production 名单 revision 均为 0；唯一 roster 回填是 `purpose=test` 的开放课次且条目为 0。生产应用未部署本规划代码，M4a 仍按本地开发 Gate 施工；该数据库前移不构成产品验收或后续生产写入授权。
 
 普通 native renderer 不进入这轮验收；未来 H5 package 只要复用相同 provider/bridge 版本并通过 conformance，也不逐包重复本轮。只有新输入原语、路由/所有权算法、跨 iframe/H5 协议或设备回归才重新建立人工输入 Gate。
 

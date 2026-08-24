@@ -2,14 +2,18 @@
 
 ## 当前拓扑
 
-- Supabase Docker 主机：`xiaomi` / `192.168.5.183`
+- **环境等级**：`xiaomi` / `192.168.5.183` 是当前 R1-Live **生产主机**，不是开发库；完整写入门见 [`runbooks/r1-write-target-policy.md`](runbooks/r1-write-target-policy.md)
+- 生产 Supabase Docker 主机：`xiaomi` / `192.168.5.183`
 - Compose 目录：`/home/swing/services/supabase-project`
 - 应用使用的 Supabase 地址：`https://supabase.mathin.club`
 - 局域网入口：`https://192.168.5.183:443`（保留域名作为 Host/SNI；由 Caddy 转发至 Kong）
 - Kong 内部入口：`http://127.0.0.1:8000`；`8000/8443` 仅绑定 Xiaomi loopback，不得从其他设备直连
-- Mathin 开发入口：`http://192.168.5.213:3130`
+- Mathin 本地开发主机：`192.168.5.213`；开发入口 `http://localhost:3130` / `http://192.168.5.213:3130`
+- 本地开发 Supabase：Windows Docker Desktop，`.env.local` 使用 `http://127.0.0.1:35421`
 
-开发机需要局域网直连时，双击仓库根目录的 `Supabase路由切换.cmd` 并选择 `LAN direct`；它只为 `supabase.mathin.club` 写入 `192.168.5.183` 的 hosts 覆盖，并将该域名与 IP 写入用户 `NO_PROXY`，HTTPS 仍使用正式域名和 Caddy 证书。切换后重新打开终端。选择 `Public Internet` 会删除这两类仅由 Mathin 管理的覆盖，便于测试完整 Sakura 公网链路。
+本机与 Xiaomi 的 Compose 都使用 `supabase-db`、`supabase-rest` 等名称。执行 `docker exec supabase-db ...` 前必须先确认命令运行在哪台主机；`ssh xiaomi "docker exec ..."` 永远按生产写入处理。
+
+只有在已获授权验证生产网络路径时，才可双击仓库根目录的 `Supabase路由切换.cmd` 并选择 `LAN direct`；它会让生产域名 `supabase.mathin.club` 直连 `192.168.5.183`，因此不能作为日常开发连接。正常开发保持 `.env.local` 指向 `http://127.0.0.1:35421`。选择 `Public Internet` 会删除 Mathin 管理的 hosts/`NO_PROXY` 覆盖，用于经授权测试完整 Sakura 公网链路。
 
 自托管 Supabase 的系统更新、密钥轮换、备份、监控和灾难恢复由部署者负责。
 
@@ -24,7 +28,7 @@ cp -p .env ".env.${stamp}.backup"
 cp -p docker-compose.yml "docker-compose.yml.${stamp}.backup"
 ```
 
-`.env` 的开发期关键项：
+Xiaomi 生产 `.env` 的历史部署示例（不代表当前配置值，也不得直接复制执行；当前值只在受控 preflight 中读取）：
 
 ```dotenv
 SUPABASE_PUBLIC_URL=https://supabase.mathin.club
@@ -54,14 +58,15 @@ curl -sS -o /dev/null -w '%{http_code}\n' \
 ## 数据库迁移
 
 - 所有建表与 RLS 以 SQL 文件形式提交在仓库 `supabase/migrations/`，文件名前缀为时间戳，按文件名顺序各执行一次。
-- 执行方式：由 agent 通过 SSH 直接应用（用户无需手动跑）：
+- 开发阶段只向本机 Docker Supabase 应用迁移：先确认 `.env.local` 为 `http://127.0.0.1:35421`、该端口由 Docker Desktop 监听，并使用本机 `docker exec supabase-db ...`；不得经过 SSH。
+- Xiaomi 生产迁移必须先完成开发验收，并取得产品负责人对该次精确 migration/commit 的明确生产授权；随后按写入目标 runbook 核对生产指纹、当前备份、影响范围、回退点和 postflight。下列命令只是经授权后的执行形态，不能单独构成授权：
 
   ```bash
   (echo "begin;"; cat supabase/migrations/<file>.sql; echo "commit;") \
     | ssh xiaomi "docker exec -i supabase-db psql -U postgres -d postgres -v ON_ERROR_STOP=1"
   ```
 
-  执行前先查 `pg_policies` / `information_schema` 确认未重复应用，执行后验证关键对象生效。
+  执行前先查 migration ledger、`pg_policies` / `information_schema` 和业务不变量，执行后验证关键对象、业务计数、错误增量与应用兼容性。禁止把开发断言或 fixture 对 Xiaomi 执行，即使脚本声称最终 rollback。
 - 迁移文件只追加、不修改历史文件；需要变更结构时新增一个迁移文件。
 - 没有 RLS 策略的表不得合并（docs/plan/03-3）。
 

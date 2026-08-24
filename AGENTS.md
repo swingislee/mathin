@@ -82,6 +82,13 @@ Mathin 是一个中英双语（zh/en，中文为默认语言）、以 Terms 为�
 
 ## 常用命令
 
+## 环境边界（写操作硬门）
+
+- **生产环境**：SSH alias `xiaomi`（`192.168.5.183`）、`https://mathin.club` 与 `https://supabase.mathin.club` 指向同一套 R1-Live 生产系统。任何 `ssh xiaomi "docker exec ..."` 都按生产操作处理；未取得产品负责人对本次生产动作的明确授权、未完成 [`docs/runbooks/r1-write-target-policy.md`](docs/runbooks/r1-write-target-policy.md) 的只读 preflight 时，禁止迁移、测试造数、业务写入、服务重载或重启。
+- **本地开发环境**：Windows 主机 `192.168.5.213`；Next 开发入口为 `http://localhost:3130` / `http://192.168.5.213:3130`，本机 Docker Supabase 由 `.env.local` 指向 `http://127.0.0.1:35421`。开发迁移和固定账号验证只操作本机 Docker，不经过 `ssh xiaomi`。
+- 本机与 Xiaomi 都使用 `supabase-db`、`supabase-rest` 等相同容器名。**容器名不能证明环境**。任何数据库、Storage 或服务写操作前，必须同时核对执行主机、应用实际 Supabase origin、监听进程和目标环境；其中任一不明确即停止。
+- Xiaomi 过去曾承担开发用途不改变其当前生产等级；历史文档把 Xiaomi 称为“开发库”的描述不得作为当前写入依据。生产变更必须区分“开发通过”“获准部署”“已部署待验收”和“生产通过”。
+
 ## SSH 国际网络代理
 
 - 每个新建的 SSH Shell 在执行 `curl`、`git`、`apt`、Docker 拉取或其他需访问国际网络的命令前，必须先执行 `proxy_on` 启动代理。
@@ -112,7 +119,7 @@ CI 的 checks job 不 fail-fast：所有静态门禁一次跑完再判定，`pnp
 
 ## 测试账号
 
-自托管开发库上已存在一套固定的 5 个可复用测试账号（admin / teacher / sales / student / parent，均为 `@mathin.local`），角色/staff_role_members/学生档案/监护人关联均已预绑定。凭据与 ID 见 `.claude/test-accounts.local.md`（已 gitignore，不在仓库中，需要登录或模拟这些用户时读取该文件）。**所有人工/agent 开发测试复用这套账号，不要新建。** 如果任务确实需要新账号或不同账号（如测试未认领的绑定码流程、多子女家长、越权场景），先向用户确认。
+本机 Docker 隔离开发库上已存在一套固定的 5 个可复用测试账号（admin / teacher / sales / student / parent，均为 `@mathin.local`），角色/staff_role_members/学生档案/监护人关联均已预绑定。凭据与 ID 见 `.claude/test-accounts.local.md`（已 gitignore，不在仓库中，需要登录或模拟这些用户时读取该文件）。**所有人工/agent 开发测试复用这套账号，不要新建，也不得把这些账号同步到 Xiaomi。** 如果任务确实需要新账号或不同账号（如测试未认领的绑定码流程、多子女家长、越权场景），先向用户确认。
 
 这些账号只属于开发/RC 数据，不得进入正式身份清单。R1-Live 的正式身份以明确 UUID 登记：admin 角色账号恰为 1，但允许加入经批准的真实教师和其他业务用户；真实班级、课次、学生、考勤及课次冻结/引用的 immutable release、snapshot 和对象一经产生即进入受保护清单。Production 1.0 只允许在隔离副本演练并删除 manifest 明确标记的测试对象，同时保留 E 系列 1135 讲与爱学习 G+/X+/A+ 秋季 170 讲的 16:9/4:3 资源，为 1305 个 lecture 的两条轨道建立 2610 条 baseline `release_no=1`。旧“只留一个 auth 用户”的 planner 在增加正式对象保护 manifest 前不可执行；除 R1-15 隔离演练或 R1-18 明确人工授权外，任何 Agent 都不得执行清理。
 
