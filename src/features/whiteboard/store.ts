@@ -31,6 +31,11 @@ export interface BoardRenderMutation {
   items: BoardItem[];
 }
 
+export interface BoardLocalMutation {
+  revision: number;
+  ops: BoardOp[];
+}
+
 interface WhiteboardState {
   boardId: string | null;
   items: BoardItem[];
@@ -38,6 +43,8 @@ interface WhiteboardState {
   revision: number;
   /** Canvas-only mutation metadata; unlike revision it also advances for remote and hydration changes. */
   renderMutation: BoardRenderMutation;
+  /** Latest local mutation, retained after the realtime outbox is drained so durable writers cannot miss it. */
+  localMutation: BoardLocalMutation | null;
   savedRevision: number;
   saveState: SaveState;
   tool: Tool;
@@ -109,6 +116,7 @@ const stateCreator: StateCreator<WhiteboardState> = (set, get) => ({
   items: [],
   revision: 0,
   renderMutation: { version: 0, kind: "full", items: [] },
+  localMutation: null,
   savedRevision: 0,
   saveState: "saved",
   tool: "pen",
@@ -128,6 +136,7 @@ const stateCreator: StateCreator<WhiteboardState> = (set, get) => ({
           items,
           revision: 0,
           renderMutation: { version: state.renderMutation.version + 1, kind: "full", items: [] },
+          localMutation: null,
           savedRevision: 0,
           saveState: "saved",
           selectedIds: [],
@@ -142,26 +151,34 @@ const stateCreator: StateCreator<WhiteboardState> = (set, get) => ({
   setSizeNorm: (sizeNorm) => set({ sizeNorm }),
   setShapeKind: (shapeKind) => set({ shapeKind, tool: "shape", selectedIds: [] }),
   setSelectedIds: (selectedIds) => set({ selectedIds }),
-  commitItem: (item) => set((state) => ({
-    items: [...state.items, item],
-    revision: state.revision + 1,
-    renderMutation: { version: state.renderMutation.version + 1, kind: "append", items: [item] },
-    selectedIds: isStrokeItem(item) ? state.selectedIds : [item.id],
-    undoStack: [...state.undoStack, { kind: "erase", ids: [item.id] }],
-    outbox: [...state.outbox, { t: "commit", item }],
-  })),
+  commitItem: (item) => set((state) => {
+    const revision = state.revision + 1;
+    const ops: BoardOp[] = [{ t: "commit", item }];
+    return {
+      items: [...state.items, item],
+      revision,
+      renderMutation: { version: state.renderMutation.version + 1, kind: "append", items: [item] },
+      localMutation: { revision, ops },
+      selectedIds: isStrokeItem(item) ? state.selectedIds : [item.id],
+      undoStack: [...state.undoStack, { kind: "erase", ids: [item.id] }],
+      outbox: [...state.outbox, ...ops],
+    };
+  }),
   updateItem: (item) => set((state) => {
     const index = state.items.findIndex((existing) => existing.id === item.id);
     if (index < 0) return state;
     const previous = state.items[index];
     const items = [...state.items];
     items[index] = item;
+    const revision = state.revision + 1;
+    const ops: BoardOp[] = [{ t: "replace", item }];
     return {
       items,
-      revision: state.revision + 1,
+      revision,
       renderMutation: { version: state.renderMutation.version + 1, kind: "full", items: [] },
+      localMutation: { revision, ops },
       undoStack: [...state.undoStack, { kind: "replace", items: [previous] }],
-      outbox: [...state.outbox, { t: "replace", item }],
+      outbox: [...state.outbox, ...ops],
     };
   }),
   eraseLine: (id) => get().removeItems([id]),
@@ -176,26 +193,32 @@ const stateCreator: StateCreator<WhiteboardState> = (set, get) => ({
       }
     });
     if (restored.length === 0) return state;
+    const revision = state.revision + 1;
+    const ops = restored.map((item): BoardOp => ({ t: "erase", id: item.id }));
     return {
       items: state.items.filter((item) => !idSet.has(item.id)),
-      revision: state.revision + 1,
+      revision,
       renderMutation: { version: state.renderMutation.version + 1, kind: "full", items: [] },
+      localMutation: { revision, ops },
       selectedIds: state.selectedIds.filter((id) => !idSet.has(id)),
       undoStack: [...state.undoStack, { kind: "restore", items: restored, indexes }],
-      outbox: [...state.outbox, ...restored.map((item): BoardOp => ({ t: "erase", id: item.id }))],
+      outbox: [...state.outbox, ...ops],
     };
   }),
   duplicateSelected: () => set((state) => {
     const selected = new Set(state.selectedIds);
     const copies = state.items.filter((item) => selected.has(item.id)).map((item) => cloneBoardItem(item, newId()));
     if (copies.length === 0) return state;
+    const revision = state.revision + 1;
+    const ops = copies.map((item): BoardOp => ({ t: "commit", item }));
     return {
       items: [...state.items, ...copies],
-      revision: state.revision + 1,
+      revision,
       renderMutation: { version: state.renderMutation.version + 1, kind: "append", items: copies },
+      localMutation: { revision, ops },
       selectedIds: copies.map((item) => item.id),
       undoStack: [...state.undoStack, { kind: "erase", ids: copies.map((item) => item.id) }],
-      outbox: [...state.outbox, ...copies.map((item): BoardOp => ({ t: "commit", item }))],
+      outbox: [...state.outbox, ...ops],
     };
   }),
   styleSelected: (style) => set((state) => {
@@ -219,57 +242,75 @@ const stateCreator: StateCreator<WhiteboardState> = (set, get) => ({
       return replacement;
     });
     if (previous.length === 0) return state;
+    const revision = state.revision + 1;
+    const ops = replacements.map((item): BoardOp => ({ t: "replace", item }));
     return {
       items,
-      revision: state.revision + 1,
+      revision,
       renderMutation: { version: state.renderMutation.version + 1, kind: "full", items: [] },
+      localMutation: { revision, ops },
       undoStack: [...state.undoStack, { kind: "replace", items: previous }],
-      outbox: [...state.outbox, ...replacements.map((item): BoardOp => ({ t: "replace", item }))],
+      outbox: [...state.outbox, ...ops],
     };
   }),
-  clear: () => set((state) => state.items.length === 0 ? state : ({
-    items: [],
-    revision: state.revision + 1,
-    renderMutation: { version: state.renderMutation.version + 1, kind: "full", items: [] },
-    selectedIds: [],
-    undoStack: [...state.undoStack, {
-      kind: "restore",
-      items: state.items,
-      indexes: state.items.map((_, index) => index),
-    }],
-    outbox: [...state.outbox, { t: "clear" }],
-  })),
+  clear: () => set((state) => {
+    if (state.items.length === 0) return state;
+    const revision = state.revision + 1;
+    const ops: BoardOp[] = [{ t: "clear" }];
+    return {
+      items: [],
+      revision,
+      renderMutation: { version: state.renderMutation.version + 1, kind: "full", items: [] },
+      localMutation: { revision, ops },
+      selectedIds: [],
+      undoStack: [...state.undoStack, {
+        kind: "restore",
+        items: state.items,
+        indexes: state.items.map((_, index) => index),
+      }],
+      outbox: [...state.outbox, ...ops],
+    };
+  }),
   undo: () => set((state) => {
     const entry = state.undoStack[state.undoStack.length - 1];
     if (!entry) return state;
     const undoStack = state.undoStack.slice(0, -1);
     if (entry.kind === "erase") {
       const ids = new Set(entry.ids);
+      const revision = state.revision + 1;
+      const ops = entry.ids.map((id): BoardOp => ({ t: "erase", id }));
       return {
         items: state.items.filter((item) => !ids.has(item.id)),
-        revision: state.revision + 1,
+        revision,
         renderMutation: { version: state.renderMutation.version + 1, kind: "full", items: [] },
+        localMutation: { revision, ops },
         selectedIds: [],
         undoStack,
-        outbox: [...state.outbox, ...entry.ids.map((id): BoardOp => ({ t: "erase", id }))],
+        outbox: [...state.outbox, ...ops],
       };
     }
     if (entry.kind === "restore") {
+      const revision = state.revision + 1;
+      const ops: BoardOp[] = [{ t: "restore", items: entry.items }];
       return {
         items: restoreAt(state.items, entry.items, entry.indexes),
-        revision: state.revision + 1,
+        revision,
         renderMutation: { version: state.renderMutation.version + 1, kind: "full", items: [] },
+        localMutation: { revision, ops },
         undoStack,
-        outbox: [...state.outbox, { t: "restore", items: entry.items }],
+        outbox: [...state.outbox, ...ops],
       };
     }
     const previousById = new Map(entry.items.map((item) => [item.id, item]));
+    const revision = state.revision + 1;
+    const ops = entry.items.map((item): BoardOp => ({ t: "replace", item }));
     return {
       items: state.items.map((item) => previousById.get(item.id) ?? item),
-      revision: state.revision + 1,
+      revision,
       renderMutation: { version: state.renderMutation.version + 1, kind: "full", items: [] },
+      localMutation: { revision, ops },
       undoStack,
-      outbox: [...state.outbox, ...entry.items.map((item): BoardOp => ({ t: "replace", item }))],
+      outbox: [...state.outbox, ...ops],
     };
   }),
   replaceItems: (items) => set((state) => ({

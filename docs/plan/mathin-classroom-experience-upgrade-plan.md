@@ -1106,7 +1106,7 @@ M2-B 再交付方案 C 的恢复基础：
 
 1. 新增版本化 checkpoint manifest/chunk migration、RLS 与原子保存 RPC，chunk UTF-8 JSON 不超过 192 KiB；
 2. Worker 执行自适应重采样、序列化和 item-boundary 分块，同板只提交最新任务；
-3. IndexedDB checkpoint outbox 以 `session + board/page key` 最新覆盖，并以版本确认删除；
+3. 每次最终本地白板操作立即写入 IndexedDB 增量日志；checkpoint outbox 仍以 `session + board/page key` 最新覆盖，并在同一事务中压实已纳入 checkpoint 的日志前缀，以版本确认删除服务端已接收的 checkpoint；
 4. 首屏读取每块板最新 v2 checkpoint；没有 v2 时回退最新 v1 `board_snapshot`，其他业务事件独立分页；
 5. 新 writer 由 `teaching.classroom_board_checkpoint_v2` 默认 false 开关控制，关闭后旧课堂仍可恢复，不能产生 reader 不认识的数据。
 
@@ -1138,7 +1138,9 @@ M2-B 再交付方案 C 的恢复基础：
 1. **真实书写手感**：在同一课堂页连续写短笔、长笔、急转弯，并在主/副板书切换；人工判断起止点、断线、粗细、擦除和撤销是否符合预期；
 2. **500 笔后恢复**：一键装入 500 笔无 PII fixture，继续书写观察跟手感，然后刷新/重开课堂；页面显示恢复来源、checkpoint 版本、chunk 数和精确笔数，人工确认最后一笔存在且没有重复或清空。
 
-2026-08-24 首轮恢复验收确认副板书正常，但发现主板书验收状态被错误绑定到副板书，且清空/重写后的 debounce 窗口仍显示旧 checkpoint 可刷新；较早启动的 Worker 结果也缺少 revision 入库前围栏。本问题保持为 M2 blocker：状态必须跟随当前主/副板书，内容变化立即显示“尚未落盘”，过期 Worker 结果不得覆盖最新 outbox，验收区的显式刷新必须先等待当前板书本机 checkpoint 成功。再次人工验收只检查一个对象：主板书“写旧笔 → 清空 → 写新笔 → 点击刷新恢复”，刷新后旧笔不回来、新笔存在且状态显示主板书的精确笔数。
+2026-08-24 首轮恢复验收确认副板书正常，但发现主板书验收状态被错误绑定到副板书，且清空/重写后的 debounce 窗口仍显示旧 checkpoint 可刷新；较早启动的 Worker 结果也缺少 revision 入库前围栏。修正当前板书状态、Worker revision 围栏和显式“刷新恢复”等待后，页面按钮路径可以恢复，但随后实机复测确认浏览器直接刷新仍会丢失 2.5 秒 debounce 窗口内的最后一笔，因此该修正不计为 M2 恢复通过。
+
+直接刷新缺口改用两层本机持久化：每次 `commit/replace/erase/clear/restore` 在最终操作产生时立即追加轻量 IndexedDB 日志，Worker 继续延后构建完整 checkpoint；完整 checkpoint 只压实自己覆盖到的日志序号，更晚操作必须保留。开发端定向合同已覆盖单笔恢复、清空后重写和 checkpoint 合并边界；浏览器已复现“主板书新增一笔后 80 ms 直接刷新，刷新前后均为 3 笔”，这只证明当前开发实现可供验收，不关闭 M2。下一次人工验收只检查一个对象：在主板书写一笔后立即使用浏览器刷新/F5，不点击页面内“刷新恢复”；刷新后该笔仍在，状态显示“本机增量已保存”和主板书精确笔数。
 
 ---
 

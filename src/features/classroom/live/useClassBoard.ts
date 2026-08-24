@@ -5,6 +5,12 @@ import { BoardBus } from "@/features/whiteboard/bus";
 import { createWhiteboardStore } from "@/features/whiteboard/store";
 import { isStrokeItem, type BoardItem, type BoardOp, type ProgressChunk, type StrokeItem } from "@/features/whiteboard/types";
 import { newId } from "@/lib/uuid";
+import {
+  appendBoardMutationJournal,
+  applyBoardMutationJournal,
+  getBoardMutationJournal,
+  type BoardMutationJournal,
+} from "../checkpoint/journal";
 import { getPendingBoardCheckpoint, enqueueLatestBoardCheckpoint } from "../checkpoint/outbox";
 import { flattenCheckpointChunks } from "../checkpoint/parse";
 import { BoardCheckpointPreparer } from "../checkpoint/preparer";
@@ -93,36 +99,62 @@ export function useClassBoard(
     if (!log) return;
     let disposed = false;
     const scope = log.ephemeral ? "rehearsal" as const : "formal" as const;
-    const applyLocal = (pending: PendingBoardCheckpoint) => {
-      const items = flattenCheckpointChunks(pending.chunks, pending.itemCount);
+    const applyLocal = (pending: PendingBoardCheckpoint, journal: BoardMutationJournal | undefined) => {
+      const checkpointItems = flattenCheckpointChunks(pending.chunks, pending.itemCount);
+      const journalSeq = pending.journalSeq ?? 0;
+      const hasJournalTail = Boolean(journal?.entries.some((entry) => entry.seq > journalSeq));
+      const items = applyBoardMutationJournal(checkpointItems, journal, journalSeq);
       store.getState().replaceItems(items);
       if (!disposed) {
         setCheckpointStatus({
-          state: "pending",
-          source: "local-v2",
-          version: pending.writerSeq,
+          state: hasJournalTail ? "journaled" : "pending",
+          source: hasJournalTail ? "local-journal" : "local-v2",
+          version: hasJournalTail ? journal?.latestSeq ?? pending.writerSeq : pending.writerSeq,
           checkpointId: pending.checkpointId,
           chunkCount: pending.chunks.length,
-          itemCount: pending.itemCount,
+          itemCount: items.length,
           contentBytes: pending.contentBytes,
           message: null,
         });
       }
+      return hasJournalTail;
+    };
+    const applyJournalOnly = (journal: BoardMutationJournal | undefined) => {
+      if (!journal?.entries.length) return false;
+      const items = applyBoardMutationJournal(store.getState().items, journal);
+      store.getState().replaceItems(items);
+      if (!disposed) {
+        setCheckpointStatus((current) => ({
+          ...current,
+          state: "journaled",
+          source: "local-journal",
+          version: journal.latestSeq,
+          itemCount: items.length,
+          message: null,
+        }));
+      }
+      return true;
     };
     const reconcile = async () => {
       try {
-        const pending = await getPendingBoardCheckpoint(log.sessionId, boardKey, scope);
-        if (!pending) return;
+        const [pending, journal] = await Promise.all([
+          getPendingBoardCheckpoint(log.sessionId, boardKey, scope),
+          getBoardMutationJournal(log.sessionId, boardKey, scope),
+        ]);
+        if (!pending) {
+          applyJournalOnly(journal);
+          return;
+        }
         flattenCheckpointChunks(pending.chunks, pending.itemCount);
         if (scope === "rehearsal" || !navigator.onLine) {
-          applyLocal(pending);
+          applyLocal(pending, journal);
           return;
         }
         const result = await flushPendingBoardCheckpoint(pending);
         baseVersionRef.current = Math.max(baseVersionRef.current, result.version);
         if (result.accepted) {
-          applyLocal(pending);
-          if (!disposed) {
+          const hasJournalTail = applyLocal(pending, journal);
+          if (!disposed && !hasJournalTail) {
             setCheckpointStatus((current) => ({ ...current, state: "saved", source: "server-v2", version: result.version }));
           }
           log.sendFx({ scope: "board", payload: { key: boardKey, checkpoint: { version: result.version } } });
@@ -321,8 +353,11 @@ export function useClassBoard(
 
     let disposed = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
+    const scope = log.ephemeral ? "rehearsal" as const : "formal" as const;
     let latestTaskRevision = store.getState().revision;
     let lastEnqueuedRevision = -1;
+    let latestJournalSeq = 0;
+    let journalQueue: Promise<number> = Promise.resolve(0);
     const tasks = new Set<Promise<unknown>>();
     const trackTask = <T,>(task: Promise<T>): Promise<T> => {
       tasks.add(task);
@@ -382,9 +417,13 @@ export function useClassBoard(
     };
     const persistLocal = async (): Promise<boolean> => {
       timer = null;
+      // The snapshot may only cover a journal prefix that is already durable.
+      // A failed journal write is still recoverable once this full checkpoint succeeds.
+      await journalQueue.catch(() => latestJournalSeq);
       const state = store.getState();
       if (state.revision === lastEnqueuedRevision) return true;
       const sourceRevision = state.revision;
+      const journalSeq = latestJournalSeq;
       latestTaskRevision = Math.max(latestTaskRevision, sourceRevision);
       if (!disposed) {
         setCheckpointStatus((current) => ({
@@ -402,13 +441,14 @@ export function useClassBoard(
         if (!prepared || sourceRevision !== latestTaskRevision) return false;
         const pending = await enqueueLatestBoardCheckpoint({
           ...prepared,
-          scope: log.ephemeral ? "rehearsal" : "formal",
+          scope,
           checkpointId: newId(),
           sessionId: log.sessionId,
           boardKey,
           writerId: log.deviceId,
           baseVersion: baseVersionRef.current,
           sourceRevision,
+          journalSeq,
           preparedAt: new Date().toISOString(),
         });
         lastEnqueuedRevision = sourceRevision;
@@ -469,6 +509,51 @@ export function useClassBoard(
           itemCount: state.items.length,
           message: null,
         }));
+      }
+      const mutation = state.localMutation;
+      if (!mutation || mutation.revision !== state.revision) {
+        if (!disposed) {
+          setCheckpointStatus((current) => ({
+            ...current,
+            state: "error",
+            message: "BOARD_LOCAL_MUTATION_MISSING",
+          }));
+        }
+      } else {
+        const mutationRevision = mutation.revision;
+        const itemCount = state.items.length;
+        journalQueue = journalQueue
+          .catch(() => latestJournalSeq)
+          .then(() => appendBoardMutationJournal({
+            sessionId: log.sessionId,
+            boardKey,
+            scope,
+            ops: mutation.ops,
+          }))
+          .then((seq) => {
+            latestJournalSeq = Math.max(latestJournalSeq, seq);
+            if (!disposed && mutationRevision === latestTaskRevision) {
+              setCheckpointStatus((current) => ({
+                ...current,
+                state: "journaled",
+                source: "local-journal",
+                version: seq,
+                itemCount,
+                message: null,
+              }));
+            }
+            return seq;
+          }, (error: unknown) => {
+            if (!disposed && mutationRevision === latestTaskRevision) {
+              setCheckpointStatus((current) => ({
+                ...current,
+                state: "error",
+                message: error instanceof Error ? error.message : "BOARD_MUTATION_JOURNAL_WRITE_FAILED",
+              }));
+            }
+            throw error;
+          });
+        void journalQueue.catch(() => undefined);
       }
       if (timer) clearTimeout(timer);
       timer = setTimeout(() => { void runPersist().catch(() => undefined); }, SNAPSHOT_DEBOUNCE_MS);

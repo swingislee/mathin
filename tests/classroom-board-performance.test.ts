@@ -86,13 +86,16 @@ describe("M2 base-layer mutation metadata", () => {
     const store = createWhiteboardStore();
     store.getState().commitItem(stroke("local"));
     expect(store.getState().renderMutation).toMatchObject({ kind: "append", items: [{ id: "local" }] });
+    expect(store.getState().localMutation).toMatchObject({ revision: 1, ops: [{ t: "commit", item: { id: "local" } }] });
 
     store.getState().applyRemote({ t: "commit", item: stroke("remote") });
     expect(store.getState().renderMutation).toMatchObject({ kind: "append", items: [{ id: "remote" }] });
 
     store.getState().eraseLine("local");
     expect(store.getState().renderMutation).toMatchObject({ kind: "full", items: [] });
+    expect(store.getState().localMutation).toEqual({ revision: 2, ops: [{ t: "erase", id: "local" }] });
     store.getState().clear();
     expect(store.getState().renderMutation).toMatchObject({ kind: "full", items: [] });
+    expect(store.getState().localMutation).toEqual({ revision: 3, ops: [{ t: "clear" }] });
   });
 });

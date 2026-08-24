@@ -4183,6 +4183,7 @@
       "m2CheckpointError": "保存失败：{error}",
       "m2State_idle": "待书写",
       "m2State_dirty": "有更改，尚未落盘",
+      "m2State_journaled": "本机增量已保存",
       "m2State_preparing": "Worker 构建中",
       "m2State_pending": "本机已保存",
       "m2State_saved": "服务端已保存",
@@ -4191,6 +4192,7 @@
       "m2Source_legacy-v1": "旧快照 v1",
       "m2Source_server-v2": "checkpoint v2",
       "m2Source_local-v2": "本机 checkpoint v2",
+      "m2Source_local-journal": "本机笔迹日志",
       "cancel": "取消"
     },
     "assignments": {

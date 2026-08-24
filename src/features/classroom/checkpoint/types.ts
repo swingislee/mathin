@@ -18,6 +18,8 @@ export interface PendingBoardCheckpoint extends PreparedBoardCheckpoint {
   writerSeq: number;
   baseVersion: number;
   sourceRevision: number;
+  /** Highest durable local-op journal sequence included in this full checkpoint. */
+  journalSeq?: number;
   preparedAt: string;
 }
 
@@ -32,10 +34,10 @@ export interface SessionBoardCheckpoint {
   items: BoardItem[];
 }
 
-export type CheckpointSource = "memory" | "legacy-v1" | "server-v2" | "local-v2";
+export type CheckpointSource = "memory" | "legacy-v1" | "server-v2" | "local-v2" | "local-journal";
 
 export interface BoardCheckpointStatus {
-  state: "idle" | "dirty" | "preparing" | "pending" | "saved" | "error";
+  state: "idle" | "dirty" | "journaled" | "preparing" | "pending" | "saved" | "error";
   source: CheckpointSource;
   version: number | null;
   checkpointId: string | null;

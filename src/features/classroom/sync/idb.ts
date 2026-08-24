@@ -2,12 +2,13 @@
 // IndexedDB 在非安全上下文（局域网 HTTP）可用，这是离线课的存储底座。
 
 const DB_NAME = "mathin-classroom";
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 export const STORE_ASSETS = "assets"; // key = storage path, value = Blob
 export const STORE_OUTBOX = "outbox"; // key = event id, value = SessionEvent 行；索引 sessionId
 export const STORE_META = "meta";     // key = `${sessionId}:${deviceId}`, value = 最后 seq
 export const STORE_BOARD_CHECKPOINTS = "boardCheckpoints"; // key = `${sessionId}:${scope}:${boardKey}`, latest pending v2 checkpoint
+export const STORE_BOARD_MUTATION_JOURNALS = "boardMutationJournals"; // key matches checkpoint; final local ops awaiting checkpoint compaction
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
@@ -26,6 +27,10 @@ export function openClassroomDb(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(STORE_BOARD_CHECKPOINTS)) {
         const checkpoints = db.createObjectStore(STORE_BOARD_CHECKPOINTS);
         checkpoints.createIndex("sessionId", "sessionId", { unique: false });
+      }
+      if (!db.objectStoreNames.contains(STORE_BOARD_MUTATION_JOURNALS)) {
+        const journals = db.createObjectStore(STORE_BOARD_MUTATION_JOURNALS);
+        journals.createIndex("sessionId", "sessionId", { unique: false });
       }
     };
     request.onsuccess = () => {

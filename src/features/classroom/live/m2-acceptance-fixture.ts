@@ -32,12 +32,16 @@ export function createM2AcceptanceStrokes(count = 500): StrokeItem[] {
 /** Rehearsal-only fixture load: one full redraw and one checkpoint revision. */
 export function loadM2AcceptanceFixture(store: WhiteboardStore): void {
   const items = createM2AcceptanceStrokes();
-  store.setState((state) => ({
-    items,
-    revision: state.revision + 1,
-    renderMutation: { version: state.renderMutation.version + 1, kind: "full", items: [] },
-    selectedIds: [],
-    undoStack: [],
-    outbox: [],
-  }));
+  store.setState((state) => {
+    const revision = state.revision + 1;
+    return {
+      items,
+      revision,
+      renderMutation: { version: state.renderMutation.version + 1, kind: "full", items: [] },
+      localMutation: { revision, ops: [{ t: "clear" }, { t: "restore", items }] },
+      selectedIds: [],
+      undoStack: [],
+      outbox: [],
+    };
+  });
 }

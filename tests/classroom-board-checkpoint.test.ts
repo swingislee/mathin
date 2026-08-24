@@ -14,6 +14,11 @@ import {
   enqueueLatestBoardCheckpoint,
   getPendingBoardCheckpoint,
 } from "@/features/classroom/checkpoint/outbox";
+import {
+  appendBoardMutationJournal,
+  applyBoardMutationJournal,
+  getBoardMutationJournal,
+} from "@/features/classroom/checkpoint/journal";
 import { parseSessionBoardCheckpoints } from "@/features/classroom/checkpoint/parse";
 import { BoardCheckpointPreparer } from "@/features/classroom/checkpoint/preparer";
 import { shouldApplyLegacyBoardSnapshot } from "@/features/classroom/checkpoint/selection";
@@ -135,6 +140,72 @@ describe("classroom board checkpoint v2", () => {
     expect((recovered?.chunks.flat()[0] as StrokeItem).id).toBe("m2-fixture-1");
   });
 
+  it("recovers a final stroke from the durable mutation journal before the debounce checkpoint", async () => {
+    const sessionId = crypto.randomUUID();
+    const boardKey = crypto.randomUUID();
+    const [baseStroke, finalStroke] = createM2AcceptanceStrokes(2);
+    const seq = await appendBoardMutationJournal({
+      sessionId,
+      boardKey,
+      scope: "rehearsal",
+      ops: [{ t: "commit", item: finalStroke }],
+    });
+
+    const journal = await getBoardMutationJournal(sessionId, boardKey, "rehearsal");
+    expect(seq).toBe(1);
+    expect(journal?.latestSeq).toBe(1);
+    expect(applyBoardMutationJournal([baseStroke], journal).map((item) => item.id)).toEqual([
+      baseStroke.id,
+      finalStroke.id,
+    ]);
+  });
+
+  it("replays clear then rewrite and only compacts the journal prefix covered by a checkpoint", async () => {
+    const sessionId = crypto.randomUUID();
+    const boardKey = crypto.randomUUID();
+    const writerId = crypto.randomUUID();
+    const [oldStroke, rewrittenStroke, laterStroke] = createM2AcceptanceStrokes(3);
+    const clearSeq = await appendBoardMutationJournal({
+      sessionId,
+      boardKey,
+      scope: "rehearsal",
+      ops: [{ t: "clear" }, { t: "restore", items: [rewrittenStroke] }],
+    });
+    const laterSeq = await appendBoardMutationJournal({
+      sessionId,
+      boardKey,
+      scope: "rehearsal",
+      ops: [{ t: "commit", item: laterStroke }],
+    });
+    const beforeCheckpoint = await getBoardMutationJournal(sessionId, boardKey, "rehearsal");
+    expect(applyBoardMutationJournal([oldStroke], beforeCheckpoint).map((item) => item.id)).toEqual([
+      rewrittenStroke.id,
+      laterStroke.id,
+    ]);
+
+    const prepared = buildBoardCheckpoint([rewrittenStroke]);
+    const pending = await enqueueLatestBoardCheckpoint({
+      ...prepared,
+      scope: "rehearsal",
+      checkpointId: crypto.randomUUID(),
+      sessionId,
+      boardKey,
+      writerId,
+      baseVersion: 0,
+      sourceRevision: 1,
+      journalSeq: clearSeq,
+      preparedAt: new Date().toISOString(),
+    });
+    const compacted = await getBoardMutationJournal(sessionId, boardKey, "rehearsal");
+    expect(compacted?.latestSeq).toBe(laterSeq);
+    expect(compacted?.entries.map((entry) => entry.seq)).toEqual([laterSeq]);
+    expect(applyBoardMutationJournal(
+      pending.chunks.flat(),
+      compacted,
+      pending.journalSeq,
+    ).map((item) => item.id)).toEqual([rewrittenStroke.id, laterStroke.id]);
+  });
+
   it("terminates stale Worker work and only resolves the latest task", async () => {
     class WorkerMock {
       static instances: WorkerMock[] = [];
@@ -222,6 +293,8 @@ describe("classroom board checkpoint v2", () => {
     expect(hook).toContain('state: "dirty"');
     expect(hook).toContain("sourceRevision !== latestTaskRevision");
     expect(hook).toContain("flushLatestCheckpoint");
+    expect(hook).toContain("appendBoardMutationJournal");
+    expect(hook).toContain("journalSeq");
     expect(shell).toContain('const activeBoardKey = activeArea === "side" ? "side" : activePage?.id ?? null');
     expect(shell).toContain("await sideBoard.flushCheckpoint()");
     expect(shell).toContain("await mainCheckpointControl.flush()");
