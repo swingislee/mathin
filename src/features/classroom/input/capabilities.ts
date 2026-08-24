@@ -1,3 +1,5 @@
+import type { CoursewareDoc } from "@/features/courseware-doc/document";
+import { PAGE_DOC_VERSION, type DocNode, type PageDoc } from "@/features/courseware-doc/schema";
 import type { CoursewarePage } from "../types";
 import type { ClassroomInputCapability } from "./router";
 
@@ -14,9 +16,11 @@ export function isAuditedClassroomNativeGame(gameId: string): gameId is AuditedC
 }
 
 export interface ClassroomRendererInputProfile {
-  renderer: "board" | "image" | AuditedClassroomNativeGameId | "unsupported";
+  renderer: "board" | "image" | "video" | "document" | AuditedClassroomNativeGameId | "unsupported";
   version: number;
   audited: boolean;
+  /** True while a doc is still resolving; do not persist the temporary protection as a user lock choice. */
+  provisional: boolean;
   defaultCapability: ClassroomInputCapability;
 }
 
@@ -24,13 +28,53 @@ const UNSUPPORTED_PROFILE: ClassroomRendererInputProfile = {
   renderer: "unsupported",
   version: CLASSROOM_INPUT_CAPABILITY_VERSION,
   audited: false,
+  provisional: false,
   defaultCapability: "unknown",
 };
 
-/** M3a registry: paper/image and the three in-repo native game renderers are audited. */
+const PROVISIONAL_PROFILE: ClassroomRendererInputProfile = {
+  ...UNSUPPORTED_PROFILE,
+  provisional: true,
+};
+
+const AUDITED_NATIVE_DOC_ADAPTERS = new Set([
+  "group",
+  "page",
+  "image",
+  "svg",
+  "math_vertical",
+  "shape",
+  "video",
+  "audio",
+  "table",
+  "rich_text",
+  "text",
+]);
+
+function nodeRequiresInteractionProtection(node: DocNode): boolean {
+  return !node.supported
+    || !AUDITED_NATIVE_DOC_ADAPTERS.has(node.adapter)
+    || node.content?.kind === "h5"
+    || node.resources.some((resource) => resource.kind === "h5")
+    || node.children.some(nodeRequiresInteractionProtection);
+}
+
+/** Only native page-doc-v1 DOM is audited here; Aixuexi, spatial, and H5 remain fail-closed. */
+export function isAuditedNativeCoursewareDoc(
+  doc: CoursewareDoc | null | undefined,
+): doc is PageDoc {
+  return Boolean(
+    doc
+    && doc.docVersion === PAGE_DOC_VERSION
+    && !doc.nodes.some(nodeRequiresInteractionProtection),
+  );
+}
+
+/** M3a registry: paper/image/video, native page-doc, and the in-repo game renderers are audited. */
 export function resolveClassroomRendererInputProfile(
   page: CoursewarePage | undefined,
   hasToolOverlay: boolean,
+  doc?: CoursewareDoc | null,
 ): ClassroomRendererInputProfile {
   if (hasToolOverlay || !page) return UNSUPPORTED_PROFILE;
   if (page.type === "board") {
@@ -38,6 +82,7 @@ export function resolveClassroomRendererInputProfile(
       renderer: "board",
       version: CLASSROOM_INPUT_CAPABILITY_VERSION,
       audited: true,
+      provisional: false,
       defaultCapability: "ink",
     };
   }
@@ -46,6 +91,27 @@ export function resolveClassroomRendererInputProfile(
       renderer: "image",
       version: CLASSROOM_INPUT_CAPABILITY_VERSION,
       audited: true,
+      provisional: false,
+      defaultCapability: "ink",
+    };
+  }
+  if (page.type === "video") {
+    return {
+      renderer: "video",
+      version: CLASSROOM_INPUT_CAPABILITY_VERSION,
+      audited: true,
+      provisional: false,
+      defaultCapability: "ink",
+    };
+  }
+  if (page.type === "doc") {
+    if (!doc) return PROVISIONAL_PROFILE;
+    if (!isAuditedNativeCoursewareDoc(doc)) return UNSUPPORTED_PROFILE;
+    return {
+      renderer: "document",
+      version: CLASSROOM_INPUT_CAPABILITY_VERSION,
+      audited: true,
+      provisional: false,
       defaultCapability: "ink",
     };
   }
@@ -54,6 +120,7 @@ export function resolveClassroomRendererInputProfile(
       renderer: page.gameId,
       version: CLASSROOM_INPUT_CAPABILITY_VERSION,
       audited: true,
+      provisional: false,
       defaultCapability: "ink",
     };
   }

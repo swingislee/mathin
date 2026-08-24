@@ -159,6 +159,7 @@ function DocVideo({
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
       <video
         ref={videoRef}
+        data-classroom-input="native"
         controls={isController}
         playsInline
         preload="auto"
@@ -183,6 +184,7 @@ function DocVideo({
       {!isController && needsManualAudio && (
         <Button
           type="button"
+          data-classroom-input="native"
           size="sm"
           className="absolute bottom-3 left-1/2 -translate-x-1/2"
           onClick={() => {
@@ -337,7 +339,9 @@ function nodeBody(
       return <DocVideo node={node} src={url} poster={poster} control={videoControl} />;
     }
     case "audio":
-      return url ? <audio controls src={url} style={{ width: "100%" }} /> : unknownBody(node);
+      return url
+        ? <audio controls src={url} data-classroom-input="native" style={{ width: "100%" }} />
+        : unknownBody(node);
     case "h5": {
       const entryUrl = node.resources.find((item) => item.role === "entry")
         ? (urls[node.resources.find((item) => item.role === "entry")!.bindingKey] ?? null)
@@ -436,6 +440,7 @@ function NodeView({
       data-node-path={node.nodePath}
       data-source-resource-id={node.sourceResourceId ?? ""}
       data-click-trigger={clickTrigger}
+      data-classroom-input={clickTrigger ? "click" : undefined}
       onClickCapture={() => onNodeSelect?.(node.nodePath)}
       style={style}
     >
@@ -535,8 +540,15 @@ export default function DocStage({
   const backgroundUrl = canvas.backgroundBindingKey ? (bindingUrls[canvas.backgroundBindingKey] ?? null) : null;
   const clickTriggers = new Set(
     doc.interactions
-      .filter((item) => item.triggerScope === "node" && item.triggerResourceId !== null)
+      .filter((item) => (
+        item.trigger === "click"
+        && item.triggerScope === "node"
+        && item.triggerResourceId !== null
+      ))
       .map((item) => item.triggerResourceId as string),
+  );
+  const hasPageClick = doc.interactions.some(
+    (item) => item.triggerScope === "page" && item.trigger === "click",
   );
 
   return (
@@ -559,6 +571,7 @@ export default function DocStage({
         key={`${doc.sourceCoursewareId}:${doc.sourcePageDatabaseId}`}
         ref={stageRef}
         data-doc-stage
+        data-classroom-input={hasPageClick ? "click" : "ink"}
         style={{
           position: "absolute",
           left: 0,

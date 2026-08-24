@@ -4,6 +4,7 @@ import {
   parseClassroomInputCapability,
   resolveClassroomRendererInputProfile,
 } from "@/features/classroom/input/capabilities";
+import { createM3DocumentInputFixture } from "@/features/classroom/live/m3-input-fixtures";
 import {
   CLASSROOM_SMART_TAKEOVER_PX,
   IDLE_CLASSROOM_INPUT_STATE,
@@ -19,6 +20,19 @@ const sudokuPage = {
   seed: "input-router-fixture",
   title: "Sudoku",
 };
+
+const documentPage = {
+  id: "document-page",
+  type: "doc" as const,
+  docId: "document-doc",
+  title: "Document",
+};
+
+const documentFixture = createM3DocumentInputFixture({
+  title: "Document",
+  instruction: "Tap",
+  result: "Advanced",
+});
 
 describe("M3a classroom input routing", () => {
   it("routes pen, touch, and mouse identically", () => {
@@ -109,6 +123,50 @@ describe("M3a classroom input routing", () => {
     expect(resolveClassroomRendererInputProfile(sudokuPage, true).audited).toBe(false);
   });
 
+  it("audits native video and plain documents while protecting unresolved and bridged docs", () => {
+    const video = resolveClassroomRendererInputProfile({
+      id: "video-page",
+      type: "video",
+      path: "lesson.mp4",
+      title: "Video",
+    }, false);
+    expect(video).toMatchObject({ renderer: "video", audited: true, provisional: false });
+    expect(parseClassroomInputCapability("native", video)).toBe("native");
+
+    expect(resolveClassroomRendererInputProfile(documentPage, false)).toMatchObject({
+      renderer: "unsupported",
+      audited: false,
+      provisional: true,
+    });
+    expect(resolveClassroomRendererInputProfile(documentPage, false, documentFixture)).toMatchObject({
+      renderer: "document",
+      audited: true,
+      provisional: false,
+    });
+
+    const bridgedDocument = {
+      ...documentFixture,
+      nodes: documentFixture.nodes.map((node, index) => index === 0 ? { ...node, adapter: "h5" } : node),
+    };
+    expect(resolveClassroomRendererInputProfile(documentPage, false, bridgedDocument)).toMatchObject({
+      renderer: "unsupported",
+      audited: false,
+      provisional: false,
+    });
+
+    const unknownDocument = {
+      ...documentFixture,
+      nodes: documentFixture.nodes.map((node, index) => index === 0
+        ? { ...node, adapter: "future-native-widget" }
+        : node),
+    };
+    expect(resolveClassroomRendererInputProfile(documentPage, false, unknownDocument)).toMatchObject({
+      renderer: "unsupported",
+      audited: false,
+      provisional: false,
+    });
+  });
+
   it("registers the production switch as a fail-closed database flag", () => {
     const migration = readFileSync(new URL("../supabase/migrations/20260824000200_classroom_input_v2_flag.sql", import.meta.url), "utf8");
     const contract = readFileSync(new URL("../src/features/school/organization-settings-contract.ts", import.meta.url), "utf8");
@@ -121,6 +179,8 @@ describe("M3a classroom input routing", () => {
     const sudoku = readFileSync(new URL("../src/features/games/sudoku/SudokuBoard.tsx", import.meta.url), "utf8");
     const kakuro = readFileSync(new URL("../src/features/games/kakuro/KakuroBoard.tsx", import.meta.url), "utf8");
     const magicSquare = readFileSync(new URL("../src/features/games/magic-square/MagicSquareBoard.tsx", import.meta.url), "utf8");
+    const docStage = readFileSync(new URL("../src/features/courseware-doc/DocStage.tsx", import.meta.url), "utf8");
+    const videoStage = readFileSync(new URL("../src/features/classroom/live/VideoStage.tsx", import.meta.url), "utf8");
     const canvas = readFileSync(new URL("../src/features/whiteboard/CanvasSurface.tsx", import.meta.url), "utf8");
     const hook = readFileSync(new URL("../src/features/classroom/input/useClassroomPointerRouter.ts", import.meta.url), "utf8");
     const liveRoute = readFileSync(new URL("../src/app/[locale]/classroom/[classId]/session/[sessionId]/live/page.tsx", import.meta.url), "utf8");
@@ -132,6 +192,10 @@ describe("M3a classroom input routing", () => {
         (source.match(/data-classroom-input="click"/g) ?? []).length,
       );
     }
+    expect(docStage).toContain('data-classroom-input={hasPageClick ? "click" : "ink"}');
+    expect(docStage).toContain('data-classroom-input={clickTrigger ? "click" : undefined}');
+    expect(docStage).toContain('data-classroom-input="native"');
+    expect(videoStage).toContain('data-classroom-input="native"');
     expect(canvas).toContain('inputMode === "smart" && tool === "pen"');
     expect(hook).toContain("event.composedPath()");
     expect(hook).not.toMatch(/\.click\s*\(/);

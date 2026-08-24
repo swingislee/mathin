@@ -85,6 +85,12 @@ import { useClassBoard } from "./useClassBoard";
 import { VideoStage } from "./VideoStage";
 import { GamePage, MainBoard, StudentCard, ToolOverlay, ToolPicker } from "./LivePanels";
 import { ClassroomInputModeControl } from "./ClassroomInputModeControl";
+import {
+  createM3DocumentInputFixture,
+  M3_NATIVE_RENDERER_FIXTURE_PAGES,
+  M3_VIDEO_FIXTURE_PATH,
+  type M3NativeRendererFixtureId,
+} from "./m3-input-fixtures";
 import { OPTION_LABELS, reduceEvent, type LiveState, type Phase, type Role } from "./liveState";
 
 // 上课页（08-§3.4/§5）：候课（预载/自检）→ 上课 全程页内状态切换，零路由跳转。
@@ -115,27 +121,6 @@ interface Props {
   learningSetup: SessionLearningSetup | null;
 }
 
-type M3NativeGameFixtureId = "kakuro" | "magic-square";
-
-const M3_NATIVE_GAME_FIXTURES: Record<M3NativeGameFixtureId, Extract<CoursewarePage, { type: "game" }>> = {
-  kakuro: {
-    id: "m3-native-kakuro-fixture",
-    type: "game",
-    gameId: "kakuro",
-    difficulty: "easy",
-    seed: "m3-native-kakuro-fixture-v1",
-    title: "M3 Kakuro Input",
-  },
-  "magic-square": {
-    id: "m3-native-magic-square-fixture",
-    type: "game",
-    gameId: "magic-square",
-    difficulty: "easy",
-    seed: "m3-native-magic-square-fixture-v1",
-    title: "M3 Magic Square Input",
-  },
-};
-
 export function LiveShell({
   session,
   classId,
@@ -156,7 +141,6 @@ export function LiveShell({
   const router = useRouter();
   const t = useTranslations("classroom.live");
   const tPrep = useTranslations("classroom.prep");
-  const tGames = useTranslations("games.items");
   const students = useMemo(() => members.filter((member) => member.role === "student"), [members]);
   const selfName = useMemo(
     () => members.find((member) => member.userId === userId)?.displayName ?? "",
@@ -219,7 +203,7 @@ export function LiveShell({
   const [routingMode, setRoutingMode] = useState<ClassroomRoutingMode>("smart");
   const [inputRendererSignature, setInputRendererSignature] = useState("");
   const [m3FixtureEnabled, setM3FixtureEnabled] = useState(() => rehearsal && inputV2Enabled);
-  const [m3FixtureGameId, setM3FixtureGameId] = useState<M3NativeGameFixtureId>("kakuro");
+  const [m3FixtureRendererId, setM3FixtureRendererId] = useState<M3NativeRendererFixtureId>("document");
   const [endOpen, setEndOpen] = useState(false);
   const [classroomToolsOpen, setClassroomToolsOpen] = useState(false);
   const [stageWidth, setStageWidth] = useState(0);
@@ -666,22 +650,51 @@ export function LiveShell({
   }, [append, session.id]);
 
   // --- 派生 ----------------------------------------------------------------
+  const m3DocumentFixtureTitle = t("documentFixtureTitle");
+  const m3DocumentFixtureInstruction = t("documentFixtureInstruction");
+  const m3DocumentFixtureResult = t("documentFixtureResult");
+  const m3DocumentFixtureDoc = useMemo(
+    () => createM3DocumentInputFixture({
+      title: m3DocumentFixtureTitle,
+      instruction: m3DocumentFixtureInstruction,
+      result: m3DocumentFixtureResult,
+    }),
+    [m3DocumentFixtureInstruction, m3DocumentFixtureResult, m3DocumentFixtureTitle],
+  );
   const page = state.pages[state.currentPage] as CoursewarePage | undefined;
   const usingM3Fixture = rehearsal && inputV2Enabled && m3FixtureEnabled;
   const renderPage = usingM3Fixture
-    ? M3_NATIVE_GAME_FIXTURES[m3FixtureGameId]
+    ? M3_NATIVE_RENDERER_FIXTURE_PAGES[m3FixtureRendererId]
     : page;
+  const activeDocBundleEntry = renderPage?.type === "doc" && !usingM3Fixture
+    ? docBundle?.find((item) => item.pageDocId === renderPage.docId)
+    : undefined;
+  const renderDoc = renderPage?.type === "doc"
+    ? usingM3Fixture
+      ? m3DocumentFixtureDoc
+      : activeDocBundleEntry?.doc
+    : undefined;
+  const isM3VideoFixture = usingM3Fixture
+    && renderPage?.type === "video"
+    && renderPage.path === M3_VIDEO_FIXTURE_PATH;
   const displayedSessionTitle = usingM3Fixture
     ? t("m3FixtureSessionTitle")
     : session.title || t("untitled");
   const rendererProfile = useMemo(
-    () => resolveClassroomRendererInputProfile(renderPage, Boolean(state.openTool)),
-    [renderPage, state.openTool],
+    () => resolveClassroomRendererInputProfile(renderPage, Boolean(state.openTool), renderDoc),
+    [renderDoc, renderPage, state.openTool],
   );
-  const nextInputRendererSignature = `${renderPage?.id ?? "no-page"}:${rendererProfile.renderer}:${state.openTool ?? "no-tool"}`;
+  const nextInputRendererSignature = [
+    renderPage?.id ?? "no-page",
+    rendererProfile.renderer,
+    rendererProfile.provisional ? "provisional" : rendererProfile.audited ? "audited" : "protected",
+    state.openTool ?? "no-tool",
+  ].join(":");
   if (inputRendererSignature !== nextInputRendererSignature) {
     setInputRendererSignature(nextInputRendererSignature);
-    if (routingMode === "smart" && !rendererProfile.audited) setRoutingMode("interaction-lock");
+    if (routingMode === "smart" && !rendererProfile.audited && !rendererProfile.provisional) {
+      setRoutingMode("interaction-lock");
+    }
   }
   const mainTool = useStore(mainStore ?? sideBoard.store, (boardState) => boardState.tool);
   const effectiveRoutingMode: ClassroomRoutingMode = inputV2Enabled && isController
@@ -691,12 +704,12 @@ export function LiveShell({
     : "ink-lock";
   const activateMainInput = useCallback(() => setActiveArea("main"), []);
   const changeRoutingMode = useCallback((nextMode: ClassroomRoutingMode) => {
-    if (nextMode === "smart" && !rendererProfile.audited) {
+    if (nextMode === "smart" && !rendererProfile.audited && !rendererProfile.provisional) {
       setRoutingMode("interaction-lock");
       return;
     }
     setRoutingMode(nextMode);
-  }, [rendererProfile.audited]);
+  }, [rendererProfile.audited, rendererProfile.provisional]);
   useClassroomPointerRouter({
     stageRef,
     inputPortRef: mainInputPortRef,
@@ -712,15 +725,9 @@ export function LiveShell({
     onInkStart: activateMainInput,
   });
   const assetsReady = preload.done >= preload.total;
-  const docsById = useMemo(
-    () => new Map((docBundle ?? []).map((item) => [item.pageDocId, item.doc])),
-    [docBundle],
-  );
-  const activeDocBindings = renderPage?.type === "doc"
-    ? docBundle?.find((item) => item.pageDocId === renderPage.docId)?.bindings
-    : undefined;
-  const activeDocAssetsLoading = renderPage?.type === "doc" && (
-    !docsById.has(renderPage.docId)
+  const activeDocBindings = activeDocBundleEntry?.bindings;
+  const activeDocAssetsLoading = renderPage?.type === "doc" && !usingM3Fixture && (
+    !renderDoc
     || Boolean(
       activeDocBindings?.some((binding) => binding.kind !== "h5" && !docUrls[binding.bindingKey])
       && preload.done + preload.failed < preload.total,
@@ -971,54 +978,54 @@ export function LiveShell({
 
       {rehearsal && isController && inputV2Enabled && (
         <section
-          aria-label={t("nativeGameAcceptanceTitle")}
+          aria-label={t("nativeRendererAcceptanceTitle")}
           className="mt-2 flex shrink-0 flex-wrap items-center gap-2 rounded-xl border border-blue/30 bg-blue/5 p-2 text-xs"
-          data-native-game-acceptance
+          data-native-renderer-acceptance
         >
           <div className="min-w-48 flex-1 px-2">
-            <p className="font-medium text-ink">{t("nativeGameAcceptanceTitle")}</p>
-            <p className="mt-0.5 text-muted">{t("nativeGameAcceptanceBody")}</p>
+            <p className="font-medium text-ink">{t("nativeRendererAcceptanceTitle")}</p>
+            <p className="mt-0.5 text-muted">{t("nativeRendererAcceptanceBody")}</p>
           </div>
           <div
             role="group"
-            aria-label={t("nativeGameFixtureGroup")}
+            aria-label={t("nativeRendererFixtureGroup")}
             className="flex items-center gap-1.5"
           >
             <Button
               type="button"
               size="sm"
-              variant={m3FixtureEnabled && m3FixtureGameId === "kakuro" ? "primary" : "secondary"}
-              aria-pressed={m3FixtureEnabled && m3FixtureGameId === "kakuro"}
-              data-m3-fixture-game="kakuro"
+              variant={m3FixtureEnabled && m3FixtureRendererId === "document" ? "primary" : "secondary"}
+              aria-pressed={m3FixtureEnabled && m3FixtureRendererId === "document"}
+              data-m3-fixture-renderer="document"
               onClick={() => {
-                setM3FixtureGameId("kakuro");
+                setM3FixtureRendererId("document");
                 setM3FixtureEnabled(true);
               }}
             >
-              {tGames("kakuro.name")}
+              {t("nativeRendererDocument")}
             </Button>
             <Button
               type="button"
               size="sm"
-              variant={m3FixtureEnabled && m3FixtureGameId === "magic-square" ? "primary" : "secondary"}
-              aria-pressed={m3FixtureEnabled && m3FixtureGameId === "magic-square"}
-              data-m3-fixture-game="magic-square"
+              variant={m3FixtureEnabled && m3FixtureRendererId === "video" ? "primary" : "secondary"}
+              aria-pressed={m3FixtureEnabled && m3FixtureRendererId === "video"}
+              data-m3-fixture-renderer="video"
               onClick={() => {
-                setM3FixtureGameId("magic-square");
+                setM3FixtureRendererId("video");
                 setM3FixtureEnabled(true);
               }}
             >
-              {tGames("magic-square.name")}
+              {t("nativeRendererVideo")}
             </Button>
           </div>
           <ol className="grid min-w-0 flex-[2] basis-full gap-1 sm:grid-cols-2 lg:basis-auto">
             <li className="rounded-lg bg-paper/80 px-2 py-1.5 text-muted">
               <span className="mr-1 font-mono text-ink">1</span>
-              {t("nativeGameCheckKakuro")}
+              {t("nativeRendererCheckDocument")}
             </li>
             <li className="rounded-lg bg-paper/80 px-2 py-1.5 text-muted">
               <span className="mr-1 font-mono text-ink">2</span>
-              {t("nativeGameCheckMagicSquare")}
+              {t("nativeRendererCheckVideo")}
             </li>
           </ol>
           <Button
@@ -1071,14 +1078,15 @@ export function LiveShell({
                 <p className="grid size-full place-items-center text-sm text-muted">{t("assetMissing")}</p>
               )
             ) : renderPage.type === "video" ? (
-              assetUrls[renderPage.path] ? (
+              isM3VideoFixture || assetUrls[renderPage.path] ? (
                 <VideoStage
                   pageId={renderPage.id}
-                  src={assetUrls[renderPage.path]}
+                  src={assetUrls[renderPage.path] ?? ""}
                   controller={isController}
                   ctl={state.video[renderPage.id]}
                   onCtl={(action, time) => append("video_ctl", { pageId: renderPage.id, action, time })}
                   log={log}
+                  fixture={isM3VideoFixture}
                 />
               ) : (
                 <p className="grid size-full place-items-center text-sm text-muted">{t("assetMissing")}</p>
@@ -1101,7 +1109,7 @@ export function LiveShell({
                 </p>
               ) : <DocCoursewarePage
                 key={`doc-${renderPage.id}`}
-                doc={docsById.get(renderPage.docId) ?? null}
+                doc={renderDoc ?? null}
                 bindingUrls={docUrls}
                 isController={isController}
                 steps={state.docSteps[renderPage.id]}
