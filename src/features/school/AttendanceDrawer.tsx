@@ -3,6 +3,7 @@
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { UserRoundCheck } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { useAction } from "@/components/action-form";
 import {
@@ -33,7 +34,7 @@ export function AttendanceDrawer({
   className,
 }: {
   sessionId: string;
-  appearance?: "link" | "secondary" | "primary";
+  appearance?: "link" | "secondary" | "primary" | "rail";
   mode?: "initial" | "amend";
   onSaved?: () => void;
   className?: string;
@@ -77,11 +78,16 @@ export function AttendanceDrawer({
       <button
         type="button"
         onClick={openDrawer}
-        className={appearance === "link"
-          ? cn("shrink-0 text-xs text-muted underline underline-offset-2 hover:text-ink", className)
-          : cn(buttonVariants({ size: "sm", variant: appearance === "secondary" ? "secondary" : "primary" }), "shrink-0", className)}
+        title={label}
+        data-classroom-rail-button={appearance === "rail" ? "attendance" : undefined}
+        className={appearance === "rail"
+          ? cn("grid size-11 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-moon/30 hover:text-ink", className)
+          : appearance === "link"
+            ? cn("shrink-0 text-xs text-muted underline underline-offset-2 hover:text-ink", className)
+            : cn(buttonVariants({ size: "sm", variant: appearance === "secondary" ? "secondary" : "primary" }), "shrink-0", className)}
       >
-        {label}
+        {appearance === "rail" ? <UserRoundCheck aria-hidden size={18} /> : null}
+        <span className={appearance === "rail" ? "sr-only" : undefined}>{label}</span>
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>

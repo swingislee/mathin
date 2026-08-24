@@ -31,8 +31,15 @@ import {
 } from "@/components/ui/dialog";
 import type { GameMirrorState } from "@/features/games/types";
 import { AttendanceDrawer } from "@/features/school/AttendanceDrawer";
-import { SessionLearningCheckPanel } from "@/features/school/SessionLearningCheckPanel";
-import type { SessionLearningSetup } from "@/features/school/session-learning-contract";
+import {
+  SessionLearningCheckPanel,
+  type LearningCheckSummarySnapshot,
+} from "@/features/school/SessionLearningCheckPanel";
+import {
+  learningCheckIdAfterPageChange,
+  learningResultKey,
+  type SessionLearningSetup,
+} from "@/features/school/session-learning-contract";
 import { CanvasSurface, type CanvasSurfaceInputPort } from "@/features/whiteboard/CanvasSurface";
 import { Toolbar } from "@/features/whiteboard/Toolbar";
 import type { WhiteboardStore } from "@/features/whiteboard/store";
@@ -115,6 +122,7 @@ import {
 } from "./m3-input-fixtures";
 import { buildM4aRosterFixtures, M4A_STAR_STUDENT_ID } from "./m4-roster-fixtures";
 import { buildM4bRosterFixtures, buildM4bStarFixtureEvents } from "./m4-layout-fixtures";
+import { buildRehearsalLearningSetup } from "./rehearsal-learning";
 import { OPTION_LABELS, reduceEvent, type LiveState, type Phase, type Role } from "./liveState";
 
 // 上课页（08-§3.4/§5）：候课（预载/自检）→ 上课 全程页内状态切换，零路由跳转。
@@ -280,6 +288,14 @@ export function LiveShell({
   const [rosterRefreshError, setRosterRefreshError] = useState(false);
   const [starWriteError, setStarWriteError] = useState(false);
   const [attendanceSaved, setAttendanceSaved] = useState(initialAttendanceComplete);
+  const [learningSummaryState, setLearningSummaryState] = useState<{
+    setupKey: string;
+    snapshot: LearningCheckSummarySnapshot;
+  } | null>(null);
+  const [learningSeatState, setLearningSeatState] = useState<{
+    setupKey: string;
+    positions: ReadonlyMap<string, number>;
+  } | null>(null);
   const logRef = useRef<SessionEventLog | null>(null);
   const preloadTick = useRef(0);
   const activePageDocIdRef = useRef(activePageDocId);
@@ -925,6 +941,53 @@ export function LiveShell({
     append("doc_step", { pageId, scope: trigger.scope, id: trigger.id });
   }, [append]);
   const onlineIds = useMemo(() => new Set(onlinePeers.map((peer) => peer.userId)), [onlinePeers]);
+  const classroomLearningSetup = useMemo(() => rehearsal
+    ? buildRehearsalLearningSetup({
+        persisted: learningSetup,
+        pages: state.pages,
+        roster: students,
+        fallbackTitle: t("rehearsalLearningCheck"),
+      })
+    : learningSetup, [learningSetup, rehearsal, state.pages, students, t]);
+  const classroomLearningSetupKey = useMemo(() => classroomLearningSetup
+    ? [
+        classroomLearningSetup.configured ? "configured" : "default",
+        classroomLearningSetup.checks.map((check) => `${check.id}:${check.sourcePageId ?? "manual"}`).join(","),
+        classroomLearningSetup.students.map((student) => `${student.id}:${student.seatPosition ?? "none"}`).join(","),
+        classroomLearningSetup.results.map((result) => `${result.checkId}:${result.studentId}:${result.status}`).join(","),
+      ].join("|")
+    : "none", [classroomLearningSetup]);
+  const initialLearningResults = useMemo(() => new Map(
+    classroomLearningSetup?.results.map((result) => [
+      learningResultKey(result.checkId, result.studentId),
+      result.status,
+    ]) ?? [],
+  ), [classroomLearningSetup]);
+  const activeLearningSummary = learningSummaryState?.setupKey === classroomLearningSetupKey
+    ? learningSummaryState.snapshot
+    : {
+        checkId: classroomLearningSetup
+          ? learningCheckIdAfterPageChange(classroomLearningSetup.checks, null, activePageDocId) ?? ""
+          : "",
+        results: initialLearningResults,
+      };
+  const initialLearningSeatPositions = useMemo(() => new Map(
+    classroomLearningSetup?.students.flatMap((student) => student.seatPosition === null
+      ? []
+      : [[student.id, student.seatPosition] as const]) ?? [],
+  ), [classroomLearningSetup]);
+  const activeLearningSeatPositions = learningSeatState?.setupKey === classroomLearningSetupKey
+    ? learningSeatState.positions
+    : initialLearningSeatPositions;
+  const handleLearningSummaryChange = useCallback((snapshot: LearningCheckSummarySnapshot) => {
+    setLearningSummaryState({ setupKey: classroomLearningSetupKey, snapshot });
+  }, [classroomLearningSetupKey]);
+  const handleLearningSeatOrderChange = useCallback((assignments: Array<{ studentId: string; position: number }>) => {
+    setLearningSeatState({
+      setupKey: classroomLearningSetupKey,
+      positions: new Map(assignments.map((assignment) => [assignment.studentId, assignment.position])),
+    });
+  }, [classroomLearningSetupKey]);
   const visibleStudents = useMemo(
     () => (myRole === "student" && !showAllStudents ? students.filter((student) => student.userId === userId) : students),
     [myRole, showAllStudents, students, userId],
@@ -935,11 +998,15 @@ export function LiveShell({
       : undefined;
     return {
       ...student,
+      seatPosition: activeLearningSeatPositions.get(student.studentId) ?? student.seatPosition,
       name: student.name || t("anonymous"),
       count: starCountForRosterEntry(state.starLedger, student),
       hand: Boolean(student.userId && state.hands[student.userId]),
       online: Boolean(student.userId && onlineIds.has(student.userId)),
       answerLabel: answered === undefined ? null : isController ? OPTION_LABELS[answered] ?? "?" : "✓",
+      learningStatus: activeLearningSummary.checkId
+        ? activeLearningSummary.results.get(learningResultKey(activeLearningSummary.checkId, student.studentId)) ?? "unchecked"
+        : null,
       interactive: editable && (starEventSchema === 2 || student.userId !== null),
     };
   });
@@ -1439,6 +1506,7 @@ export function LiveShell({
                 {m4bScenario === "30" ? t("m4bStressState") : t("m4bBaselineState", { count: Number(m4bScenario) })}
               </p>
               <p className="mt-1 text-muted">{t("m4bRewardState")}</p>
+              <p className="mt-1 text-muted">{t("m4bLearningState")}</p>
               <p className="mt-1 text-muted">{t("m4bInfoState")}</p>
               <p className="mt-1 text-muted">{t("m4bBottomState")}</p>
             </div>
@@ -1801,11 +1869,15 @@ export function LiveShell({
                     currentPage={state.currentPage}
                     onGoto={(nextPage) => gotoPage(nextPage, state.pages.length)}
                   />
-                  {learningSetup && (
+                  {classroomLearningSetup && classroomLearningSetup.checks.length > 0 && (
                     <SessionLearningCheckPanel
+                      key={classroomLearningSetupKey}
                       sessionId={session.id}
-                      setup={learningSetup}
-                      activePageDocId={page?.type === "doc" ? page.docId : null}
+                      setup={classroomLearningSetup}
+                      activePageDocId={activePageDocId}
+                      ephemeral={rehearsal}
+                      onSummaryChange={handleLearningSummaryChange}
+                      onSeatOrderChange={handleLearningSeatOrderChange}
                     />
                   )}
                   {!state.ended && state.quiz && (
@@ -1900,56 +1972,65 @@ export function LiveShell({
               {inputV2Enabled && (
                 <ClassroomInputModeControl
                   compact
+                  rail
                   value={effectiveRoutingMode}
                   protectedRenderer={!rendererProfile.audited}
                   onChange={changeRoutingMode}
-                  className="h-11 flex-nowrap rounded-none border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
                 />
               )}
-              <AttendanceDrawer
-                sessionId={session.id}
-                appearance="secondary"
-                mode="amend"
-                className="min-h-11 px-3 text-xs"
-              />
-              {learningSetup && (
-                <SessionLearningCheckPanel
+              <div className="flex shrink-0 items-center gap-0.5 rounded-xl bg-card/70 p-0.5" data-classroom-rail-group="classroom-actions">
+                <AttendanceDrawer
                   sessionId={session.id}
-                  setup={learningSetup}
-                  activePageDocId={page?.type === "doc" ? page.docId : null}
+                  appearance="rail"
+                  mode="amend"
                 />
-              )}
-              {!state.ended && state.quiz && (
-                <button
-                  type="button"
-                  onClick={() => append("session_ctl", { action: "quiz_close", quizId: state.quiz?.id })}
-                  className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full bg-ink px-3 text-xs text-paper transition-opacity hover:opacity-85"
-                >
-                  <SquareCheckBig size={14} />
-                  {t("quizClose")}
-                </button>
-              )}
-              {!state.ended && (
-                <ClassroomToolsMenu
-                  open={classroomToolsOpen}
-                  quizOpen={Boolean(state.quiz)}
-                  largeTarget
-                  align="start"
-                  onOpenChange={setClassroomToolsOpen}
-                  onInsertBoard={() => {
-                    setClassroomToolsOpen(false);
-                    insertBoardPage();
-                  }}
-                  onOpenTool={(toolId) => {
-                    setClassroomToolsOpen(false);
-                    append("tool_ctl", { action: "open", toolId });
-                  }}
-                  onOpenQuiz={(options) => {
-                    setClassroomToolsOpen(false);
-                    append("session_ctl", { action: "quiz_open", quizId: newId(), options });
-                  }}
-                />
-              )}
+                {classroomLearningSetup && classroomLearningSetup.checks.length > 0 && (
+                  <SessionLearningCheckPanel
+                    key={classroomLearningSetupKey}
+                    sessionId={session.id}
+                    setup={classroomLearningSetup}
+                    activePageDocId={activePageDocId}
+                    ephemeral={rehearsal}
+                    triggerVariant="rail"
+                    onSummaryChange={handleLearningSummaryChange}
+                    onSeatOrderChange={handleLearningSeatOrderChange}
+                  />
+                )}
+                {!state.ended && state.quiz && (
+                  <button
+                    type="button"
+                    title={t("quizClose")}
+                    onClick={() => append("session_ctl", { action: "quiz_close", quizId: state.quiz?.id })}
+                    className="grid size-11 shrink-0 place-items-center rounded-full bg-moon/60 text-ink transition-colors hover:bg-moon/80"
+                    data-classroom-rail-button="quiz-close"
+                  >
+                    <SquareCheckBig aria-hidden size={18} />
+                    <span className="sr-only">{t("quizClose")}</span>
+                  </button>
+                )}
+                {!state.ended && (
+                  <ClassroomToolsMenu
+                    open={classroomToolsOpen}
+                    quizOpen={Boolean(state.quiz)}
+                    largeTarget
+                    rail
+                    align="start"
+                    onOpenChange={setClassroomToolsOpen}
+                    onInsertBoard={() => {
+                      setClassroomToolsOpen(false);
+                      insertBoardPage();
+                    }}
+                    onOpenTool={(toolId) => {
+                      setClassroomToolsOpen(false);
+                      append("tool_ctl", { action: "open", toolId });
+                    }}
+                    onOpenQuiz={(options) => {
+                      setClassroomToolsOpen(false);
+                      append("session_ctl", { action: "quiz_open", quizId: newId(), options });
+                    }}
+                  />
+                )}
+              </div>
             </>
           )}
           drawingControls={toolbarStore ? (
@@ -1967,6 +2048,7 @@ export function LiveShell({
               pages={state.pages}
               currentPage={state.currentPage}
               largeTargets
+              rail
               onGoto={(nextPage) => gotoPage(nextPage, state.pages.length)}
             />
           )}

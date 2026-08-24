@@ -2,7 +2,7 @@
 
 import { Armchair, CheckSquare2, ClipboardCheck, GripVertical, LoaderCircle, Square } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useMemo, useRef, useState, useTransition, type KeyboardEvent, type PointerEvent } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition, type KeyboardEvent, type PointerEvent } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -21,61 +21,31 @@ import {
   type SessionLearningSetup,
   type SessionLearningStudent,
 } from "./session-learning-contract";
-
-const STATUS_STYLE: Record<LearningCheckStatus, {
-  active: string;
-  card: string;
-  dot: string;
-  idle: string;
-}> = {
-  explained: {
-    active: "border-sky-500 bg-sky-500 text-white shadow-sm",
-    card: "border-sky-500/45 bg-sky-500/[0.04] dark:bg-sky-950/15",
-    dot: "bg-sky-500",
-    idle: "hover:border-sky-500/45 hover:bg-sky-500/10 hover:text-sky-700 dark:hover:text-sky-200",
-  },
-  independent: {
-    active: "border-leaf bg-leaf text-white shadow-sm",
-    card: "border-leaf/50 bg-leaf/[0.05]",
-    dot: "bg-leaf",
-    idle: "hover:border-leaf/50 hover:bg-leaf/10 hover:text-leaf-deep",
-  },
-  prompted: {
-    active: "border-amber-400 bg-amber-300 text-amber-950 shadow-sm dark:border-amber-500 dark:bg-amber-500",
-    card: "border-amber-400/50 bg-amber-400/[0.05] dark:bg-amber-950/15",
-    dot: "bg-amber-400",
-    idle: "hover:border-amber-400/50 hover:bg-amber-400/10 hover:text-amber-800 dark:hover:text-amber-200",
-  },
-  imitated: {
-    active: "border-violet-500 bg-violet-500 text-white shadow-sm",
-    card: "border-violet-500/45 bg-violet-500/[0.04] dark:bg-violet-950/15",
-    dot: "bg-violet-500",
-    idle: "hover:border-violet-500/45 hover:bg-violet-500/10 hover:text-violet-700 dark:hover:text-violet-200",
-  },
-  incomplete: {
-    active: "border-rose bg-rose text-white shadow-sm",
-    card: "border-rose/45 bg-rose/[0.04]",
-    dot: "bg-rose",
-    idle: "hover:border-rose/45 hover:bg-rose/10 hover:text-rose",
-  },
-  unchecked: {
-    active: "border-crater/70 bg-line/70 text-muted",
-    card: "border-dashed border-line bg-card/70",
-    dot: "bg-crater",
-    idle: "hover:border-crater/60 hover:bg-line/50 hover:text-ink",
-  },
-};
+import { LEARNING_CHECK_STATUS_STYLE } from "./session-learning-visual";
 
 const EMPTY_STUDENT_IDS = new Set<string>();
+
+export interface LearningCheckSummarySnapshot {
+  checkId: string;
+  results: ReadonlyMap<string, LearningCheckStatus>;
+}
 
 export function SessionLearningCheckPanel({
   sessionId,
   setup,
   activePageDocId,
+  ephemeral = false,
+  triggerVariant = "default",
+  onSummaryChange,
+  onSeatOrderChange,
 }: {
   sessionId: string;
   setup: SessionLearningSetup;
   activePageDocId: string | null;
+  ephemeral?: boolean;
+  triggerVariant?: "default" | "rail";
+  onSummaryChange?: (snapshot: LearningCheckSummarySnapshot) => void;
+  onSeatOrderChange?: (assignments: Array<{ studentId: string; position: number }>) => void;
 }) {
   const t = useTranslations("school.session");
   const [manualSelection, setManualSelection] = useState<{
@@ -126,6 +96,7 @@ export function SessionLearningCheckPanel({
     ? manualSelection.checkId ?? automaticCheckId ?? setup.checks[0]?.id ?? ""
     : learningCheckIdAfterPageChange(setup.checks, manualSelection.checkId, activePageDocId) ?? "";
   const activeCheck = setup.checks.find((check) => check.id === activeCheckId) ?? setup.checks[0];
+  const activeCheckSummaryId = activeCheck?.id ?? "";
   const selectedStudentIds = activeCheck && studentSelection.checkId === activeCheck.id
     ? studentSelection.ids
     : EMPTY_STUDENT_IDS;
@@ -134,6 +105,11 @@ export function SessionLearningCheckPanel({
     return orderedStudents.filter((student) =>
       (results.get(learningResultKey(activeCheck.id, student.id)) ?? "unchecked") !== "unchecked").length;
   }, [activeCheck, orderedStudents, results]);
+
+  useEffect(() => {
+    if (!activeCheckSummaryId) return;
+    onSummaryChange?.({ checkId: activeCheckSummaryId, results: new Map(results) });
+  }, [activeCheckSummaryId, onSummaryChange, results]);
 
   if (setup.checks.length === 0) return null;
 
@@ -155,6 +131,15 @@ export function SessionLearningCheckPanel({
       }
       return next;
     });
+    if (ephemeral) {
+      setStudentSelection({ checkId: activeCheck.id, ids: new Set() });
+      setSavingStudentIds((current) => {
+        const next = new Set(current);
+        for (const studentId of targetStudentIds) next.delete(studentId);
+        return next;
+      });
+      return;
+    }
     startTransition(async () => {
       const result = await markSessionLearningChecksAction({
         sessionId,
@@ -204,6 +189,11 @@ export function SessionLearningCheckPanel({
       seatOrderSavingRef.current
       || next.every((student, index) => student?.id === previousSaved[index]?.id)
     ) return;
+    if (ephemeral) {
+      savedSeatSlotsRef.current = next;
+      onSeatOrderChange?.(learningSeatAssignments(next));
+      return;
+    }
     seatOrderSavingRef.current = true;
     setSeatOrderSaving(true);
     try {
@@ -217,6 +207,7 @@ export function SessionLearningCheckPanel({
         return;
       }
       savedSeatSlotsRef.current = next;
+      onSeatOrderChange?.(learningSeatAssignments(next));
       toast.success(t("learningSeatOrderSaved"));
     } catch {
       updateSeatSlots(previousSaved);
@@ -293,9 +284,18 @@ export function SessionLearningCheckPanel({
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <button type="button" className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-ink px-3 text-xs text-paper">
-          <ClipboardCheck size={14} />
-          {t("learningPanelOpen")}
+        <button
+          type="button"
+          title={t("learningPanelOpen")}
+          className={cn(
+            triggerVariant === "rail"
+              ? "grid size-11 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-moon/30 hover:text-ink"
+              : "inline-flex min-h-11 items-center gap-1.5 rounded-full bg-ink px-3 text-xs text-paper",
+          )}
+          data-classroom-rail-button={triggerVariant === "rail" ? "learning" : undefined}
+        >
+          <ClipboardCheck size={triggerVariant === "rail" ? 18 : 14} />
+          <span className={triggerVariant === "rail" ? "sr-only" : undefined}>{t("learningPanelOpen")}</span>
         </button>
       </DialogTrigger>
       {/*
@@ -309,6 +309,11 @@ export function SessionLearningCheckPanel({
             <DialogTitle className="flex shrink-0 items-center gap-1.5 text-sm">
               <ClipboardCheck size={16} />{t("learningPanelTitle")}
             </DialogTitle>
+            {ephemeral && (
+              <span className="shrink-0 rounded-full bg-moon/50 px-2 py-0.5 text-[10px] text-ink" data-learning-persistence="ephemeral">
+                {t("learningRehearsalLocal")}
+              </span>
+            )}
             <div className="flex min-w-0 flex-1 items-center gap-2 border-l border-line pl-2">
               <span className="min-w-0 truncate text-xs font-medium text-ink">{activeCheck?.title}</span>
               <span className="shrink-0 text-[11px] tabular-nums text-muted">{t("learningCheckedCount", { checked: checkedCount, total: orderedStudents.length })}</span>
@@ -382,7 +387,7 @@ export function SessionLearningCheckPanel({
                   onClick={() => mark([...selectedStudentIds], status)}
                   className={cn(
                     "min-h-10 rounded-lg border px-2.5 text-xs font-medium transition-transform active:scale-95 disabled:opacity-40",
-                    STATUS_STYLE[status].active,
+                    LEARNING_CHECK_STATUS_STYLE[status].active,
                   )}
                 >
                   {t("learningStatus_" + status)}
@@ -427,7 +432,7 @@ export function SessionLearningCheckPanel({
                 : "unchecked";
               const selected = selectedStudentIds.has(student.id);
               const saving = savingStudentIds.has(student.id);
-              const statusStyle = STATUS_STYLE[status];
+              const statusStyle = LEARNING_CHECK_STATUS_STYLE[status];
               return (
                 <article
                   key={student.id}
@@ -496,13 +501,13 @@ export function SessionLearningCheckPanel({
                           className={cn(
                             "flex min-h-11 items-center justify-center gap-1 rounded-lg border px-1 text-[11px] font-medium leading-tight outline-none transition-[color,background-color,border-color,box-shadow,transform] focus-visible:ring-2 focus-visible:ring-crater focus-visible:ring-offset-1 focus-visible:ring-offset-card active:scale-95 disabled:opacity-55",
                             status === candidate
-                              ? STATUS_STYLE[candidate].active
-                              : cn("border-transparent bg-paper/55 text-muted", STATUS_STYLE[candidate].idle),
+                              ? LEARNING_CHECK_STATUS_STYLE[candidate].active
+                              : cn("border-transparent bg-paper/55 text-muted", LEARNING_CHECK_STATUS_STYLE[candidate].idle),
                           )}
                         >
                           <span className={cn(
                             "size-1.5 shrink-0 rounded-full",
-                            status === candidate ? "bg-current opacity-75" : STATUS_STYLE[candidate].dot,
+                            status === candidate ? "bg-current opacity-75" : LEARNING_CHECK_STATUS_STYLE[candidate].dot,
                           )} />
                           {t("learningStatusShort_" + candidate)}
                         </button>

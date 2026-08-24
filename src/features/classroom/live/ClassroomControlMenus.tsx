@@ -13,11 +13,13 @@ export function ClassroomPageControls({
   pages,
   currentPage,
   largeTargets = false,
+  rail = false,
   onGoto,
 }: {
   pages: readonly CoursewarePage[];
   currentPage: number;
   largeTargets?: boolean;
+  rail?: boolean;
   onGoto: (page: number) => void;
 }) {
   const t = useTranslations("classroom.live");
@@ -25,15 +27,28 @@ export function ClassroomPageControls({
   const roundClass = largeTargets ? "size-11" : "size-10";
 
   return (
-    <div className="flex min-w-0 items-center justify-end gap-1.5">
+    <div
+      className={cn(
+        "flex min-w-0 items-center justify-end",
+        rail ? "gap-0.5 rounded-xl bg-card/70 p-0.5" : "gap-1.5",
+      )}
+      data-classroom-rail-group={rail ? "pages" : undefined}
+    >
       <Popover>
         <PopoverTrigger asChild>
           <button
             type="button"
-            className={cn("inline-flex items-center gap-1.5 rounded-full border border-line px-3 text-xs text-muted transition-colors hover:bg-moon/30 hover:text-ink", targetClass)}
+            className={cn(
+              rail
+                ? "grid size-11 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-moon/30 hover:text-ink"
+                : "inline-flex items-center gap-1.5 rounded-full border border-line px-3 text-xs text-muted transition-colors hover:bg-moon/30 hover:text-ink",
+              !rail && targetClass,
+            )}
+            title={t("pageList")}
+            data-classroom-rail-button={rail ? "page-list" : undefined}
           >
-            <PanelsTopLeft size={14} />
-            {t("pageList")}
+            <PanelsTopLeft size={rail ? 18 : 14} />
+            <span className={rail ? "sr-only" : undefined}>{t("pageList")}</span>
           </button>
         </PopoverTrigger>
         <PopoverContent side="top" align="end" className="w-72 p-2">
@@ -64,7 +79,13 @@ export function ClassroomPageControls({
         aria-label={t("prevPage")}
         disabled={currentPage <= 0}
         onClick={() => onGoto(currentPage - 1)}
-        className={cn("grid shrink-0 place-items-center rounded-full border border-line text-ink transition-colors hover:bg-moon/30 disabled:opacity-30", roundClass)}
+        className={cn(
+          "grid shrink-0 place-items-center rounded-full text-ink transition-colors hover:bg-moon/30 disabled:opacity-30",
+          !rail && "border border-line",
+          roundClass,
+        )}
+        title={t("prevPage")}
+        data-classroom-rail-button={rail ? "previous-page" : undefined}
       >
         <ChevronLeft size={18} />
       </button>
@@ -73,7 +94,13 @@ export function ClassroomPageControls({
         aria-label={t("nextPage")}
         disabled={currentPage >= pages.length - 1}
         onClick={() => onGoto(currentPage + 1)}
-        className={cn("grid shrink-0 place-items-center rounded-full border border-line text-ink transition-colors hover:bg-moon/30 disabled:opacity-30", roundClass)}
+        className={cn(
+          "grid shrink-0 place-items-center rounded-full text-ink transition-colors hover:bg-moon/30 disabled:opacity-30",
+          !rail && "border border-line",
+          roundClass,
+        )}
+        title={t("nextPage")}
+        data-classroom-rail-button={rail ? "next-page" : undefined}
       >
         <ChevronRight size={18} />
       </button>
@@ -85,6 +112,7 @@ export function ClassroomToolsMenu({
   open,
   quizOpen,
   largeTarget = false,
+  rail = false,
   align = "end",
   onOpenChange,
   onInsertBoard,
@@ -94,6 +122,7 @@ export function ClassroomToolsMenu({
   open: boolean;
   quizOpen: boolean;
   largeTarget?: boolean;
+  rail?: boolean;
   align?: "start" | "end";
   onOpenChange: (open: boolean) => void;
   onInsertBoard: () => void;
@@ -108,12 +137,16 @@ export function ClassroomToolsMenu({
         <button
           type="button"
           className={cn(
-            "inline-flex shrink-0 items-center gap-1.5 rounded-full border border-line px-3 text-xs text-muted transition-colors hover:bg-moon/30 hover:text-ink",
-            largeTarget ? "min-h-11" : "min-h-10",
+            rail
+              ? "grid size-11 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-moon/30 hover:text-ink"
+              : "inline-flex shrink-0 items-center gap-1.5 rounded-full border border-line px-3 text-xs text-muted transition-colors hover:bg-moon/30 hover:text-ink",
+            !rail && (largeTarget ? "min-h-11" : "min-h-10"),
           )}
+          title={t("moreClassroomTools")}
+          data-classroom-rail-button={rail ? "more" : undefined}
         >
-          <MoreHorizontal size={14} />
-          {t("moreClassroomTools")}
+          <MoreHorizontal size={rail ? 18 : 14} />
+          <span className={rail ? "sr-only" : undefined}>{t("moreClassroomTools")}</span>
         </button>
       </PopoverTrigger>
       <PopoverContent side="top" align={align} className="w-64 p-2">

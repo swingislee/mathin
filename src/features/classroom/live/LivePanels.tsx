@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { GameBoard } from "@/features/games/boards";
 import { games } from "@/features/games/registry";
 import type { GameMirrorState } from "@/features/games/types";
+import type { LearningCheckStatus } from "@/features/school/session-learning-contract";
+import { LEARNING_CHECK_STATUS_STYLE } from "@/features/school/session-learning-visual";
 import { ToolView } from "@/features/tools/components";
 import { getTool, tools } from "@/features/tools/registry";
 import {
@@ -251,7 +253,7 @@ export function StudentStarDisplay({ count, label, compact = false }: {
   );
 }
 
-/** 学生卡（08-§3.5 加星面板）：点卡 +1 星、长按撤销最新一颗；触控目标 ≥44px。 */
+/** 学生简卡：点卡加星、长按撤销；紧凑态同时投影当前逐题学情，触控目标 ≥44px。 */
 export function StudentCard({
   name,
   count,
@@ -263,6 +265,8 @@ export function StudentCard({
   starTotalLabel,
   awardStarLabel,
   undoStarLabel,
+  learningStatus,
+  learningStatusLabel,
   compact = false,
   onStar,
   onUndo,
@@ -277,6 +281,8 @@ export function StudentCard({
   starTotalLabel?: string;
   awardStarLabel?: string;
   undoStarLabel?: string;
+  learningStatus?: LearningCheckStatus | null;
+  learningStatusLabel?: string;
   compact?: boolean;
   onStar: () => void;
   onUndo: () => void;
@@ -305,7 +311,19 @@ export function StudentCard({
           <span className="shrink-0 rounded-full bg-line/50 px-1 font-mono text-[9px] leading-4">{answerLabel}</span>
         )}
       </span>
-      <StudentStarDisplay count={count} label={totalLabel} compact />
+      <span className="flex min-w-0 max-w-full items-center gap-1">
+        {learningStatus && learningStatusLabel ? (
+          <span
+            className="inline-flex min-w-0 shrink items-center gap-0.5 rounded-full bg-paper/75 px-1 text-[8px] leading-3 text-muted"
+            title={learningStatusLabel}
+            aria-label={learningStatusLabel}
+          >
+            <span aria-hidden className={cn("size-1.5 shrink-0 rounded-full", LEARNING_CHECK_STATUS_STYLE[learningStatus].dot)} />
+            <span className="truncate">{learningStatusLabel}</span>
+          </span>
+        ) : null}
+        <StudentStarDisplay count={count} label={totalLabel} compact />
+      </span>
     </>
   ) : (
     <>
@@ -326,17 +344,20 @@ export function StudentCard({
 
   if (!interactive) {
     return (
-      <li className={cn(
-        "rounded-xl border border-line",
-        compact ? "flex min-h-11 min-w-0 flex-col justify-center gap-0.5 overflow-hidden px-1.5 py-1" : "flex min-h-11 items-center gap-2 px-3",
-      )}>
+      <li
+        data-learning-status={learningStatus ?? undefined}
+        className={cn(
+          "relative rounded-xl border border-line",
+          compact ? "flex min-h-11 min-w-0 flex-col justify-center gap-0.5 overflow-hidden px-1.5 py-1" : "flex min-h-11 items-center gap-2 px-3",
+        )}
+      >
         {content}
       </li>
     );
   }
 
   return (
-    <li className={cn(compact && "relative min-h-11 min-w-0")}>
+    <li data-learning-status={learningStatus ?? undefined} className={cn(compact && "relative min-h-11 min-w-0")}>
       <button
         type="button"
         title={undoHint}

@@ -18,19 +18,27 @@ export function ClassroomInputModeControl({
   onChange,
   className,
   compact = false,
+  rail = false,
 }: {
   value: ClassroomRoutingMode;
   protectedRenderer: boolean;
   onChange: (mode: ClassroomRoutingMode) => void;
   className?: string;
   compact?: boolean;
+  rail?: boolean;
 }) {
   const t = useTranslations("classroom.live");
   return (
     <div
       aria-label={t("inputModeGroup")}
-      className={cn("flex flex-wrap items-center gap-1 rounded-xl border border-line bg-paper/95 p-1 shadow-sm backdrop-blur", className)}
+      className={cn(
+        rail
+          ? "flex shrink-0 items-center gap-0.5 rounded-xl bg-card/70 p-0.5"
+          : "flex flex-wrap items-center gap-1 rounded-xl border border-line bg-paper/95 p-1 shadow-sm backdrop-blur",
+        className,
+      )}
       data-classroom-input-mode={value}
+      data-classroom-rail-group={rail ? "input" : undefined}
       role="group"
     >
       {MODES.map(({ mode, icon: Icon, label, hint }) => (
@@ -38,9 +46,14 @@ export function ClassroomInputModeControl({
           key={mode}
           type="button"
           size="sm"
-          variant={value === mode ? "primary" : "ghost"}
+          variant={rail ? "ghost" : value === mode ? "primary" : "ghost"}
           aria-pressed={value === mode}
-          className="min-h-11 gap-1.5 px-2.5"
+          className={cn(
+            rail
+              ? "size-11 gap-0 rounded-full p-0 hover:bg-moon/30"
+              : "min-h-11 gap-1.5 px-2.5",
+            rail && value === mode && "bg-moon/60 text-ink hover:bg-moon/60",
+          )}
           data-input-mode-option={mode}
           title={t(hint)}
           onClick={() => onChange(mode)}

@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+import type { LearningCheckStatus } from "@/features/school/session-learning-contract";
 import type { SessionRosterEntry } from "../types";
 import { StudentCard } from "./LivePanels";
 
@@ -8,6 +10,7 @@ export interface ClassroomRosterStudent extends SessionRosterEntry {
   hand: boolean;
   online: boolean;
   answerLabel: string | null;
+  learningStatus: LearningCheckStatus | null;
   interactive: boolean;
 }
 
@@ -64,6 +67,7 @@ export function ClassroomRosterGrid({
   onStar: (student: ClassroomRosterStudent) => void;
   onUndo: (student: ClassroomRosterStudent) => void;
 }) {
+  const t = useTranslations("school.session");
   const slots = buildClassroomRosterSlots(students);
   const byId = new Map(students.map((student) => [student.studentId, student]));
 
@@ -98,6 +102,8 @@ export function ClassroomRosterGrid({
               hand={student.hand}
               online={student.online}
               answerLabel={student.answerLabel}
+              learningStatus={student.learningStatus}
+              learningStatusLabel={student.learningStatus ? t("learningStatusShort_" + student.learningStatus) : undefined}
               interactive={student.interactive}
               undoHint={undoHint}
               starTotalLabel={starTotalLabel(student.name, student.count)}
