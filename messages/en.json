@@ -1324,6 +1324,7 @@
       "flag_public_content_publish": "Public content publishing",
       "flag_teaching_preparation_archive_edit": "Amend session courseware and archive",
       "flag_teaching_classroom_board_checkpoint_v2": "Classroom board checkpoint v2",
+      "flag_teaching_classroom_input_v2": "Classroom smart input routing v2",
       "flagHelp_finance_enabled": "Controls orders, payments, refunds, accounts, reports, and finance work items.",
       "financeReleaseClosed": "Finance release gate locked for 1.0",
       "financeReleaseClosedHelp": "R1-8 uses the safe-close path. Routes, navigation, data, work items, notifications, metrics, and background jobs stay unavailable; a later reviewed migration must open the release gate after the full accounting gates pass.",
@@ -1332,7 +1333,8 @@
       "flagHelp_notifications_wechat": "Allows notification jobs to choose WeChat; the provider is configured in R1-2.",
       "flagHelp_public_content_publish": "Allows public content to enter the production publish action; drafts and previews remain available.",
       "flagHelp_teaching_preparation_archive_edit": "Lets assigned teachers amend the current session after freeze, start, or end: reorder or add/remove boards, videos, and images; update learning checks, board solutions, lesson plans, and rehearsal links. The formal release and reviewer stay unchanged.",
-      "flagHelp_teaching_classroom_board_checkpoint_v2": "Saves main and side boards as a versioned latest checkpoint with 192 KiB chunks. Turning it off keeps v2 reads while new writes fall back to legacy snapshots."
+      "flagHelp_teaching_classroom_board_checkpoint_v2": "Saves main and side boards as a versioned latest checkpoint with 192 KiB chunks. Turning it off keeps v2 reads while new writes fall back to legacy snapshots.",
+      "flagHelp_teaching_classroom_input_v2": "Enables Smart, interaction-lock, and ink-lock routing on audited native courseware; unknown renderers stay interaction-protected."
     },
     "registration": {
       "title": "Registration invites",

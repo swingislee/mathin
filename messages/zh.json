@@ -1324,6 +1324,7 @@
       "flag_public_content_publish": "公开内容发布",
       "flag_teaching_preparation_archive_edit": "课中/课后补改本课课件与档案",
       "flag_teaching_classroom_board_checkpoint_v2": "课堂板书分块恢复 v2",
+      "flag_teaching_classroom_input_v2": "课堂智能输入路由 v2",
       "flagHelp_finance_enabled": "控制订单、收款、退款、账户、报表和财务工作项。",
       "financeReleaseClosed": "1.0 财务发布门已锁定关闭",
       "financeReleaseClosedHelp": "R1-8 采用安全关闭方案。路由、导航、数据、任务、通知、指标和后台任务均不可启用；未来完成完整账务验收后，需通过新迁移显式打开发布门。",
@@ -1332,7 +1333,8 @@
       "flagHelp_notifications_wechat": "允许通知任务选择微信渠道；供应商仍需在 R1-2 配置。",
       "flagHelp_public_content_publish": "允许公共内容进入正式发布动作；草稿与预览不受影响。",
       "flagHelp_teaching_preparation_archive_edit": "允许任课教师在冻结、开课或结课后补改当前课次：重排或增删白板、视频、图片，补勾逐生检查页，修订板书解析和教案，并更新磨课链接。正式 release 与审校人保持不变。",
-      "flagHelp_teaching_classroom_board_checkpoint_v2": "将主、副板书保存为版本化 latest checkpoint，并使用 192 KiB 分块；关闭后继续读取 v2，但新写入回退到旧快照。"
+      "flagHelp_teaching_classroom_board_checkpoint_v2": "将主、副板书保存为版本化 latest checkpoint，并使用 192 KiB 分块；关闭后继续读取 v2，但新写入回退到旧快照。",
+      "flagHelp_teaching_classroom_input_v2": "在已审计原生课件上启用 Smart、交互锁和书写锁；未知 renderer 保持交互保护。"
     },
     "registration": {
       "title": "注册邀请码",
