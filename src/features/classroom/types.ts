@@ -23,6 +23,20 @@ export interface SessionRosterEntry {
   userId: string | null;
 }
 
+/** Frozen roster pointer plus the current enrollment/seat source comparison. */
+export interface SessionRosterState {
+  sessionId: string;
+  revision: number | null;
+  frozen: boolean;
+  sourceHash: string | null;
+  currentSourceHash: string;
+  hasDifference: boolean;
+  frozenAt: string | null;
+  revisionCreatedAt: string | null;
+  starEventSchema: 1 | 2;
+  entries: SessionRosterEntry[];
+}
+
 export interface ClassroomRecord extends ClassroomMeta {
   members: ClassroomMember[];
   /** 仅教师可见（经 RPC），其余为 null。 */

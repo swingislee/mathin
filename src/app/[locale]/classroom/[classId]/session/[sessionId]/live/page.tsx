@@ -3,6 +3,7 @@ import { setRequestLocale } from "next-intl/server";
 import { getClassroom, getClassSession, listSessionBoardCheckpoints, listSessionEvents } from "@/features/classroom/actions";
 import type { CoursewarePage } from "@/features/classroom/types";
 import { LiveShell } from "@/features/classroom/live/LiveShell";
+import { getSessionRoster } from "@/features/classroom/roster-server";
 import { getSessionCoursewareTemplate } from "@/features/school/courses";
 import { getAttendanceDrawerData } from "@/features/school/actions/attendance";
 import { getSessionLearningSetup } from "@/features/school/session-learning";
@@ -25,14 +26,26 @@ export default async function LiveClassPage({
   if (!UUID_PATTERN.test(classId) || !UUID_PATTERN.test(sessionId)) notFound();
 
   // 全量类型：P4-5 起晚加入者要还原板书快照/游戏镜像/视频进度/临时插页等一切基线
-  const [classroom, session, events, boardCheckpoints, checkpointWriterEnabled, inputV2Enabled, h5PointerEnabled] = await Promise.all([
+  const [
+    classroom,
+    session,
+    events,
+    boardCheckpoints,
+    rosterState,
+    checkpointWriterEnabled,
+    inputV2Enabled,
+    h5PointerEnabled,
+    layoutV2Enabled,
+  ] = await Promise.all([
     getClassroom(classId, sessionId),
     getClassSession(sessionId),
     listSessionEvents(sessionId),
     listSessionBoardCheckpoints(sessionId),
+    getSessionRoster(sessionId),
     isFeatureEnabled("teaching.classroom_board_checkpoint_v2"),
     isFeatureEnabled("teaching.classroom_input_v2"),
     isFeatureEnabled("teaching.classroom_h5_pointer_v1"),
+    isFeatureEnabled("teaching.classroom_layout_v2"),
   ]);
   if (!classroom || !session || session.classroomId !== classId) notFound();
 
@@ -73,9 +86,11 @@ export default async function LiveClassPage({
       userId={user.id}
       initialEvents={events}
       initialCheckpoints={boardCheckpoints}
+      initialRoster={rosterState}
       checkpointV2Writer={checkpointWriterEnabled || (process.env.NODE_ENV !== "production" && rehearsal)}
       inputV2Enabled={inputV2Enabled || (process.env.NODE_ENV !== "production" && rehearsal)}
       h5PointerEnabled={h5PointerEnabled || (process.env.NODE_ENV !== "production" && rehearsal)}
+      layoutV2Enabled={layoutV2Enabled || (process.env.NODE_ENV !== "production" && rehearsal)}
       role={role}
       rehearsal={rehearsal}
       offlineDrill={offlineDrill}

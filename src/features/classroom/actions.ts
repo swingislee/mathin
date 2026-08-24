@@ -4,12 +4,15 @@ import { z } from "zod";
 import { materializeSessionResolved, type CoursewareTrack } from "@/features/courseware-studio/data";
 import { resolveCourseware, type OverlaySlot } from "@/features/school/courseware-overlay";
 import { getSessionCoursewareTemplate } from "@/features/school/courses";
+import { isFeatureEnabled } from "@/features/school/organization-settings";
 import type { Json } from "@/lib/database.types";
 import { createClient } from "@/lib/supabase/server";
 import { collectPostgrestRowsInBatches } from "@/lib/supabase/postgrest-batches";
 import { parseSessionBoardCheckpoints } from "./checkpoint/parse";
 import type { SessionBoardCheckpoint } from "./checkpoint/types";
 import { buildSessionReport } from "./report";
+import { parseSessionRosterState } from "./roster";
+import { getSessionRoster } from "./roster-server";
 import type {
   AssignmentContent,
   AssignmentMeta,
@@ -25,7 +28,7 @@ import type {
   SessionEventType,
   SessionReport,
   SessionLearningReportStatus,
-  SessionRosterEntry,
+  SessionRosterState,
   SubmissionRecord,
 } from "./types";
 
@@ -250,6 +253,26 @@ export async function getClassSession(sessionId: string): Promise<ClassSessionRe
   };
 }
 
+const rosterRefreshSchema = z.object({
+  sessionId: z.string().uuid(),
+  expectedSourceHash: z.string().regex(/^[0-9a-f]{64}$/),
+});
+
+/** The enrollment/seat source changes only after this explicit teacher action. */
+export async function refreshSessionRoster(
+  sessionId: string,
+  expectedSourceHash: string,
+): Promise<SessionRosterState> {
+  const value = rosterRefreshSchema.parse({ sessionId, expectedSourceHash });
+  const { supabase } = await authenticatedClient();
+  const { data, error } = await supabase.rpc("refresh_session_roster", {
+    p_session_id: value.sessionId,
+    p_expected_source_hash: value.expectedSourceHash,
+  });
+  if (error) throw new Error(error.message);
+  return parseSessionRosterState(data);
+}
+
 export async function renameClassSession(sessionId: string, title: string): Promise<void> {
   const { supabase } = await authenticatedClient();
   const { error } = await supabase
@@ -277,7 +300,7 @@ export async function saveCourseware(sessionId: string, pages: CoursewarePage[])
  * 与 started_at 一起原子写入（同一条 UPDATE ... WHERE started_at is null，
  * 天然充当行锁：并发开课只有一次真正生效，见 10-§5.4）。
  */
-export async function startClassSession(sessionId: string): Promise<void> {
+export async function startClassSession(sessionId: string): Promise<SessionRosterState | null> {
   const { supabase } = await authenticatedClient();
   const { data: session, error: fetchError } = await supabase
     .from("class_sessions")
@@ -291,7 +314,16 @@ export async function startClassSession(sessionId: string): Promise<void> {
       started_at: string | null;
     }>();
   if (fetchError) throw new Error(fetchError.message);
-  if (!session || session.started_at) return;
+  if (!session) return null;
+  if (session.started_at) return getSessionRoster(sessionId);
+
+  const rosterSchema = await isFeatureEnabled("teaching.classroom_layout_v2") ? 2 : 1;
+  const { data: rosterData, error: rosterError } = await supabase.rpc("freeze_session_roster", {
+    p_session_id: sessionId,
+    p_star_event_schema: rosterSchema,
+  });
+  if (rosterError) throw new Error(rosterError.message);
+  const rosterState = parseSessionRosterState(rosterData);
 
   if (!session.courseware_frozen_at) {
     const { data: resolvedRelease, error: resolvedReleaseError } = await supabase.rpc("resolve_session_courseware_release", {
@@ -313,7 +345,7 @@ export async function startClassSession(sessionId: string): Promise<void> {
         : { version: "cw-session-resolved-v1", track: selected.track, releaseId: null, bindings: [] },
     });
     if (error) throw new Error(error.message);
-    return;
+    return rosterState;
   }
 
   const { error } = await supabase
@@ -322,6 +354,7 @@ export async function startClassSession(sessionId: string): Promise<void> {
     .eq("id", sessionId)
     .is("started_at", null);
   if (error) throw new Error(error.message);
+  return rosterState;
 }
 
 export async function endClassSession(sessionId: string): Promise<void> {
@@ -346,6 +379,11 @@ export async function setSessionPage(sessionId: string, page: number): Promise<v
 /** 重新开课：清掉 ended_at 即可回到上课态；事件流里由新的 session_ctl start 收敛各端。 */
 export async function reopenClassSession(sessionId: string): Promise<void> {
   const { supabase } = await authenticatedClient();
+  const { error: rosterError } = await supabase.rpc("freeze_session_roster", {
+    p_session_id: sessionId,
+    p_star_event_schema: 1,
+  });
+  if (rosterError) throw new Error(rosterError.message);
   const { error } = await supabase
     .from("class_sessions")
     .update({ ended_at: null })
@@ -458,20 +496,12 @@ export async function getSessionReport(sessionId: string): Promise<SessionReport
   if (myMembership?.role !== "teacher") throw new Error("FORBIDDEN");
 
   const [
-    { data: enrollmentRows, error: enrollmentError },
+    rosterState,
     events,
     { data: attendanceRows, error: attendanceError },
     { data: checkRows, error: checkError },
   ] = await Promise.all([
-    supabase
-      .from("enrollments")
-      .select("student_id,students(name,user_id)")
-      .eq("classroom_id", session.classroom_id)
-      .eq("status", "active")
-      .returns<Array<{
-        student_id: string;
-        students: { name: string; user_id: string | null } | null;
-      }>>(),
+    getSessionRoster(sessionId),
     listSessionEvents(sessionId, ["star", "star_undo", "hand", "answer", "session_ctl"]),
     supabase
       .from("session_attendance")
@@ -488,22 +518,10 @@ export async function getSessionReport(sessionId: string): Promise<SessionReport
       .order("position", { ascending: true })
       .returns<Array<{ id: string; title: string; position: number }>>(),
   ]);
-  if (enrollmentError) throw new Error(enrollmentError.message);
   if (attendanceError) throw new Error(attendanceError.message);
   if (checkError) throw new Error(checkError.message);
 
-  const participants = (enrollmentRows ?? []).map((row) => ({
-    studentId: row.student_id,
-    userId: row.students?.user_id ?? null,
-    displayName: row.students?.name ?? "",
-  }));
-  const roster: SessionRosterEntry[] = participants.map((student) => ({
-    studentId: student.studentId,
-    userId: student.userId,
-    name: student.displayName,
-    seatPosition: null,
-  }));
-  const report = buildSessionReport(roster, events);
+  const report = buildSessionReport(rosterState.entries, events);
   const attendanceByStudent = new Map((attendanceRows ?? []).map((row) => [row.student_id, row.status]));
   report.rows = report.rows.map((row) => {
     return {
@@ -540,7 +558,7 @@ export async function getSessionReport(sessionId: string): Promise<SessionReport
       incomplete: 0,
       unchecked: 0,
     };
-    const results = participants.map((student) => {
+    const results = rosterState.entries.map((student) => {
       const status = resultByKey.get(check.id + ":" + student.studentId) ?? "unchecked";
       counts[status] += 1;
       return { studentId: student.studentId, status };

@@ -51,7 +51,15 @@ import { Link, useRouter } from "@/i18n/navigation";
 import { createIsolatedRealtimeClient } from "@/lib/supabase/client";
 import { newId } from "@/lib/uuid";
 import { cn } from "@/lib/utils";
-import { endClassSession, getClassSession, reopenClassSession, saveCourseware, setSessionPage, startClassSession } from "../actions";
+import {
+  endClassSession,
+  getClassSession,
+  refreshSessionRoster,
+  reopenClassSession,
+  saveCourseware,
+  setSessionPage,
+  startClassSession,
+} from "../actions";
 import {
   buildDocBindingUrls,
   collectH5PackageHashes,
@@ -69,7 +77,12 @@ import { DocCoursewarePage } from "./DocCoursewarePage";
 import { SessionEventLog } from "../sync/eventlog";
 import { flushOutbox, pendingCount } from "../sync/flush";
 import { STORE_ASSETS, idbGet, idbPut } from "../sync/idb";
-import { emptyStarLedger, starCountForRosterEntry } from "../stars";
+import {
+  emptyStarLedger,
+  latestActiveAwardId,
+  reduceStarLedger,
+  starCountForRosterEntry,
+} from "../stars";
 import {
   createLocalTransport,
   createP2PSignalBus,
@@ -78,7 +91,14 @@ import {
   type P2PHealth,
   type PresencePeer,
 } from "../sync/transports";
-import type { ClassroomMember, ClassSessionRecord, CoursewarePage, SessionEvent } from "../types";
+import type {
+  ClassroomMember,
+  ClassSessionRecord,
+  CoursewarePage,
+  SessionEvent,
+  SessionRosterEntry,
+  SessionRosterState,
+} from "../types";
 import { countCoursewareH5Frames, resolveClassroomRendererInputProfile } from "../input/capabilities";
 import { classroomInputProviderAttributes } from "../input/provider";
 import { useClassroomPointerRouter } from "../input/useClassroomPointerRouter";
@@ -108,12 +128,15 @@ interface Props {
   userId: string;
   initialEvents: SessionEvent[];
   initialCheckpoints: SessionBoardCheckpoint[];
+  initialRoster: SessionRosterState;
   /** Writer gate only. The v2 reader remains active during rollback. */
   checkpointV2Writer: boolean;
   /** Independent M3 input gate. Production stays fail-closed until explicitly enabled. */
   inputV2Enabled: boolean;
   /** Independent M3b H5 bridge gate. Production stays fail-closed until explicitly enabled. */
   h5PointerEnabled: boolean;
+  /** M4 roster/star writer and control-layout gate. Readers remain dual-version. */
+  layoutV2Enabled: boolean;
   role: Role;
   /** 试讲：教师本地预演/复盘——事件不落库不同步，随时可进（包括已下课的课次）。 */
   rehearsal?: boolean;
@@ -133,9 +156,11 @@ export function LiveShell({
   userId,
   initialEvents,
   initialCheckpoints,
+  initialRoster,
   checkpointV2Writer,
   inputV2Enabled,
   h5PointerEnabled,
+  layoutV2Enabled,
   role,
   rehearsal = false,
   offlineDrill = false,
@@ -146,7 +171,9 @@ export function LiveShell({
   const router = useRouter();
   const t = useTranslations("classroom.live");
   const tPrep = useTranslations("classroom.prep");
-  const students = useMemo(() => members.filter((member) => member.role === "student"), [members]);
+  const [rosterState, setRosterState] = useState(initialRoster);
+  const students = rosterState.entries;
+  const starEventSchema = rehearsal && layoutV2Enabled ? 2 : rosterState.starEventSchema;
   const selfName = useMemo(
     () => members.find((member) => member.userId === userId)?.displayName ?? "",
     [members, userId],
@@ -182,6 +209,8 @@ export function LiveShell({
   }, [session, initialEvents, initialCheckpoints, checkpointByBoard]);
 
   const [state, setState] = useState(initialState);
+  const starLedgerRef = useRef(initialState.starLedger);
+  const starQueueRef = useRef<Promise<void>>(Promise.resolve());
   const activePage = state.pages[state.currentPage];
   const activePageDocId = activePage?.type === "doc" ? activePage.docId : null;
   // 从 state.pages（而非 props）取媒体页：学生开课后补取的冻结页也要进预载
@@ -220,6 +249,9 @@ export function LiveShell({
   const [sideFollow, setSideFollow] = useState(myRole === "student");
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState(false);
+  const [rosterRefreshing, setRosterRefreshing] = useState(false);
+  const [rosterRefreshError, setRosterRefreshError] = useState(false);
+  const [starWriteError, setStarWriteError] = useState(false);
   const [attendanceSaved, setAttendanceSaved] = useState(initialAttendanceComplete);
   const logRef = useRef<SessionEventLog | null>(null);
   const preloadTick = useRef(0);
@@ -257,14 +289,20 @@ export function LiveShell({
       // 试讲：事件只在本窗口内存生效，不挂 T0/T1/T2、不回传——预演/复盘零副作用
       if (rehearsal) {
         logRef.current = eventLog;
-        eventLog.subscribe((ev) => setState((prev) => reduceEvent(prev, ev)));
+        eventLog.subscribe((ev) => {
+          starLedgerRef.current = reduceStarLedger(starLedgerRef.current, ev);
+          setState((prev) => reduceEvent(prev, ev));
+        });
         setLog(eventLog);
         return;
       }
       eventLog.markSeen(initialEvents.map((ev) => ev.id));
       const p2pSignals = createP2PSignalBus();
       logRef.current = eventLog;
-      eventLog.subscribe((ev) => setState((prev) => reduceEvent(prev, ev)));
+      eventLog.subscribe((ev) => {
+        starLedgerRef.current = reduceStarLedger(starLedgerRef.current, ev);
+        setState((prev) => reduceEvent(prev, ev));
+      });
       eventLog.attach(createLocalTransport(session.id, eventLog.ingest, eventLog.ingestFx));
       eventLog.attach(createP2PTransport(
         p2pSignals,
@@ -544,6 +582,43 @@ export function LiveShell({
     });
   }, [session.id, rehearsal]);
 
+  /** Serialize award/revoke decisions so every undo names the latest still-active award. */
+  const appendStar = useCallback((student: SessionRosterEntry, action: "award" | "undo") => {
+    const run = async () => {
+      const eventLog = logRef.current;
+      if (!eventLog) return;
+
+      let payload: Record<string, unknown>;
+      if (starEventSchema === 2) {
+        const awardId = action === "award"
+          ? newId()
+          : latestActiveAwardId(starLedgerRef.current, student.studentId);
+        if (!awardId) return;
+        payload = { schemaVersion: 2, studentId: student.studentId, awardId };
+      } else {
+        if (!student.userId) return;
+        if (
+          action === "undo"
+          && starCountForRosterEntry(starLedgerRef.current, student) === 0
+        ) return;
+        payload = { studentId: student.userId };
+      }
+
+      setStarWriteError(false);
+      await eventLog.append(action === "award" ? "star" : "star_undo", payload);
+      if (!rehearsal) {
+        const count = await pendingCount(session.id);
+        setPending(count);
+      }
+    };
+
+    starQueueRef.current = starQueueRef.current
+      .then(run, run)
+      .catch(() => {
+        setStarWriteError(true);
+      });
+  }, [rehearsal, session.id, starEventSchema]);
+
   const gotoPage = useCallback((page: number, total: number) => {
     const clamped = Math.max(0, Math.min(total - 1, page));
     append("page", { page: clamped });
@@ -582,7 +657,8 @@ export function LiveShell({
     setStarting(true);
     setStartError(false);
     try {
-      await startClassSession(session.id);
+      const frozenRoster = await startClassSession(session.id);
+      if (frozenRoster) setRosterState(frozenRoster);
     } catch {
       setStarting(false);
       setStartError(true);
@@ -653,6 +729,21 @@ export function LiveShell({
     append("session_ctl", { action: "start" });
     void reopenClassSession(session.id).catch(() => undefined);
   }, [append, session.id]);
+
+  const confirmRosterRefresh = useCallback(async () => {
+    if (!rosterState.hasDifference || rosterRefreshing) return;
+    setRosterRefreshing(true);
+    setRosterRefreshError(false);
+    try {
+      const refreshed = await refreshSessionRoster(session.id, rosterState.currentSourceHash);
+      setRosterState(refreshed);
+      router.refresh();
+    } catch {
+      setRosterRefreshError(true);
+    } finally {
+      setRosterRefreshing(false);
+    }
+  }, [rosterRefreshing, rosterState.currentSourceHash, rosterState.hasDifference, router, session.id]);
 
   // --- 派生 ----------------------------------------------------------------
   const page = state.pages[state.currentPage] as CoursewarePage | undefined;
@@ -811,6 +902,36 @@ export function LiveShell({
     </div>
   );
 
+  const rosterDifferenceNotice = isController && rosterState.hasDifference ? (
+    <section
+      className="mt-2 flex shrink-0 flex-wrap items-center gap-3 rounded-xl border border-crater/35 bg-crater/8 px-3 py-2"
+      data-m4-roster-difference
+      aria-live="polite"
+    >
+      <TriangleAlert size={17} className="shrink-0 text-crater" />
+      <div className="min-w-48 flex-1">
+        <p className="text-sm font-medium text-ink">{t("rosterDifferenceTitle")}</p>
+        <p className="text-xs text-muted">
+          {t("rosterDifferenceBody", {
+            revision: rosterState.revision ?? 0,
+            count: rosterState.entries.length,
+          })}
+        </p>
+        {rosterRefreshError && <p className="mt-1 text-xs text-rose">{t("rosterRefreshFailed")}</p>}
+      </div>
+      <Button
+        type="button"
+        size="sm"
+        variant="secondary"
+        disabled={rosterRefreshing}
+        onClick={() => void confirmRosterRefresh()}
+      >
+        {rosterRefreshing && <LoaderCircle size={14} className="animate-spin motion-reduce:animate-none" />}
+        {t("confirmRosterRefresh")}
+      </Button>
+    </section>
+  ) : null;
+
   // --- 候课 ----------------------------------------------------------------
   if (effectivePhase === "prep") {
     const checklist: Array<{ key: string; ok: boolean; warn?: boolean; label: string; hint?: string }> = [
@@ -885,6 +1006,8 @@ export function LiveShell({
           <h1 className="min-w-0 flex-1 truncate font-display text-2xl">{session.title || t("untitled")}</h1>
           {connectionBadges}
         </div>
+
+        {rosterDifferenceNotice}
 
         {attendanceSuggested && (
           <section className="mt-8 flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-card p-4">
@@ -989,6 +1112,13 @@ export function LiveShell({
           {state.pages.length === 0 ? "0 / 0" : `${state.currentPage + 1} / ${state.pages.length}`}
         </span>
       </header>
+
+      {rosterDifferenceNotice}
+      {starWriteError && isController && (
+        <p className="mt-2 rounded-xl border border-rose/30 bg-rose/5 px-3 py-2 text-xs text-rose" role="alert">
+          {t("starWriteFailed")}
+        </p>
+      )}
 
       {rehearsal && isController && inputV2Enabled && (
         <section
@@ -1317,27 +1447,24 @@ export function LiveShell({
               {!rosterCollapsed && (
                 <ul className="flex min-h-0 flex-1 gap-1.5 overflow-x-auto p-1.5 [&>li]:min-w-48 lg:block lg:space-y-1 lg:overflow-y-auto lg:[&>li]:min-w-0">
                   {visibleStudents.map((student) => {
-                    const count = starCountForRosterEntry(state.starLedger, {
-                      studentId: student.userId,
-                      userId: student.userId,
-                    });
-                    const answered = state.quiz ? state.answers[state.quiz.id]?.[student.userId] : undefined;
+                    const count = starCountForRosterEntry(state.starLedger, student);
+                    const answered = state.quiz && student.userId
+                      ? state.answers[state.quiz.id]?.[student.userId]
+                      : undefined;
                     return (
                       <StudentCard
-                        key={student.userId}
-                        name={student.displayName || t("anonymous")}
+                        key={student.studentId}
+                        name={student.name || t("anonymous")}
                         count={count}
-                        hand={Boolean(state.hands[student.userId])}
-                        online={onlineIds.has(student.userId)}
+                        hand={Boolean(student.userId && state.hands[student.userId])}
+                        online={Boolean(student.userId && onlineIds.has(student.userId))}
                         answerLabel={
                           answered === undefined ? null : isController ? OPTION_LABELS[answered] ?? "?" : "✓"
                         }
-                        interactive={editable}
+                        interactive={editable && (starEventSchema === 2 || student.userId !== null)}
                         undoHint={t("undoStar")}
-                        onStar={() => append("star", { studentId: student.userId })}
-                        onUndo={() => {
-                          if (count > 0) append("star_undo", { studentId: student.userId });
-                        }}
+                        onStar={() => appendStar(student, "award")}
+                        onUndo={() => appendStar(student, "undo")}
                       />
                     );
                   })}

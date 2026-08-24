@@ -3,6 +3,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { collectPostgrestRowsInBatches } from "@/lib/supabase/postgrest-batches";
 import type { CoursewareTrack } from "@/features/courseware-studio/data";
+import { getSessionRoster } from "@/features/classroom/roster-server";
 import { courseware_template_array_schema } from "./courseware-overlay";
 import type {
   LearningCheckStatus,
@@ -21,16 +22,15 @@ export async function getSessionLearningSetup(sessionId: string): Promise<Sessio
   const supabase = await createClient();
   const { data: session, error: sessionError } = await supabase
     .from("class_sessions")
-    .select("classroom_id,learning_checks_configured_at")
+    .select("learning_checks_configured_at")
     .eq("id", sessionId)
-    .maybeSingle<{ classroom_id: string; learning_checks_configured_at: string | null }>();
+    .maybeSingle<{ learning_checks_configured_at: string | null }>();
   if (sessionError) throw new Error(sessionError.message);
   if (!session) throw new Error("SESSION_NOT_FOUND");
 
   const [
     { data: checkRows, error: checkError },
-    { data: enrollmentRows, error: enrollmentError },
-    { data: seatOrderRows, error: seatOrderError },
+    rosterState,
   ] = await Promise.all([
     supabase
       .from("session_learning_checks")
@@ -38,24 +38,9 @@ export async function getSessionLearningSetup(sessionId: string): Promise<Sessio
       .eq("session_id", sessionId)
       .order("position", { ascending: true })
       .returns<Array<{ id: string; position: number; title: string; source_page_doc_id: string | null }>>(),
-    supabase
-      .from("enrollments")
-      .select("student_id,students(name)")
-      .eq("classroom_id", session.classroom_id)
-      .eq("status", "active")
-      .order("joined_at", { ascending: true })
-      .order("student_id", { ascending: true })
-      .returns<Array<{ student_id: string; students: { name: string } | null }>>(),
-    supabase
-      .from("classroom_student_seat_order")
-      .select("student_id,position")
-      .eq("classroom_id", session.classroom_id)
-      .order("position", { ascending: true })
-      .returns<Array<{ student_id: string; position: number }>>(),
+    getSessionRoster(sessionId),
   ]);
   if (checkError) throw new Error(checkError.message);
-  if (enrollmentError) throw new Error(enrollmentError.message);
-  if (seatOrderError) throw new Error(seatOrderError.message);
 
   const checkIds = (checkRows ?? []).map((row) => row.id);
   const resultRows = await collectPostgrestRowsInBatches<string, {
@@ -72,15 +57,11 @@ export async function getSessionLearningSetup(sessionId: string): Promise<Sessio
       status: Exclude<LearningCheckStatus, "unchecked">;
     }>>());
 
-  const seatPositionByStudentId = new Map(
-    (seatOrderRows ?? []).map((row) => [row.student_id, row.position]),
-  );
-  const students = (enrollmentRows ?? [])
-    .map((row) => ({
-      id: row.student_id,
-      name: row.students?.name ?? "—",
-      seatPosition: seatPositionByStudentId.get(row.student_id) ?? null,
-    }));
+  const students = rosterState.entries.map((student) => ({
+    id: student.studentId,
+    name: student.name,
+    seatPosition: student.seatPosition,
+  }));
 
   return {
     configured: session.learning_checks_configured_at !== null,

@@ -20,13 +20,3 @@ export function summarizeAttendance(statuses: AttendanceStatus[]): AttendanceSum
   const total = statuses.length;
   return { present, absent, late, leave, total, rate: total > 0 ? present / total : 0 };
 }
-
-/** 净星数：star +1，star_undo -1（下限 0）；events 须按 at 升序传入。 */
-export function sumStars(events: Array<{ type: string }>): number {
-  let total = 0;
-  for (const event of events) {
-    if (event.type === "star") total += 1;
-    else if (event.type === "star_undo") total = Math.max(0, total - 1);
-  }
-  return total;
-}

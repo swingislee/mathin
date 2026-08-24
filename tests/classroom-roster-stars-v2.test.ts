@@ -1,5 +1,8 @@
+import fs from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { buildSessionReport } from "@/features/classroom/report";
+import { parseSessionRosterState } from "@/features/classroom/roster";
 import {
   buildStarLedger,
   emptyStarLedger,
@@ -16,6 +19,7 @@ const UNCLAIMED_STUDENT_ID = "44444444-4444-4444-8444-444444444444";
 const STUDENT_USER_ID = "55555555-5555-4555-8555-555555555555";
 const AWARD_A = "66666666-6666-4666-8666-666666666666";
 const AWARD_B = "77777777-7777-4777-8777-777777777777";
+const source = (file: string) => fs.readFileSync(path.join(process.cwd(), file), "utf8");
 
 function event(type: SessionEventType, payload: Record<string, unknown>, userId = TEACHER_ID): SessionEvent {
   return {
@@ -97,5 +101,76 @@ describe("M4a roster identity and star v2", () => {
       expect.objectContaining({ studentId: STUDENT_ID, userId: STUDENT_USER_ID, handRaises: 1, answeredCount: 1 }),
       expect.objectContaining({ studentId: UNCLAIMED_STUDENT_ID, userId: null, stars: 1, handRaises: null, answeredCount: null }),
     ]);
+  });
+
+  it("freezes the enrollment roster and guards versioned star writes in the database", () => {
+    const migration = source("supabase/migrations/20260825000200_classroom_roster_star_v2.sql");
+
+    expect(migration).toContain("create table public.session_roster_revisions");
+    expect(migration).toContain("create table public.session_roster_entries");
+    expect(migration).toMatch(/join public\.enrollments[\s\S]*enrollment_row\.status = 'active'/);
+    expect(migration).toContain("student_id uuid not null references public.students(id)");
+    expect(migration).toContain("user_id uuid references public.profiles(id) on delete set null");
+    expect(migration).toContain("create function public.freeze_session_roster");
+    expect(migration).toContain("create function public.refresh_session_roster");
+    expect(migration).toContain("current_hash <> p_expected_source_hash");
+    expect(migration).toContain("if session_row.roster_revision > 0 then");
+    expect(migration).toContain("create function public.is_valid_session_star_event");
+    expect(migration).toContain("entry_row.student_id = target_id");
+    expect(migration).toContain("entry_row.user_id = target_id");
+    expect(migration).toContain("public.student_star_total(my_student.id)");
+    expect(migration).toContain("select distinct event_row.session_id, event_row.payload ->> 'awardId'");
+    expect(migration).toContain("'teaching.classroom_layout_v2', 1, false");
+  });
+
+  it("parses only internally consistent frozen-roster responses", () => {
+    const response = {
+      sessionId: SESSION_ID,
+      revision: 2,
+      frozen: true,
+      sourceHash: "a".repeat(64),
+      currentSourceHash: "b".repeat(64),
+      hasDifference: true,
+      frozenAt: "2026-08-25T00:00:00+00:00",
+      revisionCreatedAt: "2026-08-25T00:01:00+00:00",
+      starEventSchema: 2,
+      entries: roster,
+    };
+
+    expect(parseSessionRosterState(response).entries).toEqual(roster);
+    expect(() => parseSessionRosterState({ ...response, frozen: false })).toThrow(
+      "SESSION_ROSTER_RESPONSE_INVALID",
+    );
+    expect(() => parseSessionRosterState({ ...response, entries: [
+      { ...roster[0], seatPosition: 60 },
+    ] })).toThrow("SESSION_ROSTER_RESPONSE_INVALID");
+  });
+
+  it("wires the frozen roster and one serialized v2 writer into the live classroom", () => {
+    const actions = source("src/features/classroom/actions.ts");
+    const readerMigration = source("supabase/migrations/20260825000300_classroom_star_v2_readers.sql");
+    const backfillMigration = source("supabase/migrations/20260825000400_classroom_open_roster_backfill.sql");
+    const route = source("src/app/[locale]/classroom/[classId]/session/[sessionId]/live/page.tsx");
+    const shell = source("src/features/classroom/live/LiveShell.tsx");
+    const learning = source("src/features/school/session-learning.ts");
+    const featureContract = source("src/features/school/organization-settings-contract.ts");
+
+    expect(actions).toContain('isFeatureEnabled("teaching.classroom_layout_v2")');
+    expect(actions).toContain('supabase.rpc("freeze_session_roster"');
+    expect(actions).toContain('supabase.rpc("refresh_session_roster"');
+    expect(readerMigration).toContain("create function public.get_student_star_total");
+    expect(readerMigration).toContain("public.can_access_student(p_student_id, uid)");
+    expect(backfillMigration).toContain("session_row.started_at is not null");
+    expect(backfillMigration).toContain("session_row.ended_at is null");
+    expect(backfillMigration).toContain("star_event_schema = 1");
+    expect(actions).toMatch(/reopenClassSession[\s\S]*freeze_session_roster/);
+    expect(route).toContain("getSessionRoster(sessionId)");
+    expect(route).toContain('isFeatureEnabled("teaching.classroom_layout_v2")');
+    expect(learning).toContain("getSessionRoster(sessionId)");
+    expect(featureContract).toContain('"teaching.classroom_layout_v2"');
+    expect(shell).toContain("starQueueRef.current = starQueueRef.current");
+    expect(shell).toContain("latestActiveAwardId(starLedgerRef.current, student.studentId)");
+    expect(shell).toContain("payload = { schemaVersion: 2, studentId: student.studentId, awardId }");
+    expect(shell).not.toContain('append("star", { studentId: student.userId })');
   });
 });

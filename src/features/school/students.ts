@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { collectPostgrestRowsInBatches } from "@/lib/supabase/postgrest-batches";
 import { SELECT_ALL_VALUE } from "./controls";
-import { summarizeAttendance, sumStars, type AttendanceStatus, type AttendanceSummary } from "./learning";
+import { summarizeAttendance, type AttendanceStatus, type AttendanceSummary } from "./learning";
 
 export const STUDENT_STATUSES = ["lead", "trialing", "enrolled", "paused", "alumni", "invalid"] as const;
 export const FOLLOW_UP_STATUSES = ["pending", "following", "invited", "trialed", "signed", "lost"] as const;
@@ -342,29 +342,21 @@ export async function getStudentLearning(studentId: string): Promise<StudentLear
       }));
   }
 
-  let starTotal = 0;
+  const { data: starTotalData, error: starTotalError } = await supabase.rpc("get_student_star_total", {
+    p_student_id: studentId,
+  });
+  if (starTotalError) throw new Error(starTotalError.message);
+  const starTotal = starTotalData ?? 0;
   let submissions: StudentSubmissionRow[] = [];
   if (userId) {
-    const [{ data: eventRows, error: eventError }, { data: submissionRows, error: submissionError }] = await Promise.all([
-      // 星标事件的作者是教师（user_id=教师），学生在 payload.studentId（08-§3.5 单写者语义）
-      supabase
-        .from("session_events")
-        .select("type,at")
-        .eq("payload->>studentId", userId)
-        .in("type", ["star", "star_undo"])
-        .order("at", { ascending: true })
-        .returns<Array<{ type: string; at: string }>>(),
-      supabase
-        .from("submissions")
-        .select("assignment_id,score,feedback,submitted_at,graded_at,assignments(title)")
-        .eq("user_id", userId)
-        .order("submitted_at", { ascending: false, nullsFirst: false })
-        .limit(200)
-        .returns<SubmissionLearningRow[]>(),
-    ]);
-    if (eventError) throw new Error(eventError.message);
+    const { data: submissionRows, error: submissionError } = await supabase
+      .from("submissions")
+      .select("assignment_id,score,feedback,submitted_at,graded_at,assignments(title)")
+      .eq("user_id", userId)
+      .order("submitted_at", { ascending: false, nullsFirst: false })
+      .limit(200)
+      .returns<SubmissionLearningRow[]>();
     if (submissionError) throw new Error(submissionError.message);
-    starTotal = sumStars(eventRows ?? []);
     submissions = (submissionRows ?? []).map((row) => ({
       assignmentId: row.assignment_id,
       assignmentTitle: row.assignments?.title || "",
