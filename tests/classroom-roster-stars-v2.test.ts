@@ -248,6 +248,9 @@ describe("M4a roster identity and star v2", () => {
     expect(panels).toContain("fill-amber-400");
     expect(panels).toContain("<Moon");
     expect(panels).toContain("<Sun");
+    expect(panels).toContain('data-reward-symbol="moon"');
+    expect(panels).not.toContain("bg-indigo-100");
+    expect(panels).not.toContain("ring-indigo-300");
     expect(courseInfo).toContain('data-course-info-surface="flat"');
     expect(courseInfo).toContain('data-course-info-height="40"');
     expect(courseInfo).toContain("<LogOut");

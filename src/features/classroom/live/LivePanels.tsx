@@ -199,8 +199,9 @@ export function StudentStarDisplay({ count, label, compact = false }: {
   compact?: boolean;
 }) {
   const iconSize = compact ? 8 : 13;
-  const badgeSize = compact ? 12 : 20;
-  const badgeIconSize = compact ? 9 : 14;
+  const moonIconSize = compact ? 10 : 15;
+  const sunBadgeSize = compact ? 12 : 20;
+  const sunIconSize = compact ? 9 : 14;
   const reward = decomposeClassroomReward(count);
 
   return (
@@ -222,20 +223,20 @@ export function StudentStarDisplay({ count, label, compact = false }: {
           key={`sun-${index}`}
           aria-hidden
           className="grid shrink-0 place-items-center rounded-full bg-orange-100 text-orange-700 ring-1 ring-orange-300 dark:bg-orange-400/20 dark:text-orange-200 dark:ring-orange-300/60"
-          style={{ width: badgeSize, height: badgeSize }}
+          style={{ width: sunBadgeSize, height: sunBadgeSize }}
         >
-          <Sun size={badgeIconSize} strokeWidth={2.25} className="fill-orange-400 dark:fill-orange-300" />
+          <Sun size={sunIconSize} strokeWidth={2.25} className="fill-orange-400 dark:fill-orange-300" />
         </span>
       ))}
       {Array.from({ length: reward.moons }, (_, index) => (
-        <span
+        <Moon
           key={`moon-${index}`}
           aria-hidden
-          className="grid shrink-0 place-items-center rounded-full bg-indigo-100 text-indigo-700 ring-1 ring-indigo-300 dark:bg-indigo-400/20 dark:text-indigo-200 dark:ring-indigo-300/60"
-          style={{ width: badgeSize, height: badgeSize }}
-        >
-          <Moon size={badgeIconSize} strokeWidth={2.25} className="fill-indigo-300 dark:fill-indigo-300" />
-        </span>
+          data-reward-symbol="moon"
+          size={moonIconSize}
+          strokeWidth={2.25}
+          className="shrink-0 fill-indigo-300 text-indigo-700 dark:fill-indigo-300 dark:text-indigo-200"
+        />
       ))}
       {Array.from({ length: reward.stars }, (_, index) => (
         <Star

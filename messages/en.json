@@ -4182,7 +4182,7 @@
       "m4bStudentScenario": "{count} students",
       "m4bBaselineState": "Now showing {count} students. Cards are arranged directly with no visible heading, seat numbers, or rounded outer container; empty positions remain stable, and 20 students should need no scrollbar.",
       "m4bStressState": "30-student stress state: only the directly arranged card area scrolls internally, with no visible heading, seat numbers, or outer container, while a long title, pending work, and an error entry remain visible.",
-      "m4bRewardState": "The first five cards should show 9 stars; 1 moon; 1 moon + 1 star; 2 moons + 7 stars; and 1 sun, with no numeric reward shorthand.",
+      "m4bRewardState": "The first five cards should show 9 stars; 1 moon; 1 moon + 1 star; 2 moons + 7 stars; and 1 sun. Moons have no outer badge, symbols pack tightly, and no numeric shorthand appears.",
       "m4bInfoState": "The course information area is a 40px flat strip with no outer chrome or divider; exit uses a logout SVG and End class reuses the compact legacy button with a prominent solid danger color.",
       "m4bBottomState": "The bottom rail sits flush with the viewport and uses only a flat surface, a top rule, and section dividers—no rounded outer shell, floating shadow, or drawing-toolbar shell.",
       "m4bRoleIsolation": "② Display isolation",
