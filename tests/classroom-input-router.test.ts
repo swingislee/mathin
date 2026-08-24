@@ -111,16 +111,38 @@ describe("M3a classroom input routing", () => {
 
   it("trusts each versioned in-repo native game and fails closed for unknown renderers", () => {
     for (const gameId of ["sudoku", "kakuro", "magic-square"] as const) {
-      const profile = resolveClassroomRendererInputProfile({ ...sudokuPage, gameId }, false);
+      const profile = resolveClassroomRendererInputProfile({ ...sudokuPage, gameId }, null);
       expect(profile).toMatchObject({ renderer: gameId, version: 1, audited: true, defaultCapability: "ink" });
       expect(parseClassroomInputCapability("click", profile)).toBe("click");
       expect(parseClassroomInputCapability("drag", profile)).toBe("drag");
       expect(parseClassroomInputCapability("surprise", profile)).toBe("unknown");
     }
-    const unknown = resolveClassroomRendererInputProfile({ ...sudokuPage, gameId: "unregistered-game" }, false);
+    const unknown = resolveClassroomRendererInputProfile({ ...sudokuPage, gameId: "unregistered-game" }, null);
     expect(unknown).toMatchObject({ renderer: "unsupported", audited: false, defaultCapability: "unknown" });
     expect(parseClassroomInputCapability("click", unknown)).toBe("unknown");
-    expect(resolveClassroomRendererInputProfile(sudokuPage, true).audited).toBe(false);
+    expect(resolveClassroomRendererInputProfile(sudokuPage, "spatial-lab").audited).toBe(false);
+  });
+
+  it("audits only the partitioned Fraction Line overlay and protects other tools", () => {
+    const fractionLine = resolveClassroomRendererInputProfile(sudokuPage, "fraction-line");
+    expect(fractionLine).toMatchObject({
+      renderer: "tool:fraction-line",
+      version: 1,
+      audited: true,
+      defaultCapability: "unknown",
+    });
+    expect(parseClassroomInputCapability("click", fractionLine)).toBe("click");
+    expect(parseClassroomInputCapability("drag", fractionLine)).toBe("drag");
+    expect(parseClassroomInputCapability("ink", fractionLine)).toBe("ink");
+    expect(parseClassroomInputCapability(null, fractionLine)).toBe("unknown");
+
+    for (const toolId of ["motion-lab", "spatial-lab", "future-tool"]) {
+      expect(resolveClassroomRendererInputProfile(sudokuPage, toolId)).toMatchObject({
+        renderer: "unsupported",
+        audited: false,
+        defaultCapability: "unknown",
+      });
+    }
   });
 
   it("audits native video and plain documents while protecting unresolved and bridged docs", () => {
@@ -129,17 +151,17 @@ describe("M3a classroom input routing", () => {
       type: "video",
       path: "lesson.mp4",
       title: "Video",
-    }, false);
+    }, null);
     expect(video).toMatchObject({ renderer: "video", audited: true, provisional: false });
     expect(parseClassroomInputCapability("click", video)).toBe("click");
     expect(parseClassroomInputCapability("native", video)).toBe("native");
 
-    expect(resolveClassroomRendererInputProfile(documentPage, false)).toMatchObject({
+    expect(resolveClassroomRendererInputProfile(documentPage, null)).toMatchObject({
       renderer: "unsupported",
       audited: false,
       provisional: true,
     });
-    expect(resolveClassroomRendererInputProfile(documentPage, false, documentFixture)).toMatchObject({
+    expect(resolveClassroomRendererInputProfile(documentPage, null, documentFixture)).toMatchObject({
       renderer: "document",
       audited: true,
       provisional: false,
@@ -149,7 +171,7 @@ describe("M3a classroom input routing", () => {
       ...documentFixture,
       nodes: documentFixture.nodes.map((node, index) => index === 0 ? { ...node, adapter: "h5" } : node),
     };
-    expect(resolveClassroomRendererInputProfile(documentPage, false, bridgedDocument)).toMatchObject({
+    expect(resolveClassroomRendererInputProfile(documentPage, null, bridgedDocument)).toMatchObject({
       renderer: "unsupported",
       audited: false,
       provisional: false,
@@ -161,7 +183,7 @@ describe("M3a classroom input routing", () => {
         ? { ...node, adapter: "future-native-widget" }
         : node),
     };
-    expect(resolveClassroomRendererInputProfile(documentPage, false, unknownDocument)).toMatchObject({
+    expect(resolveClassroomRendererInputProfile(documentPage, null, unknownDocument)).toMatchObject({
       renderer: "unsupported",
       audited: false,
       provisional: false,
@@ -185,6 +207,9 @@ describe("M3a classroom input routing", () => {
     const videoSurface = readFileSync(new URL("../src/features/classroom/input/ClassroomVideoInkSurface.tsx", import.meta.url), "utf8");
     const canvas = readFileSync(new URL("../src/features/whiteboard/CanvasSurface.tsx", import.meta.url), "utf8");
     const hook = readFileSync(new URL("../src/features/classroom/input/useClassroomPointerRouter.ts", import.meta.url), "utf8");
+    const panels = readFileSync(new URL("../src/features/classroom/live/LivePanels.tsx", import.meta.url), "utf8");
+    const liveShell = readFileSync(new URL("../src/features/classroom/live/LiveShell.tsx", import.meta.url), "utf8");
+    const fractionLine = readFileSync(new URL("../src/features/tools/fraction-line/FractionLine.tsx", import.meta.url), "utf8");
     const liveRoute = readFileSync(new URL("../src/app/[locale]/classroom/[classId]/session/[sessionId]/live/page.tsx", import.meta.url), "utf8");
     expect(sudoku).toContain('data-classroom-input="click"');
     expect(sudoku).toContain('data-classroom-input={state.highlightTool === "cell" ? "drag" : "click"}');
@@ -209,6 +234,14 @@ describe("M3a classroom input routing", () => {
     expect(hook).toContain('stage.addEventListener("selectstart", preventTextSelection, true)');
     expect(hook).toContain("window.getSelection()?.removeAllRanges()");
     expect(hook).not.toMatch(/\.click\s*\(/);
+    expect(panels).toContain('foreground ? "z-40" : "z-10"');
+    expect(panels).toContain('data-classroom-input={auditedInput ? "ink" : undefined}');
+    expect(liveShell).toContain('foreground={Boolean(activeToolId) && rendererProfile.audited}');
+    expect(liveShell).toContain('bottom-3 left-1/2 z-50');
+    expect(fractionLine).toContain('data-classroom-input="click"');
+    expect(fractionLine).toContain('data-classroom-input="drag"');
+    expect(fractionLine).toContain('data-classroom-input="ink"');
+    expect(fractionLine).toContain('data-classroom-input="native"');
     expect(liveRoute).toContain('isFeatureEnabled("teaching.classroom_input_v2")');
   });
 });

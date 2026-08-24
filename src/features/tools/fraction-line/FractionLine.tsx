@@ -133,8 +133,11 @@ export function FractionLine({ embedded }: ToolComponentProps) {
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className={`flex flex-wrap items-center gap-x-3 gap-y-2 border-b px-4 ${embedded ? "py-2" : "py-3"}`}>
+    <div className="flex min-h-0 flex-1 flex-col" data-classroom-input="ink">
+      <div
+        className={`flex flex-wrap items-center gap-x-3 gap-y-2 border-b px-4 ${embedded ? "py-2" : "py-3"}`}
+        data-classroom-input="native"
+      >
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted">{t("unitLabel")}</span>
           <div className="flex flex-col items-center leading-none">
@@ -145,15 +148,16 @@ export function FractionLine({ embedded }: ToolComponentProps) {
               max={100}
               value={denomText}
               onChange={(e) => setDenomText(e.target.value)}
+              data-classroom-input="native"
               className="w-12 border-t border-ink bg-transparent pt-0.5 text-center text-sm outline-none"
               aria-label={t("unitLabel")}
             />
           </div>
         </div>
-        <Button size="sm" onClick={nextPoint}><Plus size={14} />{t("nextPoint")}</Button>
-        <Button variant="ghost" size="sm" onClick={undoPoint}><Undo2 size={14} />{t("undoPoint")}</Button>
-        <Button variant="ghost" size="sm" onClick={() => setRows((p) => p.slice(0, -1))}><Eraser size={14} />{t("deleteRow")}</Button>
-        <Button variant="ghost" size="sm" onClick={() => setRows([])}><RotateCcw size={14} />{t("clearAll")}</Button>
+        <Button size="sm" data-classroom-input="click" onClick={nextPoint}><Plus size={14} />{t("nextPoint")}</Button>
+        <Button variant="ghost" size="sm" data-classroom-input="click" onClick={undoPoint}><Undo2 size={14} />{t("undoPoint")}</Button>
+        <Button variant="ghost" size="sm" data-classroom-input="click" onClick={() => setRows((p) => p.slice(0, -1))}><Eraser size={14} />{t("deleteRow")}</Button>
+        <Button variant="ghost" size="sm" data-classroom-input="click" onClick={() => setRows([])}><RotateCcw size={14} />{t("clearAll")}</Button>
         <div className="ml-auto flex items-center gap-2 text-xs text-muted">
           <span>{t("zoom")}</span>
           <Slider
@@ -162,6 +166,7 @@ export function FractionLine({ embedded }: ToolComponentProps) {
             max={ZOOM_MAX}
             step={0.01}
             onValueChange={([v]) => setZoomPow(v)}
+            data-classroom-input="drag"
             className="w-36"
             aria-label={t("zoom")}
           />
@@ -170,6 +175,7 @@ export function FractionLine({ embedded }: ToolComponentProps) {
               <button
                 key={i}
                 type="button"
+                data-classroom-input="click"
                 onClick={() => setZoomPow(pow)}
                 className={`px-2 py-1 tabular-nums transition-colors duration-200 ${i > 0 ? "border-l" : ""} ${Math.abs(zoomPow - pow) < 0.05 ? "bg-moon text-ink" : "hover:bg-moon/40"}`}
               >
@@ -178,17 +184,17 @@ export function FractionLine({ embedded }: ToolComponentProps) {
             ))}
           </div>
         </div>
-        <label className="flex items-center gap-1.5 text-xs text-muted">
-          <Input type="checkbox" checked={showTicks} onChange={(e) => setShowTicks(e.target.checked)} className="accent-[var(--p-accent)]" />
+        <label className="flex items-center gap-1.5 text-xs text-muted" data-classroom-input="native">
+          <Input type="checkbox" checked={showTicks} onChange={(e) => setShowTicks(e.target.checked)} data-classroom-input="native" className="accent-[var(--p-accent)]" />
           {t("showTicks")}
         </label>
-        <label className="flex items-center gap-1.5 text-xs text-muted">
-          <Input type="checkbox" checked={showGuides} onChange={(e) => setShowGuides(e.target.checked)} className="accent-[var(--p-accent)]" />
+        <label className="flex items-center gap-1.5 text-xs text-muted" data-classroom-input="native">
+          <Input type="checkbox" checked={showGuides} onChange={(e) => setShowGuides(e.target.checked)} data-classroom-input="native" className="accent-[var(--p-accent)]" />
           {t("showGuides")}
         </label>
       </div>
       <p className="px-4 pt-2 text-xs text-muted">{t("zeroHint")}</p>
-      <div ref={wrapRef} className="min-h-0 flex-1 overflow-auto">
+      <div ref={wrapRef} className="min-h-0 flex-1 overflow-auto" data-classroom-input="ink">
         <svg width={width} height={height} className="block">
           {/* 数轴与箭头 */}
           <line x1={8} y1={AXIS_Y} x2={width - 14} y2={AXIS_Y} stroke="var(--ink)" strokeWidth={1.5} />
@@ -198,7 +204,7 @@ export function FractionLine({ embedded }: ToolComponentProps) {
           {ticks.map((n) => {
             const x = zeroX + n * unitLength;
             return (
-              <g key={n} className="cursor-grab active:cursor-grabbing" {...panHandlers} stroke="var(--crater)" fill="var(--muted)">
+              <g key={n} className="cursor-grab active:cursor-grabbing" data-classroom-input="drag" {...panHandlers} stroke="var(--crater)" fill="var(--muted)">
                 <circle cx={x} cy={AXIS_Y} r={14} fill="transparent" stroke="none" />
                 <line x1={x} y1={AXIS_Y - 6} x2={x} y2={AXIS_Y + 6} strokeWidth={1.5} />
                 <text x={x} y={AXIS_Y - 12} textAnchor="middle" fontSize={11} stroke="none">{n}</text>
@@ -228,7 +234,7 @@ export function FractionLine({ embedded }: ToolComponentProps) {
           )}
 
           {/* 可拖动的原点 */}
-          <g className="cursor-grab active:cursor-grabbing" {...panHandlers}>
+          <g className="cursor-grab active:cursor-grabbing" data-classroom-input="drag" {...panHandlers}>
             <circle cx={zeroX} cy={AXIS_Y} r={14} fill="transparent" />
             <circle cx={zeroX} cy={AXIS_Y} r={5} fill="var(--rose)" />
             <text x={zeroX} y={AXIS_Y - 12} textAnchor="middle" fontSize={12} fill="var(--ink)">0</text>

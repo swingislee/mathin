@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Hand, Star, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { GameBoard } from "@/features/games/boards";
 import { games } from "@/features/games/registry";
 import type { GameMirrorState } from "@/features/games/types";
@@ -22,6 +23,7 @@ import type { CoursewarePage } from "../types";
 import {
   CLASSROOM_INPUT_CAPABILITY_VERSION,
   isAuditedClassroomNativeGame,
+  isAuditedClassroomTool,
 } from "../input/capabilities";
 import { useClassBoard } from "./useClassBoard";
 import { MAX_INLINE_STARS } from "./liveState";
@@ -43,6 +45,7 @@ export function MainBoard({
   onCheckpointStatus,
   onCheckpointFlush,
   onStore,
+  foreground = false,
 }: {
   log: SessionEventLog | null;
   boardKey: string;
@@ -57,6 +60,8 @@ export function MainBoard({
   onCheckpointStatus?: (boardKey: string, status: BoardCheckpointStatus) => void;
   onCheckpointFlush?: (boardKey: string, flush: (() => Promise<void>) | null) => void;
   onStore: (store: WhiteboardStore) => void;
+  /** Audited tool overlays sit below the render-only board so routed ink stays visible. */
+  foreground?: boolean;
 }) {
   const { store, bus, flushCheckpoint } = useClassBoard(log, boardKey, editable, initialItems, {
     cursorName,
@@ -73,7 +78,7 @@ export function MainBoard({
     return () => onCheckpointFlush(boardKey, null);
   }, [boardKey, flushCheckpoint, onCheckpointFlush]);
   return (
-    <div className="pointer-events-none absolute inset-0 z-10">
+    <div className={cn("pointer-events-none absolute inset-0", foreground ? "z-40" : "z-10")}>
       <CanvasSurface
         editable={editable}
         store={store}
@@ -135,23 +140,38 @@ export function ToolOverlay({ toolId, onClose }: { toolId: string; onClose?: () 
   const tool = getTool(toolId);
   if (!tool) return null;
   const Icon = tool.icon;
+  const auditedInput = isAuditedClassroomTool(tool.id);
   return (
-    <div className="absolute inset-0 z-30 flex flex-col bg-paper">
-      <div className="flex h-10 shrink-0 items-center gap-2 border-b border-line px-3">
+    <div
+      className="absolute inset-0 z-30 flex flex-col bg-paper"
+      data-classroom-tool={tool.id}
+      data-classroom-input={auditedInput ? "ink" : undefined}
+      data-classroom-renderer-version={auditedInput ? CLASSROOM_INPUT_CAPABILITY_VERSION : undefined}
+    >
+      <div
+        className="flex h-10 shrink-0 items-center gap-2 border-b border-line px-3"
+        data-classroom-input={auditedInput ? "native" : undefined}
+      >
         <Icon size={15} className="text-muted" />
         <span className="text-sm font-medium">{tTools(`items.${tool.id}.name`)}</span>
         {onClose && (
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
             aria-label={t("closeTool")}
+            data-classroom-input={auditedInput ? "click" : undefined}
             onClick={onClose}
             className="ml-auto rounded-full p-1.5 text-muted transition-colors hover:bg-moon/30 hover:text-ink"
           >
             <X size={16} />
-          </button>
+          </Button>
         )}
       </div>
-      <div className="min-h-0 flex-1 overflow-auto">
+      <div
+        className="min-h-0 flex-1 overflow-auto"
+        data-classroom-input={auditedInput ? "native" : undefined}
+      >
         <ToolView id={tool.id} embedded />
       </div>
     </div>

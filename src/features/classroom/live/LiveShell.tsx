@@ -86,10 +86,7 @@ import { VideoStage } from "./VideoStage";
 import { GamePage, MainBoard, StudentCard, ToolOverlay, ToolPicker } from "./LivePanels";
 import { ClassroomInputModeControl } from "./ClassroomInputModeControl";
 import {
-  createM3DocumentInputFixture,
-  M3_NATIVE_RENDERER_FIXTURE_PAGES,
-  M3_VIDEO_FIXTURE_PATH,
-  type M3NativeRendererFixtureId,
+  M3_TOOL_OVERLAY_FIXTURE_PAGE,
 } from "./m3-input-fixtures";
 import { OPTION_LABELS, reduceEvent, type LiveState, type Phase, type Role } from "./liveState";
 
@@ -203,7 +200,7 @@ export function LiveShell({
   const [routingMode, setRoutingMode] = useState<ClassroomRoutingMode>("smart");
   const [inputRendererSignature, setInputRendererSignature] = useState("");
   const [m3FixtureEnabled, setM3FixtureEnabled] = useState(() => rehearsal && inputV2Enabled);
-  const [m3FixtureRendererId, setM3FixtureRendererId] = useState<M3NativeRendererFixtureId>("document");
+  const [m3FixtureToolOpen, setM3FixtureToolOpen] = useState(() => rehearsal && inputV2Enabled);
   const [endOpen, setEndOpen] = useState(false);
   const [classroomToolsOpen, setClassroomToolsOpen] = useState(false);
   const [stageWidth, setStageWidth] = useState(0);
@@ -650,45 +647,32 @@ export function LiveShell({
   }, [append, session.id]);
 
   // --- 派生 ----------------------------------------------------------------
-  const m3DocumentFixtureTitle = t("documentFixtureTitle");
-  const m3DocumentFixtureInstruction = t("documentFixtureInstruction");
-  const m3DocumentFixtureResult = t("documentFixtureResult");
-  const m3DocumentFixtureDoc = useMemo(
-    () => createM3DocumentInputFixture({
-      title: m3DocumentFixtureTitle,
-      instruction: m3DocumentFixtureInstruction,
-      result: m3DocumentFixtureResult,
-    }),
-    [m3DocumentFixtureInstruction, m3DocumentFixtureResult, m3DocumentFixtureTitle],
-  );
   const page = state.pages[state.currentPage] as CoursewarePage | undefined;
   const usingM3Fixture = rehearsal && inputV2Enabled && m3FixtureEnabled;
+  const activeToolId = usingM3Fixture
+    ? m3FixtureToolOpen ? "fraction-line" : null
+    : state.openTool;
   const renderPage = usingM3Fixture
-    ? M3_NATIVE_RENDERER_FIXTURE_PAGES[m3FixtureRendererId]
+    ? M3_TOOL_OVERLAY_FIXTURE_PAGE
     : page;
   const activeDocBundleEntry = renderPage?.type === "doc" && !usingM3Fixture
     ? docBundle?.find((item) => item.pageDocId === renderPage.docId)
     : undefined;
   const renderDoc = renderPage?.type === "doc"
-    ? usingM3Fixture
-      ? m3DocumentFixtureDoc
-      : activeDocBundleEntry?.doc
+    ? activeDocBundleEntry?.doc
     : undefined;
-  const isM3VideoFixture = usingM3Fixture
-    && renderPage?.type === "video"
-    && renderPage.path === M3_VIDEO_FIXTURE_PATH;
   const displayedSessionTitle = usingM3Fixture
     ? t("m3FixtureSessionTitle")
     : session.title || t("untitled");
   const rendererProfile = useMemo(
-    () => resolveClassroomRendererInputProfile(renderPage, Boolean(state.openTool), renderDoc),
-    [renderDoc, renderPage, state.openTool],
+    () => resolveClassroomRendererInputProfile(renderPage, activeToolId, renderDoc),
+    [activeToolId, renderDoc, renderPage],
   );
   const nextInputRendererSignature = [
     renderPage?.id ?? "no-page",
     rendererProfile.renderer,
     rendererProfile.provisional ? "provisional" : rendererProfile.audited ? "audited" : "protected",
-    state.openTool ?? "no-tool",
+    activeToolId ?? "no-tool",
   ].join(":");
   if (inputRendererSignature !== nextInputRendererSignature) {
     setInputRendererSignature(nextInputRendererSignature);
@@ -994,38 +978,30 @@ export function LiveShell({
             <Button
               type="button"
               size="sm"
-              variant={m3FixtureEnabled && m3FixtureRendererId === "document" ? "primary" : "secondary"}
-              aria-pressed={m3FixtureEnabled && m3FixtureRendererId === "document"}
-              data-m3-fixture-renderer="document"
+              variant={usingM3Fixture && m3FixtureToolOpen ? "primary" : "secondary"}
+              aria-pressed={usingM3Fixture && m3FixtureToolOpen}
+              data-m3-tool-fixture="fraction-line"
               onClick={() => {
-                setM3FixtureRendererId("document");
                 setM3FixtureEnabled(true);
+                setM3FixtureToolOpen(true);
+                setRoutingMode("smart");
               }}
             >
-              {t("nativeRendererDocument")}
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant={m3FixtureEnabled && m3FixtureRendererId === "video" ? "primary" : "secondary"}
-              aria-pressed={m3FixtureEnabled && m3FixtureRendererId === "video"}
-              data-m3-fixture-renderer="video"
-              onClick={() => {
-                setM3FixtureRendererId("video");
-                setM3FixtureEnabled(true);
-              }}
-            >
-              {t("nativeRendererVideo")}
+              {t("nativeRendererTool")}
             </Button>
           </div>
-          <ol className="grid min-w-0 flex-[2] basis-full gap-1 sm:grid-cols-2 lg:basis-auto">
+          <ol className="grid min-w-0 flex-[2] basis-full gap-1 sm:grid-cols-3 lg:basis-auto">
             <li className="rounded-lg bg-paper/80 px-2 py-1.5 text-muted">
               <span className="mr-1 font-mono text-ink">1</span>
-              {t("nativeRendererCheckDocument")}
+              {t("nativeRendererCheckToolClick")}
             </li>
             <li className="rounded-lg bg-paper/80 px-2 py-1.5 text-muted">
               <span className="mr-1 font-mono text-ink">2</span>
-              {t("nativeRendererCheckVideo")}
+              {t("nativeRendererCheckToolDrag")}
+            </li>
+            <li className="rounded-lg bg-paper/80 px-2 py-1.5 text-muted">
+              <span className="mr-1 font-mono text-ink">3</span>
+              {t("nativeRendererCheckToolInk")}
             </li>
           </ol>
           <Button
@@ -1033,9 +1009,12 @@ export function LiveShell({
             size="sm"
             variant="secondary"
             data-m3-fixture-toggle
-            onClick={() => setM3FixtureEnabled((enabled) => !enabled)}
+            onClick={() => {
+              setM3FixtureToolOpen(false);
+              setM3FixtureEnabled(false);
+            }}
           >
-            {m3FixtureEnabled ? t("m3ReturnCourseware") : t("m3OpenFixture")}
+            {t("m3ReturnCourseware")}
           </Button>
         </section>
       )}
@@ -1078,7 +1057,7 @@ export function LiveShell({
                 <p className="grid size-full place-items-center text-sm text-muted">{t("assetMissing")}</p>
               )
             ) : renderPage.type === "video" ? (
-              isM3VideoFixture || assetUrls[renderPage.path] ? (
+              assetUrls[renderPage.path] ? (
                 <VideoStage
                   pageId={renderPage.id}
                   src={assetUrls[renderPage.path] ?? ""}
@@ -1086,7 +1065,6 @@ export function LiveShell({
                   ctl={state.video[renderPage.id]}
                   onCtl={(action, time) => append("video_ctl", { pageId: renderPage.id, action, time })}
                   log={log}
-                  fixture={isM3VideoFixture}
                 />
               ) : (
                 <p className="grid size-full place-items-center text-sm text-muted">{t("assetMissing")}</p>
@@ -1134,13 +1112,18 @@ export function LiveShell({
                 inputMode={effectiveRoutingMode}
                 onInputPort={onMainInputPort}
                 onStore={setMainStore}
+                foreground={Boolean(activeToolId) && rendererProfile.audited}
               />
             )}
 
-            {state.openTool && (
+            {activeToolId && (
               <ToolOverlay
-                toolId={state.openTool}
-                onClose={isController ? () => append("tool_ctl", { action: "close" }) : undefined}
+                toolId={activeToolId}
+                onClose={isController
+                  ? usingM3Fixture
+                    ? () => setM3FixtureToolOpen(false)
+                    : () => append("tool_ctl", { action: "close" })
+                  : undefined}
               />
             )}
 
@@ -1148,7 +1131,7 @@ export function LiveShell({
           </div>
 
           {isController && toolbarStore && (
-            <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-1">
+            <div className="absolute bottom-3 left-1/2 z-50 flex -translate-x-1/2 flex-col items-center gap-1">
               <span className="rounded-full bg-ink/70 px-2 py-0.5 text-[10px] leading-none text-paper">
                 {activeArea === "side" ? t("boardSide") : t("boardMain")}
               </span>

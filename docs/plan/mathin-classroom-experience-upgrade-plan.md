@@ -554,6 +554,15 @@ data-classroom-input="ink"
 
 Canvas base/draft、`BoardObjectLayer`、`InstrumentLayer`、课件 DOM 和课堂 ToolOverlay 需要一张明确的 z-layer/输入所有权表。Smart + pen 时 ink Canvas 只渲染；选择、图形、尺规或对象编辑启用时由 §6.4 的工具矩阵决定哪个板书层可交互，不能只把 draft Canvas 设为 none 后留下另一个透明层继续吞事件。
 
+| 舞台场景 | 视觉顺序 | Smart + pen 输入所有权 |
+| --- | --- | --- |
+| 普通已审计课件 | 课件 DOM < 主板书 `z-10` | 真实课件节点命中；Canvas、对象和尺规层只渲染，router 写入主板书 port |
+| 已审计工具覆盖层 | ToolOverlay `z-30` < 主板书 `z-40` | 工具 DOM 继续是真实 target；`click/drag/native/ink` 由工具逐区输出，板书笔迹显示在工具上方 |
+| 未审计或复杂工具覆盖层 | 主板书 `z-10` < ToolOverlay `z-30` | renderer fail closed 到交互锁；不得仅抬高 Canvas 后猜测工具内部语义 |
+| 教师板书工具栏 | 上述舞台层 < 工具栏 `z-50` | 工具栏位于共同舞台之外，保持自身按钮所有权且不被已抬高的板书层遮挡 |
+
+工具覆盖层的外层滚动容器与滚动条保持 `native`，内部可书写区再用更近的 `ink` 标记覆盖；按钮、表单、滑块和自定义拖拽手柄分别输出 `click/native/drag`。首版只登记已完成逐区审计且单屏验收成立的工具，其余工具继续保护。
+
 ### 8.7 H5 课件
 
 iframe 内事件不会自然冒泡到课堂父页面。现有 H5 已使用 `H5_RUNTIME_VERSION` 和 `mathin-h5-media` bridge；指针能力扩展这套 runtime，建议升级为 v3，不另建无法统一升级和缓存失效的平行脚本。合同可命名为：
@@ -1197,7 +1206,7 @@ M2-B 再交付方案 C 的恢复基础：
 
 #### M3a 开发交付记录（2026-08-24）
 
-原生输入 v1 已接入开发端共同舞台，生产组织开关 `teaching.classroom_input_v2` 仍默认 `false`。截至 2026-08-25，capability registry 审计 `board`、`image`、独立 `video`、无 H5 且节点均为已支持 adapter 的 `page-doc-v1`，以及三个仓内原生游戏 `sudoku/kakuro/magic-square`：数独按钮/普通单元格输出 `click`，框选单元格模式动态输出 `drag`；数和、幻方的格子、数字与擦除按钮输出 `click`；普通文档按页级/节点级点击和媒体原生控件输出对应能力。Aixuexi、spatial document、H5、未知/未支持文档节点与课堂工具覆盖层继续进入交互保护，不据此宣称 M3a/M3b 完成。
+原生输入 v1 已接入开发端共同舞台，生产组织开关 `teaching.classroom_input_v2` 仍默认 `false`。截至 2026-08-25，capability registry 审计 `board`、`image`、独立 `video`、无 H5 且节点均为已支持 adapter 的 `page-doc-v1`、三个仓内原生游戏 `sudoku/kakuro/magic-square`，以及逐区登记的 `tool:fraction-line`：数独按钮/普通单元格输出 `click`，框选单元格模式动态输出 `drag`；数和、幻方的格子、数字与擦除按钮输出 `click`；普通文档按页级/节点级点击和媒体原生控件输出对应能力；分数数轴的按钮、表单、滑块和平移手柄、滚动外壳、空白书写区分别输出 `click/native/drag/native/ink`。Aixuexi、spatial document、H5、未知/未支持文档节点，以及 `motion-lab/spatial-lab` 工具覆盖层继续进入交互保护，不据此宣称 M3a/M3b 完成。
 
 首轮试讲页使用无姓名、无账号、无原始坐标上报的确定性数独 fixture 替换 M2 验收板，一级界面持续显示 `Smart / 交互锁 / 书写锁`，并只列四个当轮人工验收对象：轻点只触发题面、按钮上拖动转为起点完整的笔迹且 click 为零、交互锁不出墨、书写锁不点击题面。机器检查覆盖 8 CSS px 边界、pointer ID/类型无关性、取消与未知 renderer fail-closed；开发浏览器确认 Smart 轻点、交互锁和书写锁的可见行为。按钮上真实拖动接管与主观出墨手感由产品负责人完成验收后关闭。
 
@@ -1214,6 +1223,8 @@ M2-B 再交付方案 C 的恢复基础：
 同日，下一增量登记独立视频与普通 `page-doc-v1`。初版把视频整体登记为 `native`；开发人工验收随后确认它虽能播放/暂停，却不能在 Smart 下直接批注，因此按 §8.6 改为“画面 `click` + 底部控制条 `native`”的两个真实命中区。普通文档按实际交互把页级/节点级点击标为 `click`，其余已知区域保持 `ink`；Smart + pen 的共同舞台同时禁止文字 selection，修复 iPad 手写意外框选课件元素。文档尚未解析时只应用临时交互保护，不把加载态持久化成教师的锁选择；解析后若发现 H5、未知 adapter、未支持节点或非 `page-doc-v1`，继续 fail closed。开发验收夹具仍只呈现两个对象：文档轻点步进、拖写不框选文字；视频画面短点启停、拖写产生板书，而底部原生控制条仍可操作。课堂工具覆盖层和 H5 bridge 不在本增量范围。
 
 同日，产品负责人确认上述文档与视频对象在开发端人工验收通过：文档拖写不再框选文字，视频画面短点/拖写与底部原生控制条分区成立。该结论不等同生产 iPad 通过；生产复核仍须等待开发端整体完成并按晋级流程迁移。文档与视频对象至此关闭，后续只交付课堂工具覆盖层的新验收对象，不重复前述流程。
+
+随后，课堂工具覆盖层先登记 `fraction-line`，没有把“工具窗已打开”继续当作单一未知布尔值。工具 DOM 保持真实命中，按钮允许 8px 后接管，缩放滑块和数轴原点/刻度保持原生拖拽，表单及滚动外壳保持原生语义，数轴空白区直接写入主板书；主板书在该已审计工具上方只渲染，使接管后的笔迹不再被 `z-30` 不透明工具窗遮住。试讲使用版本化的独立 `m3-tool-overlay-fixture-v1` board key，既不复用文档验收笔迹，也不删除旧诊断板书；当前只等待三个新人工对象：轻点“下一个点”只加分数点、拖动红色 0 点只平移数轴、空白区笔迹显示在工具上方。`motion-lab`、`spatial-lab` 和 H5 继续 fail closed，本轮不展示也不顺带放行。
 
 ---
 

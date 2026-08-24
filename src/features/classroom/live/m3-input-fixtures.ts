@@ -1,26 +1,10 @@
 import type { DocNode, PageDoc } from "@/features/courseware-doc/schema";
 import type { CoursewarePage } from "../types";
 
-export type M3NativeRendererFixtureId = "document" | "video";
-
-export const M3_VIDEO_FIXTURE_PATH = "m3-native-video-fixture://canvas-stream";
-
-export const M3_NATIVE_RENDERER_FIXTURE_PAGES: Record<
-  M3NativeRendererFixtureId,
-  CoursewarePage
-> = {
-  document: {
-    id: "m3-native-document-fixture",
-    type: "doc",
-    docId: "m3-native-document-doc",
-    title: "M3 Native Document Input",
-  },
-  video: {
-    id: "m3-native-video-fixture",
-    type: "video",
-    path: M3_VIDEO_FIXTURE_PATH,
-    title: "M3 Native Video Input",
-  },
+export const M3_TOOL_OVERLAY_FIXTURE_PAGE: CoursewarePage = {
+  id: "m3-tool-overlay-fixture-v1",
+  type: "board",
+  title: "M3 Tool Overlay Input",
 };
 
 const ZERO_SHA256 = "0".repeat(64);
