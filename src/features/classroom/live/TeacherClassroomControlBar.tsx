@@ -21,7 +21,9 @@ export function TeacherClassroomControlBar({
       <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
         <div className="flex shrink-0 items-center gap-1.5">{secondaryControls}</div>
         <span aria-hidden className="mx-1 h-6 w-px shrink-0 bg-line" />
-        <div className="ml-auto min-w-0 overflow-x-auto overscroll-contain">{drawingControls}</div>
+        <div className="ml-auto min-w-0 touch-pan-x overflow-x-auto overflow-y-hidden overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {drawingControls}
+        </div>
       </div>
       <div className="flex min-w-0 items-center justify-end gap-1.5 border-l border-line pl-3">{pageControls}</div>
     </footer>

@@ -356,8 +356,13 @@ describe("R1 classroom continuity contracts", () => {
     expect(controlBar).toContain("border-t border-line");
     expect(controlBar).not.toContain("rounded-2xl");
     expect(controlBar).not.toContain("shadow-lg");
+    expect(controlBar).toContain("overflow-y-hidden");
+    expect(controlBar).toContain("[scrollbar-width:none]");
     expect(toolbar).toContain("largeTargets?: boolean");
+    expect(toolbar).toContain('variant?: "floating" | "rail"');
     expect(toolbar).not.toContain("compact?: boolean");
+    expect(liveShell).toContain('variant="rail"');
+    expect(liveShell).not.toContain('activeArea === "side" ? t("boardSide") : t("boardMain")');
   });
 
   it("publishes knowledge summary, assignment, and video as three independent tasks", () => {

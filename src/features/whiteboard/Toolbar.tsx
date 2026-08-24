@@ -133,12 +133,14 @@ export function Toolbar({
   clearTargets,
   className,
   largeTargets = false,
+  variant = "floating",
 }: {
   title: string;
   store?: WhiteboardStore;
   clearTargets?: ClearTarget[];
   className?: string;
   largeTargets?: boolean;
+  variant?: "floating" | "rail";
 }) {
   const t = useTranslations("whiteboard.board.tools");
   const colorNames = useTranslations("whiteboard.board.colors");
@@ -164,6 +166,7 @@ export function Toolbar({
   const [clearSelected, setClearSelected] = useState<Set<string>>(
     () => new Set(clearTargets?.filter((target) => target.defaultChecked).map((target) => target.key) ?? []),
   );
+  const isRail = variant === "rail";
   const isEraser = ERASER_TOOLS.includes(tool);
   const sizeIndex = Math.max(SIZE_ORDER.findIndex((key) => SIZE_PRESETS[key] === sizeNorm), 0);
 
@@ -185,7 +188,7 @@ export function Toolbar({
     setTool("pointer");
   };
 
-  if (collapsed) {
+  if (!isRail && collapsed) {
     return (
       <Button
         type="button"
@@ -207,7 +210,15 @@ export function Toolbar({
   return (
     // 上限按所在列算而不是按视口算（doc 27 §5.1）：工具栏浮在主板书列内居中，
     // 而 100vw 是整个视口——主板书只有 700px 时，工具栏会长到盖住右侧副板书。
-    <div className={cn("flex max-w-full items-center gap-0.5 overflow-x-auto rounded-2xl border border-line bg-paper/90 p-1.5 shadow-lg backdrop-blur transition-[transform,opacity] duration-200 select-none", className)}>
+    <div
+      className={cn(
+        "flex items-center gap-0.5 transition-[transform,opacity] duration-200 select-none",
+        isRail
+          ? "max-w-none overflow-visible"
+          : "max-w-full overflow-x-auto rounded-2xl border border-line bg-paper/90 p-1.5 shadow-lg backdrop-blur",
+        className,
+      )}
+    >
       <ToolButton large={largeTargets} active={tool === "pointer"} label={t("pointer")} onClick={() => setTool("pointer")}>
         <MousePointer2 size={18} />
       </ToolButton>
@@ -352,8 +363,12 @@ export function Toolbar({
       <ToolButton large={largeTargets} label={t("undo")} onClick={undo} disabled={!canUndo}><Undo2 size={18} /></ToolButton>
       <ToolButton large={largeTargets} label={t("clear")} onClick={() => setClearOpen(true)} disabled={clearTargets ? false : !hasItems}><Trash2 size={18} /></ToolButton>
       <ToolButton large={largeTargets} label={t("export")} onClick={() => { void exportPng(store.getState().items, title, document.documentElement); }} disabled={!hasItems}><Download size={18} /></ToolButton>
-      <div aria-hidden className="mx-0.5 h-6 w-px shrink-0 bg-line" />
-      <ToolButton large={largeTargets} label={t("hideToolbar")} onClick={() => setCollapsed(true)}><ChevronDown size={18} /></ToolButton>
+      {!isRail ? (
+        <>
+          <div aria-hidden className="mx-0.5 h-6 w-px shrink-0 bg-line" />
+          <ToolButton large={largeTargets} label={t("hideToolbar")} onClick={() => setCollapsed(true)}><ChevronDown size={18} /></ToolButton>
+        </>
+      ) : null}
 
       <Dialog open={clearOpen} onOpenChange={setClearOpen}>
         <DialogContent>

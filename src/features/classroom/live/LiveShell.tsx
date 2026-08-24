@@ -1589,13 +1589,7 @@ export function LiveShell({
           </div>
 
           {isController && toolbarStore && !teacherLayoutV2 && (
-            <div className={cn(
-              "absolute z-50 flex flex-col items-center gap-1",
-              teacherLayoutV2 ? "bottom-2 right-2 max-w-[calc(100%-1rem)]" : "bottom-3 left-1/2 -translate-x-1/2",
-            )}>
-              <span className="rounded-full bg-ink/70 px-2 py-0.5 text-[10px] leading-none text-paper">
-                {activeArea === "side" ? t("boardSide") : t("boardMain")}
-              </span>
+            <div className="absolute bottom-3 left-1/2 z-50 flex max-w-[calc(100%-1rem)] -translate-x-1/2 items-center">
               <Toolbar title={`${displayedSessionTitle}-${renderPage?.title ?? ""}`} store={toolbarStore} clearTargets={clearTargets} />
             </div>
           )}
@@ -1959,18 +1953,14 @@ export function LiveShell({
             </>
           )}
           drawingControls={toolbarStore ? (
-            <div className="flex min-w-max items-center gap-1">
-              <span className="rounded-full bg-ink/70 px-2 py-0.5 text-[10px] leading-none text-paper">
-                {activeArea === "side" ? t("boardSide") : t("boardMain")}
-              </span>
-              <Toolbar
-                largeTargets
-                title={`${displayedSessionTitle}-${renderPage?.title ?? ""}`}
-                store={toolbarStore}
-                clearTargets={clearTargets}
-                className="h-11 rounded-none border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
-              />
-            </div>
+            <Toolbar
+              largeTargets
+              variant="rail"
+              title={`${displayedSessionTitle}-${renderPage?.title ?? ""}`}
+              store={toolbarStore}
+              clearTargets={clearTargets}
+              className="h-11"
+            />
           ) : null}
           pageControls={(
             <ClassroomPageControls
