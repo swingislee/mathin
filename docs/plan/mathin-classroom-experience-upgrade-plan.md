@@ -1,6 +1,6 @@
 # Mathin 课堂体验升级规划
 
-> **状态**：M1 已完成开发端人工验收；M0-A 产品决策已冻结，M0-B 原型与基线施工中；暂不进入 M2–M5 集成实施<br>
+> **状态**：M1 已完成开发端人工验收；M0 合同与基线门已关闭；M2 白板性能基础施工中，暂不进入 M3–M5 集成实施<br>
 > **规划日期**：2026-08-24<br>
 > **仓库基线**：`swingislee/mathin`，本轮审阅基于 `main` 的 `0e30b33`<br>
 > **M1 验收基线**：`43ae587` + `67989c1`；只表示开发目标已验收，尚未部署生产<br>
@@ -942,13 +942,14 @@ type StarUndoV2 = {
 teaching.classroom_input_v2
 teaching.classroom_layout_v2
 teaching.classroom_h5_pointer_v1
+teaching.classroom_board_checkpoint_v2
 ```
 
 若采用这些键，必须同步更新 `organization_feature_keys()`、`ORGANIZATION_FEATURE_KEYS`、默认 false 的 `feature_flag_versions`、数据库生成类型/初始化 manifest、管理入口和 zh/en 文案，因此本身就是 migration。开发期 query/local override 只能用于固定账号的试讲，不得作为生产放量开关，也不能从客户端把 false 覆盖成 true。
 
 现有组织级开关不能天然表达“只给某一位真实教师/某一课次”。M0 必须证明生产环境只有一个符合条件的教师，或增加服务端求值、默认拒绝的教师/课次 rollout scope；不得把真实 UUID 写死在客户端、共享源码或证据中。
 
-输入、布局和 H5 能力独立回退；旧 reader 在整个双读期保留。移除旧实现以“真实教师课次证据 + 无未同步旧事件 + rollback 演练通过”为条件，不以“经过一个发布周期”单独判定。
+输入、布局、H5 能力和板书 checkpoint writer 独立回退；前三个开关落实 M0-A 的交互决策，第四个开关落实 M0-B 选择的存储方案 C。旧 reader 在整个双读期保留。移除旧实现以“真实教师课次证据 + 无未同步旧事件 + rollback 演练通过”为条件，不以“经过一个发布周期”单独判定。
 
 ---
 
@@ -973,8 +974,8 @@ teaching.classroom_h5_pointer_v1
 | 座次/课中变化 | 复用正式 seat position，开课冻结、差异提示后确认刷新 | 5×4/4×5 映射与 1/8/20/30 人原型 |
 | 角色与 viewport | 新网格仅 control；display/viewer 独立 | 1024/1280/1366/1920 + 窄屏截图矩阵 |
 | H5 | 扩展现有 runtime 并版本握手；不兼容页交互锁 | v3 message schema、威胁模型、watchdog |
-| 性能/存储 | fresh production baseline，冻结设备、pixel/payload/latency 预算 | 可复现 fixture、命令、原始摘要 |
-| 灰度与回退 | 现有数据库 feature flag，三开关独立 | migration 清单、旧 reader 删除条件 |
+| 性能/存储 | fresh production baseline；版本化 latest checkpoint、192 KiB item-boundary chunk、Worker 构建与 Canvas 像素护栏 | 可复现 fixture、命令、原始摘要、v1/v2 双读与原子写合同 |
+| 灰度与回退 | 现有数据库 feature flag；M0-A 三开关加独立 checkpoint writer 开关 | migration 清单、旧 reader 删除条件 |
 
 #### M0-A 决策记录（2026-08-24）
 
@@ -994,11 +995,11 @@ teaching.classroom_h5_pointer_v1
 | H5 | 扩展既有 runtime、版本握手与 watchdog；不兼容或失联页面进入交互锁 | runtime/message schema 升级与缓存失效；不新建无握手平行 bridge |
 | 灰度与回退 | 输入、布局、H5 三个服务端 feature flag 独立、默认 false；旧 reader 在双读期保留 | fail-closed migration、生成类型、初始化清单、管理入口与 zh/en 文案；生产另走 preflight/postflight |
 
-M0-A 已关闭。M0-B 的输入阈值已按产品决策冻结为首版 8 CSS px；M0-B 仍须关闭 Canvas pixel budget、60 分钟 payload/IDB/恢复基线及是否需要 progress chunk 或 snapshot 分块，这些性能与存储项不得由开发机观感代替。
+M0-A 已关闭。M0-B 的输入阈值已按产品决策冻结为首版 8 CSS px；性能与存储合同在下述基线和方案 C 决策中关闭。
 
 #### M0-B 原型与基线施工记录（2026-08-24）
 
-本批只产出会话内可操作原型和可复现基线，不修改课堂产品路由、数据库、事件 writer 或 feature flag。三个原型等待产品负责人人工验收：
+本批只产出会话内可操作原型和可复现基线，不修改课堂产品路由、数据库、事件 writer 或 feature flag。产品负责人已据此授权继续施工，M0-B 的三个验收对象冻结如下：
 
 | 验收对象 | 已具备的行为 | 本批不证明 |
 | --- | --- | --- |
@@ -1014,9 +1015,9 @@ M0-A 已关闭。M0-B 的输入阈值已按产品决策冻结为首版 8 CSS px�
 | 31.95 | 671.27 KiB | 16.79 MiB | 92.742–94.956 ms | 仅余 96.73 KiB warning 余量；历史全量快照下载成本已经不可忽略 |
 | 63.90 | 1300.57 KiB | 32.53 MiB | 201.110–215.144 ms | 超过数据库 1 MiB hard limit，现有 writer 会失败 |
 
-因此 M0-B 已能冻结一项下游约束：初始恢复不能继续下载每块板的全部历史全量 snapshot，M2 前必须选定“每块板最新 checkpoint + 其后 tail”或等价的服务端压缩/分页合同。是否只做点重采样即可守住单 snapshot 预算，仍取决于真实授课设备的点密度、IDB 与恢复采样；若实机落入高点密度档，则必须先设计可编辑分块/压缩协议，不能靠截断 payload。
+因此初始恢复不能继续下载每块板的全部历史全量 snapshot；M2 固定读取“每块板最新 checkpoint + 其后 tail”，其他业务事件继续分页读取。仅做点重采样不能保证高点密度课堂守住 1 MiB 上限，不能靠截断 payload 或捕获异常后丢事件。
 
-fresh production build 于同日通过；`pnpm bundle:report --json` 的课堂 live 路由为 28 chunks、480,704 gzip bytes。该数字是 M2–M5 改造前基线，不是性能通过结论。按推荐布局和 `effectiveDpr=1.5` 的几何投影，1024×768、1280×720、1366×768、1920×1080 的 base+draft 总 backing pixels 均低于 24 MP 起始护栏；它只证明数学投影，最终 DPR 与内存预算仍须最低实机冻结。
+fresh production build 于同日通过；`pnpm bundle:report --json` 的课堂 live 路由为 28 chunks、480,704 gzip bytes。该数字是 M2–M5 改造前基线，不是性能通过结论。按推荐布局和 `effectiveDpr=1.5` 的几何投影，1024×768、1280×720、1366×768、1920×1080 的 base+draft 总 backing pixels 均低于 24 MP 起始护栏。M2 首版据此冻结 `effectiveDpr≤1.5`、单个 Canvas backing pixels `≤8 MP`、课堂所有 Canvas 合计 `≤24 MP`；三条同时满足，低端设备仍以真实老师手感复核。
 
 ##### 快速手感采样 #1（2026-08-24）
 
@@ -1032,15 +1033,30 @@ fresh production build 于同日通过；`pnpm bundle:report --json` 的课堂 l
 
 样本仍有明显限制：5px 轻点的平均/最大移动为 25.55/43.09px，而同一设备 8px 轮次只有 0.21/2.13px，说明首轮操作理解、练习顺序或手势执行影响了结果；汇总也无法区分实体鼠标与被设备误报为 `mouse` 的触控笔，并且没有可确认的 `pen`/`touch` 样本。产品负责人接受这些不确定性并决定先冻结 **8 CSS px v1**，正式 100/50/50 从 M0 退出条件移到教师试用后的问题诊断。输入阈值 Gate 据此关闭；若老师课中反复出现“轻点变墨迹”或“短起笔不出墨”，再对问题设备复测并通过独立输入 flag 调整，不回写历史笔迹或事件。
 
+##### 存储方案 C 决策（2026-08-24）
+
+产品负责人在 A“继续追加全量快照”、B“只做重采样”和 C“版本化 checkpoint + 最新覆盖 + 分块兜底”之间选择 C，并授权继续 M2。冻结合同如下：
+
+1. 主/副板书当前状态从 append-only `session_events` 分离；其他考勤、积分、举手等业务事件仍保持 append-only，不能借此改写审计历史；
+2. 服务端按 `session + board/page key` 只暴露最新已提交 checkpoint；manifest 和其 chunk 在同一数据库事务中按递增版本提交，读者不会看到半版本；
+3. item 边界分块上限为 192 KiB，单个 item 超限时先在 Worker 做自适应重采样；仍超限则显示可恢复错误，禁止静默截断、清空或假装保存成功；
+4. checkpoint 序列化、重采样和分块在 Worker 中完成；同一块板只保留最新待处理任务，过期结果不得覆盖新版本；
+5. IndexedDB outbox 以 `session + board/page key` 覆盖最新待同步 checkpoint，只在对应版本服务端确认后删除；恢复只装载最新 checkpoint，不回放 50 份历史全量快照；
+6. 新 reader 先读 v2 checkpoint，再对没有 v2 的旧课堂回退到最新 v1 `board_snapshot`；旧 writer/reader 在独立 `teaching.classroom_board_checkpoint_v2` 开关和双读期内保留；
+7. 768 KiB 仍是未分块 payload warning 水位，192 KiB 是 chunk hard budget；两者均按 UTF-8 JSON 内容测量，不以 JavaScript 字符数代替；
+8. Worker、最新覆盖、原子版本、显式失败、v1/v2 双读和三条 Canvas 像素护栏都是方案 C 的组成部分，不作为低端设备上的可选优化。
+
+布局名单原型按既定 4:3 主板书、右侧信息/副板书/4 列稳定座次、21–30 人学生区内部滚动冻结；后续真实上课反馈可通过独立布局开关调整，不回开 M0。至此 M0-B 和整个 M0 关闭；M2 只实现白板性能与恢复基础，不提前施工 M3 输入路由或 M4 正式名单/布局。
+
 #### 退出条件
 
 - 所有决策有负责人、日期和代码/迁移影响，不留“实现时再看”；
 - 原生数独按钮上的 tap→click 与 move→ink 在 DOM 原型中成立，且不通过覆盖层命中猜测或人工 `.click()`；
-- 60 分钟板书 fixture 测得实际 payload/IDB/恢复基线，决定只做重采样还是需要分块；
+- 60 分钟板书 fixture 已测得 payload/IDB/恢复基线，方案 C 已冻结 latest checkpoint、Worker 与分块合同；
 - 未认领学生、旧星星事件、21–30 人、H5 不兼容页、offline tail loss 均有兼容路径；
 - M1–M5 拆成可独立验收、独立提交和独立回退的增量。
 
-M0 阻塞 M2–M5。M1 的纯数独/工具栏修正可在开发线获批后独立实施，但不得借 M1 顺手引入新输入路由或数据 writer。
+M0 已关闭并解除对 M2 的阻塞；M3–M5 仍按里程碑顺序等待各自前置和人工验收。M2 不得借白板性能施工顺手引入新输入路由、正式名单或星星 writer。
 
 ### 12.1 M1：确定性逻辑修正
 
@@ -1075,6 +1091,8 @@ M0 阻塞 M2–M5。M1 的纯数独/工具栏修正可在开发线获批后独�
 
 #### 内容
 
+M2-A 先交付书写渲染基础：
+
 1. 将 Canvas 内部指针处理抽成可复用 `BoardInputSink`，保持默认内部宿主供独立白板使用；
 2. coalesced points 按帧批处理、排空与在线重采样；
 3. 当前笔迹用经过视觉差异验证的 tail-window 增量预览；
@@ -1084,12 +1102,21 @@ M0 阻塞 M2–M5。M1 的纯数独/工具栏修正可在开发线获批后独�
 7. 页面切换/失焦/卸载的输入 drain；
 8. 无 PII 的开发调试计数与性能 fixture。
 
+M2-B 再交付方案 C 的恢复基础：
+
+1. 新增版本化 checkpoint manifest/chunk migration、RLS 与原子保存 RPC，chunk UTF-8 JSON 不超过 192 KiB；
+2. Worker 执行自适应重采样、序列化和 item-boundary 分块，同板只提交最新任务；
+3. IndexedDB checkpoint outbox 以 `session + board/page key` 最新覆盖，并以版本确认删除；
+4. 首屏读取每块板最新 v2 checkpoint；没有 v2 时回退最新 v1 `board_snapshot`，其他业务事件独立分页；
+5. 新 writer 由 `teaching.classroom_board_checkpoint_v2` 默认 false 开关控制，关闭后旧课堂仍可恢复，不能产生 reader 不认识的数据。
+
 #### 主要文件
 
 - `CanvasSurface.tsx`
 - `strokes.ts`
 - `store.ts`
 - `bus.ts`、`useClassBoard.ts` 与实时笔迹传输相关文件
+- checkpoint Worker、IndexedDB outbox、课堂初始读取与对应数据库 migration/RPC
 
 #### 自动验证
 
@@ -1106,11 +1133,10 @@ M0 阻塞 M2–M5。M1 的纯数独/工具栏修正可在开发线获批后独�
 
 #### 人工验收
 
-- 快速连续书写不出现明显断线；
-- 短笔画和长笔画起止位置正确；
-- 主板书与副板书粗细一致；
-- 书写、擦除、撤销结果与升级前一致；
-- 模拟大量副板书笔迹后继续书写，跟手感不明显恶化。
+下一次只交付两个可见、可操作对象，不用机器检查清单代替：
+
+1. **真实书写手感**：在同一课堂页连续写短笔、长笔、急转弯，并在主/副板书切换；人工判断起止点、断线、粗细、擦除和撤销是否符合预期；
+2. **500 笔后恢复**：一键装入 500 笔无 PII fixture，继续书写观察跟手感，然后刷新/重开课堂；页面显示恢复来源、checkpoint 版本、chunk 数和精确笔数，人工确认最后一笔存在且没有重复或清空。
 
 ---
 
