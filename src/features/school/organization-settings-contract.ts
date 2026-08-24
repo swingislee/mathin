@@ -16,6 +16,7 @@ export const ORGANIZATION_FEATURE_KEYS = [
   "teaching.preparation_archive_edit",
   "teaching.classroom_board_checkpoint_v2",
   "teaching.classroom_input_v2",
+  "teaching.classroom_h5_pointer_v1",
 ] as const;
 
 export type OrganizationRuleDomain = (typeof ORGANIZATION_RULE_DOMAINS)[number];

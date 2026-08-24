@@ -1,4 +1,5 @@
 import { ASSET_BINDING_URL_PREFIX } from "./schema";
+import { H5_POINTER_RUNTIME_VERSION } from "./h5-pointer-protocol";
 
 /**
  * bindingKey → URL 的解析结果。来源可注入(docs/plan/16 §3 D5):
@@ -10,7 +11,7 @@ import { ASSET_BINDING_URL_PREFIX } from "./schema";
 export type ResolvedBindingUrls = Readonly<Record<string, string>>;
 
 const BINDING_PLACEHOLDER = /asset:\/\/binding\/([0-9a-f]{64})/g;
-export const H5_RUNTIME_VERSION = "2";
+export const H5_RUNTIME_VERSION = H5_POINTER_RUNTIME_VERSION;
 
 /** richText html 里的 asset://binding/<key> 占位注入实际 URL;未解析的引用原样保留(渲染为破图,可见即可查)。 */
 export function injectBindingUrls(html: string, urls: ResolvedBindingUrls): string {

@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { isAixuexiPageDoc } from "@/features/courseware-doc/aixuexi-schema";
 import type { CoursewareDoc } from "@/features/courseware-doc/document";
 import type { DocVideoCtl } from "@/features/courseware-doc/DocStage";
+import type { H5PointerBridgeHost } from "@/features/courseware-doc/h5-pointer-protocol";
 import type { InteractionTrigger } from "@/features/courseware-doc/interactions";
 import type { ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 import { StagePreview } from "@/features/courseware-studio/StagePreview";
@@ -18,6 +19,7 @@ interface Props {
   videoCtl: DocVideoCtl | undefined;
   onVideoCtl: (action: DocVideoCtl["action"], time: number) => void;
   onAdvance: () => void;
+  h5PointerBridge?: H5PointerBridgeHost;
 }
 
 /** 课堂 doc 页舞台（P6-5）：4:3 顶置模式，16:9 内容占上部 75%、下部为板书带（§6.1）。 */
@@ -30,6 +32,7 @@ export function DocCoursewarePage({
   videoCtl,
   onVideoCtl,
   onAdvance,
+  h5PointerBridge,
 }: Props) {
   const t = useTranslations("classroom.live");
   if (!doc) {
@@ -56,6 +59,7 @@ export function DocCoursewarePage({
       onClickTrigger={isController ? onStep : undefined}
       replaySteps={steps}
       videoControl={{ controller: isController, ctl: videoCtl, onCtl: onVideoCtl }}
+      h5PointerBridge={h5PointerBridge}
     />
   );
 }

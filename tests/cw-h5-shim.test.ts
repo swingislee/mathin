@@ -9,6 +9,7 @@ import {
   injectHeadSnippet,
   isHtmlObjectPath,
 } from "../src/features/courseware-doc/h5-shim";
+import { H5_POINTER_RUNTIME_VERSION } from "../src/features/courseware-doc/h5-pointer-protocol";
 
 const HASH = "a".repeat(64);
 
@@ -59,7 +60,7 @@ describe("P6-4 H5 shim", () => {
   });
 
   it("keeps entry pages same-origin-only while allowing sandboxed nested HTML", () => {
-    expect(h5HtmlSecurityHeaders(`https://mathin.example/api/cw-h5/packages/${HASH}/index.html?mathin_h5_runtime=2`))
+    expect(h5HtmlSecurityHeaders(`https://mathin.example/api/cw-h5/packages/${HASH}/index.html?mathin_h5_runtime=${H5_POINTER_RUNTIME_VERSION}`))
       .toEqual({
         "Content-Security-Policy": "sandbox allow-scripts allow-forms allow-pointer-lock allow-modals",
         "X-Frame-Options": "SAMEORIGIN",

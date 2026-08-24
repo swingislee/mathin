@@ -6,6 +6,15 @@
  * 公开桶。路径内容寻址(packages/<sha256>/...),响应可永久缓存。
  */
 
+import {
+  H5_POINTER_FRAME_SOURCE,
+  H5_POINTER_MAX_POINTS_PER_CHUNK,
+  H5_POINTER_PARENT_SOURCE,
+  H5_POINTER_PROTOCOL_SCHEMA,
+  H5_POINTER_PROTOCOL_VERSION,
+  H5_POINTER_RUNTIME_VERSION,
+} from "./h5-pointer-protocol";
+
 const PACKAGE_HASH = /^[0-9a-f]{64}$/;
 const HTML_EXTENSIONS = new Set(["html", "htm"]);
 
@@ -13,7 +22,7 @@ export const H5_IMMUTABLE_CACHE = "public, max-age=31536000, immutable";
 export const H5_SANDBOX_CSP = "sandbox allow-scripts allow-forms allow-pointer-lock allow-modals";
 
 export function h5HtmlSecurityHeaders(requestUrl: string): Record<string, string> {
-  const entrypoint = new URL(requestUrl).searchParams.get("mathin_h5_runtime") === "2";
+  const entrypoint = new URL(requestUrl).searchParams.get("mathin_h5_runtime") === H5_POINTER_RUNTIME_VERSION;
   return {
     "Content-Security-Policy": H5_SANDBOX_CSP,
     ...(entrypoint ? { "X-Frame-Options": "SAMEORIGIN" } : {}),
@@ -26,10 +35,18 @@ export function h5HtmlSecurityHeaders(requestUrl: string): Record<string, string
  * read storage during bootstrap and otherwise stop before binding their controls.
  * The same bridge relays native media events through nested package iframes.
  */
-export const H5_OPAQUE_ORIGIN_RUNTIME = `<script data-mathin-h5-runtime>
+export const H5_OPAQUE_ORIGIN_RUNTIME = `<script data-mathin-h5-runtime="${H5_POINTER_RUNTIME_VERSION}">
 (() => {
   if (window.__mathinH5Runtime) return;
-  window.__mathinH5Runtime = true;
+  window.__mathinH5Runtime = "${H5_POINTER_RUNTIME_VERSION}";
+
+  const POINTER_SCHEMA = "${H5_POINTER_PROTOCOL_SCHEMA}";
+  const POINTER_VERSION = ${H5_POINTER_PROTOCOL_VERSION};
+  const POINTER_FRAME_SOURCE = "${H5_POINTER_FRAME_SOURCE}";
+  const POINTER_PARENT_SOURCE = "${H5_POINTER_PARENT_SOURCE}";
+  const MAX_POINTS = ${H5_POINTER_MAX_POINTS_PER_CHUNK};
+  const INPUT_PROVIDER_SCHEMA = "mathin-classroom-input";
+  const INPUT_PROVIDER_VERSION = 1;
 
   const createMemoryStorage = () => {
     const values = new Map();
@@ -53,6 +70,7 @@ export const H5_OPAQUE_ORIGIN_RUNTIME = `<script data-mathin-h5-runtime>
   let applying = 0;
   const media = () => Array.from(document.querySelectorAll("video,audio"));
   const childFrames = () => Array.from(document.querySelectorAll("iframe"));
+  const childFrameForSource = (source) => childFrames().find((frame) => frame.contentWindow === source) || null;
   const relay = (event) => {
     if (applying > 0) return;
     const target = event.target;
@@ -85,6 +103,338 @@ export const H5_OPAQUE_ORIGIN_RUNTIME = `<script data-mathin-h5-runtime>
     setTimeout(() => { applying = Math.max(0, applying - 1); }, 120);
   };
 
+  const capabilities = ["click", "drag", "native", "ink", "unknown"];
+  const clamp01 = (value) => Math.max(0, Math.min(1, value));
+  const rootProvider = () => {
+    const root = document.documentElement;
+    const providerSchema = root.getAttribute("data-classroom-input-provider") || "unsupported";
+    const providerVersion = Number(root.getAttribute("data-classroom-renderer-version") || 0);
+    const defaultCapability = root.getAttribute("data-classroom-input-default") || "unknown";
+    return {
+      providerSchema,
+      providerVersion,
+      defaultCapability: capabilities.includes(defaultCapability) ? defaultCapability : "unknown",
+      compatible: providerSchema === INPUT_PROVIDER_SCHEMA
+        && providerVersion === INPUT_PROVIDER_VERSION
+        && capabilities.includes(defaultCapability),
+    };
+  };
+  const pointerEnvelope = (type, extra = {}) => ({
+    source: POINTER_FRAME_SOURCE,
+    schema: POINTER_SCHEMA,
+    version: POINTER_VERSION,
+    type,
+    frameId: pointerSession?.frameId || "unbound",
+    channelToken: pointerSession?.channelToken || "unbound",
+    ...extra,
+  });
+  const postPointer = (type, extra = {}) => {
+    if (!pointerSession) return;
+    parent.postMessage(pointerEnvelope(type, extra), "*");
+  };
+  const isPointerParentMessage = (data) => Boolean(
+    data
+    && data.source === POINTER_PARENT_SOURCE
+    && data.schema === POINTER_SCHEMA
+    && data.version === POINTER_VERSION
+    && typeof data.frameId === "string"
+    && typeof data.channelToken === "string"
+  );
+  const isPointerFrameMessage = (data) => Boolean(
+    data
+    && data.source === POINTER_FRAME_SOURCE
+    && data.schema === POINTER_SCHEMA
+    && data.version === POINTER_VERSION
+    && typeof data.frameId === "string"
+    && typeof data.channelToken === "string"
+  );
+  const matchesPointerSession = (data) => Boolean(
+    pointerSession
+    && data.frameId === pointerSession.frameId
+    && data.channelToken === pointerSession.channelToken
+  );
+  const parentPointerMessage = (type, extra = {}) => ({
+    source: POINTER_PARENT_SOURCE,
+    schema: POINTER_SCHEMA,
+    version: POINTER_VERSION,
+    type,
+    frameId: pointerSession?.frameId || "unbound",
+    channelToken: pointerSession?.channelToken || "unbound",
+    ...extra,
+  });
+  const forwardToChildren = (data) => {
+    for (const frame of childFrames()) frame.contentWindow?.postMessage(data, "*");
+  };
+  const normalizedPoint = (event) => ({
+    x: clamp01(event.clientX / Math.max(window.innerWidth, 1)),
+    y: clamp01(event.clientY / Math.max(window.innerHeight, 1)),
+  });
+  const remapChildPoint = (point, frame) => {
+    const rect = frame.getBoundingClientRect();
+    return {
+      x: clamp01((rect.left + Number(point.x) * rect.width) / Math.max(window.innerWidth, 1)),
+      y: clamp01((rect.top + Number(point.y) * rect.height) / Math.max(window.innerHeight, 1)),
+    };
+  };
+  const safePoints = (value) => Array.isArray(value)
+    && value.length <= MAX_POINTS
+    && value.every((point) => point && Number.isFinite(point.x) && Number.isFinite(point.y)
+      && point.x >= 0 && point.x <= 1 && point.y >= 0 && point.y <= 1);
+  const relayChildPointer = (data, frame) => {
+    if (!matchesPointerSession(data)) return;
+    const relayDepth = Number(data.relayDepth || 0);
+    if (!Number.isInteger(relayDepth) || relayDepth < 0 || relayDepth >= 8) return;
+    if (data.type === "pointer_start") {
+      if (!Number.isFinite(data.x) || !Number.isFinite(data.y)) return;
+      const point = remapChildPoint({ x: data.x, y: data.y }, frame);
+      parent.postMessage(pointerEnvelope("pointer_start", {
+        pointerId: data.pointerId,
+        pointerType: data.pointerType,
+        gestureToken: data.gestureToken,
+        capability: data.capability,
+        isPrimary: data.isPrimary,
+        button: data.button,
+        ...point,
+        relayDepth: relayDepth + 1,
+      }), "*");
+      return;
+    }
+    if (data.type === "pointer_move" || data.type === "pointer_end") {
+      if (!safePoints(data.points)) return;
+      parent.postMessage(pointerEnvelope(data.type, {
+        pointerId: data.pointerId,
+        gestureToken: data.gestureToken,
+        chunkSeq: data.chunkSeq,
+        points: data.points.map((point) => remapChildPoint(point, frame)),
+        relayDepth: relayDepth + 1,
+      }), "*");
+      return;
+    }
+    if (data.type === "pointer_cancel") {
+      parent.postMessage(pointerEnvelope("pointer_cancel", {
+        pointerId: data.pointerId,
+        gestureToken: data.gestureToken,
+      }), "*");
+    }
+  };
+
+  let pointerSession = null;
+  let pointerReady = false;
+  let pointerMode = "interaction-lock";
+  let pointerSequence = 0;
+  let activePointer = null;
+  let suppressedClick = null;
+  let moveFrame = 0;
+  let previousPointerStyles = null;
+  let childPointerStates = new Map();
+
+  const reportRootCapabilities = (forceIncompatible = false) => {
+    const provider = rootProvider();
+    postPointer("pointer_capabilities", {
+      providerSchema: forceIncompatible ? "unsupported-nested-frame" : provider.providerSchema,
+      providerVersion: forceIncompatible ? 0 : provider.providerVersion,
+      defaultCapability: forceIncompatible ? "unknown" : provider.defaultCapability,
+    });
+  };
+  const allChildrenReady = () => {
+    const frames = childFrames();
+    const currentFrames = new Set(frames);
+    for (const frame of childPointerStates.keys()) {
+      if (!currentFrames.has(frame)) childPointerStates.delete(frame);
+    }
+    return frames.every((frame) => childPointerStates.get(frame) === "ready");
+  };
+  const startChildHandshake = () => {
+    const frames = childFrames();
+    childPointerStates = new Map(frames.map((frame) => [frame, "pending"]));
+    const provider = rootProvider();
+    if (!provider.compatible || frames.length === 0) reportRootCapabilities();
+    forwardToChildren(parentPointerMessage("pointer_hello"));
+  };
+
+  const applyPointerMode = (mode) => {
+    pointerMode = mode === "smart" ? "smart" : "interaction-lock";
+    const root = document.documentElement;
+    if (pointerMode === "smart") {
+      if (!previousPointerStyles) {
+        previousPointerStyles = {
+          userSelect: root.style.userSelect,
+          webkitUserSelect: root.style.webkitUserSelect,
+          webkitTouchCallout: root.style.getPropertyValue("-webkit-touch-callout"),
+        };
+      }
+      root.style.userSelect = "none";
+      root.style.webkitUserSelect = "none";
+      root.style.setProperty("-webkit-touch-callout", "none");
+      return;
+    }
+    if (!previousPointerStyles) return;
+    root.style.userSelect = previousPointerStyles.userSelect;
+    root.style.webkitUserSelect = previousPointerStyles.webkitUserSelect;
+    if (previousPointerStyles.webkitTouchCallout) {
+      root.style.setProperty("-webkit-touch-callout", previousPointerStyles.webkitTouchCallout);
+    } else {
+      root.style.removeProperty("-webkit-touch-callout");
+    }
+    previousPointerStyles = null;
+  };
+
+  const targetCapability = (event) => {
+    for (const target of event.composedPath()) {
+      if (!(target instanceof Element) || !target.hasAttribute("data-classroom-input")) continue;
+      const value = target.getAttribute("data-classroom-input") || "unknown";
+      return capabilities.includes(value) ? { capability: value, owner: target } : { capability: "unknown", owner: target };
+    }
+    return { capability: rootProvider().defaultCapability, owner: event.target instanceof Element ? event.target : null };
+  };
+  const flushMoves = () => {
+    moveFrame = 0;
+    const active = activePointer;
+    if (!active || active.points.length === 0) return;
+    const points = active.points.splice(0, MAX_POINTS);
+    active.chunkSeq += 1;
+    postPointer("pointer_move", {
+      pointerId: active.pointerId,
+      gestureToken: active.gestureToken,
+      chunkSeq: active.chunkSeq,
+      points,
+    });
+    if (active.points.length > 0) moveFrame = requestAnimationFrame(flushMoves);
+  };
+  const flushAllMoves = () => {
+    if (moveFrame) cancelAnimationFrame(moveFrame);
+    moveFrame = 0;
+    const active = activePointer;
+    if (!active) return;
+    while (active.points.length > 0) {
+      const points = active.points.splice(0, MAX_POINTS);
+      active.chunkSeq += 1;
+      postPointer("pointer_move", {
+        pointerId: active.pointerId,
+        gestureToken: active.gestureToken,
+        chunkSeq: active.chunkSeq,
+        points,
+      });
+    }
+  };
+  const scheduleMoves = () => {
+    if (!moveFrame) moveFrame = requestAnimationFrame(flushMoves);
+  };
+  const clearActivePointer = () => {
+    if (moveFrame) cancelAnimationFrame(moveFrame);
+    moveFrame = 0;
+    if (activePointer?.target?.hasPointerCapture?.(activePointer.pointerId)) {
+      try { activePointer.target.releasePointerCapture(activePointer.pointerId); } catch {}
+    }
+    activePointer = null;
+  };
+  const takeoverActivePointer = (gestureToken) => {
+    if (!activePointer || activePointer.gestureToken !== gestureToken) return;
+    activePointer.takeover = true;
+    try { activePointer.target?.setPointerCapture?.(activePointer.pointerId); } catch {}
+    window.getSelection?.()?.removeAllRanges();
+  };
+  const abortActivePointer = (gestureToken) => {
+    if (!activePointer || activePointer.gestureToken !== gestureToken) return;
+    clearActivePointer();
+  };
+
+  document.addEventListener("pointerdown", (event) => {
+    if (!pointerReady || pointerMode !== "smart" || activePointer || !event.isPrimary || event.button !== 0) return;
+    const target = targetCapability(event);
+    if (target.capability !== "click" && target.capability !== "ink") return;
+    pointerSequence += 1;
+    const gestureToken = pointerSession.frameId + ":" + pointerSequence + ":" + event.pointerId;
+    activePointer = {
+      pointerId: event.pointerId,
+      gestureToken,
+      target: target.owner,
+      capability: target.capability,
+      takeover: target.capability === "ink",
+      chunkSeq: 0,
+      points: [],
+    };
+    const point = normalizedPoint(event);
+    postPointer("pointer_start", {
+      pointerId: event.pointerId,
+      pointerType: String(event.pointerType || "unknown"),
+      gestureToken,
+      capability: target.capability,
+      isPrimary: event.isPrimary,
+      button: event.button,
+      ...point,
+    });
+    if (activePointer.takeover) {
+      try { target.owner?.setPointerCapture?.(event.pointerId); } catch {}
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  }, true);
+
+  document.addEventListener("pointermove", (event) => {
+    const active = activePointer;
+    if (!active || active.pointerId !== event.pointerId) return;
+    const source = event.getCoalescedEvents?.() || [];
+    const events = source.length ? source : [event];
+    for (const pointEvent of events) active.points.push(normalizedPoint(pointEvent));
+    if (active.points.length > MAX_POINTS * 2) flushAllMoves();
+    else scheduleMoves();
+    if (active.takeover) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  }, true);
+
+  document.addEventListener("pointerup", (event) => {
+    const active = activePointer;
+    if (!active || active.pointerId !== event.pointerId) return;
+    flushAllMoves();
+    active.chunkSeq += 1;
+    postPointer("pointer_end", {
+      pointerId: active.pointerId,
+      gestureToken: active.gestureToken,
+      chunkSeq: active.chunkSeq,
+      points: [normalizedPoint(event)],
+    });
+    if (active.takeover) {
+      suppressedClick = { owner: active.target, until: performance.now() + 500 };
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    clearActivePointer();
+  }, true);
+
+  document.addEventListener("pointercancel", (event) => {
+    const active = activePointer;
+    if (!active || active.pointerId !== event.pointerId) return;
+    postPointer("pointer_cancel", { pointerId: active.pointerId, gestureToken: active.gestureToken });
+    clearActivePointer();
+  }, true);
+
+  document.addEventListener("click", (event) => {
+    const token = suppressedClick;
+    if (!token || performance.now() > token.until) {
+      suppressedClick = null;
+      return;
+    }
+    if (token.owner && event.target instanceof Node && token.owner !== event.target && !token.owner.contains(event.target)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    suppressedClick = null;
+  }, true);
+
+  document.addEventListener("load", (event) => {
+    if (!pointerSession || !(event.target instanceof HTMLIFrameElement)) return;
+    childPointerStates.set(event.target, "pending");
+    if (pointerReady) {
+      pointerReady = false;
+      applyPointerMode("interaction-lock");
+      clearActivePointer();
+      reportRootCapabilities(true);
+    }
+    event.target.contentWindow?.postMessage(parentPointerMessage("pointer_hello"), "*");
+  }, true);
+
   window.addEventListener("message", (event) => {
     const data = event.data || {};
     if (data.source === "mathin-h5-media") {
@@ -92,6 +442,64 @@ export const H5_OPAQUE_ORIGIN_RUNTIME = `<script data-mathin-h5-runtime>
       return;
     }
     if (data.source === "mathin-classroom" && data.type === "media_ctl") applyControl(data);
+
+    if (event.source === parent && isPointerParentMessage(data)) {
+      if (data.type === "pointer_hello") {
+        pointerSession = { frameId: data.frameId, channelToken: data.channelToken };
+        pointerReady = false;
+        applyPointerMode("interaction-lock");
+        clearActivePointer();
+        startChildHandshake();
+        return;
+      }
+      if (!matchesPointerSession(data)) return;
+      if (data.type === "pointer_ack") {
+        pointerReady = rootProvider().compatible && allChildrenReady();
+        applyPointerMode(data.mode);
+        forwardToChildren(parentPointerMessage("pointer_ack", { mode: pointerMode }));
+        return;
+      }
+      if (data.type === "pointer_mode") {
+        applyPointerMode(data.mode);
+        if (pointerMode !== "smart") clearActivePointer();
+        forwardToChildren(parentPointerMessage("pointer_mode", { mode: pointerMode }));
+        return;
+      }
+      if (data.type === "pointer_ping") {
+        postPointer("pointer_pong");
+        return;
+      }
+      if (data.type === "pointer_takeover") {
+        takeoverActivePointer(data.gestureToken);
+        forwardToChildren(parentPointerMessage("pointer_takeover", { gestureToken: data.gestureToken }));
+        return;
+      }
+      if (data.type === "pointer_abort") {
+        abortActivePointer(data.gestureToken);
+        forwardToChildren(parentPointerMessage("pointer_abort", { gestureToken: data.gestureToken }));
+      }
+      return;
+    }
+
+    const childFrame = childFrameForSource(event.source);
+    if (!childFrame || !isPointerFrameMessage(data) || !matchesPointerSession(data)) return;
+    if (data.type === "pointer_capabilities") {
+      const compatible = data.providerSchema === INPUT_PROVIDER_SCHEMA
+        && data.providerVersion === INPUT_PROVIDER_VERSION
+        && capabilities.includes(data.defaultCapability);
+      childPointerStates.set(childFrame, compatible ? "ready" : "incompatible");
+      if (compatible) {
+        childFrame.contentWindow?.postMessage(parentPointerMessage("pointer_ack", { mode: pointerMode }), "*");
+        if (allChildrenReady()) reportRootCapabilities();
+      } else {
+        pointerReady = false;
+        applyPointerMode("interaction-lock");
+        clearActivePointer();
+        reportRootCapabilities(true);
+      }
+      return;
+    }
+    relayChildPointer(data, childFrame);
   });
 })();
 </script>`;

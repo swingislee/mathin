@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { ClassroomVideoInkSurface } from "@/features/classroom/input/ClassroomVideoInkSurface";
 import "./doc-stage.css";
+import type { H5PointerBridgeHost } from "./h5-pointer-protocol";
 import type { DocNode, PageDoc } from "./schema";
 import { injectBindingUrls, type ResolvedBindingUrls } from "./resolve";
 import { createInteractionRuntime, type InteractionRuntime, type InteractionTrigger } from "./interactions";
@@ -37,6 +38,8 @@ export interface DocStageProps {
   replaySteps?: readonly InteractionTrigger[];
   /** 课堂内嵌视频控制；不传时保持中台预览的本地 controls 行为。 */
   videoControl?: DocVideoControl;
+  /** 课堂 H5 指针桥；预览/编辑器不传，iframe 保持原生交互。 */
+  h5PointerBridge?: H5PointerBridgeHost;
   /** 中台编辑器选择节点；课堂不传，保持原有交互语义。 */
   onNodeSelect?: (nodePath: string) => void;
   /** Studio 选择画布背景资源；只有存在背景 binding 时才会触发。 */
@@ -213,15 +216,19 @@ function DocVideo({
   );
 }
 
-/** H5 stays in an opaque-origin sandbox. A narrow postMessage bridge mirrors native media controls. */
+/** H5 stays in an opaque-origin sandbox. Narrow postMessage bridges carry media and pointer contracts. */
 function H5Frame({
+  frameId,
   entryUrl,
   title,
   control,
+  pointerBridge,
 }: {
+  frameId: string;
   entryUrl: string;
   title: string;
   control: DocVideoControl | undefined;
+  pointerBridge: H5PointerBridgeHost | undefined;
 }) {
   const t = useTranslations("coursewareStudio");
   const frameRef = useRef<HTMLDivElement>(null);
@@ -229,6 +236,12 @@ function H5Frame({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [frameGeneration, setFrameGeneration] = useState(0);
   const appliedCtl = useRef<DocVideoCtl | undefined>(undefined);
+
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!pointerBridge || !iframe || frameGeneration === 0) return;
+    return pointerBridge.registerFrame(frameId, iframe);
+  }, [frameGeneration, frameId, pointerBridge]);
 
   useEffect(() => {
     const syncFullscreen = () => setIsFullscreen(document.fullscreenElement === frameRef.current);
@@ -275,9 +288,14 @@ function H5Frame({
   };
 
   return (
-    <div ref={frameRef} style={{ position: "relative", width: "100%", height: "100%", background: "#fff" }}>
+    <div
+      ref={frameRef}
+      data-classroom-input="native"
+      style={{ position: "relative", width: "100%", height: "100%", background: "#fff" }}
+    >
       <iframe
         ref={iframeRef}
+        data-classroom-input="native"
         title={title}
         src={entryUrl}
         sandbox="allow-scripts"
@@ -290,6 +308,7 @@ function H5Frame({
         type="button"
         variant="secondary"
         size="sm"
+        data-classroom-input="click"
         className="absolute right-3 top-3 bg-paper/95 shadow-sm"
         aria-label={isFullscreen ? t("h5Collapse") : t("h5Expand")}
         onClick={toggleFullscreen}
@@ -305,6 +324,7 @@ function nodeBody(
   urls: ResolvedBindingUrls,
   clickTriggers: ReadonlySet<string>,
   videoControl: DocVideoControl | undefined,
+  h5PointerBridge: H5PointerBridgeHost | undefined,
   onNodeSelect: ((nodePath: string) => void) | undefined,
 ): ReactNode {
   const alt = node.content?.text || node.name || node.sourceType;
@@ -319,6 +339,7 @@ function nodeBody(
           urls={urls}
           clickTriggers={clickTriggers}
           videoControl={videoControl}
+          h5PointerBridge={h5PointerBridge}
           onNodeSelect={onNodeSelect}
         />
       ));
@@ -360,7 +381,15 @@ function nodeBody(
         ? (urls[node.resources.find((item) => item.role === "entry")!.bindingKey] ?? null)
         : null;
       if (!entryUrl) return unknownBody(node, `互动 · ${node.content?.status ?? "unavailable"}`);
-      return <H5Frame entryUrl={entryUrl} title={node.name ?? "互动"} control={videoControl} />;
+      return (
+        <H5Frame
+          frameId={node.nodePath}
+          entryUrl={entryUrl}
+          title={node.name ?? "互动"}
+          control={videoControl}
+          pointerBridge={h5PointerBridge}
+        />
+      );
     }
     case "table": {
       const rows = node.content?.rows ?? [];
@@ -419,12 +448,14 @@ function NodeView({
   urls,
   clickTriggers,
   videoControl,
+  h5PointerBridge,
   onNodeSelect,
 }: {
   node: DocNode;
   urls: ResolvedBindingUrls;
   clickTriggers: ReadonlySet<string>;
   videoControl: DocVideoControl | undefined;
+  h5PointerBridge: H5PointerBridgeHost | undefined;
   onNodeSelect: ((nodePath: string) => void) | undefined;
 }) {
   const t = node.transform;
@@ -457,7 +488,7 @@ function NodeView({
       onClickCapture={() => onNodeSelect?.(node.nodePath)}
       style={style}
     >
-      {nodeBody(node, urls, clickTriggers, videoControl, onNodeSelect)}
+      {nodeBody(node, urls, clickTriggers, videoControl, h5PointerBridge, onNodeSelect)}
     </div>
   );
 }
@@ -473,6 +504,7 @@ export default function DocStage({
   onClickTrigger,
   replaySteps,
   videoControl,
+  h5PointerBridge,
   onNodeSelect,
   onBackgroundSelect,
 }: DocStageProps) {
@@ -626,6 +658,7 @@ export default function DocStage({
             urls={bindingUrls}
             clickTriggers={clickTriggers}
             videoControl={videoControl}
+            h5PointerBridge={h5PointerBridge}
             onNodeSelect={onNodeSelect}
           />
         ))}

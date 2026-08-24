@@ -1,6 +1,6 @@
 # Mathin 课堂体验升级规划
 
-> **状态**：M0–M2 与 M3a 已在开发端关闭；M3b H5 输入桥施工中，暂不进入 M4/M5<br>
+> **状态**：M0–M2 与 M3a 已在开发端关闭；M3b H5 输入桥已部署到开发端、等待三项人工验收，暂不进入 M4/M5<br>
 > **规划日期**：2026-08-24<br>
 > **仓库基线**：`swingislee/mathin`，本轮审阅基于 `main` 的 `0e30b33`<br>
 > **M1 验收基线**：`43ae587` + `67989c1`；只表示开发目标已验收，尚未部署生产<br>
@@ -956,7 +956,7 @@ type StarUndoV2 = {
 
 ### 11.7 Feature flag 与回退
 
-生产开关使用现有组织级、服务端求值、fail-closed 机制，建议命名为：
+生产开关使用现有组织级、服务端求值、fail-closed 机制，目标键名为：
 
 ```text
 teaching.classroom_input_v2
@@ -965,7 +965,7 @@ teaching.classroom_h5_pointer_v1
 teaching.classroom_board_checkpoint_v2
 ```
 
-若采用这些键，必须同步更新 `organization_feature_keys()`、`ORGANIZATION_FEATURE_KEYS`、默认 false 的 `feature_flag_versions`、数据库生成类型/初始化 manifest、管理入口和 zh/en 文案，因此本身就是 migration。开发期 query/local override 只能用于固定账号的试讲，不得作为生产放量开关，也不能从客户端把 false 覆盖成 true。
+每个键落地时必须同步更新 `organization_feature_keys()`、`ORGANIZATION_FEATURE_KEYS`、默认 false 的 `feature_flag_versions`、数据库生成类型/初始化 manifest、管理入口和 zh/en 文案，因此本身就是 migration。开发期 query/local override 只能用于固定账号的试讲，不得作为生产放量开关，也不能从客户端把 false 覆盖成 true。截至 2026-08-25，M3b 已登记 `teaching.classroom_h5_pointer_v1` 的 fail-closed migration 与服务端求值；它只在非生产试讲中自动开启，migration 尚未向生产应用。
 
 现有组织级开关不能天然表达“只给某一位真实教师/某一课次”。M0 必须证明生产环境只有一个符合条件的教师，或增加服务端求值、默认拒绝的教师/课次 rollout scope；不得把真实 UUID 写死在客户端、共享源码或证据中。
 
@@ -1235,6 +1235,20 @@ M3a 的 v1 原语已经用数独、普通文档、视频与分数数轴作为代
 随后，课堂工具覆盖层先登记 `fraction-line`，没有把“工具窗已打开”继续当作单一未知布尔值。工具 DOM 保持真实命中，按钮允许 8px 后接管，缩放滑块和数轴原点/刻度保持原生拖拽，表单及滚动外壳保持原生语义，数轴空白区直接写入主板书；主板书在该已审计工具上方只渲染，使接管后的笔迹不再被 `z-30` 不透明工具窗遮住。版本化的独立 `m3-tool-overlay-fixture-v1` board key 不复用文档验收笔迹，也不删除旧诊断板书；“下一个点”、红色 0 点拖拽和空白区笔迹成为四原语/z-layer 的代表性 conformance 对象，不再单独等待一轮产品验收。`motion-lab`、`spatial-lab` 和 H5 继续 fail closed，未被顺带放行。
 
 2026-08-25，产品负责人否决继续按 renderer 逐个排队验收，并冻结 §8.6 的 provider/conformance 方向。实现随之移除课堂输入模块中的游戏/工具 ID 白名单：游戏和工具在各自既有 registry 记录声明 provider；共同舞台、游戏根与工具根发布统一 provider 边界；router 只接受匹配 schema/version/renderer 边界内的目标；registry 新增项自动进入同一纯合同测试。既有代表对象已覆盖 `click/drag/native/ink`、takeover、锁模式和 z-layer，故 `motion-lab`、`spatial-lab` 等未声明 provider 的 renderer 继续安全保护，但不再阻塞 M3a，也不产生逐个产品验收。M3a 在开发端关闭；这不等同生产部署或生产 iPad 通过，下一施工项为触发独立人工 Gate 的 M3b H5 bridge。
+
+#### M3b 开发交付记录（2026-08-25，待人工验收）
+
+M3b 把指针协议扩展进既有 H5 注入 runtime，并把缓存版本从 v2 升到 v3，没有建立第二套平行脚本。兼容 H5 根声明 `mathin-classroom-input` provider v1 和默认能力；父页与 frame 先完成 `mathin-h5-pointer` v1 的 hello/capabilities/ack，再允许 Smart。父页同时校验 `event.source === iframe.contentWindow`、单次注册 token、schema/version、字段边界、每秒消息上限和 chunk 顺序；移动点按 animation frame 分批，每包最多 64 点。坐标从 frame viewport 归一化到冻结的课堂舞台，嵌套 frame 逐层转换；reload 会生成新 channel，ping/watchdog、失焦、隐藏、resize、切页和卸载都结束活动手势。旧 runtime、未声明 provider、握手超时或失联统一 fail closed，不猜测 H5 内部目标。
+
+独立开关 `teaching.classroom_h5_pointer_v1` 已加入 TypeScript 合同和默认 false migration；课堂只在服务端求值，非生产试讲可自动打开，生产环境未迁移、未启用。开发夹具只含一个兼容/不兼容可切换的 H5，不含账号、学生信息或笔迹坐标。定向机器合同覆盖协议解析边界、provider 状态、runtime v3、组织开关与既有 H5 shim；开发浏览器已确认兼容页轻点只计数一次且不产生板书、iframe reload 后重新握手并保持 Smart、不兼容页可见回退交互锁且 iframe 原生点击仍可用。这些事实不替代跨 frame 拖写的人工手感，也不证明生产 iPad。
+
+本 Gate 只向产品负责人交付以下三个可见对象，M3b 在三项确认前保持开启：
+
+1. 兼容 H5 显示“bridge v1 已就绪”时，轻点“轻点计数”只增加 1，主板书不出墨；
+2. 从“轻点计数”按钮按下并拖出，计数不增加，只形成一条从按下位置开始的主板书笔迹；
+3. 点击“重载 iframe”后自动回到“已就绪”且 Smart 保持；再切到“不兼容 H5”，一级模式明确变为交互锁，iframe 内轻点仍正常计数。
+
+普通 native renderer 不进入这轮验收；未来 H5 package 只要复用相同 provider/bridge 版本并通过 conformance，也不逐包重复本轮。只有新输入原语、路由/所有权算法、跨 iframe/H5 协议或设备回归才重新建立人工输入 Gate。
 
 ---
 

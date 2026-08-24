@@ -1,11 +1,96 @@
 import type { DocNode, PageDoc } from "@/features/courseware-doc/schema";
 import type { CoursewarePage } from "../types";
 
-export const M3_TOOL_OVERLAY_FIXTURE_PAGE: CoursewarePage = {
-  id: "m3-tool-overlay-fixture-v1",
-  type: "board",
-  title: "M3 Tool Overlay Input",
+export const M3_H5_FIXTURE_PAGE: CoursewarePage = {
+  id: "m3-h5-pointer-fixture-v1",
+  type: "doc",
+  docId: "m3-h5-pointer-doc-v1",
+  title: "M3b H5 Pointer Bridge",
 };
+
+export const M3_H5_FIXTURE_BINDING_KEY = "3".repeat(64);
+
+export const M3_H5_FIXTURE_DOC: PageDoc = {
+  docVersion: "page-doc-v1",
+  sourceCoursewareId: "m3-h5-pointer-fixture",
+  sourcePageId: "m3-h5-pointer-page",
+  sourcePageDatabaseId: 3,
+  sourceSnapshotId: 1,
+  sourceContentHash: "4".repeat(64),
+  canvas: {
+    width: 960,
+    height: 540,
+    backgroundColor: "#fffdf8",
+    backgroundBindingKey: null,
+  },
+  nodes: [
+    {
+      id: "m3-h5-frame",
+      nodePath: "root/m3-h5-frame",
+      sourceType: "h5",
+      sourceResourceId: "m3-h5-frame",
+      adapter: "h5",
+      name: "M3b H5 Pointer Bridge",
+      supported: true,
+      visible: true,
+      interactive: true,
+      zIndex: 1,
+      order: 0,
+      crop: null,
+      transform: {
+        x: 0,
+        y: 0,
+        width: 960,
+        height: 540,
+        rotation: 0,
+        scaleX: 1,
+        scaleY: 1,
+        anchorX: 0,
+        anchorY: 0,
+        opacity: 1,
+        flipX: false,
+        flipY: false,
+        clip: false,
+      },
+      style: {
+        objectFit: "contain",
+        backgroundColor: "#fffdf8",
+        color: "#29251f",
+        borderColor: null,
+        borderWidth: 0,
+        borderRadius: 0,
+        fontFamily: "system-ui, sans-serif",
+        fontSize: 16,
+        fontWeight: 400,
+        lineHeight: 1.4,
+        letterSpacing: null,
+        whiteSpace: "normal",
+        textAlign: "left",
+        overflow: "hidden",
+      },
+      content: {
+        kind: "h5",
+        status: "development_fixture",
+      },
+      resources: [
+        {
+          bindingKey: M3_H5_FIXTURE_BINDING_KEY,
+          bindingPath: "fixture/index.html",
+          role: "entry",
+          kind: "h5",
+        },
+      ],
+      children: [],
+    },
+  ],
+  interactions: [],
+};
+
+export function m3H5FixtureBindingUrls(compatible: boolean): Readonly<Record<string, string>> {
+  return {
+    [M3_H5_FIXTURE_BINDING_KEY]: `/api/cw-h5/fixture?compatible=${compatible ? "1" : "0"}`,
+  };
+}
 
 const ZERO_SHA256 = "0".repeat(64);
 

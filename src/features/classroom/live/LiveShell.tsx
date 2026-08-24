@@ -78,16 +78,19 @@ import {
   type PresencePeer,
 } from "../sync/transports";
 import type { ClassroomMember, ClassSessionRecord, CoursewarePage, SessionEvent } from "../types";
-import { resolveClassroomRendererInputProfile } from "../input/capabilities";
+import { countCoursewareH5Frames, resolveClassroomRendererInputProfile } from "../input/capabilities";
 import { classroomInputProviderAttributes } from "../input/provider";
 import { useClassroomPointerRouter } from "../input/useClassroomPointerRouter";
+import { useH5PointerBridge } from "../input/useH5PointerBridge";
 import type { ClassroomRoutingMode } from "../input/router";
 import { useClassBoard } from "./useClassBoard";
 import { VideoStage } from "./VideoStage";
 import { GamePage, MainBoard, StudentCard, ToolOverlay, ToolPicker } from "./LivePanels";
 import { ClassroomInputModeControl } from "./ClassroomInputModeControl";
 import {
-  M3_TOOL_OVERLAY_FIXTURE_PAGE,
+  M3_H5_FIXTURE_DOC,
+  M3_H5_FIXTURE_PAGE,
+  m3H5FixtureBindingUrls,
 } from "./m3-input-fixtures";
 import { OPTION_LABELS, reduceEvent, type LiveState, type Phase, type Role } from "./liveState";
 
@@ -108,6 +111,8 @@ interface Props {
   checkpointV2Writer: boolean;
   /** Independent M3 input gate. Production stays fail-closed until explicitly enabled. */
   inputV2Enabled: boolean;
+  /** Independent M3b H5 bridge gate. Production stays fail-closed until explicitly enabled. */
+  h5PointerEnabled: boolean;
   role: Role;
   /** 试讲：教师本地预演/复盘——事件不落库不同步，随时可进（包括已下课的课次）。 */
   rehearsal?: boolean;
@@ -129,6 +134,7 @@ export function LiveShell({
   initialCheckpoints,
   checkpointV2Writer,
   inputV2Enabled,
+  h5PointerEnabled,
   role,
   rehearsal = false,
   offlineDrill = false,
@@ -201,7 +207,7 @@ export function LiveShell({
   const [routingMode, setRoutingMode] = useState<ClassroomRoutingMode>("smart");
   const [inputRendererSignature, setInputRendererSignature] = useState("");
   const [m3FixtureEnabled, setM3FixtureEnabled] = useState(() => rehearsal && inputV2Enabled);
-  const [m3FixtureToolOpen, setM3FixtureToolOpen] = useState(() => rehearsal && inputV2Enabled);
+  const [m3H5Compatible, setM3H5Compatible] = useState(true);
   const [endOpen, setEndOpen] = useState(false);
   const [classroomToolsOpen, setClassroomToolsOpen] = useState(false);
   const [stageWidth, setStageWidth] = useState(0);
@@ -651,23 +657,47 @@ export function LiveShell({
   const page = state.pages[state.currentPage] as CoursewarePage | undefined;
   const usingM3Fixture = rehearsal && inputV2Enabled && m3FixtureEnabled;
   const activeToolId = usingM3Fixture
-    ? m3FixtureToolOpen ? "fraction-line" : null
+    ? null
     : state.openTool;
   const renderPage = usingM3Fixture
-    ? M3_TOOL_OVERLAY_FIXTURE_PAGE
+    ? M3_H5_FIXTURE_PAGE
     : page;
   const activeDocBundleEntry = renderPage?.type === "doc" && !usingM3Fixture
     ? docBundle?.find((item) => item.pageDocId === renderPage.docId)
     : undefined;
   const renderDoc = renderPage?.type === "doc"
-    ? activeDocBundleEntry?.doc
+    ? usingM3Fixture ? M3_H5_FIXTURE_DOC : activeDocBundleEntry?.doc
     : undefined;
+  const renderDocUrls = usingM3Fixture
+    ? m3H5FixtureBindingUrls(m3H5Compatible)
+    : docUrls;
   const displayedSessionTitle = usingM3Fixture
     ? t("m3FixtureSessionTitle")
     : session.title || t("untitled");
+  const h5FrameCount = countCoursewareH5Frames(renderDoc);
+  const mainTool = useStore(mainStore ?? sideBoard.store, (boardState) => boardState.tool);
+  const activateMainInput = useCallback(() => setActiveArea("main"), []);
+  const {
+    host: h5PointerBridge,
+    status: h5PointerBridgeStatus,
+  } = useH5PointerBridge({
+    stageRef,
+    inputPortRef: mainInputPortRef,
+    enabled: h5PointerEnabled && inputV2Enabled && editable && h5FrameCount > 0,
+    expectedFrameCount: h5FrameCount,
+    mode: routingMode,
+    tool: mainTool,
+    gestureKey: renderPage?.id ?? "no-page",
+    onInkStart: activateMainInput,
+  });
   const rendererProfile = useMemo(
-    () => resolveClassroomRendererInputProfile(renderPage, activeToolId, renderDoc),
-    [activeToolId, renderDoc, renderPage],
+    () => resolveClassroomRendererInputProfile(
+      renderPage,
+      activeToolId,
+      renderDoc,
+      h5PointerBridgeStatus,
+    ),
+    [activeToolId, h5PointerBridgeStatus, renderDoc, renderPage],
   );
   const nextInputRendererSignature = [
     renderPage?.id ?? "no-page",
@@ -681,13 +711,11 @@ export function LiveShell({
       setRoutingMode("interaction-lock");
     }
   }
-  const mainTool = useStore(mainStore ?? sideBoard.store, (boardState) => boardState.tool);
   const effectiveRoutingMode: ClassroomRoutingMode = inputV2Enabled && isController
     ? routingMode === "smart" && !rendererProfile.audited
       ? "interaction-lock"
       : routingMode
     : "ink-lock";
-  const activateMainInput = useCallback(() => setActiveArea("main"), []);
   const changeRoutingMode = useCallback((nextMode: ClassroomRoutingMode) => {
     if (nextMode === "smart" && !rendererProfile.audited && !rendererProfile.provisional) {
       setRoutingMode("interaction-lock");
@@ -963,46 +991,63 @@ export function LiveShell({
 
       {rehearsal && isController && inputV2Enabled && (
         <section
-          aria-label={t("nativeRendererAcceptanceTitle")}
+          aria-label={t("m3AcceptanceTitle")}
           className="mt-2 flex shrink-0 flex-wrap items-center gap-2 rounded-xl border border-blue/30 bg-blue/5 p-2 text-xs"
-          data-native-renderer-acceptance
+          data-m3-acceptance
         >
           <div className="min-w-48 flex-1 px-2">
-            <p className="font-medium text-ink">{t("nativeRendererAcceptanceTitle")}</p>
-            <p className="mt-0.5 text-muted">{t("nativeRendererAcceptanceBody")}</p>
+            <p className="font-medium text-ink">{t("m3AcceptanceTitle")}</p>
+            <p className="mt-0.5 text-muted">{t("m3AcceptanceBody")}</p>
           </div>
           <div
             role="group"
-            aria-label={t("nativeRendererFixtureGroup")}
+            aria-label={t("m3FixtureGroup")}
             className="flex items-center gap-1.5"
           >
             <Button
               type="button"
               size="sm"
-              variant={usingM3Fixture && m3FixtureToolOpen ? "primary" : "secondary"}
-              aria-pressed={usingM3Fixture && m3FixtureToolOpen}
-              data-m3-tool-fixture="fraction-line"
+              variant={usingM3Fixture && m3H5Compatible ? "primary" : "secondary"}
+              aria-pressed={usingM3Fixture && m3H5Compatible}
+              data-m3-h5-fixture="compatible"
               onClick={() => {
                 setM3FixtureEnabled(true);
-                setM3FixtureToolOpen(true);
+                setM3H5Compatible(true);
                 setRoutingMode("smart");
               }}
             >
-              {t("nativeRendererTool")}
+              {t("h5CompatibleFixture")}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={usingM3Fixture && !m3H5Compatible ? "primary" : "secondary"}
+              aria-pressed={usingM3Fixture && !m3H5Compatible}
+              data-m3-h5-fixture="incompatible"
+              onClick={() => {
+                setM3FixtureEnabled(true);
+                setM3H5Compatible(false);
+                setRoutingMode("smart");
+              }}
+            >
+              {t("h5IncompatibleFixture")}
             </Button>
           </div>
+          <Badge variant={h5PointerBridgeStatus === "ready" ? "default" : "secondary"}>
+            {t(`h5BridgeStatus.${h5PointerBridgeStatus}`)}
+          </Badge>
           <ol className="grid min-w-0 flex-[2] basis-full gap-1 sm:grid-cols-3 lg:basis-auto">
             <li className="rounded-lg bg-paper/80 px-2 py-1.5 text-muted">
               <span className="mr-1 font-mono text-ink">1</span>
-              {t("nativeRendererCheckToolClick")}
+              {t("h5CheckTap")}
             </li>
             <li className="rounded-lg bg-paper/80 px-2 py-1.5 text-muted">
               <span className="mr-1 font-mono text-ink">2</span>
-              {t("nativeRendererCheckToolDrag")}
+              {t("h5CheckTakeover")}
             </li>
             <li className="rounded-lg bg-paper/80 px-2 py-1.5 text-muted">
               <span className="mr-1 font-mono text-ink">3</span>
-              {t("nativeRendererCheckToolInk")}
+              {t("h5CheckReloadFallback")}
             </li>
           </ol>
           <Button
@@ -1011,7 +1056,6 @@ export function LiveShell({
             variant="secondary"
             data-m3-fixture-toggle
             onClick={() => {
-              setM3FixtureToolOpen(false);
               setM3FixtureEnabled(false);
             }}
           >
@@ -1086,15 +1130,16 @@ export function LiveShell({
                   </span>
                 </p>
               ) : <DocCoursewarePage
-                key={`doc-${renderPage.id}`}
+                key={`doc-${renderPage.id}:${usingM3Fixture ? Number(m3H5Compatible) : "courseware"}`}
                 doc={renderDoc ?? null}
-                bindingUrls={docUrls}
+                bindingUrls={renderDocUrls}
                 isController={isController}
                 steps={state.docSteps[renderPage.id]}
                 onStep={(trigger) => onDocStep(renderPage.id, trigger)}
                 videoCtl={state.video[renderPage.id]}
                 onVideoCtl={(action, time) => append("video_ctl", { pageId: renderPage.id, action, time })}
                 onAdvance={() => gotoPage(state.currentPage + 1, state.pages.length)}
+                h5PointerBridge={h5PointerBridge}
               />
             ) : null}
 
@@ -1120,9 +1165,7 @@ export function LiveShell({
               <ToolOverlay
                 toolId={activeToolId}
                 onClose={isController
-                  ? usingM3Fixture
-                    ? () => setM3FixtureToolOpen(false)
-                    : () => append("tool_ctl", { action: "close" })
+                  ? () => append("tool_ctl", { action: "close" })
                   : undefined}
               />
             )}

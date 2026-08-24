@@ -2,6 +2,7 @@ import type { CoursewareDoc } from "@/features/courseware-doc/document";
 import { PAGE_DOC_VERSION, type DocNode, type PageDoc } from "@/features/courseware-doc/schema";
 import { getGame } from "@/features/games/registry";
 import { getTool } from "@/features/tools/registry";
+import type { H5PointerBridgeStatus } from "@/features/courseware-doc/h5-pointer-protocol";
 import type { CoursewarePage } from "../types";
 import type { ClassroomInputCapability } from "./router";
 import {
@@ -45,12 +46,26 @@ const AUDITED_NATIVE_DOC_ADAPTERS = new Set([
   "text",
 ]);
 
-function nodeRequiresInteractionProtection(node: DocNode): boolean {
-  return !node.supported
-    || !AUDITED_NATIVE_DOC_ADAPTERS.has(node.adapter)
+function nodeContainsH5(node: DocNode): boolean {
+  return node.adapter === "h5"
     || node.content?.kind === "h5"
     || node.resources.some((resource) => resource.kind === "h5")
-    || node.children.some(nodeRequiresInteractionProtection);
+    || node.children.some(nodeContainsH5);
+}
+
+function nodeRequiresInteractionProtection(node: DocNode, allowH5: boolean): boolean {
+  const h5Node = node.adapter === "h5"
+    || node.content?.kind === "h5"
+    || node.resources.some((resource) => resource.kind === "h5");
+  if (!node.supported) return true;
+  if (h5Node) {
+    return !allowH5
+      || node.adapter !== "h5"
+      || !node.resources.some((resource) => resource.kind === "h5")
+      || node.children.some((child) => nodeRequiresInteractionProtection(child, allowH5));
+  }
+  return !AUDITED_NATIVE_DOC_ADAPTERS.has(node.adapter)
+    || node.children.some((child) => nodeRequiresInteractionProtection(child, allowH5));
 }
 
 function providerProfile(
@@ -72,8 +87,24 @@ export function isAuditedNativeCoursewareDoc(
   return Boolean(
     doc
     && doc.docVersion === PAGE_DOC_VERSION
-    && !doc.nodes.some(nodeRequiresInteractionProtection),
+    && !doc.nodes.some((node) => nodeRequiresInteractionProtection(node, false)),
   );
+}
+
+export function countCoursewareH5Frames(doc: CoursewareDoc | null | undefined): number {
+  if (!doc || doc.docVersion !== PAGE_DOC_VERSION) return 0;
+  const count = (node: DocNode): number => {
+    if (node.adapter === "h5") return 1;
+    if (node.adapter !== "group" && node.adapter !== "page") return 0;
+    return node.children.reduce((total, child) => total + count(child), 0);
+  };
+  return doc.nodes.reduce((total, node) => total + count(node), 0);
+}
+
+function isH5BridgeEligibleCoursewareDoc(doc: CoursewareDoc): doc is PageDoc {
+  return doc.docVersion === PAGE_DOC_VERSION
+    && doc.nodes.some(nodeContainsH5)
+    && !doc.nodes.some((node) => nodeRequiresInteractionProtection(node, true));
 }
 
 /** M3a provider resolution: an overlay provider takes ownership before the underlying renderer. */
@@ -81,6 +112,7 @@ export function resolveClassroomRendererInputProfile(
   page: CoursewarePage | undefined,
   toolId: string | null | undefined,
   doc?: CoursewareDoc | null,
+  h5BridgeStatus: H5PointerBridgeStatus = "disabled",
 ): ClassroomRendererInputProfile {
   if (toolId) {
     const provider = getTool(toolId)?.classroomInput;
@@ -98,6 +130,12 @@ export function resolveClassroomRendererInputProfile(
   }
   if (page.type === "doc") {
     if (!doc) return PROVISIONAL_PROFILE;
+    if (isH5BridgeEligibleCoursewareDoc(doc)) {
+      if (h5BridgeStatus === "pending") return PROVISIONAL_PROFILE;
+      return h5BridgeStatus === "ready"
+        ? providerProfile("document:h5", CLASSROOM_INK_INPUT_PROVIDER_V1)
+        : UNSUPPORTED_PROFILE;
+    }
     if (!isAuditedNativeCoursewareDoc(doc)) return UNSUPPORTED_PROFILE;
     return providerProfile("document", CLASSROOM_INK_INPUT_PROVIDER_V1);
   }
