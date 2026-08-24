@@ -237,6 +237,7 @@ describe("M4a roster identity and star v2", () => {
     expect(rosterGrid).toContain('data-roster-scroll={slots.length > 20 ? "internal" : "none"}');
     expect(liveState).toContain("export const MAX_INLINE_STARS = 10");
     expect(panels).toContain('data-star-display={count > MAX_INLINE_STARS ? "ten-seal-remainder" : "individual"}');
+    expect(panels).toContain('"grid min-h-3 max-w-full grid-cols-5 gap-px"');
     expect(panels).toContain("10★");
   });
 });

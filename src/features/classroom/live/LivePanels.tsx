@@ -198,7 +198,7 @@ export function StudentStarDisplay({ count, label, compact = false }: {
   label: string;
   compact?: boolean;
 }) {
-  const iconSize = compact ? 9 : 12;
+  const iconSize = compact ? 8 : 12;
   const remainder = Math.max(0, count - MAX_INLINE_STARS);
 
   return (
@@ -207,8 +207,12 @@ export function StudentStarDisplay({ count, label, compact = false }: {
       role="img"
       aria-label={label}
       className={cn(
-        "flex shrink-0 items-center motion-safe:[animation:star-pop_.35s_ease-out]",
-        compact ? "min-h-3 max-w-full gap-px overflow-hidden" : "gap-0.5",
+        "shrink-0 items-center motion-safe:[animation:star-pop_.35s_ease-out]",
+        compact && count <= MAX_INLINE_STARS
+          ? "grid min-h-3 max-w-full grid-cols-5 gap-px"
+          : compact
+            ? "flex min-h-3 max-w-full gap-px overflow-hidden"
+            : "flex gap-0.5",
       )}
       data-star-display={count > MAX_INLINE_STARS ? "ten-seal-remainder" : "individual"}
     >
