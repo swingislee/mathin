@@ -1,6 +1,6 @@
 # Mathin 课堂体验升级规划
 
-> **状态**：M0–M2 与 M3a 已在开发端关闭；M3b H5 输入桥已部署到开发端、等待三项人工验收，暂不进入 M4/M5<br>
+> **状态**：M0–M3 已在开发端关闭；M4a 正式名单与星星 v2 数据合同施工中，暂不进入 M4b/M5<br>
 > **规划日期**：2026-08-24<br>
 > **仓库基线**：`swingislee/mathin`，本轮审阅基于 `main` 的 `0e30b33`<br>
 > **M1 验收基线**：`43ae587` + `67989c1`；只表示开发目标已验收，尚未部署生产<br>
@@ -1170,7 +1170,7 @@ M2-B 再交付方案 C 的恢复基础：
 
 ---
 
-### 12.3 M3：智能输入路由（M3a 已关闭，M3b 施工中）
+### 12.3 M3：智能输入路由（M3a/M3b 已关闭）
 
 #### 内容
 
@@ -1236,23 +1236,25 @@ M3a 的 v1 原语已经用数独、普通文档、视频与分数数轴作为代
 
 2026-08-25，产品负责人否决继续按 renderer 逐个排队验收，并冻结 §8.6 的 provider/conformance 方向。实现随之移除课堂输入模块中的游戏/工具 ID 白名单：游戏和工具在各自既有 registry 记录声明 provider；共同舞台、游戏根与工具根发布统一 provider 边界；router 只接受匹配 schema/version/renderer 边界内的目标；registry 新增项自动进入同一纯合同测试。既有代表对象已覆盖 `click/drag/native/ink`、takeover、锁模式和 z-layer，故 `motion-lab`、`spatial-lab` 等未声明 provider 的 renderer 继续安全保护，但不再阻塞 M3a，也不产生逐个产品验收。M3a 在开发端关闭；这不等同生产部署或生产 iPad 通过，下一施工项为触发独立人工 Gate 的 M3b H5 bridge。
 
-#### M3b 开发交付记录（2026-08-25，待人工验收）
+#### M3b 开发交付记录（2026-08-25）
 
 M3b 把指针协议扩展进既有 H5 注入 runtime，并把缓存版本从 v2 升到 v3，没有建立第二套平行脚本。兼容 H5 根声明 `mathin-classroom-input` provider v1 和默认能力；父页与 frame 先完成 `mathin-h5-pointer` v1 的 hello/capabilities/ack，再允许 Smart。父页同时校验 `event.source === iframe.contentWindow`、单次注册 token、schema/version、字段边界、每秒消息上限和 chunk 顺序；移动点按 animation frame 分批，每包最多 64 点。坐标从 frame viewport 归一化到冻结的课堂舞台，嵌套 frame 逐层转换；reload 会生成新 channel，ping/watchdog、失焦、隐藏、resize、切页和卸载都结束活动手势。旧 runtime、未声明 provider、握手超时或失联统一 fail closed，不猜测 H5 内部目标。
 
 独立开关 `teaching.classroom_h5_pointer_v1` 已加入 TypeScript 合同和默认 false migration；课堂只在服务端求值，非生产试讲可自动打开，生产环境未迁移、未启用。开发夹具只含一个兼容/不兼容可切换的 H5，不含账号、学生信息或笔迹坐标。定向机器合同覆盖协议解析边界、provider 状态、runtime v3、组织开关与既有 H5 shim；开发浏览器已确认兼容页轻点只计数一次且不产生板书、iframe reload 后重新握手并保持 Smart、不兼容页可见回退交互锁且 iframe 原生点击仍可用。这些事实不替代跨 frame 拖写的人工手感，也不证明生产 iPad。
 
-本 Gate 只向产品负责人交付以下三个可见对象，M3b 在三项确认前保持开启：
+本 Gate 只向产品负责人交付以下三个可见对象：
 
 1. 兼容 H5 显示“bridge v1 已就绪”时，轻点“轻点计数”只增加 1，主板书不出墨；
 2. 从“轻点计数”按钮按下并拖出，计数不增加，只形成一条从按下位置开始的主板书笔迹；
 3. 点击“重载 iframe”后自动回到“已就绪”且 Smart 保持；再切到“不兼容 H5”，一级模式明确变为交互锁，iframe 内轻点仍正常计数。
 
+2026-08-25，产品负责人确认上述三项全部通过。M3b 与整个 M3 在开发端关闭；结论范围为 commit `61c6c70` 的兼容 H5 轻点/接管、reload 重握手和不兼容降级，不表示生产迁移、生产 iPad 或真实课堂已通过。后续复用同版 provider/bridge 的 H5 package 只进入统一 conformance，不逐包重复本轮；下一施工项为 M4a 正式名单与星星 v2 数据合同。
+
 普通 native renderer 不进入这轮验收；未来 H5 package 只要复用相同 provider/bridge 版本并通过 conformance，也不逐包重复本轮。只有新输入原语、路由/所有权算法、跨 iframe/H5 协议或设备回归才重新建立人工输入 Gate。
 
 ---
 
-### 12.4 M4：正式名单、积分语义与教师布局
+### 12.4 M4：正式名单、积分语义与教师布局（M4a 施工中）
 
 #### 内容
 
