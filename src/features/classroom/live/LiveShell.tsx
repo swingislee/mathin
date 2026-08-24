@@ -113,6 +113,7 @@ import {
   M3_H5_FIXTURE_PAGE,
   m3H5FixtureBindingUrls,
 } from "./m3-input-fixtures";
+import { buildM4aRosterFixtures, M4A_STAR_STUDENT_ID } from "./m4-roster-fixtures";
 import { OPTION_LABELS, reduceEvent, type LiveState, type Phase, type Role } from "./liveState";
 
 // 上课页（08-§3.4/§5）：候课（预载/自检）→ 上课 全程页内状态切换，零路由跳转。
@@ -137,6 +138,8 @@ interface Props {
   h5PointerEnabled: boolean;
   /** M4 roster/star writer and control-layout gate. Readers remain dual-version. */
   layoutV2Enabled: boolean;
+  /** Development-only visible Gate; accepted milestones stay out of the default surface. */
+  acceptanceFixture: "m3b" | "m4a" | null;
   role: Role;
   /** 试讲：教师本地预演/复盘——事件不落库不同步，随时可进（包括已下课的课次）。 */
   rehearsal?: boolean;
@@ -161,6 +164,7 @@ export function LiveShell({
   inputV2Enabled,
   h5PointerEnabled,
   layoutV2Enabled,
+  acceptanceFixture,
   role,
   rehearsal = false,
   offlineDrill = false,
@@ -171,7 +175,15 @@ export function LiveShell({
   const router = useRouter();
   const t = useTranslations("classroom.live");
   const tPrep = useTranslations("classroom.prep");
-  const [rosterState, setRosterState] = useState(initialRoster);
+  const m4aFixtures = useMemo(() => buildM4aRosterFixtures({
+    claimed: t("m4FixtureClaimed"),
+    unclaimed: t("m4FixtureUnclaimed"),
+    seated: t("m4FixtureSeated"),
+    newlyEnrolled: t("m4FixtureNewEnrollment"),
+  }), [t]);
+  const [rosterState, setRosterState] = useState(() => (
+    acceptanceFixture === "m4a" ? m4aFixtures.base : initialRoster
+  ));
   const students = rosterState.entries;
   const starEventSchema = rehearsal && layoutV2Enabled ? 2 : rosterState.starEventSchema;
   const selfName = useMemo(
@@ -236,7 +248,7 @@ export function LiveShell({
   const [activeArea, setActiveArea] = useState<"main" | "side">("main");
   const [routingMode, setRoutingMode] = useState<ClassroomRoutingMode>("smart");
   const [inputRendererSignature, setInputRendererSignature] = useState("");
-  const [m3FixtureEnabled, setM3FixtureEnabled] = useState(() => rehearsal && inputV2Enabled);
+  const [m3FixtureEnabled, setM3FixtureEnabled] = useState(() => acceptanceFixture === "m3b");
   const [m3H5Compatible, setM3H5Compatible] = useState(true);
   const [endOpen, setEndOpen] = useState(false);
   const [classroomToolsOpen, setClassroomToolsOpen] = useState(false);
@@ -734,6 +746,11 @@ export function LiveShell({
     if (!rosterState.hasDifference || rosterRefreshing) return;
     setRosterRefreshing(true);
     setRosterRefreshError(false);
+    if (rehearsal && acceptanceFixture === "m4a") {
+      setRosterState(m4aFixtures.refreshed);
+      setRosterRefreshing(false);
+      return;
+    }
     try {
       const refreshed = await refreshSessionRoster(session.id, rosterState.currentSourceHash);
       setRosterState(refreshed);
@@ -743,7 +760,45 @@ export function LiveShell({
     } finally {
       setRosterRefreshing(false);
     }
-  }, [rosterRefreshing, rosterState.currentSourceHash, rosterState.hasDifference, router, session.id]);
+  }, [
+    acceptanceFixture,
+    m4aFixtures.refreshed,
+    rehearsal,
+    rosterRefreshing,
+    rosterState.currentSourceHash,
+    rosterState.hasDifference,
+    router,
+    session.id,
+  ]);
+
+  const resetM4aFixture = useCallback(() => {
+    setRosterState(m4aFixtures.base);
+    setRosterRefreshError(false);
+    setStarWriteError(false);
+    starQueueRef.current = starQueueRef.current.then(() => {
+      const ledger = emptyStarLedger();
+      starLedgerRef.current = ledger;
+      setState((previous) => ({ ...previous, starLedger: ledger }));
+    });
+  }, [m4aFixtures.base]);
+
+  const runM4aStarSequence = useCallback(() => {
+    const run = async () => {
+      const eventLog = logRef.current;
+      if (!eventLog) return;
+      const ledger = emptyStarLedger();
+      starLedgerRef.current = ledger;
+      setState((previous) => ({ ...previous, starLedger: ledger }));
+      const reversedAwardId = newId();
+      const activeAwardId = newId();
+      const target = { schemaVersion: 2, studentId: M4A_STAR_STUDENT_ID };
+      await eventLog.append("star_undo", { ...target, awardId: reversedAwardId });
+      await eventLog.append("star", { ...target, awardId: reversedAwardId });
+      await eventLog.append("star", { ...target, awardId: reversedAwardId });
+      await eventLog.append("star", { ...target, awardId: activeAwardId });
+    };
+    starQueueRef.current = starQueueRef.current.then(run, run).catch(() => setStarWriteError(true));
+  }, []);
 
   // --- 派生 ----------------------------------------------------------------
   const page = state.pages[state.currentPage] as CoursewarePage | undefined;
@@ -847,6 +902,10 @@ export function LiveShell({
     () => (myRole === "student" && !showAllStudents ? students.filter((student) => student.userId === userId) : students),
     [myRole, showAllStudents, students, userId],
   );
+  const m4aStarStudent = students.find((student) => student.studentId === M4A_STAR_STUDENT_ID);
+  const m4aStarCount = m4aStarStudent
+    ? starCountForRosterEntry(state.starLedger, m4aStarStudent)
+    : 0;
   const toolbarStore = activeArea === "side" ? sideBoard.store : mainStore;
   // 清空对话框目标：默认勾选主板书，副板书可选加入（用户 2026-07-08 要求）
   const clearTargets = useMemo(
@@ -1120,7 +1179,64 @@ export function LiveShell({
         </p>
       )}
 
-      {rehearsal && isController && inputV2Enabled && (
+      {rehearsal && isController && layoutV2Enabled && acceptanceFixture === "m4a" && (
+        <section
+          aria-label={t("m4AcceptanceTitle")}
+          className="mt-2 grid shrink-0 gap-2 rounded-xl border border-leaf/30 bg-leaf/5 p-2 text-xs lg:grid-cols-3"
+          data-m4-acceptance
+        >
+          <div className="rounded-lg bg-paper/80 p-3" data-m4-roster-identity>
+            <p className="font-medium text-ink">{t("m4RosterObjectTitle")}</p>
+            <p className="mt-1 text-muted">{t("m4RosterObjectBody")}</p>
+            <p className="mt-2 font-mono text-[11px] text-ink">
+              {t("m4RosterObjectState", {
+                revision: rosterState.revision ?? 0,
+                count: rosterState.entries.length,
+                seat: m4aStarStudent?.seatPosition ?? "—",
+              })}
+            </p>
+          </div>
+          <div className="rounded-lg bg-paper/80 p-3" data-m4-star-set>
+            <p className="font-medium text-ink">{t("m4StarObjectTitle")}</p>
+            <p className="mt-1 text-muted">{t("m4StarObjectBody")}</p>
+            <p className="mt-2 font-mono text-[11px] text-ink">{t("m4StarObjectState", { count: m4aStarCount })}</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Button type="button" size="sm" variant="secondary" disabled={!log} onClick={runM4aStarSequence}>
+                {t("m4InjectReverseDuplicate")}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                disabled={!log || !m4aStarStudent || m4aStarCount === 0}
+                onClick={() => m4aStarStudent && appendStar(m4aStarStudent, "undo")}
+              >
+                {t("m4UndoConcreteAward")}
+              </Button>
+            </div>
+          </div>
+          <div className="rounded-lg bg-paper/80 p-3" data-m4-roster-refresh>
+            <p className="font-medium text-ink">{t("m4RefreshObjectTitle")}</p>
+            <p className="mt-1 text-muted">{t("m4RefreshObjectBody")}</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                disabled={rosterState.hasDifference}
+                onClick={() => setRosterState(m4aFixtures.changed)}
+              >
+                {t("m4SimulateRosterChange")}
+              </Button>
+              <Button type="button" size="sm" variant="ghost" onClick={resetM4aFixture}>
+                {t("m4ResetAcceptance")}
+              </Button>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {rehearsal && isController && inputV2Enabled && acceptanceFixture === "m3b" && (
         <section
           aria-label={t("m3AcceptanceTitle")}
           className="mt-2 flex shrink-0 flex-wrap items-center gap-2 rounded-xl border border-blue/30 bg-blue/5 p-2 text-xs"

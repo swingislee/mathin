@@ -3,6 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { buildSessionReport } from "@/features/classroom/report";
 import { parseSessionRosterState } from "@/features/classroom/roster";
+import { buildM4aRosterFixtures, M4A_STAR_STUDENT_ID } from "@/features/classroom/live/m4-roster-fixtures";
 import {
   buildStarLedger,
   emptyStarLedger,
@@ -172,5 +173,30 @@ describe("M4a roster identity and star v2", () => {
     expect(shell).toContain("latestActiveAwardId(starLedgerRef.current, student.studentId)");
     expect(shell).toContain("payload = { schemaVersion: 2, studentId: student.studentId, awardId }");
     expect(shell).not.toContain('append("star", { studentId: student.userId })');
+  });
+
+  it("ships only the three new M4a visual acceptance objects by default", () => {
+    const fixtures = buildM4aRosterFixtures({
+      claimed: "claimed",
+      unclaimed: "unclaimed",
+      seated: "seated",
+      newlyEnrolled: "new",
+    });
+    const route = source("src/app/[locale]/classroom/[classId]/session/[sessionId]/live/page.tsx");
+    const shell = source("src/features/classroom/live/LiveShell.tsx");
+
+    expect(fixtures.base.entries.find((student) => student.studentId === M4A_STAR_STUDENT_ID)).toMatchObject({
+      userId: null,
+      seatPosition: 5,
+    });
+    expect(fixtures.changed).toMatchObject({ revision: 7, hasDifference: true });
+    expect(fixtures.changed.entries).toEqual(fixtures.base.entries);
+    expect(fixtures.refreshed).toMatchObject({ revision: 8, hasDifference: false });
+    expect(fixtures.refreshed.entries).toHaveLength(4);
+    expect(route).toContain('acceptance === "m3b" ? "m3b" : "m4a"');
+    expect(shell).toContain("data-m4-roster-identity");
+    expect(shell).toContain("data-m4-star-set");
+    expect(shell).toContain("data-m4-roster-refresh");
+    expect(shell).toContain('acceptanceFixture === "m3b"');
   });
 });

@@ -18,9 +18,9 @@ export default async function LiveClassPage({
   searchParams,
 }: {
   params: Promise<{ locale: string; classId: string; sessionId: string }>;
-  searchParams: Promise<{ role?: string; mode?: string }>;
+  searchParams: Promise<{ role?: string; mode?: string; acceptance?: string }>;
 }) {
-  const [{ locale, classId, sessionId }, { role: roleParam, mode }] = await Promise.all([params, searchParams]);
+  const [{ locale, classId, sessionId }, { role: roleParam, mode, acceptance }] = await Promise.all([params, searchParams]);
   setRequestLocale(locale);
   const user = await requireUser(locale);
   if (!UUID_PATTERN.test(classId) || !UUID_PATTERN.test(sessionId)) notFound();
@@ -76,6 +76,9 @@ export default async function LiveClassPage({
     : classroom.myRole === "teacher"
       ? "control"
       : "viewer";
+  const acceptanceFixture = process.env.NODE_ENV !== "production" && rehearsal
+    ? acceptance === "m3b" ? "m3b" : "m4a"
+    : null;
 
   return (
     <LiveShell
@@ -91,6 +94,7 @@ export default async function LiveClassPage({
       inputV2Enabled={inputV2Enabled || (process.env.NODE_ENV !== "production" && rehearsal)}
       h5PointerEnabled={h5PointerEnabled || (process.env.NODE_ENV !== "production" && rehearsal)}
       layoutV2Enabled={layoutV2Enabled || (process.env.NODE_ENV !== "production" && rehearsal)}
+      acceptanceFixture={acceptanceFixture}
       role={role}
       rehearsal={rehearsal}
       offlineDrill={offlineDrill}
