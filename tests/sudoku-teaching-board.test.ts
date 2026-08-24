@@ -125,6 +125,40 @@ describe("Sudoku teaching board M2", () => {
     expect(state.inputDigit).toBe(6);
   });
 
+  it("keeps candidates and the active stamp after a rejected placement", () => {
+    const puzzle = [...SUDOKU_BOX_ELIMINATION_PUZZLE];
+    let state = createSudokuBoardState(puzzle);
+
+    state = setSudokuEntryMode(state, "candidate");
+    state = selectSudokuCell(state, puzzle, 0, false);
+    state = chooseSudokuDigit(state, puzzle, 3);
+    state = chooseSudokuDigit(state, puzzle, 6);
+    expect(sudokuCandidateDigits(state.candidates[0])).toEqual([3, 6]);
+
+    state = setSudokuEntryMode(state, "value");
+    state = selectSudokuCell(state, puzzle, 2, false);
+    state = chooseSudokuDigit(state, puzzle, 2);
+    state = selectSudokuCell(state, puzzle, 1);
+
+    expect(state.values[1]).toBe(0);
+    expect(state.inputDigit).toBe(2);
+    expect(state.selected).toBe(1);
+    expect(state.invalidAttempt).toMatchObject({ index: 1, digit: 2 });
+    expect(sudokuCandidateDigits(state.candidates[0])).toEqual([3, 6]);
+
+    state = chooseSudokuDigit(state, puzzle, 6);
+    expect(state.values[1]).toBe(0);
+    expect(state.inputDigit).toBe(6);
+    expect(state.selected).toBeNull();
+    expect(state.invalidAttempt).toBeNull();
+    expect(sudokuCandidateDigits(state.candidates[0])).toEqual([3, 6]);
+
+    state = selectSudokuCell(state, puzzle, 1);
+    expect(state.values[1]).toBe(6);
+    expect(state.inputDigit).toBe(6);
+    expect(sudokuCandidateDigits(state.candidates[0])).toEqual([3, 6]);
+  });
+
   it("toggles candidates, clears them on fill, and mirrors the complete M2 state", () => {
     const puzzle = [...SUDOKU_BOX_ELIMINATION_PUZZLE];
     let state = createSudokuBoardState(puzzle);
@@ -315,25 +349,30 @@ describe("Sudoku answer validation M4", () => {
     expect(isSudokuValuePossible(puzzle, puzzle, 0, 1)).toBe(false);
   });
 
-  it("rejects wrong value attempts, mirrors one transient marker, and keeps the cell empty", () => {
+  it("rejects wrong values, preserves the stamp, and requires a fresh cell click", () => {
     const puzzle = [...SUDOKU_BOX_ELIMINATION_PUZZLE];
     let state = createSudokuBoardState(puzzle);
     state = selectSudokuCell(state, puzzle, 0, false);
     state = chooseSudokuDigit(state, puzzle, 1);
 
     expect(state.values[0]).toBe(0);
-    expect(state.inputDigit).toBeNull();
+    expect(state.inputDigit).toBe(1);
     expect(state.invalidAttempt).toEqual({ index: 0, digit: 1, sequence: 1 });
-
-    state = chooseSudokuDigit(state, puzzle, 1);
-    expect(state.invalidAttempt).toEqual({ index: 0, digit: 1, sequence: 2 });
 
     const restored = createSudokuBoardState(puzzle, toSudokuMirrorState(state));
     expect(restored).toEqual(state);
 
+    state = chooseSudokuDigit(state, puzzle, 1);
+    expect(state.values[0]).toBe(0);
+    expect(state.inputDigit).toBe(1);
+    expect(state.selected).toBeNull();
+    expect(state.invalidAttempt).toBeNull();
+
     state = chooseSudokuDigit(state, puzzle, 3);
+    expect(state.values[0]).toBe(0);
+    state = selectSudokuCell(state, puzzle, 0);
     expect(state.values[0]).toBe(3);
-    expect(state.invalidAttempt?.sequence).toBe(2);
+    expect(state.inputDigit).toBe(3);
   });
 
   it("validates digit-first entry but never treats candidates as answer guesses", () => {

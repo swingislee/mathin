@@ -193,7 +193,6 @@ function applyDigitAt(state: SudokuBoardState, puzzle: number[], index: number, 
     return {
       ...state,
       selected: index,
-      inputDigit: null,
       invalidAttempt: {
         index,
         digit,
@@ -224,6 +223,9 @@ export function chooseSudokuDigit(state: SudokuBoardState, puzzle: number[], dig
   if (state.highlightTool) return state;
   const withInput = { ...state, inputDigit: digit };
   const selected = state.selected;
+  if (state.entryMode === "value" && state.invalidAttempt?.index === selected) {
+    return { ...withInput, selected: null, invalidAttempt: null };
+  }
   if (selected === null || puzzle[selected] !== 0 || state.values[selected] !== 0) return withInput;
   return applyDigitAt(withInput, puzzle, selected, digit);
 }
