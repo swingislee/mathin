@@ -145,6 +145,7 @@
 - 所有模式、错误、空状态、同步提示和可访问名称同一提交维护 zh/en；
 - 不扩大页面级 Client Component。课堂交互叶子可以保持 client，静态壳、鉴权和数据读取继续在服务端；重 renderer 保持按页动态加载；
 - 首屏几何优先由 CSS grid、`aspect-ratio` 与 container/viewport 条件表达，避免服务端猜窗口尺寸造成 hydration 后布局跳变。
+- 开发环境的人工验收说明与 fixture 开关统一放入可收缩的 fixed 浮窗；浮窗不得作为课堂 flex/grid 子项占位，展开或收起都不能改变主板书、副板书、名单或底栏的测量结果。
 
 ---
 

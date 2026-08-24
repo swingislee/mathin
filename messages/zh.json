@@ -4173,6 +4173,8 @@
       "confirmRosterRefresh": "确认刷新名单",
       "rosterRefreshFailed": "名单又发生了变化，请重新连接后再确认。",
       "starWriteFailed": "本次星星未安全保存，请重试；名单与已有星星未被改动。",
+      "acceptanceDockCollapse": "收起开发验收浮窗",
+      "acceptanceDockExpand": "展开开发验收浮窗",
       "m4AcceptanceTitle": "M4a 正式名单与星星 v2",
       "m4FixtureClaimed": "已认领学生",
       "m4FixtureUnclaimed": "未认领学生 · 无账号",

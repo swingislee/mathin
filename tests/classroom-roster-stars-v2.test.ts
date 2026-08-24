@@ -186,6 +186,7 @@ describe("M4a roster identity and star v2", () => {
     });
     const route = source("src/app/[locale]/classroom/[classId]/session/[sessionId]/live/page.tsx");
     const shell = source("src/features/classroom/live/LiveShell.tsx");
+    const acceptanceDock = source("src/features/classroom/live/DevelopmentAcceptanceDock.tsx");
 
     expect(fixtures.base.entries.find((student) => student.studentId === M4A_STAR_STUDENT_ID)).toMatchObject({
       userId: null,
@@ -200,5 +201,9 @@ describe("M4a roster identity and star v2", () => {
     expect(shell).toContain("data-m4-star-set");
     expect(shell).toContain("data-m4-roster-refresh");
     expect(shell).toContain('acceptanceFixture === "m3b"');
+    expect(shell).toContain("<DevelopmentAcceptanceDock");
+    expect(acceptanceDock).toContain("fixed left-");
+    expect(acceptanceDock).toContain("data-development-acceptance-dock");
+    expect(acceptanceDock).toContain("aria-expanded={expanded}");
   });
 });

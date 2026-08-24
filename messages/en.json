@@ -4173,6 +4173,8 @@
       "confirmRosterRefresh": "Confirm roster refresh",
       "rosterRefreshFailed": "The roster changed again. Reconnect, review it, and confirm once more.",
       "starWriteFailed": "This star was not safely stored. Try again; the roster and existing stars were not changed.",
+      "acceptanceDockCollapse": "Collapse development acceptance dock",
+      "acceptanceDockExpand": "Expand development acceptance dock",
       "m4AcceptanceTitle": "M4a formal roster and star v2",
       "m4FixtureClaimed": "Claimed student",
       "m4FixtureUnclaimed": "Unclaimed student · no account",

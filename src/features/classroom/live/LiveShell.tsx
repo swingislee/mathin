@@ -108,6 +108,7 @@ import { useClassBoard } from "./useClassBoard";
 import { VideoStage } from "./VideoStage";
 import { GamePage, MainBoard, StudentCard, ToolOverlay, ToolPicker } from "./LivePanels";
 import { ClassroomInputModeControl } from "./ClassroomInputModeControl";
+import { DevelopmentAcceptanceDock } from "./DevelopmentAcceptanceDock";
 import {
   M3_H5_FIXTURE_DOC,
   M3_H5_FIXTURE_PAGE,
@@ -1180,69 +1181,72 @@ export function LiveShell({
       )}
 
       {rehearsal && isController && layoutV2Enabled && acceptanceFixture === "m4a" && (
-        <section
-          aria-label={t("m4AcceptanceTitle")}
-          className="mt-2 grid shrink-0 gap-2 rounded-xl border border-leaf/30 bg-leaf/5 p-2 text-xs lg:grid-cols-3"
-          data-m4-acceptance
+        <DevelopmentAcceptanceDock
+          title={t("m4AcceptanceTitle")}
+          collapseLabel={t("acceptanceDockCollapse")}
+          expandLabel={t("acceptanceDockExpand")}
         >
-          <div className="rounded-lg bg-paper/80 p-3" data-m4-roster-identity>
-            <p className="font-medium text-ink">{t("m4RosterObjectTitle")}</p>
-            <p className="mt-1 text-muted">{t("m4RosterObjectBody")}</p>
-            <p className="mt-2 font-mono text-[11px] text-ink">
-              {t("m4RosterObjectState", {
-                revision: rosterState.revision ?? 0,
-                count: rosterState.entries.length,
-                seat: m4aStarStudent?.seatPosition ?? "—",
-              })}
-            </p>
-          </div>
-          <div className="rounded-lg bg-paper/80 p-3" data-m4-star-set>
-            <p className="font-medium text-ink">{t("m4StarObjectTitle")}</p>
-            <p className="mt-1 text-muted">{t("m4StarObjectBody")}</p>
-            <p className="mt-2 font-mono text-[11px] text-ink">{t("m4StarObjectState", { count: m4aStarCount })}</p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <Button type="button" size="sm" variant="secondary" disabled={!log} onClick={runM4aStarSequence}>
-                {t("m4InjectReverseDuplicate")}
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                disabled={!log || !m4aStarStudent || m4aStarCount === 0}
-                onClick={() => m4aStarStudent && appendStar(m4aStarStudent, "undo")}
-              >
-                {t("m4UndoConcreteAward")}
-              </Button>
+          <section aria-label={t("m4AcceptanceTitle")} className="grid gap-2" data-m4-acceptance>
+            <div className="rounded-lg bg-leaf/5 p-3" data-m4-roster-identity>
+              <p className="font-medium text-ink">{t("m4RosterObjectTitle")}</p>
+              <p className="mt-1 text-muted">{t("m4RosterObjectBody")}</p>
+              <p className="mt-2 font-mono text-[11px] text-ink">
+                {t("m4RosterObjectState", {
+                  revision: rosterState.revision ?? 0,
+                  count: rosterState.entries.length,
+                  seat: m4aStarStudent?.seatPosition ?? "—",
+                })}
+              </p>
             </div>
-          </div>
-          <div className="rounded-lg bg-paper/80 p-3" data-m4-roster-refresh>
-            <p className="font-medium text-ink">{t("m4RefreshObjectTitle")}</p>
-            <p className="mt-1 text-muted">{t("m4RefreshObjectBody")}</p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                disabled={rosterState.hasDifference}
-                onClick={() => setRosterState(m4aFixtures.changed)}
-              >
-                {t("m4SimulateRosterChange")}
-              </Button>
-              <Button type="button" size="sm" variant="ghost" onClick={resetM4aFixture}>
-                {t("m4ResetAcceptance")}
-              </Button>
+            <div className="rounded-lg bg-leaf/5 p-3" data-m4-star-set>
+              <p className="font-medium text-ink">{t("m4StarObjectTitle")}</p>
+              <p className="mt-1 text-muted">{t("m4StarObjectBody")}</p>
+              <p className="mt-2 font-mono text-[11px] text-ink">{t("m4StarObjectState", { count: m4aStarCount })}</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Button type="button" size="sm" variant="secondary" disabled={!log} onClick={runM4aStarSequence}>
+                  {t("m4InjectReverseDuplicate")}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  disabled={!log || !m4aStarStudent || m4aStarCount === 0}
+                  onClick={() => m4aStarStudent && appendStar(m4aStarStudent, "undo")}
+                >
+                  {t("m4UndoConcreteAward")}
+                </Button>
+              </div>
             </div>
-          </div>
-        </section>
+            <div className="rounded-lg bg-leaf/5 p-3" data-m4-roster-refresh>
+              <p className="font-medium text-ink">{t("m4RefreshObjectTitle")}</p>
+              <p className="mt-1 text-muted">{t("m4RefreshObjectBody")}</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  disabled={rosterState.hasDifference}
+                  onClick={() => setRosterState(m4aFixtures.changed)}
+                >
+                  {t("m4SimulateRosterChange")}
+                </Button>
+                <Button type="button" size="sm" variant="ghost" onClick={resetM4aFixture}>
+                  {t("m4ResetAcceptance")}
+                </Button>
+              </div>
+            </div>
+          </section>
+        </DevelopmentAcceptanceDock>
       )}
 
       {rehearsal && isController && inputV2Enabled && acceptanceFixture === "m3b" && (
-        <section
-          aria-label={t("m3AcceptanceTitle")}
-          className="mt-2 flex shrink-0 flex-wrap items-center gap-2 rounded-xl border border-blue/30 bg-blue/5 p-2 text-xs"
-          data-m3-acceptance
+        <DevelopmentAcceptanceDock
+          title={t("m3AcceptanceTitle")}
+          collapseLabel={t("acceptanceDockCollapse")}
+          expandLabel={t("acceptanceDockExpand")}
         >
-          <div className="min-w-48 flex-1 px-2">
+          <section aria-label={t("m3AcceptanceTitle")} className="flex flex-col gap-2" data-m3-acceptance>
+          <div className="rounded-lg bg-blue/5 p-2">
             <p className="font-medium text-ink">{t("m3AcceptanceTitle")}</p>
             <p className="mt-0.5 text-muted">{t("m3AcceptanceBody")}</p>
           </div>
@@ -1308,7 +1312,8 @@ export function LiveShell({
           >
             {t("m3ReturnCourseware")}
           </Button>
-        </section>
+          </section>
+        </DevelopmentAcceptanceDock>
       )}
 
       {state.ended && !rehearsal && (
