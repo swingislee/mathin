@@ -30,11 +30,13 @@ export function AttendanceDrawer({
   appearance = "link",
   mode = "initial",
   onSaved,
+  className,
 }: {
   sessionId: string;
   appearance?: "link" | "secondary" | "primary";
   mode?: "initial" | "amend";
   onSaved?: () => void;
+  className?: string;
 }) {
   const t = useTranslations("school.classes");
   const router = useRouter();
@@ -76,8 +78,8 @@ export function AttendanceDrawer({
         type="button"
         onClick={openDrawer}
         className={appearance === "link"
-          ? "shrink-0 text-xs text-muted underline underline-offset-2 hover:text-ink"
-          : cn(buttonVariants({ size: "sm", variant: appearance === "secondary" ? "secondary" : "primary" }), "shrink-0")}
+          ? cn("shrink-0 text-xs text-muted underline underline-offset-2 hover:text-ink", className)
+          : cn(buttonVariants({ size: "sm", variant: appearance === "secondary" ? "secondary" : "primary" }), "shrink-0", className)}
       >
         {label}
       </button>

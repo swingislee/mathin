@@ -225,12 +225,14 @@ describe("R1 classroom continuity contracts", () => {
 
   it("ships a teacher page list, protected student media, and one-touch or batch learning checks", () => {
     const liveShell = read("src/features/classroom/live/LiveShell.tsx");
+    const controlMenus = read("src/features/classroom/live/ClassroomControlMenus.tsx");
     const video = read("src/features/classroom/live/VideoStage.tsx");
     const panel = read("src/features/school/SessionLearningCheckPanel.tsx");
     const learningSetup = read("src/features/school/session-learning.ts");
     const learningActions = read("src/features/school/session-learning-actions.ts");
-    expect(liveShell).toContain("PanelsTopLeft");
-    expect(liveShell).toContain('t("pageList")');
+    expect(liveShell).toContain("<ClassroomPageControls");
+    expect(controlMenus).toContain("PanelsTopLeft");
+    expect(controlMenus).toContain('t("pageList")');
     expect(liveShell).toContain('page?.type === "doc"');
     expect(video).toContain("pointer-events-none");
     expect(liveShell).toContain("prioritizeDocObjectHashes");
@@ -260,8 +262,8 @@ describe("R1 classroom continuity contracts", () => {
     expect(panel).toContain("saveClassroomStudentSeatLayoutAction");
     expect(panel).toContain("learningCheckIdForPage");
     expect(learningActions).toContain('rpc("save_classroom_student_seat_layout"');
-    expect(learningSetup).toContain('.from("classroom_student_seat_order")');
-    expect(learningSetup).toContain("seatPositionByStudentId");
+    expect(learningSetup).toContain("getSessionRoster(sessionId)");
+    expect(learningSetup).toContain("rosterState.entries.map");
     expect(learningSeatOrderMigration).toContain("create table public.classroom_student_seat_order");
     expect(learningSeatOrderMigration).toContain("save_classroom_student_seat_order");
     expect(learningSeatOrderMigration).toContain("ROSTER_CHANGED");
@@ -325,12 +327,17 @@ describe("R1 classroom continuity contracts", () => {
     expect(learningCheckIdAfterPageChange(checks, null, "page-4")).toBe("check-1");
   });
 
-  it("prioritizes 4:3 courseware and keeps both collapsible teacher docks on the right", () => {
+  it("prioritizes 4:3 courseware and gives M4b its right stack and full-width control row", () => {
     const liveShell = read("src/features/classroom/live/LiveShell.tsx");
     const toolbar = read("src/features/whiteboard/Toolbar.tsx");
-    // doc 27 §5.1 H4：分栏阈值从 xl 提到 lg。1024 横屏是直播课堂最典型的教师终端，
-    // 落在 xl 之下时主板书、副板书、名录与控制条全部纵向堆叠，上课要滚动才看得到名录。
-    expect(liveShell).toContain("flex-col gap-2 overflow-y-auto lg:flex-row");
+    const rosterGrid = read("src/features/classroom/live/ClassroomRosterGrid.tsx");
+    const controlBar = read("src/features/classroom/live/TeacherClassroomControlBar.tsx");
+    const controlMenus = read("src/features/classroom/live/ClassroomControlMenus.tsx");
+    expect(liveShell).toContain("teacherLayoutV2");
+    expect(liveShell).toContain("grid-cols-[minmax(0,1fr)_clamp(22rem,31vw,36rem)]");
+    expect(liveShell).toContain("100cqh * 4 / 3");
+    expect(liveShell).toContain("<ClassroomCourseInfoBar");
+    expect(liveShell).toContain("<ClassroomRosterGrid");
     expect(liveShell).toContain("data-side-board-viewport");
     expect(liveShell).toContain("sideZoom * 100");
     expect(liveShell).toContain("lastPoint[1] * viewport.scrollHeight");
@@ -340,8 +347,12 @@ describe("R1 classroom continuity contracts", () => {
     expect(liveShell).toContain("5.25rem");
     expect(liveShell).toContain("lg:justify-end");
     expect(liveShell).toContain("transition-[width] duration-200");
-    expect(liveShell).toContain('t("moreClassroomTools")');
-    expect(liveShell).not.toContain("compact");
+    expect(liveShell).toContain("<ClassroomToolsMenu");
+    expect(controlMenus).toContain('t("moreClassroomTools")');
+    expect(rosterGrid).toContain("grid-cols-4");
+    expect(rosterGrid).toContain("overflow-y-auto");
+    expect(controlBar).toContain('data-classroom-control-bar="full-width"');
+    expect(toolbar).toContain("largeTargets?: boolean");
     expect(toolbar).not.toContain("compact?: boolean");
   });
 

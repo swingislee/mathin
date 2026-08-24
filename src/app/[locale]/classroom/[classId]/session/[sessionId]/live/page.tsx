@@ -66,18 +66,24 @@ export default async function LiveClassPage({
   const rehearsal = mode === "rehearsal" && classroom.myRole === "teacher";
   const offlineDrill = mode === "offline-drill" && classroom.myRole === "teacher";
   const attendanceSuggested = !rehearsal && !offlineDrill && classroom.myRole === "teacher" && !session.startedAt;
-  const attendanceResult = attendanceSuggested ? await getAttendanceDrawerData(sessionId) : null;
+  const [attendanceResult, learningSetup] = await Promise.all([
+    attendanceSuggested ? getAttendanceDrawerData(sessionId) : Promise.resolve(null),
+    classroom.myRole === "teacher" ? getSessionLearningSetup(sessionId) : Promise.resolve(null),
+  ]);
   const initialAttendanceComplete = Boolean(
     attendanceResult?.ok && attendanceResult.data.length > 0 && attendanceResult.data.every((row) => row.marked),
   );
-  const learningSetup = classroom.myRole === "teacher" ? await getSessionLearningSetup(sessionId) : null;
-  const role = !rehearsal && roleParam === "display"
+  const role = roleParam === "display" && classroom.myRole === "teacher"
     ? "display"
     : classroom.myRole === "teacher"
       ? "control"
       : "viewer";
   const acceptanceFixture = process.env.NODE_ENV !== "production" && rehearsal
-    ? acceptance === "m3b" ? "m3b" : "m4a"
+    ? acceptance === "m3b"
+      ? "m3b"
+      : acceptance === "m4a"
+        ? "m4a"
+        : "m4b"
     : null;
 
   return (

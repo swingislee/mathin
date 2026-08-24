@@ -115,5 +115,5 @@ export function reduceEvent(state: LiveState, ev: SessionEvent): LiveState {
 }
 
 export const OPTION_LABELS = ["A", "B", "C", "D"];
-/** 星数不超过此值时直接摆星星图标（更直观）；超出退回单星+数字（08-§3.5）。 */
-export const MAX_INLINE_STARS = 5;
+/** M0-A contract: 0–10 are shown individually; 11+ uses a ten-star seal plus remainder. */
+export const MAX_INLINE_STARS = 10;

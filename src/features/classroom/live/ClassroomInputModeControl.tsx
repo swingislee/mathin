@@ -17,11 +17,13 @@ export function ClassroomInputModeControl({
   protectedRenderer,
   onChange,
   className,
+  compact = false,
 }: {
   value: ClassroomRoutingMode;
   protectedRenderer: boolean;
   onChange: (mode: ClassroomRoutingMode) => void;
   className?: string;
+  compact?: boolean;
 }) {
   const t = useTranslations("classroom.live");
   return (
@@ -44,10 +46,10 @@ export function ClassroomInputModeControl({
           onClick={() => onChange(mode)}
         >
           <Icon aria-hidden size={15} />
-          <span>{t(label)}</span>
+          <span className={compact ? "sr-only" : undefined}>{t(label)}</span>
         </Button>
       ))}
-      {protectedRenderer ? (
+      {protectedRenderer && !compact ? (
         <span className="max-w-52 px-2 text-[11px] leading-tight text-crater" role="status">
           {t("inputRendererProtected")}
         </span>

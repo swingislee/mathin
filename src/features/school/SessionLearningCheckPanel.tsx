@@ -293,7 +293,7 @@ export function SessionLearningCheckPanel({
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <button type="button" className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-ink px-3 text-xs text-paper">
+        <button type="button" className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-ink px-3 text-xs text-paper">
           <ClipboardCheck size={14} />
           {t("learningPanelOpen")}
         </button>

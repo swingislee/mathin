@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { buildSessionReport } from "@/features/classroom/report";
 import { parseSessionRosterState } from "@/features/classroom/roster";
 import { buildM4aRosterFixtures, M4A_STAR_STUDENT_ID } from "@/features/classroom/live/m4-roster-fixtures";
+import { buildM4bRosterFixtures, buildM4bStarFixtureEvents } from "@/features/classroom/live/m4-layout-fixtures";
 import {
   buildStarLedger,
   emptyStarLedger,
@@ -177,7 +178,7 @@ describe("M4a roster identity and star v2", () => {
     expect(shell).not.toContain('append("star", { studentId: student.userId })');
   });
 
-  it("ships only the three new M4a visual acceptance objects by default", () => {
+  it("keeps the accepted M4a objects addressable without making them the default", () => {
     const fixtures = buildM4aRosterFixtures({
       claimed: "claimed",
       unclaimed: "unclaimed",
@@ -196,7 +197,8 @@ describe("M4a roster identity and star v2", () => {
     expect(fixtures.changed.entries).toEqual(fixtures.base.entries);
     expect(fixtures.refreshed).toMatchObject({ revision: 8, hasDifference: false });
     expect(fixtures.refreshed.entries).toHaveLength(4);
-    expect(route).toContain('acceptance === "m3b" ? "m3b" : "m4a"');
+    expect(route).toContain('acceptance === "m4a"');
+    expect(route).toContain(': "m4b"');
     expect(shell).toContain("data-m4-roster-identity");
     expect(shell).toContain("data-m4-star-set");
     expect(shell).toContain("data-m4-roster-refresh");
@@ -205,5 +207,36 @@ describe("M4a roster identity and star v2", () => {
     expect(acceptanceDock).toContain("fixed left-");
     expect(acceptanceDock).toContain("data-development-acceptance-dock");
     expect(acceptanceDock).toContain("aria-expanded={expanded}");
+  });
+
+  it("provides stable M4b 8/20/30-seat and ten-star overflow fixtures", () => {
+    const fixtures = buildM4bRosterFixtures({
+      student: (seat) => `student ${seat}`,
+      longName: "a very long student name",
+      unclaimed: "unclaimed",
+    });
+    const ledger = buildStarLedger(buildM4bStarFixtureEvents(SESSION_ID, TEACHER_ID));
+    const shell = source("src/features/classroom/live/LiveShell.tsx");
+    const rosterGrid = source("src/features/classroom/live/ClassroomRosterGrid.tsx");
+    const panels = source("src/features/classroom/live/LivePanels.tsx");
+    const liveState = source("src/features/classroom/live/liveState.ts");
+
+    expect(fixtures["8"].entries).toHaveLength(8);
+    expect(fixtures["20"].entries).toHaveLength(20);
+    expect(fixtures["30"].entries).toHaveLength(30);
+    expect(fixtures["30"].entries.map((student) => student.seatPosition)).toEqual(
+      Array.from({ length: 30 }, (_, index) => index),
+    );
+    expect(fixtures["30"].entries[5]).toMatchObject({ userId: null, seatPosition: 5 });
+    expect(fixtures["20"].entries.slice(0, 4).map((student) => starCountForRosterEntry(ledger, student))).toEqual([10, 11, 13, 27]);
+
+    expect(shell).toContain('acceptanceFixture === "m4b"');
+    expect(shell).toContain("data-m4b-roster-scenarios");
+    expect(shell).toContain("grid-cols-[minmax(0,1fr)_clamp(22rem,31vw,36rem)]");
+    expect(rosterGrid).toContain("grid-cols-4");
+    expect(rosterGrid).toContain('data-roster-scroll={slots.length > 20 ? "internal" : "none"}');
+    expect(liveState).toContain("export const MAX_INLINE_STARS = 10");
+    expect(panels).toContain('data-star-display={count > MAX_INLINE_STARS ? "ten-seal-remainder" : "individual"}');
+    expect(panels).toContain("10★");
   });
 });

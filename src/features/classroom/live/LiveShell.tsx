@@ -11,12 +11,8 @@ import {
   CircleAlert,
   ExternalLink,
   Hand,
-  ListTodo,
   LoaderCircle,
   MonitorPlay,
-  MoreHorizontal,
-  PanelsTopLeft,
-  PenLine,
   SquareCheckBig,
   TriangleAlert,
   LocateFixed,
@@ -33,7 +29,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { GameMirrorState } from "@/features/games/types";
 import { AttendanceDrawer } from "@/features/school/AttendanceDrawer";
 import { SessionLearningCheckPanel } from "@/features/school/SessionLearningCheckPanel";
@@ -106,15 +101,20 @@ import { useH5PointerBridge } from "../input/useH5PointerBridge";
 import type { ClassroomRoutingMode } from "../input/router";
 import { useClassBoard } from "./useClassBoard";
 import { VideoStage } from "./VideoStage";
-import { GamePage, MainBoard, StudentCard, ToolOverlay, ToolPicker } from "./LivePanels";
+import { GamePage, MainBoard, StudentCard, ToolOverlay } from "./LivePanels";
 import { ClassroomInputModeControl } from "./ClassroomInputModeControl";
+import { ClassroomCourseInfoBar } from "./ClassroomCourseInfoBar";
+import { ClassroomRosterGrid, type ClassroomRosterStudent } from "./ClassroomRosterGrid";
 import { DevelopmentAcceptanceDock } from "./DevelopmentAcceptanceDock";
+import { TeacherClassroomControlBar } from "./TeacherClassroomControlBar";
+import { ClassroomPageControls, ClassroomToolsMenu } from "./ClassroomControlMenus";
 import {
   M3_H5_FIXTURE_DOC,
   M3_H5_FIXTURE_PAGE,
   m3H5FixtureBindingUrls,
 } from "./m3-input-fixtures";
 import { buildM4aRosterFixtures, M4A_STAR_STUDENT_ID } from "./m4-roster-fixtures";
+import { buildM4bRosterFixtures, buildM4bStarFixtureEvents } from "./m4-layout-fixtures";
 import { OPTION_LABELS, reduceEvent, type LiveState, type Phase, type Role } from "./liveState";
 
 // 上课页（08-§3.4/§5）：候课（预载/自检）→ 上课 全程页内状态切换，零路由跳转。
@@ -140,7 +140,7 @@ interface Props {
   /** M4 roster/star writer and control-layout gate. Readers remain dual-version. */
   layoutV2Enabled: boolean;
   /** Development-only visible Gate; accepted milestones stay out of the default surface. */
-  acceptanceFixture: "m3b" | "m4a" | null;
+  acceptanceFixture: "m3b" | "m4a" | "m4b" | null;
   role: Role;
   /** 试讲：教师本地预演/复盘——事件不落库不同步，随时可进（包括已下课的课次）。 */
   rehearsal?: boolean;
@@ -182,8 +182,17 @@ export function LiveShell({
     seated: t("m4FixtureSeated"),
     newlyEnrolled: t("m4FixtureNewEnrollment"),
   }), [t]);
+  const m4bFixtures = useMemo(() => buildM4bRosterFixtures({
+    student: (seat) => t("m4bFixtureStudent", { seat }),
+    longName: t("m4bFixtureLongName"),
+    unclaimed: t("m4bFixtureUnclaimed"),
+  }), [t]);
   const [rosterState, setRosterState] = useState(() => (
-    acceptanceFixture === "m4a" ? m4aFixtures.base : initialRoster
+    acceptanceFixture === "m4a"
+      ? m4aFixtures.base
+      : acceptanceFixture === "m4b"
+        ? m4bFixtures["20"]
+        : initialRoster
   ));
   const students = rosterState.entries;
   const starEventSchema = rehearsal && layoutV2Enabled ? 2 : rosterState.starEventSchema;
@@ -194,6 +203,10 @@ export function LiveShell({
   const checkpointByBoard = useMemo(
     () => new Map(initialCheckpoints.map((checkpoint) => [checkpoint.boardKey, checkpoint])),
     [initialCheckpoints],
+  );
+  const m4bStarEvents = useMemo(
+    () => acceptanceFixture === "m4b" ? buildM4bStarFixtureEvents(session.id, userId) : [],
+    [acceptanceFixture, session.id, userId],
   );
 
   const initialState = useMemo<LiveState>(() => {
@@ -212,14 +225,14 @@ export function LiveShell({
       answers: {},
       docSteps: {},
     };
-    for (const ev of initialEvents) {
+    for (const ev of [...initialEvents, ...m4bStarEvents]) {
       const pageKey = ev.type === "board_snapshot" ? String(ev.payload.pageKey ?? "") : "";
       const checkpoint = pageKey ? checkpointByBoard.get(pageKey) : undefined;
       if (pageKey && !shouldApplyLegacyBoardSnapshot(checkpoint, ev.createdAt)) continue;
       state = reduceEvent(state, ev);
     }
     return state;
-  }, [session, initialEvents, initialCheckpoints, checkpointByBoard]);
+  }, [session, initialEvents, initialCheckpoints, checkpointByBoard, m4bStarEvents]);
 
   const [state, setState] = useState(initialState);
   const starLedgerRef = useRef(initialState.starLedger);
@@ -251,6 +264,7 @@ export function LiveShell({
   const [inputRendererSignature, setInputRendererSignature] = useState("");
   const [m3FixtureEnabled, setM3FixtureEnabled] = useState(() => acceptanceFixture === "m3b");
   const [m3H5Compatible, setM3H5Compatible] = useState(true);
+  const [m4bScenario, setM4bScenario] = useState<"8" | "20" | "30">("20");
   const [endOpen, setEndOpen] = useState(false);
   const [classroomToolsOpen, setClassroomToolsOpen] = useState(false);
   const [stageWidth, setStageWidth] = useState(0);
@@ -281,6 +295,7 @@ export function LiveShell({
   }, [activePageDocId]);
 
   const isController = role === "control" && myRole === "teacher";
+  const teacherLayoutV2 = layoutV2Enabled && isController;
   // 试讲不受「已下课」限制：复盘已结束的课次也可随手写画（本地临时，不留痕）
   const editable = isController && (rehearsal || !state.ended);
   // 展示窗/学生端跟随 start 事件进入上课（派生而非 effect，避免级联渲染）
@@ -783,6 +798,15 @@ export function LiveShell({
     });
   }, [m4aFixtures.base]);
 
+  const selectM4bScenario = useCallback((scenario: "8" | "20" | "30") => {
+    setM4bScenario(scenario);
+    setRosterState(m4bFixtures[scenario]);
+    // The 30-seat fixture intentionally combines long copy, pending work and
+    // an error indicator to verify that the control layout does not reflow.
+    setPending(scenario === "30" ? 7 : 0);
+    setStarWriteError(scenario === "30");
+  }, [m4bFixtures]);
+
   const runM4aStarSequence = useCallback(() => {
     const run = async () => {
       const eventLog = logRef.current;
@@ -821,7 +845,9 @@ export function LiveShell({
     : docUrls;
   const displayedSessionTitle = usingM3Fixture
     ? t("m3FixtureSessionTitle")
-    : session.title || t("untitled");
+    : acceptanceFixture === "m4b" && m4bScenario === "30"
+      ? t("m4bLongSessionTitle")
+      : session.title || t("untitled");
   const h5FrameCount = countCoursewareH5Frames(renderDoc);
   const mainTool = useStore(mainStore ?? sideBoard.store, (boardState) => boardState.tool);
   const activateMainInput = useCallback(() => setActiveArea("main"), []);
@@ -903,6 +929,20 @@ export function LiveShell({
     () => (myRole === "student" && !showAllStudents ? students.filter((student) => student.userId === userId) : students),
     [myRole, showAllStudents, students, userId],
   );
+  const rosterGridStudents: ClassroomRosterStudent[] = students.map((student) => {
+    const answered = state.quiz && student.userId
+      ? state.answers[state.quiz.id]?.[student.userId]
+      : undefined;
+    return {
+      ...student,
+      name: student.name || t("anonymous"),
+      count: starCountForRosterEntry(state.starLedger, student),
+      hand: Boolean(student.userId && state.hands[student.userId]),
+      online: Boolean(student.userId && onlineIds.has(student.userId)),
+      answerLabel: answered === undefined ? null : isController ? OPTION_LABELS[answered] ?? "?" : "✓",
+      interactive: editable && (starEventSchema === 2 || student.userId !== null),
+    };
+  });
   const m4aStarStudent = students.find((student) => student.studentId === M4A_STAR_STUDENT_ID);
   const m4aStarCount = m4aStarStudent
     ? starCountForRosterEntry(state.starLedger, m4aStarStudent)
@@ -931,9 +971,16 @@ export function LiveShell({
 
   const connectionBadges = rehearsal ? (
     // 试讲没有任何同步通道，连接徽标只会误导——换成单一模式标识
-    <span className="rounded-full bg-moon/40 px-2 py-0.5 text-xs text-ink" title={t("rehearsalHint")}>
-      {t("rehearsalBadge")}
-    </span>
+    <div className="flex flex-wrap items-center gap-2 text-xs">
+      <span className="rounded-full bg-moon/40 px-2 py-0.5 text-ink" title={t("rehearsalHint")}>
+        {t("rehearsalBadge")}
+      </span>
+      {pending > 0 && (
+        <span className="rounded-full bg-crater/10 px-2 py-0.5 text-crater" title={t("pendingHint")}>
+          {t("pending", { count: pending })}
+        </span>
+      )}
+    </div>
   ) : offlineDrill ? (
     <div className="flex items-center gap-2 text-xs">
       <Badge variant="secondary" className="bg-moon/40 text-ink">{t("offlineDrillBadge")}</Badge>
@@ -990,6 +1037,51 @@ export function LiveShell({
         {t("confirmRosterRefresh")}
       </Button>
     </section>
+  ) : null;
+
+  const courseStatusLabel = starWriteError
+    ? t("m4bStatusError")
+    : pending > 0
+      ? t("pending", { count: pending })
+      : rehearsal
+        ? t("rehearsalBadge")
+        : offlineDrill
+          ? t("offlineDrillBadge")
+          : t2Connected
+            ? t("online")
+            : t("offline");
+  const teacherLayoutAlertContent = starWriteError || rosterState.hasDifference ? (
+    <div className="space-y-3" aria-live="polite">
+      {starWriteError && (
+        <p className="rounded-xl border border-rose/30 bg-rose/5 px-3 py-2 text-xs text-rose" role="alert">
+          {t("starWriteFailed")}
+        </p>
+      )}
+      {rosterState.hasDifference && (
+        <section className="space-y-2">
+          <div>
+            <p className="text-sm font-medium text-ink">{t("rosterDifferenceTitle")}</p>
+            <p className="text-xs text-muted">
+              {t("rosterDifferenceBody", {
+                revision: rosterState.revision ?? 0,
+                count: rosterState.entries.length,
+              })}
+            </p>
+            {rosterRefreshError && <p className="mt-1 text-xs text-rose">{t("rosterRefreshFailed")}</p>}
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            disabled={rosterRefreshing}
+            onClick={() => void confirmRosterRefresh()}
+          >
+            {rosterRefreshing && <LoaderCircle size={14} className="animate-spin motion-reduce:animate-none" />}
+            {t("confirmRosterRefresh")}
+          </Button>
+        </section>
+      )}
+    </div>
   ) : null;
 
   // --- 候课 ----------------------------------------------------------------
@@ -1141,8 +1233,11 @@ export function LiveShell({
 
   // --- 上课 ----------------------------------------------------------------
   return (
-    <div className="flex h-dvh flex-col overflow-hidden px-3 py-2">
-      <header className="flex shrink-0 flex-wrap items-center gap-2">
+    <div className={cn(
+      "flex h-dvh flex-col overflow-hidden px-3 pt-2",
+      teacherLayoutV2 ? "pb-[calc(4.25rem+env(safe-area-inset-bottom))]" : "pb-2",
+    )}>
+      {!teacherLayoutV2 && <header className="flex shrink-0 flex-wrap items-center gap-2">
         <Link
           href={`/classroom/${classId}/session/${session.id}`}
           aria-label={t("exit")}
@@ -1171,10 +1266,10 @@ export function LiveShell({
         <span className="font-mono text-xs text-muted">
           {state.pages.length === 0 ? "0 / 0" : `${state.currentPage + 1} / ${state.pages.length}`}
         </span>
-      </header>
+      </header>}
 
-      {rosterDifferenceNotice}
-      {starWriteError && isController && (
+      {!teacherLayoutV2 && rosterDifferenceNotice}
+      {!teacherLayoutV2 && starWriteError && isController && (
         <p className="mt-2 rounded-xl border border-rose/30 bg-rose/5 px-3 py-2 text-xs text-rose" role="alert">
           {t("starWriteFailed")}
         </p>
@@ -1316,6 +1411,58 @@ export function LiveShell({
         </DevelopmentAcceptanceDock>
       )}
 
+      {rehearsal && layoutV2Enabled && acceptanceFixture === "m4b" && (
+        <DevelopmentAcceptanceDock
+          title={t("m4bAcceptanceTitle")}
+          collapseLabel={t("acceptanceDockCollapse")}
+          expandLabel={t("acceptanceDockExpand")}
+        >
+          <section aria-label={t("m4bAcceptanceTitle")} className="space-y-3" data-m4b-acceptance>
+            <div className="rounded-lg bg-blue/5 p-2">
+              <p className="font-medium text-ink">{t("m4bAcceptanceBody")}</p>
+              <p className="mt-1 text-muted">{t("m4bAcceptanceNoReflow")}</p>
+            </div>
+            <div data-m4b-roster-scenarios>
+              <p className="mb-1 font-medium text-ink">{t("m4bRosterScenarios")}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {(["8", "20", "30"] as const).map((scenario) => (
+                  <Button
+                    key={scenario}
+                    type="button"
+                    size="sm"
+                    variant={m4bScenario === scenario ? "primary" : "secondary"}
+                    aria-pressed={m4bScenario === scenario}
+                    onClick={() => selectM4bScenario(scenario)}
+                  >
+                    {t("m4bStudentScenario", { count: Number(scenario) })}
+                  </Button>
+                ))}
+              </div>
+              <p className="mt-1 text-muted">
+                {m4bScenario === "30" ? t("m4bStressState") : t("m4bBaselineState", { count: Number(m4bScenario) })}
+              </p>
+            </div>
+            <div data-m4b-role-isolation>
+              <p className="mb-1 font-medium text-ink">{t("m4bRoleIsolation")}</p>
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={() => {
+                  const query = isController
+                    ? "?mode=rehearsal&acceptance=m4b&role=display"
+                    : "?mode=rehearsal&acceptance=m4b";
+                  window.open(`${window.location.pathname}${query}`, "_blank");
+                }}
+              >
+                {isController ? t("m4bOpenDisplay") : t("m4bOpenControl")}
+              </Button>
+              <p className="mt-1 text-muted">{t("m4bRoleIsolationHint")}</p>
+            </div>
+          </section>
+        </DevelopmentAcceptanceDock>
+      )}
+
       {state.ended && !rehearsal && (
         <div className="mt-2 flex shrink-0 items-center justify-center gap-3 rounded-xl bg-moon/40 px-3 py-1.5 text-xs">
           <span>{t("ended")}</span>
@@ -1331,15 +1478,31 @@ export function LiveShell({
         </div>
       )}
 
-      <div className="mt-2 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto lg:flex-row lg:gap-3 lg:overflow-hidden">
+      <div className={cn(
+        "mt-2 min-h-0 flex-1 gap-2",
+        teacherLayoutV2
+          ? "flex flex-col overflow-y-auto lg:grid lg:grid-cols-[minmax(0,1fr)_clamp(22rem,31vw,36rem)] lg:gap-3 lg:overflow-hidden"
+          : "flex flex-col overflow-y-auto lg:flex-row lg:gap-3 lg:overflow-hidden",
+      )}>
         {/* 左：4:3 课件层 + 主板书覆盖层，尽量占满可压缩空间（08-§3.2 归一化坐标） */}
-        <main className="relative flex min-w-0 shrink-0 items-center justify-center lg:min-h-0 lg:flex-1 lg:shrink">
+        <main className={cn(
+          "relative flex min-w-0 shrink-0 items-center justify-center lg:min-h-0 lg:flex-1 lg:shrink",
+          teacherLayoutV2 && "min-h-[min(50dvh,32rem)] [container-type:size] lg:min-h-0",
+        )}>
           <div
             ref={stageRef}
-            className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-line bg-card"
+            className={cn(
+              "relative aspect-[4/3] overflow-hidden rounded-2xl border border-line bg-card",
+              teacherLayoutV2 ? "max-h-full max-w-full" : "w-full",
+            )}
             data-classroom-stage
             {...classroomInputProviderAttributes(rendererProfile.renderer, rendererProfile.provider)}
-            style={{ width: "min(100%, calc((100dvh - 6rem) * 4 / 3))" }}
+            style={teacherLayoutV2
+              ? {
+                  width: "min(100cqw, calc(100cqh * 4 / 3))",
+                  height: "min(100cqh, calc(100cqw * 3 / 4))",
+                }
+              : { width: "min(100%, calc((100dvh - 6rem) * 4 / 3))" }}
             onPointerDownCapture={() => setActiveArea("main")}
           >
             {!renderPage ? (
@@ -1425,8 +1588,11 @@ export function LiveShell({
             {!isController && renderPage?.type === "doc" && <div aria-hidden="true" className="absolute inset-0 z-40 touch-none" />}
           </div>
 
-          {isController && toolbarStore && (
-            <div className="absolute bottom-3 left-1/2 z-50 flex -translate-x-1/2 flex-col items-center gap-1">
+          {isController && toolbarStore && !teacherLayoutV2 && (
+            <div className={cn(
+              "absolute z-50 flex flex-col items-center gap-1",
+              teacherLayoutV2 ? "bottom-2 right-2 max-w-[calc(100%-1rem)]" : "bottom-3 left-1/2 -translate-x-1/2",
+            )}>
               <span className="rounded-full bg-ink/70 px-2 py-0.5 text-[10px] leading-none text-paper">
                 {activeArea === "side" ? t("boardSide") : t("boardMain")}
               </span>
@@ -1438,25 +1604,50 @@ export function LiveShell({
         {/* 右：副板书（长条，固定宽，用户 2026-07-08 要求加宽一倍）+ 学生名录（固定宽，容纳多人）+ 控制条，三段式 */}
         <div
           className={cn(
-            "flex min-h-0 w-full flex-1 flex-col gap-2 transition-[width] duration-200 lg:ml-auto lg:flex-none lg:shrink-0",
+            teacherLayoutV2
+              ? "grid min-h-[30rem] w-full flex-none gap-2 lg:min-h-0"
+              : "flex min-h-0 w-full flex-1 flex-col gap-2 transition-[width] duration-200 lg:ml-auto lg:flex-none lg:shrink-0",
             // 分栏阈值从 xl 提到 lg（doc 27 §5.1 H4）：1024 横屏是直播课堂最典型的教师终端，
             // 原先落在 xl 之下，主板书、副板书、名录与控制条全部纵向堆叠，上课要滚动才看得到名录。
             // 但 1024 上留 34rem 会把主板书压到 480px，所以两栏全展开时 lg 档先给 26rem，xl 才放到 34rem。
-            sideCollapsed && rosterCollapsed
-              ? "lg:w-[5.25rem]"
-              : sideCollapsed
-                ? "lg:w-[16rem] xl:w-[18rem]"
+            teacherLayoutV2
+              ? sideCollapsed
+                ? "grid-rows-[3rem_2.75rem_minmax(0,1fr)]"
                 : rosterCollapsed
-                  ? "lg:w-[18rem] xl:w-[22rem]"
-                  : "lg:w-[26rem] xl:w-[34rem]",
+                  ? "grid-rows-[3rem_minmax(0,1fr)_2.75rem]"
+                  : "grid-rows-[3rem_minmax(8rem,1fr)_17.5rem]"
+              : sideCollapsed && rosterCollapsed
+                ? "lg:w-[5.25rem]"
+                : sideCollapsed
+                  ? "lg:w-[16rem] xl:w-[18rem]"
+                  : rosterCollapsed
+                    ? "lg:w-[18rem] xl:w-[22rem]"
+                    : "lg:w-[26rem] xl:w-[34rem]",
           )}
         >
-          <div className="flex min-h-0 flex-1 flex-col gap-2 lg:flex-row lg:justify-end">
+          {teacherLayoutV2 && (
+            <ClassroomCourseInfoBar
+              backHref={`/classroom/${classId}/session/${session.id}`}
+              exitLabel={t("exit")}
+              title={displayedSessionTitle}
+              statusLabel={courseStatusLabel}
+              statusDetails={connectionBadges}
+              pageLabel={state.pages.length === 0 ? "0/0" : `${state.currentPage + 1}/${state.pages.length}`}
+              alertLabel={teacherLayoutAlertContent ? t("m4bOpenAlerts") : undefined}
+              alertContent={teacherLayoutAlertContent}
+              endLabel={t("endClass")}
+              endDisabled={rehearsal || state.ended}
+              onEnd={() => setEndOpen(true)}
+            />
+          )}
+          <div className={teacherLayoutV2 ? "contents" : "flex min-h-0 flex-1 flex-col gap-2 lg:flex-row lg:justify-end"}>
             {/* 副板书：默认展开固定宽；折叠为窄条腾出空间；名录折叠时改吃 flex-1（用户 2026-07-08 要求可折叠） */}
             <div
               className={cn(
                 "relative min-h-0 overflow-hidden rounded-2xl border border-line bg-card transition-[width,height] duration-150",
-                sideCollapsed
+                teacherLayoutV2
+                  ? sideCollapsed ? "h-11" : "h-full"
+                  : sideCollapsed
                   ? "h-9 shrink-0 lg:h-auto lg:w-10"
                   : rosterCollapsed
                     ? "flex-1"
@@ -1536,6 +1727,24 @@ export function LiveShell({
               </div>
             </div>
             {/* 名录：默认展开吃满剩余宽度；折叠为窄条，副板书自动接手空间 */}
+            {teacherLayoutV2 ? (
+              <ClassroomRosterGrid
+                students={rosterGridStudents}
+                rosterLabel={t("roster", { count: students.length })}
+                emptySeatLabel={(seat) => t("emptySeatLabel", { seat })}
+                seatLabel={(seat) => t("seatShort", { seat })}
+                starTotalLabel={(name, count) => t("studentStarTotal", { name, count })}
+                awardStarLabel={(name, count) => t("awardStarLabel", { name, count })}
+                undoStarLabel={(name, count) => t("undoStarLabel", { name, count })}
+                undoHint={t("undoStar")}
+                collapsed={rosterCollapsed}
+                collapseLabel={t("collapseRoster")}
+                expandLabel={t("expandRoster")}
+                onToggleCollapsed={() => setRosterCollapsed((collapsed) => !collapsed)}
+                onStar={(student) => appendStar(student, "award")}
+                onUndo={(student) => appendStar(student, "undo")}
+              />
+            ) : (
             <div
               className={cn(
                 "flex min-h-0 flex-col overflow-hidden rounded-2xl border border-line transition-[width,height] duration-150",
@@ -1592,31 +1801,19 @@ export function LiveShell({
                 </ul>
               )}
             </div>
+            )}
           </div>
 
           {/* 控制条：翻页/插页/工具/发题（教师）或举手/作答（学生），紧贴副板书+名录下方，老师操作更方便 */}
-          {showControlBar && (
-            <div className="flex shrink-0 flex-col gap-1.5 rounded-2xl border border-line p-2">
+          {showControlBar && !teacherLayoutV2 && (
+            <div className="flex shrink-0 flex-col gap-1.5 rounded-2xl border border-line p-2" data-classroom-control-bar="panel">
               {isController && (
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <button
-                    type="button"
-                    aria-label={t("prevPage")}
-                    disabled={state.currentPage <= 0}
-                    onClick={() => gotoPage(state.currentPage - 1, state.pages.length)}
-                    className="grid size-10 place-items-center rounded-full border border-line text-ink transition-colors hover:bg-moon/30 disabled:opacity-30"
-                  >
-                    <ChevronLeft size={18} />
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={t("nextPage")}
-                    disabled={state.currentPage >= state.pages.length - 1}
-                    onClick={() => gotoPage(state.currentPage + 1, state.pages.length)}
-                    className="grid size-10 place-items-center rounded-full border border-line text-ink transition-colors hover:bg-moon/30 disabled:opacity-30"
-                  >
-                    <ChevronRight size={18} />
-                  </button>
+                  <ClassroomPageControls
+                    pages={state.pages}
+                    currentPage={state.currentPage}
+                    onGoto={(nextPage) => gotoPage(nextPage, state.pages.length)}
+                  />
                   {learningSetup && (
                     <SessionLearningCheckPanel
                       sessionId={session.id}
@@ -1624,38 +1821,6 @@ export function LiveShell({
                       activePageDocId={page?.type === "doc" ? page.docId : null}
                     />
                   )}
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <button
-                        type="button"
-                        className="ml-auto inline-flex min-h-10 items-center gap-1.5 rounded-full border border-line px-3 text-xs text-muted transition-colors hover:bg-moon/30 hover:text-ink"
-                      >
-                        <PanelsTopLeft size={14} />
-                        {t("pageList")}
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent side="top" align="end" className="w-72 p-2">
-                      <p className="px-2 pb-2 text-xs font-medium text-muted">{t("pageList")}</p>
-                      <ol className="max-h-72 space-y-1 overflow-y-auto">
-                        {state.pages.map((coursewarePage, pageIndex) => (
-                          <li key={coursewarePage.id}>
-                            <button
-                              type="button"
-                              onClick={() => gotoPage(pageIndex, state.pages.length)}
-                              aria-current={pageIndex === state.currentPage ? "page" : undefined}
-                              className={cn(
-                                "flex min-h-10 w-full items-center gap-2 rounded-lg px-2 text-left text-sm transition-colors",
-                                pageIndex === state.currentPage ? "bg-moon/50 text-ink" : "text-muted hover:bg-moon/30 hover:text-ink",
-                              )}
-                            >
-                              <span className="w-6 shrink-0 text-right font-mono text-xs">{pageIndex + 1}</span>
-                              <span className="min-w-0 flex-1 truncate">{coursewarePage.title || t("untitledPage")}</span>
-                            </button>
-                          </li>
-                        ))}
-                      </ol>
-                    </PopoverContent>
-                  </Popover>
                   {!state.ended && state.quiz && (
                     <button
                       type="button"
@@ -1667,63 +1832,23 @@ export function LiveShell({
                     </button>
                   )}
                   {!state.ended && (
-                    <Popover open={classroomToolsOpen} onOpenChange={setClassroomToolsOpen}>
-                      <PopoverTrigger asChild>
-                        <button
-                          type="button"
-                          className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-line px-3 text-xs text-muted transition-colors hover:bg-moon/30 hover:text-ink"
-                        >
-                          <MoreHorizontal size={14} />
-                          {t("moreClassroomTools")}
-                        </button>
-                      </PopoverTrigger>
-                      <PopoverContent side="top" align="end" className="w-64 p-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          className="w-full justify-start"
-                          onClick={() => {
-                            setClassroomToolsOpen(false);
-                            insertBoardPage();
-                          }}
-                        >
-                          <PenLine size={15} />
-                          {t("insertBoard")}
-                        </Button>
-                        <div aria-hidden className="my-2 h-px bg-line" />
-                        <p className="px-2 pb-1 text-xs font-medium text-muted">{t("openTool")}</p>
-                        <ToolPicker
-                          onPick={(toolId) => {
-                            setClassroomToolsOpen(false);
-                            append("tool_ctl", { action: "open", toolId });
-                          }}
-                        />
-                        {!state.quiz && (
-                          <>
-                            <div aria-hidden className="my-2 h-px bg-line" />
-                            <p className="px-2 pb-1 text-xs font-medium text-muted">{t("quizOpen")}</p>
-                            <div className="flex items-center gap-1 px-1">
-                              {[2, 3, 4].map((options) => (
-                                <Button
-                                  key={options}
-                                  type="button"
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => {
-                                    setClassroomToolsOpen(false);
-                                    append("session_ctl", { action: "quiz_open", quizId: newId(), options });
-                                  }}
-                                >
-                                  <ListTodo size={14} />
-                                  {t("quizOptions", { last: OPTION_LABELS[options - 1] })}
-                                </Button>
-                              ))}
-                            </div>
-                          </>
-                        )}
-                      </PopoverContent>
-                    </Popover>
+                    <ClassroomToolsMenu
+                      open={classroomToolsOpen}
+                      quizOpen={Boolean(state.quiz)}
+                      onOpenChange={setClassroomToolsOpen}
+                      onInsertBoard={() => {
+                        setClassroomToolsOpen(false);
+                        insertBoardPage();
+                      }}
+                      onOpenTool={(toolId) => {
+                        setClassroomToolsOpen(false);
+                        append("tool_ctl", { action: "open", toolId });
+                      }}
+                      onOpenQuiz={(options) => {
+                        setClassroomToolsOpen(false);
+                        append("session_ctl", { action: "quiz_open", quizId: newId(), options });
+                      }}
+                    />
                   )}
                 </div>
               )}
@@ -1780,6 +1905,90 @@ export function LiveShell({
           )}
         </div>
       </div>
+
+      {teacherLayoutV2 && showControlBar && (
+        <TeacherClassroomControlBar
+          secondaryControls={(
+            <>
+              {inputV2Enabled && (
+                <ClassroomInputModeControl
+                  compact
+                  value={effectiveRoutingMode}
+                  protectedRenderer={!rendererProfile.audited}
+                  onChange={changeRoutingMode}
+                  className="h-11 flex-nowrap p-0"
+                />
+              )}
+              <AttendanceDrawer
+                sessionId={session.id}
+                appearance="secondary"
+                mode="amend"
+                className="min-h-11 px-3 text-xs"
+              />
+              {learningSetup && (
+                <SessionLearningCheckPanel
+                  sessionId={session.id}
+                  setup={learningSetup}
+                  activePageDocId={page?.type === "doc" ? page.docId : null}
+                />
+              )}
+              {!state.ended && state.quiz && (
+                <button
+                  type="button"
+                  onClick={() => append("session_ctl", { action: "quiz_close", quizId: state.quiz?.id })}
+                  className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full bg-ink px-3 text-xs text-paper transition-opacity hover:opacity-85"
+                >
+                  <SquareCheckBig size={14} />
+                  {t("quizClose")}
+                </button>
+              )}
+              {!state.ended && (
+                <ClassroomToolsMenu
+                  open={classroomToolsOpen}
+                  quizOpen={Boolean(state.quiz)}
+                  largeTarget
+                  align="start"
+                  onOpenChange={setClassroomToolsOpen}
+                  onInsertBoard={() => {
+                    setClassroomToolsOpen(false);
+                    insertBoardPage();
+                  }}
+                  onOpenTool={(toolId) => {
+                    setClassroomToolsOpen(false);
+                    append("tool_ctl", { action: "open", toolId });
+                  }}
+                  onOpenQuiz={(options) => {
+                    setClassroomToolsOpen(false);
+                    append("session_ctl", { action: "quiz_open", quizId: newId(), options });
+                  }}
+                />
+              )}
+            </>
+          )}
+          drawingControls={toolbarStore ? (
+            <div className="flex min-w-max items-center gap-1">
+              <span className="rounded-full bg-ink/70 px-2 py-0.5 text-[10px] leading-none text-paper">
+                {activeArea === "side" ? t("boardSide") : t("boardMain")}
+              </span>
+              <Toolbar
+                largeTargets
+                title={`${displayedSessionTitle}-${renderPage?.title ?? ""}`}
+                store={toolbarStore}
+                clearTargets={clearTargets}
+                className="h-11 p-0 shadow-none"
+              />
+            </div>
+          ) : null}
+          pageControls={(
+            <ClassroomPageControls
+              pages={state.pages}
+              currentPage={state.currentPage}
+              largeTargets
+              onGoto={(nextPage) => gotoPage(nextPage, state.pages.length)}
+            />
+          )}
+        />
+      )}
 
       <Dialog open={endOpen} onOpenChange={setEndOpen}>
         <DialogContent>
