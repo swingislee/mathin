@@ -105,6 +105,26 @@ describe("Sudoku teaching board M2", () => {
     expect(mirror.highlights?.focusedDigit).toBeNull();
   });
 
+  it("keeps a filled selected cell focused while switching the persistent digit stamp", () => {
+    const puzzle = [...SUDOKU_BOX_ELIMINATION_PUZZLE];
+    let state = createSudokuBoardState(puzzle);
+
+    state = chooseSudokuDigit(state, puzzle, 3);
+    state = selectSudokuCell(state, puzzle, 0);
+    expect(state.values[0]).toBe(3);
+    expect(state.selected).toBe(0);
+
+    state = chooseSudokuDigit(state, puzzle, 6);
+    expect(state.values[0]).toBe(3);
+    expect(state.selected).toBe(0);
+    expect(state.inputDigit).toBe(6);
+    expect(state.invalidAttempt).toBeNull();
+
+    state = selectSudokuCell(state, puzzle, 1);
+    expect(state.values[1]).toBe(6);
+    expect(state.inputDigit).toBe(6);
+  });
+
   it("toggles candidates, clears them on fill, and mirrors the complete M2 state", () => {
     const puzzle = [...SUDOKU_BOX_ELIMINATION_PUZZLE];
     let state = createSudokuBoardState(puzzle);

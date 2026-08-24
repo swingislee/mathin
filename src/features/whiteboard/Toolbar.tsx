@@ -17,7 +17,6 @@ import {
   MousePointer2,
   PaintBucket,
   Palette,
-  Pencil,
   Ruler,
   Scissors,
   Shapes,
@@ -211,10 +210,6 @@ export function Toolbar({
 
       <div aria-hidden className="mx-0.5 h-6 w-px shrink-0 bg-line" />
       <div role="group" data-tool-group="drawing" aria-label={`${t("pen")} · ${t("eraser")} · ${t("color")} · ${t("size")}`} className="flex shrink-0 items-center gap-0.5 rounded-xl bg-card/70 p-0.5">
-      <ToolButton active={tool === "pen"} label={t("pen")} onClick={() => setTool("pen")}>
-        <Pencil size={18} />
-      </ToolButton>
-
       <Popover>
         <div className="flex items-center">
           <ToolButton active={isEraser} label={t("eraser")} onClick={() => setTool(lastEraser)}><Eraser size={18} /></ToolButton>
@@ -240,6 +235,7 @@ export function Toolbar({
             : token === "rose"
               ? "quickColorRed"
               : "quickColorBlue";
+          const active = tool === "pen" && color === token;
           return (
             <button
               key={token}
@@ -247,22 +243,22 @@ export function Toolbar({
               data-quick-color={token}
               aria-label={t(labelKey)}
               title={t(labelKey)}
-              aria-pressed={color === token}
+              aria-pressed={active}
               onClick={() => pickColor(token)}
               className={cn(
                 "relative grid size-9 shrink-0 place-items-center rounded-full transition-colors hover:bg-moon/30",
-                color === token && "bg-moon/30",
+                active && "bg-moon/30",
               )}
             >
               <span
                 aria-hidden
                 className={cn(
                   "grid size-5 place-items-center rounded-full border border-line shadow-sm transition-transform",
-                  color === token && "scale-110 ring-2 ring-ink/60 ring-offset-1 ring-offset-paper",
+                  active && "scale-110 ring-2 ring-ink/60 ring-offset-1 ring-offset-paper",
                 )}
                 style={{ background: colorVar(token) }}
               >
-                {color === token ? <Check size={12} strokeWidth={3} className="text-paper" /> : null}
+                {active ? <Check size={12} strokeWidth={3} className="text-paper" /> : null}
               </span>
             </button>
           );

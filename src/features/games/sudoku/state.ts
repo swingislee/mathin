@@ -223,7 +223,9 @@ export function chooseSudokuDigit(state: SudokuBoardState, puzzle: number[], dig
   }
   if (state.highlightTool) return state;
   const withInput = { ...state, inputDigit: digit };
-  return state.selected === null ? withInput : applyDigitAt(withInput, puzzle, state.selected, digit);
+  const selected = state.selected;
+  if (selected === null || puzzle[selected] !== 0 || state.values[selected] !== 0) return withInput;
+  return applyDigitAt(withInput, puzzle, selected, digit);
 }
 
 function toggledIndex(values: number[], value: number): number[] {

@@ -83,5 +83,8 @@ describe("whiteboard geometry objects", () => {
     expect(toolbar).toContain("data-quick-color={token}");
     expect(toolbar).toContain('setTool("pen")');
     expect(toolbar).toContain('t("moreColors")');
+    expect(toolbar).toContain('const active = tool === "pen" && color === token');
+    expect(toolbar).toContain("aria-pressed={active}");
+    expect(toolbar).not.toContain("<Pencil");
   });
 });
