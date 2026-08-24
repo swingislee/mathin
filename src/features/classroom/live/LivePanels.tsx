@@ -13,6 +13,7 @@ import type { WhiteboardStore } from "@/features/whiteboard/store";
 import type { BoardItem } from "@/features/whiteboard/types";
 import { cn } from "@/lib/utils";
 import type { SessionEventLog } from "../sync/eventlog";
+import type { BoardCheckpointStatus, SessionBoardCheckpoint } from "../checkpoint/types";
 import type { CoursewarePage } from "../types";
 import { useClassBoard } from "./useClassBoard";
 import { MAX_INLINE_STARS } from "./liveState";
@@ -27,6 +28,9 @@ export function MainBoard({
   initialItems,
   strokeWidthBasis,
   cursorName,
+  checkpointV2Writer,
+  initialCheckpoint,
+  onCheckpointStatus,
   onStore,
 }: {
   log: SessionEventLog | null;
@@ -35,9 +39,17 @@ export function MainBoard({
   initialItems: BoardItem[] | undefined;
   strokeWidthBasis?: number;
   cursorName: string;
+  checkpointV2Writer: boolean;
+  initialCheckpoint?: SessionBoardCheckpoint;
+  onCheckpointStatus: (boardKey: string, status: BoardCheckpointStatus) => void;
   onStore: (store: WhiteboardStore) => void;
 }) {
-  const { store, bus } = useClassBoard(log, boardKey, editable, initialItems, { cursorName });
+  const { store, bus } = useClassBoard(log, boardKey, editable, initialItems, {
+    cursorName,
+    checkpointV2Writer,
+    initialCheckpoint,
+    onCheckpointStatus,
+  });
   useEffect(() => {
     onStore(store);
   }, [store, onStore]);

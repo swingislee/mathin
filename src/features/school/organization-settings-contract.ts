@@ -14,6 +14,7 @@ export const ORGANIZATION_FEATURE_KEYS = [
   "notifications.wechat",
   "public_content.publish",
   "teaching.preparation_archive_edit",
+  "teaching.classroom_board_checkpoint_v2",
 ] as const;
 
 export type OrganizationRuleDomain = (typeof ORGANIZATION_RULE_DOMAINS)[number];

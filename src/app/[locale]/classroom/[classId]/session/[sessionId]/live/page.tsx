@@ -1,12 +1,13 @@
 import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
-import { getClassroom, getClassSession, listSessionEvents } from "@/features/classroom/actions";
+import { getClassroom, getClassSession, listSessionBoardCheckpoints, listSessionEvents } from "@/features/classroom/actions";
 import type { CoursewarePage } from "@/features/classroom/types";
 import { LiveShell } from "@/features/classroom/live/LiveShell";
 import { getSessionCoursewareTemplate } from "@/features/school/courses";
 import { getAttendanceDrawerData } from "@/features/school/actions/attendance";
 import { getSessionLearningSetup } from "@/features/school/session-learning";
 import { resolveCourseware, type OverlaySlot } from "@/features/school/courseware-overlay";
+import { isFeatureEnabled } from "@/features/school/organization-settings";
 import { requireUser } from "@/lib/auth";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -24,10 +25,12 @@ export default async function LiveClassPage({
   if (!UUID_PATTERN.test(classId) || !UUID_PATTERN.test(sessionId)) notFound();
 
   // 全量类型：P4-5 起晚加入者要还原板书快照/游戏镜像/视频进度/临时插页等一切基线
-  const [classroom, session, events] = await Promise.all([
+  const [classroom, session, events, boardCheckpoints, checkpointWriterEnabled] = await Promise.all([
     getClassroom(classId, sessionId),
     getClassSession(sessionId),
     listSessionEvents(sessionId),
+    listSessionBoardCheckpoints(sessionId),
+    isFeatureEnabled("teaching.classroom_board_checkpoint_v2"),
   ]);
   if (!classroom || !session || session.classroomId !== classId) notFound();
 
@@ -67,6 +70,8 @@ export default async function LiveClassPage({
       myRole={classroom.myRole}
       userId={user.id}
       initialEvents={events}
+      initialCheckpoints={boardCheckpoints}
+      checkpointV2Writer={checkpointWriterEnabled || (process.env.NODE_ENV !== "production" && rehearsal)}
       role={role}
       rehearsal={rehearsal}
       offlineDrill={offlineDrill}

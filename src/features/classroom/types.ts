@@ -88,6 +88,8 @@ export interface SessionEvent {
   payload: Record<string, unknown>;
   /** 客户端时间 ISO 串，报告展示用；排序不依赖它。 */
   at: string;
+  /** 数据库提交时间；仅服务端读取得到，用于 checkpoint/v1 回退的权威先后比较。 */
+  createdAt?: string;
 }
 
 // ---------------------------------------------------------------------------

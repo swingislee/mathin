@@ -7,6 +7,8 @@ import { getSessionCoursewareTemplate } from "@/features/school/courses";
 import type { Json } from "@/lib/database.types";
 import { createClient } from "@/lib/supabase/server";
 import { collectPostgrestRowsInBatches } from "@/lib/supabase/postgrest-batches";
+import { parseSessionBoardCheckpoints } from "./checkpoint/parse";
+import type { SessionBoardCheckpoint } from "./checkpoint/types";
 import { buildSessionReport } from "./report";
 import type {
   AssignmentContent,
@@ -356,18 +358,50 @@ export async function listSessionEvents(
   types?: SessionEventType[],
 ): Promise<SessionEvent[]> {
   const { supabase } = await authenticatedClient();
-  let query = supabase
-    .from("session_events")
-    .select("id,session_id,user_id,device_id,seq,type,payload,at")
-    .eq("session_id", sessionId)
-    .order("at", { ascending: true })
-    .limit(5000);
-  if (types && types.length > 0) query = query.in("type", types);
-  const { data, error } = await query.returns<
-    Array<{ id: string; session_id: string; user_id: string; device_id: string; seq: number; type: SessionEventType; payload: Record<string, unknown>; at: string }>
-  >();
-  if (error) throw new Error(error.message);
-  return (data ?? []).map((row) => ({
+  type EventRow = {
+    id: string;
+    session_id: string;
+    user_id: string;
+    device_id: string;
+    seq: number;
+    type: SessionEventType;
+    payload: Record<string, unknown>;
+    at: string;
+    created_at: string;
+  };
+  const requestedTypes = types?.length ? types : undefined;
+  const includeLegacyBoard = !requestedTypes || requestedTypes.includes("board_snapshot");
+  const eventTypes = requestedTypes?.filter((type) => type !== "board_snapshot");
+  const rows: EventRow[] = [];
+  const pageSize = 1000;
+
+  if (!requestedTypes || (eventTypes && eventTypes.length > 0)) {
+    for (let offset = 0; ; offset += pageSize) {
+      let query = supabase
+        .from("session_events")
+        .select("id,session_id,user_id,device_id,seq,type,payload,at,created_at")
+        .eq("session_id", sessionId)
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(offset, offset + pageSize - 1);
+      query = requestedTypes
+        ? query.in("type", eventTypes!)
+        : query.neq("type", "board_snapshot");
+      const { data, error } = await query.returns<EventRow[]>();
+      if (error) throw new Error(error.message);
+      rows.push(...(data ?? []));
+      if ((data?.length ?? 0) < pageSize) break;
+    }
+  }
+
+  if (includeLegacyBoard) {
+    const { data, error } = await supabase.rpc("get_session_legacy_board_snapshots", { p_session_id: sessionId });
+    if (error) throw new Error(error.message);
+    rows.push(...((data ?? []) as EventRow[]));
+  }
+
+  rows.sort((left, right) => left.created_at.localeCompare(right.created_at) || left.id.localeCompare(right.id));
+  return rows.map((row) => ({
     id: row.id,
     sessionId: row.session_id,
     userId: row.user_id,
@@ -376,7 +410,18 @@ export async function listSessionEvents(
     type: row.type,
     payload: row.payload ?? {},
     at: row.at,
+    createdAt: row.created_at,
   }));
+}
+
+/** v2 reader is always active so disabling the writer remains a safe rollback. */
+export async function listSessionBoardCheckpoints(sessionId: string): Promise<SessionBoardCheckpoint[]> {
+  const { supabase } = await authenticatedClient();
+  const { data, error } = await supabase.rpc("get_session_board_checkpoints", {
+    p_session_id: sessionId,
+  });
+  if (error) throw new Error(error.message);
+  return parseSessionBoardCheckpoints(data);
 }
 
 export async function getMyProfileRole(): Promise<"student" | "parent" | "staff" | "admin"> {

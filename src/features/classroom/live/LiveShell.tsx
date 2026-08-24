@@ -43,6 +43,8 @@ import type { WhiteboardStore } from "@/features/whiteboard/store";
 import { isStrokeItem, type StrokeItem } from "@/features/whiteboard/types";
 
 import type { InteractionTrigger } from "@/features/courseware-doc/interactions";
+import type { BoardCheckpointStatus, SessionBoardCheckpoint } from "../checkpoint/types";
+import { shouldApplyLegacyBoardSnapshot } from "../checkpoint/selection";
 import type { ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 import { Link, useRouter } from "@/i18n/navigation";
 import { createIsolatedRealtimeClient } from "@/lib/supabase/client";
@@ -79,6 +81,7 @@ import { useClassBoard } from "./useClassBoard";
 import { VideoStage } from "./VideoStage";
 import { GamePage, MainBoard, StudentCard, ToolOverlay, ToolPicker } from "./LivePanels";
 import { OPTION_LABELS, reduceEvent, type LiveState, type Phase, type Role } from "./liveState";
+import { loadM2AcceptanceFixture } from "./m2-acceptance-fixture";
 
 // 上课页（08-§3.4/§5）：候课（预载/自检）→ 上课 全程页内状态切换，零路由跳转。
 // P4-5 正式舞台：4:3 课件/主板书 + 副板书 + 学生名录；主板书按页 uuid 隔离、
@@ -92,6 +95,9 @@ interface Props {
   myRole: "teacher" | "student";
   userId: string;
   initialEvents: SessionEvent[];
+  initialCheckpoints: SessionBoardCheckpoint[];
+  /** Writer gate only. The v2 reader remains active during rollback. */
+  checkpointV2Writer: boolean;
   role: Role;
   /** 试讲：教师本地预演/复盘——事件不落库不同步，随时可进（包括已下课的课次）。 */
   rehearsal?: boolean;
@@ -103,6 +109,10 @@ interface Props {
   learningSetup: SessionLearningSetup | null;
 }
 
+function formatCheckpointBytes(bytes: number): string {
+  return bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} KiB`;
+}
+
 export function LiveShell({
   session,
   classId,
@@ -110,6 +120,8 @@ export function LiveShell({
   myRole,
   userId,
   initialEvents,
+  initialCheckpoints,
+  checkpointV2Writer,
   role,
   rehearsal = false,
   offlineDrill = false,
@@ -125,6 +137,10 @@ export function LiveShell({
     () => members.find((member) => member.userId === userId)?.displayName ?? "",
     [members, userId],
   );
+  const checkpointByBoard = useMemo(
+    () => new Map(initialCheckpoints.map((checkpoint) => [checkpoint.boardKey, checkpoint])),
+    [initialCheckpoints],
+  );
 
   const initialState = useMemo<LiveState>(() => {
     let state: LiveState = {
@@ -134,7 +150,7 @@ export function LiveShell({
       started: Boolean(session.startedAt),
       ended: Boolean(session.endedAt),
       hands: {},
-      boards: {},
+      boards: Object.fromEntries(initialCheckpoints.map((checkpoint) => [checkpoint.boardKey, checkpoint.items])),
       games: {},
       video: {},
       openTool: null,
@@ -142,9 +158,14 @@ export function LiveShell({
       answers: {},
       docSteps: {},
     };
-    for (const ev of initialEvents) state = reduceEvent(state, ev);
+    for (const ev of initialEvents) {
+      const pageKey = ev.type === "board_snapshot" ? String(ev.payload.pageKey ?? "") : "";
+      const checkpoint = pageKey ? checkpointByBoard.get(pageKey) : undefined;
+      if (pageKey && !shouldApplyLegacyBoardSnapshot(checkpoint, ev.createdAt)) continue;
+      state = reduceEvent(state, ev);
+    }
     return state;
-  }, [session, initialEvents]);
+  }, [session, initialEvents, initialCheckpoints, checkpointByBoard]);
 
   const [state, setState] = useState(initialState);
   const activePage = state.pages[state.currentPage];
@@ -169,6 +190,7 @@ export function LiveShell({
   const [log, setLog] = useState<SessionEventLog | null>(null);
   const [onlinePeers, setOnlinePeers] = useState<PresencePeer[]>([]);
   const [mainStore, setMainStore] = useState<WhiteboardStore | null>(null);
+  const [checkpointStatuses, setCheckpointStatuses] = useState<Record<string, BoardCheckpointStatus>>({});
   const [activeArea, setActiveArea] = useState<"main" | "side">("main");
   const [endOpen, setEndOpen] = useState(false);
   const [classroomToolsOpen, setClassroomToolsOpen] = useState(false);
@@ -187,6 +209,9 @@ export function LiveShell({
   const activePageDocIdRef = useRef(activePageDocId);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const sideViewportRef = useRef<HTMLDivElement | null>(null);
+  const onCheckpointStatus = useCallback((boardKey: string, status: BoardCheckpointStatus) => {
+    setCheckpointStatuses((current) => current[boardKey] === status ? current : { ...current, [boardKey]: status });
+  }, []);
 
   useEffect(() => {
     activePageDocIdRef.current = activePageDocId;
@@ -461,7 +486,12 @@ export function LiveShell({
   }, [effectivePhase]);
 
   // --- 副板书（全课一块，pageKey="side"）---------------------------------
-  const sideBoard = useClassBoard(log, "side", editable, initialState.boards["side"], { cursorName: selfName });
+  const sideBoard = useClassBoard(log, "side", editable, initialState.boards["side"], {
+    cursorName: selfName,
+    checkpointV2Writer,
+    initialCheckpoint: checkpointByBoard.get("side"),
+    onCheckpointStatus,
+  });
 
   // 学生端的副板书保持固定纵横比并允许平移/缩放；新笔迹落定后自动把最后一行带回视口。
   useEffect(() => {
@@ -654,6 +684,7 @@ export function LiveShell({
     return bucket;
   }, [state.quiz, state.answers]);
   const showControlBar = isController || (myRole === "student" && role === "viewer") || Boolean(state.quiz);
+  const sideCheckpointStatus = checkpointStatuses.side ?? sideBoard.checkpointStatus;
 
   const connectionBadges = rehearsal ? (
     // 试讲没有任何同步通道，连接徽标只会误导——换成单一模式标识
@@ -860,6 +891,47 @@ export function LiveShell({
         </span>
       </header>
 
+      {rehearsal && isController && checkpointV2Writer && (
+        <section aria-label={t("m2AcceptanceTitle")} className="mt-2 grid shrink-0 gap-2 rounded-xl border border-blue/30 bg-blue/5 p-2 text-xs lg:grid-cols-2">
+          <div className="rounded-lg bg-paper/80 px-3 py-2">
+            <p className="font-medium text-ink">{t("m2HandFeelTitle")}</p>
+            <p className="mt-0.5 text-muted">{t("m2HandFeelBody")}</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 rounded-lg bg-paper/80 px-3 py-2">
+            <div className="min-w-52 flex-1">
+              <p className="font-medium text-ink">{t("m2RecoveryTitle")}</p>
+              <p className="mt-0.5 text-muted">{t("m2RecoveryBody")}</p>
+              <p className={cn("mt-1 font-mono", sideCheckpointStatus.state === "error" ? "text-rose" : "text-muted")} role={sideCheckpointStatus.state === "error" ? "alert" : "status"}>
+                {sideCheckpointStatus.state === "error"
+                  ? t("m2CheckpointError", { error: sideCheckpointStatus.message ?? "CHECKPOINT_SAVE_FAILED" })
+                  : t("m2CheckpointStatus", {
+                      state: t(`m2State_${sideCheckpointStatus.state}`),
+                      source: t(`m2Source_${sideCheckpointStatus.source}`),
+                      version: sideCheckpointStatus.version ?? "—",
+                      chunks: sideCheckpointStatus.chunkCount,
+                      items: sideCheckpointStatus.itemCount,
+                      size: formatCheckpointBytes(sideCheckpointStatus.contentBytes),
+                    })}
+              </p>
+            </div>
+            <Button size="sm" variant="secondary" onClick={() => {
+              setActiveArea("side");
+              loadM2AcceptanceFixture(sideBoard.store);
+            }}>
+              {t("m2Load500")}
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={sideCheckpointStatus.state === "preparing" || sideCheckpointStatus.state === "idle"}
+              onClick={() => window.location.reload()}
+            >
+              {t("m2Reload")}
+            </Button>
+          </div>
+        </section>
+      )}
+
       {state.ended && !rehearsal && (
         <div className="mt-2 flex shrink-0 items-center justify-center gap-3 rounded-xl bg-moon/40 px-3 py-1.5 text-xs">
           <span>{t("ended")}</span>
@@ -945,6 +1017,9 @@ export function LiveShell({
                 initialItems={state.boards[page.id]}
                 strokeWidthBasis={stageWidth}
                 cursorName={selfName}
+                checkpointV2Writer={checkpointV2Writer}
+                initialCheckpoint={checkpointByBoard.get(page.id)}
+                onCheckpointStatus={onCheckpointStatus}
                 onStore={setMainStore}
               />
             )}
