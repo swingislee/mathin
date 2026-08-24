@@ -3,8 +3,18 @@ import type { ClassroomInputCapability } from "./router";
 
 export const CLASSROOM_INPUT_CAPABILITY_VERSION = 1;
 
+export const AUDITED_CLASSROOM_NATIVE_GAME_IDS = ["sudoku", "kakuro", "magic-square"] as const;
+
+export type AuditedClassroomNativeGameId = (typeof AUDITED_CLASSROOM_NATIVE_GAME_IDS)[number];
+
+const auditedNativeGameIds = new Set<string>(AUDITED_CLASSROOM_NATIVE_GAME_IDS);
+
+export function isAuditedClassroomNativeGame(gameId: string): gameId is AuditedClassroomNativeGameId {
+  return auditedNativeGameIds.has(gameId);
+}
+
 export interface ClassroomRendererInputProfile {
-  renderer: "board" | "image" | "sudoku" | "unsupported";
+  renderer: "board" | "image" | AuditedClassroomNativeGameId | "unsupported";
   version: number;
   audited: boolean;
   defaultCapability: ClassroomInputCapability;
@@ -17,7 +27,7 @@ const UNSUPPORTED_PROFILE: ClassroomRendererInputProfile = {
   defaultCapability: "unknown",
 };
 
-/** M3a registry: only non-interactive paper/image and the native Sudoku renderer are audited. */
+/** M3a registry: paper/image and the three in-repo native game renderers are audited. */
 export function resolveClassroomRendererInputProfile(
   page: CoursewarePage | undefined,
   hasToolOverlay: boolean,
@@ -39,9 +49,9 @@ export function resolveClassroomRendererInputProfile(
       defaultCapability: "ink",
     };
   }
-  if (page.type === "game" && page.gameId === "sudoku") {
+  if (page.type === "game" && isAuditedClassroomNativeGame(page.gameId)) {
     return {
-      renderer: "sudoku",
+      renderer: page.gameId,
       version: CLASSROOM_INPUT_CAPABILITY_VERSION,
       audited: true,
       defaultCapability: "ink",

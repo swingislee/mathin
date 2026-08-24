@@ -115,13 +115,25 @@ interface Props {
   learningSetup: SessionLearningSetup | null;
 }
 
-const M3_NATIVE_INPUT_FIXTURE: Extract<CoursewarePage, { type: "game" }> = {
-  id: "m3-native-input-fixture",
-  type: "game",
-  gameId: "sudoku",
-  difficulty: "medium",
-  seed: "m3-native-input-fixture-v1",
-  title: "M3 Smart Input",
+type M3NativeGameFixtureId = "kakuro" | "magic-square";
+
+const M3_NATIVE_GAME_FIXTURES: Record<M3NativeGameFixtureId, Extract<CoursewarePage, { type: "game" }>> = {
+  kakuro: {
+    id: "m3-native-kakuro-fixture",
+    type: "game",
+    gameId: "kakuro",
+    difficulty: "easy",
+    seed: "m3-native-kakuro-fixture-v1",
+    title: "M3 Kakuro Input",
+  },
+  "magic-square": {
+    id: "m3-native-magic-square-fixture",
+    type: "game",
+    gameId: "magic-square",
+    difficulty: "easy",
+    seed: "m3-native-magic-square-fixture-v1",
+    title: "M3 Magic Square Input",
+  },
 };
 
 export function LiveShell({
@@ -144,6 +156,7 @@ export function LiveShell({
   const router = useRouter();
   const t = useTranslations("classroom.live");
   const tPrep = useTranslations("classroom.prep");
+  const tGames = useTranslations("games.items");
   const students = useMemo(() => members.filter((member) => member.role === "student"), [members]);
   const selfName = useMemo(
     () => members.find((member) => member.userId === userId)?.displayName ?? "",
@@ -206,6 +219,7 @@ export function LiveShell({
   const [routingMode, setRoutingMode] = useState<ClassroomRoutingMode>("smart");
   const [inputRendererSignature, setInputRendererSignature] = useState("");
   const [m3FixtureEnabled, setM3FixtureEnabled] = useState(() => rehearsal && inputV2Enabled);
+  const [m3FixtureGameId, setM3FixtureGameId] = useState<M3NativeGameFixtureId>("kakuro");
   const [endOpen, setEndOpen] = useState(false);
   const [classroomToolsOpen, setClassroomToolsOpen] = useState(false);
   const [stageWidth, setStageWidth] = useState(0);
@@ -653,10 +667,11 @@ export function LiveShell({
 
   // --- 派生 ----------------------------------------------------------------
   const page = state.pages[state.currentPage] as CoursewarePage | undefined;
-  const renderPage = rehearsal && inputV2Enabled && m3FixtureEnabled
-    ? M3_NATIVE_INPUT_FIXTURE
+  const usingM3Fixture = rehearsal && inputV2Enabled && m3FixtureEnabled;
+  const renderPage = usingM3Fixture
+    ? M3_NATIVE_GAME_FIXTURES[m3FixtureGameId]
     : page;
-  const displayedSessionTitle = renderPage?.id === M3_NATIVE_INPUT_FIXTURE.id
+  const displayedSessionTitle = usingM3Fixture
     ? t("m3FixtureSessionTitle")
     : session.title || t("untitled");
   const rendererProfile = useMemo(
@@ -956,21 +971,58 @@ export function LiveShell({
 
       {rehearsal && isController && inputV2Enabled && (
         <section
-          aria-label={t("sudokuOperationAcceptanceTitle")}
+          aria-label={t("nativeGameAcceptanceTitle")}
           className="mt-2 flex shrink-0 flex-wrap items-center gap-2 rounded-xl border border-blue/30 bg-blue/5 p-2 text-xs"
-          data-sudoku-operation-acceptance
+          data-native-game-acceptance
         >
           <div className="min-w-48 flex-1 px-2">
-            <p className="font-medium text-ink">{t("sudokuOperationAcceptanceTitle")}</p>
-            <p className="mt-0.5 text-muted">{t("sudokuOperationAcceptanceBody")}</p>
+            <p className="font-medium text-ink">{t("nativeGameAcceptanceTitle")}</p>
+            <p className="mt-0.5 text-muted">{t("nativeGameAcceptanceBody")}</p>
           </div>
-          <ol className="min-w-0 flex-[2] basis-full lg:basis-auto">
+          <div
+            role="group"
+            aria-label={t("nativeGameFixtureGroup")}
+            className="flex items-center gap-1.5"
+          >
+            <Button
+              type="button"
+              size="sm"
+              variant={m3FixtureEnabled && m3FixtureGameId === "kakuro" ? "primary" : "secondary"}
+              aria-pressed={m3FixtureEnabled && m3FixtureGameId === "kakuro"}
+              data-m3-fixture-game="kakuro"
+              onClick={() => {
+                setM3FixtureGameId("kakuro");
+                setM3FixtureEnabled(true);
+              }}
+            >
+              {tGames("kakuro.name")}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={m3FixtureEnabled && m3FixtureGameId === "magic-square" ? "primary" : "secondary"}
+              aria-pressed={m3FixtureEnabled && m3FixtureGameId === "magic-square"}
+              data-m3-fixture-game="magic-square"
+              onClick={() => {
+                setM3FixtureGameId("magic-square");
+                setM3FixtureEnabled(true);
+              }}
+            >
+              {tGames("magic-square.name")}
+            </Button>
+          </div>
+          <ol className="grid min-w-0 flex-[2] basis-full gap-1 sm:grid-cols-2 lg:basis-auto">
             <li className="rounded-lg bg-paper/80 px-2 py-1.5 text-muted">
               <span className="mr-1 font-mono text-ink">1</span>
-              {t("sudokuOperationCheckEntryMode")}
+              {t("nativeGameCheckKakuro")}
+            </li>
+            <li className="rounded-lg bg-paper/80 px-2 py-1.5 text-muted">
+              <span className="mr-1 font-mono text-ink">2</span>
+              {t("nativeGameCheckMagicSquare")}
             </li>
           </ol>
           <Button
+            type="button"
             size="sm"
             variant="secondary"
             data-m3-fixture-toggle

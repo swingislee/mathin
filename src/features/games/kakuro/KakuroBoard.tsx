@@ -91,6 +91,20 @@ export function KakuroBoard({ seed, difficulty, finished, onComplete, mirror, on
           return (
             <button
               key={i}
+              type="button"
+              data-cell-index={i}
+              data-classroom-input="click"
+              aria-label={v
+                ? t("kakuroBoard.filledCell", {
+                    row: Math.floor(i / puzzle.cols) + 1,
+                    column: (i % puzzle.cols) + 1,
+                    value: v,
+                  })
+                : t("kakuroBoard.emptyCell", {
+                    row: Math.floor(i / puzzle.cols) + 1,
+                    column: (i % puzzle.cols) + 1,
+                  })}
+              aria-pressed={selected === i}
               onClick={() => select(i)}
               className={cn(
                 "flex aspect-square items-center justify-center border border-line bg-card text-lg tabular-nums transition-colors duration-100 sm:text-xl",
@@ -108,6 +122,9 @@ export function KakuroBoard({ seed, difficulty, finished, onComplete, mirror, on
         {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
           <button
             key={n}
+            type="button"
+            data-classroom-input="click"
+            aria-label={t("kakuroBoard.chooseDigit", { digit: n })}
             onClick={() => put(n)}
             disabled={finished}
             className="flex size-9 items-center justify-center rounded-lg border bg-card text-base tabular-nums transition duration-150 hover:bg-(--p-wash) disabled:opacity-50"
@@ -116,6 +133,8 @@ export function KakuroBoard({ seed, difficulty, finished, onComplete, mirror, on
           </button>
         ))}
         <button
+          type="button"
+          data-classroom-input="click"
           onClick={() => put(0)}
           disabled={finished}
           aria-label={t("erase")}

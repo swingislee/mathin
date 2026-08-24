@@ -19,7 +19,10 @@ import { cn } from "@/lib/utils";
 import type { SessionEventLog } from "../sync/eventlog";
 import type { BoardCheckpointStatus, SessionBoardCheckpoint } from "../checkpoint/types";
 import type { CoursewarePage } from "../types";
-import { CLASSROOM_INPUT_CAPABILITY_VERSION } from "../input/capabilities";
+import {
+  CLASSROOM_INPUT_CAPABILITY_VERSION,
+  isAuditedClassroomNativeGame,
+} from "../input/capabilities";
 import { useClassBoard } from "./useClassBoard";
 import { MAX_INLINE_STARS } from "./liveState";
 
@@ -105,7 +108,9 @@ export function GamePage({
     <div
       className="size-full overflow-auto p-4"
       data-classroom-renderer={game.id}
-      data-classroom-renderer-version={game.id === "sudoku" ? CLASSROOM_INPUT_CAPABILITY_VERSION : undefined}
+      data-classroom-renderer-version={isAuditedClassroomNativeGame(game.id)
+        ? CLASSROOM_INPUT_CAPABILITY_VERSION
+        : undefined}
     >
       <GameBoard
         key={`${page.id}:${page.seed}:${page.difficulty}`}

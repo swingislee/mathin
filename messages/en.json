@@ -241,11 +241,16 @@
       "candidateCell": "{coordinate}, candidates {values}",
       "emptyCell": "{coordinate}, empty cell"
     },
+    "kakuroBoard": {
+      "emptyCell": "Row {row}, column {column}, empty cell",
+      "filledCell": "Row {row}, column {column}, digit {value}",
+      "chooseDigit": "Choose digit {digit}"
+    },
     "items": {
       "sudoku": {
         "name": "Sudoku",
         "desc": "Fill the 9×9 board with 1–9 so no row, column or box repeats.",
-        "rules": "Each row, column and 3×3 box must contain the digits 1–9 exactly once. Select a cell then a digit, or a digit then a cell; switch between Candidates and Fill to choose how it is recorded. Rows are A–I and columns are 1–9."
+        "rules": "Each row, column and 3×3 box must contain the digits 1–9 exactly once. Choose a digit, then apply it to one or more empty cells; switch between Candidates and Fill to choose how it is recorded. Rows are A–I and columns are 1–9."
       },
       "kakuro": {
         "name": "Kakuro",
@@ -259,7 +264,11 @@
       }
     },
     "magicSquare": {
-      "target": "Every row, column and both diagonals must sum to {sum}"
+      "target": "Every row, column and both diagonals must sum to {sum}",
+      "emptyCell": "Row {row}, column {column}, empty cell",
+      "givenCell": "Row {row}, column {column}, given number {value}",
+      "filledCell": "Row {row}, column {column}, number {value}",
+      "chooseNumber": "Choose number {number}"
     }
   },
   "tools": {
@@ -4180,11 +4189,13 @@
       "inputModeInteractionHint": "All input goes to the courseware and creates no board ink.",
       "inputModeInkHint": "All input goes to the active board tool and does not trigger courseware controls.",
       "inputRendererProtected": "This renderer is not audited and is protected in interaction lock; ink lock remains available.",
-      "sudokuOperationAcceptanceTitle": "Sudoku entry-mode follow-up",
-      "m3FixtureSessionTitle": "Sudoku operation stamps",
-      "sudokuOperationAcceptanceBody": "The other Sudoku operations passed; this round checks only entry-mode persistence.",
-      "sudokuOperationCheckEntryMode": "Candidates or Fill stays selected when a highlight tool is active",
-      "m3OpenFixture": "Open Sudoku fixture",
+      "nativeGameAcceptanceTitle": "M3a native game input",
+      "m3FixtureSessionTitle": "M3a native game input",
+      "nativeGameAcceptanceBody": "This round checks native clicks in Kakuro and Magic square under Smart; the accepted Sudoku flow is not repeated.",
+      "nativeGameFixtureGroup": "Choose an acceptance game",
+      "nativeGameCheckKakuro": "Kakuro: click a white cell, then a digit; the cell fills without ink",
+      "nativeGameCheckMagicSquare": "Magic square: click an empty cell, then an available number; the cell fills without ink",
+      "m3OpenFixture": "Open native game fixture",
       "m3ReturnCourseware": "Return to current page",
       "m2AcceptanceTitle": "M2 board acceptance",
       "m2HandFeelTitle": "① Real writing feel",

@@ -95,13 +95,15 @@ describe("M3a classroom input routing", () => {
     })).toBe(IDLE_CLASSROOM_INPUT_STATE);
   });
 
-  it("fails closed for unknown renderers and only trusts the versioned Sudoku profile", () => {
-    const sudoku = resolveClassroomRendererInputProfile(sudokuPage, false);
-    expect(sudoku).toMatchObject({ renderer: "sudoku", version: 1, audited: true, defaultCapability: "ink" });
-    expect(parseClassroomInputCapability("click", sudoku)).toBe("click");
-    expect(parseClassroomInputCapability("drag", sudoku)).toBe("drag");
-    expect(parseClassroomInputCapability("surprise", sudoku)).toBe("unknown");
-    const unknown = resolveClassroomRendererInputProfile({ ...sudokuPage, gameId: "magic-square" }, false);
+  it("trusts each versioned in-repo native game and fails closed for unknown renderers", () => {
+    for (const gameId of ["sudoku", "kakuro", "magic-square"] as const) {
+      const profile = resolveClassroomRendererInputProfile({ ...sudokuPage, gameId }, false);
+      expect(profile).toMatchObject({ renderer: gameId, version: 1, audited: true, defaultCapability: "ink" });
+      expect(parseClassroomInputCapability("click", profile)).toBe("click");
+      expect(parseClassroomInputCapability("drag", profile)).toBe("drag");
+      expect(parseClassroomInputCapability("surprise", profile)).toBe("unknown");
+    }
+    const unknown = resolveClassroomRendererInputProfile({ ...sudokuPage, gameId: "unregistered-game" }, false);
     expect(unknown).toMatchObject({ renderer: "unsupported", audited: false, defaultCapability: "unknown" });
     expect(parseClassroomInputCapability("click", unknown)).toBe("unknown");
     expect(resolveClassroomRendererInputProfile(sudokuPage, true).audited).toBe(false);
@@ -117,11 +119,19 @@ describe("M3a classroom input routing", () => {
 
   it("wires audited native capabilities without synthetic clicks", () => {
     const sudoku = readFileSync(new URL("../src/features/games/sudoku/SudokuBoard.tsx", import.meta.url), "utf8");
+    const kakuro = readFileSync(new URL("../src/features/games/kakuro/KakuroBoard.tsx", import.meta.url), "utf8");
+    const magicSquare = readFileSync(new URL("../src/features/games/magic-square/MagicSquareBoard.tsx", import.meta.url), "utf8");
     const canvas = readFileSync(new URL("../src/features/whiteboard/CanvasSurface.tsx", import.meta.url), "utf8");
     const hook = readFileSync(new URL("../src/features/classroom/input/useClassroomPointerRouter.ts", import.meta.url), "utf8");
     const liveRoute = readFileSync(new URL("../src/app/[locale]/classroom/[classId]/session/[sessionId]/live/page.tsx", import.meta.url), "utf8");
     expect(sudoku).toContain('data-classroom-input="click"');
     expect(sudoku).toContain('data-classroom-input={state.highlightTool === "cell" ? "drag" : "click"}');
+    for (const source of [kakuro, magicSquare]) {
+      expect(source).toContain('data-cell-index={i}');
+      expect((source.match(/<button/g) ?? []).length).toBe(
+        (source.match(/data-classroom-input="click"/g) ?? []).length,
+      );
+    }
     expect(canvas).toContain('inputMode === "smart" && tool === "pen"');
     expect(hook).toContain("event.composedPath()");
     expect(hook).not.toMatch(/\.click\s*\(/);

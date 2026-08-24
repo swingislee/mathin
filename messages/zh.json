@@ -241,11 +241,16 @@
       "candidateCell": "{coordinate}，候选数 {values}",
       "emptyCell": "{coordinate}，空格"
     },
+    "kakuroBoard": {
+      "emptyCell": "第 {row} 行第 {column} 列，空格",
+      "filledCell": "第 {row} 行第 {column} 列，数字 {value}",
+      "chooseDigit": "选择数字 {digit}"
+    },
     "items": {
       "sudoku": {
         "name": "数独",
         "desc": "在 9×9 棋盘上填入 1–9，使每行、每列、每宫都不重复。",
-        "rules": "每行、每列和每个 3×3 宫内必须恰好出现 1–9 各一次。可先选格再点数字，也可先选数字再点格子；用「候选 / 填数」切换记录方式。行标为 A–I，列标为 1–9。"
+        "rules": "每行、每列和每个 3×3 宫内必须恰好出现 1–9 各一次。先选择数字，再点一个或多个空格应用；用「候选 / 填数」切换记录方式。行标为 A–I，列标为 1–9。"
       },
       "kakuro": {
         "name": "数和",
@@ -259,7 +264,11 @@
       }
     },
     "magicSquare": {
-      "target": "每行、每列与两条对角线之和都要等于 {sum}"
+      "target": "每行、每列与两条对角线之和都要等于 {sum}",
+      "emptyCell": "第 {row} 行第 {column} 列，空格",
+      "givenCell": "第 {row} 行第 {column} 列，题面数字 {value}",
+      "filledCell": "第 {row} 行第 {column} 列，数字 {value}",
+      "chooseNumber": "选择数字 {number}"
     }
   },
   "tools": {
@@ -4180,11 +4189,13 @@
       "inputModeInteractionHint": "所有输入交给当前课件，不产生板书。",
       "inputModeInkHint": "所有输入交给当前板书工具，不触发课件控件。",
       "inputRendererProtected": "此 renderer 尚未审计，已保护为交互锁；可明确切到书写锁。",
-      "sudokuOperationAcceptanceTitle": "数独输入方式单项补验",
-      "m3FixtureSessionTitle": "数独操作印章",
-      "sudokuOperationAcceptanceBody": "其余数独操作已通过；本轮只确认输入方式状态保持。",
-      "sudokuOperationCheckEntryMode": "选择任一突出工具后，候选或填数仍保持选中",
-      "m3OpenFixture": "打开数独夹具",
+      "nativeGameAcceptanceTitle": "M3a 原生游戏输入",
+      "m3FixtureSessionTitle": "M3a 原生游戏输入",
+      "nativeGameAcceptanceBody": "本轮只验数和与幻方在 Smart 下的原生点击；已通过的数独不重复。",
+      "nativeGameFixtureGroup": "选择验收游戏",
+      "nativeGameCheckKakuro": "数和：点白格，再点数字；白格填入且不出墨",
+      "nativeGameCheckMagicSquare": "幻方：点空格，再点可用数字；空格填入且不出墨",
+      "m3OpenFixture": "打开原生游戏夹具",
       "m3ReturnCourseware": "返回当前课件",
       "m2AcceptanceTitle": "M2 白板人工验收",
       "m2HandFeelTitle": "① 真实书写手感",
