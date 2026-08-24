@@ -131,6 +131,7 @@ describe("M3a classroom input routing", () => {
       title: "Video",
     }, false);
     expect(video).toMatchObject({ renderer: "video", audited: true, provisional: false });
+    expect(parseClassroomInputCapability("click", video)).toBe("click");
     expect(parseClassroomInputCapability("native", video)).toBe("native");
 
     expect(resolveClassroomRendererInputProfile(documentPage, false)).toMatchObject({
@@ -181,6 +182,7 @@ describe("M3a classroom input routing", () => {
     const magicSquare = readFileSync(new URL("../src/features/games/magic-square/MagicSquareBoard.tsx", import.meta.url), "utf8");
     const docStage = readFileSync(new URL("../src/features/courseware-doc/DocStage.tsx", import.meta.url), "utf8");
     const videoStage = readFileSync(new URL("../src/features/classroom/live/VideoStage.tsx", import.meta.url), "utf8");
+    const videoSurface = readFileSync(new URL("../src/features/classroom/input/ClassroomVideoInkSurface.tsx", import.meta.url), "utf8");
     const canvas = readFileSync(new URL("../src/features/whiteboard/CanvasSurface.tsx", import.meta.url), "utf8");
     const hook = readFileSync(new URL("../src/features/classroom/input/useClassroomPointerRouter.ts", import.meta.url), "utf8");
     const liveRoute = readFileSync(new URL("../src/app/[locale]/classroom/[classId]/session/[sessionId]/live/page.tsx", import.meta.url), "utf8");
@@ -196,8 +198,16 @@ describe("M3a classroom input routing", () => {
     expect(docStage).toContain('data-classroom-input={clickTrigger ? "click" : undefined}');
     expect(docStage).toContain('data-classroom-input="native"');
     expect(videoStage).toContain('data-classroom-input="native"');
+    expect(videoStage).toContain("<ClassroomVideoInkSurface");
+    expect(docStage).toContain("<ClassroomVideoInkSurface");
+    expect(videoSurface).toContain('data-classroom-input="click"');
+    expect(videoSurface).toContain("bottom-14");
     expect(canvas).toContain('inputMode === "smart" && tool === "pen"');
     expect(hook).toContain("event.composedPath()");
+    expect(hook).toContain('stage.style.webkitUserSelect = "none"');
+    expect(hook).toContain('stage.style.setProperty("-webkit-touch-callout", "none")');
+    expect(hook).toContain('stage.addEventListener("selectstart", preventTextSelection, true)');
+    expect(hook).toContain("window.getSelection()?.removeAllRanges()");
     expect(hook).not.toMatch(/\.click\s*\(/);
     expect(liveRoute).toContain('isFeatureEnabled("teaching.classroom_input_v2")');
   });

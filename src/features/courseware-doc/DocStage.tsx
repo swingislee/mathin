@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
+import { ClassroomVideoInkSurface } from "@/features/classroom/input/ClassroomVideoInkSurface";
 import "./doc-stage.css";
 import type { DocNode, PageDoc } from "./schema";
 import { injectBindingUrls, type ResolvedBindingUrls } from "./resolve";
@@ -121,6 +122,7 @@ function DocVideo({
   const videoRef = useRef<HTMLVideoElement>(null);
   const appliedCtl = useRef<DocVideoCtl | undefined>(undefined);
   const [needsManualAudio, setNeedsManualAudio] = useState(false);
+  const videoSurfaceLabel = t("videoSurfaceAction");
 
   useEffect(() => {
     if (!control || control.controller || !control.ctl || appliedCtl.current === control.ctl) return;
@@ -181,6 +183,17 @@ function DocVideo({
           ? (event) => control.onCtl?.("seek", event.currentTarget.currentTime)
           : undefined}
       />
+      {isController && (
+        <ClassroomVideoInkSurface
+          label={videoSurfaceLabel}
+          onToggle={() => {
+            const video = videoRef.current;
+            if (!video) return;
+            if (video.paused) void video.play().catch(() => undefined);
+            else video.pause();
+          }}
+        />
+      )}
       {!isController && needsManualAudio && (
         <Button
           type="button"

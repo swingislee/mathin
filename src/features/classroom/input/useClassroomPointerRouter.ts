@@ -114,7 +114,13 @@ export function useClassroomPointerRouter({
     let suppression: ClickSuppressionToken | null = null;
     let suppressionTimer: number | null = null;
     const previousTouchAction = stage.style.touchAction;
+    const previousUserSelect = stage.style.userSelect;
+    const previousWebkitUserSelect = stage.style.webkitUserSelect;
+    const previousWebkitTouchCallout = stage.style.getPropertyValue("-webkit-touch-callout");
     stage.style.touchAction = "none";
+    stage.style.userSelect = "none";
+    stage.style.webkitUserSelect = "none";
+    stage.style.setProperty("-webkit-touch-callout", "none");
 
     const clearSuppression = () => {
       suppression = null;
@@ -146,6 +152,7 @@ export function useClassroomPointerRouter({
         event.pointerId,
         normalizedPoint(frozen.startClientX, frozen.startClientY, frozen.rect),
       )) return false;
+      window.getSelection()?.removeAllRanges();
       onInkStart?.();
       try {
         stage.setPointerCapture(event.pointerId);
@@ -277,6 +284,8 @@ export function useClassroomPointerRouter({
       clearSuppression();
     };
 
+    const preventTextSelection = (event: Event) => event.preventDefault();
+
     const resizeObserver = new ResizeObserver(cancelLifecycle);
     resizeObserver.observe(stage);
     stage.addEventListener("pointerdown", pointerDown, true);
@@ -285,6 +294,7 @@ export function useClassroomPointerRouter({
     stage.addEventListener("pointercancel", pointerCancel, true);
     stage.addEventListener("lostpointercapture", lostPointerCapture, true);
     stage.addEventListener("click", clickCapture, true);
+    stage.addEventListener("selectstart", preventTextSelection, true);
     window.addEventListener("pointerup", windowPointerEnd);
     window.addEventListener("pointercancel", pointerCancel);
     window.addEventListener("blur", cancelLifecycle);
@@ -295,12 +305,20 @@ export function useClassroomPointerRouter({
       cancelLifecycle();
       resizeObserver.disconnect();
       stage.style.touchAction = previousTouchAction;
+      stage.style.userSelect = previousUserSelect;
+      stage.style.webkitUserSelect = previousWebkitUserSelect;
+      if (previousWebkitTouchCallout) {
+        stage.style.setProperty("-webkit-touch-callout", previousWebkitTouchCallout);
+      } else {
+        stage.style.removeProperty("-webkit-touch-callout");
+      }
       stage.removeEventListener("pointerdown", pointerDown, true);
       stage.removeEventListener("pointermove", pointerMove, true);
       stage.removeEventListener("pointerup", pointerUp, true);
       stage.removeEventListener("pointercancel", pointerCancel, true);
       stage.removeEventListener("lostpointercapture", lostPointerCapture, true);
       stage.removeEventListener("click", clickCapture, true);
+      stage.removeEventListener("selectstart", preventTextSelection, true);
       window.removeEventListener("pointerup", windowPointerEnd);
       window.removeEventListener("pointercancel", pointerCancel);
       window.removeEventListener("blur", cancelLifecycle);

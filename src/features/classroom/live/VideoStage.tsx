@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Volume2 } from "lucide-react";
+import { ClassroomVideoInkSurface } from "../input/ClassroomVideoInkSurface";
 import type { SessionEventLog } from "../sync/eventlog";
 
 const SYNC_TICK_MS = 4000;
@@ -37,6 +38,7 @@ export function VideoStage({
   const [needsUnmute, setNeedsUnmute] = useState(false);
   const appliedCtl = useRef<VideoCtl | undefined>(undefined);
   const fixtureLabel = t("videoFixtureLabel");
+  const videoSurfaceLabel = t("videoSurfaceAction");
 
   useEffect(() => {
     if (!fixture) return;
@@ -160,20 +162,31 @@ export function VideoStage({
 
   if (controller) {
     return (
-      <video
-        ref={videoRef}
-        src={fixture ? undefined : src}
-        data-classroom-input="native"
-        data-video-input-fixture={fixture ? "canvas-stream" : undefined}
-        aria-label={fixture ? fixtureLabel : undefined}
-        controls
-        playsInline
-        preload="auto"
-        className="size-full object-contain"
-        onPlay={(event) => onCtl("play", event.currentTarget.currentTime)}
-        onPause={(event) => onCtl("pause", event.currentTarget.currentTime)}
-        onSeeked={(event) => onCtl("seek", event.currentTarget.currentTime)}
-      />
+      <div className="relative size-full">
+        <video
+          ref={videoRef}
+          src={fixture ? undefined : src}
+          data-classroom-input="native"
+          data-video-input-fixture={fixture ? "canvas-stream" : undefined}
+          aria-label={fixture ? fixtureLabel : undefined}
+          controls
+          playsInline
+          preload="auto"
+          className="size-full object-contain"
+          onPlay={(event) => onCtl("play", event.currentTarget.currentTime)}
+          onPause={(event) => onCtl("pause", event.currentTarget.currentTime)}
+          onSeeked={(event) => onCtl("seek", event.currentTarget.currentTime)}
+        />
+        <ClassroomVideoInkSurface
+          label={videoSurfaceLabel}
+          onToggle={() => {
+            const video = videoRef.current;
+            if (!video) return;
+            if (video.paused) playGuarded(video);
+            else video.pause();
+          }}
+        />
+      </div>
     );
   }
 
