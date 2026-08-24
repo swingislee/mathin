@@ -276,7 +276,11 @@ describe("R1 classroom continuity contracts", () => {
     expect(panel).toContain("dragStartSeatSlotsRef.current");
     expect(panel).toContain("setDragOffset");
     expect(panel).toContain("learningStatusShort_");
-    expect(panel).toContain("min-h-11");
+    expect(panel).toContain("data-learning-current-status={status}");
+    expect(panel).toContain("statusStyle.header");
+    expect(panel).toContain("auto-rows-[2.75rem]");
+    expect(panel).toContain("h-11 min-h-0");
+    expect(panel).toContain("flex-col overflow-hidden rounded-xl");
     expect(panel).toContain("saveClassroomStudentSeatLayoutAction");
     expect(panel).toContain("learningCheckIdForPage");
     expect(panel).toContain("onSummaryChange");
