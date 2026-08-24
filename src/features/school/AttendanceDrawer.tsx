@@ -3,7 +3,6 @@
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { UserRoundCheck } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { useAction } from "@/components/action-form";
 import {
@@ -17,14 +16,8 @@ import { cn } from "@/lib/utils";
 import { useRouter } from "@/i18n/navigation";
 import { getAttendanceDrawerData, saveAttendanceAction } from "./actions/attendance";
 import { type AttendanceDrawerRow } from "./actions/types";
-import { ATTENDANCE_STATUSES, type AttendanceStatus } from "./learning";
-
-const STATUS_TONE: Record<AttendanceStatus, string> = {
-  present: "border-leaf/60 bg-leaf/15 text-leaf-deep",
-  absent: "border-rose/60 bg-rose/10 text-rose",
-  late: "border-amber-400/60 bg-amber-100 text-amber-950 dark:bg-amber-950/40 dark:text-amber-100",
-  leave: "border-sky-400/60 bg-sky-100 text-sky-950 dark:bg-sky-950/40 dark:text-sky-100",
-};
+import { ATTENDANCE_STATUS_TONE } from "./attendance-visual";
+import { ATTENDANCE_STATUSES } from "./learning";
 
 export function AttendanceDrawer({
   sessionId,
@@ -34,7 +27,7 @@ export function AttendanceDrawer({
   className,
 }: {
   sessionId: string;
-  appearance?: "link" | "secondary" | "primary" | "rail";
+  appearance?: "link" | "secondary" | "primary";
   mode?: "initial" | "amend";
   onSaved?: () => void;
   className?: string;
@@ -79,15 +72,11 @@ export function AttendanceDrawer({
         type="button"
         onClick={openDrawer}
         title={label}
-        data-classroom-rail-button={appearance === "rail" ? "attendance" : undefined}
-        className={appearance === "rail"
-          ? cn("grid size-11 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-moon/30 hover:text-ink", className)
-          : appearance === "link"
-            ? cn("shrink-0 text-xs text-muted underline underline-offset-2 hover:text-ink", className)
-            : cn(buttonVariants({ size: "sm", variant: appearance === "secondary" ? "secondary" : "primary" }), "shrink-0", className)}
+        className={appearance === "link"
+          ? cn("shrink-0 text-xs text-muted underline underline-offset-2 hover:text-ink", className)
+          : cn(buttonVariants({ size: "sm", variant: appearance === "secondary" ? "secondary" : "primary" }), "shrink-0", className)}
       >
-        {appearance === "rail" ? <UserRoundCheck aria-hidden size={18} /> : null}
-        <span className={appearance === "rail" ? "sr-only" : undefined}>{label}</span>
+        {label}
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -120,7 +109,7 @@ export function AttendanceDrawer({
                         onClick={() => updateRow(row.studentId, { status })}
                         className={cn(
                           "min-h-11 rounded-lg border px-1 text-xs font-medium transition-transform active:scale-95",
-                          STATUS_TONE[status],
+                          ATTENDANCE_STATUS_TONE[status],
                           row.status === status && "ring-2 ring-ink/45 ring-offset-1 ring-offset-card",
                         )}
                       >

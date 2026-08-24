@@ -66,8 +66,12 @@ export default async function LiveClassPage({
   const rehearsal = mode === "rehearsal" && classroom.myRole === "teacher";
   const offlineDrill = mode === "offline-drill" && classroom.myRole === "teacher";
   const attendanceSuggested = !rehearsal && !offlineDrill && classroom.myRole === "teacher" && !session.startedAt;
+  const attendanceInLearningPanel = classroom.myRole === "teacher"
+    && (layoutV2Enabled || (process.env.NODE_ENV !== "production" && rehearsal));
   const [attendanceResult, learningSetup] = await Promise.all([
-    attendanceSuggested ? getAttendanceDrawerData(sessionId) : Promise.resolve(null),
+    attendanceSuggested || attendanceInLearningPanel
+      ? getAttendanceDrawerData(sessionId)
+      : Promise.resolve(null),
     classroom.myRole === "teacher" ? getSessionLearningSetup(sessionId) : Promise.resolve(null),
   ]);
   const initialAttendanceComplete = Boolean(
@@ -106,6 +110,7 @@ export default async function LiveClassPage({
       offlineDrill={offlineDrill}
       attendanceSuggested={attendanceSuggested}
       initialAttendanceComplete={initialAttendanceComplete}
+      initialAttendanceRows={attendanceResult?.ok ? attendanceResult.data : []}
       learningSetup={learningSetup}
     />
   );

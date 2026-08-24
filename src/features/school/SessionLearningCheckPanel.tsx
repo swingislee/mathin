@@ -1,16 +1,22 @@
 "use client";
 
-import { Armchair, CheckSquare2, ClipboardCheck, GripVertical, LoaderCircle, Square } from "lucide-react";
+import { Armchair, CheckSquare2, ClipboardCheck, GripVertical, Lightbulb, LoaderCircle, Square } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState, useTransition, type KeyboardEvent, type PointerEvent } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { amendAttendanceStatusAction } from "./actions/attendance";
+import type { AttendanceDrawerRow } from "./actions/types";
+import { ATTENDANCE_STATUS_LIGHT, ATTENDANCE_STATUS_TONE } from "./attendance-visual";
+import { ATTENDANCE_STATUSES, type AttendanceStatus } from "./learning";
 import { markSessionLearningChecksAction, saveClassroomStudentSeatLayoutAction } from "./session-learning-actions";
 import {
   buildLearningSeatSlots,
   LEARNING_CHECK_STATUSES,
+  LEARNING_SEAT_COLUMNS,
   learningCheckIdAfterPageChange,
   learningCheckIdForPage,
   learningResultKey,
@@ -25,6 +31,73 @@ import { LEARNING_CHECK_STATUS_STYLE } from "./session-learning-visual";
 
 const EMPTY_STUDENT_IDS = new Set<string>();
 
+function AttendanceStatusLight({
+  studentName,
+  row,
+  saving,
+  onChange,
+}: {
+  studentName: string;
+  row: AttendanceDrawerRow | undefined;
+  saving: boolean;
+  onChange: (status: AttendanceStatus) => void;
+}) {
+  const t = useTranslations("school.session");
+  const attendanceT = useTranslations("school.classes");
+  const [open, setOpen] = useState(false);
+  const status = row?.marked ? row.status : null;
+  const statusLabel = status ? attendanceT(status) : t("learningAttendanceUnmarked");
+  const label = t("learningAttendanceLabel", { name: studentName, status: statusLabel });
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          disabled={saving}
+          aria-label={label}
+          title={label}
+          className="grid size-8 shrink-0 place-items-center rounded-lg text-muted transition-colors hover:bg-moon/30 hover:text-ink disabled:opacity-55"
+          data-learning-attendance={status ?? "unmarked"}
+        >
+          {saving
+            ? <LoaderCircle size={14} className="animate-spin motion-reduce:animate-none" />
+            : (
+                <Lightbulb
+                  aria-hidden
+                  size={16}
+                  className={status ? ATTENDANCE_STATUS_LIGHT[status] : "fill-transparent text-line"}
+                />
+              )}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent side="bottom" align="start" className="z-[90] w-64 p-2">
+        <p className="truncate px-1 pb-2 text-xs font-medium text-ink">{label}</p>
+        <div className="grid grid-cols-4 gap-1">
+          {ATTENDANCE_STATUSES.map((candidate) => (
+            <button
+              key={candidate}
+              type="button"
+              aria-pressed={status === candidate}
+              onClick={() => {
+                onChange(candidate);
+                setOpen(false);
+              }}
+              className={cn(
+                "min-h-10 rounded-lg border px-1 text-[11px] font-medium transition-transform active:scale-95",
+                ATTENDANCE_STATUS_TONE[candidate],
+                status === candidate && "ring-2 ring-ink/45 ring-offset-1 ring-offset-card",
+              )}
+            >
+              {attendanceT(candidate)}
+            </button>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export interface LearningCheckSummarySnapshot {
   checkId: string;
   results: ReadonlyMap<string, LearningCheckStatus>;
@@ -34,6 +107,8 @@ export function SessionLearningCheckPanel({
   sessionId,
   setup,
   activePageDocId,
+  attendanceRows = [],
+  attendanceIntegrated = false,
   ephemeral = false,
   triggerVariant = "default",
   onSummaryChange,
@@ -42,6 +117,8 @@ export function SessionLearningCheckPanel({
   sessionId: string;
   setup: SessionLearningSetup;
   activePageDocId: string | null;
+  attendanceRows?: readonly AttendanceDrawerRow[];
+  attendanceIntegrated?: boolean;
   ephemeral?: boolean;
   triggerVariant?: "default" | "rail";
   onSummaryChange?: (snapshot: LearningCheckSummarySnapshot) => void;
@@ -59,15 +136,23 @@ export function SessionLearningCheckPanel({
     setup.results.map((result) => [learningResultKey(result.checkId, result.studentId), result.status as LearningCheckStatus]),
   ));
   const [seatSlots, setSeatSlots] = useState(() => buildLearningSeatSlots(setup.students));
+  const [attendanceByStudent, setAttendanceByStudent] = useState(() => new Map(
+    attendanceRows.map((row) => [row.studentId, row]),
+  ));
+  const [attendanceSavingStudentIds, setAttendanceSavingStudentIds] = useState<Set<string>>(() => new Set());
+  const [seatEditMode, setSeatEditMode] = useState(false);
   const seatSlotsRef = useRef(buildLearningSeatSlots(setup.students));
   const savedSeatSlotsRef = useRef(buildLearningSeatSlots(setup.students));
   const dragStartSeatSlotsRef = useRef(buildLearningSeatSlots(setup.students));
   const seatGridRef = useRef<HTMLDivElement>(null);
   const draggingStudentIdRef = useRef<string | null>(null);
   const dragOverSeatPositionRef = useRef<number | null>(null);
+  const dragStartPointRef = useRef<{ x: number; y: number } | null>(null);
   const seatOrderSavingRef = useRef(false);
   const [draggingStudentId, setDraggingStudentId] = useState<string | null>(null);
   const [dragOverSeatPosition, setDragOverSeatPosition] = useState<number | null>(null);
+  const [dragOriginSeatPosition, setDragOriginSeatPosition] = useState<number | null>(null);
+  const [dragOffset, setDragOffset] = useState<{ x: number; y: number } | null>(null);
   const [seatOrderSaving, setSeatOrderSaving] = useState(false);
   const [studentSelection, setStudentSelection] = useState<{
     checkId: string;
@@ -80,6 +165,13 @@ export function SessionLearningCheckPanel({
     () => seatSlots.filter((student): student is SessionLearningStudent => student !== null),
     [seatSlots],
   );
+  const stableSeatStudents = useMemo(
+    () => [...orderedStudents].sort((left, right) => left.id.localeCompare(right.id)),
+    [orderedStudents],
+  );
+  const seatPositionByStudentId = useMemo(() => new Map(
+    seatSlots.flatMap((student, position) => student ? [[student.id, position] as const] : []),
+  ), [seatSlots]);
   const automaticCheckId = learningCheckIdForPage(setup.checks, activePageDocId);
   if (manualSelection.pageDocId !== activePageDocId) {
     // React discards this render and retries with the new shared page. A marked
@@ -178,9 +270,58 @@ export function SessionLearningCheckPanel({
     });
   };
 
+  const markAttendance = (student: SessionLearningStudent, status: AttendanceStatus) => {
+    if (attendanceSavingStudentIds.has(student.id)) return;
+    const previous = attendanceByStudent.get(student.id);
+    const nextRow: AttendanceDrawerRow = {
+      studentId: student.id,
+      studentName: student.name,
+      status,
+      note: previous?.note ?? "",
+      marked: true,
+    };
+    setAttendanceByStudent((current) => new Map(current).set(student.id, nextRow));
+    if (ephemeral) return;
+
+    setAttendanceSavingStudentIds((current) => new Set(current).add(student.id));
+    void (async () => {
+      try {
+        const result = await amendAttendanceStatusAction(sessionId, nextRow);
+        if (!result.ok) {
+          setAttendanceByStudent((current) => {
+            const next = new Map(current);
+            if (previous) next.set(student.id, previous);
+            else next.delete(student.id);
+            return next;
+          });
+          toast.error(t("learningAttendanceSaveFailed"));
+        }
+      } catch {
+        setAttendanceByStudent((current) => {
+          const next = new Map(current);
+          if (previous) next.set(student.id, previous);
+          else next.delete(student.id);
+          return next;
+        });
+        toast.error(t("learningAttendanceSaveFailed"));
+      } finally {
+        setAttendanceSavingStudentIds((current) => {
+          const next = new Set(current);
+          next.delete(student.id);
+          return next;
+        });
+      }
+    })();
+  };
+
   const updateSeatSlots = (next: LearningSeatSlot[]) => {
     seatSlotsRef.current = next;
     setSeatSlots(next);
+  };
+
+  const publishSeatSlots = (next: LearningSeatSlot[]) => {
+    updateSeatSlots(next);
+    onSeatOrderChange?.(learningSeatAssignments(next));
   };
 
   const persistSeatLayout = async (next: LearningSeatSlot[]) => {
@@ -202,7 +343,7 @@ export function SessionLearningCheckPanel({
         assignments: learningSeatAssignments(next),
       });
       if (!result.ok) {
-        updateSeatSlots(previousSaved);
+        publishSeatSlots(previousSaved);
         toast.error(t(result.code === "ROSTER_CHANGED" ? "learningSeatOrderRosterChanged" : "learningSeatOrderSaveFailed"));
         return;
       }
@@ -210,7 +351,7 @@ export function SessionLearningCheckPanel({
       onSeatOrderChange?.(learningSeatAssignments(next));
       toast.success(t("learningSeatOrderSaved"));
     } catch {
-      updateSeatSlots(previousSaved);
+      publishSeatSlots(previousSaved);
       toast.error(t("learningSeatOrderSaveFailed"));
     } finally {
       seatOrderSavingRef.current = false;
@@ -222,36 +363,59 @@ export function SessionLearningCheckPanel({
     if (!draggingStudentIdRef.current) return;
     draggingStudentIdRef.current = null;
     dragOverSeatPositionRef.current = null;
+    dragStartPointRef.current = null;
     setDraggingStudentId(null);
     setDragOverSeatPosition(null);
+    setDragOriginSeatPosition(null);
+    setDragOffset(null);
     if (cancelled) {
-      updateSeatSlots(dragStartSeatSlotsRef.current);
+      publishSeatSlots(dragStartSeatSlotsRef.current);
       return;
     }
     void persistSeatLayout(seatSlotsRef.current);
   };
 
   const handleDragPointerDown = (event: PointerEvent<HTMLButtonElement>, studentId: string) => {
-    if (seatOrderSavingRef.current || event.button !== 0) return;
+    if (!seatEditMode || seatOrderSavingRef.current || event.button !== 0) return;
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
     dragStartSeatSlotsRef.current = seatSlotsRef.current;
+    dragStartPointRef.current = { x: event.clientX, y: event.clientY };
     draggingStudentIdRef.current = studentId;
     dragOverSeatPositionRef.current = seatSlotsRef.current.findIndex((student) => student?.id === studentId);
     setDraggingStudentId(studentId);
     setDragOverSeatPosition(dragOverSeatPositionRef.current);
+    setDragOriginSeatPosition(dragOverSeatPositionRef.current);
+    setDragOffset({ x: 0, y: 0 });
   };
 
   const handleDragPointerMove = (event: PointerEvent<HTMLButtonElement>) => {
     const activeStudentId = draggingStudentIdRef.current;
-    if (!activeStudentId) return;
-    const target = document.elementFromPoint(event.clientX, event.clientY)
-      ?.closest<HTMLElement>("[data-learning-seat-index]");
-    const overSeatPosition = Number(target?.dataset.learningSeatIndex);
+    const startPoint = dragStartPointRef.current;
+    const grid = seatGridRef.current;
+    if (!activeStudentId || !startPoint || !grid) return;
+    setDragOffset({ x: event.clientX - startPoint.x, y: event.clientY - startPoint.y });
+
+    const bounds = grid.getBoundingClientRect();
+    if (bounds.width <= 0 || bounds.height <= 0) return;
+    const rowCount = Math.ceil(seatSlotsRef.current.length / LEARNING_SEAT_COLUMNS);
+    const column = Math.max(0, Math.min(
+      LEARNING_SEAT_COLUMNS - 1,
+      Math.floor(((event.clientX - bounds.left) / bounds.width) * LEARNING_SEAT_COLUMNS),
+    ));
+    const row = Math.max(0, Math.min(
+      rowCount - 1,
+      Math.floor(((event.clientY - bounds.top) / bounds.height) * rowCount),
+    ));
+    const overSeatPosition = row * LEARNING_SEAT_COLUMNS + column;
     if (!Number.isInteger(overSeatPosition) || overSeatPosition === dragOverSeatPositionRef.current) return;
     dragOverSeatPositionRef.current = overSeatPosition;
     setDragOverSeatPosition(overSeatPosition);
-    updateSeatSlots(moveLearningStudentToSeat(seatSlotsRef.current, activeStudentId, overSeatPosition));
+    publishSeatSlots(moveLearningStudentToSeat(
+      dragStartSeatSlotsRef.current,
+      activeStudentId,
+      overSeatPosition,
+    ));
   };
 
   const handleOrderKeyDown = (event: KeyboardEvent<HTMLButtonElement>, studentId: string) => {
@@ -260,16 +424,13 @@ export function SessionLearningCheckPanel({
     const current = seatSlotsRef.current;
     const currentIndex = current.findIndex((student) => student?.id === studentId);
     if (currentIndex < 0) return;
-    const columnCount = seatGridRef.current
-      ? getComputedStyle(seatGridRef.current).gridTemplateColumns.split(" ").filter(Boolean).length
-      : 1;
     const delta = event.key === "ArrowLeft"
       ? -1
       : event.key === "ArrowRight"
         ? 1
         : event.key === "ArrowUp"
-          ? -columnCount
-          : columnCount;
+          ? -LEARNING_SEAT_COLUMNS
+          : LEARNING_SEAT_COLUMNS;
     const targetIndex = event.key === "Home"
       ? 0
       : event.key === "End"
@@ -277,7 +438,7 @@ export function SessionLearningCheckPanel({
         : Math.max(0, Math.min(current.length - 1, currentIndex + delta));
     if (targetIndex === currentIndex) return;
     const next = moveLearningStudentToSeat(current, studentId, targetIndex);
-    updateSeatSlots(next);
+    publishSeatSlots(next);
     void persistSeatLayout(next);
   };
 
@@ -298,12 +459,8 @@ export function SessionLearningCheckPanel({
           <span className={triggerVariant === "rail" ? "sr-only" : undefined}>{t("learningPanelOpen")}</span>
         </button>
       </DialogTrigger>
-      {/*
-        doc 27 §5.2：`w-screen` 是 100vw，在有经典滚动条的 Windows 上比可用宽度多约 15px；
-        fixed 元素的 `w-full` 按初始包含块算，正好排除滚动条。
-        `@container`：座位网格的列数该由这块画布的实宽决定，原先用的是 min-[900px] 视口查询。
-      */}
-      <DialogContent className="@container flex h-dvh w-full max-w-none flex-col gap-0 overflow-hidden rounded-none p-0 sm:rounded-none [&>button]:right-2.5 [&>button]:top-2.5">
+      {/* `w-full` 避免 Windows 经典滚动条下 `100vw` 多出的约 15px。 */}
+      <DialogContent className="flex h-dvh w-full max-w-none flex-col gap-0 overflow-hidden rounded-none p-0 sm:rounded-none [&>button]:right-2.5 [&>button]:top-2.5">
         <DialogHeader className="shrink-0 space-y-0 border-b border-line px-2 pb-1 pr-11 pt-1.5 text-left">
           <div className="flex min-h-8 min-w-0 items-center gap-2" data-learning-check-toolbar>
             <DialogTitle className="flex shrink-0 items-center gap-1.5 text-sm">
@@ -328,9 +485,27 @@ export function SessionLearningCheckPanel({
             </div>
             <Button
               size="sm"
+              variant={seatEditMode ? "primary" : "secondary"}
+              disabled={seatOrderSaving}
+              aria-pressed={seatEditMode}
+              className="min-h-8 shrink-0 px-2.5 text-xs"
+              onClick={() => {
+                if (draggingStudentIdRef.current) finishDragging(true);
+                setSeatEditMode((enabled) => !enabled);
+                setBatchMode(false);
+                if (activeCheck) setStudentSelection({ checkId: activeCheck.id, ids: new Set() });
+              }}
+            >
+              <GripVertical size={14} />
+              {seatEditMode ? t("learningSeatEditStop") : t("learningSeatEditStart")}
+            </Button>
+            <Button
+              size="sm"
               variant={batchMode ? "primary" : "secondary"}
               className="min-h-8 shrink-0 px-2.5 text-xs"
               onClick={() => {
+                if (draggingStudentIdRef.current) finishDragging(true);
+                setSeatEditMode(false);
                 setBatchMode((enabled) => !enabled);
                 if (activeCheck) setStudentSelection({ checkId: activeCheck.id, ids: new Set() });
               }}
@@ -398,35 +573,44 @@ export function SessionLearningCheckPanel({
 
           <div
             ref={seatGridRef}
-            // doc 27 §5.2：座位网格活在全屏 Dialog 里，列数该由这块画布自己的宽度决定，
-            // 而不是 min-[900px] 这样的视口查询——iPad 横屏 1024 上原先直接排 5 列 × 8.5rem 行高，
-            // 768 的高度里只露得出三行多一点。
-            className="grid min-h-0 flex-1 grid-cols-3 auto-rows-[minmax(7rem,1fr)] gap-2 @2xl:grid-cols-4 @4xl:grid-cols-5 @4xl:auto-rows-[minmax(8.5rem,1fr)]"
+            className="grid min-h-0 flex-1 auto-rows-[minmax(8.5rem,1fr)] gap-2"
+            style={{ gridTemplateColumns: `repeat(${LEARNING_SEAT_COLUMNS}, minmax(0, 1fr))` }}
             data-learning-seat-grid
+            data-learning-seat-columns={LEARNING_SEAT_COLUMNS}
             data-ipad-roster-grid
           >
-            {seatSlots.map((student, seatPosition) => {
-              if (!student) {
-                return (
-                  <article
-                    key={`empty-seat-${seatPosition}`}
-                    data-learning-seat-index={seatPosition}
-                    data-learning-empty-seat
-                    aria-label={t("learningEmptySeatNumber", { number: seatPosition + 1 })}
-                    className={cn(
-                      "relative flex min-h-[8.5rem] min-w-0 flex-col items-center justify-center rounded-xl border border-dashed border-line/80 bg-card/25 p-2 text-center text-muted transition-[border-color,background-color,box-shadow]",
-                      draggingStudentId && dragOverSeatPosition === seatPosition && "border-crater bg-moon/35 ring-2 ring-crater/30",
-                    )}
-                  >
+            {seatSlots.map((student, seatPosition) => (
+              <article
+                key={`seat-${seatPosition}`}
+                data-learning-seat-index={seatPosition}
+                data-learning-empty-seat={student ? undefined : ""}
+                aria-label={student ? undefined : t("learningEmptySeatNumber", { number: seatPosition + 1 })}
+                aria-hidden={student ? true : undefined}
+                className={cn(
+                  "relative flex min-h-[8.5rem] min-w-0 flex-col items-center justify-center rounded-xl border p-2 text-center text-muted transition-[border-color,background-color,box-shadow]",
+                  student
+                    ? "pointer-events-none border-transparent bg-transparent"
+                    : "border-dashed border-line/80 bg-card/25",
+                  draggingStudentId && dragOverSeatPosition === seatPosition && "border-crater bg-moon/35 ring-2 ring-crater/30",
+                )}
+              >
+                {!student && (
+                  <>
                     <span className="absolute left-2 top-2 text-[9px] tabular-nums opacity-70" aria-hidden="true">
                       {String(seatPosition + 1).padStart(2, "0")}
                     </span>
                     <Armchair size={20} className="mb-1 opacity-45" aria-hidden="true" />
                     <span className="text-[11px] font-medium">{t("learningEmptySeat")}</span>
                     <span className="mt-0.5 text-[9px] opacity-70">{t("learningEmptySeatDrop")}</span>
-                  </article>
-                );
-              }
+                  </>
+                )}
+              </article>
+            ))}
+            {stableSeatStudents.map((student) => {
+              const seatPosition = seatPositionByStudentId.get(student.id) ?? 0;
+              const visualSeatPosition = draggingStudentId === student.id
+                ? dragOriginSeatPosition ?? seatPosition
+                : seatPosition;
               const status = activeCheck
                 ? results.get(learningResultKey(activeCheck.id, student.id)) ?? "unchecked"
                 : "unchecked";
@@ -438,12 +622,19 @@ export function SessionLearningCheckPanel({
                   key={student.id}
                   data-learning-student-id={student.id}
                   data-learning-seat-index={seatPosition}
+                  style={{
+                    gridColumnStart: (visualSeatPosition % LEARNING_SEAT_COLUMNS) + 1,
+                    gridRowStart: Math.floor(visualSeatPosition / LEARNING_SEAT_COLUMNS) + 1,
+                    transform: draggingStudentId === student.id && dragOffset
+                      ? `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0)`
+                      : undefined,
+                  }}
                   className={cn(
-                    "flex min-h-[8.5rem] min-w-0 flex-col rounded-xl border p-1.5 transition-[border-color,background-color,box-shadow,opacity]",
+                    "relative z-10 flex min-h-[8.5rem] min-w-0 flex-col rounded-xl border p-1.5 transition-[border-color,background-color,box-shadow,opacity,transform]",
                     batchMode && selected
                       ? "border-rose bg-rose/10 ring-2 ring-rose/20"
                       : statusStyle.card,
-                    draggingStudentId === student.id && "opacity-65 shadow-sm",
+                    draggingStudentId === student.id && "z-30 opacity-85 shadow-lg transition-none will-change-transform",
                     dragOverSeatPosition === seatPosition && draggingStudentId !== student.id && "ring-2 ring-crater/35",
                   )}
                 >
@@ -452,25 +643,14 @@ export function SessionLearningCheckPanel({
                     status === "unchecked" ? "bg-line/80" : statusStyle.dot,
                   )} />
                   <div className="flex min-h-8 items-center gap-0.5">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      disabled={seatOrderSaving}
-                      aria-label={t("learningSeatOrderHandle", { name: student.name })}
-                      title={t("learningSeatOrderHint")}
-                      className="h-8 w-10 shrink-0 touch-none cursor-grab gap-0 p-0 text-muted active:cursor-grabbing"
-                      onPointerDown={(event) => handleDragPointerDown(event, student.id)}
-                      onPointerMove={handleDragPointerMove}
-                      onPointerUp={() => finishDragging(false)}
-                      onPointerCancel={() => finishDragging(true)}
-                      onKeyDown={(event) => handleOrderKeyDown(event, student.id)}
-                    >
-                      <GripVertical size={14} />
-                      <span className="text-[9px] tabular-nums" aria-hidden="true">
-                        {String(seatPosition + 1).padStart(2, "0")}
-                      </span>
-                    </Button>
+                    {attendanceIntegrated && (
+                      <AttendanceStatusLight
+                        studentName={student.name}
+                        row={attendanceByStudent.get(student.id)}
+                        saving={attendanceSavingStudentIds.has(student.id)}
+                        onChange={(attendanceStatus) => markAttendance(student, attendanceStatus)}
+                      />
+                    )}
                     <Button
                       type="button"
                       size="sm"
@@ -486,6 +666,27 @@ export function SessionLearningCheckPanel({
                       <span className="min-w-0 flex-1 truncate text-xs font-medium">{student.name}</span>
                       {saving && <LoaderCircle size={13} className="shrink-0 animate-spin text-muted motion-reduce:animate-none" />}
                     </Button>
+                    {seatEditMode && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        disabled={seatOrderSaving}
+                        aria-label={t("learningSeatOrderHandle", { name: student.name })}
+                        title={t("learningSeatOrderHint")}
+                        className="h-8 w-10 shrink-0 touch-none cursor-grab gap-0 p-0 text-muted active:cursor-grabbing"
+                        onPointerDown={(event) => handleDragPointerDown(event, student.id)}
+                        onPointerMove={handleDragPointerMove}
+                        onPointerUp={() => finishDragging(false)}
+                        onPointerCancel={() => finishDragging(true)}
+                        onKeyDown={(event) => handleOrderKeyDown(event, student.id)}
+                      >
+                        <GripVertical size={14} />
+                        <span className="text-[9px] tabular-nums" aria-hidden="true">
+                          {String(seatPosition + 1).padStart(2, "0")}
+                        </span>
+                      </Button>
+                    )}
                   </div>
                   {!batchMode && (
                     <div className="mt-1 grid flex-1 grid-cols-3 auto-rows-[minmax(2.75rem,4rem)] content-center gap-1">

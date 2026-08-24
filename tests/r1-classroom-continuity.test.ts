@@ -3,6 +3,8 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   buildLearningSeatSlots,
+  LEARNING_SEAT_COLUMNS,
+  LEARNING_SEAT_ROWS,
   learningCheckIdAfterPageChange,
   learningCheckIdForPage,
   learningSeatAssignments,
@@ -196,6 +198,8 @@ describe("R1 classroom continuity contracts", () => {
     expect(livePage).toContain("getAttendanceDrawerData");
     expect(livePage).toContain("attendanceSuggested");
     expect(livePage).toContain("initialAttendanceComplete");
+    expect(livePage).toContain("attendanceInLearningPanel");
+    expect(livePage).toContain("initialAttendanceRows=");
     expect(liveShell).not.toContain("attendanceRequired && !attendanceComplete");
     expect(liveShell).toContain("attendanceSuggested");
     expect(liveShell).toContain("AttendanceDrawer");
@@ -231,6 +235,11 @@ describe("R1 classroom continuity contracts", () => {
     const panel = read("src/features/school/SessionLearningCheckPanel.tsx");
     const learningSetup = read("src/features/school/session-learning.ts");
     const learningActions = read("src/features/school/session-learning-actions.ts");
+    const attendanceActions = read("src/features/school/actions/attendance.ts");
+    const attendanceAmendment = attendanceActions.slice(
+      attendanceActions.indexOf("export async function amendAttendanceStatusAction"),
+      attendanceActions.indexOf("export async function getSessionChangeOptionsAction"),
+    );
     expect(liveShell).toContain("<ClassroomPageControls");
     expect(controlMenus).toContain("ListOrdered");
     expect(controlMenus).toContain('t("pageList")');
@@ -249,15 +258,23 @@ describe("R1 classroom continuity contracts", () => {
     expect(panel).toContain("data-learning-check-toolbar");
     expect(panel).toContain("data-learning-check-strip");
     expect(panel).toContain("data-ipad-roster-grid");
-    // doc 27 §5.2：座位网格的列数改由这块全屏画布自己的宽度决定。原先的 min-[900px]
-    // 是视口查询，iPad 横屏 1024 上直接排 5 列 × 8.5rem 行高，768 的高度里只露得出三行多。
-    expect(panel).toContain("@2xl:grid-cols-4");
-    expect(panel).toContain("@4xl:grid-cols-5");
-    expect(panel).toContain("@4xl:auto-rows-[minmax(8.5rem,1fr)]");
+    expect(LEARNING_SEAT_COLUMNS).toBe(4);
+    expect(LEARNING_SEAT_ROWS).toBe(5);
+    expect(panel).toContain("data-learning-seat-columns={LEARNING_SEAT_COLUMNS}");
+    expect(panel).toContain("repeat(${LEARNING_SEAT_COLUMNS}");
+    expect(panel).not.toContain("grid-cols-5");
     expect(panel).toContain("data-learning-seat-index");
     expect(panel).toContain("data-learning-empty-seat");
     expect(panel).toContain("Armchair");
     expect(panel).toContain("GripVertical");
+    expect(panel).toContain("AttendanceStatusLight");
+    expect(panel).toContain("amendAttendanceStatusAction");
+    expect(attendanceAmendment).toContain('authorizedClient("attendance.mark")');
+    expect(attendanceAmendment).not.toContain("session_completion_tasks");
+    expect(panel).toContain("seatEditMode");
+    expect(panel).toContain("stableSeatStudents.map");
+    expect(panel).toContain("dragStartSeatSlotsRef.current");
+    expect(panel).toContain("setDragOffset");
     expect(panel).toContain("learningStatusShort_");
     expect(panel).toContain("min-h-11");
     expect(panel).toContain("saveClassroomStudentSeatLayoutAction");
@@ -362,6 +379,7 @@ describe("R1 classroom continuity contracts", () => {
     const liveShell = read("src/features/classroom/live/LiveShell.tsx");
     const toolbar = read("src/features/whiteboard/Toolbar.tsx");
     const rosterGrid = read("src/features/classroom/live/ClassroomRosterGrid.tsx");
+    const panels = read("src/features/classroom/live/LivePanels.tsx");
     const controlBar = read("src/features/classroom/live/TeacherClassroomControlBar.tsx");
     const controlMenus = read("src/features/classroom/live/ClassroomControlMenus.tsx");
     expect(liveShell).toContain("teacherLayoutV2");
@@ -380,7 +398,10 @@ describe("R1 classroom continuity contracts", () => {
     expect(liveShell).toContain("transition-[width] duration-200");
     expect(liveShell).toContain("<ClassroomToolsMenu");
     expect(controlMenus).toContain('t("moreClassroomTools")');
-    expect(rosterGrid).toContain("grid-cols-4");
+    expect(rosterGrid).toContain("data-roster-column-count={LEARNING_SEAT_COLUMNS}");
+    expect(rosterGrid).toContain("repeat(${LEARNING_SEAT_COLUMNS}");
+    expect(panels).toContain("LEARNING_CHECK_STATUS_STYLE[learningStatus].card");
+    expect(panels).not.toContain("learningStatusShort_");
     expect(rosterGrid).toContain("overflow-y-auto");
     expect(controlBar).toContain('data-classroom-control-bar="full-width"');
     expect(controlBar).toContain('data-classroom-control-surface="flat-rail"');
@@ -398,7 +419,9 @@ describe("R1 classroom continuity contracts", () => {
     expect(toolbar).not.toContain("compact?: boolean");
     expect(liveShell).toContain('variant="rail"');
     expect(liveShell).toContain('triggerVariant="rail"');
-    expect(liveShell).toContain('appearance="rail"');
+    expect(liveShell).not.toContain('appearance="rail"');
+    expect(liveShell).toContain("attendanceRows={initialAttendanceRows}");
+    expect(liveShell).toContain("attendanceIntegrated");
     expect(liveShell).toContain("utilityControls={(");
     expect(liveShell).toContain("activeLearningSummary");
     expect(liveShell).toContain("activeLearningSeatPositions.get(student.studentId)");

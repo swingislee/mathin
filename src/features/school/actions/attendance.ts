@@ -69,11 +69,15 @@ export async function getAttendanceDrawerData(sessionId: string): Promise<Action
   }
 }
 
+const attendanceRecordSchema = z.object({
+  studentId: uuid,
+  status: z.enum(ATTENDANCE_STATUSES),
+  note: text(500),
+});
+
 const saveAttendanceSchema = z.object({
   sessionId: uuid,
-  records: z
-    .array(z.object({ studentId: uuid, status: z.enum(ATTENDANCE_STATUSES), note: text(500) }))
-    .max(200),
+  records: z.array(attendanceRecordSchema).max(200),
 });
 
 export async function saveAttendanceAction(
@@ -118,6 +122,40 @@ export async function saveAttendanceAction(
       if (completeError) console.error("complete_session_task(attendance) failed", completeError.message);
     }
 
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, COMMON_CODES);
+  }
+}
+
+const amendAttendanceStatusSchema = z.object({
+  sessionId: uuid,
+  record: attendanceRecordSchema,
+});
+
+/** Update one student's in-class correction without completing the whole-roster attendance task. */
+export async function amendAttendanceStatusAction(
+  sessionId: string,
+  record: { studentId: string; status: AttendanceStatus; note: string },
+): Promise<ActionResult> {
+  try {
+    const value = parse(amendAttendanceStatusSchema, { sessionId, record });
+    const { supabase } = await authorizedClient("attendance.mark");
+    const { error } = await supabase.from("session_attendance").upsert({
+      session_id: value.sessionId,
+      student_id: value.record.studentId,
+      status: value.record.status,
+      note: value.record.note,
+    }, { onConflict: "session_id,student_id" });
+    if (error) throw new Error(error.message);
+
+    if (value.record.status === "absent") {
+      const { error: absenceError } = await supabase.rpc("record_attendance_absence", {
+        p_session_id: value.sessionId,
+        p_student_id: value.record.studentId,
+      });
+      if (absenceError) console.error("record_attendance_absence failed", absenceError.message);
+    }
     return { ok: true };
   } catch (error) {
     return actionError(error, COMMON_CODES);

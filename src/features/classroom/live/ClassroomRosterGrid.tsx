@@ -1,7 +1,10 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import type { LearningCheckStatus } from "@/features/school/session-learning-contract";
+import {
+  LEARNING_SEAT_COLUMNS,
+  type LearningCheckStatus,
+} from "@/features/school/session-learning-contract";
 import type { SessionRosterEntry } from "../types";
 import { StudentCard } from "./LivePanels";
 
@@ -23,7 +26,10 @@ export function buildClassroomRosterSlots(
     .map((student) => student.seatPosition)
     .filter((seat): seat is number => typeof seat === "number" && Number.isInteger(seat) && seat >= 0);
   const required = Math.max(minimumSlots, students.length, validSeats.length ? Math.max(...validSeats) + 1 : 0);
-  const slotCount = Math.max(4, Math.ceil(required / 4) * 4);
+  const slotCount = Math.max(
+    LEARNING_SEAT_COLUMNS,
+    Math.ceil(required / LEARNING_SEAT_COLUMNS) * LEARNING_SEAT_COLUMNS,
+  );
   const slots = new Array<SessionRosterEntry | null>(slotCount).fill(null);
   const unseated: SessionRosterEntry[] = [];
 
@@ -39,7 +45,9 @@ export function buildClassroomRosterSlots(
   let nextFree = 0;
   for (const student of unseated) {
     while (nextFree < slots.length && slots[nextFree]) nextFree += 1;
-    if (nextFree === slots.length) slots.push(null, null, null, null);
+    if (nextFree === slots.length) {
+      slots.push(...new Array<SessionRosterEntry | null>(LEARNING_SEAT_COLUMNS).fill(null));
+    }
     slots[nextFree] = student;
   }
 
@@ -79,7 +87,12 @@ export function ClassroomRosterGrid({
       data-roster-surface="cards-only"
       data-roster-scroll={slots.length > 20 ? "internal" : "none"}
     >
-      <ul className="grid min-h-0 flex-1 auto-rows-[minmax(2.75rem,auto)] grid-cols-4 gap-1 overflow-y-auto overscroll-contain" data-roster-slot-count={slots.length}>
+      <ul
+        className="grid min-h-0 flex-1 auto-rows-[minmax(2.75rem,auto)] gap-1 overflow-y-auto overscroll-contain"
+        style={{ gridTemplateColumns: `repeat(${LEARNING_SEAT_COLUMNS}, minmax(0, 1fr))` }}
+        data-roster-column-count={LEARNING_SEAT_COLUMNS}
+        data-roster-slot-count={slots.length}
+      >
         {slots.map((entry, slotIndex) => {
           const seat = slotIndex + 1;
           if (!entry) {

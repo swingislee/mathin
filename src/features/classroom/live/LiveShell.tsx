@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/dialog";
 import type { GameMirrorState } from "@/features/games/types";
 import { AttendanceDrawer } from "@/features/school/AttendanceDrawer";
+import type { AttendanceDrawerRow } from "@/features/school/actions/types";
 import {
   SessionLearningCheckPanel,
   type LearningCheckSummarySnapshot,
@@ -157,6 +158,7 @@ interface Props {
   /** 正式课次显示点名提醒；试讲/离线演练不显示，且点名状态不阻断开课。 */
   attendanceSuggested: boolean;
   initialAttendanceComplete: boolean;
+  initialAttendanceRows: AttendanceDrawerRow[];
   learningSetup: SessionLearningSetup | null;
 }
 
@@ -179,6 +181,7 @@ export function LiveShell({
   offlineDrill = false,
   attendanceSuggested,
   initialAttendanceComplete,
+  initialAttendanceRows,
   learningSetup,
 }: Props) {
   const router = useRouter();
@@ -1978,17 +1981,14 @@ export function LiveShell({
           ) : null}
           utilityControls={(
             <div className="flex shrink-0 items-center gap-0.5 rounded-xl bg-card/70 p-0.5" data-classroom-rail-group="classroom-actions">
-              <AttendanceDrawer
-                sessionId={session.id}
-                appearance="rail"
-                mode="amend"
-              />
               {classroomLearningSetup && classroomLearningSetup.checks.length > 0 && (
                 <SessionLearningCheckPanel
                   key={classroomLearningSetupKey}
                   sessionId={session.id}
                   setup={classroomLearningSetup}
                   activePageDocId={activePageDocId}
+                  attendanceRows={initialAttendanceRows}
+                  attendanceIntegrated
                   ephemeral={rehearsal}
                   triggerVariant="rail"
                   onSummaryChange={handleLearningSummaryChange}

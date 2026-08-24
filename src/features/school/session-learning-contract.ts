@@ -9,7 +9,9 @@ export const LEARNING_CHECK_STATUSES = [
 
 export type LearningCheckStatus = (typeof LEARNING_CHECK_STATUSES)[number];
 
-export const LEARNING_SEAT_CAPACITY = 20;
+export const LEARNING_SEAT_COLUMNS = 4;
+export const LEARNING_SEAT_ROWS = 5;
+export const LEARNING_SEAT_CAPACITY = LEARNING_SEAT_COLUMNS * LEARNING_SEAT_ROWS;
 export const LEARNING_SEAT_POSITION_LIMIT = 60;
 
 export interface SessionLearningCheck {
@@ -48,7 +50,8 @@ export function buildLearningSeatSlots(
     (highest, student) => Math.max(highest, student.seatPosition ?? -1),
     -1,
   );
-  const slotCount = Math.max(minimumCapacity, students.length, highestSavedPosition + 1);
+  const requiredSlots = Math.max(minimumCapacity, students.length, highestSavedPosition + 1);
+  const slotCount = Math.ceil(requiredSlots / LEARNING_SEAT_COLUMNS) * LEARNING_SEAT_COLUMNS;
   const slots: LearningSeatSlot[] = Array.from({ length: slotCount }, () => null);
   const unseated: SessionLearningStudent[] = [];
 

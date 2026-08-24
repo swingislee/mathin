@@ -298,6 +298,13 @@ export function StudentCard({
   };
 
   const totalLabel = starTotalLabel ?? `${name}: ${count}`;
+  const learningCardClass = compact && learningStatus
+    ? LEARNING_CHECK_STATUS_STYLE[learningStatus].card
+    : "border-line";
+  const awardLabel = awardStarLabel ?? name;
+  const accessibleAwardLabel = learningStatusLabel
+    ? `${awardLabel}; ${learningStatusLabel}`
+    : awardLabel;
   const content = compact ? (
     <>
       <span className={cn("flex min-w-0 max-w-full items-center gap-1", interactive && "pr-5")}>
@@ -312,18 +319,9 @@ export function StudentCard({
         )}
       </span>
       <span className="flex min-w-0 max-w-full items-center gap-1">
-        {learningStatus && learningStatusLabel ? (
-          <span
-            className="inline-flex min-w-0 shrink items-center gap-0.5 rounded-full bg-paper/75 px-1 text-[8px] leading-3 text-muted"
-            title={learningStatusLabel}
-            aria-label={learningStatusLabel}
-          >
-            <span aria-hidden className={cn("size-1.5 shrink-0 rounded-full", LEARNING_CHECK_STATUS_STYLE[learningStatus].dot)} />
-            <span className="truncate">{learningStatusLabel}</span>
-          </span>
-        ) : null}
         <StudentStarDisplay count={count} label={totalLabel} compact />
       </span>
+      {learningStatusLabel ? <span className="sr-only">{learningStatusLabel}</span> : null}
     </>
   ) : (
     <>
@@ -347,7 +345,8 @@ export function StudentCard({
       <li
         data-learning-status={learningStatus ?? undefined}
         className={cn(
-          "relative rounded-xl border border-line",
+          "relative rounded-xl border",
+          learningCardClass,
           compact ? "flex min-h-11 min-w-0 flex-col justify-center gap-0.5 overflow-hidden px-1.5 py-1" : "flex min-h-11 items-center gap-2 px-3",
         )}
       >
@@ -361,9 +360,10 @@ export function StudentCard({
       <button
         type="button"
         title={undoHint}
-        aria-label={awardStarLabel ?? name}
+        aria-label={accessibleAwardLabel}
         className={cn(
-          "flex min-h-11 w-full touch-none select-none rounded-xl border border-line transition-colors hover:bg-moon/30",
+          "flex min-h-11 w-full touch-none select-none rounded-xl border transition-colors hover:bg-moon/30",
+          learningCardClass,
           compact ? "min-w-0 flex-col items-stretch justify-center gap-0.5 overflow-hidden px-1.5 py-1" : "items-center gap-2 px-3",
         )}
         onPointerDown={() => {

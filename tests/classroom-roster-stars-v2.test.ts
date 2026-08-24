@@ -238,7 +238,8 @@ describe("M4a roster identity and star v2", () => {
     expect(shell).toContain('acceptanceFixture === "m4b"');
     expect(shell).toContain("data-m4b-roster-scenarios");
     expect(shell).toContain("grid-cols-[minmax(0,1fr)_clamp(22rem,31vw,36rem)]");
-    expect(rosterGrid).toContain("grid-cols-4");
+    expect(rosterGrid).toContain("data-roster-column-count={LEARNING_SEAT_COLUMNS}");
+    expect(rosterGrid).toContain("repeat(${LEARNING_SEAT_COLUMNS}");
     expect(rosterGrid).toContain('data-roster-scroll={slots.length > 20 ? "internal" : "none"}');
     expect(rosterGrid).toContain('data-roster-surface="cards-only"');
     expect(rosterGrid).not.toContain("<h2");
