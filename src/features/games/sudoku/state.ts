@@ -210,7 +210,7 @@ function applyDigitAt(state: SudokuBoardState, puzzle: number[], index: number, 
 }
 
 /** 数字按钮只切换持续印章；写入统一发生在随后点击目标格时。 */
-export function chooseSudokuDigit(state: SudokuBoardState, _puzzle: number[], digit: number): SudokuBoardState {
+export function chooseSudokuDigit(state: SudokuBoardState, digit: number): SudokuBoardState {
   if (!validDigit(digit)) return state;
   if (
     state.inputDigit === digit
@@ -336,19 +336,8 @@ export function selectSudokuCell(
 }
 
 export function setSudokuEntryMode(state: SudokuBoardState, entryMode: SudokuEntryMode): SudokuBoardState {
-  if (
-    state.entryMode === entryMode
-    && state.highlightTool === null
-    && state.selected === null
-    && state.invalidAttempt === null
-  ) return state;
-  return {
-    ...state,
-    entryMode,
-    highlightTool: null,
-    selected: null,
-    invalidAttempt: null,
-  };
+  if (state.entryMode === entryMode) return state;
+  return { ...state, entryMode };
 }
 
 export function setSudokuHighlightTool(

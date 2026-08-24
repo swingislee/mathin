@@ -964,18 +964,11 @@ export function LiveShell({
             <p className="font-medium text-ink">{t("sudokuOperationAcceptanceTitle")}</p>
             <p className="mt-0.5 text-muted">{t("sudokuOperationAcceptanceBody")}</p>
           </div>
-          <ol className="grid min-w-0 flex-[2] basis-full grid-cols-2 gap-1 lg:basis-auto lg:grid-cols-4">
-            {([
-              "sudokuOperationCheckNoCellFirst",
-              "sudokuOperationCheckMutualExclusion",
-              "sudokuOperationCheckMatchingDigit",
-              "sudokuOperationCheckApply",
-            ] as const).map((key, index) => (
-              <li key={key} className="rounded-lg bg-paper/80 px-2 py-1.5 text-muted">
-                <span className="mr-1 font-mono text-ink">{index + 1}</span>
-                {t(key)}
-              </li>
-            ))}
+          <ol className="min-w-0 flex-[2] basis-full lg:basis-auto">
+            <li className="rounded-lg bg-paper/80 px-2 py-1.5 text-muted">
+              <span className="mr-1 font-mono text-ink">1</span>
+              {t("sudokuOperationCheckEntryMode")}
+            </li>
           </ol>
           <Button
             size="sm"

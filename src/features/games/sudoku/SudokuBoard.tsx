@@ -140,7 +140,6 @@ export function SudokuBoard({ seed, difficulty, finished, onComplete, mirror, on
   }
 
   const inputDisabled = Boolean(readOnly || finished);
-  const numberPadDisabled = inputDisabled;
   const deleteDisabled = inputDisabled || Boolean(state.highlightTool);
   const answerDisabled = inputDisabled
     || state.highlightTool !== null
@@ -170,7 +169,7 @@ export function SudokuBoard({ seed, difficulty, finished, onComplete, mirror, on
 
   function chooseDigit(digit: number) {
     if (inputDisabled) return;
-    commit(chooseSudokuDigit(state, puzzle, digit));
+    commit(chooseSudokuDigit(state, digit));
   }
 
   function selectCell(index: number, applySelectedDigit = true) {
@@ -339,13 +338,13 @@ export function SudokuBoard({ seed, difficulty, finished, onComplete, mirror, on
                   type="button"
                   data-classroom-input="click"
                   role="radio"
-                  aria-checked={state.entryMode === mode && state.highlightTool === null}
+                  aria-checked={state.entryMode === mode}
                   disabled={inputDisabled}
                   onClick={() => commit(setSudokuEntryMode(state, mode))}
                   className={cn(
                     styles.modeButton,
                     "min-h-10 rounded-lg border border-transparent px-1 text-sm font-medium transition-colors disabled:cursor-default disabled:opacity-100",
-                    state.entryMode === mode && state.highlightTool === null
+                    state.entryMode === mode
                       ? styles.controlActive
                       : styles.controlIdle,
                   )}
@@ -386,7 +385,7 @@ export function SudokuBoard({ seed, difficulty, finished, onComplete, mirror, on
                         data-classroom-input="click"
                         aria-label={t("chooseDigit", { digit })}
                         aria-pressed={pressed}
-                        disabled={numberPadDisabled}
+                        disabled={inputDisabled}
                         onClick={() => chooseDigit(digit)}
                         className={cn(
                           styles.numberButton,
