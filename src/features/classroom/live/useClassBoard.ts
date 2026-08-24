@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { BoardBus } from "@/features/whiteboard/bus";
 import { createWhiteboardStore } from "@/features/whiteboard/store";
 import { isStrokeItem, type BoardItem, type BoardOp, type ProgressChunk, type StrokeItem } from "@/features/whiteboard/types";
@@ -68,6 +68,12 @@ export function useClassBoard(
   }));
   const hydrated = useRef(false);
   const baseVersionRef = useRef(initialCheckpoint?.version ?? 0);
+  const persistCheckpointRef = useRef<(() => Promise<void>) | null>(null);
+  const flushCheckpoint = useCallback(async () => {
+    const persist = persistCheckpointRef.current;
+    if (!persist) throw new Error("CHECKPOINT_WRITER_UNAVAILABLE");
+    await persist();
+  }, []);
 
   useEffect(() => {
     onCheckpointStatus?.(boardKey, checkpointStatus);
@@ -282,67 +288,52 @@ export function useClassBoard(
 
   // Writer flag only chooses v1 append snapshots vs v2 latest checkpoints.
   useEffect(() => {
-    if (!log || !editable) return;
+    if (!log || !editable) {
+      persistCheckpointRef.current = null;
+      return;
+    }
     if (!checkpointV2Writer) {
       let timer: ReturnType<typeof setTimeout> | null = null;
-      const snapshot = () => {
+      const snapshot = async () => {
         timer = null;
-        void log.append("board_snapshot", { pageKey: boardKey, items: store.getState().items });
+        await log.append("board_snapshot", { pageKey: boardKey, items: store.getState().items });
       };
       const unsub = store.subscribe((state, prev) => {
         if (state.revision === prev.revision) return;
         if (timer) clearTimeout(timer);
-        timer = setTimeout(snapshot, SNAPSHOT_DEBOUNCE_MS);
+        timer = setTimeout(() => { void snapshot().catch(() => undefined); }, SNAPSHOT_DEBOUNCE_MS);
       });
+      const flushLegacySnapshot = async () => {
+        if (!timer) return;
+        clearTimeout(timer);
+        await snapshot();
+      };
+      persistCheckpointRef.current = flushLegacySnapshot;
       return () => {
         unsub();
+        if (persistCheckpointRef.current === flushLegacySnapshot) persistCheckpointRef.current = null;
         if (timer) {
           clearTimeout(timer);
-          snapshot();
+          void snapshot().catch(() => undefined);
         }
       };
     }
 
     let disposed = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
-    let latestTaskRevision = 0;
+    let latestTaskRevision = store.getState().revision;
     let lastEnqueuedRevision = -1;
-    const tasks = new Set<Promise<void>>();
-    const persist = async () => {
-      timer = null;
-      const state = store.getState();
-      if (state.revision === lastEnqueuedRevision) return;
-      const sourceRevision = state.revision;
-      latestTaskRevision = Math.max(latestTaskRevision, sourceRevision);
-      if (!disposed) setCheckpointStatus((current) => ({ ...current, state: "preparing", message: null }));
+    const tasks = new Set<Promise<unknown>>();
+    const trackTask = <T,>(task: Promise<T>): Promise<T> => {
+      tasks.add(task);
+      void task.then(
+        () => tasks.delete(task),
+        () => tasks.delete(task),
+      );
+      return task;
+    };
+    const syncPending = async (pending: PendingBoardCheckpoint, sourceRevision: number) => {
       try {
-        const prepared = await preparer.prepare(state.items);
-        if (!prepared) return;
-        const pending = await enqueueLatestBoardCheckpoint({
-          ...prepared,
-          scope: log.ephemeral ? "rehearsal" : "formal",
-          checkpointId: newId(),
-          sessionId: log.sessionId,
-          boardKey,
-          writerId: log.deviceId,
-          baseVersion: baseVersionRef.current,
-          sourceRevision,
-          preparedAt: new Date().toISOString(),
-        });
-        lastEnqueuedRevision = sourceRevision;
-        if (!disposed && sourceRevision === latestTaskRevision) {
-          setCheckpointStatus({
-            state: "pending",
-            source: "local-v2",
-            version: pending.writerSeq,
-            checkpointId: pending.checkpointId,
-            chunkCount: pending.chunks.length,
-            itemCount: pending.itemCount,
-            contentBytes: pending.contentBytes,
-            message: null,
-          });
-        }
-        if (log.ephemeral || !navigator.onLine) return;
         const result = await flushPendingBoardCheckpoint(pending);
         baseVersionRef.current = Math.max(baseVersionRef.current, result.version);
         if (result.accepted) {
@@ -389,26 +380,116 @@ export function useClassBoard(
         }
       }
     };
-    const runPersist = () => {
-      const task = persist();
-      tasks.add(task);
-      void task.finally(() => tasks.delete(task));
+    const persistLocal = async (): Promise<boolean> => {
+      timer = null;
+      const state = store.getState();
+      if (state.revision === lastEnqueuedRevision) return true;
+      const sourceRevision = state.revision;
+      latestTaskRevision = Math.max(latestTaskRevision, sourceRevision);
+      if (!disposed) {
+        setCheckpointStatus((current) => ({
+          ...current,
+          state: "preparing",
+          source: "memory",
+          itemCount: state.items.length,
+          message: null,
+        }));
+      }
+      try {
+        const prepared = await preparer.prepare(state.items);
+        // A clear/rewrite that lands while the Worker is running invalidates this result.
+        // The trailing task (or an explicit flush) will persist the newer revision.
+        if (!prepared || sourceRevision !== latestTaskRevision) return false;
+        const pending = await enqueueLatestBoardCheckpoint({
+          ...prepared,
+          scope: log.ephemeral ? "rehearsal" : "formal",
+          checkpointId: newId(),
+          sessionId: log.sessionId,
+          boardKey,
+          writerId: log.deviceId,
+          baseVersion: baseVersionRef.current,
+          sourceRevision,
+          preparedAt: new Date().toISOString(),
+        });
+        lastEnqueuedRevision = sourceRevision;
+        if (!disposed && sourceRevision === latestTaskRevision) {
+          setCheckpointStatus({
+            state: "pending",
+            source: "local-v2",
+            version: pending.writerSeq,
+            checkpointId: pending.checkpointId,
+            chunkCount: pending.chunks.length,
+            itemCount: pending.itemCount,
+            contentBytes: pending.contentBytes,
+            message: null,
+          });
+        }
+        if (!log.ephemeral && navigator.onLine) {
+          void trackTask(syncPending(pending, sourceRevision));
+        }
+        return true;
+      } catch (error) {
+        if (!disposed && sourceRevision === latestTaskRevision) {
+          setCheckpointStatus((current) => ({
+            ...current,
+            state: "error",
+            message: error instanceof Error ? error.message : "CHECKPOINT_SAVE_FAILED",
+          }));
+        }
+        throw error;
+      }
     };
+    const runPersist = () => trackTask(persistLocal());
+    let activeFlush: Promise<void> | null = null;
+    const flushLatestCheckpoint = () => {
+      if (activeFlush) return activeFlush;
+      activeFlush = (async () => {
+        if (timer) {
+          clearTimeout(timer);
+          timer = null;
+        }
+        while (store.getState().revision !== lastEnqueuedRevision) {
+          latestTaskRevision = store.getState().revision;
+          await runPersist();
+        }
+      })().finally(() => {
+        activeFlush = null;
+      });
+      return activeFlush;
+    };
+    persistCheckpointRef.current = flushLatestCheckpoint;
     const unsub = store.subscribe((state, prev) => {
       if (state.revision === prev.revision) return;
+      latestTaskRevision = state.revision;
+      if (!disposed) {
+        setCheckpointStatus((current) => ({
+          ...current,
+          state: "dirty",
+          source: "memory",
+          itemCount: state.items.length,
+          message: null,
+        }));
+      }
       if (timer) clearTimeout(timer);
-      timer = setTimeout(runPersist, SNAPSHOT_DEBOUNCE_MS);
+      timer = setTimeout(() => { void runPersist().catch(() => undefined); }, SNAPSHOT_DEBOUNCE_MS);
     });
     return () => {
       disposed = true;
       unsub();
+      if (persistCheckpointRef.current === flushLatestCheckpoint) persistCheckpointRef.current = null;
       if (timer) {
         clearTimeout(timer);
-        runPersist();
+        void runPersist().catch(() => undefined);
       }
       void Promise.allSettled([...tasks]).then(() => preparer.close());
     };
   }, [log, boardKey, editable, store, checkpointV2Writer, preparer]);
 
-  return { store, bus, checkpointStatus };
+  return {
+    store,
+    bus,
+    checkpointStatus,
+    flushCheckpoint,
+    checkpointWriterReady: Boolean(log && editable),
+  };
 }

@@ -98,6 +98,43 @@ describe("classroom board checkpoint v2", () => {
     expect(await getPendingBoardCheckpoint(sessionId, boardKey, "rehearsal")).toBeDefined();
   });
 
+  it("keeps the rewritten main board as the latest local checkpoint after a clear", async () => {
+    const sessionId = crypto.randomUUID();
+    const writerId = crypto.randomUUID();
+    const boardKey = crypto.randomUUID();
+    const empty = buildBoardCheckpoint([]);
+    await enqueueLatestBoardCheckpoint({
+      ...empty,
+      scope: "rehearsal",
+      checkpointId: crypto.randomUUID(),
+      sessionId,
+      boardKey,
+      writerId,
+      baseVersion: 0,
+      sourceRevision: 1,
+      preparedAt: new Date().toISOString(),
+    });
+
+    const rewritten = buildBoardCheckpoint(createM2AcceptanceStrokes(1));
+    const latest = await enqueueLatestBoardCheckpoint({
+      ...rewritten,
+      scope: "rehearsal",
+      checkpointId: crypto.randomUUID(),
+      sessionId,
+      boardKey,
+      writerId,
+      baseVersion: 0,
+      sourceRevision: 2,
+      preparedAt: new Date().toISOString(),
+    });
+
+    const recovered = await getPendingBoardCheckpoint(sessionId, boardKey, "rehearsal");
+    expect(recovered?.checkpointId).toBe(latest.checkpointId);
+    expect(recovered?.sourceRevision).toBe(2);
+    expect(recovered?.itemCount).toBe(1);
+    expect((recovered?.chunks.flat()[0] as StrokeItem).id).toBe("m2-fixture-1");
+  });
+
   it("terminates stale Worker work and only resolves the latest task", async () => {
     class WorkerMock {
       static instances: WorkerMock[] = [];
@@ -177,5 +214,17 @@ describe("classroom board checkpoint v2", () => {
     expect(actions).toContain('.neq("type", "board_snapshot")');
     expect(actions).toContain('.order("created_at", { ascending: true })');
     expect(actions).toContain("get_session_board_checkpoints");
+  });
+
+  it("fences stale Worker results and reloads the active board only after an explicit local flush", () => {
+    const hook = source("src/features/classroom/live/useClassBoard.ts");
+    const shell = source("src/features/classroom/live/LiveShell.tsx");
+    expect(hook).toContain('state: "dirty"');
+    expect(hook).toContain("sourceRevision !== latestTaskRevision");
+    expect(hook).toContain("flushLatestCheckpoint");
+    expect(shell).toContain('const activeBoardKey = activeArea === "side" ? "side" : activePage?.id ?? null');
+    expect(shell).toContain("await sideBoard.flushCheckpoint()");
+    expect(shell).toContain("await mainCheckpointControl.flush()");
+    expect(shell).not.toContain("const sideCheckpointStatus =");
   });
 });

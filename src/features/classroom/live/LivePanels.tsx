@@ -31,6 +31,7 @@ export function MainBoard({
   checkpointV2Writer,
   initialCheckpoint,
   onCheckpointStatus,
+  onCheckpointFlush,
   onStore,
 }: {
   log: SessionEventLog | null;
@@ -42,9 +43,10 @@ export function MainBoard({
   checkpointV2Writer: boolean;
   initialCheckpoint?: SessionBoardCheckpoint;
   onCheckpointStatus: (boardKey: string, status: BoardCheckpointStatus) => void;
+  onCheckpointFlush: (boardKey: string, flush: (() => Promise<void>) | null) => void;
   onStore: (store: WhiteboardStore) => void;
 }) {
-  const { store, bus } = useClassBoard(log, boardKey, editable, initialItems, {
+  const { store, bus, flushCheckpoint } = useClassBoard(log, boardKey, editable, initialItems, {
     cursorName,
     checkpointV2Writer,
     initialCheckpoint,
@@ -53,6 +55,10 @@ export function MainBoard({
   useEffect(() => {
     onStore(store);
   }, [store, onStore]);
+  useEffect(() => {
+    onCheckpointFlush(boardKey, flushCheckpoint);
+    return () => onCheckpointFlush(boardKey, null);
+  }, [boardKey, flushCheckpoint, onCheckpointFlush]);
   return (
     <div className="pointer-events-none absolute inset-0 z-10">
       <CanvasSurface editable={editable} store={store} bus={bus} strokeWidthBasis={strokeWidthBasis} renderProfile="classroom" />

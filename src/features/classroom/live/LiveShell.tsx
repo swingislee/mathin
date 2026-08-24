@@ -113,6 +113,17 @@ function formatCheckpointBytes(bytes: number): string {
   return bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} KiB`;
 }
 
+const EMPTY_CHECKPOINT_STATUS: BoardCheckpointStatus = {
+  state: "idle",
+  source: "memory",
+  version: null,
+  checkpointId: null,
+  chunkCount: 0,
+  itemCount: 0,
+  contentBytes: 0,
+  message: null,
+};
+
 export function LiveShell({
   session,
   classId,
@@ -190,8 +201,13 @@ export function LiveShell({
   const [log, setLog] = useState<SessionEventLog | null>(null);
   const [onlinePeers, setOnlinePeers] = useState<PresencePeer[]>([]);
   const [mainStore, setMainStore] = useState<WhiteboardStore | null>(null);
+  const [mainCheckpointControl, setMainCheckpointControl] = useState<{
+    boardKey: string;
+    flush: () => Promise<void>;
+  } | null>(null);
   const [checkpointStatuses, setCheckpointStatuses] = useState<Record<string, BoardCheckpointStatus>>({});
   const [activeArea, setActiveArea] = useState<"main" | "side">("main");
+  const [m2Reloading, setM2Reloading] = useState(false);
   const [endOpen, setEndOpen] = useState(false);
   const [classroomToolsOpen, setClassroomToolsOpen] = useState(false);
   const [stageWidth, setStageWidth] = useState(0);
@@ -211,6 +227,12 @@ export function LiveShell({
   const sideViewportRef = useRef<HTMLDivElement | null>(null);
   const onCheckpointStatus = useCallback((boardKey: string, status: BoardCheckpointStatus) => {
     setCheckpointStatuses((current) => current[boardKey] === status ? current : { ...current, [boardKey]: status });
+  }, []);
+  const onMainCheckpointFlush = useCallback((boardKey: string, flush: (() => Promise<void>) | null) => {
+    setMainCheckpointControl((current) => {
+      if (flush) return { boardKey, flush };
+      return current?.boardKey === boardKey ? null : current;
+    });
   }, []);
 
   useEffect(() => {
@@ -684,7 +706,29 @@ export function LiveShell({
     return bucket;
   }, [state.quiz, state.answers]);
   const showControlBar = isController || (myRole === "student" && role === "viewer") || Boolean(state.quiz);
-  const sideCheckpointStatus = checkpointStatuses.side ?? sideBoard.checkpointStatus;
+  const activeBoardKey = activeArea === "side" ? "side" : activePage?.id ?? null;
+  const activeCheckpointStatus = activeBoardKey
+    ? checkpointStatuses[activeBoardKey] ?? (activeBoardKey === "side" ? sideBoard.checkpointStatus : EMPTY_CHECKPOINT_STATUS)
+    : EMPTY_CHECKPOINT_STATUS;
+  const activeBoardLabel = activeArea === "side" ? t("boardSide") : t("boardMain");
+  const activeCheckpointReady = activeArea === "side"
+    ? sideBoard.checkpointWriterReady
+    : activeBoardKey !== null && mainCheckpointControl?.boardKey === activeBoardKey;
+  const reloadActiveCheckpoint = async () => {
+    setM2Reloading(true);
+    try {
+      if (activeArea === "side") {
+        await sideBoard.flushCheckpoint();
+      } else if (activeBoardKey && mainCheckpointControl?.boardKey === activeBoardKey) {
+        await mainCheckpointControl.flush();
+      } else {
+        throw new Error("CHECKPOINT_WRITER_UNAVAILABLE");
+      }
+      window.location.reload();
+    } catch {
+      setM2Reloading(false);
+    }
+  };
 
   const connectionBadges = rehearsal ? (
     // 试讲没有任何同步通道，连接徽标只会误导——换成单一模式标识
@@ -899,18 +943,18 @@ export function LiveShell({
           </div>
           <div className="flex flex-wrap items-center gap-2 rounded-lg bg-paper/80 px-3 py-2">
             <div className="min-w-52 flex-1">
-              <p className="font-medium text-ink">{t("m2RecoveryTitle")}</p>
+              <p className="font-medium text-ink">{t("m2RecoveryTitle")} · {activeBoardLabel}</p>
               <p className="mt-0.5 text-muted">{t("m2RecoveryBody")}</p>
-              <p className={cn("mt-1 font-mono", sideCheckpointStatus.state === "error" ? "text-rose" : "text-muted")} role={sideCheckpointStatus.state === "error" ? "alert" : "status"}>
-                {sideCheckpointStatus.state === "error"
-                  ? t("m2CheckpointError", { error: sideCheckpointStatus.message ?? "CHECKPOINT_SAVE_FAILED" })
+              <p className={cn("mt-1 font-mono", activeCheckpointStatus.state === "error" ? "text-rose" : "text-muted")} role={activeCheckpointStatus.state === "error" ? "alert" : "status"}>
+                {activeCheckpointStatus.state === "error"
+                  ? t("m2CheckpointError", { error: activeCheckpointStatus.message ?? "CHECKPOINT_SAVE_FAILED" })
                   : t("m2CheckpointStatus", {
-                      state: t(`m2State_${sideCheckpointStatus.state}`),
-                      source: t(`m2Source_${sideCheckpointStatus.source}`),
-                      version: sideCheckpointStatus.version ?? "—",
-                      chunks: sideCheckpointStatus.chunkCount,
-                      items: sideCheckpointStatus.itemCount,
-                      size: formatCheckpointBytes(sideCheckpointStatus.contentBytes),
+                      state: t(`m2State_${activeCheckpointStatus.state}`),
+                      source: t(`m2Source_${activeCheckpointStatus.source}`),
+                      version: activeCheckpointStatus.version ?? "—",
+                      chunks: activeCheckpointStatus.chunkCount,
+                      items: activeCheckpointStatus.itemCount,
+                      size: formatCheckpointBytes(activeCheckpointStatus.contentBytes),
                     })}
               </p>
             </div>
@@ -923,10 +967,10 @@ export function LiveShell({
             <Button
               size="sm"
               variant="secondary"
-              disabled={sideCheckpointStatus.state === "preparing" || sideCheckpointStatus.state === "idle"}
-              onClick={() => window.location.reload()}
+              disabled={m2Reloading || !activeCheckpointReady}
+              onClick={() => { void reloadActiveCheckpoint(); }}
             >
-              {t("m2Reload")}
+              {m2Reloading ? t("m2Reloading") : t("m2Reload")}
             </Button>
           </div>
         </section>
@@ -1020,6 +1064,7 @@ export function LiveShell({
                 checkpointV2Writer={checkpointV2Writer}
                 initialCheckpoint={checkpointByBoard.get(page.id)}
                 onCheckpointStatus={onCheckpointStatus}
+                onCheckpointFlush={onMainCheckpointFlush}
                 onStore={setMainStore}
               />
             )}

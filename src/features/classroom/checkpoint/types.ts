@@ -35,7 +35,7 @@ export interface SessionBoardCheckpoint {
 export type CheckpointSource = "memory" | "legacy-v1" | "server-v2" | "local-v2";
 
 export interface BoardCheckpointStatus {
-  state: "idle" | "preparing" | "pending" | "saved" | "error";
+  state: "idle" | "dirty" | "preparing" | "pending" | "saved" | "error";
   source: CheckpointSource;
   version: number | null;
   checkpointId: string | null;
