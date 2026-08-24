@@ -1441,6 +1441,8 @@ export function LiveShell({
               <p className="mt-1 text-muted">
                 {m4bScenario === "30" ? t("m4bStressState") : t("m4bBaselineState", { count: Number(m4bScenario) })}
               </p>
+              <p className="mt-1 text-muted">{t("m4bRewardState")}</p>
+              <p className="mt-1 text-muted">{t("m4bInfoState")}</p>
             </div>
             <div data-m4b-role-isolation>
               <p className="mb-1 font-medium text-ink">{t("m4bRoleIsolation")}</p>
@@ -1613,9 +1615,7 @@ export function LiveShell({
             teacherLayoutV2
               ? sideCollapsed
                 ? "grid-rows-[3rem_2.75rem_minmax(0,1fr)]"
-                : rosterCollapsed
-                  ? "grid-rows-[3rem_minmax(0,1fr)_2.75rem]"
-                  : "grid-rows-[3rem_minmax(8rem,1fr)_17.5rem]"
+                : "grid-rows-[3rem_minmax(8rem,1fr)_17.5rem]"
               : sideCollapsed && rosterCollapsed
                 ? "lg:w-[5.25rem]"
                 : sideCollapsed
@@ -1732,15 +1732,10 @@ export function LiveShell({
                 students={rosterGridStudents}
                 rosterLabel={t("roster", { count: students.length })}
                 emptySeatLabel={(seat) => t("emptySeatLabel", { seat })}
-                seatLabel={(seat) => t("seatShort", { seat })}
                 starTotalLabel={(name, count) => t("studentStarTotal", { name, count })}
                 awardStarLabel={(name, count) => t("awardStarLabel", { name, count })}
                 undoStarLabel={(name, count) => t("undoStarLabel", { name, count })}
                 undoHint={t("undoStar")}
-                collapsed={rosterCollapsed}
-                collapseLabel={t("collapseRoster")}
-                expandLabel={t("expandRoster")}
-                onToggleCollapsed={() => setRosterCollapsed((collapsed) => !collapsed)}
                 onStar={(student) => appendStar(student, "award")}
                 onUndo={(student) => appendStar(student, "undo")}
               />

@@ -1,6 +1,5 @@
 "use client";
 
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { SessionRosterEntry } from "../types";
 import { StudentCard } from "./LivePanels";
 
@@ -48,30 +47,20 @@ export function ClassroomRosterGrid({
   students,
   rosterLabel,
   emptySeatLabel,
-  seatLabel,
   starTotalLabel,
   awardStarLabel,
   undoStarLabel,
   undoHint,
-  collapsed,
-  collapseLabel,
-  expandLabel,
-  onToggleCollapsed,
   onStar,
   onUndo,
 }: {
   students: readonly ClassroomRosterStudent[];
   rosterLabel: string;
   emptySeatLabel: (seat: number) => string;
-  seatLabel: (seat: number) => string;
   starTotalLabel: (name: string, count: number) => string;
   awardStarLabel: (name: string, count: number) => string;
   undoStarLabel: (name: string, count: number) => string;
   undoHint: string;
-  collapsed: boolean;
-  collapseLabel: string;
-  expandLabel: string;
-  onToggleCollapsed: () => void;
   onStar: (student: ClassroomRosterStudent) => void;
   onUndo: (student: ClassroomRosterStudent) => void;
 }) {
@@ -81,60 +70,44 @@ export function ClassroomRosterGrid({
   return (
     <section
       className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-line bg-paper"
+      aria-label={rosterLabel}
       data-classroom-roster-grid
       data-roster-scroll={slots.length > 20 ? "internal" : "none"}
     >
-      <div className="flex min-h-11 shrink-0 items-center gap-2 border-b border-line px-2">
-        {!collapsed && <h2 className="min-w-0 flex-1 truncate text-xs text-muted">{rosterLabel}</h2>}
-        <button
-          type="button"
-          onClick={onToggleCollapsed}
-          aria-label={collapsed ? expandLabel : collapseLabel}
-          title={collapsed ? expandLabel : collapseLabel}
-          className="ml-auto grid size-11 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-moon/30 hover:text-ink"
-        >
-          {collapsed ? <ChevronLeft aria-hidden size={15} /> : <ChevronRight aria-hidden size={15} />}
-        </button>
-      </div>
-      {!collapsed && (
-        <ul className="grid min-h-0 flex-1 auto-rows-[minmax(2.75rem,auto)] grid-cols-4 gap-1 overflow-y-auto p-1 overscroll-contain" data-roster-slot-count={slots.length}>
-          {slots.map((entry, slotIndex) => {
-            const seat = slotIndex + 1;
-            if (!entry) {
-              return (
-                <li
-                  key={`empty-${slotIndex}`}
-                  aria-label={emptySeatLabel(seat)}
-                  className="grid min-h-11 place-items-center rounded-lg border border-dashed border-line/70 px-1 text-[10px] text-muted/70"
-                >
-                  {seat}
-                </li>
-              );
-            }
-            const student = byId.get(entry.studentId);
-            if (!student) return null;
+      <ul className="grid min-h-0 flex-1 auto-rows-[minmax(2.75rem,auto)] grid-cols-4 gap-1 overflow-y-auto p-1 overscroll-contain" data-roster-slot-count={slots.length}>
+        {slots.map((entry, slotIndex) => {
+          const seat = slotIndex + 1;
+          if (!entry) {
             return (
-              <StudentCard
-                key={student.studentId}
-                compact
-                seatLabel={seatLabel(seat)}
-                name={student.name}
-                count={student.count}
-                hand={student.hand}
-                online={student.online}
-                answerLabel={student.answerLabel}
-                interactive={student.interactive}
-                undoHint={undoHint}
-                starTotalLabel={starTotalLabel(student.name, student.count)}
-                awardStarLabel={awardStarLabel(student.name, student.count)}
-                undoStarLabel={undoStarLabel(student.name, student.count)}
-                onStar={() => onStar(student)}
-                onUndo={() => onUndo(student)}
+              <li
+                key={`empty-${slotIndex}`}
+                aria-label={emptySeatLabel(seat)}
+                className="min-h-11 rounded-lg border border-dashed border-line/70"
               />
             );
-          })}
-        </ul>
-      )}
+          }
+          const student = byId.get(entry.studentId);
+          if (!student) return null;
+          return (
+            <StudentCard
+              key={student.studentId}
+              compact
+              name={student.name}
+              count={student.count}
+              hand={student.hand}
+              online={student.online}
+              answerLabel={student.answerLabel}
+              interactive={student.interactive}
+              undoHint={undoHint}
+              starTotalLabel={starTotalLabel(student.name, student.count)}
+              awardStarLabel={awardStarLabel(student.name, student.count)}
+              undoStarLabel={undoStarLabel(student.name, student.count)}
+              onStar={() => onStar(student)}
+              onUndo={() => onUndo(student)}
+            />
+          );
+        })}
+      </ul>
     </section>
   );
 }

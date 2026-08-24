@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Hand, Star, Undo2, X } from "lucide-react";
+import { Hand, Moon, Star, Sun, Undo2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GameBoard } from "@/features/games/boards";
 import { games } from "@/features/games/registry";
@@ -21,8 +21,8 @@ import type { SessionEventLog } from "../sync/eventlog";
 import type { BoardCheckpointStatus, SessionBoardCheckpoint } from "../checkpoint/types";
 import type { CoursewarePage } from "../types";
 import { classroomInputProviderAttributes } from "../input/provider";
+import { decomposeClassroomReward } from "./rewardDisplay";
 import { useClassBoard } from "./useClassBoard";
-import { MAX_INLINE_STARS } from "./liveState";
 
 // 课堂实时首屏的展示型子组件（原 LiveShell.tsx 尾部模块级函数，P4G-7 拆出）。
 // 它们各自 props 驱动、不与 LiveShell 主体共享闭包，是天然接缝。
@@ -198,40 +198,54 @@ export function StudentStarDisplay({ count, label, compact = false }: {
   label: string;
   compact?: boolean;
 }) {
-  const iconSize = compact ? 8 : 12;
-  const remainder = Math.max(0, count - MAX_INLINE_STARS);
+  const iconSize = compact ? 8 : 13;
+  const badgeSize = compact ? 12 : 20;
+  const badgeIconSize = compact ? 9 : 14;
+  const reward = decomposeClassroomReward(count);
 
   return (
     <span
-      key={count}
+      key={reward.total}
       role="img"
       aria-label={label}
-      className={cn(
-        "shrink-0 items-center motion-safe:[animation:star-pop_.35s_ease-out]",
-        compact && count <= MAX_INLINE_STARS
-          ? "grid min-h-3 max-w-full grid-cols-5 gap-px"
-          : compact
-            ? "flex min-h-3 max-w-full gap-px overflow-hidden"
-            : "flex gap-0.5",
-      )}
-      data-star-display={count > MAX_INLINE_STARS ? "ten-seal-remainder" : "individual"}
+      className="flex min-h-3 max-w-full shrink-0 flex-wrap content-center items-center gap-px motion-safe:[animation:star-pop_.35s_ease-out]"
+      data-star-display={reward.total >= 10 ? "star-moon-sun" : "individual"}
+      data-reward-suns={reward.suns}
+      data-reward-moons={reward.moons}
+      data-reward-stars={reward.stars}
     >
-      {count === 0 ? (
-        <Star aria-hidden size={iconSize} className="shrink-0 text-line" />
-      ) : count <= MAX_INLINE_STARS ? (
-        Array.from({ length: count }, (_, index) => (
-          <Star key={index} aria-hidden size={iconSize} className="shrink-0 fill-crater/15 text-crater" />
-        ))
-      ) : (
-        <>
-          <span className="inline-flex shrink-0 items-center rounded-full border border-crater/40 bg-crater/10 px-1 font-mono text-[9px] font-semibold leading-4 text-crater" aria-hidden>
-            10★
-          </span>
-          <span className="inline-flex shrink-0 items-center gap-px font-mono text-[10px] text-crater" aria-hidden>
-            +{remainder}<Star size={8} className="fill-crater/15" />
-          </span>
-        </>
+      {reward.total === 0 && (
+        <Star aria-hidden size={iconSize} className="shrink-0 text-amber-300/70 dark:text-amber-200/45" />
       )}
+      {Array.from({ length: reward.suns }, (_, index) => (
+        <span
+          key={`sun-${index}`}
+          aria-hidden
+          className="grid shrink-0 place-items-center rounded-full bg-orange-100 text-orange-700 ring-1 ring-orange-300 dark:bg-orange-400/20 dark:text-orange-200 dark:ring-orange-300/60"
+          style={{ width: badgeSize, height: badgeSize }}
+        >
+          <Sun size={badgeIconSize} strokeWidth={2.25} className="fill-orange-400 dark:fill-orange-300" />
+        </span>
+      ))}
+      {Array.from({ length: reward.moons }, (_, index) => (
+        <span
+          key={`moon-${index}`}
+          aria-hidden
+          className="grid shrink-0 place-items-center rounded-full bg-indigo-100 text-indigo-700 ring-1 ring-indigo-300 dark:bg-indigo-400/20 dark:text-indigo-200 dark:ring-indigo-300/60"
+          style={{ width: badgeSize, height: badgeSize }}
+        >
+          <Moon size={badgeIconSize} strokeWidth={2.25} className="fill-indigo-300 dark:fill-indigo-300" />
+        </span>
+      ))}
+      {Array.from({ length: reward.stars }, (_, index) => (
+        <Star
+          key={`star-${index}`}
+          aria-hidden
+          size={iconSize}
+          strokeWidth={2.1}
+          className="shrink-0 fill-amber-400 text-amber-600 drop-shadow-sm dark:fill-amber-300 dark:text-amber-200"
+        />
+      ))}
     </span>
   );
 }
@@ -248,7 +262,6 @@ export function StudentCard({
   starTotalLabel,
   awardStarLabel,
   undoStarLabel,
-  seatLabel,
   compact = false,
   onStar,
   onUndo,
@@ -263,7 +276,6 @@ export function StudentCard({
   starTotalLabel?: string;
   awardStarLabel?: string;
   undoStarLabel?: string;
-  seatLabel?: string;
   compact?: boolean;
   onStar: () => void;
   onUndo: () => void;
@@ -281,8 +293,7 @@ export function StudentCard({
   const totalLabel = starTotalLabel ?? `${name}: ${count}`;
   const content = compact ? (
     <>
-      <span className="flex min-w-0 max-w-full items-center gap-1">
-        {seatLabel && <span className="shrink-0 font-mono text-[9px] text-muted">{seatLabel}</span>}
+      <span className={cn("flex min-w-0 max-w-full items-center gap-1", interactive && "pr-5")}>
         <span
           aria-hidden
           className={cn("size-1.5 shrink-0 rounded-full", online ? "bg-leaf" : "bg-line")}
@@ -331,7 +342,7 @@ export function StudentCard({
         aria-label={awardStarLabel ?? name}
         className={cn(
           "flex min-h-11 w-full touch-none select-none rounded-xl border border-line transition-colors hover:bg-moon/30",
-          compact ? "min-w-0 flex-col items-stretch justify-center gap-0.5 overflow-hidden py-1 pl-1.5 pr-7" : "items-center gap-2 px-3",
+          compact ? "min-w-0 flex-col items-stretch justify-center gap-0.5 overflow-hidden px-1.5 py-1" : "items-center gap-2 px-3",
         )}
         onPointerDown={() => {
           longFired.current = false;
@@ -361,7 +372,7 @@ export function StudentCard({
           aria-label={undoStarLabel ?? undoHint}
           title={undoStarLabel ?? undoHint}
           onClick={onUndo}
-          className="absolute bottom-0.5 right-0.5 grid size-6 place-items-center rounded-full bg-paper/90 text-muted shadow-sm transition-colors hover:bg-moon/50 hover:text-ink focus-visible:ring-2 focus-visible:ring-crater"
+          className="absolute right-0.5 top-0.5 grid size-6 place-items-center rounded-full bg-paper/90 text-muted shadow-sm transition-colors hover:bg-moon/50 hover:text-ink focus-visible:ring-2 focus-visible:ring-crater"
         >
           <Undo2 aria-hidden size={11} />
         </button>

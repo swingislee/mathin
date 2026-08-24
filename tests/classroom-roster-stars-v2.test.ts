@@ -4,7 +4,12 @@ import { describe, expect, it } from "vitest";
 import { buildSessionReport } from "@/features/classroom/report";
 import { parseSessionRosterState } from "@/features/classroom/roster";
 import { buildM4aRosterFixtures, M4A_STAR_STUDENT_ID } from "@/features/classroom/live/m4-roster-fixtures";
-import { buildM4bRosterFixtures, buildM4bStarFixtureEvents } from "@/features/classroom/live/m4-layout-fixtures";
+import {
+  buildM4bRosterFixtures,
+  buildM4bStarFixtureEvents,
+  M4B_REWARD_COUNTS,
+} from "@/features/classroom/live/m4-layout-fixtures";
+import { decomposeClassroomReward } from "@/features/classroom/live/rewardDisplay";
 import {
   buildStarLedger,
   emptyStarLedger,
@@ -209,7 +214,7 @@ describe("M4a roster identity and star v2", () => {
     expect(acceptanceDock).toContain("aria-expanded={expanded}");
   });
 
-  it("provides stable M4b 8/20/30-seat and ten-star overflow fixtures", () => {
+  it("provides stable M4b 8/20/30-seat and compact reward fixtures", () => {
     const fixtures = buildM4bRosterFixtures({
       student: (seat) => `student ${seat}`,
       longName: "a very long student name",
@@ -219,7 +224,7 @@ describe("M4a roster identity and star v2", () => {
     const shell = source("src/features/classroom/live/LiveShell.tsx");
     const rosterGrid = source("src/features/classroom/live/ClassroomRosterGrid.tsx");
     const panels = source("src/features/classroom/live/LivePanels.tsx");
-    const liveState = source("src/features/classroom/live/liveState.ts");
+    const courseInfo = source("src/features/classroom/live/ClassroomCourseInfoBar.tsx");
 
     expect(fixtures["8"].entries).toHaveLength(8);
     expect(fixtures["20"].entries).toHaveLength(20);
@@ -228,16 +233,31 @@ describe("M4a roster identity and star v2", () => {
       Array.from({ length: 30 }, (_, index) => index),
     );
     expect(fixtures["30"].entries[5]).toMatchObject({ userId: null, seatPosition: 5 });
-    expect(fixtures["20"].entries.slice(0, 4).map((student) => starCountForRosterEntry(ledger, student))).toEqual([10, 11, 13, 27]);
+    expect(fixtures["20"].entries.slice(0, M4B_REWARD_COUNTS.length).map((student) => starCountForRosterEntry(ledger, student))).toEqual(M4B_REWARD_COUNTS);
 
     expect(shell).toContain('acceptanceFixture === "m4b"');
     expect(shell).toContain("data-m4b-roster-scenarios");
     expect(shell).toContain("grid-cols-[minmax(0,1fr)_clamp(22rem,31vw,36rem)]");
     expect(rosterGrid).toContain("grid-cols-4");
     expect(rosterGrid).toContain('data-roster-scroll={slots.length > 20 ? "internal" : "none"}');
-    expect(liveState).toContain("export const MAX_INLINE_STARS = 10");
-    expect(panels).toContain('data-star-display={count > MAX_INLINE_STARS ? "ten-seal-remainder" : "individual"}');
-    expect(panels).toContain('"grid min-h-3 max-w-full grid-cols-5 gap-px"');
-    expect(panels).toContain("10★");
+    expect(rosterGrid).not.toContain("<h2");
+    expect(rosterGrid).not.toContain("seatLabel");
+    expect(panels).toContain('data-star-display={reward.total >= 10 ? "star-moon-sun" : "individual"}');
+    expect(panels).toContain("fill-amber-400");
+    expect(panels).toContain("<Moon");
+    expect(panels).toContain("<Sun");
+    expect(courseInfo).toContain('data-course-info-surface="flat"');
+    expect(courseInfo).toContain("<LogOut");
+    expect(courseInfo).not.toContain("rounded-2xl border border-line bg-card");
+  });
+
+  it("decomposes rewards into direct stars, ten-star moons, and hundred-star suns", () => {
+    expect(decomposeClassroomReward(0)).toEqual({ total: 0, suns: 0, moons: 0, stars: 0 });
+    expect(decomposeClassroomReward(9)).toEqual({ total: 9, suns: 0, moons: 0, stars: 9 });
+    expect(decomposeClassroomReward(10)).toEqual({ total: 10, suns: 0, moons: 1, stars: 0 });
+    expect(decomposeClassroomReward(11)).toEqual({ total: 11, suns: 0, moons: 1, stars: 1 });
+    expect(decomposeClassroomReward(27)).toEqual({ total: 27, suns: 0, moons: 2, stars: 7 });
+    expect(decomposeClassroomReward(100)).toEqual({ total: 100, suns: 1, moons: 0, stars: 0 });
+    expect(decomposeClassroomReward(117)).toEqual({ total: 117, suns: 1, moons: 1, stars: 7 });
   });
 });

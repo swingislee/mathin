@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { ArrowLeft, TriangleAlert } from "lucide-react";
+import { LogOut, TriangleAlert } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
@@ -33,16 +33,17 @@ export function ClassroomCourseInfoBar({
 }) {
   return (
     <header
-      className="flex h-12 min-w-0 items-center gap-1 rounded-2xl border border-line bg-card px-1.5"
+      className="flex h-12 min-w-0 items-center gap-1 border-b border-line px-1"
       data-classroom-course-info
+      data-course-info-surface="flat"
     >
       <Link
         href={backHref}
         aria-label={exitLabel}
         title={exitLabel}
-        className="grid size-11 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-moon/30 hover:text-ink"
+        className="grid size-11 shrink-0 place-items-center rounded-full text-ink transition-colors hover:bg-moon/40 hover:text-rose"
       >
-        <ArrowLeft aria-hidden size={17} />
+        <LogOut aria-hidden size={20} strokeWidth={2.1} />
       </Link>
       <h1 className="min-w-0 flex-1 truncate text-xs font-medium" title={title}>{title}</h1>
 

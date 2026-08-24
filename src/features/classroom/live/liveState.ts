@@ -115,5 +115,3 @@ export function reduceEvent(state: LiveState, ev: SessionEvent): LiveState {
 }
 
 export const OPTION_LABELS = ["A", "B", "C", "D"];
-/** M0-A contract: 0–10 are shown individually; 11+ uses a ten-star seal plus remainder. */
-export const MAX_INLINE_STARS = 10;

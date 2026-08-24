@@ -1,6 +1,7 @@
 import type { SessionEvent, SessionRosterState } from "../types";
 
 export const M4B_LONG_NAME_STUDENT_ID = "a4000000-0000-4000-8000-000000000003";
+export const M4B_REWARD_COUNTS = [9, 10, 11, 27, 100] as const;
 
 interface M4bFixtureNames {
   student: (seat: number) => string;
@@ -40,11 +41,10 @@ export function buildM4bRosterFixtures(names: M4bFixtureNames): Record<"8" | "20
   };
 }
 
-/** 10/11/13/27-star examples exercise the visual contract without touching a database. */
+/** Star→moon→sun boundary examples exercise the visual contract without touching a database. */
 export function buildM4bStarFixtureEvents(sessionId: string, userId: string): SessionEvent[] {
-  const counts = [10, 11, 13, 27];
   let seq = 0;
-  return counts.flatMap((count, studentIndex) => Array.from({ length: count }, () => {
+  return M4B_REWARD_COUNTS.flatMap((count, studentIndex) => Array.from({ length: count }, () => {
     seq += 1;
     return {
       id: `e4000000-0000-4000-8000-${String(seq).padStart(12, "0")}`,
