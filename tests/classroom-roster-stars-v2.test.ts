@@ -151,6 +151,7 @@ describe("M4a roster identity and star v2", () => {
     const actions = source("src/features/classroom/actions.ts");
     const readerMigration = source("supabase/migrations/20260825000300_classroom_star_v2_readers.sql");
     const backfillMigration = source("supabase/migrations/20260825000400_classroom_open_roster_backfill.sql");
+    const schemaReloadMigration = source("supabase/migrations/20260825000500_classroom_roster_rpc_schema_reload.sql");
     const route = source("src/app/[locale]/classroom/[classId]/session/[sessionId]/live/page.tsx");
     const shell = source("src/features/classroom/live/LiveShell.tsx");
     const learning = source("src/features/school/session-learning.ts");
@@ -164,6 +165,7 @@ describe("M4a roster identity and star v2", () => {
     expect(backfillMigration).toContain("session_row.started_at is not null");
     expect(backfillMigration).toContain("session_row.ended_at is null");
     expect(backfillMigration).toContain("star_event_schema = 1");
+    expect(schemaReloadMigration).toContain("notify pgrst, 'reload schema'");
     expect(actions).toMatch(/reopenClassSession[\s\S]*freeze_session_roster/);
     expect(route).toContain("getSessionRoster(sessionId)");
     expect(route).toContain('isFeatureEnabled("teaching.classroom_layout_v2")');
