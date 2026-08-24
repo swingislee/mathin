@@ -25,6 +25,7 @@ import type {
   SessionEventType,
   SessionReport,
   SessionLearningReportStatus,
+  SessionRosterEntry,
   SubmissionRecord,
 } from "./types";
 
@@ -493,23 +494,21 @@ export async function getSessionReport(sessionId: string): Promise<SessionReport
 
   const participants = (enrollmentRows ?? []).map((row) => ({
     studentId: row.student_id,
-    userId: row.students?.user_id ?? row.student_id,
+    userId: row.students?.user_id ?? null,
     displayName: row.students?.name ?? "",
   }));
-  const members: ClassroomMember[] = participants.map((student) => ({
+  const roster: SessionRosterEntry[] = participants.map((student) => ({
+    studentId: student.studentId,
     userId: student.userId,
-    displayName: student.displayName,
-    role: "student",
+    name: student.displayName,
+    seatPosition: null,
   }));
-  const report = buildSessionReport(members, events);
-  const participantByUser = new Map(participants.map((student) => [student.userId, student]));
+  const report = buildSessionReport(roster, events);
   const attendanceByStudent = new Map((attendanceRows ?? []).map((row) => [row.student_id, row.status]));
   report.rows = report.rows.map((row) => {
-    const participant = participantByUser.get(row.userId);
     return {
       ...row,
-      studentId: participant?.studentId ?? null,
-      attendanceStatus: participant ? attendanceByStudent.get(participant.studentId) ?? null : null,
+      attendanceStatus: attendanceByStudent.get(row.studentId) ?? null,
     };
   });
 

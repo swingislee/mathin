@@ -1,6 +1,7 @@
 import type { InteractionTrigger } from "@/features/courseware-doc/interactions";
 import type { GameMirrorState } from "@/features/games/types";
 import type { BoardItem } from "@/features/whiteboard/types";
+import { reduceStarLedger, type StarLedger } from "../stars";
 import type { CoursewarePage, SessionEvent } from "../types";
 import type { VideoCtl } from "./VideoStage";
 
@@ -13,7 +14,7 @@ export type Phase = "prep" | "live";
 export interface LiveState {
   pages: CoursewarePage[];
   currentPage: number;
-  stars: Record<string, number>;
+  starLedger: StarLedger;
   started: boolean;
   ended: boolean;
   hands: Record<string, boolean>;
@@ -44,14 +45,12 @@ export function reduceEvent(state: LiveState, ev: SessionEvent): LiveState {
       return { ...state, pages };
     }
     case "star": {
-      const studentId = String(ev.payload.studentId ?? "");
-      if (!studentId) return state;
-      return { ...state, stars: { ...state.stars, [studentId]: (state.stars[studentId] ?? 0) + 1 } };
+      const starLedger = reduceStarLedger(state.starLedger, ev);
+      return starLedger === state.starLedger ? state : { ...state, starLedger };
     }
     case "star_undo": {
-      const studentId = String(ev.payload.studentId ?? "");
-      if (!studentId) return state;
-      return { ...state, stars: { ...state.stars, [studentId]: Math.max(0, (state.stars[studentId] ?? 0) - 1) } };
+      const starLedger = reduceStarLedger(state.starLedger, ev);
+      return starLedger === state.starLedger ? state : { ...state, starLedger };
     }
     case "session_ctl": {
       const action = ev.payload.action;

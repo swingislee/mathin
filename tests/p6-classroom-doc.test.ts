@@ -159,7 +159,7 @@ function docStepEvent(payload: Record<string, unknown>): SessionEvent {
 const emptyState: LiveState = {
   pages: [],
   currentPage: 0,
-  stars: {},
+  starLedger: { legacyCounts: {}, awardsByStudent: {}, revocationsByStudent: {} },
   started: true,
   ended: false,
   hands: {},

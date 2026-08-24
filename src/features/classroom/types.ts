@@ -14,6 +14,15 @@ export interface ClassroomMember {
   role: ClassroomRole;
 }
 
+/** Active enrollment identity shared by classroom roster, seats, attendance and stars. */
+export interface SessionRosterEntry {
+  studentId: string;
+  name: string;
+  seatPosition: number | null;
+  /** Runtime account mapping only; unclaimed students remain in the roster with null. */
+  userId: string | null;
+}
+
 export interface ClassroomRecord extends ClassroomMeta {
   members: ClassroomMember[];
   /** 仅教师可见（经 RPC），其余为 null。 */
@@ -100,8 +109,8 @@ export type SessionAttendanceStatus = "present" | "absent" | "late" | "leave";
 export type SessionLearningReportStatus = "explained" | "independent" | "prompted" | "imitated" | "incomplete" | "unchecked";
 
 export interface SessionReportRow {
-  userId: string;
-  studentId: string | null;
+  studentId: string;
+  userId: string | null;
   displayName: string;
   attendanceStatus: SessionAttendanceStatus | null;
   stars: number;

@@ -80,7 +80,7 @@ export default async function SessionReportPage({
             </TableHeader>
             <TableBody className="divide-y divide-line">
               {report.rows.map((row) => (
-                <TableRow key={row.userId}>
+                <TableRow key={row.studentId}>
                   <TableCell className="px-4 py-2.5">{row.displayName || "—"}</TableCell>
                   <TableCell className="px-4 py-2.5">
                     {row.attendanceStatus ? t("attendance_" + row.attendanceStatus) : t("notCaptured")}

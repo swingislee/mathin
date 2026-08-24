@@ -67,7 +67,7 @@ export async function SessionPostworkPanel({ detail }: { detail: SessionWorkspac
         : reviewStatuses.has("published")
           ? "published"
           : "draft";
-  const reportByStudent = new Map(report.rows.flatMap((row) => row.studentId ? [[row.studentId, row] as const] : []));
+  const reportByStudent = new Map(report.rows.map((row) => [row.studentId, row] as const));
   const studentRows: SessionStudentPostworkRow[] = detail.roster.map((student) => {
     const reportRow = reportByStudent.get(student.studentId);
     return {

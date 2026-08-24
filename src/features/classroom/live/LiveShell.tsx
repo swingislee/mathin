@@ -69,6 +69,7 @@ import { DocCoursewarePage } from "./DocCoursewarePage";
 import { SessionEventLog } from "../sync/eventlog";
 import { flushOutbox, pendingCount } from "../sync/flush";
 import { STORE_ASSETS, idbGet, idbPut } from "../sync/idb";
+import { emptyStarLedger, starCountForRosterEntry } from "../stars";
 import {
   createLocalTransport,
   createP2PSignalBus,
@@ -159,7 +160,7 @@ export function LiveShell({
     let state: LiveState = {
       pages: session.courseware,
       currentPage: session.currentPage,
-      stars: {},
+      starLedger: emptyStarLedger(),
       started: Boolean(session.startedAt),
       ended: Boolean(session.endedAt),
       hands: {},
@@ -1316,7 +1317,10 @@ export function LiveShell({
               {!rosterCollapsed && (
                 <ul className="flex min-h-0 flex-1 gap-1.5 overflow-x-auto p-1.5 [&>li]:min-w-48 lg:block lg:space-y-1 lg:overflow-y-auto lg:[&>li]:min-w-0">
                   {visibleStudents.map((student) => {
-                    const count = state.stars[student.userId] ?? 0;
+                    const count = starCountForRosterEntry(state.starLedger, {
+                      studentId: student.userId,
+                      userId: student.userId,
+                    });
                     const answered = state.quiz ? state.answers[state.quiz.id]?.[student.userId] : undefined;
                     return (
                       <StudentCard
