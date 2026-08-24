@@ -91,7 +91,7 @@ export function useBoardSync(boardId: string, canEdit: boolean, selfName: string
     });
 
     // 绘制中增量流：共享 stroke 对象引用，定时把新增点发出去
-    let active: { stroke: StrokeItem; sent: number } | null = null;
+    let active: { stroke: StrokeItem; sent: number; seq: number } | null = null;
     let progressTimer: ReturnType<typeof setInterval> | null = null;
     const flushProgress = () => {
       if (!active) return;
@@ -103,13 +103,15 @@ export function useBoardSync(boardId: string, canEdit: boolean, selfName: string
           color: stroke.color,
           wNorm: stroke.wNorm,
           points: stroke.points.slice(active.sent),
+          seq: active.seq,
         } satisfies ProgressChunk);
         active.sent = stroke.points.length;
+        active.seq += 1;
       }
     };
     const offStart = boardBus.on("local-progress-start", (stroke) => {
       if (!canEdit) return;
-      active = { stroke, sent: 0 };
+      active = { stroke, sent: 0, seq: 0 };
       flushProgress();
       progressTimer = setInterval(flushProgress, PROGRESS_INTERVAL_MS);
     });
@@ -132,6 +134,7 @@ export function useBoardSync(boardId: string, canEdit: boolean, selfName: string
 
     return () => {
       cancelled = true;
+      flushProgress();
       offStart();
       offEnd();
       offCursor();

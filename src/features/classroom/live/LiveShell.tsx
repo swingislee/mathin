@@ -461,7 +461,7 @@ export function LiveShell({
   }, [effectivePhase]);
 
   // --- 副板书（全课一块，pageKey="side"）---------------------------------
-  const sideBoard = useClassBoard(log, "side", editable, initialState.boards["side"]);
+  const sideBoard = useClassBoard(log, "side", editable, initialState.boards["side"], { cursorName: selfName });
 
   // 学生端的副板书保持固定纵横比并允许平移/缩放；新笔迹落定后自动把最后一行带回视口。
   useEffect(() => {
@@ -944,6 +944,7 @@ export function LiveShell({
                 editable={editable}
                 initialItems={state.boards[page.id]}
                 strokeWidthBasis={stageWidth}
+                cursorName={selfName}
                 onStore={setMainStore}
               />
             )}
@@ -1009,7 +1010,7 @@ export function LiveShell({
                     className="relative mx-auto aspect-[2/5] min-h-full min-w-full bg-card"
                     style={{ width: `${sideZoom * 100}%` }}
                   >
-                    <CanvasSurface editable={editable} store={sideBoard.store} bus={sideBoard.bus} strokeWidthBasis={stageWidth} />
+                    <CanvasSurface editable={editable} store={sideBoard.store} bus={sideBoard.bus} strokeWidthBasis={stageWidth} renderProfile="classroom" />
                   </div>
                 </div>
               )}

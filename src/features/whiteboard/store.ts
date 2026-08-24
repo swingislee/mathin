@@ -24,11 +24,20 @@ type UndoEntry =
 
 export type SaveState = "saved" | "saving" | "error";
 
+export interface BoardRenderMutation {
+  version: number;
+  kind: "append" | "full";
+  /** Only populated for an append that can be painted over the existing base layer. */
+  items: BoardItem[];
+}
+
 interface WhiteboardState {
   boardId: string | null;
   items: BoardItem[];
   /** 本地内容变更 +1；savedRevision 落后即为脏。远端 op 不计（远端由绘制者负责落盘）。 */
   revision: number;
+  /** Canvas-only mutation metadata; unlike revision it also advances for remote and hydration changes. */
+  renderMutation: BoardRenderMutation;
   savedRevision: number;
   saveState: SaveState;
   tool: Tool;
@@ -99,6 +108,7 @@ const stateCreator: StateCreator<WhiteboardState> = (set, get) => ({
   boardId: null,
   items: [],
   revision: 0,
+  renderMutation: { version: 0, kind: "full", items: [] },
   savedRevision: 0,
   saveState: "saved",
   tool: "pen",
@@ -117,6 +127,7 @@ const stateCreator: StateCreator<WhiteboardState> = (set, get) => ({
           boardId,
           items,
           revision: 0,
+          renderMutation: { version: state.renderMutation.version + 1, kind: "full", items: [] },
           savedRevision: 0,
           saveState: "saved",
           selectedIds: [],
@@ -134,6 +145,7 @@ const stateCreator: StateCreator<WhiteboardState> = (set, get) => ({
   commitItem: (item) => set((state) => ({
     items: [...state.items, item],
     revision: state.revision + 1,
+    renderMutation: { version: state.renderMutation.version + 1, kind: "append", items: [item] },
     selectedIds: isStrokeItem(item) ? state.selectedIds : [item.id],
     undoStack: [...state.undoStack, { kind: "erase", ids: [item.id] }],
     outbox: [...state.outbox, { t: "commit", item }],
@@ -147,6 +159,7 @@ const stateCreator: StateCreator<WhiteboardState> = (set, get) => ({
     return {
       items,
       revision: state.revision + 1,
+      renderMutation: { version: state.renderMutation.version + 1, kind: "full", items: [] },
       undoStack: [...state.undoStack, { kind: "replace", items: [previous] }],
       outbox: [...state.outbox, { t: "replace", item }],
     };
@@ -166,6 +179,7 @@ const stateCreator: StateCreator<WhiteboardState> = (set, get) => ({
     return {
       items: state.items.filter((item) => !idSet.has(item.id)),
       revision: state.revision + 1,
+      renderMutation: { version: state.renderMutation.version + 1, kind: "full", items: [] },
       selectedIds: state.selectedIds.filter((id) => !idSet.has(id)),
       undoStack: [...state.undoStack, { kind: "restore", items: restored, indexes }],
       outbox: [...state.outbox, ...restored.map((item): BoardOp => ({ t: "erase", id: item.id }))],
@@ -178,6 +192,7 @@ const stateCreator: StateCreator<WhiteboardState> = (set, get) => ({
     return {
       items: [...state.items, ...copies],
       revision: state.revision + 1,
+      renderMutation: { version: state.renderMutation.version + 1, kind: "append", items: copies },
       selectedIds: copies.map((item) => item.id),
       undoStack: [...state.undoStack, { kind: "erase", ids: copies.map((item) => item.id) }],
       outbox: [...state.outbox, ...copies.map((item): BoardOp => ({ t: "commit", item }))],
@@ -207,6 +222,7 @@ const stateCreator: StateCreator<WhiteboardState> = (set, get) => ({
     return {
       items,
       revision: state.revision + 1,
+      renderMutation: { version: state.renderMutation.version + 1, kind: "full", items: [] },
       undoStack: [...state.undoStack, { kind: "replace", items: previous }],
       outbox: [...state.outbox, ...replacements.map((item): BoardOp => ({ t: "replace", item }))],
     };
@@ -214,6 +230,7 @@ const stateCreator: StateCreator<WhiteboardState> = (set, get) => ({
   clear: () => set((state) => state.items.length === 0 ? state : ({
     items: [],
     revision: state.revision + 1,
+    renderMutation: { version: state.renderMutation.version + 1, kind: "full", items: [] },
     selectedIds: [],
     undoStack: [...state.undoStack, {
       kind: "restore",
@@ -231,6 +248,7 @@ const stateCreator: StateCreator<WhiteboardState> = (set, get) => ({
       return {
         items: state.items.filter((item) => !ids.has(item.id)),
         revision: state.revision + 1,
+        renderMutation: { version: state.renderMutation.version + 1, kind: "full", items: [] },
         selectedIds: [],
         undoStack,
         outbox: [...state.outbox, ...entry.ids.map((id): BoardOp => ({ t: "erase", id }))],
@@ -240,6 +258,7 @@ const stateCreator: StateCreator<WhiteboardState> = (set, get) => ({
       return {
         items: restoreAt(state.items, entry.items, entry.indexes),
         revision: state.revision + 1,
+        renderMutation: { version: state.renderMutation.version + 1, kind: "full", items: [] },
         undoStack,
         outbox: [...state.outbox, { t: "restore", items: entry.items }],
       };
@@ -248,32 +267,56 @@ const stateCreator: StateCreator<WhiteboardState> = (set, get) => ({
     return {
       items: state.items.map((item) => previousById.get(item.id) ?? item),
       revision: state.revision + 1,
+      renderMutation: { version: state.renderMutation.version + 1, kind: "full", items: [] },
       undoStack,
       outbox: [...state.outbox, ...entry.items.map((item): BoardOp => ({ t: "replace", item }))],
     };
   }),
-  replaceItems: (items) => set({ items, selectedIds: [] }),
+  replaceItems: (items) => set((state) => ({
+    items,
+    selectedIds: [],
+    renderMutation: { version: state.renderMutation.version + 1, kind: "full", items: [] },
+  })),
   applyRemote: (op) => set((state) => {
     if (op.t === "commit") {
       return state.items.some((item) => item.id === op.item.id)
         ? state
-        : { items: [...state.items, op.item] };
+        : {
+            items: [...state.items, op.item],
+            renderMutation: { version: state.renderMutation.version + 1, kind: "append", items: [op.item] },
+          };
     }
     if (op.t === "replace") {
       return state.items.some((item) => item.id === op.item.id)
-        ? { items: state.items.map((item) => item.id === op.item.id ? op.item : item) }
-        : { items: [...state.items, op.item] };
+        ? {
+            items: state.items.map((item) => item.id === op.item.id ? op.item : item),
+            renderMutation: { version: state.renderMutation.version + 1, kind: "full", items: [] },
+          }
+        : {
+            items: [...state.items, op.item],
+            renderMutation: { version: state.renderMutation.version + 1, kind: "append", items: [op.item] },
+          };
     }
     if (op.t === "erase") {
       return state.items.some((item) => item.id === op.id)
-        ? { items: state.items.filter((item) => item.id !== op.id) }
+        ? {
+            items: state.items.filter((item) => item.id !== op.id),
+            renderMutation: { version: state.renderMutation.version + 1, kind: "full", items: [] },
+          }
         : state;
     }
     if (op.t === "clear") {
-      return state.items.length ? { items: [], selectedIds: [] } : state;
+      return state.items.length ? {
+        items: [],
+        selectedIds: [],
+        renderMutation: { version: state.renderMutation.version + 1, kind: "full", items: [] },
+      } : state;
     }
     const items = appendMissing(state.items, op.items);
-    return items === state.items ? state : { items };
+    return items === state.items ? state : {
+      items,
+      renderMutation: { version: state.renderMutation.version + 1, kind: "full", items: [] },
+    };
   }),
   addInstrument: (kind) => set((state) => ({ instruments: [...state.instruments, defaultInstrument(kind)] })),
   updateInstrument: (item) => set((state) => ({

@@ -7,7 +7,12 @@ import { isStrokeItem, type BoardItem, type BoardOp, type ProgressChunk, type St
 import type { SessionEventLog } from "../sync/eventlog";
 
 const PROGRESS_INTERVAL_MS = 50;
+const CURSOR_MIN_INTERVAL_MS = 90;
 const SNAPSHOT_DEBOUNCE_MS = 2500;
+
+interface ClassBoardOptions {
+  cursorName?: string;
+}
 
 /**
  * 课堂板书（08-§5）：复用白板画布组件，同步层换成课堂事件层——
@@ -20,7 +25,9 @@ export function useClassBoard(
   boardKey: string,
   editable: boolean,
   initialItems: BoardItem[] | undefined,
+  options: ClassBoardOptions = {},
 ) {
+  const cursorName = options.cursorName ?? "";
   const [store] = useState(createWhiteboardStore);
   const [bus] = useState(() => new BoardBus());
   const hydrated = useRef(false);
@@ -45,7 +52,7 @@ export function useClassBoard(
       }
     });
 
-    let active: { stroke: StrokeItem; sent: number } | null = null;
+    let active: { stroke: StrokeItem; sent: number; seq: number } | null = null;
     let progressTimer: ReturnType<typeof setInterval> | null = null;
     const flushProgress = () => {
       if (!active) return;
@@ -57,14 +64,16 @@ export function useClassBoard(
           color: stroke.color,
           wNorm: stroke.wNorm,
           points: stroke.points.slice(active.sent),
+          seq: active.seq,
         };
         log.sendFx({ scope: "board", payload: { key: boardKey, progress: chunk } });
         active.sent = stroke.points.length;
+        active.seq += 1;
       }
     };
     const offStart = bus.on("local-progress-start", (stroke) => {
       if (!editable) return;
-      active = { stroke, sent: 0 };
+      active = { stroke, sent: 0, seq: 0 };
       flushProgress();
       progressTimer = setInterval(flushProgress, PROGRESS_INTERVAL_MS);
     });
@@ -77,7 +86,12 @@ export function useClassBoard(
 
     const offFx = log.onFx((fx) => {
       if (fx.scope !== "board") return;
-      const payload = fx.payload as { key?: unknown; op?: BoardOp; progress?: ProgressChunk };
+      const payload = fx.payload as {
+        key?: unknown;
+        op?: BoardOp;
+        progress?: ProgressChunk;
+        cursor?: { key: string; name: string; x: number; y: number };
+      };
       if (payload.key !== boardKey) return;
       if (payload.op) {
         store.getState().applyRemote(payload.op);
@@ -87,7 +101,21 @@ export function useClassBoard(
         }
       } else if (payload.progress) {
         bus.emit("remote-progress", payload.progress);
+      } else if (payload.cursor && payload.cursor.key !== log.deviceId) {
+        bus.emit("remote-cursor", payload.cursor);
       }
+    });
+
+    let lastCursorAt = 0;
+    const offCursor = bus.on("local-cursor", ({ x, y }) => {
+      if (!editable) return;
+      const now = Date.now();
+      if (now - lastCursorAt < CURSOR_MIN_INTERVAL_MS) return;
+      lastCursorAt = now;
+      log.sendFx({
+        scope: "board",
+        payload: { key: boardKey, cursor: { key: log.deviceId, name: cursorName, x, y } },
+      });
     });
 
     // 教师的持久快照到达（含晚到的 T2 重放）：跟随端整块对齐兜底
@@ -99,14 +127,16 @@ export function useClassBoard(
     });
 
     return () => {
+      flushProgress();
       unsubOutbox();
       offStart();
       offEnd();
       offFx();
       offEv();
+      offCursor();
       if (progressTimer) clearInterval(progressTimer);
     };
-  }, [log, boardKey, editable, store, bus]);
+  }, [log, boardKey, editable, store, bus, cursorName]);
 
   // 快照持久化（仅书写端）：防抖落 board_snapshot；翻页卸载时立即补一发，不丢尾巴
   useEffect(() => {

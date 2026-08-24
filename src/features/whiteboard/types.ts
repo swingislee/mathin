@@ -120,6 +120,8 @@ export type BoardOp =
 
 /** 绘制中的增量点（节流广播，对端画在 draft 层）。 */
 export interface ProgressChunk {
+  /** v2 chunks are numbered per stroke from zero; omitted means legacy best-effort stream. */
+  seq?: number;
   id: string;
   mode: StrokeMode;
   color: ColorToken;

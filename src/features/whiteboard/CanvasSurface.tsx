@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useStore } from "zustand";
+import { BoardInputSink, type InputPoint } from "./board-input-sink";
 import { boardBus, type BoardBus } from "./bus";
 import { BoardObjectLayer } from "./BoardObjectLayer";
 import { createShapeFromDrag } from "./geometry";
@@ -9,11 +10,14 @@ import { InstrumentLayer } from "./InstrumentLayer";
 import { colorVar, drawItem, hitStrokeId, newStrokeId, renderAll, resolveColor } from "./strokes";
 import { useWhiteboardStore, type WhiteboardStore } from "./store";
 import { COLOR_TOKENS, isStrokeItem, type ShapeItem, type StrokeItem, type Tool } from "./types";
+import { ProgressStreamAssembler } from "./progress-stream";
+import { classroomPixelBudget, type WhiteboardRenderProfile } from "./render-profile";
 
 /** S/M/L 碎擦宽度（相对逻辑画布宽），沿旧版手感微调。 */
 const ERASER_NORM: Partial<Record<Tool, number>> = { eraserS: 0.012, eraserM: 0.025, eraserL: 0.05 };
 const STROKE_ERASER_THRESHOLD_PX = 12;
 const CURSOR_STALE_MS = 4000;
+const DRAFT_TAIL_OVERLAP_POINTS = 12;
 
 interface RemoteCursor {
   name: string;
@@ -28,13 +32,17 @@ export function CanvasSurface({
   store = useWhiteboardStore,
   bus = boardBus,
   strokeWidthBasis,
+  renderProfile = "default",
 }: {
   editable: boolean;
   store?: WhiteboardStore;
   bus?: BoardBus;
   /** 课堂场景传统一参照宽度，让同屏两块板书的画笔粗细一致。 */
   strokeWidthBasis?: number;
+  /** 课堂 profile 启用 DPR、单 Canvas 与全课堂总像素三重护栏。 */
+  renderProfile?: WhiteboardRenderProfile;
 }) {
+  const surfaceId = useId();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const baseRef = useRef<HTMLCanvasElement | null>(null);
   const draftRef = useRef<HTMLCanvasElement | null>(null);
@@ -45,13 +53,14 @@ export function CanvasSurface({
   }, [strokeWidthBasis]);
   const basisW = useCallback(() => (basisRef.current && basisRef.current > 0 ? basisRef.current : dimsRef.current.w), []);
   const strokeRef = useRef<StrokeItem | null>(null);
-  const remotePendingRef = useRef<Map<string, StrokeItem>>(new Map());
+  const draftDrawnPointsRef = useRef(0);
+  const remoteProgressRef = useRef(new ProgressStreamAssembler());
   const [cursor, setCursor] = useState<[number, number] | null>(null);
   const [canvasSize, setCanvasSize] = useState({ width: 1, height: 1 });
   const [remoteCursors, setRemoteCursors] = useState<Record<string, RemoteCursor>>({});
   const [shapePreview, setShapePreview] = useState<ShapeItem | null>(null);
 
-  const items = useStore(store, (state) => state.items);
+  const renderMutation = useStore(store, (state) => state.renderMutation);
   const tool = useStore(store, (state) => state.tool);
   const color = useStore(store, (state) => state.color);
   const fill = useStore(store, (state) => state.fill);
@@ -74,35 +83,73 @@ export function CanvasSurface({
     const { w, h } = dimsRef.current;
     ctx.clearRect(0, 0, w, h);
     const local = strokeRef.current;
-    if (local && local.mode === "ink") drawItem(ctx, local, w, h, resolveColor(draft, local.color), basisW());
-    for (const pending of remotePendingRef.current.values()) {
+    if (local && local.mode === "ink") {
+      drawItem(ctx, local, w, h, resolveColor(draft, local.color), basisW());
+      draftDrawnPointsRef.current = local.points.length;
+    } else {
+      draftDrawnPointsRef.current = 0;
+    }
+    for (const pending of remoteProgressRef.current.strokes()) {
       if (pending.mode === "ink") drawItem(ctx, pending, w, h, resolveColor(draft, pending.color), basisW());
     }
+  }, [basisW]);
+
+  const drawLocalDraftTail = useCallback(() => {
+    const draft = draftRef.current;
+    const ctx = draft?.getContext("2d");
+    const stroke = strokeRef.current;
+    if (!draft || !ctx || !stroke || stroke.mode !== "ink") return;
+    const drawn = draftDrawnPointsRef.current;
+    if (stroke.points.length <= drawn) return;
+    const from = Math.max(0, drawn - DRAFT_TAIL_OVERLAP_POINTS);
+    const tail = { ...stroke, points: stroke.points.slice(from) };
+    drawItem(ctx, tail, dimsRef.current.w, dimsRef.current.h, resolveColor(draft, stroke.color), basisW());
+    draftDrawnPointsRef.current = stroke.points.length;
   }, [basisW]);
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+    const applyDpr = (dpr: number) => {
+      const { w, h } = dimsRef.current;
+      let backingPixels = 0;
+      for (const canvas of [baseRef.current, draftRef.current]) {
+        if (!canvas) continue;
+        canvas.width = Math.max(1, Math.floor(w * dpr));
+        canvas.height = Math.max(1, Math.floor(h * dpr));
+        backingPixels += canvas.width * canvas.height;
+        canvas.getContext("2d")?.setTransform(canvas.width / w, 0, 0, canvas.height / h, 0, 0);
+      }
+      container.dataset.effectiveDpr = dpr.toFixed(3);
+      container.dataset.backingPixels = String(backingPixels);
+      redrawBase();
+      redrawDraft();
+    };
+    const unregister = renderProfile === "classroom"
+      ? classroomPixelBudget.register(surfaceId, applyDpr)
+      : null;
     const resize = () => {
       const w = Math.max(container.clientWidth, 1);
       const h = Math.max(container.clientHeight, 1);
-      const dpr = window.devicePixelRatio || 1;
       dimsRef.current = { w, h };
-      setCanvasSize({ width: w, height: h });
-      for (const canvas of [baseRef.current, draftRef.current]) {
-        if (!canvas) continue;
-        canvas.width = Math.round(w * dpr);
-        canvas.height = Math.round(h * dpr);
-        canvas.getContext("2d")?.setTransform(dpr, 0, 0, dpr, 0, 0);
+      setCanvasSize((previous) => previous.width === w && previous.height === h ? previous : { width: w, height: h });
+      const deviceDpr = window.devicePixelRatio || 1;
+      if (renderProfile === "classroom") {
+        classroomPixelBudget.update(surfaceId, { width: w, height: h, deviceDpr, canvasCount: 2 });
+      } else {
+        applyDpr(deviceDpr);
       }
-      redrawBase();
-      redrawDraft();
     };
     resize();
     const observer = new ResizeObserver(resize);
     observer.observe(container);
-    return () => observer.disconnect();
-  }, [redrawBase, redrawDraft]);
+    window.addEventListener("resize", resize);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", resize);
+      unregister?.();
+    };
+  }, [redrawBase, redrawDraft, renderProfile, surfaceId]);
 
   useEffect(() => {
     redrawBase();
@@ -110,10 +157,20 @@ export function CanvasSurface({
   }, [strokeWidthBasis, redrawBase, redrawDraft]);
 
   useEffect(() => {
-    for (const item of items) if (isStrokeItem(item)) remotePendingRef.current.delete(item.id);
-    redrawBase();
+    const base = baseRef.current;
+    const ctx = base?.getContext("2d");
+    if (renderMutation.kind === "append" && base && ctx) {
+      const { w, h } = dimsRef.current;
+      for (const item of renderMutation.items) {
+        if (!isStrokeItem(item)) continue;
+        remoteProgressRef.current.finish(item.id);
+        drawItem(ctx, item, w, h, item.mode === "erase" ? "#000" : resolveColor(base, item.color), basisW());
+      }
+    } else {
+      redrawBase();
+    }
     redrawDraft();
-  }, [items, redrawBase, redrawDraft]);
+  }, [renderMutation, redrawBase, redrawDraft, basisW]);
 
   useEffect(() => {
     const observer = new MutationObserver(() => {
@@ -132,17 +189,8 @@ export function CanvasSurface({
 
   useEffect(() => {
     const offProgress = bus.on("remote-progress", (chunk) => {
-      const pending = remotePendingRef.current;
-      if (chunk.done) {
-        pending.delete(chunk.id);
-        redrawDraft();
-        return;
-      }
-      if (store.getState().items.some((item) => item.id === chunk.id)) return;
-      const existing = pending.get(chunk.id);
-      if (existing) existing.points.push(...chunk.points);
-      else pending.set(chunk.id, { id: chunk.id, mode: chunk.mode, color: chunk.color, wNorm: chunk.wNorm, points: [...chunk.points] });
-      redrawDraft();
+      const committed = store.getState().items.some((item) => item.id === chunk.id);
+      if (remoteProgressRef.current.ingest(chunk, committed)) redrawDraft();
     });
     const offCursor = bus.on("remote-cursor", (payload) => {
       setRemoteCursors((prev) => ({ ...prev, [payload.key]: { name: payload.name, x: payload.x, y: payload.y, at: Date.now() } }));
@@ -185,12 +233,19 @@ export function CanvasSurface({
     let gestureStart: [number, number] | null = null;
     let gestureEnd: [number, number] | null = null;
 
-    const toPoint = (event: PointerEvent): [number, number] => {
+    const toPoint = (event: PointerEvent): InputPoint => {
       const rect = draft.getBoundingClientRect();
       return [event.clientX - rect.left, event.clientY - rect.top];
     };
-    const toNorm = (event: PointerEvent): [number, number] => {
-      const [x, y] = toPoint(event);
+    const eventPoints = (event: PointerEvent): InputPoint[] => {
+      const coalesced = event.getCoalescedEvents?.() ?? [];
+      const points = (coalesced.length ? coalesced : [event]).map(toPoint);
+      const current = toPoint(event);
+      const last = points[points.length - 1];
+      if (!last || last[0] !== current[0] || last[1] !== current[1]) points.push(current);
+      return points;
+    };
+    const toNorm = ([x, y]: InputPoint): [number, number] => {
       const { w, h } = dimsRef.current;
       return [x / w, y / h];
     };
@@ -200,13 +255,47 @@ export function CanvasSurface({
       if (id) actions.eraseLine(id);
     };
 
+    const sink = new BoardInputSink((points) => {
+      const norms = points.map(toNorm);
+      const lastPoint = points[points.length - 1];
+      const lastNorm = norms[norms.length - 1];
+      gestureEnd = lastNorm;
+      if (tool === "shape" && gestureStart) {
+        setShapePreview(createShapeFromDrag("shape-preview", shapeKind, gestureStart, lastNorm, color, fill, sizeNorm, dimsRef.current.h / dimsRef.current.w));
+        return;
+      }
+      if (tool.startsWith("eraser")) setCursor(lastPoint);
+      if (tool === "strokeEraser") {
+        for (const [x, y] of points) eraseHit(x, y);
+        return;
+      }
+      const stroke = strokeRef.current;
+      if (!stroke) return;
+      const { w, h } = dimsRef.current;
+      for (const norm of norms) {
+        const previous = stroke.points[stroke.points.length - 1];
+        stroke.points.push(norm);
+        if (stroke.mode === "erase") {
+          drawItem(baseCtx, { ...stroke, points: [previous, norm] }, w, h, "#000", basisW());
+        }
+      }
+      if (stroke.mode === "ink") drawLocalDraftTail();
+    });
+
     const down = (event: PointerEvent) => {
+      if (!event.isPrimary || event.button !== 0) return;
       const [x, y] = toPoint(event);
-      const norm = toNorm(event);
+      if (!sink.begin(event.pointerId, [x, y])) return;
+      event.preventDefault();
+      const norm = toNorm([x, y]);
       gestureStart = norm;
       gestureEnd = norm;
-      draft.setPointerCapture(event.pointerId);
       capturedPointerId = event.pointerId;
+      try {
+        draft.setPointerCapture(event.pointerId);
+      } catch {
+        // Some synthetic/test pointer sources do not expose pointer capture.
+      }
       if (tool === "shape") {
         setShapePreview(createShapeFromDrag("shape-preview", shapeKind, norm, norm, color, fill, sizeNorm, dimsRef.current.h / dimsRef.current.w));
         return;
@@ -223,44 +312,29 @@ export function CanvasSurface({
         points: [[x / w, y / h]],
       };
       strokeRef.current = stroke;
+      draftDrawnPointsRef.current = 0;
       if (stroke.mode === "ink") bus.emit("local-progress-start", stroke);
     };
 
     const move = (event: PointerEvent) => {
-      const [x, y] = toPoint(event);
-      const { w, h } = dimsRef.current;
-      const norm: [number, number] = [x / w, y / h];
+      const point = toPoint(event);
+      const norm = toNorm(point);
       bus.emit("local-cursor", { x: norm[0], y: norm[1] });
-      gestureEnd = norm;
-      if (tool === "shape" && gestureStart) {
-        setShapePreview(createShapeFromDrag("shape-preview", shapeKind, gestureStart, norm, color, fill, sizeNorm, dimsRef.current.h / dimsRef.current.w));
-        return;
-      }
-      if (tool.startsWith("eraser")) setCursor([x, y]);
-      if (tool === "strokeEraser") {
-        if (event.buttons & 1) eraseHit(x, y);
-        return;
-      }
-      const stroke = strokeRef.current;
-      if (!stroke) return;
-      const prev = stroke.points[stroke.points.length - 1];
-      stroke.points.push(norm);
-      if (stroke.mode === "ink") redrawDraft();
-      else drawItem(baseCtx, { ...stroke, points: [prev, norm] }, w, h, "#000", basisW());
+      if (tool.startsWith("eraser")) setCursor(point);
+      sink.push(event.pointerId, eventPoints(event));
     };
 
-    const releaseCapture = () => {
-      if (capturedPointerId === null) return;
+    const releaseCapture = (pointerId: number) => {
+      if (capturedPointerId !== pointerId) return;
+      capturedPointerId = null;
       try {
-        if (draft.hasPointerCapture(capturedPointerId)) draft.releasePointerCapture(capturedPointerId);
+        if (draft.hasPointerCapture(pointerId)) draft.releasePointerCapture(pointerId);
       } catch {
         // 节点卸载时 capture 已隐式释放。
       }
-      capturedPointerId = null;
     };
 
-    const finish = () => {
-      releaseCapture();
+    const commitGesture = () => {
       if (tool === "shape") {
         const start = gestureStart;
         const end = gestureEnd;
@@ -274,31 +348,62 @@ export function CanvasSurface({
       const stroke = strokeRef.current;
       if (!stroke) return;
       strokeRef.current = null;
+      draftDrawnPointsRef.current = 0;
       if (stroke.mode === "ink") bus.emit("local-progress-end", { id: stroke.id });
       store.getState().commitItem(stroke);
+    };
+
+    const finish = (event: PointerEvent) => {
+      if (!sink.finish(event.pointerId, eventPoints(event))) return;
+      releaseCapture(event.pointerId);
+      commitGesture();
+    };
+    const finishLostCapture = (event: PointerEvent) => {
+      if (!sink.finish(event.pointerId)) return;
+      capturedPointerId = null;
+      commitGesture();
+    };
+    const drain = () => {
+      const pointerId = sink.drain();
+      if (pointerId === null) return;
+      releaseCapture(pointerId);
+      commitGesture();
+    };
+    const visibility = () => {
+      if (document.visibilityState === "hidden") drain();
     };
 
     const leave = () => setCursor(null);
     draft.addEventListener("pointerdown", down);
     draft.addEventListener("pointermove", move);
     draft.addEventListener("pointerleave", leave);
+    draft.addEventListener("lostpointercapture", finishLostCapture);
     window.addEventListener("pointerup", finish);
     window.addEventListener("pointercancel", finish);
+    window.addEventListener("blur", drain);
+    window.addEventListener("pagehide", drain);
+    document.addEventListener("visibilitychange", visibility);
     return () => {
+      drain();
+      sink.dispose();
       draft.removeEventListener("pointerdown", down);
       draft.removeEventListener("pointermove", move);
       draft.removeEventListener("pointerleave", leave);
+      draft.removeEventListener("lostpointercapture", finishLostCapture);
       window.removeEventListener("pointerup", finish);
       window.removeEventListener("pointercancel", finish);
+      window.removeEventListener("blur", drain);
+      window.removeEventListener("pagehide", drain);
+      document.removeEventListener("visibilitychange", visibility);
     };
-  }, [editable, tool, color, fill, sizeNorm, shapeKind, redrawDraft, store, bus, basisW]);
+  }, [editable, tool, color, fill, sizeNorm, shapeKind, store, bus, basisW, drawLocalDraftTail]);
 
   const interactive = editable && tool !== "pointer";
   const cursorStyle = !interactive ? "default" : tool.startsWith("eraser") ? "none" : "crosshair";
   const eraserSize = (ERASER_NORM[tool] ?? 0) * (strokeWidthBasis && strokeWidthBasis > 0 ? strokeWidthBasis : canvasSize.width);
 
   return (
-    <div ref={containerRef} className="pointer-events-none absolute inset-0">
+    <div ref={containerRef} className="pointer-events-none absolute inset-0" data-render-profile={renderProfile}>
       <canvas ref={baseRef} className="absolute inset-0 h-full w-full touch-none" style={{ pointerEvents: "none" }} />
       <BoardObjectLayer store={store} editable={editable} width={canvasSize.width} height={canvasSize.height} preview={shapePreview} />
       <canvas

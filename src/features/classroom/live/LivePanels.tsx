@@ -26,6 +26,7 @@ export function MainBoard({
   editable,
   initialItems,
   strokeWidthBasis,
+  cursorName,
   onStore,
 }: {
   log: SessionEventLog | null;
@@ -33,15 +34,16 @@ export function MainBoard({
   editable: boolean;
   initialItems: BoardItem[] | undefined;
   strokeWidthBasis?: number;
+  cursorName: string;
   onStore: (store: WhiteboardStore) => void;
 }) {
-  const { store, bus } = useClassBoard(log, boardKey, editable, initialItems);
+  const { store, bus } = useClassBoard(log, boardKey, editable, initialItems, { cursorName });
   useEffect(() => {
     onStore(store);
   }, [store, onStore]);
   return (
     <div className="pointer-events-none absolute inset-0 z-10">
-      <CanvasSurface editable={editable} store={store} bus={bus} strokeWidthBasis={strokeWidthBasis} />
+      <CanvasSurface editable={editable} store={store} bus={bus} strokeWidthBasis={strokeWidthBasis} renderProfile="classroom" />
     </div>
   );
 }
