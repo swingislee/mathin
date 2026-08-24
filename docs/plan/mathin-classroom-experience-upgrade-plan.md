@@ -1,6 +1,6 @@
 # Mathin 课堂体验升级规划
 
-> **状态**：M1 确定性逻辑修正已完成开发端人工验收；M0 决策门未关闭，暂不进入 M2–M5 集成实施<br>
+> **状态**：M1 已完成开发端人工验收；M0-A 产品决策已冻结，M0-B 原型与基线施工中；暂不进入 M2–M5 集成实施<br>
 > **规划日期**：2026-08-24<br>
 > **仓库基线**：`swingislee/mathin`，本轮审阅基于 `main` 的 `0e30b33`<br>
 > **M1 验收基线**：`43ae587` + `67989c1`；只表示开发目标已验收，尚未部署生产<br>
@@ -975,6 +975,26 @@ teaching.classroom_h5_pointer_v1
 | H5 | 扩展现有 runtime 并版本握手；不兼容页交互锁 | v3 message schema、威胁模型、watchdog |
 | 性能/存储 | fresh production baseline，冻结设备、pixel/payload/latency 预算 | 可复现 fixture、命令、原始摘要 |
 | 灰度与回退 | 现有数据库 feature flag，三开关独立 | migration 清单、旧 reader 删除条件 |
+
+#### M0-A 决策记录（2026-08-24）
+
+决策负责人为产品负责人；本记录只授权开发目标上的 M0-B 原型与基线，不授权生产部署或改变 R1-Live-2 Gate 2 行为。
+
+| 决策 | 冻结结果 | 代码、协议或迁移影响 |
+| --- | --- | --- |
+| 课堂结构 | 左侧严格 4:3 主板书；右侧依次为课程信息、副板书、4×5 学生积分；全宽底栏承载高频画笔与翻页 | M4 调整教师 control 布局；display/viewer 保持独立；实际右栏宽度由 M0-B viewport 原型校准 |
+| 默认输入 | Smart 只自动路由 `pen`；轻点已审计点击目标，移动后由共同舞台接管书写；其他工具按 §6.4 保守处理 | M3 建共同舞台 capture、`BoardInputSink` 与工具矩阵；未知 renderer fail closed 到交互锁 |
+| renderer 能力 | 只给版本化 registry 中已审计 renderer 启用；能力未知、版本不匹配或 H5 bridge 失联时进入交互锁 | 新增 capability schema；逐页登记数独、文档、媒体、自研游戏、白板、工具覆盖页与 H5 |
+| 名单身份 | active enrollment 决定名单，业务主键为稳定 `students.id`，`userId` 只作可空运行态映射 | `SessionRosterEntry`、数据库 migration、RLS、旧账号型事件/报表双读；未认领学生必须保留 |
+| 星星语义 | v2 award/revoke set；撤销指向具体 `awardId`，重复、晚到和跨 transport 顺序不改变结果 | 新事件 schema、writer、RLS、聚合器、报表、导出与 v1/v2 混合 fixture |
+| 星星超限 | 0–10 颗逐颗显示；第 11 颗起改为一个十星章加余星；奖励继续写入，不把视觉上限当业务上限；可访问名称包含精确总数 | M4 学生卡覆盖 0/1/10/11/13/历史高分；视觉表达与 v2 事件总数分离 |
+| 21–30 人 | 复用稳定座次并在学生区内部纵向滚动；不截断、不静默重排 | M4 复用 `seatPosition`，补 1/8/20/30 人与键盘焦点原型 |
+| 课中名单变化 | 开课冻结 session roster；重连发现报名或座次差异后提示，由教师确认刷新 | roster revision/摘要、差异合同与显式刷新动作；禁止课中静默重排 |
+| Realtime 权威 | 数据库已验证事件收敛教师控制状态；broadcast 只承载可丢弃暂态效果，不能凭 payload 自报角色获得权威 | reducer 在版本化 schema/RLS 验证后应用；FX 去重并由 final/snapshot 收敛 |
+| H5 | 扩展既有 runtime、版本握手与 watchdog；不兼容或失联页面进入交互锁 | runtime/message schema 升级与缓存失效；不新建无握手平行 bridge |
+| 灰度与回退 | 输入、布局、H5 三个服务端 feature flag 独立、默认 false；旧 reader 在双读期保留 | fail-closed migration、生成类型、初始化清单、管理入口与 zh/en 文案；生产另走 preflight/postflight |
+
+M0-A 已关闭。M0-B 仍须用 DOM 原型和真实设备数据冻结 `5/8/12px` 阈值、Canvas pixel budget、60 分钟 payload/IDB/恢复基线及是否需要 progress chunk 或 snapshot 分块；这些未决项不得由开发机观感代替。
 
 #### 退出条件
 
