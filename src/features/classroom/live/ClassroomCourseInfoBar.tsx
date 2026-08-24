@@ -6,6 +6,30 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 
+export function ClassroomEndButton({
+  label,
+  disabled = false,
+  onClick,
+}: {
+  label: string;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className={cn(
+        "shrink-0 rounded-full border border-line px-3 py-1 text-xs text-muted transition-colors hover:bg-rose/10 hover:text-rose",
+        disabled && "cursor-not-allowed opacity-55",
+      )}
+    >
+      {label}
+    </button>
+  );
+}
+
 export function ClassroomCourseInfoBar({
   backHref,
   exitLabel,
@@ -33,15 +57,16 @@ export function ClassroomCourseInfoBar({
 }) {
   return (
     <header
-      className="flex h-12 min-w-0 items-center gap-1 border-b border-line px-1"
+      className="flex h-10 min-w-0 items-center gap-1 px-1"
       data-classroom-course-info
       data-course-info-surface="flat"
+      data-course-info-height="40"
     >
       <Link
         href={backHref}
         aria-label={exitLabel}
         title={exitLabel}
-        className="grid size-11 shrink-0 place-items-center rounded-full text-ink transition-colors hover:bg-moon/40 hover:text-rose"
+        className="grid size-10 shrink-0 place-items-center rounded-full text-ink transition-colors hover:bg-moon/40 hover:text-rose"
       >
         <LogOut aria-hidden size={20} strokeWidth={2.1} />
       </Link>
@@ -51,7 +76,7 @@ export function ClassroomCourseInfoBar({
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="min-h-11 max-w-20 shrink-0 truncate rounded-full px-2 text-[11px] text-muted transition-colors hover:bg-moon/30 hover:text-ink"
+            className="h-10 max-w-20 shrink-0 truncate rounded-full px-2 text-[11px] text-muted transition-colors hover:bg-moon/30 hover:text-ink"
           >
             {statusLabel}
           </button>
@@ -68,7 +93,7 @@ export function ClassroomCourseInfoBar({
               type="button"
               aria-label={alertLabel}
               title={alertLabel}
-              className="grid size-11 shrink-0 place-items-center rounded-full text-crater transition-colors hover:bg-crater/10"
+              className="grid size-10 shrink-0 place-items-center rounded-full text-crater transition-colors hover:bg-crater/10"
             >
               <TriangleAlert aria-hidden size={17} />
             </button>
@@ -80,17 +105,11 @@ export function ClassroomCourseInfoBar({
       ) : null}
 
       <span className="shrink-0 font-mono text-[11px] text-muted" aria-label={pageLabel}>{pageLabel}</span>
-      <button
-        type="button"
+      <ClassroomEndButton
+        label={endLabel}
         disabled={endDisabled}
         onClick={onEnd}
-        className={cn(
-          "min-h-11 shrink-0 rounded-full border border-rose/35 px-2.5 text-xs text-rose transition-colors hover:bg-rose/10",
-          endDisabled && "cursor-not-allowed opacity-55",
-        )}
-      >
-        {endLabel}
-      </button>
+      />
     </header>
   );
 }

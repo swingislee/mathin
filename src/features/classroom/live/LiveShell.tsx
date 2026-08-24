@@ -103,7 +103,7 @@ import { useClassBoard } from "./useClassBoard";
 import { VideoStage } from "./VideoStage";
 import { GamePage, MainBoard, StudentCard, ToolOverlay } from "./LivePanels";
 import { ClassroomInputModeControl } from "./ClassroomInputModeControl";
-import { ClassroomCourseInfoBar } from "./ClassroomCourseInfoBar";
+import { ClassroomCourseInfoBar, ClassroomEndButton } from "./ClassroomCourseInfoBar";
 import { ClassroomRosterGrid, type ClassroomRosterStudent } from "./ClassroomRosterGrid";
 import { DevelopmentAcceptanceDock } from "./DevelopmentAcceptanceDock";
 import { TeacherClassroomControlBar } from "./TeacherClassroomControlBar";
@@ -1235,7 +1235,7 @@ export function LiveShell({
   return (
     <div className={cn(
       "flex h-dvh flex-col overflow-hidden px-3 pt-2",
-      teacherLayoutV2 ? "pb-[calc(4.25rem+env(safe-area-inset-bottom))]" : "pb-2",
+      teacherLayoutV2 ? "pb-[calc(3.5rem+env(safe-area-inset-bottom))]" : "pb-2",
     )}>
       {!teacherLayoutV2 && <header className="flex shrink-0 flex-wrap items-center gap-2">
         <Link
@@ -1255,13 +1255,10 @@ export function LiveShell({
         )}
         {connectionBadges}
         {isController && !state.ended && !rehearsal && (
-          <button
-            type="button"
+          <ClassroomEndButton
+            label={t("endClass")}
             onClick={() => setEndOpen(true)}
-            className="rounded-full border border-line px-3 py-1 text-xs text-muted transition-colors hover:bg-rose/10 hover:text-rose"
-          >
-            {t("endClass")}
-          </button>
+          />
         )}
         <span className="font-mono text-xs text-muted">
           {state.pages.length === 0 ? "0 / 0" : `${state.currentPage + 1} / ${state.pages.length}`}
@@ -1443,6 +1440,7 @@ export function LiveShell({
               </p>
               <p className="mt-1 text-muted">{t("m4bRewardState")}</p>
               <p className="mt-1 text-muted">{t("m4bInfoState")}</p>
+              <p className="mt-1 text-muted">{t("m4bBottomState")}</p>
             </div>
             <div data-m4b-role-isolation>
               <p className="mb-1 font-medium text-ink">{t("m4bRoleIsolation")}</p>
@@ -1614,8 +1612,8 @@ export function LiveShell({
             // 但 1024 上留 34rem 会把主板书压到 480px，所以两栏全展开时 lg 档先给 26rem，xl 才放到 34rem。
             teacherLayoutV2
               ? sideCollapsed
-                ? "grid-rows-[3rem_2.75rem_minmax(0,1fr)]"
-                : "grid-rows-[3rem_minmax(8rem,1fr)_17.5rem]"
+                ? "grid-rows-[2.5rem_2.75rem_minmax(0,1fr)]"
+                : "grid-rows-[2.5rem_minmax(8rem,1fr)_17.5rem]"
               : sideCollapsed && rosterCollapsed
                 ? "lg:w-[5.25rem]"
                 : sideCollapsed
@@ -1911,7 +1909,7 @@ export function LiveShell({
                   value={effectiveRoutingMode}
                   protectedRenderer={!rendererProfile.audited}
                   onChange={changeRoutingMode}
-                  className="h-11 flex-nowrap p-0"
+                  className="h-11 flex-nowrap rounded-none border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
                 />
               )}
               <AttendanceDrawer
@@ -1970,7 +1968,7 @@ export function LiveShell({
                 title={`${displayedSessionTitle}-${renderPage?.title ?? ""}`}
                 store={toolbarStore}
                 clearTargets={clearTargets}
-                className="h-11 p-0 shadow-none"
+                className="h-11 rounded-none border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
               />
             </div>
           ) : null}
