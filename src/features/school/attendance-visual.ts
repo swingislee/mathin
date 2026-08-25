@@ -8,9 +8,9 @@ export const ATTENDANCE_STATUS_TONE: Record<AttendanceStatus, string> = {
   leave: "border-sky-400/60 bg-sky-100 text-sky-950 dark:bg-sky-950/40 dark:text-sky-100",
 };
 
-export const ATTENDANCE_STATUS_LIGHT: Record<AttendanceStatus, string> = {
-  present: "fill-leaf text-leaf-deep",
-  absent: "fill-rose/75 text-rose",
-  late: "fill-amber-300 text-amber-600 dark:fill-amber-500 dark:text-amber-200",
-  leave: "fill-sky-300 text-sky-600 dark:fill-sky-500 dark:text-sky-200",
+export const ATTENDANCE_STATUS_LED: Record<AttendanceStatus, string> = {
+  present: "bg-leaf ring-leaf/20",
+  absent: "bg-rose ring-rose/20",
+  late: "bg-amber-400 ring-amber-400/20",
+  leave: "bg-sky-400 ring-sky-400/20",
 };

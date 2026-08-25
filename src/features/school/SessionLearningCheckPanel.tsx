@@ -1,6 +1,6 @@
 "use client";
 
-import { Armchair, ClipboardCheck, GripVertical, Lightbulb, LoaderCircle } from "lucide-react";
+import { Armchair, ClipboardCheck, GripVertical, LoaderCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState, useTransition, type KeyboardEvent, type PointerEvent } from "react";
 import { toast } from "sonner";
@@ -12,7 +12,7 @@ import { LearningCheckStatusIcon } from "./LearningCheckStatusIcon";
 import { LearningFillRail } from "./LearningFillRail";
 import { amendAttendanceStatusAction } from "./actions/attendance";
 import type { AttendanceDrawerRow } from "./actions/types";
-import { ATTENDANCE_STATUS_LIGHT, ATTENDANCE_STATUS_TONE } from "./attendance-visual";
+import { ATTENDANCE_STATUS_LED, ATTENDANCE_STATUS_TONE } from "./attendance-visual";
 import { ATTENDANCE_STATUSES, type AttendanceStatus } from "./learning";
 import { markSessionLearningChecksAction, saveClassroomStudentSeatLayoutAction } from "./session-learning-actions";
 import {
@@ -70,13 +70,7 @@ function AttendanceStatusLight({
         >
           {saving
             ? <LoaderCircle size={14} className="animate-spin motion-reduce:animate-none" />
-            : (
-                <Lightbulb
-                  aria-hidden
-                  size={16}
-                  className={status ? ATTENDANCE_STATUS_LIGHT[status] : "fill-transparent text-line"}
-                />
-              )}
+            : <span aria-hidden className={cn("size-2 rounded-full ring-2", status ? ATTENDANCE_STATUS_LED[status] : "bg-transparent ring-line")} />}
         </button>
       </PopoverTrigger>
       <PopoverContent side="bottom" align="start" className="z-[90] w-64 p-2">

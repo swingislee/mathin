@@ -238,6 +238,7 @@ describe("R1 classroom continuity contracts", () => {
     const video = read("src/features/classroom/live/VideoStage.tsx");
     const panel = read("src/features/school/SessionLearningCheckPanel.tsx");
     const fillRail = read("src/features/school/LearningFillRail.tsx");
+    const statusIcons = read("src/features/school/LearningCheckStatusIcon.tsx");
     const learningSetup = read("src/features/school/session-learning.ts");
     const learningActions = read("src/features/school/session-learning-actions.ts");
     const attendanceActions = read("src/features/school/actions/attendance.ts");
@@ -284,6 +285,11 @@ describe("R1 classroom continuity contracts", () => {
     expect(panel).toContain("Armchair");
     expect(panel).toContain("GripVertical");
     expect(panel).toContain("AttendanceStatusLight");
+    expect(panel).toContain("ATTENDANCE_STATUS_LED");
+    expect(panel).not.toContain("Lightbulb");
+    expect(statusIcons).toContain("BulbCheckIcon");
+    expect(statusIcons).toContain("TracePenIcon");
+    expect(statusIcons).toContain('strokeDasharray="2 2"');
     expect(panel).toContain("amendAttendanceStatusAction");
     expect(attendanceAmendment).toContain('authorizedClient("attendance.mark")');
     expect(attendanceAmendment).not.toContain("session_completion_tasks");
