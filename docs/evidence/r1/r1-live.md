@@ -331,11 +331,26 @@ Agent 按 doc 04 的 standing execution direction 生成包含原 4 个 protecte
 7. 正式管理员打开同一课次或对应学生学习记录，核对可见。
 8. 退出登录后直接访问，页面/查询必须拒绝；若目标已有未分配 staff、其他班教师、学生或家长，再对该现有主体验证拒绝，不为负向测试临时创建正式账号。
 
+### 手机号/password P0 本机候选证据
+
+本增量把登录与注册表单统一为“手机号或邮箱 + password”，手机号注册只接受主管为该号码创建的一次性员工邀请。应用通过受信 Admin API 创建可使用 password 的手机号账号，但不启用 `SMS_AUTOCONFIRM`，并在独立保障表中明确记录“员工邀请见证、provider 未验证”；通用邀请码继续只允许邮箱注册。隔离验证没有创建或保留手机号测试账号。
+
+| 证据字段 | 值 |
+| --- | --- |
+| `gate_id`, `domain`, `result` | `R1-Live Gate 2`；内部教师手机号/password P0；本机候选 `PASS`，生产部署与真实教师验收 `BLOCKED` |
+| `measured_value`, `threshold` | migration 回退演练 1/1、正式本机应用 1/1；账户安全 SQL 定向断言通过并回滚；身份合同 Vitest 2 文件 9/9；typecheck、双语 messages、数据库类型和 plan audit 均通过；本机 Auth `phone_enabled=true`、`phone_autoconfirm=false`。阈值为邀请精确绑定、无 OTP/全局手机号注册、无持久测试身份、email rollback 路径保留，全部满足 |
+| `commit_sha`, `migration_head`, `environment` | `9e0dafb`；`20260825000600_r1_live_phone_password_auth`；本机 `mathin-isolated-loopback`，非 Xiaomi |
+| `dataset_manifest` | 本机应用前后均为 auth user=11、profile=11、staff invitation=0、identifier assurance=0；migration ledger=191；断言事务回滚，无账号或业务数据漂移 |
+| `started_at`, `finished_at`, `actor`, `approver` | 2026-08-25（Asia/Shanghai）；2026-08-25（Asia/Shanghai）；Codex；`swingislee`（将手机号/邮箱 password 登录列为 P0） |
+| `command_or_runbook` | 本机 Docker PostgreSQL migration 回退演练→正式应用→只读 postflight；`r1_account_security_assertions.sql`；身份合同定向 Vitest；`pnpm typecheck`、`pnpm messages:check`、`pnpm db:types:check`、`pnpm plan:audit`；未运行 Playwright、全量回归或生产写入 |
+| `artifact_url_or_path`, `artifact_hash` | `supabase/migrations/20260825000600_r1_live_phone_password_auth.sql`；规范化文本 SHA-256 `01b89098cb4fddb155a26e98f38fc33072fbe2e9b553b6a491b7fc77ec495133` |
+| `retention`, `access_roles`, `failure_ticket` | migration、测试与 Git 随仓库永久保留；仓库维护者；生产仍为 `LIVE-P0-04`，完成精确发布和真实教师验收后关闭 |
+
 ### 代码、数据和权限位置
 
 | 范围 | 位置 | 当前判断 |
 | --- | --- | --- |
-| 正式员工注册 | `src/features/account/AccountSupportPanel.tsx`、`src/features/account/actions.ts`、`src/app/[locale]/(auth)/actions.ts`、迁移 `20260728000400_r1_account_security.sql` | 当前一次性代码只绑定邮箱；注册后身份为 `staff`，仍需分配 teacher role。邮箱/手机号/password、验证码与微信/QQ 的唯一账号合同见 [`r1-live-auth-identities.md`](../../plan/r1-live-auth-identities.md) |
+| 正式员工注册 | `src/features/account/AccountSupportPanel.tsx`、`src/features/account/actions.ts`、`src/app/[locale]/(auth)/actions.ts`、迁移 `20260825000600_r1_live_phone_password_auth.sql` | 本机候选已支持绑定邮箱或手机号的一次性员工邀请；注册后身份为 `staff`，仍需分配 teacher role。生产尚未部署本候选。邮箱/手机号/password、验证码与微信/QQ 的唯一账号合同见 [`r1-live-auth-identities.md`](../../plan/r1-live-auth-identities.md) |
 | 教师入口 | `src/app/[locale]/dashboard/classes/**`、`src/app/[locale]/dashboard/sessions/[sessionId]/page.tsx`、课堂 live route | 本机固定教师已完成 live 点名和课后页再读；缺正式目标 E3 |
 | 点名 UI/action | `src/features/school/AttendanceDrawer.tsx`、`src/features/school/actions/attendance.ts` | 读取失败显示 action failed；写入使用 zod 和 upsert；本机写态/再读通过，缺真实目标 E3 |
 | 点名事实 | `public.session_attendance` | 主键防重复；触发器写 `marked_by/marked_at`；note 最长 500 字符由 action 限制 |
@@ -346,7 +361,7 @@ Agent 按 doc 04 的 standing execution direction 生成包含原 4 个 protecte
 ## 真实正式账号与数据路径
 
 1. 先记录目标的前端域名、Supabase project/database 指纹、Storage namespace、部署 commit 和环境责任人。
-2. **已完成**：正式管理员从 `/dashboard/account-support` 为首名真实教师邮箱生成一次性员工邀请码并通过受控渠道交付；手机号邀请需等待兼容迁移和非生产验证。
+2. **邮箱路径已完成，手机号生产待部署**：正式管理员已为首名真实教师邮箱生成一次性员工邀请码并通过受控渠道交付；手机号绑定员工邀请已通过本机隔离迁移和定向断言，尚未在 Xiaomi 启用。
 3. **注册与岗位已完成**：教师已在 `/signup` 自行注册；正式管理员分配的 `research` 与 `teacher` 双岗位均有效，现有 active manifest 已保护该身份。教师的 production password 登录与授权范围仍在后续人工闭环中核对。邮箱、手机号、微信和 QQ 最终都绑定同一 `auth.users.id`，不得为登录方式复制 profile。
 4. **花名册/报名已有首条事实**：生产只读核查确认现有班级已有 1 条 active 报名；学生可识别字段不进入 Git/聊天证据。
 5. **建班与学年归属已完成**：管理员已使用 `/dashboard/classes/new` 创建 1 个 `purpose=production` 班级和 15 个课次；学辅可留空。班级、课次和报名现归 `2026–2027` 秋季；教师可使用 immutable release，也可冻结 `releaseId=null` 的空白/本次覆盖快照。
@@ -358,9 +373,10 @@ Agent 按 doc 04 的 standing execution direction 生成包含原 4 个 protecte
 
 | ID | 等级 | 原因 | 最小修复 | 人工操作 | 验收 |
 | --- | --- | --- | --- | --- | --- |
+| LIVE-P0-04 | P0 | 内部教师实际使用偏好手机号；生产当前只支持邮箱/password | 部署 `20260825000600`、只打开 Auth phone password provider、发布统一登录应用；保持 SMS auto-confirm 关闭 | 管理员为真实教师手机号生成一次性邀请；教师完成一次注册/登录 | 同一手机号只能消费其绑定邀请；登录进入唯一 staff profile；不发送验证码、不开放全局邀请码手机号注册 |
 | LIVE-P1-03 | 核心 P1 | production 班级、15 个课次和 1 条 active 报名已建立，但还没有生产点名 Golden Path | 正式教师保存点名并刷新或重登再读，管理员与既有无权限主体作对照 | 正式教师执行一次登录与点名 | 每名在册学生恰好一条记录；再读一致；越权查询 0 泄露；P0/核心 P1=0 |
 
-仓库审阅没有发现一个已证实的开放 P0；这不等于生产 P0=0，因为 Gate 2 尚未在目标环境执行。
+手机号/password P0 已形成可部署的本机候选，但在生产迁移、Auth 配置、应用发布和真实教师验收完成前仍是开放 P0。
 
 ## 上线后待办池
 
