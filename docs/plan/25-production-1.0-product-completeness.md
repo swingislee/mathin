@@ -136,7 +136,7 @@ command_or_runbook, artifact_url_or_path, artifact_hash, failure_ticket
 | 规划/变更治理 | M3 | M4 | R1-0 已冻结实际 owner 与证据位置；2026-08-14 增加 R1-Live Gate，后续持续维护索引并在 Production 1.0 汇总审批 | 0/Live/18 |
 | 机构配置/Feature Flag | M3 | M4 | R1-1 已完成规则/开关版本、生效、权限、回滚、fail-closed 与开发环境验证；M4 仍需生产初始化、正式角色旅程和发布门 | 1/15/18 |
 | Jobs/通知/文件/集成 | M3 | M4 | R1-2 已完成 durable job/dead-letter/重放、第一方通知、TUS/文件策略、webhook 防重放与开发环境验证；M4 仍需生产 Worker、选中供应商（如有）、大文件并发/容量、告警恢复和 14 天 RC | 2/14/16/17 |
-| 账户/Auth/同意/支持 | M3 | M4 | R1-3 已完成版本化同意、MFA/会话、权利请求、员工邀请、封禁/恢复和审计支持；R1-Live 先建立正式管理员/教师并验证恢复。`POST-LIVE-AUTH-01` 在 R1-Live 后补齐所有身份/环境的统一账号中心入口及资料、密码、MFA、会话、恢复、多 identity 管理；M4 仍需正式身份清单、生产 MFA/速率限制与完整环境证据 | 3/Live/12/14/16/17/18 |
+| 账户/Auth/同意/支持 | M3 | M4 | R1-3 已完成版本化同意、MFA/会话、权利请求、员工邀请、封禁/恢复和审计支持；R1-Live 先建立正式管理员/教师并验证恢复。`POST-LIVE-AUTH-01` 在 R1-Live 后把现有入口升级为传统设置页式统一账号中心，补齐头像/显示名称/语言、登录 identity、密码、MFA、会话与恢复；真实姓名、岗位、学生及家庭信息继续由业务档案维护 | 3/Live/12/14/16/17/18 |
 | Work-items/审批 | M3 | M4 | R1-4 已完成混合投影、持久协同、独立审批、动态逾期、幂等/通知与开发规模 PERF-04；M4 仍需正式 E2E、生产候选负载和 RC 指标 | 4/14/17 |
 | 学生门户 | M3 | M4 | R1-5 已完成本人课务/考勤/请假补课/作业/视频/成果/逐题学情/通知、草稿隔离、跨学生拒绝与 zh/en 开发环境旅程；M4 仍需 R1-14 正式 Playwright、R1-16 独立生产、R1-17 RC 与 R1-18 发布证据 | 5/14/16/17/18 |
 | 家庭门户 | M3 | M4 | R1-5 已完成稳定学生 ID 多子女切换、未绑定/待审核/撤回/财务关闭、关系撤销、请假补课、成果通知、跨家庭拒绝与 zh/en 开发环境旅程；M4 仍需 R1-14 正式 Playwright、R1-16 独立生产、R1-17 RC 与 R1-18 发布证据 | 5/14/16/17/18 |
@@ -561,7 +561,7 @@ R1-0 已完成责任角色到 `swingislee` 的映射。增加人员或发生交�
 
 ### 7.3 当前专题与 1.0 后处理
 
-- R1-Live 通过后执行 `POST-LIVE-AUTH-01`：student/parent/staff/admin 及 learning/family/staff 环境统一提供可发现的账号中心入口，完善资料、密码、MFA、会话、恢复方式和邮箱/手机号/微信/QQ identity 管理；保持单 UUID、zh/en、移动与敏感操作 AAL2 合同。当前学生端入口缺失不追加为 R1-Live blocker。
+- R1-Live 通过后执行 `POST-LIVE-AUTH-01`：把 student/parent/staff/admin 及 learning/family/staff 环境已有入口升级为传统设置页式账号中心，按个人资料、登录方式、安全与恢复、隐私与数据组织；账号级只编辑头像、全站显示名称和语言，业务档案只读关联，并保持单 UUID、zh/en、移动与敏感操作 AAL2 合同。该项不追加为 R1-Live blocker。
 - 空间数学实验室保留 SML-0 暂停点，可按独立路由、权限或 Feature Flag 并行；不因已有增量自动关闭 SML-0～8，不进入 R1-Live Gate，也不扩写 PROD-08。
 - 补齐英文课程、Minds 和 Story 正文；UI、路由和回退已在 1.0 完成。
 - 执行 `cacheComponents` + `use cache` 专项；继续禁止 `unstable_cache`。

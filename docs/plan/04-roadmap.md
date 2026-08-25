@@ -138,7 +138,7 @@ Gate 1 已按以下顺序关闭：
 - Spatial Math / 3D 继续独立路由、权限或 Feature Flag；默认普通教师不可见未完成能力。修改共享认证、导航、数据库或课堂链路时回归 R1-Live Smoke。
 - Terms/Minds/Story 长内容、1305 讲全量审计、Notebook 完整写态、完整视觉矩阵、全量 E2E、容量、指标、完整恢复/rollback、财务/活动深化和长期重构进入上线后池。
 - 上述池中的事项不会自动开工；只有产品负责人明确选中的新功能可在当前单老师试用期进入开发预演轨，并按 §5.2 独立晋级生产，其余继续排队。
-- `POST-LIVE-AUTH-01`：为 student/parent/staff/admin 及各 Dashboard 环境建立一致、可发现的账号中心入口，完善资料、密码、MFA、会话、恢复方式和多 identity 绑定管理；当前学生端无入口不阻塞 R1-Live，完整合同见 [`r1-live-auth-identities.md`](r1-live-auth-identities.md) §6E。
+- `POST-LIVE-AUTH-01`：把现有各身份可达的 `/dashboard/account-security` 升级为传统设置页式统一账号中心，按个人资料、登录方式、安全与恢复、隐私与数据组织能力；账号级只编辑头像、全站显示名称和语言，业务档案只读关联。该项不阻塞 R1-Live，完整合同见 [`r1-live-auth-identities.md`](r1-live-auth-identities.md) §6E。
 - `POST-LIVE-UX-02`（2026-08-23 已提前收敛并上线，待逐项人工验收）：班级管理子页面使用与 Dashboard 一致的标题分割线和水平命令工作区，本项不改变点名主链。
 - `POST-LIVE-UX-03`（2026-08-23 已提前收敛并上线，待逐项人工验收）：共享 Select 统一纸色/星夜配色和悬浮反馈；日期/时间表单改用 shadcn `Calendar` + `Popover` 组成的共享控件，不再使用业务层原生 date/time/datetime-local。
 - `POST-LIVE-OPS-01`（2026-08-23 已提前收敛并上线，待逐项人工验收）：备课待办在开课前 14 天出现、开课前 7 天到期，此后向主管投影逾期待办；开课后提交显示“补交”。生产当前教师投影由 15 条缩为 1 条。
