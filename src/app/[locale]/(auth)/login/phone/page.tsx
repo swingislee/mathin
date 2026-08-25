@@ -1,2 +1,6 @@
-import { PhoneAuthForm } from "@/components/phone-auth-form";
-export default function PhoneLoginPage(){return <PhoneAuthForm/>;}
+import { redirect } from "next/navigation";
+
+export default async function PhoneLoginPage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+  redirect(`/${locale}/login`);
+}

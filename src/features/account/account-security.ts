@@ -92,7 +92,8 @@ export interface AccountSupportSnapshot {
   }>;
   pendingInvitations: Array<{
     id: string;
-    email: string;
+    identifierType: "email" | "phone";
+    identifier: string;
     expiresAt: string;
     createdAt: string;
   }>;

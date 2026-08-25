@@ -5,6 +5,7 @@ begin;
 select id as admin_id from public.profiles where display_name = '测试-管理员' limit 1 \gset
 select id as teacher_id from public.profiles where display_name = '测试-教师' limit 1 \gset
 select id as student_id from public.profiles where display_name = '测试-学生' limit 1 \gset
+select code as general_invite_code from public.registration_invite_settings where id = 1 \gset
 \if :{?admin_id}
 \else
   \echo R1 fixtures missing: 测试-管理员
@@ -150,6 +151,62 @@ select public.validate_registration_access(:'invite_code','wrong@example.invalid
   \echo R1-3 staff invite accepted a different email
   select 1 / 0;
 \endif
+
+select invitation_id,invite_code,expires_at,identifier_type,identifier_normalized
+  from public.issue_staff_identity_invitation('phone','139 0000 0098',7) \gset phone_invite_
+select public.validate_registration_access_v2(
+  :'phone_invite_invite_code','phone','+86 139 0000 0098'
+) as phone_invite_correct \gset
+select public.validate_registration_access_v2(
+  :'phone_invite_invite_code','phone','13800000098'
+) as phone_invite_wrong \gset
+select public.validate_registration_access_v2(
+  :'general_invite_code','phone','+8613800000098'
+) as general_phone_invite_accepted \gset
+\if :phone_invite_correct
+\else
+  \echo R1-Live phone staff invite rejected its normalized bound phone
+  select 1 / 0;
+\endif
+\if :phone_invite_wrong
+  \echo R1-Live phone staff invite accepted a different phone
+  select 1 / 0;
+\endif
+\if :general_phone_invite_accepted
+  \echo R1-Live general invite incorrectly opened phone signup
+  select 1 / 0;
+\endif
+
+reset role;
+insert into auth.users(id,phone,raw_user_meta_data)
+values(
+  '00000000-0000-4000-8000-000000000098',
+  '+8613900000098',
+  jsonb_build_object(
+    'display_name','测试-手机教师',
+    'registration_invite_code',:'phone_invite_invite_code',
+    'privacy_consent',true,
+    'children_privacy_consent',true
+  )
+);
+do $$
+begin
+  if not exists(
+    select 1 from public.profiles
+     where id='00000000-0000-4000-8000-000000000098' and role='staff'
+  ) then raise exception 'R1_PHONE_INVITE_DID_NOT_CREATE_STAFF_PROFILE'; end if;
+  if not exists(
+    select 1 from public.account_identifier_assurances
+     where user_id='00000000-0000-4000-8000-000000000098'
+       and identifier_type='phone'
+       and attestation_source='staff_invite'
+       and not provider_verified
+  ) then raise exception 'R1_PHONE_INVITE_ASSURANCE_MISSING'; end if;
+end
+$$;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'admin_id', true);
+select set_config('request.jwt.claim.role', '', true);
 
 do $$
 declare request_id uuid;

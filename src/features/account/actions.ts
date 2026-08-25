@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { actionError, type ActionResult } from "@/lib/action-result";
+import { emailLoginIdentifierSchema, phoneLoginIdentifierSchema } from "@/lib/auth-identifier";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { authorizedClient } from "@/features/school/actions/guards";
@@ -20,7 +21,10 @@ const rightsRequestSchema = z.object({
   dataScope: requiredText(200),
 });
 const supportTargetSchema = z.object({ target: uuid, reason: requiredText(500) });
-const staffInviteSchema = z.object({ email: z.email().max(254).transform((value) => value.toLowerCase()), validDays: z.number().int().min(1).max(30) });
+const staffInviteSchema = z.discriminatedUnion("identifierType", [
+  z.object({ identifierType: z.literal("email"), identifier: emailLoginIdentifierSchema, validDays: z.number().int().min(1).max(30) }),
+  z.object({ identifierType: z.literal("phone"), identifier: phoneLoginIdentifierSchema, validDays: z.number().int().min(1).max(30) }),
+]);
 const requestDecisionSchema = z.object({
   requestId: uuid,
   status: z.enum(["submitted", "identity_verified", "approved", "processing", "completed", "rejected", "cancelled"]),
@@ -55,7 +59,8 @@ const SUPPORT_CODES = [
   "TARGET_NOT_FOUND", "LAST_ACTIVE_ADMIN", "INVALID_ACTION", "INVALID_REASON", "INVALID_STATUS",
   "IDENTITY_NOT_VERIFIED", "EVIDENCE_REQUIRED", "EXPORT_ARTIFACT_REQUIRED", "REQUEST_NOT_APPROVED",
   "EXPORT_TOO_LARGE", "INVALID_SCOPE", "REQUEST_NOT_FOUND", "REQUEST_TERMINAL",
-  "ACCOUNT_EXISTS", "INVITATION_ALREADY_PENDING", "INVITATION_NOT_PENDING", "INVALID_EMAIL", "INVALID_EXPIRY",
+  "ACCOUNT_EXISTS", "INVITATION_ALREADY_PENDING", "INVITATION_NOT_PENDING", "INVALID_IDENTIFIER_TYPE",
+  "INVALID_EMAIL", "INVALID_PHONE", "INVALID_EXPIRY",
   ...COMMON_CODES,
 ];
 
@@ -184,11 +189,19 @@ export async function sendRecoveryAction(target: string, reason: string, locale:
   }
 }
 
-export async function issueStaffInvitationAction(email: string, validDays = 7): Promise<ActionResult<{ invitationId: string; inviteCode: string; expiresAt: string }>> {
+export async function issueStaffInvitationAction(
+  identifierType: "email" | "phone",
+  identifier: string,
+  validDays = 7,
+): Promise<ActionResult<{ invitationId: string; inviteCode: string; expiresAt: string }>> {
   try {
-    const value = parse(staffInviteSchema, { email, validDays });
+    const value = parse(staffInviteSchema, { identifierType, identifier, validDays });
     const { supabase } = await authorizedClient("staff.manage");
-    const { data, error } = await supabase.rpc("issue_staff_invitation", { p_email: value.email, p_valid_days: value.validDays });
+    const { data, error } = await supabase.rpc("issue_staff_identity_invitation", {
+      p_identifier_type: value.identifierType,
+      p_identifier: value.identifier,
+      p_valid_days: value.validDays,
+    });
     if (error) throw new Error(error.message);
     const row = (data ?? [])[0] as { invitation_id: string; invite_code: string; expires_at: string } | undefined;
     if (!row) throw new Error("INVITATION_FAILED");

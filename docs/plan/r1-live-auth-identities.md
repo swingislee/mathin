@@ -4,9 +4,9 @@
 >
 > **当前用途**：冻结邮箱、手机号、验证码、微信和 QQ 的账号边界与分阶段接口；当前施工顺序仍由 doc 04 决定。
 >
-> **当前实现状态**：生产只启用邮箱/password；手机号、验证码、微信、QQ 均未达到可用状态。本机隔离目标已独立初始化 11 个固定 email/password 开发身份并通过登录，不包含手机号/OAuth identity。本文不授权修改生产 Auth 配置、创建正式账号或合并生产身份。
+> **当前实现状态**：2026-08-25 产品负责人把“手机号或邮箱 + password”提升为内部使用 P0。本机隔离目标已完成通用 identifier 表单、手机号绑定员工邀请、provider-unverified 保障记录、手机号/password Auth 开关和数据库断言；没有创建持久手机号测试账号。生产仍只启用邮箱/password，候选迁移、应用与 Auth 配置尚未部署；验证码、微信、QQ 和已有账号新增标识绑定仍未启用。
 >
-> **最后核对**：2026-08-15；运行事实见 [`r1-live-target-audit.md`](../evidence/r1/r1-live-target-audit.md)。
+> **最后核对**：2026-08-25；运行事实见 [`r1-live-target-audit.md`](../evidence/r1/r1-live-target-audit.md)。
 
 ## 1. 产品裁决
 
@@ -130,14 +130,15 @@ beginIdentityLink(input: {
 
 1. 先完成当前 Gate 1 的生产目标误写保护与当前 PostgreSQL+Storage 同批次备份；认证改造不得先于这两个保险丝修改生产配置。
 2. 首名真实教师可继续使用现有“邮箱绑定一次性邀请 + password”路径，避免手机号/验证码/OAuth 延迟第一次真实点名。
-3. 同一代码增量把登录/注册表单改为通用 identifier、补重复密码，隐藏当前不可用的 OTP 入口，并让登录 OTP 固定 `shouldCreateUser:false`。
-4. 手机号/password 保持功能开关关闭，直到员工邀请完成 email/phone 泛化并在非生产目标验证同一 UUID 合同。
+3. 登录/注册表单使用通用 identifier，注册要求重复密码；原手机号 OTP 页面回到统一登录页，当前不展示或调用 OTP。
+4. 2026-08-25 P0 候选已在本机完成：员工邀请泛化为 email/phone，手机号只接受绑定具体号码的一次性员工邀请；通用全局邀请码仍不能创建手机号账号。
 
 ### B. 无验证码的内部手机号/password
 
 1. 只对绑定具体手机号的一次性员工邀请开放；全局邀请码手机号注册仍关闭。
 2. 邀请通过已确认的独立渠道交付，账号标记为“invite-attested / provider-unverified”；手机号不能用于找回或敏感通知。
-3. 经备份、部署和回退预检后才修改 GoTrue phone 开关；变更后使用非生产固定数据验证，不创建一次性生产测试账号。
+3. 不启用 `SMS_AUTOCONFIRM`。服务端在验证手机号绑定员工邀请后，通过受信 Admin API 创建 `phone_confirm=true` 的 password 账号，并在 `account_identifier_assurances` 另存 `staff_invite + provider_unverified`；随后仍由普通 `signInWithPassword({phone,password})` 建立会话。
+4. GoTrue 只打开 phone provider 以接受 password 登录，不配置 SMS provider；直接 OTP 请求不会成为产品入口。经备份、部署和回退预检后才修改生产 Auth 配置，生产验收使用真实受邀教师，不创建一次性生产测试账号。
 
 ### C. 邮件/SMS 验证码
 
