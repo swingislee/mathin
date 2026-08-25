@@ -460,7 +460,7 @@ export function SessionLearningCheckPanel({
         </button>
       </DialogTrigger>
       {/* `w-full` 避免 Windows 经典滚动条下 `100vw` 多出的约 15px。 */}
-      <DialogContent className="flex h-dvh w-full max-w-none flex-col gap-0 overflow-hidden rounded-none p-0 sm:rounded-none [&>button]:right-2.5 [&>button]:top-2.5">
+      <DialogContent className="z-[80] flex h-dvh max-h-none w-full max-w-none flex-col gap-0 overflow-hidden rounded-none border-0 p-0 sm:rounded-none [&>button]:right-2.5 [&>button]:top-2.5">
         <DialogHeader className="shrink-0 space-y-0 border-b border-line px-2 pb-1 pr-11 pt-1.5 text-left">
           <div className="flex min-h-8 min-w-0 items-center gap-2" data-learning-check-toolbar>
             <DialogTitle className="flex shrink-0 items-center gap-1.5 text-sm">
@@ -550,7 +550,7 @@ export function SessionLearningCheckPanel({
           </div>
         </DialogHeader>
 
-        <main className="flex min-h-0 flex-1 flex-col overflow-y-auto p-2 sm:p-2.5">
+        <main className="flex min-h-0 flex-1 flex-col overflow-y-auto p-1">
           {batchMode && (
             <div className="sticky top-0 z-20 mb-2 flex flex-wrap items-center gap-1.5 rounded-xl border border-line bg-paper/95 p-1.5 shadow-sm backdrop-blur">
               <span className="mr-1 text-xs text-muted">{t("learningBatchSelected", { count: selectedStudentIds.size })}</span>
@@ -573,7 +573,7 @@ export function SessionLearningCheckPanel({
 
           <div
             ref={seatGridRef}
-            className="grid min-h-0 flex-1 auto-rows-[minmax(8.5rem,1fr)] gap-2"
+            className="grid min-h-0 flex-1 auto-rows-[minmax(8.25rem,1fr)] gap-1"
             style={{ gridTemplateColumns: `repeat(${LEARNING_SEAT_COLUMNS}, minmax(0, 1fr))` }}
             data-learning-seat-grid
             data-learning-seat-columns={LEARNING_SEAT_COLUMNS}
@@ -583,11 +583,16 @@ export function SessionLearningCheckPanel({
               <article
                 key={`seat-${seatPosition}`}
                 data-learning-seat-index={seatPosition}
+                data-learning-seat-layer="background"
                 data-learning-empty-seat={student ? undefined : ""}
                 aria-label={student ? undefined : t("learningEmptySeatNumber", { number: seatPosition + 1 })}
                 aria-hidden={student ? true : undefined}
+                style={{
+                  gridColumnStart: (seatPosition % LEARNING_SEAT_COLUMNS) + 1,
+                  gridRowStart: Math.floor(seatPosition / LEARNING_SEAT_COLUMNS) + 1,
+                }}
                 className={cn(
-                  "relative flex min-h-[8.5rem] min-w-0 flex-col items-center justify-center rounded-xl border p-2 text-center text-muted transition-[border-color,background-color,box-shadow]",
+                  "relative flex min-h-[8.25rem] min-w-0 flex-col items-center justify-center rounded-xl border p-2 text-center text-muted transition-[border-color,background-color,box-shadow]",
                   student
                     ? "pointer-events-none border-transparent bg-transparent"
                     : "border-dashed border-line/80 bg-card/25",
@@ -622,6 +627,7 @@ export function SessionLearningCheckPanel({
                   key={student.id}
                   data-learning-student-id={student.id}
                   data-learning-seat-index={seatPosition}
+                  data-learning-seat-layer="student"
                   style={{
                     gridColumnStart: (visualSeatPosition % LEARNING_SEAT_COLUMNS) + 1,
                     gridRowStart: Math.floor(visualSeatPosition / LEARNING_SEAT_COLUMNS) + 1,
@@ -630,7 +636,7 @@ export function SessionLearningCheckPanel({
                       : undefined,
                   }}
                   className={cn(
-                    "relative z-10 flex min-h-[8.5rem] min-w-0 flex-col overflow-hidden rounded-xl border transition-[border-color,background-color,box-shadow,opacity,transform]",
+                    "relative z-10 flex min-h-[8.25rem] min-w-0 flex-col overflow-hidden rounded-xl border transition-[border-color,background-color,box-shadow,opacity,transform]",
                     batchMode && selected
                       ? "border-rose bg-rose/10 ring-2 ring-rose/20"
                       : statusStyle.card,
@@ -691,7 +697,7 @@ export function SessionLearningCheckPanel({
                     )}
                   </div>
                   {!batchMode && (
-                    <div className="grid min-h-0 flex-1 grid-cols-3 auto-rows-[2.75rem] content-center gap-1 px-1 py-0.5">
+                    <div className="grid min-h-0 flex-1 grid-cols-3 auto-rows-[2.75rem] content-center gap-1 px-1">
                       {LEARNING_CHECK_STATUSES.map((candidate) => (
                         <button
                           key={candidate}

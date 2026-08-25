@@ -258,6 +258,7 @@ describe("R1 classroom continuity contracts", () => {
     expect(panel).toContain("data-learning-check-toolbar");
     expect(panel).toContain("data-learning-check-strip");
     expect(panel).toContain("data-ipad-roster-grid");
+    expect(panel).toContain("z-[80] flex h-dvh max-h-none");
     expect(LEARNING_SEAT_COLUMNS).toBe(4);
     expect(LEARNING_SEAT_ROWS).toBe(5);
     expect(panel).toContain("data-learning-seat-columns={LEARNING_SEAT_COLUMNS}");
@@ -265,6 +266,12 @@ describe("R1 classroom continuity contracts", () => {
     expect(panel).not.toContain("grid-cols-5");
     expect(panel).toContain("data-learning-seat-index");
     expect(panel).toContain("data-learning-empty-seat");
+    expect(panel).toContain('data-learning-seat-layer="background"');
+    expect(panel).toContain('data-learning-seat-layer="student"');
+    expect(panel).toContain("gridColumnStart: (seatPosition % LEARNING_SEAT_COLUMNS) + 1");
+    expect(panel).toContain("gridRowStart: Math.floor(seatPosition / LEARNING_SEAT_COLUMNS) + 1");
+    expect(panel).toContain("auto-rows-[minmax(8.25rem,1fr)] gap-1");
+    expect(panel).toContain("overflow-y-auto p-1");
     expect(panel).toContain("Armchair");
     expect(panel).toContain("GripVertical");
     expect(panel).toContain("AttendanceStatusLight");
