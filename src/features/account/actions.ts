@@ -34,6 +34,20 @@ const requestDecisionSchema = z.object({
   evidenceHash: z.union([z.literal(""), z.string().regex(/^[a-f0-9]{64}$/)]),
 });
 const exportArtifactSchema = z.object({ artifactId: uuid });
+const accountProfileSchema = z.object({
+  displayName: z.string().trim().min(1).max(40),
+  preferredLocale: z.enum(["zh", "en"]),
+  avatarPath: z.union([
+    z.null(),
+    z.string().max(200).regex(/^[0-9a-f-]{36}\/[0-9a-f-]{36}\.webp$/),
+  ]).optional(),
+});
+
+export interface AccountProfileUpdate {
+  displayName: string;
+  avatarUrl: string | null;
+  preferredLocale: "zh" | "en";
+}
 
 export interface PreparedUserRightsExport {
   artifactId: string;
@@ -54,6 +68,7 @@ export interface UserRightsExportDownload {
 const SELF_CODES = [
   "INVALID_DECISION", "POLICY_NOT_FOUND", "REQUEST_ALREADY_OPEN", "INVALID_KIND", "INVALID_SCOPE",
   "EXPORT_NOT_FOUND", "EXPORT_EXPIRED", "EXPORT_PURGED", "EXPORT_HASH_MISMATCH", ...COMMON_CODES,
+  "AVATAR_PATH_INVALID", "PROFILE_UPDATE_FAILED",
 ];
 const SUPPORT_CODES = [
   "TARGET_NOT_FOUND", "LAST_ACTIVE_ADMIN", "INVALID_ACTION", "INVALID_REASON", "INVALID_STATUS",
@@ -66,6 +81,74 @@ const SUPPORT_CODES = [
 
 function correlationHash(target: string, action: string) {
   return createHash("sha256").update(`${target}:${action}:${Date.now()}`).digest("hex");
+}
+
+function profileAvatarPath(publicUrl: string | null, userId: string) {
+  if (!publicUrl) return null;
+  try {
+    const marker = "/storage/v1/object/public/profile-avatars/";
+    const pathname = new URL(publicUrl).pathname;
+    const markerIndex = pathname.indexOf(marker);
+    if (markerIndex < 0) return null;
+    const path = decodeURIComponent(pathname.slice(markerIndex + marker.length));
+    return path.startsWith(`${userId}/`) ? path : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function updateAccountProfileAction(input: unknown): Promise<ActionResult<AccountProfileUpdate>> {
+  try {
+    const value = parse(accountProfileSchema, input);
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("UNAUTHENTICATED");
+    const hasAvatarUpdate = Object.prototype.hasOwnProperty.call(value, "avatarPath");
+    if (typeof value.avatarPath === "string" && !value.avatarPath.startsWith(`${user.id}/`)) {
+      throw new Error("AVATAR_PATH_INVALID");
+    }
+
+    const { data: current, error: currentError } = await supabase
+      .from("profiles")
+      .select("avatar_url")
+      .eq("id", user.id)
+      .single<{ avatar_url: string | null }>();
+    if (currentError || !current) throw new Error("PROFILE_UPDATE_FAILED");
+
+    let avatarUrl = current.avatar_url;
+    if (hasAvatarUpdate) {
+      avatarUrl = value.avatarPath
+        ? supabase.storage.from("profile-avatars").getPublicUrl(value.avatarPath).data.publicUrl
+        : null;
+    }
+    const update: {
+      display_name: string;
+      preferred_locale: "zh" | "en";
+      avatar_url?: string | null;
+    } = {
+      display_name: value.displayName,
+      preferred_locale: value.preferredLocale,
+    };
+    if (hasAvatarUpdate) update.avatar_url = avatarUrl;
+    const { error: updateError } = await supabase.from("profiles").update(update).eq("id", user.id);
+    if (updateError) throw new Error("PROFILE_UPDATE_FAILED");
+
+    const previousPath = profileAvatarPath(current.avatar_url, user.id);
+    if (hasAvatarUpdate && previousPath && previousPath !== value.avatarPath) {
+      await supabase.storage.from("profile-avatars").remove([previousPath]);
+    }
+    revalidatePath("/[locale]/dashboard/account-security", "page");
+    return {
+      ok: true,
+      data: {
+        displayName: value.displayName,
+        avatarUrl,
+        preferredLocale: value.preferredLocale,
+      },
+    };
+  } catch (error) {
+    return actionError<AccountProfileUpdate>(error, SELF_CODES, "PROFILE_UPDATE_FAILED");
+  }
 }
 
 export async function recordAccountConsentAction(input: unknown): Promise<ActionResult> {

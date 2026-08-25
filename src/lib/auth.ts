@@ -11,6 +11,7 @@ export interface Profile {
   role: ProfileRole;
   displayName: string;
   avatarUrl: string | null;
+  preferredLocale: "zh" | "en";
   lastActiveEnvironment: UserEnvironment;
 }
 
@@ -42,13 +43,14 @@ export async function getProfile(userId: string): Promise<Profile | null> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("profiles")
-    .select("id,role,display_name,avatar_url,last_active_environment")
+    .select("id,role,display_name,avatar_url,preferred_locale,last_active_environment")
     .eq("id", userId)
     .maybeSingle<{
       id: string;
       role: ProfileRole;
       display_name: string;
       avatar_url: string | null;
+      preferred_locale: "zh" | "en";
       last_active_environment: UserEnvironment;
     }>();
   if (!data) return null;
@@ -57,6 +59,7 @@ export async function getProfile(userId: string): Promise<Profile | null> {
     role: data.role,
     displayName: data.display_name,
     avatarUrl: data.avatar_url,
+    preferredLocale: data.preferred_locale,
     lastActiveEnvironment: data.last_active_environment,
   };
 }

@@ -155,7 +155,7 @@ beginIdentityLink(input: {
 
 ### E. R1-Live 后统一账号中心（`POST-LIVE-AUTH-01`）
 
-2026-08-25 代码复核修正了早期判断：student、parent、staff 导航和全局工具菜单已经提供 `/dashboard/account-security` 入口，当前缺口是页面仍以安全工具集合为主，不能完成个人资料、登录 identity 和恢复状态管理。产品负责人确认统一账号中心采用传统网站个人设置页：桌面为左侧设置导航、右侧线性表单/列表，移动端把导航移到内容上方；不用 Dashboard 卡片网格组织个人信息。该项在 R1-Live Gate 0～4 全部通过后施工，不阻塞当前首个真实点名闭环。
+2026-08-25 代码复核修正了早期判断：student、parent、staff 导航和全局工具菜单已经提供 `/dashboard/account-security` 入口，当前缺口是页面仍以安全工具集合为主，不能完成个人资料、登录 identity 和恢复状态管理。产品负责人确认统一账号中心采用传统网站个人设置页：桌面为左侧设置导航、右侧线性表单/列表，移动端把导航移到内容上方；不用 Dashboard 卡片网格组织个人信息。产品负责人随后明确把第一阶段提前为 R1-Live 期间的独立热修；它不改变 Gate 2 点名退出条件，仍须按开发候选、生产 preflight、数据库优先和应用发布顺序独立晋级。
 
 现有 `/dashboard/account-security` 升级为统一账号中心，保留当前入口和书签兼容。一级信息架构固定为：
 

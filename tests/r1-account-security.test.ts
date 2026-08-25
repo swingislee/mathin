@@ -6,6 +6,7 @@ const root = process.cwd();
 const read = (file: string) => fs.readFileSync(path.join(root, file), "utf8");
 const migration = read("supabase/migrations/20260728000400_r1_account_security.sql");
 const roleGuardMigration = read("supabase/migrations/20260815000200_r1_profile_role_update_guard.sql");
+const accountCenterMigration = read("supabase/migrations/20260825000800_account_center_profile.sql");
 
 describe("R1-3 account security contracts", () => {
   it("versions exact consent records and rejects duplicate open rights requests without deleting history", () => {
@@ -49,6 +50,24 @@ describe("R1-3 account security contracts", () => {
     expect(actions).toContain("supportTargetSchema");
     expect(actions).toContain("updateUserById");
     expect(actions).toContain('rpc("record_account_support_action"');
+  });
+
+  it("ships the provider-independent account center without pretending disabled identity providers work", () => {
+    const security = read("src/features/account/AccountSecurityPanel.tsx");
+    const accountData = read("src/features/account/account-security.ts");
+    const actions = read("src/features/account/actions.ts");
+    expect(security).toContain('value="profile"');
+    expect(security).toContain('value="identities"');
+    expect(security).toContain('value="security"');
+    expect(security).toContain('value="privacy"');
+    expect(security).toContain('storage.from("profile-avatars").upload');
+    expect(security).toContain('<Button type="button" variant="secondary" size="sm" disabled>');
+    expect(accountData).toContain('recoveryAvailable: false');
+    expect(actions).toContain("accountProfileSchema");
+    expect(actions).toContain('value.avatarPath.startsWith(`${user.id}/`)');
+    expect(accountCenterMigration).toContain("add column if not exists preferred_locale");
+    expect(accountCenterMigration).toContain("profile_avatars_insert_own");
+    expect(accountCenterMigration).toContain("entity_type := 'profile_avatar'");
   });
 
   it("allows trusted identity role changes without opening other protected profile fields", () => {

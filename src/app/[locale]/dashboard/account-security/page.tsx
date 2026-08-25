@@ -2,15 +2,20 @@ import { CircleAlert } from "lucide-react";
 import { Suspense } from "react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { AccountSecurityPanel } from "@/features/account/AccountSecurityPanel";
-import { getAccountSecuritySnapshot } from "@/features/account/account-security";
+import { getAccountCenterSnapshot } from "@/features/account/account-security";
 import { DashboardPage } from "@/features/school/dashboard-page";
 import { DashboardListSkeleton } from "@/features/school/list-skeleton";
 import { getProfile, requireUser } from "@/lib/auth";
 
-async function AccountSecurityBody({ locale }: { locale: string }) {
+async function AccountSecurityBody({ locale, required }: { locale: string; required: "mfa" | "consent" | null }) {
   const user = await requireUser(locale, { allowAccountRecovery: true });
-  const [profile, snapshot] = await Promise.all([getProfile(user.id), getAccountSecuritySnapshot()]);
-  return <AccountSecurityPanel snapshot={snapshot} isAdmin={profile?.role === "admin"} />;
+  const profile = await getProfile(user.id);
+  if (!profile) throw new Error("PROFILE_NOT_FOUND");
+  const snapshot = await getAccountCenterSnapshot(user, profile);
+  return <AccountSecurityPanel
+    snapshot={snapshot}
+    initialSection={required === "mfa" ? "security" : required === "consent" ? "privacy" : "profile"}
+  />;
 }
 
 export default async function AccountSecurityPage({
@@ -37,6 +42,6 @@ export default async function AccountSecurityPage({
         </div>
       </div>
     )}
-    <Suspense fallback={<DashboardListSkeleton />}><AccountSecurityBody locale={locale} /></Suspense>
+    <Suspense fallback={<DashboardListSkeleton />}><AccountSecurityBody locale={locale} required={required} /></Suspense>
   </DashboardPage>;
 }

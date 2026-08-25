@@ -18,6 +18,19 @@ function supabaseOrigins(): string[] {
   }
 }
 
+function supabaseImagePatterns(): URL[] {
+  const raw = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  if (!raw) return [];
+  try {
+    const pattern = new URL(raw);
+    pattern.pathname = "/storage/v1/object/public/profile-avatars/**";
+    pattern.search = "";
+    return [pattern];
+  } catch {
+    return [];
+  }
+}
+
 /** docs/plan/15-§7.1。CSP 先以 Report-Only 上线观察，确认无误报再切强制。 */
 function contentSecurityPolicy(frameAncestors: string): string {
   const supabase = supabaseOrigins();
@@ -65,6 +78,7 @@ const nextConfig: NextConfig = {
   distDir: process.env.NEXT_DIST_DIR || ".next",
   allowedDevOrigins: ["192.168.5.213", "127.0.0.1", "localhost"],
   serverExternalPackages: ["@blocknote/server-util"],
+  images: { remotePatterns: supabaseImagePatterns() },
   async headers() {
     return [
       {

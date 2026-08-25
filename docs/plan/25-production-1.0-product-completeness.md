@@ -561,7 +561,7 @@ R1-0 已完成责任角色到 `swingislee` 的映射。增加人员或发生交�
 
 ### 7.3 当前专题与 1.0 后处理
 
-- R1-Live 通过后执行 `POST-LIVE-AUTH-01`：把 student/parent/staff/admin 及 learning/family/staff 环境已有入口升级为传统设置页式账号中心，按个人资料、登录方式、安全与恢复、隐私与数据组织；账号级只编辑头像、全站显示名称和语言，业务档案只读关联，并保持单 UUID、zh/en、移动与敏感操作 AAL2 合同。该项不追加为 R1-Live blocker。
+- `POST-LIVE-AUTH-01` 已由产品负责人在 R1-Live 期间提前选入独立热修轨：把 student/parent/staff/admin 及 learning/family/staff 环境已有入口升级为传统设置页式账号中心，按个人资料、登录方式、安全与恢复、隐私与数据组织；账号级只编辑头像、全站显示名称和语言，业务档案只读关联，并保持单 UUID、zh/en、移动与敏感操作 AAL2 合同。本机候选已完成，尚未发布生产；该项不追加为 R1-Live blocker。
 - 空间数学实验室保留 SML-0 暂停点，可按独立路由、权限或 Feature Flag 并行；不因已有增量自动关闭 SML-0～8，不进入 R1-Live Gate，也不扩写 PROD-08。
 - 补齐英文课程、Minds 和 Story 正文；UI、路由和回退已在 1.0 完成。
 - 执行 `cacheComponents` + `use cache` 专项；继续禁止 `unstable_cache`。
