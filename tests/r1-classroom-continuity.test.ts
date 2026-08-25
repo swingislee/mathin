@@ -277,7 +277,7 @@ describe("R1 classroom continuity contracts", () => {
     expect(panel).toContain("setDragOffset");
     expect(panel).toContain("learningStatusShort_");
     expect(panel).toContain("data-learning-current-status={status}");
-    expect(panel).toContain("statusStyle.header");
+    expect(panel).toContain('status === "unchecked" ? "bg-line/80" : statusStyle.dot');
     expect(panel).toContain("auto-rows-[2.75rem]");
     expect(panel).toContain("h-11 min-h-0");
     expect(panel).toContain("flex-col overflow-hidden rounded-xl");

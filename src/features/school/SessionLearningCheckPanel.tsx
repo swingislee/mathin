@@ -57,7 +57,7 @@ function AttendanceStatusLight({
           disabled={saving}
           aria-label={label}
           title={label}
-          className="grid size-8 shrink-0 place-items-center rounded-lg bg-white/90 text-slate-800 shadow-sm transition-colors hover:bg-white disabled:opacity-55"
+          className="grid size-8 shrink-0 place-items-center rounded-lg text-muted transition-colors hover:bg-moon/30 hover:text-ink disabled:opacity-55"
           data-learning-attendance={status ?? "unmarked"}
         >
           {saving
@@ -66,7 +66,7 @@ function AttendanceStatusLight({
                 <Lightbulb
                   aria-hidden
                   size={16}
-                  className={status ? ATTENDANCE_STATUS_LIGHT[status] : "fill-transparent text-muted"}
+                  className={status ? ATTENDANCE_STATUS_LIGHT[status] : "fill-transparent text-line"}
                 />
               )}
         </button>
@@ -638,13 +638,13 @@ export function SessionLearningCheckPanel({
                     dragOverSeatPosition === seatPosition && draggingStudentId !== student.id && "ring-2 ring-crater/35",
                   )}
                 >
-                  <div
-                    className={cn(
-                      "flex min-h-9 items-center gap-0.5 px-1 transition-colors",
-                      statusStyle.header,
-                    )}
+                  <div className={cn(
+                    "h-1 shrink-0 rounded-t-xl transition-colors",
+                    status === "unchecked" ? "bg-line/80" : statusStyle.dot,
+                  )}
                     data-learning-current-status={status}
-                  >
+                  />
+                  <div className="flex min-h-8 items-center gap-0.5 px-1">
                     {attendanceIntegrated && (
                       <AttendanceStatusLight
                         studentName={student.name}
@@ -660,17 +660,14 @@ export function SessionLearningCheckPanel({
                       disabled={!batchMode}
                       onClick={() => toggleSelected(student.id)}
                       className={cn(
-                        "h-8 min-w-0 flex-1 justify-start gap-1 px-1 text-left text-current hover:text-current disabled:opacity-100",
-                        batchMode && "hover:bg-white/15 active:scale-[0.99]",
+                        "h-8 min-w-0 flex-1 justify-start gap-1 px-1 text-left disabled:opacity-100",
+                        batchMode && "hover:bg-moon/30 active:scale-[0.99]",
                       )}
                     >
                       {batchMode && (selected ? <CheckSquare2 size={15} className="shrink-0 text-rose" /> : <Square size={15} className="shrink-0 text-muted" />)}
                       <span className="min-w-0 flex-1 truncate text-xs font-medium">{student.name}</span>
-                      {saving && <LoaderCircle size={13} className="shrink-0 animate-spin motion-reduce:animate-none" />}
+                      {saving && <LoaderCircle size={13} className="shrink-0 animate-spin text-muted motion-reduce:animate-none" />}
                     </Button>
-                    <span className="shrink-0 rounded-md bg-white/15 px-1.5 py-0.5 text-[10px] font-semibold leading-none">
-                      {t("learningStatus_" + status)}
-                    </span>
                     {seatEditMode && (
                       <Button
                         type="button"
@@ -679,7 +676,7 @@ export function SessionLearningCheckPanel({
                         disabled={seatOrderSaving}
                         aria-label={t("learningSeatOrderHandle", { name: student.name })}
                         title={t("learningSeatOrderHint")}
-                        className="h-8 w-10 shrink-0 touch-none cursor-grab gap-0 p-0 text-current hover:bg-white/15 hover:text-current active:cursor-grabbing"
+                        className="h-8 w-10 shrink-0 touch-none cursor-grab gap-0 p-0 text-muted active:cursor-grabbing"
                         onPointerDown={(event) => handleDragPointerDown(event, student.id)}
                         onPointerMove={handleDragPointerMove}
                         onPointerUp={() => finishDragging(false)}
@@ -720,6 +717,7 @@ export function SessionLearningCheckPanel({
                       ))}
                     </div>
                   )}
+                  {batchMode && <p className="px-1 pb-1 text-xs text-muted">{t("learningStatus_" + status)}</p>}
                 </article>
               );
             })}
