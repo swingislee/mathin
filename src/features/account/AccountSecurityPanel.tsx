@@ -313,7 +313,7 @@ export function AccountSecurityPanel({
   return (
     <Tabs value={section} onValueChange={(value) => setSection(value as AccountSection)} orientation="vertical" className="grid min-w-0 border-y border-line lg:grid-cols-[14rem_minmax(0,1fr)]">
       <aside className="border-b border-line p-3 lg:border-r lg:border-b-0 lg:py-6">
-        <div className="lg:sticky lg:top-4">
+        <div className="lg:sticky lg:top-20">
           <p className="hidden px-4 pb-3 text-xs font-medium uppercase tracking-[0.12em] text-muted lg:block">{t("settingsNav")}</p>
           <TabsList className="grid h-auto w-full grid-cols-2 gap-1 rounded-none bg-transparent p-0 lg:block">
             {([
@@ -344,7 +344,7 @@ export function AccountSecurityPanel({
                     <Label htmlFor="account-avatar" className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "cursor-pointer")}>
                       {avatarBusy ? <LoaderCircle className="size-4 animate-spin" /> : null}{t("changeAvatar")}
                     </Label>
-                    <Input id="account-avatar" className="sr-only" type="file" accept="image/png,image/jpeg,image/webp" disabled={profileBusy} onChange={(event) => { void chooseAvatar(event.target.files?.[0]); event.target.value = ""; }} />
+                    <Input id="account-avatar" className="sr-only !size-px" type="file" accept="image/png,image/jpeg,image/webp" disabled={profileBusy} onChange={(event) => { void chooseAvatar(event.target.files?.[0]); event.target.value = ""; }} />
                     {avatarPreview || avatarDraft.kind === "upload" ? <Button type="button" size="sm" variant="ghost" disabled={profileBusy} onClick={() => setAvatarDraft({ kind: "remove" })}>{t("removeAvatar")}</Button> : null}
                   </div>
                   <p className="text-xs text-muted">{t("avatarHint")}</p>
