@@ -1,6 +1,6 @@
-# 课堂体验升级 · M5 本地集成候选
+# 课堂体验升级 · M5 生产分段启用
 
-> **结果**：`PASS / LOCAL INTEGRATION CANDIDATE`
+> **结果**：`STAGE B1 DEPLOYED / PENDING USER ACCEPTANCE`
 >
 > **日期**：2026-08-25
 >
@@ -8,7 +8,7 @@
 >
 > **生产候选**：`8c303a2`
 >
-> **生产状态**：只读 preflight 已完成；migration、应用发布、服务重载和开关启用均未获授权、未执行
+> **生产状态**：Stage A 已完成；Stage B1 的 board checkpoint/input 已启用，layout/H5 仍关闭
 
 ## 本地 Gate
 
@@ -39,10 +39,12 @@ Gate 同步修复了三类发布测试漂移：统一登录框由 `#email` 改�
 
 匿名计数为 auth/profile/student/classroom/session/enrollment/attendance=`14/14/5/3/16/1/0`；checkpoint version/chunk/head、star v2 event、learning result 均为 0，roster revision/entry=`1/0`。Storage object=`123602`，operational error=`1949`，最近错误仍为 `2026-08-22T15:53:09.807Z`。最近已核验备份仍是 `mathin-20260822T093529Z`；它早于手机号与账号中心两次授权发布，因此只能作为既有 Gate 1 证据，不能冒充本候选的新鲜 pre-change 备份。
 
-## 待授权发布分段
+## 生产执行
 
-1. **Stage A · 可直接回退的暗发布**：生成并核验新的 PostgreSQL pre-change 备份；对 migration `20260825000700` 先做完整事务回滚演练，再正式登记；发布 `8c303a2` 并保持四个开关全部关闭。此阶段不产生课堂 v2 数据，应用可原子切回 `72d8127`，新增 RPC 保留为向后兼容 schema。
-2. **Stage B · 受控启用**：按 board checkpoint/input → layout → H5 pointer 分段启用并在每段后由产品负责人审核一个真实教师课堂对象。开关是组织/校区级，不是 user 级；当前“单老师”边界依赖唯一获批教师/课次的运营控制，启用窗口内不得让其他班级开始使用新课堂。
-3. **启用后的回退限制**：一旦产生 v2 checkpoint、roster/star event，不能把应用直接切回不认识 v2 数据的 `72d8127`。回退动作是先关闭对应 writer/UI 开关并继续运行当前双读 bundle；只有证明没有新 v2 写入时，才允许应用级 previous 切换。
+1. **Stage A · 已完成**：Xiaomi 目标、数据库指纹、current/previous、业务计数和四个 false 开关无漂移。新建 PostgreSQL-only pre-change 备份 `mathin-db-prechange-20260825T085233Z-classroom-m5-8c303a2`，dump=`249637390 bytes`、TOC=`3761`、SHA-256=`5654c1ecc7812dc7c93798fba361f76e400037f6299352ee8eb1504c44c431e8`；未归档 Storage、未清理旧备份。
+2. **migration 与暗发布 · 已完成**：`20260825000700_classroom_learning_fill_bulk` 以既有 RPC owner `supabase_admin` 完整执行并回滚，独立核查零残留后正式登记；ledger=`193`、head 仍为较晚的 `20260825000800_account_center_profile`，checksum=`b6ffca69…84e3d`。PostgREST schema cache 已可见四参 RPC。应用候选 `8c303a2` 发布为 `20260825-085754`，previous=`20260825-072801` / `72d8127…`；应用服务、双层 health、zh/en login 和匿名 classroom 重定向通过。
+3. **Stage B1 · 已部署待验收**：组织级 `teaching.classroom_board_checkpoint_v2` 与 `teaching.classroom_input_v2` 已追加 version 2 / true；layout/H5 保持 version 1 / false。第一次启用因 `clock_timestamp()` 晚于事务求值时间而被提交前断言拦截，独立核查为 version 1 / false、domain event=`593`；改用同一事务时间后一次提交，domain event=`595`。启用瞬间 checkpoint/star/learning result 仍为 0，roster revision/entry=`1/0`，错误仍为 `1949` 且最近时间未变。
+4. **后续 Gate**：产品负责人先在真实测试课堂验收一笔主板书的保存/刷新恢复和 Smart 输入所有权；通过后再启用 layout，最后启用 H5 pointer。开关是组织级，不是 user 级，分段期间继续执行单老师运营边界。
+5. **启用后的回退限制**：一旦产生 v2 checkpoint、roster/star event，不能把应用直接切回不认识 v2 数据的 `72d8127`。回退动作是先关闭对应 writer/UI 开关并继续运行当前双读 bundle；只有证明没有新 v2 写入时，才允许应用级 previous 切换。
 
-本记录不授权上述任何生产动作，也不表示 M5 或 R1-Live Gate 2 已通过。
+本记录只证明 Stage A 与 B1 的机器 postflight；Stage B1 尚待产品负责人真实课堂验收，layout/H5 尚未启用，也不表示 R1-Live Gate 2 已通过。

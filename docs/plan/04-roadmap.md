@@ -8,7 +8,7 @@
 >
 > **SML 暂停位置**：`SML-0 · 合同与金标冻结`；空间数学可按独立权限或 Feature Flag 并行，不进入 R1-Live Gate。
 >
-> **当前运行状态**：Gate 1 已通过。Xiaomi 已固定为 `mathin.club` / `supabase.mathin.club` 生产目标；唯一正式管理员、首名真实教师、危险写拒绝、protected-only manifest、current/previous、健康、错误查询位置及当前 PostgreSQL+Storage 同批次备份均已登记。生产业务计数为班级/课次/报名/点名=`1/15/1/0`。2026-08-25 执行者误把 Xiaomi 当作开发库，未经生产授权提前应用 `20260824000200`、`20260825000100–00500`；只读审计确认三项课堂开关均为 false、v2 星星事件=0、production 名单 revision=0，唯一回填的是 `purpose=test` 开放课次且名单条目=0，该事件不表示 M3/M4 已发布或生产通过。本次手机号/password P0 随后取得独立明确授权，数据库 head 已前进到 `20260825000600_r1_live_phone_password_auth`，应用 current/previous 为 `20260825-041101` / `8ec0ba0…` 与 `20260823-123746` / `9bc9ff3…`；其他 Xiaomi 写操作仍需各自授权。Auth phone provider=true、SMS auto-confirm=false，发布后账号/手机号账号/profile/邀请/保障记录=`14/0/14/1/0`，未创建账号、邀请或业务数据。正式手机号邀请注册/登录仍待产品负责人使用真实教师完成，因此 Gate 2 保持 `BLOCKED`。
+> **当前运行状态**：Gate 1 已通过，Gate 2 仍等待正式教师点名持久再读与权限对照。Xiaomi 已固定为生产目标；当前数据库 ledger=`193`、head=`20260825000800_account_center_profile`，应用 current/previous=`20260825-085754` / `8c303a2…` 与 `20260825-072801` / `72d8127…`。课堂 Stage A 的新鲜 PostgreSQL pre-change 备份、migration `20260825000700` 和暗发布已完成；Stage B1 的 board checkpoint/input 为 version 2 / true，layout/H5 保持 version 1 / false，待产品负责人真实测试课堂验收。账号、班级、课次、报名、点名、Storage object 和错误计数在发布及启用瞬间无漂移。
 >
 > **当前 P0 状态**：2026-08-25 产品负责人确认内部教师更习惯手机号注册登录。`手机号或邮箱 + password` 已部署生产：手机号只接受绑定具体号码的一次性员工邀请，不发送/伪造验证码，不开放全局邀请码手机号注册，账号仍以单一 `auth.users.id` 为主体。机器 postflight 已通过；真实教师尚未消费手机号邀请并完成 password 登录，因此状态为 `DEPLOYED / PENDING USER ACCEPTANCE`。
 >
@@ -55,7 +55,7 @@ R1-Live 完成即代表 Mathin 进入公司内部生产使用。它产生的身�
 
 | Gate | 状态 | 已完成证据 | 唯一退出差距 |
 | --- | --- | --- | --- |
-| **Gate 1 · 可安全开始** | **PASS** | 生产目标组合指纹、部署和匿名计数已登记；危险 fixture/rebuild/import 拒绝 Xiaomi；唯一正式 admin 已完成 verified MFA、原子交接、新会话 challenge 和 admin 路由验收；首名真实教师为 active `staff` 并有 `research`/`teacher` 岗位；生产 purge 只有当前数据库指纹、active manifest、显式 `purge_allowed` test 根和精确影响计数同时成立才可执行，当前准删数为 0；数据库当前 head 为 `20260825000500`（2026-08-25 未授权提前迁移事件已单列审计，开关关闭且 production 业务未回填），应用 current/previous 为 `20260823-123746` / `9bc9ff3…` 与 `20260823-122633` / `ba5c991…`，原子发布健康门和 `operational_errors` 查询位置已知；当前 PostgreSQL+Storage 同批次备份的数据库目录、125135 个 Storage 文件、前后清单与全部 SHA-256 已独立复核 | 无。未授权迁移的处置不能被解释为新的生产授权；previous 实际回切、恢复演练、异机/静态加密备份和错误 release 标签属于 Production 1.0 |
+| **Gate 1 · 可安全开始** | **PASS** | 生产目标组合指纹、部署和匿名计数已登记；危险 fixture/rebuild/import 拒绝 Xiaomi；唯一正式 admin 已完成 verified MFA，首名真实教师为 active `staff` 并有 `research`/`teacher` 岗位；生产 purge 仍要求当前数据库指纹、active manifest、显式 `purge_allowed` test 根和精确影响计数，当前准删数为 0。数据库 ledger=`193`、head=`20260825000800`，应用 current/previous=`20260825-085754` / `8c303a2…` 与 `20260825-072801` / `72d8127…`；原子发布健康门和 `operational_errors` 查询位置已知。当前 PostgreSQL+Storage 同批次备份已独立复核，课堂发布另有新鲜 PostgreSQL-only pre-change 备份 | 无。previous 实际回切、恢复演练、异机/静态加密备份和错误 release 标签属于 Production 1.0 |
 | **Gate 2 · 首个真实教师闭环** | **BLOCKED** | 学生、班级、课次、报名、点名 UI/RPC 与 RLS 已实现；本轮运行时合同允许自由班/未完整课程启用，备课质量项、点名前置、资源预载和无 release 均不阻断开课；本机隔离固定账号 Golden Path 1/1 已完成建班→自动课次→`lead` 报名→教师保存迟到/备注→换页再读。生产已有 1 个 production 班级、15 个课次和 1 条 active 报名，主讲 1、学辅 0；学年修复只调整三类对象的周期引用，未升年级，应用已发布且健康 | 正式教师完成登录→进入课次→开课/点名→保存→刷新/重登再读；正式管理员可见，匿名及一个既有无权限主体不可见；P0/核心 P1=0 |
 
 `R1-Live-N` 表示当前只关闭 Gate N。Gate 1 通过后推进 `R1-Live-2`；Gate 2 通过后立即向第一批公司教师开放，不再追加新的上线 Gate。
@@ -114,7 +114,7 @@ Gate 1 已按以下顺序关闭：
 - 实现后先运行覆盖变更风险的最窄机器检查。UI/交互执行受影响测试与必要静态检查；数据库/API、鉴权、共享模块或发布边界变更增加相应集成、RLS、安全或构建检查。
 - 机器检查通过后交由产品负责人在开发端做初步验收。只有目标旅程可用、无已知 P0/核心 P1、双语与失败状态符合该功能范围，并得到明确“可上生产”的确认，才进入生产候选。
 - 可扩展互动使用版本化 capability provider 和统一 conformance：普通 renderer 复用既有输入原语时不逐个建立人工里程碑；只有新增输入原语、修改路由/输入所有权算法、跨 iframe 协议或真实设备回归才触发新的人工输入 Gate。显式 provider 声明与未知能力 fail-closed 仍是安全边界。
-- 课堂体验升级 M0–M4 已于 2026-08-25 在本机开发目标完成产品负责人整体验收，已验收应用基线为 `95ed9f1`；M5 候选 `8c303a2` 随后通过工程、隔离数据库、课堂专项 SQL 与本地浏览器 Gate。Xiaomi 只读 preflight 已确认 current/previous、数据库 head=`20260825000800`、待补 `20260825000700` 与四个 false 开关；生产迁移、暗发布和分段启用仍需本次明确授权，且一旦产生 v2 数据不得直接切回不认识 v2 的旧 bundle。
+- 课堂体验升级 M0–M4 已于 2026-08-25 在本机开发目标完成产品负责人整体验收，已验收应用基线为 `95ed9f1`；M5 候选 `8c303a2` 随后通过工程、隔离数据库、课堂专项 SQL 与本地浏览器 Gate。Xiaomi Stage A 已完成，Stage B1 只启用 board checkpoint/input，layout/H5 仍关闭并等待产品负责人真实测试课堂验收；一旦产生 v2 数据不得直接切回不认识 v2 的旧 bundle。
 - 生产部署以独立可回退提交为单位，记录精确 commit/migration 和目标；发布前核对生产指纹、最近可用备份、current/previous、迁移/数据影响与回退点，发布后核对健康、错误增量、核心 Smoke 和受影响业务不变量。未完成 postflight 的功能只记为“已部署待验收”，不能记为生产通过。
 - 开发新功能不自动成为 Gate 2 blocker。只有它修改共享登录、授权、班级、课次、课堂或点名链路时，才追加对应 R1-Live Smoke；失败时先回退或关闭该功能，保持单老师试用可继续。
 

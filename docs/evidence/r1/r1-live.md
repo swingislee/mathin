@@ -2,7 +2,7 @@
 
 ## 结论
 
-截至 2026-08-25，Xiaomi 已固定为 `mathin.club` / `supabase.mathin.club` 生产目标，危险开发写入继续 fail-closed。数据库账本为 191 条，head=`20260825000600_r1_live_phone_password_auth`；应用 current/previous 为 `20260825-041101` / `8ec0ba0…` 与 `20260823-123746` / `9bc9ff3…`，服务、Auth、loopback、Caddy 与公网健康均正常，最近同批次 PostgreSQL+Storage 备份仍为 `mathin-20260822T093529Z`。手机号/password P0 已部署，phone provider=true、SMS auto-confirm=false；发布前后账号/手机号账号/profile/邀请/保障记录=`14/0/14/1/0`，没有创建账号、邀请或业务数据。真实手机号邀请注册/login 与正式点名闭环均未发生，因此 Gate 2 保持 `BLOCKED`。
+截至 2026-08-25，Xiaomi 已固定为 `mathin.club` / `supabase.mathin.club` 生产目标，危险开发写入继续 fail-closed。数据库账本为 193 条、head=`20260825000800_account_center_profile`；应用 current/previous 为 `20260825-085754` / `8c303a2…` 与 `20260825-072801` / `72d8127…`，服务、Supabase、loopback、Caddy 与公网健康均正常。课堂 Stage A 已完成新鲜 PostgreSQL pre-change 备份、migration `20260825000700` 和暗发布；Stage B1 的 board checkpoint/input 为 version 2 / true，layout/H5 保持 version 1 / false。手机号/password P0 与账号中心第一阶段也已部署。课堂 B1、账号中心、真实手机号邀请注册/login 与正式点名闭环均尚待人工验收，因此 Gate 2 保持 `BLOCKED`。
 
 本文件是 E0/E1 差距审阅，不是完整生产验收。2026-08-14～22 的 Xiaomi E1/E3 运行事实，以及本机隔离目标、应用/数据库发布、正式管理员交接和 manifest 激活证据见 [`r1-live-target-audit.md`](r1-live-target-audit.md)；用户提供的 `docs/plan/mathin-R1-Live-讨论稿.md` 为产品裁决输入，现行施工顺序以 doc 04 为准。
 
@@ -375,6 +375,21 @@ Agent 按 doc 04 的 standing execution direction 生成包含原 4 个 protecte
 | `command_or_runbook` | 只读目标/备份/release/账本/对象计数 preflight → 精确候选 scope diff → migration 失败自动回滚与独立零残留核查 → owner 对齐后的完整回滚演练/独立核查 → 正式事务/账本登记 → 精确 Git archive 的 Xiaomi production build/原子切换 → HTTP、schema、对象计数、错误和 manifest 只读 postflight；未运行 Playwright、全量回归或生产账号旅程 |
 | `artifact_url_or_path`, `artifact_hash` | Xiaomi `/home/swing/services/mathin/releases/20260825-072801/release.json`；migration 规范化 SHA-256 `564b290997cee8e2e4599530f2380acda879129783f9e4396323b7e44f25dc37`；部署 archive SHA-256 `2af10cd0390ff3c7cbe6ab4e057e56b98ae7a8bf843707f100e43f6d01a0fc76` |
 | `retention`, `access_roles`, `failure_ticket` | migration、Git 与 immutable current/previous 按既有策略保留；仓库维护者/Xiaomi 运维角色；页面布局、固定二级导航和滚动容器待产品人工验收 |
+
+### 课堂 M5 Stage A / Stage B1 生产部署证据
+
+产品负责人要求直接推进到 Stage B 后，执行者重新完成 Xiaomi 只读漂移核查：current/previous、数据库指纹、ledger=`192`、四开关 version 1 / false、业务/Storage/错误计数均与候选证据一致，唯一进行中课次属于 `purpose=test`。Stage A 新建并核验 PostgreSQL-only pre-change 备份，不归档 Storage、不清理旧备份；migration `20260825000700` 完整回滚演练与零残留核查通过后正式登记，候选 `8c303a2` 原子发布。四开关关闭 postflight 通过后才进入 Stage B1。
+
+| 证据字段 | 值 |
+| --- | --- |
+| `gate_id`, `domain`, `result` | `CLASSROOM-M5`；课堂体验升级；Stage A `PASS`，Stage B1 `DEPLOYED / PENDING USER ACCEPTANCE` |
+| `measured_value`, `threshold` | 新备份 dump=`249637390 bytes`、TOC=`3761`、SHA-256=`5654c1ec…31e8`；ledger `192→193`，migration checksum=`b6ffca69…84e3d`；current/previous=`20260825-085754` / `8c303a2…` 与 `20260825-072801` / `72d8127…`。board/input version 2 / true，layout/H5 version 1 / false；domain event `593→595`，checkpoint/star/learning result=`0/0/0`，错误=`1949` |
+| `commit_sha`, `migration_head`, `environment` | `8c303a21574899728826984181028971dfc77742`；head 仍为 `20260825000800_account_center_profile`，另登记较早编号 `20260825000700_classroom_learning_fill_bulk`；Xiaomi / production，数据库指纹 `10e3…1a0c` |
+| `dataset_manifest` | 账号/profile/学生/班级/课次/报名/点名=`14/14/5/3/16/1/0`、Storage object=`123602` 均无漂移；Stage B1 只新增两条 feature flag version 与两条审计事件 |
+| `started_at`, `finished_at`, `actor`, `approver` | 2026-08-25（Asia/Shanghai）；release `builtAt=2026-08-25T08:59:10Z`；Codex；`swingislee`（明确要求“直接推进到Stage B”） |
+| `command_or_runbook` | 生产只读 preflight → PostgreSQL-only pre-change 备份/独立 SHA 与 TOC 核验 → migration 完整回滚演练/零残留/正式登记/schema reload → 精确候选双 build/原子切换 → 四开关关闭 postflight → board/input 版本化启用/独立只读 postflight；未造测试数据、未改账号/业务/Storage，未重启 Supabase |
+| `artifact_url_or_path`, `artifact_hash` | release `/home/swing/services/mathin/releases/20260825-085754/release.json`；备份 `/mnt/openlist-disk/Backups/Mathin/mathin-db-prechange-20260825T085233Z-classroom-m5-8c303a2/`；migration 规范化 SHA-256 `b6ffca69ffeb99f4001f120af3bf8b60fec43ff7fe69209c765939400f184e3d` |
+| `retention`, `access_roles`, `failure_ticket` | Git、migration、immutable current/previous 与新备份按既有策略保留且本轮未 prune；仓库维护者/Xiaomi 运维角色；Stage B1 待产品负责人真实测试课堂验收，之后才启用 layout/H5 |
 
 ### 代码、数据和权限位置
 

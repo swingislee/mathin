@@ -1,6 +1,6 @@
 # Mathin 课堂体验升级规划
 
-> **状态**：M0–M4 已在开发端关闭并完成产品负责人整体验收；M5 本地集成候选已通过，生产迁移/暗发布/分段启用待授权<br>
+> **状态**：M0–M4 开发端已验收；M5 Stage A 已完成，Stage B1 已部署待产品负责人真实课堂验收<br>
 > **规划日期**：2026-08-24<br>
 > **仓库基线**：`swingislee/mathin`，本轮审阅基于 `main` 的 `0e30b33`<br>
 > **M1 验收基线**：`43ae587` + `67989c1`；只表示开发目标已验收，尚未部署生产<br>
@@ -1325,7 +1325,7 @@ M3b 把指针协议扩展进既有 H5 注入 runtime，并把缓存版本从 v2 
 
 ### 12.5 M5：课堂集成与发布
 
-当前状态：M0–M4 的开发端产品验收已经完成，`95ed9f1` 是进入 M5 的已验收应用基线。候选 `8c303a2` 已通过一次工程、隔离数据库、课堂专项 SQL 与本地浏览器集成 Gate；Xiaomi 只读 preflight 确认 current/previous、数据库 head、缺失的 `20260825000700`、四个 false 开关和现有备份。精确证据与 Stage A/Stage B 回退边界见 [`classroom-experience-m5-candidate.md`](../evidence/r1/classroom-experience-m5-candidate.md)。生产写入、迁移、重载与开关启用仍未获授权。
+当前状态：M0–M4 的开发端产品验收已经完成，`95ed9f1` 是进入 M5 的已验收应用基线。候选 `8c303a2` 已通过一次工程、隔离数据库、课堂专项 SQL 与本地浏览器集成 Gate，并于 2026-08-25 完成 Stage A：新鲜 PostgreSQL pre-change 备份、`20260825000700` 回滚演练/正式登记、候选发布和四开关关闭 postflight。Stage B1 随后只启用 board checkpoint/input，layout/H5 保持关闭；当前状态为 `DEPLOYED / PENDING USER ACCEPTANCE`。精确证据与回退边界见 [`classroom-experience-m5-candidate.md`](../evidence/r1/classroom-experience-m5-candidate.md)。B1 人工通过后才进入 layout，最后进入 H5 pointer。
 
 #### 回归矩阵
 
