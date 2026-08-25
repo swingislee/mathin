@@ -25,4 +25,4 @@
 
 ## M5 入口
 
-`95ed9f1` 是 M5 的已验收应用基线。M5 先执行一次覆盖发布风险的集成 Gate，并登记精确候选 commit、migration、默认关闭的开关和可执行回退点；生产 preflight、迁移、应用发布、服务重载和开关启用均须另有明确授权。
+`95ed9f1` 是 M5 的已验收应用基线。M5 本地集成 Gate 已在候选 `8c303a2` 通过，精确结果、Xiaomi 只读 preflight、待补 migration、四个默认关闭开关与分段回退限制见 [M5 本地集成候选](classroom-experience-m5-candidate.md)。生产迁移、应用发布、服务重载和开关启用仍须另有明确授权。
