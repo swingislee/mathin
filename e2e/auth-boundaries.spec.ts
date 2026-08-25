@@ -19,7 +19,7 @@ test.describe("authentication boundaries", () => {
 
   test("invalid credentials stay on the login boundary with an accessible error", async ({ page }) => {
     await page.goto("/zh/login");
-    await page.locator("#email").fill("unknown-user@mathin.invalid");
+    await page.locator("#identifier").fill("unknown-user@mathin.invalid");
     await page.locator("#password").fill("not-a-real-account-secret");
     await page.locator('form button[type="submit"]').click();
 

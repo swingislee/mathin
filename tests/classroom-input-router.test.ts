@@ -241,6 +241,7 @@ describe("M3a classroom input routing", () => {
     const hook = readFileSync(new URL("../src/features/classroom/input/useClassroomPointerRouter.ts", import.meta.url), "utf8");
     const panels = readFileSync(new URL("../src/features/classroom/live/LivePanels.tsx", import.meta.url), "utf8");
     const liveShell = readFileSync(new URL("../src/features/classroom/live/LiveShell.tsx", import.meta.url), "utf8");
+    const controlBar = readFileSync(new URL("../src/features/classroom/live/TeacherClassroomControlBar.tsx", import.meta.url), "utf8");
     const fractionLine = readFileSync(new URL("../src/features/tools/fraction-line/FractionLine.tsx", import.meta.url), "utf8");
     const capabilities = readFileSync(new URL("../src/features/classroom/input/capabilities.ts", import.meta.url), "utf8");
     const gameRegistry = readFileSync(new URL("../src/features/games/registry.ts", import.meta.url), "utf8");
@@ -267,8 +268,9 @@ describe("M3a classroom input routing", () => {
     expect(panels).toContain("classroomInputProviderAttributes");
     expect(liveShell).toContain('foreground={Boolean(activeToolId) && rendererProfile.audited}');
     expect(liveShell).toContain("classroomInputProviderAttributes(rendererProfile.renderer, rendererProfile.provider)");
-    expect(liveShell).toContain('teacherLayoutV2 ? "bottom-2 right-2');
     expect(liveShell).toContain("<TeacherClassroomControlBar");
+    expect(controlBar).toContain('className="fixed inset-x-0 bottom-0');
+    expect(controlBar).toContain('data-classroom-control-surface="flat-rail"');
     expect(fractionLine).toContain('data-classroom-input="click"');
     expect(fractionLine).toContain('data-classroom-input="drag"');
     expect(fractionLine).toContain('data-classroom-input="ink"');

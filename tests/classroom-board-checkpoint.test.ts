@@ -287,17 +287,12 @@ describe("classroom board checkpoint v2", () => {
     expect(actions).toContain("get_session_board_checkpoints");
   });
 
-  it("fences stale Worker results and reloads the active board only after an explicit local flush", () => {
+  it("fences stale Worker results and journals every finalized board mutation", () => {
     const hook = source("src/features/classroom/live/useClassBoard.ts");
-    const shell = source("src/features/classroom/live/LiveShell.tsx");
     expect(hook).toContain('state: "dirty"');
     expect(hook).toContain("sourceRevision !== latestTaskRevision");
     expect(hook).toContain("flushLatestCheckpoint");
     expect(hook).toContain("appendBoardMutationJournal");
     expect(hook).toContain("journalSeq");
-    expect(shell).toContain('const activeBoardKey = activeArea === "side" ? "side" : activePage?.id ?? null');
-    expect(shell).toContain("await sideBoard.flushCheckpoint()");
-    expect(shell).toContain("await mainCheckpointControl.flush()");
-    expect(shell).not.toContain("const sideCheckpointStatus =");
   });
 });

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { createInteractionRuntime } from "../src/features/courseware-doc/interactions";
-import { buildH5EntryUrl, injectBindingUrls } from "../src/features/courseware-doc/resolve";
+import { buildH5EntryUrl, H5_RUNTIME_VERSION, injectBindingUrls } from "../src/features/courseware-doc/resolve";
 import type { DocInteraction } from "../src/features/courseware-doc/schema";
 
 const KEY_A = "a".repeat(64);
@@ -21,9 +21,9 @@ describe("P6-4 binding resolution", () => {
         query: { coursewareId: ["5518"], env: ["online", "backup"] },
         coursewareIdParam: "5518",
       }),
-    ).toBe(`/api/cw-h5/packages/${"f".repeat(64)}/index.html?coursewareId=5518&env=online&env=backup&mathin_h5_runtime=2`);
+    ).toBe(`/api/cw-h5/packages/${"f".repeat(64)}/index.html?coursewareId=5518&env=online&env=backup&mathin_h5_runtime=${H5_RUNTIME_VERSION}`);
     expect(buildH5EntryUrl("f".repeat(64), "sub dir/main.htm", null)).toBe(
-      `/api/cw-h5/packages/${"f".repeat(64)}/sub%20dir/main.htm?mathin_h5_runtime=2`,
+      `/api/cw-h5/packages/${"f".repeat(64)}/sub%20dir/main.htm?mathin_h5_runtime=${H5_RUNTIME_VERSION}`,
     );
   });
 });

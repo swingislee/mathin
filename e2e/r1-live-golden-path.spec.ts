@@ -50,7 +50,8 @@ test("principal builds an incomplete-course class and its teacher persists and r
     await page.getByRole("button", { name: "下一步", exact: true }).click();
 
     await page.getByRole("combobox").first().click();
-    await page.getByRole("option", { name: fixture.termName, exact: false }).click();
+    const termOptionName = fixture.termName.replace(" 学年", "");
+    await page.getByRole("option", { name: termOptionName, exact: false }).click();
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     const weekday = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][tomorrow.getDay()];

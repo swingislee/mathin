@@ -10,7 +10,7 @@ export async function loginWithFixedAccount(
   if (locale !== "zh" && locale !== "en") throw new Error("E2E destination must include a supported locale");
 
   await page.goto(`/${locale}/login?next=${encodeURIComponent(destination)}`);
-  await page.locator("#email").fill(account.email);
+  await page.locator("#identifier").fill(account.email);
   await page.locator("#password").fill(account.password);
   await page.locator('form button[type="submit"]').click();
   await page.waitForURL((url) => url.pathname === destination, { waitUntil: "domcontentloaded" });

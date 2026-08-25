@@ -107,7 +107,7 @@ $$;
 grant execute on function auth.uid(), auth.role(), auth.jwt() to anon, authenticated, service_role;
 
 -- ---------------------------------------------------------------------------
--- storage：桶与对象元数据。migrations 只用到 bucket_id / name / owner_id 与 foldername()。
+-- storage：桶与对象元数据。函数保持与 Supabase Storage 当前定义一致。
 -- ---------------------------------------------------------------------------
 create schema if not exists storage;
 grant usage on schema storage to anon, authenticated, service_role;
@@ -135,12 +135,30 @@ grant select, insert, update, delete on storage.objects to anon, authenticated;
 grant select on storage.buckets to anon, authenticated;
 
 create or replace function storage.foldername(name text) returns text[]
-language sql immutable
+language plpgsql immutable
 as $$
-  select string_to_array(name, '/')
+declare
+  parts text[];
+begin
+  select string_to_array(name, '/') into parts;
+  return parts[1 : array_length(parts, 1) - 1];
+end
 $$;
 
-grant execute on function storage.foldername(text) to anon, authenticated, service_role;
+create or replace function storage.extension(name text) returns text
+language plpgsql immutable
+as $$
+declare
+  parts text[];
+  file_name text;
+begin
+  select string_to_array(name, '/') into parts;
+  select parts[array_length(parts, 1)] into file_name;
+  return reverse(split_part(reverse(file_name), '.', 1));
+end
+$$;
+
+grant execute on function storage.foldername(text), storage.extension(text) to anon, authenticated, service_role;
 
 -- ---------------------------------------------------------------------------
 -- realtime：私有频道授权走 realtime.messages 的 RLS，topic 从会话变量读取。

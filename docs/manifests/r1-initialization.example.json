@@ -6,13 +6,13 @@
   "projectId": "example-production-project",
   "databaseId": "example-production-database",
   "migration": {
-    "head": "20260823000200_r1_live_preparation_attention_window",
-    "digest": "7156b94c3a074a35522433ca30db161dd4b9c8c52f2e18fb95486713010646c6",
-    "fileCount": 184
+    "head": "20260825000800_account_center_profile",
+    "digest": "cd1c5b7ce31915bb348e6b5d3838e9d2ed1c06a1a86b43557d2491595e62bcac",
+    "fileCount": 196
   },
   "platform": {
     "source": "supabase/ci/00_platform_bootstrap.sql",
-    "sourceSha256": "f7df9909486485e7a2c692b9cffb0b54d7c6e83685e963818e7a402cb085b857",
+    "sourceSha256": "4ddc631ae9a3236b9e05585f79b6338abb547b2fe5cfb2e0478c544b0c2796cc",
     "scope": "ci-verification-only"
   },
   "referenceData": {
@@ -45,6 +45,6 @@
     "manifestPath": "docs/manifests/production-admin.example.json",
     "manifestSha256": "c0e41ffa51222f7ffbe1866727d9ac8b85a1f9838fd4b335acacbbb37f83c9fa"
   },
-  "generatedAt": "2026-08-01T00:00:00.000Z",
+  "generatedAt": "2026-08-25T00:00:00.000Z",
   "approvedBy": ["release-owner", "security-reviewer"]
 }

@@ -20,7 +20,10 @@ const sources = {
     read("tests/p4e-offline.test.ts"),
   observability: read("src/instrumentation.ts"),
   operations: read("src/instrumentation.ts") + read("src/app/[locale]/dashboard/system-health/page.tsx"),
-  phone: read("src/components/phone-auth-form.tsx") + read("src/features/school/actions/students.ts"),
+  phone:
+    read("src/components/auth-form.tsx") +
+    read("src/app/[locale]/(auth)/actions.ts") +
+    read("src/features/school/actions/students.ts"),
   video: read("src/features/school/video-actions.ts"),
   privacy: read("src/features/notebook/actions.ts") + read("src/features/school/customer-actions.ts"),
 };
@@ -47,7 +50,7 @@ const assertions = [
   ["guardian consent and requests", "migrations", /guardian_consents[\s\S]*account_requests/],
   ["platform post moderation", "privacy", /moderate_post/],
   ["private signed video URL", "video", /session-videos[\s\S]*createSignedUrl/],
-  ["phone OTP and account provisioning", "phone", /signInWithOtp[\s\S]*provisionStudentPhoneAccountAction/],
+  ["invited phone/password and account provisioning", "phone", /signInWithPassword[\s\S]*phone_confirm: true[\s\S]*provisionStudentPhoneAccountAction/],
   ["staff deactivation", "migrations", /staff\.deactivated/],
   ["substitute teacher override", "migrations", /assign_session_substitute/],
   ["guardian visibility scopes", "migrations", /set_guardian_scope/],
