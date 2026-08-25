@@ -311,21 +311,23 @@ export function AccountSecurityPanel({
   const profileBusy = avatarBusy || profileRun.pending;
 
   return (
-    <Tabs value={section} onValueChange={(value) => setSection(value as AccountSection)} orientation="vertical" className="grid min-w-0 overflow-hidden border-y border-line lg:grid-cols-[14rem_minmax(0,1fr)]">
-      <aside className="border-b border-line bg-moon/20 p-3 lg:border-r lg:border-b-0 lg:py-6">
-        <p className="hidden px-4 pb-3 text-xs font-medium uppercase tracking-[0.12em] text-muted lg:block">{t("settingsNav")}</p>
-        <TabsList className="grid h-auto w-full grid-cols-2 gap-1 rounded-none bg-transparent p-0 lg:block">
-          {([
-            ["profile", UserRound, t("navProfile")],
-            ["identities", KeyRound, t("navIdentities")],
-            ["security", ShieldCheck, t("navSecurity")],
-            ["privacy", FileLock2, t("navPrivacy")],
-          ] as const).map(([value, Icon, label]) => (
-            <TabsTrigger key={value} value={value} className="w-full justify-start rounded-none border-b-2 border-transparent bg-transparent px-3 py-3 text-left shadow-none data-[state=active]:border-rose data-[state=active]:bg-rose/5 data-[state=active]:shadow-none lg:border-b-0 lg:border-l-2">
-              <Icon className="size-4 shrink-0" aria-hidden />{label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+    <Tabs value={section} onValueChange={(value) => setSection(value as AccountSection)} orientation="vertical" className="grid min-w-0 border-y border-line lg:grid-cols-[14rem_minmax(0,1fr)]">
+      <aside className="border-b border-line p-3 lg:border-r lg:border-b-0 lg:py-6">
+        <div className="lg:sticky lg:top-4">
+          <p className="hidden px-4 pb-3 text-xs font-medium uppercase tracking-[0.12em] text-muted lg:block">{t("settingsNav")}</p>
+          <TabsList className="grid h-auto w-full grid-cols-2 gap-1 rounded-none bg-transparent p-0 lg:block">
+            {([
+              ["profile", UserRound, t("navProfile")],
+              ["identities", KeyRound, t("navIdentities")],
+              ["security", ShieldCheck, t("navSecurity")],
+              ["privacy", FileLock2, t("navPrivacy")],
+            ] as const).map(([value, Icon, label]) => (
+              <TabsTrigger key={value} value={value} className="w-full justify-start rounded-none border-b-2 border-transparent bg-transparent px-3 py-3 text-left shadow-none data-[state=active]:border-rose data-[state=active]:bg-rose/5 data-[state=active]:shadow-none lg:border-b-0 lg:border-l-2">
+                <Icon className="size-4 shrink-0" aria-hidden />{label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
       </aside>
 
       <div className="min-w-0 px-4 py-7 sm:px-7 lg:px-10">
