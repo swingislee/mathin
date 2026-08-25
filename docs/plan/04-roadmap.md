@@ -8,13 +8,13 @@
 >
 > **SML 暂停位置**：`SML-0 · 合同与金标冻结`；空间数学可按独立权限或 Feature Flag 并行，不进入 R1-Live Gate。
 >
-> **当前运行状态**：Gate 1 已通过。Xiaomi 已固定为 `mathin.club` / `supabase.mathin.club` 生产目标；唯一正式管理员、首名真实教师、危险写拒绝、protected-only manifest、current/previous、健康、错误查询位置及当前 PostgreSQL+Storage 同批次备份均已登记。生产业务计数为班级/课次/报名/点名=`1/15/1/0`。2026-08-25 执行者误把 Xiaomi 当作开发库，未经生产授权提前应用 `20260824000200`、`20260825000100–00500`，故数据库 head 已变为 `20260825000500_classroom_roster_rpc_schema_reload`；应用 current/previous 仍为 `20260823-123746` / `9bc9ff3…` 与 `20260823-122633` / `ba5c991…`。只读审计确认三项课堂开关均为 false、v2 星星事件=0、production 名单 revision=0；唯一回填的是 `purpose=test` 开放课次且名单条目=0。该事件不表示 M3/M4 已发布或生产通过，后续 Xiaomi 写入全部等待新的明确授权。自由课次课件工作区、固定宫区块摈除数独预设和试讲页面读取热修已部署，待教师重新进入试讲及课堂验收。2026-08-23 产品负责人已启动生产端单老师试用；正式点名仍为 0，故 Gate 2 保持 `BLOCKED`。开发轨 M3a/M3b 与 M4a 已完成产品初验；下一开发项为 M4b control 端教师布局，生产保持不变。
+> **当前运行状态**：Gate 1 已通过。Xiaomi 已固定为 `mathin.club` / `supabase.mathin.club` 生产目标；唯一正式管理员、首名真实教师、危险写拒绝、protected-only manifest、current/previous、健康、错误查询位置及当前 PostgreSQL+Storage 同批次备份均已登记。生产业务计数为班级/课次/报名/点名=`1/15/1/0`。2026-08-25 执行者误把 Xiaomi 当作开发库，未经生产授权提前应用 `20260824000200`、`20260825000100–00500`；只读审计确认三项课堂开关均为 false、v2 星星事件=0、production 名单 revision=0，唯一回填的是 `purpose=test` 开放课次且名单条目=0，该事件不表示 M3/M4 已发布或生产通过。本次手机号/password P0 随后取得独立明确授权，数据库 head 已前进到 `20260825000600_r1_live_phone_password_auth`，应用 current/previous 为 `20260825-041101` / `8ec0ba0…` 与 `20260823-123746` / `9bc9ff3…`；其他 Xiaomi 写操作仍需各自授权。Auth phone provider=true、SMS auto-confirm=false，发布后账号/手机号账号/profile/邀请/保障记录=`14/0/14/1/0`，未创建账号、邀请或业务数据。正式手机号邀请注册/登录仍待产品负责人使用真实教师完成，因此 Gate 2 保持 `BLOCKED`。
 >
-> **当前 P0 候选**：2026-08-25 产品负责人确认内部教师更习惯手机号注册登录。`手机号或邮箱 + password` 已在本机隔离目标完成最小候选：手机号只接受绑定具体号码的一次性员工邀请，不发送/伪造验证码，不开放全局邀请码手机号注册，账号仍以单一 `auth.users.id` 为主体；生产迁移、应用和 Auth phone provider 均尚未部署。
+> **当前 P0 状态**：2026-08-25 产品负责人确认内部教师更习惯手机号注册登录。`手机号或邮箱 + password` 已部署生产：手机号只接受绑定具体号码的一次性员工邀请，不发送/伪造验证码，不开放全局邀请码手机号注册，账号仍以单一 `auth.users.id` 为主体。机器 postflight 已通过；真实教师尚未消费手机号邀请并完成 password 登录，因此状态为 `DEPLOYED / PENDING USER ACCEPTANCE`。
 >
 > **双轨执行**：生产端由 1 名正式教师在现有正式班级、课次和花名册上持续试用，优先反馈 P0/核心 P1；开发端可并行尝试产品负责人选中的新功能。新功能只有在开发目标完成受影响检查并由产品负责人初步验收后，才成为生产候选；完成精确版本/迁移登记、生产 preflight、可回退发布和 postflight 后，才能记为生产已部署。开发通过不等于生产通过，新功能也不改变 Gate 2 的点名与权限退出条件。
 >
-> **核对日期**：2026-08-25；生产事实仍截至 2026-08-23，开发轨补充依据课堂体验 M3a/M3b 提交与产品初验；其余依据 active doc 00/25、代码与迁移、本机隔离验证、Xiaomi 去标识化运行核查和 `mathin-R1-Live-讨论稿.md`。
+> **核对日期**：2026-08-25；生产事实已包含手机号/password P0 的 migration、Auth-only 重建、热修 release 与去标识化 postflight；其余依据 active doc 00/25、代码与迁移、本机隔离验证、Xiaomi 运行核查和 `mathin-R1-Live-讨论稿.md`。
 
 ## 1. 两个交付事件
 

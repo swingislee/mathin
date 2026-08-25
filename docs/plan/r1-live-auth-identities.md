@@ -4,7 +4,7 @@
 >
 > **当前用途**：冻结邮箱、手机号、验证码、微信和 QQ 的账号边界与分阶段接口；当前施工顺序仍由 doc 04 决定。
 >
-> **当前实现状态**：2026-08-25 产品负责人把“手机号或邮箱 + password”提升为内部使用 P0。本机隔离目标已完成通用 identifier 表单、手机号绑定员工邀请、provider-unverified 保障记录、手机号/password Auth 开关和数据库断言；没有创建持久手机号测试账号。生产仍只启用邮箱/password，候选迁移、应用与 Auth 配置尚未部署；验证码、微信、QQ 和已有账号新增标识绑定仍未启用。
+> **当前实现状态**：2026-08-25 产品负责人把“手机号或邮箱 + password”提升为内部使用 P0。本机隔离目标完成通用 identifier 表单、手机号绑定员工邀请、provider-unverified 保障记录、手机号/password Auth 开关和数据库断言后，migration `20260825000600`、Auth phone provider 与热修 `8ec0ba0` 已部署 Xiaomi；`SMS_AUTOCONFIRM=false`，没有创建手机号账号或邀请。真实教师注册/login 尚待人工验收；验证码、微信、QQ 和已有账号新增标识绑定仍未启用。
 >
 > **最后核对**：2026-08-25；运行事实见 [`r1-live-target-audit.md`](../evidence/r1/r1-live-target-audit.md)。
 

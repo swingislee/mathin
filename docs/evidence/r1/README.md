@@ -32,7 +32,7 @@ failure_ticket
 
 | 阶段 | 状态 | 日期 | 证据 |
 | --- | --- | --- | --- |
-| R1-Live | Gate 1 passed；Gate 2 single-teacher production trial/blocking；environment incident contained | 2026-08-25 | [真实教师点名闭环差距表](r1-live.md)；[目标核查、应用/数据库发布、正式管理员交接、manifest 激活、真实教师注册/岗位保护、当前生产备份及 2026-08-25 环境误判事件](r1-live-target-audit.md)；[仓库写入目标保险丝](../../runbooks/r1-write-target-policy.md)；[正式对象保护 manifest](../../runbooks/r1-live-object-protection-manifest.md)。Xiaomi 已固定为当前生产目标。数据库 head 因未授权提前迁移变为 `20260825000500_classroom_roster_rpc_schema_reload`；应用 current/previous 仍为 `20260823-123746` / `9bc9ff3…` 与 `20260823-122633` / `ba5c991…`。只读 containment 确认三项新开关均关闭、v2 星星事件与 production roster revision 均为 0；唯一回填为 `purpose=test` 开放课次且 entries=0。该事件不构成 M3/M4 生产发布，后续 Xiaomi 写入等待明确授权。正式教师点名保存/再读、管理员可见和无权限拒绝的 E3 结果仍未完成，因此 Gate 2 未通过 |
+| R1-Live | Gate 1 passed；Gate 2 single-teacher production trial/blocking；phone/password P0 deployed/pending acceptance | 2026-08-25 | [真实教师点名闭环差距表及手机号 P0 证据](r1-live.md)；[目标核查、应用/数据库发布、正式管理员交接、manifest 激活、真实教师注册/岗位保护、当前生产备份及 2026-08-25 环境误判事件](r1-live-target-audit.md)；[仓库写入目标保险丝](../../runbooks/r1-write-target-policy.md)；[正式对象保护 manifest](../../runbooks/r1-live-object-protection-manifest.md)。环境事件 containment 后，产品负责人另行逐字授权手机号/password P0：数据库 head=`20260825000600_r1_live_phone_password_auth`，应用 current/previous=`20260825-041101` / `8ec0ba0…` 与 `20260823-123746` / `9bc9ff3…`，Auth phone=true、SMS auto-confirm=false。发布后账号/手机号账号/profile/邀请/保障记录=`14/0/14/1/0`，业务与错误计数无漂移；真实手机号邀请注册/login 以及正式教师点名保存/再读、管理员可见和无权限拒绝仍未完成，因此 Gate 2 未通过 |
 | R1-0 | passed | 2026-07-28 | [规划真相源与发布边界冻结](r1-0.md) |
 | R1-1 | passed | 2026-07-28 | [机构配置、规则与 Feature Flag](r1-1.md) |
 | R1-2 | passed | 2026-07-28 | [Jobs、通知、文件与外部集成](r1-2.md) |

@@ -198,7 +198,7 @@ R1-3 以 `20260728000400_r1_account_security.sql` 落地账户锁、版本化且
 
 R1-Live 冻结“单账号、多登录身份”：`auth.users.id` 是唯一业务主体，邮箱、手机号、微信和 QQ 只能绑定为同一 UUID 的 identity；密码属于账号，验证码登录不得隐式创建用户，OAuth 新身份只允许在已有会话或完成账号恢复后绑定。初期无验证码 provider 时隐藏验证码入口并继续使用邀请门；正式手机号/password 启用前先把员工邀请从 email-only 泛化为 email/phone，并在非生产目标证明两种登录返回同一 UUID。首名真实教师继续可走现有邮箱/password 邀请，不让手机号、验证码或 OAuth 延迟首次点名。完整接口与冲突合同见 [`r1-live-auth-identities.md`](r1-live-auth-identities.md)。
 
-2026-08-25 产品负责人将手机号/password 提升为内部使用 P0。本机候选已完成通用 identifier、重复密码、email/phone 员工邀请、手机号仅绑定邀请注册及 `provider_unverified` 保障记录；GoTrue phone provider 在本机开启但 `SMS_AUTOCONFIRM=false`，没有持久新增测试账号。生产仍为 email/password，候选迁移、应用与 Auth 配置须作为同一可回退增量部署后再由真实受邀教师验收。
+2026-08-25 产品负责人将手机号/password 提升为内部使用 P0。通用 identifier、重复密码、email/phone 员工邀请、手机号仅绑定邀请注册及 `provider_unverified` 保障记录已随 migration `20260825000600` 和热修 `8ec0ba0` 部署生产；GoTrue phone provider 已开启且 `SMS_AUTOCONFIRM=false`。发布后仍为 14 个账号、0 个手机号账号、14 个 profile、1 条既有已消费邮箱邀请和 0 条保障记录，没有创建账号、邀请或业务数据。当前结论为 `DEPLOYED / PENDING USER ACCEPTANCE`；真实受邀教师完成一次手机号注册和 password 登录后再关闭该 P0。
 
 R1-5 已关闭学生与家庭门户及其课堂连续性依赖：固定角色浏览器子门覆盖学生/家长 zh/en、多子女与特殊状态、请假补课、任务驱动视频、已结束课次逐题学情和监护关系；跨家庭/跨学生真实身份负向查询 100% 拒绝。集成基线通过 14/14 静态 CI、62/62 R1 合同、144 文件空库重放、迁移账本和 13/13 数据库审计，见 [`docs/evidence/r1/r1-5.md`](../evidence/r1/r1-5.md)。学生与家庭门户据此达到 M3；本证据不替代 R1-14 正式 Playwright、R1-16 独立生产、R1-17 RC 或 R1-18 发布审批。
 
