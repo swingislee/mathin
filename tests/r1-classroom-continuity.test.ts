@@ -7,8 +7,11 @@ import {
   LEARNING_SEAT_ROWS,
   learningCheckIdAfterPageChange,
   learningCheckIdForPage,
+  learningResultKey,
   learningSeatAssignments,
+  learningUncheckedStudentIds,
   moveLearningStudentToSeat,
+  type LearningCheckStatus,
 } from "../src/features/school/session-learning-contract";
 import { resolveCourseware } from "../src/features/school/courseware-overlay";
 import { buildRehearsalLearningSetup } from "../src/features/classroom/live/rehearsal-learning";
@@ -27,6 +30,7 @@ const prepUnlockMigration = read("supabase/migrations/20260731000500_r1_preparat
 const prepUnlockNarrowingMigration = read("supabase/migrations/20260731000800_r1_narrow_preparation_archive_unlock.sql");
 const learningSeatOrderMigration = read("supabase/migrations/20260731001000_r1_learning_check_seat_order.sql");
 const learningSeatLayoutMigration = read("supabase/migrations/20260731001200_r1_learning_check_seat_layout.sql");
+const learningFillBulkMigration = read("supabase/migrations/20260825000700_classroom_learning_fill_bulk.sql");
 
 describe("R1 classroom continuity contracts", () => {
   it("bridges active enrollments and claimed student accounts into live classroom membership", () => {
@@ -228,11 +232,12 @@ describe("R1 classroom continuity contracts", () => {
     expect(livePage).not.toContain("if (template.length > 0)");
   });
 
-  it("ships a teacher page list, protected student media, and one-touch or batch learning checks", () => {
+  it("ships a teacher page list, protected student media, and one-touch learning checks with atomic completion", () => {
     const liveShell = read("src/features/classroom/live/LiveShell.tsx");
     const controlMenus = read("src/features/classroom/live/ClassroomControlMenus.tsx");
     const video = read("src/features/classroom/live/VideoStage.tsx");
     const panel = read("src/features/school/SessionLearningCheckPanel.tsx");
+    const fillRail = read("src/features/school/LearningFillRail.tsx");
     const learningSetup = read("src/features/school/session-learning.ts");
     const learningActions = read("src/features/school/session-learning-actions.ts");
     const attendanceActions = read("src/features/school/actions/attendance.ts");
@@ -254,7 +259,10 @@ describe("R1 classroom continuity contracts", () => {
     expect(continuityMigration).toContain("mark_session_learning_check");
     expect(panel).toContain("LEARNING_CHECK_STATUSES.map");
     expect(panel).toContain("mark([student.id], candidate)");
-    expect(panel).toContain("selectedStudentIds");
+    expect(panel).toContain("<LearningFillRail");
+    expect(panel).toContain("learningUncheckedStudentIds");
+    expect(panel).not.toContain("batchMode");
+    expect(panel).not.toContain("studentSelection");
     expect(panel).toContain("data-learning-check-toolbar");
     expect(panel).toContain("data-learning-check-strip");
     expect(panel).toContain("data-ipad-roster-grid");
@@ -270,8 +278,9 @@ describe("R1 classroom continuity contracts", () => {
     expect(panel).toContain('data-learning-seat-layer="student"');
     expect(panel).toContain("gridColumnStart: (seatPosition % LEARNING_SEAT_COLUMNS) + 1");
     expect(panel).toContain("gridRowStart: Math.floor(seatPosition / LEARNING_SEAT_COLUMNS) + 1");
-    expect(panel).toContain("auto-rows-[minmax(8.25rem,1fr)] gap-1");
-    expect(panel).toContain("overflow-y-auto p-1");
+    expect(panel).toContain("auto-rows-[minmax(0,1fr)] overflow-y-hidden");
+    expect(panel).toContain("auto-rows-[minmax(7.75rem,1fr)] overflow-y-auto pr-1");
+    expect(panel).toContain("overflow-y-auto pr-1");
     expect(panel).toContain("Armchair");
     expect(panel).toContain("GripVertical");
     expect(panel).toContain("AttendanceStatusLight");
@@ -282,7 +291,10 @@ describe("R1 classroom continuity contracts", () => {
     expect(panel).toContain("stableSeatStudents.map");
     expect(panel).toContain("dragStartSeatSlotsRef.current");
     expect(panel).toContain("setDragOffset");
-    expect(panel).toContain("learningStatusShort_");
+    expect(panel).not.toContain("learningStatusShort_");
+    expect(panel).toContain('t("learningStatus_" + status)');
+    expect(fillRail).toContain('data-learning-fill-width="112"');
+    expect(fillRail).toContain('t("learningStatus_" + status)');
     expect(panel).toContain("data-learning-current-status={status}");
     expect(panel).toContain('status === "unchecked" ? "bg-line/80" : statusStyle.dot');
     expect(panel).toContain("auto-rows-[2.75rem]");
@@ -294,6 +306,8 @@ describe("R1 classroom continuity contracts", () => {
     expect(panel).toContain("onSeatOrderChange?.(learningSeatAssignments(next))");
     expect(panel).toContain("data-learning-persistence");
     expect(learningActions).toContain('rpc("save_classroom_student_seat_layout"');
+    expect(learningActions).toContain('rpc("mark_session_learning_checks"');
+    expect(learningActions).not.toContain("Promise.all(value.studentIds.map");
     expect(learningSetup).toContain("getSessionRoster(sessionId)");
     expect(learningSetup).toContain("rosterState.entries.map");
     expect(learningSeatOrderMigration).toContain("create table public.classroom_student_seat_order");
@@ -310,6 +324,28 @@ describe("R1 classroom continuity contracts", () => {
     expect(liveShell).not.toContain("operateCourseware");
     expect(learningCheckMarkFixMigration).toContain("v_classroom_id");
     expect(learningCheckMarkFixMigration).toContain("enrollment_row.classroom_id = v_classroom_id");
+    expect(learningFillBulkMigration).toContain("create or replace function public.mark_session_learning_checks");
+    expect(learningFillBulkMigration).toContain("distinct_count <> submitted_count");
+    expect(learningFillBulkMigration).toContain("result_row.student_id = any(p_student_ids)");
+    expect(learningFillBulkMigration).toContain("from unnest(p_student_ids) submitted(student_id)");
+  });
+
+  it("fills only unchecked, assessable students", () => {
+    const students = [
+      { id: "student-1", name: "One", seatPosition: 0 },
+      { id: "student-2", name: "Two", seatPosition: 1 },
+      { id: "student-3", name: "Three", seatPosition: 2 },
+    ];
+    const results = new Map<string, LearningCheckStatus>([
+      [learningResultKey("check-1", "student-1"), "independent"],
+    ]);
+
+    expect(learningUncheckedStudentIds(
+      students,
+      "check-1",
+      results,
+      new Set(["student-3"]),
+    )).toEqual(["student-2"]);
   });
 
   it("creates a local rehearsal learning setup from the on-air roster without inventing database writes", () => {

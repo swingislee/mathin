@@ -107,6 +107,21 @@ export function learningResultKey(checkId: string, studentId: string): string {
   return checkId + ":" + studentId;
 }
 
+/** Students that still have no result for a check, excluding out-of-scope roster rows. */
+export function learningUncheckedStudentIds(
+  students: readonly SessionLearningStudent[],
+  checkId: string,
+  results: ReadonlyMap<string, LearningCheckStatus>,
+  excludedStudentIds: ReadonlySet<string>,
+): string[] {
+  return students.flatMap((student) => (
+    !excludedStudentIds.has(student.id)
+    && (results.get(learningResultKey(checkId, student.id)) ?? "unchecked") === "unchecked"
+      ? [student.id]
+      : []
+  ));
+}
+
 /** Resolve the official page-bound check for the courseware page currently on air. */
 export function learningCheckIdForPage(
   checks: readonly SessionLearningCheck[],
