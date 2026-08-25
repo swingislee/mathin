@@ -39,6 +39,8 @@ interface LearningFillUndo {
   status: Exclude<LearningCheckStatus, "unchecked">;
 }
 
+const LEARNING_FILL_TOAST_OPTIONS = { position: "top-center" as const };
+
 function AttendanceStatusLight({
   studentName,
   row,
@@ -273,7 +275,7 @@ export function SessionLearningCheckPanel({
     const checkId = activeCheck.id;
     mark(uncheckedStudentIds, status, (savedStudentIds) => {
       setFillUndo({ checkId, studentIds: savedStudentIds, status });
-      toast.success(t("learningFillSaved", { count: savedStudentIds.length }));
+      toast.success(t("learningFillSaved", { count: savedStudentIds.length }), LEARNING_FILL_TOAST_OPTIONS);
     });
   };
 
@@ -288,7 +290,7 @@ export function SessionLearningCheckPanel({
     }
     mark(undoStudentIds, "unchecked", (savedStudentIds) => {
       setFillUndo(null);
-      toast.success(t("learningFillUndone", { count: savedStudentIds.length }));
+      toast.success(t("learningFillUndone", { count: savedStudentIds.length }), LEARNING_FILL_TOAST_OPTIONS);
     });
   };
 
