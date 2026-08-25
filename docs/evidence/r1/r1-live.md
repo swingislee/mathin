@@ -361,6 +361,21 @@ Agent 按 doc 04 的 standing execution direction 生成包含原 4 个 protecte
 | `artifact_url_or_path`, `artifact_hash` | Xiaomi `/home/swing/services/mathin/releases/20260825-041101/release.json`；Auth 回退配置 `/home/swing/services/supabase-project/deployment-backups/20260825T040901Z-phone-password-provider/.env.before`；migration 规范化 SHA-256 `01b89098cb4fddb155a26e98f38fc33072fbe2e9b553b6a491b7fc77ec495133` |
 | `retention`, `access_roles`, `failure_ticket` | Git、migration、immutable current/previous 与 owner-only Auth 配置备份按既有策略保留；仓库维护者/Xiaomi 运维角色；`LIVE-P0-04` 待真实教师手机号注册/login 后关闭 |
 
+### 统一账号中心第一阶段生产部署证据
+
+产品负责人逐字授权向 Xiaomi 部署 migration `20260825000800_account_center_profile` 与精确应用提交 `72d8127`，允许为既有 profile 增加默认 `preferred_locale=zh`、创建空头像 bucket/RLS 和文件治理规则，禁止创建账号、身份、岗位、业务数据或 Storage 对象。写前 scope diff 发现较早候选 `9b2cf53` 会夹带尚未获准的课堂增量，因此在任何生产写入前停止；最终 release 从生产基线 `8ec0ba0` 只选取账号中心 11 个文件。migration 首次以错误 owner 执行时在替换既有函数前失败并自动回滚，独立核查为零残留；随后以函数 owner `supabase_admin` 完整执行并回滚、再次零残留核查后，才以相同事务正式提交。
+
+| 证据字段 | 值 |
+| --- | --- |
+| `gate_id`, `domain`, `result` | `POST-LIVE-AUTH-01` 第一阶段；统一账号中心；`DEPLOYED / PENDING USER ACCEPTANCE` |
+| `measured_value`, `threshold` | ledger `191→192`，head/checksum=`20260825000800_account_center_profile` / `564b2909…c37`；14/14 个既有 profile 为默认 `preferred_locale=zh`；头像 bucket=`1`、bucket object=`0`、Storage policy=`3`、文件策略=`1`。current/previous=`20260825-072801` / `72d8127…` 与 `20260825-041101` / `8ec0ba0…`；service active，loopback/Caddy/公网 health 为 production `ok`，zh/en login=200，匿名账号中心精确 307 到登录页；错误仍为 1949 |
+| `commit_sha`, `migration_head`, `environment` | `72d812727121c112ceaa3ab3fd935016473e48ad`；`20260825000800_account_center_profile`；Xiaomi / production，数据库指纹 `10e3…1a0c` |
+| `dataset_manifest` | pre/post 均为 auth user/profile/phone user=`14/14/0`、staff-role/invitation/identifier assurance=`11/1/0`、学生/班级/课次/报名/点名=`5/3/16/1/0`、Storage object/managed file=`123602/5`、active manifest/entry/protected/purge=`1/8/8/0`；仅 bucket 总数按授权 `8→9`，新 bucket 为空 |
+| `started_at`, `finished_at`, `actor`, `approver` | 2026-08-25（Asia/Shanghai）；release `builtAt=2026-08-25T07:29:16Z`；Codex；`swingislee`（逐字授权本 migration、空 bucket/RLS/文件治理和 commit `72d8127`） |
+| `command_or_runbook` | 只读目标/备份/release/账本/对象计数 preflight → 精确候选 scope diff → migration 失败自动回滚与独立零残留核查 → owner 对齐后的完整回滚演练/独立核查 → 正式事务/账本登记 → 精确 Git archive 的 Xiaomi production build/原子切换 → HTTP、schema、对象计数、错误和 manifest 只读 postflight；未运行 Playwright、全量回归或生产账号旅程 |
+| `artifact_url_or_path`, `artifact_hash` | Xiaomi `/home/swing/services/mathin/releases/20260825-072801/release.json`；migration 规范化 SHA-256 `564b290997cee8e2e4599530f2380acda879129783f9e4396323b7e44f25dc37`；部署 archive SHA-256 `2af10cd0390ff3c7cbe6ab4e057e56b98ae7a8bf843707f100e43f6d01a0fc76` |
+| `retention`, `access_roles`, `failure_ticket` | migration、Git 与 immutable current/previous 按既有策略保留；仓库维护者/Xiaomi 运维角色；页面布局、固定二级导航和滚动容器待产品人工验收 |
+
 ### 代码、数据和权限位置
 
 | 范围 | 位置 | 当前判断 |
@@ -401,7 +416,7 @@ Agent 按 doc 04 的 standing execution direction 生成包含原 4 个 protecte
 - 全量 Playwright 写态、zh/en、跨浏览器、连续无 flaky、文件/并发/竞争矩阵。
 - 全量指标、容量、监控、数据库/Storage RPO/RTO 和恢复演练。
 - 14 天/5 节真实使用观察；观察从 R1-Live 开放当天开始，不作为开放前等待。
-- `POST-LIVE-AUTH-01`：补齐 student/parent/staff/admin 在桌面、移动和各可用环境中的统一账号中心入口，并完善资料、密码、MFA、会话、恢复和多 identity 绑定；2026-08-15 已确认学生 Dashboard 无可发现入口，本轮不保存含姓名的用户截图。
+- `POST-LIVE-AUTH-01`：第一阶段统一账号中心已部署，待人工验收传统设置页布局、固定二级导航和单一滚动容器；验证码、邮箱/手机号自助绑定、微信/QQ 与完整多 identity 旅程仍在后续 provider 阶段。本轮不保存含姓名的用户截图。
 - Spatial Math / 3D 增强、长期重构、财务/活动深化和更多内容。
 
 ## 下一次状态变化

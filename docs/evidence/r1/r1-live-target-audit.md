@@ -239,8 +239,8 @@ replacement artifact 只复制首份 manifest 的 4 个 protected 条目，并�
 
 | 指针 | release | commit | 构建时间 |
 | --- | --- | --- | --- |
-| current | `20260822-181331` | `b8999422a217ecf83064bd9f02521a751d23f692` | `2026-08-22T18:14:43Z` |
-| previous | `20260822-162416` | `6dfb3af96cc81ca09be9b662d7cb047025546019` | `2026-08-22T16:25:29Z` |
+| current | `20260825-072801` | `72d812727121c112ceaa3ab3fd935016473e48ad` | `2026-08-25T07:29:16Z` |
+| previous | `20260825-041101` | `8ec0ba01ef74d503ff89138cd05da395b096228e` | `2026-08-25T04:12:14Z` |
 
 #### 4.2.0 2026-08-14 身份页前端发布
 
@@ -406,6 +406,21 @@ replacement artifact 只复制首份 manifest 的 4 个 protected 条目，并�
 | `artifact_url_or_path`, `artifact_hash` | release `/home/swing/services/mathin/releases/20260825-041101/release.json`；Auth 回退 `/home/swing/services/supabase-project/deployment-backups/20260825T040901Z-phone-password-provider/.env.before`；migration SHA-256 `01b89098cb4fddb155a26e98f38fc33072fbe2e9b553b6a491b7fc77ec495133` |
 | `retention`, `access_roles`, `failure_ticket` | Git、migration、immutable current/previous 与 owner-only Auth 配置备份按既有策略保留；仓库维护者/Xiaomi 运维角色；`LIVE-P0-04` 待真实教师手机号注册/login 后关闭 |
 
+#### 4.2.10 2026-08-25 统一账号中心第一阶段授权发布
+
+产品负责人先后修正应用候选，最终逐字授权 migration `20260825000800_account_center_profile` 与 commit `72d8127`，并允许新增默认中文偏好、空头像 bucket/RLS 和文件治理规则。生产 preflight 发现早期候选 `9b2cf53` 相对 current 会夹带未获准的课堂 migration/应用增量，因此没有写入并改为从 `8ec0ba0` 创建只含 11 个账号中心文件的 release。migration 第一次以 `postgres` runner 替换 `supabase_admin` 所有的既有函数时失败并自动回滚；独立零残留核查通过后，以 `supabase_admin` 完成全量回滚演练、再次零残留核查与正式提交。
+
+| 证据字段 | 值 |
+| --- | --- |
+| `gate_id`, `domain`, `result` | `POST-LIVE-AUTH-01` 第一阶段；账号资料与治理；`DEPLOYED / PENDING USER ACCEPTANCE` |
+| `measured_value`, `threshold` | ledger `191→192`，head/checksum=`20260825000800_account_center_profile` / `564b2909…c37`；`preferred_locale=zh` 为 14/14；头像 bucket/object=`1/0`、Storage policy=`3`、文件策略=`1`。current/previous=`20260825-072801` / `72d8127…` 与 `20260825-041101` / `8ec0ba0…`；三层 health 正常、zh/en login=200、匿名账号中心=307 精确登录跳转、错误仍为 1949 |
+| `commit_sha`, `migration_head`, `environment` | `72d812727121c112ceaa3ab3fd935016473e48ad`；`20260825000800_account_center_profile`；Xiaomi / production；数据库指纹 `10e3…1a0c` |
+| `dataset_manifest` | pre/post auth user/profile/phone user=`14/14/0`、staff-role/invitation/identifier assurance=`11/1/0`、学生/班级/课次/报名/点名=`5/3/16/1/0`、Storage object/managed file=`123602/5`、active manifest/entry/protected/purge=`1/8/8/0`；仅授权的空 bucket 使 bucket 总数 `8→9` |
+| `started_at`, `finished_at`, `actor`, `approver` | 2026-08-25（Asia/Shanghai）；release `builtAt=2026-08-25T07:29:16Z`；Codex；`swingislee`（逐字授权 migration、空 bucket/RLS/文件治理和 commit `72d8127`） |
+| `command_or_runbook` | 只读 preflight/scope diff → 首次失败自动回滚与独立零残留核查 → owner 对齐后的完整回滚演练/独立核查 → 正式 migration/ledger → 精确 archive 的 Xiaomi build、immutable release 与原子切换 → HTTP/数据库/Storage/manifest/错误只读 postflight；未运行 Playwright、全量回归或真实账号写态 |
+| `artifact_url_or_path`, `artifact_hash` | release `/home/swing/services/mathin/releases/20260825-072801/release.json`；migration SHA-256 `564b290997cee8e2e4599530f2380acda879129783f9e4396323b7e44f25dc37`；部署 archive SHA-256 `2af10cd0390ff3c7cbe6ab4e057e56b98ae7a8bf843707f100e43f6d01a0fc76` |
+| `retention`, `access_roles`, `failure_ticket` | Git、migration 与 immutable current/previous 按现有策略保留；仓库维护者/Xiaomi 运维角色；账号中心页面待产品人工验收 |
+
 ### 4.3 错误定位：可查询，但 release 关联缺失
 
 - `public.operational_errors` 共 1,949 条：`request.error` 1,948 条、`infra.disk_alert` 1 条；最近一条为本轮建班校验错误 `2026-08-22T15:53:09.807Z`。
@@ -420,4 +435,4 @@ replacement artifact 只复制首份 manifest 的 4 个 protected 条目，并�
 | Gate 1 · 可安全开始 | `PASS` | 目标域名、应用/数据库/Storage/compose 匿名指纹和部署 commit 已登记；正式 admin/MFA 与首名教师岗位已建立；危险写入口和 purge RPC fail-closed，准删候选为 0；运行时 migration/应用已同步发布；current/previous、原子切换/失败回退命令、服务健康和错误查询位置已确认；当前 PostgreSQL+Storage 同批次备份已通过 TOC、完整文件计数、源前后清单和独立 SHA 复核 | 无；恢复、异机/静态加密备份和受控 rollback 属于 Production 1.0 |
 | Gate 2 · 首个真实教师闭环 | `BLOCKED` | 身份与岗位存在；报名状态窄修复已部署；生产已有 1 个 production 班级、15 个课次和 1 条 active 报名；建班字段校验与学年/秋季归属修复均已发布，学生未升年级 | 正式教师完成点名保存与再读；管理员可见且既有无权限主体不可见 |
 
-这份证据证明 2026-08-14 的 Xiaomi 初次只读观察，2026-08-15 的本机隔离目标、应用-only 生产发布、发布后健康、正式管理员身份引导/MFA/原子交接、新会话 AAL2/admin 路由验收、两个早期 R1-Live migration、首份 protected-only manifest 和首名真实教师邀请注册，2026-08-17 的 `research`/`teacher` 双岗位核查与 replacement manifest 原子替换，2026-08-22 两条运行时 migration/对应应用的同步生产发布、当前 PostgreSQL+Storage 同批次备份的独立可读性/SHA 复核和 `20260822000300` 报名状态窄修复，以及 2026-08-23 首个正式班级/15 个课次、建班字段校验修复和学年四周期方案的生产同步发布。2026-08-25 的未授权 classroom migration 提前应用事件已如实登记并完成 containment；后续手机号/password P0 取得独立明确授权并以 migration `20260825000600`、Auth-only 重建和热修 `8ec0ba0` 发布，未创建账号、邀请或业务数据。Gate 1 已通过；Gate 2 已关闭建班、课次、报名与学年归属子路径，但仍不证明手机号真实邀请注册/login、正式教师点名持久再读及权限对照已经完成。previous 兼容回退、恢复演练、异机/静态加密备份和 release 错误标签另属 Production 1.0 证据。
+这份证据证明 2026-08-14 的 Xiaomi 初次只读观察，2026-08-15 的本机隔离目标、应用-only 生产发布、发布后健康、正式管理员身份引导/MFA/原子交接、新会话 AAL2/admin 路由验收、两个早期 R1-Live migration、首份 protected-only manifest 和首名真实教师邀请注册，2026-08-17 的 `research`/`teacher` 双岗位核查与 replacement manifest 原子替换，2026-08-22 两条运行时 migration/对应应用的同步生产发布、当前 PostgreSQL+Storage 同批次备份的独立可读性/SHA 复核和 `20260822000300` 报名状态窄修复，以及 2026-08-23 首个正式班级/15 个课次、建班字段校验修复和学年四周期方案的生产同步发布。2026-08-25 的未授权 classroom migration 提前应用事件已如实登记并完成 containment；后续手机号/password P0 取得独立明确授权并以 migration `20260825000600`、Auth-only 重建和热修 `8ec0ba0` 发布，统一账号中心第一阶段也以 migration `20260825000800` 与账号专用提交 `72d8127` 发布；两批均未创建账号、身份、岗位或业务数据，后者只新增空头像 bucket 与既定治理对象。Gate 1 已通过；Gate 2 已关闭建班、课次、报名与学年归属子路径，但仍不证明手机号真实邀请注册/login、正式教师点名持久再读及权限对照已经完成。账号中心仍待人工验收；previous 兼容回退、恢复演练、异机/静态加密备份和 release 错误标签另属 Production 1.0 证据。

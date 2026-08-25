@@ -4,7 +4,7 @@
 >
 > **当前用途**：冻结邮箱、手机号、验证码、微信和 QQ 的账号边界与分阶段接口；当前施工顺序仍由 doc 04 决定。
 >
-> **当前实现状态**：2026-08-25 产品负责人把“手机号或邮箱 + password”提升为内部使用 P0。本机隔离目标完成通用 identifier 表单、手机号绑定员工邀请、provider-unverified 保障记录、手机号/password Auth 开关和数据库断言后，migration `20260825000600`、Auth phone provider 与热修 `8ec0ba0` 已部署 Xiaomi；`SMS_AUTOCONFIRM=false`，没有创建手机号账号或邀请。真实教师注册/login 尚待人工验收；验证码、微信、QQ 和已有账号新增标识绑定仍未启用。
+> **当前实现状态**：2026-08-25 产品负责人把“手机号或邮箱 + password”提升为内部使用 P0。本机隔离目标完成通用 identifier 表单、手机号绑定员工邀请、provider-unverified 保障记录、手机号/password Auth 开关和数据库断言后，migration `20260825000600`、Auth phone provider 与热修 `8ec0ba0` 已部署 Xiaomi；`SMS_AUTOCONFIRM=false`，没有创建手机号账号或邀请。同日统一账号中心第一阶段 migration `20260825000800` 与应用 `72d8127` 也已部署，机器 postflight 通过，待人工验收；验证码、邮箱/手机号自助绑定、微信/QQ 和真实手机号教师注册/login 仍未完成。
 >
 > **最后核对**：2026-08-25；运行事实见 [`r1-live-target-audit.md`](../evidence/r1/r1-live-target-audit.md)。
 
@@ -153,9 +153,9 @@ beginIdentityLink(input: {
 3. 第一阶段只在“账号设置 → 绑定登录方式”中调用 manual identity linking。登录页仅允许已经绑定的微信/QQ 返回原 UUID；新 provider subject 不创建账号。
 4. 解绑前要求至少保留一种可用登录方式；最后一种身份不可删除。绑定、冲突、解绑和支持恢复写不可变审计。
 
-### E. R1-Live 后统一账号中心（`POST-LIVE-AUTH-01`）
+### E. 统一账号中心（`POST-LIVE-AUTH-01`）
 
-2026-08-25 代码复核修正了早期判断：student、parent、staff 导航和全局工具菜单已经提供 `/dashboard/account-security` 入口，当前缺口是页面仍以安全工具集合为主，不能完成个人资料、登录 identity 和恢复状态管理。产品负责人确认统一账号中心采用传统网站个人设置页：桌面为左侧设置导航、右侧线性表单/列表，移动端把导航移到内容上方；不用 Dashboard 卡片网格组织个人信息。产品负责人随后明确把第一阶段提前为 R1-Live 期间的独立热修；它不改变 Gate 2 点名退出条件，仍须按开发候选、生产 preflight、数据库优先和应用发布顺序独立晋级。
+2026-08-25 代码复核修正了早期判断：student、parent、staff 导航和全局工具菜单已经提供 `/dashboard/account-security` 入口，当前缺口是页面仍以安全工具集合为主，不能完成个人资料、登录 identity 和恢复状态管理。产品负责人确认统一账号中心采用传统网站个人设置页：桌面为左侧设置导航、右侧线性表单/列表，移动端把导航移到内容上方；不用 Dashboard 卡片网格组织个人信息。产品负责人随后明确把第一阶段提前为 R1-Live 期间的独立热修；migration `20260825000800` 与应用 `72d8127` 已部署 Xiaomi，机器 postflight 通过，页面仍待产品人工验收。它不改变 Gate 2 点名退出条件。
 
 现有 `/dashboard/account-security` 升级为统一账号中心，保留当前入口和书签兼容。一级信息架构固定为：
 
