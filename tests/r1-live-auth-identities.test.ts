@@ -29,7 +29,11 @@ describe("R1-Live email and phone password identities", () => {
     expect(actions).toContain('rpc("validate_registration_access_v2"');
     expect(actions).toContain("admin.auth.admin.createUser");
     expect(actions).toContain("phone_confirm: true");
-    expect(form).toContain('name="identifier"');
+    expect(form).toContain('id="username" name="username"');
+    expect(form).toContain('autoComplete="username"');
+    expect(form).toContain('autoComplete={mode === "login" ? "current-password" : "new-password"}');
+    expect(actions).toContain('formData.get("username")');
+    expect(actions).not.toContain('formData.get("identifier")');
     expect(form).toContain('name="passwordConfirm"');
     expect(form).not.toContain("phoneLogin");
     expect(phoneRoute).toContain("redirect(`/${locale}/login`)");

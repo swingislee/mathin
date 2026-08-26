@@ -52,7 +52,7 @@ export async function login(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
   const next = safeNext(formData.get("next"), locale);
   const parsed = loginSchema.safeParse({
-    identifier: formData.get("identifier"),
+    identifier: formData.get("username"),
     password: formData.get("password"),
   });
   if (!parsed.success) redirect(`/${locale}/login?error=credentials`);
@@ -71,7 +71,7 @@ export async function signup(formData: FormData) {
   const parsed = signupSchema.safeParse({
     displayName: formData.get("displayName"),
     inviteCode: formData.get("inviteCode"),
-    identifier: formData.get("identifier"),
+    identifier: formData.get("username"),
     password: formData.get("password"),
     passwordConfirm: formData.get("passwordConfirm"),
     privacyConsent: formData.get("privacyConsent"),

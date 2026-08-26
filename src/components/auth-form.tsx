@@ -28,7 +28,7 @@ export async function AuthForm({ mode, locale, error, next }: { mode: "login" | 
     <main className="grid min-h-dvh place-items-center px-6 py-16">
       <div className="flex w-full max-w-md flex-col items-center">
         <Star4 size={24} className="mb-6" />
-        <form action={action} className="w-full rounded-[2rem] border bg-card p-8 shadow-sm">
+        <form action={action} autoComplete="on" className="w-full rounded-[2rem] border bg-card p-8 shadow-sm">
           <Link href="/" className="font-display text-xl">Mathin</Link>
           <h1 className="mb-7 mt-7 font-display text-3xl">{t(mode === "login" ? "loginTitle" : "signupTitle")}</h1>
           <Input type="hidden" name="locale" value={locale} />
@@ -43,8 +43,8 @@ export async function AuthForm({ mode, locale, error, next }: { mode: "login" | 
             </>
           )}
 
-          <Label className="mb-2 block" htmlFor="identifier">{t("identifier")}</Label>
-          <Input className="h-11 rounded-full bg-transparent px-4" id="identifier" name="identifier" type="text" required autoComplete="username" placeholder={t("identifierPlaceholder")} />
+          <Label className="mb-2 block" htmlFor="username">{t("identifier")}</Label>
+          <Input className="h-11 rounded-full bg-transparent px-4" id="username" name="username" type="text" required autoComplete="username" autoCapitalize="none" spellCheck={false} placeholder={t("identifierPlaceholder")} />
           <p className="mb-5 mt-2 text-xs leading-5 text-muted">{t(mode === "signup" ? "signupIdentifierHint" : "loginIdentifierHint")}</p>
           <Label className="mb-2 block" htmlFor="password">{t("password")}</Label>
           <Input className="h-11 rounded-full bg-transparent px-4" id="password" name="password" type="password" minLength={mode === "login" ? 6 : 8} maxLength={128} required autoComplete={mode === "login" ? "current-password" : "new-password"} />
