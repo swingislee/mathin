@@ -1,14 +1,14 @@
 # 课堂体验升级 · M5 生产分段启用
 
-> **结果**：`STAGE B3 STOPPED / FAIL-CLOSED ROLLBACK`
+> **结果**：`STAGE B3 REMEDIATION DEPLOYED / H5 FLAG FALSE / PENDING USER ACCEPTANCE`
 >
 > **日期**：2026-08-25～26
 >
 > **产品验收基线**：`95ed9f1`
 >
-> **生产候选**：`8c303a2`
+> **生产候选**：`964ca5e`
 >
-> **生产状态**：Stage A、B1 与 B2 已通过；H5 pointer 已回退为 version 3 / false。开发修复候选 `f1f8d98` + `e2ff273` 已就绪并等待产品人工验收，尚未迁移生产
+> **生产状态**：Stage A、B1 与 B2 已通过；Stage B3 修复底座已由隔离提交 `964ca5e` 部署，H5 pointer 保持 version 3 / false，等待生产人工验收与逐包档案登记
 
 ## 本地 Gate
 
@@ -53,8 +53,18 @@ Gate 同步修复了三类发布测试漂移：统一登录框由 `#email` 改�
 | 对象 | 开发结果 | 证据边界 |
 | --- | --- | --- |
 | 共同能力合同 | `f1f8d98` 新增按 package SHA-256 的版本化 active 能力档案；通用魔法校 `DocStage` 与爱学习 `AixuexiStage` 复用同一 iframe 注册和 pointer bridge。`e2ff273` 把一级三模式选择收敛为单一 Smart 开关，由当前指针/绘图工具派生回退锁；`c03c382` 将入口改为 `112×44px` 横向滑动条，`aa6b75b` 再以强调色小型 SVG 与滑轨表达开启态并移除外围边框/圆角底板 | 包内 provider 声明在 delivery 时剥离，只信任 registry；缺档案、查询失败、档案不匹配或握手失败时 Smart fail closed，但教师仍可用指针操作 H5，或用笔/颜色直接批注 |
-| 数据库 | `20260826000100_classroom_h5_input_profiles` 只应用到 `127.0.0.1:35421` 指向的本机 Docker；表为空、RLS 只允许 anon/authenticated 读取 active 档案，PostgREST 授权查询返回 200/`[]` | Xiaomi 未执行 migration、未写 profile、未改开关 |
+| 数据库 | `20260826000100_classroom_h5_input_profiles` 已以规范化 checksum `8709c55c…80e1` 登记生产；`cw_h5_input_profiles` 为空、RLS 开启，anon/authenticated 仅可读取 active 档案的指定列，PostgREST 返回 200/`[]` | 未写 profile、未改四个开关；H5 继续 fail closed |
 | 课程审计 | 全量 revision 只读审计：`aixuexi-page-doc-v1` 5442 页/9 个 `embedded_h5`，`page-doc-v1` 97349 页/13258 个 H5；本地发布包审计：魔法校 baseline 55101 页、H5 4367、页面互动 3305、混合 102，2026 包 16451 页、H5 2316、页面互动 1075、混合 78 | revision 与本地发布包计数不证明当前 production 课次可达量；700 个现有魔法校 package（677 non-cocos、23 cocos2）尚无权威输入档案，未被批量猜测为 `click` |
 | 机器 Gate | `f1f8d98` 相关 Vitest 5 个文件：36 项通过、1 项条件跳过，`pnpm typecheck`、`pnpm lint`、Next production build 通过；`e2ff273` 追加 3 个定向文件 15/15、typecheck/受影响 lint 和统一 Playwright 1/1 通过；`c03c382`/`aa6b75b` 追加实际 `112×44px`、单 SVG、零边框/圆角和开关行为断言，typecheck、受影响 lint、统一 Playwright 1/1 通过 | E2E 只覆盖 Smart 单开关、魔法校混合页、爱学习嵌入页和未登记页的工具派生回退，不替代产品手感与生产 iPad |
 
-本记录证明 Stage A 机器 postflight、B1/B2 人工验收，以及 `f1f8d98` + `e2ff273` + `c03c382` + `aa6b75b` 的开发机器候选；Stage B3 生产仍处于安全回退。只有产品负责人确认三个代表页面及单一 Smart 开关的开发验收，并另行授权生产迁移/发布后，才能重新进入 B3 生产 preflight；当前不能记为 H5 pointer、M5 或 R1-Live Gate 2 已通过。
+## Stage B3 修复生产部署
+
+2026-08-26，产品负责人要求把对应改动推送生产。执行者没有发布包含教师微课提交的 `main`，而是从 production current `8c303a2` 隔离拣选 `f1f8d98`、`e2ff273`、`c03c382`、`aa6b75b`，生成精确发布提交 `964ca5e6975d94b75591201aa13698a288f4ae70`。
+
+- preflight 确认 Xiaomi、`mathin.club` / `supabase.mathin.club`、数据库指纹 `10e3…1a0c`、current/previous、ledger=`193`、业务/Storage/错误计数与四开关状态。唯一未结束课次已开始约 46 小时，最近 60 分钟事件为 0；未修改其状态。
+- 新建 PostgreSQL-only 备份 `mathin-db-prechange-20260826T124534Z-classroom-b3-964ca5e`：dump=`249650397 bytes`、TOC=`3778`、SHA-256=`aa0b5888a3e67e7ae7f411a21ab9166789fb0a1f0680314f9d672d9acf7536bf`。未归档 Storage、未清理旧备份。
+- migration 完整回滚演练创建表/索引/RLS/策略/授权后回滚；独立连接确认表 absent、ledger=`193`、业务计数零漂移。正式事务登记 `20260826000100_classroom_h5_input_profiles` 后，ledger=`194`，PostgREST schema cache 返回 200/`[]`。
+- 隔离候选通过 typecheck、受影响 ESLint、6 个定向 Vitest 文件 39 项通过/1 项条件跳过，以及发布器的全库 lint、typecheck、本地与 Xiaomi production build。应用原子切换为 `20260826-125052` / `964ca5e…`，previous=`20260825-085754` / `8c303a2…`。
+- 独立 postflight：loopback/public health=`ok`，zh/en login=`200/200`，匿名课堂=`307` 到 locale login，Smart/H5 profile 编译产物存在，服务 journal error=`0`；账号/profile/学生/班级/课次/报名/点名/Storage object/错误=`14/14/5/3/16/1/0/123602/1949`，checkpoint=`2/2/2`。board/input/layout=`v2/true`，H5=`v3/false`。
+
+本记录证明 Stage B3 修复底座与单一 Smart UI 已部署且机器 postflight 通过。生产 `cw_h5_input_profiles` 仍为空、H5 开关仍为 false，因此不能记为 H5 pointer、M5 或 R1-Live Gate 2 已通过；下一人工对象只是生产课堂中的 Smart 开关外观与工具派生回退，H5 另需先登记经审计 package 再分段启用。

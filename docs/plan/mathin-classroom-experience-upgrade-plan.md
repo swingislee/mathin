@@ -1,6 +1,6 @@
 # Mathin 课堂体验升级规划
 
-> **状态**：M0–M4 开发端与 M5 Stage B1/B2 已验收；Stage B3 生产已安全回退，开发修复候选 `f1f8d98` + `e2ff273` + `c03c382` + `aa6b75b` 机器 Gate 通过、等待产品人工验收<br>
+> **状态**：M0–M4 开发端与 M5 Stage B1/B2 已验收；Stage B3 修复已以隔离提交 `964ca5e` 部署生产，H5 开关保持 false，等待生产人工验收与逐包档案登记<br>
 > **规划日期**：2026-08-24<br>
 > **仓库基线**：`swingislee/mathin`，本轮审阅基于 `main` 的 `0e30b33`<br>
 > **M1 验收基线**：`43ae587` + `67989c1`；只表示开发目标已验收，尚未部署生产<br>
@@ -1326,9 +1326,11 @@ M3b 把指针协议扩展进既有 H5 注入 runtime，并把缓存版本从 v2 
 
 当前状态：M0–M4 的开发端产品验收已经完成，`95ed9f1` 是进入 M5 的已验收应用基线。候选 `8c303a2` 已通过一次工程、隔离数据库、课堂专项 SQL 与本地浏览器集成 Gate，并于 2026-08-25 完成 Stage A。2026-08-26 产品负责人确认 Stage B1 的主板书刷新恢复与 Smart 输入、Stage B2 的课堂整体布局通过；B2 验收后的生产复核观测到 checkpoint version/chunk/head=`2/2/2`。Stage B3 启用 H5 pointer 后，当前 production 课次/发布引用核对得到 399 条 H5-kind 页面记录、409 条 binding，均指向 `aixuexi-page-doc-v1`，而候选只把 pointer bridge 传入通用 `page-doc-v1` 舞台；这两个数字描述绑定记录，不是 399 个实际 iframe。H5 开关已追加 version 3 / false，board/input/layout 保持 version 2 / true，业务与错误计数无漂移。
 
-开发候选 `f1f8d98` 已完成共同合同修复：`classroom_h5_input_profiles` 按不可变 package SHA-256 保存版本化 active 能力档案；H5 delivery 剥离包内自声明，只注入 registry 权威能力；通用 `DocStage` 与 `AixuexiStage` 复用同一 frame 注册和 pointer bridge。缺档案、档案不匹配、查询失败或握手失败时，H5 自身仍可交互，但 Smart 不接管。只读 revision 审计另确认 Aixuexi 5442 页中实际 `embedded_h5` 为 9 页，通用 `page-doc-v1` 97349 页中 H5 为 13258 页；这些是全量 revision 数，不代表当前生产课次可达量。本地发布包审计还确认魔法校 baseline/2026 分别有 102/78 个“页面内互动 + H5”混合页，因此人工 Gate 合并为魔法校混合页、爱学习嵌入页和未登记回退三个代表页面，不再按 renderer 或 package 逐个验收。
+开发候选 `f1f8d98` 已完成共同合同修复：`cw_h5_input_profiles` 按不可变 package SHA-256 保存版本化 active 能力档案；H5 delivery 剥离包内自声明，只注入 registry 权威能力；通用 `DocStage` 与 `AixuexiStage` 复用同一 frame 注册和 pointer bridge。缺档案、档案不匹配、查询失败或握手失败时，H5 自身仍可交互，但 Smart 不接管。只读 revision 审计另确认 Aixuexi 5442 页中实际 `embedded_h5` 为 9 页，通用 `page-doc-v1` 97349 页中 H5 为 13258 页；这些是全量 revision 数，不代表当前生产课次可达量。本地发布包审计还确认魔法校 baseline/2026 分别有 102/78 个“页面内互动 + H5”混合页，因此人工 Gate 合并为魔法校混合页、爱学习嵌入页和未登记回退三个代表页面，不再按 renderer 或 package 逐个验收。
 
 2026-08-26，产品负责人进一步取消一级 `Smart / 交互锁 / 书写锁` 三按钮，冻结为一个 Smart 开关。`e2ff273` 实现工具派生回退：Smart 关闭或页面不兼容时，指针选择自动成为交互锁，画笔、快捷颜色、橡皮和其他绘图工具自动成为画笔锁；renderer 变化不再修改教师的 Smart 偏好。该提交同时把 H5 channel token 从局域网 HTTP 下不可用的直接 `crypto.randomUUID()` 调用改为仓库统一 `newId()` 兜底。`c03c382` 根据产品复核把左下角入口改为与底栏一级控件等高的 `112×44px` 横向滑动条，移除圆形 Sparkles 按钮；`aa6b75b` 再按视觉复核加入小型 Sparkles SVG，去掉外层边框和圆角底板，以玫瑰强调色图标与滑轨标识开启态。Playwright 在真实课堂壳断言尺寸、单 SVG、零边框/圆角与开关路由。精确证据与生产回退边界见 [`classroom-experience-m5-candidate.md`](../evidence/r1/classroom-experience-m5-candidate.md)。
+
+同日，产品负责人要求将对应改动推送生产。发布从生产基线 `8c303a2` 隔离拣选四个课堂代码提交，生成 `964ca5e`，未包含同期教师微课提交或未提交工作树。新鲜 PostgreSQL-only 备份、migration 完整回滚/零残留、正式 ledger、双 build、原子切换与独立 postflight 均通过；生产 current/previous 为 `20260826-125052` / `964ca5e…` 与 `20260825-085754` / `8c303a2…`。`cw_h5_input_profiles` 为空且 H5 开关仍为 version 3 / false，因此本次只记为修复底座与 Smart UI 已部署待验收，不记为 H5 pointer 已启用。
 
 #### 回归矩阵
 

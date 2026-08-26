@@ -8,7 +8,7 @@
 >
 > **SML 暂停位置**：`SML-0 · 合同与金标冻结`；空间数学可按独立权限或 Feature Flag 并行，不进入 R1-Live Gate。
 >
-> **当前运行状态**：Gate 1 已通过，Gate 2 仍等待正式教师点名持久再读与权限对照。Xiaomi 当前数据库 ledger=`193`、head=`20260825000800_account_center_profile`，应用 current/previous=`20260825-085754` / `8c303a2…` 与 `20260825-072801` / `72d8127…`。课堂 Stage A、B1 与 B2 已通过，生产已有 checkpoint version/chunk/head=`2/2/2`；Stage B3 因 production H5 实际走未接 bridge 的 Aixuexi 舞台而安全回退，board/input/layout 为 version 2 / true，H5 为 version 3 / false。开发候选 `f1f8d98` + `e2ff273` + `c03c382` + `aa6b75b` 已把包哈希能力档案、魔法校混合页和爱学习嵌入页接入同一 bridge/conformance，并把一级三模式选择收敛为单一 Smart 开关；Smart 关闭或不可用时由当前指针/画笔工具自动决定回退锁。左下角开关为与底栏一级触控目标等高的 `112×44px` 横向滑动条，外层透明且无边框/圆角底板，开启态用玫瑰强调色 SVG 与滑轨表达。机器 Gate 已通过，等待产品负责人在开发端人工验收；该 migration、应用和开关均未进入生产。账号、班级、课次、报名、点名、Storage object 和错误计数无漂移。
+> **当前运行状态**：Gate 1 已通过，Gate 2 仍等待正式教师点名持久再读与权限对照。Xiaomi 当前数据库 ledger=`194`、head=`20260826000100_classroom_h5_input_profiles`，应用 current/previous=`20260826-125052` / `964ca5e…` 与 `20260825-085754` / `8c303a2…`。课堂 Stage A、B1 与 B2 已通过，生产已有 checkpoint version/chunk/head=`2/2/2`；Stage B3 修复已用隔离提交 `964ca5e` 部署共同 bridge、单一 Smart 开关与 `cw_h5_input_profiles` 权威表。board/input/layout 为 version 2 / true，H5 继续为 version 3 / false；新表为空，未登记 package 仍 fail closed，尚不能记为 H5 pointer 生产通过。左下角开关为 `112×44px` 横向滑动条，外层透明且无边框/圆角底板，开启态使用玫瑰强调色 SVG 与滑轨。新鲜 PostgreSQL-only pre-change 备份、migration 回滚演练、双 build、原子切换与独立 postflight 已通过，等待产品负责人在生产课堂人工验收；账号、班级、课次、报名、点名、Storage object 和错误计数无漂移。
 >
 > **当前 P0 状态**：2026-08-25 产品负责人确认内部教师更习惯手机号注册登录。`手机号或邮箱 + password` 已部署生产：手机号只接受绑定具体号码的一次性员工邀请，不发送/伪造验证码，不开放全局邀请码手机号注册，账号仍以单一 `auth.users.id` 为主体。机器 postflight 已通过；真实教师尚未消费手机号邀请并完成 password 登录，因此状态为 `DEPLOYED / PENDING USER ACCEPTANCE`。
 >
@@ -55,7 +55,7 @@ R1-Live 完成即代表 Mathin 进入公司内部生产使用。它产生的身�
 
 | Gate | 状态 | 已完成证据 | 唯一退出差距 |
 | --- | --- | --- | --- |
-| **Gate 1 · 可安全开始** | **PASS** | 生产目标组合指纹、部署和匿名计数已登记；危险 fixture/rebuild/import 拒绝 Xiaomi；唯一正式 admin 已完成 verified MFA，首名真实教师为 active `staff` 并有 `research`/`teacher` 岗位；生产 purge 仍要求当前数据库指纹、active manifest、显式 `purge_allowed` test 根和精确影响计数，当前准删数为 0。数据库 ledger=`193`、head=`20260825000800`，应用 current/previous=`20260825-085754` / `8c303a2…` 与 `20260825-072801` / `72d8127…`；原子发布健康门和 `operational_errors` 查询位置已知。当前 PostgreSQL+Storage 同批次备份已独立复核，课堂发布另有新鲜 PostgreSQL-only pre-change 备份 | 无。previous 实际回切、恢复演练、异机/静态加密备份和错误 release 标签属于 Production 1.0 |
+| **Gate 1 · 可安全开始** | **PASS** | 生产目标组合指纹、部署和匿名计数已登记；危险 fixture/rebuild/import 拒绝 Xiaomi；唯一正式 admin 已完成 verified MFA，首名真实教师为 active `staff` 并有 `research`/`teacher` 岗位；生产 purge 仍要求当前数据库指纹、active manifest、显式 `purge_allowed` test 根和精确影响计数，当前准删数为 0。数据库 ledger=`194`、head=`20260826000100_classroom_h5_input_profiles`，应用 current/previous=`20260826-125052` / `964ca5e…` 与 `20260825-085754` / `8c303a2…`；原子发布健康门和 `operational_errors` 查询位置已知。当前 PostgreSQL+Storage 同批次备份已独立复核，课堂 Stage B3 发布另有新鲜 PostgreSQL-only pre-change 备份 | 无。previous 实际回切、恢复演练、异机/静态加密备份和错误 release 标签属于 Production 1.0 |
 | **Gate 2 · 首个真实教师闭环** | **BLOCKED** | 学生、班级、课次、报名、点名 UI/RPC 与 RLS 已实现；本轮运行时合同允许自由班/未完整课程启用，备课质量项、点名前置、资源预载和无 release 均不阻断开课；本机隔离固定账号 Golden Path 1/1 已完成建班→自动课次→`lead` 报名→教师保存迟到/备注→换页再读。生产已有 1 个 production 班级、15 个课次和 1 条 active 报名，主讲 1、学辅 0；学年修复只调整三类对象的周期引用，未升年级，应用已发布且健康 | 正式教师完成登录→进入课次→开课/点名→保存→刷新/重登再读；正式管理员可见，匿名及一个既有无权限主体不可见；P0/核心 P1=0 |
 
 `R1-Live-N` 表示当前只关闭 Gate N。Gate 1 通过后推进 `R1-Live-2`；Gate 2 通过后立即向第一批公司教师开放，不再追加新的上线 Gate。
@@ -114,7 +114,7 @@ Gate 1 已按以下顺序关闭：
 - 实现后先运行覆盖变更风险的最窄机器检查。UI/交互执行受影响测试与必要静态检查；数据库/API、鉴权、共享模块或发布边界变更增加相应集成、RLS、安全或构建检查。
 - 机器检查通过后交由产品负责人在开发端做初步验收。只有目标旅程可用、无已知 P0/核心 P1、双语与失败状态符合该功能范围，并得到明确“可上生产”的确认，才进入生产候选。
 - 可扩展互动使用版本化 capability provider 和统一 conformance：普通 renderer 复用既有输入原语时不逐个建立人工里程碑；只有新增输入原语、修改路由/输入所有权算法、跨 iframe 协议或真实设备回归才触发新的人工输入 Gate。显式 provider 声明与未知能力 fail-closed 仍是安全边界。
-- 课堂体验升级 M0–M4 已于 2026-08-25 在本机开发目标完成产品负责人整体验收；M5 候选 `8c303a2` 完成 Stage A 后，产品负责人于 2026-08-26 确认 Stage B1 与 B2 通过。Stage B3 核对到 production 当前课次/发布引用含 399 条 H5-kind 页面记录、409 条 binding，均指向未接 bridge 的 `aixuexi-page-doc-v1`，遂关闭 H5 开关；这些记录不等于 399 个实际 iframe，Aixuexi 全量 revision 只读审计为 5442 页、其中 9 页含 `embedded_h5`。开发候选 `f1f8d98` 已用包 SHA-256 版本化能力档案统一承载魔法校混合页与爱学习嵌入页，`e2ff273` 再冻结单一 Smart 开关与工具派生回退锁；未登记 package 继续 fail closed，生产已有 v2 checkpoint，不得直接切回不认识 v2 的旧 bundle。
+- 课堂体验升级 M0–M4 已于 2026-08-25 在本机开发目标完成产品负责人整体验收；M5 候选 `8c303a2` 完成 Stage A 后，产品负责人于 2026-08-26 确认 Stage B1 与 B2 通过。Stage B3 核对到 production 当前课次/发布引用含 399 条 H5-kind 页面记录、409 条 binding，均指向未接 bridge 的 `aixuexi-page-doc-v1`，遂关闭 H5 开关；这些记录不等于 399 个实际 iframe，Aixuexi 全量 revision 只读审计为 5442 页、其中 9 页含 `embedded_h5`。共同 bridge、包 SHA-256 权威表、单一 Smart 开关与工具派生回退锁已通过隔离提交 `964ca5e` 部署；H5 开关保持 false，空档案表不授权任何现有 package。生产已有 v2 checkpoint，不得直接切回不认识 v2 的旧 bundle。
 - 生产部署以独立可回退提交为单位，记录精确 commit/migration 和目标；发布前核对生产指纹、最近可用备份、current/previous、迁移/数据影响与回退点，发布后核对健康、错误增量、核心 Smoke 和受影响业务不变量。未完成 postflight 的功能只记为“已部署待验收”，不能记为生产通过。
 - 开发新功能不自动成为 Gate 2 blocker。只有它修改共享登录、授权、班级、课次、课堂或点名链路时，才追加对应 R1-Live Smoke；失败时先回退或关闭该功能，保持单老师试用可继续。
 
