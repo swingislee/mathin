@@ -1,6 +1,5 @@
 "use client";
 
-import { Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -10,15 +9,11 @@ export function ClassroomSmartInputToggle({
   available,
   onChange,
   className,
-  compact = false,
-  rail = false,
 }: {
   enabled: boolean;
   available: boolean;
   onChange: (enabled: boolean) => void;
   className?: string;
-  compact?: boolean;
-  rail?: boolean;
 }) {
   const t = useTranslations("classroom.live");
   const active = available && enabled;
@@ -35,38 +30,40 @@ export function ClassroomSmartInputToggle({
       : t("inputSmartOffHint");
 
   return (
-    <div
-      aria-label={t("inputModeGroup")}
+    <Button
+      type="button"
+      size="sm"
+      variant="ghost"
+      role="switch"
+      aria-checked={active}
+      aria-label={label}
+      disabled={!available}
       className={cn(
-        rail
-          ? "flex shrink-0 items-center rounded-xl bg-card/70 p-0.5"
-          : "flex items-center rounded-xl border border-line bg-paper/95 p-1 shadow-sm backdrop-blur",
+        "h-11 w-28 shrink-0 justify-between gap-2 rounded-xl border border-line bg-card/70 px-3 text-ink shadow-none hover:border-crater/60 hover:bg-moon/25 disabled:opacity-55",
+        active && "border-leaf-deep/35 bg-leaf/15 hover:bg-leaf/20",
         className,
       )}
-      data-classroom-rail-group={rail ? "input" : undefined}
+      data-classroom-rail-group="input"
+      data-classroom-smart-input={state}
+      data-smart-preference={enabled ? "on" : "off"}
+      title={hint}
+      onClick={() => onChange(!enabled)}
     >
-      <Button
-        type="button"
-        size="sm"
-        variant={rail ? "ghost" : active ? "primary" : "ghost"}
-        role="switch"
-        aria-checked={active}
-        aria-label={label}
-        disabled={!available}
+      <span className="whitespace-nowrap text-xs font-medium">{t("inputModeSmart")}</span>
+      <span
+        aria-hidden
         className={cn(
-          rail
-            ? "size-11 gap-0 rounded-full p-0 hover:bg-moon/30"
-            : "min-h-11 gap-1.5 px-2.5",
-          rail && active && "bg-moon/60 text-ink hover:bg-moon/60",
+          "relative h-5 w-9 shrink-0 rounded-full bg-muted/30 p-0.5 transition-colors",
+          active && "bg-leaf-deep",
         )}
-        data-classroom-smart-input={state}
-        data-smart-preference={enabled ? "on" : "off"}
-        title={hint}
-        onClick={() => onChange(!enabled)}
       >
-        <Sparkles aria-hidden size={15} />
-        <span className={compact ? "sr-only" : undefined}>{t("inputModeSmart")}</span>
-      </Button>
-    </div>
+        <span
+          className={cn(
+            "block size-4 rounded-full bg-card shadow-sm transition-transform",
+            active && "translate-x-4",
+          )}
+        />
+      </span>
+    </Button>
   );
 }

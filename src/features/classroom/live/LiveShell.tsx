@@ -1982,8 +1982,6 @@ export function LiveShell({
         <TeacherClassroomControlBar
           inputControls={inputV2Enabled ? (
             <ClassroomSmartInputToggle
-              compact
-              rail
               enabled={smartInputEnabled}
               available={smartInputAvailable}
               onChange={setSmartInputEnabled}

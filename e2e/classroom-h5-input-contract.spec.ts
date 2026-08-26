@@ -24,6 +24,16 @@ test("one H5 capability contract covers mixed Mofaxiao and embedded Aixuexi page
 
   const smartToggle = page.getByRole("switch", { name: "关闭 Smart", exact: true });
   await expect(smartToggle).toHaveAttribute("data-classroom-smart-input", "on");
+  await expect(smartToggle).toHaveText("Smart");
+  const smartToggleShape = await smartToggle.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return {
+      height: rect.height,
+      width: rect.width,
+      svgCount: element.querySelectorAll("svg").length,
+    };
+  });
+  expect(smartToggleShape).toEqual({ height: 44, width: 112, svgCount: 0 });
   await smartToggle.click();
   await expect(mainInput).toHaveAttribute("data-input-mode", "ink-lock");
   await page.getByRole("switch", { name: "开启 Smart", exact: true }).click();
