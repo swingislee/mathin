@@ -46,7 +46,7 @@ async function TeacherMicrocourseContent({ locale, sessionId }: { locale: string
     isFeatureEnabled("teaching.teacher_microcourses_v1"),
     getSessionWorkspaceDetail(sessionId),
   ]);
-  if (!session || session.lectureId !== null || !session.capabilities.canPrepare) notFound();
+  if (!session || session.lectureId !== null) notFound();
   if (!enabled) {
     return <Card className="max-w-2xl"><CardHeader><CardTitle>{t("featureDisabledTitle")}</CardTitle><CardDescription>{t("featureDisabledDescription")}</CardDescription></CardHeader><CardContent><p className="text-sm text-muted">{t("featureDisabledHint")}</p></CardContent></Card>;
   }
@@ -54,6 +54,7 @@ async function TeacherMicrocourseContent({ locale, sessionId }: { locale: string
     getTeacherMicrocourseForSession(sessionId),
     listTeacherMicrocourseTopics(),
   ]);
+  if (!summary && !session.capabilities.canPrepare) notFound();
   if (!summary) return <MicrocourseStartPanel sessionId={sessionId} sessionTitle={session.name} topics={topics} />;
   const [editor, initialSources] = await Promise.all([
     getTeacherMicrocourseEditor(summary.id),
@@ -61,4 +62,3 @@ async function TeacherMicrocourseContent({ locale, sessionId }: { locale: string
   ]);
   return <MicrocourseEditor session={{ id: session.id, title: session.name, classroomId: session.classroomId, coursewareFrozenAt: session.coursewareFrozenAt }} editor={editor} initialSources={initialSources} />;
 }
-

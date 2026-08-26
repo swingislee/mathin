@@ -6,6 +6,7 @@ const root = process.cwd();
 const read = (...segments: string[]) => fs.readFileSync(path.join(root, ...segments), "utf8");
 const lifecycleMigration = read("supabase", "migrations", "20260826000400_teacher_microcourse_lifecycle.sql");
 const readModelsMigration = read("supabase", "migrations", "20260826000500_teacher_microcourse_ui_read_models.sql");
+const runtimeFixesMigration = read("supabase", "migrations", "20260826000600_teacher_microcourse_runtime_fixes.sql");
 
 describe("DEV-TMC-1 teacher microcourse product surfaces", () => {
   it("keeps authoring behind the development flag, author capability, and a free session", () => {
@@ -17,12 +18,14 @@ describe("DEV-TMC-1 teacher microcourse product surfaces", () => {
     expect(sessionWorkspace).toContain("detail.lectureId === null");
     expect(route).toContain('requirePerm(locale, "courseware.microcourse.author")');
     expect(route).toContain("session.lectureId !== null");
+    expect(route).toContain("!summary && !session.capabilities.canPrepare");
     expect(route).toContain("<Suspense");
   });
 
   it("exposes all three page modes while preserving a locked source snapshot and editable overlay", () => {
     const editor = read("src", "features", "teacher-microcourses", "MicrocourseEditor.tsx");
     const picker = read("src", "features", "teacher-microcourses", "MicrocourseSourcePicker.tsx");
+    const liveShell = read("src", "features", "classroom", "live", "LiveShell.tsx");
     const contentMigration = read("supabase", "migrations", "20260826000300_teacher_microcourse_content.sql");
 
     expect(editor).toContain("createTeacherCompositionPageAction");
@@ -35,6 +38,8 @@ describe("DEV-TMC-1 teacher microcourse product surfaces", () => {
     expect(contentMigration).toContain("source_revision_id");
     expect(contentMigration).toContain("course_row.course_kind = 'curriculum'");
     expect(readModelsMigration).toContain("coalesce(track_head.current_release_id, lecture_row.current_release_id)");
+    expect(runtimeFixesMigration).toContain("'type', 'doc'");
+    expect(liveShell).toContain("session.lectureId || docPageKey");
   });
 
   it("keeps intermediate-review H5 private and only promotes the final frozen snapshot", () => {
@@ -45,6 +50,8 @@ describe("DEV-TMC-1 teacher microcourse product surfaces", () => {
     expect(actions).toContain("plan.finalApproval ? plan.artifacts : []");
     expect(actions).toContain("cw-h5-drafts");
     expect(actions).toContain("cw-h5");
+    expect(actions).toContain('contentType: "text/html"');
+    expect(actions).not.toContain('contentType: "text/html; charset=utf-8"');
     expect(review).toContain('t("immutableSnapshotHint")');
     expect(lifecycleMigration).toContain("teacher_microcourse_review_snapshots");
     expect(lifecycleMigration).toContain("snapshot_row.h5_hashes");

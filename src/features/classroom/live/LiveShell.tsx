@@ -425,6 +425,10 @@ export function LiveShell({
   // 板书插页等 pages 数组重建不应重跑预载（会撤销在用的 objectURL），
   // 媒体页内容以路径串为准。
   const mediaKey = mediaPages.map((page) => page.path).join("|");
+  const docPageKey = state.pages
+    .filter((page): page is Extract<CoursewarePage, { type: "doc" }> => page.type === "doc")
+    .map((page) => page.docId)
+    .join("|");
   useEffect(() => {
     const tick = ++preloadTick.current;
     const urls: string[] = [];
@@ -435,7 +439,7 @@ export function LiveShell({
       // 冻结课次取冻结 pin 的 release，候课/试讲回退 current release。
       let docPages: SessionPageDoc[] = [];
       let docHashes: string[] = [];
-      if (session.lectureId) {
+      if (session.lectureId || docPageKey) {
         try {
           docPages = await loadSessionDocsBundle(session.id);
           docHashes = prioritizeDocObjectHashes(docPages, activePageDocIdRef.current);
@@ -532,12 +536,13 @@ export function LiveShell({
     };
     // mediaPages 的内容由 mediaKey 代表（见上）
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mediaKey, session.id, session.lectureId]);
+  }, [docPageKey, mediaKey, session.id, session.lectureId]);
 
-  // --- 学生端开课补取（P6-5）：挂讲次课次的 courseware 在开课冻结时才落库，
+  // --- 学生端开课补取（P6-5）：正式讲次或自由课微课的 courseware 都可能在
+  // 开课冻结时才落库，
   // 早于开课进入等待页的学生 pages 为空，收到 start 后拉一次冻结基线。
   useEffect(() => {
-    if (isController || !state.started || state.pages.length > 0 || !session.lectureId) return;
+    if (isController || !state.started || state.pages.length > 0) return;
     let cancelled = false;
     void getClassSession(session.id)
       .then((fresh) => {

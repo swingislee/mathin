@@ -124,6 +124,17 @@ select public.create_teacher_microcourse(
   array['快照', '数独', 'H5']
 ) as microcourse_id \gset
 
+select (
+  public.get_teacher_microcourse_for_session(
+    '00000000-0000-4000-8000-000000000912'
+  ) ->> 'id' = :'microcourse_id'
+) as session_summary_readable \gset
+\if :session_summary_readable
+\else
+  \echo DEV-TMC-1 failed: teacher microcourse session summary is not readable after creation
+  select 1 / 0;
+\endif
+
 select exists (
   select 1
   from public.search_teacher_microcourse_source_pages(
@@ -171,6 +182,16 @@ select public.register_teacher_microcourse_image(
 ) as image_registration \gset
 select public.freeze_teacher_microcourse_source_session(:'microcourse_id');
 select (
+  jsonb_array_length(courseware) = 4
+  and not exists (
+    select 1 from jsonb_array_elements(courseware) page
+    where page ->> 'type' <> 'doc'
+      or coalesce(page ->> 'docId', '') = ''
+  )
+) as frozen_doc_pages_ok
+from public.class_sessions
+where id = '00000000-0000-4000-8000-000000000912' \gset
+select (
   count(*) = 1
   and max(object_hash) = repeat('c', 64)
 ) as frozen_asset_preload_ok
@@ -180,6 +201,11 @@ reset role;
 \if :frozen_asset_preload_ok
 \else
   \echo DEV-TMC-1 failed: frozen microcourse asset preload
+  select 1 / 0;
+\endif
+\if :frozen_doc_pages_ok
+\else
+  \echo DEV-TMC-1 failed: frozen microcourse doc pages are not in the classroom page list
   select 1 / 0;
 \endif
 

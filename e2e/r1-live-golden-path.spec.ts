@@ -29,7 +29,7 @@ test("principal builds an incomplete-course class and its teacher persists and r
     await loginWithFixedAccount(page, principal, "/zh/dashboard/classes/new");
     await page.getByRole("button", { name: "测试班", exact: true }).click();
     await page.getByRole("button", { name: "搜索并选择课程版本", exact: true }).click();
-    await page.getByRole("combobox", { name: "搜索产品、版本、产品码或讲次", exact: true }).fill(fixture.courseTitle);
+    await page.getByRole("combobox", { name: "搜索课程、讲次、发布老师、主题或关键词", exact: true }).fill(fixture.courseTitle);
     const courseOption = page.getByRole("option").filter({ hasText: fixture.courseTitle });
     await expect(courseOption).toHaveCount(1);
     await courseOption.click();

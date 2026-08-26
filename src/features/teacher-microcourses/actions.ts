@@ -75,6 +75,7 @@ const AUTHOR_CODES = [
   "INVALID_PAGE_DOC",
   "INVALID_SUDOKU_PUZZLE",
   "H5_ARTIFACT_NOT_FOUND",
+  "H5_UPLOAD_FAILED",
   "H5_TOO_LARGE",
   "MICROCOURSE_PAGE_LIMIT",
   "PAGE_ORDER_MISMATCH",
@@ -235,10 +236,10 @@ export async function createTeacherH5PageAction(input: {
     const { error: uploadError } = await admin.storage.from("cw-h5-drafts").upload(
       privatePath,
       bytes,
-      { contentType: "text/html; charset=utf-8", cacheControl: "0", upsert: false },
+      { contentType: "text/html", cacheControl: "0", upsert: false },
     );
     if (uploadError && !/already exists|duplicate/i.test(uploadError.message)) {
-      throw new Error(uploadError.message);
+      throw new Error("H5_UPLOAD_FAILED");
     }
     const { data: artifactId, error: artifactError } = await rpc<string>(
       supabase,
@@ -292,10 +293,10 @@ export async function updateTeacherH5PageAction(input: {
     const { error: uploadError } = await admin.storage.from("cw-h5-drafts").upload(
       privatePath,
       bytes,
-      { contentType: "text/html; charset=utf-8", cacheControl: "0", upsert: false },
+      { contentType: "text/html", cacheControl: "0", upsert: false },
     );
     if (uploadError && !/already exists|duplicate/i.test(uploadError.message)) {
-      throw new Error(uploadError.message);
+      throw new Error("H5_UPLOAD_FAILED");
     }
     const { data: artifactId, error: artifactError } = await rpc<string>(
       supabase,
@@ -600,10 +601,10 @@ export async function approveTeacherMicrocourseReviewAction(input: {
       const { error: uploadError } = await admin.storage.from("cw-h5").upload(
         artifact.publicPath,
         bytes,
-        { contentType: "text/html; charset=utf-8", cacheControl: "31536000", upsert: false },
+        { contentType: "text/html", cacheControl: "31536000", upsert: false },
       );
       if (uploadError && !/already exists|duplicate/i.test(uploadError.message)) {
-        throw new Error(uploadError.message);
+        throw new Error("H5_PUBLISH_UPLOAD_FAILED");
       }
     }
     const { data, error } = await rpc<unknown>(
@@ -629,6 +630,7 @@ export async function approveTeacherMicrocourseReviewAction(input: {
       "FORBIDDEN_SELF_REVIEW",
       "H5_DRAFT_MISSING",
       "H5_HASH_MISMATCH",
+      "H5_PUBLISH_UPLOAD_FAILED",
       "H5_PROMOTION_REQUIRED",
       "NOT_READY_TO_PUBLISH",
       ...COMMON_CODES,

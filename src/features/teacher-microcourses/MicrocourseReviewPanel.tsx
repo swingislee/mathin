@@ -31,13 +31,11 @@ export function MicrocourseReviewPanel({ review }: { review: TeacherMicrocourseR
     if (!result.ok) { setMessage(t("actionFailed", { code: result.code })); return; }
     if (result.data.status === "in_review") router.replace(`/dashboard/courseware/review/microcourses/${result.data.reviewCycleId}`);
     else router.push("/dashboard/courseware/review?tab=microcourses");
-    router.refresh();
   });
   const reject = () => startTransition(async () => {
     const result = await rejectTeacherMicrocourseReviewAction({ reviewCycleId: review.reviewCycleId, note, reviewedPages });
     if (!result.ok) { setMessage(t("actionFailed", { code: result.code })); return; }
     router.push("/dashboard/courseware/review?tab=microcourses");
-    router.refresh();
   });
 
   return <div className="space-y-4">
@@ -49,4 +47,3 @@ export function MicrocourseReviewPanel({ review }: { review: TeacherMicrocourseR
     </div>
   </div>;
 }
-
