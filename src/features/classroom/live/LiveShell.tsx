@@ -106,11 +106,11 @@ import { countCoursewareH5Frames, resolveClassroomRendererInputProfile } from ".
 import { classroomInputProviderAttributes } from "../input/provider";
 import { useClassroomPointerRouter } from "../input/useClassroomPointerRouter";
 import { useH5PointerBridge } from "../input/useH5PointerBridge";
-import type { ClassroomRoutingMode } from "../input/router";
+import { resolveClassroomRoutingMode } from "../input/router";
 import { useClassBoard } from "./useClassBoard";
 import { VideoStage } from "./VideoStage";
 import { GamePage, MainBoard, StudentCard, ToolOverlay } from "./LivePanels";
-import { ClassroomInputModeControl } from "./ClassroomInputModeControl";
+import { ClassroomSmartInputToggle } from "./ClassroomSmartInputToggle";
 import { ClassroomCourseInfoBar, ClassroomEndButton } from "./ClassroomCourseInfoBar";
 import { ClassroomRosterGrid, type ClassroomRosterStudent } from "./ClassroomRosterGrid";
 import { DevelopmentAcceptanceDock } from "./DevelopmentAcceptanceDock";
@@ -274,8 +274,7 @@ export function LiveShell({
   const [onlinePeers, setOnlinePeers] = useState<PresencePeer[]>([]);
   const [mainStore, setMainStore] = useState<WhiteboardStore | null>(null);
   const [activeArea, setActiveArea] = useState<"main" | "side">("main");
-  const [routingMode, setRoutingMode] = useState<ClassroomRoutingMode>("smart");
-  const [inputRendererSignature, setInputRendererSignature] = useState("");
+  const [smartInputEnabled, setSmartInputEnabled] = useState(true);
   const [m3FixtureEnabled, setM3FixtureEnabled] = useState(() => acceptanceFixture === "m3b");
   const [m3FixtureRenderer, setM3FixtureRenderer] = useState<"mofaxiao" | "aixuexi">("mofaxiao");
   const [m3H5Compatible, setM3H5Compatible] = useState(true);
@@ -877,6 +876,11 @@ export function LiveShell({
       : session.title || t("untitled");
   const h5FrameCount = countCoursewareH5Frames(renderDoc);
   const mainTool = useStore(mainStore ?? sideBoard.store, (boardState) => boardState.tool);
+  const bridgeRoutingMode = resolveClassroomRoutingMode({
+    smartEnabled: smartInputEnabled,
+    smartAvailable: inputV2Enabled && isController,
+    tool: mainTool === "pointer" ? "pointer" : "drawing",
+  });
   const activateMainInput = useCallback(() => setActiveArea("main"), []);
   const {
     host: h5PointerBridge,
@@ -886,7 +890,7 @@ export function LiveShell({
     inputPortRef: mainInputPortRef,
     enabled: h5PointerEnabled && inputV2Enabled && editable && h5FrameCount > 0,
     expectedFrameCount: h5FrameCount,
-    mode: routingMode,
+    mode: bridgeRoutingMode,
     tool: mainTool,
     gestureKey: renderPage?.id ?? "no-page",
     onInkStart: activateMainInput,
@@ -900,30 +904,12 @@ export function LiveShell({
     ),
     [activeToolId, h5PointerBridgeStatus, renderDoc, renderPage],
   );
-  const nextInputRendererSignature = [
-    renderPage?.id ?? "no-page",
-    rendererProfile.renderer,
-    rendererProfile.provisional ? "provisional" : rendererProfile.audited ? "audited" : "protected",
-    activeToolId ?? "no-tool",
-  ].join(":");
-  if (inputRendererSignature !== nextInputRendererSignature) {
-    setInputRendererSignature(nextInputRendererSignature);
-    if (routingMode === "smart" && !rendererProfile.audited && !rendererProfile.provisional) {
-      setRoutingMode("interaction-lock");
-    }
-  }
-  const effectiveRoutingMode: ClassroomRoutingMode = inputV2Enabled && isController
-    ? routingMode === "smart" && !rendererProfile.audited
-      ? "interaction-lock"
-      : routingMode
-    : "ink-lock";
-  const changeRoutingMode = useCallback((nextMode: ClassroomRoutingMode) => {
-    if (nextMode === "smart" && !rendererProfile.audited && !rendererProfile.provisional) {
-      setRoutingMode("interaction-lock");
-      return;
-    }
-    setRoutingMode(nextMode);
-  }, [rendererProfile.audited, rendererProfile.provisional]);
+  const smartInputAvailable = inputV2Enabled && isController && rendererProfile.audited;
+  const effectiveRoutingMode = resolveClassroomRoutingMode({
+    smartEnabled: smartInputEnabled,
+    smartAvailable: smartInputAvailable,
+    tool: mainTool === "pointer" ? "pointer" : "drawing",
+  });
   useClassroomPointerRouter({
     stageRef,
     inputPortRef: mainInputPortRef,
@@ -1325,10 +1311,10 @@ export function LiveShell({
         </Link>
         <h1 className="min-w-0 flex-1 truncate text-sm font-medium">{displayedSessionTitle}</h1>
         {isController && inputV2Enabled && (
-          <ClassroomInputModeControl
-            value={effectiveRoutingMode}
-            protectedRenderer={!rendererProfile.audited}
-            onChange={changeRoutingMode}
+          <ClassroomSmartInputToggle
+            enabled={smartInputEnabled}
+            available={smartInputAvailable}
+            onChange={setSmartInputEnabled}
           />
         )}
         {connectionBadges}
@@ -1435,7 +1421,7 @@ export function LiveShell({
                 setM3FixtureEnabled(true);
                 setM3FixtureRenderer("mofaxiao");
                 setM3H5Compatible(true);
-                setRoutingMode("smart");
+                setSmartInputEnabled(true);
               }}
             >
               {t("h5MofaxiaoFixture")}
@@ -1450,7 +1436,7 @@ export function LiveShell({
                 setM3FixtureEnabled(true);
                 setM3FixtureRenderer("aixuexi");
                 setM3H5Compatible(true);
-                setRoutingMode("smart");
+                setSmartInputEnabled(true);
               }}
             >
               {t("h5AixuexiFixture")}
@@ -1464,7 +1450,7 @@ export function LiveShell({
               onClick={() => {
                 setM3FixtureEnabled(true);
                 setM3H5Compatible(false);
-                setRoutingMode("smart");
+                setSmartInputEnabled(true);
               }}
             >
               {t("h5UnregisteredFixture")}
@@ -1995,12 +1981,12 @@ export function LiveShell({
       {teacherLayoutV2 && showControlBar && (
         <TeacherClassroomControlBar
           inputControls={inputV2Enabled ? (
-            <ClassroomInputModeControl
+            <ClassroomSmartInputToggle
               compact
               rail
-              value={effectiveRoutingMode}
-              protectedRenderer={!rendererProfile.audited}
-              onChange={changeRoutingMode}
+              enabled={smartInputEnabled}
+              available={smartInputAvailable}
+              onChange={setSmartInputEnabled}
             />
           ) : null}
           utilityControls={(

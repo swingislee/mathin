@@ -3,6 +3,23 @@ export const CLASSROOM_SMART_TAKEOVER_PX = 8;
 export type ClassroomRoutingMode = "smart" | "interaction-lock" | "ink-lock";
 export type ClassroomInputCapability = "click" | "drag" | "native" | "ink" | "unknown";
 
+/**
+ * Smart is a single teacher preference. When it is off or unavailable, the
+ * selected whiteboard tool provides the unambiguous v1 fallback ownership.
+ */
+export function resolveClassroomRoutingMode({
+  smartEnabled,
+  smartAvailable,
+  tool,
+}: {
+  smartEnabled: boolean;
+  smartAvailable: boolean;
+  tool: "pointer" | "drawing";
+}): ClassroomRoutingMode {
+  if (smartEnabled && smartAvailable) return "smart";
+  return tool === "pointer" ? "interaction-lock" : "ink-lock";
+}
+
 export type ClassroomInputRouterState =
   | { kind: "idle" }
   | { kind: "pending-click"; pointerId: number; maxMovementPx: number }

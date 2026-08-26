@@ -145,6 +145,10 @@ describe("M3b H5 pointer bridge", () => {
       new URL("../src/features/courseware-doc/useH5FrameRegistration.ts", import.meta.url),
       "utf8",
     );
+    const bridge = readFileSync(
+      new URL("../src/features/classroom/input/useH5PointerBridge.ts", import.meta.url),
+      "utf8",
+    );
     const profileMigration = readFileSync(
       new URL("../supabase/migrations/20260826000100_classroom_h5_input_profiles.sql", import.meta.url),
       "utf8",
@@ -156,6 +160,8 @@ describe("M3b H5 pointer bridge", () => {
     expect(docStage).toContain("useH5FrameRegistration(pointerBridge, frameId)");
     expect(aixuexiStage).toContain("useH5FrameRegistration(pointerBridge, frameId)");
     expect(registration).toContain("pointerBridge.registerFrame(frameId, iframe)");
+    expect(bridge).toContain("channelToken: newId()");
+    expect(bridge).not.toContain("crypto.randomUUID()");
     expect(profileMigration).toContain("cw_h5_input_profiles_one_active_idx");
     expect(profileMigration).toMatch(/for select to anon, authenticated[\s\S]*status = 'active'/);
   });

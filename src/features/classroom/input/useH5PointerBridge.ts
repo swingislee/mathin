@@ -12,6 +12,7 @@ import {
 } from "@/features/courseware-doc/h5-pointer-protocol";
 import type { CanvasSurfaceInputPort, NormalizedInputPoint } from "@/features/whiteboard/CanvasSurface";
 import type { Tool } from "@/features/whiteboard/types";
+import { newId } from "@/lib/uuid";
 import {
   CLASSROOM_INPUT_CAPABILITY_VERSION,
   CLASSROOM_INPUT_PROVIDER_SCHEMA,
@@ -167,7 +168,7 @@ export function useH5PointerBridge({
       frameId,
       iframe,
       source,
-      channelToken: crypto.randomUUID(),
+      channelToken: newId(),
       status: "pending",
       registeredAt: now,
       lastHelloAt: now,

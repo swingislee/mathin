@@ -17,9 +17,17 @@ test("one H5 capability contract covers mixed Mofaxiao and embedded Aixuexi page
 
   const dock = page.locator("[data-development-acceptance-dock]");
   const stage = page.locator("[data-classroom-stage]");
+  const mainInput = stage.locator('[data-render-profile="classroom"]');
   await expect(dock).toBeVisible();
   await expect(page.getByText("H5 bridge v1 已就绪", { exact: true })).toBeVisible();
   await expect(stage).toHaveAttribute("data-classroom-renderer", "document:h5");
+
+  const smartToggle = page.getByRole("switch", { name: "关闭 Smart", exact: true });
+  await expect(smartToggle).toHaveAttribute("data-classroom-smart-input", "on");
+  await smartToggle.click();
+  await expect(mainInput).toHaveAttribute("data-input-mode", "ink-lock");
+  await page.getByRole("switch", { name: "开启 Smart", exact: true }).click();
+  await expect(mainInput).toHaveAttribute("data-input-mode", "smart");
 
   const dockToggle = dock.getByRole("button").first();
   await dockToggle.click();
@@ -43,6 +51,12 @@ test("one H5 capability contract covers mixed Mofaxiao and embedded Aixuexi page
   await expect(stage).toHaveAttribute("data-classroom-renderer", "unsupported");
   await expect(page.getByText("H5 provider 不兼容", { exact: true })).toBeVisible();
   await dockToggle.click();
+  await expect(page.getByRole("switch", { name: "当前页面不支持 Smart", exact: true })).toBeDisabled();
+  await expect(mainInput).toHaveAttribute("data-input-mode", "ink-lock");
+  await page.getByRole("button", { name: "选择", exact: true }).click();
+  await expect(mainInput).toHaveAttribute("data-input-mode", "interaction-lock");
   await aixuexiFrame.getByRole("button", { name: /轻点计数/ }).click();
   await expect(aixuexiFrame.locator("#count")).toHaveText("1");
+  await page.getByRole("button", { name: "主色", exact: true }).click();
+  await expect(mainInput).toHaveAttribute("data-input-mode", "ink-lock");
 });

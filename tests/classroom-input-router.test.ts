@@ -17,6 +17,7 @@ import {
   IDLE_CLASSROOM_INPUT_STATE,
   isClassroomInkTakeover,
   reduceClassroomInputRouter,
+  resolveClassroomRoutingMode,
 } from "@/features/classroom/input/router";
 
 const sudokuPage = {
@@ -51,6 +52,34 @@ function attributeNode(attributes: Record<string, string | number | undefined>) 
 }
 
 describe("M3a classroom input routing", () => {
+  it("derives both fallback locks from the active tool behind one Smart toggle", () => {
+    expect(resolveClassroomRoutingMode({
+      smartEnabled: true,
+      smartAvailable: true,
+      tool: "drawing",
+    })).toBe("smart");
+    expect(resolveClassroomRoutingMode({
+      smartEnabled: false,
+      smartAvailable: true,
+      tool: "pointer",
+    })).toBe("interaction-lock");
+    expect(resolveClassroomRoutingMode({
+      smartEnabled: false,
+      smartAvailable: true,
+      tool: "drawing",
+    })).toBe("ink-lock");
+    expect(resolveClassroomRoutingMode({
+      smartEnabled: true,
+      smartAvailable: false,
+      tool: "pointer",
+    })).toBe("interaction-lock");
+    expect(resolveClassroomRoutingMode({
+      smartEnabled: true,
+      smartAvailable: false,
+      tool: "drawing",
+    })).toBe("ink-lock");
+  });
+
   it("routes pen, touch, and mouse identically", () => {
     for (const pointerType of ["pen", "touch", "mouse"]) {
       const pending = reduceClassroomInputRouter(IDLE_CLASSROOM_INPUT_STATE, {
