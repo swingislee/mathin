@@ -2,7 +2,7 @@
 
 ## 结论
 
-截至 2026-08-26，Xiaomi 已固定为 `mathin.club` / `supabase.mathin.club` 生产目标，危险开发写入继续 fail-closed。数据库账本为 193 条、head=`20260825000800_account_center_profile`；应用 current/previous 为 `20260825-085754` / `8c303a2…` 与 `20260825-072801` / `72d8127…`，服务、Supabase、loopback、Caddy 与公网健康均正常。课堂 Stage A、B1 与 B2 已通过，生产 checkpoint version/chunk/head=`2/2/2`；Stage B3 H5 pointer 已启用，board/input/layout/H5 均为 version 2 / true，并待一个 H5 实机对象验收。手机号/password P0 与账号中心第一阶段也已部署。真实手机号邀请注册/login 与正式点名闭环均尚未完成，因此 Gate 2 保持 `BLOCKED`。
+截至 2026-08-26，Xiaomi 已固定为 `mathin.club` / `supabase.mathin.club` 生产目标，危险开发写入继续 fail-closed。数据库账本为 193 条、head=`20260825000800_account_center_profile`；应用 current/previous 为 `20260825-085754` / `8c303a2…` 与 `20260825-072801` / `72d8127…`，服务、Supabase、loopback、Caddy 与公网健康均正常。课堂 Stage A、B1 与 B2 已通过，生产 checkpoint version/chunk/head=`2/2/2`；Stage B3 发现真实生产 H5 全部走未接 bridge 的 Aixuexi 舞台后已安全回退，board/input/layout 为 version 2 / true，H5 为 version 3 / false。手机号/password P0 与账号中心第一阶段也已部署。真实手机号邀请注册/login 与正式点名闭环均尚未完成，因此 Gate 2 保持 `BLOCKED`。
 
 本文件是 E0/E1 差距审阅，不是完整生产验收。2026-08-14～22 的 Xiaomi E1/E3 运行事实，以及本机隔离目标、应用/数据库发布、正式管理员交接和 manifest 激活证据见 [`r1-live-target-audit.md`](r1-live-target-audit.md)；用户提供的 `docs/plan/mathin-R1-Live-讨论稿.md` 为产品裁决输入，现行施工顺序以 doc 04 为准。
 
@@ -382,14 +382,14 @@ Agent 按 doc 04 的 standing execution direction 生成包含原 4 个 protecte
 
 | 证据字段 | 值 |
 | --- | --- |
-| `gate_id`, `domain`, `result` | `CLASSROOM-M5`；课堂体验升级；Stage A/B1/B2 `PASS`，Stage B3 `DEPLOYED / PENDING USER ACCEPTANCE` |
-| `measured_value`, `threshold` | 新备份 dump=`249637390 bytes`、TOC=`3761`、SHA-256=`5654c1ec…31e8`；ledger `192→193`，migration checksum=`b6ffca69…84e3d`；current/previous=`20260825-085754` / `8c303a2…` 与 `20260825-072801` / `72d8127…`。B2 人工通过后 checkpoint version/chunk/head=`2/2/2`；board/input/layout/H5 均为 version 2 / true；domain event=`597`，star/learning result=`0/0`，错误=`1949` |
+| `gate_id`, `domain`, `result` | `CLASSROOM-M5`；课堂体验升级；Stage A/B1/B2 `PASS`，Stage B3 `STOPPED / FAIL-CLOSED ROLLBACK` |
+| `measured_value`, `threshold` | 新备份 dump=`249637390 bytes`、TOC=`3761`、SHA-256=`5654c1ec…31e8`；ledger `192→193`，migration checksum=`b6ffca69…84e3d`；current/previous=`20260825-085754` / `8c303a2…` 与 `20260825-072801` / `72d8127…`。B2 人工通过后 checkpoint version/chunk/head=`2/2/2`；production 399 个 H5 页面/409 个 binding 全部为 `aixuexi-page-doc-v1`。board/input/layout=`v2/true`，H5=`v3/false`；domain event=`598`，star/learning result=`0/0`，错误=`1949` |
 | `commit_sha`, `migration_head`, `environment` | `8c303a21574899728826984181028971dfc77742`；head 仍为 `20260825000800_account_center_profile`，另登记较早编号 `20260825000700_classroom_learning_fill_bulk`；Xiaomi / production，数据库指纹 `10e3…1a0c` |
-| `dataset_manifest` | 账号/profile/学生/班级/课次/报名/点名=`14/14/5/3/16/1/0`、Storage object=`123602` 均无漂移；Stage B1～B3 合计只新增四条 feature flag version 与四条审计事件 |
+| `dataset_manifest` | 账号/profile/学生/班级/课次/报名/点名=`14/14/5/3/16/1/0`、Storage object=`123602` 均无漂移；Stage B1～B3 启用与回退合计只新增五条 feature flag version 与五条审计事件 |
 | `started_at`, `finished_at`, `actor`, `approver` | 2026-08-25～26（Asia/Shanghai）；release `builtAt=2026-08-25T08:59:10Z`；Codex；`swingislee`（要求推进 Stage B，并确认“B1通过”“B2通过”） |
-| `command_or_runbook` | 生产只读 preflight → PostgreSQL-only pre-change 备份/独立 SHA 与 TOC 核验 → migration 完整回滚演练/零残留/正式登记/schema reload → 精确候选双 build/原子切换 → 四开关关闭 postflight → board/input 版本化启用 → B1 人工验收/只读写入复核 → layout 版本化启用 → B2 人工验收/只读写入复核 → H5 pointer 版本化启用；每段均独立 postflight，未造测试数据、未改账号/业务/Storage，未重启 Supabase |
+| `command_or_runbook` | 生产只读 preflight → PostgreSQL-only pre-change 备份/独立 SHA 与 TOC 核验 → migration 完整回滚演练/零残留/正式登记/schema reload → 精确候选双 build/原子切换 → 四开关关闭 postflight → board/input 版本化启用 → B1 人工验收/只读写入复核 → layout 版本化启用 → B2 人工验收/只读写入复核 → H5 pointer 版本化启用 → production H5 renderer 全量只读核对 → H5 pointer 版本化关闭；每段均独立 postflight，未造测试数据、未改账号/业务/Storage，未重启 Supabase |
 | `artifact_url_or_path`, `artifact_hash` | release `/home/swing/services/mathin/releases/20260825-085754/release.json`；备份 `/mnt/openlist-disk/Backups/Mathin/mathin-db-prechange-20260825T085233Z-classroom-m5-8c303a2/`；migration 规范化 SHA-256 `b6ffca69ffeb99f4001f120af3bf8b60fec43ff7fe69209c765939400f184e3d` |
-| `retention`, `access_roles`, `failure_ticket` | Git、migration、immutable current/previous 与新备份按既有策略保留且本轮未 prune；仓库维护者/Xiaomi 运维角色；Stage B3 待产品负责人完成一个 H5 实机对象验收 |
+| `retention`, `access_roles`, `failure_ticket` | Git、migration、immutable current/previous 与新备份按既有策略保留且本轮未 prune；仓库维护者/Xiaomi 运维角色；Stage B3 返回开发环境补齐 Aixuexi H5 bridge 后重新验收 |
 
 ### 代码、数据和权限位置
 
