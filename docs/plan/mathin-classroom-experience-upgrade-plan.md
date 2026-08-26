@@ -1,6 +1,6 @@
 # Mathin 课堂体验升级规划
 
-> **状态**：M0–M4 开发端与 M5 Stage B1/B2 已验收；Stage B3 生产已安全回退，开发修复候选 `f1f8d98` 机器 Gate 通过、等待产品人工验收<br>
+> **状态**：M0–M4 开发端与 M5 Stage B1/B2 已验收；Stage B3 生产已安全回退，开发修复候选 `f1f8d98` + `e2ff273` 机器 Gate 通过、等待产品人工验收<br>
 > **规划日期**：2026-08-24<br>
 > **仓库基线**：`swingislee/mathin`，本轮审阅基于 `main` 的 `0e30b33`<br>
 > **M1 验收基线**：`43ae587` + `67989c1`；只表示开发目标已验收，尚未部署生产<br>
@@ -369,26 +369,25 @@ tool === "pen" && color === token
 
 独立白板可以继续使用完整形态。
 
-### 6.4 输入模式与绘图工具正交
+### 6.4 单一 Smart 开关与工具派生回退
 
-工具栏维护两组独立状态：
+一级界面只保留一个 Smart 开关；交互锁和画笔锁仍是 router 的内部有效状态，不再是教师需要额外选择的两个模式。白板 `tool`、笔色、粗细和主/副板书 `activeArea` 保持原有独立状态。
 
 ```ts
-type ClassroomRoutingMode = "smart" | "interaction-lock" | "ink-lock";
+type ClassroomSmartPreference = boolean;
+type EffectiveRoutingMode = "smart" | "interaction-lock" | "ink-lock";
 type WhiteboardTool = Tool;
 ```
 
-切换 `routingMode` 不覆盖当前笔色、粗细、白板 `tool` 或主/副板书 `activeArea`。三种输入模式必须在一级界面有持续可见的短状态和一键恢复智能模式的入口；“更多”菜单只承载解释和低频设置，不能成为发现当前锁定状态的唯一位置。
+有效路由由 Smart 可用性、教师开关和当前工具共同派生：
 
-M0 冻结以下行为矩阵，未冻结前智能模式只对 `pen` 开放：
+| 当前工具 | Smart 开启且页面已登记 | Smart 关闭或页面不可用 |
+| --- | --- | --- |
+| 画笔/快捷颜色 | 点击已审计交互目标；移动后接管书写 | 画笔锁：全部用于书写 |
+| 指针/选择 | 保持指针语义，不产生板书 | 指针锁：全部交给课件或板书选择层 |
+| 擦除/图形/尺规 | 当前板书工具拥有输入，不套用点击接管 | 画笔锁：全部交给当前板书工具 |
 
-| 当前工具 | Smart | Interaction lock | Ink lock |
-| --- | --- | --- | --- |
-| `pen` | 点击已审计交互目标；移动后接管书写 | 全部交给课件 | 全部用于书写 |
-| 碎擦/整线擦 | 默认保持板书所有权，避免轻点按钮意外擦除后又点击 | 全部交给课件 | 全部用于擦除 |
-| 图形/选择/尺规 | 不自动套用“轻点点击、移动书写”；按能力清单明确 native 或 board | 全部交给课件 | 全部交给当前板书工具 |
-
-模式、工具和板书目标三者都需要各自的 `aria-pressed`/可访问名称。页面切换、主副板切换、断线重连和试讲重置不得让界面显示状态与实际路由状态分离。
+点击快捷颜色同时把 `tool` 切为 `pen`，因此也会立即进入相应的 Smart 或画笔锁。Smart 按钮使用 `aria-checked` 表示启用状态；页面未登记、H5 握手失败或开关关闭时，按钮显示不可用/关闭，实际锁状态由当前工具自然表达。页面切换、主副板切换、断线重连和试讲重置不得让按钮、工具高亮与实际路由分离。
 
 ---
 
@@ -476,7 +475,7 @@ Smart / 智能模式
 - 起点是否位于交互目标；
 - 手势是否超过移动阈值；
 - 目标声明的是点击、拖拽还是书写；
-- 当前是否处于智能、交互锁或书写锁。
+- Smart 是否开启/可用，以及当前工具派生出的指针锁或画笔锁。
 
 `pointerType`、压力、接触面积可以进入调试数据，但不作为唯一分支条件。
 
@@ -558,7 +557,7 @@ data-classroom-input="ink"
 
 视频不得把整个元素永久登记为 `native`。控制端把画面区显式覆为 `click`：短点播放/暂停，移动超过阈值转为板书并抑制本次点击；底部原生控制条保留独立无遮挡安全区并继续为 `native`，其中进度拖动不被 Smart 接管。页面 DOM 必须通过两个实际命中区域表达该边界，router 不按坐标猜测浏览器 shadow DOM。
 
-建立版本化 `ClassroomInputCapabilityProvider`。每个 renderer 在自己的 registry 记录或 adapter 模块声明 provider，不再由课堂模块维护另一份 renderer/tool ID 白名单；新增 renderer 已经必须修改的注册记录就是唯一启用点。共同舞台与 renderer 根输出 provider schema、version、renderer 和 default capability，目标继续输出 `data-classroom-input`。router 只信任匹配 provider 边界内的目标；未声明 provider、边界缺失、renderer/version 不匹配或目标语义未知时 fail closed 到交互锁，并提供明确的书写锁入口，不能把任意 `button` 自动视为可被中途接管的点击目标。
+建立版本化 `ClassroomInputCapabilityProvider`。每个 renderer 在自己的 registry 记录或 adapter 模块声明 provider，不再由课堂模块维护另一份 renderer/tool ID 白名单；新增 renderer 已经必须修改的注册记录就是唯一启用点。共同舞台与 renderer 根输出 provider schema、version、renderer 和 default capability，目标继续输出 `data-classroom-input`。router 只信任匹配 provider 边界内的目标；未声明 provider、边界缺失、renderer/version 不匹配或目标语义未知时关闭 Smart，并由指针工具派生交互锁、绘图工具派生画笔锁，不能把任意 `button` 自动视为可被中途接管的点击目标。
 
 provider 的“显式声明”和“人工逐个验收”是两层合同：显式声明仍是运行时安全边界；是否正确接入由统一 conformance 门禁自动验证，不再要求产品负责人对每个游戏、工具或未来互动重复同一轮轻点/拖写。普通新增 renderer 复用 `click/drag/native/ink`、共同舞台状态机、z-layer 和 provider v1 时，作者只需声明 provider、标注真实区域并通过统一自动门禁。
 
@@ -1187,7 +1186,7 @@ M2-B 再交付方案 C 的恢复基础：
 1. 新增纯状态机、共同舞台 capture 与 `useClassroomPointerRouter`；
 2. Smart 模式让 Canvas 退为渲染层，通过 `BoardInputSink` 接管移动后的手势；
 3. 建立版本化 provider 合同；renderer 在自己的 registry/adapter 声明能力，统一 conformance 自动门禁，未知 provider fail closed；
-4. 增加持续可见的交互锁、书写锁与一键恢复智能；
+4. 增加单一、持续可见的 Smart 开关；关闭或不可用时由当前指针/绘图工具派生回退锁；
 5. 固化精确 pointer lifecycle、click token、resize/page change 策略；
 6. M3a 先交付 native renderer；M3b 扩展现有 H5 runtime、握手、批量 bridge、watchdog 和未接桥兜底。
 
@@ -1327,7 +1326,9 @@ M3b 把指针协议扩展进既有 H5 注入 runtime，并把缓存版本从 v2 
 
 当前状态：M0–M4 的开发端产品验收已经完成，`95ed9f1` 是进入 M5 的已验收应用基线。候选 `8c303a2` 已通过一次工程、隔离数据库、课堂专项 SQL 与本地浏览器集成 Gate，并于 2026-08-25 完成 Stage A。2026-08-26 产品负责人确认 Stage B1 的主板书刷新恢复与 Smart 输入、Stage B2 的课堂整体布局通过；B2 验收后的生产复核观测到 checkpoint version/chunk/head=`2/2/2`。Stage B3 启用 H5 pointer 后，当前 production 课次/发布引用核对得到 399 条 H5-kind 页面记录、409 条 binding，均指向 `aixuexi-page-doc-v1`，而候选只把 pointer bridge 传入通用 `page-doc-v1` 舞台；这两个数字描述绑定记录，不是 399 个实际 iframe。H5 开关已追加 version 3 / false，board/input/layout 保持 version 2 / true，业务与错误计数无漂移。
 
-开发候选 `f1f8d98` 已完成共同合同修复：`classroom_h5_input_profiles` 按不可变 package SHA-256 保存版本化 active 能力档案；H5 delivery 剥离包内自声明，只注入 registry 权威能力；通用 `DocStage` 与 `AixuexiStage` 复用同一 frame 注册和 pointer bridge。缺档案、档案不匹配、查询失败或握手失败时，H5 自身仍可交互，但 Smart 保持交互锁。只读 revision 审计另确认 Aixuexi 5442 页中实际 `embedded_h5` 为 9 页，通用 `page-doc-v1` 97349 页中 H5 为 13258 页；这些是全量 revision 数，不代表当前生产课次可达量。本地发布包审计还确认魔法校 baseline/2026 分别有 102/78 个“页面内互动 + H5”混合页，因此人工 Gate 合并为魔法校混合页、爱学习嵌入页和未登记回退三个状态，不再按 renderer 或 package 逐个验收。精确证据与生产回退边界见 [`classroom-experience-m5-candidate.md`](../evidence/r1/classroom-experience-m5-candidate.md)。
+开发候选 `f1f8d98` 已完成共同合同修复：`classroom_h5_input_profiles` 按不可变 package SHA-256 保存版本化 active 能力档案；H5 delivery 剥离包内自声明，只注入 registry 权威能力；通用 `DocStage` 与 `AixuexiStage` 复用同一 frame 注册和 pointer bridge。缺档案、档案不匹配、查询失败或握手失败时，H5 自身仍可交互，但 Smart 不接管。只读 revision 审计另确认 Aixuexi 5442 页中实际 `embedded_h5` 为 9 页，通用 `page-doc-v1` 97349 页中 H5 为 13258 页；这些是全量 revision 数，不代表当前生产课次可达量。本地发布包审计还确认魔法校 baseline/2026 分别有 102/78 个“页面内互动 + H5”混合页，因此人工 Gate 合并为魔法校混合页、爱学习嵌入页和未登记回退三个代表页面，不再按 renderer 或 package 逐个验收。
+
+2026-08-26，产品负责人进一步取消一级 `Smart / 交互锁 / 书写锁` 三按钮，冻结为一个 Smart 开关。`e2ff273` 实现工具派生回退：Smart 关闭或页面不兼容时，指针选择自动成为交互锁，画笔、快捷颜色、橡皮和其他绘图工具自动成为画笔锁；renderer 变化不再修改教师的 Smart 偏好。该提交同时把 H5 channel token 从局域网 HTTP 下不可用的直接 `crypto.randomUUID()` 调用改为仓库统一 `newId()` 兜底。精确证据与生产回退边界见 [`classroom-experience-m5-candidate.md`](../evidence/r1/classroom-experience-m5-candidate.md)。
 
 #### 回归矩阵
 
@@ -1484,7 +1485,7 @@ teaching.classroom_h5_pointer_v1
 7. 点击蓝笔继续写，切到橡皮并擦除，再点击蓝笔恢复；切主/副板书后确认一级界面显示正确目标，第一笔和撤销都作用于当前目标。
 8. 用点击、键盘和长按为学生加星/撤销；确认未认领学生可操作，达到视觉上限时按 M0 决策反馈，长按移动离开不误撤销。
 9. 翻页，确认主板书按页隔离、副板书持续；学情检查、点名、发题、工具覆盖和 pending 状态仍可到达。
-10. 用一组代表对象抽验 provider 的 `click/drag/native/ink`，不按 renderer 全量重复；未知 renderer 自动进入安全交互态并能明确切到书写锁。
+10. 用一组代表对象抽验 provider 的 `click/drag/native/ink`，不按 renderer 全量重复；未知 renderer 的 Smart 按钮不可用，选指针进入交互锁，选笔或颜色进入画笔锁。
 11. 在魔法校混合页和爱学习嵌入页各抽验同一份 H5 tap/takeover 合同；在未登记 H5 上确认原生交互可用，但 Smart 不做坐标猜测或误接管。
 
 ### 14.2 恢复、角色与容量
@@ -1518,7 +1519,7 @@ teaching.classroom_h5_pointer_v1
 - §9.11 快照余量、IDB、回放和显式 drain 全部通过，最后一笔/状态在切页和结课后可恢复；
 - 数独切换数字不再误改上一格；
 - 三色按钮直接代表三支笔；
-- Smart/交互锁/书写锁与 pen/eraser/shape/select、主/副板目标互不覆盖，界面和实际状态一致；
+- 一级界面只有一个 Smart 开关；Smart 关闭或不可用时由 pointer/pen/color/eraser/shape 自动派生回退锁，且与主/副板目标保持一致；
 - 教师控制端在冻结的最小横屏以上保持 4:3 主板书、副板书和 20 人积分区持续同屏；小屏按既有工作区合同降级；
 - 积分名单覆盖所有 active enrollment，使用稳定 `students.id` 与正式座次；20 人无滚动，21–30 人不截断；
 - 学生积分按 10 星/月亮、10 月亮/太阳折算且余星逐颗呈现；撤销具有幂等 v2 语义和键盘等价动作；
