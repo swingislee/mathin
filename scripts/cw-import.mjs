@@ -26,6 +26,7 @@ const ASSET_KINDS = new Set(["image", "video", "audio", "svg", "h5"]);
 const DEFAULT_SSH_HOST = "xiaomi";
 const CATALOG_VERSION_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const RESUMABLE_UPLOAD_BYTES = 6 * 1024 * 1024;
+const BATCH_UPLOAD_CONCURRENCY = 8;
 const storageDirectoryCache = new Map();
 const verifiedFileCache = new Map();
 const sharedNdjsonCache = new Map();
@@ -1394,13 +1395,25 @@ async function verifyLocalFile(file, expectedHash, expectedByteCount, label) {
   if (await sha256File(file) !== expectedHash) fail(`${label} SHA-256 mismatch`);
 }
 
+async function mapWithConcurrency(items, concurrency, handler) {
+  let nextIndex = 0;
+  const workers = Array.from({ length: Math.min(concurrency, items.length) }, async () => {
+    while (nextIndex < items.length) {
+      const index = nextIndex;
+      nextIndex += 1;
+      await handler(items[index], index);
+    }
+  });
+  await Promise.all(workers);
+}
+
 async function uploadPlan(plan, storeRoot, client, uploadConfig, quiet = false) {
   const result = {
     cwObjects: { uploaded: 0, existing: 0 },
     cwH5: { uploaded: 0, existing: 0, manifestsUploaded: 0, manifestsExisting: 0 },
   };
   const normalObjects = plan.objects.filter((object) => object.kind !== "h5");
-  for (const [index, object] of normalObjects.entries()) {
+  await mapWithConcurrency(normalObjects, quiet ? BATCH_UPLOAD_CONCURRENCY : 1, async (object, index) => {
     if (!quiet && (index === 0 || (index + 1) % 25 === 0 || index + 1 === normalObjects.length)) {
       process.stderr.write(`CW_IMPORT: cw-objects ${index + 1}/${normalObjects.length}\n`);
     }
@@ -1409,14 +1422,14 @@ async function uploadPlan(plan, storeRoot, client, uploadConfig, quiet = false) 
     await verifyLocalFile(file, object.objectHash, object.byteCount, `CAS ${object.objectHash}`);
     const state = await uploadOne(client, uploadConfig, "cw-objects", object.storagePath, file, object.mime, "31536000");
     result.cwObjects[state] += 1;
-  }
+  });
   const h5Packages = [...plan.h5Manifests];
   for (const [packageIndex, [hash, manifest]] of h5Packages.entries()) {
     if (!quiet) process.stderr.write(`CW_IMPORT: cw-h5 package ${packageIndex + 1}/${h5Packages.length}\n`);
     const manifestFile = resolveInside(plan.packageRoot, `h5-manifests/${hash}.json`);
     const manifestState = await uploadOne(client, uploadConfig, "cw-h5", `packages/${hash}/__mathin_manifest.json`, manifestFile, "application/json", "31536000");
     result.cwH5[`manifests${manifestState[0].toUpperCase()}${manifestState.slice(1)}`] += 1;
-    for (const file of manifest.files) {
+    await mapWithConcurrency(manifest.files, quiet ? BATCH_UPLOAD_CONCURRENCY : 1, async (file) => {
       const fileRoot = file.storeScope === "package" ? plan.packageRoot : storeRoot;
       const source = resolveInside(
         fileRoot,
@@ -1425,7 +1438,7 @@ async function uploadPlan(plan, storeRoot, client, uploadConfig, quiet = false) 
       await verifyLocalFile(source, file.sha256, file.byteCount, `H5 ${hash}/${file.packagePath}`);
       const state = await uploadOne(client, uploadConfig, "cw-h5", h5StoragePath(hash, file.packagePath), source, file.mime, "31536000");
       result.cwH5[state] += 1;
-    }
+    });
   }
   return result;
 }
