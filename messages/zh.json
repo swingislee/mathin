@@ -2694,6 +2694,8 @@
       "scheduledAt": "上课时间",
       "submit": "创建班级",
       "submitting": "创建中…",
+      "createdRedirecting": "班级已创建，正在进入班级页面…",
+      "openCreatedClass": "立即打开",
       "submitFailed": "创建失败，请检查填写内容后重试。",
       "includeSupersededCourses": "包含已被替代的历史版本",
       "supersededCourse": "历史版本"

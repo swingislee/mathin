@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, LoaderCircle, Plus, Trash2 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useRouter } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { buildClass, getClassBuildConflictsAction, getClassBuildCourseDetailAction } from "./actions/classes";
 import type { BuildClassSession } from "./actions/types";
@@ -55,6 +55,7 @@ export function ClassBuildWizard({
   initialCourseId?: string;
 }) {
   const t = useTranslations("school.classBuild");
+  const locale = useLocale();
   const scheduleT = useTranslations("school.schedule");
   const router = useRouter();
   const initialCourseHandled = useRef(false);
@@ -80,6 +81,7 @@ export function ClassBuildWizard({
   const [conflictsLoading, setConflictsLoading] = useState(false);
   const [activateNow, setActivateNow] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [createdClassroomId, setCreatedClassroomId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [attemptedSteps, setAttemptedSteps] = useState<Set<number>>(() => new Set());
 
@@ -237,6 +239,7 @@ export function ClassBuildWizard({
       return;
     }
     setSubmitting(true);
+    setCreatedClassroomId(null);
     setError(null);
     try {
       const sessions: BuildClassSession[] = mode === "course"
@@ -266,7 +269,15 @@ export function ClassBuildWizard({
         activateNow,
         sessions,
       });
-      router.push(`/dashboard/classes/${classroomId}`);
+      const href = `/dashboard/classes/${classroomId}` as const;
+      const localizedHref = `/${locale}${href}`;
+      setCreatedClassroomId(classroomId);
+      window.requestAnimationFrame(() => {
+        router.replace(href);
+        window.setTimeout(() => {
+          if (window.location.pathname !== localizedHref) window.location.assign(localizedHref);
+        }, 1_200);
+      });
     } catch {
       setError(t("submitFailed"));
       setSubmitting(false);
@@ -385,6 +396,7 @@ export function ClassBuildWizard({
       <div className="mt-5 flex items-start gap-3"><Checkbox id="activate-now" checked={activateNow} onCheckedChange={(value) => setActivateNow(value === true)} /><div><Label htmlFor="activate-now" className="cursor-pointer">{t("activateNow")}</Label><p className="mt-1 text-xs text-muted">{t("activateNowHint")}</p></div></div>
     </section>}
 
+    {createdClassroomId && <p role="status" className="flex flex-wrap items-center gap-2 rounded-xl border border-leaf/40 bg-leaf/15 px-3 py-2 text-sm text-ink"><LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" />{t("createdRedirecting")}<Link href={`/dashboard/classes/${createdClassroomId}`} className="font-medium underline underline-offset-2">{t("openCreatedClass")}</Link></p>}
     {error && <p role="alert" className="text-sm text-rose">{error}</p>}
     <div className="flex items-center justify-between gap-3"><Button type="button" variant="secondary" onClick={() => setStep((current) => Math.max(1, current - 1))} disabled={step === 1 || submitting}><ChevronLeft className="size-4" />{t("previousStep")}</Button>{step < 4 ? <Button type="button" onClick={advance} disabled={submitting}>{t("nextStep")}<ChevronRight className="size-4" /></Button> : <Button type="button" onClick={() => void submit()} disabled={submitting}>{submitting && <LoaderCircle className="size-4 animate-spin" />}{submitting ? t("submitting") : t("submit")}</Button>}</div>
   </div>;

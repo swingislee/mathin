@@ -2694,6 +2694,8 @@
       "scheduledAt": "Scheduled at",
       "submit": "Create class",
       "submitting": "Creating…",
+      "createdRedirecting": "Class created. Opening the class page…",
+      "openCreatedClass": "Open now",
       "submitFailed": "Failed to create, check the form and try again.",
       "includeSupersededCourses": "Include superseded versions",
       "supersededCourse": "Superseded"

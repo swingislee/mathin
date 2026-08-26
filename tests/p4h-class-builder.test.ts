@@ -34,6 +34,9 @@ describe("P4H CoursePicker and class-builder contract", () => {
     expect(wizard).toContain('setLearningSupportId("")');
     expect(wizard).toContain("primaryTeacherRequired");
     expect(wizard).toContain("aria-invalid");
+    expect(wizard).toContain("createdRedirecting");
+    expect(wizard).toContain("router.replace(href)");
+    expect(wizard).toContain("window.location.assign(localizedHref)");
   });
 
   it("validates availability and creates the correct staff responsibilities inside the controlled RPC", () => {
