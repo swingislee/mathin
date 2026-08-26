@@ -1,6 +1,6 @@
 # Mathin 课堂体验升级规划
 
-> **状态**：M0–M4 开发端与 M5 Stage B1/B2 已验收；Stage B3 因 production Aixuexi H5 bridge 缺口已回退并返回开发施工<br>
+> **状态**：M0–M4 开发端与 M5 Stage B1/B2 已验收；Stage B3 生产已安全回退，开发修复候选 `f1f8d98` 机器 Gate 通过、等待产品人工验收<br>
 > **规划日期**：2026-08-24<br>
 > **仓库基线**：`swingislee/mathin`，本轮审阅基于 `main` 的 `0e30b33`<br>
 > **M1 验收基线**：`43ae587` + `67989c1`；只表示开发目标已验收，尚未部署生产<br>
@@ -1325,7 +1325,9 @@ M3b 把指针协议扩展进既有 H5 注入 runtime，并把缓存版本从 v2 
 
 ### 12.5 M5：课堂集成与发布
 
-当前状态：M0–M4 的开发端产品验收已经完成，`95ed9f1` 是进入 M5 的已验收应用基线。候选 `8c303a2` 已通过一次工程、隔离数据库、课堂专项 SQL 与本地浏览器集成 Gate，并于 2026-08-25 完成 Stage A。2026-08-26 产品负责人确认 Stage B1 的主板书刷新恢复与 Smart 输入、Stage B2 的课堂整体布局通过；B2 验收后的生产复核观测到 checkpoint version/chunk/head=`2/2/2`。Stage B3 启用 H5 pointer 后，在准备人工验收对象时发现 production 399 个 H5 页面/409 个 binding 全部是 `aixuexi-page-doc-v1`，而开发 fixture 只证明通用 `page-doc-v1` 舞台；Aixuexi 舞台没有接收 pointer bridge。H5 开关已追加 version 3 / false，board/input/layout 保持 version 2 / true，业务与错误计数无漂移。精确证据与回退边界见 [`classroom-experience-m5-candidate.md`](../evidence/r1/classroom-experience-m5-candidate.md)。下一步回开发环境接通真实 renderer，并用一个 Aixuexi H5 对象重新人工验收。
+当前状态：M0–M4 的开发端产品验收已经完成，`95ed9f1` 是进入 M5 的已验收应用基线。候选 `8c303a2` 已通过一次工程、隔离数据库、课堂专项 SQL 与本地浏览器集成 Gate，并于 2026-08-25 完成 Stage A。2026-08-26 产品负责人确认 Stage B1 的主板书刷新恢复与 Smart 输入、Stage B2 的课堂整体布局通过；B2 验收后的生产复核观测到 checkpoint version/chunk/head=`2/2/2`。Stage B3 启用 H5 pointer 后，当前 production 课次/发布引用核对得到 399 条 H5-kind 页面记录、409 条 binding，均指向 `aixuexi-page-doc-v1`，而候选只把 pointer bridge 传入通用 `page-doc-v1` 舞台；这两个数字描述绑定记录，不是 399 个实际 iframe。H5 开关已追加 version 3 / false，board/input/layout 保持 version 2 / true，业务与错误计数无漂移。
+
+开发候选 `f1f8d98` 已完成共同合同修复：`classroom_h5_input_profiles` 按不可变 package SHA-256 保存版本化 active 能力档案；H5 delivery 剥离包内自声明，只注入 registry 权威能力；通用 `DocStage` 与 `AixuexiStage` 复用同一 frame 注册和 pointer bridge。缺档案、档案不匹配、查询失败或握手失败时，H5 自身仍可交互，但 Smart 保持交互锁。只读 revision 审计另确认 Aixuexi 5442 页中实际 `embedded_h5` 为 9 页，通用 `page-doc-v1` 97349 页中 H5 为 13258 页；这些是全量 revision 数，不代表当前生产课次可达量。本地发布包审计还确认魔法校 baseline/2026 分别有 102/78 个“页面内互动 + H5”混合页，因此人工 Gate 合并为魔法校混合页、爱学习嵌入页和未登记回退三个状态，不再按 renderer 或 package 逐个验收。精确证据与生产回退边界见 [`classroom-experience-m5-candidate.md`](../evidence/r1/classroom-experience-m5-candidate.md)。
 
 #### 回归矩阵
 
@@ -1333,7 +1335,7 @@ M3b 把指针协议扩展进既有 H5 注入 runtime，并把缓存版本从 v2 
 | --- | --- |
 | 运行模式 | 试讲、正式课堂、离线演练 |
 | 角色 | 教师控制端、学生端、展示端 |
-| 页面 | 数独普通/拖选模式、图片、视频及原生控件、文档点击步进、自研拖拽游戏、白板页、工具覆盖页、兼容/不兼容 H5 |
+| 页面 | 数独普通/拖选模式、图片、视频及原生控件、文档点击步进、自研拖拽游戏、白板页、工具覆盖页、魔法校页面内互动 + H5 混合页、爱学习嵌入 H5、未登记 H5 |
 | 输入 | 鼠标、`pen`、`touch`、设备把笔上报为 `mouse` 的模拟 |
 | 学生数 | 0、1、8、20、21、30；含空座、长名、未认领账号、最高星数 |
 | 白板 | 空板、长笔迹、500+ 笔迹、擦除、撤销、清空 |
@@ -1347,7 +1349,7 @@ M3b 把指针协议扩展进既有 H5 注入 runtime，并把缓存版本从 v2 
 1. fresh build 完成开发矩阵、迁移重建、RLS、离线与量化性能 Gate；
 2. 试讲对固定开发账号启用 input，layout 仍旧版；教师完成一节 60 分钟混合课件试讲；
 3. 单独启用 layout，重复角色/viewport/名单验收；
-4. H5 pointer 只对 bridge 握手成功的 package 启用；
+4. H5 pointer 只对存在 active 包哈希能力档案且 bridge 握手成功的 package 启用；delivery 必须剥离原始包自声明，未登记或不匹配时 fail closed；
 5. 产品初验后生成独立、可回退 commit；生产前按 `docs/plan/04-roadmap.md` 当前 Gate 做 preflight，不把开发通过写成生产通过；
 6. 生产只对获批真实教师开启，完成 postflight 和至少一节真实课证据；
 7. 任一开关可独立回退，旧 reader 持续处理已存在 v1/outbox；
@@ -1483,7 +1485,7 @@ teaching.classroom_h5_pointer_v1
 8. 用点击、键盘和长按为学生加星/撤销；确认未认领学生可操作，达到视觉上限时按 M0 决策反馈，长按移动离开不误撤销。
 9. 翻页，确认主板书按页隔离、副板书持续；学情检查、点名、发题、工具覆盖和 pending 状态仍可到达。
 10. 用一组代表对象抽验 provider 的 `click/drag/native/ink`，不按 renderer 全量重复；未知 renderer 自动进入安全交互态并能明确切到书写锁。
-11. 在兼容 H5 上完成 tap、takeover ink 与 reload；在不兼容 H5 上确认不会坐标猜测或误点击。
+11. 在魔法校混合页和爱学习嵌入页各抽验同一份 H5 tap/takeover 合同；在未登记 H5 上确认原生交互可用，但 Smart 不做坐标猜测或误接管。
 
 ### 14.2 恢复、角色与容量
 

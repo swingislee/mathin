@@ -2,13 +2,13 @@
 
 > **结果**：`STAGE B3 STOPPED / FAIL-CLOSED ROLLBACK`
 >
-> **日期**：2026-08-25
+> **日期**：2026-08-25～26
 >
 > **产品验收基线**：`95ed9f1`
 >
 > **生产候选**：`8c303a2`
 >
-> **生产状态**：Stage A、B1 与 B2 已通过；H5 pointer 已回退为 version 3 / false，等待开发补齐真实 Aixuexi 舞台
+> **生产状态**：Stage A、B1 与 B2 已通过；H5 pointer 已回退为 version 3 / false。开发修复候选 `f1f8d98` 已就绪并等待产品人工验收，尚未迁移生产
 
 ## 本地 Gate
 
@@ -45,7 +45,16 @@ Gate 同步修复了三类发布测试漂移：统一登录框由 `#email` 改�
 2. **migration 与暗发布 · 已完成**：`20260825000700_classroom_learning_fill_bulk` 以既有 RPC owner `supabase_admin` 完整执行并回滚，独立核查零残留后正式登记；ledger=`193`、head 仍为较晚的 `20260825000800_account_center_profile`，checksum=`b6ffca69…84e3d`。PostgREST schema cache 已可见四参 RPC。应用候选 `8c303a2` 发布为 `20260825-085754`，previous=`20260825-072801` / `72d8127…`；应用服务、双层 health、zh/en login 和匿名 classroom 重定向通过。
 3. **Stage B1 · 人工通过**：组织级 `teaching.classroom_board_checkpoint_v2` 与 `teaching.classroom_input_v2` 为 version 2 / true。产品负责人确认主板书刷新恢复与 Smart 输入通过；随后只读复核观测到 checkpoint version/chunk/head=`1/1/1`，错误仍为 `1949`，证明验收动作实际经过 v2 持久化链路。第一次启用因 `clock_timestamp()` 晚于事务求值时间而被提交前断言拦截，独立核查零残留；改用同一事务时间后一次提交。
 4. **Stage B2 · 人工通过**：`teaching.classroom_layout_v2` 为 version 2 / true。产品负责人确认生产课堂整体布局通过；随后的 B3 preflight 观测到 checkpoint version/chunk/head=`2/2/2`，说明 B2 验收又完成了一次真实板书保存。此时 H5 仍为 version 1 / false，domain event=`596`。
-5. **Stage B3 · 已停止并回退**：最初只为 `teaching.classroom_h5_pointer_v1` 追加 version 2 / true，domain event=`597`。准备生产验收对象时的只读全量核对发现，现有 production 课次引用的 399 个 H5 页面、409 个 H5 binding 全部属于 `aixuexi-page-doc-v1`，而候选只把 pointer bridge 传入通用 `page-doc-v1` 舞台；因此没有可代表实际生产类型的 tap/takeover/reload 对象。按 fail-closed 规则立即追加 version 3 / false，domain event=`598`；board/input/layout 继续 version 2 / true。独立 postflight 确认 checkpoint=`2/2/2`、账号、业务、Storage object 与错误计数无漂移，且没有进行中的 production 课堂。
+5. **Stage B3 · 已停止并回退**：最初只为 `teaching.classroom_h5_pointer_v1` 追加 version 2 / true，domain event=`597`。准备生产验收对象时的只读全量核对发现，现有 production 课次/发布引用含 399 条 H5-kind 页面记录、409 条 binding，全部属于 `aixuexi-page-doc-v1`，而候选只把 pointer bridge 传入通用 `page-doc-v1` 舞台；因此没有可代表实际生产类型的 tap/takeover/reload 对象。这里的 399/409 是绑定记录量，不是实际嵌入 iframe 数。按 fail-closed 规则立即追加 version 3 / false，domain event=`598`；board/input/layout 继续 version 2 / true。独立 postflight 确认 checkpoint=`2/2/2`、账号、业务、Storage object 与错误计数无漂移，且没有进行中的 production 课堂。
 6. **启用后的回退限制**：当前已经产生 v2 checkpoint，不能把应用直接切回不认识 v2 数据的 `72d8127`。回退动作是先关闭对应 writer/UI 开关并继续运行当前双读 bundle；只有证明没有新 v2 写入时，才允许应用级 previous 切换。
 
-本记录证明 Stage A 机器 postflight 与 B1/B2 人工验收；Stage B3 已因真实生产 renderer 集成缺口安全回退，必须先在开发环境补齐 Aixuexi H5 bridge 并重新人工验收，不能记为 H5 pointer、M5 或 R1-Live Gate 2 已通过。
+## Stage B3 开发修复候选
+
+| 对象 | 开发结果 | 证据边界 |
+| --- | --- | --- |
+| 共同能力合同 | `f1f8d98` 新增按 package SHA-256 的版本化 active 能力档案；通用魔法校 `DocStage` 与爱学习 `AixuexiStage` 复用同一 iframe 注册和 pointer bridge | 包内 provider 声明在 delivery 时剥离，只信任 registry；缺档案、查询失败、档案不匹配或握手失败时 H5 原生交互保留、Smart fail closed |
+| 数据库 | `20260826000100_classroom_h5_input_profiles` 只应用到 `127.0.0.1:35421` 指向的本机 Docker；表为空、RLS 只允许 anon/authenticated 读取 active 档案，PostgREST 授权查询返回 200/`[]` | Xiaomi 未执行 migration、未写 profile、未改开关 |
+| 课程审计 | 全量 revision 只读审计：`aixuexi-page-doc-v1` 5442 页/9 个 `embedded_h5`，`page-doc-v1` 97349 页/13258 个 H5；本地发布包审计：魔法校 baseline 55101 页、H5 4367、页面互动 3305、混合 102，2026 包 16451 页、H5 2316、页面互动 1075、混合 78 | revision 与本地发布包计数不证明当前 production 课次可达量；700 个现有魔法校 package（677 non-cocos、23 cocos2）尚无权威输入档案，未被批量猜测为 `click` |
+| 机器 Gate | 相关 Vitest 5 个文件：36 项通过、1 项条件跳过；`pnpm typecheck`、`pnpm lint`、Next production build 通过；统一 Playwright 合同 1/1 通过 | E2E 只覆盖魔法校混合页、爱学习嵌入页和未登记回退三个开发状态，不替代产品手感与生产 iPad |
+
+本记录证明 Stage A 机器 postflight、B1/B2 人工验收，以及 `f1f8d98` 的开发机器候选；Stage B3 生产仍处于安全回退。只有产品负责人确认三态开发验收并另行授权生产迁移/发布后，才能重新进入 B3 生产 preflight；当前不能记为 H5 pointer、M5 或 R1-Live Gate 2 已通过。

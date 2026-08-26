@@ -383,7 +383,7 @@ Agent 按 doc 04 的 standing execution direction 生成包含原 4 个 protecte
 | 证据字段 | 值 |
 | --- | --- |
 | `gate_id`, `domain`, `result` | `CLASSROOM-M5`；课堂体验升级；Stage A/B1/B2 `PASS`，Stage B3 `STOPPED / FAIL-CLOSED ROLLBACK` |
-| `measured_value`, `threshold` | 新备份 dump=`249637390 bytes`、TOC=`3761`、SHA-256=`5654c1ec…31e8`；ledger `192→193`，migration checksum=`b6ffca69…84e3d`；current/previous=`20260825-085754` / `8c303a2…` 与 `20260825-072801` / `72d8127…`。B2 人工通过后 checkpoint version/chunk/head=`2/2/2`；production 399 个 H5 页面/409 个 binding 全部为 `aixuexi-page-doc-v1`。board/input/layout=`v2/true`，H5=`v3/false`；domain event=`598`，star/learning result=`0/0`，错误=`1949` |
+| `measured_value`, `threshold` | 新备份 dump=`249637390 bytes`、TOC=`3761`、SHA-256=`5654c1ec…31e8`；ledger `192→193`，migration checksum=`b6ffca69…84e3d`；current/previous=`20260825-085754` / `8c303a2…` 与 `20260825-072801` / `72d8127…`。B2 人工通过后 checkpoint version/chunk/head=`2/2/2`；production 当前引用含 399 条 H5-kind 页面记录/409 条 binding，全部为 `aixuexi-page-doc-v1`，不等于实际 iframe 数。board/input/layout=`v2/true`，H5=`v3/false`；domain event=`598`，star/learning result=`0/0`，错误=`1949` |
 | `commit_sha`, `migration_head`, `environment` | `8c303a21574899728826984181028971dfc77742`；head 仍为 `20260825000800_account_center_profile`，另登记较早编号 `20260825000700_classroom_learning_fill_bulk`；Xiaomi / production，数据库指纹 `10e3…1a0c` |
 | `dataset_manifest` | 账号/profile/学生/班级/课次/报名/点名=`14/14/5/3/16/1/0`、Storage object=`123602` 均无漂移；Stage B1～B3 启用与回退合计只新增五条 feature flag version 与五条审计事件 |
 | `started_at`, `finished_at`, `actor`, `approver` | 2026-08-25～26（Asia/Shanghai）；release `builtAt=2026-08-25T08:59:10Z`；Codex；`swingislee`（要求推进 Stage B，并确认“B1通过”“B2通过”） |
