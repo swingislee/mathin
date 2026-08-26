@@ -8,7 +8,7 @@
 >
 > **SML 暂停位置**：`SML-0 · 合同与金标冻结`；空间数学可按独立权限或 Feature Flag 并行，不进入 R1-Live Gate。
 >
-> **当前运行状态**：Gate 1 已通过，Gate 2 仍等待正式教师点名持久再读与权限对照。Xiaomi 当前数据库 ledger=`193`、head=`20260825000800_account_center_profile`，应用 current/previous=`20260825-085754` / `8c303a2…` 与 `20260825-072801` / `72d8127…`。课堂 Stage A、B1 与 B2 已通过，生产已有 checkpoint version/chunk/head=`2/2/2`；Stage B3 因 production H5 实际走未接 bridge 的 Aixuexi 舞台而安全回退，board/input/layout 为 version 2 / true，H5 为 version 3 / false。开发候选 `f1f8d98` + `e2ff273` 已把包哈希能力档案、魔法校混合页和爱学习嵌入页接入同一 bridge/conformance，并把一级三模式选择收敛为单一 Smart 开关；Smart 关闭或不可用时由当前指针/画笔工具自动决定回退锁。机器 Gate 已通过，等待产品负责人在开发端人工验收；该 migration、应用和开关均未进入生产。账号、班级、课次、报名、点名、Storage object 和错误计数无漂移。
+> **当前运行状态**：Gate 1 已通过，Gate 2 仍等待正式教师点名持久再读与权限对照。Xiaomi 当前数据库 ledger=`193`、head=`20260825000800_account_center_profile`，应用 current/previous=`20260825-085754` / `8c303a2…` 与 `20260825-072801` / `72d8127…`。课堂 Stage A、B1 与 B2 已通过，生产已有 checkpoint version/chunk/head=`2/2/2`；Stage B3 因 production H5 实际走未接 bridge 的 Aixuexi 舞台而安全回退，board/input/layout 为 version 2 / true，H5 为 version 3 / false。开发候选 `f1f8d98` + `e2ff273` + `c03c382` 已把包哈希能力档案、魔法校混合页和爱学习嵌入页接入同一 bridge/conformance，并把一级三模式选择收敛为单一 Smart 开关；Smart 关闭或不可用时由当前指针/画笔工具自动决定回退锁。左下角开关为与底栏一级触控目标等高的 `112×44px` 横向滑动条，不再使用圆形图标按钮。机器 Gate 已通过，等待产品负责人在开发端人工验收；该 migration、应用和开关均未进入生产。账号、班级、课次、报名、点名、Storage object 和错误计数无漂移。
 >
 > **当前 P0 状态**：2026-08-25 产品负责人确认内部教师更习惯手机号注册登录。`手机号或邮箱 + password` 已部署生产：手机号只接受绑定具体号码的一次性员工邀请，不发送/伪造验证码，不开放全局邀请码手机号注册，账号仍以单一 `auth.users.id` 为主体。机器 postflight 已通过；真实教师尚未消费手机号邀请并完成 password 登录，因此状态为 `DEPLOYED / PENDING USER ACCEPTANCE`。
 >

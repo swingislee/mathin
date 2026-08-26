@@ -52,9 +52,9 @@ Gate 同步修复了三类发布测试漂移：统一登录框由 `#email` 改�
 
 | 对象 | 开发结果 | 证据边界 |
 | --- | --- | --- |
-| 共同能力合同 | `f1f8d98` 新增按 package SHA-256 的版本化 active 能力档案；通用魔法校 `DocStage` 与爱学习 `AixuexiStage` 复用同一 iframe 注册和 pointer bridge。`e2ff273` 把一级三模式选择收敛为单一 Smart 开关，由当前指针/绘图工具派生回退锁 | 包内 provider 声明在 delivery 时剥离，只信任 registry；缺档案、查询失败、档案不匹配或握手失败时 Smart fail closed，但教师仍可用指针操作 H5，或用笔/颜色直接批注 |
+| 共同能力合同 | `f1f8d98` 新增按 package SHA-256 的版本化 active 能力档案；通用魔法校 `DocStage` 与爱学习 `AixuexiStage` 复用同一 iframe 注册和 pointer bridge。`e2ff273` 把一级三模式选择收敛为单一 Smart 开关，由当前指针/绘图工具派生回退锁；`c03c382` 将入口改为 `112×44px` 横向滑动条并移除圆形图标按钮 | 包内 provider 声明在 delivery 时剥离，只信任 registry；缺档案、查询失败、档案不匹配或握手失败时 Smart fail closed，但教师仍可用指针操作 H5，或用笔/颜色直接批注 |
 | 数据库 | `20260826000100_classroom_h5_input_profiles` 只应用到 `127.0.0.1:35421` 指向的本机 Docker；表为空、RLS 只允许 anon/authenticated 读取 active 档案，PostgREST 授权查询返回 200/`[]` | Xiaomi 未执行 migration、未写 profile、未改开关 |
 | 课程审计 | 全量 revision 只读审计：`aixuexi-page-doc-v1` 5442 页/9 个 `embedded_h5`，`page-doc-v1` 97349 页/13258 个 H5；本地发布包审计：魔法校 baseline 55101 页、H5 4367、页面互动 3305、混合 102，2026 包 16451 页、H5 2316、页面互动 1075、混合 78 | revision 与本地发布包计数不证明当前 production 课次可达量；700 个现有魔法校 package（677 non-cocos、23 cocos2）尚无权威输入档案，未被批量猜测为 `click` |
-| 机器 Gate | `f1f8d98` 相关 Vitest 5 个文件：36 项通过、1 项条件跳过，`pnpm typecheck`、`pnpm lint`、Next production build 通过；`e2ff273` 追加 3 个定向文件 15/15、typecheck/受影响 lint 和统一 Playwright 1/1 通过 | E2E 只覆盖 Smart 单开关、魔法校混合页、爱学习嵌入页和未登记页的工具派生回退，不替代产品手感与生产 iPad |
+| 机器 Gate | `f1f8d98` 相关 Vitest 5 个文件：36 项通过、1 项条件跳过，`pnpm typecheck`、`pnpm lint`、Next production build 通过；`e2ff273` 追加 3 个定向文件 15/15、typecheck/受影响 lint 和统一 Playwright 1/1 通过；`c03c382` 追加实际 `112×44px`、无 SVG 图标和开关行为断言，typecheck、受影响 lint、统一 Playwright 1/1 通过 | E2E 只覆盖 Smart 单开关、魔法校混合页、爱学习嵌入页和未登记页的工具派生回退，不替代产品手感与生产 iPad |
 
-本记录证明 Stage A 机器 postflight、B1/B2 人工验收，以及 `f1f8d98` + `e2ff273` 的开发机器候选；Stage B3 生产仍处于安全回退。只有产品负责人确认三个代表页面及单一 Smart 开关的开发验收，并另行授权生产迁移/发布后，才能重新进入 B3 生产 preflight；当前不能记为 H5 pointer、M5 或 R1-Live Gate 2 已通过。
+本记录证明 Stage A 机器 postflight、B1/B2 人工验收，以及 `f1f8d98` + `e2ff273` + `c03c382` 的开发机器候选；Stage B3 生产仍处于安全回退。只有产品负责人确认三个代表页面及单一 Smart 开关的开发验收，并另行授权生产迁移/发布后，才能重新进入 B3 生产 preflight；当前不能记为 H5 pointer、M5 或 R1-Live Gate 2 已通过。

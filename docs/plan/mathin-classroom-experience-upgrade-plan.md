@@ -1,6 +1,6 @@
 # Mathin 课堂体验升级规划
 
-> **状态**：M0–M4 开发端与 M5 Stage B1/B2 已验收；Stage B3 生产已安全回退，开发修复候选 `f1f8d98` + `e2ff273` 机器 Gate 通过、等待产品人工验收<br>
+> **状态**：M0–M4 开发端与 M5 Stage B1/B2 已验收；Stage B3 生产已安全回退，开发修复候选 `f1f8d98` + `e2ff273` + `c03c382` 机器 Gate 通过、等待产品人工验收<br>
 > **规划日期**：2026-08-24<br>
 > **仓库基线**：`swingislee/mathin`，本轮审阅基于 `main` 的 `0e30b33`<br>
 > **M1 验收基线**：`43ae587` + `67989c1`；只表示开发目标已验收，尚未部署生产<br>
@@ -371,7 +371,7 @@ tool === "pen" && color === token
 
 ### 6.4 单一 Smart 开关与工具派生回退
 
-一级界面只保留一个 Smart 开关；交互锁和画笔锁仍是 router 的内部有效状态，不再是教师需要额外选择的两个模式。白板 `tool`、笔色、粗细和主/副板书 `activeArea` 保持原有独立状态。
+一级界面只保留一个 Smart 开关；交互锁和画笔锁仍是 router 的内部有效状态，不再是教师需要额外选择的两个模式。白板 `tool`、笔色、粗细和主/副板书 `activeArea` 保持原有独立状态。教师底栏入口使用 `112×44px` 横向二态滑动条，显示 `Smart` 与开关轨道；不得恢复大圆形图标按钮或额外模式容器。不可用是禁用状态，不是第三个可选择模式。
 
 ```ts
 type ClassroomSmartPreference = boolean;
@@ -1328,7 +1328,7 @@ M3b 把指针协议扩展进既有 H5 注入 runtime，并把缓存版本从 v2 
 
 开发候选 `f1f8d98` 已完成共同合同修复：`classroom_h5_input_profiles` 按不可变 package SHA-256 保存版本化 active 能力档案；H5 delivery 剥离包内自声明，只注入 registry 权威能力；通用 `DocStage` 与 `AixuexiStage` 复用同一 frame 注册和 pointer bridge。缺档案、档案不匹配、查询失败或握手失败时，H5 自身仍可交互，但 Smart 不接管。只读 revision 审计另确认 Aixuexi 5442 页中实际 `embedded_h5` 为 9 页，通用 `page-doc-v1` 97349 页中 H5 为 13258 页；这些是全量 revision 数，不代表当前生产课次可达量。本地发布包审计还确认魔法校 baseline/2026 分别有 102/78 个“页面内互动 + H5”混合页，因此人工 Gate 合并为魔法校混合页、爱学习嵌入页和未登记回退三个代表页面，不再按 renderer 或 package 逐个验收。
 
-2026-08-26，产品负责人进一步取消一级 `Smart / 交互锁 / 书写锁` 三按钮，冻结为一个 Smart 开关。`e2ff273` 实现工具派生回退：Smart 关闭或页面不兼容时，指针选择自动成为交互锁，画笔、快捷颜色、橡皮和其他绘图工具自动成为画笔锁；renderer 变化不再修改教师的 Smart 偏好。该提交同时把 H5 channel token 从局域网 HTTP 下不可用的直接 `crypto.randomUUID()` 调用改为仓库统一 `newId()` 兜底。精确证据与生产回退边界见 [`classroom-experience-m5-candidate.md`](../evidence/r1/classroom-experience-m5-candidate.md)。
+2026-08-26，产品负责人进一步取消一级 `Smart / 交互锁 / 书写锁` 三按钮，冻结为一个 Smart 开关。`e2ff273` 实现工具派生回退：Smart 关闭或页面不兼容时，指针选择自动成为交互锁，画笔、快捷颜色、橡皮和其他绘图工具自动成为画笔锁；renderer 变化不再修改教师的 Smart 偏好。该提交同时把 H5 channel token 从局域网 HTTP 下不可用的直接 `crypto.randomUUID()` 调用改为仓库统一 `newId()` 兜底。`c03c382` 根据产品复核把左下角入口改为与底栏一级控件等高的 `112×44px` 横向滑动条，移除圆形 Sparkles 按钮；Playwright 在真实课堂壳断言尺寸、无 SVG 与开关路由。精确证据与生产回退边界见 [`classroom-experience-m5-candidate.md`](../evidence/r1/classroom-experience-m5-candidate.md)。
 
 #### 回归矩阵
 
