@@ -18,6 +18,7 @@ import type { BuildClassInput, StudentSearchResult } from "./types";
 import type {
   ClassBuildCourseCandidate,
   ClassBuildCourseDetail,
+  ClassBuildMicrocourseTopic,
   ClassBuildPurpose,
   ClassBuildScheduleConflict,
 } from "../teaching-operations/course-picker-types";
@@ -30,6 +31,10 @@ const courseSearchSchema = z.object({
   classType: text(20),
   purpose: z.enum(["production", "test"]),
   includeSuperseded: z.boolean().default(false),
+  courseKind: z.enum(["curriculum", "microcourse"]).nullable().default(null),
+  authorId: uuid.nullable().default(null),
+  primaryTopicSlug: text(60),
+  keyword: text(32),
 });
 
 const classBuildCandidateSchema = z.object({
@@ -42,10 +47,17 @@ const classBuildCandidateSchema = z.object({
   catalogVersionTitle: z.string(),
   isSuperseded: z.boolean(),
   grade: z.number().int(),
-  courseSeason: z.number().int(),
+  courseSeason: z.number().int().nullable(),
   classType: z.string(),
   lectureCount: z.number().int().nonnegative(),
   releasedLectureCount: z.number().int().nonnegative(),
+  courseKind: z.enum(["curriculum", "microcourse"]),
+  authorId: uuid.nullable(),
+  authorName: z.string().nullable(),
+  primaryTopicSlug: z.string().nullable(),
+  primaryTopicTitleZh: z.string().nullable(),
+  primaryTopicTitleEn: z.string().nullable(),
+  keywords: z.array(z.string()),
 });
 
 const classBuildDetailSchema = classBuildCandidateSchema.extend({
@@ -56,6 +68,13 @@ const classBuildDetailSchema = classBuildCandidateSchema.extend({
     objectives: z.string(),
     ready: z.boolean(),
   })),
+});
+
+const classBuildMicrocourseTopicSchema = z.object({
+  id: uuid,
+  slug: z.string(),
+  title_zh: z.string(),
+  title_en: z.string(),
 });
 
 const conflictSchema = z.object({
@@ -79,6 +98,10 @@ export async function searchClassBuildCoursesAction(input: {
   classType: string;
   purpose: ClassBuildPurpose;
   includeSuperseded?: boolean;
+  courseKind?: "curriculum" | "microcourse" | null;
+  authorId?: string | null;
+  primaryTopicSlug?: string;
+  keyword?: string;
 }): Promise<ClassBuildCourseCandidate[]> {
   const value = parse(courseSearchSchema, input);
   const { supabase } = await authorizedClient("class.create");
@@ -90,6 +113,10 @@ export async function searchClassBuildCoursesAction(input: {
     p_purpose: value.purpose,
     p_limit: 30,
     p_include_superseded: value.includeSuperseded,
+    p_course_kind: value.courseKind,
+    p_author_id: value.authorId,
+    p_primary_topic_slug: value.primaryTopicSlug || null,
+    p_keyword: value.keyword || null,
   });
   if (error) throw new Error(error.message);
   const rows = z.array(z.object({
@@ -102,10 +129,17 @@ export async function searchClassBuildCoursesAction(input: {
     catalog_version_title: z.string(),
     is_superseded: z.boolean(),
     grade: z.number().int(),
-    course_season: z.number().int(),
+    course_season: z.number().int().nullable(),
     class_type: z.string(),
     lecture_count: z.number().int().nonnegative(),
     released_lecture_count: z.number().int().nonnegative(),
+    course_kind: z.enum(["curriculum", "microcourse"]),
+    author_id: uuid.nullable(),
+    author_name: z.string().nullable(),
+    primary_topic_slug: z.string().nullable(),
+    primary_topic_title_zh: z.string().nullable(),
+    primary_topic_title_en: z.string().nullable(),
+    keywords: z.array(z.string()).nullable(),
   })).parse(data ?? []);
   return rows.map((row) => classBuildCandidateSchema.parse({
     id: row.course_id,
@@ -121,6 +155,25 @@ export async function searchClassBuildCoursesAction(input: {
     classType: row.class_type,
     lectureCount: row.lecture_count,
     releasedLectureCount: row.released_lecture_count,
+    courseKind: row.course_kind,
+    authorId: row.author_id,
+    authorName: row.author_name,
+    primaryTopicSlug: row.primary_topic_slug,
+    primaryTopicTitleZh: row.primary_topic_title_zh,
+    primaryTopicTitleEn: row.primary_topic_title_en,
+    keywords: row.keywords ?? [],
+  }));
+}
+
+export async function listClassBuildMicrocourseTopicsAction(): Promise<ClassBuildMicrocourseTopic[]> {
+  const { supabase } = await authorizedClient("class.create");
+  const { data, error } = await rpc(supabase)("list_teacher_microcourse_topics", {});
+  if (error) throw new Error(error.message);
+  return z.array(classBuildMicrocourseTopicSchema).parse(data ?? []).map((topic) => ({
+    id: topic.id,
+    slug: topic.slug,
+    titleZh: topic.title_zh,
+    titleEn: topic.title_en,
   }));
 }
 
@@ -145,10 +198,17 @@ export async function getClassBuildCourseDetailAction(
     catalogVersionTitle: z.string(),
     isSuperseded: z.boolean(),
     grade: z.number().int(),
-    courseSeason: z.number().int(),
+    courseSeason: z.number().int().nullable(),
     classType: z.string(),
     lectureCount: z.number().int().nonnegative(),
     releasedLectureCount: z.number().int().nonnegative(),
+    courseKind: z.enum(["curriculum", "microcourse"]),
+    authorId: uuid.nullable(),
+    authorName: z.string().nullable(),
+    primaryTopicSlug: z.string().nullable(),
+    primaryTopicTitleZh: z.string().nullable(),
+    primaryTopicTitleEn: z.string().nullable(),
+    keywords: z.array(z.string()).nullable(),
     lectures: z.array(z.object({
       id: uuid,
       no: z.number().int(),
@@ -157,7 +217,7 @@ export async function getClassBuildCourseDetailAction(
       ready: z.boolean(),
     })),
   }).parse(data);
-  return classBuildDetailSchema.parse(row);
+  return classBuildDetailSchema.parse({ ...row, keywords: row.keywords ?? [] });
 }
 
 export async function getClassBuildConflictsAction(

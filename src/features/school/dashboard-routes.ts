@@ -136,6 +136,7 @@ const COURSEWARE_PERMS: readonly PermissionKey[] = [
   "courseware.page.edit",
   "courseware.release.publish",
   "courseware.asset.manage",
+  "courseware.review",
 ];
 
 /**
@@ -254,6 +255,14 @@ export const DASHBOARD_ROUTES = {
     createSurface: "parent",
     creationOwner: "classes",
   },
+  sessionMicrocourse: {
+    hrefPattern: "/dashboard/sessions/[sessionId]/microcourse",
+    kind: "workflow",
+    environments: STAFF_ONLY,
+    permission: "courseware.microcourse.author",
+    createSurface: "none",
+    parent: "sessionDetail",
+  },
   courses: {
     href: "/dashboard/courses",
     kind: "collection",
@@ -299,6 +308,15 @@ export const DASHBOARD_ROUTES = {
     createSurface: "none",
     parent: "courseware",
     nav: { labelKey: "adaptReview", group: "courseware" },
+  },
+  microcourseReviewDetail: {
+    hrefPattern: "/dashboard/courseware/review/microcourses/[reviewCycleId]",
+    kind: "object",
+    environments: STAFF_ONLY,
+    permission: "courseware.review",
+    createSurface: "parent",
+    creationOwner: "coursewareReview",
+    parent: "coursewareReview",
   },
   coursewarePreparationReview: {
     href: "/dashboard/courseware/preparation-review",

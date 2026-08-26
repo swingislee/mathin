@@ -173,4 +173,15 @@ describe("teacher microcourse page documents", () => {
     expect(preview).toContain("MicrocourseStage");
     expect(studioPage).toContain("if (isMicrocoursePageDoc(editor.activeRevision.doc)) notFound()");
   });
+
+  it("passes the saved Sudoku display contract into preparation and classroom rendering", () => {
+    const stage = readFileSync(
+      new URL("../src/features/courseware-doc/MicrocourseStage.tsx", import.meta.url),
+      "utf8",
+    );
+    expect(stage).toContain("showCoordinates={doc.display.showCoordinates}");
+    expect(stage).toContain("allowCandidates={doc.display.allowCandidates}");
+    expect(stage).toContain("allowAnswerReveal={doc.display.allowAnswerReveal}");
+    expect(stage).toContain("showTeachingTools={doc.display.showTeachingTools}");
+  });
 });

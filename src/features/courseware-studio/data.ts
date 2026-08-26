@@ -21,6 +21,7 @@ export const COURSEWARE_STUDIO_PERMS = [
   "courseware.page.edit",
   "courseware.release.publish",
   "courseware.asset.manage",
+  "courseware.review",
 ] as const;
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;

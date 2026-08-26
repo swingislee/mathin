@@ -1,5 +1,12 @@
 export type ClassBuildPurpose = "production" | "test";
 
+export interface ClassBuildMicrocourseTopic {
+  id: string;
+  slug: string;
+  titleZh: string;
+  titleEn: string;
+}
+
 export interface ClassBuildLecture {
   id: string;
   no: number;
@@ -20,10 +27,17 @@ export interface ClassBuildCourseCandidate {
   /** 已被同族同维度的更新版本替代；建班候选默认不返回这类课程。 */
   isSuperseded: boolean;
   grade: number;
-  courseSeason: number;
+  courseSeason: number | null;
   classType: string;
   lectureCount: number;
   releasedLectureCount: number;
+  courseKind: "curriculum" | "microcourse";
+  authorId: string | null;
+  authorName: string | null;
+  primaryTopicSlug: string | null;
+  primaryTopicTitleZh: string | null;
+  primaryTopicTitleEn: string | null;
+  keywords: string[];
 }
 
 export interface ClassBuildCourseDetail extends ClassBuildCourseCandidate {

@@ -5,13 +5,25 @@ import { DIGEST_PREFIX, migrationsDigest } from "./lib/migrations-digest.mjs";
 
 const databaseUrl = process.env.DATABASE_URL;
 const metaSsh = process.env.SUPABASE_META_SSH;
-if (!databaseUrl && !metaSsh) {
-  console.error("DATABASE_URL or SUPABASE_META_SSH is required for db:types");
+const metaUrl = process.env.SUPABASE_META_URL;
+if (!databaseUrl && !metaSsh && !metaUrl) {
+  console.error("DATABASE_URL, SUPABASE_META_SSH, or SUPABASE_META_URL is required for db:types");
   process.exit(2);
 }
-const result = metaSsh
-  ? spawnSync(process.platform === "win32" ? "ssh.exe" : "ssh", [metaSsh, "ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' supabase-meta); curl -fsS http://$ip:8080/generators/typescript?included_schemas=public"], { encoding: "utf8", shell: false, maxBuffer: 64 * 1024 * 1024 })
-  : spawnSync(process.platform === "win32" ? "supabase.exe" : "supabase", ["gen", "types", "typescript", "--db-url", databaseUrl, "--schema", "public"], { encoding: "utf8", shell: false, maxBuffer: 64 * 1024 * 1024 });
+let result;
+if (metaUrl) {
+  const endpoint = new URL("/generators/typescript?included_schemas=public", metaUrl);
+  const response = await fetch(endpoint);
+  result = {
+    status: response.ok ? 0 : response.status,
+    stdout: response.ok ? await response.text() : "",
+    stderr: response.ok ? "" : await response.text(),
+  };
+} else {
+  result = metaSsh
+    ? spawnSync(process.platform === "win32" ? "ssh.exe" : "ssh", [metaSsh, "ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' supabase-meta); curl -fsS http://$ip:8080/generators/typescript?included_schemas=public"], { encoding: "utf8", shell: false, maxBuffer: 64 * 1024 * 1024 })
+    : spawnSync(process.platform === "win32" ? "supabase.exe" : "supabase", ["gen", "types", "typescript", "--db-url", databaseUrl, "--schema", "public"], { encoding: "utf8", shell: false, maxBuffer: 64 * 1024 * 1024 });
+}
 if (result.error?.code === "ENOENT") {
   console.error("Supabase CLI (DATABASE_URL mode) or ssh (SUPABASE_META_SSH mode) is required.");
   process.exit(2);

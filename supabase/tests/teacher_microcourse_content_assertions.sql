@@ -143,7 +143,19 @@ select public.register_teacher_microcourse_image(
   :'microcourse_id', :'blank_page_id', repeat('c', 64), 'image/png',
   68, 1, 1, 'dot.png', 'image'
 ) as image_registration \gset
+select public.freeze_teacher_microcourse_source_session(:'microcourse_id');
+select (
+  count(*) = 1
+  and max(object_hash) = repeat('c', 64)
+) as frozen_asset_preload_ok
+from public.list_session_resolved_assets('00000000-0000-4000-8000-000000000912') \gset
 reset role;
+
+\if :frozen_asset_preload_ok
+\else
+  \echo DEV-TMC-1 failed: frozen microcourse asset preload
+  select 1 / 0;
+\endif
 
 select lecture_id as lecture_id from public.teacher_microcourses
 where id = :'microcourse_id' \gset

@@ -16,11 +16,13 @@ import {
 } from "./object-workspace";
 import { cn } from "@/lib/utils";
 import { Link } from "@/i18n/navigation";
-import { Presentation } from "lucide-react";
+import { Presentation, Sparkles } from "lucide-react";
 import { NotificationFocus } from "@/features/events/NotificationFocus";
 import { SessionPrepCompleteAction, SessionPrepCopyAction } from "./SessionPrepActions";
 import { AttendanceDrawer } from "./AttendanceDrawer";
 import { SessionCompletePostworkButton } from "./SessionCompletePostworkButton";
+import { isFeatureEnabled } from "./organization-settings";
+import { getMyPerms } from "@/lib/auth";
 
 const STAGES = ["pre", "live", "post"] as const;
 export type SessionStage = (typeof STAGES)[number];
@@ -123,6 +125,12 @@ export async function SessionWorkspaceBody({
       && detail.scheduledAt
       && new Date(detail.prepPreparedAt).getTime() > new Date(detail.scheduledAt).getTime(),
   );
+  const canAuthorMicrocourse = stage === "pre"
+    && detail.state === "scheduled"
+    && detail.lectureId === null
+    && detail.capabilities.canPrepare
+    && await isFeatureEnabled("teaching.teacher_microcourses_v1")
+    && (await getMyPerms(detail.viewerId)).has("courseware.microcourse.author");
 
   return (
     <ObjectWorkspace
@@ -159,8 +167,17 @@ export async function SessionWorkspaceBody({
               />
             ) : null}
           </div>
-          {stage === "pre" && detail.capabilities.canPrepare && detail.state === "scheduled" ? (
-            <div className="flex flex-wrap items-center justify-end gap-2">
+            {stage === "pre" && detail.capabilities.canPrepare && detail.state === "scheduled" ? (
+              <div className="flex flex-wrap items-center justify-end gap-2">
+              {canAuthorMicrocourse ? (
+                <Link
+                  href={`/dashboard/sessions/${detail.id}/microcourse`}
+                  className={cn(buttonVariants({ size: "sm", variant: "secondary" }), "gap-2")}
+                >
+                  <Sparkles size={15} />
+                  {t("buildMicrocourse")}
+                </Link>
+              ) : null}
               <Link
                 href={"/classroom/" + detail.classroomId + "/session/" + detail.id + "/live?mode=rehearsal"}
                 className={cn(buttonVariants({ size: "sm", variant: "secondary" }), "gap-2")}

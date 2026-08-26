@@ -10,6 +10,7 @@ import { useH5FrameRegistration } from "./useH5FrameRegistration";
 import type { DocNode, PageDoc } from "./schema";
 import { injectBindingUrls, type ResolvedBindingUrls } from "./resolve";
 import { createInteractionRuntime, type InteractionRuntime, type InteractionTrigger } from "./interactions";
+import { renderAixuexiMathHtml } from "./aixuexi-math";
 
 /**
  * page-doc-v1 舞台渲染器——镜像 viewer renderedNodeHtmlV2 的 React 移植,
@@ -409,7 +410,7 @@ function nodeBody(
       return (
         <div
           style={textBlockStyle(node)}
-          dangerouslySetInnerHTML={{ __html: injectBindingUrls(node.content?.html ?? "", urls) }}
+          dangerouslySetInnerHTML={{ __html: renderAixuexiMathHtml(injectBindingUrls(node.content?.html ?? "", urls)) }}
         />
       );
     case "text":

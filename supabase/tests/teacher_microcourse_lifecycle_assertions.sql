@@ -133,6 +133,26 @@ select (
   select 1 / 0;
 \endif
 
+-- An intermediate review round must not authorize public H5 promotion.
+update public.cw_lecture_workflows
+set required_review_rounds_snapshot = current_review_round + 1
+where active_review_cycle_id = :'second_cycle_id';
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'reviewer_id', true);
+select (
+  public.prepare_teacher_microcourse_review_publish(:'second_cycle_id')
+    ->> 'finalApproval'
+) = 'false' as intermediate_h5_private \gset
+reset role;
+\if :intermediate_h5_private
+\else
+  \echo DEV-TMC-1 failed: intermediate review exposed H5 promotion
+  select 1 / 0;
+\endif
+update public.cw_lecture_workflows
+set required_review_rounds_snapshot = current_review_round
+where active_review_cycle_id = :'second_cycle_id';
+
 -- The content-addressed public object is promoted before final approval.
 insert into storage.objects(id, bucket_id, name, owner_id)
 values (
@@ -205,6 +225,19 @@ reset role;
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', :'teacher_id', true);
+select (
+  count(*) >= 5
+  and bool_and(enabled)
+  and count(*) filter (where slug = 'number-algebra') = 1
+) as topic_read_model_ok
+from public.list_teacher_microcourse_topics() \gset
+
+\if :topic_read_model_ok
+\else
+  \echo DEV-TMC-1 failed: controlled topic read model
+  select 1 / 0;
+\endif
+
 select public.withdraw_teacher_microcourse(:'microcourse_id');
 reset role;
 
@@ -222,4 +255,3 @@ select (
 \endif
 
 rollback;
-

@@ -27,8 +27,10 @@ import {
   DashboardPage,
 } from "@/features/school/dashboard-page";
 import { getMyPerms, requireAnyPerm } from "@/lib/auth";
+import { MicrocourseReviewQueue } from "@/features/teacher-microcourses/MicrocourseReviewQueue";
+import { listTeacherMicrocourseReviewQueue } from "@/features/teacher-microcourses/data";
 
-type AdaptReviewTab = "backgrounds" | "rework" | "pages" | "releases" | "history";
+type AdaptReviewTab = "microcourses" | "backgrounds" | "rework" | "pages" | "releases" | "history";
 
 function first(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -72,13 +74,18 @@ export default async function CoursewareReviewPage({
 }
 
 async function AdaptReviewCommandPanel({ locale, searchParams }: { locale: string; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const [t, query] = await Promise.all([
+  const [t, tm, query, user] = await Promise.all([
     getTranslations("coursewareStudio"),
+    getTranslations("teacherMicrocourses"),
     searchParams,
     requireAnyPerm(locale, COURSEWARE_STUDIO_PERMS),
   ]);
+  const perms = await getMyPerms(user.id);
+  const canReviewMicrocourses = perms.has("courseware.review");
   const requestedTab = first(query.tab);
-  const tab: AdaptReviewTab = requestedTab === "rework" || requestedTab === "pages" || requestedTab === "releases" || requestedTab === "history" ? requestedTab : "backgrounds";
+  const tab: AdaptReviewTab = requestedTab === "microcourses" && canReviewMicrocourses
+    ? "microcourses"
+    : requestedTab === "rework" || requestedTab === "pages" || requestedTab === "releases" || requestedTab === "history" ? requestedTab : "backgrounds";
   const courseId = parseAdaptFilterId(query.course);
   const lectureId = courseId ? parseAdaptFilterId(query.lecture) : null;
   const filterOptions = await loadAdaptReviewFilterOptions(courseId);
@@ -89,6 +96,7 @@ async function AdaptReviewCommandPanel({ locale, searchParams }: { locale: strin
           ariaLabel={t("adaptReviewTitle")}
           activeValue={tab}
           items={[
+            ...(canReviewMicrocourses ? [{ value: "microcourses", label: tm("reviewQueueTab"), href: tabHref("microcourses", courseId, lectureId) }] : []),
             { value: "backgrounds", label: t("adaptBackgroundTab"), href: tabHref("backgrounds", courseId, lectureId) },
             { value: "rework", label: t("adaptReworkTab"), href: tabHref("rework", courseId, lectureId) },
             { value: "pages", label: t("adaptPageTab"), href: tabHref("pages", courseId, lectureId) },
@@ -97,9 +105,9 @@ async function AdaptReviewCommandPanel({ locale, searchParams }: { locale: strin
           ]}
         />
       </DashboardCommandState>
-      <DashboardCommandFilters>
+      {tab !== "microcourses" && <DashboardCommandFilters>
         <AdaptReviewFilters options={filterOptions} courseId={courseId} lectureId={lectureId} embedded />
-      </DashboardCommandFilters>
+      </DashboardCommandFilters>}
     </DashboardCommandPanel>
   );
 }
@@ -108,7 +116,9 @@ async function AdaptReviewContent({ locale, searchParams }: { locale: string; se
   const [user, query] = await Promise.all([requireAnyPerm(locale, COURSEWARE_STUDIO_PERMS), searchParams]);
   const perms = await getMyPerms(user.id);
   const requestedTab = first(query.tab);
-  const tab: AdaptReviewTab = requestedTab === "rework" || requestedTab === "pages" || requestedTab === "releases" || requestedTab === "history" ? requestedTab : "backgrounds";
+  const tab: AdaptReviewTab = requestedTab === "microcourses" && perms.has("courseware.review")
+    ? "microcourses"
+    : requestedTab === "rework" || requestedTab === "pages" || requestedTab === "releases" || requestedTab === "history" ? requestedTab : "backgrounds";
   const page = parseAdaptReviewPage(query.page);
   const courseId = parseAdaptFilterId(query.course);
   const lectureId = courseId ? parseAdaptFilterId(query.lecture) : null;
@@ -116,6 +126,23 @@ async function AdaptReviewContent({ locale, searchParams }: { locale: string; se
   const canManageAssets = perms.has("courseware.asset.manage");
   const canEditPages = perms.has("courseware.page.edit");
   const canPublish = perms.has("courseware.release.publish");
+  if (tab === "microcourses") {
+    const [items, tm] = await Promise.all([
+      listTeacherMicrocourseReviewQueue(),
+      getTranslations("teacherMicrocourses"),
+    ]);
+    return <MicrocourseReviewQueue
+      items={items}
+      locale={locale}
+      labels={{
+        empty: tm("reviewQueueEmpty"),
+        review: tm("openReview"),
+        grade: (grade) => tm("gradeValue", { grade }),
+        round: (current, required) => tm("reviewRound", { current, required }),
+        submitted: (value) => tm("submittedAt", { value }),
+      }}
+    />;
+  }
   const queue = await (
     tab === "backgrounds"
       ? loadAdaptReviewQueue(page, filters)

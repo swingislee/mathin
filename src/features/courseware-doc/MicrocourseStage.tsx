@@ -1,5 +1,6 @@
 "use client";
 
+import "katex/dist/katex.min.css";
 import { useLocale } from "next-intl";
 import { cn } from "@/lib/utils";
 import { SudokuBoard } from "@/features/games/sudoku/SudokuBoard";
@@ -120,6 +121,10 @@ export default function MicrocourseStage(props: MicrocourseStageProps) {
             seed={`microcourse:${doc.analysis.status}`}
             difficulty="medium"
             puzzle={doc.puzzle}
+            showCoordinates={doc.display.showCoordinates}
+            allowCandidates={doc.display.allowCandidates}
+            allowAnswerReveal={doc.display.allowAnswerReveal}
+            showTeachingTools={doc.display.showTeachingTools}
             finished={false}
             onComplete={() => undefined}
             readOnly={!props.interactive}

@@ -67,6 +67,10 @@ interface SudokuDragSelection {
 export interface SudokuBoardProps extends GameBoardProps {
   /** Optional teacher-authored puzzle; generated game routes leave it unset. */
   puzzle?: SudokuGrid;
+  showCoordinates?: boolean;
+  allowCandidates?: boolean;
+  allowAnswerReveal?: boolean;
+  showTeachingTools?: boolean;
 }
 
 export function SudokuBoard({
@@ -78,6 +82,10 @@ export function SudokuBoard({
   onMirror,
   readOnly,
   puzzle: authoredPuzzle,
+  showCoordinates = true,
+  allowCandidates = true,
+  allowAnswerReveal = true,
+  showTeachingTools = true,
 }: SudokuBoardProps) {
   const t = useTranslations("games.sudokuBoard");
   const authoredPuzzleKey = authoredPuzzle?.join("") ?? null;
@@ -187,7 +195,10 @@ export function SudokuBoard({
 
   function chooseDigit(digit: number) {
     if (inputDisabled) return;
-    commit(chooseSudokuDigit(state, digit));
+    const activeState = allowCandidates || state.entryMode === "value"
+      ? state
+      : setSudokuEntryMode(state, "value");
+    commit(chooseSudokuDigit(activeState, digit));
   }
 
   function selectCell(index: number, applySelectedDigit = true) {
@@ -342,7 +353,12 @@ export function SudokuBoard({
           {reasoningOnlyMessage}
         </div>
       ) : null}
-      <div className="mx-auto grid h-full min-h-96 min-w-[38rem] max-w-5xl grid-cols-[7.25rem_minmax(0,1fr)_3.375rem] items-center gap-4 p-1 sm:gap-6">
+      <div className={cn(
+        "mx-auto grid h-full min-h-96 min-w-[34rem] max-w-5xl items-center gap-4 p-1 sm:gap-6",
+        showTeachingTools || allowAnswerReveal
+          ? "grid-cols-[7.25rem_minmax(0,1fr)_3.375rem]"
+          : "grid-cols-[7.25rem_minmax(0,1fr)]",
+      )}>
         <aside className="w-full max-w-[7.25rem] justify-self-center">
           <div className="flex min-w-0 flex-col gap-3">
             <div
@@ -350,19 +366,19 @@ export function SudokuBoard({
               className={cn(styles.controlGroup, "grid grid-cols-2 rounded-xl border p-1")}
               role="radiogroup"
             >
-              {ENTRY_MODES.map((mode) => (
+              {(allowCandidates ? ENTRY_MODES : (["value"] as const)).map((mode) => (
                 <button
                   key={mode}
                   type="button"
                   data-classroom-input="click"
                   role="radio"
-                  aria-checked={state.entryMode === mode}
+                  aria-checked={(allowCandidates ? state.entryMode : "value") === mode}
                   disabled={inputDisabled}
                   onClick={() => commit(setSudokuEntryMode(state, mode))}
                   className={cn(
                     styles.modeButton,
                     "min-h-10 rounded-lg border border-transparent px-1 text-sm font-medium transition-colors disabled:cursor-default disabled:opacity-100",
-                    state.entryMode === mode
+                    (allowCandidates ? state.entryMode : "value") === mode
                       ? styles.controlActive
                       : styles.controlIdle,
                   )}
@@ -423,18 +439,23 @@ export function SudokuBoard({
         </aside>
 
         <div className="flex min-h-0 min-w-0 items-center justify-center self-stretch">
-          <div className="grid aspect-square h-auto max-h-full w-full max-w-[42rem] grid-cols-[1.125rem_minmax(0,1fr)] grid-rows-[1.125rem_minmax(0,1fr)]">
-            <span aria-hidden />
-            <div aria-hidden className={cn(styles.coordinate, "grid grid-cols-9 text-xs font-medium sm:text-sm")}>
+          <div className={cn(
+            "grid aspect-square h-auto max-h-full w-full max-w-[42rem]",
+            showCoordinates
+              ? "grid-cols-[1.125rem_minmax(0,1fr)] grid-rows-[1.125rem_minmax(0,1fr)]"
+              : "grid-cols-1 grid-rows-1",
+          )}>
+            {showCoordinates && <span aria-hidden />}
+            {showCoordinates && <div aria-hidden className={cn(styles.coordinate, "grid grid-cols-9 text-xs font-medium sm:text-sm")}>
               {SUDOKU_COLUMN_LABELS.map((label) => (
                 <span key={label} className="grid place-items-center tabular-nums">{label}</span>
               ))}
-            </div>
-            <div aria-hidden className={cn(styles.coordinate, "grid grid-rows-9 text-xs font-medium sm:text-sm")}>
+            </div>}
+            {showCoordinates && <div aria-hidden className={cn(styles.coordinate, "grid grid-rows-9 text-xs font-medium sm:text-sm")}>
               {SUDOKU_ROW_LABELS.map((label) => (
                 <span key={label} className="grid place-items-center">{label}</span>
               ))}
-            </div>
+            </div>}
             <div
               ref={boardGridRef}
               className={cn(
@@ -575,12 +596,12 @@ export function SudokuBoard({
           </div>
         </div>
 
-        <div
+        {(showTeachingTools || allowAnswerReveal) && <div
           aria-label={t("highlightToolbar")}
           className={cn(styles.toolBar, "flex flex-col items-center gap-1 rounded-xl border p-1 justify-self-center")}
           role="toolbar"
         >
-          {HIGHLIGHT_TOOL_DEFS.map(({ tool, label, Icon }) => (
+          {showTeachingTools && HIGHLIGHT_TOOL_DEFS.map(({ tool, label, Icon }) => (
             <button
               key={tool}
               type="button"
@@ -608,7 +629,7 @@ export function SudokuBoard({
               )}
             </button>
           ))}
-          <span aria-hidden className={cn(styles.toolSeparator, "h-px w-7")} />
+          {showTeachingTools && <><span aria-hidden className={cn(styles.toolSeparator, "h-px w-7")} />
           <button
             type="button"
             data-classroom-input="click"
@@ -638,8 +659,8 @@ export function SudokuBoard({
             )}
           >
             <Trash2 aria-hidden size={18} />
-          </button>
-          <span aria-hidden className={cn(styles.toolSeparator, "h-px w-7")} />
+          </button></>}
+          {allowAnswerReveal && <><span aria-hidden className={cn(styles.toolSeparator, "h-px w-7")} />
           <button
             type="button"
             data-classroom-input="click"
@@ -655,8 +676,8 @@ export function SudokuBoard({
             )}
           >
             <Eye aria-hidden size={18} />
-          </button>
-        </div>
+          </button></>}
+        </div>}
       </div>
     </div>
   );

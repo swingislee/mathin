@@ -2,18 +2,19 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Check, ChevronsUpDown, LoaderCircle, X } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { getClassBuildCourseDetailAction, searchClassBuildCoursesAction } from "../actions/classes";
+import { getClassBuildCourseDetailAction, listClassBuildMicrocourseTopicsAction, searchClassBuildCoursesAction } from "../actions/classes";
 import { compareCourseDifficulty } from "./course-difficulty";
-import type { ClassBuildCourseCandidate, ClassBuildCourseDetail, ClassBuildPurpose } from "./course-picker-types";
+import type { ClassBuildCourseCandidate, ClassBuildCourseDetail, ClassBuildMicrocourseTopic, ClassBuildPurpose } from "./course-picker-types";
 
 const ALL = "__all__";
 const CLASS_TYPES = ["X+", "G+", "A+", "A", "B", "S"];
@@ -24,22 +25,33 @@ function isReady(course: Pick<ClassBuildCourseCandidate, "lectureCount" | "relea
 
 function CourseCandidateLabel({ candidate }: { candidate: ClassBuildCourseCandidate }) {
   const t = useTranslations("school.classBuild");
+  const locale = useLocale();
+  const topic = locale === "en" ? candidate.primaryTopicTitleEn : candidate.primaryTopicTitleZh;
   return <div className="min-w-0 flex-1">
     <div className="flex min-w-0 items-center gap-2">
       <span className="truncate font-medium">{candidate.title}</span>
       {/* `default` 版本表示该课程族尚未发生教材年度换代，此时版本徽标没有区分作用。 */}
       {candidate.catalogVersionSlug !== "default" && <Badge variant="outline">{candidate.catalogVersionTitle}</Badge>}
       {candidate.isSuperseded && <Badge variant="outline" className="border-line text-muted">{t("supersededCourse")}</Badge>}
+      {candidate.courseKind === "microcourse" && <Badge variant="secondary">{t("teacherMicrocourse")}</Badge>}
       {!isReady(candidate) && <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300">{t("incomplete")}</Badge>}
     </div>
     <p className="mt-0.5 truncate text-xs text-muted">
-      {t("courseCandidateMeta", {
-        grade: candidate.grade,
-        season: t(`courseSeason_${candidate.courseSeason}`),
-        classType: candidate.classType || t("defaultClassType"),
-        code: candidate.productCode || "—",
-      })}
+      {candidate.courseKind === "microcourse"
+        ? t("microcourseCandidateMeta", {
+            grade: candidate.grade,
+            season: candidate.courseSeason ? t(`courseSeason_${candidate.courseSeason}`) : t("seasonOptional"),
+            author: candidate.authorName ?? "—",
+            topic: topic ?? "—",
+          })
+        : t("courseCandidateMeta", {
+            grade: candidate.grade,
+            season: candidate.courseSeason ? t(`courseSeason_${candidate.courseSeason}`) : t("seasonOptional"),
+            classType: candidate.classType || t("defaultClassType"),
+            code: candidate.productCode || "—",
+          })}
     </p>
+    {candidate.courseKind === "microcourse" && candidate.keywords.length > 0 && <p className="mt-0.5 truncate text-xs text-muted">{candidate.keywords.join(" · ")}</p>}
   </div>;
 }
 
@@ -57,11 +69,16 @@ export function CoursePicker({
   disabled?: boolean;
 }) {
   const t = useTranslations("school.classBuild");
+  const locale = useLocale();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [grade, setGrade] = useState<number | null>(null);
   const [courseSeason, setCourseSeason] = useState<number | null>(null);
   const [classType, setClassType] = useState("");
+  const [courseKind, setCourseKind] = useState<"curriculum" | "microcourse" | null>(null);
+  const [primaryTopicSlug, setPrimaryTopicSlug] = useState("");
+  const [keyword, setKeyword] = useState("");
+  const [microcourseTopics, setMicrocourseTopics] = useState<ClassBuildMicrocourseTopic[]>([]);
   // 已被新版替代的课程默认不出现：教务在同一年级/季节/班型下几乎总是要最新教材版本，
   // 需要沿用旧版开班时才显式打开。
   const [includeSuperseded, setIncludeSuperseded] = useState(false);
@@ -75,7 +92,7 @@ export function CoursePicker({
       const current = groups.get(candidate.familyTitle) ?? [];
       current.push(candidate);
       current.sort((left, right) => left.grade - right.grade
-        || left.courseSeason - right.courseSeason
+        || (left.courseSeason ?? 99) - (right.courseSeason ?? 99)
         || compareCourseDifficulty(left.classType, right.classType)
         || (left.productCode ?? "").localeCompare(right.productCode ?? "", "en"));
       groups.set(candidate.familyTitle, current);
@@ -89,13 +106,22 @@ export function CoursePicker({
     const timer = window.setTimeout(() => {
       setSearching(true);
       setFailed(false);
-      void searchClassBuildCoursesAction({ query, grade, courseSeason, classType, purpose, includeSuperseded })
+      void searchClassBuildCoursesAction({ query, grade, courseSeason, classType, purpose, includeSuperseded, courseKind, primaryTopicSlug, keyword })
         .then((next) => { if (active) setResults(next); })
         .catch(() => { if (active) { setResults([]); setFailed(true); } })
         .finally(() => { if (active) setSearching(false); });
     }, 250);
     return () => { active = false; window.clearTimeout(timer); };
-  }, [classType, courseSeason, grade, includeSuperseded, open, purpose, query]);
+  }, [classType, courseKind, courseSeason, grade, includeSuperseded, keyword, open, primaryTopicSlug, purpose, query]);
+
+  useEffect(() => {
+    if (!open || microcourseTopics.length > 0) return;
+    let active = true;
+    void listClassBuildMicrocourseTopicsAction()
+      .then((topics) => { if (active) setMicrocourseTopics(topics); })
+      .catch(() => undefined);
+    return () => { active = false; };
+  }, [microcourseTopics.length, open]);
 
   const visibleResults = open ? grouped : [];
   const showSearching = open && searching;
@@ -126,7 +152,11 @@ export function CoursePicker({
       <PopoverContent align="start" className="w-[min(34rem,calc(100vw-2rem))] p-0">
         <Command shouldFilter={false}>
           <CommandInput value={query} onValueChange={setQuery} placeholder={t("searchCourses")} aria-label={t("searchCourses")} />
-          <div className="grid grid-cols-3 gap-2 border-b p-2">
+          <div className="grid grid-cols-2 gap-2 border-b p-2 sm:grid-cols-3">
+            <Select value={courseKind ?? ALL} onValueChange={(value) => setCourseKind(value === ALL ? null : value as "curriculum" | "microcourse")}>
+              <SelectTrigger className="h-9 text-xs"><SelectValue placeholder={t("allCourseKinds")} /></SelectTrigger>
+              <SelectContent><SelectItem value={ALL}>{t("allCourseKinds")}</SelectItem><SelectItem value="curriculum">{t("curriculumCourse")}</SelectItem><SelectItem value="microcourse">{t("teacherMicrocourse")}</SelectItem></SelectContent>
+            </Select>
             <Select value={grade?.toString() ?? ALL} onValueChange={(value) => setGrade(value === ALL ? null : Number(value))}>
               <SelectTrigger className="h-9 text-xs"><SelectValue placeholder={t("allGrades")} /></SelectTrigger>
               <SelectContent><SelectItem value={ALL}>{t("allGrades")}</SelectItem>{Array.from({ length: 9 }, (_, index) => index + 1).map((item) => <SelectItem key={item} value={String(item)}>{t("grade", { grade: item })}</SelectItem>)}</SelectContent>
@@ -139,6 +169,11 @@ export function CoursePicker({
               <SelectTrigger className="h-9 text-xs"><SelectValue placeholder={t("allClassTypes")} /></SelectTrigger>
               <SelectContent><SelectItem value={ALL}>{t("allClassTypes")}</SelectItem>{CLASS_TYPES.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent>
             </Select>
+            <Select value={primaryTopicSlug || ALL} onValueChange={(value) => setPrimaryTopicSlug(value === ALL ? "" : value)}>
+              <SelectTrigger className="h-9 text-xs"><SelectValue placeholder={t("allTopics")} /></SelectTrigger>
+              <SelectContent><SelectItem value={ALL}>{t("allTopics")}</SelectItem>{microcourseTopics.map((topic) => <SelectItem key={topic.id} value={topic.slug}>{locale === "en" ? topic.titleEn : topic.titleZh}</SelectItem>)}</SelectContent>
+            </Select>
+            <Input value={keyword} onChange={(event) => setKeyword(event.target.value)} maxLength={32} placeholder={t("keywordFilter")} className="h-9 text-xs" />
           </div>
           <Label className="flex items-center gap-2 border-b px-2 py-2 text-xs font-normal text-muted">
             <Checkbox checked={includeSuperseded} onCheckedChange={(value) => setIncludeSuperseded(value === true)} />

@@ -1,8 +1,9 @@
 "use server";
 
 import { createHash } from "node:crypto";
+import sanitizeHtml from "sanitize-html";
 import { z } from "zod";
-import { microcoursePageDocSchema } from "@/features/courseware-doc/microcourse-schema";
+import { microcoursePageDocSchema, type MicrocoursePageDoc } from "@/features/courseware-doc/microcourse-schema";
 import { authorizedClient } from "@/features/school/actions/guards";
 import {
   COMMON_CODES,
@@ -16,6 +17,7 @@ import { actionError, type ActionResult } from "@/lib/action-result";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { microcourseH5Bytes, normalizeMicrocourseH5 } from "./h5";
 import { teacherImageDimensions } from "./image-metadata";
+import { loadTeacherMicrocourseH5Html, searchTeacherMicrocourseSourcePages } from "./data";
 
 type RpcClient = Awaited<ReturnType<typeof authorizedClient>>["supabase"];
 function rpc<T>(client: RpcClient, name: string, args: Record<string, unknown>) {
@@ -26,6 +28,28 @@ function rpc<T>(client: RpcClient, name: string, args: Record<string, unknown>) 
 }
 
 const topicSlug = z.string().min(1).max(60).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
+
+function sanitizeTeacherMicrocoursePage(doc: MicrocoursePageDoc): MicrocoursePageDoc {
+  if (doc.mode !== "composition") return doc;
+  const next = structuredClone(doc);
+  const walk = (nodes: typeof next.overlay.nodes) => {
+    for (const node of nodes) {
+      if (node.content?.kind === "rich_text") {
+        node.content.html = sanitizeHtml(node.content.html ?? "", {
+          allowedTags: [...sanitizeHtml.defaults.allowedTags, "span"],
+          allowedAttributes: { span: ["class"] },
+          allowedClasses: { span: ["math-tex"] },
+          allowedSchemes: [],
+          disallowedTagsMode: "discard",
+        });
+        node.content.sanitized = true;
+      }
+      walk(node.children);
+    }
+  };
+  walk(next.overlay.nodes);
+  return microcoursePageDocSchema.parse(next);
+}
 const metadataSchema = z.object({
   sourceSessionId: uuid.optional(),
   microcourseId: uuid.optional(),
@@ -244,6 +268,89 @@ export async function createTeacherH5PageAction(input: {
   }
 }
 
+export async function updateTeacherH5PageAction(input: {
+  microcourseId: string;
+  pageDocId: string;
+  title: string;
+  html: string;
+  baseRevisionNo: number;
+}): Promise<ActionResult<{ artifactId: string; sha256: string; revisionNo: number }>> {
+  try {
+    const value = parse(z.object({
+      microcourseId: uuid,
+      pageDocId: uuid,
+      title: requiredText(200),
+      html: z.string().min(1).max(5_242_880),
+      baseRevisionNo: intInRange(1, 100_000),
+    }), input);
+    const { user, supabase } = await authorizedClient("courseware.microcourse.author");
+    const normalized = normalizeMicrocourseH5(value.html);
+    const bytes = microcourseH5Bytes(normalized);
+    const sha256 = createHash("sha256").update(bytes).digest("hex");
+    const privatePath = `${user.id}/${value.microcourseId}/${sha256}/index.html`;
+    const admin = createAdminClient();
+    const { error: uploadError } = await admin.storage.from("cw-h5-drafts").upload(
+      privatePath,
+      bytes,
+      { contentType: "text/html; charset=utf-8", cacheControl: "0", upsert: false },
+    );
+    if (uploadError && !/already exists|duplicate/i.test(uploadError.message)) {
+      throw new Error(uploadError.message);
+    }
+    const { data: artifactId, error: artifactError } = await rpc<string>(
+      supabase,
+      "register_teacher_microcourse_h5_artifact",
+      {
+        p_microcourse_id: value.microcourseId,
+        p_sha256: sha256,
+        p_byte_count: bytes.byteLength,
+        p_private_path: privatePath,
+      },
+    );
+    if (artifactError || !artifactId) throw new Error(artifactError?.message ?? "H5_REGISTER_FAILED");
+    const doc = {
+      docVersion: "microcourse-page-v1" as const,
+      mode: "h5" as const,
+      canvas: { width: 960 as const, height: 720 as const, backgroundColor: null },
+      artifactId,
+      sha256,
+      byteCount: bytes.byteLength,
+      entryPath: "index.html" as const,
+    };
+    const { data, error } = await rpc<Array<{ revision_no: number }>>(
+      supabase,
+      "save_teacher_microcourse_page",
+      {
+        p_page_doc_id: value.pageDocId,
+        p_doc: doc,
+        p_base_revision_no: value.baseRevisionNo,
+        p_title: value.title,
+        p_note: "H5 updated",
+      },
+    );
+    if (error || !data?.[0]) throw new Error(error?.message ?? "SAVE_FAILED");
+    return { ok: true, data: { artifactId, sha256, revisionNo: data[0].revision_no } };
+  } catch (error) {
+    return actionError(error, ["H5_REGISTER_FAILED", "SAVE_FAILED", ...AUTHOR_CODES]);
+  }
+}
+
+export async function searchTeacherMicrocourseSourcePagesAction(input: {
+  query?: string;
+  familyId?: string | null;
+  courseId?: string | null;
+  lectureId?: string | null;
+  limit?: number;
+}) {
+  await authorizedClient("courseware.microcourse.author");
+  return searchTeacherMicrocourseSourcePages(input);
+}
+
+export async function loadTeacherMicrocourseH5HtmlAction(artifactId: string): Promise<string> {
+  await authorizedClient("courseware.microcourse.author");
+  return loadTeacherMicrocourseH5Html(parse(uuid, artifactId));
+}
+
 export async function saveTeacherMicrocoursePageAction(input: {
   pageDocId: string;
   doc: unknown;
@@ -259,13 +366,14 @@ export async function saveTeacherMicrocoursePageAction(input: {
       title: requiredText(200),
       note: text(1000),
     }), input);
+    const doc = sanitizeTeacherMicrocoursePage(value.doc);
     const { supabase } = await authorizedClient("courseware.microcourse.author");
     const { data, error } = await rpc<Array<{ revision_no: number }>>(
       supabase,
       "save_teacher_microcourse_page",
       {
         p_page_doc_id: value.pageDocId,
-        p_doc: value.doc,
+        p_doc: doc,
         p_base_revision_no: value.baseRevisionNo,
         p_title: value.title,
         p_note: value.note,
@@ -448,6 +556,7 @@ export async function withdrawTeacherMicrocourseAction(
 
 const reviewPromotionSchema = z.object({
   microcourseId: uuid,
+  finalApproval: z.boolean(),
   artifacts: z.array(z.object({
     artifactId: uuid,
     sha256: z.string().regex(/^[0-9a-f]{64}$/),
@@ -480,7 +589,7 @@ export async function approveTeacherMicrocourseReviewAction(input: {
     if (planError) throw new Error(planError.message);
     const plan = reviewPromotionSchema.parse(rawPlan);
     const admin = createAdminClient();
-    for (const artifact of plan.artifacts) {
+    for (const artifact of plan.finalApproval ? plan.artifacts : []) {
       const { data: draft, error: downloadError } = await admin.storage
         .from("cw-h5-drafts")
         .download(artifact.privatePath);
