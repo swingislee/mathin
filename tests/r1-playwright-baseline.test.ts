@@ -146,6 +146,7 @@ describe("R1-14 formal Playwright baseline", () => {
 | --- | --- | --- |
 | 管理员 admin | admin@example.invalid | canonical |
 | 主管 staff/principal | principal@example.invalid | canonical |
+| 教研 staff/research | research@example.invalid | canonical |
 | 教师 staff/teacher | teacher@example.invalid | canonical |
 | 学生 student | student@example.invalid | canonical |
 | 学生2 student | second@example.invalid | ignored |
@@ -158,6 +159,7 @@ describe("R1-14 formal Playwright baseline", () => {
       emails: {
         admin: "admin@example.invalid",
         principal: "principal@example.invalid",
+        research: "research@example.invalid",
         teacher: "teacher@example.invalid",
         student: "student@example.invalid",
         parent: "parent@example.invalid",

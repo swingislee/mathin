@@ -5,7 +5,7 @@ export const FIXED_ACCOUNT_SKIP_REASON =
   "fixed development account credentials are unavailable; set MATHIN_E2E_* variables or provide .claude/test-accounts.local.md";
 export const RELEASE_MODE = "release";
 
-export type FixedAccountRole = "admin" | "principal" | "teacher" | "student" | "parent";
+export type FixedAccountRole = "admin" | "principal" | "research" | "teacher" | "student" | "parent";
 
 export interface FixedAccount {
   email: string;
@@ -20,6 +20,7 @@ interface ParsedAccountDocument {
 const ROLE_ENV_KEYS: Record<FixedAccountRole, string> = {
   admin: "MATHIN_E2E_ADMIN_EMAIL",
   principal: "MATHIN_E2E_PRINCIPAL_EMAIL",
+  research: "MATHIN_E2E_RESEARCH_EMAIL",
   teacher: "MATHIN_E2E_TEACHER_EMAIL",
   student: "MATHIN_E2E_STUDENT_EMAIL",
   parent: "MATHIN_E2E_PARENT_EMAIL",
@@ -28,6 +29,7 @@ const ROLE_ENV_KEYS: Record<FixedAccountRole, string> = {
 const ROLE_LABELS: ReadonlyArray<readonly [FixedAccountRole, RegExp]> = [
   ["admin", /^管理员\s+admin(?:\s|$)/i],
   ["principal", /^主管\s+staff\/principal(?:\s|$)/i],
+  ["research", /^教研\s+staff\/research(?:\s|$)/i],
   ["teacher", /^教师\s+staff\/teacher(?:\s|$)/i],
   ["student", /^学生\s+student(?:\s|$)/i],
   ["parent", /^家长\s+parent(?:\s|$)/i],

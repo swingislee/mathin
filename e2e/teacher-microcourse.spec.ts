@@ -33,10 +33,11 @@ test("teacher authors, teaches, resubmits, publishes, and the catalog creates on
   page.setDefaultNavigationTimeout(30_000);
   const admin = loadFixedAccountForMode("admin");
   const principal = loadFixedAccountForMode("principal");
+  const research = loadFixedAccountForMode("research");
   const teacher = loadFixedAccountForMode("teacher");
-  test.skip(!admin || !principal || !teacher, FIXED_ACCOUNT_SKIP_REASON);
+  test.skip(!admin || !principal || !research || !teacher, FIXED_ACCOUNT_SKIP_REASON);
   test.skip(process.env.R1_DEV_TEST_FIXTURES !== "1", FIXTURE_FLAG_REASON);
-  if (!admin || !principal || !teacher) return;
+  if (!admin || !principal || !research || !teacher) return;
 
   const fixture = await setupTeacherMicrocourseFixture({ adminAccount: admin, principal, teacher });
   activeFixture = fixture;
@@ -99,7 +100,7 @@ test("teacher authors, teaches, resubmits, publishes, and the catalog creates on
     await expect(page.getByText("已冻结当前内容并提交教研审核。", { exact: true })).toBeVisible();
 
     await page.context().clearCookies();
-    await loginWithFixedAccount(page, principal, "/zh/dashboard/courseware/review");
+    await loginWithFixedAccount(page, research, "/zh/dashboard/courseware/review");
     await page.goto("/zh/dashboard/courseware/review?tab=microcourses");
     await expect(page.getByText(fixture.microcourseTitle, { exact: true }).first()).toBeVisible();
     await page.getByRole("link", { name: "打开审核", exact: true }).first().click();
@@ -116,20 +117,22 @@ test("teacher authors, teaches, resubmits, publishes, and the catalog creates on
     await expect(page.getByText("已冻结当前内容并提交教研审核。", { exact: true })).toBeVisible();
 
     await page.context().clearCookies();
-    await loginWithFixedAccount(page, principal, "/en/dashboard/courseware/review");
+    await loginWithFixedAccount(page, research, "/en/dashboard/courseware/review");
     await page.goto("/en/dashboard/courseware/review?tab=microcourses");
     await expect(page.getByText(fixture.microcourseTitle, { exact: true }).first()).toBeVisible();
     await page.getByRole("link", { name: "Open review", exact: true }).first().click();
     for (let round = 0; round < 3; round += 1) {
       const publish = page.getByRole("button", { name: "Approve and publish", exact: true });
-      await expect(publish).toBeVisible();
-      await publish.click();
-      await page.waitForTimeout(500);
+      await expect(publish).toBeEnabled();
+      const reviewUrl = page.url();
+      await publish.click({ noWaitAfter: true });
+      await page.waitForURL((url) => url.href !== reviewUrl);
       if (new URL(page.url()).pathname === "/en/dashboard/courseware/review") break;
     }
     await page.waitForURL((url) => url.pathname === "/en/dashboard/courseware/review" && url.searchParams.get("tab") === "microcourses");
 
-    await page.goto("/zh/dashboard/classes/new");
+    await page.context().clearCookies();
+    await loginWithFixedAccount(page, principal, "/zh/dashboard/classes/new");
     await page.getByRole("button", { name: "正式班", exact: true }).click();
     await page.getByRole("button", { name: "搜索并选择课程版本", exact: true }).click();
     await page.getByRole("combobox", { name: "搜索课程、讲次、发布老师、主题或关键词", exact: true }).fill(fixture.microcourseTitle);
