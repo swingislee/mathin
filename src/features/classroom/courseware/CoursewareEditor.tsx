@@ -27,6 +27,8 @@ import {
 } from "@/components/ui/dialog";
 import { games } from "@/features/games/registry";
 import { SUDOKU_BOX_ELIMINATION_SEED } from "@/features/games/sudoku/presets";
+import { SudokuSizeSelector } from "@/features/games/sudoku/SudokuSizeSelector";
+import { sudokuSeedForSize, type SudokuSize } from "@/features/games/sudoku/variant";
 import type { Difficulty } from "@/features/games/types";
 import { newId } from "@/lib/uuid";
 import { saveCourseware } from "../actions";
@@ -58,6 +60,7 @@ export function CoursewareEditor({
   const [gameDialog, setGameDialog] = useState(false);
   const [gameId, setGameId] = useState(games[0]?.id ?? "");
   const [difficulty, setDifficulty] = useState<Difficulty>("easy");
+  const [sudokuSize, setSudokuSize] = useState<SudokuSize>(9);
   const [seed, setSeed] = useState(() => defaultGameSeed(games[0]?.id ?? ""));
   const fileInputRef = useRef<HTMLInputElement>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -151,7 +154,10 @@ export function CoursewareEditor({
             type="button"
             onClick={() => {
               setSeed(defaultGameSeed(gameId));
-              if (gameId === "sudoku") setDifficulty("hard");
+              if (gameId === "sudoku") {
+                setDifficulty("hard");
+                setSudokuSize(9);
+              }
               setGameDialog(true);
             }}
             className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-xs text-muted transition-colors hover:bg-moon/30 hover:text-ink"
@@ -230,6 +236,7 @@ export function CoursewareEditor({
                       setGameId(game.id);
                       setSeed(defaultGameSeed(game.id));
                       setDifficulty(game.id === "sudoku" ? "hard" : "easy");
+                      setSudokuSize(9);
                     }}
                     className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
                       gameId === game.id ? "border-ink/60 bg-moon/40" : "border-line text-muted hover:bg-moon/20"
@@ -240,6 +247,19 @@ export function CoursewareEditor({
                 ))}
               </div>
             </div>
+            {gameId === "sudoku" ? (
+              <div>
+                <p className="text-xs text-muted">{tGames("sudokuSizeLabel")}</p>
+                <SudokuSizeSelector
+                  value={sudokuSize}
+                  className="mt-2 w-fit"
+                  onValueChange={(size) => {
+                    setSudokuSize(size);
+                    setSeed((current) => sudokuSeedForSize(current, size));
+                  }}
+                />
+              </div>
+            ) : null}
             <div>
               <p className="text-xs text-muted">{tGames("difficultyLabel")}</p>
               <div className="mt-2 flex flex-wrap gap-2">
@@ -265,7 +285,10 @@ export function CoursewareEditor({
                   type="button"
                   aria-label={t("rollSeed")}
                   title={t("rollSeed")}
-                  onClick={() => setSeed(newId().slice(0, 8))}
+                  onClick={() => {
+                    const nextSeed = newId().slice(0, 8);
+                    setSeed(gameId === "sudoku" ? sudokuSeedForSize(nextSeed, sudokuSize) : nextSeed);
+                  }}
                   className="rounded-full p-2 text-muted transition-colors hover:bg-moon/30 hover:text-ink"
                 >
                   <Dices size={15} />
@@ -285,6 +308,8 @@ export function CoursewareEditor({
                 if (!game) return;
                 const title = usingSudokuTeachingPreset
                   ? t("sudokuBoxEliminationTitle")
+                  : game.id === "sudoku"
+                    ? tGames("sudokuVariantTitle", { size: tGames(`sudokuSize.${sudokuSize}`) })
                   : tGames(`items.${game.id}.name`);
                 mutate((prev) => [...prev, { id: newId(), type: "game", gameId: game.id, difficulty, seed, title }]);
                 setGameDialog(false);

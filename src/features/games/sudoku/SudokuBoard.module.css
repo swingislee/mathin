@@ -182,8 +182,6 @@
   z-index: 15;
   inset: 0;
   display: grid;
-  grid-template-columns: repeat(9, minmax(0, 1fr));
-  grid-template-rows: repeat(9, minmax(0, 1fr));
   pointer-events: none;
 }
 

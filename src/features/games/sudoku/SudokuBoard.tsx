@@ -29,16 +29,18 @@ import {
   setSudokuEntryMode,
   setSudokuHighlightTool,
   SUDOKU_COLUMN_LABELS,
-  SUDOKU_NUMBER_PAD_COLUMNS,
   SUDOKU_ROW_LABELS,
   sudokuCandidateDigits,
   sudokuCellHighlightCount,
   sudokuHighlightRegions,
+  sudokuNumberPadItems,
+  sudokuNumberPadRowCount,
   toggleSudokuCellHighlightRegion,
   toSudokuMirrorState,
   type SudokuBoardState,
   type SudokuEntryMode,
 } from "./state";
+import { sudokuSpecForGrid, sudokuSpecForSize } from "./variant";
 
 const ENTRY_MODES: SudokuEntryMode[] = ["candidate", "value"];
 const INVALID_CELL_VISIBLE_MS = 1_100;
@@ -94,6 +96,21 @@ export function SudokuBoard({
     () => authoredPuzzle ? [...authoredPuzzle] : sudokuPuzzle(seed, difficulty),
     [authoredPuzzle, difficulty, seed],
   );
+  const spec = sudokuSpecForGrid(puzzle) ?? sudokuSpecForSize(9);
+  const rowLabels = SUDOKU_ROW_LABELS.slice(0, spec.size);
+  const columnLabels = SUDOKU_COLUMN_LABELS.slice(0, spec.size);
+  const numberPadItems = sudokuNumberPadItems(spec.size);
+  const numberPadRows = sudokuNumberPadRowCount(spec.size);
+  const digitSizeClass = spec.size === 4
+    ? "text-[clamp(2rem,6vw,4rem)]"
+    : spec.size === 6
+      ? "text-[clamp(1.5rem,4.5vw,3rem)]"
+      : "text-[clamp(1rem,3vw,2rem)]";
+  const candidateSizeClass = spec.size === 4
+    ? "text-[clamp(0.8rem,2vw,1.2rem)]"
+    : spec.size === 6
+      ? "text-[clamp(0.62rem,1.5vw,0.9rem)]"
+      : "text-[clamp(0.48rem,1.2vw,0.72rem)]";
   const [state, setState] = useState<SudokuBoardState>(() => createSudokuBoardState(puzzle, mirror));
   const [appliedMirror, setAppliedMirror] = useState<GameMirrorState | null | undefined>(mirror);
   const [appliedPuzzleKey, setAppliedPuzzleKey] = useState(puzzleKey);
@@ -172,9 +189,9 @@ export function SudokuBoard({
     || state.selected === null
     || Boolean(puzzle[state.selected])
     || Boolean(state.values[state.selected]);
-  const highlightRegions = sudokuHighlightRegions(state.highlights);
+  const highlightRegions = sudokuHighlightRegions(state.highlights, spec.size);
   const dragRegion = dragSelection
-    ? createSudokuCellHighlightRegion(dragSelection.startIndex, dragSelection.endIndex)
+    ? createSudokuCellHighlightRegion(dragSelection.startIndex, dragSelection.endIndex, spec.size)
     : null;
   const hasStructuralHighlights = highlightRegions.length > 0 || Boolean(dragRegion);
 
@@ -216,9 +233,15 @@ export function SudokuBoard({
     if (!board) return null;
     const bounds = board.getBoundingClientRect();
     if (!bounds.width || !bounds.height) return null;
-    const column = Math.min(8, Math.max(0, Math.floor(((clientX - bounds.left) / bounds.width) * 9)));
-    const row = Math.min(8, Math.max(0, Math.floor(((clientY - bounds.top) / bounds.height) * 9)));
-    return row * 9 + column;
+    const column = Math.min(
+      spec.size - 1,
+      Math.max(0, Math.floor(((clientX - bounds.left) / bounds.width) * spec.size)),
+    );
+    const row = Math.min(
+      spec.size - 1,
+      Math.max(0, Math.floor(((clientY - bounds.top) / bounds.height) * spec.size)),
+    );
+    return row * spec.size + column;
   }
 
   function beginCellHighlight(event: PointerEvent<HTMLButtonElement>, index: number) {
@@ -311,7 +334,7 @@ export function SudokuBoard({
 
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     if (inputDisabled) return;
-    if (event.key >= "1" && event.key <= "9") {
+    if (event.key >= "1" && event.key <= String(spec.size)) {
       event.preventDefault();
       chooseDigit(Number(event.key));
       return;
@@ -324,13 +347,13 @@ export function SudokuBoard({
     if (state.highlightTool) return;
     if (state.selected === null) return;
 
-    const row = Math.floor(state.selected / 9);
-    const column = state.selected % 9;
+    const row = Math.floor(state.selected / spec.size);
+    const column = state.selected % spec.size;
     const target = {
       ArrowLeft: column > 0 ? state.selected - 1 : null,
-      ArrowRight: column < 8 ? state.selected + 1 : null,
-      ArrowUp: row > 0 ? state.selected - 9 : null,
-      ArrowDown: row < 8 ? state.selected + 9 : null,
+      ArrowRight: column < spec.size - 1 ? state.selected + 1 : null,
+      ArrowUp: row > 0 ? state.selected - spec.size : null,
+      ArrowDown: row < spec.size - 1 ? state.selected + spec.size : null,
     }[event.key];
     if (typeof target === "number") {
       event.preventDefault();
@@ -340,11 +363,12 @@ export function SudokuBoard({
 
   return (
     <div
-      aria-label={t("boardLabel")}
+      aria-label={t("boardLabel", { lastRow: rowLabels.at(-1) ?? "I", size: spec.size })}
       className={cn(
         styles.academyTheme,
         "relative mx-auto h-full w-full overflow-auto rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-[var(--sudoku-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-paper",
       )}
+      data-sudoku-size={spec.size}
       tabIndex={inputDisabled ? -1 : 0}
       onKeyDown={onKeyDown}
     >
@@ -388,51 +412,55 @@ export function SudokuBoard({
               ))}
             </div>
 
-            <div aria-label={t("numberPad")} className="grid grid-cols-2 gap-2" role="group">
-              {SUDOKU_NUMBER_PAD_COLUMNS.map((column, columnIndex) => (
-                <div key={columnIndex} className="flex flex-col gap-2">
-                  {column.map((digit) => {
-                    if (digit === null) {
-                      return (
-                        <button
-                          key="delete"
-                          type="button"
-                          data-classroom-input="click"
-                          aria-label={t("deleteEntry")}
-                          title={t("deleteEntry")}
-                          disabled={deleteDisabled}
-                          onClick={deleteEntry}
-                          className={cn(
-                            styles.numberButton,
-                            "grid aspect-square min-h-11 w-full place-items-center rounded-xl border transition-colors disabled:cursor-default disabled:opacity-45",
-                          )}
-                        >
-                          <Eraser aria-hidden size={20} />
-                        </button>
-                      );
-                    }
-                    const pressed = state.inputDigit === digit;
-                    return (
-                      <button
-                        key={digit}
-                        type="button"
-                        data-classroom-input="click"
-                        aria-label={t("chooseDigit", { digit })}
-                        aria-pressed={pressed}
-                        disabled={inputDisabled}
-                        onClick={() => chooseDigit(digit)}
-                        className={cn(
-                          styles.numberButton,
-                          "aspect-square min-h-11 w-full rounded-xl border text-xl font-medium tabular-nums transition-colors disabled:cursor-default disabled:opacity-45",
-                          pressed && styles.numberActive,
-                        )}
-                      >
-                        {digit}
-                      </button>
-                    );
-                  })}
-                </div>
-              ))}
+            <div
+              aria-label={t("numberPad")}
+              className="grid grid-flow-col grid-cols-2 gap-2"
+              role="group"
+              style={{ gridTemplateRows: `repeat(${numberPadRows}, minmax(0, 1fr))` }}
+            >
+              {numberPadItems.map((item, index) => {
+                if (item === "spacer") {
+                  return <span key={`spacer-${index}`} aria-hidden className="aspect-square min-h-11" />;
+                }
+                if (item === "delete") {
+                  return (
+                    <button
+                      key="delete"
+                      type="button"
+                      data-classroom-input="click"
+                      aria-label={t("deleteEntry")}
+                      title={t("deleteEntry")}
+                      disabled={deleteDisabled}
+                      onClick={deleteEntry}
+                      className={cn(
+                        styles.numberButton,
+                        "grid aspect-square min-h-11 w-full place-items-center rounded-xl border transition-colors disabled:cursor-default disabled:opacity-45",
+                      )}
+                    >
+                      <Eraser aria-hidden size={20} />
+                    </button>
+                  );
+                }
+                const pressed = state.inputDigit === item;
+                return (
+                  <button
+                    key={item}
+                    type="button"
+                    data-classroom-input="click"
+                    aria-label={t("chooseDigit", { digit: item })}
+                    aria-pressed={pressed}
+                    disabled={inputDisabled}
+                    onClick={() => chooseDigit(item)}
+                    className={cn(
+                      styles.numberButton,
+                      "aspect-square min-h-11 w-full rounded-xl border text-xl font-medium tabular-nums transition-colors disabled:cursor-default disabled:opacity-45",
+                      pressed && styles.numberActive,
+                    )}
+                  >
+                    {item}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -446,13 +474,21 @@ export function SudokuBoard({
               : "grid-cols-1 grid-rows-1",
           )}>
             {showCoordinates && <span aria-hidden />}
-            {showCoordinates && <div aria-hidden className={cn(styles.coordinate, "grid grid-cols-9 text-xs font-medium sm:text-sm")}>
-              {SUDOKU_COLUMN_LABELS.map((label) => (
+            {showCoordinates && <div
+              aria-hidden
+              className={cn(styles.coordinate, "grid text-xs font-medium sm:text-sm")}
+              style={{ gridTemplateColumns: `repeat(${spec.size}, minmax(0, 1fr))` }}
+            >
+              {columnLabels.map((label) => (
                 <span key={label} className="grid place-items-center tabular-nums">{label}</span>
               ))}
             </div>}
-            {showCoordinates && <div aria-hidden className={cn(styles.coordinate, "grid grid-rows-9 text-xs font-medium sm:text-sm")}>
-              {SUDOKU_ROW_LABELS.map((label) => (
+            {showCoordinates && <div
+              aria-hidden
+              className={cn(styles.coordinate, "grid text-xs font-medium sm:text-sm")}
+              style={{ gridTemplateRows: `repeat(${spec.size}, minmax(0, 1fr))` }}
+            >
+              {rowLabels.map((label) => (
                 <span key={label} className="grid place-items-center">{label}</span>
               ))}
             </div>}
@@ -461,8 +497,9 @@ export function SudokuBoard({
               className={cn(
                 styles.boardGrid,
                 state.highlightTool === "cell" && styles.regionDragActive,
-                "grid grid-cols-9 overflow-hidden rounded-xl border-2",
+                "grid overflow-hidden rounded-xl border-2",
               )}
+              style={{ gridTemplateColumns: `repeat(${spec.size}, minmax(0, 1fr))` }}
               data-has-structural-highlights={hasStructuralHighlights || undefined}
               onPointerCancel={cancelCellHighlight}
               onPointerMove={moveCellHighlight}
@@ -470,12 +507,19 @@ export function SudokuBoard({
             >
               {state.values.map((value, index) => {
                 const given = puzzle[index] !== 0;
-                const column = index % 9;
-                const row = Math.floor(index / 9);
-                const box = Math.floor(row / 3) * 3 + Math.floor(column / 3);
+                const column = index % spec.size;
+                const row = Math.floor(index / spec.size);
+                const boxesPerRow = spec.size / spec.boxColumns;
+                const box = Math.floor(row / spec.boxRows) * boxesPerRow
+                  + Math.floor(column / spec.boxColumns);
                 const coordinate = `${SUDOKU_ROW_LABELS[row]}${SUDOKU_COLUMN_LABELS[column]}`;
-                const candidateDigits = sudokuCandidateDigits(state.candidates[index]);
-                const structuralHighlightCount = sudokuCellHighlightCount(state.highlights, row, column);
+                const candidateDigits = sudokuCandidateDigits(state.candidates[index], spec.size);
+                const structuralHighlightCount = sudokuCellHighlightCount(
+                  state.highlights,
+                  row,
+                  column,
+                  spec.size,
+                );
                 const inDragRegion = Boolean(
                   dragRegion
                   && row >= dragRegion.top
@@ -495,7 +539,7 @@ export function SudokuBoard({
                       ? t("candidateCell", { coordinate, values: candidateDigits.join(" ") })
                       : t("emptyCell", { coordinate });
                 const label = teachingHighlighted ? `${baseLabel}${t("highlightedSuffix")}` : baseLabel;
-                const greenBox = (Math.floor(row / 3) + Math.floor(column / 3)) % 2 === 0;
+                const greenBox = (Math.floor(row / spec.boxRows) + Math.floor(column / spec.boxColumns)) % 2 === 0;
 
                 return (
                   <button
@@ -522,8 +566,10 @@ export function SudokuBoard({
                       styles.cell,
                       "relative flex aspect-square items-center justify-center tabular-nums outline-none transition-[background-color,box-shadow] duration-100 disabled:cursor-default disabled:opacity-100",
                       greenBox ? styles.greenCell : styles.blueCell,
-                      column < 8 && (column % 3 === 2 ? styles.majorRight : styles.minorRight),
-                      row < 8 && (row % 3 === 2 ? styles.majorBottom : styles.minorBottom),
+                      column < spec.size - 1
+                        && ((column + 1) % spec.boxColumns === 0 ? styles.majorRight : styles.minorRight),
+                      row < spec.size - 1
+                        && ((row + 1) % spec.boxRows === 0 ? styles.majorBottom : styles.minorBottom),
                       hasStructuralHighlights && !structurallyHighlighted && styles.dimmedCell,
                       !inputDisabled && !state.highlightTool && "hover:brightness-[0.97]",
                       state.highlightTool && !inputDisabled && "cursor-crosshair",
@@ -534,7 +580,8 @@ export function SudokuBoard({
                     {value ? (
                       <span
                         className={cn(
-                          "text-[clamp(1rem,3vw,2rem)] leading-none",
+                          digitSizeClass,
+                          "leading-none",
                           given ? cn(styles.givenTile, "font-medium") : cn(styles.filledDigit, "font-medium"),
                           digitHighlighted && styles.digitHighlight,
                           revealedCell === index && styles.revealedDigit,
@@ -547,10 +594,15 @@ export function SudokuBoard({
                         aria-hidden
                         className={cn(
                           styles.candidateGrid,
-                          "grid size-full grid-cols-3 grid-rows-3 p-[5%] text-[clamp(0.48rem,1.2vw,0.72rem)] leading-none",
+                          candidateSizeClass,
+                          "grid size-full p-[5%] leading-none",
                         )}
+                        style={{
+                          gridTemplateColumns: `repeat(${spec.boxColumns}, minmax(0, 1fr))`,
+                          gridTemplateRows: `repeat(${spec.boxRows}, minmax(0, 1fr))`,
+                        }}
                       >
-                        {Array.from({ length: 9 }, (_, candidateIndex) => candidateIndex + 1).map((digit) => (
+                        {Array.from({ length: spec.size }, (_, candidateIndex) => candidateIndex + 1).map((digit) => (
                           <span
                             key={digit}
                             className={cn(
@@ -568,7 +620,14 @@ export function SudokuBoard({
                   </button>
                 );
               })}
-              <div aria-hidden className={styles.highlightLayer}>
+              <div
+                aria-hidden
+                className={styles.highlightLayer}
+                style={{
+                  gridTemplateColumns: `repeat(${spec.size}, minmax(0, 1fr))`,
+                  gridTemplateRows: `repeat(${spec.size}, minmax(0, 1fr))`,
+                }}
+              >
                 {highlightRegions.map((region) => (
                   <span
                     key={region.key}

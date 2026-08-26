@@ -6,12 +6,18 @@ import type {
   SudokuTeachingHighlights,
 } from "../types";
 import { isSudokuValuePossible, solveSudokuGrid } from "./logic";
+import {
+  sudokuSpecForGrid,
+  sudokuSpecForSize,
+  type SudokuSize,
+  type SudokuSpec,
+} from "./variant";
 
 export type SudokuEntryMode = "candidate" | "value";
 
 export interface SudokuBoardState {
   values: number[];
-  /** 每格用 bit 1–9 表示候选数；比 81 个嵌套数组更适合课堂实时镜像。 */
+  /** 每格用 bit 1–N 表示候选数；比嵌套数组更适合课堂实时镜像。 */
   candidates: number[];
   selected: number | null;
   /** 正常输入数字；M3 的可选「突出数字」会使用独立状态，不复用本字段。 */
@@ -38,6 +44,7 @@ export const SUDOKU_NUMBER_PAD_COLUMNS = [
   [1, 2, 3, 4, 5],
   [6, 7, 8, 9, null],
 ] as const;
+export type SudokuNumberPadItem = number | "delete" | "spacer";
 export const SUDOKU_HIGHLIGHT_TOOLS = [
   "cell",
   "box",
@@ -46,14 +53,20 @@ export const SUDOKU_HIGHLIGHT_TOOLS = [
   "digit",
 ] as const satisfies readonly SudokuHighlightTool[];
 
-const CANDIDATE_MASK = 0b1111111110;
-
-function validDigit(value: unknown): value is number {
-  return Number.isInteger(value) && Number(value) >= 1 && Number(value) <= 9;
+function specForState(state: SudokuBoardState): SudokuSpec {
+  return sudokuSpecForGrid(state.values) ?? sudokuSpecForSize(9);
 }
 
-function validCellIndex(value: unknown): value is number {
-  return Number.isInteger(value) && Number(value) >= 0 && Number(value) < 81;
+function candidateMask(spec: SudokuSpec): number {
+  return (1 << (spec.size + 1)) - 2;
+}
+
+function validDigit(value: unknown, spec: SudokuSpec): value is number {
+  return Number.isInteger(value) && Number(value) >= 1 && Number(value) <= spec.size;
+}
+
+function validCellIndex(value: unknown, spec: SudokuSpec): value is number {
+  return Number.isInteger(value) && Number(value) >= 0 && Number(value) < spec.size * spec.size;
 }
 
 function validHighlightTool(value: unknown): value is SudokuHighlightTool {
@@ -65,7 +78,7 @@ function normalizedIndexes(value: unknown, max: number): number[] {
   return [...new Set(value.filter((item) => Number.isInteger(item) && Number(item) >= 0 && Number(item) <= max).map(Number))];
 }
 
-function normalizedCellRegions(value: unknown): SudokuCellHighlightRegion[] {
+function normalizedCellRegions(value: unknown, spec: SudokuSpec): SudokuCellHighlightRegion[] {
   if (!Array.isArray(value)) return [];
   const regions = new Map<string, SudokuCellHighlightRegion>();
   for (const item of value) {
@@ -83,7 +96,7 @@ function normalizedCellRegions(value: unknown): SudokuCellHighlightRegion[] {
     const left = Math.min(Number(candidate.left), Number(candidate.right));
     const bottom = Math.max(Number(candidate.top), Number(candidate.bottom));
     const right = Math.max(Number(candidate.left), Number(candidate.right));
-    if (top < 0 || left < 0 || bottom > 8 || right > 8) continue;
+    if (top < 0 || left < 0 || bottom >= spec.size || right >= spec.size) continue;
     const region = { top, left, bottom, right };
     regions.set(`${top}:${left}:${bottom}:${right}`, region);
   }
@@ -100,24 +113,24 @@ function emptySudokuHighlights(): SudokuTeachingHighlights {
   };
 }
 
-function normalizedHighlights(mirror?: GameMirrorState | null): SudokuTeachingHighlights {
+function normalizedHighlights(spec: SudokuSpec, mirror?: GameMirrorState | null): SudokuTeachingHighlights {
   const highlights = mirror?.highlights;
   if (!highlights) return emptySudokuHighlights();
   return {
-    boxes: normalizedIndexes(highlights.boxes, 8),
-    rows: normalizedIndexes(highlights.rows, 8),
-    columns: normalizedIndexes(highlights.columns, 8),
-    regions: normalizedCellRegions(highlights.regions),
-    focusedDigit: validDigit(highlights.focusedDigit) ? highlights.focusedDigit : null,
+    boxes: normalizedIndexes(highlights.boxes, spec.size - 1),
+    rows: normalizedIndexes(highlights.rows, spec.size - 1),
+    columns: normalizedIndexes(highlights.columns, spec.size - 1),
+    regions: normalizedCellRegions(highlights.regions, spec),
+    focusedDigit: validDigit(highlights.focusedDigit, spec) ? highlights.focusedDigit : null,
   };
 }
 
-function normalizedInvalidAttempt(mirror?: GameMirrorState | null): SudokuInvalidAttempt | null {
+function normalizedInvalidAttempt(spec: SudokuSpec, mirror?: GameMirrorState | null): SudokuInvalidAttempt | null {
   const attempt = mirror?.invalidAttempt;
   if (
     !attempt
-    || !validCellIndex(attempt.index)
-    || !validDigit(attempt.digit)
+    || !validCellIndex(attempt.index, spec)
+    || !validDigit(attempt.digit, spec)
     || !Number.isSafeInteger(attempt.sequence)
     || attempt.sequence < 1
   ) {
@@ -126,33 +139,34 @@ function normalizedInvalidAttempt(mirror?: GameMirrorState | null): SudokuInvali
   return { index: attempt.index, digit: attempt.digit, sequence: attempt.sequence };
 }
 
-function normalizedValues(puzzle: number[], mirror?: GameMirrorState | null): number[] {
-  if (!mirror || !Array.isArray(mirror.values) || mirror.values.length !== 81) return [...puzzle];
+function normalizedValues(puzzle: number[], spec: SudokuSpec, mirror?: GameMirrorState | null): number[] {
+  if (!mirror || !Array.isArray(mirror.values) || mirror.values.length !== puzzle.length) return [...puzzle];
   return puzzle.map((given, index) => {
     if (given) return given;
     const value = mirror.values[index];
-    return validDigit(value) ? value : 0;
+    return validDigit(value, spec) ? value : 0;
   });
 }
 
 export function createSudokuBoardState(puzzle: number[], mirror?: GameMirrorState | null): SudokuBoardState {
-  const values = normalizedValues(puzzle, mirror);
+  const spec = sudokuSpecForGrid(puzzle) ?? sudokuSpecForSize(9);
+  const values = normalizedValues(puzzle, spec, mirror);
   const highlightTool = validHighlightTool(mirror?.highlightTool) ? mirror.highlightTool : null;
-  const candidates = Array.from({ length: 81 }, (_, index) => {
+  const candidates = Array.from({ length: puzzle.length }, (_, index) => {
     if (puzzle[index] || values[index]) return 0;
     const mask = mirror?.candidates?.[index];
-    return Number.isInteger(mask) && Number(mask) >= 0 ? Number(mask) & CANDIDATE_MASK : 0;
+    return Number.isInteger(mask) && Number(mask) >= 0 ? Number(mask) & candidateMask(spec) : 0;
   });
 
   return {
     values,
     candidates,
-    selected: highlightTool === null && validCellIndex(mirror?.selected) ? mirror.selected : null,
-    inputDigit: highlightTool === null && validDigit(mirror?.inputDigit) ? mirror.inputDigit : null,
+    selected: highlightTool === null && validCellIndex(mirror?.selected, spec) ? mirror.selected : null,
+    inputDigit: highlightTool === null && validDigit(mirror?.inputDigit, spec) ? mirror.inputDigit : null,
     entryMode: mirror?.entryMode === "candidate" ? "candidate" : "value",
     highlightTool,
-    highlights: normalizedHighlights(mirror),
-    invalidAttempt: highlightTool === null ? normalizedInvalidAttempt(mirror) : null,
+    highlights: normalizedHighlights(spec, mirror),
+    invalidAttempt: highlightTool === null ? normalizedInvalidAttempt(spec, mirror) : null,
   };
 }
 
@@ -175,12 +189,29 @@ export function toSudokuMirrorState(state: SudokuBoardState): GameMirrorState {
   };
 }
 
-export function sudokuCandidateDigits(mask: number): number[] {
-  return Array.from({ length: 9 }, (_, index) => index + 1).filter((digit) => Boolean(mask & (1 << digit)));
+export function sudokuCandidateDigits(mask: number, size: SudokuSize = 9): number[] {
+  return Array.from({ length: size }, (_, index) => index + 1).filter((digit) => Boolean(mask & (1 << digit)));
+}
+
+export function sudokuNumberPadRowCount(size: SudokuSize): number {
+  return Math.ceil((size + 1) / 2);
+}
+
+export function sudokuNumberPadItems(size: SudokuSize): SudokuNumberPadItem[] {
+  const rows = sudokuNumberPadRowCount(size);
+  const digits = Array.from({ length: size }, (_, index) => index + 1);
+  const firstColumn = digits.slice(0, rows);
+  const secondColumn = digits.slice(rows);
+  const spacers = Array.from(
+    { length: Math.max(0, rows - secondColumn.length - 1) },
+    () => "spacer" as const,
+  );
+  return [...firstColumn, ...secondColumn, ...spacers, "delete"];
 }
 
 function applyDigitAt(state: SudokuBoardState, puzzle: number[], index: number, digit: number): SudokuBoardState {
-  if (!validCellIndex(index) || puzzle[index]) return state;
+  const spec = specForState(state);
+  if (!validCellIndex(index, spec) || !validDigit(digit, spec) || puzzle[index]) return state;
 
   if (state.entryMode === "candidate") {
     if (state.values[index]) return state;
@@ -211,7 +242,7 @@ function applyDigitAt(state: SudokuBoardState, puzzle: number[], index: number, 
 
 /** 数字按钮只切换持续印章；写入统一发生在随后点击目标格时。 */
 export function chooseSudokuDigit(state: SudokuBoardState, digit: number): SudokuBoardState {
-  if (!validDigit(digit)) return state;
+  if (!validDigit(digit, specForState(state))) return state;
   if (
     state.inputDigit === digit
     && state.highlightTool === null
@@ -234,12 +265,14 @@ function toggledIndex(values: number[], value: number): number[] {
 export function createSudokuCellHighlightRegion(
   startIndex: number,
   endIndex: number,
+  size: SudokuSize = 9,
 ): SudokuCellHighlightRegion | null {
-  if (!validCellIndex(startIndex) || !validCellIndex(endIndex)) return null;
-  const startRow = Math.floor(startIndex / 9);
-  const startColumn = startIndex % 9;
-  const endRow = Math.floor(endIndex / 9);
-  const endColumn = endIndex % 9;
+  const spec = sudokuSpecForSize(size);
+  if (!validCellIndex(startIndex, spec) || !validCellIndex(endIndex, spec)) return null;
+  const startRow = Math.floor(startIndex / size);
+  const startColumn = startIndex % size;
+  const endRow = Math.floor(endIndex / size);
+  const endColumn = endIndex % size;
   return {
     top: Math.min(startRow, endRow),
     left: Math.min(startColumn, endColumn),
@@ -261,7 +294,7 @@ export function toggleSudokuCellHighlightRegion(
   endIndex: number,
 ): SudokuBoardState {
   if (state.highlightTool !== "cell") return state;
-  const region = createSudokuCellHighlightRegion(startIndex, endIndex);
+  const region = createSudokuCellHighlightRegion(startIndex, endIndex, specForState(state).size);
   if (!region) return state;
   const exists = state.highlights.regions.some((item) => sameCellRegion(item, region));
   return {
@@ -276,14 +309,16 @@ export function toggleSudokuCellHighlightRegion(
 }
 
 export function toggleSudokuHighlightTarget(state: SudokuBoardState, index: number): SudokuBoardState {
-  if (!state.highlightTool || !validCellIndex(index)) return state;
-  const row = Math.floor(index / 9);
-  const column = index % 9;
-  const box = Math.floor(row / 3) * 3 + Math.floor(column / 3);
+  const spec = specForState(state);
+  if (!state.highlightTool || !validCellIndex(index, spec)) return state;
+  const row = Math.floor(index / spec.size);
+  const column = index % spec.size;
+  const boxesPerRow = spec.size / spec.boxColumns;
+  const box = Math.floor(row / spec.boxRows) * boxesPerRow + Math.floor(column / spec.boxColumns);
 
   if (state.highlightTool === "digit") {
     const digit = state.values[index];
-    if (!validDigit(digit)) return state;
+    if (!validDigit(digit, spec)) return state;
     return {
       ...state,
       highlights: {
@@ -328,7 +363,7 @@ export function selectSudokuCell(
   index: number,
   applySelectedDigit = true,
 ): SudokuBoardState {
-  if (!validCellIndex(index)) return state;
+  if (!validCellIndex(index, specForState(state))) return state;
   if (state.highlightTool) return toggleSudokuHighlightTarget(state, index);
   const withSelection = { ...state, selected: index };
   if (!applySelectedDigit || state.inputDigit === null) return withSelection;
@@ -373,8 +408,11 @@ export function sudokuCellHighlightCount(
   highlights: SudokuTeachingHighlights,
   row: number,
   column: number,
+  size: SudokuSize = 9,
 ): number {
-  const box = Math.floor(row / 3) * 3 + Math.floor(column / 3);
+  const spec = sudokuSpecForSize(size);
+  const boxesPerRow = spec.size / spec.boxColumns;
+  const box = Math.floor(row / spec.boxRows) * boxesPerRow + Math.floor(column / spec.boxColumns);
   return Number(highlights.boxes.includes(box))
     + Number(highlights.rows.includes(row))
     + Number(highlights.columns.includes(column))
@@ -386,11 +424,16 @@ export function sudokuCellHighlightCount(
     )).length;
 }
 
-/** 把可组合的教学突出转换成 9×9 视觉层上的矩形，保留每个区域自己的完整轮廓。 */
-export function sudokuHighlightRegions(highlights: SudokuTeachingHighlights): SudokuHighlightRegion[] {
+/** 把可组合的教学突出转换成棋盘视觉层上的矩形，保留每个区域自己的完整轮廓。 */
+export function sudokuHighlightRegions(
+  highlights: SudokuTeachingHighlights,
+  size: SudokuSize = 9,
+): SudokuHighlightRegion[] {
+  const spec = sudokuSpecForSize(size);
+  const boxesPerRow = spec.size / spec.boxColumns;
   const boxOrigin = (box: number) => ({
-    rowStart: Math.floor(box / 3) * 3 + 1,
-    columnStart: (box % 3) * 3 + 1,
+    rowStart: Math.floor(box / boxesPerRow) * spec.boxRows + 1,
+    columnStart: (box % boxesPerRow) * spec.boxColumns + 1,
   });
 
   return [
@@ -399,8 +442,8 @@ export function sudokuHighlightRegions(highlights: SudokuTeachingHighlights): Su
       kind: "box" as const,
       target: box,
       ...boxOrigin(box),
-      rowSpan: 3,
-      columnSpan: 3,
+      rowSpan: spec.boxRows,
+      columnSpan: spec.boxColumns,
     })),
     ...highlights.rows.map((row) => ({
       key: `row-${row}`,
@@ -409,7 +452,7 @@ export function sudokuHighlightRegions(highlights: SudokuTeachingHighlights): Su
       rowStart: row + 1,
       columnStart: 1,
       rowSpan: 1,
-      columnSpan: 9,
+      columnSpan: spec.size,
     })),
     ...highlights.columns.map((column) => ({
       key: `column-${column}`,
@@ -417,7 +460,7 @@ export function sudokuHighlightRegions(highlights: SudokuTeachingHighlights): Su
       target: column,
       rowStart: 1,
       columnStart: column + 1,
-      rowSpan: 9,
+      rowSpan: spec.size,
       columnSpan: 1,
     })),
     ...highlights.regions.map((region, index) => ({
@@ -445,10 +488,11 @@ export function deleteSelectedSudokuCell(state: SudokuBoardState, puzzle: number
 
 /** 教师快捷动作：只揭示当前选中空格，并沿用当前合法局面的一份终盘。 */
 export function revealSelectedSudokuCell(state: SudokuBoardState, puzzle: number[]): SudokuBoardState {
+  const spec = specForState(state);
   const index = state.selected;
   if (
     index === null
-    || !validCellIndex(index)
+    || !validCellIndex(index, spec)
     || puzzle[index]
     || state.values[index]
     || state.highlightTool
@@ -457,7 +501,7 @@ export function revealSelectedSudokuCell(state: SudokuBoardState, puzzle: number
   }
   const solution = solveSudokuGrid(state.values);
   const digit = solution?.[index];
-  if (!validDigit(digit)) return state;
+  if (!validDigit(digit, spec)) return state;
 
   const values = [...state.values];
   const candidates = [...state.candidates];

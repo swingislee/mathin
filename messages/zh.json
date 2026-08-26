@@ -205,7 +205,16 @@
       "medium": "骑士",
       "hard": "国王"
     },
+    "sudokuSizeLabel": "棋盘规格",
+    "sudokuSize": {
+      "4": "四宫",
+      "6": "六宫",
+      "9": "九宫"
+    },
+    "sudokuVariantTitle": "数独 · {size}",
     "pickDifficulty": "选择难度，随时可以重开。",
+    "pickSudokuSetup": "选择棋盘规格和难度，随时可以重开。",
+    "sudokuSmallPractice": "四宫与六宫当前作为练习模式，不计入排行榜。",
     "rules": "规则与技巧",
     "relatedTerms": "相关知识：",
     "submitting": "成绩提交中…",
@@ -224,7 +233,7 @@
     "noRanks": "这一难度还没有人完赛，虚位以待。",
     "erase": "擦除",
     "sudokuBoard": {
-      "boardLabel": "数独棋盘，行标 A 到 I，列标 1 到 9",
+      "boardLabel": "{size} 宫数独棋盘，行标 A 到 {lastRow}，列标 1 到 {size}",
       "entryMode": "输入方式",
       "candidateMode": "候选",
       "valueMode": "填数",
@@ -255,8 +264,8 @@
     "items": {
       "sudoku": {
         "name": "数独",
-        "desc": "在 9×9 棋盘上填入 1–9，使每行、每列、每宫都不重复。",
-        "rules": "每行、每列和每个 3×3 宫内必须恰好出现 1–9 各一次。先选择数字，再点一个或多个空格应用；用「候选 / 填数」切换记录方式。行标为 A–I，列标为 1–9。"
+        "desc": "选择四宫、六宫或九宫棋盘，使每行、每列、每宫都不重复。",
+        "rules": "四宫使用 4×4 棋盘与 2×2 宫；六宫使用 6×6 棋盘与 2×3 宫；九宫使用 9×9 棋盘与 3×3 宫。每行、每列和每宫都要恰好出现 1 到棋盘阶数。先选择数字，再点一个或多个空格应用；用「候选 / 填数」切换记录方式。"
       },
       "kakuro": {
         "name": "数和",

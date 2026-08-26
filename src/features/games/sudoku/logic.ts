@@ -1,40 +1,55 @@
 import { createRng, shuffle } from "../rng";
 import type { Difficulty } from "../types";
 import { sudokuPresetPuzzle } from "./presets";
+import {
+  sudokuSizeFromSeed,
+  sudokuSpecForGrid,
+  sudokuSpecForSize,
+  type SudokuSpec,
+  type SudokuSize,
+} from "./variant";
 
-/** 0 = 待填格；数组长度恒为 81，行优先。 */
+/** 0 = 待填格；数组长度为 16 / 36 / 81，行优先。 */
 export type SudokuGrid = number[];
 
-const GIVENS: Record<Difficulty, number> = { easy: 40, medium: 32, hard: 26 };
+const GIVENS: Record<SudokuSize, Record<Difficulty, number>> = {
+  4: { easy: 10, medium: 8, hard: 6 },
+  6: { easy: 24, medium: 20, hard: 16 },
+  9: { easy: 40, medium: 32, hard: 26 },
+};
 
-function boxStart(pos: number) {
-  const row = Math.floor(pos / 9);
-  const col = pos % 9;
-  return Math.floor(row / 3) * 27 + Math.floor(col / 3) * 3;
+function boxStart(pos: number, spec: SudokuSpec) {
+  const row = Math.floor(pos / spec.size);
+  const column = pos % spec.size;
+  return Math.floor(row / spec.boxRows) * spec.boxRows * spec.size
+    + Math.floor(column / spec.boxColumns) * spec.boxColumns;
 }
 
-function canPlace(grid: SudokuGrid, pos: number, n: number) {
-  const row = Math.floor(pos / 9) * 9;
-  const col = pos % 9;
-  for (let i = 0; i < 9; i++) {
-    if (grid[row + i] === n || grid[col + i * 9] === n) return false;
+function canPlace(grid: SudokuGrid, pos: number, digit: number, spec: SudokuSpec) {
+  const row = Math.floor(pos / spec.size) * spec.size;
+  const column = pos % spec.size;
+  for (let index = 0; index < spec.size; index++) {
+    if (grid[row + index] === digit || grid[column + index * spec.size] === digit) return false;
   }
-  const b = boxStart(pos);
-  for (let i = 0; i < 9; i++) {
-    if (grid[b + Math.floor(i / 3) * 9 + (i % 3)] === n) return false;
+  const box = boxStart(pos, spec);
+  for (let index = 0; index < spec.size; index++) {
+    const boxRow = Math.floor(index / spec.boxColumns);
+    const boxColumn = index % spec.boxColumns;
+    if (grid[box + boxRow * spec.size + boxColumn] === digit) return false;
   }
   return true;
 }
 
 export function isValidPartialSudokuGrid(values: SudokuGrid): boolean {
+  const spec = sudokuSpecForGrid(values);
+  if (!spec) return false;
   const grid = [...values];
-  if (grid.length !== 81) return false;
-  for (let pos = 0; pos < 81; pos++) {
+  for (let pos = 0; pos < grid.length; pos++) {
     const value = grid[pos];
-    if (!Number.isInteger(value) || value < 0 || value > 9) return false;
+    if (!Number.isInteger(value) || value < 0 || value > spec.size) return false;
     if (value === 0) continue;
     grid[pos] = 0;
-    const valid = canPlace(grid, pos, value);
+    const valid = canPlace(grid, pos, value, spec);
     grid[pos] = value;
     if (!valid) return false;
   }
@@ -43,6 +58,9 @@ export function isValidPartialSudokuGrid(values: SudokuGrid): boolean {
 
 /** 使用最少候选优先的回溯，返回与当前局面相容的一份确定性终盘。 */
 export function solveSudokuGrid(values: SudokuGrid): SudokuGrid | null {
+  const inferredSpec = sudokuSpecForGrid(values);
+  if (!inferredSpec) return null;
+  const spec = inferredSpec;
   const grid = [...values];
   if (!isValidPartialSudokuGrid(grid)) return null;
 
@@ -50,10 +68,10 @@ export function solveSudokuGrid(values: SudokuGrid): SudokuGrid | null {
     let target = -1;
     let targetCandidates: number[] = [];
 
-    for (let pos = 0; pos < 81; pos++) {
+    for (let pos = 0; pos < grid.length; pos++) {
       if (grid[pos] !== 0) continue;
-      const candidates = Array.from({ length: 9 }, (_, index) => index + 1)
-        .filter((digit) => canPlace(grid, pos, digit));
+      const candidates = Array.from({ length: spec.size }, (_, index) => index + 1)
+        .filter((digit) => canPlace(grid, pos, digit, spec));
       if (candidates.length === 0) return false;
       if (target === -1 || candidates.length < targetCandidates.length) {
         target = pos;
@@ -77,6 +95,9 @@ export function solveSudokuGrid(values: SudokuGrid): SudokuGrid | null {
 /** Counts solutions deterministically and stops at `limit` (normally two). */
 export function countSudokuSolutions(values: SudokuGrid, limit = 2): number {
   if (!Number.isInteger(limit) || limit < 1) return 0;
+  const inferredSpec = sudokuSpecForGrid(values);
+  if (!inferredSpec) return 0;
+  const spec = inferredSpec;
   const grid = [...values];
   if (!isValidPartialSudokuGrid(grid)) return 0;
   let count = 0;
@@ -86,10 +107,10 @@ export function countSudokuSolutions(values: SudokuGrid, limit = 2): number {
     let target = -1;
     let targetCandidates: number[] = [];
 
-    for (let pos = 0; pos < 81; pos++) {
+    for (let pos = 0; pos < grid.length; pos++) {
       if (grid[pos] !== 0) continue;
-      const candidates = Array.from({ length: 9 }, (_, index) => index + 1)
-        .filter((digit) => canPlace(grid, pos, digit));
+      const candidates = Array.from({ length: spec.size }, (_, index) => index + 1)
+        .filter((digit) => canPlace(grid, pos, digit, spec));
       if (candidates.length === 0) return;
       if (target === -1 || candidates.length < targetCandidates.length) {
         target = pos;
@@ -141,13 +162,13 @@ function hasSudokuSolution(values: SudokuGrid): boolean {
   return solveSudokuGrid(values) !== null;
 }
 
-function fillSolved(grid: SudokuGrid, pos: number, rng: () => number): boolean {
-  if (pos === 81) return true;
-  const nums = shuffle(rng, [1, 2, 3, 4, 5, 6, 7, 8, 9]);
-  for (const n of nums) {
-    if (canPlace(grid, pos, n)) {
-      grid[pos] = n;
-      if (fillSolved(grid, pos + 1, rng)) return true;
+function fillSolved(grid: SudokuGrid, pos: number, rng: () => number, spec: SudokuSpec): boolean {
+  if (pos === grid.length) return true;
+  const digits = shuffle(rng, Array.from({ length: spec.size }, (_, index) => index + 1));
+  for (const digit of digits) {
+    if (canPlace(grid, pos, digit, spec)) {
+      grid[pos] = digit;
+      if (fillSolved(grid, pos + 1, rng, spec)) return true;
       grid[pos] = 0;
     }
   }
@@ -161,31 +182,41 @@ function fillSolved(grid: SudokuGrid, pos: number, rng: () => number): boolean {
 export function sudokuPuzzle(seed: string, difficulty: Difficulty): SudokuGrid {
   const preset = sudokuPresetPuzzle(seed);
   if (preset) return preset;
+  const spec = sudokuSpecForSize(sudokuSizeFromSeed(seed));
   const rng = createRng(`sudoku:${difficulty}:${seed}`);
-  const grid: SudokuGrid = new Array(81).fill(0);
-  fillSolved(grid, 0, rng);
-  const holes = shuffle(rng, Array.from({ length: 81 }, (_, i) => i)).slice(0, 81 - GIVENS[difficulty]);
+  const cellCount = spec.size * spec.size;
+  const grid: SudokuGrid = new Array(cellCount).fill(0);
+  fillSolved(grid, 0, rng, spec);
+  const holes = shuffle(rng, Array.from({ length: cellCount }, (_, i) => i))
+    .slice(0, cellCount - GIVENS[spec.size][difficulty]);
   for (const pos of holes) grid[pos] = 0;
   return grid;
 }
 
-/** 终盘是否为合法数独（每行/列/宫恰为 1–9） */
+/** 终盘是否为合法数独（每行、列、宫恰好包含 1–N）。 */
 export function isSolvedGrid(grid: SudokuGrid): boolean {
-  if (grid.length !== 81) return false;
+  const spec = sudokuSpecForGrid(grid);
+  if (!spec) return false;
+  const boxesPerRow = spec.size / spec.boxColumns;
   const groups = [
-    (g: number, i: number) => g * 9 + i,                                          // 行
-    (g: number, i: number) => i * 9 + g,                                          // 列
-    (g: number, i: number) => boxStart(Math.floor(g / 3) * 27 + (g % 3) * 3) + Math.floor(i / 3) * 9 + (i % 3), // 宫
+    (group: number, index: number) => group * spec.size + index,
+    (group: number, index: number) => index * spec.size + group,
+    (group: number, index: number) => {
+      const boxRow = Math.floor(group / boxesPerRow) * spec.boxRows;
+      const boxColumn = (group % boxesPerRow) * spec.boxColumns;
+      return (boxRow + Math.floor(index / spec.boxColumns)) * spec.size
+        + boxColumn + (index % spec.boxColumns);
+    },
   ];
   for (const index of groups) {
-    for (let g = 0; g < 9; g++) {
+    for (let group = 0; group < spec.size; group++) {
       let mask = 0;
-      for (let i = 0; i < 9; i++) {
-        const v = grid[index(g, i)];
-        if (!Number.isInteger(v) || v < 1 || v > 9) return false;
+      for (let item = 0; item < spec.size; item++) {
+        const v = grid[index(group, item)];
+        if (!Number.isInteger(v) || v < 1 || v > spec.size) return false;
         mask |= 1 << v;
       }
-      if (mask !== 0b1111111110) return false;
+      if (mask !== (1 << (spec.size + 1)) - 2) return false;
     }
   }
   return true;
@@ -201,15 +232,16 @@ export function isSudokuValuePossible(
   index: number,
   digit: number,
 ): boolean {
+  const spec = sudokuSpecForGrid(puzzle);
   if (
-    puzzle.length !== 81
-    || values.length !== 81
+    !spec
+    || values.length !== puzzle.length
     || !Number.isInteger(index)
     || index < 0
-    || index >= 81
+    || index >= puzzle.length
     || !Number.isInteger(digit)
     || digit < 1
-    || digit > 9
+    || digit > spec.size
     || puzzle[index] !== 0
   ) {
     return false;
@@ -223,7 +255,8 @@ export function isSudokuValuePossible(
 
 /** 服务端校验：proof 是与该 seed 题面一致的合法终盘（GameDef.verify） */
 export function verifySudoku(seed: string, difficulty: Difficulty, proof: unknown): boolean {
-  if (!Array.isArray(proof) || proof.length !== 81) return false;
+  const size = sudokuSizeFromSeed(seed);
+  if (!Array.isArray(proof) || proof.length !== size * size) return false;
   const grid = proof as SudokuGrid;
   if (!isSolvedGrid(grid)) return false;
   const puzzle = sudokuPuzzle(seed, difficulty);

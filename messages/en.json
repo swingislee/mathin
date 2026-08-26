@@ -205,7 +205,16 @@
       "medium": "Knight",
       "hard": "King"
     },
+    "sudokuSizeLabel": "Board size",
+    "sudokuSize": {
+      "4": "4×4",
+      "6": "6×6",
+      "9": "9×9"
+    },
+    "sudokuVariantTitle": "Sudoku · {size}",
     "pickDifficulty": "Pick a difficulty — you can restart anytime.",
+    "pickSudokuSetup": "Pick a board size and difficulty — you can restart anytime.",
+    "sudokuSmallPractice": "The 4×4 and 6×6 boards are practice modes and are not ranked yet.",
     "rules": "Rules & tips",
     "relatedTerms": "Related concepts: ",
     "submitting": "Submitting score…",
@@ -224,7 +233,7 @@
     "noRanks": "No one has finished this difficulty yet — the throne awaits.",
     "erase": "Erase",
     "sudokuBoard": {
-      "boardLabel": "Sudoku board, rows A through I and columns 1 through 9",
+      "boardLabel": "{size} by {size} Sudoku board, rows A through {lastRow} and columns 1 through {size}",
       "entryMode": "Entry mode",
       "candidateMode": "Notes",
       "valueMode": "Fill",
@@ -255,8 +264,8 @@
     "items": {
       "sudoku": {
         "name": "Sudoku",
-        "desc": "Fill the 9×9 board with 1–9 so no row, column or box repeats.",
-        "rules": "Each row, column and 3×3 box must contain the digits 1–9 exactly once. Choose a digit, then apply it to one or more empty cells; switch between Candidates and Fill to choose how it is recorded. Rows are A–I and columns are 1–9."
+        "desc": "Choose a 4×4, 6×6 or 9×9 board so no row, column or box repeats.",
+        "rules": "The 4×4 board uses 2×2 boxes, the 6×6 board uses 2×3 boxes, and the 9×9 board uses 3×3 boxes. Every row, column and box must contain 1 through the board size exactly once. Choose a digit, then apply it to one or more empty cells; switch between Candidates and Fill to choose how it is recorded."
       },
       "kakuro": {
         "name": "Kakuro",

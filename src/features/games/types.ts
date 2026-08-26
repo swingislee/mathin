@@ -7,7 +7,7 @@ export type Difficulty = "easy" | "medium" | "hard";
 export type SudokuHighlightTool = "cell" | "box" | "row" | "column" | "digit";
 
 export interface SudokuCellHighlightRegion {
-  /** 0–8，均为规范化后的闭区间边界。 */
+  /** 0–(N-1)，均为规范化后的闭区间边界。 */
   top: number;
   left: number;
   bottom: number;
@@ -15,7 +15,7 @@ export interface SudokuCellHighlightRegion {
 }
 
 export interface SudokuTeachingHighlights {
-  /** 0–8：九宫编号，按从左到右、从上到下排列。 */
+  /** 0–(N-1)：宫编号，按从左到右、从上到下排列。 */
   boxes: number[];
   /** 0–8：整行。 */
   rows: number[];
@@ -28,9 +28,9 @@ export interface SudokuTeachingHighlights {
 }
 
 export interface SudokuInvalidAttempt {
-  /** 被拒绝的格子，0–80、行优先。 */
+  /** 被拒绝的格子，0–(N²-1)、行优先。 */
   index: number;
-  /** 被拒绝的数字，1–9。 */
+  /** 被拒绝的数字，1–N。 */
   digit: number;
   /** 单调递增事件号；课堂跟随端据此只播放一次瞬时反馈。 */
   sequence: number;
@@ -43,7 +43,7 @@ export interface SudokuInvalidAttempt {
 export interface GameMirrorState {
   values: number[];
   selected: number | null;
-  /** 数独专用：每格用 bit 1–9 表示候选数；其他游戏省略。 */
+  /** 数独专用：每格用 bit 1–N 表示候选数；其他游戏省略。 */
   candidates?: number[];
   /** 数独专用：正常输入数字，不等同于 M3 的可选突出数字。 */
   inputDigit?: number | null;
@@ -58,7 +58,7 @@ export interface GameMirrorState {
 }
 
 export interface GameBoardProps {
-  /** 题目种子，题面由各游戏用 createRng(seed) 确定性推导（服务端校验时同样推导） */
+  /** 题目种子，题面由各游戏确定性推导；数独规格也兼容编码在此字段中。 */
   seed: string;
   difficulty: Difficulty;
   /** 完赛后棋盘进入只读态 */
