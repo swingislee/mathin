@@ -15,7 +15,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { cn } from "@/lib/utils";
 import type { GameBoardProps, GameMirrorState, SudokuHighlightTool } from "../types";
-import { isSolvedGrid, sudokuPuzzle } from "./logic";
+import { isSolvedGrid, sudokuPuzzle, type SudokuGrid } from "./logic";
 import styles from "./SudokuBoard.module.css";
 import {
   clearSudokuTeachingHighlights,
@@ -64,10 +64,28 @@ interface SudokuDragSelection {
   endIndex: number;
 }
 
-export function SudokuBoard({ seed, difficulty, finished, onComplete, mirror, onMirror, readOnly }: GameBoardProps) {
+export interface SudokuBoardProps extends GameBoardProps {
+  /** Optional teacher-authored puzzle; generated game routes leave it unset. */
+  puzzle?: SudokuGrid;
+}
+
+export function SudokuBoard({
+  seed,
+  difficulty,
+  finished,
+  onComplete,
+  mirror,
+  onMirror,
+  readOnly,
+  puzzle: authoredPuzzle,
+}: SudokuBoardProps) {
   const t = useTranslations("games.sudokuBoard");
-  const puzzleKey = `${seed}:${difficulty}`;
-  const puzzle = useMemo(() => sudokuPuzzle(seed, difficulty), [seed, difficulty]);
+  const authoredPuzzleKey = authoredPuzzle?.join("") ?? null;
+  const puzzleKey = authoredPuzzleKey ? `authored:${authoredPuzzleKey}` : `${seed}:${difficulty}`;
+  const puzzle = useMemo(
+    () => authoredPuzzle ? [...authoredPuzzle] : sudokuPuzzle(seed, difficulty),
+    [authoredPuzzle, difficulty, seed],
+  );
   const [state, setState] = useState<SudokuBoardState>(() => createSudokuBoardState(puzzle, mirror));
   const [appliedMirror, setAppliedMirror] = useState<GameMirrorState | null | undefined>(mirror);
   const [appliedPuzzleKey, setAppliedPuzzleKey] = useState(puzzleKey);

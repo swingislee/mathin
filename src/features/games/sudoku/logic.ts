@@ -26,7 +26,8 @@ function canPlace(grid: SudokuGrid, pos: number, n: number) {
   return true;
 }
 
-function isValidPartialGrid(grid: SudokuGrid): boolean {
+export function isValidPartialSudokuGrid(values: SudokuGrid): boolean {
+  const grid = [...values];
   if (grid.length !== 81) return false;
   for (let pos = 0; pos < 81; pos++) {
     const value = grid[pos];
@@ -43,7 +44,7 @@ function isValidPartialGrid(grid: SudokuGrid): boolean {
 /** 使用最少候选优先的回溯，返回与当前局面相容的一份确定性终盘。 */
 export function solveSudokuGrid(values: SudokuGrid): SudokuGrid | null {
   const grid = [...values];
-  if (!isValidPartialGrid(grid)) return null;
+  if (!isValidPartialSudokuGrid(grid)) return null;
 
   function search(): boolean {
     let target = -1;
@@ -71,6 +72,69 @@ export function solveSudokuGrid(values: SudokuGrid): SudokuGrid | null {
   }
 
   return search() ? [...grid] : null;
+}
+
+/** Counts solutions deterministically and stops at `limit` (normally two). */
+export function countSudokuSolutions(values: SudokuGrid, limit = 2): number {
+  if (!Number.isInteger(limit) || limit < 1) return 0;
+  const grid = [...values];
+  if (!isValidPartialSudokuGrid(grid)) return 0;
+  let count = 0;
+
+  function search(): void {
+    if (count >= limit) return;
+    let target = -1;
+    let targetCandidates: number[] = [];
+
+    for (let pos = 0; pos < 81; pos++) {
+      if (grid[pos] !== 0) continue;
+      const candidates = Array.from({ length: 9 }, (_, index) => index + 1)
+        .filter((digit) => canPlace(grid, pos, digit));
+      if (candidates.length === 0) return;
+      if (target === -1 || candidates.length < targetCandidates.length) {
+        target = pos;
+        targetCandidates = candidates;
+        if (candidates.length === 1) break;
+      }
+    }
+
+    if (target === -1) {
+      count += 1;
+      return;
+    }
+    for (const digit of targetCandidates) {
+      grid[target] = digit;
+      search();
+      if (count >= limit) break;
+    }
+    grid[target] = 0;
+  }
+
+  search();
+  return count;
+}
+
+export type SudokuPuzzleAnalysis =
+  | { status: "conflict" | "unsolvable"; solutionCount: 0; solution: null }
+  | { status: "multiple"; solutionCount: 2; solution: null }
+  | { status: "unique"; solutionCount: 1; solution: SudokuGrid };
+
+/** Server-authoritative analysis persisted beside every teacher-authored puzzle. */
+export function analyzeSudokuPuzzle(values: SudokuGrid): SudokuPuzzleAnalysis {
+  if (!isValidPartialSudokuGrid(values)) {
+    return { status: "conflict", solutionCount: 0, solution: null };
+  }
+  const solutionCount = countSudokuSolutions(values, 2);
+  if (solutionCount === 0) {
+    return { status: "unsolvable", solutionCount: 0, solution: null };
+  }
+  if (solutionCount > 1) {
+    return { status: "multiple", solutionCount: 2, solution: null };
+  }
+  const solution = solveSudokuGrid(values);
+  return solution
+    ? { status: "unique", solutionCount: 1, solution }
+    : { status: "unsolvable", solutionCount: 0, solution: null };
 }
 
 function hasSudokuSolution(values: SudokuGrid): boolean {

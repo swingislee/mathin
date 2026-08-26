@@ -45,6 +45,8 @@ export interface DocStageProps {
   onNodeSelect?: (nodePath: string) => void;
   /** Studio 选择画布背景资源；只有存在背景 binding 时才会触发。 */
   onBackgroundSelect?: () => void;
+  /** Composition overlays keep the immutable source page visible underneath. */
+  transparentCanvas?: boolean;
 }
 
 export interface DocVideoCtl {
@@ -501,6 +503,7 @@ export default function DocStage({
   h5PointerBridge,
   onNodeSelect,
   onBackgroundSelect,
+  transparentCanvas = false,
 }: DocStageProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -629,7 +632,7 @@ export default function DocStage({
           transform: `scale(${scale})`,
           transformOrigin: "top left",
           overflow: "hidden",
-          background: canvas.backgroundColor ?? "#fff",
+          background: transparentCanvas ? "transparent" : (canvas.backgroundColor ?? "#fff"),
           visibility: scale > 0 ? "visible" : "hidden",
         }}
       >

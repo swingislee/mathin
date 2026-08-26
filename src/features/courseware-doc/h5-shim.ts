@@ -22,6 +22,32 @@ const HTML_EXTENSIONS = new Set(["html", "htm"]);
 export const H5_IMMUTABLE_CACHE = "public, max-age=31536000, immutable";
 export const H5_SANDBOX_CSP = "sandbox allow-scripts allow-forms allow-pointer-lock allow-modals";
 
+/** Single-file teacher H5: scripts/styles stay inline and every network exit is closed. */
+export const MICROCOURSE_H5_CSP = [
+  "default-src 'none'",
+  "script-src 'unsafe-inline'",
+  "style-src 'unsafe-inline'",
+  "img-src data: blob:",
+  "media-src data: blob:",
+  "font-src data:",
+  "connect-src 'none'",
+  "form-action 'none'",
+  "frame-src 'none'",
+  "child-src 'none'",
+  "object-src 'none'",
+  "base-uri 'none'",
+  "navigate-to 'none'",
+  "sandbox allow-scripts",
+].join("; ");
+
+export function microcourseH5SecurityHeaders(): Record<string, string> {
+  return {
+    "Content-Security-Policy": MICROCOURSE_H5_CSP,
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "no-referrer",
+  };
+}
+
 export function h5HtmlSecurityHeaders(requestUrl: string): Record<string, string> {
   const entrypoint = new URL(requestUrl).searchParams.get("mathin_h5_runtime") === H5_POINTER_RUNTIME_VERSION;
   return {

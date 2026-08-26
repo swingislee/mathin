@@ -4,6 +4,7 @@ import { PAGE_DOC_VERSION, type DocNode, type PageDoc } from "@/features/coursew
 import { getGame } from "@/features/games/registry";
 import { getTool } from "@/features/tools/registry";
 import type { H5PointerBridgeStatus } from "@/features/courseware-doc/h5-pointer-protocol";
+import { isMicrocoursePageDoc } from "@/features/courseware-doc/microcourse-schema";
 import type { CoursewarePage } from "../types";
 import type { ClassroomInputCapability } from "./router";
 import {
@@ -95,6 +96,14 @@ export function isAuditedNativeCoursewareDoc(
 
 export function countCoursewareH5Frames(doc: CoursewareDoc | null | undefined): number {
   if (!doc) return 0;
+  if (isMicrocoursePageDoc(doc)) {
+    if (doc.mode === "h5") return 1;
+    if (doc.mode === "composition") {
+      return countCoursewareH5Frames(doc.source?.doc)
+        + countCoursewareH5Frames(doc.overlay);
+    }
+    return 0;
+  }
   if (isAixuexiPageDoc(doc)) {
     return doc.nodes.reduce((total, node) => total + Number(Boolean(node.embeddedH5)), 0);
   }
@@ -136,6 +145,24 @@ export function resolveClassroomRendererInputProfile(
   }
   if (page.type === "doc") {
     if (!doc) return PROVISIONAL_PROFILE;
+    if (isMicrocoursePageDoc(doc)) {
+      if (countCoursewareH5Frames(doc) > 0) {
+        if (h5BridgeStatus === "pending") return PROVISIONAL_PROFILE;
+        return h5BridgeStatus === "ready"
+          ? providerProfile("document:microcourse:h5", CLASSROOM_PARTITIONED_INPUT_PROVIDER_V1)
+          : UNSUPPORTED_PROFILE;
+      }
+      if (doc.mode === "sudoku") {
+        const provider = getGame("sudoku")?.classroomInput;
+        return provider
+          ? providerProfile("document:microcourse:sudoku", provider)
+          : UNSUPPORTED_PROFILE;
+      }
+      return providerProfile(
+        "document:microcourse:composition",
+        CLASSROOM_PARTITIONED_INPUT_PROVIDER_V1,
+      );
+    }
     if (isAixuexiPageDoc(doc)) {
       if (countCoursewareH5Frames(doc) > 0) {
         if (h5BridgeStatus === "pending") return PROVISIONAL_PROFILE;
