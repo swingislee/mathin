@@ -1,5 +1,6 @@
 "use client";
 
+import { Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -39,8 +40,7 @@ export function ClassroomSmartInputToggle({
       aria-label={label}
       disabled={!available}
       className={cn(
-        "h-11 w-28 shrink-0 justify-between gap-2 rounded-xl border border-line bg-card/70 px-3 text-ink shadow-none hover:border-crater/60 hover:bg-moon/25 disabled:opacity-55",
-        active && "border-leaf-deep/35 bg-leaf/15 hover:bg-leaf/20",
+        "h-11 w-28 shrink-0 justify-between gap-2 rounded-none border-0 bg-transparent px-2 text-muted shadow-none hover:bg-transparent hover:text-ink disabled:opacity-55",
         className,
       )}
       data-classroom-rail-group="input"
@@ -49,12 +49,20 @@ export function ClassroomSmartInputToggle({
       title={hint}
       onClick={() => onChange(!enabled)}
     >
-      <span className="whitespace-nowrap text-xs font-medium">{t("inputModeSmart")}</span>
+      <span
+        className={cn(
+          "flex items-center gap-1.5 whitespace-nowrap text-xs font-medium transition-colors",
+          active && "text-rose",
+        )}
+      >
+        <Sparkles aria-hidden size={15} />
+        {t("inputModeSmart")}
+      </span>
       <span
         aria-hidden
         className={cn(
           "relative h-5 w-9 shrink-0 rounded-full bg-muted/30 p-0.5 transition-colors",
-          active && "bg-leaf-deep",
+          active && "bg-rose",
         )}
       >
         <span
