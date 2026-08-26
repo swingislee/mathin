@@ -27,6 +27,16 @@ const DEFAULT_SSH_HOST = "xiaomi";
 const CATALOG_VERSION_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const RESUMABLE_UPLOAD_BYTES = 6 * 1024 * 1024;
 const storageDirectoryCache = new Map();
+const verifiedFileCache = new Map();
+const sharedNdjsonCache = new Map();
+const jsonFileCache = new Map();
+const SHARED_NDJSON_FILES = new Set([
+  "lectures.ndjson",
+  "asset-objects.ndjson",
+  "candidates.ndjson",
+  "usages.ndjson",
+  "adaptations.ndjson",
+]);
 
 // 白名单按 exportId 2490b13a 全量包的标签/属性清单对齐（镜像端已做保留呈现属性的
 // 黑名单消毒，doc 带 sanitized: true）。这里只做无损门禁：消毒结果与原文不一致即失败，
@@ -104,9 +114,22 @@ function parseJsonLine(line, file, lineNo) {
 }
 
 async function readNdjson(root, relativePath) {
-  const text = await readFile(resolveInside(root, relativePath), "utf8");
-  if (!text.trim()) return [];
-  return text.trim().split(/\r?\n/).map((line, index) => parseJsonLine(line, relativePath, index + 1));
+  const file = resolveInside(root, relativePath);
+  const load = async () => {
+    const text = await readFile(file, "utf8");
+    if (!text.trim()) return [];
+    return text.trim().split(/\r?\n/).map((line, index) => parseJsonLine(line, relativePath, index + 1));
+  };
+  if (!SHARED_NDJSON_FILES.has(relativePath)) return load();
+  if (!sharedNdjsonCache.has(file)) sharedNdjsonCache.set(file, load());
+  return sharedNdjsonCache.get(file);
+}
+
+async function readJsonCached(file) {
+  if (!jsonFileCache.has(file)) {
+    jsonFileCache.set(file, readFile(file, "utf8").then((text) => JSON.parse(text)));
+  }
+  return jsonFileCache.get(file);
 }
 
 export function resolveInside(root, relativePath) {
@@ -136,8 +159,13 @@ async function assertFileHash(root, manifestFiles, relativePath) {
   const expected = manifestFiles.get(relativePath);
   if (!expected) fail(`manifest does not list ${relativePath}`);
   const file = resolveInside(root, relativePath);
-  const actual = await sha256File(file);
-  if (actual !== expected.sha256) fail(`manifest hash mismatch for ${relativePath}`);
+  const key = `${file}\0${expected.sha256}`;
+  if (!verifiedFileCache.has(key)) {
+    verifiedFileCache.set(key, sha256File(file).then((actual) => {
+      if (actual !== expected.sha256) fail(`manifest hash mismatch for ${relativePath}`);
+    }));
+  }
+  return verifiedFileCache.get(key);
 }
 
 function validateLaunchQuery(value, label) {
@@ -362,7 +390,7 @@ function storagePathForObject(object) {
 }
 
 export async function loadImportPlan({ packageRoot, coursewareId, catalogVersionSlug = null }) {
-  const manifest = JSON.parse(await readFile(resolveInside(packageRoot, "manifest.json"), "utf8"));
+  const manifest = await readJsonCached(resolveInside(packageRoot, "manifest.json"));
   if (manifest?.schemaVersion !== PACKAGE_SCHEMA_VERSION) fail(`unsupported package schema ${manifest?.schemaVersion ?? "<missing>"}`);
   assertString(manifest.exportId, "manifest.exportId");
   if (!Array.isArray(manifest.files)) fail("manifest.files must be an array");
@@ -440,7 +468,7 @@ export async function loadImportPlan({ packageRoot, coursewareId, catalogVersion
   for (const hash of h5Hashes) {
     const relativePath = `h5-manifests/${hash}.json`;
     await assertFileHash(packageRoot, manifestFiles, relativePath);
-    const h5 = JSON.parse(await readFile(resolveInside(packageRoot, relativePath), "utf8"));
+    const h5 = await readJsonCached(resolveInside(packageRoot, relativePath));
     if (h5?.schemaVersion !== "mathin-h5-manifest-v1" || h5.packageHash !== hash || !Array.isArray(h5.files)) {
       fail(`invalid H5 manifest for ${hash}`);
     }
@@ -465,7 +493,7 @@ export async function loadImportPlan({ packageRoot, coursewareId, catalogVersion
     const profilePath = `h5-input-profiles/${hash}.json`;
     if (manifestFiles.has(profilePath)) {
       await assertFileHash(packageRoot, manifestFiles, profilePath);
-      const profile = JSON.parse(await readFile(resolveInside(packageRoot, profilePath), "utf8"));
+      const profile = await readJsonCached(resolveInside(packageRoot, profilePath));
       h5InputProfiles.set(hash, normalizeH5InputProfile(profile, hash));
     }
   }
@@ -1366,14 +1394,14 @@ async function verifyLocalFile(file, expectedHash, expectedByteCount, label) {
   if (await sha256File(file) !== expectedHash) fail(`${label} SHA-256 mismatch`);
 }
 
-async function uploadPlan(plan, storeRoot, client, uploadConfig) {
+async function uploadPlan(plan, storeRoot, client, uploadConfig, quiet = false) {
   const result = {
     cwObjects: { uploaded: 0, existing: 0 },
     cwH5: { uploaded: 0, existing: 0, manifestsUploaded: 0, manifestsExisting: 0 },
   };
   const normalObjects = plan.objects.filter((object) => object.kind !== "h5");
   for (const [index, object] of normalObjects.entries()) {
-    if (index === 0 || (index + 1) % 25 === 0 || index + 1 === normalObjects.length) {
+    if (!quiet && (index === 0 || (index + 1) % 25 === 0 || index + 1 === normalObjects.length)) {
       process.stderr.write(`CW_IMPORT: cw-objects ${index + 1}/${normalObjects.length}\n`);
     }
     const objectRoot = object.storeScope === "package" ? plan.packageRoot : storeRoot;
@@ -1384,7 +1412,7 @@ async function uploadPlan(plan, storeRoot, client, uploadConfig) {
   }
   const h5Packages = [...plan.h5Manifests];
   for (const [packageIndex, [hash, manifest]] of h5Packages.entries()) {
-    process.stderr.write(`CW_IMPORT: cw-h5 package ${packageIndex + 1}/${h5Packages.length}\n`);
+    if (!quiet) process.stderr.write(`CW_IMPORT: cw-h5 package ${packageIndex + 1}/${h5Packages.length}\n`);
     const manifestFile = resolveInside(plan.packageRoot, `h5-manifests/${hash}.json`);
     const manifestState = await uploadOne(client, uploadConfig, "cw-h5", `packages/${hash}/__mathin_manifest.json`, manifestFile, "application/json", "31536000");
     result.cwH5[`manifests${manifestState[0].toUpperCase()}${manifestState.slice(1)}`] += 1;
@@ -1489,7 +1517,7 @@ export async function importCourseware(options) {
   const key = writeEnvironment.SUPABASE_SECRET_KEY;
   if (!key) fail("SUPABASE_SECRET_KEY is required for Storage upload");
   const client = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
-  const storage = await uploadPlan(plan, path.resolve(options.storeRoot), client, { url: resumableUrl, key });
+  const storage = await uploadPlan(plan, path.resolve(options.storeRoot), client, { url: resumableUrl, key }, options.quiet);
   const database = JSON.parse(runSql(buildImportSql(plan), options));
   const problems = [];
   if (database.bindings.conflicts > 0) problems.push(`${database.bindings.conflicts} binding conflicts`);

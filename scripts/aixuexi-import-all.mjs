@@ -125,6 +125,7 @@ export async function importAll(options) {
         databaseUrl: options.databaseUrl,
         sshHost: options.sshHost,
         allowProductionTarget: false,
+        quiet: true,
       });
     } else {
       const child = spawnSync(process.execPath, args, {
