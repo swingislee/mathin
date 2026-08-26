@@ -8,7 +8,7 @@
 >
 > **SML 暂停位置**：`SML-0 · 合同与金标冻结`；空间数学可按独立权限或 Feature Flag 并行，不进入 R1-Live Gate。
 >
-> **当前运行状态**：Gate 1 已通过，Gate 2 仍等待正式教师点名持久再读与权限对照。Xiaomi 已固定为生产目标；当前数据库 ledger=`193`、head=`20260825000800_account_center_profile`，应用 current/previous=`20260825-085754` / `8c303a2…` 与 `20260825-072801` / `72d8127…`。课堂 Stage A 的新鲜 PostgreSQL pre-change 备份、migration `20260825000700` 和暗发布已完成；Stage B1 的 board checkpoint/input 为 version 2 / true，layout/H5 保持 version 1 / false，待产品负责人真实测试课堂验收。账号、班级、课次、报名、点名、Storage object 和错误计数在发布及启用瞬间无漂移。
+> **当前运行状态**：Gate 1 已通过，Gate 2 仍等待正式教师点名持久再读与权限对照。Xiaomi 当前数据库 ledger=`193`、head=`20260825000800_account_center_profile`，应用 current/previous=`20260825-085754` / `8c303a2…` 与 `20260825-072801` / `72d8127…`。课堂 Stage A 与 B1 已通过，生产已有 checkpoint version/chunk/head=`1/1/1`；Stage B2 layout 已启用，board/input/layout 为 version 2 / true，H5 为 version 1 / false，并待人工验收。账号、班级、课次、报名、点名、Storage object 和错误计数无漂移。
 >
 > **当前 P0 状态**：2026-08-25 产品负责人确认内部教师更习惯手机号注册登录。`手机号或邮箱 + password` 已部署生产：手机号只接受绑定具体号码的一次性员工邀请，不发送/伪造验证码，不开放全局邀请码手机号注册，账号仍以单一 `auth.users.id` 为主体。机器 postflight 已通过；真实教师尚未消费手机号邀请并完成 password 登录，因此状态为 `DEPLOYED / PENDING USER ACCEPTANCE`。
 >
@@ -114,7 +114,7 @@ Gate 1 已按以下顺序关闭：
 - 实现后先运行覆盖变更风险的最窄机器检查。UI/交互执行受影响测试与必要静态检查；数据库/API、鉴权、共享模块或发布边界变更增加相应集成、RLS、安全或构建检查。
 - 机器检查通过后交由产品负责人在开发端做初步验收。只有目标旅程可用、无已知 P0/核心 P1、双语与失败状态符合该功能范围，并得到明确“可上生产”的确认，才进入生产候选。
 - 可扩展互动使用版本化 capability provider 和统一 conformance：普通 renderer 复用既有输入原语时不逐个建立人工里程碑；只有新增输入原语、修改路由/输入所有权算法、跨 iframe 协议或真实设备回归才触发新的人工输入 Gate。显式 provider 声明与未知能力 fail-closed 仍是安全边界。
-- 课堂体验升级 M0–M4 已于 2026-08-25 在本机开发目标完成产品负责人整体验收，已验收应用基线为 `95ed9f1`；M5 候选 `8c303a2` 随后通过工程、隔离数据库、课堂专项 SQL 与本地浏览器 Gate。Xiaomi Stage A 已完成，Stage B1 只启用 board checkpoint/input，layout/H5 仍关闭并等待产品负责人真实测试课堂验收；一旦产生 v2 数据不得直接切回不认识 v2 的旧 bundle。
+- 课堂体验升级 M0–M4 已于 2026-08-25 在本机开发目标完成产品负责人整体验收；M5 候选 `8c303a2` 完成 Stage A 后，产品负责人于 2026-08-26 确认 Stage B1 通过。Stage B2 已启用 layout，H5 仍关闭并等待整体布局验收；生产已有 v2 checkpoint，不得直接切回不认识 v2 的旧 bundle。
 - 生产部署以独立可回退提交为单位，记录精确 commit/migration 和目标；发布前核对生产指纹、最近可用备份、current/previous、迁移/数据影响与回退点，发布后核对健康、错误增量、核心 Smoke 和受影响业务不变量。未完成 postflight 的功能只记为“已部署待验收”，不能记为生产通过。
 - 开发新功能不自动成为 Gate 2 blocker。只有它修改共享登录、授权、班级、课次、课堂或点名链路时，才追加对应 R1-Live Smoke；失败时先回退或关闭该功能，保持单老师试用可继续。
 

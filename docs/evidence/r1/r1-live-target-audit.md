@@ -421,22 +421,22 @@ replacement artifact 只复制首份 manifest 的 4 个 protected 条目，并�
 | `artifact_url_or_path`, `artifact_hash` | release `/home/swing/services/mathin/releases/20260825-072801/release.json`；migration SHA-256 `564b290997cee8e2e4599530f2380acda879129783f9e4396323b7e44f25dc37`；部署 archive SHA-256 `2af10cd0390ff3c7cbe6ab4e057e56b98ae7a8bf843707f100e43f6d01a0fc76` |
 | `retention`, `access_roles`, `failure_ticket` | Git、migration 与 immutable current/previous 按现有策略保留；仓库维护者/Xiaomi 运维角色；账号中心页面待产品人工验收 |
 
-#### 4.2.11 2026-08-25 课堂 M5 Stage A 与 Stage B1
+#### 4.2.11 2026-08-25～26 课堂 M5 Stage A、Stage B1 与 Stage B2
 
 产品负责人在了解四个课堂开关后明确要求“直接推进到Stage B”。执行前重新确认 Xiaomi、生产域名、数据库指纹、current/previous、迁移缺口、四个 version 1 / false 开关、业务计数与最近错误均无漂移；唯一进行中课次属于 `purpose=test`，没有 production 课堂进行中。新建 PostgreSQL-only pre-change 备份并验证 dump、TOC 与 SHA，不归档 Storage、不清理旧备份。`20260825000700_classroom_learning_fill_bulk` 以 `supabase_admin` 完整执行并回滚，独立确认零残留后正式登记并刷新 PostgREST schema cache；匿名探针得到 401 且不再是 `PGRST202`。
 
-应用候选 `8c303a2` 经发布器固定的本地 lint/typecheck/build 与 Xiaomi production build 后原子切换；四开关关闭 postflight 通过。Stage B1 随后只启用 board checkpoint/input。第一次写事务因 `clock_timestamp()` 晚于事务求值时间被提交前断言拦截，独立核查确认 version/event 零残留；使用统一事务时间后一次提交成功，layout/H5 继续关闭。
+应用候选 `8c303a2` 经发布器固定的本地 lint/typecheck/build 与 Xiaomi production build 后原子切换；四开关关闭 postflight 通过。Stage B1 随后只启用 board checkpoint/input。第一次写事务因 `clock_timestamp()` 晚于事务求值时间被提交前断言拦截，独立核查确认 version/event 零残留；使用统一事务时间后一次提交成功。2026-08-26 产品负责人确认 B1 通过，生产观测到 checkpoint version/chunk/head=`1/1/1`；Stage B2 再单独启用 layout，H5 继续关闭。
 
 | 证据字段 | 值 |
 | --- | --- |
-| `gate_id`, `domain`, `result` | `CLASSROOM-M5`；课堂体验升级；Stage A `PASS`，Stage B1 `DEPLOYED / PENDING USER ACCEPTANCE` |
-| `measured_value`, `threshold` | 新备份=`249637390 bytes` / TOC `3761` / SHA-256 `5654c1ec…31e8`；ledger `192→193`、migration checksum=`b6ffca69…84e3d`；current/previous=`20260825-085754` / `8c303a2…` 与 `20260825-072801` / `72d8127…`。board/input=`v2/true`，layout/H5=`v1/false`；domain event=`595`，checkpoint/star/learning result=`0/0/0`，错误=`1949` 且最近时间不变 |
+| `gate_id`, `domain`, `result` | `CLASSROOM-M5`；课堂体验升级；Stage A/B1 `PASS`，Stage B2 `DEPLOYED / PENDING USER ACCEPTANCE` |
+| `measured_value`, `threshold` | 新备份=`249637390 bytes` / TOC `3761` / SHA-256 `5654c1ec…31e8`；ledger `192→193`、migration checksum=`b6ffca69…84e3d`；current/previous=`20260825-085754` / `8c303a2…` 与 `20260825-072801` / `72d8127…`。B1 人工通过后 checkpoint version/chunk/head=`1/1/1`；board/input/layout=`v2/true`，H5=`v1/false`；domain event=`596`，star/learning result=`0/0`，错误=`1949` 且最近时间不变 |
 | `commit_sha`, `migration_head`, `environment` | `8c303a21574899728826984181028971dfc77742`；head=`20260825000800_account_center_profile`，账本另含较早编号 `20260825000700_classroom_learning_fill_bulk`；Xiaomi / production；数据库指纹 `10e3…1a0c` |
-| `dataset_manifest` | auth/profile/学生/班级/课次/报名/点名=`14/14/5/3/16/1/0`、Storage object=`123602`；Stage B1 只新增两条 feature flag version 与两条 feature flag 审计事件 |
-| `started_at`, `finished_at`, `actor`, `approver` | 2026-08-25（Asia/Shanghai）；release `builtAt=2026-08-25T08:59:10Z`；Codex；`swingislee`（“直接推进到Stage B”） |
-| `command_or_runbook` | 只读目标/备份/release/账本/flags/计数 preflight → PostgreSQL-only 备份 → migration rollback/零残留/formal/schema cache → `publish-mathin-xiaomi.ps1 -Action Publish` → Stage A postflight → board/input 版本化启用与独立 postflight；未造数、未改账号/业务/Storage、未重启 Supabase |
+| `dataset_manifest` | auth/profile/学生/班级/课次/报名/点名=`14/14/5/3/16/1/0`、Storage object=`123602`；Stage B1/B2 合计只新增三条 feature flag version 与三条 feature flag 审计事件 |
+| `started_at`, `finished_at`, `actor`, `approver` | 2026-08-25～26（Asia/Shanghai）；release `builtAt=2026-08-25T08:59:10Z`；Codex；`swingislee`（“直接推进到Stage B”；“B1通过”） |
+| `command_or_runbook` | 只读目标/备份/release/账本/flags/计数 preflight → PostgreSQL-only 备份 → migration rollback/零残留/formal/schema cache → `publish-mathin-xiaomi.ps1 -Action Publish` → Stage A postflight → board/input 版本化启用 → B1 人工验收/只读写入复核 → layout 单独版本化启用；每段均独立 postflight，未造数、未改账号/业务/Storage、未重启 Supabase |
 | `artifact_url_or_path`, `artifact_hash` | release `/home/swing/services/mathin/releases/20260825-085754/release.json`；备份 `/mnt/openlist-disk/Backups/Mathin/mathin-db-prechange-20260825T085233Z-classroom-m5-8c303a2/`；migration SHA-256 `b6ffca69ffeb99f4001f120af3bf8b60fec43ff7fe69209c765939400f184e3d` |
-| `retention`, `access_roles`, `failure_ticket` | Git、migration、immutable release 与新备份按既有策略保留，本轮无 prune；仓库维护者/Xiaomi 运维角色；B1 待真实测试课堂验收，layout/H5 仍关闭 |
+| `retention`, `access_roles`, `failure_ticket` | Git、migration、immutable release 与新备份按既有策略保留，本轮无 prune；仓库维护者/Xiaomi 运维角色；B2 待整体布局验收，H5 仍关闭 |
 
 ### 4.3 错误定位：可查询，但 release 关联缺失
 
