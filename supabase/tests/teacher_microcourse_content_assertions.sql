@@ -7,12 +7,16 @@ select id as teacher_id from public.profiles where display_name = '测试-教师
 select id as other_teacher_id from public.profiles where display_name = '测试-学辅' limit 1 \gset
 
 select
+  lecture_row.id as source_lecture_id,
   release_row.id as source_release_id,
   (item.value ->> 'pageDocId')::uuid as source_page_id,
   (item.value ->> 'revisionId')::uuid as source_revision_id
 from public.courses course_row
 join public.course_lectures lecture_row on lecture_row.course_id = course_row.id
-join public.cw_lecture_releases release_row on release_row.id = lecture_row.current_release_id
+left join public.cw_lecture_track_heads track_head
+  on track_head.lecture_id = lecture_row.id and track_head.track = 'native-16x9'
+join public.cw_lecture_releases release_row
+  on release_row.id = coalesce(track_head.current_release_id, lecture_row.current_release_id)
 cross join lateral jsonb_array_elements(release_row.snapshot) item
 where course_row.course_kind = 'curriculum'
   and course_row.status = 'enabled'
@@ -24,6 +28,14 @@ limit 1 \gset
   \echo DEV-TMC-1 content fixtures missing: teacher
   select 1 / 0;
 \endif
+
+insert into public.cw_lecture_track_heads(lecture_id, track, current_release_id)
+values (:'source_lecture_id', 'native-16x9', :'source_release_id')
+on conflict (lecture_id, track) do update
+set current_release_id = excluded.current_release_id;
+update public.course_lectures
+set current_release_id = null
+where id = :'source_lecture_id';
 \if :{?source_release_id}
 \else
   \echo DEV-TMC-1 content fixtures missing: published curriculum source page
@@ -111,6 +123,20 @@ select public.create_teacher_microcourse(
   'logic-strategy',
   array['快照', '数独', 'H5']
 ) as microcourse_id \gset
+
+select exists (
+  select 1
+  from public.search_teacher_microcourse_source_pages(
+    '', null, null, :'source_lecture_id', 100
+  ) source_row
+  where source_row.release_id = :'source_release_id'
+    and source_row.revision_id = :'source_revision_id'
+) as track_head_source_visible \gset
+\if :track_head_source_visible
+\else
+  \echo DEV-TMC-1 failed: native track-head source release is not discoverable
+  select 1 / 0;
+\endif
 
 select public.create_teacher_microcourse_composition_page(
   :'microcourse_id', null, '空白图文页', null, null, null

@@ -34,6 +34,7 @@ describe("DEV-TMC-1 teacher microcourse product surfaces", () => {
     expect(contentMigration).toContain("source_release_id");
     expect(contentMigration).toContain("source_revision_id");
     expect(contentMigration).toContain("course_row.course_kind = 'curriculum'");
+    expect(readModelsMigration).toContain("coalesce(track_head.current_release_id, lecture_row.current_release_id)");
   });
 
   it("keeps intermediate-review H5 private and only promotes the final frozen snapshot", () => {
