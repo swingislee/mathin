@@ -300,5 +300,13 @@ export function AixuexiNativeGame({ node, bindingUrls, interactive }: AixuexiNat
     if (node.trueOrFalse) return installTrueOrFalse(host, node.trueOrFalse, bindingUrls, interactive);
     if (node.topicClassification) return installTopicClassification(host, node.topicClassification, bindingUrls, interactive);
   }, [node, bindingUrls, interactive]);
-  return <div ref={ref} data-aix-native-game data-aix-page-click-boundary="game" className="size-full" />;
+  return (
+    <div
+      ref={ref}
+      data-aix-native-game
+      data-aix-page-click-boundary="game"
+      data-classroom-input={node.topicClassification ? "drag" : "click"}
+      className="size-full"
+    />
+  );
 }

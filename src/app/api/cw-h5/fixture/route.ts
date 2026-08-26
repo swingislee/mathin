@@ -3,18 +3,27 @@ import {
   injectH5Runtime,
 } from "@/features/courseware-doc/h5-shim";
 import {
+  H5_INPUT_PROFILE_SCHEMA,
+  H5_INPUT_PROVIDER_SCHEMA,
+  H5_INPUT_PROVIDER_VERSION,
+  type H5InputProfile,
+} from "@/features/courseware-doc/h5-input-profile";
+import {
   H5_POINTER_RUNTIME_VERSION,
 } from "@/features/courseware-doc/h5-pointer-protocol";
 
 export const dynamic = "force-dynamic";
 
 function fixtureHtml(compatible: boolean): string {
-  const provider = compatible
-    ? ' data-classroom-input-provider="mathin-classroom-input" data-classroom-renderer-version="1" data-classroom-input-default="ink"'
-    : "";
   const state = compatible ? "provider v1 ready" : "provider missing · protected";
+  const profile: H5InputProfile | null = compatible ? {
+    schemaVersion: H5_INPUT_PROFILE_SCHEMA,
+    providerSchema: H5_INPUT_PROVIDER_SCHEMA,
+    providerVersion: H5_INPUT_PROVIDER_VERSION,
+    defaultCapability: "click",
+  } : null;
   return injectH5Runtime(`<!doctype html>
-<html lang="zh"${provider}>
+<html lang="zh" data-classroom-input-provider="untrusted-source" data-classroom-input-default="ink">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
@@ -50,7 +59,7 @@ function fixtureHtml(compatible: boolean): string {
     document.getElementById("reload").addEventListener("click", () => location.reload());
   </script>
 </body>
-</html>`);
+</html>`, profile);
 }
 
 export function GET(request: Request): Response {

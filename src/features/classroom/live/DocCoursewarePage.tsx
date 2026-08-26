@@ -47,6 +47,7 @@ export function DocCoursewarePage({
         interactive={isController}
         onAdvance={isController ? onAdvance : undefined}
         videoControl={{ controller: isController, ctl: videoCtl, onCtl: onVideoCtl }}
+        h5PointerBridge={h5PointerBridge}
       />
     );
   }

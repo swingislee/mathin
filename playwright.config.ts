@@ -66,6 +66,15 @@ export default defineConfig({
         screenshot: "off" as const,
         video: "off" as const,
       },
+    }, {
+      name: "classroom-contract-local-chromium",
+      testMatch: ["classroom-h5-input-contract.spec.ts"],
+      use: {
+        ...devices["Desktop Chrome"],
+        trace: "retain-on-failure" as const,
+        screenshot: "only-on-failure" as const,
+        video: "off" as const,
+      },
     }]),
   ],
 });

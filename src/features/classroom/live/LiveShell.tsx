@@ -117,8 +117,11 @@ import { DevelopmentAcceptanceDock } from "./DevelopmentAcceptanceDock";
 import { TeacherClassroomControlBar } from "./TeacherClassroomControlBar";
 import { ClassroomPageControls, ClassroomToolsMenu } from "./ClassroomControlMenus";
 import {
+  M3_AIXUEXI_H5_FIXTURE_DOC,
+  M3_AIXUEXI_H5_FIXTURE_PAGE,
   M3_H5_FIXTURE_DOC,
   M3_H5_FIXTURE_PAGE,
+  m3AixuexiH5FixtureBindingUrls,
   m3H5FixtureBindingUrls,
 } from "./m3-input-fixtures";
 import { buildM4aRosterFixtures, M4A_STAR_STUDENT_ID } from "./m4-roster-fixtures";
@@ -274,6 +277,7 @@ export function LiveShell({
   const [routingMode, setRoutingMode] = useState<ClassroomRoutingMode>("smart");
   const [inputRendererSignature, setInputRendererSignature] = useState("");
   const [m3FixtureEnabled, setM3FixtureEnabled] = useState(() => acceptanceFixture === "m3b");
+  const [m3FixtureRenderer, setM3FixtureRenderer] = useState<"mofaxiao" | "aixuexi">("mofaxiao");
   const [m3H5Compatible, setM3H5Compatible] = useState(true);
   const [m4bScenario, setM4bScenario] = useState<"8" | "20" | "30">("20");
   const [endOpen, setEndOpen] = useState(false);
@@ -851,16 +855,20 @@ export function LiveShell({
     ? null
     : state.openTool;
   const renderPage = usingM3Fixture
-    ? M3_H5_FIXTURE_PAGE
+    ? m3FixtureRenderer === "aixuexi" ? M3_AIXUEXI_H5_FIXTURE_PAGE : M3_H5_FIXTURE_PAGE
     : page;
   const activeDocBundleEntry = renderPage?.type === "doc" && !usingM3Fixture
     ? docBundle?.find((item) => item.pageDocId === renderPage.docId)
     : undefined;
   const renderDoc = renderPage?.type === "doc"
-    ? usingM3Fixture ? M3_H5_FIXTURE_DOC : activeDocBundleEntry?.doc
+    ? usingM3Fixture
+      ? m3FixtureRenderer === "aixuexi" ? M3_AIXUEXI_H5_FIXTURE_DOC : M3_H5_FIXTURE_DOC
+      : activeDocBundleEntry?.doc
     : undefined;
   const renderDocUrls = usingM3Fixture
-    ? m3H5FixtureBindingUrls(m3H5Compatible)
+    ? m3FixtureRenderer === "aixuexi"
+      ? m3AixuexiH5FixtureBindingUrls(m3H5Compatible)
+      : m3H5FixtureBindingUrls(m3H5Compatible)
     : docUrls;
   const displayedSessionTitle = usingM3Fixture
     ? t("m3FixtureSessionTitle")
@@ -1420,16 +1428,32 @@ export function LiveShell({
             <Button
               type="button"
               size="sm"
-              variant={usingM3Fixture && m3H5Compatible ? "primary" : "secondary"}
-              aria-pressed={usingM3Fixture && m3H5Compatible}
-              data-m3-h5-fixture="compatible"
+              variant={usingM3Fixture && m3H5Compatible && m3FixtureRenderer === "mofaxiao" ? "primary" : "secondary"}
+              aria-pressed={usingM3Fixture && m3H5Compatible && m3FixtureRenderer === "mofaxiao"}
+              data-m3-h5-fixture="mofaxiao"
               onClick={() => {
                 setM3FixtureEnabled(true);
+                setM3FixtureRenderer("mofaxiao");
                 setM3H5Compatible(true);
                 setRoutingMode("smart");
               }}
             >
-              {t("h5CompatibleFixture")}
+              {t("h5MofaxiaoFixture")}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={usingM3Fixture && m3H5Compatible && m3FixtureRenderer === "aixuexi" ? "primary" : "secondary"}
+              aria-pressed={usingM3Fixture && m3H5Compatible && m3FixtureRenderer === "aixuexi"}
+              data-m3-h5-fixture="aixuexi"
+              onClick={() => {
+                setM3FixtureEnabled(true);
+                setM3FixtureRenderer("aixuexi");
+                setM3H5Compatible(true);
+                setRoutingMode("smart");
+              }}
+            >
+              {t("h5AixuexiFixture")}
             </Button>
             <Button
               type="button"
@@ -1443,7 +1467,7 @@ export function LiveShell({
                 setRoutingMode("smart");
               }}
             >
-              {t("h5IncompatibleFixture")}
+              {t("h5UnregisteredFixture")}
             </Button>
           </div>
           <Badge variant={h5PointerBridgeStatus === "ready" ? "default" : "secondary"}>
@@ -1616,7 +1640,7 @@ export function LiveShell({
                   </span>
                 </p>
               ) : <DocCoursewarePage
-                key={`doc-${renderPage.id}:${usingM3Fixture ? Number(m3H5Compatible) : "courseware"}`}
+                key={`doc-${renderPage.id}:${usingM3Fixture ? `${m3FixtureRenderer}:${Number(m3H5Compatible)}` : "courseware"}`}
                 doc={renderDoc ?? null}
                 bindingUrls={renderDocUrls}
                 isController={isController}

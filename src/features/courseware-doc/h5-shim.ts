@@ -14,6 +14,7 @@ import {
   H5_POINTER_PROTOCOL_VERSION,
   H5_POINTER_RUNTIME_VERSION,
 } from "./h5-pointer-protocol";
+import type { H5InputProfile } from "./h5-input-profile";
 
 const PACKAGE_HASH = /^[0-9a-f]{64}$/;
 const HTML_EXTENSIONS = new Set(["html", "htm"]);
@@ -565,6 +566,23 @@ export function injectHeadSnippet(html: string, snippet: string): string {
   return html.slice(0, insertAt) + snippet + html.slice(insertAt);
 }
 
-export function injectH5Runtime(html: string): string {
-  return injectHeadSnippet(html, H5_OPAQUE_ORIGIN_RUNTIME);
+const H5_PROVIDER_ATTRIBUTE = /\sdata-classroom-(?:input-provider|renderer-version|input-default)(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+))?/gi;
+
+/**
+ * Remove every source-supplied provider declaration and attach only the
+ * registry-authoritative profile. Missing profiles deliberately fail closed.
+ */
+export function applyH5InputProfile(html: string, profile: H5InputProfile | null = null): string {
+  return html.replace(/<html\b[^>]*>/i, (root) => {
+    const clean = root.replace(H5_PROVIDER_ATTRIBUTE, "");
+    if (!profile) return clean;
+    const attributes = ` data-classroom-input-provider="${profile.providerSchema}"`
+      + ` data-classroom-renderer-version="${profile.providerVersion}"`
+      + ` data-classroom-input-default="${profile.defaultCapability}"`;
+    return clean.replace(/>$/, `${attributes}>`);
+  });
+}
+
+export function injectH5Runtime(html: string, profile: H5InputProfile | null = null): string {
+  return injectHeadSnippet(applyH5InputProfile(html, profile), H5_OPAQUE_ORIGIN_RUNTIME);
 }

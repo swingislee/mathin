@@ -11,6 +11,10 @@ import { buildImportSql } from "../scripts/cw-import.mjs";
 import { rewriteTopicRootUrls } from "../scripts/aixuexi-build-package.mjs";
 import { renderAixuexiMathHtml } from "../src/features/courseware-doc/aixuexi-math";
 import { compareCourseDifficulty } from "../src/features/school/teaching-operations/course-difficulty";
+import {
+  countCoursewareH5Frames,
+  resolveClassroomRendererInputProfile,
+} from "../src/features/classroom/input/capabilities";
 
 const key = (character: string) => character.repeat(64);
 
@@ -122,6 +126,42 @@ describe("Aixuexi courseware adapter", () => {
     const parsed = aixuexiPageDocSchema.parse(doc());
     expect(parsed.docVersion).toBe("aixuexi-page-doc-v1");
     expect([...collectAixuexiBindingKeys(parsed)]).toEqual([key("b"), key("c")]);
+  });
+
+  it("uses the shared classroom provider and keeps embedded H5 provisional until its handshake", () => {
+    const nativeDoc = doc();
+    const page = { id: "aix", type: "doc", docId: "aix-doc", title: "Aixuexi" } as const;
+    expect(countCoursewareH5Frames(nativeDoc)).toBe(0);
+    expect(resolveClassroomRendererInputProfile(page, null, nativeDoc)).toMatchObject({
+      renderer: "document:aixuexi",
+      audited: true,
+      provider: { defaultCapability: "unknown" },
+    });
+
+    const embeddedDoc: AixuexiPageDoc = {
+      ...nativeDoc,
+      nodes: [{
+        ...nativeDoc.nodes[0],
+        id: "embedded-h5",
+        kind: "embedded_h5",
+        resourceBindingKey: key("d"),
+        resourceBindingKeys: [key("d")],
+        embeddedH5: {
+          packageHash: key("e"),
+          entryPackagePath: "index.html",
+          intrinsicViewport: { width: 1280, height: 720 },
+          presentationMode: "letterbox_4_3",
+          bindingKey: key("d"),
+        },
+      }],
+    };
+    expect(countCoursewareH5Frames(embeddedDoc)).toBe(1);
+    expect(resolveClassroomRendererInputProfile(page, null, embeddedDoc, "pending"))
+      .toMatchObject({ audited: false, provisional: true });
+    expect(resolveClassroomRendererInputProfile(page, null, embeddedDoc, "ready"))
+      .toMatchObject({ renderer: "document:aixuexi:h5", audited: true, provisional: false });
+    expect(resolveClassroomRendererInputProfile(page, null, embeddedDoc, "incompatible"))
+      .toMatchObject({ renderer: "unsupported", audited: false, provisional: false });
   });
 
   it("keeps the 4:3 master canvas unscaled and carries the source 16:9 presentation rule", () => {

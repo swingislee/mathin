@@ -1,3 +1,4 @@
+import type { AixuexiPageDoc } from "@/features/courseware-doc/aixuexi-schema";
 import type { DocNode, PageDoc } from "@/features/courseware-doc/schema";
 import type { CoursewarePage } from "../types";
 
@@ -9,6 +10,14 @@ export const M3_H5_FIXTURE_PAGE: CoursewarePage = {
 };
 
 export const M3_H5_FIXTURE_BINDING_KEY = "3".repeat(64);
+export const M3_AIXUEXI_RUNTIME_BINDING_KEY = "5".repeat(64);
+
+export const M3_AIXUEXI_H5_FIXTURE_PAGE: CoursewarePage = {
+  id: "m3-aixuexi-h5-pointer-fixture-v1",
+  type: "doc",
+  docId: "m3-aixuexi-h5-pointer-doc-v1",
+  title: "Aixuexi H5 Pointer Bridge",
+};
 
 export const M3_H5_FIXTURE_DOC: PageDoc = {
   docVersion: "page-doc-v1",
@@ -38,10 +47,10 @@ export const M3_H5_FIXTURE_DOC: PageDoc = {
       order: 0,
       crop: null,
       transform: {
-        x: 0,
-        y: 0,
-        width: 960,
-        height: 540,
+        x: 64,
+        y: 128,
+        width: 832,
+        height: 360,
         rotation: 0,
         scaleX: 1,
         scaleY: 1,
@@ -82,13 +91,141 @@ export const M3_H5_FIXTURE_DOC: PageDoc = {
       ],
       children: [],
     },
+    textNode({ id: "m3-mixed-title", text: "魔法校混合页：页面点击 + H5", y: 32, height: 54, fontSize: 28, fontWeight: 700 }),
+    textNode({
+      id: "m3-mixed-result",
+      text: "页面内点击已触发",
+      y: 88,
+      height: 34,
+      fontSize: 18,
+      fontWeight: 600,
+      visible: false,
+      backgroundColor: "#feedb9",
+    }),
   ],
-  interactions: [],
+  interactions: [{
+    trigger: "click",
+    triggerScope: "page",
+    triggerResourceId: null,
+    targetResourceId: "m3-mixed-result",
+    action: "enter",
+    animation: "fadeIn",
+    delay: 0,
+    duration: 0.15,
+    loop: 1,
+    path: null,
+    audioBindingKey: null,
+    audioName: null,
+    step: 0,
+  }],
+};
+
+export const M3_AIXUEXI_H5_FIXTURE_DOC: AixuexiPageDoc = {
+  docVersion: "aixuexi-page-doc-v1",
+  adapter: "aixuexi-page-v1",
+  projectionVersion: 31,
+  source: {
+    sourceSystem: "aixuexi_bsk",
+    packageKey: "development-aixuexi-h5-fixture",
+    coursewareId: "development-aixuexi-h5-fixture",
+    pageDatabaseId: 1,
+    sourceSnapshotId: 1,
+    sourceContentHash: "6".repeat(64),
+    pageName: "爱学习嵌入 H5",
+    groupName: "B3 开发验收",
+  },
+  canvas: {
+    width: 1200,
+    height: 900,
+    widgetOffsetX: 0,
+    slideClass: "light-slide slide",
+    backgroundBindingKey: null,
+  },
+  playerStage: {
+    width: 1920,
+    height: 1080,
+    presentationScale: 0.625,
+    offsetX: 0,
+    offsetY: 0,
+    backgroundSize: "auto 1080px",
+    backgroundPosition: "center center",
+    backgroundRepeat: "no-repeat",
+    backgroundColor: "#fffdf8",
+    contentPadding: { top: 0, right: 0, bottom: 0, left: 0 },
+  },
+  presentation: {
+    width: 1200,
+    height: 675,
+    contentScale: 0.75,
+    offsetX: 150,
+    offsetY: 0,
+  },
+  sourceRuntime: {
+    runtimeBindingKey: M3_AIXUEXI_RUNTIME_BINDING_KEY,
+    slideStylesheetPath: "slide-runtime.css",
+    itvStylesheetPath: "itv-runtime.css",
+    lottieRuntimePath: null,
+    lottieRuntimeSha256: null,
+    questionImageSizing: null,
+    questionImageSizingInput: { imgs: {} },
+  },
+  behaviors: {
+    splitQuestionScroll: null,
+    singleQuestionScroll: null,
+    stagedReveal: { underlineCount: 0, summaryWidgetCount: 0 },
+    widgetReveal: { steps: 0 },
+    shapeTextFit: null,
+  },
+  sourceKind: "slide_widgets",
+  nodes: [{
+    id: "aixuexi-h5-fixture",
+    sourcePath: "$.widgets[0]",
+    sourceType: "embedded-h5",
+    kind: "embedded_h5",
+    title: "爱学习嵌入互动",
+    x: 100,
+    y: 90,
+    width: 1000,
+    height: 720,
+    zIndex: 1,
+    rotation: 0,
+    transform: "",
+    transformOrigin: "",
+    known: true,
+    html: null,
+    resourceBindingKey: M3_H5_FIXTURE_BINDING_KEY,
+    resourceBindingKeys: [M3_H5_FIXTURE_BINDING_KEY],
+    revealStep: 0,
+    animations: [],
+    questionTkRuntime: null,
+    embeddedH5: {
+      packageHash: "7".repeat(64),
+      entryPackagePath: "index.html",
+      intrinsicViewport: { width: 960, height: 540 },
+      presentationMode: "letterbox_4_3",
+      bindingKey: M3_H5_FIXTURE_BINDING_KEY,
+    },
+    trueOrFalse: null,
+    topicClassification: null,
+    warnings: [],
+  }],
+  topicInteraction: null,
+  itvInteraction: null,
+  behavior: { advanceOnCanvasClick: false },
+  fourByThree: { mode: "source-player-compat", reasons: ["embedded_h5"] },
+  warnings: [],
 };
 
 export function m3H5FixtureBindingUrls(compatible: boolean): Readonly<Record<string, string>> {
   return {
     [M3_H5_FIXTURE_BINDING_KEY]: `/api/cw-h5/fixture?compatible=${compatible ? "1" : "0"}`,
+  };
+}
+
+export function m3AixuexiH5FixtureBindingUrls(compatible: boolean): Readonly<Record<string, string>> {
+  return {
+    [M3_H5_FIXTURE_BINDING_KEY]: `/api/cw-h5/fixture?compatible=${compatible ? "1" : "0"}`,
+    [M3_AIXUEXI_RUNTIME_BINDING_KEY]: "/api/cw-h5/fixture/runtime/index.html",
   };
 }
 

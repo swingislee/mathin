@@ -249,8 +249,7 @@ export function useH5PointerBridge({
 
       if (message.type === "pointer_capabilities") {
         const compatible = message.providerSchema === CLASSROOM_INPUT_PROVIDER_SCHEMA
-          && message.providerVersion === CLASSROOM_INPUT_CAPABILITY_VERSION
-          && ["ink", "unknown"].includes(message.defaultCapability);
+          && message.providerVersion === CLASSROOM_INPUT_CAPABILITY_VERSION;
         frame.status = compatible ? "ready" : "incompatible";
         if (compatible) {
           const bridgeMode = modeRef.current === "smart" && toolRef.current === "pen"

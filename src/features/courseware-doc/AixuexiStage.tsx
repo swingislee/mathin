@@ -16,7 +16,9 @@ import {
 } from "./aixuexi-runtime";
 import type { AixuexiPageDoc } from "./aixuexi-schema";
 import type { DocVideoControl } from "./DocStage";
+import type { H5PointerBridgeHost } from "./h5-pointer-protocol";
 import { injectBindingUrls, type ResolvedBindingUrls } from "./resolve";
+import { useH5FrameRegistration } from "./useH5FrameRegistration";
 import styles from "./aixuexi-stage.module.css";
 
 /**
@@ -35,6 +37,7 @@ export interface AixuexiStageProps {
   interactive?: boolean;
   videoControl?: DocVideoControl;
   onAdvance?: () => void;
+  h5PointerBridge?: H5PointerBridgeHost;
 }
 
 function sourceClassNames(value: string): string {
@@ -70,6 +73,34 @@ function sourcePresentation(doc: AixuexiPageDoc): PresentationGeometry {
   };
 }
 
+function AixuexiEmbeddedH5Frame({
+  frameId,
+  title,
+  src,
+  presentationMode,
+  pointerBridge,
+}: {
+  frameId: string;
+  title: string;
+  src: string | undefined;
+  presentationMode: string;
+  pointerBridge: H5PointerBridgeHost | undefined;
+}) {
+  const { iframeRef, onFrameLoad } = useH5FrameRegistration(pointerBridge, frameId);
+  return (
+    <iframe
+      ref={iframeRef}
+      title={title}
+      src={src}
+      sandbox="allow-scripts allow-forms allow-pointer-lock allow-modals"
+      className={styles.embeddedFrame}
+      data-aix-h5-presentation={presentationMode}
+      data-classroom-input="native"
+      onLoad={onFrameLoad}
+    />
+  );
+}
+
 export default function AixuexiStage({
   doc,
   bindingUrls,
@@ -78,6 +109,7 @@ export default function AixuexiStage({
   interactive = true,
   videoControl,
   onAdvance,
+  h5PointerBridge,
 }: AixuexiStageProps) {
   const t = useTranslations("coursewareStage");
   const containerRef = useRef<HTMLDivElement>(null);
@@ -187,6 +219,11 @@ export default function AixuexiStage({
       node.kind === "itv_video" ? "aix-itv-node" : "",
       styles.node,
     ].filter(Boolean).join(" ");
+    const inputCapability = node.embeddedH5
+      ? "native"
+      : node.topicClassification
+        ? "drag"
+        : "click";
     return (
       <div
         key={node.id}
@@ -197,11 +234,13 @@ export default function AixuexiStage({
         data-aix-reveal-step={node.revealStep > 0 ? node.revealStep : undefined}
         data-aix-question-kit={node.questionTkRuntime?.kit}
         data-aix-page-click-boundary={node.embeddedH5 ? "embedded_h5" : node.trueOrFalse || node.topicClassification ? "game" : undefined}
+        data-classroom-input={inputCapability}
         style={nodeStyle(node, yOffset, width)}
       >
         {node.kind === "itv_video" ? (
           <Button
             className={styles.entryButton}
+            data-classroom-input="click"
             disabled={!interactive || !doc.itvInteraction}
             onClick={(event) => {
               event.stopPropagation();
@@ -212,12 +251,12 @@ export default function AixuexiStage({
             <small>{doc.itvInteraction ? t("itvNodeCount", { count: doc.itvInteraction.eventCount }) : t("itvNotReady")}</small>
           </Button>
         ) : node.embeddedH5 ? (
-          <iframe
+          <AixuexiEmbeddedH5Frame
+            frameId={`aixuexi/${doc.source.coursewareId}/${doc.source.pageDatabaseId}/${node.id}`}
             title={node.title || doc.source.pageName}
             src={bindingUrls[node.embeddedH5.bindingKey]}
-            sandbox="allow-scripts allow-forms allow-pointer-lock allow-modals"
-            className={styles.embeddedFrame}
-            data-aix-h5-presentation={node.embeddedH5.presentationMode}
+            presentationMode={node.embeddedH5.presentationMode}
+            pointerBridge={h5PointerBridge}
           />
         ) : node.trueOrFalse || node.topicClassification ? (
           <AixuexiNativeGame node={node} bindingUrls={bindingUrls} interactive={interactive} />
@@ -282,6 +321,7 @@ export default function AixuexiStage({
       className={["aix-layout-frame", styles.frame, className].filter(Boolean).join(" ")}
       data-aixuexi-stage-mode={stageMode}
       data-aixuexi-four-by-three={doc.fourByThree.mode}
+      data-classroom-input="click"
       style={{ aspectRatio: String(frameWidth / frameHeight) }}
     >
       {runtimeCss ? <link rel="stylesheet" href={runtimeCss} data-aixuexi-slide-runtime /> : null}
@@ -296,6 +336,7 @@ export default function AixuexiStage({
           ref={stageRef}
           className={["aix-layout-stage", styles.stage].join(" ")}
           data-aix-stage
+          data-classroom-input="click"
           style={{
             width: doc.canvas.width,
             height: viewportHeight,
@@ -309,7 +350,12 @@ export default function AixuexiStage({
         >
           {fixedNodes.map((node) => renderNode(node))}
           {split ? (
-            <div className={styles.questionScroll} data-aix-question-scroll style={{ top: split.top, height: split.height }}>
+            <div
+              className={styles.questionScroll}
+              data-aix-question-scroll
+              data-classroom-input="native"
+              style={{ top: split.top, height: split.height }}
+            >
               <div className={styles.questionScrollContent} style={{ height: split.contentHeight }}>
                 {scrollNodes.map((node) => renderNode(node, split.top))}
               </div>
@@ -323,6 +369,7 @@ export default function AixuexiStage({
       {doc.topicInteraction ? (
         <Button
           className={styles.topicButton}
+          data-classroom-input="click"
           disabled={!interactive || doc.topicInteraction.status !== "offline"}
           title={doc.topicInteraction.status === "offline" ? undefined : t("topicPendingHint")}
           onClick={(event) => {
@@ -335,7 +382,7 @@ export default function AixuexiStage({
       ) : null}
 
       {topicOpen && doc.topicInteraction?.bindingKey ? (
-        <div className={styles.overlay} onClick={(event) => event.stopPropagation()}>
+        <div className={styles.overlay} data-classroom-input="native" onClick={(event) => event.stopPropagation()}>
           <div className={styles.overlayToolbar}>
             <strong>{doc.topicInteraction.entryKind}</strong>
             <Button size="sm" variant="secondary" onClick={() => setTopicOpen(false)}>{t("exitTopic")}</Button>
@@ -345,6 +392,7 @@ export default function AixuexiStage({
             src={bindingUrls[doc.topicInteraction.bindingKey]}
             sandbox="allow-scripts allow-forms allow-pointer-lock allow-modals"
             className={styles.topicFrame}
+            data-classroom-input="native"
           />
         </div>
       ) : null}

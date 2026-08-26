@@ -17,6 +17,10 @@ const AIXUEXI_PAGE_DOC_VERSION = "aixuexi-page-doc-v1";
 const AIXUEXI_DOCUMENT_ADAPTER = "aixuexi-page-v1";
 /** 与 `src/features/courseware-doc/aixuexi-schema.ts` 及构建器同步。 */
 const AIXUEXI_PROJECTION_VERSION = 31;
+const H5_INPUT_PROFILE_SCHEMA = "mathin-classroom-h5-input-profile-v1";
+const H5_INPUT_PROVIDER_SCHEMA = "mathin-classroom-input";
+const H5_INPUT_PROVIDER_VERSION = 1;
+const H5_INPUT_CAPABILITIES = new Set(["click", "drag", "native", "ink", "unknown"]);
 const HASH = /^[0-9a-f]{64}$/;
 const ASSET_KINDS = new Set(["image", "video", "audio", "svg", "h5"]);
 const DEFAULT_SSH_HOST = "xiaomi";
@@ -64,6 +68,31 @@ function assertString(value, label) {
 function assertObject(value, label) {
   if (!value || typeof value !== "object" || Array.isArray(value)) fail(`${label} must be an object`);
   return value;
+}
+
+function normalizeH5InputProfile(value, packageHash) {
+  const profile = assertObject(value, `H5 ${packageHash} input profile`);
+  if (profile.schemaVersion !== H5_INPUT_PROFILE_SCHEMA
+      || profile.packageHash !== packageHash
+      || profile.providerSchema !== H5_INPUT_PROVIDER_SCHEMA
+      || profile.providerVersion !== H5_INPUT_PROVIDER_VERSION
+      || !H5_INPUT_CAPABILITIES.has(profile.defaultCapability)) {
+    fail(`invalid H5 input profile for ${packageHash}`);
+  }
+  const engineFamily = assertString(profile.engineFamily, `H5 ${packageHash} input profile engineFamily`);
+  const auditMethod = assertString(profile.auditMethod, `H5 ${packageHash} input profile auditMethod`);
+  if (engineFamily.length > 80) fail(`H5 ${packageHash} input profile engineFamily is too long`);
+  if (auditMethod.length > 160) fail(`H5 ${packageHash} input profile auditMethod is too long`);
+  return {
+    packageHash,
+    profileSchema: profile.schemaVersion,
+    providerSchema: profile.providerSchema,
+    providerVersion: profile.providerVersion,
+    defaultCapability: profile.defaultCapability,
+    engineFamily,
+    auditMethod,
+    evidenceSha256: assertHash(profile.evidenceSha256, `H5 ${packageHash} input profile evidenceSha256`),
+  };
 }
 
 function parseJsonLine(line, file, lineNo) {
@@ -407,6 +436,7 @@ export async function loadImportPlan({ packageRoot, coursewareId, catalogVersion
 
   const h5Hashes = [...new Set(usageRows.filter((row) => row.objectKind === "h5_package").map((row) => row.objectHash))];
   const h5Manifests = new Map();
+  const h5InputProfiles = new Map();
   for (const hash of h5Hashes) {
     const relativePath = `h5-manifests/${hash}.json`;
     await assertFileHash(packageRoot, manifestFiles, relativePath);
@@ -432,6 +462,12 @@ export async function loadImportPlan({ packageRoot, coursewareId, catalogVersion
       resolveInside("/cw-import-path-check", file.packagePath);
     }
     h5Manifests.set(hash, h5);
+    const profilePath = `h5-input-profiles/${hash}.json`;
+    if (manifestFiles.has(profilePath)) {
+      await assertFileHash(packageRoot, manifestFiles, profilePath);
+      const profile = JSON.parse(await readFile(resolveInside(packageRoot, profilePath), "utf8"));
+      h5InputProfiles.set(hash, normalizeH5InputProfile(profile, hash));
+    }
   }
 
   const usedObjectHashes = new Set(usageRows.filter((row) => row.objectKind === "cas").map((row) => row.objectHash));
@@ -543,6 +579,7 @@ export async function loadImportPlan({ packageRoot, coursewareId, catalogVersion
     objects: [...objects.values()].sort((left, right) => left.objectHash.localeCompare(right.objectHash)),
     assets: [...assets.values()].sort((left, right) => left.candidateKey.localeCompare(right.candidateKey)),
     h5Manifests,
+    h5InputProfiles,
   };
 }
 
@@ -589,6 +626,65 @@ export function buildImportSql(plan) {
     String(binding.pageNo), sqlText(binding.bindingKey), sqlText(binding.role), sqlText(binding.kind),
     sqlText(binding.candidateKey), binding.launchQuery === null ? "NULL" : sqlJson(binding.launchQuery),
   ]);
+  const h5InputProfiles = [...(plan.h5InputProfiles ?? new Map()).values()];
+  const h5InputProfileSql = h5InputProfiles.length === 0 ? "" : `
+create temporary table cw_import_h5_input_profiles (
+  package_sha256 text primary key,
+  profile_schema text not null,
+  provider_schema text not null,
+  provider_version smallint not null,
+  default_capability text not null,
+  engine_family text not null,
+  audit_method text not null,
+  evidence_sha256 text not null
+) on commit drop;
+insert into cw_import_h5_input_profiles (
+  package_sha256,profile_schema,provider_schema,provider_version,
+  default_capability,engine_family,audit_method,evidence_sha256
+) values
+${values(h5InputProfiles, (profile) => [
+    sqlText(profile.packageHash), sqlText(profile.profileSchema), sqlText(profile.providerSchema),
+    String(profile.providerVersion), sqlText(profile.defaultCapability), sqlText(profile.engineFamily),
+    sqlText(profile.auditMethod), sqlText(profile.evidenceSha256),
+  ])};
+
+do $$ begin
+  if exists (
+    select 1 from cw_import_h5_input_profiles input
+    left join public.cw_asset_objects object on object.sha256=input.package_sha256
+    where object.id is null or object.kind <> 'h5'
+  ) then raise exception 'CW_IMPORT_H5_INPUT_PROFILE_OBJECT_MISMATCH'; end if;
+  if exists (
+    select 1 from cw_import_h5_input_profiles input
+    join public.cw_h5_input_profiles profile
+      on profile.package_sha256=input.package_sha256 and profile.status='active'
+    where profile.profile_schema <> input.profile_schema
+       or profile.provider_schema <> input.provider_schema
+       or profile.provider_version <> input.provider_version
+       or profile.default_capability <> input.default_capability
+       or profile.engine_family <> input.engine_family
+       or profile.audit_method <> input.audit_method
+       or profile.evidence_sha256 <> input.evidence_sha256
+  ) then raise exception 'CW_IMPORT_H5_INPUT_PROFILE_MISMATCH'; end if;
+end $$;
+
+insert into public.cw_h5_input_profiles (
+  package_sha256,profile_revision,profile_schema,provider_schema,provider_version,
+  default_capability,engine_family,audit_method,evidence_sha256,registered_export_id,status
+)
+select input.package_sha256,
+       coalesce((select max(history.profile_revision) + 1
+                   from public.cw_h5_input_profiles history
+                  where history.package_sha256=input.package_sha256),1),
+       input.profile_schema,input.provider_schema,input.provider_version,
+       input.default_capability,input.engine_family,input.audit_method,input.evidence_sha256,
+       ${sqlText(plan.exportId)},'active'
+  from cw_import_h5_input_profiles input
+ where not exists (
+   select 1 from public.cw_h5_input_profiles active
+    where active.package_sha256=input.package_sha256 and active.status='active'
+ );
+`;
   const importNote = `P6-3 import baseline ${plan.exportId}`;
   const sourceLectureNameSql = isAixuexi ? `
 update public.course_lectures lecture
@@ -794,6 +890,7 @@ with inserted as (
   returning sha256
 )
 insert into cw_import_inserted_objects select sha256 from inserted;
+${h5InputProfileSql}
 
 create temporary table cw_import_inserted_assets (candidate_key text primary key) on commit drop;
 with inserted as (

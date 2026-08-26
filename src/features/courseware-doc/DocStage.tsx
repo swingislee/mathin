@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ClassroomVideoInkSurface } from "@/features/classroom/input/ClassroomVideoInkSurface";
 import "./doc-stage.css";
 import type { H5PointerBridgeHost } from "./h5-pointer-protocol";
+import { useH5FrameRegistration } from "./useH5FrameRegistration";
 import type { DocNode, PageDoc } from "./schema";
 import { injectBindingUrls, type ResolvedBindingUrls } from "./resolve";
 import { createInteractionRuntime, type InteractionRuntime, type InteractionTrigger } from "./interactions";
@@ -232,16 +233,9 @@ function H5Frame({
 }) {
   const t = useTranslations("coursewareStudio");
   const frameRef = useRef<HTMLDivElement>(null);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [frameGeneration, setFrameGeneration] = useState(0);
+  const { iframeRef, frameGeneration, onFrameLoad } = useH5FrameRegistration(pointerBridge, frameId);
   const appliedCtl = useRef<DocVideoCtl | undefined>(undefined);
-
-  useEffect(() => {
-    const iframe = iframeRef.current;
-    if (!pointerBridge || !iframe || frameGeneration === 0) return;
-    return pointerBridge.registerFrame(frameId, iframe);
-  }, [frameGeneration, frameId, pointerBridge]);
 
   useEffect(() => {
     const syncFullscreen = () => setIsFullscreen(document.fullscreenElement === frameRef.current);
@@ -262,7 +256,7 @@ function H5Frame({
     };
     window.addEventListener("message", receive);
     return () => window.removeEventListener("message", receive);
-  }, [control]);
+  }, [control, iframeRef]);
 
   useEffect(() => {
     if (!control || control.controller || !control.ctl || frameGeneration === 0 || appliedCtl.current === control.ctl) return;
@@ -273,7 +267,7 @@ function H5Frame({
       action: control.ctl.action,
       time: control.ctl.time,
     }, "*");
-  }, [control, frameGeneration]);
+  }, [control, frameGeneration, iframeRef]);
 
   const toggleFullscreen = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
@@ -301,7 +295,7 @@ function H5Frame({
         sandbox="allow-scripts"
         allow="autoplay; fullscreen"
         allowFullScreen
-        onLoad={() => setFrameGeneration((generation) => generation + 1)}
+        onLoad={onFrameLoad}
         style={{ width: "100%", height: "100%", border: 0, display: "block" }}
       />
       <Button

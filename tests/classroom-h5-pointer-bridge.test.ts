@@ -137,10 +137,26 @@ describe("M3b H5 pointer bridge", () => {
       new URL("../src/features/courseware-doc/DocStage.tsx", import.meta.url),
       "utf8",
     );
+    const aixuexiStage = readFileSync(
+      new URL("../src/features/courseware-doc/AixuexiStage.tsx", import.meta.url),
+      "utf8",
+    );
+    const registration = readFileSync(
+      new URL("../src/features/courseware-doc/useH5FrameRegistration.ts", import.meta.url),
+      "utf8",
+    );
+    const profileMigration = readFileSync(
+      new URL("../supabase/migrations/20260826000100_classroom_h5_input_profiles.sql", import.meta.url),
+      "utf8",
+    );
     expect(migration).toMatch(/teaching\.classroom_h5_pointer_v1', 1, false/);
     expect(contract).toContain('"teaching.classroom_h5_pointer_v1"');
     expect(liveRoute).toContain('isFeatureEnabled("teaching.classroom_h5_pointer_v1")');
     expect(liveShell).toContain("useH5PointerBridge");
-    expect(docStage).toContain("pointerBridge.registerFrame(frameId, iframe)");
+    expect(docStage).toContain("useH5FrameRegistration(pointerBridge, frameId)");
+    expect(aixuexiStage).toContain("useH5FrameRegistration(pointerBridge, frameId)");
+    expect(registration).toContain("pointerBridge.registerFrame(frameId, iframe)");
+    expect(profileMigration).toContain("cw_h5_input_profiles_one_active_idx");
+    expect(profileMigration).toMatch(/for select to anon, authenticated[\s\S]*status = 'active'/);
   });
 });

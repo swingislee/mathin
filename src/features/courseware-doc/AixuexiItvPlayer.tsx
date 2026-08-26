@@ -366,6 +366,7 @@ export function AixuexiItvPlayer({
   return (
     <div
       className={styles.itvOverlay}
+      data-classroom-input="native"
       onClick={(event) => event.stopPropagation()}
       onPointerMove={() => {
         if (!gameActive) {

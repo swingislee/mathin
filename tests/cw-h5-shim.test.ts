@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  applyH5InputProfile,
   h5ObjectPath,
   h5HtmlSecurityHeaders,
   h5PublicUrl,
@@ -9,6 +10,12 @@ import {
   injectHeadSnippet,
   isHtmlObjectPath,
 } from "../src/features/courseware-doc/h5-shim";
+import {
+  H5_INPUT_PROFILE_SCHEMA,
+  H5_INPUT_PROVIDER_SCHEMA,
+  H5_INPUT_PROVIDER_VERSION,
+  parseH5InputProfile,
+} from "../src/features/courseware-doc/h5-input-profile";
 import { H5_POINTER_RUNTIME_VERSION } from "../src/features/courseware-doc/h5-pointer-protocol";
 
 const HASH = "a".repeat(64);
@@ -57,6 +64,28 @@ describe("P6-4 H5 shim", () => {
     expect(html).toContain('Object.defineProperty(window, name');
     expect(html).toContain('frame.contentWindow?.postMessage(data');
     expect(html).toContain('source: "mathin-h5-media"');
+  });
+
+  it("strips source claims and injects only a registry-authoritative input profile", () => {
+    const source = '<html data-classroom-input-provider="forged" data-classroom-renderer-version="99" data-classroom-input-default="ink"><head></head></html>';
+    expect(applyH5InputProfile(source)).toBe("<html><head></head></html>");
+    const profile = parseH5InputProfile({
+      profile_schema: H5_INPUT_PROFILE_SCHEMA,
+      provider_schema: H5_INPUT_PROVIDER_SCHEMA,
+      provider_version: H5_INPUT_PROVIDER_VERSION,
+      default_capability: "drag",
+    });
+    expect(profile).not.toBeNull();
+    expect(applyH5InputProfile(source, profile)).toContain(
+      'data-classroom-input-provider="mathin-classroom-input" data-classroom-renderer-version="1" data-classroom-input-default="drag"',
+    );
+    expect(applyH5InputProfile(source, profile)).not.toContain("forged");
+    expect(parseH5InputProfile({
+      profile_schema: H5_INPUT_PROFILE_SCHEMA,
+      provider_schema: H5_INPUT_PROVIDER_SCHEMA,
+      provider_version: 2,
+      default_capability: "ink",
+    })).toBeNull();
   });
 
   it("keeps entry pages same-origin-only while allowing sandboxed nested HTML", () => {

@@ -1,4 +1,5 @@
 import type { CoursewareDoc } from "@/features/courseware-doc/document";
+import { isAixuexiPageDoc } from "@/features/courseware-doc/aixuexi-schema";
 import { PAGE_DOC_VERSION, type DocNode, type PageDoc } from "@/features/courseware-doc/schema";
 import { getGame } from "@/features/games/registry";
 import { getTool } from "@/features/tools/registry";
@@ -7,6 +8,7 @@ import type { CoursewarePage } from "../types";
 import type { ClassroomInputCapability } from "./router";
 import {
   CLASSROOM_INK_INPUT_PROVIDER_V1,
+  CLASSROOM_PARTITIONED_INPUT_PROVIDER_V1,
   matchesClassroomInputProviderBoundary,
   type ClassroomInputCapabilityProvider,
   type ClassroomInputProviderAttributeSource,
@@ -80,7 +82,7 @@ function providerProfile(
   };
 }
 
-/** Only native page-doc-v1 DOM is audited here; Aixuexi, spatial, and H5 remain fail-closed. */
+/** Native page-doc-v1 DOM remains on the original audited adapter contract. */
 export function isAuditedNativeCoursewareDoc(
   doc: CoursewareDoc | null | undefined,
 ): doc is PageDoc {
@@ -92,7 +94,11 @@ export function isAuditedNativeCoursewareDoc(
 }
 
 export function countCoursewareH5Frames(doc: CoursewareDoc | null | undefined): number {
-  if (!doc || doc.docVersion !== PAGE_DOC_VERSION) return 0;
+  if (!doc) return 0;
+  if (isAixuexiPageDoc(doc)) {
+    return doc.nodes.reduce((total, node) => total + Number(Boolean(node.embeddedH5)), 0);
+  }
+  if (doc.docVersion !== PAGE_DOC_VERSION) return 0;
   const count = (node: DocNode): number => {
     if (node.adapter === "h5") return 1;
     if (node.adapter !== "group" && node.adapter !== "page") return 0;
@@ -130,6 +136,15 @@ export function resolveClassroomRendererInputProfile(
   }
   if (page.type === "doc") {
     if (!doc) return PROVISIONAL_PROFILE;
+    if (isAixuexiPageDoc(doc)) {
+      if (countCoursewareH5Frames(doc) > 0) {
+        if (h5BridgeStatus === "pending") return PROVISIONAL_PROFILE;
+        return h5BridgeStatus === "ready"
+          ? providerProfile("document:aixuexi:h5", CLASSROOM_PARTITIONED_INPUT_PROVIDER_V1)
+          : UNSUPPORTED_PROFILE;
+      }
+      return providerProfile("document:aixuexi", CLASSROOM_PARTITIONED_INPUT_PROVIDER_V1);
+    }
     if (isH5BridgeEligibleCoursewareDoc(doc)) {
       if (h5BridgeStatus === "pending") return PROVISIONAL_PROFILE;
       return h5BridgeStatus === "ready"

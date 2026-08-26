@@ -46,6 +46,16 @@ async function createPackageFixture(html = RICH_HTML) {
     writeFixtureFile(root, "usages.ndjson", `${JSON.stringify({ usageKey: usageNormal, coursewareId: "sample-courseware", pageDatabaseId: 1, objectHash: normalHash, objectKind: "cas", candidateKey: candidateNormal, role: "background", kind: "image" })}\n${JSON.stringify({ usageKey: usageH5, coursewareId: "sample-courseware", pageDatabaseId: 1, objectHash: h5Hash, objectKind: "h5_package", candidateKey: candidateH5, role: "entry", kind: "h5", launchQuery: { level: ["3"] }, coursewareIdParam: "lesson" })}\n`),
     writeFixtureFile(root, "page-docs/sample-courseware.ndjson", `${JSON.stringify({ coursewareId: "sample-courseware", pageIndex: 1, pageDatabaseId: 1, name: "第一页", thumbnailBindingKey: null, doc })}\n`),
     writeFixtureFile(root, `h5-manifests/${h5Hash}.json`, JSON.stringify({ schemaVersion: "mathin-h5-manifest-v1", packageHash: h5Hash, entryPath: "index.html", byteCount: 7, files: [{ packagePath: "index.html", sha256: hash("<html>"), byteCount: 6, mime: "text/html" }] })),
+    writeFixtureFile(root, `h5-input-profiles/${h5Hash}.json`, JSON.stringify({
+      schemaVersion: "mathin-classroom-h5-input-profile-v1",
+      packageHash: h5Hash,
+      providerSchema: "mathin-classroom-input",
+      providerVersion: 1,
+      defaultCapability: "click",
+      engineFamily: "fixture-dom",
+      auditMethod: "fixture-contract-v1",
+      evidenceSha256: "9".repeat(64),
+    })),
   ]);
   await writeFixtureFile(root, "manifest.json", JSON.stringify({ schemaVersion: "mathin-package-export-v1", exportId: "fixture-export", files }));
   return { root, normalHash, h5Hash };
@@ -72,11 +82,17 @@ describe("P6 courseware importer", () => {
     ]));
     expect(plan.objects.find((object) => object.objectHash === fixture.normalHash)?.storagePath).toBe(`sha256/aa/${fixture.normalHash}`);
     expect(plan.objects.find((object) => object.objectHash === fixture.h5Hash)?.storagePath).toBe(`packages/${fixture.h5Hash}`);
+    expect(plan.h5InputProfiles.get(fixture.h5Hash)).toMatchObject({
+      defaultCapability: "click",
+      engineFamily: "fixture-dom",
+    });
 
     const sql = buildImportSql(plan);
     expect(sql).toContain("CW_IMPORT_LECTURE_MAPPING_MISSING_OR_AMBIGUOUS");
     expect(sql).toContain("'launchQuery'");
     expect(sql).toContain("courseware_template = '[]'::jsonb");
+    expect(sql).toContain("CW_IMPORT_H5_INPUT_PROFILE_MISMATCH");
+    expect(sql).toContain("insert into public.cw_h5_input_profiles");
   });
 
   it("stores documents verbatim — presentation markup passes the lossless gate untouched", async () => {
