@@ -19,6 +19,7 @@ export const PERMISSION_KEYS = [
   "course.assignment.manage",
   "courseware.template.edit",
   "courseware.overlay.edit",
+  "courseware.microcourse.author",
   "courseware.page.edit",
   "courseware.asset.manage",
   "courseware.release.publish",
