@@ -1,6 +1,6 @@
 # Mathin 课堂体验升级规划
 
-> **状态**：M0–M4 开发端与 M5 Stage B1 已验收；Stage B2 layout 已部署待产品负责人验收<br>
+> **状态**：M0–M4 开发端与 M5 Stage B1/B2 已验收；Stage B3 H5 pointer 已部署待产品负责人验收<br>
 > **规划日期**：2026-08-24<br>
 > **仓库基线**：`swingislee/mathin`，本轮审阅基于 `main` 的 `0e30b33`<br>
 > **M1 验收基线**：`43ae587` + `67989c1`；只表示开发目标已验收，尚未部署生产<br>
@@ -1325,7 +1325,7 @@ M3b 把指针协议扩展进既有 H5 注入 runtime，并把缓存版本从 v2 
 
 ### 12.5 M5：课堂集成与发布
 
-当前状态：M0–M4 的开发端产品验收已经完成，`95ed9f1` 是进入 M5 的已验收应用基线。候选 `8c303a2` 已通过一次工程、隔离数据库、课堂专项 SQL 与本地浏览器集成 Gate，并于 2026-08-25 完成 Stage A。2026-08-26 产品负责人确认 Stage B1 的主板书刷新恢复与 Smart 输入通过，生产复核观测到 checkpoint version/chunk/head=`1/1/1`；Stage B2 随后只启用 layout，H5 保持关闭，当前状态为 `DEPLOYED / PENDING USER ACCEPTANCE`。精确证据与回退边界见 [`classroom-experience-m5-candidate.md`](../evidence/r1/classroom-experience-m5-candidate.md)。B2 人工通过后才进入 H5 pointer。
+当前状态：M0–M4 的开发端产品验收已经完成，`95ed9f1` 是进入 M5 的已验收应用基线。候选 `8c303a2` 已通过一次工程、隔离数据库、课堂专项 SQL 与本地浏览器集成 Gate，并于 2026-08-25 完成 Stage A。2026-08-26 产品负责人确认 Stage B1 的主板书刷新恢复与 Smart 输入、Stage B2 的课堂整体布局通过；B2 验收后的生产复核观测到 checkpoint version/chunk/head=`2/2/2`。Stage B3 随后只启用 H5 pointer，四个课堂开关均为 version 2 / true，当前状态为 `DEPLOYED / PENDING USER ACCEPTANCE`。精确证据与回退边界见 [`classroom-experience-m5-candidate.md`](../evidence/r1/classroom-experience-m5-candidate.md)。下一步只验收一个生产 H5 的 tap/takeover/reload 对象。
 
 #### 回归矩阵
 

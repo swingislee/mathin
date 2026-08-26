@@ -1,6 +1,6 @@
 # 课堂体验升级 · M5 生产分段启用
 
-> **结果**：`STAGE B2 DEPLOYED / PENDING USER ACCEPTANCE`
+> **结果**：`STAGE B3 DEPLOYED / PENDING USER ACCEPTANCE`
 >
 > **日期**：2026-08-25
 >
@@ -8,7 +8,7 @@
 >
 > **生产候选**：`8c303a2`
 >
-> **生产状态**：Stage A 与 B1 已通过；Stage B2 layout 已启用，H5 仍关闭
+> **生产状态**：Stage A、B1 与 B2 已通过；Stage B3 H5 pointer 已启用待验收
 
 ## 本地 Gate
 
@@ -44,7 +44,8 @@ Gate 同步修复了三类发布测试漂移：统一登录框由 `#email` 改�
 1. **Stage A · 已完成**：Xiaomi 目标、数据库指纹、current/previous、业务计数和四个 false 开关无漂移。新建 PostgreSQL-only pre-change 备份 `mathin-db-prechange-20260825T085233Z-classroom-m5-8c303a2`，dump=`249637390 bytes`、TOC=`3761`、SHA-256=`5654c1ecc7812dc7c93798fba361f76e400037f6299352ee8eb1504c44c431e8`；未归档 Storage、未清理旧备份。
 2. **migration 与暗发布 · 已完成**：`20260825000700_classroom_learning_fill_bulk` 以既有 RPC owner `supabase_admin` 完整执行并回滚，独立核查零残留后正式登记；ledger=`193`、head 仍为较晚的 `20260825000800_account_center_profile`，checksum=`b6ffca69…84e3d`。PostgREST schema cache 已可见四参 RPC。应用候选 `8c303a2` 发布为 `20260825-085754`，previous=`20260825-072801` / `72d8127…`；应用服务、双层 health、zh/en login 和匿名 classroom 重定向通过。
 3. **Stage B1 · 人工通过**：组织级 `teaching.classroom_board_checkpoint_v2` 与 `teaching.classroom_input_v2` 为 version 2 / true。产品负责人确认主板书刷新恢复与 Smart 输入通过；随后只读复核观测到 checkpoint version/chunk/head=`1/1/1`，错误仍为 `1949`，证明验收动作实际经过 v2 持久化链路。第一次启用因 `clock_timestamp()` 晚于事务求值时间而被提交前断言拦截，独立核查零残留；改用同一事务时间后一次提交。
-4. **Stage B2 · 已部署待验收**：`teaching.classroom_layout_v2` 已追加 version 2 / true，H5 保持 version 1 / false；domain event=`596`。启用后 checkpoint 仍为 `1/1/1`，roster revision/entry=`1/0`，star/learning result=`0/0`，错误与最近时间未变。产品负责人只需验收一个生产课堂整体布局对象，通过后再启用 H5 pointer。
-5. **启用后的回退限制**：当前已经产生 v2 checkpoint，不能把应用直接切回不认识 v2 数据的 `72d8127`。回退动作是先关闭对应 writer/UI 开关并继续运行当前双读 bundle；只有证明没有新 v2 写入时，才允许应用级 previous 切换。
+4. **Stage B2 · 人工通过**：`teaching.classroom_layout_v2` 为 version 2 / true。产品负责人确认生产课堂整体布局通过；随后的 B3 preflight 观测到 checkpoint version/chunk/head=`2/2/2`，说明 B2 验收又完成了一次真实板书保存。此时 H5 仍为 version 1 / false，domain event=`596`。
+5. **Stage B3 · 已部署待验收**：只为 `teaching.classroom_h5_pointer_v1` 追加 version 2 / true，四个课堂开关至此均为 version 2 / true，domain event=`597`。独立新连接 postflight 确认 checkpoint=`2/2/2`、roster revision/entry=`1/0`、star/learning result=`0/0`；账号、profile、学生、班级、课次、报名、点名、Storage object 与错误计数无漂移，且没有进行中的 production 课堂。下一步只验收一个生产 H5 的 tap/takeover/reload 对象。
+6. **启用后的回退限制**：当前已经产生 v2 checkpoint，不能把应用直接切回不认识 v2 数据的 `72d8127`。回退动作是先关闭对应 writer/UI 开关并继续运行当前双读 bundle；只有证明没有新 v2 写入时，才允许应用级 previous 切换。
 
-本记录证明 Stage A 机器 postflight 与 B1 人工验收；Stage B2 layout 尚待产品负责人真实课堂验收，H5 尚未启用，也不表示 R1-Live Gate 2 已通过。
+本记录证明 Stage A 机器 postflight 与 B1/B2 人工验收；Stage B3 H5 pointer 尚待产品负责人真实设备验收，也不表示 M5 或 R1-Live Gate 2 已通过。
