@@ -16,6 +16,11 @@ function parseArgs(argv) {
     startAt: 1,
     limit: Number.POSITIVE_INFINITY,
     dryRun: false,
+    localDocker: false,
+    databaseUrl: process.env.CW_IMPORT_DATABASE_URL ?? null,
+    catalogVersion: null,
+    catalogMap: null,
+    duplicateCatalogVersion: null,
     allowProductionTarget: false,
   };
   for (let index = 0; index < argv.length; index += 1) {
@@ -25,11 +30,15 @@ function parseArgs(argv) {
       options.dryRun = true;
       continue;
     }
+    if (arg === "--local-docker") {
+      options.localDocker = true;
+      continue;
+    }
     if (arg === "--allow-production-target") {
       options.allowProductionTarget = true;
       continue;
     }
-    if (["--package-key", "--package-root", "--store-root", "--ssh-host", "--start-at", "--limit"].includes(arg)) {
+    if (["--package-key", "--package-root", "--store-root", "--ssh-host", "--start-at", "--limit", "--database-url", "--catalog-version", "--catalog-map", "--duplicate-catalog-version"].includes(arg)) {
       const value = argv[++index];
       if (!value || value.startsWith("--")) fail(arg + " requires a value");
       const key = arg.slice(2).replace(/-([a-z])/g, (_all, letter) => letter.toUpperCase());
@@ -42,14 +51,48 @@ function parseArgs(argv) {
   if (!(options.limit === Number.POSITIVE_INFINITY || Number.isInteger(options.limit) && options.limit > 0)) {
     fail("--limit must be a positive integer");
   }
+  if (options.localDocker && !options.databaseUrl) fail("--database-url is required with --local-docker");
+  if (!options.localDocker && options.databaseUrl) fail("--database-url is only valid with --local-docker");
+  if (options.duplicateCatalogVersion && !options.catalogMap) {
+    fail("--duplicate-catalog-version requires --catalog-map");
+  }
   options.packageRoot ??= path.resolve(process.cwd(), ".tmp", "aixuexi-import", options.packageKey);
   return options;
+}
+
+async function catalogVersionsByProduct(options) {
+  if (!options.catalogMap) return new Map();
+  const plans = JSON.parse(await readFile(path.resolve(options.catalogMap), "utf8"));
+  if (!Array.isArray(plans)) fail("--catalog-map must contain a JSON array");
+  const result = new Map();
+  for (const plan of plans) {
+    if (typeof plan.productCode !== "string" || typeof plan.catalogVersion !== "string") {
+      fail("--catalog-map rows require productCode and catalogVersion");
+    }
+    const versions = result.get(plan.productCode) ?? new Set();
+    versions.add(plan.catalogVersion);
+    result.set(plan.productCode, versions);
+  }
+  return result;
+}
+
+export function resolveCatalogVersion(lecture, options, versionsByProduct) {
+  if (options.catalogVersion) return options.catalogVersion;
+  if (lecture.catalogVersionSlug) return lecture.catalogVersionSlug;
+  const versions = versionsByProduct.get(lecture.mathinProductCode);
+  if (!versions || versions.size === 0) return null;
+  if (versions.size === 1) return [...versions][0];
+  if (options.duplicateCatalogVersion && versions.has(options.duplicateCatalogVersion)) {
+    return options.duplicateCatalogVersion;
+  }
+  fail(`product ${lecture.mathinProductCode} maps to multiple catalog versions; pass --duplicate-catalog-version`);
 }
 
 export async function importAll(options) {
   const lectures = (await readFile(path.join(options.packageRoot, "lectures.ndjson"), "utf8"))
     .trim().split(/\r?\n/).filter(Boolean).map((line) => JSON.parse(line));
   const selected = lectures.slice(options.startAt - 1, options.startAt - 1 + options.limit);
+  const versionsByProduct = await catalogVersionsByProduct(options);
   const results = [];
 
   for (const [index, lecture] of selected.entries()) {
@@ -62,8 +105,11 @@ export async function importAll(options) {
       "--package-root", options.packageRoot,
       "--store-root", options.storeRoot,
       "--courseware-id", lecture.coursewareId,
-      "--ssh-host", options.sshHost,
     ];
+    const catalogVersion = resolveCatalogVersion(lecture, options, versionsByProduct);
+    if (catalogVersion) args.push("--catalog-version", catalogVersion);
+    if (options.localDocker) args.push("--local-docker", "--database-url", options.databaseUrl);
+    else args.push("--ssh-host", options.sshHost);
     if (options.dryRun) args.push("--dry-run");
     if (options.allowProductionTarget) args.push("--allow-production-target");
     const child = spawnSync(process.execPath, args, {

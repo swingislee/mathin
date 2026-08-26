@@ -5,6 +5,7 @@ import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { buildImportSql, h5StoragePath, loadImportPlan, parseArgs, resolveInside } from "../scripts/cw-import.mjs";
+import { resolveCatalogVersion } from "../scripts/aixuexi-import-all.mjs";
 
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");
 
@@ -128,5 +129,46 @@ describe("P6 courseware importer", () => {
       storeRoot: "C:/store",
       coursewareId: "123",
     });
+  });
+
+  it("requires an attested database target for local Docker imports", () => {
+    expect(() => parseArgs([
+      "--package-root", "C:/package",
+      "--store-root", "C:/store",
+      "--courseware-id", "123",
+      "--local-docker",
+    ])).toThrow(/--database-url is required/);
+
+    expect(parseArgs([
+      "--package-root", "C:/package",
+      "--store-root", "C:/store",
+      "--courseware-id", "123",
+      "--local-docker",
+      "--database-url", "postgresql://127.0.0.1:35422/postgres",
+    ])).toMatchObject({
+      localDocker: true,
+      databaseUrl: "postgresql://127.0.0.1:35422/postgres",
+    });
+  });
+
+  it("resolves mixed E-series catalog versions without guessing duplicate product codes", () => {
+    const unique = new Map([["SUMMER", new Set(["2026"])]]);
+    expect(resolveCatalogVersion(
+      { mathinProductCode: "SUMMER", catalogVersionSlug: null },
+      { catalogVersion: null, duplicateCatalogVersion: null },
+      unique,
+    )).toBe("2026");
+
+    const duplicate = new Map([["AUTUMN", new Set(["2025", "2026"])]]);
+    expect(() => resolveCatalogVersion(
+      { mathinProductCode: "AUTUMN", catalogVersionSlug: null },
+      { catalogVersion: null, duplicateCatalogVersion: null },
+      duplicate,
+    )).toThrow(/multiple catalog versions/);
+    expect(resolveCatalogVersion(
+      { mathinProductCode: "AUTUMN", catalogVersionSlug: null },
+      { catalogVersion: null, duplicateCatalogVersion: "2025" },
+      duplicate,
+    )).toBe("2025");
   });
 });

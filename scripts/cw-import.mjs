@@ -1127,15 +1127,25 @@ select jsonb_build_object(
 commit;`;
 }
 
-function runRemoteSql(sql, sshHost) {
-  const result = spawnSync(
-    "ssh",
-    [sshHost, "docker exec -i supabase-db psql -U postgres -d postgres -X -q -t -A -v ON_ERROR_STOP=1"],
-    { input: sql, encoding: "utf8", maxBuffer: 256 * 1024 * 1024, shell: false },
-  );
+function runSql(sql, options) {
+  const localArgs = [
+    "exec", "-i", "supabase-db", "psql", "-U", "postgres", "-d", "postgres",
+    "-X", "-q", "-t", "-A", "-v", "ON_ERROR_STOP=1",
+  ];
+  const command = options.localDocker ? "docker" : "ssh";
+  const args = options.localDocker
+    ? localArgs
+    : [options.sshHost, "docker exec -i supabase-db psql -U postgres -d postgres -X -q -t -A -v ON_ERROR_STOP=1"];
+  const result = spawnSync(command, args, {
+    input: sql,
+    encoding: "utf8",
+    maxBuffer: 256 * 1024 * 1024,
+    shell: false,
+  });
 
-  if (result.error) fail(`cannot start SSH psql: ${result.error.message}`);
-  if (result.status !== 0) fail(`remote SQL failed: ${(result.stderr || result.stdout || "unknown error").trim()}`);
+  const mode = options.localDocker ? "local Docker" : "remote SSH";
+  if (result.error) fail(`cannot start ${mode} psql: ${result.error.message}`);
+  if (result.status !== 0) fail(`${mode} SQL failed: ${(result.stderr || result.stdout || "unknown error").trim()}`);
   return result.stdout.trim();
 }
 
@@ -1378,13 +1388,20 @@ async function uploadPlan(plan, storeRoot, client, uploadConfig) {
 }
 
 export function parseArgs(argv) {
-  const options = { dryRun: false, allowProductionTarget: false, sshHost: process.env.CW_IMPORT_SSH_HOST ?? DEFAULT_SSH_HOST };
+  const options = {
+    dryRun: false,
+    allowProductionTarget: false,
+    localDocker: false,
+    databaseUrl: process.env.CW_IMPORT_DATABASE_URL,
+    sshHost: process.env.CW_IMPORT_SSH_HOST ?? DEFAULT_SSH_HOST,
+  };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === "--") continue;
     if (arg === "--dry-run") { options.dryRun = true; continue; }
+    if (arg === "--local-docker") { options.localDocker = true; continue; }
     if (arg === "--allow-production-target") { options.allowProductionTarget = true; continue; }
-    if (arg === "--package-root" || arg === "--store-root" || arg === "--courseware-id" || arg === "--ssh-host" || arg === "--catalog-version") {
+    if (arg === "--package-root" || arg === "--store-root" || arg === "--courseware-id" || arg === "--ssh-host" || arg === "--catalog-version" || arg === "--database-url") {
       const value = argv[index + 1];
       if (!value || value.startsWith("--")) fail(`${arg} requires a value`);
       options[arg.slice(2).replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())] = value;
@@ -1396,10 +1413,16 @@ export function parseArgs(argv) {
   options.packageRoot ??= process.env.CW_PACKAGE_ROOT;
   options.storeRoot ??= process.env.CW_STORE_ROOT;
   if (!options.packageRoot || !options.storeRoot || !options.coursewareId) {
-    fail("usage: pnpm cw:import -- --package-root <dir> --store-root <dir> --courseware-id <id> [--catalog-version <slug>] [--dry-run] [--ssh-host <host>] [--allow-production-target]");
+    fail("usage: pnpm cw:import -- --package-root <dir> --store-root <dir> --courseware-id <id> [--catalog-version <slug>] [--dry-run] [--local-docker --database-url <loopback-postgres-url> | --ssh-host <host>] [--allow-production-target]");
   }
   if (options.catalogVersion !== undefined && !CATALOG_VERSION_SLUG.test(options.catalogVersion)) {
     fail("--catalog-version must be a slug such as 2026");
+  }
+  if (options.localDocker && !options.databaseUrl) {
+    fail("--database-url is required with --local-docker so the write-target policy can attest the exact loopback database");
+  }
+  if (!options.localDocker && options.databaseUrl) {
+    fail("--database-url is only valid with --local-docker");
   }
   return options;
 }
@@ -1411,7 +1434,7 @@ async function main() {
     coursewareId: options.coursewareId,
     catalogVersionSlug: options.catalogVersion ?? null,
   });
-  const preflight = JSON.parse(runRemoteSql(buildPreflightSql(plan), options.sshHost));
+  const preflight = JSON.parse(runSql(buildPreflightSql(plan), options));
   if (preflight.matches !== 1) fail(`target lecture mapping returned ${preflight.matches} rows`);
   const summary = {
     exportId: plan.exportId,
@@ -1442,7 +1465,8 @@ async function main() {
     operation: "cw:import",
     supabaseUrl: url,
     additionalSupabaseUrls: [resumableUrl],
-    sshHost: options.sshHost,
+    databaseUrl: options.localDocker ? options.databaseUrl : undefined,
+    sshHost: options.localDocker ? undefined : options.sshHost,
     environment: writeEnvironment,
     allowProduction: options.allowProductionTarget,
     productionConfirmation: options.allowProductionTarget
@@ -1453,7 +1477,7 @@ async function main() {
   if (!key) fail("SUPABASE_SECRET_KEY is required for Storage upload");
   const client = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
   const storage = await uploadPlan(plan, path.resolve(options.storeRoot), client, { url: resumableUrl, key });
-  const database = JSON.parse(runRemoteSql(buildImportSql(plan), options.sshHost));
+  const database = JSON.parse(runSql(buildImportSql(plan), options));
   process.stdout.write(`${JSON.stringify({ ...summary, storage, database }, null, 2)}\n`);
   const problems = [];
   if (database.bindings.conflicts > 0) problems.push(`${database.bindings.conflicts} binding conflicts`);
