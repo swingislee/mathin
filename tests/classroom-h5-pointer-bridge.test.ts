@@ -165,4 +165,32 @@ describe("M3b H5 pointer bridge", () => {
     expect(profileMigration).toContain("cw_h5_input_profiles_one_active_idx");
     expect(profileMigration).toMatch(/for select to anon, authenticated[\s\S]*status = 'active'/);
   });
+
+  it("uses a transient local fixture and proves the formal route before rehearsal", () => {
+    const e2e = readFileSync(
+      new URL("../e2e/classroom-h5-input-contract.spec.ts", import.meta.url),
+      "utf8",
+    );
+    const fixture = readFileSync(
+      new URL("../e2e/support/classroom-contract-fixture.ts", import.meta.url),
+      "utf8",
+    );
+    const runner = readFileSync(
+      new URL("../scripts/run-classroom-contract.mjs", import.meta.url),
+      "utf8",
+    );
+
+    expect(e2e).not.toContain("03c61c75-b2ee-4e2a-907d-50df45052790");
+    expect(e2e).not.toContain("d4377e50-271a-42b9-9e86-b8aaa9cae67e");
+    expect(e2e).toContain("setupClassroomContractFixture");
+    expect(e2e).toContain('data-classroom-control-surface="flat-rail"');
+    expect(e2e.indexOf("data-classroom-control-surface"))
+      .toBeLessThan(e2e.indexOf("mode=rehearsal&acceptance=m3b"));
+    expect(e2e).toContain("finally");
+    expect(fixture).toContain("assertNonProductionWriteTarget");
+    expect(fixture).toContain('purpose: "test"');
+    expect(fixture).toContain("cleanupMutableFixture");
+    expect(runner).toContain('R1_DEV_TEST_FIXTURES: "1"');
+    expect(runner).toContain("isLoopback");
+  });
 });

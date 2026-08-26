@@ -1332,6 +1332,8 @@ M3b 把指针协议扩展进既有 H5 注入 runtime，并把缓存版本从 v2 
 
 同日，产品负责人要求将对应改动推送生产。发布从生产基线 `8c303a2` 隔离拣选四个课堂代码提交，生成 `964ca5e`，未包含同期教师微课提交或未提交工作树。新鲜 PostgreSQL-only 备份、migration 完整回滚/零残留、正式 ledger、双 build、原子切换与独立 postflight 均通过；生产 current/previous 为 `20260826-125052` / `964ca5e…` 与 `20260825-085754` / `8c303a2…`。`cw_h5_input_profiles` 为空且 H5 开关仍为 version 3 / false，因此本次只记为修复底座与 Smart UI 已部署待验收，不记为 H5 pointer 已启用。
 
+开发库后续暴露出验收数据治理缺口：M2 测试班被 E2E 以固定 UUID 长期复用，普通 `all/teaching/support` 名单又默认混入 test 与 archived 对象；试讲参数还能自动打开开发开关，使该测试没有证明正式课堂入口。修复后，课堂合同每次创建随机 `purpose=test` 班级和自由课次，先经普通候课→正式开课断言 Stage B 布局与 Smart，再进入试讲覆盖 H5，`finally` 精确删除临时对象；本地 runner 只接受 loopback 并对齐 board/input/layout=true、H5=false。名单 RPC 的普通 scope 默认只返回未归档 production 班，显式 `purpose=test` 仍可查询未归档测试班，独立 test scope 继续包含已归档测试班以支持恢复。旧 M2 班因已有正式 start 历史而按领域规则可恢复地归档，没有物理删除；开发库只读复核为普通名单命中 0、test scope 归档命中 1、临时课堂残留 0。该记录只证明开发环境已修复，不改变生产开关或数据。
+
 #### 回归矩阵
 
 | 维度 | 覆盖项 |

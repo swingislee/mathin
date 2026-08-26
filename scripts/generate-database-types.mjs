@@ -6,8 +6,11 @@ import { DIGEST_PREFIX, migrationsDigest } from "./lib/migrations-digest.mjs";
 const databaseUrl = process.env.DATABASE_URL;
 const metaSsh = process.env.SUPABASE_META_SSH;
 const metaUrl = process.env.SUPABASE_META_URL;
-if (!databaseUrl && !metaSsh && !metaUrl) {
-  console.error("DATABASE_URL, SUPABASE_META_SSH, or SUPABASE_META_URL is required for db:types");
+const metaDocker = process.env.SUPABASE_META_DOCKER;
+if (!databaseUrl && !metaSsh && !metaUrl && !metaDocker) {
+  console.error(
+    "DATABASE_URL, SUPABASE_META_SSH, SUPABASE_META_URL, or SUPABASE_META_DOCKER is required for db:types",
+  );
   process.exit(2);
 }
 let result;
@@ -19,13 +22,29 @@ if (metaUrl) {
     stdout: response.ok ? await response.text() : "",
     stderr: response.ok ? "" : await response.text(),
   };
+} else if (metaDocker) {
+  const generator = `
+const response = await fetch("http://127.0.0.1:8080/generators/typescript?included_schemas=public");
+if (!response.ok) {
+  process.stderr.write(await response.text());
+  process.exit(response.status || 1);
+}
+process.stdout.write(await response.text());
+`;
+  result = spawnSync(
+    process.platform === "win32" ? "docker.exe" : "docker",
+    ["exec", metaDocker, "node", "--input-type=module", "-e", generator],
+    { encoding: "utf8", shell: false, maxBuffer: 64 * 1024 * 1024 },
+  );
 } else {
   result = metaSsh
     ? spawnSync(process.platform === "win32" ? "ssh.exe" : "ssh", [metaSsh, "ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' supabase-meta); curl -fsS http://$ip:8080/generators/typescript?included_schemas=public"], { encoding: "utf8", shell: false, maxBuffer: 64 * 1024 * 1024 })
     : spawnSync(process.platform === "win32" ? "supabase.exe" : "supabase", ["gen", "types", "typescript", "--db-url", databaseUrl, "--schema", "public"], { encoding: "utf8", shell: false, maxBuffer: 64 * 1024 * 1024 });
 }
 if (result.error?.code === "ENOENT") {
-  console.error("Supabase CLI (DATABASE_URL mode) or ssh (SUPABASE_META_SSH mode) is required.");
+  console.error(
+    "Supabase CLI (DATABASE_URL), ssh (SUPABASE_META_SSH), or Docker (SUPABASE_META_DOCKER) is required.",
+  );
   process.exit(2);
 }
 if (result.status !== 0) {

@@ -21,6 +21,18 @@ describe("P4H-8 classroom list, detail tabs and session drawer contract", () => 
     expect(migration).toContain("is_classroom_staff_assigned(cid, uid)");
   });
 
+  it("keeps archived and test fixtures out of ordinary classroom scopes", () => {
+    const migration = read("supabase", "migrations", "20260826000700_classroom_fixture_isolation.sql");
+
+    expect(migration).toContain("drop function if exists public.list_classrooms_for_scope");
+    expect(migration).toContain("archived_at timestamptz");
+    expect(migration).toContain("v_scope = 'test' and classroom_row.purpose = 'test'");
+    expect(migration).toContain("v_scope <> 'test'");
+    expect(migration).toContain("classroom_row.archived_at is null");
+    expect(migration).toContain("classroom_row.purpose = coalesce(v_purpose, 'production')");
+    expect(migration).toContain("select pg_notify('pgrst', 'reload schema')");
+  });
+
   it("derives session state from real lifecycle columns instead of a hardcoded default", () => {
     const scopes = read("src", "features", "school", "teaching-operations", "scopes.ts");
     expect(scopes).toContain("export function deriveSessionState");
