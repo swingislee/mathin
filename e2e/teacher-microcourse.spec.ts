@@ -54,9 +54,10 @@ test("teacher authors, teaches, resubmits, publishes, and the catalog creates on
       await page.getByRole("button", { name: "从课程选页", exact: true }).click();
       const sourceDialog = page.getByRole("dialog");
       await sourceDialog.getByPlaceholder("搜索课程族、课程、讲次或页面标题").fill(sourceTitle);
-      const sourceCheckbox = sourceDialog.getByRole("checkbox", { name: `选择 ${sourceTitle}`, exact: true });
-      await expect(sourceCheckbox).toBeVisible();
-      await sourceCheckbox.check();
+      const sourceOption = sourceDialog.getByRole("button", { name: `选择 ${sourceTitle}`, exact: true });
+      await expect(sourceOption).toBeVisible();
+      await sourceOption.click();
+      await expect(sourceOption).toHaveAttribute("aria-pressed", "true");
       await sourceDialog.getByRole("button", { name: "插入 1 页", exact: true }).click();
       await expect(sourceDialog).toBeHidden();
       await expect(page.getByText(sourceTitle, { exact: true }).first()).toBeVisible();
@@ -65,9 +66,9 @@ test("teacher authors, teaches, resubmits, publishes, and the catalog creates on
     await page.getByRole("button", { name: "空白/图文", exact: true }).click();
     await expect(page.getByText("新页面", { exact: true }).first()).toBeVisible();
     await page.getByRole("button", { name: "文字", exact: true }).click();
-    await page.getByTestId("microcourse-overlay-text").fill("教师自建图文叠加层：\n3 × 4 = 12");
-    await page.getByRole("button", { name: "保存页面", exact: true }).click();
-    await expect(page.getByText(/页面草稿已保存为第 \d+ 版。/)).toBeVisible();
+    const overlayText = "教师自建图文叠加层：\n3 × 4 = 12";
+    await page.getByTestId("microcourse-overlay-text").fill(overlayText);
+    await expect(page.getByTestId("microcourse-autosave-status")).toHaveText("等待自动保存");
 
     await page.getByRole("button", { name: "数独", exact: true }).click();
     for (let index = 0; index < UNIQUE_SUDOKU.length; index += 1) {
@@ -75,8 +76,6 @@ test("teacher authors, teaches, resubmits, publishes, and the catalog creates on
       if (digit !== 0) await page.getByLabel(`数独第 ${index + 1} 格`, { exact: true }).fill(String(digit));
     }
     await expect(page.getByText("唯一解校验通过，可以提交审核。", { exact: true })).toBeVisible();
-    await page.getByRole("button", { name: "保存页面", exact: true }).click();
-    await expect(page.getByText(/页面草稿已保存为第 \d+ 版。/)).toBeVisible();
 
     await page.getByRole("button", { name: "H5", exact: true }).click();
     const h5Dialog = page.getByRole("dialog");
@@ -86,6 +85,17 @@ test("teacher authors, teaches, resubmits, publishes, and the catalog creates on
     const previewFrame = page.locator('iframe[title="H5 实时预览"]');
     await expect(previewFrame).toBeVisible();
     await expect(previewFrame).toHaveAttribute("sandbox", "allow-scripts");
+    const h5Html = "<!doctype html><html><body><h1>H5 自动保存</h1></body></html>";
+    const htmlEditor = page.getByLabel("HTML", { exact: true });
+    await expect(htmlEditor).toBeEnabled();
+    await htmlEditor.fill(h5Html);
+    await expect(page.getByTestId("microcourse-autosave-status")).toHaveText("等待自动保存");
+    await expect(page.getByTestId("microcourse-autosave-status")).toHaveText("已自动保存", { timeout: 30_000 });
+
+    await page.getByRole("button", { name: /新页面.*图文\/组合页/ }).click();
+    await expect(page.getByTestId("microcourse-overlay-text")).toHaveValue(overlayText);
+    await page.getByRole("button", { name: /数独探索.*数独页/ }).click();
+    await expect(page.getByLabel("数独第 1 格", { exact: true })).toHaveValue("5");
 
     await page.getByRole("button", { name: "冻结并上课", exact: true }).click();
     await page.waitForURL((url) => url.pathname === `/zh/classroom/${fixture.sourceClassroomId}/session/${fixture.sourceSessionId}/live`, {
@@ -95,6 +105,7 @@ test("teacher authors, teaches, resubmits, publishes, and the catalog creates on
 
     await page.goto(editorPath);
     await expect(page.getByRole("button", { name: "进入课堂", exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "编辑微课信息", exact: true }).click();
     await page.getByLabel("提交/审核说明", { exact: true }).fill("首轮提交：请检查来源快照和课堂交互。");
     await page.getByRole("button", { name: "提交审核", exact: true }).click();
     await expect(page.getByText("已冻结当前内容并提交教研审核。", { exact: true })).toBeVisible();
@@ -112,6 +123,7 @@ test("teacher authors, teaches, resubmits, publishes, and the catalog creates on
     await page.context().clearCookies();
     await loginWithFixedAccount(page, teacher, editorPath);
     await expect(page.getByText("待修改", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "编辑微课信息", exact: true }).click();
     await page.getByLabel("提交/审核说明", { exact: true }).fill("已根据首轮意见复核并重提。");
     await page.getByRole("button", { name: "提交审核", exact: true }).click();
     await expect(page.getByText("已冻结当前内容并提交教研审核。", { exact: true })).toBeVisible();
