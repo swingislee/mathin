@@ -1,13 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { ArrowDown, ArrowUp, LoaderCircle, Search } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, LoaderCircle, RefreshCw, Search } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { StagePreview } from "@/features/courseware-studio/StagePreview";
 import { createTeacherCompositionPageAction, searchTeacherMicrocourseSourcePagesAction } from "./actions";
@@ -30,6 +28,8 @@ export function MicrocourseSourcePicker({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [sources, setSources] = useState(initialSources);
+  const [catalogEmpty, setCatalogEmpty] = useState(initialSources.length === 0);
+  const [searchVersion, setSearchVersion] = useState(0);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const selectedIdsRef = useRef(selectedIds);
   const [failed, setFailed] = useState(false);
@@ -54,6 +54,8 @@ export function MicrocourseSourcePicker({
               const incoming = new Set(rows.map((item) => item.revisionId));
               return [...pinned.filter((item) => !incoming.has(item.revisionId)), ...rows];
             });
+            if (query.trim() === "") setCatalogEmpty(rows.length === 0);
+            else if (rows.length > 0) setCatalogEmpty(false);
             setFailed(false);
           }
         } catch {
@@ -62,7 +64,7 @@ export function MicrocourseSourcePicker({
       });
     }, 250);
     return () => { live = false; window.clearTimeout(timer); };
-  }, [open, query]);
+  }, [open, query, searchVersion]);
 
   const toggle = (id: string) => setSelectedIds((current) => current.includes(id)
     ? current.filter((item) => item !== id)
@@ -121,16 +123,17 @@ export function MicrocourseSourcePicker({
               {searching && <p className="col-span-full flex items-center justify-center gap-2 py-10 text-sm text-muted"><LoaderCircle className="size-4 animate-spin" />{t("searching")}</p>}
               {!searching && sources.map((source) => {
                 const checked = selectedIds.includes(source.revisionId);
-                return <div key={source.revisionId} className={`overflow-hidden rounded-xl border text-left transition ${checked ? "border-crater ring-2 ring-crater/20" : "border-line hover:border-crater/50"}`}>
+                return <Button key={source.revisionId} type="button" variant="ghost" aria-pressed={checked} aria-label={t("selectSourcePage", { title: source.pageTitle })} onClick={() => toggle(source.revisionId)} className={`h-auto min-w-0 flex-col items-stretch justify-start gap-0 overflow-hidden whitespace-normal rounded-xl border p-0 text-left transition ${checked ? "border-crater bg-moon/15 ring-2 ring-crater/20" : "border-line hover:border-crater/50 hover:bg-paper"}`}>
                   <div className="pointer-events-none aspect-[4/3] overflow-hidden bg-paper"><StagePreview doc={source.doc} bindingUrls={source.bindingUrls} interactive={false} className="h-full w-full" /></div>
-                  <Label className="flex cursor-pointer items-start gap-2 border-t border-line p-3 font-normal">
-                    <Checkbox checked={checked} onCheckedChange={() => toggle(source.revisionId)} aria-label={t("selectSourcePage", { title: source.pageTitle })} />
+                  <div className="flex items-start gap-2 border-t border-line p-3 font-normal">
+                    <span aria-hidden="true" className={`mt-0.5 grid size-4 shrink-0 place-items-center rounded border ${checked ? "border-rose bg-rose text-white" : "border-crater bg-card"}`}>{checked && <Check className="size-3" />}</span>
                     <div className="min-w-0"><p className="truncate text-sm font-medium text-ink">{source.pageTitle}</p><p className="mt-0.5 line-clamp-2 text-xs text-muted">{source.familyTitle} · {source.courseTitle} · {source.lectureTitle} · P{source.pageNo}</p></div>
-                  </Label>
-                </div>;
+                  </div>
+                </Button>;
               })}
-              {!searching && !failed && sources.length === 0 && <p className="col-span-full py-10 text-center text-sm text-muted">{t("sourceEmpty")}</p>}
-              {failed && <p role="alert" className="col-span-full py-10 text-center text-sm text-rose">{t("sourceFailed")}</p>}
+              {!searching && !failed && sources.length === 0 && catalogEmpty && <div className="col-span-full grid place-items-center gap-2 px-6 py-10 text-center"><p className="text-sm font-medium text-ink">{t("sourceCatalogEmpty")}</p><p className="max-w-xl text-xs leading-5 text-muted">{t("sourceCatalogEmptyHint")}</p><Button type="button" size="sm" variant="secondary" onClick={() => setSearchVersion((value) => value + 1)}><RefreshCw className="size-3.5" />{t("retrySourceSearch")}</Button></div>}
+              {!searching && !failed && sources.length === 0 && !catalogEmpty && <p className="col-span-full py-10 text-center text-sm text-muted">{t("sourceEmpty")}</p>}
+              {failed && <div role="alert" className="col-span-full grid place-items-center gap-2 px-6 py-10 text-center"><p className="text-sm text-rose">{t("sourceFailed")}</p><Button type="button" size="sm" variant="secondary" onClick={() => { setFailed(false); setSearchVersion((value) => value + 1); }}><RefreshCw className="size-3.5" />{t("retrySourceSearch")}</Button></div>}
             </div>
           </ScrollArea>
           <aside className="min-h-0 rounded-xl border border-line bg-paper/60 p-3">
