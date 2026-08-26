@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { buildImportSql, h5StoragePath, loadImportPlan, parseArgs, resolveInside } from "../scripts/cw-import.mjs";
+import { buildImportSql, h5StoragePath, importCourseware, loadImportPlan, parseArgs, resolveInside } from "../scripts/cw-import.mjs";
 import { resolveCatalogVersion } from "../scripts/aixuexi-import-all.mjs";
 
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");
@@ -170,5 +170,9 @@ describe("P6 courseware importer", () => {
       { catalogVersion: null, duplicateCatalogVersion: "2025" },
       duplicate,
     )).toBe("2025");
+  });
+
+  it("exports the in-process importer used by local resumable batches", () => {
+    expect(importCourseware).toBeTypeOf("function");
   });
 });

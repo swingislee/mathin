@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { importCourseware } from "./cw-import.mjs";
 
 function fail(message) {
   throw new Error("AIXUEXI_IMPORT_ALL: " + message);
@@ -112,17 +113,32 @@ export async function importAll(options) {
     else args.push("--ssh-host", options.sshHost);
     if (options.dryRun) args.push("--dry-run");
     if (options.allowProductionTarget) args.push("--allow-production-target");
-    const child = spawnSync(process.execPath, args, {
-      cwd: process.cwd(),
-      encoding: "utf8",
-      maxBuffer: 256 * 1024 * 1024,
-      shell: false,
-    });
-    if (child.status !== 0) {
-      process.stderr.write(child.stderr ?? "");
-      fail("lecture " + lecture.coursewareId + " failed with exit code " + child.status);
+    let result;
+    if (options.localDocker) {
+      result = await importCourseware({
+        packageRoot: options.packageRoot,
+        storeRoot: options.storeRoot,
+        coursewareId: lecture.coursewareId,
+        catalogVersion,
+        dryRun: options.dryRun,
+        localDocker: true,
+        databaseUrl: options.databaseUrl,
+        sshHost: options.sshHost,
+        allowProductionTarget: false,
+      });
+    } else {
+      const child = spawnSync(process.execPath, args, {
+        cwd: process.cwd(),
+        encoding: "utf8",
+        maxBuffer: 256 * 1024 * 1024,
+        shell: false,
+      });
+      if (child.status !== 0) {
+        process.stderr.write(child.stderr ?? "");
+        fail("lecture " + lecture.coursewareId + " failed with exit code " + child.status);
+      }
+      result = JSON.parse(child.stdout);
     }
-    const result = JSON.parse(child.stdout);
     results.push(result);
     process.stderr.write(
       "AIXUEXI_IMPORT_ALL: ok · pages=" + result.expected.pages

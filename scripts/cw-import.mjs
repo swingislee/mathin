@@ -1236,12 +1236,19 @@ async function storageObjectExists(client, bucket, remotePath) {
   fail(`storage existence check exhausted retries for ${bucket}/${remotePath}`);
 }
 
+function rememberStorageObject(bucket, remotePath) {
+  const separator = remotePath.lastIndexOf("/");
+  const folder = separator < 0 ? "" : remotePath.slice(0, separator);
+  const name = separator < 0 ? remotePath : remotePath.slice(separator + 1);
+  storageDirectoryCache.get(`${bucket}/${folder}`)?.add(name);
+}
+
 /** 供同样写入 CAS 的增量管线复用：先查存在性、瞬态失败重试，大对象走 TUS。 */
 export async function uploadOne(client, uploadConfig, bucket, remotePath, file, mime, cacheControl) {
   if (await storageObjectExists(client, bucket, remotePath)) return "existing";
   const info = await stat(file);
   if (info.size > RESUMABLE_UPLOAD_BYTES) {
-    return uploadResumable({
+    const state = await uploadResumable({
       ...uploadConfig,
       bucket,
       remotePath,
@@ -1250,6 +1257,8 @@ export async function uploadOne(client, uploadConfig, bucket, remotePath, file, 
       cacheControl,
       byteCount: info.size,
     });
+    rememberStorageObject(bucket, remotePath);
+    return state;
   }
   const body = await readFile(file);
   for (let attempt = 0; attempt < 4; attempt += 1) {
@@ -1258,8 +1267,14 @@ export async function uploadOne(client, uploadConfig, bucket, remotePath, file, 
       cacheControl,
       upsert: false,
     });
-    if (!error) return "uploaded";
-    if (alreadyExists(error)) return "existing";
+    if (!error) {
+      rememberStorageObject(bucket, remotePath);
+      return "uploaded";
+    }
+    if (alreadyExists(error)) {
+      rememberStorageObject(bucket, remotePath);
+      return "existing";
+    }
     if (transientStorageFailure(error) && attempt < 3) {
       await wait(500 * (attempt + 1));
       continue;
@@ -1427,8 +1442,7 @@ export function parseArgs(argv) {
   return options;
 }
 
-async function main() {
-  const options = parseArgs(process.argv.slice(2));
+export async function importCourseware(options) {
   const plan = await loadImportPlan({
     packageRoot: options.packageRoot,
     coursewareId: options.coursewareId,
@@ -1453,8 +1467,7 @@ async function main() {
     preflight,
   };
   if (options.dryRun) {
-    process.stdout.write(`${JSON.stringify({ dryRun: true, ...summary }, null, 2)}\n`);
-    return;
+    return { dryRun: true, ...summary };
   }
   const localEnv = await loadLocalEnv(process.cwd());
   const writeEnvironment = { ...localEnv, ...process.env };
@@ -1478,11 +1491,16 @@ async function main() {
   const client = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
   const storage = await uploadPlan(plan, path.resolve(options.storeRoot), client, { url: resumableUrl, key });
   const database = JSON.parse(runSql(buildImportSql(plan), options));
-  process.stdout.write(`${JSON.stringify({ ...summary, storage, database }, null, 2)}\n`);
   const problems = [];
   if (database.bindings.conflicts > 0) problems.push(`${database.bindings.conflicts} binding conflicts`);
   if (database.pages.baselineDrift > 0) problems.push(`${database.pages.baselineDrift} pages drifted from the imported baseline`);
   if (problems.length > 0) fail(`reconciliation reported ${problems.join(" and ")} — inspect before re-running`);
+  return { ...summary, storage, database };
+}
+
+async function main() {
+  const result = await importCourseware(parseArgs(process.argv.slice(2)));
+  process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
