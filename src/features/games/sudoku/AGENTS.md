@@ -10,8 +10,10 @@
 | 规则、生成、求解、验证 | `logic.ts` 的 `SudokuVariantRuntime` / `SUDOKU_RUNTIME_REGISTRY` | 客户端判定与服务端 `verifySudoku` 必须调用同一 runtime |
 | 棋盘表现 | `SudokuBoard.tsx` 的 `SUDOKU_RENDERER_REGISTRY` | 新 renderer 必须显式登记；不得让未知 renderer 静默套用普通棋盘 |
 | 题型按钮 | `SudokuVariantSelector.tsx` | 公开游戏和课件入口复用同一选择器；可见性来自 `selectableIn` |
+| 教师自编题内容 | `courseware-contract.ts` | `sudoku-authored-v1` 只保存稳定 `variantId`、原型题与展示选项；格数和数字范围由题型注册表校验 |
+| 微课编辑与课堂 | `SudokuGamePageEditor.tsx` / `SudokuGamePageStage.tsx` | 通过通用 `game-page-v1` 适配层接入；不得在微课编辑器、审核或来源选择器中新增数独专用分支 |
 | 课堂轻状态 | `state.ts` / `GameMirrorState` | 题型由课件页 seed 决定；镜像只传操作状态，不重复传规则定义 |
-| 合同测试 | `tests/sudoku-variants.test.ts` | 注册表、seed、确定性生成、runtime、服务端验证和镜像兼容必须覆盖 |
+| 合同测试 | `tests/sudoku-variants.test.ts` / `tests/game-courseware-contract.test.ts` | 注册表、seed、确定性生成、自编题 payload、runtime、服务端验证和镜像兼容必须覆盖 |
 
 `SudokuSizeSelector` 只为旧尺寸调用保留。新代码必须使用 `SudokuVariantSelector` 和稳定 `variantId`，否则无法区分同为 9×9 的标准数独与变形数独。
 
@@ -22,7 +24,8 @@
 - `sudoku-v1:4:<baseSeed>` 与 `sudoku-v1:6:<baseSeed>` 永久表示当前四宫、六宫；不得改写既有题面算法或 RNG 输入。
 - 新变形题型使用 `sudoku-v2:<variantId>:<baseSeed>`。`variantId` 使用小写 kebab-case，发布后不得改名、复用或改变语义。
 - 未知或畸形的 `sudoku-v1/v2` 必须 fail closed，不能降级成 9×9 继续生成或通过服务端验证。
-- 课件与课堂继续复用 `{ gameId, difficulty, seed }` 及现有 `GameMirrorState`。只有规则无法由 seed 确定性恢复时，才可提出新的版本化课件字段；不得先把规则对象塞进镜像事件。
+- 确定性生成的公开对局与历史游戏课件继续复用 `{ gameId, difficulty, seed }` 及现有 `GameMirrorState`。教师手工原型题使用 `game-page-v1` + `sudoku-authored-v1`，payload 必须显式保存稳定 `variantId`，并经服务端 runtime 生成不可变校验凭证；不得把规则对象塞进镜像事件。
+- `microcourse-page-v1 mode=sudoku` 是永久可读的 81 格兼容格式，不回写旧 revision。所有新建教师数独页都走 `game-page-v1`；新增题型只改数独注册表、payload 适配器和测试，不得修改微课核心 schema、页面切换、审核、冻结或课堂路由。
 
 标准调用：
 
@@ -42,9 +45,9 @@ const solved = solveSudokuGrid(puzzle, variantId);
 2. 判断现有 runtime 是否完整覆盖新规则。若不能，新增 `runtimeId` 和 `SudokuVariantRuntime` 实现，并注册到 `SUDOKU_RUNTIME_REGISTRY`。生成、候选合法性、求解、唯一性分析、逐格验证和最终 proof 验证不得分叉。
 3. 判断 `classic-grid-v1` 是否能准确表达宫边界、附加线索和课堂突出。若不能，新增 renderer 并在 `SUDOKU_RENDERER_REGISTRY` 登记；仅隐藏规则标记不算支持。
 4. 在 `messages/zh.json`、`messages/en.json` 的 `games.sudokuVariants.<variantId>` 添加同名 key。
-5. 通过 `selectableIn` 决定是否出现在公开游戏和课件。不得另建按钮列表或插入弹窗分支。
+5. 通过 `selectableIn` 决定是否出现在公开游戏、确定性课件和教师自编题。不得另建按钮列表或插入弹窗分支。
 6. 新题型默认 `ranked: false`。只有开始会话、seed 发放、服务端验证和排行榜维度都显式包含题型后才可设为 `true`。
-7. 若教师自编题、微课或导入格式需要该题型，文档 schema 必须增加版本化 `variantId` 并由服务端分析；不能只在 React props 中临时传值。
+7. 若教师自编题、微课或导入格式需要该题型，在 `sudoku-authored-v1` 中保存版本化 `variantId` 并由服务端 runtime 分析；只要 payload 版本不变，不得为新题型修改通用 `game-page-v1` 或来源导入 SQL。
 
 ## 4. 必须验收
 
@@ -56,7 +59,7 @@ const solved = solveSudokuGrid(puzzle, variantId);
 - 最窄检查至少运行：
 
 ```text
-pnpm test -- tests/sudoku-variants.test.ts tests/sudoku-teaching-board.test.ts
+pnpm test -- tests/sudoku-variants.test.ts tests/sudoku-teaching-board.test.ts tests/game-courseware-contract.test.ts
 pnpm typecheck
 pnpm messages:check
 ```

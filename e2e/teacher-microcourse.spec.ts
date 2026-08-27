@@ -7,17 +7,14 @@ import {
 } from "./support/teacher-microcourse-fixture";
 
 const FIXTURE_FLAG_REASON = "set R1_DEV_TEST_FIXTURES=1 and use the local teacher microcourse runner";
-const UNIQUE_SUDOKU = (
-  "530070000"
-  + "600195000"
-  + "098000060"
-  + "800060003"
-  + "400803001"
-  + "700020006"
-  + "060000280"
-  + "000419005"
-  + "000080079"
-).split("").map(Number);
+const UNIQUE_SIX_BY_SIX = [
+  1, 2, 3, 4, 5, 6,
+  4, 5, 6, 1, 2, 3,
+  2, 3, 4, 5, 6, 1,
+  5, 6, 1, 2, 3, 4,
+  3, 4, 5, 6, 1, 2,
+  6, 1, 2, 3, 4, 0,
+];
 
 let activeFixture: TeacherMicrocourseFixture | null = null;
 
@@ -70,9 +67,16 @@ test("teacher authors, teaches, resubmits, publishes, and the catalog creates on
     await page.getByTestId("microcourse-overlay-text").fill(overlayText);
     await expect(page.getByTestId("microcourse-autosave-status")).toHaveText("等待自动保存");
 
-    await page.getByRole("button", { name: "数独", exact: true }).click();
-    for (let index = 0; index < UNIQUE_SUDOKU.length; index += 1) {
-      const digit = UNIQUE_SUDOKU[index];
+    await page.getByRole("button", { name: "游戏", exact: true }).click();
+    const gameDialog = page.getByRole("dialog");
+    await expect(gameDialog.getByRole("heading", { name: "新建游戏页", exact: true })).toBeVisible();
+    await gameDialog.getByRole("button", { name: "数独", exact: true }).click();
+    await gameDialog.getByRole("button", { name: "创建", exact: true }).click();
+    await expect(gameDialog).toBeHidden();
+    await page.getByRole("radio", { name: "六宫", exact: true }).click();
+    await expect(page.getByTestId("sudoku-authoring-grid")).toHaveAttribute("data-sudoku-variant", "classic-6x6");
+    for (let index = 0; index < UNIQUE_SIX_BY_SIX.length; index += 1) {
+      const digit = UNIQUE_SIX_BY_SIX[index];
       if (digit !== 0) await page.getByLabel(`数独第 ${index + 1} 格`, { exact: true }).fill(String(digit));
     }
     await expect(page.getByText("唯一解校验通过，可以提交审核。", { exact: true })).toBeVisible();
@@ -94,8 +98,9 @@ test("teacher authors, teaches, resubmits, publishes, and the catalog creates on
 
     await page.getByRole("button", { name: /新页面.*图文\/组合页/ }).click();
     await expect(page.getByTestId("microcourse-overlay-text")).toHaveValue(overlayText);
-    await page.getByRole("button", { name: /数独探索.*数独页/ }).click();
-    await expect(page.getByLabel("数独第 1 格", { exact: true })).toHaveValue("5");
+    await page.getByRole("button", { name: /数独.*游戏页/ }).click();
+    await expect(page.getByTestId("sudoku-authoring-grid")).toHaveAttribute("data-sudoku-variant", "classic-6x6");
+    await expect(page.getByLabel("数独第 1 格", { exact: true })).toHaveValue("1");
 
     await page.getByRole("button", { name: "冻结并上课", exact: true }).click();
     await page.waitForURL((url) => url.pathname === `/zh/classroom/${fixture.sourceClassroomId}/session/${fixture.sourceSessionId}/live`, {

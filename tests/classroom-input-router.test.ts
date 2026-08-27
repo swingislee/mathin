@@ -42,6 +42,31 @@ const documentFixture = createM3DocumentInputFixture({
   result: "Advanced",
 });
 
+const gameDocumentFixture = {
+  docVersion: "game-page-v1" as const,
+  canvas: { width: 960 as const, height: 720 as const, backgroundColor: "#ffffff" },
+  gameId: "sudoku",
+  contentVersion: "sudoku-authored-v1",
+  payload: {
+    kind: "authored" as const,
+    variantId: "classic-6x6" as const,
+    puzzle: new Array(36).fill(0),
+    display: {
+      showCoordinates: true,
+      allowCandidates: true,
+      allowAnswerReveal: false,
+      showTeachingTools: true,
+    },
+  },
+  validation: {
+    payloadHash: "a".repeat(64),
+    validatorVersion: "sudoku-authored-v1@1",
+    publishable: false,
+    code: "multiple",
+    details: { status: "multiple", solutionCount: 2 },
+  },
+};
+
 function attributeNode(attributes: Record<string, string | number | undefined>) {
   return {
     getAttribute(name: string) {
@@ -228,6 +253,12 @@ describe("M3a classroom input routing", () => {
       renderer: "document",
       audited: true,
       provisional: false,
+    });
+    expect(resolveClassroomRendererInputProfile(documentPage, null, gameDocumentFixture)).toMatchObject({
+      renderer: "document:game:sudoku",
+      audited: true,
+      provisional: false,
+      provider: games.find((game) => game.id === "sudoku")?.classroomInput,
     });
 
     const bridgedDocument = {

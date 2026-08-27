@@ -6,6 +6,8 @@ import { isAixuexiPageDoc } from "@/features/courseware-doc/aixuexi-schema";
 import type { AixuexiStageProps } from "@/features/courseware-doc/AixuexiStage";
 import type { CoursewareDoc } from "@/features/courseware-doc/document";
 import type { DocStageProps } from "@/features/courseware-doc/DocStage";
+import { isGamePageDoc } from "@/features/courseware-doc/game-page-schema";
+import type { GamePageStageProps } from "@/features/games/courseware/GamePageStage";
 import { isMicrocoursePageDoc } from "@/features/courseware-doc/microcourse-schema";
 import type { MicrocourseStageProps } from "@/features/courseware-doc/MicrocourseStage";
 import { isSpatialPageDoc } from "@/features/courseware-doc/spatial";
@@ -41,12 +43,23 @@ const MicrocourseStage = dynamic<MicrocourseStageProps>(
   },
 );
 
+const GamePageStage = dynamic<GamePageStageProps>(
+  () => import("@/features/games/courseware/GamePageStage"),
+  {
+    ssr: false,
+    loading: () => <Skeleton className="aspect-[4/3] w-full rounded-xl" />,
+  },
+);
+
 export type StagePreviewProps = Omit<DocStageProps, "doc"> & {
   doc: CoursewareDoc;
   onAdvance?: () => void;
 };
 
 export function StagePreview(props: StagePreviewProps) {
+  if (isGamePageDoc(props.doc)) {
+    return <GamePageStage {...props as GamePageStageProps} />;
+  }
   if (isMicrocoursePageDoc(props.doc)) {
     return <MicrocourseStage {...props as MicrocourseStageProps} />;
   }

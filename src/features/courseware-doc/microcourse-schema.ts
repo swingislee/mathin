@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { aixuexiPageDocSchema, type AixuexiPageDoc } from "./aixuexi-schema";
 import { pageDocSchema, type PageDoc } from "./schema";
+import { gamePageDocSchema, type GamePageDoc } from "./game-page-schema";
 import {
   spatialPageDocSchema,
   type SpatialPageDoc,
@@ -21,14 +22,15 @@ export const microcourseCanvasSchema = z
   .strict();
 
 /**
- * A copied source is intentionally limited to the three first-party published
- * document formats. A teacher microcourse can therefore never recursively
- * embed another teacher microcourse.
+ * A copied source is limited to registered first-party published document
+ * formats. A teacher microcourse can therefore never recursively embed another
+ * teacher microcourse; game-page-v1 is flattened as one immutable source doc.
  */
 export const microcourseSourceDocSchema = z.union([
   pageDocSchema,
   aixuexiPageDocSchema,
   spatialPageDocSchema,
+  gamePageDocSchema,
 ]);
 
 export const microcourseSourceSnapshotSchema = z
@@ -139,7 +141,7 @@ export const microcoursePageDocSchema = z.union([
   h5PageSchema,
 ]);
 
-export type MicrocourseSourceDoc = PageDoc | AixuexiPageDoc | SpatialPageDoc;
+export type MicrocourseSourceDoc = PageDoc | AixuexiPageDoc | SpatialPageDoc | GamePageDoc;
 export type MicrocourseSourceSnapshot = z.infer<typeof microcourseSourceSnapshotSchema>;
 export type SudokuAnalysis = z.infer<typeof sudokuAnalysisSchema>;
 export type MicrocoursePageDoc = z.infer<typeof microcoursePageDocSchema>;
@@ -149,4 +151,3 @@ export function isMicrocoursePageDoc(
 ): doc is MicrocoursePageDoc {
   return doc.docVersion === MICROCOURSE_PAGE_DOC_VERSION;
 }
-

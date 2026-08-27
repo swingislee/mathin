@@ -3,7 +3,14 @@
 import { createHash } from "node:crypto";
 import sanitizeHtml from "sanitize-html";
 import { z } from "zod";
-import { microcoursePageDocSchema, type MicrocoursePageDoc } from "@/features/courseware-doc/microcourse-schema";
+import {
+  GAME_PAGE_DOC_VERSION,
+  gamePageDocSchema,
+  isGamePageDoc,
+} from "@/features/courseware-doc/game-page-schema";
+import { microcoursePageDocSchema } from "@/features/courseware-doc/microcourse-schema";
+import { createDefaultGameCoursewarePayload } from "@/features/games/courseware/contracts";
+import { validateGameCoursewareContent } from "@/features/games/courseware/server";
 import { authorizedClient } from "@/features/school/actions/guards";
 import {
   COMMON_CODES,
@@ -18,8 +25,12 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { microcourseH5Bytes, normalizeMicrocourseH5 } from "./h5";
 import { teacherImageDimensions } from "./image-metadata";
 import { loadTeacherMicrocourseH5Html, searchTeacherMicrocourseSourceLectures } from "./data";
+import {
+  teacherMicrocoursePageDocSchema,
+  type TeacherMicrocoursePageDoc,
+} from "./page-doc";
 
-type RpcClient = Awaited<ReturnType<typeof authorizedClient>>["supabase"];
+type RpcClient = { rpc: unknown };
 function rpc<T>(client: RpcClient, name: string, args: Record<string, unknown>) {
   return (client.rpc as unknown as (
     fn: string,
@@ -29,8 +40,8 @@ function rpc<T>(client: RpcClient, name: string, args: Record<string, unknown>) 
 
 const topicSlug = z.string().min(1).max(60).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
 
-function sanitizeTeacherMicrocoursePage(doc: MicrocoursePageDoc): MicrocoursePageDoc {
-  if (doc.mode !== "composition") return doc;
+function sanitizeTeacherMicrocoursePage(doc: TeacherMicrocoursePageDoc): TeacherMicrocoursePageDoc {
+  if (isGamePageDoc(doc) || doc.mode !== "composition") return doc;
   const next = structuredClone(doc);
   const walk = (nodes: typeof next.overlay.nodes) => {
     for (const node of nodes) {
@@ -74,6 +85,9 @@ const AUTHOR_CODES = [
   "SOURCE_PROVENANCE_IMMUTABLE",
   "INVALID_PAGE_DOC",
   "INVALID_SUDOKU_PUZZLE",
+  "UNKNOWN_GAME_COURSEWARE_CONTRACT",
+  "GAME_PAGE_VALIDATION_FAILED",
+  "GAME_PAGE_NOT_PUBLISHABLE",
   "H5_ARTIFACT_NOT_FOUND",
   "H5_UPLOAD_FAILED",
   "H5_TOO_LARGE",
@@ -223,38 +237,51 @@ export async function createTeacherCompositionPagesFromLectureAction(input: {
   }
 }
 
-const sudokuDisplaySchema = z.object({
-  showCoordinates: z.boolean(),
-  allowCandidates: z.boolean(),
-  allowAnswerReveal: z.boolean(),
-  showTeachingTools: z.boolean(),
-}).strict();
+const gameContractId = z.string().min(1).max(100).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
 
-export async function createTeacherSudokuPageAction(input: {
+export async function createTeacherGamePageAction(input: {
   microcourseId: string;
   afterPageDocId: string | null;
   title: string;
-  puzzle: number[];
-  display: z.input<typeof sudokuDisplaySchema>;
+  gameId: string;
+  contentVersion: string;
 }): Promise<ActionResult<{ pageId: string }>> {
   try {
     const value = parse(z.object({
       microcourseId: uuid,
       afterPageDocId: uuid.nullable(),
       title: requiredText(200),
-      puzzle: z.array(intInRange(0, 9)).length(81),
-      display: sudokuDisplaySchema,
+      gameId: gameContractId,
+      contentVersion: gameContractId,
     }), input);
-    const { supabase } = await authorizedClient("courseware.microcourse.author");
-    const { data, error } = await rpc<string>(supabase, "create_teacher_microcourse_sudoku_page", {
-      p_microcourse_id: value.microcourseId,
-      p_after_page_doc_id: value.afterPageDocId,
-      p_title: value.title,
-      p_puzzle: value.puzzle,
-      p_display: value.display,
+    const { user } = await authorizedClient("courseware.microcourse.author");
+    const trusted = validateGameCoursewareContent(
+      value.gameId,
+      value.contentVersion,
+      createDefaultGameCoursewarePayload(value.gameId, value.contentVersion),
+    );
+    const doc = gamePageDocSchema.parse({
+      docVersion: GAME_PAGE_DOC_VERSION,
+      canvas: { width: 960, height: 720, backgroundColor: "#ffffff" },
+      gameId: value.gameId,
+      contentVersion: value.contentVersion,
+      payload: trusted.payload,
+      validation: trusted.validation,
     });
-    if (error || !data) throw new Error(error?.message ?? "CREATE_PAGE_FAILED");
-    return { ok: true, data: { pageId: data } };
+    const admin = createAdminClient();
+    const { data, error } = await rpc<Array<{ page_id: string }>>(
+      admin,
+      "create_teacher_microcourse_game_page",
+      {
+        p_actor_id: user.id,
+        p_microcourse_id: value.microcourseId,
+        p_after_page_doc_id: value.afterPageDocId,
+        p_title: value.title,
+        p_doc: doc,
+      },
+    );
+    if (error || !data?.[0]?.page_id) throw new Error(error?.message ?? "CREATE_PAGE_FAILED");
+    return { ok: true, data: { pageId: data[0].page_id } };
   } catch (error) {
     return actionError(error, ["CREATE_PAGE_FAILED", ...AUTHOR_CODES]);
   }
@@ -403,17 +430,43 @@ export async function saveTeacherMicrocoursePageAction(input: {
   baseRevisionNo: number;
   title: string;
   note: string;
-}): Promise<ActionResult<{ revisionNo: number }>> {
+}): Promise<ActionResult<{ revisionNo: number; doc: TeacherMicrocoursePageDoc }>> {
   try {
     const value = parse(z.object({
       pageDocId: uuid,
-      doc: microcoursePageDocSchema,
+      doc: teacherMicrocoursePageDocSchema,
       baseRevisionNo: intInRange(1, 100_000),
       title: requiredText(200),
       note: text(1000),
     }), input);
     const doc = sanitizeTeacherMicrocoursePage(value.doc);
-    const { supabase } = await authorizedClient("courseware.microcourse.author");
+    const { user, supabase } = await authorizedClient("courseware.microcourse.author");
+    if (isGamePageDoc(doc)) {
+      const trusted = validateGameCoursewareContent(doc.gameId, doc.contentVersion, doc.payload);
+      const trustedDoc = gamePageDocSchema.parse({
+        ...doc,
+        payload: trusted.payload,
+        validation: trusted.validation,
+      });
+      const admin = createAdminClient();
+      const { data, error } = await rpc<Array<{ revision_no: number }>>(
+        admin,
+        "save_teacher_microcourse_game_page",
+        {
+          p_actor_id: user.id,
+          p_page_doc_id: value.pageDocId,
+          p_doc: trustedDoc,
+          p_base_revision_no: value.baseRevisionNo,
+          p_title: value.title,
+          p_note: value.note,
+        },
+      );
+      if (error || !data?.[0]) throw new Error(error?.message ?? "SAVE_FAILED");
+      return {
+        ok: true,
+        data: { revisionNo: data[0].revision_no, doc: trustedDoc },
+      };
+    }
     const { data, error } = await rpc<Array<{ revision_no: number }>>(
       supabase,
       "save_teacher_microcourse_page",
@@ -426,7 +479,7 @@ export async function saveTeacherMicrocoursePageAction(input: {
       },
     );
     if (error || !data?.[0]) throw new Error(error?.message ?? "SAVE_FAILED");
-    return { ok: true, data: { revisionNo: data[0].revision_no } };
+    return { ok: true, data: { revisionNo: data[0].revision_no, doc } };
   } catch (error) {
     return actionError(error, ["SAVE_FAILED", ...AUTHOR_CODES]);
   }

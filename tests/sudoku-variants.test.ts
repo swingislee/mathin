@@ -88,7 +88,9 @@ describe("Sudoku variant extension registry", () => {
       { id: "classic-9x9", ranked: true },
     ]);
     expect(SUDOKU_VARIANTS.every((variant) => (
-      variant.selectableIn.includes("public") && variant.selectableIn.includes("courseware")
+      variant.selectableIn.includes("public")
+      && variant.selectableIn.includes("courseware")
+      && variant.selectableIn.includes("courseware-authored")
     ))).toBe(true);
   });
 });

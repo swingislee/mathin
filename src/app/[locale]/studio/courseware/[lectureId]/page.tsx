@@ -14,6 +14,7 @@ import { getLectureWorkspaceDetail } from "@/features/school/curriculum/lecture-
 import { isAixuexiPageDoc } from "@/features/courseware-doc/aixuexi-schema";
 import { isSpatialPageDoc } from "@/features/courseware-doc/spatial";
 import { isMicrocoursePageDoc } from "@/features/courseware-doc/microcourse-schema";
+import { isGamePageDoc } from "@/features/courseware-doc/game-page-schema";
 import type { PageDoc } from "@/features/courseware-doc/schema";
 import type { StudioRevision } from "@/features/courseware-studio/data";
 import { resolveLectureReviewCapabilities } from "@/features/school/teaching-operations/capabilities";
@@ -91,7 +92,7 @@ export default async function StudioCoursewarePage({
 
   // Teacher-authored pages use their scoped editor rather than the global
   // curriculum Studio. This guard also keeps CoursewarePageEditor page-doc-v1 only.
-  if (isMicrocoursePageDoc(editor.activeRevision.doc)) notFound();
+  if (isMicrocoursePageDoc(editor.activeRevision.doc) || isGamePageDoc(editor.activeRevision.doc)) notFound();
 
   const detail = await getLectureWorkspaceDetail(lectureId).catch((error) => {
     if (error instanceof Error && (error.message.includes("LECTURE_NOT_FOUND") || error.message.includes("FORBIDDEN_SCOPE"))) return null;
@@ -114,7 +115,8 @@ export default async function StudioCoursewarePage({
     (revision): revision is Omit<StudioRevision, "doc"> & { doc: PageDoc } =>
       !isAixuexiPageDoc(revision.doc)
       && !isSpatialPageDoc(revision.doc)
-      && !isMicrocoursePageDoc(revision.doc),
+      && !isMicrocoursePageDoc(revision.doc)
+      && !isGamePageDoc(revision.doc),
   );
 
   return <CoursewarePageEditor

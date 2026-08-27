@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { parseCoursewareDoc } from "@/features/courseware-doc/document";
+import { gamePageDocSchema } from "@/features/courseware-doc/game-page-schema";
 import {
   MICROCOURSE_H5_MAX_BYTES,
   MICROCOURSE_PAGE_DOC_VERSION,
@@ -62,6 +63,33 @@ const UNIQUE_PUZZLE = (
   + "000419005"
   + "000080079"
 ).split("").map(Number);
+
+function gamePage(variantId: "classic-4x4" | "classic-6x6" | "classic-9x9", puzzle: number[]) {
+  return {
+    docVersion: "game-page-v1" as const,
+    canvas: { width: 960 as const, height: 720 as const, backgroundColor: "#fff" },
+    gameId: "sudoku",
+    contentVersion: "sudoku-authored-v1",
+    payload: {
+      kind: "authored" as const,
+      variantId,
+      puzzle,
+      display: {
+        showCoordinates: true,
+        allowCandidates: true,
+        allowAnswerReveal: false,
+        showTeachingTools: true,
+      },
+    },
+    validation: {
+      payloadHash: sha,
+      validatorVersion: "sudoku-authored-v1@1",
+      publishable: true,
+      code: "unique",
+      details: { status: "unique", solutionCount: 1 },
+    },
+  };
+}
 
 describe("teacher microcourse page documents", () => {
   it("parses a blank composition while keeping the teacher overlay 4:3", () => {
@@ -128,6 +156,40 @@ describe("teacher microcourse page documents", () => {
     });
   });
 
+  it("parses registered 4×4, 6×6 and 9×9 game pages through the shared document union", () => {
+    for (const [variantId, size] of [
+      ["classic-4x4", 4],
+      ["classic-6x6", 6],
+      ["classic-9x9", 9],
+    ] as const) {
+      const page = gamePage(variantId, new Array(size * size).fill(0));
+      expect(gamePageDocSchema.parse(page)).toEqual(page);
+      expect(parseCoursewareDoc(page)).toEqual(page);
+    }
+  });
+
+  it("allows a published game revision as an immutable composition source", () => {
+    const source = gamePage("classic-6x6", new Array(36).fill(0));
+    const page = {
+      docVersion: MICROCOURSE_PAGE_DOC_VERSION,
+      mode: "composition",
+      canvas: { width: 960, height: 720, backgroundColor: "#fff" },
+      source: {
+        sourceFamilyId: "00000000-0000-4000-8000-000000000001",
+        sourceCourseId: "00000000-0000-4000-8000-000000000002",
+        sourceLectureId: "00000000-0000-4000-8000-000000000003",
+        sourceReleaseId: "00000000-0000-4000-8000-000000000004",
+        sourcePageDocId: "00000000-0000-4000-8000-000000000005",
+        sourceRevisionId: "00000000-0000-4000-8000-000000000006",
+        sourcePageNo: 1,
+        sourceTitle: "Six by six",
+        doc: source,
+      },
+      overlay: overlayDoc(),
+    };
+    expect(microcoursePageDocSchema.parse(page)).toEqual(page);
+  });
+
   it("limits single-file H5 documents to five MiB and pins their digest", () => {
     const page = {
       docVersion: MICROCOURSE_PAGE_DOC_VERSION,
@@ -169,9 +231,12 @@ describe("teacher microcourse page documents", () => {
       new URL("../src/app/[locale]/studio/courseware/[lectureId]/page.tsx", import.meta.url),
       "utf8",
     );
+    expect(preview).toContain("isGamePageDoc(props.doc)");
+    expect(preview).toContain("GamePageStage");
     expect(preview).toContain("isMicrocoursePageDoc(props.doc)");
     expect(preview).toContain("MicrocourseStage");
-    expect(studioPage).toContain("if (isMicrocoursePageDoc(editor.activeRevision.doc)) notFound()");
+    expect(studioPage).toContain("isGamePageDoc(editor.activeRevision.doc)");
+    expect(studioPage).toContain("isMicrocoursePageDoc(editor.activeRevision.doc)");
   });
 
   it("passes the saved Sudoku display contract into preparation and classroom rendering", () => {

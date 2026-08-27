@@ -77,6 +77,24 @@ begin
     'public.search_teacher_microcourse_source_lectures(text,uuid,uuid,integer)',
     'EXECUTE'
   ) then failures := array_append(failures, 'lecture source search RPC grant missing'); end if;
+  if has_function_privilege(
+    'authenticated',
+    'public.create_teacher_microcourse_game_page(uuid,uuid,uuid,text,jsonb)',
+    'EXECUTE'
+  ) then failures := array_append(failures, 'authenticated can execute service game create RPC'); end if;
+  if has_function_privilege(
+    'authenticated',
+    'public.save_teacher_microcourse_game_page(uuid,uuid,jsonb,integer,text,text)',
+    'EXECUTE'
+  ) then failures := array_append(failures, 'authenticated can execute service game save RPC'); end if;
+  if not has_function_privilege(
+    'service_role',
+    'public.create_teacher_microcourse_game_page(uuid,uuid,uuid,text,jsonb)',
+    'EXECUTE'
+  ) then failures := array_append(failures, 'service game create RPC grant missing'); end if;
+  if has_table_privilege(
+    'authenticated', 'public.cw_game_revision_validations', 'SELECT'
+  ) then failures := array_append(failures, 'authenticated can read game validation attestations'); end if;
   if not exists (
     select 1 from storage.buckets
     where id = 'cw-h5-drafts' and not public and file_size_limit = 5242880
@@ -255,12 +273,114 @@ select public.create_teacher_microcourse_sudoku_page(
     'showTeachingTools', true
   )
 ) as sudoku_page_id \gset
+
+reset role;
+set local role service_role;
+select set_config('request.jwt.claim.role', 'service_role', true);
+select page_id as game_page_id
+from public.create_teacher_microcourse_game_page(
+  :'teacher_id',
+  :'microcourse_id',
+  :'sudoku_page_id',
+  '六宫数独',
+  jsonb_build_object(
+    'docVersion', 'game-page-v1',
+    'canvas', jsonb_build_object(
+      'width', 960, 'height', 720, 'backgroundColor', '#ffffff'
+    ),
+    'gameId', 'sudoku',
+    'contentVersion', 'sudoku-authored-v1',
+    'payload', jsonb_build_object(
+      'kind', 'authored',
+      'variantId', 'classic-6x6',
+      'puzzle', to_jsonb(array_fill(0, array[36])),
+      'display', jsonb_build_object(
+        'showCoordinates', true,
+        'allowCandidates', true,
+        'allowAnswerReveal', false,
+        'showTeachingTools', true
+      )
+    ),
+    'validation', jsonb_build_object(
+      'payloadHash', repeat('a', 64),
+      'validatorVersion', 'sudoku-authored-v1@1',
+      'publishable', false,
+      'code', 'multiple',
+      'details', jsonb_build_object('status', 'multiple', 'solutionCount', 2)
+    )
+  )
+) \gset
+
+select set_config('dev_tmc.game_microcourse_id', :'microcourse_id', true);
+do $$
+begin
+  perform public.build_teacher_microcourse_draft_snapshot(
+    current_setting('dev_tmc.game_microcourse_id')::uuid,
+    false
+  );
+  begin
+    perform public.build_teacher_microcourse_draft_snapshot(
+      current_setting('dev_tmc.game_microcourse_id')::uuid,
+      true
+    );
+    raise exception 'NON_PUBLISHABLE_GAME_ACCEPTED';
+  exception when others then
+    if sqlerrm <> 'GAME_PAGE_NOT_PUBLISHABLE' then raise; end if;
+  end;
+end
+$$;
+
+select revision_no as game_revision_no
+from public.save_teacher_microcourse_game_page(
+  :'teacher_id',
+  :'game_page_id',
+  jsonb_build_object(
+    'docVersion', 'game-page-v1',
+    'canvas', jsonb_build_object(
+      'width', 960, 'height', 720, 'backgroundColor', '#ffffff'
+    ),
+    'gameId', 'sudoku',
+    'contentVersion', 'sudoku-authored-v1',
+    'payload', jsonb_build_object(
+      'kind', 'authored',
+      'variantId', 'classic-6x6',
+      'puzzle', to_jsonb(array[
+        1,2,3,4,5,6,
+        4,5,6,1,2,3,
+        2,3,4,5,6,1,
+        5,6,1,2,3,4,
+        3,4,5,6,1,2,
+        6,1,2,3,4,0
+      ]),
+      'display', jsonb_build_object(
+        'showCoordinates', true,
+        'allowCandidates', true,
+        'allowAnswerReveal', false,
+        'showTeachingTools', true
+      )
+    ),
+    'validation', jsonb_build_object(
+      'payloadHash', repeat('d', 64),
+      'validatorVersion', 'sudoku-authored-v1@1',
+      'publishable', true,
+      'code', 'unique',
+      'details', jsonb_build_object('status', 'unique', 'solutionCount', 1)
+    )
+  ),
+  1,
+  '六宫数独',
+  'complete six by six puzzle'
+) \gset
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claim.role', 'authenticated', true);
+select set_config('request.jwt.claim.sub', :'teacher_id', true);
 select public.register_teacher_microcourse_h5_artifact(
   :'microcourse_id', repeat('b', 64), 42,
   :'teacher_id' || '/' || :'microcourse_id' || '/' || repeat('b', 64) || '/index.html'
 ) as h5_artifact_id \gset
 select public.create_teacher_microcourse_h5_page(
-  :'microcourse_id', :'h5_artifact_id', :'sudoku_page_id', '离线 H5'
+  :'microcourse_id', :'h5_artifact_id', :'game_page_id', '离线 H5'
 ) as h5_page_id \gset
 select public.register_teacher_microcourse_image(
   :'microcourse_id', :'blank_page_id', repeat('c', 64), 'image/png',
@@ -268,7 +388,7 @@ select public.register_teacher_microcourse_image(
 ) as image_registration \gset
 select public.freeze_teacher_microcourse_source_session(:'microcourse_id');
 select (
-  jsonb_array_length(courseware) = 4
+  jsonb_array_length(courseware) = 5
   and not exists (
     select 1 from jsonb_array_elements(courseware) page
     where page ->> 'type' <> 'doc'
@@ -304,10 +424,28 @@ select (
   (select count(*) = 4 from public.cw_page_docs
    where lecture_id = :'lecture_id' and deleted_at is null
      and doc_version = 'microcourse-page-v1' and aspect = '4:3')
+  and (select count(*) = 1 from public.cw_page_docs
+       where lecture_id = :'lecture_id' and deleted_at is null
+         and doc_version = 'game-page-v1' and aspect = '4:3')
   and (select count(*) = 4 from public.cw_page_revisions revision_row
        join public.cw_page_docs page_row on page_row.id = revision_row.page_doc_id
        where page_row.lecture_id = :'lecture_id'
          and revision_row.layout_profile = 'microcourse-4x3')
+  and (select count(*) = 2 from public.cw_page_revisions revision_row
+       join public.cw_page_docs page_row on page_row.id = revision_row.page_doc_id
+       where page_row.lecture_id = :'lecture_id'
+         and revision_row.layout_profile = 'standard-4x3'
+         and revision_row.doc #>> '{payload,variantId}' = 'classic-6x6')
+  and (select count(*) = 2
+       from public.cw_game_revision_validations validation_row
+       join public.cw_page_revisions revision_row
+         on revision_row.id = validation_row.revision_id
+       where revision_row.page_doc_id = :'game_page_id')
+  and (select public.cw_game_page_revision_validation_is_current(
+         page_row.draft_revision_id, true
+       )
+       from public.cw_page_docs page_row
+       where page_row.id = :'game_page_id')
   and (select count(*) = 1 from public.teacher_microcourse_page_sources
        where target_page_doc_id = :'source_copy_page_id'
          and source_release_id = :'source_release_id'

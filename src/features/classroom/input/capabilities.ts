@@ -5,6 +5,7 @@ import { getGame } from "@/features/games/registry";
 import { getTool } from "@/features/tools/registry";
 import type { H5PointerBridgeStatus } from "@/features/courseware-doc/h5-pointer-protocol";
 import { isMicrocoursePageDoc } from "@/features/courseware-doc/microcourse-schema";
+import { isGamePageDoc } from "@/features/courseware-doc/game-page-schema";
 import type { CoursewarePage } from "../types";
 import type { ClassroomInputCapability } from "./router";
 import {
@@ -145,6 +146,12 @@ export function resolveClassroomRendererInputProfile(
   }
   if (page.type === "doc") {
     if (!doc) return PROVISIONAL_PROFILE;
+    if (isGamePageDoc(doc)) {
+      const provider = getGame(doc.gameId)?.classroomInput;
+      return provider
+        ? providerProfile(`document:game:${doc.gameId}`, provider)
+        : UNSUPPORTED_PROFILE;
+    }
     if (isMicrocoursePageDoc(doc)) {
       if (countCoursewareH5Frames(doc) > 0) {
         if (h5BridgeStatus === "pending") return PROVISIONAL_PROFILE;

@@ -4,6 +4,8 @@ import "katex/dist/katex.min.css";
 import { useLocale } from "next-intl";
 import { cn } from "@/lib/utils";
 import { SudokuBoard } from "@/features/games/sudoku/SudokuBoard";
+import { isGamePageDoc } from "./game-page-schema";
+import GamePageStage from "@/features/games/courseware/GamePageStage";
 import { isAixuexiPageDoc } from "./aixuexi-schema";
 import AixuexiStage from "./AixuexiStage";
 import DocStage, { type DocStageProps } from "./DocStage";
@@ -28,6 +30,9 @@ function SourceStage({
   doc: MicrocourseSourceDoc;
   props: MicrocourseStageProps;
 }) {
+  if (isGamePageDoc(doc)) {
+    return <GamePageStage doc={doc} className="size-full" interactive={props.interactive} />;
+  }
   if (isAixuexiPageDoc(doc)) {
     return (
       <AixuexiStage

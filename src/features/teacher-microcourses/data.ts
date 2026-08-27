@@ -1,12 +1,15 @@
 import "server-only";
 
 import { z } from "zod";
-import { microcoursePageDocSchema, type MicrocoursePageDoc } from "@/features/courseware-doc/microcourse-schema";
 import { parseCoursewareDoc, type CoursewareDoc } from "@/features/courseware-doc/document";
 import { buildH5EntryUrl, type ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSupabaseConfig } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
+import {
+  teacherMicrocoursePageDocSchema,
+  type TeacherMicrocoursePageDoc,
+} from "./page-doc";
 
 type RpcClient = Awaited<ReturnType<typeof createClient>>;
 type UntypedRpc = (name: string, args?: Record<string, unknown>) => Promise<{
@@ -102,7 +105,7 @@ export interface TeacherMicrocoursePage {
   title: string;
   revisionId: string;
   revisionNo: number;
-  doc: MicrocoursePageDoc;
+  doc: TeacherMicrocoursePageDoc;
   bindings: TeacherMicrocourseBinding[];
   bindingUrls: ResolvedBindingUrls;
 }
@@ -136,7 +139,7 @@ const editorSchema = teacherMicrocourseSummarySchema.extend({
     title: z.string(),
     revisionId: uuid,
     revisionNo: z.number().int().positive(),
-    doc: microcoursePageDocSchema,
+    doc: teacherMicrocoursePageDocSchema,
     bindings: z.array(bindingSchema),
   })),
 });
@@ -426,7 +429,7 @@ export async function getTeacherMicrocourseReview(reviewCycleId: string): Promis
       title: z.string(),
       revisionId: uuid,
       revisionNo: z.number().int().positive(),
-      doc: microcoursePageDocSchema,
+      doc: teacherMicrocoursePageDocSchema,
       bindings: z.array(bindingSchema),
     })),
   }).parse(data);

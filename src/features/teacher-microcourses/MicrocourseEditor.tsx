@@ -7,6 +7,7 @@ import {
   ChevronDown,
   ChevronUp,
   FileCode2,
+  Gamepad2,
   ImagePlus,
   LoaderCircle,
   Play,
@@ -31,16 +32,20 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { isGamePageDoc } from "@/features/courseware-doc/game-page-schema";
 import type { MicrocoursePageDoc } from "@/features/courseware-doc/microcourse-schema";
 import type { DocNode, PageDoc } from "@/features/courseware-doc/schema";
 import { StagePreview } from "@/features/courseware-studio/StagePreview";
+import { GamePageEditor } from "@/features/games/courseware/GamePageEditor";
+import { gameCoursewareContractsForSurface } from "@/features/games/courseware/registry";
+import { getGame } from "@/features/games/registry";
 import { analyzeSudokuPuzzle } from "@/features/games/sudoku/logic";
 import { useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import {
   createTeacherCompositionPageAction,
   createTeacherH5PageAction,
-  createTeacherSudokuPageAction,
+  createTeacherGamePageAction,
   deleteTeacherMicrocoursePageAction,
   freezeTeacherMicrocourseSourceSessionAction,
   loadTeacherMicrocourseH5HtmlAction,
@@ -56,6 +61,7 @@ import {
 import type { TeacherMicrocourseEditor as EditorData, TeacherMicrocoursePage, TeacherMicrocourseSourceLecture } from "./data";
 import { microcourseH5Bytes, normalizeMicrocourseH5 } from "./h5";
 import { MicrocourseSourcePicker } from "./MicrocourseSourcePicker";
+import type { TeacherMicrocoursePageDoc } from "./page-doc";
 
 const NONE = "__none__";
 const DEFAULT_H5 = `<!doctype html>
@@ -136,6 +142,7 @@ function imageNode(bindingKey: string, index: number): DocNode {
 }
 
 function pageModeLabel(page: TeacherMicrocoursePage, t: (key: string) => string) {
+  if (isGamePageDoc(page.doc)) return t("mode_game");
   return t(`mode_${page.doc.mode}`);
 }
 
@@ -144,7 +151,7 @@ type PageSaveState = "saved" | "saving" | "dirty" | "error";
 interface PersistedPageDraft {
   pageDocId: string;
   title: string;
-  doc: MicrocoursePageDoc;
+  doc: TeacherMicrocoursePageDoc;
   revisionNo: number;
   h5Html?: string;
 }
@@ -270,18 +277,6 @@ export function MicrocourseEditor({
     if (result.ok) { setSelectedPageId(result.data.pageId); refresh(t("pageAdded")); }
     else setMessage(t("actionFailed", { code: result.code }));
   });
-  const addSudoku = () => startTransition(async () => {
-    if (!await persistCurrentPage()) return;
-    const result = await createTeacherSudokuPageAction({
-      microcourseId: editor.id,
-      afterPageDocId: currentPage?.pageDocId ?? null,
-      title: t("sudokuDefaultTitle"),
-      puzzle: Array.from({ length: 81 }, () => 0),
-      display: { showCoordinates: true, allowCandidates: true, allowAnswerReveal: false, showTeachingTools: true },
-    });
-    if (result.ok) { setSelectedPageId(result.data.pageId); refresh(t("pageAdded")); }
-    else setMessage(t("actionFailed", { code: result.code }));
-  });
   const movePage = (direction: -1 | 1) => {
     if (!currentPage) return;
     const index = pages.findIndex((page) => page.pageDocId === currentPage.pageDocId);
@@ -358,7 +353,13 @@ export function MicrocourseEditor({
           <CardContent className="flex h-[39rem] min-h-0 flex-col gap-3 p-3 pt-0">
             <div className="grid grid-cols-2 gap-2">
               <Button type="button" size="sm" variant="secondary" disabled={pending || pageSwitching} onClick={addBlank}><Plus className="size-4" />{t("addBlank")}</Button>
-              <Button type="button" size="sm" variant="secondary" disabled={pending || pageSwitching} onClick={addSudoku}>{t("addSudoku")}</Button>
+              <GameCreateDialog
+                microcourseId={editor.id}
+                afterPageDocId={currentPage?.pageDocId ?? null}
+                disabled={pending || pageSwitching}
+                beforeCreate={persistCurrentPage}
+                onAdded={(id) => void handlePageAdded(id, t("pageAdded"))}
+              />
               <MicrocourseSourcePicker microcourseId={editor.id} afterPageDocId={currentPage?.pageDocId ?? null} initialSources={initialSources} disabled={pending || pageSwitching} onAdded={(id, count) => void handlePageAdded(id, t("pagesAdded", { count }))} />
               <H5CreateDialog microcourseId={editor.id} afterPageDocId={currentPage?.pageDocId ?? null} disabled={pending || pageSwitching} onAdded={(id) => void handlePageAdded(id, t("pageAdded"))} />
             </div>
@@ -386,6 +387,109 @@ export function MicrocourseEditor({
       <ConfirmDialog open={deletePageId !== null} onOpenChange={(open) => { if (!open) setDeletePageId(null); }} title={t("deletePageTitle")} description={t("deletePageDescription")} confirmLabel={t("deletePage")} cancelLabel={t("cancel")} onConfirm={deletePage} pending={pending} />
       <ConfirmDialog open={withdrawOpen} onOpenChange={setWithdrawOpen} title={t("withdrawPublicationTitle")} description={t("withdrawPublicationDescription")} confirmLabel={t("withdrawPublication")} cancelLabel={t("cancel")} onConfirm={withdrawPublished} pending={pending} />
     </div>
+  );
+}
+
+function GameCreateDialog({
+  microcourseId,
+  afterPageDocId,
+  disabled,
+  beforeCreate,
+  onAdded,
+}: {
+  microcourseId: string;
+  afterPageDocId: string | null;
+  disabled: boolean;
+  beforeCreate: () => Promise<boolean>;
+  onAdded: (id: string) => void;
+}) {
+  const t = useTranslations("teacherMicrocourses");
+  const tGames = useTranslations("games");
+  const contracts = gameCoursewareContractsForSurface("microcourse");
+  const [open, setOpen] = useState(false);
+  const [selectedKey, setSelectedKey] = useState(
+    contracts[0] ? `${contracts[0].gameId}:${contracts[0].contentVersion}` : "",
+  );
+  const [title, setTitle] = useState(
+    contracts[0] ? tGames(`items.${contracts[0].gameId}.name`) : "",
+  );
+  const [message, setMessage] = useState("");
+  const [pending, startTransition] = useTransition();
+  const selected = contracts.find((contract) => (
+    `${contract.gameId}:${contract.contentVersion}` === selectedKey
+  ));
+  const choose = (gameId: string, contentVersion: string) => {
+    setSelectedKey(`${gameId}:${contentVersion}`);
+    setTitle(tGames(`items.${gameId}.name`));
+    setMessage("");
+  };
+  const create = () => startTransition(async () => {
+    if (!selected || !await beforeCreate()) return;
+    const result = await createTeacherGamePageAction({
+      microcourseId,
+      afterPageDocId,
+      title,
+      gameId: selected.gameId,
+      contentVersion: selected.contentVersion,
+    });
+    if (result.ok) {
+      setOpen(false);
+      onAdded(result.data.pageId);
+    } else {
+      setMessage(t("actionFailed", { code: result.code }));
+    }
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button type="button" size="sm" variant="secondary" disabled={disabled || contracts.length === 0}>
+          <Gamepad2 className="size-4" />
+          {t("addGame")}
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-xl">
+        <DialogHeader>
+          <DialogTitle>{t("createGameTitle")}</DialogTitle>
+          <DialogDescription>{t("gameAuthoringHint")}</DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {contracts.map((contract) => {
+            const game = getGame(contract.gameId);
+            const Icon = game?.icon ?? Gamepad2;
+            const key = `${contract.gameId}:${contract.contentVersion}`;
+            return (
+              <Button
+                key={key}
+                type="button"
+                variant="secondary"
+                aria-pressed={selectedKey === key}
+                className={cn(
+                  "h-auto justify-start rounded-xl px-4 py-3",
+                  selectedKey === key && "border-crater bg-moon/30",
+                )}
+                onClick={() => choose(contract.gameId, contract.contentVersion)}
+              >
+                <Icon className="size-4" />
+                {tGames(`items.${contract.gameId}.name`)}
+              </Button>
+            );
+          })}
+        </div>
+        <Label className="grid gap-1">
+          <span>{t("pageTitle")}</span>
+          <Input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={200} />
+        </Label>
+        {message && <p role="alert" className="text-sm text-rose">{message}</p>}
+        <DialogFooter>
+          <Button type="button" variant="secondary" onClick={() => setOpen(false)}>{t("cancel")}</Button>
+          <Button type="button" disabled={pending || !selected || !title.trim()} onClick={create}>
+            {pending && <LoaderCircle className="size-4 animate-spin" />}
+            {t("create")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -463,8 +567,15 @@ const MicrocoursePageWorkbench = forwardRef<MicrocoursePageWorkbenchHandle, {
       revisionRef.current = result.data.revisionNo;
       savedSequenceRef.current = sequence;
       setMessage("");
-      onPersisted({ pageDocId: page.pageDocId, title: titleSnapshot, doc: docSnapshot, revisionNo: result.data.revisionNo });
+      onPersisted({
+        pageDocId: page.pageDocId,
+        title: titleSnapshot,
+        doc: result.data.doc,
+        revisionNo: result.data.revisionNo,
+      });
       if (sequenceRef.current === sequence) {
+        docRef.current = result.data.doc;
+        setDoc(result.data.doc);
         setSaveState("saved");
       } else {
         setSaveState("dirty");
@@ -484,7 +595,9 @@ const MicrocoursePageWorkbench = forwardRef<MicrocoursePageWorkbenchHandle, {
   }, [onPersisted, onStatus, page.pageDocId, t]);
 
   const flush = useCallback(async (): Promise<boolean> => {
-    if (docRef.current.mode === "h5") return h5Ref.current?.flush() ?? false;
+    if (!isGamePageDoc(docRef.current) && docRef.current.mode === "h5") {
+      return h5Ref.current?.flush() ?? false;
+    }
     return flushDoc();
   }, [flushDoc]);
 
@@ -498,9 +611,9 @@ const MicrocoursePageWorkbench = forwardRef<MicrocoursePageWorkbenchHandle, {
     timerRef.current = window.setTimeout(() => void flushRef.current(), 800);
   }, []);
 
-  const updateDoc: React.Dispatch<React.SetStateAction<MicrocoursePageDoc>> = useCallback((nextValue) => {
+  const updateDoc: React.Dispatch<React.SetStateAction<TeacherMicrocoursePageDoc>> = useCallback((nextValue) => {
     const next = typeof nextValue === "function"
-      ? (nextValue as (current: MicrocoursePageDoc) => MicrocoursePageDoc)(docRef.current)
+      ? (nextValue as (current: TeacherMicrocoursePageDoc) => TeacherMicrocoursePageDoc)(docRef.current)
       : nextValue;
     docRef.current = next;
     setDoc(next);
@@ -510,7 +623,7 @@ const MicrocoursePageWorkbench = forwardRef<MicrocoursePageWorkbenchHandle, {
   const changeTitle = (value: string) => {
     titleRef.current = value;
     setTitle(value);
-    if (docRef.current.mode === "h5") {
+    if (!isGamePageDoc(docRef.current) && docRef.current.mode === "h5") {
       h5Ref.current?.markDirty();
       return;
     }
@@ -549,11 +662,12 @@ const MicrocoursePageWorkbench = forwardRef<MicrocoursePageWorkbenchHandle, {
       {message && <p role="alert" className="mt-2 text-xs text-rose">{message}</p>}
     </CardHeader>
     <CardContent className="grid min-h-[38rem] gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
-      <div className="min-w-0"><div className="mx-auto max-w-4xl overflow-hidden rounded-xl border border-line bg-white shadow-sm"><StagePreview doc={doc} bindingUrls={bindingUrls} stageMode="natural" className="w-full" interactive /></div>{doc.mode === "composition" && doc.source && <p className="mt-2 text-xs text-muted">{t("lockedSource", { title: doc.source.sourceTitle, page: doc.source.sourcePageNo })}</p>}</div>
+      <div className="min-w-0"><div className="mx-auto max-w-4xl overflow-hidden rounded-xl border border-line bg-white shadow-sm"><StagePreview doc={doc} bindingUrls={bindingUrls} stageMode="natural" className="w-full" interactive /></div>{!isGamePageDoc(doc) && doc.mode === "composition" && doc.source && <p className="mt-2 text-xs text-muted">{t("lockedSource", { title: doc.source.sourceTitle, page: doc.source.sourcePageNo })}</p>}</div>
       <ScrollArea className="h-[35rem] rounded-xl border border-line bg-paper/50"><div className="p-4">
-        {doc.mode === "composition" && <CompositionControls microcourseId={microcourseId} page={page} doc={doc} setDoc={updateDoc} bindingUrls={bindingUrls} setBindingUrls={setBindingUrls} pending={pending} startTransition={startTransition} setMessage={setMessage} />}
-        {doc.mode === "sudoku" && <SudokuControls doc={doc} setDoc={updateDoc} />}
-        {doc.mode === "h5" && <H5Controls ref={h5Ref} microcourseId={microcourseId} page={page} initialHtml={page.h5Html} titleRef={titleRef} onPersisted={onPersisted} onSaveStateChange={setSaveState} setMessage={setMessage} onStatus={onStatus} />}
+        {isGamePageDoc(doc) && <GamePageEditor doc={doc} onChange={updateDoc} />}
+        {!isGamePageDoc(doc) && doc.mode === "composition" && <CompositionControls microcourseId={microcourseId} page={page} doc={doc} setDoc={updateDoc} bindingUrls={bindingUrls} setBindingUrls={setBindingUrls} pending={pending} startTransition={startTransition} setMessage={setMessage} />}
+        {!isGamePageDoc(doc) && doc.mode === "sudoku" && <SudokuControls doc={doc} setDoc={updateDoc} />}
+        {!isGamePageDoc(doc) && doc.mode === "h5" && <H5Controls ref={h5Ref} microcourseId={microcourseId} page={page} initialHtml={page.h5Html} titleRef={titleRef} onPersisted={onPersisted} onSaveStateChange={setSaveState} setMessage={setMessage} onStatus={onStatus} />}
       </div></ScrollArea>
     </CardContent>
   </Card>;
@@ -564,7 +678,7 @@ function CompositionControls({ microcourseId, page, doc, setDoc, bindingUrls, se
   page: TeacherMicrocoursePage;
   initialHtml?: string;
   doc: Extract<MicrocoursePageDoc, { mode: "composition" }>;
-  setDoc: React.Dispatch<React.SetStateAction<MicrocoursePageDoc>>;
+  setDoc: React.Dispatch<React.SetStateAction<TeacherMicrocoursePageDoc>>;
   bindingUrls: Record<string, string>;
   setBindingUrls: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   pending: boolean;
@@ -576,7 +690,7 @@ function CompositionControls({ microcourseId, page, doc, setDoc, bindingUrls, se
   const [file, setFile] = useState<File | null>(null);
   const selected = doc.overlay.nodes.find((node) => node.id === selectedId) ?? null;
   const updateOverlay = (updater: (overlay: PageDoc) => void) => setDoc((current) => {
-    if (current.mode !== "composition") return current;
+    if (isGamePageDoc(current) || current.mode !== "composition") return current;
     const next = clone(current);
     updater(next.overlay);
     return next;
@@ -625,19 +739,19 @@ function CompositionControls({ microcourseId, page, doc, setDoc, bindingUrls, se
   </div>;
 }
 
-function SudokuControls({ doc, setDoc }: { doc: Extract<MicrocoursePageDoc, { mode: "sudoku" }>; setDoc: React.Dispatch<React.SetStateAction<MicrocoursePageDoc>> }) {
+function SudokuControls({ doc, setDoc }: { doc: Extract<MicrocoursePageDoc, { mode: "sudoku" }>; setDoc: React.Dispatch<React.SetStateAction<TeacherMicrocoursePageDoc>> }) {
   const t = useTranslations("teacherMicrocourses");
   const analysis = useMemo(() => analyzeSudokuPuzzle(doc.puzzle), [doc.puzzle]);
   const setDigit = (index: number, raw: string) => {
     const digit = /^[1-9]$/.test(raw) ? Number(raw) : 0;
-    setDoc((current) => current.mode !== "sudoku" ? current : {
+    setDoc((current) => isGamePageDoc(current) || current.mode !== "sudoku" ? current : {
       ...current,
       puzzle: current.puzzle.map((value, currentIndex) => currentIndex === index ? digit : value),
       analysis: analyzeSudokuPuzzle(current.puzzle.map((value, currentIndex) => currentIndex === index ? digit : value)),
     });
   };
-  const setDisplay = (key: keyof typeof doc.display, value: boolean) => setDoc((current) => current.mode !== "sudoku" ? current : { ...current, display: { ...current.display, [key]: value } });
-  return <div className="space-y-4"><div><h3 className="text-sm font-medium">{t("sudokuPrototype")}</h3><p className={`mt-1 text-xs ${analysis.status === "unique" ? "text-leaf" : "text-rose"}`}>{t(`sudoku_${analysis.status}`)}</p></div><div className="grid grid-cols-9 overflow-hidden rounded-lg border-2 border-ink/50">{doc.puzzle.map((digit, index) => <Input key={index} aria-label={t("sudokuCell", { cell: index + 1 })} inputMode="numeric" maxLength={1} value={digit || ""} onChange={(event) => setDigit(index, event.target.value)} className={`h-8 rounded-none border-0 border-r border-b border-line p-0 text-center text-xs ${index % 3 === 2 && index % 9 !== 8 ? "border-r-2 border-r-ink/40" : ""} ${Math.floor(index / 9) % 3 === 2 && index < 72 ? "border-b-2 border-b-ink/40" : ""}`} />)}</div><div className="space-y-2">{(["showCoordinates", "allowCandidates", "allowAnswerReveal", "showTeachingTools"] as const).map((key) => <Label key={key} className="flex items-center gap-2 text-sm font-normal"><Checkbox checked={doc.display[key]} onCheckedChange={(value) => setDisplay(key, value === true)} />{t(`sudokuOption_${key}`)}</Label>)}</div></div>;
+  const setDisplay = (key: keyof typeof doc.display, value: boolean) => setDoc((current) => isGamePageDoc(current) || current.mode !== "sudoku" ? current : { ...current, display: { ...current.display, [key]: value } });
+  return <div className="space-y-4"><div><h3 className="text-sm font-medium">{t("sudokuPrototype", { size: 9 })}</h3><p className={`mt-1 text-xs ${analysis.status === "unique" ? "text-leaf-deep" : "text-rose"}`}>{t(`sudoku_${analysis.status}`)}</p></div><div className="grid grid-cols-9 overflow-hidden rounded-lg border-2 border-ink/50">{doc.puzzle.map((digit, index) => <Input key={index} aria-label={t("sudokuCell", { cell: index + 1 })} inputMode="numeric" maxLength={1} value={digit || ""} onChange={(event) => setDigit(index, event.target.value)} className={`h-8 rounded-none border-0 border-r border-b border-line p-0 text-center text-xs ${index % 3 === 2 && index % 9 !== 8 ? "border-r-2 border-r-ink/40" : ""} ${Math.floor(index / 9) % 3 === 2 && index < 72 ? "border-b-2 border-b-ink/40" : ""}`} />)}</div><div className="space-y-2">{(["showCoordinates", "allowCandidates", "allowAnswerReveal", "showTeachingTools"] as const).map((key) => <Label key={key} className="flex items-center gap-2 text-sm font-normal"><Checkbox checked={doc.display[key]} onCheckedChange={(value) => setDisplay(key, value === true)} />{t(`sudokuOption_${key}`)}</Label>)}</div></div>;
 }
 
 const H5Controls = forwardRef<MicrocourseH5ControlsHandle, {
@@ -651,7 +765,7 @@ const H5Controls = forwardRef<MicrocourseH5ControlsHandle, {
   onStatus: (message: string) => void;
 }>(function H5Controls({ microcourseId, page, initialHtml, titleRef, onPersisted, onSaveStateChange, setMessage, onStatus }, ref) {
   const t = useTranslations("teacherMicrocourses");
-  const h5Doc = page.doc.mode === "h5" ? page.doc : null;
+  const h5Doc = !isGamePageDoc(page.doc) && page.doc.mode === "h5" ? page.doc : null;
   const [initialArtifactId] = useState(() => h5Doc?.artifactId ?? null);
   const [html, setHtml] = useState(initialHtml ?? "");
   const [previewHtml, setPreviewHtml] = useState("");

@@ -9,7 +9,7 @@ import type { Difficulty } from "../types";
 export const SUDOKU_SIZES = [4, 6, 9] as const;
 
 export type SudokuSize = (typeof SUDOKU_SIZES)[number];
-export type SudokuVariantSurface = "public" | "courseware";
+export type SudokuVariantSurface = "public" | "courseware" | "courseware-authored";
 export type SudokuSeedEncoding = "legacy" | "size-v1" | "variant-v2";
 
 export interface SudokuVariantDefinitionShape {
@@ -47,7 +47,7 @@ export const SUDOKU_VARIANTS = [
     seedEncoding: "size-v1",
     seedToken: "4",
     messageKey: "sudokuVariants.classic-4x4",
-    selectableIn: ["public", "courseware"],
+    selectableIn: ["public", "courseware", "courseware-authored"],
     ranked: false,
     givens: { easy: 10, medium: 8, hard: 6 },
   },
@@ -62,7 +62,7 @@ export const SUDOKU_VARIANTS = [
     seedEncoding: "size-v1",
     seedToken: "6",
     messageKey: "sudokuVariants.classic-6x6",
-    selectableIn: ["public", "courseware"],
+    selectableIn: ["public", "courseware", "courseware-authored"],
     ranked: false,
     givens: { easy: 24, medium: 20, hard: 16 },
   },
@@ -76,7 +76,7 @@ export const SUDOKU_VARIANTS = [
     rendererId: "classic-grid-v1",
     seedEncoding: "legacy",
     messageKey: "sudokuVariants.classic-9x9",
-    selectableIn: ["public", "courseware"],
+    selectableIn: ["public", "courseware", "courseware-authored"],
     ranked: true,
     givens: { easy: 40, medium: 32, hard: 26 },
   },

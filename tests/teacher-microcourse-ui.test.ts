@@ -8,6 +8,8 @@ const lifecycleMigration = read("supabase", "migrations", "20260826000400_teache
 const readModelsMigration = read("supabase", "migrations", "20260826000500_teacher_microcourse_ui_read_models.sql");
 const runtimeFixesMigration = read("supabase", "migrations", "20260826000600_teacher_microcourse_runtime_fixes.sql");
 const lectureSourceMigration = read("supabase", "migrations", "20260827000100_teacher_microcourse_lecture_source_picker.sql");
+const gameContractMigration = read("supabase", "migrations", "20260827000300_courseware_game_page_contract.sql");
+const gameSourceMigration = read("supabase", "migrations", "20260827000400_teacher_microcourse_game_source_adapter.sql");
 
 describe("DEV-TMC-1 teacher microcourse product surfaces", () => {
   it("keeps authoring behind the development flag, author capability, and a free session", () => {
@@ -23,16 +25,24 @@ describe("DEV-TMC-1 teacher microcourse product surfaces", () => {
     expect(route).toContain("<Suspense");
   });
 
-  it("exposes all three page modes while preserving a locked source snapshot and editable overlay", () => {
+  it("exposes composition, registered games and H5 while preserving source provenance", () => {
     const editor = read("src", "features", "teacher-microcourses", "MicrocourseEditor.tsx");
     const picker = read("src", "features", "teacher-microcourses", "MicrocourseSourcePicker.tsx");
     const liveShell = read("src", "features", "classroom", "live", "LiveShell.tsx");
     const contentMigration = read("supabase", "migrations", "20260826000300_teacher_microcourse_content.sql");
+    const actions = read("src", "features", "teacher-microcourses", "actions.ts");
+    const manifest = read("src", "features", "games", "courseware", "registry.ts");
 
     expect(editor).toContain("createTeacherCompositionPageAction");
-    expect(editor).toContain("createTeacherSudokuPageAction");
+    expect(editor).toContain("createTeacherGamePageAction");
+    expect(editor).toContain("gameCoursewareContractsForSurface");
+    expect(editor).toContain("<GamePageEditor");
     expect(editor).toContain("createTeacherH5PageAction");
     expect(editor).toContain("uploadTeacherMicrocourseImageAction");
+    expect(actions).toContain('"create_teacher_microcourse_game_page"');
+    expect(actions).toContain('"save_teacher_microcourse_game_page"');
+    expect(manifest).toContain('gameId: "sudoku"');
+    expect(manifest).toContain('authoringSurfaces: ["microcourse"]');
     expect(picker).toContain("createTeacherCompositionPagesFromLectureAction");
     expect(picker).toContain("sourceReleaseId: selected.releaseId");
     expect(picker).toContain("sourceLectureId: selected.lectureId");
@@ -43,6 +53,12 @@ describe("DEV-TMC-1 teacher microcourse product surfaces", () => {
     expect(lectureSourceMigration).toContain("search_teacher_microcourse_source_lectures");
     expect(lectureSourceMigration).toContain("create_teacher_microcourse_composition_pages_from_lecture");
     expect(lectureSourceMigration).toContain("order by source_item.position");
+    expect(gameContractMigration).toContain("cw_game_revision_validations");
+    expect(gameContractMigration).toContain("GAME_PAGE_NOT_PUBLISHABLE");
+    expect(gameSourceMigration).toContain("cw_teacher_microcourse_source_revision_is_supported");
+    expect(gameSourceMigration).not.toMatch(
+      /source_revision\.doc_version\s+in\s*\([^)]*sudoku[\s\S]*/,
+    );
     expect(runtimeFixesMigration).toContain("'type', 'doc'");
     expect(liveShell).toContain("session.lectureId || docPageKey");
   });
