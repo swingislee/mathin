@@ -41,6 +41,12 @@ export interface SessionPreparationArtifacts {
   reviews: Partial<Record<PrepArtifactKind, PrepArtifactReview>>;
 }
 
+interface PrepReviewerCandidateRow {
+  user_id: string;
+  display_name: string;
+  is_self: boolean;
+}
+
 function files(value: unknown): PrepArtifactFile[] {
   if (!Array.isArray(value)) return [];
   return value.flatMap((item) => {
@@ -53,8 +59,14 @@ function files(value: unknown): PrepArtifactFile[] {
   });
 }
 
-export async function getSessionPreparationArtifacts(sessionId: string): Promise<SessionPreparationArtifacts> {
+export async function getSessionPreparationArtifacts(
+  sessionId: string,
+  includeReviewerCandidates = true,
+): Promise<SessionPreparationArtifacts> {
   const supabase = await createClient();
+  const reviewerCandidatesRequest = includeReviewerCandidates
+    ? supabase.rpc("list_session_preparation_reviewer_candidates", { p_session_id: sessionId })
+    : Promise.resolve({ data: [] as PrepReviewerCandidateRow[], error: null });
   const [
     { data, error },
     { data: reviewRows, error: reviewError },
@@ -92,7 +104,7 @@ export async function getSessionPreparationArtifacts(sessionId: string): Promise
         reviewer_assignment_source: PrepReviewerAssignmentSource | null;
         reviewer: { display_name: string } | null;
       }>(),
-    supabase.rpc("list_session_preparation_reviewer_candidates", { p_session_id: sessionId }),
+    reviewerCandidatesRequest,
   ]);
   if (error) throw new Error(error.message);
   if (reviewError) throw new Error(reviewError.message);

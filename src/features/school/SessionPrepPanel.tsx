@@ -41,14 +41,20 @@ export async function SessionPrepPanel({
   const regularPreparationEditing = Boolean(detail.capabilities.canPrepare && !detail.coursewareFrozenAt);
   const canAmendSessionArchive = Boolean(regularPreparationEditing || prepArchiveUnlocked);
   const preparationWorkflowReadOnly = !canAmendSessionArchive;
+  const canReadSessionMemberState = detail.capabilities.canEditPreparationArchive;
+  const relationshipReadOnly = Boolean(
+    detail.state === "scheduled"
+      && !detail.coursewareFrozenAt
+      && !detail.capabilities.canPrepare,
+  );
 
   const [template, learningSetup, coursewareLearningCheckPages, sessionDocs, sessionAssets, prepArtifacts, teacherPreparation] = await Promise.all([
     detail.lectureId && !detail.coursewareFrozenAt ? getSessionCoursewareTemplate(detail.id) : Promise.resolve([]),
-    canViewPrepArchive ? getSessionLearningSetup(detail.id) : Promise.resolve(null),
+    canReadSessionMemberState ? getSessionLearningSetup(detail.id) : Promise.resolve(null),
     canViewPrepArchive ? getSessionCoursewareLearningCheckPages(detail.id) : Promise.resolve([]),
     canViewPrepArchive ? getSessionPageDocs(detail.id).catch(() => []) : Promise.resolve([]),
     canViewPrepArchive ? getSessionAssetUrls(detail.id).catch(() => []) : Promise.resolve([]),
-    getSessionPreparationArtifacts(detail.id),
+    getSessionPreparationArtifacts(detail.id, regularPreparationEditing),
     getTeacherPreparationWorkspace(detail.id),
   ]);
   const h5BindingUrls = canViewPrepArchive
@@ -86,6 +92,15 @@ export async function SessionPrepPanel({
     <>
       {detail.prepStatus === "not_started" && detail.capabilities.canPrepare ? <SessionPrepAutostart sessionId={detail.id} /> : null}
       <div className="flex h-full min-h-0 min-w-0 flex-col gap-3 px-1">
+        {relationshipReadOnly ? (
+          <section className="flex shrink-0 items-start gap-3 rounded-xl border border-line bg-card/70 px-4 py-3">
+            <LockKeyhole size={18} className="mt-0.5 shrink-0 text-muted" aria-hidden />
+            <div className="min-w-0 flex-1">
+              <h2 className="text-sm font-medium text-ink">{t("prepReadOnlyNotTeacherTitle")}</h2>
+              <p className="mt-1 text-xs leading-5 text-muted">{t("prepReadOnlyNotTeacherBody")}</p>
+            </div>
+          </section>
+        ) : null}
         {detail.coursewareFrozenAt ? (
           <section className="flex shrink-0 flex-wrap items-start gap-3 rounded-xl border border-line bg-card/70 px-4 py-3">
             {prepArchiveUnlocked

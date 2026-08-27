@@ -40,7 +40,28 @@ test("teacher authors, teaches, resubmits, publishes, and the catalog creates on
   activeFixture = fixture;
   try {
     const editorPath = `/zh/dashboard/sessions/${fixture.sourceSessionId}/microcourse` as const;
-    await loginWithFixedAccount(page, teacher, editorPath);
+    const sessionPath = `/zh/dashboard/sessions/${fixture.sourceSessionId}` as const;
+
+    await loginWithFixedAccount(page, principal, `/zh/dashboard/classes/${fixture.sourceClassroomId}`);
+    await page.getByRole("button", { name: "设置", exact: true }).click();
+    await page.getByRole("button", { name: "结束班级", exact: true }).click();
+    await expect(page.getByText("班级状态已更新。", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "重新启用班级", exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "重新启用班级", exact: true }).click();
+    await expect(page.getByText("班级状态已更新。", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "结束班级", exact: true })).toBeVisible();
+
+    await page.context().clearCookies();
+    await loginWithFixedAccount(page, principal, sessionPath);
+    await expect(page.getByText("当前账号不是本课任课教师", { exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "编辑课件", exact: true })).toHaveCount(0);
+
+    await page.context().clearCookies();
+    await loginWithFixedAccount(page, teacher, sessionPath);
+    const editCourseware = page.getByRole("link", { name: "编辑课件", exact: true });
+    await expect(editCourseware).toBeVisible();
+    await editCourseware.click();
+    await page.waitForURL((url) => url.pathname === editorPath);
     await expect(page.getByText("把这节自由课孵化成微课", { exact: true })).toBeVisible();
     await page.getByLabel("微课标题", { exact: true }).fill(fixture.microcourseTitle);
     await page.getByLabel("简介", { exact: true }).fill("固定来源页、数独、图文叠加和离线 H5 的校内审核旅程。");

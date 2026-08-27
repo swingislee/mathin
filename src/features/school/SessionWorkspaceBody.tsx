@@ -175,7 +175,7 @@ export async function SessionWorkspaceBody({
                   className={cn(buttonVariants({ size: "sm", variant: "secondary" }), "gap-2")}
                 >
                   <Sparkles size={15} />
-                  {t("buildMicrocourse")}
+                  {t("editCourseware")}
                 </Link>
               ) : null}
               <Link

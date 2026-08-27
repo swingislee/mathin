@@ -78,6 +78,8 @@ export function ClassroomSettingsSheet({
 
   const riskyLectureCount = teachingReadiness.filter(hasTeachingReadinessRisk).length;
   const pending = transitionRun.pending || trashRun.pending || restoreRun.pending || archiveRun.pending;
+  const canSetActive = classroom.operationalStatus === "planning" || classroom.operationalStatus === "completed";
+  const isReactivating = classroom.operationalStatus === "completed";
 
   const activate = () => {
     if (riskyLectureCount > 0) { setConfirmActivate(true); return; }
@@ -115,12 +117,17 @@ export function ClassroomSettingsSheet({
               {classroom.trashedAt && <Badge variant="outline">{t("trashed")}</Badge>}
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button type="button" size="sm" variant="secondary" disabled={pending || classroom.operationalStatus !== "planning" || Boolean(classroom.trashedAt)} onClick={activate}>
-                {pending && <LoaderCircle size={14} className="animate-spin" />}{t("lifecycleActivate")}
-              </Button>
-              <Button type="button" size="sm" variant="secondary" disabled={pending || classroom.operationalStatus !== "active"} onClick={() => transitionRun.run(classroom.id, "completed")}>
-                {t("lifecycleComplete")}
-              </Button>
+              {canSetActive ? (
+                <Button type="button" size="sm" variant="secondary" disabled={pending || Boolean(classroom.trashedAt)} onClick={activate}>
+                  {pending && <LoaderCircle size={14} className="animate-spin" />}
+                  {t(isReactivating ? "lifecycleReactivate" : "lifecycleActivate")}
+                </Button>
+              ) : null}
+              {classroom.operationalStatus === "active" ? (
+                <Button type="button" size="sm" variant="secondary" disabled={pending} onClick={() => transitionRun.run(classroom.id, "completed")}>
+                  {t("lifecycleComplete")}
+                </Button>
+              ) : null}
               <Button type="button" size="sm" variant="secondary" disabled={pending || Boolean(classroom.trashedAt)} onClick={() => archiveRun.run(!classroom.archivedAt)}>
                 {classroom.archivedAt ? t("lifecycleUnarchive") : t("lifecycleArchive")}
               </Button>
