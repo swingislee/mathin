@@ -204,9 +204,10 @@ export function DashboardShell({
               aria-hidden
             >
               <Image
-                src="/illustrations/dashboard-observatory.png"
+                src="/illustrations/dashboard-observatory.webp"
                 alt=""
                 fill
+                loading="eager"
                 sizes="240px"
                 className="object-cover object-bottom opacity-[0.14] mix-blend-multiply dark:opacity-[0.12] dark:mix-blend-screen"
               />
