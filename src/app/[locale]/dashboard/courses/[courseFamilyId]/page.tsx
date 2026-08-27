@@ -232,7 +232,7 @@ async function CourseFamilyProductPage({
     </DashboardContentGrid>
     {validPreview && (
       <LecturePreviewDialog title={t("lecturePreviewTitle", { no: validPreview.lecture.no, name: validPreview.lecture.name })} closeHref={baseHref}>
-        <LecturePreviewPanel preview={validPreview} baseHref={baseHref} workspaceHref={`/dashboard/courseware/lectures/${validPreview.lecture.id}?track=${previewTrack}`} />
+        <LecturePreviewPanel preview={validPreview} baseHref={baseHref} workspaceHref={`/dashboard/courseware/lectures/${validPreview.lecture.id}?track=${validPreview.track}`} />
       </LecturePreviewDialog>
     )}
   </ObjectWorkspace>;

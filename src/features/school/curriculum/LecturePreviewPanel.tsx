@@ -32,7 +32,7 @@ export async function LecturePreviewPanel({
   workspaceHref: string;
 }) {
   const t = await getTranslations("school.courses");
-  const currentTrack: CoursewareTrack = preview.page.aspect === "4:3" ? "adapted-4x3" : "native-16x9";
+  const currentTrack = preview.track;
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="px-6 py-5 pr-14">

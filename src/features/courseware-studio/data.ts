@@ -385,6 +385,7 @@ export interface CoursewarePreviewPageMeta {
 }
 
 export interface CoursewareLecturePreview {
+  track: CoursewareTrack;
   lecture: { id: string; no: number; name: string; courseId: string };
   release: { id: string; releaseNo: number; publishedAt: string };
   /** 导航只需轻量元数据；不把整讲 page-doc 下发或解析。 */
@@ -475,7 +476,10 @@ export interface StudioRevision {
 
 function aspectForLayoutProfile(layoutProfile: string | null | undefined, track: CoursewareTrack): string {
   if (layoutProfile === "standard-4x3" || layoutProfile === "legacy-4x3-adaptation") return "4:3";
-  if (layoutProfile === "wide-16x9-exception" || layoutProfile === "legacy-16x9-import") return "16:9";
+  if (layoutProfile === "wide-16x9-exception") return "16:9";
+  // Legacy imports intentionally let the adapted track reuse the immutable native revision.
+  // Its delivery surface is nevertheless the 4:3 compatibility/source-master board.
+  if (layoutProfile === "legacy-16x9-import") return track === "adapted-4x3" ? "4:3" : "16:9";
   return track === "adapted-4x3" ? "4:3" : "16:9";
 }
 
@@ -800,6 +804,7 @@ export async function loadLecturePreview(
 
   const bindingUrls = await resolveSnapshotBindingUrls(supabase, [snapshotEntry], bindingRows ?? []);
   return {
+    track,
     lecture: { id: lecture.id, no: lecture.no, name: lecture.name, courseId: lecture.course_id },
     release: { id: release.id, releaseNo: release.release_no, publishedAt: release.published_at },
     pages,
