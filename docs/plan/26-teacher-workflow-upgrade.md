@@ -6,7 +6,7 @@
 >
 > **剩余项**：独立教案管理页面的创建/绑定入口、服务端打印 PDF 派生文件，以及 `DEV-TMC-1` 的产品负责人开发端初验、生产迁移/开关授权和 postflight；页面级教学备注已按产品判断暂缓。R1-Live 中备课产物、审核和检查项只作质量提示，不阻断教师冻结快照或开课；Production 1.0 再评估质量门。
 >
-> **最后核对**：2026-08-27；既有教师生产链依据迁移 `20260730010500_doc26_teacher_workflow.sql`、`20260731000700_doc26_annotation_board_items.sql` 与 `20260823000200_r1_live_preparation_attention_window.sql`、隔离/生产数据库断言、定向合同测试及产品走查。`DEV-TMC-1` 已在本机开发目标实现并完成机器验证，最新实现 commit 为 `1135099`，本机迁移 head 为 `20260827000400_teacher_microcourse_game_source_adapter`；产品负责人初验和生产晋级尚未发生。
+> **最后核对**：2026-08-27；既有教师生产链依据迁移 `20260730010500_doc26_teacher_workflow.sql`、`20260731000700_doc26_annotation_board_items.sql` 与 `20260823000200_r1_live_preparation_attention_window.sql`、隔离/生产数据库断言、定向合同测试及产品走查。`DEV-TMC-1` 已在本机开发目标实现并完成机器验证，最新实现 commit 为 `210944c`，本机迁移 head 为 `20260827000700_teacher_microcourse_course_catalog_access`；产品负责人初验和生产晋级尚未发生。
 
 # Mathin 教师备课生产链升级规划
 
