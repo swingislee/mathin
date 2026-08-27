@@ -8,7 +8,7 @@
 >
 > **SML 暂停位置**：`SML-0 · 合同与金标冻结`；空间数学可按独立权限或 Feature Flag 并行，不进入 R1-Live Gate。
 >
-> **当前运行状态**：Gate 1 已通过，Gate 2 仍等待正式教师点名持久再读与权限对照。Xiaomi 当前数据库 ledger=`194`、head=`20260826000100_classroom_h5_input_profiles`，应用 current/previous=`20260826-125052` / `964ca5e…` 与 `20260825-085754` / `8c303a2…`。课堂 Stage A、B1 与 B2 已通过，生产已有 checkpoint version/chunk/head=`2/2/2`；Stage B3 修复已用隔离提交 `964ca5e` 部署共同 bridge、单一 Smart 开关与 `cw_h5_input_profiles` 权威表。board/input/layout 为 version 2 / true，H5 继续为 version 3 / false；新表为空，未登记 package 仍 fail closed，尚不能记为 H5 pointer 生产通过。左下角开关为 `112×44px` 横向滑动条，外层透明且无边框/圆角底板，开启态使用玫瑰强调色 SVG 与滑轨。新鲜 PostgreSQL-only pre-change 备份、migration 回滚演练、双 build、原子切换与独立 postflight 已通过，等待产品负责人在生产课堂人工验收；账号、班级、课次、报名、点名、Storage object 和错误计数无漂移。
+> **当前运行状态**：Gate 1 已通过，Gate 2 仍等待正式教师点名持久再读与权限对照。Xiaomi 当前数据库 ledger=`206`、head=`20260827000700_teacher_microcourse_course_catalog_access`，应用 current/previous=`20260827-094025` / `bc76f68…` 与 `20260826-125052` / `964ca5e…`。课堂 Stage A、B1 与 B2 已通过，生产已有 checkpoint version/chunk/head=`2/2/2`；Stage B3 修复已用隔离提交 `964ca5e` 部署共同 bridge、单一 Smart 开关与 `cw_h5_input_profiles` 权威表。board/input/layout 为 version 2 / true，H5 继续为 version 3 / false；新表为空，未登记 package 仍 fail closed，尚不能记为 H5 pointer 生产通过。普通教师短期微课已以独立开发轨部署，flag=version 2 / true，仍待产品负责人生产页面验收，不关闭 Gate 2。新鲜 PostgreSQL-only pre-change 备份、migration 回滚演练、双 build、原子切换与独立 postflight 已通过；账号、既有班级/课次/报名/点名、Storage object 和错误计数无漂移。
 >
 > **当前 P0 状态**：2026-08-25 产品负责人确认内部教师更习惯手机号注册登录。`手机号或邮箱 + password` 已部署生产：手机号只接受绑定具体号码的一次性员工邀请，不发送/伪造验证码，不开放全局邀请码手机号注册，账号仍以单一 `auth.users.id` 为主体。机器 postflight 已通过；真实教师尚未消费手机号邀请并完成 password 登录，因此状态为 `DEPLOYED / PENDING USER ACCEPTANCE`。
 >
@@ -55,7 +55,7 @@ R1-Live 完成即代表 Mathin 进入公司内部生产使用。它产生的身�
 
 | Gate | 状态 | 已完成证据 | 唯一退出差距 |
 | --- | --- | --- | --- |
-| **Gate 1 · 可安全开始** | **PASS** | 生产目标组合指纹、部署和匿名计数已登记；危险 fixture/rebuild/import 拒绝 Xiaomi；唯一正式 admin 已完成 verified MFA，首名真实教师为 active `staff` 并有 `research`/`teacher` 岗位；生产 purge 仍要求当前数据库指纹、active manifest、显式 `purge_allowed` test 根和精确影响计数，当前准删数为 0。数据库 ledger=`194`、head=`20260826000100_classroom_h5_input_profiles`，应用 current/previous=`20260826-125052` / `964ca5e…` 与 `20260825-085754` / `8c303a2…`；原子发布健康门和 `operational_errors` 查询位置已知。当前 PostgreSQL+Storage 同批次备份已独立复核，课堂 Stage B3 发布另有新鲜 PostgreSQL-only pre-change 备份 | 无。previous 实际回切、恢复演练、异机/静态加密备份和错误 release 标签属于 Production 1.0 |
+| **Gate 1 · 可安全开始** | **PASS** | 生产目标组合指纹、部署和匿名计数已登记；危险 fixture/rebuild/import 拒绝 Xiaomi；唯一正式 admin 已完成 verified MFA，首名真实教师为 active `staff` 并有 `research`/`teacher` 岗位；生产 purge 仍要求当前数据库指纹、active manifest、显式 `purge_allowed` test 根和精确影响计数，当前准删数为 0。数据库 ledger=`206`、head=`20260827000700_teacher_microcourse_course_catalog_access`，应用 current/previous=`20260827-094025` / `bc76f68…` 与 `20260826-125052` / `964ca5e…`；原子发布健康门和 `operational_errors` 查询位置已知。当前 PostgreSQL+Storage 同批次备份已独立复核，课堂 Stage B3 与教师微课发布各有新鲜 PostgreSQL-only pre-change 备份 | 无。previous 实际回切、恢复演练、异机/静态加密备份和错误 release 标签属于 Production 1.0 |
 | **Gate 2 · 首个真实教师闭环** | **BLOCKED** | 学生、班级、课次、报名、点名 UI/RPC 与 RLS 已实现；本轮运行时合同允许自由班/未完整课程启用，备课质量项、点名前置、资源预载和无 release 均不阻断开课；本机隔离固定账号 Golden Path 1/1 已完成建班→自动课次→`lead` 报名→教师保存迟到/备注→换页再读。生产已有 1 个 production 班级、15 个课次和 1 条 active 报名，主讲 1、学辅 0；学年修复只调整三类对象的周期引用，未升年级，应用已发布且健康 | 正式教师完成登录→进入课次→开课/点名→保存→刷新/重登再读；正式管理员可见，匿名及一个既有无权限主体不可见；P0/核心 P1=0 |
 
 `R1-Live-N` 表示当前只关闭 Gate N。Gate 1 通过后推进 `R1-Live-2`；Gate 2 通过后立即向第一批公司教师开放，不再追加新的上线 Gate。
@@ -120,13 +120,15 @@ Gate 1 已按以下顺序关闭：
 
 #### DEV-TMC-1 · 普通教师短期微课孵化与校内共享
 
-`DEV-TMC-1` 是本机隔离开发轨的独立 Gate，生产默认关闭，不改变 R1-Live Gate 2。用户闭环固定为“自由班课次 → 课件编辑 → 草稿立即试讲/上课 → 提交教研审核 → 发布到教师微课课程族 → 其他老师搜索选课建班”。一份自由课次只关联一份微课项目；每份作品映射为一门 `microcourse` 课程和唯一一讲，发布不改写原自由班、已冻结课次或历史 release。
+`DEV-TMC-1` 是独立开发轨 Gate，不改变 R1-Live Gate 2。能力由 `teaching.teacher_microcourses_v1` 独立控制；2026-08-27 已授权部署并启用，关闭开关仍是即时 fail-closed 回退面。用户闭环固定为“自由班课次 → 课件编辑 → 草稿立即试讲/上课 → 提交教研审核 → 发布到教师微课课程族 → 其他老师搜索选课建班”。一份自由课次只关联一份微课项目；每份作品映射为一门 `microcourse` 课程和唯一一讲，发布不改写原自由班、已冻结课次或历史 release。
 
 首版范围包含正式课程当前 release 的整讲快照与锁定来源基底、可编辑叠加层、文字/图片/标题页、注册表驱动的教师自编游戏页、单文件离线 H5、版本化元数据、受控主主题、教研退回/通过/发布、校内检索和单讲建班。首个 `game-page-v1` 适配器为数独，统一支持四宫、六宫和九宫原型题；历史 81 格 `microcourse-page-v1 mode=sudoku` 保持只读兼容。来源不包含已发布教师微课，避免递归嵌套；H5 不包含 AI、低代码、多文件或 ZIP。普通教师只获得本人且关联本人任教自由课次的 `courseware.microcourse.author`，不获得全局 `course.manage` 或 `courseware.page.edit`。
 
 开发验收必须同时覆盖作者/他人草稿隔离、提交快照不可替换、发布/退回/撤回/新版切换原子性、4/6/9 宫数独唯一解与未完成草稿审核阻断、H5 离线 CSP、自由课次冻结、其他教师搜索建班以及 zh/en 旅程。功能由 `teaching.teacher_microcourses_v1` 控制；本地机器检查和产品初验完成后仍须另行取得生产迁移与启用授权。
 
-截至 2026-08-27，本机实现与机器检查为 **PASS**：基础闭环 commits `cd3b2bf`、`26698e3`、`96f3301`、`a4fa9e4`、`5c13d5d`、`f418dd9` 已通过三份 SQL 断言、微课 Vitest 17/17、普通教师—教研—主管 zh/en Playwright 1/1 和当前 R1-Live 合同 60/60；commit `dd9a755` 把来源选择改为课次检索与整讲事务插入；commit `1135099` 以 migrations `20260827000300`～`20260827000400` 增加通用 `game-page-v1`、服务端不可变校验凭证和来源 capability predicate。migrations `20260827000600`～`20260827000700` 又把来源入口改为复用课程产品 `CoursePicker`：先选生产正式课程，再列课次名称与页数，不再加载页面预览；普通教师通过独立作者权限分支访问同一筛选 RPC，不获得 `class.create`。本机 migration head=`20260827000700_teacher_microcourse_course_catalog_access`，事务回滚/权限矩阵、微课 Vitest 4 文件 21/21 与同一固定账号完整 Playwright 1/1 通过；此前最终 `pnpm ci:checks` 16/16、全量 Vitest 106 文件 742 通过/1 条件跳过及 production build 证据保持有效。产品负责人对该增量的开发端初验仍为 **UNKNOWN**；截至本机验证完成时生产 migration、应用和开关均未写入。详细边界见 [doc 26 §十三](26-teacher-workflow-upgrade.md#十三dev-tmc-1-普通教师短期微课) 与[开发证据](../evidence/r1/teacher-microcourse-dev.md)。
+截至 2026-08-27，本机实现与机器检查为 **PASS**：基础闭环 commits `cd3b2bf`、`26698e3`、`96f3301`、`a4fa9e4`、`5c13d5d`、`f418dd9` 已通过三份 SQL 断言、微课 Vitest 17/17、普通教师—教研—主管 zh/en Playwright 1/1 和当前 R1-Live 合同 60/60；commit `dd9a755` 把来源选择改为课次检索与整讲事务插入；commit `1135099` 以 migrations `20260827000300`～`20260827000400` 增加通用 `game-page-v1`、服务端不可变校验凭证和来源 capability predicate。migrations `20260827000600`～`20260827000700` 又把来源入口改为复用课程产品 `CoursePicker`：先选生产正式课程，再列课次名称与页数，不再加载页面预览；普通教师通过独立作者权限分支访问同一筛选 RPC，不获得 `class.create`。本机 migration head=`20260827000700_teacher_microcourse_course_catalog_access`，事务回滚/权限矩阵、微课 Vitest 4 文件 21/21 与同一固定账号完整 Playwright 1/1 通过；此前最终 `pnpm ci:checks` 16/16、全量 Vitest 106 文件 742 通过/1 条件跳过及 production build 证据保持有效。
+
+生产状态为 **DEPLOYED / PENDING USER ACCEPTANCE**：产品负责人明确要求推送生产后，12 个 migration 经新鲜 PostgreSQL-only 备份、完整 rollback/零残留/formal 后把 ledger 推进到 `206`；干净 commit `bc76f68` 已发布为 current `20260827-094025`，previous 为 `20260826-125052` / `964ca5e…`。`teaching.teacher_microcourses_v1` 通过真实管理员审计 RPC 推进到 version 2 / true；双层/公网 health、zh/en、真实作者只读课程目录权限、既有业务/Storage 计数、journal 与应用错误增量 postflight 均通过。该结果不替代产品负责人在生产页面完成实际写态旅程，当前产品验收仍为 **UNKNOWN**。详细边界见 [doc 26 §十三](26-teacher-workflow-upgrade.md#十三dev-tmc-1-普通教师短期微课) 与[实现/发布证据](../evidence/r1/teacher-microcourse-dev.md)。
 
 ## 6. 原 R1 工作重新定位
 

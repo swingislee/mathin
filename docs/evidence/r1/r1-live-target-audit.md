@@ -453,6 +453,23 @@ replacement artifact 只复制首份 manifest 的 4 个 protected 条目，并�
 | `artifact_url_or_path`, `artifact_hash` | `/home/swing/services/mathin/releases/20260826-125052/release.json`；`/mnt/openlist-disk/Backups/Mathin/mathin-db-prechange-20260826T124534Z-classroom-b3-964ca5e/`；migration SHA-256 `8709c55c4b25d8dacdfcf1927584bc7ab95348f6049afe997e8313ad513080e1` |
 | `retention`, `access_roles`, `failure_ticket` | Git、migration、immutable current/previous 与新备份按现有策略保留，本轮无 prune；仓库维护者/Xiaomi 运维角色；Smart UI 待生产人工验收，H5 package 档案和启用另行推进 |
 
+#### 4.2.13 2026-08-27 普通教师短期微课授权发布
+
+产品负责人在课程来源交互收敛为“复用课程产品筛选 → 选课程 → 只列课次名称与页数”后要求将改动推送生产。发布使用干净隔离候选 `bc76f68`，不夹带主工作树中正在开发的爱学习 source runtime 文件。只读 preflight 复核 Xiaomi、应用 Supabase origin、数据库指纹、10 个 Supabase 容器、current/previous、ledger、匿名计数、Storage、错误和活动课堂；唯一 started 未 ended 课次始于 2026-08-24，最后事件为 2026-08-26T04:41:54Z，最近 60 分钟事件为 0，提交窗口内附近排课、课堂事件和其他活跃数据库会话均为 0。
+
+新建 PostgreSQL-only pre-change 备份，不复制 Storage、不执行 retention prune。12 个 migration 先在一个 SERIALIZABLE 事务中连同 ledger、权限和 owner 断言完整执行并回滚；前几次演练暴露 `supabase_admin` 历史 owner 与一条旧 RPC 断言签名，均在提交前自动回滚，独立核查 ledger、新列/表和 flag 零残留。按真实 owner 边界修正 runner 后，最终 rollback 与正式原子提交都通过。应用再经发布器固定的本地 lint/typecheck/build、Xiaomi Next.js build、immutable release 切换和健康恢复。功能开关由唯一真实管理员通过既有 `set_feature_flag` 审计 RPC 先 rollback 演练，再从 version 1 / false 正式推进到 version 2 / true；旧区间闭合并生成 `feature_flag.versioned` 事件。
+
+| 证据字段 | 值 |
+| --- | --- |
+| `gate_id`, `domain`, `result` | `DEV-TMC-1`；普通教师短期微课孵化/审核/校内目录；`DEPLOYED / PENDING USER ACCEPTANCE`，不改变 R1-Live Gate 2 |
+| `measured_value`, `threshold` | backup=`249657570 bytes` / TOC=`3793` / SHA-256 `6f8dcb05…8432`；ledger `194→206`、12/12 checksum、head=`20260827000700_teacher_microcourse_course_catalog_access`；current/previous=`20260827-094025` / `bc76f68…` 与 `20260826-125052` / `964ca5e…`；flag=`v2/true`、审计事件=`1`。服务 active/running、`NRestarts=0`、`ExecMainStatus=0`，loopback/Caddy/public health 与 zh/en login 均通过，匿名微课路由精确 307 到对应 locale login；journal error、新 `operational_errors`、新课堂事件均为 0 |
+| `commit_sha`, `migration_head`, `environment` | `bc76f68f8a68b65514658b97df0dfc4f7e0438b3`；`20260827000700_teacher_microcourse_course_catalog_access`；Xiaomi / production，数据库指纹 `10e3…1a0c` |
+| `dataset_manifest` | auth/profile/学生/课程族/课程/讲次/release/班级/课次/报名/点名/Storage=`14/14/5/3/102/1315/2633/3/16/1/0/123602`；102 门既有课程全部为 `curriculum`，微课项目=`0`、受控主题=`5`、启用游戏合同=`1`。只新增授权 schema/seed、12 条 ledger、1 条 flag version 和 1 条 domain event；未创建账号、班级、课次、报名、点名、微课作品或 Storage 对象 |
+| `started_at`, `finished_at`, `actor`, `approver` | 2026-08-27（Asia/Shanghai）；release `builtAt=2026-08-27T09:41:44Z`；Codex；产品负责人明确指令“将改动推送生产” |
+| `command_or_runbook` | 写目标只读 preflight → PostgreSQL-only backup/TOC/SHA/pre-post count → 12 migration rollback/独立零残留/formal → `publish-mathin-xiaomi.ps1 -Action Publish` 双 build/原子切换 → feature flag rollback/formal → HTTP、真实作者只读 catalog 权限、数据库/服务/journal/错误/业务计数/备份独立 postflight；未运行生产 Playwright、未造数、未使用固定开发账号 |
+| `artifact_url_or_path`, `artifact_hash` | release `/home/swing/services/mathin/releases/20260827-094025/release.json`；备份 `/mnt/openlist-disk/Backups/Mathin/mathin-db-prechange-20260827T092348Z-teacher-microcourse-bc76f68/`；dump SHA-256 `6f8dcb0564ff9ca22994ff2d4f0566e16f5a9fe9234a54d342a219eabaff8432`，发布后 `sha256sum -c` 五项全 `OK` |
+| `retention`, `access_roles`, `failure_ticket` | Git、migration、immutable current/previous、feature flag audit 与新备份按现有策略保留，本轮无 prune；仓库维护者/Xiaomi 运维角色；`not_applicable`，真实教师/教研生产写态旅程仍待产品负责人验收 |
+
 ### 4.3 错误定位：可查询，但 release 关联缺失
 
 - `public.operational_errors` 共 1,949 条：`request.error` 1,948 条、`infra.disk_alert` 1 条；最近一条为本轮建班校验错误 `2026-08-22T15:53:09.807Z`。

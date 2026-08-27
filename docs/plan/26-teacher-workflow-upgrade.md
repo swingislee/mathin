@@ -4,9 +4,9 @@
 >
 > **已落地**：左侧三步备课切换、右侧常驻课件预览、与上课教室共用且可向下收起的白板工具栏和 BoardItem 对象层、解析成品查看与 WebP/原件导出、可见 revision 审核链、BlockNote 标准模板与备课质量状态、开课前 14/7 天备课提醒与课后“补交”标记，以及 `DEV-TMC-1` 的数据库、编辑器、草稿试讲、教研审核、教师微课目录、单讲建班和注册表驱动游戏页闭环。
 >
-> **剩余项**：独立教案管理页面的创建/绑定入口、服务端打印 PDF 派生文件，以及 `DEV-TMC-1` 的产品负责人开发端初验、生产迁移/开关授权和 postflight；页面级教学备注已按产品判断暂缓。R1-Live 中备课产物、审核和检查项只作质量提示，不阻断教师冻结快照或开课；Production 1.0 再评估质量门。
+> **剩余项**：独立教案管理页面的创建/绑定入口、服务端打印 PDF 派生文件，以及 `DEV-TMC-1` 的产品负责人生产页面写态验收；页面级教学备注已按产品判断暂缓。R1-Live 中备课产物、审核和检查项只作质量提示，不阻断教师冻结快照或开课；Production 1.0 再评估质量门。
 >
-> **最后核对**：2026-08-27；既有教师生产链依据迁移 `20260730010500_doc26_teacher_workflow.sql`、`20260731000700_doc26_annotation_board_items.sql` 与 `20260823000200_r1_live_preparation_attention_window.sql`、隔离/生产数据库断言、定向合同测试及产品走查。`DEV-TMC-1` 已在本机开发目标实现并完成机器验证，最新实现 commit 为 `210944c`，本机迁移 head 为 `20260827000700_teacher_microcourse_course_catalog_access`；产品负责人初验和生产晋级尚未发生。
+> **最后核对**：2026-08-27；既有教师生产链依据迁移 `20260730010500_doc26_teacher_workflow.sql`、`20260731000700_doc26_annotation_board_items.sql` 与 `20260823000200_r1_live_preparation_attention_window.sql`、隔离/生产数据库断言、定向合同测试及产品走查。`DEV-TMC-1` 已在本机完成机器验证，并以 commit `bc76f68`、生产 head `20260827000700_teacher_microcourse_course_catalog_access` 和 release `20260827-094025` 部署；`teaching.teacher_microcourses_v1` 为 version 2 / true，postflight 通过，产品负责人生产页面验收尚未发生。
 
 # Mathin 教师备课生产链升级规划
 
@@ -552,7 +552,7 @@ template_version:
 | --- | --- | --- |
 | 本机实现与机器检查 | **PASS** | 基础 commits `cd3b2bf`、`26698e3`、`96f3301`、`a4fa9e4`、`5c13d5d`、`f418dd9` 与迁移 `20260826000200`～`20260826000600` 已通过三份事务回滚 SQL、微课 Vitest 17/17、固定账号 Playwright 1/1 和 R1-Live 60/60；整讲来源增量 commit `dd9a755`、migration `20260827000100_teacher_microcourse_lecture_source_picker` 通过内容 SQL、微课 Vitest 4 文件 19/19 与完整旅程；通用游戏页增量 commit `1135099`、migrations `20260827000300`～`20260827000400` 通过回滚式内容 SQL、定向 Vitest 6 文件 47/47、固定账号 Playwright 1/1 及最终 CI 16/16，全量 Vitest为 106 文件、742 通过/1 条件跳过且 production build 成功；课程产品选择器复用增量 migrations `20260827000600`～`20260827000700` 已通过事务回滚、固定教师权限矩阵、微课 Vitest 4 文件 21/21 与完整 Playwright 1/1 |
 | 产品负责人开发端初验 | **UNKNOWN** | 本机功能开关已启用并保留可验收版本；自动化只能证明覆盖合同，尚无产品负责人签收 |
-| 生产迁移与启用 | 尚未开始 | 本任务未连接 Xiaomi，仓库默认开关保持关闭；生产发布必须另做目标、备份/current/previous、数据影响、回退与 postflight 审批 |
+| 生产迁移与启用 | **DEPLOYED / PENDING USER ACCEPTANCE** | 明确授权后完成 PostgreSQL-only 备份、12 migration rollback/零残留/formal、commit `bc76f68` 双 build/原子切换及真实管理员 feature flag rollback/formal；current/previous=`20260827-094025` / `20260826-125052`，ledger=`206`，flag=version 2 / true，HTTP/权限/服务/错误/业务计数 postflight 通过 |
 
 完整机器证据见 [`../evidence/r1/teacher-microcourse-dev.md`](../evidence/r1/teacher-microcourse-dev.md)。本机随机 E2E 课程族、班级、课次和微课项目已按精确名称/ID 清理并复核为 0；固定开发账号与既有基线数据未改变。
 
@@ -594,4 +594,4 @@ template_version:
 
 H5 首版只有 HTML 编辑框、防抖预览、运行错误和本地素材 data URL。草稿进入作者域隔离的私有对象路径，发布时按规范化内容 SHA-256 提升到 `cw-h5/packages/<sha256>/`；iframe 只使用 `sandbox="allow-scripts"`，CSP 禁止网络、表单、外层导航、子 iframe 和插件，仅开放内联脚本/样式与 `data:`/`blob:` 媒体，并继续注入课堂指针桥和内存 storage shim。
 
-目录查询只返回 `enabled` 且唯一讲次存在正式 release 的微课，支持发布教师、课程/讲次标题、主题、关键词、年级及可选学期/班型筛选。验收至少覆盖既有课程唯一性、他人草稿拒绝、审核快照不可替换、4/6/9 宫数独四种结果、游戏校验凭证不可替换、H5 CSP、自由课次冻结、退回重提发布、单讲建班、旧课次钉死旧 release、新班使用新版，以及普通教师/教研 zh/en 固定账号旅程。生产迁移和开关启用须另行取得明确授权。
+目录查询只返回 `enabled` 且唯一讲次存在正式 release 的微课，支持发布教师、课程/讲次标题、主题、关键词、年级及可选学期/班型筛选。验收至少覆盖既有课程唯一性、他人草稿拒绝、审核快照不可替换、4/6/9 宫数独四种结果、游戏校验凭证不可替换、H5 CSP、自由课次冻结、退回重提发布、单讲建班、旧课次钉死旧 release、新班使用新版，以及普通教师/教研 zh/en 固定账号旅程。首轮生产迁移和开关启用已在 2026-08-27 取得明确授权并完成；真实教师/教研生产写态旅程仍须产品负责人操作验收，后续 schema、release 或开关变更继续单独授权。
