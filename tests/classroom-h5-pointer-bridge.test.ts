@@ -141,6 +141,10 @@ describe("M3b H5 pointer bridge", () => {
       new URL("../src/features/courseware-doc/AixuexiStage.tsx", import.meta.url),
       "utf8",
     );
+    const sourceRuntimeStage = readFileSync(
+      new URL("../src/features/courseware-doc/SourceRuntimeStage.tsx", import.meta.url),
+      "utf8",
+    );
     const registration = readFileSync(
       new URL("../src/features/courseware-doc/useH5FrameRegistration.ts", import.meta.url),
       "utf8",
@@ -159,6 +163,7 @@ describe("M3b H5 pointer bridge", () => {
     expect(liveShell).toContain("useH5PointerBridge");
     expect(docStage).toContain("useH5FrameRegistration(pointerBridge, frameId)");
     expect(aixuexiStage).toContain("useH5FrameRegistration(pointerBridge, frameId)");
+    expect(sourceRuntimeStage).toContain("useH5FrameRegistration(h5PointerBridge, frameId)");
     expect(registration).toContain("pointerBridge.registerFrame(frameId, iframe)");
     expect(bridge).toContain("channelToken: newId()");
     expect(bridge).not.toContain("crypto.randomUUID()");

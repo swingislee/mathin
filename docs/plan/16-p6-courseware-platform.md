@@ -4,7 +4,7 @@
 >
 > **当前用途**：E 系列与爱学习 G+/X+/A+ 秋季课程研发、16:9/4:3 双轨资源与 release 契约；记录不进入正式基线的暑期开发增量。
 >
-> **已落地**：P6-1～P6-8 主体与 P6-10；开发数据已有 E 系列 1135 讲与爱学习 G+/X+/A+ 秋季 170 讲双轨资源，另有一年级 A+ 全国版暑期 2 讲/66 页开发增量和 13 个空占位，P6-5 有课堂集成证据。旧 v11 导入仅作为 §12 历史记录，projection v31 的现行合同与证据见 §13。
+> **已落地**：P6-1～P6-8 主体与 P6-10；开发数据已有 E 系列 1135 讲与爱学习 G+/X+/A+ 秋季 170 讲双轨资源，另有一年级 A+ 全国版暑期 2 讲/66 页开发增量和 13 个空占位，P6-5 有课堂集成证据。旧 v11 导入仅作为 §12 历史记录；projection v31 来源事实、生产兼容边界和 source-runtime 开发导入合同见 §13。
 >
 > **当前施工**：P6-AIX-2 已于 2026-08-13 关闭；当前由 R1-9/P6-9 采集 1305 讲正式来源 inventory、Storage/H5 对象审计与非执行者复核。
 >
@@ -533,7 +533,7 @@ sanitize 白名单按“移植过来的规则实际选择到的标签/属性”�
 
 库内复核：1525 页文档全部为 `1200x900 / projectionVersion 11`；两轨各 52 release、52 讲头、1525 页头、4934 binding；58 `offline` + 1 `capture_required`；10 个 ITV 页 55 个事件。
 
-## 13. 爱学习 projection v31 多难度升级（P6-AIX-2）
+## 13. 爱学习 projection v31 来源与 source-runtime 导入（P6-AIX-2）
 
 ### 13.1 输入清单与占位边界
 
@@ -571,8 +571,20 @@ sanitize 白名单按“移植过来的规则实际选择到的标签/属性”�
 ### 13.4 阶段退出证据
 
 - **已通过**：三包构建器对 package key、课程/页面计数、年级/难度/版本、逐讲离线状态和 v31 文档做 fail-closed 校验。
-- **已通过**：开发库精确拥有 3 个 source package、12 门爱学习课程、170 个 source lecture、5442 页；双轨各 170 个 release/head、5442 个页面 head 和 27541 个 binding。5020 页为 `source-master`，422 页为 `source-player-compat`。
-- **2026-08-27 开发增量**：`2026-summer-aplus-quanguo-math` 新增一年级 A+ 全国版暑期课程，教学计划保留 15 讲；第 1 讲《一个萝卜一个坑》和第 8 讲《逃家的小羊》共 66 页已导入，双轨各 2 个 release/head、66 个页面 head 和 350 个 binding，13 个其余讲次保持空模板、无 release。开发库爱学习当前合计 4 个 source package、13 门课程、195 个教学计划讲次（172 个 source-backed、23 个占位）、5508 页；该增量不改变 Production 1.0 的秋季 12 门/170 讲基线。
-- **已通过**：构建与重导入 `baselineDrift=0`、`binding conflicts=0`；X+ 首讲重跑只返回 existing，不新增对象、revision 或 release。
-- **已通过**：浏览器覆盖普通 G+ 4:3、A+ 动画、X+ embedded H5、TrueOrFalse、TopicClassification、计划第 7/15 讲占位和 `/en` Studio；源运行时错误为 0。
+- **2026-08-13 v31 基线已通过**：当时开发库精确拥有 3 个 source package、12 门爱学习课程、170 个 source lecture、5442 页；双轨各 170 个 release/head、5442 个页面 head 和 27541 个 binding。5020 页为 `source-master`，422 页为 `source-player-compat`。该数值继续描述当前 Production 1.0 release-1 合同，不代表 2026-08-27 开发库的新适配器头。
+- **2026-08-27 开发增量**：`2026-summer-aplus-quanguo-math` 新增一年级 A+ 全国版暑期课程，教学计划保留 15 讲；第 1 讲《一个萝卜一个坑》和第 8 讲《逃家的小羊》共 66 页已导入，双轨各 2 个 release/head、66 个页面 head 和 550 个 current release binding，13 个其余讲次保持空模板、无 release。开发库爱学习当前合计 4 个 source package、13 门课程、195 个教学计划讲次（172 个 source-backed、23 个占位）、5508 页；该增量不改变 Production 1.0 的秋季 12 门/170 讲基线。
+- **2026-08-13 v31 基线已通过**：构建与重导入 `baselineDrift=0`、`binding conflicts=0`；X+ 首讲重跑只返回 existing，不新增对象、revision 或 release。
+- **2026-08-13 v31 基线已通过**：浏览器覆盖普通 G+ 4:3、A+ 动画、X+ embedded H5、TrueOrFalse、TopicClassification、计划第 7/15 讲占位和 `/en` Studio；当时的运行时错误为 0。
 - **范围裁决**：G+/X+/A+ 170 条源站讲次进入 1.0；G+ 五/六年级与 X+ 二/五/六年级的第 7/15 讲共 10 条由教学计划补充占位，均无 release、准备状态为“未发布”。正式总基线仍为 1305 讲/2610 条 release-1，执行仍受 R1-9/15/18 约束。
+
+### 13.5 2026-08-27 source-runtime 开发适配器
+
+来源仓库此前已经把源播放器 DOM、源 CSS、captured player 模块、Topic/ITV/原生游戏和 H5 父子页协议收敛到一个 Viewer；Mathin 的旧 `AixuexiStage` 又把投影拆成 React 节点并重画入口，造成“进入互动”按钮、缩放与样式偏差。新导入接口把来源 Viewer 作为内容寻址 H5 原样封装：页文档使用 `source-runtime-page-v1`，只保存安全来源投影、资源/路由 binding 和 `mathin-source-runtime-v1` host 协议。Mathin 只拥有 sandbox、URL 物化、双轨外框和课堂桥，不拥有来源组件外观。
+
+开发升级使用 `--upgrade-source-runtime`，逐页新增 revision 2、逐轨新增 release 2 并切换 current head；revision/release 1 与 snapshot 不覆盖、不删除。该 flag 只接受已 attestation 的本机 Docker，远程或 production 目标在写入前失败。旧 `aixuexi-page-doc-v1` 留作现有发布数据的只读兼容；Production 1.0 仍以批准的 v31 release-1 manifest 为准，未获授权部署。
+
+本机开发库已完成 G+/X+/A+ 秋季 170 讲和 A+ 暑期 2 讲的版本化升级：5508 页的两轨 current page head 全部指向 `source-runtime-page-v1` revision 2，两轨 172 个 current lecture head 全部指向 release 2；current release snapshot 每轨精确包含 G+ 11132、X+ 19729、A+ 15591、暑期 550，共 47002 个 binding。旧 `aixuexi-page-doc-v1` revision 1 仍为 5508 页，四包均为 `imported/source-runtime-v1`，current head 缺失、legacy/native head 不一致、导入冲突与未解释 drift 均为 0。该结果只证明本机开发库，未写入 Xiaomi/生产。
+
+暑期第 1、8 讲分别为 34/32 页并完成该升级；其余 13 讲仍为 0 页、0 release 占位。Playwright 分别复验暑期与历史 G+ 的“妙答连连1”：4:3 外框内保持 16:9 来源舞台顶对齐，入口仍为来源 `.aix-shared-interaction-entry`、橙色“开始”和 `(434,690,332×90)`，点击后打开本地 `/api/cw-h5/`，无“进入互动”替代按钮、无运行时错误；同时修复了 child `rendered` 先于 iframe `load` 时遮罩被重新置为 loading 的竞态。
+
+补充抽查覆盖 X+ embedded H5 与 A+ ITV：source-runtime 的二级 H5 曾被入口 `X-Frame-Options: SAMEORIGIN` 拒绝，因为其直接父层按合同是 opaque-origin sandbox；现在二级 URL 带明确父层标记，只移除该响应的 XFO，继续保留课堂 runtime 注入、响应 CSP sandbox、内容寻址路径校验和普通顶层 H5 的 SAMEORIGIN 门禁。复验中 X+ 原游戏 canvas 完整显示，A+ ITV 保留来源透明 `.aix-itv-entry` 命中层并打开本地视频控制界面；可执行运行时错误与 HTTP 4xx/5xx 均为 0，无头 Chromium 仅记录源游戏在用户手势前请求音频的标准 autoplay 拒绝。

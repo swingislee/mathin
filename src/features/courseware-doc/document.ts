@@ -3,6 +3,10 @@ import { aixuexiPageDocSchema, type AixuexiPageDoc } from "./aixuexi-schema";
 import { pageDocSchema, type PageDoc } from "./schema";
 import { gamePageDocSchema, type GamePageDoc } from "./game-page-schema";
 import {
+  sourceRuntimePageDocSchema,
+  type SourceRuntimePageDoc,
+} from "./source-runtime-schema";
+import {
   microcoursePageDocSchema,
   type MicrocoursePageDoc,
 } from "./microcourse-schema";
@@ -18,9 +22,10 @@ export const coursewareDocSchema = z.union([
   spatialPageDocSchema,
   microcoursePageDocSchema,
   gamePageDocSchema,
+  sourceRuntimePageDocSchema,
 ]);
 
-export type CoursewareDoc = PageDoc | AixuexiPageDoc | SpatialPageDoc | MicrocoursePageDoc | GamePageDoc;
+export type CoursewareDoc = PageDoc | AixuexiPageDoc | SpatialPageDoc | MicrocoursePageDoc | GamePageDoc | SourceRuntimePageDoc;
 
 export function parseCoursewareDoc(value: unknown): CoursewareDoc {
   return coursewareDocSchema.parse(value);

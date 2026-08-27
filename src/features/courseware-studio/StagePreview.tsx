@@ -12,6 +12,8 @@ import { isMicrocoursePageDoc } from "@/features/courseware-doc/microcourse-sche
 import type { MicrocourseStageProps } from "@/features/courseware-doc/MicrocourseStage";
 import { isSpatialPageDoc } from "@/features/courseware-doc/spatial";
 import type { SpatialCoursewareStageProps } from "@/features/courseware-doc/SpatialCoursewareStage";
+import { isSourceRuntimePageDoc } from "@/features/courseware-doc/source-runtime-schema";
+import type { SourceRuntimeStageProps } from "@/features/courseware-doc/SourceRuntimeStage";
 
 /**
  * DocStage 的懒加载 client 叶子(games/boards.tsx 模式):渲染器只在预览页
@@ -26,6 +28,14 @@ const AixuexiStage = dynamic<AixuexiStageProps>(() => import("@/features/coursew
   ssr: false,
   loading: () => <Skeleton className="aspect-video w-full rounded-xl" />,
 });
+
+const SourceRuntimeStage = dynamic<SourceRuntimeStageProps>(
+  () => import("@/features/courseware-doc/SourceRuntimeStage"),
+  {
+    ssr: false,
+    loading: () => <Skeleton className="aspect-video w-full rounded-xl" />,
+  },
+);
 
 const SpatialCoursewareStage = dynamic<SpatialCoursewareStageProps>(
   () => import("@/features/courseware-doc/SpatialCoursewareStage"),
@@ -57,6 +67,14 @@ export type StagePreviewProps = Omit<DocStageProps, "doc"> & {
 };
 
 export function StagePreview(props: StagePreviewProps) {
+  if (isSourceRuntimePageDoc(props.doc)) {
+    return (
+      <SourceRuntimeStage
+        key={`${props.doc.source.coursewareId}:${props.doc.source.pageDatabaseId}`}
+        {...props as SourceRuntimeStageProps}
+      />
+    );
+  }
   if (isGamePageDoc(props.doc)) {
     return <GamePageStage {...props as GamePageStageProps} />;
   }

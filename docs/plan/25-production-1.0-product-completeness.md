@@ -146,7 +146,7 @@ command_or_runbook, artifact_url_or_path, artifact_hash, failure_ticket
 | 财务 | M3（安全关闭） | M4 安全关闭 | R1-8 已锁定发布门并关闭路由/导航、数据、work item/审批、通知、指标和 job；R1-15/18 在隔离副本和正式环境复核关闭不变量 | 8/15/18 |
 | Terms | M2 | M4 | 图谱、内容、搜索、SEO、跨链全验 | 9 |
 | 公共内容发布 | M1～M2 | M4 | 统一状态机、资源、稳定关系、本地化状态 | 9～11 |
-| 课程研发/双轨 release | M3 | M4 | P6-AIX-2 已固定 G+/X+/A+ 秋季 170 讲/5442 页；2026-08-27 开发库另导入一年级 A+ 暑期 2 讲/66 页并保留 13 个空占位，开发库爱学习现为 13 门课程、195 个教学计划讲次（172 个 source-backed）/5508 页，暑期增量尚未进入 Production 1.0 基线。[来源 manifest 子门](../evidence/r1/r1-9-courseware-source-manifest.md)已同步 102 门/1305 讲/2610 条 release-1 的 v4 确定性合同、只读导出/对象校验核心与受控 runner；批准副本真实 inventory、Storage/H5 审计、隔离演练和正式 release-1 仍缺 | 9/15/18 |
+| 课程研发/双轨 release | M3 | M4 | P6-AIX-2 已固定 G+/X+/A+ 秋季 170 讲/5442 页；2026-08-27 开发库另导入一年级 A+ 暑期 2 讲/66 页并保留 13 个空占位，开发库爱学习现为 13 门课程、195 个教学计划讲次（172 个 source-backed）/5508 页。开发库已在保留 revision/release 1 的前提下把 5508 页两轨 current head 升级到 `source-runtime-page-v1` revision 2 / release 2；该适配器和暑期增量均未进入 Production 1.0 基线。[来源 manifest 子门](../evidence/r1/r1-9-courseware-source-manifest.md)已同步 102 门/1305 讲/2610 条 release-1 的 v4 确定性合同、只读导出/对象校验核心与受控 runner；批准副本真实 inventory、Storage/H5 审计、隔离演练和正式 release-1 仍缺 | 9/15/18 |
 | Story | M1 | M4 | 完整章节和内容生产记录 | 10 |
 | Games | M2～M3 | M4 | 排名可信、浏览器、容量 | 11/12 |
 | Minds | M2 | M4 | Terms 关系、内容回退 | 11/12 |
@@ -256,7 +256,7 @@ R1-1 以 `20260728000100_r1_organization_settings.sql` 与 `20260728000200_r1_pu
 | 课程页面文档 | revision/binding、native 16:9、adapted 4:3、review 分层 | 研发读取可编辑状态；课堂不读取草稿 |
 | 课程 release | 发布前检查对象可读、binding、snapshot 和并发版本；发布后不可变 | track head 指向当前 release；legacy 字段指向 native release |
 
-爱学习课程与 E 系列共享课程族/课程/讲次、CAS、revision/release、双轨 head 和课次冻结，不共享页面文档接口。1.0 范围固定为 2026 秋季数学：G+ 苏教版三至六年级 56 条源站讲次、X+ 苏教版一至六年级 84 条源站讲次、A+ 全国版一至二年级 30 条源站讲次；页面使用 projection v31 的 `aixuexi-page-doc-v1`。G+ 五/六年级与 X+ 二/五/六年级缺少第 7/15 讲源站课件，教学计划补充 10 条占位，不创建 release，课件准备状态为“未发布”；其他缺失讲次、年级、季节和难度不生成空课程或伪页面。
+爱学习课程与 E 系列共享课程族/课程/讲次、CAS、revision/release、双轨 head 和课次冻结，不共享页面文档接口。1.0 范围固定为 2026 秋季数学：G+ 苏教版三至六年级 56 条源站讲次、X+ 苏教版一至六年级 84 条源站讲次、A+ 全国版一至二年级 30 条源站讲次；当前批准的生产 release-1 页面仍使用 projection v31 的 `aixuexi-page-doc-v1`。2026-08-27 开发导入器已改为 `source-runtime-page-v1`，复用来源 Viewer 而不在 Mathin 重造 DOM/CSS；生产切换仍需 R1-9/15/18 的批准 manifest、隔离演练和正式授权。G+ 五/六年级与 X+ 二/五/六年级缺少第 7/15 讲源站课件，教学计划补充 10 条占位，不创建 release，课件准备状态为“未发布”；其他缺失讲次、年级、季节和难度不生成空课程或伪页面。
 
 报告保存指标版本、数据截止时间、机构时区和生成数据集。教师在学生学情页选择日期范围，右栏查看范围内的已上课课评、作业记录和视频讲解，左栏新建或打开报告；未选择报告时不常驻空编辑器。稳定指标 ID 在界面显示本地化名称。发布/撤回/修订提交领域事务后创建幂等通知 job；通知失败不回滚已发布事实。
 

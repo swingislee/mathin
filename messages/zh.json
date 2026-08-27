@@ -1205,7 +1205,9 @@
     "topicPending": "进入互动（待补采）",
     "topicPendingHint": "来源包未捕获该题目的互动响应，暂无离线互动可用。",
     "disclosureAnswer": "答案",
-    "disclosureAnalysis": "解析"
+    "disclosureAnalysis": "解析",
+    "sourceRuntimeLoading": "正在加载源课件…",
+    "sourceRuntimeUnavailable": "源课件运行时或资源尚不可用"
   },
   "school": {
     "home": {

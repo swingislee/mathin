@@ -10,6 +10,7 @@ import {
 import { buildImportSql } from "../scripts/cw-import.mjs";
 import {
   aixuexiPackageDefinition,
+  preserveSourceMarkup,
   rewriteTopicRootUrls,
 } from "../scripts/aixuexi-build-package.mjs";
 import { renderAixuexiMathHtml } from "../src/features/courseware-doc/aixuexi-math";
@@ -18,6 +19,10 @@ import {
   countCoursewareH5Frames,
   resolveClassroomRendererInputProfile,
 } from "../src/features/classroom/input/capabilities";
+import {
+  collectSourceRuntimeBindingKeys,
+  sourceRuntimePageDocSchema,
+} from "../src/features/courseware-doc/source-runtime-schema";
 
 const key = (character: string) => character.repeat(64);
 
@@ -114,6 +119,33 @@ function doc(): AixuexiPageDoc {
 }
 
 describe("Aixuexi courseware adapter", () => {
+  it("preserves inert MathJax TeX scripts but rejects executable script markup", () => {
+    const inert = '<span class="math-tex"><script type="math/tex">\\cdots</script></span>';
+    expect(preserveSourceMarkup(inert, () => null, "math")).toBe(inert);
+    expect(() => preserveSourceMarkup('<script type="text/javascript">alert(1)</script>', () => null, "js"))
+      .toThrow(/unsafe CSS\/script syntax/);
+    expect(() => preserveSourceMarkup('<script type="math/tex" src="evil.js"></script>', () => null, "src"))
+      .toThrow(/unsafe CSS\/script syntax/);
+  });
+
+  it("localizes captured source URLs without rebuilding source markup", () => {
+    const sourceUrl = "https://assets.example.test/picture.png?x=1&y=2";
+    const seen: number[] = [];
+    const markup = `<p class="source"><img src="${sourceUrl}"></p>`;
+    expect(preserveSourceMarkup(
+      markup,
+      (resourceRefId: number) => {
+        seen.push(resourceRefId);
+        return key("d");
+      },
+      "asset",
+      new Map([[sourceUrl, 19]]),
+    )).toBe('<p class="source"><img src="asset://resource/19"></p>');
+    expect(seen).toEqual([19]);
+    expect(() => preserveSourceMarkup(markup, () => null, "external"))
+      .toThrow(/external executable URL/);
+  });
+
   it("derives the displayed level from every supported package key", () => {
     expect(aixuexiPackageLevel("2026-gplus-sujiao-math")).toBe("G+");
     expect(aixuexiPackageLevel("2026-xplus-sujiao-math")).toBe("X+");
@@ -237,7 +269,7 @@ describe("Aixuexi courseware adapter", () => {
         lessonIndex: 1,
         lessonName: "混合运算",
         pageCount: 1,
-        documentAdapter: "aixuexi-page-v1",
+        documentAdapter: "source-runtime-v1",
         sourceSystem: "aixuexi_bsk",
         sourcePackageKey: "2026-gplus-sujiao-math",
         sourcePackageManifestSha256: key("e"),
@@ -275,9 +307,12 @@ describe("Aixuexi courseware adapter", () => {
       }],
       assets: [{ candidateKey, kind: "image", role: "background", objectHash }],
       h5Manifests: new Map(),
-    });
+    }, { upgradeSourceRuntime: true });
 
     expect(sql).toContain("cw_source_packages");
+    expect(sql).toContain("document_adapter=excluded.document_adapter");
+    expect(sql).toContain("CW_IMPORT_SOURCE_RUNTIME_PROTECTED_PAGE");
+    expect(sql).toContain("cw_import_inserted_source_runtime_releases");
     expect(sql).toContain("cw_source_lectures");
     expect(sql).toContain("'native-16x9'");
     expect(sql).toContain("'adapted-4x3'");
@@ -288,12 +323,16 @@ describe("Aixuexi courseware adapter", () => {
 
 const contractRoot = process.env.AIXUEXI_CONTRACT_ROOT;
 
-describe.skipIf(!contractRoot)("Aixuexi generated v31 packages", () => {
+describe.skipIf(!contractRoot)("Aixuexi generated source packages", () => {
   it("parses every page and reconciles every document binding with usages.ndjson", () => {
     let pageCount = 0;
     let compatibilityCount = 0;
+    let legacyPageCount = 0;
+    let sourceRuntimePageCount = 0;
+    let expectedPageCount = 0;
     for (const directory of readdirSync(contractRoot!, { withFileTypes: true }).filter((entry) => entry.isDirectory())) {
       const packageRoot = path.join(contractRoot!, directory.name);
+      expectedPageCount += aixuexiPackageDefinition(directory.name)?.pageCount ?? 0;
       const usages = new Set(
         readFileSync(path.join(packageRoot, "usages.ndjson"), "utf8")
           .trim().split(/\r?\n/).filter(Boolean).map((line) => JSON.parse(line).usageKey as string),
@@ -302,16 +341,25 @@ describe.skipIf(!contractRoot)("Aixuexi generated v31 packages", () => {
         const rows = readFileSync(path.join(packageRoot, "page-docs", file), "utf8")
           .trim().split(/\r?\n/).filter(Boolean).map((line) => JSON.parse(line) as { pageIndex: number; doc: unknown });
         for (const row of rows) {
-          const parsed = aixuexiPageDocSchema.parse(row.doc);
-          for (const binding of collectAixuexiBindingKeys(parsed)) {
+          const raw = row.doc as { docVersion?: string };
+          const bindings = raw.docVersion === "source-runtime-page-v1"
+            ? collectSourceRuntimeBindingKeys(sourceRuntimePageDocSchema.parse(row.doc))
+            : collectAixuexiBindingKeys(aixuexiPageDocSchema.parse(row.doc));
+          for (const binding of bindings) {
             expect(usages.has(binding), `${directory.name}/${file}/${row.pageIndex}/${binding}`).toBe(true);
           }
           pageCount += 1;
-          if (parsed.fourByThree.mode === "source-player-compat") compatibilityCount += 1;
+          if (raw.docVersion === "source-runtime-page-v1") sourceRuntimePageCount += 1;
+          else {
+            const parsed = aixuexiPageDocSchema.parse(row.doc);
+            legacyPageCount += 1;
+            if (parsed.fourByThree.mode === "source-player-compat") compatibilityCount += 1;
+          }
         }
       }
     }
-    expect(pageCount).toBe(5442);
-    expect(compatibilityCount).toBe(422);
+    expect(pageCount).toBe(expectedPageCount);
+    expect(legacyPageCount + sourceRuntimePageCount).toBe(pageCount);
+    if (legacyPageCount === 5442) expect(compatibilityCount).toBe(422);
   });
 });

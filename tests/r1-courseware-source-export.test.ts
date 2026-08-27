@@ -216,7 +216,7 @@ describe("R1 courseware source export core", () => {
     expect(deriveCoursewareDatabaseFingerprint([...shuffled].reverse(), { migrationHead })).toBe(result.databaseFingerprint);
   });
 
-  it("extracts both supported document binding contracts", () => {
+  it("extracts every supported document binding contract", () => {
     const key = hash("aixuexi-runtime");
     const aixuexi = {
       docVersion: "aixuexi-page-doc-v1",
@@ -225,6 +225,14 @@ describe("R1 courseware source export core", () => {
       nodes: [],
     };
     expect(extractRequiredBindingKeys(aixuexi)).toEqual([key]);
+    expect(extractRequiredBindingKeys({
+      docVersion: "source-runtime-page-v1",
+      runtime: { bindingKey: key },
+      bindings: {
+        resources: { "28": hash("source-resource") },
+        routes: [{ path: "/api/aixuexi-topic/1/1/index.html", bindingKey: hash("source-route") }],
+      },
+    })).toEqual([hash("source-resource"), hash("source-route"), key].sort());
     expect(() => extractRequiredBindingKeys({ docVersion: "spatial-page-v1" })).toThrow(/unsupported/);
   });
 

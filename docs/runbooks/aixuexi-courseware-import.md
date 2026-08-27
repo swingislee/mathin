@@ -1,4 +1,4 @@
-# 爱学习 projection v31 多难度课程导入
+# 爱学习 source-runtime 导入与 projection v31 兼容
 
 ## 1. 固定范围
 
@@ -15,25 +15,37 @@
 
 开发库另可导入暑期增量包 `2026-summer-aplus-quanguo-math`。该包当前只包含一年级 A+ 全国版第 1 讲《一个萝卜一个坑》和第 8 讲《逃家的小羊》，合计 2 讲、66 页；数据库课程保留完整 15 讲教学计划，其余 13 讲只建空 `courseware_template`、无 release 的占位讲次，不补造课件或来源记录。这个开发增量不改变上表 Production 1.0 秋季基线。
 
-## 2. 页面与 4:3 合同
+## 2. 页面、源 Viewer 与 4:3 合同
 
-爱学习页面保存为 projection v31 的 `aixuexi-page-doc-v1`，不转换成 E 系列 `page-doc-v1`。课程族、课程、讲次、CAS、revision/release、双轨 head 和课次冻结继续复用 P6 数据层。
+来源包仍以 projection v31 保存安全投影和离线证据；Mathin 的新导入文档统一为 `source-runtime-page-v1`，来源适配器为 `source-runtime-v1`。它不转换成 E 系列 `page-doc-v1`，也不再把来源节点拆成 Mathin 自有 React 组件。课程族、课程、讲次、CAS、revision/release、双轨 head 和课次冻结继续复用 P6 数据层。
 
-普通源母版是 1200×900。源播放器则用 1920×1080 外层承载背景和 `slideClass`，把 1200×900 内层居中并放大 1.2 倍，再以 0.625 呈现为 1200×675。分类器按页面结构选择 4:3 策略：
+每个来源 package 只生成一个内容寻址的 Viewer H5 包。包内直接使用来源仓库维护的 `viewerScript`、`viewerStyles`、`slide-runtime.css`、`itv-runtime.css`、captured player 图片模块、字体及游戏运行时；页文档只携带安全筛选后的来源页面投影、资源 ID 映射和来源路由映射。Mathin 宿主仅负责：
 
-| 模式 | 判定 | adapted 4:3 |
-| --- | --- | --- |
-| `source-master` | 1200×900 且没有源动画、embedded H5 或 1920×1080 原生游戏 | 直接铺满 1200×900；共 5020 页 |
-| `source-player-compat` | 有动画、embedded H5，或画布/原生游戏为 1920×1080 | 保持源 1200×675 交互比例置于上部，底部 225 逻辑像素为课堂兼容区；共 422 页 |
+1. 在无 `allow-same-origin` 的外层 sandbox iframe 中启动来源 Viewer；
+2. 把内容寻址 binding 解析成短期 URL，并通过 `mathin-source-runtime-v1` 消息协议交给 Viewer；
+3. 在 `native-16x9` 使用 1200×675 自然舞台，在 `adapted-4x3` 使用 1200×900 外框，把同一 1200×675 来源舞台顶对齐，底部保留 225 逻辑像素；
+4. 转发课堂媒体控制、H5 输入桥和来源 Viewer 明确发出的翻页事件。
 
-422 页来自 X+ 381 页和 A+ 41 页；G+ 1641 页全部直接复用。分类不得编码成 package、年级、讲次或页面白名单。
+来源 DOM、类名、坐标、transform、折叠结构、按钮文案和 CSS 由来源 Viewer 单一拥有。导入 seam 只允许把已捕获的精确源 URL 改写为 `asset://resource/<id>`，以及把已登记 API 路径映射到本地 H5；未知网络 URL、可执行 markup、缺少 binding 或 Viewer 指纹漂移必须硬失败。
 
-运行时必须消费来源包的 `slide-runtime.css`、captured player 图片模块、完整 transform/transform-origin、动画 step/group/effect/phase/duration/delay、embedded H5、TrueOrFalse 和 TopicClassification。旧手工小图放大、xmind 偏移和近似游戏实现不得恢复。
+### 2.1 已审阅踩坑约束
+
+本接口以同级来源仓库的 `docs/current/aixuexi-localization.md`、`docs/阶段/爱学习/阶段68_源播放器样式表接入与部件呈现批量修复.md`、`docs/阶段/爱学习/阶段74_Viewer自拟样式与字体替换对账闭环.md` 和 `docs/视觉对比/综合审校/审校记录.md` 为输入事实，固定以下禁区：
+
+- 不从截图重画部件，不在 Mathin 复制来源 CSS 规则，也不为 Topic、ITV、TrueOrFalse 等题型各造一套按钮；
+- 普通题目入口保留来源 1200×900 坐标 `(434,690,332×90)`、橙色“开始”和 `.aix-shared-interaction-entry`，不能替换成 shadcn `Button` 或“进入互动”；
+- 图片尺寸继续由 captured player 模块执行；不恢复小图阈值、xmind 偏移、统一 `object-fit` 或 Viewer 兜底放大；
+- H5 只做地址适配，保留真实入口、内在画布、父子页协议和 source sandbox；
+- source-runtime 自身是 opaque-origin sandbox；其二级 H5 入口用显式父层标记保留课堂 runtime 注入并移除会拒绝 opaque 父层的 `X-Frame-Options: SAMEORIGIN`，响应 CSP sandbox、内容寻址路径校验和普通顶层 H5 的 SAMEORIGIN 门禁不放宽；
+- MathJax v2 的精确 `<script type="math/tex">` 是惰性公式载体，可以原样保留；其他 script 及带属性的伪装形式仍拒绝；
+- iframe 的 `ready/rendered/load` 顺序不得假定。渲染状态绑定具体 frame key，父层 `load` 事件不能重新覆盖已经完成的来源页面。
+
+旧 `aixuexi-page-doc-v1` / `aixuexi-page-v1` 仅保留为已发布数据的只读兼容渲染器。新包不得再生成该文档；生产 release 未经 R1-9/15/18 授权不得切换。
 
 ## 3. 前置条件
 
 1. `.env.local` 指向开发 Supabase，并具备导入所需 server key；凭据不得写入日志或仓库。
-2. 开发库已应用并登记 `20260814000300_p6_six_classroom_cleanup.sql`；爱学习必须收敛为一个课程族、12 门课程、180 条教学计划讲次，其中 170 条有源站课件、10 条为第 7/15 讲计划补充占位；难度顺序为 X+ < G+ < A+。
+2. 开发库已应用并登记 `20260814000300_p6_six_classroom_cleanup.sql` 与 `20260827000500_courseware_source_runtime_adapter.sql`；爱学习秋季课程必须收敛为一个课程族、12 门课程、180 条教学计划讲次，其中 170 条有源站课件、10 条为第 7/15 讲计划补充占位；难度顺序为 X+ < G+ < A+。
 3. 三包的 `site/manifest.json`、catalog、projection v31、slide/player runtime 和逐讲 offline verification 都存在，且 remote/missing/fatal 为 0。
 4. 本流程只允许开发库导入。R1-15/R1-18 的生产清理与 release-1 重建需要独立授权。
 
@@ -47,54 +59,68 @@ pnpm cw:aixuexi:build -- --package-key 2026-xplus-sujiao-math
 pnpm cw:aixuexi:build -- --package-key 2026-aplus-quanguo-math
 pnpm cw:aixuexi:build -- --package-key 2026-summer-aplus-quanguo-math
 
-pnpm cw:aixuexi:import -- --package-key 2026-gplus-sujiao-math --dry-run
-pnpm cw:aixuexi:import -- --package-key 2026-xplus-sujiao-math --dry-run
-pnpm cw:aixuexi:import -- --package-key 2026-aplus-quanguo-math --dry-run
-pnpm cw:aixuexi:import -- --package-key 2026-summer-aplus-quanguo-math --dry-run
+pnpm cw:aixuexi:import -- --package-key 2026-gplus-sujiao-math --local-docker --database-url $env:CW_IMPORT_DATABASE_URL --dry-run
+pnpm cw:aixuexi:import -- --package-key 2026-xplus-sujiao-math --local-docker --database-url $env:CW_IMPORT_DATABASE_URL --dry-run
+pnpm cw:aixuexi:import -- --package-key 2026-aplus-quanguo-math --local-docker --database-url $env:CW_IMPORT_DATABASE_URL --dry-run
+pnpm cw:aixuexi:import -- --package-key 2026-summer-aplus-quanguo-math --local-docker --database-url $env:CW_IMPORT_DATABASE_URL --dry-run
 ```
 
 只校验合同而不复制 H5 文件时，在 build 命令末尾加 `--metadata-only`。当前完整构建结果：
 
 | package | 讲次/页面 | usages | CAS 对象 | H5 包/包内文件 |
 | --- | ---: | ---: | ---: | ---: |
-| G+ | 56/1641 | 6981 | 838 | 59/2484 |
-| X+ | 84/2767 | 14889 | 2424 | 70/3021 |
-| A+ | 30/1034 | 5671 | 1335 | 87/4864 |
-| A+ 暑期开发增量 | 2/66 | 350 | 105 | 7/312 |
+| G+ | 56/1641 | 11132 | 1213 | 59/2551 |
+| X+ | 84/2767 | 19729 | 2740 | 70/3086 |
+| A+ | 30/1034 | 15591 | 2137 | 87/4931 |
+| A+ 暑期开发增量 | 2/66 | 550 | 171 | 7/377 |
 
-范围漂移、projection 版本错误、离线验证不完整、外部 URL、缺失资源、hash/字节数不符或不安全标记都必须非零退出。
+`CW_IMPORT_DATABASE_URL` 只登记经 `.env.local` attestation 的本机数据库目标，不能写入仓库或命令日志。即使是 `--dry-run` 也必须显式传 `--local-docker`；省略后导入器会走 SSH 路径，禁止在本流程使用。
+
+范围漂移、projection 版本错误、Viewer seam/指纹漂移、离线验证不完整、未登记外部 URL、缺失资源、hash/字节数不符或不安全标记都必须非零退出。
 
 ## 5. 导入与幂等重跑
 
 ```powershell
-pnpm cw:aixuexi:import -- --package-key 2026-gplus-sujiao-math
-pnpm cw:aixuexi:import -- --package-key 2026-xplus-sujiao-math
-pnpm cw:aixuexi:import -- --package-key 2026-aplus-quanguo-math
-pnpm cw:aixuexi:import -- --package-key 2026-summer-aplus-quanguo-math
+pnpm cw:aixuexi:import -- --package-key 2026-gplus-sujiao-math --local-docker --database-url $env:CW_IMPORT_DATABASE_URL
+pnpm cw:aixuexi:import -- --package-key 2026-xplus-sujiao-math --local-docker --database-url $env:CW_IMPORT_DATABASE_URL
+pnpm cw:aixuexi:import -- --package-key 2026-aplus-quanguo-math --local-docker --database-url $env:CW_IMPORT_DATABASE_URL
+pnpm cw:aixuexi:import -- --package-key 2026-summer-aplus-quanguo-math --local-docker --database-url $env:CW_IMPORT_DATABASE_URL
 ```
 
-可追加 `--start-at <1-based-index> --limit <count>` 分批运行；索引按 `lectures.ndjson` 稳定顺序，不是讲号。每讲先上传内容寻址对象，再用单个数据库事务写来源映射、页面、revision、两轨 binding/release/head。中断后从失败项重跑；`conflicts`、`baselineDrift` 必须为 0，已存在对象和行只报告 existing。
+可追加 `--start-at <1-based-index> --limit <count>` 分批运行；索引按 `lectures.ndjson` 稳定顺序，不是讲号。每讲先上传内容寻址对象，再用单个数据库事务写来源映射、页面、revision、两轨 binding/release/head。中断后从失败项重跑；`conflicts` 和未解释的 `baselineDrift` 必须为 0，已存在对象和行只报告 existing。
 
-## 6. 重导入安全边界
+## 6. v31 → source-runtime 版本化升级
 
-来源语义或 projection 版本变化时，旧文档不会被覆盖。先只读确认以下外部引用均为 0：annotations、replacement items/batches、lesson notes、solution records、learning checks、preparations、review cycles、派生背景和外部 asset binding。
+已有 `aixuexi-page-doc-v1` 不能覆盖或删除。只在已 attestation 的本机 Docker 开发库显式执行：
 
-随后在单事务内清除旧爱学习 page data、两轨 release/head 和 source mapping，保留 `courses`、`course_lectures` 以及内容寻址的 CAS/Storage 对象和元数据。事务内再次断言外部引用；任一非 0 整笔回滚。开发库本轮先完成了 1525 页旧 G+ 数据的回滚试验，再提交清理；没有执行生产清理。
+```powershell
+pnpm cw:aixuexi:import -- --package-key 2026-gplus-sujiao-math --local-docker --database-url $env:CW_IMPORT_DATABASE_URL --upgrade-source-runtime
+pnpm cw:aixuexi:import -- --package-key 2026-xplus-sujiao-math --local-docker --database-url $env:CW_IMPORT_DATABASE_URL --upgrade-source-runtime
+pnpm cw:aixuexi:import -- --package-key 2026-aplus-quanguo-math --local-docker --database-url $env:CW_IMPORT_DATABASE_URL --upgrade-source-runtime
+```
+
+升级事务逐页断言当前两轨都仍指向导入基线、没有 draft/partial drift，随后新增 `revision_no=2`，为两轨分别新增 `release_no=2` 并切换 current heads；旧 revision/release 和其 snapshot 原样保留。binding 集合按新文档精确对账。`baselineDrift` 中被同一事务完整解释的页面计入 `sourceRuntimeUpgraded`，批量汇总只报告剩余未解释 drift。
+
+`--upgrade-source-runtime` 与远程 SSH、`--allow-production-target` 互斥；目标不是本机开发库时命令在写入前失败。生产 v31 baseline 的升级需要新的 R1-9/15/18 授权、批准 manifest、隔离演练和正式 release 编号裁决，本手册不授予该权限。
 
 ## 7. 验收
 
 ```powershell
-pnpm exec vitest run tests/aixuexi-courseware.test.ts tests/cw-import.test.ts tests/cw-h5-shim.test.ts
+pnpm test -- tests/aixuexi-courseware.test.ts tests/aixuexi-source-runtime.test.ts tests/cw-import.test.ts tests/cw-h5-shim.test.ts
 pnpm typecheck
 pnpm lint
 pnpm messages:check
 pnpm build
 ```
 
-Production 1.0 秋季基线必须精确满足：3 个 imported source package、12 门课程、180 条教学计划讲次（170 条 source-backed、10 条未发布占位）、5442 页且全部 projection v31；两轨各 170 release/head、5442 页面 head、27541 binding；8 个原生游戏、9 个 embedded H5；runtime binding 缺失=0；重复导入零新增/零 drift。
+Production 1.0 当前批准事实仍是：3 个 imported source package、12 门课程、180 条教学计划讲次（170 条 source-backed、10 条未发布占位）、5442 页的 projection v31 release-1；两轨各 170 release/head、5442 页面 head、27541 binding。该数值只描述尚未升级的生产 baseline，不得用本地 source-runtime 结果静默改写。
 
-导入暑期开发增量后，开发库爱学习目录合计为 4 个 imported source package、13 门课程、195 条教学计划讲次（172 条 source-backed、23 条未发布占位）、5508 页。暑期目标课程必须精确为 15 讲；第 1、8 讲分别为 34/32 页并各有两轨 release/head，两轨各新增 350 个 binding；其余 13 讲保持空模板、0 页面、0 release。重复导入必须 Storage 零上传、数据库零 conflict/零 drift。
+本机完成三套秋季升级后，170 条 source-backed 讲次的当前两轨头应全部指向 `source-runtime-page-v1` revision 2 / release 2，共 5442 页、46452 个当前文档 binding；旧 v31 revision 1 / release 1 仍可按历史 ID 读取。导入暑期开发增量后，开发库爱学习目录合计为 4 个 imported source package、13 门课程、195 条教学计划讲次（172 条 source-backed、23 条未发布占位）、5508 页，当前 source-runtime 文档共 47002 个 binding。
 
-浏览器至少抽查：G+ `source-master` 4:3；A+ 动画兼容页逐步揭示；X+ embedded H5 的 opaque-origin sandbox；TrueOrFalse 和 TopicClassification 的源样式与交互；显式第 7/15 讲占位；zh/en Studio 标签。H5 不得添加 `allow-same-origin`，原生游戏 shadow root 必须可在 React Strict Mode 重挂载。
+暑期目标课程必须精确为 15 讲；第 1、8 讲分别为 34/32 页并各有两轨 revision/release 2 current head，其余 13 讲保持空模板、0 页面、0 release。重复导入必须 Storage 零上传、数据库零 conflict/零未解释 drift。
+
+2026-08-27 本机 postflight 已达到该合同：四包均为 `imported/source-runtime-v1`；两轨各 5508 个 current page head、172 个 release-2 lecture head和 47002 个 current release binding；历史 revision 1 与新 revision 2 各 5508 页，current head 缺失和 legacy/native head 不一致均为 0。该证据只覆盖本机 Docker 开发库，不证明生产状态。
+
+浏览器至少抽查：普通题目 4:3 外框内的来源 16:9 舞台；橙色“开始”按钮的源文案、类名和 `(434,690,332×90)` 几何；A+ 动画逐步揭示；X+ embedded H5；ITV、TrueOrFalse 和 TopicClassification 的源样式与交互；显式第 7/15 讲及暑期 13 讲占位；zh/en Studio 标签。加载遮罩必须在来源 `rendered` 后消失，点击“开始”必须打开 `/api/cw-h5/` 本地路由，页面不得出现 Mathin 重造的“进入互动”按钮。外层来源 runtime iframe 不加 `allow-same-origin`；来源 Viewer 内部 H5 按已审计 source sandbox 运行。
 
 支持证据见 [R1-9 爱学习 v31 证据](../evidence/r1/r1-9-aixuexi-courseware.md)。

@@ -17,6 +17,8 @@ import {
 } from "./microcourse-schema";
 import { isSpatialPageDoc } from "./spatial";
 import SpatialCoursewareStage from "./SpatialCoursewareStage";
+import { isSourceRuntimePageDoc } from "./source-runtime-schema";
+import SourceRuntimeStage from "./SourceRuntimeStage";
 
 export type MicrocourseStageProps = Omit<DocStageProps, "doc"> & {
   doc: MicrocoursePageDoc;
@@ -30,6 +32,20 @@ function SourceStage({
   doc: MicrocourseSourceDoc;
   props: MicrocourseStageProps;
 }) {
+  if (isSourceRuntimePageDoc(doc)) {
+    return (
+      <SourceRuntimeStage
+        doc={doc}
+        bindingUrls={props.bindingUrls}
+        stageMode="board43"
+        className="size-full"
+        interactive={props.interactive}
+        videoControl={props.videoControl}
+        onAdvance={props.onAdvance}
+        h5PointerBridge={props.h5PointerBridge}
+      />
+    );
+  }
   if (isGamePageDoc(doc)) {
     return <GamePageStage doc={doc} className="size-full" interactive={props.interactive} />;
   }

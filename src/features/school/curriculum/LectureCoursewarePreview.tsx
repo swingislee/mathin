@@ -3,6 +3,7 @@ import { CoursewarePreviewWorkspace } from "@/features/courseware-preview/Course
 import { StagePreview } from "@/features/courseware-studio/StagePreview";
 import type { CoursewareLecturePreview } from "@/features/courseware-studio/data";
 import { isSpatialPageDoc } from "@/features/courseware-doc/spatial";
+import { isSourceRuntimePageDoc } from "@/features/courseware-doc/source-runtime-schema";
 import { cn } from "@/lib/utils";
 
 /**
@@ -24,7 +25,9 @@ export async function LectureCoursewarePreview({
   const isFourThree = preview.page.aspect === "4:3";
   const previewAspect = isFourThree
     ? 4 / 3
-    : isSpatialPageDoc(preview.page.doc)
+    : isSourceRuntimePageDoc(preview.page.doc)
+      ? preview.page.doc.viewport.width / preview.page.doc.viewport.height
+      : isSpatialPageDoc(preview.page.doc)
       ? 16 / 9
       : preview.page.doc.canvas.width / preview.page.doc.canvas.height;
 

@@ -6,6 +6,7 @@ import { getTool } from "@/features/tools/registry";
 import type { H5PointerBridgeStatus } from "@/features/courseware-doc/h5-pointer-protocol";
 import { isMicrocoursePageDoc } from "@/features/courseware-doc/microcourse-schema";
 import { isGamePageDoc } from "@/features/courseware-doc/game-page-schema";
+import { isSourceRuntimePageDoc } from "@/features/courseware-doc/source-runtime-schema";
 import type { CoursewarePage } from "../types";
 import type { ClassroomInputCapability } from "./router";
 import {
@@ -108,6 +109,7 @@ export function countCoursewareH5Frames(doc: CoursewareDoc | null | undefined): 
   if (isAixuexiPageDoc(doc)) {
     return doc.nodes.reduce((total, node) => total + Number(Boolean(node.embeddedH5)), 0);
   }
+  if (isSourceRuntimePageDoc(doc)) return 1;
   if (doc.docVersion !== PAGE_DOC_VERSION) return 0;
   const count = (node: DocNode): number => {
     if (node.adapter === "h5") return 1;
@@ -178,6 +180,12 @@ export function resolveClassroomRendererInputProfile(
           : UNSUPPORTED_PROFILE;
       }
       return providerProfile("document:aixuexi", CLASSROOM_PARTITIONED_INPUT_PROVIDER_V1);
+    }
+    if (isSourceRuntimePageDoc(doc)) {
+      if (h5BridgeStatus === "pending") return PROVISIONAL_PROFILE;
+      return h5BridgeStatus === "ready"
+        ? providerProfile("document:source-runtime", CLASSROOM_PARTITIONED_INPUT_PROVIDER_V1)
+        : UNSUPPORTED_PROFILE;
     }
     if (isH5BridgeEligibleCoursewareDoc(doc)) {
       if (h5BridgeStatus === "pending") return PROVISIONAL_PROFILE;

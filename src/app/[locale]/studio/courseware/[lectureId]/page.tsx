@@ -15,6 +15,7 @@ import { isAixuexiPageDoc } from "@/features/courseware-doc/aixuexi-schema";
 import { isSpatialPageDoc } from "@/features/courseware-doc/spatial";
 import { isMicrocoursePageDoc } from "@/features/courseware-doc/microcourse-schema";
 import { isGamePageDoc } from "@/features/courseware-doc/game-page-schema";
+import { isSourceRuntimePageDoc } from "@/features/courseware-doc/source-runtime-schema";
 import type { PageDoc } from "@/features/courseware-doc/schema";
 import type { StudioRevision } from "@/features/courseware-studio/data";
 import { resolveLectureReviewCapabilities } from "@/features/school/teaching-operations/capabilities";
@@ -68,7 +69,7 @@ export default async function StudioCoursewarePage({
     editor = await loadCoursewareStudioPage(lectureId, context.firstPageDocId, track);
   }
   if (!editor) notFound();
-  if (isAixuexiPageDoc(editor.activeRevision.doc)) {
+  if (isAixuexiPageDoc(editor.activeRevision.doc) || isSourceRuntimePageDoc(editor.activeRevision.doc)) {
     return <AixuexiStudioViewer
       lecture={editor.lecture}
       track={editor.track}
@@ -114,6 +115,7 @@ export default async function StudioCoursewarePage({
   const pageDocRevisions = editor.revisions.filter(
     (revision): revision is Omit<StudioRevision, "doc"> & { doc: PageDoc } =>
       !isAixuexiPageDoc(revision.doc)
+      && !isSourceRuntimePageDoc(revision.doc)
       && !isSpatialPageDoc(revision.doc)
       && !isMicrocoursePageDoc(revision.doc)
       && !isGamePageDoc(revision.doc),

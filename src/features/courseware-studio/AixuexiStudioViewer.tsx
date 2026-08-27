@@ -5,6 +5,7 @@ import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { aixuexiPackageLevel, type AixuexiPageDoc } from "@/features/courseware-doc/aixuexi-schema";
 import type { ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
+import type { SourceRuntimePageDoc } from "@/features/courseware-doc/source-runtime-schema";
 import type { CoursewareTrack, StudioPageSummary } from "./data";
 import { CoursewarePageCreateDialog } from "./CoursewarePageCreateDialog";
 import { StagePreview } from "./StagePreview";
@@ -22,7 +23,7 @@ export async function AixuexiStudioViewer({
   track: CoursewareTrack;
   page: StudioPageSummary;
   pages: StudioPageSummary[];
-  doc: AixuexiPageDoc;
+  doc: AixuexiPageDoc | SourceRuntimePageDoc;
   bindingUrls: ResolvedBindingUrls;
   lectureWorkspaceHref: string;
 }) {

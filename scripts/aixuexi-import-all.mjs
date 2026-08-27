@@ -23,6 +23,7 @@ function parseArgs(argv) {
     catalogMap: null,
     duplicateCatalogVersion: null,
     allowProductionTarget: false,
+    upgradeSourceRuntime: false,
   };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -37,6 +38,10 @@ function parseArgs(argv) {
     }
     if (arg === "--allow-production-target") {
       options.allowProductionTarget = true;
+      continue;
+    }
+    if (arg === "--upgrade-source-runtime") {
+      options.upgradeSourceRuntime = true;
       continue;
     }
     if (["--package-key", "--package-root", "--store-root", "--ssh-host", "--start-at", "--limit", "--database-url", "--catalog-version", "--catalog-map", "--duplicate-catalog-version"].includes(arg)) {
@@ -56,6 +61,9 @@ function parseArgs(argv) {
   if (!options.localDocker && options.databaseUrl) fail("--database-url is only valid with --local-docker");
   if (options.duplicateCatalogVersion && !options.catalogMap) {
     fail("--duplicate-catalog-version requires --catalog-map");
+  }
+  if (options.upgradeSourceRuntime && (!options.localDocker || options.allowProductionTarget)) {
+    fail("--upgrade-source-runtime is restricted to the local Docker development database");
   }
   options.packageRoot ??= path.resolve(process.cwd(), ".tmp", "aixuexi-import", options.packageKey);
   return options;
@@ -89,6 +97,10 @@ export function resolveCatalogVersion(lecture, options, versionsByProduct) {
   fail(`product ${lecture.mathinProductCode} maps to multiple catalog versions; pass --duplicate-catalog-version`);
 }
 
+export function unresolvedSourceRuntimeDrift(pages = {}) {
+  return Math.max(0, (pages.baselineDrift ?? 0) - (pages.sourceRuntimeUpgraded ?? 0));
+}
+
 export async function importAll(options) {
   const lectures = (await readFile(path.join(options.packageRoot, "lectures.ndjson"), "utf8"))
     .trim().split(/\r?\n/).filter(Boolean).map((line) => JSON.parse(line));
@@ -113,6 +125,7 @@ export async function importAll(options) {
     else args.push("--ssh-host", options.sshHost);
     if (options.dryRun) args.push("--dry-run");
     if (options.allowProductionTarget) args.push("--allow-production-target");
+    if (options.upgradeSourceRuntime) args.push("--upgrade-source-runtime");
     let result;
     if (options.localDocker) {
       result = await importCourseware({
@@ -125,6 +138,7 @@ export async function importAll(options) {
         databaseUrl: options.databaseUrl,
         sshHost: options.sshHost,
         allowProductionTarget: false,
+        upgradeSourceRuntime: options.upgradeSourceRuntime,
         quiet: true,
       });
     } else {
@@ -157,7 +171,14 @@ export async function importAll(options) {
     pages: results.reduce((sum, result) => sum + result.expected.pages, 0),
     bindings: results.reduce((sum, result) => sum + result.expected.usages, 0),
     databaseConflicts: results.reduce((sum, result) => sum + (result.database?.bindings.conflicts ?? 0), 0),
-    baselineDrift: results.reduce((sum, result) => sum + (result.database?.pages.baselineDrift ?? 0), 0),
+    sourceRuntimeUpgraded: results.reduce(
+      (sum, result) => sum + (result.database?.pages.sourceRuntimeUpgraded ?? 0),
+      0,
+    ),
+    baselineDrift: results.reduce(
+      (sum, result) => sum + unresolvedSourceRuntimeDrift(result.database?.pages),
+      0,
+    ),
   };
 }
 

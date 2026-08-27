@@ -15,6 +15,10 @@ import {
   H5_POINTER_RUNTIME_VERSION,
 } from "./h5-pointer-protocol";
 import type { H5InputProfile } from "./h5-input-profile";
+import {
+  SOURCE_RUNTIME_NESTED_H5_PARAM,
+  SOURCE_RUNTIME_PROTOCOL,
+} from "./source-runtime-schema";
 
 const PACKAGE_HASH = /^[0-9a-f]{64}$/;
 const HTML_EXTENSIONS = new Set(["html", "htm"]);
@@ -49,10 +53,16 @@ export function microcourseH5SecurityHeaders(): Record<string, string> {
 }
 
 export function h5HtmlSecurityHeaders(requestUrl: string): Record<string, string> {
-  const entrypoint = new URL(requestUrl).searchParams.get("mathin_h5_runtime") === H5_POINTER_RUNTIME_VERSION;
+  const searchParams = new URL(requestUrl).searchParams;
+  const entrypoint = searchParams.get("mathin_h5_runtime") === H5_POINTER_RUNTIME_VERSION;
+  const nestedSourceRuntime = searchParams.get(SOURCE_RUNTIME_NESTED_H5_PARAM) === SOURCE_RUNTIME_PROTOCOL;
   return {
     "Content-Security-Policy": H5_SANDBOX_CSP,
-    ...(entrypoint ? { "X-Frame-Options": "SAMEORIGIN" } : {}),
+    // A source-runtime document is itself an opaque-origin sandbox. Its
+    // content-addressed child H5 must keep this response CSP/runtime injection,
+    // but SAMEORIGIN would reject that intentional opaque parent before the
+    // child can bootstrap. All ordinary top-level entry pages remain locked.
+    ...(entrypoint && !nestedSourceRuntime ? { "X-Frame-Options": "SAMEORIGIN" } : {}),
   };
 }
 

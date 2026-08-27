@@ -176,12 +176,30 @@ function collectAixuexiPageBindingKeys(doc, label) {
   return keys;
 }
 
+function collectSourceRuntimePageBindingKeys(doc, label) {
+  const keys = new Set();
+  addBindingKey(keys, doc.runtime?.bindingKey, `${label}.runtime.bindingKey`);
+  const resources = object(doc.bindings?.resources, `${label}.bindings.resources`);
+  for (const [resourceId, key] of Object.entries(resources)) {
+    assert(/^\d+$/.test(resourceId), `${label}.bindings.resources has an invalid resource id`);
+    addBindingKey(keys, key, `${label}.bindings.resources.${resourceId}`);
+  }
+  assert(Array.isArray(doc.bindings?.routes), `${label}.bindings.routes must be an array`);
+  for (let index = 0; index < doc.bindings.routes.length; index += 1) {
+    const route = object(doc.bindings.routes[index], `${label}.bindings.routes[${index}]`);
+    addBindingKey(keys, route.bindingKey, `${label}.bindings.routes[${index}].bindingKey`);
+  }
+  return keys;
+}
+
 export function extractRequiredBindingKeys(document, label = "document") {
   const doc = object(document, label);
   const keys = doc.docVersion === "page-doc-v1"
     ? collectMathinPageBindingKeys(doc, label)
     : doc.docVersion === "aixuexi-page-doc-v1"
       ? collectAixuexiPageBindingKeys(doc, label)
+      : doc.docVersion === "source-runtime-page-v1"
+        ? collectSourceRuntimePageBindingKeys(doc, label)
       : fail(`${label}.docVersion is unsupported`);
   return [...keys].sort(compareText);
 }
@@ -412,7 +430,10 @@ export function validateCoursewareSourceCapture(records, { migrationHead } = {})
     if (lecture.courseSystem === "aixuexi-autumn") {
       assert(lecture.sourceEvidence !== null, `AIXUEXI lecture ${lecture.lectureId} lacks database source provenance`);
       assert(lecture.sourceEvidence.sourceSystem === "aixuexi_bsk", `AIXUEXI lecture ${lecture.lectureId} has an unexpected database source system`);
-      assert(lecture.sourceEvidence.documentAdapter === "aixuexi-page-v1", `AIXUEXI lecture ${lecture.lectureId} has an unexpected document adapter`);
+      assert(
+        new Set(["aixuexi-page-v1", "source-runtime-v1"]).has(lecture.sourceEvidence.documentAdapter),
+        `AIXUEXI lecture ${lecture.lectureId} has an unexpected document adapter`,
+      );
       assert(lecture.sourceEvidence.packageStatus === "imported", `AIXUEXI lecture ${lecture.lectureId} package is not imported`);
       assert(AIXUEXI_PACKAGE_KEYS.has(lecture.sourceEvidence.packageKey), `AIXUEXI lecture ${lecture.lectureId} has an unexpected package key`);
       assert(lecture.sourceEvidence.sourceProductCode === lecture.productCode, `AIXUEXI lecture ${lecture.lectureId} source product code differs from course product code`);
@@ -489,7 +510,10 @@ export function validateCoursewareSourceCapture(records, { migrationHead } = {})
         const trackPages = pagesByRelease.get(`${lecture.lectureId}\0${track}`);
         assert(trackPages.length === lecture.sourceEvidence.pageCount, `AIXUEXI lecture ${lecture.lectureId} ${track} page count differs from source provenance`);
         for (const page of trackPages) {
-          assert(page.document.docVersion === "aixuexi-page-doc-v1", `AIXUEXI lecture ${lecture.lectureId} contains a non-AIXUEXI page document`);
+          const expectedDocVersion = lecture.sourceEvidence.documentAdapter === "source-runtime-v1"
+            ? "source-runtime-page-v1"
+            : "aixuexi-page-doc-v1";
+          assert(page.document.docVersion === expectedDocVersion, `AIXUEXI lecture ${lecture.lectureId} contains a document that differs from its package adapter`);
           assert(page.pageSourceCoursewareId === lecture.sourceEvidence.sourceCoursewareId, `AIXUEXI lecture ${lecture.lectureId} page row source courseware ID differs from source provenance`);
           assert(page.document.source?.coursewareId === lecture.sourceEvidence.sourceCoursewareId, `AIXUEXI lecture ${lecture.lectureId} page source courseware ID differs from source provenance`);
         }

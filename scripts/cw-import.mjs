@@ -7,6 +7,7 @@ import { pathToFileURL } from "node:url";
 import { createClient } from "@supabase/supabase-js";
 import sanitizeHtml from "sanitize-html";
 import { h5StoragePath } from "./lib/courseware-storage-paths.mjs";
+import { stripInertMathTexScriptsForInspection } from "./lib/aixuexi-source-viewer-runtime.mjs";
 import { assertControlledContentWriteTarget } from "./lib/r1-write-target-policy.mjs";
 
 export { h5StoragePath } from "./lib/courseware-storage-paths.mjs";
@@ -15,8 +16,15 @@ const PACKAGE_SCHEMA_VERSION = "mathin-package-export-v1";
 const PAGE_DOC_VERSION = "page-doc-v1";
 const AIXUEXI_PAGE_DOC_VERSION = "aixuexi-page-doc-v1";
 const AIXUEXI_DOCUMENT_ADAPTER = "aixuexi-page-v1";
+const SOURCE_RUNTIME_DOCUMENT_ADAPTER = "source-runtime-v1";
+const AIXUEXI_DOCUMENT_ADAPTERS = new Set([
+  AIXUEXI_DOCUMENT_ADAPTER,
+  SOURCE_RUNTIME_DOCUMENT_ADAPTER,
+]);
 /** 与 `src/features/courseware-doc/aixuexi-schema.ts` 及构建器同步。 */
 const AIXUEXI_PROJECTION_VERSION = 31;
+const SOURCE_RUNTIME_PAGE_DOC_VERSION = "source-runtime-page-v1";
+const SOURCE_RUNTIME_PROTOCOL = "mathin-source-runtime-v1";
 const H5_INPUT_PROFILE_SCHEMA = "mathin-classroom-h5-input-profile-v1";
 const H5_INPUT_PROVIDER_SCHEMA = "mathin-classroom-input";
 const H5_INPUT_PROVIDER_VERSION = 1;
@@ -28,6 +36,7 @@ const CATALOG_VERSION_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const RESUMABLE_UPLOAD_BYTES = 6 * 1024 * 1024;
 const BATCH_UPLOAD_CONCURRENCY = 8;
 const storageDirectoryCache = new Map();
+const storageObjectPresenceCache = new Map();
 const verifiedFileCache = new Map();
 const sharedNdjsonCache = new Map();
 const jsonFileCache = new Map();
@@ -214,8 +223,12 @@ function markupInventory(markup) {
 }
 
 function assertMarkupLossless(markup, label) {
-  const before = markupInventory(sanitizeHtml(markup, MARKUP_IDENTITY_OPTIONS));
-  const after = markupInventory(sanitizeHtml(markup, COURSEWARE_MARKUP_OPTIONS));
+  // The source builder and importer share one exact MathJax-v2 exception.
+  // Any executable or attributed script remains in this inspection copy and
+  // therefore fails the ordinary lossless allow-list gate below.
+  const inspectedMarkup = stripInertMathTexScriptsForInspection(markup);
+  const before = markupInventory(sanitizeHtml(inspectedMarkup, MARKUP_IDENTITY_OPTIONS));
+  const after = markupInventory(sanitizeHtml(inspectedMarkup, COURSEWARE_MARKUP_OPTIONS));
   const lost = [];
   for (const [token, count] of before) {
     if ((after.get(token) ?? 0) < count) lost.push(token);
@@ -225,9 +238,8 @@ function assertMarkupLossless(markup, label) {
   }
 }
 
-export function assertPageDocMarkupSafe(doc, label) {
-  if (doc.docVersion === AIXUEXI_PAGE_DOC_VERSION) {
-    for (const node of doc.nodes ?? []) {
+function assertAixuexiMarkupSafe(page, label) {
+  for (const node of page.nodes ?? []) {
       if (typeof node.html === "string") assertMarkupLossless(node.html, `${label} html`);
       if (typeof node.trueOrFalse?.contentHtml === "string") {
         assertMarkupLossless(node.trueOrFalse.contentHtml, `${label} TrueOrFalse question html`);
@@ -238,11 +250,25 @@ export function assertPageDocMarkupSafe(doc, label) {
       if (typeof node.topicClassification?.stageHtml === "string") {
         assertMarkupLossless(node.topicClassification.stageHtml, `${label} TopicClassification stage html`);
       }
-    }
-    for (const event of doc.itvInteraction?.events ?? []) {
+  }
+  for (const event of page.itvInteraction?.events ?? []) {
       for (const widget of event.stage?.widgets ?? []) {
         if (typeof widget.html === "string") assertMarkupLossless(widget.html, `${label} ITV html`);
       }
+  }
+}
+
+export function assertPageDocMarkupSafe(doc, label) {
+  if (doc.docVersion === AIXUEXI_PAGE_DOC_VERSION) {
+    assertAixuexiMarkupSafe(doc, label);
+    return;
+  }
+  if (doc.docVersion === SOURCE_RUNTIME_PAGE_DOC_VERSION) {
+    const payload = assertObject(doc.payload, `${label}.payload`);
+    if (payload.format === "aixuexi-viewer-page-v1") {
+      const data = assertObject(payload.data, `${label}.payload.data`);
+      const layout = assertObject(data.layout, `${label}.payload.data.layout`);
+      assertAixuexiMarkupSafe({ nodes: layout.nodes, itvInteraction: data.itvInteraction }, label);
     }
     return;
   }
@@ -262,6 +288,46 @@ export function assertPageDocMarkupSafe(doc, label) {
 
 function validatePageDoc(doc, label) {
   const value = assertObject(doc, label);
+  if (value.docVersion === SOURCE_RUNTIME_PAGE_DOC_VERSION) {
+    const source = assertObject(value.source, `${label}.source`);
+    assertString(source.coursewareId, `${label}.source.coursewareId`);
+    if (!Number.isInteger(source.pageDatabaseId) || source.pageDatabaseId <= 0) {
+      fail(`${label}.source.pageDatabaseId must be a positive integer`);
+    }
+    assertHash(source.sourceContentHash, `${label}.source.sourceContentHash`);
+    const runtime = assertObject(value.runtime, `${label}.runtime`);
+    if (runtime.protocol !== SOURCE_RUNTIME_PROTOCOL || runtime.entryPath !== "index.html") {
+      fail(`${label} has an unsupported source runtime protocol/entry`);
+    }
+    const keys = new Set([
+      assertHash(runtime.bindingKey, `${label}.runtime.bindingKey`),
+    ]);
+    const bindings = assertObject(value.bindings, `${label}.bindings`);
+    const resources = assertObject(bindings.resources, `${label}.bindings.resources`);
+    for (const [resourceId, key] of Object.entries(resources)) {
+      if (!/^\d+$/.test(resourceId)) fail(`${label}.bindings.resources has an invalid resource id`);
+      keys.add(assertHash(key, `${label}.bindings.resources.${resourceId}`));
+    }
+    if (!Array.isArray(bindings.routes)) fail(`${label}.bindings.routes must be an array`);
+    const routePaths = new Set();
+    for (const [index, routeValue] of bindings.routes.entries()) {
+      const route = assertObject(routeValue, `${label}.bindings.routes[${index}]`);
+      if (typeof route.path !== "string"
+          || !route.path.startsWith("/")
+          || route.path.startsWith("//")
+          || route.path.includes("\\")
+          || route.path.includes("..")
+          || routePaths.has(route.path)) {
+        fail(`${label}.bindings.routes[${index}].path is invalid or duplicated`);
+      }
+      routePaths.add(route.path);
+      keys.add(assertHash(route.bindingKey, `${label}.bindings.routes[${index}].bindingKey`));
+    }
+    const payload = assertObject(value.payload, `${label}.payload`);
+    assertString(payload.format, `${label}.payload.format`);
+    assertObject(payload.data, `${label}.payload.data`);
+    return keys;
+  }
   if (value.docVersion === AIXUEXI_PAGE_DOC_VERSION) {
     if (value.adapter !== AIXUEXI_DOCUMENT_ADAPTER || value.projectionVersion !== AIXUEXI_PROJECTION_VERSION) {
       fail(`${label} has an unsupported Aixuexi adapter/projection`);
@@ -311,7 +377,7 @@ function validatePageDoc(doc, label) {
     return keys;
   }
   if (value.docVersion !== PAGE_DOC_VERSION) {
-    fail(`${label}.docVersion must be ${PAGE_DOC_VERSION} or ${AIXUEXI_PAGE_DOC_VERSION}`);
+    fail(`${label}.docVersion must be ${PAGE_DOC_VERSION}, ${AIXUEXI_PAGE_DOC_VERSION}, or ${SOURCE_RUNTIME_PAGE_DOC_VERSION}`);
   }
   assertString(value.sourceCoursewareId, `${label}.sourceCoursewareId`);
   if (!(typeof value.sourcePageId === "string" || value.sourcePageId === null)) fail(`${label}.sourcePageId must be string|null`);
@@ -554,10 +620,11 @@ export async function loadImportPlan({ packageRoot, coursewareId, catalogVersion
     const doc = page.doc;
     assertPageDocMarkupSafe(assertObject(doc, `page ${page.pageIndex} doc`), `page ${page.pageIndex}`);
     const docBindingKeys = validatePageDoc(doc, `page ${page.pageIndex} doc`);
-    const provenanceCoursewareId = doc.docVersion === AIXUEXI_PAGE_DOC_VERSION
+    const sourceOwnedDoc = doc.docVersion === AIXUEXI_PAGE_DOC_VERSION || doc.docVersion === SOURCE_RUNTIME_PAGE_DOC_VERSION;
+    const provenanceCoursewareId = sourceOwnedDoc
       ? doc.source?.coursewareId
       : doc.sourceCoursewareId;
-    const provenancePageDatabaseId = doc.docVersion === AIXUEXI_PAGE_DOC_VERSION
+    const provenancePageDatabaseId = sourceOwnedDoc
       ? doc.source?.pageDatabaseId
       : doc.sourcePageDatabaseId;
     if (provenanceCoursewareId !== coursewareId || provenancePageDatabaseId !== page.pageDatabaseId) {
@@ -575,7 +642,7 @@ export async function loadImportPlan({ packageRoot, coursewareId, catalogVersion
     pages.push({
       pageNo: page.pageIndex,
       title: typeof page.name === "string" ? page.name : "",
-      sourcePageId: doc.docVersion === AIXUEXI_PAGE_DOC_VERSION
+      sourcePageId: sourceOwnedDoc
         ? (typeof page.sourcePageId === "string" ? page.sourcePageId : `page-db:${page.pageDatabaseId}`)
         : doc.sourcePageId,
       sourcePageDatabaseId: page.pageDatabaseId,
@@ -629,9 +696,13 @@ export function catalogVersionFilterSql(plan, courseAlias) {
    )`;
 }
 
-export function buildImportSql(plan) {
-  const isAixuexi = plan.lecture.documentAdapter === AIXUEXI_DOCUMENT_ADAPTER;
+export function buildImportSql(plan, options = {}) {
+  const isAixuexi = plan.lecture.sourceSystem === "aixuexi_bsk";
+  const upgradeSourceRuntime = options.upgradeSourceRuntime === true;
   if (isAixuexi) {
+    if (!AIXUEXI_DOCUMENT_ADAPTERS.has(plan.lecture.documentAdapter)) {
+      fail(`lecture.documentAdapter is unsupported for Aixuexi: ${plan.lecture.documentAdapter}`);
+    }
     assertString(plan.lecture.sourceSystem, "lecture.sourceSystem");
     assertString(plan.lecture.sourcePackageKey, "lecture.sourcePackageKey");
     assertHash(plan.lecture.sourcePackageManifestSha256, "lecture.sourcePackageManifestSha256");
@@ -639,6 +710,10 @@ export function buildImportSql(plan) {
     if (plan.lecture.verificationSha256 !== null) {
       assertHash(plan.lecture.verificationSha256, "lecture.verificationSha256");
     }
+  }
+  if (upgradeSourceRuntime
+      && (!isAixuexi || plan.lecture.documentAdapter !== SOURCE_RUNTIME_DOCUMENT_ADAPTER)) {
+    fail("--upgrade-source-runtime requires an Aixuexi source-runtime-v1 package");
   }
   const objectValues = values(plan.objects, (object) => [
     sqlText(object.objectHash), sqlText(object.mime), String(object.byteCount), sqlText(object.kind), sqlText(object.storagePath),
@@ -741,6 +816,7 @@ values (
   ${sqlJson(plan.lecture.sourcePackageCounts ?? {})},'importing'
 )
 on conflict(source_system,package_key) do update set
+  document_adapter=excluded.document_adapter,
   labels=excluded.labels,scope=excluded.scope,counts=excluded.counts,
   status=case when public.cw_source_packages.status='imported' then 'imported' else 'importing' end;
 insert into public.cw_source_lectures(
@@ -848,6 +924,199 @@ update public.cw_source_packages package
        end
  where package.source_system=${sqlText(plan.lecture.sourceSystem)}
    and package.package_key=${sqlText(plan.lecture.sourcePackageKey)};
+` : "";
+  const sourceRuntimeUpgradeRevisionNote = `${importNote} · source-runtime-v1 revision`;
+  const sourceRuntimeUpgradeNativeNote = `${importNote} · source-runtime-v1`;
+  const sourceRuntimeUpgradeAdaptedNote = `${importNote} · source-runtime-v1 · 4:3 top-aligned`;
+  const sourceRuntimeUpgradePrepareSql = upgradeSourceRuntime ? `
+do $$ begin
+  if exists (
+    select 1 from cw_import_protected_pages protected
+    join cw_import_baseline_drift_pages drift using(page_no)
+  ) then raise exception 'CW_IMPORT_SOURCE_RUNTIME_PROTECTED_PAGE'; end if;
+  if exists (
+    select 1 from public.cw_page_docs page
+    join cw_import_context context on context.lecture_id=page.lecture_id
+    join cw_import_pages input on input.page_no=page.page_no
+    where page.draft_revision_id is not null
+  ) then raise exception 'CW_IMPORT_SOURCE_RUNTIME_DRAFT_PRESENT'; end if;
+  if exists (select 1 from cw_import_baseline_drift_pages)
+     and (select count(*) from cw_import_baseline_drift_pages) <> (select count(*) from cw_import_pages)
+  then raise exception 'CW_IMPORT_SOURCE_RUNTIME_PARTIAL_BASELINE_DRIFT'; end if;
+  if exists (
+    select 1 from cw_import_baseline_drift_pages drift
+    join public.cw_page_docs page on page.page_no=drift.page_no
+    join cw_import_context context on context.lecture_id=page.lecture_id
+    join public.cw_page_revisions revision on revision.page_doc_id=page.id and revision.revision_no=1
+    where coalesce(revision.doc->>'docVersion','') not in ('aixuexi-page-doc-v1','source-runtime-page-v1')
+  ) then raise exception 'CW_IMPORT_SOURCE_RUNTIME_BASELINE_UNSUPPORTED'; end if;
+end $$;
+
+update public.cw_page_docs page
+   set doc_version='source-runtime-page-v1'
+  from cw_import_context context
+  join cw_import_baseline_drift_pages drift on true
+ where page.lecture_id=context.lecture_id
+   and page.page_no=drift.page_no;
+
+create temporary table cw_import_source_runtime_target_revisions (
+  page_no int primary key,
+  revision_id uuid unique not null
+) on commit drop;
+insert into cw_import_source_runtime_target_revisions(page_no,revision_id)
+select page.page_no,revision.id
+  from cw_import_baseline_drift_pages drift
+  join public.cw_page_docs page on page.page_no=drift.page_no
+  join cw_import_context context on context.lecture_id=page.lecture_id
+  join cw_import_pages input on input.page_no=page.page_no
+  join lateral (
+    select candidate.id
+      from public.cw_page_revisions candidate
+     where candidate.page_doc_id=page.id
+       and candidate.origin='import'
+       and candidate.doc=input.doc
+     order by candidate.revision_no desc
+     limit 1
+  ) revision on true;
+
+create temporary table cw_import_inserted_source_runtime_revisions (
+  page_no int primary key,
+  revision_id uuid unique not null
+) on commit drop;
+with inserted as (
+  insert into public.cw_page_revisions(page_doc_id,revision_no,doc,origin,note,track)
+  select page.id,next_revision.revision_no,input.doc,'import',
+         ${sqlText(sourceRuntimeUpgradeRevisionNote)},'native-16x9'
+    from cw_import_baseline_drift_pages drift
+    join public.cw_page_docs page on page.page_no=drift.page_no
+    join cw_import_context context on context.lecture_id=page.lecture_id
+    join cw_import_pages input on input.page_no=page.page_no
+    cross join lateral (
+      select coalesce(max(history.revision_no),0)+1 as revision_no
+        from public.cw_page_revisions history
+       where history.page_doc_id=page.id
+    ) next_revision
+    left join cw_import_source_runtime_target_revisions target on target.page_no=page.page_no
+   where target.page_no is null
+  returning page_doc_id,id
+)
+insert into cw_import_inserted_source_runtime_revisions(page_no,revision_id)
+select page.page_no,inserted.id
+  from inserted
+  join public.cw_page_docs page on page.id=inserted.page_doc_id;
+insert into cw_import_source_runtime_target_revisions(page_no,revision_id)
+select page_no,revision_id from cw_import_inserted_source_runtime_revisions;
+
+do $$ begin
+  if (select count(*) from cw_import_source_runtime_target_revisions)
+       <> (select count(*) from cw_import_baseline_drift_pages)
+  then raise exception 'CW_IMPORT_SOURCE_RUNTIME_REVISION_RECONCILIATION_FAILED'; end if;
+end $$;
+update public.cw_page_docs page
+   set current_revision_id=target.revision_id,
+       draft_revision_id=null,
+       title=input.title
+  from cw_import_context context
+  join cw_import_source_runtime_target_revisions target on true
+  join cw_import_pages input on input.page_no=target.page_no
+ where page.lecture_id=context.lecture_id
+   and page.page_no=target.page_no;
+insert into public.cw_page_track_heads(page_doc_id,track,current_revision_id)
+select page.id,track.value,target.revision_id
+  from cw_import_context context
+  join public.cw_page_docs page on page.lecture_id=context.lecture_id
+  join cw_import_source_runtime_target_revisions target on target.page_no=page.page_no
+  cross join (values ('native-16x9'),('adapted-4x3')) track(value)
+on conflict(page_doc_id,track) do update set
+  current_revision_id=excluded.current_revision_id,
+  updated_at=now();
+` : "";
+  const sourceRuntimeUpgradeReleaseSql = upgradeSourceRuntime ? `
+do $$ begin
+  if exists (
+    select 1
+      from cw_import_bindings input
+      cross join (values ('native-16x9'),('adapted-4x3')) track(value)
+      join cw_import_context context on true
+      join public.cw_page_docs page on page.lecture_id=context.lecture_id and page.page_no=input.page_no
+      left join public.cw_page_asset_bindings binding
+        on binding.page_doc_id=page.id and binding.binding_key=input.binding_key and binding.track=track.value
+     where binding.id is null
+  ) then raise exception 'CW_IMPORT_SOURCE_RUNTIME_BINDING_SET_INCOMPLETE'; end if;
+end $$;
+create temporary table cw_import_inserted_source_runtime_releases (
+  track text primary key,
+  id uuid unique not null
+) on commit drop;
+with track_config(track,note) as (values
+  ('native-16x9',${sqlText(sourceRuntimeUpgradeNativeNote)}),
+  ('adapted-4x3',${sqlText(sourceRuntimeUpgradeAdaptedNote)})
+), snapshots as (
+  select config.track,config.note,jsonb_agg(jsonb_build_object(
+    'pageDocId',page.id,
+    'revisionId',target.revision_id,
+    'bindings',coalesce((
+      select jsonb_agg(jsonb_strip_nulls(jsonb_build_object(
+        'bindingKey',binding.binding_key,
+        'assetRevisionId',coalesce(binding.pinned_revision_id,variant.published_revision_id,asset.published_revision_id),
+        'launchQuery',binding.launch_query
+      )) order by binding.binding_key)
+        from public.cw_page_asset_bindings binding
+        join cw_import_bindings input_binding
+          on input_binding.page_no=page.page_no and input_binding.binding_key=binding.binding_key
+        join public.cw_shared_assets asset on asset.id=binding.shared_asset_id
+        left join public.cw_asset_variant_heads variant
+          on variant.shared_asset_id=asset.id and variant.track=config.track
+       where binding.page_doc_id=page.id and binding.track=config.track
+    ),'[]'::jsonb)
+  ) order by page.page_no) as value
+    from track_config config
+    cross join cw_import_context context
+    join public.cw_page_docs page on page.lecture_id=context.lecture_id and page.deleted_at is null
+    join cw_import_source_runtime_target_revisions target on target.page_no=page.page_no
+   group by config.track,config.note
+), inserted as (
+  insert into public.cw_lecture_releases(lecture_id,release_no,note,snapshot,track)
+  select context.lecture_id,
+         coalesce((select max(history.release_no) from public.cw_lecture_releases history
+                    where history.lecture_id=context.lecture_id and history.track=snapshot.track),0)+1,
+         snapshot.note,snapshot.value,snapshot.track
+    from cw_import_context context
+    cross join snapshots snapshot
+   where exists (select 1 from cw_import_baseline_drift_pages)
+     and not exists (
+       select 1 from public.cw_lecture_releases existing
+        where existing.lecture_id=context.lecture_id
+          and existing.track=snapshot.track
+          and existing.note=snapshot.note
+     )
+  returning track,id
+)
+insert into cw_import_inserted_source_runtime_releases(track,id)
+select track,id from inserted;
+with track_config(track,note) as (values
+  ('native-16x9',${sqlText(sourceRuntimeUpgradeNativeNote)}),
+  ('adapted-4x3',${sqlText(sourceRuntimeUpgradeAdaptedNote)})
+)
+insert into public.cw_lecture_track_heads(lecture_id,track,current_release_id)
+select context.lecture_id,config.track,release.id
+  from cw_import_context context
+  cross join track_config config
+  join public.cw_lecture_releases release
+    on release.lecture_id=context.lecture_id and release.track=config.track and release.note=config.note
+ where exists (select 1 from cw_import_baseline_drift_pages)
+on conflict(lecture_id,track) do update set
+  current_release_id=excluded.current_release_id,
+  updated_at=now();
+update public.course_lectures lecture
+   set current_release_id=release.id
+  from cw_import_context context
+  join public.cw_lecture_releases release
+    on release.lecture_id=context.lecture_id
+   and release.track='native-16x9'
+   and release.note=${sqlText(sourceRuntimeUpgradeNativeNote)}
+ where lecture.id=context.lecture_id
+   and exists (select 1 from cw_import_baseline_drift_pages);
 ` : "";
 
   return `begin;
@@ -1068,6 +1337,7 @@ with inserted as (
 )
 insert into cw_import_inserted_bindings select binding_key from inserted;
 ${adaptedBindingsSql}
+${sourceRuntimeUpgradePrepareSql}
 
 create temporary table cw_import_template (value jsonb not null) on commit drop;
 insert into cw_import_template (value)
@@ -1139,6 +1409,7 @@ insert into public.cw_lecture_track_heads(lecture_id,track,current_release_id)
 select context.lecture_id,'native-16x9',release.id from cw_import_context context join cw_import_inserted_release release on true
 on conflict(lecture_id,track) do update set current_release_id=excluded.current_release_id,updated_at=now();
 ${adaptedReleaseSql}
+${sourceRuntimeUpgradeReleaseSql}
 ${sourceFinalizeSql}
 
 select jsonb_build_object(
@@ -1146,11 +1417,12 @@ select jsonb_build_object(
   'objects', jsonb_build_object('expected', (select count(*) from cw_import_objects), 'inserted', (select count(*) from cw_import_inserted_objects), 'existing', (select count(*) from cw_import_objects) - (select count(*) from cw_import_inserted_objects)),
   'sharedAssets', jsonb_build_object('expected', (select count(*) from cw_import_assets), 'inserted', (select count(*) from cw_import_inserted_assets), 'existing', (select count(*) from cw_import_assets) - (select count(*) from cw_import_inserted_assets)),
   'assetRevisions', jsonb_build_object('inserted', (select count(*) from cw_import_inserted_asset_revisions)),
-  'pages', jsonb_build_object('expected', (select count(*) from cw_import_pages), 'inserted', (select count(*) from cw_import_inserted_pages), 'existing', (select count(*) from cw_import_pages) - (select count(*) from cw_import_inserted_pages), 'protected', (select count(*) from cw_import_protected_pages), 'baselineDrift', (select count(*) from cw_import_baseline_drift_pages)),
+  'pages', jsonb_build_object('expected', (select count(*) from cw_import_pages), 'inserted', (select count(*) from cw_import_inserted_pages), 'existing', (select count(*) from cw_import_pages) - (select count(*) from cw_import_inserted_pages), 'protected', (select count(*) from cw_import_protected_pages), 'baselineDrift', (select count(*) from cw_import_baseline_drift_pages), 'sourceRuntimeUpgraded', ${upgradeSourceRuntime ? "(select count(*) from cw_import_source_runtime_target_revisions)" : "0"}, 'sourceRuntimeRevisionsInserted', ${upgradeSourceRuntime ? "(select count(*) from cw_import_inserted_source_runtime_revisions)" : "0"}),
   'bindings', jsonb_build_object('expected', (select count(*) from cw_import_bindings), 'inserted', (select count(*) from cw_import_inserted_bindings), 'existing', (select count(*) from cw_import_bindings) - (select count(*) from cw_import_inserted_bindings), 'conflicts', (select count(*) from cw_import_binding_conflicts)),
   'templateUpdated', (select updated from cw_import_template_updated),
   'releaseInserted', exists(select 1 from cw_import_inserted_release),
   'adaptedReleaseInserted', ${isAixuexi ? "exists(select 1 from cw_import_inserted_adapted_release)" : "false"},
+  'sourceRuntimeReleasesInserted', ${upgradeSourceRuntime ? "(select count(*) from cw_import_inserted_source_runtime_releases)" : "0"},
   'releaseId', (select id from cw_import_inserted_release limit 1)
 )::text;
 commit;`;
@@ -1236,6 +1508,8 @@ function wait(milliseconds) {
 }
 
 async function storageObjectExists(client, bucket, remotePath) {
+  const exactKey = `${bucket}\0${remotePath}`;
+  if (storageObjectPresenceCache.has(exactKey)) return storageObjectPresenceCache.get(exactKey);
   const separator = remotePath.lastIndexOf("/");
   const folder = separator < 0 ? "" : remotePath.slice(0, separator);
   const name = separator < 0 ? remotePath : remotePath.slice(separator + 1);
@@ -1266,6 +1540,7 @@ async function storageObjectExists(client, bucket, remotePath) {
 }
 
 function rememberStorageObject(bucket, remotePath) {
+  storageObjectPresenceCache.set(`${bucket}\0${remotePath}`, true);
   const separator = remotePath.lastIndexOf("/");
   const folder = separator < 0 ? "" : remotePath.slice(0, separator);
   const name = separator < 0 ? remotePath : remotePath.slice(separator + 1);
@@ -1407,6 +1682,48 @@ async function mapWithConcurrency(items, concurrency, handler) {
   await Promise.all(workers);
 }
 
+export function storageTargetsForPlan(plan) {
+  const targets = new Map();
+  const add = (bucket, remotePath) => targets.set(`${bucket}\0${remotePath}`, { bucket, remotePath });
+  for (const object of plan.objects) {
+    if (object.kind !== "h5") add("cw-objects", object.storagePath);
+  }
+  for (const [hash, manifest] of plan.h5Manifests) {
+    add("cw-h5", `packages/${hash}/__mathin_manifest.json`);
+    for (const file of manifest.files) add("cw-h5", h5StoragePath(hash, file.packagePath));
+  }
+  return [...targets.values()].sort(
+    (left, right) => left.bucket.localeCompare(right.bucket, "en")
+      || left.remotePath.localeCompare(right.remotePath, "en"),
+  );
+}
+
+function prewarmLocalStorageObjects(plan, options) {
+  if (!options.localDocker) return;
+  const targets = storageTargetsForPlan(plan).filter(
+    ({ bucket, remotePath }) => !storageObjectPresenceCache.has(`${bucket}\0${remotePath}`),
+  );
+  if (targets.length === 0) return;
+  for (const { bucket, remotePath } of targets) {
+    storageObjectPresenceCache.set(`${bucket}\0${remotePath}`, false);
+  }
+  const requestedValues = targets.map(({ bucket, remotePath }) => (
+    `(${sqlText(bucket)},${sqlText(remotePath)})`
+  )).join(",\n");
+  const output = runSql(`select requested.bucket_id || chr(9) || requested.name
+from (values ${requestedValues}) as requested(bucket_id,name)
+join storage.objects object
+  on object.bucket_id = requested.bucket_id and object.name = requested.name
+order by requested.bucket_id, requested.name;`, options);
+  for (const line of output.split(/\r?\n/).filter(Boolean)) {
+    const separator = line.indexOf("\t");
+    if (separator <= 0) fail("local Storage metadata preflight returned an invalid row");
+    const bucket = line.slice(0, separator);
+    const remotePath = line.slice(separator + 1);
+    storageObjectPresenceCache.set(`${bucket}\0${remotePath}`, true);
+  }
+}
+
 async function uploadPlan(plan, storeRoot, client, uploadConfig, quiet = false) {
   const result = {
     cwObjects: { uploaded: 0, existing: 0 },
@@ -1448,6 +1765,7 @@ export function parseArgs(argv) {
     dryRun: false,
     allowProductionTarget: false,
     localDocker: false,
+    upgradeSourceRuntime: false,
     databaseUrl: process.env.CW_IMPORT_DATABASE_URL,
     sshHost: process.env.CW_IMPORT_SSH_HOST ?? DEFAULT_SSH_HOST,
   };
@@ -1456,6 +1774,7 @@ export function parseArgs(argv) {
     if (arg === "--") continue;
     if (arg === "--dry-run") { options.dryRun = true; continue; }
     if (arg === "--local-docker") { options.localDocker = true; continue; }
+    if (arg === "--upgrade-source-runtime") { options.upgradeSourceRuntime = true; continue; }
     if (arg === "--allow-production-target") { options.allowProductionTarget = true; continue; }
     if (arg === "--package-root" || arg === "--store-root" || arg === "--courseware-id" || arg === "--ssh-host" || arg === "--catalog-version" || arg === "--database-url") {
       const value = argv[index + 1];
@@ -1479,6 +1798,9 @@ export function parseArgs(argv) {
   }
   if (!options.localDocker && options.databaseUrl) {
     fail("--database-url is only valid with --local-docker");
+  }
+  if (options.upgradeSourceRuntime && (!options.localDocker || options.allowProductionTarget)) {
+    fail("--upgrade-source-runtime is restricted to the attested local Docker development database");
   }
   return options;
 }
@@ -1530,11 +1852,13 @@ export async function importCourseware(options) {
   const key = writeEnvironment.SUPABASE_SECRET_KEY;
   if (!key) fail("SUPABASE_SECRET_KEY is required for Storage upload");
   const client = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  prewarmLocalStorageObjects(plan, options);
   const storage = await uploadPlan(plan, path.resolve(options.storeRoot), client, { url: resumableUrl, key }, options.quiet);
-  const database = JSON.parse(runSql(buildImportSql(plan), options));
+  const database = JSON.parse(runSql(buildImportSql(plan, options), options));
   const problems = [];
   if (database.bindings.conflicts > 0) problems.push(`${database.bindings.conflicts} binding conflicts`);
-  if (database.pages.baselineDrift > 0) problems.push(`${database.pages.baselineDrift} pages drifted from the imported baseline`);
+  const unresolvedBaselineDrift = database.pages.baselineDrift - (database.pages.sourceRuntimeUpgraded ?? 0);
+  if (unresolvedBaselineDrift > 0) problems.push(`${unresolvedBaselineDrift} pages drifted from the imported baseline`);
   if (problems.length > 0) fail(`reconciliation reported ${problems.join(" and ")} — inspect before re-running`);
   return { ...summary, storage, database };
 }

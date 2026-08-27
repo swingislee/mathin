@@ -1205,7 +1205,9 @@
     "topicPending": "Activity (source capture pending)",
     "topicPendingHint": "The source package did not capture this activity response, so no offline activity is available.",
     "disclosureAnswer": "Answer",
-    "disclosureAnalysis": "Solution"
+    "disclosureAnalysis": "Solution",
+    "sourceRuntimeLoading": "Loading the source courseware…",
+    "sourceRuntimeUnavailable": "The source courseware runtime or its assets are unavailable"
   },
   "school": {
     "home": {

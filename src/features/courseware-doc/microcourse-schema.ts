@@ -3,6 +3,10 @@ import { aixuexiPageDocSchema, type AixuexiPageDoc } from "./aixuexi-schema";
 import { pageDocSchema, type PageDoc } from "./schema";
 import { gamePageDocSchema, type GamePageDoc } from "./game-page-schema";
 import {
+  sourceRuntimePageDocSchema,
+  type SourceRuntimePageDoc,
+} from "./source-runtime-schema";
+import {
   spatialPageDocSchema,
   type SpatialPageDoc,
 } from "@/features/spatial-math/domain/page-schema";
@@ -31,6 +35,7 @@ export const microcourseSourceDocSchema = z.union([
   aixuexiPageDocSchema,
   spatialPageDocSchema,
   gamePageDocSchema,
+  sourceRuntimePageDocSchema,
 ]);
 
 export const microcourseSourceSnapshotSchema = z
@@ -141,7 +146,7 @@ export const microcoursePageDocSchema = z.union([
   h5PageSchema,
 ]);
 
-export type MicrocourseSourceDoc = PageDoc | AixuexiPageDoc | SpatialPageDoc | GamePageDoc;
+export type MicrocourseSourceDoc = PageDoc | AixuexiPageDoc | SpatialPageDoc | GamePageDoc | SourceRuntimePageDoc;
 export type MicrocourseSourceSnapshot = z.infer<typeof microcourseSourceSnapshotSchema>;
 export type SudokuAnalysis = z.infer<typeof sudokuAnalysisSchema>;
 export type MicrocoursePageDoc = z.infer<typeof microcoursePageDocSchema>;

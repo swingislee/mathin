@@ -4,8 +4,8 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { buildImportSql, h5StoragePath, importCourseware, loadImportPlan, parseArgs, resolveInside } from "../scripts/cw-import.mjs";
-import { resolveCatalogVersion } from "../scripts/aixuexi-import-all.mjs";
+import { buildImportSql, h5StoragePath, importCourseware, loadImportPlan, parseArgs, resolveInside, storageTargetsForPlan } from "../scripts/cw-import.mjs";
+import { resolveCatalogVersion, unresolvedSourceRuntimeDrift } from "../scripts/aixuexi-import-all.mjs";
 
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");
 
@@ -87,6 +87,11 @@ describe("P6 courseware importer", () => {
       defaultCapability: "click",
       engineFamily: "fixture-dom",
     });
+    expect(storageTargetsForPlan(plan)).toEqual(expect.arrayContaining([
+      { bucket: "cw-objects", remotePath: `sha256/aa/${fixture.normalHash}` },
+      { bucket: "cw-h5", remotePath: `packages/${fixture.h5Hash}/__mathin_manifest.json` },
+      { bucket: "cw-h5", remotePath: h5StoragePath(fixture.h5Hash, "index.html") },
+    ]));
 
     const sql = buildImportSql(plan);
     expect(sql).toContain("CW_IMPORT_LECTURE_MAPPING_MISSING_OR_AMBIGUOUS");
@@ -170,6 +175,12 @@ describe("P6 courseware importer", () => {
       { catalogVersion: null, duplicateCatalogVersion: "2025" },
       duplicate,
     )).toBe("2025");
+  });
+
+  it("reports only baseline drift that a versioned source-runtime upgrade did not reconcile", () => {
+    expect(unresolvedSourceRuntimeDrift({ baselineDrift: 66, sourceRuntimeUpgraded: 66 })).toBe(0);
+    expect(unresolvedSourceRuntimeDrift({ baselineDrift: 66, sourceRuntimeUpgraded: 60 })).toBe(6);
+    expect(unresolvedSourceRuntimeDrift()).toBe(0);
   });
 
   it("exports the in-process importer used by local resumable batches", () => {

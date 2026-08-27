@@ -11,6 +11,10 @@ import {
   isHtmlObjectPath,
 } from "../src/features/courseware-doc/h5-shim";
 import {
+  SOURCE_RUNTIME_NESTED_H5_PARAM,
+  SOURCE_RUNTIME_PROTOCOL,
+} from "../src/features/courseware-doc/source-runtime-schema";
+import {
   H5_INPUT_PROFILE_SCHEMA,
   H5_INPUT_PROVIDER_SCHEMA,
   H5_INPUT_PROVIDER_VERSION,
@@ -98,5 +102,10 @@ describe("P6-4 H5 shim", () => {
       .toEqual({
         "Content-Security-Policy": "sandbox allow-scripts allow-forms allow-pointer-lock allow-modals",
       });
+    expect(h5HtmlSecurityHeaders(
+      `https://mathin.example/api/cw-h5/packages/${HASH}/index.html?mathin_h5_runtime=${H5_POINTER_RUNTIME_VERSION}&${SOURCE_RUNTIME_NESTED_H5_PARAM}=${SOURCE_RUNTIME_PROTOCOL}`,
+    )).toEqual({
+      "Content-Security-Policy": "sandbox allow-scripts allow-forms allow-pointer-lock allow-modals",
+    });
   });
 });
