@@ -47,6 +47,7 @@ export const tools: ToolDef[] = [ ... ];
 ```
 
 - games 同理：`GameDef` 含 `id, difficulties[], Board`，`Board` 实现统一接口 `{ difficulty, seed, onComplete(ms, proof) }`。
+- 数独内部题型继续复用 `gameId=sudoku` 与 `{difficulty, seed}` 协议，不为对角线、杀手或不规则宫建立平行游戏 ID。题型注册、`sudoku-v2:<variantId>` seed、runtime/renderer 接口及后续 Agent 验收规范以 [`src/features/games/sudoku/AGENTS.md`](../../src/features/games/sudoku/AGENTS.md) 为权威入口。
 - terms 概念页的「看见它」交互槽通过 `interactive` frontmatter 字段查 tools/独立演示注册表。
 - 新增游戏/工具 = 加一个 feature 目录 + 注册表一行，不改路由代码。
 

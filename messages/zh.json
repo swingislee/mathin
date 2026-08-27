@@ -211,10 +211,17 @@
       "6": "六宫",
       "9": "九宫"
     },
+    "sudokuVariantLabel": "数独题型",
+    "sudokuVariants": {
+      "classic-4x4": "四宫",
+      "classic-6x6": "六宫",
+      "classic-9x9": "九宫"
+    },
     "sudokuVariantTitle": "数独 · {size}",
     "pickDifficulty": "选择难度，随时可以重开。",
     "pickSudokuSetup": "选择棋盘规格和难度，随时可以重开。",
     "sudokuSmallPractice": "四宫与六宫当前作为练习模式，不计入排行榜。",
+    "sudokuVariantPractice": "当前题型为练习模式，不计入排行榜。",
     "rules": "规则与技巧",
     "relatedTerms": "相关知识：",
     "submitting": "成绩提交中…",

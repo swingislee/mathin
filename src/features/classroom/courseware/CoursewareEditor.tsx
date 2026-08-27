@@ -27,8 +27,13 @@ import {
 } from "@/components/ui/dialog";
 import { games } from "@/features/games/registry";
 import { SUDOKU_BOX_ELIMINATION_SEED } from "@/features/games/sudoku/presets";
-import { SudokuSizeSelector } from "@/features/games/sudoku/SudokuSizeSelector";
-import { sudokuSeedForSize, type SudokuSize } from "@/features/games/sudoku/variant";
+import { SudokuVariantSelector } from "@/features/games/sudoku/SudokuVariantSelector";
+import {
+  DEFAULT_SUDOKU_VARIANT_ID,
+  getSudokuVariant,
+  sudokuSeedForVariant,
+  type SudokuVariantId,
+} from "@/features/games/sudoku/variant";
 import type { Difficulty } from "@/features/games/types";
 import { newId } from "@/lib/uuid";
 import { saveCourseware } from "../actions";
@@ -60,7 +65,7 @@ export function CoursewareEditor({
   const [gameDialog, setGameDialog] = useState(false);
   const [gameId, setGameId] = useState(games[0]?.id ?? "");
   const [difficulty, setDifficulty] = useState<Difficulty>("easy");
-  const [sudokuSize, setSudokuSize] = useState<SudokuSize>(9);
+  const [sudokuVariantId, setSudokuVariantId] = useState<SudokuVariantId>(DEFAULT_SUDOKU_VARIANT_ID);
   const [seed, setSeed] = useState(() => defaultGameSeed(games[0]?.id ?? ""));
   const fileInputRef = useRef<HTMLInputElement>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -156,7 +161,7 @@ export function CoursewareEditor({
               setSeed(defaultGameSeed(gameId));
               if (gameId === "sudoku") {
                 setDifficulty("hard");
-                setSudokuSize(9);
+                setSudokuVariantId(DEFAULT_SUDOKU_VARIANT_ID);
               }
               setGameDialog(true);
             }}
@@ -236,7 +241,7 @@ export function CoursewareEditor({
                       setGameId(game.id);
                       setSeed(defaultGameSeed(game.id));
                       setDifficulty(game.id === "sudoku" ? "hard" : "easy");
-                      setSudokuSize(9);
+                      setSudokuVariantId(DEFAULT_SUDOKU_VARIANT_ID);
                     }}
                     className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
                       gameId === game.id ? "border-ink/60 bg-moon/40" : "border-line text-muted hover:bg-moon/20"
@@ -249,13 +254,14 @@ export function CoursewareEditor({
             </div>
             {gameId === "sudoku" ? (
               <div>
-                <p className="text-xs text-muted">{tGames("sudokuSizeLabel")}</p>
-                <SudokuSizeSelector
-                  value={sudokuSize}
+                <p className="text-xs text-muted">{tGames("sudokuVariantLabel")}</p>
+                <SudokuVariantSelector
+                  value={sudokuVariantId}
+                  surface="courseware"
                   className="mt-2 w-fit"
-                  onValueChange={(size) => {
-                    setSudokuSize(size);
-                    setSeed((current) => sudokuSeedForSize(current, size));
+                  onValueChange={(variantId) => {
+                    setSudokuVariantId(variantId);
+                    setSeed((current) => sudokuSeedForVariant(current, variantId));
                   }}
                 />
               </div>
@@ -287,7 +293,7 @@ export function CoursewareEditor({
                   title={t("rollSeed")}
                   onClick={() => {
                     const nextSeed = newId().slice(0, 8);
-                    setSeed(gameId === "sudoku" ? sudokuSeedForSize(nextSeed, sudokuSize) : nextSeed);
+                    setSeed(gameId === "sudoku" ? sudokuSeedForVariant(nextSeed, sudokuVariantId) : nextSeed);
                   }}
                   className="rounded-full p-2 text-muted transition-colors hover:bg-moon/30 hover:text-ink"
                 >
@@ -309,7 +315,9 @@ export function CoursewareEditor({
                 const title = usingSudokuTeachingPreset
                   ? t("sudokuBoxEliminationTitle")
                   : game.id === "sudoku"
-                    ? tGames("sudokuVariantTitle", { size: tGames(`sudokuSize.${sudokuSize}`) })
+                    ? tGames("sudokuVariantTitle", {
+                        size: tGames(getSudokuVariant(sudokuVariantId)?.messageKey ?? "sudokuVariants.classic-9x9"),
+                      })
                   : tGames(`items.${game.id}.name`);
                 mutate((prev) => [...prev, { id: newId(), type: "game", gameId: game.id, difficulty, seed, title }]);
                 setGameDialog(false);

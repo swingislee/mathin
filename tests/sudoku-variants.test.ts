@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   isSolvedGrid,
+  SUDOKU_RUNTIME_REGISTRY,
   solveSudokuGrid,
   sudokuPuzzle,
   verifySudoku,
@@ -17,11 +18,15 @@ import {
   toSudokuMirrorState,
 } from "@/features/games/sudoku/state";
 import {
+  parseSudokuVariantSeed,
   parseSudokuSeed,
   SUDOKU_SIZES,
+  SUDOKU_VARIANTS,
+  sudokuSeedForVariant,
   sudokuSeedForSize,
   sudokuSizeFromSeed,
   sudokuSpecForSize,
+  sudokuVariantRegistryIssues,
 } from "@/features/games/sudoku/variant";
 
 const EXPECTED_GIVENS = {
@@ -47,6 +52,44 @@ describe("Sudoku size seed protocol", () => {
     expect(parseSudokuSeed("sudoku-v1:6:lesson-a")).toEqual({ size: 6, baseSeed: "lesson-a" });
     expect(sudokuSeedForSize("sudoku-v1:4:lesson-a", 6)).toBe("sudoku-v1:6:lesson-a");
     expect(sudokuSeedForSize("sudoku-v1:6:lesson-a", 9)).toBe("lesson-a");
+  });
+
+  it("reserves strict v2 variant ids and rejects unknown protocol values", () => {
+    expect(parseSudokuVariantSeed("sudoku-v1:6:lesson-a")).toEqual({
+      variantId: "classic-6x6",
+      size: 6,
+      baseSeed: "lesson-a",
+      protocol: "v1",
+    });
+    expect(sudokuSeedForVariant("lesson-a", "classic-4x4")).toBe("sudoku-v1:4:lesson-a");
+    expect(parseSudokuVariantSeed("sudoku-v2:future-diagonal:lesson-a")).toBeNull();
+    expect(parseSudokuVariantSeed("sudoku-v2:classic-9x9:")).toBeNull();
+    expect(verifySudoku("sudoku-v2:future-diagonal:lesson-a", "easy", [])).toBe(false);
+  });
+});
+
+describe("Sudoku variant extension registry", () => {
+  it("keeps metadata valid and every runtime explicitly registered", () => {
+    expect(sudokuVariantRegistryIssues()).toEqual([]);
+    expect(SUDOKU_VARIANTS.map((variant) => variant.id)).toEqual([
+      "classic-4x4",
+      "classic-6x6",
+      "classic-9x9",
+    ]);
+    expect(new Set(Object.keys(SUDOKU_RUNTIME_REGISTRY))).toEqual(
+      new Set(SUDOKU_VARIANTS.map((variant) => variant.runtimeId)),
+    );
+  });
+
+  it("keeps ranking and surface policy in variant metadata", () => {
+    expect(SUDOKU_VARIANTS.map(({ id, ranked }) => ({ id, ranked }))).toEqual([
+      { id: "classic-4x4", ranked: false },
+      { id: "classic-6x6", ranked: false },
+      { id: "classic-9x9", ranked: true },
+    ]);
+    expect(SUDOKU_VARIANTS.every((variant) => (
+      variant.selectableIn.includes("public") && variant.selectableIn.includes("courseware")
+    ))).toBe(true);
   });
 });
 
@@ -86,6 +129,7 @@ describe("Sudoku variant teaching state", () => {
     const puzzle = sudokuPuzzle(sudokuSeedForSize("state-six", 6), "easy");
     const emptyIndex = puzzle.findIndex((value) => value === 0);
     let state = createSudokuBoardState(puzzle);
+    expect(state.variantId).toBe("classic-6x6");
     const unchanged = chooseSudokuDigit(state, 7);
     expect(unchanged).toBe(state);
 

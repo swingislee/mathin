@@ -7,15 +7,21 @@ import type {
 } from "../types";
 import { isSudokuValuePossible, solveSudokuGrid } from "./logic";
 import {
+  getSudokuVariant,
+  resolveSudokuVariant,
   sudokuSpecForGrid,
   sudokuSpecForSize,
   type SudokuSize,
   type SudokuSpec,
+  type SudokuVariantId,
+  type SudokuVariantReference,
 } from "./variant";
 
 export type SudokuEntryMode = "candidate" | "value";
 
 export interface SudokuBoardState {
+  /** 题型由 seed/课件页决定，不进入课堂镜像；本地状态必须保留其稳定 ID。 */
+  variantId: SudokuVariantId;
   values: number[];
   /** 每格用 bit 1–N 表示候选数；比嵌套数组更适合课堂实时镜像。 */
   candidates: number[];
@@ -54,7 +60,7 @@ export const SUDOKU_HIGHLIGHT_TOOLS = [
 ] as const satisfies readonly SudokuHighlightTool[];
 
 function specForState(state: SudokuBoardState): SudokuSpec {
-  return sudokuSpecForGrid(state.values) ?? sudokuSpecForSize(9);
+  return getSudokuVariant(state.variantId) ?? sudokuSpecForSize(9);
 }
 
 function candidateMask(spec: SudokuSpec): number {
@@ -148,8 +154,15 @@ function normalizedValues(puzzle: number[], spec: SudokuSpec, mirror?: GameMirro
   });
 }
 
-export function createSudokuBoardState(puzzle: number[], mirror?: GameMirrorState | null): SudokuBoardState {
-  const spec = sudokuSpecForGrid(puzzle) ?? sudokuSpecForSize(9);
+export function createSudokuBoardState(
+  puzzle: number[],
+  mirror?: GameMirrorState | null,
+  variantReference?: SudokuVariantReference,
+): SudokuBoardState {
+  const requested = variantReference ? resolveSudokuVariant(variantReference) : null;
+  const spec = requested && requested.size * requested.size === puzzle.length
+    ? requested
+    : sudokuSpecForGrid(puzzle) ?? sudokuSpecForSize(9);
   const values = normalizedValues(puzzle, spec, mirror);
   const highlightTool = validHighlightTool(mirror?.highlightTool) ? mirror.highlightTool : null;
   const candidates = Array.from({ length: puzzle.length }, (_, index) => {
@@ -159,6 +172,7 @@ export function createSudokuBoardState(puzzle: number[], mirror?: GameMirrorStat
   });
 
   return {
+    variantId: spec.id,
     values,
     candidates,
     selected: highlightTool === null && validCellIndex(mirror?.selected, spec) ? mirror.selected : null,
@@ -220,7 +234,7 @@ function applyDigitAt(state: SudokuBoardState, puzzle: number[], index: number, 
     return { ...state, candidates };
   }
 
-  if (!isSudokuValuePossible(puzzle, state.values, index, digit)) {
+  if (!isSudokuValuePossible(puzzle, state.values, index, digit, spec)) {
     const previousSequence = state.invalidAttempt?.sequence ?? 0;
     return {
       ...state,
@@ -499,7 +513,7 @@ export function revealSelectedSudokuCell(state: SudokuBoardState, puzzle: number
   ) {
     return state;
   }
-  const solution = solveSudokuGrid(state.values);
+  const solution = solveSudokuGrid(state.values, spec);
   const digit = solution?.[index];
   if (!validDigit(digit, spec)) return state;
 

@@ -211,10 +211,17 @@
       "6": "6×6",
       "9": "9×9"
     },
+    "sudokuVariantLabel": "Sudoku variant",
+    "sudokuVariants": {
+      "classic-4x4": "4×4",
+      "classic-6x6": "6×6",
+      "classic-9x9": "9×9"
+    },
     "sudokuVariantTitle": "Sudoku · {size}",
     "pickDifficulty": "Pick a difficulty — you can restart anytime.",
     "pickSudokuSetup": "Pick a board size and difficulty — you can restart anytime.",
     "sudokuSmallPractice": "The 4×4 and 6×6 boards are practice modes and are not ranked yet.",
+    "sudokuVariantPractice": "This variant is a practice mode and is not ranked.",
     "rules": "Rules & tips",
     "relatedTerms": "Related concepts: ",
     "submitting": "Submitting score…",

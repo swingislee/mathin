@@ -1,10 +1,16 @@
 "use client";
 
-import { useTranslations } from "next-intl";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { SUDOKU_SIZES, type SudokuSize } from "./variant";
+import { SudokuVariantSelector } from "./SudokuVariantSelector";
+import {
+  getSudokuVariant,
+  sudokuVariantForSize,
+  type SudokuSize,
+} from "./variant";
 
+/**
+ * @deprecated 仅保留给旧尺寸调用方。新增界面必须使用 SudokuVariantSelector，
+ * 否则同为 9×9 的变形题型无法区分。
+ */
 export function SudokuSizeSelector({
   value,
   onValueChange,
@@ -16,33 +22,15 @@ export function SudokuSizeSelector({
   disabled?: boolean;
   className?: string;
 }) {
-  const t = useTranslations("games");
-
   return (
-    <div
-      aria-label={t("sudokuSizeLabel")}
-      className={cn("flex items-center gap-1 rounded-full border border-line/80 bg-card/70 p-1", className)}
-      role="radiogroup"
-    >
-      {SUDOKU_SIZES.map((size) => (
-        <Button
-          key={size}
-          type="button"
-          role="radio"
-          aria-checked={value === size}
-          data-sudoku-size-option={size}
-          disabled={disabled}
-          variant="ghost"
-          size="sm"
-          className={cn(
-            "min-h-8 px-3 py-1 text-xs",
-            value === size ? "bg-moon/70 text-ink shadow-sm hover:bg-moon/70" : "hover:bg-moon/30",
-          )}
-          onClick={() => onValueChange(size)}
-        >
-          {t(`sudokuSize.${size}`)}
-        </Button>
-      ))}
-    </div>
+    <SudokuVariantSelector
+      value={sudokuVariantForSize(value).id}
+      disabled={disabled}
+      className={className}
+      onValueChange={(variantId) => {
+        const size = getSudokuVariant(variantId)?.size;
+        if (size) onValueChange(size);
+      }}
+    />
   );
 }

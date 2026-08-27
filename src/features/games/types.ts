@@ -17,9 +17,9 @@ export interface SudokuCellHighlightRegion {
 export interface SudokuTeachingHighlights {
   /** 0–(N-1)：宫编号，按从左到右、从上到下排列。 */
   boxes: number[];
-  /** 0–8：整行。 */
+  /** 0–(N-1)：整行。 */
   rows: number[];
-  /** 0–8：整列。 */
+  /** 0–(N-1)：整列。 */
   columns: number[];
   /** 可叠加的任意轴对齐单元格矩形；单击等价于 1×1 矩形。 */
   regions: SudokuCellHighlightRegion[];
@@ -38,7 +38,7 @@ export interface SudokuInvalidAttempt {
 
 /**
  * 课堂镜像轻状态（08-§3.6 game_state）：三个游戏共用 values + selected；
- * 数独附带候选、输入、M3 讲解突出和 M4 错误事件。题面仍由 seed 推导，无需入镜像。
+ * 数独附带候选、输入、M3 讲解突出和 M4 错误事件。题型与题面仍由 seed 推导，无需入镜像。
  */
 export interface GameMirrorState {
   values: number[];
@@ -58,7 +58,7 @@ export interface GameMirrorState {
 }
 
 export interface GameBoardProps {
-  /** 题目种子，题面由各游戏确定性推导；数独规格也兼容编码在此字段中。 */
+  /** 题目种子，题面由各游戏确定性推导；数独稳定 variantId 也编码在此字段中。 */
   seed: string;
   difficulty: Difficulty;
   /** 完赛后棋盘进入只读态 */

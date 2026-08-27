@@ -40,7 +40,14 @@ import {
   type SudokuBoardState,
   type SudokuEntryMode,
 } from "./state";
-import { sudokuSpecForGrid, sudokuSpecForSize } from "./variant";
+import {
+  getSudokuVariant,
+  sudokuSpecForGrid,
+  sudokuSpecForSize,
+  sudokuVariantFromSeed,
+  type SudokuRendererId,
+  type SudokuVariantId,
+} from "./variant";
 
 const ENTRY_MODES: SudokuEntryMode[] = ["candidate", "value"];
 const INVALID_CELL_VISIBLE_MS = 1_100;
@@ -48,6 +55,10 @@ const INVALID_MESSAGE_DELAY_MS = 440;
 const INVALID_MESSAGE_VISIBLE_MS = 2_600;
 const MAX_HIGHLIGHT_UNDO_STEPS = 50;
 const ANSWER_REVEAL_ANIMATION_MS = 320;
+/** variant.ts 出现新的 rendererId 时，typecheck 会要求在这里登记真实渲染实现。 */
+export const SUDOKU_RENDERER_REGISTRY = {
+  "classic-grid-v1": true,
+} as const satisfies Readonly<Record<SudokuRendererId, true>>;
 const HIGHLIGHT_TOOL_DEFS = [
   { tool: "cell", label: "highlightCells", Icon: Scan },
   { tool: "box", label: "highlightBox", Icon: SquareDashed },
@@ -69,6 +80,8 @@ interface SudokuDragSelection {
 export interface SudokuBoardProps extends GameBoardProps {
   /** Optional teacher-authored puzzle; generated game routes leave it unset. */
   puzzle?: SudokuGrid;
+  /** 自定义题面必须显式携带题型；省略时只按格数兼容推断 classic。 */
+  variantId?: SudokuVariantId;
   showCoordinates?: boolean;
   allowCandidates?: boolean;
   allowAnswerReveal?: boolean;
@@ -84,6 +97,7 @@ export function SudokuBoard({
   onMirror,
   readOnly,
   puzzle: authoredPuzzle,
+  variantId,
   showCoordinates = true,
   allowCandidates = true,
   allowAnswerReveal = true,
@@ -91,12 +105,19 @@ export function SudokuBoard({
 }: SudokuBoardProps) {
   const t = useTranslations("games.sudokuBoard");
   const authoredPuzzleKey = authoredPuzzle?.join("") ?? null;
-  const puzzleKey = authoredPuzzleKey ? `authored:${authoredPuzzleKey}` : `${seed}:${difficulty}`;
   const puzzle = useMemo(
     () => authoredPuzzle ? [...authoredPuzzle] : sudokuPuzzle(seed, difficulty),
     [authoredPuzzle, difficulty, seed],
   );
-  const spec = sudokuSpecForGrid(puzzle) ?? sudokuSpecForSize(9);
+  const spec = (variantId ? getSudokuVariant(variantId) : null)
+    ?? (authoredPuzzle ? sudokuSpecForGrid(puzzle) : sudokuVariantFromSeed(seed))
+    ?? sudokuSpecForSize(9);
+  if (!(spec.rendererId in SUDOKU_RENDERER_REGISTRY)) {
+    throw new Error(`Unsupported Sudoku renderer: ${spec.rendererId}`);
+  }
+  const puzzleKey = authoredPuzzleKey
+    ? `authored:${spec.id}:${authoredPuzzleKey}`
+    : `${spec.id}:${seed}:${difficulty}`;
   const rowLabels = SUDOKU_ROW_LABELS.slice(0, spec.size);
   const columnLabels = SUDOKU_COLUMN_LABELS.slice(0, spec.size);
   const numberPadItems = sudokuNumberPadItems(spec.size);
@@ -111,7 +132,7 @@ export function SudokuBoard({
     : spec.size === 6
       ? "text-[clamp(0.62rem,1.5vw,0.9rem)]"
       : "text-[clamp(0.48rem,1.2vw,0.72rem)]";
-  const [state, setState] = useState<SudokuBoardState>(() => createSudokuBoardState(puzzle, mirror));
+  const [state, setState] = useState<SudokuBoardState>(() => createSudokuBoardState(puzzle, mirror, spec));
   const [appliedMirror, setAppliedMirror] = useState<GameMirrorState | null | undefined>(mirror);
   const [appliedPuzzleKey, setAppliedPuzzleKey] = useState(puzzleKey);
   const invalidAttemptKey = state.invalidAttempt
@@ -174,12 +195,12 @@ export function SudokuBoard({
   if (puzzleKey !== appliedPuzzleKey) {
     setAppliedPuzzleKey(puzzleKey);
     setAppliedMirror(mirror);
-    setState(createSudokuBoardState(puzzle, mirror));
+    setState(createSudokuBoardState(puzzle, mirror, spec));
     setHighlightUndoStack([]);
     setRevealedCell(null);
   } else if (mirror !== appliedMirror) {
     setAppliedMirror(mirror);
-    if (mirror) setState(createSudokuBoardState(puzzle, mirror));
+    if (mirror) setState(createSudokuBoardState(puzzle, mirror, spec));
   }
 
   const inputDisabled = Boolean(readOnly || finished);
@@ -205,7 +226,11 @@ export function SudokuBoard({
     }
     setState(next);
     onMirror?.(toSudokuMirrorState(next));
-    if (next.values !== state.values && next.values.every((value) => value > 0) && isSolvedGrid(next.values)) {
+    if (
+      next.values !== state.values
+      && next.values.every((value) => value > 0)
+      && isSolvedGrid(next.values, spec)
+    ) {
       onComplete(next.values);
     }
   }
@@ -369,6 +394,7 @@ export function SudokuBoard({
         "relative mx-auto h-full w-full overflow-auto rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-[var(--sudoku-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-paper",
       )}
       data-sudoku-size={spec.size}
+      data-sudoku-variant={spec.id}
       tabIndex={inputDisabled ? -1 : 0}
       onKeyDown={onKeyDown}
     >

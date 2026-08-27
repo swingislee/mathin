@@ -10,8 +10,13 @@ import { startGame, submitScore } from "./actions";
 import { GameBoard } from "./boards";
 import { formatMs } from "./format";
 import { getGame } from "./registry";
-import { SudokuSizeSelector } from "./sudoku/SudokuSizeSelector";
-import { sudokuSeedForSize, type SudokuSize } from "./sudoku/variant";
+import { SudokuVariantSelector } from "./sudoku/SudokuVariantSelector";
+import {
+  DEFAULT_SUDOKU_VARIANT_ID,
+  getSudokuVariant,
+  sudokuSeedForVariant,
+  type SudokuVariantId,
+} from "./sudoku/variant";
 import type { Difficulty } from "./types";
 
 type Phase = "idle" | "starting" | "playing" | "submitting" | "done";
@@ -30,7 +35,7 @@ export function GameMatch({ gameId, loggedIn }: { gameId: string; loggedIn: bool
   const t = useTranslations("games");
   const [phase, setPhase] = useState<Phase>("idle");
   const [difficulty, setDifficulty] = useState<Difficulty>(game?.difficulties[0] ?? "easy");
-  const [sudokuSize, setSudokuSize] = useState<SudokuSize>(9);
+  const [sudokuVariantId, setSudokuVariantId] = useState<SudokuVariantId>(DEFAULT_SUDOKU_VARIANT_ID);
   const [seed, setSeed] = useState("");
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
@@ -45,13 +50,18 @@ export function GameMatch({ gameId, loggedIn }: { gameId: string; loggedIn: bool
   }, [playing]);
 
   if (!game) return null;
+  const sudokuVariant = getSudokuVariant(sudokuVariantId);
 
-  async function begin(nextDifficulty: Difficulty, nextSudokuSize: SudokuSize = sudokuSize) {
+  async function begin(
+    nextDifficulty: Difficulty,
+    nextSudokuVariantId: SudokuVariantId = sudokuVariantId,
+  ) {
     setDifficulty(nextDifficulty);
-    setSudokuSize(nextSudokuSize);
+    setSudokuVariantId(nextSudokuVariantId);
     setPhase("starting");
     setElapsedMs(0);
-    const rankedRound = gameId !== "sudoku" || nextSudokuSize === 9;
+    const nextSudokuVariant = getSudokuVariant(nextSudokuVariantId);
+    const rankedRound = gameId !== "sudoku" || Boolean(nextSudokuVariant?.ranked);
     if (loggedIn && rankedRound) {
       const res = await startGame(gameId, nextDifficulty);
       if (res.ok) {
@@ -64,7 +74,7 @@ export function GameMatch({ gameId, loggedIn }: { gameId: string; loggedIn: bool
       }
     } else {
       const nextSeed = localSeed();
-      setSeed(gameId === "sudoku" ? sudokuSeedForSize(nextSeed, nextSudokuSize) : nextSeed);
+      setSeed(gameId === "sudoku" ? sudokuSeedForVariant(nextSeed, nextSudokuVariantId) : nextSeed);
       setSessionId(null);
     }
     startedAtRef.current = nowMs();
@@ -118,11 +128,11 @@ export function GameMatch({ gameId, loggedIn }: { gameId: string; loggedIn: bool
 
       {gameId === "sudoku" ? (
         <div className="mt-2 flex items-center justify-center gap-2">
-          <span className="text-xs text-muted">{t("sudokuSizeLabel")}</span>
-          <SudokuSizeSelector
-            value={sudokuSize}
+          <span className="text-xs text-muted">{t("sudokuVariantLabel")}</span>
+          <SudokuVariantSelector
+            value={sudokuVariantId}
             disabled={phase === "starting" || phase === "submitting"}
-            onValueChange={(size) => void begin(difficulty, size)}
+            onValueChange={(variantId) => void begin(difficulty, variantId)}
           />
         </div>
       ) : null}
@@ -152,7 +162,7 @@ export function GameMatch({ gameId, loggedIn }: { gameId: string; loggedIn: bool
           <div className="mt-4 text-center text-sm">
             <p><span className="font-medium">{t("finishedIn", { time: formatMs(elapsedMs) })}</span><span className="ml-2 text-muted">{recorded === "yes" ? t("recorded") : recorded === "failed" ? t("submitFailed") : t("notRecorded")}</span></p>
             <div className="mt-4 flex flex-wrap justify-center gap-2">
-              {(gameId !== "sudoku" || sudokuSize === 9) ? (
+              {(gameId !== "sudoku" || sudokuVariant?.ranked) ? (
                 <Link href={`/games/${gameId}/ranks?difficulty=${difficulty}`} className={buttonVariants({size:"sm"})}>{t("viewRanking")}</Link>
               ) : null}
               <Button variant="secondary" size="sm" onClick={()=>begin(difficulty)}>{t("playAgain")}</Button>
@@ -160,8 +170,8 @@ export function GameMatch({ gameId, loggedIn }: { gameId: string; loggedIn: bool
             </div>
           </div>
         )}
-        {gameId === "sudoku" && sudokuSize !== 9 ? (
-          <p className="mt-4 text-center text-xs text-muted">{t("sudokuSmallPractice")}</p>
+        {gameId === "sudoku" && sudokuVariant && !sudokuVariant.ranked ? (
+          <p className="mt-4 text-center text-xs text-muted">{t("sudokuVariantPractice")}</p>
         ) : !loggedIn ? (
           <p className="mt-4 text-center text-xs text-muted">{t("loginToRank")}</p>
         ) : null}
