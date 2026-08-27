@@ -50,18 +50,18 @@ test("teacher authors, teaches, resubmits, publishes, and the catalog creates on
     await page.getByRole("button", { name: "创建微课草稿", exact: true }).click();
     await expect(page.getByText("微课编辑", { exact: true })).toBeVisible();
 
-    for (const sourceTitle of [fixture.nativePageTitle, fixture.aixuexiPageTitle]) {
-      await page.getByRole("button", { name: "从课程选页", exact: true }).click();
-      const sourceDialog = page.getByRole("dialog");
-      await sourceDialog.getByPlaceholder("搜索课程族、课程、讲次或页面标题").fill(sourceTitle);
-      const sourceOption = sourceDialog.getByRole("button", { name: `选择 ${sourceTitle}`, exact: true });
-      await expect(sourceOption).toBeVisible();
-      await sourceOption.click();
-      await expect(sourceOption).toHaveAttribute("aria-pressed", "true");
-      await sourceDialog.getByRole("button", { name: "插入 1 页", exact: true }).click();
-      await expect(sourceDialog).toBeHidden();
-      await expect(page.getByText(sourceTitle, { exact: true }).first()).toBeVisible();
-    }
+    await page.getByRole("button", { name: "从课程插入整讲", exact: true }).click();
+    const sourceDialog = page.getByRole("dialog");
+    await sourceDialog.getByPlaceholder("搜索课程族、课程或课次").fill(fixture.sourceLectureTitle);
+    const sourceOption = sourceDialog.getByRole("button", { name: `选择课次 ${fixture.sourceLectureTitle}`, exact: true });
+    await expect(sourceOption).toBeVisible();
+    await expect(sourceOption).toContainText("本讲共 2 页");
+    await sourceOption.click();
+    await expect(sourceOption).toHaveAttribute("aria-pressed", "true");
+    await sourceDialog.getByRole("button", { name: "插入本讲 2 页", exact: true }).click();
+    await expect(sourceDialog).toBeHidden();
+    await expect(page.getByText(fixture.nativePageTitle, { exact: true }).first()).toBeVisible();
+    await expect(page.getByText(fixture.aixuexiPageTitle, { exact: true }).first()).toBeVisible();
 
     await page.getByRole("button", { name: "空白/图文", exact: true }).click();
     await expect(page.getByText("新页面", { exact: true }).first()).toBeVisible();

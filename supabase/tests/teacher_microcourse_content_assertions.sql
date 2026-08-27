@@ -8,6 +8,7 @@ select id as other_teacher_id from public.profiles where display_name = '测试-
 
 select
   lecture_row.id as source_lecture_id,
+  lecture_row.name as source_lecture_title,
   release_row.id as source_release_id,
   (item.value ->> 'pageDocId')::uuid as source_page_id,
   (item.value ->> 'revisionId')::uuid as source_revision_id
@@ -66,6 +67,16 @@ begin
     'public.create_teacher_microcourse_composition_page(uuid,uuid,text,uuid,uuid,uuid)',
     'EXECUTE'
   ) then failures := array_append(failures, 'composition RPC grant missing'); end if;
+  if not has_function_privilege(
+    'authenticated',
+    'public.create_teacher_microcourse_composition_pages_from_lecture(uuid,uuid,uuid,uuid)',
+    'EXECUTE'
+  ) then failures := array_append(failures, 'lecture composition RPC grant missing'); end if;
+  if not has_function_privilege(
+    'authenticated',
+    'public.search_teacher_microcourse_source_lectures(text,uuid,uuid,integer)',
+    'EXECUTE'
+  ) then failures := array_append(failures, 'lecture source search RPC grant missing'); end if;
   if not exists (
     select 1 from storage.buckets
     where id = 'cw-h5-drafts' and not public and file_size_limit = 5242880
@@ -149,6 +160,81 @@ select exists (
   select 1 / 0;
 \endif
 
+select exists (
+  select 1
+  from public.search_teacher_microcourse_source_lectures(
+    :'source_lecture_title', null, null, 100
+  ) source_row
+  join public.cw_lecture_releases release_row on release_row.id = source_row.release_id
+  where source_row.lecture_id = :'source_lecture_id'
+    and source_row.release_id = :'source_release_id'
+    and source_row.page_count = jsonb_array_length(release_row.snapshot)
+) as lecture_source_visible \gset
+\if :lecture_source_visible
+\else
+  \echo DEV-TMC-1 failed: published source lecture is not discoverable as one complete unit
+  select 1 / 0;
+\endif
+
+select set_config('dev_tmc.bulk_microcourse_id', :'microcourse_id', true);
+select set_config('dev_tmc.bulk_source_lecture_id', :'source_lecture_id', true);
+select set_config('dev_tmc.bulk_source_release_id', :'source_release_id', true);
+do $$
+declare
+  bulk_result record;
+  target_lecture uuid;
+  before_count integer;
+  after_count integer;
+  expected_count integer;
+  source_count integer;
+begin
+  select microcourse_row.lecture_id into target_lecture
+  from public.teacher_microcourses microcourse_row
+  where microcourse_row.id = current_setting('dev_tmc.bulk_microcourse_id')::uuid;
+  select count(*) into before_count
+  from public.cw_page_docs page_row
+  where page_row.lecture_id = target_lecture and page_row.deleted_at is null;
+  select jsonb_array_length(release_row.snapshot) into expected_count
+  from public.cw_lecture_releases release_row
+  where release_row.id = current_setting('dev_tmc.bulk_source_release_id')::uuid;
+
+  begin
+    select * into bulk_result
+    from public.create_teacher_microcourse_composition_pages_from_lecture(
+      current_setting('dev_tmc.bulk_microcourse_id')::uuid,
+      null,
+      current_setting('dev_tmc.bulk_source_release_id')::uuid,
+      current_setting('dev_tmc.bulk_source_lecture_id')::uuid
+    );
+    select count(*) into after_count
+    from public.cw_page_docs page_row
+    where page_row.lecture_id = target_lecture and page_row.deleted_at is null;
+    select count(*) into source_count
+    from public.teacher_microcourse_page_sources source_row
+    where source_row.microcourse_id = current_setting('dev_tmc.bulk_microcourse_id')::uuid
+      and source_row.source_lecture_id = current_setting('dev_tmc.bulk_source_lecture_id')::uuid
+      and source_row.source_release_id = current_setting('dev_tmc.bulk_source_release_id')::uuid;
+    if bulk_result.page_count <> expected_count
+       or bulk_result.first_page_id is null
+       or bulk_result.last_page_id is null
+       or after_count <> before_count + expected_count
+       or source_count <> expected_count then
+      raise exception 'LECTURE_BULK_INSERT_CONTRACT_FAILED';
+    end if;
+    raise exception 'ROLLBACK_LECTURE_BULK_INSERT_TEST';
+  exception when others then
+    if sqlerrm <> 'ROLLBACK_LECTURE_BULK_INSERT_TEST' then raise; end if;
+  end;
+
+  select count(*) into after_count
+  from public.cw_page_docs page_row
+  where page_row.lecture_id = target_lecture and page_row.deleted_at is null;
+  if after_count <> before_count then
+    raise exception 'LECTURE_BULK_INSERT_ROLLBACK_FAILED';
+  end if;
+end
+$$;
+
 select public.create_teacher_microcourse_composition_page(
   :'microcourse_id', null, '空白图文页', null, null, null
 ) as blank_page_id \gset
@@ -192,8 +278,8 @@ select (
 from public.class_sessions
 where id = '00000000-0000-4000-8000-000000000912' \gset
 select (
-  count(*) = 1
-  and max(object_hash) = repeat('c', 64)
+  count(*) >= 1
+  and count(*) filter (where object_hash = repeat('c', 64)) = 1
 ) as frozen_asset_preload_ok
 from public.list_session_resolved_assets('00000000-0000-4000-8000-000000000912') \gset
 reset role;

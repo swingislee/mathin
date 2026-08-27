@@ -238,43 +238,42 @@ export async function getTeacherMicrocourseEditor(microcourseId: string): Promis
   return { ...editor, pages };
 }
 
-export interface TeacherMicrocourseSourcePage {
+export interface TeacherMicrocourseSourceLecture {
   familyId: string;
   familyTitle: string;
   courseId: string;
   courseTitle: string;
   lectureId: string;
+  lectureNo: number;
   lectureTitle: string;
   releaseId: string;
-  pageDocId: string;
-  revisionId: string;
-  pageNo: number;
-  pageTitle: string;
-  doc: CoursewareDoc;
-  bindings: TeacherMicrocourseBinding[];
-  bindingUrls: ResolvedBindingUrls;
+  pageCount: number;
+  previewPageDocId: string;
+  previewRevisionId: string;
+  previewPageNo: number;
+  previewPageTitle: string;
+  previewDoc: CoursewareDoc;
+  previewBindings: TeacherMicrocourseBinding[];
+  previewBindingUrls: ResolvedBindingUrls;
 }
 
-export async function searchTeacherMicrocourseSourcePages(input: {
+export async function searchTeacherMicrocourseSourceLectures(input: {
   query?: string;
   familyId?: string | null;
   courseId?: string | null;
-  lectureId?: string | null;
   limit?: number;
-}): Promise<TeacherMicrocourseSourcePage[]> {
+}): Promise<TeacherMicrocourseSourceLecture[]> {
   const value = z.object({
     query: z.string().max(100).default(""),
     familyId: uuid.nullable().default(null),
     courseId: uuid.nullable().default(null),
-    lectureId: uuid.nullable().default(null),
     limit: z.number().int().min(1).max(100).default(60),
   }).parse(input);
   const supabase = await createClient();
-  const { data, error } = await rpc(supabase)("search_teacher_microcourse_source_pages", {
+  const { data, error } = await rpc(supabase)("search_teacher_microcourse_source_lectures", {
     p_query: value.query,
     p_family_id: value.familyId,
     p_course_id: value.courseId,
-    p_lecture_id: value.lectureId,
     p_limit: value.limit,
   });
   if (error) throw new Error(error.message);
@@ -284,17 +283,19 @@ export async function searchTeacherMicrocourseSourcePages(input: {
     course_id: uuid,
     course_title: z.string(),
     lecture_id: uuid,
+    lecture_no: z.number().int().positive(),
     lecture_title: z.string(),
     release_id: uuid,
-    page_doc_id: uuid,
-    revision_id: uuid,
-    page_no: z.number().int().positive(),
-    page_title: z.string(),
-    doc: z.unknown(),
-    bindings: z.array(bindingSchema),
+    page_count: z.number().int().positive(),
+    preview_page_doc_id: uuid,
+    preview_revision_id: uuid,
+    preview_page_no: z.number().int().positive(),
+    preview_page_title: z.string(),
+    preview_doc: z.unknown(),
+    preview_bindings: z.array(bindingSchema),
   })).parse(data ?? []);
   return Promise.all(rows.map(async (row) => {
-    const bindings = row.bindings.map((binding) => ({
+    const previewBindings = row.preview_bindings.map((binding) => ({
       bindingKey: binding.bindingKey,
       assetRevisionId: binding.assetRevisionId,
       role: binding.role ?? null,
@@ -307,15 +308,17 @@ export async function searchTeacherMicrocourseSourcePages(input: {
       courseId: row.course_id,
       courseTitle: row.course_title,
       lectureId: row.lecture_id,
+      lectureNo: row.lecture_no,
       lectureTitle: row.lecture_title,
       releaseId: row.release_id,
-      pageDocId: row.page_doc_id,
-      revisionId: row.revision_id,
-      pageNo: row.page_no,
-      pageTitle: row.page_title,
-      doc: parseCoursewareDoc(row.doc),
-      bindings,
-      bindingUrls: await resolveBindingUrls(bindings),
+      pageCount: row.page_count,
+      previewPageDocId: row.preview_page_doc_id,
+      previewRevisionId: row.preview_revision_id,
+      previewPageNo: row.preview_page_no,
+      previewPageTitle: row.preview_page_title,
+      previewDoc: parseCoursewareDoc(row.preview_doc),
+      previewBindings,
+      previewBindingUrls: await resolveBindingUrls(previewBindings),
     };
   }));
 }

@@ -7,6 +7,7 @@ const read = (...segments: string[]) => fs.readFileSync(path.join(root, ...segme
 const lifecycleMigration = read("supabase", "migrations", "20260826000400_teacher_microcourse_lifecycle.sql");
 const readModelsMigration = read("supabase", "migrations", "20260826000500_teacher_microcourse_ui_read_models.sql");
 const runtimeFixesMigration = read("supabase", "migrations", "20260826000600_teacher_microcourse_runtime_fixes.sql");
+const lectureSourceMigration = read("supabase", "migrations", "20260827000100_teacher_microcourse_lecture_source_picker.sql");
 
 describe("DEV-TMC-1 teacher microcourse product surfaces", () => {
   it("keeps authoring behind the development flag, author capability, and a free session", () => {
@@ -32,12 +33,16 @@ describe("DEV-TMC-1 teacher microcourse product surfaces", () => {
     expect(editor).toContain("createTeacherSudokuPageAction");
     expect(editor).toContain("createTeacherH5PageAction");
     expect(editor).toContain("uploadTeacherMicrocourseImageAction");
-    expect(picker).toContain("releaseId: source.releaseId");
-    expect(picker).toContain("revisionId: source.revisionId");
+    expect(picker).toContain("createTeacherCompositionPagesFromLectureAction");
+    expect(picker).toContain("sourceReleaseId: selected.releaseId");
+    expect(picker).toContain("sourceLectureId: selected.lectureId");
     expect(contentMigration).toContain("source_release_id");
     expect(contentMigration).toContain("source_revision_id");
     expect(contentMigration).toContain("course_row.course_kind = 'curriculum'");
     expect(readModelsMigration).toContain("coalesce(track_head.current_release_id, lecture_row.current_release_id)");
+    expect(lectureSourceMigration).toContain("search_teacher_microcourse_source_lectures");
+    expect(lectureSourceMigration).toContain("create_teacher_microcourse_composition_pages_from_lecture");
+    expect(lectureSourceMigration).toContain("order by source_item.position");
     expect(runtimeFixesMigration).toContain("'type', 'doc'");
     expect(liveShell).toContain("session.lectureId || docPageKey");
   });

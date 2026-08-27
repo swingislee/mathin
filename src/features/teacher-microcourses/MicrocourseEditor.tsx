@@ -53,7 +53,7 @@ import {
   withdrawTeacherMicrocourseAction,
   withdrawTeacherMicrocourseReviewAction,
 } from "./actions";
-import type { TeacherMicrocourseEditor as EditorData, TeacherMicrocoursePage, TeacherMicrocourseSourcePage } from "./data";
+import type { TeacherMicrocourseEditor as EditorData, TeacherMicrocoursePage, TeacherMicrocourseSourceLecture } from "./data";
 import { microcourseH5Bytes, normalizeMicrocourseH5 } from "./h5";
 import { MicrocourseSourcePicker } from "./MicrocourseSourcePicker";
 
@@ -164,7 +164,7 @@ export function MicrocourseEditor({
 }: {
   session: { id: string; title: string; classroomId: string; coursewareFrozenAt: string | null };
   editor: EditorData;
-  initialSources: TeacherMicrocourseSourcePage[];
+  initialSources: TeacherMicrocourseSourceLecture[];
 }) {
   const t = useTranslations("teacherMicrocourses");
   const locale = useLocale();
@@ -359,7 +359,7 @@ export function MicrocourseEditor({
             <div className="grid grid-cols-2 gap-2">
               <Button type="button" size="sm" variant="secondary" disabled={pending || pageSwitching} onClick={addBlank}><Plus className="size-4" />{t("addBlank")}</Button>
               <Button type="button" size="sm" variant="secondary" disabled={pending || pageSwitching} onClick={addSudoku}>{t("addSudoku")}</Button>
-              <MicrocourseSourcePicker microcourseId={editor.id} afterPageDocId={currentPage?.pageDocId ?? null} initialSources={initialSources} disabled={pending || pageSwitching} onAdded={(id) => void handlePageAdded(id, t("pagesAdded"))} />
+              <MicrocourseSourcePicker microcourseId={editor.id} afterPageDocId={currentPage?.pageDocId ?? null} initialSources={initialSources} disabled={pending || pageSwitching} onAdded={(id, count) => void handlePageAdded(id, t("pagesAdded", { count }))} />
               <H5CreateDialog microcourseId={editor.id} afterPageDocId={currentPage?.pageDocId ?? null} disabled={pending || pageSwitching} onAdded={(id) => void handlePageAdded(id, t("pageAdded"))} />
             </div>
             <ScrollArea className="min-h-0 flex-1">

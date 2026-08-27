@@ -17,7 +17,7 @@ import { actionError, type ActionResult } from "@/lib/action-result";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { microcourseH5Bytes, normalizeMicrocourseH5 } from "./h5";
 import { teacherImageDimensions } from "./image-metadata";
-import { loadTeacherMicrocourseH5Html, searchTeacherMicrocourseSourcePages } from "./data";
+import { loadTeacherMicrocourseH5Html, searchTeacherMicrocourseSourceLectures } from "./data";
 
 type RpcClient = Awaited<ReturnType<typeof authorizedClient>>["supabase"];
 function rpc<T>(client: RpcClient, name: string, args: Record<string, unknown>) {
@@ -170,6 +170,52 @@ export async function createTeacherCompositionPageAction(input: {
     return actionError(error, [
       "CREATE_PAGE_FAILED",
       "INVALID_SOURCE_SELECTION",
+      "SOURCE_PAGE_NOT_CURRENT_PUBLISHED",
+      "SOURCE_BINDING_SNAPSHOT_MISMATCH",
+      ...AUTHOR_CODES,
+    ]);
+  }
+}
+
+export async function createTeacherCompositionPagesFromLectureAction(input: {
+  microcourseId: string;
+  afterPageDocId: string | null;
+  sourceReleaseId: string;
+  sourceLectureId: string;
+}): Promise<ActionResult<{ firstPageId: string; lastPageId: string; pageCount: number }>> {
+  try {
+    const value = parse(z.object({
+      microcourseId: uuid,
+      afterPageDocId: uuid.nullable(),
+      sourceReleaseId: uuid,
+      sourceLectureId: uuid,
+    }).strict(), input);
+    const { supabase } = await authorizedClient("courseware.microcourse.author");
+    const { data, error } = await rpc<Array<{
+      first_page_id: string;
+      last_page_id: string;
+      page_count: number;
+    }>>(supabase, "create_teacher_microcourse_composition_pages_from_lecture", {
+      p_microcourse_id: value.microcourseId,
+      p_after_page_doc_id: value.afterPageDocId,
+      p_source_release_id: value.sourceReleaseId,
+      p_source_lecture_id: value.sourceLectureId,
+    });
+    const created = data?.[0];
+    if (error || !created) throw new Error(error?.message ?? "CREATE_PAGES_FAILED");
+    return {
+      ok: true,
+      data: {
+        firstPageId: created.first_page_id,
+        lastPageId: created.last_page_id,
+        pageCount: created.page_count,
+      },
+    };
+  } catch (error) {
+    return actionError(error, [
+      "CREATE_PAGES_FAILED",
+      "SOURCE_LECTURE_NOT_CURRENT_PUBLISHED",
+      "SOURCE_LECTURE_SNAPSHOT_INVALID",
       "SOURCE_PAGE_NOT_CURRENT_PUBLISHED",
       "SOURCE_BINDING_SNAPSHOT_MISMATCH",
       ...AUTHOR_CODES,
@@ -336,15 +382,14 @@ export async function updateTeacherH5PageAction(input: {
   }
 }
 
-export async function searchTeacherMicrocourseSourcePagesAction(input: {
+export async function searchTeacherMicrocourseSourceLecturesAction(input: {
   query?: string;
   familyId?: string | null;
   courseId?: string | null;
-  lectureId?: string | null;
   limit?: number;
 }) {
   await authorizedClient("courseware.microcourse.author");
-  return searchTeacherMicrocourseSourcePages(input);
+  return searchTeacherMicrocourseSourceLectures(input);
 }
 
 export async function loadTeacherMicrocourseH5HtmlAction(artifactId: string): Promise<string> {

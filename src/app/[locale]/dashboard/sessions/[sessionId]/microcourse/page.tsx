@@ -8,7 +8,7 @@ import {
   getTeacherMicrocourseEditor,
   getTeacherMicrocourseForSession,
   listTeacherMicrocourseTopics,
-  searchTeacherMicrocourseSourcePages,
+  searchTeacherMicrocourseSourceLectures,
 } from "@/features/teacher-microcourses/data";
 import { getSessionWorkspaceDetail } from "@/features/school/classes";
 import { DashboardPage } from "@/features/school/dashboard-page";
@@ -58,7 +58,7 @@ async function TeacherMicrocourseContent({ locale, sessionId }: { locale: string
   if (!summary) return <MicrocourseStartPanel sessionId={sessionId} sessionTitle={session.name} topics={topics} />;
   const [editor, initialSources] = await Promise.all([
     getTeacherMicrocourseEditor(summary.id),
-    searchTeacherMicrocourseSourcePages({ limit: 30 }),
+    searchTeacherMicrocourseSourceLectures({ limit: 30 }),
   ]);
   return <MicrocourseEditor session={{ id: session.id, title: session.name, classroomId: session.classroomId, coursewareFrozenAt: session.coursewareFrozenAt }} editor={editor} initialSources={initialSources} />;
 }

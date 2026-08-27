@@ -6,15 +6,21 @@ const root = process.cwd();
 const read = (...segments: string[]) => fs.readFileSync(path.join(root, ...segments), "utf8");
 
 describe("teacher microcourse authoring UX", () => {
-  it("makes the full published-source card selectable and distinguishes an empty catalog", () => {
+  it("selects published lectures and inserts the complete release in one transaction", () => {
     const picker = read("src", "features", "teacher-microcourses", "MicrocourseSourcePicker.tsx");
+    const actions = read("src", "features", "teacher-microcourses", "actions.ts");
     const zh = read("messages", "zh.json");
     const en = read("messages", "en.json");
 
     expect(picker).toContain("aria-pressed={checked}");
-    expect(picker).toContain("onClick={() => toggle(source.revisionId)}");
+    expect(picker).toContain("createTeacherCompositionPagesFromLectureAction");
+    expect(picker).toContain("source.pageCount");
+    expect(picker).not.toContain("for (const revisionId");
+    expect(actions).toContain('"create_teacher_microcourse_composition_pages_from_lecture"');
     expect(picker).toContain("sourceCatalogEmpty");
     expect(picker).toContain("retrySourceSearch");
+    expect(zh).toContain('"insertLecture"');
+    expect(en).toContain('"insertLecture"');
     expect(zh).toContain('"sourceCatalogEmpty"');
     expect(en).toContain('"sourceCatalogEmpty"');
   });
