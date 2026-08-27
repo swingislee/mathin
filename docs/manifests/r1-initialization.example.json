@@ -6,9 +6,9 @@
   "projectId": "example-production-project",
   "databaseId": "example-production-database",
   "migration": {
-    "head": "20260826000600_teacher_microcourse_runtime_fixes",
-    "digest": "9ad986d84a0928482b339d085fdf5b5a66cb7d937d3640c5c6c0b4dd7c94a5d3",
-    "fileCount": 202
+    "head": "20260827000400_teacher_microcourse_game_source_adapter",
+    "digest": "7343610b5fce2c2c4ff0cf8c492bd63c5b4814b1faa30bed95d503c872c65609",
+    "fileCount": 207
   },
   "platform": {
     "source": "supabase/ci/00_platform_bootstrap.sql",

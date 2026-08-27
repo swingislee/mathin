@@ -122,11 +122,11 @@ Gate 1 已按以下顺序关闭：
 
 `DEV-TMC-1` 是本机隔离开发轨的独立 Gate，生产默认关闭，不改变 R1-Live Gate 2。用户闭环固定为“自由班课次 → 课件编辑 → 草稿立即试讲/上课 → 提交教研审核 → 发布到教师微课课程族 → 其他老师搜索选课建班”。一份自由课次只关联一份微课项目；每份作品映射为一门 `microcourse` 课程和唯一一讲，发布不改写原自由班、已冻结课次或历史 release。
 
-首版范围包含正式课程当前 release 的选页快照与锁定来源基底、可编辑叠加层、文字/图片/标题页、手工数独原型、单文件离线 H5、版本化元数据、受控主主题、教研退回/通过/发布、校内检索和单讲建班。来源不包含已发布教师微课，避免递归嵌套；H5 不包含 AI、低代码、多文件或 ZIP。普通教师只获得本人且关联本人任教自由课次的 `courseware.microcourse.author`，不获得全局 `course.manage` 或 `courseware.page.edit`。
+首版范围包含正式课程当前 release 的整讲快照与锁定来源基底、可编辑叠加层、文字/图片/标题页、注册表驱动的教师自编游戏页、单文件离线 H5、版本化元数据、受控主主题、教研退回/通过/发布、校内检索和单讲建班。首个 `game-page-v1` 适配器为数独，统一支持四宫、六宫和九宫原型题；历史 81 格 `microcourse-page-v1 mode=sudoku` 保持只读兼容。来源不包含已发布教师微课，避免递归嵌套；H5 不包含 AI、低代码、多文件或 ZIP。普通教师只获得本人且关联本人任教自由课次的 `courseware.microcourse.author`，不获得全局 `course.manage` 或 `courseware.page.edit`。
 
-开发验收必须同时覆盖作者/他人草稿隔离、提交快照不可替换、发布/退回/撤回/新版切换原子性、数独唯一解、H5 离线 CSP、自由课次冻结、其他教师搜索建班以及 zh/en 旅程。功能由 `teaching.teacher_microcourses_v1` 控制；本地机器检查和产品初验完成后仍须另行取得生产迁移与启用授权。
+开发验收必须同时覆盖作者/他人草稿隔离、提交快照不可替换、发布/退回/撤回/新版切换原子性、4/6/9 宫数独唯一解与未完成草稿审核阻断、H5 离线 CSP、自由课次冻结、其他教师搜索建班以及 zh/en 旅程。功能由 `teaching.teacher_microcourses_v1` 控制；本地机器检查和产品初验完成后仍须另行取得生产迁移与启用授权。
 
-截至 2026-08-27，本机实现与机器检查为 **PASS**：基础闭环 commits `cd3b2bf`、`26698e3`、`96f3301`、`a4fa9e4`、`5c13d5d`、`f418dd9` 已通过三份 SQL 断言、微课 Vitest 17/17、普通教师—教研—主管 zh/en Playwright 1/1、`pnpm ci:checks` 16/16 和当前 R1-Live 合同 60/60；增量 commit `dd9a755` 把来源选择改为课次检索与整讲事务插入，本机 migration head=`20260827000100_teacher_microcourse_lecture_source_picker`，回滚式内容 SQL、微课 Vitest 4 文件 19/19、typecheck、消息/类型/规划审计和同一固定账号 Playwright 1/1 通过。产品负责人对该增量的开发端初验仍为 **UNKNOWN**；本任务未连接 Xiaomi，生产 migration、应用和开关均未部署。详细边界见 [doc 26 §十三](26-teacher-workflow-upgrade.md#十三dev-tmc-1-普通教师短期微课) 与[开发证据](../evidence/r1/teacher-microcourse-dev.md)。
+截至 2026-08-27，本机实现与机器检查为 **PASS**：基础闭环 commits `cd3b2bf`、`26698e3`、`96f3301`、`a4fa9e4`、`5c13d5d`、`f418dd9` 已通过三份 SQL 断言、微课 Vitest 17/17、普通教师—教研—主管 zh/en Playwright 1/1 和当前 R1-Live 合同 60/60；commit `dd9a755` 把来源选择改为课次检索与整讲事务插入；commit `1135099` 以 migrations `20260827000300`～`20260827000400` 增加通用 `game-page-v1`、服务端不可变校验凭证和来源 capability predicate，本机 migration head=`20260827000400_teacher_microcourse_game_source_adapter`。本轮回滚式内容 SQL、定向 Vitest 6 文件 47/47、同一固定账号完整 Playwright 1/1 及最终 `pnpm ci:checks` 16/16 通过；全量 Vitest 为 106 文件、742 通过/1 条件跳过，production build 成功。产品负责人对该增量的开发端初验仍为 **UNKNOWN**；本任务未连接 Xiaomi，生产 migration、应用和开关均未部署。详细边界见 [doc 26 §十三](26-teacher-workflow-upgrade.md#十三dev-tmc-1-普通教师短期微课) 与[开发证据](../evidence/r1/teacher-microcourse-dev.md)。
 
 ## 6. 原 R1 工作重新定位
 
