@@ -6,6 +6,7 @@ const root = process.cwd();
 const read = (file: string) => fs.readFileSync(path.join(root, file), "utf8");
 const legacy = read("supabase/migrations/20260720001700_p4i6_work_item_projection.sql");
 const migration = read("supabase/migrations/20260728000500_r1_work_items_approvals.sql");
+const classroomVisibility = read("supabase/migrations/20260827000200_work_item_classroom_visibility.sql");
 
 describe("R1-4 hybrid work-item contracts", () => {
   it("preserves all 11 domain projection kinds and unions durable and approval sources", () => {
@@ -41,6 +42,17 @@ describe("R1-4 hybrid work-item contracts", () => {
     expect(migration).toContain("public.classify_work_item_urgency(item_row.due_at");
     expect(migration).toContain("source_kind text, source_id text, action_kind text, action_href text");
     expect(migration).toContain("assignee_id uuid, assignee_name text, priority text, read_state text");
+  });
+
+  it("keeps test, archived, trashed, and orphaned classroom work out of the ordinary inbox", () => {
+    expect(classroomVisibility).toContain("rename to list_my_work_items_before_classroom_visibility");
+    expect(classroomVisibility).toContain("coalesce(projected.primary_object_type in ('classroom', 'session'), false)");
+    expect(classroomVisibility).toContain("coalesce(projected.secondary_object_type in ('classroom', 'session'), false)");
+    expect(classroomVisibility).toContain("classroom_row.purpose = 'production'");
+    expect(classroomVisibility).toContain("classroom_row.archived_at is null");
+    expect(classroomVisibility).toContain("classroom_row.trashed_at is null");
+    expect(classroomVisibility).toContain("classroom_row.id is not null");
+    expect(classroomVisibility).toContain("from public.list_my_work_items() item_row");
   });
 
   it("makes writes RPC-only, idempotent, notified, and decisions immutable", () => {

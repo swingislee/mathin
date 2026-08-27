@@ -23,10 +23,84 @@ begin
   if exists(select 1 from unnest(array['work_items','work_item_assignments','approval_requests','approval_decisions']) table_name
     where has_table_privilege('authenticated','public.'||table_name,'INSERT,UPDATE,DELETE')) then failures:=array_append(failures,'coordination table allows direct mutation'); end if;
   if to_regprocedure('public.list_my_domain_work_items(text,boolean)') is null then failures:=array_append(failures,'11-source projection was not preserved'); end if;
+  if to_regprocedure('public.list_my_work_items_before_classroom_visibility(text,boolean)') is null then failures:=array_append(failures,'classroom visibility wrapper source missing'); end if;
   if to_regprocedure('public.list_my_work_items(text,boolean)') is null then failures:=array_append(failures,'unified projection missing'); end if;
+  if has_function_privilege('authenticated','public.list_my_work_items_before_classroom_visibility(text,boolean)','EXECUTE') then failures:=array_append(failures,'unfiltered classroom projection exposed'); end if;
   if to_regclass('public.work_items_assignee_open_due_idx') is null then failures:=array_append(failures,'work item assignee/due index missing'); end if;
   if to_regclass('public.approval_requests_approver_pending_due_idx') is null then failures:=array_append(failures,'approval approver/due index missing'); end if;
   if cardinality(failures)>0 then raise exception 'R1-4 structure assertions failed: %',array_to_string(failures,', '); end if;
+end
+$$;
+
+-- A class/session-backed work item is eligible for the ordinary inbox only
+-- when its classroom is an unarchived, untrashed production classroom. The
+-- legacy projection is checked first so this fixture proves the wrapper is
+-- filtering real source rows rather than passing vacuously.
+insert into public.classrooms(owner_id,name,invite_code,purpose,operational_status)
+values(:'teacher_id','__R1_WORK_VISIBLE_PRODUCTION__','WV'||upper(substr(replace(gen_random_uuid()::text,'-',''),1,6)),'production','active')
+returning id as visible_classroom_id \gset
+insert into public.class_sessions(classroom_id,title,scheduled_at)
+values(:'visible_classroom_id','__R1_WORK_VISIBLE_SESSION__',now()-interval '1 day')
+returning id as visible_session_id \gset
+
+insert into public.classrooms(owner_id,name,invite_code,purpose,operational_status)
+values(:'teacher_id','__R1_WORK_TEST_CLASS__','WT'||upper(substr(replace(gen_random_uuid()::text,'-',''),1,6)),'test','active')
+returning id as test_classroom_id \gset
+insert into public.class_sessions(classroom_id,title,scheduled_at)
+values(:'test_classroom_id','__R1_WORK_TEST_SESSION__',now()-interval '1 day')
+returning id as test_session_id \gset
+
+insert into public.classrooms(owner_id,name,invite_code,purpose,operational_status,archived_at)
+values(:'teacher_id','__R1_WORK_ARCHIVED_CLASS__','WA'||upper(substr(replace(gen_random_uuid()::text,'-',''),1,6)),'production','active',now())
+returning id as archived_classroom_id \gset
+insert into public.class_sessions(classroom_id,title,scheduled_at)
+values(:'archived_classroom_id','__R1_WORK_ARCHIVED_SESSION__',now()-interval '1 day')
+returning id as archived_session_id \gset
+
+insert into public.classrooms(owner_id,name,invite_code,purpose,operational_status,trashed_at)
+values(:'teacher_id','__R1_WORK_TRASHED_CLASS__','WX'||upper(substr(replace(gen_random_uuid()::text,'-',''),1,6)),'production','active',now())
+returning id as trashed_classroom_id \gset
+insert into public.class_sessions(classroom_id,title,scheduled_at)
+values(:'trashed_classroom_id','__R1_WORK_TRASHED_SESSION__',now()-interval '1 day')
+returning id as trashed_session_id \gset
+
+select set_config('request.jwt.claim.sub', :'admin_id', true);
+select set_config('test.r1_work_visible_session_id', :'visible_session_id', true);
+select set_config('test.r1_work_test_session_id', :'test_session_id', true);
+select set_config('test.r1_work_archived_session_id', :'archived_session_id', true);
+select set_config('test.r1_work_trashed_session_id', :'trashed_session_id', true);
+do $$
+declare
+  visible_session uuid := current_setting('test.r1_work_visible_session_id')::uuid;
+  hidden_sessions uuid[] := array[
+    current_setting('test.r1_work_test_session_id')::uuid,
+    current_setting('test.r1_work_archived_session_id')::uuid,
+    current_setting('test.r1_work_trashed_session_id')::uuid
+  ];
+begin
+  if not exists (
+    select 1
+    from public.list_my_work_items_before_classroom_visibility(null,true)
+    where primary_object_id = any(hidden_sessions)
+      and kind in ('session.prepare','session.overdue_not_started')
+  ) then
+    raise exception 'R1_CLASSROOM_VISIBILITY_FIXTURE_DID_NOT_REACH_SOURCE_PROJECTION';
+  end if;
+  if exists (
+    select 1
+    from public.list_my_work_items(null,true)
+    where primary_object_id = any(hidden_sessions)
+  ) then
+    raise exception 'R1_HIDDEN_CLASSROOM_WORK_ITEM_VISIBLE';
+  end if;
+  if (
+    select count(*)
+    from public.list_my_work_items(null,true)
+    where primary_object_id = visible_session
+      and kind in ('session.prepare','session.overdue_not_started')
+  ) <> 2 then
+    raise exception 'R1_VISIBLE_PRODUCTION_CLASSROOM_WORK_ITEM_MISSING';
+  end if;
 end
 $$;
 
