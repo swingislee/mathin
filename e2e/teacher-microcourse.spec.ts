@@ -49,7 +49,11 @@ test("teacher authors, teaches, resubmits, publishes, and the catalog creates on
 
     await page.getByRole("button", { name: "从课程插入整讲", exact: true }).click();
     const sourceDialog = page.getByRole("dialog");
-    await sourceDialog.getByPlaceholder("搜索课程族、课程或课次").fill(fixture.sourceLectureTitle);
+    await sourceDialog.getByRole("button", { name: "搜索并选择课程版本", exact: true }).click();
+    await page.getByPlaceholder("搜索课程、讲次、发布老师、主题或关键词").fill(fixture.sourceCourseTitle);
+    const sourceCourse = page.getByRole("option").filter({ hasText: fixture.sourceCourseTitle });
+    await expect(sourceCourse).toBeVisible();
+    await sourceCourse.click();
     const sourceOption = sourceDialog.getByRole("button", { name: `选择课次 ${fixture.sourceLectureTitle}`, exact: true });
     await expect(sourceOption).toBeVisible();
     await expect(sourceOption).toContainText("本讲共 2 页");

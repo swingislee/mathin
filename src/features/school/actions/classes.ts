@@ -91,20 +91,14 @@ function rpc(supabase: { rpc: unknown }): UntypedRpc {
   return (supabase.rpc as UntypedRpc).bind(supabase);
 }
 
-export async function searchClassBuildCoursesAction(input: {
-  query: string;
-  grade: number | null;
-  courseSeason: number | null;
-  classType: string;
-  purpose: ClassBuildPurpose;
-  includeSuperseded?: boolean;
-  courseKind?: "curriculum" | "microcourse" | null;
-  authorId?: string | null;
-  primaryTopicSlug?: string;
-  keyword?: string;
-}): Promise<ClassBuildCourseCandidate[]> {
-  const value = parse(courseSearchSchema, input);
-  const { supabase } = await authorizedClient("class.create");
+type CourseCatalogPermission = "class.create" | "courseware.microcourse.author";
+type CourseSearchValue = z.infer<typeof courseSearchSchema>;
+
+async function searchCourseVariants(
+  value: CourseSearchValue,
+  permission: CourseCatalogPermission,
+): Promise<ClassBuildCourseCandidate[]> {
+  const { supabase } = await authorizedClient(permission);
   const { data, error } = await rpc(supabase)("list_class_build_course_variants", {
     p_query: value.query,
     p_grade: value.grade,
@@ -165,6 +159,45 @@ export async function searchClassBuildCoursesAction(input: {
   }));
 }
 
+export async function searchClassBuildCoursesAction(input: {
+  query: string;
+  grade: number | null;
+  courseSeason: number | null;
+  classType: string;
+  purpose: ClassBuildPurpose;
+  includeSuperseded?: boolean;
+  courseKind?: "curriculum" | "microcourse" | null;
+  authorId?: string | null;
+  primaryTopicSlug?: string;
+  keyword?: string;
+}): Promise<ClassBuildCourseCandidate[]> {
+  const value = parse(courseSearchSchema, input);
+  return searchCourseVariants(value, "class.create");
+}
+
+export async function searchTeacherMicrocourseSourceCoursesAction(input: {
+  query: string;
+  grade: number | null;
+  courseSeason: number | null;
+  classType: string;
+  purpose: ClassBuildPurpose;
+  includeSuperseded?: boolean;
+  courseKind?: "curriculum" | "microcourse" | null;
+  authorId?: string | null;
+  primaryTopicSlug?: string;
+  keyword?: string;
+}): Promise<ClassBuildCourseCandidate[]> {
+  const value = parse(courseSearchSchema, input);
+  if (value.purpose !== "production"
+      || value.courseKind !== "curriculum"
+      || value.authorId !== null
+      || value.primaryTopicSlug !== ""
+      || value.keyword !== "") {
+    throw new Error("VALIDATION");
+  }
+  return searchCourseVariants(value, "courseware.microcourse.author");
+}
+
 export async function listClassBuildMicrocourseTopicsAction(): Promise<ClassBuildMicrocourseTopic[]> {
   const { supabase } = await authorizedClient("class.create");
   const { data, error } = await rpc(supabase)("list_teacher_microcourse_topics", {});
@@ -177,12 +210,13 @@ export async function listClassBuildMicrocourseTopicsAction(): Promise<ClassBuil
   }));
 }
 
-export async function getClassBuildCourseDetailAction(
+async function getCourseCatalogDetail(
   courseId: string,
   purpose: ClassBuildPurpose,
+  permission: CourseCatalogPermission,
 ): Promise<ClassBuildCourseDetail> {
   const value = parse(z.object({ courseId: uuid, purpose: z.enum(["production", "test"]) }), { courseId, purpose });
-  const { supabase } = await authorizedClient("class.create");
+  const { supabase } = await authorizedClient(permission);
   const { data, error } = await rpc(supabase)("get_class_build_course_detail", {
     p_course_id: value.courseId,
     p_purpose: value.purpose,
@@ -218,6 +252,21 @@ export async function getClassBuildCourseDetailAction(
     })),
   }).parse(data);
   return classBuildDetailSchema.parse({ ...row, keywords: row.keywords ?? [] });
+}
+
+export async function getClassBuildCourseDetailAction(
+  courseId: string,
+  purpose: ClassBuildPurpose,
+): Promise<ClassBuildCourseDetail> {
+  return getCourseCatalogDetail(courseId, purpose, "class.create");
+}
+
+export async function getTeacherMicrocourseSourceCourseDetailAction(
+  courseId: string,
+  purpose: ClassBuildPurpose,
+): Promise<ClassBuildCourseDetail> {
+  if (purpose !== "production") throw new Error("VALIDATION");
+  return getCourseCatalogDetail(courseId, purpose, "courseware.microcourse.author");
 }
 
 export async function getClassBuildConflictsAction(

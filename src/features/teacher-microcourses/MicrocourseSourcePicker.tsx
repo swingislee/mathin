@@ -1,81 +1,78 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { Check, LoaderCircle, RefreshCw, Search } from "lucide-react";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { Check, LoaderCircle, RefreshCw } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { StagePreview } from "@/features/courseware-studio/StagePreview";
+import { CoursePicker } from "@/features/school/teaching-operations/CoursePicker";
+import type { ClassBuildCourseDetail } from "@/features/school/teaching-operations/course-picker-types";
 import {
   createTeacherCompositionPagesFromLectureAction,
-  searchTeacherMicrocourseSourceLecturesAction,
+  listTeacherMicrocourseSourceLecturesAction,
 } from "./actions";
 import type { TeacherMicrocourseSourceLecture } from "./data";
 
 export function MicrocourseSourcePicker({
   microcourseId,
   afterPageDocId,
-  initialSources,
   disabled,
   onAdded,
 }: {
   microcourseId: string;
   afterPageDocId: string | null;
-  initialSources: TeacherMicrocourseSourceLecture[];
   disabled?: boolean;
   onAdded: (lastPageId: string, pageCount: number) => void;
 }) {
   const t = useTranslations("teacherMicrocourses");
   const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const [sources, setSources] = useState(initialSources);
-  const [catalogEmpty, setCatalogEmpty] = useState(initialSources.length === 0);
-  const [searchVersion, setSearchVersion] = useState(0);
+  const [selectedCourse, setSelectedCourse] = useState<ClassBuildCourseDetail | null>(null);
+  const [sources, setSources] = useState<TeacherMicrocourseSourceLecture[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const selectedIdRef = useRef(selectedId);
-  const [searchFailed, setSearchFailed] = useState(false);
+  const [loadVersion, setLoadVersion] = useState(0);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [insertFailed, setInsertFailed] = useState(false);
-  const [searching, startSearch] = useTransition();
+  const [loading, startLoad] = useTransition();
   const [adding, startAdd] = useTransition();
   const byId = useMemo(() => new Map(sources.map((source) => [source.lectureId, source])), [sources]);
   const selected = selectedId ? byId.get(selectedId) ?? null : null;
 
   useEffect(() => {
-    selectedIdRef.current = selectedId;
-  }, [selectedId]);
+    if (!open || !selectedCourse) return;
+    let active = true;
+    startLoad(async () => {
+      try {
+        const rows = await listTeacherMicrocourseSourceLecturesAction({ courseId: selectedCourse.id, limit: 100 });
+        if (!active) return;
+        setSources(rows);
+        setSelectedId((current) => rows.some((row) => row.lectureId === current) ? current : null);
+        setLoadFailed(false);
+      } catch {
+        if (!active) return;
+        setSources([]);
+        setSelectedId(null);
+        setLoadFailed(true);
+      }
+    });
+    return () => { active = false; };
+  }, [loadVersion, open, selectedCourse]);
 
-  useEffect(() => {
-    if (!open) return;
-    let live = true;
-    const timer = window.setTimeout(() => {
-      startSearch(async () => {
-        try {
-          const rows = await searchTeacherMicrocourseSourceLecturesAction({ query, limit: 60 });
-          if (live) {
-            setSources((current) => {
-              const pinned = current.filter((item) => item.lectureId === selectedIdRef.current);
-              const incoming = new Set(rows.map((item) => item.lectureId));
-              return [...pinned.filter((item) => !incoming.has(item.lectureId)), ...rows];
-            });
-            if (query.trim() === "") setCatalogEmpty(rows.length === 0);
-            else if (rows.length > 0) setCatalogEmpty(false);
-            setSearchFailed(false);
-          }
-        } catch {
-          if (live) {
-            setSources([]);
-            setSearchFailed(true);
-          }
-        }
-      });
-    }, 250);
-    return () => {
-      live = false;
-      window.clearTimeout(timer);
-    };
-  }, [open, query, searchVersion]);
+  const chooseCourse = (course: ClassBuildCourseDetail) => {
+    setSelectedCourse(course);
+    setSources([]);
+    setSelectedId(null);
+    setLoadFailed(false);
+    setInsertFailed(false);
+  };
+
+  const clearCourse = () => {
+    setSelectedCourse(null);
+    setSources([]);
+    setSelectedId(null);
+    setLoadFailed(false);
+    setInsertFailed(false);
+  };
 
   const add = () => {
     if (!selected) return;
@@ -102,22 +99,35 @@ export function MicrocourseSourcePicker({
       <DialogTrigger asChild>
         <Button type="button" size="sm" variant="secondary" disabled={disabled}>{t("addFromCourse")}</Button>
       </DialogTrigger>
-      <DialogContent className="flex max-h-[90dvh] max-w-5xl flex-col overflow-hidden">
+      <DialogContent className="flex max-h-[90dvh] max-w-3xl flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle>{t("sourcePickerTitle")}</DialogTitle>
           <DialogDescription>{t("sourcePickerDescription")}</DialogDescription>
         </DialogHeader>
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-2.5 size-4 text-muted" />
-          <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("sourceSearch")} className="pl-9" />
+
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-ink">{t("sourceCourseLabel")}</p>
+          <CoursePicker
+            purpose="production"
+            selected={selectedCourse}
+            onSelect={chooseCourse}
+            onClear={clearCourse}
+            fixedCourseKind="curriculum"
+            showSelectedDetail={false}
+            accessContext="microcourse-source"
+            disabled={adding}
+          />
         </div>
-        <ScrollArea className="min-h-0 flex-1 rounded-xl border border-line">
-          <div className="grid min-h-[24rem] gap-3 p-3 sm:grid-cols-2 lg:grid-cols-3">
-            {searching && <p className="col-span-full flex items-center justify-center gap-2 py-10 text-sm text-muted"><LoaderCircle className="size-4 animate-spin" />{t("searching")}</p>}
-            {!searching && sources.map((source) => {
-              const checked = selectedId === source.lectureId;
-              return (
-                <Button
+
+        <div className="min-h-0 flex-1 space-y-2">
+          <p className="text-sm font-medium text-ink">{t("sourceLectureLabel")}</p>
+          <ScrollArea className="h-[min(24rem,48dvh)] rounded-xl border border-line">
+            <div className="space-y-1 p-2">
+              {!selectedCourse && <p className="px-4 py-10 text-center text-sm text-muted">{t("selectCourseHint")}</p>}
+              {selectedCourse && loading && <p className="flex items-center justify-center gap-2 px-4 py-10 text-sm text-muted"><LoaderCircle className="size-4 animate-spin" />{t("loadingLectures")}</p>}
+              {selectedCourse && !loading && !loadFailed && sources.map((source) => {
+                const checked = selectedId === source.lectureId;
+                return <Button
                   key={source.lectureId}
                   type="button"
                   variant="ghost"
@@ -127,29 +137,21 @@ export function MicrocourseSourcePicker({
                     setSelectedId((current) => current === source.lectureId ? null : source.lectureId);
                     setInsertFailed(false);
                   }}
-                  className={`h-auto min-w-0 flex-col items-stretch justify-start gap-0 overflow-hidden whitespace-normal rounded-xl border p-0 text-left transition ${checked ? "border-crater bg-moon/15 ring-2 ring-crater/20" : "border-line hover:border-crater/50 hover:bg-paper"}`}
+                  className={`h-auto w-full justify-start gap-3 rounded-lg border px-3 py-2 text-left ${checked ? "border-crater bg-moon/20 ring-2 ring-crater/20" : "border-transparent hover:border-line hover:bg-paper"}`}
                 >
-                  <div className="pointer-events-none aspect-[4/3] overflow-hidden bg-paper">
-                    <StagePreview doc={source.previewDoc} bindingUrls={source.previewBindingUrls} interactive={false} className="h-full w-full" />
-                  </div>
-                  <div className="flex items-start gap-2 border-t border-line p-3 font-normal">
-                    <span aria-hidden="true" className={`mt-0.5 grid size-4 shrink-0 place-items-center rounded border ${checked ? "border-rose bg-rose text-white" : "border-crater bg-card"}`}>{checked && <Check className="size-3" />}</span>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-ink">{source.lectureTitle}</p>
-                      <p className="mt-0.5 line-clamp-2 text-xs text-muted">{source.familyTitle} · {source.courseTitle}</p>
-                      <p className="mt-1 text-xs text-muted">{t("sourceLecturePages", { count: source.pageCount })}</p>
-                    </div>
-                  </div>
-                </Button>
-              );
-            })}
-            {!searching && !searchFailed && sources.length === 0 && catalogEmpty && <div className="col-span-full grid place-items-center gap-2 px-6 py-10 text-center"><p className="text-sm font-medium text-ink">{t("sourceCatalogEmpty")}</p><p className="max-w-xl text-xs leading-5 text-muted">{t("sourceCatalogEmptyHint")}</p><Button type="button" size="sm" variant="secondary" onClick={() => setSearchVersion((value) => value + 1)}><RefreshCw className="size-3.5" />{t("retrySourceSearch")}</Button></div>}
-            {!searching && !searchFailed && sources.length === 0 && !catalogEmpty && <p className="col-span-full py-10 text-center text-sm text-muted">{t("sourceEmpty")}</p>}
-            {searchFailed && <div role="alert" className="col-span-full grid place-items-center gap-2 px-6 py-10 text-center"><p className="text-sm text-rose">{t("sourceFailed")}</p><Button type="button" size="sm" variant="secondary" onClick={() => { setSearchFailed(false); setSearchVersion((value) => value + 1); }}><RefreshCw className="size-3.5" />{t("retrySourceSearch")}</Button></div>}
-          </div>
-        </ScrollArea>
+                  <span aria-hidden="true" className={`grid size-5 shrink-0 place-items-center rounded border ${checked ? "border-rose bg-rose text-white" : "border-crater bg-card"}`}>{checked && <Check className="size-3.5" />}</span>
+                  <span className="w-8 shrink-0 font-mono text-xs text-muted">{source.lectureNo}</span>
+                  <span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium text-ink">{source.lectureTitle}</span><span className="block text-xs font-normal text-muted">{t("sourceLecturePages", { count: source.pageCount })}</span></span>
+                </Button>;
+              })}
+              {selectedCourse && !loading && !loadFailed && sources.length === 0 && <p className="px-4 py-10 text-center text-sm text-muted">{t("sourceEmpty")}</p>}
+              {selectedCourse && loadFailed && <div role="alert" className="grid place-items-center gap-2 px-4 py-10 text-center"><p className="text-sm text-rose">{t("sourceFailed")}</p><Button type="button" size="sm" variant="secondary" onClick={() => { setLoadFailed(false); setLoadVersion((value) => value + 1); }}><RefreshCw className="size-3.5" />{t("retrySourceSearch")}</Button></div>}
+            </div>
+          </ScrollArea>
+        </div>
+
         <div aria-live="polite" className="min-h-5 text-sm text-muted">
-          {selected ? t("selectedLecture", { title: selected.lectureTitle, count: selected.pageCount }) : t("selectLectureHint")}
+          {selected ? t("selectedLecture", { title: selected.lectureTitle, count: selected.pageCount }) : selectedCourse ? t("selectLectureHint") : t("selectCourseHint")}
           {insertFailed && <span role="alert" className="ml-2 text-rose">{t("sourceInsertFailed")}</span>}
         </div>
         <DialogFooter>

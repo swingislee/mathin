@@ -1,17 +1,17 @@
 # DEV-TMC-1 普通教师短期微课开发证据
 
-> **结论**：`DEVELOPMENT_MACHINE_VERIFIED / PENDING_USER_ACCEPTANCE`。本机开发目标已完成实现与机器检查；未连接、迁移或启用 Xiaomi 生产环境。
+> **结论**：`DEVELOPMENT_MACHINE_VERIFIED / PENDING_USER_ACCEPTANCE`。本机开发目标已完成实现与机器检查；Xiaomi 生产只完成只读状态检查，尚未迁移、发布或启用。
 
 | 字段 | 值 |
 | --- | --- |
 | `gate_id`, `domain`, `result` | `DEV-TMC-1`；teacher microcourse authoring/review/catalog；`DEVELOPMENT_MACHINE_VERIFIED`，产品负责人初验 `UNKNOWN` |
-| `measured_value`, `threshold` | 基础闭环三份事务回滚 SQL、微课 Vitest 17/17、普通教师—教研—主管 Playwright 1/1、全量 Vitest 709 通过/1 条件跳过、CI 16/16 与 R1-Live 60/60 保持既有通过证据。2026-08-27 整讲来源增量另通过内容 SQL、微课 Vitest 4 文件 19/19 与固定账号 Playwright 1/1；通用游戏页增量通过回滚式内容 SQL、定向 Vitest 6 文件 47/47、固定账号完整 Playwright 1/1，并最终通过 CI 16/16、全量 Vitest 106 文件 742 通过/1 条件跳过及 production build；阈值为相关断言零失败、E2E 零 skip |
-| `commit_sha`, `migration_head`, `environment` | `cd3b2bfae1e2df54c0e55db927e21737ba411825`、`26698e31ba6e1f1b1f17f295afa44344a5f47832`、`96f3301ef8b4a8c645def82b41a47d48ac2bd368`、`a4fa9e40c318159ac40f327d915124e54130d86a`、`5c13d5d4801c547c7e5af23cefc115894117bda0`、`f418dd9c20bea654ddb9410d038839b9043a9e10`、`dd9a755`、`1135099`；本机 head=`20260827000400_teacher_microcourse_game_source_adapter`；Windows Docker Desktop / `http://127.0.0.1:35421`，未连接 Xiaomi |
+| `measured_value`, `threshold` | 基础闭环三份事务回滚 SQL、微课 Vitest 17/17、普通教师—教研—主管 Playwright 1/1、全量 Vitest 709 通过/1 条件跳过、CI 16/16 与 R1-Live 60/60 保持既有通过证据。2026-08-27 整讲来源增量另通过内容 SQL、微课 Vitest 4 文件 19/19 与固定账号 Playwright 1/1；通用游戏页增量通过回滚式内容 SQL、定向 Vitest 6 文件 47/47、固定账号完整 Playwright 1/1，并最终通过 CI 16/16、全量 Vitest 106 文件 742 通过/1 条件跳过及 production build；课程产品选择器复用增量通过两份 migration 回滚、固定教师权限矩阵、微课 Vitest 4 文件 21/21 与固定账号完整 Playwright 1/1；阈值为相关断言零失败、E2E 零 skip |
+| `commit_sha`, `migration_head`, `environment` | `cd3b2bfae1e2df54c0e55db927e21737ba411825`、`26698e31ba6e1f1b1f17f295afa44344a5f47832`、`96f3301ef8b4a8c645def82b41a47d48ac2bd368`、`a4fa9e40c318159ac40f327d915124e54130d86a`、`5c13d5d4801c547c7e5af23cefc115894117bda0`、`f418dd9c20bea654ddb9410d038839b9043a9e10`、`dd9a755`、`1135099`；本机 head=`20260827000700_teacher_microcourse_course_catalog_access`；Windows Docker Desktop / `http://127.0.0.1:35421`，生产仅完成只读状态检查、未写入 |
 | `dataset_manifest` | 复用 gitignored 固定开发账号；随机 `DEV-TMC-1 <token>` 课程族/班级/课次/项目只写本机，旅程后按精确 ID、名称和类型清理；复核 `classes=0`、`families=0`、`projects=0`。未创建账号，外部通知通道在夹具启动前要求全部 disabled |
 | `started_at`, `finished_at`, `actor`, `approver` | `2026-08-26`；`2026-08-27`；Codex 本机开发执行；产品负责人 `pending` |
-| `command_or_runbook` | 基础闭环：三份 teacher microcourse SQL、微课 Vitest、`R1_DEV_TEST_FIXTURES=1` 的 `e2e/teacher-microcourse.spec.ts`、`pnpm ci:checks`、`pnpm r1:live:test`。整讲增量：`teacher_microcourse_content_assertions.sql`、4 份微课 Vitest及同一 Playwright spec。通用游戏页增量：同一回滚式内容 SQL、6 份定向 Vitest、`pnpm typecheck`、`messages:check`、`db:types:check`、定向 lint、同一 Playwright spec 及最终 `pnpm ci:checks` |
+| `command_or_runbook` | 基础闭环：三份 teacher microcourse SQL、微课 Vitest、`R1_DEV_TEST_FIXTURES=1` 的 `e2e/teacher-microcourse.spec.ts`、`pnpm ci:checks`、`pnpm r1:live:test`。整讲增量：`teacher_microcourse_content_assertions.sql`、4 份微课 Vitest及同一 Playwright spec。通用游戏页增量：同一回滚式内容 SQL、6 份定向 Vitest、`pnpm typecheck`、`messages:check`、`db:types:check`、定向 lint、同一 Playwright spec 及最终 `pnpm ci:checks`。课程选择器增量：migrations `20260827000600`～`20260827000700` 回滚探针、固定教师 JWT 权限矩阵、4 份微课 Vitest、定向 lint 与同一 Playwright spec |
 | `artifact_url_or_path`, `artifact_hash`, `retention`, `access_roles` | `not_applicable`（没有提交截图、视频或大日志）；`not_applicable`；可重跑源码与小摘要随 Git 保留；仓库读权限持有者 |
-| `failure_ticket` | `not_applicable`。浏览器旅程发现并修复 session 查询歧义、自由课冻结未生成 doc 页列表、H5 MIME、审核导航和建班时序；通用游戏页增量把初始化 manifest 同步至 207 个 migration 后完整 Gate 通过 |
+| `failure_ticket` | `not_applicable`。浏览器旅程发现并修复 session 查询歧义、自由课冻结未生成 doc 页列表、H5 MIME、审核导航和建班时序；通用游戏页增量把初始化 manifest 同步至 207 个 migration 后完整 Gate 通过；课程选择器首次复用时发现普通教师没有 `class.create`，随后拆分 Server Action 授权上下文，并把作者分支在数据库固定到生产正式课程 |
 
 ## 覆盖边界
 
@@ -33,7 +33,13 @@
 - 写前确认应用 origin 为 `http://127.0.0.1:35421`、本机监听和健康 `supabase-db`；migrations `20260827000300`～`20260827000400` 与 LF 规范化 checksum 只登记到本机账本。固定账号 Playwright 以六宫题完成自动保存、课堂、退回重提、英文发布和单讲建班并自动清理；未连接 Xiaomi。
 - 最终 `pnpm ci:checks` 为 16/16；其中全量 Vitest 为 106 文件、742 通过/1 条件跳过，Next.js 16.2.11 production build 成功。该机器结果不替代产品负责人验收。
 
+## 2026-08-27 课程产品选择器复用增量
+
+- 删除来源页面预览、缩略图签名和独立页面级搜索 UI；直接复用建班课程产品 `CoursePicker`，先按既有课程族/版本、年级、课程季节、班型和历史版本筛选课程，再列出该课程可整讲复制的课次名称与页数。
+- migration `20260827000600_teacher_microcourse_course_catalog_picker` 提供不含 preview doc/binding 的紧凑课次 RPC，并给整讲复制 RPC 增加生产正式课程/current release 边界。migration `20260827000700_teacher_microcourse_course_catalog_access` 让同一课程目录筛选 RPC 支持两种固定授权上下文：建班保持 `class.create`，作者只允许 `purpose='production'`、`course_kind='curriculum'`，详情查询也拒绝作者读取教师微课候选。
+- 本机固定教师实际只有 `courseware.microcourse.author`、没有 `class.create`。JWT 角色模拟证明该身份可读 30 条生产正式课程和一份课程详情，测试目的目录及 `microcourse` 目录均返回 `FORBIDDEN`；完整 Playwright 随机夹具继续完成整讲插入、六宫数独、H5、冻结上课、退回重提、英文发布和单讲建班并自动清理。
+
 ## 尚未证明
 
 - 自动化不等于产品负责人实际操作验收；当前状态仍为 `PENDING_USER_ACCEPTANCE`。
-- 本任务没有连接 Xiaomi，不能证明生产迁移、生产数据兼容、生产 H5 对象提升、正式教师旅程或生产性能。生产晋级须另行获得明确授权并执行写目标 preflight、备份/current/previous、迁移回退与 postflight。
+- 本任务截至本机验证结束只对 Xiaomi 做了只读状态检查，不能证明生产迁移、生产数据兼容、生产 H5 对象提升、正式教师旅程或生产性能。生产晋级须使用既有明确授权并执行完整写目标 preflight、备份/current/previous、迁移回退与 postflight。

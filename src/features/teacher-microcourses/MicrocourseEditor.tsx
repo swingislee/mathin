@@ -58,7 +58,7 @@ import {
   withdrawTeacherMicrocourseAction,
   withdrawTeacherMicrocourseReviewAction,
 } from "./actions";
-import type { TeacherMicrocourseEditor as EditorData, TeacherMicrocoursePage, TeacherMicrocourseSourceLecture } from "./data";
+import type { TeacherMicrocourseEditor as EditorData, TeacherMicrocoursePage } from "./data";
 import { microcourseH5Bytes, normalizeMicrocourseH5 } from "./h5";
 import { MicrocourseSourcePicker } from "./MicrocourseSourcePicker";
 import type { TeacherMicrocoursePageDoc } from "./page-doc";
@@ -167,11 +167,9 @@ interface MicrocourseH5ControlsHandle extends MicrocoursePageWorkbenchHandle {
 export function MicrocourseEditor({
   session,
   editor,
-  initialSources,
 }: {
   session: { id: string; title: string; classroomId: string; coursewareFrozenAt: string | null };
   editor: EditorData;
-  initialSources: TeacherMicrocourseSourceLecture[];
 }) {
   const t = useTranslations("teacherMicrocourses");
   const locale = useLocale();
@@ -360,7 +358,7 @@ export function MicrocourseEditor({
                 beforeCreate={persistCurrentPage}
                 onAdded={(id) => void handlePageAdded(id, t("pageAdded"))}
               />
-              <MicrocourseSourcePicker microcourseId={editor.id} afterPageDocId={currentPage?.pageDocId ?? null} initialSources={initialSources} disabled={pending || pageSwitching} onAdded={(id, count) => void handlePageAdded(id, t("pagesAdded", { count }))} />
+              <MicrocourseSourcePicker microcourseId={editor.id} afterPageDocId={currentPage?.pageDocId ?? null} disabled={pending || pageSwitching} onAdded={(id, count) => void handlePageAdded(id, t("pagesAdded", { count }))} />
               <H5CreateDialog microcourseId={editor.id} afterPageDocId={currentPage?.pageDocId ?? null} disabled={pending || pageSwitching} onAdded={(id) => void handlePageAdded(id, t("pageAdded"))} />
             </div>
             <ScrollArea className="min-h-0 flex-1">

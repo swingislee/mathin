@@ -550,7 +550,7 @@ template_version:
 
 | 子门 | 状态 | 证据范围 |
 | --- | --- | --- |
-| 本机实现与机器检查 | **PASS** | 基础 commits `cd3b2bf`、`26698e3`、`96f3301`、`a4fa9e4`、`5c13d5d`、`f418dd9` 与迁移 `20260826000200`～`20260826000600` 已通过三份事务回滚 SQL、微课 Vitest 17/17、固定账号 Playwright 1/1 和 R1-Live 60/60；整讲来源增量 commit `dd9a755`、migration `20260827000100_teacher_microcourse_lecture_source_picker` 通过内容 SQL、微课 Vitest 4 文件 19/19 与完整旅程；通用游戏页增量 commit `1135099`、migrations `20260827000300`～`20260827000400` 通过回滚式内容 SQL、定向 Vitest 6 文件 47/47、固定账号 Playwright 1/1 及最终 CI 16/16，全量 Vitest为 106 文件、742 通过/1 条件跳过且 production build 成功 |
+| 本机实现与机器检查 | **PASS** | 基础 commits `cd3b2bf`、`26698e3`、`96f3301`、`a4fa9e4`、`5c13d5d`、`f418dd9` 与迁移 `20260826000200`～`20260826000600` 已通过三份事务回滚 SQL、微课 Vitest 17/17、固定账号 Playwright 1/1 和 R1-Live 60/60；整讲来源增量 commit `dd9a755`、migration `20260827000100_teacher_microcourse_lecture_source_picker` 通过内容 SQL、微课 Vitest 4 文件 19/19 与完整旅程；通用游戏页增量 commit `1135099`、migrations `20260827000300`～`20260827000400` 通过回滚式内容 SQL、定向 Vitest 6 文件 47/47、固定账号 Playwright 1/1 及最终 CI 16/16，全量 Vitest为 106 文件、742 通过/1 条件跳过且 production build 成功；课程产品选择器复用增量 migrations `20260827000600`～`20260827000700` 已通过事务回滚、固定教师权限矩阵、微课 Vitest 4 文件 21/21 与完整 Playwright 1/1 |
 | 产品负责人开发端初验 | **UNKNOWN** | 本机功能开关已启用并保留可验收版本；自动化只能证明覆盖合同，尚无产品负责人签收 |
 | 生产迁移与启用 | 尚未开始 | 本任务未连接 Xiaomi，仓库默认开关保持关闭；生产发布必须另做目标、备份/current/previous、数据影响、回退与 postflight 审批 |
 
@@ -588,7 +588,7 @@ template_version:
 | `game-page-v1` | `gameId + contentVersion + payload` 与服务端校验事实；首个 `sudoku-authored-v1` 适配器显式保存稳定 `variantId`，支持四宫、六宫和九宫 | 草稿可不完整并可立即试讲；提交要求当前 revision 存在同 payload hash、validator version 与详情的不可变凭证，且 `publishable=true` |
 | `h5` | 单文件 HTML artifact ID、规范化内容 SHA-256 和入口 | 不超过 5 MiB；审核快照中的同一 hash 已准备好提升为不可变包 |
 
-来源选择器只列正式 `curriculum` 当前 release，并以课次为选择单位：老师按课程族、课程或课次检索，从首屏缩略图与总页数确认目标后，一次事务按 release 顺序插入本讲全部页面，再在微课编辑器中删除、移动或补充页面。整讲插入复制每页文档快照和绑定 revision，任一页面或素材快照失败时整讲回滚；资源字节继续复用 CAS。来源格式由统一 revision capability predicate 判定，已登记、可复制且有发布校验凭证的 `game-page-v1` 自动进入同一链路，新增游戏内容版本不改搜索或复制 RPC。首版仍不把教师微课作为来源。普通教师不能改变来源基底，只编辑叠加层或前后自建页；教研对原生 `page-doc-v1` 保留逐元素编辑能力，爱学习与空间页等导入基底仍只编辑叠加层。
+来源入口直接复用建班课程产品的 `CoursePicker` 和 `list_class_build_course_variants` 筛选逻辑：老师先按课程族/版本、年级、课程季节、班型和历史版本筛选一门正式 `curriculum` 课程，再从紧凑列表按课次名称和总页数选择整讲。选择阶段不加载页面预览文档、缩略图或签名素材；一次事务按当前 release 顺序插入本讲全部页面后，老师在微课编辑器中删除、移动或补充页面。普通教师不因此获得 `class.create`：共享目录 RPC 保留建班权限分支，并为 `courseware.microcourse.author` 增加只能访问 `purpose='production'`、`course_kind='curriculum'` 的固定分支。整讲插入复制每页文档快照和绑定 revision，任一页面或素材快照失败时整讲回滚；资源字节继续复用 CAS。来源格式由统一 revision capability predicate 判定，已登记、可复制且有发布校验凭证的 `game-page-v1` 自动进入同一链路，新增游戏内容版本不改搜索或复制 RPC。首版仍不把教师微课作为来源。普通教师不能改变来源基底，只编辑叠加层或前后自建页；教研对原生 `page-doc-v1` 保留逐元素编辑能力，爱学习与空间页等导入基底仍只编辑叠加层。
 
 ## H5 与验收边界
 

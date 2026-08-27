@@ -12,7 +12,13 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { getClassBuildCourseDetailAction, listClassBuildMicrocourseTopicsAction, searchClassBuildCoursesAction } from "../actions/classes";
+import {
+  getClassBuildCourseDetailAction,
+  getTeacherMicrocourseSourceCourseDetailAction,
+  listClassBuildMicrocourseTopicsAction,
+  searchClassBuildCoursesAction,
+  searchTeacherMicrocourseSourceCoursesAction,
+} from "../actions/classes";
 import { compareCourseDifficulty } from "./course-difficulty";
 import type { ClassBuildCourseCandidate, ClassBuildCourseDetail, ClassBuildMicrocourseTopic, ClassBuildPurpose } from "./course-picker-types";
 
@@ -61,12 +67,18 @@ export function CoursePicker({
   onSelect,
   onClear,
   disabled = false,
+  fixedCourseKind,
+  showSelectedDetail = true,
+  accessContext = "class-build",
 }: {
   purpose: ClassBuildPurpose;
   selected: ClassBuildCourseDetail | null;
   onSelect: (course: ClassBuildCourseDetail) => void;
   onClear: () => void;
   disabled?: boolean;
+  fixedCourseKind?: "curriculum" | "microcourse";
+  showSelectedDetail?: boolean;
+  accessContext?: "class-build" | "microcourse-source";
 }) {
   const t = useTranslations("school.classBuild");
   const locale = useLocale();
@@ -86,6 +98,8 @@ export function CoursePicker({
   const [searching, setSearching] = useState(false);
   const [selectingId, setSelectingId] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
+  const effectiveCourseKind = fixedCourseKind ?? courseKind;
+  const showMicrocourseFilters = effectiveCourseKind !== "curriculum";
   const grouped = useMemo(() => {
     const groups = new Map<string, ClassBuildCourseCandidate[]>();
     for (const candidate of results) {
@@ -106,22 +120,35 @@ export function CoursePicker({
     const timer = window.setTimeout(() => {
       setSearching(true);
       setFailed(false);
-      void searchClassBuildCoursesAction({ query, grade, courseSeason, classType, purpose, includeSuperseded, courseKind, primaryTopicSlug, keyword })
+      const searchAction = accessContext === "microcourse-source"
+        ? searchTeacherMicrocourseSourceCoursesAction
+        : searchClassBuildCoursesAction;
+      void searchAction({
+        query,
+        grade,
+        courseSeason,
+        classType,
+        purpose,
+        includeSuperseded,
+        courseKind: effectiveCourseKind,
+        primaryTopicSlug: showMicrocourseFilters ? primaryTopicSlug : "",
+        keyword: showMicrocourseFilters ? keyword : "",
+      })
         .then((next) => { if (active) setResults(next); })
         .catch(() => { if (active) { setResults([]); setFailed(true); } })
         .finally(() => { if (active) setSearching(false); });
     }, 250);
     return () => { active = false; window.clearTimeout(timer); };
-  }, [classType, courseKind, courseSeason, grade, includeSuperseded, keyword, open, primaryTopicSlug, purpose, query]);
+  }, [accessContext, classType, courseSeason, effectiveCourseKind, grade, includeSuperseded, keyword, open, primaryTopicSlug, purpose, query, showMicrocourseFilters]);
 
   useEffect(() => {
-    if (!open || microcourseTopics.length > 0) return;
+    if (!open || !showMicrocourseFilters || microcourseTopics.length > 0) return;
     let active = true;
     void listClassBuildMicrocourseTopicsAction()
       .then((topics) => { if (active) setMicrocourseTopics(topics); })
       .catch(() => undefined);
     return () => { active = false; };
-  }, [microcourseTopics.length, open]);
+  }, [microcourseTopics.length, open, showMicrocourseFilters]);
 
   const visibleResults = open ? grouped : [];
   const showSearching = open && searching;
@@ -130,7 +157,10 @@ export function CoursePicker({
     setSelectingId(candidate.id);
     setFailed(false);
     try {
-      const detail = await getClassBuildCourseDetailAction(candidate.id, purpose);
+      const detailAction = accessContext === "microcourse-source"
+        ? getTeacherMicrocourseSourceCourseDetailAction
+        : getClassBuildCourseDetailAction;
+      const detail = await detailAction(candidate.id, purpose);
       onSelect(detail);
       setOpen(false);
       setQuery("");
@@ -145,7 +175,7 @@ export function CoursePicker({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button type="button" variant="secondary" disabled={disabled} aria-expanded={open} className="h-auto min-h-10 w-full justify-between px-3 py-2 text-left">
-          {selected ? <span className="min-w-0"><span className="block truncate font-medium">{selected.familyTitle} · {selected.title}</span><span className="block truncate text-xs font-normal text-muted">{selected.productCode || "—"} · {selected.releasedLectureCount}/{selected.lectureCount}</span></span> : <span className="text-muted">{t("chooseCourse")}</span>}
+          {selected ? <span className="min-w-0"><span className="block truncate font-medium">{showSelectedDetail ? `${selected.familyTitle} · ${selected.title}` : selected.title}</span>{showSelectedDetail && <span className="block truncate text-xs font-normal text-muted">{selected.productCode || "—"} · {selected.releasedLectureCount}/{selected.lectureCount}</span>}</span> : <span className="text-muted">{t("chooseCourse")}</span>}
           <ChevronsUpDown className="ml-2 size-4 shrink-0 text-muted" />
         </Button>
       </PopoverTrigger>
@@ -153,10 +183,10 @@ export function CoursePicker({
         <Command shouldFilter={false}>
           <CommandInput value={query} onValueChange={setQuery} placeholder={t("searchCourses")} aria-label={t("searchCourses")} />
           <div className="grid grid-cols-2 gap-2 border-b p-2 sm:grid-cols-3">
-            <Select value={courseKind ?? ALL} onValueChange={(value) => setCourseKind(value === ALL ? null : value as "curriculum" | "microcourse")}>
+            {!fixedCourseKind && <Select value={courseKind ?? ALL} onValueChange={(value) => setCourseKind(value === ALL ? null : value as "curriculum" | "microcourse")}>
               <SelectTrigger className="h-9 text-xs"><SelectValue placeholder={t("allCourseKinds")} /></SelectTrigger>
               <SelectContent><SelectItem value={ALL}>{t("allCourseKinds")}</SelectItem><SelectItem value="curriculum">{t("curriculumCourse")}</SelectItem><SelectItem value="microcourse">{t("teacherMicrocourse")}</SelectItem></SelectContent>
-            </Select>
+            </Select>}
             <Select value={grade?.toString() ?? ALL} onValueChange={(value) => setGrade(value === ALL ? null : Number(value))}>
               <SelectTrigger className="h-9 text-xs"><SelectValue placeholder={t("allGrades")} /></SelectTrigger>
               <SelectContent><SelectItem value={ALL}>{t("allGrades")}</SelectItem>{Array.from({ length: 9 }, (_, index) => index + 1).map((item) => <SelectItem key={item} value={String(item)}>{t("grade", { grade: item })}</SelectItem>)}</SelectContent>
@@ -169,11 +199,11 @@ export function CoursePicker({
               <SelectTrigger className="h-9 text-xs"><SelectValue placeholder={t("allClassTypes")} /></SelectTrigger>
               <SelectContent><SelectItem value={ALL}>{t("allClassTypes")}</SelectItem>{CLASS_TYPES.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent>
             </Select>
-            <Select value={primaryTopicSlug || ALL} onValueChange={(value) => setPrimaryTopicSlug(value === ALL ? "" : value)}>
+            {showMicrocourseFilters && <Select value={primaryTopicSlug || ALL} onValueChange={(value) => setPrimaryTopicSlug(value === ALL ? "" : value)}>
               <SelectTrigger className="h-9 text-xs"><SelectValue placeholder={t("allTopics")} /></SelectTrigger>
               <SelectContent><SelectItem value={ALL}>{t("allTopics")}</SelectItem>{microcourseTopics.map((topic) => <SelectItem key={topic.id} value={topic.slug}>{locale === "en" ? topic.titleEn : topic.titleZh}</SelectItem>)}</SelectContent>
-            </Select>
-            <Input value={keyword} onChange={(event) => setKeyword(event.target.value)} maxLength={32} placeholder={t("keywordFilter")} className="h-9 text-xs" />
+            </Select>}
+            {showMicrocourseFilters && <Input value={keyword} onChange={(event) => setKeyword(event.target.value)} maxLength={32} placeholder={t("keywordFilter")} className="h-9 text-xs" />}
           </div>
           <Label className="flex items-center gap-2 border-b px-2 py-2 text-xs font-normal text-muted">
             <Checkbox checked={includeSuperseded} onCheckedChange={(value) => setIncludeSuperseded(value === true)} />
@@ -194,7 +224,7 @@ export function CoursePicker({
       </PopoverContent>
     </Popover>
 
-    {selected && <div className="flex flex-wrap items-center gap-2 text-sm">
+    {selected && showSelectedDetail && <div className="flex flex-wrap items-center gap-2 text-sm">
       <CourseCandidateLabel candidate={selected} />
       <Button type="button" variant="ghost" size="sm" onClick={onClear} disabled={disabled} className={cn("shrink-0", disabled && "hidden")}><X className="size-4" />{t("clearCourse")}</Button>
     </div>}

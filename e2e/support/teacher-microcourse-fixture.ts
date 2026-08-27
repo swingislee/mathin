@@ -23,6 +23,7 @@ interface FixtureState {
 export interface TeacherMicrocourseFixture {
   sourceSessionId: string;
   sourceClassroomId: string;
+  sourceCourseTitle: string;
   sourceLectureTitle: string;
   nativePageTitle: string;
   aixuexiPageTitle: string;
@@ -361,6 +362,7 @@ export async function setupTeacherMicrocourseFixture({
   const token = randomBytes(5).toString("hex");
   const sourceClassName = `DEV-TMC-1 ${token} 自由班`;
   const sourceSessionTitle = `DEV-TMC-1 ${token} 自由课次`;
+  const sourceCourseTitle = `DEV-TMC-1 ${token} 来源课程`;
   const sourceLectureTitle = `DEV-TMC-1 ${token} 来源讲次`;
   const nativePageTitle = `DEV-TMC-1 ${token} 原生页`;
   const aixuexiPageTitle = `DEV-TMC-1 ${token} 爱学习页`;
@@ -421,7 +423,7 @@ export async function setupTeacherMicrocourseFixture({
       await admin.from("courses").insert({
         family_id: family.id,
         catalog_version_id: catalogVersion.id,
-        title: `DEV-TMC-1 ${token} 来源课程`,
+        title: sourceCourseTitle,
         product_code: `TMC-${token}`,
         grade: 3,
         term: 2,
@@ -632,6 +634,7 @@ export async function setupTeacherMicrocourseFixture({
     return {
       sourceSessionId: sourceSession.id,
       sourceClassroomId: sourceClassroom.id,
+      sourceCourseTitle,
       sourceLectureTitle,
       nativePageTitle,
       aixuexiPageTitle,

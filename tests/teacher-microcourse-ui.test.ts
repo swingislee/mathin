@@ -10,6 +10,8 @@ const runtimeFixesMigration = read("supabase", "migrations", "20260826000600_tea
 const lectureSourceMigration = read("supabase", "migrations", "20260827000100_teacher_microcourse_lecture_source_picker.sql");
 const gameContractMigration = read("supabase", "migrations", "20260827000300_courseware_game_page_contract.sql");
 const gameSourceMigration = read("supabase", "migrations", "20260827000400_teacher_microcourse_game_source_adapter.sql");
+const catalogPickerMigration = read("supabase", "migrations", "20260827000600_teacher_microcourse_course_catalog_picker.sql");
+const catalogAccessMigration = read("supabase", "migrations", "20260827000700_teacher_microcourse_course_catalog_access.sql");
 
 describe("DEV-TMC-1 teacher microcourse product surfaces", () => {
   it("keeps authoring behind the development flag, author capability, and a free session", () => {
@@ -44,6 +46,10 @@ describe("DEV-TMC-1 teacher microcourse product surfaces", () => {
     expect(manifest).toContain('gameId: "sudoku"');
     expect(manifest).toContain('authoringSurfaces: ["microcourse"]');
     expect(picker).toContain("createTeacherCompositionPagesFromLectureAction");
+    expect(picker).toContain("<CoursePicker");
+    expect(picker).toContain('fixedCourseKind="curriculum"');
+    expect(picker).toContain('accessContext="microcourse-source"');
+    expect(picker).not.toContain("StagePreview");
     expect(picker).toContain("sourceReleaseId: selected.releaseId");
     expect(picker).toContain("sourceLectureId: selected.lectureId");
     expect(contentMigration).toContain("source_release_id");
@@ -59,6 +65,12 @@ describe("DEV-TMC-1 teacher microcourse product surfaces", () => {
     expect(gameSourceMigration).not.toMatch(
       /source_revision\.doc_version\s+in\s*\([^)]*sudoku[\s\S]*/,
     );
+    expect(catalogPickerMigration).toContain("list_teacher_microcourse_source_lectures");
+    expect(catalogPickerMigration).toContain("family_row.purpose = 'production'");
+    expect(catalogPickerMigration).not.toContain("preview_doc");
+    expect(catalogAccessMigration).toContain("public.has_perm(uid, 'class.create')");
+    expect(catalogAccessMigration).toContain("public.has_perm(uid, 'courseware.microcourse.author')");
+    expect(catalogAccessMigration).toContain("p_course_kind = 'curriculum'");
     expect(runtimeFixesMigration).toContain("'type', 'doc'");
     expect(liveShell).toContain("session.lectureId || docPageKey");
   });

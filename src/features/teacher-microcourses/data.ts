@@ -1,7 +1,6 @@
 import "server-only";
 
 import { z } from "zod";
-import { parseCoursewareDoc, type CoursewareDoc } from "@/features/courseware-doc/document";
 import { buildH5EntryUrl, type ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSupabaseConfig } from "@/lib/supabase/config";
@@ -251,31 +250,18 @@ export interface TeacherMicrocourseSourceLecture {
   lectureTitle: string;
   releaseId: string;
   pageCount: number;
-  previewPageDocId: string;
-  previewRevisionId: string;
-  previewPageNo: number;
-  previewPageTitle: string;
-  previewDoc: CoursewareDoc;
-  previewBindings: TeacherMicrocourseBinding[];
-  previewBindingUrls: ResolvedBindingUrls;
 }
 
-export async function searchTeacherMicrocourseSourceLectures(input: {
-  query?: string;
-  familyId?: string | null;
-  courseId?: string | null;
+export async function listTeacherMicrocourseSourceLectures(input: {
+  courseId: string;
   limit?: number;
 }): Promise<TeacherMicrocourseSourceLecture[]> {
   const value = z.object({
-    query: z.string().max(100).default(""),
-    familyId: uuid.nullable().default(null),
-    courseId: uuid.nullable().default(null),
-    limit: z.number().int().min(1).max(100).default(60),
+    courseId: uuid,
+    limit: z.number().int().min(1).max(200).default(100),
   }).parse(input);
   const supabase = await createClient();
-  const { data, error } = await rpc(supabase)("search_teacher_microcourse_source_lectures", {
-    p_query: value.query,
-    p_family_id: value.familyId,
+  const { data, error } = await rpc(supabase)("list_teacher_microcourse_source_lectures", {
     p_course_id: value.courseId,
     p_limit: value.limit,
   });
@@ -290,39 +276,17 @@ export async function searchTeacherMicrocourseSourceLectures(input: {
     lecture_title: z.string(),
     release_id: uuid,
     page_count: z.number().int().positive(),
-    preview_page_doc_id: uuid,
-    preview_revision_id: uuid,
-    preview_page_no: z.number().int().positive(),
-    preview_page_title: z.string(),
-    preview_doc: z.unknown(),
-    preview_bindings: z.array(bindingSchema),
   })).parse(data ?? []);
-  return Promise.all(rows.map(async (row) => {
-    const previewBindings = row.preview_bindings.map((binding) => ({
-      bindingKey: binding.bindingKey,
-      assetRevisionId: binding.assetRevisionId,
-      role: binding.role ?? null,
-      kind: binding.kind ?? null,
-      storagePath: binding.storagePath ?? null,
-    }));
-    return {
-      familyId: row.family_id,
-      familyTitle: row.family_title,
-      courseId: row.course_id,
-      courseTitle: row.course_title,
-      lectureId: row.lecture_id,
-      lectureNo: row.lecture_no,
-      lectureTitle: row.lecture_title,
-      releaseId: row.release_id,
-      pageCount: row.page_count,
-      previewPageDocId: row.preview_page_doc_id,
-      previewRevisionId: row.preview_revision_id,
-      previewPageNo: row.preview_page_no,
-      previewPageTitle: row.preview_page_title,
-      previewDoc: parseCoursewareDoc(row.preview_doc),
-      previewBindings,
-      previewBindingUrls: await resolveBindingUrls(previewBindings),
-    };
+  return rows.map((row) => ({
+    familyId: row.family_id,
+    familyTitle: row.family_title,
+    courseId: row.course_id,
+    courseTitle: row.course_title,
+    lectureId: row.lecture_id,
+    lectureNo: row.lecture_no,
+    lectureTitle: row.lecture_title,
+    releaseId: row.release_id,
+    pageCount: row.page_count,
   }));
 }
 

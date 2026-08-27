@@ -9,20 +9,39 @@ describe("teacher microcourse authoring UX", () => {
   it("selects published lectures and inserts the complete release in one transaction", () => {
     const picker = read("src", "features", "teacher-microcourses", "MicrocourseSourcePicker.tsx");
     const actions = read("src", "features", "teacher-microcourses", "actions.ts");
+    const courseActions = read("src", "features", "school", "actions", "classes.ts");
+    const sharedPicker = read("src", "features", "school", "teaching-operations", "CoursePicker.tsx");
+    const catalogPickerMigration = read("supabase", "migrations", "20260827000600_teacher_microcourse_course_catalog_picker.sql");
+    const catalogAccessMigration = read("supabase", "migrations", "20260827000700_teacher_microcourse_course_catalog_access.sql");
     const zh = read("messages", "zh.json");
     const en = read("messages", "en.json");
 
     expect(picker).toContain("aria-pressed={checked}");
+    expect(picker).toContain("<CoursePicker");
+    expect(picker).toContain('fixedCourseKind="curriculum"');
+    expect(picker).toContain('purpose="production"');
+    expect(picker).toContain('accessContext="microcourse-source"');
+    expect(picker).not.toContain("StagePreview");
+    expect(picker).not.toContain("previewDoc");
     expect(picker).toContain("createTeacherCompositionPagesFromLectureAction");
     expect(picker).toContain("source.pageCount");
     expect(picker).not.toContain("for (const revisionId");
     expect(actions).toContain('"create_teacher_microcourse_composition_pages_from_lecture"');
-    expect(picker).toContain("sourceCatalogEmpty");
+    expect(actions).toContain("listTeacherMicrocourseSourceLectures");
+    expect(catalogPickerMigration).toContain("list_teacher_microcourse_source_lectures");
+    expect(catalogPickerMigration).toContain("copy_teacher_microcourse_lecture_pages_internal");
+    expect(catalogPickerMigration).toContain("from public, anon, authenticated");
+    expect(catalogPickerMigration).not.toContain("preview_doc");
+    expect(sharedPicker).toContain("searchTeacherMicrocourseSourceCoursesAction");
+    expect(courseActions).toContain('"courseware.microcourse.author"');
+    expect(catalogAccessMigration).toContain("p_purpose = 'production'");
+    expect(catalogAccessMigration).toContain("p_course_kind = 'curriculum'");
+    expect(catalogAccessMigration).toContain("can_build_class or course_row.course_kind = 'curriculum'");
     expect(picker).toContain("retrySourceSearch");
     expect(zh).toContain('"insertLecture"');
     expect(en).toContain('"insertLecture"');
-    expect(zh).toContain('"sourceCatalogEmpty"');
-    expect(en).toContain('"sourceCatalogEmpty"');
+    expect(zh).toContain('"sourceCourseLabel"');
+    expect(en).toContain('"sourceCourseLabel"');
   });
 
   it("keeps details compact and autosaves every page mode before navigation", () => {

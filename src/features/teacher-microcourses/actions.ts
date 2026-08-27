@@ -24,7 +24,7 @@ import { actionError, type ActionResult } from "@/lib/action-result";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { microcourseH5Bytes, normalizeMicrocourseH5 } from "./h5";
 import { teacherImageDimensions } from "./image-metadata";
-import { loadTeacherMicrocourseH5Html, searchTeacherMicrocourseSourceLectures } from "./data";
+import { listTeacherMicrocourseSourceLectures, loadTeacherMicrocourseH5Html } from "./data";
 import {
   teacherMicrocoursePageDocSchema,
   type TeacherMicrocoursePageDoc,
@@ -409,14 +409,12 @@ export async function updateTeacherH5PageAction(input: {
   }
 }
 
-export async function searchTeacherMicrocourseSourceLecturesAction(input: {
-  query?: string;
-  familyId?: string | null;
-  courseId?: string | null;
+export async function listTeacherMicrocourseSourceLecturesAction(input: {
+  courseId: string;
   limit?: number;
 }) {
   await authorizedClient("courseware.microcourse.author");
-  return searchTeacherMicrocourseSourceLectures(input);
+  return listTeacherMicrocourseSourceLectures(input);
 }
 
 export async function loadTeacherMicrocourseH5HtmlAction(artifactId: string): Promise<string> {
