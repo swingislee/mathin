@@ -550,7 +550,7 @@ template_version:
 
 | 子门 | 状态 | 证据范围 |
 | --- | --- | --- |
-| 本机实现与机器检查 | **PASS** | commits `cd3b2bf`、`26698e3`、`96f3301`、`a4fa9e4`、`5c13d5d`、`f418dd9`；迁移 `20260826000200`～`20260826000600`；三份事务回滚 SQL 断言通过；微课定向 Vitest 3 文件 17/17；固定普通教师、教研、主管的 zh/en Playwright 1/1；`pnpm ci:checks` 16/16，当前 R1-Live 合同 60/60 |
+| 本机实现与机器检查 | **PASS** | 基础 commits `cd3b2bf`、`26698e3`、`96f3301`、`a4fa9e4`、`5c13d5d`、`f418dd9` 与迁移 `20260826000200`～`20260826000600` 已通过三份事务回滚 SQL、微课 Vitest 17/17、固定账号 Playwright 1/1、CI 16/16 和 R1-Live 60/60；整讲来源增量 commit `dd9a755`、migration `20260827000100_teacher_microcourse_lecture_source_picker` 另通过内容 SQL、微课 Vitest 4 文件 19/19、typecheck/消息/类型/规划审计和固定账号 Playwright 1/1 |
 | 产品负责人开发端初验 | **UNKNOWN** | 本机功能开关已启用并保留可验收版本；自动化只能证明覆盖合同，尚无产品负责人签收 |
 | 生产迁移与启用 | 尚未开始 | 本任务未连接 Xiaomi，仓库默认开关保持关闭；生产发布必须另做目标、备份/current/previous、数据影响、回退与 postflight 审批 |
 

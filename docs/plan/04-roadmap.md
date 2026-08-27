@@ -126,7 +126,7 @@ Gate 1 已按以下顺序关闭：
 
 开发验收必须同时覆盖作者/他人草稿隔离、提交快照不可替换、发布/退回/撤回/新版切换原子性、数独唯一解、H5 离线 CSP、自由课次冻结、其他教师搜索建班以及 zh/en 旅程。功能由 `teaching.teacher_microcourses_v1` 控制；本地机器检查和产品初验完成后仍须另行取得生产迁移与启用授权。
 
-截至 2026-08-26，本机实现与机器检查为 **PASS**：commits `cd3b2bf`、`26698e3`、`96f3301`、`a4fa9e4`、`5c13d5d`、`f418dd9`，迁移 head=`20260826000600_teacher_microcourse_runtime_fixes`；三份 SQL 断言、微课 Vitest 17/17、普通教师—教研—主管 zh/en Playwright 1/1、`pnpm ci:checks` 16/16 和当前 R1-Live 合同 60/60 通过。产品负责人开发端初验仍为 **UNKNOWN**；本任务未连接 Xiaomi，生产 migration、应用和开关均未部署。详细边界见 [doc 26 §十三](26-teacher-workflow-upgrade.md#十三dev-tmc-1-普通教师短期微课) 与[开发证据](../evidence/r1/teacher-microcourse-dev.md)。
+截至 2026-08-27，本机实现与机器检查为 **PASS**：基础闭环 commits `cd3b2bf`、`26698e3`、`96f3301`、`a4fa9e4`、`5c13d5d`、`f418dd9` 已通过三份 SQL 断言、微课 Vitest 17/17、普通教师—教研—主管 zh/en Playwright 1/1、`pnpm ci:checks` 16/16 和当前 R1-Live 合同 60/60；增量 commit `dd9a755` 把来源选择改为课次检索与整讲事务插入，本机 migration head=`20260827000100_teacher_microcourse_lecture_source_picker`，回滚式内容 SQL、微课 Vitest 4 文件 19/19、typecheck、消息/类型/规划审计和同一固定账号 Playwright 1/1 通过。产品负责人对该增量的开发端初验仍为 **UNKNOWN**；本任务未连接 Xiaomi，生产 migration、应用和开关均未部署。详细边界见 [doc 26 §十三](26-teacher-workflow-upgrade.md#十三dev-tmc-1-普通教师短期微课) 与[开发证据](../evidence/r1/teacher-microcourse-dev.md)。
 
 ## 6. 原 R1 工作重新定位
 
