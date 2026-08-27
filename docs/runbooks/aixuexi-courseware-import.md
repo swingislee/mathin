@@ -13,6 +13,8 @@
 
 源包没有提供的第 7/15 讲不导入课件；合并后的课程包在数据库教学计划中补充 10 条占位讲次。占位讲次不创建 release，课件准备状态保持“未发布”。
 
+开发库另可导入暑期增量包 `2026-summer-aplus-quanguo-math`。该包当前只包含一年级 A+ 全国版第 1 讲《一个萝卜一个坑》和第 8 讲《逃家的小羊》，合计 2 讲、66 页；数据库课程保留完整 15 讲教学计划，其余 13 讲只建空 `courseware_template`、无 release 的占位讲次，不补造课件或来源记录。这个开发增量不改变上表 Production 1.0 秋季基线。
+
 ## 2. 页面与 4:3 合同
 
 爱学习页面保存为 projection v31 的 `aixuexi-page-doc-v1`，不转换成 E 系列 `page-doc-v1`。课程族、课程、讲次、CAS、revision/release、双轨 head 和课次冻结继续复用 P6 数据层。
@@ -43,10 +45,12 @@
 pnpm cw:aixuexi:build -- --package-key 2026-gplus-sujiao-math
 pnpm cw:aixuexi:build -- --package-key 2026-xplus-sujiao-math
 pnpm cw:aixuexi:build -- --package-key 2026-aplus-quanguo-math
+pnpm cw:aixuexi:build -- --package-key 2026-summer-aplus-quanguo-math
 
 pnpm cw:aixuexi:import -- --package-key 2026-gplus-sujiao-math --dry-run
 pnpm cw:aixuexi:import -- --package-key 2026-xplus-sujiao-math --dry-run
 pnpm cw:aixuexi:import -- --package-key 2026-aplus-quanguo-math --dry-run
+pnpm cw:aixuexi:import -- --package-key 2026-summer-aplus-quanguo-math --dry-run
 ```
 
 只校验合同而不复制 H5 文件时，在 build 命令末尾加 `--metadata-only`。当前完整构建结果：
@@ -56,6 +60,7 @@ pnpm cw:aixuexi:import -- --package-key 2026-aplus-quanguo-math --dry-run
 | G+ | 56/1641 | 6981 | 838 | 59/2484 |
 | X+ | 84/2767 | 14889 | 2424 | 70/3021 |
 | A+ | 30/1034 | 5671 | 1335 | 87/4864 |
+| A+ 暑期开发增量 | 2/66 | 350 | 105 | 7/312 |
 
 范围漂移、projection 版本错误、离线验证不完整、外部 URL、缺失资源、hash/字节数不符或不安全标记都必须非零退出。
 
@@ -65,6 +70,7 @@ pnpm cw:aixuexi:import -- --package-key 2026-aplus-quanguo-math --dry-run
 pnpm cw:aixuexi:import -- --package-key 2026-gplus-sujiao-math
 pnpm cw:aixuexi:import -- --package-key 2026-xplus-sujiao-math
 pnpm cw:aixuexi:import -- --package-key 2026-aplus-quanguo-math
+pnpm cw:aixuexi:import -- --package-key 2026-summer-aplus-quanguo-math
 ```
 
 可追加 `--start-at <1-based-index> --limit <count>` 分批运行；索引按 `lectures.ndjson` 稳定顺序，不是讲号。每讲先上传内容寻址对象，再用单个数据库事务写来源映射、页面、revision、两轨 binding/release/head。中断后从失败项重跑；`conflicts`、`baselineDrift` 必须为 0，已存在对象和行只报告 existing。
@@ -85,7 +91,9 @@ pnpm messages:check
 pnpm build
 ```
 
-开发库必须精确满足：3 个 imported source package、12 门课程、180 条教学计划讲次（170 条 source-backed、10 条未发布占位）、5442 页且全部 projection v31；两轨各 170 release/head、5442 页面 head、27541 binding；8 个原生游戏、9 个 embedded H5；runtime binding 缺失=0；重复导入零新增/零 drift。
+Production 1.0 秋季基线必须精确满足：3 个 imported source package、12 门课程、180 条教学计划讲次（170 条 source-backed、10 条未发布占位）、5442 页且全部 projection v31；两轨各 170 release/head、5442 页面 head、27541 binding；8 个原生游戏、9 个 embedded H5；runtime binding 缺失=0；重复导入零新增/零 drift。
+
+导入暑期开发增量后，开发库爱学习目录合计为 4 个 imported source package、13 门课程、195 条教学计划讲次（172 条 source-backed、23 条未发布占位）、5508 页。暑期目标课程必须精确为 15 讲；第 1、8 讲分别为 34/32 页并各有两轨 release/head，两轨各新增 350 个 binding；其余 13 讲保持空模板、0 页面、0 release。重复导入必须 Storage 零上传、数据库零 conflict/零 drift。
 
 浏览器至少抽查：G+ `source-master` 4:3；A+ 动画兼容页逐步揭示；X+ embedded H5 的 opaque-origin sandbox；TrueOrFalse 和 TopicClassification 的源样式与交互；显式第 7/15 讲占位；zh/en Studio 标签。H5 不得添加 `allow-same-origin`，原生游戏 shadow root 必须可在 React Strict Mode 重挂载。
 

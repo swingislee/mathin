@@ -146,7 +146,7 @@ command_or_runbook, artifact_url_or_path, artifact_hash, failure_ticket
 | 财务 | M3（安全关闭） | M4 安全关闭 | R1-8 已锁定发布门并关闭路由/导航、数据、work item/审批、通知、指标和 job；R1-15/18 在隔离副本和正式环境复核关闭不变量 | 8/15/18 |
 | Terms | M2 | M4 | 图谱、内容、搜索、SEO、跨链全验 | 9 |
 | 公共内容发布 | M1～M2 | M4 | 统一状态机、资源、稳定关系、本地化状态 | 9～11 |
-| 课程研发/双轨 release | M3 | M4 | P6-AIX-2 已在开发库固定 G+/X+/A+ 170 讲/5442 页；[来源 manifest 子门](../evidence/r1/r1-9-courseware-source-manifest.md)已同步 102 门/1305 讲/2610 条 release-1 的 v4 确定性合同、只读导出/对象校验核心与受控 runner；批准副本真实 inventory、Storage/H5 审计、隔离演练和正式 release-1 仍缺 | 9/15/18 |
+| 课程研发/双轨 release | M3 | M4 | P6-AIX-2 已固定 G+/X+/A+ 秋季 170 讲/5442 页；2026-08-27 开发库另导入一年级 A+ 暑期 2 讲/66 页并保留 13 个空占位，开发库爱学习现为 13 门课程、195 个教学计划讲次（172 个 source-backed）/5508 页，暑期增量尚未进入 Production 1.0 基线。[来源 manifest 子门](../evidence/r1/r1-9-courseware-source-manifest.md)已同步 102 门/1305 讲/2610 条 release-1 的 v4 确定性合同、只读导出/对象校验核心与受控 runner；批准副本真实 inventory、Storage/H5 审计、隔离演练和正式 release-1 仍缺 | 9/15/18 |
 | Story | M1 | M4 | 完整章节和内容生产记录 | 10 |
 | Games | M2～M3 | M4 | 排名可信、浏览器、容量 | 11/12 |
 | Minds | M2 | M4 | Terms 关系、内容回退 | 11/12 |

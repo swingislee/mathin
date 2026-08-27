@@ -15,14 +15,26 @@ const PACKAGE_CONFIGS = new Map([
   ["2026-gplus-sujiao-math", {
     lectureCount: 56, pageCount: 1641, grades: [3, 4, 5, 6],
     level: "G+", sourceLevel: "能力强化 G+", edition: "苏教版", productPrefix: "AXX26G-SJ",
+    term: "秋季", termCode: "AUT",
+    playerRuntimeSchemaVersion: 3, playerRuntimeDerivationVersion: 3,
   }],
   ["2026-xplus-sujiao-math", {
     lectureCount: 84, pageCount: 2767, grades: [1, 2, 3, 4, 5, 6],
     level: "X+", sourceLevel: "能力提高 X+", edition: "苏教版", productPrefix: "AXX26X-SJ",
+    term: "秋季", termCode: "AUT",
+    playerRuntimeSchemaVersion: 3, playerRuntimeDerivationVersion: 3,
   }],
   ["2026-aplus-quanguo-math", {
     lectureCount: 30, pageCount: 1034, grades: [1, 2],
     level: "A+", sourceLevel: "思维突破 A+", edition: "全国版", productPrefix: "AXX26A-QG",
+    term: "秋季", termCode: "AUT",
+    playerRuntimeSchemaVersion: 3, playerRuntimeDerivationVersion: 3,
+  }],
+  ["2026-summer-aplus-quanguo-math", {
+    lectureCount: 2, pageCount: 66, grades: [1],
+    level: "A+", sourceLevel: "思维突破 A+", edition: "全国版", productPrefix: "AXX26A-QG",
+    term: "暑期", termCode: "SUM",
+    playerRuntimeSchemaVersion: 4, playerRuntimeDerivationVersion: 5,
   }],
 ]);
 const TEXT_EXTENSIONS = new Set([".css", ".html", ".htm", ".js", ".json", ".mjs", ".svg", ".txt"]);
@@ -39,6 +51,10 @@ const SOURCE_PRESENTATION_HEIGHT = 675;
 
 function fail(message) {
   throw new Error(`AIXUEXI_BUILD: ${message}`);
+}
+
+export function aixuexiPackageDefinition(packageKey) {
+  return PACKAGE_CONFIGS.get(packageKey) ?? null;
 }
 
 function sha256(value) {
@@ -255,7 +271,7 @@ function assertSourceScope(siteManifest, catalog, config) {
   }
   for (const course of catalog.courses) {
     const grade = GRADE.get(course.grade);
-    if (!config.grades.includes(grade) || course.term !== "秋季" || course.level !== config.sourceLevel
+    if (!config.grades.includes(grade) || course.term !== config.term || course.level !== config.sourceLevel
         || course.status !== "complete") {
       fail(`lecture ${course.coursewareId} is outside the approved ${config.level} scope`);
     }
@@ -341,8 +357,9 @@ export async function buildAixuexiPackage(options) {
       || siteManifest.slideRuntime?.cssSha256 !== slideRuntime.cssSha256) {
     fail("invalid slide runtime contract");
   }
-  if (playerRuntime.schemaVersion !== 3 || playerRuntime.packageKey !== options.packageKey
-      || playerRuntime.derivationVersion !== 3
+  if (playerRuntime.schemaVersion !== config.playerRuntimeSchemaVersion
+      || playerRuntime.packageKey !== options.packageKey
+      || playerRuntime.derivationVersion !== config.playerRuntimeDerivationVersion
       || playerRuntime.lessonBindings?.length !== config.lectureCount) {
     fail("invalid player runtime contract");
   }
@@ -528,7 +545,7 @@ export async function buildAixuexiPackage(options) {
     }
     lectures.push({
       coursewareId: course.coursewareId,
-      mathinProductCode: `${config.productPrefix}-${String(grade).padStart(2, "0")}-AUT`,
+      mathinProductCode: `${config.productPrefix}-${String(grade).padStart(2, "0")}-${config.termCode}`,
       lessonIndex: catalogCourse.lessonIndex,
       lessonName: catalogCourse.lessonName,
       pageCount: catalogCourse.pageCount,
@@ -536,8 +553,8 @@ export async function buildAixuexiPackage(options) {
       sourceSystem: "aixuexi_bsk",
       sourcePackageKey: options.packageKey,
       sourcePackageManifestSha256: packageManifestSha256,
-      sourcePackageLabels: { year: 2026, level: config.level, edition: config.edition, subject: "数学", term: "秋季" },
-      sourcePackageScope: { grades: config.grades, term: "秋季", level: config.level, placeholders: "source_catalog_only" },
+      sourcePackageLabels: { year: 2026, level: config.level, edition: config.edition, subject: "数学", term: config.term },
+      sourcePackageScope: { grades: config.grades, term: config.term, level: config.level, placeholders: "source_catalog_only" },
       sourcePackageCounts: { lectureCount: config.lectureCount, pageCount: config.pageCount },
       sourceRuntimePackageHash: runtimePackageHash,
       sourceProductCode: catalogCourse.productCode,

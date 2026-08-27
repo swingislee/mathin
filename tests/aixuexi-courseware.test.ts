@@ -8,7 +8,10 @@ import {
   type AixuexiPageDoc,
 } from "../src/features/courseware-doc/aixuexi-schema";
 import { buildImportSql } from "../scripts/cw-import.mjs";
-import { rewriteTopicRootUrls } from "../scripts/aixuexi-build-package.mjs";
+import {
+  aixuexiPackageDefinition,
+  rewriteTopicRootUrls,
+} from "../scripts/aixuexi-build-package.mjs";
 import { renderAixuexiMathHtml } from "../src/features/courseware-doc/aixuexi-math";
 import { compareCourseDifficulty } from "../src/features/school/teaching-operations/course-difficulty";
 import {
@@ -116,6 +119,20 @@ describe("Aixuexi courseware adapter", () => {
     expect(aixuexiPackageLevel("2026-xplus-sujiao-math")).toBe("X+");
     expect(aixuexiPackageLevel("2026-aplus-quanguo-math")).toBe("A+");
     expect(aixuexiPackageLevel("future-package")).toBeNull();
+  });
+
+  it("keeps the partial summer A+ source package separate from the autumn catalog", () => {
+    expect(aixuexiPackageDefinition("2026-summer-aplus-quanguo-math")).toMatchObject({
+      lectureCount: 2,
+      pageCount: 66,
+      grades: [1],
+      level: "A+",
+      term: "暑期",
+      termCode: "SUM",
+      playerRuntimeSchemaVersion: 4,
+      playerRuntimeDerivationVersion: 5,
+    });
+    expect(aixuexiPackageDefinition("future-package")).toBeNull();
   });
 
   it("keeps the merged course package difficulty order", () => {
