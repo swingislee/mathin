@@ -288,7 +288,7 @@ function H5Frame({
     <div
       ref={frameRef}
       data-classroom-input="native"
-      style={{ position: "relative", width: "100%", height: "100%", background: "#fff" }}
+      style={{ position: "relative", width: "100%", height: "100%", background: "transparent" }}
     >
       <iframe
         ref={iframeRef}
