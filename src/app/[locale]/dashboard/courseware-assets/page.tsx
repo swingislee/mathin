@@ -62,7 +62,7 @@ export default async function CoursewareAssetLibraryPage({
       {items.length === 0 ? (
         <DashboardEmptyCard>{t("assetLibraryEmpty")}</DashboardEmptyCard>
       ) : (
-        <DashboardCardShell>
+        <DashboardCardShell className="rounded-none border-x-0">
           <Table className="w-full min-w-[48rem] border-collapse text-left text-sm">
             <TableHeader className="border-b border-line text-xs text-muted">
               <TableRow>

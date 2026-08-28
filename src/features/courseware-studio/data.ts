@@ -156,9 +156,12 @@ export interface SharedAssetLibraryItem {
   previewUrl: string | null;
 }
 
-const ASSET_LIBRARY_PAGE_SIZE = 100;
+export const ASSET_LIBRARY_PAGE_SIZE = 10;
 
-/** 资源库按服务端筛选和分页，避免全量迁入后一次把数万 semantic asset 下发给浏览器。 */
+/**
+ * 资源库每次只取 10 条，并且只为这 10 条生成预览签名 URL。素材数量会持续增长，
+ * 首屏不应因为后台还有更多资源而线性变慢。
+ */
 export async function loadCoursewareSharedAssets(filters: AssetLibraryFilters) {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("list_cw_shared_assets", {
