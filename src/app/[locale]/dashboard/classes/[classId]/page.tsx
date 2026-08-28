@@ -46,6 +46,11 @@ import { TeachingReadinessPanel } from "@/features/school/TeachingReadinessPanel
 import { listMyWorkItems } from "@/features/school/work-items";
 import { Link } from "@/i18n/navigation";
 import { getMyPerms, requireDashboardEnvironment } from "@/lib/auth";
+import {
+  getOrganizationTimezoneV2,
+  getScheduleDefaultsV2,
+  listActiveRoomOptionsV2,
+} from "@/features/school/organization-locations";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const TABS = ["sessions", "students", "readiness", "records"] as const;
@@ -85,11 +90,14 @@ async function ClassDetailBody({
   const [{ classId }, rawSearchParams, { user, environment }] = await Promise.all([params, searchParams, requireDashboardEnvironment(locale, ["staff"])]);
   if (!UUID_PATTERN.test(classId)) notFound();
 
-  const [t, classroom, perms, allWorkItems] = await Promise.all([
+  const [t, classroom, perms, allWorkItems, roomOptions, timeZone, scheduleDefaults] = await Promise.all([
     getTranslations("school.classes"),
     getClassroomDetailForScope(classId),
     getMyPerms(user.id),
     listMyWorkItems(),
+    listActiveRoomOptionsV2(),
+    getOrganizationTimezoneV2(),
+    getScheduleDefaultsV2(),
   ]);
   if (!classroom) notFound();
 
@@ -174,7 +182,7 @@ async function ClassDetailBody({
             {(primaryAction || isManagementView) ? (
               <DashboardCommandActions>
                 {primaryAction}
-                {isManagementView ? <ClassroomSettingsSheet classroom={classroom} staffOptions={staffOptions} teachingReadiness={teachingReadiness} /> : null}
+                {isManagementView ? <ClassroomSettingsSheet classroom={classroom} staffOptions={staffOptions} teachingReadiness={teachingReadiness} roomOptions={roomOptions} /> : null}
               </DashboardCommandActions>
             ) : null}
           </DashboardCommandPanel>
@@ -194,6 +202,8 @@ async function ClassDetailBody({
                 workItems={sessionWorkItems}
                 returnTo={tabHref("sessions")}
                 canAddSession={classroom.courseId === null && classroom.capabilities.canManageSchedule}
+                defaultDurationMinutes={scheduleDefaults.defaultDurationMinutes}
+                timeZone={timeZone}
               />
             )}
             {activeTab === "students" && (
@@ -229,7 +239,9 @@ async function ClassDetailBody({
         key={activeSession?.id ?? "none"}
         session={activeSession}
         classroomName={classroom.name}
-        classroomRoom={classroom.room}
+        classroomDefaultRoomId={classroom.defaultRoomId}
+        roomOptions={roomOptions}
+        timeZone={timeZone}
         closeHref={closeHref}
       />
     </>

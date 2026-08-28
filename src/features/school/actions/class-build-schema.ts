@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { datetime, intInRange, requiredText, text, uuid } from "./schemas";
+import { datetime, intInRange, requiredText, uuid } from "./schemas";
 
 // Optional Select fields may arrive as either the explicit null used by the
 // current wizard or an empty string from an older/hydrating client. Normalize
@@ -13,7 +13,7 @@ export const buildClassSchema = z.object({
   name: requiredText(100),
   courseId: uuid.nullable(),
   capacity: intInRange(1, 500).nullable(),
-  room: text(100),
+  roomId: uuid.nullable(),
   primaryTeacherId: uuid,
   learningSupportId: optionalFormUuid,
   schoolTermId: uuid,

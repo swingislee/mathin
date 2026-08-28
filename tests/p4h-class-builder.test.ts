@@ -54,14 +54,14 @@ describe("P4H CoursePicker and class-builder contract", () => {
     expect(migration).not.toContain("values (cid, p_learning_support_id, 'teacher')");
     expect(migration).toContain("case when p_activate then 'active' else 'planning' end");
     expect(actions).toContain('authorizedClient("class.create")');
-    expect(actions).toContain('rpc(supabase)("create_class"');
+    expect(actions).toContain('rpc(supabase)("create_class_v2"');
     expect(actions).toContain(".bind(supabase)");
 
     const baseInput = {
       name: "R1 class",
       courseId: null,
       capacity: null,
-      room: "",
+      roomId: null,
       primaryTeacherId: "11111111-1111-4111-8111-111111111111",
       schoolTermId: "22222222-2222-4222-8222-222222222222",
       purpose: "test" as const,
@@ -134,7 +134,7 @@ describe("P4H CoursePicker and class-builder contract", () => {
       name: "Topic class",
       courseId: null,
       capacity: null,
-      room: "",
+      roomId: null,
       primaryTeacherId: "11111111-1111-4111-8111-111111111111",
       learningSupportId: null,
       schoolTermId: "22222222-2222-4222-8222-222222222222",

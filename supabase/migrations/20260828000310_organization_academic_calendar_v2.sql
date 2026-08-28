@@ -579,6 +579,43 @@ end
 $$;
 
 -- Manual scheduling on an effective closed date needs an explicit reason.
+create or replace function public.create_managed_class_session_v2(
+  p_classroom_id uuid,
+  p_title text,
+  p_scheduled_at timestamptz,
+  p_duration_min smallint,
+  p_confirm_closed_day boolean default false,
+  p_closed_day_reason text default ''
+) returns uuid language plpgsql security definer
+set search_path = public, pg_temp
+as $$
+declare timezone_value text; local_day date; calendar_result jsonb; entry_kind text;
+        default_room_id_value uuid; session_id_value uuid;
+begin
+  if auth.uid() is null then raise exception 'UNAUTHENTICATED'; end if;
+  select default_room_id into default_room_id_value from public.classrooms where id = p_classroom_id;
+  select timezone into timezone_value from public.organizations where singleton_key = 1;
+  local_day := (p_scheduled_at at time zone timezone_value)::date;
+  calendar_result := public.get_effective_calendar_day_v2(local_day, default_room_id_value);
+  entry_kind := calendar_result #>> '{entry,kind}';
+  if entry_kind = 'closed' and (
+    not coalesce(p_confirm_closed_day, false)
+    or char_length(btrim(coalesce(p_closed_day_reason, ''))) not between 1 and 500
+  ) then raise exception 'CLOSED_DAY_CONFIRMATION_REQUIRED'; end if;
+
+  session_id_value := public.create_managed_class_session(
+    p_classroom_id, p_title, p_scheduled_at, p_duration_min
+  );
+  if entry_kind = 'closed' then
+    perform public.emit_domain_event('session.closed_day.override_confirmed', 'class_session', session_id_value,
+      jsonb_build_object('day', local_day, 'roomId', default_room_id_value,
+        'calendarEntryId', calendar_result #>> '{entry,id}',
+        'reason', btrim(p_closed_day_reason)), null, null);
+  end if;
+  return session_id_value;
+end
+$$;
+
 create or replace function public.update_managed_class_session_v2(
   p_session_id uuid,
   p_title text,
@@ -591,8 +628,10 @@ create or replace function public.update_managed_class_session_v2(
 set search_path = public, pg_temp
 as $$
 declare timezone_value text; local_day date; calendar_result jsonb; entry_kind text;
+        current_room_id uuid;
 begin
   if auth.uid() is null then raise exception 'UNAUTHENTICATED'; end if;
+  select room_id into current_room_id from public.class_sessions where id = p_session_id;
   select timezone into timezone_value from public.organizations where singleton_key = 1;
   local_day := (p_scheduled_at at time zone timezone_value)::date;
   calendar_result := public.get_effective_calendar_day_v2(local_day, p_room_id);
@@ -603,7 +642,11 @@ begin
   ) then raise exception 'CLOSED_DAY_CONFIRMATION_REQUIRED'; end if;
 
   perform public.update_managed_class_session(p_session_id, p_title, p_scheduled_at, p_duration_min);
-  perform public.set_class_session_room_v2(p_session_id, p_room_id);
+  -- Editing title/time must not silently convert a frozen class-default assignment
+  -- into a session override when the selected room did not change.
+  if current_room_id is distinct from p_room_id then
+    perform public.set_class_session_room_v2(p_session_id, p_room_id);
+  end if;
   if entry_kind = 'closed' then
     perform public.emit_domain_event('session.closed_day.override_confirmed', 'class_session', p_session_id,
       jsonb_build_object('day', local_day, 'roomId', p_room_id,
@@ -624,6 +667,7 @@ revoke all on function public.create_teaching_calendar_entry_v2(uuid, text, text
 revoke all on function public.update_teaching_calendar_entry_v2(uuid, uuid, text, text, date, date, text, smallint) from public, anon, authenticated;
 revoke all on function public.archive_teaching_calendar_entry_v2(uuid) from public, anon, authenticated;
 revoke all on function public.get_effective_calendar_day_v2(date, uuid) from public, anon, authenticated;
+revoke all on function public.create_managed_class_session_v2(uuid, text, timestamptz, smallint, boolean, text) from public, anon, authenticated;
 revoke all on function public.update_managed_class_session_v2(uuid, text, timestamptz, smallint, uuid, boolean, text) from public, anon, authenticated;
 
 grant execute on function public.list_school_years_v2() to authenticated;
@@ -632,6 +676,7 @@ grant execute on function public.create_teaching_calendar_entry_v2(uuid, text, t
 grant execute on function public.update_teaching_calendar_entry_v2(uuid, uuid, text, text, date, date, text, smallint) to authenticated;
 grant execute on function public.archive_teaching_calendar_entry_v2(uuid) to authenticated;
 grant execute on function public.get_effective_calendar_day_v2(date, uuid) to authenticated;
+grant execute on function public.create_managed_class_session_v2(uuid, text, timestamptz, smallint, boolean, text) to authenticated;
 grant execute on function public.update_managed_class_session_v2(uuid, text, timestamptz, smallint, uuid, boolean, text) to authenticated;
 
 select pg_notify('pgrst', 'reload schema');

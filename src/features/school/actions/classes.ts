@@ -83,6 +83,12 @@ const conflictSchema = z.object({
   lectureName: z.string(),
   scheduledAt: z.string(),
   durationMin: z.number().int(),
+  teacherConflict: z.boolean(),
+  roomConflict: z.boolean(),
+  roomId: uuid.nullable(),
+  roomName: z.string().nullable(),
+  campusId: uuid.nullable(),
+  campusName: z.string().nullable(),
 });
 
 type UntypedRpc = (name: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>;
@@ -271,15 +277,18 @@ export async function getTeacherMicrocourseSourceCourseDetailAction(
 
 export async function getClassBuildConflictsAction(
   primaryTeacherId: string,
+  roomId: string | null,
   slots: Array<{ scheduledAt: string; durationMin: number }>,
 ): Promise<ClassBuildScheduleConflict[]> {
   const value = parse(z.object({
     primaryTeacherId: uuid,
+    roomId: uuid.nullable(),
     slots: z.array(z.object({ scheduledAt: datetime, durationMin: intInRange(1, 600) })).max(200),
-  }), { primaryTeacherId, slots });
+  }), { primaryTeacherId, roomId, slots });
   const { supabase } = await authorizedClient("class.create");
-  const { data, error } = await rpc(supabase)("get_class_build_conflicts", {
+  const { data, error } = await rpc(supabase)("get_class_build_conflicts_v2", {
     p_primary_teacher_id: value.primaryTeacherId,
+    p_room_id: value.roomId,
     p_slots: value.slots.map((slot) => ({ scheduled_at: slot.scheduledAt, duration_min: slot.durationMin })),
   });
   if (error) throw new Error(error.message);
@@ -289,6 +298,12 @@ export async function getClassBuildConflictsAction(
     lecture_name: z.string(),
     scheduled_at: z.string(),
     duration_min: z.number().int(),
+    teacher_conflict: z.boolean(),
+    room_conflict: z.boolean(),
+    room_id: uuid.nullable(),
+    room_name: z.string().nullable(),
+    campus_id: uuid.nullable(),
+    campus_name: z.string().nullable(),
   })).parse(data ?? []);
   return rows.map((row) => conflictSchema.parse({
     sessionId: row.session_id,
@@ -296,6 +311,12 @@ export async function getClassBuildConflictsAction(
     lectureName: row.lecture_name,
     scheduledAt: row.scheduled_at,
     durationMin: row.duration_min,
+    teacherConflict: row.teacher_conflict,
+    roomConflict: row.room_conflict,
+    roomId: row.room_id,
+    roomName: row.room_name,
+    campusId: row.campus_id,
+    campusName: row.campus_name,
   }));
 }
 
@@ -348,10 +369,10 @@ export async function buildClass(input: BuildClassInput): Promise<string> {
     duration_min: session.durationMin,
   }));
   const { data: cid, error: rpcError } = value.courseId === null
-    ? await rpc(supabase)("create_free_class_with_sessions", {
+    ? await rpc(supabase)("create_free_class_with_sessions_v2", {
         p_name: value.name,
         p_capacity: value.capacity,
-        p_room: value.room,
+        p_room_id: value.roomId,
         p_primary_teacher_id: value.primaryTeacherId,
         p_learning_support_id: value.learningSupportId,
         p_term_id: value.schoolTermId,
@@ -360,11 +381,11 @@ export async function buildClass(input: BuildClassInput): Promise<string> {
         p_sessions: sessions,
         p_activate: value.activateNow,
       })
-    : await rpc(supabase)("create_class", {
+    : await rpc(supabase)("create_class_v2", {
         p_name: value.name,
         p_course_id: value.courseId,
         p_capacity: value.capacity,
-        p_room: value.room,
+        p_room_id: value.roomId,
         p_primary_teacher_id: value.primaryTeacherId,
         p_learning_support_id: value.learningSupportId,
         p_term_id: value.schoolTermId,
@@ -445,6 +466,9 @@ const managedSessionSchema = z.object({
   title: requiredText(100),
   scheduledAt: datetime,
   durationMin: intInRange(1, 600),
+  roomId: uuid.nullable(),
+  confirmClosedDay: z.boolean().default(false),
+  closedDayReason: text(500).default(""),
 });
 
 const MANAGED_SESSION_CODES = [
@@ -455,21 +479,30 @@ const MANAGED_SESSION_CODES = [
   "SESSION_NOT_FOUND",
   "SESSION_ALREADY_STARTED",
   "SESSION_NOT_EDITABLE",
+  "CLOSED_DAY_CONFIRMATION_REQUIRED",
   ...COMMON_CODES,
 ] as const;
 
 export async function createClassSessionAction(
   classroomId: string,
-  input: { title: string; scheduledAt: string; durationMin: number },
+  input: {
+    title: string;
+    scheduledAt: string;
+    durationMin: number;
+    confirmClosedDay?: boolean;
+    closedDayReason?: string;
+  },
 ): Promise<ActionResult<{ id: string }>> {
   try {
-    const value = parse(managedSessionSchema.extend({ classroomId: uuid }), { classroomId, ...input });
+    const value = parse(managedSessionSchema.omit({ roomId: true }).extend({ classroomId: uuid }), { classroomId, ...input });
     const supabase = await createClient();
-    const { data, error } = await rpc(supabase)("create_managed_class_session", {
+    const { data, error } = await rpc(supabase)("create_managed_class_session_v2", {
       p_classroom_id: value.classroomId,
       p_title: value.title,
       p_scheduled_at: value.scheduledAt,
       p_duration_min: value.durationMin,
+      p_confirm_closed_day: value.confirmClosedDay,
+      p_closed_day_reason: value.closedDayReason,
     });
     if (error) throw new Error(error.message);
     return { ok: true, data: { id: parse(uuid, data) } };
@@ -480,16 +513,26 @@ export async function createClassSessionAction(
 
 export async function updateClassSessionAction(
   sessionId: string,
-  input: { title: string; scheduledAt: string; durationMin: number },
+  input: {
+    title: string;
+    scheduledAt: string;
+    durationMin: number;
+    roomId: string | null;
+    confirmClosedDay?: boolean;
+    closedDayReason?: string;
+  },
 ): Promise<ActionResult> {
   try {
     const value = parse(managedSessionSchema.extend({ sessionId: uuid }), { sessionId, ...input });
     const supabase = await createClient();
-    const { error } = await rpc(supabase)("update_managed_class_session", {
+    const { error } = await rpc(supabase)("update_managed_class_session_v2", {
       p_session_id: value.sessionId,
       p_title: value.title,
       p_scheduled_at: value.scheduledAt,
       p_duration_min: value.durationMin,
+      p_room_id: value.roomId,
+      p_confirm_closed_day: value.confirmClosedDay,
+      p_closed_day_reason: value.closedDayReason,
     });
     if (error) throw new Error(error.message);
     return { ok: true };
@@ -670,20 +713,19 @@ const updateClassroomSchema = z.object({
   classroomId: uuid,
   name: requiredText(100),
   capacity: intInRange(1, 500).nullable(),
-  room: text(100),
   grade: intInRange(1, 12).nullable(),
 });
 
 export async function updateClassroomAction(
   classroomId: string,
-  input: { name: string; capacity: number | null; room: string; grade: number | null },
+  input: { name: string; capacity: number | null; grade: number | null },
 ): Promise<ActionResult> {
   try {
     const value = parse(updateClassroomSchema, { classroomId, ...input });
     const { supabase } = await authorizedClient("class.manage");
     const { data, error } = await supabase
       .from("classrooms")
-      .update({ name: value.name, capacity: value.capacity, room: value.room, grade: value.grade })
+      .update({ name: value.name, capacity: value.capacity, grade: value.grade })
       .eq("id", value.classroomId)
       .select("id");
     if (error) throw new Error(error.message);
@@ -691,6 +733,92 @@ export async function updateClassroomAction(
     return { ok: true };
   } catch (error) {
     return actionError(error, SCOPED_CODES);
+  }
+}
+
+const roomAssignmentSchema = z.object({ classroomId: uuid, roomId: uuid.nullable() });
+const ROOM_ASSIGNMENT_CODES = [
+  "CLASSROOM_NOT_FOUND",
+  "SESSION_NOT_FOUND",
+  "SESSION_NOT_EDITABLE",
+  "INVALID_ROOM",
+  "FORBIDDEN_SCOPE",
+  "LOCATION_IMPACT_STALE",
+  ...COMMON_CODES,
+] as const;
+
+export interface ClassroomRoomApplyPreview {
+  classroomId: string;
+  roomId: string | null;
+  unstartedDefaultSessionCount: number;
+  capacityWarning: boolean;
+  classCapacity: number | null;
+  roomCapacity: number | null;
+}
+
+function parseRoomApplyPreview(data: unknown): ClassroomRoomApplyPreview {
+  return z.object({
+    classroomId: uuid,
+    roomId: uuid.nullable(),
+    unstartedDefaultSessionCount: z.number().int().nonnegative(),
+    capacityWarning: z.boolean(),
+    classCapacity: z.number().int().nullable(),
+    roomCapacity: z.number().int().nullable(),
+  }).parse(data);
+}
+
+export async function previewClassroomDefaultRoomAction(
+  classroomId: string,
+  roomId: string | null,
+): Promise<ActionResult<ClassroomRoomApplyPreview>> {
+  try {
+    const value = parse(roomAssignmentSchema, { classroomId, roomId });
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("get_classroom_room_apply_preview_v2", {
+      p_classroom_id: value.classroomId,
+      p_room_id: nullableRpcArg(value.roomId),
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true, data: parseRoomApplyPreview(data) };
+  } catch (error) {
+    return actionError<ClassroomRoomApplyPreview>(error, ROOM_ASSIGNMENT_CODES);
+  }
+}
+
+export async function updateClassroomDefaultRoomAction(input: {
+  classroomId: string;
+  roomId: string | null;
+  applyToUnstarted: boolean;
+  expectedUnstartedSessionCount: number | null;
+}): Promise<ActionResult> {
+  try {
+    const value = parse(roomAssignmentSchema.extend({
+      applyToUnstarted: z.boolean(),
+      expectedUnstartedSessionCount: z.number().int().nonnegative().nullable(),
+    }), input);
+    const supabase = await createClient();
+    const { error } = await supabase.rpc("update_classroom_default_room_v2", {
+      p_classroom_id: value.classroomId,
+      p_room_id: nullableRpcArg(value.roomId),
+      p_apply_to_unstarted: value.applyToUnstarted,
+      p_expected_unstarted_session_count: nullableRpcArg(value.expectedUnstartedSessionCount),
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ROOM_ASSIGNMENT_CODES);
+  }
+}
+
+export async function resetClassSessionRoomAction(sessionId: string): Promise<ActionResult> {
+  try {
+    const id = parse(uuid, sessionId);
+    const supabase = await createClient();
+    const { error } = await supabase.rpc("reset_class_session_room_v2", { p_session_id: id });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ROOM_ASSIGNMENT_CODES);
   }
 }
 

@@ -4,6 +4,7 @@ import { DashboardStatGrid, DashboardSummaryCard } from "@/features/school/dashb
 import { withReturnTo } from "./object-workspace/return-target";
 import { Link } from "@/i18n/navigation";
 import type { ClassroomDetail, SessionGroups } from "./classes";
+import { formatRoomLocation } from "./location-format";
 
 /**
  * 班级页侧栏的稳定摘要（doc 23 §9）。
@@ -37,7 +38,7 @@ export async function ClassroomSummary({ classroom }: { classroom: ClassroomDeta
           },
           { label: t("summarySessions"), value: classroom.sessions.length },
           { label: t("summaryEnded"), value: ended },
-          { label: t("summaryRoom"), value: classroom.room || "—" },
+          { label: t("summaryRoom"), value: formatRoomLocation(classroom.defaultRoomName, classroom.defaultRoomCampusName, t("roomTbd")) },
         ]}
       />
     </DashboardSummaryCard>

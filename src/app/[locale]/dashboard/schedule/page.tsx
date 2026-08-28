@@ -1,10 +1,9 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { ScheduleWeekView } from "@/features/school/ScheduleWeekView";
 import { SessionManagementDrawer } from "@/features/school/SessionManagementDrawer";
-import { TermManager } from "@/features/school/TermManager";
-import { listSchoolYears } from "@/features/school/courses";
 import { getSessionQuickRow } from "@/features/school/classes";
 import { getMyPerms, requireUser } from "@/lib/auth";
+import { getOrganizationTimezoneV2, listActiveRoomOptionsV2 } from "@/features/school/organization-locations";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -22,12 +21,13 @@ export default async function SchedulePage({
   const { locale } = await params;
   setRequestLocale(locale);
   const user = await requireUser(locale);
-  const [t, perms, rawSearchParams] = await Promise.all([
+  const [t, perms, rawSearchParams, roomOptions, timeZone] = await Promise.all([
     getTranslations("school.schedule"),
     getMyPerms(user.id),
     searchParams,
+    listActiveRoomOptionsV2(),
+    getOrganizationTimezoneV2(),
   ]);
-  const schoolYears = perms.has("schedule.manage") ? await listSchoolYears() : [];
 
   const requestedSessionId = first(rawSearchParams.session);
   const quickRow = requestedSessionId && UUID_PATTERN.test(requestedSessionId)
@@ -41,14 +41,17 @@ export default async function SchedulePage({
       <ScheduleWeekView
         title={t("title")}
         canFilterAll={perms.has("schedule.view.all")}
-        termManager={perms.has("schedule.manage") ? <TermManager years={schoolYears} /> : undefined}
+        roomOptions={roomOptions}
+        timeZone={timeZone}
       />
 
       <SessionManagementDrawer
         key={quickRow?.id ?? "none"}
         session={quickRow}
         classroomName={quickRow?.classroomName ?? ""}
-        classroomRoom={quickRow?.classroomRoom ?? ""}
+        classroomDefaultRoomId={quickRow?.classroomDefaultRoomId ?? null}
+        roomOptions={roomOptions}
+        timeZone={timeZone}
         closeHref="/dashboard/schedule"
       />
     </>

@@ -38,6 +38,19 @@ export interface LocationImpactV2 {
   historicalSessionCount: number;
 }
 
+export interface RoomOptionV2 {
+  id: string;
+  name: string;
+  capacity: number | null;
+  campusId: string;
+  campusName: string;
+}
+
+export interface ScheduleDefaultsV2 {
+  defaultDurationMinutes: number;
+  conflictPolicy: "warn";
+}
+
 function objectValue(value: unknown, code: string): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error(code);
   return value as Record<string, unknown>;
@@ -106,4 +119,34 @@ export async function getCampusV2(campusId: string): Promise<CampusV2> {
   const { data, error } = await supabase.rpc("get_campus_v2", { p_campus_id: campusId });
   if (error) throw new Error(error.message);
   return campusValue(data);
+}
+
+export async function listActiveRoomOptionsV2(): Promise<RoomOptionV2[]> {
+  const campuses = await getLocationCatalogV2(false);
+  return campuses.flatMap((campus) => campus.rooms.map((room) => ({
+    id: room.id,
+    name: room.name,
+    capacity: room.capacity,
+    campusId: campus.id,
+    campusName: campus.name,
+  })));
+}
+
+export async function getScheduleDefaultsV2(): Promise<ScheduleDefaultsV2> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("get_schedule_defaults_v2");
+  if (error) throw new Error(error.message);
+  const row = objectValue(data, "SCHEDULE_DEFAULTS_NOT_FOUND");
+  const duration = Number(row.defaultDurationMinutes);
+  if (!Number.isInteger(duration) || duration < 15 || duration > 300 || row.conflictPolicy !== "warn") {
+    throw new Error("SCHEDULE_DEFAULTS_NOT_FOUND");
+  }
+  return { defaultDurationMinutes: duration, conflictPolicy: "warn" };
+}
+
+export async function getOrganizationTimezoneV2(): Promise<string> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("get_organization_timezone_v2");
+  if (error) throw new Error(error.message);
+  return stringValue(data, "ORGANIZATION_TIMEZONE_NOT_FOUND");
 }

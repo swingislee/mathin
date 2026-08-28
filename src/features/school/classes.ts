@@ -74,6 +74,11 @@ export interface SessionRow {
   teacherOverrideId: string | null;
   teacherOverrideName: string | null;
   coursewareTrackOverride: "native-16x9" | "adapted-4x3" | null;
+  roomId: string | null;
+  roomName: string | null;
+  campusId: string | null;
+  campusName: string | null;
+  roomAssignmentOrigin: "class_default" | "session_override";
   state: TeachingSessionState;
   capabilities: SessionCapabilities;
 }
@@ -88,7 +93,11 @@ export interface ClassroomDetail {
   courseTitle: string | null;
   grade: number | null;
   capacity: number | null;
-  room: string;
+  defaultRoomId: string | null;
+  defaultRoomName: string | null;
+  defaultRoomCapacity: number | null;
+  defaultRoomCampusId: string | null;
+  defaultRoomCampusName: string | null;
   coursewareTrack: "native-16x9" | "adapted-4x3";
   archivedAt: string | null;
   purpose: ClassroomPurpose;
@@ -132,7 +141,18 @@ interface SessionQueryRow {
   void_reason: string | null;
   teacher_override: string | null;
   courseware_track_override: "native-16x9" | "adapted-4x3" | null;
+  room_id: string | null;
+  room_assignment_origin: "class_default" | "session_override";
+  campus_rooms: RoomJoinRow | null;
   profiles: { display_name: string } | null;
+}
+
+interface RoomJoinRow {
+  id: string;
+  name: string;
+  capacity: number | null;
+  campus_id: string;
+  campuses: { id: string; name: string } | null;
 }
 
 interface BuildSessionRowInput {
@@ -187,6 +207,11 @@ function buildSessionRow(row: SessionQueryRow, input: BuildSessionRowInput): Ses
     teacherOverrideId: row.teacher_override,
     teacherOverrideName: row.profiles?.display_name ?? null,
     coursewareTrackOverride: row.courseware_track_override,
+    roomId: row.room_id,
+    roomName: row.campus_rooms?.name ?? null,
+    campusId: row.campus_rooms?.campus_id ?? null,
+    campusName: row.campus_rooms?.campuses?.name ?? null,
+    roomAssignmentOrigin: row.room_assignment_origin,
     state,
     capabilities: resolveSessionCapabilities(context),
   };
@@ -200,7 +225,7 @@ export async function getClassroomDetailForScope(id: string): Promise<ClassroomD
 
   const { data: classroom, error } = await supabase
     .from("classrooms")
-    .select("id,name,course_id,grade,capacity,room,archived_at,courseware_track,purpose,offering_type,operational_status,trashed_at,courses(title)")
+    .select("id,name,course_id,grade,capacity,default_room_id,archived_at,courseware_track,purpose,offering_type,operational_status,trashed_at,courses(title),default_room:campus_rooms!classrooms_default_room_id_fkey(id,name,capacity,campus_id,campuses(id,name))")
     .eq("id", id)
     .maybeSingle<{
       id: string;
@@ -208,7 +233,8 @@ export async function getClassroomDetailForScope(id: string): Promise<ClassroomD
       course_id: string | null;
       grade: number | null;
       capacity: number | null;
-      room: string;
+      default_room_id: string | null;
+      default_room: RoomJoinRow | null;
       courseware_track: "native-16x9" | "adapted-4x3";
       archived_at: string | null;
       purpose: ClassroomPurpose;
@@ -245,7 +271,7 @@ export async function getClassroomDetailForScope(id: string): Promise<ClassroomD
       .returns<Array<{ user_id: string; role: string; profiles: { display_name: string } | null }>>(),
     supabase
       .from("class_sessions")
-      .select("id,lecture_id,lecture_no,title,scheduled_at,duration_min,started_at,ended_at,deleted_at,cancelled_by,cancel_reason,voided_at,void_reason,teacher_override,courseware_track_override,profiles!class_sessions_teacher_override_fkey(display_name)")
+      .select("id,lecture_id,lecture_no,title,scheduled_at,duration_min,started_at,ended_at,deleted_at,cancelled_by,cancel_reason,voided_at,void_reason,teacher_override,courseware_track_override,room_id,room_assignment_origin,profiles!class_sessions_teacher_override_fkey(display_name),campus_rooms!class_sessions_room_id_fkey(id,name,capacity,campus_id,campuses(id,name))")
       .eq("classroom_id", id)
       .order("scheduled_at", { ascending: true, nullsFirst: false })
       .returns<SessionQueryRow[]>(),
@@ -319,7 +345,11 @@ export async function getClassroomDetailForScope(id: string): Promise<ClassroomD
     courseTitle: classroom.courses?.title ?? null,
     grade: classroom.grade,
     capacity: classroom.capacity,
-    room: classroom.room,
+    defaultRoomId: classroom.default_room_id,
+    defaultRoomName: classroom.default_room?.name ?? null,
+    defaultRoomCapacity: classroom.default_room?.capacity ?? null,
+    defaultRoomCampusId: classroom.default_room?.campus_id ?? null,
+    defaultRoomCampusName: classroom.default_room?.campuses?.name ?? null,
     coursewareTrack: classroom.courseware_track,
     archivedAt: classroom.archived_at,
     purpose: classroom.purpose,
@@ -339,7 +369,7 @@ export async function getClassroomDetailForScope(id: string): Promise<ClassroomD
 export interface SessionQuickRow extends SessionRow {
   classroomId: string;
   classroomName: string;
-  classroomRoom: string;
+  classroomDefaultRoomId: string | null;
   classroomCoursewareTrack: "native-16x9" | "adapted-4x3";
 }
 
@@ -353,11 +383,11 @@ export async function getSessionQuickRow(sessionId: string): Promise<SessionQuic
   const { data: row, error } = await supabase
     .from("class_sessions")
     .select(
-      "id,lecture_id,lecture_no,title,scheduled_at,duration_min,started_at,ended_at,deleted_at,cancelled_by,cancel_reason,voided_at,void_reason,teacher_override,courseware_track_override,classroom_id," +
-        "profiles!class_sessions_teacher_override_fkey(display_name),classrooms(name,room,courseware_track)",
+      "id,lecture_id,lecture_no,title,scheduled_at,duration_min,started_at,ended_at,deleted_at,cancelled_by,cancel_reason,voided_at,void_reason,teacher_override,courseware_track_override,room_id,room_assignment_origin,classroom_id," +
+        "profiles!class_sessions_teacher_override_fkey(display_name),campus_rooms!class_sessions_room_id_fkey(id,name,capacity,campus_id,campuses(id,name)),classrooms(name,default_room_id,courseware_track)",
     )
     .eq("id", sessionId)
-    .maybeSingle<SessionQueryRow & { classroom_id: string; classrooms: { name: string; room: string; courseware_track: "native-16x9" | "adapted-4x3" } | null }>();
+    .maybeSingle<SessionQueryRow & { classroom_id: string; classrooms: { name: string; default_room_id: string | null; courseware_track: "native-16x9" | "adapted-4x3" } | null }>();
   if (error) throw new Error(error.message);
   if (!row) return null;
 
@@ -394,7 +424,7 @@ export async function getSessionQuickRow(sessionId: string): Promise<SessionQuic
     ...sessionRow,
     classroomId: row.classroom_id,
     classroomName: row.classrooms?.name ?? "",
-    classroomRoom: row.classrooms?.room ?? "",
+    classroomDefaultRoomId: row.classrooms?.default_room_id ?? null,
     classroomCoursewareTrack: row.classrooms?.courseware_track ?? "native-16x9",
   };
 }

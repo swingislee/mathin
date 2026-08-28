@@ -21,6 +21,7 @@ import { ClassroomStaffDialog } from "./ClassroomStaffDialog";
 import type { ClassroomDetail, StaffOption, TeachingReadinessRow } from "./classes";
 import { ConsumeRuleDialog } from "./ConsumeRuleDialog";
 import { hasTeachingReadinessRisk } from "./teaching-operations/readiness";
+import type { RoomOptionV2 } from "./organization-locations";
 
 type LifecycleErrorCode =
   | "FORBIDDEN_SCOPE"
@@ -37,10 +38,12 @@ export function ClassroomSettingsSheet({
   classroom,
   staffOptions,
   teachingReadiness,
+  roomOptions,
 }: {
   classroom: ClassroomDetail;
   staffOptions: StaffOption[];
   teachingReadiness: TeachingReadinessRow[];
+  roomOptions: RoomOptionV2[];
 }) {
   const t = useTranslations("school.classes");
   const router = useRouter();
@@ -102,7 +105,7 @@ export function ClassroomSettingsSheet({
           <section className="grid gap-2">
             <h3 className="text-xs font-medium uppercase text-muted">{t("settingsBasicInfo")}</h3>
             <div className="flex flex-wrap gap-2">
-              <ClassroomEditor classroom={classroom} />
+              <ClassroomEditor classroom={classroom} roomOptions={roomOptions} />
               <ClassroomStaffDialog classroomId={classroom.id} staffAssignments={classroom.staffAssignments} staffOptions={staffOptions} />
               <ConsumeRuleDialog classroomId={classroom.id} />
             </div>

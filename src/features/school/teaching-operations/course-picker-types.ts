@@ -50,4 +50,10 @@ export interface ClassBuildScheduleConflict {
   lectureName: string;
   scheduledAt: string;
   durationMin: number;
+  teacherConflict: boolean;
+  roomConflict: boolean;
+  roomId: string | null;
+  roomName: string | null;
+  campusId: string | null;
+  campusName: string | null;
 }

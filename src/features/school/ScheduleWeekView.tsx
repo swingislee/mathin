@@ -20,7 +20,9 @@ import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { getWeekSchedule } from "./actions/schedule";
 import { fromSelectValue, toSelectValue } from "./controls";
-import { addDays, markConflicts, startOfWeek, type ScheduleBlock } from "./schedule";
+import { addCalendarDays, calendarDayKey, markConflicts, startOfWeek, zonedDateParts, type ScheduleBlock } from "./schedule";
+import type { RoomOptionV2 } from "./organization-locations";
+import { formatRoomLocation } from "./location-format";
 
 const HOUR_START = 8;
 const HOUR_END = 21;
@@ -29,8 +31,9 @@ const SLOT_PX = 28;
 const SLOT_COUNT = ((HOUR_END - HOUR_START) * 60) / SLOT_MIN;
 const WEEKDAY_OFFSETS = [0, 1, 2, 3, 4, 5, 6]; // 周一起算
 
-function slotIndex(date: Date): number {
-  const minutes = (date.getHours() - HOUR_START) * 60 + date.getMinutes();
+function slotIndex(date: Date, timeZone: string): number {
+  const parts = zonedDateParts(date, timeZone);
+  const minutes = (parts.hour - HOUR_START) * 60 + parts.minute;
   return Math.min(Math.max(Math.floor(minutes / SLOT_MIN), 0), SLOT_COUNT - 1);
 }
 
@@ -85,15 +88,16 @@ function layoutDayEntries(dayEntries: ScheduleBlock[]): LaidOutBlock[] {
 }
 
 /** 当前时间在本周网格里的位置（今天不在可见周内则返回 null）。 */
-function useNowMarker(days: Date[]) {
+function useNowMarker(days: Date[], timeZone: string) {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60_000);
     return () => clearInterval(timer);
   }, []);
-  const dayIndex = days.findIndex((day) => day.toDateString() === now.toDateString());
+  const dayIndex = days.findIndex((day) => calendarDayKey(day, timeZone) === calendarDayKey(now, timeZone));
   if (dayIndex === -1) return null;
-  const minutes = (now.getHours() - HOUR_START) * 60 + now.getMinutes();
+  const parts = zonedDateParts(now, timeZone);
+  const minutes = (parts.hour - HOUR_START) * 60 + parts.minute;
   if (minutes < 0 || minutes >= (HOUR_END - HOUR_START) * 60) return null;
   const slot = Math.floor(minutes / SLOT_MIN);
   const offsetPx = ((minutes % SLOT_MIN) / SLOT_MIN) * SLOT_PX;
@@ -111,10 +115,14 @@ function useNowMarker(days: Date[]) {
 export function ScheduleWeekView({
   title,
   canFilterAll,
+  timeZone,
+  roomOptions,
   termManager,
 }: {
   title: string;
   canFilterAll: boolean;
+  timeZone: string;
+  roomOptions: RoomOptionV2[];
   termManager?: ReactNode;
 }) {
   const t = useTranslations("school.schedule");
@@ -124,14 +132,15 @@ export function ScheduleWeekView({
   const [loading, setLoading] = useState(true);
   const [teacherFilter, setTeacherFilter] = useState("");
   const [classroomFilter, setClassroomFilter] = useState("");
+  const [campusFilter, setCampusFilter] = useState("");
   const [roomFilter, setRoomFilter] = useState("");
 
-  const weekStart = useMemo(() => startOfWeek(anchor), [anchor]);
-  const weekEnd = useMemo(() => addDays(weekStart, 7), [weekStart]);
+  const weekStart = useMemo(() => startOfWeek(anchor, timeZone), [anchor, timeZone]);
+  const weekEnd = useMemo(() => addCalendarDays(weekStart, 7, timeZone), [weekStart, timeZone]);
 
   useEffect(() => {
     let cancelled = false;
-    void getWeekSchedule(weekStart.toISOString(), weekEnd.toISOString())
+    void getWeekSchedule(weekStart.toISOString(), weekEnd.toISOString(), campusFilter || null, roomFilter || null)
       .then((rows) => {
         if (cancelled) return;
         setEntries(markConflicts(rows));
@@ -142,11 +151,11 @@ export function ScheduleWeekView({
     return () => {
       cancelled = true;
     };
-  }, [weekStart, weekEnd]);
+  }, [campusFilter, roomFilter, weekStart, weekEnd]);
 
   const jumpWeek = (days: number) => {
     setLoading(true);
-    setAnchor((prev) => addDays(prev, days));
+    setAnchor((prev) => addCalendarDays(prev, days, timeZone));
   };
 
   const jumpToday = () => {
@@ -162,29 +171,28 @@ export function ScheduleWeekView({
     () => Array.from(new Set(entries.map((entry) => entry.classroomName).filter(Boolean))).sort(),
     [entries],
   );
-  const roomOptions = useMemo(
-    () => Array.from(new Set(entries.map((entry) => entry.room).filter(Boolean))).sort(),
-    [entries],
-  );
+  const campusOptions = useMemo(() => Array.from(new Map(roomOptions.map((room) => [room.campusId, room.campusName])).entries()), [roomOptions]);
+  const visibleRoomOptions = roomOptions.filter((room) => !campusFilter || room.campusId === campusFilter);
 
   const visibleEntries = entries
     .filter((entry) => !teacherFilter || entry.teacherName === teacherFilter)
     .filter((entry) => !classroomFilter || entry.classroomName === classroomFilter)
-    .filter((entry) => !roomFilter || entry.room === roomFilter);
+    .filter((entry) => !campusFilter || entry.campusId === campusFilter)
+    .filter((entry) => !roomFilter || entry.roomId === roomFilter);
 
-  const days = WEEKDAY_OFFSETS.map((offset) => addDays(weekStart, offset));
-  const dayFormatter = new Intl.DateTimeFormat(locale, { month: "numeric", day: "numeric", weekday: "short" });
-  const timeFormatter = new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit" });
-  const nowMarker = useNowMarker(days);
+  const days = WEEKDAY_OFFSETS.map((offset) => addCalendarDays(weekStart, offset, timeZone));
+  const dayFormatter = new Intl.DateTimeFormat(locale, { timeZone, month: "numeric", day: "numeric", weekday: "short" });
+  const timeFormatter = new Intl.DateTimeFormat(locale, { timeZone, hour: "2-digit", minute: "2-digit" });
+  const nowMarker = useNowMarker(days, timeZone);
 
-  const hasFilters = canFilterAll && (teacherOptions.length > 0 || classroomOptions.length > 0 || roomOptions.length > 0);
+  const hasFilters = (canFilterAll && (teacherOptions.length > 0 || classroomOptions.length > 0)) || campusOptions.length > 0;
 
   return (
     <DashboardPage
       title={title}
       // 周区间是"我在看哪一周"，属于页面身份而不是操作——放 meta，命令面板第一行
       // 就只剩三个按钮，390px 下不会被日期串挤到换行。
-      meta={<span>{dayFormatter.format(weekStart)} – {dayFormatter.format(addDays(weekStart, 6))}</span>}
+      meta={<span>{dayFormatter.format(weekStart)} – {dayFormatter.format(addCalendarDays(weekStart, 6, timeZone))} · {timeZone}</span>}
       density="compact"
       className="flex w-full min-w-0 flex-1 flex-col panel-canvas"
       bodyClassName="min-h-0 flex-1"
@@ -224,12 +232,25 @@ export function ScheduleWeekView({
                   </SelectContent>
                 </Select>
               )}
-              {roomOptions.length > 0 && (
+              {campusOptions.length > 0 && (
+                <Select value={toSelectValue(campusFilter)} onValueChange={(value) => {
+                  const nextCampus = fromSelectValue(value);
+                  setCampusFilter(nextCampus);
+                  if (roomFilter && roomOptions.find((room) => room.id === roomFilter)?.campusId !== nextCampus) setRoomFilter("");
+                }}>
+                  <FilterSelectTrigger className="w-36"><SelectValue /></FilterSelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={toSelectValue("")}>{t("allCampuses")}</SelectItem>
+                    {campusOptions.map(([id, name]) => <SelectItem key={id} value={id}>{name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              )}
+              {visibleRoomOptions.length > 0 && (
                 <Select value={toSelectValue(roomFilter)} onValueChange={(value) => setRoomFilter(fromSelectValue(value))}>
-                  <FilterSelectTrigger className="w-32"><SelectValue /></FilterSelectTrigger>
+                  <FilterSelectTrigger className="w-40"><SelectValue /></FilterSelectTrigger>
                   <SelectContent>
                     <SelectItem value={toSelectValue("")}>{t("allRooms")}</SelectItem>
-                    {roomOptions.map((name) => <SelectItem key={name} value={name}>{name}</SelectItem>)}
+                    {visibleRoomOptions.map((room) => <SelectItem key={room.id} value={room.id}>{room.campusName} · {room.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               )}
@@ -300,7 +321,7 @@ export function ScheduleWeekView({
           )}
 
           {days.map((day, dayIndex) => {
-            const dayEntries = visibleEntries.filter((entry) => new Date(entry.scheduledAt).toDateString() === day.toDateString());
+            const dayEntries = visibleEntries.filter((entry) => calendarDayKey(new Date(entry.scheduledAt), timeZone) === calendarDayKey(day, timeZone));
             if (dayEntries.length === 0) return null;
             return (
               // 相对定位的整列包裹层：本身是普通网格项（尺寸=这一天这一列的真实像素宽高），
@@ -310,7 +331,7 @@ export function ScheduleWeekView({
               <div key={day.toISOString()} className="relative" style={{ gridColumn: dayIndex + 2, gridRow: `2 / span ${SLOT_COUNT}` }}>
                 {layoutDayEntries(dayEntries).map(({ entry, lane, lanes }) => {
                   const date = new Date(entry.scheduledAt);
-                  const startSlot = slotIndex(date);
+                  const startSlot = slotIndex(date, timeZone);
                   const span = Math.max(1, Math.round(entry.durationMin / SLOT_MIN));
                   const widthPct = 100 / lanes;
                   return (
@@ -332,6 +353,7 @@ export function ScheduleWeekView({
                       <p className="truncate font-medium">{timeFormatter.format(date)} {entry.classroomName || t("freeClass")}</p>
                       {entry.lectureName && <p className="truncate text-muted">{entry.lectureName}</p>}
                       {entry.teacherName && <p className="truncate text-muted">{entry.teacherName}</p>}
+                      <p className="truncate text-muted">{formatRoomLocation(entry.roomName, entry.campusName, t("roomTbd"))}</p>
                       {entry.studentName && <p className="truncate text-muted">{entry.studentName}</p>}
                     </Link>
                   );

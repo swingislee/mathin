@@ -8,10 +8,10 @@ const read = (...segments: string[]) => fs.readFileSync(path.join(root, ...segme
 describe("P4I-16 schedule and quick drawer contract", () => {
   it("schedule.ts 的冲突判定同时看教师和教室重叠", () => {
     const schedule = read("src", "features", "school", "schedule.ts");
-    expect(schedule).toContain("room: string");
+    expect(schedule).toContain("roomId: string | null");
     expect(schedule).toContain("collectOverlapConflicts");
     expect(schedule).toContain("entry.teacherName");
-    expect(schedule).toContain("entry.room");
+    expect(schedule).toContain("entry.roomId");
   });
 
   it("SessionManagementDrawer 瘦身为快速抽屉：不再引用点名/课评/课件版本，包含打开完整课次链接", () => {
@@ -30,12 +30,14 @@ describe("P4I-16 schedule and quick drawer contract", () => {
     expect(classes).toContain("export interface SessionQuickRow");
   });
 
-  it("ScheduleWeekView 接入抽屉点击、sticky 表头与东八区安全的日期工具函数", () => {
+  it("ScheduleWeekView 接入抽屉点击、sticky 表头与机构 IANA 时区工具函数", () => {
     const view = read("src", "features", "school", "ScheduleWeekView.tsx");
     expect(view).toContain('from "@/i18n/navigation"');
     expect(view).toContain("/dashboard/schedule?session=");
     expect(view).toContain("sticky top-0");
     expect(view).toContain('from "./schedule"');
+    expect(view).toContain("timeZone");
+    expect(view).toContain("campusFilter");
     expect(view).not.toContain("function startOfWeek");
   });
 
@@ -52,9 +54,11 @@ describe("P4I-16 schedule and quick drawer contract", () => {
     const classesPage = read("src", "app", "[locale]", "dashboard", "classes", "[classId]", "page.tsx");
     const schedulePage = read("src", "app", "[locale]", "dashboard", "schedule", "page.tsx");
     expect(classesPage).toContain("classroomName={classroom.name}");
-    expect(classesPage).toContain("classroomRoom={classroom.room}");
+    expect(classesPage).toContain("classroomDefaultRoomId={classroom.defaultRoomId}");
+    expect(classesPage).toContain("roomOptions={roomOptions}");
     expect(schedulePage).toContain("getSessionQuickRow");
     expect(schedulePage).toContain("classroomName={quickRow?.classroomName");
+    expect(schedulePage).toContain("classroomDefaultRoomId={quickRow?.classroomDefaultRoomId");
     expect(schedulePage).toContain('closeHref="/dashboard/schedule"');
   });
 });

@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { FOLLOW_UP_STATUSES, type FollowUpStatus } from "./students";
-import { addDays, startOfMonth, startOfWeek } from "./schedule";
+import { addCalendarDays, startOfMonth, startOfWeek } from "./schedule";
+import { getOrganizationTimezoneV2 } from "./organization-locations";
 
 // ---------------------------------------------------------------------------
 // 领域概览页数据层（10-§7，P4B-7；P4I-19 收口：staff 磁贴池随 StaffHome 一起
@@ -15,10 +16,10 @@ export interface StaffStats {
 }
 
 export async function getStaffStats(): Promise<StaffStats> {
-  const supabase = await createClient();
+  const [supabase, timeZone] = await Promise.all([createClient(), getOrganizationTimezoneV2()]);
   const now = new Date();
-  const weekStart = startOfWeek(now);
-  const weekEnd = addDays(weekStart, 7);
+  const weekStart = startOfWeek(now, timeZone);
+  const weekEnd = addCalendarDays(weekStart, 7, timeZone);
   const [enrolled, leads, sessions, overdue] = await Promise.all([
     supabase.from("students").select("*", { count: "exact", head: true }).is("deleted_at", null).eq("status", "enrolled"),
     supabase.from("students").select("*", { count: "exact", head: true }).is("deleted_at", null).in("status", ["lead", "trialing"]),
@@ -135,8 +136,8 @@ export interface FinanceOverview {
 }
 
 export async function getFinanceOverview(): Promise<FinanceOverview> {
-  const supabase = await createClient();
-  const monthStart = startOfMonth(new Date());
+  const [supabase, timeZone] = await Promise.all([createClient(), getOrganizationTimezoneV2()]);
+  const monthStart = startOfMonth(new Date(), timeZone);
   const [dueRes, paidRes, refundRes, overdueRes] = await Promise.all([
     supabase.from("orders").select("amount_due").gte("created_at", monthStart.toISOString()).returns<Array<{ amount_due: number }>>(),
     supabase.from("payments").select("amount").gte("paid_at", monthStart.toISOString()).returns<Array<{ amount: number }>>(),

@@ -82,13 +82,23 @@ async function SessionGroupSection({ titleKey, count, classroomId, sessions, col
   </div>;
 }
 
-export async function SessionGroupList({ classroomId, sessions, workItems, returnTo, canAddSession }: {
+export async function SessionGroupList({
+  classroomId,
+  sessions,
+  workItems,
+  returnTo,
+  canAddSession,
+  defaultDurationMinutes,
+  timeZone,
+}: {
   classroomId: string;
   sessions: SessionRow[];
   workItems: readonly WorkItemRow[];
   /** 本屏自己的地址，作为课次工作区的返回来源。 */
   returnTo: string;
   canAddSession: boolean;
+  defaultDurationMinutes: number;
+  timeZone: string;
 }) {
   const t = await getTranslations("school.classes");
   const groups = groupClassroomSessions(sessions, workItems);
@@ -99,7 +109,13 @@ export async function SessionGroupList({ classroomId, sessions, workItems, retur
     <section className="rounded-2xl border border-line bg-card p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-base font-medium text-ink">{t("sessions", { count: sessions.length })}</h2>
-        {canAddSession ? <SessionCreateDialog classroomId={classroomId} /> : null}
+        {canAddSession ? (
+          <SessionCreateDialog
+            classroomId={classroomId}
+            defaultDurationMinutes={defaultDurationMinutes}
+            timeZone={timeZone}
+          />
+        ) : null}
       </div>
       {isEmpty ? (
         <p className="mt-4 text-sm text-muted">{t("emptySessions")}</p>

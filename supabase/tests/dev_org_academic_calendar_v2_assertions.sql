@@ -153,19 +153,58 @@ select public.update_managed_class_session_v2(
   :'session_id'::uuid, 'Moved to closed day', :'closed_at'::timestamptz,
   90::smallint, :'room_b_id'::uuid, true, 'Approved exceptional lesson'
 );
+select set_config('dev_org.classroom_id', :'classroom_id', true);
+do $$
+begin
+  begin
+    perform public.create_managed_class_session_v2(
+      current_setting('dev_org.classroom_id')::uuid,
+      'Created on closed day', current_setting('dev_org.closed_at')::timestamptz,
+      90::smallint, false, ''
+    );
+    raise exception 'CLOSED_DAY_CREATE_WITHOUT_REASON_WAS_ACCEPTED';
+  exception when others then
+    if sqlerrm <> 'CLOSED_DAY_CONFIRMATION_REQUIRED' then raise; end if;
+  end;
+end
+$$;
+select public.create_managed_class_session_v2(
+  :'classroom_id'::uuid, 'Created on closed day', :'closed_at'::timestamptz,
+  90::smallint, true, 'Approved exceptional creation'
+) as created_session_id \gset
 reset role;
 
-select (
+select
   exists(select 1 from public.class_sessions where id = :'session_id'::uuid
     and scheduled_at = :'closed_at'::timestamptz and room_id = :'room_b_id'::uuid
-    and room_assignment_origin = 'session_override')
-  and exists(select 1 from public.domain_events where entity_id = :'session_id'::uuid
+    and room_assignment_origin = 'class_default') as updated_session_ok,
+  exists(select 1 from public.domain_events where entity_id = :'session_id'::uuid
     and event_type = 'session.closed_day.override_confirmed'
-    and payload ->> 'reason' = 'Approved exceptional lesson')
-) as closed_day_confirmation_ok \gset
-\if :closed_day_confirmation_ok
+    and payload ->> 'reason' = 'Approved exceptional lesson') as updated_event_ok,
+  exists(select 1 from public.class_sessions where id = :'created_session_id'::uuid
+    and room_id = :'room_b_id'::uuid and room_assignment_origin = 'class_default') as created_session_ok,
+  exists(select 1 from public.domain_events where entity_id = :'created_session_id'::uuid
+    and event_type = 'session.closed_day.override_confirmed'
+    and payload ->> 'reason' = 'Approved exceptional creation') as created_event_ok
+\gset
+\if :updated_session_ok
 \else
-  \echo DEV-ORG-1 closed-day confirmation/audit assertion failed
+  \echo DEV-ORG-1 closed-day update did not preserve unchanged class-default room/origin
+  select 1 / 0;
+\endif
+\if :updated_event_ok
+\else
+  \echo DEV-ORG-1 closed-day update event/reason missing
+  select 1 / 0;
+\endif
+\if :created_session_ok
+\else
+  \echo DEV-ORG-1 closed-day create did not copy class default room/origin
+  select 1 / 0;
+\endif
+\if :created_event_ok
+\else
+  \echo DEV-ORG-1 closed-day create event/reason missing
   select 1 / 0;
 \endif
 

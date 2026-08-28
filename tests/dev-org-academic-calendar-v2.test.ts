@@ -41,5 +41,6 @@ describe("DEV-ORG-1 organization academic calendar", () => {
     expect(migration).toContain("CLOSED_DAY_CONFIRMATION_REQUIRED");
     expect(migration).toContain("session.closed_day.override_confirmed");
     expect(migration).toContain("p_closed_day_reason");
+    expect(migration).toContain("current_room_id is distinct from p_room_id");
   });
 });

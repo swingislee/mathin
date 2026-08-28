@@ -8,9 +8,9 @@
 import { z } from "zod";
 import { getProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { collectPostgrestRowsInBatches } from "@/lib/supabase/postgrest-batches";
 import type { ScheduleEntry } from "../schedule";
-import { datetime, parse } from "./schemas";
+import { datetime, parse, uuid } from "./schemas";
+import { nullableRpcArg } from "./guards";
 
 interface MySchedRow {
   session_id: string;
@@ -24,19 +24,30 @@ interface MySchedRow {
   student_name: string | null;
 }
 
-interface StaffSessionRow {
-  id: string;
-  title: string;
+interface StaffScheduleV2Row {
+  session_id: string;
+  classroom_id: string;
+  classroom_name: string;
+  lecture_name: string;
   scheduled_at: string;
   duration_min: number | null;
-  classroom_id: string;
-  classrooms: { name: string; room: string } | null;
+  teacher_name: string | null;
+  room_id: string | null;
+  room_name: string | null;
+  campus_id: string | null;
+  campus_name: string | null;
+  room_assignment_origin: "class_default" | "session_override" | null;
 }
 
-const rangeSchema = z.object({ fromIso: datetime, toIso: datetime });
+const rangeSchema = z.object({ fromIso: datetime, toIso: datetime, campusId: uuid.nullable(), roomId: uuid.nullable() });
 
-export async function getWeekSchedule(fromIso: string, toIso: string): Promise<ScheduleEntry[]> {
-  const range = parse(rangeSchema, { fromIso, toIso });
+export async function getWeekSchedule(
+  fromIso: string,
+  toIso: string,
+  campusId: string | null = null,
+  roomId: string | null = null,
+): Promise<ScheduleEntry[]> {
+  const range = parse(rangeSchema, { fromIso, toIso, campusId, roomId });
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("UNAUTHENTICATED");
@@ -56,47 +67,35 @@ export async function getWeekSchedule(fromIso: string, toIso: string): Promise<S
       durationMin: row.duration_min ?? 0,
       teacherName: row.teacher_name ?? "",
       studentName: row.student_name ?? "",
-      room: "",
+      roomId: null,
+      roomName: null,
+      campusId: null,
+      campusName: null,
+      roomAssignmentOrigin: null,
     }));
   }
 
-  const { data: sessionRows, error } = await supabase
-    .from("class_sessions")
-    .select("id,title,scheduled_at,duration_min,classroom_id,classrooms(name,room)")
-    .is("deleted_at", null)
-    .gte("scheduled_at", range.fromIso)
-    .lt("scheduled_at", range.toIso)
-    .order("scheduled_at", { ascending: true })
-    .returns<StaffSessionRow[]>();
+  const { data: sessionRows, error } = await supabase.rpc("get_staff_schedule_v2", {
+    p_from: range.fromIso,
+    p_to: range.toIso,
+    p_campus_id: nullableRpcArg(range.campusId),
+    p_room_id: nullableRpcArg(range.roomId),
+  });
   if (error) throw new Error(error.message);
-  const rows = sessionRows ?? [];
-  if (rows.length === 0) return [];
-
-  const classroomIds = Array.from(new Set(rows.map((row) => row.classroom_id)));
-  const teacherRows = await collectPostgrestRowsInBatches<string, {
-    classroom_id: string;
-    profiles: { display_name: string } | null;
-  }>(classroomIds, (batch) => supabase
-    .from("classroom_members")
-    .select("classroom_id,profiles(display_name)")
-    .in("classroom_id", batch)
-    .eq("role", "teacher")
-    .returns<Array<{ classroom_id: string; profiles: { display_name: string } | null }>>());
-  const teacherByClassroom = new Map<string, string>();
-  for (const row of teacherRows) {
-    if (!teacherByClassroom.has(row.classroom_id)) teacherByClassroom.set(row.classroom_id, row.profiles?.display_name ?? "");
-  }
-
-  return rows.map((row) => ({
-    sessionId: row.id,
+  return ((sessionRows ?? []) as StaffScheduleV2Row[]).map((row) => ({
+    sessionId: row.session_id,
     studentId: "",
     classroomId: row.classroom_id,
-    classroomName: row.classrooms?.name || "",
-    lectureName: row.title,
+    classroomName: row.classroom_name,
+    lectureName: row.lecture_name,
     scheduledAt: row.scheduled_at,
     durationMin: row.duration_min ?? 0,
-    teacherName: teacherByClassroom.get(row.classroom_id) ?? "",
+    teacherName: row.teacher_name ?? "",
     studentName: "",
-    room: row.classrooms?.room || "",
+    roomId: row.room_id,
+    roomName: row.room_name,
+    campusId: row.campus_id,
+    campusName: row.campus_name,
+    roomAssignmentOrigin: row.room_assignment_origin,
   }));
 }

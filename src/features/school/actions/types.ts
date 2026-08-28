@@ -22,7 +22,7 @@ export interface BuildClassInput {
   name: string;
   courseId: string | null;
   capacity: number | null;
-  room: string;
+  roomId: string | null;
   primaryTeacherId: string;
   learningSupportId: string | null;
   schoolTermId: string;

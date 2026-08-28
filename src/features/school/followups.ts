@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { collectPostgrestRowsInBatches } from "@/lib/supabase/postgrest-batches";
-import { addDays, startOfDay, startOfWeek } from "./schedule";
+import { addCalendarDays, startOfDay, startOfWeek } from "./schedule";
+import { getOrganizationTimezoneV2 } from "./organization-locations";
 import { FOLLOW_UP_STATUSES, studentSearchFilter, type FollowUpStatus, type StudentStatus } from "./students";
 
 // ---------------------------------------------------------------------------
@@ -70,13 +71,15 @@ interface BoardStudentRow {
 }
 
 export async function listFollowUpBoard(userId: string, scope: BoardScope, bucket?: BoardBucket, q?: string): Promise<FollowUpBoard> {
-  const supabase = await createClient();
+  const [supabase, timeZone] = await Promise.all([createClient(), getOrganizationTimezoneV2()]);
   const now = new Date();
   const nowIso = now.toISOString();
-  const dayStart = startOfDay(now).toISOString();
-  const dayEnd = addDays(startOfDay(now), 1).toISOString();
-  const weekStart = startOfWeek(now).toISOString();
-  const weekEnd = addDays(startOfWeek(now), 7).toISOString();
+  const dayStartValue = startOfDay(now, timeZone);
+  const weekStartValue = startOfWeek(now, timeZone);
+  const dayStart = dayStartValue.toISOString();
+  const dayEnd = addCalendarDays(dayStartValue, 1, timeZone).toISOString();
+  const weekStart = weekStartValue.toISOString();
+  const weekEnd = addCalendarDays(weekStartValue, 7, timeZone).toISOString();
 
   let query = supabase
     .from("students")

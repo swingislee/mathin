@@ -123,6 +123,30 @@ select (
   select 1 / 0;
 \endif
 
+select scheduled_at as unchanged_scheduled_at, duration_min as unchanged_duration_min
+  from public.class_sessions where id = :'default_session_id'::uuid \gset
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'admin_id', true);
+select public.update_managed_class_session_v2(
+  :'default_session_id'::uuid,
+  'Default session renamed',
+  :'unchanged_scheduled_at'::timestamptz,
+  :unchanged_duration_min::smallint,
+  :'room_b_id'::uuid,
+  false,
+  ''
+);
+reset role;
+select exists(
+  select 1 from public.class_sessions where id = :'default_session_id'::uuid
+    and room_id = :'room_b_id'::uuid and room_assignment_origin = 'class_default'
+) as unchanged_room_origin_ok \gset
+\if :unchanged_room_origin_ok
+\else
+  \echo DEV-ORG-1 unchanged room was converted into a session override
+  select 1 / 0;
+\endif
+
 set local role authenticated;
 select set_config('request.jwt.claim.sub', :'admin_id', true);
 select public.set_campus_room_status_v2(:'room_b_id'::uuid, 'inactive', 1);

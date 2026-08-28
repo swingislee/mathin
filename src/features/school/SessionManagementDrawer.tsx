@@ -7,13 +7,16 @@ import { Button } from "@/components/ui/button";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Textarea } from "@/components/ui/textarea";
 import { useAction } from "@/components/action-form";
 import { Link, useRouter } from "@/i18n/navigation";
 import type { SessionCapabilities } from "./teaching-operations/types";
 import {
   deleteUnstartedSessionAction,
   restoreSessionAction,
+  resetClassSessionRoomAction,
   updateClassSessionAction,
   voidSessionAction,
 } from "./actions/classes";
@@ -21,12 +24,10 @@ import type { SessionRow } from "./classes";
 import { withReturnTo } from "./object-workspace/return-target";
 import { SessionChangeDialog } from "./SessionChangeDialog";
 import { SubstituteTeacherDialog } from "./SubstituteTeacherDialog";
-
-function toDateTimeLocalValue(iso: string): string {
-  const date = new Date(iso);
-  const pad = (value: number) => String(value).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
+import { RoomPicker } from "./RoomPicker";
+import { formatRoomLocation } from "./location-format";
+import type { RoomOptionV2 } from "./organization-locations";
+import { dateTimeInputToInstant, zonedDateTimeInputValue } from "./schedule";
 
 function reasonText(t: ReturnType<typeof useTranslations>, code: string | undefined): string | undefined {
   if (!code) return undefined;
@@ -41,27 +42,45 @@ function reasonText(t: ReturnType<typeof useTranslations>, code: string | undefi
 export function SessionManagementDrawer({
   session,
   classroomName,
-  classroomRoom,
+  classroomDefaultRoomId,
+  roomOptions,
+  timeZone,
   closeHref,
 }: {
   session: SessionRow | null;
   classroomName: string;
-  classroomRoom: string;
+  classroomDefaultRoomId: string | null;
+  roomOptions: RoomOptionV2[];
+  timeZone: string;
   closeHref: string;
 }) {
   const t = useTranslations("school.classes");
   const router = useRouter();
   const [reason, setReason] = useState("");
   const [title, setTitle] = useState(session?.name ?? "");
-  const [scheduledAt, setScheduledAt] = useState(session?.scheduledAt ? toDateTimeLocalValue(session.scheduledAt) : "");
+  const [scheduledAt, setScheduledAt] = useState(session?.scheduledAt ? zonedDateTimeInputValue(new Date(session.scheduledAt), timeZone) : "");
   const [durationMin, setDurationMin] = useState(String(session?.durationMin ?? 90));
+  const [roomId, setRoomId] = useState<string | null>(session?.roomId ?? null);
+  const [closedDayConfirmOpen, setClosedDayConfirmOpen] = useState(false);
+  const [closedDayReason, setClosedDayReason] = useState("");
 
   const close = () => router.replace(closeHref);
 
   const updateRun = useAction(updateClassSessionAction, {
     successMessage: t("sessionSaved"),
-    errorMessage: { default: t("actionFailed") },
+    errorMessage: { CLOSED_DAY_CONFIRMATION_REQUIRED: t("closedDayConfirmationRequired"), default: t("actionFailed") },
     onSuccess: () => router.refresh(),
+    onError: (code) => { if (code === "CLOSED_DAY_CONFIRMATION_REQUIRED") setClosedDayConfirmOpen(true); },
+  });
+  const confirmClosedDayRun = useAction(updateClassSessionAction, {
+    successMessage: t("sessionSaved"),
+    errorMessage: { CLOSED_DAY_CONFIRMATION_REQUIRED: t("closedDayReasonRequired"), default: t("actionFailed") },
+    onSuccess: () => { setClosedDayConfirmOpen(false); setClosedDayReason(""); router.refresh(); },
+  });
+  const resetRoomRun = useAction(resetClassSessionRoomAction, {
+    successMessage: t("sessionRoomReset"),
+    errorMessage: { default: t("actionFailed") },
+    onSuccess: () => { setRoomId(classroomDefaultRoomId); router.refresh(); },
   });
   const cancelRun = useAction(deleteUnstartedSessionAction, {
     successMessage: t("sessionCancelled"),
@@ -79,12 +98,13 @@ export function SessionManagementDrawer({
     onSuccess: () => router.refresh(),
   });
 
-  const pending = updateRun.pending || cancelRun.pending || restoreRun.pending || voidRun.pending;
+  const pending = updateRun.pending || confirmClosedDayRun.pending || resetRoomRun.pending || cancelRun.pending || restoreRun.pending || voidRun.pending;
   const capabilities: SessionCapabilities | undefined = session?.capabilities;
   const duration = Number(durationMin);
+  const scheduledInstant = dateTimeInputToInstant(scheduledAt, timeZone);
   const scheduleValid = title.trim().length > 0
     && title.trim().length <= 100
-    && scheduledAt !== ""
+    && scheduledInstant !== null
     && Number.isInteger(duration)
     && duration >= 1
     && duration <= 600;
@@ -106,7 +126,7 @@ export function SessionManagementDrawer({
               <SheetTitle>{session.name || t("untitledSession")}</SheetTitle>
               <div className="flex flex-wrap items-center gap-2 text-sm text-muted">
                 <Badge variant="secondary">{stateLabel}</Badge>
-                {session.scheduledAt && <span>{new Date(session.scheduledAt).toLocaleString()}</span>}
+                {session.scheduledAt && <span>{new Intl.DateTimeFormat(undefined, { timeZone, dateStyle: "short", timeStyle: "short" }).format(new Date(session.scheduledAt))}</span>}
                 {classroomName && <span>· {classroomName}</span>}
               </div>
               {/* doc23 §18：抽屉可能开在班级详情，也可能开在课表。带上来源，
@@ -132,23 +152,33 @@ export function SessionManagementDrawer({
                     <Label htmlFor="edit-session-duration" className="text-xs font-normal text-muted">{t("sessionDuration")}</Label>
                     <Input id="edit-session-duration" type="number" min={1} max={600} step={5} value={durationMin} onChange={(event) => setDurationMin(event.target.value)} disabled={pending} className="mt-1" />
                   </div>
+                  <div>
+                    <Label htmlFor="edit-session-room" className="text-xs font-normal text-muted">{t("sessionRoom")}</Label>
+                    <div className="mt-1"><RoomPicker id="edit-session-room" rooms={roomOptions} value={roomId} onValueChange={setRoomId} disabled={pending} /></div>
+                    {session.roomAssignmentOrigin === "session_override" ? (
+                      <Button type="button" size="sm" variant="ghost" className="mt-1" disabled={pending} onClick={() => resetRoomRun.run(session.id)}>{t("followClassDefault")}</Button>
+                    ) : <p className="mt-1 text-xs text-muted">{t("usingFrozenClassDefault")}</p>}
+                  </div>
                   <Button
                     type="button"
                     size="sm"
                     disabled={!scheduleValid || pending}
                     onClick={() => updateRun.run(session.id, {
                       title: title.trim(),
-                      scheduledAt: new Date(scheduledAt).toISOString(),
+                      scheduledAt: scheduledInstant!.toISOString(),
                       durationMin: duration,
+                      roomId,
+                      confirmClosedDay: false,
+                      closedDayReason: "",
                     })}
                   >
                     {t("saveSession")}
                   </Button>
                 </div>
               ) : (
-                <p className="text-sm text-muted">{session.scheduledAt ? new Date(session.scheduledAt).toLocaleString() : t("notApplicable")}</p>
+                <p className="text-sm text-muted">{session.scheduledAt ? new Intl.DateTimeFormat(undefined, { timeZone, dateStyle: "short", timeStyle: "short" }).format(new Date(session.scheduledAt)) : t("notApplicable")}</p>
               )}
-              <p className="text-sm text-muted">{classroomRoom || t("notApplicable")}</p>
+              {!capabilities.canReschedule ? <p className="text-sm text-muted">{formatRoomLocation(session.roomName, session.campusName, t("roomTbd"))}</p> : null}
               {capabilities.canAssignSubstitute && (
                 <SubstituteTeacherDialog sessionId={session.id} currentTeacherId={session.teacherOverrideId} />
               )}
@@ -197,6 +227,29 @@ export function SessionManagementDrawer({
           </>
         )}
       </SheetContent>
+      {session ? (
+        <Dialog open={closedDayConfirmOpen} onOpenChange={setClosedDayConfirmOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader><DialogTitle>{t("closedDayOverrideTitle")}</DialogTitle></DialogHeader>
+            <p className="text-sm text-muted">{t("closedDayOverrideDescription")}</p>
+            <Label className="grid gap-1.5 text-xs font-normal text-muted">
+              {t("closedDayReason")}
+              <Textarea value={closedDayReason} onChange={(event) => setClosedDayReason(event.target.value)} maxLength={500} rows={3} />
+            </Label>
+            <DialogFooter>
+              <Button type="button" size="sm" variant="secondary" disabled={confirmClosedDayRun.pending} onClick={() => setClosedDayConfirmOpen(false)}>{t("cancel")}</Button>
+              <Button type="button" size="sm" disabled={confirmClosedDayRun.pending || !closedDayReason.trim()} onClick={() => confirmClosedDayRun.run(session.id, {
+                title: title.trim(),
+                scheduledAt: scheduledInstant!.toISOString(),
+                durationMin: duration,
+                roomId,
+                confirmClosedDay: true,
+                closedDayReason,
+              })}>{t("confirmClosedDayOverride")}</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      ) : null}
     </Sheet>
   );
 }
