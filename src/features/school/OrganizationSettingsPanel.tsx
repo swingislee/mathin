@@ -52,6 +52,31 @@ function SettingsSelectTrigger({ className, ...props }: React.ComponentProps<typ
   return <SelectTrigger className={cn(SETTINGS_CONTROL_CLASS, className)} {...props} />;
 }
 
+function SettingsField({
+  label,
+  htmlFor,
+  children,
+}: {
+  label: string;
+  htmlFor: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="grid gap-2 py-3 sm:grid-cols-[11rem_minmax(0,1fr)] sm:items-start sm:gap-6">
+      <Label htmlFor={htmlFor} className="pt-2 leading-5 text-muted">{label}</Label>
+      <div className="min-w-0">{children}</div>
+    </div>
+  );
+}
+
+function SettingsActionRow({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="grid pt-4 sm:grid-cols-[11rem_minmax(0,1fr)] sm:gap-6">
+      <div className="flex justify-end sm:col-start-2">{children}</div>
+    </div>
+  );
+}
+
 function localDatetimeNow() {
   const now = new Date(Date.now() + 60_000);
   const local = new Date(now.getTime() - now.getTimezoneOffset() * 60_000);
@@ -95,10 +120,10 @@ function effectiveFlag(rows: FeatureFlagVersion[], flagKey: OrganizationFeatureK
     .sort((a, b) => Number(b.campusId !== null) - Number(a.campusId !== null) || Date.parse(b.effectiveFrom) - Date.parse(a.effectiveFrom) || b.version - a.version)[0];
 }
 
-function ScopeSelect({ campuses, value, onChange, globalLabel }: { campuses: CampusSettings[]; value: string | null; onChange: (value: string | null) => void; globalLabel: string }) {
+function ScopeSelect({ campuses, value, onChange, globalLabel, triggerId }: { campuses: CampusSettings[]; value: string | null; onChange: (value: string | null) => void; globalLabel: string; triggerId: string }) {
   return (
     <Select value={value ?? GLOBAL_SCOPE} onValueChange={(next) => onChange(next === GLOBAL_SCOPE ? null : next)}>
-      <SettingsSelectTrigger><SelectValue /></SettingsSelectTrigger>
+      <SettingsSelectTrigger id={triggerId}><SelectValue /></SettingsSelectTrigger>
       <SelectContent>
         <SelectItem value={GLOBAL_SCOPE}>{globalLabel}</SelectItem>
         {campuses.map((campus) => <SelectItem key={campus.id} value={campus.id}>{campus.name}</SelectItem>)}
@@ -232,73 +257,123 @@ export function OrganizationSettingsPanel({ initial }: { initial: OrganizationSe
 
       <TabsContent value="profile" className="mt-0">
         <SettingsSection title={t("profileTitle")} description={t("profileIntro")} icon={<Building2 size={19} />}>
-          <div className="grid gap-4 @2xl/page:grid-cols-2 @5xl/page:grid-cols-3">
-            <Label className="grid gap-2">{t("organizationName")}<SettingsInput value={organizationName} maxLength={100} onChange={(event) => setOrganizationName(event.target.value)} /></Label>
-            <Label className="grid gap-2">{t("timezone")}<SettingsInput value={organizationTimezone} maxLength={64} onChange={(event) => setOrganizationTimezone(event.target.value)} /></Label>
-            <Label className="grid gap-2">{t("defaultLocale")}<Select value={defaultLocale} onValueChange={(value) => setDefaultLocale(value as "zh" | "en")}><SettingsSelectTrigger><SelectValue /></SettingsSelectTrigger><SelectContent><SelectItem value="zh">中文</SelectItem><SelectItem value="en">English</SelectItem></SelectContent></Select></Label>
+          <div className="divide-y divide-line border-y border-line">
+            <SettingsField label={t("organizationName")} htmlFor="organization-name">
+              <SettingsInput id="organization-name" value={organizationName} maxLength={100} onChange={(event) => setOrganizationName(event.target.value)} />
+            </SettingsField>
+            <SettingsField label={t("timezone")} htmlFor="organization-timezone">
+              <SettingsInput id="organization-timezone" value={organizationTimezone} maxLength={64} onChange={(event) => setOrganizationTimezone(event.target.value)} />
+            </SettingsField>
+            <SettingsField label={t("defaultLocale")} htmlFor="organization-locale">
+              <Select value={defaultLocale} onValueChange={(value) => setDefaultLocale(value as "zh" | "en")}>
+                <SettingsSelectTrigger id="organization-locale"><SelectValue /></SettingsSelectTrigger>
+                <SelectContent><SelectItem value="zh">中文</SelectItem><SelectItem value="en">English</SelectItem></SelectContent>
+              </Select>
+            </SettingsField>
           </div>
-          <div className="mt-5 flex justify-end"><Button size="sm" disabled={pending} onClick={() => profileRun.run({ name: organizationName, timezone: organizationTimezone, defaultLocale })}>{profileRun.pending ? <LoaderCircle className="size-4 animate-spin" /> : <Save className="size-4" />}{t("save")}</Button></div>
+          <SettingsActionRow><Button size="sm" disabled={pending} onClick={() => profileRun.run({ name: organizationName, timezone: organizationTimezone, defaultLocale })}>{profileRun.pending ? <LoaderCircle className="size-4 animate-spin" /> : <Save className="size-4" />}{t("save")}</Button></SettingsActionRow>
         </SettingsSection>
       </TabsContent>
 
       <TabsContent value="locations" className="mt-0">
         <SettingsSection title={t("campusTitle")} description={t("campusIntro")} icon={<MapPin size={19} />}>
-          <div className="grid gap-8 @3xl/page:grid-cols-2 @3xl/page:divide-x @3xl/page:divide-line">
-            <div className="@3xl/page:pr-8">
-              <Label className="grid gap-2">{t("selectCampus")}<Select value={campusId} onValueChange={chooseCampus}><SettingsSelectTrigger><SelectValue /></SettingsSelectTrigger><SelectContent>{initial.campuses.map((campus) => <SelectItem key={campus.id} value={campus.id}>{campus.name} · {campus.code}</SelectItem>)}</SelectContent></Select></Label>
-              {selectedCampus && <div className="mt-4 grid gap-3">
-                <Label className="grid gap-2">{t("campusName")}<SettingsInput value={campusName} maxLength={100} onChange={(event) => setCampusName(event.target.value)} /></Label>
-                <Label className="grid gap-2">{t("campusTimezone")}<SettingsInput value={campusTimezone} maxLength={64} placeholder={initial.organization.timezone} onChange={(event) => setCampusTimezone(event.target.value)} /></Label>
-                <Label className="grid gap-2">{t("status")}<Select value={campusStatus} onValueChange={(value) => setCampusStatus(value as "active" | "archived")}><SettingsSelectTrigger><SelectValue /></SettingsSelectTrigger><SelectContent><SelectItem value="active">{t("active")}</SelectItem><SelectItem value="archived">{t("archived")}</SelectItem></SelectContent></Select></Label>
-                <Label className="flex items-center gap-3 font-normal"><Checkbox checked={campusDefault} onCheckedChange={(checked) => setCampusDefault(checked === true)} />{t("defaultCampus")}</Label>
-                <div className="flex justify-end"><Button size="sm" disabled={pending || !campusName.trim()} onClick={() => updateCampusRun.run({ campusId: selectedCampus.id, name: campusName, timezone: campusTimezone.trim() || null, status: campusStatus, isDefault: campusDefault })}>{t("saveCampus")}</Button></div>
-              </div>}
+          <div className="divide-y divide-line border-y border-line">
+            <SettingsField label={t("selectCampus")} htmlFor="campus-select">
+              <Select value={campusId} onValueChange={chooseCampus}>
+                <SettingsSelectTrigger id="campus-select"><SelectValue /></SettingsSelectTrigger>
+                <SelectContent>{initial.campuses.map((campus) => <SelectItem key={campus.id} value={campus.id}>{campus.name} · {campus.code}</SelectItem>)}</SelectContent>
+              </Select>
+            </SettingsField>
+            {selectedCampus ? <>
+              <SettingsField label={t("campusName")} htmlFor="campus-name">
+                <SettingsInput id="campus-name" value={campusName} maxLength={100} onChange={(event) => setCampusName(event.target.value)} />
+              </SettingsField>
+              <SettingsField label={t("campusTimezone")} htmlFor="campus-timezone">
+                <SettingsInput id="campus-timezone" value={campusTimezone} maxLength={64} placeholder={initial.organization.timezone} onChange={(event) => setCampusTimezone(event.target.value)} />
+              </SettingsField>
+              <SettingsField label={t("status")} htmlFor="campus-status">
+                <Select value={campusStatus} onValueChange={(value) => setCampusStatus(value as "active" | "archived")}>
+                  <SettingsSelectTrigger id="campus-status"><SelectValue /></SettingsSelectTrigger>
+                  <SelectContent><SelectItem value="active">{t("active")}</SelectItem><SelectItem value="archived">{t("archived")}</SelectItem></SelectContent>
+                </Select>
+              </SettingsField>
+              <SettingsField label={t("defaultCampus")} htmlFor="campus-default">
+                <div className="flex min-h-10 items-center"><Checkbox id="campus-default" checked={campusDefault} onCheckedChange={(checked) => setCampusDefault(checked === true)} /></div>
+              </SettingsField>
+            </> : null}
+          </div>
+          {selectedCampus ? <SettingsActionRow><Button size="sm" disabled={pending || !campusName.trim()} onClick={() => updateCampusRun.run({ campusId: selectedCampus.id, name: campusName, timezone: campusTimezone.trim() || null, status: campusStatus, isDefault: campusDefault })}>{t("saveCampus")}</Button></SettingsActionRow> : null}
+
+          <div className="mt-8 border-t border-line pt-6">
+            <h3 className="font-medium text-ink">{t("addCampus")}</h3>
+            <div className="mt-3 divide-y divide-line border-y border-line">
+              <SettingsField label={t("campusCode")} htmlFor="new-campus-code">
+                <SettingsInput
+                  id="new-campus-code"
+                  value={newCampusCode}
+                  maxLength={40}
+                  aria-invalid={!newCampusCodeValid || newCampusCodeExists}
+                  aria-describedby="new-campus-code-help"
+                  onChange={(event) => setNewCampusCode(event.target.value.toLowerCase().replaceAll(" ", "-"))}
+                />
+                <p id="new-campus-code-help" className={`mt-2 text-xs ${!newCampusCodeValid || newCampusCodeExists ? "text-rose" : "text-muted"}`}>
+                  {!newCampusCodeValid ? t("campusCodeInvalid") : newCampusCodeExists ? t("campusCodeExists") : t("campusCodeHint")}
+                </p>
+              </SettingsField>
+              <SettingsField label={t("campusName")} htmlFor="new-campus-name">
+                <SettingsInput id="new-campus-name" value={newCampusName} maxLength={100} onChange={(event) => setNewCampusName(event.target.value)} />
+              </SettingsField>
+              <SettingsField label={t("campusTimezone")} htmlFor="new-campus-timezone">
+                <SettingsInput id="new-campus-timezone" value={newCampusTimezone} maxLength={64} aria-invalid={!newCampusTimezoneValid} aria-describedby="new-campus-timezone-help" placeholder={initial.organization.timezone} onChange={(event) => setNewCampusTimezone(event.target.value)} />
+                {!newCampusTimezoneValid ? <p id="new-campus-timezone-help" className="mt-2 text-xs text-rose">{t("campusTimezoneInvalid")}</p> : null}
+              </SettingsField>
             </div>
-            <div className="@3xl/page:pl-8">
-              <h3 className="font-medium">{t("addCampus")}</h3>
-              <div className="mt-3 grid gap-3">
-                <Label className="grid gap-2">
-                  {t("campusCode")}
-                  <SettingsInput
-                    value={newCampusCode}
-                    maxLength={40}
-                    aria-invalid={!newCampusCodeValid || newCampusCodeExists}
-                    aria-describedby="new-campus-code-help"
-                    onChange={(event) => setNewCampusCode(event.target.value.toLowerCase().replaceAll(" ", "-"))}
-                  />
-                  <span id="new-campus-code-help" className={`text-xs ${!newCampusCodeValid || newCampusCodeExists ? "text-rose" : "text-muted"}`}>
-                    {!newCampusCodeValid ? t("campusCodeInvalid") : newCampusCodeExists ? t("campusCodeExists") : t("campusCodeHint")}
-                  </span>
-                </Label>
-                <Label className="grid gap-2">{t("campusName")}<SettingsInput value={newCampusName} maxLength={100} onChange={(event) => setNewCampusName(event.target.value)} /></Label>
-                <Label className="grid gap-2">
-                  {t("campusTimezone")}
-                  <SettingsInput value={newCampusTimezone} maxLength={64} aria-invalid={!newCampusTimezoneValid} placeholder={initial.organization.timezone} onChange={(event) => setNewCampusTimezone(event.target.value)} />
-                  {!newCampusTimezoneValid && <span className="text-xs text-rose">{t("campusTimezoneInvalid")}</span>}
-                </Label>
-                <div className="flex justify-end"><Button size="sm" variant="secondary" disabled={pending || !canCreateCampus} onClick={() => createCampusRun.run({ code: normalizedNewCampusCode, name: newCampusName, timezone: normalizedNewCampusTimezone || null })}>{t("createCampus")}</Button></div>
-              </div>
-            </div>
+            <SettingsActionRow><Button size="sm" variant="secondary" disabled={pending || !canCreateCampus} onClick={() => createCampusRun.run({ code: normalizedNewCampusCode, name: newCampusName, timezone: normalizedNewCampusTimezone || null })}>{t("createCampus")}</Button></SettingsActionRow>
           </div>
         </SettingsSection>
 
         <SettingsSection title={t("roomTitle")} description={t("roomIntro")} icon={<Building2 size={19} />}>
           {!selectedCampus ? <p className="text-sm text-muted">{t("noCampus")}</p> : <>
             <ul className="divide-y divide-line">{selectedCampus.rooms.map((room) => <li key={room.id} className="flex flex-wrap items-center gap-3 py-3 text-sm"><span className="min-w-0 flex-1"><strong>{room.name}</strong> · {room.code} · {room.capacity ?? t("capacityUnset")}</span><Badge variant={room.isActive ? "secondary" : "outline"}>{room.isActive ? t("active") : t("inactive")}</Badge><Button size="sm" variant="secondary" disabled={pending} onClick={() => roomActiveRun.run(room.id, !room.isActive)}>{room.isActive ? t("disable") : t("enable")}</Button></li>)}</ul>
-            <div className="mt-4 grid gap-3 @2xl/page:grid-cols-2 @5xl/page:grid-cols-4">
-              <Label className="grid gap-2">{t("roomCode")}<SettingsInput value={roomCode} maxLength={40} onChange={(event) => setRoomCode(event.target.value)} /></Label>
-              <Label className="grid gap-2 @5xl/page:col-span-2">{t("roomName")}<SettingsInput value={roomName} maxLength={100} onChange={(event) => setRoomName(event.target.value)} /></Label>
-              <Label className="grid gap-2">{t("capacity")}<SettingsInput type="number" min={1} max={500} value={roomCapacity} onChange={(event) => setRoomCapacity(event.target.value)} /></Label>
+            <div className="mt-4 divide-y divide-line border-y border-line">
+              <SettingsField label={t("roomCode")} htmlFor="room-code">
+                <SettingsInput id="room-code" value={roomCode} maxLength={40} onChange={(event) => setRoomCode(event.target.value)} />
+              </SettingsField>
+              <SettingsField label={t("roomName")} htmlFor="room-name">
+                <SettingsInput id="room-name" value={roomName} maxLength={100} onChange={(event) => setRoomName(event.target.value)} />
+              </SettingsField>
+              <SettingsField label={t("capacity")} htmlFor="room-capacity">
+                <SettingsInput id="room-capacity" type="number" min={1} max={500} value={roomCapacity} onChange={(event) => setRoomCapacity(event.target.value)} />
+              </SettingsField>
             </div>
-            <div className="mt-3 flex justify-end"><Button size="sm" variant="secondary" disabled={pending || !roomCode.trim() || !roomName.trim()} onClick={() => roomRun.run({ campusId: selectedCampus.id, code: roomCode, name: roomName, capacity: roomCapacity ? Number(roomCapacity) : null })}>{t("createRoom")}</Button></div>
+            <SettingsActionRow><Button size="sm" variant="secondary" disabled={pending || !roomCode.trim() || !roomName.trim()} onClick={() => roomRun.run({ campusId: selectedCampus.id, code: roomCode, name: roomName, capacity: roomCapacity ? Number(roomCapacity) : null })}>{t("createRoom")}</Button></SettingsActionRow>
           </>}
         </SettingsSection>
 
         <SettingsSection title={t("calendarTitle")} description={t("calendarIntro")} icon={<CalendarDays size={19} />}>
           <div>
             <div><h3 className="font-medium">{t("holidays")}</h3><ul className="mt-2 divide-y divide-line">{initial.holidays.map((holiday) => <li key={holiday.id} className="flex items-center gap-3 py-3 text-sm"><span className="min-w-0 flex-1">{holiday.name} · {holiday.startsOn} — {holiday.endsOn}</span><Badge variant="outline">{t(`holiday_${holiday.kind}`)}</Badge><Button size="sm" variant="secondary" disabled={pending} onClick={() => archiveHolidayRun.run(holiday.id)}>{t("archive")}</Button></li>)}</ul>
-              <div className="mt-3 grid gap-3 @xl/page:grid-cols-2"><ScopeSelect campuses={activeCampuses} value={holidayCampusId} onChange={setHolidayCampusId} globalLabel={t("allCampuses")} /><Select value={holidayKind} onValueChange={(value) => setHolidayKind(value as typeof holidayKind)}><SettingsSelectTrigger><SelectValue /></SettingsSelectTrigger><SelectContent><SelectItem value="closed">{t("holiday_closed")}</SelectItem><SelectItem value="teaching">{t("holiday_teaching")}</SelectItem><SelectItem value="makeup">{t("holiday_makeup")}</SelectItem></SelectContent></Select><SettingsInput value={holidayName} maxLength={100} placeholder={t("holidayName")} onChange={(event) => setHolidayName(event.target.value)} /><span className="grid grid-cols-2 gap-2"><DateTimePicker className={SETTINGS_CONTROL_CLASS} value={holidayStart} onValueChange={setHolidayStart} /><DateTimePicker className={SETTINGS_CONTROL_CLASS} value={holidayEnd} onValueChange={setHolidayEnd} /></span></div>
-              <Button className="mt-3" size="sm" variant="secondary" disabled={pending || !holidayName.trim() || !holidayStart || !holidayEnd} onClick={() => holidayRun.run({ campusId: holidayCampusId, name: holidayName, kind: holidayKind, startsOn: holidayStart, endsOn: holidayEnd })}>{t("createHoliday")}</Button>
+              <div className="mt-3 divide-y divide-line border-y border-line">
+                <SettingsField label={t("scope")} htmlFor="holiday-scope">
+                  <ScopeSelect triggerId="holiday-scope" campuses={activeCampuses} value={holidayCampusId} onChange={setHolidayCampusId} globalLabel={t("allCampuses")} />
+                </SettingsField>
+                <SettingsField label={t("holidayKind")} htmlFor="holiday-kind">
+                  <Select value={holidayKind} onValueChange={(value) => setHolidayKind(value as typeof holidayKind)}>
+                    <SettingsSelectTrigger id="holiday-kind"><SelectValue /></SettingsSelectTrigger>
+                    <SelectContent><SelectItem value="closed">{t("holiday_closed")}</SelectItem><SelectItem value="teaching">{t("holiday_teaching")}</SelectItem><SelectItem value="makeup">{t("holiday_makeup")}</SelectItem></SelectContent>
+                  </Select>
+                </SettingsField>
+                <SettingsField label={t("holidayName")} htmlFor="holiday-name">
+                  <SettingsInput id="holiday-name" value={holidayName} maxLength={100} onChange={(event) => setHolidayName(event.target.value)} />
+                </SettingsField>
+                <SettingsField label={t("startsOn")} htmlFor="holiday-start">
+                  <DateTimePicker id="holiday-start" className={SETTINGS_CONTROL_CLASS} value={holidayStart} onValueChange={setHolidayStart} />
+                </SettingsField>
+                <SettingsField label={t("endsOn")} htmlFor="holiday-end">
+                  <DateTimePicker id="holiday-end" className={SETTINGS_CONTROL_CLASS} value={holidayEnd} onValueChange={setHolidayEnd} />
+                </SettingsField>
+              </div>
+              <SettingsActionRow><Button size="sm" variant="secondary" disabled={pending || !holidayName.trim() || !holidayStart || !holidayEnd} onClick={() => holidayRun.run({ campusId: holidayCampusId, name: holidayName, kind: holidayKind, startsOn: holidayStart, endsOn: holidayEnd })}>{t("createHoliday")}</Button></SettingsActionRow>
             </div>
           </div>
         </SettingsSection>
@@ -306,14 +381,27 @@ export function OrganizationSettingsPanel({ initial }: { initial: OrganizationSe
 
       <TabsContent value="rules" className="mt-0">
         <SettingsSection title={t("rulesTitle")} description={t("rulesIntro")} icon={<Settings2 size={19} />}>
-          <div className="grid gap-4 @2xl/page:grid-cols-2 @5xl/page:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)]">
-            <Label className="grid gap-2">{t("ruleDomain")}<Select value={ruleDomain} onValueChange={(value) => chooseRule(value as OrganizationRuleDomain, ruleCampusId)}><SettingsSelectTrigger><SelectValue /></SettingsSelectTrigger><SelectContent>{ORGANIZATION_RULE_DOMAINS.map((domain) => <SelectItem key={domain} value={domain}>{t(`rule_${domain}`)}</SelectItem>)}</SelectContent></Select></Label>
-            <Label className="grid gap-2">{t("scope")}<ScopeSelect campuses={activeCampuses} value={ruleCampusId} onChange={(scope) => chooseRule(ruleDomain, scope)} globalLabel={t("allCampuses")} /></Label>
-            <Label className="grid gap-2">{t("effectiveAt")}<DateTimePicker className={SETTINGS_CONTROL_CLASS} mode="datetime" value={ruleEffectiveAt} onValueChange={setRuleEffectiveAt} /></Label>
+          <div className="divide-y divide-line border-y border-line">
+            <SettingsField label={t("ruleDomain")} htmlFor="rule-domain">
+              <Select value={ruleDomain} onValueChange={(value) => chooseRule(value as OrganizationRuleDomain, ruleCampusId)}>
+                <SettingsSelectTrigger id="rule-domain"><SelectValue /></SettingsSelectTrigger>
+                <SelectContent>{ORGANIZATION_RULE_DOMAINS.map((domain) => <SelectItem key={domain} value={domain}>{t(`rule_${domain}`)}</SelectItem>)}</SelectContent>
+              </Select>
+            </SettingsField>
+            <SettingsField label={t("scope")} htmlFor="rule-scope">
+              <ScopeSelect triggerId="rule-scope" campuses={activeCampuses} value={ruleCampusId} onChange={(scope) => chooseRule(ruleDomain, scope)} globalLabel={t("allCampuses")} />
+            </SettingsField>
+            <SettingsField label={t("effectiveAt")} htmlFor="rule-effective-at">
+              <DateTimePicker id="rule-effective-at" className={SETTINGS_CONTROL_CLASS} mode="datetime" value={ruleEffectiveAt} onValueChange={setRuleEffectiveAt} />
+            </SettingsField>
+            <SettingsField label={t("ruleValue")} htmlFor="rule-value">
+              <Textarea id="rule-value" rows={10} value={ruleValue} onChange={(event) => setRuleValue(event.target.value)} className="font-mono text-xs" />
+            </SettingsField>
+            <SettingsField label={t("changeReason")} htmlFor="rule-reason">
+              <SettingsInput id="rule-reason" value={ruleReason} maxLength={200} onChange={(event) => setRuleReason(event.target.value)} />
+            </SettingsField>
           </div>
-          <Label className="mt-4 grid gap-2">{t("ruleValue")}<Textarea rows={10} value={ruleValue} onChange={(event) => setRuleValue(event.target.value)} className="font-mono text-xs" /></Label>
-          <Label className="mt-4 grid gap-2">{t("changeReason")}<SettingsInput value={ruleReason} maxLength={200} onChange={(event) => setRuleReason(event.target.value)} /></Label>
-          <div className="mt-4 flex justify-end"><Button size="sm" disabled={pending || !ruleEffectiveAt || !ruleReason.trim()} onClick={() => ruleRun.run({ domain: ruleDomain, campusId: ruleCampusId, valueText: ruleValue, effectiveAt: toIso(ruleEffectiveAt), reason: ruleReason })}>{t("createVersion")}</Button></div>
+          <SettingsActionRow><Button size="sm" disabled={pending || !ruleEffectiveAt || !ruleReason.trim()} onClick={() => ruleRun.run({ domain: ruleDomain, campusId: ruleCampusId, valueText: ruleValue, effectiveAt: toIso(ruleEffectiveAt), reason: ruleReason })}>{t("createVersion")}</Button></SettingsActionRow>
           <div className="mt-6 border-t border-line pt-4"><h3 className="font-medium">{t("versionHistory")}</h3><ul className="mt-2 divide-y divide-line">{ruleHistory.map((row) => <li key={row.id} className="flex flex-wrap items-center gap-3 py-3 text-sm"><span className="font-mono">v{row.version}</span><span className="min-w-0 flex-1 text-muted">{formatTime(row.effectiveFrom)} · {row.reason} · {row.createdBy || t("systemActor")}</span>{isEffective(row) && <Badge variant="secondary">{t("effective")}</Badge>}<Button size="sm" variant="secondary" disabled={pending || isEffective(row)} onClick={() => rollbackRuleRun.run(row.id, new Date().toISOString(), t("rollbackReason", { version: row.version }))}><RotateCcw className="size-3.5" />{t("rollback")}</Button></li>)}</ul></div>
         </SettingsSection>
       </TabsContent>
@@ -321,14 +409,31 @@ export function OrganizationSettingsPanel({ initial }: { initial: OrganizationSe
       <TabsContent value="features" className="mt-0">
         <SettingsSection title={t("featuresTitle")} description={t("featuresIntro")} icon={<Flag size={19} />}>
           <div className="border-y border-line py-4 text-sm text-muted">{t("failClosedNotice")}</div>
-          <div className="mt-4 grid gap-4 @2xl/page:grid-cols-2 @5xl/page:grid-cols-3">
-            <Label className="grid gap-2">{t("feature")}<Select value={flagKey} onValueChange={(value) => chooseFlag(value as OrganizationFeatureKey, flagCampusId)}><SettingsSelectTrigger><SelectValue /></SettingsSelectTrigger><SelectContent>{ORGANIZATION_FEATURE_KEYS.map((key) => <SelectItem key={key} value={key}>{t(`flag_${key.replaceAll(".", "_")}`)}</SelectItem>)}</SelectContent></Select></Label>
-            <Label className="grid gap-2">{t("scope")}<ScopeSelect campuses={activeCampuses} value={flagCampusId} onChange={(scope) => chooseFlag(flagKey, scope)} globalLabel={t("allCampuses")} /></Label>
-            <Label className="grid gap-2">{t("effectiveAt")}<DateTimePicker className={SETTINGS_CONTROL_CLASS} mode="datetime" value={flagEffectiveAt} onValueChange={setFlagEffectiveAt} /></Label>
+          <div className="mt-4 divide-y divide-line border-y border-line">
+            <SettingsField label={t("feature")} htmlFor="feature-key">
+              <Select value={flagKey} onValueChange={(value) => chooseFlag(value as OrganizationFeatureKey, flagCampusId)}>
+                <SettingsSelectTrigger id="feature-key"><SelectValue /></SettingsSelectTrigger>
+                <SelectContent>{ORGANIZATION_FEATURE_KEYS.map((key) => <SelectItem key={key} value={key}>{t(`flag_${key.replaceAll(".", "_")}`)}</SelectItem>)}</SelectContent>
+              </Select>
+            </SettingsField>
+            <SettingsField label={t("scope")} htmlFor="feature-scope">
+              <ScopeSelect triggerId="feature-scope" campuses={activeCampuses} value={flagCampusId} onChange={(scope) => chooseFlag(flagKey, scope)} globalLabel={t("allCampuses")} />
+            </SettingsField>
+            <SettingsField label={t("effectiveAt")} htmlFor="feature-effective-at">
+              <DateTimePicker id="feature-effective-at" className={SETTINGS_CONTROL_CLASS} mode="datetime" value={flagEffectiveAt} onValueChange={setFlagEffectiveAt} />
+            </SettingsField>
+            <SettingsField label={t("status")} htmlFor="feature-enabled">
+              <div className="flex min-h-10 items-center gap-3">
+                <Checkbox id="feature-enabled" checked={financeReleaseClosed ? false : flagEnabled} disabled={financeReleaseClosed} onCheckedChange={(checked) => setFlagEnabled(checked === true)} />
+                <div className="min-w-0 flex-1"><p className="font-medium">{financeReleaseClosed ? t("financeReleaseClosed") : flagEnabled ? t("enabled") : t("disabled")}</p><p className="mt-1 text-xs text-muted">{financeReleaseClosed ? t("financeReleaseClosedHelp") : t(`flagHelp_${flagKey.replaceAll(".", "_")}`)}</p></div>
+                <Badge variant={financeReleaseClosed || !flagEnabled ? "outline" : "default"}>{financeReleaseClosed || !flagEnabled ? t("off") : t("on")}</Badge>
+              </div>
+            </SettingsField>
+            <SettingsField label={t("changeReason")} htmlFor="feature-reason">
+              <SettingsInput id="feature-reason" value={flagReason} maxLength={200} onChange={(event) => setFlagReason(event.target.value)} />
+            </SettingsField>
           </div>
-          <div className="mt-4 flex items-center gap-3 border-y border-line py-4"><Checkbox checked={financeReleaseClosed ? false : flagEnabled} disabled={financeReleaseClosed} onCheckedChange={(checked) => setFlagEnabled(checked === true)} /><div className="min-w-0 flex-1"><p className="font-medium">{financeReleaseClosed ? t("financeReleaseClosed") : flagEnabled ? t("enabled") : t("disabled")}</p><p className="mt-1 text-xs text-muted">{financeReleaseClosed ? t("financeReleaseClosedHelp") : t(`flagHelp_${flagKey.replaceAll(".", "_")}`)}</p></div><Badge variant={financeReleaseClosed || !flagEnabled ? "outline" : "default"}>{financeReleaseClosed || !flagEnabled ? t("off") : t("on")}</Badge></div>
-          <Label className="mt-4 grid gap-2">{t("changeReason")}<SettingsInput value={flagReason} maxLength={200} onChange={(event) => setFlagReason(event.target.value)} /></Label>
-          <div className="mt-4 flex justify-end"><Button size="sm" disabled={financeReleaseClosed || pending || !flagEffectiveAt || !flagReason.trim()} onClick={() => flagRun.run({ flagKey, campusId: flagCampusId, enabled: flagEnabled, effectiveAt: toIso(flagEffectiveAt), reason: flagReason })}>{t("createVersion")}</Button></div>
+          <SettingsActionRow><Button size="sm" disabled={financeReleaseClosed || pending || !flagEffectiveAt || !flagReason.trim()} onClick={() => flagRun.run({ flagKey, campusId: flagCampusId, enabled: flagEnabled, effectiveAt: toIso(flagEffectiveAt), reason: flagReason })}>{t("createVersion")}</Button></SettingsActionRow>
           <div className="mt-6 border-t border-line pt-4"><h3 className="font-medium">{t("versionHistory")}</h3><ul className="mt-2 divide-y divide-line">{flagHistory.map((row) => <li key={row.id} className="flex flex-wrap items-center gap-3 py-3 text-sm"><span className="font-mono">v{row.version}</span><Badge variant={row.enabled ? "default" : "outline"}>{row.enabled ? t("on") : t("off")}</Badge><span className="min-w-0 flex-1 text-muted">{formatTime(row.effectiveFrom)} · {row.reason} · {row.createdBy || t("systemActor")}</span>{isEffective(row) && <Badge variant="secondary">{t("effective")}</Badge>}<Button size="sm" variant="secondary" disabled={financeReleaseClosed || pending || isEffective(row)} onClick={() => rollbackFlagRun.run(row.id, new Date().toISOString(), t("rollbackReason", { version: row.version }))}><RotateCcw className="size-3.5" />{t("rollback")}</Button></li>)}</ul></div>
         </SettingsSection>
       </TabsContent>
