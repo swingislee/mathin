@@ -59,7 +59,7 @@ export default defineConfig({
     },
     ...(target.releaseMode ? [] : [{
       name: "r1-live-local-chromium",
-      testMatch: ["r1-live-golden-path.spec.ts", "teacher-microcourse.spec.ts", "organization-location-settings.spec.ts"],
+      testMatch: ["r1-live-golden-path.spec.ts", "teacher-microcourse.spec.ts", "organization-location-settings.spec.ts", "staff-self-role.spec.ts"],
       use: {
         ...devices["Desktop Chrome"],
         trace: "off" as const,

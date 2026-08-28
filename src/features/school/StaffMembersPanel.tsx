@@ -139,6 +139,7 @@ export function StaffMembersPanel({
   const deactivate = () => { if (deactivateTarget) deactivateRun.run(deactivateTarget.userId, reassignTo || null); };
 
   const pending = saveRolesRun.pending || promoteRun.pending || deactivateRun.pending;
+  const canManageRoles = (member: StaffMember) => member.userId !== selfId || isAdmin;
 
   // 查到的已是员工：直接从成员列表里找到对应行进授岗弹窗
   const foundMember = found ? members.find((member) => member.userId === found.userId) ?? null : null;
@@ -183,14 +184,13 @@ export function StaffMembersPanel({
                   )}
                 </TableCell>
                 <TableCell className="px-4 py-3 text-right">
-                  {member.userId === selfId ? (
-                    <span className="text-xs text-muted">{t("selfRow")}</span>
-                  ) : (
-                    <span className="inline-flex gap-3">
+                  <span className="inline-flex items-center gap-3">
+                    {member.userId === selfId && <span className="text-xs text-muted">{t("selfRow")}</span>}
+                    {canManageRoles(member) && (
                       <button type="button" onClick={() => openDialog(member)} className="text-xs text-muted underline underline-offset-2 hover:text-ink">{t("manageRoles")}</button>
-                      {member.isActive && <button type="button" onClick={() => { setDeactivateTarget(member); setReassignTo(""); setHandoverPreview(null); void getStaffHandoverPreviewAction(member.userId).then(setHandoverPreview).catch(()=>{}); }} className="text-xs text-rose underline underline-offset-2">{t("deactivate")}</button>}
-                    </span>
-                  )}
+                    )}
+                    {member.userId !== selfId && member.isActive && <button type="button" onClick={() => { setDeactivateTarget(member); setReassignTo(""); setHandoverPreview(null); void getStaffHandoverPreviewAction(member.userId).then(setHandoverPreview).catch(()=>{}); }} className="text-xs text-rose underline underline-offset-2">{t("deactivate")}</button>}
+                  </span>
                 </TableCell>
               </TableRow>
             ))}
@@ -238,7 +238,7 @@ export function StaffMembersPanel({
               ) : (
                 <span className="ml-auto text-xs text-muted">{t("promoteAdminOnly")}</span>
               ))}
-            {foundMember && foundMember.userId !== selfId && (
+            {foundMember && canManageRoles(foundMember) && (
               <button
                 type="button"
                 onClick={() => openDialog(foundMember)}
