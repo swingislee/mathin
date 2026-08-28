@@ -136,7 +136,7 @@ R1-Live 不缩减 1.0 产品合同。它只保留两个结果 Gate：原范围�
 
 - 当前子阶段以 doc 04 顶部为准；2026-08-23 进入 `R1-Live-2 · 生产单老师试用`，首个 Gate 2 闭环仍固定为正式教师整班点名、持久再读和权限对照。
 - 当前采用双轨执行：生产端只由 1 名正式教师在既有正式数据上小范围试用，开发端可并行尝试产品负责人选中的新功能。新功能须在隔离开发目标完成相关机器检查和产品负责人初步验收，再以独立可回退提交经过生产 preflight、发布与 postflight；开发通过、已部署待验收和生产通过必须分别记录。
-- `DEV-ORG-1` 已进入开发预演轨：把机构资料、校区/教室目录、课表学年/日历/排课默认和系统能力发布按工作对象拆分。首个迁移保留旧字段与 RPC 并双写一个回退窗口；开发验收和旧版本退休后才能另行删除兼容合同。该工作不修改 R1-Live Gate 2，也不授权任何生产迁移或数据写入。
+- `DEV-ORG-1` 已完成本机实现与机器检查，当前为 `LOCAL MACHINE PASS / PENDING USER ACCEPTANCE`：机构资料、校区/教室目录、课表学年/日历/排课默认和系统能力发布已按工作对象拆分，固定管理员完整旅程 1/1 通过。兼容迁移继续保留旧字段与 RPC 并双写一个回退窗口；开发人工验收和旧版本退休后才能另行删除兼容合同。该工作不修改 R1-Live Gate 2，也不授权任何生产迁移或数据写入。
 - 原 R1 暂停在 R1-9。P6-AIX-2、来源 manifest 和导出器结果保留；1305 讲全量对象证据及 R1-10～18 进入 Production 1.0/上线后池，不再阻塞第一名教师开始工作。SML-0 作为独立并行轨道保留暂停点。
 - R1 实际责任映射由 doc 25 §7.1 维护；阶段证据统一从 `docs/evidence/r1/README.md` 索引，Agent 只能作为执行者，不能代替人员 owner 或批准人。
 - R1-Live 已建立只绑定 `127.0.0.1` 且关闭自助注册的本机隔离开发目标；11 个固定开发身份已从 gitignored manifest 初始化并通过密码登录。Xiaomi 上首名真实教师已通过邮箱绑定的一次性员工邀请完成注册，正式管理员已分配 `research` 与 `teacher` 岗位；active manifest 仍为 8 条 protected、0 条 purge。生产数据库 ledger=`211`、head=`20260828000200_courseware_summer_a_plus_catalog`，应用 current/previous=`20260828-071313` / `087b497…` 与 `20260828-071024` / `087b497…`。课堂 Stage A、B1 与 B2 已通过，生产已有 checkpoint version/chunk/head=`2/2/2`；Stage B3 的共同 bridge 与档案表已部署，board/input/layout 为 version 2 / true，H5 为 version 3 / false。来源课件运行时/暑期 A+ 与教师微课课次多方案/班级重新启用已部署待产品验收；最新 PostgreSQL+Storage 同批次全量备份为 `mathin-20260828T052842Z-teacher-microcourse-variant-087b497`。Gate 1 `PASS`；生产已有 3 个班级、16 个课次和 1 条 active 报名，正式点名仍为 0，Gate 2 继续 `BLOCKED`，退出差距仍是正式教师点名持久再读和权限对照。当前已规划且不扩张范围的步骤按 standing direction 直接推进；需要真实教师输入、人工操作或验收，发现计划外差异，或进入清理、不可逆动作和范围扩张时停止。生产写入继续保留精确目标、只读 preflight、fail-closed 断言和证据登记。
