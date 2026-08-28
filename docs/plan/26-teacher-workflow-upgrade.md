@@ -4,9 +4,9 @@
 >
 > **已落地**：左侧三步备课切换、右侧常驻课件预览、与上课教室共用且可向下收起的白板工具栏和 BoardItem 对象层、解析成品查看与 WebP/原件导出、可见 revision 审核链、BlockNote 标准模板与备课质量状态、开课前 14/7 天备课提醒与课后“补交”标记，`DEV-TMC-1` 的数据库、编辑器、草稿试讲、教研审核、教师微课目录、单讲建班和注册表驱动游戏页闭环，以及 `DEV-TMC-2` 的多方案创建、派生、任课教师选用和课堂冻结闭环。
 >
-> **剩余项**：独立教案管理页面的创建/绑定入口、服务端打印 PDF 派生文件，`DEV-TMC-1` 的产品负责人生产页面写态验收，以及 `DEV-TMC-2` 的产品负责人开发页面验收与任何后续生产授权；页面级教学备注已按产品判断暂缓。R1-Live 中备课产物、审核和检查项只作质量提示，不阻断教师冻结快照或开课；Production 1.0 再评估质量门。
+> **剩余项**：独立教案管理页面的创建/绑定入口、服务端打印 PDF 派生文件，以及 `DEV-TMC-1/2` 的产品负责人生产页面写态验收；页面级教学备注已按产品判断暂缓。R1-Live 中备课产物、审核和检查项只作质量提示，不阻断教师冻结快照或开课；Production 1.0 再评估质量门。
 >
-> **最后核对**：2026-08-28；既有教师生产链依据迁移 `20260730010500_doc26_teacher_workflow.sql`、`20260731000700_doc26_annotation_board_items.sql` 与 `20260823000200_r1_live_preparation_attention_window.sql`、隔离/生产数据库断言、定向合同测试及产品走查。`DEV-TMC-1` 已在本机完成机器验证，并以 commit `bc76f68`、生产 head `20260827000700_teacher_microcourse_course_catalog_access` 和 release `20260827-094025` 部署；`teaching.teacher_microcourses_v1` 为 version 2 / true，postflight 通过，产品负责人生产页面验收尚未发生。`DEV-TMC-2` 已在本机通过数据库、静态、单元与固定账号浏览器检查，产品负责人开发页面验收和生产授权均尚未发生。
+> **最后核对**：2026-08-28；既有教师生产链依据迁移 `20260730010500_doc26_teacher_workflow.sql`、`20260731000700_doc26_annotation_board_items.sql` 与 `20260823000200_r1_live_preparation_attention_window.sql`、隔离/生产数据库断言、定向合同测试及产品走查。`DEV-TMC-1` 已于 2026-08-27 首轮部署并保持 `teaching.teacher_microcourses_v1` version 2 / true；`DEV-TMC-2` 与班级重新启用增量又以 commit `087b497…`、ledger=`211`、current/previous=`20260828-071313` / `20260828-071024` 部署，数据库、服务、HTTP、业务不变量和登录态只读页面 postflight 通过。产品负责人生产写态验收尚未发生。
 
 # Mathin 教师备课生产链升级规划
 
@@ -552,7 +552,7 @@ template_version:
 | --- | --- | --- |
 | 本机实现与机器检查 | **PASS** | 基础 commits `cd3b2bf`、`26698e3`、`96f3301`、`a4fa9e4`、`5c13d5d`、`f418dd9` 与迁移 `20260826000200`～`20260826000600` 已通过三份事务回滚 SQL、微课 Vitest 17/17、固定账号 Playwright 1/1 和 R1-Live 60/60；整讲来源增量 commit `dd9a755`、migration `20260827000100_teacher_microcourse_lecture_source_picker` 通过内容 SQL、微课 Vitest 4 文件 19/19 与完整旅程；通用游戏页增量 commit `1135099`、migrations `20260827000300`～`20260827000400` 通过回滚式内容 SQL、定向 Vitest 6 文件 47/47、固定账号 Playwright 1/1 及最终 CI 16/16，全量 Vitest为 106 文件、742 通过/1 条件跳过且 production build 成功；课程产品选择器复用增量 migrations `20260827000600`～`20260827000700` 已通过事务回滚、固定教师权限矩阵、微课 Vitest 4 文件 21/21 与完整 Playwright 1/1 |
 | 产品负责人开发端初验 | **UNKNOWN** | 本机功能开关已启用并保留可验收版本；自动化只能证明覆盖合同，尚无产品负责人签收 |
-| 生产迁移与启用 | **DEPLOYED / PENDING USER ACCEPTANCE** | 明确授权后完成 PostgreSQL-only 备份、12 migration rollback/零残留/formal、commit `bc76f68` 双 build/原子切换及真实管理员 feature flag rollback/formal；current/previous=`20260827-094025` / `20260826-125052`，ledger=`206`，flag=version 2 / true，HTTP/权限/服务/错误/业务计数 postflight 通过 |
+| 生产迁移与启用 | **DEPLOYED / PENDING USER ACCEPTANCE** | 首轮明确授权后完成 PostgreSQL-only 备份、12 migration rollback/零残留/formal、commit `bc76f68` 发布及 feature flag rollback/formal；后续 DEV-TMC-2 候选以 PostgreSQL+Storage 全量备份、三 migration rollback/formal 和双 release 推进到 current/previous=`20260828-071313` / `20260828-071024`、ledger=`211`、flag=version 2 / true，HTTP/权限/服务/错误/业务计数 postflight 通过 |
 
 完整机器证据见 [`../evidence/r1/teacher-microcourse-dev.md`](../evidence/r1/teacher-microcourse-dev.md)。本机随机 E2E 课程族、班级、课次和微课项目已按精确名称/ID 清理并复核为 0；固定开发账号与既有基线数据未改变。
 
@@ -598,6 +598,14 @@ H5 首版只有 HTML 编辑框、防抖预览、运行错误和本地素材 data
 
 # 十四、DEV-TMC-2 课次课件多方案协作与选用
 
+## 当前状态与证据
+
+| 子门 | 状态 | 证据范围 |
+| --- | --- | --- |
+| 本机实现与机器检查 | **PASS** | 两份 migration 回滚断言、TypeScript、双语键、全库 ESLint、定向 Vitest 8 文件 64/64、固定账号新旧 Playwright 2/2、CI 16/16、全量 Vitest 108 文件 761 通过/1 条件跳过及 production build 通过 |
+| 生产迁移与应用 | **DEPLOYED / PENDING USER ACCEPTANCE** | 明确授权后，候选 `087b497…` 同时纳入 `20260827000800_classroom_reactivation` 与两条多方案 migration，明确排除班级课型/活动类型增量；全量备份、完整 rollback/零残留/formal、同 schema 双 release 与独立 postflight 通过，ledger=`211`，current/previous=`20260828-071313` / `20260828-071024` |
+| 产品负责人生产写态验收 | **UNKNOWN** | 登录态只读浏览器已打开生产 4:3 审核工作区并确认新流程与正常空状态；未创建生产方案、未选择/冻结方案、未点击班级重新启用 |
+
 ## 产品动作与对象
 
 一个自由课次可以关联多个课件方案。任课教师和具备 `courseware.review` 的教研都能从空白开始制作；打开本人方案直接续编，修改他人方案时由系统在一次事务内复制当前元数据、页面 revision、绑定、H5 内容引用与游戏校验事实，生成带来源关系的新方案后进入编辑，不覆盖来源 head。方案是并行教学设计，方案内部的连续输入仍只产生自动保存 revision，不把每次保存暴露成新方案。
@@ -617,4 +625,4 @@ H5 首版只有 HTML 编辑框、防抖预览、运行错误和本地素材 data
 - 只有任课教师能设置本节使用；单方案可自动选中，多方案保持既有选择，已冻结/开课后拒绝切换。
 - 常规开课入口与编辑器开课入口都冻结同一已选方案；无选用方案时继续沿用既有空白课堂降级，不引入新的硬阻断。
 - H5 私有内容引用、上传图片 CAS、来源课程页面与 `game-page-v1` 校验事实在派生后仍可预览、编辑、提交共享审核并保持 RLS 隔离。
-- zh/en 固定开发账号覆盖普通教师制作/选用、教研创建修改方案、来源 head 不漂移和课堂冻结；生产迁移与启用继续要求新的明确授权。
+- zh/en 固定开发账号覆盖普通教师制作/选用、教研创建修改方案、来源 head 不漂移和课堂冻结；本轮生产迁移与应用已取得明确授权并完成，后续 schema、release、权限或开关变更继续要求新的明确授权。
