@@ -37,7 +37,9 @@ describe("P4H-8 classroom list, detail tabs and session drawer contract", () => 
     const migration = read("supabase", "migrations", "20260829000100_classroom_personal_scope_default.sql");
     const page = read("src", "app", "[locale]", "dashboard", "classes", "page.tsx");
     const list = read("src", "features", "school", "ClassroomList.tsx");
+    const testPanel = read("src", "features", "school", "ClassroomTestBulkPanel.tsx");
     const queries = read("src", "features", "school", "teaching-operations", "classroom-queries.ts");
+    const sharedTableShell = "overflow-hidden rounded-2xl border border-line bg-card";
 
     expect(migration).toContain("when has_teaching_class then 'teaching'");
     expect(migration).toContain("when has_support_class then 'support'");
@@ -49,6 +51,10 @@ describe("P4H-8 classroom list, detail tabs and session drawer contract", () => 
     expect(list).toContain('scope === "all"');
     expect(list).toContain("<AllClassroomsTable");
     expect(list).toContain("<PersonalClassroomCards");
+    expect(list).toContain('data-classroom-table="all"');
+    expect(list).toContain(sharedTableShell);
+    expect(testPanel).toContain(sharedTableShell);
+    expect(list).not.toContain('<div className="border-y border-line">');
     expect(list).toContain("timeZone });");
   });
 

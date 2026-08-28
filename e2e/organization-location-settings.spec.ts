@@ -296,7 +296,11 @@ test("dashboard uses functional navigation, scalable class views, and ten-item a
 
   await page.goto("/zh/dashboard/classes?scope=all");
   await expect(page.getByRole("link", { name: "全部班级", exact: true })).toHaveAttribute("aria-current", "page");
-  await expect(page.locator("main table")).toBeVisible();
+  const allClassroomsTable = page.locator('[data-classroom-table="all"]');
+  await expect(allClassroomsTable).toBeVisible();
+  await expect(allClassroomsTable).toHaveClass(/rounded-2xl/);
+  await expect(allClassroomsTable).toHaveClass(/border-line/);
+  await expect(allClassroomsTable.locator("table")).toBeVisible();
   await expect(page.locator("main article")).toHaveCount(0);
 
   await page.context().clearCookies();

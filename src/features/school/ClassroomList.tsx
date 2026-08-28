@@ -115,9 +115,9 @@ function AllClassroomsTable({
   formatSession: (value: string) => string;
 }) {
   return (
-    <div className="border-y border-line">
-      <Table className="min-w-[72rem]">
-        <TableHeader>
+    <div data-classroom-table="all" className="overflow-hidden rounded-2xl border border-line bg-card">
+      <Table className="w-full min-w-[72rem] text-left text-sm">
+        <TableHeader className="border-b border-line text-xs text-muted">
           <TableRow>
             <TableHead>{t("title")}</TableHead>
             <TableHead>{t("courseColumn")}</TableHead>
@@ -129,7 +129,7 @@ function AllClassroomsTable({
             <TableHead />
           </TableRow>
         </TableHeader>
-        <TableBody>
+        <TableBody className="divide-y divide-line">
           {classrooms.map((classroom) => (
             <TableRow key={classroom.id}>
               <TableCell>
