@@ -9,6 +9,7 @@ import {
   startOfWeek,
   type ScheduleEntry,
 } from "@/features/school/schedule";
+import type { TeachingCalendarEntryV2 } from "@/features/school/teaching-calendar";
 
 function entry(overrides: Partial<ScheduleEntry>): ScheduleEntry {
   return {
@@ -26,6 +27,22 @@ function entry(overrides: Partial<ScheduleEntry>): ScheduleEntry {
     campusId: null,
     campusName: null,
     roomAssignmentOrigin: null,
+    ...overrides,
+  };
+}
+
+function calendarEntry(overrides: Partial<TeachingCalendarEntryV2>): TeachingCalendarEntryV2 {
+  return {
+    id: crypto.randomUUID(),
+    campusId: null,
+    campusName: null,
+    name: "Calendar rule",
+    kind: "closed",
+    startsOn: "2026-03-09",
+    endsOn: "2026-03-09",
+    scheduleMode: null,
+    mappedWeekday: null,
+    createdAt: "2026-01-01T00:00:00.000Z",
     ...overrides,
   };
 }
@@ -68,5 +85,42 @@ describe("organization timezone and structured room scheduling", () => {
       "America/New_York",
     );
     expect(rows[0].scheduledAt.toISOString()).toBe("2026-03-09T23:00:00.000Z");
+  });
+
+  it("skips closures, inserts mapped dates, ignores manual dates, and applies campus precedence", () => {
+    const campusA = crypto.randomUUID();
+    const rules = [
+      calendarEntry({ startsOn: "2026-03-09", endsOn: "2026-03-09" }),
+      calendarEntry({
+        campusId: campusA,
+        campusName: "A",
+        kind: "teaching",
+        startsOn: "2026-03-09",
+        endsOn: "2026-03-09",
+        scheduleMode: "mapped",
+        mappedWeekday: 1,
+      }),
+      calendarEntry({
+        kind: "makeup",
+        startsOn: "2026-03-14",
+        endsOn: "2026-03-14",
+        scheduleMode: "mapped",
+        mappedWeekday: 1,
+      }),
+      calendarEntry({
+        kind: "teaching",
+        startsOn: "2026-03-16",
+        endsOn: "2026-03-16",
+        scheduleMode: "manual",
+      }),
+    ];
+    const lectures = [1, 2, 3].map((no) => ({ lectureId: crypto.randomUUID(), no, name: String(no) }));
+    const generate = (campusId: string | null) => generateSchedulePreview(
+      lectures, "2026-03-02", [1], 10, 0, 90, "Asia/Shanghai", { entries: rules, campusId },
+    ).map((row) => calendarDayKey(row.scheduledAt, "Asia/Shanghai"));
+
+    expect(generate(campusA)).toEqual(["2026-03-02", "2026-03-09", "2026-03-14"]);
+    expect(generate(crypto.randomUUID())).toEqual(["2026-03-02", "2026-03-14", "2026-03-23"]);
+    expect(generate(null)).toEqual(["2026-03-02", "2026-03-14", "2026-03-23"]);
   });
 });

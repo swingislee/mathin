@@ -131,6 +131,69 @@ select (((:'closed_day'::date + time '10:00') at time zone
   (select timezone from public.organizations where singleton_key = 1)))::text as closed_at \gset
 
 set local role authenticated;
+select set_config('request.jwt.claim.sub', :'admin_id', true);
+select set_config('dev_org.closed_at', :'closed_at', true);
+select set_config('dev_org.room_b_id', :'room_b_id', true);
+select set_config('dev_org.teacher_id', :'teacher_id', true);
+select set_config('dev_org.term_id', :'term_id', true);
+select (
+  public.get_class_build_calendar_preview_v2(
+    :'room_b_id'::uuid,
+    jsonb_build_array(jsonb_build_object('key', 'closed-build', 'scheduled_at', :'closed_at'::timestamptz))
+  ) #>> '{0,entry,kind}' = 'closed'
+) as class_build_preview_ok \gset
+\if :class_build_preview_ok
+\else
+  \echo DEV-ORG-1 class build calendar preview missed closed date
+  select 1 / 0;
+\endif
+do $$
+begin
+  begin
+    perform public.create_free_class_with_sessions_v2(
+      'Rejected closed-day class', 12::smallint, current_setting('dev_org.room_b_id')::uuid,
+      current_setting('dev_org.teacher_id')::uuid, null::uuid,
+      current_setting('dev_org.term_id')::uuid, 'test',
+      jsonb_build_array(jsonb_build_object(
+        'lecture_id', null, 'title', 'Rejected closed-day session',
+        'scheduled_at', current_setting('dev_org.closed_at')::timestamptz,
+        'duration_min', 90, 'closed_day_reason', ''
+      )), false, 'short_term_topic'
+    );
+    raise exception 'CLOSED_DAY_CLASS_BUILD_WITHOUT_REASON_WAS_ACCEPTED';
+  exception when others then
+    if sqlerrm <> 'CLOSED_DAY_CONFIRMATION_REQUIRED' then raise; end if;
+  end;
+end
+$$;
+select public.create_free_class_with_sessions_v2(
+  'Confirmed closed-day class', 12::smallint, :'room_b_id'::uuid,
+  :'teacher_id'::uuid, null::uuid, :'term_id'::uuid, 'test',
+  jsonb_build_array(jsonb_build_object(
+    'lecture_id', null, 'title', 'Confirmed closed-day session',
+    'scheduled_at', :'closed_at'::timestamptz, 'duration_min', 90,
+    'closed_day_reason', 'Approved during class creation'
+  )), false, 'short_term_topic'
+) as closed_build_classroom_id \gset
+reset role;
+
+select id as closed_build_session_id from public.class_sessions
+ where classroom_id = :'closed_build_classroom_id'::uuid
+   and title = 'Confirmed closed-day session' \gset
+select exists(
+  select 1 from public.domain_events
+   where entity_id = :'closed_build_session_id'::uuid
+     and event_type = 'session.closed_day.override_confirmed'
+     and payload ->> 'reason' = 'Approved during class creation'
+     and payload ->> 'source' = 'class_creation'
+) as closed_build_event_ok \gset
+\if :closed_build_event_ok
+\else
+  \echo DEV-ORG-1 class build closed-day event/reason missing
+  select 1 / 0;
+\endif
+
+set local role authenticated;
 select set_config('request.jwt.claim.sub', :'teacher_id', true);
 select set_config('dev_org.session_id', :'session_id', true);
 select set_config('dev_org.room_b_id', :'room_b_id', true);

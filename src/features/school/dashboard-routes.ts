@@ -169,7 +169,7 @@ export const DASHBOARD_ROUTES = {
     // 课次创建属于班级上下文；课表只做跨班级/教师/课次的聚合时间视图（§5.3）。
     createSurface: "parent",
     creationOwner: "classes",
-    nav: { labelKey: "schedule", group: "work" },
+    nav: { labelKey: "schedule", group: "teachingOps" },
   },
 
   // ── 学员服务 ────────────────────────────────────────────────────────────
@@ -219,6 +219,24 @@ export const DASHBOARD_ROUTES = {
   },
 
   // ── 教学运营 ────────────────────────────────────────────────────────────
+  scheduleCalendar: {
+    href: "/dashboard/schedule/calendar",
+    kind: "singleton",
+    environments: STAFF_ONLY,
+    permission: "schedule.manage",
+    createSurface: "dialog",
+    parent: "schedule",
+    nav: { labelKey: "academicCalendar", group: "teachingOps" },
+  },
+  scheduleDefaults: {
+    href: "/dashboard/schedule/defaults",
+    kind: "singleton",
+    environments: STAFF_ONLY,
+    permission: "schedule.manage",
+    createSurface: "none",
+    parent: "schedule",
+    nav: { labelKey: "scheduleDefaults", group: "teachingOps" },
+  },
   classes: {
     href: "/dashboard/classes",
     kind: "collection",

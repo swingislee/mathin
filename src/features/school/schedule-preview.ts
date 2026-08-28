@@ -1,3 +1,6 @@
+import { zonedDateTimeToInstant } from "./schedule";
+import { isAutomaticTeachingDay, type TeachingCalendarEntryV2 } from "./teaching-calendar";
+
 export interface LectureSlot {
   lectureId: string;
   no: number;
@@ -22,6 +25,10 @@ export function generateSchedulePreview(
   timeMM: number,
   durationMin: number,
   timeZone: string,
+  calendar?: {
+    entries: readonly TeachingCalendarEntryV2[];
+    campusId: string | null;
+  },
 ): ScheduledSession[] {
   if (lectures.length === 0 || weekdays.length === 0) return [];
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(startDate);
@@ -32,7 +39,14 @@ export function generateSchedulePreview(
   // 保底循环次数，避免 weekdays 传参异常时死循环
   let guard = lectures.length * 14 + 60;
   while (results.length < lectures.length && guard-- > 0) {
-    if (weekdaySet.has(cursor.getUTCDay())) {
+    const day = `${cursor.getUTCFullYear()}-${String(cursor.getUTCMonth() + 1).padStart(2, "0")}-${String(cursor.getUTCDate()).padStart(2, "0")}`;
+    if (isAutomaticTeachingDay(
+      calendar?.entries ?? [],
+      day,
+      cursor.getUTCDay(),
+      weekdaySet,
+      calendar?.campusId ?? null,
+    )) {
       results.push(zonedDateTimeToInstant({
         year: cursor.getUTCFullYear(),
         month: cursor.getUTCMonth(),
@@ -43,12 +57,9 @@ export function generateSchedulePreview(
     }
     cursor.setUTCDate(cursor.getUTCDate() + 1);
   }
-  return lectures.map((lecture, index) => ({
-    ...lecture,
-    scheduledAt: results[index] ?? zonedDateTimeToInstant({
-      year: Number(match[1]), month: Number(match[2]) - 1, day: Number(match[3]), hour: timeHH, minute: timeMM,
-    }, timeZone),
+  return results.map((scheduledAt, index) => ({
+    ...lectures[index],
+    scheduledAt,
     durationMin,
   }));
 }
-import { zonedDateTimeToInstant } from "./schedule";

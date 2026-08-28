@@ -16,6 +16,7 @@ export interface BuildClassSession {
   name: string;
   scheduledAt: string;
   durationMin: number;
+  closedDayReason?: string;
 }
 
 export interface BuildClassInput {

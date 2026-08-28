@@ -13,7 +13,7 @@ import { materializeSessionResolved } from "@/features/courseware-studio/data";
 import { getSessionCoursewareTemplate } from "../courses";
 import { resolveCourseware, type OverlaySlot } from "../courseware-overlay";
 import { authorizedClient, nullableRpcArg } from "./guards";
-import { COMMON_CODES, datetime, intInRange, parse, requiredText, searchQuery, text, uuid } from "./schemas";
+import { COMMON_CODES, dateOnly, datetime, intInRange, parse, requiredText, searchQuery, text, uuid } from "./schemas";
 import type { BuildClassInput, StudentSearchResult } from "./types";
 import type {
   ClassBuildCourseCandidate,
@@ -90,6 +90,22 @@ const conflictSchema = z.object({
   campusId: uuid.nullable(),
   campusName: z.string().nullable(),
 });
+
+const classBuildCalendarPreviewSchema = z.array(z.object({
+  key: requiredText(100),
+  day: dateOnly,
+  locationPending: z.boolean(),
+  entry: z.object({
+    id: uuid,
+    campusId: uuid.nullable(),
+    name: z.string(),
+    kind: z.enum(["closed", "teaching", "makeup"]),
+    scheduleMode: z.enum(["mapped", "manual"]).nullable(),
+    mappedWeekday: z.number().int().min(0).max(6).nullable(),
+  }).nullable(),
+}));
+
+export type ClassBuildCalendarPreviewRow = z.infer<typeof classBuildCalendarPreviewSchema>[number];
 
 type UntypedRpc = (name: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>;
 
@@ -320,6 +336,23 @@ export async function getClassBuildConflictsAction(
   }));
 }
 
+export async function getClassBuildCalendarPreviewAction(
+  roomId: string | null,
+  slots: Array<{ key: string; scheduledAt: string }>,
+): Promise<ClassBuildCalendarPreviewRow[]> {
+  const value = parse(z.object({
+    roomId: uuid.nullable(),
+    slots: z.array(z.object({ key: requiredText(100), scheduledAt: datetime })).max(200),
+  }), { roomId, slots });
+  const { supabase } = await authorizedClient("class.create");
+  const { data, error } = await rpc(supabase)("get_class_build_calendar_preview_v2", {
+    p_room_id: value.roomId,
+    p_slots: value.slots.map((slot) => ({ key: slot.key, scheduled_at: slot.scheduledAt })),
+  });
+  if (error) throw new Error(error.message);
+  return classBuildCalendarPreviewSchema.parse(data ?? []);
+}
+
 const coursewareTrackSchema = z.enum(["native-16x9", "adapted-4x3"]);
 
 export async function setClassroomCoursewareTrackAction(
@@ -367,6 +400,7 @@ export async function buildClass(input: BuildClassInput): Promise<string> {
     title: session.name,
     scheduled_at: session.scheduledAt,
     duration_min: session.durationMin,
+    closed_day_reason: session.closedDayReason,
   }));
   const { data: cid, error: rpcError } = value.courseId === null
     ? await rpc(supabase)("create_free_class_with_sessions_v2", {

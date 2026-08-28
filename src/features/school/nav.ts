@@ -45,6 +45,8 @@ const STAFF_NAV_KEYS: readonly DashboardRouteKey[] = [
   "followups",
   "students",
   "activities",
+  "scheduleCalendar",
+  "scheduleDefaults",
   "classes",
   "courses",
   "courseware",

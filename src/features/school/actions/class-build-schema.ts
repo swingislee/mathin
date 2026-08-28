@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { datetime, intInRange, requiredText, uuid } from "./schemas";
+import { datetime, intInRange, requiredText, text, uuid } from "./schemas";
 
 // Optional Select fields may arrive as either the explicit null used by the
 // current wizard or an empty string from an older/hydrating client. Normalize
@@ -28,6 +28,7 @@ export const buildClassSchema = z.object({
         name: requiredText(100),
         scheduledAt: datetime,
         durationMin: intInRange(1, 600),
+        closedDayReason: text(500).default(""),
       }),
     )
     .max(200),

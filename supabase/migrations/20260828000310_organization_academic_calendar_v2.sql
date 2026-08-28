@@ -452,6 +452,31 @@ begin
 end
 $$;
 
+create or replace function public.list_teaching_calendar_entries_v2()
+returns jsonb language plpgsql security definer stable
+set search_path = public, pg_temp
+as $$
+begin
+  if auth.uid() is null then raise exception 'UNAUTHENTICATED'; end if;
+  return coalesce((select jsonb_agg(jsonb_build_object(
+      'id', entry.id,
+      'campusId', entry.campus_id,
+      'campusName', campus_row.name,
+      'name', entry.name,
+      'kind', entry.kind,
+      'startsOn', entry.starts_on,
+      'endsOn', entry.ends_on,
+      'scheduleMode', entry.schedule_mode,
+      'mappedWeekday', entry.mapped_weekday,
+      'createdAt', entry.created_at
+    ) order by entry.starts_on, entry.ends_on, entry.campus_id nulls first, entry.id)
+    from public.school_holidays entry
+    left join public.campuses campus_row on campus_row.id = entry.campus_id
+    where entry.organization_id = (select id from public.organizations where singleton_key = 1)
+      and entry.archived_at is null), '[]'::jsonb);
+end
+$$;
+
 create or replace function public.create_teaching_calendar_entry_v2(
   p_campus_id uuid,
   p_name text,
@@ -578,6 +603,175 @@ begin
 end
 $$;
 
+create or replace function public.get_class_build_calendar_preview_v2(p_room_id uuid, p_slots jsonb)
+returns jsonb language plpgsql security definer stable
+set search_path = public, pg_temp
+as $$
+declare uid uuid := auth.uid(); timezone_value text; slot record; local_day date;
+        calendar_result jsonb; result jsonb := '[]'::jsonb;
+begin
+  if uid is null or not public.has_perm(uid, 'class.create') then raise exception 'FORBIDDEN'; end if;
+  if jsonb_typeof(coalesce(p_slots, '[]'::jsonb)) <> 'array' or jsonb_array_length(coalesce(p_slots, '[]'::jsonb)) > 200 then
+    raise exception 'INVALID_SCHEDULE';
+  end if;
+  select timezone into timezone_value from public.organizations where singleton_key = 1;
+  for slot in
+    select value ->> 'key' as slot_key, (value ->> 'scheduled_at')::timestamptz as scheduled_at
+      from jsonb_array_elements(coalesce(p_slots, '[]'::jsonb))
+  loop
+    if nullif(slot.slot_key, '') is null or slot.scheduled_at is null then raise exception 'INVALID_SCHEDULE'; end if;
+    local_day := (slot.scheduled_at at time zone timezone_value)::date;
+    calendar_result := public.get_effective_calendar_day_v2(local_day, p_room_id);
+    result := result || jsonb_build_array(jsonb_build_object(
+      'key', slot.slot_key,
+      'day', local_day,
+      'locationPending', (calendar_result ->> 'locationPending')::boolean,
+      'entry', calendar_result -> 'entry'
+    ));
+  end loop;
+  return result;
+exception when invalid_text_representation then
+  raise exception 'INVALID_SCHEDULE';
+end
+$$;
+
+create or replace function public.validate_class_build_calendar_sessions_v2(p_room_id uuid, p_sessions jsonb)
+returns void language plpgsql security definer
+set search_path = public, pg_temp
+as $$
+declare timezone_value text; session_input record; local_day date; calendar_result jsonb;
+begin
+  if auth.uid() is null then raise exception 'UNAUTHENTICATED'; end if;
+  if jsonb_typeof(coalesce(p_sessions, '[]'::jsonb)) <> 'array' then raise exception 'INVALID_SCHEDULE'; end if;
+  select timezone into timezone_value from public.organizations where singleton_key = 1;
+  for session_input in
+    select * from jsonb_to_recordset(coalesce(p_sessions, '[]'::jsonb))
+      as item(scheduled_at timestamptz, closed_day_reason text)
+  loop
+    if session_input.scheduled_at is null then raise exception 'INVALID_SCHEDULE'; end if;
+    local_day := (session_input.scheduled_at at time zone timezone_value)::date;
+    calendar_result := public.get_effective_calendar_day_v2(local_day, p_room_id);
+    if calendar_result #>> '{entry,kind}' = 'closed'
+       and char_length(btrim(coalesce(session_input.closed_day_reason, ''))) not between 1 and 500 then
+      raise exception 'CLOSED_DAY_CONFIRMATION_REQUIRED';
+    end if;
+  end loop;
+end
+$$;
+
+create or replace function public.emit_class_build_closed_day_events_v2(
+  p_classroom_id uuid,
+  p_room_id uuid,
+  p_sessions jsonb
+) returns void language plpgsql security definer
+set search_path = public, pg_temp
+as $$
+declare timezone_value text; session_input record; local_day date; calendar_result jsonb;
+        session_id_value uuid; emitted_ids uuid[] := '{}';
+begin
+  select timezone into timezone_value from public.organizations where singleton_key = 1;
+  for session_input in
+    select * from jsonb_to_recordset(coalesce(p_sessions, '[]'::jsonb))
+      as item(lecture_id uuid, title text, scheduled_at timestamptz, closed_day_reason text)
+  loop
+    local_day := (session_input.scheduled_at at time zone timezone_value)::date;
+    calendar_result := public.get_effective_calendar_day_v2(local_day, p_room_id);
+    if calendar_result #>> '{entry,kind}' = 'closed' then
+      select session_row.id into session_id_value
+        from public.class_sessions session_row
+       where session_row.classroom_id = p_classroom_id
+         and session_row.scheduled_at = session_input.scheduled_at
+         and session_row.title = btrim(session_input.title)
+         and session_row.lecture_id is not distinct from session_input.lecture_id
+         and not (session_row.id = any(emitted_ids))
+       order by session_row.created_at, session_row.id
+       limit 1;
+      if session_id_value is null then raise exception 'SESSION_NOT_FOUND'; end if;
+      emitted_ids := array_append(emitted_ids, session_id_value);
+      perform public.emit_domain_event('session.closed_day.override_confirmed', 'class_session', session_id_value,
+        jsonb_build_object('day', local_day, 'roomId', p_room_id,
+          'calendarEntryId', calendar_result #>> '{entry,id}',
+          'reason', btrim(session_input.closed_day_reason), 'source', 'class_creation'), null, null);
+    end if;
+  end loop;
+end
+$$;
+
+-- The location V2 wrappers are redefined after the calendar exists so class
+-- creation can validate every generated/manual session atomically.
+create or replace function public.create_class_v2(
+  p_name text,
+  p_course_id uuid default null,
+  p_capacity smallint default null,
+  p_room_id uuid default null,
+  p_primary_teacher_id uuid default null,
+  p_learning_support_id uuid default null,
+  p_term_id uuid default null,
+  p_purpose text default 'production',
+  p_sessions jsonb default '[]'::jsonb,
+  p_activate boolean default false,
+  p_offering_type text default 'long_term_formal'
+) returns uuid language plpgsql security definer
+set search_path = public, pg_temp
+as $$
+declare classroom_id_value uuid;
+begin
+  if p_room_id is not null and not exists (
+    select 1 from public.campus_rooms room_row
+    join public.campuses campus_row on campus_row.id = room_row.campus_id
+    where room_row.id = p_room_id and room_row.status = 'active' and campus_row.status = 'active'
+  ) then raise exception 'INVALID_ROOM'; end if;
+  perform public.validate_class_build_calendar_sessions_v2(p_room_id, p_sessions);
+  classroom_id_value := public.create_class(
+    p_name => p_name, p_course_id => p_course_id, p_capacity => p_capacity, p_room => '',
+    p_primary_teacher_id => p_primary_teacher_id, p_learning_support_id => p_learning_support_id,
+    p_term_id => p_term_id, p_purpose => p_purpose, p_sessions => p_sessions,
+    p_activate => p_activate, p_offering_type => p_offering_type
+  );
+  update public.classrooms set default_room_id = p_room_id where id = classroom_id_value;
+  update public.class_sessions set room_id = p_room_id, room_assignment_origin = 'class_default'
+   where classroom_id = classroom_id_value;
+  perform public.emit_class_build_closed_day_events_v2(classroom_id_value, p_room_id, p_sessions);
+  return classroom_id_value;
+end
+$$;
+
+create or replace function public.create_free_class_with_sessions_v2(
+  p_name text,
+  p_capacity smallint default null,
+  p_room_id uuid default null,
+  p_primary_teacher_id uuid default null,
+  p_learning_support_id uuid default null,
+  p_term_id uuid default null,
+  p_purpose text default 'production',
+  p_sessions jsonb default '[]'::jsonb,
+  p_activate boolean default false,
+  p_offering_type text default 'long_term_formal'
+) returns uuid language plpgsql security definer
+set search_path = public, pg_temp
+as $$
+declare classroom_id_value uuid;
+begin
+  if p_room_id is not null and not exists (
+    select 1 from public.campus_rooms room_row
+    join public.campuses campus_row on campus_row.id = room_row.campus_id
+    where room_row.id = p_room_id and room_row.status = 'active' and campus_row.status = 'active'
+  ) then raise exception 'INVALID_ROOM'; end if;
+  perform public.validate_class_build_calendar_sessions_v2(p_room_id, p_sessions);
+  classroom_id_value := public.create_free_class_with_sessions(
+    p_name => p_name, p_capacity => p_capacity, p_room => '',
+    p_primary_teacher_id => p_primary_teacher_id, p_learning_support_id => p_learning_support_id,
+    p_term_id => p_term_id, p_purpose => p_purpose, p_sessions => p_sessions,
+    p_activate => p_activate, p_offering_type => p_offering_type
+  );
+  update public.classrooms set default_room_id = p_room_id where id = classroom_id_value;
+  update public.class_sessions set room_id = p_room_id, room_assignment_origin = 'class_default'
+   where classroom_id = classroom_id_value;
+  perform public.emit_class_build_closed_day_events_v2(classroom_id_value, p_room_id, p_sessions);
+  return classroom_id_value;
+end
+$$;
+
 -- Manual scheduling on an effective closed date needs an explicit reason.
 create or replace function public.create_managed_class_session_v2(
   p_classroom_id uuid,
@@ -663,19 +857,25 @@ $$;
 revoke all on function public.validate_teaching_calendar_entry_v2() from public, anon, authenticated;
 revoke all on function public.list_school_years_v2() from public, anon, authenticated;
 revoke all on function public.get_teaching_calendar_v2(date, date) from public, anon, authenticated;
+revoke all on function public.list_teaching_calendar_entries_v2() from public, anon, authenticated;
 revoke all on function public.create_teaching_calendar_entry_v2(uuid, text, text, date, date, text, smallint) from public, anon, authenticated;
 revoke all on function public.update_teaching_calendar_entry_v2(uuid, uuid, text, text, date, date, text, smallint) from public, anon, authenticated;
 revoke all on function public.archive_teaching_calendar_entry_v2(uuid) from public, anon, authenticated;
 revoke all on function public.get_effective_calendar_day_v2(date, uuid) from public, anon, authenticated;
+revoke all on function public.get_class_build_calendar_preview_v2(uuid, jsonb) from public, anon, authenticated;
+revoke all on function public.validate_class_build_calendar_sessions_v2(uuid, jsonb) from public, anon, authenticated;
+revoke all on function public.emit_class_build_closed_day_events_v2(uuid, uuid, jsonb) from public, anon, authenticated;
 revoke all on function public.create_managed_class_session_v2(uuid, text, timestamptz, smallint, boolean, text) from public, anon, authenticated;
 revoke all on function public.update_managed_class_session_v2(uuid, text, timestamptz, smallint, uuid, boolean, text) from public, anon, authenticated;
 
 grant execute on function public.list_school_years_v2() to authenticated;
 grant execute on function public.get_teaching_calendar_v2(date, date) to authenticated;
+grant execute on function public.list_teaching_calendar_entries_v2() to authenticated;
 grant execute on function public.create_teaching_calendar_entry_v2(uuid, text, text, date, date, text, smallint) to authenticated;
 grant execute on function public.update_teaching_calendar_entry_v2(uuid, uuid, text, text, date, date, text, smallint) to authenticated;
 grant execute on function public.archive_teaching_calendar_entry_v2(uuid) to authenticated;
 grant execute on function public.get_effective_calendar_day_v2(date, uuid) to authenticated;
+grant execute on function public.get_class_build_calendar_preview_v2(uuid, jsonb) to authenticated;
 grant execute on function public.create_managed_class_session_v2(uuid, text, timestamptz, smallint, boolean, text) to authenticated;
 grant execute on function public.update_managed_class_session_v2(uuid, text, timestamptz, smallint, uuid, boolean, text) to authenticated;
 

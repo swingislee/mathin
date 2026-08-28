@@ -99,7 +99,7 @@ function PeriodDates({
 }
 
 /** 学年决定年级归属；暑/秋/寒/春只是可逐步补日期的运营周期。 */
-export function TermManager({ years }: { years: SchoolYearRow[] }) {
+export function TermManager({ years, today }: { years: SchoolYearRow[]; today: string }) {
   const t = useTranslations("school.schedule");
   const router = useRouter();
   const yearSelectorId = useId();
@@ -108,7 +108,7 @@ export function TermManager({ years }: { years: SchoolYearRow[] }) {
   const [selectedYearId, setSelectedYearId] = useState(
     years.find((row) => row.status === "active")?.id ?? years[0]?.id ?? "",
   );
-  const suggestedYear = Math.max(new Date().getFullYear(), ...years.map((row) => row.startYear + 1));
+  const suggestedYear = Math.max(Number(today.slice(0, 4)), ...years.map((row) => row.startYear + 1));
   const [startYear, setStartYear] = useState(suggestedYear);
   const [effectiveDates, setEffectiveDates] = useState<Record<string, string>>({});
   const [activationTarget, setActivationTarget] = useState<SchoolYearRow | null>(null);
