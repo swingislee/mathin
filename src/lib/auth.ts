@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { cache } from "react";
 import { PERMISSION_KEYS, type PermissionKey } from "@/features/school/permissions";
 import { pickActiveEnvironment, resolveAvailableEnvironments, type UserEnvironment } from "@/lib/environment";
+import { hasLocalDevelopmentMfaExemption } from "@/lib/local-development-security";
 import { createClient } from "@/lib/supabase/server";
 
 export type ProfileRole = "student" | "parent" | "staff" | "admin";
@@ -30,7 +31,11 @@ export async function requireUser(locale: string, options: { allowAccountRecover
   if (!options.allowAccountRecovery && consentReady === false) {
     redirect(`/${locale}/dashboard/account-security?required=consent`);
   }
-  if (!options.allowAccountRecovery && account?.role === "admin") {
+  const localDevelopmentMfaExempt = hasLocalDevelopmentMfaExemption(user.app_metadata, {
+    nodeEnv: process.env.NODE_ENV,
+    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+  });
+  if (!options.allowAccountRecovery && account?.role === "admin" && !localDevelopmentMfaExempt) {
     const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
     if (assurance?.currentLevel !== "aal2") {
       redirect(`/${locale}/dashboard/account-security?required=mfa`);

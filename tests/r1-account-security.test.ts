@@ -33,6 +33,7 @@ describe("R1-3 account security contracts", () => {
     expect(auth).toContain('rpc("has_current_required_consents"');
     expect(auth).toContain('getAuthenticatorAssuranceLevel()');
     expect(auth).toContain('currentLevel !== "aal2"');
+    expect(auth).toContain("hasLocalDevelopmentMfaExemption");
     expect(layout).toContain("allowAccountRecovery: true");
     const securityPage = read("src/app/[locale]/dashboard/account-security/page.tsx");
     expect(securityPage).toContain('role="alert"');
