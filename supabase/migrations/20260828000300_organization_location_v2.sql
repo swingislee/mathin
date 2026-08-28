@@ -138,6 +138,8 @@ declare
   override_summary jsonb;
   duplicate_summary jsonb;
   legacy_summary jsonb;
+  duplicate_row record;
+  signature_count integer;
 begin
   select jsonb_build_object(
     'activeCampusRules', (select count(*) from public.organization_rule_versions
@@ -158,9 +160,34 @@ begin
     select jsonb_build_object('startYear', start_year, 'count', count(*)) item
       from public.school_years group by start_year having count(*) > 1
   ) duplicates;
-  if jsonb_array_length(duplicate_summary) > 0 then
-    raise exception 'DUPLICATE_SCHOOL_YEAR_REQUIRES_ORG_MERGE: %', duplicate_summary;
-  end if;
+  for duplicate_row in
+    select start_year from public.school_years group by start_year having count(*) > 1
+  loop
+    select count(distinct signature::text) into signature_count
+      from (
+        select jsonb_build_object(
+          'name', year_row.name,
+          'status', year_row.status,
+          'gradeEffectiveOn', year_row.grade_effective_on,
+          'periods', coalesce((
+            select jsonb_agg(jsonb_build_object(
+              'term', term_row.term,
+              'name', term_row.name,
+              'startsOn', term_row.starts_on,
+              'endsOn', term_row.ends_on,
+              'isCurrent', term_row.is_current
+            ) order by term_row.term)
+              from public.school_terms term_row
+             where term_row.school_year_id = year_row.id
+          ), '[]'::jsonb)
+        ) signature
+          from public.school_years year_row
+         where year_row.start_year = duplicate_row.start_year
+      ) signatures;
+    if signature_count <> 1 then
+      raise exception 'DUPLICATE_SCHOOL_YEAR_REQUIRES_ORG_MERGE: %', duplicate_summary;
+    end if;
+  end loop;
 
   select coalesce(jsonb_agg(jsonb_build_object(
     'roomText', room_text,
@@ -852,7 +879,7 @@ as $$
 declare uid uuid := auth.uid(); classroom_row public.classrooms; room_row public.campus_rooms;
         affected_count integer;
 begin
-  if uid is null or not public.has_perm(uid, 'class.manage') then raise exception 'FORBIDDEN'; end if;
+  if uid is null then raise exception 'UNAUTHENTICATED'; end if;
   select * into classroom_row from public.classrooms where id = p_classroom_id;
   if classroom_row.id is null then raise exception 'CLASSROOM_NOT_FOUND'; end if;
   if not (public.is_admin(uid) or public.can_manage_classroom(p_classroom_id, uid)
@@ -926,7 +953,7 @@ set search_path = public, pg_temp
 as $$
 declare uid uuid := auth.uid(); session_row public.class_sessions; old_room_id uuid; old_origin text;
 begin
-  if uid is null or not public.has_perm(uid, 'class.manage') then raise exception 'FORBIDDEN'; end if;
+  if uid is null then raise exception 'UNAUTHENTICATED'; end if;
   select * into session_row from public.class_sessions where id = p_session_id for update;
   if session_row.id is null then raise exception 'SESSION_NOT_FOUND'; end if;
   if not (public.is_admin(uid) or public.can_manage_classroom(session_row.classroom_id, uid)
@@ -953,7 +980,7 @@ set search_path = public, pg_temp
 as $$
 declare uid uuid := auth.uid(); session_row public.class_sessions; default_room_id_value uuid;
 begin
-  if uid is null or not public.has_perm(uid, 'class.manage') then raise exception 'FORBIDDEN'; end if;
+  if uid is null then raise exception 'UNAUTHENTICATED'; end if;
   select * into session_row from public.class_sessions where id = p_session_id for update;
   if session_row.id is null then raise exception 'SESSION_NOT_FOUND'; end if;
   if not (public.is_admin(uid) or public.can_manage_classroom(session_row.classroom_id, uid)
