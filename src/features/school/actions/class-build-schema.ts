@@ -18,6 +18,7 @@ export const buildClassSchema = z.object({
   learningSupportId: optionalFormUuid,
   schoolTermId: uuid,
   purpose: z.enum(["production", "test"]),
+  offeringType: z.enum(["long_term_formal", "short_term_topic"]),
   activateNow: z.boolean(),
   sessions: z
     .array(

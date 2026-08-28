@@ -48,6 +48,7 @@ export async function ClassroomList({
             </div>
             <div className="flex gap-1.5">
               <Badge variant={classroom.operationalStatus === "active" ? "secondary" : "outline"}>{t(classroom.operationalStatus === "active" ? "operationalActive" : classroom.operationalStatus)}</Badge>
+              <Badge variant="outline">{t(`offering_${classroom.offeringType}`)}</Badge>
               {classroom.purpose === "test" && <Badge variant="outline">{t("test")}</Badge>}
             </div>
           </div>

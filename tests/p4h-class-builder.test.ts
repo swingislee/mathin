@@ -65,6 +65,7 @@ describe("P4H CoursePicker and class-builder contract", () => {
       primaryTeacherId: "11111111-1111-4111-8111-111111111111",
       schoolTermId: "22222222-2222-4222-8222-222222222222",
       purpose: "test" as const,
+      offeringType: "short_term_topic" as const,
       activateNow: false,
       sessions: [],
     };
@@ -109,5 +110,60 @@ describe("P4H CoursePicker and class-builder contract", () => {
     expect(replay).toContain("migrations.slice(familyMigrationIndex, catalogVersionMigrationIndex + 1)");
     expect(replay).toContain("versionedCourseSeed,");
     expect(replay).toContain("migrations.slice(catalogVersionMigrationIndex + 1)");
+  });
+
+  it("keeps data purpose separate from the long-term or short-term class offering", () => {
+    const migration = read("supabase", "migrations", "20260828000200_classroom_offering_and_activity_kind.sql");
+    const wizard = read("src", "features", "school", "ClassBuildWizard.tsx");
+    const actions = read("src", "features", "school", "actions", "classes.ts");
+    const list = read("src", "features", "school", "ClassroomList.tsx");
+    const zh = read("messages", "zh.json");
+    const en = read("messages", "en.json");
+
+    expect(migration).toContain("add column if not exists offering_type text not null default 'long_term_formal'");
+    expect(migration).toContain("check (offering_type in ('long_term_formal', 'short_term_topic'))");
+    expect(migration).toContain("'offeringType', p_offering_type");
+    expect(wizard).toContain('useState<ClassroomOfferingType>("long_term_formal")');
+    expect(wizard).toContain('setOfferingType("short_term_topic")');
+    expect(actions).toContain("p_offering_type: value.offeringType");
+    expect(list).toContain("classroom.offeringType");
+    expect(zh).toContain('"offering_short_term_topic": "短期专题课"');
+    expect(en).toContain('"offering_short_term_topic": "Short-term topic class"');
+
+    const baseInput = {
+      name: "Topic class",
+      courseId: null,
+      capacity: null,
+      room: "",
+      primaryTeacherId: "11111111-1111-4111-8111-111111111111",
+      learningSupportId: null,
+      schoolTermId: "22222222-2222-4222-8222-222222222222",
+      purpose: "production" as const,
+      offeringType: "short_term_topic" as const,
+      activateNow: false,
+      sessions: [],
+    };
+    expect(buildClassSchema.parse(baseInput).offeringType).toBe("short_term_topic");
+    expect(buildClassSchema.safeParse({ ...baseInput, offeringType: "public_class" }).success).toBe(false);
+  });
+
+  it("models public classes as explicit one-off activities", () => {
+    const migration = read("supabase", "migrations", "20260828000200_classroom_offering_and_activity_kind.sql");
+    const activityKinds = read("src", "features", "school", "activity-kinds.ts");
+    const manager = read("src", "features", "school", "ActivitiesManager.tsx");
+    const activityActions = read("src", "features", "school", "activity-actions.ts");
+    const zh = read("messages", "zh.json");
+    const en = read("messages", "en.json");
+
+    expect(migration).toContain("'trial_class', 'public_class', 'assessment_1v1'");
+    expect(activityKinds).toContain('"public_class"');
+    expect(manager).toContain('t("creationBoundary")');
+    expect(manager).toContain("kindHint_");
+    expect(manager).toContain("<Textarea");
+    expect(manager).not.toContain("<textarea");
+    expect(activityActions).toContain("activityInputSchema");
+    expect(activityActions).toContain("parse(activityInputSchema, input)");
+    expect(zh).toContain('"kind_public_class": "公开课"');
+    expect(en).toContain('"kind_public_class": "Public class"');
   });
 });

@@ -14,6 +14,7 @@ export const COURSE_SEASONS = [
 export type ClassroomScope = "teaching" | "support" | "all" | "test";
 
 export type ClassroomPurpose = "production" | "test";
+export type ClassroomOfferingType = "long_term_formal" | "short_term_topic";
 export type ClassroomOperationalStatus = "planning" | "active" | "completed";
 export type StaffResponsibility = "primary_teacher" | "assistant_teacher" | "learning_support";
 

@@ -145,6 +145,7 @@ async function ClassDetailBody({
       <Badge variant={classroom.operationalStatus === "active" ? "secondary" : "outline"}>
         {t(classroom.operationalStatus === "active" ? "operationalActive" : classroom.operationalStatus)}
       </Badge>
+      <Badge variant="outline">{t(`offering_${classroom.offeringType}`)}</Badge>
       {classroom.archivedAt && <Badge variant="outline">{t("archived")}</Badge>}
       {classroom.trashedAt && <Badge variant="outline">{t("trashed")}</Badge>}
       {classroom.purpose === "test" && <Badge variant="outline">{t("test")}</Badge>}

@@ -16,6 +16,7 @@ import {
 } from "./teaching-operations/scopes";
 import type {
   ClassroomCapabilities,
+  ClassroomOfferingType,
   ClassroomOperationalStatus,
   ClassroomPurpose,
   SessionCapabilities,
@@ -91,6 +92,7 @@ export interface ClassroomDetail {
   coursewareTrack: "native-16x9" | "adapted-4x3";
   archivedAt: string | null;
   purpose: ClassroomPurpose;
+  offeringType: ClassroomOfferingType;
   operationalStatus: ClassroomOperationalStatus;
   trashedAt: string | null;
   primaryTeacherName: string | null;
@@ -198,7 +200,7 @@ export async function getClassroomDetailForScope(id: string): Promise<ClassroomD
 
   const { data: classroom, error } = await supabase
     .from("classrooms")
-    .select("id,name,course_id,grade,capacity,room,archived_at,courseware_track,purpose,operational_status,trashed_at,courses(title)")
+    .select("id,name,course_id,grade,capacity,room,archived_at,courseware_track,purpose,offering_type,operational_status,trashed_at,courses(title)")
     .eq("id", id)
     .maybeSingle<{
       id: string;
@@ -210,6 +212,7 @@ export async function getClassroomDetailForScope(id: string): Promise<ClassroomD
       courseware_track: "native-16x9" | "adapted-4x3";
       archived_at: string | null;
       purpose: ClassroomPurpose;
+      offering_type: ClassroomOfferingType;
       operational_status: ClassroomOperationalStatus;
       trashed_at: string | null;
       courses: { title: string } | null;
@@ -320,6 +323,7 @@ export async function getClassroomDetailForScope(id: string): Promise<ClassroomD
     coursewareTrack: classroom.courseware_track,
     archivedAt: classroom.archived_at,
     purpose: classroom.purpose,
+    offeringType: classroom.offering_type,
     operationalStatus: classroom.operational_status,
     trashedAt: classroom.trashed_at,
     primaryTeacherName,

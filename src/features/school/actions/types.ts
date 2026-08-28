@@ -27,6 +27,7 @@ export interface BuildClassInput {
   learningSupportId: string | null;
   schoolTermId: string;
   purpose: "production" | "test";
+  offeringType: "long_term_formal" | "short_term_topic";
   activateNow: boolean;
   sessions: BuildClassSession[];
 }

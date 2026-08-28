@@ -356,6 +356,7 @@ export async function buildClass(input: BuildClassInput): Promise<string> {
         p_learning_support_id: value.learningSupportId,
         p_term_id: value.schoolTermId,
         p_purpose: value.purpose,
+        p_offering_type: value.offeringType,
         p_sessions: sessions,
         p_activate: value.activateNow,
       })
@@ -368,6 +369,7 @@ export async function buildClass(input: BuildClassInput): Promise<string> {
         p_learning_support_id: value.learningSupportId,
         p_term_id: value.schoolTermId,
         p_purpose: value.purpose,
+        p_offering_type: value.offeringType,
         p_sessions: sessions,
         p_activate: value.activateNow,
       });

@@ -2,7 +2,7 @@ import "server-only";
 
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
-import type { ClassroomOperationalStatus, ClassroomPurpose, ClassroomScope } from "./types";
+import type { ClassroomOfferingType, ClassroomOperationalStatus, ClassroomPurpose, ClassroomScope } from "./types";
 
 export interface ClassroomListFilters {
   q?: string;
@@ -20,6 +20,7 @@ export interface ClassroomListItem {
   id: string;
   name: string;
   purpose: ClassroomPurpose;
+  offeringType: ClassroomOfferingType;
   operationalStatus: ClassroomOperationalStatus;
   archivedAt: string | null;
   courseFamilyTitle: string | null;
@@ -111,10 +112,21 @@ export async function listClassroomsForScope(scope: ClassroomScope, filters: Cla
   });
   if (error) throw new Error(error.message);
   const rows = data ?? [];
+  let offeringTypes = new Map<string, ClassroomOfferingType>();
+  if (rows.length > 0) {
+    const { data: offeringRows, error: offeringError } = await supabase
+      .from("classrooms")
+      .select("id,offering_type")
+      .in("id", rows.map((row) => row.id))
+      .returns<Array<{ id: string; offering_type: ClassroomOfferingType }>>();
+    if (offeringError) throw new Error(offeringError.message);
+    offeringTypes = new Map((offeringRows ?? []).map((row) => [row.id, row.offering_type]));
+  }
   const classrooms = rows.map((row): ClassroomListItem => ({
     id: row.id,
     name: row.name,
     purpose: row.purpose as ClassroomPurpose,
+    offeringType: offeringTypes.get(row.id) ?? "long_term_formal",
     operationalStatus: row.operational_status as ClassroomOperationalStatus,
     archivedAt: row.archived_at,
     courseFamilyTitle: row.course_family_title,

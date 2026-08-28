@@ -22,6 +22,7 @@ import { inputClass } from "./controls";
 import { generateSchedulePreview } from "./schedule-preview";
 import { CoursePicker } from "./teaching-operations/CoursePicker";
 import type { ClassBuildCourseDetail, ClassBuildPurpose, ClassBuildScheduleConflict } from "./teaching-operations/course-picker-types";
+import type { ClassroomOfferingType } from "./teaching-operations/types";
 
 const WEEKDAYS = [1, 2, 3, 4, 5, 6, 0] as const;
 const DATE_INPUT_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -62,6 +63,7 @@ export function ClassBuildWizard({
   const [step, setStep] = useState(1);
   const [mode, setMode] = useState<"course" | "free">("course");
   const [purpose, setPurpose] = useState<ClassBuildPurpose>("production");
+  const [offeringType, setOfferingType] = useState<ClassroomOfferingType>("long_term_formal");
   const [course, setCourse] = useState<ClassBuildCourseDetail | null>(null);
   const [name, setName] = useState("");
   const [capacity, setCapacity] = useState("");
@@ -266,6 +268,7 @@ export function ClassBuildWizard({
         learningSupportId: learningSupportId || null,
         schoolTermId,
         purpose,
+        offeringType,
         activateNow,
         sessions,
       });
@@ -301,6 +304,14 @@ export function ClassBuildWizard({
       <div className="mt-5">
         <Label className="text-xs font-normal text-muted">{t("purpose")}</Label>
         <div className="mt-2 flex flex-wrap gap-2"><Button type="button" variant="secondary" aria-pressed={purpose === "production"} onClick={() => setClassPurpose("production")} className={cn(purpose === "production" && "border-moon bg-moon/50 font-medium text-ink")}>{t("production")}</Button><Button type="button" variant="secondary" aria-pressed={purpose === "test"} onClick={() => setClassPurpose("test")} className={cn(purpose === "test" && "border-moon bg-moon/50 font-medium text-ink")}>{t("test")}</Button></div>
+      </div>
+      <div className="mt-5">
+        <Label className="text-xs font-normal text-muted">{t("offeringType")}</Label>
+        <div className="mt-2 flex flex-wrap gap-2">
+          <Button type="button" variant="secondary" aria-pressed={offeringType === "long_term_formal"} onClick={() => setOfferingType("long_term_formal")} className={cn(offeringType === "long_term_formal" && "border-moon bg-moon/50 font-medium text-ink")}>{t("offering_long_term_formal")}</Button>
+          <Button type="button" variant="secondary" aria-pressed={offeringType === "short_term_topic"} onClick={() => setOfferingType("short_term_topic")} className={cn(offeringType === "short_term_topic" && "border-moon bg-moon/50 font-medium text-ink")}>{t("offering_short_term_topic")}</Button>
+        </div>
+        <p className="mt-2 text-xs text-muted">{t(offeringType === "long_term_formal" ? "offeringLongTermHint" : "offeringShortTermHint")}</p>
       </div>
       <div className="mt-5"><Label className="text-xs font-normal text-muted">{t("course")}</Label><div className="mt-1"><CoursePicker purpose={purpose} selected={course} onSelect={updateCourse} onClear={clearCourse} /></div></div>
       <div className="mt-4 flex items-center gap-3 border-t border-line pt-4"><span className="text-sm text-muted">{t("or")}</span><Button type="button" variant={mode === "free" ? "secondary" : "ghost"} onClick={() => { clearCourse(); setMode("free"); }}>{t("modeFree")}</Button></div>
@@ -341,7 +352,10 @@ export function ClassBuildWizard({
         </div>
         <div className="md:col-span-2"><Label htmlFor="class-room" className="text-xs font-normal text-muted">{t("room")}</Label><Input id="class-room" value={room} onChange={(event) => setRoom(event.target.value)} maxLength={100} className={cn("mt-1", inputClass)} /></div>
       </div>
-      <p className="mt-4 text-sm text-muted">{t("purposeSummary", { purpose: purpose === "test" ? t("test") : t("production") })}</p>
+      <div className="mt-4 grid gap-1 text-sm text-muted sm:grid-cols-2">
+        <p>{t("purposeSummary", { purpose: purpose === "test" ? t("test") : t("production") })}</p>
+        <p>{t("offeringTypeSummary", { offeringType: t(`offering_${offeringType}`) })}</p>
+      </div>
     </section>}
 
     {step === 3 && <section className="rounded-2xl border border-line bg-card p-5">
@@ -390,7 +404,7 @@ export function ClassBuildWizard({
 
     {step === 4 && <section className="rounded-2xl border border-line bg-card p-5">
       <h2 className="text-base font-medium text-ink">{t("stepConfirm")}</h2><p className="mt-1 text-sm text-muted">{t("confirmStepHint")}</p>
-      <dl className="mt-5 grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2"><div><dt className="text-muted">{t("course")}</dt><dd className="mt-1 font-medium">{mode === "free" ? t("modeFree") : `${course?.familyTitle ?? ""} · ${course?.title ?? ""}`}</dd></div><div><dt className="text-muted">{t("courseReadiness")}</dt><dd className="mt-1">{mode === "free" ? t("notApplicable") : isReady ? t("readyCount", { ready: course?.releasedLectureCount ?? 0, total: course?.lectureCount ?? 0 }) : <span className="text-amber-800 dark:text-amber-300">{t("incompleteCount", { ready: course?.releasedLectureCount ?? 0, total: course?.lectureCount ?? 0 })}</span>}</dd></div><div><dt className="text-muted">{t("teacher")}</dt><dd className="mt-1 font-medium">{teachers.find((teacher) => teacher.id === primaryTeacherId)?.name || "—"}</dd></div><div><dt className="text-muted">{t("conflicts")}</dt><dd className="mt-1">{visibleConflictsLoading ? t("checking") : visibleConflicts.length ? t("conflictsFound", { count: visibleConflicts.length }) : t("noTeacherConflicts")}</dd></div><div><dt className="text-muted">{t("sessionCount")}</dt><dd className="mt-1">{mode === "course" ? preview.length : freeSessions.length}</dd></div><div><dt className="text-muted">{t("purpose")}</dt><dd className="mt-1">{purpose === "test" ? <Badge variant="outline" className="border-violet-500/40 bg-violet-500/10 text-violet-800 dark:text-violet-300">{t("testBadge")}</Badge> : t("production")}</dd></div></dl>
+      <dl className="mt-5 grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2"><div><dt className="text-muted">{t("course")}</dt><dd className="mt-1 font-medium">{mode === "free" ? t("modeFree") : `${course?.familyTitle ?? ""} · ${course?.title ?? ""}`}</dd></div><div><dt className="text-muted">{t("courseReadiness")}</dt><dd className="mt-1">{mode === "free" ? t("notApplicable") : isReady ? t("readyCount", { ready: course?.releasedLectureCount ?? 0, total: course?.lectureCount ?? 0 }) : <span className="text-amber-800 dark:text-amber-300">{t("incompleteCount", { ready: course?.releasedLectureCount ?? 0, total: course?.lectureCount ?? 0 })}</span>}</dd></div><div><dt className="text-muted">{t("teacher")}</dt><dd className="mt-1 font-medium">{teachers.find((teacher) => teacher.id === primaryTeacherId)?.name || "—"}</dd></div><div><dt className="text-muted">{t("conflicts")}</dt><dd className="mt-1">{visibleConflictsLoading ? t("checking") : visibleConflicts.length ? t("conflictsFound", { count: visibleConflicts.length }) : t("noTeacherConflicts")}</dd></div><div><dt className="text-muted">{t("sessionCount")}</dt><dd className="mt-1">{mode === "course" ? preview.length : freeSessions.length}</dd></div><div><dt className="text-muted">{t("purpose")}</dt><dd className="mt-1">{purpose === "test" ? <Badge variant="outline" className="border-violet-500/40 bg-violet-500/10 text-violet-800 dark:text-violet-300">{t("testBadge")}</Badge> : t("production")}</dd></div><div><dt className="text-muted">{t("offeringType")}</dt><dd className="mt-1">{t(`offering_${offeringType}`)}</dd></div></dl>
       {purpose === "production" && !isReady && mode === "course" && <p className="mt-5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-950 dark:text-amber-100">{t("productionActivationWarning")}</p>}
       {purpose === "test" && !isReady && <p className="mt-5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-950 dark:text-amber-100">{t("testActivationWarning")}</p>}
       <div className="mt-5 flex items-start gap-3"><Checkbox id="activate-now" checked={activateNow} onCheckedChange={(value) => setActivateNow(value === true)} /><div><Label htmlFor="activate-now" className="cursor-pointer">{t("activateNow")}</Label><p className="mt-1 text-xs text-muted">{t("activateNowHint")}</p></div></div>

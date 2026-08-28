@@ -1087,6 +1087,7 @@ export type Database = {
           id: string
           invite_code: string
           name: string
+          offering_type: string
           operational_status: string
           owner_id: string
           purpose: string
@@ -1105,6 +1106,7 @@ export type Database = {
           id?: string
           invite_code: string
           name?: string
+          offering_type?: string
           operational_status?: string
           owner_id: string
           purpose?: string
@@ -1123,6 +1125,7 @@ export type Database = {
           id?: string
           invite_code?: string
           name?: string
+          offering_type?: string
           operational_status?: string
           owner_id?: string
           purpose?: string
@@ -9795,6 +9798,7 @@ export type Database = {
           p_course_id?: string
           p_learning_support_id?: string
           p_name: string
+          p_offering_type?: string
           p_primary_teacher_id?: string
           p_purpose?: string
           p_room?: string
@@ -9878,6 +9882,7 @@ export type Database = {
           p_capacity?: number
           p_learning_support_id?: string
           p_name: string
+          p_offering_type?: string
           p_primary_teacher_id?: string
           p_purpose?: string
           p_room?: string

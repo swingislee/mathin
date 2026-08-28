@@ -8,7 +8,7 @@
 >
 > **剩余项**：生产质量、数据初始化和安全硬门见 doc 25。
 >
-> **最后核对**：2026-07-28。
+> **最后核对**：2026-08-28。
 
 ## 1. 目录结构约定
 
@@ -94,7 +94,7 @@ P3 使用三表模型：`notes` 保存私有树形笔记与 BlockNote `jsonb` �
 ### 3.4 教室（P4 建表，先记录设计）
 
 ```sql
-classrooms         ( owner_id, name, invite_code text unique )
+classrooms         ( owner_id, name, invite_code text unique, purpose, offering_type )
 classroom_members  ( classroom_id, user_id, role text check (role in ('teacher','student')), pk(classroom_id,user_id) )
 class_sessions     ( classroom_id, started_at, ended_at, courseware jsonb )   -- 一次课
 session_events     ( session_id, user_id, type text, payload jsonb )          -- 举手/答题/翻页流水
@@ -102,6 +102,8 @@ assignments        ( classroom_id, title, content jsonb, due_at )
 submissions        ( assignment_id, user_id, content jsonb, score numeric, feedback text, graded_by uuid )
 -- RLS：一律以 classroom_members 成员关系为界；评分字段仅教师可写
 ```
+
+`classrooms.purpose` 只表达 `production | test` 数据治理用途；`offering_type` 独立表达 `long_term_formal | short_term_topic` 业务开班类型。长期正式课与短期专题课都使用班级、固定花名册和连续 `class_sessions`；只有单次举行、单次报名/到场结果的体验课、公开课、讲座等使用活动域。
 
 课堂报告 = 对 `session_events` 的聚合查询，不单独存表。
 
