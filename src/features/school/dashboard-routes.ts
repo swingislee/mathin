@@ -65,12 +65,10 @@ export type DashboardCreateSurface =
 
 /** 员工侧栏分组（§8.1）；只在员工环境渲染分组标题，家庭/学习侧栏是平铺列表。 */
 export type SchoolNavGroup =
-  | "work"
-  | "studentService"
-  | "teachingOps"
-  | "courseware"
-  | "finance"
-  | "org"
+  | "subjectOperations"
+  | "teaching"
+  | "research"
+  | "organization"
   | "system";
 
 export interface DashboardRouteNav {
@@ -151,14 +149,15 @@ export const DASHBOARD_ROUTES = {
     kind: "queue",
     environments: ALL_ENVIRONMENTS,
     createSurface: "none",
-    nav: { labelKey: "home", group: "work" },
+    // 总览是侧栏唯一的顶层入口，不再与领域功能混成“工作”分组。
+    nav: { labelKey: "home" },
   },
   coordination: {
     href: "/dashboard/coordination",
     kind: "queue",
     environments: STAFF_ONLY,
     createSurface: "none",
-    nav: { labelKey: "coordination", group: "work" },
+    nav: { labelKey: "coordination", group: "subjectOperations" },
   },
   schedule: {
     href: "/dashboard/schedule",
@@ -169,7 +168,7 @@ export const DASHBOARD_ROUTES = {
     // 课次创建属于班级上下文；课表只做跨班级/教师/课次的聚合时间视图（§5.3）。
     createSurface: "parent",
     creationOwner: "classes",
-    nav: { labelKey: "schedule", group: "teachingOps" },
+    nav: { labelKey: "schedule", group: "teaching" },
   },
 
   // ── 学员服务 ────────────────────────────────────────────────────────────
@@ -180,7 +179,7 @@ export const DASHBOARD_ROUTES = {
     permission: "followup.view",
     // 跟进记录从学生详情或队列行内 FollowUpForm 创建，没有 /followups/new（§5.8）。
     createSurface: "dialog",
-    nav: { labelKey: "followups", group: "studentService" },
+    nav: { labelKey: "followups", group: "subjectOperations" },
   },
   students: {
     href: "/dashboard/students",
@@ -189,7 +188,7 @@ export const DASHBOARD_ROUTES = {
     permissionAny: STUDENTS_PERMS,
     // 单个学生只建立最小线索档案 → NewStudentDialog；完整资料在详情页维护（§5.5）。
     createSurface: "dialog",
-    nav: { labelKey: "students", group: "studentService" },
+    nav: { labelKey: "students", group: "subjectOperations" },
   },
   studentImport: {
     href: "/dashboard/students/import",
@@ -215,27 +214,18 @@ export const DASHBOARD_ROUTES = {
     permission: "activity.register",
     // 活动字段仍属轻量范围 → ActivitiesManager Dialog（§5.9）。
     createSurface: "dialog",
-    nav: { labelKey: "activities", group: "studentService" },
+    nav: { labelKey: "activities", group: "subjectOperations" },
   },
 
-  // ── 教学运营 ────────────────────────────────────────────────────────────
-  scheduleCalendar: {
-    href: "/dashboard/schedule/calendar",
+  // ── 教学 ────────────────────────────────────────────────────────────────
+  academicYears: {
+    // 学年是教学领域的顶层对象；页面同时承载教学日历和唯一的新班时长默认值。
+    href: "/dashboard/academic-years",
     kind: "singleton",
     environments: STAFF_ONLY,
     permission: "schedule.manage",
     createSurface: "dialog",
-    parent: "schedule",
-    nav: { labelKey: "academicCalendar", group: "teachingOps" },
-  },
-  scheduleDefaults: {
-    href: "/dashboard/schedule/defaults",
-    kind: "singleton",
-    environments: STAFF_ONLY,
-    permission: "schedule.manage",
-    createSurface: "none",
-    parent: "schedule",
-    nav: { labelKey: "scheduleDefaults", group: "teachingOps" },
+    nav: { labelKey: "academicYears", group: "teaching" },
   },
   classes: {
     href: "/dashboard/classes",
@@ -245,7 +235,7 @@ export const DASHBOARD_ROUTES = {
     // 建班要过课程版本/主讲/学辅/学期/排课预览/冲突检测 → 完整 Wizard（§5.11）。
     createSurface: "page",
     createHref: "/dashboard/classes/new",
-    nav: { labelKey: "classes", group: "teachingOps" },
+    nav: { labelKey: "classes", group: "teaching" },
   },
   classNew: {
     href: "/dashboard/classes/new",
@@ -288,7 +278,7 @@ export const DASHBOARD_ROUTES = {
     permission: "course.view",
     createSurface: "page",
     createHref: "/dashboard/courses/new",
-    nav: { labelKey: "courses", group: "teachingOps" },
+    nav: { labelKey: "courses", group: "research" },
   },
   courseNew: {
     href: "/dashboard/courses/new",
@@ -316,7 +306,7 @@ export const DASHBOARD_ROUTES = {
     environments: STAFF_ONLY,
     permissionAny: COURSEWARE_PERMS,
     createSurface: "none",
-    nav: { labelKey: "workbench", group: "courseware" },
+    nav: { labelKey: "workbench", group: "research" },
   },
   coursewareReview: {
     href: "/dashboard/courseware/review",
@@ -325,7 +315,7 @@ export const DASHBOARD_ROUTES = {
     permissionAny: COURSEWARE_PERMS,
     createSurface: "none",
     parent: "courseware",
-    nav: { labelKey: "adaptReview", group: "courseware" },
+    nav: { labelKey: "adaptReview", group: "research" },
   },
   microcourseReviewDetail: {
     hrefPattern: "/dashboard/courseware/review/microcourses/[reviewCycleId]",
@@ -342,7 +332,7 @@ export const DASHBOARD_ROUTES = {
     environments: STAFF_ONLY,
     createSurface: "none",
     parent: "courseware",
-    nav: { labelKey: "preparationReview", group: "courseware" },
+    nav: { labelKey: "preparationReview", group: "research" },
   },
   coursewareLecture: {
     // 讲次在课程版本的教学计划中创建，没有 /courseware/lectures/new（§5.19）。
@@ -363,7 +353,7 @@ export const DASHBOARD_ROUTES = {
     permission: "courseware.asset.manage",
     // 素材由课件导入/替换流程产生，素材库只负责审计、预览、全局替换与治理（§5.21）。
     createSurface: "derived",
-    nav: { labelKey: "sharedAssets", group: "courseware" },
+    nav: { labelKey: "sharedAssets", group: "research" },
   },
   coursewareAssetDetail: {
     hrefPattern: "/dashboard/courseware-assets/[assetId]",
@@ -385,7 +375,8 @@ export const DASHBOARD_ROUTES = {
     environments: ["staff", "family"],
     permissionAny: FINANCE_NAV_PERMS,
     createSurface: "none",
-    nav: { labelKey: "finance", group: "finance" },
+    // 招生、转化、续费与退费属于同一条学生生命周期，因此财务入口跟随学科运营。
+    nav: { labelKey: "finance", group: "subjectOperations" },
   },
 
   // ── 组织管理 ────────────────────────────────────────────────────────────
@@ -396,7 +387,7 @@ export const DASHBOARD_ROUTES = {
     environments: STAFF_ONLY,
     permission: "organization.profile.manage",
     createSurface: "none",
-    nav: { labelKey: "organizationProfile", group: "org" },
+    nav: { labelKey: "organizationProfile", group: "organization" },
   },
   campuses: {
     // 校区只是教室目录的上一级，创建入口是列表页 Dialog。
@@ -405,7 +396,7 @@ export const DASHBOARD_ROUTES = {
     environments: STAFF_ONLY,
     permission: "location.manage",
     createSurface: "dialog",
-    nav: { labelKey: "campuses", group: "org" },
+    nav: { labelKey: "campuses", group: "organization" },
   },
   campusDetail: {
     hrefPattern: "/dashboard/campuses/[campusId]",
@@ -416,14 +407,6 @@ export const DASHBOARD_ROUTES = {
     creationOwner: "campuses",
     parent: "campuses",
   },
-  organizationSettingsLegacy: {
-    // 一个生产回退窗口内保留旧 URL，但页面只做 locale-aware 重定向。
-    href: "/dashboard/organization-settings",
-    kind: "tool",
-    environments: STAFF_ONLY,
-    permission: "organization.profile.manage",
-    createSurface: "none",
-  },
   staff: {
 
     // 添加员工 = 精确邮箱查找已有账号 → 必要时提升为 staff → 分配岗位，
@@ -433,7 +416,7 @@ export const DASHBOARD_ROUTES = {
     environments: STAFF_ONLY,
     permission: "staff.manage",
     createSurface: "dialog",
-    nav: { labelKey: "staff", group: "org" },
+    nav: { labelKey: "staff", group: "organization" },
   },
   accessControl: {
     // 岗位权限是独立配置控制台，不依赖具体员工——与 staff 是同级而非父子（§5.23）。
@@ -442,7 +425,7 @@ export const DASHBOARD_ROUTES = {
     environments: STAFF_ONLY,
     permission: "permission.configure",
     createSurface: "dialog",
-    nav: { labelKey: "roles", group: "org" },
+    nav: { labelKey: "roles", group: "organization" },
   },
 
   // ── 系统 ────────────────────────────────────────────────────────────────

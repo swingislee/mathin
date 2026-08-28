@@ -37,32 +37,34 @@ function navItem(key: DashboardRouteKey, options?: { withGroup?: boolean }): Sch
 
 export const HOME_NAV_ITEM: SchoolNavItem = navItem("home", { withGroup: false });
 
-/** 员工侧栏顺序（doc22 §8.1）。总览与课表同属"工作"组，因此不再有无分组顶部项。 */
+/**
+ * 员工侧栏按真实岗位职能排序。总览是唯一顶层入口；其余页面依次进入学科运营、
+ * 教学、教研、组织管理和系统管理。URL 层级仍只表达资源关系，不参与这里的分组。
+ */
 const STAFF_NAV_KEYS: readonly DashboardRouteKey[] = [
   "home",
-  "coordination",
-  "schedule",
-  "followups",
   "students",
   "activities",
-  "scheduleCalendar",
-  "scheduleDefaults",
+  "followups",
+  "coordination",
+  "finance",
   "classes",
+  "academicYears",
+  "schedule",
   "courses",
   "courseware",
   "coursewareReview",
   "coursewarePreparationReview",
   "coursewareAssets",
-  "finance",
-  "staff",
   "organization",
   "campuses",
+  "staff",
   "accessControl",
   "registrationSettings",
   "accountSupport",
-  "accountSecurity",
   "systemHealth",
   "dataMaintenance",
+  "accountSecurity",
 ];
 
 export const SCHOOL_NAV_ITEMS: readonly SchoolNavItem[] = STAFF_NAV_KEYS.map((key) => navItem(key));

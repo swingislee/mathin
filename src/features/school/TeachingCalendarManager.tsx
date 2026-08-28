@@ -280,7 +280,7 @@ export function TeachingCalendarManager({
   const openEdit = (entry: TeachingCalendarEntryV2) => { setEditing(entry); setDialogOpen(true); };
 
   return (
-    <section className="rounded-2xl border border-line bg-card p-5">
+    <section className="border-y border-line py-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-base font-medium text-ink">{t("calendarTitle")}</h2>
@@ -289,9 +289,9 @@ export function TeachingCalendarManager({
         <Button type="button" size="sm" onClick={openCreate}><CalendarPlus className="size-4" />{t("createEntry")}</Button>
       </div>
       {rows.length === 0 ? (
-        <p className="mt-4 rounded-xl border border-dashed border-line p-5 text-sm text-muted">{t("empty")}</p>
+        <p className="mt-4 border-y border-dashed border-line py-8 text-center text-sm text-muted">{t("empty")}</p>
       ) : (
-        <div className="mt-4 overflow-x-auto rounded-xl border border-line">
+        <div className="mt-4 overflow-x-auto border-y border-line">
           <Table className="min-w-[52rem]">
             <TableHeader><TableRow>
               <TableHead>{t("date")}</TableHead><TableHead>{t("name")}</TableHead><TableHead>{t("scope")}</TableHead><TableHead>{t("kind")}</TableHead><TableHead>{t("rule")}</TableHead><TableHead className="text-right">{t("actions")}</TableHead>

@@ -127,9 +127,8 @@ describe("R1-1 organization settings contracts", () => {
     expect(preparationUnlock).toMatch(/teaching\.preparation_archive_edit', 1, false/);
   });
 
-  it("splits organization and location resources while preserving the legacy redirect", () => {
+  it("splits organization and location resources and retires the legacy settings route", () => {
     const routes = read("src/features/school/dashboard-routes.ts");
-    const legacyPage = read("src/app/[locale]/dashboard/organization-settings/page.tsx");
     const profilePage = read("src/app/[locale]/dashboard/organization/page.tsx");
     const campusesPage = read("src/app/[locale]/dashboard/campuses/page.tsx");
     const campusForm = read("src/features/school/CampusCreateDialog.tsx");
@@ -140,8 +139,8 @@ describe("R1-1 organization settings contracts", () => {
     expect(routes).toContain('permission: "organization.profile.manage"');
     expect(routes).toContain('href: "/dashboard/campuses"');
     expect(routes).toContain('permission: "location.manage"');
-    expect(routes).toContain('href: "/dashboard/organization-settings"');
-    expect(legacyPage).toContain('redirect(`/${locale}/dashboard/organization`)');
+    expect(routes).not.toContain('href: "/dashboard/organization-settings"');
+    expect(fs.existsSync(path.join(root, "src/app/[locale]/dashboard/organization-settings/page.tsx"))).toBe(false);
     expect(profilePage).toContain('requirePerm(locale, "organization.profile.manage")');
     expect(campusesPage).toContain('requirePerm(locale, "location.manage")');
     expect(zh.school.organizationProfile.title).toBeTruthy();

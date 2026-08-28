@@ -10,7 +10,6 @@ import { Label } from "@/components/ui/label";
 import { useRouter } from "@/i18n/navigation";
 import { updateOrganizationProfileV2Action } from "./actions/organization-locations";
 import { inputClass } from "./controls";
-import { DashboardCard } from "./dashboard-page";
 import type { OrganizationProfileV2 } from "./organization-locations";
 
 export function OrganizationProfileForm({ profile }: { profile: OrganizationProfileV2 }) {
@@ -29,33 +28,42 @@ export function OrganizationProfileForm({ profile }: { profile: OrganizationProf
   });
 
   return (
-    <DashboardCard title={t("cardTitle")} description={t("cardIntro")}>
-      <div className="grid max-w-2xl gap-5 sm:grid-cols-2">
-        <Label className="grid gap-1.5 text-sm font-normal text-muted">
-          {t("name")}
+    <section className="max-w-5xl border-y border-line">
+      <header className="py-5">
+        <h2 className="text-base font-medium text-ink">{t("cardTitle")}</h2>
+        <p className="mt-1 max-w-3xl text-sm text-muted">{t("cardIntro")}</p>
+      </header>
+      <div className="divide-y divide-line border-t border-line">
+        <div className="grid gap-3 py-4 sm:grid-cols-[minmax(11rem,15rem)_minmax(0,1fr)] sm:items-center">
+          <Label htmlFor="organization-name" className="text-sm font-normal text-muted">{t("name")}</Label>
           <Input
+            id="organization-name"
             value={name}
             onChange={(event) => setName(event.target.value)}
             maxLength={100}
-            className={inputClass}
+            className={`${inputClass} max-w-xl`}
           />
-        </Label>
-        <Label className="grid gap-1.5 text-sm font-normal text-muted">
-          {t("timezone")}
-          <Input
-            value={timezone}
-            onChange={(event) => setTimezone(event.target.value)}
-            maxLength={64}
-            placeholder="Asia/Shanghai"
-            className={inputClass}
-          />
-        </Label>
+        </div>
+        <div className="grid gap-3 py-4 sm:grid-cols-[minmax(11rem,15rem)_minmax(0,1fr)]">
+          <Label htmlFor="organization-timezone" className="pt-2 text-sm font-normal text-muted">{t("timezone")}</Label>
+          <div className="max-w-xl">
+            <Input
+              id="organization-timezone"
+              value={timezone}
+              onChange={(event) => setTimezone(event.target.value)}
+              maxLength={64}
+              placeholder="Asia/Shanghai"
+              className={inputClass}
+            />
+            <p className="mt-2 text-xs leading-5 text-muted">{t("timezoneHint")}</p>
+          </div>
+        </div>
+        <div className="grid gap-3 py-4 sm:grid-cols-[minmax(11rem,15rem)_minmax(0,1fr)]">
+          <p className="text-sm text-muted">中文 / English</p>
+          <p className="text-sm text-ink">{t("languageFixed")}</p>
+        </div>
       </div>
-      <div className="mt-3 text-xs text-muted">
-        <p>{t("timezoneHint")}</p>
-        <p className="mt-1">{t("languageFixed")}</p>
-      </div>
-      <div className="mt-5 flex justify-end">
+      <div className="flex justify-end border-t border-line py-4">
         <Button
           type="button"
           size="sm"
@@ -67,6 +75,6 @@ export function OrganizationProfileForm({ profile }: { profile: OrganizationProf
           {t("save")}
         </Button>
       </div>
-    </DashboardCard>
+    </section>
   );
 }
