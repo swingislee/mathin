@@ -8,7 +8,7 @@
 >
 > **SML 暂停位置**：`SML-0 · 合同与金标冻结`；空间数学可按独立权限或 Feature Flag 并行，不进入 R1-Live Gate。
 >
-> **当前运行状态**：Gate 1 已通过，Gate 2 仍等待正式教师点名持久再读与权限对照。Xiaomi 当前数据库 ledger=`219`、head=`20260829000100_classroom_personal_scope_default`，应用 current/previous=`20260828-174731` / `34f07e8…` 与 `20260828-075322` / `c7c8219…`。课堂 Stage A、B1 与 B2 已通过，生产已有 checkpoint version/chunk/head=`2/2/2`；Stage B3 修复、来源课件运行时/暑期 A+、教师微课多方案、班级/活动分类以及 DEV-ORG/DEV-DASH 均已部署，产品负责人生产写态/页面验收仍 pending，不关闭 Gate 2。本轮 DEV-ORG/DEV-DASH 通过新鲜 PostgreSQL 写前备份、7 migration 完整回滚/零残留演练、正式迁移、双 production build、原子 release、健康/权限/业务不变量 postflight；生产管理员 verified MFA=`1`，班级/课次/报名/点名与 Storage=`3/16/1/0/125725`，新 release 启动后错误增量为 0。
+> **当前运行状态**：Gate 1 已通过，Gate 2 仍等待正式教师点名持久再读与权限对照。Xiaomi 当前数据库 ledger=`219`、head=`20260829000100_classroom_personal_scope_default`，应用 current/previous=`20260828-190055` / `7601c86…` 与 `20260828-174731` / `34f07e8…`。课堂 Stage A、B1 与 B2 已通过，生产已有 checkpoint version/chunk/head=`2/2/2`；Stage B3 修复、来源课件运行时/暑期 A+、教师微课多方案、班级/活动分类、DEV-ORG/DEV-DASH 以及自由班排课/H5 透明层 hotfix 均已部署，产品负责人生产写态/页面验收仍 pending，不关闭 Gate 2。最近应用-only 发布通过双 production build、原子 release、健康/鉴权/业务不变量 postflight且没有 DB/Storage 写入；生产管理员 verified MFA=`1`，班级/课次/报名/点名与 Storage=`3/16/1/0/125725`，新 release 启动后错误增量为 0。
 >
 > **当前 P0 状态**：2026-08-25 产品负责人确认内部教师更习惯手机号注册登录。`手机号或邮箱 + password` 已部署生产：手机号只接受绑定具体号码的一次性员工邀请，不发送/伪造验证码，不开放全局邀请码手机号注册，账号仍以单一 `auth.users.id` 为主体。机器 postflight 已通过；真实教师尚未消费手机号邀请并完成 password 登录，因此状态为 `DEPLOYED / PENDING USER ACCEPTANCE`。
 >
@@ -55,7 +55,7 @@ R1-Live 完成即代表 Mathin 进入公司内部生产使用。它产生的身�
 
 | Gate | 状态 | 已完成证据 | 唯一退出差距 |
 | --- | --- | --- | --- |
-| **Gate 1 · 可安全开始** | **PASS** | 生产目标组合指纹、部署和匿名计数已登记；危险 fixture/rebuild/import 拒绝 Xiaomi；唯一正式 admin 已完成 verified MFA，首名真实教师为 active `staff` 并有 `research`/`teacher` 岗位；生产 purge 仍要求当前数据库指纹、active manifest、显式 `purge_allowed` test 根和精确影响计数，当前准删数为 0。数据库 ledger=`211`、head=`20260828000200_courseware_summer_a_plus_catalog`，应用 current/previous=`20260828-071313` / `087b497…` 与 `20260828-071024` / `087b497…`；原子发布健康门和 `operational_errors` 查询位置已知。最新 PostgreSQL+Storage 同批次全量备份 `mathin-20260828T052842Z-teacher-microcourse-variant-087b497` 已独立复核 | 无。previous 实际回切、恢复演练、异机/静态加密备份和错误 release 标签属于 Production 1.0 |
+| **Gate 1 · 可安全开始** | **PASS** | 生产目标组合指纹、部署和匿名计数已登记；危险 fixture/rebuild/import 拒绝 Xiaomi；唯一正式 admin 已完成 verified MFA，首名真实教师为 active `staff` 并有 `research`/`teacher` 岗位；生产 purge 仍要求当前数据库指纹、active manifest、显式 `purge_allowed` test 根和精确影响计数，当前准删数为 0。数据库 ledger=`219`、head=`20260829000100_classroom_personal_scope_default`，应用 current/previous=`20260828-190055` / `7601c86…` 与 `20260828-174731` / `34f07e8…`；原子发布健康门和 `operational_errors` 查询位置已知。最新 PostgreSQL+Storage 同批次全量备份 `mathin-20260828T052842Z-teacher-microcourse-variant-087b497` 已独立复核 | 无。previous 实际回切、恢复演练、异机/静态加密备份和错误 release 标签属于 Production 1.0 |
 | **Gate 2 · 首个真实教师闭环** | **BLOCKED** | 学生、班级、课次、报名、点名 UI/RPC 与 RLS 已实现；本轮运行时合同允许自由班/未完整课程启用，备课质量项、点名前置、资源预载和无 release 均不阻断开课；本机隔离固定账号 Golden Path 1/1 已完成建班→自动课次→`lead` 报名→教师保存迟到/备注→换页再读。生产已有 1 个 production 班级、15 个课次和 1 条 active 报名，主讲 1、学辅 0；学年修复只调整三类对象的周期引用，未升年级，应用已发布且健康 | 正式教师完成登录→进入课次→开课/点名→保存→刷新/重登再读；正式管理员可见，匿名及一个既有无权限主体不可见；P0/核心 P1=0 |
 
 `R1-Live-N` 表示当前只关闭 Gate N。Gate 1 通过后推进 `R1-Live-2`；Gate 2 通过后立即向第一批公司教师开放，不再追加新的上线 Gate。
@@ -147,6 +147,10 @@ Gate 1 已按以下顺序关闭：
 验收至少覆盖机构资料、全部班级、学生、校区、教学日历、课件资源和系统错误表；固定管理员 zh/en 页面须确认页头单线、横向导航下方无线、顶层表格外壳一致，390px 下宽表滚动仍局限在表格容器。生产发布已完成，人工页面验收仍需在当前 release 上执行。
 
 本机提交 `e1e8c87` 已落地共享 `DashboardTableShell`，并迁移 Dashboard 与学校运营组件内全部 shadcn `Table` 使用点；机构资料、学年、排课默认、活动列表与个人班级摘要已移除逐项分割线。定向 Vitest 3 文件 14/14、TypeScript、全量 ESLint、doc 24 Dashboard 审计、固定管理员 Playwright 1/1 和本地/生产双 build 通过；该代码已随 `34f07e8…` 上线。Chrome 自动刷新超时，因此生产视觉签收仍为 pending。
+
+#### HOTFIX-20260829 · 自由班自动排课与来源 H5 透明层
+
+产品负责人已在开发版本通过自由班排课改动并授权上线。`557fc51` 把来源 H5 容器白底改为透明，`7601c86` 让自由班按选中周几与教学日历依次自动排课、允许逐讲改时间并复用冲突检查；应用候选 `7601c86…` 已通过本地/远端 production build 和无浏览器 postflight 上线。两讲暑期 A+ 内容不重导，数据库、课程 release 与 Storage 写前写后完全一致。来源/审阅工具 `26adab7` 是 localhost-only 私有 CLI 提交，没有独立生产服务；详细边界见 [`free-class-h5-hotfix-production.md`](../evidence/r1/free-class-h5-hotfix-production.md)。
 
 #### DEV-TMC-1 · 普通教师短期微课孵化与校内共享
 
