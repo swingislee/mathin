@@ -1,6 +1,6 @@
 "use client";
 
-import { Baby, BookOpen, CalendarDays, ChevronsLeft, ClipboardCheck, ClipboardList, Crop, DatabaseZap, FolderOpen, KeyRound, LayoutDashboard, PanelLeftClose, PanelLeftOpen, PhoneForwarded, Presentation, School, ShieldAlert, ShieldCheck, Sparkles, UserRoundCog, Users, UserCog, Wallet } from "lucide-react";
+import { Baby, BookOpen, Building2, CalendarDays, ChevronsLeft, ClipboardCheck, ClipboardList, Crop, DatabaseZap, FolderOpen, KeyRound, LayoutDashboard, MapPin, PanelLeftClose, PanelLeftOpen, PhoneForwarded, Presentation, School, ShieldAlert, ShieldCheck, Sparkles, UserRoundCog, Users, UserCog, Wallet } from "lucide-react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { Fragment, useState } from "react";
@@ -34,6 +34,8 @@ const ICONS: Record<string, ComponentType<{ size?: number; strokeWidth?: number 
   schedule: CalendarDays,
   finance: Wallet,
   staff: UserCog,
+  organizationProfile: Building2,
+  campuses: MapPin,
   roles: ShieldCheck,
   registrationInvites: KeyRound,
   children: Baby,

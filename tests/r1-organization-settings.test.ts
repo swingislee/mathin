@@ -127,16 +127,29 @@ describe("R1-1 organization settings contracts", () => {
     expect(preparationUnlock).toMatch(/teaching\.preparation_archive_edit', 1, false/);
   });
 
-  it("registers a bilingual, permission-gated singleton route", () => {
+  it("splits organization and location resources while preserving the legacy redirect", () => {
     const routes = read("src/features/school/dashboard-routes.ts");
-    const page = read("src/app/[locale]/dashboard/organization-settings/page.tsx");
+    const legacyPage = read("src/app/[locale]/dashboard/organization-settings/page.tsx");
+    const profilePage = read("src/app/[locale]/dashboard/organization/page.tsx");
+    const campusesPage = read("src/app/[locale]/dashboard/campuses/page.tsx");
+    const campusForm = read("src/features/school/CampusCreateDialog.tsx");
+    const roomForm = read("src/features/school/CampusRoomCreateDialog.tsx");
     const zh = JSON.parse(read("messages/zh.json"));
     const en = JSON.parse(read("messages/en.json"));
+    expect(routes).toContain('href: "/dashboard/organization"');
+    expect(routes).toContain('permission: "organization.profile.manage"');
+    expect(routes).toContain('href: "/dashboard/campuses"');
+    expect(routes).toContain('permission: "location.manage"');
     expect(routes).toContain('href: "/dashboard/organization-settings"');
-    expect(routes).toContain('permission: "organization.settings.manage"');
-    expect(page).toContain('requirePerm(locale, "organization.settings.manage")');
-    expect(zh.school.organization.title).toBeTruthy();
-    expect(en.school.organization.title).toBeTruthy();
+    expect(legacyPage).toContain('redirect(`/${locale}/dashboard/organization`)');
+    expect(profilePage).toContain('requirePerm(locale, "organization.profile.manage")');
+    expect(campusesPage).toContain('requirePerm(locale, "location.manage")');
+    expect(zh.school.organizationProfile.title).toBeTruthy();
+    expect(en.school.organizationProfile.title).toBeTruthy();
+    expect(zh.school.locations.title).toBeTruthy();
+    expect(en.school.locations.title).toBeTruthy();
+    expect(campusForm).not.toMatch(/campusCode|campus\.code|\bcode\b/);
+    expect(roomForm).not.toMatch(/roomCode|room\.code|\bcode\b/);
     for (const key of ORGANIZATION_FEATURE_KEYS) {
       const suffix = key.replaceAll(".", "_");
       expect(zh.school.organization[`flag_${suffix}`]).toBeTruthy();
@@ -146,15 +159,14 @@ describe("R1-1 organization settings contracts", () => {
     }
   });
 
-  it("surfaces campus identity constraints before a generic create failure", () => {
-    const actions = read("src/features/school/actions/organization-settings.ts");
-    const panel = read("src/features/school/OrganizationSettingsPanel.tsx");
+  it("validates V2 names and timezones without accepting administrator-provided codes", () => {
+    const actions = read("src/features/school/actions/organization-locations.ts");
+    const server = read("src/features/school/organization-locations.ts");
     expect(actions).toContain('.refine(isIanaTimezone)');
-    expect(actions).toContain('error?.code === "23505"');
-    expect(actions).toContain('new Error("CAMPUS_CODE_EXISTS")');
-    expect(panel).toContain("CAMPUS_CODE_PATTERN");
-    expect(panel).toContain("newCampusCodeExists");
-    expect(panel).toContain('aria-invalid={!newCampusCodeValid || newCampusCodeExists}');
-    expect(panel).toContain('CAMPUS_CODE_EXISTS: t("campusCodeExists")');
+    expect(actions).toContain('"CAMPUS_NAME_EXISTS"');
+    expect(actions).toContain('"ROOM_NAME_EXISTS"');
+    expect(actions).not.toMatch(/campusCode|roomCode|p_code/);
+    expect(server).not.toContain("row.code");
+    expect(server).not.toMatch(/\n\s+code:\s/);
   });
 });

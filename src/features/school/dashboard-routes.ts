@@ -371,14 +371,40 @@ export const DASHBOARD_ROUTES = {
   },
 
   // ── 组织管理 ────────────────────────────────────────────────────────────
-  organizationSettings: {
-    // R1-1：单机构/多校区、版本化规则和运行期开关共用一个设置中心。
-    href: "/dashboard/organization-settings",
+  organization: {
+    // 机构级单例只维护名称与统一 IANA 时区；语言固定为产品默认中文。
+    href: "/dashboard/organization",
     kind: "singleton",
     environments: STAFF_ONLY,
-    permission: "organization.settings.manage",
+    permission: "organization.profile.manage",
     createSurface: "none",
-    nav: { labelKey: "organizationSettings", group: "org" },
+    nav: { labelKey: "organizationProfile", group: "org" },
+  },
+  campuses: {
+    // 校区只是教室目录的上一级，创建入口是列表页 Dialog。
+    href: "/dashboard/campuses",
+    kind: "collection",
+    environments: STAFF_ONLY,
+    permission: "location.manage",
+    createSurface: "dialog",
+    nav: { labelKey: "campuses", group: "org" },
+  },
+  campusDetail: {
+    hrefPattern: "/dashboard/campuses/[campusId]",
+    kind: "object",
+    environments: STAFF_ONLY,
+    permission: "location.manage",
+    createSurface: "parent",
+    creationOwner: "campuses",
+    parent: "campuses",
+  },
+  organizationSettingsLegacy: {
+    // 一个生产回退窗口内保留旧 URL，但页面只做 locale-aware 重定向。
+    href: "/dashboard/organization-settings",
+    kind: "tool",
+    environments: STAFF_ONLY,
+    permission: "organization.profile.manage",
+    createSurface: "none",
   },
   staff: {
 
