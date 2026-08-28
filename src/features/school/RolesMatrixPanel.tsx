@@ -13,13 +13,13 @@ import { cn } from "@/lib/utils";
 import type { ActionResult } from "@/lib/action-result";
 import { inputClass } from "./controls";
 import { createStaffRoleAction, deleteStaffRoleAction, renameStaffRoleAction, setRolePermissionsAction } from "./actions/staff";
-import { PERMISSION_KEYS, type PermissionKey } from "./permissions";
+import { ROLE_CONFIGURABLE_PERMISSION_KEYS, type PermissionKey } from "./permissions";
 import type { StaffRoleInfo } from "./staff";
 
 /** 权限键按域分组（键前缀即域），组序沿 PERMISSION_KEYS 声明序。 */
 const PERM_GROUPS: Array<{ domain: string; keys: PermissionKey[] }> = (() => {
   const groups: Array<{ domain: string; keys: PermissionKey[] }> = [];
-  for (const key of PERMISSION_KEYS) {
+  for (const key of ROLE_CONFIGURABLE_PERMISSION_KEYS) {
     const domain = key.split(".")[0];
     const group = groups.find((entry) => entry.domain === domain);
     if (group) group.keys.push(key);

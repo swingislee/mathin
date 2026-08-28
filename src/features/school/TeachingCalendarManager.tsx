@@ -2,7 +2,7 @@
 
 import { CalendarPlus, LoaderCircle, Pencil, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAction } from "@/components/action-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,9 @@ import { useRouter } from "@/i18n/navigation";
 import {
   archiveTeachingCalendarEntryAction,
   createTeachingCalendarEntryAction,
+  previewTeachingCalendarImpactAction,
   updateTeachingCalendarEntryAction,
+  type TeachingCalendarImpactV2,
   type TeachingCalendarEntryInput,
 } from "./actions/academic-calendar";
 import type { CampusV2 } from "./organization-locations";
@@ -71,6 +73,9 @@ function CalendarEntryDialog({
   const t = useTranslations("school.academicCalendar");
   const router = useRouter();
   const [form, setForm] = useState<TeachingCalendarEntryInput>(() => entry ? entryInput(entry) : emptyInput(today));
+  const [impact, setImpact] = useState<{ key: string; value: TeachingCalendarImpactV2 } | null>(null);
+  const [impactLoading, setImpactLoading] = useState(false);
+  const [impactFailed, setImpactFailed] = useState(false);
   const set = <K extends keyof TeachingCalendarEntryInput>(key: K, value: TeachingCalendarEntryInput[K]) => {
     setForm((current) => ({ ...current, [key]: value }));
   };
@@ -100,6 +105,31 @@ function CalendarEntryDialog({
       ? form.scheduleMode === null
       : form.startsOn === form.endsOn && form.scheduleMode !== null
         && (form.scheduleMode === "manual" || form.mappedWeekday !== null));
+  const impactRequestKey = form.startsOn && form.endsOn && form.endsOn >= form.startsOn
+    ? `${form.campusId ?? ORGANIZATION_SCOPE}:${form.startsOn}:${form.endsOn}`
+    : "";
+  const impactValue = impactRequestKey && impact?.key === impactRequestKey && !impactFailed ? impact.value : null;
+  const impactReady = impactValue !== null;
+
+  useEffect(() => {
+    if (!impactRequestKey) return;
+    let active = true;
+    const timer = window.setTimeout(() => {
+      setImpactLoading(true);
+      setImpactFailed(false);
+      void previewTeachingCalendarImpactAction(form.campusId, form.startsOn, form.endsOn)
+        .then((value) => {
+          if (active) setImpact({ key: impactRequestKey, value });
+        })
+        .catch(() => {
+          if (active) setImpactFailed(true);
+        })
+        .finally(() => {
+          if (active) setImpactLoading(false);
+        });
+    }, 180);
+    return () => { active = false; window.clearTimeout(timer); };
+  }, [form.campusId, form.endsOn, form.startsOn, impactRequestKey]);
 
   const changeKind = (kind: TeachingCalendarKind) => {
     setForm((current) => kind === "closed"
@@ -200,9 +230,23 @@ function CalendarEntryDialog({
         <p className="rounded-xl bg-moon/25 px-3 py-2 text-xs leading-5 text-muted">
           {t(form.kind === "closed" ? "closedHint" : form.scheduleMode === "mapped" ? "mappedHint" : "manualHint")}
         </p>
+        <div className="rounded-xl border border-line px-3 py-2 text-xs leading-5 text-muted">
+          {impactLoading || !impactValue ? (
+            <p className="flex items-center gap-2">{impactLoading ? <LoaderCircle className="size-3.5 animate-spin motion-reduce:animate-none" /> : null}{impactFailed ? t("impactFailed") : t("impactLoading")}</p>
+          ) : (
+            <>
+              <p>{t("impactSummary", {
+                sessions: impactValue.futureSessionCount,
+                classes: impactValue.futureClassroomCount,
+                history: impactValue.historicalSessionCount,
+              })}</p>
+              {form.campusId === null && impactValue.locationPendingCount > 0 ? <p className="mt-1">{t("impactPendingSummary", { count: impactValue.locationPendingCount })}</p> : null}
+            </>
+          )}
+        </div>
         <DialogFooter>
           <Button type="button" variant="secondary" disabled={pending} onClick={() => onOpenChange(false)}>{t("cancel")}</Button>
-          <Button type="button" disabled={pending || !valid} onClick={submit}>
+          <Button type="button" disabled={pending || !valid || !impactReady} onClick={submit}>
             {pending && <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" />}
             {t(entry ? "save" : "create")}
           </Button>

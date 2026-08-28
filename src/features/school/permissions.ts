@@ -62,6 +62,16 @@ export const PERMISSION_KEYS = [
 
 export type PermissionKey = (typeof PERMISSION_KEYS)[number];
 
+/**
+ * `organization.settings.manage` remains in the database for the previous-app
+ * rollback window. New role configuration uses the split profile/location
+ * permissions and must not offer the compatibility key as a live product
+ * choice. Existing assignments are preserved when a role is saved.
+ */
+export const ROLE_CONFIGURABLE_PERMISSION_KEYS: readonly PermissionKey[] = PERMISSION_KEYS.filter(
+  (key) => key !== "organization.settings.manage",
+);
+
 export function isPermissionKey(value: string): value is PermissionKey {
   return (PERMISSION_KEYS as readonly string[]).includes(value);
 }

@@ -56,6 +56,35 @@ export type TeachingCalendarEntryInput = {
   mappedWeekday: number | null;
 };
 
+const teachingCalendarImpactSchema = z.object({
+  futureSessionCount: z.number().int().nonnegative(),
+  futureClassroomCount: z.number().int().nonnegative(),
+  locationPendingCount: z.number().int().nonnegative(),
+  historicalSessionCount: z.number().int().nonnegative(),
+});
+
+export type TeachingCalendarImpactV2 = z.infer<typeof teachingCalendarImpactSchema>;
+
+export async function previewTeachingCalendarImpactAction(
+  campusId: string | null,
+  startsOn: string,
+  endsOn: string,
+): Promise<TeachingCalendarImpactV2> {
+  const value = parse(z.object({
+    campusId: uuid.nullable(),
+    startsOn: dateOnly,
+    endsOn: dateOnly,
+  }).refine((input) => input.endsOn >= input.startsOn), { campusId, startsOn, endsOn });
+  const { supabase } = await authorizedClient("schedule.manage");
+  const { data, error } = await supabase.rpc("preview_teaching_calendar_impact_v2", {
+    p_campus_id: nullableRpcArg(value.campusId),
+    p_starts_on: value.startsOn,
+    p_ends_on: value.endsOn,
+  });
+  if (error) throw new Error(error.message);
+  return teachingCalendarImpactSchema.parse(data);
+}
+
 export async function createTeachingCalendarEntryAction(input: TeachingCalendarEntryInput): Promise<ActionResult> {
   try {
     const value = parse(calendarEntrySchema, input);

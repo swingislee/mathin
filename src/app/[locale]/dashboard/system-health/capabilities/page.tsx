@@ -4,6 +4,8 @@ import { CapabilityReleasePanel } from "@/features/school/CapabilityReleasePanel
 import { listCapabilityReleaseV2 } from "@/features/school/capability-release";
 import { DashboardPage } from "@/features/school/dashboard-page";
 import { getOrganizationTimezoneV2 } from "@/features/school/organization-locations";
+import { LegacyRuleHistoryPanel } from "@/features/school/LegacyRuleHistoryPanel";
+import { listLegacyOrganizationRuleHistoryV2 } from "@/features/school/legacy-rule-history";
 import { SystemHealthNavigation } from "@/features/school/SystemHealthNavigation";
 import { getMyPerms, requireAnyPerm } from "@/lib/auth";
 
@@ -21,9 +23,10 @@ export default async function CapabilityReleasePage({ params }: { params: Promis
 
 async function CapabilityReleaseBody({ locale }: { locale: string }) {
   const user = await requireAnyPerm(locale, CAPABILITY_ACCESS);
-  const [t, capabilities, timeZone, perms] = await Promise.all([
+  const [t, capabilities, legacyRules, timeZone, perms] = await Promise.all([
     getTranslations("school.capabilityRelease"),
     listCapabilityReleaseV2(),
+    listLegacyOrganizationRuleHistoryV2(),
     getOrganizationTimezoneV2(),
     getMyPerms(user.id),
   ]);
@@ -35,6 +38,7 @@ async function CapabilityReleaseBody({ locale }: { locale: string }) {
       commandPanel={<SystemHealthNavigation active="capabilities" canViewRuntime={perms.has("audit.view")} />}
     >
       <CapabilityReleasePanel capabilities={capabilities} canManage={perms.has("system.operations.manage")} timeZone={timeZone} />
+      <LegacyRuleHistoryPanel rows={legacyRules} locale={locale} timeZone={timeZone} />
     </DashboardPage>
   );
 }

@@ -21,10 +21,13 @@ where permission_row.role_id = member_row.role_id
 set local role authenticated;
 select set_config('request.jwt.claim.sub', :'teacher_id', true);
 select public.list_capability_release_v2()::text as audit_dto \gset
+select public.list_legacy_organization_rule_history_v2()::text as legacy_rule_dto \gset
 select (
   :'audit_dto' not like '%"campusId"%'
   and :'audit_dto' not like '%"code"%'
   and :'audit_dto' like '%"financeReleaseLocked": true%'
+  and :'legacy_rule_dto' not like '%"campusId"%'
+  and :'legacy_rule_dto' not like '%"code"%'
 ) as audit_dto_ok \gset
 \if :audit_dto_ok
 \else
@@ -97,6 +100,7 @@ select exists(select 1 from public.feature_flag_versions
 select (
   to_regprocedure('public.set_feature_flag(text,uuid,boolean,timestamptz,text)') is not null
   and to_regprocedure('public.rollback_feature_flag(uuid,timestamptz,text)') is not null
+  and to_regprocedure('public.set_organization_rule_v2(text,jsonb,timestamptz,text)') is null
 ) as legacy_rpc_ok \gset
 \if :legacy_rpc_ok
 \else
