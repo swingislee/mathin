@@ -86,9 +86,6 @@ test("administrator completes the organization, room, class, calendar, and archi
     await expect(page.getByText("中文是产品固定默认语言，不需要管理员配置。", { exact: true })).toBeVisible();
     await expect(page.getByLabel("默认语言", { exact: true })).toHaveCount(0);
 
-    await page.goto("/zh/dashboard/organization-settings");
-    await expect(page).toHaveURL((url) => url.pathname === "/zh/dashboard/organization");
-
     await page.goto("/zh/dashboard/campuses");
     await expect(page.getByRole("heading", { name: "校区与教室", exact: true })).toBeVisible();
     await page.getByRole("button", { name: "新增校区", exact: true }).click();
@@ -206,7 +203,7 @@ test("administrator completes the organization, room, class, calendar, and archi
       },
     });
 
-    await page.goto("/zh/dashboard/schedule/calendar");
+    await page.goto("/zh/dashboard/academic-years");
     await expect(page.getByRole("heading", { name: "学年与教学日历", exact: true })).toBeVisible();
     await page.getByRole("button", { name: "添加日期规则", exact: true }).click();
     const calendarDialog = page.getByRole("dialog", { name: "添加教学日期规则" });
@@ -216,9 +213,9 @@ test("administrator completes the organization, room, class, calendar, and archi
     await expect(calendarDialog.getByText(/此范围已有 \d+ 节未来课次/)).toBeVisible();
     await calendarDialog.getByRole("button", { name: "取消", exact: true }).click();
 
-    await page.goto("/zh/dashboard/schedule/defaults");
     await expect(page.getByLabel("默认课次时长（分钟）", { exact: true })).toHaveValue("90");
-    await expect(page.getByText("冲突策略: 警告", { exact: true })).toBeVisible();
+    await expect(page.getByText("冲突策略", { exact: true })).toBeVisible();
+    await expect(page.getByText("警告", { exact: true })).toBeVisible();
 
     await page.goto("/zh/dashboard/system-health/capabilities");
     await expect(page.getByRole("heading", { name: "能力发布", exact: true })).toBeVisible();
@@ -269,4 +266,52 @@ test("administrator completes the organization, room, class, calendar, and archi
     await fixture.cleanup();
     activeFixture = null;
   }
+});
+
+test("dashboard uses functional navigation, scalable class views, and ten-item asset pages", async ({ page }) => {
+  test.setTimeout(120_000);
+  const admin = loadFixedAccountForMode("admin");
+  const teacher = loadFixedAccountForMode("teacher");
+  test.skip(!admin || !teacher, FIXED_ACCOUNT_SKIP_REASON);
+  if (!admin || !teacher) return;
+
+  await loginWithFixedAccount(page, admin, "/zh/dashboard");
+  const sidebar = page.getByRole("navigation", { name: "后台导航" });
+  await expect(sidebar).toBeVisible();
+  await expect(sidebar.locator("p")).toHaveText(["学科运营", "教学", "教研", "组织管理", "系统管理"]);
+  await expect(sidebar.getByRole("link", { name: "学年", exact: true })).toHaveAttribute("href", "/zh/dashboard/academic-years");
+  await expect(sidebar.getByRole("link", { name: "排课默认", exact: true })).toHaveCount(0);
+  await expect(sidebar.locator('a[href*="organization-settings"], a[href*="schedule/calendar"], a[href*="schedule/defaults"]')).toHaveCount(0);
+
+  const iconMarkup = await Promise.all(
+    ["总览", "协同记录", "学年", "课表"].map((label) =>
+      sidebar.getByRole("link", { name: label, exact: true }).locator("svg").evaluate((icon) => icon.innerHTML),
+    ),
+  );
+  expect(new Set(iconMarkup).size).toBe(iconMarkup.length);
+
+  await page.goto("/zh/dashboard/academic-years");
+  await expect(page.getByRole("heading", { name: "学年与教学日历", exact: true })).toBeVisible();
+  await expect(page.getByLabel("默认课次时长（分钟）", { exact: true })).toHaveValue("90");
+
+  await page.goto("/zh/dashboard/classes?scope=all");
+  await expect(page.getByRole("link", { name: "全部班级", exact: true })).toHaveAttribute("aria-current", "page");
+  await expect(page.locator("main table")).toBeVisible();
+  await expect(page.locator("main article")).toHaveCount(0);
+
+  await page.context().clearCookies();
+  await loginWithFixedAccount(page, teacher, "/zh/dashboard/classes");
+  await expect(page.getByRole("link", { name: "我任教的班级", exact: true })).toHaveAttribute("aria-current", "page");
+  expect(await page.locator("main article").count()).toBeGreaterThan(0);
+  await expect(page.locator("main table")).toHaveCount(0);
+
+  await page.context().clearCookies();
+  await loginWithFixedAccount(page, admin, "/zh/dashboard/courseware-assets");
+  await expect(page.getByRole("heading", { name: "课件资源库", exact: true })).toBeVisible();
+  const assetRows = page.locator("main tbody tr");
+  expect(await assetRows.count()).toBeGreaterThan(0);
+  expect(await assetRows.count()).toBeLessThanOrEqual(10);
+
+  await page.goto("/en/dashboard/academic-years");
+  await expect(page.getByRole("heading", { name: "Academic year & teaching calendar", exact: true })).toBeVisible();
 });
