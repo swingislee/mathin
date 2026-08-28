@@ -135,9 +135,9 @@ function Group({
   return <section>
     {title && <h2 className="text-base font-medium text-ink">{title}</h2>}
     {rows.length === 0
-      ? <p className="mt-3 rounded-2xl border border-line bg-card p-5 text-sm text-muted">{t("empty")}</p>
-      : <div className="mt-3 grid gap-4">
-        {rows.map((activity) => <article key={activity.id} className="rounded-2xl border border-line bg-card p-5">
+      ? <p className="mt-3 border-y border-line py-8 text-center text-sm text-muted">{t("empty")}</p>
+      : <div className="mt-3 divide-y divide-line border-y border-line">
+        {rows.map((activity) => <article key={activity.id} className="py-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <Badge variant="outline">{t(`kind_${activity.kind}`)}</Badge>

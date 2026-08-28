@@ -39,6 +39,7 @@ import {
 } from "./organization-settings-contract";
 
 const GLOBAL_SCOPE = "__global__";
+const CAMPUS_CODE_PATTERN = /^[a-z][a-z0-9-]{1,39}$/;
 const errorMessage = (fallback: string) => ({ default: fallback });
 
 function localDatetimeNow() {
@@ -53,6 +54,23 @@ function toIso(value: string) {
 
 function isEffective(row: { effectiveFrom: string; effectiveUntil: string | null }, at = Date.now()) {
   return Date.parse(row.effectiveFrom) <= at && (!row.effectiveUntil || Date.parse(row.effectiveUntil) > at);
+}
+
+function isIanaTimezone(value: string) {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: value }).format();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function nextCampusCode(campuses: CampusSettings[], reservedCode?: string) {
+  const existing = new Set(campuses.map((campus) => campus.code));
+  if (reservedCode) existing.add(reservedCode);
+  let index = Math.max(1, existing.size + 1);
+  while (existing.has(`campus-${index}`)) index += 1;
+  return `campus-${index}`;
 }
 
 function effectiveRule(rows: OrganizationRuleVersion[], domain: OrganizationRuleDomain, campusId: string | null) {
@@ -79,14 +97,14 @@ function ScopeSelect({ campuses, value, onChange, globalLabel }: { campuses: Cam
   );
 }
 
-function SectionCard({ title, description, icon, children }: { title: string; description: string; icon: React.ReactNode; children: React.ReactNode }) {
+function SettingsSection({ title, description, icon, children }: { title: string; description: string; icon: React.ReactNode; children: React.ReactNode }) {
   return (
-    <section className="rounded-2xl border border-line bg-card p-5 shadow-sm">
+    <section className="border-b border-line py-7">
       <div className="flex items-start gap-3">
-        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-moon/45 text-crater">{icon}</span>
+        <span className="mt-0.5 shrink-0 text-crater">{icon}</span>
         <div><h2 className="font-display text-lg text-ink">{title}</h2><p className="mt-1 text-sm leading-6 text-muted">{description}</p></div>
       </div>
-      <div className="mt-5">{children}</div>
+      <div className="mt-6">{children}</div>
     </section>
   );
 }
@@ -119,10 +137,24 @@ export function OrganizationSettingsPanel({ initial }: { initial: OrganizationSe
     setCampusDefault(campus?.isDefault ?? false);
   };
   const updateCampusRun = useAction(updateCampusAction, { successMessage: t("campusSaved"), errorMessage: errors, onSuccess: refresh });
-  const [newCampusCode, setNewCampusCode] = useState("");
+  const [newCampusCode, setNewCampusCode] = useState(() => nextCampusCode(initial.campuses));
   const [newCampusName, setNewCampusName] = useState("");
   const [newCampusTimezone, setNewCampusTimezone] = useState("");
-  const createCampusRun = useAction(createCampusAction, { successMessage: t("campusCreated"), errorMessage: errors, onSuccess: refresh });
+  const createCampusRun = useAction(createCampusAction, {
+    successMessage: t("campusCreated"),
+    errorMessage: {
+      INVALID_CAMPUS: t("campusInvalid"),
+      CAMPUS_CODE_EXISTS: t("campusCodeExists"),
+      VALIDATION: t("campusInvalid"),
+      default: t("actionFailed"),
+    },
+    onSuccess: () => {
+      setNewCampusCode(nextCampusCode(initial.campuses, newCampusCode.trim().toLowerCase()));
+      setNewCampusName("");
+      setNewCampusTimezone("");
+      refresh();
+    },
+  });
 
   const [roomCode, setRoomCode] = useState("");
   const [roomName, setRoomName] = useState("");
@@ -167,6 +199,12 @@ export function OrganizationSettingsPanel({ initial }: { initial: OrganizationSe
   const rollbackFlagRun = useAction(rollbackFeatureFlagAction, { successMessage: t("rollbackCreated"), errorMessage: errors, onSuccess: refresh });
   const flagHistory = useMemo(() => initial.featureFlags.filter((row) => row.flagKey === flagKey && row.campusId === flagCampusId), [initial.featureFlags, flagKey, flagCampusId]);
   const financeReleaseClosed = flagKey === "finance.enabled";
+  const normalizedNewCampusCode = newCampusCode.trim().toLowerCase();
+  const newCampusCodeValid = CAMPUS_CODE_PATTERN.test(normalizedNewCampusCode);
+  const newCampusCodeExists = initial.campuses.some((campus) => campus.code === normalizedNewCampusCode);
+  const normalizedNewCampusTimezone = newCampusTimezone.trim();
+  const newCampusTimezoneValid = !normalizedNewCampusTimezone || isIanaTimezone(normalizedNewCampusTimezone);
+  const canCreateCampus = Boolean(newCampusName.trim()) && newCampusCodeValid && !newCampusCodeExists && newCampusTimezoneValid;
 
   const pending = profileRun.pending || createCampusRun.pending || updateCampusRun.pending || roomRun.pending || roomActiveRun.pending
     || holidayRun.pending || archiveHolidayRun.pending || ruleRun.pending
@@ -174,29 +212,29 @@ export function OrganizationSettingsPanel({ initial }: { initial: OrganizationSe
   const formatTime = (value: string) => new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 
   return (
-    <Tabs defaultValue="profile" className="space-y-5">
-      <TabsList className="h-auto w-full flex-wrap justify-start gap-1 bg-line/30 p-1.5">
-        <TabsTrigger value="profile">{t("tabProfile")}</TabsTrigger>
-        <TabsTrigger value="locations">{t("tabLocations")}</TabsTrigger>
-        <TabsTrigger value="rules">{t("tabRules")}</TabsTrigger>
-        <TabsTrigger value="features">{t("tabFeatures")}</TabsTrigger>
+    <Tabs defaultValue="profile">
+      <TabsList className="h-auto w-full flex-wrap justify-start gap-x-6 rounded-none border-b border-line bg-transparent p-0">
+        <TabsTrigger className="rounded-none border-b-2 border-transparent bg-transparent px-0 py-3 shadow-none data-[state=active]:border-rose data-[state=active]:bg-transparent data-[state=active]:shadow-none" value="profile">{t("tabProfile")}</TabsTrigger>
+        <TabsTrigger className="rounded-none border-b-2 border-transparent bg-transparent px-0 py-3 shadow-none data-[state=active]:border-rose data-[state=active]:bg-transparent data-[state=active]:shadow-none" value="locations">{t("tabLocations")}</TabsTrigger>
+        <TabsTrigger className="rounded-none border-b-2 border-transparent bg-transparent px-0 py-3 shadow-none data-[state=active]:border-rose data-[state=active]:bg-transparent data-[state=active]:shadow-none" value="rules">{t("tabRules")}</TabsTrigger>
+        <TabsTrigger className="rounded-none border-b-2 border-transparent bg-transparent px-0 py-3 shadow-none data-[state=active]:border-rose data-[state=active]:bg-transparent data-[state=active]:shadow-none" value="features">{t("tabFeatures")}</TabsTrigger>
       </TabsList>
 
-      <TabsContent value="profile">
-        <SectionCard title={t("profileTitle")} description={t("profileIntro")} icon={<Building2 size={19} />}>
+      <TabsContent value="profile" className="mt-0">
+        <SettingsSection title={t("profileTitle")} description={t("profileIntro")} icon={<Building2 size={19} />}>
           <div className="grid gap-4 @2xl/page:grid-cols-2 @5xl/page:grid-cols-3">
             <Label className="grid gap-2">{t("organizationName")}<Input value={organizationName} maxLength={100} onChange={(event) => setOrganizationName(event.target.value)} /></Label>
             <Label className="grid gap-2">{t("timezone")}<Input value={organizationTimezone} maxLength={64} onChange={(event) => setOrganizationTimezone(event.target.value)} /></Label>
             <Label className="grid gap-2">{t("defaultLocale")}<Select value={defaultLocale} onValueChange={(value) => setDefaultLocale(value as "zh" | "en")}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="zh">中文</SelectItem><SelectItem value="en">English</SelectItem></SelectContent></Select></Label>
           </div>
           <div className="mt-5 flex justify-end"><Button disabled={pending} onClick={() => profileRun.run({ name: organizationName, timezone: organizationTimezone, defaultLocale })}>{profileRun.pending ? <LoaderCircle className="size-4 animate-spin" /> : <Save className="size-4" />}{t("save")}</Button></div>
-        </SectionCard>
+        </SettingsSection>
       </TabsContent>
 
-      <TabsContent value="locations" className="space-y-5">
-        <SectionCard title={t("campusTitle")} description={t("campusIntro")} icon={<MapPin size={19} />}>
-          <div className="grid gap-4 @3xl/page:grid-cols-2">
-            <div className="rounded-xl border border-line p-4">
+      <TabsContent value="locations" className="mt-0">
+        <SettingsSection title={t("campusTitle")} description={t("campusIntro")} icon={<MapPin size={19} />}>
+          <div className="grid gap-8 @3xl/page:grid-cols-2 @3xl/page:divide-x @3xl/page:divide-line">
+            <div className="@3xl/page:pr-8">
               <Label className="grid gap-2">{t("selectCampus")}<Select value={campusId} onValueChange={chooseCampus}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{initial.campuses.map((campus) => <SelectItem key={campus.id} value={campus.id}>{campus.name} · {campus.code}</SelectItem>)}</SelectContent></Select></Label>
               {selectedCampus && <div className="mt-4 grid gap-3">
                 <Label className="grid gap-2">{t("campusName")}<Input value={campusName} maxLength={100} onChange={(event) => setCampusName(event.target.value)} /></Label>
@@ -206,19 +244,35 @@ export function OrganizationSettingsPanel({ initial }: { initial: OrganizationSe
                 <Button disabled={pending || !campusName.trim()} onClick={() => updateCampusRun.run({ campusId: selectedCampus.id, name: campusName, timezone: campusTimezone.trim() || null, status: campusStatus, isDefault: campusDefault })}>{t("saveCampus")}</Button>
               </div>}
             </div>
-            <div className="rounded-xl border border-line p-4">
+            <div className="@3xl/page:pl-8">
               <h3 className="font-medium">{t("addCampus")}</h3>
               <div className="mt-3 grid gap-3">
-                <Label className="grid gap-2">{t("campusCode")}<Input value={newCampusCode} maxLength={40} onChange={(event) => setNewCampusCode(event.target.value.toLowerCase())} /></Label>
+                <Label className="grid gap-2">
+                  {t("campusCode")}
+                  <Input
+                    value={newCampusCode}
+                    maxLength={40}
+                    aria-invalid={!newCampusCodeValid || newCampusCodeExists}
+                    aria-describedby="new-campus-code-help"
+                    onChange={(event) => setNewCampusCode(event.target.value.toLowerCase().replaceAll(" ", "-"))}
+                  />
+                  <span id="new-campus-code-help" className={`text-xs ${!newCampusCodeValid || newCampusCodeExists ? "text-rose" : "text-muted"}`}>
+                    {!newCampusCodeValid ? t("campusCodeInvalid") : newCampusCodeExists ? t("campusCodeExists") : t("campusCodeHint")}
+                  </span>
+                </Label>
                 <Label className="grid gap-2">{t("campusName")}<Input value={newCampusName} maxLength={100} onChange={(event) => setNewCampusName(event.target.value)} /></Label>
-                <Label className="grid gap-2">{t("campusTimezone")}<Input value={newCampusTimezone} maxLength={64} placeholder={initial.organization.timezone} onChange={(event) => setNewCampusTimezone(event.target.value)} /></Label>
-                <Button variant="secondary" disabled={pending || !newCampusCode.trim() || !newCampusName.trim()} onClick={() => createCampusRun.run({ code: newCampusCode, name: newCampusName, timezone: newCampusTimezone.trim() || null })}>{t("createCampus")}</Button>
+                <Label className="grid gap-2">
+                  {t("campusTimezone")}
+                  <Input value={newCampusTimezone} maxLength={64} aria-invalid={!newCampusTimezoneValid} placeholder={initial.organization.timezone} onChange={(event) => setNewCampusTimezone(event.target.value)} />
+                  {!newCampusTimezoneValid && <span className="text-xs text-rose">{t("campusTimezoneInvalid")}</span>}
+                </Label>
+                <div className="flex justify-end"><Button variant="secondary" disabled={pending || !canCreateCampus} onClick={() => createCampusRun.run({ code: normalizedNewCampusCode, name: newCampusName, timezone: normalizedNewCampusTimezone || null })}>{t("createCampus")}</Button></div>
               </div>
             </div>
           </div>
-        </SectionCard>
+        </SettingsSection>
 
-        <SectionCard title={t("roomTitle")} description={t("roomIntro")} icon={<Building2 size={19} />}>
+        <SettingsSection title={t("roomTitle")} description={t("roomIntro")} icon={<Building2 size={19} />}>
           {!selectedCampus ? <p className="text-sm text-muted">{t("noCampus")}</p> : <>
             <ul className="divide-y divide-line">{selectedCampus.rooms.map((room) => <li key={room.id} className="flex flex-wrap items-center gap-3 py-3 text-sm"><span className="min-w-0 flex-1"><strong>{room.name}</strong> · {room.code} · {room.capacity ?? t("capacityUnset")}</span><Badge variant={room.isActive ? "secondary" : "outline"}>{room.isActive ? t("active") : t("inactive")}</Badge><Button size="sm" variant="secondary" disabled={pending} onClick={() => roomActiveRun.run(room.id, !room.isActive)}>{room.isActive ? t("disable") : t("enable")}</Button></li>)}</ul>
             <div className="mt-4 grid gap-3 @2xl/page:grid-cols-2 @5xl/page:grid-cols-4">
@@ -228,20 +282,20 @@ export function OrganizationSettingsPanel({ initial }: { initial: OrganizationSe
             </div>
             <div className="mt-3 flex justify-end"><Button variant="secondary" disabled={pending || !roomCode.trim() || !roomName.trim()} onClick={() => roomRun.run({ campusId: selectedCampus.id, code: roomCode, name: roomName, capacity: roomCapacity ? Number(roomCapacity) : null })}>{t("createRoom")}</Button></div>
           </>}
-        </SectionCard>
+        </SettingsSection>
 
-        <SectionCard title={t("calendarTitle")} description={t("calendarIntro")} icon={<CalendarDays size={19} />}>
+        <SettingsSection title={t("calendarTitle")} description={t("calendarIntro")} icon={<CalendarDays size={19} />}>
           <div>
             <div><h3 className="font-medium">{t("holidays")}</h3><ul className="mt-2 divide-y divide-line">{initial.holidays.map((holiday) => <li key={holiday.id} className="flex items-center gap-3 py-3 text-sm"><span className="min-w-0 flex-1">{holiday.name} · {holiday.startsOn} — {holiday.endsOn}</span><Badge variant="outline">{t(`holiday_${holiday.kind}`)}</Badge><Button size="sm" variant="secondary" disabled={pending} onClick={() => archiveHolidayRun.run(holiday.id)}>{t("archive")}</Button></li>)}</ul>
               <div className="mt-3 grid gap-3 @xl/page:grid-cols-2"><ScopeSelect campuses={activeCampuses} value={holidayCampusId} onChange={setHolidayCampusId} globalLabel={t("allCampuses")} /><Select value={holidayKind} onValueChange={(value) => setHolidayKind(value as typeof holidayKind)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="closed">{t("holiday_closed")}</SelectItem><SelectItem value="teaching">{t("holiday_teaching")}</SelectItem><SelectItem value="makeup">{t("holiday_makeup")}</SelectItem></SelectContent></Select><Input value={holidayName} maxLength={100} placeholder={t("holidayName")} onChange={(event) => setHolidayName(event.target.value)} /><span className="grid grid-cols-2 gap-2"><DateTimePicker value={holidayStart} onValueChange={setHolidayStart} /><DateTimePicker value={holidayEnd} onValueChange={setHolidayEnd} /></span></div>
               <Button className="mt-3" size="sm" variant="secondary" disabled={pending || !holidayName.trim() || !holidayStart || !holidayEnd} onClick={() => holidayRun.run({ campusId: holidayCampusId, name: holidayName, kind: holidayKind, startsOn: holidayStart, endsOn: holidayEnd })}>{t("createHoliday")}</Button>
             </div>
           </div>
-        </SectionCard>
+        </SettingsSection>
       </TabsContent>
 
-      <TabsContent value="rules">
-        <SectionCard title={t("rulesTitle")} description={t("rulesIntro")} icon={<Settings2 size={19} />}>
+      <TabsContent value="rules" className="mt-0">
+        <SettingsSection title={t("rulesTitle")} description={t("rulesIntro")} icon={<Settings2 size={19} />}>
           <div className="grid gap-4 @2xl/page:grid-cols-2 @5xl/page:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)]">
             <Label className="grid gap-2">{t("ruleDomain")}<Select value={ruleDomain} onValueChange={(value) => chooseRule(value as OrganizationRuleDomain, ruleCampusId)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{ORGANIZATION_RULE_DOMAINS.map((domain) => <SelectItem key={domain} value={domain}>{t(`rule_${domain}`)}</SelectItem>)}</SelectContent></Select></Label>
             <Label className="grid gap-2">{t("scope")}<ScopeSelect campuses={activeCampuses} value={ruleCampusId} onChange={(scope) => chooseRule(ruleDomain, scope)} globalLabel={t("allCampuses")} /></Label>
@@ -251,22 +305,22 @@ export function OrganizationSettingsPanel({ initial }: { initial: OrganizationSe
           <Label className="mt-4 grid gap-2">{t("changeReason")}<Input value={ruleReason} maxLength={200} onChange={(event) => setRuleReason(event.target.value)} /></Label>
           <div className="mt-4 flex justify-end"><Button disabled={pending || !ruleEffectiveAt || !ruleReason.trim()} onClick={() => ruleRun.run({ domain: ruleDomain, campusId: ruleCampusId, valueText: ruleValue, effectiveAt: toIso(ruleEffectiveAt), reason: ruleReason })}>{t("createVersion")}</Button></div>
           <div className="mt-6 border-t border-line pt-4"><h3 className="font-medium">{t("versionHistory")}</h3><ul className="mt-2 divide-y divide-line">{ruleHistory.map((row) => <li key={row.id} className="flex flex-wrap items-center gap-3 py-3 text-sm"><span className="font-mono">v{row.version}</span><span className="min-w-0 flex-1 text-muted">{formatTime(row.effectiveFrom)} · {row.reason} · {row.createdBy || t("systemActor")}</span>{isEffective(row) && <Badge variant="secondary">{t("effective")}</Badge>}<Button size="sm" variant="secondary" disabled={pending || isEffective(row)} onClick={() => rollbackRuleRun.run(row.id, new Date().toISOString(), t("rollbackReason", { version: row.version }))}><RotateCcw className="size-3.5" />{t("rollback")}</Button></li>)}</ul></div>
-        </SectionCard>
+        </SettingsSection>
       </TabsContent>
 
-      <TabsContent value="features">
-        <SectionCard title={t("featuresTitle")} description={t("featuresIntro")} icon={<Flag size={19} />}>
-          <div className="rounded-xl border border-line bg-paper/45 p-4 text-sm text-muted">{t("failClosedNotice")}</div>
+      <TabsContent value="features" className="mt-0">
+        <SettingsSection title={t("featuresTitle")} description={t("featuresIntro")} icon={<Flag size={19} />}>
+          <div className="border-y border-line py-4 text-sm text-muted">{t("failClosedNotice")}</div>
           <div className="mt-4 grid gap-4 @2xl/page:grid-cols-2 @5xl/page:grid-cols-3">
             <Label className="grid gap-2">{t("feature")}<Select value={flagKey} onValueChange={(value) => chooseFlag(value as OrganizationFeatureKey, flagCampusId)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{ORGANIZATION_FEATURE_KEYS.map((key) => <SelectItem key={key} value={key}>{t(`flag_${key.replaceAll(".", "_")}`)}</SelectItem>)}</SelectContent></Select></Label>
             <Label className="grid gap-2">{t("scope")}<ScopeSelect campuses={activeCampuses} value={flagCampusId} onChange={(scope) => chooseFlag(flagKey, scope)} globalLabel={t("allCampuses")} /></Label>
             <Label className="grid gap-2">{t("effectiveAt")}<DateTimePicker mode="datetime" value={flagEffectiveAt} onValueChange={setFlagEffectiveAt} /></Label>
           </div>
-          <div className="mt-4 flex items-center gap-3 rounded-xl border border-line p-4"><Checkbox checked={financeReleaseClosed ? false : flagEnabled} disabled={financeReleaseClosed} onCheckedChange={(checked) => setFlagEnabled(checked === true)} /><div className="min-w-0 flex-1"><p className="font-medium">{financeReleaseClosed ? t("financeReleaseClosed") : flagEnabled ? t("enabled") : t("disabled")}</p><p className="mt-1 text-xs text-muted">{financeReleaseClosed ? t("financeReleaseClosedHelp") : t(`flagHelp_${flagKey.replaceAll(".", "_")}`)}</p></div><Badge variant={financeReleaseClosed || !flagEnabled ? "outline" : "default"}>{financeReleaseClosed || !flagEnabled ? t("off") : t("on")}</Badge></div>
+          <div className="mt-4 flex items-center gap-3 border-y border-line py-4"><Checkbox checked={financeReleaseClosed ? false : flagEnabled} disabled={financeReleaseClosed} onCheckedChange={(checked) => setFlagEnabled(checked === true)} /><div className="min-w-0 flex-1"><p className="font-medium">{financeReleaseClosed ? t("financeReleaseClosed") : flagEnabled ? t("enabled") : t("disabled")}</p><p className="mt-1 text-xs text-muted">{financeReleaseClosed ? t("financeReleaseClosedHelp") : t(`flagHelp_${flagKey.replaceAll(".", "_")}`)}</p></div><Badge variant={financeReleaseClosed || !flagEnabled ? "outline" : "default"}>{financeReleaseClosed || !flagEnabled ? t("off") : t("on")}</Badge></div>
           <Label className="mt-4 grid gap-2">{t("changeReason")}<Input value={flagReason} maxLength={200} onChange={(event) => setFlagReason(event.target.value)} /></Label>
           <div className="mt-4 flex justify-end"><Button disabled={financeReleaseClosed || pending || !flagEffectiveAt || !flagReason.trim()} onClick={() => flagRun.run({ flagKey, campusId: flagCampusId, enabled: flagEnabled, effectiveAt: toIso(flagEffectiveAt), reason: flagReason })}>{t("createVersion")}</Button></div>
           <div className="mt-6 border-t border-line pt-4"><h3 className="font-medium">{t("versionHistory")}</h3><ul className="mt-2 divide-y divide-line">{flagHistory.map((row) => <li key={row.id} className="flex flex-wrap items-center gap-3 py-3 text-sm"><span className="font-mono">v{row.version}</span><Badge variant={row.enabled ? "default" : "outline"}>{row.enabled ? t("on") : t("off")}</Badge><span className="min-w-0 flex-1 text-muted">{formatTime(row.effectiveFrom)} · {row.reason} · {row.createdBy || t("systemActor")}</span>{isEffective(row) && <Badge variant="secondary">{t("effective")}</Badge>}<Button size="sm" variant="secondary" disabled={financeReleaseClosed || pending || isEffective(row)} onClick={() => rollbackFlagRun.run(row.id, new Date().toISOString(), t("rollbackReason", { version: row.version }))}><RotateCcw className="size-3.5" />{t("rollback")}</Button></li>)}</ul></div>
-        </SectionCard>
+        </SettingsSection>
       </TabsContent>
     </Tabs>
   );

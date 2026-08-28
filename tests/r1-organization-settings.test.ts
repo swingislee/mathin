@@ -137,4 +137,16 @@ describe("R1-1 organization settings contracts", () => {
     expect(zh.school.organization.title).toBeTruthy();
     expect(en.school.organization.title).toBeTruthy();
   });
+
+  it("surfaces campus identity constraints before a generic create failure", () => {
+    const actions = read("src/features/school/actions/organization-settings.ts");
+    const panel = read("src/features/school/OrganizationSettingsPanel.tsx");
+    expect(actions).toContain('.refine(isIanaTimezone)');
+    expect(actions).toContain('error?.code === "23505"');
+    expect(actions).toContain('new Error("CAMPUS_CODE_EXISTS")');
+    expect(panel).toContain("CAMPUS_CODE_PATTERN");
+    expect(panel).toContain("newCampusCodeExists");
+    expect(panel).toContain('aria-invalid={!newCampusCodeValid || newCampusCodeExists}');
+    expect(panel).toContain('CAMPUS_CODE_EXISTS: t("campusCodeExists")');
+  });
 });

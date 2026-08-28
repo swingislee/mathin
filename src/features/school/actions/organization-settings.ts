@@ -22,11 +22,21 @@ const SETTINGS_CODES = [
   "INVALID_FEATURE_FLAG",
   "FINANCE_RELEASE_CLOSED",
   "INVALID_TERM",
+  "CAMPUS_CODE_EXISTS",
   "DEFAULT_CAMPUS_REQUIRED",
   "NOT_FOUND",
 ] as const;
 
-const timezone = z.string().trim().min(1).max(64);
+function isIanaTimezone(value: string) {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: value }).format();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const timezone = z.string().trim().min(1).max(64).refine(isIanaTimezone);
 const campusCode = z.string().trim().toLowerCase().regex(/^[a-z][a-z0-9-]{1,39}$/);
 const roomCode = z.string().trim().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,39}$/);
 const optionalTimezone = timezone.nullable();
@@ -61,6 +71,7 @@ export async function createCampusAction(input: { code: string; name: string; ti
       p_name: value.name,
       p_timezone: nullableRpcArg(value.timezone),
     });
+    if (error?.code === "23505") throw new Error("CAMPUS_CODE_EXISTS");
     if (error) throw new Error(error.message);
     return { ok: true };
   } catch (error) {
