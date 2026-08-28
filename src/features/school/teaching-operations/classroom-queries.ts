@@ -42,6 +42,8 @@ export interface ClassroomListResult {
   totalCount: number;
 }
 
+export const CLASSROOM_LIST_PAGE_SIZE = 20;
+
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function first(value: string | string[] | undefined) {
@@ -82,15 +84,21 @@ export function parseClassroomListFilters(input: Record<string, string | string[
  */
 export const resolveClassroomScope = cache(async function resolveClassroomScope(
   requestedScope: string | string[] | undefined,
-): Promise<{ scope: ClassroomScope; availableScopes: ClassroomScope[] }> {
+): Promise<{ scope: ClassroomScope; availableScopes: ClassroomScope[]; fellBackToAll: boolean }> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("resolve_classroom_scope", { p_requested: first(requestedScope) ?? undefined });
   if (error) throw new Error(error.message);
   const row = data?.[0];
   if (!row) throw new Error("FORBIDDEN");
+  const scope = row.resolved_scope as ClassroomScope;
+  const availableScopes = row.available_scopes as ClassroomScope[];
+  const hasExplicitScope = Boolean(first(requestedScope)?.trim());
   return {
-    scope: row.resolved_scope as ClassroomScope,
-    availableScopes: row.available_scopes as ClassroomScope[],
+    scope,
+    availableScopes,
+    fellBackToAll: !hasExplicitScope
+      && scope === "all"
+      && (availableScopes.includes("teaching") || availableScopes.includes("support")),
   };
 });
 

@@ -33,6 +33,25 @@ describe("P4H-8 classroom list, detail tabs and session drawer contract", () => 
     expect(migration).toContain("select pg_notify('pgrst', 'reload schema')");
   });
 
+  it("prefers assigned personal classes, falls back to all only when empty, and scales the all view as a paged table", () => {
+    const migration = read("supabase", "migrations", "20260829000100_classroom_personal_scope_default.sql");
+    const page = read("src", "app", "[locale]", "dashboard", "classes", "page.tsx");
+    const list = read("src", "features", "school", "ClassroomList.tsx");
+    const queries = read("src", "features", "school", "teaching-operations", "classroom-queries.ts");
+
+    expect(migration).toContain("when has_teaching_class then 'teaching'");
+    expect(migration).toContain("when has_support_class then 'support'");
+    expect(migration).toContain("when can_view_all then 'all'");
+    expect(migration).toMatch(/has_teaching_class[\s\S]*classroom_row\.purpose = 'production'[\s\S]*classroom_row\.archived_at is null/);
+    expect(page).toContain("scope.fellBackToAll");
+    expect(page).toContain("<ClassroomPagination");
+    expect(queries).toContain("CLASSROOM_LIST_PAGE_SIZE = 20");
+    expect(list).toContain('scope === "all"');
+    expect(list).toContain("<AllClassroomsTable");
+    expect(list).toContain("<PersonalClassroomCards");
+    expect(list).toContain("timeZone });");
+  });
+
   it("derives session state from real lifecycle columns instead of a hardcoded default", () => {
     const scopes = read("src", "features", "school", "teaching-operations", "scopes.ts");
     expect(scopes).toContain("export function deriveSessionState");
