@@ -8,13 +8,13 @@
 >
 > **SML 暂停位置**：`SML-0 · 合同与金标冻结`；空间数学可按独立权限或 Feature Flag 并行，不进入 R1-Live Gate。
 >
-> **当前运行状态**：Gate 1 已通过，Gate 2 仍等待正式教师点名持久再读与权限对照。Xiaomi 当前数据库 ledger=`211`、head=`20260828000200_courseware_summer_a_plus_catalog`，应用 current/previous=`20260828-071313` / `087b497…` 与 `20260828-071024` / `087b497…`。课堂 Stage A、B1 与 B2 已通过，生产已有 checkpoint version/chunk/head=`2/2/2`；Stage B3 修复已部署共同 bridge、单一 Smart 开关与 `cw_h5_input_profiles` 权威表，board/input/layout 为 version 2 / true，H5 继续为 version 3 / false。来源课件运行时/暑期 A+ 与教师微课课次多方案/班级重新启用均已部署，教师微课 flag=version 2 / true；只读 postflight 通过，产品负责人生产写态验收仍 pending，不关闭 Gate 2。最新同批次 PostgreSQL+Storage 全量备份、migration 回滚演练、双 release、健康与业务不变量 postflight 已通过；账号、既有班级/课次/报名/点名、微课记录、Storage object 和错误计数无漂移。
+> **当前运行状态**：Gate 1 已通过，Gate 2 仍等待正式教师点名持久再读与权限对照。Xiaomi 当前数据库 ledger=`212`、head=`20260828000210_classroom_offering_and_activity_kind`，应用 current/previous=`20260828-075322` / `c7c8219…` 与 `20260828-071313` / `087b497…`。课堂 Stage A、B1 与 B2 已通过，生产已有 checkpoint version/chunk/head=`2/2/2`；Stage B3 修复已部署共同 bridge、单一 Smart 开关与 `cw_h5_input_profiles` 权威表，board/input/layout 为 version 2 / true，H5 继续为 version 3 / false。来源课件运行时/暑期 A+、教师微课课次多方案/班级重新启用、班级业务分类与单次活动边界均已部署；教师微课 flag=version 2 / true。机器 postflight 通过，产品负责人生产写态验收仍 pending，不关闭 Gate 2。最新同批次 PostgreSQL+Storage 全量备份及本轮当前 PostgreSQL 写前备份、migration 回滚演练、原子 release、健康与业务不变量 postflight 已通过；账号、既有班级/课次/报名/点名、活动、微课记录、Storage object 和错误计数无漂移。
 >
 > **当前 P0 状态**：2026-08-25 产品负责人确认内部教师更习惯手机号注册登录。`手机号或邮箱 + password` 已部署生产：手机号只接受绑定具体号码的一次性员工邀请，不发送/伪造验证码，不开放全局邀请码手机号注册，账号仍以单一 `auth.users.id` 为主体。机器 postflight 已通过；真实教师尚未消费手机号邀请并完成 password 登录，因此状态为 `DEPLOYED / PENDING USER ACCEPTANCE`。
 >
 > **双轨执行**：生产端由 1 名正式教师在现有正式班级、课次和花名册上持续试用，优先反馈 P0/核心 P1；开发端可并行尝试产品负责人选中的新功能。新功能只有在开发目标完成受影响检查并由产品负责人初步验收后，才成为生产候选；完成精确版本/迁移登记、生产 preflight、可回退发布和 postflight 后，才能记为生产已部署。开发通过不等于生产通过，新功能也不改变 Gate 2 的点名与权限退出条件。
 >
-> **核对日期**：2026-08-28；生产事实已包含手机号/password P0 的 migration、Auth-only 重建、热修 release 与去标识化 postflight；开发端另登记班级业务分类与单次活动边界增量，其余依据 active doc 00/25、代码与迁移、本机隔离验证、Xiaomi 运行核查和 `mathin-R1-Live-讨论稿.md`。
+> **核对日期**：2026-08-28；生产事实已包含手机号/password P0、来源课件运行时、教师微课多方案与班级/活动分类增量的 migration、release 和去标识化 postflight，其余依据 active doc 00/25、代码与迁移、本机隔离验证、Xiaomi 运行核查和 `mathin-R1-Live-讨论稿.md`。
 
 ## 1. 两个交付事件
 
@@ -165,7 +165,7 @@ Gate 1 已按以下顺序关闭：
 - `POST-LIVE-OPS-01`（2026-08-23 已提前收敛并上线，待逐项人工验收）：备课待办在开课前 14 天出现、开课前 7 天到期，此后向主管投影逾期待办；开课后提交显示“补交”。生产当前教师投影由 15 条缩为 1 条。
 - `POST-LIVE-NOTIFY-01`（2026-08-23 已提前收敛并上线，待逐项人工验收）：未知事件也显示事件类型及 payload 中首个可读对象/变化字段，不再只显示“系统状态有更新”；既有通知入口继续承担跳转。
 - `POST-LIVE-CANVAS-01`（2026-08-23 已提前收敛并上线，待逐项人工验收）：共享绘图工具栏支持向屏幕下缘收起/展开；备课工具栏已移到翻页工作区，并移除常驻的方向键/PageUp/PageDown/空格提示文案。
-- `POST-LIVE-OPS-02`（2026-08-28 产品负责人启动开发端增量）：班级保留 `purpose=production|test` 数据治理轴，新增 `offering_type=long_term_formal|short_term_topic` 区分长期正式课与短期专题课；活动新增显式公开课类型，并在新建面板说明活动只对应一个举行时间和一次报名/到场结果，固定名单连续 3–4 次或更多课应建短期专题班。旧班级只默认回填长期正式课，不按历史课次数量猜测；本增量未获生产发布授权，不改变 Gate 2。
+- `POST-LIVE-OPS-02`（2026-08-28 已部署 / 待产品验收）：班级保留 `purpose=production|test` 数据治理轴，新增 `offering_type=long_term_formal|short_term_topic` 区分长期正式课与短期专题课；活动新增显式公开课类型，并在新建面板说明活动只对应一个举行时间和一次报名/到场结果，固定名单连续 3–4 次或更多课应建短期专题班。旧班级默认回填长期正式课，不按历史课次数量猜测。migration rollback/formal、当前数据库备份、应用 release 与机器 postflight 已通过；生产实际新建两类班级和公开课仍待产品负责人操作验收，不改变 Gate 2。
 - 单老师生产试用中的真实问题按 P0/P1/P2 排序；Gate 2 通过后的 14 天观察用于决定扩大用户范围和恢复 Production 1.0 施工顺序。
 - `cacheComponents`、原生 App、更多游戏/章节和高级 BI 继续延期。
 
