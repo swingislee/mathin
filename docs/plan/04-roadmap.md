@@ -8,7 +8,7 @@
 >
 > **SML 暂停位置**：`SML-0 · 合同与金标冻结`；空间数学可按独立权限或 Feature Flag 并行，不进入 R1-Live Gate。
 >
-> **当前运行状态**：Gate 1 已通过，Gate 2 仍等待正式教师点名持久再读与权限对照。Xiaomi 当前数据库 ledger=`219`、head=`20260829000100_classroom_personal_scope_default`，应用 current/previous=`20260828-190055` / `7601c86…` 与 `20260828-174731` / `34f07e8…`。课堂 Stage A、B1 与 B2 已通过，生产已有 checkpoint version/chunk/head=`2/2/2`；Stage B3 修复、来源课件运行时/暑期 A+、教师微课多方案、班级/活动分类、DEV-ORG/DEV-DASH 以及自由班排课/H5 透明层 hotfix 均已部署，产品负责人生产写态/页面验收仍 pending，不关闭 Gate 2。最近应用-only 发布通过双 production build、原子 release、健康/鉴权/业务不变量 postflight且没有 DB/Storage 写入；生产管理员 verified MFA=`1`，班级/课次/报名/点名与 Storage=`3/16/1/0/125725`，新 release 启动后错误增量为 0。
+> **当前运行状态**：Gate 1 已通过，Gate 2 仍等待正式教师点名持久再读与权限对照。Xiaomi 当前数据库 ledger=`220`、head=`20260829000200_admin_self_staff_roles`，应用 current/previous=`20260828-195733` / `ba98a8e…` 与 `20260828-190055` / `7601c86…`。课堂 Stage A、B1 与 B2 已通过，生产已有 checkpoint version/chunk/head=`2/2/2`；Stage B3 修复、来源课件运行时/暑期 A+、教师微课多方案、班级/活动分类、DEV-ORG/DEV-DASH、自由班排课/H5 透明层与管理员自授岗 hotfix 均已部署，产品负责人生产写态/页面验收仍 pending，不关闭 Gate 2。最近 migration+app 发布通过 PostgreSQL 写前备份、rollback/零残留/formal、双 production build、原子 release 与健康/鉴权/业务不变量 postflight；只替换两个授权 RPC 并登记 ledger，不写岗位成员、班课、课程 release 或 Storage。生产管理员 verified MFA=`1`、岗位成员=`0`，等待自行选择教师/教研岗位；班级/课次/报名/点名与 Storage=`4/19/1/0/125725`，新 release 启动后错误增量为 0。
 >
 > **当前 P0 状态**：2026-08-25 产品负责人确认内部教师更习惯手机号注册登录。`手机号或邮箱 + password` 已部署生产：手机号只接受绑定具体号码的一次性员工邀请，不发送/伪造验证码，不开放全局邀请码手机号注册，账号仍以单一 `auth.users.id` 为主体。机器 postflight 已通过；真实教师尚未消费手机号邀请并完成 password 登录，因此状态为 `DEPLOYED / PENDING USER ACCEPTANCE`。
 >
@@ -151,6 +151,10 @@ Gate 1 已按以下顺序关闭：
 #### HOTFIX-20260829 · 自由班自动排课与来源 H5 透明层
 
 产品负责人已在开发版本通过自由班排课改动并授权上线。`557fc51` 把来源 H5 容器白底改为透明，`7601c86` 让自由班按选中周几与教学日历依次自动排课、允许逐讲改时间并复用冲突检查；应用候选 `7601c86…` 已通过本地/远端 production build 和无浏览器 postflight 上线。两讲暑期 A+ 内容不重导，数据库、课程 release 与 Storage 写前写后完全一致。来源/审阅工具 `26adab7` 是 localhost-only 私有 CLI 提交，没有独立生产服务；详细边界见 [`free-class-h5-hotfix-production.md`](../evidence/r1/free-class-h5-hotfix-production.md)。
+
+#### HOTFIX-20260829 · 管理员自授员工岗位
+
+产品负责人报告顶层管理员无法给自己分配教师/教研岗位，因而不能为其他老师的短期专题班制作课件。`dc8b5b0` 把员工页与 `grant_staff_role` / `revoke_staff_role` 的 self-target 规则改为只对顶层 admin 放行，普通 staff 自授岗和管理员自停用继续拒绝；生产 rollback rehearsal 又发现旧函数保留显式 anon execute，`ba98a8e` 按当前 RPC 标准收紧为仅 authenticated 执行。最终 migration `20260829000200_admin_self_staff_roles`、应用 `ba98a8e…` 已通过新鲜写前备份、完整 rollback/零残留/formal、双 production build 与独立 postflight，ledger=`220`、current=`20260828-195733`。发布没有替管理员实际新增岗位；产品负责人仍须在员工页自行授予所需岗位并验证短期班课件制作。完整证据见 [`admin-self-role-hotfix-production.md`](../evidence/r1/admin-self-role-hotfix-production.md)。
 
 #### DEV-TMC-1 · 普通教师短期微课孵化与校内共享
 

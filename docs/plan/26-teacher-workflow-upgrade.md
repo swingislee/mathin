@@ -1,12 +1,12 @@
 > **规划状态**：`partial`
 >
-> **当前用途**：R1-5 教师备课生产链，以及开发轨 `DEV-TMC-1` 普通教师短期微课孵化与校内共享、`DEV-TMC-2` 课次课件多方案协作与选用的专题合同。
+> **当前用途**：R1-5 教师备课生产链，以及开发轨 `DEV-TMC-1` 普通教师短期微课孵化与校内共享、`DEV-TMC-2` 课次课件多方案协作与选用、顶层管理员兼任教师/教研岗位的专题合同。
 >
 > **已落地**：左侧三步备课切换、右侧常驻课件预览、与上课教室共用且可向下收起的白板工具栏和 BoardItem 对象层、解析成品查看与 WebP/原件导出、可见 revision 审核链、BlockNote 标准模板与备课质量状态、开课前 14/7 天备课提醒与课后“补交”标记，`DEV-TMC-1` 的数据库、编辑器、草稿试讲、教研审核、教师微课目录、单讲建班和注册表驱动游戏页闭环，以及 `DEV-TMC-2` 的多方案创建、派生、任课教师选用和课堂冻结闭环。
 >
 > **剩余项**：独立教案管理页面的创建/绑定入口、服务端打印 PDF 派生文件，以及 `DEV-TMC-1/2` 的产品负责人生产页面写态验收；页面级教学备注已按产品判断暂缓。R1-Live 中备课产物、审核和检查项只作质量提示，不阻断教师冻结快照或开课；Production 1.0 再评估质量门。
 >
-> **最后核对**：2026-08-28；既有教师生产链依据迁移 `20260730010500_doc26_teacher_workflow.sql`、`20260731000700_doc26_annotation_board_items.sql` 与 `20260823000200_r1_live_preparation_attention_window.sql`、隔离/生产数据库断言、定向合同测试及产品走查。`DEV-TMC-1` 已于 2026-08-27 首轮部署并保持 `teaching.teacher_microcourses_v1` version 2 / true；`DEV-TMC-2` 与班级重新启用增量又以 commit `087b497…`、ledger=`211`、current/previous=`20260828-071313` / `20260828-071024` 部署，数据库、服务、HTTP、业务不变量和登录态只读页面 postflight 通过。产品负责人生产写态验收尚未发生。
+> **最后核对**：2026-08-29；既有教师生产链依据迁移 `20260730010500_doc26_teacher_workflow.sql`、`20260731000700_doc26_annotation_board_items.sql` 与 `20260823000200_r1_live_preparation_attention_window.sql`、隔离/生产数据库断言、定向合同测试及产品走查。`DEV-TMC-1` 已于 2026-08-27 首轮部署并保持 `teaching.teacher_microcourses_v1` version 2 / true；`DEV-TMC-2` 与班级重新启用增量以 commit `087b497…` 部署。2026-08-29 又以 migration `20260829000200_admin_self_staff_roles` 与应用 `ba98a8e…` 放行顶层管理员管理自己的员工岗位，ledger=`220`、current/previous=`20260828-195733` / `20260828-190055`，数据库、服务、HTTP、业务/Storage 不变量和备份 postflight 通过；管理员实际自授岗与生产写态旅程尚未验收。
 
 # Mathin 教师备课生产链升级规划
 
@@ -552,7 +552,7 @@ template_version:
 | --- | --- | --- |
 | 本机实现与机器检查 | **PASS** | 基础 commits `cd3b2bf`、`26698e3`、`96f3301`、`a4fa9e4`、`5c13d5d`、`f418dd9` 与迁移 `20260826000200`～`20260826000600` 已通过三份事务回滚 SQL、微课 Vitest 17/17、固定账号 Playwright 1/1 和 R1-Live 60/60；整讲来源增量 commit `dd9a755`、migration `20260827000100_teacher_microcourse_lecture_source_picker` 通过内容 SQL、微课 Vitest 4 文件 19/19 与完整旅程；通用游戏页增量 commit `1135099`、migrations `20260827000300`～`20260827000400` 通过回滚式内容 SQL、定向 Vitest 6 文件 47/47、固定账号 Playwright 1/1 及最终 CI 16/16，全量 Vitest为 106 文件、742 通过/1 条件跳过且 production build 成功；课程产品选择器复用增量 migrations `20260827000600`～`20260827000700` 已通过事务回滚、固定教师权限矩阵、微课 Vitest 4 文件 21/21 与完整 Playwright 1/1 |
 | 产品负责人开发端初验 | **UNKNOWN** | 本机功能开关已启用并保留可验收版本；自动化只能证明覆盖合同，尚无产品负责人签收 |
-| 生产迁移与启用 | **DEPLOYED / PENDING USER ACCEPTANCE** | 首轮明确授权后完成 PostgreSQL-only 备份、12 migration rollback/零残留/formal、commit `bc76f68` 发布及 feature flag rollback/formal；后续 DEV-TMC-2 候选以 PostgreSQL+Storage 全量备份、三 migration rollback/formal 和双 release 推进到 current/previous=`20260828-071313` / `20260828-071024`、ledger=`211`、flag=version 2 / true，HTTP/权限/服务/错误/业务计数 postflight 通过 |
+| 生产迁移与启用 | **DEPLOYED / PENDING USER ACCEPTANCE** | 首轮明确授权后完成 PostgreSQL-only 备份、12 migration rollback/零残留/formal、commit `bc76f68` 发布及 feature flag rollback/formal；后续 DEV-TMC-2 候选以 PostgreSQL+Storage 全量备份、三 migration rollback/formal 和双 release 推进到 ledger=`211`、flag=version 2 / true。管理员自授岗 hotfix 再以 migration `20260829000200_admin_self_staff_roles`、应用 `ba98a8e…` 推进到 ledger=`220`、current/previous=`20260828-195733` / `20260828-190055`；HTTP/权限/服务/错误/业务/Storage postflight 通过，真实自授岗仍待产品负责人验收 |
 
 完整机器证据见 [`../evidence/r1/teacher-microcourse-dev.md`](../evidence/r1/teacher-microcourse-dev.md)。本机随机 E2E 课程族、班级、课次和微课项目已按精确名称/ID 清理并复核为 0；固定开发账号与既有基线数据未改变。
 
@@ -573,7 +573,7 @@ template_version:
 
 - 一份自由课次只关联一个微课项目。项目保存作者、隐藏草稿课程、唯一讲次、草稿元数据 head 与已发布元数据 head；每次修改生成不可变 revision。
 - 主主题使用可增停的校方目录，首批固定为数与代数、图形与几何、统计与概率、逻辑与策略、综合与实践；自由关键词独立保存。
-- `courseware.microcourse.author` 只允许作者操作本人且仍由本人任教的来源自由课次，不推导 `course.manage`、`courseware.page.edit` 或其他 Studio 权限。作者、来源课次教师、教研审核者和管理员可读草稿；校内其他教师只读已发布 revision/release。
+- `courseware.microcourse.author` 只允许作者操作本人且仍由本人任教的来源自由课次，不推导 `course.manage`、`courseware.page.edit` 或其他 Studio 权限。作者、来源课次教师、教研审核者和管理员可读草稿；校内其他教师只读已发布 revision/release。顶层管理员同时承担教师/教研工作时，可在员工页给自己授予对应岗位；普通 staff 仍不能自授岗，管理员自停用也继续拒绝。该能力已随 `20260829000200_admin_self_staff_roles` / `ba98a8e…` 部署，机器 postflight 通过，实际生产自授岗待产品负责人验收。
 - 提交时把页面 revision、资源 revision、H5 SHA-256 与元数据 revision 固定到同一审核事实。审核期间继续编辑只推进草稿 head，不替换已提交快照。退回后重提生成新的提交快照；通过与发布复用 `cw_lecture_workflows`、`cw_review_cycles` 和 immutable release，并在一个事务内推进 release、课程投影和目录可见性。
 - 发布后修改仍须重新审核。撤回只把课程从新建班目录隐藏，历史 release、既有班级和已冻结课次保持可读。
 
