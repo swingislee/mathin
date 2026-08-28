@@ -113,7 +113,7 @@ describe("P4H CoursePicker and class-builder contract", () => {
   });
 
   it("keeps data purpose separate from the long-term or short-term class offering", () => {
-    const migration = read("supabase", "migrations", "20260828000200_classroom_offering_and_activity_kind.sql");
+    const migration = read("supabase", "migrations", "20260828000210_classroom_offering_and_activity_kind.sql");
     const wizard = read("src", "features", "school", "ClassBuildWizard.tsx");
     const actions = read("src", "features", "school", "actions", "classes.ts");
     const list = read("src", "features", "school", "ClassroomList.tsx");
@@ -148,7 +148,7 @@ describe("P4H CoursePicker and class-builder contract", () => {
   });
 
   it("models public classes as explicit one-off activities", () => {
-    const migration = read("supabase", "migrations", "20260828000200_classroom_offering_and_activity_kind.sql");
+    const migration = read("supabase", "migrations", "20260828000210_classroom_offering_and_activity_kind.sql");
     const activityKinds = read("src", "features", "school", "activity-kinds.ts");
     const manager = read("src", "features", "school", "ActivitiesManager.tsx");
     const activityActions = read("src", "features", "school", "activity-actions.ts");
