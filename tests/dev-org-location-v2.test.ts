@@ -7,6 +7,10 @@ const migration = fs.readFileSync(
   path.join(root, "supabase/migrations/20260828000300_organization_location_v2.sql"),
   "utf8",
 );
+const readModelGrantMigration = fs.readFileSync(
+  path.join(root, "supabase/migrations/20260828000350_location_read_model_grants_v2.sql"),
+  "utf8",
+);
 
 describe("DEV-ORG-1 location V2 contract", () => {
   it("keeps legacy location fields while adding structured room references", () => {
@@ -44,5 +48,19 @@ describe("DEV-ORG-1 location V2 contract", () => {
   it("detects room conflicts by UUID", () => {
     expect(migration).toContain("session_row.room_id = p_room_id");
     expect(migration).toContain("get_class_build_conflicts_v2");
+  });
+
+  it("lets staff read code-free room joins while keeping location writes RPC-only", () => {
+    expect(readModelGrantMigration).toContain("create policy campuses_staff_read_v2");
+    expect(readModelGrantMigration).toContain("create policy campus_rooms_staff_read_v2");
+    expect(readModelGrantMigration).toContain("public.is_staff((select auth.uid()))");
+    expect(readModelGrantMigration).toContain("id, organization_id, code, name, timezone, status, is_default");
+    expect(readModelGrantMigration).toContain("id, campus_id, code, name, capacity, is_active");
+    const grants = readModelGrantMigration.match(/grant select \([\s\S]+?to authenticated;/g)?.join("\n") ?? "";
+    expect(grants).toContain("grant select (id, name)");
+    expect(grants).toContain("grant select (id, campus_id, name, capacity)");
+    expect(grants).not.toMatch(/\bcode\b/);
+    expect(readModelGrantMigration).not.toMatch(/grant\s+(insert|update|delete|all)/i);
+    expect(readModelGrantMigration).toContain("pg_notify('pgrst', 'reload schema')");
   });
 });

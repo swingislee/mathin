@@ -40,6 +40,18 @@ begin
   if has_function_privilege('anon', 'public.get_location_catalog_v2(boolean)', 'EXECUTE') then
     failures := array_append(failures, 'anon location catalog execute granted');
   end if;
+  if not has_column_privilege('authenticated', 'public.campuses', 'name', 'SELECT')
+     or not has_column_privilege('authenticated', 'public.campus_rooms', 'name', 'SELECT') then
+    failures := array_append(failures, 'staff location read-model columns missing');
+  end if;
+  if has_column_privilege('authenticated', 'public.campuses', 'code', 'SELECT')
+     or has_column_privilege('authenticated', 'public.campus_rooms', 'code', 'SELECT') then
+    failures := array_append(failures, 'internal location code is selectable');
+  end if;
+  if has_column_privilege('anon', 'public.campuses', 'name', 'SELECT')
+     or has_column_privilege('anon', 'public.campus_rooms', 'name', 'SELECT') then
+    failures := array_append(failures, 'anonymous location read-model access granted');
+  end if;
   if cardinality(failures) > 0 then
     raise exception 'DEV-ORG-1 structure assertions failed: %', array_to_string(failures, ', ');
   end if;
@@ -70,6 +82,18 @@ select public.create_campus_v2('DEV ORG V2 Campus', 'Test address') as campus_id
 select public.create_campus_room_v2(:'campus_id'::uuid, 'Room A', 20) as room_a_id \gset
 select public.create_campus_room_v2(:'campus_id'::uuid, 'Room B', 10) as room_b_id \gset
 select public.create_campus_room_v2(:'campus_id'::uuid, 'Room C', null) as room_c_id \gset
+
+select set_config('request.jwt.claim.sub', :'teacher_id', true);
+select (
+  exists(select 1 from public.campuses where id = :'campus_id'::uuid and name = 'DEV ORG V2 Campus')
+  and exists(select 1 from public.campus_rooms where id = :'room_a_id'::uuid and name = 'Room A')
+) as teacher_location_read_ok \gset
+\if :teacher_location_read_ok
+\else
+  \echo DEV-ORG-1 staff code-free location read model failed
+  select 1 / 0;
+\endif
+select set_config('request.jwt.claim.sub', :'admin_id', true);
 
 select public.create_free_class_with_sessions_v2(
   'DEV ORG V2 Class',
