@@ -2956,7 +2956,7 @@
       "calendarLoading": "Applying the teaching calendar…",
       "calendarLoadFailed": "The teaching calendar could not be read. Session preview is unavailable to avoid scheduling on a closed date.",
       "current": "Current",
-      "freeScheduleHint": "Add free-class sessions as the plan becomes known. Add initial sessions here, or leave this empty and add them later.",
+      "freeScheduleHint": "Choose weekly class days and new sessions are scheduled in sequence. You can still adjust each time, or leave this empty and add sessions later.",
       "freeSessionTitle": "Session title",
       "freeSessionTitlePlaceholder": "For example: Session 1",
       "addSession": "Add session",

@@ -87,6 +87,29 @@ describe("organization timezone and structured room scheduling", () => {
     expect(rows[0].scheduledAt.toISOString()).toBe("2026-03-09T23:00:00.000Z");
   });
 
+  it("lays free-class session drafts across the selected weekdays in sequence", () => {
+    const rows = generateSchedulePreview(
+      ["One", "Two", "Three", "Four"].map((name, index) => ({
+        lectureId: `free-${index + 1}`,
+        no: index + 1,
+        name,
+      })),
+      "2026-08-28",
+      [5, 6, 0],
+      19,
+      0,
+      90,
+      "Asia/Shanghai",
+    );
+
+    expect(rows.map((row) => calendarDayKey(row.scheduledAt, "Asia/Shanghai"))).toEqual([
+      "2026-08-28",
+      "2026-08-29",
+      "2026-08-30",
+      "2026-09-04",
+    ]);
+  });
+
   it("skips closures, inserts mapped dates, ignores manual dates, and applies campus precedence", () => {
     const campusA = crypto.randomUUID();
     const rules = [

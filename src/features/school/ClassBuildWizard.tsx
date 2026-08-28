@@ -36,7 +36,7 @@ import type { RoomOptionV2 } from "./organization-locations";
 import { CoursePicker } from "./teaching-operations/CoursePicker";
 import type { ClassBuildCourseDetail, ClassBuildPurpose, ClassBuildScheduleConflict } from "./teaching-operations/course-picker-types";
 import type { ClassroomOfferingType } from "./teaching-operations/types";
-import { calendarDayKey, dateTimeInputToInstant, zonedDateTimeInputValue, zonedDateTimeToInstant } from "./schedule";
+import { calendarDayKey, dateTimeInputToInstant, zonedDateTimeInputValue } from "./schedule";
 import type { TeachingCalendarEntryV2 } from "./teaching-calendar";
 
 const WEEKDAYS = [1, 2, 3, 4, 5, 6, 0] as const;
@@ -51,7 +51,7 @@ function validDateInput(value: string) {
   return DATE_INPUT_PATTERN.test(value) && !Number.isNaN(new Date(`${value}T00:00:00`).getTime());
 }
 
-type FreeSessionDraft = BuildClassSession & { key: string };
+type FreeSessionDraft = { key: string; name: string };
 type PendingClosedDayBuild = {
   input: BuildClassInput;
   sessionKeys: string[];
@@ -78,6 +78,7 @@ export function ClassBuildWizard({
   const scheduleT = useTranslations("school.schedule");
   const router = useRouter();
   const initialCourseHandled = useRef(false);
+  const freeSessionSequence = useRef(0);
   const [step, setStep] = useState(1);
   const [mode, setMode] = useState<"course" | "free">("course");
   const [purpose, setPurpose] = useState<ClassBuildPurpose>("production");
@@ -120,6 +121,10 @@ export function ClassBuildWizard({
   }, [initialCourseId, t]);
 
   const lectures = useMemo(() => mode === "course" ? course?.lectures ?? [] : [], [course, mode]);
+  const scheduleSlots = useMemo(() => mode === "course"
+    ? lectures.map((lecture) => ({ lectureId: lecture.id, no: lecture.no, name: lecture.name }))
+    : freeSessions.map((session, index) => ({ lectureId: session.key, no: index + 1, name: session.name })),
+  [freeSessions, lectures, mode]);
   const resolvedName = name.trim() || course?.title || "";
   const capacityNumber = capacity === "" ? null : Number(capacity);
   const classNameValid = resolvedName.length > 0 && resolvedName.length <= 100;
@@ -131,8 +136,8 @@ export function ClassBuildWizard({
   const durationNumber = Number(durationMin);
   const durationValid = durationMin !== "" && Number.isInteger(durationNumber) && durationNumber >= 10 && durationNumber <= 600;
   const scheduleInputsValid = startDateValid && timeValid && durationValid;
-  const calendarRequestKey = mode === "course" && lectures.length > 0 && startDateValid
-    ? `${startDate}:${lectures.length}`
+  const calendarRequestKey = scheduleSlots.length > 0 && startDateValid
+    ? `${startDate}:${scheduleSlots.length}`
     : "";
   const calendarReady = calendarRequestKey === "" || (calendarLoadedKey === calendarRequestKey && !calendarLoadFailed);
   const roomCampusId = roomId ? roomOptions.find((room) => room.id === roomId)?.campusId ?? null : null;
@@ -143,7 +148,7 @@ export function ClassBuildWizard({
     const timer = window.setTimeout(() => {
       setCalendarLoading(true);
       setCalendarLoadFailed(false);
-      void getClassScheduleCalendarAction(startDate, lectures.length)
+      void getClassScheduleCalendarAction(startDate, scheduleSlots.length)
         .then((rows) => {
           if (!active) return;
           setCalendarEntries(rows);
@@ -158,24 +163,20 @@ export function ClassBuildWizard({
         .finally(() => { if (active) setCalendarLoading(false); });
     }, 180);
     return () => { active = false; window.clearTimeout(timer); };
-  }, [calendarRequestKey, lectures.length, startDate]);
+  }, [calendarRequestKey, scheduleSlots.length, startDate]);
 
   const preview = useMemo(() => {
-    if (mode !== "course" || lectures.length === 0 || weekdays.size === 0 || !scheduleInputsValid || !calendarReady) return [];
+    if (scheduleSlots.length === 0 || weekdays.size === 0 || !scheduleInputsValid || !calendarReady) return [];
     const [hours, minutes] = time.split(":").map(Number);
-    const slots = lectures.map((lecture) => ({ lectureId: lecture.id, no: lecture.no, name: lecture.name }));
-    return generateSchedulePreview(slots, startDate, Array.from(weekdays), hours, minutes, durationNumber, timeZone, {
+    return generateSchedulePreview(scheduleSlots, startDate, Array.from(weekdays), hours, minutes, durationNumber, timeZone, {
       entries: calendarEntries,
       campusId: roomCampusId,
     });
-  }, [calendarEntries, calendarReady, durationNumber, lectures, mode, roomCampusId, scheduleInputsValid, startDate, time, timeZone, weekdays]);
-  const conflictSlots = useMemo(() => mode === "course"
-    ? preview.map((item) => ({
-        scheduledAt: overrides[item.lectureId] ?? item.scheduledAt.toISOString(),
-        durationMin: item.durationMin,
-      }))
-    : freeSessions.map((item) => ({ scheduledAt: item.scheduledAt, durationMin: item.durationMin })),
-  [freeSessions, mode, overrides, preview]);
+  }, [calendarEntries, calendarReady, durationNumber, roomCampusId, scheduleInputsValid, scheduleSlots, startDate, time, timeZone, weekdays]);
+  const conflictSlots = useMemo(() => preview.map((item) => ({
+    scheduledAt: overrides[item.lectureId] ?? item.scheduledAt.toISOString(),
+    durationMin: item.durationMin,
+  })), [overrides, preview]);
 
   useEffect(() => {
     if (!primaryTeacherId || conflictSlots.length === 0) return;
@@ -194,9 +195,15 @@ export function ClassBuildWizard({
   const conflictsRelevant = Boolean(primaryTeacherId && conflictSlots.length > 0);
   const visibleConflicts = conflictsRelevant ? conflicts : [];
   const visibleConflictsLoading = conflictsRelevant && conflictsLoading;
+  const scheduleRequired = mode === "course" || freeSessions.length > 0;
   const step1Complete = mode === "free" || course !== null;
   const step2Complete = classNameValid && primaryTeacherValid && capacityValid && learningSupportValid;
-  const step3Complete = Boolean(schoolTermId) && (mode === "free" || (scheduleInputsValid && calendarReady && preview.length === lectures.length));
+  const step3Complete = Boolean(schoolTermId) && (!scheduleRequired || (
+    scheduleInputsValid
+    && weekdays.size > 0
+    && calendarReady
+    && preview.length === scheduleSlots.length
+  ));
   const step1Attempted = attemptedSteps.has(1);
   const step2Attempted = attemptedSteps.has(2);
   const step3Attempted = attemptedSteps.has(3);
@@ -265,20 +272,28 @@ export function ClassBuildWizard({
   };
 
   const addFreeSession = () => {
-    if (!freeSessionTitle.trim() || !scheduleInputsValid) return;
-    const [year, month, day] = startDate.split("-").map(Number);
-    const [hour, minute] = time.split(":").map(Number);
-    const scheduledAt = zonedDateTimeToInstant({ year, month: month - 1, day, hour, minute }, timeZone);
-    if (Number.isNaN(scheduledAt.getTime())) return;
+    if (!freeSessionTitle.trim() || !scheduleInputsValid || weekdays.size === 0) return;
     setFreeSessions((current) => [...current, {
-      key: `${Date.now()}-${current.length}`,
-      lectureId: null,
-      no: null,
+      key: `free-${Date.now()}-${freeSessionSequence.current++}`,
       name: freeSessionTitle.trim(),
-      scheduledAt: scheduledAt.toISOString(),
-      durationMin: durationNumber,
     }]);
     setFreeSessionTitle("");
+    setActivateNow(false);
+  };
+
+  const removeFreeSession = (key: string) => {
+    setFreeSessions((current) => current.filter((session) => session.key !== key));
+    setOverrides((current) => {
+      const next = { ...current };
+      delete next[key];
+      return next;
+    });
+    setActivateNow(false);
+  };
+
+  const updateScheduleOverride = (key: string, value: string, automaticAt: Date) => {
+    const instant = value ? dateTimeInputToInstant(value, timeZone) : null;
+    setOverrides((current) => ({ ...current, [key]: instant?.toISOString() ?? automaticAt.toISOString() }));
     setActivateNow(false);
   };
 
@@ -324,27 +339,16 @@ export function ClassBuildWizard({
     setCreatedClassroomId(null);
     setError(null);
     try {
-      const keyedSessions: Array<{ key: string; session: BuildClassSession }> = mode === "course"
-        ? preview.map((item) => ({
-            key: item.lectureId,
-            session: {
-            lectureId: item.lectureId,
-            no: item.no,
-            name: item.name,
-            scheduledAt: overrides[item.lectureId] ?? item.scheduledAt.toISOString(),
-            durationMin: item.durationMin,
-            },
-          }))
-        : freeSessions.map((session) => ({
-            key: session.key,
-            session: {
-              lectureId: session.lectureId,
-              no: session.no,
-              name: session.name,
-              scheduledAt: session.scheduledAt,
-              durationMin: session.durationMin,
-            },
-          }));
+      const keyedSessions: Array<{ key: string; session: BuildClassSession }> = preview.map((item) => ({
+        key: item.lectureId,
+        session: {
+          lectureId: mode === "course" ? item.lectureId : null,
+          no: mode === "course" ? item.no : null,
+          name: item.name,
+          scheduledAt: overrides[item.lectureId] ?? item.scheduledAt.toISOString(),
+          durationMin: item.durationMin,
+        },
+      }));
       const input: BuildClassInput = {
         name: resolvedName,
         courseId: mode === "course" ? course?.id ?? null : null,
@@ -476,25 +480,30 @@ export function ClassBuildWizard({
         </div>
         <div>
           <Label htmlFor="schedule-start" className="text-xs font-normal text-muted">{t("startDate")}</Label>
-          <DateTimePicker id="schedule-start" value={startDate} onValueChange={setStartDate} aria-invalid={mode === "course" && step3Attempted && !startDateValid} aria-describedby={mode === "course" && step3Attempted && !startDateValid ? "schedule-start-error" : undefined} className={cn("mt-1", inputClass)} />
-          {mode === "course" && step3Attempted && !startDateValid && <p id="schedule-start-error" role="alert" className="mt-1 text-xs text-rose">{t("startDateRequired")}</p>}
+          <DateTimePicker id="schedule-start" value={startDate} onValueChange={setStartDate} aria-invalid={scheduleRequired && step3Attempted && !startDateValid} aria-describedby={scheduleRequired && step3Attempted && !startDateValid ? "schedule-start-error" : undefined} className={cn("mt-1", inputClass)} />
+          {scheduleRequired && step3Attempted && !startDateValid && <p id="schedule-start-error" role="alert" className="mt-1 text-xs text-rose">{t("startDateRequired")}</p>}
         </div>
         <div>
           <Label htmlFor="schedule-time" className="text-xs font-normal text-muted">{t("time")}</Label>
-          <DateTimePicker id="schedule-time" mode="time" value={time} onValueChange={setTime} aria-invalid={mode === "course" && step3Attempted && !timeValid} aria-describedby={mode === "course" && step3Attempted && !timeValid ? "schedule-time-error" : undefined} className={cn("mt-1", inputClass)} />
-          {mode === "course" && step3Attempted && !timeValid && <p id="schedule-time-error" role="alert" className="mt-1 text-xs text-rose">{t("timeRequired")}</p>}
+          <DateTimePicker id="schedule-time" mode="time" value={time} onValueChange={setTime} aria-invalid={scheduleRequired && step3Attempted && !timeValid} aria-describedby={scheduleRequired && step3Attempted && !timeValid ? "schedule-time-error" : undefined} className={cn("mt-1", inputClass)} />
+          {scheduleRequired && step3Attempted && !timeValid && <p id="schedule-time-error" role="alert" className="mt-1 text-xs text-rose">{t("timeRequired")}</p>}
         </div>
         <div>
           <Label htmlFor="schedule-duration" className="text-xs font-normal text-muted">{t("duration")}</Label>
-          <Input id="schedule-duration" type="number" min={10} max={600} step={5} value={durationMin} onChange={(event) => setDurationMin(event.target.value)} aria-invalid={mode === "course" && !durationValid} aria-describedby={mode === "course" && !durationValid ? "schedule-duration-error" : undefined} className={cn("mt-1", inputClass)} />
-          {mode === "course" && !durationValid && <p id="schedule-duration-error" role="alert" className="mt-1 text-xs text-rose">{t("durationInvalid")}</p>}
+          <Input id="schedule-duration" type="number" min={10} max={600} step={5} value={durationMin} onChange={(event) => setDurationMin(event.target.value)} aria-invalid={scheduleRequired && !durationValid} aria-describedby={scheduleRequired && !durationValid ? "schedule-duration-error" : undefined} className={cn("mt-1", inputClass)} />
+          {scheduleRequired && !durationValid && <p id="schedule-duration-error" role="alert" className="mt-1 text-xs text-rose">{t("durationInvalid")}</p>}
         </div>
       </div>
-      {mode === "course" ? <><div className="mt-5"><Label className="text-xs font-normal text-muted">{t("weekdays")}</Label><div className="mt-2 flex flex-wrap gap-2">{WEEKDAYS.map((day) => <Button key={day} type="button" variant={weekdays.has(day) ? "primary" : "secondary"} onClick={() => toggleWeekday(day)}>{t(`weekday_${day}`)}</Button>)}</div>{step3Attempted && weekdays.size === 0 && <p role="alert" className="mt-2 text-xs text-rose">{t("weekdaysRequired")}</p>}</div>
-        {!roomId && <p className="mt-3 rounded-xl bg-moon/25 px-3 py-2 text-xs text-muted">{t("roomTbdCalendarHint")}</p>}
-        {calendarLoading && <p className="mt-3 flex items-center gap-2 text-sm text-muted"><LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" />{t("calendarLoading")}</p>}
-        {calendarLoadFailed && <p role="alert" className="mt-3 text-sm text-rose">{t("calendarLoadFailed")}</p>}
-        {preview.length > 0 && <DashboardTableShell className="mt-5"><Table><TableHeader><TableRow><TableHead className="w-16">No.</TableHead><TableHead>{t("lectureName")}</TableHead><TableHead>{t("scheduledAt")}</TableHead></TableRow></TableHeader><TableBody>{preview.map((item) => <TableRow key={item.lectureId}><TableCell className="font-mono text-xs text-muted">{item.no}</TableCell><TableCell>{item.name}</TableCell><TableCell><DateTimePicker mode="datetime" value={zonedDateTimeInputValue(new Date(overrides[item.lectureId] ?? item.scheduledAt.toISOString()), timeZone)} onValueChange={(value) => { const instant = value ? dateTimeInputToInstant(value, timeZone) : null; setOverrides((current) => ({ ...current, [item.lectureId]: instant?.toISOString() ?? item.scheduledAt.toISOString() })); setActivateNow(false); }} className="h-8 max-w-60 text-xs" /></TableCell></TableRow>)}</TableBody></Table></DashboardTableShell>}
+      <div className="mt-5">
+        <Label className="text-xs font-normal text-muted">{t("weekdays")}</Label>
+        <div className="mt-2 flex flex-wrap gap-2">{WEEKDAYS.map((day) => <Button key={day} type="button" variant={weekdays.has(day) ? "primary" : "secondary"} aria-pressed={weekdays.has(day)} onClick={() => toggleWeekday(day)}>{t(`weekday_${day}`)}</Button>)}</div>
+        {scheduleRequired && step3Attempted && weekdays.size === 0 && <p role="alert" className="mt-2 text-xs text-rose">{t("weekdaysRequired")}</p>}
+      </div>
+      {!roomId && scheduleSlots.length > 0 && <p className="mt-3 rounded-xl bg-moon/25 px-3 py-2 text-xs text-muted">{t("roomTbdCalendarHint")}</p>}
+      {scheduleSlots.length > 0 && calendarLoading && <p className="mt-3 flex items-center gap-2 text-sm text-muted"><LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" />{t("calendarLoading")}</p>}
+      {scheduleSlots.length > 0 && calendarLoadFailed && <p role="alert" className="mt-3 text-sm text-rose">{t("calendarLoadFailed")}</p>}
+      {mode === "course" ? <>
+        {preview.length > 0 && <DashboardTableShell className="mt-5"><Table><TableHeader><TableRow><TableHead className="w-16">No.</TableHead><TableHead>{t("lectureName")}</TableHead><TableHead>{t("scheduledAt")}</TableHead></TableRow></TableHeader><TableBody>{preview.map((item) => <TableRow key={item.lectureId}><TableCell className="font-mono text-xs text-muted">{item.no}</TableCell><TableCell>{item.name}</TableCell><TableCell><DateTimePicker mode="datetime" value={zonedDateTimeInputValue(new Date(overrides[item.lectureId] ?? item.scheduledAt.toISOString()), timeZone)} onValueChange={(value) => updateScheduleOverride(item.lectureId, value, item.scheduledAt)} className="h-8 max-w-60 text-xs" /></TableCell></TableRow>)}</TableBody></Table></DashboardTableShell>}
       </> : <div className="mt-5 space-y-4">
         <p className="rounded-xl bg-moon/30 px-3 py-2 text-sm text-muted">{t("freeScheduleHint")}</p>
         <div className="flex flex-col gap-3 rounded-xl border border-line p-4 sm:flex-row sm:items-end">
@@ -502,11 +511,11 @@ export function ClassBuildWizard({
             <Label htmlFor="free-session-title" className="text-xs font-normal text-muted">{t("freeSessionTitle")}</Label>
             <Input id="free-session-title" value={freeSessionTitle} onChange={(event) => setFreeSessionTitle(event.target.value)} maxLength={100} placeholder={t("freeSessionTitlePlaceholder")} className={cn("mt-1", inputClass)} />
           </div>
-          <Button type="button" onClick={addFreeSession} disabled={!freeSessionTitle.trim() || !scheduleInputsValid}>
+          <Button type="button" onClick={addFreeSession} disabled={!freeSessionTitle.trim() || !scheduleInputsValid || weekdays.size === 0}>
             <Plus className="size-4" />{t("addSession")}
           </Button>
         </div>
-        {freeSessions.length > 0 && <DashboardTableShell><Table><TableHeader><TableRow><TableHead>{t("lectureName")}</TableHead><TableHead>{t("scheduledAt")}</TableHead><TableHead className="w-20" /></TableRow></TableHeader><TableBody>{freeSessions.map((item) => <TableRow key={item.key}><TableCell>{item.name}</TableCell><TableCell>{new Intl.DateTimeFormat(undefined, { timeZone, dateStyle: "medium", timeStyle: "short" }).format(new Date(item.scheduledAt))} · {t("durationMinutes", { count: item.durationMin })}</TableCell><TableCell><Button type="button" size="sm" variant="ghost" className="px-2" aria-label={t("removeSession")} onClick={() => setFreeSessions((current) => current.filter((row) => row.key !== item.key))}><Trash2 className="size-4" /></Button></TableCell></TableRow>)}</TableBody></Table></DashboardTableShell>}
+        {preview.length > 0 && <DashboardTableShell><Table><TableHeader><TableRow><TableHead className="w-16">No.</TableHead><TableHead>{t("lectureName")}</TableHead><TableHead>{t("scheduledAt")}</TableHead><TableHead className="w-20" /></TableRow></TableHeader><TableBody>{preview.map((item) => <TableRow key={item.lectureId}><TableCell className="font-mono text-xs text-muted">{item.no}</TableCell><TableCell>{item.name}</TableCell><TableCell><DateTimePicker mode="datetime" value={zonedDateTimeInputValue(new Date(overrides[item.lectureId] ?? item.scheduledAt.toISOString()), timeZone)} onValueChange={(value) => updateScheduleOverride(item.lectureId, value, item.scheduledAt)} className="h-8 max-w-60 text-xs" /></TableCell><TableCell><Button type="button" size="sm" variant="ghost" className="px-2" aria-label={t("removeSession")} onClick={() => removeFreeSession(item.lectureId)}><Trash2 className="size-4" /></Button></TableCell></TableRow>)}</TableBody></Table></DashboardTableShell>}
       </div>}
       {visibleConflictsLoading && <p className="mt-4 flex items-center gap-2 text-sm text-muted"><LoaderCircle className="size-4 animate-spin" />{t("checkingConflicts")}</p>}
       {!visibleConflictsLoading && visibleConflicts.length > 0 && <div role="alert" className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-950 dark:text-amber-100"><p className="flex items-center gap-2 font-medium"><AlertTriangle className="size-4" />{t("conflictsFound", { count: visibleConflicts.length })}</p><ul className="mt-2 space-y-1 text-xs">{visibleConflicts.map((conflict) => <li key={conflict.sessionId}>{conflict.classroomName} · {conflict.lectureName} · {new Intl.DateTimeFormat(undefined, { timeZone, dateStyle: "medium", timeStyle: "short" }).format(new Date(conflict.scheduledAt))} · {[conflict.teacherConflict ? t("teacherConflict") : null, conflict.roomConflict ? formatRoomLocation(conflict.roomName, conflict.campusName, t("roomTbd")) : null].filter(Boolean).join(" / ")}</li>)}</ul></div>}

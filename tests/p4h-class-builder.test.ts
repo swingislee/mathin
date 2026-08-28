@@ -39,6 +39,23 @@ describe("P4H CoursePicker and class-builder contract", () => {
     expect(wizard).toContain("window.location.assign(localizedHref)");
   });
 
+  it("gives free classes the shared weekly auto-schedule and per-session time controls", () => {
+    const wizard = read("src", "features", "school", "ClassBuildWizard.tsx");
+    const zh = read("messages", "zh.json");
+    const en = read("messages", "en.json");
+
+    expect(wizard).toContain('const scheduleSlots = useMemo(() => mode === "course"');
+    expect(wizard).toContain("freeSessions.map((session, index)");
+    expect(wizard).toContain("getClassScheduleCalendarAction(startDate, scheduleSlots.length)");
+    expect(wizard).toContain("preview.length === scheduleSlots.length");
+    expect(wizard).toContain("!scheduleInputsValid || weekdays.size === 0");
+    expect(wizard).toContain('lectureId: mode === "course" ? item.lectureId : null');
+    expect(wizard).toContain("updateScheduleOverride(item.lectureId, value, item.scheduledAt)");
+    expect(wizard).toContain("removeFreeSession(item.lectureId)");
+    expect(zh).toContain("新增课次会按顺序自动排期");
+    expect(en).toContain("new sessions are scheduled in sequence");
+  });
+
   it("validates availability and creates the correct staff responsibilities inside the controlled RPC", () => {
     const migration = read("supabase", "migrations", "20260720000800_p4h_class_builder.sql");
     const enrollmentMigration = read("supabase", "migrations", "20260711000100_p4c_permission_correction.sql");

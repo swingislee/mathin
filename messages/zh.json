@@ -2956,7 +2956,7 @@
       "calendarLoading": "正在应用教学日历…",
       "calendarLoadFailed": "教学日历读取失败。为避免排入停课日，当前不能生成课次预览。",
       "current": "当前",
-      "freeScheduleHint": "自由班可按实际进度逐次添加课次；此处添加首批课次，也可留空后创建。",
+      "freeScheduleHint": "选择每周上课日后，新增课次会按顺序自动排期；每节时间仍可单独调整，也可留空后创建。",
       "freeSessionTitle": "课次名称",
       "freeSessionTitlePlaceholder": "例如：第一次课",
       "addSession": "添加课次",
