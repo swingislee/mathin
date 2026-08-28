@@ -178,7 +178,7 @@ function RegistrationList({ activity, pending, run }: { activity: ActivityRow; p
         else setResults([]);
       }}
       placeholder={t("searchStudent")}
-      className={`${inputClass} h-9 max-w-md rounded-md py-1.5 shadow-none`}
+      className={`${inputClass} h-9 rounded-md py-1.5 shadow-none`}
     />
     {results.length > 0 && <div className="mt-2 flex flex-wrap gap-2">
       {results.map((student) => <Button
