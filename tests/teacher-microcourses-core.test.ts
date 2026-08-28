@@ -6,6 +6,7 @@ import { PERMISSION_KEYS } from "@/features/school/permissions";
 
 const read = (file: string) => fs.readFileSync(path.join(process.cwd(), file), "utf8");
 const migration = read("supabase/migrations/20260826000200_teacher_microcourses_core.sql");
+const variantsMigration = read("supabase/migrations/20260828000100_teacher_microcourse_variants.sql");
 
 describe("DEV-TMC-1 teacher microcourse core", () => {
   it("keeps the capability fail-closed and separate from global Studio permissions", () => {
@@ -30,10 +31,13 @@ describe("DEV-TMC-1 teacher microcourse core", () => {
     );
   });
 
-  it("maps one free session to one hidden course and one lecture", () => {
+  it("maps each proposal to one hidden course and lecture while allowing session variants", () => {
     expect(migration).toContain("source_session_id uuid not null unique");
     expect(migration).toContain("course_id uuid not null unique");
     expect(migration).toContain("lecture_id uuid not null unique");
+    expect(variantsMigration).toContain("drop constraint if exists teacher_microcourses_source_session_id_key");
+    expect(variantsMigration).toContain("selected_teacher_microcourse_id uuid");
+    expect(variantsMigration).toContain("based_on_microcourse_id uuid");
     expect(migration).toContain("MICROCOURSE_SOURCE_MUST_BE_FREE_SESSION");
     expect(migration).toContain("MICROCOURSE_REQUIRES_ONE_LECTURE");
     expect(migration).toContain("'teacher-microcourses'");
@@ -64,11 +68,15 @@ describe("DEV-TMC-1 teacher microcourse core", () => {
     );
   });
 
-  it("registers the development-track gate without claiming production deployment", () => {
+  it("keeps the deployed baseline distinct from the development-only collaboration increment", () => {
     const roadmap = read("docs/plan/04-roadmap.md");
     const completeness = read("docs/plan/25-production-1.0-product-completeness.md");
     expect(roadmap).toContain("DEV-TMC-1 · 普通教师短期微课孵化与校内共享");
-    expect(roadmap).toContain("生产默认关闭");
-    expect(completeness).toContain("该能力由 `teaching.teacher_microcourses_v1` 默认关闭");
+    expect(roadmap).toContain("生产状态为 **DEPLOYED / PENDING USER ACCEPTANCE**");
+    expect(roadmap).toContain("DEV-TMC-2 · 课次课件多方案协作与选用");
+    expect(roadmap).toContain("**IMPLEMENTED / LOCAL MACHINE PASS / DEVELOPMENT ONLY**");
+    expect(completeness).toContain("`DEV-TMC-2` 已在开发端实现");
+    expect(completeness).toContain("产品负责人页面验收仍为 `UNKNOWN`");
+    expect(completeness).toContain("没有新的生产 schema、应用或开关授权");
   });
 });

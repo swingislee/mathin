@@ -167,9 +167,11 @@ interface MicrocourseH5ControlsHandle extends MicrocoursePageWorkbenchHandle {
 export function MicrocourseEditor({
   session,
   editor,
+  canTeach,
 }: {
   session: { id: string; title: string; classroomId: string; coursewareFrozenAt: string | null };
   editor: EditorData;
+  canTeach: boolean;
 }) {
   const t = useTranslations("teacherMicrocourses");
   const locale = useLocale();
@@ -326,7 +328,7 @@ export function MicrocourseEditor({
               {inReview
                 ? <Button type="button" variant="secondary" size="sm" disabled={pending || !editor.workflow?.activeReviewCycleId} onClick={withdrawReview}><Undo2 className="size-4" />{t("withdrawReview")}</Button>
                 : <Button type="button" size="sm" disabled={pending || pages.length === 0} onClick={submit}><Send className="size-4" />{published ? t("submitNewVersion") : t("submitReview")}</Button>}
-              <Button type="button" variant="secondary" size="sm" disabled={pending || pages.length === 0} onClick={startClass}><Play className="size-4" />{session.coursewareFrozenAt ? t("enterClass") : t("freezeAndTeach")}</Button>
+              {canTeach && <Button type="button" variant="secondary" size="sm" disabled={pending || pages.length === 0} onClick={startClass}><Play className="size-4" />{session.coursewareFrozenAt ? t("enterClass") : t("freezeAndTeach")}</Button>}
               {published && !editor.withdrawnAt && <Button type="button" variant="ghost" size="sm" disabled={pending} onClick={() => setWithdrawOpen(true)}>{t("withdrawPublication")}</Button>}
             </div>
           </div>

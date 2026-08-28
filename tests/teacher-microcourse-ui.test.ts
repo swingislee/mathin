@@ -23,8 +23,34 @@ describe("DEV-TMC-1 teacher microcourse product surfaces", () => {
     expect(sessionWorkspace).toContain("detail.lectureId === null");
     expect(route).toContain('requirePerm(locale, "courseware.microcourse.author")');
     expect(route).toContain("session.lectureId !== null");
-    expect(route).toContain("!summary && !session.capabilities.canPrepare");
+    expect(route).toContain("variants.length === 0 && !session.canCreate");
+    expect(route).toContain("getTeacherMicrocourseSessionContext(sessionId)");
     expect(route).toContain("<Suspense");
+  });
+
+  it("supports independent teacher/research proposals and freezes the teacher selection", () => {
+    const variantMigration = read("supabase", "migrations", "20260828000100_teacher_microcourse_variants.sql");
+    const runtimeMigration = read("supabase", "migrations", "20260828000110_teacher_microcourse_variant_runtime.sql");
+    const switcher = read("src", "features", "teacher-microcourses", "MicrocourseVariantSwitcher.tsx");
+    const preview = read("src", "features", "teacher-microcourses", "MicrocourseVariantPreview.tsx");
+    const classroomActions = read("src", "features", "classroom", "actions.ts");
+    const reviewRoute = read("src", "app", "[locale]", "dashboard", "courseware", "review", "page.tsx");
+
+    expect(variantMigration).toContain("create_teacher_microcourse_variant");
+    expect(variantMigration).toContain("fork_teacher_microcourse_variant");
+    expect(variantMigration).toContain("select_teacher_microcourse_variant");
+    expect(variantMigration).toContain("microcourse.author_id = p_uid");
+    expect(variantMigration).toContain("public.is_session_teacher(p_session_id, uid)");
+    expect(variantMigration).toContain("where role.key = 'research'");
+    expect(runtimeMigration).toContain("freeze_selected_teacher_microcourse_source_session");
+    expect(runtimeMigration).toContain("'microcourseDraft'");
+    expect(runtimeMigration).toContain("'docId', page_row.id");
+    expect(classroomActions).toContain('"freeze_selected_teacher_microcourse_source_session"');
+    expect(switcher).toContain("forkTeacherMicrocourseVariantAction");
+    expect(switcher).toContain("selectTeacherMicrocourseVariantAction");
+    expect(switcher).toContain('data-testid="microcourse-variant-switcher"');
+    expect(preview).toContain('data-testid="microcourse-variant-preview"');
+    expect(reviewRoute).toContain("listTeacherMicrocourseSessionWorkspaces");
   });
 
   it("exposes composition, registered games and H5 while preserving source provenance", () => {

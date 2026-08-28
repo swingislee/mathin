@@ -175,7 +175,7 @@ test("teacher authors, teaches, resubmits, publishes, and the catalog creates on
 
     await page.context().clearCookies();
     await loginWithFixedAccount(page, principal, "/zh/dashboard/classes/new");
-    await page.getByRole("button", { name: "正式班", exact: true }).click();
+    await expect(page.getByRole("button", { name: "长期正式课", exact: true })).toHaveAttribute("aria-pressed", "true");
     await page.getByRole("button", { name: "搜索并选择课程版本", exact: true }).click();
     await page.getByRole("combobox", { name: "搜索课程、讲次、发布老师、主题或关键词", exact: true }).fill(fixture.microcourseTitle);
     const courseOption = page.getByRole("option").filter({ hasText: fixture.microcourseTitle });
@@ -215,6 +215,74 @@ test("teacher authors, teaches, resubmits, publishes, and the catalog creates on
     await loginWithFixedAccount(page, teacher, `/en/dashboard/sessions/${fixture.sourceSessionId}/microcourse`);
     await expect(page.getByText("Microcourse editor", { exact: true })).toBeVisible();
     await expect(page.getByText("Published", { exact: true })).toBeVisible();
+  } finally {
+    await fixture.cleanup();
+    activeFixture = null;
+  }
+});
+
+test("teacher and research branch proposals while only the teacher selects and freezes", async ({ page }) => {
+  test.setTimeout(360_000);
+  page.setDefaultTimeout(15_000);
+  page.setDefaultNavigationTimeout(30_000);
+  const admin = loadFixedAccountForMode("admin");
+  const principal = loadFixedAccountForMode("principal");
+  const research = loadFixedAccountForMode("research");
+  const teacher = loadFixedAccountForMode("teacher");
+  test.skip(!admin || !principal || !research || !teacher, FIXED_ACCOUNT_SKIP_REASON);
+  test.skip(process.env.R1_DEV_TEST_FIXTURES !== "1", FIXTURE_FLAG_REASON);
+  if (!admin || !principal || !research || !teacher) return;
+
+  const fixture = await setupTeacherMicrocourseFixture({ adminAccount: admin, principal, teacher });
+  activeFixture = fixture;
+  try {
+    const editorPath = `/zh/dashboard/sessions/${fixture.sourceSessionId}/microcourse` as const;
+
+    await loginWithFixedAccount(page, teacher, editorPath);
+    await expect(page.getByText("把这节自由课孵化成微课", { exact: true })).toBeVisible();
+    await page.getByLabel("方案名称", { exact: true }).fill("老师初稿");
+    await page.getByLabel("微课标题", { exact: true }).fill(fixture.microcourseTitle);
+    await page.getByRole("button", { name: "创建微课草稿", exact: true }).click();
+    await expect(page.getByTestId("microcourse-variant-switcher")).toBeVisible();
+    await page.getByRole("button", { name: "空白/图文", exact: true }).click();
+    await expect(page.getByText("新页面", { exact: true }).first()).toBeVisible();
+
+    await page.context().clearCookies();
+    await loginWithFixedAccount(page, research, "/zh/dashboard/courseware/review");
+    await page.goto("/zh/dashboard/courseware/review?tab=microcourses");
+    await expect(page.getByTestId("microcourse-session-workspace-queue")).toBeVisible();
+    await page.locator(`a[href="${editorPath}"]`).first().click();
+    await expect(page.getByTestId("microcourse-variant-preview")).toBeVisible();
+    await expect(page.getByRole("button", { name: "设为本节使用", exact: true })).toHaveCount(0);
+    await page.getByRole("button", { name: "编辑这个方案", exact: true }).click();
+    const researchFork = page.getByRole("dialog");
+    await researchFork.getByLabel("方案名称", { exact: true }).fill("教研建议稿");
+    await researchFork.getByRole("button", { name: "创建并开始编辑", exact: true }).click();
+    await expect(page.getByText("教研建议稿", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("微课编辑", { exact: true })).toBeVisible();
+
+    await page.context().clearCookies();
+    await loginWithFixedAccount(page, teacher, editorPath);
+    await page.getByRole("link", { name: /教研建议稿/ }).click();
+    await expect(page.getByTestId("microcourse-variant-preview")).toBeVisible();
+    await page.getByRole("button", { name: "编辑这个方案", exact: true }).click();
+    const teacherFork = page.getByRole("dialog");
+    await teacherFork.getByLabel("方案名称", { exact: true }).fill("老师课堂版");
+    await teacherFork.getByRole("button", { name: "创建并开始编辑", exact: true }).click();
+    await expect(page.getByText("老师课堂版", { exact: true }).first()).toBeVisible();
+    await page.getByRole("button", { name: "设为本节使用", exact: true }).click();
+    await expect(page.getByText("已设为本节最终使用方案。", { exact: true })).toBeVisible();
+    await expect(page.getByText("本节选用", { exact: true }).first()).toBeVisible();
+
+    await page.getByRole("button", { name: "冻结并上课", exact: true }).click();
+    await page.waitForURL((url) => url.pathname === `/zh/classroom/${fixture.sourceClassroomId}/session/${fixture.sourceSessionId}/live`, {
+      waitUntil: "domcontentloaded",
+    });
+
+    await page.context().clearCookies();
+    await loginWithFixedAccount(page, research, editorPath);
+    await expect(page.getByText("本课次课件已经冻结；方案仍可用于后续共享发布，但不能替换本节课堂版本。", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "设为本节使用", exact: true })).toHaveCount(0);
   } finally {
     await fixture.cleanup();
     activeFixture = null;

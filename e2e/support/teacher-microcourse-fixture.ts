@@ -263,6 +263,7 @@ function purgeLocalTeacherMicrocourseProject({
   if (!/^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/.test(container)) throw new Error("Invalid local Supabase database container name");
   const sql = `
 begin;
+alter table public.class_sessions disable trigger class_sessions_guard_teacher_microcourse_selection;
 alter table public.teacher_microcourse_metadata_revisions disable trigger user;
 alter table public.teacher_microcourse_review_snapshots disable trigger user;
 alter table public.teacher_microcourse_page_sources disable trigger user;
@@ -270,44 +271,56 @@ alter table public.teacher_microcourse_h5_artifacts disable trigger user;
 alter table public.teacher_microcourse_assets disable trigger user;
 do $fixture$
 declare
-  v_project_id uuid;
-  v_course_id uuid;
-  v_course_kind text;
-  v_course_title text;
-  v_session_title text;
+  v_project_ids uuid[];
+  v_course_ids uuid[];
   v_shared_asset_ids uuid[];
   v_object_ids uuid[];
 begin
-  select project_row.id, project_row.course_id, course_row.course_kind, course_row.title, session_row.title
-    into v_project_id, v_course_id, v_course_kind, v_course_title, v_session_title
+  select array_agg(project_row.id), array_agg(project_row.course_id)
+    into v_project_ids, v_course_ids
     from public.teacher_microcourses project_row
     join public.courses course_row on course_row.id = project_row.course_id
     join public.class_sessions session_row on session_row.id = project_row.source_session_id
    where project_row.source_session_id = ${sqlLiteral(sourceSessionId)}::uuid
-   for update of project_row;
-  if not found then return; end if;
-  if v_course_kind <> 'microcourse'
-     or v_course_title <> ${sqlLiteral(microcourseTitle)}
-     or v_session_title <> ${sqlLiteral(sourceSessionTitle)} then
+     and course_row.course_kind = 'microcourse';
+  if coalesce(cardinality(v_project_ids), 0) = 0 then return; end if;
+  if exists (
+    select 1
+    from public.teacher_microcourses project_row
+    join public.courses course_row on course_row.id = project_row.course_id
+    join public.class_sessions session_row on session_row.id = project_row.source_session_id
+    where project_row.id = any(v_project_ids)
+      and (
+        course_row.course_kind <> 'microcourse'
+        or course_row.title <> ${sqlLiteral(microcourseTitle)}
+        or session_row.title <> ${sqlLiteral(sourceSessionTitle)}
+      )
+  ) then
     raise exception 'REFUSED_UNEXPECTED_TEACHER_MICROCOURSE_FIXTURE';
   end if;
 
-  select coalesce(array_agg(shared_asset_id), '{}'::uuid[]), coalesce(array_agg(object_id), '{}'::uuid[])
+  select coalesce(array_agg(shared_asset_id) filter (where shared_asset_id is not null), '{}'::uuid[]),
+         coalesce(array_agg(object_id) filter (where object_id is not null), '{}'::uuid[])
     into v_shared_asset_ids, v_object_ids
     from public.teacher_microcourse_assets
-   where microcourse_id = v_project_id;
+   where microcourse_id = any(v_project_ids);
 
+  update public.class_sessions
+     set selected_teacher_microcourse_id = null
+   where id = ${sqlLiteral(sourceSessionId)}::uuid;
   update public.teacher_microcourses
      set draft_metadata_revision_id = null,
-         published_metadata_revision_id = null
-   where id = v_project_id;
-  delete from public.teacher_microcourse_review_snapshots where microcourse_id = v_project_id;
-  delete from public.teacher_microcourse_page_sources where microcourse_id = v_project_id;
-  delete from public.teacher_microcourse_h5_artifacts where microcourse_id = v_project_id;
-  delete from public.teacher_microcourse_assets where microcourse_id = v_project_id;
-  delete from public.teacher_microcourse_metadata_revisions where microcourse_id = v_project_id;
-  delete from public.teacher_microcourses where id = v_project_id;
-  delete from public.courses where id = v_course_id and course_kind = 'microcourse';
+         published_metadata_revision_id = null,
+         based_on_microcourse_id = null,
+         based_on_metadata_revision_id = null
+   where id = any(v_project_ids);
+  delete from public.teacher_microcourse_review_snapshots where microcourse_id = any(v_project_ids);
+  delete from public.teacher_microcourse_page_sources where microcourse_id = any(v_project_ids);
+  delete from public.teacher_microcourse_h5_artifacts where microcourse_id = any(v_project_ids);
+  delete from public.teacher_microcourse_assets where microcourse_id = any(v_project_ids);
+  delete from public.teacher_microcourse_metadata_revisions where microcourse_id = any(v_project_ids);
+  delete from public.teacher_microcourses where id = any(v_project_ids);
+  delete from public.courses where id = any(v_course_ids) and course_kind = 'microcourse';
   delete from public.cw_shared_assets where id = any(v_shared_asset_ids);
   delete from public.cw_asset_objects object_row
    where object_row.id = any(v_object_ids)
@@ -322,6 +335,7 @@ alter table public.teacher_microcourse_h5_artifacts enable trigger user;
 alter table public.teacher_microcourse_page_sources enable trigger user;
 alter table public.teacher_microcourse_review_snapshots enable trigger user;
 alter table public.teacher_microcourse_metadata_revisions enable trigger user;
+alter table public.class_sessions enable trigger class_sessions_guard_teacher_microcourse_selection;
 commit;
 `;
   const result = spawnSync(
@@ -589,11 +603,11 @@ export async function setupTeacherMicrocourseFixture({
             "locate teacher microcourse fixture project",
           )
         : [];
-      if (projectRows.length > 1) throw new Error("Teacher microcourse cleanup found multiple projects for one fixture session");
-      state.microcourseCourseId = projectRows[0]?.course_id;
-      if (projectRows[0]) {
+      const projectIds = projectRows.map((project) => project.id);
+      state.microcourseCourseId = projectRows.length === 1 ? projectRows[0]?.course_id : undefined;
+      if (projectIds.length > 0) {
         const artifacts = dataOrThrow<Array<{ private_path: string; public_path: string | null }>>(
-          await admin.from("teacher_microcourse_h5_artifacts").select("private_path,public_path").eq("microcourse_id", projectRows[0].id),
+          await admin.from("teacher_microcourse_h5_artifacts").select("private_path,public_path").in("microcourse_id", projectIds),
           "locate teacher microcourse H5 fixture artifacts",
         );
         const draftPaths = [...new Set(artifacts.map((artifact) => artifact.private_path))];
@@ -603,11 +617,14 @@ export async function setupTeacherMicrocourseFixture({
           if (error) throw new Error(`cleanup teacher microcourse draft H5: ${error.message}`);
         }
         if (publicPaths.length > 0) {
-          const references = dataOrThrow<Array<{ public_path: string | null }>>(
-            await admin.from("teacher_microcourse_h5_artifacts").select("public_path").in("public_path", publicPaths).neq("microcourse_id", projectRows[0].id),
+          const references = dataOrThrow<Array<{ microcourse_id: string; public_path: string | null }>>(
+            await admin.from("teacher_microcourse_h5_artifacts").select("microcourse_id,public_path").in("public_path", publicPaths),
             "check shared published H5 fixture paths",
           );
-          const sharedPaths = new Set(references.flatMap((artifact) => artifact.public_path ? [artifact.public_path] : []));
+          const fixtureProjects = new Set(projectIds);
+          const sharedPaths = new Set(references.flatMap((artifact) => (
+            artifact.public_path && !fixtureProjects.has(artifact.microcourse_id) ? [artifact.public_path] : []
+          )));
           const removablePaths = publicPaths.filter((publicPath) => !sharedPaths.has(publicPath));
           if (removablePaths.length > 0) {
             const { error } = await admin.storage.from("cw-h5").remove(removablePaths);
@@ -616,7 +633,7 @@ export async function setupTeacherMicrocourseFixture({
         }
       }
       await deleteExactClassroom(admin, state.catalogClassroomId, catalogClassName, state.microcourseCourseId);
-      if (projectRows[0]) purgeLocalTeacherMicrocourseProject({ sourceSessionId: state.sourceSessionId!, sourceSessionTitle, microcourseTitle });
+      if (projectRows.length > 0) purgeLocalTeacherMicrocourseProject({ sourceSessionId: state.sourceSessionId!, sourceSessionTitle, microcourseTitle });
       await deleteExactClassroom(admin, state.sourceClassroomId, sourceClassName, null);
       if (state.sourceCourseId) {
         const { error } = await admin.from("courses").delete().eq("id", state.sourceCourseId);

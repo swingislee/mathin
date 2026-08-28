@@ -64,6 +64,7 @@ function sanitizeTeacherMicrocoursePage(doc: TeacherMicrocoursePageDoc): Teacher
 const metadataSchema = z.object({
   sourceSessionId: uuid.optional(),
   microcourseId: uuid.optional(),
+  variantName: requiredText(120).optional(),
   title: requiredText(100),
   description: text(2000),
   grade: intInRange(1, 9),
@@ -91,7 +92,11 @@ const AUTHOR_CODES = [
   "H5_ARTIFACT_NOT_FOUND",
   "H5_UPLOAD_FAILED",
   "H5_TOO_LARGE",
+  "H5_ARTIFACT_SNAPSHOT_MISMATCH",
   "MICROCOURSE_PAGE_LIMIT",
+  "MICROCOURSE_PAGES_REQUIRED",
+  "MICROCOURSE_VARIANT_SESSION_MISMATCH",
+  "SESSION_COURSEWARE_ALREADY_FROZEN",
   "PAGE_ORDER_MISMATCH",
   "OBJECT_METADATA_CONFLICT",
   ...COMMON_CODES,
@@ -102,10 +107,11 @@ export async function createTeacherMicrocourseAction(
 ): Promise<ActionResult<{ microcourseId: string }>> {
   try {
     const value = parse(metadataSchema, input);
-    if (!value.sourceSessionId) throw new Error("VALIDATION");
+    if (!value.sourceSessionId || !value.variantName) throw new Error("VALIDATION");
     const { supabase } = await authorizedClient("courseware.microcourse.author");
-    const { data, error } = await rpc<string>(supabase, "create_teacher_microcourse", {
+    const { data, error } = await rpc<string>(supabase, "create_teacher_microcourse_variant", {
       p_source_session_id: value.sourceSessionId,
+      p_variant_name: value.variantName,
       p_title: value.title,
       p_description: value.description,
       p_grade: value.grade,
@@ -118,6 +124,65 @@ export async function createTeacherMicrocourseAction(
     return { ok: true, data: { microcourseId: data } };
   } catch (error) {
     return actionError(error, ["CREATE_FAILED", ...AUTHOR_CODES]);
+  }
+}
+
+const variantIdentitySchema = z.object({
+  microcourseId: uuid,
+  variantName: requiredText(120),
+}).strict();
+
+export async function forkTeacherMicrocourseVariantAction(input: {
+  microcourseId: string;
+  variantName: string;
+}): Promise<ActionResult<{ microcourseId: string }>> {
+  try {
+    const value = parse(variantIdentitySchema, input);
+    const { supabase } = await authorizedClient("courseware.microcourse.author");
+    const { data, error } = await rpc<string>(supabase, "fork_teacher_microcourse_variant", {
+      p_source_microcourse_id: value.microcourseId,
+      p_variant_name: value.variantName,
+    });
+    if (error || !data) throw new Error(error?.message ?? "FORK_FAILED");
+    return { ok: true, data: { microcourseId: data } };
+  } catch (error) {
+    return actionError(error, ["FORK_FAILED", ...AUTHOR_CODES]);
+  }
+}
+
+export async function renameTeacherMicrocourseVariantAction(input: {
+  microcourseId: string;
+  variantName: string;
+}): Promise<ActionResult<null>> {
+  try {
+    const value = parse(variantIdentitySchema, input);
+    const { supabase } = await authorizedClient("courseware.microcourse.author");
+    const { error } = await rpc<null>(supabase, "rename_teacher_microcourse_variant", {
+      p_microcourse_id: value.microcourseId,
+      p_variant_name: value.variantName,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true, data: null };
+  } catch (error) {
+    return actionError(error, AUTHOR_CODES);
+  }
+}
+
+export async function selectTeacherMicrocourseVariantAction(input: {
+  sessionId: string;
+  microcourseId: string;
+}): Promise<ActionResult<null>> {
+  try {
+    const value = parse(z.object({ sessionId: uuid, microcourseId: uuid }).strict(), input);
+    const { supabase } = await authorizedClient("courseware.microcourse.author");
+    const { error } = await rpc<null>(supabase, "select_teacher_microcourse_variant", {
+      p_session_id: value.sessionId,
+      p_microcourse_id: value.microcourseId,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true, data: null };
+  } catch (error) {
+    return actionError(error, AUTHOR_CODES);
   }
 }
 

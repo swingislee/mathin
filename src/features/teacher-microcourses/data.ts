@@ -46,6 +46,11 @@ export const teacherMicrocourseSummarySchema = z.object({
   id: uuid,
   sourceSessionId: uuid,
   authorId: uuid,
+  authorName: z.string(),
+  variantName: z.string(),
+  basedOnMicrocourseId: uuid.nullable(),
+  basedOnMetadataRevisionId: uuid.nullable(),
+  basedOnVariantName: z.string().nullable(),
   courseId: uuid,
   lectureId: uuid,
   courseStatus: z.string(),
@@ -58,6 +63,11 @@ export const teacherMicrocourseSummarySchema = z.object({
   firstPublishedAt: z.string().nullable(),
   lastPublishedAt: z.string().nullable(),
   withdrawnAt: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  pageCount: z.number().int().nonnegative(),
+  selectedForSession: z.boolean(),
+  canEdit: z.boolean(),
 });
 
 export type TeacherMicrocourseSummary = z.infer<typeof teacherMicrocourseSummarySchema>;
@@ -218,6 +228,74 @@ export async function getTeacherMicrocourseForSession(sessionId: string): Promis
   const { data, error } = await rpc(supabase)("get_teacher_microcourse_for_session", { p_session_id: parsed.data });
   if (error) throw new Error(error.message);
   return data === null ? null : teacherMicrocourseSummarySchema.parse(data);
+}
+
+export async function listTeacherMicrocourseVariants(sessionId: string): Promise<TeacherMicrocourseSummary[]> {
+  const parsed = uuid.safeParse(sessionId);
+  if (!parsed.success) throw new Error("VALIDATION");
+  const supabase = await createClient();
+  const { data, error } = await rpc(supabase)("list_teacher_microcourse_variants", {
+    p_session_id: parsed.data,
+  });
+  if (error) throw new Error(error.message);
+  return z.array(teacherMicrocourseSummarySchema).parse(data ?? []);
+}
+
+const teacherMicrocourseSessionContextSchema = z.object({
+  id: uuid,
+  title: z.string(),
+  classroomId: uuid,
+  classroomName: z.string(),
+  lectureId: uuid.nullable(),
+  scheduledAt: z.string().nullable(),
+  coursewareFrozenAt: z.string().nullable(),
+  startedAt: z.string().nullable(),
+  selectedMicrocourseId: uuid.nullable(),
+  canCreate: z.boolean(),
+  canSelect: z.boolean(),
+});
+
+export type TeacherMicrocourseSessionContext = z.infer<typeof teacherMicrocourseSessionContextSchema>;
+
+export async function getTeacherMicrocourseSessionContext(
+  sessionId: string,
+): Promise<TeacherMicrocourseSessionContext | null> {
+  const parsed = uuid.safeParse(sessionId);
+  if (!parsed.success) throw new Error("VALIDATION");
+  const supabase = await createClient();
+  const { data, error } = await rpc(supabase)("get_teacher_microcourse_session_context", {
+    p_session_id: parsed.data,
+  });
+  if (error) throw new Error(error.message);
+  return data === null ? null : teacherMicrocourseSessionContextSchema.parse(data);
+}
+
+const teacherMicrocourseSessionWorkspaceSchema = z.object({
+  sessionId: uuid,
+  sessionTitle: z.string(),
+  classroomId: uuid,
+  classroomName: z.string(),
+  scheduledAt: z.string().nullable(),
+  coursewareFrozenAt: z.string().nullable(),
+  startedAt: z.string().nullable(),
+  variantCount: z.number().int().nonnegative(),
+  selectedMicrocourseId: uuid.nullable(),
+  selectedVariantName: z.string().nullable(),
+  primaryTeacherName: z.string(),
+});
+
+export type TeacherMicrocourseSessionWorkspace = z.infer<typeof teacherMicrocourseSessionWorkspaceSchema>;
+
+export async function listTeacherMicrocourseSessionWorkspaces(
+  limit = 100,
+): Promise<TeacherMicrocourseSessionWorkspace[]> {
+  const value = z.number().int().min(1).max(200).parse(limit);
+  const supabase = await createClient();
+  const { data, error } = await rpc(supabase)("list_teacher_microcourse_session_workspaces", {
+    p_limit: value,
+  });
+  if (error) throw new Error(error.message);
+  return z.array(teacherMicrocourseSessionWorkspaceSchema).parse(data ?? []);
 }
 
 export async function getTeacherMicrocourseEditor(microcourseId: string): Promise<TeacherMicrocourseEditor> {

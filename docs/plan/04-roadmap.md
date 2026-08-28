@@ -130,6 +130,14 @@ Gate 1 已按以下顺序关闭：
 
 生产状态为 **DEPLOYED / PENDING USER ACCEPTANCE**：产品负责人明确要求推送生产后，12 个 migration 经新鲜 PostgreSQL-only 备份、完整 rollback/零残留/formal 后把 ledger 推进到 `206`；干净 commit `bc76f68` 已发布为 current `20260827-094025`，previous 为 `20260826-125052` / `964ca5e…`。`teaching.teacher_microcourses_v1` 通过真实管理员审计 RPC 推进到 version 2 / true；双层/公网 health、zh/en、真实作者只读课程目录权限、既有业务/Storage 计数、journal 与应用错误增量 postflight 均通过。该结果不替代产品负责人在生产页面完成实际写态旅程，当前产品验收仍为 **UNKNOWN**。详细边界见 [doc 26 §十三](26-teacher-workflow-upgrade.md#十三dev-tmc-1-普通教师短期微课) 与[实现/发布证据](../evidence/r1/teacher-microcourse-dev.md)。
 
+#### DEV-TMC-2 · 课次课件多方案协作与选用
+
+`DEV-TMC-2` 是产品负责人在开发端选入的独立增量，当前状态为 **IMPLEMENTED / LOCAL MACHINE PASS / DEVELOPMENT ONLY**，不改变 R1-Live Gate 2，也未取得新的生产 schema、应用或开关变更授权。它把自由课次课件从“一个作者草稿”调整为“同一课次可有多个课件方案”：本课任课教师和具备 `courseware.review` 的教研均可直接创建方案；编辑他人方案时生成保留来源关系的新方案，不覆盖对方 head，也不经过认领、交付、退回等前置流程。一个方案内部继续使用自动保存 revision，只有并行教学设计才显示为方案。
+
+主讲教师在开课前显式选择“本节使用”方案；只有任课教师可以改变该选择，教研不因此获得班级、花名册、点名或课堂控制权限。开课继续冻结所选方案当时的页面 revision、资源 revision、H5 hash 与游戏校验事实，后续任何方案修改都不回写当前或历史课堂。课次内创建、修改、选择和试讲不要求教研审核；只有把某一方案发布到校内“教师微课”目录时，才继续使用 DEV-TMC-1 的审核与 immutable release 链路。
+
+本机 migration `20260828000100_teacher_microcourse_variants` / `20260828000110_teacher_microcourse_variant_runtime`、回滚数据库断言、TypeScript、双语键、全库 ESLint、定向 Vitest 以及固定账号 Playwright 均通过；浏览器证据同时覆盖既有“制作—上课—审核发布—选课建班”旅程和新增“教师/教研派生—教师选用—冻结”旅程。该结果是机器检查，产品负责人页面验收仍为 **UNKNOWN**。详细合同见 [doc 26 §十四](26-teacher-workflow-upgrade.md#十四dev-tmc-2-课次课件多方案协作与选用)。
+
 ## 6. 原 R1 工作重新定位
 
 | 原阶段 | 已有结果 | R1-Live 处理 | Production 1.0 处理 |

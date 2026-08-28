@@ -21,6 +21,7 @@
     "p4e:db-audit": "node scripts/run-p4e-db-audit.mjs",
     "p6:db-audit": "node scripts/run-p6-db-audit.mjs",
     "p4h:db-audit": "node scripts/run-p4h-db-audit.mjs",
+    "teacher-microcourse:db-audit": "node scripts/run-teacher-microcourse-db-audit.mjs",
     "r1:db-audit": "node scripts/run-r1-db-audit.mjs",
     "sml:db-audit": "node scripts/run-sml-db-audit.mjs",
     "r1:test": "pnpm r1:live:test",

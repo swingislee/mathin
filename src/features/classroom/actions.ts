@@ -304,7 +304,7 @@ export async function startClassSession(sessionId: string): Promise<SessionRoste
   const { supabase } = await authenticatedClient();
   const { data: session, error: fetchError } = await supabase
     .from("class_sessions")
-    .select("classroom_id,lecture_id,courseware_overlay,courseware_frozen_at,started_at")
+    .select("classroom_id,lecture_id,courseware_overlay,courseware_frozen_at,started_at,selected_teacher_microcourse_id")
     .eq("id", sessionId)
     .maybeSingle<{
       classroom_id: string;
@@ -312,6 +312,7 @@ export async function startClassSession(sessionId: string): Promise<SessionRoste
       courseware_overlay: OverlaySlot[];
       courseware_frozen_at: string | null;
       started_at: string | null;
+      selected_teacher_microcourse_id: string | null;
     }>();
   if (fetchError) throw new Error(fetchError.message);
   if (!session) return null;
@@ -326,6 +327,18 @@ export async function startClassSession(sessionId: string): Promise<SessionRoste
   const rosterState = parseSessionRosterState(rosterData);
 
   if (!session.courseware_frozen_at) {
+    if (session.selected_teacher_microcourse_id) {
+      const callRpc = supabase.rpc as unknown as (
+        name: string,
+        args: Record<string, unknown>,
+      ) => Promise<{ data: Json | null; error: { message: string } | null }>;
+      const { data: frozenMicrocourse, error: microcourseError } = await callRpc(
+        "freeze_selected_teacher_microcourse_source_session",
+        { p_session_id: sessionId },
+      );
+      if (microcourseError) throw new Error(microcourseError.message);
+      if (frozenMicrocourse) return rosterState;
+    }
     const { data: resolvedRelease, error: resolvedReleaseError } = await supabase.rpc("resolve_session_courseware_release", {
       p_session_id: sessionId,
     });

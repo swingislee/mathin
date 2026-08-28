@@ -27,6 +27,7 @@ export function MicrocourseStartPanel({
   const t = useTranslations("teacherMicrocourses");
   const locale = useLocale();
   const router = useRouter();
+  const [variantName, setVariantName] = useState(t("defaultVariantName"));
   const [title, setTitle] = useState(sessionTitle);
   const [description, setDescription] = useState("");
   const [grade, setGrade] = useState(1);
@@ -40,6 +41,7 @@ export function MicrocourseStartPanel({
   const create = () => startTransition(async () => {
     const result = await createTeacherMicrocourseAction({
       sourceSessionId: sessionId,
+      variantName,
       title,
       description,
       grade,
@@ -52,7 +54,7 @@ export function MicrocourseStartPanel({
       setMessage(t("actionFailed", { code: result.code }));
       return;
     }
-    router.refresh();
+    router.replace(`/dashboard/sessions/${sessionId}/microcourse?variant=${result.data.microcourseId}`);
   });
 
   return (
@@ -62,6 +64,10 @@ export function MicrocourseStartPanel({
         <CardDescription>{t("startDescription")}</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4 sm:grid-cols-2">
+        <Label className="grid gap-1.5 sm:col-span-2">
+          <span>{t("variantName")}</span>
+          <Input value={variantName} onChange={(event) => setVariantName(event.target.value)} maxLength={120} />
+        </Label>
         <Label className="grid gap-1.5 sm:col-span-2">
           <span>{t("title")}</span>
           <Input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={100} />
@@ -100,7 +106,7 @@ export function MicrocourseStartPanel({
           <Input value={keywords} onChange={(event) => setKeywords(event.target.value)} maxLength={400} placeholder={t("keywordsHint")} />
         </Label>
         <div className="flex items-center gap-3 sm:col-span-2">
-          <Button type="button" disabled={pending || !title.trim() || !topic} onClick={create}>
+          <Button type="button" disabled={pending || !variantName.trim() || !title.trim() || !topic} onClick={create}>
             {pending ? <LoaderCircle className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
             {t("createDraft")}
           </Button>
@@ -110,4 +116,3 @@ export function MicrocourseStartPanel({
     </Card>
   );
 }
-

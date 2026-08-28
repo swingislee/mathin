@@ -28,7 +28,11 @@ import {
 } from "@/features/school/dashboard-page";
 import { getMyPerms, requireAnyPerm } from "@/lib/auth";
 import { MicrocourseReviewQueue } from "@/features/teacher-microcourses/MicrocourseReviewQueue";
-import { listTeacherMicrocourseReviewQueue } from "@/features/teacher-microcourses/data";
+import { MicrocourseSessionWorkspaceQueue } from "@/features/teacher-microcourses/MicrocourseSessionWorkspaceQueue";
+import {
+  listTeacherMicrocourseReviewQueue,
+  listTeacherMicrocourseSessionWorkspaces,
+} from "@/features/teacher-microcourses/data";
 
 type AdaptReviewTab = "microcourses" | "backgrounds" | "rework" | "pages" | "releases" | "history";
 
@@ -127,21 +131,40 @@ async function AdaptReviewContent({ locale, searchParams }: { locale: string; se
   const canEditPages = perms.has("courseware.page.edit");
   const canPublish = perms.has("courseware.release.publish");
   if (tab === "microcourses") {
-    const [items, tm] = await Promise.all([
+    const [items, workspaces, tm] = await Promise.all([
       listTeacherMicrocourseReviewQueue(),
+      listTeacherMicrocourseSessionWorkspaces(),
       getTranslations("teacherMicrocourses"),
     ]);
-    return <MicrocourseReviewQueue
-      items={items}
-      locale={locale}
-      labels={{
-        empty: tm("reviewQueueEmpty"),
-        review: tm("openReview"),
-        grade: (grade) => tm("gradeValue", { grade }),
-        round: (current, required) => tm("reviewRound", { current, required }),
-        submitted: (value) => tm("submittedAt", { value }),
-      }}
-    />;
+    return <div className="space-y-4">
+      <MicrocourseSessionWorkspaceQueue
+        items={workspaces}
+        locale={locale}
+        labels={{
+          title: tm("sessionWorkspaceQueueTitle"),
+          description: tm("sessionWorkspaceQueueDescription"),
+          empty: tm("sessionWorkspaceQueueEmpty"),
+          open: tm("openSessionWorkspace"),
+          variants: (count) => tm("variantCount", { count }),
+          noVariant: tm("noVariantYet"),
+          selected: (name) => tm("selectedVariantName", { name }),
+          notSelected: tm("noSelectedVariant"),
+          frozen: tm("sessionFrozen"),
+          teacher: (name) => tm("primaryTeacher", { name }),
+        }}
+      />
+      <MicrocourseReviewQueue
+        items={items}
+        locale={locale}
+        labels={{
+          empty: tm("reviewQueueEmpty"),
+          review: tm("openReview"),
+          grade: (grade) => tm("gradeValue", { grade }),
+          round: (current, required) => tm("reviewRound", { current, required }),
+          submitted: (value) => tm("submittedAt", { value }),
+        }}
+      />
+    </div>;
   }
   const queue = await (
     tab === "backgrounds"
