@@ -8,13 +8,13 @@
 >
 > **SML 暂停位置**：`SML-0 · 合同与金标冻结`；空间数学可按独立权限或 Feature Flag 并行，不进入 R1-Live Gate。
 >
-> **当前运行状态**：Gate 1 已通过，Gate 2 仍等待正式教师点名持久再读与权限对照。Xiaomi 当前数据库 ledger=`212`、head=`20260828000210_classroom_offering_and_activity_kind`，应用 current/previous=`20260828-075322` / `c7c8219…` 与 `20260828-071313` / `087b497…`。课堂 Stage A、B1 与 B2 已通过，生产已有 checkpoint version/chunk/head=`2/2/2`；Stage B3 修复已部署共同 bridge、单一 Smart 开关与 `cw_h5_input_profiles` 权威表，board/input/layout 为 version 2 / true，H5 继续为 version 3 / false。来源课件运行时/暑期 A+、教师微课课次多方案/班级重新启用、班级业务分类与单次活动边界均已部署；教师微课 flag=version 2 / true。机器 postflight 通过，产品负责人生产写态验收仍 pending，不关闭 Gate 2。最新同批次 PostgreSQL+Storage 全量备份及本轮当前 PostgreSQL 写前备份、migration 回滚演练、原子 release、健康与业务不变量 postflight 已通过；账号、既有班级/课次/报名/点名、活动、微课记录、Storage object 和错误计数无漂移。
+> **当前运行状态**：Gate 1 已通过，Gate 2 仍等待正式教师点名持久再读与权限对照。Xiaomi 当前数据库 ledger=`219`、head=`20260829000100_classroom_personal_scope_default`，应用 current/previous=`20260828-174731` / `34f07e8…` 与 `20260828-075322` / `c7c8219…`。课堂 Stage A、B1 与 B2 已通过，生产已有 checkpoint version/chunk/head=`2/2/2`；Stage B3 修复、来源课件运行时/暑期 A+、教师微课多方案、班级/活动分类以及 DEV-ORG/DEV-DASH 均已部署，产品负责人生产写态/页面验收仍 pending，不关闭 Gate 2。本轮 DEV-ORG/DEV-DASH 通过新鲜 PostgreSQL 写前备份、7 migration 完整回滚/零残留演练、正式迁移、双 production build、原子 release、健康/权限/业务不变量 postflight；生产管理员 verified MFA=`1`，班级/课次/报名/点名与 Storage=`3/16/1/0/125725`，新 release 启动后错误增量为 0。
 >
 > **当前 P0 状态**：2026-08-25 产品负责人确认内部教师更习惯手机号注册登录。`手机号或邮箱 + password` 已部署生产：手机号只接受绑定具体号码的一次性员工邀请，不发送/伪造验证码，不开放全局邀请码手机号注册，账号仍以单一 `auth.users.id` 为主体。机器 postflight 已通过；真实教师尚未消费手机号邀请并完成 password 登录，因此状态为 `DEPLOYED / PENDING USER ACCEPTANCE`。
 >
 > **双轨执行**：生产端由 1 名正式教师在现有正式班级、课次和花名册上持续试用，优先反馈 P0/核心 P1；开发端可并行尝试产品负责人选中的新功能。新功能只有在开发目标完成受影响检查并由产品负责人初步验收后，才成为生产候选；完成精确版本/迁移登记、生产 preflight、可回退发布和 postflight 后，才能记为生产已部署。开发通过不等于生产通过，新功能也不改变 Gate 2 的点名与权限退出条件。
 >
-> **核对日期**：2026-08-28；生产事实已包含手机号/password P0、来源课件运行时、教师微课多方案与班级/活动分类增量的 migration、release 和去标识化 postflight，其余依据 active doc 00/25、代码与迁移、本机隔离验证、Xiaomi 运行核查和 `mathin-R1-Live-讨论稿.md`。
+> **核对日期**：2026-08-29；生产事实已包含手机号/password P0、来源课件运行时、教师微课多方案、班级/活动分类以及机构/场地/后台信息架构与表格语义增量的 migration、release 和去标识化 postflight，其余依据 active doc 00/25、代码与迁移、本机隔离验证、Xiaomi 运行核查和 `mathin-R1-Live-讨论稿.md`。
 
 ## 1. 两个交付事件
 
@@ -120,7 +120,7 @@ Gate 1 已按以下顺序关闭：
 
 #### DEV-ORG-1 · 机构设置与校区/教室重构
 
-`DEV-ORG-1` 是产品负责人于 2026-08-28 选入的开发预演增量，当前状态为 **LOCAL MACHINE PASS / PENDING USER ACCEPTANCE**，不改变 R1-Live Gate 2。用户闭环固定为“维护机构资料与统一时区 → 在校区目录下维护教室 → 建班选择默认教室 → 单节调课或批量应用未来默认 → 课表按场地筛选 → 用机构级学年、教学日历和排课默认生成课次”。校区只作为教室的上一级目录，不承担班级、员工、权限、学年、规则或 Feature Flag 作用域；不建设全局校区切换、校区员工授权和跨校区交通规则。
+`DEV-ORG-1` 是产品负责人于 2026-08-28 选入并于 2026-08-29 明确授权发布的开发预演增量，当前状态为 **DEPLOYED / PENDING USER ACCEPTANCE**，不改变 R1-Live Gate 2。用户闭环固定为“维护机构资料与统一时区 → 在校区目录下维护教室 → 建班选择默认教室 → 单节调课或批量应用未来默认 → 课表按场地筛选 → 用机构级学年、教学日历和排课默认生成课次”。校区只作为教室的上一级目录，不承担班级、员工、权限、学年、规则或 Feature Flag 作用域；不建设全局校区切换、校区员工授权和跨校区交通规则。
 
 页面按工作对象拆分：`/dashboard/organization` 维护机构名称与 IANA 时区，`/dashboard/campuses` 及详情页维护校区和教室，`/dashboard/academic-years` 统一承载学年、教学日历和内联的新班级默认课次时长，`/dashboard/schedule` 只承载课表；系统“运行与错误”下承载能力发布。产品负责人于 2026-08-29 确认旧地址不保留兼容跳转，因此 `/dashboard/organization-settings`、`/dashboard/schedule/calendar` 与 `/dashboard/schedule/defaults` 直接退役。校区/教室内部代码由数据库生成且不进入页面、表单和公开 DTO；原始 JSON 规则编辑器停止新写入，历史版本只读，财务发布门继续固定关闭。
 
@@ -128,25 +128,25 @@ Gate 1 已按以下顺序关闭：
 
 开发验收覆盖数据库回填/RLS、机构时区边界、日历优先级、结构化教室冲突、未来课次传播、zh/en 资源页和固定账号完整旅程。机器检查通过只记为“开发可验收”；产品负责人确认后才可成为生产候选。
 
-截至 2026-08-28，兼容数据层与产品页面 commits `596f498`～`0d47f77`、代码字段隐藏的员工只读关联修复 `bc018c2` 和固定账号旅程 `9aba9aa` 已落地；本机 migrations `20260828000300`～`20260828000350` 已应用。DEV-ORG SQL 事务回滚断言、定向 Vitest、TypeScript、受影响 ESLint 与固定管理员 Playwright 1/1 通过，旅程覆盖 zh/en 校区资源、建班选教室、容量警告、单节覆盖、显式待定、未来默认传播、日历影响预览、能力发布和归档后历史地点保留。该结果只证明本机开发目标达到可人工验收状态；产品负责人页面验收仍为 **UNKNOWN**，尚未执行生产 preflight、备份、迁移、部署或 postflight。
+截至 2026-08-29，兼容数据层与产品页面 commits `596f498`～`0d47f77`、代码字段隐藏修复 `bc018c2`、固定账号旅程 `9aba9aa` 及后续 Dashboard 增量已随候选 `34f07e8…` 上线。生产 preflight 确认唯一旧教室文本 `3305`、唯一活跃校区、有效校区级规则/开关覆盖 0、学年重复 0；7 个 migration 通过新鲜 PostgreSQL 备份、完整回滚/零残留演练和正式事务，把 ledger 从 212 推进到 219，并回填 1 个结构化教室、1 个班级和 15 个课次。应用 current/previous=`20260828-174731` / `34f07e8…` 与 `20260828-075322` / `c7c8219…`，机器 postflight 通过；登录态 Chrome 刷新超时，产品负责人生产页面验收仍为 **UNKNOWN**。证据见 [`organization-dashboard-production.md`](../evidence/r1/organization-dashboard-production.md)。
 
 #### DEV-DASH-1 · 后台职能导航与可扩展资源列表
 
-`DEV-DASH-1` 是产品负责人于 2026-08-29 在 DEV-ORG 本机验收前提出的后台信息架构增量，当前状态为 **LOCAL MACHINE PASS / PENDING USER ACCEPTANCE**，不改变 R1-Live Gate 2。侧栏使用“总览 → 学科运营 → 教学 → 教研 → 组织管理 → 系统管理”的职能顺序；学科运营覆盖学生从线索、活动、跟进到在读服务的生命周期，教学承载班级、学年和课表，教研承载课程产品、研发任务、审核与课件资源。所有可见 staff 入口使用不同语义图标，单一的 90 分钟排课默认不再占用侧栏条目。
+`DEV-DASH-1` 是产品负责人于 2026-08-29 提出并明确授权发布的后台信息架构增量，当前状态为 **DEPLOYED / PENDING USER ACCEPTANCE**，不改变 R1-Live Gate 2。侧栏使用“总览 → 学科运营 → 教学 → 教研 → 组织管理 → 系统管理”的职能顺序；学科运营覆盖学生从线索、活动、跟进到在读服务的生命周期，教学承载班级、学年和课表，教研承载课程产品、研发任务、审核与课件资源。所有可见 staff 入口使用不同语义图标，单一的 90 分钟排课默认不再占用侧栏条目。
 
 机构资料、校区目录和教学日历采用线性设置区或表格，不再默认堆叠卡片。班级无显式 scope 时先选择本人任教班级，其次本人负责班级，仅在两者均为空时回退到全部班级并提示；个人班级保留信息卡，`all` 与 `test` 使用同一套 shadcn `Table` 圆角完整描边表格壳，列表按 20 条分页。课件资源库首屏和后续页每次只读取 11 条判断下一页、最多展示并生成 10 条预览签名，避免为整库对象生成临时 URL。
 
-本机提交 `e8107e0`、`06f5104`、`b644d14` 与 migration `20260829000100_classroom_personal_scope_default` 已落地；定向 Vitest 4 文件 22/22、TypeScript、受影响 ESLint、zh/en 消息合同、路由审计及固定开发账号 Playwright 2/2 通过。第二条浏览器旅程直接核对五个职能分组、图标差异、学年新路径、个人班级卡片、全部班级表格和资源页最多 10 行；第一条原有场地旅程已同步改用新路径。该结果只证明本机开发目标可供产品负责人验收，未执行任何 Xiaomi 生产 preflight、迁移、部署或业务写入。
+本机提交 `e8107e0`、`06f5104`、`b644d14` 与 migration `20260829000100_classroom_personal_scope_default` 已落地；定向 Vitest 4 文件 22/22、TypeScript、受影响 ESLint、zh/en 消息合同、路由审计及固定开发账号 Playwright 2/2 通过。该增量已随 `34f07e8…` 上线；production route manifest 已确认机构、校区、学年与能力发布路径存在，旧设置路径不存在，PostgREST schema cache 与匿名拒绝通过。生产登录态侧栏、班级 scope 和资源分页仍待产品负责人刷新后人工验收。
 
 #### DEV-DASH-2 · Dashboard 表格与分隔语义统一
 
-`DEV-DASH-2` 是产品负责人于 2026-08-29 在 DEV-DASH-1 人工验收中提出的视觉语义增量，当前状态为 **LOCAL MACHINE PASS / PENDING USER ACCEPTANCE**，不改变 R1-Live Gate 2。Dashboard 顶层数据表统一复用共享外壳：shadcn `Table`、`rounded-2xl`、完整 `border-line` 和 `bg-card`；宽表只在表格自己的滚动容器内横向滚动。表格表头与数据行的边界服务于行列辨识，可以保留；普通列表、表单字段、状态摘要和导航不得借用表格分隔语义。
+`DEV-DASH-2` 是产品负责人于 2026-08-29 提出并明确授权发布的视觉语义增量，当前状态为 **DEPLOYED / PENDING USER ACCEPTANCE**，不改变 R1-Live Gate 2。Dashboard 顶层数据表统一复用共享外壳：shadcn `Table`、`rounded-2xl`、完整 `border-line` 和 `bg-card`；宽表只在表格自己的滚动容器内横向滚动。表格表头与数据行的边界服务于行列辨识，可以保留；普通列表、表单字段、状态摘要和导航不得借用表格分隔语义。
 
 普通页面固定只有一条页头结构线：它位于页面标题之后。横向状态导航、筛选和页面操作位于该线下，并与正文属于同一工作区；命令面板底部及正文顶部不得再增加重复分割线。机构资料、学年概览和排课默认使用字段间距、标签层级与局部底色组织，不再为每个字段画上下边线；只有教学日历、排课默认等真正独立的大内容板块可以在区块起点使用一条分割线。
 
-验收至少覆盖机构资料、全部班级、学生、校区、教学日历、课件资源和系统错误表；固定管理员 zh/en 页面须确认页头单线、横向导航下方无线、顶层表格外壳一致，390px 下宽表滚动仍局限在表格容器。本项只在本机开发目标施工，任何生产发布仍需独立授权。
+验收至少覆盖机构资料、全部班级、学生、校区、教学日历、课件资源和系统错误表；固定管理员 zh/en 页面须确认页头单线、横向导航下方无线、顶层表格外壳一致，390px 下宽表滚动仍局限在表格容器。生产发布已完成，人工页面验收仍需在当前 release 上执行。
 
-本机提交 `e1e8c87` 已落地共享 `DashboardTableShell`，并迁移 Dashboard 与学校运营组件内全部 shadcn `Table` 使用点；机构资料、学年、排课默认、活动列表与个人班级摘要已移除逐项分割线。定向 Vitest 3 文件 14/14、TypeScript、全量 ESLint、doc 24 Dashboard 审计和固定管理员 Playwright 1/1 通过；浏览器实际视觉复核确认机构资料只剩页头主分隔线。机器结果只证明本机开发目标可供产品负责人验收，未执行 Xiaomi 生产 preflight、部署或业务写入。
+本机提交 `e1e8c87` 已落地共享 `DashboardTableShell`，并迁移 Dashboard 与学校运营组件内全部 shadcn `Table` 使用点；机构资料、学年、排课默认、活动列表与个人班级摘要已移除逐项分割线。定向 Vitest 3 文件 14/14、TypeScript、全量 ESLint、doc 24 Dashboard 审计、固定管理员 Playwright 1/1 和本地/生产双 build 通过；该代码已随 `34f07e8…` 上线。Chrome 自动刷新超时，因此生产视觉签收仍为 pending。
 
 #### DEV-TMC-1 · 普通教师短期微课孵化与校内共享
 
