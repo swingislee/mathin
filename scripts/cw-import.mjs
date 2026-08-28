@@ -8,7 +8,10 @@ import { createClient } from "@supabase/supabase-js";
 import sanitizeHtml from "sanitize-html";
 import { h5StoragePath } from "./lib/courseware-storage-paths.mjs";
 import { stripInertMathTexScriptsForInspection } from "./lib/aixuexi-source-viewer-runtime.mjs";
-import { assertControlledContentWriteTarget } from "./lib/r1-write-target-policy.mjs";
+import {
+  assertControlledContentWriteTarget,
+  R1_WRITE_TARGET_POLICY,
+} from "./lib/r1-write-target-policy.mjs";
 
 export { h5StoragePath } from "./lib/courseware-storage-paths.mjs";
 
@@ -1764,6 +1767,7 @@ export function parseArgs(argv) {
   const options = {
     dryRun: false,
     allowProductionTarget: false,
+    allowProductionSourceRuntimeUpgrade: false,
     localDocker: false,
     upgradeSourceRuntime: false,
     databaseUrl: process.env.CW_IMPORT_DATABASE_URL,
@@ -1776,6 +1780,10 @@ export function parseArgs(argv) {
     if (arg === "--local-docker") { options.localDocker = true; continue; }
     if (arg === "--upgrade-source-runtime") { options.upgradeSourceRuntime = true; continue; }
     if (arg === "--allow-production-target") { options.allowProductionTarget = true; continue; }
+    if (arg === "--allow-production-source-runtime-upgrade") {
+      options.allowProductionSourceRuntimeUpgrade = true;
+      continue;
+    }
     if (arg === "--package-root" || arg === "--store-root" || arg === "--courseware-id" || arg === "--ssh-host" || arg === "--catalog-version" || arg === "--database-url") {
       const value = argv[index + 1];
       if (!value || value.startsWith("--")) fail(`${arg} requires a value`);
@@ -1788,7 +1796,7 @@ export function parseArgs(argv) {
   options.packageRoot ??= process.env.CW_PACKAGE_ROOT;
   options.storeRoot ??= process.env.CW_STORE_ROOT;
   if (!options.packageRoot || !options.storeRoot || !options.coursewareId) {
-    fail("usage: pnpm cw:import -- --package-root <dir> --store-root <dir> --courseware-id <id> [--catalog-version <slug>] [--dry-run] [--local-docker --database-url <loopback-postgres-url> | --ssh-host <host>] [--allow-production-target]");
+    fail("usage: pnpm cw:import -- --package-root <dir> --store-root <dir> --courseware-id <id> [--catalog-version <slug>] [--dry-run] [--local-docker --database-url <loopback-postgres-url> | --ssh-host <host>] [--allow-production-target] [--upgrade-source-runtime --allow-production-source-runtime-upgrade]");
   }
   if (options.catalogVersion !== undefined && !CATALOG_VERSION_SLUG.test(options.catalogVersion)) {
     fail("--catalog-version must be a slug such as 2026");
@@ -1799,10 +1807,29 @@ export function parseArgs(argv) {
   if (!options.localDocker && options.databaseUrl) {
     fail("--database-url is only valid with --local-docker");
   }
-  if (options.upgradeSourceRuntime && (!options.localDocker || options.allowProductionTarget)) {
-    fail("--upgrade-source-runtime is restricted to the attested local Docker development database");
+  if (options.allowProductionSourceRuntimeUpgrade && !options.upgradeSourceRuntime) {
+    fail("--allow-production-source-runtime-upgrade requires --upgrade-source-runtime");
+  }
+  if (options.upgradeSourceRuntime && options.localDocker) {
+    if (options.allowProductionTarget || options.allowProductionSourceRuntimeUpgrade) {
+      fail("local source-runtime upgrades cannot use production authorization flags");
+    }
+  } else if (options.upgradeSourceRuntime
+    && (!options.allowProductionTarget || !options.allowProductionSourceRuntimeUpgrade)) {
+    fail("remote source-runtime upgrades require both --allow-production-target and --allow-production-source-runtime-upgrade");
   }
   return options;
+}
+
+export function assertProductionSourceRuntimeUpgrade(options, environment = process.env) {
+  if (!options.upgradeSourceRuntime || options.localDocker) return;
+  if (!options.allowProductionTarget || !options.allowProductionSourceRuntimeUpgrade) {
+    fail("production source-runtime upgrade authorization is incomplete");
+  }
+  const expected = `cw:import:source-runtime-upgrade:${R1_WRITE_TARGET_POLICY.productionTargetFingerprint.slice(0, 16)}`;
+  if (environment.MATHIN_PRODUCTION_SOURCE_RUNTIME_UPGRADE_CONFIRMATION !== expected) {
+    fail("set MATHIN_PRODUCTION_SOURCE_RUNTIME_UPGRADE_CONFIRMATION in the current Shell for this versioned production upgrade");
+  }
 }
 
 export async function importCourseware(options) {
@@ -1849,6 +1876,7 @@ export async function importCourseware(options) {
       ? process.env.MATHIN_PRODUCTION_WRITE_CONFIRMATION
       : undefined,
   });
+  assertProductionSourceRuntimeUpgrade(options);
   const key = writeEnvironment.SUPABASE_SECRET_KEY;
   if (!key) fail("SUPABASE_SECRET_KEY is required for Storage upload");
   const client = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });

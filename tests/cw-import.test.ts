@@ -4,7 +4,16 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { buildImportSql, h5StoragePath, importCourseware, loadImportPlan, parseArgs, resolveInside, storageTargetsForPlan } from "../scripts/cw-import.mjs";
+import {
+  assertProductionSourceRuntimeUpgrade,
+  buildImportSql,
+  h5StoragePath,
+  importCourseware,
+  loadImportPlan,
+  parseArgs,
+  resolveInside,
+  storageTargetsForPlan,
+} from "../scripts/cw-import.mjs";
 import { resolveCatalogVersion, unresolvedSourceRuntimeDrift } from "../scripts/aixuexi-import-all.mjs";
 
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");
@@ -154,6 +163,69 @@ describe("P6 courseware importer", () => {
       localDocker: true,
       databaseUrl: "postgresql://127.0.0.1:35422/postgres",
     });
+  });
+
+  it("requires a second explicit gate for production source-runtime upgrades", () => {
+    const base = [
+      "--package-root", "C:/package",
+      "--store-root", "C:/store",
+      "--courseware-id", "123",
+      "--upgrade-source-runtime",
+    ];
+    expect(() => parseArgs(base)).toThrow(/require both --allow-production-target/);
+    expect(() => parseArgs([...base, "--allow-production-target"]))
+      .toThrow(/--allow-production-source-runtime-upgrade/);
+    expect(parseArgs([
+      ...base,
+      "--allow-production-target",
+      "--allow-production-source-runtime-upgrade",
+    ])).toMatchObject({
+      upgradeSourceRuntime: true,
+      allowProductionTarget: true,
+      allowProductionSourceRuntimeUpgrade: true,
+      localDocker: false,
+    });
+    expect(() => parseArgs([
+      "--package-root", "C:/package",
+      "--store-root", "C:/store",
+      "--courseware-id", "123",
+      "--allow-production-source-runtime-upgrade",
+    ])).toThrow(/requires --upgrade-source-runtime/);
+  });
+
+  it("keeps local source-runtime upgrades on the non-production path", () => {
+    expect(parseArgs([
+      "--package-root", "C:/package",
+      "--store-root", "C:/store",
+      "--courseware-id", "123",
+      "--local-docker",
+      "--database-url", "postgresql://127.0.0.1:35422/postgres",
+      "--upgrade-source-runtime",
+    ])).toMatchObject({
+      localDocker: true,
+      upgradeSourceRuntime: true,
+      allowProductionTarget: false,
+      allowProductionSourceRuntimeUpgrade: false,
+    });
+  });
+
+  it("accepts the production upgrade confirmation only from the current process", () => {
+    const options = {
+      upgradeSourceRuntime: true,
+      localDocker: false,
+      allowProductionTarget: true,
+      allowProductionSourceRuntimeUpgrade: true,
+    };
+    expect(() => assertProductionSourceRuntimeUpgrade(options, { NODE_ENV: "test" }))
+      .toThrow(/MATHIN_PRODUCTION_SOURCE_RUNTIME_UPGRADE_CONFIRMATION/);
+    expect(() => assertProductionSourceRuntimeUpgrade(options, {
+      NODE_ENV: "test",
+      MATHIN_PRODUCTION_SOURCE_RUNTIME_UPGRADE_CONFIRMATION: "cw:import:source-runtime-upgrade:wrong",
+    })).toThrow(/MATHIN_PRODUCTION_SOURCE_RUNTIME_UPGRADE_CONFIRMATION/);
+    expect(() => assertProductionSourceRuntimeUpgrade(options, {
+      NODE_ENV: "test",
+      MATHIN_PRODUCTION_SOURCE_RUNTIME_UPGRADE_CONFIRMATION: "cw:import:source-runtime-upgrade:10e3f97e32b01840",
+    })).not.toThrow();
   });
 
   it("resolves mixed E-series catalog versions without guessing duplicate product codes", () => {

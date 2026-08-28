@@ -23,6 +23,7 @@ function parseArgs(argv) {
     catalogMap: null,
     duplicateCatalogVersion: null,
     allowProductionTarget: false,
+    allowProductionSourceRuntimeUpgrade: false,
     upgradeSourceRuntime: false,
   };
   for (let index = 0; index < argv.length; index += 1) {
@@ -44,6 +45,10 @@ function parseArgs(argv) {
       options.upgradeSourceRuntime = true;
       continue;
     }
+    if (arg === "--allow-production-source-runtime-upgrade") {
+      options.allowProductionSourceRuntimeUpgrade = true;
+      continue;
+    }
     if (["--package-key", "--package-root", "--store-root", "--ssh-host", "--start-at", "--limit", "--database-url", "--catalog-version", "--catalog-map", "--duplicate-catalog-version"].includes(arg)) {
       const value = argv[++index];
       if (!value || value.startsWith("--")) fail(arg + " requires a value");
@@ -62,8 +67,16 @@ function parseArgs(argv) {
   if (options.duplicateCatalogVersion && !options.catalogMap) {
     fail("--duplicate-catalog-version requires --catalog-map");
   }
-  if (options.upgradeSourceRuntime && (!options.localDocker || options.allowProductionTarget)) {
-    fail("--upgrade-source-runtime is restricted to the local Docker development database");
+  if (options.allowProductionSourceRuntimeUpgrade && !options.upgradeSourceRuntime) {
+    fail("--allow-production-source-runtime-upgrade requires --upgrade-source-runtime");
+  }
+  if (options.upgradeSourceRuntime && options.localDocker) {
+    if (options.allowProductionTarget || options.allowProductionSourceRuntimeUpgrade) {
+      fail("local source-runtime upgrades cannot use production authorization flags");
+    }
+  } else if (options.upgradeSourceRuntime
+    && (!options.allowProductionTarget || !options.allowProductionSourceRuntimeUpgrade)) {
+    fail("remote source-runtime upgrades require both --allow-production-target and --allow-production-source-runtime-upgrade");
   }
   options.packageRoot ??= path.resolve(process.cwd(), ".tmp", "aixuexi-import", options.packageKey);
   return options;
@@ -125,6 +138,9 @@ export async function importAll(options) {
     else args.push("--ssh-host", options.sshHost);
     if (options.dryRun) args.push("--dry-run");
     if (options.allowProductionTarget) args.push("--allow-production-target");
+    if (options.allowProductionSourceRuntimeUpgrade) {
+      args.push("--allow-production-source-runtime-upgrade");
+    }
     if (options.upgradeSourceRuntime) args.push("--upgrade-source-runtime");
     let result;
     if (options.localDocker) {
@@ -138,6 +154,7 @@ export async function importAll(options) {
         databaseUrl: options.databaseUrl,
         sshHost: options.sshHost,
         allowProductionTarget: false,
+        allowProductionSourceRuntimeUpgrade: false,
         upgradeSourceRuntime: options.upgradeSourceRuntime,
         quiet: true,
       });

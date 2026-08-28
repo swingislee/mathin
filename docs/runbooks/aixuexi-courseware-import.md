@@ -101,7 +101,25 @@ pnpm cw:aixuexi:import -- --package-key 2026-aplus-quanguo-math --local-docker -
 
 升级事务逐页断言当前两轨都仍指向导入基线、没有 draft/partial drift，随后新增 `revision_no=2`，为两轨分别新增 `release_no=2` 并切换 current heads；旧 revision/release 和其 snapshot 原样保留。binding 集合按新文档精确对账。`baselineDrift` 中被同一事务完整解释的页面计入 `sourceRuntimeUpgraded`，批量汇总只报告剩余未解释 drift。
 
-`--upgrade-source-runtime` 与远程 SSH、`--allow-production-target` 互斥；目标不是本机开发库时命令在写入前失败。生产 v31 baseline 的升级需要新的 R1-9/15/18 授权、批准 manifest、隔离演练和正式 release 编号裁决，本手册不授予该权限。
+默认路径仍只允许本机开发库。远程升级必须同时具备当前产品负责人对这一批生产升级的明确指令、写前只读 preflight、新鲜 PostgreSQL+Storage 备份、精确 current-head 回退 manifest、已部署的兼容应用与 migration，并额外打开第二道一次性保险丝：
+
+```powershell
+$env:MATHIN_WRITE_TARGET_ENVIRONMENT = 'production'
+$env:MATHIN_WRITE_ALLOWED_SUPABASE_ORIGIN = 'https://supabase.mathin.club'
+$env:MATHIN_WRITE_ALLOWED_SUPABASE_ORIGINS = 'https://supabase.mathin.club'
+$env:MATHIN_WRITE_ALLOWED_SSH_TARGET = 'xiaomi'
+$env:MATHIN_WRITE_TARGET_FINGERPRINT = '10e3f97e32b018403c9074efa4e258d699530a487c47de89b5d307ab7ff21a0c'
+$env:MATHIN_PRODUCTION_WRITE_CONFIRMATION = 'cw:import:10e3f97e32b01840'
+$env:MATHIN_PRODUCTION_SOURCE_RUNTIME_UPGRADE_CONFIRMATION = 'cw:import:source-runtime-upgrade:10e3f97e32b01840'
+
+pnpm cw:aixuexi:import -- --package-key 2026-gplus-sujiao-math --ssh-host xiaomi --upgrade-source-runtime --allow-production-target --allow-production-source-runtime-upgrade
+```
+
+三个秋季包必须逐包执行并核对 `conflicts=0`、未解释 `baselineDrift=0`。第二道确认只从当前进程环境读取；`.env.local` 中的同名值无效。普通生产导入不能携带 `--allow-production-source-runtime-upgrade`，缺少任一 CLI 开关或确认值时必须在 Storage/SQL 写入前失败。发布完成后立即清除当前 Shell 的全部生产 attestation。
+
+生产回退只按写前 manifest 把 lecture/page current head 恢复到旧 release/revision；旧 revision 1、release 1、snapshot 和对象不得删除或改写。新上传的内容寻址对象保持不可变，不在故障窗口执行 Storage 清理。
+
+暑期 A+ 是生产目录中的新课程，不制造一轮旧适配器历史：先应用版本化目录 migration 建立 15 讲空壳，再以普通受控生产导入通道直接导入 `source-runtime-v1`。第 1、8 讲从 revision/release 1 开始，其余 13 讲保持空模板、0 页面、0 release。
 
 ## 7. 验收
 
