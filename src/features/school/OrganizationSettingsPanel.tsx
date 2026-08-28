@@ -41,7 +41,7 @@ import {
 
 const GLOBAL_SCOPE = "__global__";
 const CAMPUS_CODE_PATTERN = /^[a-z][a-z0-9-]{1,39}$/;
-const SETTINGS_CONTROL_CLASS = "rounded-none border-x-0 border-t-0 border-b border-line/80 bg-transparent px-0 shadow-none hover:translate-y-0 hover:border-crater/70 hover:bg-transparent focus:border-crater focus:ring-0 focus-visible:border-crater focus-visible:ring-0 aria-invalid:border-rose";
+const SETTINGS_CONTROL_CLASS = "rounded-none border-x-0 border-t-0 border-b border-line/60 bg-transparent px-0 shadow-none hover:translate-y-0 hover:border-crater/70 hover:bg-transparent focus:border-crater focus:ring-0 focus-visible:border-crater focus-visible:ring-0 aria-invalid:border-rose";
 const errorMessage = (fallback: string) => ({ default: fallback });
 
 function SettingsInput({ className, ...props }: React.ComponentProps<typeof Input>) {
@@ -62,7 +62,7 @@ function SettingsField({
   children: React.ReactNode;
 }) {
   return (
-    <div className="grid gap-2 py-3 sm:grid-cols-[11rem_minmax(0,1fr)] sm:items-start sm:gap-6">
+    <div className="grid gap-1.5 py-1.5 sm:grid-cols-[9rem_minmax(0,1fr)] sm:items-start sm:gap-4">
       <Label htmlFor={htmlFor} className="pt-2 leading-5 text-muted">{label}</Label>
       <div className="min-w-0">{children}</div>
     </div>
@@ -71,8 +71,8 @@ function SettingsField({
 
 function SettingsActionRow({ children }: { children: React.ReactNode }) {
   return (
-    <div className="grid pt-4 sm:grid-cols-[11rem_minmax(0,1fr)] sm:gap-6">
-      <div className="flex justify-end sm:col-start-2">{children}</div>
+    <div className="grid pt-2 sm:grid-cols-[9rem_minmax(0,1fr)] sm:gap-4">
+      <div className="flex justify-start sm:col-start-2">{children}</div>
     </div>
   );
 }
@@ -134,12 +134,12 @@ function ScopeSelect({ campuses, value, onChange, globalLabel, triggerId }: { ca
 
 function SettingsSection({ title, description, icon, children }: { title: string; description: string; icon: React.ReactNode; children: React.ReactNode }) {
   return (
-    <section className="border-b border-line py-7">
+    <section className="border-b border-line py-5">
       <div className="flex items-start gap-3">
         <span className="mt-0.5 shrink-0 text-crater">{icon}</span>
         <div><h2 className="font-display text-lg text-ink">{title}</h2><p className="mt-1 text-sm leading-6 text-muted">{description}</p></div>
       </div>
-      <div className="mt-6">{children}</div>
+      <div className="mt-4">{children}</div>
     </section>
   );
 }
@@ -257,7 +257,7 @@ export function OrganizationSettingsPanel({ initial }: { initial: OrganizationSe
 
       <TabsContent value="profile" className="mt-0">
         <SettingsSection title={t("profileTitle")} description={t("profileIntro")} icon={<Building2 size={19} />}>
-          <div className="divide-y divide-line border-y border-line">
+          <div className="space-y-0.5">
             <SettingsField label={t("organizationName")} htmlFor="organization-name">
               <SettingsInput id="organization-name" value={organizationName} maxLength={100} onChange={(event) => setOrganizationName(event.target.value)} />
             </SettingsField>
@@ -277,7 +277,7 @@ export function OrganizationSettingsPanel({ initial }: { initial: OrganizationSe
 
       <TabsContent value="locations" className="mt-0">
         <SettingsSection title={t("campusTitle")} description={t("campusIntro")} icon={<MapPin size={19} />}>
-          <div className="divide-y divide-line border-y border-line">
+          <div className="space-y-0.5">
             <SettingsField label={t("selectCampus")} htmlFor="campus-select">
               <Select value={campusId} onValueChange={chooseCampus}>
                 <SettingsSelectTrigger id="campus-select"><SelectValue /></SettingsSelectTrigger>
@@ -304,9 +304,9 @@ export function OrganizationSettingsPanel({ initial }: { initial: OrganizationSe
           </div>
           {selectedCampus ? <SettingsActionRow><Button size="sm" disabled={pending || !campusName.trim()} onClick={() => updateCampusRun.run({ campusId: selectedCampus.id, name: campusName, timezone: campusTimezone.trim() || null, status: campusStatus, isDefault: campusDefault })}>{t("saveCampus")}</Button></SettingsActionRow> : null}
 
-          <div className="mt-8 border-t border-line pt-6">
+          <div className="mt-5 border-t border-line pt-4">
             <h3 className="font-medium text-ink">{t("addCampus")}</h3>
-            <div className="mt-3 divide-y divide-line border-y border-line">
+            <div className="mt-2 space-y-0.5">
               <SettingsField label={t("campusCode")} htmlFor="new-campus-code">
                 <SettingsInput
                   id="new-campus-code"
@@ -335,7 +335,7 @@ export function OrganizationSettingsPanel({ initial }: { initial: OrganizationSe
         <SettingsSection title={t("roomTitle")} description={t("roomIntro")} icon={<Building2 size={19} />}>
           {!selectedCampus ? <p className="text-sm text-muted">{t("noCampus")}</p> : <>
             <ul className="divide-y divide-line">{selectedCampus.rooms.map((room) => <li key={room.id} className="flex flex-wrap items-center gap-3 py-3 text-sm"><span className="min-w-0 flex-1"><strong>{room.name}</strong> · {room.code} · {room.capacity ?? t("capacityUnset")}</span><Badge variant={room.isActive ? "secondary" : "outline"}>{room.isActive ? t("active") : t("inactive")}</Badge><Button size="sm" variant="secondary" disabled={pending} onClick={() => roomActiveRun.run(room.id, !room.isActive)}>{room.isActive ? t("disable") : t("enable")}</Button></li>)}</ul>
-            <div className="mt-4 divide-y divide-line border-y border-line">
+            <div className="mt-3 space-y-0.5">
               <SettingsField label={t("roomCode")} htmlFor="room-code">
                 <SettingsInput id="room-code" value={roomCode} maxLength={40} onChange={(event) => setRoomCode(event.target.value)} />
               </SettingsField>
@@ -353,7 +353,7 @@ export function OrganizationSettingsPanel({ initial }: { initial: OrganizationSe
         <SettingsSection title={t("calendarTitle")} description={t("calendarIntro")} icon={<CalendarDays size={19} />}>
           <div>
             <div><h3 className="font-medium">{t("holidays")}</h3><ul className="mt-2 divide-y divide-line">{initial.holidays.map((holiday) => <li key={holiday.id} className="flex items-center gap-3 py-3 text-sm"><span className="min-w-0 flex-1">{holiday.name} · {holiday.startsOn} — {holiday.endsOn}</span><Badge variant="outline">{t(`holiday_${holiday.kind}`)}</Badge><Button size="sm" variant="secondary" disabled={pending} onClick={() => archiveHolidayRun.run(holiday.id)}>{t("archive")}</Button></li>)}</ul>
-              <div className="mt-3 divide-y divide-line border-y border-line">
+              <div className="mt-2 space-y-0.5">
                 <SettingsField label={t("scope")} htmlFor="holiday-scope">
                   <ScopeSelect triggerId="holiday-scope" campuses={activeCampuses} value={holidayCampusId} onChange={setHolidayCampusId} globalLabel={t("allCampuses")} />
                 </SettingsField>
@@ -381,7 +381,7 @@ export function OrganizationSettingsPanel({ initial }: { initial: OrganizationSe
 
       <TabsContent value="rules" className="mt-0">
         <SettingsSection title={t("rulesTitle")} description={t("rulesIntro")} icon={<Settings2 size={19} />}>
-          <div className="divide-y divide-line border-y border-line">
+          <div className="space-y-0.5">
             <SettingsField label={t("ruleDomain")} htmlFor="rule-domain">
               <Select value={ruleDomain} onValueChange={(value) => chooseRule(value as OrganizationRuleDomain, ruleCampusId)}>
                 <SettingsSelectTrigger id="rule-domain"><SelectValue /></SettingsSelectTrigger>
@@ -408,8 +408,8 @@ export function OrganizationSettingsPanel({ initial }: { initial: OrganizationSe
 
       <TabsContent value="features" className="mt-0">
         <SettingsSection title={t("featuresTitle")} description={t("featuresIntro")} icon={<Flag size={19} />}>
-          <div className="border-y border-line py-4 text-sm text-muted">{t("failClosedNotice")}</div>
-          <div className="mt-4 divide-y divide-line border-y border-line">
+          <div className="border-l-2 border-crater/50 py-2 pl-3 text-sm text-muted">{t("failClosedNotice")}</div>
+          <div className="mt-3 space-y-0.5">
             <SettingsField label={t("feature")} htmlFor="feature-key">
               <Select value={flagKey} onValueChange={(value) => chooseFlag(value as OrganizationFeatureKey, flagCampusId)}>
                 <SettingsSelectTrigger id="feature-key"><SelectValue /></SettingsSelectTrigger>
