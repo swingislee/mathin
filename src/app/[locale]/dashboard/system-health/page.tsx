@@ -1,10 +1,12 @@
 import { getFormatter, getTranslations, setRequestLocale } from "next-intl/server";
+import { redirect } from "next/navigation";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getRosterMismatchCount } from "@/features/school/dashboard";
 import { DashboardCardShell, DashboardEmptyCard, DashboardPage } from "@/features/school/dashboard-page";
 import { StatusStrip, type StatusStripItem } from "@/features/school/dashboard-page";
 import { PlatformOperationsPanel } from "@/features/school/PlatformOperationsPanel";
-import { getMyPerms, requirePerm } from "@/lib/auth";
+import { SystemHealthNavigation } from "@/features/school/SystemHealthNavigation";
+import { getMyPerms, requireAnyPerm } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
 async function safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
@@ -28,18 +30,21 @@ interface OperationalErrorRow {
   release: string | null;
 }
 
+const SYSTEM_HEALTH_ACCESS = ["audit.view", "system.operations.manage"] as const;
+
 // doc22 §5.25：这一页展示的是系统错误、请求路径与方法、环境、release 和 roster
 // mismatch，属于系统健康而不是业务运营，因此从 /dashboard/operations 迁到这里。
 export default async function SystemHealthPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const user = await requirePerm(locale, "audit.view");
-  const [t, homeT, format, supabase, perms] = await Promise.all([
+  const user = await requireAnyPerm(locale, SYSTEM_HEALTH_ACCESS);
+  const perms = await getMyPerms(user.id);
+  if (!perms.has("audit.view")) redirect(`/${locale}/dashboard/system-health/capabilities`);
+  const [t, homeT, format, supabase] = await Promise.all([
     getTranslations("school.operations"),
     getTranslations("school.home"),
     getFormatter(),
     createClient(),
-    getMyPerms(user.id),
   ]);
   const canRosterMismatch = perms.has("class.view.all");
   const [{ data, error }, rosterMismatch] = await Promise.all([
@@ -64,6 +69,7 @@ export default async function SystemHealthPage({ params }: { params: Promise<{ l
   return (
     <DashboardPage
       title={t("title")}
+      commandPanel={<SystemHealthNavigation active="runtime" />}
       summary={statusItems.length > 0 ? <StatusStrip items={statusItems} /> : null}
     >
       <PlatformOperationsPanel canManage={perms.has("system.operations.manage")} />

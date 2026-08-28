@@ -477,9 +477,17 @@ export const DASHBOARD_ROUTES = {
     href: "/dashboard/system-health",
     kind: "tool",
     environments: STAFF_ONLY,
-    permission: "audit.view",
+    permissionAny: ["audit.view", "system.operations.manage"],
     createSurface: "none",
     nav: { labelKey: "operations", group: "system" },
+  },
+  capabilityRelease: {
+    href: "/dashboard/system-health/capabilities",
+    kind: "tool",
+    environments: STAFF_ONLY,
+    permissionAny: ["audit.view", "system.operations.manage"],
+    createSurface: "none",
+    parent: "systemHealth",
   },
   dataMaintenance: {
     // R1-7：audit.view 可读取扫描/修复账本；扫描和修复另需 system.operations.manage，永久清理另需 testdata.purge。
