@@ -50,6 +50,8 @@ export const PERMISSION_KEYS = [
   "permission.configure",
   "registration.invite.manage",
   "organization.settings.manage",
+  "organization.profile.manage",
+  "location.manage",
   "system.operations.manage",
   "account.support.manage",
   "work_item.manage",
