@@ -59,8 +59,8 @@ begin
 end;
 $$;
 
-revoke all on function public.grant_staff_role(uuid, uuid) from public;
-revoke all on function public.revoke_staff_role(uuid, uuid) from public;
+revoke all on function public.grant_staff_role(uuid, uuid) from public, anon, authenticated;
+revoke all on function public.revoke_staff_role(uuid, uuid) from public, anon, authenticated;
 grant execute on function public.grant_staff_role(uuid, uuid) to authenticated;
 grant execute on function public.revoke_staff_role(uuid, uuid) to authenticated;
 

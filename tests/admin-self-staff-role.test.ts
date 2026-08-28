@@ -12,6 +12,8 @@ describe("administrator self staff-role hotfix", () => {
     expect(migration).toContain("raise exception 'CANNOT_GRANT_SELF'");
     expect(migration).toContain("raise exception 'CANNOT_REVOKE_SELF'");
     expect(migration).toContain("not public.has_perm(uid, 'staff.manage')");
+    expect(migration.match(/revoke all on function public\.(?:grant|revoke)_staff_role\(uuid, uuid\) from public, anon, authenticated;/g)).toHaveLength(2);
+    expect(migration.match(/grant execute on function public\.(?:grant|revoke)_staff_role\(uuid, uuid\) to authenticated;/g)).toHaveLength(2);
   });
 
   it("shows self role management to an admin without exposing self-deactivation", () => {
