@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { ORGANIZATION_FEATURE_KEYS } from "../src/features/school/organization-settings-contract";
 
 const root = process.cwd();
 const read = (file: string) => fs.readFileSync(path.join(root, file), "utf8");
@@ -136,6 +137,13 @@ describe("R1-1 organization settings contracts", () => {
     expect(page).toContain('requirePerm(locale, "organization.settings.manage")');
     expect(zh.school.organization.title).toBeTruthy();
     expect(en.school.organization.title).toBeTruthy();
+    for (const key of ORGANIZATION_FEATURE_KEYS) {
+      const suffix = key.replaceAll(".", "_");
+      expect(zh.school.organization[`flag_${suffix}`]).toBeTruthy();
+      expect(zh.school.organization[`flagHelp_${suffix}`]).toBeTruthy();
+      expect(en.school.organization[`flag_${suffix}`]).toBeTruthy();
+      expect(en.school.organization[`flagHelp_${suffix}`]).toBeTruthy();
+    }
   });
 
   it("surfaces campus identity constraints before a generic create failure", () => {

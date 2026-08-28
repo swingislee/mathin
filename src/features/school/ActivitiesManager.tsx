@@ -178,7 +178,7 @@ function RegistrationList({ activity, pending, run }: { activity: ActivityRow; p
         else setResults([]);
       }}
       placeholder={t("searchStudent")}
-      className={inputClass}
+      className={`${inputClass} h-9 max-w-md rounded-md py-1.5 shadow-none`}
     />
     {results.length > 0 && <div className="mt-2 flex flex-wrap gap-2">
       {results.map((student) => <Button
@@ -202,7 +202,7 @@ function RegistrationList({ activity, pending, run }: { activity: ActivityRow; p
           onChange={(event) => setOutcomes((current) => ({ ...current, [registration.id]: event.target.value }))}
           placeholder={t("outcome")}
           maxLength={1_000}
-          className={`${inputClass} min-w-0 grow basis-40`}
+          className={`${inputClass} h-9 min-w-0 grow basis-40 rounded-md py-1.5 shadow-none`}
         />
         <Button size="sm" variant="secondary" disabled={pending} onClick={() => run(
           () => markActivityResultAction(registration.id, "attended", outcomes[registration.id] ?? registration.outcome),
@@ -250,16 +250,16 @@ function ActivityDialog({
         <Label className="grid gap-1 text-xs font-normal text-muted">
           {t("kind")}
           <Select value={form.kind} onValueChange={(value) => set("kind", value as ActivityInput["kind"])}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger className="h-9 rounded-md shadow-none"><SelectValue /></SelectTrigger>
             <SelectContent>{ACTIVITY_KINDS.map((kind) => <SelectItem key={kind} value={kind}>{t(`kind_${kind}`)}</SelectItem>)}</SelectContent>
           </Select>
         </Label>
-        <Label className="grid gap-1 text-xs font-normal text-muted">{t("titleLabel")}<Input value={form.title} onChange={(event) => set("title", event.target.value)} maxLength={100} className={inputClass} /></Label>
+        <Label className="grid gap-1 text-xs font-normal text-muted">{t("titleLabel")}<Input value={form.title} onChange={(event) => set("title", event.target.value)} maxLength={100} className={`${inputClass} h-9 rounded-md py-1.5 shadow-none`} /></Label>
         <p className="rounded-xl bg-paper px-3 py-2 text-xs text-muted sm:col-span-2">{t(`kindHint_${form.kind}`)}</p>
-        <Label className="grid gap-1 text-xs font-normal text-muted">{t("time")}<DateTimePicker mode="datetime" value={form.scheduledAt} onValueChange={(value) => set("scheduledAt", value)} className={inputClass} /></Label>
-        <Label className="grid gap-1 text-xs font-normal text-muted">{t("duration")}<Input type="number" min={1} max={32_767} value={form.durationMin ?? ""} onChange={(event) => set("durationMin", event.target.value ? Number(event.target.value) : null)} className={inputClass} /></Label>
-        <Label className="grid gap-1 text-xs font-normal text-muted">{t("location")}<Input value={form.location} onChange={(event) => set("location", event.target.value)} maxLength={100} className={inputClass} /></Label>
-        <Label className="grid gap-1 text-xs font-normal text-muted">{t("capacity")}<Input type="number" min={1} max={32_767} value={form.capacity ?? ""} onChange={(event) => set("capacity", event.target.value ? Number(event.target.value) : null)} className={inputClass} /></Label>
+        <Label className="grid gap-1 text-xs font-normal text-muted">{t("time")}<DateTimePicker mode="datetime" value={form.scheduledAt} onValueChange={(value) => set("scheduledAt", value)} className={`${inputClass} h-9 rounded-md py-1.5 shadow-none`} /></Label>
+        <Label className="grid gap-1 text-xs font-normal text-muted">{t("duration")}<Input type="number" min={1} max={32_767} value={form.durationMin ?? ""} onChange={(event) => set("durationMin", event.target.value ? Number(event.target.value) : null)} className={`${inputClass} h-9 rounded-md py-1.5 shadow-none`} /></Label>
+        <Label className="grid gap-1 text-xs font-normal text-muted">{t("location")}<Input value={form.location} onChange={(event) => set("location", event.target.value)} maxLength={100} className={`${inputClass} h-9 rounded-md py-1.5 shadow-none`} /></Label>
+        <Label className="grid gap-1 text-xs font-normal text-muted">{t("capacity")}<Input type="number" min={1} max={32_767} value={form.capacity ?? ""} onChange={(event) => set("capacity", event.target.value ? Number(event.target.value) : null)} className={`${inputClass} h-9 rounded-md py-1.5 shadow-none`} /></Label>
       </div>
       <Textarea value={form.remark} onChange={(event) => set("remark", event.target.value)} placeholder={t("remark")} maxLength={1_000} />
       <DialogFooter>
