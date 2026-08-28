@@ -20,7 +20,7 @@ import {
   updateCampusV2Action,
 } from "./actions/organization-locations";
 import { inputClass } from "./controls";
-import { DashboardCard, DashboardCardShell, DashboardEmptyCard } from "./dashboard-page";
+import { DashboardCard, DashboardEmptyCard, DashboardTableShell } from "./dashboard-page";
 import type { CampusRoomV2, CampusV2, LocationImpactV2 } from "./organization-locations";
 
 type Confirmation =
@@ -181,7 +181,7 @@ export function CampusDetailManager({ campus }: { campus: CampusV2 }) {
         {campus.rooms.length === 0 ? (
           <DashboardEmptyCard>{t("emptyRooms")}</DashboardEmptyCard>
         ) : (
-          <DashboardCardShell>
+          <DashboardTableShell>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -221,7 +221,7 @@ export function CampusDetailManager({ campus }: { campus: CampusV2 }) {
                 ))}
               </TableBody>
             </Table>
-          </DashboardCardShell>
+          </DashboardTableShell>
         )}
       </section>
 

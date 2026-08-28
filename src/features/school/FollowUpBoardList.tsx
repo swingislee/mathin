@@ -12,6 +12,7 @@ import { Link, useRouter } from "@/i18n/navigation";
 import { withReturnTo } from "./object-workspace/return-target";
 import { changeStudentStatusAction, recoverLostStudentAction } from "./actions/students";
 import { FollowUpForm } from "./FollowUpForm";
+import { DashboardTableShell } from "./dashboard-page";
 import type { BoardGroup, BoardRow } from "./followups";
 import type { StudentStatus } from "./students";
 
@@ -83,7 +84,7 @@ export function FollowUpBoardList({
         const open = expanded.has(group.status);
         const rows = open ? group.rows : group.rows.slice(0, FOLD_LIMIT);
         return (
-          <section key={group.status} className="overflow-hidden rounded-2xl border border-line bg-card">
+          <DashboardTableShell key={group.status}>
             <header className="flex items-center gap-2 border-b border-line px-4 py-3">
               <h2 className="text-sm font-medium text-ink">{studentsT(group.status)}</h2>
               <span className="rounded-full bg-crater/10 px-2 py-0.5 text-xs tabular-nums text-muted">{group.rows.length}</span>
@@ -104,7 +105,7 @@ export function FollowUpBoardList({
                       <TableHead className="px-4 py-2.5"></TableHead>
                     </TableRow>
                   </TableHeader>
-                  <TableBody className="divide-y divide-line">
+                  <TableBody>
                     {rows.map((row) => (
                       <TableRow key={row.id}>
                         <TableCell className="px-4 py-2.5 font-medium">
@@ -170,7 +171,7 @@ export function FollowUpBoardList({
                 </Button>
               </div>
             )}
-          </section>
+          </DashboardTableShell>
         );
       })}
 

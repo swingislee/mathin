@@ -12,11 +12,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 export function DashboardListSkeleton() {
   return (
     <div className="w-full min-w-0" aria-busy="true">
-      <div className="sticky top-0 z-30 mx-[calc(var(--dashboard-gutter,0px)*-1)] border-b border-line bg-paper/95 px-[var(--dashboard-gutter,0px)] backdrop-blur-md">
-        <div className="flex min-h-16 items-center py-2.5 lg:min-h-[76px]">
+      <div className="sticky top-0 z-30 mx-[calc(var(--dashboard-gutter,0px)*-1)] bg-paper/95 px-[var(--dashboard-gutter,0px)] backdrop-blur-md">
+        <div className="flex min-h-16 items-center border-b border-line/60 py-2.5 lg:min-h-[76px]">
           <Skeleton className="h-7 w-40" />
         </div>
-        <div className="flex min-h-14 items-center gap-3 border-t border-line/60 py-2">
+        <div className="flex min-h-14 items-center gap-3 py-2">
           <Skeleton className="h-9 w-32 rounded-lg" />
           <Skeleton className="h-9 w-48 rounded-full" />
           <Skeleton className="ml-auto h-9 w-28 rounded-md" />
@@ -24,7 +24,7 @@ export function DashboardListSkeleton() {
       </div>
 
       {/* 表格：表头 + 8 行 */}
-      <div className="mt-5 overflow-hidden rounded-xl border border-line">
+      <div className="mt-5 overflow-hidden rounded-2xl border border-line bg-card">
         <Skeleton className="h-11 w-full rounded-none" />
         <div className="divide-y divide-line">
           {Array.from({ length: 8 }, (_, index) => (

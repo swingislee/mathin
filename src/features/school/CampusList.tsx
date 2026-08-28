@@ -3,7 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Link } from "@/i18n/navigation";
-import { DashboardEmptyCard } from "./dashboard-page";
+import { DashboardEmptyCard, DashboardTableShell } from "./dashboard-page";
 import type { CampusV2 } from "./organization-locations";
 
 export async function CampusList({ campuses }: { campuses: CampusV2[] }) {
@@ -11,7 +11,7 @@ export async function CampusList({ campuses }: { campuses: CampusV2[] }) {
   if (campuses.length === 0) return <DashboardEmptyCard>{t("emptyCampuses")}</DashboardEmptyCard>;
 
   return (
-    <div className="border-y border-line">
+    <DashboardTableShell>
       <Table className="min-w-[44rem]">
         <TableHeader>
           <TableRow>
@@ -41,6 +41,6 @@ export async function CampusList({ campuses }: { campuses: CampusV2[] }) {
           })}
         </TableBody>
       </Table>
-    </div>
+    </DashboardTableShell>
   );
 }

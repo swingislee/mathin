@@ -7,9 +7,9 @@ import { loadCoursewareSharedAssets, parseAssetLibraryFilters } from "@/features
 import {
   DashboardCommandFilters,
   DashboardCommandPanel,
-  DashboardCardShell,
   DashboardEmptyCard,
   DashboardPage,
+  DashboardTableShell,
 } from "@/features/school/dashboard-page";
 import { Link } from "@/i18n/navigation";
 import { requirePerm } from "@/lib/auth";
@@ -62,7 +62,7 @@ export default async function CoursewareAssetLibraryPage({
       {items.length === 0 ? (
         <DashboardEmptyCard>{t("assetLibraryEmpty")}</DashboardEmptyCard>
       ) : (
-        <DashboardCardShell className="rounded-none border-x-0">
+        <DashboardTableShell>
           <Table className="w-full min-w-[48rem] border-collapse text-left text-sm">
             <TableHeader className="border-b border-line text-xs text-muted">
               <TableRow>
@@ -74,7 +74,7 @@ export default async function CoursewareAssetLibraryPage({
                 <TableHead className="px-4 py-3 font-medium" />
               </TableRow>
             </TableHeader>
-            <TableBody className="divide-y divide-line">
+            <TableBody>
               {items.map((asset) => (
                 <TableRow key={asset.id}>
                   <TableCell className="px-4 py-3">
@@ -103,7 +103,7 @@ export default async function CoursewareAssetLibraryPage({
               ))}
             </TableBody>
           </Table>
-        </DashboardCardShell>
+        </DashboardTableShell>
       )}
     </DashboardPage>
   );

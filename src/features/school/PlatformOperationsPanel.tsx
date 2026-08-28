@@ -1,7 +1,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { DashboardCardShell, DashboardEmptyCard, StatusStrip } from "./dashboard-page";
+import { DashboardCardShell, DashboardEmptyCard, DashboardTableShell, StatusStrip } from "./dashboard-page";
 import { JobReplayButton } from "./JobReplayButton";
 import { createClient } from "@/lib/supabase/server";
 
@@ -89,7 +89,7 @@ export async function PlatformOperationsPanel({ canManage }: { canManage: boolea
     <div className="grid gap-5">
       <StatusStrip items={status} />
       <div className="grid gap-5 @4xl/page:grid-cols-2">
-        <DashboardCardShell>
+        <DashboardTableShell>
           <div className="border-b border-line px-5 py-4">
             <h2 className="text-base font-medium text-ink">{t("jobRuntimeTitle")}</h2>
             <p className="mt-1 text-sm text-muted">{t("jobRuntimeIntro", { succeeded: snapshot.jobs.succeeded24h })}</p>
@@ -112,7 +112,7 @@ export async function PlatformOperationsPanel({ canManage }: { canManage: boolea
               ))}</TableBody>
             </Table>
           )}
-        </DashboardCardShell>
+        </DashboardTableShell>
 
         <DashboardCardShell>
           <div className="border-b border-line px-5 py-4">
@@ -128,7 +128,7 @@ export async function PlatformOperationsPanel({ canManage }: { canManage: boolea
         </DashboardCardShell>
       </div>
 
-      <DashboardCardShell>
+      <DashboardTableShell>
         <div className="border-b border-line px-5 py-4">
           <h2 className="text-base font-medium text-ink">{t("fileGovernanceTitle")}</h2>
           <p className="mt-1 text-sm text-muted">{t("fileGovernanceIntro", { uploads: snapshot.files.activeUploads, orphans: snapshot.files.orphansDue, rejected: snapshot.files.rejected })}</p>
@@ -148,7 +148,7 @@ export async function PlatformOperationsPanel({ canManage }: { canManage: boolea
             </TableRow>
           ))}</TableBody>
         </Table>
-      </DashboardCardShell>
+      </DashboardTableShell>
 
       {snapshot.workers.length === 0 ? (
         <DashboardEmptyCard>{t("noWorkers")}</DashboardEmptyCard>

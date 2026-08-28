@@ -27,7 +27,7 @@ import {
 import { ACTIVITY_KINDS } from "./activity-kinds";
 import type { ActivityRow } from "./activities";
 import { inputClass } from "./controls";
-import { DashboardCommandActions, DashboardCommandPanel, DashboardPage } from "./dashboard-page";
+import { DashboardCommandActions, DashboardCommandPanel, DashboardEmptyCard, DashboardPage } from "./dashboard-page";
 
 const empty: ActivityInput = {
   kind: "trial_class",
@@ -135,9 +135,9 @@ function Group({
   return <section>
     {title && <h2 className="text-base font-medium text-ink">{title}</h2>}
     {rows.length === 0
-      ? <p className="mt-3 border-y border-line py-8 text-center text-sm text-muted">{t("empty")}</p>
-      : <div className="mt-3 divide-y divide-line border-y border-line">
-        {rows.map((activity) => <article key={activity.id} className="py-5">
+      ? <DashboardEmptyCard className="mt-3">{t("empty")}</DashboardEmptyCard>
+      : <div className="mt-3 grid gap-6">
+        {rows.map((activity) => <article key={activity.id} className="py-2">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <Badge variant="outline">{t(`kind_${activity.kind}`)}</Badge>
@@ -193,8 +193,8 @@ function RegistrationList({ activity, pending, run }: { activity: ActivityRow; p
         )}
       >+ {student.name}</Button>)}
     </div>}
-    <ul className="mt-3 divide-y divide-line">
-      {activity.registrations.map((registration) => <li key={registration.id} className="flex flex-wrap items-center gap-2 py-2 text-sm">
+    <ul className="mt-3 grid gap-2">
+      {activity.registrations.map((registration) => <li key={registration.id} className="flex flex-wrap items-center gap-2 py-1 text-sm">
         <Link href={`/dashboard/students/${registration.studentId}`} className="font-medium hover:underline">{registration.studentName}</Link>
         <span className="text-xs text-muted">{t(`status_${registration.status}`)}</span>
         <Input

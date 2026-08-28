@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { DashboardTableShell } from "./dashboard-page";
 import type { ZeroReferenceAsset } from "./testdata";
 
 function formatBytes(byteCount: number): string {
@@ -18,7 +19,7 @@ export async function CoursewareZeroReferenceReport({ assets }: { assets: ZeroRe
       {assets.length === 0 ? (
         <p className="mt-4 text-sm text-muted">{t("zeroRefEmpty")}</p>
       ) : (
-        <div className="mt-4 overflow-hidden rounded-xl border border-line">
+        <DashboardTableShell className="mt-4">
           <Table className="w-full text-left text-sm">
             <TableHeader className="border-b border-line text-xs text-muted">
               <TableRow>
@@ -28,7 +29,7 @@ export async function CoursewareZeroReferenceReport({ assets }: { assets: ZeroRe
                 <TableHead className="px-4 py-3 font-medium">{t("zeroRefColPath")}</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody className="divide-y divide-line">
+            <TableBody>
               {assets.map((asset) => (
                 <TableRow key={asset.id}>
                   <TableCell className="px-4 py-3 font-medium">{asset.name || t("zeroRefUnnamed")}</TableCell>
@@ -39,7 +40,7 @@ export async function CoursewareZeroReferenceReport({ assets }: { assets: ZeroRe
               ))}
             </TableBody>
           </Table>
-        </div>
+        </DashboardTableShell>
       )}
     </section>
   );

@@ -10,6 +10,7 @@ import {
   DashboardCommandState,
   DashboardCommandTabs,
   DashboardEmptyCard,
+  DashboardTableShell,
 } from "@/features/school/dashboard-page";
 import { FilterBar, FilterBarSubmit, FilterSearchInput } from "@/features/school/FilterBar";
 import { withReturnTo } from "@/features/school/object-workspace/return-target";
@@ -97,7 +98,7 @@ export async function CoursewareTaskQueue({ locale, tab, query }: Props) {
         <DashboardEmptyCard>{t("taskQueueEmpty")}</DashboardEmptyCard>
       ) : (
         <>
-          <div className="hidden overflow-hidden rounded-2xl border border-line bg-card md:block">
+          <DashboardTableShell className="hidden md:block">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -115,7 +116,7 @@ export async function CoursewareTaskQueue({ locale, tab, query }: Props) {
                 ))}
               </TableBody>
             </Table>
-          </div>
+          </DashboardTableShell>
           <div className="grid gap-3 md:hidden">
             {tasks.map((item) => (
               <article key={`${item.lectureId}:${item.track}`} className="rounded-2xl border border-line bg-card p-4">

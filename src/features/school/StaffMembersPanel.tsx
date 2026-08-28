@@ -26,6 +26,7 @@ import { deactivateStaffAction, findProfileByEmailAction, getStaffHandoverPrevie
 import { type FoundProfile } from "./actions/types";
 import type { ActionResult } from "@/lib/action-result";
 import type { StaffMember, StaffRoleInfo } from "./staff";
+import { DashboardTableShell } from "./dashboard-page";
 
 /** 服务端错误码 → school.staff.err_* 文案；未知码回落 actionFailed。 */
 const KNOWN_ERR = new Set([
@@ -144,7 +145,7 @@ export function StaffMembersPanel({
 
   return (
     <div className="space-y-6">
-      <section className="overflow-hidden rounded-2xl border border-line bg-card">
+      <DashboardTableShell>
         <Table className="w-full border-collapse text-left text-sm">
           <TableHeader className="border-b border-line text-xs text-muted">
             <TableRow>
@@ -155,7 +156,7 @@ export function StaffMembersPanel({
               <TableHead className="px-4 py-3 font-medium"></TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody className="divide-y divide-line">
+          <TableBody>
             {members.map((member) => (
               <TableRow key={member.userId}>
                 <TableCell className="px-4 py-3 font-medium">
@@ -195,7 +196,7 @@ export function StaffMembersPanel({
             ))}
           </TableBody>
         </Table>
-      </section>
+      </DashboardTableShell>
 
       <section className="rounded-2xl border border-line bg-card p-5">
         <h2 className="text-base font-medium text-ink">{t("addStaff")}</h2>

@@ -26,6 +26,7 @@ describe("courseware shared asset pagination", () => {
     expect(page).toContain("assetPreviousPage");
     expect(page).toContain("assetNextPage");
     expect(page).toContain("<Table");
-    expect(page).toContain('className="rounded-none border-x-0"');
+    expect(page).toContain("DashboardTableShell");
+    expect(page).not.toContain('className="rounded-none border-x-0"');
   });
 });

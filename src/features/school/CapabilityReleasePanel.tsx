@@ -18,6 +18,7 @@ import {
   setCapabilityReleaseAction,
 } from "./actions/capability-release";
 import type { CapabilityReleaseV2 } from "./capability-release-contract";
+import { DashboardTableShell } from "./dashboard-page";
 import type { OrganizationFeatureKey } from "./organization-settings-contract";
 import { dateTimeInputToInstant, zonedDateTimeInputValue } from "./schedule";
 
@@ -87,7 +88,7 @@ export function CapabilityReleasePanel({
   return (
     <div className="grid gap-5">
       <section className="rounded-2xl border border-line bg-card p-5">
-        <div className="grid gap-4 md:grid-cols-[minmax(0,20rem)_minmax(0,1fr)] md:items-end">
+        <div className="grid gap-4 @3xl/page:grid-cols-[minmax(0,20rem)_minmax(0,1fr)] @3xl/page:items-end">
           <Label className="grid gap-1 text-xs font-normal text-muted">
             {t("capability")}
             <Select value={selected.flagKey} onValueChange={(value) => chooseCapability(value as OrganizationFeatureKey)}>
@@ -114,10 +115,10 @@ export function CapabilityReleasePanel({
 
       {canManage && !selected.financeReleaseLocked ? (
         <section className="rounded-2xl border border-line bg-card p-5">
-          <h2 className="font-medium text-ink">{t("editorTitle")}</h2>
+          <h2 className="text-base font-medium text-ink">{t("editorTitle")}</h2>
           <p className="mt-1 text-sm text-muted">{t("editorIntro")}</p>
-          <div className="mt-5 grid gap-4 md:grid-cols-2">
-            <div className="flex items-start gap-3 rounded-xl border border-line p-4 md:col-span-2">
+          <div className="mt-5 grid gap-4 @3xl/page:grid-cols-2">
+            <div className="flex items-start gap-3 rounded-xl border border-line p-4 @3xl/page:col-span-2">
               <Checkbox id="capability-enabled" checked={enabled} onCheckedChange={(value) => setEnabled(value === true)} />
               <div><Label htmlFor="capability-enabled" className="cursor-pointer">{enabled ? t("enableVersion") : t("disableVersion")}</Label><p className="mt-1 text-xs text-muted">{t("failClosedHint")}</p></div>
             </div>
@@ -141,8 +142,8 @@ export function CapabilityReleasePanel({
         </section>
       )}
 
-      <section className="overflow-hidden rounded-2xl border border-line bg-card">
-        <div className="border-b border-line px-5 py-4"><h2 className="font-medium text-ink">{t("historyTitle")}</h2><p className="mt-1 text-sm text-muted">{t("historyIntro")}</p></div>
+      <DashboardTableShell>
+        <div className="border-b border-line px-5 py-4"><h2 className="text-base font-medium text-ink">{t("historyTitle")}</h2><p className="mt-1 text-sm text-muted">{t("historyIntro")}</p></div>
         {selected.versions.length === 0 ? <p className="px-5 py-6 text-sm text-muted">{t("noHistory")}</p> : (
           <Table className="min-w-[48rem]">
             <TableHeader><TableRow><TableHead>{t("version")}</TableHead><TableHead>{t("state")}</TableHead><TableHead>{t("effectiveWindow")}</TableHead><TableHead>{t("reason")}</TableHead><TableHead>{t("actor")}</TableHead><TableHead className="text-right">{t("action")}</TableHead></TableRow></TableHeader>
@@ -162,7 +163,7 @@ export function CapabilityReleasePanel({
             ))}</TableBody>
           </Table>
         )}
-      </section>
+      </DashboardTableShell>
     </div>
   );
 }

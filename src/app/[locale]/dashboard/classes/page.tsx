@@ -120,7 +120,7 @@ async function ClassroomLibrary({ locale, searchParams }: { locale: string; sear
   return (
     <div className="space-y-4">
       {scope.fellBackToAll ? (
-        <p role="status" className="border-y border-line bg-moon/15 px-4 py-3 text-sm text-muted">{t("fallbackToAll")}</p>
+        <p role="status" className="rounded-xl bg-moon/15 px-4 py-3 text-sm text-muted">{t("fallbackToAll")}</p>
       ) : null}
       {list}
       <ClassroomPagination scope={scope.scope} filters={filters} totalPages={totalPages} />

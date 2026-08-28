@@ -28,9 +28,9 @@ export default async function AcademicYearsPage({ params }: { params: Promise<{ 
 function AcademicYearsSkeleton() {
   return (
     <div className="space-y-8 pt-5" aria-hidden>
-      <div className="h-28 animate-pulse border-y border-line bg-card/35" />
-      <div className="h-64 animate-pulse border-y border-line bg-card/35" />
-      <div className="h-40 animate-pulse border-y border-line bg-card/35" />
+      <div className="h-28 animate-pulse rounded-2xl bg-card/35" />
+      <div className="h-64 animate-pulse rounded-2xl bg-card/35" />
+      <div className="h-40 animate-pulse rounded-2xl bg-card/35" />
     </div>
   );
 }
@@ -52,7 +52,7 @@ async function AcademicYearsBody({ locale }: { locale: string }) {
 
   return (
     <DashboardPage title={t("title")} description={t("intro")} meta={<span>{timeZone}</span>} density="comfortable">
-      <section className="border-y border-line py-5">
+      <section>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="max-w-3xl">
             <h2 className="text-base font-medium text-ink">{t("yearsTitle")}</h2>
@@ -60,14 +60,14 @@ async function AcademicYearsBody({ locale }: { locale: string }) {
           </div>
           <TermManager years={years} today={today} />
         </div>
-        <dl className="mt-5 divide-y divide-line border-t border-line text-sm">
-          <div className="grid gap-1 py-3 sm:grid-cols-[13rem_minmax(0,1fr)] sm:items-center">
+        <dl className="mt-5 grid gap-4 text-sm">
+          <div className="grid gap-1 sm:grid-cols-[13rem_minmax(0,1fr)] sm:items-center">
             <dt className="text-muted">{t("activeYearLabel")}</dt>
             <dd className="font-medium text-ink">
               {activeYear ? scheduleT("schoolYearName", { start: activeYear.startYear, end: activeYear.startYear + 1 }) : t("none")}
             </dd>
           </div>
-          <div className="grid gap-1 py-3 sm:grid-cols-[13rem_minmax(0,1fr)] sm:items-center">
+          <div className="grid gap-1 sm:grid-cols-[13rem_minmax(0,1fr)] sm:items-center">
             <dt className="text-muted">{t("currentPeriodLabel")}</dt>
             <dd className="flex items-center gap-2 font-medium text-ink">
               {currentPeriod ? scheduleT(`period${currentPeriod.term}`) : t("none")}

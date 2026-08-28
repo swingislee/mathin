@@ -28,13 +28,13 @@ export function OrganizationProfileForm({ profile }: { profile: OrganizationProf
   });
 
   return (
-    <section className="max-w-5xl border-y border-line">
-      <header className="py-5">
+    <section data-organization-profile-form className="max-w-5xl">
+      <header className="pb-6">
         <h2 className="text-base font-medium text-ink">{t("cardTitle")}</h2>
         <p className="mt-1 max-w-3xl text-sm text-muted">{t("cardIntro")}</p>
       </header>
-      <div className="divide-y divide-line border-t border-line">
-        <div className="grid gap-3 py-4 sm:grid-cols-[minmax(11rem,15rem)_minmax(0,1fr)] sm:items-center">
+      <div className="grid gap-6">
+        <div className="grid gap-3 sm:grid-cols-[minmax(11rem,15rem)_minmax(0,1fr)] sm:items-center">
           <Label htmlFor="organization-name" className="text-sm font-normal text-muted">{t("name")}</Label>
           <Input
             id="organization-name"
@@ -44,7 +44,7 @@ export function OrganizationProfileForm({ profile }: { profile: OrganizationProf
             className={`${inputClass} max-w-xl`}
           />
         </div>
-        <div className="grid gap-3 py-4 sm:grid-cols-[minmax(11rem,15rem)_minmax(0,1fr)]">
+        <div className="grid gap-3 sm:grid-cols-[minmax(11rem,15rem)_minmax(0,1fr)]">
           <Label htmlFor="organization-timezone" className="pt-2 text-sm font-normal text-muted">{t("timezone")}</Label>
           <div className="max-w-xl">
             <Input
@@ -58,12 +58,12 @@ export function OrganizationProfileForm({ profile }: { profile: OrganizationProf
             <p className="mt-2 text-xs leading-5 text-muted">{t("timezoneHint")}</p>
           </div>
         </div>
-        <div className="grid gap-3 py-4 sm:grid-cols-[minmax(11rem,15rem)_minmax(0,1fr)]">
+        <div className="grid gap-3 sm:grid-cols-[minmax(11rem,15rem)_minmax(0,1fr)]">
           <p className="text-sm text-muted">中文 / English</p>
           <p className="text-sm text-ink">{t("languageFixed")}</p>
         </div>
       </div>
-      <div className="flex justify-end border-t border-line py-4">
+      <div className="flex justify-end pt-6">
         <Button
           type="button"
           size="sm"

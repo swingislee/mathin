@@ -2,7 +2,7 @@ import { getFormatter, getTranslations, setRequestLocale } from "next-intl/serve
 import { redirect } from "next/navigation";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getRosterMismatchCount } from "@/features/school/dashboard";
-import { DashboardCardShell, DashboardEmptyCard, DashboardPage } from "@/features/school/dashboard-page";
+import { DashboardEmptyCard, DashboardPage, DashboardTableShell } from "@/features/school/dashboard-page";
 import { StatusStrip, type StatusStripItem } from "@/features/school/dashboard-page";
 import { PlatformOperationsPanel } from "@/features/school/PlatformOperationsPanel";
 import { SystemHealthNavigation } from "@/features/school/SystemHealthNavigation";
@@ -78,7 +78,7 @@ export default async function SystemHealthPage({ params }: { params: Promise<{ l
         {rows.length === 0 ? (
         <DashboardEmptyCard>{t("empty")}</DashboardEmptyCard>
       ) : (
-        <DashboardCardShell>
+        <DashboardTableShell>
           <Table className="min-w-[52rem]">
             <TableHeader>
               <TableRow>
@@ -104,7 +104,7 @@ export default async function SystemHealthPage({ params }: { params: Promise<{ l
               ))}
             </TableBody>
           </Table>
-        </DashboardCardShell>
+        </DashboardTableShell>
         )}
       </section>
     </DashboardPage>

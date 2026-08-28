@@ -8,6 +8,40 @@ import {
 
 const FIXTURE_FLAG_REASON = "set R1_DEV_TEST_FIXTURES=1 and use the local organization-location runner";
 let activeFixture: OrganizationLocationFixture | null = null;
+type BrowserPage = Parameters<typeof loginWithFixedAccount>[0];
+
+async function expectDashboardDividerSemantics(page: BrowserPage) {
+  const header = page.locator("[data-dashboard-page-header]").first();
+  await expect(header).toBeVisible();
+  const headerBorders = await header.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return {
+      top: Number.parseFloat(style.borderTopWidth),
+      right: Number.parseFloat(style.borderRightWidth),
+      bottom: Number.parseFloat(style.borderBottomWidth),
+      left: Number.parseFloat(style.borderLeftWidth),
+    };
+  });
+  expect(headerBorders.bottom).toBeGreaterThan(0);
+  expect(headerBorders.top + headerBorders.right + headerBorders.left).toBe(0);
+
+  const commandPanels = page.locator("[data-dashboard-command-panel]");
+  for (let index = 0; index < await commandPanels.count(); index += 1) {
+    const borders = await commandPanels.nth(index).evaluate((element) => {
+      const style = getComputedStyle(element);
+      return [style.borderTopWidth, style.borderRightWidth, style.borderBottomWidth, style.borderLeftWidth]
+        .map(Number.parseFloat);
+    });
+    expect(borders.reduce((sum, width) => sum + width, 0)).toBe(0);
+  }
+}
+
+async function expectDashboardTablesUseSharedShell(page: BrowserPage) {
+  const tables = page.locator("main table");
+  for (let index = 0; index < await tables.count(); index += 1) {
+    expect(await tables.nth(index).evaluate((table) => Boolean(table.closest("[data-dashboard-table-shell]")))).toBe(true);
+  }
+}
 
 test.afterEach(async () => {
   if (!activeFixture) return;
@@ -269,7 +303,7 @@ test("administrator completes the organization, room, class, calendar, and archi
 });
 
 test("dashboard uses functional navigation, scalable class views, and ten-item asset pages", async ({ page }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(180_000);
   const admin = loadFixedAccountForMode("admin");
   const teacher = loadFixedAccountForMode("teacher");
   test.skip(!admin || !teacher, FIXED_ACCOUNT_SKIP_REASON);
@@ -290,9 +324,36 @@ test("dashboard uses functional navigation, scalable class views, and ten-item a
   );
   expect(new Set(iconMarkup).size).toBe(iconMarkup.length);
 
+  await page.goto("/zh/dashboard/organization");
+  await expect(page.getByRole("heading", { name: "机构资料", exact: true })).toBeVisible();
+  await expectDashboardDividerSemantics(page);
+  const profileForm = page.locator("[data-organization-profile-form]");
+  await expect(profileForm).toBeVisible();
+  const fieldDividerCount = await profileForm.locator("*").evaluateAll((elements) => elements.filter((element) => {
+    const style = getComputedStyle(element);
+    const top = Number.parseFloat(style.borderTopWidth);
+    const right = Number.parseFloat(style.borderRightWidth);
+    const bottom = Number.parseFloat(style.borderBottomWidth);
+    const left = Number.parseFloat(style.borderLeftWidth);
+    return right + left === 0 && top + bottom > 0;
+  }).length);
+  expect(fieldDividerCount).toBe(0);
+
+  await page.goto("/zh/dashboard/campuses");
+  await expect(page.getByRole("heading", { name: "校区与教室", exact: true })).toBeVisible();
+  await expectDashboardDividerSemantics(page);
+  await expectDashboardTablesUseSharedShell(page);
+
+  await page.goto("/zh/dashboard/students");
+  await expect(page.getByRole("heading", { name: "学生", exact: true })).toBeVisible();
+  await expectDashboardDividerSemantics(page);
+  await expectDashboardTablesUseSharedShell(page);
+
   await page.goto("/zh/dashboard/academic-years");
   await expect(page.getByRole("heading", { name: "学年与教学日历", exact: true })).toBeVisible();
   await expect(page.getByLabel("默认课次时长（分钟）", { exact: true })).toHaveValue("90");
+  await expectDashboardDividerSemantics(page);
+  await expectDashboardTablesUseSharedShell(page);
 
   await page.goto("/zh/dashboard/classes?scope=all");
   await expect(page.getByRole("link", { name: "全部班级", exact: true })).toHaveAttribute("aria-current", "page");
@@ -302,6 +363,19 @@ test("dashboard uses functional navigation, scalable class views, and ten-item a
   await expect(allClassroomsTable).toHaveClass(/border-line/);
   await expect(allClassroomsTable.locator("table")).toBeVisible();
   await expect(page.locator("main article")).toHaveCount(0);
+  await expectDashboardDividerSemantics(page);
+  await expectDashboardTablesUseSharedShell(page);
+  expect(await allClassroomsTable.locator("thead").evaluate((element) => Number.parseFloat(getComputedStyle(element).borderBottomWidth))).toBeGreaterThan(0);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/zh/dashboard/classes?scope=all");
+  const mobileTable = page.locator('[data-classroom-table="all"]');
+  await expect(mobileTable).toBeVisible();
+  const mobileBounds = await mobileTable.boundingBox();
+  expect(mobileBounds).not.toBeNull();
+  expect((mobileBounds?.x ?? 0) + (mobileBounds?.width ?? 0)).toBeLessThanOrEqual(391);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(391);
+  await page.setViewportSize({ width: 1280, height: 720 });
 
   await page.context().clearCookies();
   await loginWithFixedAccount(page, teacher, "/zh/dashboard/classes");
@@ -312,10 +386,14 @@ test("dashboard uses functional navigation, scalable class views, and ten-item a
   await page.context().clearCookies();
   await loginWithFixedAccount(page, admin, "/zh/dashboard/courseware-assets");
   await expect(page.getByRole("heading", { name: "课件资源库", exact: true })).toBeVisible();
+  await expectDashboardDividerSemantics(page);
+  await expectDashboardTablesUseSharedShell(page);
   const assetRows = page.locator("main tbody tr");
   expect(await assetRows.count()).toBeGreaterThan(0);
   expect(await assetRows.count()).toBeLessThanOrEqual(10);
 
   await page.goto("/en/dashboard/academic-years");
   await expect(page.getByRole("heading", { name: "Academic year & teaching calendar", exact: true })).toBeVisible();
+  await expectDashboardDividerSemantics(page);
+  await expectDashboardTablesUseSharedShell(page);
 });

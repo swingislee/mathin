@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { DashboardEmptyCard, DashboardTableShell } from "./dashboard-page";
 import { useRouter } from "@/i18n/navigation";
 import {
   archiveTeachingCalendarEntryAction,
@@ -280,7 +281,7 @@ export function TeachingCalendarManager({
   const openEdit = (entry: TeachingCalendarEntryV2) => { setEditing(entry); setDialogOpen(true); };
 
   return (
-    <section className="border-y border-line py-5">
+    <section className="border-t border-line/60 pt-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-base font-medium text-ink">{t("calendarTitle")}</h2>
@@ -289,9 +290,9 @@ export function TeachingCalendarManager({
         <Button type="button" size="sm" onClick={openCreate}><CalendarPlus className="size-4" />{t("createEntry")}</Button>
       </div>
       {rows.length === 0 ? (
-        <p className="mt-4 border-y border-dashed border-line py-8 text-center text-sm text-muted">{t("empty")}</p>
+        <DashboardEmptyCard className="mt-4">{t("empty")}</DashboardEmptyCard>
       ) : (
-        <div className="mt-4 overflow-x-auto border-y border-line">
+        <DashboardTableShell className="mt-4">
           <Table className="min-w-[52rem]">
             <TableHeader><TableRow>
               <TableHead>{t("date")}</TableHead><TableHead>{t("name")}</TableHead><TableHead>{t("scope")}</TableHead><TableHead>{t("kind")}</TableHead><TableHead>{t("rule")}</TableHead><TableHead className="text-right">{t("actions")}</TableHead>
@@ -310,7 +311,7 @@ export function TeachingCalendarManager({
               </TableRow>
             ))}</TableBody>
           </Table>
-        </div>
+        </DashboardTableShell>
       )}
       {dialogOpen ? (
         <CalendarEntryDialog

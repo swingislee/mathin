@@ -12,9 +12,9 @@ import {
   DashboardCommandPanel,
   DashboardCommandState,
   DashboardCommandTabs,
-  DashboardCardShell,
   DashboardEmptyCard,
   DashboardPage,
+  DashboardTableShell,
 } from "@/features/school/dashboard-page";
 import { FilterBar, FilterBarMore, FilterBarReset, FilterBarSubmit, FilterSearchInput, FilterSelectTrigger } from "@/features/school/FilterBar";
 import { NewStudentDialog } from "@/features/school/NewStudentDialog";
@@ -161,7 +161,7 @@ export default async function StudentsPage({
       {students.length === 0 ? (
         <DashboardEmptyCard>{t("empty")}</DashboardEmptyCard>
       ) : (
-        <DashboardCardShell>
+        <DashboardTableShell>
           {/* 表格铺满统一内容轴；列放不下时由 Table 自带的 overflow-x 横向滚动，
               而不是把每一格挤成竖排单字（§17.1）。 */}
           <Table className="w-full min-w-[44rem] border-collapse text-left text-sm">
@@ -176,7 +176,7 @@ export default async function StudentsPage({
                 <TableHead className="px-4 py-3 font-medium"></TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody className="divide-y divide-line">
+            <TableBody>
               {students.map((student) => (
                 <TableRow key={student.id}>
                   <TableCell className="px-4 py-3 font-medium">{student.name}</TableCell>
@@ -199,7 +199,7 @@ export default async function StudentsPage({
               ))}
             </TableBody>
           </Table>
-        </DashboardCardShell>
+        </DashboardTableShell>
       )}
     </DashboardPage>
   );

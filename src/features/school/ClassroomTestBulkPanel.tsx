@@ -1,6 +1,6 @@
 "use client";
 
-import { DashboardEmptyCard } from "@/features/school/dashboard-page";
+import { DashboardEmptyCard, DashboardTableShell } from "@/features/school/dashboard-page";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -64,7 +64,7 @@ export function ClassroomTestBulkPanel({ classrooms }: { classrooms: ClassroomLi
           </button>
         </div>
       </div>
-      <div className="mt-4 overflow-hidden rounded-2xl border border-line bg-card">
+      <DashboardTableShell className="mt-4">
         <Table className="w-full text-left text-sm">
           <TableHeader className="border-b border-line text-xs text-muted">
             <TableRow>
@@ -75,7 +75,7 @@ export function ClassroomTestBulkPanel({ classrooms }: { classrooms: ClassroomLi
               <TableHead className="px-4 py-3 font-medium"></TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody className="divide-y divide-line">
+          <TableBody>
             {classrooms.map((classroom) => (
               <TableRow key={classroom.id}>
                 <TableCell className="px-4 py-3"><Checkbox checked={selected.has(classroom.id)} onCheckedChange={() => toggleOne(classroom.id)} /></TableCell>
@@ -93,7 +93,7 @@ export function ClassroomTestBulkPanel({ classrooms }: { classrooms: ClassroomLi
             ))}
           </TableBody>
         </Table>
-      </div>
+      </DashboardTableShell>
     </div>
   );
 }

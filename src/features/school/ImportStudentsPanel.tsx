@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { applyStudentImportAction, previewStudentImportAction } from "./actions/students";
+import { DashboardTableShell } from "./dashboard-page";
 import {
   STUDENT_IMPORT_TEMPLATE_VERSION,
   type ImportStudentRow,
@@ -193,14 +194,14 @@ export function ImportStudentsPanel() {
       </section>
 
       {rows.length > 0 && (
-        <section className="overflow-hidden rounded-2xl border border-line bg-card">
+        <DashboardTableShell>
           <div className="border-b border-line px-4 py-3 text-sm font-medium">{t("preview")}</div>
           <div className="max-h-96 overflow-auto">
             <Table className="w-full min-w-[760px] border-collapse text-left text-xs">
               <TableHeader className="sticky top-0 bg-card text-muted">
                 <TableRow>{["line", "name", "phone", "gradeCol", "region", "source", "remark", "validation"].map((key) => <TableHead key={key} className="px-3 py-2 font-medium">{t(key)}</TableHead>)}</TableRow>
               </TableHeader>
-              <TableBody className="divide-y divide-line">
+              <TableBody>
                 {rows.map((row) => (
                   <TableRow key={row.line} className={row.errors.length ? "bg-rose/5" : undefined}>
                     <TableCell className="px-3 py-2 font-mono text-muted">{row.line}</TableCell>
@@ -216,7 +217,7 @@ export function ImportStudentsPanel() {
               </TableBody>
             </Table>
           </div>
-        </section>
+        </DashboardTableShell>
       )}
 
       {batch && (

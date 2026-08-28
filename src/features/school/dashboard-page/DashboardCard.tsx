@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -60,6 +60,22 @@ export function DashboardCardShell({ children, className }: { children: ReactNod
     <section data-dashboard-card="shell" className={cn("min-w-0 overflow-hidden rounded-2xl border border-line bg-card", className)}>
       {children}
     </section>
+  );
+}
+
+/**
+ * Dashboard 顶层数据表的统一外壳。
+ *
+ * 表格内部的表头与数据行继续由 shadcn Table 负责；这里只固定数据表作为一个完整
+ * 对象在页面上的边界，避免 `border-y`、直角表格和卡片表格三套语义并存。
+ */
+export function DashboardTableShell({ className, ...props }: ComponentProps<"div">) {
+  return (
+    <div
+      data-dashboard-table-shell
+      className={cn("min-w-0 overflow-hidden rounded-2xl border border-line bg-card", className)}
+      {...props}
+    />
   );
 }
 

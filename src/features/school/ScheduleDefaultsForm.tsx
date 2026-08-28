@@ -25,13 +25,13 @@ export function ScheduleDefaultsForm({ defaults }: { defaults: ScheduleDefaultsV
   });
 
   return (
-    <section id="schedule-defaults" className="scroll-mt-40 border-y border-line py-5">
+    <section id="schedule-defaults" className="scroll-mt-40 border-t border-line/60 pt-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="max-w-3xl"><h2 className="font-medium text-ink">{t("classDefaultsTitle")}</h2><p className="mt-1 text-sm text-muted">{t("classDefaultsIntro")}</p></div>
+        <div className="max-w-3xl"><h2 className="text-base font-medium text-ink">{t("classDefaultsTitle")}</h2><p className="mt-1 text-sm text-muted">{t("classDefaultsIntro")}</p></div>
         <Badge variant="outline">{t("newClassesOnly")}</Badge>
       </div>
-      <div className="mt-5 divide-y divide-line border-t border-line">
-        <div className="grid gap-3 py-4 sm:grid-cols-[minmax(12rem,16rem)_minmax(0,1fr)] sm:items-center">
+      <div className="mt-5 grid gap-6">
+        <div className="grid gap-3 sm:grid-cols-[minmax(12rem,16rem)_minmax(0,1fr)] sm:items-center">
           <Label htmlFor="default-session-duration" className="text-sm font-normal text-muted">{t("duration")}</Label>
           <Input
             id="default-session-duration"
@@ -44,7 +44,7 @@ export function ScheduleDefaultsForm({ defaults }: { defaults: ScheduleDefaultsV
             onChange={(event) => setDuration(event.target.value)}
           />
         </div>
-        <div className="grid gap-3 py-4 sm:grid-cols-[minmax(12rem,16rem)_minmax(0,1fr)]">
+        <div className="grid gap-3 sm:grid-cols-[minmax(12rem,16rem)_minmax(0,1fr)]">
           <p className="text-sm text-muted">{t("conflictPolicyTitle")}</p>
           <div>
             <p className="text-sm font-medium text-ink">{t("conflictPolicyWarn")}</p>

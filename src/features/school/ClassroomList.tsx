@@ -3,7 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { DashboardEmptyCard } from "@/features/school/dashboard-page";
+import { DashboardEmptyCard, DashboardTableShell } from "@/features/school/dashboard-page";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import type { ClassroomListItem } from "./teaching-operations/classroom-queries";
@@ -73,16 +73,16 @@ function PersonalClassroomCards({
             </div>
           </div>
 
-          <dl className="mt-4 grid grid-cols-3 divide-x divide-line border-y border-line py-3 text-xs">
-            <div className="px-3 first:pl-0">
+          <dl className="mt-4 grid grid-cols-3 gap-3 rounded-xl bg-paper/45 p-3 text-xs">
+            <div>
               <dt className="flex items-center gap-1 text-muted"><Users className="size-3.5" />{t("size")}</dt>
               <dd className="mt-1 font-medium text-ink">{classroom.enrolledCount}{classroom.capacity ? ` / ${classroom.capacity}` : ""}</dd>
             </div>
-            <div className="px-3">
+            <div>
               <dt className="text-muted">{t("sessionProgress")}</dt>
               <dd className="mt-1 font-medium text-ink">{classroom.sessionDoneCount}/{classroom.sessionTotalCount}</dd>
             </div>
-            <div className="px-3 pr-0">
+            <div>
               <dt className="text-muted">{t("nextSession")}</dt>
               <dd className="mt-1 truncate font-medium text-ink">{classroom.nextSessionAt ? formatSession(classroom.nextSessionAt) : t("notApplicable")}</dd>
             </div>
@@ -115,7 +115,7 @@ function AllClassroomsTable({
   formatSession: (value: string) => string;
 }) {
   return (
-    <div data-classroom-table="all" className="overflow-hidden rounded-2xl border border-line bg-card">
+    <DashboardTableShell data-classroom-table="all">
       <Table className="w-full min-w-[72rem] text-left text-sm">
         <TableHeader className="border-b border-line text-xs text-muted">
           <TableRow>
@@ -129,7 +129,7 @@ function AllClassroomsTable({
             <TableHead />
           </TableRow>
         </TableHeader>
-        <TableBody className="divide-y divide-line">
+        <TableBody>
           {classrooms.map((classroom) => (
             <TableRow key={classroom.id}>
               <TableCell>
@@ -158,7 +158,7 @@ function AllClassroomsTable({
           ))}
         </TableBody>
       </Table>
-    </div>
+    </DashboardTableShell>
   );
 }
 

@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useRouter } from "@/i18n/navigation";
 import { runDataQualityScanAction } from "./actions/data-quality";
 import type { DataQualityFinding, DataQualityRun, DataQualitySeverity } from "./data-quality";
-import { DashboardCard, DashboardEmptyCard } from "./dashboard-page";
+import { DashboardCard, DashboardEmptyCard, DashboardTableShell } from "./dashboard-page";
 
 const severities: DataQualitySeverity[] = ["critical", "error", "warning", "info"];
 
@@ -77,32 +77,34 @@ export function DataQualityPanel({ initialRun, canRun }: { initialRun: DataQuali
             <p role="status" className="rounded-xl border border-line bg-moon/10 px-4 py-6 text-center text-sm text-muted">{t("clean")}</p>
           ) : (
             <div>
-              <Table className="min-w-[62rem]">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t("severity")}</TableHead>
-                    <TableHead>{t("rule")}</TableHead>
-                    <TableHead>{t("object")}</TableHead>
-                    <TableHead>{t("evidence")}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {run.findings.map((finding) => (
-                    <TableRow key={finding.id}>
-                      <TableCell><Badge variant={badgeVariant(finding.severity)}>{t(`severity_${finding.severity}`)}</Badge></TableCell>
-                      <TableCell>
-                        <p className="font-medium text-ink">{t(`rule_${finding.ruleKey}`)}</p>
-                        <p className="mt-1 font-mono text-xs text-muted">v{finding.ruleVersion} · {finding.ruleKey}</p>
-                      </TableCell>
-                      <TableCell>
-                        <p>{finding.objectType}</p>
-                        <p className="mt-1 max-w-64 break-all font-mono text-xs text-muted">{finding.objectId ?? "—"}</p>
-                      </TableCell>
-                      <TableCell className="max-w-xl break-all font-mono text-xs text-muted">{compactEvidence(finding)}</TableCell>
+              <DashboardTableShell>
+                <Table className="min-w-[62rem]">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{t("severity")}</TableHead>
+                      <TableHead>{t("rule")}</TableHead>
+                      <TableHead>{t("object")}</TableHead>
+                      <TableHead>{t("evidence")}</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {run.findings.map((finding) => (
+                      <TableRow key={finding.id}>
+                        <TableCell><Badge variant={badgeVariant(finding.severity)}>{t(`severity_${finding.severity}`)}</Badge></TableCell>
+                        <TableCell>
+                          <p className="font-medium text-ink">{t(`rule_${finding.ruleKey}`)}</p>
+                          <p className="mt-1 font-mono text-xs text-muted">v{finding.ruleVersion} · {finding.ruleKey}</p>
+                        </TableCell>
+                        <TableCell>
+                          <p>{finding.objectType}</p>
+                          <p className="mt-1 max-w-64 break-all font-mono text-xs text-muted">{finding.objectId ?? "—"}</p>
+                        </TableCell>
+                        <TableCell className="max-w-xl break-all font-mono text-xs text-muted">{compactEvidence(finding)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </DashboardTableShell>
               {run.truncated ? <p className="mt-3 text-xs text-muted">{t("truncated")}</p> : null}
             </div>
           )}

@@ -38,6 +38,7 @@ describe("P4H-8 classroom list, detail tabs and session drawer contract", () => 
     const page = read("src", "app", "[locale]", "dashboard", "classes", "page.tsx");
     const list = read("src", "features", "school", "ClassroomList.tsx");
     const testPanel = read("src", "features", "school", "ClassroomTestBulkPanel.tsx");
+    const tableShell = read("src", "features", "school", "dashboard-page", "DashboardCard.tsx");
     const queries = read("src", "features", "school", "teaching-operations", "classroom-queries.ts");
     const sharedTableShell = "overflow-hidden rounded-2xl border border-line bg-card";
 
@@ -52,8 +53,9 @@ describe("P4H-8 classroom list, detail tabs and session drawer contract", () => 
     expect(list).toContain("<AllClassroomsTable");
     expect(list).toContain("<PersonalClassroomCards");
     expect(list).toContain('data-classroom-table="all"');
-    expect(list).toContain(sharedTableShell);
-    expect(testPanel).toContain(sharedTableShell);
+    expect(tableShell).toContain(sharedTableShell);
+    expect(list).toContain("DashboardTableShell");
+    expect(testPanel).toContain("DashboardTableShell");
     expect(list).not.toContain('<div className="border-y border-line">');
     expect(list).toContain("timeZone });");
   });
