@@ -6,6 +6,7 @@ import { listStaffOptions } from "@/features/school/classes";
 import { resolveLectureReviewCapabilities } from "@/features/school/teaching-operations/capabilities";
 import type { LectureReviewCapabilities } from "@/features/school/teaching-operations/types";
 import { getMyPerms, requirePerm } from "@/lib/auth";
+import { isTeacherMicrocourseReviewCycle } from "@/features/teacher-microcourses/data";
 import { getLectureWorkspaceDetail, isUuid } from "./lecture-workspace-detail";
 
 function first(value: string | string[] | undefined) {
@@ -53,7 +54,13 @@ export async function loadLectureWorkspacePageData(
 
   const requestedPageRaw = Number(first(rawSearchParams.page));
   const requestedPage = Number.isInteger(requestedPageRaw) && requestedPageRaw > 0 ? requestedPageRaw : undefined;
-  const preview = await loadLecturePreview(lectureId, track, requestedPage);
+  const activeReviewCycleId = detail.tracks.find((state) => state.track === track)?.activeReviewCycle?.id ?? null;
+  const [preview, microcourseReviewCycleId] = await Promise.all([
+    loadLecturePreview(lectureId, track, requestedPage),
+    canReview && activeReviewCycleId && await isTeacherMicrocourseReviewCycle(activeReviewCycleId)
+      ? activeReviewCycleId
+      : null,
+  ]);
   const validPreview = preview && preview.lecture.id === detail.lecture.id ? preview : null;
 
   return {
@@ -62,6 +69,7 @@ export async function loadLectureWorkspacePageData(
     staffOptions,
     capabilitiesByTrack,
     preview: validPreview,
+    microcourseReviewCycleId,
     canOpenCoursewareWorkbench: canEditPage,
     canAssign,
   };

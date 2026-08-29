@@ -117,6 +117,17 @@ describe("DEV-TMC-1 teacher microcourse product surfaces", () => {
     expect(lifecycleMigration).toContain("snapshot_row.h5_hashes");
   });
 
+  it("routes generic lecture review links into the immutable microcourse review workspace", () => {
+    const lectureLoader = read("src", "features", "school", "curriculum", "load-lecture-workspace-page.ts");
+    const lectureRoute = read("src", "app", "[locale]", "dashboard", "courseware", "lectures", "[lectureId]", "page.tsx");
+    const data = read("src", "features", "teacher-microcourses", "data.ts");
+
+    expect(lectureLoader).toContain("isTeacherMicrocourseReviewCycle(activeReviewCycleId)");
+    expect(lectureRoute).toContain("microcourseReviewCycleId");
+    expect(lectureRoute).toContain("/dashboard/courseware/review/microcourses/");
+    expect(data).toContain('from("teacher_microcourse_review_snapshots")');
+  });
+
   it("searches only eligible catalog entries and keeps a microcourse to one released lecture", () => {
     const actions = read("src", "features", "school", "actions", "classes.ts");
     const picker = read("src", "features", "school", "teaching-operations", "CoursePicker.tsx");

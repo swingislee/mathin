@@ -9,6 +9,11 @@ import {
   teacherMicrocoursePageDocSchema,
   type TeacherMicrocoursePageDoc,
 } from "./page-doc";
+import {
+  bindingObjectLookupRevisionIds,
+  resolveTeacherMicrocourseBindingDescriptors,
+  type TeacherMicrocourseAssetObjectDescriptor,
+} from "./binding-resolution";
 
 type RpcClient = Awaited<ReturnType<typeof createClient>>;
 type UntypedRpc = (name: string, args?: Record<string, unknown>) => Promise<{
@@ -174,13 +179,13 @@ async function h5EntryPath(objectHash: string): Promise<string> {
 async function resolveBindingUrls(bindings: readonly TeacherMicrocourseBinding[]): Promise<ResolvedBindingUrls> {
   if (bindings.length === 0) return {};
   const admin = createAdminClient();
-  const missingRevisionIds = [...new Set(bindings.filter((item) => !item.storagePath).map((item) => item.assetRevisionId))];
-  const objectByRevision = new Map<string, { sha256: string; storagePath: string; kind: string }>();
-  if (missingRevisionIds.length > 0) {
+  const lookupRevisionIds = bindingObjectLookupRevisionIds(bindings);
+  const objectByRevision = new Map<string, TeacherMicrocourseAssetObjectDescriptor>();
+  if (lookupRevisionIds.length > 0) {
     const { data, error } = await admin
       .from("cw_asset_revisions")
       .select("id,object:cw_asset_objects!cw_asset_revisions_object_id_fkey(sha256,storage_path,kind)")
-      .in("id", missingRevisionIds)
+      .in("id", lookupRevisionIds)
       .returns<Array<{ id: string; object: { sha256: string; storage_path: string; kind: string } | null }>>();
     if (error) throw new Error(error.message);
     for (const row of data ?? []) {
@@ -192,15 +197,7 @@ async function resolveBindingUrls(bindings: readonly TeacherMicrocourseBinding[]
     }
   }
 
-  const resolved = bindings.map((binding) => {
-    const object = objectByRevision.get(binding.assetRevisionId);
-    return {
-      bindingKey: binding.bindingKey,
-      storagePath: binding.storagePath ?? object?.storagePath ?? null,
-      objectHash: object?.sha256 ?? (/^[0-9a-f]{64}$/.test(binding.bindingKey) ? binding.bindingKey : null),
-      kind: binding.kind ?? object?.kind ?? null,
-    };
-  });
+  const resolved = resolveTeacherMicrocourseBindingDescriptors(bindings, objectByRevision);
   const paths = [...new Set(resolved.filter((item) => item.kind !== "h5" && item.storagePath).map((item) => item.storagePath!))];
   const signedByPath = new Map<string, string>();
   if (paths.length > 0) {
@@ -486,6 +483,19 @@ export async function getTeacherMicrocourseReview(reviewCycleId: string): Promis
     return { ...page, bindings, bindingUrls: await resolveBindingUrls(bindings) };
   }));
   return { ...review, pages };
+}
+
+export async function isTeacherMicrocourseReviewCycle(reviewCycleId: string): Promise<boolean> {
+  const parsed = uuid.safeParse(reviewCycleId);
+  if (!parsed.success) return false;
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("teacher_microcourse_review_snapshots")
+    .select("review_cycle_id")
+    .eq("review_cycle_id", parsed.data)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data !== null;
 }
 
 export async function loadTeacherMicrocourseH5Html(artifactId: string): Promise<string> {

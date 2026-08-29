@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { redirect } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
 import { DecisionRailContent } from "@/features/school/curriculum/DecisionRailContent";
 import { LectureWorkspaceBody } from "@/features/school/curriculum/LectureWorkspaceBody";
@@ -38,8 +39,12 @@ async function LectureWorkspaceContent({
     searchParams,
     requireDashboardEnvironment(locale, ["staff"]),
   ]);
-  const { detail, track, staffOptions, capabilitiesByTrack, preview, canOpenCoursewareWorkbench, canAssign } =
+  const { detail, track, staffOptions, capabilitiesByTrack, preview, microcourseReviewCycleId, canOpenCoursewareWorkbench, canAssign } =
     await loadLectureWorkspacePageData(locale, lectureId, rawSearchParams);
+
+  if (microcourseReviewCycleId) {
+    redirect(`/${locale}/dashboard/courseware/review/microcourses/${microcourseReviewCycleId}`);
+  }
 
   const baseHref = `/dashboard/courseware/lectures/${detail.lecture.id}`;
   const trackState = detail.tracks.find((row) => row.track === track) ?? detail.tracks[0];
