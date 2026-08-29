@@ -731,6 +731,7 @@
     "emptyPages": "No pages yet. Create a composition page or insert a published lecture; add text, images, games, and H5 components inside the page.",
     "addBlank": "New composition page",
     "pageCreateHint": "Pages hold content. Add text, images, games, and H5 components from the editor on the right.",
+    "renamePage": "Rename current page",
     "addSudoku": "Sudoku",
     "addGame": "Game",
     "createGameTitle": "Create game page",

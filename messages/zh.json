@@ -731,6 +731,7 @@
     "emptyPages": "还没有页面。先新建组合页，或从正式课程整讲插入；文字、图片、游戏和 H5 组件都在页面内添加。",
     "addBlank": "新建组合页",
     "pageCreateHint": "页面只负责承载内容；文字、图片、游戏和 H5 组件在右侧插入。",
+    "renamePage": "重命名当前页面",
     "addSudoku": "数独",
     "addGame": "游戏",
     "createGameTitle": "新建游戏页",

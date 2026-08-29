@@ -21,7 +21,6 @@ import {
   useState,
   useTransition,
 } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
@@ -93,6 +92,7 @@ function h5PreviewDocument(html: string) {
 
 export interface CoursewareCompositionWorkbenchHandle {
   flush: () => Promise<boolean>;
+  rename?: (title: string) => void;
 }
 
 interface PersistedCompositionPage {
@@ -185,7 +185,6 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
   onStatus: (message: string) => void;
 }>(function CoursewareCompositionWorkbench({ microcourseId, page, onPersisted, onStatus }, ref) {
   const t = useTranslations("teacherMicrocourses");
-  const [title, setTitle] = useState(page.title);
   const [doc, setDoc] = useState(() => structuredClone(page.doc));
   const [bindingUrls, setBindingUrls] = useState({ ...page.bindingUrls });
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(page.doc.layout.blocks[0]?.id ?? null);
@@ -260,9 +259,6 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
     return request;
   }, [onPersisted, onStatus, page.pageDocId, t]);
 
-  useEffect(() => { flushRef.current = flush; }, [flush]);
-  useImperativeHandle(ref, () => ({ flush }), [flush]);
-
   const markDirty = useCallback(() => {
     sequenceRef.current += 1;
     setSaveState("dirty");
@@ -270,18 +266,20 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
     timerRef.current = window.setTimeout(() => void flushRef.current(), 800);
   }, []);
 
+  const rename = useCallback((value: string) => {
+    titleRef.current = value;
+    markDirty();
+  }, [markDirty]);
+
+  useEffect(() => { flushRef.current = flush; }, [flush]);
+  useImperativeHandle(ref, () => ({ flush, rename }), [flush, rename]);
+
   const updateDoc = useCallback((next: CoursewareCompositionPage | ((current: CoursewareCompositionPage) => CoursewareCompositionPage)) => {
     const value = typeof next === "function" ? next(docRef.current) : next;
     docRef.current = value;
     setDoc(value);
     markDirty();
   }, [markDirty]);
-
-  const changeTitle = (value: string) => {
-    titleRef.current = value;
-    setTitle(value);
-    markDirty();
-  };
 
   useEffect(() => {
     const visibility = () => { if (document.visibilityState === "hidden") void flushRef.current(); };
@@ -376,15 +374,34 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
   return (
     <Card className={cn("flex min-h-0 min-w-0 flex-col overflow-hidden", styles.workbench)}>
       <CardHeader className="shrink-0 border-b border-line py-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <Badge variant="secondary">{t("mode_composition")}</Badge>
-          <Input value={title} onChange={(event) => changeTitle(event.target.value)} maxLength={200} className="min-w-[14rem] flex-1" />
-          <span role="status" aria-live="polite" className={cn("inline-flex items-center gap-1 text-xs", saveState === "error" ? "text-rose" : "text-muted")}>
+        <div className="flex min-w-0 items-center justify-between gap-3">
+          <div role="toolbar" aria-label={t("componentPanelTitle")} className="flex min-w-0 flex-wrap items-center gap-1">
+            <Button type="button" size="sm" variant="ghost" className="size-9 p-0" aria-label={t("componentText")} title={t("componentText")} onClick={() => addNode("text")}><Type className="size-4" /></Button>
+            <Button type="button" size="sm" variant="ghost" className="size-9 p-0" aria-label={t("componentFormula")} title={t("componentFormula")} onClick={() => addNode("formula")}><Sigma className="size-4" /></Button>
+            <Button type="button" size="sm" variant="ghost" className="size-9 p-0" aria-label={t("componentShape")} title={t("componentShape")} onClick={() => addNode("shape")}><Shapes className="size-4" /></Button>
+            <Label aria-label={t("componentImage")} title={t("componentImage")} className="inline-grid size-9 cursor-pointer place-items-center rounded-full text-muted transition-colors hover:bg-moon/30 hover:text-ink">
+              <Input type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="sr-only" disabled={pending} onChange={(event) => uploadImage(event.target.files?.[0] ?? null)} />
+              <ImagePlus className="size-4" />
+            </Label>
+            <GameComponentDialog microcourseId={microcourseId} disabled={interactivePresent} iconOnly onCreated={(game) => {
+              const next = addCoursewareCompositionGame(docRef.current, game);
+              updateDoc(next);
+              setSelectedBlockId("interactive-game");
+            }} />
+            <H5ComponentDialog microcourseId={microcourseId} disabled={interactivePresent} iconOnly onSaved={(h5) => {
+              const next = addCoursewareCompositionH5(docRef.current, h5);
+              updateDoc(next);
+              setSelectedBlockId("interactive-h5");
+            }} />
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <span role="status" aria-live="polite" className={cn("inline-flex items-center gap-1 text-xs", saveState === "error" ? "text-rose" : "text-muted")}>
             {saveState === "saving" && <LoaderCircle className="size-3.5 animate-spin" />}{saveLabel}
-          </span>
-          <Button type="button" size="sm" variant="secondary" disabled={pending || saveState === "saving"} onClick={() => void flush()}>
-            <Save className="size-4" />{t("saveNow")}
-          </Button>
+            </span>
+            <Button type="button" size="sm" variant="secondary" className="size-9 p-0" aria-label={t("saveNow")} title={t("saveNow")} disabled={pending || saveState === "saving"} onClick={() => void flush()}>
+              <Save className="size-4" />
+            </Button>
+          </div>
         </div>
         {message && <p role="alert" className="mt-2 text-xs text-rose">{message}</p>}
       </CardHeader>
@@ -402,31 +419,6 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
         </div>
         <ScrollArea className="min-h-0 rounded-xl border border-line bg-paper/70">
           <div className="space-y-4 p-3">
-            <div className="rounded-lg border border-crater/60 bg-moon/25 p-3">
-              <h3 className="text-sm font-semibold">{t("componentPanelTitle")}</h3>
-              <p className="mt-1 text-xs text-muted">{t("componentPanelHint")}</p>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <Button type="button" size="sm" variant="secondary" onClick={() => addNode("text")}><Type className="size-3.5" />{t("componentText")}</Button>
-                <Button type="button" size="sm" variant="secondary" onClick={() => addNode("formula")}><Sigma className="size-3.5" />{t("componentFormula")}</Button>
-                <Button type="button" size="sm" variant="secondary" onClick={() => addNode("shape")}><Shapes className="size-3.5" />{t("componentShape")}</Button>
-                <Label className="inline-flex cursor-pointer">
-                  <Input type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="sr-only" disabled={pending} onChange={(event) => uploadImage(event.target.files?.[0] ?? null)} />
-                  <span className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-full border border-line bg-card px-3 text-xs hover:bg-moon/30"><ImagePlus className="size-3.5" />{t("componentImage")}</span>
-                </Label>
-                <GameComponentDialog microcourseId={microcourseId} disabled={interactivePresent} onCreated={(game) => {
-                  const next = addCoursewareCompositionGame(docRef.current, game);
-                  updateDoc(next);
-                  setSelectedBlockId("interactive-game");
-                }} />
-                <H5ComponentDialog microcourseId={microcourseId} disabled={interactivePresent} onSaved={(h5) => {
-                  const next = addCoursewareCompositionH5(docRef.current, h5);
-                  updateDoc(next);
-                  setSelectedBlockId("interactive-h5");
-                }} />
-              </div>
-              {interactivePresent && <p className="mt-2 text-xs text-muted">{t("componentInteractiveOccupied")}</p>}
-            </div>
-
             <div>
               <p className="text-xs font-medium text-muted">{t("gridComponentList")}</p>
               <div className="mt-2 grid grid-cols-2 gap-1">
@@ -489,9 +481,10 @@ function NodeControls({ doc, block, patch }: {
   );
 }
 
-function GameComponentDialog({ microcourseId, disabled = false, onCreated }: {
+function GameComponentDialog({ microcourseId, disabled = false, iconOnly = false, onCreated }: {
   microcourseId: string;
   disabled?: boolean;
+  iconOnly?: boolean;
   onCreated: (game: GamePageDoc) => void;
 }) {
   const t = useTranslations("teacherMicrocourses");
@@ -514,7 +507,7 @@ function GameComponentDialog({ microcourseId, disabled = false, onCreated }: {
   });
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild><Button type="button" size="sm" variant="secondary" disabled={disabled || contracts.length === 0}><Gamepad2 className="size-3.5" />{t("insertGame")}</Button></DialogTrigger>
+      <DialogTrigger asChild><Button type="button" size="sm" variant={iconOnly ? "ghost" : "secondary"} className={iconOnly ? "size-9 p-0" : undefined} aria-label={t("componentGame")} title={t("componentGame")} disabled={disabled || contracts.length === 0}><Gamepad2 className="size-4" />{iconOnly ? null : t("componentGame")}</Button></DialogTrigger>
       <DialogContent className="max-w-xl">
         <DialogHeader><DialogTitle>{t("insertGameComponentTitle")}</DialogTitle><DialogDescription>{t("gameAuthoringHint")}</DialogDescription></DialogHeader>
         <div className="grid gap-2 sm:grid-cols-2">
@@ -532,9 +525,10 @@ function GameComponentDialog({ microcourseId, disabled = false, onCreated }: {
   );
 }
 
-function H5ComponentDialog({ microcourseId, disabled = false, existing, onSaved }: {
+function H5ComponentDialog({ microcourseId, disabled = false, iconOnly = false, existing, onSaved }: {
   microcourseId: string;
   disabled?: boolean;
+  iconOnly?: boolean;
   existing?: CoursewareCompositionH5;
   onSaved: (h5: CoursewareCompositionH5) => void;
 }) {
@@ -573,7 +567,7 @@ function H5ComponentDialog({ microcourseId, disabled = false, existing, onSaved 
   const bytes = microcourseH5Bytes(normalizeMicrocourseH5(html)).byteLength;
   return (
     <Dialog open={open} onOpenChange={changeOpen}>
-      <DialogTrigger asChild><Button type="button" size="sm" variant="secondary" className={existing ? "w-full" : undefined} disabled={disabled}><FileCode2 className="size-3.5" />{existing ? t("editH5Component") : t("componentH5")}</Button></DialogTrigger>
+      <DialogTrigger asChild><Button type="button" size="sm" variant={iconOnly ? "ghost" : "secondary"} className={cn(existing && "w-full", iconOnly && "size-9 p-0")} aria-label={existing ? t("editH5Component") : t("componentH5")} title={existing ? t("editH5Component") : t("componentH5")} disabled={disabled}><FileCode2 className="size-4" />{iconOnly ? null : existing ? t("editH5Component") : t("componentH5")}</Button></DialogTrigger>
       <DialogContent className="max-w-5xl">
         <DialogHeader><DialogTitle>{existing ? t("editH5Component") : t("insertH5ComponentTitle")}</DialogTitle><DialogDescription>{t("h5SecurityHint")}</DialogDescription></DialogHeader>
         <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_22rem]">

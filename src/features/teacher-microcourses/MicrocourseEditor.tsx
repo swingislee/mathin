@@ -141,6 +141,7 @@ interface PersistedPageDraft {
 
 interface MicrocoursePageWorkbenchHandle {
   flush: () => Promise<boolean>;
+  rename?: (title: string) => void;
 }
 
 type LegacyTeacherMicrocoursePageDoc = MicrocoursePageDoc | GamePageDoc;
@@ -173,6 +174,7 @@ export function MicrocourseEditor({
   const [message, setMessage] = useState("");
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [pageDrafts, setPageDrafts] = useState<Record<string, PersistedPageDraft>>({});
+  const [pageTitleDrafts, setPageTitleDrafts] = useState<Record<string, string>>({});
   const [selectedPageId, setSelectedPageId] = useState<string | null>(editor.pages[0]?.pageDocId ?? null);
   const [deletePageId, setDeletePageId] = useState<string | null>(null);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
@@ -183,8 +185,11 @@ export function MicrocourseEditor({
 
   const pages = useMemo(() => editor.pages.map((page) => {
     const draft = pageDrafts[page.pageDocId];
-    return draft ? { ...page, title: draft.title, doc: draft.doc, revisionNo: draft.revisionNo, h5Html: draft.h5Html } : page;
-  }), [editor.pages, pageDrafts]);
+    const resolved = draft ? { ...page, title: draft.title, doc: draft.doc, revisionNo: draft.revisionNo, h5Html: draft.h5Html } : page;
+    return pageTitleDrafts[page.pageDocId] === undefined
+      ? resolved
+      : { ...resolved, title: pageTitleDrafts[page.pageDocId] };
+  }), [editor.pages, pageDrafts, pageTitleDrafts]);
   const currentPage = pages.find((page) => page.pageDocId === selectedPageId) ?? pages[0] ?? null;
   const stage = editor.workflow?.stage ?? "idle";
   const inReview = stage === "in_review" || stage === "ready_to_publish";
@@ -210,7 +215,18 @@ export function MicrocourseEditor({
   };
   const handlePagePersisted = useCallback((draft: PersistedPageDraft) => {
     setPageDrafts((current) => ({ ...current, [draft.pageDocId]: draft }));
+    setPageTitleDrafts((current) => {
+      if (current[draft.pageDocId] === undefined) return current;
+      const next = { ...current };
+      delete next[draft.pageDocId];
+      return next;
+    });
   }, []);
+  const renameCurrentPage = (value: string) => {
+    if (!currentPage) return;
+    setPageTitleDrafts((current) => ({ ...current, [currentPage.pageDocId]: value }));
+    workbenchRef.current?.rename?.(value);
+  };
   const saveMetadata = () => startTransition(async () => {
     const result = await saveTeacherMicrocourseMetadataAction({
       microcourseId: editor.id,
@@ -346,9 +362,19 @@ export function MicrocourseEditor({
             <ScrollArea className="min-h-0 flex-1">
               <ol className="space-y-2 pr-2">
                 {pages.map((page) => <li key={page.pageDocId}>
-                  <Button type="button" variant="ghost" disabled={pending || pageSwitching} onClick={() => void selectPage(page.pageDocId)} className={`h-auto w-full justify-start rounded-xl border px-3 py-2 text-left ${page.pageDocId === currentPage?.pageDocId ? "border-crater bg-moon/30 text-ink" : "border-line"}`}>
-                    <span className="w-5 shrink-0 text-xs text-muted">{page.pageNo}</span><span className="min-w-0"><span className="block truncate text-sm">{page.title}</span><span className="block text-xs font-normal text-muted">{pageModeLabel(page, t)}</span></span>
-                  </Button>
+                  {page.pageDocId === currentPage?.pageDocId ? (
+                    <div className="rounded-xl border border-crater bg-moon/30 px-3 py-2 text-ink">
+                      <div className="flex items-center gap-2">
+                        <span className="w-5 shrink-0 text-xs text-muted">{page.pageNo}</span>
+                        <Input aria-label={t("renamePage")} value={page.title} maxLength={200} className="h-7 min-w-0 flex-1 border-0 bg-transparent px-1 text-sm shadow-none focus-visible:ring-1" onChange={(event) => renameCurrentPage(event.target.value)} />
+                      </div>
+                      <span className="ml-7 block text-xs font-normal text-muted">{pageModeLabel(page, t)}</span>
+                    </div>
+                  ) : (
+                    <Button type="button" variant="ghost" disabled={pending || pageSwitching} onClick={() => void selectPage(page.pageDocId)} className="h-auto w-full justify-start rounded-xl border border-line px-3 py-2 text-left">
+                      <span className="w-5 shrink-0 text-xs text-muted">{page.pageNo}</span><span className="min-w-0"><span className="block truncate text-sm">{page.title}</span><span className="block text-xs font-normal text-muted">{pageModeLabel(page, t)}</span></span>
+                    </Button>
+                  )}
                 </li>)}
               </ol>
             </ScrollArea>
