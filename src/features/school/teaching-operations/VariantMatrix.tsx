@@ -79,6 +79,9 @@ export function VariantMatrix({ familyId, variants, catalogVersions, canManage }
     ? variants.filter((variant) => variant.catalogVersionId === activeVersion.id)
     : variants;
   const grades = Array.from(new Set(scopedVariants.map((variant) => variant.grade))).sort((a, b) => a - b);
+  const unspecifiedSeasonVariants = scopedVariants
+    .filter((variant) => variant.courseSeason === null)
+    .sort((left, right) => left.grade - right.grade || compareCourseDifficulty(left.classType, right.classType));
   const createVersionId = activeVersion?.id ?? null;
 
   const versionTabs = showVersionTabs && <div className="mb-3 flex flex-wrap gap-1.5" role="tablist" aria-label={t("catalogVersion")}>
@@ -134,6 +137,15 @@ export function VariantMatrix({ familyId, variants, catalogVersions, canManage }
         })}
       </Fragment>)}
     </div>
+    {unspecifiedSeasonVariants.length > 0 && <div className="mt-3 rounded-xl bg-paper/60 p-3">
+      <p className="mb-2 text-xs font-medium text-muted">{t("courseSeasonUnspecified")}</p>
+      <div className="flex flex-wrap gap-2">
+        {unspecifiedSeasonVariants.map((variant) => <div key={variant.id} className="flex items-center gap-2">
+          <span className="text-xs text-muted">{t("grade", { grade: variant.grade })}</span>
+          <VariantBadge familyId={familyId} variant={variant} />
+        </div>)}
+      </div>
+    </div>}
     {canManage && <AddGradeRow familyId={familyId} catalogVersionId={createVersionId} existingGrades={grades} />}
   </section>;
 }

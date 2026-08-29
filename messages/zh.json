@@ -2240,6 +2240,7 @@
       "allGrades": "全部年级",
       "allTerms": "全部学期",
       "courseSeason": "课程季节",
+      "courseSeasonUnspecified": "暂未设置学期",
       "allCourseSeasons": "全部课程季节",
       "allTypes": "全部班型",
       "allStatuses": "全部状态",

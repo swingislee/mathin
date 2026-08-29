@@ -64,7 +64,7 @@ export interface CourseVariantSummary {
   catalogVersionTitle: string;
   supersededByCourseId: string | null;
   grade: number;
-  courseSeason: CourseSeason;
+  courseSeason: CourseSeason | null;
   classType: string;
   lectureCount: number;
   releasedLectureCount: number;

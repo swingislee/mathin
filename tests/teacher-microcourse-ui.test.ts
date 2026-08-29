@@ -155,6 +155,18 @@ describe("DEV-TMC-1 teacher microcourse product surfaces", () => {
     expect(lifecycleMigration).toContain("counts.released_lecture_count = 1");
   });
 
+  it("keeps optional microcourse seasons readable in the shared course-family library", () => {
+    const detail = read("src", "features", "school", "teaching-operations", "course-family-detail.ts");
+    const queries = read("src", "features", "school", "teaching-operations", "course-queries.ts");
+    const matrix = read("src", "features", "school", "teaching-operations", "VariantMatrix.tsx");
+
+    expect(detail.match(/courseSeason: courseSeasonSchema\.nullable\(\)/g)).toHaveLength(2);
+    expect(detail.match(/courseSeason: CourseSeason \| null/g)).toHaveLength(2);
+    expect(queries).toContain("rawCourseSeason === null ? null");
+    expect(matrix).toContain('variant.courseSeason === null');
+    expect(matrix).toContain('t("courseSeasonUnspecified")');
+  });
+
   it("maintains matching Chinese and English teacher-microcourse UI keys", () => {
     const zh = JSON.parse(read("messages", "zh.json")) as { teacherMicrocourses: Record<string, unknown> };
     const en = JSON.parse(read("messages", "en.json")) as { teacherMicrocourses: Record<string, unknown> };

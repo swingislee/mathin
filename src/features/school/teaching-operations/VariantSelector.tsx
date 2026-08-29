@@ -83,6 +83,7 @@ export async function VariantSelector({
     </SelectorGroup>
     <SelectorGroup label={t("courseSeason")}>
       {COURSE_SEASONS.map((season) => <OptionLink key={season.value} active={current.courseSeason === season.value} label={t(season.labelKey)} target={pickVariant(scoped, currentVariant, (variant) => variant.courseSeason === season.value as CourseSeason)} familyId={familyId} />)}
+      {scoped.some((variant) => variant.courseSeason === null) && <OptionLink key="unspecified" active={current.courseSeason === null} label={t("courseSeasonUnspecified")} target={pickVariant(scoped, currentVariant, (variant) => variant.courseSeason === null)} familyId={familyId} />}
     </SelectorGroup>
   </div>;
 }

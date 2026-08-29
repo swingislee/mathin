@@ -12,11 +12,11 @@ export function compareCourseDifficulty(left: string, right: string): number {
 }
 
 export function compareCourseVariant(
-  left: { grade: number; courseSeason: number; classType: string; productCode?: string | null },
-  right: { grade: number; courseSeason: number; classType: string; productCode?: string | null },
+  left: { grade: number; courseSeason: number | null; classType: string; productCode?: string | null },
+  right: { grade: number; courseSeason: number | null; classType: string; productCode?: string | null },
 ): number {
   return left.grade - right.grade
-    || left.courseSeason - right.courseSeason
+    || (left.courseSeason ?? Number.MAX_SAFE_INTEGER) - (right.courseSeason ?? Number.MAX_SAFE_INTEGER)
     || compareCourseDifficulty(left.classType, right.classType)
     || (left.productCode ?? "").localeCompare(right.productCode ?? "", "en");
 }

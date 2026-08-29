@@ -9,7 +9,8 @@ import { compareCourseVariant } from "./course-difficulty";
 import { type CourseFamilyListItem, COURSE_SEASONS } from "./course-queries";
 import type { CourseSeason } from "./types";
 
-function courseSeasonLabel(season: CourseSeason, translate: (key: string) => string) {
+function courseSeasonLabel(season: CourseSeason | null, translate: (key: string) => string) {
+  if (season === null) return translate("courseSeasonUnspecified");
   return translate(COURSE_SEASONS.find((item) => item.value === season)?.labelKey ?? "summer");
 }
 

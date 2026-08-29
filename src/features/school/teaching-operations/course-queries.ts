@@ -70,11 +70,12 @@ function parseMatchedVariants(value: Json): CourseVariantSummary[] {
     const catalogVersionTitle = string(item.catalogVersionTitle);
     const supersededByCourseId = string(item.supersededByCourseId);
     const grade = number(item.grade);
-    const courseSeason = number(item.courseSeason);
+    const rawCourseSeason = number(item.courseSeason);
+    const courseSeason = rawCourseSeason === null ? null : isCourseSeason(rawCourseSeason) ? rawCourseSeason : undefined;
     const classType = string(item.classType);
     const lectureCount = number(item.lectureCount);
     const releasedLectureCount = number(item.releasedLectureCount);
-    if (!id || !title || grade === null || courseSeason === null || !isCourseSeason(courseSeason)
+    if (!id || !title || grade === null || courseSeason === undefined
       || classType === null || lectureCount === null || releasedLectureCount === null
       || catalogVersionSlug === null || catalogVersionTitle === null) continue;
     variants.push({

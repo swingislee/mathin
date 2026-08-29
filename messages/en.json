@@ -2240,6 +2240,7 @@
       "allGrades": "All grades",
       "allTerms": "All terms",
       "courseSeason": "Course season",
+      "courseSeasonUnspecified": "Season not set",
       "allCourseSeasons": "All course seasons",
       "allTypes": "All types",
       "allStatuses": "All statuses",
