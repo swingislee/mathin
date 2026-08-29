@@ -1338,6 +1338,24 @@ export function LiveShell({
     )} data-classroom-live-shell>
       <ClassroomBackdrop />
 
+      {teacherLayoutV2 && (
+        <div className="shrink-0 lg:hidden" data-classroom-narrow-course-info>
+          <ClassroomCourseInfoBar
+            backHref={`/classroom/${classId}/session/${session.id}`}
+            exitLabel={t("exit")}
+            title={displayedSessionTitle}
+            statusLabel={courseStatusLabel}
+            statusDetails={connectionBadges}
+            pageLabel={state.pages.length === 0 ? "0/0" : `${state.currentPage + 1}/${state.pages.length}`}
+            alertLabel={teacherLayoutAlertContent ? t("m4bOpenAlerts") : undefined}
+            alertContent={teacherLayoutAlertContent}
+            endLabel={t("endClass")}
+            endDisabled={rehearsal || state.ended}
+            onEnd={() => setEndOpen(true)}
+          />
+        </div>
+      )}
+
       {!teacherLayoutV2 && <header className="flex shrink-0 flex-wrap items-center gap-2 rounded-xl bg-paper/95 px-1 shadow-sm">
         <Link
           href={`/classroom/${classId}/session/${session.id}`}
@@ -1597,10 +1615,10 @@ export function LiveShell({
       )}
 
       <div className={cn(
-        "mt-2 min-h-0 flex-1 gap-2",
+        "min-h-0 flex-1",
         teacherLayoutV2
-          ? "flex flex-col overflow-y-auto lg:grid lg:grid-cols-[minmax(0,1fr)_clamp(22rem,31vw,36rem)] lg:gap-3 lg:overflow-hidden"
-          : "flex flex-col overflow-y-auto lg:flex-row lg:gap-3 lg:overflow-hidden",
+          ? "mt-1 flex flex-col gap-1.5 overflow-y-auto lg:mt-2 lg:grid lg:grid-cols-[minmax(0,1fr)_clamp(22rem,31vw,36rem)] lg:gap-3 lg:overflow-hidden"
+          : "mt-2 flex flex-col gap-2 overflow-y-auto lg:flex-row lg:gap-3 lg:overflow-hidden",
       )}>
         {/* 左：4:3 课件层 + 主板书覆盖层，尽量占满可压缩空间（08-§3.2 归一化坐标） */}
         <main className={cn(
@@ -1729,15 +1747,15 @@ export function LiveShell({
         <div
           className={cn(
             teacherLayoutV2
-              ? "grid min-h-[30rem] w-full flex-none gap-2 bg-transparent lg:min-h-0"
+              ? "grid min-h-[21rem] w-full flex-none gap-1.5 bg-transparent lg:min-h-0 lg:gap-2"
               : "flex min-h-0 w-full flex-1 flex-col gap-2 rounded-2xl bg-paper/95 shadow-sm transition-[width] duration-200 lg:ml-auto lg:flex-none lg:shrink-0",
             // 分栏阈值从 xl 提到 lg（doc 27 §5.1 H4）：1024 横屏是直播课堂最典型的教师终端，
             // 原先落在 xl 之下，主板书、副板书、名录与控制条全部纵向堆叠，上课要滚动才看得到名录。
             // 但 1024 上留 34rem 会把主板书压到 480px，所以两栏全展开时 lg 档先给 26rem，xl 才放到 34rem。
             teacherLayoutV2
               ? sideCollapsed
-                ? "grid-rows-[2.5rem_2.75rem_minmax(0,1fr)]"
-                : "grid-rows-[2.5rem_minmax(8rem,1fr)_17.5rem]"
+                ? "grid-rows-[2.75rem_minmax(0,1fr)] lg:grid-rows-[2.5rem_2.75rem_minmax(0,1fr)]"
+                : "grid-rows-[minmax(7rem,1fr)_13rem] lg:grid-rows-[2.5rem_minmax(8rem,1fr)_17.5rem]"
               : sideCollapsed && rosterCollapsed
                 ? "lg:w-[5.25rem]"
                 : sideCollapsed
@@ -1749,19 +1767,21 @@ export function LiveShell({
           data-classroom-right-stack-surface={teacherLayoutV2 ? "transparent" : "paper"}
         >
           {teacherLayoutV2 && (
-            <ClassroomCourseInfoBar
-              backHref={`/classroom/${classId}/session/${session.id}`}
-              exitLabel={t("exit")}
-              title={displayedSessionTitle}
-              statusLabel={courseStatusLabel}
-              statusDetails={connectionBadges}
-              pageLabel={state.pages.length === 0 ? "0/0" : `${state.currentPage + 1}/${state.pages.length}`}
-              alertLabel={teacherLayoutAlertContent ? t("m4bOpenAlerts") : undefined}
-              alertContent={teacherLayoutAlertContent}
-              endLabel={t("endClass")}
-              endDisabled={rehearsal || state.ended}
-              onEnd={() => setEndOpen(true)}
-            />
+            <div className="hidden lg:block" data-classroom-wide-course-info>
+              <ClassroomCourseInfoBar
+                backHref={`/classroom/${classId}/session/${session.id}`}
+                exitLabel={t("exit")}
+                title={displayedSessionTitle}
+                statusLabel={courseStatusLabel}
+                statusDetails={connectionBadges}
+                pageLabel={state.pages.length === 0 ? "0/0" : `${state.currentPage + 1}/${state.pages.length}`}
+                alertLabel={teacherLayoutAlertContent ? t("m4bOpenAlerts") : undefined}
+                alertContent={teacherLayoutAlertContent}
+                endLabel={t("endClass")}
+                endDisabled={rehearsal || state.ended}
+                onEnd={() => setEndOpen(true)}
+              />
+            </div>
           )}
           <div className={teacherLayoutV2 ? "contents" : "flex min-h-0 flex-1 flex-col gap-2 lg:flex-row lg:justify-end"}>
             {/* 副板书：默认展开固定宽；折叠为窄条腾出空间；名录折叠时改吃 flex-1（用户 2026-07-08 要求可折叠） */}
@@ -2091,14 +2111,15 @@ export function LiveShell({
               )}
             </div>
           )}
-          drawingControls={toolbarStore ? (
+          drawingControls={(expanded) => toolbarStore ? (
             <Toolbar
               largeTargets
               variant="rail"
+              railExpanded={expanded}
               title={`${displayedSessionTitle}-${renderPage?.title ?? ""}`}
               store={toolbarStore}
               clearTargets={clearTargets}
-              className="h-11"
+              className={expanded ? "h-auto lg:h-11 lg:flex-nowrap lg:justify-start" : "h-11"}
               swatchStyle={teachingSurface.paletteStyle}
             />
           ) : null}

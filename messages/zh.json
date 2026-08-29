@@ -4910,6 +4910,8 @@
       "insertBoard": "插入白板页",
       "openTool": "工具",
       "moreClassroomTools": "更多",
+      "expandToolTray": "展开全部课堂工具",
+      "collapseToolTray": "收起课堂工具",
       "pageList": "页面列表",
       "pageListPosition": "页面列表，当前第 {current} 页，共 {total} 页",
       "rehearsalLearningCheck": "课堂观察",

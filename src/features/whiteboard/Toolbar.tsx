@@ -134,6 +134,7 @@ export function Toolbar({
   className,
   largeTargets = false,
   variant = "floating",
+  railExpanded = false,
   swatchStyle,
 }: {
   title: string;
@@ -142,6 +143,7 @@ export function Toolbar({
   className?: string;
   largeTargets?: boolean;
   variant?: "floating" | "rail";
+  railExpanded?: boolean;
   /** Optional semantic color scope for previews when app chrome and canvas use different themes. */
   swatchStyle?: CSSProperties;
 }) {
@@ -218,10 +220,12 @@ export function Toolbar({
       className={cn(
         "flex items-center gap-0.5 transition-[transform,opacity] duration-200 select-none",
         isRail
-          ? "max-w-none overflow-visible"
+          ? cn("max-w-none overflow-visible", railExpanded && "h-auto w-full flex-wrap content-center justify-center")
           : "max-w-full overflow-x-auto rounded-2xl border border-line bg-paper/90 p-1.5 shadow-lg backdrop-blur",
         className,
       )}
+      data-whiteboard-toolbar={isRail ? "rail" : "floating"}
+      data-whiteboard-toolbar-layout={isRail && railExpanded ? "wrapped" : "row"}
     >
       <span ref={paletteRef} aria-hidden className="hidden" style={swatchStyle} data-whiteboard-swatch-palette />
       <ToolButton large={largeTargets} active={tool === "pointer"} label={t("pointer")} onClick={() => setTool("pointer")}>

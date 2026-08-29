@@ -4910,6 +4910,8 @@
       "insertBoard": "Insert board page",
       "openTool": "Tools",
       "moreClassroomTools": "More",
+      "expandToolTray": "Show all classroom tools",
+      "collapseToolTray": "Collapse classroom tools",
       "pageList": "Page list",
       "pageListPosition": "Page list, page {current} of {total}",
       "rehearsalLearningCheck": "Classroom observation",
