@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { cn } from "@/lib/utils";
 import type { GamePageDoc } from "@/features/courseware-doc/game-page-schema";
+import { coursewareCanvasStyle } from "@/features/courseware-doc/courseware-surface";
 import type { ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 import type { GameMirrorState } from "../types";
 import { resolveGamePageGridLayout } from "./game-page-layout";
@@ -33,15 +34,17 @@ export default function GamePageStage({
   const hasCompanions = layout.blocks.length > 1;
   return (
     <div
-      className={cn("@container/game-page relative aspect-[4/3] w-full overflow-hidden bg-white", className)}
+      className={cn("@container/game-page relative aspect-[4/3] w-full overflow-hidden", className)}
       data-game-page={doc.gameId}
       data-game-content-version={doc.contentVersion}
       data-game-page-layout={layout.version}
       data-classroom-input="native"
+      style={coursewareCanvasStyle(doc.canvas.backgroundColor)}
     >
       <div
-        className="grid size-full bg-paper"
+        className="grid size-full"
         style={{
+          backgroundColor: doc.canvas.backgroundColor ?? "var(--paper)",
           gridTemplateColumns: `repeat(${layout.columns}, minmax(0, 1fr))`,
           gridTemplateRows: `repeat(${layout.rows}, minmax(0, 1fr))`,
         }}

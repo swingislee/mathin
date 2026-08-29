@@ -12,6 +12,7 @@ import type {
   CoursewareCompositionPage,
   CoursewareCompositionPlacement,
 } from "./composition-page-schema";
+import { COURSEWARE_DEFAULT_PAPER } from "./courseware-surface";
 import CoursewareCompositionStage from "./CoursewareCompositionStage";
 import { cn } from "@/lib/utils";
 
@@ -145,9 +146,10 @@ export function CoursewareCompositionGridEditor({
   return (
     <div
       ref={canvasRef}
-      className="relative aspect-[4/3] w-full touch-none overflow-hidden bg-white"
+      className="relative aspect-[4/3] w-full touch-none overflow-hidden"
       data-courseware-composition-grid-editor
       data-grid-visible={gesture ? "true" : "false"}
+      style={{ backgroundColor: doc.canvas.backgroundColor ?? COURSEWARE_DEFAULT_PAPER }}
     >
       <CoursewareCompositionStage doc={displayed} bindingUrls={bindingUrls} interactive={false} />
       <div

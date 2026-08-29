@@ -6,6 +6,7 @@ import GamePageStage from "@/features/games/courseware/GamePageStage";
 import type { GameMirrorState } from "@/features/games/types";
 import { ToolView } from "@/features/tools/components";
 import type { CoursewareCompositionPage } from "./composition-page-schema";
+import { coursewareCanvasStyle } from "./courseware-surface";
 import DocStage, { type DocStageProps } from "./DocStage";
 import {
   MicrocourseH5ArtifactFrame,
@@ -68,9 +69,10 @@ export default function CoursewareCompositionStage(props: CoursewareCompositionS
 
   return (
     <div
-      className={cn("relative aspect-[4/3] w-full overflow-hidden bg-white", props.className)}
+      className={cn("relative aspect-[4/3] w-full overflow-hidden", props.className)}
       data-courseware-composition="courseware-composition-v1"
       data-classroom-input={gameBlocks.length > 0 ? "native" : "ink"}
+      style={coursewareCanvasStyle(doc.canvas.backgroundColor)}
     >
       {doc.source ? (
         <div className="absolute inset-0">

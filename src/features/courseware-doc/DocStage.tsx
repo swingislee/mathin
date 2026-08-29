@@ -9,6 +9,7 @@ import type { H5PointerBridgeHost } from "./h5-pointer-protocol";
 import { useH5FrameRegistration } from "./useH5FrameRegistration";
 import type { DocNode, PageDoc } from "./schema";
 import { injectBindingUrls, type ResolvedBindingUrls } from "./resolve";
+import { COURSEWARE_LIGHT_SURFACE_STYLE } from "./courseware-surface";
 import { createInteractionRuntime, type InteractionRuntime, type InteractionTrigger } from "./interactions";
 import { renderAixuexiMathHtml } from "./aixuexi-math";
 
@@ -599,7 +600,13 @@ export default function DocStage({
       ref={containerRef}
       className={className}
       data-stage-mode={stageMode}
-      style={{ position: "relative", width: "100%", aspectRatio: `${outerAspect}`, overflow: "hidden" }}
+      style={{
+        ...COURSEWARE_LIGHT_SURFACE_STYLE,
+        position: "relative",
+        width: "100%",
+        aspectRatio: `${outerAspect}`,
+        overflow: "hidden",
+      }}
     >
       {showBoardBand ? (
         <div

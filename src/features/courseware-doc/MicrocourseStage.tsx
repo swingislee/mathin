@@ -9,6 +9,7 @@ import { isGamePageDoc } from "./game-page-schema";
 import GamePageStage from "@/features/games/courseware/GamePageStage";
 import { isAixuexiPageDoc } from "./aixuexi-schema";
 import AixuexiStage from "./AixuexiStage";
+import { coursewareCanvasStyle } from "./courseware-surface";
 import DocStage, { type DocStageProps } from "./DocStage";
 import { useH5FrameRegistration } from "./useH5FrameRegistration";
 import {
@@ -130,9 +131,10 @@ export default function MicrocourseStage(props: MicrocourseStageProps) {
 
   return (
     <div
-      className={cn("relative aspect-[4/3] w-full overflow-hidden bg-white", props.className)}
+      className={cn("relative aspect-[4/3] w-full overflow-hidden", props.className)}
       data-microcourse-mode={doc.mode}
       data-classroom-input={doc.mode === "sudoku" || doc.mode === "h5" ? "native" : "ink"}
+      style={coursewareCanvasStyle(doc.canvas.backgroundColor)}
     >
       {doc.mode === "composition" ? (
         <>

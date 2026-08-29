@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import type { DocVideoControl } from "./DocStage";
 import type { H5PointerBridgeHost } from "./h5-pointer-protocol";
 import type { ResolvedBindingUrls } from "./resolve";
+import { coursewareCanvasStyle } from "./courseware-surface";
 import {
   markSourceRuntimeNestedH5Url,
   SOURCE_RUNTIME_PROTOCOL,
@@ -156,11 +157,11 @@ export default function SourceRuntimeStage({
       data-source-runtime-stage
       data-stage-mode={stageMode}
       style={{
+        ...coursewareCanvasStyle("#fff"),
         position: "relative",
         width: "100%",
         aspectRatio: String(outerAspect),
         overflow: "hidden",
-        background: "#fff",
       }}
     >
       {stageMode === "board43" && sourceHeightPercent < 100 ? (
