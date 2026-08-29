@@ -69,4 +69,4 @@ pnpm messages:check
 pnpm classroom:interaction-sync:audit
 ```
 
-视觉、输入或课堂能力变化还要按仓库 `verify` skill 做对应真实页面验收。
+视觉、输入或课堂能力变化按仓库根 `AGENTS.md` 的产品负责人视觉验收规则执行：默认只做必要的窄机器检查，并提供 `http://192.168.5.213:3130/...` 局域网链接交由产品负责人人工验收；只有产品负责人明确要求时才运行 `verify` skill、浏览器控制、截图或其他视觉自动化。
