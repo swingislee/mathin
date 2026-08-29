@@ -115,6 +115,7 @@ import { useClassBoard } from "./useClassBoard";
 import { VideoStage } from "./VideoStage";
 import { GamePage, MainBoard, StudentCard, ToolOverlay } from "./LivePanels";
 import { ClassroomSmartInputToggle } from "./ClassroomSmartInputToggle";
+import { ClassroomBackdrop } from "./ClassroomBackdrop";
 import { ClassroomCourseInfoBar, ClassroomEndButton } from "./ClassroomCourseInfoBar";
 import { ClassroomRosterGrid, type ClassroomRosterStudent } from "./ClassroomRosterGrid";
 import { DevelopmentAcceptanceDock } from "./DevelopmentAcceptanceDock";
@@ -1330,10 +1331,12 @@ export function LiveShell({
   // --- 上课 ----------------------------------------------------------------
   return (
     <div className={cn(
-      "flex h-dvh flex-col overflow-hidden px-3 pt-2",
+      "relative isolate flex h-dvh flex-col overflow-hidden px-3 pt-2",
       teacherLayoutV2 ? "pb-[calc(3.5rem+env(safe-area-inset-bottom))]" : "pb-2",
-    )}>
-      {!teacherLayoutV2 && <header className="flex shrink-0 flex-wrap items-center gap-2">
+    )} data-classroom-live-shell>
+      <ClassroomBackdrop />
+
+      {!teacherLayoutV2 && <header className="flex shrink-0 flex-wrap items-center gap-2 rounded-xl bg-paper/95 px-1 shadow-sm">
         <Link
           href={`/classroom/${classId}/session/${session.id}`}
           aria-label={t("exit")}
@@ -1713,6 +1716,7 @@ export function LiveShell({
         {/* 右：副板书（长条，固定宽，用户 2026-07-08 要求加宽一倍）+ 学生名录（固定宽，容纳多人）+ 控制条，三段式 */}
         <div
           className={cn(
+            "rounded-2xl bg-paper/95 shadow-sm",
             teacherLayoutV2
               ? "grid min-h-[30rem] w-full flex-none gap-2 lg:min-h-0"
               : "flex min-h-0 w-full flex-1 flex-col gap-2 transition-[width] duration-200 lg:ml-auto lg:flex-none lg:shrink-0",
