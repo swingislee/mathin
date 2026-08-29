@@ -6,6 +6,7 @@ export type ClassroomInteractionSyncProtocol =
   | "game-mirror-v1"
   | "doc-step-v1"
   | "h5-state-v1"
+  | "tool-state-v1"
   | "spatial-command-v1"
   | "unregistered-v1";
 
@@ -48,6 +49,16 @@ export const CLASSROOM_H5_STATE_SYNC_REQUIRED_V1 = Object.freeze({
   maxPayloadBytes: 0,
 } satisfies ClassroomInteractionSyncProvider);
 
+/** Embedded tools remain read-only until each contract exposes replayable state. */
+export const CLASSROOM_TOOL_STATE_SYNC_REQUIRED_V1 = Object.freeze({
+  schema: CLASSROOM_INTERACTION_SYNC_SCHEMA,
+  version: CLASSROOM_INTERACTION_SYNC_VERSION,
+  mode: "read-only",
+  protocol: "tool-state-v1",
+  eventType: null,
+  maxPayloadBytes: 0,
+} satisfies ClassroomInteractionSyncProvider);
+
 /** Spatial pages stay read-only until semantic commands and snapshots join the event log. */
 export const CLASSROOM_SPATIAL_COMMAND_SYNC_REQUIRED_V1 = Object.freeze({
   schema: CLASSROOM_INTERACTION_SYNC_SCHEMA,
@@ -76,6 +87,7 @@ export function isClassroomInteractionSyncProvider(
   const protocolValid = protocol === "game-mirror-v1"
     || protocol === "doc-step-v1"
     || protocol === "h5-state-v1"
+    || protocol === "tool-state-v1"
     || protocol === "spatial-command-v1"
     || protocol === "unregistered-v1";
   if (provider.schema !== CLASSROOM_INTERACTION_SYNC_SCHEMA
@@ -83,6 +95,7 @@ export function isClassroomInteractionSyncProvider(
     || !protocolValid) return false;
   if (provider.mode === "read-only") {
     return (provider.protocol === "h5-state-v1"
+      || provider.protocol === "tool-state-v1"
       || provider.protocol === "spatial-command-v1"
       || provider.protocol === "unregistered-v1")
       && provider.eventType === null

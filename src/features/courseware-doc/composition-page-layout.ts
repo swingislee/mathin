@@ -11,6 +11,7 @@ import {
   type CoursewareCompositionH5,
   type CoursewareCompositionPage,
   type CoursewareCompositionPlacement,
+  type CoursewareCompositionTool,
   type EmbeddedCompositionGame,
 } from "./composition-page-schema";
 
@@ -30,7 +31,7 @@ function alternatives(block: CoursewareCompositionBlock): readonly CoursewareSna
       { columnSpan: 4, rowSpan: 4 },
     ];
   }
-  if (block.type === "h5") {
+  if (block.type === "h5" || block.type === "tool") {
     return [
       { columnSpan: 12, rowSpan: 6 },
       { columnSpan: 8, rowSpan: 9 },
@@ -54,9 +55,9 @@ function gridTile(block: CoursewareCompositionBlock): CoursewareSnapGridTile {
   return {
     id: block.id,
     placement: block.placement,
-    minColumnSpan: block.type === "game" ? 4 : block.type === "h5" ? 2 : 1,
-    minRowSpan: block.type === "game" ? 4 : block.type === "h5" ? 2 : 1,
-    priority: block.type === "game" || block.type === "h5" ? 0 : 10,
+    minColumnSpan: block.type === "game" ? 4 : block.type === "h5" || block.type === "tool" ? 2 : 1,
+    minRowSpan: block.type === "game" ? 4 : block.type === "h5" || block.type === "tool" ? 2 : 1,
+    priority: block.type === "game" || block.type === "h5" || block.type === "tool" ? 0 : 10,
     alternativeSizes: alternatives(block),
   };
 }
@@ -167,6 +168,20 @@ export function addCoursewareCompositionH5(
     id: nextBlockId(input, "h5"),
     type: "h5",
     h5,
+    placement: input.layout.blocks.length === 0
+      ? { column: 0, row: 0, columnSpan: 12, rowSpan: 9 }
+      : { column: 0, row: 0, columnSpan: 4, rowSpan: 3 },
+  });
+}
+
+export function addCoursewareCompositionTool(
+  input: CoursewareCompositionPage,
+  tool: CoursewareCompositionTool,
+): CoursewareCompositionPage {
+  return appendBlock(input, {
+    id: nextBlockId(input, "tool"),
+    type: "tool",
+    tool,
     placement: input.layout.blocks.length === 0
       ? { column: 0, row: 0, columnSpan: 12, rowSpan: 9 }
       : { column: 0, row: 0, columnSpan: 4, rowSpan: 3 },

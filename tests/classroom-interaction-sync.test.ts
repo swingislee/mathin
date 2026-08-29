@@ -9,6 +9,7 @@ import {
 import {
   addCoursewareCompositionGame,
   addCoursewareCompositionH5,
+  addCoursewareCompositionTool,
 } from "@/features/courseware-doc/composition-page-layout";
 import {
   COURSEWARE_DOC_INTERACTION_AUDIT,
@@ -19,6 +20,7 @@ import {
 import {
   CLASSROOM_GAME_MIRROR_SYNC_V1,
   CLASSROOM_SPATIAL_COMMAND_SYNC_REQUIRED_V1,
+  CLASSROOM_TOOL_STATE_SYNC_REQUIRED_V1,
   classroomInteractionPayloadWithinBudget,
   isClassroomInteractionSyncProvider,
   type ClassroomInteractionSyncProvider,
@@ -27,6 +29,7 @@ import { reduceEvent, type LiveState } from "@/features/classroom/live/liveState
 import { emptyStarLedger } from "@/features/classroom/stars";
 import type { GameMirrorState } from "@/features/games/types";
 import { GAME_COURSEWARE_CONTRACTS } from "@/features/games/courseware/registry";
+import { TOOL_COURSEWARE_CONTRACTS } from "@/features/tools/courseware/registry";
 
 const root = process.cwd();
 const read = (file: string) => fs.readFileSync(path.join(root, file), "utf8");
@@ -80,6 +83,10 @@ const compositionH5Doc = addCoursewareCompositionH5(
     entryPath: "index.html",
   },
 );
+const compositionToolDoc = addCoursewareCompositionTool(
+  createEmptyCoursewareCompositionPage(),
+  { toolId: "fraction-line", contentVersion: "tool-embed-v1" },
+);
 
 function initialState(): LiveState {
   return {
@@ -116,6 +123,12 @@ describe("classroom interaction synchronization audit", () => {
       const provider: ClassroomInteractionSyncProvider = contract.classroomSync;
       return isClassroomInteractionSyncProvider(provider) && provider.mode !== "read-only";
     })).toBe(true);
+    expect(TOOL_COURSEWARE_CONTRACTS.every((contract) => {
+      const provider: ClassroomInteractionSyncProvider = contract.classroomSync;
+      return isClassroomInteractionSyncProvider(provider)
+        && provider.mode === "read-only"
+        && provider.protocol === "tool-state-v1";
+    })).toBe(true);
     expect(isClassroomInteractionSyncProvider({
       ...CLASSROOM_GAME_MIRROR_SYNC_V1,
       protocol: "h5-state-v1",
@@ -149,6 +162,12 @@ describe("classroom interaction synchronization audit", () => {
       ownership: "mathin",
       status: "read-only",
       provider: { protocol: "h5-state-v1", mode: "read-only" },
+    });
+    expect(resolveClassroomInteractionAudit(compositionToolDoc)).toMatchObject({
+      surface: "composition:tool:fraction-line:tool-embed-v1",
+      ownership: "mathin",
+      status: "read-only",
+      provider: CLASSROOM_TOOL_STATE_SYNC_REQUIRED_V1,
     });
     expect(COURSEWARE_DOC_INTERACTION_AUDIT["spatial-page-v1"].defaultProvider)
       .toBe(CLASSROOM_SPATIAL_COMMAND_SYNC_REQUIRED_V1);
@@ -244,5 +263,7 @@ describe("classroom interaction synchronization audit", () => {
     expect(compositionStage).toContain("instances: next");
     expect(compositionStage).toContain("updateGameInstance(block.id, state)");
     expect(compositionStage).toContain("MicrocourseH5ArtifactFrame");
+    expect(compositionStage).toContain("ToolView");
+    expect(compositionStage).toContain('data-classroom-tool="read-only"');
   });
 });

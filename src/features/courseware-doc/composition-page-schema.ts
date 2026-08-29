@@ -19,6 +19,7 @@ export const COURSEWARE_COMPOSITION_MAX_BLOCKS = COURSEWARE_SNAP_GRID_COLUMNS * 
 
 const sha256HexSchema = z.string().regex(/^[0-9a-f]{64}$/);
 const blockIdSchema = z.string().min(1).max(80).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
+const componentContractIdSchema = z.string().min(1).max(100).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
 
 export const coursewareCompositionPlacementSchema = z.object({
   column: z.number().int().min(0).max(COURSEWARE_SNAP_GRID_COLUMNS - 1),
@@ -54,10 +55,21 @@ const h5BlockSchema = baseBlockSchema.extend({
   h5: coursewareCompositionH5Schema,
 }).strict();
 
+export const coursewareCompositionToolSchema = z.object({
+  toolId: componentContractIdSchema,
+  contentVersion: z.literal("tool-embed-v1"),
+}).strict();
+
+const toolBlockSchema = baseBlockSchema.extend({
+  type: z.literal("tool"),
+  tool: coursewareCompositionToolSchema,
+}).strict();
+
 export const coursewareCompositionBlockSchema = z.discriminatedUnion("type", [
   nodeBlockSchema,
   gameBlockSchema,
   h5BlockSchema,
+  toolBlockSchema,
 ]);
 
 export const coursewareCompositionLayoutSchema = z.object({
@@ -81,6 +93,8 @@ export const coursewareCompositionLayoutSchema = z.object({
       ? { columnSpan: 4, rowSpan: 4 }
       : block.type === "h5"
         ? { columnSpan: 2, rowSpan: 2 }
+        : block.type === "tool"
+          ? { columnSpan: 2, rowSpan: 2 }
         : { columnSpan: 1, rowSpan: 1 };
     if (placement.columnSpan < minimum.columnSpan || placement.rowSpan < minimum.rowSpan) {
       context.addIssue({ code: "custom", path: ["blocks", index, "placement"], message: "block is smaller than its classroom minimum" });
@@ -136,6 +150,7 @@ export type CoursewareCompositionPlacement = z.infer<typeof coursewareCompositio
 export type CoursewareCompositionBlock = z.infer<typeof coursewareCompositionBlockSchema>;
 export type CoursewareCompositionLayout = z.infer<typeof coursewareCompositionLayoutSchema>;
 export type CoursewareCompositionH5 = z.infer<typeof coursewareCompositionH5Schema>;
+export type CoursewareCompositionTool = z.infer<typeof coursewareCompositionToolSchema>;
 export type CoursewareCompositionPage = z.infer<typeof coursewareCompositionPageSchema>;
 
 function emptyOverlay(): PageDoc {

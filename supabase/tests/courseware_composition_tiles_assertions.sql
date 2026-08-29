@@ -6,6 +6,8 @@ declare
   overlap_doc jsonb;
   source_interaction_doc jsonb;
   multi_interaction_doc jsonb;
+  tool_doc jsonb;
+  unknown_tool_doc jsonb;
 begin
   empty_doc := jsonb_build_object(
     'docVersion', 'courseware-composition-v1',
@@ -100,6 +102,29 @@ begin
   );
   if not public.cw_courseware_composition_doc_is_valid(multi_interaction_doc) then
     raise exception 'multiple independently keyed interactive blocks must be valid';
+  end if;
+
+  tool_doc := jsonb_set(
+    empty_doc,
+    '{layout,blocks}',
+    '[{
+      "id":"tool-1",
+      "type":"tool",
+      "tool":{"toolId":"fraction-line","contentVersion":"tool-embed-v1"},
+      "placement":{"column":0,"row":0,"columnSpan":4,"rowSpan":3}
+    }]'::jsonb
+  );
+  if not public.cw_courseware_composition_doc_is_valid(tool_doc) then
+    raise exception 'registered versioned Tool block must be valid';
+  end if;
+
+  unknown_tool_doc := jsonb_set(
+    tool_doc,
+    '{layout,blocks,0,tool,toolId}',
+    '"unknown-tool"'::jsonb
+  );
+  if public.cw_courseware_composition_doc_is_valid(unknown_tool_doc) then
+    raise exception 'unregistered Tool contract must be rejected';
   end if;
 
   if has_function_privilege(

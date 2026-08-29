@@ -47,6 +47,7 @@ export function CoursewareCompositionGridEditor({
   const labelFor = (block: CoursewareCompositionBlock) => {
     if (block.type === "game") return t("componentGame");
     if (block.type === "h5") return t("componentH5");
+    if (block.type === "tool") return t("componentTool");
     const node = displayed.overlay.nodes.find((item) => item.id === block.nodeId);
     if (node?.adapter === "image") return t("componentImage");
     if (node?.adapter === "rich_text") return t("componentFormula");

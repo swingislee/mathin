@@ -17,6 +17,7 @@ import {
 import { createDefaultGameCoursewarePayload } from "@/features/games/courseware/contracts";
 import { gameCoursewareContractsForSurface } from "@/features/games/courseware/registry";
 import { validateGameCoursewareContent } from "@/features/games/courseware/server";
+import { toolCoursewareContractsForSurface } from "@/features/tools/courseware/registry";
 import { authorizedClient } from "@/features/school/actions/guards";
 import {
   COMMON_CODES,
@@ -96,6 +97,7 @@ const AUTHOR_CODES = [
   "INVALID_PAGE_DOC",
   "INVALID_SUDOKU_PUZZLE",
   "UNKNOWN_GAME_COURSEWARE_CONTRACT",
+  "UNKNOWN_TOOL_COURSEWARE_CONTRACT",
   "GAME_PAGE_VALIDATION_FAILED",
   "GAME_PAGE_NOT_PUBLISHABLE",
   "H5_ARTIFACT_NOT_FOUND",
@@ -601,7 +603,16 @@ export async function saveTeacherMicrocoursePageAction(input: {
     const { user, supabase } = await authorizedClient("courseware.microcourse.author");
     if (isCoursewareCompositionPage(doc)) {
       const trustedDoc = structuredClone(doc);
+      const toolContracts = toolCoursewareContractsForSurface("microcourse");
       trustedDoc.layout.blocks = trustedDoc.layout.blocks.map((block) => {
+        if (block.type === "tool") {
+          const authorable = toolContracts.some((contract) => (
+            contract.toolId === block.tool.toolId
+              && contract.contentVersion === block.tool.contentVersion
+          ));
+          if (!authorable) throw new Error("UNKNOWN_TOOL_COURSEWARE_CONTRACT");
+          return block;
+        }
         if (block.type !== "game") return block;
         const trusted = validateGameCoursewareContent(
           block.game.gameId,

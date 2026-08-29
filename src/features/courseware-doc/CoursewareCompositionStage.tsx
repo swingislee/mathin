@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { useState } from "react";
 import GamePageStage from "@/features/games/courseware/GamePageStage";
 import type { GameMirrorState } from "@/features/games/types";
+import { ToolView } from "@/features/tools/components";
 import type { CoursewareCompositionPage } from "./composition-page-schema";
 import DocStage, { type DocStageProps } from "./DocStage";
 import {
@@ -90,8 +91,17 @@ export default function CoursewareCompositionStage(props: CoursewareCompositionS
                 onMirror={props.onGameMirror ? (state) => updateGameInstance(block.id, state) : undefined}
                 bindingUrls={props.bindingUrls}
               />
-            ) : (
+            ) : block.type === "h5" ? (
               <MicrocourseH5ArtifactFrame artifact={block.h5} props={readOnlyH5Props} />
+            ) : (
+              <div
+                className="size-full overflow-auto bg-paper"
+                data-courseware-tool={block.tool.toolId}
+                data-classroom-tool="read-only"
+                style={{ pointerEvents: "none" }}
+              >
+                <ToolView id={block.tool.toolId} embedded />
+              </div>
             )}
           </div>
         );

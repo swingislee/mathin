@@ -10,6 +10,7 @@ import {
   Sigma,
   Trash2,
   Type,
+  Wrench,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import {
@@ -41,6 +42,7 @@ import {
   addCoursewareCompositionGame,
   addCoursewareCompositionH5,
   addCoursewareCompositionNode,
+  addCoursewareCompositionTool,
   removeCoursewareCompositionBlock,
 } from "@/features/courseware-doc/composition-page-layout";
 import {
@@ -48,12 +50,15 @@ import {
   type CoursewareCompositionBlock,
   type CoursewareCompositionH5,
   type CoursewareCompositionPage,
+  type CoursewareCompositionTool,
 } from "@/features/courseware-doc/composition-page-schema";
 import type { GamePageDoc } from "@/features/courseware-doc/game-page-schema";
 import type { DocNode } from "@/features/courseware-doc/schema";
 import { GamePageEditor } from "@/features/games/courseware/GamePageEditor";
 import { gameCoursewareContractsForSurface } from "@/features/games/courseware/registry";
 import { getGame } from "@/features/games/registry";
+import { toolCoursewareContractsForSurface } from "@/features/tools/courseware/registry";
+import { getTool } from "@/features/tools/registry";
 import { cn } from "@/lib/utils";
 import {
   createTeacherGameComponentAction,
@@ -165,6 +170,7 @@ function blockLabel(
 ) {
   if (block.type === "game") return t("componentGame");
   if (block.type === "h5") return t("componentH5");
+  if (block.type === "tool") return t("componentTool");
   const node = doc.overlay.nodes.find((item) => item.id === block.nodeId);
   if (node?.adapter === "image") return t("componentImage");
   if (node?.adapter === "rich_text") return t("componentFormula");
@@ -394,6 +400,16 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
               updateDoc(next);
               setSelectedBlockId(next.layout.blocks.find((block) => !previousIds.has(block.id))?.id ?? null);
             }} />
+            <ToolComponentDialog disabled={pending} onCreated={(tool) => {
+              const previousIds = new Set(docRef.current.layout.blocks.map((block) => block.id));
+              const next = addCoursewareCompositionTool(docRef.current, tool);
+              if (next === docRef.current) {
+                setMessage(t("componentNoSpace"));
+                return;
+              }
+              updateDoc(next);
+              setSelectedBlockId(next.layout.blocks.find((block) => !previousIds.has(block.id))?.id ?? null);
+            }} />
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <span role="status" aria-live="polite" className={cn("inline-flex items-center gap-1 text-xs", saveState === "error" ? "text-rose" : "text-muted")}>
@@ -444,6 +460,12 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
               <div className="space-y-2 border-t border-line pt-3">
                 <H5ComponentDialog microcourseId={microcourseId} existing={selected.h5} onSaved={replaceSelectedH5} />
                 <p className="text-xs text-muted">{t("componentH5ClassroomReadOnly")}</p>
+              </div>
+            ) : null}
+            {selected?.type === "tool" ? (
+              <div className="space-y-2 border-t border-line pt-3">
+                <p className="text-sm font-medium text-ink">{selected.tool.toolId}</p>
+                <p className="text-xs text-muted">{t("componentToolClassroomReadOnly")}</p>
               </div>
             ) : null}
             {selected ? (
@@ -521,6 +543,59 @@ function GameComponentDialog({ microcourseId, disabled = false, iconOnly = false
         </div>
         {message && <p role="alert" className="text-sm text-rose">{message}</p>}
         <DialogFooter><Button type="button" variant="secondary" onClick={() => setOpen(false)}>{t("cancel")}</Button><Button type="button" disabled={pending || !selected} onClick={create}>{pending && <LoaderCircle className="size-4 animate-spin" />}{t("insertComponent")}</Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ToolComponentDialog({ disabled = false, onCreated }: {
+  disabled?: boolean;
+  onCreated: (tool: CoursewareCompositionTool) => void;
+}) {
+  const t = useTranslations("teacherMicrocourses");
+  const tTools = useTranslations("tools");
+  const contracts = toolCoursewareContractsForSurface("microcourse");
+  const [open, setOpen] = useState(false);
+  const [selectedKey, setSelectedKey] = useState(
+    contracts[0] ? `${contracts[0].toolId}:${contracts[0].contentVersion}` : "",
+  );
+  const selected = contracts.find((contract) => (
+    `${contract.toolId}:${contract.contentVersion}` === selectedKey
+  ));
+  const insert = () => {
+    if (!selected) return;
+    onCreated({ toolId: selected.toolId, contentVersion: selected.contentVersion });
+    setOpen(false);
+  };
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button type="button" size="sm" variant="ghost" className="size-9 p-0" aria-label={t("componentTool")} title={t("componentTool")} disabled={disabled || contracts.length === 0}>
+          <Wrench className="size-4" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-xl">
+        <DialogHeader>
+          <DialogTitle>{t("insertToolComponentTitle")}</DialogTitle>
+          <DialogDescription>{t("toolAuthoringHint")}</DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {contracts.map((contract) => {
+            const tool = getTool(contract.toolId);
+            const Icon = tool?.icon ?? Wrench;
+            const key = `${contract.toolId}:${contract.contentVersion}`;
+            return (
+              <Button key={key} type="button" variant="secondary" aria-pressed={selectedKey === key} className={cn("h-auto justify-start rounded-xl px-4 py-3", selectedKey === key && "border-crater bg-moon/30")} onClick={() => setSelectedKey(key)}>
+                <Icon className="size-4" />
+                {tTools(`items.${contract.toolId}.name`)}
+              </Button>
+            );
+          })}
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="secondary" onClick={() => setOpen(false)}>{t("cancel")}</Button>
+          <Button type="button" disabled={!selected} onClick={insert}>{t("insertComponent")}</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

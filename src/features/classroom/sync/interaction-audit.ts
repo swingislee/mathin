@@ -13,10 +13,15 @@ import {
   getGameCoursewareContract,
 } from "@/features/games/courseware/registry";
 import {
+  TOOL_COURSEWARE_CONTRACTS,
+  getToolCoursewareContract,
+} from "@/features/tools/courseware/registry";
+import {
   CLASSROOM_DOC_STEP_SYNC_V1,
   CLASSROOM_GAME_MIRROR_SYNC_V1,
   CLASSROOM_H5_STATE_SYNC_REQUIRED_V1,
   CLASSROOM_SPATIAL_COMMAND_SYNC_REQUIRED_V1,
+  CLASSROOM_TOOL_STATE_SYNC_REQUIRED_V1,
   CLASSROOM_UNREGISTERED_INTERACTION_READ_ONLY_V1,
   isClassroomInteractionSyncProvider,
   type ClassroomInteractionSyncProvider,
@@ -87,6 +92,18 @@ export function resolveClassroomInteractionAudit(
     if (doc.layout.blocks.some((block) => block.type === "h5")) {
       return profile("composition:h5", "mathin", CLASSROOM_H5_STATE_SYNC_REQUIRED_V1);
     }
+    const toolBlock = doc.layout.blocks.find((block) => block.type === "tool");
+    if (toolBlock?.type === "tool") {
+      const contract = getToolCoursewareContract(
+        toolBlock.tool.toolId,
+        toolBlock.tool.contentVersion,
+      );
+      return profile(
+        `composition:tool:${toolBlock.tool.toolId}:${toolBlock.tool.contentVersion}`,
+        "mathin",
+        contract?.classroomSync ?? CLASSROOM_UNREGISTERED_INTERACTION_READ_ONLY_V1,
+      );
+    }
     if (sourceAudit) {
       if (sourceAudit.ownership === "mathin") {
         return { ...sourceAudit, surface: `composition/source/${sourceAudit.surface}` };
@@ -143,6 +160,14 @@ export function classroomInteractionAuditIssues(): string[] {
       issues.push(`game:${contract.gameId}:${contract.contentVersion}:not-synchronized`);
     }
   }
+  for (const contract of TOOL_COURSEWARE_CONTRACTS) {
+    const provider: ClassroomInteractionSyncProvider = contract.classroomSync;
+    if (!isClassroomInteractionSyncProvider(provider)) {
+      issues.push(`tool:${contract.toolId}:${contract.contentVersion}:invalid-provider`);
+    } else if (provider.mode !== "read-only" || provider.protocol !== "tool-state-v1") {
+      issues.push(`tool:${contract.toolId}:${contract.contentVersion}:must-use-versioned-state-sync`);
+    }
+  }
   for (const [mode, provider] of Object.entries(MATHIN_MICROCOURSE_SYNC_PROVIDERS)) {
     if (!isClassroomInteractionSyncProvider(provider)) issues.push(`microcourse:${mode}:invalid-provider`);
   }
@@ -153,6 +178,10 @@ export function classroomInteractionAuditIssues(): string[] {
   if (CLASSROOM_SPATIAL_COMMAND_SYNC_REQUIRED_V1.mode !== "read-only"
     || CLASSROOM_SPATIAL_COMMAND_SYNC_REQUIRED_V1.protocol !== "spatial-command-v1") {
     issues.push("spatial-page-v1:must-use-semantic-command-sync");
+  }
+  if (CLASSROOM_TOOL_STATE_SYNC_REQUIRED_V1.mode !== "read-only"
+    || CLASSROOM_TOOL_STATE_SYNC_REQUIRED_V1.protocol !== "tool-state-v1") {
+    issues.push("tool-embed-v1:must-use-versioned-state-sync");
   }
   return issues;
 }

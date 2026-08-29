@@ -3,6 +3,7 @@ import {
   addCoursewareCompositionGame,
   addCoursewareCompositionH5,
   addCoursewareCompositionNode,
+  addCoursewareCompositionTool,
   removeCoursewareCompositionBlock,
   updateCoursewareCompositionPlacement,
 } from "@/features/courseware-doc/composition-page-layout";
@@ -171,6 +172,29 @@ describe("courseware composition page", () => {
       .toEqual(["game-1", "game-2"]);
     expect(withH5.layout.blocks.some((block) => block.type === "h5" && block.id === "h5-1")).toBe(true);
     expect(coursewareCompositionPageSchema.safeParse(withH5).success).toBe(true);
+  });
+
+  it("adds multiple versioned Tool blocks without excluding games or regular components", () => {
+    const withText = addCoursewareCompositionNode(
+      createEmptyCoursewareCompositionPage(),
+      textNode("text-1"),
+      { columnSpan: 4, rowSpan: 3 },
+    );
+    const withTool = addCoursewareCompositionTool(withText, {
+      toolId: "fraction-line",
+      contentVersion: "tool-embed-v1",
+    });
+    const withTwoTools = addCoursewareCompositionTool(withTool, {
+      toolId: "motion-lab",
+      contentVersion: "tool-embed-v1",
+    });
+
+    expect(withTwoTools.layout.blocks.filter((block) => block.type === "tool"))
+      .toMatchObject([
+        { id: "tool-1", tool: { toolId: "fraction-line", contentVersion: "tool-embed-v1" } },
+        { id: "tool-2", tool: { toolId: "motion-lab", contentVersion: "tool-embed-v1" } },
+      ]);
+    expect(coursewareCompositionPageSchema.safeParse(withTwoTools).success).toBe(true);
   });
 
   it("lets an imported source share the page with independently keyed authored interactions", () => {
