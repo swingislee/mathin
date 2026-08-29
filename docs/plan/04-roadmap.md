@@ -8,7 +8,7 @@
 >
 > **SML 暂停位置**：`SML-0 · 合同与金标冻结`；空间数学可按独立权限或 Feature Flag 并行，不进入 R1-Live Gate。
 >
-> **当前运行状态**：Gate 1 已通过，Gate 2 仍等待正式教师点名持久再读与权限对照。Xiaomi 当前数据库 ledger=`220`、head=`20260829000200_admin_self_staff_roles`，应用 current/previous=`20260829-031327` / `bf81aa4…` 与 `20260828-195733` / `ba98a8e…`。课堂 Stage A、B1 与 B2 已通过，生产已有 checkpoint version/chunk/head=`2/2/2`；Stage B3 修复、来源课件运行时/暑期 A+、教师微课多方案、班级/活动分类、DEV-ORG/DEV-DASH、自由班排课/H5 透明层、管理员自授岗与教研课次页入口 hotfix 均已部署，产品负责人生产写态/页面验收仍 pending，不关闭 Gate 2。最新 app-only 发布从干净 `bf81aa4…` 候选通过双 production build、原子 release 与健康/鉴权/业务不变量 postflight；未修改 schema、岗位、班课、课程 release 或 Storage。生产管理员 verified MFA=`1`，教师/教研岗位成员=`6/4`；班级/课次/报名/点名与 Storage=`4/19/1/0/125725`，新 release 启动后错误增量为 0。
+> **当前运行状态**：Gate 1 已通过，Gate 2 仍等待正式教师点名持久再读与权限对照。Xiaomi 当前数据库 ledger=`220`、head=`20260829000200_admin_self_staff_roles`，应用 current/previous=`20260829-045135` / `6185352…` 与 `20260829-033955` / `59cc342…`。课堂 Stage A、B1 与 B2 已通过，生产已有 checkpoint version/chunk/head=`2/2/2`；Stage B3 修复、来源课件运行时/暑期 A+、教师微课多方案、班级/活动分类、DEV-ORG/DEV-DASH、自由班排课/H5 透明层、管理员自授岗、教研课次页入口与微课来源预览 hotfix 均已部署，产品负责人生产写态/页面验收仍 pending，不关闭 Gate 2。最新 app-only 发布从干净 `6185352…` 候选通过双 production build、原子 release 与健康/鉴权/业务不变量 postflight；未修改 schema、岗位、班课、课程 release、审核快照或 Storage。生产管理员 verified MFA=`1`，教师/教研岗位成员=`6/4`；班级/课次/报名/点名与 Storage=`4/19/1/0/125725`，新 release 启动后错误增量为 0。
 >
 > **当前 P0 状态**：2026-08-25 产品负责人确认内部教师更习惯手机号注册登录。`手机号或邮箱 + password` 已部署生产：手机号只接受绑定具体号码的一次性员工邀请，不发送/伪造验证码，不开放全局邀请码手机号注册，账号仍以单一 `auth.users.id` 为主体。机器 postflight 已通过；真实教师尚未消费手机号邀请并完成 password 登录，因此状态为 `DEPLOYED / PENDING USER ACCEPTANCE`。
 >
@@ -159,6 +159,10 @@ Gate 1 已按以下顺序关闭：
 #### HOTFIX-20260829 · 教研课次页课件入口
 
 生产 `ba98a8e…` 已包含 DEV-TMC-2 schema 与权限，但普通课次页仍用任课教师 `canPrepare` 决定是否显示“编辑课件”，导致教研虽能从审核队列进入方案工作区，却在老师的课次页只看到只读提示。`bf81aa4` 把入口拆成课件制作权与教学运营权：任课教师或同时具备 `courseware.review + courseware.microcourse.author` 的教研都能打开方案；教研仍看不到试讲、完成备课、点名、课堂控制和“本节使用”。定向 Vitest 9/9、固定账号 Playwright 1/1、双 production build 与 app-only 原子发布通过，current/previous=`20260829-031327` / `bf81aa4…` 与 `20260828-195733` / `ba98a8e…`；ledger、业务、Storage 和错误基线零漂移，生产页面刷新验收 pending。证据见 [`teacher-microcourse-research-entry-hotfix-production.md`](../evidence/r1/teacher-microcourse-research-entry-hotfix-production.md)。
+
+#### HOTFIX-20260829 · 教师微课来源预览
+
+产品负责人在生产导入正式课程整讲后，来源页持续停在加载态，提交审核后通用审核页又显示没有已发布课件。生产只读核对确认待审快照未丢失：32/32 页均为来源运行时页，283/283 个必需绑定完整。根因是空 `binding.kind` 让解析器跳过钉死 `cw_asset_objects` 的 H5 kind/hash，并按普通对象生成错误签名；通用讲次审核入口同时只读取 current release，无法预览首次发布前的提交快照。`6185352` 已以 pinned object 为权威解析 H5 package，并把教师微课 active review 转到不可变微课审核路由。定向 Vitest 17/17、固定账号 Playwright 2/2、双 production build、app-only 原子发布与独立 postflight 通过，current/previous=`20260829-045135` / `6185352…` 与 `20260829-033955` / `59cc342…`；ledger、业务、审核快照、Storage 与错误基线零漂移，生产页面刷新验收 pending。证据见 [`teacher-microcourse-source-preview-hotfix-production.md`](../evidence/r1/teacher-microcourse-source-preview-hotfix-production.md)。
 
 #### HOTFIX-20260829 · 自研课堂互动状态同步
 
