@@ -179,7 +179,7 @@ describe("DEV-TMC-1 teacher microcourse product surfaces", () => {
     expect(matrix).toContain('t("courseSeasonUnspecified")');
   });
 
-  it("browses teacher microcourses in one catalog-detail workspace instead of a unique variant matrix", () => {
+  it("browses teacher microcourses as a grouped catalog with on-demand details instead of a unique variant matrix", () => {
     const route = read("src", "app", "[locale]", "dashboard", "courses", "[courseFamilyId]", "page.tsx");
     const library = read("src", "features", "school", "teaching-operations", "TeacherMicrocourseLibrary.tsx");
     const filters = read("src", "features", "school", "teaching-operations", "TeacherMicrocourseLibraryFilters.tsx");
@@ -188,8 +188,10 @@ describe("DEV-TMC-1 teacher microcourse product surfaces", () => {
 
     expect(route).toContain('detail.family.slug === "teacher-microcourses"');
     expect(route).toContain("<TeacherMicrocourseLibrary");
-    expect(library).toContain('id="microcourse-detail"');
-    expect(library).toContain("filteredEntries.map");
+    expect(library).toContain("structureGroups.map");
+    expect(library).toContain("<Sheet defaultOpen>");
+    expect(library).toContain('className="w-[min(96vw,72rem)] max-w-none p-0"');
+    expect(library).not.toContain("grid-cols-[21rem_minmax(0,1fr)]");
     expect(library).toContain("<DashboardCommandPanel>");
     expect(library).toContain("<DashboardCommandFilters>");
     expect(library).toContain("<TeachingPlan");
@@ -198,6 +200,8 @@ describe("DEV-TMC-1 teacher microcourse product surfaces", () => {
     expect(library).toContain("canViewUsage && <UsagePanel");
     expect(library).not.toContain("microcourseFacetNote");
     expect(library).not.toContain("VariantMatrix");
+    expect(route).toContain("只有用户明确点击某门微课时才打开详情抽屉");
+    expect(route).not.toContain(": filteredEntries[0]?.id");
     expect(filters).toContain("<FilterBar");
     expect(filters).toContain("<FilterBarMore");
     expect(filters).toContain("<FilterBarSubmit>");

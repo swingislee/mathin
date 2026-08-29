@@ -135,9 +135,11 @@ async function CourseFamilyProductPage({
       return variant ? [{ ...item, ...variant }] : [];
     });
     const filteredEntries = filterTeacherMicrocourseLibrary(entries, filters);
+    // 资料库首屏只展示全部候选；只有用户明确点击某门微课时才打开详情抽屉。
+    // 不再默认选中第一项，否则页面一进来又退化成“目录 + 常驻详情”的双重信息面。
     const selectedId = requestedVariantId && filteredEntries.some((entry) => entry.id === requestedVariantId)
       ? requestedVariantId
-      : filteredEntries[0]?.id;
+      : undefined;
 
     if (selectedId && detail.selectedVariant?.id !== selectedId) {
       detail = await getCourseFamilyDetail(detail.family.id, selectedId);

@@ -3,6 +3,13 @@ import { CheckCircle2, CircleDashed } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   DashboardCommandFilters,
@@ -12,7 +19,6 @@ import {
 import {
   ObjectBar,
   ObjectWorkspace,
-  type ObjectContextItem,
 } from "@/features/school/object-workspace";
 import type { StaffOption } from "@/features/school/classes";
 import { Link } from "@/i18n/navigation";
@@ -43,7 +49,7 @@ function entryHref(
   const params = teacherMicrocourseLibrarySearchParams(filters);
   params.set("variant", entryId);
   if (returnTo) params.set("returnTo", returnTo);
-  return `/dashboard/courses/${familyId}?${params.toString()}#microcourse-detail`;
+  return `/dashboard/courses/${familyId}?${params.toString()}`;
 }
 
 function seasonLabelKey(season: CourseSeason | null) {
@@ -81,13 +87,6 @@ export async function TeacherMicrocourseLibrary({
   lecturePreview?: ReactNode;
 }) {
   const t = await getTranslations("school.courses");
-  const identity: ObjectContextItem[] = [detail.family.publisher, detail.family.stage, detail.family.subject, detail.family.edition]
-    .filter(Boolean)
-    .map((value) => ({ value }));
-  const singleCount = entries.filter((entry) => teacherMicrocourseStructure(entry.lectureCount) === "single").length;
-  const shortCount = entries.filter((entry) => teacherMicrocourseStructure(entry.lectureCount) === "short").length;
-  const seriesCount = entries.filter((entry) => teacherMicrocourseStructure(entry.lectureCount) === "series").length;
-  const readyCount = entries.filter(teacherMicrocourseIsReady).length;
   const selectedVariant = detail.selectedVariant;
   const selectedBaseHref = selectedEntry
     ? entryHref(detail.family.id, selectedEntry.id, filters, returnTo).split("#")[0]
@@ -109,13 +108,16 @@ export async function TeacherMicrocourseLibrary({
   const topics = [...topicMap].map(([slug, label]) => ({ slug, label })).sort((left, right) => left.label.localeCompare(right.label));
   const offerings = Array.from(new Set(entries.map((entry) => entry.offeringType)));
   const selectedReady = selectedEntry ? teacherMicrocourseIsReady(selectedEntry) : false;
+  const structureGroups = (["single", "short", "series"] as const).map((structure) => ({
+    structure,
+    entries: filteredEntries.filter((entry) => teacherMicrocourseStructure(entry.lectureCount) === structure),
+  })).filter((group) => group.entries.length > 0);
 
   return <ObjectWorkspace
     objectBar={<ObjectBar
       title={detail.family.title}
       backHref={returnTo ?? "/dashboard/courses"}
       backLabel={t("backToLibrary")}
-      context={identity}
       status={<>
         <Badge variant={detail.family.status === "enabled" ? "secondary" : "outline"}>{t(detail.family.status)}</Badge>
         {detail.family.purpose === "test" && <Badge variant="outline">{t("test")}</Badge>}
@@ -140,106 +142,119 @@ export async function TeacherMicrocourseLibrary({
       </DashboardCommandFilters>
     </DashboardCommandPanel>}
   >
-    <div className="grid min-w-0 gap-6 @4xl/page:grid-cols-[21rem_minmax(0,1fr)]">
-      <section className="min-w-0 self-start overflow-hidden rounded-2xl border border-line bg-card" aria-labelledby="microcourse-results-heading">
-        <div className="px-4 py-3.5">
-          <div className="flex items-center justify-between gap-3">
-            <h2 id="microcourse-results-heading" className="font-medium text-ink">{t("microcourseCatalog")}</h2>
-            <span className="text-xs tabular-nums text-muted">{filteredEntries.length}/{entries.length}</span>
-          </div>
-          <p className="mt-1.5 text-xs leading-5 text-muted">
-            {t("microcourseSingle")} {singleCount} · {t("microcourseShort")} {shortCount} · {t("microcourseSeries")} {seriesCount} · {t("microcourseReady")} {readyCount}
-          </p>
+    <section className="min-w-0" aria-labelledby="microcourse-results-heading">
+      <div className="mb-5 flex items-end justify-between gap-4">
+        <div>
+          <h2 id="microcourse-results-heading" className="font-display text-2xl text-ink">{t("microcourseCatalog")}</h2>
+          <p className="mt-1 text-sm text-muted">{t("microcourseResultCount", { count: filteredEntries.length })}</p>
         </div>
+        {filteredEntries.length !== entries.length && <span className="text-xs tabular-nums text-muted">{filteredEntries.length}/{entries.length}</span>}
+      </div>
 
-        {filteredEntries.length === 0 ? <DashboardEmptyCard className="m-3">{t("microcourseNoResults")}</DashboardEmptyCard> : <div className="flex max-h-[calc(100vh-18rem)] min-h-64 flex-col overflow-y-auto p-2">
-          {filteredEntries.map((entry) => {
-            const active = entry.id === selectedEntry?.id;
-            const ready = teacherMicrocourseIsReady(entry);
-            const ReadyIcon = ready ? CheckCircle2 : CircleDashed;
-            const topic = entry.topics[0];
-            return <Link
-              key={entry.id}
-              href={entryHref(detail.family.id, entry.id, filters, returnTo)}
-              aria-current={active ? "page" : undefined}
-              className={cn(
-                "group rounded-xl border px-3 py-3 transition",
-                active ? "border-crater/60 bg-moon/20" : "border-transparent hover:border-line hover:bg-paper/70",
-              )}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <h3 className="truncate font-medium text-ink">{entry.title}</h3>
-                  <p className="mt-1 truncate text-xs text-muted">{entry.authorName} · {entry.sourceClassroomName}</p>
+      {filteredEntries.length === 0 ? <DashboardEmptyCard>{t("microcourseNoResults")}</DashboardEmptyCard> : <div className="space-y-7">
+        {structureGroups.map((group) => <section key={group.structure} aria-labelledby={`microcourse-${group.structure}-heading`}>
+          <div className="mb-3 flex items-center gap-3">
+            <h3 id={`microcourse-${group.structure}-heading`} className="text-sm font-medium text-ink">{t(`microcourseStructure_${group.structure}`)}</h3>
+            <span className="text-xs tabular-nums text-muted">{group.entries.length}</span>
+            <span className="h-px flex-1 bg-line/70" aria-hidden />
+          </div>
+          <div className="grid min-w-0 gap-3 @3xl/page:grid-cols-2 @6xl/page:grid-cols-3">
+            {group.entries.map((entry) => {
+              const ready = teacherMicrocourseIsReady(entry);
+              const ReadyIcon = ready ? CheckCircle2 : CircleDashed;
+              const topic = entry.topics[0];
+              return <Link
+                key={entry.id}
+                href={entryHref(detail.family.id, entry.id, filters, returnTo)}
+                aria-label={`${t("microcourseViewDetails")}：${entry.title}`}
+                className="group flex min-h-44 min-w-0 flex-col rounded-2xl border border-line bg-card px-5 py-4 transition hover:-translate-y-0.5 hover:border-crater/60 hover:bg-paper/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-crater"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <h4 className="truncate font-display text-xl text-ink">{entry.title}</h4>
+                    <p className="mt-1 truncate text-xs text-muted">{t("microcourseSourceByline", {
+                      author: entry.authorName,
+                      classroom: entry.sourceClassroomName,
+                    })}</p>
+                  </div>
+                  <span className={cn("flex shrink-0 items-center gap-1 text-xs", ready ? "text-emerald-700 dark:text-emerald-300" : "text-muted")}>
+                    <ReadyIcon className="size-3.5" aria-hidden />
+                    {ready ? t("microcourseReady") : t("microcourseNeedsWork")}
+                  </span>
                 </div>
-                <span className={cn("flex shrink-0 items-center gap-1 text-xs tabular-nums", ready ? "text-emerald-700 dark:text-emerald-300" : "text-muted")}>
-                  <ReadyIcon className="size-3.5" aria-hidden />{entry.releasedLectureCount}/{entry.lectureCount}
-                </span>
-              </div>
-              <p className="mt-2 truncate text-xs text-muted">
-                {t(`microcourseStructure_${teacherMicrocourseStructure(entry.lectureCount)}`)}
-                {topic ? ` · ${locale === "en" ? topic.titleEn : topic.titleZh}` : ""}
-                {` · ${t(seasonLabelKey(entry.courseSeason))}`}
-              </p>
-            </Link>;
-          })}
-        </div>}
-      </section>
 
-      <section id="microcourse-detail" className="min-w-0 scroll-mt-28" aria-labelledby="microcourse-detail-heading">
-        {!selectedEntry || !selectedVariant ? <DashboardEmptyCard>{t("microcourseChooseOne")}</DashboardEmptyCard> : <>
-          <header className="border-b border-line pb-5">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="min-w-0 max-w-3xl">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant={selectedVariant.status === "enabled" ? "secondary" : "outline"}>{t(selectedVariant.status)}</Badge>
-                  <Badge variant={selectedReady ? "secondary" : "outline"}>{selectedReady ? t("microcourseReady") : t("microcourseNeedsWork")}</Badge>
+                <div className="mt-4 flex flex-wrap gap-1.5">
+                  {topic && <Badge variant="outline">{locale === "en" ? topic.titleEn : topic.titleZh}</Badge>}
+                  {entry.keywords.slice(0, 2).map((keyword) => <Badge key={keyword} variant="outline">#{keyword}</Badge>)}
                 </div>
-                <h2 id="microcourse-detail-heading" className="mt-3 font-display text-3xl text-ink">{selectedEntry.title}</h2>
-                <p className="mt-1.5 text-sm text-muted">{t("microcourseSourceByline", {
-                  author: selectedEntry.authorName,
-                  classroom: selectedEntry.sourceClassroomName,
-                })}</p>
+
+                <div className="mt-auto flex items-end justify-between gap-4 pt-5 text-xs text-muted">
+                  <p className="min-w-0 truncate">
+                    {t("microcourseCardMeta", {
+                      lectures: entry.lectureCount,
+                      grade: entry.grade,
+                      season: t(seasonLabelKey(entry.courseSeason)),
+                    })}
+                  </p>
+                  <span className="shrink-0 font-medium text-ink transition group-hover:text-crater">{t("microcourseViewDetails")} →</span>
+                </div>
+              </Link>;
+            })}
+          </div>
+        </section>)}
+      </div>}
+    </section>
+
+    {selectedEntry && selectedVariant && <Sheet defaultOpen>
+      <SheetContent side="right" closeLabel={t("microcourseCloseDetails")} className="w-[min(96vw,72rem)] max-w-none p-0">
+        <SheetHeader className="border-b border-line px-6 py-5 pr-16">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="min-w-0 max-w-3xl">
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <Badge variant={selectedVariant.status === "enabled" ? "secondary" : "outline"}>{t(selectedVariant.status)}</Badge>
+                <Badge variant={selectedReady ? "secondary" : "outline"}>{selectedReady ? t("microcourseReady") : t("microcourseNeedsWork")}</Badge>
               </div>
-              <div className="flex shrink-0 items-center gap-2">
-                {canCreateClass && selectedVariant.status === "enabled" && <Link
-                  href={`/dashboard/classes/new?courseId=${selectedVariant.id}`}
-                  className={buttonVariants({ size: "sm" })}
-                >{t("useMicrocourseForClass")}</Link>}
-                {canManage && <StatusOverflowMenu
-                  id={selectedVariant.id}
-                  status={selectedVariant.status}
-                  action={transitionCourseVariantStatusAction}
-                  ariaLabel={t("moreActions")}
-                />}
-              </div>
+              <SheetTitle className="text-3xl">{selectedEntry.title}</SheetTitle>
+              <SheetDescription>{t("microcourseSourceByline", {
+                author: selectedEntry.authorName,
+                classroom: selectedEntry.sourceClassroomName,
+              })}</SheetDescription>
             </div>
-
-            <dl className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm">
-              {[
-                { label: t("lectures"), value: selectedEntry.lectureCount },
-                { label: t("publishedLectures"), value: selectedEntry.releasedLectureCount },
-                { label: t("pagesLabel"), value: detail.readiness.pageCount },
-                ...(canViewUsage ? [{ label: t("usingClasses"), value: detail.usage.length }] : []),
-              ].map((item) => <div key={item.label} className="flex items-baseline gap-1.5">
-                <dt className="text-xs text-muted">{item.label}</dt>
-                <dd className="font-medium tabular-nums text-ink">{item.value}</dd>
-              </div>)}
-            </dl>
-
-            <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
-              <span>{t("microcourseSourceGradeValue", { grade: selectedEntry.grade })}</span><span aria-hidden>·</span>
-              <span>{t("microcourseSourceSeasonValue", { season: t(seasonLabelKey(selectedEntry.courseSeason)) })}</span><span aria-hidden>·</span>
-              <span>{t("microcourseSourceClassTypeValue", { classType: selectedEntry.classType || t("defaultClassType") })}</span>
+            <div className="flex shrink-0 items-center gap-2 pr-8">
+              {canCreateClass && selectedVariant.status === "enabled" && <Link
+                href={`/dashboard/classes/new?courseId=${selectedVariant.id}`}
+                className={buttonVariants({ size: "sm" })}
+              >{t("useMicrocourseForClass")}</Link>}
+              {canManage && <StatusOverflowMenu
+                id={selectedVariant.id}
+                status={selectedVariant.status}
+                action={transitionCourseVariantStatusAction}
+                ariaLabel={t("moreActions")}
+              />}
             </div>
+          </div>
 
-            {(selectedEntry.topics.length > 0 || selectedEntry.keywords.length > 0) && <div className="mt-3 flex flex-wrap gap-1.5">
-              {selectedEntry.topics.map((topic) => <Badge key={topic.slug} variant="outline">{locale === "en" ? topic.titleEn : topic.titleZh}</Badge>)}
-              {selectedEntry.keywords.slice(0, 6).map((keyword) => <Badge key={keyword} variant="outline">#{keyword}</Badge>)}
-            </div>}
-          </header>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
+            <span>{t("microcourseCardMeta", {
+              lectures: selectedEntry.lectureCount,
+              grade: selectedEntry.grade,
+              season: t(seasonLabelKey(selectedEntry.courseSeason)),
+            })}</span>
+            <span aria-hidden>·</span>
+            <span>{t("publishedLectures")} {selectedEntry.releasedLectureCount}/{selectedEntry.lectureCount}</span>
+            <span aria-hidden>·</span>
+            <span>{t("pagesLabel")} {detail.readiness.pageCount}</span>
+            {canViewUsage && <><span aria-hidden>·</span><span>{t("usingClasses")} {detail.usage.length}</span></>}
+          </div>
 
-          <Tabs defaultValue="content" className="mt-5 min-w-0">
+          {(selectedEntry.topics.length > 0 || selectedEntry.keywords.length > 0) && <div className="flex flex-wrap gap-1.5">
+            {selectedEntry.topics.map((topic) => <Badge key={topic.slug} variant="outline">{locale === "en" ? topic.titleEn : topic.titleZh}</Badge>)}
+            {selectedEntry.keywords.slice(0, 4).map((keyword) => <Badge key={keyword} variant="outline">#{keyword}</Badge>)}
+          </div>}
+        </SheetHeader>
+
+        <div className="@container/detail px-6 py-5">
+          <Tabs defaultValue="content" className="min-w-0">
             <TabsList>
               <TabsTrigger value="content">{t("microcourseContentTab")}</TabsTrigger>
               <TabsTrigger value="management">{t("microcourseManagementTab")}</TabsTrigger>
@@ -248,7 +263,7 @@ export async function TeacherMicrocourseLibrary({
               <TeachingPlan baseHref={selectedBaseHref} teachingPlan={detail.teachingPlan} canManage={canManage} compact />
             </TabsContent>
             <TabsContent value="management" className="mt-4">
-              <div className="grid gap-4 @4xl/page:grid-cols-3">
+              <div className="grid gap-4 @4xl/detail:grid-cols-3">
                 <CourseVariantReadiness readiness={detail.readiness} />
                 {canViewUsage && <UsagePanel usage={detail.usage} returnTo={selectedBaseHref} />}
                 <ResponsibilityPanel
@@ -262,9 +277,9 @@ export async function TeacherMicrocourseLibrary({
               </div>
             </TabsContent>
           </Tabs>
-        </>}
-      </section>
-    </div>
+        </div>
+      </SheetContent>
+    </Sheet>}
     {lecturePreview}
   </ObjectWorkspace>;
 }
