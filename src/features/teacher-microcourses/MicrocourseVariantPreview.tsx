@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { isGamePageDoc } from "@/features/courseware-doc/game-page-schema";
+import { isCoursewareCompositionPage } from "@/features/courseware-doc/composition-page-schema";
 import { StagePreview } from "@/features/courseware-studio/StagePreview";
 import type { TeacherMicrocourseEditor } from "./data";
 
@@ -18,7 +19,9 @@ export function MicrocourseVariantPreview({ editor }: { editor: TeacherMicrocour
     [editor.pages, selectedPageId],
   );
   const modeLabel = (value: (typeof editor.pages)[number]) => (
-    isGamePageDoc(value.doc) ? t("mode_game") : t(`mode_${value.doc.mode}`)
+    isCoursewareCompositionPage(value.doc)
+      ? t("mode_composition")
+      : isGamePageDoc(value.doc) ? t("mode_game") : t(`mode_${value.doc.mode}`)
   );
 
   return <div className="grid min-h-[40rem] gap-4 xl:grid-cols-[16rem_minmax(0,1fr)]" data-testid="microcourse-variant-preview">

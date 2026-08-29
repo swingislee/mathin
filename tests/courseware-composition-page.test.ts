@@ -12,6 +12,7 @@ import {
 } from "@/features/courseware-doc/composition-page-schema";
 import type { GamePageDoc } from "@/features/courseware-doc/game-page-schema";
 import type { DocNode } from "@/features/courseware-doc/schema";
+import { teacherMicrocoursePageDocSchema } from "@/features/teacher-microcourses/page-doc";
 
 function textNode(id: string): DocNode {
   return {
@@ -168,5 +169,45 @@ describe("courseware composition page", () => {
     expect(withGame.layout.blocks).toHaveLength(1);
     expect(rejectedH5).toEqual(withGame);
     expect(coursewareCompositionPageSchema.safeParse(withGame).success).toBe(true);
+  });
+
+  it("keeps an imported source and an authored interaction from competing for classroom state", () => {
+    const source = {
+      sourceFamilyId: "00000000-0000-4000-8000-000000000011",
+      sourceCourseId: "00000000-0000-4000-8000-000000000012",
+      sourceLectureId: "00000000-0000-4000-8000-000000000013",
+      sourceReleaseId: "00000000-0000-4000-8000-000000000014",
+      sourcePageDocId: "00000000-0000-4000-8000-000000000015",
+      sourceRevisionId: "00000000-0000-4000-8000-000000000016",
+      sourcePageNo: 1,
+      sourceTitle: "Source",
+      doc: sudokuGame(),
+    };
+    const page = createEmptyCoursewareCompositionPage(source);
+    expect(addCoursewareCompositionGame(page, sudokuGame())).toEqual(page);
+    expect(addCoursewareCompositionH5(page, h5)).toEqual(page);
+  });
+
+  it("rejects standalone legacy game, Sudoku and H5 pages at the teacher authoring boundary", () => {
+    expect(teacherMicrocoursePageDocSchema.safeParse(sudokuGame()).success).toBe(false);
+    expect(teacherMicrocoursePageDocSchema.safeParse({
+      docVersion: "microcourse-page-v1",
+      mode: "h5",
+      canvas: { width: 960, height: 720, backgroundColor: "#ffffff" },
+      ...h5,
+    }).success).toBe(false);
+    expect(teacherMicrocoursePageDocSchema.safeParse({
+      docVersion: "microcourse-page-v1",
+      mode: "sudoku",
+      canvas: { width: 960, height: 720, backgroundColor: "#ffffff" },
+      puzzle: new Array(81).fill(0),
+      display: {
+        showCoordinates: true,
+        allowCandidates: true,
+        allowAnswerReveal: false,
+        showTeachingTools: true,
+      },
+      analysis: { status: "multiple", solutionCount: 2, solution: null },
+    }).success).toBe(false);
   });
 });

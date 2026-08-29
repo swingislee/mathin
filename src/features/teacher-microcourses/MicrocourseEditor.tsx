@@ -6,8 +6,6 @@ import {
   ArrowUp,
   ChevronDown,
   ChevronUp,
-  FileCode2,
-  Gamepad2,
   ImagePlus,
   LoaderCircle,
   Play,
@@ -26,27 +24,23 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { isGamePageDoc } from "@/features/courseware-doc/game-page-schema";
+import { isGamePageDoc, type GamePageDoc } from "@/features/courseware-doc/game-page-schema";
+import { isCoursewareCompositionPage } from "@/features/courseware-doc/composition-page-schema";
 import type { MicrocoursePageDoc } from "@/features/courseware-doc/microcourse-schema";
 import type { DocNode, PageDoc } from "@/features/courseware-doc/schema";
 import { StagePreview } from "@/features/courseware-studio/StagePreview";
 import { GamePageEditor } from "@/features/games/courseware/GamePageEditor";
 import { GamePageGridEditor } from "@/features/games/courseware/GamePageGridEditor";
-import { gameCoursewareContractsForSurface } from "@/features/games/courseware/registry";
-import { getGame } from "@/features/games/registry";
 import { analyzeSudokuPuzzle } from "@/features/games/sudoku/logic";
 import { useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import {
   createTeacherCompositionPageAction,
-  createTeacherH5PageAction,
-  createTeacherGamePageAction,
   deleteTeacherMicrocoursePageAction,
   freezeTeacherMicrocourseSourceSessionAction,
   loadTeacherMicrocourseH5HtmlAction,
@@ -63,25 +57,12 @@ import type { TeacherMicrocourseEditor as EditorData, TeacherMicrocoursePage } f
 import { microcourseH5Bytes, normalizeMicrocourseH5 } from "./h5";
 import { MicrocourseSourcePicker } from "./MicrocourseSourcePicker";
 import type { TeacherMicrocoursePageDoc } from "./page-doc";
+import {
+  CoursewareCompositionWorkbench,
+  type CoursewareCompositionWorkbenchHandle,
+} from "./CoursewareCompositionWorkbench";
 
 const NONE = "__none__";
-const DEFAULT_H5 = `<!doctype html>
-<html lang="zh-CN">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>互动微课</title>
-  <style>
-    body { margin: 0; min-height: 100vh; display: grid; place-items: center; font-family: system-ui; background: #fffaf1; color: #2d2a26; }
-    button { padding: .75rem 1.25rem; border: 0; border-radius: 999px; background: #dd765c; color: white; font: inherit; }
-  </style>
-</head>
-<body>
-  <main><h1>我的互动微课</h1><button id="start">开始</button></main>
-  <script>document.querySelector('#start').addEventListener('click', () => alert('开始探索！'))</script>
-</body>
-</html>`;
-
 function clone<T>(value: T): T {
   return structuredClone(value);
 }
@@ -143,6 +124,7 @@ function imageNode(bindingKey: string, index: number): DocNode {
 }
 
 function pageModeLabel(page: TeacherMicrocoursePage, t: (key: string) => string) {
+  if (isCoursewareCompositionPage(page.doc)) return t("mode_composition");
   if (isGamePageDoc(page.doc)) return t("mode_game");
   return t(`mode_${page.doc.mode}`);
 }
@@ -160,6 +142,8 @@ interface PersistedPageDraft {
 interface MicrocoursePageWorkbenchHandle {
   flush: () => Promise<boolean>;
 }
+
+type LegacyTeacherMicrocoursePageDoc = MicrocoursePageDoc | GamePageDoc;
 
 interface MicrocourseH5ControlsHandle extends MicrocoursePageWorkbenchHandle {
   markDirty: () => void;
@@ -194,7 +178,7 @@ export function MicrocourseEditor({
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [pageSwitching, setPageSwitching] = useState(false);
   const pageSwitchingRef = useRef(false);
-  const workbenchRef = useRef<MicrocoursePageWorkbenchHandle>(null);
+  const workbenchRef = useRef<MicrocoursePageWorkbenchHandle | CoursewareCompositionWorkbenchHandle>(null);
   const [pending, startTransition] = useTransition();
 
   const pages = useMemo(() => editor.pages.map((page) => {
@@ -348,21 +332,16 @@ export function MicrocourseEditor({
         {message && <p role="status" className="border-t border-line px-6 py-2 text-xs text-muted">{message}</p>}
       </Card>
 
-      <div className="grid min-h-[44rem] gap-4 xl:grid-cols-[16rem_minmax(0,1fr)]">
-        <Card className="min-h-0 overflow-hidden">
+      <div className="grid h-[calc(100vh-11rem)] min-h-[46rem] max-h-[68rem] gap-4 xl:grid-cols-[18rem_minmax(0,1fr)]">
+        <Card className="flex min-h-0 flex-col overflow-hidden">
           <CardHeader className="pb-3"><CardTitle className="text-base">{t("pages", { count: pages.length })}</CardTitle></CardHeader>
-          <CardContent className="flex h-[39rem] min-h-0 flex-col gap-3 p-3 pt-0">
-            <div className="grid grid-cols-2 gap-2">
-              <Button type="button" size="sm" variant="secondary" disabled={pending || pageSwitching} onClick={addBlank}><Plus className="size-4" />{t("addBlank")}</Button>
-              <GameCreateDialog
-                microcourseId={editor.id}
-                afterPageDocId={currentPage?.pageDocId ?? null}
-                disabled={pending || pageSwitching}
-                beforeCreate={persistCurrentPage}
-                onAdded={(id) => void handlePageAdded(id, t("pageAdded"))}
-              />
+          <CardContent className="flex min-h-0 flex-1 flex-col gap-3 p-3 pt-0">
+            <div className="rounded-xl border border-crater/60 bg-moon/25 p-2">
+              <p className="mb-2 px-1 text-xs font-medium text-muted">{t("pageCreateHint")}</p>
+              <div className="grid gap-2">
+                <Button type="button" size="sm" variant="secondary" className="justify-start" disabled={pending || pageSwitching} onClick={addBlank}><Plus className="size-4" />{t("addBlank")}</Button>
               <MicrocourseSourcePicker microcourseId={editor.id} afterPageDocId={currentPage?.pageDocId ?? null} disabled={pending || pageSwitching} onAdded={(id, count) => void handlePageAdded(id, t("pagesAdded", { count }))} />
-              <H5CreateDialog microcourseId={editor.id} afterPageDocId={currentPage?.pageDocId ?? null} disabled={pending || pageSwitching} onAdded={(id) => void handlePageAdded(id, t("pageAdded"))} />
+              </div>
             </div>
             <ScrollArea className="min-h-0 flex-1">
               <ol className="space-y-2 pr-2">
@@ -381,7 +360,9 @@ export function MicrocourseEditor({
           </CardContent>
         </Card>
         {currentPage
-          ? <MicrocoursePageWorkbench ref={workbenchRef} key={currentPage.pageDocId} microcourseId={editor.id} page={currentPage} onPersisted={handlePagePersisted} onStatus={setMessage} />
+          ? isCoursewareCompositionPage(currentPage.doc)
+            ? <CoursewareCompositionWorkbench ref={workbenchRef} key={currentPage.pageDocId} microcourseId={editor.id} page={{ ...currentPage, doc: currentPage.doc }} onPersisted={handlePagePersisted} onStatus={setMessage} />
+            : <MicrocoursePageWorkbench ref={workbenchRef} key={currentPage.pageDocId} microcourseId={editor.id} page={{ ...currentPage, doc: currentPage.doc }} onPersisted={handlePagePersisted} onStatus={setMessage} />
           : <Card className="grid place-items-center"><p className="text-sm text-muted">{t("emptyPages")}</p></Card>}
       </div>
 
@@ -391,130 +372,9 @@ export function MicrocourseEditor({
   );
 }
 
-function GameCreateDialog({
-  microcourseId,
-  afterPageDocId,
-  disabled,
-  beforeCreate,
-  onAdded,
-}: {
-  microcourseId: string;
-  afterPageDocId: string | null;
-  disabled: boolean;
-  beforeCreate: () => Promise<boolean>;
-  onAdded: (id: string) => void;
-}) {
-  const t = useTranslations("teacherMicrocourses");
-  const tGames = useTranslations("games");
-  const contracts = gameCoursewareContractsForSurface("microcourse");
-  const [open, setOpen] = useState(false);
-  const [selectedKey, setSelectedKey] = useState(
-    contracts[0] ? `${contracts[0].gameId}:${contracts[0].contentVersion}` : "",
-  );
-  const [title, setTitle] = useState(
-    contracts[0] ? tGames(`items.${contracts[0].gameId}.name`) : "",
-  );
-  const [message, setMessage] = useState("");
-  const [pending, startTransition] = useTransition();
-  const selected = contracts.find((contract) => (
-    `${contract.gameId}:${contract.contentVersion}` === selectedKey
-  ));
-  const choose = (gameId: string, contentVersion: string) => {
-    setSelectedKey(`${gameId}:${contentVersion}`);
-    setTitle(tGames(`items.${gameId}.name`));
-    setMessage("");
-  };
-  const create = () => startTransition(async () => {
-    if (!selected || !await beforeCreate()) return;
-    const result = await createTeacherGamePageAction({
-      microcourseId,
-      afterPageDocId,
-      title,
-      gameId: selected.gameId,
-      contentVersion: selected.contentVersion,
-    });
-    if (result.ok) {
-      setOpen(false);
-      onAdded(result.data.pageId);
-    } else {
-      setMessage(t("actionFailed", { code: result.code }));
-    }
-  });
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button type="button" size="sm" variant="secondary" disabled={disabled || contracts.length === 0}>
-          <Gamepad2 className="size-4" />
-          {t("addGame")}
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-xl">
-        <DialogHeader>
-          <DialogTitle>{t("createGameTitle")}</DialogTitle>
-          <DialogDescription>{t("gameAuthoringHint")}</DialogDescription>
-        </DialogHeader>
-        <div className="grid gap-2 sm:grid-cols-2">
-          {contracts.map((contract) => {
-            const game = getGame(contract.gameId);
-            const Icon = game?.icon ?? Gamepad2;
-            const key = `${contract.gameId}:${contract.contentVersion}`;
-            return (
-              <Button
-                key={key}
-                type="button"
-                variant="secondary"
-                aria-pressed={selectedKey === key}
-                className={cn(
-                  "h-auto justify-start rounded-xl px-4 py-3",
-                  selectedKey === key && "border-crater bg-moon/30",
-                )}
-                onClick={() => choose(contract.gameId, contract.contentVersion)}
-              >
-                <Icon className="size-4" />
-                {tGames(`items.${contract.gameId}.name`)}
-              </Button>
-            );
-          })}
-        </div>
-        <Label className="grid gap-1">
-          <span>{t("pageTitle")}</span>
-          <Input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={200} />
-        </Label>
-        {message && <p role="alert" className="text-sm text-rose">{message}</p>}
-        <DialogFooter>
-          <Button type="button" variant="secondary" onClick={() => setOpen(false)}>{t("cancel")}</Button>
-          <Button type="button" disabled={pending || !selected || !title.trim()} onClick={create}>
-            {pending && <LoaderCircle className="size-4 animate-spin" />}
-            {t("create")}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function H5CreateDialog({ microcourseId, afterPageDocId, disabled, onAdded }: { microcourseId: string; afterPageDocId: string | null; disabled: boolean; onAdded: (id: string) => void }) {
-  const t = useTranslations("teacherMicrocourses");
-  const [open, setOpen] = useState(false);
-  const [title, setTitle] = useState(t("h5DefaultTitle"));
-  const [html, setHtml] = useState(DEFAULT_H5);
-  const [message, setMessage] = useState("");
-  const [pending, startTransition] = useTransition();
-  const create = () => startTransition(async () => {
-    const result = await createTeacherH5PageAction({ microcourseId, afterPageDocId, title, html });
-    if (result.ok) { setOpen(false); onAdded(result.data.pageId); }
-    else setMessage(t("actionFailed", { code: result.code }));
-  });
-  return <Dialog open={open} onOpenChange={setOpen}>
-    <DialogTrigger asChild><Button type="button" size="sm" variant="secondary" disabled={disabled}><FileCode2 className="size-4" />{t("addH5")}</Button></DialogTrigger>
-    <DialogContent className="max-w-4xl"><DialogHeader><DialogTitle>{t("createH5Title")}</DialogTitle><DialogDescription>{t("h5SecurityHint")}</DialogDescription></DialogHeader><Label className="grid gap-1"><span>{t("pageTitle")}</span><Input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={200} /></Label><Label className="grid gap-1"><span>{t("html")}</span><Textarea value={html} onChange={(event) => setHtml(event.target.value)} rows={18} className="font-mono text-xs" /></Label>{message && <p role="alert" className="text-sm text-rose">{message}</p>}<DialogFooter><Button type="button" variant="secondary" onClick={() => setOpen(false)}>{t("cancel")}</Button><Button type="button" disabled={pending || !title.trim() || !html.trim()} onClick={create}>{pending && <LoaderCircle className="size-4 animate-spin" />}{t("create")}</Button></DialogFooter></DialogContent>
-  </Dialog>;
-}
-
 const MicrocoursePageWorkbench = forwardRef<MicrocoursePageWorkbenchHandle, {
   microcourseId: string;
-  page: TeacherMicrocoursePage & { h5Html?: string };
+  page: Omit<TeacherMicrocoursePage, "doc"> & { doc: LegacyTeacherMicrocoursePageDoc; h5Html?: string };
   onPersisted: (draft: PersistedPageDraft) => void;
   onStatus: (message: string) => void;
 }>(function MicrocoursePageWorkbench({ microcourseId, page, onPersisted, onStatus }, ref) {
@@ -569,6 +429,11 @@ const MicrocoursePageWorkbench = forwardRef<MicrocoursePageWorkbenchHandle, {
       revisionRef.current = result.data.revisionNo;
       savedSequenceRef.current = sequence;
       setMessage("");
+      if (isCoursewareCompositionPage(result.data.doc)) {
+        setSaveState("error");
+        setMessage(t("pageAutosaveFailed"));
+        return false;
+      }
       onPersisted({
         pageDocId: page.pageDocId,
         title: titleSnapshot,
@@ -613,9 +478,9 @@ const MicrocoursePageWorkbench = forwardRef<MicrocoursePageWorkbenchHandle, {
     timerRef.current = window.setTimeout(() => void flushRef.current(), 800);
   }, []);
 
-  const updateDoc: React.Dispatch<React.SetStateAction<TeacherMicrocoursePageDoc>> = useCallback((nextValue) => {
+  const updateDoc: React.Dispatch<React.SetStateAction<LegacyTeacherMicrocoursePageDoc>> = useCallback((nextValue) => {
     const next = typeof nextValue === "function"
-      ? (nextValue as (current: TeacherMicrocoursePageDoc) => TeacherMicrocoursePageDoc)(docRef.current)
+      ? (nextValue as (current: LegacyTeacherMicrocoursePageDoc) => LegacyTeacherMicrocoursePageDoc)(docRef.current)
       : nextValue;
     docRef.current = next;
     setDoc(next);
@@ -691,7 +556,7 @@ function CompositionControls({ microcourseId, page, doc, setDoc, bindingUrls, se
   page: TeacherMicrocoursePage;
   initialHtml?: string;
   doc: Extract<MicrocoursePageDoc, { mode: "composition" }>;
-  setDoc: React.Dispatch<React.SetStateAction<TeacherMicrocoursePageDoc>>;
+  setDoc: React.Dispatch<React.SetStateAction<LegacyTeacherMicrocoursePageDoc>>;
   bindingUrls: Record<string, string>;
   setBindingUrls: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   pending: boolean;
@@ -752,7 +617,7 @@ function CompositionControls({ microcourseId, page, doc, setDoc, bindingUrls, se
   </div>;
 }
 
-function SudokuControls({ doc, setDoc }: { doc: Extract<MicrocoursePageDoc, { mode: "sudoku" }>; setDoc: React.Dispatch<React.SetStateAction<TeacherMicrocoursePageDoc>> }) {
+function SudokuControls({ doc, setDoc }: { doc: Extract<MicrocoursePageDoc, { mode: "sudoku" }>; setDoc: React.Dispatch<React.SetStateAction<LegacyTeacherMicrocoursePageDoc>> }) {
   const t = useTranslations("teacherMicrocourses");
   const analysis = useMemo(() => analyzeSudokuPuzzle(doc.puzzle), [doc.puzzle]);
   const setDigit = (index: number, raw: string) => {
@@ -769,7 +634,7 @@ function SudokuControls({ doc, setDoc }: { doc: Extract<MicrocoursePageDoc, { mo
 
 const H5Controls = forwardRef<MicrocourseH5ControlsHandle, {
   microcourseId: string;
-  page: TeacherMicrocoursePage;
+  page: Omit<TeacherMicrocoursePage, "doc"> & { doc: LegacyTeacherMicrocoursePageDoc };
   initialHtml?: string;
   titleRef: { current: string };
   onPersisted: (draft: PersistedPageDraft) => void;

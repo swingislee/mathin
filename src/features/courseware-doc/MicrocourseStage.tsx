@@ -21,19 +21,22 @@ import SpatialCoursewareStage from "./SpatialCoursewareStage";
 import { isSourceRuntimePageDoc } from "./source-runtime-schema";
 import SourceRuntimeStage from "./SourceRuntimeStage";
 
-export type MicrocourseStageProps = Omit<DocStageProps, "doc"> & {
-  doc: MicrocoursePageDoc;
+export type MicrocourseStageRuntimeProps = Omit<DocStageProps, "doc"> & {
   onAdvance?: () => void;
   gameMirror?: GameMirrorState | null;
   onGameMirror?: (state: GameMirrorState) => void;
 };
 
-function SourceStage({
+export type MicrocourseStageProps = MicrocourseStageRuntimeProps & {
+  doc: MicrocoursePageDoc;
+};
+
+export function MicrocourseSourceStage({
   doc,
   props,
 }: {
   doc: MicrocourseSourceDoc;
-  props: MicrocourseStageProps;
+  props: MicrocourseStageRuntimeProps;
 }) {
   if (isSourceRuntimePageDoc(doc)) {
     return (
@@ -93,9 +96,12 @@ function SourceStage({
   );
 }
 
-function MicrocourseH5Frame({ doc, props }: { doc: Extract<MicrocoursePageDoc, { mode: "h5" }>; props: MicrocourseStageProps }) {
+export function MicrocourseH5ArtifactFrame({ artifact, props }: {
+  artifact: { artifactId: string; sha256: string };
+  props: MicrocourseStageRuntimeProps;
+}) {
   const locale = useLocale();
-  const frameId = `microcourse-h5:${doc.artifactId}`;
+  const frameId = `microcourse-h5:${artifact.artifactId}`;
   const { iframeRef, onFrameLoad } = useH5FrameRegistration(
     props.h5PointerBridge,
     frameId,
@@ -103,9 +109,9 @@ function MicrocourseH5Frame({ doc, props }: { doc: Extract<MicrocoursePageDoc, {
 
   return (
     <iframe
-      key={doc.sha256}
+      key={artifact.sha256}
       ref={iframeRef}
-      src={`/api/microcourse-h5/${doc.artifactId}`}
+      src={`/api/microcourse-h5/${artifact.artifactId}`}
       title={locale === "en" ? "Interactive microcourse" : "微课互动内容"}
       sandbox="allow-scripts"
       className="size-full border-0 bg-white"
@@ -132,7 +138,7 @@ export default function MicrocourseStage(props: MicrocourseStageProps) {
         <>
           {doc.source ? (
             <div className="absolute inset-0">
-              <SourceStage doc={doc.source.doc} props={props} />
+              <MicrocourseSourceStage doc={doc.source.doc} props={props} />
             </div>
           ) : null}
           <div
@@ -169,7 +175,7 @@ export default function MicrocourseStage(props: MicrocourseStageProps) {
         </div>
       ) : null}
 
-      {doc.mode === "h5" ? <MicrocourseH5Frame doc={doc} props={props} /> : null}
+      {doc.mode === "h5" ? <MicrocourseH5ArtifactFrame artifact={doc} props={props} /> : null}
     </div>
   );
 }

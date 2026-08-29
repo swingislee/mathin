@@ -1,17 +1,19 @@
 import { z } from "zod";
 import {
-  gamePageDocSchema,
-  type GamePageDoc,
-} from "@/features/courseware-doc/game-page-schema";
+  coursewareCompositionPageSchema,
+  type CoursewareCompositionPage,
+} from "@/features/courseware-doc/composition-page-schema";
 import {
-  microcoursePageDocSchema,
+  legacyMicrocourseCompositionPageSchema,
   type MicrocoursePageDoc,
 } from "@/features/courseware-doc/microcourse-schema";
+import type { GamePageDoc } from "@/features/courseware-doc/game-page-schema";
 
 export const teacherMicrocoursePageDocSchema = z.union([
-  microcoursePageDocSchema,
-  gamePageDocSchema,
+  coursewareCompositionPageSchema,
+  legacyMicrocourseCompositionPageSchema,
 ]);
 
-export type TeacherMicrocoursePageDoc = MicrocoursePageDoc | GamePageDoc;
-
+export type LegacyTeacherCompositionPage = Extract<MicrocoursePageDoc, { mode: "composition" }>;
+/** Runtime parsing intentionally rejects standalone legacy game/H5/Sudoku pages. */
+export type TeacherMicrocoursePageDoc = CoursewareCompositionPage | MicrocoursePageDoc | GamePageDoc;

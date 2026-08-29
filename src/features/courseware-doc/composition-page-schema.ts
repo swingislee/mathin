@@ -134,6 +134,13 @@ export const coursewareCompositionPageSchema = z.object({
   if (new TextEncoder().encode(JSON.stringify(doc)).byteLength > 3 * 1_024 * 1_024) {
     context.addIssue({ code: "custom", path: [], message: "composition page exceeds the document size limit" });
   }
+  if (doc.source && doc.layout.blocks.some((block) => block.type === "game" || block.type === "h5")) {
+    context.addIssue({
+      code: "custom",
+      path: ["layout", "blocks"],
+      message: "an immutable source page and an authored interaction cannot share one classroom state owner",
+    });
+  }
 });
 
 export type CoursewareCompositionPlacement = z.infer<typeof coursewareCompositionPlacementSchema>;

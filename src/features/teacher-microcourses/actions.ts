@@ -6,9 +6,14 @@ import { z } from "zod";
 import {
   GAME_PAGE_DOC_VERSION,
   gamePageDocSchema,
-  isGamePageDoc,
+  type GamePageDoc,
 } from "@/features/courseware-doc/game-page-schema";
-import { microcoursePageDocSchema } from "@/features/courseware-doc/microcourse-schema";
+import { legacyMicrocourseCompositionPageSchema } from "@/features/courseware-doc/microcourse-schema";
+import {
+  coursewareCompositionPageSchema,
+  isCoursewareCompositionPage,
+  type CoursewareCompositionH5,
+} from "@/features/courseware-doc/composition-page-schema";
 import { createDefaultGameCoursewarePayload } from "@/features/games/courseware/contracts";
 import { gameCoursewareContractsForSurface } from "@/features/games/courseware/registry";
 import { validateGameCoursewareContent } from "@/features/games/courseware/server";
@@ -42,9 +47,10 @@ function rpc<T>(client: RpcClient, name: string, args: Record<string, unknown>) 
 const topicSlug = z.string().min(1).max(60).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
 
 function sanitizeTeacherMicrocoursePage(doc: TeacherMicrocoursePageDoc): TeacherMicrocoursePageDoc {
-  if (isGamePageDoc(doc) || doc.mode !== "composition") return doc;
+  if (!isCoursewareCompositionPage(doc)
+    && (doc.docVersion !== "microcourse-page-v1" || doc.mode !== "composition")) return doc;
   const next = structuredClone(doc);
-  const walk = (nodes: typeof next.overlay.nodes) => {
+  const walk = (nodes: typeof doc.overlay.nodes) => {
     for (const node of nodes) {
       if (node.content?.kind === "rich_text") {
         node.content.html = sanitizeHtml(node.content.html ?? "", {
@@ -60,7 +66,9 @@ function sanitizeTeacherMicrocoursePage(doc: TeacherMicrocoursePageDoc): Teacher
     }
   };
   walk(next.overlay.nodes);
-  return microcoursePageDocSchema.parse(next);
+  return isCoursewareCompositionPage(doc)
+    ? coursewareCompositionPageSchema.parse(next)
+    : legacyMicrocourseCompositionPageSchema.parse(next);
 }
 const metadataSchema = z.object({
   sourceSessionId: uuid.optional(),
@@ -305,6 +313,41 @@ export async function createTeacherCompositionPagesFromLectureAction(input: {
 
 const gameContractId = z.string().min(1).max(100).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
 
+export async function createTeacherGameComponentAction(input: {
+  microcourseId: string;
+  gameId: string;
+  contentVersion: string;
+}): Promise<ActionResult<{ game: GamePageDoc }>> {
+  try {
+    const value = parse(z.object({
+      microcourseId: uuid,
+      gameId: gameContractId,
+      contentVersion: gameContractId,
+    }).strict(), input);
+    await authorizedClient("courseware.microcourse.author");
+    const authorable = gameCoursewareContractsForSurface("microcourse").some((contract) => (
+      contract.gameId === value.gameId && contract.contentVersion === value.contentVersion
+    ));
+    if (!authorable) throw new Error("UNKNOWN_GAME_COURSEWARE_CONTRACT");
+    const trusted = validateGameCoursewareContent(
+      value.gameId,
+      value.contentVersion,
+      createDefaultGameCoursewarePayload(value.gameId, value.contentVersion),
+    );
+    const game = gamePageDocSchema.parse({
+      docVersion: GAME_PAGE_DOC_VERSION,
+      canvas: { width: 960, height: 720, backgroundColor: "#ffffff" },
+      gameId: value.gameId,
+      contentVersion: value.contentVersion,
+      payload: trusted.payload,
+      validation: trusted.validation,
+    });
+    return { ok: true, data: { game } };
+  } catch (error) {
+    return actionError(error, AUTHOR_CODES);
+  }
+}
+
 export async function createTeacherGamePageAction(input: {
   microcourseId: string;
   afterPageDocId: string | null;
@@ -373,6 +416,7 @@ export async function createTeacherH5PageAction(input: {
     const { user, supabase } = await authorizedClient("courseware.microcourse.author");
     const normalized = normalizeMicrocourseH5(value.html);
     const bytes = microcourseH5Bytes(normalized);
+    if (bytes.byteLength > 5 * 1_024 * 1_024) throw new Error("H5_TOO_LARGE");
     const sha256 = createHash("sha256").update(bytes).digest("hex");
     const privatePath = `${user.id}/${value.microcourseId}/${sha256}/index.html`;
     const admin = createAdminClient();
@@ -409,6 +453,52 @@ export async function createTeacherH5PageAction(input: {
     return { ok: true, data: { pageId, artifactId, sha256 } };
   } catch (error) {
     return actionError(error, ["H5_REGISTER_FAILED", "CREATE_PAGE_FAILED", ...AUTHOR_CODES]);
+  }
+}
+
+export async function createTeacherH5ComponentArtifactAction(input: {
+  microcourseId: string;
+  html: string;
+}): Promise<ActionResult<{ h5: CoursewareCompositionH5 }>> {
+  try {
+    const value = parse(z.object({
+      microcourseId: uuid,
+      html: z.string().min(1).max(5_242_880),
+    }).strict(), input);
+    const { user, supabase } = await authorizedClient("courseware.microcourse.author");
+    const normalized = normalizeMicrocourseH5(value.html);
+    const bytes = microcourseH5Bytes(normalized);
+    if (bytes.byteLength > 5 * 1_024 * 1_024) throw new Error("H5_TOO_LARGE");
+    const sha256 = createHash("sha256").update(bytes).digest("hex");
+    const privatePath = `${user.id}/${value.microcourseId}/${sha256}/index.html`;
+    const admin = createAdminClient();
+    const { error: uploadError } = await admin.storage.from("cw-h5-drafts").upload(
+      privatePath,
+      bytes,
+      { contentType: "text/html", cacheControl: "0", upsert: false },
+    );
+    if (uploadError && !/already exists|duplicate/i.test(uploadError.message)) {
+      throw new Error("H5_UPLOAD_FAILED");
+    }
+    const { data: artifactId, error: artifactError } = await rpc<string>(
+      supabase,
+      "register_teacher_microcourse_h5_artifact",
+      {
+        p_microcourse_id: value.microcourseId,
+        p_sha256: sha256,
+        p_byte_count: bytes.byteLength,
+        p_private_path: privatePath,
+      },
+    );
+    if (artifactError || !artifactId) throw new Error(artifactError?.message ?? "H5_REGISTER_FAILED");
+    return {
+      ok: true,
+      data: {
+        h5: { artifactId, sha256, byteCount: bytes.byteLength, entryPath: "index.html" },
+      },
+    };
+  } catch (error) {
+    return actionError(error, ["H5_REGISTER_FAILED", ...AUTHOR_CODES]);
   }
 }
 
@@ -509,21 +599,33 @@ export async function saveTeacherMicrocoursePageAction(input: {
     }), input);
     const doc = sanitizeTeacherMicrocoursePage(value.doc);
     const { user, supabase } = await authorizedClient("courseware.microcourse.author");
-    if (isGamePageDoc(doc)) {
-      const trusted = validateGameCoursewareContent(doc.gameId, doc.contentVersion, doc.payload);
-      const trustedDoc = gamePageDocSchema.parse({
-        ...doc,
-        payload: trusted.payload,
-        validation: trusted.validation,
+    if (isCoursewareCompositionPage(doc)) {
+      const trustedDoc = structuredClone(doc);
+      trustedDoc.layout.blocks = trustedDoc.layout.blocks.map((block) => {
+        if (block.type !== "game") return block;
+        const trusted = validateGameCoursewareContent(
+          block.game.gameId,
+          block.game.contentVersion,
+          block.game.payload,
+        );
+        return {
+          ...block,
+          game: gamePageDocSchema.parse({
+            ...block.game,
+            payload: trusted.payload,
+            validation: trusted.validation,
+          }),
+        };
       });
+      const parsedTrustedDoc = coursewareCompositionPageSchema.parse(trustedDoc);
       const admin = createAdminClient();
       const { data, error } = await rpc<Array<{ revision_no: number }>>(
         admin,
-        "save_teacher_microcourse_game_page",
+        "save_teacher_courseware_composition_page",
         {
           p_actor_id: user.id,
           p_page_doc_id: value.pageDocId,
-          p_doc: trustedDoc,
+          p_doc: parsedTrustedDoc,
           p_base_revision_no: value.baseRevisionNo,
           p_title: value.title,
           p_note: value.note,
@@ -532,7 +634,7 @@ export async function saveTeacherMicrocoursePageAction(input: {
       if (error || !data?.[0]) throw new Error(error?.message ?? "SAVE_FAILED");
       return {
         ok: true,
-        data: { revisionNo: data[0].revision_no, doc: trustedDoc },
+        data: { revisionNo: data[0].revision_no, doc: parsedTrustedDoc },
       };
     }
     const { data, error } = await rpc<Array<{ revision_no: number }>>(

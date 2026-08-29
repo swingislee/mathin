@@ -6,6 +6,7 @@ import { getTool } from "@/features/tools/registry";
 import type { H5PointerBridgeStatus } from "@/features/courseware-doc/h5-pointer-protocol";
 import { isMicrocoursePageDoc } from "@/features/courseware-doc/microcourse-schema";
 import { isGamePageDoc } from "@/features/courseware-doc/game-page-schema";
+import { isCoursewareCompositionPage } from "@/features/courseware-doc/composition-page-schema";
 import { isSourceRuntimePageDoc } from "@/features/courseware-doc/source-runtime-schema";
 import type { CoursewarePage } from "../types";
 import type { ClassroomInputCapability } from "./router";
@@ -98,6 +99,10 @@ export function isAuditedNativeCoursewareDoc(
 
 export function countCoursewareH5Frames(doc: CoursewareDoc | null | undefined): number {
   if (!doc) return 0;
+  if (isCoursewareCompositionPage(doc)) {
+    return doc.layout.blocks.filter((block) => block.type === "h5").length
+      + countCoursewareH5Frames(doc.source?.doc);
+  }
   if (isMicrocoursePageDoc(doc)) {
     if (doc.mode === "h5") return 1;
     if (doc.mode === "composition") {
@@ -148,6 +153,22 @@ export function resolveClassroomRendererInputProfile(
   }
   if (page.type === "doc") {
     if (!doc) return PROVISIONAL_PROFILE;
+    if (isCoursewareCompositionPage(doc)) {
+      if (countCoursewareH5Frames(doc) > 0) {
+        if (h5BridgeStatus === "pending") return PROVISIONAL_PROFILE;
+        return h5BridgeStatus === "ready"
+          ? providerProfile("document:composition:h5", CLASSROOM_PARTITIONED_INPUT_PROVIDER_V1)
+          : UNSUPPORTED_PROFILE;
+      }
+      const game = doc.layout.blocks.find((block) => block.type === "game");
+      if (game?.type === "game") {
+        const provider = getGame(game.game.gameId)?.classroomInput;
+        return provider
+          ? providerProfile(`document:composition:game:${game.game.gameId}`, provider)
+          : UNSUPPORTED_PROFILE;
+      }
+      return providerProfile("document:composition", CLASSROOM_PARTITIONED_INPUT_PROVIDER_V1);
+    }
     if (isGamePageDoc(doc)) {
       const provider = getGame(doc.gameId)?.classroomInput;
       return provider

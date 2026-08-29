@@ -5,6 +5,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { isAixuexiPageDoc } from "@/features/courseware-doc/aixuexi-schema";
 import type { AixuexiStageProps } from "@/features/courseware-doc/AixuexiStage";
 import type { CoursewareDoc } from "@/features/courseware-doc/document";
+import { isCoursewareCompositionPage } from "@/features/courseware-doc/composition-page-schema";
+import type { CoursewareCompositionStageProps } from "@/features/courseware-doc/CoursewareCompositionStage";
 import type { DocStageProps } from "@/features/courseware-doc/DocStage";
 import { isGamePageDoc } from "@/features/courseware-doc/game-page-schema";
 import type { GamePageStageProps } from "@/features/games/courseware/GamePageStage";
@@ -54,6 +56,14 @@ const MicrocourseStage = dynamic<MicrocourseStageProps>(
   },
 );
 
+const CoursewareCompositionStage = dynamic<CoursewareCompositionStageProps>(
+  () => import("@/features/courseware-doc/CoursewareCompositionStage"),
+  {
+    ssr: false,
+    loading: () => <Skeleton className="aspect-[4/3] w-full rounded-xl" />,
+  },
+);
+
 const GamePageStage = dynamic<GamePageStageProps>(
   () => import("@/features/games/courseware/GamePageStage"),
   {
@@ -70,6 +80,9 @@ export type StagePreviewProps = Omit<DocStageProps, "doc"> & {
 };
 
 export function StagePreview(props: StagePreviewProps) {
+  if (isCoursewareCompositionPage(props.doc)) {
+    return <CoursewareCompositionStage {...props as CoursewareCompositionStageProps} />;
+  }
   if (isSourceRuntimePageDoc(props.doc)) {
     return (
       <SourceRuntimeStage

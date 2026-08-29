@@ -52,7 +52,7 @@ export const microcourseSourceSnapshotSchema = z
   })
   .strict();
 
-const compositionPageSchema = z
+export const legacyMicrocourseCompositionPageSchema = z
   .object({
     docVersion: z.literal(MICROCOURSE_PAGE_DOC_VERSION),
     mode: z.literal("composition"),
@@ -141,7 +141,7 @@ const h5PageSchema = z
   .strict();
 
 export const microcoursePageDocSchema = z.union([
-  compositionPageSchema,
+  legacyMicrocourseCompositionPageSchema,
   sudokuPageSchema,
   h5PageSchema,
 ]);

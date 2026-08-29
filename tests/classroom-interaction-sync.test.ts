@@ -4,6 +4,13 @@ import { describe, expect, it } from "vitest";
 import type { GamePageDoc } from "@/features/courseware-doc/game-page-schema";
 import type { MicrocoursePageDoc } from "@/features/courseware-doc/microcourse-schema";
 import {
+  createEmptyCoursewareCompositionPage,
+} from "@/features/courseware-doc/composition-page-schema";
+import {
+  addCoursewareCompositionGame,
+  addCoursewareCompositionH5,
+} from "@/features/courseware-doc/composition-page-layout";
+import {
   COURSEWARE_DOC_INTERACTION_AUDIT,
   MATHIN_MICROCOURSE_SYNC_PROVIDERS,
   classroomInteractionAuditIssues,
@@ -59,6 +66,20 @@ const h5Doc: MicrocoursePageDoc = {
   entryPath: "index.html",
 };
 
+const compositionGameDoc = addCoursewareCompositionGame(
+  createEmptyCoursewareCompositionPage(),
+  gameDoc,
+);
+const compositionH5Doc = addCoursewareCompositionH5(
+  createEmptyCoursewareCompositionPage(),
+  {
+    artifactId: "11111111-1111-4111-8111-111111111111",
+    sha256: "b".repeat(64),
+    byteCount: 1_024,
+    entryPath: "index.html",
+  },
+);
+
 function initialState(): LiveState {
   return {
     pages: [],
@@ -81,6 +102,7 @@ describe("classroom interaction synchronization audit", () => {
   it("requires an explicit decision for every courseware document family and authored mode", () => {
     expect(Object.keys(COURSEWARE_DOC_INTERACTION_AUDIT).sort()).toEqual([
       "aixuexi-page-doc-v1",
+      "courseware-composition-v1",
       "game-page-v1",
       "microcourse-page-v1",
       "page-doc-v1",
@@ -106,6 +128,18 @@ describe("classroom interaction synchronization audit", () => {
       provider: CLASSROOM_GAME_MIRROR_SYNC_V1,
     });
     expect(resolveClassroomInteractionAudit(h5Doc)).toMatchObject({
+      ownership: "mathin",
+      status: "read-only",
+      provider: { protocol: "h5-state-v1", mode: "read-only" },
+    });
+    expect(resolveClassroomInteractionAudit(compositionGameDoc)).toMatchObject({
+      surface: "composition/game:sudoku:sudoku-authored-v1",
+      ownership: "mathin",
+      status: "synchronized",
+      provider: CLASSROOM_GAME_MIRROR_SYNC_V1,
+    });
+    expect(resolveClassroomInteractionAudit(compositionH5Doc)).toMatchObject({
+      surface: "composition:h5",
       ownership: "mathin",
       status: "read-only",
       provider: { protocol: "h5-state-v1", mode: "read-only" },
@@ -163,6 +197,7 @@ describe("classroom interaction synchronization audit", () => {
     const gameStage = read("src/features/games/courseware/GamePageStage.tsx");
     const sudokuStage = read("src/features/games/sudoku/SudokuGamePageStage.tsx");
     const microcourseStage = read("src/features/courseware-doc/MicrocourseStage.tsx");
+    const compositionStage = read("src/features/courseware-doc/CoursewareCompositionStage.tsx");
 
     expect(liveShell).toContain("gameMirror={state.games[renderPage.id] ?? null}");
     expect(liveShell).toContain("onGameMirror={(mirror) => onGameMirror(renderPage.id, mirror)}");
@@ -179,5 +214,8 @@ describe("classroom interaction synchronization audit", () => {
     expect(microcourseStage).toContain("onMirror={props.onGameMirror}");
     expect(microcourseStage).toContain('tabIndex={props.interactive === false ? -1 : undefined}');
     expect(microcourseStage).toContain('pointerEvents: props.interactive === false ? "none" : "auto"');
+    expect(compositionStage).toContain("mirror={props.gameMirror}");
+    expect(compositionStage).toContain("onMirror={props.onGameMirror}");
+    expect(compositionStage).toContain("MicrocourseH5ArtifactFrame");
   });
 });

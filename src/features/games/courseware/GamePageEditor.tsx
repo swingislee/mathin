@@ -33,12 +33,14 @@ export function GamePageEditor({
   selectedBlockId = "game",
   onSelectBlock = () => undefined,
   onUploadImage,
+  embedded = false,
 }: {
   doc: GamePageDoc;
   onChange: (doc: GamePageDoc) => void;
   selectedBlockId?: string;
   onSelectBlock?: (blockId: string) => void;
   onUploadImage?: (file: File) => Promise<{ bindingKey: string }>;
+  embedded?: boolean;
 }) {
   const t = useTranslations("teacherMicrocourses");
   const [file, setFile] = useState<File | null>(null);
@@ -194,7 +196,9 @@ export function GamePageEditor({
   switch (`${doc.gameId}:${doc.contentVersion}`) {
     case "sudoku:sudoku-authored-v1":
     case "sudoku:sudoku-authored-v2":
-      return <div className="space-y-5">{layoutControls}<Separator /><SudokuGamePageEditor doc={doc} onChange={onChange} /></div>;
+      return embedded
+        ? <SudokuGamePageEditor doc={doc} onChange={onChange} />
+        : <div className="space-y-5">{layoutControls}<Separator /><SudokuGamePageEditor doc={doc} onChange={onChange} /></div>;
     default:
       return <p className="text-sm text-rose">{t("unsupportedGamePage")}</p>;
   }

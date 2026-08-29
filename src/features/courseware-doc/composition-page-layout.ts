@@ -111,7 +111,7 @@ export function addCoursewareCompositionNode(
     || input.overlay.nodes.some((item) => item.id === node.id)) return input;
   const doc = structuredClone(input);
   const block: Extract<CoursewareCompositionBlock, { type: "node" }> = {
-    id: `node-${node.id}`.toLowerCase().replace(/[^a-z0-9-]/g, "-").slice(0, 80),
+    id: `node-${node.id}`.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80),
     type: "node",
     nodeId: node.id,
     placement: { column: 0, row: 0, ...size },
@@ -132,8 +132,9 @@ export function addCoursewareCompositionGame(
   input: CoursewareCompositionPage,
   game: EmbeddedCompositionGame,
 ): CoursewareCompositionPage {
-  if (input.layout.blocks.some((block) => block.type === "game" || block.type === "h5")) return input;
-  const { layout: _nestedLayout, ...embeddedGame } = game;
+  if (input.source || input.layout.blocks.some((block) => block.type === "game" || block.type === "h5")) return input;
+  const embeddedGame = structuredClone(game);
+  delete embeddedGame.layout;
   return appendBlock(input, {
     id: "interactive-game",
     type: "game",
@@ -148,7 +149,7 @@ export function addCoursewareCompositionH5(
   input: CoursewareCompositionPage,
   h5: CoursewareCompositionH5,
 ): CoursewareCompositionPage {
-  if (input.layout.blocks.some((block) => block.type === "game" || block.type === "h5")) return input;
+  if (input.source || input.layout.blocks.some((block) => block.type === "game" || block.type === "h5")) return input;
   return appendBlock(input, {
     id: "interactive-h5",
     type: "h5",

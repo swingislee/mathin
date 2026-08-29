@@ -1,5 +1,6 @@
 import { isAixuexiPageDoc } from "@/features/courseware-doc/aixuexi-schema";
 import type { CoursewareDoc } from "@/features/courseware-doc/document";
+import { isCoursewareCompositionPage } from "@/features/courseware-doc/composition-page-schema";
 import { isGamePageDoc } from "@/features/courseware-doc/game-page-schema";
 import {
   isMicrocoursePageDoc,
@@ -44,6 +45,7 @@ export const COURSEWARE_DOC_INTERACTION_AUDIT = {
   "aixuexi-page-doc-v1": { ownership: "external", defaultProvider: null },
   "source-runtime-page-v1": { ownership: "external", defaultProvider: null },
   "microcourse-page-v1": { ownership: "mathin", defaultProvider: CLASSROOM_DOC_STEP_SYNC_V1 },
+  "courseware-composition-v1": { ownership: "mathin", defaultProvider: CLASSROOM_DOC_STEP_SYNC_V1 },
   "game-page-v1": { ownership: "mathin", defaultProvider: CLASSROOM_GAME_MIRROR_SYNC_V1 },
   "spatial-page-v1": { ownership: "mathin", defaultProvider: CLASSROOM_SPATIAL_COMMAND_SYNC_REQUIRED_V1 },
 } as const satisfies Record<CoursewareDoc["docVersion"], ClassroomDocInteractionRegistration>;
@@ -75,6 +77,24 @@ function profile(
 export function resolveClassroomInteractionAudit(
   doc: CoursewareDoc,
 ): ClassroomInteractionAuditProfile {
+  if (isCoursewareCompositionPage(doc)) {
+    const interactive = doc.layout.blocks.find((block) => block.type === "game" || block.type === "h5");
+    if (interactive?.type === "game") {
+      const nested = resolveClassroomInteractionAudit(interactive.game);
+      return { ...nested, surface: `composition/${nested.surface}` };
+    }
+    if (interactive?.type === "h5") {
+      return profile("composition:h5", "mathin", CLASSROOM_H5_STATE_SYNC_REQUIRED_V1);
+    }
+    if (doc.source) {
+      const nested = resolveClassroomInteractionAudit(doc.source.doc);
+      if (nested.ownership === "mathin") {
+        return { ...nested, surface: `composition/source/${nested.surface}` };
+      }
+    }
+    return profile("courseware-composition-v1", "mathin", CLASSROOM_DOC_STEP_SYNC_V1);
+  }
+
   if (isGamePageDoc(doc)) {
     const contract = getGameCoursewareContract(doc.gameId, doc.contentVersion);
     return profile(
