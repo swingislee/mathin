@@ -224,7 +224,12 @@ export function Toolbar({
       </ToolButton>
 
       <div aria-hidden className="mx-0.5 h-6 w-px shrink-0 bg-line" />
-      <div role="group" data-tool-group="drawing" aria-label={`${t("pen")} · ${t("eraser")} · ${t("color")} · ${t("size")}`} className="flex shrink-0 items-center gap-0.5 rounded-xl bg-card/70 p-0.5">
+      <div
+        role="group"
+        data-tool-group="drawing"
+        aria-label={`${t("pen")} · ${t("eraser")} · ${t("color")} · ${t("size")}`}
+        className={cn("flex shrink-0 items-center gap-0.5", !isRail && "rounded-xl bg-card/70 p-0.5")}
+      >
       <Popover>
         <div className="flex items-center">
           <ToolButton large={largeTargets} active={isEraser} label={t("eraser")} onClick={() => setTool(lastEraser)}><Eraser size={18} /></ToolButton>
@@ -310,7 +315,12 @@ export function Toolbar({
       </div>
 
       <div aria-hidden className="mx-0.5 h-6 w-px shrink-0 bg-line" />
-      <div role="group" data-tool-group="construction" aria-label={`${t("shape")} · ${t("instruments")}`} className="flex shrink-0 items-center gap-0.5 rounded-xl bg-moon/20 p-0.5">
+      <div
+        role="group"
+        data-tool-group="construction"
+        aria-label={`${t("shape")} · ${t("instruments")}`}
+        className={cn("flex shrink-0 items-center gap-0.5", !isRail && "rounded-xl bg-moon/20 p-0.5")}
+      >
       <Popover>
         <PopoverTrigger asChild>
           <button type="button" aria-label={t("shape")} title={t("shape")} aria-pressed={tool === "shape"} className={cn("grid shrink-0 place-items-center rounded-full transition-colors", largeTargets ? "size-11" : "size-9", tool === "shape" ? "bg-moon/60 text-ink" : "text-muted hover:bg-moon/30 hover:text-ink")}>

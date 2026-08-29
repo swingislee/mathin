@@ -34,7 +34,7 @@ export function ClassroomPageControls({
     <div
       className={cn(
         "flex min-w-0 items-center justify-end",
-        rail ? "gap-0.5 rounded-xl bg-card/70 p-0.5" : "gap-1.5",
+        rail ? "gap-0.5" : "gap-1.5",
       )}
       data-classroom-rail-group={rail ? "pages" : undefined}
     >

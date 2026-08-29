@@ -2026,7 +2026,7 @@ export function LiveShell({
             />
           ) : null}
           utilityControls={(
-            <div className="flex shrink-0 items-center gap-0.5 rounded-xl bg-card/70 p-0.5" data-classroom-rail-group="classroom-actions">
+            <div className="flex shrink-0 items-center gap-0.5" data-classroom-rail-group="classroom-actions">
               {classroomLearningSetup && classroomLearningSetup.checks.length > 0 && (
                 <SessionLearningCheckPanel
                   key={classroomLearningSetupKey}
