@@ -97,3 +97,41 @@ test("one H5 capability contract covers mixed Mofaxiao and embedded Aixuexi page
     await fixture.cleanup();
   }
 });
+
+test("authored Sudoku fill and teaching highlights synchronize to the classroom display", async ({ page, context }) => {
+  const admin = loadFixedAccountForMode("admin");
+  const teacher = loadFixedAccountForMode("teacher");
+  test.skip(!admin || !teacher, FIXED_ACCOUNT_SKIP_REASON);
+  test.skip(process.env.R1_DEV_TEST_FIXTURES !== "1", FIXTURE_FLAG_REASON);
+  if (!admin || !teacher) return;
+
+  const fixture = await setupClassroomContractFixture({ adminAccount: admin, teacher });
+  const fixtureQuery = "acceptance=interaction-sync";
+  try {
+    await loginWithFixedAccount(page, teacher, fixture.classroomPath);
+    await page.goto(`${fixture.classroomPath}?${fixtureQuery}`);
+    await page.getByRole("button", { name: "开始上课", exact: true }).click();
+
+    const controllerStage = page.locator('[data-classroom-sync-protocol="game-mirror-v1"]');
+    await expect(controllerStage).toHaveAttribute("data-classroom-sync-status", "synchronized");
+
+    const display = await context.newPage();
+    await display.goto(`${fixture.classroomPath}?role=display&${fixtureQuery}`);
+    const displayStage = display.locator('[data-classroom-sync-protocol="game-mirror-v1"]');
+    await expect(displayStage).toHaveAttribute("data-classroom-sync-status", "synchronized");
+
+    await page.getByRole("button", { name: "选择数字 1", exact: true }).click();
+    await page.locator('[data-coordinate="A1"]').click();
+    await expect(display.locator('[data-coordinate="A1"]')).toHaveAttribute("data-digit", "1");
+
+    await page.getByRole("button", { name: "突出行", exact: true }).click();
+    await page.locator('[data-coordinate="B1"]').click();
+    await expect(display.locator('[data-coordinate="B1"]'))
+      .toHaveAttribute("data-teaching-highlight", "true");
+    await expect(display.locator('[data-coordinate="B4"]'))
+      .toHaveAttribute("data-teaching-highlight", "true");
+    await display.close();
+  } finally {
+    await fixture.cleanup();
+  }
+});

@@ -67,6 +67,12 @@ Mathin 是一个中英双语（zh/en，中文为默认语言）、以 Terms 为�
 - 重、且非首屏必需的 client 组件用 `next/dynamic` 懒加载（参考 `src/features/games/boards.tsx`、`src/features/tools/components.tsx`：模块级 `dynamic()` 常量 + switch 分发，避免 `react-hooks/static-components` 把查表判成渲染期建组件）。
 - 量化基线：`pnpm bundle:report`（`scripts/bundle-report.mjs`）给出每路由 gzip JS 体积排名，动边界前先量、动完再量对比。
 
+### 自研课堂互动同步门
+
+- 新增或修改 Mathin 自研的游戏页、单文件 H5、空间/3D 文档或其他课堂互动 renderer 时，必须在 `src/features/classroom/sync/interaction-audit.ts` 声明版本化同步 provider；只传 `interactive=true` 或只完成本机 pointer/click 输入不构成课堂同步。
+- 教师控制态只允许一个权威写者。可恢复操作使用有 payload 上限的 durable snapshot/semantic command 并进入现有 session event log；逐帧相机、hover、拖动中间帧等可丢表现不得冒充权威状态。展示端、学生端和晚加入端必须能从 snapshot/command replay 收敛到相同状态。
+- 尚未实现同步协议的 Mathin 自研 H5 与 `spatial-page-v1` 在课堂中保持 read-only/fail-closed；不得以 local-only 交互登记为已审计。新增 `CoursewareDoc` 版本、微课 mode 或游戏课件 contract 必须让类型穷尽门和 `pnpm classroom:interaction-sync:audit` 通过。
+
 ### 动态数据的 Suspense 就绪（为将来 cacheComponents 预付）
 
 - **新增受保护/数据页：把读请求期数据（`cookies()`/`await searchParams`/远程查询）的动态子树包在 `<Suspense>` 里，或给该路由配 `loading.tsx`**（形状对得上的骨架，参考 `src/features/school/list-skeleton.tsx` 与后台各 `loading.tsx`）。首屏静态壳（页头、导航、标题）留在 Suspense 之外先出。
@@ -109,6 +115,7 @@ pnpm secrets:check   # 当前跟踪树、binary ASCII 与高风险容器 secret 
 pnpm secrets:history # 完整可达 Git 历史 high-confidence secret scan
 pnpm e2e        # 本地/开发目标 Playwright；复用固定开发账号，不注册新账号
 pnpm e2e:release # 仅允许明确非生产 target attestation，缺角色/skip/flaky 均失败
+pnpm classroom:interaction-sync:audit # 自研游戏/H5/空间互动的课堂同步 provider 与适配链审计
 ```
 
 CI 的 checks job 不 fail-fast：所有静态门禁一次跑完再判定，`pnpm ci:checks` 行为一致，因此一次运行就能看到全部失败，不要只跑单个审计就推送。

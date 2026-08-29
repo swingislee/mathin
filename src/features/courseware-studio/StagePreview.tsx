@@ -14,6 +14,7 @@ import { isSpatialPageDoc } from "@/features/courseware-doc/spatial";
 import type { SpatialCoursewareStageProps } from "@/features/courseware-doc/SpatialCoursewareStage";
 import { isSourceRuntimePageDoc } from "@/features/courseware-doc/source-runtime-schema";
 import type { SourceRuntimeStageProps } from "@/features/courseware-doc/SourceRuntimeStage";
+import type { GameMirrorState } from "@/features/games/types";
 
 /**
  * DocStage 的懒加载 client 叶子(games/boards.tsx 模式):渲染器只在预览页
@@ -64,6 +65,8 @@ const GamePageStage = dynamic<GamePageStageProps>(
 export type StagePreviewProps = Omit<DocStageProps, "doc"> & {
   doc: CoursewareDoc;
   onAdvance?: () => void;
+  gameMirror?: GameMirrorState | null;
+  onGameMirror?: (state: GameMirrorState) => void;
 };
 
 export function StagePreview(props: StagePreviewProps) {
@@ -76,7 +79,13 @@ export function StagePreview(props: StagePreviewProps) {
     );
   }
   if (isGamePageDoc(props.doc)) {
-    return <GamePageStage {...props as GamePageStageProps} />;
+    return (
+      <GamePageStage
+        {...props as GamePageStageProps}
+        mirror={props.gameMirror}
+        onMirror={props.onGameMirror}
+      />
+    );
   }
   if (isMicrocoursePageDoc(props.doc)) {
     return <MicrocourseStage {...props as MicrocourseStageProps} />;

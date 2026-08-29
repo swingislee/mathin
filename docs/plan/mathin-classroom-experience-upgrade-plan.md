@@ -570,6 +570,8 @@ provider 的“显式声明”和“人工逐个验收”是两层合同：显�
 
 普通 renderer 的业务体验可以在其自身功能里验收，但不得再次把已通过的 Smart 输入原语包装成独立课堂里程碑。CI 的通用 conformance 至少验证 provider schema/version、registry→profile 解析、边界匹配、四原语、未知/旧版本 fail closed、真实 click 一次和 takeover 后 click 为零；新增 provider 会自动进入同一门禁。
 
+`ClassroomInputCapabilityProvider` 只回答“这次指针由课件还是板书接管”，不证明课件状态已经同步。2026-08-29 的自编数独热修确认 `game-page-v1` 虽已接入输入 provider，却在 `LiveShell → DocCoursewarePage → StagePreview → GamePageStage → SudokuBoard` 适配链遗漏 `mirror/onMirror`，导致教师端本地填数与高亮没有生成全班 `game_state`。课堂因此另建版本化 `ClassroomInteractionSyncProvider`：每个 Mathin 自研 docVersion、微课 mode 和游戏 registry 项必须显式选择 durable snapshot、语义 command 或课堂只读；未知或未完成协议一律只读。当前数独使用 `game-mirror-v1`，自研 H5 在 `h5-state-v1` 完成前只读，`spatial-page-v1` 在 `spatial-command-v1` 接入事件流与 replay 前只读。`pnpm classroom:interaction-sync:audit` 同时检查注册穷尽、provider 形状、payload 预算和完整镜像适配链；新增自研 H5、游戏或 3D renderer 不得只凭 `interactive=true`、pointer provider 或 DOM 可点击绕过该门。
+
 Canvas base/draft、`BoardObjectLayer`、`InstrumentLayer`、课件 DOM 和课堂 ToolOverlay 需要一张明确的 z-layer/输入所有权表。Smart + pen 时 ink Canvas 只渲染；选择、图形、尺规或对象编辑启用时由 §6.4 的工具矩阵决定哪个板书层可交互，不能只把 draft Canvas 设为 none 后留下另一个透明层继续吞事件。
 
 | 舞台场景 | 视觉顺序 | Smart + pen 输入所有权 |

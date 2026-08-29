@@ -32,6 +32,7 @@ failure_ticket
 
 | 阶段 | 状态 | 日期 | 证据 |
 | --- | --- | --- | --- |
+| HOTFIX-20260829 · 自研课堂互动状态同步 | local machine/browser checks passed；pending real iPad acceptance；not deployed | 2026-08-29 | [game-page-v1 镜像根因、100ms 合并广播、H5/3D fail-closed 审计门、72/72 Vitest 与控制页→展示页 Chromium 2/2](classroom-interaction-sync-hotfix.md) |
 | HOTFIX-20260829 · 管理员自授员工岗位 | production schema/app deployed；machine postflight passed；pending production admin self-assignment acceptance | 2026-08-29 | [目标 preflight、最终 PostgreSQL 写前备份、首轮 ACL fail-closed 与零残留、修正后 rollback/formal、原子 release、HTTP/ACL/业务/Storage/备份 postflight](admin-self-role-hotfix-production.md) |
 | HOTFIX-20260829 · 自由班自动排课与 H5 透明层 | production app deployed；machine postflight passed；pending production product acceptance | 2026-08-29 | [精确提交边界、应用-only 发布、无 DB/Storage 漂移、localhost-only 来源工具边界与非浏览器 postflight](free-class-h5-hotfix-production.md) |
 | DEV-ORG-1 / DEV-DASH-1 / DEV-DASH-2 · 机构场地、后台职能导航与表格语义 | production schema/app deployed；machine postflight passed；pending product acceptance | 2026-08-29 | [目标 preflight、PostgreSQL 写前备份、7 migration 回滚/零残留与正式事务、结构化教室回填、原子 release、ACL/HTTP/业务不变量/error postflight](organization-dashboard-production.md) |

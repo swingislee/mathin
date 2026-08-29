@@ -164,7 +164,7 @@ Gate 1 已按以下顺序关闭：
 
 产品负责人报告教师在 iPad 操作自编数独时，填数与突出显示只改变本机。根因是 `game-page-v1` 新适配链只传递 `interactive`，遗漏既有 `GameMirrorState` 的 `mirror/onMirror`，因此没有生成全班 durable `game_state`；历史 `type=game` 路径正常，旧测试也只覆盖该路径。本机热修已补齐 `LiveShell → DocCoursewarePage → StagePreview → GamePageStage → SudokuBoard` 双向镜像，并把连续操作改为每 100ms 合并发送最新状态，避免 trailing debounce 在教师持续点击期间长期不广播。
 
-同一增量建立独立于输入路由的版本化 `ClassroomInteractionSyncProvider`：所有 Mathin 自研 docVersion、微课 mode 和游戏 registry 项必须声明 snapshot、语义 command 或课堂只读，并通过 `pnpm classroom:interaction-sync:audit`。当前自编数独使用 `game-mirror-v1`；自研 H5 与 `spatial-page-v1` 在各自 `h5-state-v1` / `spatial-command-v1` 完成前 fail closed 为课堂只读。该热修当前为 **LOCAL FIXED / PENDING DEVELOPMENT DEVICE ACCEPTANCE / NOT DEPLOYED**，不修改数据库、Storage、R1-Live Gate 2 或暂停中的 SML 施工状态。
+同一增量建立独立于输入路由的版本化 `ClassroomInteractionSyncProvider`：所有 Mathin 自研 docVersion、微课 mode 和游戏 registry 项必须声明 snapshot、语义 command 或课堂只读，并通过 `pnpm classroom:interaction-sync:audit`。当前自编数独使用 `game-mirror-v1`；自研 H5 与 `spatial-page-v1` 在各自 `h5-state-v1` / `spatial-command-v1` 完成前 fail closed 为课堂只读。定向 Vitest 6 文件 72/72、同步审计 4/4、TypeScript、受影响 ESLint、规划审计和本地 Chromium 课堂合同 2/2 通过；新增双窗口用例在同一个正式本地课次验证控制页填数/突出行后展示页重放，既有 H5 合同保持通过。该热修当前为 **LOCAL MACHINE/BROWSER CHECKS PASSED / PENDING REAL IPAD ACCEPTANCE / NOT DEPLOYED**；本地双窗口结果不替代真实 iPad Safari、跨设备局域网或产品验收，也不修改数据库、Storage、R1-Live Gate 2 或暂停中的 SML 施工状态。
 
 #### DEV-TMC-1 · 普通教师短期微课孵化与校内共享
 

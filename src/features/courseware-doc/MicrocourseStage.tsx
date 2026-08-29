@@ -3,6 +3,7 @@
 import "katex/dist/katex.min.css";
 import { useLocale } from "next-intl";
 import { cn } from "@/lib/utils";
+import type { GameMirrorState } from "@/features/games/types";
 import { SudokuBoard } from "@/features/games/sudoku/SudokuBoard";
 import { isGamePageDoc } from "./game-page-schema";
 import GamePageStage from "@/features/games/courseware/GamePageStage";
@@ -23,6 +24,8 @@ import SourceRuntimeStage from "./SourceRuntimeStage";
 export type MicrocourseStageProps = Omit<DocStageProps, "doc"> & {
   doc: MicrocoursePageDoc;
   onAdvance?: () => void;
+  gameMirror?: GameMirrorState | null;
+  onGameMirror?: (state: GameMirrorState) => void;
 };
 
 function SourceStage({
@@ -47,7 +50,15 @@ function SourceStage({
     );
   }
   if (isGamePageDoc(doc)) {
-    return <GamePageStage doc={doc} className="size-full" interactive={props.interactive} />;
+    return (
+      <GamePageStage
+        doc={doc}
+        className="size-full"
+        interactive={props.interactive}
+        mirror={props.gameMirror}
+        onMirror={props.onGameMirror}
+      />
+    );
   }
   if (isAixuexiPageDoc(doc)) {
     return (
@@ -98,6 +109,8 @@ function MicrocourseH5Frame({ doc, props }: { doc: Extract<MicrocoursePageDoc, {
       sandbox="allow-scripts"
       className="size-full border-0 bg-white"
       data-classroom-input="native"
+      tabIndex={props.interactive === false ? -1 : undefined}
+      style={{ pointerEvents: props.interactive === false ? "none" : "auto" }}
       onLoad={onFrameLoad}
     />
   );
@@ -148,6 +161,8 @@ export default function MicrocourseStage(props: MicrocourseStageProps) {
             showTeachingTools={doc.display.showTeachingTools}
             finished={false}
             onComplete={() => undefined}
+            mirror={props.gameMirror}
+            onMirror={props.onGameMirror}
             readOnly={!props.interactive}
           />
         </div>

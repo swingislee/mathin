@@ -1,15 +1,20 @@
 "use client";
 
 import type { GamePageDoc } from "@/features/courseware-doc/game-page-schema";
+import type { GameMirrorState } from "../types";
 import { sudokuAuthoredPayloadSchema } from "./courseware-contract";
 import { SudokuBoard } from "./SudokuBoard";
 
 export function SudokuGamePageStage({
   doc,
   interactive,
+  mirror,
+  onMirror,
 }: {
   doc: GamePageDoc;
   interactive?: boolean;
+  mirror?: GameMirrorState | null;
+  onMirror?: (state: GameMirrorState) => void;
 }) {
   const payload = sudokuAuthoredPayloadSchema.parse(doc.payload);
   return (
@@ -25,9 +30,10 @@ export function SudokuGamePageStage({
         showTeachingTools={payload.display.showTeachingTools}
         finished={false}
         onComplete={() => undefined}
+        mirror={mirror}
+        onMirror={onMirror}
         readOnly={!interactive}
       />
     </div>
   );
 }
-

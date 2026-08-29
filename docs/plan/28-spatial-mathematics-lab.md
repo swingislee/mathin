@@ -428,6 +428,8 @@ M1 先支持规则实体和凸多面体：以平面方程与语义边/面求交�
 
 教师可在三个模式间切换，并决定是否“跟随镜头”。相机连续拖动不持久化；教师点击“锁定当前视角/加入步骤”才生成 durable bookmark 命令。
 
+2026-08-29 起，`spatial-page-v1` 已进入共享 `ClassroomInteractionSyncProvider` 审计，但在 SML 暂停期间固定登记为 `spatial-command-v1` / `read-only`。这只建立防止本地 3D 操作误冒充全班同步的审计门，不代表恢复 SML-1～8 施工。未来获准恢复并接入课堂时，必须把本节与 §8.1、§10 定义的语义命令、snapshot、单写者 ownership 和 replay 实现为版本化 provider，再通过 `pnpm classroom:interaction-sync:audit`；仅开放 pointer、相机或 renderer 本地交互不得解除课堂只读。
+
 ### 8.3 三维呈现
 
 - 单位块使用 `InstancedMesh` 降低同几何体的 draw calls；选择和着色通过 instance 属性或分批实例实现；

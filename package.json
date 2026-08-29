@@ -59,6 +59,7 @@
     "ci:checks": "node scripts/run-ci-checks.mjs",
     "bundle:report": "node scripts/bundle-report.mjs",
     "classroom:m0-baseline": "node scripts/classroom-m0-baseline.mjs",
+    "classroom:interaction-sync:audit": "vitest run tests/classroom-interaction-sync.test.ts",
     "ci:db-rebuild": "node scripts/ci-rebuild-db.mjs",
     "db:types": "node scripts/generate-database-types.mjs",
     "db:types:check": "node scripts/verify-database-types.mjs",

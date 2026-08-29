@@ -30,6 +30,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { GameMirrorState } from "@/features/games/types";
+import {
+  CLASSROOM_GAME_MIRROR_SYNC_V1,
+  classroomInteractionPayloadWithinBudget,
+} from "../sync/interaction-provider";
 import { AttendanceDrawer } from "@/features/school/AttendanceDrawer";
 import type { AttendanceDrawerRow } from "@/features/school/actions/types";
 import {
@@ -128,6 +132,10 @@ import { buildM4aRosterFixtures, M4A_STAR_STUDENT_ID } from "./m4-roster-fixture
 import { buildM4bRosterFixtures, buildM4bStarFixtureEvents } from "./m4-layout-fixtures";
 import { buildRehearsalLearningSetup } from "./rehearsal-learning";
 import { OPTION_LABELS, reduceEvent, type LiveState, type Phase, type Role } from "./liveState";
+import {
+  INTERACTION_SYNC_FIXTURE_DOC,
+  INTERACTION_SYNC_FIXTURE_PAGE,
+} from "./interaction-sync-fixtures";
 
 // 上课页（08-§3.4/§5）：候课（预载/自检）→ 上课 全程页内状态切换，零路由跳转。
 // P4-5 正式舞台：4:3 课件/主板书 + 副板书 + 学生名录；主板书按页 uuid 隔离、
@@ -152,7 +160,7 @@ interface Props {
   /** M4 roster/star writer and control-layout gate. Readers remain dual-version. */
   layoutV2Enabled: boolean;
   /** Development-only visible Gate; accepted milestones stay out of the default surface. */
-  acceptanceFixture: "m3b" | "m4a" | "m4b" | null;
+  acceptanceFixture: "m3b" | "m4a" | "m4b" | "interaction-sync" | null;
   role: Role;
   /** 试讲：教师本地预演/复盘——事件不落库不同步，随时可进（包括已下课的课次）。 */
   rehearsal?: boolean;
@@ -735,17 +743,26 @@ export function LiveShell({
     void setSessionPage(session.id, index).catch(() => undefined);
   }, [state.currentPage, state.pages, append, session.id, t]);
 
-  // 游戏镜像：全量轻状态防抖 350ms（08-§3.6 game_state，单写者）
+  // 游戏镜像：100ms 合并窗口持续送出最新全量轻状态。不能用 trailing debounce：
+  // iPad 连续点按若始终快于等待窗口，会让其他设备直到教师停手才看到变化。
   const mirrorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const onGameMirror = useCallback((pageId: string, mirror: GameMirrorState) => {
+  const pendingMirror = useRef<{ pageId: string; mirror: GameMirrorState } | null>(null);
+  const flushGameMirror = useCallback(() => {
     if (mirrorTimer.current) clearTimeout(mirrorTimer.current);
-    mirrorTimer.current = setTimeout(() => {
-      append("game_state", { pageId, state: mirror });
-    }, 350);
+    mirrorTimer.current = null;
+    const pendingState = pendingMirror.current;
+    pendingMirror.current = null;
+    if (pendingState) append("game_state", { pageId: pendingState.pageId, state: pendingState.mirror });
   }, [append]);
-  useEffect(() => () => {
-    if (mirrorTimer.current) clearTimeout(mirrorTimer.current);
-  }, []);
+  const onGameMirror = useCallback((pageId: string, mirror: GameMirrorState) => {
+    if (!classroomInteractionPayloadWithinBudget(CLASSROOM_GAME_MIRROR_SYNC_V1, mirror)) return;
+    pendingMirror.current = { pageId, mirror };
+    if (!mirrorTimer.current) mirrorTimer.current = setTimeout(flushGameMirror, 100);
+  }, [flushGameMirror]);
+  useEffect(() => {
+    flushGameMirror();
+  }, [flushGameMirror, state.currentPage]);
+  useEffect(() => () => flushGameMirror(), [flushGameMirror]);
 
   // 主/副板书工具态双向同步：选一次笔全场生效（翻页重建的主板书也继承当前工具），
   // 切「选择」时两块板同时放行指针，才能点到板书下层的游戏/视频。
@@ -855,19 +872,26 @@ export function LiveShell({
   // --- 派生 ----------------------------------------------------------------
   const page = state.pages[state.currentPage] as CoursewarePage | undefined;
   const usingM3Fixture = rehearsal && inputV2Enabled && m3FixtureEnabled;
-  const activeToolId = usingM3Fixture
+  const usingInteractionSyncFixture = acceptanceFixture === "interaction-sync";
+  const activeToolId = usingM3Fixture || usingInteractionSyncFixture
     ? null
     : state.openTool;
-  const renderPage = usingM3Fixture
-    ? m3FixtureRenderer === "aixuexi" ? M3_AIXUEXI_H5_FIXTURE_PAGE : M3_H5_FIXTURE_PAGE
-    : page;
-  const activeDocBundleEntry = renderPage?.type === "doc" && !usingM3Fixture
+  const renderPage = usingInteractionSyncFixture
+    ? INTERACTION_SYNC_FIXTURE_PAGE
+    : usingM3Fixture
+      ? m3FixtureRenderer === "aixuexi" ? M3_AIXUEXI_H5_FIXTURE_PAGE : M3_H5_FIXTURE_PAGE
+      : page;
+  const activeDocBundleEntry = renderPage?.type === "doc"
+    && !usingM3Fixture
+    && !usingInteractionSyncFixture
     ? docBundle?.find((item) => item.pageDocId === renderPage.docId)
     : undefined;
   const renderDoc = renderPage?.type === "doc"
-    ? usingM3Fixture
-      ? m3FixtureRenderer === "aixuexi" ? M3_AIXUEXI_H5_FIXTURE_DOC : M3_H5_FIXTURE_DOC
-      : activeDocBundleEntry?.doc
+    ? usingInteractionSyncFixture
+      ? INTERACTION_SYNC_FIXTURE_DOC
+      : usingM3Fixture
+        ? m3FixtureRenderer === "aixuexi" ? M3_AIXUEXI_H5_FIXTURE_DOC : M3_H5_FIXTURE_DOC
+        : activeDocBundleEntry?.doc
     : undefined;
   const renderDocUrls = usingM3Fixture
     ? m3FixtureRenderer === "aixuexi"
@@ -931,7 +955,10 @@ export function LiveShell({
   });
   const assetsReady = preload.done >= preload.total;
   const activeDocBindings = activeDocBundleEntry?.bindings;
-  const activeDocAssetsLoading = renderPage?.type === "doc" && !usingM3Fixture && (
+  const activeDocAssetsLoading = renderPage?.type === "doc"
+    && !usingM3Fixture
+    && !usingInteractionSyncFixture
+    && (
     !renderDoc
     || Boolean(
       activeDocBindings?.some((binding) => binding.kind !== "h5" && !docUrls[binding.bindingKey])
@@ -1641,6 +1668,8 @@ export function LiveShell({
                 onVideoCtl={(action, time) => append("video_ctl", { pageId: renderPage.id, action, time })}
                 onAdvance={() => gotoPage(state.currentPage + 1, state.pages.length)}
                 h5PointerBridge={h5PointerBridge}
+                gameMirror={state.games[renderPage.id] ?? null}
+                onGameMirror={(mirror) => onGameMirror(renderPage.id, mirror)}
               />
             ) : null}
 

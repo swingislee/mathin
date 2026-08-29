@@ -55,6 +55,7 @@ const solved = solveSudokuGrid(puzzle, variantId);
 - 历史 raw seed 与 v1 seed 生成结果不变；同 seed + 难度 + variant 在服务端和浏览器得到同一题面。
 - 每个新题型至少覆盖：合法终盘、错误终盘、逐格错误、确定性生成、proof 验证、seed round-trip 和未知协议拒绝。
 - 课堂覆盖填数、候选、删除、突出、答案、撤销与镜像恢复；不适用的工具必须由 renderer 明示禁用。
+- `game-page-v1`、微课嵌套来源和旧 `microcourse-page-v1 mode=sudoku` 必须把同一 `GameMirrorState` 贯穿到课堂 `game_state`；只传 `interactive` 而遗漏 `mirror/onMirror` 视为合同失败。
 - 公开页和课件入口 zh/en 均可选择；1024×768 的 4:3 工作区无横向滚动。
 - 最窄检查至少运行：
 
@@ -62,6 +63,7 @@ const solved = solveSudokuGrid(puzzle, variantId);
 pnpm test -- tests/sudoku-variants.test.ts tests/sudoku-teaching-board.test.ts tests/game-courseware-contract.test.ts
 pnpm typecheck
 pnpm messages:check
+pnpm classroom:interaction-sync:audit
 ```
 
 视觉、输入或课堂能力变化还要按仓库 `verify` skill 做对应真实页面验收。

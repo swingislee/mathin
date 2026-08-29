@@ -1,3 +1,17 @@
+import {
+  CLASSROOM_GAME_MIRROR_SYNC_V1,
+  type ClassroomInteractionSyncProvider,
+} from "@/features/classroom/sync/interaction-provider";
+
+interface GameCoursewareContractDefinition {
+  gameId: string;
+  contentVersion: string;
+  validatorVersion: string;
+  authoringSurfaces: readonly ["microcourse", ...string[]];
+  copyable: boolean;
+  classroomSync: ClassroomInteractionSyncProvider;
+}
+
 export const GAME_COURSEWARE_CONTRACTS = [
   {
     gameId: "sudoku",
@@ -5,8 +19,9 @@ export const GAME_COURSEWARE_CONTRACTS = [
     validatorVersion: "sudoku-authored-v1@1",
     authoringSurfaces: ["microcourse"] as const,
     copyable: true,
+    classroomSync: CLASSROOM_GAME_MIRROR_SYNC_V1,
   },
-] as const;
+] as const satisfies readonly GameCoursewareContractDefinition[];
 
 export type GameCoursewareContract = (typeof GAME_COURSEWARE_CONTRACTS)[number];
 export type AuthorableGameId = GameCoursewareContract["gameId"];
@@ -29,4 +44,3 @@ export function gameCoursewareContractsForSurface(
     (contract.authoringSurfaces as readonly GameCoursewareAuthoringSurface[]).includes(surface)
   ));
 }
-

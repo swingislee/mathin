@@ -82,13 +82,18 @@ export default async function LiveClassPage({
     : classroom.myRole === "teacher"
       ? "control"
       : "viewer";
-  const acceptanceFixture = process.env.NODE_ENV !== "production" && rehearsal
-    ? acceptance === "m3b"
-      ? "m3b"
-      : acceptance === "m4a"
-        ? "m4a"
-        : "m4b"
-    : null;
+  // Acceptance fixtures are compiled out of production behavior; their runners
+  // still require R1_DEV_TEST_FIXTURES before they may create local DB records.
+  const developmentFixturesEnabled = process.env.NODE_ENV !== "production";
+  const acceptanceFixture = developmentFixturesEnabled && acceptance === "interaction-sync" && !rehearsal
+    ? "interaction-sync"
+    : developmentFixturesEnabled && rehearsal
+      ? acceptance === "m3b"
+        ? "m3b"
+        : acceptance === "m4a"
+          ? "m4a"
+          : "m4b"
+      : null;
 
   return (
     <LiveShell

@@ -4,6 +4,10 @@ import type { BoardItem } from "@/features/whiteboard/types";
 import { reduceStarLedger, type StarLedger } from "../stars";
 import type { CoursewarePage, SessionEvent } from "../types";
 import type { VideoCtl } from "./VideoStage";
+import {
+  CLASSROOM_GAME_MIRROR_SYNC_V1,
+  classroomInteractionPayloadWithinBudget,
+} from "../sync/interaction-provider";
 
 // 课堂实时状态原语（原 LiveShell.tsx 内联，P4G-7 拆巨石时抽出的纯逻辑层）：
 // 事件流经 reduceEvent 折叠成 LiveState，可回放、可离线补同步，无 hook 无副作用。
@@ -75,7 +79,10 @@ export function reduceEvent(state: LiveState, ev: SessionEvent): LiveState {
     case "game_state": {
       const pageId = String(ev.payload.pageId ?? "");
       const mirror = ev.payload.state as GameMirrorState | undefined;
-      if (!pageId || !mirror || !Array.isArray(mirror.values)) return state;
+      if (!pageId
+        || !mirror
+        || !Array.isArray(mirror.values)
+        || !classroomInteractionPayloadWithinBudget(CLASSROOM_GAME_MIRROR_SYNC_V1, mirror)) return state;
       return { ...state, games: { ...state.games, [pageId]: mirror } };
     }
     case "doc_step": {
