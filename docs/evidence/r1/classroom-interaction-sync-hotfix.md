@@ -6,7 +6,7 @@
 >
 > **目标**：本机 Next `http://127.0.0.1:3130` 与 `.env.local` 指向的本机 Supabase；未连接或写入 Xiaomi
 >
-> **提交**：`pending`（本记录随热修提交；生产候选与发布授权尚未产生）
+> **本机热修提交**：`5783b9300dfa2eff1ee4dbd78ffa3a57f19f3977`；生产候选与发布授权尚未产生
 
 ## 根因与修复
 
@@ -42,4 +42,4 @@ Playwright 新用例使用同一浏览器上下文的控制页和展示页，证
 - 没有 migration、schema、Storage、Xiaomi、`mathin.club`、服务重载或生产发布操作。
 - `approver=pending`，`production_commit=pending`，`production_postflight=pending`，真实 iPad 验收 `pending`；因此本记录不能提升为生产通过。
 
-结构化字段：`gate_id=HOTFIX-20260829-CLASSROOM-INTERACTION-SYNC`，`domain=classroom-interaction-state`，`result=local_machine_browser_pass`，`environment=local-development`，`dataset_manifest=fixed-accounts-plus-ephemeral-purpose-test-fixture`，`actor=Codex`，`approver=pending`，`artifact_url_or_path=docs/evidence/r1/classroom-interaction-sync-hotfix.md`，`artifact_hash=not_applicable`，`retention=git-history`，`access_roles=repository-readers`，`failure_ticket=resolved-test-harness-only`。
+结构化字段：`gate_id=HOTFIX-20260829-CLASSROOM-INTERACTION-SYNC`，`domain=classroom-interaction-state`，`result=local_machine_browser_pass`，`commit_sha=5783b9300dfa2eff1ee4dbd78ffa3a57f19f3977`，`environment=local-development`，`dataset_manifest=fixed-accounts-plus-ephemeral-purpose-test-fixture`，`actor=Codex`，`approver=pending`，`artifact_url_or_path=docs/evidence/r1/classroom-interaction-sync-hotfix.md`，`artifact_hash=not_applicable`，`retention=git-history`，`access_roles=repository-readers`，`failure_ticket=resolved-test-harness-only`。
