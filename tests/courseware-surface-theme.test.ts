@@ -2,9 +2,12 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  COURSEWARE_DARK_SURFACE_STYLE,
+  COURSEWARE_DEFAULT_DARK_PAPER,
   COURSEWARE_DEFAULT_PAPER,
   COURSEWARE_LIGHT_SURFACE_STYLE,
   coursewareCanvasStyle,
+  coursewarePaletteStyle,
 } from "@/features/courseware-doc/courseware-surface";
 
 const root = process.cwd();
@@ -25,6 +28,17 @@ describe("courseware presentation color domain", () => {
       colorScheme: "light",
     });
     expect(coursewareCanvasStyle("#f1eadc").backgroundColor).toBe("#f1eadc");
+    expect(COURSEWARE_DARK_SURFACE_STYLE).toMatchObject({
+      colorScheme: "dark",
+      "--paper": COURSEWARE_DEFAULT_DARK_PAPER,
+      "--ink": "#f2eddf",
+    });
+    expect(coursewareCanvasStyle(null, "dark")).toMatchObject({
+      backgroundColor: COURSEWARE_DEFAULT_DARK_PAPER,
+      colorScheme: "dark",
+    });
+    expect(coursewarePaletteStyle("light")).toMatchObject({ "--ink": "#29251f" });
+    expect(coursewarePaletteStyle("light")).not.toHaveProperty("color");
   });
 
   it("applies the shared palette at every renderer that can expose shell colors", () => {

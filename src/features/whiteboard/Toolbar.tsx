@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ComponentType, type ReactNode } from "react";
+import { useRef, useState, type ComponentType, type CSSProperties, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import {
   ArrowRight,
@@ -134,6 +134,7 @@ export function Toolbar({
   className,
   largeTargets = false,
   variant = "floating",
+  swatchStyle,
 }: {
   title: string;
   store?: WhiteboardStore;
@@ -141,6 +142,8 @@ export function Toolbar({
   className?: string;
   largeTargets?: boolean;
   variant?: "floating" | "rail";
+  /** Optional semantic color scope for previews when app chrome and canvas use different themes. */
+  swatchStyle?: CSSProperties;
 }) {
   const t = useTranslations("whiteboard.board.tools");
   const colorNames = useTranslations("whiteboard.board.colors");
@@ -163,6 +166,7 @@ export function Toolbar({
   const [lastEraser, setLastEraser] = useState<Tool>("strokeEraser");
   const [collapsed, setCollapsed] = useState(false);
   const [clearOpen, setClearOpen] = useState(false);
+  const paletteRef = useRef<HTMLSpanElement>(null);
   const [clearSelected, setClearSelected] = useState<Set<string>>(
     () => new Set(clearTargets?.filter((target) => target.defaultChecked).map((target) => target.key) ?? []),
   );
@@ -219,6 +223,7 @@ export function Toolbar({
         className,
       )}
     >
+      <span ref={paletteRef} aria-hidden className="hidden" style={swatchStyle} data-whiteboard-swatch-palette />
       <ToolButton large={largeTargets} active={tool === "pointer"} label={t("pointer")} onClick={() => setTool("pointer")}>
         <MousePointer2 size={18} />
       </ToolButton>
@@ -277,7 +282,7 @@ export function Toolbar({
                   "grid size-5 place-items-center rounded-full border border-line shadow-sm transition-transform",
                   active && "scale-110 ring-2 ring-ink/60 ring-offset-1 ring-offset-paper",
                 )}
-                style={{ background: colorVar(token) }}
+                style={{ ...swatchStyle, background: colorVar(token) }}
               >
                 {active ? <Check size={12} strokeWidth={3} className="text-paper" /> : null}
               </span>
@@ -293,7 +298,7 @@ export function Toolbar({
         <PopoverContent side="top" className="w-auto p-2">
           <div className="grid grid-cols-2 gap-2">
             {MORE_COLOR_TOKENS.map((token) => (
-              <button key={token} type="button" aria-label={colorNames(token)} title={colorNames(token)} onClick={() => pickColor(token)} className={cn("size-7 rounded-full border border-line transition-transform hover:scale-110", color === token && "ring-2 ring-crater ring-offset-2 ring-offset-paper")} style={{ background: colorVar(token) }} />
+              <button key={token} type="button" aria-label={colorNames(token)} title={colorNames(token)} onClick={() => pickColor(token)} className={cn("size-7 rounded-full border border-line transition-transform hover:scale-110", color === token && "ring-2 ring-crater ring-offset-2 ring-offset-paper")} style={{ ...swatchStyle, background: colorVar(token) }} />
             ))}
           </div>
         </PopoverContent>
@@ -360,9 +365,9 @@ export function Toolbar({
         </PopoverTrigger>
         <PopoverContent side="top" className="w-auto p-2">
           <div className="grid grid-cols-4 gap-2">
-            <button type="button" aria-label={t("fillNone")} title={t("fillNone")} onClick={() => pickFill(null)} className={cn("relative size-7 rounded-full border border-line bg-paper", fill === null && "ring-2 ring-crater ring-offset-2 ring-offset-paper")}><span className="absolute inset-1/2 h-px w-6 -translate-x-1/2 -rotate-45 bg-rose" /></button>
+            <button type="button" aria-label={t("fillNone")} title={t("fillNone")} onClick={() => pickFill(null)} className={cn("relative size-7 rounded-full border border-line bg-paper", fill === null && "ring-2 ring-crater ring-offset-2 ring-offset-paper")} style={swatchStyle}><span className="absolute inset-1/2 h-px w-6 -translate-x-1/2 -rotate-45 bg-rose" /></button>
             {COLOR_TOKENS.map((token) => (
-              <button key={token} type="button" aria-label={colorNames(token)} title={colorNames(token)} onClick={() => pickFill(token)} className={cn("size-7 rounded-full border border-line", fill === token && "ring-2 ring-crater ring-offset-2 ring-offset-paper")} style={{ background: colorVar(token) }} />
+              <button key={token} type="button" aria-label={colorNames(token)} title={colorNames(token)} onClick={() => pickFill(token)} className={cn("size-7 rounded-full border border-line", fill === token && "ring-2 ring-crater ring-offset-2 ring-offset-paper")} style={{ ...swatchStyle, background: colorVar(token) }} />
             ))}
           </div>
         </PopoverContent>
@@ -372,7 +377,7 @@ export function Toolbar({
       <div aria-hidden className="mx-0.5 h-6 w-px shrink-0 bg-line" />
       <ToolButton large={largeTargets} label={t("undo")} onClick={undo} disabled={!canUndo}><Undo2 size={18} /></ToolButton>
       <ToolButton large={largeTargets} label={t("clear")} onClick={() => setClearOpen(true)} disabled={clearTargets ? false : !hasItems}><Trash2 size={18} /></ToolButton>
-      <ToolButton large={largeTargets} label={t("export")} onClick={() => { void exportPng(store.getState().items, title, document.documentElement); }} disabled={!hasItems}><Download size={18} /></ToolButton>
+      <ToolButton large={largeTargets} label={t("export")} onClick={() => { void exportPng(store.getState().items, title, paletteRef.current ?? document.documentElement); }} disabled={!hasItems}><Download size={18} /></ToolButton>
       {!isRail ? (
         <>
           <div aria-hidden className="mx-0.5 h-6 w-px shrink-0 bg-line" />

@@ -58,9 +58,12 @@ describe("classroom ambience backdrop", () => {
     expect(roster).toContain('data-roster-gap-surface="classroom-backdrop"');
     expect(panels).toContain("bg-card/80");
     expect(controlBar).toContain('data-classroom-control-surface="flat-rail"');
-    expect(controlBar).toContain('data-classroom-control-background="translucent"');
+    expect(controlBar).toContain('data-classroom-control-background="optical-glass"');
     expect(controlBar).toContain("bg-paper/30");
-    expect(controlBar).toContain("backdrop-blur-md");
+    expect(controlBar).toContain("backdrop-blur-xl");
+    expect(controlBar).toContain("backdrop-saturate-150");
+    expect(controlBar).toContain("inset_0_1px_0_rgba(255,255,255,0.24)");
+    expect(controlBar).toContain("inset_0_-1px_0_rgba(0,0,0,0.16)");
     expect(controlBar).not.toContain("border-t");
     expect(shell).not.toContain("scene-story");
   });

@@ -121,6 +121,7 @@ import { ClassroomRosterGrid, type ClassroomRosterStudent } from "./ClassroomRos
 import { DevelopmentAcceptanceDock } from "./DevelopmentAcceptanceDock";
 import { TeacherClassroomControlBar } from "./TeacherClassroomControlBar";
 import { ClassroomPageControls, ClassroomToolsMenu } from "./ClassroomControlMenus";
+import { resolveClassroomTeachingSurface } from "./classroom-teaching-surface";
 import {
   M3_AIXUEXI_H5_FIXTURE_DOC,
   M3_AIXUEXI_H5_FIXTURE_PAGE,
@@ -894,6 +895,7 @@ export function LiveShell({
         ? m3FixtureRenderer === "aixuexi" ? M3_AIXUEXI_H5_FIXTURE_DOC : M3_H5_FIXTURE_DOC
         : activeDocBundleEntry?.doc
     : undefined;
+  const teachingSurface = resolveClassroomTeachingSurface();
   const renderDocUrls = usingM3Fixture
     ? m3FixtureRenderer === "aixuexi"
       ? m3AixuexiH5FixtureBindingUrls(m3H5Compatible)
@@ -1332,7 +1334,7 @@ export function LiveShell({
   return (
     <div className={cn(
       "relative isolate flex h-dvh flex-col overflow-hidden px-3 pt-2",
-      teacherLayoutV2 ? "pb-[calc(3.5rem+env(safe-area-inset-bottom))]" : "pb-2",
+      teacherLayoutV2 ? "pb-[calc(4.25rem+env(safe-area-inset-bottom))]" : "pb-2",
     )} data-classroom-live-shell>
       <ClassroomBackdrop />
 
@@ -1613,12 +1615,17 @@ export function LiveShell({
             )}
             data-classroom-stage
             {...classroomInputProviderAttributes(rendererProfile.renderer, rendererProfile.provider)}
-            style={teacherLayoutV2
-              ? {
+            style={{
+              ...teachingSurface.surfaceStyle,
+              ...(teacherLayoutV2
+                ? {
                   width: "min(100cqw, calc(100cqh * 4 / 3))",
                   height: "min(100cqh, calc(100cqw * 3 / 4))",
                 }
-              : { width: "min(100%, calc((100dvh - 6rem) * 4 / 3))" }}
+                : { width: "min(100%, calc((100dvh - 6rem) * 4 / 3))" }),
+            }}
+            data-classroom-teaching-surface={teachingSurface.theme}
+            data-classroom-teaching-surface-scope={teachingSurface.scope}
             onPointerDownCapture={() => setActiveArea("main")}
           >
             {!renderPage ? (
@@ -1708,7 +1715,12 @@ export function LiveShell({
 
           {isController && toolbarStore && !teacherLayoutV2 && (
             <div className="absolute bottom-3 left-1/2 z-50 flex max-w-[calc(100%-1rem)] -translate-x-1/2 items-center">
-              <Toolbar title={`${displayedSessionTitle}-${renderPage?.title ?? ""}`} store={toolbarStore} clearTargets={clearTargets} />
+              <Toolbar
+                title={`${displayedSessionTitle}-${renderPage?.title ?? ""}`}
+                store={toolbarStore}
+                clearTargets={clearTargets}
+                swatchStyle={teachingSurface.paletteStyle}
+              />
             </div>
           )}
         </main>
@@ -1764,6 +1776,8 @@ export function LiveShell({
                     ? "flex-1"
                     : "min-h-48 flex-1 lg:w-[14rem] lg:flex-none xl:w-[18rem]",
               )}
+              style={teachingSurface.surfaceStyle}
+              data-classroom-teaching-surface={teachingSurface.theme}
               onPointerDownCapture={() => !sideCollapsed && setActiveArea("side")}
             >
               {!sideCollapsed && (
@@ -2085,6 +2099,7 @@ export function LiveShell({
               store={toolbarStore}
               clearTargets={clearTargets}
               className="h-11"
+              swatchStyle={teachingSurface.paletteStyle}
             />
           ) : null}
           pageControls={(

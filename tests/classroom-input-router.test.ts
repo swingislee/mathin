@@ -329,7 +329,7 @@ describe("M3a classroom input routing", () => {
     expect(liveShell).toContain('foreground={Boolean(activeToolId) && rendererProfile.audited}');
     expect(liveShell).toContain("classroomInputProviderAttributes(rendererProfile.renderer, rendererProfile.provider)");
     expect(liveShell).toContain("<TeacherClassroomControlBar");
-    expect(controlBar).toContain('className="fixed inset-x-0 bottom-0');
+    expect(controlBar).toContain('className="fixed inset-x-3 bottom-2');
     expect(controlBar).toContain('data-classroom-control-surface="flat-rail"');
     expect(fractionLine).toContain('data-classroom-input="click"');
     expect(fractionLine).toContain('data-classroom-input="drag"');
