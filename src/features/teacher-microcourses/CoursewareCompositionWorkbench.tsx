@@ -513,7 +513,7 @@ function GameComponentDialog({ microcourseId, disabled = false, onCreated }: {
   });
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild><Button type="button" size="sm" variant="secondary" disabled={disabled || contracts.length === 0}><Gamepad2 className="size-3.5" />{t("componentGame")}</Button></DialogTrigger>
+      <DialogTrigger asChild><Button type="button" size="sm" variant="secondary" disabled={disabled || contracts.length === 0}><Gamepad2 className="size-3.5" />{t("insertGame")}</Button></DialogTrigger>
       <DialogContent className="max-w-xl">
         <DialogHeader><DialogTitle>{t("insertGameComponentTitle")}</DialogTitle><DialogDescription>{t("gameAuthoringHint")}</DialogDescription></DialogHeader>
         <div className="grid gap-2 sm:grid-cols-2">
