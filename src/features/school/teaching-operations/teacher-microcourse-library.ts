@@ -6,6 +6,7 @@ import type { CourseFamilyDetail } from "./course-family-detail";
 import type { CourseSeason } from "./types";
 
 const uuidSchema = z.uuid();
+const selectAllValue = "__all__";
 const topicSchema = z.object({
   slug: z.string(),
   titleZh: z.string(),
@@ -77,6 +78,8 @@ export function parseTeacherMicrocourseLibraryFilters(
   const seasonText = first(input.mcSeason);
   const season = Number(seasonText);
   const offering = first(input.mcOffering);
+  const classType = first(input.mcClassType)?.trim();
+  const topic = first(input.mcTopic)?.trim();
   return {
     q: first(input.q)?.trim().slice(0, 80) || undefined,
     structure: structure === "single" || structure === "short" || structure === "series"
@@ -87,8 +90,8 @@ export function parseTeacherMicrocourseLibraryFilters(
     courseSeason: seasonText === "unspecified"
       ? "unspecified"
       : isCourseSeason(season) ? season : undefined,
-    classType: first(input.mcClassType)?.trim().slice(0, 40) || undefined,
-    topic: first(input.mcTopic)?.trim().slice(0, 60) || undefined,
+    classType: classType && classType !== selectAllValue ? classType.slice(0, 40) : undefined,
+    topic: topic && topic !== selectAllValue ? topic.slice(0, 60) : undefined,
     offering: offering === "long_term_formal" || offering === "short_term_topic"
       ? offering
       : undefined,

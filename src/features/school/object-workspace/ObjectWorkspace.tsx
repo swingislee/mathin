@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils";
 export function ObjectWorkspace({
   objectBar,
   navigation,
+  commandPanel,
   statusStrip,
   children,
   scroll = "ambient",
@@ -35,6 +36,8 @@ export function ObjectWorkspace({
   objectBar: ReactNode;
   /** ObjectTabs / StageNavigation / TrackSwitcher / ObjectContextSwitcher。 */
   navigation?: ReactNode;
+  /** 与普通 Dashboard 页共用的状态、筛选与页面操作命令层。 */
+  commandPanel?: ReactNode;
   /** 底部只读状态条（可选）。 */
   statusStrip?: ReactNode;
   children: ReactNode;
@@ -49,6 +52,7 @@ export function ObjectWorkspace({
           {navigation}
         </div>
       ) : null}
+      {commandPanel}
     </DashboardPageChrome>
   );
 
