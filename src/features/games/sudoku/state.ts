@@ -501,7 +501,11 @@ export function deleteSelectedSudokuCell(state: SudokuBoardState, puzzle: number
 }
 
 /** 教师快捷动作：只揭示当前选中空格，并沿用当前合法局面的一份终盘。 */
-export function revealSelectedSudokuCell(state: SudokuBoardState, puzzle: number[]): SudokuBoardState {
+export function revealSelectedSudokuCell(
+  state: SudokuBoardState,
+  puzzle: number[],
+  answerValues?: readonly number[],
+): SudokuBoardState {
   const spec = specForState(state);
   const index = state.selected;
   if (
@@ -513,8 +517,8 @@ export function revealSelectedSudokuCell(state: SudokuBoardState, puzzle: number
   ) {
     return state;
   }
-  const solution = solveSudokuGrid(state.values, spec);
-  const digit = solution?.[index];
+  const supplied = answerValues?.[index] ?? 0;
+  const digit = supplied || solveSudokuGrid(state.values, spec)?.[index];
   if (!validDigit(digit, spec)) return state;
 
   const values = [...state.values];

@@ -20,9 +20,9 @@ export function GamePageEditor({
   const t = useTranslations("teacherMicrocourses");
   switch (`${doc.gameId}:${doc.contentVersion}`) {
     case "sudoku:sudoku-authored-v1":
+    case "sudoku:sudoku-authored-v2":
       return <SudokuGamePageEditor doc={doc} onChange={onChange} />;
     default:
       return <p className="text-sm text-rose">{t("unsupportedGamePage")}</p>;
   }
 }
-

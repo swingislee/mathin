@@ -51,7 +51,10 @@ const display = {
 
 describe("registry-backed game courseware contract", () => {
   it("exposes authoring through the manifest instead of microcourse conditionals", () => {
-    expect(gameCoursewareContractsForSurface("microcourse")).toEqual(GAME_COURSEWARE_CONTRACTS);
+    expect(gameCoursewareContractsForSurface("microcourse")).toEqual([
+      expect.objectContaining({ contentVersion: "sudoku-authored-v2" }),
+    ]);
+    expect(GAME_COURSEWARE_CONTRACTS).toHaveLength(2);
     expect(getGameCoursewareContract("sudoku", "sudoku-authored-v1")).toMatchObject({
       validatorVersion: "sudoku-authored-v1@1",
       copyable: true,
@@ -97,6 +100,61 @@ describe("registry-backed game courseware contract", () => {
     const payload = createDefaultGameCoursewarePayload("sudoku", "sudoku-authored-v1");
     const trusted = validateGameCoursewareContent("sudoku", "sudoku-authored-v1", payload);
     expect(trusted.validation).toMatchObject({ publishable: false, code: "multiple" });
+  });
+
+  it("publishes a forced teaching target without requiring the whole board to be unique", () => {
+    const puzzle = [
+      1, 2, 3, 0,
+      0, 0, 0, 0,
+      0, 0, 0, 0,
+      0, 0, 0, 0,
+    ];
+    const trusted = validateGameCoursewareContent("sudoku", "sudoku-authored-v2", {
+      kind: "authored-activity",
+      variantId: "classic-4x4",
+      puzzle,
+      goal: { kind: "teaching-target", targets: [{ kind: "cell-value", index: 3, value: 4 }] },
+      display,
+    });
+
+    expect(trusted.validation).toMatchObject({
+      validatorVersion: "sudoku-authored-v2@1",
+      publishable: true,
+      code: "teaching-target-ready",
+    });
+    expect(trusted.validation.details).toMatchObject({
+      puzzle: { status: "multiple" },
+      targets: [{ index: 3, value: 4, status: "forced" }],
+    });
+  });
+
+  it("keeps full-solution unique while allowing solvable teacher-led boards", () => {
+    const blank = new Array(16).fill(0);
+    const teacherLed = validateGameCoursewareContent("sudoku", "sudoku-authored-v2", {
+      kind: "authored-activity",
+      variantId: "classic-4x4",
+      puzzle: blank,
+      goal: { kind: "teacher-led" },
+      display,
+    });
+    const fullSolution = validateGameCoursewareContent("sudoku", "sudoku-authored-v2", {
+      kind: "authored-activity",
+      variantId: "classic-4x4",
+      puzzle: blank,
+      goal: { kind: "full-solution", requireUnique: true },
+      display,
+    });
+    const unforcedTarget = validateGameCoursewareContent("sudoku", "sudoku-authored-v2", {
+      kind: "authored-activity",
+      variantId: "classic-4x4",
+      puzzle: blank,
+      goal: { kind: "teaching-target", targets: [{ kind: "cell-value", index: 0, value: 1 }] },
+      display,
+    });
+
+    expect(teacherLed.validation).toMatchObject({ publishable: true, code: "teacher-led-ready" });
+    expect(fullSolution.validation).toMatchObject({ publishable: false, code: "full-solution-multiple" });
+    expect(unforcedTarget.validation).toMatchObject({ publishable: false, code: "teaching-target-not-forced" });
   });
 
   it("rejects payload shapes that do not match the registered variant", () => {

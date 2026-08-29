@@ -86,6 +86,10 @@ export interface SudokuBoardProps extends GameBoardProps {
   allowCandidates?: boolean;
   allowAnswerReveal?: boolean;
   showTeachingTools?: boolean;
+  /** Sparse trusted answers. Passing an all-zero array disables arbitrary reveals on multi-solution boards. */
+  answerValues?: readonly number[];
+  /** Sparse goal cells; completion fires when every non-zero target is reached. */
+  completionTargets?: readonly number[];
 }
 
 export function SudokuBoard({
@@ -102,6 +106,8 @@ export function SudokuBoard({
   allowCandidates = true,
   allowAnswerReveal = true,
   showTeachingTools = true,
+  answerValues,
+  completionTargets,
 }: SudokuBoardProps) {
   const t = useTranslations("games.sudokuBoard");
   const authoredPuzzleKey = authoredPuzzle?.join("") ?? null;
@@ -209,7 +215,8 @@ export function SudokuBoard({
     || state.highlightTool !== null
     || state.selected === null
     || Boolean(puzzle[state.selected])
-    || Boolean(state.values[state.selected]);
+    || Boolean(state.values[state.selected])
+    || Boolean(answerValues && !answerValues[state.selected]);
   const highlightRegions = sudokuHighlightRegions(state.highlights, spec.size);
   const dragRegion = dragSelection
     ? createSudokuCellHighlightRegion(dragSelection.startIndex, dragSelection.endIndex, spec.size)
@@ -226,7 +233,13 @@ export function SudokuBoard({
     }
     setState(next);
     onMirror?.(toSudokuMirrorState(next));
-    if (
+    const targetCompleted = Boolean(
+      completionTargets?.some((value) => value > 0)
+      && completionTargets.every((value, index) => value === 0 || next.values[index] === value),
+    );
+    if (targetCompleted) {
+      onComplete(next.values);
+    } else if (
       next.values !== state.values
       && next.values.every((value) => value > 0)
       && isSolvedGrid(next.values, spec)
@@ -346,7 +359,7 @@ export function SudokuBoard({
 
   function revealSelectedAnswer() {
     const selected = state.selected;
-    const next = revealSelectedSudokuCell(state, puzzle);
+    const next = revealSelectedSudokuCell(state, puzzle, answerValues);
     if (selected === null || next === state) return;
     if (answerRevealTimerRef.current !== null) window.clearTimeout(answerRevealTimerRef.current);
     setRevealedCell(selected);

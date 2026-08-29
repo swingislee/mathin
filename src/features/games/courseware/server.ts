@@ -2,8 +2,12 @@ import "server-only";
 
 import { createHash } from "node:crypto";
 import type { GamePageValidation } from "@/features/courseware-doc/game-page-schema";
+import { analyzeSudokuCoursewareActivity } from "../sudoku/activity";
 import { analyzeSudokuPuzzle } from "../sudoku/logic";
-import type { SudokuAuthoredPayload } from "../sudoku/courseware-contract";
+import type {
+  SudokuActivityPayload,
+  SudokuAuthoredPayload,
+} from "../sudoku/courseware-contract";
 import { parseGameCoursewarePayload } from "./contracts";
 import { getGameCoursewareContract } from "./registry";
 
@@ -37,8 +41,21 @@ export function validateGameCoursewareContent(
         },
       };
     }
+    case "sudoku:sudoku-authored-v2": {
+      const sudoku = normalized as SudokuActivityPayload;
+      const analysis = analyzeSudokuCoursewareActivity(sudoku);
+      return {
+        payload: sudoku,
+        validation: {
+          payloadHash,
+          validatorVersion: contract.validatorVersion,
+          publishable: analysis.ready,
+          code: analysis.code,
+          details: analysis,
+        },
+      };
+    }
     default:
       throw new Error("UNKNOWN_GAME_COURSEWARE_CONTRACT");
   }
 }
-

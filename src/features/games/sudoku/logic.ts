@@ -324,6 +324,38 @@ export function analyzeSudokuPuzzle(
 }
 
 /**
+ * Returns the only value shared by every completion of one empty cell. A null
+ * result means the board is invalid, unsolvable, already filled, or the cell
+ * differs across legal completions.
+ */
+export function forcedSudokuCellValue(
+  values: SudokuGrid,
+  index: number,
+  reference?: SudokuVariantReference,
+): number | null {
+  const variant = variantForGrid(values, reference);
+  const runtime = variant ? getSudokuVariantRuntime(variant) : null;
+  if (
+    !variant
+    || !runtime
+    || !Number.isInteger(index)
+    || index < 0
+    || index >= values.length
+    || values[index] !== 0
+  ) return null;
+  const solution = runtime.solve(values, variant);
+  const forcedValue = solution?.[index] ?? 0;
+  if (forcedValue < 1 || forcedValue > variant.size) return null;
+  for (let digit = 1; digit <= variant.size; digit += 1) {
+    if (digit === forcedValue) continue;
+    const attempted = [...values];
+    attempted[index] = digit;
+    if (runtime.solve(attempted, variant)) return null;
+  }
+  return forcedValue;
+}
+
+/**
  * 由 seed 确定性生成题面（服务端校验时以相同 seed 重新生成）。
  * 不保证解唯一：verify 接受任何与题面一致的合法终盘，因此唯一性对反作弊无影响。
  */

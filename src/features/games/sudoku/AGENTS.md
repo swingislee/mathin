@@ -10,7 +10,7 @@
 | 规则、生成、求解、验证 | `logic.ts` 的 `SudokuVariantRuntime` / `SUDOKU_RUNTIME_REGISTRY` | 客户端判定与服务端 `verifySudoku` 必须调用同一 runtime |
 | 棋盘表现 | `SudokuBoard.tsx` 的 `SUDOKU_RENDERER_REGISTRY` | 新 renderer 必须显式登记；不得让未知 renderer 静默套用普通棋盘 |
 | 题型按钮 | `SudokuVariantSelector.tsx` | 公开游戏和课件入口复用同一选择器；可见性来自 `selectableIn` |
-| 教师自编题内容 | `courseware-contract.ts` | `sudoku-authored-v1` 只保存稳定 `variantId`、原型题与展示选项；格数和数字范围由题型注册表校验 |
+| 教师自编题内容 | `courseware-contract.ts` | `sudoku-authored-v1` 是唯一解历史合同；新页面使用 `sudoku-authored-v2`，显式保存 `teacher-led`、`teaching-target` 或 `full-solution` 目标 |
 | 微课编辑与课堂 | `SudokuGamePageEditor.tsx` / `SudokuGamePageStage.tsx` | 通过通用 `game-page-v1` 适配层接入；不得在微课编辑器、审核或来源选择器中新增数独专用分支 |
 | 课堂轻状态 | `state.ts` / `GameMirrorState` | 题型由课件页 seed 决定；镜像只传操作状态，不重复传规则定义 |
 | 合同测试 | `tests/sudoku-variants.test.ts` / `tests/game-courseware-contract.test.ts` | 注册表、seed、确定性生成、自编题 payload、runtime、服务端验证和镜像兼容必须覆盖 |
@@ -26,6 +26,7 @@
 - 未知或畸形的 `sudoku-v1/v2` 必须 fail closed，不能降级成 9×9 继续生成或通过服务端验证。
 - 确定性生成的公开对局与历史游戏课件继续复用 `{ gameId, difficulty, seed }` 及现有 `GameMirrorState`。教师手工原型题使用 `game-page-v1` + `sudoku-authored-v1`，payload 必须显式保存稳定 `variantId`，并经服务端 runtime 生成不可变校验凭证；不得把规则对象塞进镜像事件。
 - `microcourse-page-v1 mode=sudoku` 是永久可读的 81 格兼容格式，不回写旧 revision。所有新建教师数独页都走 `game-page-v1`；新增题型只改数独注册表、payload 适配器和测试，不得修改微课核心 schema、页面切换、审核、冻结或课堂路由。
+- `sudoku-authored-v1` 永久按“整题唯一解”解释，只用于读取历史 revision。新建页面使用 `sudoku-authored-v2`：`full-solution` 必须整题唯一；`teaching-target` 只要求盘面可解且每个目标格在所有合法终盘中取值相同；`teacher-led` 只要求盘面可解，并关闭任意格答案揭示。不得用求解器返回的第一份终盘冒充多解盘面的确定答案。
 
 标准调用：
 

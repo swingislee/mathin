@@ -32,7 +32,10 @@ export default function GamePageStage({
       data-game-content-version={doc.contentVersion}
       data-classroom-input="native"
     >
-      {doc.gameId === "sudoku" && doc.contentVersion === "sudoku-authored-v1"
+      {doc.gameId === "sudoku" && (
+        doc.contentVersion === "sudoku-authored-v1"
+        || doc.contentVersion === "sudoku-authored-v2"
+      )
         ? (
             <SudokuGamePageStage
               doc={doc}

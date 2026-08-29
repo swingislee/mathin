@@ -7,16 +7,26 @@ interface GameCoursewareContractDefinition {
   gameId: string;
   contentVersion: string;
   validatorVersion: string;
-  authoringSurfaces: readonly ["microcourse", ...string[]];
+  authoringSurfaces: readonly GameCoursewareAuthoringSurface[];
   copyable: boolean;
   classroomSync: ClassroomInteractionSyncProvider;
 }
+
+export type GameCoursewareAuthoringSurface = "microcourse";
 
 export const GAME_COURSEWARE_CONTRACTS = [
   {
     gameId: "sudoku",
     contentVersion: "sudoku-authored-v1",
     validatorVersion: "sudoku-authored-v1@1",
+    authoringSurfaces: [] as const,
+    copyable: true,
+    classroomSync: CLASSROOM_GAME_MIRROR_SYNC_V1,
+  },
+  {
+    gameId: "sudoku",
+    contentVersion: "sudoku-authored-v2",
+    validatorVersion: "sudoku-authored-v2@1",
     authoringSurfaces: ["microcourse"] as const,
     copyable: true,
     classroomSync: CLASSROOM_GAME_MIRROR_SYNC_V1,
@@ -26,7 +36,6 @@ export const GAME_COURSEWARE_CONTRACTS = [
 export type GameCoursewareContract = (typeof GAME_COURSEWARE_CONTRACTS)[number];
 export type AuthorableGameId = GameCoursewareContract["gameId"];
 export type GameCoursewareContentVersion = GameCoursewareContract["contentVersion"];
-export type GameCoursewareAuthoringSurface = GameCoursewareContract["authoringSurfaces"][number];
 
 export function getGameCoursewareContract(
   gameId: string,
