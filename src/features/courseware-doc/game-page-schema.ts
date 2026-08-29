@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { parseGameCoursewarePayload } from "@/features/games/courseware/contracts";
+import { gamePageGridLayoutSchema } from "@/features/games/courseware/game-page-layout";
 
 export const GAME_PAGE_DOC_VERSION = "game-page-v1" as const;
 export const GAME_PAGE_MAX_BYTES = 2 * 1_024 * 1_024;
@@ -24,6 +25,7 @@ export const gamePageDocSchema = z.object({
   gameId: z.string().min(1).max(80).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
   contentVersion: z.string().min(1).max(100).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
   payload: z.unknown(),
+  layout: gamePageGridLayoutSchema.optional(),
   validation: gamePageValidationSchema,
 }).strict().superRefine((doc, context) => {
   try {
@@ -52,4 +54,3 @@ export function isGamePageDoc(
 ): doc is GamePageDoc {
   return doc.docVersion === GAME_PAGE_DOC_VERSION;
 }
-
