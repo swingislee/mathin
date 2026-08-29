@@ -61,17 +61,26 @@ describe("DEV-TMC-1 teacher microcourse product surfaces", () => {
     const contentMigration = read("supabase", "migrations", "20260826000300_teacher_microcourse_content.sql");
     const actions = read("src", "features", "teacher-microcourses", "actions.ts");
     const manifest = read("src", "features", "games", "courseware", "registry.ts");
+    const gridEditor = read("src", "features", "games", "courseware", "GamePageGridEditor.tsx");
+    const gameEditor = read("src", "features", "games", "courseware", "GamePageEditor.tsx");
+    const gameStage = read("src", "features", "games", "courseware", "GamePageStage.tsx");
 
     expect(editor).toContain("createTeacherCompositionPageAction");
     expect(editor).toContain("createTeacherGamePageAction");
     expect(editor).toContain("gameCoursewareContractsForSurface");
     expect(editor).toContain("<GamePageEditor");
+    expect(editor).toContain("<GamePageGridEditor");
     expect(editor).toContain("createTeacherH5PageAction");
     expect(editor).toContain("uploadTeacherMicrocourseImageAction");
     expect(actions).toContain('"create_teacher_microcourse_game_page"');
     expect(actions).toContain('"save_teacher_microcourse_game_page"');
     expect(manifest).toContain('gameId: "sudoku"');
     expect(manifest).toContain('authoringSurfaces: ["microcourse"]');
+    expect(gridEditor).toContain("updateGamePageGridPlacement");
+    expect(gridEditor).toContain("MoveDiagonal2");
+    expect(gameEditor).toContain("applyGamePageGridTemplate");
+    expect(gameEditor).not.toContain('type="number"');
+    expect(gameStage).toContain("resolveGamePageGridLayout");
     expect(picker).toContain("createTeacherCompositionPagesFromLectureAction");
     expect(picker).toContain("<CoursePicker");
     expect(picker).toContain('fixedCourseKind="curriculum"');

@@ -15,11 +15,13 @@ export function SudokuGamePageStage({
   interactive,
   mirror,
   onMirror,
+  compact,
 }: {
   doc: GamePageDoc;
   interactive?: boolean;
   mirror?: GameMirrorState | null;
   onMirror?: (state: GameMirrorState) => void;
+  compact?: boolean;
 }) {
   const payload: SudokuCoursewarePayload = doc.contentVersion === "sudoku-authored-v2"
     ? sudokuActivityPayloadSchema.parse(doc.payload)
@@ -27,7 +29,7 @@ export function SudokuGamePageStage({
   const activity = analyzeSudokuCoursewareActivity(payload);
   const hasAnswers = activity.answerValues.some((value) => value > 0);
   return (
-    <div className="size-full overflow-auto p-3 sm:p-5">
+    <div className={compact ? "size-full overflow-hidden p-1" : "size-full overflow-auto p-3 sm:p-5"}>
       <SudokuBoard
         seed={`game-page:${payload.variantId}:${doc.validation.code}`}
         difficulty="medium"

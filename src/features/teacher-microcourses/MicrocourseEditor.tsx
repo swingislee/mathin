@@ -37,6 +37,7 @@ import type { MicrocoursePageDoc } from "@/features/courseware-doc/microcourse-s
 import type { DocNode, PageDoc } from "@/features/courseware-doc/schema";
 import { StagePreview } from "@/features/courseware-studio/StagePreview";
 import { GamePageEditor } from "@/features/games/courseware/GamePageEditor";
+import { GamePageGridEditor } from "@/features/games/courseware/GamePageGridEditor";
 import { gameCoursewareContractsForSurface } from "@/features/games/courseware/registry";
 import { getGame } from "@/features/games/registry";
 import { analyzeSudokuPuzzle } from "@/features/games/sudoku/logic";
@@ -521,6 +522,7 @@ const MicrocoursePageWorkbench = forwardRef<MicrocoursePageWorkbenchHandle, {
   const [title, setTitle] = useState(page.title);
   const [doc, setDoc] = useState(() => clone(page.doc));
   const [bindingUrls, setBindingUrls] = useState({ ...page.bindingUrls });
+  const [selectedGridBlockId, setSelectedGridBlockId] = useState("game");
   const [message, setMessage] = useState("");
   const [saveState, setSaveState] = useState<PageSaveState>("saved");
   const [pending, startTransition] = useTransition();
@@ -630,6 +632,17 @@ const MicrocoursePageWorkbench = forwardRef<MicrocoursePageWorkbenchHandle, {
     markDocDirty();
   };
 
+  const uploadGameImage = useCallback(async (file: File): Promise<{ bindingKey: string }> => {
+    const result = await uploadTeacherMicrocourseImageAction({
+      microcourseId,
+      pageDocId: page.pageDocId,
+      file,
+    });
+    if (!result.ok) throw new Error(result.code);
+    setBindingUrls((current) => ({ ...current, [result.data.bindingKey]: result.data.url }));
+    return { bindingKey: result.data.bindingKey };
+  }, [microcourseId, page.pageDocId]);
+
   useEffect(() => {
     const visibility = () => { if (document.visibilityState === "hidden") void flushRef.current(); };
     const beforeUnload = () => void flushRef.current();
@@ -662,9 +675,9 @@ const MicrocoursePageWorkbench = forwardRef<MicrocoursePageWorkbenchHandle, {
       {message && <p role="alert" className="mt-2 text-xs text-rose">{message}</p>}
     </CardHeader>
     <CardContent className="grid min-h-[38rem] gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
-      <div className="min-w-0"><div className="mx-auto max-w-4xl overflow-hidden rounded-xl border border-line bg-white shadow-sm"><StagePreview doc={doc} bindingUrls={bindingUrls} stageMode="natural" className="w-full" interactive /></div>{!isGamePageDoc(doc) && doc.mode === "composition" && doc.source && <p className="mt-2 text-xs text-muted">{t("lockedSource", { title: doc.source.sourceTitle, page: doc.source.sourcePageNo })}</p>}</div>
+      <div className="min-w-0"><div className="mx-auto max-w-4xl overflow-hidden rounded-xl border border-line bg-white shadow-sm">{isGamePageDoc(doc) ? <GamePageGridEditor doc={doc} bindingUrls={bindingUrls} selectedBlockId={selectedGridBlockId} onSelectBlock={setSelectedGridBlockId} onChange={updateDoc} /> : <StagePreview doc={doc} bindingUrls={bindingUrls} stageMode="natural" className="w-full" interactive />}</div>{!isGamePageDoc(doc) && doc.mode === "composition" && doc.source && <p className="mt-2 text-xs text-muted">{t("lockedSource", { title: doc.source.sourceTitle, page: doc.source.sourcePageNo })}</p>}</div>
       <ScrollArea className="h-[35rem] rounded-xl border border-line bg-paper/50"><div className="p-4">
-        {isGamePageDoc(doc) && <GamePageEditor doc={doc} onChange={updateDoc} />}
+        {isGamePageDoc(doc) && <GamePageEditor doc={doc} onChange={updateDoc} selectedBlockId={selectedGridBlockId} onSelectBlock={setSelectedGridBlockId} onUploadImage={uploadGameImage} />}
         {!isGamePageDoc(doc) && doc.mode === "composition" && <CompositionControls microcourseId={microcourseId} page={page} doc={doc} setDoc={updateDoc} bindingUrls={bindingUrls} setBindingUrls={setBindingUrls} pending={pending} startTransition={startTransition} setMessage={setMessage} />}
         {!isGamePageDoc(doc) && doc.mode === "sudoku" && <SudokuControls doc={doc} setDoc={updateDoc} />}
         {!isGamePageDoc(doc) && doc.mode === "h5" && <H5Controls ref={h5Ref} microcourseId={microcourseId} page={page} initialHtml={page.h5Html} titleRef={titleRef} onPersisted={onPersisted} onSaveStateChange={setSaveState} setMessage={setMessage} onStatus={onStatus} />}

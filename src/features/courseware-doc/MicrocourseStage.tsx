@@ -57,6 +57,7 @@ function SourceStage({
         interactive={props.interactive}
         mirror={props.gameMirror}
         onMirror={props.onGameMirror}
+        bindingUrls={props.bindingUrls}
       />
     );
   }
