@@ -84,6 +84,59 @@ describe("game page 12x9 composition grid", () => {
     expect(gamePageGridLayoutSchema.safeParse(removed).success).toBe(true);
   });
 
+  it("lets a companion swap sides with the game instead of rejecting the collision", () => {
+    const left = applyGamePageGridTemplate(defaultGamePageGridLayout(), "text-left");
+    const right = updateGamePageGridPlacement(
+      left,
+      "text-1",
+      { column: 8, row: 0, columnSpan: 4, rowSpan: 9 },
+    );
+
+    expect(right.blocks).toMatchObject([
+      { id: "game", placement: { column: 0, row: 0, columnSpan: 8, rowSpan: 9 } },
+      { id: "text-1", placement: { column: 8, row: 0, columnSpan: 4, rowSpan: 9 } },
+    ]);
+    expect(gamePageGridLayoutSchema.safeParse(right).success).toBe(true);
+  });
+
+  it("turns a side companion into a full row and resizes the game into the remaining area", () => {
+    const left = applyGamePageGridTemplate(defaultGamePageGridLayout(), "text-left");
+    const bottom = updateGamePageGridPlacement(
+      left,
+      "text-1",
+      { column: 0, row: 6, columnSpan: 12, rowSpan: 3 },
+    );
+
+    expect(bottom.blocks).toMatchObject([
+      { id: "game", placement: { column: 0, row: 0, columnSpan: 12, rowSpan: 6 } },
+      { id: "text-1", placement: { column: 0, row: 6, columnSpan: 12, rowSpan: 3 } },
+    ]);
+    expect(gamePageGridLayoutSchema.safeParse(bottom).success).toBe(true);
+  });
+
+  it("reorders companion tiles when one is dragged into another tile's slot", () => {
+    const withText = applyGamePageGridTemplate(defaultGamePageGridLayout(), "text-left");
+    const withImage = addGamePageGridBlock(withText, {
+      id: "image-1",
+      type: "image",
+      bindingKey: "c".repeat(64),
+      alt: "diagram",
+      fit: "contain",
+      placement: { column: 0, row: 0, columnSpan: 4, rowSpan: 4 },
+    });
+    const reordered = updateGamePageGridPlacement(
+      withImage,
+      "image-1",
+      { column: 0, row: 0, columnSpan: 4, rowSpan: 4 },
+    );
+    const image = reordered.blocks.find((block) => block.id === "image-1");
+    const text = reordered.blocks.find((block) => block.id === "text-1");
+
+    expect(image?.placement.row).toBe(0);
+    expect(text?.placement.row).toBeGreaterThanOrEqual(4);
+    expect(gamePageGridLayoutSchema.safeParse(reordered).success).toBe(true);
+  });
+
   it("rejects overlaps and unusably small classroom game regions", () => {
     expect(gamePageGridLayoutSchema.safeParse({
       ...defaultGamePageGridLayout(),
@@ -94,4 +147,3 @@ describe("game page 12x9 composition grid", () => {
     }).success).toBe(false);
   });
 });
-

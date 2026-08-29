@@ -1,8 +1,14 @@
 import { z } from "zod";
+import {
+  COURSEWARE_SNAP_GRID_COLUMNS,
+  COURSEWARE_SNAP_GRID_ROWS,
+  coursewareSnapGridPlacementsOverlap,
+  resolveCoursewareSnapGridGesture,
+} from "@/features/courseware-doc/snap-grid";
 
 export const GAME_PAGE_GRID_VERSION = "game-page-grid-v1" as const;
-export const GAME_PAGE_GRID_COLUMNS = 12;
-export const GAME_PAGE_GRID_ROWS = 9;
+export const GAME_PAGE_GRID_COLUMNS = COURSEWARE_SNAP_GRID_COLUMNS;
+export const GAME_PAGE_GRID_ROWS = COURSEWARE_SNAP_GRID_ROWS;
 export const GAME_PAGE_GRID_MAX_BLOCKS = 5;
 
 const bindingKeySchema = z.string().regex(/^[0-9a-f]{64}$/);
@@ -105,10 +111,7 @@ export function resolveGamePageGridLayout(layout: GamePageGridLayout | undefined
 }
 
 export function placementsOverlap(left: GamePageGridPlacement, right: GamePageGridPlacement): boolean {
-  return left.column < right.column + right.columnSpan
-    && left.column + left.columnSpan > right.column
-    && left.row < right.row + right.rowSpan
-    && left.row + left.rowSpan > right.row;
+  return coursewareSnapGridPlacementsOverlap(left, right);
 }
 
 function distributedPlacements(
@@ -186,9 +189,32 @@ export function updateGamePageGridPlacement(
   placement: GamePageGridPlacement,
 ): GamePageGridLayout {
   const layout = structuredClone(input);
-  const block = layout.blocks.find((item) => item.id === blockId);
-  if (!block) return input;
-  block.placement = placement;
+  const resolved = resolveCoursewareSnapGridGesture(
+    layout.blocks.map((block) => ({
+      id: block.id,
+      placement: block.placement,
+      minColumnSpan: block.type === "game" ? 8 : 2,
+      minRowSpan: block.type === "game" ? 6 : 2,
+      priority: block.type === "game" ? 0 : 10,
+      alternativeSizes: block.type === "game"
+        ? [
+            { columnSpan: 12, rowSpan: 6 },
+            { columnSpan: 8, rowSpan: 9 },
+            { columnSpan: 8, rowSpan: 6 },
+          ]
+        : [
+            { columnSpan: 4, rowSpan: 9 },
+            { columnSpan: 12, rowSpan: 3 },
+            { columnSpan: 6, rowSpan: 3 },
+            { columnSpan: 4, rowSpan: 3 },
+            { columnSpan: 2, rowSpan: 2 },
+          ],
+    })),
+    blockId,
+    placement,
+  );
+  if (!resolved) return input;
+  layout.blocks.forEach((block, index) => { block.placement = resolved[index]; });
   const parsed = gamePageGridLayoutSchema.safeParse(layout);
   return parsed.success ? parsed.data : input;
 }
@@ -227,4 +253,3 @@ export function removeGamePageGridBlock(input: GamePageGridLayout, blockId: stri
         : "text-left";
   return applyGamePageGridTemplate(layout, template, false);
 }
-
