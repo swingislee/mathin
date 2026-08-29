@@ -12,6 +12,7 @@ describe("public Sudoku surface", () => {
     expect(adapter).toContain("allowAnswerReveal={false}");
     expect(adapter).toContain("showCoordinates={false}");
     expect(adapter).toContain("showTeachingTools={false}");
+    expect(adapter).toContain('validationMode="on-complete"');
   });
 
   it("uses explicit candidate-note and value-entry symbols", () => {

@@ -451,6 +451,35 @@
   transform: translateX(-50%);
 }
 
+.completionPrompt {
+  position: fixed;
+  z-index: 60;
+  bottom: 1.5rem;
+  left: 50%;
+  max-width: calc(100vw - 2rem);
+  padding: 0.7rem 1rem;
+  border: 1px solid;
+  border-radius: 999px;
+  box-shadow: 0 4px 12px rgb(46 70 66 / 12%);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-align: center;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+.completionPrompt[data-result="correct"] {
+  color: var(--sudoku-accent-deep);
+  border-color: rgb(70 119 114 / 40%);
+  background: #f4fbf8;
+}
+
+.completionPrompt[data-result="incorrect"] {
+  color: #8d453f;
+  border-color: rgb(201 104 97 / 48%);
+  background: #fffaf8;
+}
+
 @keyframes sudoku-invalid-cell {
   0%,
   100% {

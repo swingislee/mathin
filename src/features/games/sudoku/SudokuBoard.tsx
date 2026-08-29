@@ -16,7 +16,13 @@ import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from "react";
 import { cn } from "@/lib/utils";
 import type { GameBoardProps, GameMirrorState, SudokuHighlightTool } from "../types";
-import { isSolvedGrid, sudokuPuzzle, type SudokuGrid } from "./logic";
+import {
+  evaluateSudokuCompletion,
+  isSolvedGrid,
+  sudokuPuzzle,
+  type SudokuCompletionResult,
+  type SudokuGrid,
+} from "./logic";
 import styles from "./SudokuBoard.module.css";
 import {
   clearSudokuTeachingHighlights,
@@ -106,6 +112,8 @@ export interface SudokuBoardProps extends GameBoardProps {
   allowCandidates?: boolean;
   allowAnswerReveal?: boolean;
   showTeachingTools?: boolean;
+  /** Classroom defaults to per-entry reasoning checks; public games validate only after a full board. */
+  validationMode?: "immediate" | "on-complete";
   /** Sparse trusted answers. Passing an all-zero array disables arbitrary reveals on multi-solution boards. */
   answerValues?: readonly number[];
   /** Sparse goal cells; completion fires when every non-zero target is reached. */
@@ -126,6 +134,7 @@ export function SudokuBoard({
   allowCandidates = true,
   allowAnswerReveal = true,
   showTeachingTools = true,
+  validationMode = "immediate",
   answerValues,
   completionTargets,
 }: SudokuBoardProps) {
@@ -161,12 +170,13 @@ export function SudokuBoard({
   const [state, setState] = useState<SudokuBoardState>(() => createSudokuBoardState(puzzle, mirror, spec));
   const [appliedMirror, setAppliedMirror] = useState<GameMirrorState | null | undefined>(mirror);
   const [appliedPuzzleKey, setAppliedPuzzleKey] = useState(puzzleKey);
-  const invalidAttemptKey = state.invalidAttempt
+  const invalidAttemptKey = validationMode === "immediate" && state.invalidAttempt
     ? `${puzzleKey}:${state.invalidAttempt.sequence}`
     : null;
   const invalidAttemptIndex = state.invalidAttempt?.index ?? null;
   const [invalidCell, setInvalidCell] = useState<number | null>(null);
   const [reasoningVisible, setReasoningVisible] = useState(false);
+  const [completionResult, setCompletionResult] = useState<Exclude<SudokuCompletionResult, "incomplete"> | null>(null);
   const [dragSelection, setDragSelection] = useState<SudokuDragSelection | null>(null);
   const [highlightUndoStack, setHighlightUndoStack] = useState<SudokuBoardState["highlights"][]>([]);
   const [revealedCell, setRevealedCell] = useState<number | null>(null);
@@ -224,9 +234,13 @@ export function SudokuBoard({
     setState(createSudokuBoardState(puzzle, mirror, spec));
     setHighlightUndoStack([]);
     setRevealedCell(null);
+    setCompletionResult(null);
   } else if (mirror !== appliedMirror) {
     setAppliedMirror(mirror);
-    if (mirror) setState(createSudokuBoardState(puzzle, mirror, spec));
+    if (mirror) {
+      setState(createSudokuBoardState(puzzle, mirror, spec));
+      setCompletionResult(null);
+    }
   }
 
   const inputDisabled = Boolean(readOnly || finished);
@@ -253,14 +267,21 @@ export function SudokuBoard({
     }
     setState(next);
     onMirror?.(toSudokuMirrorState(next));
+    const valuesChanged = next.values !== state.values;
+    if (valuesChanged && validationMode === "on-complete") {
+      const result = evaluateSudokuCompletion(next.values, spec);
+      setCompletionResult(result === "incomplete" ? null : result);
+      if (result === "correct") onComplete(next.values);
+      return;
+    }
     const targetCompleted = Boolean(
       completionTargets?.some((value) => value > 0)
       && completionTargets.every((value, index) => value === 0 || next.values[index] === value),
     );
-    if (next.values !== state.values && targetCompleted) {
+    if (valuesChanged && targetCompleted) {
       onComplete(next.values);
     } else if (
-      next.values !== state.values
+      valuesChanged
       && next.values.every((value) => value > 0)
       && isSolvedGrid(next.values, spec)
     ) {
@@ -278,7 +299,13 @@ export function SudokuBoard({
 
   function selectCell(index: number, applySelectedDigit = true) {
     if (inputDisabled) return;
-    commit(selectSudokuCell(state, puzzle, index, applySelectedDigit));
+    commit(selectSudokuCell(
+      state,
+      puzzle,
+      index,
+      applySelectedDigit,
+      validationMode === "immediate",
+    ));
   }
 
   function updateDragSelection(next: SudokuDragSelection | null) {
@@ -434,6 +461,16 @@ export function SudokuBoard({
       {reasoningVisible ? (
         <div aria-live="assertive" className={styles.reasoningPrompt} role="alert">
           {reasoningOnlyMessage}
+        </div>
+      ) : null}
+      {completionResult ? (
+        <div
+          aria-live="assertive"
+          className={styles.completionPrompt}
+          data-result={completionResult}
+          role={completionResult === "incorrect" ? "alert" : "status"}
+        >
+          {t(completionResult === "correct" ? "completionCorrect" : "completionIncorrect")}
         </div>
       ) : null}
       <div

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  evaluateSudokuCompletion,
   isSudokuValuePossible,
   solveSudokuGrid,
   sudokuPuzzle,
@@ -162,6 +163,23 @@ describe("Sudoku teaching board M2", () => {
     expect(state.values[1]).toBe(6);
     expect(state.inputDigit).toBe(6);
     expect(sudokuCandidateDigits(state.candidates[0])).toEqual([3, 6]);
+  });
+
+  it("accepts unchecked public entries and evaluates only a complete board", () => {
+    const puzzle = [...SUDOKU_BOX_ELIMINATION_PUZZLE];
+    let state = createSudokuBoardState(puzzle);
+
+    state = chooseSudokuDigit(state, 2);
+    state = selectSudokuCell(state, puzzle, 1, true, false);
+
+    expect(state.values[1]).toBe(2);
+    expect(state.invalidAttempt).toBeNull();
+    expect(evaluateSudokuCompletion(state.values)).toBe("incomplete");
+    expect(evaluateSudokuCompletion(BOX_ELIMINATION_SOLUTION)).toBe("correct");
+
+    const incorrect = [...BOX_ELIMINATION_SOLUTION];
+    incorrect[0] = 6;
+    expect(evaluateSudokuCompletion(incorrect)).toBe("incorrect");
   });
 
   it("toggles candidates, clears them on fill, and mirrors the complete M2 state", () => {

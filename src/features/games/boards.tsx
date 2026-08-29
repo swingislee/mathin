@@ -26,6 +26,7 @@ export function GameBoard({ id, ...props }: GameBoardProps & { id: string }) {
             allowAnswerReveal={false}
             showCoordinates={false}
             showTeachingTools={false}
+            validationMode="on-complete"
           />
         </div>
       );

@@ -258,6 +258,8 @@
       "revealSelectedAnswer": "Reveal selected cell answer",
       "highlightedSuffix": ", highlighted",
       "reasoningOnly": "No guessing — use reasoning only!",
+      "completionCorrect": "Correct!",
+      "completionIncorrect": "Something is wrong. Check the board again.",
       "givenCell": "{coordinate}, given digit {value}",
       "filledCell": "{coordinate}, entered digit {value}",
       "candidateCell": "{coordinate}, candidates {values}",

@@ -223,7 +223,13 @@ export function sudokuNumberPadItems(size: SudokuSize): SudokuNumberPadItem[] {
   return [...firstColumn, ...secondColumn, ...spacers, "delete"];
 }
 
-function applyDigitAt(state: SudokuBoardState, puzzle: number[], index: number, digit: number): SudokuBoardState {
+function applyDigitAt(
+  state: SudokuBoardState,
+  puzzle: number[],
+  index: number,
+  digit: number,
+  validateEntry: boolean,
+): SudokuBoardState {
   const spec = specForState(state);
   if (!validCellIndex(index, spec) || !validDigit(digit, spec) || puzzle[index]) return state;
 
@@ -234,7 +240,7 @@ function applyDigitAt(state: SudokuBoardState, puzzle: number[], index: number, 
     return { ...state, candidates };
   }
 
-  if (!isSudokuValuePossible(puzzle, state.values, index, digit, spec)) {
+  if (validateEntry && !isSudokuValuePossible(puzzle, state.values, index, digit, spec)) {
     const previousSequence = state.invalidAttempt?.sequence ?? 0;
     return {
       ...state,
@@ -251,7 +257,7 @@ function applyDigitAt(state: SudokuBoardState, puzzle: number[], index: number, 
   const candidates = [...state.candidates];
   values[index] = digit;
   candidates[index] = 0;
-  return { ...state, values, candidates };
+  return { ...state, values, candidates, invalidAttempt: null };
 }
 
 /** 数字按钮只切换持续印章；写入统一发生在随后点击目标格时。 */
@@ -376,12 +382,13 @@ export function selectSudokuCell(
   puzzle: number[],
   index: number,
   applySelectedDigit = true,
+  validateEntry = true,
 ): SudokuBoardState {
   if (!validCellIndex(index, specForState(state))) return state;
   if (state.highlightTool) return toggleSudokuHighlightTarget(state, index);
   const withSelection = { ...state, selected: index };
   if (!applySelectedDigit || state.inputDigit === null) return withSelection;
-  return applyDigitAt(withSelection, puzzle, index, state.inputDigit);
+  return applyDigitAt(withSelection, puzzle, index, state.inputDigit, validateEntry);
 }
 
 export function setSudokuEntryMode(state: SudokuBoardState, entryMode: SudokuEntryMode): SudokuBoardState {

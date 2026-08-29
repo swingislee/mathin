@@ -258,6 +258,8 @@
       "revealSelectedAnswer": "显示所选格答案",
       "highlightedSuffix": "，已突出",
       "reasoningOnly": "不能猜哦，只能靠推理！",
+      "completionCorrect": "填写正确！",
+      "completionIncorrect": "盘面有误，再检查一下。",
       "givenCell": "{coordinate}，题面数字 {value}",
       "filledCell": "{coordinate}，填入数字 {value}",
       "candidateCell": "{coordinate}，候选数 {values}",

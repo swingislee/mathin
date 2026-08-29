@@ -380,6 +380,17 @@ export function isSolvedGrid(
   return Boolean(variant && runtime?.isSolved(grid, variant));
 }
 
+export type SudokuCompletionResult = "incomplete" | "correct" | "incorrect";
+
+/** Public games defer feedback until every cell has a value. */
+export function evaluateSudokuCompletion(
+  grid: SudokuGrid,
+  reference?: SudokuVariantReference,
+): SudokuCompletionResult {
+  if (grid.some((value) => value === 0)) return "incomplete";
+  return isSolvedGrid(grid, reference) ? "correct" : "incorrect";
+}
+
 /**
  * M4 逐格验证：接受所有仍可完成为对应题型合法终盘的填数。
  * 这与 verifySudoku 的多解合同一致，不会把另一种合法解误判为错误。
