@@ -6,7 +6,7 @@
 >
 > **剩余项**：独立教案管理页面的创建/绑定入口、服务端打印 PDF 派生文件，以及 `DEV-TMC-1/2` 的产品负责人生产页面写态验收；页面级教学备注已按产品判断暂缓。R1-Live 中备课产物、审核和检查项只作质量提示，不阻断教师冻结快照或开课；Production 1.0 再评估质量门。
 >
-> **最后核对**：2026-08-29；既有教师生产链依据迁移 `20260730010500_doc26_teacher_workflow.sql`、`20260731000700_doc26_annotation_board_items.sql` 与 `20260823000200_r1_live_preparation_attention_window.sql`、隔离/生产数据库断言、定向合同测试及产品走查。`DEV-TMC-1` 已于 2026-08-27 首轮部署并保持 `teaching.teacher_microcourses_v1` version 2 / true；`DEV-TMC-2` 与班级重新启用增量以 commit `087b497…` 部署。2026-08-29 又以 migration `20260829000200_admin_self_staff_roles` 与应用 `ba98a8e…` 放行顶层管理员管理自己的员工岗位，ledger=`220`、current/previous=`20260828-195733` / `20260828-190055`，数据库、服务、HTTP、业务/Storage 不变量和备份 postflight 通过；管理员实际自授岗与生产写态旅程尚未验收。
+> **最后核对**：2026-08-29；既有教师生产链依据迁移 `20260730010500_doc26_teacher_workflow.sql`、`20260731000700_doc26_annotation_board_items.sql` 与 `20260823000200_r1_live_preparation_attention_window.sql`、隔离/生产数据库断言、定向合同测试及产品走查。`DEV-TMC-1` 已于 2026-08-27 首轮部署并保持 `teaching.teacher_microcourses_v1` version 2 / true；`DEV-TMC-2` 与班级重新启用增量以 commit `087b497…` 部署。2026-08-29 又以 migration `20260829000200_admin_self_staff_roles` 与应用 `ba98a8e…` 放行顶层管理员管理自己的员工岗位；随后 app-only `bf81aa4…` 修正教研在普通课次页的课件入口，ledger 保持 `220`，current/previous=`20260829-031327` / `20260828-195733`，数据库、服务、HTTP、业务/Storage 不变量和备份 postflight 通过；生产写态旅程尚未验收。
 
 # Mathin 教师备课生产链升级规划
 
@@ -552,7 +552,7 @@ template_version:
 | --- | --- | --- |
 | 本机实现与机器检查 | **PASS** | 基础 commits `cd3b2bf`、`26698e3`、`96f3301`、`a4fa9e4`、`5c13d5d`、`f418dd9` 与迁移 `20260826000200`～`20260826000600` 已通过三份事务回滚 SQL、微课 Vitest 17/17、固定账号 Playwright 1/1 和 R1-Live 60/60；整讲来源增量 commit `dd9a755`、migration `20260827000100_teacher_microcourse_lecture_source_picker` 通过内容 SQL、微课 Vitest 4 文件 19/19 与完整旅程；通用游戏页增量 commit `1135099`、migrations `20260827000300`～`20260827000400` 通过回滚式内容 SQL、定向 Vitest 6 文件 47/47、固定账号 Playwright 1/1 及最终 CI 16/16，全量 Vitest为 106 文件、742 通过/1 条件跳过且 production build 成功；课程产品选择器复用增量 migrations `20260827000600`～`20260827000700` 已通过事务回滚、固定教师权限矩阵、微课 Vitest 4 文件 21/21 与完整 Playwright 1/1 |
 | 产品负责人开发端初验 | **UNKNOWN** | 本机功能开关已启用并保留可验收版本；自动化只能证明覆盖合同，尚无产品负责人签收 |
-| 生产迁移与启用 | **DEPLOYED / PENDING USER ACCEPTANCE** | 首轮明确授权后完成 PostgreSQL-only 备份、12 migration rollback/零残留/formal、commit `bc76f68` 发布及 feature flag rollback/formal；后续 DEV-TMC-2 候选以 PostgreSQL+Storage 全量备份、三 migration rollback/formal 和双 release 推进到 ledger=`211`、flag=version 2 / true。管理员自授岗 hotfix 再以 migration `20260829000200_admin_self_staff_roles`、应用 `ba98a8e…` 推进到 ledger=`220`、current/previous=`20260828-195733` / `20260828-190055`；HTTP/权限/服务/错误/业务/Storage postflight 通过，真实自授岗仍待产品负责人验收 |
+| 生产迁移与启用 | **DEPLOYED / PENDING USER ACCEPTANCE** | 首轮明确授权后完成 PostgreSQL-only 备份、12 migration rollback/零残留/formal、commit `bc76f68` 发布及 feature flag rollback/formal；后续 DEV-TMC-2 候选以 PostgreSQL+Storage 全量备份、三 migration rollback/formal 和双 release 推进到 ledger=`211`、flag=version 2 / true。管理员自授岗 hotfix 再以 migration `20260829000200_admin_self_staff_roles`、应用 `ba98a8e…` 推进到 ledger=`220`；教研课次页入口 hotfix `bf81aa4…` 以 app-only release 推进 current/previous=`20260829-031327` / `20260828-195733`。HTTP/权限/服务/错误/业务/Storage postflight 通过，真实页面验收仍 pending |
 
 完整机器证据见 [`../evidence/r1/teacher-microcourse-dev.md`](../evidence/r1/teacher-microcourse-dev.md)。本机随机 E2E 课程族、班级、课次和微课项目已按精确名称/ID 清理并复核为 0；固定开发账号与既有基线数据未改变。
 
@@ -605,6 +605,8 @@ H5 首版只有 HTML 编辑框、防抖预览、运行错误和本地素材 data
 | 本机实现与机器检查 | **PASS** | 两份 migration 回滚断言、TypeScript、双语键、全库 ESLint、定向 Vitest 8 文件 64/64、固定账号新旧 Playwright 2/2、CI 16/16、全量 Vitest 108 文件 761 通过/1 条件跳过及 production build 通过 |
 | 生产迁移与应用 | **DEPLOYED / PENDING USER ACCEPTANCE** | 明确授权后，候选 `087b497…` 同时纳入 `20260827000800_classroom_reactivation` 与两条多方案 migration，明确排除班级课型/活动类型增量；全量备份、完整 rollback/零残留/formal、同 schema 双 release 与独立 postflight 通过，ledger=`211`，current/previous=`20260828-071313` / `20260828-071024` |
 | 产品负责人生产写态验收 | **UNKNOWN** | 登录态只读浏览器已打开生产 4:3 审核工作区并确认新流程与正常空状态；未创建生产方案、未选择/冻结方案、未点击班级重新启用 |
+
+2026-08-29 的生产验收截图暴露普通课次页仍把“编辑课件”绑定到任课教师 `canPrepare`，与本节“制作权和教学运营权分离”的合同冲突。app-only `bf81aa4…` 已允许教研从该课次页直接进入独立方案工作区，同时保留备课档案只读并隐藏试讲、完成备课和最终选用；本机固定账号旅程与生产机器 postflight 通过，产品负责人刷新页面确认前仍保持 pending。
 
 ## 产品动作与对象
 

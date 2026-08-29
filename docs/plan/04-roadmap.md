@@ -8,7 +8,7 @@
 >
 > **SML 暂停位置**：`SML-0 · 合同与金标冻结`；空间数学可按独立权限或 Feature Flag 并行，不进入 R1-Live Gate。
 >
-> **当前运行状态**：Gate 1 已通过，Gate 2 仍等待正式教师点名持久再读与权限对照。Xiaomi 当前数据库 ledger=`220`、head=`20260829000200_admin_self_staff_roles`，应用 current/previous=`20260828-195733` / `ba98a8e…` 与 `20260828-190055` / `7601c86…`。课堂 Stage A、B1 与 B2 已通过，生产已有 checkpoint version/chunk/head=`2/2/2`；Stage B3 修复、来源课件运行时/暑期 A+、教师微课多方案、班级/活动分类、DEV-ORG/DEV-DASH、自由班排课/H5 透明层与管理员自授岗 hotfix 均已部署，产品负责人生产写态/页面验收仍 pending，不关闭 Gate 2。最近 migration+app 发布通过 PostgreSQL 写前备份、rollback/零残留/formal、双 production build、原子 release 与健康/鉴权/业务不变量 postflight；只替换两个授权 RPC 并登记 ledger，不写岗位成员、班课、课程 release 或 Storage。生产管理员 verified MFA=`1`、岗位成员=`0`，等待自行选择教师/教研岗位；班级/课次/报名/点名与 Storage=`4/19/1/0/125725`，新 release 启动后错误增量为 0。
+> **当前运行状态**：Gate 1 已通过，Gate 2 仍等待正式教师点名持久再读与权限对照。Xiaomi 当前数据库 ledger=`220`、head=`20260829000200_admin_self_staff_roles`，应用 current/previous=`20260829-031327` / `bf81aa4…` 与 `20260828-195733` / `ba98a8e…`。课堂 Stage A、B1 与 B2 已通过，生产已有 checkpoint version/chunk/head=`2/2/2`；Stage B3 修复、来源课件运行时/暑期 A+、教师微课多方案、班级/活动分类、DEV-ORG/DEV-DASH、自由班排课/H5 透明层、管理员自授岗与教研课次页入口 hotfix 均已部署，产品负责人生产写态/页面验收仍 pending，不关闭 Gate 2。最新 app-only 发布从干净 `bf81aa4…` 候选通过双 production build、原子 release 与健康/鉴权/业务不变量 postflight；未修改 schema、岗位、班课、课程 release 或 Storage。生产管理员 verified MFA=`1`，教师/教研岗位成员=`6/4`；班级/课次/报名/点名与 Storage=`4/19/1/0/125725`，新 release 启动后错误增量为 0。
 >
 > **当前 P0 状态**：2026-08-25 产品负责人确认内部教师更习惯手机号注册登录。`手机号或邮箱 + password` 已部署生产：手机号只接受绑定具体号码的一次性员工邀请，不发送/伪造验证码，不开放全局邀请码手机号注册，账号仍以单一 `auth.users.id` 为主体。机器 postflight 已通过；真实教师尚未消费手机号邀请并完成 password 登录，因此状态为 `DEPLOYED / PENDING USER ACCEPTANCE`。
 >
@@ -155,6 +155,16 @@ Gate 1 已按以下顺序关闭：
 #### HOTFIX-20260829 · 管理员自授员工岗位
 
 产品负责人报告顶层管理员无法给自己分配教师/教研岗位，因而不能为其他老师的短期专题班制作课件。`dc8b5b0` 把员工页与 `grant_staff_role` / `revoke_staff_role` 的 self-target 规则改为只对顶层 admin 放行，普通 staff 自授岗和管理员自停用继续拒绝；生产 rollback rehearsal 又发现旧函数保留显式 anon execute，`ba98a8e` 按当前 RPC 标准收紧为仅 authenticated 执行。最终 migration `20260829000200_admin_self_staff_roles`、应用 `ba98a8e…` 已通过新鲜写前备份、完整 rollback/零残留/formal、双 production build 与独立 postflight，ledger=`220`、current=`20260828-195733`。发布没有替管理员实际新增岗位；产品负责人仍须在员工页自行授予所需岗位并验证短期班课件制作。完整证据见 [`admin-self-role-hotfix-production.md`](../evidence/r1/admin-self-role-hotfix-production.md)。
+
+#### HOTFIX-20260829 · 教研课次页课件入口
+
+生产 `ba98a8e…` 已包含 DEV-TMC-2 schema 与权限，但普通课次页仍用任课教师 `canPrepare` 决定是否显示“编辑课件”，导致教研虽能从审核队列进入方案工作区，却在老师的课次页只看到只读提示。`bf81aa4` 把入口拆成课件制作权与教学运营权：任课教师或同时具备 `courseware.review + courseware.microcourse.author` 的教研都能打开方案；教研仍看不到试讲、完成备课、点名、课堂控制和“本节使用”。定向 Vitest 9/9、固定账号 Playwright 1/1、双 production build 与 app-only 原子发布通过，current/previous=`20260829-031327` / `bf81aa4…` 与 `20260828-195733` / `ba98a8e…`；ledger、业务、Storage 和错误基线零漂移，生产页面刷新验收 pending。证据见 [`teacher-microcourse-research-entry-hotfix-production.md`](../evidence/r1/teacher-microcourse-research-entry-hotfix-production.md)。
+
+#### HOTFIX-20260829 · 自研课堂互动状态同步
+
+产品负责人报告教师在 iPad 操作自编数独时，填数与突出显示只改变本机。根因是 `game-page-v1` 新适配链只传递 `interactive`，遗漏既有 `GameMirrorState` 的 `mirror/onMirror`，因此没有生成全班 durable `game_state`；历史 `type=game` 路径正常，旧测试也只覆盖该路径。本机热修已补齐 `LiveShell → DocCoursewarePage → StagePreview → GamePageStage → SudokuBoard` 双向镜像，并把连续操作改为每 100ms 合并发送最新状态，避免 trailing debounce 在教师持续点击期间长期不广播。
+
+同一增量建立独立于输入路由的版本化 `ClassroomInteractionSyncProvider`：所有 Mathin 自研 docVersion、微课 mode 和游戏 registry 项必须声明 snapshot、语义 command 或课堂只读，并通过 `pnpm classroom:interaction-sync:audit`。当前自编数独使用 `game-mirror-v1`；自研 H5 与 `spatial-page-v1` 在各自 `h5-state-v1` / `spatial-command-v1` 完成前 fail closed 为课堂只读。该热修当前为 **LOCAL FIXED / PENDING DEVELOPMENT DEVICE ACCEPTANCE / NOT DEPLOYED**，不修改数据库、Storage、R1-Live Gate 2 或暂停中的 SML 施工状态。
 
 #### DEV-TMC-1 · 普通教师短期微课孵化与校内共享
 

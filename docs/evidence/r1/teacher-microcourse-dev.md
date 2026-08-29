@@ -1,12 +1,12 @@
 # DEV-TMC-1/2 普通教师短期微课与课次多方案证据
 
-> **结论**：`DEPLOYED / PENDING_USER_ACCEPTANCE`。DEV-TMC-1 于 2026-08-27 完成首轮生产发布；DEV-TMC-2 的课次多方案协作/选用及已结课班级重新启用入口于 2026-08-28 在明确授权下完成全量备份、事务迁移、双 release 发布和独立 postflight。产品负责人尚未完成生产写态操作验收。
+> **结论**：`DEPLOYED / PENDING_USER_ACCEPTANCE`。DEV-TMC-1 于 2026-08-27 完成首轮生产发布；DEV-TMC-2 的课次多方案协作/选用及已结课班级重新启用入口于 2026-08-28 完成全量备份、事务迁移、双 release 与独立 postflight。2026-08-29 又以 app-only `bf81aa4…` 修正教研在普通课次页的入口；产品负责人尚未完成生产写态操作验收。
 
 | 字段 | 值 |
 | --- | --- |
 | `gate_id`, `domain`, `result` | `DEV-TMC-1`、`DEV-TMC-2`；teacher microcourse authoring/review/catalog、session proposal collaboration/selection、classroom reactivation；`DEPLOYED / PENDING_USER_ACCEPTANCE` |
 | `measured_value`, `threshold` | DEV-TMC-1 既有 SQL/Vitest/Playwright/CI 证据保持通过。2026-08-28 候选另通过两份事务回滚 SQL、定向 Vitest 8 文件 64/64、固定账号新旧 Playwright 2/2、`pnpm ci:checks` 16/16、全量 Vitest 108 文件 761 通过/1 条件跳过及 production build；三条 migration 在同一 `SERIALIZABLE` 事务中完成含账本写入的完整 rollback/零残留/formal，ledger=`208→211`。双 release、zh/en HTTP、数据库/ACL/触发器、服务/错误/业务计数和浏览器只读页面 postflight 均通过 |
-| `commit_sha`, `migration_head`, `environment` | DEV-TMC-1 开发 commits 同下；DEV-TMC-2/重新启用生产候选=`087b49795f885cd7c9902eccc5b3978ac4bf3634`，数据库 head 仍为按名称排序更后的 `20260828000200_courseware_summer_a_plus_catalog`；Xiaomi / production，current=`20260828-071313`、previous=`20260828-071024`，两者均为同一候选 commit |
+| `commit_sha`, `migration_head`, `environment` | DEV-TMC-1 开发 commits 同下；DEV-TMC-2/重新启用生产候选=`087b49795f885cd7c9902eccc5b3978ac4bf3634`；教研课次页入口 hotfix=`bf81aa4ef5c20376a2700517f3932e881a1e6436`。数据库当前 head=`20260829000200_admin_self_staff_roles`、ledger=`220`；Xiaomi / production，current=`20260829-031327`、previous=`20260828-195733` |
 | `dataset_manifest` | 复用 gitignored 固定开发账号；随机 `DEV-TMC-1 <token>` 课程族/班级/课次/项目只写本机，旅程后按精确 ID、名称和类型清理；复核 `classes=0`、`families=0`、`projects=0`。未创建账号，外部通知通道在夹具启动前要求全部 disabled |
 | `started_at`, `finished_at`, `actor`, `approver` | `2026-08-26`；`2026-08-28`；Codex；产品负责人先后明确要求推送 DEV-TMC-1 与“设计老师短期课件制作流程”开发设计到生产，产品实际写态验收仍 `pending` |
 | `command_or_runbook` | 两轮生产均执行 [`r1-write-target-policy.md`](../../runbooks/r1-write-target-policy.md) 只读 preflight。2026-08-28 为 PostgreSQL+Storage 全量备份 → 三 migration 完整 rollback/零残留/formal → `publish-mathin-xiaomi.ps1 -Action Publish` 两次发布，使 current/previous 同 schema → HTTP、数据库、权限、服务、错误、业务不变量和登录态浏览器只读 postflight。生产未运行写态 Playwright、未创建测试账号或夹具 |
