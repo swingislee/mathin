@@ -4,6 +4,8 @@ import {
   Columns3,
   Eraser,
   Eye,
+  Keyboard,
+  Pencil,
   Rows3,
   Scan,
   Search,
@@ -128,7 +130,6 @@ export function SudokuBoard({
   const columnLabels = SUDOKU_COLUMN_LABELS.slice(0, spec.size);
   const numberPadItems = sudokuNumberPadItems(spec.size);
   const numberPadRows = sudokuNumberPadRowCount(spec.size);
-  const numberPadColumns = Math.ceil(numberPadItems.length / 2);
   const digitSizeClass = spec.size === 4
     ? "text-[clamp(2rem,6vw,4rem)]"
     : spec.size === 6
@@ -426,28 +427,36 @@ export function SudokuBoard({
             <div
               aria-label={t("entryMode")}
               className={cn(styles.controlGroup, "grid grid-cols-2 rounded-xl border p-1")}
+              data-mode-count={allowCandidates ? "2" : "1"}
               role="radiogroup"
             >
-              {(allowCandidates ? ENTRY_MODES : (["value"] as const)).map((mode) => (
-                <button
-                  key={mode}
-                  type="button"
-                  data-classroom-input="click"
-                  role="radio"
-                  aria-checked={(allowCandidates ? state.entryMode : "value") === mode}
-                  disabled={inputDisabled}
-                  onClick={() => commit(setSudokuEntryMode(state, mode))}
-                  className={cn(
-                    styles.modeButton,
-                    "min-h-10 rounded-lg border border-transparent px-1 text-sm font-medium transition-colors disabled:cursor-default disabled:opacity-100",
-                    (allowCandidates ? state.entryMode : "value") === mode
-                      ? styles.controlActive
-                      : styles.controlIdle,
-                  )}
-                >
-                  {t(mode === "candidate" ? "candidateMode" : "valueMode")}
-                </button>
-              ))}
+              {(allowCandidates ? ENTRY_MODES : (["value"] as const)).map((mode) => {
+                const label = t(mode === "candidate" ? "candidateMode" : "valueMode");
+                const ModeIcon = mode === "candidate" ? Pencil : Keyboard;
+                return (
+                  <button
+                    key={mode}
+                    type="button"
+                    data-classroom-input="click"
+                    role="radio"
+                    aria-label={label}
+                    aria-checked={(allowCandidates ? state.entryMode : "value") === mode}
+                    title={label}
+                    disabled={inputDisabled}
+                    onClick={() => commit(setSudokuEntryMode(state, mode))}
+                    className={cn(
+                      styles.modeButton,
+                      "min-h-10 rounded-lg border border-transparent px-1 text-sm font-medium transition-colors disabled:cursor-default disabled:opacity-100",
+                      (allowCandidates ? state.entryMode : "value") === mode
+                        ? styles.controlActive
+                        : styles.controlIdle,
+                    )}
+                  >
+                    <ModeIcon aria-hidden className={styles.modeIcon} size={18} />
+                    <span className={styles.modeLabel}>{label}</span>
+                  </button>
+                );
+              })}
             </div>
 
             <div
@@ -456,7 +465,7 @@ export function SudokuBoard({
               role="group"
               style={{
                 "--sudoku-pad-rows": numberPadRows,
-                "--sudoku-pad-columns": numberPadColumns,
+                "--sudoku-pad-size": spec.size + 1,
               } as CSSProperties}
             >
               {numberPadItems.map((item, index) => {

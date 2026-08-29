@@ -60,6 +60,10 @@
   gap: 0.75rem;
 }
 
+.modeIcon {
+  display: none;
+}
+
 .numberPad {
   display: grid;
   grid-auto-flow: column;
@@ -121,21 +125,54 @@
 
   .entryControls {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    gap: 0.3rem;
+    grid-template-columns: 2.25rem minmax(0, 1fr);
+    align-items: stretch;
+    gap: 0.2rem;
+  }
+
+  .entryControls .controlGroup {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+    padding: 0.15rem;
+    border-radius: 0.7rem;
+  }
+
+  .entryControls .controlGroup[data-mode-count="1"] {
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .entryControls .modeButton {
+    width: 100%;
+    min-height: 0;
+    padding: 0;
+  }
+
+  .modeIcon {
+    display: block;
+    margin-inline: auto;
+  }
+
+  .modeLabel {
+    display: none;
   }
 
   .numberPad {
     grid-auto-flow: row;
-    grid-template-columns: repeat(var(--sudoku-pad-columns), minmax(0, 1fr));
-    grid-template-rows: repeat(2, minmax(0, 1fr));
-    gap: 0.25rem;
+    grid-template-columns: repeat(var(--sudoku-pad-size), minmax(0, 1fr));
+    grid-template-rows: minmax(0, 1fr);
+    gap: 0.15rem;
   }
 
-  .numberKey,
-  .padSpacer {
-    min-height: 1.8rem;
+  .numberPad .padSpacer {
+    display: none;
+  }
+
+  .numberPad .numberKey {
+    height: 100%;
+    min-height: 3.1rem;
     aspect-ratio: auto;
+    border-radius: 0.65rem;
+    font-size: clamp(0.9rem, 4cqi, 1.25rem);
   }
 
   .toolBar {
