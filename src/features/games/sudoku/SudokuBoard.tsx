@@ -4,8 +4,7 @@ import {
   Columns3,
   Eraser,
   Eye,
-  Keyboard,
-  Pencil,
+  Hand,
   Rows3,
   Scan,
   Search,
@@ -57,6 +56,25 @@ const INVALID_MESSAGE_DELAY_MS = 440;
 const INVALID_MESSAGE_VISIBLE_MS = 2_600;
 const MAX_HIGHLIGHT_UNDO_STEPS = 50;
 const ANSWER_REVEAL_ANIMATION_MS = 320;
+
+function CandidateNotesIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden
+      className={className}
+      fill="none"
+      height="18"
+      viewBox="0 0 24 24"
+      width="18"
+    >
+      <rect height="18" rx="3" stroke="currentColor" strokeWidth="1.7" width="18" x="3" y="3" />
+      <text fill="currentColor" fontSize="5.5" fontWeight="700" textAnchor="middle" x="12" y="8.5">2</text>
+      <text fill="currentColor" fontSize="5.5" fontWeight="700" textAnchor="middle" x="7" y="14">4</text>
+      <text fill="currentColor" fontSize="5.5" fontWeight="700" textAnchor="middle" x="7" y="19.2">7</text>
+    </svg>
+  );
+}
+
 /** variant.ts 出现新的 rendererId 时，typecheck 会要求在这里登记真实渲染实现。 */
 export const SUDOKU_RENDERER_REGISTRY = {
   "classic-grid-v1": true,
@@ -432,7 +450,6 @@ export function SudokuBoard({
             >
               {(allowCandidates ? ENTRY_MODES : (["value"] as const)).map((mode) => {
                 const label = t(mode === "candidate" ? "candidateMode" : "valueMode");
-                const ModeIcon = mode === "candidate" ? Pencil : Keyboard;
                 return (
                   <button
                     key={mode}
@@ -452,7 +469,11 @@ export function SudokuBoard({
                         : styles.controlIdle,
                     )}
                   >
-                    <ModeIcon aria-hidden className={styles.modeIcon} size={18} />
+                    {mode === "candidate" ? (
+                      <CandidateNotesIcon className={styles.modeIcon} />
+                    ) : (
+                      <Hand aria-hidden className={styles.modeIcon} size={18} />
+                    )}
                     <span className={styles.modeLabel}>{label}</span>
                   </button>
                 );

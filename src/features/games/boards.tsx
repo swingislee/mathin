@@ -19,7 +19,16 @@ const MagicSquareBoard = dynamic(() => import("./magic-square/MagicSquareBoard")
 export function GameBoard({ id, ...props }: GameBoardProps & { id: string }) {
   switch (id) {
     case "sudoku":
-      return <SudokuBoard {...props} />;
+      return (
+        <div className="mx-auto aspect-[4/3] w-full">
+          <SudokuBoard
+            {...props}
+            allowAnswerReveal={false}
+            showCoordinates={false}
+            showTeachingTools={false}
+          />
+        </div>
+      );
     case "kakuro":
       return <KakuroBoard {...props} />;
     case "magic-square":
