@@ -145,13 +145,13 @@ describe("courseware composition page", () => {
 
     expect(swapped.layout.blocks).toMatchObject([
       { id: "node-text-1", placement: { column: 8, row: 0, columnSpan: 4, rowSpan: 9 } },
-      { id: "interactive-h5", placement: { column: 0, row: 0, columnSpan: 8, rowSpan: 9 } },
+      { id: "h5-1", placement: { column: 0, row: 0, columnSpan: 4, rowSpan: 3 } },
     ]);
     expect(coursewareCompositionPageSchema.safeParse(swapped).success).toBe(true);
 
     const fullWidthH5 = updateCoursewareCompositionPlacement(
       addCoursewareCompositionH5(createEmptyCoursewareCompositionPage(), h5),
-      "interactive-h5",
+      "h5-1",
       { column: 0, row: 0, columnSpan: 12, rowSpan: 6 },
     );
     expect(fullWidthH5.layout.blocks[0].placement).toEqual({
@@ -162,16 +162,18 @@ describe("courseware composition page", () => {
     });
   });
 
-  it("permits only one authoritative game or H5 component", () => {
+  it("supports multiple independently identified games alongside H5 and regular components", () => {
     const withGame = addCoursewareCompositionGame(createEmptyCoursewareCompositionPage(), sudokuGame());
-    const rejectedH5 = addCoursewareCompositionH5(withGame, h5);
+    const withTwoGames = addCoursewareCompositionGame(withGame, sudokuGame());
+    const withH5 = addCoursewareCompositionH5(withTwoGames, h5);
 
-    expect(withGame.layout.blocks).toHaveLength(1);
-    expect(rejectedH5).toEqual(withGame);
-    expect(coursewareCompositionPageSchema.safeParse(withGame).success).toBe(true);
+    expect(withTwoGames.layout.blocks.filter((block) => block.type === "game").map((block) => block.id))
+      .toEqual(["game-1", "game-2"]);
+    expect(withH5.layout.blocks.some((block) => block.type === "h5" && block.id === "h5-1")).toBe(true);
+    expect(coursewareCompositionPageSchema.safeParse(withH5).success).toBe(true);
   });
 
-  it("keeps an imported source and an authored interaction from competing for classroom state", () => {
+  it("lets an imported source share the page with independently keyed authored interactions", () => {
     const source = {
       sourceFamilyId: "00000000-0000-4000-8000-000000000011",
       sourceCourseId: "00000000-0000-4000-8000-000000000012",
@@ -184,8 +186,11 @@ describe("courseware composition page", () => {
       doc: sudokuGame(),
     };
     const page = createEmptyCoursewareCompositionPage(source);
-    expect(addCoursewareCompositionGame(page, sudokuGame())).toEqual(page);
-    expect(addCoursewareCompositionH5(page, h5)).toEqual(page);
+    const withGame = addCoursewareCompositionGame(page, sudokuGame());
+    const withH5 = addCoursewareCompositionH5(withGame, h5);
+    expect(withGame.layout.blocks[0]).toMatchObject({ id: "game-1", type: "game" });
+    expect(withH5.layout.blocks.some((block) => block.type === "h5")).toBe(true);
+    expect(coursewareCompositionPageSchema.safeParse(withH5).success).toBe(true);
   });
 
   it("rejects standalone legacy game, Sudoku and H5 pages at the teacher authoring boundary", () => {

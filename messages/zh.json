@@ -772,7 +772,7 @@
     "componentGame": "游戏",
     "insertGame": "插入游戏",
     "componentH5": "H5组件",
-    "componentInteractiveOccupied": "本页已有互动组件；删除后才能改用另一种互动。",
+    "componentInteractiveOccupied": "游戏、H5 和其他组件可以在同一页按网格组合。",
     "componentEmpty": "页面还是空的，先插入一个组件。",
     "componentNoSpace": "当前网格没有可用区域，请先移动、缩小或删除其他组件。",
     "componentH5ClassroomReadOnly": "H5 暂按只读课堂协议运行，完成状态同步协议后可开放学生端互动。",

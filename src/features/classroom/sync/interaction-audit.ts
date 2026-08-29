@@ -78,18 +78,18 @@ export function resolveClassroomInteractionAudit(
   doc: CoursewareDoc,
 ): ClassroomInteractionAuditProfile {
   if (isCoursewareCompositionPage(doc)) {
-    const interactive = doc.layout.blocks.find((block) => block.type === "game" || block.type === "h5");
-    if (interactive?.type === "game") {
-      const nested = resolveClassroomInteractionAudit(interactive.game);
-      return { ...nested, surface: `composition/${nested.surface}` };
+    const games = doc.layout.blocks.filter((block) => block.type === "game");
+    const sourceAudit = doc.source ? resolveClassroomInteractionAudit(doc.source.doc) : null;
+    const sourceOwnsGameMirror = sourceAudit?.provider?.protocol === "game-mirror-v1";
+    if (games.length > 0 || sourceOwnsGameMirror) {
+      return profile("composition:game-instances", "mathin", CLASSROOM_GAME_MIRROR_SYNC_V1);
     }
-    if (interactive?.type === "h5") {
+    if (doc.layout.blocks.some((block) => block.type === "h5")) {
       return profile("composition:h5", "mathin", CLASSROOM_H5_STATE_SYNC_REQUIRED_V1);
     }
-    if (doc.source) {
-      const nested = resolveClassroomInteractionAudit(doc.source.doc);
-      if (nested.ownership === "mathin") {
-        return { ...nested, surface: `composition/source/${nested.surface}` };
+    if (sourceAudit) {
+      if (sourceAudit.ownership === "mathin") {
+        return { ...sourceAudit, surface: `composition/source/${sourceAudit.surface}` };
       }
     }
     return profile("courseware-composition-v1", "mathin", CLASSROOM_DOC_STEP_SYNC_V1);

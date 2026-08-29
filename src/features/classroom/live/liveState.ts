@@ -79,9 +79,19 @@ export function reduceEvent(state: LiveState, ev: SessionEvent): LiveState {
     case "game_state": {
       const pageId = String(ev.payload.pageId ?? "");
       const mirror = ev.payload.state as GameMirrorState | undefined;
+      const instancesValid = mirror?.instances === undefined || (
+        mirror.instances !== null
+        && typeof mirror.instances === "object"
+        && Object.values(mirror.instances).every((instance) => (
+          Array.isArray(instance.values)
+          && (instance.selected === null || Number.isSafeInteger(instance.selected))
+          && instance.instances === undefined
+        ))
+      );
       if (!pageId
         || !mirror
         || !Array.isArray(mirror.values)
+        || !instancesValid
         || !classroomInteractionPayloadWithinBudget(CLASSROOM_GAME_MIRROR_SYNC_V1, mirror)) return state;
       return { ...state, games: { ...state.games, [pageId]: mirror } };
     }

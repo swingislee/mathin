@@ -772,7 +772,7 @@
     "componentGame": "Game",
     "insertGame": "Insert game",
     "componentH5": "H5 component",
-    "componentInteractiveOccupied": "This page already has an interactive block. Remove it before choosing another interaction.",
+    "componentInteractiveOccupied": "Games, H5, and other components can share the same page grid.",
     "componentEmpty": "This page is empty. Insert a block to begin.",
     "componentNoSpace": "The grid has no usable space. Move, resize, or remove another block first.",
     "componentH5ClassroomReadOnly": "H5 currently uses a read-only classroom protocol. Student interaction can open after state synchronization is implemented.",

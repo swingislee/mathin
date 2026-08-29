@@ -70,6 +70,7 @@ const compositionGameDoc = addCoursewareCompositionGame(
   createEmptyCoursewareCompositionPage(),
   gameDoc,
 );
+const compositionMultiGameDoc = addCoursewareCompositionGame(compositionGameDoc, gameDoc);
 const compositionH5Doc = addCoursewareCompositionH5(
   createEmptyCoursewareCompositionPage(),
   {
@@ -133,8 +134,13 @@ describe("classroom interaction synchronization audit", () => {
       provider: { protocol: "h5-state-v1", mode: "read-only" },
     });
     expect(resolveClassroomInteractionAudit(compositionGameDoc)).toMatchObject({
-      surface: "composition/game:sudoku:sudoku-authored-v1",
+      surface: "composition:game-instances",
       ownership: "mathin",
+      status: "synchronized",
+      provider: CLASSROOM_GAME_MIRROR_SYNC_V1,
+    });
+    expect(resolveClassroomInteractionAudit(compositionMultiGameDoc)).toMatchObject({
+      surface: "composition:game-instances",
       status: "synchronized",
       provider: CLASSROOM_GAME_MIRROR_SYNC_V1,
     });
@@ -188,6 +194,26 @@ describe("classroom interaction synchronization audit", () => {
       payload: { pageId: "authored-sudoku-page", state: oversized },
       at: "2026-08-29T00:00:00.000Z",
     }).games).toEqual({});
+
+    const compositionMirror: GameMirrorState = {
+      values: [],
+      selected: null,
+      instances: {
+        "game-1": mirror,
+        "game-2": { ...mirror, selected: 1 },
+      },
+    };
+    const compositionNext = reduceEvent(initialState(), {
+      id: "event-composition",
+      sessionId: "session-1",
+      userId: "teacher-1",
+      deviceId: "ipad-1",
+      seq: 2,
+      type: "game_state",
+      payload: { pageId: "composition-page", state: compositionMirror },
+      at: "2026-08-29T00:00:01.000Z",
+    });
+    expect(compositionNext.games["composition-page"]?.instances?.["game-2"]?.selected).toBe(1);
   });
 
   it("keeps the full live adapter chain wired instead of stopping at interactive=true", () => {
@@ -214,8 +240,9 @@ describe("classroom interaction synchronization audit", () => {
     expect(microcourseStage).toContain("onMirror={props.onGameMirror}");
     expect(microcourseStage).toContain('tabIndex={props.interactive === false ? -1 : undefined}');
     expect(microcourseStage).toContain('pointerEvents: props.interactive === false ? "none" : "auto"');
-    expect(compositionStage).toContain("mirror={props.gameMirror}");
-    expect(compositionStage).toContain("onMirror={props.onGameMirror}");
+    expect(compositionStage).toContain("mirror={gameInstances[block.id] ?? null}");
+    expect(compositionStage).toContain("instances: next");
+    expect(compositionStage).toContain("updateGameInstance(block.id, state)");
     expect(compositionStage).toContain("MicrocourseH5ArtifactFrame");
   });
 });

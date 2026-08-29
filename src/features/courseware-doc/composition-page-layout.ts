@@ -19,9 +19,15 @@ const CELL_SIZE = 80;
 function alternatives(block: CoursewareCompositionBlock): readonly CoursewareSnapGridSize[] {
   if (block.type === "game") {
     return [
+      { columnSpan: 12, rowSpan: 9 },
       { columnSpan: 12, rowSpan: 6 },
       { columnSpan: 8, rowSpan: 9 },
       { columnSpan: 8, rowSpan: 6 },
+      { columnSpan: 6, rowSpan: 9 },
+      { columnSpan: 6, rowSpan: 6 },
+      { columnSpan: 4, rowSpan: 9 },
+      { columnSpan: 4, rowSpan: 6 },
+      { columnSpan: 4, rowSpan: 4 },
     ];
   }
   if (block.type === "h5") {
@@ -31,6 +37,7 @@ function alternatives(block: CoursewareCompositionBlock): readonly CoursewareSna
       { columnSpan: 8, rowSpan: 6 },
       { columnSpan: 6, rowSpan: 6 },
       { columnSpan: 4, rowSpan: 3 },
+      { columnSpan: 2, rowSpan: 2 },
     ];
   }
   return [
@@ -39,6 +46,7 @@ function alternatives(block: CoursewareCompositionBlock): readonly CoursewareSna
     { columnSpan: 6, rowSpan: 3 },
     { columnSpan: 4, rowSpan: 3 },
     { columnSpan: 2, rowSpan: 2 },
+    { columnSpan: 1, rowSpan: 1 },
   ];
 }
 
@@ -46,8 +54,8 @@ function gridTile(block: CoursewareCompositionBlock): CoursewareSnapGridTile {
   return {
     id: block.id,
     placement: block.placement,
-    minColumnSpan: block.type === "game" ? 8 : block.type === "h5" ? 4 : 2,
-    minRowSpan: block.type === "game" ? 6 : block.type === "h5" ? 3 : 1,
+    minColumnSpan: block.type === "game" ? 4 : block.type === "h5" ? 2 : 1,
+    minRowSpan: block.type === "game" ? 4 : block.type === "h5" ? 2 : 1,
     priority: block.type === "game" || block.type === "h5" ? 0 : 10,
     alternativeSizes: alternatives(block),
   };
@@ -87,6 +95,13 @@ function appendBlock(
     block.placement,
   );
   return resolved ? applyResolved(doc, resolved) : input;
+}
+
+function nextBlockId(input: CoursewareCompositionPage, prefix: string): string {
+  const ids = new Set(input.layout.blocks.map((block) => block.id));
+  let sequence = 1;
+  while (ids.has(`${prefix}-${sequence}`)) sequence += 1;
+  return `${prefix}-${sequence}`;
 }
 
 export function updateCoursewareCompositionPlacement(
@@ -132,16 +147,15 @@ export function addCoursewareCompositionGame(
   input: CoursewareCompositionPage,
   game: EmbeddedCompositionGame,
 ): CoursewareCompositionPage {
-  if (input.source || input.layout.blocks.some((block) => block.type === "game" || block.type === "h5")) return input;
   const embeddedGame = structuredClone(game);
   delete embeddedGame.layout;
   return appendBlock(input, {
-    id: "interactive-game",
+    id: nextBlockId(input, "game"),
     type: "game",
     game: embeddedGame,
     placement: input.layout.blocks.length === 0
       ? { column: 0, row: 0, columnSpan: 12, rowSpan: 9 }
-      : { column: 4, row: 0, columnSpan: 8, rowSpan: 9 },
+      : { column: 0, row: 0, columnSpan: 4, rowSpan: 4 },
   });
 }
 
@@ -149,14 +163,13 @@ export function addCoursewareCompositionH5(
   input: CoursewareCompositionPage,
   h5: CoursewareCompositionH5,
 ): CoursewareCompositionPage {
-  if (input.source || input.layout.blocks.some((block) => block.type === "game" || block.type === "h5")) return input;
   return appendBlock(input, {
-    id: "interactive-h5",
+    id: nextBlockId(input, "h5"),
     type: "h5",
     h5,
     placement: input.layout.blocks.length === 0
       ? { column: 0, row: 0, columnSpan: 12, rowSpan: 9 }
-      : { column: 4, row: 0, columnSpan: 8, rowSpan: 9 },
+      : { column: 0, row: 0, columnSpan: 4, rowSpan: 3 },
   });
 }
 

@@ -154,17 +154,17 @@ export function resolveClassroomRendererInputProfile(
   if (page.type === "doc") {
     if (!doc) return PROVISIONAL_PROFILE;
     if (isCoursewareCompositionPage(doc)) {
+      const games = doc.layout.blocks.filter((block) => block.type === "game");
+      if (games.length > 0) {
+        return providerProfile(
+          "document:composition:games",
+          CLASSROOM_PARTITIONED_INPUT_PROVIDER_V1,
+        );
+      }
       if (countCoursewareH5Frames(doc) > 0) {
         if (h5BridgeStatus === "pending") return PROVISIONAL_PROFILE;
         return h5BridgeStatus === "ready"
           ? providerProfile("document:composition:h5", CLASSROOM_PARTITIONED_INPUT_PROVIDER_V1)
-          : UNSUPPORTED_PROFILE;
-      }
-      const game = doc.layout.blocks.find((block) => block.type === "game");
-      if (game?.type === "game") {
-        const provider = getGame(game.game.gameId)?.classroomInput;
-        return provider
-          ? providerProfile(`document:composition:game:${game.game.gameId}`, provider)
           : UNSUPPORTED_PROFILE;
       }
       return providerProfile("document:composition", CLASSROOM_PARTITIONED_INPUT_PROVIDER_V1);

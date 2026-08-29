@@ -5,6 +5,7 @@ declare
   empty_doc jsonb;
   overlap_doc jsonb;
   source_interaction_doc jsonb;
+  multi_interaction_doc jsonb;
 begin
   empty_doc := jsonb_build_object(
     'docVersion', 'courseware-composition-v1',
@@ -65,8 +66,40 @@ begin
       "placement":{"column":0,"row":0,"columnSpan":12,"rowSpan":9}
     }]'::jsonb
   );
-  if public.cw_courseware_composition_doc_is_valid(source_interaction_doc) then
-    raise exception 'a source page and authored interaction must not share a state owner';
+  if not public.cw_courseware_composition_doc_is_valid(source_interaction_doc) then
+    raise exception 'a source page and authored interaction must be independently keyed';
+  end if;
+
+  multi_interaction_doc := jsonb_set(
+    empty_doc,
+    '{layout,blocks}',
+    '[
+      {
+        "id":"h5-1",
+        "type":"h5",
+        "h5":{
+          "artifactId":"00000000-0000-4000-8000-000000000003",
+          "sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "byteCount":10,
+          "entryPath":"index.html"
+        },
+        "placement":{"column":0,"row":0,"columnSpan":2,"rowSpan":2}
+      },
+      {
+        "id":"h5-2",
+        "type":"h5",
+        "h5":{
+          "artifactId":"00000000-0000-4000-8000-000000000004",
+          "sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "byteCount":20,
+          "entryPath":"index.html"
+        },
+        "placement":{"column":2,"row":0,"columnSpan":2,"rowSpan":2}
+      }
+    ]'::jsonb
+  );
+  if not public.cw_courseware_composition_doc_is_valid(multi_interaction_doc) then
+    raise exception 'multiple independently keyed interactive blocks must be valid';
   end if;
 
   if has_function_privilege(

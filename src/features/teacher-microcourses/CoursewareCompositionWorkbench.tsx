@@ -333,7 +333,6 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
   };
 
   const selected = doc.layout.blocks.find((block) => block.id === selectedBlockId) ?? null;
-  const interactivePresent = doc.layout.blocks.some((block) => block.type === "game" || block.type === "h5");
   const patchSelectedNode = (updater: (node: DocNode) => void) => updateDoc((current) => {
     if (!selected || selected.type !== "node") return current;
     const next = structuredClone(current);
@@ -383,15 +382,17 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
               <Input type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="sr-only" disabled={pending} onChange={(event) => uploadImage(event.target.files?.[0] ?? null)} />
               <ImagePlus className="size-4" />
             </Label>
-            <GameComponentDialog microcourseId={microcourseId} disabled={interactivePresent} iconOnly onCreated={(game) => {
+            <GameComponentDialog microcourseId={microcourseId} disabled={pending} iconOnly onCreated={(game) => {
+              const previousIds = new Set(docRef.current.layout.blocks.map((block) => block.id));
               const next = addCoursewareCompositionGame(docRef.current, game);
               updateDoc(next);
-              setSelectedBlockId("interactive-game");
+              setSelectedBlockId(next.layout.blocks.find((block) => !previousIds.has(block.id))?.id ?? null);
             }} />
-            <H5ComponentDialog microcourseId={microcourseId} disabled={interactivePresent} iconOnly onSaved={(h5) => {
+            <H5ComponentDialog microcourseId={microcourseId} disabled={pending} iconOnly onSaved={(h5) => {
+              const previousIds = new Set(docRef.current.layout.blocks.map((block) => block.id));
               const next = addCoursewareCompositionH5(docRef.current, h5);
               updateDoc(next);
-              setSelectedBlockId("interactive-h5");
+              setSelectedBlockId(next.layout.blocks.find((block) => !previousIds.has(block.id))?.id ?? null);
             }} />
           </div>
           <div className="flex shrink-0 items-center gap-2">

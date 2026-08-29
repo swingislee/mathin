@@ -55,6 +55,8 @@ export interface GameMirrorState {
   highlights?: SudokuTeachingHighlights;
   /** 数独 M4：最近一次错误填数的瞬时反馈标记；不写入 values。 */
   invalidAttempt?: SudokuInvalidAttempt | null;
+  /** Composition pages aggregate independent game instances by stable tile id. */
+  instances?: Record<string, GameMirrorState>;
 }
 
 export interface GameBoardProps {
