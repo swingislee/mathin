@@ -74,6 +74,7 @@ describe("DEV-TMC-1 teacher microcourse product surfaces", () => {
     expect(editor).toContain("uploadTeacherMicrocourseImageAction");
     expect(actions).toContain('"create_teacher_microcourse_game_page"');
     expect(actions).toContain('"save_teacher_microcourse_game_page"');
+    expect(actions).toContain('gameCoursewareContractsForSurface("microcourse")');
     expect(manifest).toContain('gameId: "sudoku"');
     expect(manifest).toContain('authoringSurfaces: ["microcourse"]');
     expect(gridEditor).toContain("updateGamePageGridPlacement");

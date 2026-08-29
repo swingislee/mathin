@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
@@ -49,6 +50,11 @@ const display = {
   showTeachingTools: true,
 };
 
+const legacyEditCompatibilityMigration = readFileSync(
+  "supabase/migrations/20260829000400_sudoku_legacy_edit_compat.sql",
+  "utf8",
+);
+
 describe("registry-backed game courseware contract", () => {
   it("exposes authoring through the manifest instead of microcourse conditionals", () => {
     expect(gameCoursewareContractsForSurface("microcourse")).toEqual([
@@ -61,6 +67,8 @@ describe("registry-backed game courseware contract", () => {
     });
     expect(() => createDefaultGameCoursewarePayload("future-game", "future-v1"))
       .toThrow("UNKNOWN_GAME_COURSEWARE_CONTRACT");
+    expect(legacyEditCompatibilityMigration).toContain("set authorable = true");
+    expect(legacyEditCompatibilityMigration).toContain("content_version = 'sudoku-authored-v1'");
   });
 
   for (const [variantId, complete] of Object.entries(SOLUTIONS)) {

@@ -237,7 +237,7 @@ export function SudokuBoard({
       completionTargets?.some((value) => value > 0)
       && completionTargets.every((value, index) => value === 0 || next.values[index] === value),
     );
-    if (targetCompleted) {
+    if (next.values !== state.values && targetCompleted) {
       onComplete(next.values);
     } else if (
       next.values !== state.values

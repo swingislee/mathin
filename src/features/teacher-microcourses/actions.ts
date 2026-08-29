@@ -10,6 +10,7 @@ import {
 } from "@/features/courseware-doc/game-page-schema";
 import { microcoursePageDocSchema } from "@/features/courseware-doc/microcourse-schema";
 import { createDefaultGameCoursewarePayload } from "@/features/games/courseware/contracts";
+import { gameCoursewareContractsForSurface } from "@/features/games/courseware/registry";
 import { validateGameCoursewareContent } from "@/features/games/courseware/server";
 import { authorizedClient } from "@/features/school/actions/guards";
 import {
@@ -319,6 +320,10 @@ export async function createTeacherGamePageAction(input: {
       gameId: gameContractId,
       contentVersion: gameContractId,
     }), input);
+    const authorable = gameCoursewareContractsForSurface("microcourse").some((contract) => (
+      contract.gameId === value.gameId && contract.contentVersion === value.contentVersion
+    ));
+    if (!authorable) throw new Error("UNKNOWN_GAME_COURSEWARE_CONTRACT");
     const { user } = await authorizedClient("courseware.microcourse.author");
     const trusted = validateGameCoursewareContent(
       value.gameId,
