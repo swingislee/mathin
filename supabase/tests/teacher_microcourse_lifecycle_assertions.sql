@@ -4,7 +4,7 @@ begin;
 
 select id as admin_id from public.profiles where display_name = '测试-管理员' limit 1 \gset
 select id as teacher_id from public.profiles where display_name = '测试-教师' limit 1 \gset
-select id as reviewer_id from public.profiles where display_name = '测试-教务' limit 1 \gset
+select id as reviewer_id from public.profiles where display_name = '测试-教研' limit 1 \gset
 
 insert into public.classrooms(id, owner_id, name, invite_code)
 values (
@@ -61,6 +61,8 @@ reset role;
 select
   (select lecture_id from public.teacher_microcourses where id = :'microcourse_id') as lecture_id,
   (select course_id from public.teacher_microcourses where id = :'microcourse_id') as course_id,
+  (select lecture_id from public.teacher_microcourse_class_lectures
+   where source_session_id = '00000000-0000-4000-8000-000000000922') as catalog_lecture_id,
   (select metadata_revision_id from public.teacher_microcourse_review_snapshots
    where review_cycle_id = :'first_cycle_id') as first_metadata_revision_id,
   (select content_snapshot -> 0 ->> 'revisionId' from public.cw_review_cycles
@@ -171,19 +173,31 @@ select public.approve_teacher_microcourse_review(
 reset role;
 
 select current_release_id as published_release_id
-from public.course_lectures where id = :'lecture_id' \gset
+from public.course_lectures where id = :'catalog_lecture_id' \gset
 
 select (
   (:'approval_result'::jsonb ->> 'status') = 'published'
   and (:'approval_result'::jsonb ->> 'releaseId')::uuid = :'published_release_id'::uuid
-  and (select status = 'enabled' and title = '生命周期版本二'
-       and term is null and course_kind = 'microcourse'
+  and (select status = 'enabled' and title = '__DEV_TMC_LIFECYCLE_CLASS__'
+       and term is not distinct from (
+         select school_term.term
+         from public.classrooms classroom
+         left join public.school_terms school_term on school_term.id = classroom.term_id
+         where classroom.id = '00000000-0000-4000-8000-000000000921'
+       )
+       and course_kind = 'microcourse'
        from public.courses where id = :'course_id')
   and (select published_metadata_revision_id = :'submitted_metadata_revision_id'::uuid
        and draft_metadata_revision_id = :'third_metadata_revision_id'::uuid
        from public.teacher_microcourses where id = :'microcourse_id')
   and (select snapshot -> 0 ->> 'revisionId' = :'submitted_page_revision_id'
        from public.cw_lecture_releases where id = :'published_release_id')
+  and (select lecture_id = :'catalog_lecture_id'
+       from public.cw_lecture_releases where id = :'published_release_id')
+  and (select microcourse_id = :'microcourse_id'
+       and catalog_lecture_id = :'catalog_lecture_id'
+       from public.teacher_microcourse_catalog_releases
+       where release_id = :'published_release_id')
   and (select status = 'published'
        and public_path = 'packages/' || repeat('e', 64) || '/index.html'
        from public.teacher_microcourse_h5_artifacts where id = :'h5_artifact_id')
@@ -193,6 +207,37 @@ select (
 \if :atomic_publish_ok
 \else
   \echo DEV-TMC-1 failed: atomic publication projection
+  select
+    (:'approval_result'::jsonb ->> 'status') = 'published' as approval_published,
+    (:'approval_result'::jsonb ->> 'releaseId')::uuid = :'published_release_id'::uuid
+      as approval_release_matches_current,
+    (select status = 'enabled' and title = '__DEV_TMC_LIFECYCLE_CLASS__'
+       and term is not distinct from (
+         select school_term.term
+         from public.classrooms classroom
+         left join public.school_terms school_term on school_term.id = classroom.term_id
+         where classroom.id = '00000000-0000-4000-8000-000000000921'
+       )
+       and course_kind = 'microcourse'
+     from public.courses where id = :'course_id') as course_projection,
+    (select published_metadata_revision_id = :'submitted_metadata_revision_id'::uuid
+       and draft_metadata_revision_id = :'third_metadata_revision_id'::uuid
+     from public.teacher_microcourses where id = :'microcourse_id') as metadata_projection,
+    (select snapshot -> 0 ->> 'revisionId' = :'submitted_page_revision_id'
+     from public.cw_lecture_releases where id = :'published_release_id') as release_snapshot,
+    (select lecture_id = :'catalog_lecture_id'
+     from public.cw_lecture_releases where id = :'published_release_id') as stable_lecture,
+    (select microcourse_id = :'microcourse_id'
+       and catalog_lecture_id = :'catalog_lecture_id'
+     from public.teacher_microcourse_catalog_releases
+     where release_id = :'published_release_id') as proposal_release_mapping,
+    (select status = 'published'
+       and public_path = 'packages/' || repeat('e', 64) || '/index.html'
+     from public.teacher_microcourse_h5_artifacts where id = :'h5_artifact_id') as h5_projection,
+    (select lecture_id is null from public.class_sessions
+     where id = '00000000-0000-4000-8000-000000000922') as source_session_unchanged;
+  select id, title, term, status, course_kind
+  from public.courses where id = :'course_id';
   select 1 / 0;
 \endif
 
@@ -242,9 +287,9 @@ select public.withdraw_teacher_microcourse(:'microcourse_id');
 reset role;
 
 select (
-  (select status = 'disabled' from public.courses where id = :'course_id')
-  and (select current_release_id = :'published_release_id'::uuid
-       from public.course_lectures where id = :'lecture_id')
+  (select status = 'draft' from public.courses where id = :'course_id')
+  and (select current_release_id is null
+       from public.course_lectures where id = :'catalog_lecture_id')
   and (select count(*) = 1 from public.cw_lecture_releases
        where id = :'published_release_id')
 ) as withdrawal_preserved_history \gset

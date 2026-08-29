@@ -138,10 +138,12 @@ describe("DEV-TMC-1 teacher microcourse product surfaces", () => {
     expect(data).toContain('from("teacher_microcourse_review_snapshots")');
   });
 
-  it("searches only eligible catalog entries and keeps a microcourse to one released lecture", () => {
+  it("projects free classes as multi-lecture courses and proposals as lecture releases", () => {
     const actions = read("src", "features", "school", "actions", "classes.ts");
     const picker = read("src", "features", "school", "teaching-operations", "CoursePicker.tsx");
     const types = read("src", "features", "school", "teaching-operations", "course-picker-types.ts");
+    const classSeriesMigration = read("supabase", "migrations", "20260829000500_teacher_microcourse_class_series.sql");
+    const classRootMigration = read("supabase", "migrations", "20260829000600_teacher_microcourse_class_root.sql");
 
     for (const argument of ["p_course_kind", "p_author_id", "p_primary_topic_slug", "p_keyword"]) {
       expect(actions).toContain(argument);
@@ -151,8 +153,16 @@ describe("DEV-TMC-1 teacher microcourse product surfaces", () => {
     expect(types).toContain("courseSeason: number | null");
     expect(lifecycleMigration).toContain("microcourse_row.published_metadata_revision_id is not null");
     expect(lifecycleMigration).toContain("microcourse_row.withdrawn_at is null");
-    expect(lifecycleMigration).toContain("counts.lecture_count = 1");
-    expect(lifecycleMigration).toContain("counts.released_lecture_count = 1");
+    expect(classSeriesMigration).toContain("source_classroom_id uuid");
+    expect(classRootMigration).toContain("teacher_microcourse_class_courses");
+    expect(classRootMigration).toContain("teacher_microcourse_class_lectures");
+    expect(classRootMigration).toContain("teacher_microcourse_catalog_releases");
+    expect(classRootMigration).toContain("distinct immutable releases of that lecture");
+    expect(classRootMigration).toContain("catalog_lecture_id, 'native-16x9'");
+    expect(classRootMigration).toContain("public.teacher_microcourse_course_is_publishable");
+    expect(classRootMigration).toContain("drop index if exists public.teacher_microcourses_course_session_series_idx");
+    expect(classSeriesMigration).not.toContain("counts.lecture_count = 1");
+    expect(classSeriesMigration).not.toContain("MICROCOURSE_REQUIRES_ONE_LECTURE");
   });
 
   it("keeps optional microcourse seasons readable in the shared course-family library", () => {

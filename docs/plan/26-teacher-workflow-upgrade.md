@@ -554,18 +554,18 @@ template_version:
 | --- | --- | --- |
 | `classrooms` | 一门教师微课的来源根；名称、年级、`term_id` 和任课关系来自真实自由班 | 一个自由班只产生一门当前教师主线微课，不按课次数量拆课程 |
 | `class_sessions` | 微课中的课节顺序与真实排期 | 每个有效课节对应共享课程的一讲 |
-| `teacher_microcourses` | 某一课节的可编辑课件方案；同课节可有教师/教研并行方案 | 任课教师的“本节使用”决定课堂冻结；只有纳入班级微课的方案进入该课程的讲次集合 |
+| `teacher_microcourses` | 某一课节的可编辑课件方案；同课节可有教师/教研并行方案 | 任课教师的“本节使用”决定课堂冻结与该讲当前 release；方案自身不增加课程或讲次 |
 | `courses(course_kind='microcourse')` | 班级级教师微课目录投影 | 同一课程包含多个 `course_lectures`，标题/年级/学期属于课程，不属于某一讲 |
-| `course_lectures` | 按来源课节排序的微课讲次 | 每讲保留自己的 page/resource/H5/game revision、审核与 immutable release |
+| `course_lectures` | 按来源课节排序的稳定微课讲次 | 一个来源课节只对应一讲；同课节各方案的审核快照发布为该讲连续的 immutable release 版本 |
 
-保存和共享使用当前班级各课节的“本节使用”方案。某课节没有方案时在课程页显示未完成讲次，不伪造空 release；课次冻结后继续读取当时快照，后续保存或发布不改写历史课堂。并行方案仍属于课次协作能力，不能把同一班级拆成多门默认微课；未来若要保存另一套完整课程方案，必须显式执行“另存为一门微课”，而不是按方案数隐式分组。
+保存和共享使用当前班级各课节的“本节使用”方案。某课节没有方案时在课程页显示未完成讲次，不伪造空 release；同课节的方案可保持独立草稿与审核快照，每次通过只在该课节的稳定讲次下新增 release_no，发布非当前方案不抢占 current release，主讲切换“本节使用”后才切换该讲 current release。课次冻结后继续读取当时快照，后续保存、发布或切换不改写历史课堂。并行方案仍属于课次协作能力，不能把同一班级拆成多门默认微课；未来若要保存另一套完整课程方案，必须显式执行“另存为一门微课”，而不是按方案数隐式分组。
 
 ## 当前状态与证据
 
 | 子门 | 状态 | 证据范围 |
 | --- | --- | --- |
-| 本机实现与机器检查 | **PASS** | 基础 commits `cd3b2bf`、`26698e3`、`96f3301`、`a4fa9e4`、`5c13d5d`、`f418dd9` 与迁移 `20260826000200`～`20260826000600` 已通过三份事务回滚 SQL、微课 Vitest 17/17、固定账号 Playwright 1/1 和 R1-Live 60/60；整讲来源增量 commit `dd9a755`、migration `20260827000100_teacher_microcourse_lecture_source_picker` 通过内容 SQL、微课 Vitest 4 文件 19/19 与完整旅程；通用游戏页增量 commit `1135099`、migrations `20260827000300`～`20260827000400` 通过回滚式内容 SQL、定向 Vitest 6 文件 47/47、固定账号 Playwright 1/1 及最终 CI 16/16，全量 Vitest为 106 文件、742 通过/1 条件跳过且 production build 成功；课程产品选择器复用增量 migrations `20260827000600`～`20260827000700` 已通过事务回滚、固定教师权限矩阵、微课 Vitest 4 文件 21/21 与完整 Playwright 1/1 |
-| 产品负责人开发端初验 | **BLOCKED BY MODEL CORRECTION** | 课次编辑与课堂选用可继续验收；班级级保存、目录和多讲建班必须按本节更正后重新交付 |
+| 本机实现与机器检查 | **PASS** | 基础 commits `cd3b2bf`、`26698e3`、`96f3301`、`a4fa9e4`、`5c13d5d`、`f418dd9` 与迁移 `20260826000200`～`20260826000600` 已通过三份事务回滚 SQL、微课 Vitest 17/17、固定账号 Playwright 1/1 和 R1-Live 60/60；整讲来源增量 commit `dd9a755`、migration `20260827000100_teacher_microcourse_lecture_source_picker` 通过内容 SQL、微课 Vitest 4 文件 19/19 与完整旅程；通用游戏页增量 commit `1135099`、migrations `20260827000300`～`20260827000400` 通过回滚式内容 SQL、定向 Vitest 6 文件 47/47、固定账号 Playwright 1/1 及最终 CI 16/16，全量 Vitest为 106 文件、742 通过/1 条件跳过且 production build 成功；课程产品选择器复用增量 migrations `20260827000600`～`20260827000700` 已通过事务回滚、固定教师权限矩阵、微课 Vitest 4 文件 21/21 与完整 Playwright 1/1；班级级更正 migrations `20260829000500`～`20260829000600` 已应用本机开发库，三份独立回滚 SQL、数据库类型生成/摘要校验、TypeScript、规划审计、相关 ESLint 与班级/课节/release 定向 Vitest 1/1 通过 |
+| 产品负责人开发端初验 | **READY / PENDING VISUAL ACCEPTANCE** | 班级级目录投影已按本节更正交付本机开发端；页面布局、课程详情和多讲建班仍由产品负责人在开发链接人工验收 |
 | 生产迁移与启用 | **DEPLOYED LEGACY MODEL / CORRECTION NOT DEPLOYED** | 既有课次方案、审核、release 与课堂冻结能力已上线；生产当前 1 个自由班/3 个课节/3 个已选方案仍被旧模型表示为 3 门单讲草稿。班级级聚合迁移、目录修正和已有数据归并尚未获得生产授权 |
 
 完整机器证据见 [`../evidence/r1/teacher-microcourse-dev.md`](../evidence/r1/teacher-microcourse-dev.md)、[`../evidence/r1/teacher-microcourse-research-entry-hotfix-production.md`](../evidence/r1/teacher-microcourse-research-entry-hotfix-production.md) 与 [`../evidence/r1/teacher-microcourse-source-preview-hotfix-production.md`](../evidence/r1/teacher-microcourse-source-preview-hotfix-production.md)。本机随机 E2E 课程族、班级、课次和微课项目已按精确名称/ID 清理并复核为 0；固定开发账号与既有基线数据未改变。
@@ -582,11 +582,11 @@ template_version:
       → 按年级/学期进入“教师微课”课程族
       → 其他教师查看完整教学计划并建班
 
-“教师微课”是一个校内 `course_families` 课程包；一个来源自由班保存为一门 `courses.course_kind='microcourse'` 课程，班内多个课节对应多个 `course_lectures`。年级取自由班年级，课程季节取班级 `term_id → school_terms.term`；同一课程族、版本、年级和学期允许多名教师保存不同微课。发布只推进对应讲次的审核元数据与 immutable release；全部有效讲次均有可用 release 后课程才进入其他教师的新建班目录。保存和发布均不把来源自由班改成课程班，也不回写已经冻结的课次。
+“教师微课”是一个校内 `course_families` 课程包；一个来源自由班保存为一门 `courses.course_kind='microcourse'` 课程，班内多个课节各自对应一个稳定 `course_lectures`。年级取自由班年级，课程季节取班级 `term_id → school_terms.term`；同一课程族、版本、年级和学期允许多名教师保存不同微课。同课节方案发布时把不可变审核快照写成该稳定讲次的新 release，并登记方案、metadata revision、review cycle 与 release 的来源关系；全部有效讲次当前选用方案均有可用 release 后课程才进入其他教师的新建班目录。保存和发布均不把来源自由班改成课程班，也不回写已经冻结的课次。
 
 ## 元数据、权限与审核
 
-- 一个自由课次可关联多个课件方案；一个班级级微课在每个来源课次最多纳入一个方案。方案保存作者、来源课次、所属班级微课、讲次、草稿元数据 head 与已发布元数据 head；每次修改生成不可变 revision。
+- 一个自由课次可关联多个课件方案；一个班级级微课在每个来源课次只有一个稳定目录讲次，多个方案分别保存作者、独立编辑 head、草稿/已发布元数据 head 与来源关系，审核通过后成为该讲的不同 release 版本；每次修改继续生成不可变 revision。
 - 主主题使用可增停的校方目录，首批固定为数与代数、图形与几何、统计与概率、逻辑与策略、综合与实践；自由关键词独立保存。
 - `courseware.microcourse.author` 只允许作者操作本人且仍由本人任教的来源自由课次，不推导 `course.manage`、`courseware.page.edit` 或其他 Studio 权限。作者、来源课次教师、教研审核者和管理员可读草稿；校内其他教师只读已发布 revision/release。顶层管理员同时承担教师/教研工作时，可在员工页给自己授予对应岗位；普通 staff 仍不能自授岗，管理员自停用也继续拒绝。该能力已随 `20260829000200_admin_self_staff_roles` / `ba98a8e…` 部署，机器 postflight 通过，实际生产自授岗待产品负责人验收。
 - 提交时把页面 revision、资源 revision、H5 SHA-256 与元数据 revision 固定到同一审核事实。审核期间继续编辑只推进草稿 head，不替换已提交快照。退回后重提生成新的提交快照；通过与发布复用 `cw_lecture_workflows`、`cw_review_cycles` 和 immutable release，并在一个事务内推进 release、课程投影和目录可见性。
@@ -609,7 +609,7 @@ template_version:
 
 H5 首版只有 HTML 编辑框、防抖预览、运行错误和本地素材 data URL。草稿进入作者域隔离的私有对象路径，发布时按规范化内容 SHA-256 提升到 `cw-h5/packages/<sha256>/`；iframe 只使用 `sandbox="allow-scripts"`，CSP 禁止网络、表单、外层导航、子 iframe 和插件，仅开放内联脚本/样式与 `data:`/`blob:` 媒体，并继续注入课堂指针桥和内存 storage shim。
 
-目录查询只返回 `enabled`、至少一讲且全部有效讲次均存在正式 release 的班级级微课，支持发布教师、课程/讲次标题、主题、关键词、年级及学期筛选。验收至少覆盖既有课程唯一性、同班多课节归为一门课程、同课节并行方案不重复成讲、他人草稿拒绝、审核快照不可替换、4/6/9 宫数独四种结果、游戏校验凭证不可替换、H5 CSP、自由课次冻结、退回重提发布、多讲建班、旧课次钉死旧 release、新班使用新版，以及普通教师/教研 zh/en 固定账号旅程。首轮旧模型生产迁移和开关启用已在 2026-08-27 取得明确授权并完成；本次班级级 schema、已有数据归并、release 与开关变更必须重新取得生产授权。
+目录查询只返回 `enabled`、至少一讲且全部有效讲次的当前选用方案均存在正式 release 的班级级微课，支持发布教师、课程/讲次标题、主题、关键词、年级及学期筛选。验收至少覆盖既有课程唯一性、同班多课节归为一门课程、同课节并行方案发布为同讲连续 release_no 且不重复成讲、非当前方案发布不抢占 current release、主讲选用后切换 current release、他人草稿拒绝、审核快照不可替换、4/6/9 宫数独四种结果、游戏校验凭证不可替换、H5 CSP、自由课次冻结、退回重提发布、多讲建班、旧课次钉死旧 release、新班使用新版，以及普通教师/教研 zh/en 固定账号旅程。首轮旧模型生产迁移和开关启用已在 2026-08-27 取得明确授权并完成；本次班级级 schema、已有数据归并、release 与开关变更必须重新取得生产授权。
 
 # 十四、DEV-TMC-2 课次课件多方案协作与选用
 
@@ -633,7 +633,7 @@ H5 首版只有 HTML 编辑框、防抖预览、运行错误和本地素材 data
 
 常规课次工作区和微课编辑器读取同一选用事实。开课时冻结所选方案当时的 metadata/page/resource/H5/game revision；冻结记录保存方案 ID 与来源关系，后续编辑或切换其他未冻结课次不影响当前和历史课堂。已开课或已冻结课次拒绝改变选用方案。
 
-课次内制作、派生、选择、试讲和上课不依赖审核。班级保存教师微课时读取各课节当前“本节使用”方案；每讲分别进入 DEV-TMC-1 的提交、审核、发布、撤回和 immutable release 流程，课程在全部有效讲次可用后进入共享目录。发布不会改变课次当前选用，也不会把自由班转换成正式课程班。
+课次内制作、派生、选择、试讲和上课不依赖审核。班级保存教师微课时读取各课节当前“本节使用”方案；每个课节只有一个稳定目录讲次，各方案分别进入 DEV-TMC-1 的提交、审核、发布、撤回流程并累积为该讲的 immutable release 历史，课程在全部有效讲次的当前选用 release 可用后进入共享目录。发布非当前方案不会改变课次选用或该讲 current release，也不会把自由班转换成正式课程班。
 
 ## 首个开发验收
 
