@@ -10,12 +10,20 @@ import { ResponsibilityPanel } from "@/features/school/teaching-operations/Respo
 import { StatusOverflowMenu } from "@/features/school/teaching-operations/StatusOverflowMenu";
 import { TeachingPlan } from "@/features/school/teaching-operations/TeachingPlan";
 import { TeachingPlanEditorLauncher } from "@/features/school/teaching-operations/TeachingPlanEditorLauncher";
+import { TeacherMicrocourseLibrary } from "@/features/school/teaching-operations/TeacherMicrocourseLibrary";
 import { transitionCourseFamilyStatusAction, transitionCourseVariantStatusAction } from "@/features/school/teaching-operations/actions";
 import { UsagePanel } from "@/features/school/teaching-operations/UsagePanel";
 import { VariantMatrix } from "@/features/school/teaching-operations/VariantMatrix";
 import { VariantSelector } from "@/features/school/teaching-operations/VariantSelector";
 import { resolveCourseCapabilities } from "@/features/school/teaching-operations/capabilities";
 import type { SelectedCourseVariant } from "@/features/school/teaching-operations/course-family-detail";
+import {
+  filterTeacherMicrocourseLibrary,
+  listTeacherMicrocourseLibrary,
+  parseTeacherMicrocourseLibraryFilters,
+  teacherMicrocourseLibrarySearchParams,
+  type TeacherMicrocourseLibraryEntry,
+} from "@/features/school/teaching-operations/teacher-microcourse-library";
 import { LecturePreviewDialog } from "@/features/school/curriculum/LecturePreviewDialog";
 import { LecturePreviewPanel } from "@/features/school/curriculum/LecturePreviewPanel";
 import {
@@ -117,6 +125,62 @@ async function CourseFamilyProductPage({
     <Badge variant={detail.family.status === "enabled" ? "secondary" : "outline"}>{t(detail.family.status)}</Badge>
     {detail.family.purpose === "test" && <Badge variant="outline">{t("test")}</Badge>}
   </>;
+
+  if (detail.family.slug === "teacher-microcourses") {
+    const filters = parseTeacherMicrocourseLibraryFilters(rawSearchParams);
+    const catalogItems = await listTeacherMicrocourseLibrary(detail.family.id);
+    const variantsById = new Map(detail.variants.map((variant) => [variant.id, variant]));
+    const entries = catalogItems.flatMap((item): TeacherMicrocourseLibraryEntry[] => {
+      const variant = variantsById.get(item.courseId);
+      return variant ? [{ ...item, ...variant }] : [];
+    });
+    const filteredEntries = filterTeacherMicrocourseLibrary(entries, filters);
+    const selectedId = requestedVariantId && filteredEntries.some((entry) => entry.id === requestedVariantId)
+      ? requestedVariantId
+      : filteredEntries[0]?.id;
+
+    if (selectedId && detail.selectedVariant?.id !== selectedId) {
+      detail = await getCourseFamilyDetail(detail.family.id, selectedId);
+    }
+    const selectedEntry = entries.find((entry) => entry.id === selectedId) ?? null;
+    const lectureId = first(rawSearchParams.lecture);
+    const requestedLecture = detail.teachingPlan.find((lecture) => lecture.id === lectureId);
+    const previewTrack = parseCoursewareTrack(rawSearchParams.track);
+    const preview = requestedLecture?.hasRelease
+      ? await loadLecturePreview(requestedLecture.id, previewTrack, parsePage(first(rawSearchParams.page)))
+      : null;
+    const validPreview = preview?.lecture.courseId === selectedId ? preview : null;
+    const selectedParams = teacherMicrocourseLibrarySearchParams(filters);
+    if (selectedId) selectedParams.set("variant", selectedId);
+    if (returnTo) selectedParams.set("returnTo", returnTo);
+    const selectedBaseHref = `/dashboard/courses/${detail.family.id}${selectedParams.size ? `?${selectedParams.toString()}` : ""}`;
+    const lecturePreview = validPreview ? <LecturePreviewDialog
+      title={t("lecturePreviewTitle", { no: validPreview.lecture.no, name: validPreview.lecture.name })}
+      closeHref={selectedBaseHref}
+    >
+      <LecturePreviewPanel
+        preview={validPreview}
+        baseHref={selectedBaseHref}
+        workspaceHref={`/dashboard/courseware/lectures/${validPreview.lecture.id}?track=${validPreview.track}`}
+      />
+    </LecturePreviewDialog> : undefined;
+
+    return <TeacherMicrocourseLibrary
+      detail={detail}
+      entries={entries}
+      filteredEntries={filteredEntries}
+      selectedEntry={selectedEntry}
+      filters={filters}
+      locale={locale}
+      returnTo={returnTo}
+      canManage={canManage}
+      canAssign={canAssign}
+      canCreateClass={permissions.has("class.create")}
+      canViewUsage={permissions.has("class.view.all")}
+      staffOptions={staffOptions}
+      lecturePreview={lecturePreview}
+    />;
+  }
 
   if (!detail.selectedVariant) {
     // doc23 §8.1 Family 蓝图：主栏是"这个产品由哪些版本组成"，侧栏是"它整体齐不齐、归谁管"。

@@ -56,6 +56,7 @@ describe("DEV-TMC-1 teacher microcourse product surfaces", () => {
 
   it("exposes composition, registered games and H5 while preserving source provenance", () => {
     const editor = read("src", "features", "teacher-microcourses", "MicrocourseEditor.tsx");
+    const compositionWorkbench = read("src", "features", "teacher-microcourses", "CoursewareCompositionWorkbench.tsx");
     const picker = read("src", "features", "teacher-microcourses", "MicrocourseSourcePicker.tsx");
     const liveShell = read("src", "features", "classroom", "live", "LiveShell.tsx");
     const contentMigration = read("supabase", "migrations", "20260826000300_teacher_microcourse_content.sql");
@@ -66,14 +67,15 @@ describe("DEV-TMC-1 teacher microcourse product surfaces", () => {
     const gameStage = read("src", "features", "games", "courseware", "GamePageStage.tsx");
 
     expect(editor).toContain("createTeacherCompositionPageAction");
-    expect(editor).toContain("createTeacherGamePageAction");
-    expect(editor).toContain("gameCoursewareContractsForSurface");
-    expect(editor).toContain("<GamePageEditor");
-    expect(editor).toContain("<GamePageGridEditor");
-    expect(editor).toContain("createTeacherH5PageAction");
-    expect(editor).toContain("uploadTeacherMicrocourseImageAction");
+    expect(editor).toContain("<CoursewareCompositionWorkbench");
+    expect(compositionWorkbench).toContain("createTeacherGameComponentAction");
+    expect(compositionWorkbench).toContain("createTeacherH5ComponentArtifactAction");
+    expect(compositionWorkbench).toContain("gameCoursewareContractsForSurface");
+    expect(compositionWorkbench).toContain("<CoursewareCompositionGridEditor");
+    expect(compositionWorkbench).toContain("<GamePageEditor");
+    expect(compositionWorkbench).toContain("uploadTeacherMicrocourseImageAction");
     expect(actions).toContain('"create_teacher_microcourse_game_page"');
-    expect(actions).toContain('"save_teacher_microcourse_game_page"');
+    expect(actions).toContain('"save_teacher_courseware_composition_page"');
     expect(actions).toContain('gameCoursewareContractsForSurface("microcourse")');
     expect(manifest).toContain('gameId: "sudoku"');
     expect(manifest).toContain('authoringSurfaces: ["microcourse"]');
@@ -175,6 +177,30 @@ describe("DEV-TMC-1 teacher microcourse product surfaces", () => {
     expect(queries).toContain("rawCourseSeason === null ? null");
     expect(matrix).toContain('variant.courseSeason === null');
     expect(matrix).toContain('t("courseSeasonUnspecified")');
+  });
+
+  it("browses teacher microcourses in one catalog-detail workspace instead of a unique variant matrix", () => {
+    const route = read("src", "app", "[locale]", "dashboard", "courses", "[courseFamilyId]", "page.tsx");
+    const library = read("src", "features", "school", "teaching-operations", "TeacherMicrocourseLibrary.tsx");
+    const filters = read("src", "features", "school", "teaching-operations", "TeacherMicrocourseLibraryFilters.tsx");
+    const facets = read("supabase", "migrations", "20260829000800_teacher_microcourse_library_facets.sql");
+
+    expect(route).toContain('detail.family.slug === "teacher-microcourses"');
+    expect(route).toContain("<TeacherMicrocourseLibrary");
+    expect(library).toContain('id="microcourse-detail"');
+    expect(library).toContain("filteredEntries.map");
+    expect(library).toContain("<TeachingPlan");
+    expect(library).toContain("canViewUsage && <UsagePanel");
+    expect(library).not.toContain("VariantMatrix");
+    expect(filters).toContain("mcStructure");
+    expect(filters).toContain("mcReadiness");
+    expect(filters).toContain("mcTopic");
+    expect(filters).toContain("mcGrade");
+    expect(facets).toContain("list_teacher_microcourse_library");
+    expect(facets).toContain("lecture_facets.lecture_text");
+    expect(facets).toContain("metadata_facets.topic_text");
+    expect(facets).toContain("array_to_string(metadata_facets.keywords, ' ')");
+    expect(facets).toContain("Source grade/class/season remain optional filters");
   });
 
   it("maintains matching Chinese and English teacher-microcourse UI keys", () => {
