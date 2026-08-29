@@ -237,6 +237,7 @@ test("teacher and research branch proposals while only the teacher selects and f
   activeFixture = fixture;
   try {
     const editorPath = `/zh/dashboard/sessions/${fixture.sourceSessionId}/microcourse` as const;
+    const sessionPath = `/zh/dashboard/sessions/${fixture.sourceSessionId}` as const;
 
     await loginWithFixedAccount(page, teacher, editorPath);
     await expect(page.getByText("把这节自由课孵化成微课", { exact: true })).toBeVisible();
@@ -248,10 +249,14 @@ test("teacher and research branch proposals while only the teacher selects and f
     await expect(page.getByText("新页面", { exact: true }).first()).toBeVisible();
 
     await page.context().clearCookies();
-    await loginWithFixedAccount(page, research, "/zh/dashboard/courseware/review");
-    await page.goto("/zh/dashboard/courseware/review?tab=microcourses");
-    await expect(page.getByTestId("microcourse-session-workspace-queue")).toBeVisible();
-    await page.locator(`a[href="${editorPath}"]`).first().click();
+    await loginWithFixedAccount(page, research, sessionPath);
+    await expect(page.getByText("备课档案只读，可编辑课件方案", { exact: true })).toBeVisible();
+    const researchEditCourseware = page.getByRole("link", { name: "编辑课件", exact: true });
+    await expect(researchEditCourseware).toBeVisible();
+    await expect(page.getByRole("link", { name: "试讲", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "完成备课", exact: true })).toHaveCount(0);
+    await researchEditCourseware.click();
+    await page.waitForURL((url) => url.pathname === editorPath);
     await expect(page.getByTestId("microcourse-variant-preview")).toBeVisible();
     await expect(page.getByRole("button", { name: "设为本节使用", exact: true })).toHaveCount(0);
     await page.getByRole("button", { name: "编辑这个方案", exact: true }).click();

@@ -22,16 +22,21 @@ describe("classroom reactivation and free-session courseware access", () => {
     expect(settings).toContain('classroom.operationalStatus === "active"');
   });
 
-  it("keeps authoring scoped to assigned teachers and explains read-only management views", () => {
+  it("keeps preparation scoped to teachers while research may open an independent courseware proposal", () => {
     const workspace = read("src", "features", "school", "SessionWorkspaceBody.tsx");
     const prepPanel = read("src", "features", "school", "SessionPrepPanel.tsx");
     const prepArtifacts = read("src", "features", "school", "session-preparation-artifacts.ts");
     const microcourseCore = read("supabase", "migrations", "20260826000200_teacher_microcourses_core.sql");
 
     expect(workspace).toContain('detail.capabilities.canPrepare');
+    expect(workspace).toContain('viewerPerms.has("courseware.review")');
+    expect(workspace).toContain('(detail.capabilities.canPrepare || canAuthorMicrocourse)');
+    expect(workspace).toContain('canAuthorMicrocourseProposal={canAuthorMicrocourse}');
     expect(workspace).toContain('t("editCourseware")');
-    expect(prepPanel).toContain('t("prepReadOnlyNotTeacherTitle")');
-    expect(prepPanel).toContain('t("prepReadOnlyNotTeacherBody")');
+    expect(prepPanel).toContain('"prepReadOnlyNotTeacherTitle"');
+    expect(prepPanel).toContain('"prepReadOnlyNotTeacherBody"');
+    expect(prepPanel).toContain('"prepResearchCoursewareTitle"');
+    expect(prepPanel).toContain('"prepResearchCoursewareBody"');
     expect(prepPanel).toContain("getSessionPreparationArtifacts(detail.id, regularPreparationEditing)");
     expect(prepPanel).toContain("canReadSessionMemberState ? getSessionLearningSetup(detail.id) : Promise.resolve(null)");
     expect(prepArtifacts).toContain("includeReviewerCandidates = true");

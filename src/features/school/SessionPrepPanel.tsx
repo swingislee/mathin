@@ -17,10 +17,12 @@ import { isFeatureEnabled } from "./organization-settings";
 
 export async function SessionPrepPanel({
   detail,
+  canAuthorMicrocourseProposal = false,
   initialStep,
   initialPageId,
 }: {
   detail: SessionWorkspaceDetail;
+  canAuthorMicrocourseProposal?: boolean;
   initialStep?: "study" | "design" | "rehearsal";
   initialPageId?: string;
 }) {
@@ -96,8 +98,12 @@ export async function SessionPrepPanel({
           <section className="flex shrink-0 items-start gap-3 rounded-xl border border-line bg-card/70 px-4 py-3">
             <LockKeyhole size={18} className="mt-0.5 shrink-0 text-muted" aria-hidden />
             <div className="min-w-0 flex-1">
-              <h2 className="text-sm font-medium text-ink">{t("prepReadOnlyNotTeacherTitle")}</h2>
-              <p className="mt-1 text-xs leading-5 text-muted">{t("prepReadOnlyNotTeacherBody")}</p>
+              <h2 className="text-sm font-medium text-ink">
+                {t(canAuthorMicrocourseProposal ? "prepResearchCoursewareTitle" : "prepReadOnlyNotTeacherTitle")}
+              </h2>
+              <p className="mt-1 text-xs leading-5 text-muted">
+                {t(canAuthorMicrocourseProposal ? "prepResearchCoursewareBody" : "prepReadOnlyNotTeacherBody")}
+              </p>
             </div>
           </section>
         ) : null}

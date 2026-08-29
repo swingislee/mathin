@@ -3351,6 +3351,8 @@
       "prepArchiveReadOnly": "备课档案只读",
       "prepReadOnlyNotTeacherTitle": "当前账号不是本课任课教师",
       "prepReadOnlyNotTeacherBody": "课件与备课档案保持只读。请切换到本班主讲或助教账号，或先在班级设置中调整任课关系。",
+      "prepResearchCoursewareTitle": "备课档案只读，可编辑课件方案",
+      "prepResearchCoursewareBody": "教研不参与本班备课定稿、试讲、点名或课堂控制，但可以通过上方“编辑课件”创建或派生独立方案；任课教师在上课前选择最终使用的版本。",
       "prepArchiveCoursewareHint": "正在查看本课冻结定稿；页面目录、逐题检查项和课件内容保持为本课确认时的版本。",
       "prepArchiveUnlockedCoursewareHint": "这里修改的是当前课次快照；重新进入教室后生效，不会改写正式 release。",
       "startPrep": "开始备课",

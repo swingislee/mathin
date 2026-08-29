@@ -125,12 +125,17 @@ export async function SessionWorkspaceBody({
       && detail.scheduledAt
       && new Date(detail.prepPreparedAt).getTime() > new Date(detail.scheduledAt).getTime(),
   );
-  const canAuthorMicrocourse = stage === "pre"
+  const microcourseWorkspaceCandidate = stage === "pre"
     && detail.state === "scheduled"
-    && detail.lectureId === null
-    && detail.capabilities.canPrepare
-    && await isFeatureEnabled("teaching.teacher_microcourses_v1")
-    && (await getMyPerms(detail.viewerId)).has("courseware.microcourse.author");
+    && detail.lectureId === null;
+  const microcourseEnabled = microcourseWorkspaceCandidate
+    && await isFeatureEnabled("teaching.teacher_microcourses_v1");
+  const viewerPerms = microcourseEnabled ? await getMyPerms(detail.viewerId) : null;
+  const canAuthorMicrocourse = Boolean(
+    microcourseEnabled
+      && viewerPerms?.has("courseware.microcourse.author")
+      && (detail.capabilities.canPrepare || viewerPerms.has("courseware.review")),
+  );
 
   return (
     <ObjectWorkspace
@@ -167,7 +172,7 @@ export async function SessionWorkspaceBody({
               />
             ) : null}
           </div>
-            {stage === "pre" && detail.capabilities.canPrepare && detail.state === "scheduled" ? (
+            {stage === "pre" && detail.state === "scheduled" && (detail.capabilities.canPrepare || canAuthorMicrocourse) ? (
               <div className="flex flex-wrap items-center justify-end gap-2">
               {canAuthorMicrocourse ? (
                 <Link
@@ -178,18 +183,20 @@ export async function SessionWorkspaceBody({
                   {t("editCourseware")}
                 </Link>
               ) : null}
-              <Link
-                href={"/classroom/" + detail.classroomId + "/session/" + detail.id + "/live?mode=rehearsal"}
-                className={cn(buttonVariants({ size: "sm", variant: "secondary" }), "gap-2")}
-              >
-                <Presentation size={15} />
-                {t("rehearse")}
-              </Link>
-              <SessionPrepCompleteAction
-                sessionId={detail.id}
-                prepStatus={detail.prepStatus}
-                hasUnpublishedChanges={detail.hasUnpublishedChanges}
-              />
+              {detail.capabilities.canPrepare ? <>
+                <Link
+                  href={"/classroom/" + detail.classroomId + "/session/" + detail.id + "/live?mode=rehearsal"}
+                  className={cn(buttonVariants({ size: "sm", variant: "secondary" }), "gap-2")}
+                >
+                  <Presentation size={15} />
+                  {t("rehearse")}
+                </Link>
+                <SessionPrepCompleteAction
+                  sessionId={detail.id}
+                  prepStatus={detail.prepStatus}
+                  hasUnpublishedChanges={detail.hasUnpublishedChanges}
+                />
+              </> : null}
             </div>
           ) : null}
           {stage === "post" ? (
@@ -217,6 +224,7 @@ export async function SessionWorkspaceBody({
             {stage === "pre" && (
               <SessionPrepPanel
                 detail={detail}
+                canAuthorMicrocourseProposal={canAuthorMicrocourse}
                 initialStep={initialPrepStep}
                 initialPageId={initialPrepPageId}
               />

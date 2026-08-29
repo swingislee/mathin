@@ -20,6 +20,7 @@ describe("DEV-TMC-1 teacher microcourse product surfaces", () => {
 
     expect(sessionWorkspace).toContain('isFeatureEnabled("teaching.teacher_microcourses_v1")');
     expect(sessionWorkspace).toContain('has("courseware.microcourse.author")');
+    expect(sessionWorkspace).toContain('viewerPerms.has("courseware.review")');
     expect(sessionWorkspace).toContain("detail.lectureId === null");
     expect(route).toContain('requirePerm(locale, "courseware.microcourse.author")');
     expect(route).toContain("session.lectureId !== null");

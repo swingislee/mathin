@@ -3351,6 +3351,8 @@
       "prepArchiveReadOnly": "Preparation archive is read-only",
       "prepReadOnlyNotTeacherTitle": "This account is not assigned to teach this session",
       "prepReadOnlyNotTeacherBody": "Courseware and preparation records remain read-only. Switch to the assigned lead or assistant teacher, or update the teaching assignment in class settings first.",
+      "prepResearchCoursewareTitle": "Preparation is read-only; courseware proposals are editable",
+      "prepResearchCoursewareBody": "Research staff cannot finalize preparation, rehearse, take attendance, or control this class, but can use Edit courseware above to create or fork an independent proposal. The assigned teacher chooses the version used before class.",
       "prepArchiveCoursewareHint": "Viewing the frozen session version. The page list, learning checks, and courseware remain as confirmed for this session.",
       "prepArchiveUnlockedCoursewareHint": "Changes apply only to this session snapshot after re-entering the classroom; the formal release is not rewritten.",
       "startPrep": "Start prep",
