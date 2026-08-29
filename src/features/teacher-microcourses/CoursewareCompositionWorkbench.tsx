@@ -65,6 +65,7 @@ import {
 } from "./actions";
 import { microcourseH5Bytes, normalizeMicrocourseH5 } from "./h5";
 import { MICROCOURSE_H5_CSP } from "@/features/courseware-doc/h5-shim";
+import styles from "./CoursewareCompositionWorkbench.module.css";
 
 const DEFAULT_H5 = `<!doctype html>
 <html lang="zh-CN">
@@ -373,7 +374,7 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
         : t("pageAutosaved");
 
   return (
-    <Card className="flex min-h-0 min-w-0 flex-col overflow-hidden">
+    <Card className={cn("flex min-h-0 min-w-0 flex-col overflow-hidden", styles.workbench)}>
       <CardHeader className="shrink-0 border-b border-line py-3">
         <div className="flex flex-wrap items-center gap-3">
           <Badge variant="secondary">{t("mode_composition")}</Badge>
@@ -387,9 +388,9 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
         </div>
         {message && <p role="alert" className="mt-2 text-xs text-rose">{message}</p>}
       </CardHeader>
-      <CardContent className="grid min-h-0 flex-1 gap-3 p-3 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        <div className="flex min-h-0 min-w-0 items-center">
-          <div className="mx-auto w-full max-w-5xl overflow-hidden rounded-xl border border-line bg-white shadow-sm">
+      <CardContent className={cn("min-h-0 flex-1 gap-3 p-3", styles.body)}>
+        <div className={cn("flex min-h-0 min-w-0 items-center justify-center", styles.stageSlot)}>
+          <div className={cn("overflow-hidden rounded-xl border border-line bg-white shadow-sm", styles.stageFrame)}>
             <CoursewareCompositionGridEditor
               doc={doc}
               bindingUrls={bindingUrls}

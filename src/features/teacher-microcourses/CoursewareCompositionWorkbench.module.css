@@ -1,0 +1,41 @@
+.workbench {
+  container: composition-workbench / inline-size;
+}
+
+.body {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) minmax(12rem, 0.55fr);
+}
+
+.stageSlot {
+  container: composition-stage / size;
+  overflow: hidden;
+}
+
+.stageFrame {
+  width: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  aspect-ratio: 4 / 3;
+}
+
+@container composition-stage (min-aspect-ratio: 4 / 3) {
+  .stageFrame {
+    width: auto;
+    height: 100%;
+  }
+}
+
+@container composition-stage (max-aspect-ratio: 4 / 3) {
+  .stageFrame {
+    width: 100%;
+    height: auto;
+  }
+}
+
+@container composition-workbench (min-width: 54rem) {
+  .body {
+    grid-template-rows: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) clamp(17rem, 28cqi, 22rem);
+  }
+}
