@@ -12,7 +12,7 @@ import {
   Undo2,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from "react";
 import { cn } from "@/lib/utils";
 import type { GameBoardProps, GameMirrorState, SudokuHighlightTool } from "../types";
 import { isSolvedGrid, sudokuPuzzle, type SudokuGrid } from "./logic";
@@ -128,6 +128,7 @@ export function SudokuBoard({
   const columnLabels = SUDOKU_COLUMN_LABELS.slice(0, spec.size);
   const numberPadItems = sudokuNumberPadItems(spec.size);
   const numberPadRows = sudokuNumberPadRowCount(spec.size);
+  const numberPadColumns = Math.ceil(numberPadItems.length / 2);
   const digitSizeClass = spec.size === 4
     ? "text-[clamp(2rem,6vw,4rem)]"
     : spec.size === 6
@@ -404,7 +405,7 @@ export function SudokuBoard({
       aria-label={t("boardLabel", { lastRow: rowLabels.at(-1) ?? "I", size: spec.size })}
       className={cn(
         styles.academyTheme,
-        "relative mx-auto h-full w-full overflow-auto rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-[var(--sudoku-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-paper",
+        "relative mx-auto h-full w-full overflow-hidden rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-[var(--sudoku-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-paper",
       )}
       data-sudoku-size={spec.size}
       data-sudoku-variant={spec.id}
@@ -416,14 +417,12 @@ export function SudokuBoard({
           {reasoningOnlyMessage}
         </div>
       ) : null}
-      <div className={cn(
-        "mx-auto grid h-full min-h-96 min-w-[34rem] max-w-5xl items-center gap-4 p-1 sm:gap-6",
-        showTeachingTools || allowAnswerReveal
-          ? "grid-cols-[7.25rem_minmax(0,1fr)_3.375rem]"
-          : "grid-cols-[7.25rem_minmax(0,1fr)]",
-      )}>
-        <aside className="w-full max-w-[7.25rem] justify-self-center">
-          <div className="flex min-w-0 flex-col gap-3">
+      <div
+        className={styles.boardLayout}
+        data-has-tools={showTeachingTools || allowAnswerReveal ? "true" : "false"}
+      >
+        <aside className={styles.entryPanel}>
+          <div className={styles.entryControls}>
             <div
               aria-label={t("entryMode")}
               className={cn(styles.controlGroup, "grid grid-cols-2 rounded-xl border p-1")}
@@ -453,13 +452,16 @@ export function SudokuBoard({
 
             <div
               aria-label={t("numberPad")}
-              className="grid grid-flow-col grid-cols-2 gap-2"
+              className={styles.numberPad}
               role="group"
-              style={{ gridTemplateRows: `repeat(${numberPadRows}, minmax(0, 1fr))` }}
+              style={{
+                "--sudoku-pad-rows": numberPadRows,
+                "--sudoku-pad-columns": numberPadColumns,
+              } as CSSProperties}
             >
               {numberPadItems.map((item, index) => {
                 if (item === "spacer") {
-                  return <span key={`spacer-${index}`} aria-hidden className="aspect-square min-h-11" />;
+                  return <span key={`spacer-${index}`} aria-hidden className={styles.padSpacer} />;
                 }
                 if (item === "delete") {
                   return (
@@ -473,7 +475,8 @@ export function SudokuBoard({
                       onClick={deleteEntry}
                       className={cn(
                         styles.numberButton,
-                        "grid aspect-square min-h-11 w-full place-items-center rounded-xl border transition-colors disabled:cursor-default disabled:opacity-45",
+                        styles.numberKey,
+                        "grid w-full place-items-center rounded-xl border transition-colors disabled:cursor-default disabled:opacity-45",
                       )}
                     >
                       <Eraser aria-hidden size={20} />
@@ -492,7 +495,8 @@ export function SudokuBoard({
                     onClick={() => chooseDigit(item)}
                     className={cn(
                       styles.numberButton,
-                      "aspect-square min-h-11 w-full rounded-xl border text-xl font-medium tabular-nums transition-colors disabled:cursor-default disabled:opacity-45",
+                      styles.numberKey,
+                      "w-full rounded-xl border text-xl font-medium tabular-nums transition-colors disabled:cursor-default disabled:opacity-45",
                       pressed && styles.numberActive,
                     )}
                   >
@@ -505,9 +509,10 @@ export function SudokuBoard({
 
         </aside>
 
-        <div className="flex min-h-0 min-w-0 items-center justify-center self-stretch">
+        <div className={styles.boardPanel}>
           <div className={cn(
-            "grid aspect-square h-auto max-h-full w-full max-w-[42rem]",
+            styles.boardFrame,
+            "grid aspect-square max-h-full max-w-full",
             showCoordinates
               ? "grid-cols-[1.125rem_minmax(0,1fr)] grid-rows-[1.125rem_minmax(0,1fr)]"
               : "grid-cols-1 grid-rows-1",
@@ -696,7 +701,7 @@ export function SudokuBoard({
 
         {(showTeachingTools || allowAnswerReveal) && <div
           aria-label={t("highlightToolbar")}
-          className={cn(styles.toolBar, "flex flex-col items-center gap-1 rounded-xl border p-1 justify-self-center")}
+          className={cn(styles.toolBar, "flex items-center gap-1 rounded-xl border p-1")}
           role="toolbar"
         >
           {showTeachingTools && HIGHLIGHT_TOOL_DEFS.map(({ tool, label, Icon }) => (
@@ -711,7 +716,8 @@ export function SudokuBoard({
               onClick={() => commit(setSudokuHighlightTool(state, tool))}
               className={cn(
                 styles.toolButton,
-                "grid size-10 shrink-0 place-items-center rounded-lg border transition-colors disabled:cursor-default disabled:opacity-100",
+                styles.toolKey,
+                "grid shrink-0 place-items-center rounded-lg border transition-colors disabled:cursor-default disabled:opacity-100",
                 state.highlightTool === tool
                   ? styles.toolActive
                   : styles.controlIdle,
@@ -738,7 +744,8 @@ export function SudokuBoard({
             className={cn(
               styles.toolButton,
               styles.controlIdle,
-              "grid size-10 shrink-0 place-items-center rounded-lg border transition-colors disabled:cursor-default disabled:opacity-35",
+              styles.toolKey,
+              "grid shrink-0 place-items-center rounded-lg border transition-colors disabled:cursor-default disabled:opacity-35",
             )}
           >
             <Undo2 aria-hidden size={18} />
@@ -753,7 +760,8 @@ export function SudokuBoard({
             className={cn(
               styles.toolButton,
               styles.controlIdle,
-              "grid size-10 shrink-0 place-items-center rounded-lg border transition-colors disabled:cursor-default disabled:opacity-35",
+              styles.toolKey,
+              "grid shrink-0 place-items-center rounded-lg border transition-colors disabled:cursor-default disabled:opacity-35",
             )}
           >
             <Trash2 aria-hidden size={18} />
@@ -770,7 +778,8 @@ export function SudokuBoard({
               styles.toolButton,
               styles.answerButton,
               styles.controlIdle,
-              "grid size-10 shrink-0 place-items-center rounded-lg border transition-colors disabled:cursor-default disabled:opacity-35",
+              styles.toolKey,
+              "grid shrink-0 place-items-center rounded-lg border transition-colors disabled:cursor-default disabled:opacity-35",
             )}
           >
             <Eye aria-hidden size={18} />

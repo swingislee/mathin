@@ -1,4 +1,5 @@
 .academyTheme {
+  container: sudoku-board / size;
   --sudoku-surface: #eef5f2;
   --sudoku-control: #ffffff;
   --sudoku-control-border: #d7e4df;
@@ -26,6 +27,134 @@
   color-scheme: light;
   background: var(--sudoku-surface);
   box-shadow: inset 0 0 0 1px rgb(79 130 125 / 12%);
+}
+
+.boardLayout {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  grid-template-columns: 7.25rem minmax(0, 1fr) 3.375rem;
+  grid-template-rows: minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(0.25rem, 1.4cqi, 1.5rem);
+  padding: 0.25rem;
+}
+
+.boardLayout[data-has-tools="false"] {
+  grid-template-columns: 7.25rem minmax(0, 1fr);
+}
+
+.entryPanel {
+  width: 100%;
+  max-width: 7.25rem;
+  min-width: 0;
+  justify-self: center;
+}
+
+.entryControls {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.numberPad {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(var(--sudoku-pad-rows), minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.numberKey,
+.padSpacer {
+  min-height: 2.75rem;
+  aspect-ratio: 1;
+}
+
+.boardPanel {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  align-self: stretch;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.boardFrame {
+  width: auto;
+  height: 100%;
+}
+
+.toolBar {
+  flex-direction: column;
+  justify-self: center;
+}
+
+.toolKey {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
+@container sudoku-board (max-width: 42rem) or (max-aspect-ratio: 6 / 5) {
+  .boardLayout,
+  .boardLayout[data-has-tools="false"] {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto auto;
+    align-items: stretch;
+    gap: 0.3rem;
+    padding: 0.2rem;
+  }
+
+  .boardPanel {
+    grid-row: 1;
+  }
+
+  .entryPanel {
+    grid-row: 2;
+    width: 100%;
+    max-width: none;
+  }
+
+  .entryControls {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.3rem;
+  }
+
+  .numberPad {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(var(--sudoku-pad-columns), minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+    gap: 0.25rem;
+  }
+
+  .numberKey,
+  .padSpacer {
+    min-height: 1.8rem;
+    aspect-ratio: auto;
+  }
+
+  .toolBar {
+    grid-row: 3;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-self: stretch;
+    justify-content: center;
+  }
+
+  .toolKey {
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .toolSeparator {
+    width: 1px;
+    height: 1.5rem;
+  }
 }
 
 .controlGroup,
