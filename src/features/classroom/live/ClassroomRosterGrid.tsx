@@ -85,6 +85,7 @@ export function ClassroomRosterGrid({
       aria-label={rosterLabel}
       data-classroom-roster-grid
       data-roster-surface="cards-only"
+      data-roster-gap-surface="classroom-backdrop"
       data-roster-scroll={slots.length > 20 ? "internal" : "none"}
     >
       <ul

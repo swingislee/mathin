@@ -1716,10 +1716,9 @@ export function LiveShell({
         {/* 右：副板书（长条，固定宽，用户 2026-07-08 要求加宽一倍）+ 学生名录（固定宽，容纳多人）+ 控制条，三段式 */}
         <div
           className={cn(
-            "rounded-2xl bg-paper/95 shadow-sm",
             teacherLayoutV2
-              ? "grid min-h-[30rem] w-full flex-none gap-2 lg:min-h-0"
-              : "flex min-h-0 w-full flex-1 flex-col gap-2 transition-[width] duration-200 lg:ml-auto lg:flex-none lg:shrink-0",
+              ? "grid min-h-[30rem] w-full flex-none gap-2 bg-transparent lg:min-h-0"
+              : "flex min-h-0 w-full flex-1 flex-col gap-2 rounded-2xl bg-paper/95 shadow-sm transition-[width] duration-200 lg:ml-auto lg:flex-none lg:shrink-0",
             // 分栏阈值从 xl 提到 lg（doc 27 §5.1 H4）：1024 横屏是直播课堂最典型的教师终端，
             // 原先落在 xl 之下，主板书、副板书、名录与控制条全部纵向堆叠，上课要滚动才看得到名录。
             // 但 1024 上留 34rem 会把主板书压到 480px，所以两栏全展开时 lg 档先给 26rem，xl 才放到 34rem。
@@ -1735,6 +1734,7 @@ export function LiveShell({
                     ? "lg:w-[18rem] xl:w-[22rem]"
                     : "lg:w-[26rem] xl:w-[34rem]",
           )}
+          data-classroom-right-stack-surface={teacherLayoutV2 ? "transparent" : "paper"}
         >
           {teacherLayoutV2 && (
             <ClassroomCourseInfoBar

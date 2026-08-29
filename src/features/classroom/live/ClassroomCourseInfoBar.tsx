@@ -60,6 +60,7 @@ export function ClassroomCourseInfoBar({
       className="flex h-10 min-w-0 items-center gap-1 px-1"
       data-classroom-course-info
       data-course-info-surface="flat"
+      data-course-info-background="transparent"
       data-course-info-height="40"
     >
       <Link

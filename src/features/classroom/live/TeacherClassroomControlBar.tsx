@@ -16,9 +16,10 @@ export function TeacherClassroomControlBar({
 }) {
   return (
     <footer
-      className="fixed inset-x-0 bottom-0 z-[70] grid h-[calc(3.5rem+env(safe-area-inset-bottom))] grid-cols-[minmax(0,1fr)_clamp(22rem,31vw,36rem)] items-center gap-3 border-t border-line bg-paper/95 px-3 pb-[env(safe-area-inset-bottom)] backdrop-blur"
+      className="fixed inset-x-0 bottom-0 z-[70] grid h-[calc(3.5rem+env(safe-area-inset-bottom))] grid-cols-[minmax(0,1fr)_clamp(22rem,31vw,36rem)] items-center gap-3 border-t border-line/70 bg-paper/75 px-3 pb-[env(safe-area-inset-bottom)] backdrop-blur-md"
       data-classroom-control-bar="full-width"
       data-classroom-control-surface="flat-rail"
+      data-classroom-control-background="translucent"
     >
       <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
         <div className="flex shrink-0 items-center gap-1.5" data-classroom-control-zone="input">{inputControls}</div>

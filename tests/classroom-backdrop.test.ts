@@ -42,13 +42,25 @@ describe("classroom ambience backdrop", () => {
   it("keeps ambience behind functional classroom surfaces without changing shell tokens", () => {
     const component = read("src", "features", "classroom", "live", "ClassroomBackdrop.tsx");
     const shell = read("src", "features", "classroom", "live", "LiveShell.tsx");
+    const courseInfo = read("src", "features", "classroom", "live", "ClassroomCourseInfoBar.tsx");
+    const roster = read("src", "features", "classroom", "live", "ClassroomRosterGrid.tsx");
+    const panels = read("src", "features", "classroom", "live", "LivePanels.tsx");
+    const controlBar = read("src", "features", "classroom", "live", "TeacherClassroomControlBar.tsx");
 
     expect(component).toContain('aria-hidden="true"');
     expect(component).toContain("pointer-events-none absolute inset-0 -z-10");
     expect(component).toContain("scene-day scene-adaptive");
     expect(shell).toContain("relative isolate flex h-dvh");
     expect(shell).toContain("<ClassroomBackdrop />");
-    expect(shell).toContain("rounded-2xl bg-paper/95 shadow-sm");
+    expect(shell).toContain('data-classroom-right-stack-surface={teacherLayoutV2 ? "transparent" : "paper"}');
+    expect(shell).toContain("gap-2 bg-transparent lg:min-h-0");
+    expect(courseInfo).toContain('data-course-info-background="transparent"');
+    expect(roster).toContain('data-roster-gap-surface="classroom-backdrop"');
+    expect(panels).toContain("bg-card/80");
+    expect(controlBar).toContain('data-classroom-control-surface="flat-rail"');
+    expect(controlBar).toContain('data-classroom-control-background="translucent"');
+    expect(controlBar).toContain("bg-paper/75");
+    expect(controlBar).toContain("backdrop-blur-md");
     expect(shell).not.toContain("scene-story");
   });
 });

@@ -347,7 +347,7 @@ export function StudentCard({
         className={cn(
           "relative rounded-xl border",
           learningCardClass,
-          compact ? "flex min-h-11 min-w-0 flex-col justify-center gap-0.5 overflow-hidden px-1.5 py-1" : "flex min-h-11 items-center gap-2 px-3",
+          compact ? "flex min-h-11 min-w-0 flex-col justify-center gap-0.5 overflow-hidden bg-card/80 px-1.5 py-1 backdrop-blur-[2px]" : "flex min-h-11 items-center gap-2 px-3",
         )}
       >
         {content}
@@ -364,7 +364,7 @@ export function StudentCard({
         className={cn(
           "flex min-h-11 w-full touch-none select-none rounded-xl border transition-colors hover:bg-moon/30",
           learningCardClass,
-          compact ? "min-w-0 flex-col items-stretch justify-center gap-0.5 overflow-hidden px-1.5 py-1" : "items-center gap-2 px-3",
+          compact ? "min-w-0 flex-col items-stretch justify-center gap-0.5 overflow-hidden bg-card/80 px-1.5 py-1 backdrop-blur-[2px]" : "items-center gap-2 px-3",
         )}
         onPointerDown={() => {
           longFired.current = false;
