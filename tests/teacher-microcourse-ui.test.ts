@@ -179,7 +179,7 @@ describe("DEV-TMC-1 teacher microcourse product surfaces", () => {
     expect(matrix).toContain('t("courseSeasonUnspecified")');
   });
 
-  it("browses teacher microcourses as a grouped catalog with on-demand details instead of a unique variant matrix", () => {
+  it("shows teacher microcourses as a non-unique grade-season coverage map with on-demand details", () => {
     const route = read("src", "app", "[locale]", "dashboard", "courses", "[courseFamilyId]", "page.tsx");
     const library = read("src", "features", "school", "teaching-operations", "TeacherMicrocourseLibrary.tsx");
     const filters = read("src", "features", "school", "teaching-operations", "TeacherMicrocourseLibraryFilters.tsx");
@@ -188,7 +188,12 @@ describe("DEV-TMC-1 teacher microcourse product surfaces", () => {
 
     expect(route).toContain('detail.family.slug === "teacher-microcourses"');
     expect(route).toContain("<TeacherMicrocourseLibrary");
-    expect(library).toContain("structureGroups.map");
+    expect(library).toContain("coverageGrades.map");
+    expect(library).toContain("microcourseCoverageTitle");
+    expect(library).toContain("microcourseTopicIndex");
+    expect(library).toContain("data-microcourse-coverage-matrix");
+    expect(library).toContain("crossSeasonEntries");
+    expect(library).toContain("universalDifficultyEntries");
     expect(library).toContain("<Sheet defaultOpen>");
     expect(library).toContain('className="w-[min(96vw,72rem)] max-w-none p-0"');
     expect(library).not.toContain("grid-cols-[21rem_minmax(0,1fr)]");
@@ -199,7 +204,7 @@ describe("DEV-TMC-1 teacher microcourse product surfaces", () => {
     expect(library).toContain('<TabsTrigger value="management">');
     expect(library).toContain("canViewUsage && <UsagePanel");
     expect(library).not.toContain("microcourseFacetNote");
-    expect(library).not.toContain("VariantMatrix");
+    expect(library).not.toContain("<VariantMatrix");
     expect(route).toContain("只有用户明确点击某门微课时才打开详情抽屉");
     expect(route).not.toContain(": filteredEntries[0]?.id");
     expect(filters).toContain("<FilterBar");
@@ -211,6 +216,8 @@ describe("DEV-TMC-1 teacher microcourse product surfaces", () => {
     expect(filters).toContain("mcGrade");
     expect(filterModel).toContain('classType !== selectAllValue');
     expect(filterModel).toContain('topic !== selectAllValue');
+    expect(filterModel).toContain("entry.courseSeason !== null");
+    expect(filterModel).toContain('entry.classType !== ""');
     expect(facets).toContain("list_teacher_microcourse_library");
     expect(facets).toContain("lecture_facets.lecture_text");
     expect(facets).toContain("metadata_facets.topic_text");

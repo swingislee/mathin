@@ -122,9 +122,11 @@ export function filterTeacherMicrocourseLibrary(
     if (filters.readiness === "incomplete" && teacherMicrocourseIsReady(entry)) return false;
     if (filters.grade && entry.grade !== filters.grade) return false;
     if (filters.courseSeason === "unspecified" && entry.courseSeason !== null) return false;
-    if (typeof filters.courseSeason === "number" && entry.courseSeason !== filters.courseSeason) return false;
+    // 学期未限定的微课可在任一具体学期复用；筛某个学期时不能把这类通用内容漏掉。
+    if (typeof filters.courseSeason === "number" && entry.courseSeason !== filters.courseSeason && entry.courseSeason !== null) return false;
     if (filters.classType === "__default__" && entry.classType !== "") return false;
-    if (filters.classType && filters.classType !== "__default__" && entry.classType !== filters.classType) return false;
+    // 空班型表示通用难度，因此筛 G+/X+/A+ 等具体难度时也应同时返回可复用的通用内容。
+    if (filters.classType && filters.classType !== "__default__" && entry.classType !== filters.classType && entry.classType !== "") return false;
     if (filters.topic && !entry.topics.some((topic) => topic.slug === filters.topic)) return false;
     if (filters.offering && entry.offeringType !== filters.offering) return false;
     return true;
