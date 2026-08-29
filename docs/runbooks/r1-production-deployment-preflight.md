@@ -63,7 +63,51 @@ example manifest 只展示结构，所有环境证据保持 `pending`，不能�
 - 数据库迁移默认使用向后兼容部署与 forward-fix。planner 永不授权自动恢复生产数据库。
 - 只有经事故负责人确认数据破坏、选定明确恢复点并再次批准，才可进入独立的数据库恢复流程。
 
-## 7. 证据与结论
+## 7. 函数/RPC 热修执行补充
+
+本节固化 2026-08-29 管理员自授岗热修的可复用教训，适用于已取得明确生产授权、只替换少量函数并发布兼容应用的变更。它不授权生产写入，也不替代 §1～6、写目标保险丝、备份或人工批准；事件经过见 [`admin-self-role-hotfix-production.md`](../evidence/r1/admin-self-role-hotfix-production.md)。
+
+### 7.1 先冻结最终候选，再创建最终备份
+
+1. 在开发目标完成业务正向、越权负向、函数 owner/ACL 和应用定向合同；确认工作树只含本批次文件。
+2. 使用 `scripts/lib/text-hash.mjs` 的 `textFileSha256` 计算 migration 归一化摘要，提交并推送不可变候选。
+3. 只有候选 commit 与 migration hash 都冻结后，才创建记入最终证据的写前备份；manifest 同时绑定两者。
+4. rollback rehearsal 若暴露候选缺陷，先用独立连接证明 ledger、函数定义、ACL 和业务计数零残留，再修代码、形成新 commit/hash 并创建新的最终候选备份。旧备份可以保留为额外恢复点，但不得冒充最终候选绑定的备份。
+
+### 7.2 只读查询不得复制旧证据中的 schema 名
+
+- 生产统计 SQL 使用当前 migration/schema 或已审阅的版本化 SQL；不要从历史证据手抄表名、列名。字段不确定时先在只读事务查询 `information_schema`、`pg_catalog` 或 `to_regclass(...)`，再运行计数。
+- preflight/postflight 使用 `REPEATABLE READ READ ONLY`，只输出聚合计数、布尔断言和时间，不输出账号、UUID、Cookie 或 secret。任一语句报错时整组检查不算通过；此前已经打印的部分结果也不能当作完整基线。
+- 业务在发布窗口外仍可能正常增长。先把最新合法汇总冻结为本轮基线，再要求 migration 前后不变；不得用上一次发布的旧计数覆盖真实新增对象。
+
+### 7.3 `CREATE OR REPLACE FUNCTION` 不会替你清理旧 ACL
+
+- rehearsal 前查询函数的 `proowner`、`prosecdef`、`proconfig` 和 `proacl`。DDL 使用真实 owner；普通 `postgres`、`supabase_admin` 或其他同名运维角色不能互相替代。
+- `CREATE OR REPLACE FUNCTION` 会保留已有 ACL。`REVOKE ... FROM PUBLIC` 只撤销伪角色 `PUBLIC`，不会撤销对 `anon`、`authenticated` 或 `service_role` 的显式授权。authenticated-only RPC 应显式先撤销实际 API 角色，再按目标重新授予，例如：
+
+```sql
+revoke all on function public.example_rpc(uuid) from public, anon, authenticated;
+grant execute on function public.example_rpc(uuid) to authenticated;
+```
+
+- 不要只用 `has_function_privilege` 猜授权来源；用 `aclexplode(coalesce(proacl, acldefault('f', proowner)))` 展开实际 grantee。migration 后同时断言 authenticated/anon/service_role 的预期结果、owner、`SECURITY DEFINER` 和固定 `search_path`。
+
+### 7.4 rehearsal、formal 与真实业务写分开
+
+1. 从 Git archive 上传 LF 原文，远端摘要必须与仓库归一化摘要一致；rollback 与 formal 使用同一文件。
+2. 在 `SERIALIZABLE` 事务中锁定目标指纹、旧 ledger/head、函数定义/ACL 和受影响业务计数；执行完整 migration、ledger insert 与最终断言后 `ROLLBACK`。
+3. 使用新连接核对 candidate ledger row=0、旧函数/ACL 恢复、业务计数不变。只有该独立零残留检查通过，才允许运行同文件、同断言的 formal transaction。
+4. formal 提交后刷新 PostgREST schema cache，再用独立只读连接核对 checksum、定义、ACL、业务/Storage 不变量和错误基线。
+5. “部署授岗能力”不等于获准修改真实岗位。除非授权明确包含具体业务写入，生产 postflight 不调用自授岗 RPC；正负行为在隔离开发目标验证，真实管理员操作保持产品验收。
+
+### 7.5 Windows 与多层 Shell 的已知误区
+
+- 本仓库需要只跑一个 Vitest 文件时，优先直接调用 `& '.\node_modules\.bin\vitest.cmd' run 'tests/<file>.test.ts'`。`pnpm test -- <file>` 会把额外的 `--` 传给已有 `vitest run` script，可能退化为全量套件；看到实际展开命令后必须确认目标文件确实被过滤。
+- PowerShell → SSH → Bash 的多层脚本不要在命令字符串中继续拼接可执行文本。优先使用仓库脚本或 UTF-8 base64 payload；Agent 编排层还必须避开 JavaScript template 的 `${...}` 插值和 Windows `D:\...` 反斜杠转义。
+- 不要为了安心重复运行发布器已经包含的完整 lint/typecheck/build。候选冻结前运行本次风险所需的窄检查；原子发布器负责一次完整本地检查和一次远端 build。若 schema 与旧应用不兼容，改用 expand/contract 或拆分后的正式发布工具，不能靠临时命令调整顺序。
+- staging 只使用本轮唯一、可验证的子目录。结束后解析绝对路径并确认仍位于 `service_root/staging/`，再精确删除；备份目录不随 staging 清理，也不得顺手 prune。
+
+## 8. 证据与结论
 
 下列九项全部 `passed` 才允许输出 `readyForAuthorizedExecution=true`：R1-14、R1-15、环境隔离、仓库 secret scan、监控探针、数据库恢复演练、Storage 恢复演练、应用回滚演练、非执行者复核。每项 `passed` 必须引用仓库内无 secret/PII 的小摘要与归一化 SHA-256。
 

@@ -30,3 +30,4 @@
 
 - 应用问题可切回 previous `20260828-190055`；新 schema 保持旧应用兼容。数据库默认 forward-fix，本轮没有业务数据变化，不需要 restore。
 - 机器 postflight 不证明产品账号已完成真实自授岗。产品负责人应在生产 `/zh/dashboard/staff` 找到自己，授予所需教师/教研岗位，再确认能进入其他老师短期专题班的课件制作流程；完成前状态保持 `PENDING PRODUCTION USER ACCEPTANCE`。
+- 本次关于最终候选备份、schema 漂移查询、函数 ACL、rollback/formal、Windows 定向测试和多层 Shell 的可复用教训已固化到 [`r1-production-deployment-preflight.md` §7](../../runbooks/r1-production-deployment-preflight.md#7-函数rpc-热修执行补充)。
