@@ -77,10 +77,10 @@ describe("narrow classroom layout", () => {
     expect(controlBar).toContain("grid-cols-[minmax(0,1fr)_auto]");
     expect(controlBar).not.toContain("clamp(22rem,31vw,36rem)");
     expect(controlBar).toContain("fixed inset-x-0 bottom-0");
-    expect(controlBar).toContain("bg-transparent px-0 shadow-none ring-0 backdrop-blur-none");
+    expect(controlBar).toContain("rounded-none bg-transparent px-0.5");
     expect(controlBar).toContain("lg:inset-x-3");
     expect(controlBar).toContain("lg:rounded-[1.4rem]");
-    expect(controlBar).toContain('data-classroom-fixed-controls-surface="optical-glass"');
+    expect(controlBar).toContain('data-classroom-fixed-controls-surface="shared-parent-glass"');
     expect(toolbar).toContain('data-whiteboard-toolbar-layout={isRail && railExpanded ? "wrapped" : "row"}');
   });
 
