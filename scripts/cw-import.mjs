@@ -430,6 +430,7 @@ function normalizeLecture(row) {
     lessonName: typeof lecture.lessonName === "string" ? lecture.lessonName : "",
     pageCount: lecture.pageCount,
     documentAdapter: lecture.documentAdapter ?? null,
+    sourceRuntimePackageHash: lecture.sourceRuntimePackageHash ?? null,
     sourceSystem: lecture.sourceSystem ?? null,
     sourcePackageKey: lecture.sourcePackageKey ?? null,
     sourcePackageManifestSha256: lecture.sourcePackageManifestSha256 ?? null,
@@ -1886,6 +1887,10 @@ export async function importCourseware(options) {
   });
   const preflight = JSON.parse(runSql(buildPreflightSql(plan), options));
   if (preflight.matches !== 1) fail(`target lecture mapping returned ${preflight.matches} rows`);
+  // Compile the complete write transaction before dry-run returns and before
+  // any append-only Storage upload begins. This keeps dry-run representative
+  // and prevents a malformed database plan from leaving partial new objects.
+  const importSql = buildImportSql(plan, options);
   const summary = {
     exportId: plan.exportId,
     coursewareId: plan.lecture.coursewareId,
@@ -1928,7 +1933,7 @@ export async function importCourseware(options) {
   const client = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
   prewarmLocalStorageObjects(plan, options);
   const storage = await uploadPlan(plan, path.resolve(options.storeRoot), client, { url: resumableUrl, key }, options.quiet);
-  const database = JSON.parse(runSql(buildImportSql(plan, options), options));
+  const database = JSON.parse(runSql(importSql, options));
   const problems = [];
   if (database.bindings.conflicts > 0) problems.push(`${database.bindings.conflicts} binding conflicts`);
   const unresolvedBaselineDrift = database.pages.baselineDrift - (database.pages.sourceRuntimeUpgraded ?? 0);

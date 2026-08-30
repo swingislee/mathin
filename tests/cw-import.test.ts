@@ -51,7 +51,7 @@ async function createPackageFixture(html = RICH_HTML) {
     interactions: [],
   };
   const files = await Promise.all([
-    writeFixtureFile(root, "lectures.ndjson", `${JSON.stringify({ coursewareId: "sample-courseware", mathinProductCode: "MFHK00001", lessonIndex: 1, lessonName: "样本", pageCount: 1 })}\n`),
+    writeFixtureFile(root, "lectures.ndjson", `${JSON.stringify({ coursewareId: "sample-courseware", mathinProductCode: "MFHK00001", lessonIndex: 1, lessonName: "样本", pageCount: 1, sourceRuntimePackageHash: "7".repeat(64) })}\n`),
     writeFixtureFile(root, "asset-objects.ndjson", `${JSON.stringify({ objectHash: normalHash, mime: "image/png", byteCount: 1, storeRelativePath: `objects/sha256/aa/${normalHash}`, kind: "image" })}\n`),
     writeFixtureFile(root, "candidates.ndjson", `${JSON.stringify({ candidateKey: candidateNormal, objectHash: normalHash, kind: "image", role: "background" })}\n${JSON.stringify({ candidateKey: candidateH5, objectHash: h5Hash, kind: "h5", role: "entry" })}\n`),
     writeFixtureFile(root, "usages.ndjson", `${JSON.stringify({ usageKey: usageNormal, coursewareId: "sample-courseware", pageDatabaseId: 1, objectHash: normalHash, objectKind: "cas", candidateKey: candidateNormal, role: "background", kind: "image" })}\n${JSON.stringify({ usageKey: usageH5, coursewareId: "sample-courseware", pageDatabaseId: 1, objectHash: h5Hash, objectKind: "h5_package", candidateKey: candidateH5, role: "entry", kind: "h5", launchQuery: { level: ["3"] }, coursewareIdParam: "lesson" })}\n`),
@@ -86,6 +86,7 @@ describe("P6 courseware importer", () => {
     const plan = await loadImportPlan({ packageRoot: fixture.root, coursewareId: "sample-courseware" });
 
     expect(plan.pages).toHaveLength(1);
+    expect(plan.lecture.sourceRuntimePackageHash).toBe("7".repeat(64));
     expect(plan.objects).toHaveLength(2);
     expect(plan.assets).toHaveLength(2);
     expect(plan.bindings).toEqual(expect.arrayContaining([
