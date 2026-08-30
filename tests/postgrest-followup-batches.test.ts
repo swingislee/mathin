@@ -2,9 +2,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   createClient: vi.fn(),
+  getOrganizationTimezoneV2: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.createClient }));
+vi.mock("@/features/school/organization-locations", () => ({
+  getOrganizationTimezoneV2: mocks.getOrganizationTimezoneV2,
+}));
 
 const { listFollowUpBoard } = await import("@/features/school/followups");
 
@@ -13,6 +17,7 @@ describe("follow-up board PostgREST hardening", () => {
     vi.clearAllMocks();
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-07-31T08:00:00.000Z"));
+    mocks.getOrganizationTimezoneV2.mockResolvedValue("Asia/Shanghai");
   });
 
   it("keeps all follow-up and enrollment filters in bounded batches", async () => {

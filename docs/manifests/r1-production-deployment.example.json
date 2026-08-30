@@ -190,7 +190,7 @@
     {
       "key": "operations-runbook",
       "path": "docs/runbooks/r1-production-deployment-preflight.md",
-      "sha256": "1c87cf6ded3c38ffa295b96b93544a85525f73f68ec28e9154d9d7c209f4c135"
+      "sha256": "fc099db47c2c15ffeb7c7523745b185278014065bdcfa64819dc18e17f47377b"
     },
     {
       "key": "rollback-controller",

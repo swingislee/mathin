@@ -12,7 +12,9 @@ describe("P6 adaptation review and release workflow", () => {
     const migration = read("supabase", "migrations", "20260726000100_p6_adapt_release_and_class_builder.sql");
 
     expect(page).toContain("AdaptReviewFilters");
-    expect(page).toContain('requestedTab === "pages" || requestedTab === "releases"');
+    expect(page).toContain('requested === "backgrounds" || requested === "rework" || requested === "pages"');
+    expect(page).toContain('|| requested === "releases" || requested === "history"');
+    expect(page).toContain("resolveReviewTab(requestedTab, canReviewMicrocourses)");
     expect(data).toContain('"list_cw_adapt_background_review_queue"');
     expect(data).toContain('"list_cw_adapt_page_review_queue"');
     expect(data).toContain('"list_cw_adapt_release_queue"');

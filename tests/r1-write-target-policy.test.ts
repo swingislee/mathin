@@ -284,8 +284,9 @@ describe("R1-Live production write target policy", () => {
     }
     const batch = read("scripts/aixuexi-import-all.mjs");
     expect(batch).toContain('arg === "--allow-production-target"');
-    expect(batch).toContain('args.push("--allow-production-target")');
-    expect(batch).toContain('args.push("--local-docker", "--database-url", options.databaseUrl)');
+    expect(batch).toContain("allowProductionTarget: options.allowProductionTarget");
+    expect(batch).toContain("localDocker: options.localDocker");
+    expect(batch).toContain("databaseUrl: options.databaseUrl");
   });
 
   it("keeps the checked-in environment example local and the CI rebuild explicitly attested", () => {

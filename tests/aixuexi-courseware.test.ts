@@ -270,6 +270,7 @@ describe("Aixuexi courseware adapter", () => {
         lessonName: "混合运算",
         pageCount: 1,
         documentAdapter: "source-runtime-v1",
+        sourceRuntimePackageHash: key("f"),
         sourceSystem: "aixuexi_bsk",
         sourcePackageKey: "2026-gplus-sujiao-math",
         sourcePackageManifestSha256: key("e"),

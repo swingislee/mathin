@@ -34,7 +34,7 @@ describe("P6 adaptation background rework contract", () => {
     expect(rework).toContain("track=adapted-4x3");
     expect(rework).toContain("track=native-16x9");
     expect(rework).toContain("adaptChangeClassification");
-    expect(page).toContain('requestedTab === "rework"');
-    expect(page).toContain('requestedTab === "history"');
+    expect(page).toContain('requested === "backgrounds" || requested === "rework" || requested === "pages"');
+    expect(page).toContain('|| requested === "releases" || requested === "history"');
   });
 });

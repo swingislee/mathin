@@ -65,9 +65,10 @@ describe("dashboard functional information architecture", () => {
     const calendar = read("src/features/school/TeachingCalendarManager.tsx");
     const campuses = read("src/features/school/CampusList.tsx");
 
-    expect(profile).toContain('className="max-w-5xl border-y border-line"');
+    expect(profile).toContain('className="max-w-5xl"');
+    expect(profile).not.toContain('className="max-w-5xl border-y border-line"');
     expect(defaults).toContain('id="schedule-defaults"');
-    expect(calendar).toContain('className="border-y border-line py-5"');
+    expect(calendar).toContain('className="border-t border-line/60 pt-6"');
     expect(campuses).toContain("<Table");
     expect(campuses).not.toContain("md:grid-cols-2");
   });

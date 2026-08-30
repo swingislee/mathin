@@ -44,7 +44,7 @@ describe("teacher microcourse authoring UX", () => {
     expect(en).toContain('"sourceCourseLabel"');
   });
 
-  it("keeps details compact and autosaves every page mode before navigation", () => {
+  it("keeps details compact and autosaves composition pages before navigation", () => {
     const editor = read("src", "features", "teacher-microcourses", "MicrocourseEditor.tsx");
     const zh = read("messages", "zh.json");
     const en = read("messages", "en.json");
@@ -55,9 +55,9 @@ describe("teacher microcourse authoring UX", () => {
     expect(editor).toContain("await persistCurrentPage()");
     expect(editor).toContain("window.setTimeout(() => void flushRef.current(), 800)");
     expect(editor).toContain("saveTeacherMicrocoursePageAction");
-    expect(editor).toContain("updateTeacherH5PageAction");
-    expect(editor).toContain("h5Html: htmlSnapshot");
-    expect(editor).toContain("htmlEditedRef.current");
+    expect(editor).toContain("createTeacherCompositionPageAction");
+    expect(editor).toContain("CoursewareCompositionWorkbench");
+    expect(editor).toContain("isCoursewareCompositionPage");
     expect(editor).toContain('data-testid="microcourse-autosave-status"');
     expect(zh).toContain('"pageAutosaving"');
     expect(en).toContain('"pageAutosaving"');

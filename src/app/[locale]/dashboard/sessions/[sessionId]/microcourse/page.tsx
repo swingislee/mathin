@@ -59,7 +59,7 @@ async function TeacherMicrocourseContent({
   ]);
   if (!session || session.lectureId !== null) notFound();
   if (!enabled) {
-    return <section className="max-w-2xl border-y border-line py-5"><h2 className="text-lg font-medium">{t("featureDisabledTitle")}</h2><p className="mt-1 text-sm text-muted">{t("featureDisabledDescription")}</p><p className="mt-4 text-sm text-muted">{t("featureDisabledHint")}</p></section>;
+    return <section className="max-w-2xl border-y border-line py-5"><h2 className="text-base font-medium">{t("featureDisabledTitle")}</h2><p className="mt-1 text-sm text-muted">{t("featureDisabledDescription")}</p><p className="mt-4 text-sm text-muted">{t("featureDisabledHint")}</p></section>;
   }
   const [variants, topics] = await Promise.all([
     listTeacherMicrocourseVariants(sessionId),

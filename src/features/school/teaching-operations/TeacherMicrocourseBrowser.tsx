@@ -240,7 +240,7 @@ export function TeacherMicrocourseBrowser({
         </Select>
       </DashboardCommandState>
       <DashboardCommandFilters>
-        <div className="flex min-w-56 flex-1 items-center gap-2 @3xl/chrome:max-w-xl">
+        <div className="flex basis-56 grow items-center gap-2 @3xl/chrome:max-w-xl">
           <Label className="sr-only" htmlFor="microcourse-search">{t("searchCourses")}</Label>
           <Input id="microcourse-search" value={search} placeholder={t("searchPlaceholder")} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") searchCourses(); }} />
           <Button size="sm" onClick={searchCourses}><Search className="h-4 w-4" /><span className="sr-only @4xl/chrome:not-sr-only">{t("search")}</span></Button>

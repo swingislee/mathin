@@ -27,13 +27,13 @@ describe("P4H course library contract", () => {
     expect(migration).toContain("limit 20 offset");
   });
 
-  it("keeps operating-term controls on scheduling and validates them with schedule.manage", () => {
+  it("keeps operating-term controls in the academic-year workspace and validates them with schedule.manage", () => {
     const coursePage = read("src", "app", "[locale]", "dashboard", "courses", "page.tsx");
-    const schedulePage = read("src", "app", "[locale]", "dashboard", "schedule", "page.tsx");
+    const academicYearsPage = read("src", "app", "[locale]", "dashboard", "academic-years", "page.tsx");
     const actions = read("src", "features", "school", "actions", "courses.ts");
     expect(coursePage).not.toContain("TermManager");
     expect(coursePage).not.toContain("listSchoolTerms");
-    expect(schedulePage).toContain("TermManager");
+    expect(academicYearsPage).toContain("TermManager");
     expect(actions).toContain("createSchoolYearAction");
     expect(actions).toContain("updateSchoolTermDatesAction");
     expect(actions).toContain("activateSchoolTermAction");

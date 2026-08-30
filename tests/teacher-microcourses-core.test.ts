@@ -74,9 +74,9 @@ describe("DEV-TMC-1 teacher microcourse core", () => {
     expect(roadmap).toContain("DEV-TMC-1 · 普通教师短期微课孵化与校内共享");
     expect(roadmap).toContain("生产状态为 **DEPLOYED / PENDING USER ACCEPTANCE**");
     expect(roadmap).toContain("DEV-TMC-2 · 课次课件多方案协作与选用");
-    expect(roadmap).toContain("**IMPLEMENTED / LOCAL MACHINE PASS / DEVELOPMENT ONLY**");
-    expect(completeness).toContain("`DEV-TMC-2` 已在开发端实现");
-    expect(completeness).toContain("产品负责人页面验收仍为 `UNKNOWN`");
-    expect(completeness).toContain("没有新的生产 schema、应用或开关授权");
+    expect(roadmap).toContain("`DEV-TMC-2` 是产品负责人在开发端选入并于 2026-08-28 明确授权部署的独立增量");
+    expect(completeness).toContain("`DEV-TMC-2` 已获明确授权并部署生产");
+    expect(completeness).toContain("`DEV-TMC-4` 当前为 `LOCAL DEVELOPMENT DELIVERED / AWAITING PRODUCT ACCEPTANCE / NOT DEPLOYED`");
+    expect(completeness).toContain("生产迁移未获授权");
   });
 });

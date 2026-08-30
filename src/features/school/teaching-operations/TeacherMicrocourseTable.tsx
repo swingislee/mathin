@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { DashboardTableShell } from "@/features/school/dashboard-page";
 import { cn } from "@/lib/utils";
 import type { TeacherMicrocourseBrowserCourse } from "./teacher-microcourse-browser";
 
@@ -19,7 +20,7 @@ export function TeacherMicrocourseTable({ courses, selectedCourseId, checkedIds,
   onToggleAll: () => void;
 }) {
   const t = useTranslations("school.teacherMicrocourseBrowser");
-  return <Table>
+  return <DashboardTableShell><Table>
     <TableHeader><TableRow>
       {canManage && <TableHead className="w-10"><Checkbox checked={courses.length > 0 && courses.every((course) => checkedIds.has(course.id))} onCheckedChange={onToggleAll} aria-label={t("selectPageCourses")} /></TableHead>}
       <TableHead className="h-9">{t("courseName")}</TableHead>
@@ -44,5 +45,5 @@ export function TeacherMicrocourseTable({ courses, selectedCourseId, checkedIds,
       </TableRow>)}
       {courses.length === 0 && <TableRow><TableCell colSpan={canManage ? 5 : 4} className="py-16 text-center text-muted">{t("noCourses")}</TableCell></TableRow>}
     </TableBody>
-  </Table>;
+  </Table></DashboardTableShell>;
 }

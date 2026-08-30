@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { DashboardTableShell } from "@/features/school/dashboard-page";
 import { useRouter } from "@/i18n/navigation";
 import type { StaffOption } from "../classes";
 import {
@@ -205,7 +206,7 @@ export function TeacherMicrocourseSceneManager({
                 <Button size="sm" variant="secondary" disabled={pending} onClick={() => openNewScene(root.id)}><Plus className="mr-2 h-4 w-4" />{t("addScene")}</Button>
               </div>}
             </header>
-            <div>
+            <DashboardTableShell>
               <Table>
                 <TableHeader><TableRow><TableHead className="w-10" /><TableHead>{t("scene")}</TableHead><TableHead>{t("description")}</TableHead><TableHead>{t("linkedCourses")}</TableHead><TableHead className="text-right">{t("actions")}</TableHead></TableRow></TableHeader>
                 <TableBody>
@@ -213,7 +214,7 @@ export function TeacherMicrocourseSceneManager({
                   {topLevel.length === 0 && <TableRow><TableCell colSpan={5} className="py-8 text-center text-muted">{t("noScenes")}</TableCell></TableRow>}
                 </TableBody>
               </Table>
-            </div>
+            </DashboardTableShell>
           </section>;
         })}
       </div>
@@ -230,9 +231,9 @@ export function TeacherMicrocourseSceneManager({
       {!configuration.canManageOrganization && <p className="rounded-lg border border-line bg-moon/15 p-4 text-sm text-muted">{t("academicReadOnly")}</p>}
       {dimensions.map((group) => <section className="border-y border-line" key={group.kind}>
         <header className="flex items-center justify-between border-b border-line px-3 py-2.5"><div><h2 className="text-sm font-medium">{group.title}</h2><p className="mt-0.5 text-xs text-muted">{t(`${group.kind}Hint`)}</p></div>{configuration.canManageOrganization && <Button size="sm" variant="secondary" onClick={() => setDimensionDraft({ ...emptyDimension, kind: group.kind })}><Plus className="mr-2 h-4 w-4" />{t("add")}</Button>}</header>
-        <Table><TableHeader><TableRow><TableHead>{t("code")}</TableHead><TableHead>{t("chineseName")}</TableHead><TableHead>{t("englishName")}</TableHead><TableHead>{t("status")}</TableHead><TableHead className="text-right">{t("actions")}</TableHead></TableRow></TableHeader><TableBody>
+        <DashboardTableShell><Table><TableHeader><TableRow><TableHead>{t("code")}</TableHead><TableHead>{t("chineseName")}</TableHead><TableHead>{t("englishName")}</TableHead><TableHead>{t("status")}</TableHead><TableHead className="text-right">{t("actions")}</TableHead></TableRow></TableHeader><TableBody>
           {group.rows.map((row, index) => <TableRow key={row.id}><TableCell>{row.code}</TableCell><TableCell>{row.nameZh}</TableCell><TableCell>{row.nameEn}</TableCell><TableCell><Badge variant={row.active ? "secondary" : "outline"}>{row.active ? t("active") : t("inactive")}</Badge></TableCell><TableCell><div className="flex justify-end gap-1">{configuration.canManageOrganization && <><Button size="sm" className="h-9 w-9 p-0" variant="ghost" disabled={pending || index === 0} onClick={() => dimensionMove.run({ kind: group.kind, id: row.id, direction: -1 })}><ArrowUp className="h-4 w-4" /></Button><Button size="sm" className="h-9 w-9 p-0" variant="ghost" disabled={pending || index === group.rows.length - 1} onClick={() => dimensionMove.run({ kind: group.kind, id: row.id, direction: 1 })}><ArrowDown className="h-4 w-4" /></Button><Button size="sm" variant="ghost" onClick={() => setDimensionDraft({ id: row.id, kind: group.kind, parentId: row.parentId, code: row.code, nameZh: row.nameZh, nameEn: row.nameEn, gradeNo: row.gradeNo, legacySeason: row.legacySeason ?? null, active: row.active })}>{t("edit")}</Button></>}</div></TableCell></TableRow>)}
-        </TableBody></Table>
+        </TableBody></Table></DashboardTableShell>
       </section>)}
     </TabsContent>
 
