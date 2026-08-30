@@ -1,7 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { ORGANIZATION_FEATURE_KEYS } from "../src/features/school/organization-settings-contract";
+import {
+  CONFIGURABLE_ORGANIZATION_FEATURE_KEYS,
+  ORGANIZATION_FEATURE_KEYS,
+} from "../src/features/school/organization-settings-contract";
 
 const root = process.cwd();
 const read = (file: string) => fs.readFileSync(path.join(root, file), "utf8");
@@ -14,6 +17,11 @@ const notebookAssertions = read("supabase/tests/r1_notebook_assertions.sql");
 const preparationUnlock = read("supabase/migrations/20260731000500_r1_preparation_archive_unlock.sql");
 
 describe("R1-1 organization settings contracts", () => {
+  it("keeps retired rollout history readable without exposing it as a live control", () => {
+    expect(ORGANIZATION_FEATURE_KEYS).toContain("teaching.teacher_microcourse_browser_v2");
+    expect(CONFIGURABLE_ORGANIZATION_FEATURE_KEYS).not.toContain("teaching.teacher_microcourse_browser_v2");
+  });
+
   it("ships explicit organization, campus, calendar, rule, and flag schema with RLS", () => {
     for (const table of ["organizations", "campuses", "campus_rooms", "school_holidays", "organization_rule_versions", "feature_flag_versions"]) {
       expect(migration).toContain(`create table public.${table}`);
