@@ -34,8 +34,9 @@ describe("narrow classroom layout", () => {
     expect(shell).toContain("data-classroom-wide-course-info");
     expect(shell).toContain('className="hidden xl:block"');
     expect(shell).toContain("grid-rows-[minmax(7rem,1fr)_13rem]");
-    expect(shell).toContain("lg:grid-rows-[minmax(8rem,1fr)_17.5rem]");
-    expect(shell).toContain("xl:grid-rows-[2.5rem_minmax(8rem,1fr)_17.5rem]");
+    expect(shell).toContain("lg:grid-rows-[minmax(8rem,1fr)_14.25rem]");
+    expect(shell).toContain("xl:grid-rows-[2.5rem_minmax(8rem,1fr)_14.25rem]");
+    expect(shell).toContain('"grid min-h-[21rem] w-full flex-none gap-1 bg-transparent lg:min-h-0"');
   });
 
   it("ships a scrollbar-free horizontal tray with upward expansion and wrapped full tools", () => {
@@ -58,6 +59,7 @@ describe("narrow classroom layout", () => {
     const shell = source("src/features/classroom/live/LiveShell.tsx");
     const panel = source("src/features/school/SessionLearningCheckPanel.tsx");
     const fillRail = source("src/features/school/LearningFillRail.tsx");
+    const roster = source("src/features/classroom/live/ClassroomRosterGrid.tsx");
 
     expect(shell).toContain('data-classroom-selection-policy="none-during-teaching"');
     expect(shell).toContain("[-webkit-touch-callout:none]");
@@ -68,5 +70,7 @@ describe("narrow classroom layout", () => {
     expect(panel).toContain('"hidden min-h-0 min-w-0 flex-1 gap-0.5 sm:grid"');
     expect(fillRail).toContain('data-learning-fill-layout="mobile-row-desktop-rail"');
     expect(fillRail).toContain("sm:flex-col");
+    expect(roster).toContain('data-roster-density="44px-rows-2px-gap"');
+    expect(roster).toContain("auto-rows-[2.75rem] content-start gap-0.5");
   });
 });

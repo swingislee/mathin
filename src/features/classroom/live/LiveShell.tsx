@@ -1747,7 +1747,7 @@ export function LiveShell({
         <div
           className={cn(
             teacherLayoutV2
-              ? "grid min-h-[21rem] w-full flex-none gap-1.5 bg-transparent lg:min-h-0 lg:gap-2"
+              ? "grid min-h-[21rem] w-full flex-none gap-1 bg-transparent lg:min-h-0"
               : "flex min-h-0 w-full flex-1 flex-col gap-2 rounded-2xl bg-paper/95 shadow-sm transition-[width] duration-200 lg:ml-auto lg:flex-none lg:shrink-0",
             // 分栏阈值从 xl 提到 lg（doc 27 §5.1 H4）：1024 横屏是直播课堂最典型的教师终端，
             // 原先落在 xl 之下，主板书、副板书、名录与控制条全部纵向堆叠，上课要滚动才看得到名录。
@@ -1755,7 +1755,7 @@ export function LiveShell({
             teacherLayoutV2
               ? sideCollapsed
                 ? "grid-rows-[2.75rem_minmax(0,1fr)] xl:grid-rows-[2.5rem_2.75rem_minmax(0,1fr)]"
-                : "grid-rows-[minmax(7rem,1fr)_13rem] lg:grid-rows-[minmax(8rem,1fr)_17.5rem] xl:grid-rows-[2.5rem_minmax(8rem,1fr)_17.5rem]"
+                : "grid-rows-[minmax(7rem,1fr)_13rem] lg:grid-rows-[minmax(8rem,1fr)_14.25rem] xl:grid-rows-[2.5rem_minmax(8rem,1fr)_14.25rem]"
               : sideCollapsed && rosterCollapsed
                 ? "lg:w-[5.25rem]"
                 : sideCollapsed

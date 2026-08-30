@@ -89,8 +89,9 @@ export function ClassroomRosterGrid({
       data-roster-scroll={slots.length > 20 ? "internal" : "none"}
     >
       <ul
-        className="grid min-h-0 flex-1 auto-rows-[minmax(2.75rem,auto)] gap-1 overflow-y-auto overscroll-contain"
+        className="grid min-h-0 flex-1 auto-rows-[2.75rem] content-start gap-0.5 overflow-y-auto overscroll-contain"
         style={{ gridTemplateColumns: `repeat(${LEARNING_SEAT_COLUMNS}, minmax(0, 1fr))` }}
+        data-roster-density="44px-rows-2px-gap"
         data-roster-column-count={LEARNING_SEAT_COLUMNS}
         data-roster-slot-count={slots.length}
       >
