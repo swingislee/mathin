@@ -108,9 +108,15 @@ describe("DEV-TMC-4 teacher microcourse browser v2", () => {
     expect(browser).toContain("coursePreferenceKey");
     expect(browser).toContain("searchAll");
     expect(browser).toContain("mobilePreviewOpen");
+    expect(browser).toContain("setPreviewLoad({ courseId, status: \"loading\" })");
+    expect(browser).toContain("prefetched?.promise ?? loadPreview(courseId, controller.signal)");
     expect(table).toContain("<Table");
     expect(table).toContain('event.key !== "ArrowDown"');
+    expect(table).toContain("onMouseLeave={() => onCancelPrefetch(course.id)}");
     expect(preview).toContain("data-teacher-microcourse-quick-preview");
+    expect(preview).toContain('loadState === "loading"');
+    expect(preview).toContain('loadState === "error"');
+    expect(preview).toContain('t("retryPreview")');
     expect(model).toContain("PAGE_SIZE = 30");
     expect(model).toContain("parseTeacherMicrocourseBrowserQuery");
     expect(model).toContain("buildTeacherMicrocourseBrowserModel");
@@ -186,9 +192,20 @@ describe("DEV-TMC-4 teacher microcourse browser v2", () => {
     expect(browser).toContain("new Map<string, TeacherMicrocourseQuickPreviewData>");
     expect(browser).toContain("previewCache.current.size > 20");
     expect(browser).toContain("new AbortController()");
+    expect(browser).toContain("prefetchTimers.current.delete(courseId)");
+    expect(browser).toContain("for (const request of prefetchRequests.current.values()) request.controller.abort()");
     expect(browser).toContain("}, 120)");
     expect(api).toContain('supabase.rpc("get_teacher_microcourse_quick_preview"');
     expect(api).toContain('\"Cache-Control\": \"private, no-store\"');
+  });
+
+  it("exposes classification maintenance beside the selected course instead of hiding it in bulk controls", () => {
+    const browser = read("src", "features", "school", "teaching-operations", "TeacherMicrocourseBrowser.tsx");
+    const preview = read("src", "features", "school", "teaching-operations", "TeacherMicrocourseQuickPreview.tsx");
+    expect(browser).toContain("openScopeEditor([selectedCourseId])");
+    expect(browser).toContain("scopeCourseIds");
+    expect(preview).toContain('t("addClassification")');
+    expect(preview).toContain('t("editClassification")');
   });
 
   it("supports subject-managed branch ownership and non-destructive duplicate governance", () => {
