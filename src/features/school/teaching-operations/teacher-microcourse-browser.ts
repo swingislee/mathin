@@ -43,6 +43,7 @@ export interface TeacherMicrocourseBrowserCourse {
   classLabel: string;
   sceneNames: string[];
   scope: TeacherMicrocourseCourseScope;
+  previewLoaded: boolean;
   preview: TeacherMicrocourseQuickPreview;
 }
 
@@ -251,7 +252,8 @@ export function buildTeacherMicrocourseBrowserModel({ entries, scopes, previews,
   const pageEntries = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const courses = pageEntries.map((entry): TeacherMicrocourseBrowserCourse => {
     const scope = scopeMap.get(entry.id) ?? emptyScope(entry.id);
-    const preview = previewMap.get(entry.id) ?? emptyPreview(entry);
+    const loadedPreview = previewMap.get(entry.id);
+    const preview = loadedPreview ?? emptyPreview(entry);
     return {
       id: entry.id,
       title: entry.title,
@@ -263,6 +265,7 @@ export function buildTeacherMicrocourseBrowserModel({ entries, scopes, previews,
       ready: entry.lectureCount > 0 && entry.releasedLectureCount === entry.lectureCount,
       ...scopeLabels(scope, configuration, locale),
       scope,
+      previewLoaded: Boolean(loadedPreview),
       preview,
     };
   });

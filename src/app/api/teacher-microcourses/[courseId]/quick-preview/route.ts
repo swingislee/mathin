@@ -7,8 +7,9 @@ export async function GET(_request: Request, { params }: { params: Promise<{ cou
   const courseId = z.uuid().safeParse((await params).courseId);
   if (!courseId.success) return NextResponse.json({ code: "NOT_FOUND" }, { status: 404 });
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ code: "UNAUTHENTICATED" }, { status: 401 });
+  // This security-definer RPC rejects a missing auth.uid() and rechecks course
+  // visibility inside PostgreSQL. Avoid a second, serial Auth API round trip on
+  // every row selection; the database remains the authorization authority.
   const { data, error } = await supabase.rpc("get_teacher_microcourse_quick_preview", {
     p_course_id: courseId.data,
   });

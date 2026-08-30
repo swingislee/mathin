@@ -30,9 +30,9 @@ export function TeacherMicrocourseTable({ courses, selectedCourseId, checkedIds,
       <TableHead className="hidden h-9 @4xl/page:table-cell">{t("classTypes")}</TableHead>
     </TableRow></TableHeader>
     <TableBody>
-      {courses.map((course, index) => <TableRow key={course.id} className={cn(selectedCourseId === course.id && "bg-moon/25")} onMouseEnter={() => onPrefetch(course.id)} onMouseLeave={() => onCancelPrefetch(course.id)} onFocus={() => onPrefetch(course.id)} onBlur={() => onCancelPrefetch(course.id)}>
-        {canManage && <TableCell className="py-2"><Checkbox checked={checkedIds.has(course.id)} onCheckedChange={() => onToggle(course.id)} aria-label={t("selectCourse", { name: course.title })} /></TableCell>}
-        <TableCell className="py-2"><Button data-course-select variant="ghost" size="sm" className="h-auto max-w-full justify-start whitespace-normal px-0 py-0 text-left" onClick={() => onSelect(course.id)} onKeyDown={(event) => {
+      {courses.map((course, index) => <TableRow key={course.id} aria-selected={selectedCourseId === course.id} className={cn("cursor-pointer", selectedCourseId === course.id && "bg-moon/25")} onClick={() => onSelect(course.id)} onMouseEnter={() => onPrefetch(course.id)} onMouseLeave={() => onCancelPrefetch(course.id)} onFocus={() => onPrefetch(course.id)} onBlur={() => onCancelPrefetch(course.id)}>
+        {canManage && <TableCell className="py-2" onClick={(event) => event.stopPropagation()}><Checkbox checked={checkedIds.has(course.id)} onCheckedChange={() => onToggle(course.id)} aria-label={t("selectCourse", { name: course.title })} /></TableCell>}
+        <TableCell className="py-2"><Button data-course-select variant="ghost" size="sm" className="h-auto max-w-full justify-start whitespace-normal px-0 py-0 text-left" onClick={(event) => { event.stopPropagation(); onSelect(course.id); }} onKeyDown={(event) => {
           if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
           const nextIndex = event.key === "ArrowDown" ? Math.min(courses.length - 1, index + 1) : Math.max(0, index - 1);
           if (nextIndex === index) return;

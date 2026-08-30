@@ -69,9 +69,10 @@ export function TeacherMicrocourseBrowser({
   const [termIds, setTermIds] = useState(() => new Set(model.query.termIds));
   const [systemIds, setSystemIds] = useState(() => new Set(model.query.classSystemIds));
   const [classTypeIds, setClassTypeIds] = useState(() => new Set(model.query.classTypeIds));
-  const initialPreview = model.selectedCourseId
-    ? model.courses.find((course) => course.id === model.selectedCourseId)?.preview ?? null
-    : null;
+  const initialCourse = model.selectedCourseId
+    ? model.courses.find((course) => course.id === model.selectedCourseId)
+    : undefined;
+  const initialPreview = initialCourse?.previewLoaded ? initialCourse.preview : null;
   const previewCache = useRef(new Map<string, TeacherMicrocourseQuickPreviewData>(
     model.selectedCourseId && initialPreview
       ? [[model.selectedCourseId, initialPreview]]
@@ -89,7 +90,7 @@ export function TeacherMicrocourseBrowser({
   const [previewLoad, setPreviewLoad] = useState<{
     courseId: string | null;
     status: "idle" | "loading" | "ready" | "error";
-  }>({ courseId: model.selectedCourseId, status: initialPreview ? "ready" : "idle" });
+  }>({ courseId: model.selectedCourseId, status: initialPreview ? "ready" : model.selectedCourseId ? "loading" : "idle" });
   const selectedCourseId = model.courses.some((course) => course.id === selectedCourseIdCandidate)
     ? selectedCourseIdCandidate
     : model.selectedCourseId;
@@ -162,6 +163,13 @@ export function TeacherMicrocourseBrowser({
       navigate({ browse: stored, node: window.localStorage.getItem(nodePreferenceKey(stored)) ?? undefined, page: undefined, course: undefined });
     }
   }, [browseWasExplicit, navigate]);
+
+  useEffect(() => {
+    const courseId = model.selectedCourseId;
+    if (!courseId || initialPreview) return;
+    const timer = window.setTimeout(() => requestPreview(courseId), 0);
+    return () => window.clearTimeout(timer);
+  }, [initialPreview, model.selectedCourseId, requestPreview]);
 
   useEffect(() => {
     if (courseWasExplicit) return;
