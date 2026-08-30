@@ -50,11 +50,14 @@ describe("narrow classroom layout", () => {
     expect(shell).toContain("data-classroom-narrow-course-info");
     expect(shell).toContain('className="shrink-0 xl:hidden"');
     expect(shell).toContain("data-classroom-wide-course-info");
-    expect(shell).toContain('className="hidden -translate-y-2 xl:block"');
+    expect(shell).toContain('className="hidden xl:block"');
     expect(shell).toContain("grid-rows-[minmax(7rem,1fr)_auto]");
     expect(shell).toContain("lg:grid-rows-[minmax(8rem,1fr)_auto]");
-    expect(shell).toContain("xl:grid-rows-[2rem_minmax(8rem,1fr)_auto]");
-    expect(shell).toContain("xl:grid-rows-[2rem_2.75rem_minmax(0,1fr)]");
+    expect(shell).toContain("xl:grid-rows-[2.5rem_minmax(8rem,1fr)_auto]");
+    expect(shell).toContain("xl:grid-rows-[2.5rem_2.75rem_minmax(0,1fr)]");
+    expect(shell).toContain('teacherLayoutV2 ? "pb-[calc(3.5rem+env(safe-area-inset-bottom))] pt-1" : "pb-2 pt-2"');
+    expect(shell).toContain("lg:overflow-hidden xl:mt-0");
+    expect(shell).toContain('"relative flex min-w-0 shrink-0 items-center justify-center lg:min-h-0 lg:flex-1 lg:shrink"');
     expect(shell).toContain('"grid min-h-[21rem] w-full flex-none gap-1 bg-transparent lg:min-h-0"');
   });
 
