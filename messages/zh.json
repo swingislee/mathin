@@ -2638,6 +2638,8 @@
       "editingTeachingPlan": "正在编辑 · 未发布到班级",
       "previewDirectory": "页面目录",
       "coursewarePreview": "课件预览",
+      "previewPageLoading": "正在载入第 {page} 页…",
+      "previewPageLoadFailed": "这一页暂时无法载入。",
       "previewKeyboardHint": "方向键 / PageUp / PageDown / 空格翻页",
       "previewUntitledPage": "未命名页",
       "editingTeachingPlanHint": "统一保存讲次名称、教学目标和顺序；归档不会删除任何历史引用。",

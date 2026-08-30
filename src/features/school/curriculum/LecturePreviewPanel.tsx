@@ -5,6 +5,7 @@ import type { CoursewareLecturePreview, CoursewareTrack } from "@/features/cours
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { LectureCoursewarePreview } from "./LectureCoursewarePreview";
+import { LecturePreviewTrackSwitcher } from "./LecturePreviewTrackSwitcher";
 
 /** `baseHref` 已经带着调用页面自己的 `?...` 查询串,拼接时只用 `&`(对齐历史版本约定)。 */
 function previewHref(baseHref: string, lectureId: string, page: number, track: CoursewareTrack) {
@@ -39,10 +40,12 @@ export async function LecturePreviewPanel({
         <h2 className="font-display text-lg text-ink">{t("lecturePreviewTitle", { no: preview.lecture.no, name: preview.lecture.name })}</h2>
       </div>
       <div className="mx-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-card/55 px-3 py-2 ring-1 ring-line/45 sm:mx-6">
-        <div className="flex rounded-full border border-line bg-paper p-1" role="group" aria-label={t("coursewareTrack")}>
-          <Link href={previewHref(baseHref, preview.lecture.id, preview.pageIndex, "native-16x9")} className={cn(buttonVariants({ size: "sm", variant: currentTrack === "native-16x9" ? "primary" : "ghost" }), "rounded-full")}>{t("trackNative")}</Link>
-          <Link href={previewHref(baseHref, preview.lecture.id, preview.pageIndex, "adapted-4x3")} className={cn(buttonVariants({ size: "sm", variant: currentTrack === "adapted-4x3" ? "primary" : "ghost" }), "rounded-full")}>{t("trackAdapted")}</Link>
-        </div>
+        <LecturePreviewTrackSwitcher
+          baseHref={baseHref}
+          lectureId={preview.lecture.id}
+          currentTrack={currentTrack}
+          initialPage={preview.pageIndex}
+        />
         <Link href={workspaceHref} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>{t("openLecture")}<ExternalLink className="size-4" /></Link>
       </div>
       <div className="min-h-0 flex-1 overflow-hidden bg-paper px-3 py-4 sm:px-6">

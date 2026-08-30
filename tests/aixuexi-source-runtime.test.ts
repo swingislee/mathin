@@ -143,9 +143,11 @@ describe("producer-owned Aixuexi source runtime", () => {
     );
     expect(host).toContain("<iframe");
     expect(host).toContain("materializePayload");
-    expect(host).toContain("renderedFrameKey === frameKey");
-    expect(host).toContain("runtimeLoadedFor.current = frameKey");
-    expect(host).toContain("runtimePayloadSentFor.current !== frameKey");
+    expect(host).toContain("renderedFrameKey === renderKey");
+    expect(host).toContain("runtimeLoadedFor.current = runtimeInstanceKey");
+    expect(host).toContain("runtimePayloadSentFor.current !== renderKey");
+    expect(host).toContain('key={runtimeInstanceKey}');
+    expect(host).toContain('const renderKey = `${runtimeInstanceKey}:${doc.source.coursewareId}:${doc.source.pageDatabaseId}`');
     expect(host).not.toContain("setRendered(false)");
     expect(host).not.toContain("@/components/ui/button");
     expect(host).not.toContain("进入互动");

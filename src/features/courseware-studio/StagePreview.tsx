@@ -86,7 +86,6 @@ export function StagePreview(props: StagePreviewProps) {
   if (isSourceRuntimePageDoc(props.doc)) {
     return (
       <SourceRuntimeStage
-        key={`${props.doc.source.coursewareId}:${props.doc.source.pageDatabaseId}`}
         {...props as SourceRuntimeStageProps}
       />
     );
