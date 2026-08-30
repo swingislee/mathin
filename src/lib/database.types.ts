@@ -11156,6 +11156,14 @@ export type Database = {
         Args: { p_course_id: string }
         Returns: Json
       }
+      get_teacher_microcourse_branch_members: {
+        Args: { p_course_id: string }
+        Returns: Json
+      }
+      get_teacher_microcourse_quick_preview: {
+        Args: { p_course_id: string }
+        Returns: Json
+      }
       get_teacher_microcourse_browser_capabilities: {
         Args: { p_course_family_id: string }
         Returns: Json
@@ -11178,6 +11186,10 @@ export type Database = {
       }
       select_teacher_microcourse_default_commit: {
         Args: { p_commit_id: string; p_course_id: string; p_reason?: string }
+        Returns: undefined
+      }
+      select_teacher_microcourse_duplicate_canonical: {
+        Args: { p_course_id: string }
         Returns: undefined
       }
       get_teaching_calendar_v2: {
@@ -12070,6 +12082,10 @@ export type Database = {
         }[]
       }
       list_teacher_microcourse_browser_scopes: {
+        Args: { p_course_family_id: string }
+        Returns: Json
+      }
+      list_teacher_microcourse_duplicate_report: {
         Args: { p_course_family_id: string }
         Returns: Json
       }
@@ -13523,6 +13539,14 @@ export type Database = {
           p_grade_ids: string[]
           p_scene_ids: string[]
           p_term_ids: string[]
+        }
+        Returns: undefined
+      }
+      set_teacher_microcourse_branch_members: {
+        Args: {
+          p_branch_id: string
+          p_collaborator_ids?: string[]
+          p_owner_id: string
         }
         Returns: undefined
       }

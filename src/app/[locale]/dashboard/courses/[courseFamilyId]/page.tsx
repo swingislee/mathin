@@ -19,8 +19,8 @@ import { resolveCourseCapabilities } from "@/features/school/teaching-operations
 import type { SelectedCourseVariant } from "@/features/school/teaching-operations/course-family-detail";
 import {
   getTeacherMicrocourseBrowserCapabilities,
+  getTeacherMicrocourseQuickPreview,
   listTeacherMicrocourseBrowserCatalog,
-  listTeacherMicrocourseQuickPreviews,
 } from "@/features/school/teaching-operations/teacher-microcourse-library";
 import { buildTeacherMicrocourseBrowserModel, parseTeacherMicrocourseBrowserQuery } from "@/features/school/teaching-operations/teacher-microcourse-browser";
 import { getTeacherMicrocourseConfiguration, listTeacherMicrocourseCourseScopes } from "@/features/school/teaching-operations/teacher-microcourse-scenes";
@@ -45,6 +45,7 @@ import { listStaffOptions } from "@/features/school/classes";
 import { Link } from "@/i18n/navigation";
 import { getActiveEnvironment, getMyPerms, requirePerm } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { isFeatureEnabled } from "@/features/school/organization-settings";
 
 function first(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -125,16 +126,21 @@ async function CourseFamilyProductPage({
     {detail.family.purpose === "test" && <Badge variant="outline">{t("test")}</Badge>}
   </>;
 
-  if (detail.family.slug === "teacher-microcourses") {
+  if (detail.family.slug === "teacher-microcourses" && await isFeatureEnabled("teaching.teacher_microcourse_browser_v2")) {
     const query = parseTeacherMicrocourseBrowserQuery(rawSearchParams);
-    const [catalogItems, configuration, scopes, previews, capabilities] = await Promise.all([
+    const [catalogItems, configuration, scopes, capabilities] = await Promise.all([
       listTeacherMicrocourseBrowserCatalog(detail.family.id),
       getTeacherMicrocourseConfiguration(detail.family.id),
       listTeacherMicrocourseCourseScopes(detail.family.id),
-      listTeacherMicrocourseQuickPreviews(detail.family.id),
       getTeacherMicrocourseBrowserCapabilities(detail.family.id),
     ]);
-    const model = buildTeacherMicrocourseBrowserModel({ entries: catalogItems, scopes, previews, configuration, query, locale });
+    const initialModel = buildTeacherMicrocourseBrowserModel({ entries: catalogItems, scopes, previews: [], configuration, query, locale });
+    const selectedPreview = initialModel.selectedCourseId
+      ? await getTeacherMicrocourseQuickPreview(initialModel.selectedCourseId)
+      : null;
+    const model = selectedPreview
+      ? buildTeacherMicrocourseBrowserModel({ entries: catalogItems, scopes, previews: [selectedPreview], configuration, query, locale })
+      : initialModel;
     return <TeacherMicrocourseBrowser
       key={`${query.browse}:${query.node ?? "all"}:${query.q ?? ""}:${query.page}:${query.sort}:${query.gradeIds.join(",")}:${query.termIds.join(",")}:${query.classSystemIds.join(",")}:${query.classTypeIds.join(",")}`}
       familyId={detail.family.id}
@@ -145,6 +151,7 @@ async function CourseFamilyProductPage({
       scopes={scopes}
       capabilities={capabilities}
       browseWasExplicit={Boolean(first(rawSearchParams.browse))}
+      courseWasExplicit={Boolean(first(rawSearchParams.course))}
     />;
   }
 

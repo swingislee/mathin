@@ -21,6 +21,8 @@ const CODES = [
   "LECTURE_LIMIT",
   "ALL_LECTURES_REQUIRE_PUBLISHED_RELEASES",
   "PUBLISHED_COMMIT_REQUIRED",
+  "INVALID_COLLABORATORS",
+  "MAINTAINER_HAS_BRANCH",
 ] as const;
 
 const uuidList = z.array(uuid).max(100).refine((items) => new Set(items).size === items.length);
@@ -169,6 +171,52 @@ export async function selectTeacherMicrocourseDefaultCommitAction(input: {
     if (error) throw new Error(error.message);
     revalidatePath(browserPath(value.courseFamilyId));
     revalidatePath(detailPath(value.courseFamilyId, value.courseId));
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, CODES);
+  }
+}
+
+export async function setTeacherMicrocourseBranchMembersAction(input: {
+  courseFamilyId: string;
+  courseId: string;
+  branchId: string;
+  ownerId: string;
+  collaboratorIds: string[];
+}): Promise<ActionResult> {
+  try {
+    const value = parse(familyAndCourse.extend({
+      branchId: uuid,
+      ownerId: uuid,
+      collaboratorIds: uuidList,
+    }), input);
+    const { supabase } = await authorizedClient("subject.microcourse.maintainer.assign");
+    const { error } = await supabase.rpc("set_teacher_microcourse_branch_members", {
+      p_branch_id: value.branchId,
+      p_owner_id: value.ownerId,
+      p_collaborator_ids: value.collaboratorIds,
+    });
+    if (error) throw new Error(error.message);
+    revalidatePath(detailPath(value.courseFamilyId, value.courseId));
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, CODES);
+  }
+}
+
+export async function selectTeacherMicrocourseDuplicateCanonicalAction(input: {
+  courseFamilyId: string;
+  courseId: string;
+}): Promise<ActionResult> {
+  try {
+    const value = parse(familyAndCourse, input);
+    const { supabase } = await authorizedClient("subject.microcourse.maintainer.assign");
+    const { error } = await supabase.rpc("select_teacher_microcourse_duplicate_canonical", {
+      p_course_id: value.courseId,
+    });
+    if (error) throw new Error(error.message);
+    revalidatePath(browserPath(value.courseFamilyId));
+    revalidatePath(`${browserPath(value.courseFamilyId)}/microcourse-settings`);
     return { ok: true };
   } catch (error) {
     return actionError(error, CODES);

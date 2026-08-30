@@ -2,19 +2,19 @@
 
 import { CheckCircle2, CircleDashed } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import type { TeacherMicrocourseBrowserCourse } from "./teacher-microcourse-browser";
 
-export function TeacherMicrocourseTable({ courses, selectedCourseId, checkedIds, canManage, onSelect, onToggle, onToggleAll }: {
+export function TeacherMicrocourseTable({ courses, selectedCourseId, checkedIds, canManage, onSelect, onPrefetch, onToggle, onToggleAll }: {
   courses: TeacherMicrocourseBrowserCourse[];
   selectedCourseId: string | null;
   checkedIds: ReadonlySet<string>;
   canManage: boolean;
   onSelect: (courseId: string) => void;
+  onPrefetch: (courseId: string) => void;
   onToggle: (courseId: string) => void;
   onToggleAll: () => void;
 }) {
@@ -28,9 +28,16 @@ export function TeacherMicrocourseTable({ courses, selectedCourseId, checkedIds,
       <TableHead className="hidden md:table-cell">{t("classTypes")}</TableHead>
     </TableRow></TableHeader>
     <TableBody>
-      {courses.map((course) => <TableRow key={course.id} className={cn(selectedCourseId === course.id && "bg-moon/25")}>
+      {courses.map((course, index) => <TableRow key={course.id} className={cn(selectedCourseId === course.id && "bg-moon/25")} onMouseEnter={() => onPrefetch(course.id)} onFocus={() => onPrefetch(course.id)}>
         {canManage && <TableCell><Checkbox checked={checkedIds.has(course.id)} onCheckedChange={() => onToggle(course.id)} aria-label={t("selectCourse", { name: course.title })} /></TableCell>}
-        <TableCell><Button variant="ghost" size="sm" className="h-auto max-w-full justify-start whitespace-normal px-0 py-1 text-left" onClick={() => onSelect(course.id)}><span><span className="block font-medium text-ink">{course.title}</span><span className="mt-1 flex flex-wrap items-center gap-2 text-xs font-normal text-muted">{course.ready ? <CheckCircle2 className="h-3.5 w-3.5 text-sage" /> : <CircleDashed className="h-3.5 w-3.5" />}<span>{t("lectureSummary", { released: course.releasedLectureCount, total: course.lectureCount })}</span>{course.branchCount > 1 && <Badge variant="outline">{t("branchCount", { count: course.branchCount })}</Badge>}</span></span></Button></TableCell>
+        <TableCell><Button data-course-select variant="ghost" size="sm" className="h-auto max-w-full justify-start whitespace-normal px-0 py-1 text-left" onClick={() => onSelect(course.id)} onKeyDown={(event) => {
+          if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+          const nextIndex = event.key === "ArrowDown" ? Math.min(courses.length - 1, index + 1) : Math.max(0, index - 1);
+          if (nextIndex === index) return;
+          event.preventDefault();
+          onSelect(courses[nextIndex].id);
+          event.currentTarget.closest("table")?.querySelectorAll<HTMLButtonElement>("[data-course-select]").item(nextIndex).focus();
+        }}><span><span className="block font-medium text-ink">{course.title}</span><span className="mt-1 flex flex-wrap items-center gap-2 text-xs font-normal text-muted">{course.ready ? <CheckCircle2 className="h-3.5 w-3.5 text-sage" /> : <CircleDashed className="h-3.5 w-3.5" />}<span>{t("lectureSummary", { released: course.releasedLectureCount, total: course.lectureCount })}</span></span></span></Button></TableCell>
         <TableCell className="max-w-44 text-sm">{course.gradeLabel}</TableCell>
         <TableCell className="hidden max-w-44 text-sm sm:table-cell">{course.termLabel}</TableCell>
         <TableCell className="hidden max-w-52 text-sm md:table-cell">{course.classLabel}</TableCell>

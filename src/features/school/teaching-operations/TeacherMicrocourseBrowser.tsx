@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Filter, FolderTree, Search, Settings2, SlidersHorizontal } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
-import type { TeacherMicrocourseBrowserCapabilities } from "./teacher-microcourse-library";
+import type { TeacherMicrocourseBrowserCapabilities, TeacherMicrocourseQuickPreview as TeacherMicrocourseQuickPreviewData } from "./teacher-microcourse-library";
 import type { TeacherMicrocourseConfiguration, TeacherMicrocourseCourseScope } from "./teacher-microcourse-scenes";
 import type { TeacherMicrocourseBrowseMode, TeacherMicrocourseBrowserModel } from "./teacher-microcourse-browser";
 import { TeacherMicrocourseCreateCourseDialog } from "./TeacherMicrocourseCreateCourseDialog";
@@ -24,6 +24,8 @@ import { TeacherMicrocourseScopeEditor } from "./TeacherMicrocourseScopeEditor";
 import { TeacherMicrocourseTable } from "./TeacherMicrocourseTable";
 
 const BROWSE_PREFERENCE_KEY = "mathin:teacher-microcourse:browse";
+const nodePreferenceKey = (browse: TeacherMicrocourseBrowseMode) => `${BROWSE_PREFERENCE_KEY}:node:${browse}`;
+const coursePreferenceKey = (browse: TeacherMicrocourseBrowseMode, node?: string) => `${BROWSE_PREFERENCE_KEY}:course:${browse}:${node ?? "all"}`;
 
 export function TeacherMicrocourseBrowser({
   familyId,
@@ -34,6 +36,7 @@ export function TeacherMicrocourseBrowser({
   scopes,
   capabilities,
   browseWasExplicit,
+  courseWasExplicit,
 }: {
   familyId: string;
   familyTitle: string;
@@ -43,6 +46,7 @@ export function TeacherMicrocourseBrowser({
   scopes: TeacherMicrocourseCourseScope[];
   capabilities: TeacherMicrocourseBrowserCapabilities;
   browseWasExplicit: boolean;
+  courseWasExplicit: boolean;
 }) {
   const t = useTranslations("school.teacherMicrocourseBrowser");
   const router = useRouter();
@@ -57,7 +61,45 @@ export function TeacherMicrocourseBrowser({
   const [termIds, setTermIds] = useState(() => new Set(model.query.termIds));
   const [systemIds, setSystemIds] = useState(() => new Set(model.query.classSystemIds));
   const [classTypeIds, setClassTypeIds] = useState(() => new Set(model.query.classTypeIds));
-  const selectedCourse = model.courses.find((course) => course.id === selectedCourseId) ?? null;
+  const initialPreview = model.selectedCourseId
+    ? model.courses.find((course) => course.id === model.selectedCourseId)?.preview ?? null
+    : null;
+  const previewCache = useRef(new Map<string, TeacherMicrocourseQuickPreviewData>(
+    model.selectedCourseId && initialPreview
+      ? [[model.selectedCourseId, initialPreview]]
+      : [],
+  ));
+  const selectedCourseIdRef = useRef(model.selectedCourseId);
+  const previewRequest = useRef<AbortController | null>(null);
+  const prefetchTimers = useRef(new Map<string, number>());
+  const [selectedPreview, setSelectedPreview] = useState<TeacherMicrocourseQuickPreviewData | null>(initialPreview);
+  const selectedCourseBase = model.courses.find((course) => course.id === selectedCourseId) ?? null;
+  const selectedCourse = selectedCourseBase && selectedPreview?.courseId === selectedCourseBase.id
+    ? { ...selectedCourseBase, preview: selectedPreview, branchCount: selectedPreview.branchCount }
+    : selectedCourseBase;
+
+  const loadPreview = useCallback(async (courseId: string) => {
+    const cached = previewCache.current.get(courseId);
+    if (cached) return cached;
+    previewRequest.current?.abort();
+    const controller = new AbortController();
+    previewRequest.current = controller;
+    try {
+      const response = await fetch(`/api/teacher-microcourses/${courseId}/quick-preview`, { signal: controller.signal });
+      if (!response.ok) return undefined;
+      const preview = await response.json() as TeacherMicrocourseQuickPreviewData;
+      previewCache.current.set(courseId, preview);
+      while (previewCache.current.size > 20) {
+        const oldest = previewCache.current.keys().next().value as string | undefined;
+        if (!oldest) break;
+        previewCache.current.delete(oldest);
+      }
+      return preview;
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      return undefined;
+    }
+  }, []);
 
   const navigate = useCallback((patch: Record<string, string | undefined>) => {
     const params = new URLSearchParams(window.location.search);
@@ -71,19 +113,63 @@ export function TeacherMicrocourseBrowser({
   useEffect(() => {
     if (browseWasExplicit) return;
     const stored = window.localStorage.getItem(BROWSE_PREFERENCE_KEY);
-    if (stored === "grade" || stored === "term" || stored === "class") navigate({ browse: stored, node: undefined, page: undefined, course: undefined });
+    if (stored === "scene" || stored === "grade" || stored === "term" || stored === "class") {
+      navigate({ browse: stored, node: window.localStorage.getItem(nodePreferenceKey(stored)) ?? undefined, page: undefined, course: undefined });
+    }
   }, [browseWasExplicit, navigate]);
+
+  useEffect(() => {
+    if (courseWasExplicit) return;
+    const stored = window.localStorage.getItem(coursePreferenceKey(model.query.browse, model.query.node));
+    const matching = stored ? model.courses.find((course) => course.id === stored) : undefined;
+    if (!matching || matching.id === selectedCourseIdRef.current) return;
+    selectedCourseIdRef.current = matching.id;
+    setSelectedCourseId(matching.id);
+    setSelectedPreview(previewCache.current.get(matching.id) ?? matching.preview);
+    const params = new URLSearchParams(window.location.search);
+    params.set("course", matching.id);
+    window.history.replaceState(window.history.state, "", `${window.location.pathname}?${params.toString()}`);
+    void loadPreview(matching.id).then((preview) => {
+      if (preview && selectedCourseIdRef.current === matching.id) setSelectedPreview(preview);
+    });
+  }, [courseWasExplicit, loadPreview, model.courses, model.query.browse, model.query.node]);
+
+  useEffect(() => () => {
+    previewRequest.current?.abort();
+    for (const timer of prefetchTimers.current.values()) window.clearTimeout(timer);
+  }, []);
 
   const setBrowse = (value: TeacherMicrocourseBrowseMode) => {
     window.localStorage.setItem(BROWSE_PREFERENCE_KEY, value);
-    navigate({ browse: value, node: undefined, page: undefined, course: undefined });
+    navigate({ browse: value, node: window.localStorage.getItem(nodePreferenceKey(value)) ?? undefined, page: undefined, course: undefined });
+  };
+  const selectDirectory = (node?: string) => {
+    if (node) window.localStorage.setItem(nodePreferenceKey(model.query.browse), node);
+    else window.localStorage.removeItem(nodePreferenceKey(model.query.browse));
+    navigate({ node, page: undefined, course: undefined });
   };
   const selectCourse = (courseId: string) => {
+    selectedCourseIdRef.current = courseId;
     setSelectedCourseId(courseId);
+    setSelectedPreview(previewCache.current.get(courseId)
+      ?? model.courses.find((course) => course.id === courseId)?.preview
+      ?? null);
+    window.localStorage.setItem(coursePreferenceKey(model.query.browse, model.query.node), courseId);
     const params = new URLSearchParams(window.location.search);
     params.set("course", courseId);
     window.history.replaceState(window.history.state, "", `${window.location.pathname}?${params.toString()}`);
+    void loadPreview(courseId).then((preview) => {
+      if (preview && selectedCourseIdRef.current === courseId) setSelectedPreview(preview);
+    });
     if (window.matchMedia("(max-width: 1023px)").matches) setMobilePreviewOpen(true);
+  };
+  const prefetchCourse = (courseId: string) => {
+    if (previewCache.current.has(courseId) || prefetchTimers.current.has(courseId)) return;
+    const timer = window.setTimeout(() => {
+      prefetchTimers.current.delete(courseId);
+      void loadPreview(courseId);
+    }, 120);
+    prefetchTimers.current.set(courseId, timer);
   };
   const toggleChecked = (courseId: string) => setCheckedIds((current) => {
     const next = new Set(current);
@@ -129,9 +215,9 @@ export function TeacherMicrocourseBrowser({
     </Card>
 
     <div className="grid min-w-0 gap-4 @6xl/page:grid-cols-[18rem_minmax(0,1fr)_22rem]">
-      <Card className="min-w-0"><CardHeader><CardTitle className="flex items-center gap-2 text-base"><FolderTree className="h-4 w-4" />{t("virtualDirectory")}</CardTitle><CardDescription>{t("directoryHint")}</CardDescription></CardHeader><CardContent className="max-h-[calc(100dvh-18rem)] overflow-y-auto"><TeacherMicrocourseSceneNavigator nodes={model.directory} selectedNode={model.query.node} allLabel={t("allCourses", { count: model.totalCount })} onSelect={(node) => navigate({ node, page: undefined, course: undefined })} /></CardContent></Card>
+      <Card className="min-w-0"><CardHeader><CardTitle className="flex items-center gap-2 text-base"><FolderTree className="h-4 w-4" />{t("virtualDirectory")}</CardTitle><CardDescription>{t("directoryHint")}</CardDescription></CardHeader><CardContent className="max-h-[calc(100dvh-18rem)] overflow-y-auto"><TeacherMicrocourseSceneNavigator nodes={model.directory} selectedNode={model.query.node} allLabel={t("allCourses", { count: model.totalCount })} onSelect={selectDirectory} /></CardContent></Card>
 
-      <Card className="min-w-0"><CardHeader className="flex-row items-start justify-between gap-4 space-y-0"><div><CardTitle>{t("courseTable")}</CardTitle><CardDescription>{t("courseCount", { count: model.totalCount })}</CardDescription></div>{checkedIds.size > 0 && <Badge variant="secondary">{t("selectedCourses", { count: checkedIds.size })}</Badge>}</CardHeader><CardContent className="p-0"><TeacherMicrocourseTable courses={model.courses} selectedCourseId={selectedCourseId} checkedIds={checkedIds} canManage={capabilities.canManageScopes} onSelect={selectCourse} onToggle={toggleChecked} onToggleAll={toggleAll} /><div className="flex items-center justify-between border-t border-line p-4 text-sm text-muted"><span>{t("pageStatus", { page: model.query.page, pages: model.pageCount })}</span><div className="flex gap-2"><Button variant="secondary" size="sm" disabled={model.query.page <= 1} onClick={() => navigate({ page: String(model.query.page - 1), course: undefined })}>{t("previous")}</Button><Button variant="secondary" size="sm" disabled={model.query.page >= model.pageCount} onClick={() => navigate({ page: String(model.query.page + 1), course: undefined })}>{t("next")}</Button></div></div></CardContent></Card>
+      <Card className="min-w-0"><CardHeader className="flex-row items-start justify-between gap-4 space-y-0"><div><CardTitle>{t("courseTable")}</CardTitle><CardDescription>{t("courseCount", { count: model.totalCount })}</CardDescription></div>{checkedIds.size > 0 && <Badge variant="secondary">{t("selectedCourses", { count: checkedIds.size })}</Badge>}</CardHeader><CardContent className="p-0"><TeacherMicrocourseTable courses={model.courses} selectedCourseId={selectedCourseId} checkedIds={checkedIds} canManage={capabilities.canManageScopes} onSelect={selectCourse} onPrefetch={prefetchCourse} onToggle={toggleChecked} onToggleAll={toggleAll} /><div className="flex items-center justify-between border-t border-line p-4 text-sm text-muted"><span>{t("pageStatus", { page: model.query.page, pages: model.pageCount })}</span><div className="flex gap-2"><Button variant="secondary" size="sm" disabled={model.query.page <= 1} onClick={() => navigate({ page: String(model.query.page - 1), course: undefined })}>{t("previous")}</Button><Button variant="secondary" size="sm" disabled={model.query.page >= model.pageCount} onClick={() => navigate({ page: String(model.query.page + 1), course: undefined })}>{t("next")}</Button></div></div></CardContent></Card>
 
       <aside className="hidden min-w-0 lg:block"><TeacherMicrocourseQuickPreview familyId={familyId} course={selectedCourse} canCreateBranch={capabilities.canCreateBranch} /></aside>
     </div>

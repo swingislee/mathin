@@ -27,7 +27,7 @@ const libraryRowSchema = z.object({
   lecture_titles: z.array(z.string()),
   search_text: z.string(),
 });
-const quickPreviewSchema = z.object({
+export const quickPreviewSchema = z.object({
   courseId: uuidSchema,
   updatedAt: z.string(),
   branchCount: z.number().int().nonnegative(),
@@ -245,6 +245,15 @@ export async function listTeacherMicrocourseQuickPreviews(familyId: string) {
   });
   if (error) throw new Error(error.message);
   return z.array(quickPreviewSchema).parse(data ?? []);
+}
+
+export async function getTeacherMicrocourseQuickPreview(courseId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("get_teacher_microcourse_quick_preview", {
+    p_course_id: uuidSchema.parse(courseId),
+  });
+  if (error) throw new Error(error.message);
+  return quickPreviewSchema.parse(data);
 }
 
 export async function getTeacherMicrocourseBrowserCapabilities(familyId: string) {

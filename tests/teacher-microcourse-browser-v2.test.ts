@@ -8,6 +8,7 @@ const migration = read("supabase", "migrations", "20260830000100_teacher_microco
 const scopeMigration = read("supabase", "migrations", "20260830000200_teacher_microcourse_course_scopes.sql");
 const previewMigration = read("supabase", "migrations", "20260830000300_teacher_microcourse_quick_previews.sql");
 const maintenanceMigration = read("supabase", "migrations", "20260830000400_teacher_microcourse_maintenance.sql");
+const rolloutMigration = read("supabase", "migrations", "20260830000500_teacher_microcourse_rollout.sql");
 
 describe("DEV-TMC-4 teacher microcourse browser v2", () => {
   it("defines the fixed 19-item 766 dictionary and subject-scoped scene tree", () => {
@@ -93,12 +94,16 @@ describe("DEV-TMC-4 teacher microcourse browser v2", () => {
     const model = read("src", "features", "school", "teaching-operations", "teacher-microcourse-browser.ts");
 
     expect(route).toContain("listTeacherMicrocourseBrowserCatalog");
-    expect(route).toContain("listTeacherMicrocourseQuickPreviews");
+    expect(route).toContain("getTeacherMicrocourseQuickPreview");
+    expect(route).toContain('isFeatureEnabled("teaching.teacher_microcourse_browser_v2")');
     expect(browser).toContain("@6xl/page:grid-cols-[18rem_minmax(0,1fr)_22rem]");
     expect(browser).toContain("localStorage");
+    expect(browser).toContain("nodePreferenceKey");
+    expect(browser).toContain("coursePreferenceKey");
     expect(browser).toContain("searchAll");
     expect(browser).toContain("mobilePreviewOpen");
     expect(table).toContain("<Table");
+    expect(table).toContain('event.key !== "ArrowDown"');
     expect(preview).toContain("data-teacher-microcourse-quick-preview");
     expect(model).toContain("PAGE_SIZE = 30");
     expect(model).toContain("parseTeacherMicrocourseBrowserQuery");
@@ -154,5 +159,34 @@ describe("DEV-TMC-4 teacher microcourse browser v2", () => {
     expect(detailRoute).toContain("getTeacherMicrocourseCatalogCourse");
     expect(detailRoute).toContain('section="branches"');
     expect(detailRoute).toContain('section="history"');
+  });
+
+  it("bounds preview reads and client caching to the selected or prefetched course", () => {
+    const browser = read("src", "features", "school", "teaching-operations", "TeacherMicrocourseBrowser.tsx");
+    const api = read("src", "app", "api", "teacher-microcourses", "[courseId]", "quick-preview", "route.ts");
+    expect(rolloutMigration).toContain("get_teacher_microcourse_quick_preview");
+    expect(rolloutMigration).toContain("teacher_microcourse_catalog_courses_family_updated_idx");
+    expect(browser).toContain("new Map<string, TeacherMicrocourseQuickPreviewData>");
+    expect(browser).toContain("previewCache.current.size > 20");
+    expect(browser).toContain("new AbortController()");
+    expect(browser).toContain("}, 120)");
+    expect(api).toContain('supabase.rpc("get_teacher_microcourse_quick_preview"');
+    expect(api).toContain('\"Cache-Control\": \"private, no-store\"');
+  });
+
+  it("supports subject-managed branch ownership and non-destructive duplicate governance", () => {
+    const workspace = read("src", "features", "school", "teaching-operations", "TeacherMicrocourseMaintenanceWorkspace.tsx");
+    const duplicateManager = read("src", "features", "school", "teaching-operations", "TeacherMicrocourseDuplicateManager.tsx");
+    const dbAssertions = read("supabase", "tests", "teacher_microcourse_browser_v2_assertions.sql");
+    expect(rolloutMigration).toContain("set_teacher_microcourse_branch_members");
+    expect(rolloutMigration).toContain("MAINTAINER_HAS_BRANCH");
+    expect(rolloutMigration).toContain("list_teacher_microcourse_duplicate_report");
+    expect(rolloutMigration).toContain("select_teacher_microcourse_duplicate_canonical");
+    expect(rolloutMigration).toContain("Non-destructive duplicate reconciliation");
+    expect(workspace).toContain("setTeacherMicrocourseBranchMembersAction");
+    expect(workspace).toContain("searchHistory");
+    expect(duplicateManager).toContain("selectTeacherMicrocourseDuplicateCanonicalAction");
+    expect(dbAssertions).toContain("NON_DESTRUCTIVE_CANONICAL_SWITCH_FAILED");
+    expect(dbAssertions).toContain("rollback;");
   });
 });

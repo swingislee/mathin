@@ -64,6 +64,35 @@ export const teacherMicrocourseCatalogCourseSchema = z.object({
 
 export type TeacherMicrocourseCatalogCourse = z.infer<typeof teacherMicrocourseCatalogCourseSchema>;
 
+export const teacherMicrocourseBranchMembersSchema = z.object({
+  canManage: z.boolean(),
+  branches: z.array(z.object({
+    branchId: uuid,
+    ownerId: uuid,
+    collaboratorIds: z.array(uuid),
+  })),
+});
+
+export type TeacherMicrocourseBranchMembers = z.infer<typeof teacherMicrocourseBranchMembersSchema>;
+
+export const teacherMicrocourseDuplicateReportSchema = z.object({
+  canManage: z.boolean(),
+  groups: z.array(z.object({
+    normalizedName: z.string(),
+    canonicalCourseId: uuid,
+    courses: z.array(z.object({
+      courseId: uuid,
+      title: z.string(),
+      status: z.enum(["draft", "enabled", "disabled"]),
+      isCanonical: z.boolean(),
+      lectureCount: z.number().int().nonnegative(),
+      createdAt: z.string(),
+    })),
+  })),
+});
+
+export type TeacherMicrocourseDuplicateReport = z.infer<typeof teacherMicrocourseDuplicateReportSchema>;
+
 export async function getTeacherMicrocourseCatalogCourse(courseId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("get_teacher_microcourse_catalog_course", {
@@ -71,4 +100,22 @@ export async function getTeacherMicrocourseCatalogCourse(courseId: string) {
   });
   if (error) throw new Error(error.message);
   return teacherMicrocourseCatalogCourseSchema.parse(data);
+}
+
+export async function getTeacherMicrocourseBranchMembers(courseId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("get_teacher_microcourse_branch_members", {
+    p_course_id: uuid.parse(courseId),
+  });
+  if (error) throw new Error(error.message);
+  return teacherMicrocourseBranchMembersSchema.parse(data);
+}
+
+export async function listTeacherMicrocourseDuplicateReport(courseFamilyId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("list_teacher_microcourse_duplicate_report", {
+    p_course_family_id: uuid.parse(courseFamilyId),
+  });
+  if (error) throw new Error(error.message);
+  return teacherMicrocourseDuplicateReportSchema.parse(data);
 }

@@ -5,6 +5,8 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { listStaffOptions } from "@/features/school/classes";
 import { TeacherMicrocourseSceneManager } from "@/features/school/teaching-operations/TeacherMicrocourseSceneManager";
+import { TeacherMicrocourseDuplicateManager } from "@/features/school/teaching-operations/TeacherMicrocourseDuplicateManager";
+import { listTeacherMicrocourseDuplicateReport } from "@/features/school/teaching-operations/teacher-microcourse-maintenance";
 import { getTeacherMicrocourseConfiguration } from "@/features/school/teaching-operations/teacher-microcourse-scenes";
 import { Link } from "@/i18n/navigation";
 import { requirePerm } from "@/lib/auth";
@@ -34,8 +36,12 @@ async function TeacherMicrocourseSettingsContent({
   await requirePerm(locale, "course.view");
   const t = await getTranslations("school.teacherMicrocourseBrowser");
   let configuration;
+  let duplicateReport;
   try {
-    configuration = await getTeacherMicrocourseConfiguration(courseFamilyId);
+    [configuration, duplicateReport] = await Promise.all([
+      getTeacherMicrocourseConfiguration(courseFamilyId),
+      listTeacherMicrocourseDuplicateReport(courseFamilyId),
+    ]);
   } catch (error) {
     if (error instanceof Error && error.message.includes("COURSE_FAMILY_NOT_FOUND")) notFound();
     throw error;
@@ -61,6 +67,7 @@ async function TeacherMicrocourseSettingsContent({
       configuration={configuration}
       staffOptions={staffOptions}
     />
+    <TeacherMicrocourseDuplicateManager courseFamilyId={courseFamilyId} report={duplicateReport} />
   </div>;
 }
 

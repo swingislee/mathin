@@ -9,8 +9,9 @@ import { loadLecturePreview, parseCoursewareTrack } from "@/features/courseware-
 import { LecturePreviewDialog } from "@/features/school/curriculum/LecturePreviewDialog";
 import { LecturePreviewPanel } from "@/features/school/curriculum/LecturePreviewPanel";
 import { TeachingPlan } from "@/features/school/teaching-operations/TeachingPlan";
+import { listStaffOptions } from "@/features/school/classes";
 import { TeacherMicrocourseAddLectureDialog, TeacherMicrocourseMaintenanceWorkspace } from "@/features/school/teaching-operations/TeacherMicrocourseMaintenanceWorkspace";
-import { getTeacherMicrocourseCatalogCourse } from "@/features/school/teaching-operations/teacher-microcourse-maintenance";
+import { getTeacherMicrocourseBranchMembers, getTeacherMicrocourseCatalogCourse } from "@/features/school/teaching-operations/teacher-microcourse-maintenance";
 import { Link } from "@/i18n/navigation";
 import { requirePerm } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -47,6 +48,10 @@ async function TeacherMicrocourseDetailContent({ params, searchParams }: {
     getTranslations("school.teacherMicrocourseBrowser"),
   ]);
   if (course.course.familyId !== courseFamilyId) notFound();
+  const [memberManagement, staffOptions] = await Promise.all([
+    getTeacherMicrocourseBranchMembers(courseId),
+    listStaffOptions(),
+  ]);
   const lectureId = first(query.lecture);
   const lecture = course.lectures.find((item) => item.id === lectureId);
   const track = parseCoursewareTrack(query.track);
@@ -70,8 +75,8 @@ async function TeacherMicrocourseDetailContent({ params, searchParams }: {
     <Tabs defaultValue={activeTab}>
       <TabsList><TabsTrigger value="content">{t("microcourseContentTab")}</TabsTrigger><TabsTrigger value="maintenance">{browserT("maintenance")}</TabsTrigger><TabsTrigger value="history">{browserT("history")}</TabsTrigger></TabsList>
       <TabsContent value="content"><Card><CardHeader><CardTitle>{browserT("courseContent")}</CardTitle><CardDescription>{course.lectures.length ? browserT("courseContentHint") : browserT("emptyCourseHint")}</CardDescription></CardHeader><CardContent><TeachingPlan baseHref={baseHref} teachingPlan={teachingPlan} canManage={course.capabilities.canAddLecture} /></CardContent></Card></TabsContent>
-      <TabsContent value="maintenance"><TeacherMicrocourseMaintenanceWorkspace familyId={courseFamilyId} course={course} section="branches" /></TabsContent>
-      <TabsContent value="history"><TeacherMicrocourseMaintenanceWorkspace familyId={courseFamilyId} course={course} section="history" /></TabsContent>
+      <TabsContent value="maintenance"><TeacherMicrocourseMaintenanceWorkspace familyId={courseFamilyId} course={course} memberManagement={memberManagement} staffOptions={staffOptions} section="branches" /></TabsContent>
+      <TabsContent value="history"><TeacherMicrocourseMaintenanceWorkspace familyId={courseFamilyId} course={course} memberManagement={memberManagement} staffOptions={staffOptions} section="history" /></TabsContent>
     </Tabs>
     {preview?.lecture.courseId === courseId && <LecturePreviewDialog title={t("lecturePreviewTitle", { no: preview.lecture.no, name: preview.lecture.name })} closeHref={baseHref}><LecturePreviewPanel preview={preview} baseHref={baseHref} workspaceHref={`/dashboard/courseware/lectures/${preview.lecture.id}?track=${preview.track}`} /></LecturePreviewDialog>}
   </div>;

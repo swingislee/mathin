@@ -1839,6 +1839,7 @@
       "flag_teaching_classroom_h5_pointer_v1": "Classroom H5 pointer bridge v1",
       "flag_teaching_classroom_layout_v2": "Classroom formal roster and teacher layout v2",
       "flag_teaching_teacher_microcourses_v1": "Teacher short courses",
+      "flag_teaching_teacher_microcourse_browser_v2": "Teacher microcourse browser v2",
       "flagHelp_finance_enabled": "Controls orders, payments, refunds, accounts, reports, and finance work items.",
       "financeReleaseClosed": "Finance release gate locked for 1.0",
       "financeReleaseClosedHelp": "R1-8 uses the safe-close path. Routes, navigation, data, work items, notifications, metrics, and background jobs stay unavailable; a later reviewed migration must open the release gate after the full accounting gates pass.",
@@ -1851,7 +1852,8 @@
       "flagHelp_teaching_classroom_input_v2": "Enables Smart, interaction-lock, and ink-lock routing on audited native courseware; unknown renderers stay interaction-protected.",
       "flagHelp_teaching_classroom_h5_pointer_v1": "Enables Smart pointer takeover only for H5 courseware that completes the versioned handshake; legacy, unavailable, or incompatible pages remain interaction-locked.",
       "flagHelp_teaching_classroom_layout_v2": "Enables the frozen enrollment roster, stable-identity star v2, and the new teacher control layout. Turning it off keeps dual reads for old and new star events.",
-      "flagHelp_teaching_teacher_microcourses_v1": "Allows teachers to create, collaborate on, select, and publish short-course variants. Existing work remains stored when the workspace is disabled."
+      "flagHelp_teaching_teacher_microcourses_v1": "Allows teachers to create, collaborate on, select, and publish short-course variants. Existing work remains stored when the workspace is disabled.",
+      "flagHelp_teaching_teacher_microcourse_browser_v2": "Enables the three-pane microcourse browser, on-demand previews, course maintenance, and duplicate governance. Turning it off returns to the stable course detail."
     },
     "registration": {
       "title": "Registration invites",
@@ -2432,6 +2434,12 @@
       "committed": "Committed",
       "draftOnly": "Draft only",
       "noMaintenanceDirections": "No maintenance directions yet.",
+      "manageMembers": "Manage maintainers",
+      "manageMembersHint": "Each direction has one owner and may include several collaborators. Subject managers can reassign them.",
+      "collaborators": "Collaborators",
+      "branchMembersSaved": "Maintenance members saved",
+      "invalidCollaborators": "The owner or a collaborator is outside this organization, or the member selection contains duplicates.",
+      "maintainerHasBranch": "The selected owner already has a personal maintenance direction for this course.",
       "commitVersion": "Commit version",
       "commitMessage": "Commit message",
       "commitPublishedOnlyHint": "A commit references immutable lecture releases that already passed the existing review and publish flow. Any unreleased lecture blocks the commit.",
@@ -2439,6 +2447,7 @@
       "publishedCommitRequired": "Only a commit that meets publishing requirements can become the default.",
       "commitCreated": "Immutable course version committed",
       "historyLinearHint": "Browse immutable commits in time order. The first formal commit becomes the default automatically.",
+      "searchHistory": "Search commit message, direction, or author",
       "version": "Version",
       "committedBy": "Committed by",
       "published": "Published",
@@ -2450,7 +2459,15 @@
       "courseCreatedBy": "Course creator: {name}",
       "courseContent": "Course content",
       "courseContentHint": "The current default is shown first. Open a released lecture to preview its immutable courseware.",
-      "emptyCourseHint": "This is an empty course. Add the first lecture when it is needed."
+      "emptyCourseHint": "This is an empty course. Add the first lecture when it is needed.",
+      "duplicateReport": "Duplicate-course governance",
+      "duplicateReportHint": "Choose only the canonical course used by the browser. Historical duplicates and every existing reference are retained without deletion or merging.",
+      "duplicateCount": "{count} historical courses share this name",
+      "browserCanonical": "Current browser canonical",
+      "historicalDuplicate": "Historical duplicate",
+      "selectAsCanonical": "Use as browser canonical",
+      "duplicateCanonicalChanged": "Browser canonical course updated",
+      "noDuplicateCourses": "There are no historical duplicate names to govern."
     },
     "courses": {
       "title": "Course Product Library",

@@ -1839,6 +1839,7 @@
       "flag_teaching_classroom_h5_pointer_v1": "课堂 H5 手写桥接 v1",
       "flag_teaching_classroom_layout_v2": "课堂正式名单与教师布局 v2",
       "flag_teaching_teacher_microcourses_v1": "教师短期微课",
+      "flag_teaching_teacher_microcourse_browser_v2": "教师微课场景浏览 v2",
       "flagHelp_finance_enabled": "控制订单、收款、退款、账户、报表和财务工作项。",
       "financeReleaseClosed": "1.0 财务发布门已锁定关闭",
       "financeReleaseClosedHelp": "R1-8 采用安全关闭方案。路由、导航、数据、任务、通知、指标和后台任务均不可启用；未来完成完整账务验收后，需通过新迁移显式打开发布门。",
@@ -1851,7 +1852,8 @@
       "flagHelp_teaching_classroom_input_v2": "在已审计原生课件上启用 Smart、交互锁和书写锁；未知 renderer 保持交互保护。",
       "flagHelp_teaching_classroom_h5_pointer_v1": "只对完成版本握手的 H5 课件启用 Smart 手写接管；旧版、失联或不兼容页面保持交互锁。",
       "flagHelp_teaching_classroom_layout_v2": "启用以正式报名和稳定学生身份为准的冻结名单、星星 v2 与教师控制端新布局；关闭时继续双读新旧星星事件。",
-      "flagHelp_teaching_teacher_microcourses_v1": "允许普通教师创建、协作、选用并发布短期微课方案；关闭后既有作品仍保留，但不开放工作入口。"
+      "flagHelp_teaching_teacher_microcourses_v1": "允许普通教师创建、协作、选用并发布短期微课方案；关闭后既有作品仍保留，但不开放工作入口。",
+      "flagHelp_teaching_teacher_microcourse_browser_v2": "启用教师微课三栏场景浏览、按需预览、课程维护与重复课治理；关闭时回退到稳定版课程详情。"
     },
     "registration": {
       "title": "注册邀请码",
@@ -2432,6 +2434,12 @@
       "committed": "已提交",
       "draftOnly": "仅草稿",
       "noMaintenanceDirections": "暂无维护方向。",
+      "manageMembers": "管理维护人",
+      "manageMembersHint": "每条维护方向只有一位负责人，可同时加入多位协作者；学科主管可以重新分配。",
+      "collaborators": "协作者",
+      "branchMembersSaved": "维护成员已保存",
+      "invalidCollaborators": "负责人或协作者不属于当前机构，或成员选择重复。",
+      "maintainerHasBranch": "所选负责人已经拥有这门课程的个人维护方向。",
       "commitVersion": "提交版本",
       "commitMessage": "提交说明",
       "commitPublishedOnlyHint": "提交只引用各课节已经通过现有审核/发布流程的不可变版本；任一课节未发布时会阻止提交。",
@@ -2439,6 +2447,7 @@
       "publishedCommitRequired": "只有已满足发布要求的提交才能设为默认版本。",
       "commitCreated": "不可变课程版本已提交",
       "historyLinearHint": "按时间查看不可变提交；第一条正式提交自动成为默认版本。",
+      "searchHistory": "搜索提交说明、维护方向或提交人",
       "version": "版本",
       "committedBy": "提交人",
       "published": "已发布",
@@ -2450,7 +2459,15 @@
       "courseCreatedBy": "课程创建人：{name}",
       "courseContent": "课程内容",
       "courseContentHint": "默认展示当前默认版本；点击已发布课节可预览不可变课件。",
-      "emptyCourseHint": "这是一门空白课程，可按实际需要新增第一讲。"
+      "emptyCourseHint": "这是一门空白课程，可按实际需要新增第一讲。",
+      "duplicateReport": "重复课程治理",
+      "duplicateReportHint": "只标记浏览入口采用的规范课程；历史重复行和已有引用全部保留，不执行删除或合并。",
+      "duplicateCount": "{count} 门同名历史课程",
+      "browserCanonical": "当前浏览规范课",
+      "historicalDuplicate": "历史重复课",
+      "selectAsCanonical": "设为浏览规范课",
+      "duplicateCanonicalChanged": "浏览规范课程已更新",
+      "noDuplicateCourses": "当前没有需要治理的历史同名课程。"
     },
     "courses": {
       "title": "课程产品库",
