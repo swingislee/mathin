@@ -7,8 +7,8 @@
   "databaseId": "example-production-database",
   "migration": {
     "head": "20260830000700_teacher_microcourse_editor_unification",
-    "digest": "03d69433a01cec476041a18f63236494c01a4d9774308352652f83a53288cecf",
-    "fileCount": 238
+    "digest": "7bc3630ecc12b9dadcfd347acd6a7b14dc8282eadfb6b95101fe6c347c49524e",
+    "fileCount": 239
   },
   "platform": {
     "source": "supabase/ci/00_platform_bootstrap.sql",
