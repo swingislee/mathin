@@ -73,7 +73,7 @@ export type TeacherMicrocourseCourseScope = z.infer<typeof teacherMicrocourseSco
 
 export async function listTeacherMicrocourseCourseScopes(courseFamilyId: string) {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("list_teacher_microcourse_scopes", {
+  const { data, error } = await supabase.rpc("list_teacher_microcourse_browser_scopes", {
     p_course_family_id: uuid.parse(courseFamilyId),
   });
   if (error) throw new Error(error.message);

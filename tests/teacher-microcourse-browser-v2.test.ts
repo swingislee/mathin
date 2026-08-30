@@ -6,6 +6,7 @@ const root = process.cwd();
 const read = (...segments: string[]) => fs.readFileSync(path.join(root, ...segments), "utf8");
 const migration = read("supabase", "migrations", "20260830000100_teacher_microcourse_academic_scenes.sql");
 const scopeMigration = read("supabase", "migrations", "20260830000200_teacher_microcourse_course_scopes.sql");
+const previewMigration = read("supabase", "migrations", "20260830000300_teacher_microcourse_quick_previews.sql");
 
 describe("DEV-TMC-4 teacher microcourse browser v2", () => {
   it("defines the fixed 19-item 766 dictionary and subject-scoped scene tree", () => {
@@ -81,5 +82,37 @@ describe("DEV-TMC-4 teacher microcourse browser v2", () => {
     expect(editor).toContain("classSystemIds");
     expect(editor).toContain("classTypeIds");
     expect(editor).not.toMatch(/<input\b/);
+  });
+
+  it("delivers the scene-first three-column browser with URL state and current-default previews", () => {
+    const route = read("src", "app", "[locale]", "dashboard", "courses", "[courseFamilyId]", "page.tsx");
+    const browser = read("src", "features", "school", "teaching-operations", "TeacherMicrocourseBrowser.tsx");
+    const table = read("src", "features", "school", "teaching-operations", "TeacherMicrocourseTable.tsx");
+    const preview = read("src", "features", "school", "teaching-operations", "TeacherMicrocourseQuickPreview.tsx");
+    const model = read("src", "features", "school", "teaching-operations", "teacher-microcourse-browser.ts");
+
+    expect(route).toContain("listTeacherMicrocourseBrowserCatalog");
+    expect(route).toContain("listTeacherMicrocourseQuickPreviews");
+    expect(browser).toContain("@6xl/page:grid-cols-[18rem_minmax(0,1fr)_22rem]");
+    expect(browser).toContain("localStorage");
+    expect(browser).toContain("searchAll");
+    expect(browser).toContain("mobilePreviewOpen");
+    expect(table).toContain("<Table");
+    expect(preview).toContain("data-teacher-microcourse-quick-preview");
+    expect(model).toContain("PAGE_SIZE = 30");
+    expect(model).toContain("parseTeacherMicrocourseBrowserQuery");
+    expect(model).toContain("buildTeacherMicrocourseBrowserModel");
+    expect(browser).not.toContain("data-microcourse-coverage-matrix");
+  });
+
+  it("uses lightweight immutable preview keys and keeps a teacher's own drafts visible", () => {
+    expect(previewMigration).toContain("can_read_teacher_microcourse_catalog_course");
+    expect(previewMigration).toContain("root.created_by = p_uid");
+    expect(previewMigration).toContain("branch.author_id = p_uid");
+    expect(previewMigration).toContain("list_teacher_microcourse_browser_catalog");
+    expect(previewMigration).toContain("list_teacher_microcourse_browser_scopes");
+    expect(previewMigration).toContain("list_teacher_microcourse_quick_previews");
+    expect(previewMigration).toContain("lecture.current_release_id::text");
+    expect(previewMigration).not.toContain("preview_doc");
   });
 });

@@ -10,7 +10,7 @@ import { ResponsibilityPanel } from "@/features/school/teaching-operations/Respo
 import { StatusOverflowMenu } from "@/features/school/teaching-operations/StatusOverflowMenu";
 import { TeachingPlan } from "@/features/school/teaching-operations/TeachingPlan";
 import { TeachingPlanEditorLauncher } from "@/features/school/teaching-operations/TeachingPlanEditorLauncher";
-import { TeacherMicrocourseLibrary } from "@/features/school/teaching-operations/TeacherMicrocourseLibrary";
+import { TeacherMicrocourseBrowser } from "@/features/school/teaching-operations/TeacherMicrocourseBrowser";
 import { transitionCourseFamilyStatusAction, transitionCourseVariantStatusAction } from "@/features/school/teaching-operations/actions";
 import { UsagePanel } from "@/features/school/teaching-operations/UsagePanel";
 import { VariantMatrix } from "@/features/school/teaching-operations/VariantMatrix";
@@ -18,12 +18,12 @@ import { VariantSelector } from "@/features/school/teaching-operations/VariantSe
 import { resolveCourseCapabilities } from "@/features/school/teaching-operations/capabilities";
 import type { SelectedCourseVariant } from "@/features/school/teaching-operations/course-family-detail";
 import {
-  filterTeacherMicrocourseLibrary,
-  listTeacherMicrocourseLibrary,
-  parseTeacherMicrocourseLibraryFilters,
-  teacherMicrocourseLibrarySearchParams,
-  type TeacherMicrocourseLibraryEntry,
+  getTeacherMicrocourseBrowserCapabilities,
+  listTeacherMicrocourseBrowserCatalog,
+  listTeacherMicrocourseQuickPreviews,
 } from "@/features/school/teaching-operations/teacher-microcourse-library";
+import { buildTeacherMicrocourseBrowserModel, parseTeacherMicrocourseBrowserQuery } from "@/features/school/teaching-operations/teacher-microcourse-browser";
+import { getTeacherMicrocourseConfiguration, listTeacherMicrocourseCourseScopes } from "@/features/school/teaching-operations/teacher-microcourse-scenes";
 import { LecturePreviewDialog } from "@/features/school/curriculum/LecturePreviewDialog";
 import { LecturePreviewPanel } from "@/features/school/curriculum/LecturePreviewPanel";
 import {
@@ -86,10 +86,9 @@ async function CourseFamilyProductPage({
 }) {
   const [{ courseFamilyId }, rawSearchParams, user] = await Promise.all([params, searchParams, requirePerm(locale, "course.view")]);
   if (!isUuid(courseFamilyId)) notFound();
-  const [t, permissions, staffOptions, environment] = await Promise.all([
+  const [t, permissions, environment] = await Promise.all([
     getTranslations("school.courses"),
     getMyPerms(user.id),
-    listStaffOptions(),
     getActiveEnvironment(user.id),
   ]);
   // doc24 §6：课程产品可以从产品库进入，也可以从课件队列、研发任务和班级的课程链接进入。
@@ -127,62 +126,29 @@ async function CourseFamilyProductPage({
   </>;
 
   if (detail.family.slug === "teacher-microcourses") {
-    const filters = parseTeacherMicrocourseLibraryFilters(rawSearchParams);
-    const catalogItems = await listTeacherMicrocourseLibrary(detail.family.id);
-    const variantsById = new Map(detail.variants.map((variant) => [variant.id, variant]));
-    const entries = catalogItems.flatMap((item): TeacherMicrocourseLibraryEntry[] => {
-      const variant = variantsById.get(item.courseId);
-      return variant ? [{ ...item, ...variant }] : [];
-    });
-    const filteredEntries = filterTeacherMicrocourseLibrary(entries, filters);
-    // 资料库首屏只展示全部候选；只有用户明确点击某门微课时才打开详情抽屉。
-    // 不再默认选中第一项，否则页面一进来又退化成“目录 + 常驻详情”的双重信息面。
-    const selectedId = requestedVariantId && filteredEntries.some((entry) => entry.id === requestedVariantId)
-      ? requestedVariantId
-      : undefined;
-
-    if (selectedId && detail.selectedVariant?.id !== selectedId) {
-      detail = await getCourseFamilyDetail(detail.family.id, selectedId);
-    }
-    const selectedEntry = entries.find((entry) => entry.id === selectedId) ?? null;
-    const lectureId = first(rawSearchParams.lecture);
-    const requestedLecture = detail.teachingPlan.find((lecture) => lecture.id === lectureId);
-    const previewTrack = parseCoursewareTrack(rawSearchParams.track);
-    const preview = requestedLecture?.hasRelease
-      ? await loadLecturePreview(requestedLecture.id, previewTrack, parsePage(first(rawSearchParams.page)))
-      : null;
-    const validPreview = preview?.lecture.courseId === selectedId ? preview : null;
-    const selectedParams = teacherMicrocourseLibrarySearchParams(filters);
-    if (selectedId) selectedParams.set("variant", selectedId);
-    if (returnTo) selectedParams.set("returnTo", returnTo);
-    const selectedBaseHref = `/dashboard/courses/${detail.family.id}${selectedParams.size ? `?${selectedParams.toString()}` : ""}`;
-    const lecturePreview = validPreview ? <LecturePreviewDialog
-      title={t("lecturePreviewTitle", { no: validPreview.lecture.no, name: validPreview.lecture.name })}
-      closeHref={selectedBaseHref}
-    >
-      <LecturePreviewPanel
-        preview={validPreview}
-        baseHref={selectedBaseHref}
-        workspaceHref={`/dashboard/courseware/lectures/${validPreview.lecture.id}?track=${validPreview.track}`}
-      />
-    </LecturePreviewDialog> : undefined;
-
-    return <TeacherMicrocourseLibrary
-      detail={detail}
-      entries={entries}
-      filteredEntries={filteredEntries}
-      selectedEntry={selectedEntry}
-      filters={filters}
+    const query = parseTeacherMicrocourseBrowserQuery(rawSearchParams);
+    const [catalogItems, configuration, scopes, previews, capabilities] = await Promise.all([
+      listTeacherMicrocourseBrowserCatalog(detail.family.id),
+      getTeacherMicrocourseConfiguration(detail.family.id),
+      listTeacherMicrocourseCourseScopes(detail.family.id),
+      listTeacherMicrocourseQuickPreviews(detail.family.id),
+      getTeacherMicrocourseBrowserCapabilities(detail.family.id),
+    ]);
+    const model = buildTeacherMicrocourseBrowserModel({ entries: catalogItems, scopes, previews, configuration, query, locale });
+    return <TeacherMicrocourseBrowser
+      key={`${query.browse}:${query.node ?? "all"}:${query.q ?? ""}:${query.page}:${query.sort}:${query.gradeIds.join(",")}:${query.termIds.join(",")}:${query.classSystemIds.join(",")}:${query.classTypeIds.join(",")}`}
+      familyId={detail.family.id}
+      familyTitle={detail.family.title}
       locale={locale}
-      returnTo={returnTo}
-      canManage={canManage}
-      canAssign={canAssign}
-      canCreateClass={permissions.has("class.create")}
-      canViewUsage={permissions.has("class.view.all")}
-      staffOptions={staffOptions}
-      lecturePreview={lecturePreview}
+      model={model}
+      configuration={configuration}
+      scopes={scopes}
+      capabilities={capabilities}
+      browseWasExplicit={Boolean(first(rawSearchParams.browse))}
     />;
   }
+
+  const staffOptions = await listStaffOptions();
 
   if (!detail.selectedVariant) {
     // doc23 §8.1 Family 蓝图：主栏是"这个产品由哪些版本组成"，侧栏是"它整体齐不齐、归谁管"。

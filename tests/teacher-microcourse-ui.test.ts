@@ -179,50 +179,33 @@ describe("DEV-TMC-1 teacher microcourse product surfaces", () => {
     expect(matrix).toContain('t("courseSeasonUnspecified")');
   });
 
-  it("shows teacher microcourses as a non-unique grade-season coverage map with on-demand details", () => {
+  it("shows teacher microcourses as a scene-first table with a current-default quick preview", () => {
     const route = read("src", "app", "[locale]", "dashboard", "courses", "[courseFamilyId]", "page.tsx");
-    const library = read("src", "features", "school", "teaching-operations", "TeacherMicrocourseLibrary.tsx");
-    const filters = read("src", "features", "school", "teaching-operations", "TeacherMicrocourseLibraryFilters.tsx");
-    const filterModel = read("src", "features", "school", "teaching-operations", "teacher-microcourse-library.ts");
-    const facets = read("supabase", "migrations", "20260829000800_teacher_microcourse_library_facets.sql");
+    const browser = read("src", "features", "school", "teaching-operations", "TeacherMicrocourseBrowser.tsx");
+    const table = read("src", "features", "school", "teaching-operations", "TeacherMicrocourseTable.tsx");
+    const preview = read("src", "features", "school", "teaching-operations", "TeacherMicrocourseQuickPreview.tsx");
+    const model = read("src", "features", "school", "teaching-operations", "teacher-microcourse-browser.ts");
 
     expect(route).toContain('detail.family.slug === "teacher-microcourses"');
-    expect(route).toContain("<TeacherMicrocourseLibrary");
-    expect(library).toContain("coverageGrades.map");
-    expect(library).toContain("microcourseCoverageTitle");
-    expect(library).toContain("microcourseTopicIndex");
-    expect(library).toContain("data-microcourse-coverage-matrix");
-    expect(library).toContain("crossSeasonEntries");
-    expect(library).toContain("universalDifficultyEntries");
-    expect(library).toContain("<Sheet defaultOpen>");
-    expect(library).toContain('className="w-[min(96vw,72rem)] max-w-none p-0"');
-    expect(library).not.toContain("grid-cols-[21rem_minmax(0,1fr)]");
-    expect(library).toContain("<DashboardCommandPanel>");
-    expect(library).toContain("<DashboardCommandFilters>");
-    expect(library).toContain("<TeachingPlan");
-    expect(library).toContain('<TabsTrigger value="content">');
-    expect(library).toContain('<TabsTrigger value="management">');
-    expect(library).toContain("canViewUsage && <UsagePanel");
-    expect(library).not.toContain("microcourseFacetNote");
-    expect(library).not.toContain("<VariantMatrix");
-    expect(route).toContain("只有用户明确点击某门微课时才打开详情抽屉");
-    expect(route).not.toContain(": filteredEntries[0]?.id");
-    expect(filters).toContain("<FilterBar");
-    expect(filters).toContain("<FilterBarMore");
-    expect(filters).toContain("<FilterBarSubmit>");
-    expect(filters).toContain('name="mcStructure"');
-    expect(filters).toContain("mcReadiness");
-    expect(filters).toContain("mcTopic");
-    expect(filters).toContain("mcGrade");
-    expect(filterModel).toContain('classType !== selectAllValue');
-    expect(filterModel).toContain('topic !== selectAllValue');
-    expect(filterModel).toContain("entry.courseSeason !== null");
-    expect(filterModel).toContain('entry.classType !== ""');
-    expect(facets).toContain("list_teacher_microcourse_library");
-    expect(facets).toContain("lecture_facets.lecture_text");
-    expect(facets).toContain("metadata_facets.topic_text");
-    expect(facets).toContain("array_to_string(metadata_facets.keywords, ' ')");
-    expect(facets).toContain("Source grade/class/season remain optional filters");
+    expect(route).toContain("<TeacherMicrocourseBrowser");
+    expect(route).not.toContain("<TeacherMicrocourseLibrary");
+    expect(browser).toContain("@6xl/page:grid-cols-[18rem_minmax(0,1fr)_22rem]");
+    expect(browser).toContain("<TeacherMicrocourseSceneNavigator");
+    expect(browser).toContain("<TeacherMicrocourseTable");
+    expect(browser).toContain("<TeacherMicrocourseQuickPreview");
+    expect(browser).toContain("<Sheet open={mobilePreviewOpen}");
+    expect(browser).not.toContain("data-microcourse-coverage-matrix");
+    expect(browser).not.toContain("<Sheet defaultOpen>");
+    expect(table).toContain('t("courseName")');
+    expect(table).toContain('t("gradeOrStage")');
+    expect(table).toContain('t("terms")');
+    expect(table).toContain('t("classTypes")');
+    expect(preview).toContain("data-teacher-microcourse-quick-preview");
+    expect(preview).toContain("currentDefault");
+    expect(preview).toContain("maintenanceHistory");
+    expect(model).toContain('browse: browse === "grade" || browse === "term" || browse === "class" ? browse : "scene"');
+    expect(model).toContain("PAGE_SIZE = 30");
+    expect(route).toContain("<VariantMatrix");
   });
 
   it("maintains matching Chinese and English teacher-microcourse UI keys", () => {

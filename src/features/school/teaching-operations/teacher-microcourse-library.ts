@@ -27,6 +27,54 @@ const libraryRowSchema = z.object({
   lecture_titles: z.array(z.string()),
   search_text: z.string(),
 });
+const quickPreviewSchema = z.object({
+  courseId: uuidSchema,
+  updatedAt: z.string(),
+  branchCount: z.number().int().nonnegative(),
+  lectures: z.array(z.object({
+    id: uuidSchema,
+    no: z.number().int().positive(),
+    name: z.string(),
+    objectives: z.string(),
+    status: z.enum(["draft", "active", "archived"]),
+    currentReleaseId: uuidSchema.nullable(),
+    releaseNo: z.number().int().positive().nullable(),
+    pageCount: z.number().int().nonnegative(),
+    cacheKey: z.string(),
+  })),
+});
+const browserCatalogRowSchema = z.object({
+  course_id: uuidSchema,
+  course_title: z.string(),
+  author_name: z.string(),
+  updated_at: z.string(),
+  lecture_titles: z.array(z.string()),
+  lecture_count: z.number().int().nonnegative(),
+  released_lecture_count: z.number().int().nonnegative(),
+  search_text: z.string(),
+});
+const browserCapabilitiesSchema = z.object({
+  canManageScenes: z.boolean(),
+  canManageScopes: z.boolean(),
+  canCreateCourse: z.boolean(),
+  canCreateBranch: z.boolean(),
+  canCommit: z.boolean(),
+  canAssignMaintainer: z.boolean(),
+  canSelectDefault: z.boolean(),
+});
+
+export type TeacherMicrocourseQuickPreview = z.infer<typeof quickPreviewSchema>;
+export type TeacherMicrocourseBrowserCapabilities = z.infer<typeof browserCapabilitiesSchema>;
+export interface TeacherMicrocourseBrowserCatalogEntry {
+  id: string;
+  title: string;
+  authorName: string;
+  updatedAt: string;
+  lectureTitles: string[];
+  lectureCount: number;
+  releasedLectureCount: number;
+  searchText: string;
+}
 
 export type TeacherMicrocourseStructure = "single" | "short" | "series";
 export type TeacherMicrocourseReadiness = "ready" | "incomplete";
@@ -170,4 +218,40 @@ export async function listTeacherMicrocourseLibrary(
     lectureTitles: row.lecture_titles,
     searchText: row.search_text,
   }));
+}
+
+export async function listTeacherMicrocourseBrowserCatalog(familyId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("list_teacher_microcourse_browser_catalog", {
+    p_course_family_id: uuidSchema.parse(familyId),
+  });
+  if (error) throw new Error(error.message);
+  return z.array(browserCatalogRowSchema).parse(data ?? []).map((row): TeacherMicrocourseBrowserCatalogEntry => ({
+    id: row.course_id,
+    title: row.course_title,
+    authorName: row.author_name,
+    updatedAt: row.updated_at,
+    lectureTitles: row.lecture_titles,
+    lectureCount: row.lecture_count,
+    releasedLectureCount: row.released_lecture_count,
+    searchText: row.search_text,
+  }));
+}
+
+export async function listTeacherMicrocourseQuickPreviews(familyId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("list_teacher_microcourse_quick_previews", {
+    p_course_family_id: uuidSchema.parse(familyId),
+  });
+  if (error) throw new Error(error.message);
+  return z.array(quickPreviewSchema).parse(data ?? []);
+}
+
+export async function getTeacherMicrocourseBrowserCapabilities(familyId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("get_teacher_microcourse_browser_capabilities", {
+    p_course_family_id: uuidSchema.parse(familyId),
+  });
+  if (error) throw new Error(error.message);
+  return browserCapabilitiesSchema.parse(data);
 }

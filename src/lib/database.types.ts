@@ -11127,6 +11127,10 @@ export type Database = {
         Args: { p_microcourse_id: string }
         Returns: Json
       }
+      get_teacher_microcourse_browser_capabilities: {
+        Args: { p_course_family_id: string }
+        Returns: Json
+      }
       get_teacher_microcourse_for_session: {
         Args: { p_session_id: string }
         Returns: Json
@@ -12018,6 +12022,27 @@ export type Database = {
           topics: Json
           updated_at: string
         }[]
+      }
+      list_teacher_microcourse_browser_catalog: {
+        Args: { p_course_family_id: string }
+        Returns: {
+          author_name: string
+          course_id: string
+          course_title: string
+          lecture_count: number
+          lecture_titles: string[]
+          released_lecture_count: number
+          search_text: string
+          updated_at: string
+        }[]
+      }
+      list_teacher_microcourse_browser_scopes: {
+        Args: { p_course_family_id: string }
+        Returns: Json
+      }
+      list_teacher_microcourse_quick_previews: {
+        Args: { p_course_family_id: string }
+        Returns: Json
       }
       list_teacher_microcourse_scopes: {
         Args: { p_course_family_id: string }

@@ -169,7 +169,7 @@ export function TeacherMicrocourseSceneManager({
         <CardContent className="space-y-5">
           {(["seven_step", "six_support", "six_guarantee"] as const).map((group) => <div key={group} className="space-y-2">
             <p className="text-sm font-medium">{t(group)}</p>
-            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-2 @2xl/page:grid-cols-2 @6xl/page:grid-cols-3">
               {configuration.frameworkItems.filter((item) => item.groupCode === group).map((item) => <Label key={item.code} className="flex min-h-10 cursor-pointer items-center gap-3 rounded-lg border border-line px-3 py-2 text-sm">
                 <Checkbox checked={rootCodes.has(item.code)} disabled={!configuration.canManageScenes || pending} onCheckedChange={(checked) => setRootCodes((current) => {
                   const next = new Set(current);
@@ -240,7 +240,7 @@ export function TeacherMicrocourseSceneManager({
     </TabsContent>
 
     <TabsContent value="managers">
-      <Card><CardHeader><CardTitle>{t("subjectManagers")}</CardTitle><CardDescription>{t("managerHint")}</CardDescription></CardHeader><CardContent className="space-y-4"><div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">{staffOptions.map((staff) => <Label key={staff.id} className="flex items-center gap-3 rounded-lg border border-line px-3 py-2"><Checkbox checked={managerIds.has(staff.id)} disabled={pending} onCheckedChange={(checked) => setManagerIds((current) => { const next = new Set(current); if (checked) next.add(staff.id); else next.delete(staff.id); return next; })} />{staff.name}</Label>)}</div><Button disabled={pending} onClick={() => managerSave.run({ courseFamilyId, userIds: [...managerIds] })}><Save className="mr-2 h-4 w-4" />{t("saveManagers")}</Button></CardContent></Card>
+      <Card><CardHeader><CardTitle>{t("subjectManagers")}</CardTitle><CardDescription>{t("managerHint")}</CardDescription></CardHeader><CardContent className="space-y-4"><div className="grid gap-2 @2xl/page:grid-cols-2 @6xl/page:grid-cols-3">{staffOptions.map((staff) => <Label key={staff.id} className="flex items-center gap-3 rounded-lg border border-line px-3 py-2"><Checkbox checked={managerIds.has(staff.id)} disabled={pending} onCheckedChange={(checked) => setManagerIds((current) => { const next = new Set(current); if (checked) next.add(staff.id); else next.delete(staff.id); return next; })} />{staff.name}</Label>)}</div><Button disabled={pending} onClick={() => managerSave.run({ courseFamilyId, userIds: [...managerIds] })}><Save className="mr-2 h-4 w-4" />{t("saveManagers")}</Button></CardContent></Card>
     </TabsContent>
 
     <Dialog open={sceneDraft !== null} onOpenChange={(open) => { if (!open) setSceneDraft(null); }}>

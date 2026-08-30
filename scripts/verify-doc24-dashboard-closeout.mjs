@@ -126,7 +126,6 @@ const HORIZONTAL_SCROLL_ALLOWLIST = new Set([
   path.join(SCHOOL_DIR, "ScheduleWeekView.tsx"), // 课表
   path.join(SCHOOL_DIR, "SessionLearningCheckPanel.tsx"), // 课堂逐题检查项导航（doc 25 §4.3.1）
   path.join(SCHOOL_DIR, "teaching-operations", "VariantMatrix.tsx"), // 版本矩阵（宽表格）
-  path.join(SCHOOL_DIR, "teaching-operations", "TeacherMicrocourseLibrary.tsx"), // 教师微课覆盖矩阵（宽表格）
   path.join(STUDIO_DIR, "CoursewarePageEditor.tsx"), // 课件画布工具条
 ]);
 
