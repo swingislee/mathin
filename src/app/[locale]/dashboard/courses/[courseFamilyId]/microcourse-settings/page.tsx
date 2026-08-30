@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { buttonVariants } from "@/components/ui/button";
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DashboardPage } from "@/features/school/dashboard-page";
 import { listStaffOptions } from "@/features/school/classes";
 import { TeacherMicrocourseSceneManager } from "@/features/school/teaching-operations/TeacherMicrocourseSceneManager";
 import { TeacherMicrocourseDuplicateManager } from "@/features/school/teaching-operations/TeacherMicrocourseDuplicateManager";
@@ -50,16 +50,13 @@ async function TeacherMicrocourseSettingsContent({
   const renderKey = configuration.roots.map((root) => `${root.id}:${root.sortOrder}:${root.enabled}:${root.scenes.length}`).join("|")
     + configuration.gradeStages.map((item) => `${item.id}:${item.sortOrder}:${item.active}`).join("|");
 
-  return <div className="w-full min-w-0 space-y-6 py-2">
-    <Card>
-      <CardHeader className="gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1.5">
-          <CardTitle className="font-display text-2xl">{t("settingsTitle")}</CardTitle>
-          <CardDescription>{t("settingsDescription")}</CardDescription>
-        </div>
-        <Link href={`/dashboard/courses/${courseFamilyId}`} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>{t("backToBrowser")}</Link>
-      </CardHeader>
-    </Card>
+  return <DashboardPage
+    title={t("settingsTitle")}
+    description={t("settingsDescription")}
+    backHref={`/dashboard/courses/${courseFamilyId}`}
+    backLabel={t("backToBrowser")}
+    density="compact"
+  >
     <TeacherMicrocourseSceneManager
       key={renderKey}
       courseFamilyId={courseFamilyId}
@@ -68,13 +65,13 @@ async function TeacherMicrocourseSettingsContent({
       staffOptions={staffOptions}
     />
     <TeacherMicrocourseDuplicateManager courseFamilyId={courseFamilyId} report={duplicateReport} />
-  </div>;
+  </DashboardPage>;
 }
 
 function SettingsSkeleton() {
   return <div className="w-full min-w-0 space-y-5" aria-busy="true">
-    <div className="h-28 animate-pulse rounded-2xl border border-line bg-card" />
-    <div className="h-12 w-80 animate-pulse rounded-xl bg-moon/30" />
-    <div className="h-[32rem] animate-pulse rounded-2xl border border-line bg-card" />
+    <div className="h-20 animate-pulse bg-moon/20" />
+    <div className="h-10 w-80 animate-pulse bg-moon/30" />
+    <div className="h-[32rem] animate-pulse bg-moon/20" />
   </div>;
 }

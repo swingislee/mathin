@@ -8,7 +8,6 @@ import {
   gamePageDocSchema,
   type GamePageDoc,
 } from "@/features/courseware-doc/game-page-schema";
-import { legacyMicrocourseCompositionPageSchema } from "@/features/courseware-doc/microcourse-schema";
 import {
   coursewareCompositionPageSchema,
   isCoursewareCompositionPage,
@@ -48,8 +47,6 @@ function rpc<T>(client: RpcClient, name: string, args: Record<string, unknown>) 
 const topicSlug = z.string().min(1).max(60).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
 
 function sanitizeTeacherMicrocoursePage(doc: TeacherMicrocoursePageDoc): TeacherMicrocoursePageDoc {
-  if (!isCoursewareCompositionPage(doc)
-    && (doc.docVersion !== "microcourse-page-v1" || doc.mode !== "composition")) return doc;
   const next = structuredClone(doc);
   const walk = (nodes: typeof doc.overlay.nodes) => {
     for (const node of nodes) {
@@ -67,9 +64,7 @@ function sanitizeTeacherMicrocoursePage(doc: TeacherMicrocoursePageDoc): Teacher
     }
   };
   walk(next.overlay.nodes);
-  return isCoursewareCompositionPage(doc)
-    ? coursewareCompositionPageSchema.parse(next)
-    : legacyMicrocourseCompositionPageSchema.parse(next);
+  return coursewareCompositionPageSchema.parse(next);
 }
 const metadataSchema = z.object({
   sourceSessionId: uuid.optional(),
@@ -600,67 +595,52 @@ export async function saveTeacherMicrocoursePageAction(input: {
       note: text(1000),
     }), input);
     const doc = sanitizeTeacherMicrocoursePage(value.doc);
-    const { user, supabase } = await authorizedClient("courseware.microcourse.author");
-    if (isCoursewareCompositionPage(doc)) {
-      const trustedDoc = structuredClone(doc);
-      const toolContracts = toolCoursewareContractsForSurface("microcourse");
-      trustedDoc.layout.blocks = trustedDoc.layout.blocks.map((block) => {
-        if (block.type === "tool") {
-          const authorable = toolContracts.some((contract) => (
-            contract.toolId === block.tool.toolId
-              && contract.contentVersion === block.tool.contentVersion
-          ));
-          if (!authorable) throw new Error("UNKNOWN_TOOL_COURSEWARE_CONTRACT");
-          return block;
-        }
-        if (block.type !== "game") return block;
-        const trusted = validateGameCoursewareContent(
-          block.game.gameId,
-          block.game.contentVersion,
-          block.game.payload,
-        );
-        return {
-          ...block,
-          game: gamePageDocSchema.parse({
-            ...block.game,
-            payload: trusted.payload,
-            validation: trusted.validation,
-          }),
-        };
-      });
-      const parsedTrustedDoc = coursewareCompositionPageSchema.parse(trustedDoc);
-      const admin = createAdminClient();
-      const { data, error } = await rpc<Array<{ revision_no: number }>>(
-        admin,
-        "save_teacher_courseware_composition_page",
-        {
-          p_actor_id: user.id,
-          p_page_doc_id: value.pageDocId,
-          p_doc: parsedTrustedDoc,
-          p_base_revision_no: value.baseRevisionNo,
-          p_title: value.title,
-          p_note: value.note,
-        },
+    const { user } = await authorizedClient("courseware.microcourse.author");
+    const trustedDoc = structuredClone(doc);
+    const toolContracts = toolCoursewareContractsForSurface("microcourse");
+    trustedDoc.layout.blocks = trustedDoc.layout.blocks.map((block) => {
+      if (block.type === "tool") {
+        const authorable = toolContracts.some((contract) => (
+          contract.toolId === block.tool.toolId
+            && contract.contentVersion === block.tool.contentVersion
+        ));
+        if (!authorable) throw new Error("UNKNOWN_TOOL_COURSEWARE_CONTRACT");
+        return block;
+      }
+      if (block.type !== "game") return block;
+      const trusted = validateGameCoursewareContent(
+        block.game.gameId,
+        block.game.contentVersion,
+        block.game.payload,
       );
-      if (error || !data?.[0]) throw new Error(error?.message ?? "SAVE_FAILED");
       return {
-        ok: true,
-        data: { revisionNo: data[0].revision_no, doc: parsedTrustedDoc },
+        ...block,
+        game: gamePageDocSchema.parse({
+          ...block.game,
+          payload: trusted.payload,
+          validation: trusted.validation,
+        }),
       };
-    }
+    });
+    const parsedTrustedDoc = coursewareCompositionPageSchema.parse(trustedDoc);
+    const admin = createAdminClient();
     const { data, error } = await rpc<Array<{ revision_no: number }>>(
-      supabase,
-      "save_teacher_microcourse_page",
+      admin,
+      "save_teacher_courseware_composition_page",
       {
+        p_actor_id: user.id,
         p_page_doc_id: value.pageDocId,
-        p_doc: doc,
+        p_doc: parsedTrustedDoc,
         p_base_revision_no: value.baseRevisionNo,
         p_title: value.title,
         p_note: value.note,
       },
     );
     if (error || !data?.[0]) throw new Error(error?.message ?? "SAVE_FAILED");
-    return { ok: true, data: { revisionNo: data[0].revision_no, doc } };
+    return {
+      ok: true,
+      data: { revisionNo: data[0].revision_no, doc: parsedTrustedDoc },
+    };
   } catch (error) {
     return actionError(error, ["SAVE_FAILED", ...AUTHOR_CODES]);
   }

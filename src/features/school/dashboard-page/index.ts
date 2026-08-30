@@ -4,6 +4,7 @@ export { DashboardPageHeader } from "./DashboardPageHeader";
 export { DashboardPageIdentity } from "./DashboardPageIdentity";
 export { DashboardPageBody } from "./DashboardPageBody";
 export { DashboardPageSection } from "./DashboardPageSection";
+export { DashboardEmptyState, DashboardSection } from "./DashboardSection";
 export { DashboardPageSummary } from "./DashboardPageSummary";
 export { DashboardBackLink } from "./DashboardBackLink";
 export { DashboardCard, DashboardCardShell, DashboardEmptyCard, DashboardTableShell } from "./DashboardCard";

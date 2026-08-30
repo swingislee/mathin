@@ -5,8 +5,6 @@ import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { isGamePageDoc } from "@/features/courseware-doc/game-page-schema";
-import { isCoursewareCompositionPage } from "@/features/courseware-doc/composition-page-schema";
 import { StagePreview } from "@/features/courseware-studio/StagePreview";
 import type { TeacherMicrocourseEditor } from "./data";
 
@@ -17,11 +15,7 @@ export function MicrocourseVariantPreview({ editor }: { editor: TeacherMicrocour
     () => editor.pages.find((item) => item.pageDocId === selectedPageId) ?? editor.pages[0] ?? null,
     [editor.pages, selectedPageId],
   );
-  const modeLabel = (value: (typeof editor.pages)[number]) => (
-    isCoursewareCompositionPage(value.doc)
-      ? t("mode_composition")
-      : isGamePageDoc(value.doc) ? t("mode_game") : t(`mode_${value.doc.mode}`)
-  );
+  const modeLabel = (_value: (typeof editor.pages)[number]) => t("mode_composition");
 
   return <div className="grid min-h-[40rem] border-y border-line xl:grid-cols-[16rem_minmax(0,1fr)]" data-testid="microcourse-variant-preview">
     <section className="min-h-0 overflow-hidden border-b border-line xl:border-b-0 xl:border-r">

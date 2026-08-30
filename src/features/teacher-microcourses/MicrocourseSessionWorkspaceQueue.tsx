@@ -2,6 +2,7 @@ import { CalendarClock, Layers3, UserRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { DashboardSection, DashboardTableShell } from "@/features/school/dashboard-page";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import type { TeacherMicrocourseSessionWorkspace } from "./data";
@@ -38,12 +39,8 @@ export function MicrocourseSessionWorkspaceQueue({
     hour: "2-digit",
     minute: "2-digit",
   });
-  return <section className="border-y border-line/70" data-testid="microcourse-session-workspace-queue" aria-labelledby="microcourse-session-workspace-title">
-    <header className="border-b border-line/70 px-3 py-2.5">
-      <h2 id="microcourse-session-workspace-title" className="text-sm font-medium">{labels.title}</h2>
-      <p className="mt-0.5 text-xs leading-5 text-muted">{labels.description}</p>
-    </header>
-    <Table>
+  return <DashboardSection title={labels.title} description={labels.description} data-testid="microcourse-session-workspace-queue" aria-labelledby="microcourse-session-workspace-title">
+    <DashboardTableShell><Table>
       <TableHeader><TableRow>
         <TableHead className="h-9">{labels.session}</TableHead>
         <TableHead className="h-9">{labels.variant}</TableHead>
@@ -63,6 +60,6 @@ export function MicrocourseSessionWorkspaceQueue({
         </TableRow>)}
         {items.length === 0 && <TableRow><TableCell colSpan={6} className="py-12 text-center text-sm text-muted">{labels.empty}</TableCell></TableRow>}
       </TableBody>
-    </Table>
-  </section>;
+    </Table></DashboardTableShell>
+  </DashboardSection>;
 }

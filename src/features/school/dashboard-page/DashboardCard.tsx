@@ -73,7 +73,7 @@ export function DashboardTableShell({ className, ...props }: ComponentProps<"div
   return (
     <div
       data-dashboard-table-shell
-      className={cn("min-w-0 overflow-hidden rounded-2xl border border-line bg-card", className)}
+      className={cn("min-w-0 overflow-hidden rounded-xl border border-line/80", className)}
       {...props}
     />
   );

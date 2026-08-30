@@ -46,19 +46,20 @@ describe("teacher microcourse authoring UX", () => {
 
   it("keeps details compact and autosaves composition pages before navigation", () => {
     const editor = read("src", "features", "teacher-microcourses", "MicrocourseEditor.tsx");
+    const workbench = read("src", "features", "teacher-microcourses", "CoursewareCompositionWorkbench.tsx");
     const zh = read("messages", "zh.json");
     const en = read("messages", "en.json");
 
     expect(editor).toContain("const [detailsOpen, setDetailsOpen] = useState(false)");
     expect(editor).toContain("aria-expanded={detailsOpen}");
-    expect(editor).toContain("useImperativeHandle(ref, () => ({ flush })");
+    expect(workbench).toContain("useImperativeHandle(ref, () => ({ flush, rename })");
     expect(editor).toContain("await persistCurrentPage()");
-    expect(editor).toContain("window.setTimeout(() => void flushRef.current(), 800)");
-    expect(editor).toContain("saveTeacherMicrocoursePageAction");
+    expect(workbench).toContain("window.setTimeout(() => void flushRef.current(), 800)");
+    expect(workbench).toContain("saveTeacherMicrocoursePageAction");
     expect(editor).toContain("createTeacherCompositionPageAction");
     expect(editor).toContain("CoursewareCompositionWorkbench");
-    expect(editor).toContain("isCoursewareCompositionPage");
-    expect(editor).toContain('data-testid="microcourse-autosave-status"');
+    expect(editor).toContain('data-teacher-microcourse-editor="composition"');
+    expect(workbench).toContain('data-testid="microcourse-autosave-status"');
     expect(zh).toContain('"pageAutosaving"');
     expect(en).toContain('"pageAutosaving"');
   });

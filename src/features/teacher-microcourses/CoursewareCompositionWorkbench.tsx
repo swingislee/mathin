@@ -411,7 +411,7 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
             }} />
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <span role="status" aria-live="polite" className={cn("inline-flex items-center gap-1 text-xs", saveState === "error" ? "text-rose" : "text-muted")}>
+            <span data-testid="microcourse-autosave-status" role="status" aria-live="polite" className={cn("inline-flex items-center gap-1 text-xs", saveState === "error" ? "text-rose" : "text-muted")}>
             {saveState === "saving" && <LoaderCircle className="size-3.5 animate-spin" />}{saveLabel}
             </span>
             <Button type="button" size="sm" variant="secondary" className="size-9 p-0" aria-label={t("saveNow")} title={t("saveNow")} disabled={pending || saveState === "saving"} onClick={() => void flush()}>

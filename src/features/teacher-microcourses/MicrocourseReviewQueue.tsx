@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { DashboardSection, DashboardTableShell } from "@/features/school/dashboard-page";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import type { TeacherMicrocourseReviewQueueItem } from "./data";
@@ -27,12 +28,8 @@ export function MicrocourseReviewQueue({
   };
 }) {
   const formatter = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" });
-  return <section className="border-y border-line/70" aria-labelledby="microcourse-review-queue-title">
-    <header className="border-b border-line/70 px-3 py-2.5">
-      <h2 id="microcourse-review-queue-title" className="text-sm font-medium">{labels.title}</h2>
-      <p className="mt-0.5 text-xs text-muted">{items.length}</p>
-    </header>
-    <Table>
+  return <DashboardSection title={labels.title} description={String(items.length)} aria-labelledby="microcourse-review-queue-title">
+    <DashboardTableShell><Table>
       <TableHeader><TableRow>
         <TableHead className="h-9">{labels.course}</TableHead>
         <TableHead className="hidden h-9 @2xl/page:table-cell">{labels.scope}</TableHead>
@@ -50,6 +47,6 @@ export function MicrocourseReviewQueue({
         </TableRow>)}
         {items.length === 0 && <TableRow><TableCell colSpan={5} className="py-12 text-center text-sm text-muted">{labels.empty}</TableCell></TableRow>}
       </TableBody>
-    </Table>
-  </section>;
+    </Table></DashboardTableShell>
+  </DashboardSection>;
 }
