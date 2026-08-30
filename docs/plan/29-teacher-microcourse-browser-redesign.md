@@ -1,7 +1,7 @@
 # 29 · 教师微课课程浏览与维护体系重构
 
 > **规划状态**：`active`  
-> **当前状态**：本机开发端已交付并启用本机 v2 开关；2026-08-30 产品负责人人工复核确认课程切换仍有明显卡顿，§6.5 性能目标尚未验收并已进入 `POST-LIVE-PERF-01`；未获生产迁移、数据归并、功能开关或发布授权
+> **当前状态**：本机开发端已交付；2026-08-30 讲次预览 hotfix 的生产 preflight 已检出 current=`76f0f9a…`、ledger/head=`236 / 20260830000700_teacher_microcourse_editor_unification`，说明本文件 schema/app 在该 hotfix 前已进入生产，但此前部署授权与 postflight 仍待单独对账。产品负责人确认的教师微课课程切换卡顿仍未解决，§6.5 性能目标未验收；本轮 `a165004…` 只优化讲次课件预览，不关闭该样本
 > **适用范围**：教师微课课程族 `courseID` 页面、教师微课适用范围、使用场景配置、课程维护版本与默认版本管理  
 > **基线实现**：以 `fe2a1d9` 及其主线后续实现为当前重构起点  
 > **施工原则**：先完成隔离环境与本地数据验收；数据库迁移、权限、生产发布继续遵循项目现有授权与回退流程
@@ -1546,6 +1546,12 @@ teaching.teacher_microcourse_browser_v2
 - 产品负责人在教师微课课程族开发页点击不同课程时确认有明显卡顿，§6.5“未命中 p95 不高于 300ms”尚无采样证据且人工手感未通过；本页继续保持“待人工交互验收”，不得因已有 loading、预取和缓存代码写成性能已验收；
 - 静态路径核对确认课程行选择已使用本地 state，并通过原生 History API 只同步 `course` 参数，不触发课程族整页 RSC；因此本样本不再归因为 URL 更新方式。首次未命中会调用 quick-preview Route Handler，依次经过 `auth.getUser()` 与单课程 RPC，响应为 `private, no-store`，20 门缓存只存在于当前浏览器组件生命周期；
 - 后续先采集点击反馈、API TTFB／总时长、RPC 执行计划、响应体和缓存命中率，再决定可见行空闲预取、条件私有缓存、鉴权往返或缓存边界优化。该项按 doc 04 的 `POST-LIVE-PERF-01` 和 doc 15 §6.5 与其他页面卡顿一起收集，不作为 R1-Live Gate 2 blocker，也不在本轮扩成功能重构。
+
+2026-08-30 第六轮只登记生产发现与讲次预览 hotfix 边界：
+
+- app-only hotfix 写前只读 preflight 已发现生产应用为 `76f0f9a…`，数据库 ledger/head=`236 / 20260830000700_teacher_microcourse_editor_unification`；这些事实早于本轮发布，本轮没有重放本文件 migration、历史归并或功能开关，也不补写此前部署的授权结论；
+- 来源提交 `50a1648` 以该生产基线适配为 `a165004…`，只增加讲次只读预览的页级读取、缓存、相邻预取、History API 页码同步、来源 runtime iframe 复用和资源 URL 批量解析。release `20260830-080555` 的机器 postflight 通过，真实多页课程翻页手感待产品验收；
+- 教师微课课程行点击仍走 `/api/teacher-microcourses/[courseId]/quick-preview`，本 hotfix 没有改变这条 Auth/RPC 请求链、`private, no-store` 响应或组件缓存边界。因此第五轮的课程切换性能缺口、采样要求和 §6.5 门槛原样保留。
 
 ---
 
