@@ -1333,13 +1333,13 @@ export function LiveShell({
   // --- 上课 ----------------------------------------------------------------
   return (
     <div className={cn(
-      "relative isolate flex h-dvh flex-col overflow-hidden px-3 pt-2",
-      teacherLayoutV2 ? "pb-[calc(4.25rem+env(safe-area-inset-bottom))]" : "pb-2",
-    )} data-classroom-live-shell>
+      "relative isolate flex h-dvh select-none flex-col overflow-hidden px-3 pt-2 [-webkit-touch-callout:none] [-webkit-user-select:none]",
+      teacherLayoutV2 ? "pb-[calc(3.5rem+env(safe-area-inset-bottom))]" : "pb-2",
+    )} data-classroom-live-shell data-classroom-selection-policy="none-during-teaching">
       <ClassroomBackdrop />
 
       {teacherLayoutV2 && (
-        <div className="shrink-0 lg:hidden" data-classroom-narrow-course-info>
+        <div className="shrink-0 xl:hidden" data-classroom-narrow-course-info>
           <ClassroomCourseInfoBar
             backHref={`/classroom/${classId}/session/${session.id}`}
             exitLabel={t("exit")}
@@ -1754,8 +1754,8 @@ export function LiveShell({
             // 但 1024 上留 34rem 会把主板书压到 480px，所以两栏全展开时 lg 档先给 26rem，xl 才放到 34rem。
             teacherLayoutV2
               ? sideCollapsed
-                ? "grid-rows-[2.75rem_minmax(0,1fr)] lg:grid-rows-[2.5rem_2.75rem_minmax(0,1fr)]"
-                : "grid-rows-[minmax(7rem,1fr)_13rem] lg:grid-rows-[2.5rem_minmax(8rem,1fr)_17.5rem]"
+                ? "grid-rows-[2.75rem_minmax(0,1fr)] xl:grid-rows-[2.5rem_2.75rem_minmax(0,1fr)]"
+                : "grid-rows-[minmax(7rem,1fr)_13rem] lg:grid-rows-[minmax(8rem,1fr)_17.5rem] xl:grid-rows-[2.5rem_minmax(8rem,1fr)_17.5rem]"
               : sideCollapsed && rosterCollapsed
                 ? "lg:w-[5.25rem]"
                 : sideCollapsed
@@ -1767,7 +1767,7 @@ export function LiveShell({
           data-classroom-right-stack-surface={teacherLayoutV2 ? "transparent" : "paper"}
         >
           {teacherLayoutV2 && (
-            <div className="hidden lg:block" data-classroom-wide-course-info>
+            <div className="hidden xl:block" data-classroom-wide-course-info>
               <ClassroomCourseInfoBar
                 backHref={`/classroom/${classId}/session/${session.id}`}
                 exitLabel={t("exit")}

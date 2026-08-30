@@ -512,7 +512,7 @@ export function SessionLearningCheckPanel({
               variant={seatEditMode ? "primary" : "secondary"}
               disabled={seatOrderSaving}
               aria-pressed={seatEditMode}
-              className="min-h-8 shrink-0 px-2.5 text-xs"
+              className="hidden min-h-8 shrink-0 px-2.5 text-xs sm:inline-flex"
               onClick={() => {
                 if (draggingStudentIdRef.current) finishDragging(true);
                 setSeatEditMode((enabled) => !enabled);
@@ -539,11 +539,72 @@ export function SessionLearningCheckPanel({
           </div>
         </DialogHeader>
 
-        <main className="flex min-h-0 flex-1 overflow-hidden p-1">
+        <main className="flex min-h-0 flex-1 flex-col overflow-hidden p-1 sm:flex-row" data-learning-responsive-layout="mobile-list-desktop-seats">
+          <div className="flex min-h-0 flex-1 flex-col divide-y divide-line overflow-y-auto sm:hidden" data-learning-mobile-list>
+            {orderedStudents.map((student) => {
+              const status = activeCheck
+                ? results.get(learningResultKey(activeCheck.id, student.id)) ?? "unchecked"
+                : "unchecked";
+              const saving = savingStudentIds.has(student.id);
+              const statusStyle = LEARNING_CHECK_STATUS_STYLE[status];
+              return (
+                <article
+                  key={student.id}
+                  className={cn(
+                    "flex min-h-12 shrink-0 items-center gap-1 px-1.5 transition-colors",
+                    statusStyle.card,
+                  )}
+                  data-learning-mobile-row
+                  data-learning-student-id={student.id}
+                  data-learning-current-status={status}
+                >
+                  {attendanceIntegrated && (
+                    <AttendanceStatusLight
+                      studentName={student.name}
+                      row={attendanceByStudent.get(student.id)}
+                      saving={attendanceSavingStudentIds.has(student.id)}
+                      onChange={(attendanceStatus) => markAttendance(student, attendanceStatus)}
+                    />
+                  )}
+                  <span className="w-20 min-w-0 shrink-0 truncate px-1 text-xs font-medium">{student.name}</span>
+                  <div className="grid min-w-0 flex-1 grid-cols-6 gap-0.5" role="group" aria-label={student.name}>
+                    {LEARNING_CHECK_STATUSES.map((candidate) => (
+                      <button
+                        key={candidate}
+                        type="button"
+                        disabled={saving}
+                        aria-pressed={status === candidate}
+                        aria-label={t("learningStatus_" + candidate)}
+                        title={t("learningStatus_" + candidate)}
+                        onClick={() => mark([student.id], candidate)}
+                        className={cn(
+                          "grid h-10 min-w-0 place-items-center rounded-md border p-0 outline-none transition-[color,background-color,border-color,box-shadow,transform] focus-visible:ring-2 focus-visible:ring-crater active:scale-95 disabled:opacity-55",
+                          status === candidate
+                            ? LEARNING_CHECK_STATUS_STYLE[candidate].active
+                            : cn("border-transparent bg-paper/45 text-muted", LEARNING_CHECK_STATUS_STYLE[candidate].idle),
+                        )}
+                      >
+                        {saving && status === candidate
+                          ? <LoaderCircle size={15} className="animate-spin motion-reduce:animate-none" />
+                          : <LearningCheckStatusIcon
+                              status={candidate}
+                              size={16}
+                              className={cn(
+                                "shrink-0",
+                                status === candidate ? "text-current opacity-80" : LEARNING_CHECK_STATUS_STYLE[candidate].icon,
+                              )}
+                            />}
+                      </button>
+                    ))}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
           <div
             ref={seatGridRef}
             className={cn(
-              "grid min-h-0 min-w-0 flex-1 gap-0.5",
+              "hidden min-h-0 min-w-0 flex-1 gap-0.5 sm:grid",
               seatSlots.length > LEARNING_SEAT_CAPACITY
                 ? "auto-rows-[minmax(7.75rem,1fr)] overflow-y-auto pr-1"
                 : "auto-rows-[minmax(0,1fr)] overflow-y-hidden",

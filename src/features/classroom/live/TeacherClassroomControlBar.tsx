@@ -44,7 +44,7 @@ export function TeacherClassroomControlBar({
 
   return (
     <footer
-      className="fixed inset-x-3 bottom-2 z-[70] grid h-[calc(3.5rem+env(safe-area-inset-bottom))] grid-cols-[minmax(0,1fr)_auto] items-center gap-1.5 rounded-[1.4rem] bg-paper/30 px-2 pb-[env(safe-area-inset-bottom)] shadow-[inset_0_1px_0_rgba(255,255,255,0.24),inset_0_-1px_0_rgba(0,0,0,0.16),0_10px_32px_rgba(0,0,0,0.22)] ring-1 ring-inset ring-white/10 backdrop-blur-xl backdrop-saturate-150 lg:grid-cols-[minmax(0,1fr)_clamp(22rem,31vw,36rem)] lg:gap-3 lg:px-3"
+      className="fixed inset-x-2 bottom-[max(.25rem,env(safe-area-inset-bottom))] z-[70] grid h-12 grid-cols-[minmax(0,1fr)_auto] items-center gap-0.5 rounded-[1.4rem] bg-paper/30 px-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.24),inset_0_-1px_0_rgba(0,0,0,0.16),0_8px_26px_rgba(0,0,0,0.2)] ring-1 ring-inset ring-white/10 backdrop-blur-xl backdrop-saturate-150 lg:inset-x-3 lg:gap-2 lg:px-2"
       data-classroom-control-bar="full-width"
       data-classroom-control-surface="flat-rail"
       data-classroom-control-background="optical-glass"
@@ -54,7 +54,7 @@ export function TeacherClassroomControlBar({
           className={cn(
             "overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
             toolTrayExpanded
-              ? "fixed inset-x-3 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-[71] max-h-[min(60dvh,26rem)] touch-pan-y overflow-y-auto rounded-[1.4rem] bg-paper/80 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.28),inset_0_-1px_0_rgba(0,0,0,0.14),0_14px_36px_rgba(0,0,0,0.24)] ring-1 ring-inset ring-white/15 backdrop-blur-xl backdrop-saturate-150 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:duration-150"
+              ? "fixed inset-x-2 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-[71] max-h-[min(60dvh,26rem)] touch-pan-y overflow-y-auto rounded-[1.4rem] bg-paper/80 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.28),inset_0_-1px_0_rgba(0,0,0,0.14),0_14px_36px_rgba(0,0,0,0.24)] ring-1 ring-inset ring-white/15 backdrop-blur-xl backdrop-saturate-150 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:duration-150"
               : "h-11 touch-pan-x overflow-x-auto overflow-y-hidden",
             "lg:static lg:h-auto lg:max-h-none lg:overflow-visible lg:bg-transparent lg:p-0 lg:shadow-none lg:ring-0 lg:backdrop-blur-none lg:backdrop-saturate-100",
           )}
@@ -88,9 +88,9 @@ export function TeacherClassroomControlBar({
           </div>
         </div>
       </div>
-      <div className="flex min-w-0 shrink-0 items-center justify-end gap-0.5 border-l border-line pl-1.5 lg:gap-1.5 lg:pl-3">
+      <div className="flex min-w-0 shrink-0 items-center justify-end gap-0 border-l border-line pl-0.5 [&_[data-classroom-rail-button]]:!size-9 lg:gap-1 lg:pl-2 lg:[&_[data-classroom-rail-button]]:!size-11" data-classroom-fixed-controls="compact-on-narrow">
         <div className="flex shrink-0 items-center" data-classroom-control-zone="pages">{pageControls}</div>
-        <span aria-hidden className="h-6 w-px shrink-0 bg-line" />
+        <span aria-hidden className="hidden h-6 w-px shrink-0 bg-line lg:block" />
         <div className="flex shrink-0 items-center" data-classroom-control-zone="utility">{utilityControls}</div>
       </div>
     </footer>

@@ -41,9 +41,10 @@ export function LearningFillRail({
   return (
     <aside
       aria-label={t("learningFillRail")}
-      className="ml-1 flex w-28 shrink-0 flex-col items-stretch border-l border-line py-1 pl-1"
+      className="order-first mb-1 flex w-full shrink-0 items-center border-b border-line pb-1 sm:order-none sm:mb-0 sm:ml-1 sm:w-28 sm:flex-col sm:items-stretch sm:border-b-0 sm:border-l sm:py-1 sm:pb-0 sm:pl-1"
       data-learning-fill-rail
       data-learning-fill-width="112"
+      data-learning-fill-layout="mobile-row-desktop-rail"
       data-learning-fill-remaining={remainingCount}
     >
       <div
@@ -75,7 +76,7 @@ export function LearningFillRail({
             : <Check aria-hidden size={17} className="text-leaf" />}
       </div>
 
-      <div className="mt-1 flex flex-col gap-1" role="toolbar" aria-label={t("learningFillRail")}>
+      <div className="ml-1 flex min-w-0 flex-1 gap-0.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:ml-0 sm:mt-1 sm:flex-none sm:flex-col sm:gap-1 sm:overflow-visible" role="toolbar" aria-label={t("learningFillRail")}>
         {FILL_STATUSES.map((status) => {
           const label = t("learningFillAction", {
             count: remainingCount,
@@ -92,14 +93,14 @@ export function LearningFillRail({
               title={label}
               onClick={() => onFill(status)}
               className={cn(
-                "h-11 w-full shrink-0 justify-start gap-2 rounded-lg border border-transparent px-2 text-xs font-medium",
+                "size-10 shrink-0 justify-center gap-2 rounded-lg border border-transparent p-0 text-xs font-medium sm:h-11 sm:w-full sm:justify-start sm:px-2",
                 LEARNING_CHECK_STATUS_STYLE[status].icon,
                 LEARNING_CHECK_STATUS_STYLE[status].idle,
               )}
               data-learning-fill-action={status}
             >
               <LearningCheckStatusIcon status={status} size={18} className="shrink-0" />
-              <span className="min-w-0 text-left leading-tight">{t("learningStatus_" + status)}</span>
+              <span className="sr-only min-w-0 text-left leading-tight sm:not-sr-only">{t("learningStatus_" + status)}</span>
             </Button>
           );
         })}
@@ -113,11 +114,11 @@ export function LearningFillRail({
         aria-label={t("learningFillUndo")}
         title={t("learningFillUndo")}
         onClick={onUndo}
-        className="mt-auto h-11 w-full shrink-0 justify-start gap-2 rounded-lg border border-transparent px-2 text-xs font-medium text-muted hover:bg-moon/30 hover:text-ink"
+        className="ml-0.5 size-10 shrink-0 justify-center gap-2 rounded-lg border border-transparent p-0 text-xs font-medium text-muted hover:bg-moon/30 hover:text-ink sm:ml-0 sm:mt-auto sm:h-11 sm:w-full sm:justify-start sm:px-2"
         data-learning-fill-undo
       >
         <Undo2 aria-hidden size={18} className="shrink-0" />
-        <span className="min-w-0 text-left leading-tight">{t("learningFillUndo")}</span>
+        <span className="sr-only min-w-0 text-left leading-tight sm:not-sr-only">{t("learningFillUndo")}</span>
       </Button>
     </aside>
   );
