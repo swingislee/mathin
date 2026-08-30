@@ -1,4 +1,3 @@
-import { spawnSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -126,51 +125,21 @@ export async function importAll(options) {
       "AIXUEXI_IMPORT_ALL: " + (options.startAt + index) + "/" + lectures.length
       + " · " + lecture.coursewareId + " · " + lecture.lessonName + "\n",
     );
-    const args = [
-      path.join(process.cwd(), "scripts", "cw-import.mjs"),
-      "--package-root", options.packageRoot,
-      "--store-root", options.storeRoot,
-      "--courseware-id", lecture.coursewareId,
-    ];
     const catalogVersion = resolveCatalogVersion(lecture, options, versionsByProduct);
-    if (catalogVersion) args.push("--catalog-version", catalogVersion);
-    if (options.localDocker) args.push("--local-docker", "--database-url", options.databaseUrl);
-    else args.push("--ssh-host", options.sshHost);
-    if (options.dryRun) args.push("--dry-run");
-    if (options.allowProductionTarget) args.push("--allow-production-target");
-    if (options.allowProductionSourceRuntimeUpgrade) {
-      args.push("--allow-production-source-runtime-upgrade");
-    }
-    if (options.upgradeSourceRuntime) args.push("--upgrade-source-runtime");
-    let result;
-    if (options.localDocker) {
-      result = await importCourseware({
-        packageRoot: options.packageRoot,
-        storeRoot: options.storeRoot,
-        coursewareId: lecture.coursewareId,
-        catalogVersion,
-        dryRun: options.dryRun,
-        localDocker: true,
-        databaseUrl: options.databaseUrl,
-        sshHost: options.sshHost,
-        allowProductionTarget: false,
-        allowProductionSourceRuntimeUpgrade: false,
-        upgradeSourceRuntime: options.upgradeSourceRuntime,
-        quiet: true,
-      });
-    } else {
-      const child = spawnSync(process.execPath, args, {
-        cwd: process.cwd(),
-        encoding: "utf8",
-        maxBuffer: 256 * 1024 * 1024,
-        shell: false,
-      });
-      if (child.status !== 0) {
-        process.stderr.write(child.stderr ?? "");
-        fail("lecture " + lecture.coursewareId + " failed with exit code " + child.status);
-      }
-      result = JSON.parse(child.stdout);
-    }
+    const result = await importCourseware({
+      packageRoot: options.packageRoot,
+      storeRoot: options.storeRoot,
+      coursewareId: lecture.coursewareId,
+      catalogVersion,
+      dryRun: options.dryRun,
+      localDocker: options.localDocker,
+      databaseUrl: options.databaseUrl,
+      sshHost: options.sshHost,
+      allowProductionTarget: options.allowProductionTarget,
+      allowProductionSourceRuntimeUpgrade: options.allowProductionSourceRuntimeUpgrade,
+      upgradeSourceRuntime: options.upgradeSourceRuntime,
+      quiet: true,
+    });
     results.push(result);
     process.stderr.write(
       "AIXUEXI_IMPORT_ALL: ok · pages=" + result.expected.pages

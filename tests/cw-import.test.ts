@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -295,5 +296,11 @@ describe("P6 courseware importer", () => {
 
   it("exports the in-process importer used by local resumable batches", () => {
     expect(importCourseware).toBeTypeOf("function");
+    const batchImporter = readFileSync(
+      new URL("../scripts/aixuexi-import-all.mjs", import.meta.url),
+      "utf8",
+    );
+    expect(batchImporter).toContain("const result = await importCourseware({");
+    expect(batchImporter).not.toContain("spawnSync");
   });
 });
