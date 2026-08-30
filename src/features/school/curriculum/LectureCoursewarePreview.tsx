@@ -1,18 +1,50 @@
-import { getTranslations } from "next-intl/server";
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import { LoaderCircle } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { Button } from "@/components/ui/button";
+import { loadCoursewarePreviewPageAction } from "@/features/courseware-preview/actions";
 import { CoursewarePreviewWorkspace } from "@/features/courseware-preview/CoursewarePreviewWorkspace";
-import { StagePreview } from "@/features/courseware-studio/StagePreview";
-import type { CoursewareLecturePreview } from "@/features/courseware-studio/data";
-import { isSpatialPageDoc } from "@/features/courseware-doc/spatial";
 import { isSourceRuntimePageDoc } from "@/features/courseware-doc/source-runtime-schema";
+import { isSpatialPageDoc } from "@/features/courseware-doc/spatial";
+import { StagePreview } from "@/features/courseware-studio/StagePreview";
+import type {
+  CoursewareLecturePreview,
+  CoursewarePreviewPagePayload,
+} from "@/features/courseware-studio/data";
 import { cn } from "@/lib/utils";
 
+function pageAspect(
+  page: CoursewarePreviewPagePayload["page"] | undefined,
+  fallback: string,
+) {
+  const aspect = page?.aspect ?? fallback;
+  if (aspect === "4:3") return 4 / 3;
+  if (page && isSourceRuntimePageDoc(page.doc)) {
+    return page.doc.viewport.width / page.doc.viewport.height;
+  }
+  if (page && isSpatialPageDoc(page.doc)) return 16 / 9;
+  return page && "canvas" in page.doc
+    ? page.doc.canvas.width / page.doc.canvas.height
+    : 16 / 9;
+}
+
+/** Keep the locale-prefixed pathname while replacing only this preview's query state. */
+function replacePreviewUrl(href: string) {
+  const target = new URL(href, window.location.origin);
+  window.history.replaceState(null, "", `${window.location.pathname}${target.search}${target.hash}`);
+}
+
 /**
- * 课件预览 + 翻页，独立成组件是为了同一份实现能同时用在两处：讲次工作区
- * 页面内嵌（无外壳）和 `LecturePreviewPanel` 弹窗正文（带外壳）。
- * 每页 href 由调用方按各自的 baseHref 拼好；共享预览组件据当前索引统一驱动
- * 目录、上一页/下一页按钮和键盘快捷键。
+ * Read-only lecture preview with an immutable-release page cache.
+ *
+ * The first page still arrives with the Server Component response. Subsequent
+ * pages are fetched independently, cached for the lifetime of the preview, and
+ * the adjacent pages are warmed in the background. Page turns therefore no
+ * longer rerun the surrounding course/lecture route.
  */
-export async function LectureCoursewarePreview({
+export function LectureCoursewarePreview({
   preview,
   pageHrefs,
   fillAvailable = false,
@@ -21,40 +53,154 @@ export async function LectureCoursewarePreview({
   pageHrefs: string[];
   fillAvailable?: boolean;
 }) {
-  const t = await getTranslations("school.courses");
-  const isFourThree = preview.page.aspect === "4:3";
-  const previewAspect = isFourThree
-    ? 4 / 3
-    : isSourceRuntimePageDoc(preview.page.doc)
-      ? preview.page.doc.viewport.width / preview.page.doc.viewport.height
-      : isSpatialPageDoc(preview.page.doc)
-      ? 16 / 9
-      : preview.page.doc.canvas.width / preview.page.doc.canvas.height;
+  return (
+    <LectureCoursewarePreviewState
+      key={`${preview.release.id}:${preview.track}`}
+      preview={preview}
+      pageHrefs={pageHrefs}
+      fillAvailable={fillAvailable}
+    />
+  );
+}
+
+function LectureCoursewarePreviewState({
+  preview,
+  pageHrefs,
+  fillAvailable,
+}: {
+  preview: CoursewareLecturePreview;
+  pageHrefs: string[];
+  fillAvailable: boolean;
+}) {
+  const t = useTranslations("school.courses");
+  const commonT = useTranslations("common");
+  const [selectedIndex, setSelectedIndex] = useState(preview.pageIndex - 1);
+  const [cache, setCache] = useState(new Map<string, CoursewarePreviewPagePayload>([[
+    preview.page.pageDocId,
+    { page: preview.page, bindingUrls: preview.bindingUrls },
+  ]]));
+  const [errors, setErrors] = useState(new Map<string, string>());
+  const pendingRef = useRef(new Map<string, Promise<CoursewarePreviewPagePayload>>());
+
+  const ensurePage = useCallback((pageDocId: string) => {
+    const cached = cache.get(pageDocId);
+    if (cached) return Promise.resolve(cached);
+    const pending = pendingRef.current.get(pageDocId);
+    if (pending) return pending;
+
+    setErrors((current) => {
+      if (!current.has(pageDocId)) return current;
+      const next = new Map(current);
+      next.delete(pageDocId);
+      return next;
+    });
+    const request = loadCoursewarePreviewPageAction({
+      releaseId: preview.release.id,
+      track: preview.track,
+      pageDocId,
+    }).then((result) => {
+      if (!result.ok) throw new Error(result.code);
+      setCache((current) => new Map(current).set(pageDocId, result.data));
+      setErrors((current) => {
+        if (!current.has(pageDocId)) return current;
+        const next = new Map(current);
+        next.delete(pageDocId);
+        return next;
+      });
+      return result.data;
+    });
+    const settled = request.then(
+      (page) => {
+        pendingRef.current.delete(pageDocId);
+        return page;
+      },
+      (error: unknown) => {
+        pendingRef.current.delete(pageDocId);
+        setErrors((current) => new Map(current).set(
+          pageDocId,
+          error instanceof Error ? error.message : "UNKNOWN",
+        ));
+        throw error;
+      },
+    );
+    pendingRef.current.set(pageDocId, settled);
+    return settled;
+  }, [cache, preview.release.id, preview.track]);
+
+  useEffect(() => {
+    // One page in each direction is enough to make normal sequential teaching
+    // instant without signing or transferring the whole lecture up front.
+    for (const index of [selectedIndex - 1, selectedIndex + 1]) {
+      const page = preview.pages[index];
+      if (page) void ensurePage(page.pageDocId).catch(() => undefined);
+    }
+  }, [ensurePage, preview.pages, selectedIndex]);
+
+  const selectPage = useCallback((index: number) => {
+    const page = preview.pages[index];
+    const href = pageHrefs[index];
+    if (!page || !href) return;
+    setSelectedIndex(index);
+    replacePreviewUrl(href);
+    void ensurePage(page.pageDocId).catch(() => undefined);
+  }, [ensurePage, pageHrefs, preview.pages]);
+
+  const selectedMeta = preview.pages[selectedIndex] ?? preview.pages[0];
+  const loaded = selectedMeta ? cache.get(selectedMeta.pageDocId) : undefined;
+  const loadError = selectedMeta ? errors.get(selectedMeta.pageDocId) : undefined;
+  const previewAspect = pageAspect(loaded?.page, selectedMeta?.aspect ?? "16:9");
+  const isFourThree = (loaded?.page.aspect ?? selectedMeta?.aspect) === "4:3";
+
+  const previewContent = loaded ? (
+    <StagePreview
+      doc={loaded.page.doc}
+      bindingUrls={loaded.bindingUrls}
+      stageMode={isFourThree ? "board43" : "natural"}
+      className="size-full"
+    />
+  ) : loadError ? (
+    <div className="grid size-full place-items-center bg-card px-6 text-center">
+      <div>
+        <p className="text-sm text-danger">{t("previewPageLoadFailed")}</p>
+        {selectedMeta ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            className="mt-3"
+            onClick={() => void ensurePage(selectedMeta.pageDocId).catch(() => undefined)}
+          >
+            {commonT("retry")}
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  ) : (
+    <div className="grid size-full place-items-center bg-card" aria-live="polite">
+      <div className="flex items-center gap-2 text-sm text-muted">
+        <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" />
+        {t("previewPageLoading", { page: selectedIndex + 1 })}
+      </div>
+    </div>
+  );
 
   return (
     <div className={cn("flex min-h-0 flex-col", fillAvailable ? "h-full" : "h-[min(70dvh,44rem)] min-h-[28rem]")}>
       <CoursewarePreviewWorkspace
         className="flex-1"
-        items={preview.pages.map((page, index) => ({
+        items={preview.pages.map((page) => ({
           id: page.pageDocId,
           title: `${page.pageNo}. ${page.title || t("previewUntitledPage")}`,
-          href: pageHrefs[index]!,
         }))}
-        selectedIndex={preview.pageIndex - 1}
+        selectedIndex={selectedIndex}
+        onSelectedIndexChange={selectPage}
         directoryLabel={t("previewDirectory")}
         previewLabel={t("coursewarePreview")}
         previousLabel={t("previousPage")}
         nextLabel={t("nextPage")}
-        selectedPageLabel={t("previewPageIndicator", { current: preview.pageIndex, total: preview.pages.length })}
+        selectedPageLabel={t("previewPageIndicator", { current: selectedIndex + 1, total: preview.pages.length })}
         previewAspect={previewAspect}
-        preview={(
-          <StagePreview
-            doc={preview.page.doc}
-            bindingUrls={preview.bindingUrls}
-            stageMode={isFourThree ? "board43" : "natural"}
-            className="size-full"
-          />
-        )}
+        preview={previewContent}
       />
     </div>
   );

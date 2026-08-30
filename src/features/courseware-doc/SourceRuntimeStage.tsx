@@ -86,20 +86,30 @@ export default function SourceRuntimeStage({
   const [runtimeFailure, setRuntimeFailure] = useState<{ frameKey: string; message: string } | null>(null);
   const appliedCtl = useRef<DocVideoControl["ctl"]>(undefined);
   const runtimeReadyFor = useRef<string | null>(null);
+  const runtimeLoadedFor = useRef<string | null>(null);
+  const runtimePayloadSentFor = useRef<string | null>(null);
   const runtimeEntry = bindingUrls[doc.runtime.bindingKey];
-  const frameKey = `${doc.runtime.packageHash}:${doc.source.coursewareId}:${doc.source.pageDatabaseId}:${runtimeEntry ?? "missing"}`;
-  const rendered = renderedFrameKey === frameKey;
-  const runtimeError = runtimeFailure?.frameKey === frameKey ? runtimeFailure.message : null;
+  // The runtime package is shared by every page in a source courseware. Keep
+  // that iframe alive while only the render payload changes between pages;
+  // reloading the immutable viewer bundle on every page turn is the dominant
+  // source-preview latency. A different package/entry still remounts safely.
+  const runtimeInstanceKey = `${doc.runtime.packageHash}:${runtimeEntry ?? "missing"}`;
+  const renderKey = `${runtimeInstanceKey}:${doc.source.coursewareId}:${doc.source.pageDatabaseId}`;
+  const rendered = renderedFrameKey === renderKey;
+  const runtimeError = runtimeFailure?.frameKey === renderKey ? runtimeFailure.message : null;
   const payload = useMemo(
     () => materializePayload(doc, bindingUrls, interactive),
     [bindingUrls, doc, interactive],
   );
 
   useEffect(() => {
-    if (runtimeReadyFor.current === frameKey && payload) {
+    if ((runtimeReadyFor.current === runtimeInstanceKey || runtimeLoadedFor.current === runtimeInstanceKey)
+        && runtimePayloadSentFor.current !== renderKey
+        && payload) {
+      runtimePayloadSentFor.current = renderKey;
       iframeRef.current?.contentWindow?.postMessage(payload, "*");
     }
-  }, [frameKey, iframeRef, payload]);
+  }, [iframeRef, payload, renderKey, runtimeInstanceKey]);
 
   useEffect(() => {
     const receive = (event: MessageEvent) => {
@@ -107,17 +117,20 @@ export default function SourceRuntimeStage({
       const message = event.data as { source?: unknown; protocol?: unknown; type?: unknown; message?: unknown; action?: unknown; time?: unknown };
       if (message.source === FRAME_MESSAGE_SOURCE && message.protocol === SOURCE_RUNTIME_PROTOCOL) {
         if (message.type === "ready") {
-          runtimeReadyFor.current = frameKey;
-          if (payload) iframeRef.current?.contentWindow?.postMessage(payload, "*");
+          runtimeReadyFor.current = runtimeInstanceKey;
+          if (payload && runtimePayloadSentFor.current !== renderKey) {
+            runtimePayloadSentFor.current = renderKey;
+            iframeRef.current?.contentWindow?.postMessage(payload, "*");
+          }
         }
         if (message.type === "rendered") {
-          setRenderedFrameKey(frameKey);
-          setRuntimeFailure((current) => current?.frameKey === frameKey ? null : current);
+          setRenderedFrameKey(renderKey);
+          setRuntimeFailure((current) => current?.frameKey === renderKey ? null : current);
         }
         if (message.type === "advance") onAdvance?.();
         if (message.type === "error") {
           setRuntimeFailure({
-            frameKey,
+            frameKey: renderKey,
             message: typeof message.message === "string" ? message.message : t("sourceRuntimeUnavailable"),
           });
         }
@@ -132,7 +145,7 @@ export default function SourceRuntimeStage({
     };
     window.addEventListener("message", receive);
     return () => window.removeEventListener("message", receive);
-  }, [frameKey, iframeRef, onAdvance, payload, t, videoControl]);
+  }, [iframeRef, onAdvance, payload, renderKey, runtimeInstanceKey, t, videoControl]);
 
   useEffect(() => {
     const ctl = videoControl?.ctl;
@@ -170,7 +183,7 @@ export default function SourceRuntimeStage({
       {runtimeEntry ? (
         <iframe
           ref={iframeRef}
-          key={frameKey}
+          key={runtimeInstanceKey}
           title={doc.source.pageName}
           src={runtimeEntry}
           sandbox="allow-scripts allow-forms allow-pointer-lock allow-modals"
@@ -179,8 +192,13 @@ export default function SourceRuntimeStage({
           data-classroom-input="native"
           onLoad={() => {
             // The child runtime posts `ready` and can finish rendering before
-            // the browser dispatches the iframe load event. Resetting state
-            // here would re-cover an already rendered page indefinitely.
+            // the parent effect is installed. Treat `load` as the second side
+            // of the same handshake and send the payload at most once.
+            runtimeLoadedFor.current = runtimeInstanceKey;
+            if (payload && runtimePayloadSentFor.current !== renderKey) {
+              runtimePayloadSentFor.current = renderKey;
+              iframeRef.current?.contentWindow?.postMessage(payload, "*");
+            }
             onFrameLoad();
           }}
           style={{

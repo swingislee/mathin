@@ -176,8 +176,23 @@ async function h5EntryPath(objectHash: string): Promise<string> {
   return "index.html";
 }
 
-async function resolveBindingUrls(bindings: readonly TeacherMicrocourseBinding[]): Promise<ResolvedBindingUrls> {
-  if (bindings.length === 0) return {};
+function normalizeBindings(bindings: readonly z.infer<typeof bindingSchema>[]): TeacherMicrocourseBinding[] {
+  return bindings.map((binding) => ({
+    bindingKey: binding.bindingKey,
+    assetRevisionId: binding.assetRevisionId,
+    role: binding.role ?? null,
+    kind: binding.kind ?? null,
+    storagePath: binding.storagePath ?? null,
+  }));
+}
+
+/** Resolve every page in one DB lookup, one signed-URL batch and one H5 manifest pass. */
+async function resolvePageBindingUrls(
+  pages: readonly { pageDocId: string; bindings: readonly TeacherMicrocourseBinding[] }[],
+): Promise<Map<string, ResolvedBindingUrls>> {
+  const result = new Map(pages.map((page) => [page.pageDocId, {} as ResolvedBindingUrls]));
+  const bindings = pages.flatMap((page) => page.bindings);
+  if (bindings.length === 0) return result;
   const admin = createAdminClient();
   const lookupRevisionIds = bindingObjectLookupRevisionIds(bindings);
   const objectByRevision = new Map<string, TeacherMicrocourseAssetObjectDescriptor>();
@@ -197,8 +212,14 @@ async function resolveBindingUrls(bindings: readonly TeacherMicrocourseBinding[]
     }
   }
 
-  const resolved = resolveTeacherMicrocourseBindingDescriptors(bindings, objectByRevision);
-  const paths = [...new Set(resolved.filter((item) => item.kind !== "h5" && item.storagePath).map((item) => item.storagePath!))];
+  const resolvedByPage = new Map(pages.map((page) => [
+    page.pageDocId,
+    resolveTeacherMicrocourseBindingDescriptors(page.bindings, objectByRevision),
+  ]));
+  const resolved = [...resolvedByPage.values()].flat();
+  const paths = [...new Set(resolved
+    .filter((item) => item.kind !== "h5" && item.storagePath)
+    .map((item) => item.storagePath!))];
   const signedByPath = new Map<string, string>();
   if (paths.length > 0) {
     const { data, error } = await admin.storage.from("cw-objects").createSignedUrls(paths, 6 * 60 * 60);
@@ -206,16 +227,27 @@ async function resolveBindingUrls(bindings: readonly TeacherMicrocourseBinding[]
     for (const item of data ?? []) if (item.path && item.signedUrl) signedByPath.set(item.path, item.signedUrl);
   }
 
-  const urls: Record<string, string> = {};
-  for (const item of resolved) {
-    if (item.kind === "h5" && item.objectHash) {
-      urls[item.bindingKey] = buildH5EntryUrl(item.objectHash, await h5EntryPath(item.objectHash), null);
-    } else if (item.storagePath) {
-      const url = signedByPath.get(item.storagePath);
-      if (url) urls[item.bindingKey] = url;
+  const h5Hashes = [...new Set(resolved
+    .filter((item) => item.kind === "h5" && item.objectHash)
+    .map((item) => item.objectHash!))];
+  const h5Entries = new Map(await Promise.all(h5Hashes.map(async (objectHash) => [
+    objectHash,
+    await h5EntryPath(objectHash),
+  ] as const)));
+
+  for (const [pageDocId, pageBindings] of resolvedByPage) {
+    const urls: Record<string, string> = {};
+    for (const item of pageBindings) {
+      if (item.kind === "h5" && item.objectHash) {
+        urls[item.bindingKey] = buildH5EntryUrl(item.objectHash, h5Entries.get(item.objectHash) ?? "index.html", null);
+      } else if (item.storagePath) {
+        const url = signedByPath.get(item.storagePath);
+        if (url) urls[item.bindingKey] = url;
+      }
     }
+    result.set(pageDocId, urls);
   }
-  return urls;
+  return result;
 }
 
 export async function getTeacherMicrocourseForSession(sessionId: string): Promise<TeacherMicrocourseSummary | null> {
@@ -302,15 +334,11 @@ export async function getTeacherMicrocourseEditor(microcourseId: string): Promis
   const { data, error } = await rpc(supabase)("get_teacher_microcourse_editor", { p_microcourse_id: parsed.data });
   if (error) throw new Error(error.message);
   const editor = editorSchema.parse(data);
-  const pages = await Promise.all(editor.pages.map(async (page): Promise<TeacherMicrocoursePage> => {
-    const bindings = page.bindings.map((binding) => ({
-      bindingKey: binding.bindingKey,
-      assetRevisionId: binding.assetRevisionId,
-      role: binding.role ?? null,
-      kind: binding.kind ?? null,
-      storagePath: binding.storagePath ?? null,
-    }));
-    return { ...page, bindings, bindingUrls: await resolveBindingUrls(bindings) };
+  const normalizedPages = editor.pages.map((page) => ({ ...page, bindings: normalizeBindings(page.bindings) }));
+  const bindingUrlsByPage = await resolvePageBindingUrls(normalizedPages);
+  const pages = normalizedPages.map((page): TeacherMicrocoursePage => ({
+    ...page,
+    bindingUrls: bindingUrlsByPage.get(page.pageDocId) ?? {},
   }));
   return { ...editor, pages };
 }
@@ -472,15 +500,11 @@ export async function getTeacherMicrocourseReview(reviewCycleId: string): Promis
       bindings: z.array(bindingSchema),
     })),
   }).parse(data);
-  const pages = await Promise.all(review.pages.map(async (page): Promise<TeacherMicrocoursePage> => {
-    const bindings = page.bindings.map((binding) => ({
-      bindingKey: binding.bindingKey,
-      assetRevisionId: binding.assetRevisionId,
-      role: binding.role ?? null,
-      kind: binding.kind ?? null,
-      storagePath: binding.storagePath ?? null,
-    }));
-    return { ...page, bindings, bindingUrls: await resolveBindingUrls(bindings) };
+  const normalizedPages = review.pages.map((page) => ({ ...page, bindings: normalizeBindings(page.bindings) }));
+  const bindingUrlsByPage = await resolvePageBindingUrls(normalizedPages);
+  const pages = normalizedPages.map((page): TeacherMicrocoursePage => ({
+    ...page,
+    bindingUrls: bindingUrlsByPage.get(page.pageDocId) ?? {},
   }));
   return { ...review, pages };
 }

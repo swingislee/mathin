@@ -399,6 +399,11 @@ export interface CoursewareLecturePreview {
   bindingUrls: ResolvedBindingUrls;
 }
 
+export interface CoursewarePreviewPagePayload {
+  page: CoursewarePreviewPage;
+  bindingUrls: ResolvedBindingUrls;
+}
+
 export interface CoursewareWorkbenchContext {
   family: { id: string; title: string };
   course: { id: string; title: string; productCode: string | null };
@@ -797,8 +802,66 @@ export async function loadLecturePreview(
   const snapshotEntry = snapshot.find((entry) => entry.pageDocId === pageMeta.pageDocId);
   if (!snapshotEntry) throw new Error(`RELEASE_SNAPSHOT_INCOMPLETE: ${pageMeta.pageDocId}`);
 
+  const loadedPage = await materializeLecturePreviewPage(supabase, track, pageMeta, snapshotEntry);
+  return {
+    track,
+    lecture: { id: lecture.id, no: lecture.no, name: lecture.name, courseId: lecture.course_id },
+    release: { id: release.id, releaseNo: release.release_no, publishedAt: release.published_at },
+    pages,
+    page: loadedPage.page,
+    pageIndex,
+    bindingUrls: loadedPage.bindingUrls,
+  };
+}
+
+/**
+ * Load one additional page from the immutable release already opened by a
+ * preview. This deliberately skips lecture/head/catalog reads so client-side
+ * page turns can fetch and cache only the missing page instead of rerendering
+ * the entire route.
+ */
+export async function loadLecturePreviewPage(
+  releaseId: string,
+  track: CoursewareTrack,
+  pageDocId: string,
+  client?: Supabase,
+): Promise<CoursewarePreviewPagePayload> {
+  const supabase = client ?? await createClient();
+  const { data: release, error } = await supabase
+    .from("cw_lecture_releases")
+    .select("id, track, snapshot, courseware_pages")
+    .eq("id", releaseId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!release) throw new Error("RELEASE_NOT_FOUND");
+  if (release.track !== track) throw new Error("RELEASE_TRACK_MISMATCH");
+
+  const snapshot = releaseSnapshotSchema.parse(release.snapshot);
+  const releasePages = releaseCoursewarePagesSchema.parse(release.courseware_pages);
+  if (releasePages.length !== snapshot.length) throw new Error("RELEASE_SNAPSHOT_INCOMPLETE");
+  const pageIndex = snapshot.findIndex((entry) => entry.pageDocId === pageDocId);
+  const snapshotEntry = snapshot[pageIndex];
+  const releasePage = releasePages[pageIndex];
+  if (!snapshotEntry || !releasePage) throw new Error("PREVIEW_PAGE_NOT_FOUND");
+  if (releasePage.id !== snapshotEntry.pageDocId || releasePage.docId !== snapshotEntry.pageDocId) {
+    throw new Error(`RELEASE_SNAPSHOT_INCOMPLETE: ${snapshotEntry.pageDocId}`);
+  }
+
+  return materializeLecturePreviewPage(supabase, track, {
+    pageDocId: releasePage.id,
+    pageNo: pageIndex + 1,
+    title: releasePage.title,
+  }, snapshotEntry);
+}
+
+async function materializeLecturePreviewPage(
+  supabase: Supabase,
+  track: CoursewareTrack,
+  pageMeta: Omit<CoursewarePreviewPageMeta, "aspect"> & { aspect?: string },
+  snapshotEntry: z.infer<typeof releaseSnapshotSchema>[number],
+): Promise<CoursewarePreviewPagePayload> {
   const [{ data: revision, error: revisionError }, { data: bindingRows, error: bindingRowsError }] = await Promise.all([
-    supabase.from("cw_page_revisions").select("id, doc").eq("id", snapshotEntry.revisionId).maybeSingle(),
+    supabase.from("cw_page_revisions").select("id, doc, layout_profile").eq("id", snapshotEntry.revisionId).maybeSingle(),
     supabase.from("cw_page_asset_bindings").select("binding_key, kind, launch_query").eq("page_doc_id", pageMeta.pageDocId).eq("track", track),
   ]);
   if (revisionError) throw new Error(revisionError.message);
@@ -807,12 +870,11 @@ export async function loadLecturePreview(
 
   const bindingUrls = await resolveSnapshotBindingUrls(supabase, [snapshotEntry], bindingRows ?? []);
   return {
-    track,
-    lecture: { id: lecture.id, no: lecture.no, name: lecture.name, courseId: lecture.course_id },
-    release: { id: release.id, releaseNo: release.release_no, publishedAt: release.published_at },
-    pages,
-    page: { ...pageMeta, doc: parseCoursewareDoc(revision.doc) },
-    pageIndex,
+    page: {
+      ...pageMeta,
+      aspect: pageMeta.aspect ?? aspectForLayoutProfile(revision.layout_profile, track),
+      doc: parseCoursewareDoc(revision.doc),
+    },
     bindingUrls,
   };
 }

@@ -2631,6 +2631,8 @@
       "editingTeachingPlan": "Editing · not published to classes",
       "previewDirectory": "Page outline",
       "coursewarePreview": "Courseware preview",
+      "previewPageLoading": "Loading page {page}…",
+      "previewPageLoadFailed": "This page could not be loaded right now.",
       "previewKeyboardHint": "Use arrows, PageUp/PageDown, or Space to turn pages",
       "previewUntitledPage": "Untitled page",
       "editingTeachingPlanHint": "Save lecture names, objectives and ordering together. Archiving keeps every historical reference.",
