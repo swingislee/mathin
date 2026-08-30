@@ -9,13 +9,14 @@ import { DashboardTableShell } from "@/features/school/dashboard-page";
 import { cn } from "@/lib/utils";
 import type { TeacherMicrocourseBrowserCourse } from "./teacher-microcourse-browser";
 
-export function TeacherMicrocourseTable({ courses, selectedCourseId, checkedIds, canManage, onSelect, onPrefetch, onToggle, onToggleAll }: {
+export function TeacherMicrocourseTable({ courses, selectedCourseId, checkedIds, canManage, onSelect, onPrefetch, onCancelPrefetch, onToggle, onToggleAll }: {
   courses: TeacherMicrocourseBrowserCourse[];
   selectedCourseId: string | null;
   checkedIds: ReadonlySet<string>;
   canManage: boolean;
   onSelect: (courseId: string) => void;
   onPrefetch: (courseId: string) => void;
+  onCancelPrefetch: (courseId: string) => void;
   onToggle: (courseId: string) => void;
   onToggleAll: () => void;
 }) {
@@ -29,7 +30,7 @@ export function TeacherMicrocourseTable({ courses, selectedCourseId, checkedIds,
       <TableHead className="hidden h-9 @4xl/page:table-cell">{t("classTypes")}</TableHead>
     </TableRow></TableHeader>
     <TableBody>
-      {courses.map((course, index) => <TableRow key={course.id} className={cn(selectedCourseId === course.id && "bg-moon/25")} onMouseEnter={() => onPrefetch(course.id)} onFocus={() => onPrefetch(course.id)}>
+      {courses.map((course, index) => <TableRow key={course.id} className={cn(selectedCourseId === course.id && "bg-moon/25")} onMouseEnter={() => onPrefetch(course.id)} onMouseLeave={() => onCancelPrefetch(course.id)} onFocus={() => onPrefetch(course.id)} onBlur={() => onCancelPrefetch(course.id)}>
         {canManage && <TableCell className="py-2"><Checkbox checked={checkedIds.has(course.id)} onCheckedChange={() => onToggle(course.id)} aria-label={t("selectCourse", { name: course.title })} /></TableCell>}
         <TableCell className="py-2"><Button data-course-select variant="ghost" size="sm" className="h-auto max-w-full justify-start whitespace-normal px-0 py-0 text-left" onClick={() => onSelect(course.id)} onKeyDown={(event) => {
           if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;

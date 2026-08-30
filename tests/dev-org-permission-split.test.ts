@@ -6,6 +6,9 @@ const permissions = fs.readFileSync(path.join(process.cwd(), "src/features/schoo
 const roles = fs.readFileSync(path.join(process.cwd(), "src/features/school/RolesMatrixPanel.tsx"), "utf8");
 const zh = JSON.parse(fs.readFileSync(path.join(process.cwd(), "messages/zh.json"), "utf8"));
 const en = JSON.parse(fs.readFileSync(path.join(process.cwd(), "messages/en.json"), "utf8"));
+const configurablePermissionKeys = [...permissions.matchAll(/^\s+"([^"]+)",$/gm)]
+  .map((match) => match[1])
+  .filter((key) => key !== "organization.settings.manage");
 
 describe("DEV-ORG-1 split settings permissions", () => {
   it("keeps the legacy key for rollback but removes it from role configuration", () => {
@@ -25,5 +28,13 @@ describe("DEV-ORG-1 split settings permissions", () => {
       "work_item_manage",
       "approval_manage",
     ]) expect(labels[`perm_${key}`]).toBeTruthy();
+  });
+
+  it.each([zh, en])("labels every configurable permission and permission domain", (messages) => {
+    const labels = messages.school.roles;
+    for (const key of configurablePermissionKeys) {
+      expect(labels[`perm_${key.replaceAll(".", "_")}`], key).toBeTruthy();
+      expect(labels[`domain_${key.split(".")[0]}`], key).toBeTruthy();
+    }
   });
 });

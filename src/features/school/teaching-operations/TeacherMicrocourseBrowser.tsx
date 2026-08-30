@@ -62,6 +62,7 @@ export function TeacherMicrocourseBrowser({
   const [checkedIds, setCheckedIds] = useState<Set<string>>(() => new Set());
   const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
   const [scopeOpen, setScopeOpen] = useState(false);
+  const [scopeCourseIds, setScopeCourseIds] = useState<string[]>([]);
   const [search, setSearch] = useState(model.query.q ?? "");
   const [searchAll, setSearchAll] = useState(model.query.searchAll);
   const [gradeIds, setGradeIds] = useState(() => new Set(model.query.gradeIds));
@@ -80,7 +81,15 @@ export function TeacherMicrocourseBrowser({
   const previewSelectionRequest = useRef(0);
   const previewRequest = useRef<AbortController | null>(null);
   const prefetchTimers = useRef(new Map<string, number>());
+  const prefetchRequests = useRef(new Map<string, {
+    controller: AbortController;
+    promise: Promise<TeacherMicrocourseQuickPreviewData>;
+  }>());
   const [selectedPreview, setSelectedPreview] = useState<TeacherMicrocourseQuickPreviewData | null>(initialPreview);
+  const [previewLoad, setPreviewLoad] = useState<{
+    courseId: string | null;
+    status: "idle" | "loading" | "ready" | "error";
+  }>({ courseId: model.selectedCourseId, status: initialPreview ? "ready" : "idle" });
   const selectedCourseId = model.courses.some((course) => course.id === selectedCourseIdCandidate)
     ? selectedCourseIdCandidate
     : model.selectedCourseId;
@@ -89,28 +98,53 @@ export function TeacherMicrocourseBrowser({
     ? { ...selectedCourseBase, preview: selectedPreview, branchCount: selectedPreview.branchCount }
     : selectedCourseBase;
 
-  const loadPreview = useCallback(async (courseId: string) => {
+  const loadPreview = useCallback(async (courseId: string, signal?: AbortSignal) => {
     const cached = previewCache.current.get(courseId);
     if (cached) return cached;
-    previewRequest.current?.abort();
-    const controller = new AbortController();
-    previewRequest.current = controller;
-    try {
-      const response = await fetch(`/api/teacher-microcourses/${courseId}/quick-preview`, { signal: controller.signal });
-      if (!response.ok) return undefined;
-      const preview = await response.json() as TeacherMicrocourseQuickPreviewData;
-      previewCache.current.set(courseId, preview);
-      while (previewCache.current.size > 20) {
-        const oldest = previewCache.current.keys().next().value as string | undefined;
-        if (!oldest) break;
-        previewCache.current.delete(oldest);
-      }
-      return preview;
-    } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") return;
-      return undefined;
+    const response = await fetch(`/api/teacher-microcourses/${courseId}/quick-preview`, { signal });
+    if (!response.ok) throw new Error(`PREVIEW_HTTP_${response.status}`);
+    const preview = await response.json() as TeacherMicrocourseQuickPreviewData;
+    previewCache.current.set(courseId, preview);
+    while (previewCache.current.size > 20) {
+      const oldest = previewCache.current.keys().next().value as string | undefined;
+      if (!oldest) break;
+      previewCache.current.delete(oldest);
     }
+    return preview;
   }, []);
+
+  const requestPreview = useCallback((courseId: string) => {
+    const requestId = ++previewSelectionRequest.current;
+    previewRequest.current?.abort();
+    const pendingPrefetch = prefetchTimers.current.get(courseId);
+    if (pendingPrefetch) window.clearTimeout(pendingPrefetch);
+    prefetchTimers.current.delete(courseId);
+    const prefetched = prefetchRequests.current.get(courseId);
+    prefetchRequests.current.delete(courseId);
+    const cached = previewCache.current.get(courseId);
+    if (cached) {
+      previewRequest.current = null;
+      setSelectedPreview(cached);
+      setPreviewLoad({ courseId, status: "ready" });
+      return;
+    }
+    const controller = prefetched?.controller ?? new AbortController();
+    previewRequest.current = controller;
+    setSelectedPreview(null);
+    setPreviewLoad({ courseId, status: "loading" });
+    void (prefetched?.promise ?? loadPreview(courseId, controller.signal)).then((preview) => {
+      if (previewSelectionRequest.current !== requestId) return;
+      setSelectedPreview(preview);
+      setPreviewLoad({ courseId, status: "ready" });
+    }).catch((error: unknown) => {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      if (previewSelectionRequest.current === requestId) {
+        setPreviewLoad({ courseId, status: "error" });
+      }
+    }).finally(() => {
+      if (previewRequest.current === controller) previewRequest.current = null;
+    });
+  }, [loadPreview]);
 
   const navigate = useCallback((patch: Record<string, string | undefined>) => {
     const params = new URLSearchParams(window.location.search);
@@ -135,22 +169,19 @@ export function TeacherMicrocourseBrowser({
     const matching = stored ? model.courses.find((course) => course.id === stored) : undefined;
     if (!matching || matching.id === selectedCourseId) return;
     const timer = window.setTimeout(() => {
-      const requestId = ++previewSelectionRequest.current;
       setSelectedCourseId(matching.id);
-      setSelectedPreview(previewCache.current.get(matching.id) ?? matching.preview);
+      requestPreview(matching.id);
       const params = new URLSearchParams(window.location.search);
       params.set("course", matching.id);
       window.history.replaceState(window.history.state, "", `${window.location.pathname}?${params.toString()}`);
-      void loadPreview(matching.id).then((preview) => {
-        if (preview && previewSelectionRequest.current === requestId) setSelectedPreview(preview);
-      });
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [courseWasExplicit, loadPreview, model.courses, model.query.browse, model.query.node, selectedCourseId]);
+  }, [courseWasExplicit, model.courses, model.query.browse, model.query.node, requestPreview, selectedCourseId]);
 
   useEffect(() => () => {
     previewRequest.current?.abort();
     for (const timer of prefetchTimers.current.values()) window.clearTimeout(timer);
+    for (const request of prefetchRequests.current.values()) request.controller.abort();
   }, []);
 
   const setBrowse = (value: TeacherMicrocourseBrowseMode) => {
@@ -163,27 +194,37 @@ export function TeacherMicrocourseBrowser({
     navigate({ node, page: undefined, course: undefined });
   };
   const selectCourse = (courseId: string) => {
-    const requestId = ++previewSelectionRequest.current;
     setSelectedCourseId(courseId);
-    setSelectedPreview(previewCache.current.get(courseId)
-      ?? model.courses.find((course) => course.id === courseId)?.preview
-      ?? null);
+    requestPreview(courseId);
     window.localStorage.setItem(coursePreferenceKey(model.query.browse, model.query.node), courseId);
     const params = new URLSearchParams(window.location.search);
     params.set("course", courseId);
     window.history.replaceState(window.history.state, "", `${window.location.pathname}?${params.toString()}`);
-    void loadPreview(courseId).then((preview) => {
-      if (preview && previewSelectionRequest.current === requestId) setSelectedPreview(preview);
-    });
     if (!desktopPreviewRef.current?.getClientRects().length) setMobilePreviewOpen(true);
   };
   const prefetchCourse = (courseId: string) => {
-    if (previewCache.current.has(courseId) || prefetchTimers.current.has(courseId)) return;
+    if (previewCache.current.has(courseId) || prefetchTimers.current.has(courseId) || prefetchRequests.current.has(courseId)) return;
     const timer = window.setTimeout(() => {
       prefetchTimers.current.delete(courseId);
-      void loadPreview(courseId);
+      const controller = new AbortController();
+      const promise = loadPreview(courseId, controller.signal);
+      prefetchRequests.current.set(courseId, { controller, promise });
+      void promise
+        .catch(() => undefined)
+        .finally(() => {
+          if (prefetchRequests.current.get(courseId)?.controller === controller) {
+            prefetchRequests.current.delete(courseId);
+          }
+        });
     }, 120);
     prefetchTimers.current.set(courseId, timer);
+  };
+  const cancelPrefetchCourse = (courseId: string) => {
+    const timer = prefetchTimers.current.get(courseId);
+    if (timer) window.clearTimeout(timer);
+    prefetchTimers.current.delete(courseId);
+    prefetchRequests.current.get(courseId)?.controller.abort();
+    prefetchRequests.current.delete(courseId);
   };
   const toggleChecked = (courseId: string) => setCheckedIds((current) => {
     const next = new Set(current);
@@ -221,6 +262,14 @@ export function TeacherMicrocourseBrowser({
     page: undefined,
     course: undefined,
   });
+  const openScopeEditor = (courseIds: string[]) => {
+    setScopeCourseIds(courseIds);
+    setMobilePreviewOpen(false);
+    setScopeOpen(true);
+  };
+  const previewStatus = previewLoad.courseId === selectedCourseId
+    ? previewLoad.status
+    : selectedCourseId ? "loading" : "idle";
 
   return <ObjectWorkspace
     className="w-full min-w-0"
@@ -236,7 +285,7 @@ export function TeacherMicrocourseBrowser({
     />}
     commandPanel={<DashboardCommandPanel selection={checkedIds.size > 0 ? <DashboardCommandSelection>
       <span className="font-medium text-ink">{t("selectedCourses", { count: checkedIds.size })}</span>
-      {capabilities.canManageScopes && <Button variant="secondary" size="sm" onClick={() => setScopeOpen(true)}><SlidersHorizontal className="h-4 w-4" />{t("editSelectedScope", { count: checkedIds.size })}</Button>}
+      {capabilities.canManageScopes && <Button variant="secondary" size="sm" onClick={() => openScopeEditor([...checkedIds])}><SlidersHorizontal className="h-4 w-4" />{t("editSelectedScope", { count: checkedIds.size })}</Button>}
       <Button variant="ghost" size="sm" onClick={() => setCheckedIds(new Set())}>{t("clearSelection")}</Button>
     </DashboardCommandSelection> : undefined}>
       <DashboardCommandState>
@@ -261,7 +310,7 @@ export function TeacherMicrocourseBrowser({
         <Popover><PopoverTrigger asChild><Button variant="secondary" size="sm"><Filter className="h-4 w-4" />{t("filters")}{filterCount > 0 && <Badge variant="secondary">{filterCount}</Badge>}</Button></PopoverTrigger><PopoverContent className="w-[min(92vw,36rem)] space-y-5" align="end"><FilterGroup title={t("grades")} items={configuration.grades} locale={locale} selected={gradeIds} onToggle={(id) => toggleFilter(setGradeIds, id)} /><FilterGroup title={t("terms")} items={configuration.terms} locale={locale} selected={termIds} onToggle={(id) => toggleFilter(setTermIds, id)} /><FilterGroup title={t("classSystems")} items={configuration.classSystems} locale={locale} selected={systemIds} onToggle={(id) => toggleFilter(setSystemIds, id)} /><FilterGroup title={t("classTypes")} items={configuration.classSystems.flatMap((system) => system.classTypes)} locale={locale} selected={classTypeIds} onToggle={(id) => toggleFilter(setClassTypeIds, id)} /><div className="flex justify-end gap-2"><Button variant="ghost" size="sm" onClick={clearFilters}>{t("clearFilters")}</Button><Button size="sm" onClick={applyFilters}>{t("applyFilters")}</Button></div></PopoverContent></Popover>
       </DashboardCommandFilters>
       <DashboardCommandActions>
-        {capabilities.canManageScopes && selectedScopeIds.length > 0 && <Button variant="secondary" size="sm" onClick={() => setScopeOpen(true)}><SlidersHorizontal className="h-4 w-4" /><span className="sr-only">{t("editSelectedScope", { count: selectedScopeIds.length })}</span></Button>}
+        {capabilities.canManageScopes && selectedScopeIds.length > 0 && <Button variant="secondary" size="sm" onClick={() => openScopeEditor(selectedScopeIds)}><SlidersHorizontal className="h-4 w-4" /><span className="sr-only">{t("editSelectedScope", { count: selectedScopeIds.length })}</span></Button>}
         {capabilities.canManageScenes && <Link href={`/dashboard/courses/${familyId}/microcourse-settings`} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}><Settings2 className="h-4 w-4" /><span className="sr-only">{t("directorySettings")}</span></Link>}
         {capabilities.canCreateCourse && <TeacherMicrocourseCreateCourseDialog courseFamilyId={familyId} locale={locale} configuration={configuration} defaultSceneId={defaultSceneId} />}
       </DashboardCommandActions>
@@ -281,15 +330,15 @@ export function TeacherMicrocourseBrowser({
           <div><h2 id="microcourse-table-title" className="text-sm font-medium">{t("courseTable")}</h2><p className="text-xs text-muted">{t("courseCount", { count: model.totalCount })}</p></div>
           {checkedIds.size > 0 && <Badge variant="secondary">{t("selectedCourses", { count: checkedIds.size })}</Badge>}
         </header>
-        <TeacherMicrocourseTable courses={model.courses} selectedCourseId={selectedCourseId} checkedIds={checkedIds} canManage={capabilities.canManageScopes} onSelect={selectCourse} onPrefetch={prefetchCourse} onToggle={toggleChecked} onToggleAll={toggleAll} />
+        <TeacherMicrocourseTable courses={model.courses} selectedCourseId={selectedCourseId} checkedIds={checkedIds} canManage={capabilities.canManageScopes} onSelect={selectCourse} onPrefetch={prefetchCourse} onCancelPrefetch={cancelPrefetchCourse} onToggle={toggleChecked} onToggleAll={toggleAll} />
         <div className="flex min-h-12 items-center justify-between px-3 py-2 text-xs text-muted"><span>{t("pageStatus", { page: model.query.page, pages: model.pageCount })}</span><div className="flex gap-1"><Button variant="ghost" size="sm" disabled={model.query.page <= 1} onClick={() => navigate({ page: String(model.query.page - 1), course: undefined })}>{t("previous")}</Button><Button variant="ghost" size="sm" disabled={model.query.page >= model.pageCount} onClick={() => navigate({ page: String(model.query.page + 1), course: undefined })}>{t("next")}</Button></div></div>
       </section>
 
-      <aside ref={desktopPreviewRef} className="hidden min-w-0 border-l border-line/70 @5xl/page:block"><TeacherMicrocourseQuickPreview familyId={familyId} course={selectedCourse} canCreateBranch={capabilities.canCreateBranch} /></aside>
+      <aside ref={desktopPreviewRef} className="hidden min-w-0 border-l border-line/70 @5xl/page:block"><TeacherMicrocourseQuickPreview familyId={familyId} course={selectedCourse} loadState={previewStatus} canCreateBranch={capabilities.canCreateBranch} onRetry={selectedCourseId ? () => requestPreview(selectedCourseId) : undefined} onEditScope={capabilities.canManageScopes && selectedCourseId ? () => openScopeEditor([selectedCourseId]) : undefined} /></aside>
     </div>
 
-    <Sheet open={mobilePreviewOpen} onOpenChange={setMobilePreviewOpen}><SheetContent className="w-[min(94vw,32rem)] overflow-y-auto" closeLabel={t("cancel")}><SheetHeader className="sr-only"><SheetTitle>{t("quickPreview")}</SheetTitle><SheetDescription>{t("selectCourseHint")}</SheetDescription></SheetHeader><TeacherMicrocourseQuickPreview familyId={familyId} course={selectedCourse} canCreateBranch={capabilities.canCreateBranch} /></SheetContent></Sheet>
-    {capabilities.canManageScopes && <TeacherMicrocourseScopeEditor key={selectedScopeIds.join(",")} open={scopeOpen} onOpenChange={setScopeOpen} courseFamilyId={familyId} courseIds={selectedScopeIds} locale={locale} configuration={configuration} scopes={scopes} />}
+    <Sheet open={mobilePreviewOpen} onOpenChange={setMobilePreviewOpen}><SheetContent className="w-[min(94vw,32rem)] overflow-y-auto" closeLabel={t("cancel")}><SheetHeader className="sr-only"><SheetTitle>{t("quickPreview")}</SheetTitle><SheetDescription>{t("selectCourseHint")}</SheetDescription></SheetHeader><TeacherMicrocourseQuickPreview familyId={familyId} course={selectedCourse} loadState={previewStatus} canCreateBranch={capabilities.canCreateBranch} onRetry={selectedCourseId ? () => requestPreview(selectedCourseId) : undefined} onEditScope={capabilities.canManageScopes && selectedCourseId ? () => openScopeEditor([selectedCourseId]) : undefined} /></SheetContent></Sheet>
+    {capabilities.canManageScopes && <TeacherMicrocourseScopeEditor key={scopeCourseIds.join(",")} open={scopeOpen} onOpenChange={setScopeOpen} courseFamilyId={familyId} courseIds={scopeCourseIds} locale={locale} configuration={configuration} scopes={scopes} />}
   </ObjectWorkspace>;
 }
 
