@@ -125,7 +125,19 @@
 
 ## 6. 组件规范
 
-### 6.0 shadcn/ui 优先（铁律 + 强制流程）
+### 6.0 Dashboard 连续工作区与 Card 禁用规则
+
+Dashboard、Classroom、Whiteboard 和 Courseware Studio 默认使用连续工作区，不以 Card 作为页面布局原语：
+
+- 页面身份只进入 `DashboardPage` 或 `ObjectBar`；搜索、筛选、状态切换和业务操作只进入 `DashboardCommandPanel`；
+- 正文使用语义 section、分隔线、表格、局部底色、稳定留白和主栏／侧栏关系表达层级；标题、说明、筛选栏、导航、表格、表单、只读摘要和空状态不得各套一张 Card；
+- 三栏或分栏工作台使用一块连续画布，栏间以结构线分隔；不得把每一栏做成独立圆角卡片，也不得用卡片内边距降低数据密度；
+- shadcn `Card`、`DashboardCard`、`DashboardCardGrid` 和手写 `rounded-* border bg-card` 均为显式例外，不是默认方案。只有产品负责人明确要求，或对象确实需要独立搬运、选择、并列比较时才能使用，并在实现附近说明独立对象语义；
+- 空状态属于它所替代的列表、表格或画布区域，保持该区域尺寸与边线，不额外生成居中的空状态卡片。
+
+本规则优先于本文件旧有的卡片形状、卡片网格和组件目录描述；这些条目只服务被明确批准的例外。现有页面按实际改造批次迁移，新建或本轮触及的工作区必须直接遵守。
+
+### 6.1 shadcn/ui 优先（铁律 + 强制流程）
 
 任何可复用 UI 组件一律经 shadcn/ui 统一管理，禁止绕开它手搓样式常量或用未加工的原生元素。**这条铁律此前在 P4B/P4C/P4D 被系统性违反（原生 input 102 处、select 32 处、table 12 文件、`window.confirm` 做删除确认、手抄 controls.ts 还引发暗色脏色 bug 返工），补齐计划见 `14-§6.5` + 任务 P4F-0b。**
 
@@ -133,11 +145,11 @@
 1. **先查 §6.1 能力目录**——"我需要的交互是什么 → 对应哪个 shadcn 组件"。目录里有的，一律 `add`，不手搓。
 2. 未安装则 `corepack pnpm dlx shadcn@latest add <name>`（本机 `pnpm` 不在 PATH，**必须带 `corepack` 前缀**；CLI 内部装 radix 依赖会失败，先手动 `corepack pnpm add <radix 依赖>` 再跑 CLI）。
 3. 引入后把默认 token 类（`bg-background/text-muted-foreground/bg-primary`…）改写为本设计系统 token（`bg-card/text-muted/bg-rose`…），**只改内部变量映射、不改组件结构/API**，参照已适配的 `src/components/ui/dialog.tsx`、`slider.tsx`。
-4. §6.1 目录里没有、确需自造的，先问用户；自造组件遵守 §6.5。
+4. §6.2 目录里没有、确需自造的，先问用户；自造组件遵守 §6.5。
 
-### 6.1 shadcn/ui 完整能力目录（决策表：需要什么 → 用什么）
+### 6.2 shadcn/ui 完整能力目录（决策表：需要什么 → 用什么）
 
-状态图例：✅ 已装可用 · ⚠️ 债务（当前被手搓/原生顶替，见 14-§6.5，须迁移） · ○ 未装但推荐（遇到即装） · ◇ 未来阶段将需要（见 §6.2）。
+状态图例：✅ 已装可用 · ⚠️ 债务（当前被手搓/原生顶替，见 14-§6.5，须迁移） · ○ 未装但推荐（遇到即装） · ◇ 未来阶段将需要（见 §6.3）。
 
 **表单与输入**
 
@@ -206,7 +218,7 @@
 | 轮播 | `carousel` | ○ |
 | 快捷键显示 | `kbd` | ○（notebook Cmd+K） |
 
-### 6.2 与近期路线的映射（这些阶段一开工就该装对应组件，别再手搓）
+### 6.3 与近期路线的映射（这些阶段一开工就该装对应组件，别再手搓）
 
 - **P4E-C3 手机验证码登录** → `input-otp`。
 - **P4F-0 反馈原语** → `sonner`（Toast）；**P4F-0b 债务补齐** → `input/select/table/alert-dialog/badge/sheet/checkbox/label/skeleton/breadcrumb` 一次性安装。
@@ -216,7 +228,7 @@
 - **课表周视图**（P4B-4）/日期字段 → `calendar` + `date-picker`。
 - **移动端磁贴/面板**（14-§7）→ `drawer`。
 
-### 6.3 shadcn 不止是组件（平台能力，避免"以为没有就自造"）
+### 6.4 shadcn 不止是组件（平台能力，避免"以为没有就自造"）
 
 - **CLI + `components.json`**：`shadcn add` 可从官方注册表、**任意 URL、命名空间注册表**拉取组件；本项目 `components.json` 已配置（new-york 风格、lucide 图标、`@/components/ui` 别名）。
 - **Blocks**：官方提供成套区块（dashboard、sidebar、login、calendar 等整段布局），可整块 `add` 后改造，别从零拼。
@@ -224,7 +236,7 @@
 - **MCP**：shadcn 提供 MCP server，可让 agent 直接查询/安装组件——需要时可评估接入以固化"先查后装"的反射。
 - 官方组件持续新增（2025 起有 `sidebar/sonner/input-otp/calendar/spinner/kbd/empty/data-table` 等）；**每次要造"shadcn 应该有"的东西前，先去 ui.shadcn.com/docs/components 或 MCP 确认一次**，本目录随之更新。
 
-### 6.4 自定义组件（放 `src/components/`，仅限 shadcn 确无对应项）
+### 6.5 自定义组件（放 `src/components/`，仅限 shadcn 确无对应项）
 
 | 组件 | 职责 |
 | --- | --- |
@@ -235,8 +247,8 @@
 | `ThemePageIdentity` | 五个公开场景首页统一的星球身份 / h1 / 简介合同（详见 20） |
 | `EmptyState` | 空状态：一颗星 + 一句话（可评估迁移到 shadcn `empty`） |
 
-自造前自检：§6.1 目录真的没有？不能由 shadcn 组件组合而成（如 combobox=command+popover）？两者都否才自造，且遵守设计系统 token。
+自造前自检：§6.2 目录真的没有？不能由 shadcn 组件组合而成（如 combobox=command+popover）？两者都否才自造，且遵守设计系统 token。
 
-### 6.5 按钮变体约定（shadcn `button` 上定制）
+### 6.6 按钮变体约定（shadcn `button` 上定制）
 
 `primary` = rose 底白字；`secondary` = 透明底 crater 描边；`ghost` = 无边框 muted 文字。一个视图同屏只允许一个 primary。
