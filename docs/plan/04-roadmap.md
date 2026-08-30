@@ -8,13 +8,13 @@
 >
 > **SML 暂停位置**：`SML-0 · 合同与金标冻结`；空间数学可按独立权限或 Feature Flag 并行，不进入 R1-Live Gate。
 >
-> **当前运行状态**：Gate 1 已通过，Gate 2 仍等待正式教师点名持久再读与权限对照。Xiaomi 当前数据库 ledger=`220`、head=`20260829000200_admin_self_staff_roles`，应用 current/previous=`20260829-045135` / `6185352…` 与 `20260829-033955` / `59cc342…`。课堂 Stage A、B1 与 B2 已通过，生产已有 checkpoint version/chunk/head=`2/2/2`；Stage B3 修复、来源课件运行时/暑期 A+、教师微课多方案、班级/活动分类、DEV-ORG/DEV-DASH、自由班排课/H5 透明层、管理员自授岗、教研课次页入口与微课来源预览 hotfix 均已部署，产品负责人生产写态/页面验收仍 pending，不关闭 Gate 2。最新 app-only 发布从干净 `6185352…` 候选通过双 production build、原子 release 与健康/鉴权/业务不变量 postflight；未修改 schema、岗位、班课、课程 release、审核快照或 Storage。生产管理员 verified MFA=`1`，教师/教研岗位成员=`6/4`；班级/课次/报名/点名与 Storage=`4/19/1/0/125725`，新 release 启动后错误增量为 0。
+> **当前运行状态**：Gate 1 已通过，Gate 2 仍等待正式教师点名持久再读与权限对照。2026-08-30 讲次课件预览 hotfix preflight 已只读确认 Xiaomi 数据库 ledger=`236`、head=`20260830000700_teacher_microcourse_editor_unification`，当时应用已运行 `76f0f9a…`；本轮只把来源提交 `50a1648…` 移植为生产候选 `a165004…`，current/previous=`20260830-080555` / `a165004…` 与 `20260830-045421` / `76f0f9a…`。本地及 Xiaomi production build、原子 release、健康/鉴权/bundle/业务不变量 postflight 通过；未执行 migration，岗位、班课、微课、课程 release、审核快照和 Storage 未写入。生产管理员 verified MFA=`1`，教师/教研岗位成员=`6/4`；班级/课次/报名/点名与 Storage=`4/19/1/0/125917`，Storage bytes=`51524182412`，`operational_errors=1956` 且发布后无增量。课堂、教师微课重构及既有 hotfix 的产品人工验收仍分别 pending，不关闭 Gate 2。
 >
 > **当前 P0 状态**：2026-08-25 产品负责人确认内部教师更习惯手机号注册登录。`手机号或邮箱 + password` 已部署生产：手机号只接受绑定具体号码的一次性员工邀请，不发送/伪造验证码，不开放全局邀请码手机号注册，账号仍以单一 `auth.users.id` 为主体。机器 postflight 已通过；真实教师尚未消费手机号邀请并完成 password 登录，因此状态为 `DEPLOYED / PENDING USER ACCEPTANCE`。
 >
 > **双轨执行**：生产端由 1 名正式教师在现有正式班级、课次和花名册上持续试用，优先反馈 P0/核心 P1；开发端可并行尝试产品负责人选中的新功能。新功能只有在开发目标完成受影响检查并由产品负责人初步验收后，才成为生产候选；完成精确版本/迁移登记、生产 preflight、可回退发布和 postflight 后，才能记为生产已部署。开发通过不等于生产通过，新功能也不改变 Gate 2 的点名与权限退出条件。
 >
-> **核对日期**：2026-08-29；生产事实已包含手机号/password P0、来源课件运行时、教师微课多方案、班级/活动分类以及机构/场地/后台信息架构与表格语义增量的 migration、release 和去标识化 postflight，其余依据 active doc 00/25、代码与迁移、本机隔离验证、Xiaomi 运行核查和 `mathin-R1-Live-讨论稿.md`。
+> **核对日期**：2026-08-30；生产事实已包含 ledger/head=`236 / 20260830000700_teacher_microcourse_editor_unification`、应用 `a165004…`、讲次课件预览性能 hotfix 及去标识化 postflight；`76f0f9a…` 与 ledger 236 在本轮 preflight 前已运行，本轮不把此前发布归因于该 hotfix。其余依据 active doc 00/25、代码与迁移、本机隔离验证、Xiaomi 运行核查和 `mathin-R1-Live-讨论稿.md`。
 
 ## 1. 两个交付事件
 
@@ -55,7 +55,7 @@ R1-Live 完成即代表 Mathin 进入公司内部生产使用。它产生的身�
 
 | Gate | 状态 | 已完成证据 | 唯一退出差距 |
 | --- | --- | --- | --- |
-| **Gate 1 · 可安全开始** | **PASS** | 生产目标组合指纹、部署和匿名计数已登记；危险 fixture/rebuild/import 拒绝 Xiaomi；唯一正式 admin 已完成 verified MFA，首名真实教师为 active `staff` 并有 `research`/`teacher` 岗位；生产 purge 仍要求当前数据库指纹、active manifest、显式 `purge_allowed` test 根和精确影响计数，当前准删数为 0。数据库 ledger=`219`、head=`20260829000100_classroom_personal_scope_default`，应用 current/previous=`20260828-190055` / `7601c86…` 与 `20260828-174731` / `34f07e8…`；原子发布健康门和 `operational_errors` 查询位置已知。最新 PostgreSQL+Storage 同批次全量备份 `mathin-20260828T052842Z-teacher-microcourse-variant-087b497` 已独立复核 | 无。previous 实际回切、恢复演练、异机/静态加密备份和错误 release 标签属于 Production 1.0 |
+| **Gate 1 · 可安全开始** | **PASS** | 生产目标组合指纹、部署和匿名计数已登记；危险 fixture/rebuild/import 拒绝 Xiaomi；唯一正式 admin 已完成 verified MFA，首名真实教师为 active `staff` 并有 `research`/`teacher` 岗位；生产 purge 仍要求当前数据库指纹、active manifest、显式 `purge_allowed` test 根和精确影响计数，当前准删数为 0。2026-08-30 postflight 数据库 ledger/head=`236 / 20260830000700_teacher_microcourse_editor_unification`，应用 current/previous=`20260830-080555` / `a165004…` 与 `20260830-045421` / `76f0f9a…`；原子发布健康门和 `operational_errors` 查询位置已知。最近 PostgreSQL 写前备份 `mathin-db-prechange-20260830T042220Z-tmc-unification-8b9b195` 与 PostgreSQL+Storage 同批次全量备份 `mathin-20260828T052842Z-teacher-microcourse-variant-087b497` 已核对 | 无。previous 实际回切、恢复演练、异机/静态加密备份和错误 release 标签属于 Production 1.0 |
 | **Gate 2 · 首个真实教师闭环** | **BLOCKED** | 学生、班级、课次、报名、点名 UI/RPC 与 RLS 已实现；本轮运行时合同允许自由班/未完整课程启用，备课质量项、点名前置、资源预载和无 release 均不阻断开课；本机隔离固定账号 Golden Path 1/1 已完成建班→自动课次→`lead` 报名→教师保存迟到/备注→换页再读。生产已有 1 个 production 班级、15 个课次和 1 条 active 报名，主讲 1、学辅 0；学年修复只调整三类对象的周期引用，未升年级，应用已发布且健康 | 正式教师完成登录→进入课次→开课/点名→保存→刷新/重登再读；正式管理员可见，匿名及一个既有无权限主体不可见；P0/核心 P1=0 |
 
 `R1-Live-N` 表示当前只关闭 Gate N。Gate 1 通过后推进 `R1-Live-2`；Gate 2 通过后立即向第一批公司教师开放，不再追加新的上线 Gate。
@@ -164,11 +164,15 @@ Gate 1 已按以下顺序关闭：
 
 产品负责人在生产导入正式课程整讲后，来源页持续停在加载态，提交审核后通用审核页又显示没有已发布课件。生产只读核对确认待审快照未丢失：32/32 页均为来源运行时页，283/283 个必需绑定完整。根因是空 `binding.kind` 让解析器跳过钉死 `cw_asset_objects` 的 H5 kind/hash，并按普通对象生成错误签名；通用讲次审核入口同时只读取 current release，无法预览首次发布前的提交快照。`6185352` 已以 pinned object 为权威解析 H5 package，并把教师微课 active review 转到不可变微课审核路由。定向 Vitest 17/17、固定账号 Playwright 2/2、双 production build、app-only 原子发布与独立 postflight 通过，current/previous=`20260829-045135` / `6185352…` 与 `20260829-033955` / `59cc342…`；ledger、业务、审核快照、Storage 与错误基线零漂移，生产页面刷新验收 pending。证据见 [`teacher-microcourse-source-preview-hotfix-production.md`](../evidence/r1/teacher-microcourse-source-preview-hotfix-production.md)。
 
+#### HOTFIX-20260830 · 讲次课件预览翻页性能
+
+产品负责人明确要求把来源提交 `50a1648` 热推生产。生产当时已运行 `76f0f9a…`，直接 cherry-pick 只在来源 runtime 及其测试与父级握手补丁相邻处冲突；隔离候选 `a165004…` 保留这两个文件在 `50a1648` 的最终实现，排除父级 `65e3638` 的微课列表 UI、文案和规划改动。讲次只读预览改为首屏当前页、浏览器页缓存、未命中页级 Action、相邻页预取与 History API 查询参数同步；来源 runtime 按 immutable package/entry 复用 iframe，页面只更换 render payload；教师微课同讲 binding 和 signed URL 改为批量读取。定向 Vitest 10/10、messages 5205×2、发布器全库 ESLint/TypeScript、本地和 Xiaomi production build、原子切换与独立 postflight 通过，current/previous=`20260830-080555` / `a165004…` 与 `20260830-045421` / `76f0f9a…`。ledger/head、业务、Storage 与 `operational_errors` 零漂移；机器检查不证明真实多页课程的冷／热翻页手感，状态为 **DEPLOYED / MACHINE POSTFLIGHT PASSED / PENDING PRODUCTION USER ACCEPTANCE**。证据见 [`courseware-preview-performance-hotfix-production.md`](../evidence/r1/courseware-preview-performance-hotfix-production.md)。
+
 #### HOTFIX-20260829 · 自研课堂互动状态同步
 
 产品负责人报告教师在 iPad 操作自编数独时，填数与突出显示只改变本机。根因是 `game-page-v1` 新适配链只传递 `interactive`，遗漏既有 `GameMirrorState` 的 `mirror/onMirror`，因此没有生成全班 durable `game_state`；历史 `type=game` 路径正常，旧测试也只覆盖该路径。本机热修已补齐 `LiveShell → DocCoursewarePage → StagePreview → GamePageStage → SudokuBoard` 双向镜像，并把连续操作改为每 100ms 合并发送最新状态，避免 trailing debounce 在教师持续点击期间长期不广播。
 
-同一增量建立独立于输入路由的版本化 `ClassroomInteractionSyncProvider`：所有 Mathin 自研 docVersion、微课 mode 和游戏 registry 项必须声明 snapshot、语义 command 或课堂只读，并通过 `pnpm classroom:interaction-sync:audit`。当前自编数独使用 `game-mirror-v1`；自研 H5 与 `spatial-page-v1` 在各自 `h5-state-v1` / `spatial-command-v1` 完成前 fail closed 为课堂只读。定向 Vitest 6 文件 72/72、同步审计 4/4、TypeScript、受影响 ESLint、规划审计和本地 Chromium 课堂合同 2/2 通过；新增双窗口用例在同一个正式本地课次验证控制页填数/突出行后展示页重放，既有 H5 合同保持通过。该热修当前为 **LOCAL MACHINE/BROWSER CHECKS PASSED / PENDING REAL IPAD ACCEPTANCE / NOT DEPLOYED**；本地双窗口结果不替代真实 iPad Safari、跨设备局域网或产品验收，也不修改数据库、Storage、R1-Live Gate 2 或暂停中的 SML 施工状态。
+同一增量建立独立于输入路由的版本化 `ClassroomInteractionSyncProvider`：所有 Mathin 自研 docVersion、微课 mode 和游戏 registry 项必须声明 snapshot、语义 command 或课堂只读，并通过 `pnpm classroom:interaction-sync:audit`。当前自编数独使用 `game-mirror-v1`；自研 H5 与 `spatial-page-v1` 在各自 `h5-state-v1` / `spatial-command-v1` 完成前 fail closed 为课堂只读。定向 Vitest 6 文件 72/72、同步审计 4/4、TypeScript、受影响 ESLint、规划审计和本地 Chromium 课堂合同 2/2 通过；新增双窗口用例在同一个正式本地课次验证控制页填数/突出行后展示页重放，既有 H5 合同保持通过。该热修已以 `59cc342…` 完成应用-only 原子发布和机器 postflight，且继续包含在当前 `a165004…`；当前为 **DEPLOYED / MACHINE POSTFLIGHT PASSED / PENDING REAL IPAD ACCEPTANCE**。机器结果不替代真实 iPad Safari、跨设备局域网或产品验收，也不修改数据库、Storage、R1-Live Gate 2 或暂停中的 SML 施工状态；证据见 [`classroom-interaction-sync-hotfix-production.md`](../evidence/r1/classroom-interaction-sync-hotfix-production.md)。
 
 #### DEV-TMC-1 · 普通教师短期微课孵化与校内共享
 
@@ -198,9 +202,9 @@ Gate 1 已按以下顺序关闭：
 
 #### DEV-TMC-4 · 教师微课课程浏览与维护工作台
 
-`DEV-TMC-4` 是产品负责人于 2026-08-30 选入的开发端独立增量，权威范围见 [`29-teacher-microcourse-browser-redesign.md`](29-teacher-microcourse-browser-redesign.md)，当前状态为 **LOCAL DEVELOPMENT DELIVERED / AWAITING PRODUCT ACCEPTANCE / NOT DEPLOYED**。它在 DEV-TMC-3 的“一班一课、多课节多讲”根对象上增加 766 使用场景树、机构学术维度、课程适用范围、目录—表格—轻量预览浏览器、同名归并、课程级维护方向与默认版本管理；2026-08-30 复核后，主浏览、课程详情、课次编辑、审核队列/详情和场景设置已统一为连续 Dashboard 工作区，不再使用内容 Card 包裹，审核根路由对具备 `courseware.review` 的用户默认打开教师微课队列。现有课次方案、immutable release、课堂冻结和历史引用继续作为内容权威。
+`DEV-TMC-4` 是产品负责人于 2026-08-30 选入的独立增量，权威范围见 [`29-teacher-microcourse-browser-redesign.md`](29-teacher-microcourse-browser-redesign.md)。本轮 hotfix 的生产 preflight 已检出应用 current=`76f0f9a…`、数据库 ledger/head=`236 / 20260830000700_teacher_microcourse_editor_unification`，证明相关 schema/app 在本轮开始前已进入生产；本 hotfix 没有执行这些 migration，也不补写此前部署授权或 postflight。当前状态据此记为 **PRODUCTION APP/SCHEMA DETECTED / PREVIOUS DEPLOYMENT EVIDENCE RECONCILIATION PENDING / PRODUCT ACCEPTANCE PENDING**。它在 DEV-TMC-3 的“一班一课、多课节多讲”根对象上增加 766 使用场景树、机构学术维度、课程适用范围、目录—表格—轻量预览浏览器、同名归并、课程级维护方向与默认版本管理；现有课次方案、immutable release、课堂冻结和历史引用继续作为内容权威。
 
-Phase 1～5 已在本机隔离 Supabase 与固定开发身份中完成，五条 migration 已登记本机 LF checksum，受影响 ESLint、TypeScript、定向 Vitest 20/20 和自动回滚数据库合同通过；本机 v2 开关已启用用于人工验收。产品负责人明确要求本轮不运行浏览器、Playwright 或截图验证，因此当前结论只到“开发端已交付，待人工视觉与交互验收”。生产 schema、历史课程归并、功能开关和应用发布均需在开发端人工验收后重新取得授权，不改变 R1-Live Gate 2。
+Phase 1～5 的本机隔离 Supabase、固定开发身份、migration LF checksum、受影响 ESLint、TypeScript、定向 Vitest 与自动回滚数据库合同证据继续有效。2026-08-30 的生产发现只证明运行版本与 schema 已存在，不证明课程切换性能、真实写态、历史归并结果或产品页面已经验收；此前部署证据完成对账前不得把本段提升为生产通过。本轮 `a165004…` 仅部署讲次课件预览性能补丁，不改变 R1-Live Gate 2。
 
 ## 6. 原 R1 工作重新定位
 
@@ -230,7 +234,7 @@ Phase 1～5 已在本机隔离 Supabase 与固定开发身份中完成，五条 
 - `POST-LIVE-NOTIFY-01`（2026-08-23 已提前收敛并上线，待逐项人工验收）：未知事件也显示事件类型及 payload 中首个可读对象/变化字段，不再只显示“系统状态有更新”；既有通知入口继续承担跳转。
 - `POST-LIVE-CANVAS-01`（2026-08-23 已提前收敛并上线，待逐项人工验收）：共享绘图工具栏支持向屏幕下缘收起/展开；备课工具栏已移到翻页工作区，并移除常驻的方向键/PageUp/PageDown/空格提示文案。
 - `POST-LIVE-OPS-02`（2026-08-28 已部署 / 待产品验收）：班级保留 `purpose=production|test` 数据治理轴，新增 `offering_type=long_term_formal|short_term_topic` 区分长期正式课与短期专题课；活动新增显式公开课类型，并在新建面板说明活动只对应一个举行时间和一次报名/到场结果，固定名单连续 3–4 次或更多课应建短期专题班。旧班级默认回填长期正式课，不按历史课次数量猜测。migration rollback/formal、当前数据库备份、应用 release 与机器 postflight 已通过；生产实际新建两类班级和公开课仍待产品负责人操作验收，不改变 Gate 2。
-- `POST-LIVE-PERF-01`（2026-08-30 新增 / R1 问题收集期 / 非 Gate 2 blocker）：把全站页面导航、同页对象切换和重型预览的“明显卡顿感”作为独立体验优化池。首个用户样本是教师微课课程族切换课程；静态核对表明该动作已只更新本地选择与 URL，当前候选瓶颈转为首次 quick-preview 的 Auth／RPC 往返和短生命周期缓存。R1 期间继续按路由、动作、冷／热状态、RSC／API／DB／renderer 分段记录，Gate 2 后或产品负责人明确提前选择时集中优化；初筛清单与记录格式见 doc 15 §6.5。它不表示功能缺失，也不允许用客户端 History API 绕过必要的鉴权、RLS 或服务端读取。
+- `POST-LIVE-PERF-01`（2026-08-30 新增 / R1 问题收集期 / 非 Gate 2 blocker）：把全站页面导航、同页对象切换和重型预览的“明显卡顿感”作为独立体验优化池。讲次只读课件预览的页级读取、缓存、相邻预取和来源 runtime 复用已以 `a165004…` 部署，机器 postflight 通过但真实冷／热翻页手感待产品验收；首个教师微课课程族切换样本仍未解决，该动作已只更新本地选择与 URL，候选瓶颈继续是首次 quick-preview 的 Auth／RPC 往返和短生命周期缓存。R1 期间继续按路由、动作、冷／热状态、RSC／API／DB／renderer 分段记录，Gate 2 后或产品负责人明确提前选择时集中优化；初筛清单与记录格式见 doc 15 §6.5。它不表示功能缺失，也不允许用客户端 History API 绕过必要的鉴权、RLS 或服务端读取。
 - 单老师生产试用中的真实问题按 P0/P1/P2 排序；Gate 2 通过后的 14 天观察用于决定扩大用户范围和恢复 Production 1.0 施工顺序。
 - `cacheComponents`、原生 App、更多游戏/章节和高级 BI 继续延期。
 
