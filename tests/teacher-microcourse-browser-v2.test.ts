@@ -7,6 +7,7 @@ const read = (...segments: string[]) => fs.readFileSync(path.join(root, ...segme
 const migration = read("supabase", "migrations", "20260830000100_teacher_microcourse_academic_scenes.sql");
 const scopeMigration = read("supabase", "migrations", "20260830000200_teacher_microcourse_course_scopes.sql");
 const previewMigration = read("supabase", "migrations", "20260830000300_teacher_microcourse_quick_previews.sql");
+const maintenanceMigration = read("supabase", "migrations", "20260830000400_teacher_microcourse_maintenance.sql");
 
 describe("DEV-TMC-4 teacher microcourse browser v2", () => {
   it("defines the fixed 19-item 766 dictionary and subject-scoped scene tree", () => {
@@ -114,5 +115,44 @@ describe("DEV-TMC-4 teacher microcourse browser v2", () => {
     expect(previewMigration).toContain("list_teacher_microcourse_quick_previews");
     expect(previewMigration).toContain("lecture.current_release_id::text");
     expect(previewMigration).not.toContain("preview_doc");
+  });
+
+  it("normalizes course identity, reuses duplicate names, and creates courses without preset lectures", () => {
+    const actions = read("src", "features", "school", "actions", "teacher-microcourse-maintenance.ts");
+    const createDialog = read("src", "features", "school", "teaching-operations", "TeacherMicrocourseCreateCourseDialog.tsx");
+    expect(maintenanceMigration).toContain("normalize_teacher_microcourse_course_name");
+    expect(maintenanceMigration).toContain("normalize(coalesce(p_title, ''), NFKC)");
+    expect(maintenanceMigration).toContain("teacher_microcourse_catalog_courses_canonical_name_idx");
+    expect(maintenanceMigration).toContain("duplicate_of_course_id");
+    expect(maintenanceMigration).toContain("'created', false, 'courseId', existing_course_id");
+    expect(maintenanceMigration).toContain("create_teacher_microcourse_catalog_course");
+    expect(maintenanceMigration).toContain("add_teacher_microcourse_catalog_lecture");
+    expect(actions).toContain("parse(");
+    expect(actions).toContain('authorizedClient("subject.microcourse.course.create")');
+    expect(createDialog).toContain("noPresetLecturesHint");
+    expect(createDialog).toContain("duplicateCourseHint");
+    expect(createDialog).not.toMatch(/<input\b/);
+  });
+
+  it("models maintenance directions, immutable published commits, and audited default history", () => {
+    const workspace = read("src", "features", "school", "teaching-operations", "TeacherMicrocourseMaintenanceWorkspace.tsx");
+    const detailRoute = read("src", "app", "[locale]", "dashboard", "courses", "[courseFamilyId]", "microcourses", "[courseId]", "page.tsx");
+    expect(maintenanceMigration).toContain("teacher_microcourse_maintenance_branches");
+    expect(maintenanceMigration).toContain("teacher_microcourse_branch_collaborators");
+    expect(maintenanceMigration).toContain("teacher_microcourse_course_commits");
+    expect(maintenanceMigration).toContain("teacher_microcourse_course_defaults");
+    expect(maintenanceMigration).toContain("teacher_microcourse_default_history");
+    expect(maintenanceMigration).toContain("TEACHER_MICROCOURSE_COMMIT_IMMUTABLE");
+    expect(maintenanceMigration).toContain("ALL_LECTURES_REQUIRE_PUBLISHED_RELEASES");
+    expect(maintenanceMigration).toContain("first published commit");
+    expect(maintenanceMigration).toContain("frozen classroom snapshots are unchanged");
+    expect(workspace).toContain("commitTeacherMicrocourseMaintenanceBranchAction");
+    expect(workspace).toContain("selectTeacherMicrocourseDefaultCommitAction");
+    expect(workspace).toContain("historyLinearHint");
+    expect(workspace).not.toMatch(/<input\b/);
+    expect(detailRoute).toContain("<Suspense");
+    expect(detailRoute).toContain("getTeacherMicrocourseCatalogCourse");
+    expect(detailRoute).toContain('section="branches"');
+    expect(detailRoute).toContain('section="history"');
   });
 });

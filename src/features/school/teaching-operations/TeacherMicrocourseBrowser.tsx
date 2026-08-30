@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import type { TeacherMicrocourseBrowserCapabilities } from "./teacher-microcourse-library";
 import type { TeacherMicrocourseConfiguration, TeacherMicrocourseCourseScope } from "./teacher-microcourse-scenes";
 import type { TeacherMicrocourseBrowseMode, TeacherMicrocourseBrowserModel } from "./teacher-microcourse-browser";
+import { TeacherMicrocourseCreateCourseDialog } from "./TeacherMicrocourseCreateCourseDialog";
 import { TeacherMicrocourseQuickPreview } from "./TeacherMicrocourseQuickPreview";
 import { TeacherMicrocourseSceneNavigator } from "./TeacherMicrocourseSceneNavigator";
 import { TeacherMicrocourseScopeEditor } from "./TeacherMicrocourseScopeEditor";
@@ -110,12 +111,13 @@ export function TeacherMicrocourseBrowser({
     navigate({ grades: undefined, terms: undefined, systems: undefined, classTypes: undefined, page: undefined, course: undefined });
   };
   const selectedScopeIds = checkedIds.size ? [...checkedIds] : selectedCourseId ? [selectedCourseId] : [];
+  const defaultSceneId = model.query.node?.startsWith("scene:") ? model.query.node.slice("scene:".length) : undefined;
 
   return <div className="w-full min-w-0 space-y-5" data-teacher-microcourse-browser>
     <Card>
       <CardHeader className="gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div><div className="flex flex-wrap items-center gap-2"><Badge variant="secondary">{t("teacherMicrocourses")}</Badge><Badge variant="outline">{t("browserV2")}</Badge></div><CardTitle className="mt-3 font-display text-2xl">{familyTitle}</CardTitle><CardDescription className="mt-1">{t("browserDescription")}</CardDescription></div>
-        <div className="flex flex-wrap gap-2"><Link href="/dashboard/courses" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>{t("backToLibrary")}</Link>{capabilities.canManageScenes && <Link href={`/dashboard/courses/${familyId}/microcourse-settings`} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}><Settings2 className="h-4 w-4" />{t("directorySettings")}</Link>}</div>
+        <div className="flex flex-wrap gap-2"><Link href="/dashboard/courses" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>{t("backToLibrary")}</Link>{capabilities.canCreateCourse && <TeacherMicrocourseCreateCourseDialog courseFamilyId={familyId} locale={locale} configuration={configuration} defaultSceneId={defaultSceneId} />}{capabilities.canManageScenes && <Link href={`/dashboard/courses/${familyId}/microcourse-settings`} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}><Settings2 className="h-4 w-4" />{t("directorySettings")}</Link>}</div>
       </CardHeader>
       <CardContent className="flex flex-wrap items-end gap-3 border-t border-line pt-4">
         <div className="w-full basis-80 grow"><Label htmlFor="microcourse-search">{t("searchCourses")}</Label><div className="mt-1 flex gap-2"><Input id="microcourse-search" value={search} placeholder={t("searchPlaceholder")} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") navigate({ q: search.trim() || undefined, searchAll: searchAll ? "1" : undefined, page: undefined, course: undefined }); }} /><Button size="sm" onClick={() => navigate({ q: search.trim() || undefined, searchAll: searchAll ? "1" : undefined, page: undefined, course: undefined })}><Search className="h-4 w-4" />{t("search")}</Button></div><Label className="mt-2 flex items-center gap-2 text-xs text-muted"><Checkbox checked={searchAll} onCheckedChange={(checked) => setSearchAll(Boolean(checked))} />{t("searchAllCourses")}</Label></div>
