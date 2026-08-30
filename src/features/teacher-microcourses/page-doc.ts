@@ -4,16 +4,20 @@ import {
   type CoursewareCompositionPage,
 } from "@/features/courseware-doc/composition-page-schema";
 import {
-  legacyMicrocourseCompositionPageSchema,
+  microcoursePageDocSchema,
   type MicrocoursePageDoc,
 } from "@/features/courseware-doc/microcourse-schema";
-import type { GamePageDoc } from "@/features/courseware-doc/game-page-schema";
+import {
+  gamePageDocSchema,
+  type GamePageDoc,
+} from "@/features/courseware-doc/game-page-schema";
 
 export const teacherMicrocoursePageDocSchema = z.union([
   coursewareCompositionPageSchema,
-  legacyMicrocourseCompositionPageSchema,
+  microcoursePageDocSchema,
+  gamePageDocSchema,
 ]);
 
 export type LegacyTeacherCompositionPage = Extract<MicrocoursePageDoc, { mode: "composition" }>;
-/** Runtime parsing intentionally rejects standalone legacy game/H5/Sudoku pages. */
+/** Historical standalone game/H5/Sudoku pages stay readable while new pages use composition. */
 export type TeacherMicrocoursePageDoc = CoursewareCompositionPage | MicrocoursePageDoc | GamePageDoc;
