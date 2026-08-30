@@ -17,19 +17,17 @@ export interface ClassroomRosterStudent extends SessionRosterEntry {
   interactive: boolean;
 }
 
-/** Stable 4-column slot projection shared by 1/8/20/21–30 student layouts. */
+/** Stable 4-column slot projection that preserves seats while trimming fully empty trailing rows. */
 export function buildClassroomRosterSlots(
   students: readonly SessionRosterEntry[],
-  minimumSlots = 20,
+  minimumSlots = 0,
 ): Array<SessionRosterEntry | null> {
   const validSeats = students
     .map((student) => student.seatPosition)
     .filter((seat): seat is number => typeof seat === "number" && Number.isInteger(seat) && seat >= 0);
   const required = Math.max(minimumSlots, students.length, validSeats.length ? Math.max(...validSeats) + 1 : 0);
-  const slotCount = Math.max(
-    LEARNING_SEAT_COLUMNS,
-    Math.ceil(required / LEARNING_SEAT_COLUMNS) * LEARNING_SEAT_COLUMNS,
-  );
+  if (required === 0) return [];
+  const slotCount = Math.ceil(required / LEARNING_SEAT_COLUMNS) * LEARNING_SEAT_COLUMNS;
   const slots = new Array<SessionRosterEntry | null>(slotCount).fill(null);
   const unseated: SessionRosterEntry[] = [];
 
@@ -78,15 +76,21 @@ export function ClassroomRosterGrid({
   const t = useTranslations("school.session");
   const slots = buildClassroomRosterSlots(students);
   const byId = new Map(students.map((student) => [student.studentId, student]));
+  const visibleRowCount = Math.min(5, Math.ceil(slots.length / LEARNING_SEAT_COLUMNS));
+  const rosterHeightRem = visibleRowCount * 2.75 + Math.max(0, visibleRowCount - 1) * 0.125;
+
+  if (slots.length === 0) return null;
 
   return (
     <section
       className="flex min-h-0 flex-col overflow-hidden"
+      style={{ height: `${rosterHeightRem}rem` }}
       aria-label={rosterLabel}
       data-classroom-roster-grid
       data-roster-surface="cards-only"
       data-roster-gap-surface="classroom-backdrop"
       data-roster-scroll={slots.length > 20 ? "internal" : "none"}
+      data-roster-visible-row-count={visibleRowCount}
     >
       <ul
         className="grid min-h-0 flex-1 auto-rows-[2.75rem] content-start gap-0.5 overflow-y-auto overscroll-contain"

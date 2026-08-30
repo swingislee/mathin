@@ -44,7 +44,7 @@ export function TeacherClassroomControlBar({
 
   return (
     <footer
-      className="fixed inset-x-2 bottom-[max(.25rem,env(safe-area-inset-bottom))] z-[70] grid h-12 grid-cols-[minmax(0,1fr)_auto] items-center gap-0.5 rounded-[1.4rem] bg-paper/30 px-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.24),inset_0_-1px_0_rgba(0,0,0,0.16),0_8px_26px_rgba(0,0,0,0.2)] ring-1 ring-inset ring-white/10 backdrop-blur-xl backdrop-saturate-150 lg:inset-x-3 lg:gap-2 lg:px-2"
+      className="fixed inset-x-0 bottom-0 z-[70] grid h-12 grid-cols-[minmax(0,1fr)_auto] items-center gap-0.5 rounded-none bg-paper/30 px-0.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.24),inset_0_-1px_0_rgba(0,0,0,0.16),0_8px_26px_rgba(0,0,0,0.2)] ring-0 backdrop-blur-xl backdrop-saturate-150 lg:inset-x-3 lg:bottom-[max(.25rem,env(safe-area-inset-bottom))] lg:gap-2 lg:rounded-[1.4rem] lg:px-2 lg:ring-1 lg:ring-inset lg:ring-white/10"
       data-classroom-control-bar="full-width"
       data-classroom-control-surface="flat-rail"
       data-classroom-control-background="optical-glass"
@@ -55,10 +55,11 @@ export function TeacherClassroomControlBar({
             "overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
             toolTrayExpanded
               ? "fixed inset-x-2 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-[71] max-h-[min(60dvh,26rem)] touch-pan-y overflow-y-auto rounded-[1.4rem] bg-paper/80 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.28),inset_0_-1px_0_rgba(0,0,0,0.14),0_14px_36px_rgba(0,0,0,0.24)] ring-1 ring-inset ring-white/15 backdrop-blur-xl backdrop-saturate-150 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:duration-150"
-              : "h-11 touch-pan-x overflow-x-auto overflow-y-hidden",
+              : "h-11 touch-pan-x overflow-x-auto overflow-y-hidden bg-transparent shadow-none ring-0 backdrop-blur-none",
             "lg:static lg:h-auto lg:max-h-none lg:overflow-visible lg:bg-transparent lg:p-0 lg:shadow-none lg:ring-0 lg:backdrop-blur-none lg:backdrop-saturate-100",
           )}
           data-classroom-tool-tray={toolTrayExpanded ? "expanded" : "collapsed"}
+          data-classroom-tool-tray-surface={toolTrayExpanded ? "floating-glass" : "transparent"}
           data-tool-tray-gesture="horizontal-browse-upward-expand"
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}

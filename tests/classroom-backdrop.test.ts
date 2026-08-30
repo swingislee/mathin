@@ -53,7 +53,7 @@ describe("classroom ambience backdrop", () => {
     expect(shell).toContain("relative isolate flex h-dvh");
     expect(shell).toContain("<ClassroomBackdrop />");
     expect(shell).toContain('data-classroom-right-stack-surface={teacherLayoutV2 ? "transparent" : "paper"}');
-    expect(shell).toContain("gap-2 bg-transparent lg:min-h-0");
+    expect(shell).toContain("gap-1 bg-transparent lg:min-h-0");
     expect(courseInfo).toContain('data-course-info-background="transparent"');
     expect(roster).toContain('data-roster-gap-surface="classroom-backdrop"');
     expect(panels).toContain("bg-card/80");
