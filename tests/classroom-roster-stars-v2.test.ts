@@ -253,7 +253,9 @@ describe("M4a roster identity and star v2", () => {
     expect(panels).not.toContain("bg-indigo-100");
     expect(panels).not.toContain("ring-indigo-300");
     expect(courseInfo).toContain('data-course-info-surface="flat"');
-    expect(courseInfo).toContain('data-course-info-height="40"');
+    expect(courseInfo).toContain('data-course-info-height="40-narrow-36-wide"');
+    expect(courseInfo).toContain("xl:h-9 xl:gap-0.5 xl:px-0");
+    expect(courseInfo).toContain("xl:size-9");
     expect(courseInfo).toContain("<LogOut");
     expect(courseInfo).toContain("export function ClassroomEndButton");
     expect(courseInfo).toContain("rounded-full border border-rose bg-rose px-3 py-1");

@@ -57,17 +57,17 @@ export function ClassroomCourseInfoBar({
 }) {
   return (
     <header
-      className="flex h-10 min-w-0 items-center gap-1 px-1"
+      className="flex h-10 min-w-0 items-center gap-1 px-1 xl:h-9 xl:gap-0.5 xl:px-0"
       data-classroom-course-info
       data-course-info-surface="flat"
       data-course-info-background="transparent"
-      data-course-info-height="40"
+      data-course-info-height="40-narrow-36-wide"
     >
       <Link
         href={backHref}
         aria-label={exitLabel}
         title={exitLabel}
-        className="grid size-10 shrink-0 place-items-center rounded-full text-ink transition-colors hover:bg-moon/40 hover:text-rose"
+        className="grid size-10 shrink-0 place-items-center rounded-full text-ink transition-colors hover:bg-moon/40 hover:text-rose xl:size-9"
       >
         <LogOut aria-hidden size={20} strokeWidth={2.1} />
       </Link>
@@ -77,7 +77,7 @@ export function ClassroomCourseInfoBar({
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="h-10 max-w-20 shrink-0 truncate rounded-full px-2 text-[11px] text-muted transition-colors hover:bg-moon/30 hover:text-ink"
+            className="h-10 max-w-20 shrink-0 truncate rounded-full px-2 text-[11px] text-muted transition-colors hover:bg-moon/30 hover:text-ink xl:h-9 xl:px-1.5"
           >
             {statusLabel}
           </button>
@@ -94,7 +94,7 @@ export function ClassroomCourseInfoBar({
               type="button"
               aria-label={alertLabel}
               title={alertLabel}
-              className="grid size-10 shrink-0 place-items-center rounded-full text-crater transition-colors hover:bg-crater/10"
+              className="grid size-10 shrink-0 place-items-center rounded-full text-crater transition-colors hover:bg-crater/10 xl:size-9"
             >
               <TriangleAlert aria-hidden size={17} />
             </button>

@@ -1754,8 +1754,8 @@ export function LiveShell({
             // 但 1024 上留 34rem 会把主板书压到 480px，所以两栏全展开时 lg 档先给 26rem，xl 才放到 34rem。
             teacherLayoutV2
               ? sideCollapsed
-                ? "grid-rows-[2.75rem_minmax(0,1fr)] xl:grid-rows-[2.5rem_2.75rem_minmax(0,1fr)]"
-                : "grid-rows-[minmax(7rem,1fr)_auto] lg:grid-rows-[minmax(8rem,1fr)_auto] xl:grid-rows-[2.5rem_minmax(8rem,1fr)_auto]"
+                ? "grid-rows-[2.75rem_minmax(0,1fr)] xl:grid-rows-[2.25rem_2.75rem_minmax(0,1fr)]"
+                : "grid-rows-[minmax(7rem,1fr)_auto] lg:grid-rows-[minmax(8rem,1fr)_auto] xl:grid-rows-[2.25rem_minmax(8rem,1fr)_auto]"
               : sideCollapsed && rosterCollapsed
                 ? "lg:w-[5.25rem]"
                 : sideCollapsed
