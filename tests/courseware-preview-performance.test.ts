@@ -38,6 +38,26 @@ describe("courseware preview page-turn performance", () => {
     expect(sourceRuntimeBranch).not.toContain("key=");
   });
 
+  it("does not load native-editor support data for dedicated read-only renderers", () => {
+    const data = read("src/features/courseware-studio/data.ts");
+    const studioLoader = data.slice(
+      data.indexOf("export async function loadCoursewareStudioPage"),
+      data.indexOf("async function loadImageAssetUsage"),
+    );
+    const readOnlyBranch = studioLoader.slice(
+      studioLoader.indexOf("if (activeRevision.doc.docVersion !== PAGE_DOC_VERSION)"),
+      studioLoader.indexOf("const [", studioLoader.indexOf("if (activeRevision.doc.docVersion !== PAGE_DOC_VERSION)")),
+    );
+
+    expect(readOnlyBranch).toContain("resolveEditorBindingUrls");
+    expect(readOnlyBranch).toContain("imageAssetUsage: {}");
+    expect(readOnlyBranch).toContain("releaseHistory: []");
+    expect(readOnlyBranch).toContain("copyTargets: []");
+    expect(readOnlyBranch).not.toContain("loadImageAssetUsage");
+    expect(readOnlyBranch).not.toContain('from("cw_lecture_releases")');
+    expect(readOnlyBranch).not.toContain('from("course_lectures")');
+  });
+
   it("resolves teacher-microcourse page bindings in shared batches", () => {
     const data = read("src/features/teacher-microcourses/data.ts");
 

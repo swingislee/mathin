@@ -6,6 +6,7 @@ import { getSupabaseConfig } from "@/lib/supabase/config";
 import { collectPostgrestRowsInBatches } from "@/lib/supabase/postgrest-batches";
 import { parseCoursewareDoc, type CoursewareDoc } from "@/features/courseware-doc/document";
 import { buildH5EntryUrl, type H5LaunchQuery, type ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
+import { PAGE_DOC_VERSION } from "@/features/courseware-doc/schema";
 
 const SIGNED_URL_TTL_SECONDS = 60 * 60;
 export const COURSEWARE_TRACKS = ["native-16x9", "adapted-4x3"] as const;
@@ -584,21 +585,12 @@ export async function loadCoursewareStudioPage(lectureId: string, pageDocId: str
   const baseRevisionId = page.draftRevisionId ?? page.currentRevisionId;
   if (!baseRevisionId) throw new Error("PAGE_HAS_NO_BASE_REVISION");
 
-  const [{ data: revisionRows, error: revisionError }, { data: releases, error: releaseError }] = await Promise.all([
-    supabase
-      .from("cw_page_revisions")
-      .select("id, revision_no, origin, note, created_at, created_by, doc, track, doc_version, layout_profile")
-      .eq("page_doc_id", pageDocId)
-      .order("revision_no", { ascending: false }),
-    supabase
-      .from("cw_lecture_releases")
-      .select("id, release_no, note, published_at, published_by")
-      .eq("lecture_id", lectureId)
-      .eq("track", track)
-      .order("release_no", { ascending: false }),
-  ]);
+  const { data: revisionRows, error: revisionError } = await supabase
+    .from("cw_page_revisions")
+    .select("id, revision_no, origin, note, created_at, created_by, doc, track, doc_version, layout_profile")
+    .eq("page_doc_id", pageDocId)
+    .order("revision_no", { ascending: false });
   if (revisionError) throw new Error(revisionError.message);
-  if (releaseError) throw new Error(releaseError.message);
   const revisions: StudioRevision[] = (revisionRows ?? []).filter((revision) =>
     revision.id === baseRevisionId
     || (revision.doc_version === "spatial-page-v1"
@@ -617,31 +609,59 @@ export async function loadCoursewareStudioPage(lectureId: string, pageDocId: str
   }));
   const activeRevision = revisions.find((revision) => revision.id === baseRevisionId);
   if (!activeRevision) throw new Error("PAGE_REVISION_MISSING");
-  const releaseHistory: StudioRelease[] = (releases ?? []).map((release) => ({
-    id: release.id,
-    releaseNo: release.release_no,
-    note: release.note,
-    publishedAt: release.published_at,
-    publishedBy: release.published_by,
-  }));
-  const [bindingUrls, imageAssetUsage] = await Promise.all([
-    resolveEditorBindingUrls(supabase, pageDocId, track),
-    loadImageAssetUsage(supabase, pageDocId, track),
-  ]);
-  const { data: copyTargets, error: copyTargetsError } = await supabase
-    .from("course_lectures")
-    .select("id, no, name")
-    .eq("course_id", lecture.course_id)
-    .order("no");
-  if (copyTargetsError) throw new Error(copyTargetsError.message);
-  return {
+  const common = {
     lecture: { id: lecture.id, no: lecture.no, name: lecture.name, courseId: lecture.course_id },
     track,
     pages: typedPages,
     page,
     activeRevision,
     revisions,
-    releaseHistory,
+  };
+
+  // Only page-doc-v1 enters CoursewarePageEditor. Source runtimes and other
+  // dedicated renderers are read-only here, so editor-only usage/history/copy
+  // queries would add latency without contributing anything to their output.
+  if (activeRevision.doc.docVersion !== PAGE_DOC_VERSION) {
+    return {
+      ...common,
+      releaseHistory: [],
+      bindingUrls: await resolveEditorBindingUrls(supabase, pageDocId, track),
+      imageAssetUsage: {},
+      copyTargets: [],
+    };
+  }
+
+  const [
+    { data: releases, error: releaseError },
+    bindingUrls,
+    imageAssetUsage,
+    { data: copyTargets, error: copyTargetsError },
+  ] = await Promise.all([
+    supabase
+      .from("cw_lecture_releases")
+      .select("id, release_no, note, published_at, published_by")
+      .eq("lecture_id", lectureId)
+      .eq("track", track)
+      .order("release_no", { ascending: false }),
+    resolveEditorBindingUrls(supabase, pageDocId, track),
+    loadImageAssetUsage(supabase, pageDocId, track),
+    supabase
+      .from("course_lectures")
+      .select("id, no, name")
+      .eq("course_id", lecture.course_id)
+      .order("no"),
+  ]);
+  if (releaseError) throw new Error(releaseError.message);
+  if (copyTargetsError) throw new Error(copyTargetsError.message);
+  return {
+    ...common,
+    releaseHistory: (releases ?? []).map((release): StudioRelease => ({
+      id: release.id,
+      releaseNo: release.release_no,
+      note: release.note,
+      publishedAt: release.published_at,
+      publishedBy: release.published_by,
+    })),
     bindingUrls,
     imageAssetUsage,
     copyTargets: (copyTargets ?? []).map((item) => ({ id: item.id, no: item.no, name: item.name })),
