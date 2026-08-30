@@ -12,6 +12,7 @@ import {
   loadImportPlan,
   parseArgs,
   resolveInside,
+  sourceRuntimeImportFingerprint,
   storageTargetsForPlan,
 } from "../scripts/cw-import.mjs";
 import { resolveCatalogVersion, unresolvedSourceRuntimeDrift } from "../scripts/aixuexi-import-all.mjs";
@@ -253,6 +254,42 @@ describe("P6 courseware importer", () => {
     expect(unresolvedSourceRuntimeDrift({ baselineDrift: 66, sourceRuntimeUpgraded: 66 })).toBe(0);
     expect(unresolvedSourceRuntimeDrift({ baselineDrift: 66, sourceRuntimeUpgraded: 60 })).toBe(6);
     expect(unresolvedSourceRuntimeDrift()).toBe(0);
+  });
+
+  it("versions repeated source-runtime releases by the complete immutable import input", () => {
+    const base = {
+      lecture: {
+        sourcePackageManifestSha256: "1".repeat(64),
+        sourceRuntimePackageHash: "2".repeat(64),
+      },
+      pages: [{
+        pageNo: 1,
+        title: "首页",
+        sourcePageDatabaseId: 1,
+        doc: { docVersion: "source-runtime-page-v1", runtime: { packageHash: "2".repeat(64) } },
+      }],
+      bindings: [{
+        pageNo: 1,
+        bindingKey: "3".repeat(64),
+        kind: "h5",
+        candidateKey: "4".repeat(64),
+        launchQuery: null,
+      }],
+      assets: [{ candidateKey: "4".repeat(64), kind: "h5", objectHash: "2".repeat(64) }],
+    };
+    const original = sourceRuntimeImportFingerprint(base);
+    const refreshed = sourceRuntimeImportFingerprint({
+      ...base,
+      lecture: { ...base.lecture, sourceRuntimePackageHash: "5".repeat(64) },
+    });
+    const rebound = sourceRuntimeImportFingerprint({
+      ...base,
+      assets: [{ ...base.assets[0], objectHash: "6".repeat(64) }],
+    });
+
+    expect(original).toMatch(/^[0-9a-f]{64}$/);
+    expect(refreshed).not.toBe(original);
+    expect(rebound).not.toBe(original);
   });
 
   it("exports the in-process importer used by local resumable batches", () => {

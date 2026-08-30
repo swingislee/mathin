@@ -699,6 +699,51 @@ export function catalogVersionFilterSql(plan, courseAlias) {
    )`;
 }
 
+/**
+ * A source-runtime release is immutable, so refreshing the producer-owned
+ * Viewer must create a new release identity instead of reusing the original
+ * one-time upgrade note. Include every input that can change the release
+ * snapshot: producer runtime package, page documents, binding projection and
+ * the content-addressed object selected by each shared-asset candidate.
+ */
+export function sourceRuntimeImportFingerprint(plan) {
+  const runtimePackageHash = plan.lecture.sourceRuntimePackageHash;
+  assertHash(runtimePackageHash, "lecture.sourceRuntimePackageHash");
+  const pages = [...plan.pages]
+    .sort((left, right) => left.pageNo - right.pageNo)
+    .map((page) => ({
+      pageNo: page.pageNo,
+      title: page.title,
+      sourcePageDatabaseId: page.sourcePageDatabaseId,
+      doc: page.doc,
+    }));
+  const bindings = [...plan.bindings]
+    .sort((left, right) => left.pageNo - right.pageNo
+      || left.bindingKey.localeCompare(right.bindingKey, "en"))
+    .map((binding) => ({
+      pageNo: binding.pageNo,
+      bindingKey: binding.bindingKey,
+      kind: binding.kind,
+      candidateKey: binding.candidateKey,
+      launchQuery: binding.launchQuery,
+    }));
+  const assets = [...plan.assets]
+    .sort((left, right) => left.candidateKey.localeCompare(right.candidateKey, "en"))
+    .map((asset) => ({
+      candidateKey: asset.candidateKey,
+      kind: asset.kind,
+      objectHash: asset.objectHash,
+    }));
+  return createHash("sha256").update(JSON.stringify({
+    schemaVersion: "mathin-source-runtime-import-fingerprint-v1",
+    sourcePackageManifestSha256: plan.lecture.sourcePackageManifestSha256,
+    runtimePackageHash,
+    pages,
+    bindings,
+    assets,
+  })).digest("hex");
+}
+
 export function buildImportSql(plan, options = {}) {
   const isAixuexi = plan.lecture.sourceSystem === "aixuexi_bsk";
   const upgradeSourceRuntime = options.upgradeSourceRuntime === true;
@@ -928,9 +973,10 @@ update public.cw_source_packages package
  where package.source_system=${sqlText(plan.lecture.sourceSystem)}
    and package.package_key=${sqlText(plan.lecture.sourcePackageKey)};
 ` : "";
-  const sourceRuntimeUpgradeRevisionNote = `${importNote} · source-runtime-v1 revision`;
-  const sourceRuntimeUpgradeNativeNote = `${importNote} · source-runtime-v1`;
-  const sourceRuntimeUpgradeAdaptedNote = `${importNote} · source-runtime-v1 · 4:3 top-aligned`;
+  const sourceRuntimeImportHash = upgradeSourceRuntime ? sourceRuntimeImportFingerprint(plan) : null;
+  const sourceRuntimeUpgradeRevisionNote = `${importNote} · source-runtime-v1:${sourceRuntimeImportHash} revision`;
+  const sourceRuntimeUpgradeNativeNote = `${importNote} · source-runtime-v1:${sourceRuntimeImportHash}`;
+  const sourceRuntimeUpgradeAdaptedNote = `${importNote} · source-runtime-v1:${sourceRuntimeImportHash} · 4:3 top-aligned`;
   const sourceRuntimeUpgradePrepareSql = upgradeSourceRuntime ? `
 do $$ begin
   if exists (
