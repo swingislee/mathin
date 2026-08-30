@@ -1,7 +1,7 @@
 # 29 · 教师微课课程浏览与维护体系重构
 
 > **规划状态**：`active`  
-> **当前状态**：本机开发端已交付；2026-08-30 讲次预览 hotfix 的生产 preflight 已检出 current=`76f0f9a…`、ledger/head=`236 / 20260830000700_teacher_microcourse_editor_unification`，说明本文件 schema/app 在该 hotfix 前已进入生产，但此前部署授权与 postflight 仍待单独对账。产品负责人确认的教师微课课程切换卡顿仍未解决，§6.5 性能目标未验收；本轮 `a165004…` 只优化讲次课件预览，不关闭该样本
+> **当前状态**：教师微课 schema 已进入生产，数据库 ledger/head=`236 / 20260830000700_teacher_microcourse_editor_unification`。编辑器布局、预览反馈与课程选择修复先以隔离候选 `15e48ada…` 发布；随后确认生产 `teaching.teacher_microcourse_browser_v2` 仍为 version 1 / false，导致同一稳定 slug 在开发与生产进入不同页面。应用根修复已以隔离候选 `6e0b5bda…` 发布为 production release `20260830-084610`：v2 固化为 `teacher-microcourses` 的唯一主工作台，rollout flag 退出配置入口，双层 health 通过；产品页面验收继续进行
 > **适用范围**：教师微课课程族 `courseID` 页面、教师微课适用范围、使用场景配置、课程维护版本与默认版本管理  
 > **基线实现**：以 `fe2a1d9` 及其主线后续实现为当前重构起点  
 > **施工原则**：先完成隔离环境与本地数据验收；数据库迁移、权限、生产发布继续遵循项目现有授权与回退流程
@@ -1552,6 +1552,14 @@ teaching.teacher_microcourse_browser_v2
 - app-only hotfix 写前只读 preflight 已发现生产应用为 `76f0f9a…`，数据库 ledger/head=`236 / 20260830000700_teacher_microcourse_editor_unification`；这些事实早于本轮发布，本轮没有重放本文件 migration、历史归并或功能开关，也不补写此前部署的授权结论；
 - 来源提交 `50a1648` 以该生产基线适配为 `a165004…`，只增加讲次只读预览的页级读取、缓存、相邻预取、History API 页码同步、来源 runtime iframe 复用和资源 URL 批量解析。release `20260830-080555` 的机器 postflight 通过，真实多页课程翻页手感待产品验收；
 - 教师微课课程行点击仍走 `/api/teacher-microcourses/[courseId]/quick-preview`，本 hotfix 没有改变这条 Auth/RPC 请求链、`private, no-store` 响应或组件缓存边界。因此第五轮的课程切换性能缺口、采样要求和 §6.5 门槛原样保留。
+
+2026-08-30 第七轮修复开发／生产主工作台分叉：
+
+- 开发课程族 `ee0db23d…` 与生产课程族 `7b7210f7…` 的 UUID 不同属于环境数据差异；两者稳定 slug 均为 `teacher-microcourses`，路由身份不得依赖任一环境 UUID；
+- 生产 `teaching.teacher_microcourse_browser_v2` 仍为 version 1 / false，而开发为 version 2 / true；课程族页因此在生产静默回退到旧产品详情。该 flag 是开发 rollout 门，不应在 v2 已成为正式产品后继续制造两个运行界面；
+- 课程族页现在只以稳定 slug 选择教师微课主工作台。历史 flag 行继续保留在数据库和 wire contract 中用于审计读取，但从机构设置、能力发布列表和两个写 action 的允许键中退出；切换历史 flag 不再改变页面；
+- 本修复不新增 migration，不修改课程族 UUID、数据库 flag 历史、课程、release、Storage 或业务数据。开发、生产继续各自使用本环境的真实 family ID 访问同一个页面合同。
+- app-only 候选 `6e0b5bda…` 已发布为 production release `20260830-084610`，previous=`20260830-081944 / 15e48ada…`；loopback/Caddy health 均通过。生产 flag 刻意保持 version 1 / false、ledger/head 保持 `236 / 20260830000700_teacher_microcourse_editor_unification`，证明页面一致性不再依赖修改环境开关。
 
 ---
 
