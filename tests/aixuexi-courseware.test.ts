@@ -167,6 +167,15 @@ describe("Aixuexi courseware adapter", () => {
     expect(aixuexiPackageDefinition("future-package")).toBeNull();
   });
 
+  it("packages X+ with the source-owned video delivery runtime", () => {
+    expect(aixuexiPackageDefinition("2026-xplus-sujiao-math")).toMatchObject({
+      lectureCount: 84,
+      pageCount: 2767,
+      playerRuntimeSchemaVersion: 4,
+      playerRuntimeDerivationVersion: 5,
+    });
+  });
+
   it("keeps the merged course package difficulty order", () => {
     expect(["A+", "G+", "X+"].sort(compareCourseDifficulty)).toEqual(["X+", "G+", "A+"]);
   });
@@ -312,6 +321,8 @@ describe("Aixuexi courseware adapter", () => {
 
     expect(sql).toContain("cw_source_packages");
     expect(sql).toContain("document_adapter=excluded.document_adapter");
+    expect(sql).toContain("manifest_sha256=excluded.manifest_sha256");
+    expect(sql).not.toContain("AIXUEXI_SOURCE_PACKAGE_MANIFEST_DRIFT");
     expect(sql).toContain("CW_IMPORT_SOURCE_RUNTIME_PROTECTED_PAGE");
     expect(sql).toContain("cw_import_inserted_source_runtime_releases");
     expect(sql).toContain("cw_source_lectures");
