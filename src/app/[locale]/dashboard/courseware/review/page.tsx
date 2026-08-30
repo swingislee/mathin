@@ -77,7 +77,7 @@ export default async function CoursewareReviewPage({
         </Suspense>
       }
     >
-      <Suspense fallback={<div className="h-96 animate-pulse border-y border-line bg-paper/30" />}>
+      <Suspense fallback={<div className="h-96 animate-pulse bg-moon/10" />}>
         <AdaptReviewContent locale={locale} searchParams={searchParams} />
       </Suspense>
     </DashboardPage>

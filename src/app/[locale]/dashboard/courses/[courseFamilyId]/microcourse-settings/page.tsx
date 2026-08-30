@@ -1,16 +1,13 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { buttonVariants } from "@/components/ui/button";
 import { DashboardPage } from "@/features/school/dashboard-page";
 import { listStaffOptions } from "@/features/school/classes";
 import { TeacherMicrocourseSceneManager } from "@/features/school/teaching-operations/TeacherMicrocourseSceneManager";
 import { TeacherMicrocourseDuplicateManager } from "@/features/school/teaching-operations/TeacherMicrocourseDuplicateManager";
 import { listTeacherMicrocourseDuplicateReport } from "@/features/school/teaching-operations/teacher-microcourse-maintenance";
 import { getTeacherMicrocourseConfiguration } from "@/features/school/teaching-operations/teacher-microcourse-scenes";
-import { Link } from "@/i18n/navigation";
 import { requirePerm } from "@/lib/auth";
-import { cn } from "@/lib/utils";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 

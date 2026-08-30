@@ -20,7 +20,7 @@ export function TeacherMicrocourseTable({ courses, selectedCourseId, checkedIds,
   onToggleAll: () => void;
 }) {
   const t = useTranslations("school.teacherMicrocourseBrowser");
-  return <DashboardTableShell><Table>
+  return <DashboardTableShell className="rounded-none border-x-0"><Table>
     <TableHeader><TableRow>
       {canManage && <TableHead className="w-10"><Checkbox checked={courses.length > 0 && courses.every((course) => checkedIds.has(course.id))} onCheckedChange={onToggleAll} aria-label={t("selectPageCourses")} /></TableHead>}
       <TableHead className="h-9">{t("courseName")}</TableHead>

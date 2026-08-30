@@ -2,7 +2,6 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
 import { loadLecturePreview, parseCoursewareTrack } from "@/features/courseware-studio/data";
 import { LecturePreviewDialog } from "@/features/school/curriculum/LecturePreviewDialog";
 import { LecturePreviewPanel } from "@/features/school/curriculum/LecturePreviewPanel";
@@ -12,9 +11,7 @@ import { ObjectBar, ObjectTabs, ObjectWorkspace } from "@/features/school/object
 import { listStaffOptions } from "@/features/school/classes";
 import { TeacherMicrocourseAddLectureDialog, TeacherMicrocourseMaintenanceWorkspace } from "@/features/school/teaching-operations/TeacherMicrocourseMaintenanceWorkspace";
 import { getTeacherMicrocourseBranchMembers, getTeacherMicrocourseCatalogCourse } from "@/features/school/teaching-operations/teacher-microcourse-maintenance";
-import { Link } from "@/i18n/navigation";
 import { requirePerm } from "@/lib/auth";
-import { cn } from "@/lib/utils";
 
 function first(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;

@@ -1518,6 +1518,16 @@ teaching.teacher_microcourse_browser_v2
 - 最终窄检查为受影响 ESLint、`pnpm typecheck`、6 个定向 Vitest 文件 `49/49`、本地数据库 composition upgrade assertions 与 `pnpm plan:audit` 通过；
 - 本轮继续遵守产品负责人指示，没有调用浏览器、Playwright 或截图。机器检查和本地数据库断言只证明版本化合同与可启动条件，当前仍为“开发端已交付，待人工视觉与交互验收”，生产环境未修改。
 
+2026-08-30 第二轮产品复核确认问题属于 Dashboard 根语义和编辑器合同分裂，追加以下硬修正：
+
+- Dashboard 层级固定为页面／对象身份、命令区、无外框 `DashboardSection`、语义 `DashboardTableShell` 和持续栏位结构线；禁止用 `border-y`、无底色圆角边框或 section/header/table 多重线继续模拟 Card；该规则已进入根 `AGENTS.md` 与 doc 01；
+- 教师微课编辑器只允许 `CoursewareCompositionWorkbench`。`TeacherMicrocoursePageDoc`、保存动作和新增 H5／游戏／工具能力全部收敛到 `courseware-composition-v1`，整页旧 H5 writer 与旧 `MicrocoursePageWorkbench` 分支退出教师创作链；
+- `20260830000700_teacher_microcourse_editor_unification.sql` 在本机隔离库完成事务回滚试跑后正式应用：72 条旧 `microcourse-page-v1/composition` 修订原位升级，source、overlay、绑定、page/revision ID 保留；本机教师微课现为 `163/163 courseware-composition-v1`，旧 envelope 为 0，LF checksum=`6ed31f0769b9c16897fd198fb4e9671a241fc9376b96f6226b5dcd481458ee83`；
+- 产品报告的 variant `f54347a5-3a01-4620-b875-0899e654d9b0` 仍是原对象，两个页面头均解析为 `courseware-composition-v1`；升级不创建替代微课、不改 URL；
+- 主浏览器、课次方案、审核详情、课程详情／教学计划／维护历史、审核队列和 766 配置均改为连续工作台；766 不再顺序堆叠 19 个隐藏边框区块，而是 766 目录、已启用根、当前根场景表三栏，并按当前组织维度只显示一张配置表；
+- 数据迁移的运行回退是旧应用继续读取升级后的 composition 合同，不执行有损的格式降级；独立 SQL 断言验证所有教师修订均为有效 composition、旧 writer 无 authenticated execute。生产 schema、数据、开关和应用均未修改。
+- 本轮机器收口为受影响 ESLint 无告警、`pnpm typecheck` 通过、6 个定向 Vitest 文件 `38/38`、本地数据库 editor-unification assertions 和 `pnpm plan:audit` 通过；开发服务在 `0.0.0.0:3130` 启动且回环 HTTP 返回 200。按产品要求没有调用浏览器、Playwright 或截图，状态仍为“开发端已交付，待人工视觉与交互验收”。
+
 ---
 
 # 十九、Agent 施工要求

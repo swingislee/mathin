@@ -260,9 +260,9 @@ export function TeacherMicrocourseBrowser({
       </DashboardCommandActions>
     </DashboardCommandPanel>}
   >
-    <div className="grid min-h-[34rem] min-w-0 border-y border-line/70 @3xl/page:grid-cols-[14rem_minmax(0,1fr)] @6xl/page:grid-cols-[16rem_minmax(0,1fr)_20rem]" data-teacher-microcourse-browser>
-      <section className="min-w-0 border-b border-line/70 @3xl/page:border-b-0 @3xl/page:border-r" aria-labelledby="microcourse-directory-title">
-        <header className="border-b border-line/70 px-3 py-2.5">
+    <div className="grid min-h-[34rem] min-w-0 overflow-hidden bg-moon/10 @3xl/page:grid-cols-[14rem_minmax(0,1fr)] @6xl/page:grid-cols-[16rem_minmax(0,1fr)_20rem]" data-teacher-microcourse-browser>
+      <section className="min-w-0 @3xl/page:border-r @3xl/page:border-line/70" aria-labelledby="microcourse-directory-title">
+        <header className="px-3 py-2.5">
           <h2 id="microcourse-directory-title" className="flex items-center gap-2 text-sm font-medium"><FolderTree className="h-4 w-4" />{t("virtualDirectory")}</h2>
           <p className="mt-0.5 text-xs leading-5 text-muted">{t("directoryHint")}</p>
         </header>
@@ -270,12 +270,12 @@ export function TeacherMicrocourseBrowser({
       </section>
 
       <section className="min-w-0" aria-labelledby="microcourse-table-title">
-        <header className="flex min-h-14 items-center justify-between gap-3 border-b border-line/70 px-3 py-2">
+        <header className="flex min-h-14 items-center justify-between gap-3 px-3 py-2">
           <div><h2 id="microcourse-table-title" className="text-sm font-medium">{t("courseTable")}</h2><p className="text-xs text-muted">{t("courseCount", { count: model.totalCount })}</p></div>
           {checkedIds.size > 0 && <Badge variant="secondary">{t("selectedCourses", { count: checkedIds.size })}</Badge>}
         </header>
         <TeacherMicrocourseTable courses={model.courses} selectedCourseId={selectedCourseId} checkedIds={checkedIds} canManage={capabilities.canManageScopes} onSelect={selectCourse} onPrefetch={prefetchCourse} onToggle={toggleChecked} onToggleAll={toggleAll} />
-        <div className="flex min-h-12 items-center justify-between border-t border-line/70 px-3 py-2 text-xs text-muted"><span>{t("pageStatus", { page: model.query.page, pages: model.pageCount })}</span><div className="flex gap-1"><Button variant="ghost" size="sm" disabled={model.query.page <= 1} onClick={() => navigate({ page: String(model.query.page - 1), course: undefined })}>{t("previous")}</Button><Button variant="ghost" size="sm" disabled={model.query.page >= model.pageCount} onClick={() => navigate({ page: String(model.query.page + 1), course: undefined })}>{t("next")}</Button></div></div>
+        <div className="flex min-h-12 items-center justify-between px-3 py-2 text-xs text-muted"><span>{t("pageStatus", { page: model.query.page, pages: model.pageCount })}</span><div className="flex gap-1"><Button variant="ghost" size="sm" disabled={model.query.page <= 1} onClick={() => navigate({ page: String(model.query.page - 1), course: undefined })}>{t("previous")}</Button><Button variant="ghost" size="sm" disabled={model.query.page >= model.pageCount} onClick={() => navigate({ page: String(model.query.page + 1), course: undefined })}>{t("next")}</Button></div></div>
       </section>
 
       <aside className="hidden min-w-0 border-l border-line/70 @6xl/page:block"><TeacherMicrocourseQuickPreview familyId={familyId} course={selectedCourse} canCreateBranch={capabilities.canCreateBranch} /></aside>
@@ -293,5 +293,5 @@ function FilterGroup({ title, items, locale, selected, onToggle }: {
   selected: ReadonlySet<string>;
   onToggle: (id: string) => void;
 }) {
-  return <fieldset className="space-y-2"><legend className="text-sm font-medium">{title}</legend><div className="grid max-h-36 overflow-y-auto border-y border-line/70 @2xl/page:grid-cols-2">{items.filter((item) => item.active).map((item) => <Label key={item.id} className="flex cursor-pointer items-center gap-2 border-b border-line/50 px-2 py-2 text-sm @2xl/page:odd:border-r"><Checkbox checked={selected.has(item.id)} onCheckedChange={() => onToggle(item.id)} />{locale === "zh" ? item.nameZh : item.nameEn}</Label>)}</div></fieldset>;
+  return <fieldset className="space-y-2"><legend className="text-sm font-medium">{title}</legend><div className="grid max-h-36 gap-1 overflow-y-auto bg-moon/10 p-1 @2xl/page:grid-cols-2">{items.filter((item) => item.active).map((item) => <Label key={item.id} className="flex cursor-pointer items-center gap-2 px-2 py-2 text-sm"><Checkbox checked={selected.has(item.id)} onCheckedChange={() => onToggle(item.id)} />{locale === "zh" ? item.nameZh : item.nameEn}</Label>)}</div></fieldset>;
 }

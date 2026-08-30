@@ -19,6 +19,7 @@ describe("Dashboard table and divider semantics", () => {
       ...filesUnder("src/app/[locale]/dashboard"),
       ...filesUnder("src/features/school"),
       ...filesUnder("src/features/courseware-studio"),
+      ...filesUnder("src/features/teacher-microcourses"),
     ].filter((file) => file.endsWith(".tsx") && read(file).includes("<Table"));
 
     expect(files.length).toBeGreaterThan(10);
@@ -34,10 +35,23 @@ describe("Dashboard table and divider semantics", () => {
     const table = read("src/components/ui/table.tsx");
 
     expect(shell).toContain("data-dashboard-table-shell");
-    expect(shell).toContain("overflow-hidden rounded-2xl border border-line bg-card");
+    expect(shell).toContain("overflow-hidden rounded-xl border border-line/80");
     expect(table).toContain('TableHeader({ className,...props }');
     expect(table).toContain('cn("border-b border-line",className)');
     expect(table).toContain('cn("divide-y divide-line",className)');
+  });
+
+  it("uses borderless Dashboard sections and reserves borders for table or persistent panel boundaries", () => {
+    const section = read("src/features/school/dashboard-page/DashboardSection.tsx");
+    const browser = read("src/features/school/teaching-operations/TeacherMicrocourseBrowser.tsx");
+    const review = read("src/features/teacher-microcourses/MicrocourseReviewPanel.tsx");
+
+    expect(section).toContain("data-dashboard-section");
+    expect(section).not.toContain("border-y");
+    expect(section).not.toContain("bg-card");
+    expect(browser).not.toContain("border-y");
+    expect(review).not.toContain("border-y");
+    expect(review).toContain("xl:border-r xl:border-line/80");
   });
 
   it("uses one page-header divider and keeps horizontal navigation attached to its content", () => {

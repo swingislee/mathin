@@ -11,7 +11,7 @@ import {
   listTeacherMicrocourseVariants,
   listTeacherMicrocourseTopics,
 } from "@/features/teacher-microcourses/data";
-import { DashboardPage } from "@/features/school/dashboard-page";
+import { DashboardPage, DashboardSection } from "@/features/school/dashboard-page";
 import { isFeatureEnabled } from "@/features/school/organization-settings";
 import { requirePerm } from "@/lib/auth";
 
@@ -33,7 +33,7 @@ export default async function TeacherMicrocoursePage({
       backHref={`/dashboard/sessions/${sessionId}?stage=pre`}
       backLabel={t("backToSession")}
     >
-      <Suspense fallback={<div className="h-[42rem] animate-pulse border-y border-line bg-paper/30" />}>
+      <Suspense fallback={<div className="h-[42rem] animate-pulse bg-moon/10" />}>
         <TeacherMicrocourseContent locale={locale} sessionId={sessionId} searchParams={searchParams} />
       </Suspense>
     </DashboardPage>
@@ -59,7 +59,7 @@ async function TeacherMicrocourseContent({
   ]);
   if (!session || session.lectureId !== null) notFound();
   if (!enabled) {
-    return <section className="max-w-2xl border-y border-line py-5"><h2 className="text-base font-medium">{t("featureDisabledTitle")}</h2><p className="mt-1 text-sm text-muted">{t("featureDisabledDescription")}</p><p className="mt-4 text-sm text-muted">{t("featureDisabledHint")}</p></section>;
+    return <DashboardSection className="max-w-2xl" title={t("featureDisabledTitle")} description={t("featureDisabledDescription")}><p className="text-sm text-muted">{t("featureDisabledHint")}</p></DashboardSection>;
   }
   const [variants, topics] = await Promise.all([
     listTeacherMicrocourseVariants(sessionId),

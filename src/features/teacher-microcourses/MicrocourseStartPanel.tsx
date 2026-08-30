@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { DashboardSection } from "@/features/school/dashboard-page";
 import { useRouter } from "@/i18n/navigation";
 import { createTeacherMicrocourseAction } from "./actions";
 import type { TeacherMicrocourseTopic } from "./data";
@@ -57,12 +58,13 @@ export function MicrocourseStartPanel({
   });
 
   return (
-    <section className="max-w-3xl border-y border-line" data-microcourse-start-panel>
-      <header className="border-b border-line px-1 py-4">
-        <h2 className="flex items-center gap-2 text-lg font-medium"><Sparkles className="size-5 text-crater" />{t("startTitle")}</h2>
-        <p className="mt-1 text-sm text-muted">{t("startDescription")}</p>
-      </header>
-      <div className="grid gap-4 px-1 py-4 sm:grid-cols-2">
+    <DashboardSection
+      className="max-w-3xl"
+      title={<span className="flex items-center gap-2"><Sparkles className="size-5 text-crater" />{t("startTitle")}</span>}
+      description={t("startDescription")}
+      contentClassName="grid gap-4 sm:grid-cols-2"
+      data-microcourse-start-panel
+    >
         <Label className="grid gap-1.5 sm:col-span-2">
           <span>{t("variantName")}</span>
           <Input value={variantName} onChange={(event) => setVariantName(event.target.value)} maxLength={120} />
@@ -111,7 +113,6 @@ export function MicrocourseStartPanel({
           </Button>
           {message && <p role="status" className="text-sm text-rose">{message}</p>}
         </div>
-      </div>
-    </section>
+    </DashboardSection>
   );
 }
