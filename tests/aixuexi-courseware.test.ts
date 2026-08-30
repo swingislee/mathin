@@ -176,6 +176,18 @@ describe("Aixuexi courseware adapter", () => {
     });
   });
 
+  it("packages autumn A+ with the current source-owned player runtime", () => {
+    expect(aixuexiPackageDefinition("2026-aplus-quanguo-math")).toMatchObject({
+      lectureCount: 30,
+      pageCount: 1034,
+      grades: [1, 2],
+      term: "秋季",
+      termCode: "AUT",
+      playerRuntimeSchemaVersion: 4,
+      playerRuntimeDerivationVersion: 5,
+    });
+  });
+
   it("keeps the merged course package difficulty order", () => {
     expect(["A+", "G+", "X+"].sort(compareCourseDifficulty)).toEqual(["X+", "G+", "A+"]);
   });

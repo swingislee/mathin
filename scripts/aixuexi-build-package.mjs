@@ -33,7 +33,7 @@ const PACKAGE_CONFIGS = new Map([
     lectureCount: 30, pageCount: 1034, grades: [1, 2],
     level: "A+", sourceLevel: "思维突破 A+", edition: "全国版", productPrefix: "AXX26A-QG",
     term: "秋季", termCode: "AUT",
-    playerRuntimeSchemaVersion: 3, playerRuntimeDerivationVersion: 3,
+    playerRuntimeSchemaVersion: 4, playerRuntimeDerivationVersion: 5,
   }],
   ["2026-summer-aplus-quanguo-math", {
     lectureCount: 2, pageCount: 66, grades: [1],

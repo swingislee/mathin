@@ -146,6 +146,8 @@ describe("producer-owned Aixuexi source runtime", () => {
     expect(host).toContain("renderedFrameKey === renderKey");
     expect(host).toContain("runtimeLoadedFor.current = runtimeInstanceKey");
     expect(host).toContain("runtimePayloadSentFor.current !== renderKey");
+    expect(host).toContain("useLayoutEffect(() => {");
+    expect(host).toContain('window.addEventListener("message", receive)');
     expect(host).toContain('key={runtimeInstanceKey}');
     expect(host).toContain('const renderKey = `${runtimeInstanceKey}:${doc.source.coursewareId}:${doc.source.pageDatabaseId}`');
     expect(host).not.toContain("setRendered(false)");

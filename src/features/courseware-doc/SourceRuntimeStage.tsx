@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { DocVideoControl } from "./DocStage";
 import type { H5PointerBridgeHost } from "./h5-pointer-protocol";
@@ -111,7 +111,11 @@ export default function SourceRuntimeStage({
     }
   }, [iframeRef, payload, renderKey, runtimeInstanceKey]);
 
-  useEffect(() => {
+  // The source Viewer can render a lightweight page between the iframe load
+  // event and React's passive-effect flush. Install the message listener in
+  // the layout phase so its immediate `rendered` acknowledgement is never
+  // lost; otherwise the host can remain on the loading veil until remounted.
+  useLayoutEffect(() => {
     const receive = (event: MessageEvent) => {
       if (event.source !== iframeRef.current?.contentWindow) return;
       const message = event.data as { source?: unknown; protocol?: unknown; type?: unknown; message?: unknown; action?: unknown; time?: unknown };
