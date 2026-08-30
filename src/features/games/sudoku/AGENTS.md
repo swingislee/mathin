@@ -26,7 +26,7 @@
 - 新变形题型使用 `sudoku-v2:<variantId>:<baseSeed>`。`variantId` 使用小写 kebab-case，发布后不得改名、复用或改变语义。
 - 未知或畸形的 `sudoku-v1/v2` 必须 fail closed，不能降级成 9×9 继续生成或通过服务端验证。
 - 确定性生成的公开对局与历史游戏课件继续复用 `{ gameId, difficulty, seed }` 及现有 `GameMirrorState`。教师手工原型题使用 `game-page-v1` + `sudoku-authored-v1`，payload 必须显式保存稳定 `variantId`，并经服务端 runtime 生成不可变校验凭证；不得把规则对象塞进镜像事件。
-- `microcourse-page-v1 mode=sudoku` 是永久可读的 81 格兼容格式，不回写旧 revision。所有新建教师数独页都走 `game-page-v1`；新增题型只改数独注册表、payload 适配器和测试，不得修改微课核心 schema、页面切换、审核、冻结或课堂路由。
+- `microcourse-page-v1 mode=sudoku` 已由版本化 migration 原位升级为 `courseware-composition-v1` 内的 `game-page-v1 + sudoku-authored-v2` 区块；活动数据中旧 envelope 必须为零，应用解析、编辑、审核、冻结和课堂全部 fail closed。新建教师数独页只走通用 composition game 区块；不得恢复微课核心 schema 或页面切换中的数独专用分支。
 - `sudoku-authored-v1` 永久按“整题唯一解”解释，只用于读取历史 revision。新建页面使用 `sudoku-authored-v2`：`full-solution` 必须整题唯一；`teaching-target` 只要求盘面可解且每个目标格在所有合法终盘中取值相同；`teacher-led` 只要求盘面可解，并关闭任意格答案揭示。不得用求解器返回的第一份终盘冒充多解盘面的确定答案。
 - `game-page-v1.layout` 缺省永久表示互动占满 4:3 页面；存在时必须是 `game-page-grid-v1`。老师端只显示模板、网格吸附和拖拽手柄，禁止暴露 `column/row/span` 数字输入。数独块最小为 8×6 网格，避免课堂点击目标过小；布局只影响摆放，不能复制题型、目标或镜像状态。
 
@@ -58,7 +58,7 @@ const solved = solveSudokuGrid(puzzle, variantId);
 - 历史 raw seed 与 v1 seed 生成结果不变；同 seed + 难度 + variant 在服务端和浏览器得到同一题面。
 - 每个新题型至少覆盖：合法终盘、错误终盘、逐格错误、确定性生成、proof 验证、seed round-trip 和未知协议拒绝。
 - 课堂覆盖填数、候选、删除、突出、答案、撤销与镜像恢复；不适用的工具必须由 renderer 明示禁用。
-- `game-page-v1`、微课嵌套来源和旧 `microcourse-page-v1 mode=sudoku` 必须把同一 `GameMirrorState` 贯穿到课堂 `game_state`；只传 `interactive` 而遗漏 `mirror/onMirror` 视为合同失败。
+- `game-page-v1` 与微课 composition game 区块必须把同一 `GameMirrorState` 贯穿到课堂 `game_state`；旧 `microcourse-page-v1 mode=sudoku` 必须由数据库断言证明为零。只传 `interactive` 而遗漏 `mirror/onMirror` 视为合同失败。
 - 公开页和课件入口 zh/en 均可选择；1024×768 的 4:3 工作区无横向滚动。
 - 最窄检查至少运行：
 

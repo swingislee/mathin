@@ -9,6 +9,7 @@ const scopeMigration = read("supabase", "migrations", "20260830000200_teacher_mi
 const previewMigration = read("supabase", "migrations", "20260830000300_teacher_microcourse_quick_previews.sql");
 const maintenanceMigration = read("supabase", "migrations", "20260830000400_teacher_microcourse_maintenance.sql");
 const rolloutMigration = read("supabase", "migrations", "20260830000500_teacher_microcourse_rollout.sql");
+const compositionUpgradeMigration = read("supabase", "migrations", "20260830000600_teacher_microcourse_sudoku_composition_upgrade.sql");
 
 describe("DEV-TMC-4 teacher microcourse browser v2", () => {
   it("defines the fixed 19-item 766 dictionary and subject-scoped scene tree", () => {
@@ -56,6 +57,7 @@ describe("DEV-TMC-4 teacher microcourse browser v2", () => {
     expect(manager).toContain("selectedScenes");
     expect(manager).toContain("<Checkbox");
     expect(manager).toContain("<Table");
+    expect(manager).not.toContain("<Card");
     expect(manager).not.toMatch(/<input\b/);
     expect(manager).not.toContain("window.confirm");
   });
@@ -96,7 +98,10 @@ describe("DEV-TMC-4 teacher microcourse browser v2", () => {
     expect(route).toContain("listTeacherMicrocourseBrowserCatalog");
     expect(route).toContain("getTeacherMicrocourseQuickPreview");
     expect(route).toContain('isFeatureEnabled("teaching.teacher_microcourse_browser_v2")');
-    expect(browser).toContain("@6xl/page:grid-cols-[18rem_minmax(0,1fr)_22rem]");
+    expect(browser).toContain("@6xl/page:grid-cols-[16rem_minmax(0,1fr)_20rem]");
+    expect(browser).toContain("<ObjectWorkspace");
+    expect(browser).toContain("<DashboardCommandPanel");
+    expect(browser).not.toContain("<Card");
     expect(browser).toContain("localStorage");
     expect(browser).toContain("nodePreferenceKey");
     expect(browser).toContain("coursePreferenceKey");
@@ -120,6 +125,15 @@ describe("DEV-TMC-4 teacher microcourse browser v2", () => {
     expect(previewMigration).toContain("list_teacher_microcourse_quick_previews");
     expect(previewMigration).toContain("lecture.current_release_id::text");
     expect(previewMigration).not.toContain("preview_doc");
+  });
+
+  it("upgrades every standalone teacher Sudoku page into the generic composition contract", () => {
+    expect(compositionUpgradeMigration).toContain("courseware-composition-v1");
+    expect(compositionUpgradeMigration).toContain("sudoku-authored-v2");
+    expect(compositionUpgradeMigration).toContain("LEGACY_TEACHER_SUDOKU_REMAINS");
+    expect(compositionUpgradeMigration).toContain("STANDALONE_TEACHER_SUDOKU_REMAINS");
+    expect(compositionUpgradeMigration).toContain("disable trigger cw_page_revisions_set_document_metadata");
+    expect(compositionUpgradeMigration).toContain("enable trigger cw_page_revisions_set_document_metadata");
   });
 
   it("normalizes course identity, reuses duplicate names, and creates courses without preset lectures", () => {
@@ -154,11 +168,13 @@ describe("DEV-TMC-4 teacher microcourse browser v2", () => {
     expect(workspace).toContain("commitTeacherMicrocourseMaintenanceBranchAction");
     expect(workspace).toContain("selectTeacherMicrocourseDefaultCommitAction");
     expect(workspace).toContain("historyLinearHint");
+    expect(workspace).not.toContain("<Card");
     expect(workspace).not.toMatch(/<input\b/);
     expect(detailRoute).toContain("<Suspense");
     expect(detailRoute).toContain("getTeacherMicrocourseCatalogCourse");
     expect(detailRoute).toContain('section="branches"');
     expect(detailRoute).toContain('section="history"');
+    expect(detailRoute).not.toContain("<Card");
   });
 
   it("bounds preview reads and client caching to the selected or prefetched course", () => {
@@ -186,6 +202,7 @@ describe("DEV-TMC-4 teacher microcourse browser v2", () => {
     expect(workspace).toContain("setTeacherMicrocourseBranchMembersAction");
     expect(workspace).toContain("searchHistory");
     expect(duplicateManager).toContain("selectTeacherMicrocourseDuplicateCanonicalAction");
+    expect(duplicateManager).not.toContain("<Card");
     expect(dbAssertions).toContain("NON_DESTRUCTIVE_CANONICAL_SWITCH_FAILED");
     expect(dbAssertions).toContain("rollback;");
   });

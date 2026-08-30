@@ -23,7 +23,6 @@ import {
   useTransition,
 } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -377,8 +376,8 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
         : t("pageAutosaved");
 
   return (
-    <Card className={cn("flex min-h-0 min-w-0 flex-col overflow-hidden", styles.workbench)}>
-      <CardHeader className="shrink-0 border-b border-line py-3">
+    <section className={cn("flex min-h-0 min-w-0 flex-col overflow-hidden", styles.workbench)}>
+      <header className="shrink-0 border-b border-line px-3 py-2.5">
         <div className="flex min-w-0 items-center justify-between gap-3">
           <div role="toolbar" aria-label={t("componentPanelTitle")} className="flex min-w-0 flex-wrap items-center gap-1">
             <Button type="button" size="sm" variant="ghost" className="size-9 p-0" aria-label={t("componentText")} title={t("componentText")} onClick={() => addNode("text")}><Type className="size-4" /></Button>
@@ -421,10 +420,10 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
           </div>
         </div>
         {message && <p role="alert" className="mt-2 text-xs text-rose">{message}</p>}
-      </CardHeader>
-      <CardContent className={cn("min-h-0 flex-1 gap-3 p-3", styles.body)}>
+      </header>
+      <div className={cn("min-h-0 flex-1 gap-3", styles.body)}>
         <div className={cn("flex min-h-0 min-w-0 items-center justify-center", styles.stageSlot)}>
-          <div className={cn("overflow-hidden rounded-xl border border-line bg-white shadow-sm", styles.stageFrame)}>
+          <div className={cn("overflow-hidden border border-line bg-white", styles.stageFrame)}>
             <CoursewareCompositionGridEditor
               doc={doc}
               bindingUrls={bindingUrls}
@@ -434,7 +433,7 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
             />
           </div>
         </div>
-        <ScrollArea className="min-h-0 rounded-xl border border-line bg-paper/70">
+        <ScrollArea className="min-h-0 border-l border-line bg-paper/70">
           <div className="space-y-4 p-3">
             <div>
               <p className="text-xs font-medium text-muted">{t("gridComponentList")}</p>
@@ -475,8 +474,8 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
             ) : null}
           </div>
         </ScrollArea>
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 });
 

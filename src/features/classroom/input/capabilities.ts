@@ -182,12 +182,6 @@ export function resolveClassroomRendererInputProfile(
           ? providerProfile("document:microcourse:h5", CLASSROOM_PARTITIONED_INPUT_PROVIDER_V1)
           : UNSUPPORTED_PROFILE;
       }
-      if (doc.mode === "sudoku") {
-        const provider = getGame("sudoku")?.classroomInput;
-        return provider
-          ? providerProfile("document:microcourse:sudoku", provider)
-          : UNSUPPORTED_PROFILE;
-      }
       return providerProfile(
         "document:microcourse:composition",
         CLASSROOM_PARTITIONED_INPUT_PROVIDER_V1,

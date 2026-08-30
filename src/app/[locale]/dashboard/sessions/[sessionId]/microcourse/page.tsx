@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MicrocourseEditor } from "@/features/teacher-microcourses/MicrocourseEditor";
 import { MicrocourseStartPanel } from "@/features/teacher-microcourses/MicrocourseStartPanel";
 import { MicrocourseVariantPreview } from "@/features/teacher-microcourses/MicrocourseVariantPreview";
@@ -34,7 +33,7 @@ export default async function TeacherMicrocoursePage({
       backHref={`/dashboard/sessions/${sessionId}?stage=pre`}
       backLabel={t("backToSession")}
     >
-      <Suspense fallback={<div className="h-[42rem] animate-pulse rounded-2xl border border-line bg-card" />}>
+      <Suspense fallback={<div className="h-[42rem] animate-pulse border-y border-line bg-paper/30" />}>
         <TeacherMicrocourseContent locale={locale} sessionId={sessionId} searchParams={searchParams} />
       </Suspense>
     </DashboardPage>
@@ -60,7 +59,7 @@ async function TeacherMicrocourseContent({
   ]);
   if (!session || session.lectureId !== null) notFound();
   if (!enabled) {
-    return <Card className="max-w-2xl"><CardHeader><CardTitle>{t("featureDisabledTitle")}</CardTitle><CardDescription>{t("featureDisabledDescription")}</CardDescription></CardHeader><CardContent><p className="text-sm text-muted">{t("featureDisabledHint")}</p></CardContent></Card>;
+    return <section className="max-w-2xl border-y border-line py-5"><h2 className="text-lg font-medium">{t("featureDisabledTitle")}</h2><p className="mt-1 text-sm text-muted">{t("featureDisabledDescription")}</p><p className="mt-4 text-sm text-muted">{t("featureDisabledHint")}</p></section>;
   }
   const [variants, topics] = await Promise.all([
     listTeacherMicrocourseVariants(sessionId),

@@ -1,7 +1,7 @@
 import { CalendarClock, Layers3, UserRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import type { TeacherMicrocourseSessionWorkspace } from "./data";
@@ -18,6 +18,12 @@ export function MicrocourseSessionWorkspaceQueue({
     description: string;
     empty: string;
     open: string;
+    session: string;
+    variant: string;
+    teacherColumn: string;
+    schedule: string;
+    status: string;
+    action: string;
     variants: (count: number) => string;
     noVariant: string;
     selected: (name: string) => string;
@@ -32,32 +38,31 @@ export function MicrocourseSessionWorkspaceQueue({
     hour: "2-digit",
     minute: "2-digit",
   });
-  return <Card data-testid="microcourse-session-workspace-queue">
-    <CardHeader>
-      <CardTitle className="text-base">{labels.title}</CardTitle>
-      <CardDescription>{labels.description}</CardDescription>
-    </CardHeader>
-    <CardContent>
-      {items.length === 0 ? <p className="py-8 text-center text-sm text-muted">{labels.empty}</p> : <div className="grid gap-3 lg:grid-cols-2">
-        {items.map((item) => <div key={item.sessionId} className="rounded-xl border border-line bg-paper/35 p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h3 className="truncate font-medium">{item.sessionTitle}</h3>
-              <p className="mt-1 truncate text-sm text-muted">{item.classroomName}</p>
-            </div>
-            {item.coursewareFrozenAt && <Badge>{labels.frozen}</Badge>}
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted">
-            <span className="inline-flex items-center gap-1"><Layers3 className="size-3.5" />{item.variantCount > 0 ? labels.variants(item.variantCount) : labels.noVariant}</span>
-            <span className="inline-flex items-center gap-1"><UserRound className="size-3.5" />{labels.teacher(item.primaryTeacherName)}</span>
-            {item.scheduledAt && <span className="inline-flex items-center gap-1"><CalendarClock className="size-3.5" />{dateFormatter.format(new Date(item.scheduledAt))}</span>}
-          </div>
-          <p className="mt-3 text-xs text-muted">{item.selectedVariantName ? labels.selected(item.selectedVariantName) : labels.notSelected}</p>
-          <div className="mt-4 flex justify-end">
-            <Link href={`/dashboard/sessions/${item.sessionId}/microcourse`} className={cn(buttonVariants({ size: "sm" }))}>{labels.open}</Link>
-          </div>
-        </div>)}
-      </div>}
-    </CardContent>
-  </Card>;
+  return <section className="border-y border-line/70" data-testid="microcourse-session-workspace-queue" aria-labelledby="microcourse-session-workspace-title">
+    <header className="border-b border-line/70 px-3 py-2.5">
+      <h2 id="microcourse-session-workspace-title" className="text-sm font-medium">{labels.title}</h2>
+      <p className="mt-0.5 text-xs leading-5 text-muted">{labels.description}</p>
+    </header>
+    <Table>
+      <TableHeader><TableRow>
+        <TableHead className="h-9">{labels.session}</TableHead>
+        <TableHead className="h-9">{labels.variant}</TableHead>
+        <TableHead className="hidden h-9 @2xl/page:table-cell">{labels.teacherColumn}</TableHead>
+        <TableHead className="hidden h-9 @4xl/page:table-cell">{labels.schedule}</TableHead>
+        <TableHead className="hidden h-9 @3xl/page:table-cell">{labels.status}</TableHead>
+        <TableHead className="h-9 text-right">{labels.action}</TableHead>
+      </TableRow></TableHeader>
+      <TableBody>
+        {items.map((item) => <TableRow key={item.sessionId}>
+          <TableCell className="max-w-80 py-2"><p className="truncate font-medium text-ink">{item.sessionTitle}</p><p className="mt-0.5 truncate text-xs text-muted">{item.classroomName}</p></TableCell>
+          <TableCell className="py-2"><span className="inline-flex items-center gap-1 text-xs"><Layers3 className="size-3.5 text-muted" />{item.variantCount > 0 ? labels.variants(item.variantCount) : labels.noVariant}</span><p className="mt-0.5 max-w-64 truncate text-[11px] text-muted">{item.selectedVariantName ? labels.selected(item.selectedVariantName) : labels.notSelected}</p></TableCell>
+          <TableCell className="hidden py-2 text-xs text-muted @2xl/page:table-cell"><span className="inline-flex items-center gap-1"><UserRound className="size-3.5" />{labels.teacher(item.primaryTeacherName)}</span></TableCell>
+          <TableCell className="hidden py-2 text-xs text-muted @4xl/page:table-cell">{item.scheduledAt ? <span className="inline-flex items-center gap-1"><CalendarClock className="size-3.5" />{dateFormatter.format(new Date(item.scheduledAt))}</span> : "—"}</TableCell>
+          <TableCell className="hidden py-2 @3xl/page:table-cell">{item.coursewareFrozenAt ? <Badge>{labels.frozen}</Badge> : <span className="text-xs text-muted">—</span>}</TableCell>
+          <TableCell className="py-2 text-right"><Link href={`/dashboard/sessions/${item.sessionId}/microcourse`} className={cn(buttonVariants({ size: "sm" }))}>{labels.open}</Link></TableCell>
+        </TableRow>)}
+        {items.length === 0 && <TableRow><TableCell colSpan={6} className="py-12 text-center text-sm text-muted">{labels.empty}</TableCell></TableRow>}
+      </TableBody>
+    </Table>
+  </section>;
 }

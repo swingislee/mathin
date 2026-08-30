@@ -1507,6 +1507,17 @@ teaching.teacher_microcourse_browser_v2
 
 机器检查仅覆盖代码和数据库合同：受影响 ESLint、TypeScript、两份定向 Vitest `20/20` 与 `teacher_microcourse_browser_v2_assertions.sql` 自动回滚合同通过。按产品负责人要求，本轮没有调用浏览器、Playwright 或截图；当前状态仍为“开发端已交付，待人工视觉与交互验收”，不得据此写成产品已验收或生产已部署。
 
+2026-08-30 产品复核后的修正增量：
+
+- `AGENTS.md` 与 doc 01 已写入 Dashboard 连续工作区规范：标题、说明、筛选、导航、表格、表单、状态和空态不得以 Card 包裹；Card 只允许产品明确要求或对象确实可独立移动、选择、比较的例外；
+- 主浏览器按本文件 §5 改为 `ObjectWorkspace + ObjectBar + DashboardCommandPanel`，主体是 16rem 目录、单行高密度表格和 20rem 当前默认版本预览，信息通过结构分隔线连续排布；
+- 课程详情、维护/历史、课次方案、编辑器、审核队列/详情和场景设置同步移除内容 Card，使用 Dashboard 标题层、命令层、分区标题、表格与三栏工作区；
+- `/dashboard/courseware/review` 对具备 `courseware.review` 的用户默认打开教师微课，页面标题改为中性的“课件审核与发布”，4:3 背景校对保留为独立标签；
+- `20260830000600_teacher_microcourse_sudoku_composition_upgrade.sql` 在本地 Docker Supabase 将 27 条旧教师微课 Sudoku revision 原位升级为 composition 内嵌 `sudoku-authored-v2`，LF checksum 为 `823a3e7d913bb870718e051b6ceeb35b1364fadad025b092f18fee19f7951529`；升级后教师微课 revision 为 composition v1 `91` 条、历史通用 composition `72` 条，旧 `mode=sudoku` 和顶层 Sudoku game 均为 `0`；
+- 应用边界不再读取旧 Sudoku：教师微课 zod union、编辑器、Stage 和课堂 input/sync audit 均移除专用分支，数据库 validator 与断言同步 fail closed；历史 migration 文件只保留迁移来源事实，不构成运行时兼容；
+- 最终窄检查为受影响 ESLint、`pnpm typecheck`、6 个定向 Vitest 文件 `49/49`、本地数据库 composition upgrade assertions 与 `pnpm plan:audit` 通过；
+- 本轮继续遵守产品负责人指示，没有调用浏览器、Playwright 或截图。机器检查和本地数据库断言只证明版本化合同与可启动条件，当前仍为“开发端已交付，待人工视觉与交互验收”，生产环境未修改。
+
 ---
 
 # 十九、Agent 施工要求

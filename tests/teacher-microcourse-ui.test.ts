@@ -132,12 +132,34 @@ describe("DEV-TMC-1 teacher microcourse product surfaces", () => {
   it("routes generic lecture review links into the immutable microcourse review workspace", () => {
     const lectureLoader = read("src", "features", "school", "curriculum", "load-lecture-workspace-page.ts");
     const lectureRoute = read("src", "app", "[locale]", "dashboard", "courseware", "lectures", "[lectureId]", "page.tsx");
+    const reviewRoute = read("src", "app", "[locale]", "dashboard", "courseware", "review", "page.tsx");
+    const reviewQueue = read("src", "features", "teacher-microcourses", "MicrocourseReviewQueue.tsx");
+    const sessionQueue = read("src", "features", "teacher-microcourses", "MicrocourseSessionWorkspaceQueue.tsx");
     const data = read("src", "features", "teacher-microcourses", "data.ts");
 
     expect(lectureLoader).toContain("isTeacherMicrocourseReviewCycle(activeReviewCycleId)");
     expect(lectureRoute).toContain("microcourseReviewCycleId");
     expect(lectureRoute).toContain("/dashboard/courseware/review/microcourses/");
+    expect(reviewRoute).toContain('return canReviewMicrocourses ? "microcourses" : "backgrounds"');
+    expect(reviewRoute).toContain('title={t("reviewWorkspaceTitle")}');
+    expect(reviewQueue).toContain("<Table");
+    expect(sessionQueue).toContain("<Table");
+    expect(reviewQueue).not.toContain("<Card");
+    expect(sessionQueue).not.toContain("<Card");
     expect(data).toContain('from("teacher_microcourse_review_snapshots")');
+  });
+
+  it("keeps the session editor and review detail in continuous dashboard workspace sections", () => {
+    const editor = read("src", "features", "teacher-microcourses", "MicrocourseEditor.tsx");
+    const composition = read("src", "features", "teacher-microcourses", "CoursewareCompositionWorkbench.tsx");
+    const review = read("src", "features", "teacher-microcourses", "MicrocourseReviewPanel.tsx");
+    const switcher = read("src", "features", "teacher-microcourses", "MicrocourseVariantSwitcher.tsx");
+    for (const source of [editor, composition, review, switcher]) {
+      expect(source).not.toContain("<Card");
+      expect(source).not.toContain('components/ui/card');
+    }
+    expect(editor).not.toContain('doc.mode === "sudoku"');
+    expect(editor).not.toContain("H5Controls");
   });
 
   it("projects free classes as multi-lecture courses and proposals as lecture releases", () => {
@@ -189,7 +211,10 @@ describe("DEV-TMC-1 teacher microcourse product surfaces", () => {
     expect(route).toContain('detail.family.slug === "teacher-microcourses"');
     expect(route).toContain("<TeacherMicrocourseBrowser");
     expect(route).not.toContain("<TeacherMicrocourseLibrary");
-    expect(browser).toContain("@6xl/page:grid-cols-[18rem_minmax(0,1fr)_22rem]");
+    expect(browser).toContain("@6xl/page:grid-cols-[16rem_minmax(0,1fr)_20rem]");
+    expect(browser).toContain("<ObjectWorkspace");
+    expect(browser).toContain("<DashboardCommandPanel");
+    expect(browser).not.toContain("<Card");
     expect(browser).toContain("<TeacherMicrocourseSceneNavigator");
     expect(browser).toContain("<TeacherMicrocourseTable");
     expect(browser).toContain("<TeacherMicrocourseQuickPreview");

@@ -17,7 +17,7 @@ export default async function MicrocourseReviewDetailPage({
   setRequestLocale(locale);
   const t = await getTranslations("teacherMicrocourses");
   return <DashboardPage title={t("reviewDetailTitle")} backHref="/dashboard/courseware/review?tab=microcourses" backLabel={t("backToReviewQueue")}>
-    <Suspense fallback={<div className="h-[42rem] animate-pulse rounded-2xl border border-line bg-card" />}>
+    <Suspense fallback={<div className="h-[42rem] animate-pulse border-y border-line bg-paper/30" />}>
       <MicrocourseReviewContent locale={locale} reviewCycleId={reviewCycleId} />
     </Suspense>
   </DashboardPage>;
@@ -30,4 +30,3 @@ async function MicrocourseReviewContent({ locale, reviewCycleId }: { locale: str
   if (!review) notFound();
   return <MicrocourseReviewPanel review={review} />;
 }
-

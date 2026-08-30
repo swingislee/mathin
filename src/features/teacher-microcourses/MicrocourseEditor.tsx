@@ -21,42 +21,33 @@ import {
 import { useLocale, useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { isGamePageDoc, type GamePageDoc } from "@/features/courseware-doc/game-page-schema";
 import { isCoursewareCompositionPage } from "@/features/courseware-doc/composition-page-schema";
 import type { MicrocoursePageDoc } from "@/features/courseware-doc/microcourse-schema";
 import type { DocNode, PageDoc } from "@/features/courseware-doc/schema";
 import { StagePreview } from "@/features/courseware-studio/StagePreview";
-import { GamePageEditor } from "@/features/games/courseware/GamePageEditor";
-import { GamePageGridEditor } from "@/features/games/courseware/GamePageGridEditor";
-import { analyzeSudokuPuzzle } from "@/features/games/sudoku/logic";
 import { useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import {
   createTeacherCompositionPageAction,
   deleteTeacherMicrocoursePageAction,
   freezeTeacherMicrocourseSourceSessionAction,
-  loadTeacherMicrocourseH5HtmlAction,
   reorderTeacherMicrocoursePagesAction,
   saveTeacherMicrocourseMetadataAction,
   saveTeacherMicrocoursePageAction,
   submitTeacherMicrocourseReviewAction,
-  updateTeacherH5PageAction,
   uploadTeacherMicrocourseImageAction,
   withdrawTeacherMicrocourseAction,
   withdrawTeacherMicrocourseReviewAction,
 } from "./actions";
 import type { TeacherMicrocourseEditor as EditorData, TeacherMicrocoursePage } from "./data";
-import { microcourseH5Bytes, normalizeMicrocourseH5 } from "./h5";
 import { MicrocourseSourcePicker } from "./MicrocourseSourcePicker";
-import type { TeacherMicrocoursePageDoc } from "./page-doc";
+import type { LegacyTeacherCompositionPage, TeacherMicrocoursePageDoc } from "./page-doc";
 import {
   CoursewareCompositionWorkbench,
   type CoursewareCompositionWorkbenchHandle,
@@ -124,9 +115,7 @@ function imageNode(bindingKey: string, index: number): DocNode {
 }
 
 function pageModeLabel(page: TeacherMicrocoursePage, t: (key: string) => string) {
-  if (isCoursewareCompositionPage(page.doc)) return t("mode_composition");
-  if (isGamePageDoc(page.doc)) return t("mode_game");
-  return t(`mode_${page.doc.mode}`);
+  return t("mode_composition");
 }
 
 type PageSaveState = "saved" | "saving" | "dirty" | "error";
@@ -144,11 +133,7 @@ interface MicrocoursePageWorkbenchHandle {
   rename?: (title: string) => void;
 }
 
-type LegacyTeacherMicrocoursePageDoc = MicrocoursePageDoc | GamePageDoc;
-
-interface MicrocourseH5ControlsHandle extends MicrocoursePageWorkbenchHandle {
-  markDirty: () => void;
-}
+type LegacyTeacherMicrocoursePageDoc = LegacyTeacherCompositionPage;
 
 export function MicrocourseEditor({
   session,
@@ -310,12 +295,12 @@ export function MicrocourseEditor({
 
   return (
     <div className="space-y-4">
-      <Card>
-        <CardHeader className="py-3">
+      <section className="border-y border-line">
+        <header className="px-3 py-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <CardTitle className="truncate text-base">{t("workspaceTitle")}</CardTitle>
+                <h2 className="truncate text-base font-medium">{t("workspaceTitle")}</h2>
                 <Badge variant="secondary">{t(`workflow_${stage}`)}</Badge>
                 {published && <Badge variant="outline">{editor.withdrawnAt ? t("withdrawn") : t("published")}</Badge>}
               </div>
@@ -333,8 +318,8 @@ export function MicrocourseEditor({
               {published && !editor.withdrawnAt && <Button type="button" variant="ghost" size="sm" disabled={pending} onClick={() => setWithdrawOpen(true)}>{t("withdrawPublication")}</Button>}
             </div>
           </div>
-        </CardHeader>
-        {detailsOpen && <CardContent className="grid gap-3 border-t border-line pt-4 lg:grid-cols-12">
+        </header>
+        {detailsOpen && <div className="grid gap-3 border-t border-line px-3 py-4 lg:grid-cols-12">
           <Label className="grid gap-1 lg:col-span-4"><span>{t("title")}</span><Input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={100} /></Label>
           <Label className="grid gap-1 lg:col-span-2"><span>{t("grade")}</span><Select value={String(grade)} onValueChange={(value) => setGrade(Number(value))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{Array.from({ length: 9 }, (_, index) => index + 1).map((value) => <SelectItem key={value} value={String(value)}>{t("gradeValue", { grade: value })}</SelectItem>)}</SelectContent></Select></Label>
           <Label className="grid gap-1 lg:col-span-2"><span>{t("courseSeason")}</span><Select value={courseSeason === null ? NONE : String(courseSeason)} onValueChange={(value) => setCourseSeason(value === NONE ? null : Number(value))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value={NONE}>{t("seasonNone")}</SelectItem>{[1, 2, 3, 4].map((value) => <SelectItem key={value} value={String(value)}>{t(`season_${value}`)}</SelectItem>)}</SelectContent></Select></Label>
@@ -344,15 +329,15 @@ export function MicrocourseEditor({
           <Label className="grid gap-1 lg:col-span-6"><span>{t("keywords")}</span><Input value={keywords} onChange={(event) => setKeywords(event.target.value)} maxLength={400} placeholder={t("keywordsHint")} /></Label>
           <Label className="grid gap-1 lg:col-span-10"><span>{t("reviewNote")}</span><Input value={reviewNote} onChange={(event) => setReviewNote(event.target.value)} maxLength={1000} placeholder={t("reviewNoteHint")} /></Label>
           <div className="flex items-end lg:col-span-2"><Button type="button" size="sm" disabled={pending || !title.trim()} onClick={saveMetadata}><Save className="size-4" />{t("saveMetadata")}</Button></div>
-        </CardContent>}
-        {message && <p role="status" className="border-t border-line px-6 py-2 text-xs text-muted">{message}</p>}
-      </Card>
+        </div>}
+        {message && <p role="status" className="border-t border-line px-3 py-2 text-xs text-muted">{message}</p>}
+      </section>
 
-      <div className="grid h-[calc(100dvh-9rem)] min-h-[32rem] gap-4 xl:grid-cols-[18rem_minmax(0,1fr)]">
-        <Card className="flex min-h-0 flex-col overflow-hidden">
-          <CardHeader className="pb-3"><CardTitle className="text-base">{t("pages", { count: pages.length })}</CardTitle></CardHeader>
-          <CardContent className="flex min-h-0 flex-1 flex-col gap-3 p-3 pt-0">
-            <div className="rounded-xl border border-crater/60 bg-moon/25 p-2">
+      <div className="grid h-[calc(100dvh-9rem)] min-h-[32rem] border-y border-line xl:grid-cols-[18rem_minmax(0,1fr)]">
+        <section className="flex min-h-0 flex-col overflow-hidden border-b border-line xl:border-b-0 xl:border-r">
+          <header className="border-b border-line px-3 py-2.5"><h2 className="text-sm font-medium">{t("pages", { count: pages.length })}</h2></header>
+          <div className="flex min-h-0 flex-1 flex-col gap-3 p-3">
+            <div className="border-y border-crater/60 bg-moon/25 p-2">
               <p className="mb-2 px-1 text-xs font-medium text-muted">{t("pageCreateHint")}</p>
               <div className="grid gap-2">
                 <Button type="button" size="sm" variant="secondary" className="justify-start" disabled={pending || pageSwitching} onClick={addBlank}><Plus className="size-4" />{t("addBlank")}</Button>
@@ -383,13 +368,13 @@ export function MicrocourseEditor({
               <Button type="button" size="sm" variant="ghost" disabled={pending || !currentPage || currentPage.pageNo >= pages.length} onClick={() => movePage(1)} aria-label={t("moveDown")}><ArrowDown className="size-4" /></Button>
               <Button type="button" size="sm" variant="ghost" disabled={pending || !currentPage} onClick={() => setDeletePageId(currentPage?.pageDocId ?? null)} aria-label={t("deletePage")}><Trash2 className="size-4 text-rose" /></Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </section>
         {currentPage
           ? isCoursewareCompositionPage(currentPage.doc)
             ? <CoursewareCompositionWorkbench ref={workbenchRef} key={currentPage.pageDocId} microcourseId={editor.id} page={{ ...currentPage, doc: currentPage.doc }} onPersisted={handlePagePersisted} onStatus={setMessage} />
             : <MicrocoursePageWorkbench ref={workbenchRef} key={currentPage.pageDocId} microcourseId={editor.id} page={{ ...currentPage, doc: currentPage.doc }} onPersisted={handlePagePersisted} onStatus={setMessage} />
-          : <Card className="grid place-items-center"><p className="text-sm text-muted">{t("emptyPages")}</p></Card>}
+          : <section className="grid place-items-center"><p className="text-sm text-muted">{t("emptyPages")}</p></section>}
       </div>
 
       <ConfirmDialog open={deletePageId !== null} onOpenChange={(open) => { if (!open) setDeletePageId(null); }} title={t("deletePageTitle")} description={t("deletePageDescription")} confirmLabel={t("deletePage")} cancelLabel={t("cancel")} onConfirm={deletePage} pending={pending} />
@@ -408,7 +393,6 @@ const MicrocoursePageWorkbench = forwardRef<MicrocoursePageWorkbenchHandle, {
   const [title, setTitle] = useState(page.title);
   const [doc, setDoc] = useState(() => clone(page.doc));
   const [bindingUrls, setBindingUrls] = useState({ ...page.bindingUrls });
-  const [selectedGridBlockId, setSelectedGridBlockId] = useState("game");
   const [message, setMessage] = useState("");
   const [saveState, setSaveState] = useState<PageSaveState>("saved");
   const [pending, startTransition] = useTransition();
@@ -420,7 +404,6 @@ const MicrocoursePageWorkbench = forwardRef<MicrocoursePageWorkbenchHandle, {
   const timerRef = useRef<number | null>(null);
   const savingRef = useRef<Promise<boolean> | null>(null);
   const flushRef = useRef<() => Promise<boolean>>(async () => true);
-  const h5Ref = useRef<MicrocourseH5ControlsHandle>(null);
 
   const flushDoc = useCallback(async (): Promise<boolean> => {
     if (savingRef.current) {
@@ -487,12 +470,7 @@ const MicrocoursePageWorkbench = forwardRef<MicrocoursePageWorkbenchHandle, {
     return request;
   }, [onPersisted, onStatus, page.pageDocId, t]);
 
-  const flush = useCallback(async (): Promise<boolean> => {
-    if (!isGamePageDoc(docRef.current) && docRef.current.mode === "h5") {
-      return h5Ref.current?.flush() ?? false;
-    }
-    return flushDoc();
-  }, [flushDoc]);
+  const flush = flushDoc;
 
   useEffect(() => { flushRef.current = flush; }, [flush]);
   useImperativeHandle(ref, () => ({ flush }), [flush]);
@@ -516,23 +494,8 @@ const MicrocoursePageWorkbench = forwardRef<MicrocoursePageWorkbenchHandle, {
   const changeTitle = (value: string) => {
     titleRef.current = value;
     setTitle(value);
-    if (!isGamePageDoc(docRef.current) && docRef.current.mode === "h5") {
-      h5Ref.current?.markDirty();
-      return;
-    }
     markDocDirty();
   };
-
-  const uploadGameImage = useCallback(async (file: File): Promise<{ bindingKey: string }> => {
-    const result = await uploadTeacherMicrocourseImageAction({
-      microcourseId,
-      pageDocId: page.pageDocId,
-      file,
-    });
-    if (!result.ok) throw new Error(result.code);
-    setBindingUrls((current) => ({ ...current, [result.data.bindingKey]: result.data.url }));
-    return { bindingKey: result.data.bindingKey };
-  }, [microcourseId, page.pageDocId]);
 
   useEffect(() => {
     const visibility = () => { if (document.visibilityState === "hidden") void flushRef.current(); };
@@ -552,8 +515,8 @@ const MicrocoursePageWorkbench = forwardRef<MicrocoursePageWorkbenchHandle, {
       : saveState === "error" ? t("pageAutosaveFailed")
         : t("pageAutosaved");
 
-  return <Card className="min-w-0 overflow-hidden">
-    <CardHeader className="border-b border-line pb-3">
+  return <section className="min-w-0 overflow-hidden">
+    <header className="border-b border-line px-3 py-2.5">
       <div className="flex flex-wrap items-center gap-3">
         <Badge variant="secondary">{pageModeLabel(page, t)}</Badge>
         <Input value={title} onChange={(event) => changeTitle(event.target.value)} maxLength={200} className="min-w-[14rem] flex-1" />
@@ -564,17 +527,14 @@ const MicrocoursePageWorkbench = forwardRef<MicrocoursePageWorkbenchHandle, {
         <Button type="button" size="sm" variant="secondary" disabled={pending || saveState === "saving"} onClick={() => void flush()}><Save className="size-4" />{t("saveNow")}</Button>
       </div>
       {message && <p role="alert" className="mt-2 text-xs text-rose">{message}</p>}
-    </CardHeader>
-    <CardContent className="grid min-h-[38rem] gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
-      <div className="min-w-0"><div className="mx-auto max-w-4xl overflow-hidden rounded-xl border border-line bg-white shadow-sm">{isGamePageDoc(doc) ? <GamePageGridEditor doc={doc} bindingUrls={bindingUrls} selectedBlockId={selectedGridBlockId} onSelectBlock={setSelectedGridBlockId} onChange={updateDoc} /> : <StagePreview doc={doc} bindingUrls={bindingUrls} stageMode="natural" className="w-full" interactive />}</div>{!isGamePageDoc(doc) && doc.mode === "composition" && doc.source && <p className="mt-2 text-xs text-muted">{t("lockedSource", { title: doc.source.sourceTitle, page: doc.source.sourcePageNo })}</p>}</div>
-      <ScrollArea className="h-[35rem] rounded-xl border border-line bg-paper/50"><div className="p-4">
-        {isGamePageDoc(doc) && <GamePageEditor doc={doc} onChange={updateDoc} selectedBlockId={selectedGridBlockId} onSelectBlock={setSelectedGridBlockId} onUploadImage={uploadGameImage} />}
-        {!isGamePageDoc(doc) && doc.mode === "composition" && <CompositionControls microcourseId={microcourseId} page={page} doc={doc} setDoc={updateDoc} bindingUrls={bindingUrls} setBindingUrls={setBindingUrls} pending={pending} startTransition={startTransition} setMessage={setMessage} />}
-        {!isGamePageDoc(doc) && doc.mode === "sudoku" && <SudokuControls doc={doc} setDoc={updateDoc} />}
-        {!isGamePageDoc(doc) && doc.mode === "h5" && <H5Controls ref={h5Ref} microcourseId={microcourseId} page={page} initialHtml={page.h5Html} titleRef={titleRef} onPersisted={onPersisted} onSaveStateChange={setSaveState} setMessage={setMessage} onStatus={onStatus} />}
+    </header>
+    <div className="grid min-h-[38rem] lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="min-w-0 p-4"><div className="mx-auto max-w-4xl overflow-hidden border border-line bg-white"><StagePreview doc={doc} bindingUrls={bindingUrls} stageMode="natural" className="w-full" interactive /></div>{doc.source && <p className="mt-2 text-xs text-muted">{t("lockedSource", { title: doc.source.sourceTitle, page: doc.source.sourcePageNo })}</p>}</div>
+      <ScrollArea className="h-[35rem] border-t border-line bg-paper/50 lg:border-l lg:border-t-0"><div className="p-4">
+        <CompositionControls microcourseId={microcourseId} page={page} doc={doc} setDoc={updateDoc} bindingUrls={bindingUrls} setBindingUrls={setBindingUrls} pending={pending} startTransition={startTransition} setMessage={setMessage} />
       </div></ScrollArea>
-    </CardContent>
-  </Card>;
+    </div>
+  </section>;
 });
 
 function CompositionControls({ microcourseId, page, doc, setDoc, bindingUrls, setBindingUrls, pending, startTransition, setMessage }: {
@@ -594,7 +554,6 @@ function CompositionControls({ microcourseId, page, doc, setDoc, bindingUrls, se
   const [file, setFile] = useState<File | null>(null);
   const selected = doc.overlay.nodes.find((node) => node.id === selectedId) ?? null;
   const updateOverlay = (updater: (overlay: PageDoc) => void) => setDoc((current) => {
-    if (isGamePageDoc(current) || current.mode !== "composition") return current;
     const next = clone(current);
     updater(next.overlay);
     return next;
@@ -642,190 +601,3 @@ function CompositionControls({ microcourseId, page, doc, setDoc, bindingUrls, se
     </div>}
   </div>;
 }
-
-function SudokuControls({ doc, setDoc }: { doc: Extract<MicrocoursePageDoc, { mode: "sudoku" }>; setDoc: React.Dispatch<React.SetStateAction<LegacyTeacherMicrocoursePageDoc>> }) {
-  const t = useTranslations("teacherMicrocourses");
-  const analysis = useMemo(() => analyzeSudokuPuzzle(doc.puzzle), [doc.puzzle]);
-  const setDigit = (index: number, raw: string) => {
-    const digit = /^[1-9]$/.test(raw) ? Number(raw) : 0;
-    setDoc((current) => isGamePageDoc(current) || current.mode !== "sudoku" ? current : {
-      ...current,
-      puzzle: current.puzzle.map((value, currentIndex) => currentIndex === index ? digit : value),
-      analysis: analyzeSudokuPuzzle(current.puzzle.map((value, currentIndex) => currentIndex === index ? digit : value)),
-    });
-  };
-  const setDisplay = (key: keyof typeof doc.display, value: boolean) => setDoc((current) => isGamePageDoc(current) || current.mode !== "sudoku" ? current : { ...current, display: { ...current.display, [key]: value } });
-  return <div className="space-y-4"><div><h3 className="text-sm font-medium">{t("sudokuPrototype", { size: 9 })}</h3><p className={`mt-1 text-xs ${analysis.status === "unique" ? "text-leaf-deep" : "text-rose"}`}>{t(`sudoku_${analysis.status}`)}</p></div><div className="grid grid-cols-9 overflow-hidden rounded-lg border-2 border-ink/50">{doc.puzzle.map((digit, index) => <Input key={index} aria-label={t("sudokuCell", { cell: index + 1 })} inputMode="numeric" maxLength={1} value={digit || ""} onChange={(event) => setDigit(index, event.target.value)} className={`h-8 rounded-none border-0 border-r border-b border-line p-0 text-center text-xs ${index % 3 === 2 && index % 9 !== 8 ? "border-r-2 border-r-ink/40" : ""} ${Math.floor(index / 9) % 3 === 2 && index < 72 ? "border-b-2 border-b-ink/40" : ""}`} />)}</div><div className="space-y-2">{(["showCoordinates", "allowCandidates", "allowAnswerReveal", "showTeachingTools"] as const).map((key) => <Label key={key} className="flex items-center gap-2 text-sm font-normal"><Checkbox checked={doc.display[key]} onCheckedChange={(value) => setDisplay(key, value === true)} />{t(`sudokuOption_${key}`)}</Label>)}</div></div>;
-}
-
-const H5Controls = forwardRef<MicrocourseH5ControlsHandle, {
-  microcourseId: string;
-  page: Omit<TeacherMicrocoursePage, "doc"> & { doc: LegacyTeacherMicrocoursePageDoc };
-  initialHtml?: string;
-  titleRef: { current: string };
-  onPersisted: (draft: PersistedPageDraft) => void;
-  onSaveStateChange: (state: PageSaveState) => void;
-  setMessage: (message: string) => void;
-  onStatus: (message: string) => void;
-}>(function H5Controls({ microcourseId, page, initialHtml, titleRef, onPersisted, onSaveStateChange, setMessage, onStatus }, ref) {
-  const t = useTranslations("teacherMicrocourses");
-  const h5Doc = !isGamePageDoc(page.doc) && page.doc.mode === "h5" ? page.doc : null;
-  const [initialArtifactId] = useState(() => h5Doc?.artifactId ?? null);
-  const [html, setHtml] = useState(initialHtml ?? "");
-  const [previewHtml, setPreviewHtml] = useState("");
-  const [runtimeError, setRuntimeError] = useState("");
-  const [loading, setLoading] = useState(Boolean(initialArtifactId) && initialHtml === undefined);
-  const frameRef = useRef<HTMLIFrameElement>(null);
-  const htmlRef = useRef(initialHtml ?? "");
-  const htmlEditedRef = useRef(false);
-  const revisionRef = useRef(page.revisionNo);
-  const sequenceRef = useRef(0);
-  const savedSequenceRef = useRef(0);
-  const timerRef = useRef<number | null>(null);
-  const savingRef = useRef<Promise<boolean> | null>(null);
-  const loadPromiseRef = useRef<Promise<boolean> | null>(null);
-  const flushRef = useRef<() => Promise<boolean>>(async () => true);
-
-  useEffect(() => {
-    if (initialHtml !== undefined) {
-      loadPromiseRef.current = Promise.resolve(true);
-      return;
-    }
-    if (!initialArtifactId) return;
-    let active = true;
-    const request = loadTeacherMicrocourseH5HtmlAction(initialArtifactId).then((value) => {
-      if (active) {
-        if (!htmlEditedRef.current) {
-          htmlRef.current = value;
-          setHtml(value);
-        }
-        setLoading(false);
-      }
-      return true;
-    }).catch(() => {
-      if (active) {
-        setLoading(false);
-        setMessage(t("h5LoadFailed"));
-      }
-      onStatus(t("h5LoadFailed"));
-      return false;
-    });
-    loadPromiseRef.current = request;
-    return () => { active = false; };
-  }, [initialArtifactId, initialHtml, onStatus, setMessage, t]);
-
-  const flush = useCallback(async (): Promise<boolean> => {
-    if (savedSequenceRef.current === sequenceRef.current) return true;
-    if (!htmlEditedRef.current && loadPromiseRef.current && !(await loadPromiseRef.current)) return false;
-    if (savingRef.current) {
-      const previousSaved = await savingRef.current;
-      if (!previousSaved) return false;
-    }
-    if (savedSequenceRef.current === sequenceRef.current) return true;
-    if (!titleRef.current.trim() || !htmlRef.current.trim()) {
-      onSaveStateChange("error");
-      setMessage(t("pageAutosaveFailed"));
-      onStatus(t("pageAutosaveFailed"));
-      return false;
-    }
-    if (timerRef.current) window.clearTimeout(timerRef.current);
-    const sequence = sequenceRef.current;
-    const titleSnapshot = titleRef.current;
-    const htmlSnapshot = htmlRef.current;
-    onSaveStateChange("saving");
-    const request = updateTeacherH5PageAction({
-      microcourseId,
-      pageDocId: page.pageDocId,
-      title: titleSnapshot,
-      html: htmlSnapshot,
-      baseRevisionNo: revisionRef.current,
-    }).then((result) => {
-      if (!result.ok) {
-        onSaveStateChange("error");
-        setMessage(t("actionFailed", { code: result.code }));
-        onStatus(t("pageAutosaveFailed"));
-        return false;
-      }
-      const normalized = normalizeMicrocourseH5(htmlSnapshot);
-      const bytes = microcourseH5Bytes(normalized);
-      const nextDoc: Extract<MicrocoursePageDoc, { mode: "h5" }> = {
-        docVersion: "microcourse-page-v1",
-        mode: "h5",
-        canvas: { width: 960, height: 720, backgroundColor: null },
-        artifactId: result.data.artifactId,
-        sha256: result.data.sha256,
-        byteCount: bytes.byteLength,
-        entryPath: "index.html",
-      };
-      revisionRef.current = result.data.revisionNo;
-      savedSequenceRef.current = sequence;
-      setMessage("");
-      onPersisted({ pageDocId: page.pageDocId, title: titleSnapshot, doc: nextDoc, revisionNo: result.data.revisionNo, h5Html: htmlSnapshot });
-      if (sequenceRef.current === sequence) {
-        onSaveStateChange("saved");
-      } else {
-        onSaveStateChange("dirty");
-        timerRef.current = window.setTimeout(() => void flushRef.current(), 800);
-      }
-      return true;
-    }).catch(() => {
-      onSaveStateChange("error");
-      setMessage(t("pageAutosaveFailed"));
-      onStatus(t("pageAutosaveFailed"));
-      return false;
-    }).finally(() => {
-      savingRef.current = null;
-    });
-    savingRef.current = request;
-    return request;
-  }, [microcourseId, onPersisted, onSaveStateChange, onStatus, page.pageDocId, setMessage, t, titleRef]);
-
-  useEffect(() => { flushRef.current = flush; }, [flush]);
-
-  const markDirty = useCallback(() => {
-    sequenceRef.current += 1;
-    onSaveStateChange("dirty");
-    if (timerRef.current) window.clearTimeout(timerRef.current);
-    timerRef.current = window.setTimeout(() => void flushRef.current(), 800);
-  }, [onSaveStateChange]);
-
-  useImperativeHandle(ref, () => ({ flush, markDirty }), [flush, markDirty]);
-
-  const changeHtml = (value: string) => {
-    htmlEditedRef.current = true;
-    htmlRef.current = value;
-    setHtml(value);
-    markDirty();
-  };
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      const bridge = `<script>window.addEventListener('error',function(e){parent.postMessage({type:'mathin-microcourse-preview-error',message:e.message||'Runtime error'},'*')});window.addEventListener('unhandledrejection',function(e){parent.postMessage({type:'mathin-microcourse-preview-error',message:String(e.reason||'Unhandled rejection')},'*')});<\/script>`;
-      const csp = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' blob:; style-src 'unsafe-inline'; img-src data: blob:; media-src data: blob:; font-src data:; connect-src 'none'; form-action 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'">`;
-      const withHead = /<head[\s>]/i.test(html) ? html.replace(/<head([^>]*)>/i, `<head$1>${csp}`) : `${csp}${html}`;
-      setPreviewHtml(/<\/body>/i.test(withHead) ? withHead.replace(/<\/body>/i, `${bridge}</body>`) : `${withHead}${bridge}`);
-      setRuntimeError("");
-    }, 350);
-    return () => window.clearTimeout(timer);
-  }, [html]);
-  useEffect(() => {
-    const receive = (event: MessageEvent) => {
-      if (event.source !== frameRef.current?.contentWindow) return;
-      if (event.data?.type === "mathin-microcourse-preview-error") setRuntimeError(String(event.data.message ?? t("h5RuntimeError")));
-    };
-    window.addEventListener("message", receive);
-    return () => window.removeEventListener("message", receive);
-  }, [t]);
-  if (!h5Doc) return null;
-  const insertFile = (file: File | null) => {
-    if (!file || file.size > 1_500_000) { if (file) setMessage(t("h5InlineAssetTooLarge")); return; }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const url = String(reader.result ?? "");
-      const snippet = file.type.startsWith("audio/") ? `<audio controls src="${url}"></audio>` : file.type.startsWith("video/") ? `<video controls src="${url}"></video>` : `<img src="${url}" alt="">`;
-      changeHtml(`${htmlRef.current}\n${snippet}`);
-    };
-    reader.readAsDataURL(file);
-  };
-  return <div className="space-y-3"><div><h3 className="text-sm font-medium">{t("h5Editor")}</h3><p className="mt-1 text-xs text-muted">{t("h5SecurityHint")}</p></div><Label className="grid gap-1"><span>{t("html")}</span><Textarea value={html} onChange={(event) => changeHtml(event.target.value)} rows={16} className="font-mono text-[11px]" placeholder={loading ? t("h5Loading") : undefined} /></Label><Label className="grid gap-1"><span>{t("insertLocalAsset")}</span><Input type="file" accept="image/*,audio/*,video/*" disabled={loading} onChange={(event) => insertFile(event.target.files?.[0] ?? null)} /></Label><div className="overflow-hidden rounded-lg border border-line bg-white"><iframe ref={frameRef} title={t("h5LivePreview")} sandbox="allow-scripts" srcDoc={previewHtml} className="aspect-[4/3] w-full border-0" /></div>{runtimeError && <p role="alert" className="text-xs text-rose">{t("h5RuntimeErrorWithMessage", { message: runtimeError })}</p>}<p className="text-xs text-muted">{new TextEncoder().encode(normalizeMicrocourseH5(html)).byteLength} / 5 MiB</p></div>;
-});

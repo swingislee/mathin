@@ -8,11 +8,6 @@ import {
   microcoursePageDocSchema,
 } from "@/features/courseware-doc/microcourse-schema";
 import { MICROCOURSE_H5_CSP, microcourseH5SecurityHeaders } from "@/features/courseware-doc/h5-shim";
-import {
-  analyzeSudokuPuzzle,
-  isValidPartialSudokuGrid,
-  type SudokuGrid,
-} from "@/features/games/sudoku/logic";
 import { microcourseH5Bytes, normalizeMicrocourseH5 } from "@/features/teacher-microcourses/h5";
 
 const sha = "a".repeat(64);
@@ -36,44 +31,17 @@ function overlayDoc() {
   };
 }
 
-function sudokuPage(puzzle: SudokuGrid) {
-  return {
-    docVersion: MICROCOURSE_PAGE_DOC_VERSION,
-    mode: "sudoku" as const,
-    canvas: { width: 960 as const, height: 720 as const, backgroundColor: "#fff" },
-    puzzle,
-    display: {
-      showCoordinates: true,
-      allowCandidates: true,
-      allowAnswerReveal: false,
-      showTeachingTools: true,
-    },
-    analysis: analyzeSudokuPuzzle(puzzle),
-  };
-}
-
-const UNIQUE_PUZZLE = (
-  "530070000"
-  + "600195000"
-  + "098000060"
-  + "800060003"
-  + "400803001"
-  + "700020006"
-  + "060000280"
-  + "000419005"
-  + "000080079"
-).split("").map(Number);
-
 function gamePage(variantId: "classic-4x4" | "classic-6x6" | "classic-9x9", puzzle: number[]) {
   return {
     docVersion: "game-page-v1" as const,
     canvas: { width: 960 as const, height: 720 as const, backgroundColor: "#fff" },
     gameId: "sudoku",
-    contentVersion: "sudoku-authored-v1",
+    contentVersion: "sudoku-authored-v2",
     payload: {
-      kind: "authored" as const,
+      kind: "authored-activity" as const,
       variantId,
       puzzle,
+      goal: { kind: "teacher-led" as const },
       display: {
         showCoordinates: true,
         allowCandidates: true,
@@ -83,10 +51,10 @@ function gamePage(variantId: "classic-4x4" | "classic-6x6" | "classic-9x9", puzz
     },
     validation: {
       payloadHash: sha,
-      validatorVersion: "sudoku-authored-v1@1",
+      validatorVersion: "sudoku-authored-v2@1",
       publishable: true,
-      code: "unique",
-      details: { status: "unique", solutionCount: 1 },
+      code: "teacher-led-ready",
+      details: {},
     },
   };
 }
@@ -107,53 +75,6 @@ describe("teacher microcourse page documents", () => {
       ...page,
       overlay: { ...page.overlay, canvas: { ...page.overlay.canvas, width: 1_280 } },
     }).success).toBe(false);
-  });
-
-  it("allows incomplete Sudoku drafts but distinguishes every submission state", () => {
-    const unique = analyzeSudokuPuzzle(UNIQUE_PUZZLE);
-    expect(unique.status).toBe("unique");
-    expect(unique.solutionCount).toBe(1);
-    expect(unique.solution?.every((digit) => digit >= 1 && digit <= 9)).toBe(true);
-    expect(microcoursePageDocSchema.safeParse(sudokuPage(UNIQUE_PUZZLE)).success).toBe(true);
-
-    const conflict = [...UNIQUE_PUZZLE];
-    conflict[2] = 5;
-    expect(analyzeSudokuPuzzle(conflict)).toEqual({
-      status: "conflict",
-      solutionCount: 0,
-      solution: null,
-    });
-
-    expect(analyzeSudokuPuzzle(new Array(81).fill(0))).toEqual({
-      status: "multiple",
-      solutionCount: 2,
-      solution: null,
-    });
-
-    let unsolvable: SudokuGrid | null = null;
-    if (unique.solution) {
-      for (let index = 0; index < 81 && !unsolvable; index += 1) {
-        if (UNIQUE_PUZZLE[index] !== 0) continue;
-        for (let digit = 1; digit <= 9; digit += 1) {
-          if (digit === unique.solution[index]) continue;
-          const candidate = [...UNIQUE_PUZZLE];
-          candidate[index] = digit;
-          if (
-            isValidPartialSudokuGrid(candidate)
-            && analyzeSudokuPuzzle(candidate).status === "unsolvable"
-          ) {
-            unsolvable = candidate;
-            break;
-          }
-        }
-      }
-    }
-    expect(unsolvable).not.toBeNull();
-    expect(analyzeSudokuPuzzle(unsolvable ?? [])).toEqual({
-      status: "unsolvable",
-      solutionCount: 0,
-      solution: null,
-    });
   });
 
   it("parses registered 4×4, 6×6 and 9×9 game pages through the shared document union", () => {
@@ -239,14 +160,19 @@ describe("teacher microcourse page documents", () => {
     expect(studioPage).toContain("isMicrocoursePageDoc(editor.activeRevision.doc)");
   });
 
-  it("passes the saved Sudoku display contract into preparation and classroom rendering", () => {
-    const stage = readFileSync(
+  it("keeps Sudoku rendering behind the generic game-page branch", () => {
+    const microcourseStage = readFileSync(
       new URL("../src/features/courseware-doc/MicrocourseStage.tsx", import.meta.url),
       "utf8",
     );
-    expect(stage).toContain("showCoordinates={doc.display.showCoordinates}");
-    expect(stage).toContain("allowCandidates={doc.display.allowCandidates}");
-    expect(stage).toContain("allowAnswerReveal={doc.display.allowAnswerReveal}");
-    expect(stage).toContain("showTeachingTools={doc.display.showTeachingTools}");
+    const sudokuStage = readFileSync(
+      new URL("../src/features/games/sudoku/SudokuGamePageStage.tsx", import.meta.url),
+      "utf8",
+    );
+    expect(microcourseStage).not.toContain('doc.mode === "sudoku"');
+    expect(sudokuStage).toContain("payload.display.showCoordinates");
+    expect(sudokuStage).toContain("payload.display.allowCandidates");
+    expect(sudokuStage).toContain("payload.display.allowAnswerReveal");
+    expect(sudokuStage).toContain("payload.display.showTeachingTools");
   });
 });

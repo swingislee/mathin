@@ -217,14 +217,14 @@ describe("courseware composition page", () => {
     expect(coursewareCompositionPageSchema.safeParse(withH5).success).toBe(true);
   });
 
-  it("keeps standalone legacy game, Sudoku and H5 pages readable at the teacher authoring boundary", () => {
-    expect(teacherMicrocoursePageDocSchema.safeParse(sudokuGame()).success).toBe(true);
+  it("rejects every standalone game, Sudoku and H5 page at the teacher authoring boundary", () => {
+    expect(teacherMicrocoursePageDocSchema.safeParse(sudokuGame()).success).toBe(false);
     expect(teacherMicrocoursePageDocSchema.safeParse({
       docVersion: "microcourse-page-v1",
       mode: "h5",
       canvas: { width: 960, height: 720, backgroundColor: "#ffffff" },
       ...h5,
-    }).success).toBe(true);
+    }).success).toBe(false);
     expect(teacherMicrocoursePageDocSchema.safeParse({
       docVersion: "microcourse-page-v1",
       mode: "sudoku",
@@ -237,14 +237,6 @@ describe("courseware composition page", () => {
         showTeachingTools: true,
       },
       analysis: { status: "multiple", solutionCount: 2, solution: null },
-    }).success).toBe(true);
-    expect(teacherMicrocoursePageDocSchema.safeParse({
-      docVersion: "microcourse-page-v1",
-      mode: "sudoku",
-      canvas: { width: 960, height: 720, backgroundColor: "#ffffff" },
-      puzzle: [],
-      display: {},
-      analysis: null,
     }).success).toBe(false);
   });
 });

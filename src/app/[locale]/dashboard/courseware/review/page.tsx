@@ -49,6 +49,13 @@ function tabHref(tab: AdaptReviewTab, courseId: string | null, lectureId: string
   return "/dashboard/courseware/review?" + query.toString();
 }
 
+function resolveReviewTab(requested: string | undefined, canReviewMicrocourses: boolean): AdaptReviewTab {
+  if (requested === "microcourses") return canReviewMicrocourses ? "microcourses" : "backgrounds";
+  if (requested === "backgrounds" || requested === "rework" || requested === "pages"
+    || requested === "releases" || requested === "history") return requested;
+  return canReviewMicrocourses ? "microcourses" : "backgrounds";
+}
+
 // doc22 §5.18：背景审阅/返工/页面审阅/发布/历史都属于课件生产，是 /dashboard/courseware
 // 的真实子工作区。原顶层 /dashboard/adapt-review 把内部实现词（adapt）当成了 URL。
 export default async function CoursewareReviewPage({
@@ -63,14 +70,14 @@ export default async function CoursewareReviewPage({
   const t = await getTranslations("coursewareStudio");
   return (
     <DashboardPage
-      title={t("adaptReviewTitle")}
+      title={t("reviewWorkspaceTitle")}
       commandPanel={
         <Suspense fallback={<DashboardCommandPanel />}>
           <AdaptReviewCommandPanel locale={locale} searchParams={searchParams} />
         </Suspense>
       }
     >
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-2xl border border-line bg-card" />}>
+      <Suspense fallback={<div className="h-96 animate-pulse border-y border-line bg-paper/30" />}>
         <AdaptReviewContent locale={locale} searchParams={searchParams} />
       </Suspense>
     </DashboardPage>
@@ -87,9 +94,7 @@ async function AdaptReviewCommandPanel({ locale, searchParams }: { locale: strin
   const perms = await getMyPerms(user.id);
   const canReviewMicrocourses = perms.has("courseware.review");
   const requestedTab = first(query.tab);
-  const tab: AdaptReviewTab = requestedTab === "microcourses" && canReviewMicrocourses
-    ? "microcourses"
-    : requestedTab === "rework" || requestedTab === "pages" || requestedTab === "releases" || requestedTab === "history" ? requestedTab : "backgrounds";
+  const tab = resolveReviewTab(requestedTab, canReviewMicrocourses);
   const courseId = parseAdaptFilterId(query.course);
   const lectureId = courseId ? parseAdaptFilterId(query.lecture) : null;
   const filterOptions = await loadAdaptReviewFilterOptions(courseId);
@@ -97,7 +102,7 @@ async function AdaptReviewCommandPanel({ locale, searchParams }: { locale: strin
     <DashboardCommandPanel>
       <DashboardCommandState>
         <DashboardCommandTabs
-          ariaLabel={t("adaptReviewTitle")}
+          ariaLabel={t("reviewWorkspaceTitle")}
           activeValue={tab}
           items={[
             ...(canReviewMicrocourses ? [{ value: "microcourses", label: tm("reviewQueueTab"), href: tabHref("microcourses", courseId, lectureId) }] : []),
@@ -120,9 +125,7 @@ async function AdaptReviewContent({ locale, searchParams }: { locale: string; se
   const [user, query] = await Promise.all([requireAnyPerm(locale, COURSEWARE_STUDIO_PERMS), searchParams]);
   const perms = await getMyPerms(user.id);
   const requestedTab = first(query.tab);
-  const tab: AdaptReviewTab = requestedTab === "microcourses" && perms.has("courseware.review")
-    ? "microcourses"
-    : requestedTab === "rework" || requestedTab === "pages" || requestedTab === "releases" || requestedTab === "history" ? requestedTab : "backgrounds";
+  const tab = resolveReviewTab(requestedTab, perms.has("courseware.review"));
   const page = parseAdaptReviewPage(query.page);
   const courseId = parseAdaptFilterId(query.course);
   const lectureId = courseId ? parseAdaptFilterId(query.lecture) : null;
@@ -145,6 +148,12 @@ async function AdaptReviewContent({ locale, searchParams }: { locale: string; se
           description: tm("sessionWorkspaceQueueDescription"),
           empty: tm("sessionWorkspaceQueueEmpty"),
           open: tm("openSessionWorkspace"),
+          session: tm("sessionWorkspaceSession"),
+          variant: tm("sessionWorkspaceVariant"),
+          teacherColumn: tm("sessionWorkspaceTeacher"),
+          schedule: tm("sessionWorkspaceSchedule"),
+          status: tm("sessionWorkspaceStatus"),
+          action: tm("sessionWorkspaceAction"),
           variants: (count) => tm("variantCount", { count }),
           noVariant: tm("noVariantYet"),
           selected: (name) => tm("selectedVariantName", { name }),
@@ -157,8 +166,14 @@ async function AdaptReviewContent({ locale, searchParams }: { locale: string; se
         items={items}
         locale={locale}
         labels={{
+          title: tm("reviewQueueTitle"),
           empty: tm("reviewQueueEmpty"),
           review: tm("openReview"),
+          course: tm("reviewQueueCourse"),
+          scope: tm("reviewQueueScope"),
+          progress: tm("reviewQueueProgress"),
+          submittedColumn: tm("reviewQueueSubmitted"),
+          action: tm("reviewQueueAction"),
           grade: (grade) => tm("gradeValue", { grade }),
           round: (current, required) => tm("reviewRound", { current, required }),
           submitted: (value) => tm("submittedAt", { value }),

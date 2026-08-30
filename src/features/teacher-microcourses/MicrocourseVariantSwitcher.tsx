@@ -5,7 +5,6 @@ import { Check, GitBranch, LoaderCircle, Plus, UserRound } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -79,19 +78,19 @@ export function MicrocourseVariantSwitcher({
   });
 
   return <>
-    <Card data-testid="microcourse-variant-switcher">
-      <CardHeader className="pb-3">
+    <section className="border-y border-line" data-testid="microcourse-variant-switcher">
+      <header className="border-b border-line px-3 py-2.5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <CardTitle className="text-base">{t("variantWorkspaceTitle")}</CardTitle>
+            <h2 className="text-sm font-medium">{t("variantWorkspaceTitle")}</h2>
             <p className="mt-1 text-xs text-muted">{t("variantWorkspaceDescription")}</p>
           </div>
           {session.canCreate && !locked && <Button type="button" size="sm" variant="secondary" onClick={() => setCreateOpen(true)}>
             <Plus className="size-4" />{t("createBlankVariant")}
           </Button>}
         </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
+      </header>
+      <div className="space-y-3 px-3 py-3">
         <div className="flex gap-2 overflow-x-auto pb-1">
           {variants.map((variant) => <Link
             key={variant.id}
@@ -112,7 +111,7 @@ export function MicrocourseVariantSwitcher({
               </span>
           </Link>)}
         </div>
-        {activeVariant && <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-paper/40 px-3 py-2">
+        {activeVariant && <div className="flex flex-wrap items-center justify-between gap-3 border-y border-line bg-paper/30 px-3 py-2">
           <div className="min-w-0 text-sm">
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-medium">{activeVariant.variantName}</span>
@@ -136,8 +135,8 @@ export function MicrocourseVariantSwitcher({
         </div>}
         {locked && <p className="text-xs text-muted">{t("variantSelectionLocked")}</p>}
         {message && <p role="status" className="text-sm text-muted">{message}</p>}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
 
     <Dialog open={createOpen} onOpenChange={setCreateOpen}>
       <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto p-4">

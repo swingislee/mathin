@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { loadLecturePreview, parseCoursewareTrack } from "@/features/courseware-studio/data";
 import { LecturePreviewDialog } from "@/features/school/curriculum/LecturePreviewDialog";
@@ -31,7 +30,7 @@ export default async function TeacherMicrocourseDetailPage({ params, searchParam
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  return <Suspense fallback={<div className="h-[36rem] animate-pulse rounded-2xl border border-line bg-card" />}>
+  return <Suspense fallback={<div className="h-[36rem] animate-pulse border-y border-line bg-paper/30" />}>
     <TeacherMicrocourseDetailContent params={params} searchParams={searchParams} />
   </Suspense>;
 }
@@ -71,10 +70,10 @@ async function TeacherMicrocourseDetailContent({ params, searchParams }: {
   }));
 
   return <div className="w-full min-w-0 space-y-5">
-    <Card><CardHeader className="gap-4 @3xl/page:flex-row @3xl/page:items-start @3xl/page:justify-between"><div><div className="flex flex-wrap gap-2"><Badge variant="secondary">{browserT("currentDefault")}</Badge><Badge variant={course.course.defaultCommitId ? "secondary" : "outline"}>{course.course.defaultCommitId ? browserT("published") : browserT("noDefaultVersion")}</Badge><Badge variant={course.lectures.length > 0 && course.lectures.length === releasedCount ? "secondary" : "outline"}>{releasedCount}/{course.lectures.length}</Badge></div><CardTitle className="mt-3 font-display text-2xl">{course.course.title}</CardTitle><CardDescription>{course.course.description || browserT("fullCourseDescription")}</CardDescription><p className="mt-2 text-xs text-muted">{browserT("courseCreatedBy", { name: course.course.createdByName })}</p></div><div className="flex flex-wrap gap-2"><TeacherMicrocourseAddLectureDialog familyId={courseFamilyId} course={course} /><Link href={`/dashboard/courses/${courseFamilyId}?course=${courseId}`} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>{browserT("backToBrowser")}</Link></div></CardHeader></Card>
+    <section className="flex flex-wrap items-start justify-between gap-4 border-y border-line px-3 py-3"><div><div className="flex flex-wrap gap-2"><Badge variant="secondary">{browserT("currentDefault")}</Badge><Badge variant={course.course.defaultCommitId ? "secondary" : "outline"}>{course.course.defaultCommitId ? browserT("published") : browserT("noDefaultVersion")}</Badge><Badge variant={course.lectures.length > 0 && course.lectures.length === releasedCount ? "secondary" : "outline"}>{releasedCount}/{course.lectures.length}</Badge></div><h1 className="mt-3 font-display text-2xl">{course.course.title}</h1><p className="mt-1 text-sm text-muted">{course.course.description || browserT("fullCourseDescription")}</p><p className="mt-2 text-xs text-muted">{browserT("courseCreatedBy", { name: course.course.createdByName })}</p></div><div className="flex flex-wrap gap-2"><TeacherMicrocourseAddLectureDialog familyId={courseFamilyId} course={course} /><Link href={`/dashboard/courses/${courseFamilyId}?course=${courseId}`} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>{browserT("backToBrowser")}</Link></div></section>
     <Tabs defaultValue={activeTab}>
       <TabsList><TabsTrigger value="content">{t("microcourseContentTab")}</TabsTrigger><TabsTrigger value="maintenance">{browserT("maintenance")}</TabsTrigger><TabsTrigger value="history">{browserT("history")}</TabsTrigger></TabsList>
-      <TabsContent value="content"><Card><CardHeader><CardTitle>{browserT("courseContent")}</CardTitle><CardDescription>{course.lectures.length ? browserT("courseContentHint") : browserT("emptyCourseHint")}</CardDescription></CardHeader><CardContent><TeachingPlan baseHref={baseHref} teachingPlan={teachingPlan} canManage={course.capabilities.canAddLecture} /></CardContent></Card></TabsContent>
+      <TabsContent value="content"><section className="border-y border-line"><header className="border-b border-line px-3 py-2.5"><h2 className="text-sm font-medium">{browserT("courseContent")}</h2><p className="mt-0.5 text-xs text-muted">{course.lectures.length ? browserT("courseContentHint") : browserT("emptyCourseHint")}</p></header><div className="p-3"><TeachingPlan baseHref={baseHref} teachingPlan={teachingPlan} canManage={course.capabilities.canAddLecture} /></div></section></TabsContent>
       <TabsContent value="maintenance"><TeacherMicrocourseMaintenanceWorkspace familyId={courseFamilyId} course={course} memberManagement={memberManagement} staffOptions={staffOptions} section="branches" /></TabsContent>
       <TabsContent value="history"><TeacherMicrocourseMaintenanceWorkspace familyId={courseFamilyId} course={course} memberManagement={memberManagement} staffOptions={staffOptions} section="history" /></TabsContent>
     </Tabs>

@@ -58,7 +58,6 @@ export const COURSEWARE_DOC_INTERACTION_AUDIT = {
 /** A new Mathin-authored microcourse mode cannot silently inherit local-only interaction. */
 export const MATHIN_MICROCOURSE_SYNC_PROVIDERS = {
   composition: CLASSROOM_DOC_STEP_SYNC_V1,
-  sudoku: CLASSROOM_GAME_MIRROR_SYNC_V1,
   h5: CLASSROOM_H5_STATE_SYNC_REQUIRED_V1,
 } as const satisfies Record<MicrocoursePageDoc["mode"], ClassroomInteractionSyncProvider>;
 

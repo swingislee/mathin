@@ -174,7 +174,7 @@ Gate 1 已按以下顺序关闭：
 
 `DEV-TMC-1` 是独立开发轨 Gate，不改变 R1-Live Gate 2。能力由 `teaching.teacher_microcourses_v1` 独立控制；2026-08-27 已授权部署并启用，关闭开关仍是即时 fail-closed 回退面。2026-08-29 产品负责人更正产品语义：教师微课的根对象是一个自由班，同班多个课节各自导入或自制课件并选择“本节使用”方案，这些课件按课节顺序共同组成一门多讲 `microcourse`；一个课节只对应一个稳定讲次，同课节的并行方案审核发布后成为该讲次的不同 immutable release，“本节使用”决定当前 release。课程保留来源班级的年级和运营学期用于追溯，但教师微课可能跨年级、班型和季节使用，三者只能作为可选筛选面，不能继续充当唯一定位课程的版本矩阵。课程族页改为教师微课专用的目录—详情工作区：宏观展示全部微课及场次数量/完成度，支持标题、讲次、主题、关键词和来源维度组合筛选，选择条目后在同一页查看教学计划与课件预览。既有“每个课次方案各映射一门单讲课程”的实现和“年级 × 班型 × 季节唯一寻址”页面均是待替换旧模型。
 
-已落地范围包含正式课程当前 release 的整讲快照与锁定来源基底、可编辑叠加层、文字/图片/标题页、注册表驱动的教师自编游戏页、单文件离线 H5、版本化元数据、受控主主题和教研退回/通过/发布。班级级更正保留这些课次内容能力，只把目录投影、标题/年级/学期元数据和其他教师建班改为一班一课、多课节多讲。首个 `game-page-v1` 适配器为数独，统一支持四宫、六宫和九宫原型题；历史 81 格 `microcourse-page-v1 mode=sudoku` 保持只读兼容。来源不包含已发布教师微课，避免递归嵌套；H5 不包含 AI、低代码、多文件或 ZIP。普通教师只获得本人任教自由班课次的 `courseware.microcourse.author`，不获得全局 `course.manage` 或 `courseware.page.edit`。
+已落地范围包含正式课程当前 release 的整讲快照与锁定来源基底、可编辑叠加层、文字/图片/标题页、注册表驱动的教师自编游戏块、单文件离线 H5、版本化元数据、受控主主题和教研退回/通过/发布。班级级更正保留这些课次内容能力，只把目录投影、标题/年级/学期元数据和其他教师建班改为一班一课、多课节多讲。首个通用 game block 适配器为数独，统一支持四宫、六宫和九宫原型题；`microcourse-page-v1 mode=sudoku` 与顶层教师微课 `game-page-v1` 已退出仓库当前运行合同，本地版本化 migration 将 27 条相关 revision 原位升级为 `courseware-composition-v1` 内嵌 `sudoku-authored-v2`，应用解析、编辑、审核、冻结与课堂均 fail closed，生产迁移仍须单独授权后先于相应应用部署。来源不包含已发布教师微课，避免递归嵌套；H5 不包含 AI、低代码、多文件或 ZIP。普通教师只获得本人任教自由班课次的 `courseware.microcourse.author`，不获得全局 `course.manage` 或 `courseware.page.edit`。
 
 开发验收必须同时覆盖作者/他人草稿隔离、提交快照不可替换、发布/退回/撤回/新版切换原子性、4/6/9 宫数独唯一解与未完成草稿审核阻断、H5 离线 CSP、自由课次冻结、其他教师搜索建班以及 zh/en 旅程。功能由 `teaching.teacher_microcourses_v1` 控制；本地机器检查和产品初验完成后仍须另行取得生产迁移与启用授权。
 
@@ -198,7 +198,7 @@ Gate 1 已按以下顺序关闭：
 
 #### DEV-TMC-4 · 教师微课课程浏览与维护工作台
 
-`DEV-TMC-4` 是产品负责人于 2026-08-30 选入的开发端独立增量，权威范围见 [`29-teacher-microcourse-browser-redesign.md`](29-teacher-microcourse-browser-redesign.md)，当前状态为 **LOCAL DEVELOPMENT DELIVERED / AWAITING PRODUCT ACCEPTANCE / NOT DEPLOYED**。它在 DEV-TMC-3 的“一班一课、多课节多讲”根对象上增加 766 使用场景树、机构学术维度、课程适用范围、目录—表格—轻量预览浏览器、同名归并、课程级维护方向与默认版本管理；现有课次方案、immutable release、课堂冻结和历史引用继续作为内容权威。
+`DEV-TMC-4` 是产品负责人于 2026-08-30 选入的开发端独立增量，权威范围见 [`29-teacher-microcourse-browser-redesign.md`](29-teacher-microcourse-browser-redesign.md)，当前状态为 **LOCAL DEVELOPMENT DELIVERED / AWAITING PRODUCT ACCEPTANCE / NOT DEPLOYED**。它在 DEV-TMC-3 的“一班一课、多课节多讲”根对象上增加 766 使用场景树、机构学术维度、课程适用范围、目录—表格—轻量预览浏览器、同名归并、课程级维护方向与默认版本管理；2026-08-30 复核后，主浏览、课程详情、课次编辑、审核队列/详情和场景设置已统一为连续 Dashboard 工作区，不再使用内容 Card 包裹，审核根路由对具备 `courseware.review` 的用户默认打开教师微课队列。现有课次方案、immutable release、课堂冻结和历史引用继续作为内容权威。
 
 Phase 1～5 已在本机隔离 Supabase 与固定开发身份中完成，五条 migration 已登记本机 LF checksum，受影响 ESLint、TypeScript、定向 Vitest 20/20 和自动回滚数据库合同通过；本机 v2 开关已启用用于人工验收。产品负责人明确要求本轮不运行浏览器、Playwright 或截图验证，因此当前结论只到“开发端已交付，待人工视觉与交互验收”。生产 schema、历史课程归并、功能开关和应用发布均需在开发端人工验收后重新取得授权，不改变 R1-Live Gate 2。
 

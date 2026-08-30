@@ -6,7 +6,6 @@ import { useTranslations } from "next-intl";
 import { useAction, type ActionErrorMessages } from "@/components/action-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -161,12 +160,12 @@ export function TeacherMicrocourseSceneManager({
     </TabsList>
 
     <TabsContent value="scenes" className="space-y-5">
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("frameworkTitle")}</CardTitle>
-          <CardDescription>{t("frameworkHint")}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-5">
+      <section className="border-y border-line">
+        <header className="border-b border-line px-3 py-2.5">
+          <h2 className="text-sm font-medium">{t("frameworkTitle")}</h2>
+          <p className="mt-0.5 text-xs text-muted">{t("frameworkHint")}</p>
+        </header>
+        <div className="space-y-5 px-3 py-3">
           {(["seven_step", "six_support", "six_guarantee"] as const).map((group) => <div key={group} className="space-y-2">
             <p className="text-sm font-medium">{t(group)}</p>
             <div className="grid gap-2 @2xl/page:grid-cols-2 @6xl/page:grid-cols-3">
@@ -183,30 +182,30 @@ export function TeacherMicrocourseSceneManager({
           {configuration.canManageScenes && <Button disabled={pending} onClick={() => rootSave.run({ courseFamilyId, frameworkItemCodes: [...rootCodes] })}>
             <Save className="mr-2 h-4 w-4" />{t("saveEnabledRoots")}
           </Button>}
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
       <div className="space-y-4">
         {enabledRoots.map((root, rootIndex) => {
           const topLevel = root.scenes.filter((scene) => scene.parentId === null);
-          return <Card key={root.id} draggable={configuration.canManageScenes} onDragStart={(event) => event.dataTransfer.setData("application/x-mathin-root", root.id)} onDragOver={(event) => event.preventDefault()} onDrop={(event) => {
+          return <section className="border-y border-line" key={root.id} draggable={configuration.canManageScenes} onDragStart={(event) => event.dataTransfer.setData("application/x-mathin-root", root.id)} onDragOver={(event) => event.preventDefault()} onDrop={(event) => {
             event.preventDefault();
             const sourceRoot = event.dataTransfer.getData("application/x-mathin-root");
             if (sourceRoot) reorderRoot(sourceRoot, root.id);
             else if (selectedScenes.size) sceneMove.run({ courseFamilyId, sceneIds: [...selectedScenes], targetRootId: root.id, targetParentId: null, targetIndex: topLevel.length });
           }}>
-            <CardHeader className="flex-row items-start justify-between gap-4 space-y-0">
+            <header className="flex items-start justify-between gap-4 border-b border-line px-3 py-2.5">
               <div>
-                <CardTitle className="flex items-center gap-2"><GripVertical className="h-4 w-4 text-muted" />{frameworkLabel(root.frameworkItemCode)}</CardTitle>
-                <CardDescription>{t("rootSummary", { scenes: root.scenes.filter((scene) => scene.status === "active").length, courses: root.courseCount })}</CardDescription>
+                <h2 className="flex items-center gap-2 text-sm font-medium"><GripVertical className="h-4 w-4 text-muted" />{frameworkLabel(root.frameworkItemCode)}</h2>
+                <p className="mt-0.5 text-xs text-muted">{t("rootSummary", { scenes: root.scenes.filter((scene) => scene.status === "active").length, courses: root.courseCount })}</p>
               </div>
               {configuration.canManageScenes && <div className="flex gap-1">
                 <Button size="sm" className="h-9 w-9 p-0" variant="ghost" disabled={pending || rootIndex === 0} aria-label={t("moveUp")} onClick={() => reorderRoot(root.id, enabledRoots[rootIndex - 1]?.id ?? root.id)}><ArrowUp className="h-4 w-4" /></Button>
                 <Button size="sm" className="h-9 w-9 p-0" variant="ghost" disabled={pending || rootIndex === enabledRoots.length - 1} aria-label={t("moveDown")} onClick={() => reorderRoot(root.id, enabledRoots[rootIndex + 1]?.id ?? root.id)}><ArrowDown className="h-4 w-4" /></Button>
                 <Button size="sm" variant="secondary" disabled={pending} onClick={() => openNewScene(root.id)}><Plus className="mr-2 h-4 w-4" />{t("addScene")}</Button>
               </div>}
-            </CardHeader>
-            <CardContent>
+            </header>
+            <div>
               <Table>
                 <TableHeader><TableRow><TableHead className="w-10" /><TableHead>{t("scene")}</TableHead><TableHead>{t("description")}</TableHead><TableHead>{t("linkedCourses")}</TableHead><TableHead className="text-right">{t("actions")}</TableHead></TableRow></TableHeader>
                 <TableBody>
@@ -214,33 +213,31 @@ export function TeacherMicrocourseSceneManager({
                   {topLevel.length === 0 && <TableRow><TableCell colSpan={5} className="py-8 text-center text-muted">{t("noScenes")}</TableCell></TableRow>}
                 </TableBody>
               </Table>
-            </CardContent>
-          </Card>;
+            </div>
+          </section>;
         })}
       </div>
 
-      {configuration.canManageScenes && selectedScenes.size > 0 && <Card className="sticky bottom-4 border-crater bg-card/95 shadow-lg backdrop-blur">
-        <CardContent className="flex flex-wrap items-end gap-3 p-4">
+      {configuration.canManageScenes && selectedScenes.size > 0 && <section className="sticky bottom-4 flex flex-wrap items-end gap-3 border-y border-crater bg-paper/95 p-4 shadow-lg backdrop-blur">
           <div className="mr-auto"><p className="text-sm font-medium">{t("selectedScenes", { count: selectedScenes.size })}</p><p className="text-xs text-muted">{t("bulkMoveHint")}</p></div>
           <div className="min-w-48"><Label>{t("targetRoot")}</Label><Select value={moveRootId} onValueChange={(value) => { setMoveRootId(value); setMoveParentId("__root__"); }}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{enabledRoots.map((root) => <SelectItem key={root.id} value={root.id}>{frameworkLabel(root.frameworkItemCode)}</SelectItem>)}</SelectContent></Select></div>
           <div className="min-w-48"><Label>{t("targetParent")}</Label><Select value={moveParentId} onValueChange={setMoveParentId}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="__root__">{t("rootLevel")}</SelectItem>{moveParents.map((scene) => <SelectItem key={scene.id} value={scene.id}>{scene.name}</SelectItem>)}</SelectContent></Select></div>
           <Button disabled={pending || !moveRootId} onClick={() => sceneMove.run({ courseFamilyId, sceneIds: [...selectedScenes], targetRootId: moveRootId, targetParentId: moveParentId === "__root__" ? null : moveParentId, targetIndex: 10_000 })}>{t("moveSelected")}</Button>
-        </CardContent>
-      </Card>}
+      </section>}
     </TabsContent>
 
     <TabsContent value="academic" className="space-y-5">
       {!configuration.canManageOrganization && <p className="rounded-lg border border-line bg-moon/15 p-4 text-sm text-muted">{t("academicReadOnly")}</p>}
-      {dimensions.map((group) => <Card key={group.kind}>
-        <CardHeader className="flex-row items-center justify-between space-y-0"><div><CardTitle>{group.title}</CardTitle><CardDescription>{t(`${group.kind}Hint`)}</CardDescription></div>{configuration.canManageOrganization && <Button size="sm" variant="secondary" onClick={() => setDimensionDraft({ ...emptyDimension, kind: group.kind })}><Plus className="mr-2 h-4 w-4" />{t("add")}</Button>}</CardHeader>
-        <CardContent><Table><TableHeader><TableRow><TableHead>{t("code")}</TableHead><TableHead>{t("chineseName")}</TableHead><TableHead>{t("englishName")}</TableHead><TableHead>{t("status")}</TableHead><TableHead className="text-right">{t("actions")}</TableHead></TableRow></TableHeader><TableBody>
+      {dimensions.map((group) => <section className="border-y border-line" key={group.kind}>
+        <header className="flex items-center justify-between border-b border-line px-3 py-2.5"><div><h2 className="text-sm font-medium">{group.title}</h2><p className="mt-0.5 text-xs text-muted">{t(`${group.kind}Hint`)}</p></div>{configuration.canManageOrganization && <Button size="sm" variant="secondary" onClick={() => setDimensionDraft({ ...emptyDimension, kind: group.kind })}><Plus className="mr-2 h-4 w-4" />{t("add")}</Button>}</header>
+        <Table><TableHeader><TableRow><TableHead>{t("code")}</TableHead><TableHead>{t("chineseName")}</TableHead><TableHead>{t("englishName")}</TableHead><TableHead>{t("status")}</TableHead><TableHead className="text-right">{t("actions")}</TableHead></TableRow></TableHeader><TableBody>
           {group.rows.map((row, index) => <TableRow key={row.id}><TableCell>{row.code}</TableCell><TableCell>{row.nameZh}</TableCell><TableCell>{row.nameEn}</TableCell><TableCell><Badge variant={row.active ? "secondary" : "outline"}>{row.active ? t("active") : t("inactive")}</Badge></TableCell><TableCell><div className="flex justify-end gap-1">{configuration.canManageOrganization && <><Button size="sm" className="h-9 w-9 p-0" variant="ghost" disabled={pending || index === 0} onClick={() => dimensionMove.run({ kind: group.kind, id: row.id, direction: -1 })}><ArrowUp className="h-4 w-4" /></Button><Button size="sm" className="h-9 w-9 p-0" variant="ghost" disabled={pending || index === group.rows.length - 1} onClick={() => dimensionMove.run({ kind: group.kind, id: row.id, direction: 1 })}><ArrowDown className="h-4 w-4" /></Button><Button size="sm" variant="ghost" onClick={() => setDimensionDraft({ id: row.id, kind: group.kind, parentId: row.parentId, code: row.code, nameZh: row.nameZh, nameEn: row.nameEn, gradeNo: row.gradeNo, legacySeason: row.legacySeason ?? null, active: row.active })}>{t("edit")}</Button></>}</div></TableCell></TableRow>)}
-        </TableBody></Table></CardContent>
-      </Card>)}
+        </TableBody></Table>
+      </section>)}
     </TabsContent>
 
     <TabsContent value="managers">
-      <Card><CardHeader><CardTitle>{t("subjectManagers")}</CardTitle><CardDescription>{t("managerHint")}</CardDescription></CardHeader><CardContent className="space-y-4"><div className="grid gap-2 @2xl/page:grid-cols-2 @6xl/page:grid-cols-3">{staffOptions.map((staff) => <Label key={staff.id} className="flex items-center gap-3 rounded-lg border border-line px-3 py-2"><Checkbox checked={managerIds.has(staff.id)} disabled={pending} onCheckedChange={(checked) => setManagerIds((current) => { const next = new Set(current); if (checked) next.add(staff.id); else next.delete(staff.id); return next; })} />{staff.name}</Label>)}</div><Button disabled={pending} onClick={() => managerSave.run({ courseFamilyId, userIds: [...managerIds] })}><Save className="mr-2 h-4 w-4" />{t("saveManagers")}</Button></CardContent></Card>
+      <section className="border-y border-line"><header className="border-b border-line px-3 py-2.5"><h2 className="text-sm font-medium">{t("subjectManagers")}</h2><p className="mt-0.5 text-xs text-muted">{t("managerHint")}</p></header><div className="space-y-4 p-3"><div className="grid gap-2 @2xl/page:grid-cols-2 @6xl/page:grid-cols-3">{staffOptions.map((staff) => <Label key={staff.id} className="flex items-center gap-3 border-y border-line px-3 py-2"><Checkbox checked={managerIds.has(staff.id)} disabled={pending} onCheckedChange={(checked) => setManagerIds((current) => { const next = new Set(current); if (checked) next.add(staff.id); else next.delete(staff.id); return next; })} />{staff.name}</Label>)}</div><Button disabled={pending} onClick={() => managerSave.run({ courseFamilyId, userIds: [...managerIds] })}><Save className="mr-2 h-4 w-4" />{t("saveManagers")}</Button></div></section>
     </TabsContent>
 
     <Dialog open={sceneDraft !== null} onOpenChange={(open) => { if (!open) setSceneDraft(null); }}>

@@ -4,7 +4,6 @@ import { useState, useTransition } from "react";
 import { LoaderCircle, Sparkles } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -58,12 +57,12 @@ export function MicrocourseStartPanel({
   });
 
   return (
-    <Card className="max-w-3xl">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2"><Sparkles className="size-5 text-crater" />{t("startTitle")}</CardTitle>
-        <CardDescription>{t("startDescription")}</CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-4 sm:grid-cols-2">
+    <section className="max-w-3xl border-y border-line" data-microcourse-start-panel>
+      <header className="border-b border-line px-1 py-4">
+        <h2 className="flex items-center gap-2 text-lg font-medium"><Sparkles className="size-5 text-crater" />{t("startTitle")}</h2>
+        <p className="mt-1 text-sm text-muted">{t("startDescription")}</p>
+      </header>
+      <div className="grid gap-4 px-1 py-4 sm:grid-cols-2">
         <Label className="grid gap-1.5 sm:col-span-2">
           <span>{t("variantName")}</span>
           <Input value={variantName} onChange={(event) => setVariantName(event.target.value)} maxLength={120} />
@@ -112,7 +111,7 @@ export function MicrocourseStartPanel({
           </Button>
           {message && <p role="status" className="text-sm text-rose">{message}</p>}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }

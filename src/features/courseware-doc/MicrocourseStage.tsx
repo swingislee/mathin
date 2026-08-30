@@ -4,7 +4,6 @@ import "katex/dist/katex.min.css";
 import { useLocale } from "next-intl";
 import { cn } from "@/lib/utils";
 import type { GameMirrorState } from "@/features/games/types";
-import { SudokuBoard } from "@/features/games/sudoku/SudokuBoard";
 import { isGamePageDoc } from "./game-page-schema";
 import GamePageStage from "@/features/games/courseware/GamePageStage";
 import { isAixuexiPageDoc } from "./aixuexi-schema";
@@ -133,7 +132,7 @@ export default function MicrocourseStage(props: MicrocourseStageProps) {
     <div
       className={cn("relative aspect-[4/3] w-full overflow-hidden", props.className)}
       data-microcourse-mode={doc.mode}
-      data-classroom-input={doc.mode === "sudoku" || doc.mode === "h5" ? "native" : "ink"}
+      data-classroom-input={doc.mode === "h5" ? "native" : "ink"}
       style={coursewareCanvasStyle(doc.canvas.backgroundColor)}
     >
       {doc.mode === "composition" ? (
@@ -156,25 +155,6 @@ export default function MicrocourseStage(props: MicrocourseStageProps) {
             />
           </div>
         </>
-      ) : null}
-
-      {doc.mode === "sudoku" ? (
-        <div className="size-full overflow-auto p-3 sm:p-5">
-          <SudokuBoard
-            seed={`microcourse:${doc.analysis.status}`}
-            difficulty="medium"
-            puzzle={doc.puzzle}
-            showCoordinates={doc.display.showCoordinates}
-            allowCandidates={doc.display.allowCandidates}
-            allowAnswerReveal={doc.display.allowAnswerReveal}
-            showTeachingTools={doc.display.showTeachingTools}
-            finished={false}
-            onComplete={() => undefined}
-            mirror={props.gameMirror}
-            onMirror={props.onGameMirror}
-            readOnly={!props.interactive}
-          />
-        </div>
       ) : null}
 
       {doc.mode === "h5" ? <MicrocourseH5ArtifactFrame artifact={doc} props={props} /> : null}

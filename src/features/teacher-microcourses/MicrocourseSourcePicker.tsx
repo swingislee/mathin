@@ -139,7 +139,7 @@ export function MicrocourseSourcePicker({
                   }}
                   className={`h-auto w-full justify-start gap-3 rounded-lg border px-3 py-2 text-left ${checked ? "border-crater bg-moon/20 ring-2 ring-crater/20" : "border-transparent hover:border-line hover:bg-paper"}`}
                 >
-                  <span aria-hidden="true" className={`grid size-5 shrink-0 place-items-center rounded border ${checked ? "border-rose bg-rose text-white" : "border-crater bg-card"}`}>{checked && <Check className="size-3.5" />}</span>
+                  <span aria-hidden="true" className={`grid size-5 shrink-0 place-items-center rounded border ${checked ? "border-rose bg-rose text-white" : "border-crater bg-paper"}`}>{checked && <Check className="size-3.5" />}</span>
                   <span className="w-8 shrink-0 font-mono text-xs text-muted">{source.lectureNo}</span>
                   <span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium text-ink">{source.lectureTitle}</span><span className="block text-xs font-normal text-muted">{t("sourceLecturePages", { count: source.pageCount })}</span></span>
                 </Button>;

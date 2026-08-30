@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { isGamePageDoc } from "@/features/courseware-doc/game-page-schema";
 import { isCoursewareCompositionPage } from "@/features/courseware-doc/composition-page-schema";
@@ -24,10 +23,10 @@ export function MicrocourseVariantPreview({ editor }: { editor: TeacherMicrocour
       : isGamePageDoc(value.doc) ? t("mode_game") : t(`mode_${value.doc.mode}`)
   );
 
-  return <div className="grid min-h-[40rem] gap-4 xl:grid-cols-[16rem_minmax(0,1fr)]" data-testid="microcourse-variant-preview">
-    <Card className="min-h-0 overflow-hidden">
-      <CardHeader className="pb-3"><CardTitle className="text-base">{t("previewPages", { count: editor.pages.length })}</CardTitle></CardHeader>
-      <CardContent className="h-[36rem] p-3 pt-0">
+  return <div className="grid min-h-[40rem] border-y border-line xl:grid-cols-[16rem_minmax(0,1fr)]" data-testid="microcourse-variant-preview">
+    <section className="min-h-0 overflow-hidden border-b border-line xl:border-b-0 xl:border-r">
+      <header className="border-b border-line px-3 py-2.5"><h2 className="text-sm font-medium">{t("previewPages", { count: editor.pages.length })}</h2></header>
+      <div className="h-[36rem] p-3">
         <ScrollArea className="h-full">
           <ol className="space-y-2 pr-2">
             {editor.pages.map((item) => <li key={item.pageDocId}>
@@ -43,17 +42,17 @@ export function MicrocourseVariantPreview({ editor }: { editor: TeacherMicrocour
             </li>)}
           </ol>
         </ScrollArea>
-      </CardContent>
-    </Card>
-    {page ? <Card className="min-w-0 overflow-hidden">
-      <CardHeader className="border-b border-line pb-3">
-        <div className="flex flex-wrap items-center gap-3"><Badge variant="secondary">{modeLabel(page)}</Badge><CardTitle className="text-base">{page.title}</CardTitle></div>
-      </CardHeader>
-      <CardContent className="p-4">
-        <div className="mx-auto max-w-5xl overflow-hidden rounded-xl border border-line bg-white shadow-sm">
+      </div>
+    </section>
+    {page ? <section className="min-w-0 overflow-hidden">
+      <header className="border-b border-line px-3 py-2.5">
+        <div className="flex flex-wrap items-center gap-3"><Badge variant="secondary">{modeLabel(page)}</Badge><h2 className="text-sm font-medium">{page.title}</h2></div>
+      </header>
+      <div className="p-4">
+        <div className="mx-auto max-w-5xl overflow-hidden border border-line bg-white">
           <StagePreview doc={page.doc} bindingUrls={page.bindingUrls} stageMode="natural" className="w-full" interactive />
         </div>
-      </CardContent>
-    </Card> : <Card className="grid place-items-center"><p className="text-sm text-muted">{t("emptyPages")}</p></Card>}
+      </div>
+    </section> : <section className="grid place-items-center"><p className="text-sm text-muted">{t("emptyPages")}</p></section>}
   </div>;
 }
