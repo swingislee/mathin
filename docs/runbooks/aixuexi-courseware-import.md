@@ -1,4 +1,4 @@
-# 爱学习 source-runtime 导入与 projection v31 兼容
+# 爱学习 source-runtime 导入与 projection v31/v32 兼容
 
 ## 1. 固定范围
 
@@ -17,7 +17,7 @@
 
 ## 2. 页面、源 Viewer 与 4:3 合同
 
-来源包仍以 projection v31 保存安全投影和离线证据；Mathin 的新导入文档统一为 `source-runtime-page-v1`，来源适配器为 `source-runtime-v1`。它不转换成 E 系列 `page-doc-v1`，也不再把来源节点拆成 Mathin 自有 React 组件。课程族、课程、讲次、CAS、revision/release、双轨 head 和课次冻结继续复用 P6 数据层。
+来源包以 projection v32 保存当前安全投影和离线证据；历史 production baseline 的 projection v31 继续只读兼容。Mathin 的新导入文档统一为 `source-runtime-page-v1`，来源适配器为 `source-runtime-v1`。它不转换成 E 系列 `page-doc-v1`，也不再把来源节点拆成 Mathin 自有 React 组件。纯循环 Lottie 是否派生视频、体积硬门及原生 `<video>` 行为都由来源 Viewer 产生并随 runtime 封装，Mathin 不维护第二套判型或手写元素。课程族、课程、讲次、CAS、revision/release、双轨 head 和课次冻结继续复用 P6 数据层。
 
 每个来源 package 只生成一个内容寻址的 Viewer H5 包。包内直接使用来源仓库维护的 `viewerScript`、`viewerStyles`、`slide-runtime.css`、`itv-runtime.css`、captured player 图片模块、字体及游戏运行时；页文档只携带安全筛选后的来源页面投影、资源 ID 映射和来源路由映射。Mathin 宿主仅负责：
 
@@ -46,7 +46,7 @@
 
 1. `.env.local` 指向开发 Supabase，并具备导入所需 server key；凭据不得写入日志或仓库。
 2. 开发库已应用并登记 `20260814000300_p6_six_classroom_cleanup.sql` 与 `20260827000500_courseware_source_runtime_adapter.sql`；爱学习秋季课程必须收敛为一个课程族、12 门课程、180 条教学计划讲次，其中 170 条有源站课件、10 条为第 7/15 讲计划补充占位；难度顺序为 X+ < G+ < A+。
-3. 三包的 `site/manifest.json`、catalog、projection v31、slide/player runtime 和逐讲 offline verification 都存在，且 remote/missing/fatal 为 0。
+3. 三包的 `site/manifest.json`、catalog、当前 projection、slide/player runtime 和逐讲 offline verification 都存在，且 remote/missing/fatal 为 0。
 4. 本流程只允许开发库导入。R1-15/R1-18 的生产清理与 release-1 重建需要独立授权。
 
 ## 4. 构建与预检

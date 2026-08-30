@@ -27,7 +27,7 @@ const PACKAGE_CONFIGS = new Map([
     lectureCount: 84, pageCount: 2767, grades: [1, 2, 3, 4, 5, 6],
     level: "X+", sourceLevel: "能力提高 X+", edition: "苏教版", productPrefix: "AXX26X-SJ",
     term: "秋季", termCode: "AUT",
-    playerRuntimeSchemaVersion: 3, playerRuntimeDerivationVersion: 3,
+    playerRuntimeSchemaVersion: 4, playerRuntimeDerivationVersion: 5,
   }],
   ["2026-aplus-quanguo-math", {
     lectureCount: 30, pageCount: 1034, grades: [1, 2],
@@ -45,11 +45,12 @@ const PACKAGE_CONFIGS = new Map([
 const TEXT_EXTENSIONS = new Set([".css", ".html", ".htm", ".js", ".json", ".mjs", ".svg", ".txt"]);
 
 /**
- * projection v31 同时支持普通 1200×900 页与 1920×1080 原生游戏页。
+ * projection v32 延续普通 1200×900 页与 1920×1080 原生游戏页，并允许来源产生方
+ * 把严格更小的纯循环 Lottie 以带来源语义的原生视频交付。Mathin 仍只封装来源 Viewer。
  * 普通页的源播放器是 1920×1080 外层 + 水平居中的 1200×900 内层，最终由
  * layout.playerStage/layout.presentation 描述；Mathin 不再复制旧的手工放大或 xmind 偏移。
  */
-const SOURCE_PROJECTION_VERSION = 31;
+const SOURCE_PROJECTION_VERSION = 32;
 const SOURCE_ITV_PROJECTION_VERSION = 4;
 const SOURCE_PRESENTATION_WIDTH = 1200;
 const SOURCE_PRESENTATION_HEIGHT = 675;

@@ -846,7 +846,7 @@ update public.course_lectures lecture
  where lecture.id = context.lecture_id
    and lecture.name is distinct from ${sqlText(plan.lecture.lessonName)};
 ` : "";
-  const sourceProvenanceSql = isAixuexi ? `
+  const sourceManifestGuardSql = upgradeSourceRuntime ? "" : `
 do $$ begin
   if exists (
     select 1 from public.cw_source_packages
@@ -855,6 +855,12 @@ do $$ begin
        and manifest_sha256 <> ${sqlText(plan.lecture.sourcePackageManifestSha256)}
   ) then raise exception 'AIXUEXI_SOURCE_PACKAGE_MANIFEST_DRIFT'; end if;
 end $$;
+`;
+  const sourceManifestUpdateSql = upgradeSourceRuntime
+    ? "manifest_sha256=excluded.manifest_sha256,"
+    : "";
+  const sourceProvenanceSql = isAixuexi ? `
+${sourceManifestGuardSql}
 insert into public.cw_source_packages(
   source_system,package_key,document_adapter,manifest_sha256,labels,scope,counts,status
 )
@@ -866,6 +872,7 @@ values (
 )
 on conflict(source_system,package_key) do update set
   document_adapter=excluded.document_adapter,
+  ${sourceManifestUpdateSql}
   labels=excluded.labels,scope=excluded.scope,counts=excluded.counts,
   status=case when public.cw_source_packages.status='imported' then 'imported' else 'importing' end;
 insert into public.cw_source_lectures(
