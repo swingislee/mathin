@@ -196,6 +196,12 @@ Gate 1 已按以下顺序关闭：
 
 数据更正必须把一个自由班表示为一门教师微课，把来源课节按顺序表示为稳定多讲，并以班级年级与 `term_id → school_terms.term` 固定课程目录维度；同课节并行方案保留独立草稿/审核快照，但发布到同一讲次的连续 release_no，不再增加课程或讲次。“本节使用”、课堂冻结与已冻结历史继续保留。生产归并前须对当前 1 班/3 课节/3 方案做明确映射预览、备份、完整 rollback/零残留演练和 release/审核快照/Storage 不变量核对，并重新取得 schema/app 发布授权。当前状态为 **LOCAL CONTRACT CORRECTED / DATA MIGRATION NOT DEPLOYED**。
 
+#### DEV-TMC-4 · 教师微课课程浏览与维护工作台
+
+`DEV-TMC-4` 是产品负责人于 2026-08-30 选入的开发端独立增量，权威范围见 [`29-teacher-microcourse-browser-redesign.md`](29-teacher-microcourse-browser-redesign.md)，当前状态为 **LOCAL IMPLEMENTATION IN PROGRESS / NOT DEPLOYED**。它在 DEV-TMC-3 的“一班一课、多课节多讲”根对象上增加 766 使用场景树、机构学术维度、课程适用范围、目录—表格—轻量预览浏览器、同名归并、课程级维护方向与默认版本管理；现有课次方案、immutable release、课堂冻结和历史引用继续作为内容权威。
+
+本轮只允许在本机隔离 Supabase 与固定开发身份中施工，按规划 Phase 1～5 拆分可回退提交，并只运行受影响机器检查及非浏览器健康检查。产品负责人明确要求本轮不运行浏览器、Playwright 或截图验证；开发端页面仍须提供局域网验收链接与人工动作。生产 schema、历史课程归并、功能开关和应用发布均需在开发端人工验收后重新取得授权，不改变 R1-Live Gate 2。
+
 ## 6. 原 R1 工作重新定位
 
 | 原阶段 | 已有结果 | R1-Live 处理 | Production 1.0 处理 |

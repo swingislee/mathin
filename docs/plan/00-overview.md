@@ -6,7 +6,7 @@
 >
 > **阶段来源**：`04-roadmap.md` 顶部的“当前施工阶段”。
 >
-> **核对日期**：2026-08-29；依据代码、迁移、内容目录、CI、R1-Live 差距审阅、产品负责人阶段指令与 doc 00～28。
+> **核对日期**：2026-08-30；依据代码、迁移、内容目录、CI、R1-Live 差距审阅、产品负责人阶段指令与 doc 00～29。
 
 ## 1. 1.0 产品合同
 
@@ -98,7 +98,7 @@ R1-Live 不缩减 1.0 产品合同。它只保留两个结果 Gate：原范围�
 | `deferred` | 当前发布不实施 |
 | `superseded` | 只用于追查历史决定 |
 
-## 6. doc 00～28 状态索引
+## 6. doc 00～29 状态索引
 
 | 文档 | 状态 | 有效内容 |
 | --- | --- | --- |
@@ -131,6 +131,7 @@ R1-Live 不缩减 1.0 产品合同。它只保留两个结果 Gate：原范围�
 | `26-teacher-workflow-upgrade.md` | partial | 左侧备课步骤、右侧常驻课件预览、板书解析与结构化教案；独立教案管理入口和派生输出待补 |
 | `27-small-screen-workspace-adaptation.md` | active | 1024–1280px 窄屏与平板横屏的侧栏三态、工作区可拖拽分栏、4:3 全屏与容器查询收敛 |
 | `28-spatial-mathematics-lab.md` | active | SML-0 暂停点：空间数学课程能力、4:3 文档、金标、hash、权限、发布/冻结与纵向空壳合同仍未关闭；当前主线已切到 R1-Live |
+| `29-teacher-microcourse-browser-redesign.md` | active | DEV-TMC-4 开发轨：766 场景树、学术维度、适用范围、课程表格与轻量预览、维护方向及默认版本；未获生产授权 |
 
 ## 7. 当前发布纪律
 
@@ -144,6 +145,7 @@ R1-Live 不缩减 1.0 产品合同。它只保留两个结果 Gate：原范围�
 - `HOTFIX-20260829-TMC-RESEARCH-ENTRY` 当前为 `DEPLOYED / PENDING PRODUCTION USER ACCEPTANCE`：DEV-TMC-2 的数据库权限原已允许教研跨班创建/派生课件方案，但课次页把“编辑课件”错误绑定到任课教师 `canPrepare`。应用 `bf81aa4…` 已把入口改为同时接受教研 `courseware.review + courseware.microcourse.author`，备课定稿、试讲、点名、课堂控制和“本节使用”仍只属于任课教师；定向 Vitest、固定账号 Playwright、双 production build、原子发布与无登录 postflight 通过，生产登录页人工刷新验收仍 pending。
 - `HOTFIX-20260829-TMC-SOURCE-PREVIEW` 当前为 `DEPLOYED / MACHINE POSTFLIGHT PASSED / PENDING PRODUCTION USER ACCEPTANCE`：来源运行时绑定的 kind 可为空，旧解析器因此跳过钉死 H5 对象的权威 kind/hash，并按普通资源签名；通用讲次审核页又只预览已发布 release，首次发布前的待审作品显示空白。应用 `6185352…` 已按 pinned object 解析 H5 package，并把教师微课 active review 转到不可变审核快照；现有 32 页、283/283 个绑定未改动。定向 Vitest 17/17、固定账号 Playwright 2/2、双 production build、原子发布与独立 postflight 通过，生产页面刷新验收仍 pending。
 - `HOTFIX-20260829-CLASSROOM-INTERACTION-SYNC` 当前为 `LOCAL MACHINE/BROWSER CHECKS PASSED / PENDING REAL IPAD ACCEPTANCE / NOT DEPLOYED`：`game-page-v1` 补齐自编数独从教师端到全班事件流的 `GameMirrorState` 链路；版本化 `ClassroomInteractionSyncProvider` 要求未来 Mathin 自研游戏、H5 和 3D 明确声明 snapshot、语义 command 或课堂只读。定向 Vitest 72/72、同步审计 4/4、本地 Chromium 控制页→展示页填数/突出行与既有 H5 合同 2/2 通过；自研 H5/空间页在同步协议完成前 fail closed。本项没有数据库或 Storage 写入，不改变生产 current/previous 与 R1-Live Gate 2；这些结果不证明真实 iPad Safari 或跨设备局域网已验收。
+- `DEV-TMC-4` 当前为 `LOCAL IMPLEMENTATION IN PROGRESS / NOT DEPLOYED`：教师微课课程族按 doc 29 重构为使用场景树、课程表格和当前默认版本预览，并补齐机构学术维度、课程适用范围、维护方向与默认版本管理。本轮只在本机隔离目标施工；生产 schema、数据归并、开关和发布均未获授权。
 - 原 R1 暂停在 R1-9。P6-AIX-2、来源 manifest 和导出器结果保留；1305 讲全量对象证据及 R1-10～18 进入 Production 1.0/上线后池，不再阻塞第一名教师开始工作。SML-0 作为独立并行轨道保留暂停点。
 - R1 实际责任映射由 doc 25 §7.1 维护；阶段证据统一从 `docs/evidence/r1/README.md` 索引，Agent 只能作为执行者，不能代替人员 owner 或批准人。
 - R1-Live 已建立只绑定 `127.0.0.1` 且关闭自助注册的本机隔离开发目标；11 个固定开发身份已从 gitignored manifest 初始化并通过密码登录。Xiaomi 上首名真实教师已通过邮箱绑定的一次性员工邀请完成注册并持有工作岗位；正式管理员 verified MFA=`1`；active manifest 仍为 8 条 protected、0 条 purge。生产数据库 ledger=`220`、head=`20260829000200_admin_self_staff_roles`，应用 current/previous=`20260829-045135` / `6185352…` 与 `20260829-033955` / `59cc342…`。课堂 Stage A、B1 与 B2 已通过；Stage B3、来源课件运行时、教师微课多方案、班级/活动分类、DEV-ORG/DEV-DASH、自由班/H5、管理员自授岗、教研课件入口与微课来源预览 hotfix 已部署待产品验收。最新 PostgreSQL+Storage 同批次全量备份为 `mathin-20260828T052842Z-teacher-microcourse-variant-087b497`，最近 PostgreSQL 写前备份为 `mathin-db-prechange-20260828T195236Z-admin-self-role-ba98a8e`；本轮是 app-only 来源预览修复，不改 schema、业务或 Storage。Gate 1 `PASS`；生产共有 4 个班级、19 个课次和 1 条 active 报名，其中 production 长期正式班=`1/15/1`、短期专题班=`1/3/0`，test 长期班=`2/1/0`；教师/教研岗位成员=`6/4`，正式点名仍为 0，Gate 2 继续 `BLOCKED`，退出差距仍是正式教师点名持久再读和权限对照。当前已规划且不扩张范围的步骤按 standing direction 直接推进；需要真实教师输入、人工操作或验收，发现计划外差异，或进入清理、不可逆动作和范围扩张时停止。生产写入继续保留精确目标、只读 preflight、fail-closed 断言和证据登记。
