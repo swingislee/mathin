@@ -458,7 +458,8 @@ describe("R1 classroom continuity contracts", () => {
     expect(rosterGrid).toContain("overflow-y-auto");
     expect(controlBar).toContain('data-classroom-control-bar="full-width"');
     expect(controlBar).toContain('data-classroom-control-surface="flat-rail"');
-    expect(controlBar).toContain('data-classroom-control-background="optical-glass"');
+    expect(controlBar).toContain('data-classroom-control-background="transparent-tray"');
+    expect(controlBar).toContain('data-classroom-fixed-controls-surface="optical-glass"');
     expect(controlBar).not.toContain("border-t");
     expect(controlBar).toContain("bg-paper/30");
     expect(controlBar).toContain("rounded-[1.4rem]");

@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { classifyClassroomToolTrayGesture } from "./classroom-tool-tray";
 
-/** Fixed optical-glass dock aligned to the teacher body's two columns. */
+/** Transparent teaching tray with a separate optical-glass surface for fixed controls. */
 export function TeacherClassroomControlBar({
   inputControls,
   drawingControls,
@@ -44,10 +44,10 @@ export function TeacherClassroomControlBar({
 
   return (
     <footer
-      className="fixed inset-x-0 bottom-0 z-[70] grid h-12 grid-cols-[minmax(0,1fr)_auto] items-center gap-0.5 rounded-none bg-paper/30 px-0.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.24),inset_0_-1px_0_rgba(0,0,0,0.16),0_8px_26px_rgba(0,0,0,0.2)] ring-0 backdrop-blur-xl backdrop-saturate-150 lg:inset-x-3 lg:bottom-[max(.25rem,env(safe-area-inset-bottom))] lg:gap-2 lg:rounded-[1.4rem] lg:px-2 lg:ring-1 lg:ring-inset lg:ring-white/10"
+      className="fixed inset-x-0 bottom-0 z-[70] grid h-12 grid-cols-[minmax(0,1fr)_auto] items-center gap-0.5 bg-transparent px-0 shadow-none ring-0 backdrop-blur-none lg:inset-x-3 lg:bottom-[max(.25rem,env(safe-area-inset-bottom))] lg:gap-2"
       data-classroom-control-bar="full-width"
       data-classroom-control-surface="flat-rail"
-      data-classroom-control-background="optical-glass"
+      data-classroom-control-background="transparent-tray"
     >
       <div className="relative min-w-0">
         <div
@@ -89,7 +89,11 @@ export function TeacherClassroomControlBar({
           </div>
         </div>
       </div>
-      <div className="flex min-w-0 shrink-0 items-center justify-end gap-0 border-l border-line pl-0.5 [&_[data-classroom-rail-button]]:!size-9 lg:gap-1 lg:pl-2 lg:[&_[data-classroom-rail-button]]:!size-11" data-classroom-fixed-controls="compact-on-narrow">
+      <div
+        className="flex h-12 min-w-0 shrink-0 items-center justify-end gap-0 overflow-hidden rounded-none border-l border-line bg-paper/30 pl-0.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.24),inset_0_-1px_0_rgba(0,0,0,0.16),0_8px_26px_rgba(0,0,0,0.2)] ring-0 backdrop-blur-xl backdrop-saturate-150 [&_[data-classroom-rail-button]]:!size-9 lg:gap-1 lg:rounded-[1.4rem] lg:border-l-0 lg:px-1 lg:ring-1 lg:ring-inset lg:ring-white/10 lg:[&_[data-classroom-rail-button]]:!size-11"
+        data-classroom-fixed-controls="compact-on-narrow"
+        data-classroom-fixed-controls-surface="optical-glass"
+      >
         <div className="flex shrink-0 items-center" data-classroom-control-zone="pages">{pageControls}</div>
         <span aria-hidden className="hidden h-6 w-px shrink-0 bg-line lg:block" />
         <div className="flex shrink-0 items-center" data-classroom-control-zone="utility">{utilityControls}</div>
