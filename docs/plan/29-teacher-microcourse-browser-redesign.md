@@ -1,7 +1,7 @@
 # 29 · 教师微课课程浏览与维护体系重构
 
 > **规划状态**：`active`  
-> **当前状态**：教师微课 schema 已进入生产，数据库 ledger/head=`236 / 20260830000700_teacher_microcourse_editor_unification`。编辑器布局、预览反馈与课程选择修复已以隔离候选 `15e48ada…` 发布为 production release `20260830-081944`，机器 health 通过，产品页面验收继续进行。随后确认生产仍保留 `teaching.teacher_microcourse_browser_v2` version 1 / false，导致同一稳定 slug 在开发与生产进入不同页面；应用根修复已将 v2 固化为 `teacher-microcourses` 的唯一主工作台并退出该 rollout flag 的配置入口，待发布与人工验收
+> **当前状态**：教师微课 schema 已进入生产，数据库 ledger/head=`236 / 20260830000700_teacher_microcourse_editor_unification`。编辑器布局、预览反馈与课程选择修复先以隔离候选 `15e48ada…` 发布；随后确认生产 `teaching.teacher_microcourse_browser_v2` 仍为 version 1 / false，导致同一稳定 slug 在开发与生产进入不同页面。应用根修复已以隔离候选 `6e0b5bda…` 发布为 production release `20260830-084610`：v2 固化为 `teacher-microcourses` 的唯一主工作台，rollout flag 退出配置入口，双层 health 通过；产品页面验收继续进行
 > **适用范围**：教师微课课程族 `courseID` 页面、教师微课适用范围、使用场景配置、课程维护版本与默认版本管理  
 > **基线实现**：以 `fe2a1d9` 及其主线后续实现为当前重构起点  
 > **施工原则**：先完成隔离环境与本地数据验收；数据库迁移、权限、生产发布继续遵循项目现有授权与回退流程
@@ -1559,6 +1559,7 @@ teaching.teacher_microcourse_browser_v2
 - 生产 `teaching.teacher_microcourse_browser_v2` 仍为 version 1 / false，而开发为 version 2 / true；课程族页因此在生产静默回退到旧产品详情。该 flag 是开发 rollout 门，不应在 v2 已成为正式产品后继续制造两个运行界面；
 - 课程族页现在只以稳定 slug 选择教师微课主工作台。历史 flag 行继续保留在数据库和 wire contract 中用于审计读取，但从机构设置、能力发布列表和两个写 action 的允许键中退出；切换历史 flag 不再改变页面；
 - 本修复不新增 migration，不修改课程族 UUID、数据库 flag 历史、课程、release、Storage 或业务数据。开发、生产继续各自使用本环境的真实 family ID 访问同一个页面合同。
+- app-only 候选 `6e0b5bda…` 已发布为 production release `20260830-084610`，previous=`20260830-081944 / 15e48ada…`；loopback/Caddy health 均通过。生产 flag 刻意保持 version 1 / false、ledger/head 保持 `236 / 20260830000700_teacher_microcourse_editor_unification`，证明页面一致性不再依赖修改环境开关。
 
 ---
 
