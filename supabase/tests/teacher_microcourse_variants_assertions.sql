@@ -219,14 +219,20 @@ where id = '00000000-0000-4000-8000-000000000942' \gset
 
 -- Editing the proposal after class advances its head without changing the
 -- revision pinned into the frozen session snapshot.
+reset role;
+select set_config('request.jwt.claim.role', 'service_role', true);
 select revision_id as post_freeze_revision_id
-from public.save_teacher_microcourse_page(
+from public.save_teacher_courseware_composition_page(
+  :'teacher_id',
   :'classroom_page_id',
   :'classroom_doc'::jsonb,
   :'classroom_revision_no'::integer,
   '课后继续修改',
   'frozen session must not drift'
 ) \gset
+select set_config('request.jwt.claim.role', 'authenticated', true);
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'teacher_id', true);
 select (
   :'post_freeze_revision_id'::uuid <> :'frozen_revision_id'::uuid
   and (select courseware_resolved #>> '{microcourseDraft,pages,0,revisionId}' = :'frozen_revision_id'

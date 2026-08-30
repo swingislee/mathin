@@ -6,9 +6,9 @@
   "projectId": "example-production-project",
   "databaseId": "example-production-database",
   "migration": {
-    "head": "20260830000600_teacher_microcourse_sudoku_composition_upgrade",
-    "digest": "0461d9a17a4010677e0eae466dc0d9ea806f2f3dac82560bef5f4c52dbf7898a",
-    "fileCount": 237
+    "head": "20260830000700_teacher_microcourse_editor_unification",
+    "digest": "03d69433a01cec476041a18f63236494c01a4d9774308352652f83a53288cecf",
+    "fileCount": 238
   },
   "platform": {
     "source": "supabase/ci/00_platform_bootstrap.sql",

@@ -49,9 +49,39 @@ select public.register_teacher_microcourse_h5_artifact(
   :'microcourse_id', repeat('e', 64), 64,
   :'teacher_id' || '/' || :'microcourse_id' || '/' || repeat('e', 64) || '/index.html'
 ) as h5_artifact_id \gset
-select public.create_teacher_microcourse_h5_page(
-  :'microcourse_id', :'h5_artifact_id', :'composition_page_id', 'H5 页'
-) as h5_page_id \gset
+select revision_row.doc as composition_doc, revision_row.revision_no as composition_revision_no
+from public.cw_page_docs page_row
+join public.cw_page_revisions revision_row on revision_row.id = page_row.draft_revision_id
+where page_row.id = :'composition_page_id' \gset
+reset role;
+select set_config('request.jwt.claim.role', 'service_role', true);
+select revision_id as h5_composition_revision_id
+from public.save_teacher_courseware_composition_page(
+  :'teacher_id',
+  :'composition_page_id',
+  jsonb_set(
+    :'composition_doc'::jsonb,
+    '{layout,blocks}',
+    jsonb_build_array(jsonb_build_object(
+      'id', 'h5-lifecycle-fixture',
+      'type', 'h5',
+      'placement', jsonb_build_object('column', 0, 'row', 0, 'columnSpan', 12, 'rowSpan', 9),
+      'h5', jsonb_build_object(
+        'artifactId', :'h5_artifact_id',
+        'sha256', repeat('e', 64),
+        'byteCount', 64,
+        'entryPath', 'index.html'
+      )
+    )),
+    true
+  ),
+  :'composition_revision_no'::integer,
+  '图文与 H5 组合页',
+  'embed H5 component'
+) \gset
+select set_config('request.jwt.claim.role', 'authenticated', true);
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'teacher_id', true);
 
 -- The originating free session freezes revision 1 before later edits.
 select public.freeze_teacher_microcourse_source_session(:'microcourse_id') as frozen_resolved \gset
@@ -84,10 +114,16 @@ where page_row.id = :'composition_page_id' \gset
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', :'teacher_id', true);
-select public.save_teacher_microcourse_page(
-  :'composition_page_id', :'page_doc'::jsonb, :'page_revision_no'::integer,
+reset role;
+select set_config('request.jwt.claim.role', 'service_role', true);
+select revision_id
+from public.save_teacher_courseware_composition_page(
+  :'teacher_id', :'composition_page_id', :'page_doc'::jsonb, :'page_revision_no'::integer,
   '图文页·版本二', 'revision two'
 );
+select set_config('request.jwt.claim.role', 'authenticated', true);
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'teacher_id', true);
 select public.save_teacher_microcourse_metadata(
   :'microcourse_id', '生命周期版本二', '提交版本二', 4::smallint,
   null::smallint, '', 'logic-strategy', array['版本二']
@@ -110,10 +146,16 @@ where page_row.id = :'composition_page_id' \gset
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', :'teacher_id', true);
-select public.save_teacher_microcourse_page(
-  :'composition_page_id', :'submitted_doc'::jsonb, :'submitted_revision_no'::integer,
+reset role;
+select set_config('request.jwt.claim.role', 'service_role', true);
+select revision_id
+from public.save_teacher_courseware_composition_page(
+  :'teacher_id', :'composition_page_id', :'submitted_doc'::jsonb, :'submitted_revision_no'::integer,
   '图文页·审核后草稿', 'edit during review'
 );
+select set_config('request.jwt.claim.role', 'authenticated', true);
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'teacher_id', true);
 select public.save_teacher_microcourse_metadata(
   :'microcourse_id', '审核期间新草稿', '不得偷换已提交元数据', 4::smallint,
   null::smallint, '', 'geometry', array['未发布']
