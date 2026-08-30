@@ -125,15 +125,22 @@
 
 ## 6. 组件规范
 
-### 6.0 Dashboard 连续工作区与 Card 禁用规则
+### 6.0 Dashboard 连续工作区、Card 默认禁用与明确设计保留规则
 
 Dashboard、Classroom、Whiteboard 和 Courseware Studio 默认使用连续工作区，不以 Card 作为页面布局原语：
 
 - 页面身份只进入 `DashboardPage` 或 `ObjectBar`；搜索、筛选、状态切换和业务操作只进入 `DashboardCommandPanel`；
-- 正文使用无外框 `DashboardSection`、`DashboardTableShell`、局部底色、稳定留白和主栏／侧栏关系表达层级；标题、说明、筛选栏、导航、表格、表单、只读摘要和空状态不得各套一张 Card；
+- 正文使用无外框 `DashboardSection`、`DashboardTableShell`、稳定留白和主栏／侧栏关系表达层级；标题、说明、筛选栏、导航、表格、表单、只读摘要和空状态不得各套一张 Card；
 - 三栏或分栏工作台使用一块连续画布，栏间以结构线分隔；不得把每一栏做成独立圆角卡片，也不得用卡片内边距降低数据密度；
 - shadcn `Card`、`DashboardCard`、`DashboardCardGrid` 和手写 `rounded-* border bg-card` 均为显式例外，不是默认方案。只有产品负责人明确要求，或对象确实需要独立搬运、选择、并列比较时才能使用，并在实现附近说明独立对象语义；
+- 产品负责人提供的明确页面设计优先于通用“少用 Card”规则；设计稿中已经定义的 Card 是页面合同，后续统一语义或清债不得擅自改成无框 section。教师微课创作页的页面栏与 composition 编辑工作面属于当前明确保留的 Card 例外；
 - 空状态属于它所替代的列表、表格或画布区域，保持该区域尺寸与边线，不额外生成居中的空状态卡片。
+
+背景色按语义使用：
+
+- 允许背景色表达已批准 Card 的独立表面、选中／状态反馈、悬浮层可读性，以及课件、游戏或 H5 画布自己的内容底色；
+- 普通 section、栏位、目录、筛选集合、统计摘要和表格外层默认透明并继承页面底色，不得仅为了视觉分块添加 `bg-moon/*`、`bg-paper/*` 或 `bg-card`；
+- 删除背景色时不得连带删除有业务含义的选中态，也不得把明确设计的 Card 再次拉平成“分隔线下的隐藏卡片”。
 
 分隔线按拥有者只出现一次：
 

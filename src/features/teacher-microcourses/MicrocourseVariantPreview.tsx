@@ -17,7 +17,7 @@ export function MicrocourseVariantPreview({ editor }: { editor: TeacherMicrocour
   );
   const modeLabel = () => t("mode_composition");
 
-  return <div className="grid min-h-[40rem] overflow-hidden bg-moon/10 xl:grid-cols-[16rem_minmax(0,1fr)]" data-testid="microcourse-variant-preview">
+  return <div className="grid min-h-[40rem] overflow-hidden xl:grid-cols-[16rem_minmax(0,1fr)]" data-testid="microcourse-variant-preview">
     <section className="min-h-0 overflow-hidden p-3 xl:border-r xl:border-line/80">
       <h2 className="mb-3 text-sm font-medium">{t("previewPages", { count: editor.pages.length })}</h2>
       <div className="h-[36rem] p-3">

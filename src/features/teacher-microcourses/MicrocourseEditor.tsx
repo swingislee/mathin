@@ -5,6 +5,7 @@ import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, Play, Plus, Save, Send, Tra
 import { useLocale, useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,7 +58,6 @@ export function MicrocourseEditor({ session, editor, canTeach }: {
   const [message, setMessage] = useState("");
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [pageDrafts, setPageDrafts] = useState<Record<string, PersistedPageDraft>>({});
-  const [pageTitleDrafts, setPageTitleDrafts] = useState<Record<string, string>>({});
   const [selectedPageId, setSelectedPageId] = useState<string | null>(editor.pages[0]?.pageDocId ?? null);
   const [deletePageId, setDeletePageId] = useState<string | null>(null);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
@@ -68,9 +68,8 @@ export function MicrocourseEditor({ session, editor, canTeach }: {
 
   const pages = useMemo(() => editor.pages.map((page) => {
     const draft = pageDrafts[page.pageDocId];
-    const resolved = draft ? { ...page, title: draft.title, doc: draft.doc, revisionNo: draft.revisionNo } : page;
-    return pageTitleDrafts[page.pageDocId] === undefined ? resolved : { ...resolved, title: pageTitleDrafts[page.pageDocId] };
-  }), [editor.pages, pageDrafts, pageTitleDrafts]);
+    return draft ? { ...page, title: draft.title, doc: draft.doc, revisionNo: draft.revisionNo } : page;
+  }), [editor.pages, pageDrafts]);
   const currentPage = pages.find((page) => page.pageDocId === selectedPageId) ?? pages[0] ?? null;
   const stage = editor.workflow?.stage ?? "idle";
   const inReview = stage === "in_review" || stage === "ready_to_publish";
@@ -95,18 +94,7 @@ export function MicrocourseEditor({ session, editor, canTeach }: {
   };
   const handlePagePersisted = useCallback((draft: PersistedPageDraft) => {
     setPageDrafts((current) => ({ ...current, [draft.pageDocId]: draft }));
-    setPageTitleDrafts((current) => {
-      if (current[draft.pageDocId] === undefined) return current;
-      const next = { ...current };
-      delete next[draft.pageDocId];
-      return next;
-    });
   }, []);
-  const renameCurrentPage = (value: string) => {
-    if (!currentPage) return;
-    setPageTitleDrafts((current) => ({ ...current, [currentPage.pageDocId]: value }));
-    workbenchRef.current?.rename?.(value);
-  };
   const saveMetadata = () => startTransition(async () => {
     const result = await saveTeacherMicrocourseMetadataAction({
       microcourseId: editor.id, title, description, grade, courseSeason, classType, primaryTopicSlug,
@@ -212,7 +200,7 @@ export function MicrocourseEditor({ session, editor, canTeach }: {
           </div>
         </div>
         {detailsOpen ? (
-          <div className="mt-3 grid gap-3 bg-moon/15 p-4 lg:grid-cols-12">
+          <div className="mt-3 grid gap-3 pt-3 lg:grid-cols-12">
             <Label className="grid gap-1 lg:col-span-4"><span>{t("title")}</span><Input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={100} /></Label>
             <Label className="grid gap-1 lg:col-span-2"><span>{t("grade")}</span><Select value={String(grade)} onValueChange={(value) => setGrade(Number(value))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{Array.from({ length: 9 }, (_, index) => index + 1).map((value) => <SelectItem key={value} value={String(value)}>{t("gradeValue", { grade: value })}</SelectItem>)}</SelectContent></Select></Label>
             <Label className="grid gap-1 lg:col-span-2"><span>{t("courseSeason")}</span><Select value={courseSeason === null ? NONE : String(courseSeason)} onValueChange={(value) => setCourseSeason(value === NONE ? null : Number(value))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value={NONE}>{t("seasonNone")}</SelectItem>{[1, 2, 3, 4].map((value) => <SelectItem key={value} value={String(value)}>{t(`season_${value}`)}</SelectItem>)}</SelectContent></Select></Label>
@@ -227,38 +215,41 @@ export function MicrocourseEditor({ session, editor, canTeach }: {
         {message ? <p role="status" className="mt-2 text-xs text-muted">{message}</p> : null}
       </section>
 
-      <div className="grid h-[calc(100dvh-9rem)] min-h-[32rem] overflow-hidden xl:grid-cols-[18rem_minmax(0,1fr)]">
-        <nav className="flex min-h-0 flex-col overflow-hidden bg-moon/10 xl:border-r xl:border-line/80" aria-label={t("pages", { count: pages.length })}>
-          <div className="flex items-center justify-between px-3 py-2.5">
-            <h2 className="text-sm font-medium">{t("pages", { count: pages.length })}</h2>
+      {/* Product-approved authoring layout: the page rail and composition surface are independent cards. */}
+      <div className="grid h-[calc(100dvh-9rem)] min-h-[32rem] gap-3 xl:grid-cols-[13rem_minmax(0,1fr)]">
+        <Card className="flex min-h-0 flex-col overflow-hidden" role="navigation" aria-label={t("pages", { count: pages.length })}>
+          <CardHeader className="flex-row items-center justify-between space-y-0 p-3 pb-2">
+            <CardTitle className="text-sm">{t("pages", { count: pages.length })}</CardTitle>
             <Button type="button" size="sm" variant="ghost" className="size-8 p-0" disabled={pending || pageSwitching} onClick={addBlank} aria-label={t("addBlank")}><Plus className="size-4" /></Button>
-          </div>
-          <div className="px-3 pb-3"><MicrocourseSourcePicker microcourseId={editor.id} afterPageDocId={currentPage?.pageDocId ?? null} disabled={pending || pageSwitching} onAdded={(id, count) => void handlePageAdded(id, t("pagesAdded", { count }))} /></div>
-          <ScrollArea className="min-h-0 flex-1">
-            <ol className="space-y-1 px-2 pb-3">
-              {pages.map((page) => {
-                const active = page.pageDocId === currentPage?.pageDocId;
-                return <li key={page.pageDocId}>
-                  {active ? (
-                    <div className="flex items-center gap-2 bg-crater/10 px-2 py-1.5 text-ink">
-                      <span className="w-5 shrink-0 text-xs text-muted">{page.pageNo}</span>
-                      <Input aria-label={t("renamePage")} value={page.title} maxLength={200} className="h-7 min-w-0 flex-1 border-0 bg-transparent px-1 text-sm shadow-none focus-visible:ring-1" onChange={(event) => renameCurrentPage(event.target.value)} />
-                    </div>
-                  ) : (
-                    <Button type="button" variant="ghost" disabled={pending || pageSwitching} onClick={() => void selectPage(page.pageDocId)} className="h-10 w-full justify-start rounded-md px-2 text-left">
-                      <span className="w-5 shrink-0 text-xs text-muted">{page.pageNo}</span><span className="min-w-0 truncate text-sm">{page.title}</span>
-                    </Button>
-                  )}
-                </li>;
-              })}
-            </ol>
-          </ScrollArea>
-          <div className="grid grid-cols-3 gap-1 p-2">
-            <Button type="button" size="sm" variant="ghost" disabled={pending || !currentPage || currentPage.pageNo <= 1} onClick={() => movePage(-1)} aria-label={t("moveUp")}><ArrowUp className="size-4" /></Button>
-            <Button type="button" size="sm" variant="ghost" disabled={pending || !currentPage || currentPage.pageNo >= pages.length} onClick={() => movePage(1)} aria-label={t("moveDown")}><ArrowDown className="size-4" /></Button>
-            <Button type="button" size="sm" variant="ghost" disabled={pending || !currentPage} onClick={() => setDeletePageId(currentPage?.pageDocId ?? null)} aria-label={t("deletePage")}><Trash2 className="size-4 text-rose" /></Button>
-          </div>
-        </nav>
+          </CardHeader>
+          <CardContent className="flex min-h-0 flex-1 flex-col p-3 pt-0">
+            <div className="pb-3"><MicrocourseSourcePicker microcourseId={editor.id} afterPageDocId={currentPage?.pageDocId ?? null} disabled={pending || pageSwitching} onAdded={(id, count) => void handlePageAdded(id, t("pagesAdded", { count }))} /></div>
+            <ScrollArea className="min-h-0 flex-1">
+              <ol className="space-y-1 px-2 pb-3">
+                {pages.map((page) => {
+                  const active = page.pageDocId === currentPage?.pageDocId;
+                  return <li key={page.pageDocId}>
+                    {active ? (
+                      <div className="flex items-center gap-2 bg-crater/10 px-2 py-1.5 text-ink">
+                        <span className="w-5 shrink-0 text-xs text-muted">{page.pageNo}</span>
+                        <span className="min-w-0 truncate text-sm">{page.title}</span>
+                      </div>
+                    ) : (
+                      <Button type="button" variant="ghost" disabled={pending || pageSwitching} onClick={() => void selectPage(page.pageDocId)} className="h-10 w-full justify-start rounded-md px-2 text-left">
+                        <span className="w-5 shrink-0 text-xs text-muted">{page.pageNo}</span><span className="min-w-0 truncate text-sm">{page.title}</span>
+                      </Button>
+                    )}
+                  </li>;
+                })}
+              </ol>
+            </ScrollArea>
+            <div className="grid grid-cols-3 gap-1 p-2">
+              <Button type="button" size="sm" variant="ghost" disabled={pending || !currentPage || currentPage.pageNo <= 1} onClick={() => movePage(-1)} aria-label={t("moveUp")}><ArrowUp className="size-4" /></Button>
+              <Button type="button" size="sm" variant="ghost" disabled={pending || !currentPage || currentPage.pageNo >= pages.length} onClick={() => movePage(1)} aria-label={t("moveDown")}><ArrowDown className="size-4" /></Button>
+              <Button type="button" size="sm" variant="ghost" disabled={pending || !currentPage} onClick={() => setDeletePageId(currentPage?.pageDocId ?? null)} aria-label={t("deletePage")}><Trash2 className="size-4 text-rose" /></Button>
+            </div>
+          </CardContent>
+        </Card>
         {currentPage
           ? <CoursewareCompositionWorkbench ref={workbenchRef} key={currentPage.pageDocId} microcourseId={editor.id} page={currentPage} onPersisted={handlePagePersisted} onStatus={setMessage} />
           : <section className="grid place-items-center"><p className="text-sm text-muted">{t("emptyPages")}</p></section>}

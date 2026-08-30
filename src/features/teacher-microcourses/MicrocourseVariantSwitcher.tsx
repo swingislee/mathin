@@ -106,7 +106,7 @@ export function MicrocourseVariantSwitcher({
               </span>
           </Link>)}
         </div>
-        {activeVariant && <div className="flex flex-wrap items-center justify-between gap-3 bg-moon/15 px-3 py-2">
+        {activeVariant && <div className="flex flex-wrap items-center justify-between gap-3 px-3 py-2">
           <div className="min-w-0 text-sm">
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-medium">{activeVariant.variantName}</span>

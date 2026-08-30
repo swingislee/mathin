@@ -53,10 +53,10 @@ export function MicrocourseReviewPanel({ review }: { review: TeacherMicrocourseR
         {review.metadata.classType && <Badge variant="outline">{review.metadata.classType}</Badge>}
         {review.metadata.keywords.map((keyword) => <Badge key={keyword} variant="outline">{keyword}</Badge>)}
       </div>
-      {review.submissionNote && <p className="bg-moon/15 px-3 py-2 text-sm text-muted">{t("submissionNote", { note: review.submissionNote })}</p>}
+      {review.submissionNote && <p className="px-3 py-2 text-sm text-muted">{t("submissionNote", { note: review.submissionNote })}</p>}
     </DashboardSection>
 
-    <div className="grid min-h-[42rem] overflow-hidden bg-moon/10 xl:grid-cols-[17rem_minmax(0,1fr)_20rem]">
+    <div className="grid min-h-[42rem] overflow-hidden xl:grid-cols-[17rem_minmax(0,1fr)_20rem]">
       <section className="min-h-0 overflow-hidden p-3 xl:border-r xl:border-line/80">
         <h2 className="mb-3 text-sm font-medium">{t("snapshotPages", { count: review.pages.length })}</h2>
         <ScrollArea className="h-[36rem]">

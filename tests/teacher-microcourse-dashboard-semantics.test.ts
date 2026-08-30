@@ -44,4 +44,23 @@ describe("teacher microcourse Dashboard semantics", () => {
     expect(targets[2]).toContain("selectedDimension");
     expect(targets.slice(1).every((source) => source.includes("<DashboardTableShell"))).toBe(true);
   });
+
+  it("keeps browser preview reachable and removes neutral workspace tones", () => {
+    const browser = read("src", "features", "school", "teaching-operations", "TeacherMicrocourseBrowser.tsx");
+    const preview = read("src", "features", "school", "teaching-operations", "TeacherMicrocourseQuickPreview.tsx");
+    const review = read("src", "features", "teacher-microcourses", "MicrocourseReviewPanel.tsx");
+    const variant = read("src", "features", "teacher-microcourses", "MicrocourseVariantPreview.tsx");
+    const settings = read("src", "features", "school", "teaching-operations", "TeacherMicrocourseSceneManager.tsx");
+
+    expect(browser).toContain('className="size-9 shrink-0 p-0" aria-label={t("search")}');
+    expect(browser).toContain("@5xl/page:grid-cols-[15rem_minmax(0,1fr)_20rem]");
+    expect(browser).toContain("desktopPreviewRef.current?.getClientRects().length");
+    expect(browser).toContain("model.courses.some((course) => course.id === selectedCourseIdCandidate)");
+    expect(browser).not.toContain("bg-moon/10");
+    expect(preview).not.toContain("bg-paper/40");
+    expect(review).not.toContain("bg-moon/10");
+    expect(variant).not.toContain("bg-moon/10");
+    expect(settings).not.toContain("bg-paper/55");
+    expect(settings).not.toContain("bg-paper/60");
+  });
 });
