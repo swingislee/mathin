@@ -10251,6 +10251,16 @@ export type Database = {
         }
         Returns: string
       }
+      create_subject_microcourse_scene: {
+        Args: {
+          p_course_family_id: string
+          p_description?: string
+          p_name: string
+          p_parent_id: string
+          p_root_id: string
+        }
+        Returns: string
+      }
       create_teacher_microcourse_composition_page: {
         Args: {
           p_after_page_doc_id?: string
@@ -12009,6 +12019,10 @@ export type Database = {
           updated_at: string
         }[]
       }
+      list_teacher_microcourse_configuration: {
+        Args: { p_course_family_id: string }
+        Returns: Json
+      }
       list_teacher_microcourse_review_queue: {
         Args: never
         Returns: {
@@ -12166,6 +12180,19 @@ export type Database = {
       moderate_post: {
         Args: { p_post_id: string; p_reason?: string; p_status: string }
         Returns: Json
+      }
+      move_organization_microcourse_dimension: {
+        Args: { p_direction: number; p_id: string; p_kind: string }
+        Returns: undefined
+      }
+      move_subject_microcourse_scenes: {
+        Args: {
+          p_scene_ids: string[]
+          p_target_index: number
+          p_target_parent_id: string
+          p_target_root_id: string
+        }
+        Returns: undefined
       }
       normalize_login_identifier: {
         Args: { p_identifier: string; p_identifier_type: string }
@@ -12552,6 +12579,10 @@ export type Database = {
       }
       reorder_teacher_microcourse_pages: {
         Args: { p_microcourse_id: string; p_page_ids: string[] }
+        Returns: undefined
+      }
+      reorder_subject_microcourse_scene_roots: {
+        Args: { p_course_family_id: string; p_root_ids: string[] }
         Returns: undefined
       }
       repair_cw_adapt_background: {
@@ -13413,6 +13444,14 @@ export type Database = {
         }
         Returns: string
       }
+      set_subject_microcourse_scene_roots: {
+        Args: { p_codes: string[]; p_course_family_id: string }
+        Returns: undefined
+      }
+      set_teacher_microcourse_subject_managers: {
+        Args: { p_course_family_id: string; p_user_ids: string[] }
+        Returns: undefined
+      }
       set_whiteboard_invite: {
         Args: { enabled: boolean; wb_id: string }
         Returns: string
@@ -13774,6 +13813,29 @@ export type Database = {
       withdraw_teacher_microcourse: {
         Args: { p_microcourse_id: string }
         Returns: undefined
+      }
+      update_subject_microcourse_scene: {
+        Args: {
+          p_description: string
+          p_name: string
+          p_scene_id: string
+          p_status: string
+        }
+        Returns: undefined
+      }
+      upsert_organization_microcourse_dimension: {
+        Args: {
+          p_active: boolean
+          p_code: string
+          p_grade_no: number
+          p_id: string
+          p_kind: string
+          p_legacy_season: number
+          p_name_en: string
+          p_name_zh: string
+          p_parent_id: string
+        }
+        Returns: string
       }
       withdraw_teacher_microcourse_review: {
         Args: { p_review_cycle_id: string }
