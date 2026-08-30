@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 const root = process.cwd();
 const read = (...segments: string[]) => fs.readFileSync(path.join(root, ...segments), "utf8");
 const migration = read("supabase", "migrations", "20260830000100_teacher_microcourse_academic_scenes.sql");
+const scopeMigration = read("supabase", "migrations", "20260830000200_teacher_microcourse_course_scopes.sql");
 
 describe("DEV-TMC-4 teacher microcourse browser v2", () => {
   it("defines the fixed 19-item 766 dictionary and subject-scoped scene tree", () => {
@@ -61,5 +62,24 @@ describe("DEV-TMC-4 teacher microcourse browser v2", () => {
     const en = JSON.parse(read("messages", "en.json")) as { school: { teacherMicrocourseBrowser: Record<string, unknown> } };
     expect(Object.keys(zh.school.teacherMicrocourseBrowser).sort())
       .toEqual(Object.keys(en.school.teacherMicrocourseBrowser).sort());
+  });
+
+  it("models many-to-many scenes and universal applicability without a primary scene", () => {
+    const editor = read("src", "features", "school", "teaching-operations", "TeacherMicrocourseScopeEditor.tsx");
+    expect(scopeMigration).toContain("teacher_microcourse_course_scenes");
+    expect(scopeMigration).toContain("teacher_microcourse_course_grades");
+    expect(scopeMigration).toContain("teacher_microcourse_course_terms");
+    expect(scopeMigration).toContain("teacher_microcourse_course_class_systems");
+    expect(scopeMigration).toContain("teacher_microcourse_course_class_types");
+    expect(scopeMigration).toContain("There is deliberately no primary scene");
+    expect(scopeMigration).toContain("Zero rows in an applicability dimension means universal");
+    expect(scopeMigration).toContain("scope_origin text not null default 'manual'");
+    expect(scopeMigration).toContain("'legacy_source'");
+    expect(scopeMigration).toContain("set_teacher_microcourse_course_scopes");
+    expect(editor).toContain("multiSceneHint");
+    expect(editor).toContain("universalWhenEmpty");
+    expect(editor).toContain("classSystemIds");
+    expect(editor).toContain("classTypeIds");
+    expect(editor).not.toMatch(/<input\b/);
   });
 });

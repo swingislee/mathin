@@ -2331,7 +2331,18 @@
       "sceneNameExists": "A use case with this name already exists at this level.",
       "sceneHasChildren": "Move or archive the active child use cases first.",
       "sceneHasUnselectedChildren": "Select child use cases together when moving across levels.",
-      "dimensionExists": "That code, grade, or term mapping already exists."
+      "dimensionExists": "That code, grade, or term mapping already exists.",
+      "scopeEditorTitle": "Set use cases and applicability for {count} courses",
+      "scopeEditorHint": "A course can have multiple use cases. Leaving grades, terms, or class targets empty means universal.",
+      "bulkScopeReplaces": "Saving replaces the use cases and applicability on all selected courses. Different existing values are not merged automatically.",
+      "multiSceneHint": "Select multiple use cases; there is no primary use case.",
+      "universalWhenEmpty": "No selection means universal for this dimension.",
+      "systemScopeHint": "A system target automatically includes all current and future class types in that system.",
+      "leafScopeHint": "Concrete class types are stable leaves; future sibling types are not added automatically.",
+      "saveScope": "Save applicability",
+      "scopeSaved": "Course applicability saved",
+      "invalidScopeSelection": "The course or applicability selection contains duplicates or too many items.",
+      "invalidScopeTarget": "A course, use case, or dimension is no longer active. Refresh and select again."
     },
     "courses": {
       "title": "Course Product Library",

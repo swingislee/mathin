@@ -2331,7 +2331,18 @@
       "sceneNameExists": "同一层级已有同名场景。",
       "sceneHasChildren": "请先移动或归档该场景下的有效子场景。",
       "sceneHasUnselectedChildren": "跨层移动时请同时选择其子场景。",
-      "dimensionExists": "该代码、年级或学期映射已存在。"
+      "dimensionExists": "该代码、年级或学期映射已存在。",
+      "scopeEditorTitle": "设置 {count} 门课程的场景与适用范围",
+      "scopeEditorHint": "课程可关联多个场景；年级、学期或班型维度不选时表示通用。",
+      "bulkScopeReplaces": "保存后会用当前选择整体替换这些课程的场景与适用范围；不同原值不会自动合并。",
+      "multiSceneHint": "可以同时选择多个场景，不设主场景。",
+      "universalWhenEmpty": "不选择任何项时表示该维度通用。",
+      "systemScopeHint": "选择体系后，课程会自动适用于该体系现在和以后新增的全部班型。",
+      "leafScopeHint": "选择具体班型只适用于这些叶子项，以后新增同体系班型不会自动扩展。",
+      "saveScope": "保存适用范围",
+      "scopeSaved": "课程适用范围已保存",
+      "invalidScopeSelection": "课程或范围选择包含重复或数量超限的项目。",
+      "invalidScopeTarget": "某个课程、场景或维度已失效，请刷新后重选。"
     },
     "courses": {
       "title": "课程产品库",

@@ -23,6 +23,8 @@ const CODES = [
   "INVALID_DIMENSION",
   "DIMENSION_NOT_FOUND",
   "DIMENSION_VALUE_EXISTS",
+  "INVALID_SCOPE_SELECTION",
+  "INVALID_SCOPE_TARGET",
 ] as const;
 
 const familyInput = z.object({ courseFamilyId: uuid });
@@ -245,6 +247,43 @@ export async function moveTeacherMicrocourseDimensionAction(input: {
     });
     if (error) throw new Error(error.message);
     revalidatePath("/dashboard/courses", "layout");
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, CODES);
+  }
+}
+
+export async function setTeacherMicrocourseCourseScopesAction(input: {
+  courseFamilyId: string;
+  courseIds: string[];
+  sceneIds: string[];
+  gradeIds: string[];
+  termIds: string[];
+  classSystemIds: string[];
+  classTypeIds: string[];
+}): Promise<ActionResult> {
+  try {
+    const value = parse(familyInput.extend({
+      courseIds: uuidList.min(1),
+      sceneIds: uuidList,
+      gradeIds: uuidList,
+      termIds: uuidList,
+      classSystemIds: uuidList,
+      classTypeIds: uuidList,
+    }), input);
+    const { supabase } = await authorizedClient("subject.microcourse.scope.manage");
+    const { error } = await supabase.rpc("set_teacher_microcourse_course_scopes", {
+      p_course_family_id: value.courseFamilyId,
+      p_course_ids: value.courseIds,
+      p_scene_ids: value.sceneIds,
+      p_grade_ids: value.gradeIds,
+      p_term_ids: value.termIds,
+      p_class_system_ids: value.classSystemIds,
+      p_class_type_ids: value.classTypeIds,
+    });
+    if (error) throw new Error(error.message);
+    revalidatePath(`/dashboard/courses/${value.courseFamilyId}`);
+    revalidatePath(settingsPath(value.courseFamilyId));
     return { ok: true };
   } catch (error) {
     return actionError(error, CODES);

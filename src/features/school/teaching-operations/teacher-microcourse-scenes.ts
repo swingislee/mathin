@@ -59,11 +59,52 @@ export type TeacherMicrocourseConfiguration = z.infer<typeof teacherMicrocourseC
 export type TeacherMicrocourseScene = TeacherMicrocourseConfiguration["roots"][number]["scenes"][number];
 export type TeacherMicrocourseDimensionKind = "grade_stage" | "grade" | "term" | "class_system" | "class_type";
 
-export async function getTeacherMicrocourseConfiguration(courseFamilyId: string) {
+export const teacherMicrocourseScopesSchema = z.array(z.object({
+  courseId: uuid,
+  sceneIds: z.array(uuid),
+  gradeIds: z.array(uuid),
+  termIds: z.array(uuid),
+  classSystemIds: z.array(uuid),
+  classTypeIds: z.array(uuid),
+  hasLegacyScope: z.boolean(),
+}));
+
+export type TeacherMicrocourseCourseScope = z.infer<typeof teacherMicrocourseScopesSchema>[number];
+
+export async function listTeacherMicrocourseCourseScopes(courseFamilyId: string) {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("list_teacher_microcourse_configuration", {
+  const { data, error } = await supabase.rpc("list_teacher_microcourse_scopes", {
     p_course_family_id: uuid.parse(courseFamilyId),
   });
   if (error) throw new Error(error.message);
-  return teacherMicrocourseConfigurationSchema.parse(data);
+  return teacherMicrocourseScopesSchema.parse(data ?? []);
+}
+
+export async function getTeacherMicrocourseConfiguration(courseFamilyId: string) {
+  const supabase = await createClient();
+  const parsedFamilyId = uuid.parse(courseFamilyId);
+  const [{ data, error }, scopes] = await Promise.all([
+    supabase.rpc("list_teacher_microcourse_configuration", { p_course_family_id: parsedFamilyId }),
+    listTeacherMicrocourseCourseScopes(parsedFamilyId),
+  ]);
+  if (error) throw new Error(error.message);
+  const configuration = teacherMicrocourseConfigurationSchema.parse(data);
+  const scopeByScene = new Map<string, Set<string>>();
+  for (const scope of scopes) for (const sceneId of scope.sceneIds) {
+    const courses = scopeByScene.get(sceneId) ?? new Set<string>();
+    courses.add(scope.courseId);
+    scopeByScene.set(sceneId, courses);
+  }
+  return {
+    ...configuration,
+    roots: configuration.roots.map((root) => {
+      const rootCourses = new Set<string>();
+      const scenes = root.scenes.map((scene) => {
+        const courses = scopeByScene.get(scene.id) ?? new Set<string>();
+        for (const courseId of courses) rootCourses.add(courseId);
+        return { ...scene, courseCount: courses.size };
+      });
+      return { ...root, scenes, courseCount: rootCourses.size };
+    }),
+  } satisfies TeacherMicrocourseConfiguration;
 }

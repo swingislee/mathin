@@ -12019,6 +12019,10 @@ export type Database = {
           updated_at: string
         }[]
       }
+      list_teacher_microcourse_scopes: {
+        Args: { p_course_family_id: string }
+        Returns: Json
+      }
       list_teacher_microcourse_configuration: {
         Args: { p_course_family_id: string }
         Returns: Json
@@ -13450,6 +13454,18 @@ export type Database = {
       }
       set_teacher_microcourse_subject_managers: {
         Args: { p_course_family_id: string; p_user_ids: string[] }
+        Returns: undefined
+      }
+      set_teacher_microcourse_course_scopes: {
+        Args: {
+          p_class_system_ids: string[]
+          p_class_type_ids: string[]
+          p_course_family_id: string
+          p_course_ids: string[]
+          p_grade_ids: string[]
+          p_scene_ids: string[]
+          p_term_ids: string[]
+        }
         Returns: undefined
       }
       set_whiteboard_invite: {
