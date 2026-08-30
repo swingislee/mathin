@@ -86,6 +86,8 @@ export default function SourceRuntimeStage({
   const [runtimeFailure, setRuntimeFailure] = useState<{ frameKey: string; message: string } | null>(null);
   const appliedCtl = useRef<DocVideoControl["ctl"]>(undefined);
   const runtimeReadyFor = useRef<string | null>(null);
+  const runtimeLoadedFor = useRef<string | null>(null);
+  const runtimePayloadSentFor = useRef<string | null>(null);
   const runtimeEntry = bindingUrls[doc.runtime.bindingKey];
   const frameKey = `${doc.runtime.packageHash}:${doc.source.coursewareId}:${doc.source.pageDatabaseId}:${runtimeEntry ?? "missing"}`;
   const rendered = renderedFrameKey === frameKey;
@@ -96,7 +98,10 @@ export default function SourceRuntimeStage({
   );
 
   useEffect(() => {
-    if (runtimeReadyFor.current === frameKey && payload) {
+    if ((runtimeReadyFor.current === frameKey || runtimeLoadedFor.current === frameKey)
+        && runtimePayloadSentFor.current !== frameKey
+        && payload) {
+      runtimePayloadSentFor.current = frameKey;
       iframeRef.current?.contentWindow?.postMessage(payload, "*");
     }
   }, [frameKey, iframeRef, payload]);
@@ -108,7 +113,10 @@ export default function SourceRuntimeStage({
       if (message.source === FRAME_MESSAGE_SOURCE && message.protocol === SOURCE_RUNTIME_PROTOCOL) {
         if (message.type === "ready") {
           runtimeReadyFor.current = frameKey;
-          if (payload) iframeRef.current?.contentWindow?.postMessage(payload, "*");
+          if (payload && runtimePayloadSentFor.current !== frameKey) {
+            runtimePayloadSentFor.current = frameKey;
+            iframeRef.current?.contentWindow?.postMessage(payload, "*");
+          }
         }
         if (message.type === "rendered") {
           setRenderedFrameKey(frameKey);
@@ -179,8 +187,13 @@ export default function SourceRuntimeStage({
           data-classroom-input="native"
           onLoad={() => {
             // The child runtime posts `ready` and can finish rendering before
-            // the browser dispatches the iframe load event. Resetting state
-            // here would re-cover an already rendered page indefinitely.
+            // the parent effect is installed. Treat `load` as the second side
+            // of the same handshake and send the payload at most once.
+            runtimeLoadedFor.current = frameKey;
+            if (payload && runtimePayloadSentFor.current !== frameKey) {
+              runtimePayloadSentFor.current = frameKey;
+              iframeRef.current?.contentWindow?.postMessage(payload, "*");
+            }
             onFrameLoad();
           }}
           style={{
