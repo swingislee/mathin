@@ -29,9 +29,10 @@ import {
   updateOrganizationProfileAction,
 } from "./actions/organization-settings";
 import {
-  ORGANIZATION_FEATURE_KEYS,
+  CONFIGURABLE_ORGANIZATION_FEATURE_KEYS,
   ORGANIZATION_RULE_DOMAINS,
   type CampusSettings,
+  type ConfigurableOrganizationFeatureKey,
   type FeatureFlagVersion,
   type OrganizationFeatureKey,
   type OrganizationRuleDomain,
@@ -220,12 +221,12 @@ export function OrganizationSettingsPanel({ initial }: { initial: OrganizationSe
   const rollbackRuleRun = useAction(rollbackOrganizationRuleAction, { successMessage: t("rollbackCreated"), errorMessage: errors, onSuccess: refresh });
   const ruleHistory = useMemo(() => initial.rules.filter((row) => row.domain === ruleDomain && row.campusId === ruleCampusId), [initial.rules, ruleDomain, ruleCampusId]);
 
-  const [flagKey, setFlagKey] = useState<OrganizationFeatureKey>("finance.enabled");
+  const [flagKey, setFlagKey] = useState<ConfigurableOrganizationFeatureKey>("finance.enabled");
   const [flagCampusId, setFlagCampusId] = useState<string | null>(null);
   const [flagEnabled, setFlagEnabled] = useState(effectiveFlag(initial.featureFlags, "finance.enabled", null)?.enabled ?? false);
   const [flagEffectiveAt, setFlagEffectiveAt] = useState(localDatetimeNow);
   const [flagReason, setFlagReason] = useState("");
-  const chooseFlag = (key: OrganizationFeatureKey, scope: string | null) => {
+  const chooseFlag = (key: ConfigurableOrganizationFeatureKey, scope: string | null) => {
     setFlagKey(key);
     setFlagCampusId(scope);
     setFlagEnabled(effectiveFlag(initial.featureFlags, key, scope)?.enabled ?? false);
@@ -411,9 +412,9 @@ export function OrganizationSettingsPanel({ initial }: { initial: OrganizationSe
           <div className="border-l-2 border-crater/50 py-2 pl-3 text-sm text-muted">{t("failClosedNotice")}</div>
           <div className="mt-3 space-y-0.5">
             <SettingsField label={t("feature")} htmlFor="feature-key">
-              <Select value={flagKey} onValueChange={(value) => chooseFlag(value as OrganizationFeatureKey, flagCampusId)}>
+              <Select value={flagKey} onValueChange={(value) => chooseFlag(value as ConfigurableOrganizationFeatureKey, flagCampusId)}>
                 <SettingsSelectTrigger id="feature-key"><SelectValue /></SettingsSelectTrigger>
-                <SelectContent>{ORGANIZATION_FEATURE_KEYS.map((key) => <SelectItem key={key} value={key}>{t(`flag_${key.replaceAll(".", "_")}`)}</SelectItem>)}</SelectContent>
+                <SelectContent>{CONFIGURABLE_ORGANIZATION_FEATURE_KEYS.map((key) => <SelectItem key={key} value={key}>{t(`flag_${key.replaceAll(".", "_")}`)}</SelectItem>)}</SelectContent>
               </Select>
             </SettingsField>
             <SettingsField label={t("scope")} htmlFor="feature-scope">

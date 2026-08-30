@@ -98,7 +98,8 @@ describe("DEV-TMC-4 teacher microcourse browser v2", () => {
     expect(route).toContain("listTeacherMicrocourseBrowserCatalog");
     expect(route).not.toContain("getTeacherMicrocourseQuickPreview");
     expect(route).toContain("previews: []");
-    expect(route).toContain('isFeatureEnabled("teaching.teacher_microcourse_browser_v2")');
+    expect(route).toContain('detail.family.slug === "teacher-microcourses"');
+    expect(route).not.toContain('isFeatureEnabled("teaching.teacher_microcourse_browser_v2")');
     expect(browser).toContain("@5xl/page:grid-cols-[15rem_minmax(0,1fr)_20rem]");
     expect(browser).toContain("desktopPreviewRef.current?.getClientRects().length");
     expect(browser).toContain("<ObjectWorkspace");

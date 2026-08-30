@@ -2,7 +2,10 @@
 
 import { z } from "zod";
 import { actionError, type ActionResult } from "@/lib/action-result";
-import { ORGANIZATION_FEATURE_KEYS, type OrganizationFeatureKey } from "../organization-settings-contract";
+import {
+  CONFIGURABLE_ORGANIZATION_FEATURE_KEYS,
+  type ConfigurableOrganizationFeatureKey,
+} from "../organization-settings-contract";
 import { authorizedClient } from "./guards";
 import { COMMON_CODES, datetime, parse, requiredText, uuid } from "./schemas";
 
@@ -14,14 +17,14 @@ const CAPABILITY_CODES = [
 ] as const;
 
 const capabilityVersionSchema = z.object({
-  flagKey: z.enum(ORGANIZATION_FEATURE_KEYS),
+  flagKey: z.enum(CONFIGURABLE_ORGANIZATION_FEATURE_KEYS),
   enabled: z.boolean(),
   effectiveAt: datetime,
   reason: requiredText(200),
 });
 
 export async function setCapabilityReleaseAction(input: {
-  flagKey: OrganizationFeatureKey;
+  flagKey: ConfigurableOrganizationFeatureKey;
   enabled: boolean;
   effectiveAt: string;
   reason: string;

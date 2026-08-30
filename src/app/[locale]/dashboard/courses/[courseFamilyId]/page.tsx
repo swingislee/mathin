@@ -44,7 +44,6 @@ import { listStaffOptions } from "@/features/school/classes";
 import { Link } from "@/i18n/navigation";
 import { getActiveEnvironment, getMyPerms, requirePerm } from "@/lib/auth";
 import { cn } from "@/lib/utils";
-import { isFeatureEnabled } from "@/features/school/organization-settings";
 
 function first(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -125,7 +124,10 @@ async function CourseFamilyProductPage({
     {detail.family.purpose === "test" && <Badge variant="outline">{t("test")}</Badge>}
   </>;
 
-  if (detail.family.slug === "teacher-microcourses" && await isFeatureEnabled("teaching.teacher_microcourse_browser_v2")) {
+  // The browser is now the canonical workspace for the stable family slug.
+  // Family UUIDs are environment data and the retired rollout flag must not
+  // make the same product silently render two different pages across targets.
+  if (detail.family.slug === "teacher-microcourses") {
     const query = parseTeacherMicrocourseBrowserQuery(rawSearchParams);
     const [catalogItems, configuration, scopes, capabilities] = await Promise.all([
       listTeacherMicrocourseBrowserCatalog(detail.family.id),

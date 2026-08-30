@@ -7,7 +7,7 @@ export const ORGANIZATION_RULE_DOMAINS = [
   "public_publishing",
 ] as const;
 
-export const ORGANIZATION_FEATURE_KEYS = [
+export const CONFIGURABLE_ORGANIZATION_FEATURE_KEYS = [
   "finance.enabled",
   "notifications.email",
   "notifications.sms",
@@ -19,11 +19,31 @@ export const ORGANIZATION_FEATURE_KEYS = [
   "teaching.classroom_h5_pointer_v1",
   "teaching.classroom_layout_v2",
   "teaching.teacher_microcourses_v1",
+] as const;
+
+// Retired rollout keys remain part of the database/wire contract so historical
+// versions can still be read. They are intentionally absent from settings and
+// release controls because their feature is now the canonical application path.
+export const RETIRED_ORGANIZATION_FEATURE_KEYS = [
   "teaching.teacher_microcourse_browser_v2",
+] as const;
+
+export const ORGANIZATION_FEATURE_KEYS = [
+  ...CONFIGURABLE_ORGANIZATION_FEATURE_KEYS,
+  ...RETIRED_ORGANIZATION_FEATURE_KEYS,
 ] as const;
 
 export type OrganizationRuleDomain = (typeof ORGANIZATION_RULE_DOMAINS)[number];
 export type OrganizationFeatureKey = (typeof ORGANIZATION_FEATURE_KEYS)[number];
+export type ConfigurableOrganizationFeatureKey = (typeof CONFIGURABLE_ORGANIZATION_FEATURE_KEYS)[number];
+
+const configurableOrganizationFeatureKeySet = new Set<string>(CONFIGURABLE_ORGANIZATION_FEATURE_KEYS);
+
+export function isConfigurableOrganizationFeatureKey(
+  key: OrganizationFeatureKey,
+): key is ConfigurableOrganizationFeatureKey {
+  return configurableOrganizationFeatureKeySet.has(key);
+}
 
 export interface CampusRoomSettings {
   id: string;

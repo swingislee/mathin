@@ -4,9 +4,9 @@ import { z } from "zod";
 import { actionError, type ActionResult } from "@/lib/action-result";
 import type { Json } from "@/lib/database.types";
 import {
-  ORGANIZATION_FEATURE_KEYS,
+  CONFIGURABLE_ORGANIZATION_FEATURE_KEYS,
   ORGANIZATION_RULE_DOMAINS,
-  type OrganizationFeatureKey,
+  type ConfigurableOrganizationFeatureKey,
   type OrganizationRuleDomain,
 } from "../organization-settings-contract";
 import { authorizedClient, nullableRpcArg } from "./guards";
@@ -242,14 +242,14 @@ export async function rollbackOrganizationRuleAction(versionId: string, effectiv
 }
 
 export async function setFeatureFlagAction(input: {
-  flagKey: OrganizationFeatureKey;
+  flagKey: ConfigurableOrganizationFeatureKey;
   campusId: string | null;
   enabled: boolean;
   effectiveAt: string;
   reason: string;
 }): Promise<ActionResult> {
   try {
-    const value = parse(z.object({ flagKey: z.enum(ORGANIZATION_FEATURE_KEYS), campusId: uuid.nullable(), enabled: z.boolean(), ...effectiveInput.shape }), input);
+    const value = parse(z.object({ flagKey: z.enum(CONFIGURABLE_ORGANIZATION_FEATURE_KEYS), campusId: uuid.nullable(), enabled: z.boolean(), ...effectiveInput.shape }), input);
     const { supabase } = await authorizedClient("organization.settings.manage");
     const { error } = await supabase.rpc("set_feature_flag", {
       p_flag_key: value.flagKey,

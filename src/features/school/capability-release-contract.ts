@@ -1,4 +1,4 @@
-import type { OrganizationFeatureKey } from "./organization-settings-contract";
+import type { ConfigurableOrganizationFeatureKey } from "./organization-settings-contract";
 
 export interface CapabilityReleaseVersionV2 {
   id: string;
@@ -13,7 +13,7 @@ export interface CapabilityReleaseVersionV2 {
 }
 
 export interface CapabilityReleaseV2 {
-  flagKey: OrganizationFeatureKey;
+  flagKey: ConfigurableOrganizationFeatureKey;
   enabled: boolean;
   effectiveVersionId: string | null;
   financeReleaseLocked: boolean;
