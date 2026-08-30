@@ -96,7 +96,8 @@ describe("DEV-TMC-4 teacher microcourse browser v2", () => {
     const model = read("src", "features", "school", "teaching-operations", "teacher-microcourse-browser.ts");
 
     expect(route).toContain("listTeacherMicrocourseBrowserCatalog");
-    expect(route).toContain("getTeacherMicrocourseQuickPreview");
+    expect(route).not.toContain("getTeacherMicrocourseQuickPreview");
+    expect(route).toContain("previews: []");
     expect(route).toContain('isFeatureEnabled("teaching.teacher_microcourse_browser_v2")');
     expect(browser).toContain("@5xl/page:grid-cols-[15rem_minmax(0,1fr)_20rem]");
     expect(browser).toContain("desktopPreviewRef.current?.getClientRects().length");
@@ -109,9 +110,14 @@ describe("DEV-TMC-4 teacher microcourse browser v2", () => {
     expect(browser).toContain("searchAll");
     expect(browser).toContain("mobilePreviewOpen");
     expect(browser).toContain("setPreviewLoad({ courseId, status: \"loading\" })");
+    expect(browser).toContain("initialCourse?.previewLoaded");
+    expect(browser).toContain("requestPreview(courseId)");
     expect(browser).toContain("prefetched?.promise ?? loadPreview(courseId, controller.signal)");
     expect(table).toContain("<Table");
     expect(table).toContain('event.key !== "ArrowDown"');
+    expect(table).toContain('onClick={() => onSelect(course.id)}');
+    expect(table).toContain('onClick={(event) => event.stopPropagation()}');
+    expect(table).toContain("event.stopPropagation(); onSelect(course.id);");
     expect(table).toContain("onMouseLeave={() => onCancelPrefetch(course.id)}");
     expect(preview).toContain("data-teacher-microcourse-quick-preview");
     expect(preview).toContain('loadState === "loading"');
@@ -188,6 +194,7 @@ describe("DEV-TMC-4 teacher microcourse browser v2", () => {
     const browser = read("src", "features", "school", "teaching-operations", "TeacherMicrocourseBrowser.tsx");
     const api = read("src", "app", "api", "teacher-microcourses", "[courseId]", "quick-preview", "route.ts");
     expect(rolloutMigration).toContain("get_teacher_microcourse_quick_preview");
+    expect(rolloutMigration).toContain("if uid is null or not public.can_read_teacher_microcourse_catalog_course(p_course_id, uid)");
     expect(rolloutMigration).toContain("teacher_microcourse_catalog_courses_family_updated_idx");
     expect(browser).toContain("new Map<string, TeacherMicrocourseQuickPreviewData>");
     expect(browser).toContain("previewCache.current.size > 20");
@@ -196,6 +203,7 @@ describe("DEV-TMC-4 teacher microcourse browser v2", () => {
     expect(browser).toContain("for (const request of prefetchRequests.current.values()) request.controller.abort()");
     expect(browser).toContain("}, 120)");
     expect(api).toContain('supabase.rpc("get_teacher_microcourse_quick_preview"');
+    expect(api).not.toContain("auth.getUser()");
     expect(api).toContain('\"Cache-Control\": \"private, no-store\"');
   });
 

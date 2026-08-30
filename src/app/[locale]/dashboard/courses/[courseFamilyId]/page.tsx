@@ -19,7 +19,6 @@ import { resolveCourseCapabilities } from "@/features/school/teaching-operations
 import type { SelectedCourseVariant } from "@/features/school/teaching-operations/course-family-detail";
 import {
   getTeacherMicrocourseBrowserCapabilities,
-  getTeacherMicrocourseQuickPreview,
   listTeacherMicrocourseBrowserCatalog,
 } from "@/features/school/teaching-operations/teacher-microcourse-library";
 import { buildTeacherMicrocourseBrowserModel, parseTeacherMicrocourseBrowserQuery } from "@/features/school/teaching-operations/teacher-microcourse-browser";
@@ -134,13 +133,7 @@ async function CourseFamilyProductPage({
       listTeacherMicrocourseCourseScopes(detail.family.id),
       getTeacherMicrocourseBrowserCapabilities(detail.family.id),
     ]);
-    const initialModel = buildTeacherMicrocourseBrowserModel({ entries: catalogItems, scopes, previews: [], configuration, query, locale });
-    const selectedPreview = initialModel.selectedCourseId
-      ? await getTeacherMicrocourseQuickPreview(initialModel.selectedCourseId)
-      : null;
-    const model = selectedPreview
-      ? buildTeacherMicrocourseBrowserModel({ entries: catalogItems, scopes, previews: [selectedPreview], configuration, query, locale })
-      : initialModel;
+    const model = buildTeacherMicrocourseBrowserModel({ entries: catalogItems, scopes, previews: [], configuration, query, locale });
     return <TeacherMicrocourseBrowser
       key={`${query.browse}:${query.node ?? "all"}:${query.q ?? ""}:${query.page}:${query.sort}:${query.gradeIds.join(",")}:${query.termIds.join(",")}:${query.classSystemIds.join(",")}:${query.classTypeIds.join(",")}`}
       familyId={detail.family.id}
