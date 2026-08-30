@@ -159,7 +159,7 @@ command_or_runbook, artifact_url_or_path, artifact_hash, failure_ticket
 | Minds | M2 | M4 | Terms 关系、内容回退 | 11/12 |
 | Tools | M2～M3 | M4 | 嵌入、浏览器、性能 | 11/12 |
 | Notebook | M2（开发生命周期与数据库边界子门已通过） | M4 | commit `11885f7` 与[隐私子门](../evidence/r1/r1-11-notebook-readiness.md)已关闭跨用户/归档发布、点赞身份泄露和不可见内容互动；commits `8c9cb8c`、`ffe3ec6` 与[生命周期子门](../evidence/r1/r1-11-notebook-lifecycle.md)已覆盖审核、撤回/修订、平台锁、revision 内容字段不可变、归档级联和新提交源快照一致性。尚无预生产完整写态 release E2E，不能提升至 M3；旅途笔记视觉与普通 Note CRUD 结构化结果也仍缺 | 11/12 |
-| 全站视觉/SEO/a11y | M2 | M4 | 三档小王子语言、104 份代表页视觉证据、WCAG/CWV | 12 |
+| 全站视觉/SEO/a11y/体验性能 | M2 | M4 | 三档小王子语言、104 份代表页视觉证据、WCAG；`POST-LIVE-PERF-01` 已在单老师试用期收集页面导航、同页对象切换和重型预览的冷／热路径样本，首个教师微课课程切换样本人工手感未通过但不构成功能缺失或 Gate 2 blocker，集中优化与新门槛待采样后裁决 | 12/Live |
 | 指标/报表/遥测 | M1～M2 | M4 | 口径、版本、查询、告警 | 13 |
 | 幂等/并发/事务/E2E | M2～M3（正式基线/开发目标） | M4 | 本轮修复前 19 项 Vitest 失败已在 commit `cbb2a0f` 清零；commits `0d55044`、`8e5c076` 与[Playwright 子门](../evidence/r1/r1-14-playwright-baseline.md)已让 9 条本地非五模块 Chromium 旅程分别取绿并固定 release fail-closed 合同；仍缺发布目标完整重跑、写态、zh/en、跨浏览器、连续无 flaky、大文件和竞争矩阵 | 14 |
 | 生产清理/release-1 | M1（旧 planner） | M4 | 旧 planner 假定只保留管理员且无正式历史 release，与 R1-Live 后正式教师/业务数据/课次内容引用冲突；须增加正式对象保护 manifest 后再做快照副本演练、测试数据清理、可逆脚本和正式计数 | Live/15/18 |
@@ -433,6 +433,8 @@ R1-7E 以 `user_rights_export_artifacts` 保存与请求绑定的精确 JSON 字
 | CAP-01 | 单课堂 | 1 教师+30 学生同时在线；核心事件丢失/串户=0；系统错误率<0.5% |
 | CAP-02 | 常规并发 | 50 个认证用户+10 个员工并发写入持续 30min；系统错误率<0.5% |
 | CAP-03 | 文件 | 3 路并发最大允许尺寸 TUS 上传可暂停/恢复；损坏、越权、进程 OOM=0 |
+
+`POST-LIVE-PERF-01` 当前是体验证据收集项，不在没有时延样本时扩张为新的发布硬门。现有 `PERF-03` 只覆盖内部关键页服务端响应与写 action，不能证明已经加载页面内的对象切换、预览初始化或缓存未命中手感。R1 期间按 doc 15 §6.5 分开记录点击反馈、RSC、API、DB、renderer 和缓存状态；形成代表性样本后再决定是否新增跨路由门槛，并在本表统一裁决，禁止每个页面各写一套互相冲突的数字。
 
 ### 5.4 可靠性、恢复与安全
 
