@@ -46,7 +46,11 @@ const assertions = [
   ["offline outbox and restart test", "offline", /STORE_OUTBOX[\s\S]*resumes the sequence after restart/],
   ["repeatable ten-minute offline drill", "offline", /offlineDrill[\s\S]*verifyFixture/],
   ["server error sink", "observability", /MATHIN_ERROR_REPORT_URL[\s\S]*observability\.delivery_failed/],
-  ["append-only operational error dashboard", "operations", /operational_errors[\s\S]*requirePerm\(locale, "audit\.view"\)/],
+  [
+    "append-only operational error dashboard",
+    "operations",
+    /(?=[\s\S]*operational_errors)(?=[\s\S]*requireAnyPerm\(locale, SYSTEM_HEALTH_ACCESS\))(?=[\s\S]*perms\.has\("audit\.view"\))/,
+  ],
   ["guardian consent and requests", "migrations", /guardian_consents[\s\S]*account_requests/],
   ["platform post moderation", "privacy", /moderate_post/],
   ["private signed video URL", "video", /session-videos[\s\S]*createSignedUrl/],

@@ -298,6 +298,23 @@ export const DASHBOARD_ROUTES = {
     creationOwner: "courses",
     parent: "courses",
   },
+  teacherMicrocourseSettings: {
+    hrefPattern: "/dashboard/courses/[courseFamilyId]/microcourse-settings",
+    kind: "singleton",
+    environments: STAFF_ONLY,
+    permission: "course.view",
+    createSurface: "none",
+    parent: "courseFamilyDetail",
+  },
+  teacherMicrocourseCourse: {
+    hrefPattern: "/dashboard/courses/[courseFamilyId]/microcourses/[courseId]",
+    kind: "object",
+    environments: STAFF_ONLY,
+    permission: "course.view",
+    createSurface: "parent",
+    creationOwner: "courseFamilyDetail",
+    parent: "courseFamilyDetail",
+  },
 
   // ── 课件 ────────────────────────────────────────────────────────────────
   courseware: {
