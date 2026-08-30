@@ -62,3 +62,10 @@
 
 - 自动化、生产 schema/app/flag postflight 与只读真实权限 smoke 不等于产品负责人实际操作验收；当前状态仍为 `PENDING_USER_ACCEPTANCE`。
 - 尚未由真实教师在生产完成“自由课次创建内容 → 多方案派生/选用 → 冻结试讲 → 教研退回/重提/发布 → 另一教师建班”的写态旅程，也未由产品负责人实际点击已结课班级的重新启用入口；未产生可核验的生产 H5 提升对象或负载/容量证据。后续验收不得创建开发夹具或同步固定开发账号。
+
+## 2026-08-30 DEV-TMC-4 本机开发交付
+
+- 状态为 `LOCAL DEVELOPMENT DELIVERED / AWAITING PRODUCT ACCEPTANCE / NOT DEPLOYED`。六个独立提交为 `337ee99`、`1a42a49`、`263fad4`、`5adbe75`、`9e082e2`、`efe9b36`，对应 doc 29 规划登记与 Phase 1～5。
+- 本机应用 Supabase origin 已核对为 `http://127.0.0.1:35421`，目标容器为本机运行中的 `supabase-db`。五条 `20260830000100`～`20260830000500` migration 已应用并登记 LF 规范化 checksum；最后一条 checksum 为 `11d8dabd923d4588da4ee7c685ca7985c829b3f741099f2e7e06942a59bbe39a`。本机 `teaching.teacher_microcourse_browser_v2` 通过版本化审计 RPC 启用，供局域网页面人工验收。
+- 数据库回滚合同覆盖空白课程、按需新增课节、单课程预览、维护负责人/协作者分配、重复课报告和规范课切换；最终 `ROLLBACK`，没有遗留断言夹具。受影响 ESLint、TypeScript、教师微课浏览器与 UI 定向 Vitest `20/20` 通过。
+- 产品负责人明确要求本轮不运行浏览器、Playwright 或截图，因此没有生成视觉自动化证据。上述结果只证明机器覆盖的代码/数据库合同与本机可启动候选，不证明视觉、交互手感、1000 门真实数据容量或生产行为；生产 schema、数据归并、开关和发布均未授权、未执行。
