@@ -144,7 +144,7 @@ export function TeacherMicrocourseSceneManager({ courseFamilyId, locale, configu
     </TabsList>
 
     <TabsContent value="scenes" className="space-y-4">
-      <div className="grid min-h-[38rem] min-w-0 overflow-hidden bg-moon/10 @4xl/page:grid-cols-[16rem_18rem_minmax(0,1fr)]">
+      <div className="grid min-h-[38rem] min-w-0 overflow-hidden @4xl/page:grid-cols-[16rem_18rem_minmax(0,1fr)]">
         <aside className="min-w-0 p-3">
           <DashboardSection title={t("frameworkTitle")} description={t("frameworkHint")}>
             <div className="space-y-4">
@@ -164,7 +164,7 @@ export function TeacherMicrocourseSceneManager({ courseFamilyId, locale, configu
           </DashboardSection>
         </aside>
 
-        <nav className="min-w-0 bg-paper/55 p-3" aria-label={t("sceneSettings")}>
+        <nav className="min-w-0 p-3" aria-label={t("sceneSettings")}>
           <p className="mb-2 text-xs font-medium text-muted">{t("sceneSettings")}</p>
           <div className="space-y-1">
             {enabledRoots.map((root, index) => <div key={root.id} className="group flex items-center gap-1" draggable={configuration.canManageScenes} onDragStart={(event) => event.dataTransfer.setData("application/x-mathin-root", root.id)} onDragOver={(event) => event.preventDefault()} onDrop={(event) => {
@@ -212,11 +212,11 @@ export function TeacherMicrocourseSceneManager({ courseFamilyId, locale, configu
 
     <TabsContent value="academic" className="space-y-4">
       {!configuration.canManageOrganization ? <p className="bg-moon/15 p-4 text-sm text-muted">{t("academicReadOnly")}</p> : null}
-      <div className="grid min-h-[30rem] min-w-0 bg-moon/10 @3xl/page:grid-cols-[14rem_minmax(0,1fr)]">
+      <div className="grid min-h-[30rem] min-w-0 @3xl/page:grid-cols-[14rem_minmax(0,1fr)]">
         <nav className="space-y-1 p-3" aria-label={t("academicSettings")}>
           {dimensions.map((group) => <Button key={group.kind} type="button" variant="ghost" className={`w-full justify-between ${selectedDimension.kind === group.kind ? "bg-crater/10" : ""}`} onClick={() => setSelectedDimensionKind(group.kind)}><span>{group.title}</span><span className="text-xs text-muted">{group.rows.length}</span></Button>)}
         </nav>
-        <div className="min-w-0 bg-paper/60 p-4">
+        <div className="min-w-0 p-4">
           <DashboardSection title={selectedDimension.title} description={t(`${selectedDimension.kind}Hint`)} actions={configuration.canManageOrganization ? <Button size="sm" variant="secondary" onClick={() => setDimensionDraft({ ...emptyDimension, kind: selectedDimension.kind })}><Plus className="h-4 w-4" />{t("add")}</Button> : undefined}>
             <DashboardTableShell><Table><TableHeader><TableRow><TableHead>{t("code")}</TableHead><TableHead>{t("chineseName")}</TableHead><TableHead>{t("englishName")}</TableHead><TableHead>{t("status")}</TableHead><TableHead className="text-right">{t("actions")}</TableHead></TableRow></TableHeader><TableBody>
               {selectedDimension.rows.map((row, index) => <TableRow key={row.id}><TableCell>{row.code}</TableCell><TableCell>{row.nameZh}</TableCell><TableCell>{row.nameEn}</TableCell><TableCell><Badge variant={row.active ? "secondary" : "outline"}>{row.active ? t("active") : t("inactive")}</Badge></TableCell><TableCell><div className="flex justify-end gap-1">{configuration.canManageOrganization ? <><Button size="sm" className="size-9 p-0" variant="ghost" disabled={pending || index === 0} onClick={() => dimensionMove.run({ kind: selectedDimension.kind, id: row.id, direction: -1 })}><ArrowUp className="h-4 w-4" /></Button><Button size="sm" className="size-9 p-0" variant="ghost" disabled={pending || index === selectedDimension.rows.length - 1} onClick={() => dimensionMove.run({ kind: selectedDimension.kind, id: row.id, direction: 1 })}><ArrowDown className="h-4 w-4" /></Button><Button size="sm" variant="ghost" onClick={() => setDimensionDraft({ id: row.id, kind: selectedDimension.kind, parentId: row.parentId, code: row.code, nameZh: row.nameZh, nameEn: row.nameEn, gradeNo: row.gradeNo, legacySeason: row.legacySeason ?? null, active: row.active })}>{t("edit")}</Button></> : null}</div></TableCell></TableRow>)}

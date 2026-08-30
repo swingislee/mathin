@@ -22,7 +22,9 @@ import {
   useState,
   useTransition,
 } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -190,6 +192,7 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
   onStatus: (message: string) => void;
 }>(function CoursewareCompositionWorkbench({ microcourseId, page, onPersisted, onStatus }, ref) {
   const t = useTranslations("teacherMicrocourses");
+  const [title, setTitle] = useState(page.title);
   const [doc, setDoc] = useState(() => structuredClone(page.doc));
   const [bindingUrls, setBindingUrls] = useState({ ...page.bindingUrls });
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(page.doc.layout.blocks[0]?.id ?? null);
@@ -273,6 +276,7 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
 
   const rename = useCallback((value: string) => {
     titleRef.current = value;
+    setTitle(value);
     markDirty();
   }, [markDirty]);
 
@@ -376,54 +380,23 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
         : t("pageAutosaved");
 
   return (
-    <section className={cn("flex min-h-0 min-w-0 flex-col overflow-hidden", styles.workbench)}>
-      <header className="shrink-0 border-b border-line px-3 py-2.5">
-        <div className="flex min-w-0 items-center justify-between gap-3">
-          <div role="toolbar" aria-label={t("componentPanelTitle")} className="flex min-w-0 flex-wrap items-center gap-1">
-            <Button type="button" size="sm" variant="ghost" className="size-9 p-0" aria-label={t("componentText")} title={t("componentText")} onClick={() => addNode("text")}><Type className="size-4" /></Button>
-            <Button type="button" size="sm" variant="ghost" className="size-9 p-0" aria-label={t("componentFormula")} title={t("componentFormula")} onClick={() => addNode("formula")}><Sigma className="size-4" /></Button>
-            <Button type="button" size="sm" variant="ghost" className="size-9 p-0" aria-label={t("componentShape")} title={t("componentShape")} onClick={() => addNode("shape")}><Shapes className="size-4" /></Button>
-            <Label aria-label={t("componentImage")} title={t("componentImage")} className="inline-grid size-9 cursor-pointer place-items-center rounded-full text-muted transition-colors hover:bg-moon/30 hover:text-ink">
-              <Input type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="sr-only" disabled={pending} onChange={(event) => uploadImage(event.target.files?.[0] ?? null)} />
-              <ImagePlus className="size-4" />
-            </Label>
-            <GameComponentDialog microcourseId={microcourseId} disabled={pending} iconOnly onCreated={(game) => {
-              const previousIds = new Set(docRef.current.layout.blocks.map((block) => block.id));
-              const next = addCoursewareCompositionGame(docRef.current, game);
-              updateDoc(next);
-              setSelectedBlockId(next.layout.blocks.find((block) => !previousIds.has(block.id))?.id ?? null);
-            }} />
-            <H5ComponentDialog microcourseId={microcourseId} disabled={pending} iconOnly onSaved={(h5) => {
-              const previousIds = new Set(docRef.current.layout.blocks.map((block) => block.id));
-              const next = addCoursewareCompositionH5(docRef.current, h5);
-              updateDoc(next);
-              setSelectedBlockId(next.layout.blocks.find((block) => !previousIds.has(block.id))?.id ?? null);
-            }} />
-            <ToolComponentDialog disabled={pending} onCreated={(tool) => {
-              const previousIds = new Set(docRef.current.layout.blocks.map((block) => block.id));
-              const next = addCoursewareCompositionTool(docRef.current, tool);
-              if (next === docRef.current) {
-                setMessage(t("componentNoSpace"));
-                return;
-              }
-              updateDoc(next);
-              setSelectedBlockId(next.layout.blocks.find((block) => !previousIds.has(block.id))?.id ?? null);
-            }} />
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <span data-testid="microcourse-autosave-status" role="status" aria-live="polite" className={cn("inline-flex items-center gap-1 text-xs", saveState === "error" ? "text-rose" : "text-muted")}>
+    <Card className={cn("flex min-h-0 min-w-0 flex-col overflow-hidden", styles.workbench)}>
+      <CardHeader className="shrink-0 border-b border-line p-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-3">
+          <Badge variant="secondary">{t("mode_composition")}</Badge>
+          <Input value={title} onChange={(event) => rename(event.target.value)} maxLength={200} className="min-w-[12rem] flex-1" />
+          <span data-testid="microcourse-autosave-status" role="status" aria-live="polite" className={cn("inline-flex shrink-0 items-center gap-1 text-xs", saveState === "error" ? "text-rose" : "text-muted")}>
             {saveState === "saving" && <LoaderCircle className="size-3.5 animate-spin" />}{saveLabel}
-            </span>
-            <Button type="button" size="sm" variant="secondary" className="size-9 p-0" aria-label={t("saveNow")} title={t("saveNow")} disabled={pending || saveState === "saving"} onClick={() => void flush()}>
-              <Save className="size-4" />
-            </Button>
-          </div>
+          </span>
+          <Button type="button" size="sm" variant="secondary" disabled={pending || saveState === "saving"} onClick={() => void flush()}>
+            <Save className="size-4" />{t("saveNow")}
+          </Button>
         </div>
         {message && <p role="alert" className="mt-2 text-xs text-rose">{message}</p>}
-      </header>
-      <div className={cn("min-h-0 flex-1 gap-3", styles.body)}>
+      </CardHeader>
+      <CardContent className={cn("min-h-0 flex-1 gap-3 p-3", styles.body)}>
         <div className={cn("flex min-h-0 min-w-0 items-center justify-center", styles.stageSlot)}>
-          <div className={cn("overflow-hidden border border-line bg-white", styles.stageFrame)}>
+          <div className={cn("overflow-hidden rounded-xl border border-line bg-white shadow-sm", styles.stageFrame)}>
             <CoursewareCompositionGridEditor
               doc={doc}
               bindingUrls={bindingUrls}
@@ -433,8 +406,44 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
             />
           </div>
         </div>
-        <ScrollArea className="min-h-0 border-l border-line bg-paper/70">
+        <ScrollArea className="min-h-0 rounded-xl border border-line">
           <div className="space-y-4 p-3">
+            <section aria-labelledby="composition-insert-title">
+              <h3 id="composition-insert-title" className="text-sm font-medium">{t("componentPanelTitle")}</h3>
+              <p className="mt-1 text-xs leading-5 text-muted">{t("componentPanelHint")}</p>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <Button type="button" size="sm" variant="secondary" onClick={() => addNode("text")}><Type className="size-3.5" />{t("componentText")}</Button>
+                <Button type="button" size="sm" variant="secondary" onClick={() => addNode("formula")}><Sigma className="size-3.5" />{t("componentFormula")}</Button>
+                <Button type="button" size="sm" variant="secondary" onClick={() => addNode("shape")}><Shapes className="size-3.5" />{t("componentShape")}</Button>
+                <Label className="inline-flex cursor-pointer">
+                  <Input type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="sr-only" disabled={pending} onChange={(event) => uploadImage(event.target.files?.[0] ?? null)} />
+                  <span className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-full border border-crater px-3 text-xs transition-colors hover:bg-moon/30"><ImagePlus className="size-3.5" />{t("componentImage")}</span>
+                </Label>
+                <GameComponentDialog microcourseId={microcourseId} disabled={pending} onCreated={(game) => {
+                  const previousIds = new Set(docRef.current.layout.blocks.map((block) => block.id));
+                  const next = addCoursewareCompositionGame(docRef.current, game);
+                  updateDoc(next);
+                  setSelectedBlockId(next.layout.blocks.find((block) => !previousIds.has(block.id))?.id ?? null);
+                }} />
+                <H5ComponentDialog microcourseId={microcourseId} disabled={pending} onSaved={(h5) => {
+                  const previousIds = new Set(docRef.current.layout.blocks.map((block) => block.id));
+                  const next = addCoursewareCompositionH5(docRef.current, h5);
+                  updateDoc(next);
+                  setSelectedBlockId(next.layout.blocks.find((block) => !previousIds.has(block.id))?.id ?? null);
+                }} />
+                <ToolComponentDialog disabled={pending} onCreated={(tool) => {
+                  const previousIds = new Set(docRef.current.layout.blocks.map((block) => block.id));
+                  const next = addCoursewareCompositionTool(docRef.current, tool);
+                  if (next === docRef.current) {
+                    setMessage(t("componentNoSpace"));
+                    return;
+                  }
+                  updateDoc(next);
+                  setSelectedBlockId(next.layout.blocks.find((block) => !previousIds.has(block.id))?.id ?? null);
+                }} />
+              </div>
+            </section>
+
             <div>
               <p className="text-xs font-medium text-muted">{t("gridComponentList")}</p>
               <div className="mt-2 grid grid-cols-2 gap-1">
@@ -474,8 +483,8 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
             ) : null}
           </div>
         </ScrollArea>
-      </div>
-    </section>
+      </CardContent>
+    </Card>
   );
 });
 

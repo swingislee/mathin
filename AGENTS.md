@@ -59,8 +59,9 @@ Mathin 是一个中英双语（zh/en，中文为默认语言）、以 Terms 为�
 
 - 所有 UI、导航、错误、空状态、通知模板与关键元数据必须同时维护 zh/en；英文课程/文章内容可以延后，但必须有显式回退，不能以缺英文内容为由交付单语 UI。
 - 小王子视觉按三级应用：公开首页/五星球首页使用场景级；内容、Notebook、身份/错误页使用内容级；Dashboard、Classroom、Whiteboard、Courseware Studio 使用工作区级。工作区保留纸色、星夜、字体、线宽和单个品牌锚点，表格、表单、实时控制与画布内禁止叙事装饰。
-- Dashboard 默认使用连续工作区语义：页面身份进入 `DashboardPage` / `ObjectBar`，筛选和业务操作进入 `DashboardCommandPanel`，正文进入无外框的 `DashboardSection`，数据集合进入 `DashboardTableShell`，持续并存的栏位只用栏间结构线。所有内容默认禁止 Card 布局；不得把标题、说明、筛选栏、导航、表格、表单、状态摘要、空状态、每个正文分组或每个分栏分别包成 Card。`Card` / `DashboardCard` 只有产品负责人明确要求，或对象确实需要独立搬运、选择、并列比较时才能例外使用，并在代码附近说明理由。
+- Dashboard 默认使用连续工作区语义：页面身份进入 `DashboardPage` / `ObjectBar`，筛选和业务操作进入 `DashboardCommandPanel`，正文进入无外框的 `DashboardSection`，数据集合进入 `DashboardTableShell`，持续并存的栏位只用栏间结构线。所有内容默认禁止 Card 布局；不得把标题、说明、筛选栏、导航、表格、表单、状态摘要、空状态、每个正文分组或每个分栏分别包成 Card。`Card` / `DashboardCard` 只有产品负责人明确要求，或对象确实需要独立搬运、选择、并列比较时才能例外使用，并在代码附近说明理由。产品负责人已经给出带 Card 的明确页面设计时，该 Card 是页面合同，后续通用 Dashboard 重构不得自行拉平或删除。
 - Dashboard 分隔线服从语义所有权：页面头只保留一条身份分隔线；`DashboardSection` 不画上下边线；表格外框和行线只由 `DashboardTableShell` / shadcn Table 提供；三栏工作台只在持续并存的栏位之间画结构线。禁止在 section 外框、section 标题、表格外壳和表头上叠加重复分隔线，也禁止以 `border-y` 模拟隐藏卡片。
+- 工作区组件背景色必须表达明确语义：只允许已批准 Card 的独立表面、选中／状态反馈、悬浮层可读性或课件画布自身底色。普通 section、栏位、导航、筛选集合、统计摘要和表格外层默认继承页面背景，不得用 `bg-moon/*`、`bg-paper/*` 或 `bg-card` 仅为“分块”上色。
 
 - 页面、业务组件和功能模块中不得直接新增原生 `<input>`、`<select>`、`<table>` 等控件。
 - 应优先使用项目已有的 `components/ui/` 组件；缺失时先检查 shadcn/ui 是否提供对应组件。

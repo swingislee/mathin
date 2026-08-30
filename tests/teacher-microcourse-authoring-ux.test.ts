@@ -60,6 +60,13 @@ describe("teacher microcourse authoring UX", () => {
     expect(editor).toContain("CoursewareCompositionWorkbench");
     expect(editor).toContain('data-teacher-microcourse-editor="composition"');
     expect(workbench).toContain('data-testid="microcourse-autosave-status"');
+    expect(editor).toContain("@/components/ui/card");
+    expect(editor).toContain("xl:grid-cols-[13rem_minmax(0,1fr)]");
+    expect(workbench).toContain("<Card");
+    expect(workbench).toContain('<Badge variant="secondary">{t("mode_composition")}</Badge>');
+    expect(workbench).toContain('id="composition-insert-title"');
+    expect(workbench).toContain("rounded-xl border border-line bg-white shadow-sm");
+    expect(workbench).not.toContain("bg-paper/70");
     expect(zh).toContain('"pageAutosaving"');
     expect(en).toContain('"pageAutosaving"');
   });

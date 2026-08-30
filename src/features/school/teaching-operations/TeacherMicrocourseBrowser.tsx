@@ -58,7 +58,7 @@ export function TeacherMicrocourseBrowser({
   const t = useTranslations("school.teacherMicrocourseBrowser");
   const router = useRouter();
   const pathname = usePathname();
-  const [selectedCourseId, setSelectedCourseId] = useState(model.selectedCourseId);
+  const [selectedCourseIdCandidate, setSelectedCourseId] = useState(model.selectedCourseId);
   const [checkedIds, setCheckedIds] = useState<Set<string>>(() => new Set());
   const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
   const [scopeOpen, setScopeOpen] = useState(false);
@@ -76,10 +76,14 @@ export function TeacherMicrocourseBrowser({
       ? [[model.selectedCourseId, initialPreview]]
       : [],
   ));
-  const selectedCourseIdRef = useRef(model.selectedCourseId);
+  const desktopPreviewRef = useRef<HTMLElement>(null);
+  const previewSelectionRequest = useRef(0);
   const previewRequest = useRef<AbortController | null>(null);
   const prefetchTimers = useRef(new Map<string, number>());
   const [selectedPreview, setSelectedPreview] = useState<TeacherMicrocourseQuickPreviewData | null>(initialPreview);
+  const selectedCourseId = model.courses.some((course) => course.id === selectedCourseIdCandidate)
+    ? selectedCourseIdCandidate
+    : model.selectedCourseId;
   const selectedCourseBase = model.courses.find((course) => course.id === selectedCourseId) ?? null;
   const selectedCourse = selectedCourseBase && selectedPreview?.courseId === selectedCourseBase.id
     ? { ...selectedCourseBase, preview: selectedPreview, branchCount: selectedPreview.branchCount }
@@ -129,17 +133,20 @@ export function TeacherMicrocourseBrowser({
     if (courseWasExplicit) return;
     const stored = window.localStorage.getItem(coursePreferenceKey(model.query.browse, model.query.node));
     const matching = stored ? model.courses.find((course) => course.id === stored) : undefined;
-    if (!matching || matching.id === selectedCourseIdRef.current) return;
-    selectedCourseIdRef.current = matching.id;
-    setSelectedCourseId(matching.id);
-    setSelectedPreview(previewCache.current.get(matching.id) ?? matching.preview);
-    const params = new URLSearchParams(window.location.search);
-    params.set("course", matching.id);
-    window.history.replaceState(window.history.state, "", `${window.location.pathname}?${params.toString()}`);
-    void loadPreview(matching.id).then((preview) => {
-      if (preview && selectedCourseIdRef.current === matching.id) setSelectedPreview(preview);
-    });
-  }, [courseWasExplicit, loadPreview, model.courses, model.query.browse, model.query.node]);
+    if (!matching || matching.id === selectedCourseId) return;
+    const timer = window.setTimeout(() => {
+      const requestId = ++previewSelectionRequest.current;
+      setSelectedCourseId(matching.id);
+      setSelectedPreview(previewCache.current.get(matching.id) ?? matching.preview);
+      const params = new URLSearchParams(window.location.search);
+      params.set("course", matching.id);
+      window.history.replaceState(window.history.state, "", `${window.location.pathname}?${params.toString()}`);
+      void loadPreview(matching.id).then((preview) => {
+        if (preview && previewSelectionRequest.current === requestId) setSelectedPreview(preview);
+      });
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [courseWasExplicit, loadPreview, model.courses, model.query.browse, model.query.node, selectedCourseId]);
 
   useEffect(() => () => {
     previewRequest.current?.abort();
@@ -156,7 +163,7 @@ export function TeacherMicrocourseBrowser({
     navigate({ node, page: undefined, course: undefined });
   };
   const selectCourse = (courseId: string) => {
-    selectedCourseIdRef.current = courseId;
+    const requestId = ++previewSelectionRequest.current;
     setSelectedCourseId(courseId);
     setSelectedPreview(previewCache.current.get(courseId)
       ?? model.courses.find((course) => course.id === courseId)?.preview
@@ -166,9 +173,9 @@ export function TeacherMicrocourseBrowser({
     params.set("course", courseId);
     window.history.replaceState(window.history.state, "", `${window.location.pathname}?${params.toString()}`);
     void loadPreview(courseId).then((preview) => {
-      if (preview && selectedCourseIdRef.current === courseId) setSelectedPreview(preview);
+      if (preview && previewSelectionRequest.current === requestId) setSelectedPreview(preview);
     });
-    if (window.matchMedia("(max-width: 1023px)").matches) setMobilePreviewOpen(true);
+    if (!desktopPreviewRef.current?.getClientRects().length) setMobilePreviewOpen(true);
   };
   const prefetchCourse = (courseId: string) => {
     if (previewCache.current.has(courseId) || prefetchTimers.current.has(courseId)) return;
@@ -243,7 +250,7 @@ export function TeacherMicrocourseBrowser({
         <div className="flex basis-56 grow items-center gap-2 @3xl/chrome:max-w-xl">
           <Label className="sr-only" htmlFor="microcourse-search">{t("searchCourses")}</Label>
           <Input id="microcourse-search" value={search} placeholder={t("searchPlaceholder")} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") searchCourses(); }} />
-          <Button size="sm" onClick={searchCourses}><Search className="h-4 w-4" /><span className="sr-only @4xl/chrome:not-sr-only">{t("search")}</span></Button>
+          <Button size="sm" className="size-9 shrink-0 p-0" aria-label={t("search")} title={t("search")} onClick={searchCourses}><Search className="h-4 w-4" /></Button>
         </div>
         <Label className="flex items-center gap-2 whitespace-nowrap text-xs text-muted"><Checkbox checked={searchAll} onCheckedChange={(checked) => setSearchAll(Boolean(checked))} />{t("searchAllCourses")}</Label>
         <Label className="sr-only" htmlFor="microcourse-sort">{t("sortBy")}</Label>
@@ -260,7 +267,7 @@ export function TeacherMicrocourseBrowser({
       </DashboardCommandActions>
     </DashboardCommandPanel>}
   >
-    <div className="grid min-h-[34rem] min-w-0 overflow-hidden bg-moon/10 @3xl/page:grid-cols-[14rem_minmax(0,1fr)] @6xl/page:grid-cols-[16rem_minmax(0,1fr)_20rem]" data-teacher-microcourse-browser>
+    <div className="grid min-h-[34rem] min-w-0 overflow-hidden @3xl/page:grid-cols-[14rem_minmax(0,1fr)] @5xl/page:grid-cols-[15rem_minmax(0,1fr)_20rem]" data-teacher-microcourse-browser>
       <section className="min-w-0 @3xl/page:border-r @3xl/page:border-line/70" aria-labelledby="microcourse-directory-title">
         <header className="px-3 py-2.5">
           <h2 id="microcourse-directory-title" className="flex items-center gap-2 text-sm font-medium"><FolderTree className="h-4 w-4" />{t("virtualDirectory")}</h2>
@@ -278,10 +285,10 @@ export function TeacherMicrocourseBrowser({
         <div className="flex min-h-12 items-center justify-between px-3 py-2 text-xs text-muted"><span>{t("pageStatus", { page: model.query.page, pages: model.pageCount })}</span><div className="flex gap-1"><Button variant="ghost" size="sm" disabled={model.query.page <= 1} onClick={() => navigate({ page: String(model.query.page - 1), course: undefined })}>{t("previous")}</Button><Button variant="ghost" size="sm" disabled={model.query.page >= model.pageCount} onClick={() => navigate({ page: String(model.query.page + 1), course: undefined })}>{t("next")}</Button></div></div>
       </section>
 
-      <aside className="hidden min-w-0 border-l border-line/70 @6xl/page:block"><TeacherMicrocourseQuickPreview familyId={familyId} course={selectedCourse} canCreateBranch={capabilities.canCreateBranch} /></aside>
+      <aside ref={desktopPreviewRef} className="hidden min-w-0 border-l border-line/70 @5xl/page:block"><TeacherMicrocourseQuickPreview familyId={familyId} course={selectedCourse} canCreateBranch={capabilities.canCreateBranch} /></aside>
     </div>
 
-    <Sheet open={mobilePreviewOpen} onOpenChange={setMobilePreviewOpen}><SheetContent className="w-[min(94vw,32rem)] overflow-y-auto @6xl/page:hidden" closeLabel={t("cancel")}><SheetHeader className="sr-only"><SheetTitle>{t("quickPreview")}</SheetTitle><SheetDescription>{t("selectCourseHint")}</SheetDescription></SheetHeader><TeacherMicrocourseQuickPreview familyId={familyId} course={selectedCourse} canCreateBranch={capabilities.canCreateBranch} /></SheetContent></Sheet>
+    <Sheet open={mobilePreviewOpen} onOpenChange={setMobilePreviewOpen}><SheetContent className="w-[min(94vw,32rem)] overflow-y-auto" closeLabel={t("cancel")}><SheetHeader className="sr-only"><SheetTitle>{t("quickPreview")}</SheetTitle><SheetDescription>{t("selectCourseHint")}</SheetDescription></SheetHeader><TeacherMicrocourseQuickPreview familyId={familyId} course={selectedCourse} canCreateBranch={capabilities.canCreateBranch} /></SheetContent></Sheet>
     {capabilities.canManageScopes && <TeacherMicrocourseScopeEditor key={selectedScopeIds.join(",")} open={scopeOpen} onOpenChange={setScopeOpen} courseFamilyId={familyId} courseIds={selectedScopeIds} locale={locale} configuration={configuration} scopes={scopes} />}
   </ObjectWorkspace>;
 }
@@ -293,5 +300,5 @@ function FilterGroup({ title, items, locale, selected, onToggle }: {
   selected: ReadonlySet<string>;
   onToggle: (id: string) => void;
 }) {
-  return <fieldset className="space-y-2"><legend className="text-sm font-medium">{title}</legend><div className="grid max-h-36 gap-1 overflow-y-auto bg-moon/10 p-1 @2xl/page:grid-cols-2">{items.filter((item) => item.active).map((item) => <Label key={item.id} className="flex cursor-pointer items-center gap-2 px-2 py-2 text-sm"><Checkbox checked={selected.has(item.id)} onCheckedChange={() => onToggle(item.id)} />{locale === "zh" ? item.nameZh : item.nameEn}</Label>)}</div></fieldset>;
+  return <fieldset className="space-y-2"><legend className="text-sm font-medium">{title}</legend><div className="grid max-h-36 gap-1 overflow-y-auto @2xl/page:grid-cols-2">{items.filter((item) => item.active).map((item) => <Label key={item.id} className="flex cursor-pointer items-center gap-2 px-2 py-2 text-sm"><Checkbox checked={selected.has(item.id)} onCheckedChange={() => onToggle(item.id)} />{locale === "zh" ? item.nameZh : item.nameEn}</Label>)}</div></fieldset>;
 }
