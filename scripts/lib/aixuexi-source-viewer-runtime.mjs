@@ -145,22 +145,13 @@ export function buildPortableAixuexiViewerRuntime({ viewerScript, viewerStyles, 
   );
   script = replaceOnce(
     script,
-    "const assetPathPrefix=publicPath('/api/assets/');",
-    "const mathinPortableAssetUrl=value=>Object.values(MATHIN_PORTABLE?.resources||{}).some(url=>String(value).startsWith(url));",
-    "asset sanitizer prefix",
+    "const assetPathPrefix=publicPath('/api/assets/');\nconst isAixuexiLocalAssetUrl=value=>String(value).startsWith(assetPathPrefix);",
+    "const isAixuexiLocalAssetUrl=value=>Object.values(MATHIN_PORTABLE?.resources||{}).some(url=>String(value).startsWith(url));",
+    "asset URL policy",
   );
-  script = replaceOnce(
-    script,
-    "!item.value.startsWith(assetPathPrefix)&&!inlineImage",
-    "!mathinPortableAssetUrl(item.value)&&!inlineImage",
-    "markup asset sanitizer",
-  );
-  script = replaceOnce(
-    script,
-    "!url.startsWith('#')&&!url.startsWith(assetPathPrefix)",
-    "!url.startsWith('#')&&!mathinPortableAssetUrl(url)",
-    "style asset sanitizer",
-  );
+  if (script.includes("assetPathPrefix")) {
+    throw new Error("AIXUEXI_SOURCE_RUNTIME: source Viewer bypasses its asset URL policy");
+  }
   const routeStart = script.lastIndexOf("route().catch(error=>");
   if (routeStart < 0 || script.slice(routeStart).trim().split("\n").length !== 1) {
     throw new Error("AIXUEXI_SOURCE_RUNTIME: route bootstrap seam is missing or ambiguous");

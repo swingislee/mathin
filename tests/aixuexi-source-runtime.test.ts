@@ -109,7 +109,8 @@ describe("producer-owned Aixuexi source runtime", () => {
       "const publicPath=path=>PUBLIC_BASE_PATH&&String(path).startsWith('/')&&path!==PUBLIC_BASE_PATH&&!String(path).startsWith(PUBLIC_BASE_PATH+'/')?PUBLIC_BASE_PATH+path:path;",
       "const assetUrl=(resource,page)=>publicPath('/api/assets/'+resource.resourceRefId+'/content?course='+encodeURIComponent(page.coursewareId)+'&page='+encodeURIComponent(page.pageDatabaseId));",
       "const assetPathPrefix=publicPath('/api/assets/');",
-      "function safe(item,inlineImage,url){return !item.value.startsWith(assetPathPrefix)&&!inlineImage||!url.startsWith('#')&&!url.startsWith(assetPathPrefix)}",
+      "const isAixuexiLocalAssetUrl=value=>String(value).startsWith(assetPathPrefix);",
+      "function safe(item,inlineImage,url,source){return !isAixuexiLocalAssetUrl(item.value)&&!inlineImage||!url.startsWith('#')&&!isAixuexiLocalAssetUrl(url)||!isAixuexiLocalAssetUrl(source)}",
       "function aixuexiPreviewHtml(){return '<div class=\"aix-layout-viewport\"></div>'}",
       "function fitAixuexiStages(){}",
       "async function hydrateAixuexiPreviews(){}",
@@ -126,7 +127,8 @@ describe("producer-owned Aixuexi source runtime", () => {
       staticRoutes: { "/api/runtime/source.js": "./source.js" },
     });
     expect(portable.viewerScript).toContain("MATHIN_PORTABLE");
-    expect(portable.viewerScript).toContain("mathinPortableAssetUrl");
+    expect(portable.viewerScript).toContain("const isAixuexiLocalAssetUrl=value=>Object.values(MATHIN_PORTABLE?.resources||{})");
+    expect(portable.viewerScript).not.toContain("assetPathPrefix");
     expect(portable.viewerScript).toContain("message.advanceOnCanvasClick===true");
     expect(portable.viewerScript).toContain("mathin-source-runtime-host");
     expect(portable.viewerScript).not.toContain("route().catch");
