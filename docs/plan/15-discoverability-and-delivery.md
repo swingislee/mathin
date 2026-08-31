@@ -8,7 +8,7 @@
 >
 > **剩余项**：发布必要的 P4G-8/10 并入 R1；P4G-6b cacheComponents 全量迁移延后；`POST-LIVE-PERF-01` 在 R1-Live 单老师试用期持续收集全站导航与局部切换卡顿样本，集中优化不作为 Gate 2 blocker。
 >
-> **最后核对**：2026-08-30；讲次只读预览增量已完成生产 app-only 发布和机器 postflight，仍无真实课程冷／热翻页时延或产品手感签收；教师微课课程切换及其余 `POST-LIVE-PERF-01` 项仍只有用户反馈与静态初筛，不得把候选原因写成已证实瓶颈。
+> **最后核对**：2026-08-31；讲次只读预览增量已完成生产 app-only 发布和机器 postflight；Studio 来源页的整路由翻页与白闪已在开发端改为页级缓存、相邻预取和稳定来源 iframe，仍待产品手感签收。教师微课课程切换及其余 `POST-LIVE-PERF-01` 项继续按分段证据处理。
 
 > 本文是 13、14 之后的**第三条横切线**，代号 `P4G-*`。13 补后端地基（事件/学期/uid/RLS 断言/合规），14 补前端体验骨架（导航/反馈/面包屑/无障碍）——两者已按各自 §9 基本执行完毕。本文补的是**剩下那半个系统**：站被不被搜到、内容能不能真双语、数据什么时候失效、谁来自动守门、页面快不快。
 >
@@ -282,7 +282,7 @@
 | --- | --- | --- | --- |
 | `PERF-UX-01` | 教师微课课程族中切换课程。`TeacherMicrocourseBrowser` 已用本地 state + `history.replaceState` 更新选择，不会因 `course` 参数重跑整页；首次未命中仍请求 `/api/teacher-microcourses/[courseId]/quick-preview`。该 Route Handler 先 `auth.getUser()`，再调用 `get_teacher_microcourse_quick_preview`；响应为 `private, no-store`，20 门缓存只存在于当前组件生命周期，悬停／聚焦约 120ms 后才预取 | 产品负责人已在开发页确认“切换不同课程有明显卡顿”，因此 History API 不是本样本的瓶颈解释。优先怀疑首次预览的浏览器→Route Handler→Auth→RPC 往返、RPC 查询或缓存命中率 | 记录点击→选中反馈、API TTFB／总时长、RPC `explain analyze`、响应大小、缓存命中／未命中 p50/p95。再比较可见行空闲批预取、基于 `updatedAt/releaseId` 的私有条件缓存、减少重复鉴权往返或把缓存提升到不会被结果区重挂载的位置；不得先删鉴权 |
 | `PERF-UX-02` | 教师微课切换目录、筛选、排序或分页时使用 `router.replace` 触发 RSC 导航；服务端路径依次经过课程族详情、Feature Flag、四组目录／配置／范围／权限读取和选中课程预览，按查询 key 重挂载浏览器并清空组件内预览缓存 | 这是该页面另一条独立慢路径，不能与单课程选择混成同一个指标 | 分开记录 RSC 请求、稳定外壳保留时间和各服务端阶段；按结果决定稳定壳／结果子树拆分、跨结果页缓存或服务端查询合并 |
-| `PERF-UX-03` | `/studio/courseware/[lectureId]` 的普通、来源和空间课件仍用 `?page=` Link／`router.push` 翻页；每次会重新执行鉴权、workbench context、页 revision／binding 解析，来源或空间舞台也随路由替换 | 与讲次只读预览修复前同类，且编辑器还必须保留未保存离开保护；只读预览的生产 hotfix 不自动改变 Studio | 复用来源提交 `50a1648`／生产候选 `a165004` 的“页级读取＋缓存＋相邻预取”思路，但先记录不同 docVersion 的 RSC、签名和 renderer 初始化时间，并为 dirty editor 单独设计切页边界 |
+| `PERF-UX-03` | `/studio/courseware/[lectureId]` 的来源只读页已在开发端改为首屏 Server Component＋页内 action：点击立即更新本地选择和 URL，只读取目标 revision／binding，生命周期缓存并预取相邻页；同 runtime iframe 保持挂载，未命中时保留上一帧。普通可编辑页和空间页仍保留原边界 | 本轮只覆盖不会产生 dirty state 的来源只读页，因此没有绕过编辑器未保存离开保护；机器合同通过不等于产品手感已签收 | 产品负责人复核连续翻页、跨页跳转及首次未命中；通过后按 app-only 增量发布。普通编辑器与空间页只有收到独立真实反馈后再按各自状态边界处理 |
 | `PERF-UX-04` | 普通课程族的年级／班型／季节／教材版本选择使用同路由 `?variant=` Link；切换会重跑课程族详情、权限／环境和稳定侧栏数据 | 对象确实变化，但稳定 family 数据可能被重复读取和重绘 | 对同 family 冷／热切换做 RSC 分段采样；确认收益后再拆稳定 family shell 与 variant 子树，或预取相邻 variant，不能仅用 History API 隐藏必要读取 |
 | `PERF-UX-05` | `session-preparation-reviews.ts` 对每个备课附件分别调用 `createSignedUrl`，两类文件再并行执行，形成随附件数增长的签名请求扇出 | 已确认是 N 次远程调用形态，但尚未证明进入用户当前卡顿样本 | 记录附件数与签名阶段耗时；若占比成立，改为去重路径后的单次 `createSignedUrls` 批签，并保留逐文件缺失状态 |
 | `PERF-UX-06` | 课件资源筛选、4:3 复核筛选等多处查询控件通过 `router.push/replace` 刷新服务端结果；已有 route loading 不等于稳定区域不会闪烁或整块等待 | 这些导航可能是正确的数据边界，问题更可能是缺少即时 pending 反馈、Suspense 粒度过大或重复稳定查询 | 按真实反馈补具体路由，不做全库机械替换；逐项记录点击反馈、RSC 时长、查询时长、返回体和重渲染范围，再选择乐观状态、细粒度 Suspense、预取或查询合并 |

@@ -96,6 +96,7 @@ export default function SourceRuntimeStage({
   const runtimeInstanceKey = `${doc.runtime.packageHash}:${runtimeEntry ?? "missing"}`;
   const renderKey = `${runtimeInstanceKey}:${doc.source.coursewareId}:${doc.source.pageDatabaseId}`;
   const rendered = renderedFrameKey === renderKey;
+  const hasRenderedCurrentRuntime = renderedFrameKey?.startsWith(`${runtimeInstanceKey}:`) ?? false;
   const runtimeError = runtimeFailure?.frameKey === renderKey ? runtimeFailure.message : null;
   const payload = useMemo(
     () => materializePayload(doc, bindingUrls, interactive),
@@ -216,7 +217,7 @@ export default function SourceRuntimeStage({
           }}
         />
       ) : null}
-      {!rendered && !runtimeError && !unavailable ? (
+      {!rendered && !hasRenderedCurrentRuntime && !runtimeError && !unavailable ? (
         <div className="absolute inset-x-0 top-0 grid place-items-center bg-paper text-sm text-muted" style={{ height: `${sourceHeightPercent}%` }} aria-live="polite">
           {t("sourceRuntimeLoading")}
         </div>

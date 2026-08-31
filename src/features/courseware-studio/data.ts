@@ -506,6 +506,12 @@ export interface StudioImageAssetUsage {
   useCount: number;
 }
 
+export interface CoursewareStudioRenderPagePayload {
+  revisionId: string;
+  doc: CoursewareDoc;
+  bindingUrls: ResolvedBindingUrls;
+}
+
 /** 编辑器壳数据：草稿优先，其余页面走当前 release/current revision。 */
 export async function loadCoursewareStudioPage(lectureId: string, pageDocId: string, track: CoursewareTrack) {
   const supabase = await createClient();
@@ -665,6 +671,37 @@ export async function loadCoursewareStudioPage(lectureId: string, pageDocId: str
     bindingUrls,
     imageAssetUsage,
     copyTargets: (copyTargets ?? []).map((item) => ({ id: item.id, no: item.no, name: item.name })),
+  };
+}
+
+/**
+ * Studio 页内切换只读取目标 revision 与其绑定。
+ *
+ * 讲次、目录、全部 page heads 与权限已经由首个 Server Component 请求建立；
+ * 翻页时重跑整条 workbench loader 只会卸载舞台并重复读取稳定数据。
+ */
+export async function loadCoursewareStudioRenderPage(
+  pageDocId: string,
+  revisionId: string,
+  track: CoursewareTrack,
+  client?: Supabase,
+): Promise<CoursewareStudioRenderPagePayload> {
+  const supabase = client ?? await createClient();
+  const [{ data: revision, error: revisionError }, bindingUrls] = await Promise.all([
+    supabase
+      .from("cw_page_revisions")
+      .select("id, doc")
+      .eq("id", revisionId)
+      .eq("page_doc_id", pageDocId)
+      .maybeSingle(),
+    resolveEditorBindingUrls(supabase, pageDocId, track),
+  ]);
+  if (revisionError) throw new Error(revisionError.message);
+  if (!revision) throw new Error("PAGE_REVISION_MISSING");
+  return {
+    revisionId: revision.id,
+    doc: parseCoursewareDoc(revision.doc),
+    bindingUrls,
   };
 }
 
