@@ -146,6 +146,14 @@ describe("P6 courseware importer", () => {
     expect(plan.pages[0].doc.nodes[0].content.html).toBe(html);
   });
 
+  it("preserves source KaTeX MathML semantics verbatim", async () => {
+    const html = '<math><semantics><mrow><msubsup><mi>x</mi><mn>1</mn><mn>2</mn></msubsup><mtext>长度</mtext><mspace width="0.2em"></mspace></mrow><annotation encoding="application/x-tex">x_1^2\\text{长度}</annotation></semantics></math>';
+    const fixture = await createPackageFixture(html);
+    const plan = await loadImportPlan({ packageRoot: fixture.root, coursewareId: "sample-courseware" });
+
+    expect(plan.pages[0].doc.nodes[0].content.html).toBe(html);
+  });
+
   it("fails loudly when markup would be altered by sanitization", async () => {
     const fixture = await createPackageFixture('<div onclick="alert(1)"><blink>x</blink></div>');
 

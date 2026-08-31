@@ -63,7 +63,11 @@ const COURSEWARE_MARKUP_OPTIONS = {
     "svg", "g", "defs", "path", "text", "tspan", "title", "use", "foreignObject",
     "rect", "circle", "ellipse", "line", "polyline", "polygon", "marker",
     "linearGradient", "radialGradient", "stop", "clipPath", "pattern", "mask",
-    "math", "mrow", "mi", "mn", "mo", "mfrac", "msup", "msub",
+    // 与来源 Viewer 的 KaTeX htmlAndMathml 输出保持同一 MathML 标签集合；
+    // importer 只做无损门禁，不在入库时剥离已经过来源消毒的语义节点。
+    "math", "mrow", "mi", "mn", "mo", "mfrac", "msup", "msub", "msubsup",
+    "msqrt", "mroot", "munder", "mover", "munderover", "mtable", "mtr", "mtd",
+    "mtext", "mstyle", "mspace", "semantics", "annotation",
     "tal-readonly", "font", "ruby", "rt", "style", "title", "video",
   ],
   allowedAttributes: false,
