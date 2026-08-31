@@ -1357,6 +1357,7 @@
     "verticalSliceY": "Vertical position Y",
     "verticalSliceWidth": "Width",
     "verticalSliceHeight": "Height",
+    "verticalSliceResize": "Resize the selected courseware element",
     "verticalSliceFontSize": "Font size",
     "verticalSliceLineHeight": "Line height",
     "verticalSliceOpacity": "Opacity",

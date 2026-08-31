@@ -202,16 +202,27 @@ export function PageDocVerticalSliceEditor({
     };
   }, []);
 
-  const patchSelected = (mutate: (node: DocNode) => void) => {
-    if (!selectedPath) return;
+  const patchNode = useCallback((nodePath: string, mutate: (node: DocNode) => void) => {
     const next = clone(docRef.current);
-    const target = visit(next.nodes, selectedPath);
+    const target = visit(next.nodes, nodePath);
     if (!target) return;
     mutate(target);
     docRef.current = next;
     setDoc(next);
     markDirty();
+  }, [markDirty]);
+
+  const patchSelected = (mutate: (node: DocNode) => void) => {
+    if (!selectedPath) return;
+    patchNode(selectedPath, mutate);
   };
+
+  const handleNodeTransformChange = useCallback((
+    nodePath: string,
+    patch: Partial<Pick<DocNode["transform"], "x" | "y" | "width" | "height">>,
+  ) => {
+    patchNode(nodePath, (node) => Object.assign(node.transform, patch));
+  }, [patchNode]);
 
   const patchNumber = (
     key: NumericTransformKey | "fontSize" | "lineHeight" | "zIndex",
@@ -424,6 +435,8 @@ export function PageDocVerticalSliceEditor({
         playAutoInteractions={false}
         selectedNodePath={selectedPath}
         onNodeSelect={setSelectedPath}
+        onNodeTransformChange={handleNodeTransformChange}
+        nodeResizeLabel={t("verticalSliceResize")}
         onBackgroundSelect={() => {
           setSelectedPath(null);
           setMessage(t("verticalSliceBackgroundDeferred"));

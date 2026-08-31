@@ -212,6 +212,10 @@ export interface CoursewarePreviewWorkbenchProps {
 
 export type CoursewareWorkbenchMode = "preview" | "formal-editor" | "microcourse-editor";
 
+// Directory, canvas toolbar and inspector title are one visual row. Keep the
+// height contract here so adapter content cannot make one product drift taller.
+const WORKBENCH_HEADER_ROW_CLASS = "h-11 min-h-11 max-h-11 shrink-0 border-b border-line";
+
 function assignRef<T>(ref: Ref<T> | undefined, value: T | null) {
   if (typeof ref === "function") ref(value);
   else if (ref) ref.current = value;
@@ -312,7 +316,7 @@ function CoursewareWorkbenchFrame({
             >
               <div
                 data-courseware-editor-part="directory-header"
-                className="flex min-h-11 shrink-0 items-center justify-between gap-2 border-b border-line px-3 py-2"
+                className={cn(WORKBENCH_HEADER_ROW_CLASS, "flex items-center justify-between gap-2 px-3 py-2")}
               >
                 {directory.header}
               </div>
@@ -338,7 +342,7 @@ function CoursewareWorkbenchFrame({
             {editable ? (
               <div
                 data-courseware-editor-slot="toolbar"
-                className="flex min-h-11 shrink-0 items-center gap-3 border-b border-line px-3"
+                className={cn(WORKBENCH_HEADER_ROW_CLASS, "flex items-center gap-3 px-3")}
               >
                 <div data-courseware-editor-part="insert-toolbar" className="min-w-0 flex-1">
                   {activeToolbar}
@@ -350,7 +354,7 @@ function CoursewareWorkbenchFrame({
                 ) : null}
               </div>
             ) : canvas.header ? (
-              <div data-courseware-editor-part="canvas-header" className="min-h-11 shrink-0 border-b border-line">
+              <div data-courseware-editor-part="canvas-header" className={WORKBENCH_HEADER_ROW_CLASS}>
                 {canvas.header}
               </div>
             ) : null}
@@ -383,7 +387,7 @@ function CoursewareWorkbenchFrame({
               >
                 <div
                   data-courseware-editor-slot="inspector-header"
-                  className="flex min-h-11 shrink-0 items-center gap-3 border-b border-line px-3 py-2"
+                  className={cn(WORKBENCH_HEADER_ROW_CLASS, "flex items-center gap-3 px-3 py-2")}
                 >
                   {inspector.header}
                   {activeInspectorHeader ? (

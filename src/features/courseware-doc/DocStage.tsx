@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { ClassroomVideoInkSurface } from "@/features/classroom/input/ClassroomVideoInkSurface";
@@ -47,12 +54,28 @@ export interface DocStageProps {
   onNodeSelect?: (nodePath: string) => void;
   /** 中台编辑器当前选中节点；课堂不传，不产生选中描边。 */
   selectedNodePath?: string | null;
+  /** 中台编辑器直接拖动/缩放节点；预览与课堂不传，渲染行为保持只读。 */
+  onNodeTransformChange?: (nodePath: string, patch: DocNodeTransformPatch) => void;
+  /** 编辑态缩放手柄的无障碍名称。 */
+  nodeResizeLabel?: string;
   /** 编辑画布可跳过过渡并直接落到自动动画结束态；预览/课堂默认播放。 */
   playAutoInteractions?: boolean;
   /** Studio 选择画布背景资源；只有存在背景 binding 时才会触发。 */
   onBackgroundSelect?: () => void;
   /** Composition overlays keep the immutable source page visible underneath. */
   transparentCanvas?: boolean;
+}
+
+export type DocNodeTransformPatch = Partial<
+  Pick<DocNode["transform"], "x" | "y" | "width" | "height">
+>;
+
+interface NodeTransformGesture {
+  mode: "move" | "resize";
+  pointerId: number;
+  startX: number;
+  startY: number;
+  origin: Required<DocNodeTransformPatch>;
 }
 
 export interface DocVideoCtl {
@@ -329,6 +352,9 @@ function nodeBody(
   h5PointerBridge: H5PointerBridgeHost | undefined,
   onNodeSelect: ((nodePath: string) => void) | undefined,
   selectedNodePath: string | null | undefined,
+  onNodeTransformChange: DocStageProps["onNodeTransformChange"],
+  nodeResizeLabel: string | undefined,
+  stageScale: number,
 ): ReactNode {
   const alt = node.content?.text || node.name || node.sourceType;
   const url = bindingUrl(node, RESOURCE_ROLES, urls);
@@ -345,6 +371,9 @@ function nodeBody(
           h5PointerBridge={h5PointerBridge}
           onNodeSelect={onNodeSelect}
           selectedNodePath={selectedNodePath}
+          onNodeTransformChange={onNodeTransformChange}
+          nodeResizeLabel={nodeResizeLabel}
+          stageScale={stageScale}
         />
       ));
     case "image":
@@ -455,6 +484,9 @@ function NodeView({
   h5PointerBridge,
   onNodeSelect,
   selectedNodePath,
+  onNodeTransformChange,
+  nodeResizeLabel,
+  stageScale,
 }: {
   node: DocNode;
   urls: ResolvedBindingUrls;
@@ -463,10 +495,76 @@ function NodeView({
   h5PointerBridge: H5PointerBridgeHost | undefined;
   onNodeSelect: ((nodePath: string) => void) | undefined;
   selectedNodePath: string | null | undefined;
+  onNodeTransformChange: DocStageProps["onNodeTransformChange"];
+  nodeResizeLabel: string | undefined;
+  stageScale: number;
 }) {
-  const t = node.transform;
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [gesture, setGesture] = useState<NodeTransformGesture | null>(null);
+  const [draft, setDraft] = useState<Required<DocNodeTransformPatch> | null>(null);
+  const t = draft ? { ...node.transform, ...draft } : node.transform;
   const s = node.style;
+  const selected = selectedNodePath === node.nodePath;
   const clickTrigger = node.sourceResourceId && clickTriggers.has(node.sourceResourceId) ? node.sourceResourceId : "";
+  const beginTransform = (
+    event: ReactPointerEvent<HTMLElement>,
+    mode: NodeTransformGesture["mode"],
+  ) => {
+    if (!onNodeTransformChange) return;
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    rootRef.current?.setPointerCapture(event.pointerId);
+    onNodeSelect?.(node.nodePath);
+    const origin = {
+      x: node.transform.x,
+      y: node.transform.y,
+      width: node.transform.width,
+      height: node.transform.height,
+    };
+    setDraft(origin);
+    setGesture({
+      mode,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      origin,
+    });
+  };
+  const moveTransform = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!gesture || gesture.pointerId !== event.pointerId || stageScale <= 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const deltaX = (event.clientX - gesture.startX) / stageScale;
+    const deltaY = (event.clientY - gesture.startY) / stageScale;
+    const next = gesture.mode === "move"
+      ? {
+          ...gesture.origin,
+          x: gesture.origin.x + deltaX,
+          y: gesture.origin.y + deltaY,
+        }
+      : {
+          ...gesture.origin,
+          width: Math.max(8, gesture.origin.width + deltaX),
+          height: Math.max(8, gesture.origin.height + deltaY),
+        };
+    setDraft(next);
+    onNodeTransformChange?.(node.nodePath, next);
+  };
+  const finishTransform = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!gesture || gesture.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (draft) onNodeTransformChange?.(node.nodePath, draft);
+    setGesture(null);
+    setDraft(null);
+  };
+  const cancelTransform = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!gesture || gesture.pointerId !== event.pointerId) return;
+    onNodeTransformChange?.(node.nodePath, gesture.origin);
+    setGesture(null);
+    setDraft(null);
+  };
   const style: CSSProperties = {
     position: "absolute",
     left: 0,
@@ -483,20 +581,56 @@ function NodeView({
     transformOrigin: `${t.anchorX * 100}% ${t.anchorY * 100}%`,
     transform: `translate(${t.x}px,${t.y}px) rotate(${t.rotation}deg) scale(${t.flipX ? -t.scaleX : t.scaleX},${t.flipY ? -t.scaleY : t.scaleY})`,
     display: node.visible ? "block" : "none",
-    cursor: clickTrigger ? "pointer" : undefined,
-    outline: selectedNodePath === node.nodePath ? "2px solid #e76f78" : undefined,
-    outlineOffset: selectedNodePath === node.nodePath ? "2px" : undefined,
+    cursor: onNodeTransformChange ? "move" : clickTrigger ? "pointer" : undefined,
+    outline: selected ? "2px solid #e76f78" : undefined,
+    outlineOffset: selected ? "2px" : undefined,
   };
   return (
     <div
+      ref={rootRef}
       data-node-path={node.nodePath}
       data-source-resource-id={node.sourceResourceId ?? ""}
       data-click-trigger={clickTrigger}
       data-classroom-input={clickTrigger ? "click" : undefined}
       onClickCapture={() => onNodeSelect?.(node.nodePath)}
+      onPointerCancel={cancelTransform}
+      onPointerDown={(event) => beginTransform(event, "move")}
+      onPointerMove={moveTransform}
+      onPointerUp={finishTransform}
       style={style}
     >
-      {nodeBody(node, urls, clickTriggers, videoControl, h5PointerBridge, onNodeSelect, selectedNodePath)}
+      {nodeBody(
+        node,
+        urls,
+        clickTriggers,
+        videoControl,
+        h5PointerBridge,
+        onNodeSelect,
+        selectedNodePath,
+        onNodeTransformChange,
+        nodeResizeLabel,
+        stageScale,
+      )}
+      {selected && onNodeTransformChange ? (
+        <button
+          type="button"
+          data-courseware-node-resize-handle
+          aria-label={nodeResizeLabel}
+          onPointerDown={(event) => beginTransform(event, "resize")}
+          style={{
+            position: "absolute",
+            right: 0,
+            bottom: 0,
+            zIndex: 2147483647,
+            width: 24,
+            height: 24,
+            border: "1px solid #fff",
+            borderRadius: "8px 0 0 0",
+            background: "#e76f78",
+            cursor: "nwse-resize",
+          }}
+        />
+      ) : null}
     </div>
   );
 }
@@ -515,6 +649,8 @@ export default function DocStage({
   h5PointerBridge,
   onNodeSelect,
   selectedNodePath,
+  onNodeTransformChange,
+  nodeResizeLabel,
   playAutoInteractions = true,
   onBackgroundSelect,
   transparentCanvas = false,
@@ -679,6 +815,9 @@ export default function DocStage({
             h5PointerBridge={h5PointerBridge}
             onNodeSelect={onNodeSelect}
             selectedNodePath={selectedNodePath}
+            onNodeTransformChange={onNodeTransformChange}
+            nodeResizeLabel={nodeResizeLabel}
+            stageScale={scale}
           />
         ))}
       </div>

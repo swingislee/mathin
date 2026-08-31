@@ -26,6 +26,8 @@ describe("courseware workbench mode unification", () => {
     expect(workbench).toContain('data-courseware-editor-slot="inspector"');
     expect(workbench).toContain("CoursewareStageViewport");
     expect(workbench).toContain("CoursewareWorkbenchPager");
+    expect(workbench).toContain('const WORKBENCH_HEADER_ROW_CLASS = "h-11 min-h-11 max-h-11');
+    expect(workbench.match(/WORKBENCH_HEADER_ROW_CLASS/g)?.length).toBeGreaterThanOrEqual(5);
   });
 
   it("registers editor controls through React context and cannot regress to DOM-id portals", () => {

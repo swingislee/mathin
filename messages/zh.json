@@ -1357,6 +1357,7 @@
     "verticalSliceY": "纵向位置 Y",
     "verticalSliceWidth": "宽度",
     "verticalSliceHeight": "高度",
+    "verticalSliceResize": "缩放当前课件元素",
     "verticalSliceFontSize": "字号",
     "verticalSliceLineHeight": "行高",
     "verticalSliceOpacity": "透明度",

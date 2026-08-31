@@ -41,11 +41,16 @@ describe("courseware PageDoc Step 3 vertical slice", () => {
     expect(editor).toContain("window.setTimeout(() => void flushRef.current(), 800)");
     expect(editor).toContain("playAutoInteractions={false}");
     expect(editor).toContain("useState<string | null>(null)");
+    expect(editor).toContain("onNodeTransformChange={handleNodeTransformChange}");
+    expect(editor).toContain("Object.assign(node.transform, patch)");
     expect(stage).toContain("else runtime.settleAuto()");
+    expect(stage).toContain("data-courseware-node-resize-handle");
+    expect(stage).toContain("onNodeTransformChange?.(node.nodePath, next)");
     expect(editor).toContain("data-content-changed");
     expect(editor).toContain("data-layout-changed");
     expect(editor).not.toContain("replaceCoursewarePageImageAction");
     expect(editor).not.toContain("publishCoursewareReleaseAction");
     expect(actions).toMatch(/authorizedClient\("courseware\.page\.edit"\)[\s\S]*save_cw_track_page_draft/);
+    expect(actions).toContain('"RELATION_REQUIRED"');
   });
 });
