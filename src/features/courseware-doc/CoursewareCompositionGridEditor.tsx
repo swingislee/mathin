@@ -4,6 +4,7 @@ import { Grip, MoveDiagonal2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import type { ResolvedBindingUrls } from "./resolve";
+import type { DocNodeTransformPatch } from "./DocStage";
 import {
   updateCoursewareCompositionPlacement,
 } from "./composition-page-layout";
@@ -32,12 +33,18 @@ export function CoursewareCompositionGridEditor({
   selectedBlockId,
   onSelectBlock,
   onChange,
+  onNodeTransformChange,
+  onNodeTextChange,
+  snapToGrid,
 }: {
   doc: CoursewareCompositionPage;
   bindingUrls: ResolvedBindingUrls;
   selectedBlockId: string | null;
   onSelectBlock: (blockId: string) => void;
   onChange: (doc: CoursewareCompositionPage) => void;
+  onNodeTransformChange: (nodePath: string, patch: DocNodeTransformPatch) => void;
+  onNodeTextChange: (nodePath: string, value: string) => void;
+  snapToGrid: boolean;
 }) {
   const t = useTranslations("teacherMicrocourses");
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -45,6 +52,17 @@ export function CoursewareCompositionGridEditor({
   const [gesture, setGesture] = useState<GridGesture | null>(null);
   const [draft, setDraft] = useState<CoursewareCompositionPage | null>(null);
   const displayed = gesture && draft ? draft : doc;
+  const selectedBlock = displayed.layout.blocks.find((block) => block.id === selectedBlockId) ?? null;
+  const selectedNodePath = selectedBlock?.type === "node"
+    ? displayed.overlay.nodes.find((node) => node.id === selectedBlock.nodeId)?.nodePath ?? null
+    : null;
+  const selectNode = (nodePath: string) => {
+    const node = displayed.overlay.nodes.find((item) => item.nodePath === nodePath);
+    const block = node
+      ? displayed.layout.blocks.find((item) => item.type === "node" && item.nodeId === node.id)
+      : null;
+    if (block) onSelectBlock(block.id);
+  };
   const labelFor = (block: CoursewareCompositionBlock) => {
     if (block.type === "game") return t("componentGame");
     if (block.type === "h5") return t("componentH5");
@@ -151,19 +169,30 @@ export function CoursewareCompositionGridEditor({
       data-grid-visible={gesture ? "true" : "false"}
       style={{ backgroundColor: doc.canvas.backgroundColor ?? COURSEWARE_DEFAULT_PAPER }}
     >
-      <CoursewareCompositionStage doc={displayed} bindingUrls={bindingUrls} interactive={false} />
+      <CoursewareCompositionStage
+        doc={displayed}
+        bindingUrls={bindingUrls}
+        interactive={false}
+        selectedNodePath={selectedNodePath}
+        onNodeSelect={selectNode}
+        onNodeTransformChange={onNodeTransformChange}
+        onNodeTextChange={onNodeTextChange}
+        snapToGrid={snapToGrid}
+        nodeMoveLabel={t("gridMoveBlock", { type: t("componentText") })}
+        nodeResizeLabel={t("gridResizeBlock", { type: t("componentText") })}
+      />
       <div
-        className="absolute inset-0 grid"
+        className="pointer-events-none absolute inset-0 grid"
         style={{
           gridTemplateColumns: "repeat(12, minmax(0, 1fr))",
           gridTemplateRows: "repeat(9, minmax(0, 1fr))",
-          backgroundImage: gesture
+          backgroundImage: gesture && snapToGrid
             ? "linear-gradient(to right, rgb(111 139 72 / 0.22) 1px, transparent 1px), linear-gradient(to bottom, rgb(111 139 72 / 0.22) 1px, transparent 1px)"
             : "none",
           backgroundSize: `${100 / 12}% ${100 / 9}%`,
         }}
       >
-        {displayed.layout.blocks.map((block) => {
+        {displayed.layout.blocks.filter((block) => block.type !== "node").map((block) => {
           const selected = block.id === selectedBlockId;
           const label = labelFor(block);
           return (
@@ -174,7 +203,7 @@ export function CoursewareCompositionGridEditor({
               aria-label={t("gridMoveBlock", { type: label })}
               aria-pressed={selected}
               className={cn(
-                "group relative z-10 m-1 cursor-move rounded-xl border-2 bg-transparent outline-none transition-[border-color] focus-visible:ring-2 focus-visible:ring-rose",
+                "pointer-events-auto group relative z-10 m-1 cursor-move rounded-xl border-2 bg-transparent outline-none transition-[border-color] focus-visible:ring-2 focus-visible:ring-rose",
                 selected ? "border-rose" : "border-transparent hover:border-crater/70",
                 gesture?.blockId === block.id && "border-rose-deep",
               )}

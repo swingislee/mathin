@@ -1328,6 +1328,21 @@
     "sourceRuntimeLoading": "正在加载源课件…",
     "sourceRuntimeUnavailable": "源课件运行时或资源尚不可用"
   },
+  "coursewareTextEditor": {
+    "textElement": "文字",
+    "content": "文字内容",
+    "fontSize": "字号",
+    "keepSourceTypography": "沿用原样式",
+    "color": "颜色",
+    "alignment": "对齐方式",
+    "alignLeft": "左对齐",
+    "alignCenter": "居中对齐",
+    "alignRight": "右对齐",
+    "snapToGrid": "网格吸附",
+    "snapHint": "拖动与缩放时对齐 12 × 9 网格",
+    "moveElement": "移动当前课件元素",
+    "resizeElement": "缩放当前课件元素"
+  },
   "coursewareWorkspace": {
     "openWorkspace": "打开课件工作区",
     "lectureTitle": "第 {no} 讲 · {name}",

@@ -38,6 +38,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { CoursewareCompositionGridEditor } from "@/features/courseware-doc/CoursewareCompositionGridEditor";
 import { CoursewareEditorAdapterSurface } from "@/features/courseware-doc/CoursewareEditorAdapterSurface";
 import {
+  CoursewareGridSnapControl,
+  CoursewareTextElementInspector,
+  coursewareTextValue,
+  isCoursewareTextElement,
+  setCoursewareTextValue,
+} from "@/features/courseware-doc/CoursewareTextElementEditor";
+import {
   CoursewareEditorSaveControls,
   CoursewareInsertionToolbar,
   CoursewareEditorToolbarButton,
@@ -49,6 +56,7 @@ import {
   addCoursewareCompositionNode,
   addCoursewareCompositionTool,
   removeCoursewareCompositionBlock,
+  updateCoursewareCompositionNodeTransform,
 } from "@/features/courseware-doc/composition-page-layout";
 import {
   coursewareCompositionPageSchema,
@@ -59,6 +67,7 @@ import {
 } from "@/features/courseware-doc/composition-page-schema";
 import type { GamePageDoc } from "@/features/courseware-doc/game-page-schema";
 import type { DocNode } from "@/features/courseware-doc/schema";
+import type { DocNodeTransformPatch } from "@/features/courseware-doc/DocStage";
 import { GamePageEditor } from "@/features/games/courseware/GamePageEditor";
 import { gameCoursewareContractsForSurface } from "@/features/games/courseware/registry";
 import { getGame } from "@/features/games/registry";
@@ -203,6 +212,7 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
   const [doc, setDoc] = useState(() => structuredClone(page.doc));
   const [bindingUrls, setBindingUrls] = useState({ ...page.bindingUrls });
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(page.doc.layout.blocks[0]?.id ?? null);
+  const [snapToGrid, setSnapToGrid] = useState(true);
   const [message, setMessage] = useState("");
   const [saveState, setSaveState] = useState<"saved" | "saving" | "dirty" | "error">("saved");
   const [pending, startTransition] = useTransition();
@@ -355,6 +365,20 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
     updater(node);
     return coursewareCompositionPageSchema.parse(next);
   });
+  const handleNodeTransformChange = useCallback((nodePath: string, patch: DocNodeTransformPatch) => {
+    updateDoc((current) => updateCoursewareCompositionNodeTransform(current, nodePath, patch, snapToGrid));
+  }, [snapToGrid, updateDoc]);
+  const handleNodeTextChange = useCallback((nodePath: string, value: string) => {
+    updateDoc((current) => {
+      const currentNode = current.overlay.nodes.find((node) => node.nodePath === nodePath);
+      if (!currentNode || !isCoursewareTextElement(currentNode) || coursewareTextValue(currentNode) === value) return current;
+      const next = structuredClone(current);
+      const node = next.overlay.nodes.find((item) => item.nodePath === nodePath);
+      if (!node) return current;
+      setCoursewareTextValue(node, value);
+      return coursewareCompositionPageSchema.parse(next);
+    });
+  }, [updateDoc]);
   const patchSelectedGame = (game: GamePageDoc) => updateDoc((current) => {
     if (!selected || selected.type !== "game") return current;
     const next = structuredClone(current);
@@ -461,8 +485,17 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
               {doc.layout.blocks.length === 0 && <p className="mt-2 text-xs text-muted">{t("componentEmpty")}</p>}
             </div>
 
-            {selected?.type === "node" ? (
-              <NodeControls doc={doc} block={selected} patch={patchSelectedNode} />
+            <CoursewareGridSnapControl checked={snapToGrid} onCheckedChange={setSnapToGrid} />
+
+            {selected?.type === "node" && isCoursewareTextElement(
+              doc.overlay.nodes.find((item) => item.id === selected.nodeId),
+            ) ? (
+              <CoursewareTextElementInspector
+                node={doc.overlay.nodes.find((item) => item.id === selected.nodeId)!}
+                onPatch={patchSelectedNode}
+              />
+            ) : selected?.type === "node" ? (
+              <NodeAppearanceControls doc={doc} block={selected} patch={patchSelectedNode} />
             ) : null}
             {selected?.type === "game" ? (
               <div className="border-t border-line pt-3">
@@ -507,12 +540,15 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
         selectedBlockId={selectedBlockId}
         onSelectBlock={setSelectedBlockId}
         onChange={updateDoc}
+        onNodeTransformChange={handleNodeTransformChange}
+        onNodeTextChange={handleNodeTextChange}
+        snapToGrid={snapToGrid}
       />
     </CoursewareEditorAdapterSurface>
   );
 });
 
-function NodeControls({ doc, block, patch }: {
+function NodeAppearanceControls({ doc, block, patch }: {
   doc: CoursewareCompositionPage;
   block: Extract<CoursewareCompositionBlock, { type: "node" }>;
   patch: (updater: (node: DocNode) => void) => void;
@@ -522,15 +558,6 @@ function NodeControls({ doc, block, patch }: {
   if (!node) return null;
   return (
     <div className="space-y-3 border-t border-line pt-3">
-      {node.content?.kind === "text" && (
-        <Label className="grid gap-1"><span>{t("gridTextContent")}</span><Textarea value={node.content.text ?? ""} rows={5} onChange={(event) => patch((item) => { if (item.content?.kind === "text") item.content.text = event.target.value; })} /></Label>
-      )}
-      {node.content?.kind === "rich_text" && (
-        <Label className="grid gap-1"><span>{t("richTextFormula")}</span><Textarea value={node.content.html ?? ""} rows={6} className="font-mono text-xs" onChange={(event) => patch((item) => { if (item.content?.kind === "rich_text") item.content.html = event.target.value; })} /><span className="text-xs font-normal text-muted">{t("formulaHint")}</span></Label>
-      )}
-      {(node.content?.kind === "text" || node.content?.kind === "rich_text") && (
-        <Label className="grid gap-1"><span>{t("fontSize")}</span><Input type="number" min={12} max={96} value={node.style.fontSize ?? 28} onChange={(event) => patch((item) => { item.style.fontSize = Number(event.target.value); })} /></Label>
-      )}
       <Label className="grid gap-1"><span>{t("color")}</span><Input type="color" value={node.style.color ?? "#2d2a26"} onChange={(event) => patch((item) => { item.style.color = event.target.value; })} /></Label>
     </div>
   );

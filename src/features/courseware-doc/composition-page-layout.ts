@@ -1,4 +1,5 @@
 import type { DocNode } from "./schema";
+import type { DocNodeTransformPatch } from "./DocStage";
 import {
   resolveCoursewareSnapGridGesture,
   type CoursewareSnapGridSize,
@@ -116,6 +117,41 @@ export function updateCoursewareCompositionPlacement(
     placement,
   );
   return resolved ? applyResolved(input, resolved) : input;
+}
+
+/**
+ * Text/image/shape nodes use the same pixel editor as PageDoc. With snapping
+ * enabled the composition occupancy grid remains authoritative; with snapping
+ * disabled only the node geometry changes and the grid keeps its last slot as
+ * the collision/insert ledger.
+ */
+export function updateCoursewareCompositionNodeTransform(
+  input: CoursewareCompositionPage,
+  nodePath: string,
+  patch: DocNodeTransformPatch,
+  snapToGrid: boolean,
+): CoursewareCompositionPage {
+  const currentNode = input.overlay.nodes.find((node) => node.nodePath === nodePath);
+  if (!currentNode) return input;
+  const block = input.layout.blocks.find((item) => item.type === "node" && item.nodeId === currentNode.id);
+  if (!block || block.type !== "node") return input;
+  const geometry = { ...currentNode.transform, ...patch };
+  if (snapToGrid) {
+    const placement: CoursewareCompositionPlacement = {
+      column: Math.max(0, Math.min(11, Math.round(geometry.x / CELL_SIZE))),
+      row: Math.max(0, Math.min(8, Math.round(geometry.y / CELL_SIZE))),
+      columnSpan: Math.max(1, Math.min(12, Math.round(geometry.width / CELL_SIZE))),
+      rowSpan: Math.max(1, Math.min(9, Math.round(geometry.height / CELL_SIZE))),
+    };
+    placement.columnSpan = Math.min(placement.columnSpan, 12 - placement.column);
+    placement.rowSpan = Math.min(placement.rowSpan, 9 - placement.row);
+    return updateCoursewareCompositionPlacement(input, block.id, placement);
+  }
+  const doc = structuredClone(input);
+  const node = doc.overlay.nodes.find((item) => item.nodePath === nodePath);
+  if (!node) return input;
+  Object.assign(node.transform, patch);
+  return coursewareCompositionPageSchema.parse(doc);
 }
 
 export function addCoursewareCompositionNode(

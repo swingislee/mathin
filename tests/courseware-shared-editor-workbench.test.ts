@@ -68,6 +68,29 @@ describe("shared courseware editor workbench", () => {
     expect(pageDoc).toContain("<CoursewareEditorSaveControls");
   });
 
+  it("uses one text-element editor and one DocStage edit behavior in formal and microcourse authoring", () => {
+    const textEditor = read("src", "features", "courseware-doc", "CoursewareTextElementEditor.tsx");
+    const stage = read("src", "features", "courseware-doc", "DocStage.tsx");
+    const grid = read("src", "features", "courseware-doc", "CoursewareCompositionGridEditor.tsx");
+    const formal = read("src", "features", "courseware-studio", "PageDocVerticalSliceEditor.tsx");
+    const microcourse = read("src", "features", "teacher-microcourses", "CoursewareCompositionWorkbench.tsx");
+
+    expect(textEditor).toContain("function CoursewareTextElementInspector");
+    expect(textEditor).toContain("function CoursewareGridSnapControl");
+    expect(formal).toContain("<CoursewareTextElementInspector");
+    expect(microcourse).toContain("<CoursewareTextElementInspector");
+    expect(formal).toContain("<CoursewareGridSnapControl");
+    expect(microcourse).toContain("<CoursewareGridSnapControl");
+    expect(stage).toContain("contentEditable={inlineTextEditing || undefined}");
+    expect(stage).toContain("data-courseware-node-move-handle");
+    expect(stage).toContain("data-courseware-node-resize-handle");
+    expect(stage).toContain("data-courseware-node-snap-grid");
+    expect(grid).toContain('filter((block) => block.type !== "node")');
+    expect(grid).toContain("onNodeTextChange={onNodeTextChange}");
+    expect(formal).not.toContain("verticalSliceTextOrHtml");
+    expect(microcourse).not.toContain("function NodeControls");
+  });
+
   it("keeps the formal canvas header free of duplicated track titles", () => {
     const formal = read("src", "features", "courseware-studio", "UnifiedCoursewareWorkspace.tsx");
     const prototype = read("src", "features", "courseware-studio", "CoursewareCapabilityPrototype.tsx");

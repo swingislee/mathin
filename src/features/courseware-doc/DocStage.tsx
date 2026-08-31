@@ -8,6 +8,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
+import { Grip, MoveDiagonal2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { ClassroomVideoInkSurface } from "@/features/classroom/input/ClassroomVideoInkSurface";
@@ -56,6 +57,14 @@ export interface DocStageProps {
   selectedNodePath?: string | null;
   /** 中台编辑器直接拖动/缩放节点；预览与课堂不传，渲染行为保持只读。 */
   onNodeTransformChange?: (nodePath: string, patch: DocNodeTransformPatch) => void;
+  /** 中台编辑器在来源文字框内直接改字；预览与课堂不传。 */
+  onNodeTextChange?: (nodePath: string, value: string) => void;
+  /** 编辑态网格吸附；关闭时保留自由像素几何。 */
+  snapToGrid?: boolean;
+  nodeGridColumns?: number;
+  nodeGridRows?: number;
+  /** 编辑态移动手柄的无障碍名称。 */
+  nodeMoveLabel?: string;
   /** 编辑态缩放手柄的无障碍名称。 */
   nodeResizeLabel?: string;
   /** 编辑画布可跳过过渡并直接落到自动动画结束态；预览/课堂默认播放。 */
@@ -353,7 +362,13 @@ function nodeBody(
   onNodeSelect: ((nodePath: string) => void) | undefined,
   selectedNodePath: string | null | undefined,
   onNodeTransformChange: DocStageProps["onNodeTransformChange"],
+  onNodeTextChange: DocStageProps["onNodeTextChange"],
+  inlineTextEditing: boolean,
+  nodeMoveLabel: string | undefined,
   nodeResizeLabel: string | undefined,
+  snapToGrid: boolean,
+  gridStep: { x: number; y: number },
+  onTransformGestureChange: (nodePath: string | null) => void,
   stageScale: number,
 ): ReactNode {
   const alt = node.content?.text || node.name || node.sourceType;
@@ -372,7 +387,12 @@ function nodeBody(
           onNodeSelect={onNodeSelect}
           selectedNodePath={selectedNodePath}
           onNodeTransformChange={onNodeTransformChange}
+          onNodeTextChange={onNodeTextChange}
+          nodeMoveLabel={nodeMoveLabel}
           nodeResizeLabel={nodeResizeLabel}
+          snapToGrid={snapToGrid}
+          gridStep={gridStep}
+          onTransformGestureChange={onTransformGestureChange}
           stageScale={stageScale}
         />
       ));
@@ -446,11 +466,29 @@ function nodeBody(
       return (
         <div
           style={textBlockStyle(node)}
+          contentEditable={inlineTextEditing || undefined}
+          suppressContentEditableWarning={inlineTextEditing}
+          spellCheck={inlineTextEditing}
+          onPointerDown={inlineTextEditing ? (event) => event.stopPropagation() : undefined}
+          onKeyDownCapture={inlineTextEditing ? (event) => event.stopPropagation() : undefined}
+          onBlur={inlineTextEditing ? (event) => onNodeTextChange?.(node.nodePath, event.currentTarget.innerText) : undefined}
           dangerouslySetInnerHTML={{ __html: renderAixuexiMathHtml(injectBindingUrls(node.content?.html ?? "", urls)) }}
         />
       );
     case "text":
-      return <div style={textBlockStyle(node)}>{node.content?.text ?? ""}</div>;
+      return (
+        <div
+          style={textBlockStyle(node)}
+          contentEditable={inlineTextEditing || undefined}
+          suppressContentEditableWarning={inlineTextEditing}
+          spellCheck={inlineTextEditing}
+          onPointerDown={inlineTextEditing ? (event) => event.stopPropagation() : undefined}
+          onKeyDownCapture={inlineTextEditing ? (event) => event.stopPropagation() : undefined}
+          onBlur={inlineTextEditing ? (event) => onNodeTextChange?.(node.nodePath, event.currentTarget.innerText) : undefined}
+        >
+          {node.content?.text ?? ""}
+        </div>
+      );
     default:
       return unknownBody(node);
   }
@@ -485,7 +523,12 @@ function NodeView({
   onNodeSelect,
   selectedNodePath,
   onNodeTransformChange,
+  onNodeTextChange,
+  nodeMoveLabel,
   nodeResizeLabel,
+  snapToGrid,
+  gridStep,
+  onTransformGestureChange,
   stageScale,
 }: {
   node: DocNode;
@@ -496,7 +539,12 @@ function NodeView({
   onNodeSelect: ((nodePath: string) => void) | undefined;
   selectedNodePath: string | null | undefined;
   onNodeTransformChange: DocStageProps["onNodeTransformChange"];
+  onNodeTextChange: DocStageProps["onNodeTextChange"];
+  nodeMoveLabel: string | undefined;
   nodeResizeLabel: string | undefined;
+  snapToGrid: boolean;
+  gridStep: { x: number; y: number };
+  onTransformGestureChange: (nodePath: string | null) => void;
   stageScale: number;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -505,6 +553,10 @@ function NodeView({
   const t = draft ? { ...node.transform, ...draft } : node.transform;
   const s = node.style;
   const selected = selectedNodePath === node.nodePath;
+  const inlineTextEditing = Boolean(
+    onNodeTextChange
+    && (node.content?.kind === "text" || node.content?.kind === "rich_text"),
+  );
   const clickTrigger = node.sourceResourceId && clickTriggers.has(node.sourceResourceId) ? node.sourceResourceId : "";
   const beginTransform = (
     event: ReactPointerEvent<HTMLElement>,
@@ -530,6 +582,7 @@ function NodeView({
       startY: event.clientY,
       origin,
     });
+    onTransformGestureChange(node.nodePath);
   };
   const moveTransform = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (!gesture || gesture.pointerId !== event.pointerId || stageScale <= 0) return;
@@ -537,16 +590,19 @@ function NodeView({
     event.stopPropagation();
     const deltaX = (event.clientX - gesture.startX) / stageScale;
     const deltaY = (event.clientY - gesture.startY) / stageScale;
+    const snap = (value: number, step: number) => (
+      snapToGrid && step > 0 ? Math.round(value / step) * step : value
+    );
     const next = gesture.mode === "move"
       ? {
           ...gesture.origin,
-          x: gesture.origin.x + deltaX,
-          y: gesture.origin.y + deltaY,
+          x: snap(gesture.origin.x + deltaX, gridStep.x),
+          y: snap(gesture.origin.y + deltaY, gridStep.y),
         }
       : {
           ...gesture.origin,
-          width: Math.max(8, gesture.origin.width + deltaX),
-          height: Math.max(8, gesture.origin.height + deltaY),
+          width: Math.max(8, snap(gesture.origin.width + deltaX, gridStep.x)),
+          height: Math.max(8, snap(gesture.origin.height + deltaY, gridStep.y)),
         };
     setDraft(next);
     onNodeTransformChange?.(node.nodePath, next);
@@ -558,12 +614,14 @@ function NodeView({
     if (draft) onNodeTransformChange?.(node.nodePath, draft);
     setGesture(null);
     setDraft(null);
+    onTransformGestureChange(null);
   };
   const cancelTransform = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (!gesture || gesture.pointerId !== event.pointerId) return;
     onNodeTransformChange?.(node.nodePath, gesture.origin);
     setGesture(null);
     setDraft(null);
+    onTransformGestureChange(null);
   };
   const style: CSSProperties = {
     position: "absolute",
@@ -594,7 +652,7 @@ function NodeView({
       data-classroom-input={clickTrigger ? "click" : undefined}
       onClickCapture={() => onNodeSelect?.(node.nodePath)}
       onPointerCancel={cancelTransform}
-      onPointerDown={(event) => beginTransform(event, "move")}
+      onPointerDown={inlineTextEditing ? undefined : (event) => beginTransform(event, "move")}
       onPointerMove={moveTransform}
       onPointerUp={finishTransform}
       style={style}
@@ -608,28 +666,64 @@ function NodeView({
         onNodeSelect,
         selectedNodePath,
         onNodeTransformChange,
+        onNodeTextChange,
+        inlineTextEditing,
+        nodeMoveLabel,
         nodeResizeLabel,
+        snapToGrid,
+        gridStep,
+        onTransformGestureChange,
         stageScale,
       )}
       {selected && onNodeTransformChange ? (
-        <button
-          type="button"
-          data-courseware-node-resize-handle
-          aria-label={nodeResizeLabel}
-          onPointerDown={(event) => beginTransform(event, "resize")}
-          style={{
-            position: "absolute",
-            right: 0,
-            bottom: 0,
-            zIndex: 2147483647,
-            width: 24,
-            height: 24,
-            border: "1px solid #fff",
-            borderRadius: "8px 0 0 0",
-            background: "#e76f78",
-            cursor: "nwse-resize",
-          }}
-        />
+        <>
+          <button
+            type="button"
+            data-courseware-node-move-handle
+            aria-label={nodeMoveLabel}
+            onPointerDown={(event) => beginTransform(event, "move")}
+            style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              zIndex: 2147483647,
+              display: "grid",
+              placeItems: "center",
+              width: 28,
+              height: 24,
+              border: "1px solid #fff",
+              borderRadius: "0 0 8px 0",
+              background: "#e76f78",
+              color: "#fff",
+              cursor: "move",
+            }}
+          >
+            <Grip size={15} />
+          </button>
+          <button
+            type="button"
+            data-courseware-node-resize-handle
+            aria-label={nodeResizeLabel}
+            onPointerDown={(event) => beginTransform(event, "resize")}
+            style={{
+              position: "absolute",
+              right: 0,
+              bottom: 0,
+              zIndex: 2147483647,
+              display: "grid",
+              placeItems: "center",
+              width: 28,
+              height: 28,
+              border: "1px solid #fff",
+              borderRadius: "8px 0 0 0",
+              background: "#e76f78",
+              color: "#fff",
+              cursor: "nwse-resize",
+            }}
+          >
+            <MoveDiagonal2 size={15} />
+          </button>
+        </>
       ) : null}
     </div>
   );
@@ -650,6 +744,11 @@ export default function DocStage({
   onNodeSelect,
   selectedNodePath,
   onNodeTransformChange,
+  onNodeTextChange,
+  snapToGrid = false,
+  nodeGridColumns = 12,
+  nodeGridRows = 9,
+  nodeMoveLabel,
   nodeResizeLabel,
   playAutoInteractions = true,
   onBackgroundSelect,
@@ -658,6 +757,7 @@ export default function DocStage({
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
+  const [transformingNodePath, setTransformingNodePath] = useState<string | null>(null);
   const runtimeRef = useRef<InteractionRuntime | null>(null);
   // 回放游标:replaySteps 中已执行的条数。本地点击成功即预推进,
   // 让自己广播的 doc_step 回流时不被重复执行(课堂单写者=教师)。
@@ -724,6 +824,10 @@ export default function DocStage({
   }, [replaySteps]);
 
   const canvas = doc.canvas;
+  const gridStep = {
+    x: canvas.width / Math.max(1, nodeGridColumns),
+    y: canvas.height / Math.max(1, nodeGridRows),
+  };
   const canvasAspect = canvas.width / canvas.height;
   const scale = containerWidth > 0 ? containerWidth / canvas.width : 0;
   // board43:内容宽度占满舞台宽,16:9 内容高 = 宽×9/16 = 4:3 舞台高的 75%;
@@ -816,10 +920,29 @@ export default function DocStage({
             onNodeSelect={onNodeSelect}
             selectedNodePath={selectedNodePath}
             onNodeTransformChange={onNodeTransformChange}
+            onNodeTextChange={onNodeTextChange}
+            nodeMoveLabel={nodeMoveLabel}
             nodeResizeLabel={nodeResizeLabel}
+            snapToGrid={snapToGrid}
+            gridStep={gridStep}
+            onTransformGestureChange={setTransformingNodePath}
             stageScale={scale}
           />
         ))}
+        {snapToGrid && transformingNodePath ? (
+          <div
+            data-courseware-node-snap-grid
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              inset: 0,
+              zIndex: 2147483646,
+              pointerEvents: "none",
+              backgroundImage: "linear-gradient(to right, rgb(111 139 72 / 0.32) 1px, transparent 1px), linear-gradient(to bottom, rgb(111 139 72 / 0.32) 1px, transparent 1px)",
+              backgroundSize: `${gridStep.x}px ${gridStep.y}px`,
+            }}
+          />
+        ) : null}
       </div>
     </div>
   );

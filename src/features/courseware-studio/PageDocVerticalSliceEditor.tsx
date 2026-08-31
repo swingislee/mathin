@@ -17,16 +17,21 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
 import {
   CoursewareEditorSaveControls,
   CoursewareInsertionToolbar,
   type CoursewareEditorSaveState,
 } from "@/features/courseware-doc/CoursewareEditorWorkbench";
 import { CoursewareEditorAdapterSurface } from "@/features/courseware-doc/CoursewareEditorAdapterSurface";
+import {
+  CoursewareGridSnapControl,
+  CoursewareTextElementInspector,
+  coursewareTextValue,
+  isCoursewareTextElement,
+  setCoursewareTextValue,
+} from "@/features/courseware-doc/CoursewareTextElementEditor";
 import type { ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 import type { DocNode, PageDoc } from "@/features/courseware-doc/schema";
 import { saveCoursewareDraftAction } from "./actions";
@@ -100,11 +105,13 @@ export function PageDocVerticalSliceEditor({
   bindingUrls,
 }: PageDocVerticalSliceEditorProps) {
   const t = useTranslations("coursewareWorkspace");
+  const textEditorT = useTranslations("coursewareTextEditor");
   const [doc, setDoc] = useState<PageDoc>(() => clone(initialDoc));
   const [savedDoc, setSavedDoc] = useState<PageDoc>(() => clone(initialDoc));
   const [currentBaseRevisionNo, setCurrentBaseRevisionNo] = useState(baseRevisionNo);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<EditorTab>("adjust");
+  const [snapToGrid, setSnapToGrid] = useState(true);
   const [message, setMessage] = useState("");
   const [saveState, setSaveState] = useState<CoursewareEditorSaveState>("saved");
   const docRef = useRef(clone(initialDoc));
@@ -224,6 +231,12 @@ export function PageDocVerticalSliceEditor({
     patchNode(nodePath, (node) => Object.assign(node.transform, patch));
   }, [patchNode]);
 
+  const handleNodeTextChange = useCallback((nodePath: string, value: string) => {
+    const current = visit(docRef.current.nodes, nodePath);
+    if (!current || !isCoursewareTextElement(current) || coursewareTextValue(current) === value) return;
+    patchNode(nodePath, (node) => setCoursewareTextValue(node, value));
+  }, [patchNode]);
+
   const patchNumber = (
     key: NumericTransformKey | "fontSize" | "lineHeight" | "zIndex",
     raw: string,
@@ -304,39 +317,15 @@ export function PageDocVerticalSliceEditor({
         </div>
 
         <TabsContent value="adjust" className="space-y-4">
-          <div className="grid grid-cols-2 gap-2">
-            <div className="rounded-lg border border-line px-3 py-2">
-              <p className="text-xs font-medium text-ink">{t("verticalSliceSharedContent")}</p>
-              <p className="mt-1 text-[11px] text-muted">{contentChanged ? t("verticalSliceChanged") : t("verticalSliceUnchanged")}</p>
-            </div>
-            <div className="rounded-lg border border-line px-3 py-2">
-              <p className="text-xs font-medium text-ink">{t("verticalSliceTrackLayout")}</p>
-              <p className="mt-1 text-[11px] text-muted">{layoutChanged ? t("verticalSliceChanged") : t("verticalSliceUnchanged")}</p>
-            </div>
-          </div>
-          <p className="text-xs leading-5 text-muted">{t("verticalSliceIsolationHint")}</p>
+          <CoursewareGridSnapControl checked={snapToGrid} onCheckedChange={setSnapToGrid} />
 
-          {selected ? (
+          {selected && isCoursewareTextElement(selected) ? (
+            <CoursewareTextElementInspector node={selected} onPatch={patchSelected} />
+          ) : selected ? (
             <div className="space-y-3">
               <div>
                 <p className="text-xs font-medium text-ink">{selected.name || selected.adapter}</p>
-                <p className="break-all text-[11px] text-muted">{selected.nodePath}</p>
               </div>
-              {selected.content ? (
-                <div className="space-y-1.5">
-                  <Label htmlFor="courseware-step3-content">{t("verticalSliceTextOrHtml")}</Label>
-                  <Textarea
-                    id="courseware-step3-content"
-                    className="min-h-28 resize-y"
-                    value={selected.content.html ?? selected.content.text ?? ""}
-                    onChange={(event) => patchSelected((node) => {
-                      if (!node.content) return;
-                      if ("html" in node.content && node.content.html !== undefined) node.content.html = event.target.value;
-                      else node.content.text = event.target.value;
-                    })}
-                  />
-                </div>
-              ) : <p className="text-xs text-muted">{t("verticalSliceNodeHasNoContent")}</p>}
 
               <div className="grid grid-cols-2 gap-2">
                 {(["x", "y", "width", "height"] as const).map((key) => (
@@ -345,14 +334,6 @@ export function PageDocVerticalSliceEditor({
                     <Input type="number" value={selected.transform[key]} onChange={(event) => patchNumber(key, event.target.value)} />
                   </label>
                 ))}
-                <label className="space-y-1 text-xs text-muted">
-                  <span>{t("verticalSliceFontSize")}</span>
-                  <Input type="number" value={selected.style.fontSize ?? ""} onChange={(event) => patchNumber("fontSize", event.target.value)} />
-                </label>
-                <label className="space-y-1 text-xs text-muted">
-                  <span>{t("verticalSliceLineHeight")}</span>
-                  <Input type="number" step="0.1" value={selected.style.lineHeight ?? ""} onChange={(event) => patchNumber("lineHeight", event.target.value)} />
-                </label>
                 <label className="space-y-1 text-xs text-muted">
                   <span>{t("verticalSliceOpacity")}</span>
                   <Input type="number" min="0" max="1" step="0.05" value={selected.transform.opacity} onChange={(event) => patchNumber("opacity", event.target.value)} />
@@ -436,7 +417,10 @@ export function PageDocVerticalSliceEditor({
         selectedNodePath={selectedPath}
         onNodeSelect={setSelectedPath}
         onNodeTransformChange={handleNodeTransformChange}
-        nodeResizeLabel={t("verticalSliceResize")}
+        onNodeTextChange={handleNodeTextChange}
+        snapToGrid={snapToGrid}
+        nodeMoveLabel={textEditorT("moveElement")}
+        nodeResizeLabel={textEditorT("resizeElement")}
         onBackgroundSelect={() => {
           setSelectedPath(null);
           setMessage(t("verticalSliceBackgroundDeferred"));

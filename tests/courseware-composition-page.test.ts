@@ -5,6 +5,7 @@ import {
   addCoursewareCompositionNode,
   addCoursewareCompositionTool,
   removeCoursewareCompositionBlock,
+  updateCoursewareCompositionNodeTransform,
   updateCoursewareCompositionPlacement,
 } from "@/features/courseware-doc/composition-page-layout";
 import {
@@ -129,6 +130,36 @@ describe("courseware composition page", () => {
     const removed = removeCoursewareCompositionBlock(withText, "node-text-1");
     expect(removed.layout.blocks).toHaveLength(0);
     expect(removed.overlay.nodes).toHaveLength(0);
+  });
+
+  it("shares pixel dragging with PageDoc while making grid snapping an explicit choice", () => {
+    const withText = addCoursewareCompositionNode(
+      createEmptyCoursewareCompositionPage(),
+      textNode("text-1"),
+      { columnSpan: 4, rowSpan: 3 },
+    );
+    const snapped = updateCoursewareCompositionNodeTransform(
+      withText,
+      "text-1",
+      { x: 161, y: 79, width: 410, height: 245 },
+      true,
+    );
+    expect(snapped.layout.blocks[0].placement).toEqual({
+      column: 2,
+      row: 1,
+      columnSpan: 5,
+      rowSpan: 3,
+    });
+    expect(snapped.overlay.nodes[0].transform).toMatchObject({ x: 160, y: 80, width: 400, height: 240 });
+
+    const free = updateCoursewareCompositionNodeTransform(
+      withText,
+      "text-1",
+      { x: 37.5, y: 24.25, width: 333.5, height: 207.75 },
+      false,
+    );
+    expect(free.overlay.nodes[0].transform).toMatchObject({ x: 37.5, y: 24.25, width: 333.5, height: 207.75 });
+    expect(free.layout.blocks[0].placement).toEqual(withText.layout.blocks[0].placement);
   });
 
   it("lets an H5 tile swap sides with text and resize without overlap", () => {
