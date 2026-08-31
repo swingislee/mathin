@@ -63,10 +63,16 @@ describe("teacher microcourse authoring UX", () => {
     expect(workbench).toContain('data-testid="microcourse-autosave-status"');
     expect(editor).toContain("CoursewareEditorWorkbench");
     expect(editor).toContain("xl:grid-cols-[13rem_minmax(0,1fr)]");
+    expect(editor).toContain("const [pageTitleDrafts, setPageTitleDrafts]");
+    expect(editor).toContain('aria-label={t("renamePage")}');
+    expect(editor).toContain("workbenchRef.current?.rename?.(value)");
     expect(workbench).toContain("CoursewareEditorHeader");
     expect(workbench).toContain("CoursewareEditorCanvasFrame");
-    expect(workbench).toContain('<Badge variant="secondary">{t("mode_composition")}</Badge>');
-    expect(workbench).toContain('id="composition-insert-title"');
+    expect(workbench).toContain('role="toolbar"');
+    expect(workbench).toContain("iconOnly onCreated");
+    expect(workbench).toContain("iconOnly onSaved");
+    expect(workbench).not.toContain('id="composition-insert-title"');
+    expect(workbench).not.toContain('<Badge variant="secondary">{t("mode_composition")}</Badge>');
     expect(sharedWorkbench).toContain("rounded-xl border border-line bg-white shadow-sm");
     expect(workbench).not.toContain("bg-paper/70");
     expect(zh).toContain('"pageAutosaving"');

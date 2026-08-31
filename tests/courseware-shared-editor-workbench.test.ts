@@ -33,8 +33,25 @@ describe("shared courseware editor workbench", () => {
     ]) expect(shared).toContain(`function ${primitive}`);
     expect(composition).toContain("<CoursewareEditorHeader");
     expect(composition).toContain("<CoursewareEditorCanvasFrame");
-    expect(composition).toContain("<CoursewareEditorActionGrid");
     expect(prototype).toContain("<CoursewareEditorActionGrid");
+  });
+
+  it("reuses the mature preview workspace for read-only microcourse variants", () => {
+    const variantPreview = read("src", "features", "teacher-microcourses", "MicrocourseVariantPreview.tsx");
+    const sharedPreview = read("src", "features", "courseware-preview", "CoursewarePreviewWorkspace.tsx");
+
+    expect(variantPreview).toContain("<CoursewarePreviewWorkspace");
+    expect(variantPreview).toContain('layoutId="teacher-microcourse-variant-preview"');
+    expect(variantPreview).not.toContain("<ScrollArea");
+    expect(sharedPreview).toContain('window.addEventListener("keydown", onKeyDown)');
+    expect(sharedPreview).toContain('aria-keyshortcuts="ArrowLeft PageUp"');
+    expect(sharedPreview).toContain('aria-keyshortcuts="ArrowRight PageDown Space"');
+  });
+
+  it("keeps the formal workbench close to the panel bottom edge", () => {
+    const formal = read("src", "features", "courseware-studio", "UnifiedCoursewareWorkspace.tsx");
+    expect(formal).toContain("-mb-4");
+    expect(formal).toContain("lg:-mb-5");
   });
 
   it("keeps persistence in adapters rather than the shared workbench", () => {

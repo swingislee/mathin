@@ -167,7 +167,7 @@ export async function UnifiedCoursewareWorkspace({
       <CoursewareEditorWorkbench
         data-unified-courseware-workspace
         adapter={selectedDoc?.docVersion ?? "unknown"}
-        className="mx-1 mb-1 grid min-h-0 min-w-0 flex-1 grid-rows-[minmax(10rem,28dvh)_minmax(22rem,1fr)_minmax(10rem,30dvh)] @4xl/workspace:grid-cols-[224px_minmax(0,1fr)_320px] @4xl/workspace:grid-rows-1"
+        className="mx-1 -mb-4 grid min-h-0 min-w-0 flex-1 grid-rows-[minmax(10rem,28dvh)_minmax(22rem,1fr)_minmax(10rem,30dvh)] lg:-mb-5 @4xl/workspace:grid-cols-[224px_minmax(0,1fr)_320px] @4xl/workspace:grid-rows-1"
       >
         <aside className="flex min-h-0 min-w-0 flex-col border-b border-line @4xl/workspace:border-b-0 @4xl/workspace:border-r" aria-label={t("pageDirectory")}>
           <div className="flex min-h-11 shrink-0 items-center justify-between gap-2 px-3 py-2">
