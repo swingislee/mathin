@@ -21,25 +21,21 @@ const PACKAGE_CONFIGS = new Map([
     lectureCount: 56, pageCount: 1641, grades: [3, 4, 5, 6],
     level: "G+", sourceLevel: "能力强化 G+", edition: "苏教版", productPrefix: "AXX26G-SJ",
     term: "秋季", termCode: "AUT",
-    playerRuntimeSchemaVersion: 3, playerRuntimeDerivationVersion: 3,
   }],
   ["2026-xplus-sujiao-math", {
     lectureCount: 84, pageCount: 2767, grades: [1, 2, 3, 4, 5, 6],
     level: "X+", sourceLevel: "能力提高 X+", edition: "苏教版", productPrefix: "AXX26X-SJ",
     term: "秋季", termCode: "AUT",
-    playerRuntimeSchemaVersion: 4, playerRuntimeDerivationVersion: 5,
   }],
   ["2026-aplus-quanguo-math", {
     lectureCount: 30, pageCount: 1034, grades: [1, 2],
     level: "A+", sourceLevel: "思维突破 A+", edition: "全国版", productPrefix: "AXX26A-QG",
     term: "秋季", termCode: "AUT",
-    playerRuntimeSchemaVersion: 4, playerRuntimeDerivationVersion: 5,
   }],
   ["2026-summer-aplus-quanguo-math", {
     lectureCount: 2, pageCount: 66, grades: [1],
     level: "A+", sourceLevel: "思维突破 A+", edition: "全国版", productPrefix: "AXX26A-QG",
     term: "暑期", termCode: "SUM",
-    playerRuntimeSchemaVersion: 4, playerRuntimeDerivationVersion: 5,
   }],
 ]);
 const TEXT_EXTENSIONS = new Set([".css", ".html", ".htm", ".js", ".json", ".mjs", ".svg", ".txt"]);
@@ -63,6 +59,56 @@ function fail(message) {
 
 export function aixuexiPackageDefinition(packageKey) {
   return PACKAGE_CONFIGS.get(packageKey) ?? null;
+}
+
+/**
+ * The source repository owns player-runtime schema and derivation versions.
+ * Mathin validates only the portable fields it consumes and their ledger
+ * closure, so a compatible source runtime release never needs a per-course
+ * version edit here.
+ */
+export function assertAixuexiPlayerRuntimeCatalog(playerRuntime, expected) {
+  const invalid = () => fail("invalid player runtime contract");
+  if (!playerRuntime || typeof playerRuntime !== "object"
+      || !Number.isInteger(playerRuntime.schemaVersion) || playerRuntime.schemaVersion < 1
+      || !Number.isInteger(playerRuntime.derivationVersion) || playerRuntime.derivationVersion < 1
+      || playerRuntime.packageKey !== expected.packageKey
+      || !Array.isArray(playerRuntime.questionImageSizingVariants)
+      || playerRuntime.questionImageSizingVariants.length < 1
+      || !Array.isArray(playerRuntime.lessonBindings)
+      || playerRuntime.lessonBindings.length !== expected.lectureCount) {
+    invalid();
+  }
+
+  const runtimeHashes = new Set();
+  for (const variant of playerRuntime.questionImageSizingVariants) {
+    if (!variant || typeof variant !== "object"
+        || variant.sourceMode !== "captured_player_module"
+        || !Number.isInteger(variant.adapterVersion) || variant.adapterVersion < 1
+        || !HASH.test(variant.sourceModuleSha256 ?? "")
+        || !HASH.test(variant.jquerySha256 ?? "")
+        || !HASH.test(variant.executionRuntimeSha256 ?? "")
+        || typeof variant.jqueryRuntimePath !== "string" || !variant.jqueryRuntimePath
+        || typeof variant.executionRuntimePath !== "string" || !variant.executionRuntimePath
+        || runtimeHashes.has(variant.executionRuntimeSha256)) {
+      invalid();
+    }
+    runtimeHashes.add(variant.executionRuntimeSha256);
+  }
+
+  const lessonIds = new Set();
+  for (const binding of playerRuntime.lessonBindings) {
+    if (!binding || typeof binding !== "object"
+        || typeof binding.lessonId !== "string" || !binding.lessonId
+        || lessonIds.has(binding.lessonId)
+        || !runtimeHashes.has(binding.executionRuntimeSha256)
+        || !HASH.test(binding.sourceHarSha256 ?? "")
+        || !["current_har", "lesson_evidence"].includes(binding.bindingMode)) {
+      invalid();
+    }
+    lessonIds.add(binding.lessonId);
+  }
+  return playerRuntime;
 }
 
 function sha256(value) {
@@ -339,12 +385,10 @@ export async function buildAixuexiPackage(options) {
       || siteManifest.slideRuntime?.cssSha256 !== slideRuntime.cssSha256) {
     fail("invalid slide runtime contract");
   }
-  if (playerRuntime.schemaVersion !== config.playerRuntimeSchemaVersion
-      || playerRuntime.packageKey !== options.packageKey
-      || playerRuntime.derivationVersion !== config.playerRuntimeDerivationVersion
-      || playerRuntime.lessonBindings?.length !== config.lectureCount) {
-    fail("invalid player runtime contract");
-  }
+  assertAixuexiPlayerRuntimeCatalog(playerRuntime, {
+    packageKey: options.packageKey,
+    lectureCount: config.lectureCount,
+  });
 
   await rm(outputRoot, { recursive: true, force: true });
   await mkdir(path.join(outputRoot, "page-docs"), { recursive: true });

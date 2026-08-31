@@ -9,6 +9,7 @@ import {
 } from "../src/features/courseware-doc/aixuexi-schema";
 import { buildImportSql } from "../scripts/cw-import.mjs";
 import {
+  assertAixuexiPlayerRuntimeCatalog,
   aixuexiPackageDefinition,
   preserveSourceMarkup,
   rewriteTopicRootUrls,
@@ -161,8 +162,6 @@ describe("Aixuexi courseware adapter", () => {
       level: "A+",
       term: "暑期",
       termCode: "SUM",
-      playerRuntimeSchemaVersion: 4,
-      playerRuntimeDerivationVersion: 5,
     });
     expect(aixuexiPackageDefinition("future-package")).toBeNull();
   });
@@ -171,8 +170,6 @@ describe("Aixuexi courseware adapter", () => {
     expect(aixuexiPackageDefinition("2026-xplus-sujiao-math")).toMatchObject({
       lectureCount: 84,
       pageCount: 2767,
-      playerRuntimeSchemaVersion: 4,
-      playerRuntimeDerivationVersion: 5,
     });
   });
 
@@ -183,9 +180,58 @@ describe("Aixuexi courseware adapter", () => {
       grades: [1, 2],
       term: "秋季",
       termCode: "AUT",
-      playerRuntimeSchemaVersion: 4,
-      playerRuntimeDerivationVersion: 5,
     });
+  });
+
+  it("validates the source-owned player runtime without per-course version pins", () => {
+    const executionRuntimeSha256 = key("e");
+    const runtime = {
+      schemaVersion: 4,
+      derivationVersion: 5,
+      packageKey: "2026-gplus-sujiao-math",
+      questionImageSizingVariants: [{
+        adapterVersion: 2,
+        sourceMode: "captured_player_module",
+        sourceModuleSha256: key("a"),
+        jquerySha256: key("b"),
+        jqueryRuntimePath: "player-runtime/jquery.js",
+        executionRuntimeSha256,
+        executionRuntimePath: "player-runtime/question-image.js",
+      }],
+      lessonBindings: [{
+        lessonId: "1128947969",
+        executionRuntimeSha256,
+        sourceHarSha256: key("c"),
+        bindingMode: "current_har",
+      }],
+    };
+    expect(assertAixuexiPlayerRuntimeCatalog(runtime, {
+      packageKey: runtime.packageKey,
+      lectureCount: 1,
+    })).toBe(runtime);
+    expect(() => assertAixuexiPlayerRuntimeCatalog({
+      ...runtime,
+      derivationVersion: 99,
+    }, {
+      packageKey: runtime.packageKey,
+      lectureCount: 1,
+    })).not.toThrow();
+    expect(() => assertAixuexiPlayerRuntimeCatalog({
+      ...runtime,
+      lessonBindings: [{ ...runtime.lessonBindings[0], executionRuntimeSha256: key("f") }],
+    }, {
+      packageKey: runtime.packageKey,
+      lectureCount: 1,
+    })).toThrow(/invalid player runtime contract/);
+    for (const packageKey of [
+      "2026-gplus-sujiao-math",
+      "2026-xplus-sujiao-math",
+      "2026-aplus-quanguo-math",
+      "2026-summer-aplus-quanguo-math",
+    ]) {
+      expect(aixuexiPackageDefinition(packageKey)).not.toHaveProperty("playerRuntimeSchemaVersion");
+      expect(aixuexiPackageDefinition(packageKey)).not.toHaveProperty("playerRuntimeDerivationVersion");
+    }
   });
 
   it("keeps the merged course package difficulty order", () => {
