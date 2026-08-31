@@ -7,6 +7,11 @@ import { collectPostgrestRowsInBatches } from "@/lib/supabase/postgrest-batches"
 import { parseCoursewareDoc, type CoursewareDoc } from "@/features/courseware-doc/document";
 import { buildH5EntryUrl, type H5LaunchQuery, type ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 import { PAGE_DOC_VERSION } from "@/features/courseware-doc/schema";
+import {
+  collectSourceRuntimeBindingKeys,
+  isSourceRuntimePageDoc,
+  scopeSourceRuntimeBindings,
+} from "@/features/courseware-doc/source-runtime-schema";
 
 const SIGNED_URL_TTL_SECONDS = 60 * 60;
 export const COURSEWARE_TRACKS = ["native-16x9", "adapted-4x3"] as const;
@@ -631,7 +636,14 @@ export async function loadCoursewareStudioPage(lectureId: string, pageDocId: str
     return {
       ...common,
       releaseHistory: [],
-      bindingUrls: await resolveEditorBindingUrls(supabase, pageDocId, track),
+      bindingUrls: await resolveEditorBindingUrls(
+        supabase,
+        pageDocId,
+        track,
+        isSourceRuntimePageDoc(activeRevision.doc)
+          ? collectSourceRuntimeBindingKeys(activeRevision.doc)
+          : undefined,
+      ),
       imageAssetUsage: {},
       copyTargets: [],
     };
@@ -687,20 +699,24 @@ export async function loadCoursewareStudioRenderPage(
   client?: Supabase,
 ): Promise<CoursewareStudioRenderPagePayload> {
   const supabase = client ?? await createClient();
-  const [{ data: revision, error: revisionError }, bindingUrls] = await Promise.all([
-    supabase
-      .from("cw_page_revisions")
-      .select("id, doc")
-      .eq("id", revisionId)
-      .eq("page_doc_id", pageDocId)
-      .maybeSingle(),
-    resolveEditorBindingUrls(supabase, pageDocId, track),
-  ]);
+  const { data: revision, error: revisionError } = await supabase
+    .from("cw_page_revisions")
+    .select("id, doc")
+    .eq("id", revisionId)
+    .eq("page_doc_id", pageDocId)
+    .maybeSingle();
   if (revisionError) throw new Error(revisionError.message);
   if (!revision) throw new Error("PAGE_REVISION_MISSING");
+  const doc = parseCoursewareDoc(revision.doc);
+  const bindingUrls = await resolveEditorBindingUrls(
+    supabase,
+    pageDocId,
+    track,
+    isSourceRuntimePageDoc(doc) ? collectSourceRuntimeBindingKeys(doc) : undefined,
+  );
   return {
     revisionId: revision.id,
-    doc: parseCoursewareDoc(revision.doc),
+    doc,
     bindingUrls,
   };
 }
@@ -743,12 +759,20 @@ async function loadImageAssetUsage(supabase: Supabase, pageDocId: string, track:
 }
 
 /** 草稿预览按当前 binding 指针解析；发布后 release 再把版本精确 pin 进快照。 */
-async function resolveEditorBindingUrls(supabase: Supabase, pageDocId: string, track: CoursewareTrack): Promise<ResolvedBindingUrls> {
-  const { data: bindings, error: bindingError } = await supabase
+async function resolveEditorBindingUrls(
+  supabase: Supabase,
+  pageDocId: string,
+  track: CoursewareTrack,
+  requiredBindingKeys?: ReadonlySet<string>,
+): Promise<ResolvedBindingUrls> {
+  if (requiredBindingKeys?.size === 0) return {};
+  let bindingQuery = supabase
     .from("cw_page_asset_bindings")
     .select("binding_key, kind, launch_query, pinned_revision_id, shared_asset_id")
     .eq("page_doc_id", pageDocId)
     .eq("track", track);
+  if (requiredBindingKeys) bindingQuery = bindingQuery.in("binding_key", [...requiredBindingKeys]);
+  const { data: bindings, error: bindingError } = await bindingQuery;
   if (bindingError) throw new Error(bindingError.message);
   if (!bindings?.length) return {};
   const sharedIds = [...new Set(bindings.map((binding) => binding.shared_asset_id))];
@@ -917,20 +941,41 @@ async function materializeLecturePreviewPage(
   pageMeta: Omit<CoursewarePreviewPageMeta, "aspect"> & { aspect?: string },
   snapshotEntry: z.infer<typeof releaseSnapshotSchema>[number],
 ): Promise<CoursewarePreviewPagePayload> {
-  const [{ data: revision, error: revisionError }, { data: bindingRows, error: bindingRowsError }] = await Promise.all([
-    supabase.from("cw_page_revisions").select("id, doc, layout_profile").eq("id", snapshotEntry.revisionId).maybeSingle(),
-    supabase.from("cw_page_asset_bindings").select("binding_key, kind, launch_query").eq("page_doc_id", pageMeta.pageDocId).eq("track", track),
-  ]);
+  const { data: revision, error: revisionError } = await supabase
+    .from("cw_page_revisions")
+    .select("id, doc, layout_profile")
+    .eq("id", snapshotEntry.revisionId)
+    .maybeSingle();
   if (revisionError) throw new Error(revisionError.message);
   if (!revision) throw new Error(`RELEASE_SNAPSHOT_INCOMPLETE: ${pageMeta.pageDocId}`);
+  const doc = parseCoursewareDoc(revision.doc);
+  const scopedSnapshotEntry = isSourceRuntimePageDoc(doc)
+    ? { ...snapshotEntry, bindings: scopeSourceRuntimeBindings(doc, snapshotEntry.bindings) }
+    : snapshotEntry;
+  const requiredBindingKeys = isSourceRuntimePageDoc(doc)
+    ? collectSourceRuntimeBindingKeys(doc)
+    : undefined;
+  let bindingQuery = supabase
+    .from("cw_page_asset_bindings")
+    .select("binding_key, kind, launch_query")
+    .eq("page_doc_id", pageMeta.pageDocId)
+    .eq("track", track);
+  if (requiredBindingKeys) bindingQuery = bindingQuery.in("binding_key", [...requiredBindingKeys]);
+  const { data: bindingRows, error: bindingRowsError } = await bindingQuery;
   if (bindingRowsError) throw new Error(bindingRowsError.message);
+  const scopedBindingRows = isSourceRuntimePageDoc(doc)
+    ? scopeSourceRuntimeBindings(
+      doc,
+      (bindingRows ?? []).map((binding) => ({ ...binding, bindingKey: binding.binding_key })),
+    )
+    : (bindingRows ?? []);
 
-  const bindingUrls = await resolveSnapshotBindingUrls(supabase, [snapshotEntry], bindingRows ?? []);
+  const bindingUrls = await resolveSnapshotBindingUrls(supabase, [scopedSnapshotEntry], scopedBindingRows);
   return {
     page: {
       ...pageMeta,
       aspect: pageMeta.aspect ?? aspectForLayoutProfile(revision.layout_profile, track),
-      doc: parseCoursewareDoc(revision.doc),
+      doc,
     },
     bindingUrls,
   };

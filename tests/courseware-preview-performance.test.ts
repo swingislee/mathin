@@ -20,6 +20,8 @@ describe("courseware preview page-turn performance", () => {
     expect(preview).not.toContain("href: pageHrefs[index]");
     expect(action).toContain('authorizedClient("course.view")');
     expect(pageLoader).toContain('.from("cw_lecture_releases")');
+    expect(data).toContain("scopeSourceRuntimeBindings(doc, snapshotEntry.bindings)");
+    expect(data).toContain('bindingQuery.in("binding_key", [...requiredBindingKeys])');
     expect(pageLoader).not.toContain('.from("course_lectures")');
     expect(pageLoader).not.toContain('.from("cw_lecture_track_heads")');
   });

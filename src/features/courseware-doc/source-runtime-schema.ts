@@ -81,6 +81,25 @@ export function collectSourceRuntimeBindingKeys(doc: SourceRuntimePageDoc): Set<
   ]);
 }
 
+/**
+ * Release snapshots retain historical bindings for audit. Rendering resolves
+ * only the closure declared by the producer-owned source document so an
+ * obsolete H5 manifest cannot block an unrelated page.
+ */
+export function scopeSourceRuntimeBindings<T extends { bindingKey: string }>(
+  doc: SourceRuntimePageDoc,
+  bindings: readonly T[],
+): T[] {
+  const required = collectSourceRuntimeBindingKeys(doc);
+  const scoped = bindings.filter((binding) => required.has(binding.bindingKey));
+  const available = new Set(scoped.map((binding) => binding.bindingKey));
+  const missing = [...required].filter((bindingKey) => !available.has(bindingKey));
+  if (missing.length > 0) {
+    throw new Error(`SOURCE_RUNTIME_BINDING_MISSING: ${missing.join(",")}`);
+  }
+  return scoped;
+}
+
 export function isSourceRuntimePageDoc(
   doc: { readonly docVersion: string },
 ): doc is SourceRuntimePageDoc {
