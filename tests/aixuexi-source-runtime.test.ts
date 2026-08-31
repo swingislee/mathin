@@ -229,6 +229,37 @@ describe("producer-owned Aixuexi source runtime", () => {
     expect(html).toContain(`viewer-runtime.js?${SOURCE_RUNTIME_DELIVERY_PARAM}=${SOURCE_RUNTIME_DELIVERY_VERSION}`);
   });
 
+  it("adapts the published 5.6.6 Lottie readiness bridge without replacing source rendering", () => {
+    const published = [
+      "async function hydrateAixuexiLottie(){",
+      "    const animationData=await response.json();",
+      "    let animation=null,settled=false,domReady=false,frameReady=false,finish=()=>{};",
+      "    const ready=()=>{if(domReady&&frameReady){settle('playing')}};",
+      "    animation=window.lottie.loadAnimation({",
+      "        container:target,renderer:'svg',",
+      "        path:source",
+      "      });",
+      "      animation.addEventListener('DOMLoaded',()=>{domReady=true;ready()});",
+      "      animation.addEventListener('drawnFrame',()=>{frameReady=true;ready()});",
+      "}",
+      "const hydrateAixuexiPreviewsBase=hydrateAixuexiPreviews;",
+      "async function mathinRender(message){",
+      "  mathinSend('rendered',{renderKey:message.renderKey});",
+      "}",
+      "async function mathinDrainRenderQueue(){return mathinRender({})}",
+    ].join("\n");
+
+    const upgraded = upgradeSourceRuntimeViewerScript(published);
+    expect(upgraded).toContain(`mathin-source-lottie-readiness-v${SOURCE_RUNTIME_DELIVERY_VERSION}`);
+    expect(upgraded).toContain("animationData");
+    expect(upgraded).not.toContain("path:source");
+    expect(upgraded).toContain("DOMLoaded',()=>{domReady=true;frameReady=true;ready()}");
+    expect(upgraded).not.toContain("addEventListener('drawnFrame'");
+    expect(upgraded).toContain("window.lottie.loadAnimation");
+    expect(upgraded).not.toContain("document.createElement");
+    expect(upgradeSourceRuntimeViewerScript(upgraded)).toBe(upgraded);
+  });
+
   it("keeps Mathin as a sandbox host instead of recreating source buttons", () => {
     const host = readFileSync(
       new URL("../src/features/courseware-doc/SourceRuntimeStage.tsx", import.meta.url),

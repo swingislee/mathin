@@ -1,5 +1,7 @@
 export const SOURCE_RUNTIME_DELIVERY_PARAM = "mathin_source_delivery";
-export const SOURCE_RUNTIME_DELIVERY_VERSION = "4";
+export const SOURCE_RUNTIME_DELIVERY_VERSION = "5";
+
+const SOURCE_RUNTIME_LOTTIE_READINESS_MARKER = `/* mathin-source-lottie-readiness-v${SOURCE_RUNTIME_DELIVERY_VERSION} */`;
 
 function appendQueryParam(url, name, value) {
   const fragmentAt = url.indexOf("#");
@@ -61,8 +63,40 @@ async function mathinRender(message){
 }`;
 }
 
+/**
+ * Published X+ packages still bundle lottie-web 5.6.6. That source player
+ * renders before DOMLoaded but does not expose the newer drawnFrame event.
+ * Upgrade only the producer Viewer's exact readiness bridge and keep the
+ * source lottie-web renderer, DOM and interaction ownership unchanged.
+ */
+function upgradeSourceRuntimeLottieReadiness(script) {
+  if (script.includes(SOURCE_RUNTIME_LOTTIE_READINESS_MARKER)) return script;
+  const functionStart = script.indexOf("async function hydrateAixuexiLottie(){");
+  if (functionStart < 0) return script;
+  const functionEnd = script.indexOf("\nconst hydrateAixuexiPreviewsBase=hydrateAixuexiPreviews;", functionStart);
+  if (functionEnd < 0) return script;
+
+  const block = script.slice(functionStart, functionEnd);
+  const sourcePath = "        path:source";
+  const legacyReadiness = [
+    "      animation.addEventListener('DOMLoaded',()=>{domReady=true;ready()});",
+    "      animation.addEventListener('drawnFrame',()=>{frameReady=true;ready()});",
+  ].join("\n");
+  if (!block.includes(sourcePath) || !block.includes(legacyReadiness)) return script;
+
+  const upgradedBlock = block
+    .replace(sourcePath, "        animationData")
+    .replace(
+      legacyReadiness,
+      "      animation.addEventListener('DOMLoaded',()=>{domReady=true;frameReady=true;ready()});",
+    );
+  if (upgradedBlock === block) return script;
+  return `${script.slice(0, functionStart)}${SOURCE_RUNTIME_LOTTIE_READINESS_MARKER}\n${upgradedBlock}${script.slice(functionEnd)}`;
+}
+
 /** Upgrade the exact old portable bridge; unrelated package scripts pass through byte-for-byte. */
 export function upgradeSourceRuntimeViewerScript(script) {
+  script = upgradeSourceRuntimeLottieReadiness(script);
   const currentLifecycle = `const mathinVisualLifecycleVersion='${SOURCE_RUNTIME_DELIVERY_VERSION}';`;
   if (script.includes(currentLifecycle)) return script;
   const lifecycleStart = script.indexOf("const mathinVisualLifecycleVersion='");
