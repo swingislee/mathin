@@ -1721,10 +1721,16 @@ export async function uploadResumable({ url, key, bucket, remotePath, file, mime
   return "uploaded";
 }
 
-async function verifyLocalFile(file, expectedHash, expectedByteCount, label) {
-  const info = await stat(file);
-  if (info.size !== expectedByteCount) fail(`${label} byte count mismatch`);
-  if (await sha256File(file) !== expectedHash) fail(`${label} SHA-256 mismatch`);
+export async function verifyLocalFile(file, expectedHash, expectedByteCount, label, hashFile = sha256File) {
+  const key = `upload\0${file}\0${expectedHash}\0${expectedByteCount}`;
+  if (!verifiedFileCache.has(key)) {
+    verifiedFileCache.set(key, (async () => {
+      const info = await stat(file);
+      if (info.size !== expectedByteCount) fail(`${label} byte count mismatch`);
+      if (await hashFile(file) !== expectedHash) fail(`${label} SHA-256 mismatch`);
+    })());
+  }
+  return verifiedFileCache.get(key);
 }
 
 async function mapWithConcurrency(items, concurrency, handler) {
