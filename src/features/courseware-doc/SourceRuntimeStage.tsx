@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { DocVideoControl } from "./DocStage";
 import type { H5PointerBridgeHost } from "./h5-pointer-protocol";
@@ -32,6 +32,7 @@ interface RuntimePayload {
   source: typeof HOST_MESSAGE_SOURCE;
   protocol: typeof SOURCE_RUNTIME_PROTOCOL;
   type: "render";
+  renderKey: string;
   format: string;
   data: Record<string, unknown>;
   resources: Record<string, string>;
@@ -44,6 +45,7 @@ function materializePayload(
   doc: SourceRuntimePageDoc,
   bindingUrls: ResolvedBindingUrls,
   interactive: boolean,
+  renderKey: string,
 ): RuntimePayload | null {
   const resources: Record<string, string> = {};
   for (const [resourceId, bindingKey] of Object.entries(doc.bindings.resources)) {
@@ -61,6 +63,7 @@ function materializePayload(
     source: HOST_MESSAGE_SOURCE,
     protocol: SOURCE_RUNTIME_PROTOCOL,
     type: "render",
+    renderKey,
     format: doc.payload.format,
     data: doc.payload.data,
     resources,
@@ -89,6 +92,9 @@ export default function SourceRuntimeStage({
   const runtimeReadyFor = useRef<string | null>(null);
   const runtimeLoadedFor = useRef<string | null>(null);
   const runtimePayloadSentFor = useRef<string | null>(null);
+  const runtimeInFlightFor = useRef<string | null>(null);
+  const runtimeQueuedRender = useRef<{ frameKey: string; payload: RuntimePayload } | null>(null);
+  const runtimeInstanceFor = useRef<string | null>(null);
   const runtimeEntry = bindingUrls[doc.runtime.bindingKey];
   // The runtime package is shared by every page in a source courseware. Keep
   // that iframe alive while only the render payload changes between pages;
@@ -100,18 +106,45 @@ export default function SourceRuntimeStage({
   const hasRenderedCurrentRuntime = renderedFrameKey?.startsWith(`${runtimeInstanceKey}:`) ?? false;
   const runtimeError = runtimeFailure?.frameKey === renderKey ? runtimeFailure.message : null;
   const payload = useMemo(
-    () => materializePayload(doc, bindingUrls, interactive),
-    [bindingUrls, doc, interactive],
+    () => materializePayload(doc, bindingUrls, interactive, renderKey),
+    [bindingUrls, doc, interactive, renderKey],
   );
 
+  const flushRuntimeRender = useCallback(() => {
+    if (runtimeReadyFor.current !== runtimeInstanceKey
+        && runtimeLoadedFor.current !== runtimeInstanceKey) return;
+    if (runtimeInFlightFor.current) return;
+    const next = runtimeQueuedRender.current;
+    if (!next) return;
+    runtimeQueuedRender.current = null;
+    if (runtimePayloadSentFor.current === next.frameKey) return;
+    runtimeInFlightFor.current = next.frameKey;
+    runtimePayloadSentFor.current = next.frameKey;
+    iframeRef.current?.contentWindow?.postMessage(next.payload, "*");
+  }, [iframeRef, runtimeInstanceKey]);
+
+  const queueRuntimeRender = useCallback((frameKey: string, nextPayload: RuntimePayload) => {
+    if (runtimePayloadSentFor.current === frameKey) return;
+    // The source Viewer mutates one document and one captured-player global.
+    // Keep at most one render in flight and retain only the newest requested
+    // page so fast paging cannot overlap two source modules inside that frame.
+    runtimeQueuedRender.current = { frameKey, payload: nextPayload };
+    flushRuntimeRender();
+  }, [flushRuntimeRender]);
+
+  useLayoutEffect(() => {
+    if (runtimeInstanceFor.current === runtimeInstanceKey) return;
+    runtimeInstanceFor.current = runtimeInstanceKey;
+    runtimeReadyFor.current = null;
+    runtimeLoadedFor.current = null;
+    runtimePayloadSentFor.current = null;
+    runtimeInFlightFor.current = null;
+    runtimeQueuedRender.current = null;
+  }, [runtimeInstanceKey]);
+
   useEffect(() => {
-    if ((runtimeReadyFor.current === runtimeInstanceKey || runtimeLoadedFor.current === runtimeInstanceKey)
-        && runtimePayloadSentFor.current !== renderKey
-        && payload) {
-      runtimePayloadSentFor.current = renderKey;
-      iframeRef.current?.contentWindow?.postMessage(payload, "*");
-    }
-  }, [iframeRef, payload, renderKey, runtimeInstanceKey]);
+    if (payload) queueRuntimeRender(renderKey, payload);
+  }, [payload, queueRuntimeRender, renderKey]);
 
   // The source Viewer can render a lightweight page between the iframe load
   // event and React's passive-effect flush. Install the message listener in
@@ -120,25 +153,36 @@ export default function SourceRuntimeStage({
   useLayoutEffect(() => {
     const receive = (event: MessageEvent) => {
       if (event.source !== iframeRef.current?.contentWindow) return;
-      const message = event.data as { source?: unknown; protocol?: unknown; type?: unknown; message?: unknown; action?: unknown; time?: unknown };
+      const message = event.data as { source?: unknown; protocol?: unknown; type?: unknown; renderKey?: unknown; message?: unknown; action?: unknown; time?: unknown };
       if (message.source === FRAME_MESSAGE_SOURCE && message.protocol === SOURCE_RUNTIME_PROTOCOL) {
         if (message.type === "ready") {
           runtimeReadyFor.current = runtimeInstanceKey;
-          if (payload && runtimePayloadSentFor.current !== renderKey) {
-            runtimePayloadSentFor.current = renderKey;
-            iframeRef.current?.contentWindow?.postMessage(payload, "*");
-          }
+          flushRuntimeRender();
         }
         if (message.type === "rendered") {
-          setRenderedFrameKey(renderKey);
-          setRuntimeFailure((current) => current?.frameKey === renderKey ? null : current);
+          const completedRenderKey = typeof message.renderKey === "string"
+            ? message.renderKey
+            : runtimeInFlightFor.current;
+          if (completedRenderKey && completedRenderKey === runtimeInFlightFor.current) {
+            runtimeInFlightFor.current = null;
+            setRenderedFrameKey(completedRenderKey);
+            setRuntimeFailure((current) => current?.frameKey === completedRenderKey ? null : current);
+            flushRuntimeRender();
+          }
         }
         if (message.type === "advance") onAdvance?.();
         if (message.type === "error") {
-          setRuntimeFailure({
-            frameKey: renderKey,
-            message: typeof message.message === "string" ? message.message : t("sourceRuntimeUnavailable"),
-          });
+          const failedRenderKey = typeof message.renderKey === "string"
+            ? message.renderKey
+            : runtimeInFlightFor.current;
+          if (failedRenderKey && failedRenderKey === runtimeInFlightFor.current) {
+            runtimeInFlightFor.current = null;
+            setRuntimeFailure({
+              frameKey: failedRenderKey,
+              message: typeof message.message === "string" ? message.message : t("sourceRuntimeUnavailable"),
+            });
+            flushRuntimeRender();
+          }
         }
         return;
       }
@@ -151,7 +195,7 @@ export default function SourceRuntimeStage({
     };
     window.addEventListener("message", receive);
     return () => window.removeEventListener("message", receive);
-  }, [iframeRef, onAdvance, payload, renderKey, runtimeInstanceKey, t, videoControl]);
+  }, [flushRuntimeRender, iframeRef, onAdvance, runtimeInstanceKey, t, videoControl]);
 
   useEffect(() => {
     const ctl = videoControl?.ctl;
@@ -216,10 +260,7 @@ export default function SourceRuntimeStage({
               // the parent effect is installed. Treat `load` as the second side
               // of the same handshake and send the payload at most once.
               runtimeLoadedFor.current = runtimeInstanceKey;
-              if (payload && runtimePayloadSentFor.current !== renderKey) {
-                runtimePayloadSentFor.current = renderKey;
-                iframeRef.current?.contentWindow?.postMessage(payload, "*");
-              }
+              flushRuntimeRender();
               onFrameLoad();
             }}
             className="absolute inset-0 block size-full border-0 bg-white"

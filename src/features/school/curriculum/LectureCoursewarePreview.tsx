@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { LoaderCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
-import { fetchCoursewarePreviewPage } from "@/features/courseware-preview/client";
+import { fetchCoursewarePreviewPage, reuseCoursewareObjectUrls } from "@/features/courseware-preview/client";
 import { CoursewarePreviewWorkspace } from "@/features/courseware-preview/CoursewarePreviewWorkspace";
 import { warmCoursewarePreviewPage } from "@/features/courseware-preview/preload";
 import { isSourceRuntimePageDoc } from "@/features/courseware-doc/source-runtime-schema";
@@ -76,15 +76,21 @@ function LectureCoursewarePreviewState({
   const t = useTranslations("school.courses");
   const commonT = useTranslations("common");
   const [selectedIndex, setSelectedIndex] = useState(preview.pageIndex - 1);
+  const [initialCache] = useState(() => {
+    const knownObjectUrls = new Map<string, string>();
+    const initialPayload: CoursewarePreviewPagePayload = {
+      page: preview.page,
+      bindingUrls: reuseCoursewareObjectUrls(preview.bindingUrls, knownObjectUrls),
+    };
+    return { knownObjectUrls, initialPayload };
+  });
+  const knownObjectUrlsRef = useRef(initialCache.knownObjectUrls);
   const cacheRef = useRef(new Map<string, CoursewarePreviewPagePayload>([[
     preview.page.pageDocId,
-    { page: preview.page, bindingUrls: preview.bindingUrls },
+    initialCache.initialPayload,
   ]]));
   const preparedPageIdsRef = useRef(new Set([preview.page.pageDocId]));
-  const [rendered, setRendered] = useState<CoursewarePreviewPagePayload>({
-    page: preview.page,
-    bindingUrls: preview.bindingUrls,
-  });
+  const [rendered, setRendered] = useState<CoursewarePreviewPagePayload>(initialCache.initialPayload);
   const [errors, setErrors] = useState(new Map<string, string>());
   const pendingRef = useRef(new Map<string, Promise<CoursewarePreviewPagePayload>>());
   const selectedPageIdRef = useRef(preview.page.pageDocId);
@@ -109,11 +115,15 @@ function LectureCoursewarePreviewState({
         pageDocId,
       })
     ).then(async (payload) => {
+      const normalizedPayload = {
+        ...payload,
+        bindingUrls: reuseCoursewareObjectUrls(payload.bindingUrls, knownObjectUrlsRef.current),
+      };
       // Record the immutable payload before resource warming. A slow H5/image
       // warm must not make another page turn repeat the authenticated GET; the
       // prepared set still prevents mounting it before warming has settled.
-      cacheRef.current.set(pageDocId, payload);
-      await warmCoursewarePreviewPage(payload.page.doc, payload.bindingUrls);
+      cacheRef.current.set(pageDocId, normalizedPayload);
+      await warmCoursewarePreviewPage(normalizedPayload.page.doc, normalizedPayload.bindingUrls);
       preparedPageIdsRef.current.add(pageDocId);
       setErrors((current) => {
         if (!current.has(pageDocId)) return current;
@@ -121,7 +131,7 @@ function LectureCoursewarePreviewState({
         next.delete(pageDocId);
         return next;
       });
-      return payload;
+      return normalizedPayload;
     });
     const settled = request.then(
       (page) => {
@@ -142,9 +152,10 @@ function LectureCoursewarePreviewState({
   }, [preview.release.id, preview.track]);
 
   useEffect(() => {
-    // One page in each direction is enough to make normal sequential teaching
-    // instant without signing or transferring the whole lecture up front.
-    for (const index of [selectedIndex - 1, selectedIndex + 1]) {
+    // Keep the previous page and two forward pages ready. The second forward
+    // page covers fast sequential teaching without returning to whole-lecture
+    // eager loading.
+    for (const index of [selectedIndex - 1, selectedIndex + 1, selectedIndex + 2]) {
       const page = preview.pages[index];
       if (page) void ensurePage(page.pageDocId).catch(() => undefined);
     }

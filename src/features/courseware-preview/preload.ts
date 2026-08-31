@@ -1,6 +1,7 @@
 import type { CoursewareDoc } from "@/features/courseware-doc/document";
 import type { ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 import { collectBindingKeys, PAGE_DOC_VERSION } from "@/features/courseware-doc/schema";
+import { isSourceRuntimePageDoc } from "@/features/courseware-doc/source-runtime-schema";
 
 export interface CoursewarePreviewWarmTarget {
   kind: "image" | "h5";
@@ -13,8 +14,31 @@ export function collectCoursewarePreviewWarmTargets(
   doc: CoursewareDoc,
   bindingUrls: ResolvedBindingUrls,
 ): CoursewarePreviewWarmTarget[] {
-  if (doc.docVersion !== PAGE_DOC_VERSION) return [];
   const targets = new Map<string, CoursewarePreviewWarmTarget>();
+  if (isSourceRuntimePageDoc(doc)) {
+    const assets = doc.payload.format === "aixuexi-viewer-page-v1"
+      && doc.payload.data.assets
+      && typeof doc.payload.data.assets === "object"
+      && !Array.isArray(doc.payload.data.assets)
+      ? doc.payload.data.assets as Record<string, unknown>
+      : null;
+    const resources = assets && Array.isArray(assets.resources) ? assets.resources : [];
+    for (const raw of resources) {
+      if (!raw || typeof raw !== "object" || Array.isArray(raw)) continue;
+      const resource = raw as Record<string, unknown>;
+      const image = resource.kind === "image"
+        || resource.kind === "svg"
+        || (typeof resource.mime === "string" && resource.mime.startsWith("image/"));
+      if (!image) continue;
+      const resourceId = resource.resourceRefId;
+      if (!Number.isInteger(resourceId)) continue;
+      const bindingKey = doc.bindings.resources[String(resourceId)];
+      const url = bindingKey ? bindingUrls[bindingKey] : undefined;
+      if (url) targets.set(`image:${url}`, { kind: "image", url });
+    }
+    return [...targets.values()];
+  }
+  if (doc.docVersion !== PAGE_DOC_VERSION) return [];
   for (const [bindingKey, binding] of collectBindingKeys(doc)) {
     const url = bindingUrls[bindingKey];
     if (!url) continue;

@@ -15,12 +15,12 @@ describe("courseware preview page-turn performance", () => {
     );
 
     expect(preview).toContain("fetchCoursewarePreviewPage");
-    expect(preview).toContain("selectedIndex - 1, selectedIndex + 1");
+    expect(preview).toContain("selectedIndex - 1, selectedIndex + 1, selectedIndex + 2");
     expect(preview).toContain("warmCoursewarePreviewPage");
     expect(preview).toContain("waitingForSelected");
     expect(preview).toContain("setRendered(payload)");
     expect(preview).toContain("cacheRef.current.get(pageDocId)");
-    expect(preview).toContain("cacheRef.current.set(pageDocId, payload)");
+    expect(preview).toContain("cacheRef.current.set(pageDocId, normalizedPayload)");
     expect(preview).not.toContain("const [cache, setCache]");
     expect(preview).toContain("selected.pageDocId === rendered.page.pageDocId");
     expect(preview).toContain("active && selectedPageIdRef.current === selected.pageDocId");
@@ -28,6 +28,7 @@ describe("courseware preview page-turn performance", () => {
     expect(preview).toContain("new Map<string, Promise<CoursewarePreviewPagePayload>>");
     expect(preview).not.toContain("href: pageHrefs[index]");
     expect(preview).toContain("preparedPageIdsRef.current.add(pageDocId)");
+    expect(preview).toContain("reuseCoursewareObjectUrls");
     expect(route).toContain('authorizedClient("course.view")');
     expect(route).toContain('"Cache-Control": "private, no-store"');
     expect(client).toContain('cache: "no-store"');
@@ -49,7 +50,10 @@ describe("courseware preview page-turn performance", () => {
 
     expect(stage).toContain('const runtimeInstanceKey = `${doc.runtime.packageHash}:${runtimeEntry ?? "missing"}`');
     expect(stage).toContain("key={runtimeInstanceKey}");
-    expect(stage).toContain("runtimePayloadSentFor.current !== renderKey");
+    expect(stage).toContain("runtimeInFlightFor.current");
+    expect(stage).toContain("runtimeQueuedRender.current");
+    expect(stage).toContain("completedRenderKey");
+    expect(stage).not.toContain("setRenderedFrameKey(renderKey)");
     expect(stage).toContain("hasRenderedCurrentRuntime");
     expect(stage).toContain("!rendered && !hasRenderedCurrentRuntime");
     expect(sourceRuntimeBranch).not.toContain("key=");

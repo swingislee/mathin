@@ -71,6 +71,7 @@ function portableBridgeScript() {
   return String.raw`
 const mathinSend=(type,extra={})=>parent.postMessage({source:'${FRAME_SOURCE}',protocol:'${PROTOCOL}',type,...extra},'*');
 let mathinMediaBound=false;
+let mathinRenderActive=false,mathinQueuedRender=null;
 function mathinBindMedia(){
   if(mathinMediaBound)return;mathinMediaBound=true;
   document.addEventListener('play',event=>{if(event.target instanceof HTMLMediaElement)parent.postMessage({source:'mathin-h5-media',action:'play',time:event.target.currentTime},'*')},true);
@@ -101,13 +102,19 @@ async function mathinRender(message){
     mathinSend('advance');
   });
   fitAixuexiStages();applyAixuexiLayoutCorrections();
-  mathinSend('rendered');
+  mathinSend('rendered',{renderKey:message.renderKey});
 }
+async function mathinDrainRenderQueue(){
+  if(mathinRenderActive)return;mathinRenderActive=true;
+  try{while(mathinQueuedRender){const message=mathinQueuedRender;mathinQueuedRender=null;try{await mathinRender(message)}catch(error){mathinSend('error',{renderKey:message.renderKey,message:String(error?.message||error)})}}}
+  finally{mathinRenderActive=false;if(mathinQueuedRender)void mathinDrainRenderQueue()}
+}
+function mathinQueueRender(message){mathinQueuedRender=message;void mathinDrainRenderQueue()}
 window.addEventListener('resize',()=>{fitAixuexiStages();applyAixuexiLayoutCorrections()},{passive:true});
 window.addEventListener('message',event=>{
   const message=event.data||{};
   if(event.source===parent&&message.source==='${HOST_SOURCE}'&&message.protocol==='${PROTOCOL}'&&message.type==='render'){
-    mathinRender(message).catch(error=>mathinSend('error',{message:String(error?.message||error)}));return;
+    mathinQueueRender(message);return;
   }
   if(event.source===parent&&message.source==='mathin-classroom'&&message.type==='media_ctl'){
     document.querySelectorAll('video,audio').forEach(media=>{try{if(Number.isFinite(message.time)&&Math.abs(media.currentTime-message.time)>.5)media.currentTime=message.time;if(message.action==='play')media.play().catch(()=>{});if(message.action==='pause')media.pause()}catch{}});return;

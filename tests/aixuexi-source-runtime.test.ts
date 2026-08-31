@@ -154,6 +154,8 @@ describe("producer-owned Aixuexi source runtime", () => {
     expect(portable.viewerScript).not.toContain("assetPathPrefix");
     expect(portable.viewerScript).toContain("message.advanceOnCanvasClick===true");
     expect(portable.viewerScript).toContain("mathin-source-runtime-host");
+    expect(portable.viewerScript).toContain("mathinQueuedRender");
+    expect(portable.viewerScript).toContain("renderKey:message.renderKey");
     expect(portable.viewerScript).not.toContain("route().catch");
     expect(portable.sourceFingerprint).toMatch(/^[0-9a-f]{64}$/);
     expect(portableAixuexiViewerHtml({ hasLottie: true })).toContain("viewer-runtime.js");
@@ -168,7 +170,9 @@ describe("producer-owned Aixuexi source runtime", () => {
     expect(host).toContain("materializePayload");
     expect(host).toContain("renderedFrameKey === renderKey");
     expect(host).toContain("runtimeLoadedFor.current = runtimeInstanceKey");
-    expect(host).toContain("runtimePayloadSentFor.current !== renderKey");
+    expect(host).toContain("runtimeInFlightFor.current");
+    expect(host).toContain("runtimeQueuedRender.current");
+    expect(host).toContain("completedRenderKey");
     expect(host).toContain("useLayoutEffect(() => {");
     expect(host).toContain('window.addEventListener("message", receive)');
     expect(host).toContain('key={runtimeInstanceKey}');
