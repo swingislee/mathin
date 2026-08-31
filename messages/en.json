@@ -991,6 +991,8 @@
     "h5Collapse": "Exit interactive",
     "prevPage": "Previous page",
     "nextPage": "Next page",
+    "pageLoading": "Loading page {page}…",
+    "pageLoadFailed": "Page {page} could not be loaded",
     "adaptReviewTitle": "4:3 adaptation review & release",
     "reviewWorkspaceTitle": "Courseware review & release",
     "adaptReviewIntro": "Review backgrounds and pages by course or lecture, then publish each 4:3 release intentionally.",
