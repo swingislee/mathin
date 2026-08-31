@@ -14,7 +14,7 @@
 >
 > **双轨执行**：生产端由 1 名正式教师在现有正式班级、课次和花名册上持续试用，优先反馈 P0/核心 P1；开发端可并行尝试产品负责人选中的新功能。新功能只有在开发目标完成受影响检查并由产品负责人初步验收后，才成为生产候选；完成精确版本/迁移登记、生产 preflight、可回退发布和 postflight 后，才能记为生产已部署。开发通过不等于生产通过，新功能也不改变 Gate 2 的点名与权限退出条件。
 >
-> **核对日期**：2026-08-30；生产事实已包含 ledger/head=`236 / 20260830000700_teacher_microcourse_editor_unification`、应用 `a165004…`、讲次课件预览性能 hotfix 及去标识化 postflight；`76f0f9a…` 与 ledger 236 在本轮 preflight 前已运行，本轮不把此前发布归因于该 hotfix。其余依据 active doc 00/25、代码与迁移、本机隔离验证、Xiaomi 运行核查和 `mathin-R1-Live-讨论稿.md`。
+> **核对日期**：2026-08-31；生产事实仍沿用 2026-08-30 已确认的 ledger/head=`236 / 20260830000700_teacher_microcourse_editor_unification`、应用 `a165004…`、讲次课件预览性能 hotfix 及去标识化 postflight；`76f0f9a…` 与 ledger 236 在该轮 preflight 前已运行，不把此前发布归因于该 hotfix。2026-08-31 新增 `DEV-CW-1` 规划登记，没有代码、schema、数据库、Storage 或生产写入。其余依据 active doc 00/25、代码与迁移、本机隔离验证、Xiaomi 运行核查和 `mathin-R1-Live-讨论稿.md`。
 
 ## 1. 两个交付事件
 
@@ -205,6 +205,12 @@ Gate 1 已按以下顺序关闭：
 `DEV-TMC-4` 是产品负责人于 2026-08-30 选入的独立增量，权威范围见 [`29-teacher-microcourse-browser-redesign.md`](29-teacher-microcourse-browser-redesign.md)。本轮 hotfix 的生产 preflight 已检出应用 current=`76f0f9a…`、数据库 ledger/head=`236 / 20260830000700_teacher_microcourse_editor_unification`，证明相关 schema/app 在本轮开始前已进入生产；本 hotfix 没有执行这些 migration，也不补写此前部署授权或 postflight。当前状态据此记为 **PRODUCTION APP/SCHEMA DETECTED / PREVIOUS DEPLOYMENT EVIDENCE RECONCILIATION PENDING / PRODUCT ACCEPTANCE PENDING**。它在 DEV-TMC-3 的“一班一课、多课节多讲”根对象上增加 766 使用场景树、机构学术维度、课程适用范围、目录—表格—轻量预览浏览器、同名归并、课程级维护方向与默认版本管理；现有课次方案、immutable release、课堂冻结和历史引用继续作为内容权威。
 
 Phase 1～5 的本机隔离 Supabase、固定开发身份、migration LF checksum、受影响 ESLint、TypeScript、定向 Vitest 与自动回滚数据库合同证据继续有效。2026-08-30 的生产发现只证明运行版本与 schema 已存在，不证明课程切换性能、真实写态、历史归并结果或产品页面已经验收；此前部署证据完成对账前不得把本段提升为生产通过。本轮 `a165004…` 仅部署讲次课件预览性能补丁，不改变 R1-Live Gate 2。
+
+#### DEV-CW-1 · 课程产品统一课件工作区
+
+`DEV-CW-1` 回应课程产品中 E 系列、爱学习及后续导入课程缺少单页 16:9/4:3 修订闭环的问题，权威规划见 [doc 16 §14](16-p6-courseware-platform.md#14-dev-cw-1-课程产品统一课件工作区待产品逐步确认)。目标主路径为“课程产品 → 课程/版本 → 讲次 → 指定页面 → 统一课件工作区”，并把共享内容修订、分轨版式、页面上下文资源替换、插入能力和 draft/review/release 放在同一对象上下文内。研发任务最终只保留责任/待处理投影，适配校对只保留异常与审核视图，公共资源保留高级治理与回滚；新路径验收前不删除或降级现有入口。
+
+当前状态为 **PLANNED / AWAITING PRODUCT PLAN CONFIRMATION**。Step 0 只交付规划；Step 1 才允许做只读信息架构与布局；Step 2 只做无持久化功能样机；后续 PageDoc 单页、4:3 样本讲次、上下文替换、source-runtime 决策、入口收敛和扩量分别设置独立人工确认门。产品负责人明确确认当前 Step 前不得开始下一 Step；机器检查通过不构成确认。当前未授权页面实现、schema、开发库写入、批量任务或生产动作，不改变 R1-Live Gate 2。
 
 ## 6. 原 R1 工作重新定位
 
