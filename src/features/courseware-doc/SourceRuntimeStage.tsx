@@ -11,6 +11,7 @@ import {
   SOURCE_RUNTIME_PROTOCOL,
   type SourceRuntimePageDoc,
 } from "./source-runtime-schema";
+import { sourceRuntimeFourByThreeMode } from "./source-runtime-four-by-three";
 import { useH5FrameRegistration } from "./useH5FrameRegistration";
 
 const FRAME_MESSAGE_SOURCE = "mathin-source-runtime";
@@ -166,7 +167,13 @@ export default function SourceRuntimeStage({
 
   const sourceAspect = doc.viewport.width / doc.viewport.height;
   const outerAspect = stageMode === "board43" ? 4 / 3 : sourceAspect;
-  const sourceHeightPercent = Math.min(100, (outerAspect / sourceAspect) * 100);
+  const fourByThreeMode = sourceRuntimeFourByThreeMode(doc);
+  const directFourByThree = stageMode === "board43" && fourByThreeMode === "source-master";
+  const sourceHeightPercent = directFourByThree
+    ? 100
+    : Math.min(100, (outerAspect / sourceAspect) * 100);
+  const sourceWidthPercent = directFourByThree ? (sourceAspect / outerAspect) * 100 : 100;
+  const sourceLeftPercent = directFourByThree ? (100 - sourceWidthPercent) / 2 : 0;
   const unavailable = !runtimeEntry || !payload;
 
   return (
@@ -174,6 +181,7 @@ export default function SourceRuntimeStage({
       className={className}
       data-source-runtime-stage
       data-stage-mode={stageMode}
+      data-four-by-three-mode={stageMode === "board43" ? fourByThreeMode : undefined}
       style={{
         ...coursewareCanvasStyle("#fff"),
         position: "relative",
@@ -185,48 +193,49 @@ export default function SourceRuntimeStage({
       {stageMode === "board43" && sourceHeightPercent < 100 ? (
         <div className="absolute inset-x-0 bottom-0 bg-card" style={{ height: `${100 - sourceHeightPercent}%` }} />
       ) : null}
-      {runtimeEntry ? (
-        <iframe
-          ref={iframeRef}
-          key={runtimeInstanceKey}
-          title={doc.source.pageName}
-          src={runtimeEntry}
-          sandbox="allow-scripts allow-forms allow-pointer-lock allow-modals"
-          allow="autoplay; fullscreen"
-          allowFullScreen
-          data-classroom-input="native"
-          onLoad={() => {
-            // The child runtime posts `ready` and can finish rendering before
-            // the parent effect is installed. Treat `load` as the second side
-            // of the same handshake and send the payload at most once.
-            runtimeLoadedFor.current = runtimeInstanceKey;
-            if (payload && runtimePayloadSentFor.current !== renderKey) {
-              runtimePayloadSentFor.current = renderKey;
-              iframeRef.current?.contentWindow?.postMessage(payload, "*");
-            }
-            onFrameLoad();
-          }}
-          style={{
-            position: "absolute",
-            inset: "0 auto auto 0",
-            display: "block",
-            width: "100%",
-            height: `${sourceHeightPercent}%`,
-            border: 0,
-            background: "#fff",
-          }}
-        />
-      ) : null}
-      {!rendered && !hasRenderedCurrentRuntime && !runtimeError && !unavailable ? (
-        <div className="absolute inset-x-0 top-0 grid place-items-center bg-paper text-sm text-muted" style={{ height: `${sourceHeightPercent}%` }} aria-live="polite">
-          {t("sourceRuntimeLoading")}
-        </div>
-      ) : null}
-      {runtimeError || unavailable ? (
-        <div className="absolute inset-x-0 top-0 grid place-items-center bg-paper px-6 text-center text-sm text-danger" style={{ height: `${sourceHeightPercent}%` }} role="alert">
-          {runtimeError ?? t("sourceRuntimeUnavailable")}
-        </div>
-      ) : null}
+      <div
+        className="absolute top-0"
+        style={{
+          left: `${sourceLeftPercent}%`,
+          width: `${sourceWidthPercent}%`,
+          height: `${sourceHeightPercent}%`,
+        }}
+      >
+        {runtimeEntry ? (
+          <iframe
+            ref={iframeRef}
+            key={runtimeInstanceKey}
+            title={doc.source.pageName}
+            src={runtimeEntry}
+            sandbox="allow-scripts allow-forms allow-pointer-lock allow-modals"
+            allow="autoplay; fullscreen"
+            allowFullScreen
+            data-classroom-input="native"
+            onLoad={() => {
+              // The child runtime posts `ready` and can finish rendering before
+              // the parent effect is installed. Treat `load` as the second side
+              // of the same handshake and send the payload at most once.
+              runtimeLoadedFor.current = runtimeInstanceKey;
+              if (payload && runtimePayloadSentFor.current !== renderKey) {
+                runtimePayloadSentFor.current = renderKey;
+                iframeRef.current?.contentWindow?.postMessage(payload, "*");
+              }
+              onFrameLoad();
+            }}
+            className="absolute inset-0 block size-full border-0 bg-white"
+          />
+        ) : null}
+        {!rendered && !hasRenderedCurrentRuntime && !runtimeError && !unavailable ? (
+          <div className="absolute inset-0 grid place-items-center bg-paper text-sm text-muted" aria-live="polite">
+            {t("sourceRuntimeLoading")}
+          </div>
+        ) : null}
+        {runtimeError || unavailable ? (
+          <div className="absolute inset-0 grid place-items-center bg-paper px-6 text-center text-sm text-danger" role="alert">
+            {runtimeError ?? t("sourceRuntimeUnavailable")}
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

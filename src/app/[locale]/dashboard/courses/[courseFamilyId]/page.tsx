@@ -232,6 +232,9 @@ async function CourseFamilyProductPage({
     : capabilities.canCreateClass && selectedVariant.status === "enabled"
       ? <Link href={`/dashboard/classes/new?courseId=${selectedVariant.id}`} className={buttonVariants({ size: "sm" })}>{t("useVariantForClass")}</Link>
       : undefined;
+  const overflowAction = capabilities.canTransitionVariant
+    ? <StatusOverflowMenu id={selectedVariant.id} status={selectedVariant.status} action={transitionCourseVariantStatusAction} ariaLabel={t("moreActions")} />
+    : undefined;
 
   return <ObjectWorkspace
     objectBar={<ObjectBar
@@ -249,7 +252,6 @@ async function CourseFamilyProductPage({
         <Badge variant={selectedVariant.status === "enabled" ? "secondary" : "outline"}>{t(selectedVariant.status)}</Badge>
         {selectedVariant.supersededByCourseId && <Badge variant="outline">{t("superseded")}</Badge>}
       </>}
-      overflowSlot={capabilities.canTransitionVariant ? <StatusOverflowMenu id={selectedVariant.id} status={selectedVariant.status} action={transitionCourseVariantStatusAction} ariaLabel={t("moreActions")} /> : undefined}
     />}
     navigation={(
       <div
@@ -259,7 +261,12 @@ async function CourseFamilyProductPage({
         <ObjectContextSwitcher label={t("variantContextLabel")} className="min-w-0 flex-1">
           <VariantSelector familyId={detail.family.id} variants={detail.variants} catalogVersions={detail.catalogVersions} current={selectedVariant} />
         </ObjectContextSwitcher>
-        {primaryAction ? <div className="ml-auto shrink-0">{primaryAction}</div> : null}
+        {overflowAction || primaryAction ? (
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            {overflowAction}
+            {primaryAction}
+          </div>
+        ) : null}
       </div>
     )}
   >
