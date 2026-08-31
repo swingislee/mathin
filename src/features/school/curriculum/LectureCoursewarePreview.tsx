@@ -146,6 +146,18 @@ function LectureCoursewarePreviewState({
     }
   }, [ensurePage, preview.pages, selectedIndex]);
 
+  useEffect(() => {
+    const selected = preview.pages[selectedIndex];
+    if (!selected || selected.pageDocId === rendered.page.pageDocId) return;
+    let active = true;
+    void ensurePage(selected.pageDocId).then((payload) => {
+      if (active && selectedPageIdRef.current === selected.pageDocId) setRendered(payload);
+    }).catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [ensurePage, preview.pages, rendered.page.pageDocId, selectedIndex]);
+
   const selectPage = useCallback((index: number) => {
     const page = preview.pages[index];
     const href = pageHrefs[index];
@@ -156,12 +168,8 @@ function LectureCoursewarePreviewState({
     const cached = cacheRef.current.get(page.pageDocId);
     if (cached) {
       setRendered(cached);
-      return;
     }
-    void ensurePage(page.pageDocId).then((payload) => {
-      if (selectedPageIdRef.current === page.pageDocId) setRendered(payload);
-    }).catch(() => undefined);
-  }, [ensurePage, pageHrefs, preview.pages]);
+  }, [pageHrefs, preview.pages]);
 
   const selectedMeta = preview.pages[selectedIndex] ?? preview.pages[0];
   const loadError = selectedMeta ? errors.get(selectedMeta.pageDocId) : undefined;
