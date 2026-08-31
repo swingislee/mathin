@@ -18,14 +18,20 @@ export function FittedCoursewareCanvas({
   className?: string;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState<number | null>(null);
+  const [size, setSize] = useState<{ width: number; height: number } | null>(null);
 
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
     const fit = () => {
-      const rect = host.getBoundingClientRect();
-      setWidth(Math.max(0, Math.floor(Math.min(rect.width, rect.height * aspect))));
+      const style = window.getComputedStyle(host);
+      const horizontalPadding = Number.parseFloat(style.paddingLeft) + Number.parseFloat(style.paddingRight);
+      const verticalPadding = Number.parseFloat(style.paddingTop) + Number.parseFloat(style.paddingBottom);
+      const availableWidth = Math.max(0, host.clientWidth - horizontalPadding);
+      const availableHeight = Math.max(0, host.clientHeight - verticalPadding);
+      const width = Math.floor(Math.min(availableWidth, availableHeight * aspect));
+      const height = Math.floor(width / aspect);
+      setSize((current) => current?.width === width && current.height === height ? current : { width, height });
     };
     const observer = new ResizeObserver(fit);
     observer.observe(host);
@@ -34,10 +40,18 @@ export function FittedCoursewareCanvas({
   }, [aspect]);
 
   return (
-    <div ref={hostRef} className={cn("flex min-h-0 min-w-0 flex-1 items-center justify-center overflow-hidden p-3", className)}>
+    <div
+      ref={hostRef}
+      data-fitted-courseware-canvas
+      className={cn("flex h-full min-h-0 min-w-0 flex-1 items-center justify-center overflow-hidden p-3", className)}
+    >
       <div
+        data-fitted-courseware-stage
         className="shrink-0 overflow-hidden bg-card"
-        style={{ width: width === null ? "100%" : width, aspectRatio: String(aspect) }}
+        style={{
+          width: size?.width ?? 0,
+          height: size?.height ?? 0,
+        }}
       >
         {children}
       </div>

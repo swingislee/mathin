@@ -1,4 +1,5 @@
 import { getTranslations } from "next-intl/server";
+import { CircleAlert } from "lucide-react";
 import type { CoursewareLecturePreview, CoursewareTrack } from "@/features/courseware-studio/data";
 import { LectureCoursewarePreview } from "./LectureCoursewarePreview";
 import { LecturePreviewTrackSwitcher } from "./LecturePreviewTrackSwitcher";
@@ -24,10 +25,12 @@ export async function LecturePreviewPanel({
   preview,
   baseHref,
   workspaceHref,
+  adaptedPreviewFellBack = false,
 }: {
   preview: CoursewareLecturePreview;
   baseHref: string;
   workspaceHref: string;
+  adaptedPreviewFellBack?: boolean;
 }) {
   const [t, workspaceT] = await Promise.all([
     getTranslations("school.courses"),
@@ -46,6 +49,12 @@ export async function LecturePreviewPanel({
           currentTrack={currentTrack}
           initialPage={preview.pageIndex}
         />
+        {adaptedPreviewFellBack ? (
+          <p className="flex min-w-0 flex-1 items-center gap-2 text-xs leading-5 text-amber-700 dark:text-amber-300" role="status">
+            <CircleAlert className="size-4 shrink-0" />
+            <span>{workspaceT("adaptedFallbackNotice")}</span>
+          </p>
+        ) : <span className="flex-1" />}
         <OpenCoursewareWorkspaceButton href={workspaceHref} label={workspaceT("openWorkspace")} />
       </div>
       <div className="min-h-0 flex-1 overflow-hidden bg-paper px-3 py-4 sm:px-6">

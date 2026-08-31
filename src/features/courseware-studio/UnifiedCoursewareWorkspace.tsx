@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, ImageIcon, LayoutTemplate, Plus, Type } from "lucide-react";
+import { ChevronLeft, ChevronRight, CircleAlert, ImageIcon, LayoutTemplate, Plus, Type } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -76,7 +76,7 @@ function TrackCanvas({
   unavailable: string;
 }) {
   return (
-    <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-paper" aria-label={label}>
+    <section className="flex h-full min-h-0 min-w-0 flex-1 flex-col bg-paper" aria-label={label}>
       <div className="flex min-h-10 shrink-0 items-center justify-between gap-2 border-b border-line px-3 py-2">
         <span className="text-xs font-medium text-ink">{label}</span>
         <Badge variant={preview ? "secondary" : "outline"}>{preview ? `R${preview.release.releaseNo}` : unavailable}</Badge>
@@ -141,7 +141,9 @@ export async function UnifiedCoursewareWorkspace({
   const pages = directoryPreview?.pages ?? [];
   const backHref = returnTo ?? coursePreviewHref(detail, entryTrack, pageIndex);
   const selectedPage = directoryPreview?.page;
-  const selectedDoc = canvas === "adapted-4x3"
+  const adaptedCanvasFellBack = canvas !== "native-16x9" && !adaptedPreview && Boolean(nativePreview);
+  const visibleCanvas: UnifiedWorkspaceCanvas = adaptedCanvasFellBack ? "native-16x9" : canvas;
+  const selectedDoc = visibleCanvas === "adapted-4x3"
     ? adaptedPreview?.page.doc
     : nativePreview?.page.doc ?? adaptedPreview?.page.doc;
 
@@ -152,10 +154,10 @@ export async function UnifiedCoursewareWorkspace({
   ];
 
   const previousHref = pageIndex > 1
-    ? workspaceHref({ lectureId: detail.lecture.id, canvas, track: entryTrack, page: pageIndex - 1, returnTo })
+    ? workspaceHref({ lectureId: detail.lecture.id, canvas: visibleCanvas, track: entryTrack, page: pageIndex - 1, returnTo })
     : null;
   const nextHref = pageIndex < pages.length
-    ? workspaceHref({ lectureId: detail.lecture.id, canvas, track: entryTrack, page: pageIndex + 1, returnTo })
+    ? workspaceHref({ lectureId: detail.lecture.id, canvas: visibleCanvas, track: entryTrack, page: pageIndex + 1, returnTo })
     : null;
 
   return (
@@ -172,7 +174,17 @@ export async function UnifiedCoursewareWorkspace({
         ]}
         status={<Badge variant="outline">{t("readOnlyAudit")}</Badge>}
       />}
-      navigation={<ObjectTabs items={canvasItems} activeValue={canvas} ariaLabel={t("canvasNavigation")} />}
+      navigation={(
+        <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
+          <ObjectTabs items={canvasItems} activeValue={visibleCanvas} ariaLabel={t("canvasNavigation")} />
+          {adaptedCanvasFellBack ? (
+            <p className="flex min-w-0 flex-1 items-center gap-2 text-xs leading-5 text-amber-700 dark:text-amber-300" role="status">
+              <CircleAlert className="size-4 shrink-0" />
+              <span>{t("adaptedFallbackNotice")}</span>
+            </p>
+          ) : null}
+        </div>
+      )}
       statusStrip={<StatusStrip items={[
         { label: t("statusStep"), value: t("statusStepValue") },
         { label: t("statusNative"), value: nativePreview ? t("releaseNo", { no: nativePreview.release.releaseNo }) : t("unavailable") },
@@ -199,7 +211,7 @@ export async function UnifiedCoursewareWorkspace({
                   return (
                     <li key={page.pageDocId}>
                       <Link
-                        href={workspaceHref({ lectureId: detail.lecture.id, canvas, track: entryTrack, page: index + 1, returnTo })}
+                        href={workspaceHref({ lectureId: detail.lecture.id, canvas: visibleCanvas, track: entryTrack, page: index + 1, returnTo })}
                         aria-current={active ? "page" : undefined}
                         className={cn(
                           "flex min-h-12 items-center gap-2 px-3 py-2 transition-colors hover:bg-moon/20",
@@ -227,12 +239,12 @@ export async function UnifiedCoursewareWorkspace({
             <span className="min-w-0 truncate text-xs text-muted">{selectedPage?.title || t("untitledPage")}</span>
           </div>
           <div className="min-h-0 flex-1 overflow-hidden bg-moon/10">
-            {canvas === "compare" ? (
+            {visibleCanvas === "compare" ? (
               <div className="grid size-full min-h-0 grid-rows-2 gap-px bg-line @4xl/workspace:grid-cols-2 @4xl/workspace:grid-rows-1">
                 <TrackCanvas preview={nativePreview} label={t("canvasNative")} unavailable={t("nativeUnavailable")} />
                 <TrackCanvas preview={adaptedPreview} label={t("canvasAdapted")} unavailable={t("adaptedUnavailable")} />
               </div>
-            ) : canvas === "adapted-4x3" ? (
+            ) : visibleCanvas === "adapted-4x3" ? (
               <TrackCanvas preview={adaptedPreview} label={t("canvasAdapted")} unavailable={t("adaptedUnavailable")} />
             ) : (
               <TrackCanvas preview={nativePreview} label={t("canvasNative")} unavailable={t("nativeUnavailable")} />

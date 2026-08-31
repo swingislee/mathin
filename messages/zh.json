@@ -1334,6 +1334,7 @@
     "canvasCompare": "16:9 / 4:3 对照",
     "canvasNative": "16:9 原生版",
     "canvasAdapted": "4:3 适配版",
+    "adaptedFallbackNotice": "本讲尚无 4:3 适配版本，当前继续显示 16:9 原生版。",
     "pageContext": "第 {page} / {total} 页",
     "pageDirectory": "页面目录",
     "pageCount": "{count} 页",
