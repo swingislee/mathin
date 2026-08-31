@@ -22,8 +22,7 @@ describe("DEV-CW-1 Step 2 no-write interaction prototype", () => {
     const prototype = read("src", "features", "courseware-studio", "CoursewareCapabilityPrototype.tsx");
 
     expect(prototype).toContain('type PrototypeTab = "adjust" | "layout" | "replace"');
-    expect(prototype).toContain("CoursewareEditorToolbar");
-    expect(prototype).toContain("CoursewareEditorToolbarButton");
+    expect(prototype).toContain("CoursewareInsertionToolbar");
     expect(prototype).toContain("createPortal(insertToolbar, toolbarTarget)");
     expect(prototype).toContain('className="grid h-8 w-full grid-cols-3"');
     expect(prototype).not.toContain('<TabsTrigger value="insert"');

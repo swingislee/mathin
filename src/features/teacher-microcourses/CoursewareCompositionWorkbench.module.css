@@ -1,12 +1,3 @@
-.workbench {
-  container: composition-workbench / inline-size;
-}
-
-.body {
-  display: grid;
-  grid-template-rows: minmax(0, 1fr) minmax(12rem, 0.55fr);
-}
-
 .stageSlot {
   container: composition-stage / size;
   overflow: hidden;
@@ -30,12 +21,5 @@
   .stageFrame {
     width: 100%;
     height: auto;
-  }
-}
-
-@container composition-workbench (min-width: 54rem) {
-  .body {
-    grid-template-rows: minmax(0, 1fr);
-    grid-template-columns: minmax(0, 1fr) clamp(17rem, 28cqi, 22rem);
   }
 }

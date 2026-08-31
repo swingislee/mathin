@@ -6,7 +6,7 @@ const root = process.cwd();
 const read = (...segments: string[]) => fs.readFileSync(path.join(root, ...segments), "utf8");
 
 describe("shared courseware editor workbench", () => {
-  it("uses one rounded Card workbench for formal courseware and teacher compositions", () => {
+  it("uses one five-region Card workbench for formal courseware and teacher compositions", () => {
     const shared = read("src", "features", "courseware-doc", "CoursewareEditorWorkbench.tsx");
     const formal = read("src", "features", "courseware-studio", "UnifiedCoursewareWorkspace.tsx");
     const microcourse = read("src", "features", "teacher-microcourses", "MicrocourseEditor.tsx");
@@ -16,31 +16,47 @@ describe("shared courseware editor workbench", () => {
     expect(formal).toContain("<CoursewareEditorWorkbench");
     expect(microcourse).toContain("<CoursewareEditorWorkbench");
     expect(shared).toContain("data-courseware-editor-adapter={adapter}");
+    expect(shared).toContain('data-courseware-editor-slot="directory"');
+    expect(shared).toContain('data-courseware-editor-slot="toolbar"');
+    expect(shared).toContain('data-courseware-editor-slot="canvas"');
+    expect(shared).toContain('data-courseware-editor-slot="inspector-header"');
+    expect(shared).toContain('data-courseware-editor-slot="inspector"');
+    expect(formal).toContain('layout="workspace"');
+    expect(microcourse).toContain('layout="viewport"');
+    expect(formal).toContain("capabilities={{ adapt4x3: true }}");
+    expect(microcourse).toContain("capabilities={{ adapt4x3: false }}");
+    expect(shared).toContain("data-courseware-editor-adapt-4x3");
     expect(formal).toContain("adapter={selectedDoc?.docVersion");
     expect(microcourse).toContain('adapter="courseware-composition-v1"');
   });
 
-  it("shares editor shell, canvas, action-grid and top-toolbar primitives", () => {
+  it("shares editor shell, insertion toolbar, canvas and inspector composition", () => {
     const shared = read("src", "features", "courseware-doc", "CoursewareEditorWorkbench.tsx");
     const composition = read("src", "features", "teacher-microcourses", "CoursewareCompositionWorkbench.tsx");
     const prototype = read("src", "features", "courseware-studio", "CoursewareCapabilityPrototype.tsx");
 
     for (const primitive of [
-      "CoursewareEditorHeader",
-      "CoursewareEditorBody",
       "CoursewareEditorCanvasFrame",
       "CoursewareEditorActionGrid",
       "CoursewareEditorToolbar",
       "CoursewareEditorToolbarButton",
       "CoursewareEditorToolbarLabel",
+      "CoursewareInsertionToolbar",
     ]) expect(shared).toContain(`function ${primitive}`);
-    expect(composition).toContain("<CoursewareEditorHeader");
     expect(composition).toContain("<CoursewareEditorCanvasFrame");
-    expect(composition).toContain("<CoursewareEditorToolbar");
+    expect(composition).toContain("<CoursewareInsertionToolbar");
     expect(composition).toContain("<CoursewareEditorToolbarButton");
     expect(prototype).toContain("<CoursewareEditorActionGrid");
-    expect(prototype).toContain("<CoursewareEditorToolbar");
-    expect(prototype).toContain("<CoursewareEditorToolbarButton");
+    expect(prototype).toContain("<CoursewareInsertionToolbar");
+  });
+
+  it("keeps the formal canvas header free of duplicated track titles", () => {
+    const formal = read("src", "features", "courseware-studio", "UnifiedCoursewareWorkspace.tsx");
+    const prototype = read("src", "features", "courseware-studio", "CoursewareCapabilityPrototype.tsx");
+    expect(formal).not.toContain("toolbarTargetId?: string");
+    expect(formal).not.toContain("{label}</span>");
+    expect(formal).toContain("toolbar={<div id={INSERT_TOOLBAR_TARGET_ID}");
+    expect(prototype).not.toContain('className="justify-end"');
   });
 
   it("reuses the mature preview workspace for read-only microcourse variants", () => {

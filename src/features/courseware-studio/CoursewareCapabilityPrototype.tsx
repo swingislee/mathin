@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   CircleAlert,
   Eye,
@@ -24,8 +24,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   CoursewareEditorActionGrid,
-  CoursewareEditorToolbar,
-  CoursewareEditorToolbarButton,
+  CoursewareInsertionToolbar,
 } from "@/features/courseware-doc/CoursewareEditorWorkbench";
 import { cn } from "@/lib/utils";
 
@@ -89,7 +88,6 @@ export function CoursewareCapabilityPrototype({
   tabsTargetId: string;
 }) {
   const t = useTranslations("coursewareWorkspace");
-  const actionId = useRef(0);
   const [activeTab, setActiveTab] = useState<PrototypeTab>("adjust");
   const [adjustTool, setAdjustTool] = useState("text");
   const [syncContent, setSyncContent] = useState(true);
@@ -118,8 +116,11 @@ export function CoursewareCapabilityPrototype({
   const canInsertContent = pageDoc || composition;
 
   const record = (label: string, detail: string) => {
-    actionId.current += 1;
-    setHistory((current) => [...current, { id: actionId.current, label, detail }].slice(-4));
+    setHistory((current) => [...current, {
+      id: (current.at(-1)?.id ?? 0) + 1,
+      label,
+      detail,
+    }].slice(-4));
   };
 
   const adjustTools = [
@@ -141,22 +142,20 @@ export function CoursewareCapabilityPrototype({
   const insertToolbar = (
     <>
       <span id="courseware-insert-prototype-hint" className="sr-only">{t("prototypeInsertionSyncGate")}</span>
-      <CoursewareEditorToolbar className="flex-nowrap justify-end" aria-label={t("contentInsertion")} aria-describedby="courseware-insert-prototype-hint">
-        {insertTools.map(({ value, label, Icon }) => (
-          <CoursewareEditorToolbarButton
-            key={value}
-            aria-label={label}
-            title={label}
-            disabled={!canInsertContent}
-            onClick={() => record(
+      <CoursewareInsertionToolbar
+        aria-label={t("contentInsertion")}
+        aria-describedby="courseware-insert-prototype-hint"
+        actions={insertTools.map(({ value, label, Icon }) => ({
+          id: value,
+          label,
+          icon: Icon,
+          disabled: !canInsertContent,
+          onSelect: () => record(
               t("prototypeHistoryInsertion"),
               t("prototypeHistoryInsertionDetail", { kind: label }),
-            )}
-          >
-            <Icon className="size-4" />
-          </CoursewareEditorToolbarButton>
-        ))}
-      </CoursewareEditorToolbar>
+            ),
+        }))}
+      />
     </>
   );
 

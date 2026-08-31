@@ -1582,6 +1582,13 @@ teaching.teacher_microcourse_browser_v2
 - 正式右栏标题行承载微调、4:3、替换三种模式切换；插入页签和重复的插入按钮区退出右栏，当前页面身份、来源限制、影响预览与撤销仍在右栏正文；
 - 本轮没有 migration、数据库、Storage、release 或生产修改；TypeScript、受影响 ESLint、双语键 5323×2 和定向 Vitest 14/14 通过，状态为 Step 2A 修订待继续人工审计。
 
+2026-08-31 第十一轮把共享范围从原语提升为完整编辑器：
+
+- 产品负责人指出共享外壳、图标原语和 Portal 槽仍会留下两套维护面，并确认微课编辑器应是共同功能基线，正式课理论上只比微课多 4:3 适配；
+- `CoursewareEditorWorkbench` 现在直接渲染页面目录、插入顶栏、画布/翻页、右栏标题和右栏滚动区，正式与微课不再各自编排栏线、标题行和页脚；两条链同时改用 `CoursewareInsertionToolbar`，各 adapter 只接自身数据、真实或样机动作和检查内容；
+- 正式轨道画布内重复的“16:9 原生版”等标题行退出；`capabilities.adapt4x3` 只对正式 adapter 开启，微课既有实际插入、页面重命名、组件属性和 800ms 自动保存不变；
+- 本轮没有 migration、数据库、Storage、release 或生产修改；TypeScript、受影响 ESLint和定向 Vitest 12/12 通过，状态为 Step 2A 第三轮修订待人工审计。
+
 ---
 
 # 十九、Agent 施工要求

@@ -22,6 +22,7 @@ import {
   useState,
   useTransition,
 } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -38,10 +39,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { CoursewareCompositionGridEditor } from "@/features/courseware-doc/CoursewareCompositionGridEditor";
 import {
-  CoursewareEditorBody,
   CoursewareEditorCanvasFrame,
-  CoursewareEditorHeader,
-  CoursewareEditorToolbar,
+  CoursewareInsertionToolbar,
   CoursewareEditorToolbarButton,
   CoursewareEditorToolbarLabel,
 } from "@/features/courseware-doc/CoursewareEditorWorkbench";
@@ -194,9 +193,20 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
     doc: CoursewareCompositionPage;
     bindingUrls: Record<string, string>;
   };
+  toolbarTargetId: string;
+  inspectorHeaderTargetId: string;
+  inspectorTargetId: string;
   onPersisted: (draft: PersistedCompositionPage) => void;
   onStatus: (message: string) => void;
-}>(function CoursewareCompositionWorkbench({ microcourseId, page, onPersisted, onStatus }, ref) {
+}>(function CoursewareCompositionWorkbench({
+  microcourseId,
+  page,
+  toolbarTargetId,
+  inspectorHeaderTargetId,
+  inspectorTargetId,
+  onPersisted,
+  onStatus,
+}, ref) {
   const t = useTranslations("teacherMicrocourses");
   const [doc, setDoc] = useState(() => structuredClone(page.doc));
   const [bindingUrls, setBindingUrls] = useState({ ...page.bindingUrls });
@@ -212,6 +222,18 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
   const timerRef = useRef<number | null>(null);
   const savingRef = useRef<Promise<boolean> | null>(null);
   const flushRef = useRef<() => Promise<boolean>>(async () => true);
+  const [toolbarTarget, setToolbarTarget] = useState<HTMLElement | null>(null);
+  const [inspectorHeaderTarget, setInspectorHeaderTarget] = useState<HTMLElement | null>(null);
+  const [inspectorTarget, setInspectorTarget] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      setToolbarTarget(document.getElementById(toolbarTargetId));
+      setInspectorHeaderTarget(document.getElementById(inspectorHeaderTargetId));
+      setInspectorTarget(document.getElementById(inspectorTargetId));
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [inspectorHeaderTargetId, inspectorTargetId, toolbarTargetId]);
 
   const flush = useCallback(async (): Promise<boolean> => {
     if (savingRef.current) {
@@ -383,34 +405,37 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
       : saveState === "error" ? t("pageAutosaveFailed")
         : t("pageAutosaved");
 
-  return (
-    <div
-      data-courseware-editor-adapter="courseware-composition-v1"
-      className={cn("flex min-h-0 min-w-0 flex-col overflow-hidden", styles.workbench)}
-    >
-      <CoursewareEditorHeader className="px-3 py-2.5">
-        <div className="flex min-w-0 items-center justify-between gap-3">
-          <CoursewareEditorToolbar aria-label={t("componentPanelTitle")}>
-            <CoursewareEditorToolbarButton aria-label={t("componentText")} title={t("componentText")} onClick={() => addNode("text")}><Type className="size-4" /></CoursewareEditorToolbarButton>
-            <CoursewareEditorToolbarButton aria-label={t("componentFormula")} title={t("componentFormula")} onClick={() => addNode("formula")}><Sigma className="size-4" /></CoursewareEditorToolbarButton>
-            <CoursewareEditorToolbarButton aria-label={t("componentShape")} title={t("componentShape")} onClick={() => addNode("shape")}><Shapes className="size-4" /></CoursewareEditorToolbarButton>
-            <CoursewareEditorToolbarLabel aria-label={t("componentImage")} title={t("componentImage")}>
+  const insertToolbar = (
+    <CoursewareInsertionToolbar
+      aria-label={t("componentPanelTitle")}
+      actions={[
+        { id: "text", label: t("componentText"), icon: Type, onSelect: () => addNode("text") },
+        { id: "formula", label: t("componentFormula"), icon: Sigma, onSelect: () => addNode("formula") },
+        { id: "shape", label: t("componentShape"), icon: Shapes, onSelect: () => addNode("shape") },
+        { id: "image", label: t("componentImage"), icon: ImagePlus, control: (
+          <CoursewareEditorToolbarLabel aria-label={t("componentImage")} title={t("componentImage")}>
               <Input type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="sr-only" disabled={pending} onChange={(event) => uploadImage(event.target.files?.[0] ?? null)} />
               <ImagePlus className="size-4" />
-            </CoursewareEditorToolbarLabel>
-            <GameComponentDialog microcourseId={microcourseId} disabled={pending} iconOnly onCreated={(game) => {
+          </CoursewareEditorToolbarLabel>
+        ) },
+        { id: "game", label: t("componentGame"), icon: Gamepad2, control: (
+          <GameComponentDialog microcourseId={microcourseId} disabled={pending} iconOnly onCreated={(game) => {
               const previousIds = new Set(docRef.current.layout.blocks.map((block) => block.id));
               const next = addCoursewareCompositionGame(docRef.current, game);
               updateDoc(next);
               setSelectedBlockId(next.layout.blocks.find((block) => !previousIds.has(block.id))?.id ?? null);
-            }} />
-            <H5ComponentDialog microcourseId={microcourseId} disabled={pending} iconOnly onSaved={(h5) => {
+          }} />
+        ) },
+        { id: "h5", label: t("componentH5"), icon: FileCode2, control: (
+          <H5ComponentDialog microcourseId={microcourseId} disabled={pending} iconOnly onSaved={(h5) => {
               const previousIds = new Set(docRef.current.layout.blocks.map((block) => block.id));
               const next = addCoursewareCompositionH5(docRef.current, h5);
               updateDoc(next);
               setSelectedBlockId(next.layout.blocks.find((block) => !previousIds.has(block.id))?.id ?? null);
-            }} />
-            <ToolComponentDialog disabled={pending} onCreated={(tool) => {
+          }} />
+        ) },
+        { id: "tool", label: t("componentTool"), icon: Wrench, control: (
+          <ToolComponentDialog disabled={pending} onCreated={(tool) => {
               const previousIds = new Set(docRef.current.layout.blocks.map((block) => block.id));
               const next = addCoursewareCompositionTool(docRef.current, tool);
               if (next === docRef.current) {
@@ -419,33 +444,27 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
               }
               updateDoc(next);
               setSelectedBlockId(next.layout.blocks.find((block) => !previousIds.has(block.id))?.id ?? null);
-            }} />
-          </CoursewareEditorToolbar>
-          <div className="flex shrink-0 items-center gap-2">
-            <span data-testid="microcourse-autosave-status" role="status" aria-live="polite" className={cn("inline-flex items-center gap-1 text-xs", saveState === "error" ? "text-rose" : "text-muted")}>
-              {saveState === "saving" && <LoaderCircle className="size-3.5 animate-spin" />}{saveLabel}
-            </span>
-            <Button type="button" size="sm" variant="secondary" className="size-9 p-0" aria-label={t("saveNow")} title={t("saveNow")} disabled={pending || saveState === "saving"} onClick={() => void flush()}>
-              <Save className="size-4" />
-            </Button>
-          </div>
-        </div>
-        {message && <p role="alert" className="mt-2 text-xs text-rose">{message}</p>}
-      </CoursewareEditorHeader>
-      <CoursewareEditorBody className={cn("gap-3 p-3", styles.body)}>
-        <div className={cn("flex min-h-0 min-w-0 items-center justify-center", styles.stageSlot)}>
-          <CoursewareEditorCanvasFrame className={styles.stageFrame}>
-            <CoursewareCompositionGridEditor
-              doc={doc}
-              bindingUrls={bindingUrls}
-              selectedBlockId={selectedBlockId}
-              onSelectBlock={setSelectedBlockId}
-              onChange={updateDoc}
-            />
-          </CoursewareEditorCanvasFrame>
-        </div>
-        <ScrollArea className="min-h-0 rounded-xl border border-line">
-          <div className="space-y-4 p-3">
+          }} />
+        ) },
+      ]}
+    />
+  );
+
+  const saveControls = (
+    <div className="flex size-full min-w-0 items-center justify-end gap-2 px-3">
+      <span data-testid="microcourse-autosave-status" role="status" aria-live="polite" className={cn("inline-flex min-w-0 items-center gap-1 truncate text-xs", saveState === "error" ? "text-rose" : "text-muted")}>
+        {saveState === "saving" && <LoaderCircle className="size-3.5 shrink-0 animate-spin" />}{saveLabel}
+      </span>
+      <Button type="button" size="sm" variant="ghost" className="size-9 shrink-0 p-0" aria-label={t("saveNow")} title={t("saveNow")} disabled={pending || saveState === "saving"} onClick={() => void flush()}>
+        <Save className="size-4" />
+      </Button>
+    </div>
+  );
+
+  const inspectorContent = (
+    <ScrollArea className="size-full min-h-0">
+      <div className="space-y-4 p-3">
+        {message && <p role="alert" className="text-xs text-rose">{message}</p>}
             <div>
               <p className="text-xs font-medium text-muted">{t("gridComponentList")}</p>
               <div className="mt-2 grid grid-cols-2 gap-1">
@@ -483,10 +502,30 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
                 <Trash2 className="size-4" />{t("gridDeleteComponent")}
               </Button>
             ) : null}
-          </div>
-        </ScrollArea>
-      </CoursewareEditorBody>
-    </div>
+      </div>
+    </ScrollArea>
+  );
+
+  return (
+    <>
+      {toolbarTarget ? createPortal(insertToolbar, toolbarTarget) : null}
+      {inspectorHeaderTarget ? createPortal(saveControls, inspectorHeaderTarget) : null}
+      {inspectorTarget ? createPortal(inspectorContent, inspectorTarget) : null}
+      <div
+        data-courseware-editor-adapter="courseware-composition-v1"
+        className={cn("flex size-full min-h-0 min-w-0 items-center justify-center overflow-hidden p-3", styles.stageSlot)}
+      >
+        <CoursewareEditorCanvasFrame className={styles.stageFrame}>
+          <CoursewareCompositionGridEditor
+            doc={doc}
+            bindingUrls={bindingUrls}
+            selectedBlockId={selectedBlockId}
+            onSelectBlock={setSelectedBlockId}
+            onChange={updateDoc}
+          />
+        </CoursewareEditorCanvasFrame>
+      </div>
+    </>
   );
 });
 

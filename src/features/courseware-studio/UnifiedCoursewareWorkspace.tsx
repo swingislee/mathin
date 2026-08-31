@@ -74,22 +74,13 @@ function TrackCanvas({
   preview,
   label,
   unavailable,
-  toolbarTargetId,
 }: {
   preview: CoursewareLecturePreview | null;
   label: string;
   unavailable: string;
-  toolbarTargetId?: string;
 }) {
   return (
     <section className="flex h-full min-h-0 min-w-0 flex-1 flex-col bg-paper" aria-label={label}>
-      <div className="flex min-h-10 shrink-0 items-center justify-between gap-2 border-b border-line px-3 py-2">
-        <span className="text-xs font-medium text-ink">{label}</span>
-        {toolbarTargetId
-          ? <div id={toolbarTargetId} className="flex min-w-0 flex-1 items-center justify-end overflow-hidden" />
-          : <span className="flex-1" />}
-        <Badge variant={preview ? "secondary" : "outline"}>{preview ? `R${preview.release.releaseNo}` : unavailable}</Badge>
-      </div>
       {preview ? (
         <FittedCoursewareCanvas aspect={previewAspect(preview)}>
           <StagePreview
@@ -175,14 +166,16 @@ export async function UnifiedCoursewareWorkspace({
       <CoursewareEditorWorkbench
         data-unified-courseware-workspace
         adapter={selectedDoc?.docVersion ?? "unknown"}
-        className="mx-1 -mb-4 grid min-h-0 min-w-0 flex-1 grid-rows-[minmax(10rem,28dvh)_minmax(22rem,1fr)_minmax(10rem,30dvh)] lg:-mb-5 @4xl/workspace:grid-cols-[224px_minmax(0,1fr)_320px] @4xl/workspace:grid-rows-1"
-      >
-        <aside className="flex min-h-0 min-w-0 flex-col border-b border-line @4xl/workspace:border-b-0 @4xl/workspace:border-r" aria-label={t("pageDirectory")}>
-          <div className="flex min-h-11 shrink-0 items-center justify-between gap-2 px-3 py-2">
+        capabilities={{ adapt4x3: true }}
+        layout="workspace"
+        className="mx-1 -mb-4 min-h-0 min-w-0 flex-1 lg:-mb-5"
+        directory={{
+          ariaLabel: t("pageDirectory"),
+          header: <>
             <h2 className="text-xs font-medium text-muted">{t("pageDirectory")}</h2>
             <span className="text-xs tabular-nums text-muted">{t("pageCount", { count: pages.length })}</span>
-          </div>
-          <ScrollArea className="min-h-0 flex-1">
+          </>,
+          content: <ScrollArea className="size-full min-h-0">
             {pages.length > 0 ? (
               <ol className="divide-y divide-line/70">
                 {pages.map((page, index) => {
@@ -211,23 +204,24 @@ export async function UnifiedCoursewareWorkspace({
                 })}
               </ol>
             ) : <p className="px-3 py-6 text-sm text-muted">{t("noReleasedPages")}</p>}
-          </ScrollArea>
-        </aside>
-
-        <main className="@container/page flex min-h-0 min-w-0 flex-col overflow-hidden" aria-label={t("previewTitle")}>
-          <div className="min-h-0 flex-1 overflow-hidden bg-moon/10">
+          </ScrollArea>,
+        }}
+        toolbar={<div id={INSERT_TOOLBAR_TARGET_ID} className="min-w-0 flex-1" />}
+        canvas={{
+          ariaLabel: t("previewTitle"),
+          content: <div className="size-full min-h-0 overflow-hidden bg-moon/10">
             {visibleCanvas === "compare" ? (
               <div className="grid size-full min-h-0 grid-rows-2 gap-px bg-line @4xl/workspace:grid-cols-2 @4xl/workspace:grid-rows-1">
-                <TrackCanvas preview={nativePreview} label={t("canvasNative")} unavailable={t("nativeUnavailable")} toolbarTargetId={INSERT_TOOLBAR_TARGET_ID} />
+                <TrackCanvas preview={nativePreview} label={t("canvasNative")} unavailable={t("nativeUnavailable")} />
                 <TrackCanvas preview={adaptedPreview} label={t("canvasAdapted")} unavailable={t("adaptedUnavailable")} />
               </div>
             ) : visibleCanvas === "adapted-4x3" ? (
-              <TrackCanvas preview={adaptedPreview} label={t("canvasAdapted")} unavailable={t("adaptedUnavailable")} toolbarTargetId={INSERT_TOOLBAR_TARGET_ID} />
+              <TrackCanvas preview={adaptedPreview} label={t("canvasAdapted")} unavailable={t("adaptedUnavailable")} />
             ) : (
-              <TrackCanvas preview={nativePreview} label={t("canvasNative")} unavailable={t("nativeUnavailable")} toolbarTargetId={INSERT_TOOLBAR_TARGET_ID} />
+              <TrackCanvas preview={nativePreview} label={t("canvasNative")} unavailable={t("nativeUnavailable")} />
             )}
-          </div>
-          <div className="flex min-h-11 shrink-0 items-center justify-between gap-2 border-t border-line px-2 py-1.5">
+          </div>,
+          footer: <div className="flex w-full items-center justify-between gap-2">
             {previousHref ? (
               <Link href={previousHref} className={buttonVariants({ variant: "ghost", size: "sm" })}><ChevronLeft size={15} />{t("previousPage")}</Link>
             ) : <span />}
@@ -235,15 +229,15 @@ export async function UnifiedCoursewareWorkspace({
             {nextHref ? (
               <Link href={nextHref} className={buttonVariants({ variant: "ghost", size: "sm" })}>{t("nextPage")}<ChevronRight size={15} /></Link>
             ) : <span />}
-          </div>
-        </main>
-
-        <aside className="flex min-h-0 min-w-0 flex-col border-t border-line @4xl/workspace:border-l @4xl/workspace:border-t-0" aria-label={t("propertiesTitle")}>
-          <div className="flex min-h-11 shrink-0 items-center gap-3 border-b border-line px-3 py-2">
+          </div>,
+        }}
+        inspector={{
+          ariaLabel: t("propertiesTitle"),
+          header: <>
             <h2 className="shrink-0 text-sm font-medium text-ink">{t("propertiesTitle")}</h2>
             <div id={CAPABILITY_TABS_TARGET_ID} className="ml-auto min-w-0 flex-1" />
-          </div>
-          <ScrollArea className="min-h-0 flex-1">
+          </>,
+          content: <ScrollArea className="size-full min-h-0">
             <div className="px-4">
               <section className="py-4">
                 <dl className="space-y-2 text-xs">
@@ -262,9 +256,9 @@ export async function UnifiedCoursewareWorkspace({
                 />
               </section>
             </div>
-          </ScrollArea>
-        </aside>
-      </CoursewareEditorWorkbench>
+          </ScrollArea>,
+        }}
+      />
     </ObjectWorkspace>
   );
 }

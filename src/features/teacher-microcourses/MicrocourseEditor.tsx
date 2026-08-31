@@ -29,6 +29,9 @@ import type { TeacherMicrocourseEditor as EditorData } from "./data";
 import { MicrocourseSourcePicker } from "./MicrocourseSourcePicker";
 
 const NONE = "__none__";
+const COMPOSITION_TOOLBAR_TARGET_ID = "microcourse-composition-insert-toolbar";
+const COMPOSITION_INSPECTOR_HEADER_TARGET_ID = "microcourse-composition-inspector-header";
+const COMPOSITION_INSPECTOR_TARGET_ID = "microcourse-composition-inspector";
 
 interface PersistedPageDraft {
   pageDocId: string;
@@ -233,14 +236,16 @@ export function MicrocourseEditor({ session, editor, canTeach }: {
       {/* Product-approved shared courseware editor: one workbench, source-specific adapters. */}
       <CoursewareEditorWorkbench
         adapter="courseware-composition-v1"
-        className="grid h-[calc(100dvh-9rem)] min-h-[32rem] grid-rows-[minmax(12rem,32dvh)_minmax(0,1fr)] xl:grid-cols-[13rem_minmax(0,1fr)] xl:grid-rows-1"
-      >
-        <nav className="flex min-h-0 flex-col border-b border-line xl:border-b-0 xl:border-r" aria-label={t("pages", { count: pages.length })}>
-          <div className="flex items-center justify-between gap-2 p-3 pb-2">
+        capabilities={{ adapt4x3: false }}
+        layout="viewport"
+        className="h-[calc(100dvh-9rem)] min-h-[32rem]"
+        directory={{
+          ariaLabel: t("pages", { count: pages.length }),
+          header: <>
             <h3 className="text-sm font-semibold">{t("pages", { count: pages.length })}</h3>
             <Button type="button" size="sm" variant="ghost" className="size-8 p-0" disabled={pending || pageSwitching} onClick={addBlank} aria-label={t("addBlank")}><Plus className="size-4" /></Button>
-          </div>
-          <div className="flex min-h-0 flex-1 flex-col p-3 pt-0">
+          </>,
+          content: <div className="flex size-full min-h-0 flex-col p-3 pt-0">
             <div className="pb-3"><MicrocourseSourcePicker microcourseId={editor.id} afterPageDocId={currentPage?.pageDocId ?? null} disabled={pending || pageSwitching} onAdded={(id, count) => void handlePageAdded(id, t("pagesAdded", { count }))} /></div>
             <ScrollArea className="min-h-0 flex-1">
               <ol className="space-y-1 px-2 pb-3">
@@ -267,17 +272,36 @@ export function MicrocourseEditor({ session, editor, canTeach }: {
                 })}
               </ol>
             </ScrollArea>
-            <div className="grid grid-cols-3 gap-1 p-2">
+          </div>,
+          footer: <div className="grid grid-cols-3 gap-1 p-2">
               <Button type="button" size="sm" variant="ghost" disabled={pending || !currentPage || currentPage.pageNo <= 1} onClick={() => movePage(-1)} aria-label={t("moveUp")}><ArrowUp className="size-4" /></Button>
               <Button type="button" size="sm" variant="ghost" disabled={pending || !currentPage || currentPage.pageNo >= pages.length} onClick={() => movePage(1)} aria-label={t("moveDown")}><ArrowDown className="size-4" /></Button>
               <Button type="button" size="sm" variant="ghost" disabled={pending || !currentPage} onClick={() => setDeletePageId(currentPage?.pageDocId ?? null)} aria-label={t("deletePage")}><Trash2 className="size-4 text-rose" /></Button>
-            </div>
-          </div>
-        </nav>
-        {currentPage
-          ? <CoursewareCompositionWorkbench ref={workbenchRef} key={currentPage.pageDocId} microcourseId={editor.id} page={currentPage} onPersisted={handlePagePersisted} onStatus={setMessage} />
-          : <section className="grid place-items-center"><p className="text-sm text-muted">{t("emptyPages")}</p></section>}
-      </CoursewareEditorWorkbench>
+          </div>,
+        }}
+        toolbar={<div id={COMPOSITION_TOOLBAR_TARGET_ID} className="min-w-0 flex-1" />}
+        canvas={{
+          ariaLabel: t("workspaceTitle"),
+          content: currentPage
+            ? <CoursewareCompositionWorkbench
+                ref={workbenchRef}
+                key={currentPage.pageDocId}
+                microcourseId={editor.id}
+                page={currentPage}
+                toolbarTargetId={COMPOSITION_TOOLBAR_TARGET_ID}
+                inspectorHeaderTargetId={COMPOSITION_INSPECTOR_HEADER_TARGET_ID}
+                inspectorTargetId={COMPOSITION_INSPECTOR_TARGET_ID}
+                onPersisted={handlePagePersisted}
+                onStatus={setMessage}
+              />
+            : <section className="grid size-full place-items-center"><p className="text-sm text-muted">{t("emptyPages")}</p></section>,
+        }}
+        inspector={{
+          ariaLabel: t("componentPanelTitle"),
+          header: <div id={COMPOSITION_INSPECTOR_HEADER_TARGET_ID} className="size-full min-w-0" />,
+          content: <div id={COMPOSITION_INSPECTOR_TARGET_ID} className="size-full min-h-0 min-w-0" />,
+        }}
+      />
 
       <ConfirmDialog open={deletePageId !== null} onOpenChange={(open) => { if (!open) setDeletePageId(null); }} title={t("deletePageTitle")} description={t("deletePageDescription")} confirmLabel={t("deletePage")} cancelLabel={t("cancel")} onConfirm={deletePage} pending={pending} />
       <ConfirmDialog open={withdrawOpen} onOpenChange={setWithdrawOpen} title={t("withdrawPublicationTitle")} description={t("withdrawPublicationDescription")} confirmLabel={t("withdrawPublication")} cancelLabel={t("cancel")} onConfirm={withdrawPublished} pending={pending} />
