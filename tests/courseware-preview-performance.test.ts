@@ -21,6 +21,8 @@ describe("courseware preview page-turn performance", () => {
     expect(preview).toContain("cacheRef.current.get(pageDocId)");
     expect(preview).toContain("cacheRef.current.set(pageDocId, result.data)");
     expect(preview).not.toContain("const [cache, setCache]");
+    expect(preview).toContain("selected.pageDocId === rendered.page.pageDocId");
+    expect(preview).toContain("active && selectedPageIdRef.current === selected.pageDocId");
     expect(preview).toContain("window.history.replaceState");
     expect(preview).toContain("new Map<string, Promise<CoursewarePreviewPagePayload>>");
     expect(preview).not.toContain("href: pageHrefs[index]");
