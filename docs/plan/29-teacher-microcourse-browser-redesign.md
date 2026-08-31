@@ -1561,6 +1561,13 @@ teaching.teacher_microcourse_browser_v2
 - 本修复不新增 migration，不修改课程族 UUID、数据库 flag 历史、课程、release、Storage 或业务数据。开发、生产继续各自使用本环境的真实 family ID 访问同一个页面合同。
 - app-only 候选 `6e0b5bda…` 已发布为 production release `20260830-084610`，previous=`20260830-081944 / 15e48ada…`；loopback/Caddy health 均通过。生产 flag 刻意保持 version 1 / false、ledger/head 保持 `236 / 20260830000700_teacher_microcourse_editor_unification`，证明页面一致性不再依赖修改环境开关。
 
+2026-08-31 第八轮把教师微课与正式课件收敛到同一编辑组件：
+
+- 产品负责人确认两者共通的不止矩形外壳，本质上应为同一个课件编辑组件；`CoursewareEditorWorkbench` 因此成为正式课件 PageDoc/source-runtime 与教师微课 composition 的共用编辑框架；
+- 两条编辑链共用圆角 Card、编辑头、正文、画布框和动作网格。教师微课页面目录与 composition adapter 进入同一工作面，原 800ms 自动保存、页面切换前 flush、H5/游戏/工具 action 和 12×9 网格不变；
+- 正式课件仍通过自己的 adapter 呈现 A～F、替换范围和来源限制，当前只保留无写入会话样机；共享框架不读取或保存具体文档，不以“同组件”为由把 PageDoc、source-runtime 和 composition 强并为同一 schema；
+- 本轮没有 migration、数据库、Storage、release 或生产修改；TypeScript、受影响 ESLint 与两条编辑链定向 Vitest 18/18 通过，状态为开发端待人工视觉与微课回归验收。
+
 ---
 
 # 十九、Agent 施工要求

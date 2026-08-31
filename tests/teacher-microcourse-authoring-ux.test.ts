@@ -47,6 +47,7 @@ describe("teacher microcourse authoring UX", () => {
   it("keeps details compact and autosaves composition pages before navigation", () => {
     const editor = read("src", "features", "teacher-microcourses", "MicrocourseEditor.tsx");
     const workbench = read("src", "features", "teacher-microcourses", "CoursewareCompositionWorkbench.tsx");
+    const sharedWorkbench = read("src", "features", "courseware-doc", "CoursewareEditorWorkbench.tsx");
     const zh = read("messages", "zh.json");
     const en = read("messages", "en.json");
 
@@ -60,12 +61,13 @@ describe("teacher microcourse authoring UX", () => {
     expect(editor).toContain("CoursewareCompositionWorkbench");
     expect(editor).toContain('data-teacher-microcourse-editor="composition"');
     expect(workbench).toContain('data-testid="microcourse-autosave-status"');
-    expect(editor).toContain("@/components/ui/card");
+    expect(editor).toContain("CoursewareEditorWorkbench");
     expect(editor).toContain("xl:grid-cols-[13rem_minmax(0,1fr)]");
-    expect(workbench).toContain("<Card");
+    expect(workbench).toContain("CoursewareEditorHeader");
+    expect(workbench).toContain("CoursewareEditorCanvasFrame");
     expect(workbench).toContain('<Badge variant="secondary">{t("mode_composition")}</Badge>');
     expect(workbench).toContain('id="composition-insert-title"');
-    expect(workbench).toContain("rounded-xl border border-line bg-white shadow-sm");
+    expect(sharedWorkbench).toContain("rounded-xl border border-line bg-white shadow-sm");
     expect(workbench).not.toContain("bg-paper/70");
     expect(zh).toContain('"pageAutosaving"');
     expect(en).toContain('"pageAutosaving"');
