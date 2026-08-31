@@ -24,7 +24,6 @@ import {
 } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -39,6 +38,12 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { CoursewareCompositionGridEditor } from "@/features/courseware-doc/CoursewareCompositionGridEditor";
+import {
+  CoursewareEditorActionGrid,
+  CoursewareEditorBody,
+  CoursewareEditorCanvasFrame,
+  CoursewareEditorHeader,
+} from "@/features/courseware-doc/CoursewareEditorWorkbench";
 import {
   addCoursewareCompositionGame,
   addCoursewareCompositionH5,
@@ -380,8 +385,11 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
         : t("pageAutosaved");
 
   return (
-    <Card className={cn("flex min-h-0 min-w-0 flex-col overflow-hidden", styles.workbench)}>
-      <CardHeader className="shrink-0 border-b border-line p-3">
+    <div
+      data-courseware-editor-adapter="courseware-composition-v1"
+      className={cn("flex min-h-0 min-w-0 flex-col overflow-hidden", styles.workbench)}
+    >
+      <CoursewareEditorHeader>
         <div className="flex min-w-0 flex-wrap items-center gap-3">
           <Badge variant="secondary">{t("mode_composition")}</Badge>
           <Input value={title} onChange={(event) => rename(event.target.value)} maxLength={200} className="min-w-[12rem] flex-1" />
@@ -393,10 +401,10 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
           </Button>
         </div>
         {message && <p role="alert" className="mt-2 text-xs text-rose">{message}</p>}
-      </CardHeader>
-      <CardContent className={cn("min-h-0 flex-1 gap-3 p-3", styles.body)}>
+      </CoursewareEditorHeader>
+      <CoursewareEditorBody className={cn("gap-3 p-3", styles.body)}>
         <div className={cn("flex min-h-0 min-w-0 items-center justify-center", styles.stageSlot)}>
-          <div className={cn("overflow-hidden rounded-xl border border-line bg-white shadow-sm", styles.stageFrame)}>
+          <CoursewareEditorCanvasFrame className={styles.stageFrame}>
             <CoursewareCompositionGridEditor
               doc={doc}
               bindingUrls={bindingUrls}
@@ -404,14 +412,14 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
               onSelectBlock={setSelectedBlockId}
               onChange={updateDoc}
             />
-          </div>
+          </CoursewareEditorCanvasFrame>
         </div>
         <ScrollArea className="min-h-0 rounded-xl border border-line">
           <div className="space-y-4 p-3">
             <section aria-labelledby="composition-insert-title">
               <h3 id="composition-insert-title" className="text-sm font-medium">{t("componentPanelTitle")}</h3>
               <p className="mt-1 text-xs leading-5 text-muted">{t("componentPanelHint")}</p>
-              <div className="mt-3 grid grid-cols-2 gap-2">
+              <CoursewareEditorActionGrid className="mt-3">
                 <Button type="button" size="sm" variant="secondary" onClick={() => addNode("text")}><Type className="size-3.5" />{t("componentText")}</Button>
                 <Button type="button" size="sm" variant="secondary" onClick={() => addNode("formula")}><Sigma className="size-3.5" />{t("componentFormula")}</Button>
                 <Button type="button" size="sm" variant="secondary" onClick={() => addNode("shape")}><Shapes className="size-3.5" />{t("componentShape")}</Button>
@@ -441,7 +449,7 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
                   updateDoc(next);
                   setSelectedBlockId(next.layout.blocks.find((block) => !previousIds.has(block.id))?.id ?? null);
                 }} />
-              </div>
+              </CoursewareEditorActionGrid>
             </section>
 
             <div>
@@ -483,8 +491,8 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
             ) : null}
           </div>
         </ScrollArea>
-      </CardContent>
-    </Card>
+      </CoursewareEditorBody>
+    </div>
   );
 });
 

@@ -210,7 +210,7 @@ Phase 1～5 的本机隔离 Supabase、固定开发身份、migration LF checksu
 
 `DEV-CW-1` 回应课程产品中 E 系列、爱学习及后续导入课程缺少单页 16:9/4:3 修订闭环的问题，权威规划见 [doc 16 §14](16-p6-courseware-platform.md#14-dev-cw-1-课程产品统一课件工作区待产品逐步确认)。目标主路径为“课程产品 → 课程/版本 → 讲次 → 指定页面 → 统一课件工作区”，并把共享内容修订、分轨版式、页面上下文资源替换、插入能力和 draft/review/release 放在同一对象上下文内。研发任务最终只保留责任/待处理投影，适配校对只保留异常与审核视图，公共资源保留高级治理与回滚；新路径验收前不删除或降级现有入口。
 
-产品负责人于 2026-08-31 回复“开始执行”，Step 0 据此记为 `USER ACCEPTED`；Step 1 经两轮修订后，产品负责人回复“通过，继续”，现记为 `USER ACCEPTED` 并只授权 Step 2。Step 2 在已确认的右侧栏提供无写入的微调、A～F/自定义、页/讲/版本/课程族/全部引用五档替换范围、插入和会话级撤销样机；内容默认双版联动，几何只作用 4:3，爱学习未获准的节点编辑和插入 fail closed。开发端状态为 **STEP 2 READY FOR USER AUDIT**；TypeScript、受影响 ESLint、双语键 5,321×2 和 Step 1/2 定向 Vitest 9/9 通过，但不构成功能确认。当前停止在 Step 2；未授权 Step 3、editor action、schema、开发库/Storage 写入、批量任务或生产动作，不改变 R1-Live Gate 2。
+产品负责人于 2026-08-31 依次确认 Step 0、Step 1 和 Step 2；在 Step 2 通过后进一步明确正式课件与教师微课“本质上应该是同一个组件”，只授权 Step 2A 共享编辑框架迁移。两条编辑链现共用 `CoursewareEditorWorkbench` 圆角工作面、Header、Body、CanvasFrame 与 ActionGrid，由 PageDoc/source-runtime/composition adapter 保留各自页面模型和写态；微课自动保存未改，正式课程仍无写入。开发端状态为 **STEP 2A READY FOR USER AUDIT**；TypeScript、受影响 ESLint和定向 Vitest 18/18 通过，但不构成视觉或微课回归确认。当前停止在 Step 2A；未授权 Step 3、新 editor action、schema、开发库/Storage 写入、批量任务或生产动作，不改变 R1-Live Gate 2。
 
 ## 6. 原 R1 工作重新定位
 

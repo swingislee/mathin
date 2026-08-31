@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CoursewareEditorActionGrid } from "@/features/courseware-doc/CoursewareEditorWorkbench";
 import { cn } from "@/lib/utils";
 
 const LAYOUT_STRATEGIES = ["A", "B", "C", "D", "E", "F", "custom"] as const;
@@ -144,7 +145,7 @@ export function CoursewareCapabilityPrototype({
           </div>
           {canAdjustContent ? (
             <>
-              <div className="grid grid-cols-2 gap-2">
+              <CoursewareEditorActionGrid>
                 {adjustTools.map((tool) => (
                   <SelectableButton
                     key={tool.value}
@@ -154,7 +155,7 @@ export function CoursewareCapabilityPrototype({
                     {tool.label}
                   </SelectableButton>
                 ))}
-              </div>
+              </CoursewareEditorActionGrid>
               <label className="flex items-start gap-2 text-xs leading-5 text-ink">
                 <Checkbox
                   checked={syncContent}
@@ -238,14 +239,14 @@ export function CoursewareCapabilityPrototype({
             <ImageIcon className="size-4 text-crater" />
             {t("resourceReplacement")}
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <CoursewareEditorActionGrid>
             <SelectableButton selected={replacementKind === "background"} onClick={() => setReplacementKind("background")}>
               {t("prototypeReplaceBackground")}
             </SelectableButton>
             <SelectableButton selected={replacementKind === "image"} onClick={() => setReplacementKind("image")}>
               {t("prototypeReplaceImage")}
             </SelectableButton>
-          </div>
+          </CoursewareEditorActionGrid>
           <div className="space-y-2">
             <p className="text-xs font-medium text-ink">{t("prototypeReplacementScope")}</p>
             <div className="flex flex-wrap gap-2">
@@ -286,7 +287,7 @@ export function CoursewareCapabilityPrototype({
           </div>
           {canInsertContent ? (
             <>
-              <div className="grid grid-cols-2 gap-2">
+              <CoursewareEditorActionGrid>
                 {insertKinds.map((kind) => (
                   <SelectableButton
                     key={kind.value}
@@ -296,7 +297,7 @@ export function CoursewareCapabilityPrototype({
                     {kind.label}
                   </SelectableButton>
                 ))}
-              </div>
+              </CoursewareEditorActionGrid>
               <CapabilityNotice>{t("prototypeInsertionSyncGate")}</CapabilityNotice>
               <Button
                 type="button"

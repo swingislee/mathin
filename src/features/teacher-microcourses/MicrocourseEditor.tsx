@@ -5,7 +5,6 @@ import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, Play, Plus, Save, Send, Tra
 import { useLocale, useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +12,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { CoursewareCompositionPage } from "@/features/courseware-doc/composition-page-schema";
+import { CoursewareEditorWorkbench } from "@/features/courseware-doc/CoursewareEditorWorkbench";
 import { useRouter } from "@/i18n/navigation";
 import {
   createTeacherCompositionPageAction,
@@ -215,14 +215,17 @@ export function MicrocourseEditor({ session, editor, canTeach }: {
         {message ? <p role="status" className="mt-2 text-xs text-muted">{message}</p> : null}
       </section>
 
-      {/* Product-approved authoring layout: the page rail and composition surface are independent cards. */}
-      <div className="grid h-[calc(100dvh-9rem)] min-h-[32rem] gap-3 xl:grid-cols-[13rem_minmax(0,1fr)]">
-        <Card className="flex min-h-0 flex-col overflow-hidden" role="navigation" aria-label={t("pages", { count: pages.length })}>
-          <CardHeader className="flex-row items-center justify-between space-y-0 p-3 pb-2">
-            <CardTitle className="text-sm">{t("pages", { count: pages.length })}</CardTitle>
+      {/* Product-approved shared courseware editor: one workbench, source-specific adapters. */}
+      <CoursewareEditorWorkbench
+        adapter="courseware-composition-v1"
+        className="grid h-[calc(100dvh-9rem)] min-h-[32rem] grid-rows-[minmax(12rem,32dvh)_minmax(0,1fr)] xl:grid-cols-[13rem_minmax(0,1fr)] xl:grid-rows-1"
+      >
+        <nav className="flex min-h-0 flex-col border-b border-line xl:border-b-0 xl:border-r" aria-label={t("pages", { count: pages.length })}>
+          <div className="flex items-center justify-between gap-2 p-3 pb-2">
+            <h3 className="text-sm font-semibold">{t("pages", { count: pages.length })}</h3>
             <Button type="button" size="sm" variant="ghost" className="size-8 p-0" disabled={pending || pageSwitching} onClick={addBlank} aria-label={t("addBlank")}><Plus className="size-4" /></Button>
-          </CardHeader>
-          <CardContent className="flex min-h-0 flex-1 flex-col p-3 pt-0">
+          </div>
+          <div className="flex min-h-0 flex-1 flex-col p-3 pt-0">
             <div className="pb-3"><MicrocourseSourcePicker microcourseId={editor.id} afterPageDocId={currentPage?.pageDocId ?? null} disabled={pending || pageSwitching} onAdded={(id, count) => void handlePageAdded(id, t("pagesAdded", { count }))} /></div>
             <ScrollArea className="min-h-0 flex-1">
               <ol className="space-y-1 px-2 pb-3">
@@ -248,12 +251,12 @@ export function MicrocourseEditor({ session, editor, canTeach }: {
               <Button type="button" size="sm" variant="ghost" disabled={pending || !currentPage || currentPage.pageNo >= pages.length} onClick={() => movePage(1)} aria-label={t("moveDown")}><ArrowDown className="size-4" /></Button>
               <Button type="button" size="sm" variant="ghost" disabled={pending || !currentPage} onClick={() => setDeletePageId(currentPage?.pageDocId ?? null)} aria-label={t("deletePage")}><Trash2 className="size-4 text-rose" /></Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </nav>
         {currentPage
           ? <CoursewareCompositionWorkbench ref={workbenchRef} key={currentPage.pageDocId} microcourseId={editor.id} page={currentPage} onPersisted={handlePagePersisted} onStatus={setMessage} />
           : <section className="grid place-items-center"><p className="text-sm text-muted">{t("emptyPages")}</p></section>}
-      </div>
+      </CoursewareEditorWorkbench>
 
       <ConfirmDialog open={deletePageId !== null} onOpenChange={(open) => { if (!open) setDeletePageId(null); }} title={t("deletePageTitle")} description={t("deletePageDescription")} confirmLabel={t("deletePage")} cancelLabel={t("cancel")} onConfirm={deletePage} pending={pending} />
       <ConfirmDialog open={withdrawOpen} onOpenChange={setWithdrawOpen} title={t("withdrawPublicationTitle")} description={t("withdrawPublicationDescription")} confirmLabel={t("withdrawPublication")} cancelLabel={t("cancel")} onConfirm={withdrawPublished} pending={pending} />

@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { CoursewareEditorWorkbench } from "@/features/courseware-doc/CoursewareEditorWorkbench";
 import { isSourceRuntimePageDoc } from "@/features/courseware-doc/source-runtime-schema";
 import { isSpatialPageDoc } from "@/features/courseware-doc/spatial";
 import {
@@ -163,9 +164,10 @@ export async function UnifiedCoursewareWorkspace({
         </div>
       )}
     >
-      <div
+      <CoursewareEditorWorkbench
         data-unified-courseware-workspace
-        className="grid min-h-0 min-w-0 flex-1 grid-rows-[minmax(10rem,28dvh)_minmax(22rem,1fr)_minmax(10rem,30dvh)] @4xl/workspace:grid-cols-[224px_minmax(0,1fr)_320px] @4xl/workspace:grid-rows-1"
+        adapter={selectedDoc?.docVersion ?? "unknown"}
+        className="mx-1 mb-1 grid min-h-0 min-w-0 flex-1 grid-rows-[minmax(10rem,28dvh)_minmax(22rem,1fr)_minmax(10rem,30dvh)] @4xl/workspace:grid-cols-[224px_minmax(0,1fr)_320px] @4xl/workspace:grid-rows-1"
       >
         <aside className="flex min-h-0 min-w-0 flex-col border-b border-line @4xl/workspace:border-b-0 @4xl/workspace:border-r" aria-label={t("pageDirectory")}>
           <div className="flex min-h-11 shrink-0 items-center justify-between gap-2 px-3 py-2">
@@ -251,7 +253,7 @@ export async function UnifiedCoursewareWorkspace({
             </div>
           </ScrollArea>
         </aside>
-      </div>
+      </CoursewareEditorWorkbench>
     </ObjectWorkspace>
   );
 }
