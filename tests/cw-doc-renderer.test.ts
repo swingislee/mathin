@@ -77,6 +77,39 @@ describe("P6-4 interaction runtime", () => {
     expect(clickTarget.style.display).toBe("none");
   });
 
+  it("settleAuto reveals the final auto-enter layout without playing animation or audio", () => {
+    let animated = 0;
+    let resolvedAudio = 0;
+    const autoTarget: StubNode = {
+      dataset: { sourceResourceId: "r1" },
+      style: { display: "none", transform: "translate(20px,30px)" },
+      animate: () => {
+        animated += 1;
+        return { cancel: () => {}, finished: Promise.resolve() };
+      },
+    };
+    const clickTarget: StubNode = { dataset: { sourceResourceId: "r2" }, style: { display: "none", transform: "translate(0px,0px)" } };
+    const runtime = createInteractionRuntime({
+      root: stubStage([autoTarget, clickTarget]),
+      interactions: [
+        interaction({ step: 1, animation: "animate__slideInLeft", audioBindingKey: "audio" }),
+        interaction({ step: 2, trigger: "click", triggerScope: "page", targetResourceId: "r2" }),
+      ],
+      resolveAudioUrl: () => {
+        resolvedAudio += 1;
+        return "https://signed/audio";
+      },
+    });
+
+    runtime.settleAuto();
+
+    expect(autoTarget.style.display).toBe("block");
+    expect(autoTarget.style.transform).toBe("translate(20px,30px)");
+    expect(clickTarget.style.display).toBe("none");
+    expect(animated).toBe(0);
+    expect(resolvedAudio).toBe(0);
+  });
+
   it("page-scope click advances one click step and exit hides the node", async () => {
     const target: StubNode = { dataset: { sourceResourceId: "r2" }, style: { display: "none", transform: "translate(0px,0px)" } };
     const runtime = createInteractionRuntime({

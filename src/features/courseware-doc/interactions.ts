@@ -23,6 +23,8 @@ export interface InteractionTrigger {
 
 export interface InteractionRuntime {
   runAuto: () => Promise<void>;
+  /** 不播放动画/音频，直接把自动步骤落到结束态；供编辑画布显示完整静态排版。 */
+  settleAuto: () => void;
   /** 舞台 click 委托:节点触发器优先,无则走页级 click 流;返回实际触发的步进(未触发为 null)。 */
   handleStageClick: (target: EventTarget | null) => Promise<InteractionTrigger | null>;
   /** 按描述直接推进一次 click 步(课堂学生端回放远端步进);返回是否有步可播。 */
@@ -135,6 +137,26 @@ export function createInteractionRuntime({ root, interactions, resolveAudioUrl }
     );
   };
 
+  const settle = (item: DocInteraction) => {
+    if (disposed) return;
+    for (const node of targets(item.targetResourceId)) {
+      if (item.action === "exit") {
+        node.style.display = "none";
+        continue;
+      }
+      if (item.action === "enter" || item.action === "emphasize" || item.action === "path") {
+        node.style.display = "block";
+      }
+      if (item.action === "path" && (item.path?.points.length ?? 0) >= 2) {
+        const points = item.path?.points ?? [];
+        node.style.transform = node.style.transform.replace(
+          /translate\([^)]*\)/,
+          `translate(${points[0]}px,${points[1]}px)`,
+        );
+      }
+    }
+  };
+
   const stream = (scope: DocInteraction["triggerScope"], id: string | null) =>
     interactions
       .filter((item) => item.triggerScope === scope && item.triggerResourceId === id)
@@ -157,6 +179,18 @@ export function createInteractionRuntime({ root, interactions, resolveAudioUrl }
       step += 1;
     }
     await previous;
+  };
+
+  const settleAuto = () => {
+    const all = stream("auto", null);
+    const first = all.find((item) => item.trigger === "auto");
+    if (!first) return;
+    for (let step = first.step; ; step += 1) {
+      const items = all.filter((item) => item.step === step);
+      if (!items.length || disposed) break;
+      if (step !== first.step && items[0].trigger === "click") break;
+      items.forEach(settle);
+    }
   };
 
   const runClick = async (scope: DocInteraction["triggerScope"], id: string | null) => {
@@ -200,5 +234,5 @@ export function createInteractionRuntime({ root, interactions, resolveAudioUrl }
     liveAudios.clear();
   };
 
-  return { runAuto, handleStageClick, runClick, dispose };
+  return { runAuto, settleAuto, handleStageClick, runClick, dispose };
 }

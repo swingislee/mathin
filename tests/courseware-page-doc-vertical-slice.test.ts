@@ -41,7 +41,7 @@ describe("courseware PageDoc Step 3 vertical slice", () => {
     expect(editor).toContain("window.setTimeout(() => void flushRef.current(), 800)");
     expect(editor).toContain("playAutoInteractions={false}");
     expect(editor).toContain("useState<string | null>(null)");
-    expect(stage).toContain("if (playAutoInteractions) void runtime.runAuto()");
+    expect(stage).toContain("else runtime.settleAuto()");
     expect(editor).toContain("data-content-changed");
     expect(editor).toContain("data-layout-changed");
     expect(editor).not.toContain("replaceCoursewarePageImageAction");

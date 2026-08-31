@@ -47,7 +47,7 @@ export interface DocStageProps {
   onNodeSelect?: (nodePath: string) => void;
   /** 中台编辑器当前选中节点；课堂不传，不产生选中描边。 */
   selectedNodePath?: string | null;
-  /** 编辑画布可关闭进入即播动画，保持权威排版静止；预览/课堂默认播放。 */
+  /** 编辑画布可跳过过渡并直接落到自动动画结束态；预览/课堂默认播放。 */
   playAutoInteractions?: boolean;
   /** Studio 选择画布背景资源；只有存在背景 binding 时才会触发。 */
   onBackgroundSelect?: () => void;
@@ -557,6 +557,7 @@ export default function DocStage({
     runtimeRef.current = runtime;
     appliedStepsRef.current = 0;
     if (playAutoInteractions) void runtime.runAuto();
+    else runtime.settleAuto();
     const onClick = interactive
       ? (event: MouseEvent) => {
           void runtime.handleStageClick(event.target).then((trigger) => {
