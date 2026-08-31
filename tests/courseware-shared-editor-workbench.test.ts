@@ -44,7 +44,6 @@ describe("shared courseware editor workbench", () => {
     const adapterSurface = read("src", "features", "courseware-doc", "CoursewareEditorAdapterSurface.tsx");
     const composition = read("src", "features", "teacher-microcourses", "CoursewareCompositionWorkbench.tsx");
     const pageDoc = read("src", "features", "courseware-studio", "PageDocVerticalSliceEditor.tsx");
-    const prototype = read("src", "features", "courseware-studio", "CoursewareCapabilityPrototype.tsx");
 
     for (const primitive of [
       "CoursewareEditorActionGrid",
@@ -63,8 +62,6 @@ describe("shared courseware editor workbench", () => {
     expect(composition).toContain("<CoursewareInsertionToolbar");
     expect(composition).toContain("<CoursewareEditorSaveControls");
     expect(composition).toContain("<CoursewareEditorToolbarButton");
-    expect(prototype).toContain("<CoursewareEditorActionGrid");
-    expect(prototype).toContain("<CoursewareInsertionToolbar");
     expect(pageDoc).toContain("<CoursewareEditorSaveControls");
   });
 
@@ -104,12 +101,11 @@ describe("shared courseware editor workbench", () => {
 
   it("keeps the formal canvas header free of duplicated track titles", () => {
     const formal = read("src", "features", "courseware-studio", "UnifiedCoursewareWorkspace.tsx");
-    const prototype = read("src", "features", "courseware-studio", "CoursewareCapabilityPrototype.tsx");
     expect(formal).not.toContain("toolbarTargetId?: string");
     expect(formal).not.toContain("{label}</span>");
     expect(formal).not.toMatch(/(?:toolbar|save|inspector).*TargetId/);
-    expect(prototype).toContain("useCoursewareEditorChrome");
-    expect(prototype).not.toContain('className="justify-end"');
+    expect(formal).not.toContain("CoursewareCapabilityPrototype");
+    expect(formal).toContain("sourceReadOnlyToolbar");
   });
 
   it("reuses the mature preview workspace for read-only microcourse variants", () => {
@@ -174,11 +170,11 @@ describe("shared courseware editor workbench", () => {
   it("keeps persistence in adapters rather than the shared workbench", () => {
     const shared = read("src", "features", "courseware-doc", "CoursewareEditorWorkbench.tsx");
     const composition = read("src", "features", "teacher-microcourses", "CoursewareCompositionWorkbench.tsx");
-    const prototype = read("src", "features", "courseware-studio", "CoursewareCapabilityPrototype.tsx");
+    const pageDoc = read("src", "features", "courseware-studio", "PageDocVerticalSliceEditor.tsx");
 
     expect(shared).not.toContain("saveTeacherMicrocoursePageAction");
     expect(shared).not.toContain("fetch(");
     expect(composition).toContain("saveTeacherMicrocoursePageAction");
-    expect(prototype).toContain('data-persistence="none"');
+    expect(pageDoc).toContain("saveCoursewareDraftAction");
   });
 });

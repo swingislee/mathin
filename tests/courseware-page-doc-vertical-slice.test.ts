@@ -1,34 +1,18 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import {
-  isPageDocVerticalSliceSample,
-  PAGE_DOC_VERTICAL_SLICE_MODE,
-  PAGE_DOC_VERTICAL_SLICE_SAMPLE,
-} from "../src/features/courseware-studio/page-doc-vertical-slice";
 
-describe("courseware PageDoc Step 3 vertical slice", () => {
-  it("opens write mode only for the explicit local E-series sample", () => {
-    expect(isPageDocVerticalSliceSample({
-      mode: PAGE_DOC_VERTICAL_SLICE_MODE,
-      lectureId: PAGE_DOC_VERTICAL_SLICE_SAMPLE.lectureId,
-      pageDocId: PAGE_DOC_VERTICAL_SLICE_SAMPLE.pageDocId,
-      pageNo: PAGE_DOC_VERTICAL_SLICE_SAMPLE.pageNo,
-    })).toBe(true);
+describe("courseware PageDoc formal editor", () => {
+  it("loads supported PageDoc pages without a hidden sample query gate", () => {
+    const loader = readFileSync("src/features/courseware-studio/unified-workspace-data.ts", "utf8");
+    const workspace = readFileSync("src/features/courseware-studio/UnifiedCoursewareWorkspace.tsx", "utf8");
 
-    for (const changed of [
-      { mode: undefined },
-      { lectureId: "8b7ca0d4-7ca2-4fb8-82dd-9ad0099c0e71" },
-      { pageDocId: "8b7ca0d4-7ca2-4fb8-82dd-9ad0099c0e71" },
-      { pageNo: PAGE_DOC_VERTICAL_SLICE_SAMPLE.pageNo + 1 },
-    ]) {
-      expect(isPageDocVerticalSliceSample({
-        mode: PAGE_DOC_VERTICAL_SLICE_MODE,
-        lectureId: PAGE_DOC_VERTICAL_SLICE_SAMPLE.lectureId,
-        pageDocId: PAGE_DOC_VERTICAL_SLICE_SAMPLE.pageDocId,
-        pageNo: PAGE_DOC_VERTICAL_SLICE_SAMPLE.pageNo,
-        ...changed,
-      })).toBe(false);
-    }
+    expect(loader).toContain('requirePerm(locale, "courseware.page.edit")');
+    expect(loader).toContain("editorPreview.page.pageDocId");
+    expect(loader).toContain("studioPage?.activeRevision.doc.docVersion === PAGE_DOC_VERSION");
+    expect(loader).not.toContain("PAGE_DOC_VERTICAL_SLICE_SAMPLE");
+    expect(loader).not.toContain("rawSearchParams.edit");
+    expect(workspace).not.toContain('query.set("edit", "page-doc")');
+    expect(workspace).not.toContain("CoursewareCapabilityPrototype");
   });
 
   it("uses the existing draft revision action without exposing later-step writes", () => {

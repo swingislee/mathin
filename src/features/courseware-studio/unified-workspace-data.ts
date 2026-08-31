@@ -5,11 +5,12 @@ import type { ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 import { PAGE_DOC_VERSION, type PageDoc } from "@/features/courseware-doc/schema";
 import { getLectureWorkspaceDetail, isUuid } from "@/features/school/curriculum/lecture-workspace-detail";
 import { requirePerm } from "@/lib/auth";
-import { loadCoursewareStudioPage, loadLecturePreview } from "./data";
 import {
-  isPageDocVerticalSliceSample,
-  PAGE_DOC_VERTICAL_SLICE_SAMPLE,
-} from "./page-doc-vertical-slice";
+  loadCoursewareStudioPage,
+  loadLecturePreview,
+  parseCoursewareTrack,
+  type CoursewareTrack,
+} from "./data";
 
 function first(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -19,15 +20,16 @@ export interface UnifiedPageDocEditorData {
   pageDocId: string;
   pageNo: number;
   pageTitle: string;
-  track: "native-16x9";
+  track: CoursewareTrack;
   doc: PageDoc;
   baseRevisionNo: number;
   bindingUrls: ResolvedBindingUrls;
 }
 
 /**
- * Normal workspace reads immutable releases. Step 3 adds one explicit,
- * permission-gated local PageDoc sample whose canvas reads its draft head.
+ * The formal workspace is an editor route. PageDoc pages read their draft head;
+ * source-owned runtimes remain explicit read-only canvases until they expose a
+ * supported patch protocol.
  */
 export async function loadUnifiedCoursewareWorkspaceData(
   locale: string,
@@ -35,7 +37,10 @@ export async function loadUnifiedCoursewareWorkspaceData(
   rawSearchParams: Record<string, string | string[] | undefined>,
 ) {
   if (!isUuid(lectureId)) notFound();
-  await requirePerm(locale, "course.view");
+  await Promise.all([
+    requirePerm(locale, "course.view"),
+    requirePerm(locale, "courseware.page.edit"),
+  ]);
 
   const requestedPageRaw = Number(first(rawSearchParams.page));
   const requestedPage = Number.isInteger(requestedPageRaw) && requestedPageRaw > 0 ? requestedPageRaw : 1;
@@ -52,27 +57,27 @@ export async function loadUnifiedCoursewareWorkspaceData(
 
   const safeNativePreview = nativePreview?.lecture.courseId === detail.variant.id ? nativePreview : null;
   const safeAdaptedPreview = adaptedPreview?.lecture.courseId === detail.variant.id ? adaptedPreview : null;
-  const pageEditorRequested = isPageDocVerticalSliceSample({
-    mode: first(rawSearchParams.edit),
-    lectureId,
-    pageDocId: safeNativePreview?.page.pageDocId,
-    pageNo: requestedPage,
-  });
+  const requestedTrack = parseCoursewareTrack(rawSearchParams.track);
+  const editorTrack: CoursewareTrack = requestedTrack === "adapted-4x3" && safeAdaptedPreview
+    ? "adapted-4x3"
+    : safeNativePreview
+      ? "native-16x9"
+      : "adapted-4x3";
+  const editorPreview = editorTrack === "adapted-4x3" ? safeAdaptedPreview : safeNativePreview;
   let pageEditor: UnifiedPageDocEditorData | null = null;
 
-  if (pageEditorRequested) {
-    await requirePerm(locale, "courseware.page.edit");
+  if (editorPreview) {
     const studioPage = await loadCoursewareStudioPage(
-      PAGE_DOC_VERTICAL_SLICE_SAMPLE.lectureId,
-      PAGE_DOC_VERTICAL_SLICE_SAMPLE.pageDocId,
-      PAGE_DOC_VERTICAL_SLICE_SAMPLE.track,
+      lectureId,
+      editorPreview.page.pageDocId,
+      editorTrack,
     );
     if (studioPage?.activeRevision.doc.docVersion === PAGE_DOC_VERSION) {
       pageEditor = {
         pageDocId: studioPage.page.id,
         pageNo: studioPage.page.pageNo,
         pageTitle: studioPage.page.title,
-        track: PAGE_DOC_VERTICAL_SLICE_SAMPLE.track,
+        track: editorTrack,
         doc: studioPage.activeRevision.doc,
         baseRevisionNo: studioPage.activeRevision.revisionNo,
         bindingUrls: studioPage.bindingUrls,

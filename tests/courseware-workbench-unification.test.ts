@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -11,7 +11,7 @@ describe("courseware workbench mode unification", () => {
   const formalWorkspace = read("src/features/courseware-studio/UnifiedCoursewareWorkspace.tsx");
   const formalRail = read("src/features/courseware-studio/CoursewareFormalPageRail.tsx");
   const formalActions = read("src/features/courseware-studio/actions.ts");
-  const formalPrototype = read("src/features/courseware-studio/CoursewareCapabilityPrototype.tsx");
+  const formalEditor = read("src/features/courseware-studio/PageDocVerticalSliceEditor.tsx");
   const microcourseWorkspace = read("src/features/teacher-microcourses/MicrocourseEditor.tsx");
   const renameMigration = read("supabase/migrations/20260831000100_courseware_page_rename.sql");
 
@@ -37,8 +37,8 @@ describe("courseware workbench mode unification", () => {
     expect(adapterSurface).toContain("useCoursewareEditorChrome");
     expect(adapterSurface).not.toContain("createPortal");
     expect(adapterSurface).not.toContain("getElementById");
-    expect(formalPrototype).toContain("useCoursewareEditorChrome({ toolbar: insertToolbar, saveControls, inspectorHeader })");
-    expect(formalPrototype).toContain("<CoursewareEditorSaveControls");
+    expect(formalEditor).toContain("<CoursewareEditorAdapterSurface");
+    expect(formalEditor).toContain("<CoursewareEditorSaveControls");
     expect(formalWorkspace).not.toMatch(/(?:toolbar|save|inspector).*TargetId/);
     expect(microcourseWorkspace).not.toMatch(/(?:toolbar|save|inspector).*TARGET_ID/);
   });
@@ -52,6 +52,19 @@ describe("courseware workbench mode unification", () => {
     expect(workbench).toContain('mode === "formal-editor" ? "enabled" : "disabled"');
   });
 
+  it("renders the directory header through one shared component on both editor routes", () => {
+    expect(workbench).toContain("export function CoursewareWorkbenchDirectoryHeader");
+    expect(formalWorkspace).toContain("<CoursewareWorkbenchDirectoryHeader");
+    expect(microcourseWorkspace).toContain("<CoursewareWorkbenchDirectoryHeader");
+  });
+
+  it("cannot fall back to the retired formal-course prototype", () => {
+    expect(existsSync("src/features/courseware-studio/CoursewareCapabilityPrototype.tsx")).toBe(false);
+    expect(formalWorkspace).not.toContain("CoursewareCapabilityPrototype");
+    expect(formalWorkspace).not.toContain('query.set("edit", "page-doc")');
+    expect(formalWorkspace).toContain("sourceReadOnlyStatus");
+  });
+
   it("keeps scrolling, active-page reveal and inline title editing in the shared page rail", () => {
     expect(workbench).toContain('data-courseware-page-rail');
     expect(workbench).toContain('overflow-y-auto overscroll-contain');
@@ -61,6 +74,7 @@ describe("courseware workbench mode unification", () => {
     expect(microcourseWorkspace).toContain('onItemTitleChange={(_item, _index, value) => renameCurrentPage(value)}');
     expect(microcourseWorkspace).not.toContain('titleContent: active');
     expect(formalRail).toContain('onItemTitleCommit');
+    expect(formalWorkspace).toContain('editablePageId={selectedPage?.pageDocId ?? null}');
     expect(formalActions).toContain('renameCoursewarePageAction');
     expect(renameMigration).toContain('function public.rename_cw_page');
     expect(renameMigration).toContain("assert_cw_lecture_capability(lecture_value, 'page.edit')");

@@ -94,6 +94,26 @@ export interface CoursewareWorkbenchListItem {
   disabled?: boolean;
 }
 
+export function CoursewareWorkbenchDirectoryHeader({
+  title,
+  meta,
+  action,
+}: {
+  title: ReactNode;
+  meta?: ReactNode;
+  action?: ReactNode;
+}) {
+  return (
+    <>
+      <div className="flex min-w-0 items-center gap-2">
+        <h2 className="truncate text-xs font-medium text-muted">{title}</h2>
+        {meta ? <span className="shrink-0 text-xs tabular-nums text-muted">{meta}</span> : null}
+      </div>
+      {action}
+    </>
+  );
+}
+
 export interface CoursewareEditorChrome {
   toolbar?: ReactNode;
   saveControls?: ReactNode;

@@ -36,6 +36,7 @@ import {
 import type { ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 import type { DocNode, PageDoc } from "@/features/courseware-doc/schema";
 import { saveCoursewareDraftAction } from "./actions";
+import type { CoursewareTrack } from "./data";
 import { StagePreview } from "./StagePreview";
 
 type EditorTab = "adjust" | "layout" | "replace";
@@ -92,7 +93,7 @@ function changeSnapshot(doc: PageDoc, kind: ChangeKind) {
 
 export interface PageDocVerticalSliceEditorProps {
   pageDocId: string;
-  track: "native-16x9";
+  track: CoursewareTrack;
   initialDoc: PageDoc;
   baseRevisionNo: number;
   bindingUrls: ResolvedBindingUrls;

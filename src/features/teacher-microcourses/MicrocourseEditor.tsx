@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { CoursewareCompositionPage } from "@/features/courseware-doc/composition-page-schema";
 import {
   CoursewareWorkbench,
+  CoursewareWorkbenchDirectoryHeader,
   CoursewareWorkbenchPageRail,
   CoursewareWorkbenchPager,
 } from "@/features/courseware-doc/CoursewareEditorWorkbench";
@@ -252,10 +253,10 @@ export function MicrocourseEditor({ session, editor, canTeach }: {
         className="h-[calc(100dvh-9rem)] min-h-[32rem]"
         directory={{
           ariaLabel: t("pages", { count: pages.length }),
-          header: <>
-            <h3 className="text-sm font-semibold">{t("pages", { count: pages.length })}</h3>
-            <Button type="button" size="sm" variant="ghost" className="size-8 p-0" disabled={pending || pageSwitching} onClick={addBlank} aria-label={t("addBlank")}><Plus className="size-4" /></Button>
-          </>,
+          header: <CoursewareWorkbenchDirectoryHeader
+            title={t("pages", { count: pages.length })}
+            action={<Button type="button" size="sm" variant="ghost" className="size-8 p-0" disabled={pending || pageSwitching} onClick={addBlank} aria-label={t("addBlank")}><Plus className="size-4" /></Button>}
+          />,
           content: <div className="flex size-full min-h-0 flex-col pt-3">
             <div className="shrink-0 px-3 pb-3"><MicrocourseSourcePicker microcourseId={editor.id} afterPageDocId={currentPage?.pageDocId ?? null} disabled={pending || pageSwitching} onAdded={(id, count) => void handlePageAdded(id, t("pagesAdded", { count }))} /></div>
             <CoursewareWorkbenchPageRail
