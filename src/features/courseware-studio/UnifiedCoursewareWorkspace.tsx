@@ -10,7 +10,6 @@ import {
   ObjectTabs,
   ObjectWorkspace,
 } from "@/features/school/object-workspace";
-import { StatusStrip } from "@/features/school/dashboard-page";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import type { LectureWorkspaceDetail } from "@/features/school/curriculum/types";
@@ -141,7 +140,7 @@ export async function UnifiedCoursewareWorkspace({
   const pages = directoryPreview?.pages ?? [];
   const backHref = returnTo ?? coursePreviewHref(detail, entryTrack, pageIndex);
   const selectedPage = directoryPreview?.page;
-  const adaptedCanvasFellBack = canvas !== "native-16x9" && !adaptedPreview && Boolean(nativePreview);
+  const adaptedCanvasFellBack = canvas === "adapted-4x3" && !adaptedPreview && Boolean(nativePreview);
   const visibleCanvas: UnifiedWorkspaceCanvas = adaptedCanvasFellBack ? "native-16x9" : canvas;
   const selectedDoc = visibleCanvas === "adapted-4x3"
     ? adaptedPreview?.page.doc
@@ -185,12 +184,6 @@ export async function UnifiedCoursewareWorkspace({
           ) : null}
         </div>
       )}
-      statusStrip={<StatusStrip items={[
-        { label: t("statusStep"), value: t("statusStepValue") },
-        { label: t("statusNative"), value: nativePreview ? t("releaseNo", { no: nativePreview.release.releaseNo }) : t("unavailable") },
-        { label: t("statusAdapted"), value: adaptedPreview ? t("releaseNo", { no: adaptedPreview.release.releaseNo }) : t("unavailable") },
-        { label: t("statusPage"), value: `${pageIndex}/${pages.length}` },
-      ]} />}
     >
       <div
         data-unified-courseware-workspace
@@ -234,10 +227,6 @@ export async function UnifiedCoursewareWorkspace({
         </aside>
 
         <main className="@container/page flex min-h-0 min-w-0 flex-col overflow-hidden" aria-label={t("previewTitle")}>
-          <div className="flex min-h-11 shrink-0 items-center justify-between gap-3 border-b border-line px-3 py-2">
-            <h2 className="text-xs font-medium text-muted">{t("previewTitle")}</h2>
-            <span className="min-w-0 truncate text-xs text-muted">{selectedPage?.title || t("untitledPage")}</span>
-          </div>
           <div className="min-h-0 flex-1 overflow-hidden bg-moon/10">
             {visibleCanvas === "compare" ? (
               <div className="grid size-full min-h-0 grid-rows-2 gap-px bg-line @4xl/workspace:grid-cols-2 @4xl/workspace:grid-rows-1">

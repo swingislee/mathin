@@ -23,6 +23,8 @@ describe("DEV-CW-1 Step 1 read-only unified courseware workspace", () => {
 
     expect(coursePage).toContain("data-course-variant-command-row");
     expect(coursePage).not.toContain("primaryAction={primaryAction}");
+    expect(coursePage).toContain("{overflowAction}");
+    expect(coursePage).not.toContain("overflowSlot={capabilities.canTransitionVariant");
     expect(coursePage).toContain("preview = adaptedPreview ?? nativePreview");
     expect(coursePage).toContain("adaptedPreviewFellBack={adaptedPreviewFellBack}");
     expect(panel).toContain('workspaceT("adaptedFallbackNotice")');
@@ -41,8 +43,10 @@ describe("DEV-CW-1 Step 1 read-only unified courseware workspace", () => {
     expect(workspace).toContain('"compare", "native-16x9", "adapted-4x3"');
     expect(workspace).toContain("ObjectTabs");
     expect(workspace).toContain("StagePreview");
-    expect(workspace).toContain('canvas !== "native-16x9" && !adaptedPreview');
+    expect(workspace).toContain('canvas === "adapted-4x3" && !adaptedPreview');
     expect(workspace).toContain('visibleCanvas: UnifiedWorkspaceCanvas');
+    expect(workspace).not.toContain("statusStrip={<StatusStrip");
+    expect(workspace).not.toContain('>{t("previewTitle")}</h2>');
     expect(workspace).not.toContain("saveCoursewarePageAction");
     expect(workspace).not.toContain("publishCoursewareReleaseAction");
     expect(workspace).not.toContain('from "./actions"');
