@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { LoaderCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
-import { loadCoursewarePreviewPageAction } from "@/features/courseware-preview/actions";
+import { fetchCoursewarePreviewPage } from "@/features/courseware-preview/client";
 import { CoursewarePreviewWorkspace } from "@/features/courseware-preview/CoursewarePreviewWorkspace";
 import { warmCoursewarePreviewPage } from "@/features/courseware-preview/preload";
 import { isSourceRuntimePageDoc } from "@/features/courseware-doc/source-runtime-schema";
@@ -80,6 +80,7 @@ function LectureCoursewarePreviewState({
     preview.page.pageDocId,
     { page: preview.page, bindingUrls: preview.bindingUrls },
   ]]));
+  const preparedPageIdsRef = useRef(new Set([preview.page.pageDocId]));
   const [rendered, setRendered] = useState<CoursewarePreviewPagePayload>({
     page: preview.page,
     bindingUrls: preview.bindingUrls,
@@ -90,7 +91,7 @@ function LectureCoursewarePreviewState({
 
   const ensurePage = useCallback((pageDocId: string) => {
     const cached = cacheRef.current.get(pageDocId);
-    if (cached) return Promise.resolve(cached);
+    if (cached && preparedPageIdsRef.current.has(pageDocId)) return Promise.resolve(cached);
     const pending = pendingRef.current.get(pageDocId);
     if (pending) return pending;
 
@@ -100,24 +101,27 @@ function LectureCoursewarePreviewState({
       next.delete(pageDocId);
       return next;
     });
-    const request = loadCoursewarePreviewPageAction({
-      releaseId: preview.release.id,
-      track: preview.track,
-      pageDocId,
-    }).then(async (result) => {
-      if (!result.ok) throw new Error(result.code);
-      await warmCoursewarePreviewPage(result.data.page.doc, result.data.bindingUrls);
-      // A ref makes a completed adjacent-page warm immediately visible to a
-      // click handler. React state alone leaves a small pre-commit window where
-      // the handler can see the old cache and start a duplicate request.
-      cacheRef.current.set(pageDocId, result.data);
+    const request = (cached
+      ? Promise.resolve(cached)
+      : fetchCoursewarePreviewPage({
+        releaseId: preview.release.id,
+        track: preview.track,
+        pageDocId,
+      })
+    ).then(async (payload) => {
+      // Record the immutable payload before resource warming. A slow H5/image
+      // warm must not make another page turn repeat the authenticated GET; the
+      // prepared set still prevents mounting it before warming has settled.
+      cacheRef.current.set(pageDocId, payload);
+      await warmCoursewarePreviewPage(payload.page.doc, payload.bindingUrls);
+      preparedPageIdsRef.current.add(pageDocId);
       setErrors((current) => {
         if (!current.has(pageDocId)) return current;
         const next = new Map(current);
         next.delete(pageDocId);
         return next;
       });
-      return result.data;
+      return payload;
     });
     const settled = request.then(
       (page) => {
@@ -166,7 +170,7 @@ function LectureCoursewarePreviewState({
     setSelectedIndex(index);
     replacePreviewUrl(href);
     const cached = cacheRef.current.get(page.pageDocId);
-    if (cached) {
+    if (cached && preparedPageIdsRef.current.has(page.pageDocId)) {
       setRendered(cached);
     }
   }, [pageHrefs, preview.pages]);
