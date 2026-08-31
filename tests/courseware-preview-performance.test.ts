@@ -15,7 +15,7 @@ describe("courseware preview page-turn performance", () => {
     );
 
     expect(preview).toContain("fetchCoursewarePreviewPage");
-    expect(preview).toContain("selectedIndex - 1, selectedIndex + 1, selectedIndex + 2");
+    expect(preview).toContain("selectedIndex - 1, selectedIndex + 1, selectedIndex + 2, selectedIndex + 3");
     expect(preview).not.toContain("selectedIndex + 3");
     expect(preview).toContain("warmCoursewarePreviewPage");
     expect(preview).toContain("waitingForSelected");
