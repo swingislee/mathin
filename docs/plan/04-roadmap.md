@@ -210,7 +210,7 @@ Phase 1～5 的本机隔离 Supabase、固定开发身份、migration LF checksu
 
 `DEV-CW-1` 回应课程产品中 E 系列、爱学习及后续导入课程缺少单页 16:9/4:3 修订闭环的问题，权威规划见 [doc 16 §14](16-p6-courseware-platform.md#14-dev-cw-1-课程产品统一课件工作区待产品逐步确认)。目标主路径为“课程产品 → 课程/版本 → 讲次 → 指定页面 → 统一课件工作区”，并把共享内容修订、分轨版式、页面上下文资源替换、插入能力和 draft/review/release 放在同一对象上下文内。研发任务最终只保留责任/待处理投影，适配校对只保留异常与审核视图，公共资源保留高级治理与回滚；新路径验收前不删除或降级现有入口。
 
-产品负责人于 2026-08-31 依次确认 Step 0、Step 1、Step 2 和 Step 2A。Step 2A 最终确认一个 `CoursewareEditorWorkbench` 直接渲染页面目录、插入顶栏、画布/翻页、右栏标题和右栏正文，两条 adapter 共用 `CoursewareInsertionToolbar`，微课是共同能力基线，正式课只额外开启 `adapt4x3`。产品负责人要求课件工作区整体重构完成后再双端回看并定稿组件表现，因此该回看列为 Step 7 完成后、Step 8 扩量前的人工门，不在当前反复修改。`DEV-CW-1` 现为 **STEP 3 READY FOR USER RE-AUDIT**：首轮人工审计指出编辑画布进入即发生布局位移，且缺少与微课一致的自动保存提示和可见保存按钮；第二轮确认直接跳过 `slideInLeft` 会让初始隐藏的标题不出现。只读核对确认样本没有旧草稿。开发端现由 interaction runtime 的 `settleAuto` 立即应用自动步骤结束态，不播放动画或音频，标题恢复到最终位置；两条编辑链继续复用 `CoursewareEditorSaveControls`，PageDoc 以 800ms 自动保存、顶栏立即保存和离页脏态保护调用既有 revision RPC。产品负责人仍需实际修改、等待“已自动保存”、刷新并核对历史 release 未变。爱学习写入、整讲回填、跨页替换、批量任务和生产动作仍禁止，不改变 R1-Live Gate 2。
+产品负责人于 2026-08-31 依次确认 Step 0、Step 1、Step 2 和 Step 2A。Step 2A 最终确认一个 `CoursewareEditorWorkbench` 直接渲染页面目录、插入顶栏、画布/翻页、右栏标题和右栏正文，两条 adapter 共用 `CoursewareInsertionToolbar`，微课是共同能力基线，正式课只额外开启 `adapt4x3`。产品负责人要求课件工作区整体重构完成后再双端回看并定稿组件表现，因此该回看列为 Step 7 完成后、Step 8 扩量前的人工门，不在当前反复修改。`DEV-CW-1` 现为 **STEP 3A RENDERER ROOT REVIEW / PLANNED**：Step 3 虽已接入显式单页写态、共享保存控件、800ms 自动保存、立即保存和离页保护，但连续人工审计确认布局偏移不是单一进入动画问题。只读核对显示 PageDoc 几何与来源一致、样本仍为 import r1 且无 draft；真正缺口是 Mathin `DocStage` 没有携带来源富文本所依赖的 CSS／字体／行为运行时。产品负责人否决按 `data-align-v` 或页面坐标逐项补丁，要求从来源 renderer 兼容根部解决并覆盖爱学习。下一批只允许无写入 Step 3A：审计内容寻址来源 runtime、版本化宿主／选择协议和全量语义签名 inventory；现有单页保存能力在 3A 通过后进入 Step 3B 复审。爱学习写入、整讲回填、跨页替换、schema/RPC、批量任务和生产动作仍禁止，不改变 R1-Live Gate 2。
 
 ## 6. 原 R1 工作重新定位
 
