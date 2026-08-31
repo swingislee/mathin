@@ -114,13 +114,15 @@ export function assertAixuexiPlayerRuntimeCatalog(playerRuntime, expected) {
 export function assertAixuexiPortableRuntimeManifest(manifest, expected) {
   const invalid = (reason) => fail(`invalid portable runtime contract: ${reason}`);
   if (!manifest || typeof manifest !== "object"
-      || manifest.schemaVersion !== 1
+      || manifest.schemaVersion !== 2
       || manifest.packageKey !== expected.packageKey
       || !HASH.test(manifest.inputFingerprint ?? "")
       || !Array.isArray(manifest.scopeLessonIds)
       || !Array.isArray(manifest.fonts)
       || !Array.isArray(manifest.files)
-      || typeof manifest.requiresQuestionImageSizing !== "boolean") {
+      || typeof manifest.requiresQuestionImageSizing !== "boolean"
+      || typeof manifest.requiresLottie !== "boolean"
+      || !(manifest.lottieRuntimeSha256 === null || HASH.test(manifest.lottieRuntimeSha256 ?? ""))) {
     invalid("header");
   }
   const expectedLessons = [...new Set(expected.coursewareIds)].sort((left, right) => left.localeCompare(right, "en"));
@@ -136,6 +138,12 @@ export function assertAixuexiPortableRuntimeManifest(manifest, expected) {
     files.set(file.path, file);
   }
   if (!files.has("slide-runtime.css")) invalid("stylesheet ledger");
+  if (manifest.requiresLottie) {
+    const lottie = files.get("lottie.min.js");
+    if (!lottie || lottie.sha256 !== manifest.lottieRuntimeSha256) invalid("Lottie runtime ledger");
+  } else if (manifest.lottieRuntimeSha256 !== null) {
+    invalid("unexpected Lottie runtime");
+  }
   for (const coursewareId of actualLessons) {
     const prefix = `pages/${coursewareId}/`;
     if (![...files.keys()].some((file) => file.startsWith(prefix) && file.endsWith(".json"))) {
@@ -563,12 +571,20 @@ export async function buildAixuexiPackage(options) {
   };
 
   let lottieRuntimeResource = null;
-  for (const page of sourcePages.values()) {
-    lottieRuntimeResource = (page.assets?.resources ?? []).find((resource) =>
-      resource.kind === "script" && /(?:^|\/)lottie(?:\.min)?\.js(?:$|\?)/i.test(resource.normalizedUrl ?? resource.sourceUrl ?? ""),
-    ) ?? null;
-    if (lottieRuntimeResource) break;
+  if (!portableRuntime) {
+    for (const page of sourcePages.values()) {
+      lottieRuntimeResource = (page.assets?.resources ?? []).find((resource) =>
+        resource.kind === "script" && /(?:^|\/)lottie(?:\.min)?\.js(?:$|\?)/i.test(resource.normalizedUrl ?? resource.sourceUrl ?? ""),
+      ) ?? null;
+      if (lottieRuntimeResource) break;
+    }
   }
+  const portableLottieRuntime = portableRuntime?.manifest.requiresLottie
+    ? {
+      sourceFile: resolveInside(portableRuntime.root, "lottie.min.js"),
+      sha256: portableRuntime.manifest.lottieRuntimeSha256,
+    }
+    : null;
 
   const requiresQuestionImageSizing = portableRuntime
     ? portableRuntime.manifest.requiresQuestionImageSizing
@@ -600,7 +616,9 @@ export async function buildAixuexiPackage(options) {
     ...sourceViewer,
     staticRoutes: Object.fromEntries(Object.entries(staticRoutes).sort(([left], [right]) => left.localeCompare(right, "en"))),
   });
-  const runtimeHtml = portableAixuexiViewerHtml({ hasLottie: Boolean(lottieRuntimeResource) });
+  const runtimeHtml = portableAixuexiViewerHtml({
+    hasLottie: Boolean(portableLottieRuntime || lottieRuntimeResource),
+  });
   const sourceCss = runtimeSourceFiles.get("slide-runtime.css").content.toString("utf8");
   const itvCss = runtimeSourceFiles.get("itv-runtime.css").content.toString("utf8");
   const runtimeCssText = `${sourceCss}\n${itvCss}\n${portableViewer.viewerStyles}`;
@@ -641,6 +659,7 @@ export async function buildAixuexiPackage(options) {
     ...portableFontFiles.map((file) => `${file.packagePath}:${file.sha256}`),
     ...katexFiles.map((file) => `${file.packagePath}:${file.sha256}`),
     lottieRuntimeResource?.objectSha256 ?? "no-lottie-runtime",
+    portableLottieRuntime?.sha256 ?? "no-portable-lottie-runtime",
     portableRuntime?.manifest.inputFingerprint ?? "source-site-runtime",
   );
   const runtimeStageRoot = path.join(outputRoot, "h5-staging", runtimePackageHash);
@@ -684,6 +703,9 @@ export async function buildAixuexiPackage(options) {
     const sourceFile = path.join(sourceRoot, "store", lottieRuntimeResource.objectRelativePath);
     if (await sha256File(sourceFile) !== lottieRuntimeResource.objectSha256) fail("lottie runtime failed CAS verification");
     await stageRuntimeFile("lottie.min.js", sourceFile);
+  }
+  if (portableLottieRuntime) {
+    await stageRuntimeFile("lottie.min.js", portableLottieRuntime.sourceFile);
   }
   h5Manifests.set(runtimePackageHash, {
     schemaVersion: "mathin-h5-manifest-v1",

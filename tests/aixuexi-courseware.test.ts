@@ -240,11 +240,13 @@ describe("Aixuexi courseware adapter", () => {
     const outputHash = key("b");
     const inputFingerprint = key("c");
     const manifest = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       packageKey: "2026-xplus-sujiao-math",
       scopeLessonIds: ["1128951573"],
       inputFingerprint,
       requiresQuestionImageSizing: false,
+      requiresLottie: true,
+      lottieRuntimeSha256: key("f"),
       fonts: [{
         sourceHash,
         outputHash,
@@ -255,6 +257,7 @@ describe("Aixuexi courseware adapter", () => {
       }],
       files: [
         { path: `fonts/${outputHash}.woff2`, sha256: outputHash, byteCount: 128 },
+        { path: "lottie.min.js", sha256: key("f"), byteCount: 512 },
         { path: "pages/1128951573/14.json", sha256: key("d"), byteCount: 256 },
         { path: "slide-runtime.css", sha256: key("e"), byteCount: 64 },
       ],
