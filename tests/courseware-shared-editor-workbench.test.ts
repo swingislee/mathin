@@ -71,22 +71,33 @@ describe("shared courseware editor workbench", () => {
   it("uses one text-element editor and one DocStage edit behavior in formal and microcourse authoring", () => {
     const textEditor = read("src", "features", "courseware-doc", "CoursewareTextElementEditor.tsx");
     const stage = read("src", "features", "courseware-doc", "DocStage.tsx");
+    const stageCss = read("src", "features", "courseware-doc", "doc-stage.css");
     const grid = read("src", "features", "courseware-doc", "CoursewareCompositionGridEditor.tsx");
     const formal = read("src", "features", "courseware-studio", "PageDocVerticalSliceEditor.tsx");
     const microcourse = read("src", "features", "teacher-microcourses", "CoursewareCompositionWorkbench.tsx");
 
     expect(textEditor).toContain("function CoursewareTextElementInspector");
-    expect(textEditor).toContain("function CoursewareGridSnapControl");
+    expect(textEditor).toContain("function CoursewareGridSnapToggle");
     expect(formal).toContain("<CoursewareTextElementInspector");
     expect(microcourse).toContain("<CoursewareTextElementInspector");
-    expect(formal).toContain("<CoursewareGridSnapControl");
-    expect(microcourse).toContain("<CoursewareGridSnapControl");
+    expect(formal).toContain("<CoursewareGridSnapToggle");
+    expect(microcourse).toContain("<CoursewareGridSnapToggle");
+    expect(formal.slice(formal.indexOf("const inspector ="))).not.toContain("<CoursewareGridSnapToggle");
+    expect(microcourse.slice(microcourse.indexOf("const inspectorContent ="))).not.toContain("<CoursewareGridSnapToggle");
+    expect(microcourse.match(/t\("gridComponentList"\)/g)).toHaveLength(1);
+    expect(textEditor).not.toContain('t("textElement")');
     expect(stage).toContain("contentEditable={inlineTextEditing || undefined}");
+    expect(stage).toContain('data-courseware-text-font-override');
+    expect(stage).toContain('inlineTextFocused && !gesture ? "dashed" : "solid"');
     expect(stage).toContain("data-courseware-node-move-handle");
     expect(stage).toContain("data-courseware-node-resize-handle");
     expect(stage).toContain("data-courseware-node-snap-grid");
     expect(grid).toContain('filter((block) => block.type !== "node")');
     expect(grid).toContain("onNodeTextChange={onNodeTextChange}");
+    expect(stageCss).toContain('[data-courseware-text-font-override="true"] *');
+    expect(stageCss).toContain('[data-courseware-text-color-override="true"] *');
+    expect(stageCss).toContain('[data-courseware-text-align-override="true"] *');
+    expect(stageCss).toContain('[data-courseware-inline-text-editor="true"]');
     expect(formal).not.toContain("verticalSliceTextOrHtml");
     expect(microcourse).not.toContain("function NodeControls");
   });

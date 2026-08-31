@@ -5,6 +5,7 @@ import {
   CircleAlert,
   FileCode2,
   Gamepad2,
+  Grid3X3,
   ImagePlus,
   RotateCcw,
   Shapes,
@@ -26,7 +27,7 @@ import {
 } from "@/features/courseware-doc/CoursewareEditorWorkbench";
 import { CoursewareEditorAdapterSurface } from "@/features/courseware-doc/CoursewareEditorAdapterSurface";
 import {
-  CoursewareGridSnapControl,
+  CoursewareGridSnapToggle,
   CoursewareTextElementInspector,
   coursewareTextValue,
   isCoursewareTextElement,
@@ -258,19 +259,27 @@ export function PageDocVerticalSliceEditor({
         aria-label={t("contentInsertion")}
         aria-describedby="courseware-step3-insert-hint"
         actions={[
-          ["text", "prototypeInsertText", Type],
-          ["formula", "prototypeInsertFormula", Sigma],
-          ["shape", "prototypeInsertShape", Shapes],
-          ["image", "prototypeInsertImage", ImagePlus],
-          ["game", "prototypeInsertGame", Gamepad2],
-          ["h5", "prototypeInsertH5", FileCode2],
-          ["tool", "prototypeInsertTool", Wrench],
-        ].map(([id, label, icon]) => ({
-          id: id as string,
-          label: t(label as "prototypeInsertText"),
-          icon: icon as typeof Type,
-          disabled: true,
-        }))}
+          ...[
+            ["text", "prototypeInsertText", Type],
+            ["formula", "prototypeInsertFormula", Sigma],
+            ["shape", "prototypeInsertShape", Shapes],
+            ["image", "prototypeInsertImage", ImagePlus],
+            ["game", "prototypeInsertGame", Gamepad2],
+            ["h5", "prototypeInsertH5", FileCode2],
+            ["tool", "prototypeInsertTool", Wrench],
+          ].map(([id, label, icon]) => ({
+            id: id as string,
+            label: t(label as "prototypeInsertText"),
+            icon: icon as typeof Type,
+            disabled: true,
+          })),
+          {
+            id: "snap-to-grid",
+            label: textEditorT("snapToGrid"),
+            icon: Grid3X3,
+            control: <CoursewareGridSnapToggle checked={snapToGrid} onCheckedChange={setSnapToGrid} />,
+          },
+        ]}
       />
     </div>
   );
@@ -317,8 +326,6 @@ export function PageDocVerticalSliceEditor({
         </div>
 
         <TabsContent value="adjust" className="space-y-4">
-          <CoursewareGridSnapControl checked={snapToGrid} onCheckedChange={setSnapToGrid} />
-
           {selected && isCoursewareTextElement(selected) ? (
             <CoursewareTextElementInspector node={selected} onPatch={patchSelected} />
           ) : selected ? (

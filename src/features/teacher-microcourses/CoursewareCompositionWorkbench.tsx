@@ -3,6 +3,7 @@
 import {
   FileCode2,
   Gamepad2,
+  Grid3X3,
   ImagePlus,
   LoaderCircle,
   Shapes,
@@ -38,7 +39,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { CoursewareCompositionGridEditor } from "@/features/courseware-doc/CoursewareCompositionGridEditor";
 import { CoursewareEditorAdapterSurface } from "@/features/courseware-doc/CoursewareEditorAdapterSurface";
 import {
-  CoursewareGridSnapControl,
+  CoursewareGridSnapToggle,
   CoursewareTextElementInspector,
   coursewareTextValue,
   isCoursewareTextElement,
@@ -209,6 +210,7 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
   onStatus,
 }, ref) {
   const t = useTranslations("teacherMicrocourses");
+  const textEditorT = useTranslations("coursewareTextEditor");
   const [doc, setDoc] = useState(() => structuredClone(page.doc));
   const [bindingUrls, setBindingUrls] = useState({ ...page.bindingUrls });
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(page.doc.layout.blocks[0]?.id ?? null);
@@ -444,6 +446,9 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
               setSelectedBlockId(next.layout.blocks.find((block) => !previousIds.has(block.id))?.id ?? null);
           }} />
         ) },
+        { id: "snap-to-grid", label: textEditorT("snapToGrid"), icon: Grid3X3, control: (
+          <CoursewareGridSnapToggle checked={snapToGrid} onCheckedChange={setSnapToGrid} />
+        ) },
       ]}
     />
   );
@@ -474,8 +479,7 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
       <div className="space-y-4 p-3">
         {message && <p role="alert" className="text-xs text-rose">{message}</p>}
             <div>
-              <p className="text-xs font-medium text-muted">{t("gridComponentList")}</p>
-              <div className="mt-2 grid grid-cols-2 gap-1">
+              <div className="grid grid-cols-2 gap-1">
                 {doc.layout.blocks.map((block) => (
                   <Button key={block.id} type="button" size="sm" variant={selectedBlockId === block.id ? "primary" : "ghost"} className="justify-start truncate" onClick={() => setSelectedBlockId(block.id)}>
                     {blockLabel(block, doc, t)}
@@ -484,8 +488,6 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
               </div>
               {doc.layout.blocks.length === 0 && <p className="mt-2 text-xs text-muted">{t("componentEmpty")}</p>}
             </div>
-
-            <CoursewareGridSnapControl checked={snapToGrid} onCheckedChange={setSnapToGrid} />
 
             {selected?.type === "node" && isCoursewareTextElement(
               doc.overlay.nodes.find((item) => item.id === selected.nodeId),

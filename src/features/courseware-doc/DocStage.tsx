@@ -364,6 +364,7 @@ function nodeBody(
   onNodeTransformChange: DocStageProps["onNodeTransformChange"],
   onNodeTextChange: DocStageProps["onNodeTextChange"],
   inlineTextEditing: boolean,
+  onInlineTextFocusChange: (focused: boolean) => void,
   nodeMoveLabel: string | undefined,
   nodeResizeLabel: string | undefined,
   snapToGrid: boolean,
@@ -465,26 +466,39 @@ function nodeBody(
     case "rich_text":
       return (
         <div
+          data-courseware-inline-text-editor={inlineTextEditing ? "true" : undefined}
+          data-courseware-text-font-override={node.style.fontSize != null ? "true" : undefined}
+          data-courseware-text-color-override={node.style.color ? "true" : undefined}
+          data-courseware-text-align-override={node.style.textAlign ? "true" : undefined}
           style={textBlockStyle(node)}
           contentEditable={inlineTextEditing || undefined}
           suppressContentEditableWarning={inlineTextEditing}
           spellCheck={inlineTextEditing}
           onPointerDown={inlineTextEditing ? (event) => event.stopPropagation() : undefined}
           onKeyDownCapture={inlineTextEditing ? (event) => event.stopPropagation() : undefined}
-          onBlur={inlineTextEditing ? (event) => onNodeTextChange?.(node.nodePath, event.currentTarget.innerText) : undefined}
+          onFocus={inlineTextEditing ? () => onInlineTextFocusChange(true) : undefined}
+          onBlur={inlineTextEditing ? (event) => {
+            onInlineTextFocusChange(false);
+            onNodeTextChange?.(node.nodePath, event.currentTarget.innerText);
+          } : undefined}
           dangerouslySetInnerHTML={{ __html: renderAixuexiMathHtml(injectBindingUrls(node.content?.html ?? "", urls)) }}
         />
       );
     case "text":
       return (
         <div
+          data-courseware-inline-text-editor={inlineTextEditing ? "true" : undefined}
           style={textBlockStyle(node)}
           contentEditable={inlineTextEditing || undefined}
           suppressContentEditableWarning={inlineTextEditing}
           spellCheck={inlineTextEditing}
           onPointerDown={inlineTextEditing ? (event) => event.stopPropagation() : undefined}
           onKeyDownCapture={inlineTextEditing ? (event) => event.stopPropagation() : undefined}
-          onBlur={inlineTextEditing ? (event) => onNodeTextChange?.(node.nodePath, event.currentTarget.innerText) : undefined}
+          onFocus={inlineTextEditing ? () => onInlineTextFocusChange(true) : undefined}
+          onBlur={inlineTextEditing ? (event) => {
+            onInlineTextFocusChange(false);
+            onNodeTextChange?.(node.nodePath, event.currentTarget.innerText);
+          } : undefined}
         >
           {node.content?.text ?? ""}
         </div>
@@ -550,6 +564,7 @@ function NodeView({
   const rootRef = useRef<HTMLDivElement>(null);
   const [gesture, setGesture] = useState<NodeTransformGesture | null>(null);
   const [draft, setDraft] = useState<Required<DocNodeTransformPatch> | null>(null);
+  const [inlineTextFocused, setInlineTextFocused] = useState(false);
   const t = draft ? { ...node.transform, ...draft } : node.transform;
   const s = node.style;
   const selected = selectedNodePath === node.nodePath;
@@ -639,8 +654,10 @@ function NodeView({
     transformOrigin: `${t.anchorX * 100}% ${t.anchorY * 100}%`,
     transform: `translate(${t.x}px,${t.y}px) rotate(${t.rotation}deg) scale(${t.flipX ? -t.scaleX : t.scaleX},${t.flipY ? -t.scaleY : t.scaleY})`,
     display: node.visible ? "block" : "none",
-    cursor: onNodeTransformChange ? "move" : clickTrigger ? "pointer" : undefined,
-    outline: selected ? "2px solid #e76f78" : undefined,
+    cursor: inlineTextEditing ? "text" : onNodeTransformChange ? "move" : clickTrigger ? "pointer" : undefined,
+    outline: selected
+      ? `2px ${inlineTextFocused && !gesture ? "dashed" : "solid"} #e76f78`
+      : undefined,
     outlineOffset: selected ? "2px" : undefined,
   };
   return (
@@ -668,6 +685,7 @@ function NodeView({
         onNodeTransformChange,
         onNodeTextChange,
         inlineTextEditing,
+        setInlineTextFocused,
         nodeMoveLabel,
         nodeResizeLabel,
         snapToGrid,
