@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { CoursewarePreviewWorkspace } from "@/features/courseware-preview/CoursewarePreviewWorkspace";
+import { CoursewareWorkbench } from "@/features/courseware-doc/CoursewareEditorWorkbench";
 import { StagePreview } from "@/features/courseware-studio/StagePreview";
 import type { TeacherMicrocourseEditor } from "./data";
 
@@ -25,7 +25,8 @@ export function MicrocourseVariantPreview({ editor }: { editor: TeacherMicrocour
 
   return (
     <div className="h-[calc(100dvh-9rem)] min-h-[32rem]" data-testid="microcourse-variant-preview">
-      <CoursewarePreviewWorkspace
+      <CoursewareWorkbench
+        mode="preview"
         className="min-h-0"
         layoutId="teacher-microcourse-variant-preview"
         railWidth="standard"

@@ -127,7 +127,8 @@ describe("R1 classroom continuity contracts", () => {
     expect(overlayEditor).toContain("learningCheckSaveQueue");
     expect(overlayEditor).toContain("learningChecksConfigured");
     expect(overlayEditor).toContain("BadgeCheck");
-    expect(overlayEditor).toContain("CoursewarePreviewWorkspace");
+    expect(overlayEditor).toContain("CoursewareWorkbench");
+    expect(overlayEditor).toContain('mode="preview"');
     expect(overlayEditor).toContain("SUDOKU_BOX_ELIMINATION_SEED");
     expect(overlayEditor).toContain("usingSudokuTeachingPreset");
     expect(overlayEditor).toContain('t("sudokuBoxEliminationTitle")');
@@ -135,11 +136,13 @@ describe("R1 classroom continuity contracts", () => {
     expect(overlayEditor).toContain("restoreLearningCheckDefaults");
     expect(overlayEditor).toContain("undoRestoreLearningCheckDefaults");
     const sharedPreview = read("src/features/courseware-preview/CoursewarePreviewWorkspace.tsx");
+    const sharedStage = read("src/features/courseware-doc/CoursewareStageViewport.tsx");
     expect(sharedPreview).toContain("data-courseware-page-rail");
     expect(sharedPreview).toContain("data-courseware-preview-stage");
-    expect(sharedPreview).toContain("ResizeObserver");
+    expect(sharedPreview).toContain("CoursewareStageViewport");
+    expect(sharedStage).toContain("ResizeObserver");
     expect(sharedPreview).toContain('railWidth?: "standard" | "wide"');
-    expect(read("src/features/school/curriculum/LectureCoursewarePreview.tsx")).toContain("CoursewarePreviewWorkspace");
+    expect(read("src/features/school/curriculum/LectureCoursewarePreview.tsx")).toContain("CoursewareWorkbench");
     expect(read("src/features/school/SessionWorkspaceBody.tsx")).toContain('scroll={stage === "pre" ? "none" : "auto"}');
     expect(overlayEditor).not.toContain("learningCheckAddCustom");
     expect(learningCheckConfigurationMigration).toContain("learning_checks_configured_at");

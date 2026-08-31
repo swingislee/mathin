@@ -12,7 +12,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { CoursewareCompositionPage } from "@/features/courseware-doc/composition-page-schema";
-import { CoursewareEditorWorkbench } from "@/features/courseware-doc/CoursewareEditorWorkbench";
+import { CoursewareWorkbench } from "@/features/courseware-doc/CoursewareEditorWorkbench";
 import { useRouter } from "@/i18n/navigation";
 import {
   createTeacherCompositionPageAction,
@@ -234,9 +234,9 @@ export function MicrocourseEditor({ session, editor, canTeach }: {
       </section>
 
       {/* Product-approved shared courseware editor: one workbench, source-specific adapters. */}
-      <CoursewareEditorWorkbench
+      <CoursewareWorkbench
+        mode="microcourse-editor"
         adapter="courseware-composition-v1"
-        capabilities={{ adapt4x3: false }}
         layout="viewport"
         className="h-[calc(100dvh-9rem)] min-h-[32rem]"
         directory={{

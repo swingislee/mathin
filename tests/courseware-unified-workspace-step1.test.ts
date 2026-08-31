@@ -55,10 +55,12 @@ describe("DEV-CW-1 Step 1 read-only unified courseware workspace", () => {
   it("fits every single-track stage within both the available width and height", () => {
     const workspace = read("src", "features", "courseware-studio", "UnifiedCoursewareWorkspace.tsx");
     const fittedCanvas = read("src", "features", "courseware-studio", "FittedCoursewareCanvas.tsx");
+    const stageViewport = read("src", "features", "courseware-doc", "CoursewareStageViewport.tsx");
 
     expect(workspace).toContain('className="flex h-full min-h-0 min-w-0 flex-1 flex-col bg-paper"');
-    expect(fittedCanvas).toContain("availableHeight * aspect");
-    expect(fittedCanvas).toContain("height: size?.height ?? 0");
+    expect(fittedCanvas).toContain("CoursewareStageViewport");
+    expect(stageViewport).toContain("availableHeight * aspect");
+    expect(stageViewport).toContain('height: size?.height ?? "auto"');
     expect(fittedCanvas).toContain("data-fitted-courseware-stage");
   });
 

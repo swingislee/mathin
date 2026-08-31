@@ -161,7 +161,8 @@ describe("doc 26 teacher preparation workflow", () => {
     expect(reviewPage).toContain("SolutionRecordExportButton");
     expect(reviewPage).toContain("SessionPreparationCoursewareReview");
     expect(reviewPage).toContain("artifactEditHref");
-    expect(reviewCourseware).toContain("CoursewarePreviewWorkspace");
+    expect(reviewCourseware).toContain("CoursewareWorkbench");
+    expect(reviewCourseware).toContain('mode="preview"');
     expect(reviewCourseware).toContain("StagePreview");
     expect(reviewCourseware).toContain("prepReviewEditCurrentPage");
     expect(reviewFollowupMigration).toContain("get_session_preparation_review_courseware");

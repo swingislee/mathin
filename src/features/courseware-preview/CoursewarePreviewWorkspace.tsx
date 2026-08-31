@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type HTMLAttributes, type KeyboardEvent, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight, Maximize2, Minimize2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
+import { CoursewareStageViewport } from "@/features/courseware-doc/CoursewareStageViewport";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { usePanelLayout } from "@/hooks/use-panel-layout";
 import { useSplitOrientation } from "@/hooks/use-split-orientation";
@@ -97,8 +98,6 @@ export function CoursewarePreviewWorkspace({
   className?: string;
 }) {
   const router = useRouter();
-  const previewBodyRef = useRef<HTMLDivElement>(null);
-  const [stageWidth, setStageWidth] = useState<number | null>(null);
   const commonT = useTranslations("common");
   const [elementRef, orientation] = useSplitOrientation(SIDE_BY_SIDE_MIN_WIDTH);
   const horizontal = orientation === "horizontal";
@@ -106,19 +105,6 @@ export function CoursewarePreviewWorkspace({
   // 两个方向各存一份：横向记的是目录的像素宽，纵向记的是目录占的高度比例，
   // 混在一起会让转屏后的第一帧拿到一个属于另一个方向的数字。
   const { groupRef, onLayoutChanged } = usePanelLayout(`${layoutId}:${orientation}`);
-
-  useEffect(() => {
-    const body = previewBodyRef.current;
-    if (!body) return;
-    const fit = () => {
-      const { width, height } = body.getBoundingClientRect();
-      setStageWidth(Math.max(0, Math.floor(Math.min(width, height * previewAspect))));
-    };
-    const observer = new ResizeObserver(fit);
-    observer.observe(body);
-    fit();
-    return () => observer.disconnect();
-  }, [previewAspect]);
 
   /*
    * 全屏（docs/plan/27 §3 D5/D6）。整块工作区进入全屏，目录、白板工具栏和翻页一起带上，
@@ -191,6 +177,8 @@ export function CoursewarePreviewWorkspace({
       onLayoutChanged={onLayoutChanged}
       // 全屏元素默认是黑底且没有内边距；补上纸色与一圈呼吸，否则圆角卡片贴死屏幕边缘。
       className={cn("h-full min-h-0 min-w-0", fullscreen && "bg-paper p-3", className)}
+      data-courseware-workbench
+      data-courseware-workbench-mode="preview"
       data-courseware-preview-workspace
       data-orientation={orientation}
       data-fullscreen={fullscreen ? "true" : undefined}
@@ -281,18 +269,13 @@ export function CoursewarePreviewWorkspace({
             {fullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
           </Button>
         </div>
-        <div ref={previewBodyRef} className="flex min-h-0 flex-1 items-start justify-center overflow-hidden">
-          <div
-            className="shrink-0 overflow-hidden bg-card"
-            data-courseware-preview-stage
-            style={{
-              width: stageWidth === null ? "100%" : stageWidth,
-              aspectRatio: String(previewAspect),
-            }}
-          >
-            {preview}
-          </div>
-        </div>
+        <CoursewareStageViewport
+          aspect={previewAspect}
+          align="start"
+          stageProps={{ "data-courseware-preview-stage": true } as HTMLAttributes<HTMLDivElement>}
+        >
+          {preview}
+        </CoursewareStageViewport>
         <div className="flex min-h-11 shrink-0 items-center justify-between gap-2 border-t border-line px-2 py-1.5">
           <Button
             type="button"

@@ -33,6 +33,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { games } from "@/features/games/registry";
+import { CoursewareWorkbench } from "@/features/courseware-doc/CoursewareEditorWorkbench";
 import { SUDOKU_BOX_ELIMINATION_SEED } from "@/features/games/sudoku/presets";
 import { SudokuVariantSelector } from "@/features/games/sudoku/SudokuVariantSelector";
 import {
@@ -41,7 +42,7 @@ import {
   sudokuSeedForVariant,
   type SudokuVariantId,
 } from "@/features/games/sudoku/variant";
-import { CoursewarePreviewWorkspace, type CoursewarePreviewListItem } from "@/features/courseware-preview/CoursewarePreviewWorkspace";
+import { type CoursewarePreviewListItem } from "@/features/courseware-preview/CoursewarePreviewWorkspace";
 import { StagePreview } from "@/features/courseware-studio/StagePreview";
 import type { CoursewareDoc } from "@/features/courseware-doc/document";
 import type { ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
@@ -523,7 +524,8 @@ export function CoursewareOverlayEditor({
           : t(customOnly ? "freeHint" : "hint")}
       </p>
 
-      <CoursewarePreviewWorkspace
+      <CoursewareWorkbench
+        mode="preview"
         className="mt-3 flex-1"
         railWidth="wide"
         items={previewItems}

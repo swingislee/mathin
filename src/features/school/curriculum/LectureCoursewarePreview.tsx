@@ -4,8 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { LoaderCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
+import { CoursewareWorkbench } from "@/features/courseware-doc/CoursewareEditorWorkbench";
 import { fetchCoursewarePreviewPage } from "@/features/courseware-preview/client";
-import { CoursewarePreviewWorkspace } from "@/features/courseware-preview/CoursewarePreviewWorkspace";
 import { warmCoursewarePreviewPage } from "@/features/courseware-preview/preload";
 import { isSourceRuntimePageDoc } from "@/features/courseware-doc/source-runtime-schema";
 import { isSpatialPageDoc } from "@/features/courseware-doc/spatial";
@@ -220,7 +220,8 @@ function LectureCoursewarePreviewState({
 
   return (
     <div className={cn("flex min-h-0 flex-col", fillAvailable ? "h-full" : "h-[min(70dvh,44rem)] min-h-[28rem]")}>
-      <CoursewarePreviewWorkspace
+      <CoursewareWorkbench
+        mode="preview"
         className="flex-1"
         items={preview.pages.map((page) => ({
           id: page.pageDocId,

@@ -3,6 +3,7 @@ import { Fragment } from "react";
 import { LoaderCircle, Save, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { CoursewarePreviewWorkspace } from "@/features/courseware-preview/CoursewarePreviewWorkspace";
 import { cn } from "@/lib/utils";
 
 interface CoursewareEditorDirectory {
@@ -85,31 +86,52 @@ export function CoursewareEditorSaveControls({
  * Document adapters own selection, editing and persistence; this component
  * owns the stable card, canvas and inspector geometry they render into.
  */
-export function CoursewareEditorWorkbench({
+type CoursewareAuthoringWorkbenchProps = Omit<ComponentProps<typeof Card>, "children"> & {
+  mode: "formal-editor" | "microcourse-editor";
+  adapter: string;
+  layout: "viewport" | "workspace";
+  directory: CoursewareEditorDirectory;
+  toolbar: ReactNode;
+  canvas: CoursewareEditorCanvas;
+  inspector: CoursewareEditorInspector;
+};
+
+export type CoursewareWorkbenchMode = "preview" | "formal-editor" | "microcourse-editor";
+
+/**
+ * One courseware workbench with three product modes. Preview keeps the mature
+ * resizable/paging surface; both authoring modes share the same editor chrome,
+ * and only formal authoring declares the additional 4:3 adaptation capability.
+ */
+export function CoursewareWorkbench(
+  props:
+    | ({ mode: "preview" } & ComponentProps<typeof CoursewarePreviewWorkspace>)
+    | CoursewareAuthoringWorkbenchProps,
+) {
+  if (props.mode === "preview") {
+    return <CoursewarePreviewWorkspace {...props} />;
+  }
+
+  const {
+    mode,
   adapter,
-  capabilities,
   layout,
   directory,
   toolbar,
   canvas,
   inspector,
   className,
-  ...props
-}: Omit<ComponentProps<typeof Card>, "children"> & {
-  adapter: string;
-  capabilities: { adapt4x3: boolean };
-  layout: "viewport" | "workspace";
-  directory: CoursewareEditorDirectory;
-  toolbar: ReactNode;
-  canvas: CoursewareEditorCanvas;
-  inspector: CoursewareEditorInspector;
-}) {
+  ...cardProps
+  } = props;
   const viewportLayout = layout === "viewport";
+  const adapt4x3 = mode === "formal-editor";
   return (
     <Card
+      data-courseware-workbench
+      data-courseware-workbench-mode={mode}
       data-courseware-editor-workbench
       data-courseware-editor-adapter={adapter}
-      data-courseware-editor-adapt-4x3={capabilities.adapt4x3 ? "enabled" : "disabled"}
+      data-courseware-editor-adapt-4x3={adapt4x3 ? "enabled" : "disabled"}
       data-courseware-editor-layout={layout}
       className={cn(
         "grid min-h-0 min-w-0 grid-cols-1 grid-rows-[minmax(12rem,32dvh)_2.75rem_minmax(22rem,1fr)_2.75rem_minmax(12rem,30dvh)] overflow-hidden",
@@ -118,7 +140,7 @@ export function CoursewareEditorWorkbench({
           : "@4xl/workspace:grid-cols-[224px_minmax(0,1fr)_320px] @4xl/workspace:grid-rows-[2.75rem_minmax(0,1fr)]",
         className,
       )}
-      {...props}
+      {...cardProps}
     >
       <nav
         data-courseware-editor-slot="directory"
@@ -201,16 +223,6 @@ export function CoursewareEditorWorkbench({
         </aside>
       </div>
     </Card>
-  );
-}
-
-export function CoursewareEditorCanvasFrame({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return (
-    <div
-      data-courseware-editor-slot="canvas"
-      className={cn("overflow-hidden rounded-xl border border-line bg-white shadow-sm", className)}
-      {...props}
-    />
   );
 }
 

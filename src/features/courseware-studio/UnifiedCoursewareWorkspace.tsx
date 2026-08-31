@@ -3,7 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { CoursewareEditorWorkbench } from "@/features/courseware-doc/CoursewareEditorWorkbench";
+import { CoursewareWorkbench } from "@/features/courseware-doc/CoursewareEditorWorkbench";
 import { isSourceRuntimePageDoc } from "@/features/courseware-doc/source-runtime-schema";
 import { isSpatialPageDoc } from "@/features/courseware-doc/spatial";
 import {
@@ -171,10 +171,10 @@ export async function UnifiedCoursewareWorkspace({
         </div>
       )}
     >
-      <CoursewareEditorWorkbench
+      <CoursewareWorkbench
+        mode="formal-editor"
         data-unified-courseware-workspace
         adapter={selectedDoc?.docVersion ?? "unknown"}
-        capabilities={{ adapt4x3: true }}
         layout="workspace"
         className="mx-1 -mb-4 min-h-0 min-w-0 flex-1 lg:-mb-5"
         directory={{

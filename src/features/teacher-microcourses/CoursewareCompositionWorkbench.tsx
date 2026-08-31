@@ -14,6 +14,7 @@ import {
 import { useTranslations } from "next-intl";
 import {
   forwardRef,
+  type HTMLAttributes,
   useCallback,
   useEffect,
   useImperativeHandle,
@@ -37,8 +38,8 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { CoursewareCompositionGridEditor } from "@/features/courseware-doc/CoursewareCompositionGridEditor";
+import { CoursewareStageViewport } from "@/features/courseware-doc/CoursewareStageViewport";
 import {
-  CoursewareEditorCanvasFrame,
   CoursewareEditorSaveControls,
   CoursewareInsertionToolbar,
   CoursewareEditorToolbarButton,
@@ -75,7 +76,6 @@ import {
 } from "./actions";
 import { microcourseH5Bytes, normalizeMicrocourseH5 } from "./h5";
 import { MICROCOURSE_H5_CSP } from "@/features/courseware-doc/h5-shim";
-import styles from "./CoursewareCompositionWorkbench.module.css";
 
 const DEFAULT_H5 = `<!doctype html>
 <html lang="zh-CN">
@@ -512,20 +512,20 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
       {toolbarTarget ? createPortal(insertToolbar, toolbarTarget) : null}
       {inspectorHeaderTarget ? createPortal(saveControls, inspectorHeaderTarget) : null}
       {inspectorTarget ? createPortal(inspectorContent, inspectorTarget) : null}
-      <div
-        data-courseware-editor-adapter="courseware-composition-v1"
-        className={cn("flex size-full min-h-0 min-w-0 items-center justify-center overflow-hidden p-3", styles.stageSlot)}
+      <CoursewareStageViewport
+        aspect={4 / 3}
+        className="p-3"
+        stageClassName="rounded-xl border border-line bg-white shadow-sm"
+        hostProps={{ "data-courseware-editor-adapter": "courseware-composition-v1" } as HTMLAttributes<HTMLDivElement>}
       >
-        <CoursewareEditorCanvasFrame className={styles.stageFrame}>
-          <CoursewareCompositionGridEditor
-            doc={doc}
-            bindingUrls={bindingUrls}
-            selectedBlockId={selectedBlockId}
-            onSelectBlock={setSelectedBlockId}
-            onChange={updateDoc}
-          />
-        </CoursewareEditorCanvasFrame>
-      </div>
+        <CoursewareCompositionGridEditor
+          doc={doc}
+          bindingUrls={bindingUrls}
+          selectedBlockId={selectedBlockId}
+          onSelectBlock={setSelectedBlockId}
+          onChange={updateDoc}
+        />
+      </CoursewareStageViewport>
     </>
   );
 });
