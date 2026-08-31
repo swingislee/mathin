@@ -22,6 +22,9 @@ import { StagePreview } from "./StagePreview";
 export const UNIFIED_WORKSPACE_CANVASES = ["compare", "native-16x9", "adapted-4x3"] as const;
 export type UnifiedWorkspaceCanvas = (typeof UNIFIED_WORKSPACE_CANVASES)[number];
 
+const INSERT_TOOLBAR_TARGET_ID = "courseware-workspace-insert-toolbar";
+const CAPABILITY_TABS_TARGET_ID = "courseware-workspace-capability-tabs";
+
 export function parseUnifiedWorkspaceCanvas(value: string | string[] | undefined): UnifiedWorkspaceCanvas {
   const first = Array.isArray(value) ? value[0] : value;
   return first === "native-16x9" || first === "adapted-4x3" ? first : "compare";
@@ -71,15 +74,20 @@ function TrackCanvas({
   preview,
   label,
   unavailable,
+  toolbarTargetId,
 }: {
   preview: CoursewareLecturePreview | null;
   label: string;
   unavailable: string;
+  toolbarTargetId?: string;
 }) {
   return (
     <section className="flex h-full min-h-0 min-w-0 flex-1 flex-col bg-paper" aria-label={label}>
       <div className="flex min-h-10 shrink-0 items-center justify-between gap-2 border-b border-line px-3 py-2">
         <span className="text-xs font-medium text-ink">{label}</span>
+        {toolbarTargetId
+          ? <div id={toolbarTargetId} className="flex min-w-0 flex-1 items-center justify-end overflow-hidden" />
+          : <span className="flex-1" />}
         <Badge variant={preview ? "secondary" : "outline"}>{preview ? `R${preview.release.releaseNo}` : unavailable}</Badge>
       </div>
       {preview ? (
@@ -210,13 +218,13 @@ export async function UnifiedCoursewareWorkspace({
           <div className="min-h-0 flex-1 overflow-hidden bg-moon/10">
             {visibleCanvas === "compare" ? (
               <div className="grid size-full min-h-0 grid-rows-2 gap-px bg-line @4xl/workspace:grid-cols-2 @4xl/workspace:grid-rows-1">
-                <TrackCanvas preview={nativePreview} label={t("canvasNative")} unavailable={t("nativeUnavailable")} />
+                <TrackCanvas preview={nativePreview} label={t("canvasNative")} unavailable={t("nativeUnavailable")} toolbarTargetId={INSERT_TOOLBAR_TARGET_ID} />
                 <TrackCanvas preview={adaptedPreview} label={t("canvasAdapted")} unavailable={t("adaptedUnavailable")} />
               </div>
             ) : visibleCanvas === "adapted-4x3" ? (
-              <TrackCanvas preview={adaptedPreview} label={t("canvasAdapted")} unavailable={t("adaptedUnavailable")} />
+              <TrackCanvas preview={adaptedPreview} label={t("canvasAdapted")} unavailable={t("adaptedUnavailable")} toolbarTargetId={INSERT_TOOLBAR_TARGET_ID} />
             ) : (
-              <TrackCanvas preview={nativePreview} label={t("canvasNative")} unavailable={t("nativeUnavailable")} />
+              <TrackCanvas preview={nativePreview} label={t("canvasNative")} unavailable={t("nativeUnavailable")} toolbarTargetId={INSERT_TOOLBAR_TARGET_ID} />
             )}
           </div>
           <div className="flex min-h-11 shrink-0 items-center justify-between gap-2 border-t border-line px-2 py-1.5">
@@ -231,8 +239,9 @@ export async function UnifiedCoursewareWorkspace({
         </main>
 
         <aside className="flex min-h-0 min-w-0 flex-col border-t border-line @4xl/workspace:border-l @4xl/workspace:border-t-0" aria-label={t("propertiesTitle")}>
-          <div className="min-h-11 shrink-0 border-b border-line px-4 py-3">
-            <h2 className="text-sm font-medium text-ink">{t("propertiesTitle")}</h2>
+          <div className="flex min-h-11 shrink-0 items-center gap-3 border-b border-line px-3 py-2">
+            <h2 className="shrink-0 text-sm font-medium text-ink">{t("propertiesTitle")}</h2>
+            <div id={CAPABILITY_TABS_TARGET_ID} className="ml-auto min-w-0 flex-1" />
           </div>
           <ScrollArea className="min-h-0 flex-1">
             <div className="px-4">
@@ -248,6 +257,8 @@ export async function UnifiedCoursewareWorkspace({
                   sourceType={selectedDoc?.docVersion ?? "unknown"}
                   activeCanvas={visibleCanvas}
                   hasAdaptedPreview={Boolean(adaptedPreview)}
+                  toolbarTargetId={INSERT_TOOLBAR_TARGET_ID}
+                  tabsTargetId={CAPABILITY_TABS_TARGET_ID}
                 />
               </section>
             </div>

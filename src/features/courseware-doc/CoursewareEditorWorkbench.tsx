@@ -1,4 +1,5 @@
-import type { ComponentProps, HTMLAttributes } from "react";
+import type { ComponentProps, HTMLAttributes, LabelHTMLAttributes } from "react";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
@@ -57,6 +58,44 @@ export function CoursewareEditorActionGrid({ className, ...props }: HTMLAttribut
     <div
       data-courseware-editor-slot="actions"
       className={cn("grid grid-cols-2 gap-2", className)}
+      {...props}
+    />
+  );
+}
+
+export function CoursewareEditorToolbar({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      role="toolbar"
+      data-courseware-editor-slot="toolbar"
+      className={cn("flex min-w-0 flex-wrap items-center gap-1", className)}
+      {...props}
+    />
+  );
+}
+
+export function CoursewareEditorToolbarButton({
+  selected = false,
+  className,
+  ...props
+}: ComponentProps<typeof Button> & { selected?: boolean }) {
+  return (
+    <Button
+      type="button"
+      size="sm"
+      variant="ghost"
+      aria-pressed={selected || undefined}
+      className={cn("size-9 shrink-0 p-0", selected && "bg-crater/15 text-ink", className)}
+      {...props}
+    />
+  );
+}
+
+export function CoursewareEditorToolbarLabel({ className, ...props }: LabelHTMLAttributes<HTMLLabelElement>) {
+  return (
+    <label
+      data-courseware-editor-toolbar-label
+      className={cn("inline-grid size-9 shrink-0 cursor-pointer place-items-center rounded-full text-muted transition-colors hover:bg-moon/30 hover:text-ink", className)}
       {...props}
     />
   );

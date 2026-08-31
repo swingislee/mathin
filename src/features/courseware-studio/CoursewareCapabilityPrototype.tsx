@@ -1,28 +1,38 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   CircleAlert,
   Eye,
+  FileCode2,
+  Gamepad2,
   ImageIcon,
+  ImagePlus,
   LayoutTemplate,
-  Plus,
   RotateCcw,
+  Shapes,
+  Sigma,
   Type,
   Undo2,
+  Wrench,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { createPortal } from "react-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CoursewareEditorActionGrid } from "@/features/courseware-doc/CoursewareEditorWorkbench";
+import {
+  CoursewareEditorActionGrid,
+  CoursewareEditorToolbar,
+  CoursewareEditorToolbarButton,
+} from "@/features/courseware-doc/CoursewareEditorWorkbench";
 import { cn } from "@/lib/utils";
 
 const LAYOUT_STRATEGIES = ["A", "B", "C", "D", "E", "F", "custom"] as const;
 const REPLACEMENT_SCOPES = ["page", "lecture", "variant", "family", "all"] as const;
 
-type PrototypeTab = "adjust" | "layout" | "replace" | "insert";
+type PrototypeTab = "adjust" | "layout" | "replace";
 type LayoutStrategy = (typeof LAYOUT_STRATEGIES)[number];
 type ReplacementScope = (typeof REPLACEMENT_SCOPES)[number];
 
@@ -69,10 +79,14 @@ export function CoursewareCapabilityPrototype({
   sourceType,
   activeCanvas,
   hasAdaptedPreview,
+  toolbarTargetId,
+  tabsTargetId,
 }: {
   sourceType: string;
   activeCanvas: "compare" | "native-16x9" | "adapted-4x3";
   hasAdaptedPreview: boolean;
+  toolbarTargetId: string;
+  tabsTargetId: string;
 }) {
   const t = useTranslations("coursewareWorkspace");
   const actionId = useRef(0);
@@ -84,8 +98,17 @@ export function CoursewareCapabilityPrototype({
   );
   const [replacementKind, setReplacementKind] = useState("background");
   const [replacementScope, setReplacementScope] = useState<ReplacementScope>("page");
-  const [insertKind, setInsertKind] = useState("h5");
   const [history, setHistory] = useState<PrototypeAction[]>([]);
+  const [toolbarTarget, setToolbarTarget] = useState<HTMLElement | null>(null);
+  const [tabsTarget, setTabsTarget] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      setToolbarTarget(document.getElementById(toolbarTargetId));
+      setTabsTarget(document.getElementById(tabsTargetId));
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [tabsTargetId, toolbarTargetId]);
 
   const sourceRuntime = sourceType === "source-runtime-page-v1";
   const composition = sourceType === "courseware-composition-v1";
@@ -105,17 +128,50 @@ export function CoursewareCapabilityPrototype({
     { value: "position", label: t("prototypeAdjustPosition") },
     { value: "layer", label: t("prototypeAdjustLayer") },
   ];
-  const insertKinds = [
-    { value: "text", label: t("prototypeInsertText") },
-    { value: "image", label: t("prototypeInsertImage") },
-    { value: "game", label: t("prototypeInsertGame") },
-    { value: "h5", label: t("prototypeInsertH5") },
-    { value: "repeat", label: t("prototypeInsertRepeat") },
-    { value: "tool", label: t("prototypeInsertTool") },
+  const insertTools = [
+    { value: "text", label: t("prototypeInsertText"), Icon: Type },
+    { value: "formula", label: t("prototypeInsertFormula"), Icon: Sigma },
+    { value: "shape", label: t("prototypeInsertShape"), Icon: Shapes },
+    { value: "image", label: t("prototypeInsertImage"), Icon: ImagePlus },
+    { value: "game", label: t("prototypeInsertGame"), Icon: Gamepad2 },
+    { value: "h5", label: t("prototypeInsertH5"), Icon: FileCode2 },
+    { value: "tool", label: t("prototypeInsertTool"), Icon: Wrench },
   ];
 
+  const insertToolbar = (
+    <>
+      <span id="courseware-insert-prototype-hint" className="sr-only">{t("prototypeInsertionSyncGate")}</span>
+      <CoursewareEditorToolbar className="flex-nowrap justify-end" aria-label={t("contentInsertion")} aria-describedby="courseware-insert-prototype-hint">
+        {insertTools.map(({ value, label, Icon }) => (
+          <CoursewareEditorToolbarButton
+            key={value}
+            aria-label={label}
+            title={label}
+            disabled={!canInsertContent}
+            onClick={() => record(
+              t("prototypeHistoryInsertion"),
+              t("prototypeHistoryInsertionDetail", { kind: label }),
+            )}
+          >
+            <Icon className="size-4" />
+          </CoursewareEditorToolbarButton>
+        ))}
+      </CoursewareEditorToolbar>
+    </>
+  );
+
   return (
-    <div data-courseware-step2-prototype data-persistence="none" className="space-y-4 py-4">
+    <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as PrototypeTab)}>
+      {toolbarTarget ? createPortal(insertToolbar, toolbarTarget) : null}
+      {tabsTarget ? createPortal(
+        <TabsList className="grid h-8 w-full grid-cols-3">
+          <TabsTrigger value="adjust" className="px-2 text-xs">{t("prototypeTabAdjust")}</TabsTrigger>
+          <TabsTrigger value="layout" className="px-2 text-xs">{t("prototypeTabLayout")}</TabsTrigger>
+          <TabsTrigger value="replace" className="px-2 text-xs">{t("prototypeTabReplace")}</TabsTrigger>
+        </TabsList>,
+        tabsTarget,
+      ) : null}
+      <div data-courseware-step2-prototype data-persistence="none" className="space-y-4 py-4">
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-2">
           <Badge variant="secondary">{t("prototypeBadge")}</Badge>
@@ -129,14 +185,6 @@ export function CoursewareCapabilityPrototype({
               : t("prototypeUnknownSourceHint")}
         </p>
       </div>
-
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as PrototypeTab)}>
-        <TabsList className="grid h-auto w-full grid-cols-4">
-          <TabsTrigger value="adjust" className="px-1.5 text-xs">{t("prototypeTabAdjust")}</TabsTrigger>
-          <TabsTrigger value="layout" className="px-1.5 text-xs">{t("prototypeTabLayout")}</TabsTrigger>
-          <TabsTrigger value="replace" className="px-1.5 text-xs">{t("prototypeTabReplace")}</TabsTrigger>
-          <TabsTrigger value="insert" className="px-1.5 text-xs">{t("prototypeTabInsert")}</TabsTrigger>
-        </TabsList>
 
         <TabsContent value="adjust" className="space-y-4">
           <div className="flex items-center gap-2 text-xs font-medium text-ink">
@@ -280,46 +328,6 @@ export function CoursewareCapabilityPrototype({
           </Button>
         </TabsContent>
 
-        <TabsContent value="insert" className="space-y-4">
-          <div className="flex items-center gap-2 text-xs font-medium text-ink">
-            <Plus className="size-4 text-crater" />
-            {t("contentInsertion")}
-          </div>
-          {canInsertContent ? (
-            <>
-              <CoursewareEditorActionGrid>
-                {insertKinds.map((kind) => (
-                  <SelectableButton
-                    key={kind.value}
-                    selected={insertKind === kind.value}
-                    onClick={() => setInsertKind(kind.value)}
-                  >
-                    {kind.label}
-                  </SelectableButton>
-                ))}
-              </CoursewareEditorActionGrid>
-              <CapabilityNotice>{t("prototypeInsertionSyncGate")}</CapabilityNotice>
-              <Button
-                type="button"
-                size="sm"
-                className="w-full"
-                onClick={() => record(
-                  t("prototypeHistoryInsertion"),
-                  t("prototypeHistoryInsertionDetail", {
-                    kind: insertKinds.find((kind) => kind.value === insertKind)?.label ?? "—",
-                  }),
-                )}
-              >
-                <Eye className="size-4" />
-                {t("prototypePreviewInsertion")}
-              </Button>
-            </>
-          ) : (
-            <CapabilityNotice>{t(sourceRuntime ? "prototypeInsertSourceBlocked" : "prototypeUnknownBlocked")}</CapabilityNotice>
-          )}
-        </TabsContent>
-      </Tabs>
-
       <section className="border-t border-line pt-4" aria-label={t("prototypeHistoryTitle")}>
         <div className="flex items-center justify-between gap-2">
           <h3 className="text-xs font-medium text-ink">{t("prototypeHistoryTitle")}</h3>
@@ -369,6 +377,7 @@ export function CoursewareCapabilityPrototype({
           </Button>
         </div>
       </section>
-    </div>
+      </div>
+    </Tabs>
   );
 }

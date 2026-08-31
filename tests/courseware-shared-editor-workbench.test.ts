@@ -20,7 +20,7 @@ describe("shared courseware editor workbench", () => {
     expect(microcourse).toContain('adapter="courseware-composition-v1"');
   });
 
-  it("shares editor header, body, canvas frame and action-grid primitives", () => {
+  it("shares editor shell, canvas, action-grid and top-toolbar primitives", () => {
     const shared = read("src", "features", "courseware-doc", "CoursewareEditorWorkbench.tsx");
     const composition = read("src", "features", "teacher-microcourses", "CoursewareCompositionWorkbench.tsx");
     const prototype = read("src", "features", "courseware-studio", "CoursewareCapabilityPrototype.tsx");
@@ -30,10 +30,17 @@ describe("shared courseware editor workbench", () => {
       "CoursewareEditorBody",
       "CoursewareEditorCanvasFrame",
       "CoursewareEditorActionGrid",
+      "CoursewareEditorToolbar",
+      "CoursewareEditorToolbarButton",
+      "CoursewareEditorToolbarLabel",
     ]) expect(shared).toContain(`function ${primitive}`);
     expect(composition).toContain("<CoursewareEditorHeader");
     expect(composition).toContain("<CoursewareEditorCanvasFrame");
+    expect(composition).toContain("<CoursewareEditorToolbar");
+    expect(composition).toContain("<CoursewareEditorToolbarButton");
     expect(prototype).toContain("<CoursewareEditorActionGrid");
+    expect(prototype).toContain("<CoursewareEditorToolbar");
+    expect(prototype).toContain("<CoursewareEditorToolbarButton");
   });
 
   it("reuses the mature preview workspace for read-only microcourse variants", () => {

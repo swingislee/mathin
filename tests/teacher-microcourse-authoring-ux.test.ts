@@ -68,7 +68,9 @@ describe("teacher microcourse authoring UX", () => {
     expect(editor).toContain("workbenchRef.current?.rename?.(value)");
     expect(workbench).toContain("CoursewareEditorHeader");
     expect(workbench).toContain("CoursewareEditorCanvasFrame");
-    expect(workbench).toContain('role="toolbar"');
+    expect(workbench).toContain("CoursewareEditorToolbar");
+    expect(workbench).toContain("CoursewareEditorToolbarButton");
+    expect(workbench).toContain("CoursewareEditorToolbarLabel");
     expect(workbench).toContain("iconOnly onCreated");
     expect(workbench).toContain("iconOnly onSaved");
     expect(workbench).not.toContain('id="composition-insert-title"');
