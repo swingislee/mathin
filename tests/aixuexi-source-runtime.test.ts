@@ -8,6 +8,7 @@ import {
 import {
   collectSourceRuntimeBindingKeys,
   markSourceRuntimeNestedH5Url,
+  scopeSourceRuntimeBindings,
   sourceRuntimePageDocSchema,
   type SourceRuntimePageDoc,
 } from "../src/features/courseware-doc/source-runtime-schema";
@@ -84,6 +85,28 @@ describe("producer-owned Aixuexi source runtime", () => {
       ...doc,
       bindings: { ...doc.bindings, routes: [{ path: "//remote", bindingKey: key("f") }] },
     }).success).toBe(false);
+  });
+
+  it("resolves only bindings declared by the source document", () => {
+    const doc = sourceRuntimeDoc();
+    expect(scopeSourceRuntimeBindings(doc, [
+      { bindingKey: key("a"), role: "obsolete-runtime" },
+      { bindingKey: key("b"), role: "runtime" },
+      { bindingKey: key("e"), role: "image" },
+      { bindingKey: key("f"), role: "route" },
+    ])).toEqual([
+      { bindingKey: key("b"), role: "runtime" },
+      { bindingKey: key("e"), role: "image" },
+      { bindingKey: key("f"), role: "route" },
+    ]);
+  });
+
+  it("fails closed when the snapshot misses a declared source binding", () => {
+    const doc = sourceRuntimeDoc();
+    expect(() => scopeSourceRuntimeBindings(doc, [
+      { bindingKey: key("b") },
+      { bindingKey: key("e") },
+    ])).toThrow("SOURCE_RUNTIME_BINDING_MISSING");
   });
 
   it("marks nested H5 routes without losing existing query or fragment state", () => {
