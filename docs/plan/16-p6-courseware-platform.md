@@ -8,9 +8,9 @@
 >
 > **当前施工**：P6-AIX-2 已于 2026-08-13 关闭；当前由 R1-9/P6-9 采集 1305 讲正式来源 inventory、Storage/H5 对象审计与非执行者复核。
 >
-> **剩余项**：P6-9 全局量化验收和正式生产 release-1 重建见 doc 25 R1-9/15/18；§14 的 `DEV-CW-1` Step 1/2 已获产品负责人确认，新增 Step 2A“正式课件与微课使用同一个编辑组件”当前为 `READY FOR USER AUDIT`；未授权 Step 3、schema、数据写入、批量数据或生产变更，本阶段也未授权任何生产清理。
+> **剩余项**：P6-9 全局量化验收和正式生产 release-1 重建见 doc 25 R1-9/15/18；§14 的 `DEV-CW-1` Step 1/2 与 Step 2A“正式课件与微课使用同一个编辑组件”已随 `05a1027…` 发布生产，机器 postflight 通过，待生产人工视觉与微课回归验收；未授权 Step 3、schema、数据写入、批量数据或生产清理。
 >
-> **最后核对**：2026-08-31；§13 以前的来源与生产基线结论沿用原证据，§14 只依据当前仓库和本机 Docker 开发库只读核对，不代表 Xiaomi/生产事实。
+> **最后核对**：2026-08-31；§13 以前的来源与生产基线结论沿用原证据，§14 Step 2A 已有 Xiaomi app-only release `20260831-052938 / 05a1027…` 与机器 postflight；未执行课程导入、schema、数据库或 Storage 写入，生产产品验收仍 pending。
 
 > 本文是 P6 的权威执行计划，地位等同 `08-p4-classroom-whiteboard.md` 之于 P4。前置阅读：`00-overview.md`、`04-roadmap.md`、`10-school-backend.md` §4.3（模板/覆盖层/冻结）、`08-p4-classroom-whiteboard.md` §3.4/§3.6（课堂离线栈与课件页模型）。
 >

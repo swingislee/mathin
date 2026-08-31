@@ -8,13 +8,13 @@
 >
 > **SML 暂停位置**：`SML-0 · 合同与金标冻结`；空间数学可按独立权限或 Feature Flag 并行，不进入 R1-Live Gate。
 >
-> **当前运行状态**：Gate 1 已通过，Gate 2 仍等待正式教师点名持久再读与权限对照。2026-08-30 讲次课件预览 hotfix preflight 已只读确认 Xiaomi 数据库 ledger=`236`、head=`20260830000700_teacher_microcourse_editor_unification`，当时应用已运行 `76f0f9a…`；本轮只把来源提交 `50a1648…` 移植为生产候选 `a165004…`，current/previous=`20260830-080555` / `a165004…` 与 `20260830-045421` / `76f0f9a…`。本地及 Xiaomi production build、原子 release、健康/鉴权/bundle/业务不变量 postflight 通过；未执行 migration，岗位、班课、微课、课程 release、审核快照和 Storage 未写入。生产管理员 verified MFA=`1`，教师/教研岗位成员=`6/4`；班级/课次/报名/点名与 Storage=`4/19/1/0/125917`，Storage bytes=`51524182412`，`operational_errors=1956` 且发布后无增量。课堂、教师微课重构及既有 hotfix 的产品人工验收仍分别 pending，不关闭 Gate 2。
+> **当前运行状态**：Gate 1 已通过，Gate 2 仍等待正式教师点名持久再读与权限对照。2026-08-31 课件 session 修复以真实生产 `6e0b5bd…` 为基线生成隔离候选 `05a1027…`，集中发布爱学习/Mofaxiao 来源运行时与预览加载根修、X+ 动画体积门及统一课件编辑工作台；current/previous=`20260831-052938` / `05a1027…` 与 `20260830-084610` / `6e0b5bd…`。本地及 Xiaomi production build、原子 release、健康/鉴权/bundle/业务不变量 postflight 通过；未执行导入或 migration，岗位、班课、微课、课程 release、审核快照和 Storage 未写入。生产数据库 ledger/head=`236 / 20260830000700_teacher_microcourse_editor_unification`，教师/教研岗位成员=`6/4`；班级/课次/报名/点名与 Storage=`4/19/1/0/125917`，Storage bytes=`51524182412`，`operational_errors=1956` 且发布后无增量。生产课件手感、统一编辑工作面及既有 hotfix 的人工验收仍分别 pending，不关闭 Gate 2。
 >
 > **当前 P0 状态**：2026-08-25 产品负责人确认内部教师更习惯手机号注册登录。`手机号或邮箱 + password` 已部署生产：手机号只接受绑定具体号码的一次性员工邀请，不发送/伪造验证码，不开放全局邀请码手机号注册，账号仍以单一 `auth.users.id` 为主体。机器 postflight 已通过；真实教师尚未消费手机号邀请并完成 password 登录，因此状态为 `DEPLOYED / PENDING USER ACCEPTANCE`。
 >
 > **双轨执行**：生产端由 1 名正式教师在现有正式班级、课次和花名册上持续试用，优先反馈 P0/核心 P1；开发端可并行尝试产品负责人选中的新功能。新功能只有在开发目标完成受影响检查并由产品负责人初步验收后，才成为生产候选；完成精确版本/迁移登记、生产 preflight、可回退发布和 postflight 后，才能记为生产已部署。开发通过不等于生产通过，新功能也不改变 Gate 2 的点名与权限退出条件。
 >
-> **核对日期**：2026-08-31；生产事实仍沿用 2026-08-30 已确认的 ledger/head=`236 / 20260830000700_teacher_microcourse_editor_unification`、应用 `a165004…`、讲次课件预览性能 hotfix 及去标识化 postflight；`76f0f9a…` 与 ledger 236 在该轮 preflight 前已运行，不把此前发布归因于该 hotfix。2026-08-31 新增 `DEV-CW-1` 规划登记，没有代码、schema、数据库、Storage 或生产写入。其余依据 active doc 00/25、代码与迁移、本机隔离验证、Xiaomi 运行核查和 `mathin-R1-Live-讨论稿.md`。
+> **核对日期**：2026-08-31；生产事实为 ledger/head=`236 / 20260830000700_teacher_microcourse_editor_unification`、应用 current=`05a1027…`、previous=`6e0b5bd…`，本轮 app-only 集中发布及去标识化 postflight 已登记；没有 schema、数据库、Storage 或课程导入写入。其余依据 active doc 00/25、代码与迁移、本机隔离验证、Xiaomi 运行核查和 `mathin-R1-Live-讨论稿.md`。
 
 ## 1. 两个交付事件
 
@@ -55,7 +55,7 @@ R1-Live 完成即代表 Mathin 进入公司内部生产使用。它产生的身�
 
 | Gate | 状态 | 已完成证据 | 唯一退出差距 |
 | --- | --- | --- | --- |
-| **Gate 1 · 可安全开始** | **PASS** | 生产目标组合指纹、部署和匿名计数已登记；危险 fixture/rebuild/import 拒绝 Xiaomi；唯一正式 admin 已完成 verified MFA，首名真实教师为 active `staff` 并有 `research`/`teacher` 岗位；生产 purge 仍要求当前数据库指纹、active manifest、显式 `purge_allowed` test 根和精确影响计数，当前准删数为 0。2026-08-30 postflight 数据库 ledger/head=`236 / 20260830000700_teacher_microcourse_editor_unification`，应用 current/previous=`20260830-080555` / `a165004…` 与 `20260830-045421` / `76f0f9a…`；原子发布健康门和 `operational_errors` 查询位置已知。最近 PostgreSQL 写前备份 `mathin-db-prechange-20260830T042220Z-tmc-unification-8b9b195` 与 PostgreSQL+Storage 同批次全量备份 `mathin-20260828T052842Z-teacher-microcourse-variant-087b497` 已核对 | 无。previous 实际回切、恢复演练、异机/静态加密备份和错误 release 标签属于 Production 1.0 |
+| **Gate 1 · 可安全开始** | **PASS** | 生产目标组合指纹、部署和匿名计数已登记；危险 fixture/rebuild/import 拒绝 Xiaomi；唯一正式 admin 已完成 verified MFA，首名真实教师为 active `staff` 并有 `research`/`teacher` 岗位；生产 purge 仍要求当前数据库指纹、active manifest、显式 `purge_allowed` test 根和精确影响计数，当前准删数为 0。2026-08-31 postflight 数据库 ledger/head=`236 / 20260830000700_teacher_microcourse_editor_unification`，应用 current/previous=`20260831-052938` / `05a1027…` 与 `20260830-084610` / `6e0b5bd…`；原子发布健康门和 `operational_errors` 查询位置已知。最近 PostgreSQL 写前备份 `mathin-db-prechange-20260830T042220Z-tmc-unification-8b9b195` 与 PostgreSQL+Storage 同批次全量备份 `mathin-20260828T052842Z-teacher-microcourse-variant-087b497` 已核对 | 无。previous 实际回切、恢复演练、异机/静态加密备份和错误 release 标签属于 Production 1.0 |
 | **Gate 2 · 首个真实教师闭环** | **BLOCKED** | 学生、班级、课次、报名、点名 UI/RPC 与 RLS 已实现；本轮运行时合同允许自由班/未完整课程启用，备课质量项、点名前置、资源预载和无 release 均不阻断开课；本机隔离固定账号 Golden Path 1/1 已完成建班→自动课次→`lead` 报名→教师保存迟到/备注→换页再读。生产已有 1 个 production 班级、15 个课次和 1 条 active 报名，主讲 1、学辅 0；学年修复只调整三类对象的周期引用，未升年级，应用已发布且健康 | 正式教师完成登录→进入课次→开课/点名→保存→刷新/重登再读；正式管理员可见，匿名及一个既有无权限主体不可见；P0/核心 P1=0 |
 
 `R1-Live-N` 表示当前只关闭 Gate N。Gate 1 通过后推进 `R1-Live-2`；Gate 2 通过后立即向第一批公司教师开放，不再追加新的上线 Gate。

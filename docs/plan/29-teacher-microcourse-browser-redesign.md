@@ -1,7 +1,7 @@
 # 29 · 教师微课课程浏览与维护体系重构
 
 > **规划状态**：`active`  
-> **当前状态**：教师微课 schema 已进入生产，数据库 ledger/head=`236 / 20260830000700_teacher_microcourse_editor_unification`。编辑器布局、预览反馈与课程选择修复先以隔离候选 `15e48ada…` 发布；随后确认生产 `teaching.teacher_microcourse_browser_v2` 仍为 version 1 / false，导致同一稳定 slug 在开发与生产进入不同页面。应用根修复已以隔离候选 `6e0b5bda…` 发布为 production release `20260830-084610`：v2 固化为 `teacher-microcourses` 的唯一主工作台，rollout flag 退出配置入口，双层 health 通过；产品页面验收继续进行
+> **当前状态**：教师微课 schema 已进入生产，数据库 ledger/head=`236 / 20260830000700_teacher_microcourse_editor_unification`。稳定 slug 主工作台根修复先以 `6e0b5bd…` 发布；正式课件/教师微课共用 `CoursewareEditorWorkbench` 与统一顶栏工具的 Step 2A 又随隔离候选 `05a1027…` 发布为 production release `20260831-052938`。本轮 app-only，数据库、微课、课程 release、审核快照和 Storage 零写入；机器 postflight 通过，生产页面与编辑手感验收继续进行
 > **适用范围**：教师微课课程族 `courseID` 页面、教师微课适用范围、使用场景配置、课程维护版本与默认版本管理  
 > **基线实现**：以 `fe2a1d9` 及其主线后续实现为当前重构起点  
 > **施工原则**：先完成隔离环境与本地数据验收；数据库迁移、权限、生产发布继续遵循项目现有授权与回退流程
@@ -1581,6 +1581,12 @@ teaching.teacher_microcourse_browser_v2
 - 正式课件以同样顺序展示文字、公式、图形、图片、游戏、H5、工具七枚图标；当前仍是无写入 Step 2 样机，来源不支持时保持 disabled，点击只进入会话级预览历史；
 - 正式右栏标题行承载微调、4:3、替换三种模式切换；插入页签和重复的插入按钮区退出右栏，当前页面身份、来源限制、影响预览与撤销仍在右栏正文；
 - 本轮没有 migration、数据库、Storage、release 或生产修改；TypeScript、受影响 ESLint、双语键 5323×2 和定向 Vitest 14/14 通过，状态为 Step 2A 修订待继续人工审计。
+
+2026-08-31 第十一轮集中发布已完成的 session 修复：
+
+- 以真实生产 current `6e0b5bd…` 建立隔离候选，只叠加尚未上线的来源运行时、预览加载、X+ 体积门和 Step 2A 统一编辑工作台；未重放已上线的历史课程修复；
+- 候选 `05a1027…` 已原子发布为 release `20260831-052938`，previous=`20260830-084610 / 6e0b5bd…`；定向 Vitest 72 项、全库 ESLint/TypeScript、双 production build、健康/鉴权/bundle/错误与业务不变量 postflight 通过；
+- 本轮未执行课程导入、migration、数据库或 Storage 写入。生产登录态的正式课件/教师微课统一工作面仍需产品负责人实际验收，Step 3 继续关闭。
 
 ---
 
