@@ -15,6 +15,7 @@ import {
   resolveInside,
   sourceRuntimeImportFingerprint,
   storageTargetsForPlan,
+  verifyLocalFile,
 } from "../scripts/cw-import.mjs";
 import { resolveCatalogVersion, unresolvedSourceRuntimeDrift } from "../scripts/aixuexi-import-all.mjs";
 
@@ -81,6 +82,23 @@ describe("P6 courseware importer", () => {
     expect(h5StoragePath("a".repeat(64), "images/169%3A%E6%8C%82%E4%BB%B6.png")).toBe(
       `packages/${"a".repeat(64)}/images/u_169_3A_E6_8C_82_E4_BB_B6.png`,
     );
+  });
+
+  it("hashes a shared upload file only once during a batch import", async () => {
+    const root = await mkdtemp(join(tmpdir(), "mathin-cw-import-cache-"));
+    const file = join(root, "shared-runtime.js");
+    const body = "shared source runtime";
+    await writeFile(file, body, "utf8");
+    let hashCalls = 0;
+    const hashFile = async () => {
+      hashCalls += 1;
+      return hash(body);
+    };
+
+    await verifyLocalFile(file, hash(body), Buffer.byteLength(body), "shared runtime", hashFile);
+    await verifyLocalFile(file, hash(body), Buffer.byteLength(body), "shared runtime", hashFile);
+
+    expect(hashCalls).toBe(1);
   });
   it("builds a complete sample import plan and preserves H5 launch query", async () => {
     const fixture = await createPackageFixture();
