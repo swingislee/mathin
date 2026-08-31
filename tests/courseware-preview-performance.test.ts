@@ -15,12 +15,15 @@ describe("courseware preview page-turn performance", () => {
 
     expect(preview).toContain("loadCoursewarePreviewPageAction");
     expect(preview).toContain("selectedIndex - 1, selectedIndex + 1");
+    expect(preview).toContain("warmCoursewarePreviewPage");
+    expect(preview).toContain("waitingForSelected");
+    expect(preview).toContain("setRendered(payload)");
     expect(preview).toContain("window.history.replaceState");
     expect(preview).toContain("new Map<string, Promise<CoursewarePreviewPagePayload>>");
     expect(preview).not.toContain("href: pageHrefs[index]");
     expect(action).toContain('authorizedClient("course.view")');
     expect(pageLoader).toContain('.from("cw_lecture_releases")');
-    expect(data).toContain("scopeSourceRuntimeBindings(doc, snapshotEntry.bindings)");
+    expect(data).toContain("scopeCoursewareDocBindings(doc, snapshotEntry.bindings)");
     expect(data).toContain('bindingQuery.in("binding_key", [...requiredBindingKeys])');
     expect(pageLoader).not.toContain('.from("course_lectures")');
     expect(pageLoader).not.toContain('.from("cw_lecture_track_heads")');

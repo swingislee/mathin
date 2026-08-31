@@ -4,14 +4,14 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getSupabaseConfig } from "@/lib/supabase/config";
 import { collectPostgrestRowsInBatches } from "@/lib/supabase/postgrest-batches";
-import { parseCoursewareDoc, type CoursewareDoc } from "@/features/courseware-doc/document";
+import {
+  collectCoursewareDocBindingKeys,
+  parseCoursewareDoc,
+  scopeCoursewareDocBindings,
+  type CoursewareDoc,
+} from "@/features/courseware-doc/document";
 import { buildH5EntryUrl, type H5LaunchQuery, type ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 import { PAGE_DOC_VERSION } from "@/features/courseware-doc/schema";
-import {
-  collectSourceRuntimeBindingKeys,
-  isSourceRuntimePageDoc,
-  scopeSourceRuntimeBindings,
-} from "@/features/courseware-doc/source-runtime-schema";
 
 const SIGNED_URL_TTL_SECONDS = 60 * 60;
 export const COURSEWARE_TRACKS = ["native-16x9", "adapted-4x3"] as const;
@@ -640,9 +640,7 @@ export async function loadCoursewareStudioPage(lectureId: string, pageDocId: str
         supabase,
         pageDocId,
         track,
-        isSourceRuntimePageDoc(activeRevision.doc)
-          ? collectSourceRuntimeBindingKeys(activeRevision.doc)
-          : undefined,
+        collectCoursewareDocBindingKeys(activeRevision.doc) ?? undefined,
       ),
       imageAssetUsage: {},
       copyTargets: [],
@@ -661,7 +659,12 @@ export async function loadCoursewareStudioPage(lectureId: string, pageDocId: str
       .eq("lecture_id", lectureId)
       .eq("track", track)
       .order("release_no", { ascending: false }),
-    resolveEditorBindingUrls(supabase, pageDocId, track),
+    resolveEditorBindingUrls(
+      supabase,
+      pageDocId,
+      track,
+      collectCoursewareDocBindingKeys(activeRevision.doc) ?? undefined,
+    ),
     loadImageAssetUsage(supabase, pageDocId, track),
     supabase
       .from("course_lectures")
@@ -712,7 +715,7 @@ export async function loadCoursewareStudioRenderPage(
     supabase,
     pageDocId,
     track,
-    isSourceRuntimePageDoc(doc) ? collectSourceRuntimeBindingKeys(doc) : undefined,
+    collectCoursewareDocBindingKeys(doc) ?? undefined,
   );
   return {
     revisionId: revision.id,
@@ -774,6 +777,11 @@ async function resolveEditorBindingUrls(
   if (requiredBindingKeys) bindingQuery = bindingQuery.in("binding_key", [...requiredBindingKeys]);
   const { data: bindings, error: bindingError } = await bindingQuery;
   if (bindingError) throw new Error(bindingError.message);
+  if (requiredBindingKeys) {
+    const available = new Set((bindings ?? []).map((binding) => binding.binding_key));
+    const missing = [...requiredBindingKeys].filter((bindingKey) => !available.has(bindingKey));
+    if (missing.length > 0) throw new Error(`COURSEWARE_DOC_BINDING_MISSING: ${missing.join(",")}`);
+  }
   if (!bindings?.length) return {};
   const sharedIds = [...new Set(bindings.map((binding) => binding.shared_asset_id))];
   const [assets, variantHeads] = await Promise.all([
@@ -949,26 +957,28 @@ async function materializeLecturePreviewPage(
   if (revisionError) throw new Error(revisionError.message);
   if (!revision) throw new Error(`RELEASE_SNAPSHOT_INCOMPLETE: ${pageMeta.pageDocId}`);
   const doc = parseCoursewareDoc(revision.doc);
-  const scopedSnapshotEntry = isSourceRuntimePageDoc(doc)
-    ? { ...snapshotEntry, bindings: scopeSourceRuntimeBindings(doc, snapshotEntry.bindings) }
-    : snapshotEntry;
-  const requiredBindingKeys = isSourceRuntimePageDoc(doc)
-    ? collectSourceRuntimeBindingKeys(doc)
-    : undefined;
-  let bindingQuery = supabase
-    .from("cw_page_asset_bindings")
-    .select("binding_key, kind, launch_query")
-    .eq("page_doc_id", pageMeta.pageDocId)
-    .eq("track", track);
-  if (requiredBindingKeys) bindingQuery = bindingQuery.in("binding_key", [...requiredBindingKeys]);
-  const { data: bindingRows, error: bindingRowsError } = await bindingQuery;
-  if (bindingRowsError) throw new Error(bindingRowsError.message);
-  const scopedBindingRows = isSourceRuntimePageDoc(doc)
-    ? scopeSourceRuntimeBindings(
+  const requiredBindingKeys = collectCoursewareDocBindingKeys(doc);
+  const scopedSnapshotEntry = requiredBindingKeys === null
+    ? snapshotEntry
+    : { ...snapshotEntry, bindings: scopeCoursewareDocBindings(doc, snapshotEntry.bindings) };
+  let bindingRows: Array<{ binding_key: string; kind: string; launch_query: unknown }> = [];
+  if (requiredBindingKeys === null || requiredBindingKeys.size > 0) {
+    let bindingQuery = supabase
+      .from("cw_page_asset_bindings")
+      .select("binding_key, kind, launch_query")
+      .eq("page_doc_id", pageMeta.pageDocId)
+      .eq("track", track);
+    if (requiredBindingKeys !== null) bindingQuery = bindingQuery.in("binding_key", [...requiredBindingKeys]);
+    const result = await bindingQuery;
+    if (result.error) throw new Error(result.error.message);
+    bindingRows = result.data ?? [];
+  }
+  const scopedBindingRows = requiredBindingKeys === null
+    ? bindingRows
+    : scopeCoursewareDocBindings(
       doc,
-      (bindingRows ?? []).map((binding) => ({ ...binding, bindingKey: binding.binding_key })),
-    )
-    : (bindingRows ?? []);
+      bindingRows.map((binding) => ({ ...binding, bindingKey: binding.binding_key })),
+    );
 
   const bindingUrls = await resolveSnapshotBindingUrls(supabase, [scopedSnapshotEntry], scopedBindingRows);
   return {

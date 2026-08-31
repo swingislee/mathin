@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { loadCoursewarePreviewPageAction } from "@/features/courseware-preview/actions";
 import { CoursewarePreviewWorkspace } from "@/features/courseware-preview/CoursewarePreviewWorkspace";
+import { warmCoursewarePreviewPage } from "@/features/courseware-preview/preload";
 import { isSourceRuntimePageDoc } from "@/features/courseware-doc/source-runtime-schema";
 import { isSpatialPageDoc } from "@/features/courseware-doc/spatial";
 import { StagePreview } from "@/features/courseware-studio/StagePreview";
@@ -79,8 +80,13 @@ function LectureCoursewarePreviewState({
     preview.page.pageDocId,
     { page: preview.page, bindingUrls: preview.bindingUrls },
   ]]));
+  const [rendered, setRendered] = useState<CoursewarePreviewPagePayload>({
+    page: preview.page,
+    bindingUrls: preview.bindingUrls,
+  });
   const [errors, setErrors] = useState(new Map<string, string>());
   const pendingRef = useRef(new Map<string, Promise<CoursewarePreviewPagePayload>>());
+  const selectedPageIdRef = useRef(preview.page.pageDocId);
 
   const ensurePage = useCallback((pageDocId: string) => {
     const cached = cache.get(pageDocId);
@@ -98,8 +104,9 @@ function LectureCoursewarePreviewState({
       releaseId: preview.release.id,
       track: preview.track,
       pageDocId,
-    }).then((result) => {
+    }).then(async (result) => {
       if (!result.ok) throw new Error(result.code);
+      await warmCoursewarePreviewPage(result.data.page.doc, result.data.bindingUrls);
       setCache((current) => new Map(current).set(pageDocId, result.data));
       setErrors((current) => {
         if (!current.has(pageDocId)) return current;
@@ -140,47 +147,59 @@ function LectureCoursewarePreviewState({
     const page = preview.pages[index];
     const href = pageHrefs[index];
     if (!page || !href) return;
+    selectedPageIdRef.current = page.pageDocId;
     setSelectedIndex(index);
     replacePreviewUrl(href);
-    void ensurePage(page.pageDocId).catch(() => undefined);
-  }, [ensurePage, pageHrefs, preview.pages]);
+    const cached = cache.get(page.pageDocId);
+    if (cached) {
+      setRendered(cached);
+      return;
+    }
+    void ensurePage(page.pageDocId).then((payload) => {
+      if (selectedPageIdRef.current === page.pageDocId) setRendered(payload);
+    }).catch(() => undefined);
+  }, [cache, ensurePage, pageHrefs, preview.pages]);
 
   const selectedMeta = preview.pages[selectedIndex] ?? preview.pages[0];
-  const loaded = selectedMeta ? cache.get(selectedMeta.pageDocId) : undefined;
   const loadError = selectedMeta ? errors.get(selectedMeta.pageDocId) : undefined;
-  const previewAspect = pageAspect(loaded?.page, selectedMeta?.aspect ?? "16:9");
-  const isFourThree = (loaded?.page.aspect ?? selectedMeta?.aspect) === "4:3";
+  const waitingForSelected = selectedMeta?.pageDocId !== rendered.page.pageDocId;
+  const previewAspect = pageAspect(rendered.page, selectedMeta?.aspect ?? "16:9");
+  const isFourThree = rendered.page.aspect === "4:3";
 
-  const previewContent = loaded ? (
-    <StagePreview
-      doc={loaded.page.doc}
-      bindingUrls={loaded.bindingUrls}
-      stageMode={isFourThree ? "board43" : "natural"}
-      className="size-full"
-    />
-  ) : loadError ? (
-    <div className="grid size-full place-items-center bg-card px-6 text-center">
-      <div>
-        <p className="text-sm text-danger">{t("previewPageLoadFailed")}</p>
-        {selectedMeta ? (
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            className="mt-3"
-            onClick={() => void ensurePage(selectedMeta.pageDocId).catch(() => undefined)}
-          >
-            {commonT("retry")}
-          </Button>
-        ) : null}
-      </div>
-    </div>
-  ) : (
-    <div className="grid size-full place-items-center bg-card" aria-live="polite">
-      <div className="flex items-center gap-2 text-sm text-muted">
-        <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" />
-        {t("previewPageLoading", { page: selectedIndex + 1 })}
-      </div>
+  const previewContent = (
+    <div className="relative size-full">
+      <StagePreview
+        doc={rendered.page.doc}
+        bindingUrls={rendered.bindingUrls}
+        stageMode={isFourThree ? "board43" : "natural"}
+        className="size-full"
+      />
+      {waitingForSelected && !loadError ? (
+        <div className="pointer-events-none absolute right-5 top-5 z-20 flex items-center gap-2 rounded-full border border-line bg-card/90 px-3 py-1.5 text-xs text-muted shadow-sm" aria-live="polite">
+          <LoaderCircle className="size-3.5 animate-spin motion-reduce:animate-none" />
+          {t("previewPageLoading", { page: selectedIndex + 1 })}
+        </div>
+      ) : null}
+      {waitingForSelected && loadError ? (
+        <div className="absolute inset-0 z-20 grid place-items-center bg-card/45 px-6 text-center">
+          <div className="rounded-xl border border-line bg-card px-5 py-4 shadow-sm">
+            <p className="text-sm text-danger">{t("previewPageLoadFailed")}</p>
+            {selectedMeta ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                className="mt-3"
+                onClick={() => void ensurePage(selectedMeta.pageDocId).then((payload) => {
+                  if (selectedPageIdRef.current === selectedMeta.pageDocId) setRendered(payload);
+                }).catch(() => undefined)}
+              >
+                {commonT("retry")}
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 
