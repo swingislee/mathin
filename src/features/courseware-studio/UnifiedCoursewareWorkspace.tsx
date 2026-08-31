@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, CircleAlert, ImageIcon, LayoutTemplate, Plus, Type } from "lucide-react";
+import { ChevronLeft, ChevronRight, CircleAlert } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import type { LectureWorkspaceDetail } from "@/features/school/curriculum/types";
 import type { CoursewareLecturePreview, CoursewareTrack } from "./data";
+import { CoursewareCapabilityPrototype } from "./CoursewareCapabilityPrototype";
 import { FittedCoursewareCanvas } from "./FittedCoursewareCanvas";
 import { StagePreview } from "./StagePreview";
 
@@ -96,29 +97,6 @@ function TrackCanvas({
   );
 }
 
-function CapabilityRow({
-  icon,
-  title,
-  description,
-  pendingLabel,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-  pendingLabel: string;
-}) {
-  return (
-    <li className="flex items-start gap-3 py-3">
-      <span className="mt-0.5 text-crater">{icon}</span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-sm font-medium text-ink">{title}</span>
-        <span className="mt-0.5 block text-xs leading-5 text-muted">{description}</span>
-      </span>
-      <Badge variant="outline" className="shrink-0">{pendingLabel}</Badge>
-    </li>
-  );
-}
-
 export async function UnifiedCoursewareWorkspace({
   detail,
   nativePreview,
@@ -171,7 +149,7 @@ export async function UnifiedCoursewareWorkspace({
           { value: detail.variant.title },
           { value: t("pageContext", { page: pageIndex, total: pages.length }) },
         ]}
-        status={<Badge variant="outline">{t("readOnlyAudit")}</Badge>}
+        status={<Badge variant="outline">{t("prototypeAudit")}</Badge>}
       />}
       navigation={(
         <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
@@ -255,23 +233,20 @@ export async function UnifiedCoursewareWorkspace({
             <h2 className="text-sm font-medium text-ink">{t("propertiesTitle")}</h2>
           </div>
           <ScrollArea className="min-h-0 flex-1">
-            <div className="divide-y divide-line px-4">
+            <div className="px-4">
               <section className="py-4">
-                <p className="text-xs leading-5 text-muted">{t("readOnlyHint")}</p>
-                <dl className="mt-3 space-y-2 text-xs">
+                <dl className="space-y-2 text-xs">
                   <div className="flex items-start justify-between gap-3"><dt className="text-muted">{t("pageIdentity")}</dt><dd className="max-w-[11rem] truncate text-right text-ink">{selectedPage?.pageDocId ?? "—"}</dd></div>
                   <div className="flex items-start justify-between gap-3"><dt className="text-muted">{t("sourceType")}</dt><dd className="text-right text-ink">{selectedDoc?.docVersion ?? "—"}</dd></div>
                   <div className="flex items-start justify-between gap-3"><dt className="text-muted">{t("entryTrack")}</dt><dd className="text-right text-ink">{entryTrack === "adapted-4x3" ? t("canvasAdapted") : t("canvasNative")}</dd></div>
                 </dl>
               </section>
-              <section className="py-4">
-                <h3 className="text-xs font-medium uppercase tracking-[0.12em] text-muted">{t("capabilitiesTitle")}</h3>
-                <ul className="mt-1 divide-y divide-line/70">
-                  <CapabilityRow icon={<Type size={16} />} title={t("contentEditing")} description={t("contentEditingHint")} pendingLabel={t("step2Pending")} />
-                  <CapabilityRow icon={<LayoutTemplate size={16} />} title={t("layoutAdaptation")} description={t("layoutAdaptationHint")} pendingLabel={t("step2Pending")} />
-                  <CapabilityRow icon={<ImageIcon size={16} />} title={t("resourceReplacement")} description={t("resourceReplacementHint")} pendingLabel={t("step2Pending")} />
-                  <CapabilityRow icon={<Plus size={16} />} title={t("contentInsertion")} description={t("contentInsertionHint")} pendingLabel={t("step2Pending")} />
-                </ul>
+              <section className="border-t border-line">
+                <CoursewareCapabilityPrototype
+                  sourceType={selectedDoc?.docVersion ?? "unknown"}
+                  activeCanvas={visibleCanvas}
+                  hasAdaptedPreview={Boolean(adaptedPreview)}
+                />
               </section>
             </div>
           </ScrollArea>
