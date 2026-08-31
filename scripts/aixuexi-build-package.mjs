@@ -111,6 +111,54 @@ export function assertAixuexiPlayerRuntimeCatalog(playerRuntime, expected) {
   return playerRuntime;
 }
 
+export function assertAixuexiPortableRuntimeManifest(manifest, expected) {
+  const invalid = (reason) => fail(`invalid portable runtime contract: ${reason}`);
+  if (!manifest || typeof manifest !== "object"
+      || manifest.schemaVersion !== 1
+      || manifest.packageKey !== expected.packageKey
+      || !HASH.test(manifest.inputFingerprint ?? "")
+      || !Array.isArray(manifest.scopeLessonIds)
+      || !Array.isArray(manifest.fonts)
+      || !Array.isArray(manifest.files)
+      || typeof manifest.requiresQuestionImageSizing !== "boolean") {
+    invalid("header");
+  }
+  const expectedLessons = [...new Set(expected.coursewareIds)].sort((left, right) => left.localeCompare(right, "en"));
+  const actualLessons = [...manifest.scopeLessonIds].sort((left, right) => left.localeCompare(right, "en"));
+  if (JSON.stringify(actualLessons) !== JSON.stringify(expectedLessons)) invalid("lesson scope");
+
+  const files = new Map();
+  for (const file of manifest.files) {
+    if (!file || typeof file !== "object" || !HASH.test(file.sha256 ?? "")
+        || !Number.isInteger(file.byteCount) || file.byteCount < 0 || files.has(file.path)) {
+      invalid("file ledger");
+    }
+    files.set(file.path, file);
+  }
+  if (!files.has("slide-runtime.css")) invalid("stylesheet ledger");
+  for (const coursewareId of actualLessons) {
+    const prefix = `pages/${coursewareId}/`;
+    if (![...files.keys()].some((file) => file.startsWith(prefix) && file.endsWith(".json"))) {
+      invalid(`missing pages for ${coursewareId}`);
+    }
+  }
+  for (const font of manifest.fonts) {
+    if (!font || typeof font !== "object" || !HASH.test(font.sourceHash ?? "")
+        || !HASH.test(font.outputHash ?? "") || !["woff2", "woff", "ttf", "otf"].includes(font.extension)
+        || !Number.isInteger(font.originalBytes) || font.originalBytes <= 0
+        || !Number.isInteger(font.portableBytes) || font.portableBytes <= 0
+        || typeof font.subset !== "boolean") {
+      invalid("font ledger");
+    }
+    const portablePath = `fonts/${font.outputHash}.${font.extension}`;
+    const file = files.get(portablePath);
+    if (!file || file.sha256 !== font.outputHash || file.byteCount !== font.portableBytes) {
+      invalid(`font file ${font.outputHash}`);
+    }
+  }
+  return { manifest, files };
+}
+
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
 }
@@ -219,6 +267,8 @@ function parseArgs(argv) {
     stageH5: true,
     sourceRoot: path.resolve(process.cwd(), "..", "2026-07_mofaxiao_courseware"),
     outputRoot: null,
+    portableRuntimeRoot: null,
+    coursewareIds: [],
   };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -227,7 +277,13 @@ function parseArgs(argv) {
       options.stageH5 = false;
       continue;
     }
-    if (["--source-root", "--output-root", "--package-key"].includes(arg)) {
+    if (arg === "--courseware-id") {
+      const value = argv[++index];
+      if (!value || value.startsWith("--")) fail(`${arg} requires a value`);
+      options.coursewareIds.push(value);
+      continue;
+    }
+    if (["--source-root", "--output-root", "--package-key", "--portable-runtime-root"].includes(arg)) {
       const value = argv[++index];
       if (!value || value.startsWith("--")) fail(`${arg} requires a value`);
       options[arg.slice(2).replace(/-([a-z])/g, (_all, letter) => letter.toUpperCase())] = value;
@@ -239,6 +295,10 @@ function parseArgs(argv) {
   options.outputRoot = path.resolve(
     options.outputRoot ?? path.join(process.cwd(), ".tmp", "aixuexi-import", options.packageKey),
   );
+  options.portableRuntimeRoot = options.portableRuntimeRoot
+    ? path.resolve(options.portableRuntimeRoot)
+    : null;
+  options.coursewareIds = [...new Set(options.coursewareIds)].sort((left, right) => left.localeCompare(right, "en"));
   return options;
 }
 
@@ -390,6 +450,69 @@ export async function buildAixuexiPackage(options) {
     lectureCount: config.lectureCount,
   });
 
+  const requestedCoursewareIds = [...new Set(options.coursewareIds ?? [])]
+    .sort((left, right) => left.localeCompare(right, "en"));
+  const availableCoursewareIds = new Set(catalog.courses.map((course) => course.coursewareId));
+  const unknownCoursewareIds = requestedCoursewareIds.filter((coursewareId) => !availableCoursewareIds.has(coursewareId));
+  if (unknownCoursewareIds.length > 0) fail(`unknown courseware ids: ${unknownCoursewareIds.join(", ")}`);
+  if (options.portableRuntimeRoot && requestedCoursewareIds.length === 0) {
+    fail("--portable-runtime-root requires at least one --courseware-id");
+  }
+  const selectedCatalogCourses = catalog.courses.filter((course) => (
+    requestedCoursewareIds.length === 0 || requestedCoursewareIds.includes(course.coursewareId)
+  ));
+  const sortedCourses = [...selectedCatalogCourses].sort((left, right) => {
+    const grade = GRADE.get(left.grade) - GRADE.get(right.grade);
+    return grade || left.lessonIndex - right.lessonIndex;
+  });
+
+  let portableRuntime = null;
+  if (options.portableRuntimeRoot) {
+    const manifestPath = path.join(options.portableRuntimeRoot, "manifest.json");
+    const asserted = assertAixuexiPortableRuntimeManifest(await readJson(manifestPath), {
+      packageKey: options.packageKey,
+      coursewareIds: requestedCoursewareIds,
+    });
+    for (const [relativePath, ledger] of asserted.files) {
+      const file = resolveInside(options.portableRuntimeRoot, relativePath);
+      const content = await readFile(file);
+      if (content.byteLength !== ledger.byteCount || sha256(content) !== ledger.sha256) {
+        fail(`portable runtime file drifted: ${relativePath}`);
+      }
+    }
+    portableRuntime = {
+      root: options.portableRuntimeRoot,
+      manifest: asserted.manifest,
+      files: asserted.files,
+    };
+  }
+
+  const courseDocuments = new Map();
+  const sourcePages = new Map();
+  for (const catalogCourse of sortedCourses) {
+    const course = await readJson(resolveInside(siteRoot, catalogCourse.dataPath));
+    courseDocuments.set(catalogCourse.coursewareId, course);
+    for (const pageMeta of course.pages) {
+      const key = `${course.coursewareId}/${pageMeta.pageDatabaseId}`;
+      const sitePage = await readJson(resolveInside(siteRoot, pageMeta.dataPath));
+      if (portableRuntime) {
+        const portablePath = `pages/${course.coursewareId}/${pageMeta.pageDatabaseId}.json`;
+        const ledger = portableRuntime.files.get(portablePath);
+        if (!ledger) fail(`portable runtime misses ${portablePath}`);
+        const portablePage = await readJson(resolveInside(portableRuntime.root, portablePath));
+        if (portablePage.coursewareId !== sitePage.coursewareId
+            || portablePage.pageDatabaseId !== sitePage.pageDatabaseId
+            || portablePage.metadata?.sourceSha256 !== sitePage.metadata?.sourceSha256
+            || portablePage.metadata?.sourceSnapshotId !== sitePage.metadata?.sourceSnapshotId) {
+          fail(`portable runtime page provenance drifted: ${portablePath}`);
+        }
+        sourcePages.set(key, portablePage);
+      } else {
+        sourcePages.set(key, sitePage);
+      }
+    }
+  }
+
   await rm(outputRoot, { recursive: true, force: true });
   await mkdir(path.join(outputRoot, "page-docs"), { recursive: true });
   await mkdir(path.join(outputRoot, "h5-manifests"), { recursive: true });
@@ -440,29 +563,37 @@ export async function buildAixuexiPackage(options) {
   };
 
   let lottieRuntimeResource = null;
-  for (const item of siteManifest.items.filter((entry) => entry.kind === "page")) {
-    const page = await readJson(resolveInside(siteRoot, item.path));
+  for (const page of sourcePages.values()) {
     lottieRuntimeResource = (page.assets?.resources ?? []).find((resource) =>
       resource.kind === "script" && /(?:^|\/)lottie(?:\.min)?\.js(?:$|\?)/i.test(resource.normalizedUrl ?? resource.sourceUrl ?? ""),
     ) ?? null;
     if (lottieRuntimeResource) break;
   }
 
+  const requiresQuestionImageSizing = portableRuntime
+    ? portableRuntime.manifest.requiresQuestionImageSizing
+    : true;
   const runtimeSourcePaths = [...new Set([
     "slide-runtime.css", "itv-runtime.css", "player-runtime.json",
-    ...playerRuntime.questionImageSizingVariants.flatMap((item) => [item.jqueryRuntimePath, item.executionRuntimePath]),
+    ...(requiresQuestionImageSizing
+      ? playerRuntime.questionImageSizingVariants.flatMap((item) => [item.jqueryRuntimePath, item.executionRuntimePath])
+      : []),
   ])].sort((left, right) => left.localeCompare(right, "en"));
   const runtimeSourceFiles = new Map();
   for (const relativePath of runtimeSourcePaths) {
-    const sourceFile = resolveInside(siteRoot, relativePath);
+    const sourceFile = relativePath === "slide-runtime.css" && portableRuntime
+      ? resolveInside(portableRuntime.root, relativePath)
+      : resolveInside(siteRoot, relativePath);
     const content = await readFile(sourceFile);
     runtimeSourceFiles.set(relativePath, { sourceFile, content, sha256: sha256(content) });
   }
 
   const staticRoutes = {};
-  for (const variant of playerRuntime.questionImageSizingVariants) {
-    staticRoutes[`/api/aixuexi-player-runtime/jquery/${variant.jquerySha256}.js`] = `./${variant.jqueryRuntimePath}`;
-    staticRoutes[`/api/aixuexi-player-runtime/question-image/${variant.executionRuntimeSha256}.js`] = `./${variant.executionRuntimePath}`;
+  if (requiresQuestionImageSizing) {
+    for (const variant of playerRuntime.questionImageSizingVariants) {
+      staticRoutes[`/api/aixuexi-player-runtime/jquery/${variant.jquerySha256}.js`] = `./${variant.jqueryRuntimePath}`;
+      staticRoutes[`/api/aixuexi-player-runtime/question-image/${variant.executionRuntimeSha256}.js`] = `./${variant.executionRuntimePath}`;
+    }
   }
   const sourceViewer = await loadAixuexiSourceViewerRuntime(sourceRoot);
   const portableViewer = buildPortableAixuexiViewerRuntime({
@@ -488,6 +619,15 @@ export async function buildAixuexiPackage(options) {
       .map((entry) => ({ packagePath: `vendor/katex/fonts/${entry.name}`, sourceFile: path.join(katexRoot, "fonts", entry.name) })),
   ];
   for (const file of katexFiles) file.sha256 = await sha256File(file.sourceFile);
+  const portableFontFiles = portableRuntime
+    ? portableRuntime.manifest.fonts
+      .map((font) => ({
+        packagePath: `fonts/${font.outputHash}.${font.extension}`,
+        sourceFile: resolveInside(portableRuntime.root, `fonts/${font.outputHash}.${font.extension}`),
+        sha256: font.outputHash,
+      }))
+      .sort((left, right) => left.packagePath.localeCompare(right.packagePath, "en"))
+    : [];
 
   const runtimePackageHash = domainHash(
     "aixuexi-source-viewer-runtime-v1",
@@ -498,8 +638,10 @@ export async function buildAixuexiPackage(options) {
     sha256(portableViewer.viewerStyles),
     ...[...runtimeSourceFiles.entries()].map(([relativePath, file]) => `${relativePath}:${file.sha256}`),
     ...runtimeAssets.map((item) => `${item.objectHash}${item.extension}`),
+    ...portableFontFiles.map((file) => `${file.packagePath}:${file.sha256}`),
     ...katexFiles.map((file) => `${file.packagePath}:${file.sha256}`),
     lottieRuntimeResource?.objectSha256 ?? "no-lottie-runtime",
+    portableRuntime?.manifest.inputFingerprint ?? "source-site-runtime",
   );
   const runtimeStageRoot = path.join(outputRoot, "h5-staging", runtimePackageHash);
   const runtimeFiles = [];
@@ -528,6 +670,7 @@ export async function buildAixuexiPackage(options) {
       : sourceFile.content;
     await stageRuntimeFile(relativePath, sourceFile.sourceFile, content);
   }
+  for (const file of portableFontFiles) await stageRuntimeFile(file.packagePath, file.sourceFile);
   await stageRuntimeFile("viewer-runtime.css", path.join(siteRoot, "viewer-runtime.css"), rewriteRuntimeAssetUrls(portableViewer.viewerStyles));
   await stageRuntimeFile("viewer-runtime.js", path.join(siteRoot, "viewer-runtime.js"), portableViewer.viewerScript);
   await stageRuntimeFile("index.html", path.join(siteRoot, "index.html"), runtimeHtml);
@@ -551,8 +694,9 @@ export async function buildAixuexiPackage(options) {
     source: {
       kind: "aixuexi_source_viewer_runtime",
       packageKey: options.packageKey,
-      cssSha256: slideRuntime.cssSha256,
+      cssSha256: runtimeSourceFiles.get("slide-runtime.css").sha256,
       sourceFingerprint: portableViewer.sourceFingerprint,
+      portableRuntimeInputFingerprint: portableRuntime?.manifest.inputFingerprint ?? null,
     },
   });
 
@@ -601,13 +745,9 @@ export async function buildAixuexiPackage(options) {
     return usageKey;
   };
 
-  const sortedCourses = [...catalog.courses].sort((left, right) => {
-    const grade = GRADE.get(left.grade) - GRADE.get(right.grade);
-    return grade || left.lessonIndex - right.lessonIndex;
-  });
   for (const catalogCourse of sortedCourses) {
     const grade = GRADE.get(catalogCourse.grade);
-    const course = await readJson(resolveInside(siteRoot, catalogCourse.dataPath));
+    const course = courseDocuments.get(catalogCourse.coursewareId);
     const verificationPath = path.join(sourcePackageRoot, "offline-verification", `lesson-${course.coursewareId}.json`);
     const verification = await readJson(verificationPath);
     if (verification.status !== "complete"
@@ -639,7 +779,8 @@ export async function buildAixuexiPackage(options) {
     for (let index = 0; index < course.pages.length; index += 1) {
       const pageMeta = course.pages[index];
       const nextPage = course.pages[index + 1] ?? null;
-      const sourcePage = await readJson(resolveInside(siteRoot, pageMeta.dataPath));
+      const sourcePage = sourcePages.get(`${course.coursewareId}/${pageMeta.pageDatabaseId}`);
+      if (!sourcePage) fail(`${course.coursewareId}/${pageMeta.pageDatabaseId} is missing from the selected source scope`);
       if (sourcePage.layout?.adapter !== "aixuexi_page_v1"
           || sourcePage.layout?.projectionVersion !== SOURCE_PROJECTION_VERSION
           || sourcePage.reviewState?.mappingStatus !== "mapped") {

@@ -51,6 +51,24 @@
 
 ## 4. 构建与预检
 
+题目图片模块静态实装与字体裁剪由来源仓库产生，Mathin 只校验并封装来源 manifest。单讲增量先在来源仓库执行：
+
+```powershell
+pnpm courseware --config config/aixuexi-2026-xplus-sujiao-math.json aixuexi portable-runtime-export --lesson-id 1128951573
+```
+
+命令返回内容寻址的 `outputRoot`；相同页面、CSS、player runtime 和讲次范围会返回 `reused=true`，不会重复运行浏览器实装或字体裁剪。随后在 Mathin 按精确讲次封装：
+
+```powershell
+node scripts/aixuexi-build-package.mjs `
+  --package-key 2026-xplus-sujiao-math `
+  --courseware-id 1128951573 `
+  --portable-runtime-root <来源命令返回的 outputRoot> `
+  --output-root .tmp/aixuexi-xplus-1128951573
+```
+
+导入 seam 会逐文件核对 hash/字节数、讲次范围、页面来源快照与字体账本；Mathin 不执行题目图片尺寸算法，也不生成来源 DOM。`requiresQuestionImageSizing=false` 时，Viewer 包不再携带对应 jQuery/player 图片模块。
+
 每个 package 分别执行：
 
 ```powershell

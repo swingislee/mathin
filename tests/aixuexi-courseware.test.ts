@@ -9,6 +9,7 @@ import {
 } from "../src/features/courseware-doc/aixuexi-schema";
 import { buildImportSql } from "../scripts/cw-import.mjs";
 import {
+  assertAixuexiPortableRuntimeManifest,
   assertAixuexiPlayerRuntimeCatalog,
   aixuexiPackageDefinition,
   preserveSourceMarkup,
@@ -232,6 +233,50 @@ describe("Aixuexi courseware adapter", () => {
       expect(aixuexiPackageDefinition(packageKey)).not.toHaveProperty("playerRuntimeSchemaVersion");
       expect(aixuexiPackageDefinition(packageKey)).not.toHaveProperty("playerRuntimeDerivationVersion");
     }
+  });
+
+  it("accepts only a source-produced portable runtime with an exact lesson and font ledger", () => {
+    const sourceHash = key("a");
+    const outputHash = key("b");
+    const inputFingerprint = key("c");
+    const manifest = {
+      schemaVersion: 1,
+      packageKey: "2026-xplus-sujiao-math",
+      scopeLessonIds: ["1128951573"],
+      inputFingerprint,
+      requiresQuestionImageSizing: false,
+      fonts: [{
+        sourceHash,
+        outputHash,
+        extension: "woff2",
+        originalBytes: 1024,
+        portableBytes: 128,
+        subset: true,
+      }],
+      files: [
+        { path: `fonts/${outputHash}.woff2`, sha256: outputHash, byteCount: 128 },
+        { path: "pages/1128951573/14.json", sha256: key("d"), byteCount: 256 },
+        { path: "slide-runtime.css", sha256: key("e"), byteCount: 64 },
+      ],
+    };
+    expect(assertAixuexiPortableRuntimeManifest(manifest, {
+      packageKey: manifest.packageKey,
+      coursewareIds: ["1128951573"],
+    }).manifest).toBe(manifest);
+    expect(() => assertAixuexiPortableRuntimeManifest({
+      ...manifest,
+      scopeLessonIds: ["another-lesson"],
+    }, {
+      packageKey: manifest.packageKey,
+      coursewareIds: ["1128951573"],
+    })).toThrow(/lesson scope/);
+    expect(() => assertAixuexiPortableRuntimeManifest({
+      ...manifest,
+      files: manifest.files.filter((file) => !file.path.startsWith("fonts/")),
+    }, {
+      packageKey: manifest.packageKey,
+      coursewareIds: ["1128951573"],
+    })).toThrow(/font file/);
   });
 
   it("keeps the merged course package difficulty order", () => {
