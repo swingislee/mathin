@@ -92,6 +92,7 @@ type CoursewareAuthoringWorkbenchProps = Omit<ComponentProps<typeof Card>, "chil
   layout: "viewport" | "workspace";
   directory: CoursewareEditorDirectory;
   toolbar: ReactNode;
+  saveControls?: ReactNode;
   canvas: CoursewareEditorCanvas;
   inspector: CoursewareEditorInspector;
 };
@@ -118,6 +119,7 @@ export function CoursewareWorkbench(
   layout,
   directory,
   toolbar,
+  saveControls,
   canvas,
   inspector,
   className,
@@ -134,7 +136,7 @@ export function CoursewareWorkbench(
       data-courseware-editor-adapt-4x3={adapt4x3 ? "enabled" : "disabled"}
       data-courseware-editor-layout={layout}
       className={cn(
-        "grid min-h-0 min-w-0 grid-cols-1 grid-rows-[minmax(12rem,32dvh)_2.75rem_minmax(22rem,1fr)_2.75rem_minmax(12rem,30dvh)] overflow-hidden",
+        "grid min-h-0 min-w-0 grid-cols-1 grid-rows-[minmax(12rem,32dvh)_2.75rem_minmax(22rem,1fr)_minmax(12rem,30dvh)] overflow-hidden",
         viewportLayout
           ? "xl:grid-cols-[13rem_minmax(0,1fr)_22rem] xl:grid-rows-[2.75rem_minmax(0,1fr)]"
           : "@4xl/workspace:grid-cols-[224px_minmax(0,1fr)_320px] @4xl/workspace:grid-rows-[2.75rem_minmax(0,1fr)]",
@@ -169,12 +171,19 @@ export function CoursewareWorkbench(
         className={cn(
           "min-h-0 min-w-0 overflow-hidden border-b border-line",
           viewportLayout
-            ? "xl:col-start-2 xl:row-start-1"
-            : "@4xl/workspace:col-start-2 @4xl/workspace:row-start-1",
+            ? "xl:col-span-2 xl:col-start-2 xl:row-start-1"
+            : "@4xl/workspace:col-span-2 @4xl/workspace:col-start-2 @4xl/workspace:row-start-1",
         )}
       >
-        <div data-courseware-editor-part="insert-toolbar" className="flex size-full min-w-0 items-center px-3">
-          {toolbar}
+        <div data-courseware-editor-part="topbar" className="flex size-full min-w-0 items-center gap-3 px-3">
+          <div data-courseware-editor-part="insert-toolbar" className="min-w-0 flex-1">
+            {toolbar}
+          </div>
+          {saveControls ? (
+            <div data-courseware-editor-part="save-controls" className="ml-auto shrink-0">
+              {saveControls}
+            </div>
+          ) : null}
         </div>
       </div>
       <main
@@ -197,28 +206,18 @@ export function CoursewareWorkbench(
         ) : null}
       </main>
       <div
-        data-courseware-editor-slot="inspector-header"
-        className={cn(
-          "min-h-0 min-w-0 overflow-hidden border-y border-line",
-          viewportLayout
-            ? "xl:col-start-3 xl:row-start-1 xl:border-y-0 xl:border-b xl:border-l"
-            : "@4xl/workspace:col-start-3 @4xl/workspace:row-start-1 @4xl/workspace:border-y-0 @4xl/workspace:border-b @4xl/workspace:border-l",
-        )}
-      >
-        <div data-courseware-editor-part="inspector-header" className="flex size-full min-w-0 items-center gap-3 px-3 py-2">
-          {inspector.header}
-        </div>
-      </div>
-      <div
         data-courseware-editor-slot="inspector"
         className={cn(
-          "min-h-0 min-w-0 overflow-hidden",
+          "flex min-h-0 min-w-0 flex-col overflow-hidden border-t border-line",
           viewportLayout
-            ? "xl:col-start-3 xl:row-start-2 xl:border-l xl:border-line"
-            : "@4xl/workspace:col-start-3 @4xl/workspace:row-start-2 @4xl/workspace:border-l @4xl/workspace:border-line",
+            ? "xl:col-start-3 xl:row-start-2 xl:border-l xl:border-t-0 xl:border-line"
+            : "@4xl/workspace:col-start-3 @4xl/workspace:row-start-2 @4xl/workspace:border-l @4xl/workspace:border-t-0 @4xl/workspace:border-line",
         )}
       >
-        <aside className="size-full min-h-0 min-w-0 overflow-hidden" aria-label={inspector.ariaLabel}>
+        <div data-courseware-editor-part="inspector-header" className="flex min-h-11 shrink-0 items-center gap-3 border-b border-line px-3 py-2">
+          {inspector.header}
+        </div>
+        <aside className="min-h-0 min-w-0 flex-1 overflow-hidden" aria-label={inspector.ariaLabel}>
           {inspector.content}
         </aside>
       </div>

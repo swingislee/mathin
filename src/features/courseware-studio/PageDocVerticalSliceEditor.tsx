@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import {
   CircleAlert,
   FileCode2,
@@ -26,10 +25,10 @@ import {
   CoursewareInsertionToolbar,
   type CoursewareEditorSaveState,
 } from "@/features/courseware-doc/CoursewareEditorWorkbench";
+import { CoursewareEditorAdapterSurface } from "@/features/courseware-doc/CoursewareEditorAdapterSurface";
 import type { ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 import type { DocNode, PageDoc } from "@/features/courseware-doc/schema";
 import { saveCoursewareDraftAction } from "./actions";
-import { FittedCoursewareCanvas } from "./FittedCoursewareCanvas";
 import { StagePreview } from "./StagePreview";
 
 type EditorTab = "adjust" | "layout" | "replace";
@@ -91,6 +90,7 @@ export interface PageDocVerticalSliceEditorProps {
   baseRevisionNo: number;
   bindingUrls: ResolvedBindingUrls;
   toolbarTargetId: string;
+  saveTargetId: string;
   tabsTargetId: string;
   inspectorTargetId: string;
 }
@@ -102,6 +102,7 @@ export function PageDocVerticalSliceEditor({
   baseRevisionNo,
   bindingUrls,
   toolbarTargetId,
+  saveTargetId,
   tabsTargetId,
   inspectorTargetId,
 }: PageDocVerticalSliceEditorProps) {
@@ -113,9 +114,6 @@ export function PageDocVerticalSliceEditor({
   const [activeTab, setActiveTab] = useState<EditorTab>("adjust");
   const [message, setMessage] = useState("");
   const [saveState, setSaveState] = useState<CoursewareEditorSaveState>("saved");
-  const [toolbarTarget, setToolbarTarget] = useState<HTMLElement | null>(null);
-  const [tabsTarget, setTabsTarget] = useState<HTMLElement | null>(null);
-  const [inspectorTarget, setInspectorTarget] = useState<HTMLElement | null>(null);
   const docRef = useRef(clone(initialDoc));
   const savedDocRef = useRef(clone(initialDoc));
   const revisionRef = useRef(baseRevisionNo);
@@ -129,15 +127,6 @@ export function PageDocVerticalSliceEditor({
   const contentChanged = changeSnapshot(doc, "content") !== changeSnapshot(savedDoc, "content");
   const layoutChanged = changeSnapshot(doc, "layout") !== changeSnapshot(savedDoc, "layout");
   const isDirty = JSON.stringify(doc) !== JSON.stringify(savedDoc);
-
-  useEffect(() => {
-    const frame = window.requestAnimationFrame(() => {
-      setToolbarTarget(document.getElementById(toolbarTargetId));
-      setTabsTarget(document.getElementById(tabsTargetId));
-      setInspectorTarget(document.getElementById(inspectorTargetId));
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [inspectorTargetId, tabsTargetId, toolbarTargetId]);
 
   const flush = useCallback(async (): Promise<boolean> => {
     if (savingRef.current) {
@@ -246,7 +235,7 @@ export function PageDocVerticalSliceEditor({
   };
 
   const insertToolbar = (
-    <div className="flex w-full min-w-0 items-center gap-2">
+    <div className="flex min-w-0 items-center gap-2">
       <span id="courseware-step3-insert-hint" className="sr-only">{t("verticalSliceInsertDeferred")}</span>
       <CoursewareInsertionToolbar
         aria-label={t("contentInsertion")}
@@ -266,20 +255,33 @@ export function PageDocVerticalSliceEditor({
           disabled: true,
         }))}
       />
-      <CoursewareEditorSaveControls
-        state={saveState}
-        labels={{
-          saved: t("verticalSliceAutosaved"),
-          saving: t("verticalSliceAutosaving"),
-          dirty: t("verticalSliceAwaitingAutosave"),
-          error: t("verticalSliceAutosaveFailed"),
-          saveNow: t("verticalSliceSaveNow"),
-        }}
-        onSave={() => void flush()}
-        statusTestId="courseware-page-doc-autosave-status"
-        className="ml-auto w-auto pl-3"
-      />
     </div>
+  );
+
+  const saveControls = (
+    <CoursewareEditorSaveControls
+      state={saveState}
+      labels={{
+        saved: t("verticalSliceAutosaved"),
+        saving: t("verticalSliceAutosaving"),
+        dirty: t("verticalSliceAwaitingAutosave"),
+        error: t("verticalSliceAutosaveFailed"),
+        saveNow: t("verticalSliceSaveNow"),
+      }}
+      onSave={() => void flush()}
+      statusTestId="courseware-page-doc-autosave-status"
+      className="w-auto"
+    />
+  );
+
+  const inspectorHeader = (
+    <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as EditorTab)}>
+      <TabsList className="grid h-8 w-full grid-cols-3">
+        <TabsTrigger value="adjust" className="px-2 text-xs">{t("prototypeTabAdjust")}</TabsTrigger>
+        <TabsTrigger value="layout" className="px-2 text-xs">{t("prototypeTabLayout")}</TabsTrigger>
+        <TabsTrigger value="replace" className="px-2 text-xs">{t("prototypeTabReplace")}</TabsTrigger>
+      </TabsList>
+    </Tabs>
   );
 
   const inspector = (
@@ -406,35 +408,34 @@ export function PageDocVerticalSliceEditor({
   );
 
   return (
-    <>
-      {toolbarTarget ? createPortal(insertToolbar, toolbarTarget) : null}
-      {tabsTarget ? createPortal(
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as EditorTab)}>
-          <TabsList className="grid h-8 w-full grid-cols-3">
-            <TabsTrigger value="adjust" className="px-2 text-xs">{t("prototypeTabAdjust")}</TabsTrigger>
-            <TabsTrigger value="layout" className="px-2 text-xs">{t("prototypeTabLayout")}</TabsTrigger>
-            <TabsTrigger value="replace" className="px-2 text-xs">{t("prototypeTabReplace")}</TabsTrigger>
-          </TabsList>
-        </Tabs>,
-        tabsTarget,
-      ) : null}
-      {inspectorTarget ? createPortal(inspector, inspectorTarget) : null}
-      <FittedCoursewareCanvas aspect={doc.canvas.width / doc.canvas.height}>
-        <StagePreview
-          doc={doc}
-          bindingUrls={bindingUrls}
-          stageMode="natural"
-          className="size-full"
-          interactive={false}
-          playAutoInteractions={false}
-          selectedNodePath={selectedPath}
-          onNodeSelect={setSelectedPath}
-          onBackgroundSelect={() => {
-            setSelectedPath(null);
-            setMessage(t("verticalSliceBackgroundDeferred"));
-          }}
-        />
-      </FittedCoursewareCanvas>
-    </>
+    <CoursewareEditorAdapterSurface
+      toolbarTargetId={toolbarTargetId}
+      saveTargetId={saveTargetId}
+      inspectorHeaderTargetId={tabsTargetId}
+      inspectorTargetId={inspectorTargetId}
+      toolbar={insertToolbar}
+      saveControls={saveControls}
+      inspectorHeader={inspectorHeader}
+      inspector={inspector}
+      aspect={doc.canvas.width / doc.canvas.height}
+      className="p-3"
+      hostProps={{ "data-courseware-editor-adapter": "page-doc-v1" }}
+      stageProps={{ "data-fitted-courseware-stage": true }}
+    >
+      <StagePreview
+        doc={doc}
+        bindingUrls={bindingUrls}
+        stageMode="natural"
+        className="size-full"
+        interactive={false}
+        playAutoInteractions={false}
+        selectedNodePath={selectedPath}
+        onNodeSelect={setSelectedPath}
+        onBackgroundSelect={() => {
+          setSelectedPath(null);
+          setMessage(t("verticalSliceBackgroundDeferred"));
+        }}
+      />
+    </CoursewareEditorAdapterSurface>
   );
 }

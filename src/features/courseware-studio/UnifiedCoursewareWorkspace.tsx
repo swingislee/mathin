@@ -25,6 +25,7 @@ export const UNIFIED_WORKSPACE_CANVASES = ["compare", "native-16x9", "adapted-4x
 export type UnifiedWorkspaceCanvas = (typeof UNIFIED_WORKSPACE_CANVASES)[number];
 
 const INSERT_TOOLBAR_TARGET_ID = "courseware-workspace-insert-toolbar";
+const SAVE_CONTROLS_TARGET_ID = "courseware-workspace-save-controls";
 const CAPABILITY_TABS_TARGET_ID = "courseware-workspace-capability-tabs";
 const PAGE_DOC_EDITOR_TARGET_ID = "courseware-workspace-page-doc-editor";
 
@@ -222,6 +223,7 @@ export async function UnifiedCoursewareWorkspace({
           </ScrollArea>,
         }}
         toolbar={<div id={INSERT_TOOLBAR_TARGET_ID} className="min-w-0 flex-1" />}
+        saveControls={<div id={SAVE_CONTROLS_TARGET_ID} className="min-w-0" />}
         canvas={{
           ariaLabel: t("previewTitle"),
           content: <div className="size-full min-h-0 overflow-hidden bg-moon/10">
@@ -234,6 +236,7 @@ export async function UnifiedCoursewareWorkspace({
                 baseRevisionNo={pageEditor.baseRevisionNo}
                 bindingUrls={pageEditor.bindingUrls}
                 toolbarTargetId={INSERT_TOOLBAR_TARGET_ID}
+                saveTargetId={SAVE_CONTROLS_TARGET_ID}
                 tabsTargetId={CAPABILITY_TABS_TARGET_ID}
                 inspectorTargetId={PAGE_DOC_EDITOR_TARGET_ID}
               />

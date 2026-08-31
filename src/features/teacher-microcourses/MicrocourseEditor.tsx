@@ -30,6 +30,7 @@ import { MicrocourseSourcePicker } from "./MicrocourseSourcePicker";
 
 const NONE = "__none__";
 const COMPOSITION_TOOLBAR_TARGET_ID = "microcourse-composition-insert-toolbar";
+const COMPOSITION_SAVE_CONTROLS_TARGET_ID = "microcourse-composition-save-controls";
 const COMPOSITION_INSPECTOR_HEADER_TARGET_ID = "microcourse-composition-inspector-header";
 const COMPOSITION_INSPECTOR_TARGET_ID = "microcourse-composition-inspector";
 
@@ -280,6 +281,7 @@ export function MicrocourseEditor({ session, editor, canTeach }: {
           </div>,
         }}
         toolbar={<div id={COMPOSITION_TOOLBAR_TARGET_ID} className="min-w-0 flex-1" />}
+        saveControls={<div id={COMPOSITION_SAVE_CONTROLS_TARGET_ID} className="min-w-0" />}
         canvas={{
           ariaLabel: t("workspaceTitle"),
           content: currentPage
@@ -289,6 +291,7 @@ export function MicrocourseEditor({ session, editor, canTeach }: {
                 microcourseId={editor.id}
                 page={currentPage}
                 toolbarTargetId={COMPOSITION_TOOLBAR_TARGET_ID}
+                saveTargetId={COMPOSITION_SAVE_CONTROLS_TARGET_ID}
                 inspectorHeaderTargetId={COMPOSITION_INSPECTOR_HEADER_TARGET_ID}
                 inspectorTargetId={COMPOSITION_INSPECTOR_TARGET_ID}
                 onPersisted={handlePagePersisted}

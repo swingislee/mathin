@@ -48,6 +48,7 @@ describe("teacher microcourse authoring UX", () => {
     const editor = read("src", "features", "teacher-microcourses", "MicrocourseEditor.tsx");
     const workbench = read("src", "features", "teacher-microcourses", "CoursewareCompositionWorkbench.tsx");
     const sharedWorkbench = read("src", "features", "courseware-doc", "CoursewareEditorWorkbench.tsx");
+    const adapterSurface = read("src", "features", "courseware-doc", "CoursewareEditorAdapterSurface.tsx");
     const zh = read("messages", "zh.json");
     const en = read("messages", "en.json");
 
@@ -67,7 +68,8 @@ describe("teacher microcourse authoring UX", () => {
     expect(editor).toContain("const [pageTitleDrafts, setPageTitleDrafts]");
     expect(editor).toContain('aria-label={t("renamePage")}');
     expect(editor).toContain("workbenchRef.current?.rename?.(value)");
-    expect(workbench).toContain("CoursewareStageViewport");
+    expect(workbench).toContain("CoursewareEditorAdapterSurface");
+    expect(adapterSurface).toContain("CoursewareStageViewport");
     expect(workbench).toContain("CoursewareInsertionToolbar");
     expect(workbench).toContain("CoursewareEditorToolbarButton");
     expect(workbench).toContain("CoursewareEditorToolbarLabel");
@@ -77,6 +79,8 @@ describe("teacher microcourse authoring UX", () => {
     expect(workbench).not.toContain('<Badge variant="secondary">{t("mode_composition")}</Badge>');
     expect(workbench).toContain("rounded-xl border border-line bg-white shadow-sm");
     expect(editor).toContain("COMPOSITION_INSPECTOR_HEADER_TARGET_ID");
+    expect(editor).toContain("COMPOSITION_SAVE_CONTROLS_TARGET_ID");
+    expect(sharedWorkbench).toContain('data-courseware-editor-part="save-controls"');
     expect(editor).toContain("COMPOSITION_INSPECTOR_TARGET_ID");
     expect(workbench).not.toContain("bg-paper/70");
     expect(zh).toContain('"pageAutosaving"');

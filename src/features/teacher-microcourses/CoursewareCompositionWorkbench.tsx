@@ -14,7 +14,6 @@ import {
 import { useTranslations } from "next-intl";
 import {
   forwardRef,
-  type HTMLAttributes,
   useCallback,
   useEffect,
   useImperativeHandle,
@@ -22,7 +21,6 @@ import {
   useState,
   useTransition,
 } from "react";
-import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -38,7 +36,7 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { CoursewareCompositionGridEditor } from "@/features/courseware-doc/CoursewareCompositionGridEditor";
-import { CoursewareStageViewport } from "@/features/courseware-doc/CoursewareStageViewport";
+import { CoursewareEditorAdapterSurface } from "@/features/courseware-doc/CoursewareEditorAdapterSurface";
 import {
   CoursewareEditorSaveControls,
   CoursewareInsertionToolbar,
@@ -194,6 +192,7 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
     bindingUrls: Record<string, string>;
   };
   toolbarTargetId: string;
+  saveTargetId: string;
   inspectorHeaderTargetId: string;
   inspectorTargetId: string;
   onPersisted: (draft: PersistedCompositionPage) => void;
@@ -202,6 +201,7 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
   microcourseId,
   page,
   toolbarTargetId,
+  saveTargetId,
   inspectorHeaderTargetId,
   inspectorTargetId,
   onPersisted,
@@ -222,19 +222,6 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
   const timerRef = useRef<number | null>(null);
   const savingRef = useRef<Promise<boolean> | null>(null);
   const flushRef = useRef<() => Promise<boolean>>(async () => true);
-  const [toolbarTarget, setToolbarTarget] = useState<HTMLElement | null>(null);
-  const [inspectorHeaderTarget, setInspectorHeaderTarget] = useState<HTMLElement | null>(null);
-  const [inspectorTarget, setInspectorTarget] = useState<HTMLElement | null>(null);
-
-  useEffect(() => {
-    const frame = window.requestAnimationFrame(() => {
-      setToolbarTarget(document.getElementById(toolbarTargetId));
-      setInspectorHeaderTarget(document.getElementById(inspectorHeaderTargetId));
-      setInspectorTarget(document.getElementById(inspectorTargetId));
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [inspectorHeaderTargetId, inspectorTargetId, toolbarTargetId]);
-
   const flush = useCallback(async (): Promise<boolean> => {
     if (savingRef.current) {
       const previousSaved = await savingRef.current;
@@ -458,8 +445,12 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
       onSave={() => void flush()}
       disabled={pending}
       statusTestId="microcourse-autosave-status"
-      className="px-3"
+      className="w-auto"
     />
+  );
+
+  const inspectorHeader = (
+    <h2 className="text-sm font-medium text-ink">{t("gridComponentList")}</h2>
   );
 
   const inspectorContent = (
@@ -508,25 +499,28 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
   );
 
   return (
-    <>
-      {toolbarTarget ? createPortal(insertToolbar, toolbarTarget) : null}
-      {inspectorHeaderTarget ? createPortal(saveControls, inspectorHeaderTarget) : null}
-      {inspectorTarget ? createPortal(inspectorContent, inspectorTarget) : null}
-      <CoursewareStageViewport
-        aspect={4 / 3}
-        className="p-3"
-        stageClassName="rounded-xl border border-line bg-white shadow-sm"
-        hostProps={{ "data-courseware-editor-adapter": "courseware-composition-v1" } as HTMLAttributes<HTMLDivElement>}
-      >
-        <CoursewareCompositionGridEditor
-          doc={doc}
-          bindingUrls={bindingUrls}
-          selectedBlockId={selectedBlockId}
-          onSelectBlock={setSelectedBlockId}
-          onChange={updateDoc}
-        />
-      </CoursewareStageViewport>
-    </>
+    <CoursewareEditorAdapterSurface
+      toolbarTargetId={toolbarTargetId}
+      saveTargetId={saveTargetId}
+      inspectorHeaderTargetId={inspectorHeaderTargetId}
+      inspectorTargetId={inspectorTargetId}
+      toolbar={insertToolbar}
+      saveControls={saveControls}
+      inspectorHeader={inspectorHeader}
+      inspector={inspectorContent}
+      aspect={4 / 3}
+      className="p-3"
+      stageClassName="rounded-xl border border-line bg-white shadow-sm"
+      hostProps={{ "data-courseware-editor-adapter": "courseware-composition-v1" }}
+    >
+      <CoursewareCompositionGridEditor
+        doc={doc}
+        bindingUrls={bindingUrls}
+        selectedBlockId={selectedBlockId}
+        onSelectBlock={setSelectedBlockId}
+        onChange={updateDoc}
+      />
+    </CoursewareEditorAdapterSurface>
   );
 });
 

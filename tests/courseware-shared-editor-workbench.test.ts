@@ -26,8 +26,10 @@ describe("shared courseware editor workbench", () => {
     expect(shared).toContain('data-courseware-editor-slot="directory"');
     expect(shared).toContain('data-courseware-editor-slot="toolbar"');
     expect(shared).toContain('data-courseware-editor-slot="canvas"');
-    expect(shared).toContain('data-courseware-editor-slot="inspector-header"');
     expect(shared).toContain('data-courseware-editor-slot="inspector"');
+    expect(shared).toContain('data-courseware-editor-part="topbar"');
+    expect(shared).toContain('data-courseware-editor-part="save-controls"');
+    expect(shared).toContain('data-courseware-editor-part="inspector-header"');
     expect(formal).toContain('layout="workspace"');
     expect(microcourse).toContain('layout="viewport"');
     expect(shared).toContain('const adapt4x3 = mode === "formal-editor"');
@@ -38,7 +40,9 @@ describe("shared courseware editor workbench", () => {
 
   it("shares editor shell, insertion toolbar, canvas and inspector composition", () => {
     const shared = read("src", "features", "courseware-doc", "CoursewareEditorWorkbench.tsx");
+    const adapterSurface = read("src", "features", "courseware-doc", "CoursewareEditorAdapterSurface.tsx");
     const composition = read("src", "features", "teacher-microcourses", "CoursewareCompositionWorkbench.tsx");
+    const pageDoc = read("src", "features", "courseware-studio", "PageDocVerticalSliceEditor.tsx");
     const prototype = read("src", "features", "courseware-studio", "CoursewareCapabilityPrototype.tsx");
 
     for (const primitive of [
@@ -49,13 +53,17 @@ describe("shared courseware editor workbench", () => {
       "CoursewareInsertionToolbar",
       "CoursewareEditorSaveControls",
     ]) expect(shared).toContain(`function ${primitive}`);
-    expect(composition).toContain("<CoursewareStageViewport");
+    expect(adapterSurface).toContain("<CoursewareStageViewport");
+    expect(adapterSurface).toContain("createPortal(toolbar, targets.toolbar)");
+    expect(adapterSurface).toContain("createPortal(saveControls, targets.save)");
+    expect(composition).toContain("<CoursewareEditorAdapterSurface");
+    expect(pageDoc).toContain("<CoursewareEditorAdapterSurface");
     expect(composition).toContain("<CoursewareInsertionToolbar");
     expect(composition).toContain("<CoursewareEditorSaveControls");
     expect(composition).toContain("<CoursewareEditorToolbarButton");
     expect(prototype).toContain("<CoursewareEditorActionGrid");
     expect(prototype).toContain("<CoursewareInsertionToolbar");
-    expect(read("src", "features", "courseware-studio", "PageDocVerticalSliceEditor.tsx")).toContain("<CoursewareEditorSaveControls");
+    expect(pageDoc).toContain("<CoursewareEditorSaveControls");
   });
 
   it("keeps the formal canvas header free of duplicated track titles", () => {
@@ -82,6 +90,7 @@ describe("shared courseware editor workbench", () => {
 
   it("shares the same aspect-correct stage viewport across all three modes", () => {
     const stage = read("src", "features", "courseware-doc", "CoursewareStageViewport.tsx");
+    const adapterSurface = read("src", "features", "courseware-doc", "CoursewareEditorAdapterSurface.tsx");
     const preview = read("src", "features", "courseware-preview", "CoursewarePreviewWorkspace.tsx");
     const formal = read("src", "features", "courseware-studio", "FittedCoursewareCanvas.tsx");
     const microcourse = read("src", "features", "teacher-microcourses", "CoursewareCompositionWorkbench.tsx");
@@ -90,8 +99,25 @@ describe("shared courseware editor workbench", () => {
     expect(stage).toContain("ResizeObserver");
     expect(preview).toContain("<CoursewareStageViewport");
     expect(formal).toContain("<CoursewareStageViewport");
-    expect(microcourse).toContain("<CoursewareStageViewport");
+    expect(adapterSurface).toContain("<CoursewareStageViewport");
+    expect(microcourse).toContain("<CoursewareEditorAdapterSurface");
     expect(microcourse).toContain("aspect={4 / 3}");
+  });
+
+  it("keeps insertion and save controls in the same shared topbar", () => {
+    const shared = read("src", "features", "courseware-doc", "CoursewareEditorWorkbench.tsx");
+    const formal = read("src", "features", "courseware-studio", "UnifiedCoursewareWorkspace.tsx");
+    const pageDoc = read("src", "features", "courseware-studio", "PageDocVerticalSliceEditor.tsx");
+    const microcourse = read("src", "features", "teacher-microcourses", "MicrocourseEditor.tsx");
+    const composition = read("src", "features", "teacher-microcourses", "CoursewareCompositionWorkbench.tsx");
+
+    expect(shared).toContain('data-courseware-editor-part="insert-toolbar"');
+    expect(shared).toContain('data-courseware-editor-part="save-controls"');
+    expect(formal).toContain("SAVE_CONTROLS_TARGET_ID");
+    expect(microcourse).toContain("COMPOSITION_SAVE_CONTROLS_TARGET_ID");
+    expect(pageDoc).toContain("saveTargetId={saveTargetId}");
+    expect(composition).toContain("saveTargetId={saveTargetId}");
+    expect(composition).not.toContain("createPortal(saveControls");
   });
 
   it("keeps the formal workbench close to the panel bottom edge", () => {

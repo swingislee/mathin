@@ -657,7 +657,7 @@ Step 1 必须用实际课程、实际讲次和实际页面的只读数据给出�
 
 #### 14.4.1 来源渲染一致性硬门
 
-2026-08-31 的 Step 3 首页审计暴露的是渲染边界缺失，不是该页坐标或某一个动画的孤立错误。样本 `page-doc-v1` 的富文本仍携带来源类名与 `data-align-v="middle"`，来源 Viewer 依赖其完整 CSS／字体运行时解释内部排版；Mathin `DocStage` 只移植节点外层几何和 HTML 注入，没有携带这套来源语义。只补 `top / middle / bottom` 会修复当前症状，但无法覆盖未来的来源类名、字体度量、伪元素、表格、公式、主题样式和脚本行为，因此不作为正式方向。
+2026-08-31 继续抽查后，产品负责人确认“进位制初步”的标题偏移是源站 2026 年四年级秋季全系列特例，其他年级没有同类现象，预览与编辑器均复现，因此该页不再作为 Mathin 编辑器偏移证据，也不做逐页或 `data-align-v` 特判。本阶段保留来源 renderer 边界审计，但不再以修复该源站内容问题阻塞统一工作台。
 
 来源页此后按三层分工：
 
@@ -745,8 +745,9 @@ Step 0 还需要产品负责人明确以下事项，规划不代替这些产品�
 | 1 信息架构与只读布局 | `USER ACCEPTED` | 稳定讲次路由使用 `?workspace=courseware&canvas=compare`；本机 E 系列样本“进位制初步”和爱学习样本“10的认识和加减法（上）”由交付消息提供局域网入口 | 2026-08-31 首轮审计要求：主操作与版本筛选同排；缺少 4:3 时提示并保留 16:9；各轨画布完整适配可用宽高。第二轮要求：三点菜单一并下移；“对照”保持双栏且缺失侧显示空态；爱学习普通源母版恢复直接 4:3，兼容页继续顶置；移除画布标题行与底部批次状态条。产品负责人随后回复“通过，继续” | 只授权 Step 2 |
 | 2 功能交互样机 | `USER ACCEPTED` | 在已确认的右侧“页面与能力”栏提供四个页签；仍使用 Step 1 的 E 系列与爱学习局域网入口 | 已实现微调、A～F/自定义、五档替换范围、插入、选中反馈和会话级撤销。爱学习只开放 E 与宿主级自定义，文字/节点/插入因来源 patch 尚未决定而 fail closed；2026-08-31 产品负责人回复“审计通过” | 只授权 Step 2A 共享编辑框架迁移 |
 | 2A 共享课件编辑框架 | `USER ACCEPTED` | 一个 `CoursewareEditorWorkbench` 直接渲染页面目录、插入顶栏、画布/翻页、右栏标题和右栏正文，两条链共用 `CoursewareInsertionToolbar`；微课 adapter 是共同功能基线，正式 adapter 只额外开启 4:3 适配；正式轨道内重复标题行退出 | 2026-08-31 产品负责人回复“审计通过”；要求工作区整体重构完成后再双端回看并定稿组件表现 | 只授权 Step 3；双端定稿列为 Step 7 后、Step 8 前人工门 |
-| 3A 来源渲染一致性 Gate | `IN PROGRESS` | 当前样本只读诊断确认：revision 仍为 import r1、没有 draft；布局偏移来自 Mathin renderer 未携带来源富文本 CSS／字体语义，而不是页面几何、保存或动画数据。首个小增量把预览、正式编辑、微课编辑登记为同一 `CoursewareWorkbench` 的三种模式，并把完整适配算法收进共享 `CoursewareStageViewport` | 2026-08-31 产品负责人否决按页面／属性追补，随后确认“从现有预览组件基础升级编辑器；三者为同一组件不同形态；正式课只多 4:3”。本轮仍待人工核对三端布局和画布表现；来源 runtime／选择桥尚未完成 | 只允许 3A 无写入宿主与 runtime 原型；禁止 3B、Step 4、schema/RPC、重导、批量和生产动作 |
-| 3A-1 统一工作台模式与画布 | `READY FOR USER AUDIT` | 三个主入口直接使用 `CoursewareWorkbench` 的 `preview`／`formal-editor`／`microcourse-editor` 模式；预览、正式单轨画布和微课 4:3 composition 共用 `CoursewareStageViewport`。开发服务已恢复在局域网 `:3130`；本批没有数据库、Storage、schema、RPC 或 release 写入 | 待产品负责人核对：预览不出现编辑顶栏/右栏；正式与微课顶栏、右栏保持现有布局；三端画面均完整适配且微课默认 4:3；正式模式独有 4:3 能力。机器证据：TypeScript、受影响 ESLint、定向 Vitest 7 文件 46/46，最终清理后最窄复跑 3 文件 14/14，`plan:audit` 与 `git diff --check` | 未确认前不做 3A-2 来源 runtime／选择桥，不进入 3B |
+| 3A 来源渲染一致性 Gate | `IN PROGRESS` | “进位制初步”标题偏移已由产品负责人核对为源站 2026 年四年级秋季全系列特例，预览与编辑器一致复现；该页退出编辑器回归证据，不再逐页修补。当前施工转回统一工作台、共同 renderer adapter 和保存反馈一致性 | 产品负责人确认“从现有预览组件基础升级编辑器；三者为同一组件不同形态；正式课只多 4:3”，并要求不能只共享外壳或槽位 | 只允许 3A 工作台与 renderer adapter 小增量；禁止 Step 4、schema/RPC、重导、批量和生产动作 |
+| 3A-1 统一工作台模式与画布 | `CHANGES REQUESTED` | 三个主入口已登记为 `CoursewareWorkbench` 的 `preview`／`formal-editor`／`microcourse-editor` 模式并共用 `CoursewareStageViewport` | 首轮人工审计发现仍由正式课、微课各自装配顶栏／保存／右栏，正式课保存入口消失、微课保存回退到右栏；因此仅有模式 dispatcher 与画布共享不构成完成 | 只修正同一工作台实现层，不进入后续来源 runtime 或扩量 |
+| 3A-2 共享编辑表面与保存顶栏 | `READY FOR USER AUDIT` | 新增唯一 `CoursewareEditorAdapterSurface`，正式 PageDoc 与微课 composition 都通过它挂载插入栏、保存状态、右栏和共享 `CoursewareStageViewport`；`CoursewareWorkbench` 顶栏横跨画布与右栏，左侧固定插入、右侧固定自动保存状态与立即保存按钮，右栏只保留属性／能力。PageDoc 继续调用 `StagePreview`，composition grid 继续以 `CoursewareCompositionStage` 为来源基底并只叠加选择／拖拽层 | 待产品负责人核对：两种编辑器保存状态和按钮均在同一顶栏右端；微课右栏不再承载保存；正式课修改后出现未保存／保存中／已自动保存并可立即保存；预览、正式、微课的相同来源页面仍由同一 renderer 呈现 | 未确认前不继续拆目录／翻页公共实现，不进入来源 runtime、Step 4 或任何数据扩量 |
 | 3B PageDoc 单页纵切复审 | `CHANGES REQUESTED` | 已实现的显式入口、800ms 自动保存、立即保存与离页保护保留，但当前 `DocStage` 画面不再作为可接受的来源一致性证据 | 等 3A 通过后再用来源 runtime 复审修改、保存、刷新和 release 不变 | 3A 未通过不得继续 |
 
 Step 1 变更边界：只新增只读数据 loader、连续三栏工作区、画布自适应叶子、课程预览直达按钮、双语文案和定向合同；首轮修订移动课程产品主操作、增加 4:3 缺失的 16:9 降级提示，并把单轨舞台约束为可用宽高内等比完整显示。第二轮把三点菜单移入同一命令行，使对照缺轨时保留双栏空态，按不可变爱学习布局重建旧 4:3 投影，并移除中央冗余标题行和底部状态条。爱学习判定与旧权威在本机开发库 5,508 页上比对为 0 差异；普通 1,200×900 源母版直接呈现为完整 4:3，带动画、嵌入 H5、原生题型或宽画布的 424 页保留顶部兼容带。不接 editor action，不新增 schema/RPC，不写数据库/Storage，不删除讲次工作区或旧 Studio。机器证据为 TypeScript、受影响 ESLint、双语键 5,264×2、定向 Vitest 3 文件 18/18；这些证据不代表布局已经获得产品确认。
