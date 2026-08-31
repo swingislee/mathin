@@ -23,3 +23,14 @@
 ## 待产品验收
 
 机器 postflight 只证明版本、构建、鉴权、健康和数据不变量。产品负责人仍需在生产登录态复验爱学习一年级/二年级、Mofaxiao E 系列的首页、16:9/4:3、连续翻页、此前 digest/账本错误页，以及正式课件/教师微课共用编辑工作面；确认前保持 `PENDING PRODUCTION USER ACCEPTANCE`。
+
+## 2026-08-31 扩大范围根修与生产数据升级
+
+> **结论**：`DEPLOYED / MACHINE POSTFLIGHT PASSED / PENDING PRODUCTION USER ACCEPTANCE`。产品负责人确认“直接扩大范围，修复并推送生产”后，应用候选 `dbff5c9…` 原子发布，随后只对爱学习秋季 G+/X+/A+ 三包执行 source-runtime 版本化升级；暑期 `AXX26A-QG-01-SUM` 与 Mofaxiao 数据均不在写入 manifest 中。
+
+- 应用 current/previous=`20260831-073147` / `dbff5c9…` 与 `20260831-052938` / `05a1027…`；标准发布器的 ESLint、TypeScript、本地/远端 production build 与 320 页静态生成通过，service、loopback/Caddy health 正常，当前 invocation journal error=`0`。
+- 三包 dry-run 与 formal 均覆盖 G+ `56/1641/11132`、X+ `84/2767/19729`、A+ `30/1034/15591`（讲/页/binding）；formal 汇总 `sourceRuntimeUpgraded=5442`、`databaseConflicts=0`、未解释 `baselineDrift=0`。
+- postflight 的三包 manifest SHA 与 staged artifact 一致，runtime package 分别为 G+ `553901d9…`、X+ `4f3cce74…`、A+ `9105ec7c…`，全部 5442 页为 projection 32；双轨 current page head 各 5442 且 revision 错位为 0，双轨 release binding 合计 92904，历史 release 1 各保留 170 条。
+- X+ 一年级第 1 讲首页 current revision 使用 `aix-lottie-video` 与 `cbb04208…` / `1,983,848` bytes MP4；旧 `2d6907b6…` / `54,512,144` bytes 来源 JSON 只作为不可变来源证据保留，current Viewer 节点和 image-only 预热均不请求它。第 30 页 current release 的 Viewer package 已是 `4f3cce74…`。
+- Storage 从 `125917 / 51524182412` 增至 `126177 / 51619654863`（对象/bytes），即 `+260 / +95472451`；主要增量为三包新 Viewer 文件和一个压缩首页视频，没有覆盖或删除旧对象。
+- 按产品负责人意见取消了无必要的第二份 50 GB Storage 全量备份；刚启动的 `.partial` 已停止并清理。由于本次对象、revision、release 均为追加写，只保存 340 条双轨 current-head 前后清单与三包 package manifest，路径 `/mnt/openlist-disk/Backups/Mathin/mathin-courseware-heads-20260831T081748Z-dbff5c9/`，目录内 `SHA256SUMS` 复验通过；回退不删除新增对象。
