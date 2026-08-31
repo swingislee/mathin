@@ -6,27 +6,32 @@ const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.ur
 describe("courseware preview page-turn performance", () => {
   it("keeps lecture page turns inside the preview and warms adjacent immutable pages", () => {
     const preview = read("src/features/school/curriculum/LectureCoursewarePreview.tsx");
-    const action = read("src/features/courseware-preview/actions.ts");
+    const route = read("src/app/api/courseware-preview/releases/[releaseId]/pages/[pageDocId]/route.ts");
+    const client = read("src/features/courseware-preview/client.ts");
     const data = read("src/features/courseware-studio/data.ts");
     const pageLoader = data.slice(
       data.indexOf("export async function loadLecturePreviewPage"),
       data.indexOf("async function materializeLecturePreviewPage"),
     );
 
-    expect(preview).toContain("loadCoursewarePreviewPageAction");
+    expect(preview).toContain("fetchCoursewarePreviewPage");
     expect(preview).toContain("selectedIndex - 1, selectedIndex + 1");
     expect(preview).toContain("warmCoursewarePreviewPage");
     expect(preview).toContain("waitingForSelected");
     expect(preview).toContain("setRendered(payload)");
     expect(preview).toContain("cacheRef.current.get(pageDocId)");
-    expect(preview).toContain("cacheRef.current.set(pageDocId, result.data)");
+    expect(preview).toContain("cacheRef.current.set(pageDocId, payload)");
     expect(preview).not.toContain("const [cache, setCache]");
     expect(preview).toContain("selected.pageDocId === rendered.page.pageDocId");
     expect(preview).toContain("active && selectedPageIdRef.current === selected.pageDocId");
     expect(preview).toContain("window.history.replaceState");
     expect(preview).toContain("new Map<string, Promise<CoursewarePreviewPagePayload>>");
     expect(preview).not.toContain("href: pageHrefs[index]");
-    expect(action).toContain('authorizedClient("course.view")');
+    expect(preview).toContain("preparedPageIdsRef.current.add(pageDocId)");
+    expect(route).toContain('authorizedClient("course.view")');
+    expect(route).toContain('"Cache-Control": "private, no-store"');
+    expect(client).toContain('cache: "no-store"');
+    expect(client).toContain('credentials: "same-origin"');
     expect(pageLoader).toContain('.from("cw_lecture_releases")');
     expect(data).toContain("scopeCoursewareDocBindings(doc, snapshotEntry.bindings)");
     expect(data).toContain('bindingQuery.in("binding_key", [...requiredBindingKeys])');
