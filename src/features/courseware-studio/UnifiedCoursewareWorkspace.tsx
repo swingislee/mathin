@@ -17,13 +17,16 @@ import type { LectureWorkspaceDetail } from "@/features/school/curriculum/types"
 import type { CoursewareLecturePreview, CoursewareTrack } from "./data";
 import { CoursewareCapabilityPrototype } from "./CoursewareCapabilityPrototype";
 import { FittedCoursewareCanvas } from "./FittedCoursewareCanvas";
+import { PageDocVerticalSliceEditor } from "./PageDocVerticalSliceEditor";
 import { StagePreview } from "./StagePreview";
+import type { UnifiedPageDocEditorData } from "./unified-workspace-data";
 
 export const UNIFIED_WORKSPACE_CANVASES = ["compare", "native-16x9", "adapted-4x3"] as const;
 export type UnifiedWorkspaceCanvas = (typeof UNIFIED_WORKSPACE_CANVASES)[number];
 
 const INSERT_TOOLBAR_TARGET_ID = "courseware-workspace-insert-toolbar";
 const CAPABILITY_TABS_TARGET_ID = "courseware-workspace-capability-tabs";
+const PAGE_DOC_EDITOR_TARGET_ID = "courseware-workspace-page-doc-editor";
 
 export function parseUnifiedWorkspaceCanvas(value: string | string[] | undefined): UnifiedWorkspaceCanvas {
   const first = Array.isArray(value) ? value[0] : value;
@@ -47,16 +50,19 @@ function workspaceHref({
   track,
   page,
   returnTo,
+  edit = false,
 }: {
   lectureId: string;
   canvas: UnifiedWorkspaceCanvas;
   track: CoursewareTrack;
   page: number;
   returnTo: string | null;
+  edit?: boolean;
 }) {
   const query = new URLSearchParams({ workspace: "courseware", canvas, track });
   if (page > 1) query.set("page", String(page));
   if (returnTo) query.set("returnTo", returnTo);
+  if (edit) query.set("edit", "page-doc");
   return `/dashboard/courseware/lectures/${lectureId}?${query.toString()}`;
 }
 
@@ -101,6 +107,7 @@ export async function UnifiedCoursewareWorkspace({
   detail,
   nativePreview,
   adaptedPreview,
+  pageEditor,
   canvas,
   entryTrack,
   returnTo,
@@ -108,6 +115,7 @@ export async function UnifiedCoursewareWorkspace({
   detail: LectureWorkspaceDetail;
   nativePreview: CoursewareLecturePreview | null;
   adaptedPreview: CoursewareLecturePreview | null;
+  pageEditor: UnifiedPageDocEditorData | null;
   canvas: UnifiedWorkspaceCanvas;
   entryTrack: CoursewareTrack;
   returnTo: string | null;
@@ -118,16 +126,16 @@ export async function UnifiedCoursewareWorkspace({
   const pages = directoryPreview?.pages ?? [];
   const backHref = returnTo ?? coursePreviewHref(detail, entryTrack, pageIndex);
   const selectedPage = directoryPreview?.page;
-  const adaptedCanvasFellBack = canvas === "adapted-4x3" && !adaptedPreview && Boolean(nativePreview);
-  const visibleCanvas: UnifiedWorkspaceCanvas = adaptedCanvasFellBack ? "native-16x9" : canvas;
-  const selectedDoc = visibleCanvas === "adapted-4x3"
+  const adaptedCanvasFellBack = !pageEditor && canvas === "adapted-4x3" && !adaptedPreview && Boolean(nativePreview);
+  const visibleCanvas: UnifiedWorkspaceCanvas = pageEditor ? "native-16x9" : adaptedCanvasFellBack ? "native-16x9" : canvas;
+  const selectedDoc = pageEditor?.doc ?? (visibleCanvas === "adapted-4x3"
     ? adaptedPreview?.page.doc
-    : nativePreview?.page.doc ?? adaptedPreview?.page.doc;
+    : nativePreview?.page.doc ?? adaptedPreview?.page.doc);
 
   const canvasItems = [
-    { value: "compare", label: t("canvasCompare"), href: workspaceHref({ lectureId: detail.lecture.id, canvas: "compare", track: entryTrack, page: pageIndex, returnTo }) },
-    { value: "native-16x9", label: t("canvasNative"), href: workspaceHref({ lectureId: detail.lecture.id, canvas: "native-16x9", track: entryTrack, page: pageIndex, returnTo }) },
-    { value: "adapted-4x3", label: t("canvasAdapted"), href: workspaceHref({ lectureId: detail.lecture.id, canvas: "adapted-4x3", track: entryTrack, page: pageIndex, returnTo }) },
+    { value: "compare", label: t("canvasCompare"), href: workspaceHref({ lectureId: detail.lecture.id, canvas: "compare", track: entryTrack, page: pageIndex, returnTo, edit: Boolean(pageEditor) }) },
+    { value: "native-16x9", label: t("canvasNative"), href: workspaceHref({ lectureId: detail.lecture.id, canvas: "native-16x9", track: entryTrack, page: pageIndex, returnTo, edit: Boolean(pageEditor) }) },
+    { value: "adapted-4x3", label: t("canvasAdapted"), href: workspaceHref({ lectureId: detail.lecture.id, canvas: "adapted-4x3", track: entryTrack, page: pageIndex, returnTo, edit: Boolean(pageEditor) }) },
   ];
 
   const previousHref = pageIndex > 1
@@ -149,7 +157,7 @@ export async function UnifiedCoursewareWorkspace({
           { value: detail.variant.title },
           { value: t("pageContext", { page: pageIndex, total: pages.length }) },
         ]}
-        status={<Badge variant="outline">{t("prototypeAudit")}</Badge>}
+        status={<Badge variant="outline">{t(pageEditor ? "verticalSliceAudit" : "prototypeAudit")}</Badge>}
       />}
       navigation={(
         <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
@@ -185,7 +193,14 @@ export async function UnifiedCoursewareWorkspace({
                   return (
                     <li key={page.pageDocId}>
                       <Link
-                        href={workspaceHref({ lectureId: detail.lecture.id, canvas: visibleCanvas, track: entryTrack, page: index + 1, returnTo })}
+                        href={workspaceHref({
+                          lectureId: detail.lecture.id,
+                          canvas: visibleCanvas,
+                          track: entryTrack,
+                          page: index + 1,
+                          returnTo,
+                          edit: page.pageDocId === pageEditor?.pageDocId,
+                        })}
                         aria-current={active ? "page" : undefined}
                         className={cn(
                           "flex min-h-12 items-center gap-2 px-3 py-2 transition-colors hover:bg-moon/20",
@@ -210,7 +225,19 @@ export async function UnifiedCoursewareWorkspace({
         canvas={{
           ariaLabel: t("previewTitle"),
           content: <div className="size-full min-h-0 overflow-hidden bg-moon/10">
-            {visibleCanvas === "compare" ? (
+            {pageEditor ? (
+              <PageDocVerticalSliceEditor
+                key={`${pageEditor.pageDocId}:${pageEditor.baseRevisionNo}`}
+                pageDocId={pageEditor.pageDocId}
+                track={pageEditor.track}
+                initialDoc={pageEditor.doc}
+                baseRevisionNo={pageEditor.baseRevisionNo}
+                bindingUrls={pageEditor.bindingUrls}
+                toolbarTargetId={INSERT_TOOLBAR_TARGET_ID}
+                tabsTargetId={CAPABILITY_TABS_TARGET_ID}
+                inspectorTargetId={PAGE_DOC_EDITOR_TARGET_ID}
+              />
+            ) : visibleCanvas === "compare" ? (
               <div className="grid size-full min-h-0 grid-rows-2 gap-px bg-line @4xl/workspace:grid-cols-2 @4xl/workspace:grid-rows-1">
                 <TrackCanvas preview={nativePreview} label={t("canvasNative")} unavailable={t("nativeUnavailable")} />
                 <TrackCanvas preview={adaptedPreview} label={t("canvasAdapted")} unavailable={t("adaptedUnavailable")} />
@@ -247,13 +274,17 @@ export async function UnifiedCoursewareWorkspace({
                 </dl>
               </section>
               <section className="border-t border-line">
-                <CoursewareCapabilityPrototype
-                  sourceType={selectedDoc?.docVersion ?? "unknown"}
-                  activeCanvas={visibleCanvas}
-                  hasAdaptedPreview={Boolean(adaptedPreview)}
-                  toolbarTargetId={INSERT_TOOLBAR_TARGET_ID}
-                  tabsTargetId={CAPABILITY_TABS_TARGET_ID}
-                />
+                {pageEditor ? (
+                  <div id={PAGE_DOC_EDITOR_TARGET_ID} />
+                ) : (
+                  <CoursewareCapabilityPrototype
+                    sourceType={selectedDoc?.docVersion ?? "unknown"}
+                    activeCanvas={visibleCanvas}
+                    hasAdaptedPreview={Boolean(adaptedPreview)}
+                    toolbarTargetId={INSERT_TOOLBAR_TARGET_ID}
+                    tabsTargetId={CAPABILITY_TABS_TARGET_ID}
+                  />
+                )}
               </section>
             </div>
           </ScrollArea>,

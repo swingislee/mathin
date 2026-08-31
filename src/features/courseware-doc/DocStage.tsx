@@ -45,6 +45,8 @@ export interface DocStageProps {
   h5PointerBridge?: H5PointerBridgeHost;
   /** 中台编辑器选择节点；课堂不传，保持原有交互语义。 */
   onNodeSelect?: (nodePath: string) => void;
+  /** 中台编辑器当前选中节点；课堂不传，不产生选中描边。 */
+  selectedNodePath?: string | null;
   /** Studio 选择画布背景资源；只有存在背景 binding 时才会触发。 */
   onBackgroundSelect?: () => void;
   /** Composition overlays keep the immutable source page visible underneath. */
@@ -324,6 +326,7 @@ function nodeBody(
   videoControl: DocVideoControl | undefined,
   h5PointerBridge: H5PointerBridgeHost | undefined,
   onNodeSelect: ((nodePath: string) => void) | undefined,
+  selectedNodePath: string | null | undefined,
 ): ReactNode {
   const alt = node.content?.text || node.name || node.sourceType;
   const url = bindingUrl(node, RESOURCE_ROLES, urls);
@@ -339,6 +342,7 @@ function nodeBody(
           videoControl={videoControl}
           h5PointerBridge={h5PointerBridge}
           onNodeSelect={onNodeSelect}
+          selectedNodePath={selectedNodePath}
         />
       ));
     case "image":
@@ -448,6 +452,7 @@ function NodeView({
   videoControl,
   h5PointerBridge,
   onNodeSelect,
+  selectedNodePath,
 }: {
   node: DocNode;
   urls: ResolvedBindingUrls;
@@ -455,6 +460,7 @@ function NodeView({
   videoControl: DocVideoControl | undefined;
   h5PointerBridge: H5PointerBridgeHost | undefined;
   onNodeSelect: ((nodePath: string) => void) | undefined;
+  selectedNodePath: string | null | undefined;
 }) {
   const t = node.transform;
   const s = node.style;
@@ -476,6 +482,8 @@ function NodeView({
     transform: `translate(${t.x}px,${t.y}px) rotate(${t.rotation}deg) scale(${t.flipX ? -t.scaleX : t.scaleX},${t.flipY ? -t.scaleY : t.scaleY})`,
     display: node.visible ? "block" : "none",
     cursor: clickTrigger ? "pointer" : undefined,
+    outline: selectedNodePath === node.nodePath ? "2px solid #e76f78" : undefined,
+    outlineOffset: selectedNodePath === node.nodePath ? "2px" : undefined,
   };
   return (
     <div
@@ -486,7 +494,7 @@ function NodeView({
       onClickCapture={() => onNodeSelect?.(node.nodePath)}
       style={style}
     >
-      {nodeBody(node, urls, clickTriggers, videoControl, h5PointerBridge, onNodeSelect)}
+      {nodeBody(node, urls, clickTriggers, videoControl, h5PointerBridge, onNodeSelect, selectedNodePath)}
     </div>
   );
 }
@@ -504,6 +512,7 @@ export default function DocStage({
   videoControl,
   h5PointerBridge,
   onNodeSelect,
+  selectedNodePath,
   onBackgroundSelect,
   transparentCanvas = false,
 }: DocStageProps) {
@@ -665,6 +674,7 @@ export default function DocStage({
             videoControl={videoControl}
             h5PointerBridge={h5PointerBridge}
             onNodeSelect={onNodeSelect}
+            selectedNodePath={selectedNodePath}
           />
         ))}
       </div>
