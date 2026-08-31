@@ -8,7 +8,7 @@
 >
 > **当前施工**：P6-AIX-2 已于 2026-08-13 关闭；当前由 R1-9/P6-9 采集 1305 讲正式来源 inventory、Storage/H5 对象审计与非执行者复核。
 >
-> **剩余项**：P6-9 全局量化验收和正式生产 release-1 重建见 doc 25 R1-9/15/18；§14 的 `DEV-CW-1` 仍为 `PLANNED / AWAITING PRODUCT PLAN CONFIRMATION`，未授权页面实现、schema、批量数据或生产变更；本阶段未授权任何生产清理。
+> **剩余项**：P6-9 全局量化验收和正式生产 release-1 重建见 doc 25 R1-9/15/18；§14 的 `DEV-CW-1` 已完成 Step 1 只读布局开发，当前为 `READY FOR USER AUDIT`，未授权 Step 2、schema、数据写入、批量数据或生产变更；本阶段未授权任何生产清理。
 >
 > **最后核对**：2026-08-31；§13 以前的来源与生产基线结论沿用原证据，§14 只依据当前仓库和本机 Docker 开发库只读核对，不代表 Xiaomi/生产事实。
 
@@ -591,9 +591,9 @@ sanitize 白名单按“移植过来的规则实际选择到的标签/属性”�
 
 ## 14. DEV-CW-1 课程产品统一课件工作区（待产品逐步确认）
 
-> **当前状态**：`PLANNED / AWAITING PRODUCT PLAN CONFIRMATION`
+> **当前状态**：`STEP 1 READY FOR USER AUDIT`
 >
-> **施工授权**：无。产品负责人确认本节规划前，只允许继续做只读核对和文档修订；不得实现页面、修改 schema、写入开发库、批量回填或触碰生产。
+> **施工授权**：产品负责人于 2026-08-31 回复“开始执行”，据此把 Step 0 记为 `USER ACCEPTED` 并只授权 Step 1。Step 1 已交付只读页面，当前停止；未明确确认布局前不得开始 Step 2、修改 schema、写入开发库、批量回填或触碰生产。
 >
 > **推进原则**：一个批次只交付一个可人工审计的增量。每批机器检查通过后只记为 `READY FOR USER AUDIT`；必须收到产品负责人对该批布局和功能的明确确认，才能开始下一批。未回复、仅查看页面、机器检查通过或 Agent 自评均不构成确认。
 
@@ -708,4 +708,7 @@ Step 0 还需要产品负责人明确以下事项，规划不代替这些产品�
 
 | Step | 状态 | 证据/入口 | 人工结论 | 下一步权限 |
 | --- | --- | --- | --- | --- |
-| 0 规划确认 | `READY FOR USER AUDIT` | `docs/plan/16-p6-courseware-platform.md` §14；active 登记见 doc 00/04/25 | 待产品负责人核对 | 无；确认前不开始 Step 1 |
+| 0 规划确认 | `USER ACCEPTED` | `docs/plan/16-p6-courseware-platform.md` §14；active 登记见 doc 00/04/25 | 2026-08-31 产品负责人回复“开始执行” | 只授权 Step 1 |
+| 1 信息架构与只读布局 | `READY FOR USER AUDIT` | 稳定讲次路由使用 `?workspace=courseware&canvas=compare`；本机 E 系列样本“进位制初步”和爱学习样本“10的认识和加减法（上）”由交付消息提供局域网入口 | 待确认课程预览直达、连续三栏、默认并排、页面目录、画布切换、翻页、返回课程产品和只读属性区 | 无；确认前不开始 Step 2 |
+
+Step 1 变更边界：只新增只读数据 loader、连续三栏工作区、画布自适应叶子、课程预览直达按钮、双语文案和定向合同；不接 editor action，不新增 schema/RPC，不写数据库/Storage，不删除讲次工作区或旧 Studio。机器证据为 TypeScript、受影响 ESLint、双语键 5263×2、`courseware-unified-workspace-step1` 与既有 `courseware-preview-performance` 共 8/8；这些证据不代表布局已经获得产品确认。

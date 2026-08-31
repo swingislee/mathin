@@ -210,7 +210,7 @@ Phase 1～5 的本机隔离 Supabase、固定开发身份、migration LF checksu
 
 `DEV-CW-1` 回应课程产品中 E 系列、爱学习及后续导入课程缺少单页 16:9/4:3 修订闭环的问题，权威规划见 [doc 16 §14](16-p6-courseware-platform.md#14-dev-cw-1-课程产品统一课件工作区待产品逐步确认)。目标主路径为“课程产品 → 课程/版本 → 讲次 → 指定页面 → 统一课件工作区”，并把共享内容修订、分轨版式、页面上下文资源替换、插入能力和 draft/review/release 放在同一对象上下文内。研发任务最终只保留责任/待处理投影，适配校对只保留异常与审核视图，公共资源保留高级治理与回滚；新路径验收前不删除或降级现有入口。
 
-当前状态为 **PLANNED / AWAITING PRODUCT PLAN CONFIRMATION**。Step 0 只交付规划；Step 1 才允许做只读信息架构与布局；Step 2 只做无持久化功能样机；后续 PageDoc 单页、4:3 样本讲次、上下文替换、source-runtime 决策、入口收敛和扩量分别设置独立人工确认门。产品负责人明确确认当前 Step 前不得开始下一 Step；机器检查通过不构成确认。当前未授权页面实现、schema、开发库写入、批量任务或生产动作，不改变 R1-Live Gate 2。
+产品负责人于 2026-08-31 回复“开始执行”，Step 0 据此记为 `USER ACCEPTED`；本批只完成 Step 1 的课程预览当前页直达、页面目录、16:9/4:3/并排只读画布和能力位置栏，状态为 **STEP 1 READY FOR USER AUDIT**。TypeScript、受影响 ESLint、双语键和定向 Vitest 8/8 通过，但不构成产品布局确认。当前停止在 Step 1；未授权 Step 2、editor action、schema、开发库/Storage 写入、批量任务或生产动作，不改变 R1-Live Gate 2。
 
 ## 6. 原 R1 工作重新定位
 
