@@ -78,10 +78,13 @@ describe("teacher microcourse authoring UX", () => {
     expect(workbench).not.toContain('id="composition-insert-title"');
     expect(workbench).not.toContain('<Badge variant="secondary">{t("mode_composition")}</Badge>');
     expect(workbench).toContain("rounded-xl border border-line bg-white shadow-sm");
-    expect(editor).toContain("COMPOSITION_INSPECTOR_HEADER_TARGET_ID");
-    expect(editor).toContain("COMPOSITION_SAVE_CONTROLS_TARGET_ID");
+    expect(editor).toContain("CoursewareWorkbenchPageRail");
+    expect(editor).toContain("CoursewareWorkbenchPager");
+    expect(editor).not.toMatch(/(?:toolbar|save|inspector).*TARGET_ID/);
     expect(sharedWorkbench).toContain('data-courseware-editor-part="save-controls"');
-    expect(editor).toContain("COMPOSITION_INSPECTOR_TARGET_ID");
+    expect(adapterSurface).toContain("useCoursewareEditorChrome");
+    expect(adapterSurface).not.toContain("createPortal");
+    expect(sharedWorkbench).toContain('mode === "formal-editor" ? "enabled" : "disabled"');
     expect(workbench).not.toContain("bg-paper/70");
     expect(zh).toContain('"pageAutosaving"');
     expect(en).toContain('"pageAutosaving"');

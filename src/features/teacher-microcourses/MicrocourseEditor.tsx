@@ -8,11 +8,14 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { CoursewareCompositionPage } from "@/features/courseware-doc/composition-page-schema";
-import { CoursewareWorkbench } from "@/features/courseware-doc/CoursewareEditorWorkbench";
+import {
+  CoursewareWorkbench,
+  CoursewareWorkbenchPageRail,
+  CoursewareWorkbenchPager,
+} from "@/features/courseware-doc/CoursewareEditorWorkbench";
 import { useRouter } from "@/i18n/navigation";
 import {
   createTeacherCompositionPageAction,
@@ -29,10 +32,6 @@ import type { TeacherMicrocourseEditor as EditorData } from "./data";
 import { MicrocourseSourcePicker } from "./MicrocourseSourcePicker";
 
 const NONE = "__none__";
-const COMPOSITION_TOOLBAR_TARGET_ID = "microcourse-composition-insert-toolbar";
-const COMPOSITION_SAVE_CONTROLS_TARGET_ID = "microcourse-composition-save-controls";
-const COMPOSITION_INSPECTOR_HEADER_TARGET_ID = "microcourse-composition-inspector-header";
-const COMPOSITION_INSPECTOR_TARGET_ID = "microcourse-composition-inspector";
 
 interface PersistedPageDraft {
   pageDocId: string;
@@ -79,6 +78,7 @@ export function MicrocourseEditor({ session, editor, canTeach }: {
       : { ...resolved, title: pageTitleDrafts[page.pageDocId] };
   }), [editor.pages, pageDrafts, pageTitleDrafts]);
   const currentPage = pages.find((page) => page.pageDocId === selectedPageId) ?? pages[0] ?? null;
+  const currentPageIndex = currentPage ? pages.findIndex((page) => page.pageDocId === currentPage.pageDocId) : -1;
   const stage = editor.workflow?.stage ?? "idle";
   const inReview = stage === "in_review" || stage === "ready_to_publish";
   const published = Boolean(editor.publishedMetadataRevisionId && editor.currentReleaseId);
@@ -114,6 +114,24 @@ export function MicrocourseEditor({ session, editor, canTeach }: {
     setPageTitleDrafts((current) => ({ ...current, [currentPage.pageDocId]: value }));
     workbenchRef.current?.rename?.(value);
   };
+  const directoryItems = pages.map((page) => {
+    const active = page.pageDocId === currentPage?.pageDocId;
+    return {
+      id: page.pageDocId,
+      title: page.title,
+      selectable: !active,
+      disabled: pending || pageSwitching,
+      titleContent: active ? (
+        <Input
+          aria-label={t("renamePage")}
+          value={page.title}
+          maxLength={200}
+          className="h-7 min-w-0 border-0 bg-transparent px-1 text-sm shadow-none focus-visible:ring-1"
+          onChange={(event) => renameCurrentPage(event.target.value)}
+        />
+      ) : undefined,
+    };
+  });
   const saveMetadata = () => startTransition(async () => {
     const result = await saveTeacherMicrocourseMetadataAction({
       microcourseId: editor.id, title, description, grade, courseSeason, classType, primaryTopicSlug,
@@ -239,6 +257,7 @@ export function MicrocourseEditor({ session, editor, canTeach }: {
         mode="microcourse-editor"
         adapter="courseware-composition-v1"
         layout="viewport"
+        layoutId={`microcourse-editor-${editor.id}`}
         className="h-[calc(100dvh-9rem)] min-h-[32rem]"
         directory={{
           ariaLabel: t("pages", { count: pages.length }),
@@ -246,33 +265,16 @@ export function MicrocourseEditor({ session, editor, canTeach }: {
             <h3 className="text-sm font-semibold">{t("pages", { count: pages.length })}</h3>
             <Button type="button" size="sm" variant="ghost" className="size-8 p-0" disabled={pending || pageSwitching} onClick={addBlank} aria-label={t("addBlank")}><Plus className="size-4" /></Button>
           </>,
-          content: <div className="flex size-full min-h-0 flex-col p-3 pt-0">
-            <div className="pb-3"><MicrocourseSourcePicker microcourseId={editor.id} afterPageDocId={currentPage?.pageDocId ?? null} disabled={pending || pageSwitching} onAdded={(id, count) => void handlePageAdded(id, t("pagesAdded", { count }))} /></div>
-            <ScrollArea className="min-h-0 flex-1">
-              <ol className="space-y-1 px-2 pb-3">
-                {pages.map((page) => {
-                  const active = page.pageDocId === currentPage?.pageDocId;
-                  return <li key={page.pageDocId}>
-                    {active ? (
-                      <div className="flex items-center gap-2 bg-crater/10 px-2 py-1.5 text-ink">
-                        <span className="w-5 shrink-0 text-xs text-muted">{page.pageNo}</span>
-                        <Input
-                          aria-label={t("renamePage")}
-                          value={page.title}
-                          maxLength={200}
-                          className="h-7 min-w-0 flex-1 border-0 bg-transparent px-1 text-sm shadow-none focus-visible:ring-1"
-                          onChange={(event) => renameCurrentPage(event.target.value)}
-                        />
-                      </div>
-                    ) : (
-                      <Button type="button" variant="ghost" disabled={pending || pageSwitching} onClick={() => void selectPage(page.pageDocId)} className="h-10 w-full justify-start rounded-md px-2 text-left">
-                        <span className="w-5 shrink-0 text-xs text-muted">{page.pageNo}</span><span className="min-w-0 truncate text-sm">{page.title}</span>
-                      </Button>
-                    )}
-                  </li>;
-                })}
-              </ol>
-            </ScrollArea>
+          content: <div className="flex size-full min-h-0 flex-col pt-3">
+            <div className="shrink-0 px-3 pb-3"><MicrocourseSourcePicker microcourseId={editor.id} afterPageDocId={currentPage?.pageDocId ?? null} disabled={pending || pageSwitching} onAdded={(id, count) => void handlePageAdded(id, t("pagesAdded", { count }))} /></div>
+            <CoursewareWorkbenchPageRail
+              items={directoryItems}
+              selectedIndex={currentPageIndex}
+              onSelectedIndexChange={(index) => {
+                const page = pages[index];
+                if (page) void selectPage(page.pageDocId);
+              }}
+            />
           </div>,
           footer: <div className="grid grid-cols-3 gap-1 p-2">
               <Button type="button" size="sm" variant="ghost" disabled={pending || !currentPage || currentPage.pageNo <= 1} onClick={() => movePage(-1)} aria-label={t("moveUp")}><ArrowUp className="size-4" /></Button>
@@ -280,8 +282,6 @@ export function MicrocourseEditor({ session, editor, canTeach }: {
               <Button type="button" size="sm" variant="ghost" disabled={pending || !currentPage} onClick={() => setDeletePageId(currentPage?.pageDocId ?? null)} aria-label={t("deletePage")}><Trash2 className="size-4 text-rose" /></Button>
           </div>,
         }}
-        toolbar={<div id={COMPOSITION_TOOLBAR_TARGET_ID} className="min-w-0 flex-1" />}
-        saveControls={<div id={COMPOSITION_SAVE_CONTROLS_TARGET_ID} className="min-w-0" />}
         canvas={{
           ariaLabel: t("workspaceTitle"),
           content: currentPage
@@ -290,19 +290,29 @@ export function MicrocourseEditor({ session, editor, canTeach }: {
                 key={currentPage.pageDocId}
                 microcourseId={editor.id}
                 page={currentPage}
-                toolbarTargetId={COMPOSITION_TOOLBAR_TARGET_ID}
-                saveTargetId={COMPOSITION_SAVE_CONTROLS_TARGET_ID}
-                inspectorHeaderTargetId={COMPOSITION_INSPECTOR_HEADER_TARGET_ID}
-                inspectorTargetId={COMPOSITION_INSPECTOR_TARGET_ID}
                 onPersisted={handlePagePersisted}
                 onStatus={setMessage}
               />
             : <section className="grid size-full place-items-center"><p className="text-sm text-muted">{t("emptyPages")}</p></section>,
+          footer: <CoursewareWorkbenchPager
+            previousLabel={t("previousPage")}
+            nextLabel={t("nextPage")}
+            previousDisabled={pending || pageSwitching || currentPageIndex <= 0}
+            nextDisabled={pending || pageSwitching || currentPageIndex < 0 || currentPageIndex >= pages.length - 1}
+            onPrevious={() => {
+              const previous = pages[currentPageIndex - 1];
+              if (previous) void selectPage(previous.pageDocId);
+            }}
+            onNext={() => {
+              const next = pages[currentPageIndex + 1];
+              if (next) void selectPage(next.pageDocId);
+            }}
+            center={<span className="text-xs tabular-nums text-muted">{t("pageContext", { page: Math.max(0, currentPageIndex + 1), total: pages.length })}</span>}
+          />,
         }}
         inspector={{
           ariaLabel: t("componentPanelTitle"),
-          header: <div id={COMPOSITION_INSPECTOR_HEADER_TARGET_ID} className="size-full min-w-0" />,
-          content: <div id={COMPOSITION_INSPECTOR_TARGET_ID} className="size-full min-h-0 min-w-0" />,
+          header: null,
         }}
       />
 

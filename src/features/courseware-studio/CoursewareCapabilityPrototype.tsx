@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   CircleAlert,
   Eye,
@@ -17,14 +17,15 @@ import {
   Wrench,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { createPortal } from "react-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   CoursewareEditorActionGrid,
+  CoursewareEditorSaveControls,
   CoursewareInsertionToolbar,
+  useCoursewareEditorChrome,
 } from "@/features/courseware-doc/CoursewareEditorWorkbench";
 import { cn } from "@/lib/utils";
 
@@ -78,14 +79,10 @@ export function CoursewareCapabilityPrototype({
   sourceType,
   activeCanvas,
   hasAdaptedPreview,
-  toolbarTargetId,
-  tabsTargetId,
 }: {
   sourceType: string;
   activeCanvas: "compare" | "native-16x9" | "adapted-4x3";
   hasAdaptedPreview: boolean;
-  toolbarTargetId: string;
-  tabsTargetId: string;
 }) {
   const t = useTranslations("coursewareWorkspace");
   const [activeTab, setActiveTab] = useState<PrototypeTab>("adjust");
@@ -97,17 +94,6 @@ export function CoursewareCapabilityPrototype({
   const [replacementKind, setReplacementKind] = useState("background");
   const [replacementScope, setReplacementScope] = useState<ReplacementScope>("page");
   const [history, setHistory] = useState<PrototypeAction[]>([]);
-  const [toolbarTarget, setToolbarTarget] = useState<HTMLElement | null>(null);
-  const [tabsTarget, setTabsTarget] = useState<HTMLElement | null>(null);
-
-  useEffect(() => {
-    const frame = window.requestAnimationFrame(() => {
-      setToolbarTarget(document.getElementById(toolbarTargetId));
-      setTabsTarget(document.getElementById(tabsTargetId));
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [tabsTargetId, toolbarTargetId]);
-
   const sourceRuntime = sourceType === "source-runtime-page-v1";
   const composition = sourceType === "courseware-composition-v1";
   const pageDoc = sourceType === "page-doc-v1";
@@ -158,18 +144,34 @@ export function CoursewareCapabilityPrototype({
       />
     </>
   );
+  const inspectorHeader = (
+    <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as PrototypeTab)}>
+      <TabsList className="grid h-8 w-full grid-cols-3">
+        <TabsTrigger value="adjust" className="px-2 text-xs">{t("prototypeTabAdjust")}</TabsTrigger>
+        <TabsTrigger value="layout" className="px-2 text-xs">{t("prototypeTabLayout")}</TabsTrigger>
+        <TabsTrigger value="replace" className="px-2 text-xs">{t("prototypeTabReplace")}</TabsTrigger>
+      </TabsList>
+    </Tabs>
+  );
+  const saveControls = (
+    <CoursewareEditorSaveControls
+      state="saved"
+      labels={{
+        saved: t("prototypeBadge"),
+        saving: t("prototypeBadge"),
+        dirty: t("prototypeBadge"),
+        error: t("prototypeBadge"),
+        saveNow: t("verticalSliceSaveNow"),
+      }}
+      onSave={() => undefined}
+      disabled
+      className="w-auto"
+    />
+  );
+  useCoursewareEditorChrome({ toolbar: insertToolbar, saveControls, inspectorHeader });
 
   return (
     <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as PrototypeTab)}>
-      {toolbarTarget ? createPortal(insertToolbar, toolbarTarget) : null}
-      {tabsTarget ? createPortal(
-        <TabsList className="grid h-8 w-full grid-cols-3">
-          <TabsTrigger value="adjust" className="px-2 text-xs">{t("prototypeTabAdjust")}</TabsTrigger>
-          <TabsTrigger value="layout" className="px-2 text-xs">{t("prototypeTabLayout")}</TabsTrigger>
-          <TabsTrigger value="replace" className="px-2 text-xs">{t("prototypeTabReplace")}</TabsTrigger>
-        </TabsList>,
-        tabsTarget,
-      ) : null}
       <div data-courseware-step2-prototype data-persistence="none" className="space-y-4 py-4">
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-2">

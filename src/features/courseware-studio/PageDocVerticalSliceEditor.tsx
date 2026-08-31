@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -89,10 +90,6 @@ export interface PageDocVerticalSliceEditorProps {
   initialDoc: PageDoc;
   baseRevisionNo: number;
   bindingUrls: ResolvedBindingUrls;
-  toolbarTargetId: string;
-  saveTargetId: string;
-  tabsTargetId: string;
-  inspectorTargetId: string;
 }
 
 export function PageDocVerticalSliceEditor({
@@ -101,10 +98,6 @@ export function PageDocVerticalSliceEditor({
   initialDoc,
   baseRevisionNo,
   bindingUrls,
-  toolbarTargetId,
-  saveTargetId,
-  tabsTargetId,
-  inspectorTargetId,
 }: PageDocVerticalSliceEditorProps) {
   const t = useTranslations("coursewareWorkspace");
   const [doc, setDoc] = useState<PageDoc>(() => clone(initialDoc));
@@ -285,7 +278,9 @@ export function PageDocVerticalSliceEditor({
   );
 
   const inspector = (
-    <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as EditorTab)}>
+    <ScrollArea className="size-full min-h-0">
+      <div className="px-4">
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as EditorTab)}>
       <div
         data-courseware-step3-editor
         data-content-changed={contentChanged ? "true" : "false"}
@@ -404,15 +399,13 @@ export function PageDocVerticalSliceEditor({
           </p>
         </div>
       </div>
-    </Tabs>
+        </Tabs>
+      </div>
+    </ScrollArea>
   );
 
   return (
     <CoursewareEditorAdapterSurface
-      toolbarTargetId={toolbarTargetId}
-      saveTargetId={saveTargetId}
-      inspectorHeaderTargetId={tabsTargetId}
-      inspectorTargetId={inspectorTargetId}
       toolbar={insertToolbar}
       saveControls={saveControls}
       inspectorHeader={inspectorHeader}

@@ -191,19 +191,11 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
     doc: CoursewareCompositionPage;
     bindingUrls: Record<string, string>;
   };
-  toolbarTargetId: string;
-  saveTargetId: string;
-  inspectorHeaderTargetId: string;
-  inspectorTargetId: string;
   onPersisted: (draft: PersistedCompositionPage) => void;
   onStatus: (message: string) => void;
 }>(function CoursewareCompositionWorkbench({
   microcourseId,
   page,
-  toolbarTargetId,
-  saveTargetId,
-  inspectorHeaderTargetId,
-  inspectorTargetId,
   onPersisted,
   onStatus,
 }, ref) {
@@ -500,10 +492,6 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
 
   return (
     <CoursewareEditorAdapterSurface
-      toolbarTargetId={toolbarTargetId}
-      saveTargetId={saveTargetId}
-      inspectorHeaderTargetId={inspectorHeaderTargetId}
-      inspectorTargetId={inspectorTargetId}
       toolbar={insertToolbar}
       saveControls={saveControls}
       inspectorHeader={inspectorHeader}
