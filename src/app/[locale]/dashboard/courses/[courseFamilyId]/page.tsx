@@ -198,9 +198,21 @@ async function CourseFamilyProductPage({
   const lectureId = first(rawSearchParams.lecture);
   const requestedLecture = detail.teachingPlan.find((lecture) => lecture.id === lectureId);
   const previewTrack = parseCoursewareTrack(rawSearchParams.track);
-  const preview = requestedLecture?.hasRelease
-    ? await loadLecturePreview(requestedLecture.id, previewTrack, parsePage(first(rawSearchParams.page)))
-    : null;
+  let preview: Awaited<ReturnType<typeof loadLecturePreview>> = null;
+  let adaptedPreviewFellBack = false;
+  if (requestedLecture?.hasRelease) {
+    const previewPage = parsePage(first(rawSearchParams.page));
+    if (previewTrack === "adapted-4x3") {
+      const [adaptedPreview, nativePreview] = await Promise.all([
+        loadLecturePreview(requestedLecture.id, "adapted-4x3", previewPage),
+        loadLecturePreview(requestedLecture.id, "native-16x9", previewPage),
+      ]);
+      preview = adaptedPreview ?? nativePreview;
+      adaptedPreviewFellBack = !adaptedPreview && Boolean(nativePreview);
+    } else {
+      preview = await loadLecturePreview(requestedLecture.id, "native-16x9", previewPage);
+    }
+  }
   const validPreview = preview?.lecture.courseId === selectedVariant.id ? preview : null;
 
   const variantTrashed = Boolean(detail.variants.find((variant) => variant.id === selectedVariant.id)?.trashedAt);
@@ -237,12 +249,19 @@ async function CourseFamilyProductPage({
         <Badge variant={selectedVariant.status === "enabled" ? "secondary" : "outline"}>{t(selectedVariant.status)}</Badge>
         {selectedVariant.supersededByCourseId && <Badge variant="outline">{t("superseded")}</Badge>}
       </>}
-      primaryAction={primaryAction}
       overflowSlot={capabilities.canTransitionVariant ? <StatusOverflowMenu id={selectedVariant.id} status={selectedVariant.status} action={transitionCourseVariantStatusAction} ariaLabel={t("moreActions")} /> : undefined}
     />}
-    navigation={<ObjectContextSwitcher label={t("variantContextLabel")}>
-      <VariantSelector familyId={detail.family.id} variants={detail.variants} catalogVersions={detail.catalogVersions} current={selectedVariant} />
-    </ObjectContextSwitcher>}
+    navigation={(
+      <div
+        data-course-variant-command-row
+        className="flex min-w-0 flex-wrap items-center gap-3 @2xl/chrome:flex-nowrap"
+      >
+        <ObjectContextSwitcher label={t("variantContextLabel")} className="min-w-0 flex-1">
+          <VariantSelector familyId={detail.family.id} variants={detail.variants} catalogVersions={detail.catalogVersions} current={selectedVariant} />
+        </ObjectContextSwitcher>
+        {primaryAction ? <div className="ml-auto shrink-0">{primaryAction}</div> : null}
+      </div>
+    )}
   >
     {/* doc23 §8.2 Variant 蓝图：主栏只有教学计划——这一页的工作就是它；
         就绪度、在用班级、责任分配都是做这件事时要参考的稳定信息，进侧栏。 */}
@@ -270,6 +289,7 @@ async function CourseFamilyProductPage({
           preview={validPreview}
           baseHref={baseHref}
           workspaceHref={`/dashboard/courseware/lectures/${validPreview.lecture.id}?workspace=courseware&canvas=compare&track=${validPreview.track}`}
+          adaptedPreviewFellBack={adaptedPreviewFellBack}
         />
       </LecturePreviewDialog>
     )}

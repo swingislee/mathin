@@ -1334,6 +1334,7 @@
     "canvasCompare": "16:9 / 4:3 comparison",
     "canvasNative": "Native 16:9",
     "canvasAdapted": "Adapted 4:3",
+    "adaptedFallbackNotice": "This lecture has no adapted 4:3 version yet. The native 16:9 preview remains open.",
     "pageContext": "Page {page} / {total}",
     "pageDirectory": "Page directory",
     "pageCount": "{count} pages",
