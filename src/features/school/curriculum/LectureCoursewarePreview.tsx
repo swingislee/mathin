@@ -76,7 +76,7 @@ function LectureCoursewarePreviewState({
   const t = useTranslations("school.courses");
   const commonT = useTranslations("common");
   const [selectedIndex, setSelectedIndex] = useState(preview.pageIndex - 1);
-  const [cache, setCache] = useState(new Map<string, CoursewarePreviewPagePayload>([[
+  const cacheRef = useRef(new Map<string, CoursewarePreviewPagePayload>([[
     preview.page.pageDocId,
     { page: preview.page, bindingUrls: preview.bindingUrls },
   ]]));
@@ -89,7 +89,7 @@ function LectureCoursewarePreviewState({
   const selectedPageIdRef = useRef(preview.page.pageDocId);
 
   const ensurePage = useCallback((pageDocId: string) => {
-    const cached = cache.get(pageDocId);
+    const cached = cacheRef.current.get(pageDocId);
     if (cached) return Promise.resolve(cached);
     const pending = pendingRef.current.get(pageDocId);
     if (pending) return pending;
@@ -107,7 +107,10 @@ function LectureCoursewarePreviewState({
     }).then(async (result) => {
       if (!result.ok) throw new Error(result.code);
       await warmCoursewarePreviewPage(result.data.page.doc, result.data.bindingUrls);
-      setCache((current) => new Map(current).set(pageDocId, result.data));
+      // A ref makes a completed adjacent-page warm immediately visible to a
+      // click handler. React state alone leaves a small pre-commit window where
+      // the handler can see the old cache and start a duplicate request.
+      cacheRef.current.set(pageDocId, result.data);
       setErrors((current) => {
         if (!current.has(pageDocId)) return current;
         const next = new Map(current);
@@ -132,7 +135,7 @@ function LectureCoursewarePreviewState({
     );
     pendingRef.current.set(pageDocId, settled);
     return settled;
-  }, [cache, preview.release.id, preview.track]);
+  }, [preview.release.id, preview.track]);
 
   useEffect(() => {
     // One page in each direction is enough to make normal sequential teaching
@@ -150,7 +153,7 @@ function LectureCoursewarePreviewState({
     selectedPageIdRef.current = page.pageDocId;
     setSelectedIndex(index);
     replacePreviewUrl(href);
-    const cached = cache.get(page.pageDocId);
+    const cached = cacheRef.current.get(page.pageDocId);
     if (cached) {
       setRendered(cached);
       return;
@@ -158,7 +161,7 @@ function LectureCoursewarePreviewState({
     void ensurePage(page.pageDocId).then((payload) => {
       if (selectedPageIdRef.current === page.pageDocId) setRendered(payload);
     }).catch(() => undefined);
-  }, [cache, ensurePage, pageHrefs, preview.pages]);
+  }, [ensurePage, pageHrefs, preview.pages]);
 
   const selectedMeta = preview.pages[selectedIndex] ?? preview.pages[0];
   const loadError = selectedMeta ? errors.get(selectedMeta.pageDocId) : undefined;
