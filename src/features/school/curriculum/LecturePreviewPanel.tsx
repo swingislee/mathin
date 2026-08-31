@@ -1,11 +1,8 @@
-import { ExternalLink } from "lucide-react";
 import { getTranslations } from "next-intl/server";
-import { buttonVariants } from "@/components/ui/button";
 import type { CoursewareLecturePreview, CoursewareTrack } from "@/features/courseware-studio/data";
-import { Link } from "@/i18n/navigation";
-import { cn } from "@/lib/utils";
 import { LectureCoursewarePreview } from "./LectureCoursewarePreview";
 import { LecturePreviewTrackSwitcher } from "./LecturePreviewTrackSwitcher";
+import { OpenCoursewareWorkspaceButton } from "./OpenCoursewareWorkspaceButton";
 
 /** `baseHref` 已经带着调用页面自己的 `?...` 查询串,拼接时只用 `&`(对齐历史版本约定)。 */
 function previewHref(baseHref: string, lectureId: string, page: number, track: CoursewareTrack) {
@@ -20,8 +17,8 @@ function previewHref(baseHref: string, lectureId: string, page: number, track: C
  * 讲次预览对话框正文（doc19 历史设计,P4I-11 曾删除又被要求复原并组件化）。
  * 唯一可复用的"预览讲次"实现——课程产品页教学计划、研发任务页任务队列
  * 都通过 `?lecture=&page=&track=` 查询参数触发同一个组件,不是各写一份。
- * 只负责"看一眼"：翻页、切轨道都在这一页内完成,深入编辑走 `workspaceHref`
- * 进讲次工作区整页(工作区自己的主动作再决定要不要进 Studio)。
+ * 只负责"看一眼"：翻页、切轨道都在这一页内完成；深入处理从当前页面
+ * 直接进入统一课件工作区，不再先打开讲次工作区再二次进入 Studio。
  */
 export async function LecturePreviewPanel({
   preview,
@@ -32,7 +29,10 @@ export async function LecturePreviewPanel({
   baseHref: string;
   workspaceHref: string;
 }) {
-  const t = await getTranslations("school.courses");
+  const [t, workspaceT] = await Promise.all([
+    getTranslations("school.courses"),
+    getTranslations("coursewareWorkspace"),
+  ]);
   const currentTrack = preview.track;
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -46,7 +46,7 @@ export async function LecturePreviewPanel({
           currentTrack={currentTrack}
           initialPage={preview.pageIndex}
         />
-        <Link href={workspaceHref} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>{t("openLecture")}<ExternalLink className="size-4" /></Link>
+        <OpenCoursewareWorkspaceButton href={workspaceHref} label={workspaceT("openWorkspace")} />
       </div>
       <div className="min-h-0 flex-1 overflow-hidden bg-paper px-3 py-4 sm:px-6">
         <LectureCoursewarePreview

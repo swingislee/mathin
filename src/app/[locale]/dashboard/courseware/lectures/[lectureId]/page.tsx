@@ -5,7 +5,14 @@ import { DecisionRailContent } from "@/features/school/curriculum/DecisionRailCo
 import { LectureWorkspaceBody } from "@/features/school/curriculum/LectureWorkspaceBody";
 import { loadLectureWorkspacePageData } from "@/features/school/curriculum/load-lecture-workspace-page";
 import { parseReturnTo } from "@/features/school/object-workspace";
+import { parseCoursewareTrack } from "@/features/courseware-studio/data";
+import { loadUnifiedCoursewareWorkspaceData } from "@/features/courseware-studio/unified-workspace-data";
+import { parseUnifiedWorkspaceCanvas, UnifiedCoursewareWorkspace } from "@/features/courseware-studio/UnifiedCoursewareWorkspace";
 import { requireDashboardEnvironment } from "@/lib/auth";
+
+function first(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
 
 // doc22 §5.19：原 /dashboard/curriculum/lectures/[lectureId] 的 curriculum 是代码领域名
 // 泄漏——系统里根本没有 /dashboard/curriculum 首页，那是一个没有父页面的虚假中间层。
@@ -39,6 +46,20 @@ async function LectureWorkspaceContent({
     searchParams,
     requireDashboardEnvironment(locale, ["staff"]),
   ]);
+
+  const returnTo = parseReturnTo({ returnTo: rawSearchParams.returnTo, environment });
+  if (first(rawSearchParams.workspace) === "courseware") {
+    const workspace = await loadUnifiedCoursewareWorkspaceData(locale, lectureId, rawSearchParams);
+    return <UnifiedCoursewareWorkspace
+      detail={workspace.detail}
+      nativePreview={workspace.nativePreview}
+      adaptedPreview={workspace.adaptedPreview}
+      canvas={parseUnifiedWorkspaceCanvas(rawSearchParams.canvas)}
+      entryTrack={parseCoursewareTrack(rawSearchParams.track)}
+      returnTo={returnTo}
+    />;
+  }
+
   const { detail, track, staffOptions, capabilitiesByTrack, preview, microcourseReviewCycleId, canOpenCoursewareWorkbench, canAssign } =
     await loadLectureWorkspacePageData(locale, lectureId, rawSearchParams);
 
@@ -50,7 +71,6 @@ async function LectureWorkspaceContent({
   const trackState = detail.tracks.find((row) => row.track === track) ?? detail.tracks[0];
 
   // doc23 §18：讲次可以从课程版本的教学计划进入，也可以从研发任务队列或适配校对队列进入。
-  const returnTo = parseReturnTo({ returnTo: rawSearchParams.returnTo, environment });
   const backHref = returnTo ?? `/dashboard/courses/${detail.family.id}?variant=${detail.variant.id}`;
 
   return <LectureWorkspaceBody
