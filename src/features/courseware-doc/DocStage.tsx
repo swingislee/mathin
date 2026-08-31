@@ -47,6 +47,8 @@ export interface DocStageProps {
   onNodeSelect?: (nodePath: string) => void;
   /** 中台编辑器当前选中节点；课堂不传，不产生选中描边。 */
   selectedNodePath?: string | null;
+  /** 编辑画布可关闭进入即播动画，保持权威排版静止；预览/课堂默认播放。 */
+  playAutoInteractions?: boolean;
   /** Studio 选择画布背景资源；只有存在背景 binding 时才会触发。 */
   onBackgroundSelect?: () => void;
   /** Composition overlays keep the immutable source page visible underneath. */
@@ -513,6 +515,7 @@ export default function DocStage({
   h5PointerBridge,
   onNodeSelect,
   selectedNodePath,
+  playAutoInteractions = true,
   onBackgroundSelect,
   transparentCanvas = false,
 }: DocStageProps) {
@@ -553,7 +556,7 @@ export default function DocStage({
     });
     runtimeRef.current = runtime;
     appliedStepsRef.current = 0;
-    void runtime.runAuto();
+    if (playAutoInteractions) void runtime.runAuto();
     const onClick = interactive
       ? (event: MouseEvent) => {
           void runtime.handleStageClick(event.target).then((trigger) => {
@@ -569,7 +572,7 @@ export default function DocStage({
       runtime.dispose();
       runtimeRef.current = null;
     };
-  }, [doc, interactive]);
+  }, [doc, interactive, playAutoInteractions]);
 
   // 远端步进回放:mount 时把已记录的步进全量补放(晚加入/重进页与
   // 现场看课的观众收敛到同一舞台状态),此后每来一条增量执行一条。

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   CircleAlert,
@@ -8,7 +8,6 @@ import {
   Gamepad2,
   ImagePlus,
   RotateCcw,
-  Save,
   Shapes,
   Sigma,
   Type,
@@ -22,10 +21,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { CoursewareInsertionToolbar } from "@/features/courseware-doc/CoursewareEditorWorkbench";
+import {
+  CoursewareEditorSaveControls,
+  CoursewareInsertionToolbar,
+  type CoursewareEditorSaveState,
+} from "@/features/courseware-doc/CoursewareEditorWorkbench";
 import type { ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 import type { DocNode, PageDoc } from "@/features/courseware-doc/schema";
-import { useRouter } from "@/i18n/navigation";
 import { saveCoursewareDraftAction } from "./actions";
 import { FittedCoursewareCanvas } from "./FittedCoursewareCanvas";
 import { StagePreview } from "./StagePreview";
@@ -42,15 +44,6 @@ function visit(nodes: DocNode[], nodePath: string): DocNode | null {
   for (const node of nodes) {
     if (node.nodePath === nodePath) return node;
     const nested = visit(node.children, nodePath);
-    if (nested) return nested;
-  }
-  return null;
-}
-
-function firstEditableNodePath(nodes: DocNode[]): string | null {
-  for (const node of nodes) {
-    if (node.content) return node.nodePath;
-    const nested = firstEditableNodePath(node.children);
     if (nested) return nested;
   }
   return null;
@@ -112,18 +105,25 @@ export function PageDocVerticalSliceEditor({
   tabsTargetId,
   inspectorTargetId,
 }: PageDocVerticalSliceEditorProps) {
-  const router = useRouter();
   const t = useTranslations("coursewareWorkspace");
   const [doc, setDoc] = useState<PageDoc>(() => clone(initialDoc));
   const [savedDoc, setSavedDoc] = useState<PageDoc>(() => clone(initialDoc));
   const [currentBaseRevisionNo, setCurrentBaseRevisionNo] = useState(baseRevisionNo);
-  const [selectedPath, setSelectedPath] = useState<string | null>(() => firstEditableNodePath(initialDoc.nodes));
+  const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<EditorTab>("adjust");
   const [message, setMessage] = useState("");
+  const [saveState, setSaveState] = useState<CoursewareEditorSaveState>("saved");
   const [toolbarTarget, setToolbarTarget] = useState<HTMLElement | null>(null);
   const [tabsTarget, setTabsTarget] = useState<HTMLElement | null>(null);
   const [inspectorTarget, setInspectorTarget] = useState<HTMLElement | null>(null);
-  const [pending, startTransition] = useTransition();
+  const docRef = useRef(clone(initialDoc));
+  const savedDocRef = useRef(clone(initialDoc));
+  const revisionRef = useRef(baseRevisionNo);
+  const sequenceRef = useRef(0);
+  const savedSequenceRef = useRef(0);
+  const timerRef = useRef<number | null>(null);
+  const savingRef = useRef<Promise<boolean> | null>(null);
+  const flushRef = useRef<() => Promise<boolean>>(async () => true);
 
   const selected = useMemo(() => selectedPath ? visit(doc.nodes, selectedPath) : null, [doc, selectedPath]);
   const contentChanged = changeSnapshot(doc, "content") !== changeSnapshot(savedDoc, "content");
@@ -139,24 +139,96 @@ export function PageDocVerticalSliceEditor({
     return () => window.cancelAnimationFrame(frame);
   }, [inspectorTargetId, tabsTargetId, toolbarTargetId]);
 
+  const flush = useCallback(async (): Promise<boolean> => {
+    if (savingRef.current) {
+      const previousSaved = await savingRef.current;
+      if (!previousSaved) return false;
+    }
+    if (savedSequenceRef.current === sequenceRef.current) {
+      setSaveState("saved");
+      return true;
+    }
+
+    if (timerRef.current) window.clearTimeout(timerRef.current);
+    const sequence = sequenceRef.current;
+    const docSnapshot = clone(docRef.current);
+    setSaveState("saving");
+    const request = saveCoursewareDraftAction({
+      pageDocId,
+      track,
+      doc: docSnapshot,
+      baseRevisionNo: revisionRef.current,
+      note: t("verticalSliceSaveNote"),
+    }).then((result) => {
+      if (!result.ok) {
+        setSaveState("error");
+        setMessage(t("verticalSliceSaveFailed", { code: result.code }));
+        return false;
+      }
+      revisionRef.current = result.data.revisionNo;
+      savedSequenceRef.current = sequence;
+      savedDocRef.current = clone(docSnapshot);
+      setCurrentBaseRevisionNo(result.data.revisionNo);
+      setSavedDoc(clone(docSnapshot));
+      setMessage("");
+      if (sequenceRef.current === sequence) setSaveState("saved");
+      else {
+        setSaveState("dirty");
+        timerRef.current = window.setTimeout(() => void flushRef.current(), 800);
+      }
+      return true;
+    }).catch(() => {
+      setSaveState("error");
+      setMessage(t("verticalSliceSaveFailed", { code: "NETWORK" }));
+      return false;
+    }).finally(() => {
+      savingRef.current = null;
+    });
+    savingRef.current = request;
+    return request;
+  }, [pageDocId, t, track]);
+
+  const markDirty = useCallback(() => {
+    sequenceRef.current += 1;
+    setSaveState("dirty");
+    setMessage("");
+    if (timerRef.current) window.clearTimeout(timerRef.current);
+    timerRef.current = window.setTimeout(() => void flushRef.current(), 800);
+  }, []);
+
   useEffect(() => {
-    const handler = (event: BeforeUnloadEvent) => {
-      if (!isDirty) return;
+    flushRef.current = flush;
+  }, [flush]);
+
+  useEffect(() => {
+    const visibility = () => {
+      if (document.visibilityState === "hidden") void flushRef.current();
+    };
+    const beforeUnload = (event: BeforeUnloadEvent) => {
+      if (savedSequenceRef.current === sequenceRef.current) return;
+      void flushRef.current();
       event.preventDefault();
       event.returnValue = "";
     };
-    window.addEventListener("beforeunload", handler);
-    return () => window.removeEventListener("beforeunload", handler);
-  }, [isDirty]);
+    window.addEventListener("beforeunload", beforeUnload);
+    document.addEventListener("visibilitychange", visibility);
+    return () => {
+      if (timerRef.current) window.clearTimeout(timerRef.current);
+      window.removeEventListener("beforeunload", beforeUnload);
+      document.removeEventListener("visibilitychange", visibility);
+      void flushRef.current();
+    };
+  }, []);
 
   const patchSelected = (mutate: (node: DocNode) => void) => {
     if (!selectedPath) return;
-    setDoc((current) => {
-      const next = clone(current);
-      const target = visit(next.nodes, selectedPath);
-      if (target) mutate(target);
-      return next;
-    });
+    const next = clone(docRef.current);
+    const target = visit(next.nodes, selectedPath);
+    if (!target) return;
+    mutate(target);
+    docRef.current = next;
+    setDoc(next);
+    markDirty();
   };
 
   const patchNumber = (
@@ -173,26 +245,8 @@ export function PageDocVerticalSliceEditor({
     });
   };
 
-  const save = () => startTransition(async () => {
-    const result = await saveCoursewareDraftAction({
-      pageDocId,
-      track,
-      doc,
-      baseRevisionNo: currentBaseRevisionNo,
-      note: t("verticalSliceSaveNote"),
-    });
-    if (!result.ok) {
-      setMessage(t("verticalSliceSaveFailed", { code: result.code }));
-      return;
-    }
-    setCurrentBaseRevisionNo(result.data.revisionNo);
-    setSavedDoc(clone(doc));
-    setMessage(t("verticalSliceSaved", { revision: result.data.revisionNo }));
-    router.refresh();
-  });
-
   const insertToolbar = (
-    <>
+    <div className="flex w-full min-w-0 items-center gap-2">
       <span id="courseware-step3-insert-hint" className="sr-only">{t("verticalSliceInsertDeferred")}</span>
       <CoursewareInsertionToolbar
         aria-label={t("contentInsertion")}
@@ -212,7 +266,20 @@ export function PageDocVerticalSliceEditor({
           disabled: true,
         }))}
       />
-    </>
+      <CoursewareEditorSaveControls
+        state={saveState}
+        labels={{
+          saved: t("verticalSliceAutosaved"),
+          saving: t("verticalSliceAutosaving"),
+          dirty: t("verticalSliceAwaitingAutosave"),
+          error: t("verticalSliceAutosaveFailed"),
+          saveNow: t("verticalSliceSaveNow"),
+        }}
+        onSave={() => void flush()}
+        statusTestId="courseware-page-doc-autosave-status"
+        className="ml-auto w-auto pl-3"
+      />
+    </div>
   );
 
   const inspector = (
@@ -310,26 +377,26 @@ export function PageDocVerticalSliceEditor({
         </TabsContent>
 
         <div className="border-t border-line pt-4">
-          <div className="grid grid-cols-2 gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              disabled={pending || !isDirty}
-              onClick={() => {
-                setDoc(clone(savedDoc));
-                setSelectedPath(firstEditableNodePath(savedDoc.nodes));
-                setMessage("");
-              }}
-            >
-              <RotateCcw className="size-4" />
-              {t("verticalSliceReset")}
-            </Button>
-            <Button type="button" size="sm" disabled={pending || !isDirty} onClick={save}>
-              <Save className="size-4" />
-              {pending ? t("verticalSliceSaving") : t("verticalSliceSave")}
-            </Button>
-          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="w-full"
+            disabled={saveState === "saving" || !isDirty}
+            onClick={() => {
+              if (timerRef.current) window.clearTimeout(timerRef.current);
+              const restored = clone(savedDocRef.current);
+              docRef.current = restored;
+              sequenceRef.current = savedSequenceRef.current;
+              setDoc(restored);
+              setSelectedPath(null);
+              setSaveState("saved");
+              setMessage("");
+            }}
+          >
+            <RotateCcw className="size-4" />
+            {t("verticalSliceReset")}
+          </Button>
           <p className="mt-3 text-xs leading-5 text-muted" role="status" aria-live="polite">
             {message || t("verticalSliceReleaseImmutable")}
           </p>
@@ -358,6 +425,8 @@ export function PageDocVerticalSliceEditor({
           bindingUrls={bindingUrls}
           stageMode="natural"
           className="size-full"
+          interactive={false}
+          playAutoInteractions={false}
           selectedNodePath={selectedPath}
           onNodeSelect={setSelectedPath}
           onBackgroundSelect={() => {

@@ -5,7 +5,6 @@ import {
   Gamepad2,
   ImagePlus,
   LoaderCircle,
-  Save,
   Shapes,
   Sigma,
   Trash2,
@@ -40,6 +39,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { CoursewareCompositionGridEditor } from "@/features/courseware-doc/CoursewareCompositionGridEditor";
 import {
   CoursewareEditorCanvasFrame,
+  CoursewareEditorSaveControls,
   CoursewareInsertionToolbar,
   CoursewareEditorToolbarButton,
   CoursewareEditorToolbarLabel,
@@ -400,11 +400,6 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
     setSelectedBlockId(null);
   };
 
-  const saveLabel = saveState === "saving" ? t("pageAutosaving")
-    : saveState === "dirty" ? t("pageUnsaved")
-      : saveState === "error" ? t("pageAutosaveFailed")
-        : t("pageAutosaved");
-
   const insertToolbar = (
     <CoursewareInsertionToolbar
       aria-label={t("componentPanelTitle")}
@@ -451,14 +446,20 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
   );
 
   const saveControls = (
-    <div className="flex size-full min-w-0 items-center justify-end gap-2 px-3">
-      <span data-testid="microcourse-autosave-status" role="status" aria-live="polite" className={cn("inline-flex min-w-0 items-center gap-1 truncate text-xs", saveState === "error" ? "text-rose" : "text-muted")}>
-        {saveState === "saving" && <LoaderCircle className="size-3.5 shrink-0 animate-spin" />}{saveLabel}
-      </span>
-      <Button type="button" size="sm" variant="ghost" className="size-9 shrink-0 p-0" aria-label={t("saveNow")} title={t("saveNow")} disabled={pending || saveState === "saving"} onClick={() => void flush()}>
-        <Save className="size-4" />
-      </Button>
-    </div>
+    <CoursewareEditorSaveControls
+      state={saveState}
+      labels={{
+        saved: t("pageAutosaved"),
+        saving: t("pageAutosaving"),
+        dirty: t("pageUnsaved"),
+        error: t("pageAutosaveFailed"),
+        saveNow: t("saveNow"),
+      }}
+      onSave={() => void flush()}
+      disabled={pending}
+      statusTestId="microcourse-autosave-status"
+      className="px-3"
+    />
   );
 
   const inspectorContent = (

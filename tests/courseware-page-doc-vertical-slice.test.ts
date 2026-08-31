@@ -33,9 +33,15 @@ describe("courseware PageDoc Step 3 vertical slice", () => {
 
   it("uses the existing draft revision action without exposing later-step writes", () => {
     const editor = readFileSync("src/features/courseware-studio/PageDocVerticalSliceEditor.tsx", "utf8");
+    const stage = readFileSync("src/features/courseware-doc/DocStage.tsx", "utf8");
     const actions = readFileSync("src/features/courseware-studio/actions.ts", "utf8");
 
     expect(editor).toContain("saveCoursewareDraftAction");
+    expect(editor).toContain('statusTestId="courseware-page-doc-autosave-status"');
+    expect(editor).toContain("window.setTimeout(() => void flushRef.current(), 800)");
+    expect(editor).toContain("playAutoInteractions={false}");
+    expect(editor).toContain("useState<string | null>(null)");
+    expect(stage).toContain("if (playAutoInteractions) void runtime.runAuto()");
     expect(editor).toContain("data-content-changed");
     expect(editor).toContain("data-layout-changed");
     expect(editor).not.toContain("replaceCoursewarePageImageAction");

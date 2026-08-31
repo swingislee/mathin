@@ -42,12 +42,15 @@ describe("shared courseware editor workbench", () => {
       "CoursewareEditorToolbarButton",
       "CoursewareEditorToolbarLabel",
       "CoursewareInsertionToolbar",
+      "CoursewareEditorSaveControls",
     ]) expect(shared).toContain(`function ${primitive}`);
     expect(composition).toContain("<CoursewareEditorCanvasFrame");
     expect(composition).toContain("<CoursewareInsertionToolbar");
+    expect(composition).toContain("<CoursewareEditorSaveControls");
     expect(composition).toContain("<CoursewareEditorToolbarButton");
     expect(prototype).toContain("<CoursewareEditorActionGrid");
     expect(prototype).toContain("<CoursewareInsertionToolbar");
+    expect(read("src", "features", "courseware-studio", "PageDocVerticalSliceEditor.tsx")).toContain("<CoursewareEditorSaveControls");
   });
 
   it("keeps the formal canvas header free of duplicated track titles", () => {

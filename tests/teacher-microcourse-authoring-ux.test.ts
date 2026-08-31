@@ -60,7 +60,7 @@ describe("teacher microcourse authoring UX", () => {
     expect(editor).toContain("createTeacherCompositionPageAction");
     expect(editor).toContain("CoursewareCompositionWorkbench");
     expect(editor).toContain('data-teacher-microcourse-editor="composition"');
-    expect(workbench).toContain('data-testid="microcourse-autosave-status"');
+    expect(workbench).toContain('statusTestId="microcourse-autosave-status"');
     expect(editor).toContain("CoursewareEditorWorkbench");
     expect(editor).toContain('layout="viewport"');
     expect(editor).toContain("const [pageTitleDrafts, setPageTitleDrafts]");

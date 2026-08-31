@@ -1,6 +1,6 @@
 import type { ComponentProps, HTMLAttributes, LabelHTMLAttributes, ReactNode } from "react";
 import { Fragment } from "react";
-import type { LucideIcon } from "lucide-react";
+import { LoaderCircle, Save, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -31,6 +31,53 @@ export interface CoursewareEditorInsertAction {
   disabled?: boolean;
   onSelect?: () => void;
   control?: ReactNode;
+}
+
+export type CoursewareEditorSaveState = "saved" | "saving" | "dirty" | "error";
+
+export function CoursewareEditorSaveControls({
+  state,
+  labels,
+  onSave,
+  disabled = false,
+  statusTestId,
+  className,
+}: {
+  state: CoursewareEditorSaveState;
+  labels: Record<CoursewareEditorSaveState, string> & { saveNow: string };
+  onSave: () => void;
+  disabled?: boolean;
+  statusTestId?: string;
+  className?: string;
+}) {
+  return (
+    <div className={cn("flex w-full min-w-0 items-center justify-end gap-2", className)}>
+      <span
+        data-testid={statusTestId}
+        role="status"
+        aria-live="polite"
+        className={cn(
+          "inline-flex min-w-0 items-center gap-1 truncate text-xs",
+          state === "error" ? "text-rose" : "text-muted",
+        )}
+      >
+        {state === "saving" ? <LoaderCircle className="size-3.5 shrink-0 animate-spin" /> : null}
+        {labels[state]}
+      </span>
+      <Button
+        type="button"
+        size="sm"
+        variant="ghost"
+        className="size-9 shrink-0 p-0"
+        aria-label={labels.saveNow}
+        title={labels.saveNow}
+        disabled={disabled || state === "saving"}
+        onClick={onSave}
+      >
+        <Save className="size-4" />
+      </Button>
+    </div>
+  );
 }
 
 /**
