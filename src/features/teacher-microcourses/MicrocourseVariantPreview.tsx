@@ -2,51 +2,47 @@
 
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { CoursewarePreviewWorkspace } from "@/features/courseware-preview/CoursewarePreviewWorkspace";
 import { StagePreview } from "@/features/courseware-studio/StagePreview";
 import type { TeacherMicrocourseEditor } from "./data";
 
 export function MicrocourseVariantPreview({ editor }: { editor: TeacherMicrocourseEditor }) {
   const t = useTranslations("teacherMicrocourses");
+  const previewT = useTranslations("coursewareStudio");
   const [selectedPageId, setSelectedPageId] = useState(editor.pages[0]?.pageDocId ?? null);
-  const page = useMemo(
-    () => editor.pages.find((item) => item.pageDocId === selectedPageId) ?? editor.pages[0] ?? null,
-    [editor.pages, selectedPageId],
-  );
-  const modeLabel = () => t("mode_composition");
+  const selectedIndex = Math.max(0, editor.pages.findIndex((page) => page.pageDocId === selectedPageId));
+  const page = editor.pages[selectedIndex] ?? null;
+  const items = useMemo(() => editor.pages.map((item) => ({
+    id: item.pageDocId,
+    title: item.title,
+    titleContent: (
+      <span className="min-w-0">
+        <span className="block truncate text-xs text-ink">{item.title}</span>
+        <span className="block truncate text-[11px] text-muted">{t("mode_composition")}</span>
+      </span>
+    ),
+  })), [editor.pages, t]);
 
-  return <div className="grid min-h-[40rem] overflow-hidden xl:grid-cols-[16rem_minmax(0,1fr)]" data-testid="microcourse-variant-preview">
-    <section className="min-h-0 overflow-hidden p-3 xl:border-r xl:border-line/80">
-      <h2 className="mb-3 text-sm font-medium">{t("previewPages", { count: editor.pages.length })}</h2>
-      <div className="h-[36rem] p-3">
-        <ScrollArea className="h-full">
-          <ol className="space-y-2 pr-2">
-            {editor.pages.map((item) => <li key={item.pageDocId}>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setSelectedPageId(item.pageDocId)}
-                className={`h-auto w-full justify-start px-3 py-2 text-left ${item.pageDocId === page?.pageDocId ? "bg-crater/10 text-ink" : ""}`}
-              >
-                <span className="w-5 shrink-0 text-xs text-muted">{item.pageNo}</span>
-                <span className="min-w-0"><span className="block truncate text-sm">{item.title}</span><span className="block text-xs font-normal text-muted">{modeLabel()}</span></span>
-              </Button>
-            </li>)}
-          </ol>
-        </ScrollArea>
-      </div>
-    </section>
-    {page ? <section className="min-w-0 overflow-hidden">
-      <header className="px-4 pt-3">
-        <div className="flex flex-wrap items-center gap-3"><Badge variant="secondary">{modeLabel()}</Badge><h2 className="text-sm font-medium">{page.title}</h2></div>
-      </header>
-      <div className="p-4">
-        <div className="mx-auto max-w-5xl overflow-hidden border border-line bg-white">
-          <StagePreview doc={page.doc} bindingUrls={page.bindingUrls} stageMode="natural" className="w-full" interactive />
-        </div>
-      </div>
-    </section> : <section className="grid place-items-center"><p className="text-sm text-muted">{t("emptyPages")}</p></section>}
-  </div>;
+  return (
+    <div className="h-[calc(100dvh-9rem)] min-h-[32rem]" data-testid="microcourse-variant-preview">
+      <CoursewarePreviewWorkspace
+        className="min-h-0"
+        layoutId="teacher-microcourse-variant-preview"
+        railWidth="standard"
+        items={items}
+        selectedIndex={selectedIndex}
+        onSelectedIndexChange={(index) => setSelectedPageId(editor.pages[index]?.pageDocId ?? null)}
+        directoryLabel={t("previewPages", { count: editor.pages.length })}
+        previewLabel={previewT("preview")}
+        previousLabel={previewT("prevPage")}
+        nextLabel={previewT("nextPage")}
+        selectedPageLabel={page
+          ? previewT("pageIndicator", { current: selectedIndex + 1, total: editor.pages.length })
+          : t("emptyPages")}
+        preview={page
+          ? <StagePreview doc={page.doc} bindingUrls={page.bindingUrls} stageMode="natural" className="size-full" interactive />
+          : <div className="grid size-full place-items-center px-6 text-center text-sm text-muted">{t("emptyPages")}</div>}
+      />
+    </div>
+  );
 }

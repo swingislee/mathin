@@ -1568,6 +1568,13 @@ teaching.teacher_microcourse_browser_v2
 - 正式课件仍通过自己的 adapter 呈现 A～F、替换范围和来源限制，当前只保留无写入会话样机；共享框架不读取或保存具体文档，不以“同组件”为由把 PageDoc、source-runtime 和 composition 强并为同一 schema；
 - 本轮没有 migration、数据库、Storage、release 或生产修改；TypeScript、受影响 ESLint 与两条编辑链定向 Vitest 18/18 通过，状态为开发端待人工视觉与微课回归验收。
 
+2026-08-31 第九轮依据产品审计和 Git 历史修复编辑器回归：
+
+- 微课只读方案不再维护独立的页面目录和预览画布，改用成熟 `CoursewarePreviewWorkspace`；方向键、PageUp/PageDown、空格、上下页按钮、全屏和等比完整展示由同一组件承担；
+- `487b60d` 是“插入命令移入原标题栏、当前页重命名移入左侧列表”的既有实现，`0356de5` 把该布局恢复成更早版本。当前 composition adapter 按 `0356de5^` 恢复正确位置，并保留之后新增的工具组件、多互动块、自动保存和共享 `CoursewareEditorWorkbench`；
+- 正式课件工作面的底部 margin 只抵消 panel shell 固定的 20/24px padding，保留约 4px 安全区；不修改其他 panel 页面；
+- 本轮没有 migration、数据库、Storage、release 或生产修改；TypeScript、受影响 ESLint 和定向 Vitest 28/28 通过，状态为 Step 2A 修订待产品负责人第二轮人工审计。
+
 ---
 
 # 十九、Agent 施工要求
