@@ -8,6 +8,11 @@ import {
   isHtmlObjectPath,
 } from "@/features/courseware-doc/h5-shim";
 import { parseH5InputProfile, type H5InputProfile } from "@/features/courseware-doc/h5-input-profile";
+import {
+  isVersionedSourceRuntimeViewerAsset,
+  upgradeSourceRuntimeViewerScript,
+  versionSourceRuntimeHtmlAssets,
+} from "@/features/courseware-doc/source-runtime-delivery.mjs";
 
 /**
  * H5 包垫片(docs/plan/16 §3 D3,proxy matcher 已排除 /api):
@@ -140,6 +145,14 @@ export async function GET(
       const value = upstream.headers.get(name);
       if (value) headers.set(name, value);
     }
+    if (isVersionedSourceRuntimeViewerAsset(packagePath, request.url)) {
+      return new Response(upgradeSourceRuntimeViewerScript(await upstream.text()), {
+        status: upstream.status,
+        headers: {
+          ...Object.fromEntries(headers.entries()),
+        },
+      });
+    }
     return new Response(upstream.body, {
       status: upstream.status,
       headers: {
@@ -151,7 +164,8 @@ export async function GET(
   const upstream = await fetch(publicUrl, { cache: "no-store" });
   if (!upstream.ok) return new Response("Not found", { status: 404, headers: cors });
   const profile = await getActiveH5InputProfile(path[1]);
-  return new Response(injectH5Runtime(await upstream.text(), profile), {
+  const html = versionSourceRuntimeHtmlAssets(await upstream.text(), request.url);
+  return new Response(injectH5Runtime(html, profile), {
     status: 200,
     headers: {
       ...cors,

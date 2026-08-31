@@ -15,7 +15,7 @@ describe("courseware preview page-turn performance", () => {
     );
 
     expect(preview).toContain("fetchCoursewarePreviewPage");
-    expect(preview).toContain("selectedIndex - 1, selectedIndex + 1, selectedIndex + 2");
+    expect(preview).toContain("selectedIndex - 1, selectedIndex + 1, selectedIndex + 2, selectedIndex + 3");
     expect(preview).toContain("warmCoursewarePreviewPage");
     expect(preview).toContain("waitingForSelected");
     expect(preview).toContain("setRendered(payload)");
@@ -38,6 +38,17 @@ describe("courseware preview page-turn performance", () => {
     expect(data).toContain('bindingQuery.in("binding_key", [...requiredBindingKeys])');
     expect(pageLoader).not.toContain('.from("course_lectures")');
     expect(pageLoader).not.toContain('.from("cw_lecture_track_heads")');
+  });
+
+  it("lets presentation backgrounds bubble page clicks and prevents text selection", () => {
+    const stage = read("src/features/courseware-doc/DocStage.tsx");
+    const styles = read("src/features/courseware-doc/doc-stage.css");
+
+    expect(stage).toContain("onClickCapture={onBackgroundSelect ? (event) => {");
+    expect(stage).toContain("onBackgroundSelect();");
+    expect(stage).toContain("} : undefined}");
+    expect(styles).toContain("[data-doc-stage] {");
+    expect(styles).toContain("user-select: none;");
   });
 
   it("reuses a source viewer iframe across pages from the same runtime package", () => {

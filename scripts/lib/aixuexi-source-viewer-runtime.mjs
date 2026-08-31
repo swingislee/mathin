@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { sourceRuntimeVisualLifecycleScript } from "../../src/features/courseware-doc/source-runtime-delivery.mjs";
 const PROTOCOL = "mathin-source-runtime-v1";
 const FRAME_SOURCE = "mathin-source-runtime";
 const HOST_SOURCE = "mathin-source-runtime-host";
@@ -78,7 +79,7 @@ function mathinBindMedia(){
   document.addEventListener('pause',event=>{if(event.target instanceof HTMLMediaElement)parent.postMessage({source:'mathin-h5-media',action:'pause',time:event.target.currentTime},'*')},true);
   document.addEventListener('seeked',event=>{if(event.target instanceof HTMLMediaElement)parent.postMessage({source:'mathin-h5-media',action:'seek',time:event.target.currentTime},'*')},true);
 }
-async function mathinRender(message){
+async function mathinRenderBody(message){
   if(message.format!=='aixuexi-viewer-page-v1'||!message.data||typeof message.data!=='object')throw new Error('SOURCE_RUNTIME_PAYLOAD_UNSUPPORTED');
   MATHIN_PORTABLE={resources:message.resources||{},routes:message.routes||{}};
   const page=message.data;
@@ -102,8 +103,8 @@ async function mathinRender(message){
     mathinSend('advance');
   });
   fitAixuexiStages();applyAixuexiLayoutCorrections();
-  mathinSend('rendered',{renderKey:message.renderKey});
 }
+${sourceRuntimeVisualLifecycleScript()}
 async function mathinDrainRenderQueue(){
   if(mathinRenderActive)return;mathinRenderActive=true;
   try{while(mathinQueuedRender){const message=mathinQueuedRender;mathinQueuedRender=null;try{await mathinRender(message)}catch(error){mathinSend('error',{renderKey:message.renderKey,message:String(error?.message||error)})}}}

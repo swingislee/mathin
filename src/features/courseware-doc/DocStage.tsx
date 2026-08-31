@@ -649,10 +649,10 @@ export default function DocStage({
           <img
             alt=""
             src={backgroundUrl}
-            onClickCapture={(event) => {
+            onClickCapture={onBackgroundSelect ? (event) => {
               event.stopPropagation();
-              onBackgroundSelect?.();
-            }}
+              onBackgroundSelect();
+            } : undefined}
             style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
           />
         ) : null}

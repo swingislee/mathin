@@ -152,10 +152,10 @@ function LectureCoursewarePreviewState({
   }, [preview.release.id, preview.track]);
 
   useEffect(() => {
-    // Keep the previous page and two forward pages ready. The second forward
-    // page covers fast sequential teaching without returning to whole-lecture
-    // eager loading.
-    for (const index of [selectedIndex - 1, selectedIndex + 1, selectedIndex + 2]) {
+    // Keep the previous page and three forward pages ready. Production page
+    // signatures can take about one second; the third forward page hides that
+    // latency during fast sequential teaching without whole-lecture eager load.
+    for (const index of [selectedIndex - 1, selectedIndex + 1, selectedIndex + 2, selectedIndex + 3]) {
       const page = preview.pages[index];
       if (page) void ensurePage(page.pageDocId).catch(() => undefined);
     }

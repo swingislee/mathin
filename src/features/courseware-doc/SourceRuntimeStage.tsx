@@ -12,6 +12,7 @@ import {
   type SourceRuntimePageDoc,
 } from "./source-runtime-schema";
 import { sourceRuntimeFourByThreeMode } from "./source-runtime-four-by-three";
+import { versionSourceRuntimeEntryUrl } from "./source-runtime-delivery.mjs";
 import { useH5FrameRegistration } from "./useH5FrameRegistration";
 
 const FRAME_MESSAGE_SOURCE = "mathin-source-runtime";
@@ -96,6 +97,9 @@ export default function SourceRuntimeStage({
   const runtimeQueuedRender = useRef<{ frameKey: string; payload: RuntimePayload } | null>(null);
   const runtimeInstanceFor = useRef<string | null>(null);
   const runtimeEntry = bindingUrls[doc.runtime.bindingKey];
+  const runtimeSrc = runtimeEntry
+    ? versionSourceRuntimeEntryUrl(markSourceRuntimeNestedH5Url(runtimeEntry))
+    : null;
   // The runtime package is shared by every page in a source courseware. Keep
   // that iframe alive while only the render payload changes between pages;
   // reloading the immutable viewer bundle on every page turn is the dominant
@@ -250,7 +254,7 @@ export default function SourceRuntimeStage({
             ref={iframeRef}
             key={runtimeInstanceKey}
             title={doc.source.pageName}
-            src={runtimeEntry}
+            src={runtimeSrc ?? undefined}
             sandbox="allow-scripts allow-forms allow-pointer-lock allow-modals"
             allow="autoplay; fullscreen"
             allowFullScreen

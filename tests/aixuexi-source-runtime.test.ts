@@ -13,6 +13,13 @@ import {
   type SourceRuntimePageDoc,
 } from "../src/features/courseware-doc/source-runtime-schema";
 import {
+  SOURCE_RUNTIME_DELIVERY_PARAM,
+  SOURCE_RUNTIME_DELIVERY_VERSION,
+  upgradeSourceRuntimeViewerScript,
+  versionSourceRuntimeEntryUrl,
+  versionSourceRuntimeHtmlAssets,
+} from "../src/features/courseware-doc/source-runtime-delivery.mjs";
+import {
   countCoursewareH5Frames,
   resolveClassroomRendererInputProfile,
 } from "../src/features/classroom/input/capabilities";
@@ -155,10 +162,53 @@ describe("producer-owned Aixuexi source runtime", () => {
     expect(portable.viewerScript).toContain("message.advanceOnCanvasClick===true");
     expect(portable.viewerScript).toContain("mathin-source-runtime-host");
     expect(portable.viewerScript).toContain("mathinQueuedRender");
+    expect(portable.viewerScript).toContain("mathinRenderBody");
+    expect(portable.viewerScript).toContain("document.startViewTransition");
+    expect(portable.viewerScript).toContain("mathinWaitForVisualReady");
+    expect(portable.viewerScript).toContain("mathinWarmRuntimeFonts");
+    expect(portable.viewerScript).toContain("runtime-assets");
     expect(portable.viewerScript).toContain("renderKey:message.renderKey");
     expect(portable.viewerScript).not.toContain("route().catch");
     expect(portable.sourceFingerprint).toMatch(/^[0-9a-f]{64}$/);
     expect(portableAixuexiViewerHtml({ hasLottie: true })).toContain("viewer-runtime.js");
+  });
+
+  it("upgrades published immutable source viewers through one versioned lifecycle seam", () => {
+    const legacy = [
+      "async function mathinRender(message){",
+      "  app.replaceChildren();",
+      "  mathinSend('rendered',{renderKey:message.renderKey});",
+      "}",
+      "async function mathinDrainRenderQueue(){return mathinRender({})}",
+    ].join("\n");
+    const upgraded = upgradeSourceRuntimeViewerScript(legacy);
+    expect(upgraded).toContain("async function mathinRenderBody(message)");
+    expect(upgraded).toContain("document.startViewTransition");
+    expect(upgraded).toContain("document.fonts.ready");
+    expect(upgraded.indexOf("mathinWaitForVisualReady"))
+      .toBeLessThan(upgraded.indexOf("mathinSend('rendered'"));
+    expect(upgradeSourceRuntimeViewerScript(upgraded)).toBe(upgraded);
+
+    const published = [
+      "async function mathinRender(message){",
+      "  app.replaceChildren();",
+      "  mathinSend('rendered');",
+      "}",
+      "window.addEventListener('resize',()=>{})",
+    ].join("\r\n");
+    const upgradedPublished = upgradeSourceRuntimeViewerScript(published);
+    expect(upgradedPublished).toContain("async function mathinRenderBody(message)");
+    expect(upgradedPublished).toContain("renderKey:message.renderKey");
+    expect(upgradedPublished).toContain("window.addEventListener('resize'");
+
+    const entry = versionSourceRuntimeEntryUrl("/api/cw-h5/packages/hash/index.html?existing=1#slide");
+    expect(entry).toContain(`${SOURCE_RUNTIME_DELIVERY_PARAM}=${SOURCE_RUNTIME_DELIVERY_VERSION}`);
+    expect(entry.endsWith("#slide")).toBe(true);
+    const html = versionSourceRuntimeHtmlAssets(
+      '<script src="./viewer-runtime.js"></script>',
+      `https://mathin.example/index.html?${SOURCE_RUNTIME_DELIVERY_PARAM}=${SOURCE_RUNTIME_DELIVERY_VERSION}`,
+    );
+    expect(html).toContain(`viewer-runtime.js?${SOURCE_RUNTIME_DELIVERY_PARAM}=${SOURCE_RUNTIME_DELIVERY_VERSION}`);
   });
 
   it("keeps Mathin as a sandbox host instead of recreating source buttons", () => {
