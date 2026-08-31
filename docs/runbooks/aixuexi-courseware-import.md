@@ -149,13 +149,15 @@ pnpm messages:check
 pnpm build
 ```
 
-Production 1.0 当前批准事实仍是：3 个 imported source package、12 门课程、180 条教学计划讲次（170 条 source-backed、10 条未发布占位）、5442 页的 projection v31 release-1；两轨各 170 release/head、5442 页面 head、27541 binding。该数值只描述尚未升级的生产 baseline，不得用本地 source-runtime 结果静默改写。
+Production 1.0 升级前基线为：3 个 imported source package、12 门课程、180 条教学计划讲次（170 条 source-backed、10 条未发布占位）、5442 页的 projection v31 release-1；两轨各 170 release/head、5442 页面 head、27541 binding。该数值只描述 2026-09-01 source-runtime 生产升级前的历史 baseline。
 
-本机完成三套秋季升级后，170 条 source-backed 讲次的当前两轨头应全部指向 `source-runtime-page-v1` revision 2 / release 2，共 5442 页、46452 个当前文档 binding；旧 v31 revision 1 / release 1 仍可按历史 ID 读取。导入暑期开发增量后，开发库爱学习目录合计为 4 个 imported source package、13 门课程、195 条教学计划讲次（172 条 source-backed、23 条未发布占位）、5508 页，当前 source-runtime 文档共 47002 个 binding。
+完成三套秋季升级后，170 条 source-backed 讲次的当前两轨头必须全部指向 `source-runtime-page-v1`；不要把绝对 revision/release number 固定为 2，已有增量热修复会让新版本按历史最大值递增。来源 binding 集合为 46452，双轨 current release snapshot 合计为 92904；旧 revision/release 仍可按历史 ID 读取。导入暑期开发增量后，开发库爱学习目录合计为 4 个 imported source package、13 门课程、195 条教学计划讲次（172 条 source-backed、23 条未发布占位）、5508 页，当前 source-runtime 文档共 47002 个来源 binding。
 
 暑期目标课程必须精确为 15 讲；第 1、8 讲分别为 34/32 页并各有两轨 revision/release 2 current head，其余 13 讲保持空模板、0 页面、0 release。重复导入必须 Storage 零上传、数据库零 conflict/零未解释 drift。
 
 2026-08-27 本机 postflight 已达到该合同：四包均为 `imported/source-runtime-v1`；两轨各 5508 个 current page head、172 个 release-2 lecture head和 47002 个 current release binding；历史 revision 1 与新 revision 2 各 5508 页，current head 缺失和 legacy/native head 不一致均为 0。该证据只覆盖本机 Docker 开发库，不证明生产状态。
+
+2026-09-01 生产 postflight：只升级 G+/X+/A+ 三个秋季包，暑期 `AXX26A-QG-01-SUM` 不在范围内。3 个包、170 讲、5442 页、46452 个来源 binding 均完成，逐包 `conflicts=0`、未解释 `baselineDrift=0`；10884 个双轨 page head 全部指向 `source-runtime-page-v1`，340 个 lecture head 全部指向带 source-runtime note 的 current release，双轨 snapshot binding 合计 92904。生产已有的增量热修复历史使 current revision/release number 分布为 4/6；该编号分布不是产品合同，current head 文档版本、来源指纹、两轨集合和不可变历史才是 postflight 合同。
 
 浏览器至少抽查：普通题目 4:3 外框内的来源 16:9 舞台；橙色“开始”按钮的源文案、类名和 `(434,690,332×90)` 几何；A+ 动画逐步揭示；X+ embedded H5；ITV、TrueOrFalse 和 TopicClassification 的源样式与交互；显式第 7/15 讲及暑期 13 讲占位；zh/en Studio 标签。加载遮罩必须在来源 `rendered` 后消失，点击“开始”必须打开 `/api/cw-h5/` 本地路由，页面不得出现 Mathin 重造的“进入互动”按钮。外层来源 runtime iframe 不加 `allow-same-origin`；来源 Viewer 内部 H5 按已审计 source sandbox 运行。
 
