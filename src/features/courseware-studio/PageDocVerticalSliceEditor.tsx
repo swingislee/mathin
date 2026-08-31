@@ -27,6 +27,10 @@ import {
 } from "@/features/courseware-doc/CoursewareEditorWorkbench";
 import { CoursewareEditorAdapterSurface } from "@/features/courseware-doc/CoursewareEditorAdapterSurface";
 import {
+  CoursewareImageElementInspector,
+  isCoursewareImageElement,
+} from "@/features/courseware-doc/CoursewareImageElementEditor";
+import {
   CoursewareGridSnapToggle,
   CoursewareTextElementInspector,
   coursewareTextValue,
@@ -329,6 +333,12 @@ export function PageDocVerticalSliceEditor({
         <TabsContent value="adjust" className="space-y-4">
           {selected && isCoursewareTextElement(selected) ? (
             <CoursewareTextElementInspector node={selected} onPatch={patchSelected} />
+          ) : selected && isCoursewareImageElement(selected) ? (
+            <CoursewareImageElementInspector
+              node={selected}
+              onPatch={patchSelected}
+              onTransformChange={(patch) => handleNodeTransformChange(selected.nodePath, patch)}
+            />
           ) : selected ? (
             <div className="space-y-3">
               <div>

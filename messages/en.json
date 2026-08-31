@@ -1343,6 +1343,24 @@
     "moveElement": "Move the selected courseware element",
     "resizeElement": "Resize the selected courseware element"
   },
+  "coursewareImageEditor": {
+    "imageElement": "Image",
+    "fit": "Fit",
+    "fitContain": "Fit whole image",
+    "fitCover": "Crop to fill",
+    "fitFill": "Stretch to fill",
+    "fitNone": "Original size",
+    "positionAndSize": "Position and size",
+    "x": "Horizontal position",
+    "y": "Vertical position",
+    "width": "Width",
+    "height": "Height",
+    "appearance": "Appearance",
+    "opacity": "Opacity (%)",
+    "layer": "Layer",
+    "visible": "Show this image",
+    "localOnlyHint": "These controls change this page's image layout and appearance only. Replacing shared image assets remains a later step."
+  },
   "coursewareWorkspace": {
     "openWorkspace": "Open courseware workspace",
     "lectureTitle": "Lecture {no} · {name}",

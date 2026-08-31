@@ -1343,6 +1343,24 @@
     "moveElement": "移动当前课件元素",
     "resizeElement": "缩放当前课件元素"
   },
+  "coursewareImageEditor": {
+    "imageElement": "图片",
+    "fit": "填充方式",
+    "fitContain": "完整显示",
+    "fitCover": "裁切填满",
+    "fitFill": "拉伸填满",
+    "fitNone": "原始尺寸",
+    "positionAndSize": "位置与尺寸",
+    "x": "横向位置",
+    "y": "纵向位置",
+    "width": "宽度",
+    "height": "高度",
+    "appearance": "显示",
+    "opacity": "透明度（%）",
+    "layer": "层级",
+    "visible": "显示此图片",
+    "localOnlyHint": "这里只修改当前页图片的排版与显示；共享图片资源替换仍在后续步骤处理。"
+  },
   "coursewareWorkspace": {
     "openWorkspace": "打开课件工作区",
     "lectureTitle": "第 {no} 讲 · {name}",

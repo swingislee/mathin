@@ -39,6 +39,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { CoursewareCompositionGridEditor } from "@/features/courseware-doc/CoursewareCompositionGridEditor";
 import { CoursewareEditorAdapterSurface } from "@/features/courseware-doc/CoursewareEditorAdapterSurface";
 import {
+  CoursewareImageElementInspector,
+  isCoursewareImageElement,
+} from "@/features/courseware-doc/CoursewareImageElementEditor";
+import {
   CoursewareGridSnapToggle,
   CoursewareTextElementInspector,
   coursewareTextValue,
@@ -359,6 +363,9 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
   };
 
   const selected = doc.layout.blocks.find((block) => block.id === selectedBlockId) ?? null;
+  const selectedNode = selected?.type === "node"
+    ? doc.overlay.nodes.find((item) => item.id === selected.nodeId) ?? null
+    : null;
   const patchSelectedNode = (updater: (node: DocNode) => void) => updateDoc((current) => {
     if (!selected || selected.type !== "node") return current;
     const next = structuredClone(current);
@@ -489,12 +496,16 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
               {doc.layout.blocks.length === 0 && <p className="mt-2 text-xs text-muted">{t("componentEmpty")}</p>}
             </div>
 
-            {selected?.type === "node" && isCoursewareTextElement(
-              doc.overlay.nodes.find((item) => item.id === selected.nodeId),
-            ) ? (
+            {selectedNode && isCoursewareTextElement(selectedNode) ? (
               <CoursewareTextElementInspector
-                node={doc.overlay.nodes.find((item) => item.id === selected.nodeId)!}
+                node={selectedNode}
                 onPatch={patchSelectedNode}
+              />
+            ) : selectedNode && isCoursewareImageElement(selectedNode) ? (
+              <CoursewareImageElementInspector
+                node={selectedNode}
+                onPatch={patchSelectedNode}
+                onTransformChange={(patch) => handleNodeTransformChange(selectedNode.nodePath, patch)}
               />
             ) : selected?.type === "node" ? (
               <NodeAppearanceControls doc={doc} block={selected} patch={patchSelectedNode} />
