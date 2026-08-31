@@ -1,5 +1,5 @@
 export const SOURCE_RUNTIME_DELIVERY_PARAM = "mathin_source_delivery";
-export const SOURCE_RUNTIME_DELIVERY_VERSION = "3";
+export const SOURCE_RUNTIME_DELIVERY_VERSION = "4";
 
 function appendQueryParam(url, name, value) {
   const fragmentAt = url.indexOf("#");
@@ -46,49 +46,36 @@ export function isVersionedSourceRuntimeViewerAsset(packagePath, requestUrl) {
 export function sourceRuntimeVisualLifecycleScript() {
   return String.raw`
 const mathinVisualLifecycleVersion='${SOURCE_RUNTIME_DELIVERY_VERSION}';
-const mathinDelay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-const mathinNextPaint=()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
-let mathinRuntimeFontsScheduled=false;
-async function mathinRuntimeFontUrls(){
-  const stylesheet=new URL('./slide-runtime.css',location.href);
-  try{
-    const response=await fetch(stylesheet,{cache:'force-cache'});if(!response.ok)return [];
-    const css=await response.text(),urls=new Set();
-    for(const match of css.matchAll(/url\((?:["']?)([^"')]+)(?:["']?)\)/g)){
-      try{const url=new URL(match[1],stylesheet).href;if(/\/runtime-assets\/.*\.woff2?(?:$|\?)/i.test(url))urls.add(url)}catch{}
-    }
-    return [...urls]
-  }catch{return []}
-}
-function mathinWarmRuntimeFonts(){
-  if(mathinRuntimeFontsScheduled)return;mathinRuntimeFontsScheduled=true;
-  const warm=async()=>{for(const url of await mathinRuntimeFontUrls()){try{await fetch(url,{cache:'force-cache'})}catch{}}};
-  if(typeof requestIdleCallback==='function')requestIdleCallback(()=>void warm(),{timeout:1500});else setTimeout(()=>void warm(),750)
-}
-async function mathinWaitForVisualReady(){
-  await mathinNextPaint();
-  const images=[...app.querySelectorAll('img')];
-  const decoded=Promise.allSettled(images.map(image=>image.decode?.()||Promise.resolve()));
-  await Promise.race([decoded,mathinDelay(900)]);
-  if(document.fonts?.ready)await Promise.race([document.fonts.ready,mathinDelay(350)]);
-  await mathinNextPaint()
-}
 async function mathinRender(message){
-  const update=async()=>{await mathinRenderBody(message);await mathinWaitForVisualReady()};
   if(typeof document.startViewTransition==='function'&&app.firstElementChild){
-    let failure=null;
-    const transition=document.startViewTransition(async()=>{try{await update()}catch(error){failure=error}});
-    await transition.updateCallbackDone;
-    if(failure)throw failure
-  }else await update();
-  mathinSend('rendered',{renderKey:message.renderKey});
-  mathinWarmRuntimeFonts()
+    let updatePromise=null;
+    const transition=document.startViewTransition(()=>{
+      updatePromise=Promise.resolve().then(()=>mathinRenderBody(message));
+      return updatePromise
+    });
+    void transition.ready.catch(()=>undefined);
+    void transition.finished.catch(()=>undefined);
+    try{await transition.updateCallbackDone}catch(error){if(updatePromise)await updatePromise;else throw error}
+  }else await mathinRenderBody(message);
+  mathinSend('rendered',{renderKey:message.renderKey})
 }`;
 }
 
 /** Upgrade the exact old portable bridge; unrelated package scripts pass through byte-for-byte. */
 export function upgradeSourceRuntimeViewerScript(script) {
-  if (script.includes("mathinVisualLifecycleVersion=")) return script;
+  const currentLifecycle = `const mathinVisualLifecycleVersion='${SOURCE_RUNTIME_DELIVERY_VERSION}';`;
+  if (script.includes(currentLifecycle)) return script;
+  const lifecycleStart = script.indexOf("const mathinVisualLifecycleVersion='");
+  if (lifecycleStart >= 0) {
+    const queueStart = script.indexOf("async function mathinDrainRenderQueue(){", lifecycleStart);
+    const resizeStart = script.indexOf("window.addEventListener('resize'", lifecycleStart);
+    const lifecycleEnd = [queueStart, resizeStart]
+      .filter((value) => value >= 0)
+      .sort((left, right) => left - right)[0];
+    if (lifecycleEnd === undefined
+        || script.indexOf("const mathinVisualLifecycleVersion='", lifecycleStart + 1) >= 0) return script;
+    return `${script.slice(0, lifecycleStart)}${sourceRuntimeVisualLifecycleScript()}\n${script.slice(lifecycleEnd)}`;
+  }
   const renderStart = "async function mathinRender(message){";
   const renderEnd = /  mathinSend\('rendered'(?:,\{renderKey:message\.renderKey\})?\);\r?\n}\r?\n(?=async function mathinDrainRenderQueue\(\)\{|window\.addEventListener\('resize')/;
   if (!script.includes(renderStart) || !renderEnd.test(script)) return script;

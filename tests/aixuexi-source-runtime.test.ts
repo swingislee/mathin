@@ -164,9 +164,13 @@ describe("producer-owned Aixuexi source runtime", () => {
     expect(portable.viewerScript).toContain("mathinQueuedRender");
     expect(portable.viewerScript).toContain("mathinRenderBody");
     expect(portable.viewerScript).toContain("document.startViewTransition");
-    expect(portable.viewerScript).toContain("mathinWaitForVisualReady");
-    expect(portable.viewerScript).toContain("mathinWarmRuntimeFonts");
-    expect(portable.viewerScript).toContain("runtime-assets");
+    expect(portable.viewerScript).toContain("transition.ready.catch");
+    expect(portable.viewerScript).toContain("transition.finished.catch");
+    expect(portable.viewerScript).toContain("transition.updateCallbackDone");
+    expect(portable.viewerScript).not.toContain("mathinWaitForVisualReady");
+    expect(portable.viewerScript).not.toContain("mathinWarmRuntimeFonts");
+    expect(portable.viewerScript).not.toContain("mathinRuntimeFontUrls");
+    expect(portable.viewerScript).not.toContain("slide-runtime.css',location.href");
     expect(portable.viewerScript).toContain("renderKey:message.renderKey");
     expect(portable.viewerScript).not.toContain("route().catch");
     expect(portable.sourceFingerprint).toMatch(/^[0-9a-f]{64}$/);
@@ -184,10 +188,24 @@ describe("producer-owned Aixuexi source runtime", () => {
     const upgraded = upgradeSourceRuntimeViewerScript(legacy);
     expect(upgraded).toContain("async function mathinRenderBody(message)");
     expect(upgraded).toContain("document.startViewTransition");
-    expect(upgraded).toContain("document.fonts.ready");
-    expect(upgraded.indexOf("mathinWaitForVisualReady"))
+    expect(upgraded).toContain("transition.ready.catch");
+    expect(upgraded).toContain("transition.finished.catch");
+    expect(upgraded).not.toContain("document.fonts.ready");
+    expect(upgraded).not.toContain("mathinWarmRuntimeFonts");
+    expect(upgraded.indexOf("transition.updateCallbackDone"))
       .toBeLessThan(upgraded.indexOf("mathinSend('rendered'"));
     expect(upgradeSourceRuntimeViewerScript(upgraded)).toBe(upgraded);
+
+    const priorDelivery = [
+      "async function mathinRenderBody(message){app.replaceChildren(message)}",
+      "const mathinVisualLifecycleVersion='3';",
+      "function mathinWarmRuntimeFonts(){}",
+      "async function mathinRender(message){mathinWarmRuntimeFonts()}",
+      "async function mathinDrainRenderQueue(){return mathinRender({})}",
+    ].join("\n");
+    const refreshedDelivery = upgradeSourceRuntimeViewerScript(priorDelivery);
+    expect(refreshedDelivery).toContain(`mathinVisualLifecycleVersion='${SOURCE_RUNTIME_DELIVERY_VERSION}'`);
+    expect(refreshedDelivery).not.toContain("mathinWarmRuntimeFonts");
 
     const published = [
       "async function mathinRender(message){",
