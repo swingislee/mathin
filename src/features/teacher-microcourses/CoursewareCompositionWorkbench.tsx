@@ -41,6 +41,9 @@ import {
   CoursewareEditorBody,
   CoursewareEditorCanvasFrame,
   CoursewareEditorHeader,
+  CoursewareEditorToolbar,
+  CoursewareEditorToolbarButton,
+  CoursewareEditorToolbarLabel,
 } from "@/features/courseware-doc/CoursewareEditorWorkbench";
 import {
   addCoursewareCompositionGame,
@@ -387,14 +390,14 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
     >
       <CoursewareEditorHeader className="px-3 py-2.5">
         <div className="flex min-w-0 items-center justify-between gap-3">
-          <div role="toolbar" aria-label={t("componentPanelTitle")} className="flex min-w-0 flex-wrap items-center gap-1">
-            <Button type="button" size="sm" variant="ghost" className="size-9 p-0" aria-label={t("componentText")} title={t("componentText")} onClick={() => addNode("text")}><Type className="size-4" /></Button>
-            <Button type="button" size="sm" variant="ghost" className="size-9 p-0" aria-label={t("componentFormula")} title={t("componentFormula")} onClick={() => addNode("formula")}><Sigma className="size-4" /></Button>
-            <Button type="button" size="sm" variant="ghost" className="size-9 p-0" aria-label={t("componentShape")} title={t("componentShape")} onClick={() => addNode("shape")}><Shapes className="size-4" /></Button>
-            <Label aria-label={t("componentImage")} title={t("componentImage")} className="inline-grid size-9 cursor-pointer place-items-center rounded-full text-muted transition-colors hover:bg-moon/30 hover:text-ink">
+          <CoursewareEditorToolbar aria-label={t("componentPanelTitle")}>
+            <CoursewareEditorToolbarButton aria-label={t("componentText")} title={t("componentText")} onClick={() => addNode("text")}><Type className="size-4" /></CoursewareEditorToolbarButton>
+            <CoursewareEditorToolbarButton aria-label={t("componentFormula")} title={t("componentFormula")} onClick={() => addNode("formula")}><Sigma className="size-4" /></CoursewareEditorToolbarButton>
+            <CoursewareEditorToolbarButton aria-label={t("componentShape")} title={t("componentShape")} onClick={() => addNode("shape")}><Shapes className="size-4" /></CoursewareEditorToolbarButton>
+            <CoursewareEditorToolbarLabel aria-label={t("componentImage")} title={t("componentImage")}>
               <Input type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="sr-only" disabled={pending} onChange={(event) => uploadImage(event.target.files?.[0] ?? null)} />
               <ImagePlus className="size-4" />
-            </Label>
+            </CoursewareEditorToolbarLabel>
             <GameComponentDialog microcourseId={microcourseId} disabled={pending} iconOnly onCreated={(game) => {
               const previousIds = new Set(docRef.current.layout.blocks.map((block) => block.id));
               const next = addCoursewareCompositionGame(docRef.current, game);
@@ -417,7 +420,7 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
               updateDoc(next);
               setSelectedBlockId(next.layout.blocks.find((block) => !previousIds.has(block.id))?.id ?? null);
             }} />
-          </div>
+          </CoursewareEditorToolbar>
           <div className="flex shrink-0 items-center gap-2">
             <span data-testid="microcourse-autosave-status" role="status" aria-live="polite" className={cn("inline-flex items-center gap-1 text-xs", saveState === "error" ? "text-rose" : "text-muted")}>
               {saveState === "saving" && <LoaderCircle className="size-3.5 animate-spin" />}{saveLabel}
@@ -537,7 +540,10 @@ function GameComponentDialog({ microcourseId, disabled = false, iconOnly = false
   });
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild><Button type="button" size="sm" variant={iconOnly ? "ghost" : "secondary"} className={iconOnly ? "size-9 p-0" : undefined} aria-label={t("componentGame")} title={t("componentGame")} disabled={disabled || contracts.length === 0}><Gamepad2 className="size-4" />{iconOnly ? null : t("componentGame")}</Button></DialogTrigger>
+      <DialogTrigger asChild>{iconOnly
+        ? <CoursewareEditorToolbarButton aria-label={t("componentGame")} title={t("componentGame")} disabled={disabled || contracts.length === 0}><Gamepad2 className="size-4" /></CoursewareEditorToolbarButton>
+        : <Button type="button" size="sm" variant="secondary" aria-label={t("componentGame")} title={t("componentGame")} disabled={disabled || contracts.length === 0}><Gamepad2 className="size-4" />{t("componentGame")}</Button>}
+      </DialogTrigger>
       <DialogContent className="max-w-xl">
         <DialogHeader><DialogTitle>{t("insertGameComponentTitle")}</DialogTitle><DialogDescription>{t("gameAuthoringHint")}</DialogDescription></DialogHeader>
         <div className="grid gap-2 sm:grid-cols-2">
@@ -577,9 +583,9 @@ function ToolComponentDialog({ disabled = false, onCreated }: {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button type="button" size="sm" variant="ghost" className="size-9 p-0" aria-label={t("componentTool")} title={t("componentTool")} disabled={disabled || contracts.length === 0}>
+        <CoursewareEditorToolbarButton aria-label={t("componentTool")} title={t("componentTool")} disabled={disabled || contracts.length === 0}>
           <Wrench className="size-4" />
-        </Button>
+        </CoursewareEditorToolbarButton>
       </DialogTrigger>
       <DialogContent className="max-w-xl">
         <DialogHeader>
@@ -650,7 +656,10 @@ function H5ComponentDialog({ microcourseId, disabled = false, iconOnly = false, 
   const bytes = microcourseH5Bytes(normalizeMicrocourseH5(html)).byteLength;
   return (
     <Dialog open={open} onOpenChange={changeOpen}>
-      <DialogTrigger asChild><Button type="button" size="sm" variant={iconOnly ? "ghost" : "secondary"} className={cn(existing && "w-full", iconOnly && "size-9 p-0")} aria-label={existing ? t("editH5Component") : t("componentH5")} title={existing ? t("editH5Component") : t("componentH5")} disabled={disabled}><FileCode2 className="size-4" />{iconOnly ? null : existing ? t("editH5Component") : t("componentH5")}</Button></DialogTrigger>
+      <DialogTrigger asChild>{iconOnly
+        ? <CoursewareEditorToolbarButton aria-label={existing ? t("editH5Component") : t("componentH5")} title={existing ? t("editH5Component") : t("componentH5")} disabled={disabled}><FileCode2 className="size-4" /></CoursewareEditorToolbarButton>
+        : <Button type="button" size="sm" variant="secondary" className={cn(existing && "w-full")} aria-label={existing ? t("editH5Component") : t("componentH5")} title={existing ? t("editH5Component") : t("componentH5")} disabled={disabled}><FileCode2 className="size-4" />{existing ? t("editH5Component") : t("componentH5")}</Button>}
+      </DialogTrigger>
       <DialogContent className="max-w-5xl">
         <DialogHeader><DialogTitle>{existing ? t("editH5Component") : t("insertH5ComponentTitle")}</DialogTitle><DialogDescription>{t("h5SecurityHint")}</DialogDescription></DialogHeader>
         <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_22rem]">

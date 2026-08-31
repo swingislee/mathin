@@ -17,15 +17,25 @@ describe("DEV-CW-1 Step 2 no-write interaction prototype", () => {
     expect(prototype).toContain('data-persistence="none"');
   });
 
-  it("exposes the four audited tool groups, A-F/custom, and five explicit replacement scopes", () => {
+  it("keeps insertion in the shared top toolbar and three inspector modes on the right", () => {
+    const workspace = read("src", "features", "courseware-studio", "UnifiedCoursewareWorkspace.tsx");
     const prototype = read("src", "features", "courseware-studio", "CoursewareCapabilityPrototype.tsx");
 
-    expect(prototype).toContain('type PrototypeTab = "adjust" | "layout" | "replace" | "insert"');
+    expect(prototype).toContain('type PrototypeTab = "adjust" | "layout" | "replace"');
+    expect(prototype).toContain("CoursewareEditorToolbar");
+    expect(prototype).toContain("CoursewareEditorToolbarButton");
+    expect(prototype).toContain("createPortal(insertToolbar, toolbarTarget)");
+    expect(prototype).toContain('className="grid h-8 w-full grid-cols-3"');
+    expect(prototype).not.toContain('<TabsTrigger value="insert"');
+    expect(workspace).toContain("INSERT_TOOLBAR_TARGET_ID");
+    expect(workspace).toContain("CAPABILITY_TABS_TARGET_ID");
     expect(prototype).toContain('["A", "B", "C", "D", "E", "F", "custom"]');
     expect(prototype).toContain('["page", "lecture", "variant", "family", "all"]');
     expect(prototype).toContain("prototypeSyncContent");
     expect(prototype).toContain("prototypeReplacementDryRunOnly");
     expect(prototype).toContain("prototypeInsertionSyncGate");
+    expect(prototype).toContain("prototypeInsertFormula");
+    expect(prototype).toContain("prototypeInsertShape");
   });
 
   it("fails source-runtime node editing closed and keeps undo local to the browser session", () => {

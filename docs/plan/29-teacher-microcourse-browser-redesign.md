@@ -1575,6 +1575,13 @@ teaching.teacher_microcourse_browser_v2
 - 正式课件工作面的底部 margin 只抵消 panel shell 固定的 20/24px padding，保留约 4px 安全区；不修改其他 panel 页面；
 - 本轮没有 migration、数据库、Storage、release 或生产修改；TypeScript、受影响 ESLint 和定向 Vitest 28/28 通过，状态为 Step 2A 修订待产品负责人第二轮人工审计。
 
+2026-08-31 第十轮统一正式课件与微课的顶栏工具语义：
+
+- `CoursewareEditorToolbar`、图标按钮和图片上传标签进入共享编辑框架；微课 composition 改用这些原语，但原实际插入 action、Dialog 和 800ms 自动保存不变；
+- 正式课件以同样顺序展示文字、公式、图形、图片、游戏、H5、工具七枚图标；当前仍是无写入 Step 2 样机，来源不支持时保持 disabled，点击只进入会话级预览历史；
+- 正式右栏标题行承载微调、4:3、替换三种模式切换；插入页签和重复的插入按钮区退出右栏，当前页面身份、来源限制、影响预览与撤销仍在右栏正文；
+- 本轮没有 migration、数据库、Storage、release 或生产修改；TypeScript、受影响 ESLint、双语键 5323×2 和定向 Vitest 14/14 通过，状态为 Step 2A 修订待继续人工审计。
+
 ---
 
 # 十九、Agent 施工要求
