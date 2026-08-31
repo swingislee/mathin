@@ -66,7 +66,7 @@ describe("teacher microcourse authoring UX", () => {
     expect(editor).toContain('mode="microcourse-editor"');
     expect(editor).toContain('layout="viewport"');
     expect(editor).toContain("const [pageTitleDrafts, setPageTitleDrafts]");
-    expect(editor).toContain('aria-label={t("renamePage")}');
+    expect(editor).toContain('titleInputLabel={t("renamePage")}');
     expect(editor).toContain("workbenchRef.current?.rename?.(value)");
     expect(workbench).toContain("CoursewareEditorAdapterSurface");
     expect(adapterSurface).toContain("CoursewareStageViewport");

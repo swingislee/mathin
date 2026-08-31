@@ -110,6 +110,21 @@ export async function reorderCoursewarePagesAction(input: { lectureId: string; p
   } catch (error) { return actionError(error, ["PAGE_ORDER_MISMATCH", ...COMMON_CODES]); }
 }
 
+export async function renameCoursewarePageAction(input: { pageDocId: string; title: string }): Promise<ActionResult> {
+  try {
+    const value = parse(z.object({ pageDocId: uuid, title: requiredText(500) }), input);
+    const { supabase } = await authorizedClient("courseware.page.edit");
+    const { error } = await rpc<null>(supabase, "rename_cw_page", {
+      p_page_doc_id: value.pageDocId,
+      p_title: value.title,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ["PAGE_NOT_FOUND", "RELATION_REQUIRED", "RESPONSIBILITY_REQUIRED", ...COMMON_CODES]);
+  }
+}
+
 export async function createBlankCoursewarePageAction(input: { lectureId: string; afterPageDocId: string | null; title: string }): Promise<ActionResult<{ pageId: string }>> {
   try {
     const value = parse(z.object({ lectureId: uuid, afterPageDocId: uuid.nullable(), title: requiredText(500) }), input); const { supabase } = await authorizedClient("courseware.page.edit");

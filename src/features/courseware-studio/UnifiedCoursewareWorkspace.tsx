@@ -4,7 +4,6 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   CoursewareWorkbench,
-  CoursewareWorkbenchPageRail,
   CoursewareWorkbenchPager,
 } from "@/features/courseware-doc/CoursewareEditorWorkbench";
 import { isSourceRuntimePageDoc } from "@/features/courseware-doc/source-runtime-schema";
@@ -17,6 +16,7 @@ import {
 import type { LectureWorkspaceDetail } from "@/features/school/curriculum/types";
 import type { CoursewareLecturePreview, CoursewareTrack } from "./data";
 import { CoursewareCapabilityPrototype } from "./CoursewareCapabilityPrototype";
+import { CoursewareFormalPageRail } from "./CoursewareFormalPageRail";
 import { FittedCoursewareCanvas } from "./FittedCoursewareCanvas";
 import { PageDocVerticalSliceEditor } from "./PageDocVerticalSliceEditor";
 import { StagePreview } from "./StagePreview";
@@ -155,10 +155,8 @@ export async function UnifiedCoursewareWorkspace({
         returnTo,
         edit: page.pageDocId === pageEditor?.pageDocId,
       }),
-      trailing: <span className="flex shrink-0 gap-1" aria-label={t("trackAvailability")}>
-        {nativePage ? <span className="size-1.5 rounded-full bg-crater" title={t("canvasNative")} /> : null}
-        {adaptedPage ? <span className="size-1.5 rounded-full bg-amber-500" title={t("canvasAdapted")} /> : null}
-      </span>,
+      nativeAvailable: Boolean(nativePage),
+      adaptedAvailable: Boolean(adaptedPage),
     };
   });
 
@@ -203,7 +201,11 @@ export async function UnifiedCoursewareWorkspace({
             <span className="text-xs tabular-nums text-muted">{t("pageCount", { count: pages.length })}</span>
           </>,
           content: pages.length > 0
-            ? <CoursewareWorkbenchPageRail items={directoryItems} selectedIndex={pageIndex - 1} />
+            ? <CoursewareFormalPageRail
+                items={directoryItems}
+                selectedIndex={pageIndex - 1}
+                editablePageId={pageEditor?.pageDocId ?? null}
+              />
             : <p className="px-3 py-6 text-sm text-muted">{t("noReleasedPages")}</p>,
         }}
         canvas={{

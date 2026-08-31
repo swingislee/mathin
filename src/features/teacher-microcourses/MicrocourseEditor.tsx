@@ -121,15 +121,6 @@ export function MicrocourseEditor({ session, editor, canTeach }: {
       title: page.title,
       selectable: !active,
       disabled: pending || pageSwitching,
-      titleContent: active ? (
-        <Input
-          aria-label={t("renamePage")}
-          value={page.title}
-          maxLength={200}
-          className="h-7 min-w-0 border-0 bg-transparent px-1 text-sm shadow-none focus-visible:ring-1"
-          onChange={(event) => renameCurrentPage(event.target.value)}
-        />
-      ) : undefined,
     };
   });
   const saveMetadata = () => startTransition(async () => {
@@ -270,6 +261,9 @@ export function MicrocourseEditor({ session, editor, canTeach }: {
             <CoursewareWorkbenchPageRail
               items={directoryItems}
               selectedIndex={currentPageIndex}
+              onItemTitleChange={(_item, _index, value) => renameCurrentPage(value)}
+              titleInputLabel={t("renamePage")}
+              titleInputDisabled={pending || pageSwitching}
               onSelectedIndexChange={(index) => {
                 const page = pages[index];
                 if (page) void selectPage(page.pageDocId);

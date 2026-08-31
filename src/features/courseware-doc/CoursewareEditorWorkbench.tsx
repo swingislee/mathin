@@ -30,6 +30,7 @@ import {
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -320,7 +321,7 @@ function CoursewareWorkbenchFrame({
               >
                 {directory.header}
               </div>
-              <div data-courseware-editor-part="directory-content" className="min-h-0 min-w-0 flex-1 overflow-hidden">
+              <div data-courseware-editor-part="directory-content" className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
                 {directory.content}
               </div>
               {directory.footer ? (
@@ -427,11 +428,30 @@ export function CoursewareWorkbenchPageRail({
   items,
   selectedIndex,
   onSelectedIndexChange,
+  onItemTitleChange,
+  onItemTitleCommit,
+  titleInputLabel,
+  titleInputDisabled = false,
 }: {
   items: CoursewareWorkbenchListItem[];
   selectedIndex: number;
   onSelectedIndexChange?: (index: number) => void;
+  onItemTitleChange?: (item: CoursewareWorkbenchListItem, index: number, value: string) => void;
+  onItemTitleCommit?: (item: CoursewareWorkbenchListItem, index: number, value: string) => void;
+  titleInputLabel?: string;
+  titleInputDisabled?: boolean;
 }) {
+  const railRef = useRef<HTMLOListElement>(null);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      railRef.current
+        ?.querySelector<HTMLElement>(`[data-courseware-page-rail-index="${selectedIndex}"]`)
+        ?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [items.length, selectedIndex]);
+
   const selectByKeyboard = (event: KeyboardEvent<HTMLDivElement>, index: number) => {
     if (event.key !== "Enter" && event.key !== " ") return;
     event.preventDefault();
@@ -439,15 +459,30 @@ export function CoursewareWorkbenchPageRail({
   };
 
   return (
-    <ol className="min-h-0 flex-1 divide-y divide-line overflow-y-auto">
+    <ol ref={railRef} data-courseware-page-rail className="h-full min-h-0 w-full divide-y divide-line overflow-y-auto overscroll-contain">
       {items.map((item, index) => {
         const active = selectedIndex === index;
         const selectable = item.selectable !== false;
+        const editingTitle = active && Boolean(onItemTitleChange);
         const content = (
           <>
             <span className="w-5 shrink-0 text-right font-mono text-[11px] text-muted">{index + 1}</span>
             {item.leading}
-            <span className="min-w-0 flex-1">{item.titleContent ?? <span className="block truncate text-xs text-ink">{item.title}</span>}</span>
+            <span className="min-w-0 flex-1">{editingTitle ? (
+              <Input
+                aria-label={titleInputLabel}
+                value={item.title}
+                maxLength={500}
+                disabled={titleInputDisabled}
+                className="h-7 min-w-0 border-0 bg-transparent px-1 text-sm shadow-none focus-visible:ring-1"
+                onChange={(event) => onItemTitleChange?.(item, index, event.target.value)}
+                onBlur={(event) => onItemTitleCommit?.(item, index, event.target.value)}
+                onKeyDown={(event) => {
+                  event.stopPropagation();
+                  if (event.key === "Enter") event.currentTarget.blur();
+                }}
+              />
+            ) : item.titleContent ?? <span className="block truncate text-xs text-ink">{item.title}</span>}</span>
             {item.trailing}
           </>
         );
@@ -456,8 +491,12 @@ export function CoursewareWorkbenchPageRail({
           active ? "bg-crater/10" : "bg-line/10 hover:bg-moon/20",
         );
         return (
-          <li key={item.id}>
-            {item.href ? (
+          <li key={item.id} data-courseware-page-rail-index={index}>
+            {editingTitle ? (
+              <div aria-current="page" title={item.title} className={rowClass}>
+                {content}
+              </div>
+            ) : item.href ? (
               <Link href={item.href} aria-current={active ? "page" : undefined} title={item.title} className={rowClass}>
                 {content}
               </Link>

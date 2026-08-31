@@ -9,8 +9,11 @@ describe("courseware workbench mode unification", () => {
   const adapterSurface = read("src/features/courseware-doc/CoursewareEditorAdapterSurface.tsx");
   const previewWorkspace = read("src/features/courseware-preview/CoursewarePreviewWorkspace.tsx");
   const formalWorkspace = read("src/features/courseware-studio/UnifiedCoursewareWorkspace.tsx");
+  const formalRail = read("src/features/courseware-studio/CoursewareFormalPageRail.tsx");
+  const formalActions = read("src/features/courseware-studio/actions.ts");
   const formalPrototype = read("src/features/courseware-studio/CoursewareCapabilityPrototype.tsx");
   const microcourseWorkspace = read("src/features/teacher-microcourses/MicrocourseEditor.tsx");
+  const renameMigration = read("supabase/migrations/20260831000100_courseware_page_rename.sql");
 
   it("keeps preview as a mode of the shared workbench instead of a reverse delegation", () => {
     expect(workbench).not.toContain("CoursewarePreviewWorkspace");
@@ -41,10 +44,25 @@ describe("courseware workbench mode unification", () => {
   });
 
   it("uses the shared pager in both editor products and limits 4:3 adaptation by mode", () => {
-    expect(formalWorkspace).toContain("CoursewareWorkbenchPageRail");
+    expect(formalWorkspace).toContain("CoursewareFormalPageRail");
+    expect(formalRail).toContain("CoursewareWorkbenchPageRail");
     expect(microcourseWorkspace).toContain("CoursewareWorkbenchPageRail");
     expect(formalWorkspace).toContain("CoursewareWorkbenchPager");
     expect(microcourseWorkspace).toContain("CoursewareWorkbenchPager");
     expect(workbench).toContain('mode === "formal-editor" ? "enabled" : "disabled"');
+  });
+
+  it("keeps scrolling, active-page reveal and inline title editing in the shared page rail", () => {
+    expect(workbench).toContain('data-courseware-page-rail');
+    expect(workbench).toContain('overflow-y-auto overscroll-contain');
+    expect(workbench).toContain('scrollIntoView({ block: "nearest", inline: "nearest" })');
+    expect(workbench).toContain('onItemTitleChange');
+    expect(workbench).toContain('<Input');
+    expect(microcourseWorkspace).toContain('onItemTitleChange={(_item, _index, value) => renameCurrentPage(value)}');
+    expect(microcourseWorkspace).not.toContain('titleContent: active');
+    expect(formalRail).toContain('onItemTitleCommit');
+    expect(formalActions).toContain('renameCoursewarePageAction');
+    expect(renameMigration).toContain('function public.rename_cw_page');
+    expect(renameMigration).toContain("assert_cw_lecture_capability(lecture_value, 'page.edit')");
   });
 });
