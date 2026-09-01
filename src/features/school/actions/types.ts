@@ -136,6 +136,18 @@ export interface StudentImportBatchResult {
   rows: StudentImportBatchRow[];
 }
 
+export interface StudentImportBatchSummary {
+  batchId: string;
+  status: "validated" | "completed";
+  total: number;
+  valid: number;
+  duplicates: number;
+  errors: number;
+  inserted: number;
+  createdAt: string;
+  completedAt: string | null;
+}
+
 export interface PreviewStudentImportInput {
   templateVersion: typeof STUDENT_IMPORT_TEMPLATE_VERSION;
   idempotencyKey: string;

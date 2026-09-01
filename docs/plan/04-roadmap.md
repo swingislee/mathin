@@ -210,11 +210,11 @@ Phase 1～5 的本机隔离 Supabase、固定开发身份、migration LF checksu
 
 `DEV-CW-1` 回应课程产品中 E 系列、爱学习及后续导入课程缺少单页 16:9/4:3 修订闭环的问题，权威规划见 [doc 16 §14](16-p6-courseware-platform.md#14-dev-cw-1-课程产品统一课件工作区待产品逐步确认)。目标主路径为“课程产品 → 课程/版本 → 讲次 → 指定页面 → 统一课件工作区”，并把共享内容修订、分轨版式、页面上下文资源替换、插入能力和 draft/review/release 放在同一对象上下文内。研发任务最终只保留责任/待处理投影，适配校对只保留异常与审核视图，公共资源保留高级治理与回滚；新路径验收前不删除或降级现有入口。
 
-产品负责人于 2026-08-31 依次确认 Step 0、Step 1、Step 2 和 Step 2A，并于 2026-09-01 确认 Step 3A、Step 3B、Step 4A、Step 4B 与 Step 5A。Step 3B 把文字／图片／形状节点分发、公共透明度／层级／显隐和可折叠图层列表收敛为唯一共享组件；Step 4A/4B 打通正式 PageDoc、爱学习 source runtime 的共享 4:3 控制器、旧 A～F 映射和单页草稿闭环；Step 5A 在正式 PageDoc 当前元素上下文复用公共资源使用树的同一读模型，以五档紧凑选择器展示命中位置、冻结次数和独立钉版，并完成清单滚动、边界和共享翻页键复审。`DEV-CW-1` 现进入 **STEP 5B SINGLE LOCAL REPLACEMENT + ROLLBACK / TARGET INPUT REQUIRED**：只允许对一个本机 PageDoc 样本复用既有 staging/apply/rollback 链完成真实替换和回滚，开始前必须由产品负责人提供明确替换图片与作用范围；不得扩为整讲、批量、source-runtime 或生产写入。产品负责人要求课件工作区整体重构完成后再双端回看并定稿组件表现，因此该回看仍列为 Step 7 完成后、Step 8 扩量前的人工门；本项不改变 R1-Live Gate 2。
+产品负责人于 2026-08-31 依次确认 Step 0、Step 1、Step 2 和 Step 2A，并于 2026-09-01 确认 Step 3A、Step 3B、Step 4A、Step 4B 与 Step 5A。Step 3B 把文字／图片／形状节点与图层能力收敛为共享组件；Step 4A/4B 打通共享 4:3 控制器、旧 A～F 映射和单页草稿；Step 5A 的页面上下文五档影响预览已获人工验收。`DEV-CW-1` 现为 **STEP 5B REPLACEMENT + EDIT HISTORY / DEV READY / AWAITING USER STAGING PREVIEW**：产品负责人指定 `white-board.png` 和“全部引用”，页面工作区与公共资源页共用 staging/apply/rollback 流程，正式课与微课共用 20 步合并式撤销/重做和快捷键。当前只完成代码、本机 Supabase `127.0.0.1:35421` 写前核对和定向检查，尚未上传或应用替换；须先由产品负责人查看暂存后的画布与前后对比，再显式执行一次并验证 ledger rollback。不得扩为整讲、批量、source-runtime 或生产写入。整体重构完成后仍在 Step 7 后、Step 8 前双端回看定稿组件表现；本项不改变 R1-Live Gate 2。
 
 #### DEV-SCHOOL-OPS-1 · 学辅运营与教学履约主干
 
-`DEV-SCHOOL-OPS-1` 是产品负责人于 2026-09-01 选入的独立开发预演，权威里程碑见 [`30-mathin_school_ops_architecture_plan.md`](30-mathin_school_ops_architecture_plan.md)。Phase 0 的 Student、Followup、Activity、Enrollment、Class、Session、Attendance、导入批次、工作项与学年核对只作为规划证据；产品负责人明确拒绝把规划说明和对象映射写入 Mathin，错误新增的 `/dashboard/school-ops` 页面、导航入口与数据快照已删除。当前进入 **Phase 1 · 数据收件箱 + 线索工作台 / IN DEVELOPMENT**，交付物必须让用户在真实业务页完成名单导入、去重确认、负责人分配、跟进记录和下一动作设置；未通过局域网人工操作验收前不进入 Phase 2。
+`DEV-SCHOOL-OPS-1` 是产品负责人于 2026-09-01 选入的独立开发预演，权威里程碑见 [`30-mathin_school_ops_architecture_plan.md`](30-mathin_school_ops_architecture_plan.md)。规划型 `/dashboard/school-ops` 页面、导航和快照已删除；当前 **Phase 1 · 数据收件箱 + 线索工作台** 的第一轮真实业务切片已在 `/dashboard/students/import` 与 `/dashboard/followups` 接入现有 ImportBatch、服务端校验／应用、负责人分配、追加式沟通和下一联系时间。状态为 **FIRST BUSINESS SLICE DEVELOPMENT READY / AWAITING PRODUCT OWNER UI AND INTERACTION ACCEPTANCE**；二进制 `.xlsx`、逐行合并决定及 Family／Contact／Lead 分表尚未施工，不能把本轮记为 Phase 1 完成或进入 Phase 2。
 
 ## 6. 原 R1 工作重新定位
 

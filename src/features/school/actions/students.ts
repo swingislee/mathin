@@ -224,7 +224,7 @@ const importRowsSchema = z
       phone: text(40),
       grade: z.union([z.number(), z.string().max(20), z.null()]),
       region: text(100),
-      source: text(100),
+      source: requiredText(100),
       remark: text(2000),
     }),
   )

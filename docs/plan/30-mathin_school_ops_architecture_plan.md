@@ -4,7 +4,7 @@
 >
 > **当前用途**：指导 `DEV-SCHOOL-OPS-1` 按 Phase 0～6 建设学辅运营与教学履约主干。
 >
-> **当前里程碑**：`Phase 1 · 数据收件箱 + 线索工作台`；首个产品验收面必须是可真实导入、填写、分配和跟进的业务工作台。
+> **当前里程碑**：`Phase 1 · 数据收件箱 + 线索工作台`；首个真实业务切片已完成机器检查，等待产品负责人检阅页面设计、交互手感与数据填写流程。
 >
 > **权威边界**：当前唯一施工阶段仍由 `04-roadmap.md` 决定；本计划作为 R1-Live 双轨中的隔离开发预演，不自行授权生产迁移、写入或发布。
 >
@@ -865,6 +865,16 @@ Phase 0 交付方式：当前实现审阅、对象映射、复用／重构／新
 - NextAction
 - 今日工作
 - 批次工作视图
+
+### 第一轮开发验收切片（2026-09-01）
+
+- `/[locale]/dashboard/students/import` 作为真实数据收件箱：读取 CSV／TSV 文件或粘贴 Excel／飞书表格内容，填写整批来源，预览最终字段，调用现有 `preview_student_import` 完成服务端整批校验，显式确认重复记录后再调用 `apply_student_import`；
+- 页面直接读取当前账号经 RLS 可见的 `data_import_batches`，展示最近批次的行数、重复、错误、写入数和短批次 ID；
+- `/[locale]/dashboard/followups` 作为真实线索工作台：按我名下／全部、时间桶和检索条件读取现有线索，允许有权员工在同一表格内分配负责人、记录 Communication、设置跟进阶段和 `next_follow_up_at`；
+- 导入成功直接进入线索工作台；负责人分配复用 `assign_student`，沟通与下一动作复用 `student_follow_ups` 的追加式写入合同；
+- 本切片没有新增规划型产品页、migration、生产写入或 Storage 操作。二进制 `.xlsx` 直读、逐行合并决定及 Family／Contact／Lead 分表仍留在 Phase 1 后续施工，不在本轮页面验收前提前固化。
+
+当前状态：**FIRST BUSINESS SLICE DEVELOPMENT READY / AWAITING PRODUCT OWNER UI AND INTERACTION ACCEPTANCE**。本状态只表示开发页面与受影响机器合同可用，不表示 Phase 1 已完成、用户已验收或可以进入 Phase 2。
 
 局域网验收页：至少包含“数据收件箱 / 导入批次详情 / 线索工作台 / 今日待联系”可操作页面，并能够在局域网设备上真实完成一次 Excel 导入、去重确认、负责人分配、跟进记录和下一动作设置。
 

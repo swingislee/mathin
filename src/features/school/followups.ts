@@ -27,6 +27,8 @@ export interface BoardRow {
   overdue: boolean;
   /** 最近一条跟进摘要（单行 truncate 用）。 */
   latestNote: string;
+  assignedTo: string | null;
+  assignedName: string;
   isLost: boolean;
   lostDays:number;
 }
@@ -68,6 +70,8 @@ interface BoardStudentRow {
   follow_up_status: FollowUpStatus;
   last_follow_up_at: string | null;
   next_follow_up_at: string | null;
+  assigned_to: string | null;
+  profiles: { display_name: string } | null;
 }
 
 export async function listFollowUpBoard(userId: string, scope: BoardScope, bucket?: BoardBucket, q?: string): Promise<FollowUpBoard> {
@@ -83,7 +87,7 @@ export async function listFollowUpBoard(userId: string, scope: BoardScope, bucke
 
   let query = supabase
     .from("students")
-    .select("id,name,grade,status,follow_up_status,last_follow_up_at,next_follow_up_at")
+    .select("id,name,grade,status,follow_up_status,last_follow_up_at,next_follow_up_at,assigned_to,profiles!students_assigned_to_fkey(display_name)")
     .is("deleted_at", null)
     .order("next_follow_up_at", { ascending: true, nullsFirst: false })
     .limit(500);
@@ -192,6 +196,8 @@ export async function listFollowUpBoard(userId: string, scope: BoardScope, bucke
         nextFollowUpAt: row.next_follow_up_at,
         overdue: row.next_follow_up_at !== null && row.next_follow_up_at < nowIso,
         latestNote: latestByStudent.get(row.id) ?? "",
+        assignedTo: row.assigned_to,
+        assignedName: row.profiles?.display_name ?? "",
         isLost:row.follow_up_status==="lost"||row.status==="invalid",
         lostDays:(row.follow_up_status==="lost"||row.status==="invalid")&&row.last_follow_up_at?Math.max(0,Math.floor((now.getTime()-new Date(row.last_follow_up_at).getTime())/86400000)):0,
       })),

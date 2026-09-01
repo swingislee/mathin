@@ -49,7 +49,7 @@ export function FollowUpForm({ studentId, currentStatus, onSuccess }: { studentI
   };
 
   return (
-    <div className="mt-4 rounded-xl border border-line bg-line/40 p-4">
+    <div className="mt-4 space-y-3">
       <Textarea
         value={content}
         onChange={(event) => setContent(event.target.value)}
@@ -59,21 +59,21 @@ export function FollowUpForm({ studentId, currentStatus, onSuccess }: { studentI
         aria-label={t("followUpPlaceholder")}
         className={`w-full resize-y ${inputClass}`}
       />
-      <div className="mt-3 flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <div className="flex items-center gap-1" role="radiogroup" aria-label={t("followUpKind")}>
           {KINDS.map((value) => (
-            <button
+            <Button
               key={value}
               type="button"
+              variant={kind === value ? "secondary" : "ghost"}
+              size="sm"
               role="radio"
               aria-checked={kind === value}
               onClick={() => setKind(value)}
-              className={`rounded-full border px-3 py-1 text-xs transition ${
-                kind === value ? "border-crater bg-crater/10 text-ink" : "border-line text-muted hover:text-ink"
-              }`}
+              className="h-8 rounded-full px-3 text-xs"
             >
               {t(`followUpKind_${value}`)}
-            </button>
+            </Button>
           ))}
         </div>
         <Label className="flex items-center gap-1.5 text-xs font-normal text-muted">

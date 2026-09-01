@@ -1,4 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { buttonVariants } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   DashboardCommandActions,
   DashboardCommandFilters,
@@ -18,6 +20,7 @@ import {
 } from "@/features/school/followups";
 import { NewStudentDialog } from "@/features/school/NewStudentDialog";
 import { FOLLOW_UP_STATUSES } from "@/features/school/students";
+import { listStaffMembers } from "@/features/school/staff";
 import { Link } from "@/i18n/navigation";
 import { getMyPerms, requirePerm } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -49,11 +52,21 @@ export default async function FollowUpsPage({
   const perms = await getMyPerms(user.id);
   const canScopeAll = perms.has("student.view.all");
   const canCreate = perms.has("student.create");
+  const canImport = perms.has("student.import");
+  const canAssign = perms.has("student.assign");
   const canEditStatus = perms.has("student.edit");
   const canOrder = perms.has("finance.order.create");
 
   const { scope, bucket, q } = parseBoardParams(rawSearchParams, canScopeAll);
-  const board = await safe(() => listFollowUpBoard(user.id, scope, bucket, q), EMPTY_BOARD);
+  const [board, assignees] = await Promise.all([
+    safe(() => listFollowUpBoard(user.id, scope, bucket, q), EMPTY_BOARD),
+    canAssign
+      ? safe(
+          async () => (await listStaffMembers()).filter((member) => member.isActive && member.canFollowUp).map((member) => ({ userId: member.userId, displayName: member.displayName })),
+          [],
+        )
+      : Promise.resolve([]),
+  ]);
 
   const boardHref = (next: { scope?: typeof scope; bucket?: BoardBucket | undefined; q?: string | undefined }) => {
     const query = new URLSearchParams();
@@ -70,6 +83,7 @@ export default async function FollowUpsPage({
   return (
     <DashboardPage
       title={t("title")}
+      description={t("intro")}
       commandPanel={
         <DashboardCommandPanel>
           {canScopeAll ? (
@@ -98,8 +112,8 @@ export default async function FollowUpsPage({
               走 GET 表单：结果可深链、可后退，且与 scope/bucket 叠加而不是互斥。
             */}
             <FilterBar action={`/${locale}/dashboard/followups`} method="get">
-              {scope === "all" ? <input type="hidden" name="scope" value="all" /> : null}
-              {bucket ? <input type="hidden" name="bucket" value={bucket} /> : null}
+              {scope === "all" ? <Input type="hidden" name="scope" value="all" /> : null}
+              {bucket ? <Input type="hidden" name="bucket" value={bucket} /> : null}
               <FilterSearchInput name="q" defaultValue={q ?? ""} placeholder={t("searchPlaceholder")} aria-label={t("searchPlaceholder")} />
               <FilterBarSubmit>{t("searchSubmit")}</FilterBarSubmit>
               {q ? <FilterBarReset href={boardHref({ q: undefined })} label={t("searchReset")} /> : null}
@@ -126,15 +140,24 @@ export default async function FollowUpsPage({
             </div>
           </DashboardCommandFilters>
 
-          {canCreate ? (
+          {canCreate || canImport ? (
             <DashboardCommandActions>
-              <NewStudentDialog />
+              {canImport ? <Link href="/dashboard/students/import" className={buttonVariants({ variant: "secondary", size: "sm" })}>{t("openDataInbox")}</Link> : null}
+              {canCreate ? <NewStudentDialog /> : null}
             </DashboardCommandActions>
           ) : null}
         </DashboardCommandPanel>
       }
     >
-      <FollowUpBoardList groups={board.groups} canEditStatus={canEditStatus} canOrder={canOrder} canRecover={canEditStatus&&perms.has("followup.write")} returnTo={boardHref({})} />
+      <FollowUpBoardList
+        groups={board.groups}
+        canEditStatus={canEditStatus}
+        canAssign={canAssign}
+        assignees={assignees}
+        canOrder={canOrder}
+        canRecover={canEditStatus&&perms.has("followup.write")}
+        returnTo={boardHref({})}
+      />
     </DashboardPage>
   );
 }
