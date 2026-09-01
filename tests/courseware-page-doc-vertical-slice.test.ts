@@ -40,9 +40,13 @@ describe("courseware PageDoc formal editor", () => {
     expect(actions).toContain('"RELATION_REQUIRED"');
   });
 
-  it("shows the Step 5A replacement impact from the selected PageDoc resource without write controls", () => {
+  it("extends the accepted Step 5A impact model with one shared Step 5B replacement and rollback flow", () => {
     const editor = readFileSync("src/features/courseware-studio/PageDocVerticalSliceEditor.tsx", "utf8");
     const preview = readFileSync("src/features/courseware-studio/asset-replacement/CoursewareAssetImpactPreview.tsx", "utf8");
+    const flow = readFileSync("src/features/courseware-studio/asset-replacement/useAssetReplacementFlow.ts", "utf8");
+    const controls = readFileSync("src/features/courseware-studio/asset-replacement/AssetReplacementControls.tsx", "utf8");
+    const controller = readFileSync("src/features/courseware-studio/asset-replacement/AssetReplacementController.tsx", "utf8");
+    const rail = readFileSync("src/features/courseware-studio/asset-replacement/AssetReplacementRail.tsx", "utf8");
     const actions = readFileSync("src/features/courseware-studio/actions.ts", "utf8");
     const actionStart = actions.indexOf("export async function previewCoursewareImageReplacementImpactAction");
     const actionEnd = actions.indexOf("const createSpatialPageSchema", actionStart);
@@ -52,15 +56,26 @@ describe("courseware PageDoc formal editor", () => {
     expect(editor).toContain("selectedImageAsset");
     expect(preview).toContain("COURSEWARE_REPLACEMENT_IMPACT_SCOPES");
     expect(preview).toContain("CoursewareCompactChoiceGroup");
+    expect(preview).toContain("useAssetReplacementFlow");
+    expect(preview).toContain("AssetReplacementControls");
+    expect(preview).toContain("AssetReplacementHistory");
+    expect(preview).toContain("AssetReplacementPreview");
     expect(preview).toContain('className="min-h-0 min-w-0 flex-1"');
-    expect(preview).toContain('className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)] gap-1 pr-2"');
+    expect(preview).toContain('className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)] gap-3 pr-2"');
     expect(preview).toContain('className="min-w-0 overflow-hidden rounded-lg border border-line/70');
     expect(preview).toContain('className="shrink-0 px-3 py-1 text-xs leading-5 text-muted"');
     expect(preview).not.toContain('shrink-0 rounded-lg border border-line/80');
     expect(preview).not.toContain("max-h-64");
-    expect(preview).not.toContain("stageCoursewareImageReplacementAction");
-    expect(preview).not.toContain("applyCoursewareImageReplacementAction");
-    expect(preview).not.toContain('type="file"');
+    expect(editor).toContain("previewBindingUrls");
+    expect(editor).toContain("onStagedPreviewChange={setReplacementPreviewUrl}");
+    expect(flow).toContain("stageCoursewareImageReplacementAction");
+    expect(flow).toContain("applyCoursewareImageReplacementAction");
+    expect(flow).toContain("rollbackCoursewareImageReplacementAction");
+    expect(flow).toContain("selectedBindingIds");
+    expect(flow).toContain("selectableIds(detail.usages)");
+    expect(controls).toContain('type="file"');
+    expect(controller).toContain("useAssetReplacementFlow");
+    expect(rail).toContain("AssetReplacementControls");
     expect(readOnlyAction).toContain("loadCoursewareSharedAssetDetail");
     expect(readOnlyAction).not.toContain("apply_cw_asset_replacement");
     expect(readOnlyAction).not.toContain("rollback_cw_asset_replacement");

@@ -19,6 +19,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import {
   CoursewareEditorSaveControls,
+  CoursewareEditorHistoryControls,
   CoursewareFormalInspectorTabs,
   CoursewareInsertionToolbar,
   type CoursewareEditorSaveState,
@@ -45,6 +46,7 @@ import {
 } from "@/features/courseware-doc/courseware-4x3-strategy";
 import type { ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 import type { DocNode, PageDoc } from "@/features/courseware-doc/schema";
+import { useCoursewareEditHistory } from "@/features/courseware-doc/useCoursewareEditHistory";
 import { saveCoursewareDraftAction } from "./actions";
 import type { CoursewareTrack } from "./data";
 import { StagePreview } from "./StagePreview";
@@ -157,6 +159,7 @@ export function PageDocVerticalSliceEditor({
 }: PageDocVerticalSliceEditorProps) {
   const t = useTranslations("coursewareWorkspace");
   const textEditorT = useTranslations("coursewareTextEditor");
+  const elementEditorT = useTranslations("coursewareElementEditor");
   const adaptationT = useTranslations("coursewareFourByThree");
   const [doc, setDoc] = useState<PageDoc>(() => clone(initialDoc));
   const [savedDoc, setSavedDoc] = useState<PageDoc>(() => clone(initialDoc));
@@ -165,6 +168,7 @@ export function PageDocVerticalSliceEditor({
   const [activeTab, setActiveTab] = useState<EditorTab>("adjust");
   const [snapToGrid, setSnapToGrid] = useState(true);
   const [message, setMessage] = useState("");
+  const [replacementPreviewUrl, setReplacementPreviewUrl] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<CoursewareEditorSaveState>("saved");
   const coarseLayout = view === "compare";
   const sessionAdapted = view === "adapted-4x3" && track !== "adapted-4x3";
@@ -186,6 +190,17 @@ export function PageDocVerticalSliceEditor({
     if (timerRef.current) window.clearTimeout(timerRef.current);
     timerRef.current = window.setTimeout(() => void flushRef.current(), 800);
   }, []);
+  const restoreFromHistory = useCallback((value: PageDoc) => {
+    docRef.current = value;
+    setDoc(value);
+    setSelectedPath(null);
+    setBackgroundSelected(false);
+    markDirty();
+  }, [markDirty]);
+  const editHistory = useCoursewareEditHistory({
+    currentRef: docRef,
+    restore: restoreFromHistory,
+  });
   const initialFourByThreeState = useMemo(
     () => (fourByThreeDraft ? courseware43SessionFromPageDoc(fourByThreeDraft.doc) : null)
       ?? courseware43SessionFromLegacyAdaptClass(legacyAdaptClass),
@@ -209,6 +224,9 @@ export function PageDocVerticalSliceEditor({
     ? doc.canvas.backgroundBindingKey
     : selected?.resources.find((resource) => resource.kind === "image")?.bindingKey ?? null;
   const selectedImageAsset = selectedImageBindingKey ? imageAssetUsage[selectedImageBindingKey] ?? null : null;
+  const previewBindingUrls = useMemo(() => selectedImageBindingKey && replacementPreviewUrl
+    ? { ...bindingUrls, [selectedImageBindingKey]: replacementPreviewUrl }
+    : bindingUrls, [bindingUrls, replacementPreviewUrl, selectedImageBindingKey]);
   const layerItems = useMemo(() => collectLayerItems(doc.nodes), [doc.nodes]);
   const contentChanged = changeSnapshot(doc, "content") !== changeSnapshot(savedDoc, "content");
   const layoutChanged = changeSnapshot(doc, "layout") !== changeSnapshot(savedDoc, "layout");
@@ -304,14 +322,16 @@ export function PageDocVerticalSliceEditor({
   }, []);
 
   const patchNode = useCallback((nodePath: string, mutate: (node: DocNode) => void) => {
-    const next = clone(docRef.current);
+    const previous = docRef.current;
+    const next = clone(previous);
     const target = visit(next.nodes, nodePath);
     if (!target) return;
     mutate(target);
+    editHistory.record(previous, `node:${nodePath}`);
     docRef.current = next;
     setDoc(next);
     markDirty();
-  }, [markDirty]);
+  }, [editHistory, markDirty]);
 
   const patchSelected = (mutate: (node: DocNode) => void) => {
     if (!selectedPath) return;
@@ -343,6 +363,19 @@ export function PageDocVerticalSliceEditor({
         aria-label={t("contentInsertion")}
         aria-describedby="courseware-step3-insert-hint"
         actions={[
+          {
+            id: "history",
+            label: elementEditorT("undoEdit"),
+            icon: RotateCcw,
+            control: <CoursewareEditorHistoryControls
+              canUndo={editHistory.canUndo}
+              canRedo={editHistory.canRedo}
+              onUndo={editHistory.undo}
+              onRedo={editHistory.redo}
+              undoLabel={elementEditorT("undoEdit")}
+              redoLabel={elementEditorT("redoEdit")}
+            />,
+          },
           ...[
             ["text", "prototypeInsertText", Type],
             ["formula", "prototypeInsertFormula", Sigma],
@@ -443,6 +476,7 @@ export function PageDocVerticalSliceEditor({
                     disabled={saveState === "saving" || !isDirty}
                     onClick={() => {
                       if (timerRef.current) window.clearTimeout(timerRef.current);
+                      editHistory.record(docRef.current, "reset-unsaved");
                       const restored = clone(savedDocRef.current);
                       docRef.current = restored;
                       sequenceRef.current = savedSequenceRef.current;
@@ -480,6 +514,7 @@ export function PageDocVerticalSliceEditor({
               asset={selectedImageAsset}
               track={track}
               context={{ pageDocId, ...replacementContext }}
+              onStagedPreviewChange={setReplacementPreviewUrl}
             />
           </TabsContent> : null}
         </Tabs>
@@ -507,7 +542,7 @@ export function PageDocVerticalSliceEditor({
         />
       ) : <StagePreview
         doc={doc}
-        bindingUrls={bindingUrls}
+        bindingUrls={previewBindingUrls}
         stageMode="natural"
         className="size-full"
         interactive={false}

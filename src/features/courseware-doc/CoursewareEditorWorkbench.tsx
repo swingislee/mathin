@@ -24,7 +24,9 @@ import {
   LoaderCircle,
   Maximize2,
   Minimize2,
+  Redo2,
   Save,
+  Undo2,
   type LucideIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -889,6 +891,45 @@ export function CoursewareEditorToolbarButton({
       className={cn("size-9 shrink-0 p-0", selected && "bg-crater/15 text-ink", className)}
       {...props}
     />
+  );
+}
+
+export function CoursewareEditorHistoryControls({
+  canUndo,
+  canRedo,
+  onUndo,
+  onRedo,
+  undoLabel,
+  redoLabel,
+}: {
+  canUndo: boolean;
+  canRedo: boolean;
+  onUndo: () => void;
+  onRedo: () => void;
+  undoLabel: string;
+  redoLabel: string;
+}) {
+  return (
+    <div className="flex items-center" data-courseware-editor-history-controls>
+      <CoursewareEditorToolbarButton
+        aria-label={undoLabel}
+        title={`${undoLabel} · Ctrl+Z`}
+        aria-keyshortcuts="Control+Z Meta+Z"
+        disabled={!canUndo}
+        onClick={onUndo}
+      >
+        <Undo2 className="size-4" />
+      </CoursewareEditorToolbarButton>
+      <CoursewareEditorToolbarButton
+        aria-label={redoLabel}
+        title={`${redoLabel} · Ctrl+Shift+Z`}
+        aria-keyshortcuts="Control+Shift+Z Meta+Shift+Z Control+Y Meta+Y"
+        disabled={!canRedo}
+        onClick={onRedo}
+      >
+        <Redo2 className="size-4" />
+      </CoursewareEditorToolbarButton>
+    </div>
   );
 }
 

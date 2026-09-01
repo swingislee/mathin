@@ -8,7 +8,7 @@
 >
 > **当前施工**：P6-AIX-2 已于 2026-08-13 关闭；当前由 R1-9/P6-9 采集 1305 讲正式来源 inventory、Storage/H5 对象审计与非执行者复核。
 >
-> **剩余项**：P6-9 全局量化验收和正式生产 release-1 重建见 doc 25 R1-9/15/18；§14 的 `DEV-CW-1` Step 0～5A 已获产品负责人确认。当前只开放 Step 5B：对一个本机 PageDoc 样本复用既有 staging/apply/rollback 链验证真实替换与回滚；必须先取得产品负责人指定的替换图片和精确作用范围。素材未提供前不上传、不替换、不回滚；本阶段不开放来源节点写态，不进入整讲/批量数据或生产变更，也未授权任何生产清理。
+> **剩余项**：P6-9 全局量化验收和正式生产 release-1 重建见 doc 25 R1-9/15/18；§14 的 `DEV-CW-1` Step 0～5A 已获产品负责人确认。Step 5B 已接通页面上下文 staging/apply/rollback 与共享编辑撤销/重做，当前只等待产品负责人在固定本机样本上传已指定的 `white-board.png`、查看“全部引用”的暂存画面与影响清单；预览确认前不得应用替换。当前不开放来源节点写态，不进入整讲/批量数据或生产变更，也未授权任何生产清理。
 >
 > **最后核对**：2026-09-01；§13 以前的来源与生产基线结论沿用原证据，§14 只依据当前仓库和本机 Docker 开发库只读核对，不代表 Xiaomi/生产事实。
 
@@ -591,9 +591,9 @@ sanitize 白名单按“移植过来的规则实际选择到的标签/属性”�
 
 ## 14. DEV-CW-1 课程产品统一课件工作区（待产品逐步确认）
 
-> **当前状态**：`STEP 5B SINGLE LOCAL REPLACEMENT + ROLLBACK / TARGET INPUT REQUIRED`
+> **当前状态**：`STEP 5B REPLACEMENT + EDIT HISTORY / DEV READY / AWAITING USER STAGING PREVIEW`
 >
-> **施工授权**：产品负责人已确认 Step 0～5A，并于 2026-09-01 明确回复“Step 5A 人工验收通过”。Step 5B 只允许在一个本机 PageDoc 样本上复用现有 staging/apply/rollback 能力：先由产品负责人指定替换图片和页／讲／课程版本／课程族／全部引用之一的精确范围，再展示替换前后与影响清单，经明确确认后执行一次并验证 rollback。当前未提供替换素材，因此不得先行写数据库、Storage、binding 或 release；不得开放爱学习/source-runtime 节点写态、整讲回填、批量任务或触碰生产。
+> **施工授权**：产品负责人已确认 Step 0～5A，并为 Step 5B 指定本机素材 `docs/test_material/white-board.png`（1024×768，SHA-256 `704b500e80c4ab26728a85b9561ca4f06d08b796819d783bee09f7ee3fd227fb`）和“全部引用”范围。当前只允许在本机 Supabase `http://127.0.0.1:35421` 的固定 PageDoc 样本暂存该图并查看画布／前后对比；产品负责人明确确认暂存画面后，才执行一次 apply 并立即验证 replacement ledger rollback。编辑历史只新增正式课与微课共享的 20 步会话撤销/重做，撤销仍按各 adapter 原自动保存链生成新草稿 revision；不把发布 release 改写成可变历史。不得开放爱学习/source-runtime 节点写态、整讲回填、批量任务或触碰生产。
 >
 > **推进原则**：一个批次只交付一个可人工审计的增量。每批机器检查通过后只记为 `READY FOR USER AUDIT`；必须收到产品负责人对该批布局和功能的明确确认，才能开始下一批。未回复、仅查看页面、机器检查通过或 Agent 自评均不构成确认。
 
@@ -755,7 +755,7 @@ Step 0 还需要产品负责人明确以下事项，规划不代替这些产品�
 | 4A 共享 4:3 策略与单页会话预览 | `USER ACCEPTED` | 一份 `CoursewareFourByThreeAdapter` 同时供正式 PageDoc 与爱学习 source runtime 使用，并共同拥有策略状态、分类面板、对照画布和撤销／重置。A～F／自定义已收敛为“等宽顶部、等宽居中、等高左侧、等高居中”四种带 SVG 图示的整页变换和 PageDoc 可用的“背景等高·内容等宽”分层模式；缺独立 4:3 release 时直接按来源默认版式生成会话预览，爱学习 iframe 使用固定逻辑 viewport 和宿主整体缩放 | 2026-09-01 产品负责人回复“Step 4A 验收通过，进入下一步”，确认爱学习 16:9／4:3 白边修复、魔法校默认版式及当前组件表现 | 只授权 Step 4B 单个 PageDoc 样本页草稿持久化；不授权 source-runtime 写态、整讲或批量 |
 | 4B PageDoc 单页 4:3 草稿持久化 | `USER ACCEPTED` | `materializeCourseware43PageDoc` 把五种已确认策略物化为严格 960×720 PageDoc；完整背景与内容通过同一适配框变换，策略标记随文档保存。统一工作区同时读取当前页 native/adapted 草稿头，对照区复用 `save_cw_track_page_draft`、800ms 自动保存和保存按钮，只写 `adapted-4x3`；刷新从草稿适配框恢复策略。无新标记时，旧 A/B→等高左侧、C/E→等宽居中、D→等宽顶部、F→背景等高·内容等宽；新标记优先。未新增 schema/RPC，未改 binding/release。首轮发现 adapted 草稿引用 native 资源时被轨内解析器提前报 `COURSEWARE_DOC_BINDING_MISSING`；现统一为 adapted 显式 binding 优先、缺项只读继承 native binding，保持资源替换与布局适配正交，不复制 binding 行。本机只为《定义新运算进阶》讲次 `00d7da40-d880-47da-a82a-d91d72a2e044` 第 1 页 `0803cab4-e3df-48e8-b374-5f8fe6c3d473` 建立一个复用 native 基线的 adapted 草稿头，未批量补齐 | 2026-09-01 产品负责人在 binding 修复后回复“验收通过，进入下一步”，确认固定样本不再报 binding 缺失、资源完整、旧分类映射、自动保存、刷新恢复与 16:9 隔离 | 只授权 Step 5A 只读影响预览；不授权上传、真实替换/回滚、source-runtime 写态、整讲或批量 |
 | 5A 页面上下文资源替换影响预览 | `USER ACCEPTED` | 正式 PageDoc 的“替换”右栏复用公共资源使用树的同一 `loadCoursewareSharedAssetDetail` 读模型；在当前元素上下文按页、讲、课程版本、课程族、全部引用五档展示命中位置、冻结次数和独立钉版。范围与 4:3 粗调共用 `CoursewareCompactChoiceGroup`；引用清单独占剩余高度，以受限单列网格和盒内滚动条安全区保持完整边界；共享 `CoursewareWorkbenchPager` 统一处理预览、正式课与微课翻页键。合法纯背景 PageDoc 可预览全部五种 4:3 策略。该批 Server Action 只有资源治理读权限，界面没有上传或执行按钮 | 2026-09-01 产品负责人明确回复“Step 5A 人工验收通过”，确认五档范围、无框摘要、清单布局与滚动、4:3 五策略及共享翻页行为 | 只开放 Step 5B 单本机样本替换与回滚；素材和范围明确前不得写入 |
-| 5B 单本机样本真实替换与回滚 | `TARGET INPUT REQUIRED` | 复用既有 staging/apply/rollback 与 replacement ledger，只对一个本机 PageDoc 样本执行：上传产品负责人指定的替换图、复核五档影响清单、显式确认一个范围、检查替换后页面，再执行 rollback 并核对页面与引用恢复 | 产品负责人须先提供精确替换图片并确认作用范围；完成后人工核对替换前后、冻结／钉版保护、回滚结果和历史 release 不变 | 不扩到 source-runtime、整讲、批量或生产；不改 schema/RPC，不生成替代素材 |
+| 5B 单本机样本真实替换与回滚 | `DEV READY / AWAITING USER STAGING PREVIEW` | 页面上下文与公共资源页共用 `useAssetReplacementFlow`、`AssetReplacementControls`、前后对比和 batch history；“全部引用”由同一 usage 过滤结果选出未独立钉版的 binding，暂存 blob 直接覆盖当前画布 binding URL 供应用前查看。正式课与微课共用 `useCoursewareEditHistory` 与 `CoursewareEditorHistoryControls`：最多 20 个快照，650ms 内同组输入／拖动合并，支持撤销、重做和 Ctrl/Cmd+Z、Ctrl/Cmd+Shift+Z、Ctrl/Cmd+Y；撤销后仍走原 800ms 自动保存。写前已确认主机 `WHITEHOUSE`、本机 Supabase `127.0.0.1:35421`、素材 1024×768/185706 bytes/hash `704b500e…27fb`；尚未上传或执行任何 replacement 写入 | 在固定样本选择背景→“替换”→“全部引用”，从 `D:\code\2026\2026-07_mathin\docs\test_material\white-board.png` 上传并进入确认；核对当前画布和新旧缩略图、未钉版命中数、冻结提示，先不要点击应用。同时在正式课与微课各做文字或位置修改，验证顶栏撤销/重做和快捷键、自动保存状态 | 暂存画面确认前不得 apply；不扩到 source-runtime、整讲、批量或生产，不生成替代素材 |
 
 Step 1 变更边界：只新增只读数据 loader、连续三栏工作区、画布自适应叶子、课程预览直达按钮、双语文案和定向合同；首轮修订移动课程产品主操作、增加 4:3 缺失的 16:9 降级提示，并把单轨舞台约束为可用宽高内等比完整显示。第二轮把三点菜单移入同一命令行，使对照缺轨时保留双栏空态，按不可变爱学习布局重建旧 4:3 投影，并移除中央冗余标题行和底部状态条。爱学习判定与旧权威在本机开发库 5,508 页上比对为 0 差异；普通 1,200×900 源母版直接呈现为完整 4:3，带动画、嵌入 H5、原生题型或宽画布的 424 页保留顶部兼容带。不接 editor action，不新增 schema/RPC，不写数据库/Storage，不删除讲次工作区或旧 Studio。机器证据为 TypeScript、受影响 ESLint、双语键 5,264×2、定向 Vitest 3 文件 18/18；这些证据不代表布局已经获得产品确认。
 

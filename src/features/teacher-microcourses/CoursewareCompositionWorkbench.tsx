@@ -52,10 +52,12 @@ import {
 } from "@/features/courseware-doc/CoursewarePageElementEditor";
 import {
   CoursewareEditorSaveControls,
+  CoursewareEditorHistoryControls,
   CoursewareInsertionToolbar,
   CoursewareEditorToolbarButton,
   CoursewareEditorToolbarLabel,
 } from "@/features/courseware-doc/CoursewareEditorWorkbench";
+import { useCoursewareEditHistory } from "@/features/courseware-doc/useCoursewareEditHistory";
 import {
   addCoursewareCompositionGame,
   addCoursewareCompositionH5,
@@ -298,6 +300,17 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
     timerRef.current = window.setTimeout(() => void flushRef.current(), 800);
   }, []);
 
+  const restoreFromHistory = useCallback((value: CoursewareCompositionPage) => {
+    docRef.current = value;
+    setDoc(value);
+    setSelectedBlockId(null);
+    markDirty();
+  }, [markDirty]);
+  const editHistory = useCoursewareEditHistory({
+    currentRef: docRef,
+    restore: restoreFromHistory,
+  });
+
   const rename = useCallback((value: string) => {
     titleRef.current = value;
     markDirty();
@@ -306,12 +319,15 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
   useEffect(() => { flushRef.current = flush; }, [flush]);
   useImperativeHandle(ref, () => ({ flush, rename }), [flush, rename]);
 
-  const updateDoc = useCallback((next: CoursewareCompositionPage | ((current: CoursewareCompositionPage) => CoursewareCompositionPage)) => {
-    const value = typeof next === "function" ? next(docRef.current) : next;
+  const updateDoc = useCallback((next: CoursewareCompositionPage | ((current: CoursewareCompositionPage) => CoursewareCompositionPage), historyGroup = "document") => {
+    const previous = docRef.current;
+    const value = typeof next === "function" ? next(previous) : next;
+    if (value === previous) return;
+    editHistory.record(previous, historyGroup);
     docRef.current = value;
     setDoc(value);
     markDirty();
-  }, [markDirty]);
+  }, [editHistory, markDirty]);
 
   useEffect(() => {
     const visibility = () => { if (document.visibilityState === "hidden") void flushRef.current(); };
@@ -458,6 +474,16 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
     <CoursewareInsertionToolbar
       aria-label={t("componentPanelTitle")}
       actions={[
+        { id: "history", label: elementEditorT("undoEdit"), icon: Type, control: (
+          <CoursewareEditorHistoryControls
+            canUndo={editHistory.canUndo}
+            canRedo={editHistory.canRedo}
+            onUndo={editHistory.undo}
+            onRedo={editHistory.redo}
+            undoLabel={elementEditorT("undoEdit")}
+            redoLabel={elementEditorT("redoEdit")}
+          />
+        ) },
         { id: "text", label: t("componentText"), icon: Type, onSelect: () => addNode("text") },
         { id: "formula", label: t("componentFormula"), icon: Sigma, onSelect: () => addNode("formula") },
         { id: "shape", label: t("componentShape"), icon: Shapes, onSelect: () => addNode("shape") },

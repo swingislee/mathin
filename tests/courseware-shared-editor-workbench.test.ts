@@ -52,6 +52,7 @@ describe("shared courseware editor workbench", () => {
       "CoursewareEditorToolbarLabel",
       "CoursewareInsertionToolbar",
       "CoursewareEditorSaveControls",
+      "CoursewareEditorHistoryControls",
     ]) expect(shared).toContain(`function ${primitive}`);
     expect(adapterSurface).toContain("<CoursewareStageViewport");
     expect(adapterSurface).toContain("useCoursewareEditorChrome");
@@ -63,6 +64,26 @@ describe("shared courseware editor workbench", () => {
     expect(composition).toContain("<CoursewareEditorSaveControls");
     expect(composition).toContain("<CoursewareEditorToolbarButton");
     expect(pageDoc).toContain("<CoursewareEditorSaveControls");
+  });
+
+  it("shares one bounded undo and redo history across formal and microcourse PageDoc authoring", () => {
+    const shared = read("src", "features", "courseware-doc", "CoursewareEditorWorkbench.tsx");
+    const history = read("src", "features", "courseware-doc", "useCoursewareEditHistory.ts");
+    const formal = read("src", "features", "courseware-studio", "PageDocVerticalSliceEditor.tsx");
+    const microcourse = read("src", "features", "teacher-microcourses", "CoursewareCompositionWorkbench.tsx");
+
+    expect(shared).toContain("function CoursewareEditorHistoryControls");
+    expect(history).toContain("DEFAULT_HISTORY_LIMIT = 20");
+    expect(history).toContain("DEFAULT_COALESCE_MS = 650");
+    expect(history).toContain('window.addEventListener("keydown", onKeyDown)');
+    expect(history).toContain('key === "z"');
+    expect(history).toContain('key === "y"');
+    expect(formal).toContain("useCoursewareEditHistory");
+    expect(microcourse).toContain("useCoursewareEditHistory");
+    expect(formal).toContain("<CoursewareEditorHistoryControls");
+    expect(microcourse).toContain("<CoursewareEditorHistoryControls");
+    expect(formal).toContain("editHistory.record(previous");
+    expect(microcourse).toContain("editHistory.record(previous");
   });
 
   it("uses one text-element editor and one DocStage edit behavior in formal and microcourse authoring", () => {

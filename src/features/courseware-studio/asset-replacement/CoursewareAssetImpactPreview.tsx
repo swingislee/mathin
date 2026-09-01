@@ -13,6 +13,7 @@ import {
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CoursewareCompactChoiceGroup } from "@/features/courseware-doc/CoursewareCompactChoiceGroup";
 import { previewCoursewareImageReplacementImpactAction } from "../actions";
@@ -27,6 +28,11 @@ import {
   type CoursewareReplacementImpactContext,
   type CoursewareReplacementImpactScope,
 } from "./impact-scope";
+import { AssetReplacementControls } from "./AssetReplacementControls";
+import { AssetReplacementHistory } from "./AssetReplacementHistory";
+import { AssetReplacementPreview } from "./AssetReplacementPreview";
+import { selectableIds } from "./AssetUsageTree";
+import { useAssetReplacementFlow } from "./useAssetReplacementFlow";
 
 const scopeLabelKeys = {
   page: "replacementScopePage",
@@ -48,16 +54,20 @@ export function CoursewareAssetImpactPreview({
   asset,
   track,
   context,
+  onStagedPreviewChange,
 }: {
   asset: StudioImageAssetUsage | null;
   track: CoursewareTrack;
   context: CoursewareReplacementImpactContext;
+  onStagedPreviewChange?: (previewUrl: string | null) => void;
 }) {
   const t = useTranslations("coursewareWorkspace");
+  const studioT = useTranslations("coursewareStudio");
   const [scope, setScope] = useState<CoursewareReplacementImpactScope>("page");
   const [detail, setDetail] = useState<CoursewareSharedAssetDetail | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "loaded" | "error">(asset ? "loading" : "idle");
   const [errorCode, setErrorCode] = useState("");
+  const [detailRevision, setDetailRevision] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -80,7 +90,7 @@ export function CoursewareAssetImpactPreview({
       setErrorCode("NETWORK");
     });
     return () => { active = false; };
-  }, [asset, track]);
+  }, [asset, detailRevision, track]);
 
   const counts = useMemo(() => Object.fromEntries(
     COURSEWARE_REPLACEMENT_IMPACT_SCOPES.map((item) => [
@@ -92,8 +102,19 @@ export function CoursewareAssetImpactPreview({
     () => detail ? filterCoursewareReplacementUsages(detail.usages, context, scope) : [],
     [context, detail, scope],
   );
+  const selectedBindingIds = useMemo(() => selectableIds(usages), [usages]);
+  const replacement = useAssetReplacementFlow({
+    detail,
+    selectedBindingIds,
+    onMutated: () => setDetailRevision((value) => value + 1),
+  });
   const frozenCount = usages.reduce((total, usage) => total + usage.frozenSessionCount, 0);
   const pinnedCount = usages.filter((usage) => usage.pinnedRevisionId !== null).length;
+
+  useEffect(() => {
+    onStagedPreviewChange?.(replacement.staged?.previewUrl ?? null);
+    return () => onStagedPreviewChange?.(null);
+  }, [onStagedPreviewChange, replacement.staged?.previewUrl]);
 
   if (!asset) {
     return <p className="px-4 py-4 text-sm leading-6 text-muted">{t("replacementSelectImage")}</p>;
@@ -115,7 +136,7 @@ export function CoursewareAssetImpactPreview({
     };
   });
 
-  return (
+  return (<>
     <div data-courseware-replacement-impact-preview className="flex size-full min-h-0 flex-col gap-3 px-4 py-4">
       <p className="sr-only">{detail.asset.name || asset.name} · {track === "adapted-4x3" ? t("replacementTrack43") : t("replacementTrack169")}</p>
 
@@ -134,20 +155,58 @@ export function CoursewareAssetImpactPreview({
 
       {usages.length > 0 ? (
         <ScrollArea className="min-h-0 min-w-0 flex-1">
-          <ol className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)] gap-1 pr-2">
-            {usages.map((usage) => (
-              <li key={usage.bindingId} className="min-w-0 overflow-hidden rounded-lg border border-line/70 px-2.5 py-2 text-xs leading-5">
-                <p className="truncate font-medium text-ink">{usage.courseTitle}</p>
-                <p className="truncate text-muted">{t("replacementUsageLocation", { lecture: usage.lectureNo, lectureName: usage.lectureName, page: usage.pageNo, pageTitle: usage.pageTitle || t("untitledPage") })}</p>
-                <div className="mt-1 flex flex-wrap gap-1">
-                  {usage.pinnedRevisionId ? <Badge variant="secondary">{t("replacementPinned")}</Badge> : null}
-                  {usage.frozenSessionCount > 0 ? <Badge variant="outline">{t("replacementFrozenCount", { count: usage.frozenSessionCount })}</Badge> : null}
-                </div>
-              </li>
-            ))}
-          </ol>
+          <div className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)] gap-3 pr-2">
+            {replacement.staged ? <AssetReplacementPreview
+              currentPreviewUrl={detail.asset.previewUrl}
+              staged={replacement.staged}
+              selectedCount={selectedBindingIds.length}
+              unselectedCount={replacement.eligibleCount - selectedBindingIds.length}
+              frozenSelectedCount={replacement.frozenSelectedCount}
+              mode={replacement.predictedMode}
+              trackLabel={track === "adapted-4x3" ? t("replacementTrack43") : t("replacementTrack169")}
+              compact
+            /> : <ol className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-1">
+              {usages.map((usage) => (
+                <li key={usage.bindingId} className="min-w-0 overflow-hidden rounded-lg border border-line/70 px-2.5 py-2 text-xs leading-5">
+                  <p className="truncate font-medium text-ink">{usage.courseTitle}</p>
+                  <p className="truncate text-muted">{t("replacementUsageLocation", { lecture: usage.lectureNo, lectureName: usage.lectureName, page: usage.pageNo, pageTitle: usage.pageTitle || t("untitledPage") })}</p>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {usage.pinnedRevisionId ? <Badge variant="secondary">{t("replacementPinned")}</Badge> : null}
+                    {usage.frozenSessionCount > 0 ? <Badge variant="outline">{t("replacementFrozenCount", { count: usage.frozenSessionCount })}</Badge> : null}
+                  </div>
+                </li>
+              ))}
+            </ol>}
+            {detail.batches.length > 0 ? <AssetReplacementHistory batches={detail.batches} pending={replacement.pending} onRollback={replacement.requestRollback} /> : null}
+          </div>
         </ScrollArea>
       ) : <p className="grid min-h-0 flex-1 place-items-center text-xs text-muted">{t("replacementNoUsages")}</p>}
+
+      <AssetReplacementControls
+        inputId="courseware-page-replacement-file"
+        staged={replacement.staged}
+        note={replacement.note}
+        pending={replacement.pending}
+        canStage={replacement.canStage}
+        canApply={replacement.canApply}
+        message={replacement.message}
+        compact
+        onFileChange={replacement.setFile}
+        onNoteChange={replacement.setNote}
+        onStage={replacement.stage}
+        onApply={replacement.apply}
+        onDiscardStaged={replacement.discardStaged}
+      />
     </div>
-  );
+    <ConfirmDialog
+      open={replacement.rollbackBatchId !== null}
+      onOpenChange={(open) => { if (!open) replacement.cancelRollback(); }}
+      title={studioT("assetRollbackConfirmTitle")}
+      description={studioT("assetRollbackConfirmDescription")}
+      confirmLabel={studioT("assetRollback")}
+      cancelLabel={studioT("cancel")}
+      onConfirm={replacement.rollback}
+      pending={replacement.pending}
+    />
+  </>);
 }
