@@ -14,7 +14,7 @@
 >
 > **双轨执行**：生产端由 1 名正式教师在现有正式班级、课次和花名册上持续试用，优先反馈 P0/核心 P1；开发端可并行尝试产品负责人选中的新功能。新功能只有在开发目标完成受影响检查并由产品负责人初步验收后，才成为生产候选；完成精确版本/迁移登记、生产 preflight、可回退发布和 postflight 后，才能记为生产已部署。开发通过不等于生产通过，新功能也不改变 Gate 2 的点名与权限退出条件。
 >
-> **核对日期**：2026-08-31；生产事实仍沿用 2026-08-30 已确认的 ledger/head=`236 / 20260830000700_teacher_microcourse_editor_unification`、应用 `a165004…`、讲次课件预览性能 hotfix 及去标识化 postflight；`76f0f9a…` 与 ledger 236 在该轮 preflight 前已运行，不把此前发布归因于该 hotfix。2026-08-31 新增 `DEV-CW-1` 规划登记，没有代码、schema、数据库、Storage 或生产写入。其余依据 active doc 00/25、代码与迁移、本机隔离验证、Xiaomi 运行核查和 `mathin-R1-Live-讨论稿.md`。
+> **核对日期**：2026-09-01；生产事实仍沿用 2026-08-30 已确认的 ledger/head=`236 / 20260830000700_teacher_microcourse_editor_unification`、应用 `a165004…`、讲次课件预览性能 hotfix 及去标识化 postflight；`76f0f9a…` 与 ledger 236 在该轮 preflight 前已运行，不把此前发布归因于该 hotfix。2026-09-01 新增 `DEV-SCHOOL-OPS-1` Phase 0 隔离开发登记，没有 schema、数据库、Storage 或生产写入。其余依据 active doc 00/25/30、代码与迁移、本机隔离验证、Xiaomi 运行核查和 `mathin-R1-Live-讨论稿.md`。
 
 ## 1. 两个交付事件
 
@@ -211,6 +211,10 @@ Phase 1～5 的本机隔离 Supabase、固定开发身份、migration LF checksu
 `DEV-CW-1` 回应课程产品中 E 系列、爱学习及后续导入课程缺少单页 16:9/4:3 修订闭环的问题，权威规划见 [doc 16 §14](16-p6-courseware-platform.md#14-dev-cw-1-课程产品统一课件工作区待产品逐步确认)。目标主路径为“课程产品 → 课程/版本 → 讲次 → 指定页面 → 统一课件工作区”，并把共享内容修订、分轨版式、页面上下文资源替换、插入能力和 draft/review/release 放在同一对象上下文内。研发任务最终只保留责任/待处理投影，适配校对只保留异常与审核视图，公共资源保留高级治理与回滚；新路径验收前不删除或降级现有入口。
 
 产品负责人于 2026-08-31 依次确认 Step 0、Step 1、Step 2 和 Step 2A，并于 2026-09-01 确认 Step 3A、Step 3B、Step 4A、Step 4B 与 Step 5A。Step 3B 把文字／图片／形状节点分发、公共透明度／层级／显隐和可折叠图层列表收敛为唯一共享组件；Step 4A/4B 打通正式 PageDoc、爱学习 source runtime 的共享 4:3 控制器、旧 A～F 映射和单页草稿闭环；Step 5A 在正式 PageDoc 当前元素上下文复用公共资源使用树的同一读模型，以五档紧凑选择器展示命中位置、冻结次数和独立钉版，并完成清单滚动、边界和共享翻页键复审。`DEV-CW-1` 现进入 **STEP 5B SINGLE LOCAL REPLACEMENT + ROLLBACK / TARGET INPUT REQUIRED**：只允许对一个本机 PageDoc 样本复用既有 staging/apply/rollback 链完成真实替换和回滚，开始前必须由产品负责人提供明确替换图片与作用范围；不得扩为整讲、批量、source-runtime 或生产写入。产品负责人要求课件工作区整体重构完成后再双端回看并定稿组件表现，因此该回看仍列为 Step 7 完成后、Step 8 扩量前的人工门；本项不改变 R1-Live Gate 2。
+
+#### DEV-SCHOOL-OPS-1 · 学辅运营与教学履约主干
+
+`DEV-SCHOOL-OPS-1` 是产品负责人于 2026-09-01 选入的独立开发预演，权威里程碑见 [`30-mathin_school_ops_architecture_plan.md`](30-mathin_school_ops_architecture_plan.md)。当前只施工 **Phase 0 · 流程校准与模型核验**：核对现有 Student、Followup、Activity、Enrollment、Class、Session、Attendance、导入批次、工作项与学年实现，明确复用/重构/新增边界，并提供接入真实路由和当前账号可见数据的局域网审阅页。Phase 0 不新增 migration，不修改本机或生产业务数据，不触碰 Storage；机器检查通过后必须停在开发端人工验收门，产品负责人确认主流程、入口、角色边界与对象关系后才进入 Phase 1。
 
 ## 6. 原 R1 工作重新定位
 
