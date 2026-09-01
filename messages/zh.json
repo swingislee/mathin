@@ -1387,6 +1387,8 @@
   "coursewareFourByThree": {
     "title": "4:3 粗调版式",
     "sessionOnly": "仅本次预览",
+    "generatedDefaultTitle": "已生成默认 4:3 版式",
+    "generatedDefaultDescription": "本页没有独立的 4:3 release，当前按“等宽顶部”直接生成完整默认版式，不需要逐页手动建立。进入对照视图可粗调版式；本批仍不保存 4:3 草稿。",
     "changed": "会话已调整",
     "sessionHint": "只在对照区选择整页粗调方式；背景、内容和互动层保持同一变换。当前选择不会写入草稿、release 或来源数据。",
     "strategyLabel": "选择 16:9 放入 4:3 的方式",

@@ -86,6 +86,8 @@ export default function SourceRuntimeStage({
   const t = useTranslations("coursewareStage");
   const frameId = `source-runtime/${doc.source.coursewareId}/${doc.source.pageDatabaseId}`;
   const { iframeRef, frameGeneration, onFrameLoad } = useH5FrameRegistration(h5PointerBridge, frameId);
+  const sourceFrameRef = useRef<HTMLDivElement>(null);
+  const [sourceFrameSize, setSourceFrameSize] = useState<{ width: number; height: number } | null>(null);
   const [renderedFrameKey, setRenderedFrameKey] = useState<string | null>(null);
   const [runtimeFailure, setRuntimeFailure] = useState<{ frameKey: string; message: string } | null>(null);
   const appliedCtl = useRef<DocVideoControl["ctl"]>(undefined);
@@ -106,6 +108,21 @@ export default function SourceRuntimeStage({
     () => materializePayload(doc, bindingUrls, interactive),
     [bindingUrls, doc, interactive],
   );
+
+  useLayoutEffect(() => {
+    const frame = sourceFrameRef.current;
+    if (!frame) return;
+    const measure = () => {
+      const next = { width: frame.clientWidth, height: frame.clientHeight };
+      setSourceFrameSize((current) => current?.width === next.width && current.height === next.height
+        ? current
+        : next);
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(frame);
+    measure();
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     if ((runtimeReadyFor.current === runtimeInstanceKey || runtimeLoadedFor.current === runtimeInstanceKey)
@@ -177,6 +194,16 @@ export default function SourceRuntimeStage({
     : Math.min(100, (outerAspect / sourceAspect) * 100);
   const sourceWidthPercent = directFourByThree ? (sourceAspect / outerAspect) * 100 : 100;
   const sourceLeftPercent = directFourByThree ? (100 - sourceWidthPercent) / 2 : 0;
+  // The producer Viewer intentionally caps its own preview scale at 1. Render
+  // it at the document's intrinsic viewport and let the shared host scale that
+  // whole iframe instead; otherwise large workbench canvases expose the
+  // Viewer's white review margins around otherwise correct courseware.
+  const sourceFrameScale = sourceFrameSize
+    ? Math.max(
+        sourceFrameSize.width / doc.viewport.width,
+        sourceFrameSize.height / doc.viewport.height,
+      )
+    : 1;
   const unavailable = !runtimeEntry || !payload;
 
   return (
@@ -197,6 +224,7 @@ export default function SourceRuntimeStage({
         <div className="absolute inset-x-0 bottom-0 bg-card" style={{ height: `${100 - sourceHeightPercent}%` }} />
       ) : null}
       <div
+        ref={sourceFrameRef}
         className="absolute top-0"
         style={{
           left: `${sourceLeftPercent}%`,
@@ -225,7 +253,13 @@ export default function SourceRuntimeStage({
               }
               onFrameLoad();
             }}
-            className="absolute inset-0 block size-full border-0 bg-white"
+            className="absolute left-0 top-0 block origin-top-left border-0 bg-white"
+            style={{
+              width: doc.viewport.width,
+              height: doc.viewport.height,
+              transform: `scale(${sourceFrameScale})`,
+              visibility: sourceFrameSize ? "visible" : "hidden",
+            }}
           />
         ) : null}
         {!rendered && !hasRenderedCurrentRuntime && !runtimeError && !unavailable ? (

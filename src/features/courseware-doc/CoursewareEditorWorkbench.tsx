@@ -438,7 +438,7 @@ function CoursewareWorkbenchFrame({
                   data-courseware-editor-slot="inspector-header"
                   className={cn(WORKBENCH_HEADER_ROW_CLASS, "flex items-center gap-3 px-3 py-2")}
                 >
-                  {inspector.header}
+                  <Fragment key="inspector-heading">{inspector.header}</Fragment>
                   {activeInspectorHeader ? (
                     <div data-courseware-editor-part="inspector-header-controls" className="ml-auto min-w-0 flex-1">
                       {activeInspectorHeader}

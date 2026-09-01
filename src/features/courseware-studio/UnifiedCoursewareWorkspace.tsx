@@ -121,22 +121,22 @@ export async function UnifiedCoursewareWorkspace({
   const pages = directoryPreview?.pages ?? [];
   const backHref = returnTo ?? coursePreviewHref(detail, entryTrack, pageIndex);
   const selectedPage = directoryPreview?.page;
-  const adaptedCanvasFellBack = canvas === "adapted-4x3" && !adaptedPreview && Boolean(nativePreview);
+  const sourceRuntimePreview = nativePreview && isSourceRuntimePageDoc(nativePreview.page.doc)
+    ? nativePreview
+    : adaptedPreview && isSourceRuntimePageDoc(adaptedPreview.page.doc) ? adaptedPreview : null;
+  const sourceRuntimeEditor = !pageEditor && sourceRuntimePreview && isSourceRuntimePageDoc(sourceRuntimePreview.page.doc)
+      ? { doc: sourceRuntimePreview.page.doc, bindingUrls: sourceRuntimePreview.bindingUrls }
+      : null;
+  const sessionAdaptationAvailable = Boolean(pageEditor || sourceRuntimeEditor);
+  const adaptedCanvasFellBack = canvas === "adapted-4x3"
+    && !adaptedPreview
+    && Boolean(nativePreview)
+    && !sessionAdaptationAvailable;
   const visibleCanvas: UnifiedWorkspaceCanvas = adaptedCanvasFellBack ? "native-16x9" : canvas;
   const visibleTrack: CoursewareTrack = visibleCanvas === "adapted-4x3" ? "adapted-4x3" : "native-16x9";
   const selectedDoc = pageEditor?.doc ?? (visibleCanvas === "adapted-4x3"
     ? adaptedPreview?.page.doc
     : nativePreview?.page.doc ?? adaptedPreview?.page.doc);
-  const selectedPreview = visibleCanvas === "adapted-4x3"
-    ? adaptedPreview
-    : nativePreview ?? adaptedPreview;
-  const sourceRuntimePreview = nativePreview && isSourceRuntimePageDoc(nativePreview.page.doc)
-    ? nativePreview
-    : selectedPreview && isSourceRuntimePageDoc(selectedPreview.page.doc) ? selectedPreview : null;
-  const sourceRuntimeEditor = !pageEditor && sourceRuntimePreview && isSourceRuntimePageDoc(sourceRuntimePreview.page.doc)
-      ? { doc: sourceRuntimePreview.page.doc, bindingUrls: sourceRuntimePreview.bindingUrls }
-      : null;
-
   const canvasItems = [
     { value: "compare", label: t("canvasCompare"), href: workspaceHref({ lectureId: detail.lecture.id, canvas: "compare", track: "native-16x9", page: pageIndex, returnTo }) },
     { value: "native-16x9", label: t("canvasNative"), href: workspaceHref({ lectureId: detail.lecture.id, canvas: "native-16x9", track: "native-16x9", page: pageIndex, returnTo }) },
@@ -163,7 +163,7 @@ export async function UnifiedCoursewareWorkspace({
         returnTo,
       }),
       nativeAvailable: Boolean(nativePage),
-      adaptedAvailable: Boolean(adaptedPage),
+      adaptedAvailable: Boolean(adaptedPage || (nativePage && sessionAdaptationAvailable)),
     };
   });
 

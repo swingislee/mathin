@@ -255,38 +255,48 @@ export function CoursewareFourByThreeComparison({
   );
   const originalAspect = sourceAspect(source);
 
-  const original = (
-    <section className="min-h-0 min-w-0 bg-paper" aria-label={t("originalLabel")}>
+  const originalStage = <NaturalStage source={source} />;
+  const adaptedStage = layeredPageDoc && source.kind === "page-doc" ? (
+    <StagePreview
+      doc={layeredPageDoc}
+      bindingUrls={source.bindingUrls}
+      stageMode="natural"
+      className="size-full"
+      interactive={false}
+      playAutoInteractions={false}
+    />
+  ) : isWholeStageCourseware43Strategy(state.strategy) ? (
+    <WholeStageAdaptedPreview source={source} strategy={state.strategy} />
+  ) : null;
+
+  const originalComparison = (
+    <section className="size-full min-h-0 min-w-0 bg-paper" aria-label={t("originalLabel")}>
       <CoursewareStageViewport aspect={originalAspect} className="p-3">
-        <NaturalStage source={source} />
+        {originalStage}
       </CoursewareStageViewport>
     </section>
   );
-  const adapted = (
-    <section className="min-h-0 min-w-0 bg-paper" aria-label={t("adaptedLabel")}>
+  const adaptedComparison = (
+    <section className="size-full min-h-0 min-w-0 bg-paper" aria-label={t("adaptedLabel")}>
       <CoursewareStageViewport aspect={4 / 3} className="p-3">
-        {layeredPageDoc && source.kind === "page-doc" ? (
-          <StagePreview
-            doc={layeredPageDoc}
-            bindingUrls={source.bindingUrls}
-            stageMode="natural"
-            className="size-full"
-            interactive={false}
-            playAutoInteractions={false}
-          />
-        ) : isWholeStageCourseware43Strategy(state.strategy) ? (
-          <WholeStageAdaptedPreview source={source} strategy={state.strategy} />
-        ) : null}
+        {adaptedStage}
       </CoursewareStageViewport>
     </section>
   );
 
-  if (view === "native-16x9") return <div className={cn("size-full min-h-0", className)}>{original}</div>;
-  if (view === "adapted-4x3") return <div className={cn("size-full min-h-0", className)}>{adapted}</div>;
+  // Single-track editors already live in CoursewareEditorAdapterSurface's
+  // fitted frame. Reusing the comparison viewport here would fit the same
+  // source twice and shrink source-runtime pages to roughly half size.
+  if (view === "native-16x9") {
+    return <div className={cn("size-full min-h-0 overflow-hidden bg-paper", className)}>{originalStage}</div>;
+  }
+  if (view === "adapted-4x3") {
+    return <div className={cn("size-full min-h-0 overflow-hidden bg-paper", className)}>{adaptedStage}</div>;
+  }
   return (
     <div data-courseware-4x3-comparison className={cn("grid size-full min-h-0 grid-cols-2 gap-px bg-line", className)}>
-      {original}
-      {adapted}
+      {originalComparison}
+      {adaptedComparison}
     </div>
   );
 }

@@ -142,6 +142,7 @@ export function PageDocVerticalSliceEditor({
   const [saveState, setSaveState] = useState<CoursewareEditorSaveState>("saved");
   const fourByThree = useCoursewareFourByThreeAdapter({ kind: "page-doc", doc, bindingUrls });
   const coarseLayout = view === "compare";
+  const sessionAdapted = view === "adapted-4x3" && track !== "adapted-4x3";
   const displayedTab: EditorTab = coarseLayout ? "layout" : activeTab === "layout" ? "adjust" : activeTab;
   const docRef = useRef(clone(initialDoc));
   const savedDocRef = useRef(clone(initialDoc));
@@ -333,6 +334,12 @@ export function PageDocVerticalSliceEditor({
   const inspector = (
     <ScrollArea className="size-full min-h-0">
       <div className="px-4">
+        {sessionAdapted ? (
+          <div className="space-y-2 py-4">
+            <p className="text-sm font-medium text-ink">{adaptationT("generatedDefaultTitle")}</p>
+            <p className="text-xs leading-5 text-muted">{adaptationT("generatedDefaultDescription")}</p>
+          </div>
+        ) : (
         <Tabs value={displayedTab} onValueChange={(value) => setActiveTab(value as EditorTab)}>
       <div
         data-courseware-step3-editor
@@ -400,22 +407,28 @@ export function PageDocVerticalSliceEditor({
         </div> : null}
       </div>
         </Tabs>
+        )}
       </div>
     </ScrollArea>
   );
 
   return (
     <CoursewareEditorAdapterSurface
-      toolbar={coarseLayout ? null : insertToolbar}
-      saveControls={coarseLayout ? <Badge variant="outline">{adaptationT("sessionOnly")}</Badge> : saveControls}
-      inspectorHeader={inspectorHeader}
+      toolbar={coarseLayout || sessionAdapted ? null : insertToolbar}
+      saveControls={coarseLayout || sessionAdapted ? <Badge variant="outline">{adaptationT("sessionOnly")}</Badge> : saveControls}
+      inspectorHeader={sessionAdapted ? undefined : inspectorHeader}
       inspector={inspector}
-      aspect={coarseLayout ? 16 / 9 : doc.canvas.width / doc.canvas.height}
+      aspect={coarseLayout ? 16 / 9 : sessionAdapted ? 4 / 3 : doc.canvas.width / doc.canvas.height}
       className="p-3"
       hostProps={{ "data-courseware-editor-adapter": "page-doc-v1" }}
       stageProps={{ "data-fitted-courseware-stage": true }}
     >
-      {coarseLayout ? <CoursewareFourByThreeComparison adapter={fourByThree} /> : <StagePreview
+      {coarseLayout || sessionAdapted ? (
+        <CoursewareFourByThreeComparison
+          adapter={fourByThree}
+          view={sessionAdapted ? "adapted-4x3" : "compare"}
+        />
+      ) : <StagePreview
         doc={doc}
         bindingUrls={bindingUrls}
         stageMode="natural"

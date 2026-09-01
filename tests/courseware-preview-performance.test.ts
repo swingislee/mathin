@@ -52,6 +52,7 @@ describe("courseware preview page-turn performance", () => {
     expect(stage).toContain("runtimePayloadSentFor.current !== renderKey");
     expect(stage).toContain("hasRenderedCurrentRuntime");
     expect(stage).toContain("!rendered && !hasRenderedCurrentRuntime");
+    expect(stage).toContain("const sourceFrameScale = sourceFrameSize");
     expect(sourceRuntimeBranch).not.toContain("key=");
   });
 

@@ -43,7 +43,8 @@ describe("DEV-CW-1 Step 1 read-only unified courseware workspace", () => {
     expect(workspace).toContain('"compare", "native-16x9", "adapted-4x3"');
     expect(workspace).toContain("ObjectTabs");
     expect(workspace).toContain("StagePreview");
-    expect(workspace).toContain('canvas === "adapted-4x3" && !adaptedPreview');
+    expect(workspace).toContain('const adaptedCanvasFellBack = canvas === "adapted-4x3"');
+    expect(workspace).toContain("&& !sessionAdaptationAvailable");
     expect(workspace).toContain('visibleCanvas: UnifiedWorkspaceCanvas');
     expect(workspace).not.toContain("statusStrip={<StatusStrip");
     expect(workspace).not.toContain('>{t("previewTitle")}</h2>');

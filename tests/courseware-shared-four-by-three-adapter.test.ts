@@ -110,12 +110,17 @@ describe("shared formal-course 4:3 adapter", () => {
     expect(shared).toContain("courseware43ViewportPlacement(strategy, sourceAspect(source))");
     expect(shared).toContain("Courseware43StrategyIcon");
     expect(shared).toContain('data-courseware-4x3-whole-stage={strategy}');
+    expect(shared).toContain("Single-track editors already live in CoursewareEditorAdapterSurface's");
     expect(shared).not.toContain('strategy: "custom"');
     expect(pageDocEditor).toContain('const coarseLayout = view === "compare"');
+    expect(pageDocEditor).toContain('const sessionAdapted = view === "adapted-4x3" && track !== "adapted-4x3"');
     expect(sourceEditor).toContain('const coarseLayout = view === "compare"');
     expect(shared).not.toContain("fetch(");
     expect(shared).not.toContain("Action(");
     expect(workspace).toContain("<SourceRuntimeFourByThreeEditor");
+    expect(workspace).toContain("const sessionAdaptationAvailable = Boolean(pageEditor || sourceRuntimeEditor)");
+    expect(workspace).toContain("!sessionAdaptationAvailable");
     expect(workbench).toContain('<Fragment key="inspector-panel">');
+    expect(workbench).toContain('<Fragment key="inspector-heading">{inspector.header}</Fragment>');
   });
 });

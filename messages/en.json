@@ -1387,6 +1387,8 @@
   "coursewareFourByThree": {
     "title": "4:3 coarse layout",
     "sessionOnly": "Session preview",
+    "generatedDefaultTitle": "Default 4:3 layout generated",
+    "generatedDefaultDescription": "This page has no independent 4:3 release, so a complete fit-width/top-aligned default is generated automatically without per-page setup. Use Compare to adjust the coarse layout. This batch still does not save a 4:3 draft.",
     "changed": "Session adjusted",
     "sessionHint": "Choose a whole-page coarse layout only in comparison view. Background, content, and interaction layers share one transform. The choice does not write a draft, release, or source record.",
     "strategyLabel": "Choose how the 16:9 page fits into 4:3",

@@ -172,6 +172,10 @@ describe("producer-owned Aixuexi source runtime", () => {
     expect(host).toContain("useLayoutEffect(() => {");
     expect(host).toContain('window.addEventListener("message", receive)');
     expect(host).toContain('key={runtimeInstanceKey}');
+    expect(host).toContain("sourceFrameSize.width / doc.viewport.width");
+    expect(host).toContain("sourceFrameSize.height / doc.viewport.height");
+    expect(host).toContain("width: doc.viewport.width");
+    expect(host).toContain("height: doc.viewport.height");
     expect(host).toContain('const renderKey = `${runtimeInstanceKey}:${doc.source.coursewareId}:${doc.source.pageDatabaseId}`');
     expect(host).not.toContain("setRendered(false)");
     expect(host).not.toContain("@/components/ui/button");
