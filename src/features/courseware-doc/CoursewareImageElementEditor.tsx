@@ -2,7 +2,6 @@
 
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -77,46 +76,6 @@ export function CoursewareImageElementInspector({
             </Label>
           ))}
         </div>
-      </div>
-
-      <div className="space-y-2">
-        <p className="text-sm font-medium text-ink">{t("appearance")}</p>
-        <div className="grid grid-cols-2 gap-2">
-          <Label className="grid gap-1.5">
-            <span>{t("opacity")}</span>
-            <Input
-              type="number"
-              min={0}
-              max={100}
-              step={5}
-              value={Math.round(node.transform.opacity * 100)}
-              onChange={(event) => {
-                const value = Number(event.target.value);
-                if (!Number.isFinite(value)) return;
-                onPatch((item) => { item.transform.opacity = Math.min(1, Math.max(0, value / 100)); });
-              }}
-            />
-          </Label>
-          <Label className="grid gap-1.5">
-            <span>{t("layer")}</span>
-            <Input
-              type="number"
-              value={node.zIndex}
-              onChange={(event) => {
-                const value = Number(event.target.value);
-                if (!Number.isFinite(value)) return;
-                onPatch((item) => { item.zIndex = Math.round(value); });
-              }}
-            />
-          </Label>
-        </div>
-        <Label className="flex items-center gap-2 rounded-lg border border-line px-3 py-2.5">
-          <Checkbox
-            checked={node.visible}
-            onCheckedChange={(checked) => onPatch((item) => { item.visible = checked === true; })}
-          />
-          <span>{t("visible")}</span>
-        </Label>
       </div>
 
       <p className="text-xs leading-5 text-muted">{t("localOnlyHint")}</p>

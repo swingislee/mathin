@@ -16,8 +16,6 @@ import {
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -27,16 +25,16 @@ import {
 } from "@/features/courseware-doc/CoursewareEditorWorkbench";
 import { CoursewareEditorAdapterSurface } from "@/features/courseware-doc/CoursewareEditorAdapterSurface";
 import {
-  CoursewareImageElementInspector,
-  isCoursewareImageElement,
-} from "@/features/courseware-doc/CoursewareImageElementEditor";
-import {
   CoursewareGridSnapToggle,
-  CoursewareTextElementInspector,
   coursewareTextValue,
   isCoursewareTextElement,
   setCoursewareTextValue,
 } from "@/features/courseware-doc/CoursewareTextElementEditor";
+import {
+  CoursewareLayerPanel,
+  CoursewarePageElementInspector,
+  type CoursewareLayerItem,
+} from "@/features/courseware-doc/CoursewarePageElementEditor";
 import type { ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 import type { DocNode, PageDoc } from "@/features/courseware-doc/schema";
 import { saveCoursewareDraftAction } from "./actions";
@@ -45,7 +43,6 @@ import { StagePreview } from "./StagePreview";
 
 type EditorTab = "adjust" | "layout" | "replace";
 type ChangeKind = "content" | "layout";
-type NumericTransformKey = "x" | "y" | "width" | "height" | "rotation" | "scaleX" | "scaleY" | "anchorX" | "anchorY" | "opacity";
 
 function clone<T>(value: T): T {
   return structuredClone(value);
@@ -58,6 +55,20 @@ function visit(nodes: DocNode[], nodePath: string): DocNode | null {
     if (nested) return nested;
   }
   return null;
+}
+
+function collectLayerItems(nodes: DocNode[], depth = 0): CoursewareLayerItem[] {
+  return nodes.flatMap((node) => [
+    {
+      id: node.nodePath,
+      label: node.name?.trim() || node.id,
+      kind: node.adapter.replaceAll("_", " "),
+      layer: node.zIndex,
+      visible: node.visible,
+      depth,
+    },
+    ...collectLayerItems(node.children, depth + 1),
+  ]);
 }
 
 function collectNodeSnapshots(nodes: DocNode[]) {
@@ -130,6 +141,7 @@ export function PageDocVerticalSliceEditor({
   const flushRef = useRef<() => Promise<boolean>>(async () => true);
 
   const selected = useMemo(() => selectedPath ? visit(doc.nodes, selectedPath) : null, [doc, selectedPath]);
+  const layerItems = useMemo(() => collectLayerItems(doc.nodes), [doc.nodes]);
   const contentChanged = changeSnapshot(doc, "content") !== changeSnapshot(savedDoc, "content");
   const layoutChanged = changeSnapshot(doc, "layout") !== changeSnapshot(savedDoc, "layout");
   const isDirty = JSON.stringify(doc) !== JSON.stringify(savedDoc);
@@ -243,20 +255,6 @@ export function PageDocVerticalSliceEditor({
     patchNode(nodePath, (node) => setCoursewareTextValue(node, value));
   }, [patchNode]);
 
-  const patchNumber = (
-    key: NumericTransformKey | "fontSize" | "lineHeight" | "zIndex",
-    raw: string,
-  ) => {
-    const value = Number(raw);
-    if (!Number.isFinite(value)) return;
-    patchSelected((node) => {
-      if (key === "fontSize" || key === "lineHeight") node.style[key] = value;
-      else if (key === "zIndex") node.zIndex = Math.round(value);
-      else if (key === "opacity") node.transform.opacity = Math.min(1, Math.max(0, value));
-      else node.transform[key] = value;
-    });
-  };
-
   const insertToolbar = (
     <div className="flex min-w-0 items-center gap-2">
       <span id="courseware-step3-insert-hint" className="sr-only">{t("verticalSliceInsertDeferred")}</span>
@@ -330,43 +328,22 @@ export function PageDocVerticalSliceEditor({
           <span className="text-[11px] text-muted">{isDirty ? t("verticalSliceUnsaved") : t("verticalSliceSavedState")}</span>
         </div>
 
-        <TabsContent value="adjust" className="space-y-4">
-          {selected && isCoursewareTextElement(selected) ? (
-            <CoursewareTextElementInspector node={selected} onPatch={patchSelected} />
-          ) : selected && isCoursewareImageElement(selected) ? (
-            <CoursewareImageElementInspector
-              node={selected}
-              onPatch={patchSelected}
-              onTransformChange={(patch) => handleNodeTransformChange(selected.nodePath, patch)}
-            />
-          ) : selected ? (
-            <div className="space-y-3">
-              <div>
-                <p className="text-xs font-medium text-ink">{selected.name || selected.adapter}</p>
-              </div>
+        <CoursewareLayerPanel
+          items={layerItems}
+          selectedId={selectedPath}
+          onSelect={setSelectedPath}
+          onLayerChange={(nodePath, layer) => patchNode(nodePath, (node) => { node.zIndex = layer; })}
+          onVisibilityChange={(nodePath, visible) => patchNode(nodePath, (node) => { node.visible = visible; })}
+        />
 
-              <div className="grid grid-cols-2 gap-2">
-                {(["x", "y", "width", "height"] as const).map((key) => (
-                  <label key={key} className="space-y-1 text-xs text-muted">
-                    <span>{t(`verticalSlice${key[0].toUpperCase()}${key.slice(1)}` as "verticalSliceX")}</span>
-                    <Input type="number" value={selected.transform[key]} onChange={(event) => patchNumber(key, event.target.value)} />
-                  </label>
-                ))}
-                <label className="space-y-1 text-xs text-muted">
-                  <span>{t("verticalSliceOpacity")}</span>
-                  <Input type="number" min="0" max="1" step="0.05" value={selected.transform.opacity} onChange={(event) => patchNumber("opacity", event.target.value)} />
-                </label>
-                <label className="space-y-1 text-xs text-muted">
-                  <span>{t("verticalSliceLayer")}</span>
-                  <Input type="number" value={selected.zIndex} onChange={(event) => patchNumber("zIndex", event.target.value)} />
-                </label>
-              </div>
-              <label className="flex items-center gap-2 text-xs text-ink">
-                <Checkbox checked={selected.visible} onCheckedChange={(checked) => patchSelected((node) => { node.visible = checked === true; })} />
-                {t("verticalSliceVisible")}
-              </label>
-            </div>
-          ) : <p className="text-sm text-muted">{t("verticalSliceSelectNode")}</p>}
+        <TabsContent value="adjust" className="space-y-4">
+          <CoursewarePageElementInspector
+            node={selected}
+            onPatch={patchSelected}
+            onTransformChange={(patch) => {
+              if (selected) handleNodeTransformChange(selected.nodePath, patch);
+            }}
+          />
         </TabsContent>
 
         <TabsContent value="layout" className="space-y-3">

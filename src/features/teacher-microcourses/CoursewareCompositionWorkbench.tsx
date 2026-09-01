@@ -18,6 +18,7 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useRef,
   useState,
   useTransition,
@@ -39,16 +40,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { CoursewareCompositionGridEditor } from "@/features/courseware-doc/CoursewareCompositionGridEditor";
 import { CoursewareEditorAdapterSurface } from "@/features/courseware-doc/CoursewareEditorAdapterSurface";
 import {
-  CoursewareImageElementInspector,
-  isCoursewareImageElement,
-} from "@/features/courseware-doc/CoursewareImageElementEditor";
-import {
   CoursewareGridSnapToggle,
-  CoursewareTextElementInspector,
   coursewareTextValue,
   isCoursewareTextElement,
   setCoursewareTextValue,
 } from "@/features/courseware-doc/CoursewareTextElementEditor";
+import {
+  CoursewareLayerPanel,
+  CoursewarePageElementInspector,
+  type CoursewareLayerItem,
+} from "@/features/courseware-doc/CoursewarePageElementEditor";
 import {
   CoursewareEditorSaveControls,
   CoursewareInsertionToolbar,
@@ -215,6 +216,7 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
 }, ref) {
   const t = useTranslations("teacherMicrocourses");
   const textEditorT = useTranslations("coursewareTextEditor");
+  const elementEditorT = useTranslations("coursewareElementEditor");
   const [doc, setDoc] = useState(() => structuredClone(page.doc));
   const [bindingUrls, setBindingUrls] = useState({ ...page.bindingUrls });
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(page.doc.layout.blocks[0]?.id ?? null);
@@ -366,6 +368,19 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
   const selectedNode = selected?.type === "node"
     ? doc.overlay.nodes.find((item) => item.id === selected.nodeId) ?? null
     : null;
+  const layerItems = useMemo<CoursewareLayerItem[]>(() => doc.layout.blocks.map((block, index) => {
+    const node = block.type === "node"
+      ? doc.overlay.nodes.find((item) => item.id === block.nodeId) ?? null
+      : null;
+    const kind = blockLabel(block, doc, t);
+    return {
+      id: block.id,
+      label: node?.name?.trim() || `${kind} ${index + 1}`,
+      kind,
+      layer: node?.zIndex ?? index,
+      visible: node?.visible,
+    };
+  }), [doc, t]);
   const patchSelectedNode = (updater: (node: DocNode) => void) => updateDoc((current) => {
     if (!selected || selected.type !== "node") return current;
     const next = structuredClone(current);
@@ -388,6 +403,33 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
       return coursewareCompositionPageSchema.parse(next);
     });
   }, [updateDoc]);
+  const patchBlockLayer = (blockId: string, layer: number) => updateDoc((current) => {
+    const block = current.layout.blocks.find((item) => item.id === blockId);
+    if (!block) return current;
+    if (block.type === "node") {
+      const next = structuredClone(current);
+      const node = next.overlay.nodes.find((item) => item.id === block.nodeId);
+      if (!node || node.zIndex === layer) return current;
+      node.zIndex = layer;
+      return coursewareCompositionPageSchema.parse(next);
+    }
+    const from = current.layout.blocks.findIndex((item) => item.id === blockId);
+    const to = Math.max(0, Math.min(current.layout.blocks.length - 1, layer));
+    if (from === to) return current;
+    const next = structuredClone(current);
+    const [moved] = next.layout.blocks.splice(from, 1);
+    next.layout.blocks.splice(to, 0, moved);
+    return coursewareCompositionPageSchema.parse(next);
+  });
+  const patchBlockVisibility = (blockId: string, visible: boolean) => updateDoc((current) => {
+    const block = current.layout.blocks.find((item) => item.id === blockId);
+    if (!block || block.type !== "node") return current;
+    const next = structuredClone(current);
+    const node = next.overlay.nodes.find((item) => item.id === block.nodeId);
+    if (!node || node.visible === visible) return current;
+    node.visible = visible;
+    return coursewareCompositionPageSchema.parse(next);
+  });
   const patchSelectedGame = (game: GamePageDoc) => updateDoc((current) => {
     if (!selected || selected.type !== "game") return current;
     const next = structuredClone(current);
@@ -478,37 +520,27 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
   );
 
   const inspectorHeader = (
-    <h2 className="text-sm font-medium text-ink">{t("gridComponentList")}</h2>
+    <h2 className="text-sm font-medium text-ink">{elementEditorT("panelTitle")}</h2>
   );
 
   const inspectorContent = (
     <ScrollArea className="size-full min-h-0">
       <div className="space-y-4 p-3">
         {message && <p role="alert" className="text-xs text-rose">{message}</p>}
-            <div>
-              <div className="grid grid-cols-2 gap-1">
-                {doc.layout.blocks.map((block) => (
-                  <Button key={block.id} type="button" size="sm" variant={selectedBlockId === block.id ? "primary" : "ghost"} className="justify-start truncate" onClick={() => setSelectedBlockId(block.id)}>
-                    {blockLabel(block, doc, t)}
-                  </Button>
-                ))}
-              </div>
-              {doc.layout.blocks.length === 0 && <p className="mt-2 text-xs text-muted">{t("componentEmpty")}</p>}
-            </div>
+            <CoursewareLayerPanel
+              items={layerItems}
+              selectedId={selectedBlockId}
+              onSelect={setSelectedBlockId}
+              onLayerChange={patchBlockLayer}
+              onVisibilityChange={patchBlockVisibility}
+            />
 
-            {selectedNode && isCoursewareTextElement(selectedNode) ? (
-              <CoursewareTextElementInspector
-                node={selectedNode}
-                onPatch={patchSelectedNode}
-              />
-            ) : selectedNode && isCoursewareImageElement(selectedNode) ? (
-              <CoursewareImageElementInspector
+            {selectedNode ? (
+              <CoursewarePageElementInspector
                 node={selectedNode}
                 onPatch={patchSelectedNode}
                 onTransformChange={(patch) => handleNodeTransformChange(selectedNode.nodePath, patch)}
               />
-            ) : selected?.type === "node" ? (
-              <NodeAppearanceControls doc={doc} block={selected} patch={patchSelectedNode} />
             ) : null}
             {selected?.type === "game" ? (
               <div className="border-t border-line pt-3">
@@ -560,21 +592,6 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
     </CoursewareEditorAdapterSurface>
   );
 });
-
-function NodeAppearanceControls({ doc, block, patch }: {
-  doc: CoursewareCompositionPage;
-  block: Extract<CoursewareCompositionBlock, { type: "node" }>;
-  patch: (updater: (node: DocNode) => void) => void;
-}) {
-  const t = useTranslations("teacherMicrocourses");
-  const node = doc.overlay.nodes.find((item) => item.id === block.nodeId);
-  if (!node) return null;
-  return (
-    <div className="space-y-3 border-t border-line pt-3">
-      <Label className="grid gap-1"><span>{t("color")}</span><Input type="color" value={node.style.color ?? "#2d2a26"} onChange={(event) => patch((item) => { item.style.color = event.target.value; })} /></Label>
-    </div>
-  );
-}
 
 function GameComponentDialog({ microcourseId, disabled = false, iconOnly = false, onCreated }: {
   microcourseId: string;

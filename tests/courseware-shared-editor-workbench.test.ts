@@ -67,6 +67,7 @@ describe("shared courseware editor workbench", () => {
 
   it("uses one text-element editor and one DocStage edit behavior in formal and microcourse authoring", () => {
     const textEditor = read("src", "features", "courseware-doc", "CoursewareTextElementEditor.tsx");
+    const elementEditor = read("src", "features", "courseware-doc", "CoursewarePageElementEditor.tsx");
     const stage = read("src", "features", "courseware-doc", "DocStage.tsx");
     const stageCss = read("src", "features", "courseware-doc", "doc-stage.css");
     const grid = read("src", "features", "courseware-doc", "CoursewareCompositionGridEditor.tsx");
@@ -75,13 +76,16 @@ describe("shared courseware editor workbench", () => {
 
     expect(textEditor).toContain("function CoursewareTextElementInspector");
     expect(textEditor).toContain("function CoursewareGridSnapToggle");
-    expect(formal).toContain("<CoursewareTextElementInspector");
-    expect(microcourse).toContain("<CoursewareTextElementInspector");
+    expect(elementEditor).toContain("<CoursewareTextElementInspector");
+    expect(formal).toContain("<CoursewarePageElementInspector");
+    expect(microcourse).toContain("<CoursewarePageElementInspector");
+    expect(formal).not.toContain("<CoursewareTextElementInspector");
+    expect(microcourse).not.toContain("<CoursewareTextElementInspector");
     expect(formal).toContain("<CoursewareGridSnapToggle");
     expect(microcourse).toContain("<CoursewareGridSnapToggle");
     expect(formal.slice(formal.indexOf("const inspector ="))).not.toContain("<CoursewareGridSnapToggle");
     expect(microcourse.slice(microcourse.indexOf("const inspectorContent ="))).not.toContain("<CoursewareGridSnapToggle");
-    expect(microcourse.match(/t\("gridComponentList"\)/g)).toHaveLength(1);
+    expect(microcourse).not.toContain('t("gridComponentList")');
     expect(textEditor).not.toContain('t("textElement")');
     expect(stage).toContain("contentEditable={inlineTextEditing || undefined}");
     expect(stage).toContain('data-courseware-text-font-override');
