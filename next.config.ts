@@ -4,6 +4,7 @@ import createNextIntlPlugin from "next-intl/plugin";
 const withNextIntl = createNextIntlPlugin();
 
 const isDev = process.env.NODE_ENV !== "production";
+const devTurbopackMemoryLimit = 4 * 1024 * 1024 * 1024;
 
 /** Supabase 自托管源（REST/Storage/Realtime 同源）。缺失时只放行同源，不猜。 */
 function supabaseOrigins(): string[] {
@@ -73,6 +74,13 @@ const nextConfig: NextConfig = {
   // Public production runs from the immutable standalone output on port 3131;
   // the development server on 3130 remains an internal-only process.
   output: "standalone",
+  experimental: {
+    // Next 默认按物理内存放大开发子进程的堆上限；长时间 HMR 会让
+    // Turbopack 的增量图和持久缓存占满工作站。限制内存并关闭开发期
+    // 文件系统缓存，让 Next 在达到边界时自行回收，而不是依赖人工清理。
+    turbopackMemoryLimit: devTurbopackMemoryLimit,
+    turbopackFileSystemCacheForDev: false,
+  },
   // 默认 .next；bundle 量化时 NEXT_DIST_DIR=.next-bundle 构建到独立目录，
   // 不与正在运行的 dev server 争用 .next（见 scripts/bundle-report.mjs）。
   distDir: process.env.NEXT_DIST_DIR || ".next",
