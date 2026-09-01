@@ -140,6 +140,7 @@ describe("shared formal-course 4:3 adapter", () => {
     expect(shared).toContain("markSaved");
     expect(shared).toContain("courseware43ViewportPlacement(strategy, sourceAspect(source))");
     expect(shared).toContain("Courseware43StrategyIcon");
+    expect(shared).toContain("CoursewareCompactChoiceGroup");
     expect(shared).toContain('data-courseware-4x3-whole-stage={strategy}');
     expect(shared).toContain("Single-track editors already live in CoursewareEditorAdapterSurface's");
     expect(shared).not.toContain('strategy: "custom"');

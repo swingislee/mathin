@@ -16,6 +16,7 @@ import {
   type Courseware43Strategy,
 } from "@/features/courseware-doc/courseware-4x3-strategy";
 import { CoursewareStageViewport } from "@/features/courseware-doc/CoursewareStageViewport";
+import { CoursewareCompactChoiceGroup } from "@/features/courseware-doc/CoursewareCompactChoiceGroup";
 import type { ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 import type { PageDoc } from "@/features/courseware-doc/schema";
 import type { SourceRuntimePageDoc } from "@/features/courseware-doc/source-runtime-schema";
@@ -103,7 +104,7 @@ function Courseware43StrategyIcon({ strategy }: { strategy: Courseware43Strategy
   if (strategy === "fit-width-top" || strategy === "fit-width-center") {
     const y = strategy === "fit-width-top" ? 8 : 13.25;
     return (
-      <svg viewBox="0 0 96 58" aria-hidden="true" className="h-10 w-16 overflow-visible">
+      <svg viewBox="0 0 96 58" aria-hidden="true" className="h-7 w-10 overflow-visible">
         <rect x="20" y="8" width="56" height="42" rx="4" className="fill-amber-200/65 dark:fill-amber-200/35" />
         <rect x="20" y={y} width="56" height="31.5" rx="3" className="fill-emerald-300/90" />
         {canvas}
@@ -114,7 +115,7 @@ function Courseware43StrategyIcon({ strategy }: { strategy: Courseware43Strategy
     const x = strategy === "fit-height-left" ? 20 : 10.67;
     const viewportX = strategy === "fit-height-left" ? 20 : 20;
     return (
-      <svg viewBox="0 0 96 58" aria-hidden="true" className="h-10 w-16 overflow-visible">
+      <svg viewBox="0 0 96 58" aria-hidden="true" className="h-7 w-10 overflow-visible">
         <rect x={x} y="8" width="74.67" height="42" rx="4" className="fill-cyan-200/70 dark:fill-cyan-200/35" />
         <rect x={viewportX} y="8" width="56" height="42" rx="4" className="fill-emerald-300/75" />
         {canvas}
@@ -122,7 +123,7 @@ function Courseware43StrategyIcon({ strategy }: { strategy: Courseware43Strategy
     );
   }
   return (
-    <svg viewBox="0 0 96 58" aria-hidden="true" className="h-10 w-16 overflow-visible">
+    <svg viewBox="0 0 96 58" aria-hidden="true" className="h-7 w-10 overflow-visible">
       <rect x="20" y="8" width="56" height="42" rx="4" className="fill-cyan-200/70 dark:fill-cyan-200/35" />
       <rect x="20" y="13.25" width="56" height="31.5" rx="3" className="fill-emerald-300/90" />
       {canvas}
@@ -142,6 +143,13 @@ export function CoursewareFourByThreePanel({
   const t = useTranslations("coursewareFourByThree");
   const { source, state, canUndo, changed, selectStrategy, undo, reset } = adapter;
   const activeCopy = STRATEGY_COPY[state.strategy];
+  const strategyChoices = COURSEWARE_43_STRATEGIES.map((strategy, index) => ({
+    value: strategy,
+    label: t(STRATEGY_COPY[strategy].label),
+    icon: <Courseware43StrategyIcon strategy={strategy} />,
+    meta: index + 1,
+    disabled: !supportsCourseware43Strategy(source.kind, strategy),
+  }));
 
   return (
     <section data-courseware-4x3-adapter data-persistence={persistence} className={cn("space-y-4", className)}>
@@ -158,32 +166,17 @@ export function CoursewareFourByThreePanel({
         <p className="text-xs leading-5 text-muted">{t(persistence === "draft" ? "draftHint" : "sessionHint")}</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-2" role="group" aria-label={t("strategyLabel")}>
-        {COURSEWARE_43_STRATEGIES.map((strategy, index) => {
-          const supported = supportsCourseware43Strategy(source.kind, strategy);
-          const copy = STRATEGY_COPY[strategy];
-          return (
-            <Button
-              key={strategy}
-              type="button"
-              variant="secondary"
-              className={cn(
-                "h-auto min-h-20 min-w-0 flex-col gap-1.5 px-2 py-2 text-[11px]",
-                index === COURSEWARE_43_STRATEGIES.length - 1 && "col-span-2",
-                state.strategy === strategy && "border-crater bg-moon/45 text-ink",
-              )}
-              aria-pressed={state.strategy === strategy}
-              disabled={!supported}
-              onClick={() => selectStrategy(strategy)}
-            >
-              <Courseware43StrategyIcon strategy={strategy} />
-              <span>{t(copy.label)}</span>
-            </Button>
-          );
-        })}
-      </div>
+      <CoursewareCompactChoiceGroup
+        value={state.strategy}
+        choices={strategyChoices}
+        ariaLabel={t("strategyLabel")}
+        onValueChange={selectStrategy}
+      />
 
-      <p className="text-xs leading-5 text-muted">{t(activeCopy.description)}</p>
+      <div className="space-y-1 text-xs leading-5">
+        <p className="font-medium text-ink">{t(activeCopy.label)}</p>
+        <p className="text-muted">{t(activeCopy.description)}</p>
+      </div>
       {source.kind === "source-runtime" ? (
         <p className="text-xs leading-5 text-muted">{t("sourceRuntimeHint")}</p>
       ) : null}

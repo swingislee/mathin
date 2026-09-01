@@ -266,15 +266,6 @@ export async function UnifiedCoursewareWorkspace({
         inspector={{
           ariaLabel: t("propertiesTitle"),
           header: <h2 className="shrink-0 text-sm font-medium text-ink">{t("propertiesTitle")}</h2>,
-          summary: <div className="px-4">
-            <section className="py-4">
-              <dl className="space-y-2 text-xs">
-                <div className="flex items-start justify-between gap-3"><dt className="text-muted">{t("pageIdentity")}</dt><dd className="max-w-[11rem] truncate text-right text-ink">{selectedPage?.pageDocId ?? "—"}</dd></div>
-                <div className="flex items-start justify-between gap-3"><dt className="text-muted">{t("sourceType")}</dt><dd className="text-right text-ink">{selectedDoc?.docVersion ?? "—"}</dd></div>
-                <div className="flex items-start justify-between gap-3"><dt className="text-muted">{t("entryTrack")}</dt><dd className="text-right text-ink">{visibleTrack === "adapted-4x3" ? t("canvasAdapted") : t("canvasNative")}</dd></div>
-              </dl>
-            </section>
-          </div>,
           content: pageEditor ? undefined : <ScrollArea className="size-full min-h-0">
             <div className="px-4 py-5">
               <p className="text-sm font-medium text-ink">{t("sourceReadOnlyTitle")}</p>

@@ -51,12 +51,27 @@ describe("courseware PageDoc formal editor", () => {
     expect(editor).toContain("CoursewareAssetImpactPreview");
     expect(editor).toContain("selectedImageAsset");
     expect(preview).toContain("COURSEWARE_REPLACEMENT_IMPACT_SCOPES");
-    expect(preview).toContain("replacementReadOnlyHint");
+    expect(preview).toContain("CoursewareCompactChoiceGroup");
+    expect(preview).toContain('className="min-h-0 flex-1"');
+    expect(preview).not.toContain("max-h-64");
     expect(preview).not.toContain("stageCoursewareImageReplacementAction");
     expect(preview).not.toContain("applyCoursewareImageReplacementAction");
     expect(preview).not.toContain('type="file"');
     expect(readOnlyAction).toContain("loadCoursewareSharedAssetDetail");
     expect(readOnlyAction).not.toContain("apply_cw_asset_replacement");
     expect(readOnlyAction).not.toContain("rollback_cw_asset_replacement");
+  });
+
+  it("keeps formal inspector metadata out of the editing rail and shares compact selectors", () => {
+    const workspace = readFileSync("src/features/courseware-studio/UnifiedCoursewareWorkspace.tsx", "utf8");
+    const editor = readFileSync("src/features/courseware-studio/PageDocVerticalSliceEditor.tsx", "utf8");
+    const impact = readFileSync("src/features/courseware-studio/asset-replacement/CoursewareAssetImpactPreview.tsx", "utf8");
+    const adaptation = readFileSync("src/features/courseware-studio/CoursewareFourByThreeAdapter.tsx", "utf8");
+
+    expect(workspace).not.toContain("summary: <div");
+    expect(editor).not.toContain("verticalSliceDraftRevision");
+    expect(editor).toContain('value="replace" className="m-0 size-full min-h-0"');
+    expect(impact).toContain("CoursewareCompactChoiceGroup");
+    expect(adaptation).toContain("CoursewareCompactChoiceGroup");
   });
 });

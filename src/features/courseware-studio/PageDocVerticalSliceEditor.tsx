@@ -160,7 +160,6 @@ export function PageDocVerticalSliceEditor({
   const adaptationT = useTranslations("coursewareFourByThree");
   const [doc, setDoc] = useState<PageDoc>(() => clone(initialDoc));
   const [savedDoc, setSavedDoc] = useState<PageDoc>(() => clone(initialDoc));
-  const [currentBaseRevisionNo, setCurrentBaseRevisionNo] = useState(baseRevisionNo);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [backgroundSelected, setBackgroundSelected] = useState(false);
   const [activeTab, setActiveTab] = useState<EditorTab>("adjust");
@@ -262,7 +261,6 @@ export function PageDocVerticalSliceEditor({
         setSavedDoc(clone(docSnapshot));
       }
       savedSequenceRef.current = sequence;
-      setCurrentBaseRevisionNo(result.data.revisionNo);
       setMessage("");
       if (sequenceRef.current === sequence) setSaveState("saved");
       else {
@@ -402,89 +400,91 @@ export function PageDocVerticalSliceEditor({
   );
 
   const inspector = (
-    <ScrollArea className="size-full min-h-0">
-      <div className="px-4">
-        {sessionAdapted ? (
-          <div className="space-y-2 py-4">
+    <div className="size-full min-h-0">
+      {sessionAdapted ? (
+        <ScrollArea className="size-full min-h-0">
+          <div className="space-y-2 px-4 py-4">
             <p className="text-sm font-medium text-ink">{adaptationT("generatedDefaultTitle")}</p>
             <p className="text-xs leading-5 text-muted">{adaptationT("generatedDefaultDescription")}</p>
           </div>
-        ) : (
-        <Tabs value={displayedTab} onValueChange={(value) => setActiveTab(value as EditorTab)}>
-      <div
-        data-courseware-step3-editor
-        data-content-changed={contentChanged ? "true" : "false"}
-        data-layout-changed={layoutChanged ? "true" : "false"}
-        className="space-y-4 py-4"
-      >
-        <div className="flex items-center justify-between gap-2">
-          <Badge variant="secondary">{t("verticalSliceDraftRevision", { revision: currentBaseRevisionNo })}</Badge>
-          <span className="text-[11px] text-muted">{isDirty ? t("verticalSliceUnsaved") : t("verticalSliceSavedState")}</span>
-        </div>
+        </ScrollArea>
+      ) : (
+        <Tabs
+          value={displayedTab}
+          onValueChange={(value) => setActiveTab(value as EditorTab)}
+          data-courseware-step3-editor
+          data-content-changed={contentChanged ? "true" : "false"}
+          data-layout-changed={layoutChanged ? "true" : "false"}
+          className="size-full min-h-0"
+        >
+          {!coarseLayout ? <TabsContent value="adjust" className="m-0 size-full min-h-0">
+            <ScrollArea className="size-full min-h-0">
+              <div className="space-y-4 px-4 py-4">
+                <CoursewareLayerPanel
+                  items={layerItems}
+                  selectedId={selectedPath}
+                  onSelect={selectNode}
+                  onLayerChange={(nodePath, layer) => patchNode(nodePath, (node) => { node.zIndex = layer; })}
+                  onVisibilityChange={(nodePath, visible) => patchNode(nodePath, (node) => { node.visible = visible; })}
+                />
+                <CoursewarePageElementInspector
+                  node={selected}
+                  onPatch={patchSelected}
+                  onTransformChange={(patch) => {
+                    if (selected) handleNodeTransformChange(selected.nodePath, patch);
+                  }}
+                />
+                <div className="border-t border-line pt-4">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="w-full"
+                    disabled={saveState === "saving" || !isDirty}
+                    onClick={() => {
+                      if (timerRef.current) window.clearTimeout(timerRef.current);
+                      const restored = clone(savedDocRef.current);
+                      docRef.current = restored;
+                      sequenceRef.current = savedSequenceRef.current;
+                      setDoc(restored);
+                      setSelectedPath(null);
+                      setSaveState("saved");
+                      setMessage("");
+                    }}
+                  >
+                    <RotateCcw className="size-4" />
+                    {t("verticalSliceReset")}
+                  </Button>
+                  <p className="mt-3 text-xs leading-5 text-muted" role="status" aria-live="polite">
+                    {message || t("verticalSliceReleaseImmutable")}
+                  </p>
+                </div>
+              </div>
+            </ScrollArea>
+          </TabsContent> : null}
 
-        {!coarseLayout ? <TabsContent value="adjust" className="space-y-4">
-          <CoursewareLayerPanel
-            items={layerItems}
-            selectedId={selectedPath}
-            onSelect={selectNode}
-            onLayerChange={(nodePath, layer) => patchNode(nodePath, (node) => { node.zIndex = layer; })}
-            onVisibilityChange={(nodePath, visible) => patchNode(nodePath, (node) => { node.visible = visible; })}
-          />
-          <CoursewarePageElementInspector
-            node={selected}
-            onPatch={patchSelected}
-            onTransformChange={(patch) => {
-              if (selected) handleNodeTransformChange(selected.nodePath, patch);
-            }}
-          />
-        </TabsContent> : null}
+          {coarseLayout ? <TabsContent value="layout" className="m-0 size-full min-h-0">
+            <ScrollArea className="size-full min-h-0">
+              <div className="px-4 py-4">
+                <CoursewareFourByThreePanel
+                  adapter={fourByThree}
+                  persistence={canPersistFourByThree ? "draft" : "session-only"}
+                />
+              </div>
+            </ScrollArea>
+          </TabsContent> : null}
 
-        {coarseLayout ? <TabsContent value="layout" className="space-y-3">
-          <CoursewareFourByThreePanel
-            adapter={fourByThree}
-            persistence={canPersistFourByThree ? "draft" : "session-only"}
-          />
-        </TabsContent> : null}
-
-        {!coarseLayout ? <TabsContent value="replace" className="space-y-3">
-          <CoursewareAssetImpactPreview
-            key={`${track}:${selectedImageAsset?.sharedAssetId ?? "no-asset"}`}
-            asset={selectedImageAsset}
-            track={track}
-            context={{ pageDocId, ...replacementContext }}
-          />
-        </TabsContent> : null}
-
-        {displayedTab === "adjust" ? <div className="border-t border-line pt-4">
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            className="w-full"
-            disabled={saveState === "saving" || !isDirty}
-            onClick={() => {
-              if (timerRef.current) window.clearTimeout(timerRef.current);
-              const restored = clone(savedDocRef.current);
-              docRef.current = restored;
-              sequenceRef.current = savedSequenceRef.current;
-              setDoc(restored);
-              setSelectedPath(null);
-              setSaveState("saved");
-              setMessage("");
-            }}
-          >
-            <RotateCcw className="size-4" />
-            {t("verticalSliceReset")}
-          </Button>
-          <p className="mt-3 text-xs leading-5 text-muted" role="status" aria-live="polite">
-            {message || t("verticalSliceReleaseImmutable")}
-          </p>
-        </div> : null}
-      </div>
+          {!coarseLayout ? <TabsContent value="replace" className="m-0 size-full min-h-0">
+            <CoursewareAssetImpactPreview
+              key={`${track}:${selectedImageAsset?.sharedAssetId ?? "no-asset"}`}
+              asset={selectedImageAsset}
+              track={track}
+              context={{ pageDocId, ...replacementContext }}
+            />
+          </TabsContent> : null}
         </Tabs>
-        )}
-      </div>
-    </ScrollArea>
+      )}
+    </div>
   );
 
   return (

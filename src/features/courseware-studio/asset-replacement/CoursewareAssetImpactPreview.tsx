@@ -1,11 +1,20 @@
 "use client";
 
-import { CircleAlert, LoaderCircle, Snowflake } from "lucide-react";
+import {
+  BookOpen,
+  CircleAlert,
+  FileText,
+  Globe2,
+  Layers3,
+  LoaderCircle,
+  Presentation,
+  Snowflake,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { CoursewareCompactChoiceGroup } from "@/features/courseware-doc/CoursewareCompactChoiceGroup";
 import { previewCoursewareImageReplacementImpactAction } from "../actions";
 import type {
   CoursewareSharedAssetDetail,
@@ -25,6 +34,14 @@ const scopeLabelKeys = {
   course: "replacementScopeCourse",
   family: "replacementScopeFamily",
   all: "replacementScopeAll",
+} as const;
+
+const scopeIcons = {
+  page: FileText,
+  lecture: Presentation,
+  course: BookOpen,
+  family: Layers3,
+  all: Globe2,
 } as const;
 
 export function CoursewareAssetImpactPreview({
@@ -79,61 +96,58 @@ export function CoursewareAssetImpactPreview({
   const pinnedCount = usages.filter((usage) => usage.pinnedRevisionId !== null).length;
 
   if (!asset) {
-    return <p className="text-sm leading-6 text-muted">{t("replacementSelectImage")}</p>;
+    return <p className="px-4 py-4 text-sm leading-6 text-muted">{t("replacementSelectImage")}</p>;
   }
   if (status === "loading") {
-    return <p className="flex items-center gap-2 text-sm text-muted"><LoaderCircle className="size-4 animate-spin" />{t("replacementImpactLoading")}</p>;
+    return <p className="flex items-center gap-2 px-4 py-4 text-sm text-muted"><LoaderCircle className="size-4 animate-spin" />{t("replacementImpactLoading")}</p>;
   }
   if (status === "error" || !detail) {
-    return <p className="flex items-start gap-2 text-sm leading-6 text-rose"><CircleAlert className="mt-1 size-4 shrink-0" />{t("replacementImpactFailed", { code: errorCode || "UNKNOWN" })}</p>;
+    return <p className="flex items-start gap-2 px-4 py-4 text-sm leading-6 text-rose"><CircleAlert className="mt-1 size-4 shrink-0" />{t("replacementImpactFailed", { code: errorCode || "UNKNOWN" })}</p>;
   }
 
+  const scopeChoices = COURSEWARE_REPLACEMENT_IMPACT_SCOPES.map((item) => {
+    const Icon = scopeIcons[item];
+    return {
+      value: item,
+      label: t(scopeLabelKeys[item]),
+      icon: <Icon className="size-4" strokeWidth={1.7} />,
+      meta: counts[item],
+    };
+  });
+
   return (
-    <div data-courseware-replacement-impact-preview className="space-y-4">
-      <div className="space-y-1">
-        <div className="flex items-center gap-2">
-          <p className="min-w-0 flex-1 truncate text-sm font-medium text-ink">{detail.asset.name || asset.name}</p>
-          <Badge variant="outline">{track === "adapted-4x3" ? t("replacementTrack43") : t("replacementTrack169")}</Badge>
-        </div>
-        <p className="text-xs text-muted">{t("replacementReadOnlyHint")}</p>
-      </div>
+    <div data-courseware-replacement-impact-preview className="flex size-full min-h-0 flex-col gap-3 px-4 py-4">
+      <p className="sr-only">{detail.asset.name || asset.name} · {track === "adapted-4x3" ? t("replacementTrack43") : t("replacementTrack169")}</p>
 
-      <div className="grid grid-cols-2 gap-1.5" role="group" aria-label={t("replacementScopeLabel")}>
-        {COURSEWARE_REPLACEMENT_IMPACT_SCOPES.map((item) => (
-          <Button
-            key={item}
-            type="button"
-            size="sm"
-            variant="secondary"
-            aria-pressed={scope === item}
-            className={cn("justify-between", item === "all" && "col-span-2", scope === item && "border-crater bg-moon/30")}
-            onClick={() => setScope(item)}
-          >
-            <span>{t(scopeLabelKeys[item])}</span>
-            <span className="tabular-nums text-muted">{counts[item]}</span>
-          </Button>
-        ))}
-      </div>
+      <CoursewareCompactChoiceGroup
+        value={scope}
+        choices={scopeChoices}
+        ariaLabel={t("replacementScopeLabel")}
+        onValueChange={setScope}
+      />
 
-      <div className="rounded-lg border border-line/80 px-3 py-2.5 text-xs leading-5 text-muted">
+      <div className="shrink-0 rounded-lg border border-line/80 px-3 py-2.5 text-xs leading-5 text-muted">
+        <p className="font-medium text-ink">{t(scopeLabelKeys[scope])}</p>
         <p>{t("replacementImpactSummary", { count: usages.length, frozen: frozenCount, pinned: pinnedCount })}</p>
         {frozenCount > 0 ? <p className="mt-1 flex items-start gap-1.5 text-amber-700 dark:text-amber-300"><Snowflake className="mt-0.5 size-3.5 shrink-0" />{t("replacementFrozenHint")}</p> : null}
       </div>
 
       {usages.length > 0 ? (
-        <ol className="max-h-64 space-y-1 overflow-y-auto pr-1">
-          {usages.map((usage) => (
-            <li key={usage.bindingId} className="rounded-lg border border-line/70 px-2.5 py-2 text-xs leading-5">
-              <p className="truncate font-medium text-ink">{usage.courseTitle}</p>
-              <p className="truncate text-muted">{t("replacementUsageLocation", { lecture: usage.lectureNo, lectureName: usage.lectureName, page: usage.pageNo, pageTitle: usage.pageTitle || t("untitledPage") })}</p>
-              <div className="mt-1 flex flex-wrap gap-1">
-                {usage.pinnedRevisionId ? <Badge variant="secondary">{t("replacementPinned")}</Badge> : null}
-                {usage.frozenSessionCount > 0 ? <Badge variant="outline">{t("replacementFrozenCount", { count: usage.frozenSessionCount })}</Badge> : null}
-              </div>
-            </li>
-          ))}
-        </ol>
-      ) : <p className="text-xs text-muted">{t("replacementNoUsages")}</p>}
+        <ScrollArea className="min-h-0 flex-1">
+          <ol className="space-y-1 pr-2">
+            {usages.map((usage) => (
+              <li key={usage.bindingId} className="rounded-lg border border-line/70 px-2.5 py-2 text-xs leading-5">
+                <p className="truncate font-medium text-ink">{usage.courseTitle}</p>
+                <p className="truncate text-muted">{t("replacementUsageLocation", { lecture: usage.lectureNo, lectureName: usage.lectureName, page: usage.pageNo, pageTitle: usage.pageTitle || t("untitledPage") })}</p>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {usage.pinnedRevisionId ? <Badge variant="secondary">{t("replacementPinned")}</Badge> : null}
+                  {usage.frozenSessionCount > 0 ? <Badge variant="outline">{t("replacementFrozenCount", { count: usage.frozenSessionCount })}</Badge> : null}
+                </div>
+              </li>
+            ))}
+          </ol>
+        </ScrollArea>
+      ) : <p className="grid min-h-0 flex-1 place-items-center text-xs text-muted">{t("replacementNoUsages")}</p>}
     </div>
   );
 }
