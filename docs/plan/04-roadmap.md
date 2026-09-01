@@ -14,7 +14,7 @@
 >
 > **双轨执行**：生产端由 1 名正式教师在现有正式班级、课次和花名册上持续试用，优先反馈 P0/核心 P1；开发端可并行尝试产品负责人选中的新功能。新功能只有在开发目标完成受影响检查并由产品负责人初步验收后，才成为生产候选；完成精确版本/迁移登记、生产 preflight、可回退发布和 postflight 后，才能记为生产已部署。开发通过不等于生产通过，新功能也不改变 Gate 2 的点名与权限退出条件。
 >
-> **核对日期**：2026-09-01；生产事实仍沿用 2026-08-30 已确认的 ledger/head=`236 / 20260830000700_teacher_microcourse_editor_unification`、应用 `a165004…`、讲次课件预览性能 hotfix 及去标识化 postflight；`76f0f9a…` 与 ledger 236 在该轮 preflight 前已运行，不把此前发布归因于该 hotfix。`DEV-SCHOOL-OPS-1` 已按产品负责人纠正删除规划型产品页并进入 Phase 1 真实业务施工，没有生产 schema、数据库、Storage 或写入。其余依据 active doc 00/25/30、代码与迁移、本机隔离验证、Xiaomi 运行核查和 `mathin-R1-Live-讨论稿.md`。
+> **核对日期**：2026-09-02；生产事实仍沿用 2026-08-30 已确认的 ledger/head=`236 / 20260830000700_teacher_microcourse_editor_unification`、应用 `a165004…`、讲次课件预览性能 hotfix 及去标识化 postflight；`76f0f9a…` 与 ledger 236 在该轮 preflight 前已运行，不把此前发布归因于该 hotfix。产品负责人已明确要求 `DEV-SCHOOL-OPS-1` 从 Phase 1 第一业务切片继续进入 Phase 2；该开发预演没有生产 schema、数据库、Storage 或写入。其余依据 active doc 00/25/30、代码与迁移、本机隔离验证、Xiaomi 运行核查和 `mathin-R1-Live-讨论稿.md`。
 
 ## 1. 两个交付事件
 
@@ -214,7 +214,7 @@ Phase 1～5 的本机隔离 Supabase、固定开发身份、migration LF checksu
 
 #### DEV-SCHOOL-OPS-1 · 学辅运营与教学履约主干
 
-`DEV-SCHOOL-OPS-1` 是产品负责人于 2026-09-01 选入的独立开发预演，权威里程碑见 [`30-mathin_school_ops_architecture_plan.md`](30-mathin_school_ops_architecture_plan.md)。规划型 `/dashboard/school-ops` 页面、导航和快照已删除；当前 **Phase 1 · 数据收件箱 + 线索工作台** 的第一轮真实业务切片已在 `/dashboard/students/import` 与 `/dashboard/followups` 接入现有 ImportBatch、服务端校验／应用、负责人分配、追加式沟通和下一联系时间。状态为 **FIRST BUSINESS SLICE DEVELOPMENT READY / AWAITING PRODUCT OWNER UI AND INTERACTION ACCEPTANCE**；二进制 `.xlsx`、逐行合并决定及 Family／Contact／Lead 分表尚未施工，不能把本轮记为 Phase 1 完成或进入 Phase 2。
+`DEV-SCHOOL-OPS-1` 是产品负责人于 2026-09-01 选入的独立开发预演，权威里程碑见 [`30-mathin_school_ops_architecture_plan.md`](30-mathin_school_ops_architecture_plan.md)。规划型 `/dashboard/school-ops` 页面、导航和快照已删除；Phase 1 第一轮真实业务切片已在 `/dashboard/students/import` 与 `/dashboard/followups` 接入现有 ImportBatch、服务端校验／应用、负责人分配、追加式沟通和下一联系时间。产品负责人于 2026-09-02 明确要求“继续下一个阶段”，当前转入 **Phase 2 · 活动／测评／销售机会 / IN DEVELOPMENT**。Phase 1 的二进制 `.xlsx`、逐行合并决定及 Family／Contact／Lead 分表仍列为显式后续项；该推进指令不等同于这些能力已经实现，也不授权任何生产动作。
 
 ## 6. 原 R1 工作重新定位
 
