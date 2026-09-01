@@ -28,10 +28,28 @@ describe("derive43PageDoc", () => {
 
   it("keeps centre-title nodes unchanged inside a 16:9-scale content frame", () => {
     const originalGroup = { ...doc.nodes[0]!, adapter: "group" as const, transform: { ...doc.nodes[0]!.transform, x: 0, y: 275, width: 1280, height: 170 }, children: [doc.nodes[0]!] };
-    const derived = derive43PageDoc({ ...doc, nodes: [originalGroup] }, { scale: 1, translateX: 0, translateY: 0 }, "frame");
+    const derived = derive43PageDoc({ ...doc, nodes: [originalGroup] }, { scale: 0.75, translateX: 0, translateY: 90 }, "frame");
     expect(derived.nodes[0]?.transform).toMatchObject({ x: 0, y: 90, width: 1280, height: 720, scaleX: 0.75, scaleY: 0.75 });
     expect(derived.nodes[0]?.children[0]?.transform).toMatchObject({ x: 0, y: 275, width: 1280, height: 170 });
     expect(derived.nodes[0]?.children[0]?.children[0]?.transform).toMatchObject({ x: 100, y: 20, width: 400, height: 200 });
     expect(derived.interactions[0]?.path?.points).toEqual([100, 20, 500, 220]);
+  });
+
+  it("creates a valid empty content frame for background-only pages", () => {
+    const backgroundOnly = pageDocSchema.parse({
+      ...doc,
+      canvas: { ...doc.canvas, backgroundBindingKey: "b".repeat(64) },
+      nodes: [],
+      interactions: [],
+    });
+    const derived = derive43PageDoc(backgroundOnly, { scale: 0.75, translateX: 0, translateY: 90 }, "frame");
+
+    expect(pageDocSchema.parse(derived)).toEqual(derived);
+    expect(derived.nodes[0]).toMatchObject({
+      adapter: "group",
+      sourceType: "mathin:adapt-4x3-content-frame",
+      children: [],
+    });
+    expect(derived.nodes[0]?.transform).toMatchObject({ x: 0, y: 90, scaleX: 0.75, scaleY: 0.75 });
   });
 });

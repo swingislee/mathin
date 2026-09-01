@@ -121,6 +121,26 @@ describe("shared formal-course 4:3 adapter", () => {
     expect(courseware43SessionFromPageDoc(pageDoc)).toBeNull();
   });
 
+  it("materializes all five strategies for a background-only PageDoc", () => {
+    const backgroundOnly = pageDocSchema.parse({
+      ...pageDoc,
+      canvas: { ...pageDoc.canvas, backgroundBindingKey: "b".repeat(64) },
+      nodes: [],
+    });
+
+    for (const strategy of [
+      "fit-width-top",
+      "fit-width-center",
+      "fit-height-left",
+      "fit-height-center",
+      "background-height-content-width",
+    ] as const) {
+      const adapted = materializeCourseware43PageDoc(backgroundOnly, { strategy });
+      expect(pageDocSchema.parse(adapted)).toEqual(adapted);
+      expect(adapted.nodes[0]?.sourceType).toBe(`mathin:courseware-4x3:${strategy}`);
+    }
+  });
+
   it("mounts PageDoc and Aixuexi through the same state, panel, comparison and tab components", () => {
     const shared = read("src/features/courseware-studio/CoursewareFourByThreeAdapter.tsx");
     const pageDocEditor = read("src/features/courseware-studio/PageDocVerticalSliceEditor.tsx");
