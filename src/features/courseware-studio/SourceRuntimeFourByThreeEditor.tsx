@@ -9,9 +9,9 @@ import { CoursewareFormalInspectorTabs } from "@/features/courseware-doc/Coursew
 import type { ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 import type { SourceRuntimePageDoc } from "@/features/courseware-doc/source-runtime-schema";
 import {
-  CoursewareFourByThreeAdapter,
   CoursewareFourByThreeComparison,
   CoursewareFourByThreePanel,
+  useCoursewareFourByThreeAdapter,
 } from "./CoursewareFourByThreeAdapter";
 
 export function SourceRuntimeFourByThreeEditor({
@@ -25,9 +25,9 @@ export function SourceRuntimeFourByThreeEditor({
 }) {
   const t = useTranslations("coursewareWorkspace");
   const adaptationT = useTranslations("coursewareFourByThree");
+  const fourByThree = useCoursewareFourByThreeAdapter({ kind: "source-runtime", doc, bindingUrls });
 
   return (
-    <CoursewareFourByThreeAdapter source={{ kind: "source-runtime", doc, bindingUrls }}>
       <CoursewareEditorAdapterSurface
         toolbar={(
           <span className="flex items-center gap-2 text-xs text-muted">
@@ -51,7 +51,7 @@ export function SourceRuntimeFourByThreeEditor({
         inspector={(
           <ScrollArea className="size-full min-h-0">
             <div className="px-4 py-4">
-              <CoursewareFourByThreePanel />
+              <CoursewareFourByThreePanel adapter={fourByThree} />
             </div>
           </ScrollArea>
         )}
@@ -59,8 +59,7 @@ export function SourceRuntimeFourByThreeEditor({
         hostProps={{ "data-courseware-editor-adapter": "source-runtime-page-v1" }}
         stageProps={{ "data-fitted-courseware-stage": true }}
       >
-        <CoursewareFourByThreeComparison view={view} />
+        <CoursewareFourByThreeComparison adapter={fourByThree} view={view} />
       </CoursewareEditorAdapterSurface>
-    </CoursewareFourByThreeAdapter>
   );
 }

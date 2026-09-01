@@ -73,18 +73,22 @@ describe("shared formal-course 4:3 adapter", () => {
     const pageDocEditor = read("src/features/courseware-studio/PageDocVerticalSliceEditor.tsx");
     const sourceEditor = read("src/features/courseware-studio/SourceRuntimeFourByThreeEditor.tsx");
     const workspace = read("src/features/courseware-studio/UnifiedCoursewareWorkspace.tsx");
+    const workbench = read("src/features/courseware-doc/CoursewareEditorWorkbench.tsx");
 
     for (const adapter of [pageDocEditor, sourceEditor]) {
-      expect(adapter).toContain("<CoursewareFourByThreeAdapter");
+      expect(adapter).toContain("useCoursewareFourByThreeAdapter");
       expect(adapter).toContain("<CoursewareFourByThreePanel");
       expect(adapter).toContain("<CoursewareFourByThreeComparison");
       expect(adapter).toContain("<CoursewareFormalInspectorTabs");
     }
+    expect(shared).not.toContain("createContext");
+    expect(shared).not.toContain("COURSEWARE_43_ADAPTER_REQUIRED");
     expect(shared).toContain('data-persistence="session-only"');
     expect(shared).toContain("sourceRuntimeFourByThreeMode(source.doc)");
     expect(shared).toContain("deriveCourseware43PageDoc(source.doc, state)");
     expect(shared).not.toContain("fetch(");
     expect(shared).not.toContain("Action(");
     expect(workspace).toContain("<SourceRuntimeFourByThreeEditor");
+    expect(workbench).toContain('<Fragment key="inspector-panel">');
   });
 });

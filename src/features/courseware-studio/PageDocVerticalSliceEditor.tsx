@@ -42,9 +42,9 @@ import { saveCoursewareDraftAction } from "./actions";
 import type { CoursewareTrack } from "./data";
 import { StagePreview } from "./StagePreview";
 import {
-  CoursewareFourByThreeAdapter,
   CoursewareFourByThreeComparison,
   CoursewareFourByThreePanel,
+  useCoursewareFourByThreeAdapter,
 } from "./CoursewareFourByThreeAdapter";
 
 type EditorTab = "adjust" | "layout" | "replace";
@@ -138,6 +138,7 @@ export function PageDocVerticalSliceEditor({
   const [snapToGrid, setSnapToGrid] = useState(true);
   const [message, setMessage] = useState("");
   const [saveState, setSaveState] = useState<CoursewareEditorSaveState>("saved");
+  const fourByThree = useCoursewareFourByThreeAdapter({ kind: "page-doc", doc, bindingUrls });
   const docRef = useRef(clone(initialDoc));
   const savedDocRef = useRef(clone(initialDoc));
   const revisionRef = useRef(baseRevisionNo);
@@ -355,7 +356,7 @@ export function PageDocVerticalSliceEditor({
         </TabsContent>
 
         <TabsContent value="layout" className="space-y-3">
-          <CoursewareFourByThreePanel />
+          <CoursewareFourByThreePanel adapter={fourByThree} />
         </TabsContent>
 
         <TabsContent value="replace" className="space-y-3">
@@ -397,7 +398,6 @@ export function PageDocVerticalSliceEditor({
   );
 
   return (
-    <CoursewareFourByThreeAdapter source={{ kind: "page-doc", doc, bindingUrls }}>
     <CoursewareEditorAdapterSurface
       toolbar={insertToolbar}
       saveControls={activeTab === "layout" ? <Badge variant="outline">{adaptationT("sessionOnly")}</Badge> : saveControls}
@@ -408,7 +408,7 @@ export function PageDocVerticalSliceEditor({
       hostProps={{ "data-courseware-editor-adapter": "page-doc-v1" }}
       stageProps={{ "data-fitted-courseware-stage": true }}
     >
-      {activeTab === "layout" ? <CoursewareFourByThreeComparison /> : <StagePreview
+      {activeTab === "layout" ? <CoursewareFourByThreeComparison adapter={fourByThree} /> : <StagePreview
         doc={doc}
         bindingUrls={bindingUrls}
         stageMode="natural"
@@ -428,6 +428,5 @@ export function PageDocVerticalSliceEditor({
         }}
       />}
     </CoursewareEditorAdapterSurface>
-    </CoursewareFourByThreeAdapter>
   );
 }

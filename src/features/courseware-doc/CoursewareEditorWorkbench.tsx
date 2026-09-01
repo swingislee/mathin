@@ -422,7 +422,7 @@ function CoursewareWorkbenchFrame({
           </ResizablePanel>
 
           {editable && inspector ? (
-            <>
+            <Fragment key="inspector-panel">
               <ResizableHandle orientation={orientation} />
               <ResizablePanel
                 id="inspector"
@@ -452,7 +452,7 @@ function CoursewareWorkbenchFrame({
                   <div className="min-h-0 min-w-0 flex-1 overflow-hidden">{activeInspector}</div>
                 </aside>
               </ResizablePanel>
-            </>
+            </Fragment>
           ) : null}
         </ResizablePanelGroup>
       </CoursewareEditorChromeContext.Provider>

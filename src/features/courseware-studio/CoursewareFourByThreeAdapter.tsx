@@ -1,12 +1,9 @@
 "use client";
 
 import {
-  createContext,
   useCallback,
-  useContext,
   useMemo,
   useState,
-  type ReactNode,
 } from "react";
 import { LayoutTemplate, RotateCcw, Undo2 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -34,7 +31,7 @@ type Courseware43AdapterSource =
   | { kind: "page-doc"; doc: PageDoc; bindingUrls: ResolvedBindingUrls }
   | { kind: "source-runtime"; doc: SourceRuntimePageDoc; bindingUrls: ResolvedBindingUrls };
 
-interface Courseware43ContextValue {
+export interface CoursewareFourByThreeController {
   source: Courseware43AdapterSource;
   sourceMode: ReturnType<typeof sourceRuntimeFourByThreeMode> | undefined;
   state: Courseware43SessionState;
@@ -47,21 +44,7 @@ interface Courseware43ContextValue {
   reset: () => void;
 }
 
-const Courseware43Context = createContext<Courseware43ContextValue | null>(null);
-
-function useCourseware43Context() {
-  const value = useContext(Courseware43Context);
-  if (!value) throw new Error("COURSEWARE_43_ADAPTER_REQUIRED");
-  return value;
-}
-
-export function CoursewareFourByThreeAdapter({
-  source,
-  children,
-}: {
-  source: Courseware43AdapterSource;
-  children: ReactNode;
-}) {
+export function useCoursewareFourByThreeAdapter(source: Courseware43AdapterSource) {
   const sourceMode = source.kind === "source-runtime"
     ? sourceRuntimeFourByThreeMode(source.doc)
     : undefined;
@@ -98,7 +81,7 @@ export function CoursewareFourByThreeAdapter({
     commit(initialState);
   }, [commit, initialState]);
 
-  const value = useMemo<Courseware43ContextValue>(() => ({
+  return useMemo<CoursewareFourByThreeController>(() => ({
     source,
     sourceMode,
     state,
@@ -110,8 +93,6 @@ export function CoursewareFourByThreeAdapter({
     undo,
     reset,
   }), [history.length, initialState, patchCustom, reset, selectStrategy, source, sourceMode, state, undo]);
-
-  return <Courseware43Context.Provider value={value}>{children}</Courseware43Context.Provider>;
 }
 
 function numberValue(value: string, fallback: number, min: number, max: number) {
@@ -119,7 +100,13 @@ function numberValue(value: string, fallback: number, min: number, max: number) 
   return Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback;
 }
 
-export function CoursewareFourByThreePanel({ className }: { className?: string }) {
+export function CoursewareFourByThreePanel({
+  adapter,
+  className,
+}: {
+  adapter: CoursewareFourByThreeController;
+  className?: string;
+}) {
   const t = useTranslations("coursewareFourByThree");
   const {
     source,
@@ -131,7 +118,7 @@ export function CoursewareFourByThreePanel({ className }: { className?: string }
     patchCustom,
     undo,
     reset,
-  } = useCourseware43Context();
+  } = adapter;
 
   return (
     <section data-courseware-4x3-adapter data-persistence="session-only" className={cn("space-y-4", className)}>
@@ -277,14 +264,16 @@ function SourceRuntimeAdaptedPreview({
 }
 
 export function CoursewareFourByThreeComparison({
+  adapter,
   className,
   view = "compare",
 }: {
+  adapter: CoursewareFourByThreeController;
   className?: string;
   view?: "compare" | "native-16x9" | "adapted-4x3";
 }) {
   const t = useTranslations("coursewareFourByThree");
-  const { source, state } = useCourseware43Context();
+  const { source, state } = adapter;
   const adaptedPageDoc = useMemo(
     () => source.kind === "page-doc" ? deriveCourseware43PageDoc(source.doc, state) : null,
     [source, state],
