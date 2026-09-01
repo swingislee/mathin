@@ -1,20 +1,16 @@
 "use client";
 
-import {
-  useCallback,
-  useMemo,
-  useState,
-} from "react";
+import { useCallback, useMemo, useState } from "react";
 import { LayoutTemplate, RotateCcw, Undo2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   COURSEWARE_43_STRATEGIES,
+  courseware43ViewportPlacement,
   defaultCourseware43Session,
   deriveCourseware43PageDoc,
+  isWholeStageCourseware43Strategy,
   supportsCourseware43Strategy,
   type Courseware43SessionState,
   type Courseware43Strategy,
@@ -22,7 +18,6 @@ import {
 import { CoursewareStageViewport } from "@/features/courseware-doc/CoursewareStageViewport";
 import type { ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 import type { PageDoc } from "@/features/courseware-doc/schema";
-import { sourceRuntimeFourByThreeMode } from "@/features/courseware-doc/source-runtime-four-by-three";
 import type { SourceRuntimePageDoc } from "@/features/courseware-doc/source-runtime-schema";
 import { cn } from "@/lib/utils";
 import { StagePreview } from "./StagePreview";
@@ -33,42 +28,34 @@ type Courseware43AdapterSource =
 
 export interface CoursewareFourByThreeController {
   source: Courseware43AdapterSource;
-  sourceMode: ReturnType<typeof sourceRuntimeFourByThreeMode> | undefined;
   state: Courseware43SessionState;
   initialState: Courseware43SessionState;
   canUndo: boolean;
   changed: boolean;
   selectStrategy: (strategy: Courseware43Strategy) => void;
-  patchCustom: (patch: Partial<Courseware43SessionState["custom"]>) => void;
   undo: () => void;
   reset: () => void;
 }
 
 export function useCoursewareFourByThreeAdapter(source: Courseware43AdapterSource) {
-  const sourceMode = source.kind === "source-runtime"
-    ? sourceRuntimeFourByThreeMode(source.doc)
-    : undefined;
   const initialState = useMemo(
-    () => defaultCourseware43Session(source.kind, sourceMode),
-    [source.kind, sourceMode],
+    () => defaultCourseware43Session(source.kind),
+    [source.kind],
   );
   const [state, setState] = useState<Courseware43SessionState>(initialState);
   const [history, setHistory] = useState<Courseware43SessionState[]>([]);
 
   const commit = useCallback((next: Courseware43SessionState) => {
     setState((current) => {
-      if (JSON.stringify(current) === JSON.stringify(next)) return current;
+      if (current.strategy === next.strategy) return current;
       setHistory((items) => [...items, current].slice(-20));
       return next;
     });
   }, []);
   const selectStrategy = useCallback((strategy: Courseware43Strategy) => {
-    if (!supportsCourseware43Strategy(source.kind, strategy, sourceMode)) return;
-    commit({ ...state, strategy });
-  }, [commit, source.kind, sourceMode, state]);
-  const patchCustom = useCallback((patch: Partial<Courseware43SessionState["custom"]>) => {
-    commit({ ...state, strategy: "custom", custom: { ...state.custom, ...patch } });
-  }, [commit, state]);
+    if (!supportsCourseware43Strategy(source.kind, strategy)) return;
+    commit({ strategy });
+  }, [commit, source.kind]);
   const undo = useCallback(() => {
     setHistory((items) => {
       const previous = items.at(-1);
@@ -77,27 +64,61 @@ export function useCoursewareFourByThreeAdapter(source: Courseware43AdapterSourc
       return items.slice(0, -1);
     });
   }, []);
-  const reset = useCallback(() => {
-    commit(initialState);
-  }, [commit, initialState]);
+  const reset = useCallback(() => commit(initialState), [commit, initialState]);
 
   return useMemo<CoursewareFourByThreeController>(() => ({
     source,
-    sourceMode,
     state,
     initialState,
     canUndo: history.length > 0,
-    changed: JSON.stringify(state) !== JSON.stringify(initialState),
+    changed: state.strategy !== initialState.strategy,
     selectStrategy,
-    patchCustom,
     undo,
     reset,
-  }), [history.length, initialState, patchCustom, reset, selectStrategy, source, sourceMode, state, undo]);
+  }), [history.length, initialState, reset, selectStrategy, source, state, undo]);
 }
 
-function numberValue(value: string, fallback: number, min: number, max: number) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback;
+const STRATEGY_COPY: Record<Courseware43Strategy, { label: string; description: string }> = {
+  "fit-width-top": { label: "fitWidthTop", description: "fitWidthTopDescription" },
+  "fit-width-center": { label: "fitWidthCenter", description: "fitWidthCenterDescription" },
+  "fit-height-left": { label: "fitHeightLeft", description: "fitHeightLeftDescription" },
+  "fit-height-center": { label: "fitHeightCenter", description: "fitHeightCenterDescription" },
+  "background-height-content-width": {
+    label: "backgroundHeightContentWidth",
+    description: "backgroundHeightContentWidthDescription",
+  },
+};
+
+function Courseware43StrategyIcon({ strategy }: { strategy: Courseware43Strategy }) {
+  const canvas = <rect x="20" y="8" width="56" height="42" rx="4" className="stroke-current" fill="none" strokeWidth="1.5" />;
+  if (strategy === "fit-width-top" || strategy === "fit-width-center") {
+    const y = strategy === "fit-width-top" ? 8 : 13.25;
+    return (
+      <svg viewBox="0 0 96 58" aria-hidden="true" className="h-10 w-16 overflow-visible">
+        <rect x="20" y="8" width="56" height="42" rx="4" className="fill-amber-200/65 dark:fill-amber-200/35" />
+        <rect x="20" y={y} width="56" height="31.5" rx="3" className="fill-emerald-300/90" />
+        {canvas}
+      </svg>
+    );
+  }
+  if (strategy === "fit-height-left" || strategy === "fit-height-center") {
+    const x = strategy === "fit-height-left" ? 20 : 10.67;
+    const viewportX = strategy === "fit-height-left" ? 20 : 20;
+    return (
+      <svg viewBox="0 0 96 58" aria-hidden="true" className="h-10 w-16 overflow-visible">
+        <rect x={x} y="8" width="74.67" height="42" rx="4" className="fill-cyan-200/70 dark:fill-cyan-200/35" />
+        <rect x={viewportX} y="8" width="56" height="42" rx="4" className="fill-emerald-300/75" />
+        {canvas}
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 96 58" aria-hidden="true" className="h-10 w-16 overflow-visible">
+      <rect x="20" y="8" width="56" height="42" rx="4" className="fill-cyan-200/70 dark:fill-cyan-200/35" />
+      <rect x="20" y="13.25" width="56" height="31.5" rx="3" className="fill-emerald-300/90" />
+      {canvas}
+    </svg>
+  );
 }
 
 export function CoursewareFourByThreePanel({
@@ -108,17 +129,8 @@ export function CoursewareFourByThreePanel({
   className?: string;
 }) {
   const t = useTranslations("coursewareFourByThree");
-  const {
-    source,
-    sourceMode,
-    state,
-    canUndo,
-    changed,
-    selectStrategy,
-    patchCustom,
-    undo,
-    reset,
-  } = adapter;
+  const { source, state, canUndo, changed, selectStrategy, undo, reset } = adapter;
+  const activeCopy = STRATEGY_COPY[state.strategy];
 
   return (
     <section data-courseware-4x3-adapter data-persistence="session-only" className={cn("space-y-4", className)}>
@@ -133,81 +145,34 @@ export function CoursewareFourByThreePanel({
         <p className="text-xs leading-5 text-muted">{t("sessionHint")}</p>
       </div>
 
-      <div className="grid grid-cols-4 gap-2" role="group" aria-label={t("strategyLabel")}>
-        {COURSEWARE_43_STRATEGIES.map((strategy) => {
-          const supported = supportsCourseware43Strategy(source.kind, strategy, sourceMode);
-          if (strategy === "source-native" && source.kind !== "source-runtime") return null;
+      <div className="grid grid-cols-2 gap-2" role="group" aria-label={t("strategyLabel")}>
+        {COURSEWARE_43_STRATEGIES.map((strategy, index) => {
+          const supported = supportsCourseware43Strategy(source.kind, strategy);
+          const copy = STRATEGY_COPY[strategy];
           return (
             <Button
               key={strategy}
               type="button"
-              size="sm"
               variant="secondary"
               className={cn(
-                "h-9 min-w-0 px-2 text-xs",
+                "h-auto min-h-20 min-w-0 flex-col gap-1.5 px-2 py-2 text-[11px]",
+                index === COURSEWARE_43_STRATEGIES.length - 1 && "col-span-2",
                 state.strategy === strategy && "border-crater bg-moon/45 text-ink",
               )}
               aria-pressed={state.strategy === strategy}
               disabled={!supported}
               onClick={() => selectStrategy(strategy)}
             >
-              {t(strategy === "source-native" ? "sourceNativeShort" : strategy === "custom" ? "customShort" : `strategy${strategy}`)}
+              <Courseware43StrategyIcon strategy={strategy} />
+              <span>{t(copy.label)}</span>
             </Button>
           );
         })}
       </div>
 
-      <p className="text-xs leading-5 text-muted">
-        {t(state.strategy === "source-native" ? "sourceNative" : state.strategy === "custom" ? "custom" : `description${state.strategy}`)}
-      </p>
-
+      <p className="text-xs leading-5 text-muted">{t(activeCopy.description)}</p>
       {source.kind === "source-runtime" ? (
-        <p className="text-xs leading-5 text-amber-700 dark:text-amber-300">
-          {t(sourceMode === "source-master" ? "sourceMasterHint" : "sourceCompatHint")}
-        </p>
-      ) : state.strategy === "D" ? (
-        <p className="text-xs leading-5 text-amber-700 dark:text-amber-300">{t("manualReflowGate")}</p>
-      ) : null}
-
-      {state.strategy === "custom" ? (
-        <div className="grid grid-cols-3 gap-2 border-t border-line pt-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="courseware-4x3-scale" className="text-xs">{t("scale")}</Label>
-            <Input
-              id="courseware-4x3-scale"
-              type="number"
-              min={25}
-              max={150}
-              step={1}
-              value={state.custom.scale}
-              onChange={(event) => patchCustom({ scale: numberValue(event.target.value, state.custom.scale, 25, 150) })}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="courseware-4x3-x" className="text-xs">{t("offsetX")}</Label>
-            <Input
-              id="courseware-4x3-x"
-              type="number"
-              min={-960}
-              max={960}
-              step={1}
-              value={state.custom.translateX}
-              onChange={(event) => patchCustom({ translateX: numberValue(event.target.value, state.custom.translateX, -960, 960) })}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="courseware-4x3-y" className="text-xs">{t("offsetY")}</Label>
-            <Input
-              id="courseware-4x3-y"
-              type="number"
-              min={-720}
-              max={720}
-              step={1}
-              value={state.custom.translateY}
-              onChange={(event) => patchCustom({ translateY: numberValue(event.target.value, state.custom.translateY, -720, 720) })}
-            />
-          </div>
-        </div>
+        <p className="text-xs leading-5 text-muted">{t("sourceRuntimeHint")}</p>
       ) : null}
 
       <div className="grid grid-cols-2 gap-2 border-t border-line pt-4">
@@ -224,40 +189,48 @@ export function CoursewareFourByThreePanel({
   );
 }
 
-function SourceRuntimeAdaptedPreview({
-  doc,
-  bindingUrls,
-  state,
-}: {
-  doc: SourceRuntimePageDoc;
-  bindingUrls: ResolvedBindingUrls;
-  state: Courseware43SessionState;
-}) {
-  const mode = state.strategy === "source-native" ? "source-master" : "source-player-compat";
-  const custom = state.strategy === "custom";
-  const content = (
+function sourceAspect(source: Courseware43AdapterSource) {
+  return source.kind === "page-doc"
+    ? source.doc.canvas.width / source.doc.canvas.height
+    : source.doc.viewport.width / source.doc.viewport.height;
+}
+
+function NaturalStage({ source }: { source: Courseware43AdapterSource }) {
+  return (
     <StagePreview
-      doc={doc}
-      bindingUrls={bindingUrls}
-      stageMode="board43"
-      sourceRuntimeFourByThreeMode={mode}
+      doc={source.doc}
+      bindingUrls={source.bindingUrls}
+      stageMode="natural"
       className="size-full"
       interactive={false}
+      playAutoInteractions={false}
     />
   );
-  if (!custom) return content;
+}
+
+function WholeStageAdaptedPreview({
+  source,
+  strategy,
+}: {
+  source: Courseware43AdapterSource;
+  strategy: Exclude<Courseware43Strategy, "background-height-content-width">;
+}) {
+  const placement = courseware43ViewportPlacement(strategy, sourceAspect(source));
   return (
-    <div className="relative size-full overflow-hidden bg-card">
+    <div
+      data-courseware-4x3-whole-stage={strategy}
+      className="relative size-full overflow-hidden bg-card"
+    >
       <div
-        className="absolute"
+        className="absolute overflow-hidden"
         style={{
-          left: `${state.custom.translateX / 9.6}%`,
-          top: `${state.custom.translateY / 7.2}%`,
-          width: `${state.custom.scale}%`,
-          height: `${state.custom.scale}%`,
+          left: `${placement.leftPercent}%`,
+          top: `${placement.topPercent}%`,
+          width: `${placement.widthPercent}%`,
+          height: `${placement.heightPercent}%`,
         }}
       >
-        {content}
+        <NaturalStage source={source} />
       </div>
     </div>
   );
@@ -274,44 +247,37 @@ export function CoursewareFourByThreeComparison({
 }) {
   const t = useTranslations("coursewareFourByThree");
   const { source, state } = adapter;
-  const adaptedPageDoc = useMemo(
-    () => source.kind === "page-doc" ? deriveCourseware43PageDoc(source.doc, state) : null,
+  const layeredPageDoc = useMemo(
+    () => source.kind === "page-doc" && state.strategy === "background-height-content-width"
+      ? deriveCourseware43PageDoc(source.doc, state)
+      : null,
     [source, state],
   );
-  const originalAspect = source.kind === "page-doc"
-    ? source.doc.canvas.width / source.doc.canvas.height
-    : source.doc.viewport.width / source.doc.viewport.height;
+  const originalAspect = sourceAspect(source);
 
   const original = (
     <section className="min-h-0 min-w-0 bg-paper" aria-label={t("originalLabel")}>
-        <CoursewareStageViewport aspect={originalAspect} className="p-3">
+      <CoursewareStageViewport aspect={originalAspect} className="p-3">
+        <NaturalStage source={source} />
+      </CoursewareStageViewport>
+    </section>
+  );
+  const adapted = (
+    <section className="min-h-0 min-w-0 bg-paper" aria-label={t("adaptedLabel")}>
+      <CoursewareStageViewport aspect={4 / 3} className="p-3">
+        {layeredPageDoc && source.kind === "page-doc" ? (
           <StagePreview
-            doc={source.doc}
+            doc={layeredPageDoc}
             bindingUrls={source.bindingUrls}
             stageMode="natural"
             className="size-full"
             interactive={false}
             playAutoInteractions={false}
           />
-        </CoursewareStageViewport>
-    </section>
-  );
-  const adapted = (
-    <section className="min-h-0 min-w-0 bg-paper" aria-label={t("adaptedLabel")}>
-        <CoursewareStageViewport aspect={4 / 3} className="p-3">
-          {source.kind === "page-doc" && adaptedPageDoc ? (
-            <StagePreview
-              doc={adaptedPageDoc}
-              bindingUrls={source.bindingUrls}
-              stageMode="natural"
-              className="size-full"
-              interactive={false}
-              playAutoInteractions={false}
-            />
-          ) : source.kind === "source-runtime" ? (
-            <SourceRuntimeAdaptedPreview doc={source.doc} bindingUrls={source.bindingUrls} state={state} />
-          ) : null}
-        </CoursewareStageViewport>
+        ) : isWholeStageCourseware43Strategy(state.strategy) ? (
+          <WholeStageAdaptedPreview source={source} strategy={state.strategy} />
+        ) : null}
+      </CoursewareStageViewport>
     </section>
   );
 

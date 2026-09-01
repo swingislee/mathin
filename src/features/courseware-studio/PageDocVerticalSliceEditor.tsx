@@ -115,6 +115,7 @@ function changeSnapshot(doc: PageDoc, kind: ChangeKind) {
 export interface PageDocVerticalSliceEditorProps {
   pageDocId: string;
   track: CoursewareTrack;
+  view: "compare" | "native-16x9" | "adapted-4x3";
   initialDoc: PageDoc;
   baseRevisionNo: number;
   bindingUrls: ResolvedBindingUrls;
@@ -123,6 +124,7 @@ export interface PageDocVerticalSliceEditorProps {
 export function PageDocVerticalSliceEditor({
   pageDocId,
   track,
+  view,
   initialDoc,
   baseRevisionNo,
   bindingUrls,
@@ -139,6 +141,8 @@ export function PageDocVerticalSliceEditor({
   const [message, setMessage] = useState("");
   const [saveState, setSaveState] = useState<CoursewareEditorSaveState>("saved");
   const fourByThree = useCoursewareFourByThreeAdapter({ kind: "page-doc", doc, bindingUrls });
+  const coarseLayout = view === "compare";
+  const displayedTab: EditorTab = coarseLayout ? "layout" : activeTab === "layout" ? "adjust" : activeTab;
   const docRef = useRef(clone(initialDoc));
   const savedDocRef = useRef(clone(initialDoc));
   const revisionRef = useRef(baseRevisionNo);
@@ -313,8 +317,11 @@ export function PageDocVerticalSliceEditor({
 
   const inspectorHeader = (
     <CoursewareFormalInspectorTabs
-      value={activeTab}
-      onValueChange={(value) => setActiveTab(value as EditorTab)}
+      value={displayedTab}
+      onValueChange={(value) => {
+        if (!coarseLayout) setActiveTab(value as EditorTab);
+      }}
+      tabs={coarseLayout ? ["layout"] : ["adjust", "replace"]}
       labels={{
         adjust: t("prototypeTabAdjust"),
         layout: t("prototypeTabLayout"),
@@ -326,7 +333,7 @@ export function PageDocVerticalSliceEditor({
   const inspector = (
     <ScrollArea className="size-full min-h-0">
       <div className="px-4">
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as EditorTab)}>
+        <Tabs value={displayedTab} onValueChange={(value) => setActiveTab(value as EditorTab)}>
       <div
         data-courseware-step3-editor
         data-content-changed={contentChanged ? "true" : "false"}
@@ -338,7 +345,7 @@ export function PageDocVerticalSliceEditor({
           <span className="text-[11px] text-muted">{isDirty ? t("verticalSliceUnsaved") : t("verticalSliceSavedState")}</span>
         </div>
 
-        <TabsContent value="adjust" className="space-y-4">
+        {!coarseLayout ? <TabsContent value="adjust" className="space-y-4">
           <CoursewareLayerPanel
             items={layerItems}
             selectedId={selectedPath}
@@ -353,20 +360,20 @@ export function PageDocVerticalSliceEditor({
               if (selected) handleNodeTransformChange(selected.nodePath, patch);
             }}
           />
-        </TabsContent>
+        </TabsContent> : null}
 
-        <TabsContent value="layout" className="space-y-3">
+        {coarseLayout ? <TabsContent value="layout" className="space-y-3">
           <CoursewareFourByThreePanel adapter={fourByThree} />
-        </TabsContent>
+        </TabsContent> : null}
 
-        <TabsContent value="replace" className="space-y-3">
+        {!coarseLayout ? <TabsContent value="replace" className="space-y-3">
           <p className="flex items-start gap-2 text-xs leading-5 text-amber-700 dark:text-amber-300">
             <CircleAlert className="mt-0.5 size-4 shrink-0" />
             <span>{t("verticalSliceReplacementDeferred")}</span>
           </p>
-        </TabsContent>
+        </TabsContent> : null}
 
-        {activeTab === "adjust" ? <div className="border-t border-line pt-4">
+        {displayedTab === "adjust" ? <div className="border-t border-line pt-4">
           <Button
             type="button"
             variant="secondary"
@@ -399,16 +406,16 @@ export function PageDocVerticalSliceEditor({
 
   return (
     <CoursewareEditorAdapterSurface
-      toolbar={insertToolbar}
-      saveControls={activeTab === "layout" ? <Badge variant="outline">{adaptationT("sessionOnly")}</Badge> : saveControls}
+      toolbar={coarseLayout ? null : insertToolbar}
+      saveControls={coarseLayout ? <Badge variant="outline">{adaptationT("sessionOnly")}</Badge> : saveControls}
       inspectorHeader={inspectorHeader}
       inspector={inspector}
-      aspect={activeTab === "layout" ? 16 / 9 : doc.canvas.width / doc.canvas.height}
+      aspect={coarseLayout ? 16 / 9 : doc.canvas.width / doc.canvas.height}
       className="p-3"
       hostProps={{ "data-courseware-editor-adapter": "page-doc-v1" }}
       stageProps={{ "data-fitted-courseware-stage": true }}
     >
-      {activeTab === "layout" ? <CoursewareFourByThreeComparison adapter={fourByThree} /> : <StagePreview
+      {coarseLayout ? <CoursewareFourByThreeComparison adapter={fourByThree} /> : <StagePreview
         doc={doc}
         bindingUrls={bindingUrls}
         stageMode="natural"

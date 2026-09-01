@@ -121,33 +121,33 @@ export async function UnifiedCoursewareWorkspace({
   const pages = directoryPreview?.pages ?? [];
   const backHref = returnTo ?? coursePreviewHref(detail, entryTrack, pageIndex);
   const selectedPage = directoryPreview?.page;
-  const adaptedCanvasFellBack = !pageEditor && canvas === "adapted-4x3" && !adaptedPreview && Boolean(nativePreview);
-  const visibleCanvas: UnifiedWorkspaceCanvas = pageEditor
-    ? pageEditor.track === "adapted-4x3" ? "adapted-4x3" : "native-16x9"
-    : adaptedCanvasFellBack ? "native-16x9" : canvas;
+  const adaptedCanvasFellBack = canvas === "adapted-4x3" && !adaptedPreview && Boolean(nativePreview);
+  const visibleCanvas: UnifiedWorkspaceCanvas = adaptedCanvasFellBack ? "native-16x9" : canvas;
+  const visibleTrack: CoursewareTrack = visibleCanvas === "adapted-4x3" ? "adapted-4x3" : "native-16x9";
   const selectedDoc = pageEditor?.doc ?? (visibleCanvas === "adapted-4x3"
     ? adaptedPreview?.page.doc
     : nativePreview?.page.doc ?? adaptedPreview?.page.doc);
   const selectedPreview = visibleCanvas === "adapted-4x3"
     ? adaptedPreview
     : nativePreview ?? adaptedPreview;
-  const sourceRuntimeEditor = !pageEditor
-    && selectedPreview
-    && isSourceRuntimePageDoc(selectedPreview.page.doc)
-      ? { doc: selectedPreview.page.doc, bindingUrls: selectedPreview.bindingUrls }
+  const sourceRuntimePreview = nativePreview && isSourceRuntimePageDoc(nativePreview.page.doc)
+    ? nativePreview
+    : selectedPreview && isSourceRuntimePageDoc(selectedPreview.page.doc) ? selectedPreview : null;
+  const sourceRuntimeEditor = !pageEditor && sourceRuntimePreview && isSourceRuntimePageDoc(sourceRuntimePreview.page.doc)
+      ? { doc: sourceRuntimePreview.page.doc, bindingUrls: sourceRuntimePreview.bindingUrls }
       : null;
 
   const canvasItems = [
-    { value: "compare", label: t("canvasCompare"), href: workspaceHref({ lectureId: detail.lecture.id, canvas: "compare", track: entryTrack, page: pageIndex, returnTo }) },
+    { value: "compare", label: t("canvasCompare"), href: workspaceHref({ lectureId: detail.lecture.id, canvas: "compare", track: "native-16x9", page: pageIndex, returnTo }) },
     { value: "native-16x9", label: t("canvasNative"), href: workspaceHref({ lectureId: detail.lecture.id, canvas: "native-16x9", track: "native-16x9", page: pageIndex, returnTo }) },
     { value: "adapted-4x3", label: t("canvasAdapted"), href: workspaceHref({ lectureId: detail.lecture.id, canvas: "adapted-4x3", track: "adapted-4x3", page: pageIndex, returnTo }) },
   ];
 
   const previousHref = pageIndex > 1
-    ? workspaceHref({ lectureId: detail.lecture.id, canvas: visibleCanvas, track: entryTrack, page: pageIndex - 1, returnTo })
+    ? workspaceHref({ lectureId: detail.lecture.id, canvas: visibleCanvas, track: visibleTrack, page: pageIndex - 1, returnTo })
     : null;
   const nextHref = pageIndex < pages.length
-    ? workspaceHref({ lectureId: detail.lecture.id, canvas: visibleCanvas, track: entryTrack, page: pageIndex + 1, returnTo })
+    ? workspaceHref({ lectureId: detail.lecture.id, canvas: visibleCanvas, track: visibleTrack, page: pageIndex + 1, returnTo })
     : null;
   const directoryItems = pages.map((page, index) => {
     const nativePage = nativePreview?.pages[index];
@@ -158,7 +158,7 @@ export async function UnifiedCoursewareWorkspace({
       href: workspaceHref({
         lectureId: detail.lecture.id,
         canvas: visibleCanvas,
-        track: entryTrack,
+        track: visibleTrack,
         page: index + 1,
         returnTo,
       }),
@@ -220,9 +220,10 @@ export async function UnifiedCoursewareWorkspace({
           content: <div className="size-full min-h-0 overflow-hidden bg-moon/10">
             {pageEditor ? (
               <PageDocVerticalSliceEditor
-                key={`${pageEditor.pageDocId}:${pageEditor.baseRevisionNo}`}
+                key={`${pageEditor.pageDocId}:${pageEditor.baseRevisionNo}:${visibleCanvas}`}
                 pageDocId={pageEditor.pageDocId}
                 track={pageEditor.track}
+                view={visibleCanvas}
                 initialDoc={pageEditor.doc}
                 baseRevisionNo={pageEditor.baseRevisionNo}
                 bindingUrls={pageEditor.bindingUrls}
@@ -265,7 +266,7 @@ export async function UnifiedCoursewareWorkspace({
               <dl className="space-y-2 text-xs">
                 <div className="flex items-start justify-between gap-3"><dt className="text-muted">{t("pageIdentity")}</dt><dd className="max-w-[11rem] truncate text-right text-ink">{selectedPage?.pageDocId ?? "—"}</dd></div>
                 <div className="flex items-start justify-between gap-3"><dt className="text-muted">{t("sourceType")}</dt><dd className="text-right text-ink">{selectedDoc?.docVersion ?? "—"}</dd></div>
-                <div className="flex items-start justify-between gap-3"><dt className="text-muted">{t("entryTrack")}</dt><dd className="text-right text-ink">{entryTrack === "adapted-4x3" ? t("canvasAdapted") : t("canvasNative")}</dd></div>
+                <div className="flex items-start justify-between gap-3"><dt className="text-muted">{t("entryTrack")}</dt><dd className="text-right text-ink">{visibleTrack === "adapted-4x3" ? t("canvasAdapted") : t("canvasNative")}</dd></div>
               </dl>
             </section>
           </div>,

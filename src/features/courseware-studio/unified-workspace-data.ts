@@ -58,7 +58,8 @@ export async function loadUnifiedCoursewareWorkspaceData(
   const safeNativePreview = nativePreview?.lecture.courseId === detail.variant.id ? nativePreview : null;
   const safeAdaptedPreview = adaptedPreview?.lecture.courseId === detail.variant.id ? adaptedPreview : null;
   const requestedTrack = parseCoursewareTrack(rawSearchParams.track);
-  const editorTrack: CoursewareTrack = requestedTrack === "adapted-4x3" && safeAdaptedPreview
+  const requestedCanvas = first(rawSearchParams.canvas);
+  const editorTrack: CoursewareTrack = requestedCanvas === "adapted-4x3" && requestedTrack === "adapted-4x3" && safeAdaptedPreview
     ? "adapted-4x3"
     : safeNativePreview
       ? "native-16x9"

@@ -90,16 +90,18 @@ export function CoursewareFormalInspectorTabs({
   onValueChange,
   labels,
   disabled = [],
+  tabs = ["adjust", "layout", "replace"],
 }: {
   value: CoursewareFormalInspectorTab;
   onValueChange: (value: CoursewareFormalInspectorTab) => void;
   labels: Record<CoursewareFormalInspectorTab, string>;
   disabled?: CoursewareFormalInspectorTab[];
+  tabs?: CoursewareFormalInspectorTab[];
 }) {
   return (
     <Tabs value={value} onValueChange={(next) => onValueChange(next as CoursewareFormalInspectorTab)}>
-      <TabsList className="grid h-8 w-full grid-cols-3">
-        {(["adjust", "layout", "replace"] as const).map((tab) => (
+      <TabsList className="grid h-8 w-full" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
+        {tabs.map((tab) => (
           <TabsTrigger key={tab} value={tab} disabled={disabled.includes(tab)} className="px-2 text-xs">
             {labels[tab]}
           </TabsTrigger>

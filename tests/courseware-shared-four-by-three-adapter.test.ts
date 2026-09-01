@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  courseware43ViewportPlacement,
   defaultCourseware43Session,
   deriveCourseware43PageDoc,
   supportsCourseware43Strategy,
@@ -41,31 +42,53 @@ const pageDoc = pageDocSchema.parse({
 });
 
 describe("shared formal-course 4:3 adapter", () => {
-  it("uses adapter-specific defaults without forking the strategy model", () => {
-    expect(defaultCourseware43Session("page-doc").strategy).toBe("C");
-    expect(defaultCourseware43Session("source-runtime", "source-master").strategy).toBe("source-native");
-    expect(defaultCourseware43Session("source-runtime", "source-player-compat").strategy).toBe("E");
+  it("uses the same four whole-stage modes with source-specific defaults", () => {
+    expect(defaultCourseware43Session("page-doc").strategy).toBe("fit-width-top");
+    expect(defaultCourseware43Session("source-runtime").strategy).toBe("fit-height-center");
 
-    expect(supportsCourseware43Strategy("page-doc", "A")).toBe(true);
-    expect(supportsCourseware43Strategy("page-doc", "source-native")).toBe(false);
-    expect(supportsCourseware43Strategy("source-runtime", "source-native", "source-master")).toBe(true);
-    expect(supportsCourseware43Strategy("source-runtime", "source-native", "source-player-compat")).toBe(false);
-    expect(supportsCourseware43Strategy("source-runtime", "E", "source-player-compat")).toBe(true);
-    expect(supportsCourseware43Strategy("source-runtime", "A", "source-master")).toBe(false);
+    for (const strategy of ["fit-width-top", "fit-width-center", "fit-height-left", "fit-height-center"] as const) {
+      expect(supportsCourseware43Strategy("page-doc", strategy)).toBe(true);
+      expect(supportsCourseware43Strategy("source-runtime", strategy)).toBe(true);
+    }
+    expect(supportsCourseware43Strategy("page-doc", "background-height-content-width")).toBe(true);
+    expect(supportsCourseware43Strategy("source-runtime", "background-height-content-width")).toBe(false);
   });
 
-  it("derives PageDoc strategies as immutable 4:3 session previews", () => {
-    const fitted = deriveCourseware43PageDoc(pageDoc, defaultCourseware43Session("page-doc"));
-    expect(fitted).not.toBe(pageDoc);
-    expect(pageDoc.canvas).toEqual({ width: 1280, height: 720, backgroundColor: null, backgroundBindingKey: null });
-    expect(fitted.canvas).toMatchObject({ width: 960, height: 720 });
-    expect(fitted.nodes[0]?.transform).toMatchObject({ x: 75, y: 105, width: 300, height: 150 });
-
-    const topAligned = deriveCourseware43PageDoc(pageDoc, {
-      strategy: "E",
-      custom: { scale: 75, translateX: 0, translateY: 90 },
+  it("maps a 16:9 stage to the four audited 4:3 placements", () => {
+    expect(courseware43ViewportPlacement("fit-width-top", 16 / 9)).toEqual({
+      widthPercent: 100,
+      heightPercent: 75,
+      leftPercent: 0,
+      topPercent: 0,
     });
-    expect(topAligned.nodes[0]?.transform).toMatchObject({ x: 75, y: 15 });
+    expect(courseware43ViewportPlacement("fit-width-center", 16 / 9)).toEqual({
+      widthPercent: 100,
+      heightPercent: 75,
+      leftPercent: 0,
+      topPercent: 12.5,
+    });
+    const left = courseware43ViewportPlacement("fit-height-left", 16 / 9);
+    expect(left.widthPercent).toBeCloseTo(133.333, 3);
+    expect(left).toMatchObject({ heightPercent: 100, leftPercent: 0, topPercent: 0 });
+    const centered = courseware43ViewportPlacement("fit-height-center", 16 / 9);
+    expect(centered.widthPercent).toBeCloseTo(133.333, 3);
+    expect(centered.leftPercent).toBeCloseTo(-16.667, 3);
+    expect(centered).toMatchObject({ heightPercent: 100, topPercent: 0 });
+  });
+
+  it("keeps the layered PageDoc exception immutable and separates its background from content geometry", () => {
+    const layered = deriveCourseware43PageDoc(pageDoc, { strategy: "background-height-content-width" });
+    expect(layered).not.toBe(pageDoc);
+    expect(pageDoc.canvas).toEqual({ width: 1280, height: 720, backgroundColor: null, backgroundBindingKey: null });
+    expect(layered.canvas).toMatchObject({ width: 960, height: 720 });
+    expect(layered.nodes[0]?.transform).toMatchObject({
+      x: 0,
+      y: 90,
+      width: 1280,
+      height: 720,
+      scaleX: 0.75,
+      scaleY: 0.75,
+    });
   });
 
   it("mounts PageDoc and Aixuexi through the same state, panel, comparison and tab components", () => {
@@ -84,8 +107,12 @@ describe("shared formal-course 4:3 adapter", () => {
     expect(shared).not.toContain("createContext");
     expect(shared).not.toContain("COURSEWARE_43_ADAPTER_REQUIRED");
     expect(shared).toContain('data-persistence="session-only"');
-    expect(shared).toContain("sourceRuntimeFourByThreeMode(source.doc)");
-    expect(shared).toContain("deriveCourseware43PageDoc(source.doc, state)");
+    expect(shared).toContain("courseware43ViewportPlacement(strategy, sourceAspect(source))");
+    expect(shared).toContain("Courseware43StrategyIcon");
+    expect(shared).toContain('data-courseware-4x3-whole-stage={strategy}');
+    expect(shared).not.toContain('strategy: "custom"');
+    expect(pageDocEditor).toContain('const coarseLayout = view === "compare"');
+    expect(sourceEditor).toContain('const coarseLayout = view === "compare"');
     expect(shared).not.toContain("fetch(");
     expect(shared).not.toContain("Action(");
     expect(workspace).toContain("<SourceRuntimeFourByThreeEditor");
