@@ -8,7 +8,7 @@
 >
 > **当前施工**：P6-AIX-2 已于 2026-08-13 关闭；当前由 R1-9/P6-9 采集 1305 讲正式来源 inventory、Storage/H5 对象审计与非执行者复核。
 >
-> **剩余项**：P6-9 全局量化验收和正式生产 release-1 重建见 doc 25 R1-9/15/18；§14 的 `DEV-CW-1` Step 0～4B 已获产品负责人确认。当前只施工 Step 5A：在一个 PageDoc 样本页内只读展示背景／图片资源的页、讲、课程版本、课程族、全部引用五档影响清单与冻结引用提示。当前不上传、不替换、不回滚、不开放来源节点写态，不进入整讲/批量数据或生产变更，本阶段也未授权任何生产清理。
+> **剩余项**：P6-9 全局量化验收和正式生产 release-1 重建见 doc 25 R1-9/15/18；§14 的 `DEV-CW-1` Step 0～5A 已获产品负责人确认。当前只开放 Step 5B：对一个本机 PageDoc 样本复用既有 staging/apply/rollback 链验证真实替换与回滚；必须先取得产品负责人指定的替换图片和精确作用范围。素材未提供前不上传、不替换、不回滚；本阶段不开放来源节点写态，不进入整讲/批量数据或生产变更，也未授权任何生产清理。
 >
 > **最后核对**：2026-09-01；§13 以前的来源与生产基线结论沿用原证据，§14 只依据当前仓库和本机 Docker 开发库只读核对，不代表 Xiaomi/生产事实。
 
@@ -591,9 +591,9 @@ sanitize 白名单按“移植过来的规则实际选择到的标签/属性”�
 
 ## 14. DEV-CW-1 课程产品统一课件工作区（待产品逐步确认）
 
-> **当前状态**：`STEP 5A PAGE-CONTEXT REPLACEMENT DRY-RUN / DEV READY / AWAITING USER AUDIT`
+> **当前状态**：`STEP 5B SINGLE LOCAL REPLACEMENT + ROLLBACK / TARGET INPUT REQUIRED`
 >
-> **施工授权**：产品负责人已确认 Step 0～4B，并于 2026-09-01 在 binding 继承修复后回复“验收通过，进入下一步”。Step 5A 只允许复用现有资源治理读模型，在一个本机 PageDoc 样本页展示所选背景／图片在五种范围内的命中对象、冻结引用和影响语义；本批不得上传文件、执行替换或回滚、改 binding/release、开放爱学习/source-runtime 节点写态、整讲回填、批量任务、Storage 写入或触碰生产。
+> **施工授权**：产品负责人已确认 Step 0～5A，并于 2026-09-01 明确回复“Step 5A 人工验收通过”。Step 5B 只允许在一个本机 PageDoc 样本上复用现有 staging/apply/rollback 能力：先由产品负责人指定替换图片和页／讲／课程版本／课程族／全部引用之一的精确范围，再展示替换前后与影响清单，经明确确认后执行一次并验证 rollback。当前未提供替换素材，因此不得先行写数据库、Storage、binding 或 release；不得开放爱学习/source-runtime 节点写态、整讲回填、批量任务或触碰生产。
 >
 > **推进原则**：一个批次只交付一个可人工审计的增量。每批机器检查通过后只记为 `READY FOR USER AUDIT`；必须收到产品负责人对该批布局和功能的明确确认，才能开始下一批。未回复、仅查看页面、机器检查通过或 Agent 自评均不构成确认。
 
@@ -754,7 +754,8 @@ Step 0 还需要产品负责人明确以下事项，规划不代替这些产品�
 | 3B PageDoc 单页纵切复审 | `USER ACCEPTED` | 唯一 `CoursewarePageElementInspector` 负责全部 PageDoc 节点类型分发；唯一可折叠 `CoursewareLayerPanel` 在正式课与微课展示完整元素列表，支持选择、逐层上移／下移、直接输入层级和节点显隐；透明度、层级与显隐是所有 PageDoc 节点公共属性。正式课继续使用原有自动保存链，本批没有文件上传、binding 改写、schema/RPC 或共享资源替换 | 2026-09-01 产品负责人回复“下一开发项，记得遵循前面的原则”，视为本批人工通过；同时要求下一项保持逐批审计 | 只授权 Step 4A 会话预览，不授权 4:3 持久化 |
 | 4A 共享 4:3 策略与单页会话预览 | `USER ACCEPTED` | 一份 `CoursewareFourByThreeAdapter` 同时供正式 PageDoc 与爱学习 source runtime 使用，并共同拥有策略状态、分类面板、对照画布和撤销／重置。A～F／自定义已收敛为“等宽顶部、等宽居中、等高左侧、等高居中”四种带 SVG 图示的整页变换和 PageDoc 可用的“背景等高·内容等宽”分层模式；缺独立 4:3 release 时直接按来源默认版式生成会话预览，爱学习 iframe 使用固定逻辑 viewport 和宿主整体缩放 | 2026-09-01 产品负责人回复“Step 4A 验收通过，进入下一步”，确认爱学习 16:9／4:3 白边修复、魔法校默认版式及当前组件表现 | 只授权 Step 4B 单个 PageDoc 样本页草稿持久化；不授权 source-runtime 写态、整讲或批量 |
 | 4B PageDoc 单页 4:3 草稿持久化 | `USER ACCEPTED` | `materializeCourseware43PageDoc` 把五种已确认策略物化为严格 960×720 PageDoc；完整背景与内容通过同一适配框变换，策略标记随文档保存。统一工作区同时读取当前页 native/adapted 草稿头，对照区复用 `save_cw_track_page_draft`、800ms 自动保存和保存按钮，只写 `adapted-4x3`；刷新从草稿适配框恢复策略。无新标记时，旧 A/B→等高左侧、C/E→等宽居中、D→等宽顶部、F→背景等高·内容等宽；新标记优先。未新增 schema/RPC，未改 binding/release。首轮发现 adapted 草稿引用 native 资源时被轨内解析器提前报 `COURSEWARE_DOC_BINDING_MISSING`；现统一为 adapted 显式 binding 优先、缺项只读继承 native binding，保持资源替换与布局适配正交，不复制 binding 行。本机只为《定义新运算进阶》讲次 `00d7da40-d880-47da-a82a-d91d72a2e044` 第 1 页 `0803cab4-e3df-48e8-b374-5f8fe6c3d473` 建立一个复用 native 基线的 adapted 草稿头，未批量补齐 | 2026-09-01 产品负责人在 binding 修复后回复“验收通过，进入下一步”，确认固定样本不再报 binding 缺失、资源完整、旧分类映射、自动保存、刷新恢复与 16:9 隔离 | 只授权 Step 5A 只读影响预览；不授权上传、真实替换/回滚、source-runtime 写态、整讲或批量 |
-| 5A 页面上下文资源替换影响预览 | `DEV READY / AWAITING USER AUDIT` | 正式 PageDoc 的“替换”右栏复用既有公共资源使用树的同一 `loadCoursewareSharedAssetDetail` 读模型；当前页在画布中选择背景／图片后，按页、讲、课程版本、课程族、全部引用五档筛选同一组 usage，并显示命中页面、当前轨、冻结次数和独立钉版。首轮审计指出右栏元数据无操作价值、长条按钮密度低且清单高度受限；现移除页面 ID／来源／轨道／草稿基线摘要，以同一 `CoursewareCompactChoiceGroup` 承载资源范围与 4:3 粗调的 SVG＋数字五项选择，并让引用清单独占余下滚动高度。固定样本是合法的纯背景 PageDoc（`nodes=[]`），首次选择第 5 种分层版式暴露旧内容框错误依赖首节点；共享 `derive43PageDoc` 现直接构造严格 schema 的合成 group，空节点页与有节点页均可预览并物化全部五种策略。次轮审计发现引用卡片右边缘被滚动条覆盖，且分栏拖拽柄获得焦点后消费左右翻页键；共享 `CoursewareWorkbenchPager` 现于捕获阶段统一接管 ArrowLeft/ArrowRight/PageUp/PageDown，预览、正式课与微课不再各自处理该行为。后续复审确认长课程标题仍会通过 Radix 纵向滚动视口的固有宽度撑开列表；清单现用 `minmax(0,1fr)` 单列网格约束固有宽度、列表项截断溢出并在盒内预留右侧滚动条安全区，右边框不再依赖外边距碰运气。Server Action 只有 `courseware.asset.manage` 读权限，不调用上传、替换或回滚 RPC；界面没有文件输入和执行按钮。固定样本《定义新运算进阶》第 1 页公共背景 `a7b6d47e-e5d1-4a62-9ed9-c206e8d742cf` 的本机只读计数为 1/1/13/26/26 | 打开固定样本的 16:9 原生版，点击背景进入“替换”；确认右栏无冗余元数据、五项图标同排、默认当前页、计数 1/1/13/26/26，长清单占满、右边缘完整并独立滚动；进入对照区依次点击五种版式，确认无 `CONTENT_FRAME_REQUIRES_NODE`；拖动目录分栏后按左右键仍只翻页、不调整栏宽；确认页面没有上传或执行按钮。机器检查：空节点五策略定向 Vitest 15/15，最新共享工作台定向 Vitest 20/20，TypeScript、受影响 ESLint、diff check 与规划审计通过 | 未确认前不得上传、替换、回滚、写 binding/Storage/release 或扩到 source-runtime、整讲、批量 |
+| 5A 页面上下文资源替换影响预览 | `USER ACCEPTED` | 正式 PageDoc 的“替换”右栏复用公共资源使用树的同一 `loadCoursewareSharedAssetDetail` 读模型；在当前元素上下文按页、讲、课程版本、课程族、全部引用五档展示命中位置、冻结次数和独立钉版。范围与 4:3 粗调共用 `CoursewareCompactChoiceGroup`；引用清单独占剩余高度，以受限单列网格和盒内滚动条安全区保持完整边界；共享 `CoursewareWorkbenchPager` 统一处理预览、正式课与微课翻页键。合法纯背景 PageDoc 可预览全部五种 4:3 策略。该批 Server Action 只有资源治理读权限，界面没有上传或执行按钮 | 2026-09-01 产品负责人明确回复“Step 5A 人工验收通过”，确认五档范围、无框摘要、清单布局与滚动、4:3 五策略及共享翻页行为 | 只开放 Step 5B 单本机样本替换与回滚；素材和范围明确前不得写入 |
+| 5B 单本机样本真实替换与回滚 | `TARGET INPUT REQUIRED` | 复用既有 staging/apply/rollback 与 replacement ledger，只对一个本机 PageDoc 样本执行：上传产品负责人指定的替换图、复核五档影响清单、显式确认一个范围、检查替换后页面，再执行 rollback 并核对页面与引用恢复 | 产品负责人须先提供精确替换图片并确认作用范围；完成后人工核对替换前后、冻结／钉版保护、回滚结果和历史 release 不变 | 不扩到 source-runtime、整讲、批量或生产；不改 schema/RPC，不生成替代素材 |
 
 Step 1 变更边界：只新增只读数据 loader、连续三栏工作区、画布自适应叶子、课程预览直达按钮、双语文案和定向合同；首轮修订移动课程产品主操作、增加 4:3 缺失的 16:9 降级提示，并把单轨舞台约束为可用宽高内等比完整显示。第二轮把三点菜单移入同一命令行，使对照缺轨时保留双栏空态，按不可变爱学习布局重建旧 4:3 投影，并移除中央冗余标题行和底部状态条。爱学习判定与旧权威在本机开发库 5,508 页上比对为 0 差异；普通 1,200×900 源母版直接呈现为完整 4:3，带动画、嵌入 H5、原生题型或宽画布的 424 页保留顶部兼容带。不接 editor action，不新增 schema/RPC，不写数据库/Storage，不删除讲次工作区或旧 Studio。机器证据为 TypeScript、受影响 ESLint、双语键 5,264×2、定向 Vitest 3 文件 18/18；这些证据不代表布局已经获得产品确认。
 
