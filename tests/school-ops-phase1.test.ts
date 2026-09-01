@@ -25,6 +25,8 @@ describe("DEV-SCHOOL-OPS-1 Phase 1 business surfaces", () => {
     expect(panel).toContain("previewStudentImportAction");
     expect(panel).toContain("applyStudentImportAction");
     expect(panel).toContain("duplicatesReviewed");
+    expect(panel).toContain('newId();');
+    expect(panel).not.toContain("crypto.randomUUID");
     expect(panel).toContain('href="/dashboard/followups"');
     expect(data).toContain('from("data_import_batches")');
     expect(actions).toContain("source: requiredText(100)");

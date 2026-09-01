@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Link, useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
+import { newId } from "@/lib/uuid";
 import { applyStudentImportAction, previewStudentImportAction } from "./actions/students";
 import {
   STUDENT_IMPORT_TEMPLATE_VERSION,
@@ -97,7 +98,7 @@ function downloadCsv(filename: string, rows: unknown[][]) {
 }
 
 function nextIdempotencyKey() {
-  return globalThis.crypto.randomUUID();
+  return newId();
 }
 
 export function ImportStudentsPanel({ recentBatches }: { recentBatches: StudentImportBatchSummary[] }) {
