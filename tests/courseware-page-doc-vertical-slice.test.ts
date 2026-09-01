@@ -55,6 +55,8 @@ describe("courseware PageDoc formal editor", () => {
     expect(preview).toContain('className="min-h-0 min-w-0 flex-1"');
     expect(preview).toContain('className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)] gap-1 pr-2"');
     expect(preview).toContain('className="min-w-0 overflow-hidden rounded-lg border border-line/70');
+    expect(preview).toContain('className="shrink-0 px-3 py-1 text-xs leading-5 text-muted"');
+    expect(preview).not.toContain('shrink-0 rounded-lg border border-line/80');
     expect(preview).not.toContain("max-h-64");
     expect(preview).not.toContain("stageCoursewareImageReplacementAction");
     expect(preview).not.toContain("applyCoursewareImageReplacementAction");

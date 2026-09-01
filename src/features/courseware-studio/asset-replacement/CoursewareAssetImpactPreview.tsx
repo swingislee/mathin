@@ -126,7 +126,7 @@ export function CoursewareAssetImpactPreview({
         onValueChange={setScope}
       />
 
-      <div className="shrink-0 rounded-lg border border-line/80 px-3 py-2.5 text-xs leading-5 text-muted">
+      <div className="shrink-0 px-3 py-1 text-xs leading-5 text-muted">
         <p className="font-medium text-ink">{t(scopeLabelKeys[scope])}</p>
         <p>{t("replacementImpactSummary", { count: usages.length, frozen: frozenCount, pinned: pinnedCount })}</p>
         {frozenCount > 0 ? <p className="mt-1 flex items-start gap-1.5 text-amber-700 dark:text-amber-300"><Snowflake className="mt-0.5 size-3.5 shrink-0" />{t("replacementFrozenHint")}</p> : null}
