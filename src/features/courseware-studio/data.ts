@@ -12,6 +12,10 @@ import {
 } from "@/features/courseware-doc/document";
 import { buildH5EntryUrl, type H5LaunchQuery, type ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 import { PAGE_DOC_VERSION } from "@/features/courseware-doc/schema";
+import {
+  editorBindingLookupTracks,
+  selectEditorBindingRows,
+} from "@/features/courseware-studio/binding-inheritance";
 
 const SIGNED_URL_TTL_SECONDS = 60 * 60;
 export const COURSEWARE_TRACKS = ["native-16x9", "adapted-4x3"] as const;
@@ -771,18 +775,19 @@ async function resolveEditorBindingUrls(
   if (requiredBindingKeys?.size === 0) return {};
   let bindingQuery = supabase
     .from("cw_page_asset_bindings")
-    .select("binding_key, kind, launch_query, pinned_revision_id, shared_asset_id")
+    .select("binding_key, kind, launch_query, pinned_revision_id, shared_asset_id, track")
     .eq("page_doc_id", pageDocId)
-    .eq("track", track);
+    .in("track", editorBindingLookupTracks(track));
   if (requiredBindingKeys) bindingQuery = bindingQuery.in("binding_key", [...requiredBindingKeys]);
-  const { data: bindings, error: bindingError } = await bindingQuery;
+  const { data: bindingRows, error: bindingError } = await bindingQuery;
   if (bindingError) throw new Error(bindingError.message);
+  const bindings = selectEditorBindingRows(track, bindingRows ?? []);
   if (requiredBindingKeys) {
-    const available = new Set((bindings ?? []).map((binding) => binding.binding_key));
+    const available = new Set(bindings.map((binding) => binding.binding_key));
     const missing = [...requiredBindingKeys].filter((bindingKey) => !available.has(bindingKey));
     if (missing.length > 0) throw new Error(`COURSEWARE_DOC_BINDING_MISSING: ${missing.join(",")}`);
   }
-  if (!bindings?.length) return {};
+  if (!bindings.length) return {};
   const sharedIds = [...new Set(bindings.map((binding) => binding.shared_asset_id))];
   const [assets, variantHeads] = await Promise.all([
     collectPostgrestRowsInBatches<string, { id: string; published_revision_id: string | null }>(sharedIds, (batch) => supabase
