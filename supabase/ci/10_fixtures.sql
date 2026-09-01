@@ -123,7 +123,8 @@ values (
 )
 on conflict (id) do nothing;
 
--- SML-0 发布入口要求 permission + 当前课程研发责任；管理员身份不绕过责任关系。
+-- 保留一条显式 owner 关系供责任继承类断言复用；当前 active admin 已在统一
+-- capability 层拥有对象级豁免，不依赖该关系执行课件动作。
 insert into public.course_staff_assignments (
   user_id, scope_type, lecture_id, responsibility, created_by
 )

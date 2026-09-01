@@ -4,7 +4,7 @@ begin;
 
 select id as admin_id from public.profiles where display_name = '测试-管理员' limit 1 \gset
 select id as student_id from public.profiles where display_name = '测试-学生' limit 1 \gset
-select id as reviewer_id from public.profiles where display_name = '测试-教务' limit 1 \gset
+select id as reviewer_id from public.profiles where display_name = '测试-学辅' limit 1 \gset
 
 \if :{?admin_id}
 \else
@@ -18,7 +18,7 @@ select id as reviewer_id from public.profiles where display_name = '测试-教�
 \endif
 \if :{?reviewer_id}
 \else
-  \echo SML-0 lifecycle fixtures missing: 测试-教务
+  \echo SML-0 lifecycle fixtures missing: 测试-学辅
   select 1 / 0;
 \endif
 
@@ -29,7 +29,7 @@ order by role_id
 limit 1 \gset
 \if :{?reviewer_role_id}
 \else
-  \echo SML-0 lifecycle fixtures missing: 测试-教务 staff role
+  \echo SML-0 lifecycle fixtures missing: 测试-学辅 staff role
   select 1 / 0;
 \endif
 
@@ -81,24 +81,21 @@ begin
 end
 $$;
 
--- 有平台权限的管理员也不能在没有课程责任时创建页面。
+-- active admin 不需要课程责任即可获得页面写 capability；具体 RPC 由后续页面流覆盖。
 set local role authenticated;
 select set_config('request.jwt.claim.sub', :'admin_id', true);
-select set_config('sml.lifecycle.lecture_id', :'lecture_id', true);
-do $$
-begin
-  begin
-    perform public.create_blank_cw_page(
-      current_setting('sml.lifecycle.lecture_id')::uuid,
-      null,
-      'missing relation'
-    );
-    raise exception 'SML0_MISSING_RELATION_WRITE_ACCEPTED';
-  exception when others then
-    if sqlerrm <> 'RELATION_REQUIRED' or sqlstate <> '42501' then raise; end if;
-  end;
-end
-$$;
+select (
+  allowed
+  and denial_code is null
+  and responsibility = 'admin'
+  and assignment_scope_type = 'platform'
+) as admin_page_bypass
+from public.resolve_my_cw_lecture_capability(:'lecture_id', 'page.edit') \gset
+\if :admin_page_bypass
+\else
+  \echo SML-0 lifecycle failed: admin object-level bypass
+  select 1 / 0;
+\endif
 reset role;
 
 -- 非 staff 身份在对象解析前被拒绝。

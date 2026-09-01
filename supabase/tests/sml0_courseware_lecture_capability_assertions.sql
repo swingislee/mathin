@@ -4,6 +4,7 @@ begin;
 
 select id as admin_id from public.profiles where display_name = '测试-管理员' limit 1 \gset
 select id as teacher_id from public.profiles where display_name = '测试-教师' limit 1 \gset
+select id as other_staff_id from public.profiles where display_name = '测试-学辅' limit 1 \gset
 select
   lecture_value.id as lecture_id,
   course_value.id as course_id,
@@ -27,6 +28,11 @@ limit 1 \gset
 \if :{?teacher_id}
 \else
   \echo SML-0 fixtures missing: 测试-教师
+  select 1 / 0;
+\endif
+\if :{?other_staff_id}
+\else
+  \echo SML-0 fixtures missing: 测试-学辅
   select 1 / 0;
 \endif
 \if :{?lecture_id}
@@ -79,18 +85,42 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub', :'admin_id', true);
 select set_config('sml.lecture_id', :'lecture_id', true);
 
--- admin 也不能绕过对象责任关系。
+-- active admin 通过平台对象级豁免，不需要伪造课程责任关系。
 select (
-  not allowed
-  and denial_code = 'RELATION_REQUIRED'
+  allowed
+  and denial_code is null
   and required_permission = 'courseware.page.edit'
-) as relation_required
+  and responsibility = 'admin'
+  and assignment_scope_type = 'platform'
+  and assignment_source_id is null
+) as admin_object_bypass
 from public.resolve_my_cw_lecture_capability(:'lecture_id', 'page.edit') \gset
-\if :relation_required
+\if :admin_object_bypass
 \else
-  \echo SML-0 capability failed: admin bypassed lecture relation
+  \echo SML-0 capability failed: active admin did not receive object-level bypass
   select 1 / 0;
 \endif
+
+-- 管理员只豁免责任关系，不绕过对象生命周期。
+reset role;
+update public.course_lectures
+set status = 'archived', archived_at = now()
+where id = :'lecture_id';
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'admin_id', true);
+select (not allowed and denial_code = 'LECTURE_ARCHIVED') as admin_lifecycle_enforced
+from public.resolve_my_cw_lecture_capability(:'lecture_id', 'page.edit') \gset
+\if :admin_lifecycle_enforced
+\else
+  \echo SML-0 capability failed: admin bypassed lecture lifecycle
+  select 1 / 0;
+\endif
+reset role;
+update public.course_lectures
+set status = 'active', archived_at = null
+where id = :'lecture_id';
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'admin_id', true);
 
 -- 未知 capability 必须 fail closed。
 do $$
@@ -106,15 +136,32 @@ $$;
 
 reset role;
 
+-- 普通教研继续遵守对象责任关系。临时叠加 research / principal 用于覆盖全部 capability；
+-- 事务末尾回滚，不改变固定账号岗位。
+insert into public.staff_role_members(user_id, role_id)
+select :'teacher_id', id from public.staff_roles where key in ('research', 'principal')
+on conflict do nothing;
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'teacher_id', true);
+select (not allowed and denial_code = 'RELATION_REQUIRED') as researcher_relation_required
+from public.resolve_my_cw_lecture_capability(:'lecture_id', 'page.edit') \gset
+\if :researcher_relation_required
+\else
+  \echo SML-0 capability failed: non-admin bypassed lecture relation
+  select 1 / 0;
+\endif
+reset role;
+
 -- 已过期关系不能授权。
 insert into public.course_staff_assignments(
   user_id, scope_type, course_id, responsibility, starts_at, ends_at, created_by
 ) values (
-  :'admin_id', 'variant', :'course_id', 'editor', now() - interval '2 days', now() - interval '1 day', :'admin_id'
+  :'teacher_id', 'variant', :'course_id', 'editor', now() - interval '2 days', now() - interval '1 day', :'admin_id'
 );
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', :'admin_id', true);
+select set_config('request.jwt.claim.sub', :'teacher_id', true);
 select (not allowed and denial_code = 'RELATION_REQUIRED') as expired_relation_rejected
 from public.resolve_my_cw_lecture_capability(:'lecture_id', 'page.edit') \gset
 \if :expired_relation_rejected
@@ -125,12 +172,12 @@ from public.resolve_my_cw_lecture_capability(:'lecture_id', 'page.edit') \gset
 reset role;
 
 delete from public.course_staff_assignments
-where user_id = :'admin_id' and course_id = :'course_id' and responsibility = 'editor';
+where user_id = :'teacher_id' and course_id = :'course_id' and responsibility = 'editor';
 insert into public.course_staff_assignments(user_id, scope_type, course_id, responsibility, created_by)
-values (:'admin_id', 'variant', :'course_id', 'editor', :'admin_id');
+values (:'teacher_id', 'variant', :'course_id', 'editor', :'admin_id');
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', :'admin_id', true);
+select set_config('request.jwt.claim.sub', :'teacher_id', true);
 select (
   allowed
   and denial_code is null
@@ -155,10 +202,10 @@ from public.resolve_my_cw_lecture_capability(:'lecture_id', 'review.decide') \gs
 reset role;
 
 insert into public.course_staff_assignments(user_id, scope_type, family_id, responsibility, created_by)
-values (:'admin_id', 'family', :'family_id', 'reviewer', :'admin_id');
+values (:'teacher_id', 'family', :'family_id', 'reviewer', :'admin_id');
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', :'admin_id', true);
+select set_config('request.jwt.claim.sub', :'teacher_id', true);
 select (
   allowed
   and responsibility = 'reviewer'
@@ -191,10 +238,10 @@ reset role;
 
 -- owner 只取最靠近讲次的一层；下级 owner 会覆盖 family owner。
 insert into public.course_staff_assignments(user_id, scope_type, family_id, responsibility, created_by)
-values (:'admin_id', 'family', :'family_id', 'owner', :'admin_id');
+values (:'teacher_id', 'family', :'family_id', 'owner', :'admin_id');
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', :'admin_id', true);
+select set_config('request.jwt.claim.sub', :'teacher_id', true);
 select (allowed and responsibility = 'owner' and assignment_scope_type = 'family') as family_owner_allowed
 from public.resolve_my_cw_lecture_capability(:'lecture_id', 'release.emergency_publish') \gset
 \if :family_owner_allowed
@@ -205,10 +252,10 @@ from public.resolve_my_cw_lecture_capability(:'lecture_id', 'release.emergency_p
 reset role;
 
 insert into public.course_staff_assignments(user_id, scope_type, lecture_id, responsibility, created_by)
-values (:'teacher_id', 'lecture', :'lecture_id', 'owner', :'admin_id');
+values (:'other_staff_id', 'lecture', :'lecture_id', 'owner', :'admin_id');
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', :'admin_id', true);
+select set_config('request.jwt.claim.sub', :'teacher_id', true);
 select (not allowed and denial_code = 'RESPONSIBILITY_REQUIRED') as nearest_owner_overrides_family
 from public.resolve_my_cw_lecture_capability(:'lecture_id', 'release.emergency_publish') \gset
 \if :nearest_owner_overrides_family
@@ -224,7 +271,7 @@ where lecture_id = :'lecture_id' and responsibility = 'owner';
 -- 编辑允许 draft；发布要求 family/course enabled 且 lecture active。
 update public.course_lectures set status = 'draft', archived_at = null where id = :'lecture_id';
 set local role authenticated;
-select set_config('request.jwt.claim.sub', :'admin_id', true);
+select set_config('request.jwt.claim.sub', :'teacher_id', true);
 select (allowed) as draft_edit_allowed
 from public.resolve_my_cw_lecture_capability(:'lecture_id', 'page.edit') \gset
 select (not allowed and denial_code = 'LECTURE_NOT_ACTIVE') as draft_publish_rejected
@@ -244,7 +291,7 @@ reset role;
 update public.course_lectures set status = 'active', archived_at = null where id = :'lecture_id';
 update public.courses set status = 'draft', trashed_at = null where id = :'course_id';
 set local role authenticated;
-select set_config('request.jwt.claim.sub', :'admin_id', true);
+select set_config('request.jwt.claim.sub', :'teacher_id', true);
 select (allowed) as draft_course_edit_allowed
 from public.resolve_my_cw_lecture_capability(:'lecture_id', 'page.edit') \gset
 select (not allowed and denial_code = 'COURSE_NOT_ENABLED') as draft_course_publish_rejected
@@ -264,7 +311,7 @@ reset role;
 update public.courses set status = 'enabled', trashed_at = null where id = :'course_id';
 update public.course_lectures set status = 'archived', archived_at = now() where id = :'lecture_id';
 set local role authenticated;
-select set_config('request.jwt.claim.sub', :'admin_id', true);
+select set_config('request.jwt.claim.sub', :'teacher_id', true);
 select (not allowed and denial_code = 'LECTURE_ARCHIVED') as archived_lecture_rejected
 from public.resolve_my_cw_lecture_capability(:'lecture_id', 'page.edit') \gset
 \if :archived_lecture_rejected
@@ -277,7 +324,7 @@ reset role;
 update public.course_lectures set status = 'active', archived_at = null where id = :'lecture_id';
 update public.courses set trashed_at = now() where id = :'course_id';
 set local role authenticated;
-select set_config('request.jwt.claim.sub', :'admin_id', true);
+select set_config('request.jwt.claim.sub', :'teacher_id', true);
 select (not allowed and denial_code = 'COURSE_TRASHED') as trashed_course_rejected
 from public.resolve_my_cw_lecture_capability(:'lecture_id', 'page.edit') \gset
 \if :trashed_course_rejected
@@ -289,9 +336,9 @@ reset role;
 
 update public.courses set trashed_at = null where id = :'course_id';
 
-update public.profiles set account_status = 'locked' where id = :'admin_id';
+update public.profiles set account_status = 'locked' where id = :'teacher_id';
 set local role authenticated;
-select set_config('request.jwt.claim.sub', :'admin_id', true);
+select set_config('request.jwt.claim.sub', :'teacher_id', true);
 select (
   not allowed
   and denial_code = 'INACTIVE_ACTOR'
@@ -305,11 +352,11 @@ from public.resolve_my_cw_lecture_capability(:'lecture_id', 'page.edit') \gset
   select 1 / 0;
 \endif
 reset role;
-update public.profiles set account_status = 'active' where id = :'admin_id';
+update public.profiles set account_status = 'active' where id = :'teacher_id';
 
 -- 无 RBAC permission 时先拒绝，不泄露对象状态与关系。
 set local role authenticated;
-select set_config('request.jwt.claim.sub', :'teacher_id', true);
+select set_config('request.jwt.claim.sub', :'other_staff_id', true);
 select (
   not allowed
   and denial_code = 'MISSING_PERMISSION'
@@ -326,19 +373,19 @@ reset role;
 
 -- assert helper 不对 authenticated 暴露，但受控写 RPC 的 owner 可复用同一 denial code。
 delete from public.course_staff_assignments assignment_value
-where assignment_value.user_id = :'admin_id'
+where assignment_value.user_id = :'teacher_id'
   and (
     assignment_value.lecture_id = :'lecture_id'::uuid
     or assignment_value.course_id = :'course_id'::uuid
     or assignment_value.family_id = :'family_id'::uuid
   );
-select set_config('request.jwt.claim.sub', :'admin_id', true);
+select set_config('request.jwt.claim.sub', :'teacher_id', true);
 select set_config('sml.lecture_id', :'lecture_id', true);
 do $$
 begin
   begin
     perform public.assert_cw_lecture_capability(current_setting('sml.lecture_id')::uuid, 'page.edit');
-    raise exception 'SML0_ASSERT_ACCEPTED_MISSING_RELATION';
+    raise exception 'SML0_ASSERT_ACCEPTED_MISSING_RELATION_FOR_NON_ADMIN';
   exception when others then
     if sqlerrm <> 'RELATION_REQUIRED' or sqlstate <> '42501' then raise; end if;
   end;

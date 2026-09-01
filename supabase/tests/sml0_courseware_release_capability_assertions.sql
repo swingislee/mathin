@@ -4,6 +4,7 @@ begin;
 
 select id as admin_id from public.profiles where display_name = '测试-管理员' limit 1 \gset
 select id as teacher_id from public.profiles where display_name = '测试-教师' limit 1 \gset
+select id as editor_id from public.profiles where display_name = '测试-学辅' limit 1 \gset
 
 \if :{?admin_id}
 \else
@@ -13,6 +14,11 @@ select id as teacher_id from public.profiles where display_name = '测试-教师
 \if :{?teacher_id}
 \else
   \echo SML-0 release fixtures missing: 测试-教师
+  select 1 / 0;
+\endif
+\if :{?editor_id}
+\else
+  \echo SML-0 release fixtures missing: 测试-学辅
   select 1 / 0;
 \endif
 
@@ -132,9 +138,29 @@ begin
 end
 $$;
 
--- 平台管理员没有课程责任时，不能直接发布。
+-- active admin 的发布 capability 使用平台对象级豁免，但仍通过统一 resolver。
 set local role authenticated;
 select set_config('request.jwt.claim.sub', :'admin_id', true);
+select (
+  allowed
+  and denial_code is null
+  and responsibility = 'admin'
+  and assignment_scope_type = 'platform'
+) as admin_release_bypass
+from public.resolve_my_cw_lecture_capability(:'lecture_id', 'release.publish') \gset
+\if :admin_release_bypass
+\else
+  \echo SML-0 release failed: admin object-level bypass
+  select 1 / 0;
+\endif
+reset role;
+
+-- 普通员工继续要求责任关系；事务内临时赋予 research/principal 权限覆盖发布能力。
+insert into public.staff_role_members(user_id, role_id)
+select :'editor_id', id from public.staff_roles where key in ('research', 'principal')
+on conflict do nothing;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', :'editor_id', true);
 select set_config('sml.release.lecture_id', :'lecture_id', true);
 do $$
 begin
@@ -156,11 +182,11 @@ reset role;
 insert into public.course_staff_assignments(
   user_id, scope_type, course_id, responsibility, created_by
 ) values (
-  :'admin_id', 'variant', :'course_id', 'reviewer', :'admin_id'
+  :'editor_id', 'variant', :'course_id', 'reviewer', :'admin_id'
 );
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', :'admin_id', true);
+select set_config('request.jwt.claim.sub', :'editor_id', true);
 select set_config('sml.release.lecture_id', :'lecture_id', true);
 do $$
 begin
@@ -179,16 +205,16 @@ $$;
 reset role;
 
 delete from public.course_staff_assignments
-where user_id = :'admin_id' and course_id = :'course_id' and responsibility = 'reviewer';
+where user_id = :'editor_id' and course_id = :'course_id' and responsibility = 'reviewer';
 insert into public.course_staff_assignments(
   user_id, scope_type, course_id, responsibility, created_by
 ) values (
-  :'admin_id', 'variant', :'course_id', 'editor', :'admin_id'
+  :'editor_id', 'variant', :'course_id', 'editor', :'admin_id'
 );
 
 -- editor 可以直接发布，并且两种 rollback 签名都从旧快照创建向前 release。
 set local role authenticated;
-select set_config('request.jwt.claim.sub', :'admin_id', true);
+select set_config('request.jwt.claim.sub', :'editor_id', true);
 select public.publish_cw_track_release(
   :'lecture_id', 'adapted-4x3', 'direct release'
 ) as direct_release_id \gset
@@ -241,7 +267,7 @@ values (:'foreign_course_id', 1, '__SML0_RELEASE_FOREIGN_LECTURE__', 'active')
 returning id as foreign_lecture_id \gset
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', :'admin_id', true);
+select set_config('request.jwt.claim.sub', :'editor_id', true);
 select revision_id as batch_draft_id, revision_no as batch_draft_no
 from public.save_cw_track_page_draft(
   :'page_id',
@@ -297,10 +323,10 @@ reset role;
 insert into public.course_staff_assignments(
   user_id, scope_type, course_id, responsibility, created_by
 ) values (
-  :'admin_id', 'variant', :'course_id', 'reviewer', :'admin_id'
+  :'editor_id', 'variant', :'course_id', 'reviewer', :'admin_id'
 );
 set local role authenticated;
-select set_config('request.jwt.claim.sub', :'admin_id', true);
+select set_config('request.jwt.claim.sub', :'editor_id', true);
 select revision_id as review_draft_id, revision_no as review_draft_no
 from public.save_cw_track_page_draft(
   :'page_id',
@@ -316,9 +342,9 @@ select public.approve_cw_review(:'review_cycle_id', 'approved', null);
 reset role;
 
 delete from public.course_staff_assignments
-where user_id = :'admin_id' and course_id = :'course_id' and responsibility = 'editor';
+where user_id = :'editor_id' and course_id = :'course_id' and responsibility = 'editor';
 set local role authenticated;
-select set_config('request.jwt.claim.sub', :'admin_id', true);
+select set_config('request.jwt.claim.sub', :'editor_id', true);
 select set_config('sml.release.lecture_id', :'lecture_id', true);
 do $$
 begin
@@ -339,10 +365,10 @@ reset role;
 insert into public.course_staff_assignments(
   user_id, scope_type, course_id, responsibility, created_by
 ) values (
-  :'admin_id', 'variant', :'course_id', 'editor', :'admin_id'
+  :'editor_id', 'variant', :'course_id', 'editor', :'admin_id'
 );
 set local role authenticated;
-select set_config('request.jwt.claim.sub', :'admin_id', true);
+select set_config('request.jwt.claim.sub', :'editor_id', true);
 select public.publish_cw_review_cycle(
   :'lecture_id', 'adapted-4x3', 'review release'
 ) as review_release_id \gset
@@ -389,10 +415,10 @@ reset role;
 insert into public.course_staff_assignments(
   user_id, scope_type, course_id, responsibility, created_by
 ) values (
-  :'admin_id', 'variant', :'course_id', 'owner', :'admin_id'
+  :'editor_id', 'variant', :'course_id', 'owner', :'admin_id'
 );
 set local role authenticated;
-select set_config('request.jwt.claim.sub', :'admin_id', true);
+select set_config('request.jwt.claim.sub', :'editor_id', true);
 select public.emergency_publish_cw_review(
   :'lecture_id',
   'adapted-4x3',
