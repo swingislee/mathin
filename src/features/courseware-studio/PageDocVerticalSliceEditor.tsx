@@ -36,6 +36,14 @@ import {
   CoursewarePageElementInspector,
   type CoursewareLayerItem,
 } from "@/features/courseware-doc/CoursewarePageElementEditor";
+import {
+  courseware43SessionFromLegacyAdaptClass,
+  courseware43SessionFromPageDoc,
+  defaultCourseware43Session,
+  materializeCourseware43PageDoc,
+  type Courseware43SessionState,
+  type LegacyCourseware43AdaptClass,
+} from "@/features/courseware-doc/courseware-4x3-strategy";
 import type { ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 import type { DocNode, PageDoc } from "@/features/courseware-doc/schema";
 import { saveCoursewareDraftAction } from "./actions";
@@ -119,6 +127,15 @@ export interface PageDocVerticalSliceEditorProps {
   initialDoc: PageDoc;
   baseRevisionNo: number;
   bindingUrls: ResolvedBindingUrls;
+  fourByThreeSource: {
+    doc: PageDoc;
+    bindingUrls: ResolvedBindingUrls;
+  };
+  fourByThreeDraft: {
+    doc: PageDoc;
+    baseRevisionNo: number;
+  } | null;
+  legacyAdaptClass: LegacyCourseware43AdaptClass | null;
 }
 
 export function PageDocVerticalSliceEditor({
@@ -128,6 +145,9 @@ export function PageDocVerticalSliceEditor({
   initialDoc,
   baseRevisionNo,
   bindingUrls,
+  fourByThreeSource,
+  fourByThreeDraft,
+  legacyAdaptClass,
 }: PageDocVerticalSliceEditorProps) {
   const t = useTranslations("coursewareWorkspace");
   const textEditorT = useTranslations("coursewareTextEditor");
@@ -140,18 +160,43 @@ export function PageDocVerticalSliceEditor({
   const [snapToGrid, setSnapToGrid] = useState(true);
   const [message, setMessage] = useState("");
   const [saveState, setSaveState] = useState<CoursewareEditorSaveState>("saved");
-  const fourByThree = useCoursewareFourByThreeAdapter({ kind: "page-doc", doc, bindingUrls });
   const coarseLayout = view === "compare";
   const sessionAdapted = view === "adapted-4x3" && track !== "adapted-4x3";
+  const canPersistFourByThree = coarseLayout && fourByThreeDraft !== null;
   const displayedTab: EditorTab = coarseLayout ? "layout" : activeTab === "layout" ? "adjust" : activeTab;
   const docRef = useRef(clone(initialDoc));
   const savedDocRef = useRef(clone(initialDoc));
   const revisionRef = useRef(baseRevisionNo);
+  const fourByThreeRevisionRef = useRef(fourByThreeDraft?.baseRevisionNo ?? null);
   const sequenceRef = useRef(0);
   const savedSequenceRef = useRef(0);
   const timerRef = useRef<number | null>(null);
   const savingRef = useRef<Promise<boolean> | null>(null);
   const flushRef = useRef<() => Promise<boolean>>(async () => true);
+  const markDirty = useCallback(() => {
+    sequenceRef.current += 1;
+    setSaveState("dirty");
+    setMessage("");
+    if (timerRef.current) window.clearTimeout(timerRef.current);
+    timerRef.current = window.setTimeout(() => void flushRef.current(), 800);
+  }, []);
+  const initialFourByThreeState = useMemo(
+    () => (fourByThreeDraft ? courseware43SessionFromPageDoc(fourByThreeDraft.doc) : null)
+      ?? courseware43SessionFromLegacyAdaptClass(legacyAdaptClass),
+    [fourByThreeDraft, legacyAdaptClass],
+  );
+  const fourByThreeStateRef = useRef<Courseware43SessionState>(
+    initialFourByThreeState ?? defaultCourseware43Session("page-doc"),
+  );
+  const handleFourByThreeStateChange = useCallback((state: Courseware43SessionState) => {
+    fourByThreeStateRef.current = state;
+    if (canPersistFourByThree) markDirty();
+  }, [canPersistFourByThree, markDirty]);
+  const fourByThree = useCoursewareFourByThreeAdapter({
+    kind: "page-doc",
+    doc: fourByThreeSource.doc,
+    bindingUrls: fourByThreeSource.bindingUrls,
+  }, initialFourByThreeState, handleFourByThreeStateChange);
 
   const selected = useMemo(() => selectedPath ? visit(doc.nodes, selectedPath) : null, [doc, selectedPath]);
   const layerItems = useMemo(() => collectLayerItems(doc.nodes), [doc.nodes]);
@@ -168,16 +213,28 @@ export function PageDocVerticalSliceEditor({
       setSaveState("saved");
       return true;
     }
+    if (canPersistFourByThree && !fourByThree.changed) {
+      savedSequenceRef.current = sequenceRef.current;
+      setSaveState("saved");
+      return true;
+    }
 
     if (timerRef.current) window.clearTimeout(timerRef.current);
     const sequence = sequenceRef.current;
-    const docSnapshot = clone(docRef.current);
+    const savingFourByThree = canPersistFourByThree && fourByThreeRevisionRef.current !== null;
+    const docSnapshot = savingFourByThree
+      ? materializeCourseware43PageDoc(fourByThreeSource.doc, fourByThreeStateRef.current)
+      : clone(docRef.current);
+    const saveTrack: CoursewareTrack = savingFourByThree ? "adapted-4x3" : track;
+    const saveBaseRevisionNo = savingFourByThree
+      ? fourByThreeRevisionRef.current as number
+      : revisionRef.current;
     setSaveState("saving");
     const request = saveCoursewareDraftAction({
       pageDocId,
-      track,
+      track: saveTrack,
       doc: docSnapshot,
-      baseRevisionNo: revisionRef.current,
+      baseRevisionNo: saveBaseRevisionNo,
       note: t("verticalSliceSaveNote"),
     }).then((result) => {
       if (!result.ok) {
@@ -185,11 +242,16 @@ export function PageDocVerticalSliceEditor({
         setMessage(t("verticalSliceSaveFailed", { code: result.code }));
         return false;
       }
-      revisionRef.current = result.data.revisionNo;
+      if (savingFourByThree) {
+        fourByThreeRevisionRef.current = result.data.revisionNo;
+        fourByThree.markSaved();
+      } else {
+        revisionRef.current = result.data.revisionNo;
+        savedDocRef.current = clone(docSnapshot);
+        setSavedDoc(clone(docSnapshot));
+      }
       savedSequenceRef.current = sequence;
-      savedDocRef.current = clone(docSnapshot);
       setCurrentBaseRevisionNo(result.data.revisionNo);
-      setSavedDoc(clone(docSnapshot));
       setMessage("");
       if (sequenceRef.current === sequence) setSaveState("saved");
       else {
@@ -206,15 +268,7 @@ export function PageDocVerticalSliceEditor({
     });
     savingRef.current = request;
     return request;
-  }, [pageDocId, t, track]);
-
-  const markDirty = useCallback(() => {
-    sequenceRef.current += 1;
-    setSaveState("dirty");
-    setMessage("");
-    if (timerRef.current) window.clearTimeout(timerRef.current);
-    timerRef.current = window.setTimeout(() => void flushRef.current(), 800);
-  }, []);
+  }, [canPersistFourByThree, fourByThree, fourByThreeSource.doc, pageDocId, t, track]);
 
   useEffect(() => {
     flushRef.current = flush;
@@ -370,7 +424,10 @@ export function PageDocVerticalSliceEditor({
         </TabsContent> : null}
 
         {coarseLayout ? <TabsContent value="layout" className="space-y-3">
-          <CoursewareFourByThreePanel adapter={fourByThree} />
+          <CoursewareFourByThreePanel
+            adapter={fourByThree}
+            persistence={canPersistFourByThree ? "draft" : "session-only"}
+          />
         </TabsContent> : null}
 
         {!coarseLayout ? <TabsContent value="replace" className="space-y-3">
@@ -415,7 +472,9 @@ export function PageDocVerticalSliceEditor({
   return (
     <CoursewareEditorAdapterSurface
       toolbar={coarseLayout || sessionAdapted ? null : insertToolbar}
-      saveControls={coarseLayout || sessionAdapted ? <Badge variant="outline">{adaptationT("sessionOnly")}</Badge> : saveControls}
+      saveControls={coarseLayout
+        ? canPersistFourByThree ? saveControls : <Badge variant="outline">{adaptationT("sessionOnly")}</Badge>
+        : sessionAdapted ? <Badge variant="outline">{adaptationT("sessionOnly")}</Badge> : saveControls}
       inspectorHeader={sessionAdapted ? undefined : inspectorHeader}
       inspector={inspector}
       aspect={coarseLayout ? 16 / 9 : sessionAdapted ? 4 / 3 : doc.canvas.width / doc.canvas.height}

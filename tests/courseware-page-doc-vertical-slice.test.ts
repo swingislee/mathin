@@ -7,8 +7,9 @@ describe("courseware PageDoc formal editor", () => {
     const workspace = readFileSync("src/features/courseware-studio/UnifiedCoursewareWorkspace.tsx", "utf8");
 
     expect(loader).toContain('requirePerm(locale, "courseware.page.edit")');
-    expect(loader).toContain("editorPreview.page.pageDocId");
-    expect(loader).toContain("studioPage?.activeRevision.doc.docVersion === PAGE_DOC_VERSION");
+    expect(loader).toContain('loadCoursewareStudioPage(lectureId, pageDocId, "native-16x9")');
+    expect(loader).toContain('loadCoursewareStudioPage(lectureId, pageDocId, "adapted-4x3")');
+    expect(loader).toContain("fourByThreeDraft: adaptedPageDoc");
     expect(loader).not.toContain("PAGE_DOC_VERTICAL_SLICE_SAMPLE");
     expect(loader).not.toContain("rawSearchParams.edit");
     expect(workspace).not.toContain('query.set("edit", "page-doc")');

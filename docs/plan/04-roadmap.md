@@ -210,7 +210,7 @@ Phase 1～5 的本机隔离 Supabase、固定开发身份、migration LF checksu
 
 `DEV-CW-1` 回应课程产品中 E 系列、爱学习及后续导入课程缺少单页 16:9/4:3 修订闭环的问题，权威规划见 [doc 16 §14](16-p6-courseware-platform.md#14-dev-cw-1-课程产品统一课件工作区待产品逐步确认)。目标主路径为“课程产品 → 课程/版本 → 讲次 → 指定页面 → 统一课件工作区”，并把共享内容修订、分轨版式、页面上下文资源替换、插入能力和 draft/review/release 放在同一对象上下文内。研发任务最终只保留责任/待处理投影，适配校对只保留异常与审核视图，公共资源保留高级治理与回滚；新路径验收前不删除或降级现有入口。
 
-产品负责人于 2026-08-31 依次确认 Step 0、Step 1、Step 2 和 Step 2A，并于 2026-09-01 确认 Step 3A、Step 3B 与 Step 4A。Step 3B 最终把文字／图片／形状节点分发、公共透明度／层级／显隐和可折叠图层列表收敛为唯一共享组件；正式课与微课只提供各自文档 adapter。Step 4A 让正式 PageDoc 与爱学习 source runtime 共用“等宽顶部、等宽居中、等高左侧、等高居中”四种整页视口变换和同一对照控制器，PageDoc 额外支持“背景等高·内容等宽”；来源默认版式、缺独立 release 的会话预览及爱学习固定逻辑 viewport 已通过人工验收。`DEV-CW-1` 现为 **STEP 4B SINGLE-PAGE 4:3 DRAFT / AUTHORIZED / IN PROGRESS**：只把一个本机 PageDoc 样本页接入既有草稿保存、刷新重读与自动保存反馈，不开放 source-runtime 写态，不新增 schema/RPC，不改 binding/release，不扩到整讲、批量、Storage 或生产。产品负责人要求课件工作区整体重构完成后再双端回看并定稿组件表现，因此该回看仍列为 Step 7 完成后、Step 8 扩量前的人工门；本项不改变 R1-Live Gate 2。
+产品负责人于 2026-08-31 依次确认 Step 0、Step 1、Step 2 和 Step 2A，并于 2026-09-01 确认 Step 3A、Step 3B 与 Step 4A。Step 3B 最终把文字／图片／形状节点分发、公共透明度／层级／显隐和可折叠图层列表收敛为唯一共享组件；正式课与微课只提供各自文档 adapter。Step 4A 让正式 PageDoc 与爱学习 source runtime 共用“等宽顶部、等宽居中、等高左侧、等高居中”四种整页视口变换和同一对照控制器，PageDoc 额外支持“背景等高·内容等宽”；来源默认版式、缺独立 release 的会话预览及爱学习固定逻辑 viewport 已通过人工验收。`DEV-CW-1` 现为 **STEP 4B SINGLE-PAGE 4:3 DRAFT / DEV READY / AWAITING USER AUDIT**：对照区策略已可物化为当前页严格 4:3 PageDoc，并复用既有草稿 RPC、自动保存状态与刷新重读；新草稿标记优先，未保存页面才把旧 A/B 映射到等高左侧、C/E 映射到等宽居中、D 映射到等宽顶部、F 映射到分层模式。人工门只审计一个本机 PageDoc 样本页；source-runtime、schema/RPC、binding/release、整讲、批量、Storage 和生产仍未授权。产品负责人要求课件工作区整体重构完成后再双端回看并定稿组件表现，因此该回看仍列为 Step 7 完成后、Step 8 扩量前的人工门；本项不改变 R1-Live Gate 2。
 
 ## 6. 原 R1 工作重新定位
 

@@ -2,6 +2,7 @@ import "server-only";
 
 import { notFound } from "next/navigation";
 import type { ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
+import type { LegacyCourseware43AdaptClass } from "@/features/courseware-doc/courseware-4x3-strategy";
 import { PAGE_DOC_VERSION, type PageDoc } from "@/features/courseware-doc/schema";
 import { getLectureWorkspaceDetail, isUuid } from "@/features/school/curriculum/lecture-workspace-detail";
 import { requirePerm } from "@/lib/auth";
@@ -24,6 +25,19 @@ export interface UnifiedPageDocEditorData {
   doc: PageDoc;
   baseRevisionNo: number;
   bindingUrls: ResolvedBindingUrls;
+  fourByThreeSource: {
+    doc: PageDoc;
+    bindingUrls: ResolvedBindingUrls;
+  };
+  fourByThreeDraft: {
+    doc: PageDoc;
+    baseRevisionNo: number;
+  } | null;
+  legacyAdaptClass: LegacyCourseware43AdaptClass | null;
+}
+
+function isFourByThreePageDoc(doc: PageDoc) {
+  return doc.canvas.width * 3 === doc.canvas.height * 4;
 }
 
 /**
@@ -59,29 +73,50 @@ export async function loadUnifiedCoursewareWorkspaceData(
   const safeAdaptedPreview = adaptedPreview?.lecture.courseId === detail.variant.id ? adaptedPreview : null;
   const requestedTrack = parseCoursewareTrack(rawSearchParams.track);
   const requestedCanvas = first(rawSearchParams.canvas);
-  const editorTrack: CoursewareTrack = requestedCanvas === "adapted-4x3" && requestedTrack === "adapted-4x3" && safeAdaptedPreview
-    ? "adapted-4x3"
-    : safeNativePreview
-      ? "native-16x9"
-      : "adapted-4x3";
-  const editorPreview = editorTrack === "adapted-4x3" ? safeAdaptedPreview : safeNativePreview;
   let pageEditor: UnifiedPageDocEditorData | null = null;
+  const pageDocId = safeNativePreview?.page.pageDocId ?? safeAdaptedPreview?.page.pageDocId ?? null;
 
-  if (editorPreview) {
-    const studioPage = await loadCoursewareStudioPage(
-      lectureId,
-      editorPreview.page.pageDocId,
-      editorTrack,
-    );
-    if (studioPage?.activeRevision.doc.docVersion === PAGE_DOC_VERSION) {
+  if (pageDocId) {
+    const [nativeStudioPage, adaptedStudioPage] = await Promise.all([
+      loadCoursewareStudioPage(lectureId, pageDocId, "native-16x9"),
+      loadCoursewareStudioPage(lectureId, pageDocId, "adapted-4x3"),
+    ]);
+    const nativePageDoc = nativeStudioPage?.activeRevision.doc.docVersion === PAGE_DOC_VERSION
+      ? { studioPage: nativeStudioPage, doc: nativeStudioPage.activeRevision.doc }
+      : null;
+    const adaptedPageDoc = adaptedStudioPage?.activeRevision.doc.docVersion === PAGE_DOC_VERSION
+      ? { studioPage: adaptedStudioPage, doc: adaptedStudioPage.activeRevision.doc }
+      : null;
+    const editableAdaptedPage = adaptedPageDoc && isFourByThreePageDoc(adaptedPageDoc.doc)
+      ? adaptedPageDoc
+      : null;
+    const editorTrack: CoursewareTrack = requestedCanvas === "adapted-4x3"
+      && requestedTrack === "adapted-4x3"
+      && editableAdaptedPage
+      ? "adapted-4x3"
+      : nativePageDoc
+        ? "native-16x9"
+        : "adapted-4x3";
+    const studioPage = editorTrack === "adapted-4x3" ? editableAdaptedPage : nativePageDoc;
+    const fourByThreeSource = nativePageDoc ?? studioPage;
+    if (studioPage && fourByThreeSource) {
       pageEditor = {
-        pageDocId: studioPage.page.id,
-        pageNo: studioPage.page.pageNo,
-        pageTitle: studioPage.page.title,
+        pageDocId: studioPage.studioPage.page.id,
+        pageNo: studioPage.studioPage.page.pageNo,
+        pageTitle: studioPage.studioPage.page.title,
         track: editorTrack,
-        doc: studioPage.activeRevision.doc,
-        baseRevisionNo: studioPage.activeRevision.revisionNo,
-        bindingUrls: studioPage.bindingUrls,
+        doc: studioPage.doc,
+        baseRevisionNo: studioPage.studioPage.activeRevision.revisionNo,
+        bindingUrls: studioPage.studioPage.bindingUrls,
+        fourByThreeSource: {
+          doc: fourByThreeSource.doc,
+          bindingUrls: fourByThreeSource.studioPage.bindingUrls,
+        },
+        fourByThreeDraft: adaptedPageDoc ? {
+          doc: adaptedPageDoc.doc,
+          baseRevisionNo: adaptedPageDoc.studioPage.activeRevision.revisionNo,
+        } : null,
+        legacyAdaptClass: nativePageDoc?.studioPage.page.adaptClass ?? adaptedPageDoc?.studioPage.page.adaptClass ?? null,
       };
     }
   }

@@ -220,13 +220,16 @@ export async function UnifiedCoursewareWorkspace({
           content: <div className="size-full min-h-0 overflow-hidden bg-moon/10">
             {pageEditor ? (
               <PageDocVerticalSliceEditor
-                key={`${pageEditor.pageDocId}:${pageEditor.baseRevisionNo}:${visibleCanvas}`}
+                key={`${pageEditor.pageDocId}:${pageEditor.baseRevisionNo}:${pageEditor.fourByThreeDraft?.baseRevisionNo ?? "no-4x3"}:${visibleCanvas}`}
                 pageDocId={pageEditor.pageDocId}
                 track={pageEditor.track}
                 view={visibleCanvas}
                 initialDoc={pageEditor.doc}
                 baseRevisionNo={pageEditor.baseRevisionNo}
                 bindingUrls={pageEditor.bindingUrls}
+                fourByThreeSource={pageEditor.fourByThreeSource}
+                fourByThreeDraft={pageEditor.fourByThreeDraft}
+                legacyAdaptClass={pageEditor.legacyAdaptClass}
               />
             ) : sourceRuntimeEditor ? (
               <SourceRuntimeFourByThreeEditor

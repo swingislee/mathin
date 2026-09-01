@@ -35,36 +35,44 @@ export interface CoursewareFourByThreeController {
   selectStrategy: (strategy: Courseware43Strategy) => void;
   undo: () => void;
   reset: () => void;
+  markSaved: () => void;
 }
 
-export function useCoursewareFourByThreeAdapter(source: Courseware43AdapterSource) {
-  const initialState = useMemo(
-    () => defaultCourseware43Session(source.kind),
-    [source.kind],
+export function useCoursewareFourByThreeAdapter(
+  source: Courseware43AdapterSource,
+  persistedState?: Courseware43SessionState | null,
+  onStateChange?: (state: Courseware43SessionState) => void,
+) {
+  const defaultState = useMemo(
+    () => persistedState ?? defaultCourseware43Session(source.kind),
+    [persistedState, source.kind],
   );
-  const [state, setState] = useState<Courseware43SessionState>(initialState);
+  const [initialState, setInitialState] = useState<Courseware43SessionState>(defaultState);
+  const [state, setState] = useState<Courseware43SessionState>(defaultState);
   const [history, setHistory] = useState<Courseware43SessionState[]>([]);
 
   const commit = useCallback((next: Courseware43SessionState) => {
-    setState((current) => {
-      if (current.strategy === next.strategy) return current;
-      setHistory((items) => [...items, current].slice(-20));
-      return next;
-    });
-  }, []);
+    if (state.strategy === next.strategy) return;
+    setHistory((items) => [...items, state].slice(-20));
+    setState(next);
+    onStateChange?.(next);
+  }, [onStateChange, state]);
   const selectStrategy = useCallback((strategy: Courseware43Strategy) => {
     if (!supportsCourseware43Strategy(source.kind, strategy)) return;
     commit({ strategy });
   }, [commit, source.kind]);
   const undo = useCallback(() => {
-    setHistory((items) => {
-      const previous = items.at(-1);
-      if (!previous) return items;
-      setState(previous);
-      return items.slice(0, -1);
-    });
-  }, []);
+    const previous = history.at(-1);
+    if (!previous) return;
+    setState(previous);
+    setHistory(history.slice(0, -1));
+    onStateChange?.(previous);
+  }, [history, onStateChange]);
   const reset = useCallback(() => commit(initialState), [commit, initialState]);
+  const markSaved = useCallback(() => {
+    setInitialState(state);
+    setHistory([]);
+  }, [state]);
 
   return useMemo<CoursewareFourByThreeController>(() => ({
     source,
@@ -75,7 +83,8 @@ export function useCoursewareFourByThreeAdapter(source: Courseware43AdapterSourc
     selectStrategy,
     undo,
     reset,
-  }), [history.length, initialState, reset, selectStrategy, source, state, undo]);
+    markSaved,
+  }), [history.length, initialState, markSaved, reset, selectStrategy, source, state, undo]);
 }
 
 const STRATEGY_COPY: Record<Courseware43Strategy, { label: string; description: string }> = {
@@ -123,9 +132,11 @@ function Courseware43StrategyIcon({ strategy }: { strategy: Courseware43Strategy
 
 export function CoursewareFourByThreePanel({
   adapter,
+  persistence = "session-only",
   className,
 }: {
   adapter: CoursewareFourByThreeController;
+  persistence?: "session-only" | "draft";
   className?: string;
 }) {
   const t = useTranslations("coursewareFourByThree");
@@ -133,16 +144,18 @@ export function CoursewareFourByThreePanel({
   const activeCopy = STRATEGY_COPY[state.strategy];
 
   return (
-    <section data-courseware-4x3-adapter data-persistence="session-only" className={cn("space-y-4", className)}>
+    <section data-courseware-4x3-adapter data-persistence={persistence} className={cn("space-y-4", className)}>
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-2">
           <h3 className="flex items-center gap-2 text-xs font-medium text-ink">
             <LayoutTemplate className="size-4 text-crater" />
             {t("title")}
           </h3>
-          <Badge variant="outline">{t(changed ? "changed" : "sessionOnly")}</Badge>
+          <Badge variant="outline">{t(changed
+            ? persistence === "draft" ? "draftChanged" : "changed"
+            : persistence === "draft" ? "draftBacked" : "sessionOnly")}</Badge>
         </div>
-        <p className="text-xs leading-5 text-muted">{t("sessionHint")}</p>
+        <p className="text-xs leading-5 text-muted">{t(persistence === "draft" ? "draftHint" : "sessionHint")}</p>
       </div>
 
       <div className="grid grid-cols-2 gap-2" role="group" aria-label={t("strategyLabel")}>
