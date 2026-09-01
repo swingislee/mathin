@@ -53,7 +53,8 @@ describe("courseware PageDoc formal editor", () => {
     expect(preview).toContain("COURSEWARE_REPLACEMENT_IMPACT_SCOPES");
     expect(preview).toContain("CoursewareCompactChoiceGroup");
     expect(preview).toContain('className="min-h-0 min-w-0 flex-1"');
-    expect(preview).toContain('className="mr-2 min-w-0 space-y-1"');
+    expect(preview).toContain('className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)] gap-1 pr-2"');
+    expect(preview).toContain('className="min-w-0 overflow-hidden rounded-lg border border-line/70');
     expect(preview).not.toContain("max-h-64");
     expect(preview).not.toContain("stageCoursewareImageReplacementAction");
     expect(preview).not.toContain("applyCoursewareImageReplacementAction");

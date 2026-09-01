@@ -134,9 +134,9 @@ export function CoursewareAssetImpactPreview({
 
       {usages.length > 0 ? (
         <ScrollArea className="min-h-0 min-w-0 flex-1">
-          <ol className="mr-2 min-w-0 space-y-1">
+          <ol className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)] gap-1 pr-2">
             {usages.map((usage) => (
-              <li key={usage.bindingId} className="rounded-lg border border-line/70 px-2.5 py-2 text-xs leading-5">
+              <li key={usage.bindingId} className="min-w-0 overflow-hidden rounded-lg border border-line/70 px-2.5 py-2 text-xs leading-5">
                 <p className="truncate font-medium text-ink">{usage.courseTitle}</p>
                 <p className="truncate text-muted">{t("replacementUsageLocation", { lecture: usage.lectureNo, lectureName: usage.lectureName, page: usage.pageNo, pageTitle: usage.pageTitle || t("untitledPage") })}</p>
                 <div className="mt-1 flex flex-wrap gap-1">
