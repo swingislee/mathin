@@ -52,7 +52,8 @@ describe("courseware PageDoc formal editor", () => {
     expect(editor).toContain("selectedImageAsset");
     expect(preview).toContain("COURSEWARE_REPLACEMENT_IMPACT_SCOPES");
     expect(preview).toContain("CoursewareCompactChoiceGroup");
-    expect(preview).toContain('className="min-h-0 flex-1"');
+    expect(preview).toContain('className="min-h-0 min-w-0 flex-1"');
+    expect(preview).toContain('className="mr-2 min-w-0 space-y-1"');
     expect(preview).not.toContain("max-h-64");
     expect(preview).not.toContain("stageCoursewareImageReplacementAction");
     expect(preview).not.toContain("applyCoursewareImageReplacementAction");

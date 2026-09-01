@@ -122,7 +122,8 @@ describe("shared courseware editor workbench", () => {
     expect(variantPreview).not.toContain("<ScrollArea");
     expect(sharedPreview).toContain('<CoursewareWorkbench mode="preview"');
     const sharedWorkbench = read("src", "features", "courseware-doc", "CoursewareEditorWorkbench.tsx");
-    expect(sharedWorkbench).toContain('window.addEventListener("keydown", onKeyDown)');
+    expect(sharedWorkbench).toContain('window.addEventListener("keydown", onKeyDown, true)');
+    expect(sharedWorkbench).toContain("event.stopPropagation()");
     expect(sharedWorkbench).toContain('aria-keyshortcuts="ArrowLeft PageUp"');
     expect(sharedWorkbench).toContain('aria-keyshortcuts="ArrowRight PageDown Space"');
   });

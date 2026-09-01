@@ -613,17 +613,22 @@ export function CoursewareWorkbenchPager({
       if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
       if (blocksPaging(event.target, event.key)) return;
       if (event.key === "ArrowLeft" || event.key === "PageUp") {
-        if (previousDisabled) return;
         event.preventDefault();
+        event.stopPropagation();
+        if (previousDisabled) return;
         goPrevious();
       } else if (event.key === "ArrowRight" || event.key === "PageDown" || event.key === " ") {
-        if (nextDisabled) return;
         event.preventDefault();
+        event.stopPropagation();
+        if (nextDisabled) return;
         goNext();
       }
     };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    // Capture before react-resizable-panels' focused separator consumes
+    // ArrowLeft/ArrowRight as a panel-width adjustment. All three workbench
+    // modes therefore retain the same page-turning keyboard contract.
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
   }, [goNext, goPrevious, nextDisabled, previousDisabled]);
 
   return (

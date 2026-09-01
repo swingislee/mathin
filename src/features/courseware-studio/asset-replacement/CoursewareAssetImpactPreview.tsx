@@ -133,8 +133,8 @@ export function CoursewareAssetImpactPreview({
       </div>
 
       {usages.length > 0 ? (
-        <ScrollArea className="min-h-0 flex-1">
-          <ol className="space-y-1 pr-2">
+        <ScrollArea className="min-h-0 min-w-0 flex-1">
+          <ol className="mr-2 min-w-0 space-y-1">
             {usages.map((usage) => (
               <li key={usage.bindingId} className="rounded-lg border border-line/70 px-2.5 py-2 text-xs leading-5">
                 <p className="truncate font-medium text-ink">{usage.courseTitle}</p>
