@@ -9,7 +9,9 @@ describe("courseware PageDoc formal editor", () => {
     expect(loader).toContain('requirePerm(locale, "courseware.page.edit")');
     expect(loader).toContain('loadCoursewareStudioPage(lectureId, pageDocId, "native-16x9")');
     expect(loader).toContain('loadCoursewareStudioPage(lectureId, pageDocId, "adapted-4x3")');
-    expect(loader).toContain("fourByThreeDraft: adaptedPageDoc");
+    expect(loader).toContain("const fourByThreeBaseline = adaptedPageDoc ?? fourByThreeSource");
+    expect(loader).toContain("doc: fourByThreeBaseline.doc");
+    expect(loader).toContain("materialized: Boolean(editableAdaptedPage)");
     expect(loader).toContain("...(nativePageDoc?.studioPage.bindingUrls ?? {})");
     expect(loader).not.toContain("PAGE_DOC_VERTICAL_SLICE_SAMPLE");
     expect(loader).not.toContain("rawSearchParams.edit");
@@ -34,10 +36,27 @@ describe("courseware PageDoc formal editor", () => {
     expect(stage).toContain("onNodeTransformChange?.(node.nodePath, next)");
     expect(editor).toContain("data-content-changed");
     expect(editor).toContain("data-layout-changed");
+    expect(editor).toContain("fourByThreeMaterializedRef.current");
+    expect(editor).toContain('persistence="draft"');
+    expect(editor).toContain("draftReady={fourByThreeMaterialized}");
     expect(editor).not.toContain("replaceCoursewarePageImageAction");
     expect(editor).not.toContain("publishCoursewareReleaseAction");
     expect(actions).toMatch(/authorizedClient\("courseware\.page\.edit"\)[\s\S]*save_cw_track_page_draft/);
     expect(actions).toContain('"RELATION_REQUIRED"');
+  });
+
+  it("atomically bootstraps a missing adapted PageDoc head and its track bindings", () => {
+    const migration = readFileSync(
+      "supabase/migrations/20260901000100_courseware_adapted_draft_bootstrap.sql",
+      "utf8",
+    );
+
+    expect(migration).toContain("create or replace function public.save_cw_track_page_draft");
+    expect(migration).toContain("page_version = 'page-doc-v1' and p_track = 'adapted-4x3'");
+    expect(migration).toContain("p_page_doc_id, 'adapted-4x3', native_base_id");
+    expect(migration).toContain("insert into public.cw_page_asset_bindings");
+    expect(migration).toContain("on conflict (page_doc_id, binding_key, track) do nothing");
+    expect(migration).toContain("save_cw_track_page_draft_pre_sml0_impl");
   });
 
   it("extends the accepted Step 5A impact model with one shared Step 5B replacement and rollback flow", () => {

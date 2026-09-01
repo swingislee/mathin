@@ -68,6 +68,40 @@ from public.cw_page_docs where lecture_id=:'lecture_id' and deleted_at is null \
   \echo P6 studio failed: page ordering
   select 1 / 0;
 \endif
+
+-- 首次保存 4:3 粗排版会从 native 基线原子建立适配页头，并复制该轨资源 binding。
+select revision_id as adapted_draft_revision_id, revision_no as adapted_draft_revision_no
+from public.save_cw_track_page_draft(
+  :'page_id',
+  'adapted-4x3',
+  (
+    select jsonb_set(
+      jsonb_set(doc, '{canvas,width}', '960'::jsonb),
+      '{canvas,height}',
+      '720'::jsonb
+    )
+    from public.cw_page_revisions where id=:'baseline_revision_id'
+  ),
+  1,
+  'bootstrap adapted draft'
+) \gset
+select (
+  (select draft_revision_id from public.cw_page_track_heads
+    where page_doc_id=:'page_id' and track='adapted-4x3')=:'adapted_draft_revision_id'::uuid
+  and exists (
+    select 1 from public.cw_page_asset_bindings
+    where page_doc_id=:'page_id'
+      and binding_key=:'binding_key'
+      and track='adapted-4x3'
+      and shared_asset_id=:'source_asset_id'
+  )
+) as p6_studio_adapted_bootstrap_ok \gset
+\if :p6_studio_adapted_bootstrap_ok
+\else
+  \echo P6 studio failed: adapted draft bootstrap
+  select 1 / 0;
+\endif
+
 select revision_id as draft_revision_id, revision_no as draft_revision_no from public.save_cw_track_page_draft(
   :'page_id','native-16x9', (select doc from public.cw_page_revisions where id=:'baseline_revision_id'), 1, 'draft'
 ) \gset

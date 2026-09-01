@@ -134,10 +134,12 @@ function Courseware43StrategyIcon({ strategy }: { strategy: Courseware43Strategy
 export function CoursewareFourByThreePanel({
   adapter,
   persistence = "session-only",
+  draftReady = true,
   className,
 }: {
   adapter: CoursewareFourByThreeController;
   persistence?: "session-only" | "draft";
+  draftReady?: boolean;
   className?: string;
 }) {
   const t = useTranslations("coursewareFourByThree");
@@ -159,11 +161,15 @@ export function CoursewareFourByThreePanel({
             <LayoutTemplate className="size-4 text-crater" />
             {t("title")}
           </h3>
-          <Badge variant="outline">{t(changed
-            ? persistence === "draft" ? "draftChanged" : "changed"
-            : persistence === "draft" ? "draftBacked" : "sessionOnly")}</Badge>
+          <Badge variant="outline">{t(persistence === "draft" && !draftReady
+            ? "draftPending"
+            : changed
+              ? persistence === "draft" ? "draftChanged" : "changed"
+              : persistence === "draft" ? "draftBacked" : "sessionOnly")}</Badge>
         </div>
-        <p className="text-xs leading-5 text-muted">{t(persistence === "draft" ? "draftHint" : "sessionHint")}</p>
+        <p className="text-xs leading-5 text-muted">{t(persistence === "draft" && !draftReady
+          ? "draftPendingHint"
+          : persistence === "draft" ? "draftHint" : "sessionHint")}</p>
       </div>
 
       <CoursewareCompactChoiceGroup

@@ -157,6 +157,8 @@ describe("shared formal-course 4:3 adapter", () => {
     expect(shared).not.toContain("createContext");
     expect(shared).not.toContain("COURSEWARE_43_ADAPTER_REQUIRED");
     expect(shared).toContain('persistence?: "session-only" | "draft"');
+    expect(shared).toContain("draftReady?: boolean");
+    expect(shared).toContain('t(persistence === "draft" && !draftReady');
     expect(shared).toContain("markSaved");
     expect(shared).toContain("courseware43ViewportPlacement(strategy, sourceAspect(source))");
     expect(shared).toContain("Courseware43StrategyIcon");
@@ -167,6 +169,7 @@ describe("shared formal-course 4:3 adapter", () => {
     expect(pageDocEditor).toContain('const coarseLayout = view === "compare"');
     expect(pageDocEditor).toContain('const sessionAdapted = view === "adapted-4x3" && track !== "adapted-4x3"');
     expect(pageDocEditor).toContain("materializeCourseware43PageDoc");
+    expect(pageDocEditor).toContain("fourByThreeMaterializedRef.current = true");
     expect(pageDocEditor).toContain('savingFourByThree ? "adapted-4x3" : track');
     expect(sourceEditor).toContain('const coarseLayout = view === "compare"');
     expect(shared).not.toContain("fetch(");

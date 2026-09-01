@@ -39,7 +39,8 @@ export interface UnifiedPageDocEditorData {
   fourByThreeDraft: {
     doc: PageDoc;
     baseRevisionNo: number;
-  } | null;
+    materialized: boolean;
+  };
   legacyAdaptClass: LegacyCourseware43AdaptClass | null;
 }
 
@@ -106,7 +107,8 @@ export async function loadUnifiedCoursewareWorkspaceData(
         : "adapted-4x3";
     const studioPage = editorTrack === "adapted-4x3" ? editableAdaptedPage : nativePageDoc;
     const fourByThreeSource = nativePageDoc ?? studioPage;
-    if (studioPage && fourByThreeSource) {
+    const fourByThreeBaseline = adaptedPageDoc ?? fourByThreeSource;
+    if (studioPage && fourByThreeSource && fourByThreeBaseline) {
       const editorBindingUrls = editorTrack === "adapted-4x3"
         ? {
             ...(nativePageDoc?.studioPage.bindingUrls ?? {}),
@@ -137,10 +139,11 @@ export async function loadUnifiedCoursewareWorkspaceData(
           doc: fourByThreeSource.doc,
           bindingUrls: fourByThreeSource.studioPage.bindingUrls,
         },
-        fourByThreeDraft: adaptedPageDoc ? {
-          doc: adaptedPageDoc.doc,
-          baseRevisionNo: adaptedPageDoc.studioPage.activeRevision.revisionNo,
-        } : null,
+        fourByThreeDraft: {
+          doc: fourByThreeBaseline.doc,
+          baseRevisionNo: fourByThreeBaseline.studioPage.activeRevision.revisionNo,
+          materialized: Boolean(editableAdaptedPage),
+        },
         legacyAdaptClass: nativePageDoc?.studioPage.page.adaptClass ?? adaptedPageDoc?.studioPage.page.adaptClass ?? null,
       };
     }

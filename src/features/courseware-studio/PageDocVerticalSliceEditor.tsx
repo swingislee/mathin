@@ -140,7 +140,8 @@ export interface PageDocVerticalSliceEditorProps {
   fourByThreeDraft: {
     doc: PageDoc;
     baseRevisionNo: number;
-  } | null;
+    materialized: boolean;
+  };
   legacyAdaptClass: LegacyCourseware43AdaptClass | null;
 }
 
@@ -169,16 +170,20 @@ export function PageDocVerticalSliceEditor({
   const [snapToGrid, setSnapToGrid] = useState(true);
   const [message, setMessage] = useState("");
   const [replacementPreviewUrl, setReplacementPreviewUrl] = useState<string | null>(null);
-  const [saveState, setSaveState] = useState<CoursewareEditorSaveState>("saved");
   const coarseLayout = view === "compare";
   const sessionAdapted = view === "adapted-4x3" && track !== "adapted-4x3";
-  const canPersistFourByThree = coarseLayout && fourByThreeDraft !== null;
+  const canPersistFourByThree = coarseLayout;
+  const [fourByThreeMaterialized, setFourByThreeMaterialized] = useState(fourByThreeDraft.materialized);
+  const [saveState, setSaveState] = useState<CoursewareEditorSaveState>(
+    () => coarseLayout && !fourByThreeDraft.materialized ? "dirty" : "saved",
+  );
   const displayedTab: EditorTab = coarseLayout ? "layout" : activeTab === "layout" ? "adjust" : activeTab;
   const docRef = useRef(clone(initialDoc));
   const savedDocRef = useRef(clone(initialDoc));
   const revisionRef = useRef(baseRevisionNo);
-  const fourByThreeRevisionRef = useRef(fourByThreeDraft?.baseRevisionNo ?? null);
-  const sequenceRef = useRef(0);
+  const fourByThreeRevisionRef = useRef(fourByThreeDraft.baseRevisionNo);
+  const fourByThreeMaterializedRef = useRef(fourByThreeDraft.materialized);
+  const sequenceRef = useRef(coarseLayout && !fourByThreeDraft.materialized ? 1 : 0);
   const savedSequenceRef = useRef(0);
   const timerRef = useRef<number | null>(null);
   const savingRef = useRef<Promise<boolean> | null>(null);
@@ -202,7 +207,7 @@ export function PageDocVerticalSliceEditor({
     restore: restoreFromHistory,
   });
   const initialFourByThreeState = useMemo(
-    () => (fourByThreeDraft ? courseware43SessionFromPageDoc(fourByThreeDraft.doc) : null)
+    () => courseware43SessionFromPageDoc(fourByThreeDraft.doc)
       ?? courseware43SessionFromLegacyAdaptClass(legacyAdaptClass),
     [fourByThreeDraft, legacyAdaptClass],
   );
@@ -241,7 +246,7 @@ export function PageDocVerticalSliceEditor({
       setSaveState("saved");
       return true;
     }
-    if (canPersistFourByThree && !fourByThree.changed) {
+    if (canPersistFourByThree && fourByThreeMaterializedRef.current && !fourByThree.changed) {
       savedSequenceRef.current = sequenceRef.current;
       setSaveState("saved");
       return true;
@@ -249,13 +254,13 @@ export function PageDocVerticalSliceEditor({
 
     if (timerRef.current) window.clearTimeout(timerRef.current);
     const sequence = sequenceRef.current;
-    const savingFourByThree = canPersistFourByThree && fourByThreeRevisionRef.current !== null;
+    const savingFourByThree = canPersistFourByThree;
     const docSnapshot = savingFourByThree
       ? materializeCourseware43PageDoc(fourByThreeSource.doc, fourByThreeStateRef.current)
       : clone(docRef.current);
     const saveTrack: CoursewareTrack = savingFourByThree ? "adapted-4x3" : track;
     const saveBaseRevisionNo = savingFourByThree
-      ? fourByThreeRevisionRef.current as number
+      ? fourByThreeRevisionRef.current
       : revisionRef.current;
     setSaveState("saving");
     const request = saveCoursewareDraftAction({
@@ -272,6 +277,8 @@ export function PageDocVerticalSliceEditor({
       }
       if (savingFourByThree) {
         fourByThreeRevisionRef.current = result.data.revisionNo;
+        fourByThreeMaterializedRef.current = true;
+        setFourByThreeMaterialized(true);
         fourByThree.markSaved();
       } else {
         revisionRef.current = result.data.revisionNo;
@@ -502,7 +509,8 @@ export function PageDocVerticalSliceEditor({
               <div className="px-4 py-4">
                 <CoursewareFourByThreePanel
                   adapter={fourByThree}
-                  persistence={canPersistFourByThree ? "draft" : "session-only"}
+                  persistence="draft"
+                  draftReady={fourByThreeMaterialized}
                 />
               </div>
             </ScrollArea>
@@ -526,7 +534,7 @@ export function PageDocVerticalSliceEditor({
     <CoursewareEditorAdapterSurface
       toolbar={coarseLayout || sessionAdapted ? null : insertToolbar}
       saveControls={coarseLayout
-        ? canPersistFourByThree ? saveControls : <Badge variant="outline">{adaptationT("sessionOnly")}</Badge>
+        ? saveControls
         : sessionAdapted ? <Badge variant="outline">{adaptationT("sessionOnly")}</Badge> : saveControls}
       inspectorHeader={sessionAdapted ? undefined : inspectorHeader}
       inspector={inspector}
