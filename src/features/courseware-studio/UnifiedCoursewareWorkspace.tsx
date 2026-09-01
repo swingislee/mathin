@@ -20,6 +20,7 @@ import { CoursewareFormalPageRail } from "./CoursewareFormalPageRail";
 import { FittedCoursewareCanvas } from "./FittedCoursewareCanvas";
 import { PageDocVerticalSliceEditor } from "./PageDocVerticalSliceEditor";
 import { StagePreview } from "./StagePreview";
+import { SourceRuntimeFourByThreeEditor } from "./SourceRuntimeFourByThreeEditor";
 import type { UnifiedPageDocEditorData } from "./unified-workspace-data";
 
 export const UNIFIED_WORKSPACE_CANVASES = ["compare", "native-16x9", "adapted-4x3"] as const;
@@ -127,6 +128,14 @@ export async function UnifiedCoursewareWorkspace({
   const selectedDoc = pageEditor?.doc ?? (visibleCanvas === "adapted-4x3"
     ? adaptedPreview?.page.doc
     : nativePreview?.page.doc ?? adaptedPreview?.page.doc);
+  const selectedPreview = visibleCanvas === "adapted-4x3"
+    ? adaptedPreview
+    : nativePreview ?? adaptedPreview;
+  const sourceRuntimeEditor = !pageEditor
+    && selectedPreview
+    && isSourceRuntimePageDoc(selectedPreview.page.doc)
+      ? { doc: selectedPreview.page.doc, bindingUrls: selectedPreview.bindingUrls }
+      : null;
 
   const canvasItems = [
     { value: "compare", label: t("canvasCompare"), href: workspaceHref({ lectureId: detail.lecture.id, canvas: "compare", track: entryTrack, page: pageIndex, returnTo }) },
@@ -170,7 +179,7 @@ export async function UnifiedCoursewareWorkspace({
           { value: detail.variant.title },
           { value: t("pageContext", { page: pageIndex, total: pages.length }) },
         ]}
-        status={<Badge variant="outline">{t(pageEditor ? "formalEditorStatus" : "sourceReadOnlyStatus")}</Badge>}
+        status={<Badge variant="outline">{t(pageEditor ? "formalEditorStatus" : sourceRuntimeEditor ? "sourceAdaptationStatus" : "sourceReadOnlyStatus")}</Badge>}
       />}
       navigation={(
         <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
@@ -217,6 +226,13 @@ export async function UnifiedCoursewareWorkspace({
                 initialDoc={pageEditor.doc}
                 baseRevisionNo={pageEditor.baseRevisionNo}
                 bindingUrls={pageEditor.bindingUrls}
+              />
+            ) : sourceRuntimeEditor ? (
+              <SourceRuntimeFourByThreeEditor
+                key={`${sourceRuntimeEditor.doc.source.pageDatabaseId}:${sourceRuntimeEditor.doc.source.sourceContentHash}`}
+                doc={sourceRuntimeEditor.doc}
+                bindingUrls={sourceRuntimeEditor.bindingUrls}
+                view={visibleCanvas}
               />
             ) : visibleCanvas === "compare" ? (
               <div className="grid size-full min-h-0 grid-rows-2 gap-px bg-line @4xl/workspace:grid-cols-2 @4xl/workspace:grid-rows-1">

@@ -31,6 +31,7 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -82,6 +83,31 @@ export interface CoursewareEditorInsertAction {
 }
 
 export type CoursewareEditorSaveState = "saved" | "saving" | "dirty" | "error";
+export type CoursewareFormalInspectorTab = "adjust" | "layout" | "replace";
+
+export function CoursewareFormalInspectorTabs({
+  value,
+  onValueChange,
+  labels,
+  disabled = [],
+}: {
+  value: CoursewareFormalInspectorTab;
+  onValueChange: (value: CoursewareFormalInspectorTab) => void;
+  labels: Record<CoursewareFormalInspectorTab, string>;
+  disabled?: CoursewareFormalInspectorTab[];
+}) {
+  return (
+    <Tabs value={value} onValueChange={(next) => onValueChange(next as CoursewareFormalInspectorTab)}>
+      <TabsList className="grid h-8 w-full grid-cols-3">
+        {(["adjust", "layout", "replace"] as const).map((tab) => (
+          <TabsTrigger key={tab} value={tab} disabled={disabled.includes(tab)} className="px-2 text-xs">
+            {labels[tab]}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+    </Tabs>
+  );
+}
 
 export interface CoursewareWorkbenchListItem {
   id: string;

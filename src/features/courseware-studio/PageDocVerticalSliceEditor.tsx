@@ -17,9 +17,10 @@ import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import {
   CoursewareEditorSaveControls,
+  CoursewareFormalInspectorTabs,
   CoursewareInsertionToolbar,
   type CoursewareEditorSaveState,
 } from "@/features/courseware-doc/CoursewareEditorWorkbench";
@@ -40,6 +41,11 @@ import type { DocNode, PageDoc } from "@/features/courseware-doc/schema";
 import { saveCoursewareDraftAction } from "./actions";
 import type { CoursewareTrack } from "./data";
 import { StagePreview } from "./StagePreview";
+import {
+  CoursewareFourByThreeAdapter,
+  CoursewareFourByThreeComparison,
+  CoursewareFourByThreePanel,
+} from "./CoursewareFourByThreeAdapter";
 
 type EditorTab = "adjust" | "layout" | "replace";
 type ChangeKind = "content" | "layout";
@@ -123,6 +129,7 @@ export function PageDocVerticalSliceEditor({
 }: PageDocVerticalSliceEditorProps) {
   const t = useTranslations("coursewareWorkspace");
   const textEditorT = useTranslations("coursewareTextEditor");
+  const adaptationT = useTranslations("coursewareFourByThree");
   const [doc, setDoc] = useState<PageDoc>(() => clone(initialDoc));
   const [savedDoc, setSavedDoc] = useState<PageDoc>(() => clone(initialDoc));
   const [currentBaseRevisionNo, setCurrentBaseRevisionNo] = useState(baseRevisionNo);
@@ -304,13 +311,15 @@ export function PageDocVerticalSliceEditor({
   );
 
   const inspectorHeader = (
-    <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as EditorTab)}>
-      <TabsList className="grid h-8 w-full grid-cols-3">
-        <TabsTrigger value="adjust" className="px-2 text-xs">{t("prototypeTabAdjust")}</TabsTrigger>
-        <TabsTrigger value="layout" className="px-2 text-xs">{t("prototypeTabLayout")}</TabsTrigger>
-        <TabsTrigger value="replace" className="px-2 text-xs">{t("prototypeTabReplace")}</TabsTrigger>
-      </TabsList>
-    </Tabs>
+    <CoursewareFormalInspectorTabs
+      value={activeTab}
+      onValueChange={(value) => setActiveTab(value as EditorTab)}
+      labels={{
+        adjust: t("prototypeTabAdjust"),
+        layout: t("prototypeTabLayout"),
+        replace: t("prototypeTabReplace"),
+      }}
+    />
   );
 
   const inspector = (
@@ -328,15 +337,14 @@ export function PageDocVerticalSliceEditor({
           <span className="text-[11px] text-muted">{isDirty ? t("verticalSliceUnsaved") : t("verticalSliceSavedState")}</span>
         </div>
 
-        <CoursewareLayerPanel
-          items={layerItems}
-          selectedId={selectedPath}
-          onSelect={setSelectedPath}
-          onLayerChange={(nodePath, layer) => patchNode(nodePath, (node) => { node.zIndex = layer; })}
-          onVisibilityChange={(nodePath, visible) => patchNode(nodePath, (node) => { node.visible = visible; })}
-        />
-
         <TabsContent value="adjust" className="space-y-4">
+          <CoursewareLayerPanel
+            items={layerItems}
+            selectedId={selectedPath}
+            onSelect={setSelectedPath}
+            onLayerChange={(nodePath, layer) => patchNode(nodePath, (node) => { node.zIndex = layer; })}
+            onVisibilityChange={(nodePath, visible) => patchNode(nodePath, (node) => { node.visible = visible; })}
+          />
           <CoursewarePageElementInspector
             node={selected}
             onPatch={patchSelected}
@@ -347,10 +355,7 @@ export function PageDocVerticalSliceEditor({
         </TabsContent>
 
         <TabsContent value="layout" className="space-y-3">
-          <p className="flex items-start gap-2 text-xs leading-5 text-amber-700 dark:text-amber-300">
-            <CircleAlert className="mt-0.5 size-4 shrink-0" />
-            <span>{t("verticalSliceLayoutDeferred")}</span>
-          </p>
+          <CoursewareFourByThreePanel />
         </TabsContent>
 
         <TabsContent value="replace" className="space-y-3">
@@ -360,7 +365,7 @@ export function PageDocVerticalSliceEditor({
           </p>
         </TabsContent>
 
-        <div className="border-t border-line pt-4">
+        {activeTab === "adjust" ? <div className="border-t border-line pt-4">
           <Button
             type="button"
             variant="secondary"
@@ -384,7 +389,7 @@ export function PageDocVerticalSliceEditor({
           <p className="mt-3 text-xs leading-5 text-muted" role="status" aria-live="polite">
             {message || t("verticalSliceReleaseImmutable")}
           </p>
-        </div>
+        </div> : null}
       </div>
         </Tabs>
       </div>
@@ -392,17 +397,18 @@ export function PageDocVerticalSliceEditor({
   );
 
   return (
+    <CoursewareFourByThreeAdapter source={{ kind: "page-doc", doc, bindingUrls }}>
     <CoursewareEditorAdapterSurface
       toolbar={insertToolbar}
-      saveControls={saveControls}
+      saveControls={activeTab === "layout" ? <Badge variant="outline">{adaptationT("sessionOnly")}</Badge> : saveControls}
       inspectorHeader={inspectorHeader}
       inspector={inspector}
-      aspect={doc.canvas.width / doc.canvas.height}
+      aspect={activeTab === "layout" ? 16 / 9 : doc.canvas.width / doc.canvas.height}
       className="p-3"
       hostProps={{ "data-courseware-editor-adapter": "page-doc-v1" }}
       stageProps={{ "data-fitted-courseware-stage": true }}
     >
-      <StagePreview
+      {activeTab === "layout" ? <CoursewareFourByThreeComparison /> : <StagePreview
         doc={doc}
         bindingUrls={bindingUrls}
         stageMode="natural"
@@ -420,7 +426,8 @@ export function PageDocVerticalSliceEditor({
           setSelectedPath(null);
           setMessage(t("verticalSliceBackgroundDeferred"));
         }}
-      />
+      />}
     </CoursewareEditorAdapterSurface>
+    </CoursewareFourByThreeAdapter>
   );
 }

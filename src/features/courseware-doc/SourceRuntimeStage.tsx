@@ -12,6 +12,7 @@ import {
   type SourceRuntimePageDoc,
 } from "./source-runtime-schema";
 import { sourceRuntimeFourByThreeMode } from "./source-runtime-four-by-three";
+import type { SourceRuntimeFourByThreeMode } from "./source-runtime-four-by-three";
 import { useH5FrameRegistration } from "./useH5FrameRegistration";
 
 const FRAME_MESSAGE_SOURCE = "mathin-source-runtime";
@@ -26,6 +27,7 @@ export interface SourceRuntimeStageProps {
   videoControl?: DocVideoControl;
   onAdvance?: () => void;
   h5PointerBridge?: H5PointerBridgeHost;
+  sourceRuntimeFourByThreeMode?: SourceRuntimeFourByThreeMode;
 }
 
 interface RuntimePayload {
@@ -79,6 +81,7 @@ export default function SourceRuntimeStage({
   videoControl,
   onAdvance,
   h5PointerBridge,
+  sourceRuntimeFourByThreeMode: fourByThreeModeOverride,
 }: SourceRuntimeStageProps) {
   const t = useTranslations("coursewareStage");
   const frameId = `source-runtime/${doc.source.coursewareId}/${doc.source.pageDatabaseId}`;
@@ -167,7 +170,7 @@ export default function SourceRuntimeStage({
 
   const sourceAspect = doc.viewport.width / doc.viewport.height;
   const outerAspect = stageMode === "board43" ? 4 / 3 : sourceAspect;
-  const fourByThreeMode = sourceRuntimeFourByThreeMode(doc);
+  const fourByThreeMode = fourByThreeModeOverride ?? sourceRuntimeFourByThreeMode(doc);
   const directFourByThree = stageMode === "board43" && fourByThreeMode === "source-master";
   const sourceHeightPercent = directFourByThree
     ? 100
