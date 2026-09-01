@@ -4,7 +4,7 @@
 >
 > **当前用途**：指导 `DEV-SCHOOL-OPS-1` 按 Phase 0～6 建设学辅运营与教学履约主干。
 >
-> **当前里程碑**：`Phase 2 · 活动 / 测评 / 销售机会`；施工真实 Activity、Participation、AssessmentResult 与 Opportunity 业务页面和数据流。
+> **当前里程碑**：`Phase 2 · 活动 / 测评 / 销售机会`；开发端业务切片已交付，等待产品负责人检阅页面设计、参与状态、测评填写和机会流转手感。
 >
 > **权威边界**：当前唯一施工阶段仍由 `04-roadmap.md` 决定；本计划作为 R1-Live 双轨中的隔离开发预演，不自行授权生产迁移、写入或发布。
 >
@@ -884,7 +884,17 @@ Phase 0 交付方式：当前实现审阅、对象映射、复用／重构／新
 
 ## Phase 2：活动 / 测评 / 销售机会
 
-当前状态：**IN DEVELOPMENT**。本阶段只把真实业务对象、操作与结果施工到活动工作面，不新增规划展示页；完成必要窄检查后交付局域网业务链接，由产品负责人检阅页面设计、参与状态操作、测评填写和机会流转手感。
+### 开发验收切片（2026-09-02）
+
+- `/[locale]/dashboard/activities` 改为活动与转化漏斗列表：展示有效报名、到场、已测评、已建机会和已成交数量，并从单行活动进入实际工作台；
+- `/[locale]/dashboard/activities/[activityId]` 作为单次活动工作台：搜索现有学生加入 Participation，在名单行切换报名／到场／爽约／取消，选中学生后填写整体水平、可选分数、优势、待提升点和老师推荐；
+- 同一工作台在 AssessmentResult 已存在后创建 Opportunity，要求选择可跟进负责人、下一动作和执行时间；机会阶段支持新机会、联系中、有意向、已成交、已流失，开放阶段的下一动作同步回学生跟进时间；
+- `/[locale]/dashboard/opportunities` 作为全局销售机会队列：按我负责／全部可见及待推进／成交／流失筛选，直接查看老师推荐、来源活动、负责人和下一动作，并回到对应活动参与者继续处理；
+- migration `20260902000200_school_ops_phase2_activity_funnel` 新增 `assessment_results` 与 `sales_opportunities`，两表启用 RLS；受控 RPC 强制“已到场才能保存测评”“已有测评才能建机会”“开放机会必须有下一动作和时间”；
+- 本机开发库准备一场 `Phase 2 验收 · 1v1 测评` 和一名 `Phase 2 验收学生`，初始 Participation 为“已报名”，用于人工完整跑通到场、测评、机会和销售结果；该数据明确标记为本地验收数据，未创建 auth 账号；
+- 受影响 TypeScript 与 ESLint 通过；定向 Vitest 4 文件 21/21 通过；本机 SQL 断言在事务内验证测评、未到场拒绝、机会创建、下一动作投影、成交与 RLS 后 `ROLLBACK`。这些结果不替代产品负责人实际操作页面。
+
+当前状态：**DEVELOPMENT READY / AWAITING PRODUCT OWNER UI AND INTERACTION ACCEPTANCE**。提交为 `207d6e5`；当前仅本地开发 migration 和明确标记的验收数据，没有生产迁移、生产业务写入、Storage 或发布。人工验收前不进入 Phase 3。
 
 上线：
 

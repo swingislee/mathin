@@ -214,7 +214,7 @@ Phase 1～5 的本机隔离 Supabase、固定开发身份、migration LF checksu
 
 #### DEV-SCHOOL-OPS-1 · 学辅运营与教学履约主干
 
-`DEV-SCHOOL-OPS-1` 是产品负责人于 2026-09-01 选入的独立开发预演，权威里程碑见 [`30-mathin_school_ops_architecture_plan.md`](30-mathin_school_ops_architecture_plan.md)。规划型 `/dashboard/school-ops` 页面、导航和快照已删除；Phase 1 第一轮真实业务切片已在 `/dashboard/students/import` 与 `/dashboard/followups` 接入现有 ImportBatch、服务端校验／应用、负责人分配、追加式沟通和下一联系时间。产品负责人于 2026-09-02 明确要求“继续下一个阶段”，当前转入 **Phase 2 · 活动／测评／销售机会 / IN DEVELOPMENT**。Phase 1 的二进制 `.xlsx`、逐行合并决定及 Family／Contact／Lead 分表仍列为显式后续项；该推进指令不等同于这些能力已经实现，也不授权任何生产动作。
+`DEV-SCHOOL-OPS-1` 是产品负责人于 2026-09-01 选入的独立开发预演，权威里程碑见 [`30-mathin_school_ops_architecture_plan.md`](30-mathin_school_ops_architecture_plan.md)。规划型 `/dashboard/school-ops` 页面、导航和快照已删除；Phase 1 第一轮真实业务切片已在 `/dashboard/students/import` 与 `/dashboard/followups` 接入现有 ImportBatch、服务端校验／应用、负责人分配、追加式沟通和下一联系时间。产品负责人于 2026-09-02 明确要求“继续下一个阶段”；提交 `207d6e5` 现已把 **Phase 2 · 活动／测评／销售机会** 交付为 `/dashboard/activities` 活动与漏斗列表、`/dashboard/activities/[activityId]` 单次活动工作台及 `/dashboard/opportunities` 销售机会队列，本机 migration `20260902000200_school_ops_phase2_activity_funnel` 新增 AssessmentResult／Opportunity、RLS 与受控写 RPC。状态为 **DEVELOPMENT READY / AWAITING PRODUCT OWNER UI AND INTERACTION ACCEPTANCE**；机器检查只证明类型、静态合同和本机事务数据流，页面设计、交互手感与数据填写仍由产品负责人人工验收。未进入 Phase 3，没有生产迁移、数据写入、Storage 或发布动作；Phase 1 的二进制 `.xlsx`、逐行合并决定及 Family／Contact／Lead 分表仍列为显式后续项。
 
 ## 6. 原 R1 工作重新定位
 
