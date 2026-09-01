@@ -8,7 +8,7 @@
 >
 > **当前施工**：P6-AIX-2 已于 2026-08-13 关闭；当前由 R1-9/P6-9 采集 1305 讲正式来源 inventory、Storage/H5 对象审计与非执行者复核。
 >
-> **剩余项**：P6-9 全局量化验收和正式生产 release-1 重建见 doc 25 R1-9/15/18；§14 的 `DEV-CW-1` Step 0～3B 已获产品负责人确认。当前只施工 Step 4A：正式 PageDoc 与爱学习 source runtime 共用一份 4:3 策略组件和单页会话预览；魔法校 PageDoc 默认“等宽顶部”，爱学习 source runtime 默认“等高居中”。当前不保存适配草稿、不开放来源节点写态，不进入跨页替换、整讲/批量数据或生产变更，本阶段也未授权任何生产清理。
+> **剩余项**：P6-9 全局量化验收和正式生产 release-1 重建见 doc 25 R1-9/15/18；§14 的 `DEV-CW-1` Step 0～4B 已获产品负责人确认。当前只施工 Step 5A：在一个 PageDoc 样本页内只读展示背景／图片资源的页、讲、课程版本、课程族、全部引用五档影响清单与冻结引用提示。当前不上传、不替换、不回滚、不开放来源节点写态，不进入整讲/批量数据或生产变更，本阶段也未授权任何生产清理。
 >
 > **最后核对**：2026-09-01；§13 以前的来源与生产基线结论沿用原证据，§14 只依据当前仓库和本机 Docker 开发库只读核对，不代表 Xiaomi/生产事实。
 
@@ -591,9 +591,9 @@ sanitize 白名单按“移植过来的规则实际选择到的标签/属性”�
 
 ## 14. DEV-CW-1 课程产品统一课件工作区（待产品逐步确认）
 
-> **当前状态**：`STEP 4B SINGLE-PAGE 4:3 DRAFT / DEV READY / AWAITING USER AUDIT`
+> **当前状态**：`STEP 5A PAGE-CONTEXT REPLACEMENT DRY-RUN / IN PROGRESS`
 >
-> **施工授权**：产品负责人已确认 Step 0～4A，并于 2026-09-01 回复“Step 4A 验收通过，进入下一步”。Step 4B 开发端已复用现有 PageDoc 草稿合同，把对照策略物化到当前页 `adapted-4x3` 草稿，并接入自动保存与刷新恢复；策略标记位于严格 `page-doc-v1` 的适配框节点内。既有 A/B/C/D/E/F 分类只在无新标记时分别映射为等高左侧／等宽居中／等宽顶部／分层模式，避免魔法校页面重新分类；新草稿标记优先。未新增 schema/RPC。当前停在一个本机样本页人工门；不得重导数据、开放爱学习/source-runtime 节点写态、改 binding/release、跨页替换、整讲回填、批量任务、Storage 写入或触碰生产。
+> **施工授权**：产品负责人已确认 Step 0～4B，并于 2026-09-01 在 binding 继承修复后回复“验收通过，进入下一步”。Step 5A 只允许复用现有资源治理读模型，在一个本机 PageDoc 样本页展示所选背景／图片在五种范围内的命中对象、冻结引用和影响语义；本批不得上传文件、执行替换或回滚、改 binding/release、开放爱学习/source-runtime 节点写态、整讲回填、批量任务、Storage 写入或触碰生产。
 >
 > **推进原则**：一个批次只交付一个可人工审计的增量。每批机器检查通过后只记为 `READY FOR USER AUDIT`；必须收到产品负责人对该批布局和功能的明确确认，才能开始下一批。未回复、仅查看页面、机器检查通过或 Agent 自评均不构成确认。
 
@@ -753,7 +753,8 @@ Step 0 还需要产品负责人明确以下事项，规划不代替这些产品�
 | 3A-5 正式编辑态单一来源 | `USER ACCEPTED` | 2026-09-01 对 `aaa2564` 与当前 `ac07234` 的 Git blob 复核显示五个正式编辑核心文件没有回滚；实际偏差来自同一路由长期并存“真实 PageDoc 编辑器”和“无写入旧样机”两条运行分支，且前者被 `edit=page-doc`、固定讲次和固定第 5 页隐藏门限制，翻页或普通入口会静默回落旧样机。按产品负责人授权，`CoursewareCapabilityPrototype`、固定样本 gate 及其旧合同已删除；正式工作区现在统一要求 `courseware.page.edit`，按当前页和当前轨加载真实 PageDoc 草稿，来源 runtime 暂不具备 patch 协议时只显示明确只读说明，不再模拟编辑按钮。正式课与微课还共用目录标题组件，避免服务端跨边界传入松散多子节点；正式课标题编辑与画布文档类型解耦 | 2026-09-01 产品负责人回复“验收通过，进入下一个开发项” | 只授权 Step 3B；不扩展来源 patch、4:3 策略、批量或生产动作 |
 | 3B PageDoc 单页纵切复审 | `USER ACCEPTED` | 唯一 `CoursewarePageElementInspector` 负责全部 PageDoc 节点类型分发；唯一可折叠 `CoursewareLayerPanel` 在正式课与微课展示完整元素列表，支持选择、逐层上移／下移、直接输入层级和节点显隐；透明度、层级与显隐是所有 PageDoc 节点公共属性。正式课继续使用原有自动保存链，本批没有文件上传、binding 改写、schema/RPC 或共享资源替换 | 2026-09-01 产品负责人回复“下一开发项，记得遵循前面的原则”，视为本批人工通过；同时要求下一项保持逐批审计 | 只授权 Step 4A 会话预览，不授权 4:3 持久化 |
 | 4A 共享 4:3 策略与单页会话预览 | `USER ACCEPTED` | 一份 `CoursewareFourByThreeAdapter` 同时供正式 PageDoc 与爱学习 source runtime 使用，并共同拥有策略状态、分类面板、对照画布和撤销／重置。A～F／自定义已收敛为“等宽顶部、等宽居中、等高左侧、等高居中”四种带 SVG 图示的整页变换和 PageDoc 可用的“背景等高·内容等宽”分层模式；缺独立 4:3 release 时直接按来源默认版式生成会话预览，爱学习 iframe 使用固定逻辑 viewport 和宿主整体缩放 | 2026-09-01 产品负责人回复“Step 4A 验收通过，进入下一步”，确认爱学习 16:9／4:3 白边修复、魔法校默认版式及当前组件表现 | 只授权 Step 4B 单个 PageDoc 样本页草稿持久化；不授权 source-runtime 写态、整讲或批量 |
-| 4B PageDoc 单页 4:3 草稿持久化 | `DEV READY / AWAITING USER AUDIT` | `materializeCourseware43PageDoc` 把五种已确认策略物化为严格 960×720 PageDoc；完整背景与内容通过同一适配框变换，策略标记随文档保存。统一工作区同时读取当前页 native/adapted 草稿头，对照区复用 `save_cw_track_page_draft`、800ms 自动保存和保存按钮，只写 `adapted-4x3`；刷新从草稿适配框恢复策略。无新标记时，旧 A/B→等高左侧、C/E→等宽居中、D→等宽顶部、F→背景等高·内容等宽；新标记优先。未新增 schema/RPC，未改 binding/release。人工首轮打开固定样本发现 adapted 草稿引用 native 资源时被轨内解析器提前报 `COURSEWARE_DOC_BINDING_MISSING`；现统一为 adapted 显式 binding 优先、缺项只读继承 native binding，保持资源替换与布局适配正交，不复制 binding 行。本机只为《定义新运算进阶》讲次 `00d7da40-d880-47da-a82a-d91d72a2e044` 第 1 页 `0803cab4-e3df-48e8-b374-5f8fe6c3d473` 建立一个复用 native 基线的 adapted 草稿头，未批量补齐 | 打开固定样本确认 A 类首次自动选中“等高左侧”；切换非默认策略，确认“等待自动保存→已自动保存”；刷新后人工策略仍选中且 4:3 画面一致，不被旧分类覆盖；切回 16:9 确认原页不变，历史 release 不变。机器检查：原定向 Vitest 15/15；binding 继承补丁 Vitest 5/5、TypeScript、受影响 ESLint 通过 | 未确认前不进入整讲、批量、source-runtime 写态或 Step 5 |
+| 4B PageDoc 单页 4:3 草稿持久化 | `USER ACCEPTED` | `materializeCourseware43PageDoc` 把五种已确认策略物化为严格 960×720 PageDoc；完整背景与内容通过同一适配框变换，策略标记随文档保存。统一工作区同时读取当前页 native/adapted 草稿头，对照区复用 `save_cw_track_page_draft`、800ms 自动保存和保存按钮，只写 `adapted-4x3`；刷新从草稿适配框恢复策略。无新标记时，旧 A/B→等高左侧、C/E→等宽居中、D→等宽顶部、F→背景等高·内容等宽；新标记优先。未新增 schema/RPC，未改 binding/release。首轮发现 adapted 草稿引用 native 资源时被轨内解析器提前报 `COURSEWARE_DOC_BINDING_MISSING`；现统一为 adapted 显式 binding 优先、缺项只读继承 native binding，保持资源替换与布局适配正交，不复制 binding 行。本机只为《定义新运算进阶》讲次 `00d7da40-d880-47da-a82a-d91d72a2e044` 第 1 页 `0803cab4-e3df-48e8-b374-5f8fe6c3d473` 建立一个复用 native 基线的 adapted 草稿头，未批量补齐 | 2026-09-01 产品负责人在 binding 修复后回复“验收通过，进入下一步”，确认固定样本不再报 binding 缺失、资源完整、旧分类映射、自动保存、刷新恢复与 16:9 隔离 | 只授权 Step 5A 只读影响预览；不授权上传、真实替换/回滚、source-runtime 写态、整讲或批量 |
+| 5A 页面上下文资源替换影响预览 | `IN PROGRESS` | 只复用既有资源治理读模型，在当前 PageDoc 页选中背景／图片后展示页、讲、课程版本、课程族、全部引用五档范围；清单明确命中页面、当前轨、冻结引用和预期动作，不提供执行按钮 | 待提供固定本机样本和局域网入口后，由产品负责人确认范围名称、默认选择、信息密度、冻结提示和影响清单 | 未确认前不得上传、替换、回滚、写 binding/Storage/release 或扩到 source-runtime、整讲、批量 |
 
 Step 1 变更边界：只新增只读数据 loader、连续三栏工作区、画布自适应叶子、课程预览直达按钮、双语文案和定向合同；首轮修订移动课程产品主操作、增加 4:3 缺失的 16:9 降级提示，并把单轨舞台约束为可用宽高内等比完整显示。第二轮把三点菜单移入同一命令行，使对照缺轨时保留双栏空态，按不可变爱学习布局重建旧 4:3 投影，并移除中央冗余标题行和底部状态条。爱学习判定与旧权威在本机开发库 5,508 页上比对为 0 差异；普通 1,200×900 源母版直接呈现为完整 4:3，带动画、嵌入 H5、原生题型或宽画布的 424 页保留顶部兼容带。不接 editor action，不新增 schema/RPC，不写数据库/Storage，不删除讲次工作区或旧 Studio。机器证据为 TypeScript、受影响 ESLint、双语键 5,264×2、定向 Vitest 3 文件 18/18；这些证据不代表布局已经获得产品确认。
 
