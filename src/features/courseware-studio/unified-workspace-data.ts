@@ -100,6 +100,12 @@ export async function loadUnifiedCoursewareWorkspaceData(
     const studioPage = editorTrack === "adapted-4x3" ? editableAdaptedPage : nativePageDoc;
     const fourByThreeSource = nativePageDoc ?? studioPage;
     if (studioPage && fourByThreeSource) {
+      const editorBindingUrls = editorTrack === "adapted-4x3"
+        ? {
+            ...(nativePageDoc?.studioPage.bindingUrls ?? {}),
+            ...studioPage.studioPage.bindingUrls,
+          }
+        : studioPage.studioPage.bindingUrls;
       pageEditor = {
         pageDocId: studioPage.studioPage.page.id,
         pageNo: studioPage.studioPage.page.pageNo,
@@ -107,7 +113,7 @@ export async function loadUnifiedCoursewareWorkspaceData(
         track: editorTrack,
         doc: studioPage.doc,
         baseRevisionNo: studioPage.studioPage.activeRevision.revisionNo,
-        bindingUrls: studioPage.studioPage.bindingUrls,
+        bindingUrls: editorBindingUrls,
         fourByThreeSource: {
           doc: fourByThreeSource.doc,
           bindingUrls: fourByThreeSource.studioPage.bindingUrls,

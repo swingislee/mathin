@@ -10,6 +10,7 @@ describe("courseware PageDoc formal editor", () => {
     expect(loader).toContain('loadCoursewareStudioPage(lectureId, pageDocId, "native-16x9")');
     expect(loader).toContain('loadCoursewareStudioPage(lectureId, pageDocId, "adapted-4x3")');
     expect(loader).toContain("fourByThreeDraft: adaptedPageDoc");
+    expect(loader).toContain("...(nativePageDoc?.studioPage.bindingUrls ?? {})");
     expect(loader).not.toContain("PAGE_DOC_VERTICAL_SLICE_SAMPLE");
     expect(loader).not.toContain("rawSearchParams.edit");
     expect(workspace).not.toContain('query.set("edit", "page-doc")');
