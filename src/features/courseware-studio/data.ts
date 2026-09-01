@@ -253,6 +253,8 @@ export interface SharedAssetUsage {
   courseId: string;
   courseTitle: string;
   productCode: string;
+  familyId: string;
+  catalogVersionId: string;
   pinnedRevisionId: string | null;
   resolvedRevisionId: string;
   frozenSessionCount: number;
@@ -340,6 +342,17 @@ export async function loadCoursewareSharedAssetDetail(assetId: string, track: Co
 
   const { data: signed, error: signedError } = await supabase.storage.from("cw-objects").createSignedUrl(object.storage_path, SIGNED_URL_TTL_SECONDS);
   if (signedError) throw new Error(signedError.message);
+  const usageCourseIds = [...new Set((usageRows ?? []).map((usage) => usage.course_id))];
+  const usageCourses = await collectPostgrestRowsInBatches<string, {
+    id: string;
+    family_id: string;
+    catalog_version_id: string;
+  }>(usageCourseIds, (batch) => supabase
+    .from("courses")
+    .select("id,family_id,catalog_version_id")
+    .in("id", batch)
+    .returns<Array<{ id: string; family_id: string; catalog_version_id: string }>>());
+  const courseScopeById = new Map(usageCourses.map((course) => [course.id, course]));
   return {
     track,
     asset: {
@@ -355,22 +368,28 @@ export async function loadCoursewareSharedAssetDetail(assetId: string, track: Co
       height: object.height ?? 0,
       previewUrl: signed?.signedUrl ?? null,
     },
-    usages: (usageRows ?? []).map((usage): SharedAssetUsage => ({
-      bindingId: usage.binding_id,
-      bindingKey: usage.binding_key,
-      pageDocId: usage.page_doc_id,
-      pageNo: usage.page_no,
-      pageTitle: usage.page_title,
-      lectureId: usage.lecture_id,
-      lectureNo: usage.lecture_no,
-      lectureName: usage.lecture_name,
-      courseId: usage.course_id,
-      courseTitle: usage.course_title,
-      productCode: usage.product_code,
-      pinnedRevisionId: usage.pinned_revision_id,
-      resolvedRevisionId: usage.resolved_revision_id,
-      frozenSessionCount: usage.frozen_session_count,
-    })),
+    usages: (usageRows ?? []).map((usage): SharedAssetUsage => {
+      const courseScope = courseScopeById.get(usage.course_id);
+      if (!courseScope) throw new Error("COURSE_SCOPE_MISSING");
+      return {
+        bindingId: usage.binding_id,
+        bindingKey: usage.binding_key,
+        pageDocId: usage.page_doc_id,
+        pageNo: usage.page_no,
+        pageTitle: usage.page_title,
+        lectureId: usage.lecture_id,
+        lectureNo: usage.lecture_no,
+        lectureName: usage.lecture_name,
+        courseId: usage.course_id,
+        courseTitle: usage.course_title,
+        productCode: usage.product_code,
+        familyId: courseScope.family_id,
+        catalogVersionId: courseScope.catalog_version_id,
+        pinnedRevisionId: usage.pinned_revision_id,
+        resolvedRevisionId: usage.resolved_revision_id,
+        frozenSessionCount: usage.frozen_session_count,
+      };
+    }),
     batches: (batchRows ?? []).map((batch): SharedAssetReplacementBatch => ({
       id: batch.id,
       mode: batch.mode as SharedAssetReplacementBatch["mode"],

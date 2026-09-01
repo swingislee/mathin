@@ -227,6 +227,8 @@ export async function UnifiedCoursewareWorkspace({
                 initialDoc={pageEditor.doc}
                 baseRevisionNo={pageEditor.baseRevisionNo}
                 bindingUrls={pageEditor.bindingUrls}
+                imageAssetUsage={pageEditor.imageAssetUsage}
+                replacementContext={pageEditor.replacementContext}
                 fourByThreeSource={pageEditor.fourByThreeSource}
                 fourByThreeDraft={pageEditor.fourByThreeDraft}
                 legacyAdaptClass={pageEditor.legacyAdaptClass}

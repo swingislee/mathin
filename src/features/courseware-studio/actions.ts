@@ -15,7 +15,12 @@ import { COMMON_CODES, intInRange, parse, requiredText, text, uuid } from "@/fea
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
-import { COURSEWARE_TRACKS, type CoursewareTrack } from "./data";
+import {
+  COURSEWARE_TRACKS,
+  loadCoursewareSharedAssetDetail,
+  type CoursewareSharedAssetDetail,
+  type CoursewareTrack,
+} from "./data";
 
 type RpcClient = Awaited<ReturnType<typeof authorizedClient>>["supabase"];
 function rpc<T>(client: RpcClient, name: string, args: Record<string, unknown>) {
@@ -122,6 +127,26 @@ export async function renameCoursewarePageAction(input: { pageDocId: string; tit
     return { ok: true };
   } catch (error) {
     return actionError(error, ["PAGE_NOT_FOUND", "RELATION_REQUIRED", "RESPONSIBILITY_REQUIRED", ...COMMON_CODES]);
+  }
+}
+
+const replacementImpactSchema = z.object({
+  sharedAssetId: uuid,
+  track: trackSchema,
+});
+
+/** Step 5A read model: no upload, binding mutation, replacement batch, or release write. */
+export async function previewCoursewareImageReplacementImpactAction(
+  input: z.input<typeof replacementImpactSchema>,
+): Promise<ActionResult<CoursewareSharedAssetDetail>> {
+  try {
+    const value = parse(replacementImpactSchema, input);
+    await authorizedClient("courseware.asset.manage");
+    const detail = await loadCoursewareSharedAssetDetail(value.sharedAssetId, value.track);
+    if (!detail) throw new Error("ASSET_NOT_FOUND");
+    return { ok: true, data: detail };
+  } catch (error) {
+    return actionError(error, ["ASSET_NOT_FOUND", "COURSE_SCOPE_MISSING", ...COMMON_CODES]);
   }
 }
 

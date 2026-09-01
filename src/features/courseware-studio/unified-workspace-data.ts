@@ -10,6 +10,7 @@ import {
   loadCoursewareStudioPage,
   loadLecturePreview,
   parseCoursewareTrack,
+  type StudioImageAssetUsage,
   type CoursewareTrack,
 } from "./data";
 
@@ -25,6 +26,12 @@ export interface UnifiedPageDocEditorData {
   doc: PageDoc;
   baseRevisionNo: number;
   bindingUrls: ResolvedBindingUrls;
+  imageAssetUsage: Record<string, StudioImageAssetUsage>;
+  replacementContext: {
+    lectureId: string;
+    courseId: string;
+    familyId: string;
+  };
   fourByThreeSource: {
     doc: PageDoc;
     bindingUrls: ResolvedBindingUrls;
@@ -106,6 +113,12 @@ export async function loadUnifiedCoursewareWorkspaceData(
             ...studioPage.studioPage.bindingUrls,
           }
         : studioPage.studioPage.bindingUrls;
+      const editorImageAssetUsage = editorTrack === "adapted-4x3"
+        ? {
+            ...(nativePageDoc?.studioPage.imageAssetUsage ?? {}),
+            ...studioPage.studioPage.imageAssetUsage,
+          }
+        : studioPage.studioPage.imageAssetUsage;
       pageEditor = {
         pageDocId: studioPage.studioPage.page.id,
         pageNo: studioPage.studioPage.page.pageNo,
@@ -114,6 +127,12 @@ export async function loadUnifiedCoursewareWorkspaceData(
         doc: studioPage.doc,
         baseRevisionNo: studioPage.studioPage.activeRevision.revisionNo,
         bindingUrls: editorBindingUrls,
+        imageAssetUsage: editorImageAssetUsage,
+        replacementContext: {
+          lectureId: detail.lecture.id,
+          courseId: detail.variant.id,
+          familyId: detail.family.id,
+        },
         fourByThreeSource: {
           doc: fourByThreeSource.doc,
           bindingUrls: fourByThreeSource.studioPage.bindingUrls,

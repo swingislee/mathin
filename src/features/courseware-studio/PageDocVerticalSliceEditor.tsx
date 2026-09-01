@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  CircleAlert,
   FileCode2,
   Gamepad2,
   Grid3X3,
@@ -54,6 +53,9 @@ import {
   CoursewareFourByThreePanel,
   useCoursewareFourByThreeAdapter,
 } from "./CoursewareFourByThreeAdapter";
+import { CoursewareAssetImpactPreview } from "./asset-replacement/CoursewareAssetImpactPreview";
+import type { CoursewareReplacementImpactContext } from "./asset-replacement/impact-scope";
+import type { StudioImageAssetUsage } from "./data";
 
 type EditorTab = "adjust" | "layout" | "replace";
 type ChangeKind = "content" | "layout";
@@ -127,6 +129,8 @@ export interface PageDocVerticalSliceEditorProps {
   initialDoc: PageDoc;
   baseRevisionNo: number;
   bindingUrls: ResolvedBindingUrls;
+  imageAssetUsage: Record<string, StudioImageAssetUsage>;
+  replacementContext: Omit<CoursewareReplacementImpactContext, "pageDocId">;
   fourByThreeSource: {
     doc: PageDoc;
     bindingUrls: ResolvedBindingUrls;
@@ -145,6 +149,8 @@ export function PageDocVerticalSliceEditor({
   initialDoc,
   baseRevisionNo,
   bindingUrls,
+  imageAssetUsage,
+  replacementContext,
   fourByThreeSource,
   fourByThreeDraft,
   legacyAdaptClass,
@@ -156,6 +162,7 @@ export function PageDocVerticalSliceEditor({
   const [savedDoc, setSavedDoc] = useState<PageDoc>(() => clone(initialDoc));
   const [currentBaseRevisionNo, setCurrentBaseRevisionNo] = useState(baseRevisionNo);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  const [backgroundSelected, setBackgroundSelected] = useState(false);
   const [activeTab, setActiveTab] = useState<EditorTab>("adjust");
   const [snapToGrid, setSnapToGrid] = useState(true);
   const [message, setMessage] = useState("");
@@ -199,6 +206,10 @@ export function PageDocVerticalSliceEditor({
   }, initialFourByThreeState, handleFourByThreeStateChange);
 
   const selected = useMemo(() => selectedPath ? visit(doc.nodes, selectedPath) : null, [doc, selectedPath]);
+  const selectedImageBindingKey = backgroundSelected
+    ? doc.canvas.backgroundBindingKey
+    : selected?.resources.find((resource) => resource.kind === "image")?.bindingKey ?? null;
+  const selectedImageAsset = selectedImageBindingKey ? imageAssetUsage[selectedImageBindingKey] ?? null : null;
   const layerItems = useMemo(() => collectLayerItems(doc.nodes), [doc.nodes]);
   const contentChanged = changeSnapshot(doc, "content") !== changeSnapshot(savedDoc, "content");
   const layoutChanged = changeSnapshot(doc, "layout") !== changeSnapshot(savedDoc, "layout");
@@ -309,6 +320,11 @@ export function PageDocVerticalSliceEditor({
     patchNode(selectedPath, mutate);
   };
 
+  const selectNode = useCallback((nodePath: string) => {
+    setBackgroundSelected(false);
+    setSelectedPath(nodePath);
+  }, []);
+
   const handleNodeTransformChange = useCallback((
     nodePath: string,
     patch: Partial<Pick<DocNode["transform"], "x" | "y" | "width" | "height">>,
@@ -410,7 +426,7 @@ export function PageDocVerticalSliceEditor({
           <CoursewareLayerPanel
             items={layerItems}
             selectedId={selectedPath}
-            onSelect={setSelectedPath}
+            onSelect={selectNode}
             onLayerChange={(nodePath, layer) => patchNode(nodePath, (node) => { node.zIndex = layer; })}
             onVisibilityChange={(nodePath, visible) => patchNode(nodePath, (node) => { node.visible = visible; })}
           />
@@ -431,10 +447,12 @@ export function PageDocVerticalSliceEditor({
         </TabsContent> : null}
 
         {!coarseLayout ? <TabsContent value="replace" className="space-y-3">
-          <p className="flex items-start gap-2 text-xs leading-5 text-amber-700 dark:text-amber-300">
-            <CircleAlert className="mt-0.5 size-4 shrink-0" />
-            <span>{t("verticalSliceReplacementDeferred")}</span>
-          </p>
+          <CoursewareAssetImpactPreview
+            key={`${track}:${selectedImageAsset?.sharedAssetId ?? "no-asset"}`}
+            asset={selectedImageAsset}
+            track={track}
+            context={{ pageDocId, ...replacementContext }}
+          />
         </TabsContent> : null}
 
         {displayedTab === "adjust" ? <div className="border-t border-line pt-4">
@@ -495,15 +513,17 @@ export function PageDocVerticalSliceEditor({
         interactive={false}
         playAutoInteractions={false}
         selectedNodePath={selectedPath}
-        onNodeSelect={setSelectedPath}
+        onNodeSelect={selectNode}
         onNodeTransformChange={handleNodeTransformChange}
         onNodeTextChange={handleNodeTextChange}
         snapToGrid={snapToGrid}
         nodeMoveLabel={textEditorT("moveElement")}
         nodeResizeLabel={textEditorT("resizeElement")}
         onBackgroundSelect={() => {
+          setBackgroundSelected(true);
           setSelectedPath(null);
-          setMessage(t("verticalSliceBackgroundDeferred"));
+          setActiveTab("replace");
+          setMessage("");
         }}
       />}
     </CoursewareEditorAdapterSurface>

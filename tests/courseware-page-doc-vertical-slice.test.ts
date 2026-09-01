@@ -39,4 +39,24 @@ describe("courseware PageDoc formal editor", () => {
     expect(actions).toMatch(/authorizedClient\("courseware\.page\.edit"\)[\s\S]*save_cw_track_page_draft/);
     expect(actions).toContain('"RELATION_REQUIRED"');
   });
+
+  it("shows the Step 5A replacement impact from the selected PageDoc resource without write controls", () => {
+    const editor = readFileSync("src/features/courseware-studio/PageDocVerticalSliceEditor.tsx", "utf8");
+    const preview = readFileSync("src/features/courseware-studio/asset-replacement/CoursewareAssetImpactPreview.tsx", "utf8");
+    const actions = readFileSync("src/features/courseware-studio/actions.ts", "utf8");
+    const actionStart = actions.indexOf("export async function previewCoursewareImageReplacementImpactAction");
+    const actionEnd = actions.indexOf("const createSpatialPageSchema", actionStart);
+    const readOnlyAction = actions.slice(actionStart, actionEnd);
+
+    expect(editor).toContain("CoursewareAssetImpactPreview");
+    expect(editor).toContain("selectedImageAsset");
+    expect(preview).toContain("COURSEWARE_REPLACEMENT_IMPACT_SCOPES");
+    expect(preview).toContain("replacementReadOnlyHint");
+    expect(preview).not.toContain("stageCoursewareImageReplacementAction");
+    expect(preview).not.toContain("applyCoursewareImageReplacementAction");
+    expect(preview).not.toContain('type="file"');
+    expect(readOnlyAction).toContain("loadCoursewareSharedAssetDetail");
+    expect(readOnlyAction).not.toContain("apply_cw_asset_replacement");
+    expect(readOnlyAction).not.toContain("rollback_cw_asset_replacement");
+  });
 });
