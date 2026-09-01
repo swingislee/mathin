@@ -14,7 +14,7 @@
 >
 > **双轨执行**：生产端由 1 名正式教师在现有正式班级、课次和花名册上持续试用，优先反馈 P0/核心 P1；开发端可并行尝试产品负责人选中的新功能。新功能只有在开发目标完成受影响检查并由产品负责人初步验收后，才成为生产候选；完成精确版本/迁移登记、生产 preflight、可回退发布和 postflight 后，才能记为生产已部署。开发通过不等于生产通过，新功能也不改变 Gate 2 的点名与权限退出条件。
 >
-> **核对日期**：2026-09-01；生产事实仍沿用 2026-08-30 已确认的 ledger/head=`236 / 20260830000700_teacher_microcourse_editor_unification`、应用 `a165004…`、讲次课件预览性能 hotfix 及去标识化 postflight；`76f0f9a…` 与 ledger 236 在该轮 preflight 前已运行，不把此前发布归因于该 hotfix。2026-09-01 新增 `DEV-SCHOOL-OPS-1` Phase 0 隔离开发登记，没有 schema、数据库、Storage 或生产写入。其余依据 active doc 00/25/30、代码与迁移、本机隔离验证、Xiaomi 运行核查和 `mathin-R1-Live-讨论稿.md`。
+> **核对日期**：2026-09-01；生产事实仍沿用 2026-08-30 已确认的 ledger/head=`236 / 20260830000700_teacher_microcourse_editor_unification`、应用 `a165004…`、讲次课件预览性能 hotfix 及去标识化 postflight；`76f0f9a…` 与 ledger 236 在该轮 preflight 前已运行，不把此前发布归因于该 hotfix。`DEV-SCHOOL-OPS-1` 已按产品负责人纠正删除规划型产品页并进入 Phase 1 真实业务施工，没有生产 schema、数据库、Storage 或写入。其余依据 active doc 00/25/30、代码与迁移、本机隔离验证、Xiaomi 运行核查和 `mathin-R1-Live-讨论稿.md`。
 
 ## 1. 两个交付事件
 
@@ -214,7 +214,7 @@ Phase 1～5 的本机隔离 Supabase、固定开发身份、migration LF checksu
 
 #### DEV-SCHOOL-OPS-1 · 学辅运营与教学履约主干
 
-`DEV-SCHOOL-OPS-1` 是产品负责人于 2026-09-01 选入的独立开发预演，权威里程碑见 [`30-mathin_school_ops_architecture_plan.md`](30-mathin_school_ops_architecture_plan.md)。**Phase 0 · 流程校准与模型核验** 已完成开发端实现与机器检查：现有 Student、Followup、Activity、Enrollment、Class、Session、Attendance、导入批次、工作项与学年已完成复用/重构/新增核对，`/[locale]/dashboard/school-ops` 接入真实路由和当前账号经 RLS 可见的现有事实。Phase 0 没有新增 migration、业务数据写入或 Storage 操作，当前为 **DEVELOPMENT READY / AWAITING PRODUCT OWNER LAN ACCEPTANCE**；产品负责人确认主流程、入口、角色边界与对象关系后才进入 Phase 1。
+`DEV-SCHOOL-OPS-1` 是产品负责人于 2026-09-01 选入的独立开发预演，权威里程碑见 [`30-mathin_school_ops_architecture_plan.md`](30-mathin_school_ops_architecture_plan.md)。Phase 0 的 Student、Followup、Activity、Enrollment、Class、Session、Attendance、导入批次、工作项与学年核对只作为规划证据；产品负责人明确拒绝把规划说明和对象映射写入 Mathin，错误新增的 `/dashboard/school-ops` 页面、导航入口与数据快照已删除。当前进入 **Phase 1 · 数据收件箱 + 线索工作台 / IN DEVELOPMENT**，交付物必须让用户在真实业务页完成名单导入、去重确认、负责人分配、跟进记录和下一动作设置；未通过局域网人工操作验收前不进入 Phase 2。
 
 ## 6. 原 R1 工作重新定位
 
