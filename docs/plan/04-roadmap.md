@@ -214,7 +214,7 @@ Phase 1～5 的本机隔离 Supabase、固定开发身份、migration LF checksu
 
 #### DEV-SCHOOL-OPS-1 · 学辅运营与教学履约主干
 
-`DEV-SCHOOL-OPS-1` 是产品负责人于 2026-09-01 选入的独立开发预演，权威里程碑见 [`30-mathin_school_ops_architecture_plan.md`](30-mathin_school_ops_architecture_plan.md)。当前只施工 **Phase 0 · 流程校准与模型核验**：核对现有 Student、Followup、Activity、Enrollment、Class、Session、Attendance、导入批次、工作项与学年实现，明确复用/重构/新增边界，并提供接入真实路由和当前账号可见数据的局域网审阅页。Phase 0 不新增 migration，不修改本机或生产业务数据，不触碰 Storage；机器检查通过后必须停在开发端人工验收门，产品负责人确认主流程、入口、角色边界与对象关系后才进入 Phase 1。
+`DEV-SCHOOL-OPS-1` 是产品负责人于 2026-09-01 选入的独立开发预演，权威里程碑见 [`30-mathin_school_ops_architecture_plan.md`](30-mathin_school_ops_architecture_plan.md)。**Phase 0 · 流程校准与模型核验** 已完成开发端实现与机器检查：现有 Student、Followup、Activity、Enrollment、Class、Session、Attendance、导入批次、工作项与学年已完成复用/重构/新增核对，`/[locale]/dashboard/school-ops` 接入真实路由和当前账号经 RLS 可见的现有事实。Phase 0 没有新增 migration、业务数据写入或 Storage 操作，当前为 **DEVELOPMENT READY / AWAITING PRODUCT OWNER LAN ACCEPTANCE**；产品负责人确认主流程、入口、角色边界与对象关系后才进入 Phase 1。
 
 ## 6. 原 R1 工作重新定位
 

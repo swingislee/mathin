@@ -31,6 +31,7 @@ import {
   TicketCheck,
   UserCog,
   Users,
+  Waypoints,
 } from "lucide-react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
@@ -53,6 +54,7 @@ import { resolveActiveNavHref, type SchoolNavItem } from "./nav";
 
 const ICONS: Record<string, ComponentType<{ size?: number; strokeWidth?: number }>> = {
   home: LayoutDashboard,
+  schoolOps: Waypoints,
   followups: PhoneForwarded,
   students: Users,
   coordination: Handshake,

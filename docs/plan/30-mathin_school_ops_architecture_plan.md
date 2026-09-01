@@ -4,14 +4,14 @@
 >
 > **当前用途**：指导 `DEV-SCHOOL-OPS-1` 按 Phase 0～6 建设学辅运营与教学履约主干。
 >
-> **当前里程碑**：`Phase 0 · 流程校准与模型核验`；完成开发端审阅页后等待产品负责人局域网人工验收。
+> **当前里程碑**：`Phase 0 · 流程校准与模型核验`；开发端审阅页与机器检查已完成，等待产品负责人局域网人工验收。
 >
 > **权威边界**：当前唯一施工阶段仍由 `04-roadmap.md` 决定；本计划作为 R1-Live 双轨中的隔离开发预演，不自行授权生产迁移、写入或发布。
 >
 > **最后核对**：2026-09-01。
 
-> 文档定位：用于指导 Mathin 后续学辅运营、销售转化、报名入班与教学履约链路的整体建设。  
-> 当前阶段重点：先建立可真实运行的业务主干，再逐步补齐页面、统计与自动化。  
+> 文档定位：用于指导 Mathin 后续学辅运营、销售转化、报名入班与教学履约链路的整体建设。
+> 当前阶段重点：先建立可真实运行的业务主干，再逐步补齐页面、统计与自动化。
 > 适用对象：产品规划、Agent 开发、运营负责人、学辅团队、教务/教学团队。
 
 ---
@@ -829,6 +829,23 @@ Agent 需要完成：
 - 核心数据关系图
 - MVP 实施顺序
 
+### Phase 0 实施核对（2026-09-01）
+
+| 领域 | 当前事实 | Phase 1+ 处理 |
+| --- | --- | --- |
+| 身份与客户 | `students` 同时承载学习主体、线索状态和家长文本；`student_guardians` 只表示已认证账号的监护关系 | 保留稳定 Student；新增 Family、Contact、Lead 边界 |
+| 名单导入 | `data_import_batches` / `data_import_rows` 已有 dry-run、行审计、文本摘要和幂等应用 | 扩展来源、原始行、匹配决定和待处理状态，不另建平行导入器 |
+| 沟通与行动 | `student_follow_ups` 保存追加式沟通历史，`students.next_follow_up_at` 与 `work_items` 分散承载下一步行动 | Communication 保持不可覆盖历史；NextAction 收敛到可分派 work item |
+| 活动与测评 | `activities` / `activity_registrations` 已存在，参与状态较窄；没有独立 `AssessmentResult` | 扩展 Participation；测评结果新增为独立事实 |
+| 机会与商业报名 | 没有独立 Opportunity，也没有分班前商业确认的 Enrollment | 新建 Opportunity / Enrollment，保留可审计成交与交接动作 |
+| 分班关系 | 现有 `enrollments` 是 `classroom_id + student_id`，状态表达在班、结业、转出和退班 | 语义上校准为 ClassMembership；不得把它直接复用为商业 Enrollment |
+| 教学履约 | `classrooms` / `class_sessions` / `session_attendance` 已形成班级、课次、考勤主干 | 直接复用，只补跨阶段关联、缺席派生行动与必要状态合同 |
+| 学年与年级 | `school_years` / `school_terms` / `student_grade_history` 已形成时间与年级历史 | 直接复用为运营对象的时间锚点，不复制易漂移年级文本 |
+
+MVP 顺序严格按本计划 Phase 1～6 执行：“数据收件箱与线索工作台 → 活动／测评／销售机会 → 成交／报名／分班 → 课次与考勤 → 续报与长期运营 → 管理分析与自动化”。Phase 0 审阅页位于 `/[locale]/dashboard/school-ops`，只读取当前账号经 RLS 可见的现有事实；没有 migration、业务数据写入、Storage 操作或生产动作。
+
+当前状态：**DEVELOPMENT READY / AWAITING PRODUCT OWNER LAN ACCEPTANCE**。进入 Phase 1 前仍需产品负责人确认真实外部名单列与去重规则、常见家庭关系、测评最小结构化字段，以及商业 Enrollment 的确认／取消／退款／改班授权动作。
+
 局域网验收页：提供一个可访问的**运营主流程原型/审阅页**，使用现有组件和少量真实/匿名样例数据，把“名单导入 → 跟进 → 活动/测评 → 销售机会 → 成交 → 待分班 → 班级/考勤”的入口、对象关系与关键跳转实际摆出来。此阶段重点验证信息架构和工作流是否符合真实工作，而不是验证视觉完成度。
 
 人工验收：用户从局域网设备打开该页面，确认主流程、入口划分、角色边界和关键对象关系后，才进入 Phase 1。
@@ -976,8 +993,8 @@ Agent 需要完成：
 
 ## 17.2 降低录入完整度要求
 
-Lead 可以只有电话。  
-Student 可以先没有学校。  
+Lead 可以只有电话。
+Student 可以先没有学校。
 Activity 可以先只填名称和日期。
 
 先让业务跑起来，再逐步完善数据。

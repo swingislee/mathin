@@ -121,6 +121,18 @@ export const FINANCE_NAV_PERMS: readonly PermissionKey[] = [
 /** 学生花名册：分配制（assigned）或全量（all）任一即放行，与 students 页自身的 requireAnyPerm 同口径。 */
 const STUDENTS_PERMS: readonly PermissionKey[] = ["student.view.assigned", "student.view.all"];
 
+/** Phase 0 运营主流程审阅：任何真实参与学辅或教学履约的员工都可进入。 */
+export const SCHOOL_OPS_REVIEW_PERMS: readonly PermissionKey[] = [
+  "student.view.assigned",
+  "student.view.all",
+  "followup.view",
+  "activity.register",
+  "class.view.mine",
+  "class.view.all",
+  "class.manage",
+  "attendance.mark",
+];
+
 /**
  * 班级：我的班级、全量查看、管理权限任一即放行——resolve_classroom_scope 用这三者中任一
  * 即可解出 all/teaching 之外的可用 scope（support 纯靠 assignment 关系，无法静态权限判定，
@@ -151,6 +163,14 @@ export const DASHBOARD_ROUTES = {
     createSurface: "none",
     // 总览是侧栏唯一的顶层入口，不再与领域功能混成“工作”分组。
     nav: { labelKey: "home" },
+  },
+  schoolOps: {
+    href: "/dashboard/school-ops",
+    kind: "workflow",
+    environments: STAFF_ONLY,
+    permissionAny: SCHOOL_OPS_REVIEW_PERMS,
+    createSurface: "none",
+    nav: { labelKey: "schoolOps", group: "subjectOperations" },
   },
   coordination: {
     href: "/dashboard/coordination",
