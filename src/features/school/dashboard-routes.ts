@@ -211,10 +211,27 @@ export const DASHBOARD_ROUTES = {
     href: "/dashboard/activities",
     kind: "collection",
     environments: STAFF_ONLY,
-    permission: "activity.register",
+    permissionAny: ["activity.register", "review.write", "followup.view"],
     // 活动字段仍属轻量范围 → ActivitiesManager Dialog（§5.9）。
     createSurface: "dialog",
     nav: { labelKey: "activities", group: "subjectOperations" },
+  },
+  activityDetail: {
+    hrefPattern: "/dashboard/activities/[activityId]",
+    kind: "object",
+    environments: STAFF_ONLY,
+    permissionAny: ["activity.register", "review.write", "followup.view"],
+    createSurface: "parent",
+    creationOwner: "activities",
+    parent: "activities",
+  },
+  opportunities: {
+    href: "/dashboard/opportunities",
+    kind: "queue",
+    environments: STAFF_ONLY,
+    permission: "followup.view",
+    createSurface: "derived",
+    nav: { labelKey: "opportunities", group: "subjectOperations" },
   },
 
   // ── 教学 ────────────────────────────────────────────────────────────────

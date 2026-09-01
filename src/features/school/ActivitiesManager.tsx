@@ -1,33 +1,38 @@
 "use client";
 
-import { LoaderCircle, Plus, Trash2 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { ArrowRight, LoaderCircle, Plus, Trash2 } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { Link, useRouter } from "@/i18n/navigation";
 import type { ActionResult } from "@/lib/action-result";
 import {
-  bookActivityAction,
   createActivityAction,
   deleteActivityAction,
-  markActivityResultAction,
-  searchStudentsForActivity,
   updateActivityAction,
   type ActivityInput,
 } from "./activity-actions";
 import { ACTIVITY_KINDS } from "./activity-kinds";
 import type { ActivityRow } from "./activities";
 import { inputClass } from "./controls";
-import { DashboardCommandActions, DashboardCommandPanel, DashboardEmptyCard, DashboardPage } from "./dashboard-page";
+import {
+  DashboardCommandActions,
+  DashboardCommandPanel,
+  DashboardPage,
+  DashboardSection,
+  DashboardTableShell,
+  StatusStrip,
+} from "./dashboard-page";
 
 const empty: ActivityInput = {
   kind: "trial_class",
@@ -49,12 +54,15 @@ export function ActivitiesManager({
   title,
   activities,
   canManage,
+  canViewOpportunities,
 }: {
   title: string;
   activities: ActivityRow[];
   canManage: boolean;
+  canViewOpportunities: boolean;
 }) {
   const t = useTranslations("school.activities");
+  const locale = useLocale();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [editing, setEditing] = useState<ActivityRow | null | "new">(null);
@@ -69,24 +77,88 @@ export function ActivitiesManager({
       toast.error(result.code === "ACTIVITY_FULL" ? t("full") : t("actionFailed"));
     }
   });
-  const upcoming = activities.filter((activity) => new Date(activity.scheduledAt) >= new Date());
-  const past = activities.filter((activity) => new Date(activity.scheduledAt) < new Date()).reverse();
+  const registrations = activities.flatMap((activity) => activity.registrations);
+  const funnel = {
+    booked: registrations.filter((registration) => registration.status !== "cancelled").length,
+    attended: registrations.filter((registration) => registration.status === "attended").length,
+    assessed: registrations.filter((registration) => registration.assessment !== null).length,
+    opportunities: registrations.filter((registration) => registration.opportunity !== null).length,
+    won: registrations.filter((registration) => registration.opportunity?.stage === "won").length,
+  };
 
   return <DashboardPage
     title={title}
-    commandPanel={canManage ? <DashboardCommandPanel>
+    description={t("intro")}
+    commandPanel={canManage || canViewOpportunities ? <DashboardCommandPanel>
       <DashboardCommandActions>
-        <Button size="sm" onClick={() => setEditing("new")} className="gap-1"><Plus size={15} />{t("new")}</Button>
+        {canViewOpportunities ? <Link href="/dashboard/opportunities" className={buttonVariants({ size: "sm", variant: "secondary" })}>{t("openOpportunityQueue")}</Link> : null}
+        {canManage ? <Button size="sm" onClick={() => setEditing("new")} className="gap-1"><Plus size={15} />{t("new")}</Button> : null}
       </DashboardCommandActions>
     </DashboardCommandPanel> : undefined}
   >
-    <div className="space-y-6">
-      <Group title={t("upcoming")} rows={upcoming} canManage={canManage} pending={pending} edit={setEditing} requestDelete={setDeleteTarget} run={run} />
-      <details>
-        <summary className="cursor-pointer text-sm text-muted">{t("past", { count: past.length })}</summary>
-        <div className="mt-4"><Group title="" rows={past} canManage={canManage} pending={pending} edit={setEditing} requestDelete={setDeleteTarget} run={run} /></div>
-      </details>
-    </div>
+    <DashboardSection title={t("workspaceListTitle")} description={t("workspaceListHint")}>
+      <StatusStrip
+        className="mb-3"
+        items={[
+          { label: t("funnelBooked"), value: funnel.booked },
+          { label: t("funnelAttended"), value: funnel.attended },
+          { label: t("funnelAssessed"), value: funnel.assessed },
+          { label: t("funnelOpportunity"), value: funnel.opportunities },
+          { label: t("funnelWon"), value: funnel.won },
+        ]}
+      />
+      <DashboardTableShell>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>{t("time")}</TableHead>
+              <TableHead>{t("activity")}</TableHead>
+              <TableHead>{t("participation")}</TableHead>
+              <TableHead>{t("assessment")}</TableHead>
+              <TableHead>{t("opportunity")}</TableHead>
+              <TableHead className="text-right">{t("actions")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {activities.map((activity) => {
+              const booked = activity.registrations.filter((registration) => registration.status !== "cancelled").length;
+              const attended = activity.registrations.filter((registration) => registration.status === "attended").length;
+              const assessed = activity.registrations.filter((registration) => registration.assessment).length;
+              const opportunities = activity.registrations.filter((registration) => registration.opportunity).length;
+              return <TableRow key={activity.id}>
+                <TableCell className="whitespace-nowrap text-sm">
+                  {new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(activity.scheduledAt))}
+                </TableCell>
+                <TableCell>
+                  <Link href={`/dashboard/activities/${activity.id}`} className="font-medium text-ink hover:underline">
+                    {activity.title}
+                  </Link>
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted">
+                    <Badge variant="outline">{t(`kind_${activity.kind}`)}</Badge>
+                    <span>{activity.location || "—"}</span>
+                  </div>
+                </TableCell>
+                <TableCell className="tabular-nums">{t("participationCounts", { booked, attended })}</TableCell>
+                <TableCell className="tabular-nums">{assessed}</TableCell>
+                <TableCell className="tabular-nums">{opportunities}</TableCell>
+                <TableCell>
+                  <div className="flex justify-end gap-1">
+                    {canManage ? <>
+                      <Button size="sm" variant="ghost" onClick={() => setEditing(activity)}>{t("edit")}</Button>
+                      <Button size="sm" variant="ghost" className="text-rose" aria-label={t("delete")} disabled={pending} onClick={() => setDeleteTarget(activity)}><Trash2 size={15} /></Button>
+                    </> : null}
+                    <Link href={`/dashboard/activities/${activity.id}`} className={buttonVariants({ size: "sm", variant: "secondary" })}>
+                      {t("openWorkspace")}<ArrowRight size={15} />
+                    </Link>
+                  </div>
+                </TableCell>
+              </TableRow>;
+            })}
+            {activities.length === 0 ? <TableRow><TableCell colSpan={6} className="h-40 text-center text-muted">{t("empty")}</TableCell></TableRow> : null}
+          </TableBody>
+        </Table>
+      </DashboardTableShell>
+    </DashboardSection>
     {editing && <ActivityDialog
       initial={editing === "new" ? null : editing}
       pending={pending}
@@ -112,109 +184,6 @@ export function ActivitiesManager({
       }}
     />
   </DashboardPage>;
-}
-
-function Group({
-  title,
-  rows,
-  canManage,
-  pending,
-  edit,
-  requestDelete,
-  run,
-}: {
-  title: string;
-  rows: ActivityRow[];
-  canManage: boolean;
-  pending: boolean;
-  edit: (activity: ActivityRow) => void;
-  requestDelete: (activity: ActivityRow) => void;
-  run: RunAction;
-}) {
-  const t = useTranslations("school.activities");
-  return <section>
-    {title && <h2 className="text-base font-medium text-ink">{title}</h2>}
-    {rows.length === 0
-      ? <DashboardEmptyCard className="mt-3">{t("empty")}</DashboardEmptyCard>
-      : <div className="mt-3 grid gap-6">
-        {rows.map((activity) => <article key={activity.id} className="py-2">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <Badge variant="outline">{t(`kind_${activity.kind}`)}</Badge>
-              <h3 className="mt-2 font-medium">{activity.title}</h3>
-              <p className="mt-1 text-xs text-muted">
-                {new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(activity.scheduledAt))}
-                {` · ${activity.location || "—"} · ${t("counts", {
-                  booked: activity.registrations.filter((registration) => registration.status === "booked" || registration.status === "attended").length,
-                  attended: activity.registrations.filter((registration) => registration.status === "attended").length,
-                  capacity: activity.capacity ?? "∞",
-                })}`}
-              </p>
-            </div>
-            {canManage && <div className="flex gap-2">
-              <Button size="sm" variant="secondary" onClick={() => edit(activity)}>{t("edit")}</Button>
-              <Button size="sm" variant="secondary" className="text-rose" aria-label={t("delete")} disabled={pending} onClick={() => requestDelete(activity)}><Trash2 size={15} /></Button>
-            </div>}
-          </div>
-          <RegistrationList activity={activity} pending={pending} run={run} />
-        </article>)}
-      </div>}
-  </section>;
-}
-
-function RegistrationList({ activity, pending, run }: { activity: ActivityRow; pending: boolean; run: RunAction }) {
-  const t = useTranslations("school.activities");
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<Array<{ id: string; name: string; grade: number | null }>>([]);
-  const [outcomes, setOutcomes] = useState<Record<string, string>>({});
-
-  return <div className="mt-4 border-t border-line pt-3">
-    <Input
-      value={query}
-      onChange={(event) => {
-        const nextQuery = event.target.value;
-        setQuery(nextQuery);
-        if (nextQuery.trim()) void searchStudentsForActivity(nextQuery).then(setResults);
-        else setResults([]);
-      }}
-      placeholder={t("searchStudent")}
-      className={`${inputClass} h-9 rounded-md py-1.5 shadow-none`}
-    />
-    {results.length > 0 && <div className="mt-2 flex flex-wrap gap-2">
-      {results.map((student) => <Button
-        key={student.id}
-        size="sm"
-        variant="secondary"
-        disabled={pending}
-        onClick={() => run(
-          () => bookActivityAction(activity.id, student.id),
-          t("bookSuccess"),
-          () => { setResults([]); setQuery(""); },
-        )}
-      >+ {student.name}</Button>)}
-    </div>}
-    <ul className="mt-3 grid gap-2">
-      {activity.registrations.map((registration) => <li key={registration.id} className="flex flex-wrap items-center gap-2 py-1 text-sm">
-        <Link href={`/dashboard/students/${registration.studentId}`} className="font-medium hover:underline">{registration.studentName}</Link>
-        <span className="text-xs text-muted">{t(`status_${registration.status}`)}</span>
-        <Input
-          value={outcomes[registration.id] ?? registration.outcome}
-          onChange={(event) => setOutcomes((current) => ({ ...current, [registration.id]: event.target.value }))}
-          placeholder={t("outcome")}
-          maxLength={1_000}
-          className={`${inputClass} h-9 min-w-0 grow basis-40 rounded-md py-1.5 shadow-none`}
-        />
-        <Button size="sm" variant="secondary" disabled={pending} onClick={() => run(
-          () => markActivityResultAction(registration.id, "attended", outcomes[registration.id] ?? registration.outcome),
-          t("resultMarked"),
-        )}>{t("attended")}</Button>
-        <Button size="sm" variant="secondary" disabled={pending} onClick={() => run(
-          () => markActivityResultAction(registration.id, "no_show", outcomes[registration.id] ?? registration.outcome),
-          t("resultMarked"),
-        )}>{t("noShow")}</Button>
-      </li>)}
-    </ul>
-  </div>;
 }
 
 function ActivityDialog({
