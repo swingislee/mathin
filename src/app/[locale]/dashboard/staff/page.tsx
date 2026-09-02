@@ -3,15 +3,16 @@ import { DashboardPage } from "@/features/school/dashboard-page";
 import { StaffMembersPanel } from "@/features/school/StaffMembersPanel";
 import { listRecentStaffImportBatches } from "@/features/school/staff-imports";
 import { listStaffMembers, listStaffRoles } from "@/features/school/staff";
-import { getProfile, requirePerm } from "@/lib/auth";
+import { getMyPerms, getProfile, requireAnyPerm } from "@/lib/auth";
 
 export default async function StaffPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const user = await requirePerm(locale, "staff.manage");
-  const [t, profile, members, roles, recentImportBatches] = await Promise.all([
+  const user = await requireAnyPerm(locale, ["staff.invite", "staff.manage"]);
+  const [t, profile, perms, members, roles, recentImportBatches] = await Promise.all([
     getTranslations("school.staff"),
     getProfile(user.id),
+    getMyPerms(user.id),
     listStaffMembers(),
     listStaffRoles(),
     listRecentStaffImportBatches(),
@@ -25,6 +26,7 @@ export default async function StaffPage({ params }: { params: Promise<{ locale: 
         recentImportBatches={recentImportBatches}
         selfId={user.id}
         isAdmin={profile?.role === "admin"}
+        canManageStaff={perms.has("staff.manage")}
       />
     </DashboardPage>
   );

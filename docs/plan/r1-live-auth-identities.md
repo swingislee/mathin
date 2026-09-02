@@ -4,9 +4,9 @@
 >
 > **当前用途**：冻结邮箱、手机号、验证码、微信和 QQ 的账号边界与分阶段接口；当前施工顺序仍由 doc 04 决定。
 >
-> **当前实现状态**：2026-08-25 产品负责人把“手机号或邮箱 + password”提升为内部使用 P0。本机隔离目标完成通用 identifier 表单、手机号绑定员工邀请、provider-unverified 保障记录、手机号/password Auth 开关和数据库断言后，migration `20260825000600`、Auth phone provider 与热修 `8ec0ba0` 已部署 Xiaomi；`SMS_AUTOCONFIRM=false`，没有创建手机号账号或邀请。同日统一账号中心第一阶段 migration `20260825000800` 与应用 `72d8127` 也已部署，机器 postflight 通过，待人工验收；验证码、邮箱/手机号自助绑定、微信/QQ 和真实手机号教师注册/login 仍未完成。
+> **当前实现状态**：2026-08-25 产品负责人把“手机号或邮箱 + password”提升为内部使用 P0。本机隔离目标完成通用 identifier 表单、手机号绑定员工邀请、provider-unverified 保障记录、手机号/password Auth 开关和数据库断言后，migration `20260825000600`、Auth phone provider 与热修 `8ec0ba0` 已部署 Xiaomi；`SMS_AUTOCONFIRM=false`。2026-09-02 开发增量 `DEV-STAFF-ONBOARD-1` 又在本机把新员工入口调整为主管直接建 Auth 账号/员工档案/岗位、首次登录强制改密，仍复用唯一 `auth.users.id` 和 provider-unverified 保障边界；该增量尚未部署 Xiaomi，不改写生产既有 claim 邀请与正式教师登录事实。验证码、邮箱/手机号自助绑定、微信/QQ 和真实手机号新流程验收仍未完成。
 >
-> **最后核对**：2026-08-25；运行事实见 [`r1-live-target-audit.md`](../evidence/r1/r1-live-target-audit.md)。
+> **最后核对**：2026-09-02；生产运行事实见 [`r1-live-target-audit.md`](../evidence/r1/r1-live-target-audit.md)，直接建档仅为本机开发事实。
 
 ## 1. 产品裁决
 
@@ -122,7 +122,9 @@ beginIdentityLink(input: {
 | validate/trigger | 同时匹配 type、规范化值、code hash、pending 和有效期 |
 | accepted identity | `accepted_by` 仍指向唯一 `profiles.id`；同一邀请只能消费一次 |
 
-迁移完成前，正式手机号员工注册不可用；现有邮箱邀请路径继续工作。正式员工账号创建后仍由管理员分配 teacher staff role，邀请本身不改变权限模型。
+`DEV-STAFF-ONBOARD-1` 的本机后续合同使用同一表增加 `provisioning_mode='direct'` 与 ImportBatch 来源行，只把 invitation hash 当作 Auth 创建触发器的短期关联凭据。受信 Server Action 生成高熵首次登录密码并调用 Auth Admin API，数据库不保存明文；Auth trigger 同步建立 `profiles.role='staff'`、岗位关系与 `password_change_required=true`，随后同事务删除 `raw_user_meta_data.registration_invite_code`，历史同名元数据键也由 hardening migration 清理。该档案可被主管用于排课，但员工以本人会话调用 `is_staff` / `has_perm` 时保持关闭，直至 service-role 完成改密标记。direct 创建不替员工写隐私同意，改密后仍进入正常必要同意闸门。
+
+生产现有邮箱/手机号 claim 邀请路径继续工作。直接建档目前只在本机开发目标启用；只有独立生产授权、迁移 preflight 与回退证据完成后才能替换生产入口。
 
 ## 6. 分阶段启用
 

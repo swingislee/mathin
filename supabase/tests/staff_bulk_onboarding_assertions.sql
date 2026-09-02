@@ -3,21 +3,21 @@ begin;
 do $$
 declare
   v_actor_id uuid;
-  v_target_staff_id uuid;
   v_role_id uuid;
   v_role_key text;
-  valid_identifier text := 'bulk-assert-' || replace(gen_random_uuid()::text, '-', '') || '@example.invalid';
-  invalid_identifier text := 'not-a-phone';
-  valid_batch_key text := gen_random_uuid()::text;
+  identifier text := 'bulk-assert-' || replace(gen_random_uuid()::text, '-', '') || '@example.invalid';
+  batch_key text := gen_random_uuid()::text;
   invalid_batch_key text := gen_random_uuid()::text;
-  valid_preview jsonb;
+  preview jsonb;
   invalid_preview jsonb;
-  applied jsonb;
-  retried jsonb;
-  created_batch_id uuid;
-  v_invitation_id uuid;
+  v_batch_id uuid;
+  prepared record;
+  created_invitation_id uuid;
+  auth_count_before bigint;
+  auth_count_after bigint;
   denied boolean := false;
 begin
+  select count(*) into auth_count_before from auth.users;
   select id into v_actor_id
     from public.profiles
    where role = 'admin' and is_active
@@ -25,126 +25,95 @@ begin
    limit 1;
   if v_actor_id is null then raise exception 'STAFF_IMPORT_ADMIN_FIXTURE_REQUIRED'; end if;
 
-  select id into v_target_staff_id
-    from public.profiles
-   where role = 'staff' and is_active
-   order by created_at
-   limit 1;
-  if v_target_staff_id is null then raise exception 'STAFF_IMPORT_STAFF_FIXTURE_REQUIRED'; end if;
-
   select role_row.id, role_row.key into v_role_id, v_role_key
     from public.staff_roles role_row
    where not exists (
-       select 1 from public.role_permissions permission_row
-        where permission_row.role_id = role_row.id
-          and permission_row.perm_key = 'permission.configure'
-     )
-     and not exists (
-       select 1 from public.staff_role_members member_row
-        where member_row.user_id = v_target_staff_id
-          and member_row.role_id = role_row.id
-     )
+     select 1 from public.role_permissions permission_row
+      where permission_row.role_id = role_row.id
+        and permission_row.perm_key = 'permission.configure'
+   )
    order by role_row.created_at
    limit 1;
-  if v_role_id is null then raise exception 'STAFF_IMPORT_UNASSIGNED_ROLE_FIXTURE_REQUIRED'; end if;
+  if v_role_id is null then raise exception 'STAFF_IMPORT_ROLE_FIXTURE_REQUIRED'; end if;
 
   perform set_config('request.jwt.claim.sub', v_actor_id::text, true);
   perform set_config('request.jwt.claim.role', 'authenticated', true);
 
-  valid_preview := public.preview_staff_import(
+  preview := public.preview_staff_account_import(
     'mathin-staff-v1',
     jsonb_build_array(jsonb_build_object(
       'name', 'Bulk assertion staff',
-      'identifier', valid_identifier,
+      'identifier', identifier,
       'roles', jsonb_build_array(v_role_key),
-      'validDays', 1
+      'validDays', 7
     )),
-    valid_batch_key,
+    batch_key,
     repeat('a', 64)
   );
-  if valid_preview->>'status' <> 'validated'
-     or (valid_preview->>'valid')::integer <> 1
-     or (valid_preview->>'errorCount')::integer <> 0
-  then
-    raise exception 'STAFF_IMPORT_VALID_PREVIEW_FAILED';
-  end if;
+  if preview->>'status' <> 'validated'
+     or (preview->>'valid')::integer <> 1
+     or (preview->>'errorCount')::integer <> 0
+  then raise exception 'STAFF_IMPORT_VALID_PREVIEW_FAILED'; end if;
+  v_batch_id := (preview->>'batchId')::uuid;
 
-  created_batch_id := (valid_preview->>'batchId')::uuid;
-  applied := public.apply_staff_import(created_batch_id);
-  if applied->>'status' <> 'completed'
-     or (applied->>'issued')::integer <> 1
-     or (applied->>'codesAvailable')::boolean is not true
-     or jsonb_array_length(applied->'invitations') <> 1
-     or length(applied->'invitations'->0->>'inviteCode') <> 18
-  then
-    raise exception 'STAFF_IMPORT_APPLY_FAILED';
-  end if;
+  begin
+    perform public.apply_staff_import(v_batch_id);
+    raise exception 'STAFF_IMPORT_LEGACY_APPLY_ACCEPTED';
+  exception when others then
+    if sqlerrm = 'STAFF_IMPORT_LEGACY_APPLY_ACCEPTED' then raise; end if;
+    if position('DIRECT_PROVISIONING_REQUIRED' in sqlerrm) = 0 then raise; end if;
+  end;
 
-  select import_row.target_id into v_invitation_id
-    from public.data_import_rows import_row
-   where import_row.batch_id = created_batch_id and import_row.row_no = 1;
-  if v_invitation_id is null
+  select * into prepared
+    from public.prepare_staff_import_account(v_batch_id, 1, md5('M!9ASSERTIONPASSWORD'));
+  created_invitation_id := prepared.invitation_id;
+  if created_invitation_id is null
+     or prepared.identifier_normalized <> identifier
+     or prepared.role_keys <> array[v_role_key]
      or not exists (
        select 1 from public.staff_invitations invitation_row
-        where invitation_row.id = v_invitation_id
+        where invitation_row.id = created_invitation_id
           and invitation_row.status = 'pending'
-          and invitation_row.identifier_normalized = valid_identifier
-          and invitation_row.display_name = 'Bulk assertion staff'
+          and invitation_row.provisioning_mode = 'direct'
+          and invitation_row.source_batch_id = v_batch_id
+          and invitation_row.source_row_no = 1
      )
      or not exists (
        select 1 from public.staff_invitation_role_assignments assignment
-        where assignment.invitation_id = v_invitation_id
+        where assignment.invitation_id = created_invitation_id
           and assignment.role_id = v_role_id
           and assignment.assigned_by = v_actor_id
      )
-     or exists (
-       select 1 from public.data_import_rows import_row
-        where import_row.batch_id = created_batch_id and import_row.payload is not null
-     )
-  then
-    raise exception 'STAFF_IMPORT_DURABLE_INTENT_FAILED';
-  end if;
+  then raise exception 'STAFF_IMPORT_DIRECT_RESERVATION_FAILED'; end if;
 
-  retried := public.apply_staff_import(created_batch_id);
-  if (retried->>'codesAvailable')::boolean is not false
-     or jsonb_array_length(retried->'invitations') <> 0
-  then
-    raise exception 'STAFF_IMPORT_CODE_REEXPOSED';
-  end if;
-
-  update public.staff_invitations
-     set status = 'accepted', accepted_by = v_target_staff_id, accepted_at = now()
-   where id = v_invitation_id;
+  perform public.cancel_staff_import_account(created_invitation_id, 'AUTH_PROVIDER_FAILED');
   if not exists (
-    select 1 from public.staff_role_members member_row
-     where member_row.user_id = v_target_staff_id and member_row.role_id = v_role_id
-  ) or not exists (
-    select 1 from public.profiles profile_row
-     where profile_row.id = v_target_staff_id and profile_row.display_name = 'Bulk assertion staff'
-  ) then
-    raise exception 'STAFF_IMPORT_ACCEPTANCE_INTENT_FAILED';
-  end if;
+    select 1 from public.data_import_rows import_row
+     where import_row.batch_id = v_batch_id
+       and import_row.row_no = 1
+       and import_row.row_status = 'valid'
+       and import_row.error_codes = array['AUTH_PROVIDER_FAILED']
+  ) then raise exception 'STAFF_IMPORT_RETRY_STATE_FAILED'; end if;
 
-  invalid_preview := public.preview_staff_import(
+  select * into prepared
+    from public.prepare_staff_import_account(v_batch_id, 1, md5('M!9ASSERTIONRETRY'));
+  perform public.cancel_staff_import_account(prepared.invitation_id, 'AUTH_PROVIDER_FAILED');
+
+  invalid_preview := public.preview_staff_account_import(
     'mathin-staff-v1',
     jsonb_build_array(jsonb_build_object(
-      'name', '',
-      'identifier', invalid_identifier,
-      'roles', '[]'::jsonb,
-      'validDays', 7
+      'name', '', 'identifier', 'not-a-phone', 'roles', '[]'::jsonb, 'validDays', 7
     )),
     invalid_batch_key,
     repeat('b', 64)
   );
   if (invalid_preview->>'errorCount')::integer <> 1
      or invalid_preview->'rows'->0->>'status' <> 'error'
-  then
-    raise exception 'STAFF_IMPORT_INVALID_ROW_ACCEPTED';
-  end if;
+  then raise exception 'STAFF_IMPORT_INVALID_ROW_ACCEPTED'; end if;
 
   perform set_config('request.jwt.claim.sub', gen_random_uuid()::text, true);
   begin
-    perform public.preview_staff_import(
+    perform public.preview_staff_account_import(
       'mathin-staff-v1',
       jsonb_build_array(jsonb_build_object(
         'name', 'Denied', 'identifier', 'denied@example.invalid',
@@ -161,13 +130,56 @@ begin
   end;
   if not denied then raise exception 'STAFF_IMPORT_UNAUTHORIZED_CALL_NOT_DENIED'; end if;
 
-  if not exists (
-    select 1 from pg_class
-     where oid = 'public.staff_invitation_role_assignments'::regclass and relrowsecurity
-  ) then
-    raise exception 'STAFF_IMPORT_ROLE_INTENT_RLS_DISABLED';
-  end if;
+  select count(*) into auth_count_after from auth.users;
+  if auth_count_after <> auth_count_before then raise exception 'STAFF_IMPORT_ASSERTION_CREATED_AUTH_USER'; end if;
 end;
+$$;
+
+do $$
+declare failures text[] := '{}';
+begin
+  if not exists (
+    select 1 from information_schema.columns
+     where table_schema = 'public' and table_name = 'profiles'
+       and column_name = 'password_change_required' and data_type = 'boolean'
+  ) then failures := array_append(failures, 'password-change flag missing'); end if;
+  if exists (
+    select 1 from information_schema.columns
+     where table_schema = 'public' and column_name in ('initial_password', 'initial_password_plaintext')
+  ) then failures := array_append(failures, 'plaintext initial-password column exists'); end if;
+  if exists (
+    select 1 from auth.users
+     where coalesce(raw_user_meta_data, '{}'::jsonb) ? 'registration_invite_code'
+  ) then failures := array_append(failures, 'registration invite secret remains in auth metadata'); end if;
+  if not exists (
+    select 1
+      from pg_trigger trigger_row
+      join pg_class table_row on table_row.oid = trigger_row.tgrelid
+      join pg_namespace schema_row on schema_row.oid = table_row.relnamespace
+     where schema_row.nspname = 'auth'
+       and table_row.relname = 'users'
+       and trigger_row.tgname = 'on_auth_user_invite_secret_scrubbed'
+       and not trigger_row.tgisinternal
+       and trigger_row.tgenabled <> 'D'
+  ) then failures := array_append(failures, 'auth invite-secret scrub trigger missing'); end if;
+  if not exists (
+    select 1 from public.staff_roles role_row
+    join public.role_permissions permission_row on permission_row.role_id = role_row.id
+    where role_row.key = 'director' and permission_row.perm_key = 'staff.invite'
+  ) then failures := array_append(failures, 'director invite permission missing'); end if;
+  if not has_function_privilege(
+    'authenticated', 'public.preview_staff_account_import(text,jsonb,text,text)', 'EXECUTE'
+  ) then failures := array_append(failures, 'preview execute grant missing'); end if;
+  if has_function_privilege(
+    'authenticated', 'public.complete_initial_password_change(uuid)', 'EXECUTE'
+  ) then failures := array_append(failures, 'password completion leaked to authenticated'); end if;
+  if not has_function_privilege(
+    'service_role', 'public.complete_initial_password_change(uuid)', 'EXECUTE'
+  ) then failures := array_append(failures, 'service-role password completion grant missing'); end if;
+  if cardinality(failures) > 0 then
+    raise exception 'STAFF_DIRECT_PROVISIONING_STRUCTURE_FAILED: %', array_to_string(failures, ', ');
+  end if;
+end
 $$;
 
 rollback;

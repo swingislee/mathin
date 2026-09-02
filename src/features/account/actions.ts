@@ -4,7 +4,6 @@ import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { actionError, type ActionResult } from "@/lib/action-result";
-import { emailLoginIdentifierSchema, phoneLoginIdentifierSchema } from "@/lib/auth-identifier";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { authorizedClient } from "@/features/school/actions/guards";
@@ -21,10 +20,6 @@ const rightsRequestSchema = z.object({
   dataScope: requiredText(200),
 });
 const supportTargetSchema = z.object({ target: uuid, reason: requiredText(500) });
-const staffInviteSchema = z.discriminatedUnion("identifierType", [
-  z.object({ identifierType: z.literal("email"), identifier: emailLoginIdentifierSchema, validDays: z.number().int().min(1).max(30) }),
-  z.object({ identifierType: z.literal("phone"), identifier: phoneLoginIdentifierSchema, validDays: z.number().int().min(1).max(30) }),
-]);
 const requestDecisionSchema = z.object({
   requestId: uuid,
   status: z.enum(["submitted", "identity_verified", "approved", "processing", "completed", "rejected", "cancelled"]),
@@ -41,6 +36,13 @@ const accountProfileSchema = z.object({
     z.null(),
     z.string().max(200).regex(/^[0-9a-f-]{36}\/[0-9a-f-]{36}\.webp$/),
   ]).optional(),
+});
+const initialPasswordChangeSchema = z.object({
+  password: z.string().min(8).max(128),
+  passwordConfirm: z.string().min(8).max(128),
+}).refine((value) => value.password === value.passwordConfirm, {
+  path: ["passwordConfirm"],
+  message: "PASSWORD_CONFIRMATION_MISMATCH",
 });
 
 export interface AccountProfileUpdate {
@@ -70,6 +72,9 @@ const SELF_CODES = [
   "EXPORT_NOT_FOUND", "EXPORT_EXPIRED", "EXPORT_PURGED", "EXPORT_HASH_MISMATCH", ...COMMON_CODES,
   "AVATAR_PATH_INVALID", "PROFILE_UPDATE_FAILED",
 ];
+const INITIAL_PASSWORD_CODES = [
+  "SAME_AS_INITIAL", "INITIAL_PASSWORD_RECORD_MISSING", "AUTH_PROVIDER_FAILED", ...COMMON_CODES,
+] as const;
 const SUPPORT_CODES = [
   "TARGET_NOT_FOUND", "LAST_ACTIVE_ADMIN", "INVALID_ACTION", "INVALID_REASON", "INVALID_STATUS",
   "IDENTITY_NOT_VERIFIED", "EVIDENCE_REQUIRED", "EXPORT_ARTIFACT_REQUIRED", "REQUEST_NOT_APPROVED",
@@ -148,6 +153,49 @@ export async function updateAccountProfileAction(input: unknown): Promise<Action
     };
   } catch (error) {
     return actionError<AccountProfileUpdate>(error, SELF_CODES, "PROFILE_UPDATE_FAILED");
+  }
+}
+
+export async function changeInitialPasswordAction(input: unknown): Promise<ActionResult> {
+  try {
+    const value = parse(initialPasswordChangeSchema, input);
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("UNAUTHENTICATED");
+
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("password_change_required")
+      .eq("id", user.id)
+      .single<{ password_change_required: boolean }>();
+    if (profileError) throw new Error(profileError.message);
+    if (!profile.password_change_required) return { ok: true };
+
+    const admin = createAdminClient();
+    const { data: invitation, error: invitationError } = await admin
+      .from("staff_invitations")
+      .select("code_hash")
+      .eq("accepted_by", user.id)
+      .eq("provisioning_mode", "direct")
+      .order("accepted_at", { ascending: false })
+      .limit(1)
+      .maybeSingle<{ code_hash: string }>();
+    if (invitationError || !invitation) throw new Error("INITIAL_PASSWORD_RECORD_MISSING");
+    const nextHash = createHash("md5").update(value.password).digest("hex");
+    if (nextHash === invitation.code_hash) throw new Error("SAME_AS_INITIAL");
+
+    const { error: passwordError } = await supabase.auth.updateUser({ password: value.password });
+    if (passwordError) throw new Error("AUTH_PROVIDER_FAILED");
+    const { error: completionError } = await admin.rpc(
+      "complete_initial_password_change",
+      { p_user_id: user.id },
+    );
+    if (completionError) throw new Error(completionError.message);
+    revalidatePath("/[locale]/dashboard", "layout");
+    revalidatePath("/[locale]/dashboard/account-security", "page");
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, INITIAL_PASSWORD_CODES);
   }
 }
 
@@ -269,29 +317,6 @@ export async function sendRecoveryAction(target: string, reason: string, locale:
     return { ok: true };
   } catch (error) {
     return actionError(error, [...SUPPORT_CODES, "AUTH_PROVIDER_FAILED"]);
-  }
-}
-
-export async function issueStaffInvitationAction(
-  identifierType: "email" | "phone",
-  identifier: string,
-  validDays = 7,
-): Promise<ActionResult<{ invitationId: string; inviteCode: string; expiresAt: string }>> {
-  try {
-    const value = parse(staffInviteSchema, { identifierType, identifier, validDays });
-    const { supabase } = await authorizedClient("staff.manage");
-    const { data, error } = await supabase.rpc("issue_staff_identity_invitation", {
-      p_identifier_type: value.identifierType,
-      p_identifier: value.identifier,
-      p_valid_days: value.validDays,
-    });
-    if (error) throw new Error(error.message);
-    const row = (data ?? [])[0] as { invitation_id: string; invite_code: string; expires_at: string } | undefined;
-    if (!row) throw new Error("INVITATION_FAILED");
-    revalidatePath("/[locale]/dashboard/account-support", "page");
-    return { ok: true, data: { invitationId: row.invitation_id, inviteCode: row.invite_code, expiresAt: row.expires_at } };
-  } catch (error) {
-    return actionError<{ invitationId: string; inviteCode: string; expiresAt: string }>(error, SUPPORT_CODES, "INVITATION_FAILED");
   }
 }
 

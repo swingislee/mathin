@@ -18,7 +18,7 @@ import {
 const root = process.cwd();
 const read = (file: string) => fs.readFileSync(path.join(root, file), "utf8");
 
-describe("DEV-STAFF-ONBOARD-1 bulk staff invitations", () => {
+describe("DEV-STAFF-ONBOARD-1 bulk staff provisioning", () => {
   it("parses CSV and TSV without breaking quoted cells or source line numbers", () => {
     expect(parseDelimitedText('\uFEFF姓名,手机号或邮箱,岗位角色\r\n"王,老师",13800000000,"教师 教研"')).toEqual([
       { line: 1, cells: ["姓名", "手机号或邮箱", "岗位角色"] },
@@ -108,42 +108,68 @@ describe("DEV-STAFF-ONBOARD-1 bulk staff invitations", () => {
     expect(staffRoleDisplayName("teacher", roles, "en")).toBe("teacher");
   });
 
-  it("uses the shared ImportBatch ledger and never creates Auth users", () => {
-    const migration = read("supabase/migrations/20260902000700_staff_bulk_onboarding.sql");
-    expect(migration).toContain("check (import_kind in ('students', 'staff'))");
-    expect(migration).toContain("create or replace function public.preview_staff_import");
-    expect(migration).toContain("create or replace function public.apply_staff_import");
-    expect(migration).toContain("if v_batch.error_rows > 0 then raise exception 'BATCH_HAS_ERRORS'");
-    expect(migration).toContain("raise exception 'BATCH_STALE'");
-    expect(migration).toContain("from public.issue_staff_identity_invitation(");
+  it("keeps ImportBatch preview while switching apply to trusted direct Auth provisioning", () => {
+    const baseMigration = read("supabase/migrations/20260902000700_staff_bulk_onboarding.sql");
+    const migration = read("supabase/migrations/20260902001000_staff_direct_provisioning.sql");
+    const hardeningMigration = read("supabase/migrations/20260902001100_staff_initial_password_hardening.sql");
+    const actions = read("src/features/school/actions/staff-imports.ts");
+    expect(baseMigration).toContain("check (import_kind in ('students', 'staff'))");
+    expect(migration).toContain("create or replace function public.preview_staff_account_import");
+    expect(migration).toContain("provisioning_mode text not null default 'claim'");
+    expect(migration).toContain("create or replace function public.prepare_staff_import_account");
+    expect(migration).toContain("create or replace function public.finalize_staff_import_account");
+    expect(migration).toContain("raise exception 'DIRECT_PROVISIONING_REQUIRED'");
     expect(migration).not.toContain("insert into auth.users");
+    expect(actions).toContain("admin.auth.admin.createUser");
+    expect(actions).toContain('authorizedClient("staff.invite")');
+    expect(actions).not.toContain("initial_password text");
+    expect(hardeningMigration).toContain("on_auth_user_invite_secret_scrubbed");
+    expect(hardeningMigration).toContain("raw_user_meta_data = coalesce(raw_user_meta_data, '{}'::jsonb) - 'registration_invite_code'");
   });
 
-  it("applies approved roles only after invitation acceptance and protects privileged roles", () => {
-    const migration = read("supabase/migrations/20260902000700_staff_bulk_onboarding.sql");
-    expect(migration).toContain("staff_invitation_role_assignments");
-    expect(migration).toContain("after update of status, accepted_by on public.staff_invitations");
+  it("creates a schedulable staff profile immediately but closes self-service permissions until password change", () => {
+    const migration = read("supabase/migrations/20260902001000_staff_direct_provisioning.sql");
+    expect(migration).toContain("password_change_required boolean not null default false");
+    expect(migration).toContain("uid is distinct from auth.uid() or not profile_row.password_change_required");
+    expect(migration).toContain("case when staff_invite.id is null then 'student' else 'staff' end");
+    expect(migration).toContain("case when is_direct then null else now() end");
+    expect(migration).toContain("perform public.complete_staff_import_row");
     expect(migration).toContain("permission_row.perm_key = 'permission.configure'");
-    expect(migration).toContain("or public.is_admin(assignment.assigned_by)");
-    expect(migration).toContain("update public.data_import_rows\n     set payload = null");
+    expect(migration).toContain("grant execute on function public.complete_initial_password_change(uuid) to service_role");
+    expect(migration).not.toMatch(/initial_password\s+text/);
   });
 
-  it("exposes a two-step bilingual UI and one-time credential download", () => {
+  it("exposes direct account creation, one-time password handoff, and a forced first-login dialog", () => {
     const page = read("src/app/[locale]/dashboard/staff/page.tsx");
     const panel = read("src/features/school/StaffBulkInvitePanel.tsx");
     const actions = read("src/features/school/actions/staff-imports.ts");
+    const auth = read("src/lib/auth.ts");
+    const accountPage = read("src/app/[locale]/dashboard/account-security/page.tsx");
+    const accountPanel = read("src/features/account/AccountSecurityPanel.tsx");
+    const accountActions = read("src/features/account/actions.ts");
+    const supportPanel = read("src/features/account/AccountSupportPanel.tsx");
     expect(page).toContain("listRecentStaffImportBatches");
+    expect(page).toContain('["staff.invite", "staff.manage"]');
     expect(panel).toContain("previewStaffImportAction");
     expect(panel).toContain("applyStaffImportAction");
     expect(panel).toContain("duplicatesReviewed");
     expect(panel).toContain("downloadCredentials");
     expect(panel).toContain("codesAvailable");
+    expect(panel).toContain("staff-initial-passwords-");
     expect(panel).toContain('locale === "zh" ? "教师 教研" : "teacher research"');
     expect(panel).not.toContain("crypto.randomUUID");
     expect(panel).not.toContain("<table");
-    expect(actions).toContain('authorizedClient("staff.manage")');
+    expect(actions).toContain('authorizedClient("staff.invite")');
     expect(actions).toContain('.select("key,name")');
     expect(actions).toContain("canonicalizeStaffRoleTokens");
+    expect(auth).toContain("dashboard/account-security?required=password");
+    expect(accountPage).toContain("forcePasswordChange={profile.passwordChangeRequired}");
+    expect(accountPanel).toContain("showCloseButton={false}");
+    expect(accountPanel).toContain("onEscapeKeyDown={(event) => event.preventDefault()}");
+    expect(accountActions).toContain("changeInitialPasswordAction");
+    expect(accountActions).toContain("SAME_AS_INITIAL");
+    expect(supportPanel).toContain('href="/dashboard/staff"');
+    expect(supportPanel).not.toContain("issueStaffInvitationAction");
     expect(read("messages/zh.json")).toContain('"bulkCredentialsWarning"');
     expect(read("messages/en.json")).toContain('"bulkCredentialsWarning"');
   });

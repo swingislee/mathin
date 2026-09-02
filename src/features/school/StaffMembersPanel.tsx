@@ -47,12 +47,14 @@ export function StaffMembersPanel({
   recentImportBatches,
   selfId,
   isAdmin,
+  canManageStaff,
 }: {
   members: StaffMember[];
   roles: StaffRoleInfo[];
   recentImportBatches: StaffImportBatchSummary[];
   selfId: string;
   isAdmin: boolean;
+  canManageStaff: boolean;
 }) {
   const t = useTranslations("school.staff");
   const router = useRouter();
@@ -142,7 +144,7 @@ export function StaffMembersPanel({
   const deactivate = () => { if (deactivateTarget) deactivateRun.run(deactivateTarget.userId, reassignTo || null); };
 
   const pending = saveRolesRun.pending || promoteRun.pending || deactivateRun.pending;
-  const canManageRoles = (member: StaffMember) => member.userId !== selfId || isAdmin;
+  const canManageRoles = (member: StaffMember) => canManageStaff && (member.userId !== selfId || isAdmin);
 
   // 查到的已是员工：直接从成员列表里找到对应行进授岗弹窗
   const foundMember = found ? members.find((member) => member.userId === found.userId) ?? null : null;
@@ -166,6 +168,7 @@ export function StaffMembersPanel({
                 <TableCell className="px-4 py-3 font-medium">
                   {member.displayName}
                   {!member.isActive && <Badge variant="secondary" className="ml-2">{t("inactive")}</Badge>}
+                  {member.passwordChangeRequired && <Badge variant="outline" className="ml-2">{t("initialPasswordPending")}</Badge>}
                 </TableCell>
                 <TableCell className="px-4 py-3 text-muted">{member.email}</TableCell>
                 <TableCell className="px-4 py-3">
@@ -192,7 +195,7 @@ export function StaffMembersPanel({
                     {canManageRoles(member) && (
                       <button type="button" onClick={() => openDialog(member)} className="text-xs text-muted underline underline-offset-2 hover:text-ink">{t("manageRoles")}</button>
                     )}
-                    {member.userId !== selfId && member.isActive && <button type="button" onClick={() => { setDeactivateTarget(member); setReassignTo(""); setHandoverPreview(null); void getStaffHandoverPreviewAction(member.userId).then(setHandoverPreview).catch(()=>{}); }} className="text-xs text-rose underline underline-offset-2">{t("deactivate")}</button>}
+                    {canManageStaff && member.userId !== selfId && member.isActive && <button type="button" onClick={() => { setDeactivateTarget(member); setReassignTo(""); setHandoverPreview(null); void getStaffHandoverPreviewAction(member.userId).then(setHandoverPreview).catch(()=>{}); }} className="text-xs text-rose underline underline-offset-2">{t("deactivate")}</button>}
                   </span>
                 </TableCell>
               </TableRow>
@@ -203,7 +206,7 @@ export function StaffMembersPanel({
 
       <StaffBulkInvitePanel roles={roles} recentBatches={recentImportBatches} isAdmin={isAdmin} />
 
-      <section className="rounded-2xl border border-line bg-card p-5">
+      {canManageStaff ? <section className="rounded-2xl border border-line bg-card p-5">
         <h2 className="text-base font-medium text-ink">{t("addStaff")}</h2>
         <p className="mt-1 text-xs text-muted">{t("addStaffHint")}</p>
         <div className="mt-3 flex flex-wrap gap-3">
@@ -254,7 +257,7 @@ export function StaffMembersPanel({
             )}
           </div>
         )}
-      </section>
+      </section> : null}
 
       <Dialog open={Boolean(target)} onOpenChange={(open) => !open && setTarget(null)}>
         <DialogContent>
