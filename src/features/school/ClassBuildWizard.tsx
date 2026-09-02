@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, LoaderCircle, Plus, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp, CheckCircle2, ChevronLeft, ChevronRight, LoaderCircle, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -34,7 +34,7 @@ import { RoomPicker } from "./RoomPicker";
 import { formatRoomLocation } from "./location-format";
 import type { RoomOptionV2 } from "./organization-locations";
 import { CoursePicker } from "./teaching-operations/CoursePicker";
-import type { ClassBuildCourseDetail, ClassBuildPurpose, ClassBuildScheduleConflict } from "./teaching-operations/course-picker-types";
+import type { ClassBuildCourseDetail, ClassBuildLecture, ClassBuildPurpose, ClassBuildScheduleConflict } from "./teaching-operations/course-picker-types";
 import type { ClassroomOfferingType } from "./teaching-operations/types";
 import { calendarDayKey, dateTimeInputToInstant, zonedDateTimeInputValue } from "./schedule";
 import type { TeachingCalendarEntryV2 } from "./teaching-calendar";
@@ -42,10 +42,6 @@ import type { TeachingCalendarEntryV2 } from "./teaching-calendar";
 const WEEKDAYS = [1, 2, 3, 4, 5, 6, 0] as const;
 const DATE_INPUT_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_INPUT_PATTERN = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
-
-function courseReady(course: ClassBuildCourseDetail | null) {
-  return Boolean(course && course.lectureCount > 0 && course.lectureCount === course.releasedLectureCount);
-}
 
 function validDateInput(value: string) {
   return DATE_INPUT_PATTERN.test(value) && !Number.isNaN(new Date(`${value}T00:00:00`).getTime());
@@ -84,6 +80,7 @@ export function ClassBuildWizard({
   const [purpose, setPurpose] = useState<ClassBuildPurpose>("production");
   const [offeringType, setOfferingType] = useState<ClassroomOfferingType>("long_term_formal");
   const [course, setCourse] = useState<ClassBuildCourseDetail | null>(null);
+  const [courseSessions, setCourseSessions] = useState<ClassBuildLecture[]>([]);
   const [name, setName] = useState("");
   const [capacity, setCapacity] = useState("");
   const [roomId, setRoomId] = useState<string | null>(null);
@@ -116,11 +113,15 @@ export function ClassBuildWizard({
     if (!initialCourseId || initialCourseHandled.current) return;
     initialCourseHandled.current = true;
     void getClassBuildCourseDetailAction(initialCourseId, "production")
-      .then((detail) => { setCourse(detail); setMode("course"); })
+      .then((detail) => {
+        setCourse(detail);
+        setCourseSessions(detail.lectures);
+        setMode("course");
+      })
       .catch(() => setNotice(t("initialCourseUnavailable")));
   }, [initialCourseId, t]);
 
-  const lectures = useMemo(() => mode === "course" ? course?.lectures ?? [] : [], [course, mode]);
+  const lectures = useMemo(() => mode === "course" ? courseSessions : [], [courseSessions, mode]);
   const scheduleSlots = useMemo(() => mode === "course"
     ? lectures.map((lecture) => ({ lectureId: lecture.id, no: lecture.no, name: lecture.name }))
     : freeSessions.map((session, index) => ({ lectureId: session.key, no: index + 1, name: session.name })),
@@ -141,6 +142,12 @@ export function ClassBuildWizard({
     : "";
   const calendarReady = calendarRequestKey === "" || (calendarLoadedKey === calendarRequestKey && !calendarLoadFailed);
   const roomCampusId = roomId ? roomOptions.find((room) => room.id === roomId)?.campusId ?? null : null;
+  const courseSessionsAreDefault = Boolean(
+    course
+      && course.lectures.length === courseSessions.length
+      && course.lectures.every((lecture, index) => lecture.id === courseSessions[index]?.id),
+  );
+  const hasScheduleOverrides = scheduleSlots.some((slot) => overrides[slot.lectureId] !== undefined);
 
   useEffect(() => {
     if (!calendarRequestKey) return;
@@ -191,12 +198,13 @@ export function ClassBuildWizard({
     return () => { active = false; window.clearTimeout(timer); };
   }, [conflictSlots, primaryTeacherId, roomId]);
 
-  const isReady = courseReady(course);
+  const selectedReadyCount = lectures.filter((lecture) => lecture.ready).length;
+  const isReady = lectures.length > 0 && selectedReadyCount === lectures.length;
   const conflictsRelevant = Boolean(primaryTeacherId && conflictSlots.length > 0);
   const visibleConflicts = conflictsRelevant ? conflicts : [];
   const visibleConflictsLoading = conflictsRelevant && conflictsLoading;
   const scheduleRequired = mode === "course" || freeSessions.length > 0;
-  const step1Complete = mode === "free" || course !== null;
+  const step1Complete = mode === "free" || (course !== null && courseSessions.length > 0);
   const step2Complete = classNameValid && primaryTeacherValid && capacityValid && learningSupportValid;
   const step3Complete = Boolean(schoolTermId) && (!scheduleRequired || (
     scheduleInputsValid
@@ -233,6 +241,7 @@ export function ClassBuildWizard({
   const updateCourse = (next: ClassBuildCourseDetail) => {
     if (course && course.id !== next.id && Object.keys(overrides).length > 0) setNotice(t("overridesCleared"));
     setCourse(next);
+    setCourseSessions(next.lectures);
     setMode("course");
     setOverrides({});
     setActivateNow(false);
@@ -241,7 +250,38 @@ export function ClassBuildWizard({
   const clearCourse = () => {
     if (course && Object.keys(overrides).length > 0) setNotice(t("overridesCleared"));
     setCourse(null);
+    setCourseSessions([]);
     setOverrides({});
+    setActivateNow(false);
+  };
+
+  const moveCourseSession = (lectureId: string, direction: -1 | 1) => {
+    setCourseSessions((current) => {
+      const index = current.findIndex((lecture) => lecture.id === lectureId);
+      const target = index + direction;
+      if (index < 0 || target < 0 || target >= current.length) return current;
+      const next = [...current];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+    setActivateNow(false);
+  };
+
+  const removeCourseSession = (lectureId: string) => {
+    setCourseSessions((current) => current.filter((lecture) => lecture.id !== lectureId));
+    setOverrides((current) => {
+      const next = { ...current };
+      delete next[lectureId];
+      return next;
+    });
+    setActivateNow(false);
+  };
+
+  const restoreCourseSessions = () => {
+    if (!course) return;
+    setCourseSessions(course.lectures);
+    setOverrides({});
+    setNotice(t("defaultLecturesRestored"));
     setActivateNow(false);
   };
 
@@ -294,6 +334,20 @@ export function ClassBuildWizard({
   const updateScheduleOverride = (key: string, value: string, automaticAt: Date) => {
     const instant = value ? dateTimeInputToInstant(value, timeZone) : null;
     setOverrides((current) => ({ ...current, [key]: instant?.toISOString() ?? automaticAt.toISOString() }));
+    setActivateNow(false);
+  };
+
+  const resetScheduleOverride = (key: string) => {
+    setOverrides((current) => {
+      const next = { ...current };
+      delete next[key];
+      return next;
+    });
+    setActivateNow(false);
+  };
+
+  const resetAllScheduleOverrides = () => {
+    setOverrides({});
     setActivateNow(false);
   };
 
@@ -427,9 +481,31 @@ export function ClassBuildWizard({
       </div>
       <div className="mt-5"><Label className="text-xs font-normal text-muted">{t("course")}</Label><div className="mt-1"><CoursePicker purpose={purpose} selected={course} onSelect={updateCourse} onClear={clearCourse} /></div></div>
       <div className="mt-4 flex items-center gap-3 border-t border-line pt-4"><span className="text-sm text-muted">{t("or")}</span><Button type="button" variant={mode === "free" ? "secondary" : "ghost"} onClick={() => { clearCourse(); setMode("free"); }}>{t("modeFree")}</Button></div>
-      {step1Attempted && !step1Complete && <p role="alert" className="mt-3 text-xs text-rose">{t("courseRequired")}</p>}
+      {step1Attempted && !step1Complete && <p role="alert" className="mt-3 text-xs text-rose">{t(course ? "lecturesRequired" : "courseRequired")}</p>}
       {mode === "free" && <p className="mt-3 rounded-xl bg-moon/30 px-3 py-2 text-sm text-muted">{t("freeClassHint")}</p>}
-      {course && <div className="mt-5 rounded-xl border border-line p-4"><div className="flex flex-wrap items-center gap-2"><h3 className="font-medium">{course.familyTitle} · {course.title}</h3>{isReady ? <Badge variant="secondary">{t("ready")}</Badge> : <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300">{t("incomplete")}</Badge>}</div><p className="mt-1 text-sm text-muted">{t("courseSummary", { code: course.productCode || "—", ready: course.releasedLectureCount, total: course.lectureCount })}</p><ol className="mt-3 space-y-1.5 text-sm">{course.lectures.map((lecture) => <li key={lecture.id} className="flex gap-2"><span className="w-7 shrink-0 font-mono text-xs text-muted">{lecture.no}</span><span className="min-w-0 flex-1 truncate">{lecture.name}</span>{!lecture.ready && <span className="text-xs text-amber-800 dark:text-amber-300">{t("notReady")}</span>}</li>)}</ol></div>}
+      {course && <div className="mt-5 rounded-xl border border-line p-4">
+        <div className="flex flex-wrap items-center gap-2"><h3 className="font-medium">{course.familyTitle} · {course.title}</h3>{isReady ? <Badge variant="secondary">{t("ready")}</Badge> : <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300">{t("incomplete")}</Badge>}</div>
+        <p className="mt-1 text-sm text-muted">{t("courseSummary", { code: course.productCode || "—", ready: course.releasedLectureCount, total: course.lectureCount })}</p>
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h4 className="text-sm font-medium text-ink">{t("classLecturePlan")}</h4>
+            <p className="mt-0.5 text-xs text-muted">{t("selectedLectureCount", { selected: courseSessions.length, total: course.lectures.length })}</p>
+          </div>
+          <Button type="button" size="sm" variant="secondary" disabled={courseSessionsAreDefault} onClick={restoreCourseSessions}>
+            <RotateCcw className="size-4" />{t("restoreDefaultLectures")}
+          </Button>
+        </div>
+        {courseSessions.length > 0 ? <ol className="mt-3 divide-y divide-line/70 text-sm">{courseSessions.map((lecture, index) => <li key={lecture.id} className="flex min-w-0 items-center gap-2 py-2 first:pt-0 last:pb-0">
+          <span className="w-7 shrink-0 font-mono text-xs text-muted">{index + 1}</span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate">{lecture.name}</span>
+            <span className="block text-xs text-muted">{t("sourceLectureNo", { no: lecture.no })}{!lecture.ready ? ` · ${t("notReady")}` : ""}</span>
+          </span>
+          <Button type="button" size="sm" variant="ghost" className="size-8 p-0" disabled={index === 0} aria-label={t("moveLectureUp", { title: lecture.name })} onClick={() => moveCourseSession(lecture.id, -1)}><ArrowUp className="size-4" /></Button>
+          <Button type="button" size="sm" variant="ghost" className="size-8 p-0" disabled={index === courseSessions.length - 1} aria-label={t("moveLectureDown", { title: lecture.name })} onClick={() => moveCourseSession(lecture.id, 1)}><ArrowDown className="size-4" /></Button>
+          <Button type="button" size="sm" variant="ghost" className="size-8 p-0" aria-label={t("removeCourseLecture", { title: lecture.name })} onClick={() => removeCourseSession(lecture.id)}><Trash2 className="size-4 text-rose" /></Button>
+        </li>)}</ol> : <p role="status" className="mt-3 text-sm text-muted">{t("noLecturesSelected")}</p>}
+      </div>}
     </section>}
 
     {step === 2 && <section className="rounded-2xl border border-line bg-card p-5">
@@ -472,7 +548,11 @@ export function ClassBuildWizard({
 
     {step === 3 && <section className="rounded-2xl border border-line bg-card p-5">
       <h2 className="text-base font-medium text-ink">{t("stepSchedule")}</h2><p className="mt-1 text-sm text-muted">{t("scheduleStepHint")}</p>
-      <div className="mt-5 grid gap-4 @2xl/page:grid-cols-2 @6xl/page:grid-cols-4">
+      <div className="mt-5 flex flex-wrap items-start justify-between gap-3">
+        <div><h3 className="text-sm font-medium text-ink">{t("batchScheduleTitle")}</h3><p className="mt-1 text-xs text-muted">{t("batchScheduleHint", { count: scheduleSlots.length })}</p></div>
+        {hasScheduleOverrides ? <Button type="button" size="sm" variant="secondary" onClick={resetAllScheduleOverrides}><RotateCcw className="size-4" />{t("restoreBatchSchedule")}</Button> : null}
+      </div>
+      <div className="mt-3 grid gap-4 @2xl/page:grid-cols-2 @6xl/page:grid-cols-4">
         <div>
           <Label htmlFor="school-term" className="text-xs font-normal text-muted">{t("schoolTerm")}</Label>
           <Select value={schoolTermId} onValueChange={setSchoolTermId}><SelectTrigger id="school-term" aria-required="true" aria-invalid={step3Attempted && !schoolTermId} aria-describedby={step3Attempted && !schoolTermId ? "school-term-error" : undefined} className="mt-1"><SelectValue placeholder={t("chooseSchoolTerm")} /></SelectTrigger><SelectContent>{schoolTerms.map((term) => <SelectItem key={term.id} value={term.id}>{schoolTermLabel(term, scheduleT(`period${term.term}`))}{term.isCurrent ? ` · ${t("current")}` : ""}</SelectItem>)}</SelectContent></Select>
@@ -503,7 +583,7 @@ export function ClassBuildWizard({
       {scheduleSlots.length > 0 && calendarLoading && <p className="mt-3 flex items-center gap-2 text-sm text-muted"><LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" />{t("calendarLoading")}</p>}
       {scheduleSlots.length > 0 && calendarLoadFailed && <p role="alert" className="mt-3 text-sm text-rose">{t("calendarLoadFailed")}</p>}
       {mode === "course" ? <>
-        {preview.length > 0 && <DashboardTableShell className="mt-5"><Table><TableHeader><TableRow><TableHead className="w-16">No.</TableHead><TableHead>{t("lectureName")}</TableHead><TableHead>{t("scheduledAt")}</TableHead></TableRow></TableHeader><TableBody>{preview.map((item) => <TableRow key={item.lectureId}><TableCell className="font-mono text-xs text-muted">{item.no}</TableCell><TableCell>{item.name}</TableCell><TableCell><DateTimePicker mode="datetime" value={zonedDateTimeInputValue(new Date(overrides[item.lectureId] ?? item.scheduledAt.toISOString()), timeZone)} onValueChange={(value) => updateScheduleOverride(item.lectureId, value, item.scheduledAt)} className="h-8 max-w-60 text-xs" /></TableCell></TableRow>)}</TableBody></Table></DashboardTableShell>}
+        {preview.length > 0 && <DashboardTableShell className="mt-5"><Table><TableHeader><TableRow><TableHead className="w-16">{t("scheduleOrder")}</TableHead><TableHead>{t("lectureName")}</TableHead><TableHead>{t("scheduledAt")}</TableHead><TableHead className="w-28" /></TableRow></TableHeader><TableBody>{preview.map((item, index) => <TableRow key={item.lectureId}><TableCell className="font-mono text-xs text-muted">{index + 1}</TableCell><TableCell><span className="block">{item.name}</span><span className="text-xs text-muted">{t("sourceLectureNo", { no: item.no })}</span></TableCell><TableCell><DateTimePicker mode="datetime" value={zonedDateTimeInputValue(new Date(overrides[item.lectureId] ?? item.scheduledAt.toISOString()), timeZone)} onValueChange={(value) => updateScheduleOverride(item.lectureId, value, item.scheduledAt)} className="h-8 max-w-60 text-xs" /></TableCell><TableCell>{overrides[item.lectureId] !== undefined ? <Button type="button" size="sm" variant="ghost" onClick={() => resetScheduleOverride(item.lectureId)}><RotateCcw className="size-3.5" />{t("useBatchTime")}</Button> : <span className="text-xs text-muted">{t("batchTime")}</span>}</TableCell></TableRow>)}</TableBody></Table></DashboardTableShell>}
       </> : <div className="mt-5 space-y-4">
         <p className="rounded-xl bg-moon/30 px-3 py-2 text-sm text-muted">{t("freeScheduleHint")}</p>
         <div className="flex flex-col gap-3 rounded-xl border border-line p-4 sm:flex-row sm:items-end">
@@ -515,7 +595,7 @@ export function ClassBuildWizard({
             <Plus className="size-4" />{t("addSession")}
           </Button>
         </div>
-        {preview.length > 0 && <DashboardTableShell><Table><TableHeader><TableRow><TableHead className="w-16">No.</TableHead><TableHead>{t("lectureName")}</TableHead><TableHead>{t("scheduledAt")}</TableHead><TableHead className="w-20" /></TableRow></TableHeader><TableBody>{preview.map((item) => <TableRow key={item.lectureId}><TableCell className="font-mono text-xs text-muted">{item.no}</TableCell><TableCell>{item.name}</TableCell><TableCell><DateTimePicker mode="datetime" value={zonedDateTimeInputValue(new Date(overrides[item.lectureId] ?? item.scheduledAt.toISOString()), timeZone)} onValueChange={(value) => updateScheduleOverride(item.lectureId, value, item.scheduledAt)} className="h-8 max-w-60 text-xs" /></TableCell><TableCell><Button type="button" size="sm" variant="ghost" className="px-2" aria-label={t("removeSession")} onClick={() => removeFreeSession(item.lectureId)}><Trash2 className="size-4" /></Button></TableCell></TableRow>)}</TableBody></Table></DashboardTableShell>}
+        {preview.length > 0 && <DashboardTableShell><Table><TableHeader><TableRow><TableHead className="w-16">{t("scheduleOrder")}</TableHead><TableHead>{t("lectureName")}</TableHead><TableHead>{t("scheduledAt")}</TableHead><TableHead className="w-44" /></TableRow></TableHeader><TableBody>{preview.map((item) => <TableRow key={item.lectureId}><TableCell className="font-mono text-xs text-muted">{item.no}</TableCell><TableCell>{item.name}</TableCell><TableCell><DateTimePicker mode="datetime" value={zonedDateTimeInputValue(new Date(overrides[item.lectureId] ?? item.scheduledAt.toISOString()), timeZone)} onValueChange={(value) => updateScheduleOverride(item.lectureId, value, item.scheduledAt)} className="h-8 max-w-60 text-xs" /></TableCell><TableCell><div className="flex items-center justify-end gap-1">{overrides[item.lectureId] !== undefined ? <Button type="button" size="sm" variant="ghost" onClick={() => resetScheduleOverride(item.lectureId)}><RotateCcw className="size-3.5" />{t("useBatchTime")}</Button> : null}<Button type="button" size="sm" variant="ghost" className="px-2" aria-label={t("removeSession")} onClick={() => removeFreeSession(item.lectureId)}><Trash2 className="size-4" /></Button></div></TableCell></TableRow>)}</TableBody></Table></DashboardTableShell>}
       </div>}
       {visibleConflictsLoading && <p className="mt-4 flex items-center gap-2 text-sm text-muted"><LoaderCircle className="size-4 animate-spin" />{t("checkingConflicts")}</p>}
       {!visibleConflictsLoading && visibleConflicts.length > 0 && <div role="alert" className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-950 dark:text-amber-100"><p className="flex items-center gap-2 font-medium"><AlertTriangle className="size-4" />{t("conflictsFound", { count: visibleConflicts.length })}</p><ul className="mt-2 space-y-1 text-xs">{visibleConflicts.map((conflict) => <li key={conflict.sessionId}>{conflict.classroomName} · {conflict.lectureName} · {new Intl.DateTimeFormat(undefined, { timeZone, dateStyle: "medium", timeStyle: "short" }).format(new Date(conflict.scheduledAt))} · {[conflict.teacherConflict ? t("teacherConflict") : null, conflict.roomConflict ? formatRoomLocation(conflict.roomName, conflict.campusName, t("roomTbd")) : null].filter(Boolean).join(" / ")}</li>)}</ul></div>}
@@ -524,7 +604,7 @@ export function ClassBuildWizard({
 
     {step === 4 && <section className="rounded-2xl border border-line bg-card p-5">
       <h2 className="text-base font-medium text-ink">{t("stepConfirm")}</h2><p className="mt-1 text-sm text-muted">{t("confirmStepHint")}</p>
-      <dl className="mt-5 grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2"><div><dt className="text-muted">{t("course")}</dt><dd className="mt-1 font-medium">{mode === "free" ? t("modeFree") : `${course?.familyTitle ?? ""} · ${course?.title ?? ""}`}</dd></div><div><dt className="text-muted">{t("courseReadiness")}</dt><dd className="mt-1">{mode === "free" ? t("notApplicable") : isReady ? t("readyCount", { ready: course?.releasedLectureCount ?? 0, total: course?.lectureCount ?? 0 }) : <span className="text-amber-800 dark:text-amber-300">{t("incompleteCount", { ready: course?.releasedLectureCount ?? 0, total: course?.lectureCount ?? 0 })}</span>}</dd></div><div><dt className="text-muted">{t("teacher")}</dt><dd className="mt-1 font-medium">{teachers.find((teacher) => teacher.id === primaryTeacherId)?.name || "—"}</dd></div><div><dt className="text-muted">{t("room")}</dt><dd className="mt-1">{roomId ? formatRoomLocation(roomOptions.find((room) => room.id === roomId)?.name ?? null, roomOptions.find((room) => room.id === roomId)?.campusName ?? null, t("roomTbd")) : t("roomTbd")}</dd></div><div><dt className="text-muted">{t("conflicts")}</dt><dd className="mt-1">{visibleConflictsLoading ? t("checking") : visibleConflicts.length ? t("conflictsFound", { count: visibleConflicts.length }) : t("noScheduleConflicts")}</dd></div><div><dt className="text-muted">{t("sessionCount")}</dt><dd className="mt-1">{mode === "course" ? preview.length : freeSessions.length}</dd></div><div><dt className="text-muted">{t("purpose")}</dt><dd className="mt-1">{purpose === "test" ? <Badge variant="outline" className="border-violet-500/40 bg-violet-500/10 text-violet-800 dark:text-violet-300">{t("testBadge")}</Badge> : t("production")}</dd></div><div><dt className="text-muted">{t("offeringType")}</dt><dd className="mt-1">{t(`offering_${offeringType}`)}</dd></div></dl>
+      <dl className="mt-5 grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2"><div><dt className="text-muted">{t("course")}</dt><dd className="mt-1 font-medium">{mode === "free" ? t("modeFree") : `${course?.familyTitle ?? ""} · ${course?.title ?? ""}`}</dd></div><div><dt className="text-muted">{t("courseReadiness")}</dt><dd className="mt-1">{mode === "free" ? t("notApplicable") : isReady ? t("readyCount", { ready: selectedReadyCount, total: lectures.length }) : <span className="text-amber-800 dark:text-amber-300">{t("incompleteCount", { ready: selectedReadyCount, total: lectures.length })}</span>}</dd></div><div><dt className="text-muted">{t("teacher")}</dt><dd className="mt-1 font-medium">{teachers.find((teacher) => teacher.id === primaryTeacherId)?.name || "—"}</dd></div><div><dt className="text-muted">{t("room")}</dt><dd className="mt-1">{roomId ? formatRoomLocation(roomOptions.find((room) => room.id === roomId)?.name ?? null, roomOptions.find((room) => room.id === roomId)?.campusName ?? null, t("roomTbd")) : t("roomTbd")}</dd></div><div><dt className="text-muted">{t("conflicts")}</dt><dd className="mt-1">{visibleConflictsLoading ? t("checking") : visibleConflicts.length ? t("conflictsFound", { count: visibleConflicts.length }) : t("noScheduleConflicts")}</dd></div><div><dt className="text-muted">{t("sessionCount")}</dt><dd className="mt-1">{mode === "course" ? preview.length : freeSessions.length}</dd></div><div><dt className="text-muted">{t("purpose")}</dt><dd className="mt-1">{purpose === "test" ? <Badge variant="outline" className="border-violet-500/40 bg-violet-500/10 text-violet-800 dark:text-violet-300">{t("testBadge")}</Badge> : t("production")}</dd></div><div><dt className="text-muted">{t("offeringType")}</dt><dd className="mt-1">{t(`offering_${offeringType}`)}</dd></div></dl>
       {purpose === "production" && !isReady && mode === "course" && <p className="mt-5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-950 dark:text-amber-100">{t("productionActivationWarning")}</p>}
       {purpose === "test" && !isReady && <p className="mt-5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-950 dark:text-amber-100">{t("testActivationWarning")}</p>}
       <div className="mt-5 flex items-start gap-3"><Checkbox id="activate-now" checked={activateNow} onCheckedChange={(value) => setActivateNow(value === true)} /><div><Label htmlFor="activate-now" className="cursor-pointer">{t("activateNow")}</Label><p className="mt-1 text-xs text-muted">{t("activateNowHint")}</p></div></div>

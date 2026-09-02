@@ -56,6 +56,45 @@ describe("P4H CoursePicker and class-builder contract", () => {
     expect(en).toContain("new sessions are scheduled in sequence");
   });
 
+  it("lets a course class trim, reorder, restore, and then batch or individually schedule lectures", () => {
+    const wizard = read("src", "features", "school", "ClassBuildWizard.tsx");
+    const zh = read("messages", "zh.json");
+    const en = read("messages", "en.json");
+
+    expect(wizard).toContain("useState<ClassBuildLecture[]>([])");
+    expect(wizard).toContain("moveCourseSession");
+    expect(wizard).toContain("removeCourseSession");
+    expect(wizard).toContain("restoreCourseSessions");
+    expect(wizard).toContain("courseSessionsAreDefault");
+    expect(wizard).toContain("resetScheduleOverride");
+    expect(wizard).toContain("resetAllScheduleOverrides");
+    expect(wizard).toContain('t("batchScheduleTitle")');
+    expect(wizard).toContain('t("restoreDefaultLectures")');
+    expect(zh).toContain('"restoreDefaultLectures": "恢复默认课节"');
+    expect(en).toContain('"restoreDefaultLectures": "Restore default lectures"');
+
+    const courseInput = {
+      name: "Tailored course class",
+      courseId: "11111111-1111-4111-8111-111111111111",
+      capacity: null,
+      roomId: null,
+      primaryTeacherId: "22222222-2222-4222-8222-222222222222",
+      learningSupportId: null,
+      schoolTermId: "33333333-3333-4333-8333-333333333333",
+      purpose: "production" as const,
+      offeringType: "long_term_formal" as const,
+      activateNow: false,
+      sessions: [{
+        lectureId: "44444444-4444-4444-8444-444444444444",
+        no: 7,
+        name: "Only the selected lecture",
+        scheduledAt: "2026-09-12T11:00:00.000Z",
+        durationMin: 90,
+      }],
+    };
+    expect(buildClassSchema.parse(courseInput).sessions).toHaveLength(1);
+  });
+
   it("validates availability and creates the correct staff responsibilities inside the controlled RPC", () => {
     const migration = read("supabase", "migrations", "20260720000800_p4h_class_builder.sql");
     const enrollmentMigration = read("supabase", "migrations", "20260711000100_p4c_permission_correction.sql");

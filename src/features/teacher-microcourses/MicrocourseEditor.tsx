@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useRef, useState, useTransition } from "react";
-import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, Play, Plus, Save, Send, Trash2, Undo2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, Plus, Save, Send, Trash2, Undo2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,9 +21,9 @@ import { useRouter } from "@/i18n/navigation";
 import {
   createTeacherCompositionPageAction,
   deleteTeacherMicrocoursePageAction,
-  freezeTeacherMicrocourseSourceSessionAction,
   reorderTeacherMicrocoursePagesAction,
   saveTeacherMicrocourseMetadataAction,
+  selectTeacherMicrocourseVariantAction,
   submitTeacherMicrocourseReviewAction,
   withdrawTeacherMicrocourseAction,
   withdrawTeacherMicrocourseReviewAction,
@@ -124,16 +124,42 @@ export function MicrocourseEditor({ session, editor, canTeach }: {
       disabled: pending || pageSwitching,
     };
   });
+  const persistMetadata = () => saveTeacherMicrocourseMetadataAction({
+    microcourseId: editor.id, title, description, grade, courseSeason, classType, primaryTopicSlug,
+    keywords: keywords.split(/[，,]/).map((item) => item.trim()).filter(Boolean),
+  });
   const saveMetadata = () => startTransition(async () => {
-    const result = await saveTeacherMicrocourseMetadataAction({
-      microcourseId: editor.id, title, description, grade, courseSeason, classType, primaryTopicSlug,
-      keywords: keywords.split(/[，,]/).map((item) => item.trim()).filter(Boolean),
-    });
+    const result = await persistMetadata();
     setMessage(result.ok ? t("metadataSaved") : t("actionFailed", { code: result.code }));
     if (result.ok) router.refresh();
   });
+  const saveForSession = () => startTransition(async () => {
+    if (!await persistCurrentPage()) return;
+    const metadataResult = await persistMetadata();
+    if (!metadataResult.ok) {
+      setMessage(t("actionFailed", { code: metadataResult.code }));
+      return;
+    }
+    if (canTeach && !session.coursewareFrozenAt && !editor.selectedForSession && pages.length > 0) {
+      const selectionResult = await selectTeacherMicrocourseVariantAction({
+        sessionId: session.id,
+        microcourseId: editor.id,
+      });
+      if (!selectionResult.ok) {
+        setMessage(t("actionFailed", { code: selectionResult.code }));
+        return;
+      }
+    }
+    setMessage(t("sessionDraftSaved"));
+    router.push(`/dashboard/sessions/${session.id}?stage=pre`);
+  });
   const submit = () => startTransition(async () => {
     if (!await persistCurrentPage()) return;
+    const metadataResult = await persistMetadata();
+    if (!metadataResult.ok) {
+      setMessage(t("actionFailed", { code: metadataResult.code }));
+      return;
+    }
     const result = await submitTeacherMicrocourseReviewAction({ microcourseId: editor.id, note: reviewNote });
     setMessage(result.ok ? t("reviewSubmitted") : t("actionFailed", { code: result.code }));
     if (result.ok) router.refresh();
@@ -143,17 +169,6 @@ export function MicrocourseEditor({ session, editor, canTeach }: {
     const result = await withdrawTeacherMicrocourseReviewAction(editor.workflow.activeReviewCycleId);
     setMessage(result.ok ? t("reviewWithdrawn") : t("actionFailed", { code: result.code }));
     if (result.ok) router.refresh();
-  });
-  const startClass = () => startTransition(async () => {
-    if (!await persistCurrentPage()) return;
-    if (!session.coursewareFrozenAt) {
-      const result = await freezeTeacherMicrocourseSourceSessionAction(editor.id);
-      if (!result.ok) {
-        setMessage(t("actionFailed", { code: result.code }));
-        return;
-      }
-    }
-    router.push(`/classroom/${session.classroomId}/session/${session.id}/live`);
   });
   const withdrawPublished = () => startTransition(async () => {
     const result = await withdrawTeacherMicrocourseAction(editor.id);
@@ -211,8 +226,7 @@ export function MicrocourseEditor({ session, editor, canTeach }: {
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="truncate text-base font-medium">{t("workspaceTitle")}</h2>
-              <Badge variant="secondary">{t(`workflow_${stage}`)}</Badge>
-              {published ? <Badge variant="outline">{editor.withdrawnAt ? t("withdrawn") : t("published")}</Badge> : null}
+              <Badge variant="secondary">{editor.selectedForSession ? t("selectedForClass") : t("sessionDraft")}</Badge>
             </div>
             <p className="mt-0.5 truncate text-xs text-muted">{title ? `${title} · ${session.title}` : session.title}</p>
           </div>
@@ -221,11 +235,7 @@ export function MicrocourseEditor({ session, editor, canTeach }: {
               {detailsOpen ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
               {detailsOpen ? t("collapseDetails") : t("editDetails")}
             </Button>
-            {inReview
-              ? <Button type="button" variant="secondary" size="sm" disabled={pending || !editor.workflow?.activeReviewCycleId} onClick={withdrawReview}><Undo2 className="size-4" />{t("withdrawReview")}</Button>
-              : <Button type="button" size="sm" disabled={pending || pages.length === 0} onClick={submit}><Send className="size-4" />{published ? t("submitNewVersion") : t("submitReview")}</Button>}
-            {canTeach ? <Button type="button" variant="secondary" size="sm" disabled={pending || pages.length === 0} onClick={startClass}><Play className="size-4" />{session.coursewareFrozenAt ? t("enterClass") : t("freezeAndTeach")}</Button> : null}
-            {published && !editor.withdrawnAt ? <Button type="button" variant="ghost" size="sm" disabled={pending} onClick={() => setWithdrawOpen(true)}>{t("withdrawPublication")}</Button> : null}
+            <Button type="button" size="sm" disabled={pending || !title.trim()} onClick={saveForSession}><Save className="size-4" />{t(canTeach && !session.coursewareFrozenAt ? "saveForSessionAndReturn" : "saveDraftAndReturn")}</Button>
           </div>
         </div>
         {detailsOpen ? (
@@ -237,8 +247,24 @@ export function MicrocourseEditor({ session, editor, canTeach }: {
             <Label className="grid gap-1 lg:col-span-2"><span>{t("primaryTopic")}</span><Select value={primaryTopicSlug} onValueChange={setPrimaryTopicSlug}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{editor.topics.map((topic) => <SelectItem key={topic.id} value={topic.slug}>{locale === "en" ? topic.titleEn : topic.titleZh}</SelectItem>)}</SelectContent></Select></Label>
             <Label className="grid gap-1 lg:col-span-6"><span>{t("description")}</span><Textarea value={description} onChange={(event) => setDescription(event.target.value)} maxLength={2000} rows={2} /></Label>
             <Label className="grid gap-1 lg:col-span-6"><span>{t("keywords")}</span><Input value={keywords} onChange={(event) => setKeywords(event.target.value)} maxLength={400} placeholder={t("keywordsHint")} /></Label>
-            <Label className="grid gap-1 lg:col-span-10"><span>{t("reviewNote")}</span><Input value={reviewNote} onChange={(event) => setReviewNote(event.target.value)} maxLength={1000} placeholder={t("reviewNoteHint")} /></Label>
-            <div className="flex items-end lg:col-span-2"><Button type="button" size="sm" disabled={pending || !title.trim()} onClick={saveMetadata}><Save className="size-4" />{t("saveMetadata")}</Button></div>
+            <div className="flex items-end lg:col-span-12"><Button type="button" size="sm" variant="secondary" disabled={pending || !title.trim()} onClick={saveMetadata}><Save className="size-4" />{t("saveMetadata")}</Button></div>
+            <div className="flex flex-wrap items-start justify-between gap-3 pt-3 lg:col-span-12">
+              <div className="max-w-3xl">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-sm font-medium text-ink">{t("catalogSharingTitle")}</h3>
+                  <Badge variant="secondary">{t(`workflow_${stage}`)}</Badge>
+                  {published ? <Badge variant="outline">{editor.withdrawnAt ? t("withdrawn") : t("published")}</Badge> : null}
+                </div>
+                <p className="mt-1 text-xs leading-5 text-muted">{t("catalogSharingDescription")}</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {inReview
+                  ? <Button type="button" variant="secondary" size="sm" disabled={pending || !editor.workflow?.activeReviewCycleId} onClick={withdrawReview}><Undo2 className="size-4" />{t("withdrawReview")}</Button>
+                  : <Button type="button" variant="secondary" size="sm" disabled={pending || pages.length === 0} onClick={submit}><Send className="size-4" />{published ? t("submitNewVersion") : t("submitReview")}</Button>}
+                {published && !editor.withdrawnAt ? <Button type="button" variant="ghost" size="sm" disabled={pending} onClick={() => setWithdrawOpen(true)}>{t("withdrawPublication")}</Button> : null}
+              </div>
+            </div>
+            <Label className="grid gap-1 lg:col-span-12"><span>{t("reviewNote")}</span><Input value={reviewNote} onChange={(event) => setReviewNote(event.target.value)} maxLength={1000} placeholder={t("reviewNoteHint")} /></Label>
           </div>
         ) : null}
         {message ? <p role="status" className="mt-2 text-xs text-muted">{message}</p> : null}

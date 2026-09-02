@@ -89,4 +89,25 @@ describe("teacher microcourse authoring UX", () => {
     expect(zh).toContain('"pageAutosaving"');
     expect(en).toContain('"pageAutosaving"');
   });
+
+  it("saves the selected proposal back to session preparation and keeps catalog review optional", () => {
+    const editor = read("src", "features", "teacher-microcourses", "MicrocourseEditor.tsx");
+    const sessionWorkspace = read("src", "features", "school", "SessionWorkspaceBody.tsx");
+    const classroomActions = read("src", "features", "classroom", "actions.ts");
+    const zh = read("messages", "zh.json");
+    const en = read("messages", "en.json");
+
+    expect(editor).toContain("const saveForSession");
+    expect(editor).toContain("selectTeacherMicrocourseVariantAction");
+    expect(editor).toContain("/dashboard/sessions/${session.id}?stage=pre");
+    expect(editor).toContain('t("catalogSharingTitle")');
+    expect(editor).toContain("submitTeacherMicrocourseReviewAction");
+    expect(editor).not.toContain("freezeTeacherMicrocourseSourceSessionAction");
+    expect(editor).not.toContain("freezeAndTeach");
+    expect(sessionWorkspace).toContain("SessionPrepCompleteAction");
+    expect(sessionWorkspace).toContain('label: t("enterCandidate")');
+    expect(classroomActions).toContain('"freeze_selected_teacher_microcourse_source_session"');
+    expect(zh).toContain('"saveForSessionAndReturn": "保存本节并返回备课"');
+    expect(en).toContain('"saveForSessionAndReturn": "Save for session and return"');
+  });
 });
