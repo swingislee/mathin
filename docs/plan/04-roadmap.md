@@ -210,11 +210,15 @@ Phase 1～5 的本机隔离 Supabase、固定开发身份、migration LF checksu
 
 `DEV-CW-1` 回应课程产品中 E 系列、爱学习及后续导入课程缺少单页 16:9/4:3 修订闭环的问题，权威规划见 [doc 16 §14](16-p6-courseware-platform.md#14-dev-cw-1-课程产品统一课件工作区待产品逐步确认)。目标主路径为“课程产品 → 课程/版本 → 讲次 → 指定页面 → 统一课件工作区”，并把共享内容修订、分轨版式、页面上下文资源替换、插入能力和 draft/review/release 放在同一对象上下文内。研发任务只保留责任／待处理投影，公共资源保留高级治理与回滚；旧适配校对与旧 Studio 不再作为平行生产空间。
 
-产品负责人于 2026-08-31～09-02 依次确认 Step 0～6。Step 3B 把文字／图片／形状节点与图层能力收敛为共享组件；Step 4A/4B 打通共享 4:3 控制器、旧 A～F 映射和单页草稿；Step 5A/5B 打通页面上下文影响预览、单样本替换与回滚；Step 6 让爱学习来源 Viewer 通过共享编辑桥获得选择、文字、几何、图层、网格与历史能力。Step 7A 的“审核对象分流但旧工作区全部保留”已被产品负责人审计退回；`DEV-CW-1` 现为 **STEP 7B REVIEW SEMANTICS AND LEGACY RETIREMENT / IN PROGRESS**：教研审核只承载正式课修改审核和教师微课入库审核，备课资料审核回到课次教学履约并向审核人的“我的待办”投影；删除尚未正式投产的旧 Studio、旧适配发布工作台及公开直发／批量适配发布 RPC，历史对象与审计记录不删除。整体重构完成后仍在 Step 7 后、Step 8 前双端回看定稿组件表现；本批只在隔离开发目标施工，不触碰生产，也不改变 R1-Live Gate 2。
+产品负责人于 2026-08-31～09-02 依次确认 Step 0～6。Step 3B 把文字／图片／形状节点与图层能力收敛为共享组件；Step 4A/4B 打通共享 4:3 控制器、旧 A～F 映射和单页草稿；Step 5A/5B 打通页面上下文影响预览、单样本替换与回滚；Step 6 让爱学习来源 Viewer 通过共享编辑桥获得选择、文字、几何、图层、网格与历史能力。Step 7A 的“审核对象分流但旧工作区全部保留”已被产品负责人审计退回；`DEV-CW-1` 现为 **STEP 7B REVIEW SEMANTICS AND LEGACY RETIREMENT / READY FOR USER AUDIT**：提交 `a4f051e` 已将正式课修改审核与教师微课入库审核收敛为一个教研入口，并把备课资料审核归回课次对象；提交 `de72449` 退役公开直发／批量适配发布 RPC。旧 Studio、旧适配工作台和独立备课审核页已从仓库删除，历史对象与审计记录不删除。整体重构完成后仍在 Step 7 后、Step 8 前双端回看定稿组件表现；本批只在隔离开发目标完成代码与窄检查，未触碰生产，也不改变 R1-Live Gate 2。
 
 #### DEV-SCHOOL-OPS-1 · 学辅运营与教学履约主干
 
 `DEV-SCHOOL-OPS-1` 是产品负责人于 2026-09-01 选入的独立开发预演，权威里程碑见 [`30-mathin_school_ops_architecture_plan.md`](30-mathin_school_ops_architecture_plan.md)。规划型 `/dashboard/school-ops` 页面、导航和快照已删除；Phase 1 第一轮真实业务切片已在 `/dashboard/students/import` 与 `/dashboard/followups` 接入现有 ImportBatch、服务端校验／应用、负责人分配、追加式沟通和下一联系时间。产品负责人于 2026-09-02 进入 Phase 2，并在人工检阅时否决“逐人填写后创建通用销售机会”的首版。当前 **Phase 2 · 活动参与／测评录入／后续归类** 已按真实飞书样本重做：`/dashboard/activities/[activityId]` 先选业务节点，再在该节点窄表格中批量录入；`/dashboard/opportunities` 退出产品面，Enrollment／ClassMembership 继续留在 Phase 3。本机 migration `20260902000400_school_ops_phase2_node_worktables` 扩展 AssessmentResult、增加 `activity_routes` 并停止活动节点改写全局学生阶段。状态为 **DEVELOPMENT READY / AWAITING PRODUCT OWNER UI AND INTERACTION ACCEPTANCE**；机器检查只证明静态合同和本机事务数据流，页面设计、交互手感与数据填写仍由产品负责人人工验收。未进入 Phase 3，没有生产迁移、数据写入、Storage 或发布动作；Phase 1 的二进制 `.xlsx`、逐行合并决定及 Family／Contact／Lead 分表仍列为显式后续项。
+
+#### DEV-STAFF-ONBOARD-1 · 员工批量邀请
+
+`DEV-STAFF-ONBOARD-1` 是产品负责人于 2026-09-02 选入的独立开发增量，当前状态为 **IN PROGRESS / LOCAL DEVELOPMENT ONLY**，不改变 R1-Live Gate 2。用户闭环固定为“在员工页粘贴或上传 `姓名 / 手机号或邮箱 / 岗位 key` 名单 → 生成版本化 ImportBatch 并逐行预检 → 整批零错误后一次性签发邀请 → 立即下载只显示一次的邀请凭据 → 受邀人注册后自动获得预先核准的姓名与岗位”。该流程复用现有 email/phone 一次性员工邀请和 `auth.users.id` 单账号合同，不直接创建 Auth 用户、不预设密码、不把已有顾客账号静默改为员工，也不允许非管理员预授含 `permission.configure` 的岗位。批次保留 dry-run、幂等、防漂移、错误下载和审计；联系人输入在批次完成或过期后清除。首批仅在本机隔离开发目标施工，未授权生产迁移、业务写入或发布。
 
 ## 6. 原 R1 工作重新定位
 
