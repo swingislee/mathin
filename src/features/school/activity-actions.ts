@@ -224,6 +224,20 @@ export async function markActivityResultAction(
   }
 }
 
+export async function beginActivityAssessmentAction(registrationId: string): Promise<ActionResult> {
+  try {
+    const value = parse(uuid, registrationId);
+    const supabase = await authorizedActivityClientAny(["activity.register", "review.write"]);
+    const { error } = await rpc(supabase)("begin_activity_assessment", {
+      p_registration_id: value,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  } catch (error) {
+    return actionError(error, ACTIVITY_ERROR_CODES);
+  }
+}
+
 export async function saveActivityAssessmentAction(input: ActivityAssessmentInput): Promise<ActionResult> {
   try {
     const value = parse(activityAssessmentSchema, input);

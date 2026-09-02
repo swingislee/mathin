@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Link, useRouter } from "@/i18n/navigation";
 import type { ActionResult } from "@/lib/action-result";
 import {
+  beginActivityAssessmentAction,
   bookActivityAction,
   createActivityOpportunityAction,
   markActivityResultAction,
@@ -51,13 +52,19 @@ export function ActivityWorkspace({
   const t = useTranslations("school.activities");
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [autoAttendedIds, setAutoAttendedIds] = useState<Set<string>>(() => new Set());
+  const [autoAttendancePendingIds, setAutoAttendancePendingIds] = useState<Set<string>>(() => new Set());
+  const registrations = activity.registrations.map((registration) => autoAttendedIds.has(registration.id)
+    ? { ...registration, status: "attended" as const }
+    : registration);
+  const workspaceActivity = { ...activity, registrations };
   const [selectedId, setSelectedId] = useState(
     activity.registrations.some((registration) => registration.id === initialRegistrationId)
       ? initialRegistrationId ?? ""
       : activity.registrations[0]?.id ?? "",
   );
-  const selected = activity.registrations.find((registration) => registration.id === selectedId)
-    ?? activity.registrations[0]
+  const selected = registrations.find((registration) => registration.id === selectedId)
+    ?? registrations[0]
     ?? null;
 
   const run = (action: () => Promise<ActionResult>, successMessage: string, onSuccess?: () => void) => {
@@ -73,13 +80,49 @@ export function ActivityWorkspace({
     });
   };
 
-  const attended = activity.registrations.filter((registration) => registration.status === "attended").length;
-  const assessed = activity.registrations.filter((registration) => registration.assessment).length;
-  const opportunities = activity.registrations.filter((registration) => registration.opportunity).length;
+  const markAttendedWhenScoring = (registration: ActivityRegistration) => {
+    if (registration.status === "attended" || autoAttendancePendingIds.has(registration.id)) return;
+
+    setAutoAttendedIds((current) => new Set(current).add(registration.id));
+    setAutoAttendancePendingIds((current) => new Set(current).add(registration.id));
+    void beginActivityAssessmentAction(registration.id).then((result) => {
+      setAutoAttendancePendingIds((current) => {
+        const next = new Set(current);
+        next.delete(registration.id);
+        return next;
+      });
+      if (result.ok) {
+        router.refresh();
+        return;
+      }
+      setAutoAttendedIds((current) => {
+        const next = new Set(current);
+        next.delete(registration.id);
+        return next;
+      });
+      toast.error(errorMessage(t, result.code));
+    }).catch(() => {
+      setAutoAttendancePendingIds((current) => {
+        const next = new Set(current);
+        next.delete(registration.id);
+        return next;
+      });
+      setAutoAttendedIds((current) => {
+        const next = new Set(current);
+        next.delete(registration.id);
+        return next;
+      });
+      toast.error(errorMessage(t, "UNKNOWN"));
+    });
+  };
+
+  const attended = registrations.filter((registration) => registration.status === "attended").length;
+  const assessed = registrations.filter((registration) => registration.assessment).length;
+  const opportunities = registrations.filter((registration) => registration.opportunity).length;
 
   return <div className="space-y-8">
     <StatusStrip items={[
-      { label: t("registered"), value: activity.registrations.filter((registration) => registration.status !== "cancelled").length },
+      { label: t("registered"), value: registrations.filter((registration) => registration.status !== "cancelled").length },
       { label: t("attended"), value: attended },
       { label: t("assessment"), value: assessed },
       { label: t("opportunity"), value: opportunities },
@@ -87,12 +130,18 @@ export function ActivityWorkspace({
     ]} />
 
     <ParticipationRoster
-      activity={activity}
+      activity={workspaceActivity}
       selectedId={selected?.id ?? ""}
       pending={pending}
       canRegister={canRegister}
       onSelect={setSelectedId}
+      onStatusEdit={(registrationId) => setAutoAttendedIds((current) => {
+        const next = new Set(current);
+        next.delete(registrationId);
+        return next;
+      })}
       run={run}
+      statusPendingIds={autoAttendancePendingIds}
     />
 
     <DashboardSection
@@ -106,6 +155,8 @@ export function ActivityWorkspace({
           pending={pending}
           canAssess={canAssess}
           run={run}
+          attendancePending={autoAttendancePendingIds.has(selected.id)}
+          onScoreEdit={markAttendedWhenScoring}
         />
         <OpportunityEditor
           key={`opportunity-${selected.id}-${selected.opportunity?.id ?? "new"}`}
@@ -128,14 +179,18 @@ function ParticipationRoster({
   pending,
   canRegister,
   onSelect,
+  onStatusEdit,
   run,
+  statusPendingIds,
 }: {
   activity: ActivityRow;
   selectedId: string;
   pending: boolean;
   canRegister: boolean;
   onSelect: (id: string) => void;
+  onStatusEdit: (registrationId: string) => void;
   run: (action: () => Promise<ActionResult>, successMessage: string, onSuccess?: () => void) => void;
+  statusPendingIds: ReadonlySet<string>;
 }) {
   const t = useTranslations("school.activities");
   const [query, setQuery] = useState("");
@@ -159,6 +214,7 @@ function ParticipationRoster({
   }, [activity.registrations, query]);
 
   const setStatus = (registration: ActivityRegistration, status: ParticipationStatus) => {
+    onStatusEdit(registration.id);
     if (status === "booked") {
       run(() => bookActivityAction(activity.id, registration.studentId), t("resultMarked"));
       return;
@@ -209,7 +265,7 @@ function ParticipationRoster({
               {registration.studentGrade ? <p className="mt-0.5 text-xs text-muted">{t("gradeValue", { grade: registration.studentGrade })}</p> : null}
             </TableCell>
             <TableCell>
-              {canRegister ? <Select value={registration.status} disabled={pending} onValueChange={(value) => setStatus(registration, value as ParticipationStatus)}>
+              {canRegister ? <Select value={registration.status} disabled={pending || statusPendingIds.has(registration.id)} onValueChange={(value) => setStatus(registration, value as ParticipationStatus)}>
                 <SelectTrigger className="h-8 w-32"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="booked">{t("status_booked")}</SelectItem>
@@ -239,11 +295,15 @@ function AssessmentEditor({
   pending,
   canAssess,
   run,
+  attendancePending,
+  onScoreEdit,
 }: {
   registration: ActivityRegistration;
   pending: boolean;
   canAssess: boolean;
   run: (action: () => Promise<ActionResult>, successMessage: string) => void;
+  attendancePending: boolean;
+  onScoreEdit: (registration: ActivityRegistration) => void;
 }) {
   const t = useTranslations("school.activities");
   const [overallLevel, setOverallLevel] = useState(registration.assessment?.overallLevel ?? "on_track");
@@ -251,7 +311,7 @@ function AssessmentEditor({
   const [strengths, setStrengths] = useState(registration.assessment?.strengths ?? "");
   const [focusAreas, setFocusAreas] = useState(registration.assessment?.focusAreas ?? "");
   const [teacherRecommendation, setTeacherRecommendation] = useState(registration.assessment?.teacherRecommendation ?? "");
-  const canSave = canAssess && registration.status === "attended" && teacherRecommendation.trim().length > 0;
+  const canSave = canAssess && registration.status === "attended" && !attendancePending && teacherRecommendation.trim().length > 0;
 
   return <section className="min-w-0">
     <div className="mb-4">
@@ -267,7 +327,10 @@ function AssessmentEditor({
           </Select>
         </Label>
         <Label className="grid gap-1.5 text-xs font-normal text-muted">{t("scoreOptional")}
-          <Input type="number" min={0} max={100} value={score ?? ""} disabled={!canAssess || pending} onChange={(event) => setScore(event.target.value === "" ? null : Number(event.target.value))} />
+          <Input type="number" min={0} max={100} value={score ?? ""} disabled={!canAssess || pending} onChange={(event) => {
+            onScoreEdit(registration);
+            setScore(event.target.value === "" ? null : Number(event.target.value));
+          }} />
         </Label>
       </div>
       <Label className="grid gap-1.5 text-xs font-normal text-muted">{t("strengths")}

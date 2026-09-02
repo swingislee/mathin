@@ -18,6 +18,22 @@ describe("DEV-SCHOOL-OPS-1 Phase 2", () => {
     expect(migration).toContain("student_id, author_id, content, kind, next_follow_up_at");
   });
 
+  it("marks participation attended when scoring begins", () => {
+    const migration = read("supabase", "migrations", "20260902000300_school_ops_phase2_assessment_auto_attendance.sql");
+    const actions = read("src", "features", "school", "activity-actions.ts");
+    const workspace = read("src", "features", "school", "ActivityWorkspace.tsx");
+
+    expect(migration).toContain("begin_activity_assessment");
+    expect(migration).toContain("status = 'attended'");
+    expect(migration).toContain("follow_up_status = 'following'");
+    expect(migration).toContain("follow_up_status = 'invited'");
+    expect(migration).toContain("create or replace function public.mark_activity_result");
+    expect(migration).toContain("perform public.begin_activity_assessment(p_registration_id)");
+    expect(actions).toContain("beginActivityAssessmentAction");
+    expect(workspace).toContain("onScoreEdit(registration)");
+    expect(workspace).toContain("autoAttendedIds");
+  });
+
   it("delivers an activity object workspace instead of a planning surface", () => {
     const page = read("src", "app", "[locale]", "dashboard", "activities", "[activityId]", "page.tsx");
     const opportunityPage = read("src", "app", "[locale]", "dashboard", "opportunities", "page.tsx");
