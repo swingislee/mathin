@@ -3,6 +3,12 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseDelimitedText } from "@/features/school/delimited-text";
 import {
+  IGNORED_SOURCE_ROLE,
+  initialMofaxiaoRoleMappings,
+  mapMofaxiaoRoles,
+  parseStaffImportSource,
+} from "@/features/school/staff-import-source";
+import {
   canonicalizeStaffRoleTokens,
   hasLegacyStaffRoleSeparator,
   splitStaffRoleInput,
@@ -22,6 +28,69 @@ describe("DEV-STAFF-ONBOARD-1 bulk staff invitations", () => {
       { line: 1, cells: ["name", "identifier", "roles"] },
       { line: 2, cells: ["A\nTeacher", "teacher@example.com", "teacher"] },
     ]);
+    expect(parseDelimitedText(
+      "英语B\t17777777774\t未知\t前台,教务,面授（直播）主讲,校区主管,招生,学管师,课程顾问,财务,直播助教",
+    )).toEqual([{
+      line: 1,
+      cells: [
+        "英语B",
+        "17777777774",
+        "未知",
+        "前台,教务,面授（直播）主讲,校区主管,招生,学管师,课程顾问,财务,直播助教",
+      ],
+    }]);
+  });
+
+  it("detects pasted Mofaxiao rows, ignores Markdown separators, and requires explicit unsafe mappings", () => {
+    const clipboard = parseStaffImportSource(
+      "英语B\t17777777774\t未知\t前台,教务,面授（直播）主讲,校区主管,招生,学管师,课程顾问,财务,直播助教",
+    );
+    expect(clipboard.format).toBe("mofaxiao");
+    expect(clipboard.rows[0].sourceRoles).toEqual([
+      "前台",
+      "教务",
+      "面授（直播）主讲",
+      "校区主管",
+      "招生",
+      "学管师",
+      "课程顾问",
+      "财务",
+      "直播助教",
+    ]);
+
+    const source = parseStaffImportSource([
+      "| 英语D | 17777777776 | 未知 | 面授（直播）主讲 |",
+      "| ------ | ----------- | -- | ------------------ |",
+      "| 英语B | 17777777774 | 未知 | 前台,教务,面授（直播）主讲,校区主管,招生,学管师,课程顾问,财务,直播助教 |",
+    ].join("\n"));
+
+    expect(source.format).toBe("mofaxiao");
+    expect(source.rows).toHaveLength(2);
+    expect(source.rows[0]).toMatchObject({
+      line: 1,
+      name: "英语D",
+      identifier: "17777777776",
+      gender: "未知",
+      sourceRoles: ["面授（直播）主讲"],
+    });
+    expect(source.rows[1].sourceRoles).toContain("财务");
+
+    const mappings = initialMofaxiaoRoleMappings(source.sourceRoles);
+    expect(mappings["面授（直播）主讲"]).toBe("teacher");
+    expect(mappings["前台"]).toBe("");
+    expect(mappings["财务"]).toBe("");
+
+    const unresolved = mapMofaxiaoRoles(source.rows[1].sourceRoles, mappings);
+    expect(unresolved.roles).toEqual(["registrar", "teacher", "director", "sales", "part_time"]);
+    expect(unresolved.unresolved).toEqual(["前台", "财务"]);
+
+    const reviewed = mapMofaxiaoRoles(source.rows[1].sourceRoles, {
+      ...mappings,
+      "前台": IGNORED_SOURCE_ROLE,
+      "财务": IGNORED_SOURCE_ROLE,
+    });
+    expect(reviewed.unresolved).toEqual([]);
+    expect(reviewed.roles).toEqual(["registrar", "teacher", "director", "sales", "part_time"]);
   });
 
   it("uses spaces between localized role names and resolves them to stable keys", () => {
