@@ -26,6 +26,7 @@ export default async function StaffPage({ params }: { params: Promise<{ locale: 
         recentImportBatches={recentImportBatches}
         selfId={user.id}
         isAdmin={profile?.role === "admin"}
+        canInviteStaff={perms.has("staff.invite")}
         canManageStaff={perms.has("staff.manage")}
       />
     </DashboardPage>

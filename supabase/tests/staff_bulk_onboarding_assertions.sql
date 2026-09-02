@@ -11,6 +11,10 @@ declare
   preview jsonb;
   invalid_preview jsonb;
   v_batch_id uuid;
+  v_target_id uuid;
+  v_reissue_id uuid;
+  v_previous_hash text;
+  v_next_hash text;
   prepared record;
   created_invitation_id uuid;
   auth_count_before bigint;
@@ -99,6 +103,97 @@ begin
     from public.prepare_staff_import_account(v_batch_id, 1, md5('M!9ASSERTIONRETRY'));
   perform public.cancel_staff_import_account(prepared.invitation_id, 'AUTH_PROVIDER_FAILED');
 
+  select profile_row.id into v_target_id
+    from public.profiles profile_row
+   where profile_row.id <> v_actor_id
+     and profile_row.role in ('staff', 'admin')
+     and profile_row.is_active
+     and profile_row.account_status = 'active'
+   order by profile_row.created_at
+   limit 1;
+  if v_target_id is null then raise exception 'STAFF_REISSUE_TARGET_FIXTURE_REQUIRED'; end if;
+
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  update public.profiles
+     set password_change_required = true,
+         initial_password_set_at = now(),
+         password_changed_at = null
+   where id = v_target_id;
+  update public.staff_invitations
+     set status = 'accepted', accepted_by = v_target_id, accepted_at = now(), revoked_at = null
+   where id = prepared.invitation_id;
+  select code_hash into v_previous_hash
+    from public.staff_invitations where id = prepared.invitation_id;
+
+  v_next_hash := md5(gen_random_uuid()::text);
+  select reissue_id into v_reissue_id
+    from public.prepare_staff_initial_password_reissue(v_actor_id, v_target_id, v_next_hash);
+  if not exists (
+    select 1 from public.staff_initial_password_reissues request_row
+     where request_row.id = v_reissue_id
+       and request_row.status = 'prepared'
+       and request_row.next_code_hash = v_next_hash
+  ) or not exists (
+    select 1 from public.staff_invitations invitation_row
+     where invitation_row.id = prepared.invitation_id and invitation_row.code_hash = v_next_hash
+  ) then raise exception 'STAFF_REISSUE_PREPARE_FAILED'; end if;
+
+  begin
+    perform public.prepare_staff_initial_password_reissue(
+      v_actor_id, v_target_id, md5(gen_random_uuid()::text)
+    );
+    raise exception 'STAFF_REISSUE_CONCURRENT_CALL_ACCEPTED';
+  exception when others then
+    if sqlerrm = 'STAFF_REISSUE_CONCURRENT_CALL_ACCEPTED' then raise; end if;
+    if position('PASSWORD_REISSUE_IN_PROGRESS' in sqlerrm) = 0 then raise; end if;
+  end;
+
+  perform public.rollback_staff_initial_password_reissue(
+    v_reissue_id, v_actor_id, v_next_hash
+  );
+  if not exists (
+    select 1 from public.staff_initial_password_reissues request_row
+     where request_row.id = v_reissue_id
+       and request_row.status = 'rolled_back'
+       and request_row.previous_code_hash is null
+       and request_row.next_code_hash is null
+  ) or not exists (
+    select 1 from public.staff_invitations invitation_row
+     where invitation_row.id = prepared.invitation_id and invitation_row.code_hash = v_previous_hash
+  ) then raise exception 'STAFF_REISSUE_ROLLBACK_FAILED'; end if;
+
+  v_next_hash := md5(gen_random_uuid()::text);
+  select reissue_id into v_reissue_id
+    from public.prepare_staff_initial_password_reissue(v_actor_id, v_target_id, v_next_hash);
+  perform public.complete_staff_initial_password_reissue(
+    v_reissue_id, v_actor_id, v_next_hash
+  );
+  if not exists (
+    select 1 from public.staff_initial_password_reissues request_row
+     where request_row.id = v_reissue_id
+       and request_row.status = 'completed'
+       and request_row.previous_code_hash is null
+       and request_row.next_code_hash is null
+  ) then raise exception 'STAFF_REISSUE_COMPLETE_FAILED'; end if;
+
+  v_next_hash := md5(gen_random_uuid()::text);
+  select reissue_id into v_reissue_id
+    from public.prepare_staff_initial_password_reissue(v_actor_id, v_target_id, v_next_hash);
+  perform public.complete_initial_password_change(v_target_id);
+  if exists (
+    select 1 from public.profiles target_profile
+     where target_profile.id = v_target_id and target_profile.password_change_required
+  ) or not exists (
+    select 1 from public.staff_initial_password_reissues request_row
+     where request_row.id = v_reissue_id
+       and request_row.status = 'completed'
+       and request_row.previous_code_hash is null
+       and request_row.next_code_hash is null
+  ) then raise exception 'STAFF_REISSUE_PASSWORD_CHANGE_CLEANUP_FAILED'; end if;
+
+  perform set_config('request.jwt.claim.sub', v_actor_id::text, true);
+  perform set_config('request.jwt.claim.role', 'authenticated', true);
+
   invalid_preview := public.preview_staff_account_import(
     'mathin-staff-v1',
     jsonb_build_array(jsonb_build_object(
@@ -147,6 +242,9 @@ begin
     select 1 from information_schema.columns
      where table_schema = 'public' and column_name in ('initial_password', 'initial_password_plaintext')
   ) then failures := array_append(failures, 'plaintext initial-password column exists'); end if;
+  if to_regclass('public.staff_initial_password_reissues') is null then
+    failures := array_append(failures, 'initial-password reissue ledger missing');
+  end if;
   if exists (
     select 1 from auth.users
      where coalesce(raw_user_meta_data, '{}'::jsonb) ? 'registration_invite_code'
@@ -176,6 +274,18 @@ begin
   if not has_function_privilege(
     'service_role', 'public.complete_initial_password_change(uuid)', 'EXECUTE'
   ) then failures := array_append(failures, 'service-role password completion grant missing'); end if;
+  if has_function_privilege(
+    'authenticated', 'public.prepare_staff_initial_password_reissue(uuid,uuid,text)', 'EXECUTE'
+  ) then failures := array_append(failures, 'password reissue prepare leaked to authenticated'); end if;
+  if not has_function_privilege(
+    'service_role', 'public.prepare_staff_initial_password_reissue(uuid,uuid,text)', 'EXECUTE'
+  ) then failures := array_append(failures, 'service-role password reissue prepare grant missing'); end if;
+  if not has_function_privilege(
+    'service_role', 'public.rollback_staff_initial_password_reissue(uuid,uuid,text)', 'EXECUTE'
+  ) then failures := array_append(failures, 'service-role password reissue rollback grant missing'); end if;
+  if not has_function_privilege(
+    'service_role', 'public.complete_staff_initial_password_reissue(uuid,uuid,text)', 'EXECUTE'
+  ) then failures := array_append(failures, 'service-role password reissue completion grant missing'); end if;
   if cardinality(failures) > 0 then
     raise exception 'STAFF_DIRECT_PROVISIONING_STRUCTURE_FAILED: %', array_to_string(failures, ', ');
   end if;

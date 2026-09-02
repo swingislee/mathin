@@ -139,6 +139,24 @@ describe("DEV-STAFF-ONBOARD-1 bulk staff provisioning", () => {
     expect(migration).not.toMatch(/initial_password\s+text/);
   });
 
+  it("reissues a lost initial password only while first-password change is still pending", () => {
+    const migration = read("supabase/migrations/20260902001200_staff_initial_password_reissue.sql");
+    const actions = read("src/features/school/actions/staff.ts");
+    const panel = read("src/features/school/StaffMembersPanel.tsx");
+    expect(migration).toContain("create table public.staff_initial_password_reissues");
+    expect(migration).toContain("and target_profile.password_change_required");
+    expect(migration).toContain("raise exception 'INITIAL_PASSWORD_NOT_REQUIRED'");
+    expect(migration).toContain("raise exception 'PASSWORD_REISSUE_IN_PROGRESS'");
+    expect(migration).toContain("where target_user_id = p_user_id and status = 'prepared'");
+    expect(migration).toContain("grant execute on function public.prepare_staff_initial_password_reissue(uuid, uuid, text) to service_role");
+    expect(migration).not.toMatch(/initial_password\s+text/);
+    expect(actions).toContain("reissueStaffInitialPasswordAction");
+    expect(actions).toContain("admin.auth.admin.updateUserById");
+    expect(actions).toContain('authorizedClient("staff.invite")');
+    expect(panel).toContain("member.passwordChangeRequired");
+    expect(panel).toContain("reissueInitialPasswordOneTime");
+  });
+
   it("exposes direct account creation, one-time password handoff, and a forced first-login dialog", () => {
     const page = read("src/app/[locale]/dashboard/staff/page.tsx");
     const panel = read("src/features/school/StaffBulkInvitePanel.tsx");
@@ -150,6 +168,7 @@ describe("DEV-STAFF-ONBOARD-1 bulk staff provisioning", () => {
     const supportPanel = read("src/features/account/AccountSupportPanel.tsx");
     expect(page).toContain("listRecentStaffImportBatches");
     expect(page).toContain('["staff.invite", "staff.manage"]');
+    expect(page).toContain('canInviteStaff={perms.has("staff.invite")}');
     expect(panel).toContain("previewStaffImportAction");
     expect(panel).toContain("applyStaffImportAction");
     expect(panel).toContain("duplicatesReviewed");

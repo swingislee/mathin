@@ -124,6 +124,8 @@ beginIdentityLink(input: {
 
 `DEV-STAFF-ONBOARD-1` 的本机后续合同使用同一表增加 `provisioning_mode='direct'` 与 ImportBatch 来源行，只把 invitation hash 当作 Auth 创建触发器的短期关联凭据。受信 Server Action 生成高熵首次登录密码并调用 Auth Admin API，数据库不保存明文；Auth trigger 同步建立 `profiles.role='staff'`、岗位关系与 `password_change_required=true`，随后同事务删除 `raw_user_meta_data.registration_invite_code`，历史同名元数据键也由 hardening migration 清理。该档案可被主管用于排课，但员工以本人会话调用 `is_staff` / `has_perm` 时保持关闭，直至 service-role 完成改密标记。direct 创建不替员工写隐私同意，改密后仍进入正常必要同意闸门。
 
+若员工遗失首次密码，只有持有 `staff.invite` 的在职且已完成本人首次改密的主管，才能为仍在职且 `password_change_required=true` 的 direct 员工发起重签。migration `20260902001200_staff_initial_password_reissue` 以 service-role RPC 建立短时并发占位和可回退 hash 状态，Server Action 随后更新 Auth 密码；旧密码立即失效，新密码只在该次响应显示。Auth 更新失败时恢复旧 invitation hash；成功确认或员工完成首次改密时清除占位中的临时比较 hash。员工已完成首次改密后该入口关闭，因此不构成主管代改普通员工密码的通用接口。
+
 生产现有邮箱/手机号 claim 邀请路径继续工作。直接建档目前只在本机开发目标启用；只有独立生产授权、迁移 preflight 与回退证据完成后才能替换生产入口。
 
 ## 6. 分阶段启用
