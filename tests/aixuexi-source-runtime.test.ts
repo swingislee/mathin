@@ -5,8 +5,10 @@ import {
   portableAixuexiViewerHtml,
   stripInertMathTexScriptsForInspection,
 } from "../scripts/lib/aixuexi-source-viewer-runtime.mjs";
+import { injectSourceRuntimeEditorBridge } from "../src/features/courseware-doc/source-runtime-editor-bridge";
 import {
   collectSourceRuntimeBindingKeys,
+  markSourceRuntimeEditorUrl,
   markSourceRuntimeNestedH5Url,
   scopeSourceRuntimeBindings,
   sourceRuntimePageDocSchema,
@@ -176,10 +178,22 @@ describe("producer-owned Aixuexi source runtime", () => {
     expect(host).toContain("sourceFrameSize.height / doc.viewport.height");
     expect(host).toContain("width: doc.viewport.width");
     expect(host).toContain("height: doc.viewport.height");
-    expect(host).toContain('const renderKey = `${runtimeInstanceKey}:${doc.source.coursewareId}:${doc.source.pageDatabaseId}`');
+    expect(host).toContain('const renderKey = `${runtimeInstanceKey}:${doc.source.coursewareId}:${doc.source.pageDatabaseId}:${editor?.revision ?? 0}`');
+    expect(host).toContain('type: "editor-state"');
+    expect(host).toContain('message.type === "node-selected"');
     expect(host).not.toContain("setRendered(false)");
     expect(host).not.toContain("@/components/ui/button");
     expect(host).not.toContain("进入互动");
+  });
+
+  it("injects the source editor bridge only through the explicit runtime URL", () => {
+    expect(markSourceRuntimeEditorUrl("/api/cw-h5/packages/hash/index.html?x=1#page"))
+      .toBe("/api/cw-h5/packages/hash/index.html?x=1&mathin_source_editor=mathin-source-runtime-v1#page");
+    const html = injectSourceRuntimeEditorBridge("<!doctype html><html><head></head><body></body></html>");
+    expect(html).toContain("data-mathin-source-runtime-editor");
+    expect(html).toContain("node-transform-change");
+    expect(html).toContain("node-text-change");
+    expect(html).toContain("data-aix-source-path");
   });
 
   it("registers the generic adapter in the database without dropping legacy documents", () => {

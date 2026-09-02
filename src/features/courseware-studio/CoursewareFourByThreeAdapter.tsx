@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { LayoutTemplate, RotateCcw, Undo2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
@@ -21,7 +21,7 @@ import type { ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 import type { PageDoc } from "@/features/courseware-doc/schema";
 import type { SourceRuntimePageDoc } from "@/features/courseware-doc/source-runtime-schema";
 import { cn } from "@/lib/utils";
-import { StagePreview } from "./StagePreview";
+import { StagePreview, type StagePreviewProps } from "./StagePreview";
 
 type Courseware43AdapterSource =
   | { kind: "page-doc"; doc: PageDoc; bindingUrls: ResolvedBindingUrls }
@@ -207,7 +207,13 @@ function sourceAspect(source: Courseware43AdapterSource) {
     : source.doc.viewport.width / source.doc.viewport.height;
 }
 
-function NaturalStage({ source }: { source: Courseware43AdapterSource }) {
+function NaturalStage({
+  source,
+  sourceRuntimeEditor,
+}: {
+  source: Courseware43AdapterSource;
+  sourceRuntimeEditor?: StagePreviewProps["sourceRuntimeEditor"];
+}) {
   return (
     <StagePreview
       doc={source.doc}
@@ -216,6 +222,7 @@ function NaturalStage({ source }: { source: Courseware43AdapterSource }) {
       className="size-full"
       interactive={false}
       playAutoInteractions={false}
+      sourceRuntimeEditor={sourceRuntimeEditor}
     />
   );
 }
@@ -223,9 +230,11 @@ function NaturalStage({ source }: { source: Courseware43AdapterSource }) {
 function WholeStageAdaptedPreview({
   source,
   strategy,
+  sourceRuntimeEditor,
 }: {
   source: Courseware43AdapterSource;
   strategy: Exclude<Courseware43Strategy, "background-height-content-width">;
+  sourceRuntimeEditor?: StagePreviewProps["sourceRuntimeEditor"];
 }) {
   const placement = courseware43ViewportPlacement(strategy, sourceAspect(source));
   return (
@@ -242,7 +251,7 @@ function WholeStageAdaptedPreview({
           height: `${placement.heightPercent}%`,
         }}
       >
-        <NaturalStage source={source} />
+        <NaturalStage source={source} sourceRuntimeEditor={sourceRuntimeEditor} />
       </div>
     </div>
   );
@@ -252,12 +261,12 @@ export function CoursewareFourByThreeComparison({
   adapter,
   className,
   view = "compare",
-  decorateStage,
+  sourceRuntimeEditor,
 }: {
   adapter: CoursewareFourByThreeController;
   className?: string;
   view?: "compare" | "native-16x9" | "adapted-4x3";
-  decorateStage?: (stage: ReactNode) => ReactNode;
+  sourceRuntimeEditor?: StagePreviewProps["sourceRuntimeEditor"];
 }) {
   const t = useTranslations("coursewareFourByThree");
   const { source, state } = adapter;
@@ -269,8 +278,7 @@ export function CoursewareFourByThreeComparison({
   );
   const originalAspect = sourceAspect(source);
 
-  const wrapStage = decorateStage ?? ((stage: ReactNode) => stage);
-  const originalStage = wrapStage(<NaturalStage source={source} />);
+  const originalStage = <NaturalStage source={source} sourceRuntimeEditor={sourceRuntimeEditor} />;
   const rawAdaptedStage = layeredPageDoc && source.kind === "page-doc" ? (
     <StagePreview
       doc={layeredPageDoc}
@@ -281,9 +289,13 @@ export function CoursewareFourByThreeComparison({
       playAutoInteractions={false}
     />
   ) : isWholeStageCourseware43Strategy(state.strategy) ? (
-    <WholeStageAdaptedPreview source={source} strategy={state.strategy} />
+    <WholeStageAdaptedPreview
+      source={source}
+      strategy={state.strategy}
+      sourceRuntimeEditor={sourceRuntimeEditor}
+    />
   ) : null;
-  const adaptedStage = rawAdaptedStage ? wrapStage(rawAdaptedStage) : null;
+  const adaptedStage = rawAdaptedStage;
 
   const originalComparison = (
     <section className="size-full min-h-0 min-w-0 bg-paper" aria-label={t("originalLabel")}>

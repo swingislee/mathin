@@ -1,17 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  FileCode2,
-  Gamepad2,
-  Grid3X3,
-  ImagePlus,
-  RotateCcw,
-  Shapes,
-  Sigma,
-  Type,
-  Wrench,
-} from "lucide-react";
+import { RotateCcw } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,14 +9,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import {
   CoursewareEditorSaveControls,
-  CoursewareEditorHistoryControls,
   CoursewareFormalInspectorTabs,
-  CoursewareInsertionToolbar,
   type CoursewareEditorSaveState,
 } from "@/features/courseware-doc/CoursewareEditorWorkbench";
 import { CoursewareEditorAdapterSurface } from "@/features/courseware-doc/CoursewareEditorAdapterSurface";
+import { CoursewarePageEditorToolbar } from "@/features/courseware-doc/CoursewarePageEditorToolbar";
 import {
-  CoursewareGridSnapToggle,
   coursewareTextValue,
   isCoursewareTextElement,
   setCoursewareTextValue,
@@ -364,48 +352,14 @@ export function PageDocVerticalSliceEditor({
   }, [patchNode]);
 
   const insertToolbar = (
-    <div className="flex min-w-0 items-center gap-2">
-      <span id="courseware-step3-insert-hint" className="sr-only">{t("verticalSliceInsertDeferred")}</span>
-      <CoursewareInsertionToolbar
-        aria-label={t("contentInsertion")}
-        aria-describedby="courseware-step3-insert-hint"
-        actions={[
-          {
-            id: "history",
-            label: elementEditorT("undoEdit"),
-            icon: RotateCcw,
-            control: <CoursewareEditorHistoryControls
-              canUndo={editHistory.canUndo}
-              canRedo={editHistory.canRedo}
-              onUndo={editHistory.undo}
-              onRedo={editHistory.redo}
-              undoLabel={elementEditorT("undoEdit")}
-              redoLabel={elementEditorT("redoEdit")}
-            />,
-          },
-          ...[
-            ["text", "prototypeInsertText", Type],
-            ["formula", "prototypeInsertFormula", Sigma],
-            ["shape", "prototypeInsertShape", Shapes],
-            ["image", "prototypeInsertImage", ImagePlus],
-            ["game", "prototypeInsertGame", Gamepad2],
-            ["h5", "prototypeInsertH5", FileCode2],
-            ["tool", "prototypeInsertTool", Wrench],
-          ].map(([id, label, icon]) => ({
-            id: id as string,
-            label: t(label as "prototypeInsertText"),
-            icon: icon as typeof Type,
-            disabled: true,
-          })),
-          {
-            id: "snap-to-grid",
-            label: textEditorT("snapToGrid"),
-            icon: Grid3X3,
-            control: <CoursewareGridSnapToggle checked={snapToGrid} onCheckedChange={setSnapToGrid} />,
-          },
-        ]}
-      />
-    </div>
+    <CoursewarePageEditorToolbar
+      canUndo={editHistory.canUndo}
+      canRedo={editHistory.canRedo}
+      onUndo={editHistory.undo}
+      onRedo={editHistory.redo}
+      snapToGrid={snapToGrid}
+      onSnapToGridChange={setSnapToGrid}
+    />
   );
 
   const saveControls = (

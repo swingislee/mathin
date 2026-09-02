@@ -8,7 +8,7 @@
 >
 > **当前施工**：P6-AIX-2 已于 2026-08-13 关闭；当前由 R1-9/P6-9 采集 1305 讲正式来源 inventory、Storage/H5 对象审计与非执行者复核。
 >
-> **剩余项**：P6-9 全局量化验收和正式生产 release-1 重建见 doc 25 R1-9/15/18；§14 的 `DEV-CW-1` Step 0～5B 已获产品负责人确认。Step 6 爱学习/source-runtime 决策样机已交付开发端，等待产品负责人选择首期只做宿主非破坏能力，还是另开来源 patch 协议批次。不开放来源节点写态，不进入整讲/批量数据或生产变更，也未授权任何生产清理。
+> **剩余项**：P6-9 全局量化验收和正式生产 release-1 重建见 doc 25 R1-9/15/18；§14 的 `DEV-CW-1` Step 0～5B 已获产品负责人确认。Step 6 已按产品负责人复审从“宿主叠加／遮罩／裁切”改为来源 runtime 编辑桥：爱学习与魔法校继续由各自权威 renderer 出图，但共用选择、文字／元素属性、图层、网格、几何与历史控件；修改只作用会话副本，来源快照保持不可变。当前只施工一个爱学习固定页的会话纵切，不进入草稿 RPC、整讲/批量数据或生产变更，也未授权任何生产清理。
 >
 > **最后核对**：2026-09-01；§13 以前的来源与生产基线结论沿用原证据，§14 只依据当前仓库和本机 Docker 开发库只读核对，不代表 Xiaomi/生产事实。
 
@@ -593,7 +593,7 @@ sanitize 白名单按“移植过来的规则实际选择到的标签/属性”�
 
 > **当前状态**：`STEP 5B COARSE-TO-FINE 4:3 / DEV READY / AWAITING USER WORKFLOW AUDIT`
 >
-> **施工授权**：产品负责人已确认 Step 0～5B。Step 5B 使用本机素材 `docs/test_material/white-board.png`（1024×768，SHA-256 `704b500e80c4ab26728a85b9561ca4f06d08b796819d783bee09f7ee3fd227fb`）和“全部引用”范围完成固定 PageDoc 样本暂存、4:3 画布确认、一次 apply 与 replacement ledger rollback；批次 `e67693b2-d561-4544-a6c7-7e2c46769eda` 最终状态为 `rolled_back`。当前只授权 Step 6 爱学习/source-runtime 决策样机，必须继续使用现有来源 renderer，只演示宿主非破坏叠加／遮罩／裁切与来源 patch 边界。不得开放爱学习/source-runtime 节点写态、整讲回填、批量任务或触碰生产。
+> **施工授权**：产品负责人已确认 Step 0～5B。Step 5B 使用本机素材 `docs/test_material/white-board.png`（1024×768，SHA-256 `704b500e80c4ab26728a85b9561ca4f06d08b796819d783bee09f7ee3fd227fb`）和“全部引用”范围完成固定 PageDoc 样本暂存、4:3 画布确认、一次 apply 与 replacement ledger rollback；批次 `e67693b2-d561-4544-a6c7-7e2c46769eda` 最终状态为 `rolled_back`。产品负责人否决 Step 6 的宿主叠加／遮罩／裁切分支，并授权继续来源 runtime 编辑桥。当前边界是一个固定爱学习页面的会话级节点选择、框内文字、几何、图层、显隐、样式、网格和撤销；必须复用现有来源 renderer 与共享编辑控件，不新增 migration/RPC，不保存草稿，不升级 5,508 页，不触碰生产。
 >
 > **推进原则**：一个批次只交付一个可人工审计的增量。每批机器检查通过后只记为 `READY FOR USER AUDIT`；必须收到产品负责人对该批布局和功能的明确确认，才能开始下一批。未回复、仅查看页面、机器检查通过或 Agent 自评均不构成确认。
 
@@ -614,7 +614,7 @@ sanitize 白名单按“移植过来的规则实际选择到的标签/属性”�
 | 爱学习有 5,508 个 `source-runtime-page-v1` 页面；两轨页面 head 全部指向同一 revision。按旧投影权威重算为 `source-master=5,084`、`source-player-compat=424`，与 5,508 页历史模式逐页比对为 0 差异 | 本机开发库只读聚合与逐页比对 | 当前 4:3 是宿主呈现语义，不是独立可编辑内容；`source-master` 恢复原 4:3 排版等比呈现，动画/H5/原生题型/宽画布继续顶部兼容，不得把所有页面一律顶置或伪装成双稿编辑 |
 | 教师微课有 108 个 4:3 `courseware-composition-v1` 页面 | 本机开发库聚合 | 12×9 网格、插入游戏/H5/工具可作为交互参考，但不能直接替代正式课程双轨模型 |
 | 资源替换 RPC、影响树和回滚模型已经存在，但本机 replacement batch 与 4:3 派生资源记录均为 0 | 当前 schema/UI 与本机数据 | 先以页面上下文做影响预览和样本替换，不直接开展全库批量替换 |
-| `source-runtime-page-v1` 由来源 Viewer 拥有 DOM/CSS/行为 | 当前 schema 与 renderer 合同 | 文字/节点级真编辑必须另建来源 patch/投影协议；协议确认前只允许宿主叠加、遮罩、裁切和资源绑定类非破坏编辑 |
+| `source-runtime-page-v1` 由来源 Viewer 拥有 DOM/CSS/行为 | 当前 schema、稳定 `sourcePath` 与 renderer 合同 | 来源 adapter 把同一共享编辑动作翻译为 payload 会话补丁，再交回原 Viewer 重渲染；来源快照不变，未知 format／节点／互动继续 fail closed |
 
 本节不把以上本机计数写成生产事实。R1-9 正式来源 inventory 与 release-1 基线仍按 doc 25 单独核验；若后续本机事实改变，先更新本表，再决定是否调整批次。
 
@@ -718,7 +718,7 @@ Step 0 还需要产品负责人明确以下事项，规划不代替这些产品�
 | **3B PageDoc 单页纵切复审** | 3A 通过后，把已实现的单页草稿保存／重载接到来源 runtime 的选择和重渲染协议；仍只限本机一个 E 系列页面 | 修改文字／图片／位置后由同一来源内核重渲染，刷新可重读；确认共享内容与分轨几何没有互相污染；确认历史 release 未变 | 适配整讲、爱学习写入、公共资源跨页替换、生产部署 |
 | **4 4:3 样本讲次** | 在同一 E 系列样本讲次内，为有限页面建立 A～F/自定义 4:3 草稿和并排差异预览 | 按页确认缩放、裁切、平移、换行、重排、策略切换和撤销；确认发布预览符合预期 | 71,552 页批量回填、默认策略改写、爱学习全量转换 |
 | **5 页面上下文资源替换** | 先 dry-run 展示一个背景/图片在页、讲、课程版本、课程族、全部引用五种范围的影响；产品确认后只执行一个本机样本并验证回滚 | 核对命中清单、冻结引用提示、部分/全量语义、替换后页面和 rollback 结果 | 未展示影响就执行、跨范围默认勾选、全库 replacement、生产 Storage 写入 |
-| **6 爱学习/source-runtime 决策样机** | 对一个指定爱学习页面分别说明并演示可行的宿主叠加/遮罩/裁切方案，以及需要来源 patch adapter 的文字/节点真编辑边界 | 产品负责人明确选择首期能力：仅非破坏叠加，或批准另做来源 patch 协议；确认 4:3 期望 | 把 iframe 当普通 PageDoc 改写、重造来源 DOM/CSS、升级 5,508 页、生产导入 |
+| **6 爱学习/source-runtime 编辑桥纵切** | 对一个指定爱学习页面复用共享元素检查器、图层、网格、历史和选择／拖放／缩放交互；来源 adapter 只按稳定 `sourcePath` 修改 payload 会话副本并交给原 Viewer 重渲染 | 文字框内与右栏修改一致，几何／层级／显隐一致，撤销可恢复；来源播放外观、4:3 粗调与未知节点 fail-closed 行为不退化 | 把 iframe 当普通 PageDoc 重画、复制一套来源专用属性 UI、新增草稿 RPC、升级 5,508 页、生产导入 |
 | **7 插入、审核与入口收敛** | 在已通过的工作区中接入获准的游戏/H5/工具能力；分开正式课件适配审核与教师微课审核；给出侧栏调整前后对照 | 确认插入体验、课堂只读/同步提示、两类审核对象、研发任务/适配校对/公共资源的最终可见位置 | 删除旧导航/路由、合并不同审核状态机、开放未审计互动 |
 | **8 扩量与生产候选** | 先生成 E 系列与爱学习的真实 inventory、迁移/回填 dry-run、影响计数、耗时预算和回退方案；再由产品负责人另行选择扩量批次 | 审核精确对象数、样本通过率、失败隔离、旧 release/课次冻结保护、预计时长、发布与回退窗口 | 未授权批量写入、长时间全库任务、Xiaomi/生产 migration、Storage/release 改写 |
 
@@ -755,8 +755,8 @@ Step 0 还需要产品负责人明确以下事项，规划不代替这些产品�
 | 4A 共享 4:3 策略与单页会话预览 | `USER ACCEPTED` | 一份 `CoursewareFourByThreeAdapter` 同时供正式 PageDoc 与爱学习 source runtime 使用，并共同拥有策略状态、分类面板、对照画布和撤销／重置。A～F／自定义已收敛为“等宽顶部、等宽居中、等高左侧、等高居中”四种带 SVG 图示的整页变换和 PageDoc 可用的“背景等高·内容等宽”分层模式；缺独立 4:3 release 时直接按来源默认版式生成会话预览，爱学习 iframe 使用固定逻辑 viewport 和宿主整体缩放 | 2026-09-01 产品负责人回复“Step 4A 验收通过，进入下一步”，确认爱学习 16:9／4:3 白边修复、魔法校默认版式及当前组件表现 | 只授权 Step 4B 单个 PageDoc 样本页草稿持久化；不授权 source-runtime 写态、整讲或批量 |
 | 4B PageDoc 单页 4:3 草稿持久化 | `USER ACCEPTED` | `materializeCourseware43PageDoc` 把五种已确认策略物化为严格 960×720 PageDoc；完整背景与内容通过同一适配框变换，策略标记随文档保存。统一工作区同时读取当前页 native/adapted 草稿头，对照区复用 `save_cw_track_page_draft`、800ms 自动保存和保存按钮，只写 `adapted-4x3`；刷新从草稿适配框恢复策略。无新标记时，旧 A/B→等高左侧、C/E→等宽居中、D→等宽顶部、F→背景等高·内容等宽；新标记优先。未新增 schema/RPC，未改 binding/release。首轮发现 adapted 草稿引用 native 资源时被轨内解析器提前报 `COURSEWARE_DOC_BINDING_MISSING`；现统一为 adapted 显式 binding 优先、缺项只读继承 native binding，保持资源替换与布局适配正交，不复制 binding 行。本机只为《定义新运算进阶》讲次 `00d7da40-d880-47da-a82a-d91d72a2e044` 第 1 页 `0803cab4-e3df-48e8-b374-5f8fe6c3d473` 建立一个复用 native 基线的 adapted 草稿头，未批量补齐 | 2026-09-01 产品负责人在 binding 修复后回复“验收通过，进入下一步”，确认固定样本不再报 binding 缺失、资源完整、旧分类映射、自动保存、刷新恢复与 16:9 隔离 | 只授权 Step 5A 只读影响预览；不授权上传、真实替换/回滚、source-runtime 写态、整讲或批量 |
 | 5A 页面上下文资源替换影响预览 | `USER ACCEPTED` | 正式 PageDoc 的“替换”右栏复用公共资源使用树的同一 `loadCoursewareSharedAssetDetail` 读模型；在当前元素上下文按页、讲、课程版本、课程族、全部引用五档展示命中位置、冻结次数和独立钉版。范围与 4:3 粗调共用 `CoursewareCompactChoiceGroup`；引用清单独占剩余高度，以受限单列网格和盒内滚动条安全区保持完整边界；共享 `CoursewareWorkbenchPager` 统一处理预览、正式课与微课翻页键。合法纯背景 PageDoc 可预览全部五种 4:3 策略。该批 Server Action 只有资源治理读权限，界面没有上传或执行按钮 | 2026-09-01 产品负责人明确回复“Step 5A 人工验收通过”，确认五档范围、无框摘要、清单布局与滚动、4:3 五策略及共享翻页行为 | 只开放 Step 5B 单本机样本替换与回滚；素材和范围明确前不得写入 |
-| 5B 单本机样本真实替换与回滚 | `USER ACCEPTED` | 页面上下文与公共资源页共用 `useAssetReplacementFlow`、`AssetReplacementControls`、前后对比和 batch history；正式课与微课共用 `useCoursewareEditHistory` 与顶栏撤销／重做。固定第 8 页已经建立真实 960×720 `adapted-4x3` 草稿并写至 revision 35；`white-board.png` 暂存记录的摘要、尺寸与指定素材一致。产品负责人确认对照微调到 4:3 替换图片路径和暂存画面后，本机按“全部引用”执行 batch `e67693b2-d561-4544-a6c7-7e2c46769eda`：仅命中 `adapted-4x3` 轨道 1 个 binding，模式为 `publish_pointer`，新 revision 2 指向摘要 `704b500e…27fb`；随后一键回滚，batch 变为 `rolled_back`，4:3 variant 指针恢复原摘要 `dec71d86…1ff3`，16:9 未变。管理员对象级 capability 豁免继续只作用于通过全局权限与对象生命周期门的 active admin | 2026-09-02 产品负责人提供 4:3 替换前后对比与实际画布截图，并明确“对照微调-4:3 替换图片路径已经走通，可以继续推进”；本批视为人工通过 | 只授权 Step 6 爱学习/source-runtime 决策样机；不开放来源 patch 写态、整讲、批量或生产 |
-| 6 爱学习/source-runtime 决策样机 | `READY FOR USER AUDIT` | 指定样本《10的认识和加减法（上）》继续由同一个 `SourceRuntimeFourByThreeEditor` 和来源 runtime 渲染；新增的 `SourceRuntimeHostCapabilityPrototype` 只装饰既有 stage，可切换原始、宿主叠加、宿主遮罩和宿主裁切四种会话预览。右栏同一组“微调／4:3”页签分别承载宿主能力决策与已验收的 4:3 粗调；文字/公式、来源节点几何/层级、动画/H5/互动明确列为需要稳定 node identity、capability 与 patch acknowledgement 的 fail-closed 能力。组件中无 `fetch`、Server Action、草稿、release 或来源数据写入。机器证据：TypeScript、受影响 ESLint、双语键 5,623×2、统一工作区与共享 4:3 定向 Vitest 2 文件 12/12 | 待产品负责人在局域网页面逐个切换“原／叠／遮／裁”，核对来源页面行为与 4:3 页签，并选择首期能力边界 | 未确认前不进入 Step 7，不新增来源 patch schema/RPC，不升级 5,508 页，不触碰生产 |
+| 5B 单本机样本真实替换与回滚 | `USER ACCEPTED` | 页面上下文与公共资源页共用 `useAssetReplacementFlow`、`AssetReplacementControls`、前后对比和 batch history；正式课与微课共用 `useCoursewareEditHistory` 与顶栏撤销／重做。固定第 8 页已经建立真实 960×720 `adapted-4x3` 草稿并写至 revision 35；`white-board.png` 暂存记录的摘要、尺寸与指定素材一致。产品负责人确认对照微调到 4:3 替换图片路径和暂存画面后，本机按“全部引用”执行 batch `e67693b2-d561-4544-a6c7-7e2c46769eda`：仅命中 `adapted-4x3` 轨道 1 个 binding，模式为 `publish_pointer`，新 revision 2 指向摘要 `704b500e…27fb`；随后一键回滚，batch 变为 `rolled_back`，4:3 variant 指针恢复原摘要 `dec71d86…1ff3`，16:9 未变。管理员对象级 capability 豁免继续只作用于通过全局权限与对象生命周期门的 active admin | 2026-09-02 产品负责人提供 4:3 替换前后对比与实际画布截图，并明确“对照微调-4:3 替换图片路径已经走通，可以继续推进”；本批视为人工通过 | 只授权 Step 6 爱学习/source-runtime 编辑桥会话纵切；不开放草稿 RPC、整讲、批量或生产 |
+| 6 爱学习/source-runtime 编辑桥纵切 | `READY FOR USER AUDIT` | 上一版“宿主叠加／遮罩／裁切”样机已被产品负责人否决并删除。固定样本《10的认识和加减法（上）》继续由来源 Viewer 渲染；既有 `sourcePath` adapter 已把来源节点接入与 PageDoc 相同的顶栏、元素检查器、图层、网格、历史、框内文字及几何操作，iframe 只注入选择／编辑桥，不重写来源渲染树。修改仅进入 React 会话副本并重新发送 render payload，来源快照、release 和数据库不变。机器检查：TypeScript、双语 5,601×2、编辑桥 JavaScript 语法解析及 3 个定向 Vitest 文件 21/21 通过 | 2026-09-02 产品负责人指出来源保护应同时适用于魔法校与爱学习，后续调整操作必须一致，并回复“继续”授权纠正实现；开发端现已交付固定页，等待人工检查真实选中、框内文字、样式、图层、几何、网格和撤销表现 | 人工通过前不进入持久化、Step 7、整讲或批量；发现需要 migration/RPC 即停止，不升级 5,508 页，不触碰生产 |
 
 Step 1 变更边界：只新增只读数据 loader、连续三栏工作区、画布自适应叶子、课程预览直达按钮、双语文案和定向合同；首轮修订移动课程产品主操作、增加 4:3 缺失的 16:9 降级提示，并把单轨舞台约束为可用宽高内等比完整显示。第二轮把三点菜单移入同一命令行，使对照缺轨时保留双栏空态，按不可变爱学习布局重建旧 4:3 投影，并移除中央冗余标题行和底部状态条。爱学习判定与旧权威在本机开发库 5,508 页上比对为 0 差异；普通 1,200×900 源母版直接呈现为完整 4:3，带动画、嵌入 H5、原生题型或宽画布的 424 页保留顶部兼容带。不接 editor action，不新增 schema/RPC，不写数据库/Storage，不删除讲次工作区或旧 Studio。机器证据为 TypeScript、受影响 ESLint、双语键 5,264×2、定向 Vitest 3 文件 18/18；这些证据不代表布局已经获得产品确认。
 

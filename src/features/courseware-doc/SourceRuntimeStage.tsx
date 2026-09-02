@@ -7,10 +7,15 @@ import type { H5PointerBridgeHost } from "./h5-pointer-protocol";
 import type { ResolvedBindingUrls } from "./resolve";
 import { coursewareCanvasStyle } from "./courseware-surface";
 import {
+  markSourceRuntimeEditorUrl,
   markSourceRuntimeNestedH5Url,
   SOURCE_RUNTIME_PROTOCOL,
   type SourceRuntimePageDoc,
 } from "./source-runtime-schema";
+import type {
+  SourceRuntimeEditorBridgeNode,
+  SourceRuntimeEditorCanvas,
+} from "./source-runtime-editor";
 import { sourceRuntimeFourByThreeMode } from "./source-runtime-four-by-three";
 import type { SourceRuntimeFourByThreeMode } from "./source-runtime-four-by-three";
 import { useH5FrameRegistration } from "./useH5FrameRegistration";
@@ -28,7 +33,30 @@ export interface SourceRuntimeStageProps {
   onAdvance?: () => void;
   h5PointerBridge?: H5PointerBridgeHost;
   sourceRuntimeFourByThreeMode?: SourceRuntimeFourByThreeMode;
+  editor?: SourceRuntimeEditorHost;
 }
+
+export interface SourceRuntimeEditorHost {
+  enabled: boolean;
+  revision: number;
+  selectedNodePath: string | null;
+  snapToGrid: boolean;
+  canvas: SourceRuntimeEditorCanvas;
+  nodes: SourceRuntimeEditorBridgeNode[];
+  moveLabel: string;
+  resizeLabel: string;
+  onNodeSelect: (nodePath: string) => void;
+  onNodeTransformChange: (
+    nodePath: string,
+    patch: Partial<Pick<SourceRuntimeEditorBridgeNode, "x" | "y" | "width" | "height">>,
+  ) => void;
+  onNodeTextChange: (nodePath: string, value: string) => void;
+}
+
+type RuntimeEditorPayload = Omit<
+  SourceRuntimeEditorHost,
+  "revision" | "onNodeSelect" | "onNodeTransformChange" | "onNodeTextChange"
+>;
 
 interface RuntimePayload {
   source: typeof HOST_MESSAGE_SOURCE;
@@ -40,12 +68,27 @@ interface RuntimePayload {
   routes: Record<string, string>;
   interactive: boolean;
   advanceOnCanvasClick: boolean;
+  editor?: RuntimeEditorPayload;
+}
+
+function runtimeEditorPayload(editor: SourceRuntimeEditorHost | undefined): RuntimeEditorPayload | undefined {
+  if (!editor) return undefined;
+  return {
+    enabled: editor.enabled,
+    selectedNodePath: editor.selectedNodePath,
+    snapToGrid: editor.snapToGrid,
+    canvas: editor.canvas,
+    nodes: editor.nodes,
+    moveLabel: editor.moveLabel,
+    resizeLabel: editor.resizeLabel,
+  };
 }
 
 function materializePayload(
   doc: SourceRuntimePageDoc,
   bindingUrls: ResolvedBindingUrls,
   interactive: boolean,
+  editor: SourceRuntimeEditorHost | undefined,
 ): RuntimePayload | null {
   const resources: Record<string, string> = {};
   for (const [resourceId, bindingKey] of Object.entries(doc.bindings.resources)) {
@@ -69,6 +112,7 @@ function materializePayload(
     routes,
     interactive,
     advanceOnCanvasClick: doc.behavior.advanceOnCanvasClick,
+    editor: runtimeEditorPayload(editor),
   };
 }
 
@@ -82,6 +126,7 @@ export default function SourceRuntimeStage({
   onAdvance,
   h5PointerBridge,
   sourceRuntimeFourByThreeMode: fourByThreeModeOverride,
+  editor,
 }: SourceRuntimeStageProps) {
   const t = useTranslations("coursewareStage");
   const frameId = `source-runtime/${doc.source.coursewareId}/${doc.source.pageDatabaseId}`;
@@ -94,19 +139,22 @@ export default function SourceRuntimeStage({
   const runtimeReadyFor = useRef<string | null>(null);
   const runtimeLoadedFor = useRef<string | null>(null);
   const runtimePayloadSentFor = useRef<string | null>(null);
-  const runtimeEntry = bindingUrls[doc.runtime.bindingKey];
+  const runtimeEntryBase = bindingUrls[doc.runtime.bindingKey];
+  const runtimeEntry = runtimeEntryBase && editor
+    ? markSourceRuntimeEditorUrl(runtimeEntryBase)
+    : runtimeEntryBase;
   // The runtime package is shared by every page in a source courseware. Keep
   // that iframe alive while only the render payload changes between pages;
   // reloading the immutable viewer bundle on every page turn is the dominant
   // source-preview latency. A different package/entry still remounts safely.
   const runtimeInstanceKey = `${doc.runtime.packageHash}:${runtimeEntry ?? "missing"}`;
-  const renderKey = `${runtimeInstanceKey}:${doc.source.coursewareId}:${doc.source.pageDatabaseId}`;
+  const renderKey = `${runtimeInstanceKey}:${doc.source.coursewareId}:${doc.source.pageDatabaseId}:${editor?.revision ?? 0}`;
   const rendered = renderedFrameKey === renderKey;
   const hasRenderedCurrentRuntime = renderedFrameKey?.startsWith(`${runtimeInstanceKey}:`) ?? false;
   const runtimeError = runtimeFailure?.frameKey === renderKey ? runtimeFailure.message : null;
   const payload = useMemo(
-    () => materializePayload(doc, bindingUrls, interactive),
-    [bindingUrls, doc, interactive],
+    () => materializePayload(doc, bindingUrls, interactive, editor),
+    [bindingUrls, doc, editor, interactive],
   );
 
   useLayoutEffect(() => {
@@ -133,6 +181,16 @@ export default function SourceRuntimeStage({
     }
   }, [iframeRef, payload, renderKey, runtimeInstanceKey]);
 
+  useEffect(() => {
+    if (!editor || (runtimeReadyFor.current !== runtimeInstanceKey && runtimeLoadedFor.current !== runtimeInstanceKey)) return;
+    iframeRef.current?.contentWindow?.postMessage({
+      source: HOST_MESSAGE_SOURCE,
+      protocol: SOURCE_RUNTIME_PROTOCOL,
+      type: "editor-state",
+      editor: runtimeEditorPayload(editor),
+    }, "*");
+  }, [editor, iframeRef, runtimeInstanceKey]);
+
   // The source Viewer can render a lightweight page between the iframe load
   // event and React's passive-effect flush. Install the message listener in
   // the layout phase so its immediate `rendered` acknowledgement is never
@@ -140,7 +198,17 @@ export default function SourceRuntimeStage({
   useLayoutEffect(() => {
     const receive = (event: MessageEvent) => {
       if (event.source !== iframeRef.current?.contentWindow) return;
-      const message = event.data as { source?: unknown; protocol?: unknown; type?: unknown; message?: unknown; action?: unknown; time?: unknown };
+      const message = event.data as {
+        source?: unknown;
+        protocol?: unknown;
+        type?: unknown;
+        message?: unknown;
+        action?: unknown;
+        time?: unknown;
+        nodePath?: unknown;
+        value?: unknown;
+        patch?: unknown;
+      };
       if (message.source === FRAME_MESSAGE_SOURCE && message.protocol === SOURCE_RUNTIME_PROTOCOL) {
         if (message.type === "ready") {
           runtimeReadyFor.current = runtimeInstanceKey;
@@ -154,6 +222,27 @@ export default function SourceRuntimeStage({
           setRuntimeFailure((current) => current?.frameKey === renderKey ? null : current);
         }
         if (message.type === "advance") onAdvance?.();
+        if (message.type === "node-selected" && typeof message.nodePath === "string") {
+          editor?.onNodeSelect(message.nodePath);
+        }
+        if (message.type === "node-text-change"
+            && typeof message.nodePath === "string"
+            && typeof message.value === "string") {
+          editor?.onNodeTextChange(message.nodePath, message.value);
+        }
+        if (message.type === "node-transform-change"
+            && typeof message.nodePath === "string"
+            && message.patch
+            && typeof message.patch === "object") {
+          const raw = message.patch as Record<string, unknown>;
+          const patch = Object.fromEntries(
+            ["x", "y", "width", "height"].flatMap((key) => {
+              const value = raw[key];
+              return typeof value === "number" && Number.isFinite(value) ? [[key, value]] : [];
+            }),
+          ) as Partial<Pick<SourceRuntimeEditorBridgeNode, "x" | "y" | "width" | "height">>;
+          if (Object.keys(patch).length > 0) editor?.onNodeTransformChange(message.nodePath, patch);
+        }
         if (message.type === "error") {
           setRuntimeFailure({
             frameKey: renderKey,
@@ -171,7 +260,7 @@ export default function SourceRuntimeStage({
     };
     window.addEventListener("message", receive);
     return () => window.removeEventListener("message", receive);
-  }, [iframeRef, onAdvance, payload, renderKey, runtimeInstanceKey, t, videoControl]);
+  }, [editor, iframeRef, onAdvance, payload, renderKey, runtimeInstanceKey, t, videoControl]);
 
   useEffect(() => {
     const ctl = videoControl?.ctl;
