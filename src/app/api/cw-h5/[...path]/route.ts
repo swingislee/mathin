@@ -10,6 +10,11 @@ import {
 import { parseH5InputProfile, type H5InputProfile } from "@/features/courseware-doc/h5-input-profile";
 import { injectSourceRuntimeEditorBridge } from "@/features/courseware-doc/source-runtime-editor-bridge";
 import {
+  isVersionedSourceRuntimeViewerAsset,
+  upgradeSourceRuntimeViewerScript,
+  versionSourceRuntimeHtmlAssets,
+} from "@/features/courseware-doc/source-runtime-delivery.mjs";
+import {
   SOURCE_RUNTIME_EDITOR_PARAM,
   SOURCE_RUNTIME_PROTOCOL,
 } from "@/features/courseware-doc/source-runtime-schema";
@@ -145,6 +150,12 @@ export async function GET(
       const value = upstream.headers.get(name);
       if (value) headers.set(name, value);
     }
+    if (isVersionedSourceRuntimeViewerAsset(packagePath, request.url)) {
+      return new Response(upgradeSourceRuntimeViewerScript(await upstream.text()), {
+        status: upstream.status,
+        headers: Object.fromEntries(headers.entries()),
+      });
+    }
     return new Response(upstream.body, {
       status: upstream.status,
       headers: {
@@ -158,7 +169,8 @@ export async function GET(
   const profile = await getActiveH5InputProfile(path[1]);
   const requestUrl = new URL(request.url);
   const sourceEditor = requestUrl.searchParams.get(SOURCE_RUNTIME_EDITOR_PARAM) === SOURCE_RUNTIME_PROTOCOL;
-  const runtimeHtml = injectH5Runtime(await upstream.text(), profile);
+  const deliveredHtml = versionSourceRuntimeHtmlAssets(await upstream.text(), request.url);
+  const runtimeHtml = injectH5Runtime(deliveredHtml, profile);
   return new Response(sourceEditor ? injectSourceRuntimeEditorBridge(runtimeHtml) : runtimeHtml, {
     status: 200,
     headers: {

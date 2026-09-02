@@ -15,6 +15,15 @@ import {
   type SourceRuntimePageDoc,
 } from "../src/features/courseware-doc/source-runtime-schema";
 import {
+  SOURCE_RUNTIME_DELIVERY_PARAM,
+  SOURCE_RUNTIME_DELIVERY_VERSION,
+  sourceRuntimeVisualLifecycleScript,
+  upgradeSourceRuntimeViewerScript,
+  versionSourceRuntimeEntryUrl,
+  versionSourceRuntimeHtmlAssets,
+} from "../src/features/courseware-doc/source-runtime-delivery.mjs";
+import { prepareSourceRuntimeResourcesForSandbox } from "../src/features/courseware-doc/source-runtime-sandbox";
+import {
   countCoursewareH5Frames,
   resolveClassroomRendererInputProfile,
 } from "../src/features/classroom/input/capabilities";
@@ -156,9 +165,87 @@ describe("producer-owned Aixuexi source runtime", () => {
     expect(portable.viewerScript).not.toContain("assetPathPrefix");
     expect(portable.viewerScript).toContain("message.advanceOnCanvasClick===true");
     expect(portable.viewerScript).toContain("mathin-source-runtime-host");
+    expect(portable.viewerScript).toContain("mathinQueuedRender");
+    expect(portable.viewerScript).toContain("mathinRenderBody");
+    expect(portable.viewerScript).toContain("mathinPrepareVisualMessage");
+    expect(portable.viewerScript).toContain("renderKey:message.renderKey");
     expect(portable.viewerScript).not.toContain("route().catch");
     expect(portable.sourceFingerprint).toMatch(/^[0-9a-f]{64}$/);
     expect(portableAixuexiViewerHtml({ hasLottie: true })).toContain("viewer-runtime.js");
+  });
+
+  it("upgrades published runtimes through the versioned delivery seam", () => {
+    const legacy = [
+      "async function mathinRender(message){",
+      "  app.replaceChildren();",
+      "  mathinSend('rendered',{renderKey:message.renderKey});",
+      "}",
+      "async function mathinDrainRenderQueue(){return mathinRender({})}",
+    ].join("\n");
+    const upgraded = upgradeSourceRuntimeViewerScript(legacy);
+    expect(upgraded).toContain("async function mathinRenderBody(message)");
+    expect(upgraded).toContain("mathinPrepareVisualMessage");
+    expect(upgraded).toContain(`mathinVisualLifecycleVersion='${SOURCE_RUNTIME_DELIVERY_VERSION}'`);
+    expect(upgradeSourceRuntimeViewerScript(upgraded)).toBe(upgraded);
+
+    const entry = versionSourceRuntimeEntryUrl("/api/cw-h5/packages/hash/index.html?existing=1#slide");
+    expect(entry).toContain(`${SOURCE_RUNTIME_DELIVERY_PARAM}=${SOURCE_RUNTIME_DELIVERY_VERSION}`);
+    expect(entry.endsWith("#slide")).toBe(true);
+    const html = versionSourceRuntimeHtmlAssets(
+      '<script src="./viewer-runtime.js"></script>',
+      `https://mathin.example/index.html?${SOURCE_RUNTIME_DELIVERY_PARAM}=${SOURCE_RUNTIME_DELIVERY_VERSION}`,
+    );
+    expect(html).toContain(`viewer-runtime.js?${SOURCE_RUNTIME_DELIVERY_PARAM}=${SOURCE_RUNTIME_DELIVERY_VERSION}`);
+  });
+
+  it("re-homes cached Blob resources inside the opaque source-runtime sandbox", async () => {
+    const parentUrl = URL.createObjectURL(new Blob(["image-bytes"], { type: "image/webp" }));
+    try {
+      const prepared = await prepareSourceRuntimeResourcesForSandbox({
+        image: parentUrl,
+        remote: "https://example.test/asset.webp",
+      });
+      expect(prepared.image).toBeInstanceOf(Blob);
+      expect(await (prepared.image as Blob).text()).toBe("image-bytes");
+      expect(prepared.remote).toBe("https://example.test/asset.webp");
+
+      const created: string[] = [];
+      const revoked: string[] = [];
+      const rendered: Array<Record<string, unknown>> = [];
+      const runtime = new Function(
+        "Blob",
+        "URL",
+        "document",
+        "app",
+        "mathinRenderBody",
+        "mathinSend",
+        `${sourceRuntimeVisualLifecycleScript()}; return mathinRender;`,
+      )(
+        Blob,
+        {
+          createObjectURL: () => {
+            const url = `blob:null/sandbox-${created.length + 1}`;
+            created.push(url);
+            return url;
+          },
+          revokeObjectURL: (url: string) => revoked.push(url),
+        },
+        {},
+        { firstElementChild: null },
+        async (message: Record<string, unknown>) => rendered.push(message),
+        () => undefined,
+      ) as (message: Record<string, unknown>) => Promise<void>;
+
+      await runtime({ renderKey: "page-1", resources: { image: prepared.image } });
+      expect((rendered[0].resources as Record<string, string>).image).toBe("blob:null/sandbox-1");
+      expect(revoked).toEqual([]);
+
+      await runtime({ renderKey: "page-2", resources: { image: prepared.image } });
+      expect((rendered[1].resources as Record<string, string>).image).toBe("blob:null/sandbox-2");
+      expect(revoked).toEqual(["blob:null/sandbox-1"]);
+    } finally {
+      URL.revokeObjectURL(parentUrl);
+    }
   });
 
   it("keeps Mathin as a sandbox host instead of recreating source buttons", () => {
@@ -168,9 +255,12 @@ describe("producer-owned Aixuexi source runtime", () => {
     );
     expect(host).toContain("<iframe");
     expect(host).toContain("materializePayload");
+    expect(host).toContain("prepareSourceRuntimeResourcesForSandbox");
+    expect(host).not.toContain("allow-same-origin");
     expect(host).toContain("renderedFrameKey === renderKey");
     expect(host).toContain("runtimeLoadedFor.current = runtimeInstanceKey");
-    expect(host).toContain("runtimePayloadSentFor.current !== renderKey");
+    expect(host).toContain("runtimeInFlightFor.current");
+    expect(host).toContain("runtimeQueuedRender.current");
     expect(host).toContain("useLayoutEffect(() => {");
     expect(host).toContain('window.addEventListener("message", receive)');
     expect(host).toContain('key={runtimeInstanceKey}');

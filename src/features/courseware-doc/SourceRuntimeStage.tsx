@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { DocVideoControl } from "./DocStage";
 import type { H5PointerBridgeHost } from "./h5-pointer-protocol";
@@ -18,6 +18,11 @@ import type {
 } from "./source-runtime-editor";
 import { sourceRuntimeFourByThreeMode } from "./source-runtime-four-by-three";
 import type { SourceRuntimeFourByThreeMode } from "./source-runtime-four-by-three";
+import { versionSourceRuntimeEntryUrl } from "./source-runtime-delivery.mjs";
+import {
+  prepareSourceRuntimeResourcesForSandbox,
+  type SourceRuntimeSandboxResource,
+} from "./source-runtime-sandbox";
 import { useH5FrameRegistration } from "./useH5FrameRegistration";
 
 const FRAME_MESSAGE_SOURCE = "mathin-source-runtime";
@@ -62,9 +67,10 @@ interface RuntimePayload {
   source: typeof HOST_MESSAGE_SOURCE;
   protocol: typeof SOURCE_RUNTIME_PROTOCOL;
   type: "render";
+  renderKey: string;
   format: string;
   data: Record<string, unknown>;
-  resources: Record<string, string>;
+  resources: Record<string, SourceRuntimeSandboxResource>;
   routes: Record<string, string>;
   interactive: boolean;
   advanceOnCanvasClick: boolean;
@@ -89,6 +95,7 @@ function materializePayload(
   bindingUrls: ResolvedBindingUrls,
   interactive: boolean,
   editor: SourceRuntimeEditorHost | undefined,
+  renderKey: string,
 ): RuntimePayload | null {
   const resources: Record<string, string> = {};
   for (const [resourceId, bindingKey] of Object.entries(doc.bindings.resources)) {
@@ -106,6 +113,7 @@ function materializePayload(
     source: HOST_MESSAGE_SOURCE,
     protocol: SOURCE_RUNTIME_PROTOCOL,
     type: "render",
+    renderKey,
     format: doc.payload.format,
     data: doc.payload.data,
     resources,
@@ -114,6 +122,15 @@ function materializePayload(
     advanceOnCanvasClick: doc.behavior.advanceOnCanvasClick,
     editor: runtimeEditorPayload(editor),
   };
+}
+
+function runtimeBindingSignature(doc: SourceRuntimePageDoc, bindingUrls: ResolvedBindingUrls): string {
+  return JSON.stringify({
+    resources: Object.entries(doc.bindings.resources).map(([resourceId, bindingKey]) => (
+      [resourceId, bindingUrls[bindingKey] ?? null]
+    )),
+    routes: doc.bindings.routes.map((route) => [route.path, bindingUrls[route.bindingKey] ?? null]),
+  });
 }
 
 export default function SourceRuntimeStage({
@@ -139,10 +156,16 @@ export default function SourceRuntimeStage({
   const runtimeReadyFor = useRef<string | null>(null);
   const runtimeLoadedFor = useRef<string | null>(null);
   const runtimePayloadSentFor = useRef<string | null>(null);
+  const runtimeInFlightFor = useRef<string | null>(null);
+  const runtimeQueuedRender = useRef<{ frameKey: string; payload: RuntimePayload } | null>(null);
+  const runtimeInstanceFor = useRef<string | null>(null);
   const runtimeEntryBase = bindingUrls[doc.runtime.bindingKey];
-  const runtimeEntry = runtimeEntryBase && editor
+  const runtimeEntryWithMode = runtimeEntryBase && editor
     ? markSourceRuntimeEditorUrl(runtimeEntryBase)
     : runtimeEntryBase;
+  const runtimeEntry = runtimeEntryWithMode
+    ? versionSourceRuntimeEntryUrl(markSourceRuntimeNestedH5Url(runtimeEntryWithMode))
+    : null;
   // The runtime package is shared by every page in a source courseware. Keep
   // that iframe alive while only the render payload changes between pages;
   // reloading the immutable viewer bundle on every page turn is the dominant
@@ -152,10 +175,44 @@ export default function SourceRuntimeStage({
   const rendered = renderedFrameKey === renderKey;
   const hasRenderedCurrentRuntime = renderedFrameKey?.startsWith(`${runtimeInstanceKey}:`) ?? false;
   const runtimeError = runtimeFailure?.frameKey === renderKey ? runtimeFailure.message : null;
+  const bindingSignature = runtimeBindingSignature(doc, bindingUrls);
   const payload = useMemo(
-    () => materializePayload(doc, bindingUrls, interactive, editor),
-    [bindingUrls, doc, editor, interactive],
+    () => materializePayload(doc, bindingUrls, interactive, editor, renderKey),
+    // bindingSignature contains every URL consumed by materializePayload;
+    // unrelated lecture assets can finish loading without cloning Blob data again.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [bindingSignature, doc, editor, interactive, renderKey],
   );
+  const [sandboxPayload, setSandboxPayload] = useState<{ renderKey: string; payload: RuntimePayload } | null>(null);
+
+  const flushRuntimeRender = useCallback(() => {
+    if (runtimeReadyFor.current !== runtimeInstanceKey
+        && runtimeLoadedFor.current !== runtimeInstanceKey) return;
+    if (runtimeInFlightFor.current) return;
+    const next = runtimeQueuedRender.current;
+    if (!next) return;
+    runtimeQueuedRender.current = null;
+    if (runtimePayloadSentFor.current === next.frameKey) return;
+    runtimeInFlightFor.current = next.frameKey;
+    runtimePayloadSentFor.current = next.frameKey;
+    iframeRef.current?.contentWindow?.postMessage(next.payload, "*");
+  }, [iframeRef, runtimeInstanceKey]);
+
+  const queueRuntimeRender = useCallback((frameKey: string, nextPayload: RuntimePayload) => {
+    if (runtimePayloadSentFor.current === frameKey) return;
+    runtimeQueuedRender.current = { frameKey, payload: nextPayload };
+    flushRuntimeRender();
+  }, [flushRuntimeRender]);
+
+  useLayoutEffect(() => {
+    if (runtimeInstanceFor.current === runtimeInstanceKey) return;
+    runtimeInstanceFor.current = runtimeInstanceKey;
+    runtimeReadyFor.current = null;
+    runtimeLoadedFor.current = null;
+    runtimePayloadSentFor.current = null;
+    runtimeInFlightFor.current = null;
+    runtimeQueuedRender.current = null;
+  }, [runtimeInstanceKey]);
 
   useLayoutEffect(() => {
     const frame = sourceFrameRef.current;
@@ -173,13 +230,25 @@ export default function SourceRuntimeStage({
   }, []);
 
   useEffect(() => {
-    if ((runtimeReadyFor.current === runtimeInstanceKey || runtimeLoadedFor.current === runtimeInstanceKey)
-        && runtimePayloadSentFor.current !== renderKey
-        && payload) {
-      runtimePayloadSentFor.current = renderKey;
-      iframeRef.current?.contentWindow?.postMessage(payload, "*");
+    if (!payload) return;
+    const controller = new AbortController();
+    void prepareSourceRuntimeResourcesForSandbox(payload.resources, controller.signal)
+      .then((resources) => {
+        if (controller.signal.aborted) return;
+        setSandboxPayload({ renderKey, payload: { ...payload, resources } });
+      })
+      .catch(() => {
+        if (controller.signal.aborted) return;
+        setRuntimeFailure({ frameKey: renderKey, message: t("sourceRuntimeUnavailable") });
+      });
+    return () => controller.abort();
+  }, [payload, renderKey, t]);
+
+  useEffect(() => {
+    if (sandboxPayload?.renderKey === renderKey) {
+      queueRuntimeRender(renderKey, sandboxPayload.payload);
     }
-  }, [iframeRef, payload, renderKey, runtimeInstanceKey]);
+  }, [queueRuntimeRender, renderKey, sandboxPayload]);
 
   useEffect(() => {
     if (!editor || (runtimeReadyFor.current !== runtimeInstanceKey && runtimeLoadedFor.current !== runtimeInstanceKey)) return;
@@ -202,6 +271,7 @@ export default function SourceRuntimeStage({
         source?: unknown;
         protocol?: unknown;
         type?: unknown;
+        renderKey?: unknown;
         message?: unknown;
         action?: unknown;
         time?: unknown;
@@ -212,14 +282,18 @@ export default function SourceRuntimeStage({
       if (message.source === FRAME_MESSAGE_SOURCE && message.protocol === SOURCE_RUNTIME_PROTOCOL) {
         if (message.type === "ready") {
           runtimeReadyFor.current = runtimeInstanceKey;
-          if (payload && runtimePayloadSentFor.current !== renderKey) {
-            runtimePayloadSentFor.current = renderKey;
-            iframeRef.current?.contentWindow?.postMessage(payload, "*");
-          }
+          flushRuntimeRender();
         }
         if (message.type === "rendered") {
-          setRenderedFrameKey(renderKey);
-          setRuntimeFailure((current) => current?.frameKey === renderKey ? null : current);
+          const completedRenderKey = typeof message.renderKey === "string"
+            ? message.renderKey
+            : runtimeInFlightFor.current;
+          if (completedRenderKey && completedRenderKey === runtimeInFlightFor.current) {
+            runtimeInFlightFor.current = null;
+            setRenderedFrameKey(completedRenderKey);
+            setRuntimeFailure((current) => current?.frameKey === completedRenderKey ? null : current);
+            flushRuntimeRender();
+          }
         }
         if (message.type === "advance") onAdvance?.();
         if (message.type === "node-selected" && typeof message.nodePath === "string") {
@@ -244,10 +318,17 @@ export default function SourceRuntimeStage({
           if (Object.keys(patch).length > 0) editor?.onNodeTransformChange(message.nodePath, patch);
         }
         if (message.type === "error") {
-          setRuntimeFailure({
-            frameKey: renderKey,
-            message: typeof message.message === "string" ? message.message : t("sourceRuntimeUnavailable"),
-          });
+          const failedRenderKey = typeof message.renderKey === "string"
+            ? message.renderKey
+            : runtimeInFlightFor.current;
+          if (failedRenderKey && failedRenderKey === runtimeInFlightFor.current) {
+            runtimeInFlightFor.current = null;
+            setRuntimeFailure({
+              frameKey: failedRenderKey,
+              message: typeof message.message === "string" ? message.message : t("sourceRuntimeUnavailable"),
+            });
+            flushRuntimeRender();
+          }
         }
         return;
       }
@@ -260,7 +341,7 @@ export default function SourceRuntimeStage({
     };
     window.addEventListener("message", receive);
     return () => window.removeEventListener("message", receive);
-  }, [editor, iframeRef, onAdvance, payload, renderKey, runtimeInstanceKey, t, videoControl]);
+  }, [editor, flushRuntimeRender, iframeRef, onAdvance, runtimeInstanceKey, t, videoControl]);
 
   useEffect(() => {
     const ctl = videoControl?.ctl;
@@ -336,10 +417,7 @@ export default function SourceRuntimeStage({
               // the parent effect is installed. Treat `load` as the second side
               // of the same handshake and send the payload at most once.
               runtimeLoadedFor.current = runtimeInstanceKey;
-              if (payload && runtimePayloadSentFor.current !== renderKey) {
-                runtimePayloadSentFor.current = renderKey;
-                iframeRef.current?.contentWindow?.postMessage(payload, "*");
-              }
+              flushRuntimeRender();
               onFrameLoad();
             }}
             className="absolute left-0 top-0 block origin-top-left border-0 bg-white"
