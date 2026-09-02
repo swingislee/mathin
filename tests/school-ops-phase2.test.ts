@@ -5,69 +5,60 @@ import { describe, expect, it } from "vitest";
 const root = process.cwd();
 const read = (...segments: string[]) => fs.readFileSync(path.join(root, ...segments), "utf8");
 
-describe("DEV-SCHOOL-OPS-1 Phase 2", () => {
-  it("keeps assessment and opportunity as first-class RLS facts", () => {
-    const migration = read("supabase", "migrations", "20260902000200_school_ops_phase2_activity_funnel.sql");
+describe("DEV-SCHOOL-OPS-1 Phase 2 node worktables", () => {
+  it("keeps spreadsheet entry while storing assessment and routing as separate facts", () => {
+    const migration = read("supabase", "migrations", "20260902000400_school_ops_phase2_node_worktables.sql");
 
-    expect(migration).toContain("create table public.assessment_results");
-    expect(migration).toContain("create table public.sales_opportunities");
-    expect(migration).toContain("alter table public.assessment_results enable row level security");
-    expect(migration).toContain("alter table public.sales_opportunities enable row level security");
-    expect(migration).toContain("PARTICIPATION_NOT_ATTENDED");
-    expect(migration).toContain("ASSESSMENT_REQUIRED");
-    expect(migration).toContain("student_id, author_id, content, kind, next_follow_up_at");
+    expect(migration).toContain("alter table public.assessment_results");
+    expect(migration).toContain("add column parent_concerns");
+    expect(migration).toContain("add column recommended_class");
+    expect(migration).toContain("create table public.activity_routes");
+    expect(migration).toContain("alter table public.activity_routes enable row level security");
+    expect(migration).toContain("save_activity_assessment_row");
+    expect(migration).toContain("save_activity_route");
   });
 
-  it("marks participation attended when scoring begins", () => {
-    const migration = read("supabase", "migrations", "20260902000300_school_ops_phase2_assessment_auto_attendance.sql");
+  it("marks participation attended when assessment entry begins without mutating a global student stage", () => {
+    const migration = read("supabase", "migrations", "20260902000400_school_ops_phase2_node_worktables.sql");
     const actions = read("src", "features", "school", "activity-actions.ts");
     const workspace = read("src", "features", "school", "ActivityWorkspace.tsx");
 
     expect(migration).toContain("begin_activity_assessment");
     expect(migration).toContain("status = 'attended'");
-    expect(migration).toContain("follow_up_status = 'following'");
-    expect(migration).toContain("follow_up_status = 'invited'");
-    expect(migration).toContain("create or replace function public.mark_activity_result");
-    expect(migration).toContain("perform public.begin_activity_assessment(p_registration_id)");
+    expect(migration).not.toContain("set follow_up_status");
     expect(actions).toContain("beginActivityAssessmentAction");
-    expect(workspace).toContain("onScoreEdit(registration)");
+    expect(workspace).toContain("markAttendedWhenEditing");
     expect(workspace).toContain("autoAttendedIds");
   });
 
-  it("delivers an activity object workspace instead of a planning surface", () => {
+  it("selects a business node before presenting its table fields", () => {
     const page = read("src", "app", "[locale]", "dashboard", "activities", "[activityId]", "page.tsx");
-    const opportunityPage = read("src", "app", "[locale]", "dashboard", "opportunities", "page.tsx");
     const workspace = read("src", "features", "school", "ActivityWorkspace.tsx");
     const routes = read("src", "features", "school", "dashboard-routes.ts");
 
-    expect(page).toContain("ObjectWorkspace");
-    expect(page).toContain("ActivityWorkspace");
-    expect(workspace).toContain("ParticipationRoster");
-    expect(workspace).toContain("AssessmentEditor");
-    expect(workspace).toContain("OpportunityEditor");
-    expect(workspace).toContain("DashboardTableShell");
-    expect(workspace).not.toContain("school-ops");
-    expect(opportunityPage).toContain("listSalesOpportunities");
-    expect(opportunityPage).toContain("teacherRecommendation");
-    expect(opportunityPage.match(/<DashboardCommandState/g)).toHaveLength(1);
-    expect(opportunityPage).toContain('t("opportunityScopeLabel")');
-    expect(opportunityPage).toContain('t("opportunityStageFilter")');
-    expect(opportunityPage).not.toContain("source_registration_id");
+    expect(page).toContain("ACTIVITY_WORKSPACE_NODES");
+    expect(workspace).toContain("DashboardCommandTabs");
+    expect(workspace).toContain("ParticipationTable");
+    expect(workspace).toContain("AssessmentTable");
+    expect(workspace).toContain("RoutingTable");
+    expect(workspace).toContain("useAutosavedDraft");
+    expect(workspace).not.toContain("OpportunityEditor");
+    expect(workspace).not.toContain("salesOpportunity");
     expect(routes).toContain('hrefPattern: "/dashboard/activities/[activityId]"');
-    expect(routes).toContain('href: "/dashboard/opportunities"');
+    expect(routes).not.toContain('href: "/dashboard/opportunities"');
   });
 
-  it("keeps the Phase 2 forms and states bilingual", () => {
+  it("keeps the node tables and routing language bilingual", () => {
     const zh = read("messages", "zh.json");
     const en = read("messages", "en.json");
     for (const key of [
-      "participationRoster",
-      "assessmentResult",
-      "teacherRecommendation",
-      "salesOpportunity",
-      "nextAction",
-      "stage_won",
-      "stage_lost",
+      "entryNode",
+      "nodeParticipation",
+      "nodeAssessment",
+      "nodeRouting",
+      "parentConcerns",
+      "route_continue_follow_up",
+      "route_await_product",
     ]) {
       expect(zh).toContain(`\"${key}\"`);
       expect(en).toContain(`\"${key}\"`);

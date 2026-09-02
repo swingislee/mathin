@@ -54,12 +54,10 @@ export function ActivitiesManager({
   title,
   activities,
   canManage,
-  canViewOpportunities,
 }: {
   title: string;
   activities: ActivityRow[];
   canManage: boolean;
-  canViewOpportunities: boolean;
 }) {
   const t = useTranslations("school.activities");
   const locale = useLocale();
@@ -82,17 +80,17 @@ export function ActivitiesManager({
     booked: registrations.filter((registration) => registration.status !== "cancelled").length,
     attended: registrations.filter((registration) => registration.status === "attended").length,
     assessed: registrations.filter((registration) => registration.assessment !== null).length,
-    opportunities: registrations.filter((registration) => registration.opportunity !== null).length,
-    won: registrations.filter((registration) => registration.opportunity?.stage === "won").length,
+    awaitingRoute: registrations.filter((registration) =>
+      registration.status === "attended" && registration.assessment !== null && registration.route === null
+    ).length,
   };
 
   return <DashboardPage
     title={title}
     description={t("intro")}
-    commandPanel={canManage || canViewOpportunities ? <DashboardCommandPanel>
+    commandPanel={canManage ? <DashboardCommandPanel>
       <DashboardCommandActions>
-        {canViewOpportunities ? <Link href="/dashboard/opportunities" className={buttonVariants({ size: "sm", variant: "secondary" })}>{t("openOpportunityQueue")}</Link> : null}
-        {canManage ? <Button size="sm" onClick={() => setEditing("new")} className="gap-1"><Plus size={15} />{t("new")}</Button> : null}
+        <Button size="sm" onClick={() => setEditing("new")} className="gap-1"><Plus size={15} />{t("new")}</Button>
       </DashboardCommandActions>
     </DashboardCommandPanel> : undefined}
   >
@@ -103,8 +101,7 @@ export function ActivitiesManager({
           { label: t("funnelBooked"), value: funnel.booked },
           { label: t("funnelAttended"), value: funnel.attended },
           { label: t("funnelAssessed"), value: funnel.assessed },
-          { label: t("funnelOpportunity"), value: funnel.opportunities },
-          { label: t("funnelWon"), value: funnel.won },
+          { label: t("awaitingRoute"), value: funnel.awaitingRoute },
         ]}
       />
       <DashboardTableShell>
@@ -115,7 +112,7 @@ export function ActivitiesManager({
               <TableHead>{t("activity")}</TableHead>
               <TableHead>{t("participation")}</TableHead>
               <TableHead>{t("assessment")}</TableHead>
-              <TableHead>{t("opportunity")}</TableHead>
+              <TableHead>{t("awaitingRoute")}</TableHead>
               <TableHead className="text-right">{t("actions")}</TableHead>
             </TableRow>
           </TableHeader>
@@ -124,7 +121,9 @@ export function ActivitiesManager({
               const booked = activity.registrations.filter((registration) => registration.status !== "cancelled").length;
               const attended = activity.registrations.filter((registration) => registration.status === "attended").length;
               const assessed = activity.registrations.filter((registration) => registration.assessment).length;
-              const opportunities = activity.registrations.filter((registration) => registration.opportunity).length;
+              const awaitingRoute = activity.registrations.filter((registration) =>
+                registration.status === "attended" && registration.assessment !== null && registration.route === null
+              ).length;
               return <TableRow key={activity.id}>
                 <TableCell className="whitespace-nowrap text-sm">
                   {new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(activity.scheduledAt))}
@@ -140,7 +139,7 @@ export function ActivitiesManager({
                 </TableCell>
                 <TableCell className="tabular-nums">{t("participationCounts", { booked, attended })}</TableCell>
                 <TableCell className="tabular-nums">{assessed}</TableCell>
-                <TableCell className="tabular-nums">{opportunities}</TableCell>
+                <TableCell className="tabular-nums">{awaitingRoute}</TableCell>
                 <TableCell>
                   <div className="flex justify-end gap-1">
                     {canManage ? <>

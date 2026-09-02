@@ -1,14 +1,12 @@
 "use client";
 
-import { Check, LoaderCircle, Search, UserPlus } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
-import { useEffect, useState, useTransition } from "react";
+import { CircleAlert, CircleCheck, LoaderCircle, Search, UserPlus } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,37 +15,60 @@ import type { ActionResult } from "@/lib/action-result";
 import {
   beginActivityAssessmentAction,
   bookActivityAction,
-  createActivityOpportunityAction,
   markActivityResultAction,
   saveActivityAssessmentAction,
+  saveActivityRouteAction,
   searchStudentsForActivity,
-  updateSalesOpportunityAction,
 } from "./activity-actions";
-import { ASSESSMENT_LEVELS, OPPORTUNITY_STAGES, type OpportunityStage } from "./activity-funnel-contract";
-import type { ActivityRegistration, ActivityRow, OpportunityOwnerOption } from "./activities";
-import { DashboardSection, DashboardTableShell, StatusStrip } from "./dashboard-page";
-import { dateTimeInputToInstant, zonedDateTimeInputValue } from "./schedule";
+import {
+  ACTIVITY_ROUTES,
+  ASSESSMENT_BANDS,
+  type ActivityRouteKind,
+  type ActivityWorkspaceNode,
+  type AssessmentBand,
+} from "./activity-workflow-contract";
+import type { ActivityRegistration, ActivityRow } from "./activities";
+import {
+  DashboardCommandPanel,
+  DashboardCommandState,
+  DashboardCommandTabs,
+  DashboardSection,
+  DashboardTableShell,
+  StatusStrip,
+} from "./dashboard-page";
 
 type ParticipationStatus = ActivityRegistration["status"];
+type SaveState = "idle" | "dirty" | "saving" | "saved" | "error";
+
+interface AssessmentDraft {
+  assessmentBand: AssessmentBand | null;
+  score: number | null;
+  strengths: string;
+  focusAreas: string;
+  parentConcerns: string;
+  teacherRecommendation: string;
+  recommendedClass: string;
+}
+
+interface RouteDraft {
+  route: ActivityRouteKind | "";
+  note: string;
+}
 
 export function ActivityWorkspace({
   activity,
-  owners,
-  currentUserId,
-  timeZone,
+  activeNode,
   canRegister,
   canAssess,
-  canManageOpportunity,
-  initialRegistrationId,
+  canViewRouting,
+  canRoute,
 }: {
   activity: ActivityRow;
-  owners: OpportunityOwnerOption[];
-  currentUserId: string;
-  timeZone: string;
+  activeNode: ActivityWorkspaceNode;
   canRegister: boolean;
   canAssess: boolean;
-  canManageOpportunity: boolean;
-  initialRegistrationId?: string;
+  canViewRouting: boolean;
+  canRoute: boolean;
 }) {
   const t = useTranslations("school.activities");
   const router = useRouter();
@@ -57,15 +78,11 @@ export function ActivityWorkspace({
   const registrations = activity.registrations.map((registration) => autoAttendedIds.has(registration.id)
     ? { ...registration, status: "attended" as const }
     : registration);
-  const workspaceActivity = { ...activity, registrations };
-  const [selectedId, setSelectedId] = useState(
-    activity.registrations.some((registration) => registration.id === initialRegistrationId)
-      ? initialRegistrationId ?? ""
-      : activity.registrations[0]?.id ?? "",
-  );
-  const selected = registrations.find((registration) => registration.id === selectedId)
-    ?? registrations[0]
-    ?? null;
+  const attended = registrations.filter((registration) => registration.status === "attended").length;
+  const assessed = registrations.filter((registration) => registration.assessment !== null).length;
+  const awaitingRoute = registrations.filter((registration) =>
+    registration.status === "attended" && registration.assessment !== null && registration.route === null
+  ).length;
 
   const run = (action: () => Promise<ActionResult>, successMessage: string, onSuccess?: () => void) => {
     startTransition(async () => {
@@ -76,121 +93,157 @@ export function ActivityWorkspace({
         router.refresh();
         return;
       }
-      toast.error(errorMessage(t, result.code));
+      toast.error(actionErrorMessage(t, result.code));
     });
   };
 
-  const markAttendedWhenScoring = (registration: ActivityRegistration) => {
+  const markAttendedWhenEditing = (registration: ActivityRegistration) => {
     if (registration.status === "attended" || autoAttendancePendingIds.has(registration.id)) return;
+    if (registration.status === "cancelled") return;
 
     setAutoAttendedIds((current) => new Set(current).add(registration.id));
     setAutoAttendancePendingIds((current) => new Set(current).add(registration.id));
     void beginActivityAssessmentAction(registration.id).then((result) => {
-      setAutoAttendancePendingIds((current) => {
-        const next = new Set(current);
-        next.delete(registration.id);
-        return next;
-      });
-      if (result.ok) {
-        router.refresh();
-        return;
-      }
-      setAutoAttendedIds((current) => {
-        const next = new Set(current);
-        next.delete(registration.id);
-        return next;
-      });
-      toast.error(errorMessage(t, result.code));
+      setAutoAttendancePendingIds((current) => without(current, registration.id));
+      if (result.ok) return;
+      setAutoAttendedIds((current) => without(current, registration.id));
+      toast.error(actionErrorMessage(t, result.code));
     }).catch(() => {
-      setAutoAttendancePendingIds((current) => {
-        const next = new Set(current);
-        next.delete(registration.id);
-        return next;
-      });
-      setAutoAttendedIds((current) => {
-        const next = new Set(current);
-        next.delete(registration.id);
-        return next;
-      });
-      toast.error(errorMessage(t, "UNKNOWN"));
+      setAutoAttendancePendingIds((current) => without(current, registration.id));
+      setAutoAttendedIds((current) => without(current, registration.id));
+      toast.error(actionErrorMessage(t, "UNKNOWN"));
     });
   };
 
-  const attended = registrations.filter((registration) => registration.status === "attended").length;
-  const assessed = registrations.filter((registration) => registration.assessment).length;
-  const opportunities = registrations.filter((registration) => registration.opportunity).length;
+  const nodeItems = [
+    { value: "participation", label: t("nodeParticipation"), href: `/dashboard/activities/${activity.id}?node=participation` },
+    { value: "assessment", label: t("nodeAssessment"), href: `/dashboard/activities/${activity.id}?node=assessment` },
+    ...(canViewRouting ? [{ value: "routing", label: t("nodeRouting"), href: `/dashboard/activities/${activity.id}?node=routing` }] : []),
+  ];
 
-  return <div className="space-y-8">
+  return <div className="space-y-6">
     <StatusStrip items={[
-      { label: t("registered"), value: registrations.filter((registration) => registration.status !== "cancelled").length },
+      { label: t("activeRoster"), value: registrations.filter((registration) => registration.status !== "cancelled").length },
       { label: t("attended"), value: attended },
-      { label: t("assessment"), value: assessed },
-      { label: t("opportunity"), value: opportunities },
-      { label: t("capacity"), value: activity.capacity ?? "∞" },
+      { label: t("assessmentEntered"), value: assessed },
+      ...(canViewRouting ? [{ label: t("awaitingRoute"), value: awaitingRoute }] : []),
     ]} />
 
-    <ParticipationRoster
-      activity={workspaceActivity}
-      selectedId={selected?.id ?? ""}
+    <DashboardCommandPanel>
+      <DashboardCommandState className="gap-3">
+        <span className="text-xs font-medium text-muted">{t("entryNode")}</span>
+        <DashboardCommandTabs
+          ariaLabel={t("entryNode")}
+          activeValue={activeNode}
+          items={nodeItems}
+        />
+      </DashboardCommandState>
+    </DashboardCommandPanel>
+
+    {activeNode === "participation" ? <ParticipationTable
+      activity={{ ...activity, registrations }}
       pending={pending}
       canRegister={canRegister}
-      onSelect={setSelectedId}
-      onStatusEdit={(registrationId) => setAutoAttendedIds((current) => {
-        const next = new Set(current);
-        next.delete(registrationId);
-        return next;
-      })}
       run={run}
       statusPendingIds={autoAttendancePendingIds}
-    />
+      onStatusEdit={(registrationId) => setAutoAttendedIds((current) => without(current, registrationId))}
+    /> : null}
 
-    <DashboardSection
-      title={selected ? t("studentWorkbench", { name: selected.studentName }) : t("studentWorkbenchEmpty")}
-      description={selected ? t("studentWorkbenchHint") : t("selectParticipantHint")}
-    >
-      {selected ? <div className="grid min-w-0 gap-8 lg:grid-cols-2">
-        <AssessmentEditor
-          key={`assessment-${selected.id}`}
-          registration={selected}
-          pending={pending}
-          canAssess={canAssess}
-          run={run}
-          attendancePending={autoAttendancePendingIds.has(selected.id)}
-          onScoreEdit={markAttendedWhenScoring}
-        />
-        <OpportunityEditor
-          key={`opportunity-${selected.id}-${selected.opportunity?.id ?? "new"}`}
-          registration={selected}
-          owners={owners}
-          currentUserId={currentUserId}
-          timeZone={timeZone}
-          pending={pending}
-          canManage={canManageOpportunity}
-          run={run}
-        />
-      </div> : <div className="grid min-h-40 place-items-center text-sm text-muted">{t("selectParticipantHint")}</div>}
-    </DashboardSection>
+    {activeNode === "assessment" ? <AssessmentTable
+      registrations={registrations}
+      canAssess={canAssess}
+      attendancePendingIds={autoAttendancePendingIds}
+      onEdit={markAttendedWhenEditing}
+    /> : null}
+
+    {activeNode === "routing" && canViewRouting ? <RoutingTable
+      registrations={registrations}
+      canRoute={canRoute}
+    /> : null}
   </div>;
 }
 
-function ParticipationRoster({
+function ParticipationTable({
   activity,
-  selectedId,
   pending,
   canRegister,
-  onSelect,
-  onStatusEdit,
   run,
   statusPendingIds,
+  onStatusEdit,
 }: {
   activity: ActivityRow;
-  selectedId: string;
   pending: boolean;
   canRegister: boolean;
-  onSelect: (id: string) => void;
-  onStatusEdit: (registrationId: string) => void;
   run: (action: () => Promise<ActionResult>, successMessage: string, onSuccess?: () => void) => void;
   statusPendingIds: ReadonlySet<string>;
+  onStatusEdit: (registrationId: string) => void;
+}) {
+  const t = useTranslations("school.activities");
+
+  const setStatus = (registration: ActivityRegistration, status: ParticipationStatus) => {
+    onStatusEdit(registration.id);
+    if (status === "booked") {
+      run(() => bookActivityAction(activity.id, registration.studentId), t("resultMarked"));
+      return;
+    }
+    run(() => markActivityResultAction(registration.id, status, registration.outcome), t("resultMarked"));
+  };
+
+  return <DashboardSection
+    title={t("participationNodeTitle")}
+    description={t("participationNodeHint")}
+    actions={canRegister ? <StudentSearch activity={activity} pending={pending} run={run} /> : undefined}
+  >
+    <DashboardTableShell>
+      <Table className="min-w-[58rem]">
+        <TableHeader><TableRow>
+          <TableHead>{t("student")}</TableHead>
+          <TableHead>{t("participation")}</TableHead>
+          <TableHead>{t("onSiteNote")}</TableHead>
+          <TableHead>{t("assessment")}</TableHead>
+          <TableHead>{t("routingResult")}</TableHead>
+        </TableRow></TableHeader>
+        <TableBody>
+          {activity.registrations.map((registration) => <TableRow key={registration.id}>
+            <StudentCell registration={registration} />
+            <TableCell>
+              {canRegister ? <Select
+                value={registration.status}
+                disabled={pending || statusPendingIds.has(registration.id)}
+                onValueChange={(value) => setStatus(registration, value as ParticipationStatus)}
+              >
+                <SelectTrigger className="h-8 w-32"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="booked">{t("status_booked")}</SelectItem>
+                  <SelectItem value="attended">{t("status_attended")}</SelectItem>
+                  <SelectItem value="no_show">{t("status_no_show")}</SelectItem>
+                  <SelectItem value="cancelled">{t("status_cancelled")}</SelectItem>
+                </SelectContent>
+              </Select> : <Badge variant="outline">{t(`status_${registration.status}`)}</Badge>}
+            </TableCell>
+            <TableCell className="max-w-80 whitespace-normal text-sm text-muted">{registration.outcome || "—"}</TableCell>
+            <TableCell>{registration.assessment
+              ? <Badge variant="secondary">{registration.assessment.assessmentBand ? t(`band_${registration.assessment.assessmentBand}`) : t("assessmentEntered")}</Badge>
+              : <span className="text-xs text-muted">{t("notEntered")}</span>}</TableCell>
+            <TableCell>{registration.route
+              ? <Badge variant="outline">{t(`route_${registration.route.route}`)}</Badge>
+              : <span className="text-xs text-muted">{t("route_pending")}</span>}</TableCell>
+          </TableRow>)}
+          {activity.registrations.length === 0 ? <TableRow><TableCell colSpan={5} className="h-40 text-center text-muted">{t("noParticipants")}</TableCell></TableRow> : null}
+        </TableBody>
+      </Table>
+    </DashboardTableShell>
+  </DashboardSection>;
+}
+
+function StudentSearch({
+  activity,
+  pending,
+  run,
+}: {
+  activity: ActivityRow;
+  pending: boolean;
+  run: (action: () => Promise<ActionResult>, successMessage: string, onSuccess?: () => void) => void;
 }) {
   const t = useTranslations("school.activities");
   const [query, setQuery] = useState("");
@@ -213,270 +266,343 @@ function ParticipationRoster({
     };
   }, [activity.registrations, query]);
 
-  const setStatus = (registration: ActivityRegistration, status: ParticipationStatus) => {
-    onStatusEdit(registration.id);
-    if (status === "booked") {
-      run(() => bookActivityAction(activity.id, registration.studentId), t("resultMarked"));
-      return;
-    }
-    run(() => markActivityResultAction(registration.id, status, registration.outcome), t("resultMarked"));
-  };
+  return <div className="relative w-full min-w-56 sm:w-72">
+    <Search className="pointer-events-none absolute left-3 top-2.5 size-4 text-muted" />
+    <Input value={query} onChange={(event) => {
+      const value = event.target.value;
+      setQuery(value);
+      if (!value.trim()) setResults([]);
+    }} placeholder={t("searchStudent")} className="h-9 pl-9" />
+    {query.trim() ? <div className="absolute right-2 top-2.5 text-muted">{searching ? <LoaderCircle className="size-4 animate-spin" /> : null}</div> : null}
+    {results.length > 0 ? <div className="absolute right-0 top-11 z-20 w-full rounded-xl border border-line bg-card p-1 shadow-lg">
+      {results.map((student) => <Button
+        key={student.id}
+        type="button"
+        variant="ghost"
+        className="w-full justify-start"
+        disabled={pending}
+        onClick={() => run(
+          () => bookActivityAction(activity.id, student.id),
+          t("bookSuccess"),
+          () => { setQuery(""); setResults([]); },
+        )}
+      ><UserPlus className="size-4" />{student.name}{student.grade ? <span className="ml-auto text-xs text-muted">{t("gradeValue", { grade: student.grade })}</span> : null}</Button>)}
+    </div> : null}
+  </div>;
+}
 
-  return <DashboardSection
-    title={t("participationRoster")}
-    description={t("participationRosterHint")}
-    actions={canRegister ? <div className="relative w-full min-w-56 sm:w-72">
-      <Search className="pointer-events-none absolute left-3 top-2.5 size-4 text-muted" />
-      <Input value={query} onChange={(event) => {
-        const value = event.target.value;
-        setQuery(value);
-        if (!value.trim()) setResults([]);
-      }} placeholder={t("searchStudent")} className="h-9 pl-9" />
-      {query.trim() ? <div className="absolute right-2 top-2.5 text-muted">{searching ? <LoaderCircle className="size-4 animate-spin" /> : null}</div> : null}
-      {results.length > 0 ? <div className="absolute right-0 top-11 z-20 w-full rounded-xl border border-line bg-card p-1 shadow-lg">
-        {results.map((student) => <Button
-          key={student.id}
-          type="button"
-          variant="ghost"
-          className="w-full justify-start"
-          disabled={pending}
-          onClick={() => run(
-            () => bookActivityAction(activity.id, student.id),
-            t("bookSuccess"),
-            () => { setQuery(""); setResults([]); },
-          )}
-        ><UserPlus className="size-4" />{student.name}{student.grade ? <span className="ml-auto text-xs text-muted">{t("gradeValue", { grade: student.grade })}</span> : null}</Button>)}
-      </div> : null}
-    </div> : undefined}
-  >
+function AssessmentTable({
+  registrations,
+  canAssess,
+  attendancePendingIds,
+  onEdit,
+}: {
+  registrations: ActivityRegistration[];
+  canAssess: boolean;
+  attendancePendingIds: ReadonlySet<string>;
+  onEdit: (registration: ActivityRegistration) => void;
+}) {
+  const t = useTranslations("school.activities");
+  const rows = registrations.filter((registration) => registration.status !== "cancelled");
+
+  return <DashboardSection title={t("assessmentNodeTitle")} description={t("assessmentNodeHint")}>
     <DashboardTableShell>
-      <Table>
+      <Table className="min-w-[108rem] table-fixed">
         <TableHeader><TableRow>
-          <TableHead>{t("student")}</TableHead>
-          <TableHead>{t("participation")}</TableHead>
-          <TableHead>{t("assessment")}</TableHead>
-          <TableHead>{t("opportunity")}</TableHead>
-          <TableHead className="text-right">{t("actions")}</TableHead>
+          <TableHead className="w-44">{t("student")}</TableHead>
+          <TableHead className="w-28">{t("participation")}</TableHead>
+          <TableHead className="w-32">{t("assessmentBand")}</TableHead>
+          <TableHead className="w-24">{t("scoreShort")}</TableHead>
+          <TableHead className="w-60">{t("strengths")}</TableHead>
+          <TableHead className="w-60">{t("focusAreas")}</TableHead>
+          <TableHead className="w-60">{t("parentConcerns")}</TableHead>
+          <TableHead className="w-44">{t("recommendedClass")}</TableHead>
+          <TableHead className="w-64">{t("teacherRecommendation")}</TableHead>
+          <TableHead className="w-24">{t("saveState")}</TableHead>
         </TableRow></TableHeader>
         <TableBody>
-          {activity.registrations.map((registration) => <TableRow key={registration.id} className={registration.id === selectedId ? "bg-crater/8" : undefined}>
-            <TableCell>
-              <Link href={`/dashboard/students/${registration.studentId}`} className="font-medium text-ink hover:underline">{registration.studentName}</Link>
-              {registration.studentGrade ? <p className="mt-0.5 text-xs text-muted">{t("gradeValue", { grade: registration.studentGrade })}</p> : null}
-            </TableCell>
-            <TableCell>
-              {canRegister ? <Select value={registration.status} disabled={pending || statusPendingIds.has(registration.id)} onValueChange={(value) => setStatus(registration, value as ParticipationStatus)}>
-                <SelectTrigger className="h-8 w-32"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="booked">{t("status_booked")}</SelectItem>
-                  <SelectItem value="attended">{t("status_attended")}</SelectItem>
-                  <SelectItem value="no_show">{t("status_no_show")}</SelectItem>
-                  <SelectItem value="cancelled">{t("status_cancelled")}</SelectItem>
-                </SelectContent>
-              </Select> : <Badge variant="outline">{t(`status_${registration.status}`)}</Badge>}
-            </TableCell>
-            <TableCell>{registration.assessment
-              ? <Badge variant="secondary"><Check className="size-3.5" />{t(`level_${registration.assessment.overallLevel}`)}</Badge>
-              : <span className="text-xs text-muted">{t("notEntered")}</span>}</TableCell>
-            <TableCell>{registration.opportunity
-              ? <Badge variant={registration.opportunity.stage === "won" ? "secondary" : "outline"}>{t(`stage_${registration.opportunity.stage}`)}</Badge>
-              : <span className="text-xs text-muted">{t("notCreated")}</span>}</TableCell>
-            <TableCell className="text-right"><Button size="sm" variant={registration.id === selectedId ? "secondary" : "ghost"} onClick={() => onSelect(registration.id)}>{t("handle")}</Button></TableCell>
-          </TableRow>)}
-          {activity.registrations.length === 0 ? <TableRow><TableCell colSpan={5} className="h-40 text-center text-muted">{t("noParticipants")}</TableCell></TableRow> : null}
+          {rows.map((registration) => <AssessmentRow
+            key={registration.id}
+            registration={registration}
+            canAssess={canAssess}
+            attendancePending={attendancePendingIds.has(registration.id)}
+            onEdit={onEdit}
+          />)}
+          {rows.length === 0 ? <TableRow><TableCell colSpan={10} className="h-40 text-center text-muted">{t("noAssessmentRows")}</TableCell></TableRow> : null}
         </TableBody>
       </Table>
     </DashboardTableShell>
   </DashboardSection>;
 }
 
-function AssessmentEditor({
+function AssessmentRow({
   registration,
-  pending,
   canAssess,
-  run,
   attendancePending,
-  onScoreEdit,
+  onEdit,
 }: {
   registration: ActivityRegistration;
-  pending: boolean;
   canAssess: boolean;
-  run: (action: () => Promise<ActionResult>, successMessage: string) => void;
   attendancePending: boolean;
-  onScoreEdit: (registration: ActivityRegistration) => void;
+  onEdit: (registration: ActivityRegistration) => void;
 }) {
-  const t = useTranslations("school.activities");
-  const [overallLevel, setOverallLevel] = useState(registration.assessment?.overallLevel ?? "on_track");
-  const [score, setScore] = useState<number | null>(registration.assessment?.score ?? null);
-  const [strengths, setStrengths] = useState(registration.assessment?.strengths ?? "");
-  const [focusAreas, setFocusAreas] = useState(registration.assessment?.focusAreas ?? "");
-  const [teacherRecommendation, setTeacherRecommendation] = useState(registration.assessment?.teacherRecommendation ?? "");
-  const canSave = canAssess && registration.status === "attended" && !attendancePending && teacherRecommendation.trim().length > 0;
-
-  return <section className="min-w-0">
-    <div className="mb-4">
-      <h3 className="text-sm font-medium text-ink">{t("assessmentResult")}</h3>
-      <p className="mt-0.5 text-xs leading-5 text-muted">{registration.status === "attended" ? t("assessmentResultHint") : t("attendedRequiredHint")}</p>
-    </div>
-    {registration.assessment && !canAssess ? <ReadOnlyAssessment registration={registration} /> : <div className="grid gap-4">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Label className="grid gap-1.5 text-xs font-normal text-muted">{t("overallLevel")}
-          <Select value={overallLevel} onValueChange={(value) => setOverallLevel(value as typeof overallLevel)} disabled={!canAssess || pending}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>{ASSESSMENT_LEVELS.map((level) => <SelectItem key={level} value={level}>{t(`level_${level}`)}</SelectItem>)}</SelectContent>
-          </Select>
-        </Label>
-        <Label className="grid gap-1.5 text-xs font-normal text-muted">{t("scoreOptional")}
-          <Input type="number" min={0} max={100} value={score ?? ""} disabled={!canAssess || pending} onChange={(event) => {
-            onScoreEdit(registration);
-            setScore(event.target.value === "" ? null : Number(event.target.value));
-          }} />
-        </Label>
-      </div>
-      <Label className="grid gap-1.5 text-xs font-normal text-muted">{t("strengths")}
-        <Textarea value={strengths} onChange={(event) => setStrengths(event.target.value)} disabled={!canAssess || pending} maxLength={2_000} />
-      </Label>
-      <Label className="grid gap-1.5 text-xs font-normal text-muted">{t("focusAreas")}
-        <Textarea value={focusAreas} onChange={(event) => setFocusAreas(event.target.value)} disabled={!canAssess || pending} maxLength={2_000} />
-      </Label>
-      <Label className="grid gap-1.5 text-xs font-normal text-muted">{t("teacherRecommendation")}
-        <Textarea value={teacherRecommendation} onChange={(event) => setTeacherRecommendation(event.target.value)} disabled={!canAssess || pending} maxLength={2_000} placeholder={t("teacherRecommendationPlaceholder")} />
-      </Label>
-      {canAssess ? <div className="flex justify-end"><Button disabled={!canSave || pending} onClick={() => run(
-        () => saveActivityAssessmentAction({
-          registrationId: registration.id,
-          overallLevel,
-          score,
-          strengths,
-          focusAreas,
-          teacherRecommendation,
-        }),
-        t("assessmentSaved"),
-      )}>{pending ? <LoaderCircle className="size-4 animate-spin" /> : null}{registration.assessment ? t("saveAssessment") : t("completeAssessment")}</Button></div> : null}
-    </div>}
-  </section>;
-}
-
-function ReadOnlyAssessment({ registration }: { registration: ActivityRegistration }) {
   const t = useTranslations("school.activities");
   const assessment = registration.assessment;
-  if (!assessment) return <p className="text-sm text-muted">{t("notEntered")}</p>;
-  return <dl className="grid gap-4 text-sm sm:grid-cols-2">
-    <ReadOnlyField label={t("overallLevel")} value={t(`level_${assessment.overallLevel}`)} />
-    <ReadOnlyField label={t("scoreOptional")} value={assessment.score ?? "—"} />
-    <ReadOnlyField label={t("strengths")} value={assessment.strengths || "—"} />
-    <ReadOnlyField label={t("focusAreas")} value={assessment.focusAreas || "—"} />
-    <ReadOnlyField className="sm:col-span-2" label={t("teacherRecommendation")} value={assessment.teacherRecommendation} />
-  </dl>;
+  const autosave = useAutosavedDraft<AssessmentDraft>({
+    initial: {
+      assessmentBand: assessment?.assessmentBand ?? null,
+      score: assessment?.score ?? null,
+      strengths: assessment?.strengths ?? "",
+      focusAreas: assessment?.focusAreas ?? "",
+      parentConcerns: assessment?.parentConcerns ?? "",
+      teacherRecommendation: assessment?.teacherRecommendation ?? "",
+      recommendedClass: assessment?.recommendedClass ?? "",
+    },
+    enabled: canAssess && registration.status !== "cancelled" && !attendancePending,
+    save: (draft) => saveActivityAssessmentAction({ registrationId: registration.id, ...draft }),
+    errorMessage: t("assessmentAutosaveFailed"),
+  });
+  const update = <K extends keyof AssessmentDraft>(key: K, value: AssessmentDraft[K]) => {
+    onEdit(registration);
+    autosave.update(key, value);
+  };
+  const disabled = !canAssess || registration.status === "cancelled";
+
+  return <TableRow>
+    <StudentCell registration={registration} />
+    <TableCell><Badge variant={registration.status === "attended" ? "secondary" : "outline"}>{t(`status_${registration.status}`)}</Badge></TableCell>
+    <TableCell className="p-2"><Select
+      value={autosave.draft.assessmentBand ?? "none"}
+      disabled={disabled}
+      onValueChange={(value) => update("assessmentBand", value === "none" ? null : value as AssessmentBand)}
+    >
+      <SelectTrigger className="h-9 w-full"><SelectValue /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="none">{t("notEntered")}</SelectItem>
+        {ASSESSMENT_BANDS.map((band) => <SelectItem key={band} value={band}>{t(`band_${band}`)}</SelectItem>)}
+      </SelectContent>
+    </Select></TableCell>
+    <TableCell className="p-2"><Input
+      aria-label={t("scoreShort")}
+      type="number"
+      min={0}
+      max={100}
+      value={autosave.draft.score ?? ""}
+      disabled={disabled}
+      onChange={(event) => update("score", event.target.value === "" ? null : Number(event.target.value))}
+      className="h-9"
+    /></TableCell>
+    <TableCell className="p-2"><CellTextarea value={autosave.draft.strengths} disabled={disabled} label={t("strengths")} onChange={(value) => update("strengths", value)} /></TableCell>
+    <TableCell className="p-2"><CellTextarea value={autosave.draft.focusAreas} disabled={disabled} label={t("focusAreas")} onChange={(value) => update("focusAreas", value)} /></TableCell>
+    <TableCell className="p-2"><CellTextarea value={autosave.draft.parentConcerns} disabled={disabled} label={t("parentConcerns")} onChange={(value) => update("parentConcerns", value)} /></TableCell>
+    <TableCell className="p-2"><Input
+      aria-label={t("recommendedClass")}
+      value={autosave.draft.recommendedClass}
+      disabled={disabled}
+      maxLength={200}
+      placeholder={t("recommendedClassPlaceholder")}
+      onChange={(event) => update("recommendedClass", event.target.value)}
+      className="h-9"
+    /></TableCell>
+    <TableCell className="p-2"><CellTextarea value={autosave.draft.teacherRecommendation} disabled={disabled} label={t("teacherRecommendation")} onChange={(value) => update("teacherRecommendation", value)} /></TableCell>
+    <TableCell className="p-2"><AutosaveState state={autosave.state} retry={autosave.retry} /></TableCell>
+  </TableRow>;
 }
 
-function OpportunityEditor({
-  registration,
-  owners,
-  currentUserId,
-  timeZone,
-  pending,
-  canManage,
-  run,
-}: {
-  registration: ActivityRegistration;
-  owners: OpportunityOwnerOption[];
-  currentUserId: string;
-  timeZone: string;
-  pending: boolean;
-  canManage: boolean;
-  run: (action: () => Promise<ActionResult>, successMessage: string) => void;
-}) {
+function RoutingTable({ registrations, canRoute }: { registrations: ActivityRegistration[]; canRoute: boolean }) {
   const t = useTranslations("school.activities");
-  const locale = useLocale();
-  const opportunity = registration.opportunity;
-  const defaultOwner = opportunity?.ownerId ?? (owners.some((owner) => owner.userId === currentUserId) ? currentUserId : owners[0]?.userId ?? "");
-  const [stage, setStage] = useState<OpportunityStage>(opportunity?.stage ?? "new");
-  const [ownerId, setOwnerId] = useState(defaultOwner);
-  const [nextAction, setNextAction] = useState(opportunity?.nextAction ?? "");
-  const [nextActionAt, setNextActionAt] = useState(() => opportunity?.nextActionAt
-    ? zonedDateTimeInputValue(new Date(opportunity.nextActionAt), timeZone)
-    : zonedDateTimeInputValue(new Date(Date.now() + 24 * 60 * 60 * 1_000), timeZone));
-  const [note, setNote] = useState(opportunity?.note ?? "");
-  const closed = stage === "won" || stage === "lost";
-  const nextActionInstant = nextActionAt ? dateTimeInputToInstant(nextActionAt, timeZone) : null;
-  const canSave = Boolean(ownerId) && (closed || (nextAction.trim() && nextActionInstant));
+  const rows = registrations.filter((registration) => registration.status === "attended");
 
-  return <section className="min-w-0 lg:border-l lg:border-line/80 lg:pl-8">
-    <div className="mb-4">
-      <h3 className="text-sm font-medium text-ink">{t("salesOpportunity")}</h3>
-      <p className="mt-0.5 text-xs leading-5 text-muted">{t("salesOpportunityHint")}</p>
-    </div>
-    {!registration.assessment ? <p className="text-sm text-muted">{t("assessmentBeforeOpportunity")}</p> : !canManage ? (
-      opportunity ? <dl className="grid gap-4 text-sm sm:grid-cols-2">
-        <ReadOnlyField label={t("opportunityStage")} value={t(`stage_${opportunity.stage}`)} />
-        <ReadOnlyField label={t("opportunityOwner")} value={opportunity.ownerName} />
-        <ReadOnlyField label={t("nextAction")} value={opportunity.nextAction || "—"} />
-        <ReadOnlyField label={t("nextActionAt")} value={opportunity.nextActionAt ? new Intl.DateTimeFormat(locale, { timeZone, dateStyle: "medium", timeStyle: "short" }).format(new Date(opportunity.nextActionAt)) : "—"} />
-        <ReadOnlyField className="sm:col-span-2" label={t("opportunityNote")} value={opportunity.note || "—"} />
-      </dl> : <p className="text-sm text-muted">{t("notCreated")}</p>
-    ) : <div className="grid gap-4">
-      <div className="grid gap-4 sm:grid-cols-2">
-        {opportunity ? <Label className="grid gap-1.5 text-xs font-normal text-muted">{t("opportunityStage")}
-          <Select value={stage} onValueChange={(value) => setStage(value as OpportunityStage)} disabled={pending}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>{OPPORTUNITY_STAGES.map((value) => <SelectItem key={value} value={value}>{t(`stage_${value}`)}</SelectItem>)}</SelectContent>
-          </Select>
-        </Label> : <div><p className="text-xs text-muted">{t("opportunityStage")}</p><Badge className="mt-2" variant="outline">{t("stage_new")}</Badge></div>}
-        <Label className="grid gap-1.5 text-xs font-normal text-muted">{t("opportunityOwner")}
-          <Select value={ownerId} onValueChange={setOwnerId} disabled={pending || owners.length === 0}>
-            <SelectTrigger><SelectValue placeholder={t("selectOwner")} /></SelectTrigger>
-            <SelectContent>{owners.map((owner) => <SelectItem key={owner.userId} value={owner.userId}>{owner.displayName}</SelectItem>)}</SelectContent>
-          </Select>
-        </Label>
-      </div>
-      <Label className="grid gap-1.5 text-xs font-normal text-muted">{t("nextAction")}
-        <Input value={nextAction} onChange={(event) => setNextAction(event.target.value)} disabled={pending} maxLength={500} placeholder={closed ? t("closedNextActionOptional") : t("nextActionPlaceholder")} />
-      </Label>
-      <Label className="grid gap-1.5 text-xs font-normal text-muted">{t("nextActionAt")} · {timeZone}
-        <DateTimePicker mode="datetime" value={nextActionAt} onValueChange={setNextActionAt} disabled={pending} />
-      </Label>
-      <Label className="grid gap-1.5 text-xs font-normal text-muted">{t("opportunityNote")}
-        <Textarea value={note} onChange={(event) => setNote(event.target.value)} disabled={pending} maxLength={2_000} />
-      </Label>
-      <div className="flex justify-end"><Button disabled={!canSave || pending} onClick={() => {
-        const instant = nextActionInstant?.toISOString() ?? null;
-        if (opportunity) {
-          run(() => updateSalesOpportunityAction({
-            opportunityId: opportunity.id,
-            stage,
-            ownerId,
-            nextAction,
-            nextActionAt: instant,
-            note,
-          }), t("opportunitySaved"));
-        } else if (instant) {
-          run(() => createActivityOpportunityAction({
-            registrationId: registration.id,
-            ownerId,
-            nextAction,
-            nextActionAt: instant,
-            note,
-          }), t("opportunityCreated"));
+  return <DashboardSection title={t("routingNodeTitle")} description={t("routingNodeHint")}>
+    <DashboardTableShell>
+      <Table className="min-w-[70rem] table-fixed">
+        <TableHeader><TableRow>
+          <TableHead className="w-48">{t("student")}</TableHead>
+          <TableHead className="w-64">{t("assessmentSummary")}</TableHead>
+          <TableHead className="w-52">{t("routingResult")}</TableHead>
+          <TableHead className="w-96">{t("routingNote")}</TableHead>
+          <TableHead className="w-24">{t("saveState")}</TableHead>
+        </TableRow></TableHeader>
+        <TableBody>
+          {rows.map((registration) => <RoutingRow key={registration.id} registration={registration} canRoute={canRoute} />)}
+          {rows.length === 0 ? <TableRow><TableCell colSpan={5} className="h-40 text-center text-muted">{t("noRoutingRows")}</TableCell></TableRow> : null}
+        </TableBody>
+      </Table>
+    </DashboardTableShell>
+  </DashboardSection>;
+}
+
+function RoutingRow({ registration, canRoute }: { registration: ActivityRegistration; canRoute: boolean }) {
+  const t = useTranslations("school.activities");
+  const autosave = useAutosavedDraft<RouteDraft>({
+    initial: {
+      route: registration.route?.route ?? "",
+      note: registration.route?.note ?? "",
+    },
+    enabled: canRoute,
+    save: (draft) => draft.route
+      ? saveActivityRouteAction({ registrationId: registration.id, route: draft.route, note: draft.note })
+      : Promise.resolve({ ok: false, code: "VALIDATION" as const }),
+    errorMessage: t("routeAutosaveFailed"),
+  });
+
+  return <TableRow>
+    <StudentCell registration={registration} />
+    <TableCell className="whitespace-normal">
+      {registration.assessment ? <div className="space-y-1">
+        <div className="flex flex-wrap gap-1.5">
+          {registration.assessment.assessmentBand ? <Badge variant="secondary">{t(`band_${registration.assessment.assessmentBand}`)}</Badge> : null}
+          {registration.assessment.recommendedClass ? <Badge variant="outline">{registration.assessment.recommendedClass}</Badge> : null}
+        </div>
+        <p className="line-clamp-2 text-xs leading-5 text-muted">{registration.assessment.teacherRecommendation || t("assessmentEntered")}</p>
+      </div> : <span className="text-xs text-muted">{t("notEntered")}</span>}
+    </TableCell>
+    <TableCell className="p-2"><Select
+      value={autosave.draft.route || "pending"}
+      disabled={!canRoute}
+      onValueChange={(value) => autosave.update("route", value === "pending" ? "" : value as ActivityRouteKind)}
+    >
+      <SelectTrigger className="h-9 w-full"><SelectValue /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="pending" disabled>{t("route_pending")}</SelectItem>
+        {ACTIVITY_ROUTES.map((route) => <SelectItem key={route} value={route}>{t(`route_${route}`)}</SelectItem>)}
+      </SelectContent>
+    </Select></TableCell>
+    <TableCell className="p-2"><CellTextarea
+      value={autosave.draft.note}
+      disabled={!canRoute || !autosave.draft.route}
+      label={t("routingNote")}
+      onChange={(value) => autosave.update("note", value)}
+    /></TableCell>
+    <TableCell className="p-2"><AutosaveState state={autosave.state} retry={autosave.retry} /></TableCell>
+  </TableRow>;
+}
+
+function StudentCell({ registration }: { registration: ActivityRegistration }) {
+  const t = useTranslations("school.activities");
+  return <TableCell>
+    <Link href={`/dashboard/students/${registration.studentId}`} className="font-medium text-ink hover:underline">{registration.studentName}</Link>
+    {registration.studentGrade ? <p className="mt-0.5 text-xs text-muted">{t("gradeValue", { grade: registration.studentGrade })}</p> : null}
+  </TableCell>;
+}
+
+function CellTextarea({
+  value,
+  disabled,
+  label,
+  onChange,
+}: {
+  value: string;
+  disabled: boolean;
+  label: string;
+  onChange: (value: string) => void;
+}) {
+  return <Textarea
+    aria-label={label}
+    value={value}
+    disabled={disabled}
+    rows={2}
+    maxLength={2_000}
+    onChange={(event) => onChange(event.target.value)}
+    className="min-h-16 resize-y px-2.5 py-2 text-xs leading-5"
+  />;
+}
+
+function AutosaveState({ state, retry }: { state: SaveState; retry: () => void }) {
+  const t = useTranslations("school.activities");
+  if (state === "saving") return <span className="flex items-center gap-1 text-xs text-muted"><LoaderCircle className="size-3.5 animate-spin" />{t("autosave_saving")}</span>;
+  if (state === "saved") return <span className="flex items-center gap-1 text-xs text-emerald-700"><CircleCheck className="size-3.5" />{t("autosave_saved")}</span>;
+  if (state === "error") return <Button type="button" variant="ghost" size="sm" className="h-7 gap-1 px-1.5 text-xs text-rose" onClick={retry}><CircleAlert className="size-3.5" />{t("autosave_retry")}</Button>;
+  if (state === "dirty") return <span className="text-xs text-muted">{t("autosave_waiting")}</span>;
+  return <span className="text-xs text-muted">—</span>;
+}
+
+function useAutosavedDraft<T extends object>({
+  initial,
+  enabled,
+  save,
+  errorMessage,
+}: {
+  initial: T;
+  enabled: boolean;
+  save: (draft: T) => Promise<ActionResult>;
+  errorMessage: string;
+}) {
+  const [draft, setDraft] = useState<T>(initial);
+  const [revision, setRevision] = useState(0);
+  const [state, setState] = useState<SaveState>("idle");
+  const latestRevisionRef = useRef(0);
+  const saveRef = useRef(save);
+  const queueRef = useRef(Promise.resolve());
+  const mountedRef = useRef(true);
+
+  useEffect(() => { saveRef.current = save; }, [save]);
+  useEffect(() => () => { mountedRef.current = false; }, []);
+
+  useEffect(() => {
+    if (!enabled || revision === 0) return;
+    const snapshot = draft;
+    const snapshotRevision = revision;
+    const timer = window.setTimeout(() => {
+      if (!mountedRef.current) return;
+      setState("saving");
+      queueRef.current = queueRef.current.then(async () => {
+        const result = await saveRef.current(snapshot);
+        if (!mountedRef.current) return;
+        if (result.ok) {
+          setState(latestRevisionRef.current === snapshotRevision ? "saved" : "dirty");
+          return;
         }
-      }}>{pending ? <LoaderCircle className="size-4 animate-spin" /> : null}{opportunity ? t("saveOpportunity") : t("createOpportunity")}</Button></div>
-    </div>}
-  </section>;
+        if (latestRevisionRef.current === snapshotRevision) {
+          setState("error");
+          toast.error(errorMessage);
+        }
+      }).catch(() => {
+        if (mountedRef.current && latestRevisionRef.current === snapshotRevision) {
+          setState("error");
+          toast.error(errorMessage);
+        }
+      });
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, [draft, enabled, errorMessage, revision]);
+
+  const update = <K extends keyof T>(key: K, value: T[K]) => {
+    setDraft((current) => ({ ...current, [key]: value }));
+    setState("dirty");
+    setRevision((current) => {
+      const next = current + 1;
+      latestRevisionRef.current = next;
+      return next;
+    });
+  };
+
+  const retry = () => {
+    setState("dirty");
+    setRevision((current) => {
+      const next = current + 1;
+      latestRevisionRef.current = next;
+      return next;
+    });
+  };
+
+  return { draft, state, update, retry };
 }
 
-function ReadOnlyField({ label, value, className }: { label: string; value: React.ReactNode; className?: string }) {
-  return <div className={className}><dt className="text-xs text-muted">{label}</dt><dd className="mt-1 whitespace-pre-wrap text-ink">{value}</dd></div>;
+function without(values: ReadonlySet<string>, id: string) {
+  const next = new Set(values);
+  next.delete(id);
+  return next;
 }
 
-function errorMessage(t: ReturnType<typeof useTranslations<"school.activities">>, code: string): string {
-  const mapped: Record<string, string> = {
+function actionErrorMessage(t: ReturnType<typeof useTranslations<"school.activities">>, code: string) {
+  const map: Record<string, string> = {
     ACTIVITY_FULL: "full",
-    PARTICIPATION_NOT_ATTENDED: "attendedRequiredHint",
-    ASSESSMENT_REQUIRED: "assessmentBeforeOpportunity",
-    INVALID_OWNER: "invalidOwner",
     INVALID_ASSESSMENT: "invalidAssessment",
-    INVALID_OPPORTUNITY: "invalidOpportunity",
+    INVALID_ACTIVITY_ROUTE: "invalidRoute",
+    PARTICIPATION_NOT_ATTENDED: "routeNeedsAttendance",
+    PARTICIPATION_CANCELLED: "cancelledCannotAssess",
     VALIDATION: "invalidInput",
   };
-  return t(mapped[code] ?? "actionFailed");
+  return t(map[code] ?? "actionFailed");
 }

@@ -225,15 +225,6 @@ export const DASHBOARD_ROUTES = {
     creationOwner: "activities",
     parent: "activities",
   },
-  opportunities: {
-    href: "/dashboard/opportunities",
-    kind: "queue",
-    environments: STAFF_ONLY,
-    permission: "followup.view",
-    createSurface: "derived",
-    nav: { labelKey: "opportunities", group: "subjectOperations" },
-  },
-
   // ── 教学 ────────────────────────────────────────────────────────────────
   academicYears: {
     // 学年是教学领域的顶层对象；页面同时承载教学日历和唯一的新班时长默认值。

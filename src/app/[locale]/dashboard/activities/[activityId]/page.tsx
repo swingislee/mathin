@@ -2,7 +2,8 @@ import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
 import { ActivityWorkspace } from "@/features/school/ActivityWorkspace";
-import { getActivity, listSalesOpportunityOwners } from "@/features/school/activities";
+import { ACTIVITY_WORKSPACE_NODES, type ActivityWorkspaceNode } from "@/features/school/activity-workflow-contract";
+import { getActivity } from "@/features/school/activities";
 import { getOrganizationTimezoneV2 } from "@/features/school/organization-locations";
 import { ObjectBar, ObjectWorkspace } from "@/features/school/object-workspace";
 import { getMyPerms, requireAnyPerm } from "@/lib/auth";
@@ -20,14 +21,17 @@ export default async function ActivityDetailPage({
   setRequestLocale(locale);
   const user = await requireAnyPerm(locale, ACTIVITY_WORKSPACE_PERMISSIONS);
   const permissions = await getMyPerms(user.id);
-  const canManageOpportunity = permissions.has("followup.write");
-  const [t, activity, owners, timeZone] = await Promise.all([
+  const canViewRouting = permissions.has("followup.view");
+  const [t, activity, timeZone] = await Promise.all([
     getTranslations("school.activities"),
     getActivity(activityId),
-    canManageOpportunity ? listSalesOpportunityOwners() : Promise.resolve([]),
     getOrganizationTimezoneV2(),
   ]);
   if (!activity) notFound();
+  const requestedNode = typeof query.node === "string" && ACTIVITY_WORKSPACE_NODES.includes(query.node as ActivityWorkspaceNode)
+    ? query.node as ActivityWorkspaceNode
+    : "participation";
+  const activeNode = requestedNode === "routing" && !canViewRouting ? "participation" : requestedNode;
 
   const dateTime = new Intl.DateTimeFormat(locale, {
     timeZone,
@@ -51,13 +55,11 @@ export default async function ActivityDetailPage({
   >
     <ActivityWorkspace
       activity={activity}
-      owners={owners}
-      currentUserId={user.id}
-      timeZone={timeZone}
+      activeNode={activeNode}
       canRegister={permissions.has("activity.register")}
       canAssess={permissions.has("activity.register") || permissions.has("review.write")}
-      canManageOpportunity={canManageOpportunity}
-      initialRegistrationId={typeof query.registration === "string" ? query.registration : undefined}
+      canViewRouting={canViewRouting}
+      canRoute={permissions.has("followup.write")}
     />
   </ObjectWorkspace>;
 }

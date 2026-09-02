@@ -132,14 +132,14 @@ R1-Live 不缩减 1.0 产品合同。它只保留两个结果 Gate：原范围�
 | `27-small-screen-workspace-adaptation.md` | active | 1024–1280px 窄屏与平板横屏的侧栏三态、工作区可拖拽分栏、4:3 全屏与容器查询收敛 |
 | `28-spatial-mathematics-lab.md` | active | SML-0 暂停点：空间数学课程能力、4:3 文档、金标、hash、权限、发布/冻结与纵向空壳合同仍未关闭；当前主线已切到 R1-Live |
 | `29-teacher-microcourse-browser-redesign.md` | active | DEV-TMC-4 schema/app 已在 2026-08-30 生产 preflight 中检出，先前部署证据待对账、产品验收 pending；教师微课课程切换性能缺口继续进入 `POST-LIVE-PERF-01` |
-| `30-mathin_school_ops_architecture_plan.md` | active | `DEV-SCHOOL-OPS-1` 的 Phase 0～6 里程碑；Phase 0 只留规划核对，当前施工 Phase 2 活动／测评／销售机会，交付物是可操作业务页面而非规划页面 |
+| `30-mathin_school_ops_architecture_plan.md` | active | `DEV-SCHOOL-OPS-1` 的 Phase 0～6 里程碑；Phase 0 只留规划核对，当前施工 Phase 2 活动参与／测评录入／后续归类，交付物是可操作业务页面而非规划页面 |
 
 ## 7. 当前发布纪律
 
 - 当前子阶段以 doc 04 顶部为准；2026-08-23 进入 `R1-Live-2 · 生产单老师试用`，首个 Gate 2 闭环仍固定为正式教师整班点名、持久再读和权限对照。
 - 当前采用双轨执行：生产端只由 1 名正式教师在既有正式数据上小范围试用，开发端可并行尝试产品负责人选中的新功能。新功能须在隔离开发目标完成相关机器检查和产品负责人初步验收，再以独立可回退提交经过生产 preflight、发布与 postflight；开发通过、已部署待验收和生产通过必须分别记录。
 - `DEV-CW-1` 当前为 `STEP 7B REVIEW SEMANTICS AND LEGACY RETIREMENT / IN PROGRESS`：产品负责人已人工确认 Step 0～6，并在 Step 7A 审计中否决“只拆两个审核页面、旧入口继续并存”的结果。当前授权把正式课修改审核与教师微课入库审核收敛为教研审核工作区；备课资料审核回归课次／教学履约，并只通过“我的待办”向指定审核人投影。尚未生产使用的旧 `/studio/courseware/[lectureId]` 编辑器、旧适配校对工作台、直发 `publish_cw_track_release` 与批量适配发布链退出应用和公开数据库 API；历史审核／发布数据继续保留用于审计。公共资源仍是高级资源治理，不并入审核。本批只在本机开发目标施工，不执行生产数据库、Storage、release 或服务写入。
-- `DEV-SCHOOL-OPS-1` 当前为 `PHASE 2 / DEVELOPMENT READY / AWAITING PRODUCT OWNER UI AND INTERACTION ACCEPTANCE`：提交 `207d6e5` 已交付 `/dashboard/activities` 活动与转化漏斗、`/dashboard/activities/[activityId]` 单次活动工作台和 `/dashboard/opportunities` 销售机会队列；本机 migration `20260902000200_school_ops_phase2_activity_funnel` 新增独立 AssessmentResult／Opportunity 事实、RLS 与受控 RPC。参与状态、结构化测评、老师推荐、负责人、下一动作和机会阶段已形成真实数据流；尚未获得页面设计、交互手感与数据填写的人工验收，不能进入 Phase 3，也没有生产迁移或发布。Phase 1 的二进制 `.xlsx`、逐行合并决定与 Family／Contact／Lead 分表仍作为显式后续项保留。
+- `DEV-SCHOOL-OPS-1` 当前为 `PHASE 2 / DEVELOPMENT READY / AWAITING PRODUCT OWNER UI AND INTERACTION ACCEPTANCE`：产品负责人否决第一版“逐人表单 + 通用销售机会”后，活动详情已重做为“名单与到访 / 测评录入 / 后续归类”三个节点化表格；飞书宽表只提供批量录入手感，不成为 Mathin 的整体数据结构。`/dashboard/opportunities` 已退出产品面，本机 migration `20260902000400_school_ops_phase2_node_worktables` 扩展 AssessmentResult 并新增 `activity_routes`，不再改写全局学生跟进阶段。尚未获得页面设计、横向表格、自动保存和节点切换的人工验收，不能进入 Phase 3，也没有生产迁移或发布。Phase 1 的二进制 `.xlsx`、逐行合并决定与 Family／Contact／Lead 分表仍作为显式后续项保留。
 - `DEV-ORG-1` 当前为 `DEPLOYED / PENDING USER ACCEPTANCE`：机构资料、校区/教室目录、课表学年/日历/排课默认和系统能力发布已按工作对象拆分；7 个兼容 migration 与应用 `34f07e8…` 已在 Xiaomi 通过备份、完整回滚/零残留演练、正式迁移和机器 postflight。生产唯一旧教室文本 `3305` 已在唯一活跃校区内生成结构化教室，并回填 1 个班级和 15 个课次；兼容字段与旧 RPC 继续保留一个回退窗口。登录态 Chrome 刷新超时，生产页面人工验收仍 pending；本项不修改 R1-Live Gate 2。
 - `DEV-DASH-1` 当前为 `DEPLOYED / PENDING USER ACCEPTANCE`：后台侧栏改为总览、学科运营、教学、教研、组织管理和系统管理；学年、教学日历和唯一一项排课默认合并到 `/dashboard/academic-years`，旧设置与旧排课子路径直接退役且不重定向；个人班级默认优先、全部班级使用分页表格，课件资源库每页只读取并签名 10 条。定向合同 22/22、固定账号 Playwright 2/2 与 production build 已通过，生产 route manifest 已确认新路径存在、旧设置路径不存在；生产页面人工验收仍 pending。
 - `DEV-DASH-2` 当前为 `DEPLOYED / PENDING USER ACCEPTANCE`：Dashboard 顶层数据表统一使用完整圆角、完整描边和卡片底色的 shadcn `Table` 外壳；页面只在标题之后保留一条页头结构线，横向状态导航与正文保持同一语义区；普通设置字段依靠留白、标签和局部底色组织，逐项分割线退出。定向合同 14/14、TypeScript、全量 ESLint、Dashboard 设计审计、固定管理员 zh/en/390px Playwright 与 production build 已通过；生产视觉人工验收仍 pending。

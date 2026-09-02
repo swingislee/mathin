@@ -18,6 +18,5 @@ export default async function ActivitiesPage({ params }: { params: Promise<{ loc
     title={t("title")}
     activities={rows}
     canManage={permissions.has("activity.manage")}
-    canViewOpportunities={permissions.has("followup.view")}
   />;
 }

@@ -1,28 +1,27 @@
 import { createClient } from "@/lib/supabase/server";
-import type { AssessmentLevel, OpportunityStage } from "./activity-funnel-contract";
+import type { ActivityRouteKind, AssessmentBand } from "./activity-workflow-contract";
 import type { ActivityKind } from "./activity-kinds";
 
 export type { ActivityKind } from "./activity-kinds";
 
 export interface ActivityAssessmentResult {
   id: string;
-  overallLevel: AssessmentLevel;
+  assessmentBand: AssessmentBand | null;
   score: number | null;
   strengths: string;
   focusAreas: string;
+  parentConcerns: string;
   teacherRecommendation: string;
+  recommendedClass: string;
   assessorName: string;
   updatedAt: string;
 }
 
-export interface ActivitySalesOpportunity {
+export interface ActivityRoute {
   id: string;
-  stage: OpportunityStage;
-  ownerId: string | null;
-  ownerName: string;
-  nextAction: string;
-  nextActionAt: string | null;
+  route: ActivityRouteKind;
   note: string;
+  routedByName: string;
   updatedAt: string;
 }
 
@@ -34,7 +33,7 @@ export interface ActivityRegistration {
   status: "booked" | "attended" | "no_show" | "cancelled";
   outcome: string;
   assessment: ActivityAssessmentResult | null;
-  opportunity: ActivitySalesOpportunity | null;
+  route: ActivityRoute | null;
 }
 
 export interface ActivityRow {
@@ -49,35 +48,11 @@ export interface ActivityRow {
   registrations: ActivityRegistration[];
 }
 
-export interface ActivityFunnelSummary {
-  booked: number;
+export interface ActivityWorkspaceSummary {
+  activeRegistrations: number;
   attended: number;
   assessed: number;
-  opportunities: number;
-  won: number;
-}
-
-export interface OpportunityOwnerOption {
-  userId: string;
-  displayName: string;
-}
-
-export interface SalesOpportunityQueueRow {
-  id: string;
-  registrationId: string;
-  activityId: string;
-  activityTitle: string;
-  activityScheduledAt: string;
-  studentId: string;
-  studentName: string;
-  studentGrade: number | null;
-  stage: OpportunityStage;
-  ownerId: string | null;
-  ownerName: string;
-  nextAction: string;
-  nextActionAt: string | null;
-  teacherRecommendation: string;
-  updatedAt: string;
+  awaitingRoute: number;
 }
 
 interface ActivityQueryRow {
@@ -101,25 +76,24 @@ interface ActivityQueryRow {
 interface AssessmentQueryRow {
   id: string;
   activity_registration_id: string;
-  overall_level: AssessmentLevel;
+  assessment_band: AssessmentBand | null;
   score: number | null;
   strengths: string;
   focus_areas: string;
+  parent_concerns: string;
   teacher_recommendation: string;
+  recommended_class: string;
   updated_at: string;
   assessor: { display_name: string } | null;
 }
 
-interface OpportunityQueryRow {
+interface RouteQueryRow {
   id: string;
-  source_registration_id: string;
-  stage: OpportunityStage;
-  owner_id: string | null;
-  next_action: string;
-  next_action_at: string | null;
+  activity_registration_id: string;
+  route: ActivityRouteKind;
   note: string;
   updated_at: string;
-  owner: { display_name: string } | null;
+  routed_by: { display_name: string } | null;
 }
 
 interface UntypedPostgrestResult<T> {
@@ -129,7 +103,6 @@ interface UntypedPostgrestResult<T> {
 
 interface UntypedPostgrestFilter {
   in(column: string, values: readonly string[]): UntypedPostgrestFilter;
-  order(column: string, options?: { ascending?: boolean; nullsFirst?: boolean }): UntypedPostgrestFilter;
   returns<T>(): PromiseLike<UntypedPostgrestResult<T>>;
 }
 
@@ -138,17 +111,9 @@ interface UntypedPostgrestQuery {
 }
 
 type UntypedFrom = (relation: string) => UntypedPostgrestQuery;
-type UntypedRpc = (
-  name: string,
-  args?: Record<string, unknown>,
-) => Promise<{ data: unknown; error: { message: string } | null }>;
 
 function from(supabase: { from: unknown }): UntypedFrom {
   return (supabase.from as UntypedFrom).bind(supabase);
-}
-
-function rpc(supabase: { rpc: unknown }): UntypedRpc {
-  return (supabase.rpc as UntypedRpc).bind(supabase);
 }
 
 async function readActivities(activityId?: string): Promise<ActivityRow[]> {
@@ -166,22 +131,22 @@ async function readActivities(activityId?: string): Promise<ActivityRow[]> {
   const registrationIds = rows.flatMap((activity) => activity.activity_registrations.map((registration) => registration.id));
 
   const assessments = new Map<string, AssessmentQueryRow>();
-  const opportunities = new Map<string, OpportunityQueryRow>();
+  const routes = new Map<string, RouteQueryRow>();
   if (registrationIds.length > 0) {
-    const [assessmentResult, opportunityResult] = await Promise.all([
+    const [assessmentResult, routeResult] = await Promise.all([
       from(supabase)("assessment_results")
-        .select("id,activity_registration_id,overall_level,score,strengths,focus_areas,teacher_recommendation,updated_at,assessor:profiles!assessment_results_assessed_by_fkey(display_name)")
+        .select("id,activity_registration_id,assessment_band,score,strengths,focus_areas,parent_concerns,teacher_recommendation,recommended_class,updated_at,assessor:profiles!assessment_results_assessed_by_fkey(display_name)")
         .in("activity_registration_id", registrationIds)
         .returns<AssessmentQueryRow[]>(),
-      from(supabase)("sales_opportunities")
-        .select("id,source_registration_id,stage,owner_id,next_action,next_action_at,note,updated_at,owner:profiles!sales_opportunities_owner_id_fkey(display_name)")
-        .in("source_registration_id", registrationIds)
-        .returns<OpportunityQueryRow[]>(),
+      from(supabase)("activity_routes")
+        .select("id,activity_registration_id,route,note,updated_at,routed_by:profiles!activity_routes_routed_by_fkey(display_name)")
+        .in("activity_registration_id", registrationIds)
+        .returns<RouteQueryRow[]>(),
     ]);
     if (assessmentResult.error) throw new Error(assessmentResult.error.message);
-    if (opportunityResult.error) throw new Error(opportunityResult.error.message);
+    if (routeResult.error) throw new Error(routeResult.error.message);
     for (const assessment of assessmentResult.data ?? []) assessments.set(assessment.activity_registration_id, assessment);
-    for (const opportunity of opportunityResult.data ?? []) opportunities.set(opportunity.source_registration_id, opportunity);
+    for (const route of routeResult.data ?? []) routes.set(route.activity_registration_id, route);
   }
 
   return rows.map((activity) => ({
@@ -196,7 +161,7 @@ async function readActivities(activityId?: string): Promise<ActivityRow[]> {
     registrations: activity.activity_registrations
       .map((registration): ActivityRegistration => {
         const assessment = assessments.get(registration.id);
-        const opportunity = opportunities.get(registration.id);
+        const route = routes.get(registration.id);
         return {
           id: registration.id,
           studentId: registration.student_id,
@@ -206,23 +171,22 @@ async function readActivities(activityId?: string): Promise<ActivityRow[]> {
           outcome: registration.outcome,
           assessment: assessment ? {
             id: assessment.id,
-            overallLevel: assessment.overall_level,
+            assessmentBand: assessment.assessment_band,
             score: assessment.score,
             strengths: assessment.strengths,
             focusAreas: assessment.focus_areas,
+            parentConcerns: assessment.parent_concerns,
             teacherRecommendation: assessment.teacher_recommendation,
+            recommendedClass: assessment.recommended_class,
             assessorName: assessment.assessor?.display_name ?? "-",
             updatedAt: assessment.updated_at,
           } : null,
-          opportunity: opportunity ? {
-            id: opportunity.id,
-            stage: opportunity.stage,
-            ownerId: opportunity.owner_id,
-            ownerName: opportunity.owner?.display_name ?? "-",
-            nextAction: opportunity.next_action,
-            nextActionAt: opportunity.next_action_at,
-            note: opportunity.note,
-            updatedAt: opportunity.updated_at,
+          route: route ? {
+            id: route.id,
+            route: route.route,
+            note: route.note,
+            routedByName: route.routed_by?.display_name ?? "-",
+            updatedAt: route.updated_at,
           } : null,
         };
       })
@@ -238,69 +202,14 @@ export async function getActivity(activityId: string): Promise<ActivityRow | nul
   return (await readActivities(activityId))[0] ?? null;
 }
 
-export function summarizeActivityFunnel(activities: readonly ActivityRow[]): ActivityFunnelSummary {
+export function summarizeActivityWorkspace(activities: readonly ActivityRow[]): ActivityWorkspaceSummary {
   const registrations = activities.flatMap((activity) => activity.registrations);
   return {
-    booked: registrations.filter((registration) => registration.status !== "cancelled").length,
+    activeRegistrations: registrations.filter((registration) => registration.status !== "cancelled").length,
     attended: registrations.filter((registration) => registration.status === "attended").length,
     assessed: registrations.filter((registration) => registration.assessment !== null).length,
-    opportunities: registrations.filter((registration) => registration.opportunity !== null).length,
-    won: registrations.filter((registration) => registration.opportunity?.stage === "won").length,
+    awaitingRoute: registrations.filter((registration) =>
+      registration.status === "attended" && registration.assessment !== null && registration.route === null
+    ).length,
   };
-}
-
-export async function listSalesOpportunityOwners(): Promise<OpportunityOwnerOption[]> {
-  const supabase = await createClient();
-  const { data, error } = await rpc(supabase)("list_sales_opportunity_owners");
-  if (error) throw new Error(error.message);
-  return ((data ?? []) as Array<{ user_id: string; display_name: string }>).map((row) => ({
-    userId: row.user_id,
-    displayName: row.display_name,
-  }));
-}
-
-export async function listSalesOpportunities(): Promise<SalesOpportunityQueueRow[]> {
-  const supabase = await createClient();
-  const { data, error } = await from(supabase)("sales_opportunities")
-    .select("id,source_registration_id,student_id,stage,owner_id,next_action,next_action_at,updated_at,owner:profiles!sales_opportunities_owner_id_fkey(display_name),students(name,grade),registration:activity_registrations!sales_opportunities_source_registration_id_fkey(activity_id,activities(title,scheduled_at),assessment_results(teacher_recommendation))")
-    .order("next_action_at", { ascending: true, nullsFirst: false })
-    .returns<Array<{
-      id: string;
-      source_registration_id: string;
-      student_id: string;
-      stage: OpportunityStage;
-      owner_id: string | null;
-      next_action: string;
-      next_action_at: string | null;
-      updated_at: string;
-      owner: { display_name: string } | null;
-      students: { name: string; grade: number | null } | null;
-      registration: {
-        activity_id: string;
-        activities: { title: string; scheduled_at: string } | null;
-        assessment_results: { teacher_recommendation: string } | Array<{ teacher_recommendation: string }> | null;
-      } | null;
-    }>>();
-  if (error) throw new Error(error.message);
-  return (data ?? []).map((row) => {
-    const embeddedAssessment = row.registration?.assessment_results;
-    const assessment = Array.isArray(embeddedAssessment) ? embeddedAssessment[0] : embeddedAssessment;
-    return {
-      id: row.id,
-      registrationId: row.source_registration_id,
-      activityId: row.registration?.activity_id ?? "",
-      activityTitle: row.registration?.activities?.title ?? "-",
-      activityScheduledAt: row.registration?.activities?.scheduled_at ?? row.updated_at,
-      studentId: row.student_id,
-      studentName: row.students?.name ?? "-",
-      studentGrade: row.students?.grade ?? null,
-      stage: row.stage,
-      ownerId: row.owner_id,
-      ownerName: row.owner?.display_name ?? "-",
-      nextAction: row.next_action,
-      nextActionAt: row.next_action_at,
-      teacherRecommendation: assessment?.teacher_recommendation ?? "",
-      updatedAt: row.updated_at,
-    };
-  });
 }
