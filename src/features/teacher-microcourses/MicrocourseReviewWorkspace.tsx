@@ -1,43 +1,16 @@
 import { getTranslations } from "next-intl/server";
 import { MicrocourseReviewQueue } from "./MicrocourseReviewQueue";
-import { MicrocourseSessionWorkspaceQueue } from "./MicrocourseSessionWorkspaceQueue";
-import {
-  listTeacherMicrocourseReviewQueue,
-  listTeacherMicrocourseSessionWorkspaces,
-} from "./data";
+import { listTeacherMicrocourseReviewQueue } from "./data";
 
-/** Teacher-microcourse collaboration and immutable catalog review share one object workspace. */
+/** Teacher-provided microcourses enter the shared research review center here. */
 export async function MicrocourseReviewWorkspace({ locale }: { locale: string }) {
-  const [items, workspaces, t] = await Promise.all([
+  const [items, t] = await Promise.all([
     listTeacherMicrocourseReviewQueue(),
-    listTeacherMicrocourseSessionWorkspaces(),
     getTranslations("teacherMicrocourses"),
   ]);
 
   return (
-    <div className="space-y-4" data-microcourse-review-workspace>
-      <MicrocourseSessionWorkspaceQueue
-        items={workspaces}
-        locale={locale}
-        labels={{
-          title: t("sessionWorkspaceQueueTitle"),
-          description: t("sessionWorkspaceQueueDescription"),
-          empty: t("sessionWorkspaceQueueEmpty"),
-          open: t("openSessionWorkspace"),
-          session: t("sessionWorkspaceSession"),
-          variant: t("sessionWorkspaceVariant"),
-          teacherColumn: t("sessionWorkspaceTeacher"),
-          schedule: t("sessionWorkspaceSchedule"),
-          status: t("sessionWorkspaceStatus"),
-          action: t("sessionWorkspaceAction"),
-          variants: (count) => t("variantCount", { count }),
-          noVariant: t("noVariantYet"),
-          selected: (name) => t("selectedVariantName", { name }),
-          notSelected: t("noSelectedVariant"),
-          frozen: t("sessionFrozen"),
-          teacher: (name) => t("primaryTeacher", { name }),
-        }}
-      />
+    <div data-microcourse-review-workspace>
       <MicrocourseReviewQueue
         items={items}
         locale={locale}

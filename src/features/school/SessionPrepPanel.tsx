@@ -145,6 +145,7 @@ export async function SessionPrepPanel({
                   initialStage={initialStep}
                   readOnly={preparationWorkflowReadOnly}
                   reviewerReadOnly={!regularPreparationEditing}
+                  canReview={prepArtifacts.reviewerId === detail.viewerId}
                 />
               ) : null}
             </aside>

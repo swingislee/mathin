@@ -137,9 +137,11 @@ describe("doc 26 teacher preparation workflow", () => {
   });
 
   it("reuses preparation review surfaces while making completion advisory", () => {
-    const reviewPage = read("src/app/[locale]/dashboard/courseware/preparation-review/page.tsx");
     const reviewCourseware = read("src/features/school/SessionPreparationCoursewareReview.tsx");
     const sessionPage = read("src/app/[locale]/dashboard/sessions/[sessionId]/page.tsx");
+    const prepPanel = read("src/features/school/SessionPrepPanel.tsx");
+    const prepFlow = read("src/features/school/SessionPreparationFlow.tsx");
+    const workItems = read("src/features/school/work-items.ts");
     const overlayEditor = read("src/features/school/CoursewareOverlayEditor.tsx");
     expect(migration).toContain("session_preparation_reviews");
     const reviewerMigration = read("supabase/migrations/20260731000100_doc26_preparation_reviewer_selection.sql");
@@ -156,11 +158,9 @@ describe("doc 26 teacher preparation workflow", () => {
     expect(operationalGateMigration).not.toContain("lesson_plans");
     expect(operationalGateMigration).not.toContain("session_preparation_reviews");
     expect(operationalGateMigration).not.toContain("session_learning_checks");
-    expect(reviewPage).toContain("SessionLessonPlanReview");
-    expect(reviewPage).toContain("SolutionRecordPreview");
-    expect(reviewPage).toContain("SolutionRecordExportButton");
-    expect(reviewPage).toContain("SessionPreparationCoursewareReview");
-    expect(reviewPage).toContain("artifactEditHref");
+    expect(prepPanel).toContain("canReview={prepArtifacts.reviewerId === detail.viewerId}");
+    expect(prepFlow).toContain("PreparationReviewActions");
+    expect(workItems).toContain('case "session"');
     expect(reviewCourseware).toContain("CoursewareWorkbench");
     expect(reviewCourseware).toContain('mode="preview"');
     expect(reviewCourseware).toContain("StagePreview");
@@ -176,7 +176,7 @@ describe("doc 26 teacher preparation workflow", () => {
     expect(sessionPage).toContain("prepPage");
     expect(overlayEditor).toContain("initialPageId");
     expect(overlayEditor).toContain("resolveCourseware(template, initialOverlay)");
-    expect(read("src/features/school/nav.ts")).toContain('"coursewarePreparationReview"');
-    expect(read("src/features/school/dashboard-routes.ts")).toContain('labelKey: "preparationReview"');
+    expect(fs.existsSync(path.join(root, "src/app/[locale]/dashboard/courseware/preparation-review/page.tsx"))).toBe(false);
+    expect(read("src/features/school/nav.ts")).not.toContain('"coursewarePreparationReview"');
   });
 });

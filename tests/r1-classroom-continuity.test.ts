@@ -150,7 +150,8 @@ describe("R1 classroom continuity contracts", () => {
 
   it("keeps preparation artifacts and reviews as visible quality signals, not completion gates", () => {
     const prepFlow = read("src/features/school/SessionPreparationFlow.tsx");
-    const reviewPage = read("src/app/[locale]/dashboard/courseware/preparation-review/page.tsx");
+    const prepPanel = read("src/features/school/SessionPrepPanel.tsx");
+    const workItems = read("src/features/school/work-items.ts");
     expect(prepArtifactMigration).toContain("create table if not exists public.session_preparation_artifacts");
     expect(prepArtifactMigration).toContain("solution_files");
     expect(prepArtifactMigration).toContain("lesson_plan_files");
@@ -168,7 +169,10 @@ describe("R1 classroom continuity contracts", () => {
     expect(prepFlow).toContain("saveQueue");
     expect(prepFlow).toContain("latest.current = next");
     expect(prepFlow).not.toContain('type="submit"');
-    expect(reviewPage).toContain("listSessionPreparationReviews");
+    expect(prepFlow).toContain("PreparationReviewActions");
+    expect(prepPanel).toContain("canReview={prepArtifacts.reviewerId === detail.viewerId}");
+    expect(workItems).toContain('case "session"');
+    expect(fs.existsSync(path.join(root, "src/app/[locale]/dashboard/courseware/preparation-review/page.tsx"))).toBe(false);
   });
 
   it("keeps the preparation canvas fixed while resolving H5 entries through the shared preview workspace", () => {

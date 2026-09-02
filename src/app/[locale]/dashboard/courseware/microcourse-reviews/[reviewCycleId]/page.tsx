@@ -19,7 +19,7 @@ export default async function MicrocourseReviewDetailPage({
   return (
     <DashboardPage
       title={t("reviewDetailTitle")}
-      backHref="/dashboard/courseware/microcourse-reviews"
+      backHref="/dashboard/courseware/review?tab=microcourses"
       backLabel={t("backToReviewQueue")}
     >
       <Suspense fallback={<div className="h-[42rem] animate-pulse bg-moon/10" />}>

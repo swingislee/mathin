@@ -1,57 +1,26 @@
 import { Suspense } from "react";
-import { redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { AdaptBackgroundHistory } from "@/features/courseware-studio/AdaptBackgroundHistory";
-import { AdaptBackgroundReworkQueue } from "@/features/courseware-studio/AdaptBackgroundReworkQueue";
-import { AdaptPageQueue } from "@/features/courseware-studio/AdaptPageQueue";
-import { AdaptReleaseQueue } from "@/features/courseware-studio/AdaptReleaseQueue";
-import { AdaptReviewFilters } from "@/features/courseware-studio/AdaptReviewFilters";
-import { AdaptReviewQueue } from "@/features/courseware-studio/AdaptReviewQueue";
+import { FormalCoursewareReviewQueue } from "@/features/courseware-studio/FormalCoursewareReviewQueue";
+import { listFormalCoursewareReviewQueue } from "@/features/courseware-studio/formal-review-data";
 import {
-  loadAdaptBackgroundHistory,
-  loadAdaptPageQueue,
-  loadAdaptReleaseQueue,
-  loadAdaptReviewFilterOptions,
-  loadAdaptReviewQueue,
-  loadAdaptReworkQueue,
-  parseAdaptClass,
-  parseAdaptFilterId,
-  parseAdaptReleaseScope,
-  parseAdaptReviewPage,
-} from "@/features/courseware-studio/adapt-review-data";
-import { COURSEWARE_STUDIO_PERMS } from "@/features/courseware-studio/data";
-import {
-  DashboardCommandFilters,
   DashboardCommandPanel,
   DashboardCommandState,
   DashboardCommandTabs,
   DashboardPage,
 } from "@/features/school/dashboard-page";
-import { getMyPerms, requireAnyPerm } from "@/lib/auth";
+import { MicrocourseReviewWorkspace } from "@/features/teacher-microcourses/MicrocourseReviewWorkspace";
+import { requirePerm } from "@/lib/auth";
 
-type AdaptReviewTab = "backgrounds" | "rework" | "pages" | "releases" | "history";
+type ReviewTab = "formal" | "microcourses";
 
 function first(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
 
-function tabHref(tab: AdaptReviewTab, courseId: string | null, lectureId: string | null) {
-  const query = new URLSearchParams({ tab });
-  if (tab === "pages") query.set("class", "D");
-  if (tab === "releases") query.set("scope", "pending");
-  if (courseId) query.set("course", courseId);
-  if (lectureId) query.set("lecture", lectureId);
-  return "/dashboard/courseware/review?" + query.toString();
+function resolveReviewTab(value: string | undefined): ReviewTab {
+  return value === "microcourses" ? "microcourses" : "formal";
 }
 
-function resolveReviewTab(requested: string | undefined): AdaptReviewTab {
-  if (requested === "backgrounds" || requested === "rework" || requested === "pages"
-    || requested === "releases" || requested === "history") return requested;
-  return "backgrounds";
-}
-
-// doc22 §5.18：背景审阅/返工/页面审阅/发布/历史都属于课件生产，是 /dashboard/courseware
-// 的真实子工作区。原顶层 /dashboard/adapt-review 把内部实现词（adapt）当成了 URL。
 export default async function CoursewareReviewPage({
   params,
   searchParams,
@@ -60,92 +29,63 @@ export default async function CoursewareReviewPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { locale } = await params;
-  setRequestLocale(locale);
   const query = await searchParams;
-  // Step 7 keeps the former combined URL as a compatibility entry while the
-  // teacher-microcourse workflow moves to its own review object and route.
-  if (first(query.tab) === "microcourses") {
-    redirect(`/${locale}/dashboard/courseware/microcourse-reviews`);
-  }
+  setRequestLocale(locale);
+  await requirePerm(locale, "courseware.review");
   const t = await getTranslations("coursewareStudio");
+  const tab = resolveReviewTab(first(query.tab));
+
   return (
     <DashboardPage
       title={t("reviewWorkspaceTitle")}
-      commandPanel={
-        <Suspense fallback={<DashboardCommandPanel />}>
-          <AdaptReviewCommandPanel searchParams={query} />
-        </Suspense>
-      }
+      commandPanel={(
+        <DashboardCommandPanel>
+          <DashboardCommandState>
+            <DashboardCommandTabs
+              ariaLabel={t("reviewWorkspaceTitle")}
+              activeValue={tab}
+              items={[
+                { value: "formal", label: t("formalReviewTab"), href: "/dashboard/courseware/review?tab=formal" },
+                { value: "microcourses", label: t("teacherMicrocourseReviewTab"), href: "/dashboard/courseware/review?tab=microcourses" },
+              ]}
+            />
+          </DashboardCommandState>
+        </DashboardCommandPanel>
+      )}
     >
       <Suspense fallback={<div className="h-96 animate-pulse bg-moon/10" />}>
-        <AdaptReviewContent locale={locale} searchParams={query} />
+        {tab === "microcourses"
+          ? <MicrocourseReviewWorkspace locale={locale} />
+          : <FormalReviewContent locale={locale} />}
       </Suspense>
     </DashboardPage>
   );
 }
 
-async function AdaptReviewCommandPanel({ searchParams: query }: { searchParams: Record<string, string | string[] | undefined> }) {
-  const t = await getTranslations("coursewareStudio");
-  const requestedTab = first(query.tab);
-  const tab = resolveReviewTab(requestedTab);
-  const courseId = parseAdaptFilterId(query.course);
-  const lectureId = courseId ? parseAdaptFilterId(query.lecture) : null;
-  const filterOptions = await loadAdaptReviewFilterOptions(courseId);
+async function FormalReviewContent({ locale }: { locale: string }) {
+  const [items, t] = await Promise.all([
+    listFormalCoursewareReviewQueue(),
+    getTranslations("coursewareStudio"),
+  ]);
+
   return (
-    <DashboardCommandPanel>
-      <DashboardCommandState>
-        <DashboardCommandTabs
-          ariaLabel={t("reviewWorkspaceTitle")}
-          activeValue={tab}
-          items={[
-            { value: "backgrounds", label: t("adaptBackgroundTab"), href: tabHref("backgrounds", courseId, lectureId) },
-            { value: "rework", label: t("adaptReworkTab"), href: tabHref("rework", courseId, lectureId) },
-            { value: "pages", label: t("adaptPageTab"), href: tabHref("pages", courseId, lectureId) },
-            { value: "releases", label: t("adaptReleaseTab"), href: tabHref("releases", courseId, lectureId) },
-            { value: "history", label: t("adaptHistoryTab"), href: tabHref("history", courseId, lectureId) },
-          ]}
-        />
-      </DashboardCommandState>
-      <DashboardCommandFilters>
-        <AdaptReviewFilters options={filterOptions} courseId={courseId} lectureId={lectureId} embedded />
-      </DashboardCommandFilters>
-    </DashboardCommandPanel>
+    <FormalCoursewareReviewQueue
+      items={items}
+      locale={locale}
+      labels={{
+        title: t("formalReviewQueueTitle"),
+        empty: t("formalReviewQueueEmpty"),
+        course: t("formalReviewCourse"),
+        lecture: t("formalReviewLecture"),
+        progress: t("formalReviewProgress"),
+        submitted: t("formalReviewSubmitted"),
+        open: t("formalReviewOpen"),
+        nativeTrack: t("formalReviewNativeTrack"),
+        adaptedTrack: t("formalReviewAdaptedTrack"),
+        inReview: t("formalReviewInReview"),
+        readyToPublish: t("formalReviewReadyToPublish"),
+        round: (current, required) => t("formalReviewRound", { current, required }),
+      }}
+    />
   );
-}
-
-async function AdaptReviewContent({ locale, searchParams: query }: { locale: string; searchParams: Record<string, string | string[] | undefined> }) {
-  const user = await requireAnyPerm(locale, COURSEWARE_STUDIO_PERMS);
-  const perms = await getMyPerms(user.id);
-  const requestedTab = first(query.tab);
-  const tab = resolveReviewTab(requestedTab);
-  const page = parseAdaptReviewPage(query.page);
-  const courseId = parseAdaptFilterId(query.course);
-  const lectureId = courseId ? parseAdaptFilterId(query.lecture) : null;
-  const filters = { courseId, lectureId };
-  const canManageAssets = perms.has("courseware.asset.manage");
-  const canEditPages = perms.has("courseware.page.edit");
-  const canPublish = perms.has("courseware.release.publish");
-  const queue = await (
-    tab === "backgrounds"
-      ? loadAdaptReviewQueue(page, filters)
-      : tab === "rework"
-        ? loadAdaptReworkQueue(page, filters)
-        : tab === "pages"
-          ? loadAdaptPageQueue(page, parseAdaptClass(query.class), filters)
-          : tab === "releases"
-            ? loadAdaptReleaseQueue(page, parseAdaptReleaseScope(query.scope), filters)
-            : loadAdaptBackgroundHistory(page, filters)
-  );
-
-  return <>
-    {tab === "backgrounds"
-      ? <AdaptReviewQueue {...queue as Awaited<ReturnType<typeof loadAdaptReviewQueue>>} canManageAssets={canManageAssets} courseId={courseId} lectureId={lectureId} />
-      : tab === "rework"
-        ? <AdaptBackgroundReworkQueue {...queue as Awaited<ReturnType<typeof loadAdaptReworkQueue>>} canManageAssets={canManageAssets} courseId={courseId} lectureId={lectureId} />
-        : tab === "pages"
-          ? <AdaptPageQueue {...queue as Awaited<ReturnType<typeof loadAdaptPageQueue>>} canEditPages={canEditPages} courseId={courseId} lectureId={lectureId} />
-          : tab === "releases"
-            ? <AdaptReleaseQueue {...queue as Awaited<ReturnType<typeof loadAdaptReleaseQueue>>} canPublish={canPublish} courseId={courseId} lectureId={lectureId} />
-            : <AdaptBackgroundHistory {...queue as Awaited<ReturnType<typeof loadAdaptBackgroundHistory>>} courseId={courseId} lectureId={lectureId} />}
-  </>;
 }

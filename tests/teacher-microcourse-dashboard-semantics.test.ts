@@ -29,7 +29,6 @@ describe("teacher microcourse Dashboard semantics", () => {
       read("src", "features", "school", "teaching-operations", "TeacherMicrocourseSceneManager.tsx"),
       read("src", "features", "school", "teaching-operations", "TeacherMicrocourseDuplicateManager.tsx"),
       read("src", "features", "teacher-microcourses", "MicrocourseReviewQueue.tsx"),
-      read("src", "features", "teacher-microcourses", "MicrocourseSessionWorkspaceQueue.tsx"),
     ];
 
     for (const source of targets) {
