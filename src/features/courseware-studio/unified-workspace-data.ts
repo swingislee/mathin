@@ -4,6 +4,10 @@ import { notFound } from "next/navigation";
 import type { ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 import type { LegacyCourseware43AdaptClass } from "@/features/courseware-doc/courseware-4x3-strategy";
 import { PAGE_DOC_VERSION, type PageDoc } from "@/features/courseware-doc/schema";
+import {
+  SOURCE_RUNTIME_PAGE_DOC_VERSION,
+  type SourceRuntimePageDoc,
+} from "@/features/courseware-doc/source-runtime-schema";
 import { getLectureWorkspaceDetail, isUuid } from "@/features/school/curriculum/lecture-workspace-detail";
 import { requirePerm } from "@/lib/auth";
 import {
@@ -44,14 +48,31 @@ export interface UnifiedPageDocEditorData {
   legacyAdaptClass: LegacyCourseware43AdaptClass | null;
 }
 
+export interface UnifiedSourceRuntimeEditorData {
+  pageDocId: string;
+  track: CoursewareTrack;
+  doc: SourceRuntimePageDoc;
+  baseRevisionNo: number;
+  bindingUrls: ResolvedBindingUrls;
+  fourByThreeSource: {
+    doc: SourceRuntimePageDoc;
+    bindingUrls: ResolvedBindingUrls;
+  };
+  fourByThreeDraft: {
+    doc: SourceRuntimePageDoc;
+    baseRevisionNo: number;
+    materialized: boolean;
+  };
+}
+
 function isFourByThreePageDoc(doc: PageDoc) {
   return doc.canvas.width * 3 === doc.canvas.height * 4;
 }
 
 /**
- * The formal workspace is an editor route. PageDoc pages read their draft head;
- * source-owned runtimes remain explicit read-only canvases until they expose a
- * supported patch protocol.
+ * The formal workspace is an editor route. PageDoc and typed source-runtime
+ * adapters both read the active draft head; the runtime keeps its producer
+ * renderer while Mathin persists only its declared payload patch surface.
  */
 export async function loadUnifiedCoursewareWorkspaceData(
   locale: string,
@@ -82,6 +103,7 @@ export async function loadUnifiedCoursewareWorkspaceData(
   const requestedTrack = parseCoursewareTrack(rawSearchParams.track);
   const requestedCanvas = first(rawSearchParams.canvas);
   let pageEditor: UnifiedPageDocEditorData | null = null;
+  let sourceRuntimeEditor: UnifiedSourceRuntimeEditorData | null = null;
   const pageDocId = safeNativePreview?.page.pageDocId ?? safeAdaptedPreview?.page.pageDocId ?? null;
 
   if (pageDocId) {
@@ -147,6 +169,48 @@ export async function loadUnifiedCoursewareWorkspaceData(
         legacyAdaptClass: nativePageDoc?.studioPage.page.adaptClass ?? adaptedPageDoc?.studioPage.page.adaptClass ?? null,
       };
     }
+
+    const nativeSourceRuntime = nativeStudioPage?.activeRevision.doc.docVersion === SOURCE_RUNTIME_PAGE_DOC_VERSION
+      ? { studioPage: nativeStudioPage, doc: nativeStudioPage.activeRevision.doc }
+      : null;
+    const adaptedSourceRuntime = adaptedStudioPage?.activeRevision.doc.docVersion === SOURCE_RUNTIME_PAGE_DOC_VERSION
+      ? { studioPage: adaptedStudioPage, doc: adaptedStudioPage.activeRevision.doc }
+      : null;
+    const sourceEditorTrack: CoursewareTrack = requestedCanvas === "adapted-4x3"
+      && requestedTrack === "adapted-4x3"
+      && adaptedSourceRuntime
+      ? "adapted-4x3"
+      : nativeSourceRuntime
+        ? "native-16x9"
+        : "adapted-4x3";
+    const sourceStudioPage = sourceEditorTrack === "adapted-4x3"
+      ? adaptedSourceRuntime
+      : nativeSourceRuntime;
+    const sourceFourByThreeSource = nativeSourceRuntime ?? sourceStudioPage;
+    const sourceFourByThreeDraft = adaptedSourceRuntime ?? sourceFourByThreeSource;
+    if (sourceStudioPage && sourceFourByThreeSource && sourceFourByThreeDraft) {
+      sourceRuntimeEditor = {
+        pageDocId: sourceStudioPage.studioPage.page.id,
+        track: sourceEditorTrack,
+        doc: sourceStudioPage.doc,
+        baseRevisionNo: sourceStudioPage.studioPage.activeRevision.revisionNo,
+        bindingUrls: sourceEditorTrack === "adapted-4x3"
+          ? {
+              ...sourceFourByThreeSource.studioPage.bindingUrls,
+              ...sourceStudioPage.studioPage.bindingUrls,
+            }
+          : sourceStudioPage.studioPage.bindingUrls,
+        fourByThreeSource: {
+          doc: sourceFourByThreeSource.doc,
+          bindingUrls: sourceFourByThreeSource.studioPage.bindingUrls,
+        },
+        fourByThreeDraft: {
+          doc: sourceFourByThreeDraft.doc,
+          baseRevisionNo: sourceFourByThreeDraft.studioPage.activeRevision.revisionNo,
+          materialized: Boolean(adaptedSourceRuntime),
+        },
+      };
+    }
   }
 
   return {
@@ -155,5 +219,6 @@ export async function loadUnifiedCoursewareWorkspaceData(
     nativePreview: safeNativePreview,
     adaptedPreview: safeAdaptedPreview,
     pageEditor,
+    sourceRuntimeEditor,
   };
 }

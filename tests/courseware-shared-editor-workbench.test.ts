@@ -69,6 +69,7 @@ describe("shared courseware editor workbench", () => {
   it("shares one bounded undo and redo history across formal and microcourse PageDoc authoring", () => {
     const shared = read("src", "features", "courseware-doc", "CoursewareEditorWorkbench.tsx");
     const history = read("src", "features", "courseware-doc", "useCoursewareEditHistory.ts");
+    const pageToolbar = read("src", "features", "courseware-doc", "CoursewarePageEditorToolbar.tsx");
     const formal = read("src", "features", "courseware-studio", "PageDocVerticalSliceEditor.tsx");
     const microcourse = read("src", "features", "teacher-microcourses", "CoursewareCompositionWorkbench.tsx");
 
@@ -80,7 +81,8 @@ describe("shared courseware editor workbench", () => {
     expect(history).toContain('key === "y"');
     expect(formal).toContain("useCoursewareEditHistory");
     expect(microcourse).toContain("useCoursewareEditHistory");
-    expect(formal).toContain("<CoursewareEditorHistoryControls");
+    expect(formal).toContain("<CoursewarePageEditorToolbar");
+    expect(pageToolbar).toContain("<CoursewareEditorHistoryControls");
     expect(microcourse).toContain("<CoursewareEditorHistoryControls");
     expect(formal).toContain("editHistory.record(previous");
     expect(microcourse).toContain("editHistory.record(previous");
@@ -92,6 +94,7 @@ describe("shared courseware editor workbench", () => {
     const stage = read("src", "features", "courseware-doc", "DocStage.tsx");
     const stageCss = read("src", "features", "courseware-doc", "doc-stage.css");
     const grid = read("src", "features", "courseware-doc", "CoursewareCompositionGridEditor.tsx");
+    const pageToolbar = read("src", "features", "courseware-doc", "CoursewarePageEditorToolbar.tsx");
     const formal = read("src", "features", "courseware-studio", "PageDocVerticalSliceEditor.tsx");
     const microcourse = read("src", "features", "teacher-microcourses", "CoursewareCompositionWorkbench.tsx");
 
@@ -102,7 +105,8 @@ describe("shared courseware editor workbench", () => {
     expect(microcourse).toContain("<CoursewarePageElementInspector");
     expect(formal).not.toContain("<CoursewareTextElementInspector");
     expect(microcourse).not.toContain("<CoursewareTextElementInspector");
-    expect(formal).toContain("<CoursewareGridSnapToggle");
+    expect(formal).toContain("<CoursewarePageEditorToolbar");
+    expect(pageToolbar).toContain("<CoursewareGridSnapToggle");
     expect(microcourse).toContain("<CoursewareGridSnapToggle");
     expect(formal.slice(formal.indexOf("const inspector ="))).not.toContain("<CoursewareGridSnapToggle");
     expect(microcourse.slice(microcourse.indexOf("const inspectorContent ="))).not.toContain("<CoursewareGridSnapToggle");

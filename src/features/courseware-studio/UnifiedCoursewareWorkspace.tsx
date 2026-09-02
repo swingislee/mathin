@@ -21,7 +21,10 @@ import { FittedCoursewareCanvas } from "./FittedCoursewareCanvas";
 import { PageDocVerticalSliceEditor } from "./PageDocVerticalSliceEditor";
 import { StagePreview } from "./StagePreview";
 import { SourceRuntimeFourByThreeEditor } from "./SourceRuntimeFourByThreeEditor";
-import type { UnifiedPageDocEditorData } from "./unified-workspace-data";
+import type {
+  UnifiedPageDocEditorData,
+  UnifiedSourceRuntimeEditorData,
+} from "./unified-workspace-data";
 
 export const UNIFIED_WORKSPACE_CANVASES = ["compare", "native-16x9", "adapted-4x3"] as const;
 export type UnifiedWorkspaceCanvas = (typeof UNIFIED_WORKSPACE_CANVASES)[number];
@@ -103,6 +106,7 @@ export async function UnifiedCoursewareWorkspace({
   nativePreview,
   adaptedPreview,
   pageEditor,
+  sourceRuntimeEditor,
   canvas,
   entryTrack,
   returnTo,
@@ -111,6 +115,7 @@ export async function UnifiedCoursewareWorkspace({
   nativePreview: CoursewareLecturePreview | null;
   adaptedPreview: CoursewareLecturePreview | null;
   pageEditor: UnifiedPageDocEditorData | null;
+  sourceRuntimeEditor: UnifiedSourceRuntimeEditorData | null;
   canvas: UnifiedWorkspaceCanvas;
   entryTrack: CoursewareTrack;
   returnTo: string | null;
@@ -121,12 +126,6 @@ export async function UnifiedCoursewareWorkspace({
   const pages = directoryPreview?.pages ?? [];
   const backHref = returnTo ?? coursePreviewHref(detail, entryTrack, pageIndex);
   const selectedPage = directoryPreview?.page;
-  const sourceRuntimePreview = nativePreview && isSourceRuntimePageDoc(nativePreview.page.doc)
-    ? nativePreview
-    : adaptedPreview && isSourceRuntimePageDoc(adaptedPreview.page.doc) ? adaptedPreview : null;
-  const sourceRuntimeEditor = !pageEditor && sourceRuntimePreview && isSourceRuntimePageDoc(sourceRuntimePreview.page.doc)
-      ? { doc: sourceRuntimePreview.page.doc, bindingUrls: sourceRuntimePreview.bindingUrls }
-      : null;
   const sessionAdaptationAvailable = Boolean(pageEditor || sourceRuntimeEditor);
   const adaptedCanvasFellBack = canvas === "adapted-4x3"
     && !adaptedPreview
@@ -134,7 +133,7 @@ export async function UnifiedCoursewareWorkspace({
     && !sessionAdaptationAvailable;
   const visibleCanvas: UnifiedWorkspaceCanvas = adaptedCanvasFellBack ? "native-16x9" : canvas;
   const visibleTrack: CoursewareTrack = visibleCanvas === "adapted-4x3" ? "adapted-4x3" : "native-16x9";
-  const selectedDoc = pageEditor?.doc ?? (visibleCanvas === "adapted-4x3"
+  const selectedDoc = pageEditor?.doc ?? sourceRuntimeEditor?.doc ?? (visibleCanvas === "adapted-4x3"
     ? adaptedPreview?.page.doc
     : nativePreview?.page.doc ?? adaptedPreview?.page.doc);
   const canvasItems = [
@@ -235,9 +234,14 @@ export async function UnifiedCoursewareWorkspace({
               />
             ) : sourceRuntimeEditor ? (
               <SourceRuntimeFourByThreeEditor
-                key={`${sourceRuntimeEditor.doc.source.pageDatabaseId}:${sourceRuntimeEditor.doc.source.sourceContentHash}`}
-                doc={sourceRuntimeEditor.doc}
+                key={`${sourceRuntimeEditor.pageDocId}:${sourceRuntimeEditor.baseRevisionNo}:${sourceRuntimeEditor.fourByThreeDraft.baseRevisionNo}:${visibleCanvas}`}
+                pageDocId={sourceRuntimeEditor.pageDocId}
+                track={sourceRuntimeEditor.track}
+                initialDoc={sourceRuntimeEditor.doc}
+                baseRevisionNo={sourceRuntimeEditor.baseRevisionNo}
                 bindingUrls={sourceRuntimeEditor.bindingUrls}
+                fourByThreeSource={sourceRuntimeEditor.fourByThreeSource}
+                fourByThreeDraft={sourceRuntimeEditor.fourByThreeDraft}
                 view={visibleCanvas}
               />
             ) : visibleCanvas === "compare" ? (
@@ -261,12 +265,12 @@ export async function UnifiedCoursewareWorkspace({
             center={<span className="text-xs tabular-nums text-muted">{t("pageContext", { page: pageIndex, total: pages.length })}</span>}
           />,
         }}
-        toolbar={pageEditor ? undefined : <span className="text-xs text-muted">{t("sourceReadOnlyToolbar")}</span>}
-        saveControls={pageEditor ? undefined : <Badge variant="outline">{t("sourceReadOnlyStatus")}</Badge>}
+        toolbar={pageEditor || sourceRuntimeEditor ? undefined : <span className="text-xs text-muted">{t("sourceReadOnlyToolbar")}</span>}
+        saveControls={pageEditor || sourceRuntimeEditor ? undefined : <Badge variant="outline">{t("sourceReadOnlyStatus")}</Badge>}
         inspector={{
           ariaLabel: t("propertiesTitle"),
           header: <h2 className="shrink-0 text-sm font-medium text-ink">{t("propertiesTitle")}</h2>,
-          content: pageEditor ? undefined : <ScrollArea className="size-full min-h-0">
+          content: pageEditor || sourceRuntimeEditor ? undefined : <ScrollArea className="size-full min-h-0">
             <div className="px-4 py-5">
               <p className="text-sm font-medium text-ink">{t("sourceReadOnlyTitle")}</p>
               <p className="mt-2 text-xs leading-5 text-muted">{t("sourceReadOnlyDescription")}</p>

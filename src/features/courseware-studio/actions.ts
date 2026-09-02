@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { pageDocSchema } from "@/features/courseware-doc/schema";
+import { sourceRuntimePageDocSchema } from "@/features/courseware-doc/source-runtime-schema";
 import {
   SpatialPageContractError,
   spatialPageDocSchema,
@@ -26,7 +27,11 @@ function rpc<T>(client: RpcClient, name: string, args: Record<string, unknown>) 
 }
 
 const trackSchema = z.enum(COURSEWARE_TRACKS);
-const editableCoursewareDocSchema = z.discriminatedUnion("docVersion", [pageDocSchema, spatialPageDocSchema]);
+const editableCoursewareDocSchema = z.discriminatedUnion("docVersion", [
+  pageDocSchema,
+  sourceRuntimePageDocSchema,
+  spatialPageDocSchema,
+]);
 const draftSchema = z.object({ pageDocId: uuid, track: trackSchema, doc: editableCoursewareDocSchema, baseRevisionNo: intInRange(1, 100_000), note: text(1000) });
 
 async function verifySpatialDocForAction(doc: z.infer<typeof spatialPageDocSchema>) {
@@ -49,6 +54,8 @@ export async function saveCoursewareDraftAction(input: z.input<typeof draftSchem
     "SPATIAL_PAGE_SCENE_HASH_MISMATCH",
     "LAYOUT_TRACK_INCOMPATIBLE",
     "SOURCE_PROVENANCE_IMMUTABLE",
+    "SOURCE_RUNTIME_DOCUMENT_IMMUTABLE",
+    "INVALID_SOURCE_RUNTIME_DOC",
     "VERSION_CONFLICT",
     "RELATION_REQUIRED",
     "RESPONSIBILITY_REQUIRED",
