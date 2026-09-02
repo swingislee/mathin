@@ -20,6 +20,11 @@ const SOURCE_RUNTIME_EDITOR_BRIDGE = String.raw`<script data-mathin-source-runti
   const clamp=(value,min,max)=>Math.min(max,Math.max(min,value));
   const snap=(value,step)=>editor.snapToGrid&&step>0?Math.round(value/step)*step:value;
   const nodePath=node=>node?.dataset?.aixSourcePath||'';
+  const normalizeInlineText=value=>String(value??'')
+    .replace(/\r\n?/g,'\n')
+    .replace(/[ \t]+\n/g,'\n')
+    .replace(/\n[ \t]+/g,'\n')
+    .replace(/^\n+|\n+$/g,'');
 
   function installStyle(){
     if(document.querySelector('style[data-mathin-source-editor-style]'))return;
@@ -191,7 +196,7 @@ const SOURCE_RUNTIME_EDITOR_BRIDGE = String.raw`<script data-mathin-source-runti
     if(!editor.enabled||!(event.target instanceof HTMLElement)||!event.target.matches('[data-mathin-source-inline-editor]'))return;
     const node=event.target.closest('.aix-layout-node[data-aix-source-path]');
     const path=nodePath(node);
-    if(path)send('node-text-change',{nodePath:path,value:event.target.innerText});
+    if(path)send('node-text-change',{nodePath:path,value:normalizeInlineText(event.target.innerText)});
   },true);
 
   window.addEventListener('pointermove',event=>{

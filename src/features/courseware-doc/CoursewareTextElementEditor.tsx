@@ -8,56 +8,17 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { CoursewareEditorToolbarButton } from "./CoursewareEditorWorkbench";
+import {
+  coursewareTextValue,
+  setCoursewareTextValue,
+} from "./courseware-text-value";
 import type { DocNode } from "./schema";
 
-export function isCoursewareTextElement(node: DocNode | null | undefined): boolean {
-  return node?.content?.kind === "text" || node?.content?.kind === "rich_text";
-}
-
-function fallbackHtmlText(html: string) {
-  return html
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<[^>]+>/g, "")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">");
-}
-
-export function coursewareTextValue(node: DocNode) {
-  if (node.content?.kind === "text") return node.content.text ?? "";
-  if (node.content?.kind !== "rich_text") return "";
-  return fallbackHtmlText(node.content.html ?? "");
-}
-
-/** Replace visible copy while preserving the imported rich-text wrapper and its typography. */
-export function setCoursewareTextValue(node: DocNode, value: string) {
-  if (node.content?.kind === "text") {
-    node.content.text = value;
-    return;
-  }
-  if (node.content?.kind !== "rich_text") return;
-  if (typeof document === "undefined") {
-    node.content.html = value;
-    return;
-  }
-  const template = document.createElement("template");
-  template.innerHTML = node.content.html ?? "";
-  const walker = document.createTreeWalker(template.content, NodeFilter.SHOW_TEXT);
-  const textNodes: Text[] = [];
-  for (let current = walker.nextNode(); current; current = walker.nextNode()) {
-    if (current.textContent?.trim()) textNodes.push(current as Text);
-  }
-  if (textNodes[0]) {
-    textNodes[0].textContent = value;
-    textNodes.slice(1).forEach((textNode) => { textNode.textContent = ""; });
-  } else {
-    const span = document.createElement("span");
-    span.textContent = value;
-    template.content.append(span);
-  }
-  node.content.html = template.innerHTML;
-}
+export {
+  coursewareTextValue,
+  isCoursewareTextElement,
+  setCoursewareTextValue,
+} from "./courseware-text-value";
 
 function richTextCssValue(node: DocNode, property: string) {
   if (node.content?.kind !== "rich_text") return null;

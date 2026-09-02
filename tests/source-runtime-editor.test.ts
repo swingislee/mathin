@@ -129,6 +129,7 @@ describe("source runtime shared element adapter", () => {
     const script = html.match(/<script data-mathin-source-runtime-editor="[^"]+">([\s\S]*?)<\/script>/)?.[1];
     expect(script).toBeTruthy();
     if (!script) throw new Error("SOURCE_RUNTIME_EDITOR_SCRIPT_MISSING");
+    expect(script).toContain("normalizeInlineText(event.target.innerText)");
     expect(() => new Script(script)).not.toThrow();
   });
 });
