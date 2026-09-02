@@ -3,17 +3,16 @@
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { LoaderCircle, Search, ShieldAlert, UserPlus } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAction } from "@/components/action-form";
-import { useRouter } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import type { AccountSupportSnapshot, AccountSupportTarget } from "./account-security";
 import {
-  issueStaffInvitationAction,
   lookupAccountSupportTargetAction,
   manageAccountRequestAction,
   prepareUserRightsExportAction,
@@ -33,9 +32,6 @@ export function AccountSupportPanel({ snapshot }: { snapshot: AccountSupportSnap
   const [target, setTarget] = useState<AccountSupportTarget | null>(null);
   const [looked, setLooked] = useState(false);
   const [reason, setReason] = useState("");
-  const [inviteIdentifierType, setInviteIdentifierType] = useState<"email" | "phone">("email");
-  const [inviteIdentifier, setInviteIdentifier] = useState("");
-  const [inviteCode, setInviteCode] = useState<string | null>(null);
   const [request, setRequest] = useState<OpenRequest | null>(null);
   const [requestStatus, setRequestStatus] = useState("identity_verified");
   const [verification, setVerification] = useState("verified");
@@ -61,7 +57,6 @@ export function AccountSupportPanel({ snapshot }: { snapshot: AccountSupportSnap
   const lockRun = useAction(setAccountLockAction, { successMessage: t("accountStatusSaved"), errorMessage: errors, onSuccess: () => { router.refresh(); void lookupRun.run(email); } });
   const revokeRun = useAction(revokeUserSessionsAction, { successMessage: t("sessionsRevoked"), errorMessage: errors, onSuccess: () => router.refresh() });
   const recoveryRun = useAction(sendRecoveryAction, { successMessage: t("recoverySent"), errorMessage: errors, onSuccess: () => router.refresh() });
-  const inviteRun = useAction(issueStaffInvitationAction, { successMessage: t("inviteCreated"), errorMessage: errors, onSuccess: (value) => { setInviteCode(value.inviteCode); setInviteIdentifier(""); router.refresh(); } });
   const revokeInviteRun = useAction(revokeStaffInvitationAction, { successMessage: t("inviteRevoked"), errorMessage: errors, onSuccess: () => router.refresh() });
   const requestRun = useAction(manageAccountRequestAction, { successMessage: t("requestSaved"), errorMessage: errors, onSuccess: () => { setRequest(null); router.refresh(); } });
   const prepareExportRun = useAction(prepareUserRightsExportAction, { successMessage: t("exportPrepared"), errorMessage: errors, onSuccess: () => { setRequest(null); router.refresh(); } });
@@ -93,15 +88,7 @@ export function AccountSupportPanel({ snapshot }: { snapshot: AccountSupportSnap
 
     <section className="rounded-2xl border border-line bg-card p-5">
       <div className="flex items-start gap-3"><UserPlus className="mt-0.5 size-5 text-crater"/><div><h2 className="font-medium">{t("inviteTitle")}</h2><p className="mt-1 text-sm text-muted">{t("inviteIntro")}</p></div></div>
-      <div className="mt-4 flex flex-wrap gap-2">
-        <Select value={inviteIdentifierType} onValueChange={(value) => { setInviteIdentifierType(value as "email" | "phone"); setInviteIdentifier(""); setInviteCode(null); }}>
-          <SelectTrigger className="w-32"><SelectValue/></SelectTrigger>
-          <SelectContent><SelectItem value="email">{t("email")}</SelectItem><SelectItem value="phone">{t("phone")}</SelectItem></SelectContent>
-        </Select>
-        <Input type={inviteIdentifierType === "email" ? "email" : "tel"} inputMode={inviteIdentifierType === "email" ? "email" : "tel"} value={inviteIdentifier} onChange={(event) => setInviteIdentifier(event.target.value)} placeholder={inviteIdentifierType === "email" ? t("email") : t("phonePlaceholder")} className="min-w-64 flex-1"/>
-        <Button disabled={inviteRun.pending || !inviteIdentifier.trim()} onClick={() => inviteRun.run(inviteIdentifierType, inviteIdentifier, 7)}>{inviteRun.pending && <LoaderCircle className="size-4 animate-spin"/>}{t("createInvite")}</Button>
-      </div>
-      {inviteCode && <div role="status" className="mt-4 rounded-xl border border-crater/30 bg-moon/25 p-4"><p className="text-sm text-muted">{t("inviteCodeHint")}</p><p className="mt-2 break-all font-mono text-xl tracking-[0.12em]">{inviteCode}</p></div>}
+      <Link href="/dashboard/staff" className={`${buttonVariants()} mt-4`}>{t("openStaffProvisioning")}</Link>
       {snapshot.pendingInvitations.length > 0 && <ul className="mt-4 divide-y divide-line border-t border-line">{snapshot.pendingInvitations.map((invite) => <li key={invite.id} className="flex flex-wrap items-center gap-3 py-3 text-sm"><span className="rounded-full bg-line/50 px-2 py-0.5 text-xs">{t(invite.identifierType)}</span><span className="font-medium">{invite.identifier}</span><span className="text-muted">{t("expires", { date: new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(invite.expiresAt)) })}</span><Button className="ml-auto" size="sm" variant="ghost" disabled={revokeInviteRun.pending} onClick={() => revokeInviteRun.run(invite.id, t("operatorRevoked"))}>{t("revokeInvite")}</Button></li>)}</ul>}
     </section>
 

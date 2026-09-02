@@ -435,12 +435,12 @@ export const DASHBOARD_ROUTES = {
   },
   staff: {
 
-    // 添加员工 = 精确邮箱查找已有账号 → 必要时提升为 staff → 分配岗位，
-    // 不是创建全新账户，因此没有 /staff/new（§5.22）。
+    // 新员工由员工集合页批量建档；主管持有窄化的 staff.invite 即可进入，
+    // 停用员工、修改岗位等完整管理动作仍由 staff.manage 单独控制。
     href: "/dashboard/staff",
     kind: "collection",
     environments: STAFF_ONLY,
-    permission: "staff.manage",
+    permission: "staff.invite",
     createSurface: "dialog",
     nav: { labelKey: "staff", group: "organization" },
   },

@@ -46,12 +46,11 @@ interface ParsedStaffRow extends ImportStaffRow {
 }
 
 const CSV_HEADERS = ["name", "identifier", "roles"];
-const EXPIRY_OPTIONS = [1, 7, 14, 30] as const;
+const DEFAULT_RESERVATION_DAYS = 7;
 
 function parseRows(
   source: ParsedStaffImportSource,
   sourceRoleMappings: Readonly<Record<string, string>>,
-  validDays: number,
 ): ParsedStaffRow[] {
   return source.rows.map((record) => {
     const mapping = record.sourceFormat === "mofaxiao"
@@ -70,7 +69,7 @@ function parseRows(
       name: record.name,
       identifier: record.identifier,
       roles: mapping.roles,
-      validDays,
+      validDays: DEFAULT_RESERVATION_DAYS,
       localErrors,
       gender: record.gender,
       sourceRoles: record.sourceRoles,
@@ -103,9 +102,9 @@ function downloadCredentialBatch(
 ) {
   if (!batch.codesAvailable || batch.invitations.length === 0) return;
   const headers = locale === "zh"
-    ? ["姓名", "标识类型", "手机号或邮箱", "岗位角色", "一次性邀请码", "失效时间"]
-    : ["name", "identifier_type", "identifier", "roles", "invite_code", "expires_at"];
-  downloadCsv(`staff-invitations-${batch.batchId}.csv`, [
+    ? ["姓名", "标识类型", "登录账号", "岗位角色", "首次登录密码", "首次登录要求"]
+    : ["name", "identifier_type", "login", "roles", "initial_password", "first_login_requirement"];
+  downloadCsv(`staff-initial-passwords-${batch.batchId}.csv`, [
     headers,
     ...batch.invitations.map((invite) => [
       invite.name,
@@ -113,7 +112,7 @@ function downloadCredentialBatch(
       invite.identifier,
       invite.roleKeys.map((key) => staffRoleDisplayName(key, roles, locale)).join(" "),
       invite.inviteCode,
-      invite.expiresAt,
+      locale === "zh" ? "首次登录必须修改密码" : "Password change required on first login",
     ]),
   ]);
 }
@@ -133,15 +132,14 @@ export function StaffBulkInvitePanel({
   const [text, setText] = useState("");
   const [fileName, setFileName] = useState("");
   const [fileError, setFileError] = useState(false);
-  const [validDays, setValidDays] = useState(7);
   const [batch, setBatch] = useState<StaffImportBatchResult | null>(null);
   const [duplicatesReviewed, setDuplicatesReviewed] = useState(false);
   const [idempotencyKey, setIdempotencyKey] = useState(newId);
   const [sourceRoleMappings, setSourceRoleMappings] = useState<Record<string, string>>({});
   const parsedSource = useMemo(() => parseStaffImportSource(text), [text]);
   const rows = useMemo(
-    () => parseRows(parsedSource, sourceRoleMappings, validDays),
-    [parsedSource, sourceRoleMappings, validDays],
+    () => parseRows(parsedSource, sourceRoleMappings),
+    [parsedSource, sourceRoleMappings],
   );
   const unresolvedSourceRoles = parsedSource.sourceRoles.filter((role) => !sourceRoleMappings[role]);
   const serverRows = useMemo(() => new Map(batch?.rows.map((row) => [row.row, row]) ?? []), [batch]);
@@ -153,6 +151,10 @@ export function StaffBulkInvitePanel({
     BATCH_HAS_ERRORS: t("bulkBatchHasErrors"),
     BATCH_EXPIRED: t("bulkBatchExpired"),
     BATCH_STALE: t("bulkBatchStale"),
+    ACCOUNT_EXISTS: t("bulkError_ACCOUNT_EXISTS"),
+    PROVISION_IN_PROGRESS: t("bulkError_PROVISION_IN_PROGRESS"),
+    AUTH_PROVIDER_FAILED: t("bulkError_AUTH_PROVIDER_FAILED"),
+    PROVISION_FINALIZE_FAILED: t("bulkError_PROVISION_FINALIZE_FAILED"),
   };
   const previewRun = useAction(previewStaffImportAction, {
     successMessage: t("bulkPreviewSuccess"),
@@ -192,10 +194,6 @@ export function StaffBulkInvitePanel({
     setSourceRoleMappings((current) => ({ ...current, [sourceRole]: targetRole }));
     resetBatch();
   };
-  const changeExpiry = (value: string) => {
-    setValidDays(Number(value));
-    resetBatch();
-  };
   const readFile = async (file: File | undefined) => {
     if (!file) return;
     try {
@@ -214,7 +212,7 @@ export function StaffBulkInvitePanel({
       name,
       identifier,
       roles: roleKeys,
-      validDays,
+      validDays: DEFAULT_RESERVATION_DAYS,
     })),
   });
   const localizedHeaders = locale === "zh" ? ["姓名", "手机号或邮箱", "岗位角色"] : CSV_HEADERS;
@@ -236,7 +234,7 @@ export function StaffBulkInvitePanel({
     downloadCsv(`staff-import-${batch.batchId}-errors.csv`, [
       ["line", "status", "error_codes", ...sourceHeaders],
       ...batch.rows
-        .filter((row) => row.status === "error")
+        .filter((row) => row.status === "error" || (row.status === "valid" && row.errors.length > 0))
         .map((finding) => {
           const source = rows[finding.row - 1];
           const common = [
@@ -264,6 +262,10 @@ export function StaffBulkInvitePanel({
       errors: [...new Set([...(server?.errors ?? []), ...row.localErrors])],
     };
   };
+  const provisioningFailureCount = batch?.rows.filter(
+    (row) => row.status === "valid" && row.errors.length > 0,
+  ).length ?? 0;
+  const displayedErrorCount = (batch?.errorCount ?? 0) + provisioningFailureCount;
 
   return (
     <div className="space-y-10">
@@ -279,7 +281,7 @@ export function StaffBulkInvitePanel({
       >
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-0">
           <div className="min-w-0 space-y-4 lg:pr-6">
-            <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_11rem]">
+            <div className="max-w-xl">
               <Label className="grid gap-1.5 text-xs font-normal text-muted">
                 {t("bulkFile")}
                 <Input
@@ -288,18 +290,6 @@ export function StaffBulkInvitePanel({
                   onChange={(event) => void readFile(event.currentTarget.files?.[0])}
                 />
                 <span>{fileName || t("bulkFileHint")}</span>
-              </Label>
-              <Label className="grid gap-1.5 text-xs font-normal text-muted">
-                {t("bulkExpiry")}
-                <Select value={String(validDays)} onValueChange={changeExpiry}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {EXPIRY_OPTIONS.map((days) => (
-                      <SelectItem key={days} value={String(days)}>{t("bulkExpiryDays", { days })}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <span>{t("bulkExpiryHint")}</span>
               </Label>
             </div>
             <Label className="grid gap-1.5 text-xs font-normal text-muted">
@@ -415,7 +405,6 @@ export function StaffBulkInvitePanel({
             className="mb-3"
             items={[
               { label: t("bulkRows"), value: rows.length },
-              { label: t("bulkExpiry"), value: t("bulkExpiryDays", { days: validDays }) },
               { label: t("bulkSource"), value: fileName || t("bulkPaste") },
               { label: t("bulkSourceFormat"), value: t(`bulkSourceFormat_${parsedSource.format}`) },
             ]}
@@ -435,7 +424,7 @@ export function StaffBulkInvitePanel({
                 {rows.map((row, index) => {
                   const finding = rowFinding(index, row);
                   return (
-                    <TableRow key={`${row.line}-${index}`} className={finding.status === "error" ? "bg-rose/5" : undefined}>
+                    <TableRow key={`${row.line}-${index}`} className={finding.status === "error" || finding.errors.length > 0 ? "bg-rose/5" : undefined}>
                       <TableCell className="font-mono text-muted">{row.line}</TableCell>
                       <TableCell className="font-medium">{row.name || "—"}</TableCell>
                       <TableCell>{row.identifier || "—"}</TableCell>
@@ -479,7 +468,7 @@ export function StaffBulkInvitePanel({
         <DashboardSection
           title={t("bulkResultTitle")}
           description={t("bulkResultHint")}
-          actions={batch.errorCount > 0 ? (
+          actions={displayedErrorCount > 0 ? (
             <Button type="button" size="sm" variant="secondary" onClick={downloadErrors}>
               <Download size={15} />
               {t("bulkDownloadErrors")}
@@ -487,7 +476,7 @@ export function StaffBulkInvitePanel({
           ) : undefined}
         >
           <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <Badge variant={batch.errorCount > 0 ? "danger" : batch.status === "completed" ? "secondary" : "outline"}>
+            <Badge variant={displayedErrorCount > 0 ? "danger" : batch.status === "completed" ? "secondary" : "outline"}>
               {t(`bulkBatchStatus_${batch.status}`)}
             </Badge>
             <span className="font-mono text-xs text-muted">{batch.batchId}</span>
@@ -498,7 +487,7 @@ export function StaffBulkInvitePanel({
               { label: t("bulkRows"), value: batch.total },
               { label: t("bulkValid"), value: batch.valid },
               { label: t("bulkDuplicates"), value: batch.dup, tone: batch.dup > 0 ? "warning" : "default" },
-              { label: t("bulkErrors"), value: batch.errorCount, tone: batch.errorCount > 0 ? "critical" : "default" },
+              { label: t("bulkErrors"), value: displayedErrorCount, tone: displayedErrorCount > 0 ? "critical" : "default" },
               { label: t("bulkIssued"), value: batch.issued },
             ]}
           />
@@ -534,7 +523,7 @@ export function StaffBulkInvitePanel({
         </DashboardSection>
       ) : null}
 
-      {batch?.status === "completed" && batch.codesAvailable && batch.invitations.length > 0 ? (
+      {batch?.codesAvailable && batch.invitations.length > 0 ? (
         <DashboardSection
           title={t("bulkCredentialsTitle")}
           description={t("bulkCredentialsWarning")}
@@ -547,7 +536,7 @@ export function StaffBulkInvitePanel({
         >
           <p role="status" className="mb-3 flex items-center gap-2 text-sm text-leaf-deep">
             <CheckCircle2 size={16} />
-            {t("bulkCompleted", { count: batch.issued })}
+            {t("bulkCompleted", { count: batch.invitations.length })}
           </p>
           <DashboardTableShell>
             <Table className="w-full min-w-[880px] text-xs">
@@ -557,7 +546,7 @@ export function StaffBulkInvitePanel({
                   <TableHead>{t("bulkIdentifier")}</TableHead>
                   <TableHead>{t("colRoles")}</TableHead>
                   <TableHead>{t("bulkInviteCode")}</TableHead>
-                  <TableHead>{t("bulkExpiresAt")}</TableHead>
+                  <TableHead>{t("bulkFirstLoginRequirement")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -569,7 +558,7 @@ export function StaffBulkInvitePanel({
                       {invite.roleKeys.map((key) => staffRoleDisplayName(key, roles, locale)).join(" ")}
                     </TableCell>
                     <TableCell className="font-mono text-sm tracking-wider">{invite.inviteCode}</TableCell>
-                    <TableCell className="whitespace-nowrap">{formatAt(invite.expiresAt)}</TableCell>
+                    <TableCell>{t("bulkFirstLoginChangePassword")}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

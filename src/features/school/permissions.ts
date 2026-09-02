@@ -53,6 +53,7 @@ export const PERMISSION_KEYS = [
   "finance.scholarship.grant",
   "finance.account.adjust",
   "finance.report.view",
+  "staff.invite",
   "staff.manage",
   "permission.configure",
   "registration.invite.manage",

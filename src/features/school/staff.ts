@@ -12,6 +12,7 @@ export interface StaffMember {
   roleNames: string[];
   canFollowUp: boolean;
   isActive: boolean;
+  passwordChangeRequired: boolean;
 }
 
 interface StaffMemberRpcRow {
@@ -23,9 +24,10 @@ interface StaffMemberRpcRow {
   role_names: string[];
   can_follow_up: boolean;
   is_active: boolean;
+  password_change_required: boolean;
 }
 
-/** 员工列表（RPC 内 staff.manage 门控；无权限得空集）。admin 置顶，其余按姓名排。 */
+/** 员工列表（RPC 内 staff.invite 门控；无权限得空集）。admin 置顶，其余按姓名排。 */
 export async function listStaffMembers(): Promise<StaffMember[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("list_staff_members");
@@ -40,6 +42,7 @@ export async function listStaffMembers(): Promise<StaffMember[]> {
       roleNames: row.role_names ?? [],
       canFollowUp: Boolean(row.can_follow_up),
       isActive: Boolean(row.is_active),
+      passwordChangeRequired: Boolean(row.password_change_required),
     }))
     .sort((a, b) => a.isActive!==b.isActive?(a.isActive?-1:1):
       a.identity !== b.identity ? (a.identity === "admin" ? -1 : 1) : a.displayName.localeCompare(b.displayName, "zh"));

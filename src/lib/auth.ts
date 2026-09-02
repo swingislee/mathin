@@ -14,19 +14,29 @@ export interface Profile {
   avatarUrl: string | null;
   preferredLocale: "zh" | "en";
   lastActiveEnvironment: UserEnvironment;
+  passwordChangeRequired: boolean;
 }
 
 export async function requireUser(locale: string, options: { allowAccountRecovery?: boolean } = {}) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(`/${locale}/login`);
-  const [{ data: account }, { data: consentReady }] = await Promise.all([
-    supabase.from("profiles").select("role,account_status").eq("id", user.id).maybeSingle<{ role: ProfileRole; account_status: "active" | "locked" }>(),
+  const [{ data: account, error: accountError }, { data: consentReady, error: consentError }] = await Promise.all([
+    supabase.from("profiles").select("role,account_status,password_change_required").eq("id", user.id).maybeSingle<{
+      role: ProfileRole;
+      account_status: "active" | "locked";
+      password_change_required: boolean;
+    }>(),
     supabase.rpc("has_current_required_consents", { p_user_id: user.id }),
   ]);
+  if (accountError) throw new Error(accountError.message);
+  if (consentError) throw new Error(consentError.message);
   if (account?.account_status === "locked") {
     await supabase.auth.signOut({ scope: "local" });
     redirect(`/${locale}/login?error=locked`);
+  }
+  if (!options.allowAccountRecovery && account?.password_change_required) {
+    redirect(`/${locale}/dashboard/account-security?required=password`);
   }
   if (!options.allowAccountRecovery && consentReady === false) {
     redirect(`/${locale}/dashboard/account-security?required=consent`);
@@ -46,9 +56,9 @@ export async function requireUser(locale: string, options: { allowAccountRecover
 
 export async function getProfile(userId: string): Promise<Profile | null> {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("profiles")
-    .select("id,role,display_name,avatar_url,preferred_locale,last_active_environment")
+    .select("id,role,display_name,avatar_url,preferred_locale,last_active_environment,password_change_required")
     .eq("id", userId)
     .maybeSingle<{
       id: string;
@@ -57,7 +67,9 @@ export async function getProfile(userId: string): Promise<Profile | null> {
       avatar_url: string | null;
       preferred_locale: "zh" | "en";
       last_active_environment: UserEnvironment;
+      password_change_required: boolean;
     }>();
+  if (error) throw new Error(error.message);
   if (!data) return null;
   return {
     id: data.id,
@@ -66,6 +78,7 @@ export async function getProfile(userId: string): Promise<Profile | null> {
     avatarUrl: data.avatar_url,
     preferredLocale: data.preferred_locale,
     lastActiveEnvironment: data.last_active_environment,
+    passwordChangeRequired: Boolean(data.password_change_required),
   };
 }
 

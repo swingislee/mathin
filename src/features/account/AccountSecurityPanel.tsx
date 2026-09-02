@@ -24,6 +24,14 @@ import {
 import { toast } from "sonner";
 import { useAction } from "@/components/action-form";
 import { Button, buttonVariants } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -38,6 +46,7 @@ import type {
   ConsentKind,
 } from "./account-security";
 import {
+  changeInitialPasswordAction,
   downloadUserRightsExportAction,
   recordAccountConsentAction,
   requestUserRightAction,
@@ -114,9 +123,11 @@ function SettingRow({ label, children }: { label: string; children: ReactNode })
 export function AccountSecurityPanel({
   snapshot,
   initialSection = "profile",
+  forcePasswordChange = false,
 }: {
   snapshot: AccountCenterSnapshot;
   initialSection?: AccountSection;
+  forcePasswordChange?: boolean;
 }) {
   const locale = useLocale();
   const t = useTranslations("account.security");
@@ -205,6 +216,22 @@ export function AccountSecurityPanel({
       router.refresh();
     },
   });
+  const initialPasswordRun = useAction(changeInitialPasswordAction, {
+    successMessage: t("passwordSaved"),
+    errorMessage: {
+      VALIDATION: t("passwordInvalid"),
+      SAME_AS_INITIAL: t("sameAsInitialPassword"),
+      INITIAL_PASSWORD_RECORD_MISSING: t("actionFailed"),
+      AUTH_PROVIDER_FAILED: t("actionFailed"),
+      default: t("actionFailed"),
+    },
+    onSuccess: () => {
+      setPassword("");
+      setPasswordConfirm("");
+      router.replace("/dashboard");
+      router.refresh();
+    },
+  });
 
   const chooseAvatar = async (file: File | undefined) => {
     if (!file) return;
@@ -269,6 +296,13 @@ export function AccountSecurityPanel({
     if (error) toast.error(t("actionFailed")); else toast.success(t("sessionsRevoked"));
   };
 
+  const leaveForcedPasswordChange = async () => {
+    setAuthBusy(true);
+    await createClient().auth.signOut({ scope: "local" });
+    router.replace("/login");
+    router.refresh();
+  };
+
   const enrollMfa = async () => {
     setAuthBusy(true);
     const supabase = createClient();
@@ -311,7 +345,62 @@ export function AccountSecurityPanel({
   const profileBusy = avatarBusy || profileRun.pending;
 
   return (
-    <Tabs value={section} onValueChange={(value) => setSection(value as AccountSection)} orientation="vertical" className="grid min-w-0 border-y border-line lg:grid-cols-[14rem_minmax(0,1fr)]">
+    <>
+      <Dialog open={forcePasswordChange} onOpenChange={() => undefined}>
+        <DialogContent
+          showCloseButton={false}
+          onEscapeKeyDown={(event) => event.preventDefault()}
+          onPointerDownOutside={(event) => event.preventDefault()}
+          onInteractOutside={(event) => event.preventDefault()}
+        >
+          <DialogHeader>
+            <DialogTitle>{t("initialPasswordTitle")}</DialogTitle>
+            <DialogDescription>{t("initialPasswordBody")}</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <Label htmlFor="initial-new-password">{t("newPassword")}</Label>
+            <Input
+              id="initial-new-password"
+              type="password"
+              autoComplete="new-password"
+              minLength={8}
+              maxLength={128}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+            <Label htmlFor="initial-confirm-password">{t("confirmPassword")}</Label>
+            <Input
+              id="initial-confirm-password"
+              type="password"
+              autoComplete="new-password"
+              minLength={8}
+              maxLength={128}
+              value={passwordConfirm}
+              onChange={(event) => setPasswordConfirm(event.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={authBusy || initialPasswordRun.pending}
+              onClick={() => void leaveForcedPasswordChange()}
+            >
+              <LogOut className="size-4" aria-hidden />
+              {t("signOut")}
+            </Button>
+            <Button
+              type="button"
+              disabled={initialPasswordRun.pending || password.length < 8 || password !== passwordConfirm}
+              onClick={() => initialPasswordRun.run({ password, passwordConfirm })}
+            >
+              {initialPasswordRun.pending ? <LoaderCircle className="size-4 animate-spin" /> : null}
+              {t("savePassword")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Tabs value={section} onValueChange={(value) => setSection(value as AccountSection)} orientation="vertical" className="grid min-w-0 border-y border-line lg:grid-cols-[14rem_minmax(0,1fr)]">
       <aside className="border-b border-line p-3 lg:border-r lg:border-b-0 lg:py-6">
         <div className="lg:sticky lg:top-20">
           <p className="hidden px-4 pb-3 text-xs font-medium uppercase tracking-[0.12em] text-muted lg:block">{t("settingsNav")}</p>
@@ -433,6 +522,7 @@ export function AccountSecurityPanel({
           </SettingSection>
         </TabsContent>
       </div>
-    </Tabs>
+      </Tabs>
+    </>
   );
 }
