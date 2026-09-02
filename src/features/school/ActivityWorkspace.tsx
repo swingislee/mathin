@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Link, useRouter } from "@/i18n/navigation";
 import type { ActionResult } from "@/lib/action-result";
+import { cn } from "@/lib/utils";
 import {
   beginActivityAssessmentAction,
   bookActivityAction,
@@ -60,15 +61,15 @@ export function ActivityWorkspace({
   activeNode,
   canRegister,
   canAssess,
-  canViewRouting,
-  canRoute,
+  canViewOutcome,
+  canRecordOutcome,
 }: {
   activity: ActivityRow;
   activeNode: ActivityWorkspaceNode;
   canRegister: boolean;
   canAssess: boolean;
-  canViewRouting: boolean;
-  canRoute: boolean;
+  canViewOutcome: boolean;
+  canRecordOutcome: boolean;
 }) {
   const t = useTranslations("school.activities");
   const router = useRouter();
@@ -117,8 +118,9 @@ export function ActivityWorkspace({
 
   const nodeItems = [
     { value: "participation", label: t("nodeParticipation"), href: `/dashboard/activities/${activity.id}?node=participation` },
-    { value: "assessment", label: t("nodeAssessment"), href: `/dashboard/activities/${activity.id}?node=assessment` },
-    ...(canViewRouting ? [{ value: "routing", label: t("nodeRouting"), href: `/dashboard/activities/${activity.id}?node=routing` }] : []),
+    ...((canAssess || canViewOutcome)
+      ? [{ value: "assessment", label: t("nodeAssessment"), href: `/dashboard/activities/${activity.id}?node=assessment` }]
+      : []),
   ];
 
   return <div className="space-y-6">
@@ -126,7 +128,7 @@ export function ActivityWorkspace({
       { label: t("activeRoster"), value: registrations.filter((registration) => registration.status !== "cancelled").length },
       { label: t("attended"), value: attended },
       { label: t("assessmentEntered"), value: assessed },
-      ...(canViewRouting ? [{ label: t("awaitingRoute"), value: awaitingRoute }] : []),
+      ...(canViewOutcome ? [{ label: t("awaitingRoute"), value: awaitingRoute }] : []),
     ]} />
 
     <DashboardCommandPanel>
@@ -152,13 +154,10 @@ export function ActivityWorkspace({
     {activeNode === "assessment" ? <AssessmentTable
       registrations={registrations}
       canAssess={canAssess}
+      canViewOutcome={canViewOutcome}
+      canRecordOutcome={canRecordOutcome}
       attendancePendingIds={autoAttendancePendingIds}
       onEdit={markAttendedWhenEditing}
-    /> : null}
-
-    {activeNode === "routing" && canViewRouting ? <RoutingTable
-      registrations={registrations}
-      canRoute={canRoute}
     /> : null}
   </div>;
 }
@@ -294,41 +293,63 @@ function StudentSearch({
 function AssessmentTable({
   registrations,
   canAssess,
+  canViewOutcome,
+  canRecordOutcome,
   attendancePendingIds,
   onEdit,
 }: {
   registrations: ActivityRegistration[];
   canAssess: boolean;
+  canViewOutcome: boolean;
+  canRecordOutcome: boolean;
   attendancePendingIds: ReadonlySet<string>;
   onEdit: (registration: ActivityRegistration) => void;
 }) {
   const t = useTranslations("school.activities");
   const rows = registrations.filter((registration) => registration.status !== "cancelled");
+  const columnCount = canViewOutcome ? 12 : 10;
 
-  return <DashboardSection title={t("assessmentNodeTitle")} description={t("assessmentNodeHint")}>
+  return <DashboardSection
+    title={t("assessmentNodeTitle")}
+    description={t("assessmentNodeHint")}
+    actions={<span className="text-xs text-muted">{t("entryKeyboardHint")}</span>}
+  >
     <DashboardTableShell>
-      <Table className="min-w-[108rem] table-fixed">
-        <TableHeader><TableRow>
-          <TableHead className="w-44">{t("student")}</TableHead>
-          <TableHead className="w-28">{t("participation")}</TableHead>
-          <TableHead className="w-32">{t("assessmentBand")}</TableHead>
-          <TableHead className="w-24">{t("scoreShort")}</TableHead>
-          <TableHead className="w-60">{t("strengths")}</TableHead>
-          <TableHead className="w-60">{t("focusAreas")}</TableHead>
-          <TableHead className="w-60">{t("parentConcerns")}</TableHead>
-          <TableHead className="w-44">{t("recommendedClass")}</TableHead>
-          <TableHead className="w-64">{t("teacherRecommendation")}</TableHead>
-          <TableHead className="w-24">{t("saveState")}</TableHead>
-        </TableRow></TableHeader>
+      <Table className="min-w-[128rem] table-fixed">
+        <TableHeader className="bg-card">
+          <TableRow className="border-b border-line/60 hover:bg-transparent">
+            <TableHead rowSpan={2} className="sticky left-0 z-30 w-44 border-r border-line bg-card">{t("student")}</TableHead>
+            <TableHead rowSpan={2} className="sticky left-44 z-30 w-28 border-r border-line bg-card">{t("participation")}</TableHead>
+            <TableHead scope="colgroup" colSpan={4} className="h-8 text-center">{t("assessmentGroup")}</TableHead>
+            <TableHead scope="colgroup" colSpan={3} className="h-8 text-center">{t("familyDecisionGroup")}</TableHead>
+            {canViewOutcome ? <TableHead scope="colgroup" colSpan={2} className="h-8 text-center">{t("conversationOutcome")}</TableHead> : null}
+            <TableHead rowSpan={2} className="w-24">{t("saveState")}</TableHead>
+          </TableRow>
+          <TableRow className="hover:bg-transparent">
+            <TableHead className="w-32">{t("assessmentBand")}</TableHead>
+            <TableHead className="w-24">{t("scoreShort")}</TableHead>
+            <TableHead className="w-52">{t("strengths")}</TableHead>
+            <TableHead className="w-52">{t("focusAreas")}</TableHead>
+            <TableHead className="w-52">{t("parentConcerns")}</TableHead>
+            <TableHead className="w-44">{t("recommendedClass")}</TableHead>
+            <TableHead className="w-56">{t("teacherRecommendation")}</TableHead>
+            {canViewOutcome ? <>
+              <TableHead className="w-52">{t("routingResult")}</TableHead>
+              <TableHead className="w-56">{t("routingNote")}</TableHead>
+            </> : null}
+          </TableRow>
+        </TableHeader>
         <TableBody>
           {rows.map((registration) => <AssessmentRow
             key={registration.id}
             registration={registration}
             canAssess={canAssess}
+            canViewOutcome={canViewOutcome}
+            canRecordOutcome={canRecordOutcome}
             attendancePending={attendancePendingIds.has(registration.id)}
             onEdit={onEdit}
           />)}
-          {rows.length === 0 ? <TableRow><TableCell colSpan={10} className="h-40 text-center text-muted">{t("noAssessmentRows")}</TableCell></TableRow> : null}
+          {rows.length === 0 ? <TableRow><TableCell colSpan={columnCount} className="h-40 text-center text-muted">{t("noAssessmentRows")}</TableCell></TableRow> : null}
         </TableBody>
       </Table>
     </DashboardTableShell>
@@ -338,17 +359,21 @@ function AssessmentTable({
 function AssessmentRow({
   registration,
   canAssess,
+  canViewOutcome,
+  canRecordOutcome,
   attendancePending,
   onEdit,
 }: {
   registration: ActivityRegistration;
   canAssess: boolean;
+  canViewOutcome: boolean;
+  canRecordOutcome: boolean;
   attendancePending: boolean;
   onEdit: (registration: ActivityRegistration) => void;
 }) {
   const t = useTranslations("school.activities");
   const assessment = registration.assessment;
-  const autosave = useAutosavedDraft<AssessmentDraft>({
+  const assessmentAutosave = useAutosavedDraft<AssessmentDraft>({
     initial: {
       assessmentBand: assessment?.assessmentBand ?? null,
       score: assessment?.score ?? null,
@@ -362,17 +387,39 @@ function AssessmentRow({
     save: (draft) => saveActivityAssessmentAction({ registrationId: registration.id, ...draft }),
     errorMessage: t("assessmentAutosaveFailed"),
   });
+  const routeAutosave = useAutosavedDraft<RouteDraft>({
+    initial: {
+      route: registration.route?.route ?? "",
+      note: registration.route?.note ?? "",
+    },
+    enabled: canViewOutcome
+      && canRecordOutcome
+      && registration.status === "attended"
+      && !attendancePending,
+    save: (draft) => draft.route
+      ? saveActivityRouteAction({ registrationId: registration.id, route: draft.route, note: draft.note })
+      : Promise.resolve({ ok: false, code: "VALIDATION" as const }),
+    errorMessage: t("routeAutosaveFailed"),
+  });
   const update = <K extends keyof AssessmentDraft>(key: K, value: AssessmentDraft[K]) => {
     onEdit(registration);
-    autosave.update(key, value);
+    assessmentAutosave.update(key, value);
   };
   const disabled = !canAssess || registration.status === "cancelled";
+  const outcomeDisabled = !canRecordOutcome
+    || registration.status !== "attended"
+    || attendancePending;
+  const saveEntries = [
+    ...(canAssess ? [{ state: assessmentAutosave.state, retry: assessmentAutosave.retry }] : []),
+    ...(canViewOutcome && canRecordOutcome ? [{ state: routeAutosave.state, retry: routeAutosave.retry }] : []),
+  ];
+  const saveState = mergeSaveStates(saveEntries.map((entry) => entry.state));
 
-  return <TableRow>
-    <StudentCell registration={registration} />
-    <TableCell><Badge variant={registration.status === "attended" ? "secondary" : "outline"}>{t(`status_${registration.status}`)}</Badge></TableCell>
+  return <TableRow className="group">
+    <StudentCell registration={registration} sticky />
+    <TableCell className="sticky left-44 z-20 border-r border-line bg-card group-hover:bg-moon/15"><Badge variant={registration.status === "attended" ? "secondary" : "outline"}>{t(`status_${registration.status}`)}</Badge></TableCell>
     <TableCell className="p-2"><Select
-      value={autosave.draft.assessmentBand ?? "none"}
+      value={assessmentAutosave.draft.assessmentBand ?? "none"}
       disabled={disabled}
       onValueChange={(value) => update("assessmentBand", value === "none" ? null : value as AssessmentBand)}
     >
@@ -387,100 +434,53 @@ function AssessmentRow({
       type="number"
       min={0}
       max={100}
-      value={autosave.draft.score ?? ""}
+      value={assessmentAutosave.draft.score ?? ""}
       disabled={disabled}
       onChange={(event) => update("score", event.target.value === "" ? null : Number(event.target.value))}
       className="h-9"
     /></TableCell>
-    <TableCell className="p-2"><CellTextarea value={autosave.draft.strengths} disabled={disabled} label={t("strengths")} onChange={(value) => update("strengths", value)} /></TableCell>
-    <TableCell className="p-2"><CellTextarea value={autosave.draft.focusAreas} disabled={disabled} label={t("focusAreas")} onChange={(value) => update("focusAreas", value)} /></TableCell>
-    <TableCell className="p-2"><CellTextarea value={autosave.draft.parentConcerns} disabled={disabled} label={t("parentConcerns")} onChange={(value) => update("parentConcerns", value)} /></TableCell>
+    <TableCell className="p-2"><CellTextarea value={assessmentAutosave.draft.strengths} disabled={disabled} label={t("strengths")} onChange={(value) => update("strengths", value)} /></TableCell>
+    <TableCell className="p-2"><CellTextarea value={assessmentAutosave.draft.focusAreas} disabled={disabled} label={t("focusAreas")} onChange={(value) => update("focusAreas", value)} /></TableCell>
+    <TableCell className="p-2"><CellTextarea value={assessmentAutosave.draft.parentConcerns} disabled={disabled} label={t("parentConcerns")} onChange={(value) => update("parentConcerns", value)} /></TableCell>
     <TableCell className="p-2"><Input
       aria-label={t("recommendedClass")}
-      value={autosave.draft.recommendedClass}
+      value={assessmentAutosave.draft.recommendedClass}
       disabled={disabled}
       maxLength={200}
       placeholder={t("recommendedClassPlaceholder")}
       onChange={(event) => update("recommendedClass", event.target.value)}
       className="h-9"
     /></TableCell>
-    <TableCell className="p-2"><CellTextarea value={autosave.draft.teacherRecommendation} disabled={disabled} label={t("teacherRecommendation")} onChange={(value) => update("teacherRecommendation", value)} /></TableCell>
-    <TableCell className="p-2"><AutosaveState state={autosave.state} retry={autosave.retry} /></TableCell>
-  </TableRow>;
-}
-
-function RoutingTable({ registrations, canRoute }: { registrations: ActivityRegistration[]; canRoute: boolean }) {
-  const t = useTranslations("school.activities");
-  const rows = registrations.filter((registration) => registration.status === "attended");
-
-  return <DashboardSection title={t("routingNodeTitle")} description={t("routingNodeHint")}>
-    <DashboardTableShell>
-      <Table className="min-w-[70rem] table-fixed">
-        <TableHeader><TableRow>
-          <TableHead className="w-48">{t("student")}</TableHead>
-          <TableHead className="w-64">{t("assessmentSummary")}</TableHead>
-          <TableHead className="w-52">{t("routingResult")}</TableHead>
-          <TableHead className="w-96">{t("routingNote")}</TableHead>
-          <TableHead className="w-24">{t("saveState")}</TableHead>
-        </TableRow></TableHeader>
-        <TableBody>
-          {rows.map((registration) => <RoutingRow key={registration.id} registration={registration} canRoute={canRoute} />)}
-          {rows.length === 0 ? <TableRow><TableCell colSpan={5} className="h-40 text-center text-muted">{t("noRoutingRows")}</TableCell></TableRow> : null}
-        </TableBody>
-      </Table>
-    </DashboardTableShell>
-  </DashboardSection>;
-}
-
-function RoutingRow({ registration, canRoute }: { registration: ActivityRegistration; canRoute: boolean }) {
-  const t = useTranslations("school.activities");
-  const autosave = useAutosavedDraft<RouteDraft>({
-    initial: {
-      route: registration.route?.route ?? "",
-      note: registration.route?.note ?? "",
-    },
-    enabled: canRoute,
-    save: (draft) => draft.route
-      ? saveActivityRouteAction({ registrationId: registration.id, route: draft.route, note: draft.note })
-      : Promise.resolve({ ok: false, code: "VALIDATION" as const }),
-    errorMessage: t("routeAutosaveFailed"),
-  });
-
-  return <TableRow>
-    <StudentCell registration={registration} />
-    <TableCell className="whitespace-normal">
-      {registration.assessment ? <div className="space-y-1">
-        <div className="flex flex-wrap gap-1.5">
-          {registration.assessment.assessmentBand ? <Badge variant="secondary">{t(`band_${registration.assessment.assessmentBand}`)}</Badge> : null}
-          {registration.assessment.recommendedClass ? <Badge variant="outline">{registration.assessment.recommendedClass}</Badge> : null}
-        </div>
-        <p className="line-clamp-2 text-xs leading-5 text-muted">{registration.assessment.teacherRecommendation || t("assessmentEntered")}</p>
-      </div> : <span className="text-xs text-muted">{t("notEntered")}</span>}
-    </TableCell>
-    <TableCell className="p-2"><Select
-      value={autosave.draft.route || "pending"}
-      disabled={!canRoute}
-      onValueChange={(value) => autosave.update("route", value === "pending" ? "" : value as ActivityRouteKind)}
-    >
-      <SelectTrigger className="h-9 w-full"><SelectValue /></SelectTrigger>
-      <SelectContent>
-        <SelectItem value="pending" disabled>{t("route_pending")}</SelectItem>
-        {ACTIVITY_ROUTES.map((route) => <SelectItem key={route} value={route}>{t(`route_${route}`)}</SelectItem>)}
-      </SelectContent>
-    </Select></TableCell>
-    <TableCell className="p-2"><CellTextarea
-      value={autosave.draft.note}
-      disabled={!canRoute || !autosave.draft.route}
-      label={t("routingNote")}
-      onChange={(value) => autosave.update("note", value)}
+    <TableCell className="p-2"><CellTextarea value={assessmentAutosave.draft.teacherRecommendation} disabled={disabled} label={t("teacherRecommendation")} onChange={(value) => update("teacherRecommendation", value)} /></TableCell>
+    {canViewOutcome ? <>
+      <TableCell className="p-2"><Select
+        value={routeAutosave.draft.route || "pending"}
+        disabled={outcomeDisabled}
+        onValueChange={(value) => routeAutosave.update("route", value === "pending" ? "" : value as ActivityRouteKind)}
+      >
+        <SelectTrigger className="h-9 w-full"><SelectValue /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="pending" disabled>{t("route_pending")}</SelectItem>
+          {ACTIVITY_ROUTES.map((route) => <SelectItem key={route} value={route}>{t(`route_${route}`)}</SelectItem>)}
+        </SelectContent>
+      </Select></TableCell>
+      <TableCell className="p-2"><CellTextarea
+        value={routeAutosave.draft.note}
+        disabled={outcomeDisabled || !routeAutosave.draft.route}
+        label={t("routingNote")}
+        onChange={(value) => routeAutosave.update("note", value)}
+      /></TableCell>
+    </> : null}
+    <TableCell className="p-2"><AutosaveState
+      state={saveState}
+      retry={() => saveEntries.filter((entry) => entry.state === "error").forEach((entry) => entry.retry())}
     /></TableCell>
-    <TableCell className="p-2"><AutosaveState state={autosave.state} retry={autosave.retry} /></TableCell>
   </TableRow>;
 }
 
-function StudentCell({ registration }: { registration: ActivityRegistration }) {
+function StudentCell({ registration, sticky = false }: { registration: ActivityRegistration; sticky?: boolean }) {
   const t = useTranslations("school.activities");
-  return <TableCell>
+  return <TableCell className={cn(sticky && "sticky left-0 z-20 border-r border-line bg-card group-hover:bg-moon/15")}>
     <Link href={`/dashboard/students/${registration.studentId}`} className="font-medium text-ink hover:underline">{registration.studentName}</Link>
     {registration.studentGrade ? <p className="mt-0.5 text-xs text-muted">{t("gradeValue", { grade: registration.studentGrade })}</p> : null}
   </TableCell>;
@@ -515,6 +515,14 @@ function AutosaveState({ state, retry }: { state: SaveState; retry: () => void }
   if (state === "error") return <Button type="button" variant="ghost" size="sm" className="h-7 gap-1 px-1.5 text-xs text-rose" onClick={retry}><CircleAlert className="size-3.5" />{t("autosave_retry")}</Button>;
   if (state === "dirty") return <span className="text-xs text-muted">{t("autosave_waiting")}</span>;
   return <span className="text-xs text-muted">—</span>;
+}
+
+function mergeSaveStates(states: SaveState[]): SaveState {
+  if (states.includes("error")) return "error";
+  if (states.includes("saving")) return "saving";
+  if (states.includes("dirty")) return "dirty";
+  if (states.includes("saved")) return "saved";
+  return "idle";
 }
 
 function useAutosavedDraft<T extends object>({

@@ -21,17 +21,22 @@ export default async function ActivityDetailPage({
   setRequestLocale(locale);
   const user = await requireAnyPerm(locale, ACTIVITY_WORKSPACE_PERMISSIONS);
   const permissions = await getMyPerms(user.id);
-  const canViewRouting = permissions.has("followup.view");
+  const canRegister = permissions.has("activity.register");
+  const canAssess = permissions.has("review.write");
+  const canViewOutcome = permissions.has("followup.view");
+  const canOpenAssessmentSession = canAssess || canViewOutcome;
   const [t, activity, timeZone] = await Promise.all([
     getTranslations("school.activities"),
     getActivity(activityId),
     getOrganizationTimezoneV2(),
   ]);
   if (!activity) notFound();
-  const requestedNode = typeof query.node === "string" && ACTIVITY_WORKSPACE_NODES.includes(query.node as ActivityWorkspaceNode)
-    ? query.node as ActivityWorkspaceNode
-    : "participation";
-  const activeNode = requestedNode === "routing" && !canViewRouting ? "participation" : requestedNode;
+  const requestedValue = query.node === "routing" ? "assessment" : query.node;
+  const defaultNode: ActivityWorkspaceNode = canAssess && !canRegister ? "assessment" : "participation";
+  const requestedNode = typeof requestedValue === "string" && ACTIVITY_WORKSPACE_NODES.includes(requestedValue as ActivityWorkspaceNode)
+    ? requestedValue as ActivityWorkspaceNode
+    : defaultNode;
+  const activeNode = requestedNode === "assessment" && !canOpenAssessmentSession ? "participation" : requestedNode;
 
   const dateTime = new Intl.DateTimeFormat(locale, {
     timeZone,
@@ -56,10 +61,10 @@ export default async function ActivityDetailPage({
     <ActivityWorkspace
       activity={activity}
       activeNode={activeNode}
-      canRegister={permissions.has("activity.register")}
-      canAssess={permissions.has("activity.register") || permissions.has("review.write")}
-      canViewRouting={canViewRouting}
-      canRoute={permissions.has("followup.write")}
+      canRegister={canRegister}
+      canAssess={canAssess}
+      canViewOutcome={canViewOutcome}
+      canRecordOutcome={permissions.has("followup.write")}
     />
   </ObjectWorkspace>;
 }

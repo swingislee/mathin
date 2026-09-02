@@ -10,6 +10,7 @@ export const ASSESSMENT_BANDS = [
 export type AssessmentBand = (typeof ASSESSMENT_BANDS)[number];
 
 export const ACTIVITY_ROUTES = [
+  "enrollment_pending",
   "continue_follow_up",
   "await_product",
   "closed",
@@ -20,7 +21,6 @@ export type ActivityRouteKind = (typeof ACTIVITY_ROUTES)[number];
 export const ACTIVITY_WORKSPACE_NODES = [
   "participation",
   "assessment",
-  "routing",
 ] as const;
 
 export type ActivityWorkspaceNode = (typeof ACTIVITY_WORKSPACE_NODES)[number];

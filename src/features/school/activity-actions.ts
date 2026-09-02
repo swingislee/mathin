@@ -91,15 +91,6 @@ async function authorizedActivityClient(key: PermissionKey) {
   return supabase;
 }
 
-async function authorizedActivityClientAny(keys: readonly PermissionKey[]) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("UNAUTHENTICATED");
-  const permissions = await getMyPerms(user.id);
-  if (!keys.some((key) => permissions.has(key))) throw new Error("FORBIDDEN");
-  return supabase;
-}
-
 function activityRpcArgs(input: ActivityInput) {
   const value = parse(activityInputSchema, input);
   return {
@@ -202,7 +193,7 @@ export async function markActivityResultAction(
 export async function beginActivityAssessmentAction(registrationId: string): Promise<ActionResult> {
   try {
     const value = parse(uuid, registrationId);
-    const supabase = await authorizedActivityClientAny(["activity.register", "review.write"]);
+    const supabase = await authorizedActivityClient("review.write");
     const { error } = await rpc(supabase)("begin_activity_assessment", {
       p_registration_id: value,
     });
@@ -216,7 +207,7 @@ export async function beginActivityAssessmentAction(registrationId: string): Pro
 export async function saveActivityAssessmentAction(input: ActivityAssessmentInput): Promise<ActionResult> {
   try {
     const value = parse(activityAssessmentSchema, input);
-    const supabase = await authorizedActivityClientAny(["activity.register", "review.write"]);
+    const supabase = await authorizedActivityClient("review.write");
     const { error } = await rpc(supabase)("save_activity_assessment_row", {
       p_registration_id: value.registrationId,
       p_assessment_band: value.assessmentBand ?? undefined,
