@@ -62,26 +62,30 @@ export default async function OpportunitiesPage({
     title={t("opportunityQueueTitle")}
     description={t("opportunityQueueHint")}
     commandPanel={<DashboardCommandPanel>
-      {canScopeAll ? <DashboardCommandState>
-        <DashboardCommandTabs
-          ariaLabel={t("opportunityScopeLabel")}
-          activeValue={scope}
-          items={[
-            { value: "mine", label: t("opportunityScopeMine"), href: href({ scope: "mine" }) },
-            { value: "all", label: t("opportunityScopeAll"), href: href({ scope: "all" }) },
-          ]}
-        />
-      </DashboardCommandState> : null}
-      <DashboardCommandState>
-        <DashboardCommandTabs
-          ariaLabel={t("opportunityStageFilter")}
-          activeValue={stage}
-          items={(["open", "won", "lost", "all"] as const).map((value) => ({
-            value,
-            label: t(`opportunityFilter_${value}`),
-            href: href({ stage: value }),
-          }))}
-        />
+      <DashboardCommandState className="gap-x-6 gap-y-3">
+        {canScopeAll ? <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <span className="shrink-0 text-xs font-medium text-muted">{t("opportunityScopeLabel")}</span>
+          <DashboardCommandTabs
+            ariaLabel={t("opportunityScopeLabel")}
+            activeValue={scope}
+            items={[
+              { value: "mine", label: t("opportunityScopeMine"), href: href({ scope: "mine" }) },
+              { value: "all", label: t("opportunityScopeAll"), href: href({ scope: "all" }) },
+            ]}
+          />
+        </div> : null}
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <span className="shrink-0 text-xs font-medium text-muted">{t("opportunityStageFilter")}</span>
+          <DashboardCommandTabs
+            ariaLabel={t("opportunityStageFilter")}
+            activeValue={stage}
+            items={(["open", "won", "lost", "all"] as const).map((value) => ({
+              value,
+              label: t(`opportunityFilter_${value}`),
+              href: href({ stage: value }),
+            }))}
+          />
+        </div>
       </DashboardCommandState>
     </DashboardCommandPanel>}
     summary={<StatusStrip items={[

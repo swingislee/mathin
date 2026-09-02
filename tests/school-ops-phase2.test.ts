@@ -33,6 +33,9 @@ describe("DEV-SCHOOL-OPS-1 Phase 2", () => {
     expect(workspace).not.toContain("school-ops");
     expect(opportunityPage).toContain("listSalesOpportunities");
     expect(opportunityPage).toContain("teacherRecommendation");
+    expect(opportunityPage.match(/<DashboardCommandState/g)).toHaveLength(1);
+    expect(opportunityPage).toContain('t("opportunityScopeLabel")');
+    expect(opportunityPage).toContain('t("opportunityStageFilter")');
     expect(opportunityPage).not.toContain("source_registration_id");
     expect(routes).toContain('hrefPattern: "/dashboard/activities/[activityId]"');
     expect(routes).toContain('href: "/dashboard/opportunities"');
