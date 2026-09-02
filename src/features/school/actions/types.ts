@@ -154,6 +154,107 @@ export interface PreviewStudentImportInput {
   rows: ImportStudentRow[];
 }
 
+export const XIAODITUI_IMPORT_TEMPLATE_VERSION = "xiaoditui-leads-v1" as const;
+
+export interface XiaodituiLeadImportRow {
+  sourceRow: number;
+  childName: string;
+  phone: string;
+  grade: number | null;
+  gradeText: string;
+  interestText: string;
+  interests: string[];
+  wechatNickname: string;
+  submittedAt: string | null;
+  sourceDuplicate: boolean;
+  acquisitionMethod: string;
+  promoter: string;
+  location: string;
+  remark: string;
+  orderNumber: string;
+  paymentStatus: string;
+  paymentAt: string | null;
+}
+
+export type LeadImportMatchKind =
+  | "new"
+  | "existing_seed"
+  | "existing_student_hint"
+  | "phone_name_conflict"
+  | "source_marked_duplicate"
+  | "same_batch_duplicate";
+
+export type LeadImportDecision =
+  | "auto_create"
+  | "auto_link"
+  | "pending"
+  | "create_new"
+  | "link_existing"
+  | "skip";
+
+export interface LeadImportBatchRow {
+  row: number;
+  sourceRow: number;
+  sourceName: string;
+  sourcePhone: string;
+  status: "valid" | "duplicate" | "error" | "inserted";
+  errors: string[];
+  targetId: string | null;
+  matchKind: LeadImportMatchKind;
+  decision: LeadImportDecision;
+  matchedLeadId: string | null;
+  matchedLeadName: string | null;
+  suggestedStudentId: string | null;
+  suggestedStudentName: string | null;
+}
+
+export interface LeadImportBatchResult {
+  batchId: string;
+  status: "validated" | "completed";
+  templateVersion: typeof XIAODITUI_IMPORT_TEMPLATE_VERSION;
+  inputHash: string;
+  fileName: string;
+  fileHash: string;
+  sheetName: string;
+  batchLabel: string;
+  total: number;
+  valid: number;
+  dup: number;
+  errorCount: number;
+  newCount: number;
+  matchedCount: number;
+  reviewCount: number;
+  skippedCount: number;
+  created: number;
+  applied: number;
+  expiresAt: string;
+  rows: LeadImportBatchRow[];
+}
+
+export interface LeadImportBatchSummary {
+  batchId: string;
+  status: "validated" | "completed";
+  fileName: string;
+  batchLabel: string;
+  total: number;
+  duplicates: number;
+  errors: number;
+  created: number;
+  reviewCount: number;
+  createdAt: string;
+  completedAt: string | null;
+}
+
+export interface PreviewLeadImportInput {
+  templateVersion: typeof XIAODITUI_IMPORT_TEMPLATE_VERSION;
+  idempotencyKey: string;
+  fileName: string;
+  fileBase64: string;
+  sheetName: string;
+  batchLabel: string;
+  rows: XiaodituiLeadImportRow[];
+}
+
 export const STAFF_IMPORT_TEMPLATE_VERSION = "mathin-staff-v1" as const;
 
 export interface ImportStaffRow {

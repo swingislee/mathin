@@ -43,6 +43,7 @@ export const HOME_NAV_ITEM: SchoolNavItem = navItem("home", { withGroup: false }
  */
 const STAFF_NAV_KEYS: readonly DashboardRouteKey[] = [
   "home",
+  "leads",
   "students",
   "activities",
   "followups",

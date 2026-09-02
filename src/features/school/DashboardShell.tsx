@@ -27,6 +27,7 @@ import {
   ShieldAlert,
   ShieldCheck,
   Sparkles,
+  Sprout,
   TicketCheck,
   UserCog,
   Users,
@@ -52,6 +53,7 @@ import { resolveActiveNavHref, type SchoolNavItem } from "./nav";
 
 const ICONS: Record<string, ComponentType<{ size?: number; strokeWidth?: number }>> = {
   home: LayoutDashboard,
+  leads: Sprout,
   followups: PhoneForwarded,
   students: Users,
   coordination: Handshake,

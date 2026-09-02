@@ -105,6 +105,7 @@
     "react-dom": "19.2.4",
     "react-easy-crop": "^6.1.0",
     "react-resizable-panels": "^4.12.2",
+    "read-excel-file": "9.3.10",
     "rehype-katex": "^7.0.1",
     "remark-gfm": "^4.0.1",
     "remark-math": "^6.0.0",
