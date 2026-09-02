@@ -8,6 +8,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { authorizedClient } from "@/features/school/actions/guards";
 import { COMMON_CODES, parse, requiredText, text, uuid } from "@/features/school/actions/schemas";
+import { staffInitialPasswordDigest } from "@/features/school/staff-initial-password";
 import type { AccountSupportTarget } from "./account-security";
 
 const consentSchema = z.object({
@@ -181,7 +182,7 @@ export async function changeInitialPasswordAction(input: unknown): Promise<Actio
       .limit(1)
       .maybeSingle<{ code_hash: string }>();
     if (invitationError || !invitation) throw new Error("INITIAL_PASSWORD_RECORD_MISSING");
-    const nextHash = createHash("md5").update(value.password).digest("hex");
+    const nextHash = staffInitialPasswordDigest(value.password);
     if (nextHash === invitation.code_hash) throw new Error("SAME_AS_INITIAL");
 
     const { error: passwordError } = await supabase.auth.updateUser({ password: value.password });

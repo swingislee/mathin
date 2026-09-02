@@ -6,10 +6,13 @@
 // ---------------------------------------------------------------------------
 
 import { z } from "zod";
+import { revalidatePath } from "next/cache";
 import { getProfile } from "@/lib/auth";
 import { actionError, type ActionResult } from "@/lib/action-result";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { isPermissionKey } from "../permissions";
+import { generateStaffInitialPassword, staffInitialPasswordDigest } from "../staff-initial-password";
 import { authorizedClient, nullableRpcArg } from "./guards";
 import { COMMON_CODES, parse, requiredText, uuid } from "./schemas";
 import type { FoundProfile, StaffHandoverPreview } from "./types";
@@ -31,7 +34,22 @@ const STAFF_ERROR_CODES = new Set([
   "INVALID_ROLE",
   "INVALID_REPLACEMENT",
   "LAST_ACTIVE_ADMIN",
+  "INITIAL_PASSWORD_NOT_REQUIRED",
+  "INITIAL_PASSWORD_RECORD_MISSING",
+  "PASSWORD_REISSUE_IN_PROGRESS",
+  "PASSWORD_REISSUE_FINALIZE_FAILED",
+  "PASSWORD_REISSUE_ROLLBACK_FAILED",
+  "AUTH_PROVIDER_FAILED",
 ]);
+
+interface PreparedInitialPasswordReissue {
+  reissue_id: string;
+}
+
+export interface StaffInitialPasswordReissue {
+  initialPassword: string;
+  auditPending: boolean;
+}
 
 function staffResult(error: { message: string } | null): ActionResult {
   if (!error) return { ok: true };
@@ -155,6 +173,58 @@ export async function deactivateStaffAction(target: string, reassignTo: string |
     return staffResult(error);
   } catch (error) {
     return staffCatch(error);
+  }
+}
+
+export async function reissueStaffInitialPasswordAction(
+  target: string,
+): Promise<ActionResult<StaffInitialPasswordReissue>> {
+  try {
+    const targetId = parse(uuid, target);
+    const { user } = await authorizedClient("staff.invite");
+    const initialPassword = generateStaffInitialPassword();
+    const codeHash = staffInitialPasswordDigest(initialPassword);
+    const admin = createAdminClient();
+    const { data: preparedData, error: prepareError } = await admin.rpc(
+      "prepare_staff_initial_password_reissue",
+      {
+        p_actor_id: user.id,
+        p_user_id: targetId,
+        p_code_hash: codeHash,
+      },
+    );
+    if (prepareError) throw new Error(prepareError.message);
+    const prepared = ((preparedData ?? []) as PreparedInitialPasswordReissue[])[0];
+    if (!prepared) throw new Error("PASSWORD_REISSUE_FINALIZE_FAILED");
+
+    const { error: authError } = await admin.auth.admin.updateUserById(targetId, {
+      password: initialPassword,
+    });
+    if (authError) {
+      const { error: rollbackError } = await admin.rpc("rollback_staff_initial_password_reissue", {
+        p_reissue_id: prepared.reissue_id,
+        p_actor_id: user.id,
+        p_expected_code_hash: codeHash,
+      });
+      if (rollbackError) throw new Error("PASSWORD_REISSUE_ROLLBACK_FAILED");
+      throw new Error("AUTH_PROVIDER_FAILED");
+    }
+
+    const { error: completionError } = await admin.rpc("complete_staff_initial_password_reissue", {
+      p_reissue_id: prepared.reissue_id,
+      p_actor_id: user.id,
+      p_expected_code_hash: codeHash,
+    });
+    revalidatePath("/[locale]/dashboard/staff", "page");
+    return {
+      ok: true,
+      data: {
+        initialPassword,
+        auditPending: Boolean(completionError),
+      },
+    };
+  } catch (error) {
+    return actionError<StaffInitialPasswordReissue>(error, [...STAFF_ERROR_CODES]);
   }
 }
 

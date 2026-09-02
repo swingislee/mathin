@@ -1,11 +1,12 @@
 "use server";
 
-import { createHash, randomInt } from "node:crypto";
+import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { actionError, type ActionResult } from "@/lib/action-result";
 import type { Json } from "@/lib/database.types";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { generateStaffInitialPassword, staffInitialPasswordDigest } from "../staff-initial-password";
 import { canonicalizeStaffRoleTokens } from "../staff-role-input";
 import { authorizedClient } from "./guards";
 import { COMMON_CODES, intInRange, parse, requiredText, uuid } from "./schemas";
@@ -62,16 +63,7 @@ interface PreparedStaffAccount {
   expires_at: string;
 }
 
-const INITIAL_PASSWORD_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const PROVISIONING_ERROR_CODES = ["ACCOUNT_EXISTS", "PROVISION_IN_PROGRESS", "BATCH_STALE"] as const;
-
-function initialPassword() {
-  let password = "M!9";
-  for (let index = 0; index < 15; index += 1) {
-    password += INITIAL_PASSWORD_ALPHABET[randomInt(INITIAL_PASSWORD_ALPHABET.length)];
-  }
-  return password;
-}
 
 function provisioningErrorCode(message: string) {
   return PROVISIONING_ERROR_CODES.find((code) => message.includes(code));
@@ -119,8 +111,8 @@ export async function applyStaffImportAction(
     if (pendingError) throw new Error(pendingError.message);
 
     const provisionOne = async (row: StaffProvisioningRow) => {
-      const password = initialPassword();
-      const codeHash = createHash("md5").update(password).digest("hex");
+      const password = generateStaffInitialPassword();
+      const codeHash = staffInitialPasswordDigest(password);
       let prepared: PreparedStaffAccount | undefined;
       let authUserCreated = false;
 
