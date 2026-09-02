@@ -218,7 +218,7 @@ Phase 1～5 的本机隔离 Supabase、固定开发身份、migration LF checksu
 
 #### DEV-STAFF-ONBOARD-1 · 员工批量邀请
 
-`DEV-STAFF-ONBOARD-1` 是产品负责人于 2026-09-02 选入的独立开发增量，当前状态为 **IN PROGRESS / LOCAL DEVELOPMENT ONLY**，不改变 R1-Live Gate 2。用户闭环固定为“在员工页粘贴或上传 `姓名 / 手机号或邮箱 / 岗位 key` 名单 → 生成版本化 ImportBatch 并逐行预检 → 整批零错误后一次性签发邀请 → 立即下载只显示一次的邀请凭据 → 受邀人注册后自动获得预先核准的姓名与岗位”。该流程复用现有 email/phone 一次性员工邀请和 `auth.users.id` 单账号合同，不直接创建 Auth 用户、不预设密码、不把已有顾客账号静默改为员工，也不允许非管理员预授含 `permission.configure` 的岗位。批次保留 dry-run、幂等、防漂移、错误下载和审计；联系人输入在批次完成或过期后清除。首批仅在本机隔离开发目标施工，未授权生产迁移、业务写入或发布。
+`DEV-STAFF-ONBOARD-1` 是产品负责人于 2026-09-02 选入的独立开发增量，当前状态为 **DEVELOPMENT READY / AWAITING PRODUCT OWNER UI AND INTERACTION ACCEPTANCE**，不改变 R1-Live Gate 2。用户闭环固定为“在员工页粘贴或上传 `姓名 / 手机号或邮箱 / 岗位 key` 名单 → 生成版本化 ImportBatch 并逐行预检 → 整批零错误后一次性签发邀请 → 自动下载且仅本次可见的邀请凭据 → 受邀人注册后自动获得预先核准的姓名与岗位”。migration `20260902000700_staff_bulk_onboarding` 已在本机隔离 Supabase 应用，复用现有 email/phone 一次性员工邀请和 `auth.users.id` 单账号合同；不直接创建 Auth 用户、不预设密码、不把已有顾客账号静默改为员工，也不允许非管理员预授含 `permission.configure` 的岗位。批次保留 dry-run、幂等、防漂移、错误下载和审计；联系人输入在批次完成或过期后清除。定向 Vitest 4/4、受影响 ESLint、TypeScript、双语键审计及本机 migration+事务回滚断言通过；本机 postflight 为 staff batch/invite role intent/bulk invite=`0/0/0`。页面与交接操作仍待产品负责人人工验收，未授权生产迁移、业务写入或发布。
 
 ## 6. 原 R1 工作重新定位
 

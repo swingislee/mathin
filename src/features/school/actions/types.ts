@@ -154,6 +154,66 @@ export interface PreviewStudentImportInput {
   rows: ImportStudentRow[];
 }
 
+export const STAFF_IMPORT_TEMPLATE_VERSION = "mathin-staff-v1" as const;
+
+export interface ImportStaffRow {
+  name: string;
+  identifier: string;
+  roles: string[];
+  validDays: number;
+}
+
+export interface StaffImportBatchRow {
+  row: number;
+  status: "valid" | "duplicate" | "error" | "inserted";
+  errors: string[];
+  targetId: string | null;
+}
+
+export interface StaffImportInvitation {
+  row: number;
+  name: string;
+  identifierType: "email" | "phone";
+  identifier: string;
+  roleKeys: string[];
+  inviteCode: string;
+  expiresAt: string;
+}
+
+export interface StaffImportBatchResult {
+  batchId: string;
+  status: "validated" | "completed";
+  templateVersion: typeof STAFF_IMPORT_TEMPLATE_VERSION;
+  inputHash: string;
+  total: number;
+  valid: number;
+  dup: number;
+  errorCount: number;
+  issued: number;
+  expiresAt: string;
+  rows: StaffImportBatchRow[];
+  codesAvailable: boolean;
+  invitations: StaffImportInvitation[];
+}
+
+export interface StaffImportBatchSummary {
+  batchId: string;
+  status: "validated" | "completed";
+  total: number;
+  valid: number;
+  duplicates: number;
+  errors: number;
+  issued: number;
+  createdAt: string;
+  completedAt: string | null;
+}
+
+export interface PreviewStaffImportInput {
+  templateVersion: typeof STAFF_IMPORT_TEMPLATE_VERSION;
+  idempotencyKey: string;
+  rows: ImportStaffRow[];
+}
+
 export interface CourseWriteInput {
   title: string;
   productCode: string;
