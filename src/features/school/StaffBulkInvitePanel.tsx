@@ -25,6 +25,11 @@ import {
 import { DashboardSection, DashboardTableShell, StatusStrip } from "./dashboard-page";
 import { parseDelimitedText } from "./delimited-text";
 import type { StaffRoleInfo } from "./staff";
+import {
+  hasLegacyStaffRoleSeparator,
+  splitStaffRoleInput,
+  staffRoleDisplayName,
+} from "./staff-role-input";
 
 interface ParsedStaffRow extends ImportStaffRow {
   line: number;
@@ -33,7 +38,6 @@ interface ParsedStaffRow extends ImportStaffRow {
 
 const HEADER_NAMES = new Set(["name", "姓名"]);
 const CSV_HEADERS = ["name", "identifier", "roles"];
-const ROLE_SPLITTER = /[|,;；，]/;
 const EXPIRY_OPTIONS = [1, 7, 14, 30] as const;
 
 function parseRows(text: string, validDays: number): ParsedStaffRow[] {
@@ -45,11 +49,12 @@ function parseRows(text: string, validDays: number): ParsedStaffRow[] {
     const name = (record.cells[0] ?? "").trim();
     const identifier = (record.cells[1] ?? "").trim();
     const roleText = record.cells.slice(2).join(",");
-    const roles = [...new Set(roleText.split(ROLE_SPLITTER).map((value) => value.trim()).filter(Boolean))];
+    const roles = splitStaffRoleInput(roleText);
     const localErrors: string[] = [];
     if (!name) localErrors.push("EMPTY_NAME");
     if (!identifier) localErrors.push("EMPTY_IDENTIFIER");
     if (roles.length === 0) localErrors.push("EMPTY_ROLES");
+    if (hasLegacyStaffRoleSeparator(roleText)) localErrors.push("INVALID_ROLES");
     return { line: record.line, name, identifier, roles, validDays, localErrors };
   });
 }
@@ -71,15 +76,22 @@ function downloadCsv(filename: string, rows: unknown[][]) {
   globalThis.setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
-function downloadCredentialBatch(batch: StaffImportBatchResult) {
+function downloadCredentialBatch(
+  batch: StaffImportBatchResult,
+  roles: StaffRoleInfo[],
+  locale: string,
+) {
   if (!batch.codesAvailable || batch.invitations.length === 0) return;
+  const headers = locale === "zh"
+    ? ["姓名", "标识类型", "手机号或邮箱", "岗位角色", "一次性邀请码", "失效时间"]
+    : ["name", "identifier_type", "identifier", "roles", "invite_code", "expires_at"];
   downloadCsv(`staff-invitations-${batch.batchId}.csv`, [
-    ["name", "identifier_type", "identifier", "roles", "invite_code", "expires_at"],
+    headers,
     ...batch.invitations.map((invite) => [
       invite.name,
-      invite.identifierType,
+      locale === "zh" ? (invite.identifierType === "email" ? "邮箱" : "手机号") : invite.identifierType,
       invite.identifier,
-      invite.roleKeys.join("|"),
+      invite.roleKeys.map((key) => staffRoleDisplayName(key, roles, locale)).join(" "),
       invite.inviteCode,
       invite.expiresAt,
     ]),
@@ -129,7 +141,7 @@ export function StaffBulkInvitePanel({
     errorMessage: errors,
     onSuccess: (value) => {
       setBatch(value);
-      downloadCredentialBatch(value);
+      downloadCredentialBatch(value, roles, locale);
       router.refresh();
     },
   });
@@ -169,14 +181,19 @@ export function StaffBulkInvitePanel({
       validDays,
     })),
   });
+  const localizedHeaders = locale === "zh" ? ["姓名", "手机号或邮箱", "岗位角色"] : CSV_HEADERS;
   const downloadTemplate = () => downloadCsv(`${STAFF_IMPORT_TEMPLATE_VERSION}.csv`, [
-    CSV_HEADERS,
-    [t("bulkTemplateExampleName"), "teacher@example.com", "teacher|research"],
+    localizedHeaders,
+    [
+      t("bulkTemplateExampleName"),
+      "teacher@example.com",
+      locale === "zh" ? "教师 教研" : "teacher research",
+    ],
   ]);
   const downloadErrors = () => {
     if (!batch) return;
     downloadCsv(`staff-import-${batch.batchId}-errors.csv`, [
-      ["line", "status", "error_codes", ...CSV_HEADERS],
+      ["line", "status", "error_codes", ...localizedHeaders],
       ...batch.rows
         .filter((row) => row.status === "error")
         .map((finding) => {
@@ -187,12 +204,12 @@ export function StaffBulkInvitePanel({
             finding.errors.join("|"),
             source?.name ?? "",
             source?.identifier ?? "",
-            source?.roles.join("|") ?? "",
+            source?.roles.join(" ") ?? "",
           ];
         }),
     ]);
   };
-  const downloadCredentials = () => batch && downloadCredentialBatch(batch);
+  const downloadCredentials = () => batch && downloadCredentialBatch(batch, roles, locale);
   const formatAt = (value: string) => new Intl.DateTimeFormat(locale, {
     dateStyle: "medium",
     timeStyle: "short",
@@ -275,7 +292,7 @@ export function StaffBulkInvitePanel({
             <dl className="mt-4 space-y-3 text-xs">
               <div>
                 <dt className="font-medium text-ink">{t("bulkColumns")}</dt>
-                <dd className="mt-0.5 font-mono leading-5 text-muted">name · identifier · roles</dd>
+                <dd className="mt-0.5 leading-5 text-muted">{t("bulkColumnNames")}</dd>
               </div>
               <div>
                 <dt className="font-medium text-ink">{t("bulkRoleKeys")}</dt>
@@ -286,7 +303,7 @@ export function StaffBulkInvitePanel({
                       variant={role.permKeys.includes("permission.configure") && !isAdmin ? "danger" : "secondary"}
                       title={role.name}
                     >
-                      {role.key}
+                      {staffRoleDisplayName(role.key, roles, locale)}
                     </Badge>
                   ))}
                 </dd>
@@ -329,7 +346,7 @@ export function StaffBulkInvitePanel({
                       <TableCell className="font-mono text-muted">{row.line}</TableCell>
                       <TableCell className="font-medium">{row.name || "—"}</TableCell>
                       <TableCell>{row.identifier || "—"}</TableCell>
-                      <TableCell className="font-mono">{row.roles.join(" · ") || "—"}</TableCell>
+                      <TableCell>{row.roles.join(" ") || "—"}</TableCell>
                       <TableCell className={cn(
                         finding.status === "error" || finding.status === "duplicate" ? "text-rose" : "text-muted",
                       )}>
@@ -436,7 +453,9 @@ export function StaffBulkInvitePanel({
                   <TableRow key={`${invite.row}-${invite.identifier}`}>
                     <TableCell className="font-medium">{invite.name}</TableCell>
                     <TableCell>{invite.identifier}</TableCell>
-                    <TableCell className="font-mono">{invite.roleKeys.join(" · ")}</TableCell>
+                    <TableCell>
+                      {invite.roleKeys.map((key) => staffRoleDisplayName(key, roles, locale)).join(" ")}
+                    </TableCell>
                     <TableCell className="font-mono text-sm tracking-wider">{invite.inviteCode}</TableCell>
                     <TableCell className="whitespace-nowrap">{formatAt(invite.expiresAt)}</TableCell>
                   </TableRow>
