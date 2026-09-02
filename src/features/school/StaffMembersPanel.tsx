@@ -23,10 +23,11 @@ import { useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { fromSelectValue, inputClass, toSelectValue } from "./controls";
 import { deactivateStaffAction, findProfileByEmailAction, getStaffHandoverPreviewAction, grantStaffRoleAction, promoteToStaffAction, revokeStaffRoleAction } from "./actions/staff";
-import { type FoundProfile } from "./actions/types";
+import { type FoundProfile, type StaffImportBatchSummary } from "./actions/types";
 import type { ActionResult } from "@/lib/action-result";
 import type { StaffMember, StaffRoleInfo } from "./staff";
 import { DashboardTableShell } from "./dashboard-page";
+import { StaffBulkInvitePanel } from "./StaffBulkInvitePanel";
 
 /** 服务端错误码 → school.staff.err_* 文案；未知码回落 actionFailed。 */
 const KNOWN_ERR = new Set([
@@ -43,11 +44,13 @@ const KNOWN_ERR = new Set([
 export function StaffMembersPanel({
   members,
   roles,
+  recentImportBatches,
   selfId,
   isAdmin,
 }: {
   members: StaffMember[];
   roles: StaffRoleInfo[];
+  recentImportBatches: StaffImportBatchSummary[];
   selfId: string;
   isAdmin: boolean;
 }) {
@@ -197,6 +200,8 @@ export function StaffMembersPanel({
           </TableBody>
         </Table>
       </DashboardTableShell>
+
+      <StaffBulkInvitePanel roles={roles} recentBatches={recentImportBatches} isAdmin={isAdmin} />
 
       <section className="rounded-2xl border border-line bg-card p-5">
         <h2 className="text-base font-medium text-ink">{t("addStaff")}</h2>
