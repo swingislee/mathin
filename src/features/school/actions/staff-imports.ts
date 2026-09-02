@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 import { actionError, type ActionResult } from "@/lib/action-result";
 import type { Json } from "@/lib/database.types";
+import { canonicalizeStaffRoleTokens } from "../staff-role-input";
 import { authorizedClient } from "./guards";
 import { COMMON_CODES, intInRange, parse, requiredText, uuid } from "./schemas";
 import {
@@ -43,11 +44,19 @@ export async function previewStaffImportAction(
 ): Promise<ActionResult<StaffImportBatchResult>> {
   try {
     const value = parse(previewStaffImportSchema, input);
-    const inputHash = createHash("sha256").update(JSON.stringify(value.rows)).digest("hex");
     const { supabase } = await authorizedClient("staff.manage");
+    const { data: roleAliases, error: roleError } = await supabase
+      .from("staff_roles")
+      .select("key,name");
+    if (roleError) throw new Error(roleError.message);
+    const canonicalRows = value.rows.map((row) => ({
+      ...row,
+      roles: canonicalizeStaffRoleTokens(row.roles, roleAliases ?? []),
+    }));
+    const inputHash = createHash("sha256").update(JSON.stringify(canonicalRows)).digest("hex");
     const { data, error } = await supabase.rpc("preview_staff_import", {
       p_template_version: value.templateVersion,
-      p_rows: value.rows as unknown as Json,
+      p_rows: canonicalRows as unknown as Json,
       p_idempotency_key: value.idempotencyKey,
       p_input_hash: inputHash,
     });
