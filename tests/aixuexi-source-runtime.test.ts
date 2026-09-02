@@ -15,10 +15,12 @@ import {
 import {
   SOURCE_RUNTIME_DELIVERY_PARAM,
   SOURCE_RUNTIME_DELIVERY_VERSION,
+  sourceRuntimeVisualLifecycleScript,
   upgradeSourceRuntimeViewerScript,
   versionSourceRuntimeEntryUrl,
   versionSourceRuntimeHtmlAssets,
 } from "../src/features/courseware-doc/source-runtime-delivery.mjs";
+import { prepareSourceRuntimeResourcesForSandbox } from "../src/features/courseware-doc/source-runtime-sandbox";
 import {
   countCoursewareH5Frames,
   resolveClassroomRendererInputProfile,
@@ -229,6 +231,56 @@ describe("producer-owned Aixuexi source runtime", () => {
     expect(html).toContain(`viewer-runtime.js?${SOURCE_RUNTIME_DELIVERY_PARAM}=${SOURCE_RUNTIME_DELIVERY_VERSION}`);
   });
 
+  it("re-homes classroom Blob resources inside the opaque source-runtime sandbox", async () => {
+    const parentUrl = URL.createObjectURL(new Blob(["image-bytes"], { type: "image/webp" }));
+    try {
+      const prepared = await prepareSourceRuntimeResourcesForSandbox({
+        image: parentUrl,
+        remote: "https://example.test/asset.webp",
+      });
+      expect(prepared.image).toBeInstanceOf(Blob);
+      expect(await (prepared.image as Blob).text()).toBe("image-bytes");
+      expect(prepared.remote).toBe("https://example.test/asset.webp");
+
+      const created: string[] = [];
+      const revoked: string[] = [];
+      const rendered: Array<Record<string, unknown>> = [];
+      const runtime = new Function(
+        "Blob",
+        "URL",
+        "document",
+        "app",
+        "mathinRenderBody",
+        "mathinSend",
+        `${sourceRuntimeVisualLifecycleScript()}; return mathinRender;`,
+      )(
+        Blob,
+        {
+          createObjectURL: () => {
+            const url = `blob:null/sandbox-${created.length + 1}`;
+            created.push(url);
+            return url;
+          },
+          revokeObjectURL: (url: string) => revoked.push(url),
+        },
+        {},
+        { firstElementChild: null },
+        async (message: Record<string, unknown>) => rendered.push(message),
+        () => undefined,
+      ) as (message: Record<string, unknown>) => Promise<void>;
+
+      await runtime({ renderKey: "page-1", resources: { image: prepared.image } });
+      expect((rendered[0].resources as Record<string, string>).image).toBe("blob:null/sandbox-1");
+      expect(revoked).toEqual([]);
+
+      await runtime({ renderKey: "page-2", resources: { image: prepared.image } });
+      expect((rendered[1].resources as Record<string, string>).image).toBe("blob:null/sandbox-2");
+      expect(revoked).toEqual(["blob:null/sandbox-1"]);
+    } finally {
+      URL.revokeObjectURL(parentUrl);
+    }
+  });
+
   it("adapts the published 5.6.6 Lottie readiness bridge without replacing source rendering", () => {
     const published = [
       "async function hydrateAixuexiLottie(){",
@@ -267,6 +319,8 @@ describe("producer-owned Aixuexi source runtime", () => {
     );
     expect(host).toContain("<iframe");
     expect(host).toContain("materializePayload");
+    expect(host).toContain("prepareSourceRuntimeResourcesForSandbox");
+    expect(host).not.toContain("allow-same-origin");
     expect(host).toContain("renderedFrameKey === renderKey");
     expect(host).toContain("runtimeLoadedFor.current = runtimeInstanceKey");
     expect(host).toContain("runtimeInFlightFor.current");

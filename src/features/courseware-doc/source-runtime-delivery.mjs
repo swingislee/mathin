@@ -1,5 +1,5 @@
 export const SOURCE_RUNTIME_DELIVERY_PARAM = "mathin_source_delivery";
-export const SOURCE_RUNTIME_DELIVERY_VERSION = "5";
+export const SOURCE_RUNTIME_DELIVERY_VERSION = "6";
 
 const SOURCE_RUNTIME_LOTTIE_READINESS_MARKER = `/* mathin-source-lottie-readiness-v${SOURCE_RUNTIME_DELIVERY_VERSION} */`;
 
@@ -48,18 +48,43 @@ export function isVersionedSourceRuntimeViewerAsset(packagePath, requestUrl) {
 export function sourceRuntimeVisualLifecycleScript() {
   return String.raw`
 const mathinVisualLifecycleVersion='${SOURCE_RUNTIME_DELIVERY_VERSION}';
+let mathinVisualObjectUrls=[];
+function mathinPrepareVisualMessage(message){
+  const objectUrls=[];
+  const resources={};
+  for(const [resourceId,value] of Object.entries(message.resources||{})){
+    if(typeof Blob!=='undefined'&&value instanceof Blob){
+      const url=URL.createObjectURL(value);
+      objectUrls.push(url);
+      resources[resourceId]=url
+    }else resources[resourceId]=value
+  }
+  return {message:{...message,resources},objectUrls}
+}
+function mathinReleaseVisualObjectUrls(urls){
+  for(const url of urls)URL.revokeObjectURL(url)
+}
 async function mathinRender(message){
-  if(typeof document.startViewTransition==='function'&&app.firstElementChild){
-    let updatePromise=null;
-    const transition=document.startViewTransition(()=>{
-      updatePromise=Promise.resolve().then(()=>mathinRenderBody(message));
-      return updatePromise
-    });
-    void transition.ready.catch(()=>undefined);
-    void transition.finished.catch(()=>undefined);
-    try{await transition.updateCallbackDone}catch(error){if(updatePromise)await updatePromise;else throw error}
-  }else await mathinRenderBody(message);
-  mathinSend('rendered',{renderKey:message.renderKey})
+  const prepared=mathinPrepareVisualMessage(message);
+  try{
+    if(typeof document.startViewTransition==='function'&&app.firstElementChild){
+      let updatePromise=null;
+      const transition=document.startViewTransition(()=>{
+        updatePromise=Promise.resolve().then(()=>mathinRenderBody(prepared.message));
+        return updatePromise
+      });
+      void transition.ready.catch(()=>undefined);
+      void transition.finished.catch(()=>undefined);
+      try{await transition.updateCallbackDone}catch(error){if(updatePromise)await updatePromise;else throw error}
+    }else await mathinRenderBody(prepared.message);
+    const previous=mathinVisualObjectUrls;
+    mathinVisualObjectUrls=prepared.objectUrls;
+    mathinReleaseVisualObjectUrls(previous);
+    mathinSend('rendered',{renderKey:message.renderKey})
+  }catch(error){
+    mathinReleaseVisualObjectUrls(prepared.objectUrls);
+    throw error
+  }
 }`;
 }
 

@@ -13,6 +13,10 @@ import {
 } from "./source-runtime-schema";
 import { sourceRuntimeFourByThreeMode } from "./source-runtime-four-by-three";
 import { versionSourceRuntimeEntryUrl } from "./source-runtime-delivery.mjs";
+import {
+  prepareSourceRuntimeResourcesForSandbox,
+  type SourceRuntimeSandboxResource,
+} from "./source-runtime-sandbox";
 import { useH5FrameRegistration } from "./useH5FrameRegistration";
 
 const FRAME_MESSAGE_SOURCE = "mathin-source-runtime";
@@ -36,10 +40,19 @@ interface RuntimePayload {
   renderKey: string;
   format: string;
   data: Record<string, unknown>;
-  resources: Record<string, string>;
+  resources: Record<string, SourceRuntimeSandboxResource>;
   routes: Record<string, string>;
   interactive: boolean;
   advanceOnCanvasClick: boolean;
+}
+
+function runtimeBindingSignature(doc: SourceRuntimePageDoc, bindingUrls: ResolvedBindingUrls): string {
+  return JSON.stringify({
+    resources: Object.entries(doc.bindings.resources).map(([resourceId, bindingKey]) => (
+      [resourceId, bindingUrls[bindingKey] ?? null]
+    )),
+    routes: doc.bindings.routes.map((route) => [route.path, bindingUrls[route.bindingKey] ?? null]),
+  });
 }
 
 function materializePayload(
@@ -109,10 +122,15 @@ export default function SourceRuntimeStage({
   const rendered = renderedFrameKey === renderKey;
   const hasRenderedCurrentRuntime = renderedFrameKey?.startsWith(`${runtimeInstanceKey}:`) ?? false;
   const runtimeError = runtimeFailure?.frameKey === renderKey ? runtimeFailure.message : null;
+  const bindingSignature = runtimeBindingSignature(doc, bindingUrls);
   const payload = useMemo(
     () => materializePayload(doc, bindingUrls, interactive, renderKey),
-    [bindingUrls, doc, interactive, renderKey],
+    // bindingSignature contains every binding value consumed by materializePayload;
+    // unrelated lecture assets can continue preloading without restarting Blob cloning.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [bindingSignature, doc, interactive, renderKey],
   );
+  const [sandboxPayload, setSandboxPayload] = useState<{ renderKey: string; payload: RuntimePayload } | null>(null);
 
   const flushRuntimeRender = useCallback(() => {
     if (runtimeReadyFor.current !== runtimeInstanceKey
@@ -147,8 +165,27 @@ export default function SourceRuntimeStage({
   }, [runtimeInstanceKey]);
 
   useEffect(() => {
-    if (payload) queueRuntimeRender(renderKey, payload);
-  }, [payload, queueRuntimeRender, renderKey]);
+    if (!payload) return;
+    const controller = new AbortController();
+    void prepareSourceRuntimeResourcesForSandbox(
+      payload.resources,
+      controller.signal,
+    ).then((resources) => {
+      if (controller.signal.aborted) return;
+      setSandboxPayload({ renderKey, payload: { ...payload, resources } });
+    }).catch(() => {
+      if (controller.signal.aborted) return;
+      setRuntimeFailure({
+        frameKey: renderKey,
+        message: t("sourceRuntimeUnavailable"),
+      });
+    });
+    return () => controller.abort();
+  }, [payload, renderKey, t]);
+
+  useEffect(() => {
+    if (sandboxPayload?.renderKey === renderKey) queueRuntimeRender(renderKey, sandboxPayload.payload);
+  }, [queueRuntimeRender, renderKey, sandboxPayload]);
 
   // The source Viewer can render a lightweight page between the iframe load
   // event and React's passive-effect flush. Install the message listener in
