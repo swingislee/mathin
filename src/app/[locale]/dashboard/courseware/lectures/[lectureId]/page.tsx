@@ -65,7 +65,7 @@ async function LectureWorkspaceContent({
     await loadLectureWorkspacePageData(locale, lectureId, rawSearchParams);
 
   if (microcourseReviewCycleId) {
-    redirect(`/${locale}/dashboard/courseware/review/microcourses/${microcourseReviewCycleId}`);
+    redirect(`/${locale}/dashboard/courseware/microcourse-reviews/${microcourseReviewCycleId}`);
   }
 
   const baseHref = `/dashboard/courseware/lectures/${detail.lecture.id}`;

@@ -35,7 +35,7 @@ describe("DEV-TMC-1 teacher microcourse product surfaces", () => {
     const switcher = read("src", "features", "teacher-microcourses", "MicrocourseVariantSwitcher.tsx");
     const preview = read("src", "features", "teacher-microcourses", "MicrocourseVariantPreview.tsx");
     const classroomActions = read("src", "features", "classroom", "actions.ts");
-    const reviewRoute = read("src", "app", "[locale]", "dashboard", "courseware", "review", "page.tsx");
+    const reviewWorkspace = read("src", "features", "teacher-microcourses", "MicrocourseReviewWorkspace.tsx");
 
     expect(variantMigration).toContain("create_teacher_microcourse_variant");
     expect(variantMigration).toContain("fork_teacher_microcourse_variant");
@@ -51,7 +51,7 @@ describe("DEV-TMC-1 teacher microcourse product surfaces", () => {
     expect(switcher).toContain("selectTeacherMicrocourseVariantAction");
     expect(switcher).toContain('data-testid="microcourse-variant-switcher"');
     expect(preview).toContain('data-testid="microcourse-variant-preview"');
-    expect(reviewRoute).toContain("listTeacherMicrocourseSessionWorkspaces");
+    expect(reviewWorkspace).toContain("listTeacherMicrocourseSessionWorkspaces");
   });
 
   it("exposes composition, registered games and H5 while preserving source provenance", () => {
@@ -132,16 +132,19 @@ describe("DEV-TMC-1 teacher microcourse product surfaces", () => {
   it("routes generic lecture review links into the immutable microcourse review workspace", () => {
     const lectureLoader = read("src", "features", "school", "curriculum", "load-lecture-workspace-page.ts");
     const lectureRoute = read("src", "app", "[locale]", "dashboard", "courseware", "lectures", "[lectureId]", "page.tsx");
-    const reviewRoute = read("src", "app", "[locale]", "dashboard", "courseware", "review", "page.tsx");
+    const reviewRoute = read("src", "app", "[locale]", "dashboard", "courseware", "microcourse-reviews", "page.tsx");
+    const adaptReviewRoute = read("src", "app", "[locale]", "dashboard", "courseware", "review", "page.tsx");
     const reviewQueue = read("src", "features", "teacher-microcourses", "MicrocourseReviewQueue.tsx");
     const sessionQueue = read("src", "features", "teacher-microcourses", "MicrocourseSessionWorkspaceQueue.tsx");
     const data = read("src", "features", "teacher-microcourses", "data.ts");
 
     expect(lectureLoader).toContain("isTeacherMicrocourseReviewCycle(activeReviewCycleId)");
     expect(lectureRoute).toContain("microcourseReviewCycleId");
-    expect(lectureRoute).toContain("/dashboard/courseware/review/microcourses/");
-    expect(reviewRoute).toContain('return canReviewMicrocourses ? "microcourses" : "backgrounds"');
+    expect(lectureRoute).toContain("/dashboard/courseware/microcourse-reviews/");
+    expect(reviewRoute).toContain("<MicrocourseReviewWorkspace");
     expect(reviewRoute).toContain('title={t("reviewWorkspaceTitle")}');
+    expect(adaptReviewRoute).toContain('first(query.tab) === "microcourses"');
+    expect(adaptReviewRoute).not.toContain("listTeacherMicrocourseReviewQueue");
     expect(reviewQueue).toContain("<Table");
     expect(sessionQueue).toContain("<Table");
     expect(reviewQueue).not.toContain("<Card");
@@ -211,7 +214,7 @@ describe("DEV-TMC-1 teacher microcourse product surfaces", () => {
     expect(route).toContain('detail.family.slug === "teacher-microcourses"');
     expect(route).toContain("<TeacherMicrocourseBrowser");
     expect(route).not.toContain("<TeacherMicrocourseLibrary");
-    expect(browser).toContain("@6xl/page:grid-cols-[16rem_minmax(0,1fr)_20rem]");
+    expect(browser).toContain("@5xl/page:grid-cols-[15rem_minmax(0,1fr)_20rem]");
     expect(browser).toContain("<ObjectWorkspace");
     expect(browser).toContain("<DashboardCommandPanel");
     expect(browser).not.toContain("<Card");

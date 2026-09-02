@@ -652,6 +652,7 @@
   },
   "teacherMicrocourses": {
     "pageTitle": "Teacher microcourse",
+    "reviewWorkspaceTitle": "Teacher microcourse review",
     "backToSession": "Back to session",
     "featureDisabledTitle": "Teacher microcourses are not enabled",
     "featureDisabledDescription": "This feature is currently in school development acceptance.",
@@ -1697,7 +1698,8 @@
       "courses": "Course products",
       "courseware": "Courseware",
       "workbench": "R&D tasks",
-      "adaptReview": "Adapt review",
+      "adaptReview": "Formal courseware review",
+      "microcourseReview": "Teacher microcourse review",
       "preparationReview": "Preparation review",
       "sharedAssets": "Shared assets",
       "assetLibrary": "Courseware assets",

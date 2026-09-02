@@ -14,7 +14,8 @@ describe("P6 adaptation review and release workflow", () => {
     expect(page).toContain("AdaptReviewFilters");
     expect(page).toContain('requested === "backgrounds" || requested === "rework" || requested === "pages"');
     expect(page).toContain('|| requested === "releases" || requested === "history"');
-    expect(page).toContain("resolveReviewTab(requestedTab, canReviewMicrocourses)");
+    expect(page).toContain("resolveReviewTab(requestedTab)");
+    expect(page).not.toContain("listTeacherMicrocourseReviewQueue");
     expect(data).toContain('"list_cw_adapt_background_review_queue"');
     expect(data).toContain('"list_cw_adapt_page_review_queue"');
     expect(data).toContain('"list_cw_adapt_release_queue"');

@@ -652,6 +652,7 @@
   },
   "teacherMicrocourses": {
     "pageTitle": "教师微课",
+    "reviewWorkspaceTitle": "教师微课审核",
     "backToSession": "返回课次",
     "featureDisabledTitle": "教师微课功能尚未启用",
     "featureDisabledDescription": "当前处于校内开发验收阶段。",
@@ -1697,7 +1698,8 @@
       "courses": "课程产品",
       "courseware": "课件",
       "workbench": "研发任务",
-      "adaptReview": "适配校对",
+      "adaptReview": "正式课适配审核",
+      "microcourseReview": "教师微课审核",
       "preparationReview": "备课审核",
       "sharedAssets": "公共资源",
       "assetLibrary": "课件资源库",

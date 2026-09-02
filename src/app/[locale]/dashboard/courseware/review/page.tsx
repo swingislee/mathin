@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { redirect } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { AdaptBackgroundHistory } from "@/features/courseware-studio/AdaptBackgroundHistory";
 import { AdaptBackgroundReworkQueue } from "@/features/courseware-studio/AdaptBackgroundReworkQueue";
@@ -27,14 +28,8 @@ import {
   DashboardPage,
 } from "@/features/school/dashboard-page";
 import { getMyPerms, requireAnyPerm } from "@/lib/auth";
-import { MicrocourseReviewQueue } from "@/features/teacher-microcourses/MicrocourseReviewQueue";
-import { MicrocourseSessionWorkspaceQueue } from "@/features/teacher-microcourses/MicrocourseSessionWorkspaceQueue";
-import {
-  listTeacherMicrocourseReviewQueue,
-  listTeacherMicrocourseSessionWorkspaces,
-} from "@/features/teacher-microcourses/data";
 
-type AdaptReviewTab = "microcourses" | "backgrounds" | "rework" | "pages" | "releases" | "history";
+type AdaptReviewTab = "backgrounds" | "rework" | "pages" | "releases" | "history";
 
 function first(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -49,11 +44,10 @@ function tabHref(tab: AdaptReviewTab, courseId: string | null, lectureId: string
   return "/dashboard/courseware/review?" + query.toString();
 }
 
-function resolveReviewTab(requested: string | undefined, canReviewMicrocourses: boolean): AdaptReviewTab {
-  if (requested === "microcourses") return canReviewMicrocourses ? "microcourses" : "backgrounds";
+function resolveReviewTab(requested: string | undefined): AdaptReviewTab {
   if (requested === "backgrounds" || requested === "rework" || requested === "pages"
     || requested === "releases" || requested === "history") return requested;
-  return canReviewMicrocourses ? "microcourses" : "backgrounds";
+  return "backgrounds";
 }
 
 // doc22 §5.18：背景审阅/返工/页面审阅/发布/历史都属于课件生产，是 /dashboard/courseware
@@ -67,34 +61,33 @@ export default async function CoursewareReviewPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const query = await searchParams;
+  // Step 7 keeps the former combined URL as a compatibility entry while the
+  // teacher-microcourse workflow moves to its own review object and route.
+  if (first(query.tab) === "microcourses") {
+    redirect(`/${locale}/dashboard/courseware/microcourse-reviews`);
+  }
   const t = await getTranslations("coursewareStudio");
   return (
     <DashboardPage
       title={t("reviewWorkspaceTitle")}
       commandPanel={
         <Suspense fallback={<DashboardCommandPanel />}>
-          <AdaptReviewCommandPanel locale={locale} searchParams={searchParams} />
+          <AdaptReviewCommandPanel searchParams={query} />
         </Suspense>
       }
     >
       <Suspense fallback={<div className="h-96 animate-pulse bg-moon/10" />}>
-        <AdaptReviewContent locale={locale} searchParams={searchParams} />
+        <AdaptReviewContent locale={locale} searchParams={query} />
       </Suspense>
     </DashboardPage>
   );
 }
 
-async function AdaptReviewCommandPanel({ locale, searchParams }: { locale: string; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const [t, tm, query, user] = await Promise.all([
-    getTranslations("coursewareStudio"),
-    getTranslations("teacherMicrocourses"),
-    searchParams,
-    requireAnyPerm(locale, COURSEWARE_STUDIO_PERMS),
-  ]);
-  const perms = await getMyPerms(user.id);
-  const canReviewMicrocourses = perms.has("courseware.review");
+async function AdaptReviewCommandPanel({ searchParams: query }: { searchParams: Record<string, string | string[] | undefined> }) {
+  const t = await getTranslations("coursewareStudio");
   const requestedTab = first(query.tab);
-  const tab = resolveReviewTab(requestedTab, canReviewMicrocourses);
+  const tab = resolveReviewTab(requestedTab);
   const courseId = parseAdaptFilterId(query.course);
   const lectureId = courseId ? parseAdaptFilterId(query.lecture) : null;
   const filterOptions = await loadAdaptReviewFilterOptions(courseId);
@@ -105,7 +98,6 @@ async function AdaptReviewCommandPanel({ locale, searchParams }: { locale: strin
           ariaLabel={t("reviewWorkspaceTitle")}
           activeValue={tab}
           items={[
-            ...(canReviewMicrocourses ? [{ value: "microcourses", label: tm("reviewQueueTab"), href: tabHref("microcourses", courseId, lectureId) }] : []),
             { value: "backgrounds", label: t("adaptBackgroundTab"), href: tabHref("backgrounds", courseId, lectureId) },
             { value: "rework", label: t("adaptReworkTab"), href: tabHref("rework", courseId, lectureId) },
             { value: "pages", label: t("adaptPageTab"), href: tabHref("pages", courseId, lectureId) },
@@ -114,18 +106,18 @@ async function AdaptReviewCommandPanel({ locale, searchParams }: { locale: strin
           ]}
         />
       </DashboardCommandState>
-      {tab !== "microcourses" && <DashboardCommandFilters>
+      <DashboardCommandFilters>
         <AdaptReviewFilters options={filterOptions} courseId={courseId} lectureId={lectureId} embedded />
-      </DashboardCommandFilters>}
+      </DashboardCommandFilters>
     </DashboardCommandPanel>
   );
 }
 
-async function AdaptReviewContent({ locale, searchParams }: { locale: string; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const [user, query] = await Promise.all([requireAnyPerm(locale, COURSEWARE_STUDIO_PERMS), searchParams]);
+async function AdaptReviewContent({ locale, searchParams: query }: { locale: string; searchParams: Record<string, string | string[] | undefined> }) {
+  const user = await requireAnyPerm(locale, COURSEWARE_STUDIO_PERMS);
   const perms = await getMyPerms(user.id);
   const requestedTab = first(query.tab);
-  const tab = resolveReviewTab(requestedTab, perms.has("courseware.review"));
+  const tab = resolveReviewTab(requestedTab);
   const page = parseAdaptReviewPage(query.page);
   const courseId = parseAdaptFilterId(query.course);
   const lectureId = courseId ? parseAdaptFilterId(query.lecture) : null;
@@ -133,54 +125,6 @@ async function AdaptReviewContent({ locale, searchParams }: { locale: string; se
   const canManageAssets = perms.has("courseware.asset.manage");
   const canEditPages = perms.has("courseware.page.edit");
   const canPublish = perms.has("courseware.release.publish");
-  if (tab === "microcourses") {
-    const [items, workspaces, tm] = await Promise.all([
-      listTeacherMicrocourseReviewQueue(),
-      listTeacherMicrocourseSessionWorkspaces(),
-      getTranslations("teacherMicrocourses"),
-    ]);
-    return <div className="space-y-4">
-      <MicrocourseSessionWorkspaceQueue
-        items={workspaces}
-        locale={locale}
-        labels={{
-          title: tm("sessionWorkspaceQueueTitle"),
-          description: tm("sessionWorkspaceQueueDescription"),
-          empty: tm("sessionWorkspaceQueueEmpty"),
-          open: tm("openSessionWorkspace"),
-          session: tm("sessionWorkspaceSession"),
-          variant: tm("sessionWorkspaceVariant"),
-          teacherColumn: tm("sessionWorkspaceTeacher"),
-          schedule: tm("sessionWorkspaceSchedule"),
-          status: tm("sessionWorkspaceStatus"),
-          action: tm("sessionWorkspaceAction"),
-          variants: (count) => tm("variantCount", { count }),
-          noVariant: tm("noVariantYet"),
-          selected: (name) => tm("selectedVariantName", { name }),
-          notSelected: tm("noSelectedVariant"),
-          frozen: tm("sessionFrozen"),
-          teacher: (name) => tm("primaryTeacher", { name }),
-        }}
-      />
-      <MicrocourseReviewQueue
-        items={items}
-        locale={locale}
-        labels={{
-          title: tm("reviewQueueTitle"),
-          empty: tm("reviewQueueEmpty"),
-          review: tm("openReview"),
-          course: tm("reviewQueueCourse"),
-          scope: tm("reviewQueueScope"),
-          progress: tm("reviewQueueProgress"),
-          submittedColumn: tm("reviewQueueSubmitted"),
-          action: tm("reviewQueueAction"),
-          grade: (grade) => tm("gradeValue", { grade }),
-          round: (current, required) => tm("reviewRound", { current, required }),
-          submitted: (value) => tm("submittedAt", { value }),
-        }}
-      />
-    </div>;
-  }
   const queue = await (
     tab === "backgrounds"
       ? loadAdaptReviewQueue(page, filters)
