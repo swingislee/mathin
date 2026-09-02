@@ -213,6 +213,8 @@ R1-Live 冻结“单账号、多登录身份”：`auth.users.id` 是唯一业�
 
 2026-08-25 产品负责人将手机号/password 提升为内部使用 P0。通用 identifier、重复密码、email/phone 员工邀请、手机号仅绑定邀请注册及 `provider_unverified` 保障记录已随 migration `20260825000600` 和热修 `8ec0ba0` 部署生产；GoTrue phone provider 已开启且 `SMS_AUTOCONFIRM=false`。发布后仍为 14 个账号、0 个手机号账号、14 个 profile、1 条既有已消费邮箱邀请和 0 条保障记录，没有创建账号、邀请或业务数据。当前结论为 `DEPLOYED / PENDING USER ACCEPTANCE`；真实受邀教师完成一次手机号注册和 password 登录后再关闭该 P0。
 
+开发增量 `DEV-STAFF-ONBOARD-1` 已把单人邀请扩展为版本化 ImportBatch 批量邀请，并为魔法校四列员工名单建立显式适配：Tab 是表格列分隔符，岗位单元格内的逗号只拆来源岗位，性别不进入员工档案；来源岗位必须映射到现有 Mathin staff role 或被操作者明确忽略。该适配仍处于本机开发验收，不表示生产 migration、员工邀请或身份写入已经获准。
+
 R1-5 已关闭学生与家庭门户及其课堂连续性依赖：固定角色浏览器子门覆盖学生/家长 zh/en、多子女与特殊状态、请假补课、任务驱动视频、已结束课次逐题学情和监护关系；跨家庭/跨学生真实身份负向查询 100% 拒绝。集成基线通过 14/14 静态 CI、62/62 R1 合同、144 文件空库重放、迁移账本和 13/13 数据库审计，见 [`docs/evidence/r1/r1-5.md`](../evidence/r1/r1-5.md)。学生与家庭门户据此达到 M3；本证据不替代 R1-14 正式 Playwright、R1-16 独立生产、R1-17 RC 或 R1-18 发布审批。
 
 ### 4.3 机构、学生服务与教学运营

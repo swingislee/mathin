@@ -23,39 +23,59 @@ import {
   type StaffImportBatchSummary,
 } from "./actions/types";
 import { DashboardSection, DashboardTableShell, StatusStrip } from "./dashboard-page";
-import { parseDelimitedText } from "./delimited-text";
 import type { StaffRoleInfo } from "./staff";
 import {
+  IGNORED_SOURCE_ROLE,
+  initialMofaxiaoRoleMappings,
+  mapMofaxiaoRoles,
+  parseStaffImportSource,
+  type ParsedStaffImportSource,
+  type StaffImportSourceFormat,
+} from "./staff-import-source";
+import {
   hasLegacyStaffRoleSeparator,
-  splitStaffRoleInput,
   staffRoleDisplayName,
 } from "./staff-role-input";
 
 interface ParsedStaffRow extends ImportStaffRow {
   line: number;
   localErrors: string[];
+  gender: string;
+  sourceRoles: string[];
+  sourceFormat: StaffImportSourceFormat;
 }
 
-const HEADER_NAMES = new Set(["name", "姓名"]);
 const CSV_HEADERS = ["name", "identifier", "roles"];
 const EXPIRY_OPTIONS = [1, 7, 14, 30] as const;
 
-function parseRows(text: string, validDays: number): ParsedStaffRow[] {
-  const records = parseDelimitedText(text);
-  const body = records.length > 0 && HEADER_NAMES.has((records[0].cells[0] ?? "").trim().toLowerCase())
-    ? records.slice(1)
-    : records;
-  return body.map((record) => {
-    const name = (record.cells[0] ?? "").trim();
-    const identifier = (record.cells[1] ?? "").trim();
-    const roleText = record.cells.slice(2).join(",");
-    const roles = splitStaffRoleInput(roleText);
+function parseRows(
+  source: ParsedStaffImportSource,
+  sourceRoleMappings: Readonly<Record<string, string>>,
+  validDays: number,
+): ParsedStaffRow[] {
+  return source.rows.map((record) => {
+    const mapping = record.sourceFormat === "mofaxiao"
+      ? mapMofaxiaoRoles(record.sourceRoles, sourceRoleMappings)
+      : { roles: record.sourceRoles, unresolved: [] };
     const localErrors: string[] = [];
-    if (!name) localErrors.push("EMPTY_NAME");
-    if (!identifier) localErrors.push("EMPTY_IDENTIFIER");
-    if (roles.length === 0) localErrors.push("EMPTY_ROLES");
-    if (hasLegacyStaffRoleSeparator(roleText)) localErrors.push("INVALID_ROLES");
-    return { line: record.line, name, identifier, roles, validDays, localErrors };
+    if (!record.name) localErrors.push("EMPTY_NAME");
+    if (!record.identifier) localErrors.push("EMPTY_IDENTIFIER");
+    if (mapping.roles.length === 0 && mapping.unresolved.length === 0) localErrors.push("EMPTY_ROLES");
+    if (mapping.unresolved.length > 0) localErrors.push("SOURCE_ROLE_NOT_MAPPED");
+    if (record.sourceFormat === "mathin" && hasLegacyStaffRoleSeparator(record.roleText)) {
+      localErrors.push("INVALID_ROLES");
+    }
+    return {
+      line: record.line,
+      name: record.name,
+      identifier: record.identifier,
+      roles: mapping.roles,
+      validDays,
+      localErrors,
+      gender: record.gender,
+      sourceRoles: record.sourceRoles,
+      sourceFormat: record.sourceFormat,
+    };
   });
 }
 
@@ -117,7 +137,13 @@ export function StaffBulkInvitePanel({
   const [batch, setBatch] = useState<StaffImportBatchResult | null>(null);
   const [duplicatesReviewed, setDuplicatesReviewed] = useState(false);
   const [idempotencyKey, setIdempotencyKey] = useState(newId);
-  const rows = useMemo(() => parseRows(text, validDays), [text, validDays]);
+  const [sourceRoleMappings, setSourceRoleMappings] = useState<Record<string, string>>({});
+  const parsedSource = useMemo(() => parseStaffImportSource(text), [text]);
+  const rows = useMemo(
+    () => parseRows(parsedSource, sourceRoleMappings, validDays),
+    [parsedSource, sourceRoleMappings, validDays],
+  );
+  const unresolvedSourceRoles = parsedSource.sourceRoles.filter((role) => !sourceRoleMappings[role]);
   const serverRows = useMemo(() => new Map(batch?.rows.map((row) => [row.row, row]) ?? []), [batch]);
 
   const errors = {
@@ -153,7 +179,17 @@ export function StaffBulkInvitePanel({
     setIdempotencyKey(newId());
   };
   const changeText = (value: string) => {
+    const nextSource = parseStaffImportSource(value);
+    const initialMappings = initialMofaxiaoRoleMappings(nextSource.sourceRoles);
+    setSourceRoleMappings((current) => Object.fromEntries(nextSource.sourceRoles.map((role) => [
+      role,
+      current[role] ?? initialMappings[role] ?? "",
+    ])));
     setText(value);
+    resetBatch();
+  };
+  const changeSourceRoleMapping = (sourceRole: string, targetRole: string) => {
+    setSourceRoleMappings((current) => ({ ...current, [sourceRole]: targetRole }));
     resetBatch();
   };
   const changeExpiry = (value: string) => {
@@ -192,20 +228,27 @@ export function StaffBulkInvitePanel({
   ]);
   const downloadErrors = () => {
     if (!batch) return;
+    const sourceHeaders = parsedSource.format === "mofaxiao"
+      ? (locale === "zh"
+        ? ["姓名", "手机号", "性别", "魔法校岗位"]
+        : ["name", "phone", "gender", "mofaxiao_roles"])
+      : localizedHeaders;
     downloadCsv(`staff-import-${batch.batchId}-errors.csv`, [
-      ["line", "status", "error_codes", ...localizedHeaders],
+      ["line", "status", "error_codes", ...sourceHeaders],
       ...batch.rows
         .filter((row) => row.status === "error")
         .map((finding) => {
           const source = rows[finding.row - 1];
-          return [
+          const common = [
             source?.line ?? finding.row,
             finding.status,
             finding.errors.join("|"),
             source?.name ?? "",
             source?.identifier ?? "",
-            source?.roles.join(" ") ?? "",
           ];
+          return source?.sourceFormat === "mofaxiao"
+            ? [...common, source.gender, source.sourceRoles.join(",")]
+            : [...common, source?.roles.join(" ") ?? ""];
         }),
     ]);
   };
@@ -217,8 +260,8 @@ export function StaffBulkInvitePanel({
   const rowFinding = (index: number, row: ParsedStaffRow) => {
     const server = serverRows.get(index + 1);
     return {
-      status: server?.status ?? (row.localErrors.length > 0 ? "error" : "valid"),
-      errors: server?.errors ?? row.localErrors,
+      status: row.localErrors.length > 0 ? "error" : server?.status ?? "valid",
+      errors: [...new Set([...(server?.errors ?? []), ...row.localErrors])],
     };
   };
 
@@ -271,12 +314,61 @@ export function StaffBulkInvitePanel({
               />
             </Label>
             {fileError ? <p role="alert" className="text-xs text-rose">{t("bulkFileError")}</p> : null}
+            {parsedSource.format === "mofaxiao" && parsedSource.sourceRoles.length > 0 ? (
+              <div className="border-t border-line pt-4">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <h3 className="text-sm font-medium text-ink">{t("bulkMofaxiaoMappingTitle")}</h3>
+                    <p className="mt-1 max-w-3xl text-xs leading-5 text-muted">
+                      {t("bulkMofaxiaoMappingHint")}
+                    </p>
+                  </div>
+                  <Badge variant="secondary">{t("bulkSourceFormat_mofaxiao")}</Badge>
+                </div>
+                <div className="mt-3 grid gap-x-4 gap-y-3 sm:grid-cols-2">
+                  {parsedSource.sourceRoles.map((sourceRole) => (
+                    <Label key={sourceRole} className="grid gap-1.5 text-xs font-normal text-muted">
+                      <span className="font-medium text-ink">{sourceRole}</span>
+                      <Select
+                        value={sourceRoleMappings[sourceRole] || "__pending__"}
+                        onValueChange={(value) => changeSourceRoleMapping(
+                          sourceRole,
+                          value === "__pending__" ? "" : value,
+                        )}
+                      >
+                        <SelectTrigger aria-label={t("bulkMapSourceRole", { role: sourceRole })}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__pending__">{t("bulkMappingPending")}</SelectItem>
+                          <SelectItem value={IGNORED_SOURCE_ROLE}>{t("bulkMappingIgnore")}</SelectItem>
+                          {roles.map((role) => (
+                            <SelectItem key={role.id} value={role.key}>
+                              {staffRoleDisplayName(role.key, roles, locale)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </Label>
+                  ))}
+                </div>
+                {unresolvedSourceRoles.length > 0 ? (
+                  <p role="alert" className="mt-3 text-xs leading-5 text-rose">
+                    {t("bulkUnmappedSourceRoles", { roles: unresolvedSourceRoles.join("、") })}
+                  </p>
+                ) : (
+                  <p role="status" className="mt-3 text-xs leading-5 text-muted">
+                    {t("bulkMofaxiaoGenderIgnored")}
+                  </p>
+                )}
+              </div>
+            ) : null}
             <div className="flex flex-wrap items-center justify-between gap-3">
               <span className="text-xs text-muted">{t("bulkRowLimit", { count: rows.length })}</span>
               <Button
                 type="button"
                 size="sm"
-                disabled={pending || rows.length === 0 || rows.length > 500}
+                disabled={pending || rows.length === 0 || rows.length > 500 || unresolvedSourceRoles.length > 0}
                 onClick={startPreview}
               >
                 {previewRun.pending
@@ -325,6 +417,7 @@ export function StaffBulkInvitePanel({
               { label: t("bulkRows"), value: rows.length },
               { label: t("bulkExpiry"), value: t("bulkExpiryDays", { days: validDays }) },
               { label: t("bulkSource"), value: fileName || t("bulkPaste") },
+              { label: t("bulkSourceFormat"), value: t(`bulkSourceFormat_${parsedSource.format}`) },
             ]}
           />
           <DashboardTableShell>
@@ -346,12 +439,31 @@ export function StaffBulkInvitePanel({
                       <TableCell className="font-mono text-muted">{row.line}</TableCell>
                       <TableCell className="font-medium">{row.name || "—"}</TableCell>
                       <TableCell>{row.identifier || "—"}</TableCell>
-                      <TableCell>{row.roles.join(" ") || "—"}</TableCell>
+                      <TableCell>
+                        {row.sourceFormat === "mofaxiao" ? (
+                          <div className="space-y-0.5">
+                            <div>{row.sourceRoles.join("、") || "—"}</div>
+                            <div className="text-muted">
+                              {t("bulkMappedRoles", {
+                                roles: row.roles
+                                  .map((key) => staffRoleDisplayName(key, roles, locale))
+                                  .join(" ") || "—",
+                              })}
+                            </div>
+                          </div>
+                        ) : row.roles.join(" ") || "—"}
+                      </TableCell>
                       <TableCell className={cn(
                         finding.status === "error" || finding.status === "duplicate" ? "text-rose" : "text-muted",
                       )}>
                         {finding.errors.length > 0
-                          ? finding.errors.map((code) => t(`bulkError_${code}`)).join("；")
+                          ? finding.errors.map((code) => code === "SOURCE_ROLE_NOT_MAPPED"
+                            ? t("bulkError_SOURCE_ROLE_NOT_MAPPED", {
+                              roles: row.sourceRoles
+                                .filter((role) => !sourceRoleMappings[role])
+                                .join("、"),
+                            })
+                            : t(`bulkError_${code}`)).join("；")
                           : t(`bulkRowStatus_${finding.status}`)}
                       </TableCell>
                     </TableRow>

@@ -3,8 +3,12 @@ export interface DelimitedRecord {
   cells: string[];
 }
 
-function delimiterFor(text: string): "," | "\t" {
-  let commaCount = 0;
+type Delimiter = "," | "\t" | "|";
+
+function delimiterFor(text: string): Delimiter {
+  const firstLine = text.split(/\r?\n/u, 1)[0]?.trim() ?? "";
+  if (firstLine.startsWith("|") && firstLine.endsWith("|")) return "|";
+
   let tabCount = 0;
   let quoted = false;
   for (let index = 0; index < text.length; index += 1) {
@@ -14,13 +18,14 @@ function delimiterFor(text: string): "," | "\t" {
       else quoted = !quoted;
     } else if (!quoted && (char === "\r" || char === "\n")) {
       break;
-    } else if (!quoted && char === ",") commaCount += 1;
-    else if (!quoted && char === "\t") tabCount += 1;
+    } else if (!quoted && char === "\t") tabCount += 1;
   }
-  return tabCount > commaCount ? "\t" : ",";
+  // Spreadsheet clipboard data is tab-delimited even when a role cell itself
+  // contains many commas, so any unquoted tab is the stronger signal.
+  return tabCount > 0 ? "\t" : ",";
 }
 
-/** Parse CSV/TSV text, including escaped quotes and quoted line breaks. */
+/** Parse CSV/TSV or a pasted Markdown table, including escaped quotes and quoted line breaks. */
 export function parseDelimitedText(input: string): DelimitedRecord[] {
   const text = input.replace(/^\uFEFF/, "");
   const delimiter = delimiterFor(text);
@@ -33,6 +38,8 @@ export function parseDelimitedText(input: string): DelimitedRecord[] {
 
   const finishRecord = () => {
     cells.push(cell.trim());
+    if (delimiter === "|" && cells[0] === "") cells.shift();
+    if (delimiter === "|" && cells.at(-1) === "") cells.pop();
     if (cells.some((value) => value.trim() !== "")) records.push({ line: rowLine, cells });
     cells = [];
     cell = "";
