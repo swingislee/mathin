@@ -77,7 +77,7 @@ export async function LectureWorkspaceBody({
   const canEditThisTrack = currentTrackState && ["idle", "editing", "changes_requested"].includes(currentTrackState.stage);
 
   const primaryAction = canOpenCoursewareWorkbench && canEditThisTrack
-    ? <Link href={`/studio/courseware/${detail.lecture.id}?track=${track}`} className={buttonVariants({ size: "sm" })}>{t("openWorkbench")}</Link>
+    ? <Link href={`/dashboard/courseware/lectures/${detail.lecture.id}?workspace=courseware&track=${track}`} className={buttonVariants({ size: "sm" })}>{t("openWorkbench")}</Link>
     : undefined;
 
   const statusItems = detail.tracks.map((row) => {

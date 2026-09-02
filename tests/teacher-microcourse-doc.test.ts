@@ -143,21 +143,21 @@ describe("teacher microcourse page documents", () => {
     expect(microcourseH5SecurityHeaders()["Content-Security-Policy"]).toBe(MICROCOURSE_H5_CSP);
   });
 
-  it("dispatches the new format without making the curriculum editor accept it", () => {
+  it("dispatches the new format through the shared renderer without a parallel curriculum editor", () => {
     const preview = readFileSync(
       new URL("../src/features/courseware-studio/StagePreview.tsx", import.meta.url),
       "utf8",
     );
-    const studioPage = readFileSync(
-      new URL("../src/app/[locale]/studio/courseware/[lectureId]/page.tsx", import.meta.url),
+    const workspace = readFileSync(
+      new URL("../src/features/courseware-studio/UnifiedCoursewareWorkspace.tsx", import.meta.url),
       "utf8",
     );
     expect(preview).toContain("isGamePageDoc(props.doc)");
     expect(preview).toContain("GamePageStage");
     expect(preview).toContain("isMicrocoursePageDoc(props.doc)");
     expect(preview).toContain("MicrocourseStage");
-    expect(studioPage).toContain("isGamePageDoc(editor.activeRevision.doc)");
-    expect(studioPage).toContain("isMicrocoursePageDoc(editor.activeRevision.doc)");
+    expect(workspace).toContain("StagePreview");
+    expect(workspace).not.toContain("CoursewarePageEditor");
   });
 
   it("keeps Sudoku rendering behind the generic game-page branch", () => {

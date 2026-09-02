@@ -49,54 +49,12 @@ describe("courseware preview page-turn performance", () => {
 
     expect(stage).toContain('const runtimeInstanceKey = `${doc.runtime.packageHash}:${runtimeEntry ?? "missing"}`');
     expect(stage).toContain("key={runtimeInstanceKey}");
-    expect(stage).toContain("runtimePayloadSentFor.current !== renderKey");
+    expect(stage).toContain("runtimePayloadSentFor.current === frameKey");
+    expect(stage).toContain("runtimeQueuedRender");
     expect(stage).toContain("hasRenderedCurrentRuntime");
     expect(stage).toContain("!rendered && !hasRenderedCurrentRuntime");
     expect(stage).toContain("const sourceFrameScale = sourceFrameSize");
     expect(sourceRuntimeBranch).not.toContain("key=");
-  });
-
-  it("turns read-only Studio pages inside one cached client workspace", () => {
-    const viewer = read("src/features/courseware-studio/AixuexiStudioViewer.tsx");
-    const action = read("src/features/courseware-studio/preview-actions.ts");
-    const data = read("src/features/courseware-studio/data.ts");
-    const pageLoader = data.slice(
-      data.indexOf("export async function loadCoursewareStudioRenderPage"),
-      data.indexOf("async function loadImageAssetUsage"),
-    );
-
-    expect(viewer).toContain("loadCoursewareStudioRenderPageAction");
-    expect(viewer).toContain("selectedIndex - 1, selectedIndex + 1");
-    expect(viewer).toContain("window.history.replaceState");
-    expect(viewer).toContain("new Map<string, Promise<CoursewareStudioRenderPagePayload>>");
-    expect(viewer).toContain("renderedPageId !== selected.id");
-    expect(action).toContain('authorizedClient("courseware.page.edit")');
-    expect(pageLoader).toContain('.from("cw_page_revisions")');
-    expect(pageLoader).toContain("resolveEditorBindingUrls");
-    expect(pageLoader).not.toContain('.from("course_lectures")');
-    expect(pageLoader).not.toContain('.from("cw_page_docs")');
-    expect(pageLoader).not.toContain('.from("cw_page_track_heads")');
-    expect(pageLoader).not.toContain("loadImageAssetUsage");
-  });
-
-  it("does not load native-editor support data for dedicated read-only renderers", () => {
-    const data = read("src/features/courseware-studio/data.ts");
-    const studioLoader = data.slice(
-      data.indexOf("export async function loadCoursewareStudioPage"),
-      data.indexOf("async function loadImageAssetUsage"),
-    );
-    const readOnlyBranch = studioLoader.slice(
-      studioLoader.indexOf("if (activeRevision.doc.docVersion !== PAGE_DOC_VERSION)"),
-      studioLoader.indexOf("const [", studioLoader.indexOf("if (activeRevision.doc.docVersion !== PAGE_DOC_VERSION)")),
-    );
-
-    expect(readOnlyBranch).toContain("resolveEditorBindingUrls");
-    expect(readOnlyBranch).toContain("imageAssetUsage: {}");
-    expect(readOnlyBranch).toContain("releaseHistory: []");
-    expect(readOnlyBranch).toContain("copyTargets: []");
-    expect(readOnlyBranch).not.toContain("loadImageAssetUsage");
-    expect(readOnlyBranch).not.toContain('from("cw_lecture_releases")');
-    expect(readOnlyBranch).not.toContain('from("course_lectures")');
   });
 
   it("resolves teacher-microcourse page bindings in shared batches", () => {

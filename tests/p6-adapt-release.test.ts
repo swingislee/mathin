@@ -24,10 +24,10 @@ describe("P6 adaptation review and release workflow", () => {
     expect(migration).toContain("p_lecture_id uuid default null");
   });
 
-  it("publishes only explicit, bounded lecture selections and exposes a single-lecture editor path", () => {
+  it("keeps the historical bounded release contract but removes its parallel editor caller", () => {
     const queue = read("src", "features", "courseware-studio", "AdaptReleaseQueue.tsx");
     const action = read("src", "features", "courseware-studio", "adapt-release-actions.ts");
-    const editor = read("src", "features", "courseware-studio", "CoursewarePageEditor.tsx");
+    const actions = read("src", "features", "courseware-studio", "actions.ts");
     const guardMigration = read("supabase", "migrations", "20260726000200_p6_adapt_release_duplicate_guard.sql");
     const migration = read("supabase", "migrations", "20260726000100_p6_adapt_release_and_class_builder.sql");
 
@@ -41,8 +41,9 @@ describe("P6 adaptation review and release workflow", () => {
     expect(migration).toContain("public.publish_cw_track_release");
     expect(guardMigration).toContain("ADAPT_RELEASE_NOT_READY");
     expect(guardMigration).toContain("'pending'");
-    expect(editor).toContain("publishCoursewareReleaseAction");
-    expect(editor).toContain('t("publishLecture")');
+    expect(fs.existsSync(path.join(root, "src", "features", "courseware-studio", "CoursewarePageEditor.tsx"))).toBe(false);
+    expect(actions).not.toContain("publishCoursewareReleaseAction");
+    expect(actions).not.toContain('rpc<string>(supabase, "publish_cw_track_release"');
   });
 
   it("treats a native 16:9 release as sufficient courseware readiness for class building", () => {

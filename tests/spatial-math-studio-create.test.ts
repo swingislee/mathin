@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { verifySpatialPageDoc } from "@/features/spatial-math/domain";
 import {
@@ -44,31 +44,13 @@ describe("SML-0 Studio spatial page creation", () => {
     expect(builder).toContain('createdBy: "mathin.courseware-template"');
   });
 
-  it("builds the document inside a server action instead of accepting arbitrary page JSON from the dialog", () => {
-    const actions = read("src/features/courseware-studio/actions.ts");
-    const dialog = read("src/features/courseware-studio/CoursewarePageCreateDialog.tsx");
-
-    expect(actions).toContain("createSpatialCoursewareTemplatePageAction");
-    expect(actions).toContain("buildSpatialCoursewareTemplatePage(value.templateId)");
-    expect(actions).toContain('rpc<string>(supabase, "create_cw_spatial_page"');
-    expect(dialog).toContain("createSpatialCoursewareTemplatePageAction");
-    expect(dialog).not.toContain("spatialPageDocSchema");
-    expect(dialog).not.toMatch(/<input|<select|fetch\(|supabase/);
-    expect(actions).toContain('"RESPONSIBILITY_REQUIRED"');
-  });
-
-  it("exposes insertion from empty, legacy, imported and spatial Studio states", () => {
-    const route = read("src/app/[locale]/studio/courseware/[lectureId]/page.tsx");
-    const legacyEditor = read("src/features/courseware-studio/CoursewarePageEditor.tsx");
-    const importedViewer = read("src/features/courseware-studio/AixuexiStudioViewer.tsx");
-    const spatialViewer = read("src/features/courseware-studio/SpatialStudioViewer.tsx");
-    const deleteButton = read("src/features/courseware-studio/CoursewarePageDeleteButton.tsx");
-
-    for (const source of [route, legacyEditor, importedViewer, spatialViewer]) {
-      expect(source).toContain("CoursewarePageCreateDialog");
+  it("retires the old Studio-specific insertion surface", () => {
+    for (const file of [
+      "src/app/[locale]/studio/courseware/[lectureId]/page.tsx",
+      "src/features/courseware-studio/CoursewarePageCreateDialog.tsx",
+      "src/features/courseware-studio/SpatialStudioViewer.tsx",
+    ]) {
+      expect(existsSync(file)).toBe(false);
     }
-    expect(spatialViewer).toContain("CoursewarePageOrderControls");
-    expect(spatialViewer).toContain("CoursewarePageDeleteButton");
-    expect(deleteButton).toContain('const destinationTrack = nextPageId ? track : "native-16x9"');
   });
 });

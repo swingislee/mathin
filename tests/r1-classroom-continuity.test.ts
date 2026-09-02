@@ -112,15 +112,12 @@ describe("R1 classroom continuity contracts", () => {
   });
 
   it("binds learning-check defaults to published courseware page identity instead of reusable title templates", () => {
-    const studio = read("src/features/courseware-studio/CoursewarePageEditor.tsx");
     const prep = read("src/features/school/SessionPrepPanel.tsx");
     expect(learningCheckFlagMigration).toContain("create table if not exists public.cw_page_learning_check_flags");
     expect(learningCheckFlagMigration).toContain("set_cw_page_learning_check_flag");
     expect(learningCheckFlagMigration).toContain("'learningCheckEnabled',rows.learning_check_enabled");
     expect(learningCheckFlagMigration).toContain("source_page_doc_id uuid references public.cw_page_docs(id)");
-    expect(studio).toContain('t("learningCheckPageFlagTitle")');
-    expect(studio).toContain('t("learningCheckEnabled")');
-    expect(studio).not.toContain("teachingRole");
+    expect(fs.existsSync(path.join(root, "src/features/courseware-studio/CoursewarePageEditor.tsx"))).toBe(false);
     expect(prep).toContain("getSessionCoursewareLearningCheckPages");
     const overlayEditor = read("src/features/school/CoursewareOverlayEditor.tsx");
     expect(overlayEditor).toContain("toggleLearningCheck");
@@ -136,12 +133,14 @@ describe("R1 classroom continuity contracts", () => {
     expect(overlayEditor).toContain("restoreLearningCheckDefaults");
     expect(overlayEditor).toContain("undoRestoreLearningCheckDefaults");
     const sharedPreview = read("src/features/courseware-preview/CoursewarePreviewWorkspace.tsx");
+    const sharedWorkbench = read("src/features/courseware-doc/CoursewareEditorWorkbench.tsx");
     const sharedStage = read("src/features/courseware-doc/CoursewareStageViewport.tsx");
-    expect(sharedPreview).toContain("data-courseware-page-rail");
-    expect(sharedPreview).toContain("data-courseware-preview-stage");
-    expect(sharedPreview).toContain("CoursewareStageViewport");
+    expect(sharedPreview).toContain("CoursewareWorkbench");
+    expect(sharedWorkbench).toContain("data-courseware-page-rail");
+    expect(sharedWorkbench).toContain("data-courseware-preview-stage");
+    expect(sharedWorkbench).toContain("CoursewareStageViewport");
     expect(sharedStage).toContain("ResizeObserver");
-    expect(sharedPreview).toContain('railWidth?: "standard" | "wide"');
+    expect(sharedWorkbench).toContain('railWidth?: "standard" | "wide"');
     expect(read("src/features/school/curriculum/LectureCoursewarePreview.tsx")).toContain("CoursewareWorkbench");
     expect(read("src/features/school/SessionWorkspaceBody.tsx")).toContain('scroll={stage === "pre" ? "none" : "auto"}');
     expect(overlayEditor).not.toContain("learningCheckAddCustom");
@@ -176,17 +175,17 @@ describe("R1 classroom continuity contracts", () => {
     const workspace = read("src/features/school/SessionWorkspaceBody.tsx");
     const sessionAssets = read("src/features/classroom/courseware/session-assets.ts");
     const prep = read("src/features/school/SessionPrepPanel.tsx");
-    const sharedPreview = read("src/features/courseware-preview/CoursewarePreviewWorkspace.tsx");
+    const sharedWorkbench = read("src/features/courseware-doc/CoursewareEditorWorkbench.tsx");
     expect(workspace).toContain('scroll={stage === "pre" ? "none" : "auto"}');
     expect(sessionAssets).toContain("getSessionH5BindingUrls");
     expect(sessionAssets).toContain("buildH5EntryUrl");
     expect(prep).toContain("getSessionH5BindingUrls");
     // doc 27 §3 D3：目录与预览的固定轨道换成可拖拽分栏，方向按容器实宽决定。
-    expect(sharedPreview).toContain("ResizablePanelGroup");
-    expect(sharedPreview).toContain("useSplitOrientation");
-    expect(sharedPreview).toContain("overflow-y-auto");
-    expect(sharedPreview).toContain('aria-keyshortcuts="ArrowLeft PageUp"');
-    expect(sharedPreview).toContain('aria-keyshortcuts="ArrowRight PageDown Space"');
+    expect(sharedWorkbench).toContain("ResizablePanelGroup");
+    expect(sharedWorkbench).toContain("useSplitOrientation");
+    expect(sharedWorkbench).toContain("overflow-y-auto");
+    expect(sharedWorkbench).toContain('aria-keyshortcuts="ArrowLeft PageUp"');
+    expect(sharedWorkbench).toContain('aria-keyshortcuts="ArrowRight PageDown Space"');
     const docStage = read("src/features/courseware-doc/DocStage.tsx");
     expect(docStage).toContain("data-board-band");
     expect(docStage).toContain('className="bg-card"');
