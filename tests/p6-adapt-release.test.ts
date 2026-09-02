@@ -22,6 +22,8 @@ describe("P6 adaptation review and release workflow", () => {
     const actions = read("src", "features", "courseware-studio", "actions.ts");
     const guardMigration = read("supabase", "migrations", "20260726000200_p6_adapt_release_duplicate_guard.sql");
     const migration = read("supabase", "migrations", "20260726000100_p6_adapt_release_and_class_builder.sql");
+    const retirement = read("supabase", "migrations", "20260902000500_courseware_legacy_publish_retirement.sql");
+    const types = read("src", "lib", "database.types.ts");
 
     expect(migration).toContain("requested_count > 30");
     expect(migration).toContain("public.publish_cw_track_release");
@@ -32,6 +34,11 @@ describe("P6 adaptation review and release workflow", () => {
     expect(fs.existsSync(path.join(root, "src", "features", "courseware-studio", "CoursewarePageEditor.tsx"))).toBe(false);
     expect(actions).not.toContain("publishCoursewareReleaseAction");
     expect(actions).not.toContain('rpc<string>(supabase, "publish_cw_track_release"');
+    expect(retirement).toContain("drop function if exists public.publish_cw_adapt_releases(uuid[], text)");
+    expect(retirement).toContain("drop function if exists public.publish_cw_track_release(uuid, text, text)");
+    expect(retirement).toContain("public.publish_cw_review_cycle(uuid, text, text)");
+    expect(types).not.toContain("      publish_cw_adapt_releases:");
+    expect(types).not.toContain("      publish_cw_track_release:");
   });
 
   it("treats a native 16:9 release as sufficient courseware readiness for class building", () => {

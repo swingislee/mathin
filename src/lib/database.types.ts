@@ -13558,33 +13558,11 @@ export type Database = {
         Returns: Json
       }
       project_data_repair_plan: { Args: { p_plan_id: string }; Returns: Json }
-      publish_cw_adapt_releases: {
-        Args: { p_lecture_ids: string[]; p_note?: string }
-        Returns: {
-          lecture_id: string
-          release_id: string
-        }[]
-      }
-      publish_cw_adapt_releases_pre_sml0_impl: {
-        Args: { p_lecture_ids: string[]; p_note?: string }
-        Returns: {
-          lecture_id: string
-          release_id: string
-        }[]
-      }
       publish_cw_review_cycle: {
         Args: { p_lecture_id: string; p_note?: string; p_track: string }
         Returns: string
       }
       publish_cw_review_cycle_pre_sml0_impl: {
-        Args: { p_lecture_id: string; p_note?: string; p_track: string }
-        Returns: string
-      }
-      publish_cw_track_release: {
-        Args: { p_lecture_id: string; p_note?: string; p_track: string }
-        Returns: string
-      }
-      publish_cw_track_release_pre_sml0_impl: {
         Args: { p_lecture_id: string; p_note?: string; p_track: string }
         Returns: string
       }
