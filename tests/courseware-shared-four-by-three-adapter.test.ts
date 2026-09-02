@@ -145,6 +145,7 @@ describe("shared formal-course 4:3 adapter", () => {
     const shared = read("src/features/courseware-studio/CoursewareFourByThreeAdapter.tsx");
     const pageDocEditor = read("src/features/courseware-studio/PageDocVerticalSliceEditor.tsx");
     const sourceEditor = read("src/features/courseware-studio/SourceRuntimeFourByThreeEditor.tsx");
+    const sourcePrototype = read("src/features/courseware-studio/SourceRuntimeHostCapabilityPrototype.tsx");
     const workspace = read("src/features/courseware-studio/UnifiedCoursewareWorkspace.tsx");
     const workbench = read("src/features/courseware-doc/CoursewareEditorWorkbench.tsx");
 
@@ -172,6 +173,12 @@ describe("shared formal-course 4:3 adapter", () => {
     expect(pageDocEditor).toContain("fourByThreeMaterializedRef.current = true");
     expect(pageDocEditor).toContain('savingFourByThree ? "adapted-4x3" : track');
     expect(sourceEditor).toContain('const coarseLayout = view === "compare"');
+    expect(sourceEditor).toContain("SourceRuntimeHostCapabilityPrototype");
+    expect(sourceEditor).toContain("decorateStage={decorateStage}");
+    expect(sourcePrototype).toContain('data-source-runtime-host-preview={mode}');
+    expect(sourcePrototype).toContain("SourceRuntimeHostPreviewMode");
+    expect(sourcePrototype).not.toContain("fetch(");
+    expect(sourcePrototype).not.toContain("Action(");
     expect(shared).not.toContain("fetch(");
     expect(shared).not.toContain("Action(");
     expect(workspace).toContain("<SourceRuntimeFourByThreeEditor");

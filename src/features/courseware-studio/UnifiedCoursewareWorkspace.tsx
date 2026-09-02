@@ -179,7 +179,7 @@ export async function UnifiedCoursewareWorkspace({
           { value: detail.variant.title },
           { value: t("pageContext", { page: pageIndex, total: pages.length }) },
         ]}
-        status={<Badge variant="outline">{t(pageEditor ? "formalEditorStatus" : sourceRuntimeEditor ? "sourceAdaptationStatus" : "sourceReadOnlyStatus")}</Badge>}
+        status={<Badge variant="outline">{t(pageEditor ? "formalEditorStatus" : sourceRuntimeEditor ? "sourcePrototypeStatus" : "sourceReadOnlyStatus")}</Badge>}
       />}
       navigation={(
         <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { LayoutTemplate, RotateCcw, Undo2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
@@ -252,10 +252,12 @@ export function CoursewareFourByThreeComparison({
   adapter,
   className,
   view = "compare",
+  decorateStage,
 }: {
   adapter: CoursewareFourByThreeController;
   className?: string;
   view?: "compare" | "native-16x9" | "adapted-4x3";
+  decorateStage?: (stage: ReactNode) => ReactNode;
 }) {
   const t = useTranslations("coursewareFourByThree");
   const { source, state } = adapter;
@@ -267,8 +269,9 @@ export function CoursewareFourByThreeComparison({
   );
   const originalAspect = sourceAspect(source);
 
-  const originalStage = <NaturalStage source={source} />;
-  const adaptedStage = layeredPageDoc && source.kind === "page-doc" ? (
+  const wrapStage = decorateStage ?? ((stage: ReactNode) => stage);
+  const originalStage = wrapStage(<NaturalStage source={source} />);
+  const rawAdaptedStage = layeredPageDoc && source.kind === "page-doc" ? (
     <StagePreview
       doc={layeredPageDoc}
       bindingUrls={source.bindingUrls}
@@ -280,6 +283,7 @@ export function CoursewareFourByThreeComparison({
   ) : isWholeStageCourseware43Strategy(state.strategy) ? (
     <WholeStageAdaptedPreview source={source} strategy={state.strategy} />
   ) : null;
+  const adaptedStage = rawAdaptedStage ? wrapStage(rawAdaptedStage) : null;
 
   const originalComparison = (
     <section className="size-full min-h-0 min-w-0 bg-paper" aria-label={t("originalLabel")}>
