@@ -16,6 +16,7 @@
 - 导航、表单、错误、空状态、通知模板和关键元数据必须同时维护 zh/en；英文正文未发布时必须有显式中文回退或未发布状态。
 - 小王子视觉分三级：公开首页/五星球首页为场景级，内容/Notebook/身份页为内容级，Dashboard/Classroom/Whiteboard/Courseware Studio 为工作区级。工作区的信息密度、可读性和操作速度优先。
 - Dashboard 默认是连续工作区：身份进入 `DashboardPage` / `ObjectBar`，筛选与操作进入 `DashboardCommandPanel`，正文进入无外框 `DashboardSection`，数据集合进入 `DashboardTableShell`，持续栏位只用结构线。
+- 页面级与批量业务按钮只放 `DashboardCommandPanel` 的 actions／selection 槽；`DashboardTableShell` 必须直接从 shadcn `Table` 开始，不得在表格上方另造操作行。全选进入选择列的表头，逐列筛选／排序进入数据列表头，操作列与选择列不伪装成可筛选数据列；有纵向滚动的数据表保持表头固定。
 - 普通标题、筛选、导航、表格、表单、摘要、空态和正文分组不得分别包 Card。只有产品明确要求，或对象确实需要独立搬运、选择、比较时可用 Card；产品已确认的 Card 是页面合同，不得被通用重构删除。
 - 页面头只保留一条身份分隔线；section 不画上下边线；表格外框和行线只由 `DashboardTableShell` / Table 提供。禁止叠加分隔线或以 `border-y` 模拟卡片。
 - 普通 section、栏位、导航、筛选集合和表格外层继承页面背景。背景色只表达已批准的独立表面、选中/状态、悬浮层可读性或课件画布底色。

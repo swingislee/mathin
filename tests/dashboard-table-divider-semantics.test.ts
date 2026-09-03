@@ -39,6 +39,20 @@ describe("Dashboard table and divider semantics", () => {
     expect(table).toContain('TableHeader({ className,...props }');
     expect(table).toContain('cn("border-b border-line",className)');
     expect(table).toContain('cn("divide-y divide-line",className)');
+    expect(table).toContain("containerClassName");
+  });
+
+  it("keeps page and batch actions in the command panel and table controls in the header", () => {
+    const commandPanel = read("src/features/school/dashboard-page/DashboardCommandPanel.tsx");
+    const tableShell = read("src/features/school/dashboard-page/DashboardCard.tsx");
+    const frontendRules = read("docs/agent/frontend.md");
+    const designSystem = read("docs/plan/01-design-system.md");
+
+    expect(commandPanel).toContain("不得在 DashboardTableShell");
+    expect(tableShell).toContain("外壳正文必须直接从 Table 开始");
+    expect(frontendRules).toContain("页面级与批量业务按钮只放");
+    expect(designSystem).toContain("页面级与批量业务按钮只进入");
+    expect(designSystem).toContain("数据区纵向滚动时表头固定");
   });
 
   it("uses borderless Dashboard sections and reserves borders for table or persistent panel boundaries", () => {

@@ -76,7 +76,11 @@ export function DashboardCommandFilters({ children, className }: { children: Rea
   );
 }
 
-/** 页面业务操作区：每页至多一个一级主操作，其余降级到更多菜单（§14.6）。 */
+/**
+ * 页面业务操作区：每页至多一个一级主操作，其余降级到更多菜单（§14.6）。
+ * 页面级与批量业务操作必须放在这里（或 selection 模式），不得在 DashboardTableShell
+ * 上方再造一条工具栏；全选和逐列筛选／排序属于表头控件，不属于页面操作。
+ */
 export function DashboardCommandActions({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <div

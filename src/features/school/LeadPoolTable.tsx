@@ -1,6 +1,6 @@
 "use client";
 
-import { LoaderCircle, MessageSquarePlus, PhoneCall, UsersRound } from "lucide-react";
+import { LoaderCircle, MessageSquarePlus, PhoneCall } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useRef, useState } from "react";
 import { useAction } from "@/components/action-form";
@@ -19,17 +19,29 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useRouter } from "@/i18n/navigation";
-import { assignLeadsAction, recordLeadContactAction, type LeadContactInput } from "./actions/leads";
+import { recordLeadContactAction, type LeadContactInput } from "./actions/leads";
 import { fromSelectValue, toSelectValue } from "./controls";
-import { DashboardTableShell } from "./dashboard-page";
-import { updateLeadSelection } from "./lead-selection";
-import type { LeadPoolRow } from "./leads";
+import {
+  DashboardTableColumnHeader,
+  DashboardTableShell,
+  type DashboardTableFilterOption,
+} from "./dashboard-page";
+import {
+  filterAndSortLeadRows,
+  leadGradeFilterKey,
+  NO_CONTACT_FILTER,
+  NO_OWNER_FILTER,
+  type LeadTableColumn,
+  type LeadTableFilters,
+  type LeadTableSort,
+  UNKNOWN_GRADE_FILTER,
+} from "./lead-table-view";
+import { useLeadPoolSelection } from "./LeadPoolSelection";
+import { LEAD_STATUSES, type LeadPoolRow } from "./leads";
 
-interface AssigneeOption {
-  userId: string;
-  displayName: string;
-}
+const CONTACT_OUTCOMES = ["unreachable", "connected", "declined", "invalid_number"] as const;
 
 function ContactDialog({
   lead,
@@ -189,7 +201,6 @@ export function LeadPoolTable({
   canAssign,
   canContact,
   canContactAll,
-  assignees,
 }: {
   leads: LeadPoolRow[];
   locale: string;
@@ -197,101 +208,147 @@ export function LeadPoolTable({
   canAssign: boolean;
   canContact: boolean;
   canContactAll: boolean;
-  assignees: AssigneeOption[];
 }) {
   const t = useTranslations("school.leads");
-  const router = useRouter();
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [assigneeId, setAssigneeId] = useState("");
   const [contactTarget, setContactTarget] = useState<LeadPoolRow | null>(null);
-  const selectionAnchorRef = useRef<string | null>(null);
   const extendRangeRef = useRef(false);
-  const assignableIds = useMemo(
-    () => leads.filter((lead) => lead.status !== "invalid" && lead.status !== "converted").map((lead) => lead.id),
-    [leads],
+  const [columnFilters, setColumnFilters] = useState<LeadTableFilters>({});
+  const [sort, setSort] = useState<LeadTableSort | null>(null);
+  const {
+    selected,
+    assignmentPending,
+    toggleLead,
+    setVisibleSelection,
+  } = useLeadPoolSelection();
+  const visibleLeads = useMemo(
+    () => filterAndSortLeadRows(leads, columnFilters, sort, locale),
+    [columnFilters, leads, locale, sort],
   );
-  const selectedIds = assignableIds.filter((id) => selected.has(id));
-  const allSelected = assignableIds.length > 0 && selectedIds.length === assignableIds.length;
-  const someSelected = selectedIds.length > 0 && !allSelected;
+  const visibleAssignableIds = useMemo(
+    () => visibleLeads
+      .filter((lead) => lead.status !== "invalid" && lead.status !== "converted")
+      .map((lead) => lead.id),
+    [visibleLeads],
+  );
+  const selectedVisibleCount = visibleAssignableIds.filter((id) => selected.has(id)).length;
+  const allVisibleSelected = visibleAssignableIds.length > 0
+    && selectedVisibleCount === visibleAssignableIds.length;
+  const someVisibleSelected = selectedVisibleCount > 0 && !allVisibleSelected;
   const formatAt = (value: string) => new Intl.DateTimeFormat(locale, {
     dateStyle: "short",
     timeStyle: "short",
   }).format(new Date(value));
 
-  const assignRun = useAction(assignLeadsAction, {
-    successMessage: t("assignSuccess"),
-    errorMessage: {
-      TARGET_CANNOT_FOLLOW_UP: t("assigneeUnavailable"),
-      LEAD_SCOPE_MISMATCH: t("assignmentStale"),
-      default: t("assignFailed"),
-    },
-    onSuccess: () => {
-      setSelected(new Set());
-      selectionAnchorRef.current = null;
-      router.refresh();
-    },
-  });
+  const columnOptions = useMemo<Record<LeadTableColumn, DashboardTableFilterOption[]>>(() => {
+    const collator = new Intl.Collator(locale, { numeric: true, sensitivity: "base" });
+    const sortOptions = (options: DashboardTableFilterOption[]) => options
+      .sort((left, right) => collator.compare(left.label, right.label));
+    const grades = new Map<string, string>();
+    const interests = new Set<string>();
+    const owners = new Map<string, string>();
+    let hasUnassignedOwner = false;
+    let hasNoContact = false;
 
-  const toggleLead = (id: string, checked: boolean) => {
-    const extendRange = extendRangeRef.current;
-    const anchorId = selectionAnchorRef.current;
-    setSelected((current) => updateLeadSelection({
-      current,
-      orderedIds: assignableIds,
-      leadId: id,
-      checked,
-      anchorId,
-      extendRange,
-    }));
-    if (!extendRange || !anchorId) selectionAnchorRef.current = id;
-    extendRangeRef.current = false;
+    for (const lead of leads) {
+      const gradeKey = leadGradeFilterKey(lead);
+      grades.set(
+        gradeKey,
+        gradeKey === UNKNOWN_GRADE_FILTER
+          ? t("unknownGrade")
+          : lead.gradeText.trim() || t("gradeValue", { grade: lead.gradeHint ?? "" }),
+      );
+      for (const interest of lead.interests) interests.add(interest);
+      if (lead.ownerId) owners.set(lead.ownerId, lead.ownerName || t("unassignedOwner"));
+      else hasUnassignedOwner = true;
+      if (!lead.lastContactOutcome) hasNoContact = true;
+    }
+
+    return {
+      seed: sortOptions([...grades].map(([value, label]) => ({ value, label }))),
+      interests: sortOptions([...interests].map((value) => ({ value, label: value }))),
+      owner: sortOptions([
+        ...(hasUnassignedOwner ? [{ value: NO_OWNER_FILTER, label: t("unassignedOwner") }] : []),
+        ...[...owners].map(([value, label]) => ({ value, label })),
+      ]),
+      latestContact: [
+        ...(hasNoContact ? [{ value: NO_CONTACT_FILTER, label: t("notContacted") }] : []),
+        ...CONTACT_OUTCOMES.map((value) => ({ value, label: t(`contactOutcome_${value}`) })),
+      ],
+      status: LEAD_STATUSES.map((value) => ({ value, label: t(`status_${value}`) })),
+    };
+  }, [leads, locale, t]);
+
+  const setColumnFilter = (column: LeadTableColumn, value: string | undefined) => {
+    setColumnFilters((current) => {
+      const next = { ...current };
+      if (value) next[column] = value;
+      else delete next[column];
+      return next;
+    });
   };
+  const clearColumn = (column: LeadTableColumn) => {
+    setColumnFilter(column, undefined);
+    setSort((current) => current?.column === column ? null : current);
+  };
+  const columnHeader = (column: LeadTableColumn, label: string) => (
+    <DashboardTableColumnHeader
+      label={label}
+      labels={{
+        menu: t("columnMenu", { column: label }),
+        scope: t("columnMenuScope"),
+        sortAscending: t("sortAscending"),
+        sortDescending: t("sortDescending"),
+        filter: t("filterColumn", { column: label }),
+        allValues: t("allColumnValues"),
+        clear: t("clearColumn"),
+      }}
+      filterValue={columnFilters[column]}
+      filterOptions={columnOptions[column]}
+      sortDirection={sort?.column === column ? sort.direction : undefined}
+      onFilterChange={(value) => setColumnFilter(column, value)}
+      onSortChange={(direction) => setSort({ column, direction })}
+      onClear={() => clearColumn(column)}
+    />
+  );
 
   return (
     <>
       <DashboardTableShell>
-        {canAssign ? (
-          <div className="flex flex-wrap items-center gap-2 border-b border-line/80 px-3 py-2">
-            <Checkbox
-              checked={allSelected ? true : someSelected ? "indeterminate" : false}
-              onCheckedChange={(checked) => {
-                setSelected(new Set(checked === true ? assignableIds : []));
-                selectionAnchorRef.current = null;
-              }}
-              aria-label={t("selectPage")}
-            />
-            <span className="mr-auto text-xs text-muted">{t("selectedCount", { count: selectedIds.length })}</span>
-            <Select value={assigneeId || undefined} onValueChange={setAssigneeId} disabled={assignRun.pending || assignees.length === 0}>
-              <SelectTrigger className="w-44" aria-label={t("chooseAssignee")}><SelectValue placeholder={t("chooseAssignee")} /></SelectTrigger>
-              <SelectContent>
-                {assignees.map((person) => <SelectItem key={person.userId} value={person.userId}>{person.displayName}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Button
-              type="button"
-              size="sm"
-              disabled={assignRun.pending || selectedIds.length === 0 || !assigneeId}
-              onClick={() => assignRun.run(selectedIds, assigneeId)}
-            >
-              {assignRun.pending ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" /> : <UsersRound className="size-4" />}
-              {t("assignSelected")}
-            </Button>
-          </div>
-        ) : null}
-        <Table className="w-full min-w-[68rem] text-xs">
+        <Table
+          className="w-full min-w-[68rem] text-xs"
+          containerClassName="max-h-[calc(100dvh-15rem)] overflow-auto"
+        >
           <TableHeader>
             <TableRow>
-              {canAssign ? <TableHead className="h-8 w-9 px-2"><span className="sr-only">{t("select")}</span></TableHead> : null}
-              <TableHead className="h-8 px-2">{t("seed")}</TableHead>
-              <TableHead className="h-8 px-2">{t("interests")}</TableHead>
-              <TableHead className="h-8 px-2">{t("owner")}</TableHead>
-              <TableHead className="h-8 px-2">{t("latestContact")}</TableHead>
-              <TableHead className="h-8 px-2">{t("status")}</TableHead>
-              <TableHead className="h-8 w-24 px-2" />
+              {canAssign ? (
+                <TableHead className="sticky top-0 z-20 h-8 w-9 bg-card px-2">
+                  <TooltipProvider delayDuration={300}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Checkbox
+                          checked={allVisibleSelected ? true : someVisibleSelected ? "indeterminate" : false}
+                          disabled={visibleAssignableIds.length === 0 || assignmentPending}
+                          onCheckedChange={(checked) => setVisibleSelection(visibleAssignableIds, checked === true)}
+                          aria-label={t("selectPage")}
+                        />
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="max-w-72 leading-5">
+                        {t("rangeSelectionHint")}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </TableHead>
+              ) : null}
+              <TableHead className="sticky top-0 z-20 h-8 bg-card px-2">{columnHeader("seed", t("seed"))}</TableHead>
+              <TableHead className="sticky top-0 z-20 h-8 bg-card px-2">{columnHeader("interests", t("interests"))}</TableHead>
+              <TableHead className="sticky top-0 z-20 h-8 bg-card px-2">{columnHeader("owner", t("owner"))}</TableHead>
+              <TableHead className="sticky top-0 z-20 h-8 bg-card px-2">{columnHeader("latestContact", t("latestContact"))}</TableHead>
+              <TableHead className="sticky top-0 z-20 h-8 bg-card px-2">{columnHeader("status", t("status"))}</TableHead>
+              <TableHead className="sticky top-0 z-20 h-8 w-24 bg-card px-2" />
             </TableRow>
           </TableHeader>
           <TableBody>
-            {leads.map((lead) => {
+            {visibleLeads.map((lead) => {
               const assignable = lead.status !== "invalid" && lead.status !== "converted";
               const contactable = canContact && Boolean(lead.ownerId)
                 && (lead.ownerId === currentUserId || canContactAll);
@@ -301,9 +358,17 @@ export function LeadPoolTable({
                     <TableCell className="w-9 px-2 py-1.5">
                       <Checkbox
                         checked={selected.has(lead.id)}
-                        disabled={!assignable || assignRun.pending}
+                        disabled={!assignable || assignmentPending}
                         onClick={(event) => { extendRangeRef.current = event.shiftKey; }}
-                        onCheckedChange={(checked) => toggleLead(lead.id, checked === true)}
+                        onCheckedChange={(checked) => {
+                          toggleLead(
+                            lead.id,
+                            checked === true,
+                            visibleAssignableIds,
+                            extendRangeRef.current,
+                          );
+                          extendRangeRef.current = false;
+                        }}
                         aria-label={t("selectLead", { name: lead.provisionalStudentName })}
                       />
                     </TableCell>
@@ -363,6 +428,16 @@ export function LeadPoolTable({
                 </TableRow>
               );
             })}
+            {visibleLeads.length === 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={canAssign ? 7 : 6}
+                  className="h-32 px-4 text-center text-sm text-muted"
+                >
+                  {t("columnEmpty")}
+                </TableCell>
+              </TableRow>
+            ) : null}
           </TableBody>
         </Table>
       </DashboardTableShell>

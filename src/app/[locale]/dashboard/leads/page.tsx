@@ -1,8 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
-import { toSelectValue } from "@/features/school/controls";
 import {
   DashboardCommandActions,
   DashboardCommandFilters,
@@ -17,10 +15,10 @@ import {
   FilterBarReset,
   FilterBarSubmit,
   FilterSearchInput,
-  FilterSelectTrigger,
 } from "@/features/school/FilterBar";
+import { LeadPoolBatchActions, LeadPoolSelectionProvider } from "@/features/school/LeadPoolSelection";
 import { LeadPoolTable } from "@/features/school/LeadPoolTable";
-import { LEAD_STATUSES, listLeadPool, parseLeadPoolFilters } from "@/features/school/leads";
+import { listLeadPool, parseLeadPoolFilters } from "@/features/school/leads";
 import { listStaffMembers } from "@/features/school/staff";
 import { Link } from "@/i18n/navigation";
 import { getMyPerms, requirePerm } from "@/lib/auth";
@@ -59,7 +57,10 @@ export default async function LeadsPage({
     : filters.scope === "mine" && filters.status === "uncontacted"
       ? "first_contact"
       : filters.scope;
-  const activeFilterCount = [filters.q, activeQueue === "first_contact" ? undefined : filters.status].filter(Boolean).length;
+  const hasKeywordFilter = Boolean(filters.q);
+  const assignableIds = leads
+    .filter((lead) => lead.status !== "invalid" && lead.status !== "converted")
+    .map((lead) => lead.id);
 
   const hrefFor = (next: {
     scope?: typeof filters.scope;
@@ -80,7 +81,11 @@ export default async function LeadsPage({
     return `/dashboard/leads${qs ? `?${qs}` : ""}`;
   };
   return (
-    <DashboardPage
+    <LeadPoolSelectionProvider
+      key={`${filters.scope}:${filters.status ?? ""}:${filters.q ?? ""}:${filters.page}`}
+      assignableIds={assignableIds}
+    >
+      <DashboardPage
       title={t("title")}
       description={t("intro")}
       commandPanel={
@@ -103,33 +108,28 @@ export default async function LeadsPage({
           <DashboardCommandFilters>
             <FilterBar action={`/${locale}/dashboard/leads`} method="get" aria-label={t("filter")}>
               {filters.scope !== "unassigned" ? <Input type="hidden" name="scope" value={filters.scope} /> : null}
+              {filters.status ? <Input type="hidden" name="status" value={filters.status} /> : null}
               <FilterSearchInput
                 name="q"
                 defaultValue={filters.q}
                 placeholder={t("searchPlaceholder")}
                 aria-label={t("searchPlaceholder")}
               />
-              <Select name="status" defaultValue={toSelectValue(filters.status ?? "")}>
-                <FilterSelectTrigger><SelectValue /></FilterSelectTrigger>
-                <SelectContent>
-                  <SelectItem value={toSelectValue("")}>{t("allStatuses")}</SelectItem>
-                  {LEAD_STATUSES.map((status) => (
-                    <SelectItem key={status} value={status}>{t(`status_${status}`)}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
               <FilterBarSubmit>{t("filter")}</FilterBarSubmit>
-              {activeFilterCount > 0 ? (
-                <FilterBarReset href={hrefFor({ status: undefined, q: undefined, page: 1 })} label={t("reset")} />
+              {hasKeywordFilter ? (
+                <FilterBarReset href={hrefFor({ q: undefined, page: 1 })} label={t("reset")} />
               ) : null}
             </FilterBar>
           </DashboardCommandFilters>
 
-          {canImport ? (
+          {canAssign || canImport ? (
             <DashboardCommandActions>
-              <Link href="/dashboard/students/import" className={buttonVariants({ variant: "secondary", size: "sm" })}>
-                {t("openDataInbox")}
-              </Link>
+              {canAssign ? <LeadPoolBatchActions assignees={assignees} /> : null}
+              {canImport ? (
+                <Link href="/dashboard/students/import" className={buttonVariants({ variant: "secondary", size: "sm" })}>
+                  {t("openDataInbox")}
+                </Link>
+              ) : null}
             </DashboardCommandActions>
           ) : null}
         </DashboardCommandPanel>
@@ -160,9 +160,9 @@ export default async function LeadsPage({
           canAssign={canAssign}
           canContact={canContact}
           canContactAll={canContact && canScopeAll}
-          assignees={assignees}
         />
       )}
-    </DashboardPage>
+      </DashboardPage>
+    </LeadPoolSelectionProvider>
   );
 }

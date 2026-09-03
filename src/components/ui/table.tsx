@@ -1,6 +1,7 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
-export function Table({ className, ...props }: React.ComponentProps<"table">) { return <div className="relative w-full overflow-x-auto"><table data-slot="table" className={cn("w-full caption-bottom text-sm",className)} {...props}/></div>; }
+type TableProps = React.ComponentProps<"table"> & { containerClassName?: string };
+export function Table({ className, containerClassName, ...props }: TableProps) { return <div data-slot="table-container" className={cn("relative w-full overflow-x-auto",containerClassName)}><table data-slot="table" className={cn("w-full caption-bottom text-sm",className)} {...props}/></div>; }
 export function TableHeader({ className,...props }:React.ComponentProps<"thead">){return <thead className={cn("border-b border-line",className)} {...props}/>;}
 export function TableBody({ className,...props }:React.ComponentProps<"tbody">){return <tbody className={cn("divide-y divide-line",className)} {...props}/>;}
 export function TableRow({ className,...props }:React.ComponentProps<"tr">){return <tr className={cn("transition-colors hover:bg-moon/15",className)} {...props}/>;}

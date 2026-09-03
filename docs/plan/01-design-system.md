@@ -130,6 +130,8 @@
 Dashboard、Classroom、Whiteboard 和 Courseware Studio 默认使用连续工作区，不以 Card 作为页面布局原语：
 
 - 页面身份只进入 `DashboardPage` 或 `ObjectBar`；搜索、筛选、状态切换和业务操作只进入 `DashboardCommandPanel`；
+- 页面级与批量业务按钮只进入 `DashboardCommandPanel` 的 actions／selection 槽，不得在 `DashboardTableShell` 上方追加一条局部工具栏；表格外壳从 shadcn `Table` 直接开始；
+- 全选放在选择列表头，数据列用 shadcn 控件承载逐列筛选／排序，选择列与操作列不提供无意义的数据筛选；数据区纵向滚动时表头固定。命令面板只保留跨列关键词搜索与页面级筛选，不重复摆放已经进入列表头的逐列筛选；
 - 正文使用无外框 `DashboardSection`、`DashboardTableShell`、稳定留白和主栏／侧栏关系表达层级；标题、说明、筛选栏、导航、表格、表单、只读摘要和空状态不得各套一张 Card；
 - 三栏或分栏工作台使用一块连续画布，栏间以结构线分隔；不得把每一栏做成独立圆角卡片，也不得用卡片内边距降低数据密度；
 - shadcn `Card`、`DashboardCard`、`DashboardCardGrid` 和手写 `rounded-* border bg-card` 均为显式例外，不是默认方案。只有产品负责人明确要求，或对象确实需要独立搬运、选择、并列比较时才能使用，并在实现附近说明独立对象语义；

@@ -68,6 +68,8 @@ export function DashboardCardShell({ children, className }: { children: ReactNod
  *
  * 表格内部的表头与数据行继续由 shadcn Table 负责；这里只固定数据表作为一个完整
  * 对象在页面上的边界，避免 `border-y`、直角表格和卡片表格三套语义并存。
+ * 外壳正文必须直接从 Table 开始：不得在这里追加页面／批量操作栏；全选、逐列筛选
+ * 与排序进入 TableHeader，并由表格自己的滚动容器保持数据表头可见。
  */
 export function DashboardTableShell({ className, ...props }: ComponentProps<"div">) {
   return (

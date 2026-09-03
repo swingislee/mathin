@@ -8,6 +8,12 @@ export { DashboardEmptyState, DashboardSection } from "./DashboardSection";
 export { DashboardPageSummary } from "./DashboardPageSummary";
 export { DashboardBackLink } from "./DashboardBackLink";
 export { DashboardCard, DashboardCardShell, DashboardEmptyCard, DashboardTableShell } from "./DashboardCard";
+export {
+  DashboardTableColumnHeader,
+  type DashboardTableColumnHeaderLabels,
+  type DashboardTableFilterOption,
+  type DashboardTableSortDirection,
+} from "./DashboardTableColumnHeader";
 export { DashboardStatGrid, DashboardSummaryCard, type DashboardStat } from "./DashboardSummaryCard";
 export {
   DashboardCommandActions,

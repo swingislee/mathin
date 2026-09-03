@@ -2,6 +2,12 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { updateLeadSelection } from "@/features/school/lead-selection";
+import {
+  filterAndSortLeadRows,
+  NO_CONTACT_FILTER,
+  NO_OWNER_FILTER,
+} from "@/features/school/lead-table-view";
+import type { LeadPoolRow } from "@/features/school/leads";
 
 const root = process.cwd();
 const read = (...segments: string[]) => fs.readFileSync(path.join(root, ...segments), "utf8");
@@ -69,16 +75,38 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
   it("supports page and shift-range assignment without leaking next actions into the seed table", () => {
     const page = read("src", "app", "[locale]", "dashboard", "leads", "page.tsx");
     const table = read("src", "features", "school", "LeadPoolTable.tsx");
+    const selection = read("src", "features", "school", "LeadPoolSelection.tsx");
+    const columnHeader = read(
+      "src",
+      "features",
+      "school",
+      "dashboard-page",
+      "DashboardTableColumnHeader.tsx",
+    );
     const actions = read("src", "features", "school", "actions", "leads.ts");
     const query = read("src", "features", "school", "leads.ts");
 
     expect(page).toContain('value: "first_contact"');
     expect(page).toContain('status: "uncontacted"');
     expect(page).toContain("listStaffMembers");
-    expect(table).toContain("assignSelected");
-    expect(table).toContain("selectedCount");
+    expect(page).toContain("LeadPoolSelectionProvider");
+    expect(page).toContain("LeadPoolBatchActions");
+    expect(page).toContain("FilterSearchInput");
+    expect(page).not.toContain("allStatuses");
+    expect(page).not.toContain("FilterSelectTrigger");
+    expect(selection).toContain("assignSelected");
+    expect(selection).toContain("selectedCount");
+    expect(table).not.toContain("assignSelected");
+    expect(table).not.toContain("selectedCount");
+    expect(table).toMatch(/<DashboardTableShell>\s*<Table/);
     expect(table).toContain("event.shiftKey");
-    expect(table).toContain("selectionAnchorRef");
+    expect(selection).toContain("selectionAnchorRef");
+    expect(table).toContain("DashboardTableColumnHeader");
+    expect(table).toContain("containerClassName");
+    expect(table).toContain("sticky top-0");
+    expect(columnHeader).toContain("Popover");
+    expect(columnHeader).toContain("Select");
+    expect(columnHeader).toContain("Button");
     expect(table).toContain("recordFirstContact");
     expect(table).toContain("contactAutoFields");
     expect(table).not.toContain("DateTimePicker");
@@ -89,6 +117,64 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(actions).toContain('p_next_action_at: nullableRpcArg<string>(null)');
     expect(query).toContain('.from("lead_communications")');
     expect(query).not.toContain('.from("lead_next_actions")');
+  });
+
+  it("filters and sorts the currently loaded lead page by its data columns", () => {
+    const makeLead = (overrides: Partial<LeadPoolRow>): LeadPoolRow => ({
+      id: "lead-default",
+      provisionalStudentName: "默认学生",
+      phone: "13800000000",
+      gradeHint: 3,
+      gradeText: "",
+      status: "unassigned",
+      ownerId: null,
+      ownerName: "",
+      suggestedStudentId: null,
+      suggestedStudentName: "",
+      createdAt: "2026-09-01T00:00:00.000Z",
+      sourceMarkedDuplicate: false,
+      interests: [],
+      contactCount: 0,
+      lastContactAt: null,
+      lastContactOutcome: null,
+      lastContactNote: "",
+      wechatAdded: null,
+      visitCommitted: null,
+      interestLevel: null,
+      ...overrides,
+    });
+    const rows = [
+      makeLead({ id: "b", provisionalStudentName: "贝贝", interests: ["暑期课"] }),
+      makeLead({
+        id: "a",
+        provisionalStudentName: "安安",
+        status: "contacted",
+        ownerId: "staff-1",
+        ownerName: "陈老师",
+        lastContactAt: "2026-09-01T10:00:00.000Z",
+        lastContactOutcome: "connected",
+      }),
+      makeLead({
+        id: "c",
+        provisionalStudentName: "聪聪",
+        status: "nurture",
+        ownerId: "staff-1",
+        ownerName: "陈老师",
+        lastContactAt: "2026-09-02T10:00:00.000Z",
+        lastContactOutcome: "declined",
+      }),
+    ];
+
+    expect(filterAndSortLeadRows(rows, { owner: NO_OWNER_FILTER }, null, "zh").map((row) => row.id))
+      .toEqual(["b"]);
+    expect(filterAndSortLeadRows(rows, { latestContact: NO_CONTACT_FILTER }, null, "zh").map((row) => row.id))
+      .toEqual(["b"]);
+    expect(filterAndSortLeadRows(rows, { owner: "staff-1", status: "contacted" }, null, "zh").map((row) => row.id))
+      .toEqual(["a"]);
+    expect(filterAndSortLeadRows(rows, {}, { column: "seed", direction: "asc" }, "zh").map((row) => row.id))
+      .toEqual(["a", "b", "c"]);
+    expect(filterAndSortLeadRows(rows, {}, { column: "latestContact", direction: "desc" }, "zh").map((row) => row.id))
+      .toEqual(["c", "a", "b"]);
   });
 
   it("selects or clears an inclusive visible range from the plain-click anchor", () => {
