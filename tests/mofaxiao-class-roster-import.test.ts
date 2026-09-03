@@ -99,8 +99,10 @@ describe("魔法校班级学员花名册导入", () => {
     const root = process.cwd();
     const read = (...segments: string[]) => fs.readFileSync(path.join(root, ...segments), "utf8");
     const action = read("src", "features", "school", "actions", "mofaxiao-class-roster-imports.ts");
+    const optionReader = read("src", "features", "school", "class-roster-imports.ts");
     const routes = read("src", "features", "school", "dashboard-routes.ts");
     const migration = read("supabase", "migrations", "20260903000800_mofaxiao_class_roster_import.sql");
+    const optionMigration = read("supabase", "migrations", "20260903000900_mofaxiao_class_roster_option_readers.sql");
     const applySection = migration.slice(
       migration.indexOf("create or replace function public.apply_mofaxiao_class_roster_import"),
       migration.indexOf("revoke all on function public.get_mofaxiao_class_roster_import_batch"),
@@ -108,6 +110,11 @@ describe("魔法校班级学员花名册导入", () => {
 
     expect(action).toContain(".strict()");
     expect(action).toContain('p_source_system: "mofaxiao"');
+    expect(optionReader).toContain('.rpc("list_mofaxiao_class_roster_target_options")');
+    expect(optionReader).not.toContain('.from("classrooms")');
+    expect(optionMigration).toContain("security definer stable");
+    expect(optionMigration).toContain("public.has_perm(v_uid, 'enrollment.manage')");
+    expect(optionMigration).toContain("public.can_manage_classroom(classroom_row.id, v_uid)");
     expect(routes).toContain('href: "/dashboard/classes/import/roster"');
     expect(routes).toContain('permission: "enrollment.manage"');
     expect(applySection).toContain("insert into public.students");
