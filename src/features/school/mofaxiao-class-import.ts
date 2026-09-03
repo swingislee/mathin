@@ -74,6 +74,7 @@ const SEASONS = new Map<string, number>([
 ]);
 const AIXUEXI_PRIMARY_MATH_FAMILY = "aixuexi-primary-math";
 const INTEGRATED_THINKING_LEVELS = new Set(["G+", "A+"]);
+const NON_ROOM_NAMES = new Set(["", "-", "—", "无", "暂无", "待定", "未分配", "待分配", "待分发", "待分配教室", "待分发教室"]);
 
 export type MofaxiaoClassParseErrorCode = "EMPTY_SHEET" | "UNRECOGNIZED_HEADERS" | "MISSING_REQUIRED_HEADERS";
 
@@ -105,6 +106,38 @@ function normalizeHeader(value: string): string {
 
 export function normalizeClassImportText(value: string): string {
   return value.normalize("NFKC").toLocaleLowerCase("zh-CN").replace(/[\s\u3000]+/g, "");
+}
+
+export function normalizeMofaxiaoCampusName(value: string): string {
+  const normalized = normalizeClassImportText(value).replace(/校区$/u, "");
+  return normalized === "紫辰" ? "紫辰阁" : normalized;
+}
+
+export function isCreatableMofaxiaoRoomName(value: string): boolean {
+  return !NON_ROOM_NAMES.has(normalizeClassImportText(value));
+}
+
+export function suggestMofaxiaoClassRoomMapping(
+  row: Pick<MofaxiaoClassImportRow, "campusName" | "roomName">,
+  rooms: readonly { id: string; name: string; campusId: string; campusName: string }[],
+  campuses: readonly { id: string; name: string }[],
+  canCreateRoom: boolean,
+): { roomId: string | null; createRoomCampusId: string | null } {
+  const campusKey = normalizeMofaxiaoCampusName(row.campusName);
+  const roomKey = normalizeClassImportText(row.roomName);
+  const exactRooms = rooms.filter((room) => (
+    normalizeMofaxiaoCampusName(room.campusName) === campusKey
+    && normalizeClassImportText(room.name) === roomKey
+  ));
+  if (exactRooms.length === 1) return { roomId: exactRooms[0].id, createRoomCampusId: null };
+
+  if (!canCreateRoom || !isCreatableMofaxiaoRoomName(row.roomName)) {
+    return { roomId: null, createRoomCampusId: null };
+  }
+  const matchingCampuses = campuses.filter((campus) => normalizeMofaxiaoCampusName(campus.name) === campusKey);
+  return matchingCampuses.length === 1
+    ? { roomId: null, createRoomCampusId: matchingCampuses[0].id }
+    : { roomId: null, createRoomCampusId: null };
 }
 
 export function isMofaxiaoIntegratedThinkingCourse(row: Pick<MofaxiaoClassImportRow, "courseName">): boolean {
@@ -306,6 +339,7 @@ export function parseMofaxiaoClassWorksheet(
       importAsFreeClass: false,
       primaryTeacherId: null,
       roomId: null,
+      createRoomCampusId: null,
       schoolTermId: null,
     });
   }

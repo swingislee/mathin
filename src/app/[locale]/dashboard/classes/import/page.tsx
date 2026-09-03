@@ -5,8 +5,8 @@ import { listClassImportCourseOptions, listRecentMofaxiaoClassImportBatches } fr
 import { listStaffOptions } from "@/features/school/classes";
 import { listSchoolTerms } from "@/features/school/courses";
 import { DashboardPage } from "@/features/school/dashboard-page";
-import { listActiveRoomOptionsV2 } from "@/features/school/organization-locations";
-import { requirePerm } from "@/lib/auth";
+import { listActiveLocationOptionsV2 } from "@/features/school/organization-locations";
+import { getMyPerms, requirePerm } from "@/lib/auth";
 
 export default async function ImportClassesPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -32,20 +32,23 @@ export default async function ImportClassesPage({ params }: { params: Promise<{ 
 }
 
 async function ImportClassWorkspace({ locale }: { locale: string }) {
-  await requirePerm(locale, "class.create");
-  const [recentBatches, courseOptions, teachers, roomOptions, schoolTerms] = await Promise.all([
+  const user = await requirePerm(locale, "class.create");
+  const [recentBatches, courseOptions, teachers, locationOptions, schoolTerms, perms] = await Promise.all([
     listRecentMofaxiaoClassImportBatches(),
     listClassImportCourseOptions(),
     listStaffOptions(),
-    listActiveRoomOptionsV2(),
+    listActiveLocationOptionsV2(),
     listSchoolTerms(),
+    getMyPerms(user.id),
   ]);
   return (
     <MofaxiaoClassImportPanel
       recentBatches={recentBatches}
       courseOptions={courseOptions}
       teachers={teachers}
-      roomOptions={roomOptions}
+      campusOptions={locationOptions.campuses}
+      roomOptions={locationOptions.rooms}
+      canCreateRooms={perms.has("location.manage")}
       schoolTerms={schoolTerms}
     />
   );

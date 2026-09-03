@@ -3,10 +3,13 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   inferMofaxiaoSchoolYearStart,
+  isCreatableMofaxiaoRoomName,
   isSupportedMofaxiaoClassType,
   listMofaxiaoClassCourseCandidates,
+  normalizeMofaxiaoCampusName,
   parseMofaxiaoClassWorksheet,
   preferredMofaxiaoClassCourseCandidate,
+  suggestMofaxiaoClassRoomMapping,
 } from "@/features/school/mofaxiao-class-import";
 import type { ClassImportCourseOption } from "@/features/school/actions/types";
 
@@ -48,6 +51,7 @@ describe("魔法校班级表解析", () => {
       sessionTime: "17:00-19:00",
       courseId: null,
       primaryTeacherId: null,
+      createRoomCampusId: null,
       schoolTermId: null,
     });
   });
@@ -78,6 +82,31 @@ describe("魔法校班级表解析", () => {
     expect(inferMofaxiaoSchoolYearStart("2026-09-05", 2, 2025)).toBe(2026);
     expect(inferMofaxiaoSchoolYearStart("2027-03-01", 4, 2025)).toBe(2026);
     expect(inferMofaxiaoSchoolYearStart(null, 2, 2026)).toBe(2026);
+  });
+
+  it("缺失教室默认建议在对应校区新建，但占位教室不新建", () => {
+    const campuses = [
+      { id: "campus-ligang", name: "利港" },
+      { id: "campus-zichen", name: "紫辰阁" },
+    ];
+    const rooms = [{
+      id: "room-z311",
+      name: "Z311",
+      campusId: "campus-zichen",
+      campusName: "紫辰阁",
+    }];
+
+    expect(normalizeMofaxiaoCampusName("紫辰校区")).toBe("紫辰阁");
+    expect(suggestMofaxiaoClassRoomMapping(
+      { campusName: "紫辰", roomName: "Z311" }, rooms, campuses, true,
+    )).toEqual({ roomId: "room-z311", createRoomCampusId: null });
+    expect(suggestMofaxiaoClassRoomMapping(
+      { campusName: "紫辰", roomName: "Z312" }, rooms, campuses, true,
+    )).toEqual({ roomId: null, createRoomCampusId: "campus-zichen" });
+    expect(isCreatableMofaxiaoRoomName("待分发教室")).toBe(false);
+    expect(suggestMofaxiaoClassRoomMapping(
+      { campusName: "利港", roomName: "待分发教室" }, rooms, campuses, true,
+    )).toEqual({ roomId: null, createRoomCampusId: null });
   });
 
   it("贯通思维只匹配爱学习 G+ 和 A+，并按年级自动选择唯一课程", () => {
@@ -143,5 +172,27 @@ describe("魔法校班级表解析", () => {
     expect(panel).not.toContain('import("xlsx")');
     expect(panel).not.toContain("application/vnd.ms-excel");
     expect(packageJson.dependencies).not.toHaveProperty("xlsx");
+  });
+
+  it("待新建教室只在正式导入事务中创建并复用结构化教室 RPC", () => {
+    const root = process.cwd();
+    const migration = fs.readFileSync(path.join(
+      root,
+      "supabase",
+      "migrations",
+      "20260903001000_mofaxiao_class_import_room_creation.sql",
+    ), "utf8");
+    const applySection = migration.slice(
+      migration.indexOf("create or replace function public.apply_mofaxiao_class_import"),
+    );
+
+    expect(migration).toContain("createRoomCampusId");
+    expect(migration).toContain("mathin_internal.apply_mofaxiao_class_import_base");
+    expect(applySection).toContain("public.create_campus_room_v2");
+    expect(applySection.indexOf("public.create_campus_room_v2")).toBeLessThan(
+      applySection.indexOf("mathin_internal.apply_mofaxiao_class_import_base"),
+    );
+    expect(migration).toContain("ROOM_NAME_EXISTS_INACTIVE");
+    expect(migration).not.toContain("insert into public.class_sessions");
   });
 });

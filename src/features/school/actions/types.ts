@@ -278,6 +278,7 @@ export interface MofaxiaoClassImportRow {
   importAsFreeClass: boolean;
   primaryTeacherId: string | null;
   roomId: string | null;
+  createRoomCampusId: string | null;
   schoolTermId: string | null;
 }
 
