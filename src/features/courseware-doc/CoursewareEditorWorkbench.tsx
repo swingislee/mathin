@@ -774,7 +774,7 @@ function CoursewarePreviewMode({
         </div>,
         content: <CoursewareStageViewport
           aspect={previewAspect}
-          align="start"
+          align="center"
           stageProps={{ "data-courseware-preview-stage": true } as HTMLAttributes<HTMLDivElement>}
         >
           {preview}
