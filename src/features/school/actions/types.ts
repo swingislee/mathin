@@ -341,6 +341,31 @@ export const MOFAXIAO_CLASS_ROSTER_IMPORT_TEMPLATE_VERSION = "mofaxiao-class-ros
 
 export type MofaxiaoClassRosterDecision = "link_existing" | "create_student" | "skip";
 
+export interface MofaxiaoClassRosterDefaultClass {
+  name: string;
+  system: string;
+  schoolYear: number;
+  season: number;
+  seasonText: string;
+  grade: number | null;
+  gradeText: string;
+  classType: string;
+  campusName: string;
+  roomName: string;
+  teacherName: string;
+  weekday: string;
+  time: string;
+}
+
+export type MofaxiaoClassRosterReviewIssue = "course" | "teacher" | "room" | "schedule";
+
+export interface MofaxiaoClassRosterCreatedClass {
+  id: string;
+  name: string;
+  sourceClassKey: string;
+  reviewIssues: MofaxiaoClassRosterReviewIssue[];
+}
+
 export interface MofaxiaoClassRosterImportRow {
   sourceRow: number;
   sourceCell: string;
@@ -351,6 +376,7 @@ export interface MofaxiaoClassRosterImportRow {
   sourcePhone: string;
   grade: number | null;
   classroomId: string | null;
+  defaultClass: MofaxiaoClassRosterDefaultClass | null;
   decision: MofaxiaoClassRosterDecision;
   studentId: string | null;
   sourceNote: string;
@@ -394,6 +420,7 @@ export interface MofaxiaoClassRosterImportBatchResult {
   errorCount: number;
   inserted: number;
   createdStudents: number;
+  createdClasses: MofaxiaoClassRosterCreatedClass[];
   expiresAt: string;
   rows: MofaxiaoClassRosterImportBatchRow[];
 }

@@ -15,6 +15,22 @@ import { COMMON_CODES, intInRange, parse, requiredText, text, uuid } from "./sch
 const sha256 = z.string().regex(/^[a-f0-9]{64}$/);
 const rosterDecision = z.enum(["link_existing", "create_student", "skip"]);
 
+const defaultClassSchema = z.object({
+  name: requiredText(100),
+  system: requiredText(100),
+  schoolYear: intInRange(2000, 2200),
+  season: intInRange(1, 4),
+  seasonText: requiredText(40),
+  grade: intInRange(1, 12).nullable(),
+  gradeText: requiredText(40),
+  classType: requiredText(40),
+  campusName: requiredText(100),
+  roomName: text(100),
+  teacherName: text(100),
+  weekday: text(40),
+  time: text(80),
+}).strict();
+
 const mofaxiaoClassRosterRowSchema = z.object({
   sourceRow: intInRange(1, 100_000),
   sourceCell: requiredText(20),
@@ -25,12 +41,16 @@ const mofaxiaoClassRosterRowSchema = z.object({
   sourcePhone: text(40),
   grade: intInRange(1, 12).nullable(),
   classroomId: uuid.nullable(),
+  defaultClass: defaultClassSchema.nullable(),
   decision: rosterDecision,
   studentId: uuid.nullable(),
   sourceNote: text(500),
 }).strict().superRefine((row, context) => {
-  if (row.decision !== "skip" && !row.classroomId) {
+  if (row.decision !== "skip" && !row.classroomId && !row.defaultClass) {
     context.addIssue({ code: "custom", path: ["classroomId"], message: "MISSING_CLASSROOM_MAPPING" });
+  }
+  if (row.classroomId && row.defaultClass) {
+    context.addIssue({ code: "custom", path: ["defaultClass"], message: "INVALID_DEFAULT_CLASS" });
   }
   if (row.decision === "link_existing" && !row.studentId) {
     context.addIssue({ code: "custom", path: ["studentId"], message: "MISSING_STUDENT_MAPPING" });
@@ -63,6 +83,9 @@ const MOFAXIAO_CLASS_ROSTER_IMPORT_CODES = [
   "BATCH_HAS_ERRORS",
   "BATCH_KIND_MISMATCH",
   "MISSING_CLASSROOM_MAPPING",
+  "INVALID_DEFAULT_CLASS",
+  "CLASS_CREATION_FORBIDDEN",
+  "CLASS_TERM_NOT_FOUND",
   "INVALID_CLASSROOM",
   "CLASS_TERM_MISSING",
   "MISSING_STUDENT_MAPPING",

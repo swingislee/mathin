@@ -48,6 +48,7 @@ async function ImportRosterWorkspace({ locale }: { locale: string }) {
       students={students}
       savedMappings={savedMappings}
       canCreateStudents={perms.has("student.import")}
+      canCreateClasses={perms.has("class.create")}
     />
   );
 }
