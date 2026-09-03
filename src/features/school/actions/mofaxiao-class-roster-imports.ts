@@ -24,6 +24,7 @@ const defaultClassSchema = z.object({
   grade: intInRange(1, 12).nullable(),
   gradeText: requiredText(40),
   classType: requiredText(40),
+  courseClassType: requiredText(40).optional(),
   campusName: requiredText(100),
   roomName: text(100),
   teacherName: text(100),

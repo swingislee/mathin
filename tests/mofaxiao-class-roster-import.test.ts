@@ -118,7 +118,7 @@ describe("魔法校班级学员花名册导入", () => {
   it("只有学期、年级、主讲、校区与班型共同形成唯一高置信结果时才自动映射班级", () => {
     const target = (overrides: Partial<ClassRosterTargetOption>): ClassRosterTargetOption => ({
       id: "target", name: "一年级秋季A+ 周六 10:00-12:00", grade: 1, termId: "term", schoolYear: 2026,
-      season: 2, courseTitle: "爱学习 A+ 一年级秋季", courseFamilySlug: "aixuexi-primary-math", classType: "A+", campusName: "紫辰", roomName: "Z312",
+      season: 2, courseTitle: "爱学习 A+ 一年级秋季", courseFamilySlug: "aixuexi-primary-math", courseClassType: "A+", campusName: "紫辰", roomName: "Z312",
       primaryTeacherNames: ["张灿"], capacity: 16, activeEnrollmentCount: 0, ...overrides,
     });
     const source = parseMofaxiaoClassRosterWorkbook([{
@@ -128,7 +128,7 @@ describe("魔法校班级学员花名册导入", () => {
     expect(preferredMofaxiaoRosterClassCandidate(source, [target({})])?.id).toBe("target");
     expect(preferredMofaxiaoRosterClassCandidate(source, [target({ id: "a" }), target({ id: "b" })])).toBeNull();
     expect(preferredMofaxiaoRosterClassCandidate(source, [target({ campusName: "" })])).toBeNull();
-    expect(preferredMofaxiaoRosterClassCandidate(source, [target({ classType: "S", courseTitle: "二年级 S 班" })])).toBeNull();
+    expect(preferredMofaxiaoRosterClassCandidate(source, [target({ courseClassType: "S", courseTitle: "二年级 S 班" })])).toBeNull();
   });
 
   it("贯通体系的花名册班级只推荐爱学习 G+ 与 A+ 班级", () => {
@@ -138,20 +138,20 @@ describe("魔法校班级学员花名册导入", () => {
     }]).classes[0];
     const base: ClassRosterTargetOption = {
       id: "g", name: "三年级秋季 G+", grade: 3, termId: "term", schoolYear: 2026, season: 2,
-      courseTitle: "爱学习 G+ 苏教版数学 · 三年级秋季", courseFamilySlug: "aixuexi-primary-math", classType: "G+",
+      courseTitle: "爱学习 G+ 苏教版数学 · 三年级秋季", courseFamilySlug: "aixuexi-primary-math", courseClassType: "G+",
       campusName: "紫辰", roomName: "", primaryTeacherNames: ["王成国"], capacity: 16, activeEnrollmentCount: 0,
     };
     const candidates = listMofaxiaoRosterClassCandidates(source, [
       base,
-      { ...base, id: "a", classType: "A+", courseTitle: "爱学习 A+ 全国版数学 · 三年级秋季" },
-      { ...base, id: "x", classType: "X+", courseTitle: "爱学习 X+ 苏教版数学 · 三年级秋季" },
-      { ...base, id: "e", courseFamilySlug: "xueersi-e-primary-math-cn", classType: "A+", courseTitle: "E 系列数学三年级秋季 A+" },
+      { ...base, id: "a", courseClassType: "A+", courseTitle: "爱学习 A+ 全国版数学 · 三年级秋季" },
+      { ...base, id: "x", courseClassType: "X+", courseTitle: "爱学习 X+ 苏教版数学 · 三年级秋季" },
+      { ...base, id: "e", courseFamilySlug: "xueersi-e-primary-math-cn", courseClassType: "A+", courseTitle: "E 系列数学三年级秋季 A+" },
     ]);
     expect(candidates.map((candidate) => candidate.id).sort()).toEqual(["a", "g"]);
     expect(buildMofaxiaoRosterDefaultClass(source).system).toBe("贯通思维");
   });
 
-  it("培优体系映射 E 系列，并把魔法校 A+ 转成课程 B 版", () => {
+  it("E 系列保留 A+ 班型和班名，同时映射 B 版教材", () => {
     const source = parseMofaxiaoClassRosterWorkbook([{
       sheet: "26年暑秋在读学员",
       data: [
@@ -163,14 +163,14 @@ describe("魔法校班级学员花名册导入", () => {
     const base: ClassRosterTargetOption = {
       id: "e-b", name: "【科学思维】三年级秋季A+|紫辰XLZ周三17:00", grade: 3, termId: "term",
       schoolYear: 2026, season: 2, courseTitle: "E系列数学三年级秋季B[全国版]",
-      courseFamilySlug: "xueersi-e-primary-math-cn", classType: "B", campusName: "", roomName: "",
+      courseFamilySlug: "xueersi-e-primary-math-cn", courseClassType: "B", campusName: "", roomName: "",
       primaryTeacherNames: ["薛立志"], capacity: 20, activeEnrollmentCount: 0,
     };
 
     expect(listMofaxiaoRosterClassCandidates(source, [
       base,
-      { ...base, id: "e-a", courseTitle: "E系列数学三年级秋季A[全国版]", classType: "A" },
-      { ...base, id: "aix-a", courseTitle: "爱学习 A+ 全国版数学 · 三年级秋季", courseFamilySlug: "aixuexi-primary-math", classType: "A+" },
+      { ...base, id: "e-a", courseTitle: "E系列数学三年级秋季A[全国版]", courseClassType: "A" },
+      { ...base, id: "aix-a", courseTitle: "爱学习 A+ 全国版数学 · 三年级秋季", courseFamilySlug: "aixuexi-primary-math", courseClassType: "A+" },
     ]).map((candidate) => candidate.id)).toEqual(["e-b"]);
     expect(preferredMofaxiaoRosterClassCandidate(source, [base])?.id).toBe("e-b");
     expect(preferredMofaxiaoRosterClassCandidate(source, [{ ...base, name: "【培优思维】三年级秋季A+|紫辰XLZ周三17:00" }])?.id).toBe("e-b");
@@ -183,9 +183,10 @@ describe("魔法校班级学员花名册导入", () => {
     expect(teacherInitialsForClassName("张灿")).toBe("ZC");
     expect(teacherInitialsForClassName("XLZ")).toBe("XLZ");
     expect(buildMofaxiaoRosterDefaultClass(source)).toEqual(expect.objectContaining({
-      name: "【科学思维】三年级秋季B｜紫辰阁XLZ周三17:00-19:30",
+      name: "【科学思维】三年级秋季A+｜紫辰阁XLZ周三17:00-19:30",
       system: "科学思维",
-      classType: "B",
+      classType: "A+",
+      courseClassType: "B",
       campusName: "紫辰阁",
       teacherName: "薛立志",
       teacherInitials: "XLZ",
@@ -211,6 +212,7 @@ describe("魔法校班级学员花名册导入", () => {
     const optionMigration = read("supabase", "migrations", "20260903000900_mofaxiao_class_roster_option_readers.sql");
     const defaultClassMigration = read("supabase", "migrations", "20260903001200_mofaxiao_roster_default_class_creation.sql");
     const namingMigration = read("supabase", "migrations", "20260903001300_mofaxiao_e_series_science_class_naming.sql");
+    const classTypeMigration = read("supabase", "migrations", "20260903001400_mofaxiao_roster_class_type_course_mapping.sql");
     const applySection = migration.slice(
       migration.indexOf("create or replace function public.apply_mofaxiao_class_roster_import"),
       migration.indexOf("revoke all on function public.get_mofaxiao_class_roster_import_batch"),
@@ -252,6 +254,10 @@ describe("魔法校班级学员花名册导入", () => {
     expect(namingMigration).toContain("v_system := '科学思维'");
     expect(namingMigration).toContain("like '%培优%'");
     expect(namingMigration).toContain("like '%科学%'");
+    expect(classTypeMigration).toContain("p_default->>'businessClassType'");
+    expect(classTypeMigration).toContain("'{defaultClass,courseClassType}'");
+    expect(classTypeMigration).toContain("'{defaultClass,businessClassType}'");
+    expect(classTypeMigration).toContain("apply_mofaxiao_class_roster_import_class_type_base");
     for (const forbiddenWrite of [
       "insert into public.classrooms",
       "insert into public.class_sessions",

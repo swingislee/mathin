@@ -364,6 +364,7 @@ export interface MofaxiaoClassRosterDefaultClass {
   grade: number | null;
   gradeText: string;
   classType: string;
+  courseClassType?: string;
   campusName: string;
   roomName: string;
   teacherName: string;
@@ -474,7 +475,7 @@ export interface ClassRosterTargetOption {
   season: number | null;
   courseTitle: string;
   courseFamilySlug: string;
-  classType: string;
+  courseClassType: string;
   campusName: string;
   roomName: string;
   primaryTeacherNames: string[];
