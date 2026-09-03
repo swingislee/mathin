@@ -13,6 +13,7 @@ import { Link, useRouter } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { notificationValueKey, renderNotificationDetail, resolveNotificationDetail } from "./notification-copy";
 import { markChangeFeedItemRead, markChangeFeedRead, type ChangeEvent } from "./notifications";
+import { DesktopNotificationControls } from "./DesktopNotificationControls";
 
 export interface InboxWorkItem {
   key: string;
@@ -36,11 +37,13 @@ export function ChangeBell({
   workItems,
   totalWorkItems,
   userId,
+  desktopNotificationsEligible,
 }: {
   initialEvents: ChangeEvent[];
   workItems: InboxWorkItem[];
   totalWorkItems: number;
   userId: string;
+  desktopNotificationsEligible: boolean;
 }) {
   const t = useTranslations("changes");
   const locale = useLocale();
@@ -203,6 +206,7 @@ export function ChangeBell({
             )}
           </TabsContent>
         </Tabs>
+        {desktopNotificationsEligible ? <DesktopNotificationControls /> : null}
       </PopoverContent>
     </Popover>
   );

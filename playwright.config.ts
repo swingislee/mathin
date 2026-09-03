@@ -49,7 +49,7 @@ export default defineConfig({
     },
     {
       name: "credentialed-chromium",
-      testMatch: ["school-portals.spec.ts", "notebook-authenticated.spec.ts"],
+      testMatch: ["school-portals.spec.ts", "notebook-authenticated.spec.ts", "web-push-dark.spec.ts"],
       use: {
         ...devices["Desktop Chrome"],
         trace: "off",

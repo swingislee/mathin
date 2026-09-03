@@ -38,6 +38,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link, useRouter } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { revokeAllMyWebPushSubscriptionsAction } from "@/features/events/web-push-actions";
 import { cn } from "@/lib/utils";
 import type {
   AccountCenterSnapshot,
@@ -298,6 +299,10 @@ export function AccountSecurityPanel({
 
   const leaveForcedPasswordChange = async () => {
     setAuthBusy(true);
+    await revokeAllMyWebPushSubscriptionsAction().catch(() => null);
+    const registration = await navigator.serviceWorker?.getRegistration("/").catch(() => undefined);
+    const subscription = await registration?.pushManager.getSubscription().catch(() => null);
+    await subscription?.unsubscribe().catch(() => false);
     await createClient().auth.signOut({ scope: "local" });
     router.replace("/login");
     router.refresh();

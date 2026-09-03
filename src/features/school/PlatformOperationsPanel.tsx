@@ -26,7 +26,7 @@ interface FilePolicySnapshot {
 }
 
 interface IntegrationSnapshot {
-  channel: "email" | "sms" | "wechat" | "webhook";
+  channel: "email" | "sms" | "wechat" | "webhook" | "web_push";
   providerKey: string | null;
   status: "disabled" | "enabled" | "degraded";
   secretConfigured: boolean;
@@ -52,6 +52,19 @@ interface OperationsSnapshot {
     deadLetters: DeadLetter[];
   };
   notifications: { total24h: number; unread: number; failedDeliveries: number; queuedDeliveries: number };
+  webPush: {
+    featureEnabled: boolean;
+    rolloutMembers: number;
+    activeSubscriptions: number;
+    sharedSubscriptions: number;
+    expiredOrGoneSubscriptions: number;
+    queued: number;
+    sent24h: number;
+    suppressed24h: number;
+    failed: number;
+    oldestDueAt: string | null;
+    workerStale: boolean;
+  };
   files: {
     activeUploads: number;
     orphansDue: number;
@@ -82,6 +95,8 @@ export async function PlatformOperationsPanel({ canManage }: { canManage: boolea
     { label: t("jobsRunning"), value: snapshot.jobs.running, tone: "default" as const },
     { label: t("deadLetters"), value: snapshot.jobs.dead, tone: statusTone(snapshot.jobs.dead) },
     { label: t("failedDeliveries"), value: snapshot.notifications.failedDeliveries, tone: statusTone(snapshot.notifications.failedDeliveries) },
+    { label: t("webPushFailed"), value: snapshot.webPush.failed, tone: statusTone(snapshot.webPush.failed) },
+    { label: t("webPushWorkerStale"), value: snapshot.webPush.workerStale ? 1 : 0, tone: snapshot.webPush.workerStale ? "warning" as const : "default" as const },
     { label: t("fileCleanupPending"), value: snapshot.files.cleanupPending, tone: snapshot.files.cleanupPending > 0 ? "warning" as const : "default" as const },
   ];
 
@@ -127,6 +142,40 @@ export async function PlatformOperationsPanel({ canManage }: { canManage: boolea
           ))}</ul>
         </DashboardCardShell>
       </div>
+
+      <DashboardCardShell>
+        <div className="flex flex-wrap items-start gap-3 border-b border-line px-5 py-4">
+          <div className="min-w-0 flex-1">
+            <h2 className="text-base font-medium text-ink">{t("webPushTitle")}</h2>
+            <p className="mt-1 text-sm text-muted">{t("webPushIntro")}</p>
+          </div>
+          <Badge variant={snapshot.webPush.featureEnabled ? "default" : "outline"}>
+            {snapshot.webPush.featureEnabled ? t("webPushFeatureOn") : t("webPushFeatureOff")}
+          </Badge>
+        </div>
+        <dl className="grid gap-px bg-line sm:grid-cols-2 lg:grid-cols-4">
+          {([
+            ["webPushRollout", snapshot.webPush.rolloutMembers],
+            ["webPushActive", snapshot.webPush.activeSubscriptions],
+            ["webPushShared", snapshot.webPush.sharedSubscriptions],
+            ["webPushQueued", snapshot.webPush.queued],
+            ["webPushSent24h", snapshot.webPush.sent24h],
+            ["webPushSuppressed24h", snapshot.webPush.suppressed24h],
+            ["webPushExpiredGone", snapshot.webPush.expiredOrGoneSubscriptions],
+            ["webPushFailed", snapshot.webPush.failed],
+          ] as const).map(([label, value]) => (
+            <div key={label} className="bg-card px-5 py-4">
+              <dt className="text-xs text-muted">{t(label)}</dt>
+              <dd className="mt-1 text-xl font-medium text-ink">{format.number(value)}</dd>
+            </div>
+          ))}
+        </dl>
+        <p className="border-t border-line px-5 py-3 text-xs text-muted">
+          {snapshot.webPush.oldestDueAt
+            ? t("webPushOldestDue", { time: format.dateTime(new Date(snapshot.webPush.oldestDueAt), { dateStyle: "short", timeStyle: "medium" }) })
+            : t("webPushNoDue")}
+        </p>
+      </DashboardCardShell>
 
       <DashboardTableShell>
         <div className="border-b border-line px-5 py-4">

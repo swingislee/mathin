@@ -125,6 +125,11 @@ export async function signup(formData: FormData) {
 export async function logout(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
   const supabase = await createClient();
+  const revokeWebPush = supabase.rpc as unknown as (
+    name: string,
+  ) => Promise<{ error: { message: string } | null }>;
+  // Logout must continue even if the best-effort notification revocation is unavailable.
+  await revokeWebPush("revoke_all_my_web_push_subscriptions").catch(() => null);
   await supabase.auth.signOut();
   redirect(`/${locale}`);
 }

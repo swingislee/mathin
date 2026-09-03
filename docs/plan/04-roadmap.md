@@ -222,6 +222,12 @@ Phase 1～5 的本机隔离 Supabase、固定开发身份、migration LF checksu
 
 本机 migrations `20260902001000_staff_direct_provisioning`、`20260902001100_staff_initial_password_hardening` 与 `20260902001200_staff_initial_password_reissue` 在既有 `20260902000700` 预检账本上增加窄化权限 `staff.invite`、direct provisioning reservation、失败行重试、首次改密状态、service-role 完成 RPC、Auth 建档临时密钥清理，以及带 10 分钟并发占位的首次密码重签账本。重签先保留可回退的 hash 状态，再更新 Auth 密码并确认；Auth 更新失败恢复旧 hash，成功或员工完成首次改密时清除临时比较 hash。`director` 与原有 `staff.manage` 持有者可建档和重签待首次改密密码，停用员工、修改岗位和提升既有顾客身份仍要求 `staff.manage`。密码只由受信 Server Action 交给 Auth Admin API 和本次响应，数据库不保存明文，Auth 元数据也不保留邀请码键。旧账户支持页不再签发 claim 邀请，只保留旧 pending 邀请撤销并引导到员工页。迁移回滚演练、正式本机应用与独立 postflight 通过；固定管理员仍为 `admin / active / staff` 且既有 58 项权限全部保留。当前账号／profile／邀请／员工批次为 `12/12/12/5`，这些记录均早于 migration 012，本次新重签账本为 0；数据库回滚行为断言、相关 Vitest 17/17、受影响 ESLint、TypeScript、双语键和生成类型摘要检查通过。页面、首次登录、密码重签与交接操作仍待产品负责人人工验收；未授权 Xiaomi／生产迁移、身份创建、业务写入或发布。
 
+#### DEV-WEB-PUSH-1 · 员工桌面 Web Push 生产化
+
+`DEV-WEB-PUSH-1` 是产品负责人于 2026-09-03 选入的独立规划增量，权威范围与 Gate 见 [`employee-desktop-web-push.md`](employee-desktop-web-push.md)。目标是让主动开启该能力的 staff/admin 在 Mathin 标签页或浏览器窗口关闭、但浏览器后台 Push 仍可运行时，收到不含学生/财务等敏感内容的 Windows 系统通知；点击后必须按当前身份重新鉴权并解析既有站内通知。它复用 `domain_events → notifications → notification_deliveries → jobs`，新增通知专用 Service Worker、加密的逐设备订阅、共享电脑 8 小时租期、Web Push Worker、重试/熔断、独立告警、kill switch 和完整验证；不引入页面缓存 PWA，也不承诺浏览器进程被强制结束或系统勿扰时即时显示。
+
+当前状态为 **IMPLEMENTATION IN PROGRESS / LOCAL DARK RUNTIME VERIFIED / PUSH-P5 PENDING / EMPLOYEE TEST NOT AUTHORIZED**。本机 loopback 目标已完成两条 additive migration 的 rollback/零残留/formal，关闭态 postflight 为 feature=false、integration disabled、cohort/subscription/delivery/job=0；通知专用 SW、逐设备 UI、加密订阅、Web Push Worker、retry/TTL/熔断和聚合监控已实现，定向 Vitest 9/9、固定员工/管理员暗态 Playwright 2/2、TypeScript 与受影响 ESLint 通过。生产尚未变更，本轮继续推进到 feature flag off、integration disabled、cohort 空、Worker 服务未激活的 `PUSH-P5` 暗部署；普通产品裁决、员工测试日期、生成类型和外部告警出口等问题进入专题 §10.1 账本并继续代码开发，越权、泄密、误投递、旧业务回归或生产目标不明仍为 `P5-HARD-BLOCK`。只有专题 `PUSH-G5 · EMPLOYEE-TEST-ENTRY` 的安全、共享电脑、重试、监控、回退、Edge/Chrome HTTPS 预生产和生产暗部署清单全部 `PASS`，并由产品负责人登记 3～5 名首批员工及明确确认“进入员工测试”后，才可启用 `employee_test` cohort；员工测试只登记宽泛窗口，实际开始由 Gate 确认触发。该工作项不改变 R1-Live Gate 2；实现触及共享通知、Auth 或 Worker 时追加对应 R1-Live Smoke，失败时保持 Web Push 关闭并继续使用站内铃铛。
+
 ## 6. 原 R1 工作重新定位
 
 | 原阶段 | 已有结果 | R1-Live 处理 | Production 1.0 处理 |

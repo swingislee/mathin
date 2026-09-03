@@ -23,6 +23,7 @@
     "p4h:db-audit": "node scripts/run-p4h-db-audit.mjs",
     "teacher-microcourse:db-audit": "node scripts/run-teacher-microcourse-db-audit.mjs",
     "r1:db-audit": "node scripts/run-r1-db-audit.mjs",
+    "web-push:db-audit": "node scripts/run-web-push-db-audit.mjs",
     "sml:db-audit": "node scripts/run-sml-db-audit.mjs",
     "r1:test": "pnpm r1:live:test",
     "r1:live:test": "vitest run tests/r1-account-security.test.ts tests/r1-live-auth-identities.test.ts tests/p4h-class-builder.test.ts tests/r1-classroom-continuity.test.ts tests/r1-write-target-policy.test.ts tests/r1-live-object-protection.test.ts tests/r1-live-school-year.test.ts",
@@ -116,6 +117,7 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
     "three": "^0.185.1",
+    "web-push": "3.6.7",
     "zod": "^4.4.3",
     "zustand": "^5.0.14"
   },
