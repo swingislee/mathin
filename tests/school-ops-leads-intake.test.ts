@@ -3,12 +3,34 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   classifyXiaodituiInterest,
+  isXiaodituiSourceMarkedDuplicate,
   parseXiaodituiWorksheet,
+  resolveXiaodituiMathinMatch,
   splitXiaodituiInterests,
 } from "../src/features/school/xiaoditui-import";
+import type { LeadImportBatchRow } from "../src/features/school/actions/types";
 
 const root = process.cwd();
 const read = (...segments: string[]) => fs.readFileSync(path.join(root, ...segments), "utf8");
+
+function leadImportRow(overrides: Partial<LeadImportBatchRow> = {}): LeadImportBatchRow {
+  return {
+    row: 1,
+    sourceRow: 2,
+    sourceName: "小满",
+    sourcePhone: "13800000001",
+    status: "duplicate",
+    errors: [],
+    targetId: null,
+    matchKind: "source_marked_duplicate",
+    decision: "pending",
+    matchedLeadId: null,
+    matchedLeadName: null,
+    suggestedStudentId: null,
+    suggestedStudentName: null,
+    ...overrides,
+  };
+}
 
 describe("SCHOOL-OPS Leads seed intake", () => {
   it("parses both current Xiaoditui export header variants", () => {
@@ -36,6 +58,28 @@ describe("SCHOOL-OPS Leads seed intake", () => {
     expect(splitXiaodituiInterests("公开课-公开课-英语体验课")).toEqual(["公开课", "英语体验课"]);
     expect(classifyXiaodituiInterest("一对一学情诊断")).toBe("assessment");
     expect(classifyXiaodituiInterest("持续关注领学习资料")).toBe("nurture");
+  });
+
+  it("keeps the source duplicate flag separate from Mathin identity matching", () => {
+    const exactLead = leadImportRow({ matchedLeadId: "lead-1", matchedLeadName: " 小 满 " });
+    const otherName = leadImportRow({ matchedLeadId: "lead-2", matchedLeadName: "小雨" });
+    const prior = leadImportRow({
+      row: 1,
+      sourceName: "小雨",
+      matchKind: "new",
+      decision: "auto_create",
+      status: "valid",
+    });
+    const current = leadImportRow({ row: 2, sourceRow: 3 });
+
+    expect(isXiaodituiSourceMarkedDuplicate(exactLead)).toBe(true);
+    expect(resolveXiaodituiMathinMatch(exactLead, [exactLead])).toBe("existing_seed");
+    expect(resolveXiaodituiMathinMatch(otherName, [otherName])).toBe("phone_name_conflict");
+    expect(resolveXiaodituiMathinMatch(current, [prior, current])).toBe("phone_name_conflict");
+    expect(resolveXiaodituiMathinMatch(
+      current,
+      [leadImportRow({ matchKind: "new", decision: "auto_create", status: "valid" }), current],
+    )).toBe("same_batch_duplicate");
   });
 
   it("keeps import application inside the Leads seed boundary", () => {

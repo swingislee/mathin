@@ -28,7 +28,9 @@ import { DashboardSection, DashboardTableShell, StatusStrip } from "./dashboard-
 import {
   XiaodituiParseError,
   classifyXiaodituiInterest,
+  isXiaodituiSourceMarkedDuplicate,
   parseXiaodituiWorksheet,
+  resolveXiaodituiMathinMatch,
   type ParsedXiaodituiWorksheet,
 } from "./xiaoditui-import";
 
@@ -50,7 +52,6 @@ function filenameLabel(fileName: string): string {
 type ReviewDecision = Extract<LeadImportDecision, "create_new" | "link_existing" | "skip">;
 
 function reviewDecisions(row: LeadImportBatchRow): ReviewDecision[] {
-  if (row.matchKind === "source_marked_duplicate" && row.matchedLeadId) return ["link_existing", "skip"];
   if (row.matchedLeadId) return ["create_new", "link_existing", "skip"];
   return ["create_new", "skip"];
 }
@@ -267,9 +268,15 @@ export function XiaodituiImportPanel({ recentBatches }: { recentBatches: LeadImp
                         </div>
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-muted">{row.submittedAt ? formatAt(row.submittedAt) : "—"}</TableCell>
-                      <TableCell>{row.sourceDuplicate ? t("yes") : t("no")}</TableCell>
                       <TableCell>
-                        {serverRow ? <span className={serverRow.decision === "pending" ? "text-rose" : "text-muted"}>{t(`match_${serverRow.matchKind}`)}</span> : <span className="text-muted">{t("notChecked")}</span>}
+                        {row.sourceDuplicate
+                          ? <Badge variant="outline" className="whitespace-nowrap font-normal">{t("sourceDuplicateAdvisory")}</Badge>
+                          : <span className="text-muted">—</span>}
+                      </TableCell>
+                      <TableCell>
+                        {serverRow
+                          ? <span className={serverRow.decision === "pending" ? "text-rose" : "text-muted"}>{t(`match_${resolveXiaodituiMathinMatch(serverRow, batch?.rows ?? [])}`)}</span>
+                          : <span className="text-muted">{t("notChecked")}</span>}
                       </TableCell>
                     </TableRow>
                   );
@@ -307,17 +314,20 @@ export function XiaodituiImportPanel({ recentBatches }: { recentBatches: LeadImp
                 <p className="mt-1 text-xs text-muted">{t("reviewDescription")}</p>
               </div>
               <DashboardTableShell>
-                <Table className="w-full min-w-[64rem] text-xs">
+                <Table className="w-full min-w-[76rem] text-xs">
                   <TableHeader><TableRow>
-                    <TableHead>{t("sourceRow")}</TableHead><TableHead>{t("sourceIdentity")}</TableHead><TableHead>{t("matchReason")}</TableHead><TableHead>{t("existingIdentity")}</TableHead><TableHead>{t("decision")}</TableHead>
+                    <TableHead>{t("sourceRow")}</TableHead><TableHead>{t("sourceIdentity")}</TableHead><TableHead>{t("sourceSignal")}</TableHead><TableHead>{t("matchReason")}</TableHead><TableHead>{t("existingIdentity")}</TableHead><TableHead>{t("decision")}</TableHead>
                   </TableRow></TableHeader>
                   <TableBody>
                     {reviewRows.map((serverRow) => {
                       const source = rowByOrdinal.get(serverRow.row);
+                      const sourceMarkedDuplicate = isXiaodituiSourceMarkedDuplicate(serverRow);
+                      const mathinMatch = resolveXiaodituiMathinMatch(serverRow, batch.rows);
                       return <TableRow key={serverRow.row}>
                         <TableCell className="font-mono text-muted">{source?.sourceRow ?? serverRow.sourceRow}</TableCell>
                         <TableCell><span className="font-medium">{source?.childName || serverRow.sourceName || "—"}</span><span className="ml-2 text-muted">{source?.phone || serverRow.sourcePhone || "—"}</span></TableCell>
-                        <TableCell className="text-rose">{t(`match_${serverRow.matchKind}`)}</TableCell>
+                        <TableCell>{sourceMarkedDuplicate ? <Badge variant="outline" className="whitespace-nowrap font-normal">{t("sourceDuplicateAdvisory")}</Badge> : <span className="text-muted">—</span>}</TableCell>
+                        <TableCell className="text-rose">{t(`match_${mathinMatch}`)}</TableCell>
                         <TableCell>
                           {serverRow.matchedLeadName
                             ? t("existingLead", { name: serverRow.matchedLeadName })

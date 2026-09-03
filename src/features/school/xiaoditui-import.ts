@@ -1,4 +1,8 @@
-import type { XiaodituiLeadImportRow } from "./actions/types";
+import type {
+  LeadImportBatchRow,
+  LeadImportMatchKind,
+  XiaodituiLeadImportRow,
+} from "./actions/types";
 
 type WorksheetCell = unknown;
 
@@ -53,6 +57,53 @@ export class XiaodituiParseError extends Error {
     super(code);
     this.name = "XiaodituiParseError";
   }
+}
+
+function normalizeIdentityName(value: string): string {
+  return value.trim().replace(/\s+/g, "").toLocaleLowerCase();
+}
+
+function normalizeIdentityPhone(value: string): string {
+  return value.replace(/\D/g, "");
+}
+
+export function isXiaodituiSourceMarkedDuplicate(row: LeadImportBatchRow): boolean {
+  return row.matchKind === "source_marked_duplicate";
+}
+
+/**
+ * 旧版 dry-run 会用“小地推标重”覆盖 Mathin 自己的匹配原因。来源标记只是
+ * 外部事实，不能替用户决定合并或跳过；这里从候选对象和本批前序行恢复真正
+ * 的 Mathin 匹配结果，让两种信号在界面上分开呈现。
+ */
+export function resolveXiaodituiMathinMatch(
+  row: LeadImportBatchRow,
+  rows: readonly LeadImportBatchRow[],
+): LeadImportMatchKind {
+  if (!isXiaodituiSourceMarkedDuplicate(row)) return row.matchKind;
+
+  const sourceName = normalizeIdentityName(row.sourceName);
+  if (row.matchedLeadId) {
+    return normalizeIdentityName(row.matchedLeadName ?? "") === sourceName
+      ? "existing_seed"
+      : "phone_name_conflict";
+  }
+  if (row.suggestedStudentId) {
+    return normalizeIdentityName(row.suggestedStudentName ?? "") === sourceName
+      ? "existing_student_hint"
+      : "phone_name_conflict";
+  }
+
+  const sourcePhone = normalizeIdentityPhone(row.sourcePhone);
+  const priorRows = rows.filter((candidate) => (
+    candidate.row < row.row
+    && candidate.status !== "error"
+    && normalizeIdentityPhone(candidate.sourcePhone) === sourcePhone
+  ));
+  if (priorRows.some((candidate) => normalizeIdentityName(candidate.sourceName) === sourceName)) {
+    return "same_batch_duplicate";
+  }
+  return priorRows.length > 0 ? "phone_name_conflict" : "new";
 }
 
 function cellText(value: WorksheetCell): string {
