@@ -27,6 +27,7 @@ const defaultClassSchema = z.object({
   campusName: requiredText(100),
   roomName: text(100),
   teacherName: text(100),
+  teacherInitials: requiredText(40).regex(/^(?:[A-Z0-9]+|待定老师)$/).optional(),
   weekday: text(40),
   time: text(80),
 }).strict();

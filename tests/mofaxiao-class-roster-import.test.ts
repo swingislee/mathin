@@ -148,6 +148,7 @@ describe("魔法校班级学员花名册导入", () => {
       { ...base, id: "e", courseFamilySlug: "xueersi-e-primary-math-cn", classType: "A+", courseTitle: "E 系列数学三年级秋季 A+" },
     ]);
     expect(candidates.map((candidate) => candidate.id).sort()).toEqual(["a", "g"]);
+    expect(buildMofaxiaoRosterDefaultClass(source).system).toBe("贯通思维");
   });
 
   it("培优体系映射 E 系列，并把魔法校 A+ 转成课程 B 版", () => {
@@ -182,11 +183,12 @@ describe("魔法校班级学员花名册导入", () => {
     expect(teacherInitialsForClassName("张灿")).toBe("ZC");
     expect(teacherInitialsForClassName("XLZ")).toBe("XLZ");
     expect(buildMofaxiaoRosterDefaultClass(source)).toEqual(expect.objectContaining({
-      name: "【培优思维】三年级秋季B｜紫辰阁XLZ周三17:00-19:30",
-      system: "培优思维",
+      name: "【科学思维】三年级秋季B｜紫辰阁XLZ周三17:00-19:30",
+      system: "科学思维",
       classType: "B",
       campusName: "紫辰阁",
       teacherName: "薛立志",
+      teacherInitials: "XLZ",
       schoolYear: 2026,
       season: 2,
     }));
@@ -208,6 +210,7 @@ describe("魔法校班级学员花名册导入", () => {
     const migration = read("supabase", "migrations", "20260903000800_mofaxiao_class_roster_import.sql");
     const optionMigration = read("supabase", "migrations", "20260903000900_mofaxiao_class_roster_option_readers.sql");
     const defaultClassMigration = read("supabase", "migrations", "20260903001200_mofaxiao_roster_default_class_creation.sql");
+    const namingMigration = read("supabase", "migrations", "20260903001300_mofaxiao_e_series_science_class_naming.sql");
     const applySection = migration.slice(
       migration.indexOf("create or replace function public.apply_mofaxiao_class_roster_import"),
       migration.indexOf("revoke all on function public.get_mofaxiao_class_roster_import_batch"),
@@ -245,6 +248,10 @@ describe("魔法校班级学员花名册导入", () => {
     expect(defaultApplySection).toContain("p_activate => false");
     expect(defaultApplySection).toContain("'CREATED_DEFAULT_CLASS'");
     expect(defaultClassMigration).toContain("'reviewIssues', to_jsonb(created.review_issues)");
+    expect(namingMigration).toContain("p_default->>'teacherInitials'");
+    expect(namingMigration).toContain("v_system := '科学思维'");
+    expect(namingMigration).toContain("like '%培优%'");
+    expect(namingMigration).toContain("like '%科学%'");
     for (const forbiddenWrite of [
       "insert into public.classrooms",
       "insert into public.class_sessions",

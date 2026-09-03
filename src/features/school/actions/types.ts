@@ -353,6 +353,7 @@ export interface MofaxiaoClassRosterDefaultClass {
   campusName: string;
   roomName: string;
   teacherName: string;
+  teacherInitials?: string;
   weekday: string;
   time: string;
 }
