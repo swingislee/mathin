@@ -32,7 +32,7 @@ failure_ticket
 
 | 阶段 | 状态 | 日期 | 证据 |
 | --- | --- | --- | --- |
-| DEV-CW-1 Step 8E · 统一课件工作区窄范围部署候选 | candidate prepared；production database/app unchanged；awaiting explicit production write authorization | 2026-09-03 | [生产基线 `a165004…` 上的独立候选 `d8fe305d…`、6 migration、本地回滚恢复、候选 build/定向检查及生产只读结构快照](courseware-workspace-release-candidate.md)；[Step 8D 生产 inventory](courseware-workspace-production-inventory.md) |
+| DEV-CW-1 Step 8E · 统一课件工作区窄范围生产发布 | production schema/app deployed；machine postflight passed；pending production product acceptance | 2026-09-03 | [候选 `8c50b48…`、PostgreSQL 写前备份、6 migration 回滚／正式提交、原子 release、数据零漂移与机器 postflight](courseware-workspace-production.md)；[部署候选证据](courseware-workspace-release-candidate.md)；[Step 8D 生产 inventory](courseware-workspace-production-inventory.md) |
 | HOTFIX-20260830 · 讲次课件预览翻页性能 | production app deployed；machine postflight passed；pending production product acceptance | 2026-08-30 | [来源 `50a1648` 到生产基线适配候选 `a165004`、页级读取/缓存/相邻预取/runtime iframe 复用、10/10 Vitest、双 production build、原子发布、数据零漂移与回退点](courseware-preview-performance-hotfix-production.md) |
 | HOTFIX-20260829 · 教师微课来源预览 | production app deployed；machine postflight passed；pending production product acceptance | 2026-08-29 | [空 kind 绑定按钉死 H5 对象 kind/hash 解析、通用审核入口转不可变微课快照、17/17 Vitest、固定账号 Playwright 2/2、应用-only 原子发布与数据零漂移](teacher-microcourse-source-preview-hotfix-production.md) |
 | HOTFIX-20260829 · 自研课堂互动状态同步 | production app deployed；machine postflight passed；pending real iPad classroom acceptance | 2026-08-29 | [game-page-v1 镜像根因、100ms 合并广播、H5/3D fail-closed 审计门、72/72 Vitest 与控制页→展示页 Chromium 2/2](classroom-interaction-sync-hotfix.md)；[应用-only 原子发布、数据零漂移与回退点](classroom-interaction-sync-hotfix-production.md) |

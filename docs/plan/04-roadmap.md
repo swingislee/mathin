@@ -8,13 +8,13 @@
 >
 > **SML 暂停位置**：`SML-0 · 合同与金标冻结`；空间数学可按独立权限或 Feature Flag 并行，不进入 R1-Live Gate。
 >
-> **当前运行状态**：Gate 1 已通过，Gate 2 仍等待正式教师点名持久再读与权限对照。2026-08-30 讲次课件预览 hotfix preflight 已只读确认 Xiaomi 数据库 ledger=`236`、head=`20260830000700_teacher_microcourse_editor_unification`，当时应用已运行 `76f0f9a…`；本轮只把来源提交 `50a1648…` 移植为生产候选 `a165004…`，current/previous=`20260830-080555` / `a165004…` 与 `20260830-045421` / `76f0f9a…`。本地及 Xiaomi production build、原子 release、健康/鉴权/bundle/业务不变量 postflight 通过；未执行 migration，岗位、班课、微课、课程 release、审核快照和 Storage 未写入。生产管理员 verified MFA=`1`，教师/教研岗位成员=`6/4`；班级/课次/报名/点名与 Storage=`4/19/1/0/125917`，Storage bytes=`51524182412`，`operational_errors=1956` 且发布后无增量。课堂、教师微课重构及既有 hotfix 的产品人工验收仍分别 pending，不关闭 Gate 2。
+> **当前运行状态**：Gate 1 已通过，Gate 2 仍等待正式教师点名持久再读与权限对照。2026-09-03 `DEV-CW-1` 统一课件工作区完成窄范围生产发布：数据库 ledger/head=`242 / 20260903000700_courseware_page_insertions`，应用 current/previous=`20260903-115645` / `8c50b48…` 与 `20260903-100016` / `750bd607…`。6 条 migration 已通过 PostgreSQL 写前备份、完整回滚／零残留演练和正式提交；应用已通过原子 release、健康、鉴权、canonical 路由、业务计数和错误增量 postflight。77,224 个页面及资源、release、冻结会话和 Storage 计数不变；本批没有全量备份／测试或 Storage 写入。统一课件工作区与既有功能的产品人工验收仍分别 pending，不关闭 Gate 2。
 >
 > **当前 P0 状态**：2026-08-25 产品负责人确认内部教师更习惯手机号注册登录。`手机号或邮箱 + password` 已部署生产：手机号只接受绑定具体号码的一次性员工邀请，不发送/伪造验证码，不开放全局邀请码手机号注册，账号仍以单一 `auth.users.id` 为主体。机器 postflight 已通过；真实教师尚未消费手机号邀请并完成 password 登录，因此状态为 `DEPLOYED / PENDING USER ACCEPTANCE`。
 >
 > **双轨执行**：生产端由 1 名正式教师在现有正式班级、课次和花名册上持续试用，优先反馈 P0/核心 P1；开发端可并行尝试产品负责人选中的新功能。新功能只有在开发目标完成受影响检查并由产品负责人初步验收后，才成为生产候选；完成精确版本/迁移登记、生产 preflight、可回退发布和 postflight 后，才能记为生产已部署。开发通过不等于生产通过，新功能也不改变 Gate 2 的点名与权限退出条件。
 >
-> **核对日期**：2026-09-03；生产事实仍沿用 2026-08-30 已确认的 ledger/head=`236 / 20260830000700_teacher_microcourse_editor_unification`、应用 `a165004…`、讲次课件预览性能 hotfix 及去标识化 postflight；`76f0f9a…` 与 ledger 236 在该轮 preflight 前已运行，不把此前发布归因于该 hotfix。`DEV-SCHOOL-OPS-1` 当前先以真实小地推种子验收 Phase 1C 的批量分配与初次电联；该开发预演没有生产 schema、数据库、Storage 或写入。其余依据 active doc 00/25/30、代码与迁移、本机隔离验证、Xiaomi 运行核查和 `mathin-R1-Live-讨论稿.md`。
+> **核对日期**：2026-09-03；最新生产事实为 ledger/head=`242 / 20260903000700_courseware_page_insertions`、应用 `8c50b48…`，对应统一课件工作区窄范围发布的备份、回滚演练、正式 migration、原子 release 与机器 postflight；状态为已部署、待产品验收，不把机器检查记作用户通过。`DEV-SCHOOL-OPS-1` 当前先以真实小地推种子验收 Phase 1C 的批量分配与初次电联；该开发预演没有生产 schema、数据库、Storage 或写入。其余依据 active doc 00/25/30、代码与迁移、本机隔离验证、Xiaomi 运行核查和 `mathin-R1-Live-讨论稿.md`。
 
 ## 1. 两个交付事件
 
@@ -210,7 +210,7 @@ Phase 1～5 的本机隔离 Supabase、固定开发身份、migration LF checksu
 
 `DEV-CW-1` 回应课程产品中 E 系列、爱学习及后续导入课程缺少单页 16:9/4:3 修订闭环的问题，权威规划见 [doc 16 §14](16-p6-courseware-platform.md#14-dev-cw-1-课程产品统一课件工作区待产品逐步确认)。目标主路径为“课程产品 → 课程/版本 → 讲次 → 指定页面 → 统一课件工作区”，并把共享内容修订、分轨版式、页面上下文资源替换、插入能力和 draft/review/release 放在同一对象上下文内。研发任务只保留责任／待处理投影，公共资源保留高级治理与回滚；旧适配校对与旧 Studio 不再作为平行生产空间。
 
-产品负责人于 2026-08-31～09-03 依次确认 Step 0～8D。Step 3B 把文字／图片／形状节点与图层能力收敛为共享组件；Step 4A/4B 打通共享 4:3 控制器、旧 A～F 映射和单页草稿；Step 5A/5B 打通页面上下文影响预览、单样本替换与回滚；Step 6 让爱学习来源 Viewer 通过共享编辑桥获得选择、文字、几何、图层、网格与历史能力。Step 7B 已收敛审核入口并退役旧直发／批量适配发布链；Step 7C 确认三端共享工作台与编辑组件真实复用；Step 8A/8B 完成爱学习双轨草稿与正式 PageDoc／爱学习共享的文字、公式、形状、图片和 H5 插入持久化。Step 8D 生产只读事务盘点确认 77,060 个正式可编辑页面和 154,120 个可插入轨道 head 无需存量回填。当前 Step 8E 为 **NARROW RELEASE CANDIDATE PREPARED / AWAITING PRODUCTION WRITE AUTHORIZATION**：从生产应用 `a165004…` 直接建立候选 `d8fe305d…`，排除开发主线的 125 个并行提交，只包含 111 个课件相关文件和 6 条 migration；候选构建、定向合同与本地事务回滚通过，生产只读结构快照已登记。没有生产写入或发布，也不改变 R1-Live Gate 2。
+产品负责人于 2026-08-31～09-03 依次确认 Step 0～8D。Step 3B 把文字／图片／形状节点与图层能力收敛为共享组件；Step 4A/4B 打通共享 4:3 控制器、旧 A～F 映射和单页草稿；Step 5A/5B 打通页面上下文影响预览、单样本替换与回滚；Step 6 让爱学习来源 Viewer 通过共享编辑桥获得选择、文字、几何、图层、网格与历史能力。Step 7B 已收敛审核入口并退役旧直发／批量适配发布链；Step 7C 确认三端共享工作台与编辑组件真实复用；Step 8A/8B 完成爱学习双轨草稿与正式 PageDoc／爱学习共享的文字、公式、形状、图片和 H5 插入持久化。Step 8D 生产只读事务盘点确认 77,060 个正式可编辑页面和 154,120 个可插入轨道 head 无需存量回填。Step 8E 当前为 **PRODUCTION DEPLOYED / MACHINE POSTFLIGHT PASSED / PENDING PRODUCT ACCEPTANCE**：最终候选 `8c50b48…` 从实际生产基线 `750bd607…` 建立，6 条 migration 通过写前备份、回滚／零残留演练后正式提交，应用 current/previous=`20260903-115645` / `8c50b48…` 与 `20260903-100016` / `750bd607…`；存量页面、binding、资源、release、冻结会话和 Storage 计数不变。真实生产工作流仍待产品验收，也不改变 R1-Live Gate 2。
 
 #### DEV-SCHOOL-OPS-1 · 学辅运营与教学履约主干
 
