@@ -1,7 +1,7 @@
 "use client";
 
 import { Bell } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { WorkItemUrgencyBucket } from "@/features/school/stage/types";
 import { Link, useRouter } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { notificationValueKey, renderNotificationDetail, resolveNotificationDetail } from "./notification-copy";
 import { markChangeFeedItemRead, markChangeFeedRead, type ChangeEvent } from "./notifications";
 
 export interface InboxWorkItem {
@@ -42,6 +43,7 @@ export function ChangeBell({
   userId: string;
 }) {
   const t = useTranslations("changes");
+  const locale = useLocale();
   const router = useRouter();
   const [dismissedEventIds, setDismissedEventIds] = useState<Set<string>>(() => new Set());
   const [popoverOpen, setPopoverOpen] = useState(false);
@@ -210,19 +212,15 @@ export function ChangeBell({
     const resultKind = typeof event.payload.resultKind === "string" ? event.payload.resultKind : null;
     const specificKey = resultKind ? `${key}_${resultKind}` : null;
     const labelKey = specificKey && t.has(`types.${specificKey}`) ? specificKey : t.has(`types.${key}`) ? key : null;
-    const changedFields = Array.isArray(event.payload.changedFields)
-      ? event.payload.changedFields.filter((value): value is string => typeof value === "string").join(" · ")
-      : null;
-    const detail = [
-      event.payload.title,
-      event.payload.message,
-      event.payload.studentName,
-      event.payload.classroomName,
-      event.payload.sessionTitle,
-      event.payload.status,
-      event.payload.reason,
-      changedFields,
-    ].find((value): value is string => typeof value === "string" && value.trim().length > 0) ?? null;
+    const detailDescriptor = resolveNotificationDetail(event.type, event.payload);
+    const detail = detailDescriptor ? renderNotificationDetail(
+      detailDescriptor,
+      (detailKey, values) => t(`details.${detailKey}`, values),
+      (group, value) => {
+        const valueKey = notificationValueKey(group, value);
+        return t.has(`values.${valueKey}`) ? t(`values.${valueKey}`) : value;
+      },
+    ) : null;
     return (
       <span className="block min-w-0 flex-1">
         <span className="flex items-center gap-2">
@@ -231,7 +229,7 @@ export function ChangeBell({
         </span>
         {detail ? <span className="mt-1 block truncate pl-3.5 text-xs text-ink">{detail}</span> : null}
         <time className="mt-1 block pl-3.5 text-xs text-muted">
-          {new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(event.occurredAt))}
+          {new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(event.occurredAt))}
         </time>
       </span>
     );
