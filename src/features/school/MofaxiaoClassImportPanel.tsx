@@ -45,7 +45,7 @@ const UNMAPPED = "__unmapped__";
 const PREVIEW_LIMIT = 200;
 
 function filenameLabel(fileName: string): string {
-  return fileName.replace(/\.xlsx?$/i, "").slice(0, 160);
+  return fileName.replace(/\.xlsx$/i, "").slice(0, 160);
 }
 
 function courseKey(value: string) {
@@ -273,20 +273,15 @@ export function MofaxiaoClassImportPanel({
     setParseError(null);
     resetServerBatch();
     try {
-      if (!/\.xlsx?$/i.test(file.name)) throw new MofaxiaoClassParseError("UNRECOGNIZED_HEADERS");
-      const [xlsx, buffer] = await Promise.all([import("xlsx"), file.arrayBuffer()]);
-      const workbook = xlsx.read(new Uint8Array(buffer), { type: "array", cellDates: true });
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = sheetName ? workbook.Sheets[sheetName] : undefined;
-      if (!sheetName || !worksheet) throw new MofaxiaoClassParseError("EMPTY_SHEET");
-      const grid = xlsx.utils.sheet_to_json(worksheet, {
-        header: 1,
-        raw: true,
-        defval: null,
-        blankrows: false,
-      }) as unknown[][];
+      if (!/\.xlsx$/i.test(file.name)) throw new MofaxiaoClassParseError("UNRECOGNIZED_HEADERS");
+      const [{ default: readWorkbook }, buffer] = await Promise.all([
+        import("read-excel-file/browser"),
+        file.arrayBuffer(),
+      ]);
+      const [firstSheet] = await readWorkbook(file);
+      if (!firstSheet) throw new MofaxiaoClassParseError("EMPTY_SHEET");
       const [next, hash] = await Promise.all([
-        Promise.resolve(parseMofaxiaoClassWorksheet(grid, sheetName)),
+        Promise.resolve(parseMofaxiaoClassWorksheet(firstSheet.data, firstSheet.sheet)),
         sha256Hex(buffer),
       ]);
       setFileName(file.name);
@@ -345,7 +340,7 @@ export function MofaxiaoClassImportPanel({
                 {t("file")}
                 <Input
                   type="file"
-                  accept=".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                   disabled={pending}
                   onChange={(event) => void readFile(event.currentTarget.files?.[0])}
                 />

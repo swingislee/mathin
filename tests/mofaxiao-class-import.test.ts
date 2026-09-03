@@ -104,4 +104,18 @@ describe("魔法校班级表解析", () => {
       expect(applySection).not.toContain(forbiddenWrite);
     }
   });
+
+  it("客户端只接受 xlsx 并复用现有读取器，不引入 SheetJS", () => {
+    const root = process.cwd();
+    const panel = fs.readFileSync(path.join(root, "src", "features", "school", "MofaxiaoClassImportPanel.tsx"), "utf8");
+    const packageJson = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8")) as {
+      dependencies?: Record<string, string>;
+    };
+
+    expect(panel).toContain('import("read-excel-file/browser")');
+    expect(panel).toContain('accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"');
+    expect(panel).not.toContain('import("xlsx")');
+    expect(panel).not.toContain("application/vnd.ms-excel");
+    expect(packageJson.dependencies).not.toHaveProperty("xlsx");
+  });
 });
