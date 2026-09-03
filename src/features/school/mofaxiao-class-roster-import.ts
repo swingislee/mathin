@@ -59,7 +59,9 @@ export class MofaxiaoClassRosterParseError extends Error {
 export type RosterStudentMatchKind = "exact_phone" | "unique_name" | "ambiguous_name" | "new" | "review";
 
 const AIXUEXI_PRIMARY_MATH_FAMILY = "aixuexi-primary-math";
+const MOFAXIAO_E_SERIES_FAMILY = "xueersi-e-primary-math-cn";
 const INTEGRATED_THINKING_LEVELS = new Set(["G+", "A+"]);
+const E_SERIES_SYSTEM_HINTS = ["培优", "科学"];
 
 export interface RosterStudentMatch {
   kind: RosterStudentMatchKind;
@@ -264,22 +266,66 @@ function targetScore(source: ParsedMofaxiaoRosterClass, target: ClassRosterTarge
   if (target.schoolYear === 2026 && target.season === 2) score += 4;
   if (target.grade === source.grade) score += 4;
   if (source.teacher && target.primaryTeacherNames.some((name) => normalizeRosterText(name) === normalizeRosterText(source.teacher))) score += 3;
-  if (source.campus && normalizeRosterText(target.campusName) === normalizeRosterText(source.campus)) score += 2;
-  if (source.classType && targetText.includes(normalizeRosterText(source.classType))) score += 2;
+  if (targetMatchesSourceCampus(source, target)) score += 2;
+  const expectedClassType = expectedTargetClassType(source);
+  if (source.classType && (
+    normalizeRosterText(target.classType) === normalizeRosterText(expectedClassType)
+    || (!isMofaxiaoESeriesRosterSource(source) && targetText.includes(normalizeRosterText(source.classType)))
+  )) score += 2;
   if (source.weekday && normalizeRosterText(target.name).includes(normalizeRosterText(source.weekday))) score += 1;
-  const time = source.time.match(/\d{1,2}:\d{2}\s*[-–—]\s*\d{1,2}:\d{2}/)?.[0]?.replace(/\s/g, "") ?? "";
-  if (time && normalizeRosterText(target.name).includes(normalizeRosterText(time))) score += 1;
+  const sourceStartTime = normalizedStartTime(source.time);
+  if (sourceStartTime && normalizedStartTime(target.name) === sourceStartTime) score += 1;
   return score;
 }
 
+function normalizedStartTime(value: string): string {
+  const match = value.match(/(\d{1,2}):(\d{2})/);
+  return match ? `${Number(match[1])}:${match[2]}` : "";
+}
+
+function targetMatchesSourceCampus(source: ParsedMofaxiaoRosterClass, target: ClassRosterTargetOption): boolean {
+  const sourceCampus = normalizeRosterText(source.campus);
+  return Boolean(sourceCampus) && (
+    normalizeRosterText(target.campusName) === sourceCampus
+    || normalizeRosterText(target.name).includes(sourceCampus)
+  );
+}
+
+function targetMatchesSourceSchedule(source: ParsedMofaxiaoRosterClass, target: ClassRosterTargetOption): boolean {
+  const targetName = normalizeRosterText(target.name);
+  const weekday = normalizeRosterText(source.weekday);
+  const startTime = normalizedStartTime(source.time);
+  return Boolean(weekday) && targetName.includes(weekday)
+    && Boolean(startTime) && normalizedStartTime(target.name) === startTime;
+}
+
+function isMofaxiaoESeriesRosterSource(source: ParsedMofaxiaoRosterClass): boolean {
+  const system = normalizeRosterText(source.system);
+  return E_SERIES_SYSTEM_HINTS.some((hint) => system.includes(hint));
+}
+
+function expectedTargetClassType(source: ParsedMofaxiaoRosterClass): string {
+  const sourceClassType = source.classType.trim().toUpperCase();
+  return isMofaxiaoESeriesRosterSource(source) && sourceClassType === "A+"
+    ? "B"
+    : sourceClassType;
+}
+
 function targetMatchesSourceSystem(source: ParsedMofaxiaoRosterClass, target: ClassRosterTargetOption): boolean {
-  if (!normalizeRosterText(source.system).includes("贯通")) return true;
-  return target.courseFamilySlug === AIXUEXI_PRIMARY_MATH_FAMILY
-    && INTEGRATED_THINKING_LEVELS.has(target.classType.trim().toUpperCase());
+  if (normalizeRosterText(source.system).includes("贯通")) {
+    return target.courseFamilySlug === AIXUEXI_PRIMARY_MATH_FAMILY
+      && INTEGRATED_THINKING_LEVELS.has(target.classType.trim().toUpperCase());
+  }
+  if (isMofaxiaoESeriesRosterSource(source)) {
+    return target.courseFamilySlug === MOFAXIAO_E_SERIES_FAMILY
+      && target.classType.trim().toUpperCase() === expectedTargetClassType(source);
+  }
+  return true;
 }
 
 function isHighConfidenceTarget(source: ParsedMofaxiaoRosterClass, target: ClassRosterTargetOption): boolean {
   const integratedThinking = normalizeRosterText(source.system).includes("贯通");
+  const eSeries = isMofaxiaoESeriesRosterSource(source);
   const teacherMatches = Boolean(source.teacher) && target.primaryTeacherNames
     .some((name) => normalizeRosterText(name) === normalizeRosterText(source.teacher));
   return target.schoolYear === 2026
@@ -287,9 +333,10 @@ function isHighConfidenceTarget(source: ParsedMofaxiaoRosterClass, target: Class
     && source.grade !== null
     && target.grade === source.grade
     && teacherMatches
-    && Boolean(source.campus)
-    && normalizeRosterText(target.campusName) === normalizeRosterText(source.campus)
-    && (integratedThinking || normalizeRosterText(target.classType) === normalizeRosterText(source.classType));
+    && targetMatchesSourceCampus(source, target)
+    && (!eSeries || targetMatchesSourceSchedule(source, target))
+    && (integratedThinking
+      || normalizeRosterText(target.classType) === normalizeRosterText(expectedTargetClassType(source)));
 }
 
 export function listMofaxiaoRosterClassCandidates(

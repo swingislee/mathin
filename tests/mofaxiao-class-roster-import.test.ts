@@ -89,6 +89,32 @@ describe("魔法校班级学员花名册导入", () => {
     expect(candidates.map((candidate) => candidate.id).sort()).toEqual(["a", "g"]);
   });
 
+  it("培优体系映射 E 系列，并把魔法校 A+ 转成课程 B 版", () => {
+    const source = parseMofaxiaoClassRosterWorkbook([{
+      sheet: "26年暑秋在读学员",
+      data: [
+        row({ 29: "培优体系" }),
+        row({ 29: "紫辰" }),
+        row({ 29: "三年级", 30: "秋季", 31: "A+", 33: "薛立志", 34: "周三", 35: "17:00-19:30", 40: "张若雨" }),
+      ],
+    }]).classes[0];
+    const base: ClassRosterTargetOption = {
+      id: "e-b", name: "【科学思维】三年级秋季A+|紫辰XLZ周三17:00", grade: 3, termId: "term",
+      schoolYear: 2026, season: 2, courseTitle: "E系列数学三年级秋季B[全国版]",
+      courseFamilySlug: "xueersi-e-primary-math-cn", classType: "B", campusName: "", roomName: "",
+      primaryTeacherNames: ["薛立志"], capacity: 20, activeEnrollmentCount: 0,
+    };
+
+    expect(listMofaxiaoRosterClassCandidates(source, [
+      base,
+      { ...base, id: "e-a", courseTitle: "E系列数学三年级秋季A[全国版]", classType: "A" },
+      { ...base, id: "aix-a", courseTitle: "爱学习 A+ 全国版数学 · 三年级秋季", courseFamilySlug: "aixuexi-primary-math", classType: "A+" },
+    ]).map((candidate) => candidate.id)).toEqual(["e-b"]);
+    expect(preferredMofaxiaoRosterClassCandidate(source, [base])?.id).toBe("e-b");
+    expect(preferredMofaxiaoRosterClassCandidate(source, [{ ...base, name: "【培优思维】三年级秋季A+|紫辰XLZ周三17:00" }])?.id).toBe("e-b");
+    expect(preferredMofaxiaoRosterClassCandidate({ ...source, weekday: "周六", time: "9.12开课10:00-12:00" }, [base])).toBeNull();
+  });
+
   it("仍只使用现有 xlsx 读取器，不引入 SheetJS", () => {
     const root = process.cwd();
     const packageJson = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8")) as { dependencies?: Record<string, string> };
