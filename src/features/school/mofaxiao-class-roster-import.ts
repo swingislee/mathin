@@ -69,6 +69,11 @@ export interface RosterStudentMatch {
   candidates: ClassRosterStudentOption[];
 }
 
+export interface RosterStudentDefaultDecision {
+  decision: "link_existing" | "create_student" | "pending";
+  studentId: string | null;
+}
+
 function textOf(value: WorksheetCell): string {
   if (value === null || value === undefined) return "";
   return String(value).replace(/^\uFEFF/, "").trim();
@@ -113,9 +118,13 @@ function parseStudentCell(rawValue: string): { name: string; sourceNote: string;
     const name = raw.replace(reviewToken, "").replace(/[（(].*?[）)]/g, "").trim() || raw;
     return { name, sourceNote: reviewToken, needsReview: true };
   }
-  const oneCharacterSuffix = raw.match(/^(.+?)[（(]([\u3400-\u9fff])[）)]$/u);
-  if (oneCharacterSuffix) {
-    return { name: oneCharacterSuffix[1].trim(), sourceNote: oneCharacterSuffix[2], needsReview: true };
+  const parentheticalSuffix = raw.match(/^(.+?)[（(]([^）)]+)[）)]$/u);
+  if (parentheticalSuffix) {
+    return {
+      name: parentheticalSuffix[1].trim(),
+      sourceNote: parentheticalSuffix[2].trim(),
+      needsReview: true,
+    };
   }
   if (/[（(].+[）)]/.test(raw)) return { name: raw, sourceNote: raw, needsReview: true };
   return { name: raw, sourceNote: "", needsReview: false };
@@ -258,6 +267,25 @@ export function matchMofaxiaoRosterStudent(
   if (candidates.length === 1) return { kind: "unique_name", suggestedStudentId: candidates[0].id, candidates };
   if (candidates.length > 1) return { kind: "ambiguous_name", suggestedStudentId: null, candidates };
   return { kind: "new", suggestedStudentId: null, candidates: [] };
+}
+
+export function defaultMofaxiaoRosterStudentDecision(
+  match: RosterStudentMatch,
+  canCreateStudents: boolean,
+): RosterStudentDefaultDecision {
+  if (
+    (match.kind === "exact_phone" || match.kind === "unique_name" || match.kind === "review")
+    && match.suggestedStudentId
+  ) {
+    return { decision: "link_existing", studentId: match.suggestedStudentId };
+  }
+  if (
+    canCreateStudents
+    && (match.kind === "new" || (match.kind === "review" && match.candidates.length === 0))
+  ) {
+    return { decision: "create_student", studentId: null };
+  }
+  return { decision: "pending", studentId: null };
 }
 
 function targetScore(source: ParsedMofaxiaoRosterClass, target: ClassRosterTargetOption): number {
