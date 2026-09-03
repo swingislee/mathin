@@ -40,6 +40,14 @@ describe("courseware workspace rollout inventory", () => {
       "20260902000900_courseware_source_runtime_drafts.sql",
       "20260903000700_courseware_page_insertions.sql",
     ]);
+    expect(COURSEWARE_WORKSPACE_CANDIDATE_MIGRATIONS.map((name) => name.replace(/\.sql$/, ""))).toEqual([
+      "20260831000100_courseware_page_rename",
+      "20260901000100_courseware_adapted_draft_bootstrap",
+      "20260902000100_courseware_admin_object_capability",
+      "20260902000500_courseware_legacy_publish_retirement",
+      "20260902000900_courseware_source_runtime_drafts",
+      "20260903000700_courseware_page_insertions",
+    ]);
     expect(stripMigrationTransaction("begin;\r\nselect 1;\r\ncommit;\r\n")).toBe("select 1;\n");
   });
 

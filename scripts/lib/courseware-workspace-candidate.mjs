@@ -28,7 +28,7 @@ export function loadCandidateMigrations(repositoryRoot) {
     const sql = normalizeSql(readFileSync(file, "utf8"));
     return {
       name,
-      version: name.slice(0, 14),
+      version: name.replace(/\.sql$/, ""),
       sha256: createHash("sha256").update(sql).digest("hex"),
       sql,
     };

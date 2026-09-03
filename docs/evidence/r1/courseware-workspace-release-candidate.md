@@ -51,8 +51,8 @@
 - 6 条候选 migration：全部 `applied=false`
 - 当前约束：`cw_page_revisions_doc_check`，`validated=true`
 - 捕获的既有相关函数：8 个
-- 临时快照：`C:\Users\admin\AppData\Local\Temp\mathin-courseware-rc-20260903-v2\production-courseware-schema-snapshot.json`
-- SHA-256：`77564fbad461375abd54130204af8eadef361e9af5fc879930549d2498d7b0f0`
+- 临时快照：`C:\Users\admin\AppData\Local\Temp\mathin-courseware-rc-20260903-v3\production-courseware-schema-snapshot.json`
+- SHA-256：`ac8ab8f6b52cf85b6530b6aae6e470b875cb2182871af70d4c3dc497a48070df`
 
 该快照可用于发布前漂移对照和相关函数／约束的窄范围恢复参考；它不替代正式数据库备份。
 

@@ -56,7 +56,7 @@ function runPsql({ container, sshTarget, sql }) {
 }
 
 function buildProductionSnapshotSql() {
-  const versions = COURSEWARE_WORKSPACE_CANDIDATE_MIGRATIONS.map((name) => name.slice(0, 14));
+  const versions = COURSEWARE_WORKSPACE_CANDIDATE_MIGRATIONS.map((name) => name.replace(/\.sql$/, ""));
   const signatures = [
     "public.assert_cw_page_capability(uuid,text)",
     "public.resolve_cw_lecture_capability_for(uuid,uuid,text,timestamptz)",
