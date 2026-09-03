@@ -34,9 +34,12 @@ describe("classroom reactivation and free-session courseware access", () => {
     expect(workspace).toContain('canAuthorMicrocourseProposal={canAuthorMicrocourse}');
     expect(workspace).toContain('t("editCourseware")');
     expect(prepPanel).toContain('"prepReadOnlyNotTeacherTitle"');
-    expect(prepPanel).toContain('"prepReadOnlyNotTeacherBody"');
-    expect(prepPanel).toContain('"prepResearchCoursewareTitle"');
-    expect(prepPanel).toContain('"prepResearchCoursewareBody"');
+    expect(prepPanel).toContain("relationshipReadOnly && !canAuthorMicrocourseProposal");
+    expect(prepPanel).not.toContain('"prepReadOnlyNotTeacherBody"');
+    expect(prepPanel).not.toContain('"prepResearchCoursewareTitle"');
+    expect(prepPanel).not.toContain('"prepResearchCoursewareBody"');
+    expect(prepPanel).not.toContain('"prepCurrentCoursewareTitle"');
+    expect(prepPanel).not.toContain('"prepCurrentCoursewareBody"');
     expect(prepPanel).toContain("getSessionPreparationArtifacts(detail.id, regularPreparationEditing)");
     expect(prepPanel).toContain("canReadSessionMemberState ? getSessionLearningSetup(detail.id) : Promise.resolve(null)");
     expect(prepArtifacts).toContain("includeReviewerCandidates = true");

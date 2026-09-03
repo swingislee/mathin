@@ -139,7 +139,8 @@ describe("teacher microcourse authoring UX", () => {
     expect(prep).toContain("const editorTemplate = frozenEditorState?.template ?? template");
     expect(prep).not.toContain("selectedMicrocourseTemplate");
     expect(prep).toContain("customOnly={!detail.lectureId && sessionDocs.length === 0}");
-    expect(prep).toContain('t("prepCurrentCoursewareTitle")');
+    expect(prep).not.toContain('t("prepCurrentCoursewareTitle")');
+    expect(prep).not.toContain('t("prepResearchCoursewareTitle")');
     expect(coursewareAction).toContain("const template = await getSessionCoursewareTemplate(id)");
     expect(livePage).toContain("const template = await getSessionCoursewareTemplate(sessionId)");
     expect(sessionLearning).toContain('supabase.rpc("get_session_courseware_learning_check_pages"');

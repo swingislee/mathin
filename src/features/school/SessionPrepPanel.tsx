@@ -1,5 +1,5 @@
 import { getSessionAssetUrls, getSessionH5BindingUrls, getSessionPageDocs } from "@/features/classroom/courseware/session-assets";
-import { BookOpen, LockKeyhole, LockKeyholeOpen } from "lucide-react";
+import { LockKeyhole, LockKeyholeOpen } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import type { SessionWorkspaceDetail } from "./classes";
 import { getSessionCoursewareTemplate } from "./courses";
@@ -96,18 +96,11 @@ export async function SessionPrepPanel({
     <>
       {detail.prepStatus === "not_started" && detail.capabilities.canPrepare ? <SessionPrepAutostart sessionId={detail.id} /> : null}
       <div className="flex h-full min-h-0 min-w-0 flex-col gap-3 px-1">
-        {relationshipReadOnly ? (
-          <section className="flex shrink-0 items-start gap-3 rounded-xl border border-line bg-card/70 px-4 py-3">
-            <LockKeyhole size={18} className="mt-0.5 shrink-0 text-muted" aria-hidden />
-            <div className="min-w-0 flex-1">
-              <h2 className="text-sm font-medium text-ink">
-                {t(canAuthorMicrocourseProposal ? "prepResearchCoursewareTitle" : "prepReadOnlyNotTeacherTitle")}
-              </h2>
-              <p className="mt-1 text-xs leading-5 text-muted">
-                {t(canAuthorMicrocourseProposal ? "prepResearchCoursewareBody" : "prepReadOnlyNotTeacherBody")}
-              </p>
-            </div>
-          </section>
+        {relationshipReadOnly && !canAuthorMicrocourseProposal ? (
+          <p className="flex shrink-0 items-center gap-2 px-1 text-xs text-muted">
+            <LockKeyhole size={14} className="shrink-0" aria-hidden />
+            <span>{t("prepReadOnlyNotTeacherTitle")}</span>
+          </p>
         ) : null}
         {detail.coursewareFrozenAt ? (
           <section className="flex shrink-0 flex-wrap items-start gap-3 rounded-xl border border-line bg-card/70 px-4 py-3">
@@ -124,16 +117,6 @@ export async function SessionPrepPanel({
             </div>
           </section>
         ) : null}
-        {!detail.lectureId && !detail.coursewareFrozenAt && sessionDocs.length > 0 ? (
-          <section className="flex shrink-0 items-start gap-3 rounded-xl border border-line bg-card/70 px-4 py-3">
-            <BookOpen size={18} className="mt-0.5 shrink-0 text-crater" aria-hidden />
-            <div className="min-w-0 flex-1">
-              <h2 className="text-sm font-medium text-ink">{t("prepCurrentCoursewareTitle")}</h2>
-              <p className="mt-1 text-xs leading-5 text-muted">{t("prepCurrentCoursewareBody")}</p>
-            </div>
-          </section>
-        ) : null}
-
         <SessionPrepSplit
           flow={(
             <aside className="@container flex min-h-0 min-w-0 flex-1 flex-col">
