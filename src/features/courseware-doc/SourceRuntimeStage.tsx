@@ -17,6 +17,10 @@ import type {
   SourceRuntimeEditorCanvas,
   SourceRuntimeEditorGeometry,
 } from "./source-runtime-editor";
+import {
+  sourceRuntimeEditorBridgeNodes,
+  sourceRuntimeEditorCanvas,
+} from "./source-runtime-editor";
 import { SourceRuntimeEditorOverlay } from "./SourceRuntimeEditorOverlay";
 import { sourceRuntimeFourByThreeMode } from "./source-runtime-four-by-three";
 import type { SourceRuntimeFourByThreeMode } from "./source-runtime-four-by-three";
@@ -64,6 +68,8 @@ type RuntimeEditorPayload = Omit<
   SourceRuntimeEditorHost,
   "revision" | "onNodeSelect" | "onNodeTransformChange" | "onNodeTextChange"
 >;
+
+type RuntimeBridgeNode = SourceRuntimeEditorBridgeNode & { resourceUrl?: string | null };
 
 interface RuntimePayload {
   source: typeof HOST_MESSAGE_SOURCE;
@@ -113,16 +119,31 @@ function sourceRuntimeEditorGeometry(value: unknown): SourceRuntimeEditorGeometr
   };
 }
 
-function runtimeEditorPayload(editor: SourceRuntimeEditorHost | undefined): RuntimeEditorPayload | undefined {
-  if (!editor) return undefined;
+function runtimeEditorPayload(
+  editor: SourceRuntimeEditorHost | undefined,
+  bindingUrls: ResolvedBindingUrls,
+  extensions: SourceRuntimeEditorBridgeNode[],
+  canvas: SourceRuntimeEditorCanvas,
+): RuntimeEditorPayload | undefined {
+  if (!editor && extensions.length === 0) return undefined;
+  const sourceNodes = editor?.nodes ?? extensions;
+  const nodes: RuntimeBridgeNode[] = sourceNodes.map((node) => {
+    const resourceUrl = node.resourceBindingKey ? bindingUrls[node.resourceBindingKey] ?? null : null;
+    return {
+      ...node,
+      resourceUrl: resourceUrl && node.insertedKind === "h5"
+        ? markSourceRuntimeNestedH5Url(resourceUrl)
+        : resourceUrl,
+    };
+  });
   return {
-    enabled: editor.enabled,
-    selectedNodePath: editor.selectedNodePath,
-    snapToGrid: editor.snapToGrid,
-    canvas: editor.canvas,
-    nodes: editor.nodes,
-    moveLabel: editor.moveLabel,
-    resizeLabel: editor.resizeLabel,
+    enabled: editor?.enabled ?? false,
+    selectedNodePath: editor?.selectedNodePath ?? null,
+    snapToGrid: editor?.snapToGrid ?? false,
+    canvas: editor?.canvas ?? canvas,
+    nodes,
+    moveLabel: editor?.moveLabel ?? "",
+    resizeLabel: editor?.resizeLabel ?? "",
   };
 }
 
@@ -130,7 +151,7 @@ function materializePayload(
   doc: SourceRuntimePageDoc,
   bindingUrls: ResolvedBindingUrls,
   interactive: boolean,
-  editor: SourceRuntimeEditorHost | undefined,
+  editorPayload: RuntimeEditorPayload | undefined,
   renderKey: string,
 ): RuntimePayload | null {
   const resources: Record<string, string> = {};
@@ -156,7 +177,7 @@ function materializePayload(
     routes,
     interactive,
     advanceOnCanvasClick: doc.behavior.advanceOnCanvasClick,
-    editor: runtimeEditorPayload(editor),
+    editor: editorPayload,
   };
 }
 
@@ -205,7 +226,16 @@ export default function SourceRuntimeStage({
   const runtimeQueuedRender = useRef<{ frameKey: string; payload: RuntimePayload } | null>(null);
   const runtimeInstanceFor = useRef<string | null>(null);
   const runtimeEntryBase = bindingUrls[doc.runtime.bindingKey];
-  const runtimeEntryWithMode = runtimeEntryBase && editor
+  const extensionNodes = useMemo(
+    () => sourceRuntimeEditorBridgeNodes(doc).filter((node) => node.insertedKind !== null),
+    [doc],
+  );
+  const extensionCanvas = useMemo(() => sourceRuntimeEditorCanvas(doc), [doc]);
+  const bridgePayload = useMemo(
+    () => runtimeEditorPayload(editor, bindingUrls, extensionNodes, extensionCanvas),
+    [bindingUrls, editor, extensionCanvas, extensionNodes],
+  );
+  const runtimeEntryWithMode = runtimeEntryBase && bridgePayload
     ? markSourceRuntimeEditorUrl(runtimeEntryBase)
     : runtimeEntryBase;
   const runtimeEntry = runtimeEntryWithMode
@@ -222,11 +252,11 @@ export default function SourceRuntimeStage({
   const runtimeError = runtimeFailure?.frameKey === renderKey ? runtimeFailure.message : null;
   const bindingSignature = runtimeBindingSignature(doc, bindingUrls);
   const payload = useMemo(
-    () => materializePayload(doc, bindingUrls, interactive, editor, renderKey),
+    () => materializePayload(doc, bindingUrls, interactive, bridgePayload, renderKey),
     // bindingSignature contains every URL consumed by materializePayload;
     // unrelated lecture assets can finish loading without cloning Blob data again.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [bindingSignature, doc, editor, interactive, renderKey],
+    [bindingSignature, bridgePayload, doc, interactive, renderKey],
   );
   const [sandboxPayload, setSandboxPayload] = useState<{ renderKey: string; payload: RuntimePayload } | null>(null);
 
@@ -298,14 +328,14 @@ export default function SourceRuntimeStage({
   }, [queueRuntimeRender, renderKey, sandboxPayload]);
 
   useEffect(() => {
-    if (!editor || (runtimeReadyFor.current !== runtimeInstanceKey && runtimeLoadedFor.current !== runtimeInstanceKey)) return;
+    if (!bridgePayload || (runtimeReadyFor.current !== runtimeInstanceKey && runtimeLoadedFor.current !== runtimeInstanceKey)) return;
     iframeRef.current?.contentWindow?.postMessage({
       source: HOST_MESSAGE_SOURCE,
       protocol: SOURCE_RUNTIME_PROTOCOL,
       type: "editor-state",
-      editor: runtimeEditorPayload(editor),
+      editor: bridgePayload,
     }, "*");
-  }, [editor, iframeRef, runtimeInstanceKey]);
+  }, [bridgePayload, iframeRef, runtimeInstanceKey]);
 
   // The source Viewer can render a lightweight page between the iframe load
   // event and React's passive-effect flush. Install the message listener in

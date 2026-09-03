@@ -27,6 +27,64 @@ const SOURCE_RUNTIME_EDITOR_BRIDGE = String.raw`<script data-mathin-source-runti
     .replace(/\n[ \t]+/g,'\n')
     .replace(/^\n+|\n+$/g,'');
 
+  function ensureInsertedNodes(){
+    const stage=document.querySelector('[data-aix-stage]');
+    if(!stage)return;
+    const active=new Set(editor.nodes.filter(item=>item?.insertedKind&&typeof item.path==='string').map(item=>item.path));
+    stage.querySelectorAll('[data-mathin-inserted-node="true"]').forEach(node=>{
+      if(!active.has(nodePath(node)))node.remove();
+    });
+    editor.nodes.forEach(meta=>{
+      if(!meta?.insertedKind||typeof meta.path!=='string')return;
+      let node=nodeFor(meta.path);
+      if(!node){
+        node=document.createElement('div');
+        node.className='aix-layout-node';
+        node.dataset.aixSourcePath=meta.path;
+        node.dataset.mathinInsertedNode='true';
+        node.style.position='absolute';
+        stage.append(node);
+      }
+      node.dataset.mathinInsertedNode='true';
+      if(meta.insertedKind==='image'){
+        let image=node.querySelector(':scope > [data-mathin-inserted-image]');
+        if(!(image instanceof HTMLImageElement)){
+          node.replaceChildren();
+          image=document.createElement('img');
+          image.dataset.mathinInsertedImage='true';
+          image.alt='';image.draggable=false;
+          image.style.cssText='display:block;width:100%;height:100%;object-fit:contain';
+          node.append(image);
+        }
+        if(typeof meta.resourceUrl==='string'&&image.getAttribute('src')!==meta.resourceUrl)image.setAttribute('src',meta.resourceUrl);
+      }else if(meta.insertedKind==='h5'){
+        let frame=node.querySelector(':scope > [data-mathin-inserted-h5]');
+        if(!(frame instanceof HTMLIFrameElement)){
+          node.replaceChildren();
+          frame=document.createElement('iframe');
+          frame.dataset.mathinInsertedH5='true';
+          frame.title='H5';frame.setAttribute('sandbox','allow-scripts');frame.allow='autoplay; fullscreen';
+          frame.style.cssText='display:block;width:100%;height:100%;border:0';
+          node.append(frame);
+        }
+        if(typeof meta.resourceUrl==='string'&&frame.getAttribute('src')!==meta.resourceUrl)frame.setAttribute('src',meta.resourceUrl);
+      }else{
+        let content=node.querySelector(':scope > [data-aix-html]');
+        if(!(content instanceof HTMLElement)){
+          node.replaceChildren();
+          content=document.createElement('div');
+          content.dataset.aixHtml='true';
+          content.style.cssText='width:100%;height:100%';
+          node.append(content);
+        }
+        if(typeof meta.html==='string'&&content.dataset.mathinRenderedHtml!==meta.html&&document.activeElement!==content){
+          content.innerHTML=meta.html;
+          content.dataset.mathinRenderedHtml=meta.html;
+        }
+      }
+    });
+  }
+
   function installOverrideStyle(){
     if(document.querySelector('style[data-mathin-source-editor-overrides]'))return;
     const style=document.createElement('style');
@@ -51,6 +109,12 @@ const SOURCE_RUNTIME_EDITOR_BRIDGE = String.raw`<script data-mathin-source-runti
   }
 
   function syncNode(node,meta){
+    if(meta.insertedKind){
+      node.style.left=String(meta.x)+'px';
+      node.style.top=String(meta.y)+'px';
+      node.style.width=String(Math.max(1,meta.width))+'px';
+      node.style.height=String(Math.max(1,meta.height))+'px';
+    }
     if(meta.visible===false){
       node.dataset.mathinHidden='true';
       node.style.setProperty('display','none','important');
@@ -109,6 +173,7 @@ const SOURCE_RUNTIME_EDITOR_BRIDGE = String.raw`<script data-mathin-source-runti
     installOverrideStyle();
     document.documentElement.dataset.mathinSourceEditor=String(editor.enabled===true);
     previewBases=new Map();
+    ensureInsertedNodes();
     nodes().forEach(node=>{
       const meta=metadata.get(nodePath(node));
       if(meta)syncNode(node,meta);
@@ -163,7 +228,8 @@ const SOURCE_RUNTIME_EDITOR_BRIDGE = String.raw`<script data-mathin-source-runti
     if(!editor.enabled||!(event.target instanceof Element))return;
     const node=event.target.closest('.aix-layout-node[data-aix-source-path]');
     if(!node||!metadata.has(nodePath(node)))return;
-    if(!event.target.closest('[data-mathin-source-inline-editor]'))event.preventDefault();
+    if(event.target.closest('[data-mathin-source-inline-editor]'))return;
+    event.preventDefault();
     event.stopPropagation();
     event.stopImmediatePropagation();
   },true);

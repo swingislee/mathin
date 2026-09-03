@@ -33,6 +33,12 @@ import {
 import type { ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 import type { DocNode, PageDoc } from "@/features/courseware-doc/schema";
 import {
+  createCoursewareInsertedH5Node,
+  createCoursewareInsertedImageNode,
+  createCoursewareInsertedNode,
+  type CoursewareInsertedNodeKind,
+} from "@/features/courseware-doc/courseware-inserted-node";
+import {
   useCoursewareEditHistory,
   useCoursewareHistoryShortcuts,
 } from "@/features/courseware-doc/useCoursewareEditHistory";
@@ -47,6 +53,11 @@ import {
 import { CoursewareAssetImpactPreview } from "./asset-replacement/CoursewareAssetImpactPreview";
 import type { CoursewareReplacementImpactContext } from "./asset-replacement/impact-scope";
 import type { StudioImageAssetUsage } from "./data";
+import {
+  CoursewarePageH5InsertionControl,
+  CoursewarePageImageInsertionControl,
+  type InsertedCoursewareAsset,
+} from "./CoursewarePageAssetInsertionControls";
 
 type EditorTab = "adjust" | "layout" | "replace";
 type ChangeKind = "content" | "layout";
@@ -158,6 +169,7 @@ export function PageDocVerticalSliceEditor({
   const [snapToGrid, setSnapToGrid] = useState(true);
   const [message, setMessage] = useState("");
   const [replacementPreviewUrl, setReplacementPreviewUrl] = useState<string | null>(null);
+  const [insertedBindingUrls, setInsertedBindingUrls] = useState<ResolvedBindingUrls>({});
   const coarseLayout = view === "compare";
   const sessionAdapted = view === "adapted-4x3" && track !== "adapted-4x3";
   const canPersistFourByThree = coarseLayout;
@@ -219,9 +231,12 @@ export function PageDocVerticalSliceEditor({
     ? doc.canvas.backgroundBindingKey
     : selected?.resources.find((resource) => resource.kind === "image")?.bindingKey ?? null;
   const selectedImageAsset = selectedImageBindingKey ? imageAssetUsage[selectedImageBindingKey] ?? null : null;
-  const previewBindingUrls = useMemo(() => selectedImageBindingKey && replacementPreviewUrl
-    ? { ...bindingUrls, [selectedImageBindingKey]: replacementPreviewUrl }
-    : bindingUrls, [bindingUrls, replacementPreviewUrl, selectedImageBindingKey]);
+  const previewBindingUrls = useMemo(() => {
+    const urls = { ...bindingUrls, ...insertedBindingUrls };
+    return selectedImageBindingKey && replacementPreviewUrl
+      ? { ...urls, [selectedImageBindingKey]: replacementPreviewUrl }
+      : urls;
+  }, [bindingUrls, insertedBindingUrls, replacementPreviewUrl, selectedImageBindingKey]);
   const layerItems = useMemo(() => collectLayerItems(doc.nodes), [doc.nodes]);
   const contentChanged = changeSnapshot(doc, "content") !== changeSnapshot(savedDoc, "content");
   const layoutChanged = changeSnapshot(doc, "layout") !== changeSnapshot(savedDoc, "layout");
@@ -351,6 +366,40 @@ export function PageDocVerticalSliceEditor({
     patchNode(nodePath, (node) => setCoursewareTextValue(node, value));
   }, [patchNode]);
 
+  const appendNode = useCallback((node: DocNode) => {
+    const previous = docRef.current;
+    const next = clone(previous);
+    next.nodes.push(node);
+    editHistory.record(previous, `insert:${node.id}`);
+    docRef.current = next;
+    setDoc(next);
+    setBackgroundSelected(false);
+    setSelectedPath(node.nodePath);
+    markDirty();
+  }, [editHistory, markDirty]);
+
+  const insertNode = useCallback((kind: CoursewareInsertedNodeKind) => {
+    appendNode(createCoursewareInsertedNode(kind, docRef.current.nodes.length + 1, docRef.current.canvas));
+  }, [appendNode]);
+
+  const insertImage = useCallback((asset: InsertedCoursewareAsset) => {
+    setInsertedBindingUrls((current) => ({ ...current, [asset.bindingKey]: asset.url }));
+    appendNode(createCoursewareInsertedImageNode(
+      asset.bindingKey,
+      docRef.current.nodes.length + 1,
+      docRef.current.canvas,
+    ));
+  }, [appendNode]);
+
+  const insertH5 = useCallback((asset: InsertedCoursewareAsset) => {
+    setInsertedBindingUrls((current) => ({ ...current, [asset.bindingKey]: asset.url }));
+    appendNode(createCoursewareInsertedH5Node(
+      asset.bindingKey,
+      docRef.current.nodes.length + 1,
+      docRef.current.canvas,
+    ));
+  }, [appendNode]);
+
   const insertToolbar = (
     <CoursewarePageEditorToolbar
       canUndo={activeHistory.canUndo}
@@ -359,6 +408,26 @@ export function PageDocVerticalSliceEditor({
       onRedo={activeHistory.redo}
       snapToGrid={snapToGrid}
       onSnapToGridChange={setSnapToGrid}
+      insertions={{
+        text: () => insertNode("text"),
+        formula: () => insertNode("formula"),
+        shape: () => insertNode("shape"),
+        image: (
+          <CoursewarePageImageInsertionControl
+            pageDocId={pageDocId}
+            track={track}
+            onInserted={insertImage}
+            onError={(code) => setMessage(t("verticalSliceSaveFailed", { code }))}
+          />
+        ),
+        h5: (
+          <CoursewarePageH5InsertionControl
+            pageDocId={pageDocId}
+            track={track}
+            onInserted={insertH5}
+          />
+        ),
+      }}
     />
   );
 

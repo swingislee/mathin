@@ -69,7 +69,7 @@ describe("courseware PageDoc formal editor", () => {
     const rail = readFileSync("src/features/courseware-studio/asset-replacement/AssetReplacementRail.tsx", "utf8");
     const actions = readFileSync("src/features/courseware-studio/actions.ts", "utf8");
     const actionStart = actions.indexOf("export async function previewCoursewareImageReplacementImpactAction");
-    const actionEnd = actions.indexOf("const createSpatialPageSchema", actionStart);
+    const actionEnd = actions.indexOf("function imageDimensions", actionStart);
     const readOnlyAction = actions.slice(actionStart, actionEnd);
 
     expect(editor).toContain("CoursewareAssetImpactPreview");

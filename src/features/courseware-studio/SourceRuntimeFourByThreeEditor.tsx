@@ -23,6 +23,14 @@ import {
 import type { ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 import type { DocNode } from "@/features/courseware-doc/schema";
 import {
+  createCoursewareInsertedH5Node,
+  createCoursewareInsertedImageNode,
+  createCoursewareInsertedNode,
+  type CoursewareInsertedNodeKind,
+} from "@/features/courseware-doc/courseware-inserted-node";
+import {
+  appendSourceRuntimeEditorNode,
+  nextSourceRuntimeResourceId,
   patchSourceRuntimeEditorNode,
   sourceRuntimeEditorBridgeNodes,
   sourceRuntimeEditorCanvas,
@@ -44,6 +52,11 @@ import {
 } from "@/features/courseware-doc/useCoursewareEditHistory";
 import { saveCoursewareDraftAction } from "./actions";
 import type { CoursewareTrack } from "./data";
+import {
+  CoursewarePageH5InsertionControl,
+  CoursewarePageImageInsertionControl,
+  type InsertedCoursewareAsset,
+} from "./CoursewarePageAssetInsertionControls";
 import {
   CoursewareFourByThreeComparison,
   CoursewareFourByThreePanel,
@@ -97,6 +110,7 @@ export function SourceRuntimeFourByThreeEditor({
   const [snapToGrid, setSnapToGrid] = useState(true);
   const [revision, setRevision] = useState(0);
   const [message, setMessage] = useState("");
+  const [insertedBindingUrls, setInsertedBindingUrls] = useState<ResolvedBindingUrls>({});
   const docRef = useRef(clone(initialDoc));
   const coarseLayout = view === "compare";
   const canPersistFourByThree = coarseLayout;
@@ -123,8 +137,13 @@ export function SourceRuntimeFourByThreeEditor({
   }, []);
 
   const restore = useCallback((value: SourceRuntimePageDoc) => {
-    docRef.current = value;
-    setDoc(value);
+    const restored = clone(value);
+    restored.bindings.resources = {
+      ...restored.bindings.resources,
+      ...docRef.current.bindings.resources,
+    };
+    docRef.current = restored;
+    setDoc(restored);
     setSelectedPath(null);
     setRevision((current) => current + 1);
     markDirty();
@@ -147,6 +166,10 @@ export function SourceRuntimeFourByThreeEditor({
   }, [editHistory, markDirty]);
 
   const nodes = useMemo(() => sourceRuntimeEditorNodes(doc), [doc]);
+  const activeBindingUrls = useMemo(
+    () => ({ ...bindingUrls, ...insertedBindingUrls }),
+    [bindingUrls, insertedBindingUrls],
+  );
   const selected = useMemo(
     () => nodes.find((node) => node.nodePath === selectedPath) ?? null,
     [nodes, selectedPath],
@@ -168,7 +191,7 @@ export function SourceRuntimeFourByThreeEditor({
   const fourByThree = useCoursewareFourByThreeAdapter({
     kind: "source-runtime",
     doc: coarseLayout ? fourByThreeSource.doc : doc,
-    bindingUrls: coarseLayout ? fourByThreeSource.bindingUrls : bindingUrls,
+    bindingUrls: coarseLayout ? fourByThreeSource.bindingUrls : activeBindingUrls,
   }, initialFourByThreeState, handleFourByThreeStateChange);
   const activeHistory = coarseLayout ? fourByThree : editHistory;
   useCoursewareHistoryShortcuts(activeHistory);
@@ -283,6 +306,42 @@ export function SourceRuntimeFourByThreeEditor({
     patchNode(nodePath, (node) => setCoursewareTextValue(node, value));
   }, [patchNode]);
 
+  const appendNode = useCallback((node: DocNode, resourceId?: string) => {
+    const previous = docRef.current;
+    const next = appendSourceRuntimeEditorNode(previous, node, resourceId);
+    if (!next) return;
+    editHistory.record(previous, `insert:${node.id}`);
+    docRef.current = next;
+    setDoc(next);
+    setSelectedPath(node.nodePath);
+    setRevision((current) => current + 1);
+    markDirty();
+  }, [editHistory, markDirty]);
+
+  const insertNode = useCallback((kind: CoursewareInsertedNodeKind) => {
+    appendNode(createCoursewareInsertedNode(kind, nodes.length + 1, bridgeCanvas));
+  }, [appendNode, bridgeCanvas, nodes.length]);
+
+  const insertImage = useCallback((asset: InsertedCoursewareAsset) => {
+    const resourceId = nextSourceRuntimeResourceId(docRef.current);
+    setInsertedBindingUrls((current) => ({ ...current, [asset.bindingKey]: asset.url }));
+    appendNode(createCoursewareInsertedImageNode(
+      asset.bindingKey,
+      sourceRuntimeEditorNodes(docRef.current).length + 1,
+      sourceRuntimeEditorCanvas(docRef.current),
+    ), resourceId);
+  }, [appendNode]);
+
+  const insertH5 = useCallback((asset: InsertedCoursewareAsset) => {
+    const resourceId = nextSourceRuntimeResourceId(docRef.current);
+    setInsertedBindingUrls((current) => ({ ...current, [asset.bindingKey]: asset.url }));
+    appendNode(createCoursewareInsertedH5Node(
+      asset.bindingKey,
+      sourceRuntimeEditorNodes(docRef.current).length + 1,
+      sourceRuntimeEditorCanvas(docRef.current),
+    ), resourceId);
+  }, [appendNode]);
+
   const sourceRuntimeEditor = useMemo(() => ({
     enabled: !coarseLayout && supported,
     revision,
@@ -317,6 +376,26 @@ export function SourceRuntimeFourByThreeEditor({
       onRedo={activeHistory.redo}
       snapToGrid={snapToGrid}
       onSnapToGridChange={setSnapToGrid}
+      insertions={coarseLayout ? undefined : {
+        text: () => insertNode("text"),
+        formula: () => insertNode("formula"),
+        shape: () => insertNode("shape"),
+        image: (
+          <CoursewarePageImageInsertionControl
+            pageDocId={pageDocId}
+            track={track}
+            onInserted={insertImage}
+            onError={(code) => setMessage(t("verticalSliceSaveFailed", { code }))}
+          />
+        ),
+        h5: (
+          <CoursewarePageH5InsertionControl
+            pageDocId={pageDocId}
+            track={track}
+            onInserted={insertH5}
+          />
+        ),
+      }}
     />
   );
 

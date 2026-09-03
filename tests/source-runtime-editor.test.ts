@@ -2,12 +2,18 @@ import { Script } from "node:vm";
 import { describe, expect, it } from "vitest";
 import { injectSourceRuntimeEditorBridge } from "@/features/courseware-doc/source-runtime-editor-bridge";
 import {
+  appendSourceRuntimeEditorNode,
+  nextSourceRuntimeResourceId,
   patchSourceRuntimeEditorNode,
   sourceRuntimeEditorBridgeNodes,
   sourceRuntimeEditorCanvas,
   sourceRuntimeEditorNodes,
   sourceRuntimeEditorSupported,
 } from "@/features/courseware-doc/source-runtime-editor";
+import {
+  createCoursewareInsertedImageNode,
+  createCoursewareInsertedNode,
+} from "@/features/courseware-doc/courseware-inserted-node";
 import {
   sourceRuntimePageDocSchema,
   type SourceRuntimePageDoc,
@@ -121,7 +127,54 @@ describe("source runtime shared element adapter", () => {
       width: 400,
       height: 120,
       layer: 8,
+      insertedKind: null,
+      resourceBindingKey: null,
     })]);
+  });
+
+  it("appends Mathin-owned nodes without rewriting producer-owned source nodes", () => {
+    const original = fixture();
+    const producerNode = structuredClone(
+      (original.payload.data.layout as { nodes: Array<Record<string, unknown>> }).nodes[0],
+    );
+    const node = createCoursewareInsertedNode("text", 2, sourceRuntimeEditorCanvas(original));
+    const appended = appendSourceRuntimeEditorNode(original, node);
+
+    expect(appended).not.toBeNull();
+    const rawNodes = (appended!.payload.data.layout as { nodes: Array<Record<string, unknown>> }).nodes;
+    expect(rawNodes[0]).toEqual(producerNode);
+    expect(rawNodes[1]).toMatchObject({
+      id: node.id,
+      sourcePath: node.nodePath,
+      mathinInserted: true,
+      mathinNodeKind: "text",
+      html: "<div>新文本</div>",
+    });
+    expect(sourceRuntimeEditorBridgeNodes(appended!)[1]).toMatchObject({
+      path: node.nodePath,
+      editableText: true,
+      insertedKind: "text",
+      html: "<div>新文本</div>",
+    });
+  });
+
+  it("registers inserted asset bindings in the source resource map", () => {
+    const original = fixture();
+    const resourceId = nextSourceRuntimeResourceId(original);
+    const bindingKey = hash("e");
+    const node = createCoursewareInsertedImageNode(
+      bindingKey,
+      2,
+      sourceRuntimeEditorCanvas(original),
+    );
+    const appended = appendSourceRuntimeEditorNode(original, node, resourceId);
+
+    expect(resourceId).toBe("1");
+    expect(appended?.bindings.resources).toEqual({ "1": bindingKey });
+    expect(sourceRuntimeEditorBridgeNodes(appended!)[1]).toMatchObject({
+      insertedKind: "image",
+      resourceBindingKey: bindingKey,
+    });
   });
 
   it("injects syntactically valid browser code into the source runtime", () => {
@@ -136,6 +189,8 @@ describe("source runtime shared element adapter", () => {
     expect(script).toContain("data-mathin-source-editor-overrides");
     expect(script).toContain("setOverride(node,'z-index'");
     expect(script).toContain("data-mathin-source-inline-root");
+    expect(script).toContain("if(event.target.closest('[data-mathin-source-inline-editor]'))return");
+    expect(script).toContain("data-mathin-inserted-node");
     expect(script).not.toContain("mathin-source-node-handle");
     expect(script).not.toContain("handle.textContent");
     expect(script).not.toContain("Math.round(value/step)");

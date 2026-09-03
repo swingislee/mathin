@@ -99,4 +99,29 @@ describe("source-runtime formal draft persistence", () => {
     expect(migration).toContain("revoke all on function public.save_cw_source_runtime_page_draft");
     expect(migration).toContain("grant execute on function public.save_cw_track_page_draft");
   });
+
+  it("allows only capability-gated Mathin insertions while retaining producer nodes", () => {
+    const migration = readFileSync(
+      "supabase/migrations/20260903000700_courseware_page_insertions.sql",
+      "utf8",
+    );
+    const actions = readFileSync("src/features/courseware-studio/actions.ts", "utf8");
+    const sourceEditor = readFileSync(
+      "src/features/courseware-studio/SourceRuntimeFourByThreeEditor.tsx",
+      "utf8",
+    );
+
+    expect(migration).toContain("public.register_cw_page_inserted_asset");
+    expect(migration).toContain("perform public.assert_cw_page_capability(p_page_doc_id, 'page.edit')");
+    expect(migration).toContain("public.cw_source_runtime_inserted_node_is_valid");
+    expect(migration).toContain("Every producer-owned node remains present");
+    expect(migration).toContain("jsonb_typeof(candidate_node -> field_name) <> 'number'");
+    expect(migration).toContain("SOURCE_RUNTIME_DOCUMENT_IMMUTABLE");
+    expect(migration).toContain("COURSEWARE_DOC_BINDING_MISSING");
+    expect(actions).toContain("uploadCoursewarePageImageAction");
+    expect(actions).toContain("createCoursewarePageH5Action");
+    expect(sourceEditor).toContain("appendSourceRuntimeEditorNode");
+    expect(sourceEditor).toContain("CoursewarePageImageInsertionControl");
+    expect(sourceEditor).toContain("CoursewarePageH5InsertionControl");
+  });
 });

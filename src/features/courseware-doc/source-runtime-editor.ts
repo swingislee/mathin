@@ -21,6 +21,9 @@ export interface SourceRuntimeEditorBridgeNode extends SourceNodeEditorState {
   width: number;
   height: number;
   layer: number;
+  insertedKind: "text" | "formula" | "shape" | "image" | "h5" | null;
+  html: string | null;
+  resourceBindingKey: string | null;
 }
 
 export interface SourceRuntimeEditorCanvas {
@@ -100,16 +103,29 @@ function sourceNodeToDocNode(source: UnknownRecord, order: number): DocNode {
     : path;
   const sourceType = typeof source.sourceType === "string" ? source.sourceType : "unknown";
   const kind = typeof source.kind === "string" ? source.kind : "unknown";
+  const insertedKind = source.mathinInserted === true && ["text", "formula", "shape", "image", "h5"].includes(String(source.mathinNodeKind))
+    ? String(source.mathinNodeKind) as SourceRuntimeEditorBridgeNode["insertedKind"]
+    : null;
+  const bindingKey = typeof source.mathinBindingKey === "string" ? source.mathinBindingKey : null;
+  const adapter = insertedKind === "image" ? "image"
+    : insertedKind === "h5" ? "h5"
+      : insertedKind === "shape" ? "shape"
+        : html === null ? "unsupported" : "rich_text";
+  const content: DocNode["content"] = insertedKind === "image" ? null
+    : insertedKind === "h5" ? { kind: "h5", status: "offline" }
+      : insertedKind === "shape" ? { kind: "shape", shapeType: "rectangle", svg: "", html: html ?? "" }
+        : html === null ? { kind: "unsupported", sourceType, summary: title }
+          : { kind: "rich_text", html, sanitized: true, sourceType };
   return {
     id: typeof source.id === "string" ? source.id : path,
     nodePath: path,
     sourceType,
     sourceResourceId: null,
-    adapter: html === null ? "unsupported" : "rich_text",
+    adapter,
     name: title,
-    supported: html !== null,
+    supported: insertedKind !== null || html !== null,
     visible: state.visible,
-    interactive: ["embedded_h5", "itv_video", "true_or_false_game", "topic_classification_game"].includes(kind),
+    interactive: insertedKind === "h5" || ["embedded_h5", "itv_video", "true_or_false_game", "topic_classification_game"].includes(kind),
     zIndex: finite(source.zIndex, order),
     order,
     crop: null,
@@ -144,10 +160,12 @@ function sourceNodeToDocNode(source: UnknownRecord, order: number): DocNode {
       textAlign: state.textAlign,
       overflow: "visible",
     },
-    content: html === null
-      ? { kind: "unsupported", sourceType, summary: title }
-      : { kind: "rich_text", html, sanitized: true, sourceType },
-    resources: [],
+    content,
+    resources: bindingKey && insertedKind === "image"
+      ? [{ bindingKey, bindingPath: "$.src", role: "image", kind: "image" }]
+      : bindingKey && insertedKind === "h5"
+        ? [{ bindingKey, bindingPath: "$.entry", role: "entry", kind: "h5" }]
+        : [],
     children: [],
   };
 }
@@ -171,20 +189,92 @@ export function sourceRuntimeEditorCanvas(doc: SourceRuntimePageDoc): SourceRunt
 }
 
 export function sourceRuntimeEditorBridgeNodes(doc: SourceRuntimePageDoc): SourceRuntimeEditorBridgeNode[] {
-  return sourceRuntimeEditorNodes(doc).map((node) => ({
-    path: node.nodePath,
-    editableText: node.content?.kind === "text" || node.content?.kind === "rich_text",
-    visible: node.visible,
-    opacity: node.transform.opacity,
-    fontSize: node.style.fontSize,
-    color: node.style.color,
-    textAlign: node.style.textAlign,
+  const sources = new Map(rawNodes(doc).map((source) => [String(source.sourcePath), source]));
+  return sourceRuntimeEditorNodes(doc).map((node) => {
+    const source = sources.get(node.nodePath);
+    const insertedKind = source?.mathinInserted === true && ["text", "formula", "shape", "image", "h5"].includes(String(source.mathinNodeKind))
+      ? String(source.mathinNodeKind) as SourceRuntimeEditorBridgeNode["insertedKind"]
+      : null;
+    return {
+      path: node.nodePath,
+      editableText: node.content?.kind === "text" || node.content?.kind === "rich_text",
+      visible: node.visible,
+      opacity: node.transform.opacity,
+      fontSize: node.style.fontSize,
+      color: node.style.color,
+      textAlign: node.style.textAlign,
+      x: node.transform.x,
+      y: node.transform.y,
+      width: node.transform.width,
+      height: node.transform.height,
+      layer: node.zIndex,
+      insertedKind,
+      html: typeof source?.html === "string" ? source.html : null,
+      resourceBindingKey: typeof source?.mathinBindingKey === "string" ? source.mathinBindingKey : null,
+    };
+  });
+}
+
+function rawInsertedKind(node: DocNode): SourceRuntimeEditorBridgeNode["insertedKind"] {
+  if (node.adapter === "image") return "image";
+  if (node.adapter === "h5") return "h5";
+  if (node.adapter === "shape") return "shape";
+  if (node.sourceType.endsWith(":formula")) return "formula";
+  return "text";
+}
+
+/** Append one Mathin-owned node while retaining the producer payload verbatim. */
+export function appendSourceRuntimeEditorNode(
+  input: SourceRuntimePageDoc,
+  node: DocNode,
+  resourceId?: string,
+): SourceRuntimePageDoc | null {
+  if (input.payload.format !== AIXUEXI_VIEWER_FORMAT) return null;
+  const doc = structuredClone(input);
+  const targetLayout = layout(doc);
+  if (!targetLayout || !Array.isArray(targetLayout.nodes)) return null;
+  const insertedKind = rawInsertedKind(node);
+  const bindingKey = node.resources[0]?.bindingKey ?? null;
+  const html = node.content?.kind === "text"
+    ? `<div>${node.content.text ?? ""}</div>`
+    : node.content?.kind === "rich_text"
+      ? node.content.html ?? ""
+      : insertedKind === "shape"
+        ? '<div style="width:100%;height:100%;border:2px solid #dd765c;border-radius:18px;background:#fff4dc"></div>'
+        : insertedKind === "image" && resourceId
+          ? `<img alt="" src="asset://resource/${resourceId}" style="width:100%;height:100%;object-fit:contain">`
+          : "";
+  targetLayout.nodes.push({
+    id: node.id,
+    sourcePath: node.nodePath,
+    sourceType: node.sourceType,
+    kind: "widget_html",
+    title: node.name ?? insertedKind,
     x: node.transform.x,
     y: node.transform.y,
     width: node.transform.width,
     height: node.transform.height,
-    layer: node.zIndex,
-  }));
+    zIndex: node.zIndex,
+    rotation: node.transform.rotation,
+    html,
+    mathinInserted: true,
+    mathinNodeKind: insertedKind,
+    ...(bindingKey ? { mathinBindingKey: bindingKey } : {}),
+    ...(resourceId ? { mathinResourceId: resourceId } : {}),
+    mathinEditor: {
+      visible: node.visible,
+      opacity: node.transform.opacity,
+      fontSize: node.style.fontSize,
+      color: node.style.color,
+      textAlign: node.style.textAlign,
+    },
+  });
+  if (bindingKey && resourceId) doc.bindings.resources[resourceId] = bindingKey;
+  return doc;
+}
+
+export function nextSourceRuntimeResourceId(doc: SourceRuntimePageDoc): string {
+  return String(Math.max(0, ...Object.keys(doc.bindings.resources).map((value) => Number(value) || 0)) + 1);
 }
 
 /** Clone and patch exactly one stable producer node. Unknown source fields stay intact. */

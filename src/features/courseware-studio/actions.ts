@@ -12,8 +12,9 @@ import { actionError, type ActionResult } from "@/lib/action-result";
 import { authorizedClient } from "@/features/school/actions/guards";
 import { COMMON_CODES, intInRange, parse, requiredText, text, uuid } from "@/features/school/actions/schemas";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
+import { buildH5EntryUrl } from "@/features/courseware-doc/resolve";
 import {
   COURSEWARE_TRACKS,
   loadCoursewareSharedAssetDetail,
@@ -56,6 +57,7 @@ export async function saveCoursewareDraftAction(input: z.input<typeof draftSchem
     "SOURCE_PROVENANCE_IMMUTABLE",
     "SOURCE_RUNTIME_DOCUMENT_IMMUTABLE",
     "INVALID_SOURCE_RUNTIME_DOC",
+    "COURSEWARE_DOC_BINDING_MISSING",
     "VERSION_CONFLICT",
     "RELATION_REQUIRED",
     "RESPONSIBILITY_REQUIRED",
@@ -69,6 +71,181 @@ export async function saveCoursewareDraftAction(input: z.input<typeof draftSchem
     "SAVE_FAILED",
     ...COMMON_CODES,
   ]); }
+}
+
+const insertedImageSchema = z.object({
+  pageDocId: uuid,
+  track: trackSchema,
+  file: z.instanceof(File).refine(
+    (file) => ["image/png", "image/jpeg", "image/webp", "image/gif"].includes(file.type)
+      && file.size > 0
+      && file.size <= 52_428_800,
+  ),
+}).strict();
+
+const insertedH5Schema = z.object({
+  pageDocId: uuid,
+  track: trackSchema,
+  html: z.string().min(1).max(5_242_880),
+}).strict();
+
+function insertedBindingKey(
+  pageDocId: string,
+  track: CoursewareTrack,
+  kind: "image" | "h5",
+  sha256: string,
+): string {
+  return createHash("sha256")
+    .update(["courseware-page-insert-v1", pageDocId, track, kind, sha256, randomUUID()].join("\0"))
+    .digest("hex");
+}
+
+async function registerInsertedAsset(input: {
+  supabase: RpcClient;
+  pageDocId: string;
+  track: CoursewareTrack;
+  bindingKey: string;
+  sha256: string;
+  mime: string;
+  byteCount: number;
+  width: number | null;
+  height: number | null;
+  name: string;
+  role: "image" | "entry";
+  kind: "image" | "h5";
+  storagePath: string;
+}) {
+  const { error } = await rpc<null>(input.supabase, "register_cw_page_inserted_asset", {
+    p_page_doc_id: input.pageDocId,
+    p_track: input.track,
+    p_binding_key: input.bindingKey,
+    p_sha256: input.sha256,
+    p_mime: input.mime,
+    p_byte_count: input.byteCount,
+    p_width: input.width,
+    p_height: input.height,
+    p_name: input.name,
+    p_role: input.role,
+    p_kind: input.kind,
+    p_storage_path: input.storagePath,
+  });
+  if (error) throw new Error(error.message);
+}
+
+/** Upload and bind a new page-local image without mutating any existing shared asset. */
+export async function uploadCoursewarePageImageAction(
+  input: z.input<typeof insertedImageSchema>,
+): Promise<ActionResult<{ bindingKey: string; url: string }>> {
+  try {
+    const value = parse(insertedImageSchema, input);
+    const { supabase } = await authorizedClient("courseware.page.edit");
+    const bytes = new Uint8Array(await value.file.arrayBuffer());
+    const dimensions = imageDimensions(bytes, value.file.type);
+    if (!dimensions) throw new Error("INVALID_IMAGE_UPLOAD");
+    const sha256 = createHash("sha256").update(bytes).digest("hex");
+    const storagePath = `sha256/${sha256.slice(0, 2)}/${sha256}`;
+    const bindingKey = insertedBindingKey(value.pageDocId, value.track, "image", sha256);
+    const admin = createAdminClient();
+    const { error: uploadError } = await admin.storage.from("cw-objects").upload(storagePath, bytes, {
+      contentType: value.file.type,
+      cacheControl: "31536000",
+      upsert: false,
+    });
+    if (uploadError && !/already exists|duplicate/i.test(uploadError.message)) throw new Error("IMAGE_UPLOAD_FAILED");
+    await registerInsertedAsset({
+      supabase,
+      pageDocId: value.pageDocId,
+      track: value.track,
+      bindingKey,
+      sha256,
+      mime: value.file.type,
+      byteCount: bytes.byteLength,
+      width: dimensions.width,
+      height: dimensions.height,
+      name: value.file.name.slice(0, 500),
+      role: "image",
+      kind: "image",
+      storagePath,
+    });
+    const { data: signed, error: signError } = await admin.storage.from("cw-objects").createSignedUrl(storagePath, 3600);
+    if (signError || !signed?.signedUrl) throw new Error("IMAGE_URL_FAILED");
+    return { ok: true, data: { bindingKey, url: signed.signedUrl } };
+  } catch (error) {
+    return actionError(error, [
+      "INVALID_IMAGE_UPLOAD",
+      "IMAGE_UPLOAD_FAILED",
+      "IMAGE_URL_FAILED",
+      "COURSEWARE_INSERT_BINDING_FAILED",
+      "OBJECT_METADATA_CONFLICT",
+      ...COMMON_CODES,
+    ]);
+  }
+}
+
+/** Build a one-file immutable H5 package and bind it to this page/track. */
+export async function createCoursewarePageH5Action(
+  input: z.input<typeof insertedH5Schema>,
+): Promise<ActionResult<{ bindingKey: string; url: string }>> {
+  try {
+    const value = parse(insertedH5Schema, input);
+    const { supabase } = await authorizedClient("courseware.page.edit");
+    const normalized = value.html.replace(/\r\n?/g, "\n");
+    const bytes = new TextEncoder().encode(normalized);
+    if (bytes.byteLength > 5_242_880) throw new Error("H5_TOO_LARGE");
+    const packageHash = createHash("sha256").update(bytes).digest("hex");
+    const bindingKey = insertedBindingKey(value.pageDocId, value.track, "h5", packageHash);
+    const entryPath = `packages/${packageHash}/index.html`;
+    const manifestPath = `packages/${packageHash}/__mathin_manifest.json`;
+    const manifest = new TextEncoder().encode(JSON.stringify({
+      schemaVersion: "mathin-h5-manifest-v1",
+      packageHash,
+      entryPath: "index.html",
+      byteCount: bytes.byteLength,
+      files: [{
+        packagePath: "index.html",
+        sha256: packageHash,
+        byteCount: bytes.byteLength,
+        mime: "text/html",
+      }],
+      source: { kind: "mathin_page_insert" },
+    }));
+    const admin = createAdminClient();
+    for (const [path, payload, contentType] of [
+      [entryPath, bytes, "text/html"],
+      [manifestPath, manifest, "application/json"],
+    ] as const) {
+      const { error: uploadError } = await admin.storage.from("cw-h5").upload(path, payload, {
+        contentType,
+        cacheControl: "31536000",
+        upsert: false,
+      });
+      if (uploadError && !/already exists|duplicate/i.test(uploadError.message)) throw new Error("H5_UPLOAD_FAILED");
+    }
+    await registerInsertedAsset({
+      supabase,
+      pageDocId: value.pageDocId,
+      track: value.track,
+      bindingKey,
+      sha256: packageHash,
+      mime: "text/html",
+      byteCount: bytes.byteLength,
+      width: null,
+      height: null,
+      name: "H5",
+      role: "entry",
+      kind: "h5",
+      storagePath: entryPath,
+    });
+    return { ok: true, data: { bindingKey, url: buildH5EntryUrl(packageHash, "index.html", null) } };
+  } catch (error) {
+    return actionError(error, [
+      "H5_TOO_LARGE",
+      "H5_UPLOAD_FAILED",
+      "COURSEWARE_INSERT_BINDING_FAILED",
+      "OBJECT_METADATA_CONFLICT",
+      ...COMMON_CODES,
+    ]);
+  }
 }
 
 export async function renameCoursewarePageAction(input: { pageDocId: string; title: string }): Promise<ActionResult> {

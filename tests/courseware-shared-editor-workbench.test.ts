@@ -60,7 +60,8 @@ describe("shared courseware editor workbench", () => {
     expect(adapterSurface).not.toContain("getElementById");
     expect(composition).toContain("<CoursewareEditorAdapterSurface");
     expect(pageDoc).toContain("<CoursewareEditorAdapterSurface");
-    expect(composition).toContain("<CoursewareInsertionToolbar");
+    expect(composition).toContain("<CoursewarePageEditorToolbar");
+    expect(composition).not.toContain("<CoursewareInsertionToolbar");
     expect(composition).toContain("<CoursewareEditorSaveControls");
     expect(composition).toContain("<CoursewareEditorToolbarButton");
     expect(pageDoc).toContain("<CoursewareEditorSaveControls");
@@ -85,7 +86,7 @@ describe("shared courseware editor workbench", () => {
     expect(microcourse).toContain("useCoursewareEditHistory");
     expect(formal).toContain("<CoursewarePageEditorToolbar");
     expect(pageToolbar).toContain("<CoursewareEditorHistoryControls");
-    expect(microcourse).toContain("<CoursewareEditorHistoryControls");
+    expect(microcourse).toContain("<CoursewarePageEditorToolbar");
     expect(formal).toContain("editHistory.record(previous");
     expect(microcourse).toContain("editHistory.record(previous");
   });
@@ -130,7 +131,7 @@ describe("shared courseware editor workbench", () => {
     expect(microcourse).not.toContain("<CoursewareTextElementInspector");
     expect(formal).toContain("<CoursewarePageEditorToolbar");
     expect(pageToolbar).toContain("<CoursewareGridSnapToggle");
-    expect(microcourse).toContain("<CoursewareGridSnapToggle");
+    expect(microcourse).toContain("<CoursewarePageEditorToolbar");
     expect(formal.slice(formal.indexOf("const inspector ="))).not.toContain("<CoursewareGridSnapToggle");
     expect(microcourse.slice(microcourse.indexOf("const inspectorContent ="))).not.toContain("<CoursewareGridSnapToggle");
     expect(microcourse).not.toContain('t("gridComponentList")');
