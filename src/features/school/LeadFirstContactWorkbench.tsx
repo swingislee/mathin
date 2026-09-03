@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, LoaderCircle, MessageSquarePlus } from "lucide-react";
+import { Check, LoaderCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAction } from "@/components/action-form";
@@ -160,7 +160,7 @@ function ContactEntryRow({
     contactRun.run(lead.id, inputFor(nextOutcome));
   };
 
-  const chooseOutcome = (nextOutcome: LeadContactOutcome, deferSubmit = false) => {
+  const chooseOutcome = (nextOutcome: LeadContactOutcome) => {
     onActivate(lead.id);
     setOutcome(nextOutcome);
     if (nextOutcome === "unreachable" || nextOutcome === "invalid_number") {
@@ -170,7 +170,7 @@ function ContactEntryRow({
     } else if (nextOutcome === "declined") {
       setVisitState("");
     }
-    if (QUICK_SUBMIT_OUTCOMES.includes(nextOutcome) && !deferSubmit) submit(nextOutcome);
+    if (QUICK_SUBMIT_OUTCOMES.includes(nextOutcome)) submit(nextOutcome);
   };
 
   const handleRowKeyDown = (event: React.KeyboardEvent<HTMLTableRowElement>) => {
@@ -270,13 +270,13 @@ function ContactEntryRow({
       </TableCell>
 
       <TableCell className="min-w-[46rem] px-2 py-2 align-top">
-        <div className="flex flex-wrap gap-1.5">
-          {CONTACT_OUTCOME_SHORTCUTS.map(({ key, outcome: value }) => {
-            const selected = outcome === value;
-            const quickSubmit = QUICK_SUBMIT_OUTCOMES.includes(value);
-            return (
-              <div key={value} className="flex items-center gap-0.5">
+        <div className="flex items-start gap-2">
+          <div className="flex shrink-0 flex-wrap gap-1.5">
+            {CONTACT_OUTCOME_SHORTCUTS.map(({ key, outcome: value }) => {
+              const selected = outcome === value;
+              return (
                 <Button
+                  key={value}
                   type="button"
                   size="sm"
                   variant={selected ? "primary" : "secondary"}
@@ -295,23 +295,20 @@ function ContactEntryRow({
                       : <span className="font-mono text-[11px] text-muted">{key}</span>}
                   {t(`contactOutcome_${value}`)}
                 </Button>
-                {quickSubmit ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    className="h-8 w-8 px-0"
-                    disabled={contactRun.pending}
-                    aria-label={t("contactAddNoteBeforeSave", { outcome: t(`contactOutcome_${value}`) })}
-                    title={t("contactAddNoteBeforeSave", { outcome: t(`contactOutcome_${value}`) })}
-                    onClick={() => chooseOutcome(value, true)}
-                  >
-                    <MessageSquarePlus className="size-3.5" />
-                  </Button>
-                ) : null}
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+          <Textarea
+            value={note}
+            disabled={contactRun.pending}
+            onFocus={() => onActivate(lead.id)}
+            onChange={(event) => setNote(event.target.value)}
+            rows={1}
+            maxLength={2000}
+            className="h-8 min-h-8 min-w-52 flex-1 resize-y overflow-hidden rounded-xl px-2 py-1.5 text-xs transition-[height] focus:h-20 focus:overflow-auto motion-reduce:transition-none"
+            placeholder={outcome ? t(`contactNotePlaceholder_${outcome}`) : t("contactNoteInlinePlaceholder")}
+            aria-label={t("contactNoteFor", { name: lead.provisionalStudentName })}
+          />
         </div>
 
         {active && outcome ? (
@@ -343,20 +340,6 @@ function ContactEntryRow({
                 />
               </div>
             ) : null}
-
-            <Textarea
-              value={note}
-              disabled={contactRun.pending}
-              onChange={(event) => setNote(event.target.value)}
-              rows={reachable ? 2 : 1}
-              maxLength={2000}
-              className={cn(
-                "w-full rounded-xl px-2 py-1.5 text-xs",
-                reachable ? "min-h-14 resize-y" : "min-h-9 resize-none",
-              )}
-              placeholder={t(`contactNotePlaceholder_${outcome}`)}
-              aria-label={t("contactNoteFor", { name: lead.provisionalStudentName })}
-            />
 
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-[11px] leading-4 text-muted" aria-live="polite">
