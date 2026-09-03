@@ -31,6 +31,7 @@ import { saveSessionPreparationArtifactsAction } from "./actions/classes";
 import { setSessionPreparationReviewerAction } from "./teacher-preparation-actions";
 import type { SolutionRecordPagePreview } from "./CoursewareAnnotationBoard";
 import { SessionSolutionArchive } from "./SessionSolutionArchive";
+import { PreparationReviewActions } from "./PreparationReviewActions";
 import type { SolutionRecord } from "./teacher-preparation-contract";
 import type {
   PrepArtifactFile,
@@ -112,6 +113,7 @@ export function SessionPreparationFlow({
   initialStage = "study",
   readOnly = false,
   reviewerReadOnly = readOnly,
+  canReview = false,
 }: {
   sessionId: string;
   initial: SessionPreparationArtifacts;
@@ -122,6 +124,7 @@ export function SessionPreparationFlow({
   initialStage?: PrepStage;
   readOnly?: boolean;
   reviewerReadOnly?: boolean;
+  canReview?: boolean;
 }) {
   const t = useTranslations("school.session");
   const router = useRouter();
@@ -374,6 +377,9 @@ export function SessionPreparationFlow({
               pagePreviews={solutionPagePreviews}
             />
           </div>
+          {canReview && reviews.solution?.status === "pending"
+            ? <PreparationReviewActions sessionId={sessionId} artifactKind="solution" />
+            : null}
           {reviews.solution?.status === "changes_requested" && reviews.solution.reviewNote ? <p className="mt-2 text-xs text-rose">{reviews.solution.reviewNote}</p> : null}
         </article>
       </TabsContent>
@@ -402,6 +408,9 @@ export function SessionPreparationFlow({
               {reviews.lesson_plan?.status === "changes_requested" && reviews.lesson_plan.reviewNote ? <p className="mt-2 text-xs text-rose">{reviews.lesson_plan.reviewNote}</p> : null}
             </article>
             <div className="min-h-[36rem] flex-1">{lessonPlanEditor}</div>
+            {canReview && reviews.lesson_plan?.status === "pending"
+              ? <PreparationReviewActions sessionId={sessionId} artifactKind="lesson_plan" />
+              : null}
           </div>
         </TabsContent>
       ) : null}
@@ -452,6 +461,9 @@ export function SessionPreparationFlow({
               ) : null}
             </span>
           </div>
+          {canReview && reviews.rehearsal_video?.status === "pending"
+            ? <PreparationReviewActions sessionId={sessionId} artifactKind="rehearsal_video" />
+            : null}
           {reviews.rehearsal_video?.status === "changes_requested" && reviews.rehearsal_video.reviewNote ? <p className="mt-2 text-xs text-rose">{reviews.rehearsal_video.reviewNote}</p> : null}
         </article>
       </TabsContent>

@@ -21,6 +21,14 @@ export interface SessionLearningCheck {
   sourcePageId: string | null;
 }
 
+/** Client-safe shape for page-level learning-check defaults returned by the server reader. */
+export interface CoursewareLearningCheckPage {
+  pageDocId: string;
+  pageNo: number;
+  title: string;
+  learningCheckEnabled: boolean;
+}
+
 export interface SessionLearningStudent {
   id: string;
   name: string;

@@ -50,12 +50,12 @@ export default async function LiveClassPage({
   if (!classroom || !session || session.classroomId !== classId) notFound();
 
   // 教师进入未冻结课次时，试讲/候课都先用「模板+覆盖层」解析当前页面，
-  // 与正式开课时冻结的结果保持一致（10-§5.4）。自由课次没有 lecture，
-  // 其空模板 + 覆盖层就是教师为本课创建的完整课件。学生等待页仍保持空数组，
-  // 直到正式开课后再读取冻结快照。
+  // 与正式开课时冻结的结果保持一致（10-§5.4）。自由课次会由同一模板
+  // RPC 投影当前“本节使用”的教师/教研方案；没有方案时才是空模板。
+  // 学生等待页仍保持空数组，直到正式开课后再读取冻结快照。
   let effectiveSession = session;
   if (classroom.myRole === "teacher" && !session.coursewareFrozenAt) {
-    const template = session.lectureId ? await getSessionCoursewareTemplate(sessionId) : [];
+    const template = await getSessionCoursewareTemplate(sessionId);
     effectiveSession = {
       ...session,
       courseware: resolveCourseware(template, (session.coursewareOverlay as OverlaySlot[]) ?? []) as CoursewarePage[],

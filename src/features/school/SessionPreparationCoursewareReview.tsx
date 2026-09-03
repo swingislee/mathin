@@ -11,8 +11,8 @@ import {
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { buttonVariants } from "@/components/ui/button";
+import { CoursewareWorkbench } from "@/features/courseware-doc/CoursewareEditorWorkbench";
 import {
-  CoursewarePreviewWorkspace,
   type CoursewarePreviewListItem,
 } from "@/features/courseware-preview/CoursewarePreviewWorkspace";
 import { StagePreview } from "@/features/courseware-studio/StagePreview";
@@ -135,7 +135,8 @@ export function SessionPreparationCoursewareReview({
           </Link>
         ) : null}
       </div>
-      <CoursewarePreviewWorkspace
+      <CoursewareWorkbench
+        mode="preview"
         className="min-h-0 flex-1"
         layoutId="preparation-review-courseware"
         railWidth="standard"

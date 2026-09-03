@@ -1,5 +1,5 @@
 import { getSessionAssetUrls, getSessionH5BindingUrls, getSessionPageDocs } from "@/features/classroom/courseware/session-assets";
-import { LockKeyhole, LockKeyholeOpen } from "lucide-react";
+import { LockKeyhole } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import type { SessionWorkspaceDetail } from "./classes";
 import { getSessionCoursewareTemplate } from "./courses";
@@ -35,14 +35,13 @@ export async function SessionPrepPanel({
       || detail.capabilities.canEnterLive
       || detail.capabilities.canViewReport,
   );
-  const prepArchiveUnlocked = Boolean(
+  const frozenCoursewareUnlockAvailable = Boolean(
     detail.coursewareFrozenAt
       && lockedPreparationEditingEnabled
       && detail.capabilities.canEditPreparationArchive,
   );
   const regularPreparationEditing = Boolean(detail.capabilities.canPrepare && !detail.coursewareFrozenAt);
-  const canAmendSessionArchive = Boolean(regularPreparationEditing || prepArchiveUnlocked);
-  const preparationWorkflowReadOnly = !canAmendSessionArchive;
+  const preparationWorkflowReadOnly = !regularPreparationEditing;
   const canReadSessionMemberState = detail.capabilities.canEditPreparationArchive;
   const relationshipReadOnly = Boolean(
     detail.state === "scheduled"
@@ -51,7 +50,9 @@ export async function SessionPrepPanel({
   );
 
   const [template, learningSetup, coursewareLearningCheckPages, sessionDocs, sessionAssets, prepArtifacts, teacherPreparation] = await Promise.all([
-    detail.lectureId && !detail.coursewareFrozenAt ? getSessionCoursewareTemplate(detail.id) : Promise.resolve([]),
+    !detail.coursewareFrozenAt && (canViewPrepArchive || canAuthorMicrocourseProposal)
+      ? getSessionCoursewareTemplate(detail.id)
+      : Promise.resolve([]),
     canReadSessionMemberState ? getSessionLearningSetup(detail.id) : Promise.resolve(null),
     canViewPrepArchive ? getSessionCoursewareLearningCheckPages(detail.id) : Promise.resolve([]),
     canViewPrepArchive ? getSessionPageDocs(detail.id).catch(() => []) : Promise.resolve([]),
@@ -83,7 +84,6 @@ export async function SessionPrepPanel({
       title: titleByPageDocId.get(pageDoc.pageDocId) ?? t("learningCheckUntitledPage"),
     }),
   ]));
-  const canEditSessionCourseware = canAmendSessionArchive;
   const frozenEditorState = detail.coursewareFrozenAt
     ? coursewareEditorStateFromFrozenSnapshot(detail.courseware, detail.coursewareOverlay)
     : null;
@@ -94,35 +94,12 @@ export async function SessionPrepPanel({
     <>
       {detail.prepStatus === "not_started" && detail.capabilities.canPrepare ? <SessionPrepAutostart sessionId={detail.id} /> : null}
       <div className="flex h-full min-h-0 min-w-0 flex-col gap-3 px-1">
-        {relationshipReadOnly ? (
-          <section className="flex shrink-0 items-start gap-3 rounded-xl border border-line bg-card/70 px-4 py-3">
-            <LockKeyhole size={18} className="mt-0.5 shrink-0 text-muted" aria-hidden />
-            <div className="min-w-0 flex-1">
-              <h2 className="text-sm font-medium text-ink">
-                {t(canAuthorMicrocourseProposal ? "prepResearchCoursewareTitle" : "prepReadOnlyNotTeacherTitle")}
-              </h2>
-              <p className="mt-1 text-xs leading-5 text-muted">
-                {t(canAuthorMicrocourseProposal ? "prepResearchCoursewareBody" : "prepReadOnlyNotTeacherBody")}
-              </p>
-            </div>
-          </section>
+        {relationshipReadOnly && !canAuthorMicrocourseProposal ? (
+          <p className="flex shrink-0 items-center gap-2 px-1 text-xs text-muted">
+            <LockKeyhole size={14} className="shrink-0" aria-hidden />
+            <span>{t("prepReadOnlyNotTeacherTitle")}</span>
+          </p>
         ) : null}
-        {detail.coursewareFrozenAt ? (
-          <section className="flex shrink-0 flex-wrap items-start gap-3 rounded-xl border border-line bg-card/70 px-4 py-3">
-            {prepArchiveUnlocked
-              ? <LockKeyholeOpen size={18} className="mt-0.5 shrink-0 text-leaf" aria-hidden />
-              : <LockKeyhole size={18} className="mt-0.5 shrink-0 text-muted" aria-hidden />}
-            <div className="min-w-0 flex-1">
-              <h2 className="text-sm font-medium text-ink">
-                {t(prepArchiveUnlocked ? "prepArchiveUnlockedTitle" : "prepArchiveFrozenTitle")}
-              </h2>
-              <p className="mt-1 text-xs leading-5 text-muted">
-                {t(prepArchiveUnlocked ? "prepArchiveUnlockedBody" : "prepArchiveFrozenBody")}
-              </p>
-            </div>
-          </section>
-        ) : null}
-
         <SessionPrepSplit
           flow={(
             <aside className="@container flex min-h-0 min-w-0 flex-1 flex-col">
@@ -145,6 +122,7 @@ export async function SessionPrepPanel({
                   initialStage={initialStep}
                   readOnly={preparationWorkflowReadOnly}
                   reviewerReadOnly={!regularPreparationEditing}
+                  canReview={prepArtifacts.reviewerId === detail.viewerId}
                 />
               ) : null}
             </aside>
@@ -185,12 +163,13 @@ export async function SessionPrepPanel({
                 solutionRecords={teacherPreparation.solutionRecords}
                 learningCheckPages={coursewareLearningCheckPages}
                 initialLearningChecks={learningSetup?.checks ?? []}
-                learningChecksLocked={!canAmendSessionArchive}
+                learningChecksLocked={!regularPreparationEditing}
                 learningChecksConfigured={learningSetup?.configured ?? false}
                 initialPageId={initialPageId}
-                readOnly={!canAmendSessionArchive}
-                structureReadOnly={!canEditSessionCourseware}
-                customOnly={!detail.lectureId}
+                readOnly={!regularPreparationEditing}
+                structureReadOnly={!regularPreparationEditing}
+                frozen={Boolean(detail.coursewareFrozenAt)}
+                canUnlockFrozen={frozenCoursewareUnlockAvailable}
               />
             ) : null}
             </section>

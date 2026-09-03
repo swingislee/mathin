@@ -68,7 +68,7 @@ describe("R1 classroom continuity contracts", () => {
     const overlayEditor = read("src/features/school/CoursewareOverlayEditor.tsx");
     const classes = read("src/features/school/classes.ts");
     expect(prep).toContain("canViewPrepArchive");
-    expect(prep).toContain("prepArchiveFrozenTitle");
+    expect(prep).not.toContain("prepArchiveFrozenTitle");
     expect(prep).toContain("coursewareEditorStateFromFrozenSnapshot(detail.courseware, detail.coursewareOverlay)");
     expect(prep).toContain("template={editorTemplate}");
     expect(prep).toContain("initialOverlay={editorOverlay}");
@@ -78,8 +78,10 @@ describe("R1 classroom continuity contracts", () => {
     expect(prepFlow).toContain('t("prepArchiveReadOnly")');
     expect(overlayEditor).toContain("readOnly?: boolean");
     expect(overlayEditor).toContain('ts("coursewareArchivePageRailTitle")');
-    expect(overlayEditor).toContain("structureReadOnly = readOnly");
-    expect(overlayEditor).toContain("prepArchiveUnlockedCoursewareHint");
+    expect(overlayEditor).toContain("canUnlockFrozen?: boolean");
+    expect(overlayEditor).toContain("frozenEditActive");
+    expect(overlayEditor).not.toContain("prepArchiveCoursewareHint");
+    expect(overlayEditor).not.toContain('t("title", { count: overlay.length })');
     expect(classes).toContain("courseware_frozen_at,courseware,courseware_overlay");
   });
 
@@ -89,15 +91,19 @@ describe("R1 classroom continuity contracts", () => {
     const coursewareAction = read("src/features/school/actions/courseware.ts");
     expect(prep).toContain('isFeatureEnabled("teaching.preparation_archive_edit")');
     expect(prep).toContain("canEditPreparationArchive");
-    expect(prep).toContain("canAmendSessionArchive");
+    expect(prep).toContain("frozenCoursewareUnlockAvailable");
+    expect(prep).not.toContain("canAmendSessionArchive");
     expect(prep).toContain("readOnly={preparationWorkflowReadOnly}");
     expect(prep).toContain("reviewerReadOnly={!regularPreparationEditing}");
-    expect(prep).toContain("learningChecksLocked={!canAmendSessionArchive}");
-    expect(prep).toContain("readOnly={!canAmendSessionArchive}");
-    expect(prep).toContain("structureReadOnly={!canEditSessionCourseware}");
+    expect(prep).toContain("learningChecksLocked={!regularPreparationEditing}");
+    expect(prep).toContain("readOnly={!regularPreparationEditing}");
+    expect(prep).toContain("structureReadOnly={!regularPreparationEditing}");
+    expect(prep).toContain("canUnlockFrozen={frozenCoursewareUnlockAvailable}");
     expect(prep).not.toContain("openCoursewareWorkspace");
-    expect(overlayEditor).toContain("structureReadOnly = readOnly");
-    expect(overlayEditor).toContain("prepArchiveUnlockedCoursewareHint");
+    expect(overlayEditor).toContain("baseStructureReadOnly = baseReadOnly");
+    expect(overlayEditor).toContain("setFrozenUnlocked");
+    expect(overlayEditor).toContain("coursewareUnlock");
+    expect(overlayEditor).toContain("coursewareRelock");
     expect(coursewareAction).toContain('rpc("amend_session_courseware_snapshot"');
     expect(prepUnlockMigration).toContain("replace_session_learning_checks");
     expect(prepUnlockMigration).toContain("save_courseware_annotation");
@@ -171,8 +177,8 @@ describe("R1 classroom continuity contracts", () => {
     expect(prepFlow).toContain("saveQueue");
     expect(prepFlow).toContain("latest.current = next");
     expect(prepFlow).not.toContain('type="submit"');
-    expect(fs.existsSync(path.join(root, "src/features/school/PreparationReviewActions.tsx"))).toBe(true);
-    expect(fs.existsSync(path.join(root, "src/features/school/session-preparation-reviews.ts"))).toBe(true);
+    expect(prepFlow).toContain("PreparationReviewActions");
+    expect(prepPanel).toContain("canReview={prepArtifacts.reviewerId === detail.viewerId}");
     expect(workItems).toContain('case "session"');
     expect(fs.existsSync(path.join(root, "src/app/[locale]/dashboard/courseware/preparation-review/page.tsx"))).toBe(false);
   });
@@ -234,7 +240,7 @@ describe("R1 classroom continuity contracts", () => {
 
     expect(resolveCourseware([], [{ page: gamePage }])).toEqual([gamePage]);
     expect(livePage).toContain('classroom.myRole === "teacher" && !session.coursewareFrozenAt');
-    expect(livePage).toContain("const template = session.lectureId ? await getSessionCoursewareTemplate(sessionId) : []");
+    expect(livePage).toContain("const template = await getSessionCoursewareTemplate(sessionId)");
     expect(livePage).toContain("courseware: resolveCourseware(template");
     expect(livePage).not.toContain("session.lectureId && !session.coursewareFrozenAt");
     expect(livePage).not.toContain("if (template.length > 0)");

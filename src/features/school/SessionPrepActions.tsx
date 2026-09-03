@@ -24,8 +24,8 @@ import type { SessionPrepStatus } from "./teaching-operations/scopes";
 
 /**
  * 进入课前阶段会自动开始备课；复制与完成是两个独立叶子，分别贴近阶段导航和试讲入口。
- * 完成备课会冻结教师当前选择；产物、审核、检查项与 release 状态继续展示，
- * 但 R1-Live 不再把这些质量信号变成阻止教师确认或开课的前置条件。
+ * 正式讲次完成备课时固定当前 release；自由课所选教师/教研方案只标记备课完成，
+ * 仍可继续设计，并在正式进入课堂时统一冻结。质量信号不阻止教师确认或开课。
  */
 export function SessionPrepCopyAction({
   sessionId,

@@ -275,9 +275,10 @@ export async function getLectureCoursewareTemplate(id: string): Promise<Coursewa
 }
 
 /**
- * 备课/试讲读取 session 实际选择的 track release 页面投影。已有 release 时顺序、稳定
- * page identity 与标题来自 immutable release；只有没有 release 的历史讲次才回退 legacy
- * courseware_template。不要用 lectureId 读取函数替代本入口。
+ * 备课/试讲读取 session 实际选择的页面投影：正式课使用 track release，自由课使用
+ * 当前“本节使用”的教师/教研方案。已有 release 时顺序、稳定 page identity 与标题来自
+ * immutable release；只有没有 release 的历史讲次才回退 legacy courseware_template。
+ * 不要用 lectureId 读取函数替代本入口。
  */
 export async function getSessionCoursewareTemplate(sessionId: string): Promise<CoursewareTemplatePage[]> {
   const supabase = await createClient();
