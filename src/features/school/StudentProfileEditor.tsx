@@ -28,9 +28,11 @@ export function StudentProfileEditor({ student, canEdit }: { student: StudentDet
     phone: student.phone,
     wechat: student.wechat,
     school: student.school,
+    publicSchoolClass: student.publicSchoolClass,
     grade: student.grade,
     region: student.region,
     source: student.source,
+    marketActivity: student.marketActivity,
     parentName: student.parentName,
     parentRelation: student.parentRelation,
     parentPhone: student.parentPhone,
@@ -77,8 +79,10 @@ export function StudentProfileEditor({ student, canEdit }: { student: StudentDet
         <Field label={t("phone")}><Input disabled={disabled} value={form.phone} maxLength={40} onChange={(e) => set("phone", e.target.value)} className={fieldClass} /></Field>
         <Field label={t("wechat")}><Input disabled={disabled} value={form.wechat} maxLength={80} onChange={(e) => set("wechat", e.target.value)} className={fieldClass} /></Field>
         <Field label={t("schoolName")}><Input disabled={disabled} value={form.school} maxLength={100} onChange={(e) => set("school", e.target.value)} className={fieldClass} /></Field>
+        <Field label={t("publicSchoolClass")}><Input disabled={disabled} value={form.publicSchoolClass} maxLength={100} onChange={(e) => set("publicSchoolClass", e.target.value)} className={fieldClass} /></Field>
         <Field label={t("region")}><Input disabled={disabled} list="student-region-options" value={form.region} maxLength={100} onChange={(e) => set("region", e.target.value)} className={fieldClass} /></Field>
         <Field label={t("source")}><Input disabled={disabled} list="student-source-options" value={form.source} maxLength={100} onChange={(e) => set("source", e.target.value)} className={fieldClass} /></Field>
+        <Field label={t("marketActivity")}><Input disabled={disabled} value={form.marketActivity} maxLength={160} onChange={(e) => set("marketActivity", e.target.value)} className={fieldClass} /></Field>
         <Field label={t("parentName")}><Input disabled={disabled} value={form.parentName} maxLength={100} onChange={(e) => set("parentName", e.target.value)} className={fieldClass} /></Field>
         <Field label={t("parentRelation")}><Input disabled={disabled} value={form.parentRelation} maxLength={40} onChange={(e) => set("parentRelation", e.target.value)} className={fieldClass} /></Field>
         <Field label={t("parentPhone")}><Input disabled={disabled} value={form.parentPhone} maxLength={40} onChange={(e) => set("parentPhone", e.target.value)} className={fieldClass} /></Field>

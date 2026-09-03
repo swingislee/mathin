@@ -3,7 +3,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { DataInboxPanel } from "@/features/school/DataInboxPanel";
 import { DashboardPage } from "@/features/school/dashboard-page";
 import { listRecentLeadImportBatches } from "@/features/school/lead-imports";
-import { listRecentStudentImportBatches } from "@/features/school/student-imports";
+import { listRecentMofaxiaoStudentImportBatches, listRecentStudentImportBatches } from "@/features/school/student-imports";
 import { requirePerm } from "@/lib/auth";
 
 export default async function ImportStudentsPage({ params }: { params: Promise<{ locale: string }> }) {
@@ -28,11 +28,12 @@ export default async function ImportStudentsPage({ params }: { params: Promise<{
 
 async function ImportWorkspace({ locale }: { locale: string }) {
   await requirePerm(locale, "student.import");
-  const [leadBatches, studentBatches] = await Promise.all([
+  const [leadBatches, studentBatches, mofaxiaoBatches] = await Promise.all([
     listRecentLeadImportBatches(),
     listRecentStudentImportBatches(),
+    listRecentMofaxiaoStudentImportBatches(),
   ]);
-  return <DataInboxPanel leadBatches={leadBatches} studentBatches={studentBatches} />;
+  return <DataInboxPanel leadBatches={leadBatches} studentBatches={studentBatches} mofaxiaoBatches={mofaxiaoBatches} />;
 }
 
 function ImportWorkspaceSkeleton() {
