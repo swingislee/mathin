@@ -131,6 +131,7 @@ describe("employee desktop Web Push production foundation", () => {
     expect(worker).toContain("fail_web_push_job");
     expect(deploy).toContain('copy_worker_package "web-push"');
     expect(deploy).toContain('cp -a "$source_root/scripts/r1-job-worker.mjs"');
+    expect(read("src/features/school/PlatformOperationsPanel.tsx")).toContain("snapshot.webPush ??");
   });
 
   it("records broad employee-test windows and makes P5 the active construction target", () => {

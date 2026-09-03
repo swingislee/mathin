@@ -52,7 +52,7 @@ interface OperationsSnapshot {
     deadLetters: DeadLetter[];
   };
   notifications: { total24h: number; unread: number; failedDeliveries: number; queuedDeliveries: number };
-  webPush: {
+  webPush?: {
     featureEnabled: boolean;
     rolloutMembers: number;
     activeSubscriptions: number;
@@ -89,14 +89,27 @@ export async function PlatformOperationsPanel({ canManage }: { canManage: boolea
   const { data, error } = await supabase.rpc("get_platform_operations_snapshot");
   if (error) throw new Error(error.message);
   const snapshot = data as unknown as OperationsSnapshot;
+  const webPush = snapshot.webPush ?? {
+    featureEnabled: false,
+    rolloutMembers: 0,
+    activeSubscriptions: 0,
+    sharedSubscriptions: 0,
+    expiredOrGoneSubscriptions: 0,
+    queued: 0,
+    sent24h: 0,
+    suppressed24h: 0,
+    failed: 0,
+    oldestDueAt: null,
+    workerStale: false,
+  };
 
   const status = [
     { label: t("jobsPending"), value: snapshot.jobs.pending, tone: snapshot.jobs.pending > 0 ? "warning" as const : "default" as const },
     { label: t("jobsRunning"), value: snapshot.jobs.running, tone: "default" as const },
     { label: t("deadLetters"), value: snapshot.jobs.dead, tone: statusTone(snapshot.jobs.dead) },
     { label: t("failedDeliveries"), value: snapshot.notifications.failedDeliveries, tone: statusTone(snapshot.notifications.failedDeliveries) },
-    { label: t("webPushFailed"), value: snapshot.webPush.failed, tone: statusTone(snapshot.webPush.failed) },
-    { label: t("webPushWorkerStale"), value: snapshot.webPush.workerStale ? 1 : 0, tone: snapshot.webPush.workerStale ? "warning" as const : "default" as const },
+    { label: t("webPushFailed"), value: webPush.failed, tone: statusTone(webPush.failed) },
+    { label: t("webPushWorkerStale"), value: webPush.workerStale ? 1 : 0, tone: webPush.workerStale ? "warning" as const : "default" as const },
     { label: t("fileCleanupPending"), value: snapshot.files.cleanupPending, tone: snapshot.files.cleanupPending > 0 ? "warning" as const : "default" as const },
   ];
 
@@ -149,20 +162,20 @@ export async function PlatformOperationsPanel({ canManage }: { canManage: boolea
             <h2 className="text-base font-medium text-ink">{t("webPushTitle")}</h2>
             <p className="mt-1 text-sm text-muted">{t("webPushIntro")}</p>
           </div>
-          <Badge variant={snapshot.webPush.featureEnabled ? "default" : "outline"}>
-            {snapshot.webPush.featureEnabled ? t("webPushFeatureOn") : t("webPushFeatureOff")}
+          <Badge variant={webPush.featureEnabled ? "default" : "outline"}>
+            {webPush.featureEnabled ? t("webPushFeatureOn") : t("webPushFeatureOff")}
           </Badge>
         </div>
         <dl className="grid gap-px bg-line sm:grid-cols-2 lg:grid-cols-4">
           {([
-            ["webPushRollout", snapshot.webPush.rolloutMembers],
-            ["webPushActive", snapshot.webPush.activeSubscriptions],
-            ["webPushShared", snapshot.webPush.sharedSubscriptions],
-            ["webPushQueued", snapshot.webPush.queued],
-            ["webPushSent24h", snapshot.webPush.sent24h],
-            ["webPushSuppressed24h", snapshot.webPush.suppressed24h],
-            ["webPushExpiredGone", snapshot.webPush.expiredOrGoneSubscriptions],
-            ["webPushFailed", snapshot.webPush.failed],
+            ["webPushRollout", webPush.rolloutMembers],
+            ["webPushActive", webPush.activeSubscriptions],
+            ["webPushShared", webPush.sharedSubscriptions],
+            ["webPushQueued", webPush.queued],
+            ["webPushSent24h", webPush.sent24h],
+            ["webPushSuppressed24h", webPush.suppressed24h],
+            ["webPushExpiredGone", webPush.expiredOrGoneSubscriptions],
+            ["webPushFailed", webPush.failed],
           ] as const).map(([label, value]) => (
             <div key={label} className="bg-card px-5 py-4">
               <dt className="text-xs text-muted">{t(label)}</dt>
@@ -171,8 +184,8 @@ export async function PlatformOperationsPanel({ canManage }: { canManage: boolea
           ))}
         </dl>
         <p className="border-t border-line px-5 py-3 text-xs text-muted">
-          {snapshot.webPush.oldestDueAt
-            ? t("webPushOldestDue", { time: format.dateTime(new Date(snapshot.webPush.oldestDueAt), { dateStyle: "short", timeStyle: "medium" }) })
+          {webPush.oldestDueAt
+            ? t("webPushOldestDue", { time: format.dateTime(new Date(webPush.oldestDueAt), { dateStyle: "short", timeStyle: "medium" }) })
             : t("webPushNoDue")}
         </p>
       </DashboardCardShell>
