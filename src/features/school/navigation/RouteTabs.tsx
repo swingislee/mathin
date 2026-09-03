@@ -38,11 +38,13 @@ export function RouteTabs({
   items,
   activeValue,
   ariaLabel,
+  activeTone = "surface",
   className,
 }: {
   items: readonly RouteTab[];
   activeValue: string;
   ariaLabel: string;
+  activeTone?: "surface" | "accent";
   className?: string;
 }) {
   if (items.length === 0) return null;
@@ -58,7 +60,11 @@ export function RouteTabs({
               aria-current={active ? "page" : undefined}
               className={cn(
                 "inline-flex min-h-8 items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1 text-sm transition-all",
-                active ? "bg-card font-medium text-ink shadow-sm" : "hover:text-ink",
+                active
+                  ? activeTone === "accent"
+                    ? "bg-moon/35 font-medium text-ink ring-1 ring-inset ring-moon/70"
+                    : "bg-card font-medium text-ink shadow-sm"
+                  : "hover:text-ink",
               )}
             >
               {item.label}

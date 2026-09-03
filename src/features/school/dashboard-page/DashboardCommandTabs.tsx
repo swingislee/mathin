@@ -14,12 +14,22 @@ export function DashboardCommandTabs({
   items,
   activeValue,
   ariaLabel,
+  activeTone,
   className,
 }: {
   items: readonly DashboardCommandTab[];
   activeValue: string;
   ariaLabel: string;
+  activeTone?: "surface" | "accent";
   className?: string;
 }) {
-  return <RouteTabs items={items} activeValue={activeValue} ariaLabel={ariaLabel} className={className} />;
+  return (
+    <RouteTabs
+      items={items}
+      activeValue={activeValue}
+      ariaLabel={ariaLabel}
+      activeTone={activeTone}
+      className={className}
+    />
+  );
 }

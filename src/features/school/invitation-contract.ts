@@ -10,17 +10,23 @@ export const INVITATION_STATES = [
   "cancelled",
 ] as const;
 export const INVITATION_CHANNELS = ["phone", "wechat", "in_person", "other"] as const;
+export const INVITATION_COORDINATION_STATES = [
+  "coordinating_time",
+  "awaiting_teacher",
+  "awaiting_parent",
+] as const;
 
 export type InvitationKind = (typeof INVITATION_KINDS)[number];
 export type InvitationState = (typeof INVITATION_STATES)[number];
 export type InvitationChannel = (typeof INVITATION_CHANNELS)[number];
 export type InvitationQueue =
-  | "coordinating_time"
-  | "awaiting_teacher"
-  | "awaiting_parent"
+  | "coordination"
   | "confirmed"
   | "waiting_activity"
   | "closed";
+export type InvitationCoordinationStage =
+  | "all"
+  | (typeof INVITATION_COORDINATION_STATES)[number];
 
 export interface InvitationDraft {
   kind: InvitationKind;
@@ -74,7 +80,13 @@ export interface InvitationCoordinationRow extends InvitationSummary {
 
 export interface InvitationFilters {
   queue: InvitationQueue;
+  stage: InvitationCoordinationStage;
   q?: string;
+}
+
+export interface InvitationQueueCounts {
+  queues: Record<InvitationQueue, number>;
+  stages: Record<InvitationCoordinationStage, number>;
 }
 
 export function defaultInvitationState(kind: InvitationKind): InvitationState {
@@ -102,11 +114,25 @@ export function invitationDraftIsComplete(draft: InvitationDraft): boolean {
 
 export function invitationQueueFrom(value: string | string[] | undefined): InvitationQueue {
   const raw = Array.isArray(value) ? value[0] : value;
-  return raw === "awaiting_teacher"
-    || raw === "awaiting_parent"
-    || raw === "confirmed"
+  return raw === "confirmed"
     || raw === "waiting_activity"
     || raw === "closed"
     ? raw
-    : "coordinating_time";
+    : "coordination";
+}
+
+export function invitationCoordinationStageFrom(
+  queueValue: string | string[] | undefined,
+  stageValue: string | string[] | undefined,
+): InvitationCoordinationStage {
+  const rawQueue = Array.isArray(queueValue) ? queueValue[0] : queueValue;
+  const rawStage = Array.isArray(stageValue) ? stageValue[0] : stageValue;
+  const candidate = INVITATION_COORDINATION_STATES.includes(
+    rawQueue as (typeof INVITATION_COORDINATION_STATES)[number],
+  ) ? rawQueue : rawStage;
+  return candidate === "coordinating_time"
+    || candidate === "awaiting_teacher"
+    || candidate === "awaiting_parent"
+    ? candidate
+    : "all";
 }

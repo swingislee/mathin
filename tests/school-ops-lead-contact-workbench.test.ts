@@ -17,7 +17,9 @@ import {
 } from "@/features/school/lead-contract";
 import {
   defaultInvitationState,
+  invitationCoordinationStageFrom,
   invitationDraftIsComplete,
+  invitationQueueFrom,
   invitationStatesForKind,
 } from "@/features/school/invitation-contract";
 
@@ -110,6 +112,8 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(migration).not.toContain("p_next_action_at");
     expect(page).toContain("InvitationCoordinationWorkbench");
     expect(page).toContain("DashboardCommandTabs");
+    expect(page).toContain("listInvitationQueueCounts");
+    expect(page).toContain('key={`${filters.queue}:${filters.stage}:${filters.q ?? ""}`}');
     expect(workbench).toContain("copyWithFallback");
     expect(workbench).toContain("copyRelay");
     expect(workbench).toContain("sticky left-0 top-0");
@@ -250,6 +254,15 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
       proposedTimeText: "周六下午",
       locationText: "一号教室",
     })).toBe(true);
+  });
+
+  it("separates the coordination work queue from its current blocker", () => {
+    expect(invitationQueueFrom(undefined)).toBe("coordination");
+    expect(invitationQueueFrom("awaiting_teacher")).toBe("coordination");
+    expect(invitationCoordinationStageFrom("awaiting_teacher", undefined)).toBe("awaiting_teacher");
+    expect(invitationCoordinationStageFrom(undefined, "awaiting_parent")).toBe("awaiting_parent");
+    expect(invitationCoordinationStageFrom("confirmed", "awaiting_parent")).toBe("awaiting_parent");
+    expect(invitationQueueFrom("confirmed")).toBe("confirmed");
   });
 
   it("filters and sorts the currently loaded lead page by its data columns", () => {

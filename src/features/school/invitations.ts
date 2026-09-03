@@ -2,6 +2,8 @@ import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
 import {
+  INVITATION_COORDINATION_STATES,
+  invitationCoordinationStageFrom,
   invitationQueueFrom,
   type InvitationActivityOption,
   type InvitationAssessorOption,
@@ -9,6 +11,7 @@ import {
   type InvitationCoordinationRow,
   type InvitationFilters,
   type InvitationKind,
+  type InvitationQueueCounts,
   type InvitationState,
 } from "./invitation-contract";
 
@@ -65,9 +68,55 @@ function relationUnavailable(error: { code?: string; message?: string } | null):
 export function parseInvitationFilters(
   searchParams: Record<string, string | string[] | undefined>,
 ): InvitationFilters {
+  const queue = invitationQueueFrom(searchParams.queue);
   return {
-    queue: invitationQueueFrom(searchParams.queue),
+    queue,
+    stage: queue === "coordination"
+      ? invitationCoordinationStageFrom(searchParams.queue, searchParams.stage)
+      : "all",
     q: pickParam(searchParams.q)?.trim().slice(0, 80) || undefined,
+  };
+}
+
+export async function listInvitationQueueCounts(): Promise<InvitationQueueCounts> {
+  const empty: InvitationQueueCounts = {
+    queues: { coordination: 0, confirmed: 0, waiting_activity: 0, closed: 0 },
+    stages: { all: 0, coordinating_time: 0, awaiting_teacher: 0, awaiting_parent: 0 },
+  };
+  const supabase = await createClient();
+  const countStates = (states: readonly InvitationState[]) => supabase
+    .from("lead_invitation_threads")
+    .select("id", { count: "exact", head: true })
+    .in("state", [...states]);
+  const [coordinating, teacher, parent, confirmed, waitingActivity, closed] = await Promise.all([
+    countStates(["coordinating_time"]),
+    countStates(["awaiting_teacher"]),
+    countStates(["awaiting_parent"]),
+    countStates(["confirmed"]),
+    countStates(["waiting_activity"]),
+    countStates(["completed", "cancelled"]),
+  ]);
+  const results = [coordinating, teacher, parent, confirmed, waitingActivity, closed];
+  const unexpectedError = results.find((result) => result.error && !relationUnavailable(result.error))?.error;
+  if (unexpectedError) throw new Error(unexpectedError.message);
+  if (results.some((result) => result.error)) return empty;
+  const coordinationCounts = {
+    coordinating_time: coordinating.count ?? 0,
+    awaiting_teacher: teacher.count ?? 0,
+    awaiting_parent: parent.count ?? 0,
+  };
+  const coordinationTotal = Object.values(coordinationCounts).reduce((sum, count) => sum + count, 0);
+  return {
+    queues: {
+      coordination: coordinationTotal,
+      confirmed: confirmed.count ?? 0,
+      waiting_activity: waitingActivity.count ?? 0,
+      closed: closed.count ?? 0,
+    },
+    stages: {
+      all: coordinationTotal,
+      ...coordinationCounts,
+    },
   };
 }
 
@@ -116,9 +165,15 @@ export async function listInvitationCoordination(
     .select("id,lead_id,kind,state,activity_id,assessor_id,proposed_time_text,location_text,summary,updated_at")
     .order("updated_at", { ascending: false })
     .limit(500);
-  invitationQuery = filters.queue === "closed"
-    ? invitationQuery.in("state", ["completed", "cancelled"])
-    : invitationQuery.eq("state", filters.queue);
+  if (filters.queue === "closed") {
+    invitationQuery = invitationQuery.in("state", ["completed", "cancelled"]);
+  } else if (filters.queue === "coordination") {
+    invitationQuery = filters.stage === "all"
+      ? invitationQuery.in("state", [...INVITATION_COORDINATION_STATES])
+      : invitationQuery.eq("state", filters.stage);
+  } else {
+    invitationQuery = invitationQuery.eq("state", filters.queue);
+  }
   const invitationResult = await invitationQuery.returns<InvitationDbRow[]>();
   if (invitationResult.error) {
     if (relationUnavailable(invitationResult.error)) return [];
