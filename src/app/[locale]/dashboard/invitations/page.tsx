@@ -29,12 +29,6 @@ const QUEUES = [
   "waiting_activity",
   "closed",
 ] as const satisfies readonly InvitationQueue[];
-const COORDINATION_STAGES = [
-  "all",
-  "coordinating_time",
-  "awaiting_teacher",
-  "awaiting_parent",
-] as const satisfies readonly InvitationCoordinationStage[];
 
 export default async function InvitationsPage({
   params,
@@ -83,38 +77,17 @@ export default async function InvitationsPage({
       commandPanel={(
         <DashboardCommandPanel>
           <DashboardCommandState>
-            <div className="grid min-w-0 gap-1.5">
-              <div className="flex min-w-0 flex-wrap items-center gap-2">
-                <span className="w-16 shrink-0 text-[11px] font-medium text-muted">{t("workQueueLabel")}</span>
-                <DashboardCommandTabs
-                  ariaLabel={t("queueLabel")}
-                  activeValue={filters.queue}
-                  activeTone="accent"
-                  items={QUEUES.map((queue) => ({
-                    value: queue,
-                    label: t(`queue_${queue}`),
-                    href: hrefForQueue(queue),
-                    badge: countBadge(counts.queues[queue]),
-                  }))}
-                />
-              </div>
-              {filters.queue === "coordination" ? (
-                <div className="flex min-w-0 flex-wrap items-center gap-2">
-                  <span className="w-16 shrink-0 text-[11px] font-medium text-muted">{t("stageLabel")}</span>
-                  <DashboardCommandTabs
-                    ariaLabel={t("stageLabel")}
-                    activeValue={filters.stage}
-                    activeTone="accent"
-                    items={COORDINATION_STAGES.map((stage) => ({
-                      value: stage,
-                      label: stage === "all" ? t("stage_all") : t(`queue_${stage}`),
-                      href: hrefForStage(stage),
-                      badge: countBadge(counts.stages[stage]),
-                    }))}
-                  />
-                </div>
-              ) : null}
-            </div>
+            <DashboardCommandTabs
+              ariaLabel={t("queueLabel")}
+              activeValue={filters.queue}
+              activeTone="accent"
+              items={QUEUES.map((queue) => ({
+                value: queue,
+                label: t(`queue_${queue}`),
+                href: hrefForQueue(queue),
+                badge: countBadge(counts.queues[queue]),
+              }))}
+            />
           </DashboardCommandState>
           <DashboardCommandFilters>
             <FilterBar action={`/${locale}/dashboard/invitations`} method="get" aria-label={t("filterLabel")}>
@@ -147,6 +120,9 @@ export default async function InvitationsPage({
           activities={options.activities}
           assessors={options.assessors}
           locale={locale}
+          coordinationStage={filters.queue === "coordination" ? filters.stage : null}
+          stageCounts={counts.stages}
+          searchQuery={filters.q}
         />
       ) : <DashboardEmptyCard>{t(emptyKey)}</DashboardEmptyCard>}
     </DashboardPage>

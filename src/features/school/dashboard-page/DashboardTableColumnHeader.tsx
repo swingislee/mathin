@@ -18,8 +18,8 @@ export interface DashboardTableFilterOption {
 export interface DashboardTableColumnHeaderLabels {
   menu: string;
   scope: string;
-  sortAscending: string;
-  sortDescending: string;
+  sortAscending?: string;
+  sortDescending?: string;
   filter: string;
   allValues: string;
   clear: string;
@@ -42,7 +42,7 @@ export function DashboardTableColumnHeader({
   filterOptions: DashboardTableFilterOption[];
   sortDirection?: DashboardTableSortDirection;
   onFilterChange: (value: string | undefined) => void;
-  onSortChange: (direction: DashboardTableSortDirection) => void;
+  onSortChange?: (direction: DashboardTableSortDirection) => void;
   onClear: () => void;
 }) {
   const active = Boolean(filterValue || sortDirection);
@@ -60,7 +60,7 @@ export function DashboardTableColumnHeader({
         >
           <span>{label}</span>
           <ListFilter className={active && filterValue ? "size-3.5 text-rose" : "size-3.5"} />
-          <SortIcon className={active && sortDirection ? "size-3.5 text-rose" : "size-3.5"} />
+          {onSortChange ? <SortIcon className={active && sortDirection ? "size-3.5 text-rose" : "size-3.5"} /> : null}
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-60 space-y-3 p-3">
@@ -68,27 +68,31 @@ export function DashboardTableColumnHeader({
           <p className="text-sm font-medium text-ink">{label}</p>
           <p className="mt-0.5 text-xs text-muted">{labels.scope}</p>
         </div>
-        <div className="grid grid-cols-2 gap-2">
-          <Button
-            type="button"
-            variant={sortDirection === "asc" ? "secondary" : "ghost"}
-            size="sm"
-            className="h-8 justify-start px-2 text-xs"
-            onClick={() => onSortChange("asc")}
-          >
-            <ArrowUp className="size-3.5" />{labels.sortAscending}
-          </Button>
-          <Button
-            type="button"
-            variant={sortDirection === "desc" ? "secondary" : "ghost"}
-            size="sm"
-            className="h-8 justify-start px-2 text-xs"
-            onClick={() => onSortChange("desc")}
-          >
-            <ArrowDown className="size-3.5" />{labels.sortDescending}
-          </Button>
-        </div>
-        <Separator />
+        {onSortChange ? (
+          <>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant={sortDirection === "asc" ? "secondary" : "ghost"}
+                size="sm"
+                className="h-8 justify-start px-2 text-xs"
+                onClick={() => onSortChange("asc")}
+              >
+                <ArrowUp className="size-3.5" />{labels.sortAscending}
+              </Button>
+              <Button
+                type="button"
+                variant={sortDirection === "desc" ? "secondary" : "ghost"}
+                size="sm"
+                className="h-8 justify-start px-2 text-xs"
+                onClick={() => onSortChange("desc")}
+              >
+                <ArrowDown className="size-3.5" />{labels.sortDescending}
+              </Button>
+            </div>
+            <Separator />
+          </>
+        ) : null}
         <Select
           value={filterValue ?? ALL_VALUES}
           onValueChange={(value) => onFilterChange(value === ALL_VALUES ? undefined : value)}

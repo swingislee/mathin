@@ -14,15 +14,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { updateLeadInvitationAction, type UpdateInvitationInput } from "./actions/invitations";
-import { DashboardTableShell } from "./dashboard-page";
+import { DashboardTableColumnHeader, DashboardTableShell } from "./dashboard-page";
 import { InvitationDraftFields } from "./InvitationDraftFields";
 import {
   invitationDraftIsComplete,
   type InvitationActivityOption,
   type InvitationAssessorOption,
   type InvitationChannel,
+  type InvitationCoordinationStage,
   type InvitationCoordinationRow,
   type InvitationDraft,
+  type InvitationQueueCounts,
   type InvitationState,
 } from "./invitation-contract";
 
@@ -253,13 +255,20 @@ export function InvitationCoordinationWorkbench({
   activities,
   assessors,
   locale,
+  coordinationStage,
+  stageCounts,
+  searchQuery,
 }: {
   rows: InvitationCoordinationRow[];
   activities: InvitationActivityOption[];
   assessors: InvitationAssessorOption[];
   locale: string;
+  coordinationStage: InvitationCoordinationStage | null;
+  stageCounts: InvitationQueueCounts["stages"];
+  searchQuery?: string;
 }) {
   const t = useTranslations("school.invitations");
+  const router = useRouter();
   const [sessionRows, setSessionRows] = useState(rows);
   const [activeId, setActiveId] = useState<string | null>(() => rows[0]?.id ?? null);
   const dateTimeFormatter = useMemo(() => new Intl.DateTimeFormat(locale, {
@@ -268,6 +277,16 @@ export function InvitationCoordinationWorkbench({
     timeZone: "Asia/Shanghai",
   }), [locale]);
   const formatAt = (value: string) => dateTimeFormatter.format(new Date(value));
+  const replaceCoordinationStage = (value: string | undefined) => {
+    const query = new URLSearchParams();
+    if (value) query.set("stage", value);
+    if (searchQuery) query.set("q", searchQuery);
+    const qs = query.toString();
+    router.replace(`/dashboard/invitations${qs ? `?${qs}` : ""}`);
+  };
+  const stageColumnLabel = coordinationStage && coordinationStage !== "all"
+    ? `${t("stateColumn")} · ${t(`queue_${coordinationStage}`)}`
+    : t("stateColumn");
   const onSaved = (row: InvitationCoordinationRow, input: UpdateInvitationInput) => {
     const savedAt = new Date().toISOString();
     const activity = input.activityId ? activities.find((item) => item.id === input.activityId) : undefined;
@@ -298,7 +317,27 @@ export function InvitationCoordinationWorkbench({
         <TableHeader>
           <TableRow>
             <TableHead className="sticky left-0 top-0 z-30 h-9 min-w-56 border-r border-line bg-card px-2">{t("leadColumn")}</TableHead>
-            <TableHead className="sticky top-0 z-20 h-9 min-w-64 bg-card px-2">{t("stateColumn")}</TableHead>
+            <TableHead className="sticky top-0 z-20 h-9 min-w-64 bg-card px-2">
+              {coordinationStage ? (
+                <DashboardTableColumnHeader
+                  label={stageColumnLabel}
+                  labels={{
+                    menu: t("stageFilterMenu"),
+                    scope: t("stageFilterScope"),
+                    filter: t("stageFilter"),
+                    allValues: t("stageFilterAll", { count: stageCounts.all }),
+                    clear: t("stageFilterClear"),
+                  }}
+                  filterValue={coordinationStage === "all" ? undefined : coordinationStage}
+                  filterOptions={(["coordinating_time", "awaiting_teacher", "awaiting_parent"] as const).map((stage) => ({
+                    value: stage,
+                    label: t("stageFilterOption", { label: t(`queue_${stage}`), count: stageCounts[stage] }),
+                  }))}
+                  onFilterChange={replaceCoordinationStage}
+                  onClear={() => replaceCoordinationStage(undefined)}
+                />
+              ) : t("stateColumn")}
+            </TableHead>
             <TableHead className="sticky top-0 z-20 h-9 min-w-96 bg-card px-2">{t("arrangementColumn")}</TableHead>
             <TableHead className="sticky top-0 z-20 h-9 min-w-32 bg-card px-2">{t("updatedColumn")}</TableHead>
           </TableRow>

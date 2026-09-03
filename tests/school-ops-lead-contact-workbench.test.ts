@@ -114,9 +114,12 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(page).toContain("DashboardCommandTabs");
     expect(page).toContain("listInvitationQueueCounts");
     expect(page).toContain('key={`${filters.queue}:${filters.stage}:${filters.q ?? ""}`}');
+    expect(page).not.toContain("COORDINATION_STAGES");
     expect(workbench).toContain("copyWithFallback");
     expect(workbench).toContain("copyRelay");
     expect(workbench).toContain("sticky left-0 top-0");
+    expect(workbench).toContain("DashboardTableColumnHeader");
+    expect(workbench).toContain("replaceCoordinationStage");
     expect(draftFields).toContain('"assessment_1v1", "activity", "waiting_activity"');
     expect(draftFields).toContain("invitationStatesForKind");
   });
