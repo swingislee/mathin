@@ -262,6 +262,14 @@ export const DASHBOARD_ROUTES = {
     createSurface: "none",
     parent: "classes",
   },
+  classImport: {
+    href: "/dashboard/classes/import",
+    kind: "workflow",
+    environments: STAFF_ONLY,
+    permission: "class.create",
+    createSurface: "none",
+    parent: "classes",
+  },
   classDetail: {
     hrefPattern: "/dashboard/classes/[classId]",
     kind: "object",

@@ -243,6 +243,112 @@ export interface PreviewMofaxiaoStudentImportInput {
   rows: MofaxiaoStudentImportRow[];
 }
 
+export const MOFAXIAO_CLASS_IMPORT_TEMPLATE_VERSION = "mofaxiao-classes-v1" as const;
+
+export interface ClassImportCourseOption {
+  id: string;
+  title: string;
+  productCode: string | null;
+  catalogVersionTitle: string;
+  catalogVersionCurrent: boolean;
+  grade: number;
+  season: number | null;
+  classType: string;
+}
+
+export interface MofaxiaoClassImportRow {
+  sourceRow: number;
+  externalClassId: string;
+  name: string;
+  teachingMode: string;
+  courseName: string;
+  courseType: string;
+  progressText: string;
+  subject: string;
+  grade: number | null;
+  gradeText: string;
+  gradeUnmapped: boolean;
+  season: number | null;
+  seasonText: string;
+  classType: string;
+  assessmentDifficulty: string;
+  teacherName: string;
+  campusName: string;
+  roomName: string;
+  feeText: string;
+  currentStudentCount: number | null;
+  enrolledCount: number | null;
+  capacity: number | null;
+  capacityInvalid: boolean;
+  sourceStatus: string;
+  startDate: string | null;
+  startDateText: string;
+  endDate: string | null;
+  endDateText: string;
+  sessionTime: string;
+  purchasedText: string;
+  courseId: string | null;
+  importAsFreeClass: boolean;
+  primaryTeacherId: string | null;
+  roomId: string | null;
+  schoolTermId: string | null;
+}
+
+export type MofaxiaoClassImportMatchKind = "new" | "source_id" | "existing_class" | "same_batch";
+
+export interface MofaxiaoClassImportBatchRow {
+  row: number;
+  sourceRow: number;
+  sourceClassId: string;
+  sourceName: string;
+  status: "valid" | "duplicate" | "error" | "inserted";
+  errors: string[];
+  targetId: string | null;
+  matchKind: MofaxiaoClassImportMatchKind;
+}
+
+export interface MofaxiaoClassImportBatchResult {
+  batchId: string;
+  status: "validated" | "completed";
+  templateVersion: typeof MOFAXIAO_CLASS_IMPORT_TEMPLATE_VERSION;
+  inputHash: string;
+  fileName: string;
+  fileHash: string;
+  sheetName: string;
+  batchLabel: string;
+  total: number;
+  valid: number;
+  dup: number;
+  errorCount: number;
+  inserted: number;
+  expiresAt: string;
+  rows: MofaxiaoClassImportBatchRow[];
+}
+
+export interface MofaxiaoClassImportBatchSummary {
+  batchId: string;
+  status: "validated" | "completed";
+  fileName: string;
+  batchLabel: string;
+  total: number;
+  valid: number;
+  duplicates: number;
+  errors: number;
+  inserted: number;
+  createdAt: string;
+  completedAt: string | null;
+}
+
+export interface PreviewMofaxiaoClassImportInput {
+  templateVersion: typeof MOFAXIAO_CLASS_IMPORT_TEMPLATE_VERSION;
+  idempotencyKey: string;
+  fileName: string;
+  fileHash: string;
+  sheetName: string;
+  batchLabel: string;
+  rows: MofaxiaoClassImportRow[];
+}
+
 export const XIAODITUI_IMPORT_TEMPLATE_VERSION = "xiaoditui-leads-v1" as const;
 
 export interface XiaodituiLeadImportRow {
