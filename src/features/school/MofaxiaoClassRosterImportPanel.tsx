@@ -5,6 +5,7 @@ import {
   Check,
   CheckCircle2,
   ChevronsUpDown,
+  CircleAlert,
   FileSearch,
   LoaderCircle,
   ShieldCheck,
@@ -35,12 +36,14 @@ import {
   type ClassRosterStudentOption,
   type ClassRosterTargetOption,
   type MofaxiaoClassRosterDecision,
+  type MofaxiaoClassRosterDefaultClass,
   type MofaxiaoClassRosterImportBatchResult,
   type MofaxiaoClassRosterImportBatchSummary,
   type MofaxiaoClassRosterImportRow,
 } from "./actions/types";
 import { DashboardSection, DashboardTableShell, StatusStrip } from "./dashboard-page";
 import {
+  buildMofaxiaoRosterDefaultClass,
   defaultMofaxiaoRosterStudentDecision,
   listMofaxiaoRosterClassCandidates,
   matchMofaxiaoRosterStudent,
@@ -54,6 +57,7 @@ import {
 } from "./mofaxiao-class-roster-import";
 
 const UNMAPPED = "__unmapped__";
+const CREATE_DEFAULT_CLASS = "__create_default_class__";
 const PENDING = "__pending__";
 const PREVIEW_LIMIT = 250;
 
@@ -142,12 +146,14 @@ export function MofaxiaoClassRosterImportPanel({
   students,
   savedMappings,
   canCreateStudents,
+  canCreateClasses,
 }: {
   recentBatches: MofaxiaoClassRosterImportBatchSummary[];
   targetClasses: ClassRosterTargetOption[];
   students: ClassRosterStudentOption[];
   savedMappings: ClassRosterSavedMapping[];
   canCreateStudents: boolean;
+  canCreateClasses: boolean;
 }) {
   const t = useTranslations("school.classRosterImport");
   const locale = useLocale();
@@ -207,6 +213,12 @@ export function MofaxiaoClassRosterImportPanel({
       student,
       match: matchMofaxiaoRosterStudent(student, students),
     }))), [parsed, students]);
+  const defaultClasses = useMemo(() => new Map<string, MofaxiaoClassRosterDefaultClass>(
+    (parsed?.classes ?? []).map((sourceClass) => [
+      sourceClass.sourceClassKey,
+      buildMofaxiaoRosterDefaultClass(sourceClass, parsed?.schoolYear ?? 2026),
+    ]),
+  ), [parsed]);
 
   const initialize = (next: ParsedMofaxiaoClassRosterWorkbook) => {
     const saved = new Map(savedMappings.map((item) => [item.sourceClassKey, item.classroomId]));
@@ -217,7 +229,7 @@ export function MofaxiaoClassRosterImportPanel({
       const preferred = preferredMofaxiaoRosterClassCandidate(sourceClass, targetClasses);
       nextClassMappings[sourceClass.sourceClassKey] = savedTarget && candidates.some((target) => target.id === savedTarget)
         ? savedTarget
-        : preferred?.id ?? "";
+        : preferred?.id ?? (canCreateClasses ? CREATE_DEFAULT_CLASS : "");
     }
     const nextDecisions: Record<string, DecisionState> = {};
     for (const sourceClass of next.classes) {
@@ -282,6 +294,8 @@ export function MofaxiaoClassRosterImportPanel({
   const resolvedRows = useMemo<MofaxiaoClassRosterImportRow[]>(() => membershipViews.flatMap((item) => {
     const state = decisions[item.key];
     if (!state || state.decision === "pending") return [];
+    const mapping = classMappings[item.sourceClass.sourceClassKey] ?? "";
+    const createDefaultClass = mapping === CREATE_DEFAULT_CLASS;
     return [{
       sourceRow: item.student.sourceRow,
       sourceCell: item.student.sourceCell,
@@ -291,26 +305,30 @@ export function MofaxiaoClassRosterImportPanel({
       studentName: item.student.name,
       sourcePhone: item.student.phone,
       grade: item.sourceClass.grade,
-      classroomId: state.decision === "skip" ? classMappings[item.sourceClass.sourceClassKey] || null : classMappings[item.sourceClass.sourceClassKey] || null,
+      classroomId: mapping && !createDefaultClass ? mapping : null,
+      defaultClass: createDefaultClass ? defaultClasses.get(item.sourceClass.sourceClassKey) ?? null : null,
       decision: state.decision,
       studentId: state.decision === "link_existing" ? state.studentId : null,
       sourceNote: item.student.sourceNote,
     }];
-  }), [classMappings, decisions, membershipViews]);
+  }), [classMappings, decisions, defaultClasses, membershipViews]);
 
   const unresolvedDecisionCount = membershipViews.filter((item) => {
     const state = decisions[item.key];
     return !state || state.decision === "pending" || (state.decision === "link_existing" && !state.studentId)
       || (state.decision === "create_student" && !canCreateStudents);
   }).length;
-  const unmappedMembershipCount = membershipViews.filter((item) => {
+  const unresolvedClassMembershipCount = membershipViews.filter((item) => {
     const state = decisions[item.key];
     return state?.decision !== "skip" && !classMappings[item.sourceClass.sourceClassKey];
   }).length;
+  const defaultClassCount = new Set((parsed?.classes ?? [])
+    .filter((item) => classMappings[item.sourceClassKey] === CREATE_DEFAULT_CLASS)
+    .map((item) => item.sourceClassKey)).size;
   const readyToPreview = Boolean(parsed && fileHash && batchLabel.trim()
     && resolvedRows.length === membershipViews.length
     && unresolvedDecisionCount === 0
-    && unmappedMembershipCount === 0);
+    && unresolvedClassMembershipCount === 0);
   const rowByOrdinal = useMemo(() => new Map(resolvedRows.map((row, index) => [index + 1, row])), [resolvedRows]);
 
   const startPreview = () => {
@@ -328,6 +346,7 @@ export function MofaxiaoClassRosterImportPanel({
 
   const formatAt = (value: string) => new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
   const batchErrorRows = batch?.rows.filter((row) => row.status === "error" || row.status === "duplicate") ?? [];
+  const createdClasses = batch?.createdClasses ?? [];
 
   return (
     <div className="space-y-10">
@@ -374,16 +393,19 @@ export function MofaxiaoClassRosterImportPanel({
             <StatusStrip className="mb-4" items={[
               { label: t("sourceClasses"), value: parsed.classes.length },
               { label: t("sourceMemberships"), value: parsed.memberships },
-              { label: t("unmappedClasses"), value: new Set(membershipViews.filter((item) => !classMappings[item.sourceClass.sourceClassKey]).map((item) => item.sourceClass.sourceClassKey)).size, tone: unmappedMembershipCount > 0 ? "critical" : "default" },
+              { label: t("defaultClasses"), value: defaultClassCount, tone: defaultClassCount > 0 ? "warning" : "default" },
+              { label: t("unmappedClasses"), value: new Set(membershipViews.filter((item) => !classMappings[item.sourceClass.sourceClassKey]).map((item) => item.sourceClass.sourceClassKey)).size, tone: unresolvedClassMembershipCount > 0 ? "critical" : "default" },
               { label: t("savedMappings"), value: parsed.classes.filter((item) => savedMappings.some((saved) => saved.sourceClassKey === item.sourceClassKey && classMappings[item.sourceClassKey] === saved.classroomId)).length },
             ]} />
+            {!canCreateClasses ? <p className="mb-3 text-xs text-rose">{t("cannotCreateClasses")}</p> : null}
             <DashboardTableShell>
               <Table className="w-full min-w-[76rem] text-xs">
                 <TableHeader><TableRow><TableHead>{t("sourceRow")}</TableHead><TableHead>{t("sourceClass")}</TableHead><TableHead>{t("teacher")}</TableHead><TableHead>{t("schedule")}</TableHead><TableHead>{t("studentCount")}</TableHead><TableHead>{t("mathinClass")}</TableHead></TableRow></TableHeader>
                 <TableBody>{parsed.classes.map((sourceClass) => {
                   const candidates = listMofaxiaoRosterClassCandidates(sourceClass, targetClasses);
                   const value = classMappings[sourceClass.sourceClassKey] || UNMAPPED;
-                  return <TableRow key={sourceClass.sourceClassKey}>
+                  const defaultClass = defaultClasses.get(sourceClass.sourceClassKey);
+                  return <TableRow key={sourceClass.sourceClassKey} className={value === CREATE_DEFAULT_CLASS ? "bg-amber-500/5 hover:bg-amber-500/10" : undefined}>
                     <TableCell className="font-mono text-muted">{sourceClass.sourceRow}</TableCell>
                     <TableCell><span className="font-medium">{sourceClass.campus} · {sourceClass.gradeText} · {sourceClass.classType}</span><span className="block text-muted">{sourceClass.system || "—"}</span></TableCell>
                     <TableCell>{sourceClass.teacher || "—"}</TableCell>
@@ -394,6 +416,7 @@ export function MofaxiaoClassRosterImportPanel({
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value={UNMAPPED}>{t("unmapped")}</SelectItem>
+                          {canCreateClasses && defaultClass ? <SelectItem value={CREATE_DEFAULT_CLASS}>{t("createDefaultClass", { name: defaultClass.name })}</SelectItem> : null}
                           {candidates.map((target) => <SelectItem key={target.id} value={target.id}>{target.name} · {target.primaryTeacherNames.join("/") || t("noTeacher")} · {target.activeEnrollmentCount}/{target.capacity ?? "∞"}</SelectItem>)}
                         </SelectContent>
                       </Select>
@@ -419,11 +442,13 @@ export function MofaxiaoClassRosterImportPanel({
                 <TableBody>{membershipViews.slice(0, PREVIEW_LIMIT).map((item) => {
                   const state = decisions[item.key] ?? { decision: "pending", studentId: null };
                   const target = targetClasses.find((option) => option.id === classMappings[item.sourceClass.sourceClassKey]);
+                  const defaultClass = defaultClasses.get(item.sourceClass.sourceClassKey);
+                  const targetName = classMappings[item.sourceClass.sourceClassKey] === CREATE_DEFAULT_CLASS ? defaultClass?.name : target?.name;
                   return <TableRow key={item.key} className={item.student.needsReview ? "bg-rose/5 hover:bg-rose/10" : undefined}>
                     <TableCell className="font-mono text-muted">{item.student.sourceCell}</TableCell>
                     <TableCell><span className="font-medium">{item.student.rawName}</span>{item.student.rawName !== item.student.name ? <span className="block text-rose">→ {item.student.name}</span> : null}{item.student.needsReview ? <Badge variant="danger" className="mt-1">{t("needsReview")}</Badge> : null}</TableCell>
                     <TableCell className="font-mono">{item.student.phone || "—"}</TableCell>
-                    <TableCell><span>{target?.name ?? t("unmapped")}</span><span className="block text-muted">{item.sourceClass.gradeText} · {item.sourceClass.classType}</span></TableCell>
+                    <TableCell><span>{targetName ?? t("unmapped")}</span><span className="block text-muted">{classMappings[item.sourceClass.sourceClassKey] === CREATE_DEFAULT_CLASS ? t("defaultClassNeedsReview") : `${item.sourceClass.gradeText} · ${item.sourceClass.classType}`}</span></TableCell>
                     <TableCell><Badge variant={item.match.kind === "exact_phone" ? "secondary" : item.match.kind === "new" ? "outline" : item.match.kind === "review" ? "danger" : "outline"}>{t(`match_${item.match.kind}`)}</Badge></TableCell>
                     <TableCell className="min-w-48">
                       <Select value={state.decision === "pending" ? PENDING : state.decision} disabled={pending} onValueChange={(value) => updateDecision(item, value === PENDING ? "pending" : value as MofaxiaoClassRosterDecision)}>
@@ -476,9 +501,20 @@ export function MofaxiaoClassRosterImportPanel({
             </div>
           ) : null}
           {batch.status === "completed" ? (
-            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
-              <p className="flex items-center gap-2 text-sm text-leaf-deep"><CheckCircle2 size={16} />{t("completed", { inserted: batch.inserted, created: batch.createdStudents, duplicates: batch.dup, skipped: batch.skipped })}</p>
-              <Link href="/dashboard/classes" className={buttonVariants({ size: "sm" })}>{t("openClasses")}<ArrowRight size={15} /></Link>
+            <div className="mt-5 space-y-4 border-t border-line pt-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="flex items-center gap-2 text-sm text-leaf-deep"><CheckCircle2 size={16} />{t("completed", { inserted: batch.inserted, created: batch.createdStudents, duplicates: batch.dup, skipped: batch.skipped, classes: createdClasses.length })}</p>
+                <Link href="/dashboard/classes" className={buttonVariants({ size: "sm" })}>{t("openClasses")}<ArrowRight size={15} /></Link>
+              </div>
+              {createdClasses.length > 0 ? (
+                <div className="rounded-xl border border-amber-500/35 bg-amber-500/5 p-4">
+                  <p className="flex items-center gap-2 text-sm font-medium text-ink"><CircleAlert size={16} className="text-amber-700 dark:text-amber-300" />{t("createdClassReminderTitle", { count: createdClasses.length })}</p>
+                  <p className="mt-1 text-xs leading-5 text-muted">{t("createdClassReminderDescription")}</p>
+                  <ul className="mt-3 grid gap-2">
+                    {createdClasses.map((item) => <li key={item.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-line bg-card px-3 py-2 text-xs"><span><span className="font-medium text-ink">{item.name}</span><span className="ml-2 text-rose">{item.reviewIssues.map((issue) => t(`classIssue_${issue}`)).join("、")}</span></span><Link href={`/dashboard/classes/${item.id}`} className={buttonVariants({ variant: "secondary", size: "sm" })}>{t("repairClass")}<ArrowRight size={14} /></Link></li>)}
+                  </ul>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </DashboardSection>

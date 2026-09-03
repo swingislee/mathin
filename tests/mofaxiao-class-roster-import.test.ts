@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  buildMofaxiaoRosterDefaultClass,
   defaultMofaxiaoRosterStudentDecision,
   listMofaxiaoRosterClassCandidates,
   matchMofaxiaoRosterStudent,
@@ -174,6 +175,15 @@ describe("魔法校班级学员花名册导入", () => {
     expect(preferredMofaxiaoRosterClassCandidate(source, [{ ...base, name: "三年级秋季A+周三17:00", campusName: "紫辰阁" }])?.id).toBe("e-b");
     expect(preferredMofaxiaoRosterClassCandidate(source, [{ ...base, name: "三年级秋季A+周三17:00", campusName: "利港" }])).toBeNull();
     expect(preferredMofaxiaoRosterClassCandidate({ ...source, weekday: "周六", time: "9.12开课10:00-12:00" }, [base])).toBeNull();
+
+    expect(buildMofaxiaoRosterDefaultClass(source)).toEqual(expect.objectContaining({
+      name: "【培优思维】三年级秋季B｜紫辰阁薛立志周三17:00-19:30",
+      system: "培优思维",
+      classType: "B",
+      campusName: "紫辰阁",
+      schoolYear: 2026,
+      season: 2,
+    }));
   });
 
   it("仍只使用现有 xlsx 读取器，不引入 SheetJS", () => {
@@ -182,7 +192,7 @@ describe("魔法校班级学员花名册导入", () => {
     expect(packageJson.dependencies).not.toHaveProperty("xlsx");
   });
 
-  it("服务端只创建最小学员档案和当前在班关系，不写课次、订单、费用或考勤", () => {
+  it("未匹配班级只在正式应用时建立 planning 壳，并保留显式待完善清单", () => {
     const root = process.cwd();
     const read = (...segments: string[]) => fs.readFileSync(path.join(root, ...segments), "utf8");
     const action = read("src", "features", "school", "actions", "mofaxiao-class-roster-imports.ts");
@@ -191,13 +201,17 @@ describe("魔法校班级学员花名册导入", () => {
     const routes = read("src", "features", "school", "dashboard-routes.ts");
     const migration = read("supabase", "migrations", "20260903000800_mofaxiao_class_roster_import.sql");
     const optionMigration = read("supabase", "migrations", "20260903000900_mofaxiao_class_roster_option_readers.sql");
+    const defaultClassMigration = read("supabase", "migrations", "20260903001200_mofaxiao_roster_default_class_creation.sql");
     const applySection = migration.slice(
       migration.indexOf("create or replace function public.apply_mofaxiao_class_roster_import"),
       migration.indexOf("revoke all on function public.get_mofaxiao_class_roster_import_batch"),
     );
 
     expect(action).toContain(".strict()");
+    expect(action).toContain("defaultClassSchema");
+    expect(action).toContain("!row.classroomId && !row.defaultClass");
     expect(panel).toContain("defaultMofaxiaoRosterStudentDecision(view.match, canCreateStudents)");
+    expect(panel).toContain("preferred?.id ?? (canCreateClasses ? CREATE_DEFAULT_CLASS : \"\")");
     expect(panel).toContain('"bg-rose/5 hover:bg-rose/10"');
     expect(action).toContain('p_source_system: "mofaxiao"');
     expect(optionReader).toContain('.rpc("list_mofaxiao_class_roster_target_options")');
@@ -211,6 +225,20 @@ describe("魔法校班级学员花名册导入", () => {
     expect(applySection).toContain("insert into public.enrollments");
     expect(applySection).toContain("'active', now(), v_classroom.term_id");
     expect(applySection).toContain("where item.batch_id = v_batch.id");
+    const defaultPreviewSection = defaultClassMigration.slice(
+      defaultClassMigration.indexOf("create or replace function public.preview_mofaxiao_class_roster_import"),
+      defaultClassMigration.indexOf("create or replace function public.apply_mofaxiao_class_roster_import"),
+    );
+    const defaultApplySection = defaultClassMigration.slice(
+      defaultClassMigration.indexOf("create or replace function public.apply_mofaxiao_class_roster_import"),
+      defaultClassMigration.indexOf("revoke all on function public.get_mofaxiao_class_roster_import_batch"),
+    );
+    expect(defaultPreviewSection).not.toContain("public.create_class_v2(");
+    expect(defaultPreviewSection).toContain("jsonb_typeof(v_default_class) = 'object'");
+    expect(defaultApplySection).toContain("public.create_class_v2(");
+    expect(defaultApplySection).toContain("p_activate => false");
+    expect(defaultApplySection).toContain("'CREATED_DEFAULT_CLASS'");
+    expect(defaultClassMigration).toContain("'reviewIssues', to_jsonb(created.review_issues)");
     for (const forbiddenWrite of [
       "insert into public.classrooms",
       "insert into public.class_sessions",
