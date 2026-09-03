@@ -25,7 +25,6 @@ const CONTACT_OUTCOME_SHORTCUTS = [
   { key: "3", outcome: "declined" },
   { key: "4", outcome: "invalid_number" },
 ] as const satisfies ReadonlyArray<{ key: string; outcome: LeadContactOutcome }>;
-const QUICK_SUBMIT_OUTCOMES: readonly LeadContactOutcome[] = ["unreachable", "invalid_number"];
 const ACQUISITION_TIME_ZONE = "Asia/Shanghai";
 
 type TernaryChoice = "" | "yes" | "no";
@@ -56,13 +55,14 @@ function DirectChoiceGroup<T extends string>({
             variant="secondary"
             className={cn(
               "h-7 px-2.5 text-[11px]",
-              selected && "border-ink bg-moon/60 text-ink hover:bg-moon/70",
+              selected && "border-leaf-deep bg-leaf/60 text-ink hover:bg-leaf/70",
             )}
             disabled={disabled}
             aria-pressed={selected}
             aria-label={choice.accessibleLabel ?? choice.label}
             onClick={() => onChange(choice.value)}
           >
+            {selected ? <Check className="size-3" /> : null}
             {choice.label}
           </Button>
         );
@@ -135,7 +135,7 @@ function ContactEntryRow({
     const nextReachable = nextOutcome === "connected" || nextOutcome === "declined";
     return {
       outcome: nextOutcome,
-      note: nextReachable ? note : "",
+      note,
       wechatAdded: nextReachable
         ? wechatState === "yes"
           ? true
@@ -166,16 +166,14 @@ function ContactEntryRow({
       setWechatState("");
       setVisitState("");
       setInterestLevel("");
-      setNote("");
     } else if (nextOutcome === "declined") {
       setVisitState("");
     }
-    if (QUICK_SUBMIT_OUTCOMES.includes(nextOutcome)) submit(nextOutcome);
   };
 
   const handleRowKeyDown = (event: React.KeyboardEvent<HTMLTableRowElement>) => {
     if (!active || contactRun.pending || event.repeat || event.altKey) return;
-    if ((event.ctrlKey || event.metaKey) && event.key === "Enter" && reachable) {
+    if ((event.ctrlKey || event.metaKey) && event.key === "Enter" && outcome) {
       event.preventDefault();
       submit();
       return;
@@ -239,9 +237,14 @@ function ContactEntryRow({
           {lead.gradeText || (lead.gradeHint ? t("gradeValue", { grade: lead.gradeHint }) : t("unknownGrade"))}
         </p>
         {lead.contactCount > 0 && lead.lastContactAt ? (
-          <p className="mt-1 text-[11px] leading-4 text-muted">
-            {t("firstContactTried", { count: lead.contactCount, time: formatAt(lead.lastContactAt) })}
-          </p>
+          <div className="mt-1 flex flex-wrap items-center gap-1 text-[11px] leading-4 text-muted">
+            <span>{t("firstContactTried", { count: lead.contactCount, time: formatAt(lead.lastContactAt) })}</span>
+            {lead.lastContactOutcome ? (
+              <Badge variant="secondary" className="px-1.5 py-0 text-[10px] font-normal leading-4">
+                {t(`contactOutcome_${lead.lastContactOutcome}`)}
+              </Badge>
+            ) : null}
+          </div>
         ) : null}
       </TableCell>
 
@@ -273,10 +276,10 @@ function ContactEntryRow({
                 key={value}
                 type="button"
                 size="sm"
-                variant="secondary"
+                variant={selected ? "primary" : "secondary"}
                 className={cn(
                   "h-8 px-3 text-xs",
-                  selected && "border-ink bg-moon/60 text-ink hover:bg-moon/70",
+                  selected && "shadow-sm",
                 )}
                 disabled={contactRun.pending}
                 aria-pressed={selected}
@@ -284,37 +287,37 @@ function ContactEntryRow({
               >
                 {contactRun.pending && selected
                   ? <LoaderCircle className="size-3.5 animate-spin motion-reduce:animate-none" />
-                  : <span className="font-mono text-[11px] text-muted">{key}</span>}
+                  : selected
+                    ? <Check className="size-3.5" />
+                    : <span className="font-mono text-[11px] text-muted">{key}</span>}
                 {t(`contactOutcome_${value}`)}
               </Button>
             );
           })}
         </div>
 
-        {active && reachable ? (
+        {active ? (
           <div className="mt-2 space-y-2 border-t border-line pt-2">
             <div className="flex flex-wrap gap-x-4 gap-y-2">
               <DirectChoiceGroup
                 label={t("wechatFact")}
                 value={wechatState}
                 choices={wechatChoices}
-                disabled={contactRun.pending}
+                disabled={!reachable || contactRun.pending}
                 onChange={setWechatState}
               />
-              {outcome === "connected" ? (
-                <DirectChoiceGroup
-                  label={t("visitFact")}
-                  value={visitState}
-                  choices={visitChoices}
-                  disabled={contactRun.pending}
-                  onChange={setVisitState}
-                />
-              ) : null}
+              <DirectChoiceGroup
+                label={t("visitFact")}
+                value={visitState}
+                choices={visitChoices}
+                disabled={outcome !== "connected" || contactRun.pending}
+                onChange={setVisitState}
+              />
               <DirectChoiceGroup
                 label={t("interestLevel")}
                 value={interestLevel}
                 choices={interestChoices}
-                disabled={contactRun.pending}
+                disabled={!reachable || contactRun.pending}
                 onChange={setInterestLevel}
               />
             </div>
@@ -340,7 +343,7 @@ function ContactEntryRow({
                 type="button"
                 size="sm"
                 className="h-8 whitespace-nowrap"
-                disabled={contactRun.pending}
+                disabled={!outcome || contactRun.pending}
                 onClick={() => submit()}
               >
                 {contactRun.pending
@@ -350,7 +353,7 @@ function ContactEntryRow({
               </Button>
             </div>
           </div>
-        ) : !active && reachable ? (
+        ) : outcome ? (
           <p className="mt-2 text-[11px] text-muted">{t("contactDraftPending")}</p>
         ) : null}
       </TableCell>
