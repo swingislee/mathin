@@ -410,8 +410,7 @@ function canonicalRosterCampusName(value: string): string {
 function canonicalRosterSeriesName(value: string): string {
   const compact = compactNamePart(value.replace(/体系$/u, ""), "待定系列");
   if (compact.includes("贯通")) return "贯通思维";
-  if (compact.includes("培优")) return "培优思维";
-  if (compact.includes("科学")) return "科学思维";
+  if (compact.includes("培优") || compact.includes("科学")) return "科学思维";
   return compact;
 }
 
@@ -441,6 +440,7 @@ export function buildMofaxiaoRosterDefaultClass(
     campusName,
     roomName: source.room.trim(),
     teacherName: source.teacher.trim(),
+    teacherInitials,
     weekday: source.weekday.trim(),
     time: source.time.trim(),
   };
