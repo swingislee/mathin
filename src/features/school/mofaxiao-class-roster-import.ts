@@ -294,14 +294,14 @@ export function defaultMofaxiaoRosterStudentDecision(
 
 function targetScore(source: ParsedMofaxiaoRosterClass, target: ClassRosterTargetOption): number {
   let score = 0;
-  const targetText = normalizeRosterText([target.name, target.courseTitle, target.classType].join(" "));
+  const targetText = normalizeRosterText([target.name, target.courseTitle, target.courseClassType].join(" "));
   if (target.schoolYear === 2026 && target.season === 2) score += 4;
   if (target.grade === source.grade) score += 4;
   if (source.teacher && target.primaryTeacherNames.some((name) => normalizeRosterText(name) === normalizeRosterText(source.teacher))) score += 3;
   if (targetMatchesSourceCampus(source, target)) score += 2;
-  const expectedClassType = canonicalMofaxiaoRosterClassType(source);
+  const expectedCourseClassType = mofaxiaoRosterCourseClassType(source);
   if (source.classType && (
-    normalizeRosterText(target.classType) === normalizeRosterText(expectedClassType)
+    normalizeRosterText(target.courseClassType) === normalizeRosterText(expectedCourseClassType)
     || (!isMofaxiaoESeriesRosterSource(source) && targetText.includes(normalizeRosterText(source.classType)))
   )) score += 2;
   if (source.weekday && normalizeRosterText(target.name).includes(normalizeRosterText(source.weekday))) score += 1;
@@ -344,10 +344,15 @@ function isMofaxiaoESeriesRosterSource(source: ParsedMofaxiaoRosterClass): boole
 }
 
 export function canonicalMofaxiaoRosterClassType(source: ParsedMofaxiaoRosterClass): string {
-  const sourceClassType = source.classType.trim().toUpperCase();
-  return isMofaxiaoESeriesRosterSource(source) && sourceClassType === "A+"
+  return source.classType.trim().toUpperCase();
+}
+
+/** Mofaxiao E-series A+ is the business class type but uses the B textbook. */
+export function mofaxiaoRosterCourseClassType(source: ParsedMofaxiaoRosterClass): string {
+  const classType = canonicalMofaxiaoRosterClassType(source);
+  return isMofaxiaoESeriesRosterSource(source) && classType === "A+"
     ? "B"
-    : sourceClassType;
+    : classType;
 }
 
 function compactNamePart(value: string, fallback: string): string {
@@ -423,6 +428,7 @@ export function buildMofaxiaoRosterDefaultClass(
   const gradeText = compactNamePart(source.gradeText, "待定年级");
   const seasonText = compactNamePart(source.seasonText, source.season === 2 ? "秋季" : "待定季节");
   const classType = compactNamePart(canonicalMofaxiaoRosterClassType(source), "待定班型");
+  const courseClassType = compactNamePart(mofaxiaoRosterCourseClassType(source), classType);
   const campusName = canonicalRosterCampusName(source.campus);
   const teacherInitials = teacherInitialsForClassName(source.teacher) || "待定老师";
   const weekday = compactNamePart(source.weekday, "待定星期");
@@ -437,6 +443,7 @@ export function buildMofaxiaoRosterDefaultClass(
     grade: source.grade,
     gradeText,
     classType,
+    courseClassType,
     campusName,
     roomName: source.room.trim(),
     teacherName: source.teacher.trim(),
@@ -449,11 +456,11 @@ export function buildMofaxiaoRosterDefaultClass(
 function targetMatchesSourceSystem(source: ParsedMofaxiaoRosterClass, target: ClassRosterTargetOption): boolean {
   if (normalizeRosterText(source.system).includes("贯通")) {
     return target.courseFamilySlug === AIXUEXI_PRIMARY_MATH_FAMILY
-      && INTEGRATED_THINKING_LEVELS.has(target.classType.trim().toUpperCase());
+      && INTEGRATED_THINKING_LEVELS.has(target.courseClassType.trim().toUpperCase());
   }
   if (isMofaxiaoESeriesRosterSource(source)) {
     return target.courseFamilySlug === MOFAXIAO_E_SERIES_FAMILY
-      && target.classType.trim().toUpperCase() === canonicalMofaxiaoRosterClassType(source);
+      && target.courseClassType.trim().toUpperCase() === mofaxiaoRosterCourseClassType(source);
   }
   return true;
 }
@@ -471,7 +478,7 @@ function isHighConfidenceTarget(source: ParsedMofaxiaoRosterClass, target: Class
     && targetMatchesSourceCampus(source, target)
     && (!eSeries || targetMatchesSourceSchedule(source, target))
     && (integratedThinking
-      || normalizeRosterText(target.classType) === normalizeRosterText(canonicalMofaxiaoRosterClassType(source)));
+      || normalizeRosterText(target.courseClassType) === normalizeRosterText(mofaxiaoRosterCourseClassType(source)));
 }
 
 export function listMofaxiaoRosterClassCandidates(

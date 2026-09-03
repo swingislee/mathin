@@ -86,7 +86,7 @@ export async function listClassRosterTargetOptions(): Promise<ClassRosterTargetO
     season: row.season,
     courseTitle: row.course_title,
     courseFamilySlug: row.course_family_slug,
-    classType: row.class_type,
+    courseClassType: row.class_type,
     campusName: row.campus_name,
     roomName: row.room_name,
     primaryTeacherNames: row.primary_teacher_names,
