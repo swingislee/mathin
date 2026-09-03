@@ -354,6 +354,54 @@ function compactNamePart(value: string, fallback: string): string {
   return value.normalize("NFKC").replace(/[\s\u3000]+/g, "").trim() || fallback;
 }
 
+const PINYIN_COLLATOR = new Intl.Collator("zh-CN-u-co-pinyin", {
+  usage: "sort",
+  sensitivity: "base",
+});
+const PINYIN_INITIAL_ANCHORS = [
+  ["A", "阿"], ["B", "八"], ["C", "嚓"], ["D", "咑"], ["E", "妸"], ["F", "发"],
+  ["G", "旮"], ["H", "哈"], ["J", "丌"], ["K", "咔"], ["L", "垃"], ["M", "妈"],
+  ["N", "拿"], ["O", "哦"], ["P", "啪"], ["Q", "期"], ["R", "然"], ["S", "撒"],
+  ["T", "他"], ["W", "挖"], ["X", "昔"], ["Y", "压"], ["Z", "匝"],
+] as const;
+const HAN_CHARACTER = /^\p{Script=Han}$/u;
+const ASCII_LETTER = /^[A-Za-z]$/;
+const ASCII_DIGIT = /^\d$/;
+
+function pinyinInitial(character: string): string {
+  let result = "";
+  for (const [initial, anchor] of PINYIN_INITIAL_ANCHORS) {
+    if (PINYIN_COLLATOR.compare(character, anchor) < 0) break;
+    result = initial;
+  }
+  return result || character;
+}
+
+/** Compact a teacher name to uppercase pinyin initials for the class display name. */
+export function teacherInitialsForClassName(value: string): string {
+  const normalized = value.normalize("NFKC").trim();
+  if (!normalized) return "";
+  if (/^[A-Z]+$/.test(normalized)) return normalized;
+
+  let result = "";
+  let insideLatinWord = false;
+  for (const character of normalized) {
+    if (HAN_CHARACTER.test(character)) {
+      result += pinyinInitial(character);
+      insideLatinWord = false;
+    } else if (ASCII_LETTER.test(character)) {
+      if (!insideLatinWord) result += character.toUpperCase();
+      insideLatinWord = true;
+    } else if (ASCII_DIGIT.test(character)) {
+      result += character;
+      insideLatinWord = false;
+    } else {
+      insideLatinWord = false;
+    }
+  }
+  return result || compactNamePart(normalized, "").toUpperCase();
+}
+
 function canonicalRosterCampusName(value: string): string {
   const compact = compactNamePart(value, "待定校区");
   return compact.includes("紫辰") ? "紫辰阁" : compact;
@@ -377,10 +425,10 @@ export function buildMofaxiaoRosterDefaultClass(
   const seasonText = compactNamePart(source.seasonText, source.season === 2 ? "秋季" : "待定季节");
   const classType = compactNamePart(canonicalMofaxiaoRosterClassType(source), "待定班型");
   const campusName = canonicalRosterCampusName(source.campus);
-  const teacherName = compactNamePart(source.teacher, "待定老师");
+  const teacherInitials = teacherInitialsForClassName(source.teacher) || "待定老师";
   const weekday = compactNamePart(source.weekday, "待定星期");
   const time = compactNamePart(source.time, "待定时间");
-  const name = `【${system}】${gradeText}${seasonText}${classType}｜${campusName}${teacherName}${weekday}${time}`.slice(0, 100);
+  const name = `【${system}】${gradeText}${seasonText}${classType}｜${campusName}${teacherInitials}${weekday}${time}`.slice(0, 100);
   return {
     name,
     system,
