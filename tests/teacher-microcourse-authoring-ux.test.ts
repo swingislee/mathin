@@ -110,4 +110,29 @@ describe("teacher microcourse authoring UX", () => {
     expect(zh).toContain('"saveForSessionAndReturn": "保存本节并返回备课"');
     expect(en).toContain('"saveForSessionAndReturn": "Save for session and return"');
   });
+
+  it("loads the selected research version in preparation and copies only for teacher adjustments", () => {
+    const prep = read("src", "features", "school", "SessionPrepPanel.tsx");
+    const route = read("src", "app", "[locale]", "dashboard", "sessions", "[sessionId]", "microcourse", "page.tsx");
+    const switcher = read("src", "features", "teacher-microcourses", "MicrocourseVariantSwitcher.tsx");
+    const variantMigration = read("supabase", "migrations", "20260829000600_teacher_microcourse_class_root.sql");
+    const runtimeMigration = read("supabase", "migrations", "20260828000110_teacher_microcourse_variant_runtime.sql");
+    const zh = read("messages", "zh.json");
+    const en = read("messages", "en.json");
+
+    expect(variantMigration).toContain("if selected_microcourse_id is null then");
+    expect(variantMigration).toContain("set selected_teacher_microcourse_id = new_microcourse_id");
+    expect(runtimeMigration).toContain("if frozen_at is null and selected_microcourse_id is not null then");
+    expect(runtimeMigration).toContain("public.can_read_teacher_microcourse_draft(selected_microcourse_id, uid)");
+    expect(prep).toContain("const selectedMicrocourseTemplate");
+    expect(prep).toContain("sessionDocs.map((pageDoc)");
+    expect(prep).toContain("detail.lectureId ? template : selectedMicrocourseTemplate");
+    expect(prep).toContain("customOnly={!detail.lectureId && sessionDocs.length === 0}");
+    expect(prep).toContain('t("prepCurrentCoursewareTitle")');
+    expect(route).toContain("variants.find((variant) => variant.selectedForSession)");
+    expect(switcher).toContain("!activeVariant.canEdit && session.canCreate");
+    expect(switcher).toContain("forkTeacherMicrocourseVariantAction");
+    expect(zh).toContain('"editAsBranch": "复制此版本并调整"');
+    expect(en).toContain('"editAsBranch": "Copy and customize"');
+  });
 });

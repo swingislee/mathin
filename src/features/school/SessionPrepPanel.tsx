@@ -1,5 +1,5 @@
 import { getSessionAssetUrls, getSessionH5BindingUrls, getSessionPageDocs } from "@/features/classroom/courseware/session-assets";
-import { LockKeyhole, LockKeyholeOpen } from "lucide-react";
+import { BookOpen, LockKeyhole, LockKeyholeOpen } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import type { SessionWorkspaceDetail } from "./classes";
 import { getSessionCoursewareTemplate } from "./courses";
@@ -76,6 +76,14 @@ export async function SessionPrepPanel({
     })),
   }));
   const titleByPageDocId = new Map(coursewareLearningCheckPages.map((page) => [page.pageDocId, page.title]));
+  const selectedMicrocourseTemplate = !detail.lectureId && !detail.coursewareFrozenAt
+    ? sessionDocs.map((pageDoc) => ({
+        id: pageDoc.pageDocId,
+        type: "doc" as const,
+        docId: pageDoc.pageDocId,
+        title: t("currentCoursewarePageTitle", { no: pageDoc.pageNo }),
+      }))
+    : [];
   const solutionPageLabels = Object.fromEntries(sessionDocs.map((pageDoc) => [
     pageDoc.pageDocId,
     t("learningCheckPageOption", {
@@ -87,7 +95,12 @@ export async function SessionPrepPanel({
   const frozenEditorState = detail.coursewareFrozenAt
     ? coursewareEditorStateFromFrozenSnapshot(detail.courseware, detail.coursewareOverlay)
     : null;
-  const editorTemplate = frozenEditorState?.template ?? template;
+  // A free session has no formal lecture template. Its selected teacher/research
+  // proposal is nevertheless the session's current courseware, so project the
+  // live page docs into the same immutable template refs used by regular classes.
+  // This makes preparation open on the selected content instead of an empty rail.
+  const editorTemplate = frozenEditorState?.template
+    ?? (detail.lectureId ? template : selectedMicrocourseTemplate);
   const editorOverlay = frozenEditorState?.overlay ?? detail.coursewareOverlay;
 
   return (
@@ -119,6 +132,15 @@ export async function SessionPrepPanel({
               <p className="mt-1 text-xs leading-5 text-muted">
                 {t(prepArchiveUnlocked ? "prepArchiveUnlockedBody" : "prepArchiveFrozenBody")}
               </p>
+            </div>
+          </section>
+        ) : null}
+        {!detail.lectureId && !detail.coursewareFrozenAt && sessionDocs.length > 0 ? (
+          <section className="flex shrink-0 items-start gap-3 rounded-xl border border-line bg-card/70 px-4 py-3">
+            <BookOpen size={18} className="mt-0.5 shrink-0 text-crater" aria-hidden />
+            <div className="min-w-0 flex-1">
+              <h2 className="text-sm font-medium text-ink">{t("prepCurrentCoursewareTitle")}</h2>
+              <p className="mt-1 text-xs leading-5 text-muted">{t("prepCurrentCoursewareBody")}</p>
             </div>
           </section>
         ) : null}
@@ -191,7 +213,7 @@ export async function SessionPrepPanel({
                 initialPageId={initialPageId}
                 readOnly={!canAmendSessionArchive}
                 structureReadOnly={!canEditSessionCourseware}
-                customOnly={!detail.lectureId}
+                customOnly={!detail.lectureId && sessionDocs.length === 0}
               />
             ) : null}
             </section>
