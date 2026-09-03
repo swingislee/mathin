@@ -22,6 +22,7 @@ describe("courseware PageDoc formal editor", () => {
   it("uses the existing draft revision action without exposing later-step writes", () => {
     const editor = readFileSync("src/features/courseware-studio/PageDocVerticalSliceEditor.tsx", "utf8");
     const stage = readFileSync("src/features/courseware-doc/DocStage.tsx", "utf8");
+    const nodeEditing = readFileSync("src/features/courseware-doc/CoursewareNodeEditing.tsx", "utf8");
     const actions = readFileSync("src/features/courseware-studio/actions.ts", "utf8");
 
     expect(editor).toContain("saveCoursewareDraftAction");
@@ -32,7 +33,7 @@ describe("courseware PageDoc formal editor", () => {
     expect(editor).toContain("onNodeTransformChange={handleNodeTransformChange}");
     expect(editor).toContain("Object.assign(node.transform, patch)");
     expect(stage).toContain("else runtime.settleAuto()");
-    expect(stage).toContain("data-courseware-node-resize-handle");
+    expect(nodeEditing).toContain("data-courseware-node-resize-handle");
     expect(stage).toContain("onNodeTransformChange?.(node.nodePath, next)");
     expect(editor).toContain("data-content-changed");
     expect(editor).toContain("data-layout-changed");

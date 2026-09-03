@@ -28,6 +28,19 @@ export interface SourceRuntimeEditorCanvas {
   height: number;
 }
 
+export interface SourceRuntimeEditorGeometryRect {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+export interface SourceRuntimeEditorGeometry {
+  viewport: { width: number; height: number };
+  stage: SourceRuntimeEditorGeometryRect;
+  nodes: Array<SourceRuntimeEditorGeometryRect & { path: string }>;
+}
+
 function record(value: unknown): UnknownRecord | null {
   return value && typeof value === "object" && !Array.isArray(value)
     ? value as UnknownRecord

@@ -281,9 +281,11 @@ describe("producer-owned Aixuexi source runtime", () => {
       .toBe("/api/cw-h5/packages/hash/index.html?x=1&mathin_source_editor=mathin-source-runtime-v1#page");
     const html = injectSourceRuntimeEditorBridge("<!doctype html><html><head></head><body></body></html>");
     expect(html).toContain("data-mathin-source-runtime-editor");
-    expect(html).toContain("node-transform-change");
+    expect(html).toContain("editor-preview-transform");
+    expect(html).toContain("editor-geometry");
     expect(html).toContain("node-text-change");
     expect(html).toContain("data-aix-source-path");
+    expect(html).not.toContain("mathin-source-node-handle");
   });
 
   it("registers the generic adapter in the database without dropping legacy documents", () => {

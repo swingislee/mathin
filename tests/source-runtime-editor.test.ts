@@ -130,6 +130,16 @@ describe("source runtime shared element adapter", () => {
     expect(script).toBeTruthy();
     if (!script) throw new Error("SOURCE_RUNTIME_EDITOR_SCRIPT_MISSING");
     expect(script).toContain("normalizeInlineText(event.target.innerText)");
+    expect(script).toContain("editor-geometry");
+    expect(script).toContain("editor-preview-transform");
+    expect(script).toContain("contenteditable");
+    expect(script).toContain("data-mathin-source-editor-overrides");
+    expect(script).toContain("setOverride(node,'z-index'");
+    expect(script).toContain("data-mathin-source-inline-root");
+    expect(script).not.toContain("mathin-source-node-handle");
+    expect(script).not.toContain("handle.textContent");
+    expect(script).not.toContain("Math.round(value/step)");
+    expect(script).not.toContain("node-transform-change");
     expect(() => new Script(script)).not.toThrow();
   });
 });

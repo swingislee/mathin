@@ -114,6 +114,7 @@ describe("shared courseware editor workbench", () => {
     const textEditor = read("src", "features", "courseware-doc", "CoursewareTextElementEditor.tsx");
     const elementEditor = read("src", "features", "courseware-doc", "CoursewarePageElementEditor.tsx");
     const stage = read("src", "features", "courseware-doc", "DocStage.tsx");
+    const nodeEditing = read("src", "features", "courseware-doc", "CoursewareNodeEditing.tsx");
     const stageCss = read("src", "features", "courseware-doc", "doc-stage.css");
     const grid = read("src", "features", "courseware-doc", "CoursewareCompositionGridEditor.tsx");
     const pageToolbar = read("src", "features", "courseware-doc", "CoursewarePageEditorToolbar.tsx");
@@ -136,10 +137,11 @@ describe("shared courseware editor workbench", () => {
     expect(textEditor).not.toContain('t("textElement")');
     expect(stage).toContain("contentEditable={inlineTextEditing || undefined}");
     expect(stage).toContain('data-courseware-text-font-override');
-    expect(stage).toContain('inlineTextFocused && !gesture ? "dashed" : "solid"');
-    expect(stage).toContain("data-courseware-node-move-handle");
-    expect(stage).toContain("data-courseware-node-resize-handle");
-    expect(stage).toContain("data-courseware-node-snap-grid");
+    expect(stage).toContain('inlineTextFocused && !transform.active ? "dashed" : "solid"');
+    expect(stage).toContain("CoursewareNodeEditorHandles");
+    expect(stage).toContain("CoursewareSnapGridOverlay");
+    expect(stage).toContain("useCoursewareNodeTransform");
+    expect(nodeEditing).toContain("data-courseware-node-snap-grid");
     expect(grid).toContain('filter((block) => block.type !== "node")');
     expect(grid).toContain("onNodeTextChange={onNodeTextChange}");
     expect(stageCss).toContain('[data-courseware-text-font-override="true"] *');

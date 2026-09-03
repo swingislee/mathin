@@ -15,7 +15,9 @@ import {
 import type {
   SourceRuntimeEditorBridgeNode,
   SourceRuntimeEditorCanvas,
+  SourceRuntimeEditorGeometry,
 } from "./source-runtime-editor";
+import { SourceRuntimeEditorOverlay } from "./SourceRuntimeEditorOverlay";
 import { sourceRuntimeFourByThreeMode } from "./source-runtime-four-by-three";
 import type { SourceRuntimeFourByThreeMode } from "./source-runtime-four-by-three";
 import { versionSourceRuntimeEntryUrl } from "./source-runtime-delivery.mjs";
@@ -75,6 +77,40 @@ interface RuntimePayload {
   interactive: boolean;
   advanceOnCanvasClick: boolean;
   editor?: RuntimeEditorPayload;
+}
+
+function sourceRuntimeEditorGeometry(value: unknown): SourceRuntimeEditorGeometry | null {
+  if (!value || typeof value !== "object") return null;
+  const raw = value as Record<string, unknown>;
+  const rect = (candidate: unknown) => {
+    if (!candidate || typeof candidate !== "object") return null;
+    const item = candidate as Record<string, unknown>;
+    const values = [item.left, item.top, item.width, item.height];
+    if (!values.every((entry) => typeof entry === "number" && Number.isFinite(entry))) return null;
+    return {
+      left: item.left as number,
+      top: item.top as number,
+      width: item.width as number,
+      height: item.height as number,
+    };
+  };
+  const viewport = raw.viewport as Record<string, unknown> | undefined;
+  const stage = rect(raw.stage);
+  if (!viewport || typeof viewport.width !== "number" || !Number.isFinite(viewport.width)
+      || typeof viewport.height !== "number" || !Number.isFinite(viewport.height)
+      || !stage || !Array.isArray(raw.nodes)) return null;
+  const nodes = raw.nodes.flatMap((candidate) => {
+    const measured = rect(candidate);
+    const path = candidate && typeof candidate === "object"
+      ? (candidate as Record<string, unknown>).path
+      : null;
+    return measured && typeof path === "string" ? [{ path, ...measured }] : [];
+  });
+  return {
+    viewport: { width: viewport.width, height: viewport.height },
+    stage,
+    nodes,
+  };
 }
 
 function runtimeEditorPayload(editor: SourceRuntimeEditorHost | undefined): RuntimeEditorPayload | undefined {
@@ -147,11 +183,20 @@ export default function SourceRuntimeStage({
 }: SourceRuntimeStageProps) {
   const t = useTranslations("coursewareStage");
   const frameId = `source-runtime/${doc.source.coursewareId}/${doc.source.pageDatabaseId}`;
+  const editorPageKey = `${doc.source.coursewareId}:${doc.source.pageDatabaseId}`;
   const { iframeRef, frameGeneration, onFrameLoad } = useH5FrameRegistration(h5PointerBridge, frameId);
   const sourceFrameRef = useRef<HTMLDivElement>(null);
   const [sourceFrameSize, setSourceFrameSize] = useState<{ width: number; height: number } | null>(null);
   const [renderedFrameKey, setRenderedFrameKey] = useState<string | null>(null);
   const [runtimeFailure, setRuntimeFailure] = useState<{ frameKey: string; message: string } | null>(null);
+  const [editorGeometryState, setEditorGeometryState] = useState<{
+    pageKey: string;
+    geometry: SourceRuntimeEditorGeometry;
+  } | null>(null);
+  const [focusedEditorNode, setFocusedEditorNode] = useState<{
+    pageKey: string;
+    nodePath: string;
+  } | null>(null);
   const appliedCtl = useRef<DocVideoControl["ctl"]>(undefined);
   const runtimeReadyFor = useRef<string | null>(null);
   const runtimeLoadedFor = useRef<string | null>(null);
@@ -212,6 +257,8 @@ export default function SourceRuntimeStage({
     runtimePayloadSentFor.current = null;
     runtimeInFlightFor.current = null;
     runtimeQueuedRender.current = null;
+    setEditorGeometryState(null);
+    setFocusedEditorNode(null);
   }, [runtimeInstanceKey]);
 
   useLayoutEffect(() => {
@@ -278,6 +325,8 @@ export default function SourceRuntimeStage({
         nodePath?: unknown;
         value?: unknown;
         patch?: unknown;
+        focused?: unknown;
+        geometry?: unknown;
       };
       if (message.source === FRAME_MESSAGE_SOURCE && message.protocol === SOURCE_RUNTIME_PROTOCOL) {
         if (message.type === "ready") {
@@ -299,23 +348,19 @@ export default function SourceRuntimeStage({
         if (message.type === "node-selected" && typeof message.nodePath === "string") {
           editor?.onNodeSelect(message.nodePath);
         }
+        if (message.type === "node-focus-change" && typeof message.nodePath === "string") {
+          setFocusedEditorNode(message.focused === true
+            ? { pageKey: editorPageKey, nodePath: message.nodePath }
+            : null);
+        }
+        if (message.type === "editor-geometry") {
+          const geometry = sourceRuntimeEditorGeometry(message.geometry);
+          if (geometry) setEditorGeometryState({ pageKey: editorPageKey, geometry });
+        }
         if (message.type === "node-text-change"
             && typeof message.nodePath === "string"
             && typeof message.value === "string") {
           editor?.onNodeTextChange(message.nodePath, message.value);
-        }
-        if (message.type === "node-transform-change"
-            && typeof message.nodePath === "string"
-            && message.patch
-            && typeof message.patch === "object") {
-          const raw = message.patch as Record<string, unknown>;
-          const patch = Object.fromEntries(
-            ["x", "y", "width", "height"].flatMap((key) => {
-              const value = raw[key];
-              return typeof value === "number" && Number.isFinite(value) ? [[key, value]] : [];
-            }),
-          ) as Partial<Pick<SourceRuntimeEditorBridgeNode, "x" | "y" | "width" | "height">>;
-          if (Object.keys(patch).length > 0) editor?.onNodeTransformChange(message.nodePath, patch);
         }
         if (message.type === "error") {
           const failedRenderKey = typeof message.renderKey === "string"
@@ -341,7 +386,7 @@ export default function SourceRuntimeStage({
     };
     window.addEventListener("message", receive);
     return () => window.removeEventListener("message", receive);
-  }, [editor, flushRuntimeRender, iframeRef, onAdvance, runtimeInstanceKey, t, videoControl]);
+  }, [editor, editorPageKey, flushRuntimeRender, iframeRef, onAdvance, runtimeInstanceKey, t, videoControl]);
 
   useEffect(() => {
     const ctl = videoControl?.ctl;
@@ -375,6 +420,12 @@ export default function SourceRuntimeStage({
       )
     : 1;
   const unavailable = !runtimeEntry || !payload;
+  const editorGeometry = editorGeometryState?.pageKey === editorPageKey
+    ? editorGeometryState.geometry
+    : null;
+  const focusedEditorNodePath = focusedEditorNode?.pageKey === editorPageKey
+    ? focusedEditorNode.nodePath
+    : null;
 
   return (
     <div
@@ -426,6 +477,23 @@ export default function SourceRuntimeStage({
               height: doc.viewport.height,
               transform: `scale(${sourceFrameScale})`,
               visibility: sourceFrameSize ? "visible" : "hidden",
+            }}
+          />
+        ) : null}
+        {editor?.enabled && editorGeometry && sourceFrameSize ? (
+          <SourceRuntimeEditorOverlay
+            editor={editor}
+            geometry={editorGeometry}
+            frameScale={sourceFrameScale}
+            focusedNodePath={focusedEditorNodePath}
+            onPreview={(nodePath, patch) => {
+              iframeRef.current?.contentWindow?.postMessage({
+                source: HOST_MESSAGE_SOURCE,
+                protocol: SOURCE_RUNTIME_PROTOCOL,
+                type: "editor-preview-transform",
+                nodePath,
+                patch,
+              }, "*");
             }}
           />
         ) : null}

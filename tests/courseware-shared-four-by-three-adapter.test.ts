@@ -147,6 +147,11 @@ describe("shared formal-course 4:3 adapter", () => {
     const sourceEditor = read("src/features/courseware-studio/SourceRuntimeFourByThreeEditor.tsx");
     const sourceAdapter = read("src/features/courseware-doc/source-runtime-editor.ts");
     const sharedToolbar = read("src/features/courseware-doc/CoursewarePageEditorToolbar.tsx");
+    const sharedNodeEditing = read("src/features/courseware-doc/CoursewareNodeEditing.tsx");
+    const docStage = read("src/features/courseware-doc/DocStage.tsx");
+    const sourceOverlay = read("src/features/courseware-doc/SourceRuntimeEditorOverlay.tsx");
+    const sourceBridge = read("src/features/courseware-doc/source-runtime-editor-bridge.ts");
+    const sourceStage = read("src/features/courseware-doc/SourceRuntimeStage.tsx");
     const workspace = read("src/features/courseware-studio/UnifiedCoursewareWorkspace.tsx");
     const workbench = read("src/features/courseware-doc/CoursewareEditorWorkbench.tsx");
 
@@ -191,6 +196,18 @@ describe("shared formal-course 4:3 adapter", () => {
     expect(sourceEditor).toContain("const activeHistory = coarseLayout ? fourByThree : editHistory");
     expect(sharedToolbar).toContain("CoursewareInsertionToolbar");
     expect(sharedToolbar).toContain("CoursewareGridSnapToggle");
+    for (const stage of [docStage, sourceOverlay]) {
+      expect(stage).toContain("CoursewareNodeEditorHandles");
+      expect(stage).toContain("CoursewareSnapGridOverlay");
+      expect(stage).toContain("useCoursewareNodeTransform");
+    }
+    expect(sharedNodeEditing).toContain("<Grip");
+    expect(sharedNodeEditing).toContain("<MoveDiagonal2");
+    expect(sourceBridge).toContain("editor-geometry");
+    expect(sourceBridge).not.toContain("mathin-source-node-handle");
+    expect(sourceBridge).not.toContain("Math.round(value/step)");
+    expect(sourceBridge).not.toContain("node-transform-change");
+    expect(sourceStage).not.toContain('message.type === "node-transform-change"');
     expect(shared).not.toContain("decorateStage");
     expect(shared).not.toContain("fetch(");
     expect(shared).not.toContain("Action(");

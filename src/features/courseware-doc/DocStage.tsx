@@ -5,10 +5,8 @@ import {
   useRef,
   useState,
   type CSSProperties,
-  type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
-import { Grip, MoveDiagonal2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { ClassroomVideoInkSurface } from "@/features/classroom/input/ClassroomVideoInkSurface";
@@ -20,6 +18,11 @@ import { injectBindingUrls, type ResolvedBindingUrls } from "./resolve";
 import { COURSEWARE_LIGHT_SURFACE_STYLE } from "./courseware-surface";
 import { createInteractionRuntime, type InteractionRuntime, type InteractionTrigger } from "./interactions";
 import { renderAixuexiMathHtml } from "./aixuexi-math";
+import {
+  CoursewareNodeEditorHandles,
+  CoursewareSnapGridOverlay,
+  useCoursewareNodeTransform,
+} from "./CoursewareNodeEditing";
 
 /**
  * page-doc-v1 舞台渲染器——镜像 viewer renderedNodeHtmlV2 的 React 移植,
@@ -78,14 +81,6 @@ export interface DocStageProps {
 export type DocNodeTransformPatch = Partial<
   Pick<DocNode["transform"], "x" | "y" | "width" | "height">
 >;
-
-interface NodeTransformGesture {
-  mode: "move" | "resize";
-  pointerId: number;
-  startX: number;
-  startY: number;
-  origin: Required<DocNodeTransformPatch>;
-}
 
 export interface DocVideoCtl {
   action: "play" | "pause" | "seek";
@@ -561,11 +556,22 @@ function NodeView({
   onTransformGestureChange: (nodePath: string | null) => void;
   stageScale: number;
 }) {
-  const rootRef = useRef<HTMLDivElement>(null);
-  const [gesture, setGesture] = useState<NodeTransformGesture | null>(null);
-  const [draft, setDraft] = useState<Required<DocNodeTransformPatch> | null>(null);
   const [inlineTextFocused, setInlineTextFocused] = useState(false);
-  const t = draft ? { ...node.transform, ...draft } : node.transform;
+  const transform = useCoursewareNodeTransform({
+    geometry: {
+      x: node.transform.x,
+      y: node.transform.y,
+      width: node.transform.width,
+      height: node.transform.height,
+    },
+    stageScale,
+    snapToGrid,
+    gridStep,
+    onPreview: (next) => onNodeTransformChange?.(node.nodePath, next),
+    onCommit: (next) => onNodeTransformChange?.(node.nodePath, next),
+    onGestureChange: (active) => onTransformGestureChange(active ? node.nodePath : null),
+  });
+  const t = { ...node.transform, ...transform.geometry };
   const s = node.style;
   const selected = selectedNodePath === node.nodePath;
   const inlineTextEditing = Boolean(
@@ -573,71 +579,6 @@ function NodeView({
     && (node.content?.kind === "text" || node.content?.kind === "rich_text"),
   );
   const clickTrigger = node.sourceResourceId && clickTriggers.has(node.sourceResourceId) ? node.sourceResourceId : "";
-  const beginTransform = (
-    event: ReactPointerEvent<HTMLElement>,
-    mode: NodeTransformGesture["mode"],
-  ) => {
-    if (!onNodeTransformChange) return;
-    if (event.pointerType === "mouse" && event.button !== 0) return;
-    event.preventDefault();
-    event.stopPropagation();
-    rootRef.current?.setPointerCapture(event.pointerId);
-    onNodeSelect?.(node.nodePath);
-    const origin = {
-      x: node.transform.x,
-      y: node.transform.y,
-      width: node.transform.width,
-      height: node.transform.height,
-    };
-    setDraft(origin);
-    setGesture({
-      mode,
-      pointerId: event.pointerId,
-      startX: event.clientX,
-      startY: event.clientY,
-      origin,
-    });
-    onTransformGestureChange(node.nodePath);
-  };
-  const moveTransform = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (!gesture || gesture.pointerId !== event.pointerId || stageScale <= 0) return;
-    event.preventDefault();
-    event.stopPropagation();
-    const deltaX = (event.clientX - gesture.startX) / stageScale;
-    const deltaY = (event.clientY - gesture.startY) / stageScale;
-    const snap = (value: number, step: number) => (
-      snapToGrid && step > 0 ? Math.round(value / step) * step : value
-    );
-    const next = gesture.mode === "move"
-      ? {
-          ...gesture.origin,
-          x: snap(gesture.origin.x + deltaX, gridStep.x),
-          y: snap(gesture.origin.y + deltaY, gridStep.y),
-        }
-      : {
-          ...gesture.origin,
-          width: Math.max(8, snap(gesture.origin.width + deltaX, gridStep.x)),
-          height: Math.max(8, snap(gesture.origin.height + deltaY, gridStep.y)),
-        };
-    setDraft(next);
-    onNodeTransformChange?.(node.nodePath, next);
-  };
-  const finishTransform = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (!gesture || gesture.pointerId !== event.pointerId) return;
-    event.preventDefault();
-    event.stopPropagation();
-    if (draft) onNodeTransformChange?.(node.nodePath, draft);
-    setGesture(null);
-    setDraft(null);
-    onTransformGestureChange(null);
-  };
-  const cancelTransform = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (!gesture || gesture.pointerId !== event.pointerId) return;
-    onNodeTransformChange?.(node.nodePath, gesture.origin);
-    setGesture(null);
-    setDraft(null);
-    onTransformGestureChange(null);
-  };
   const style: CSSProperties = {
     position: "absolute",
     left: 0,
@@ -656,22 +597,24 @@ function NodeView({
     display: node.visible ? "block" : "none",
     cursor: inlineTextEditing ? "text" : onNodeTransformChange ? "move" : clickTrigger ? "pointer" : undefined,
     outline: selected
-      ? `2px ${inlineTextFocused && !gesture ? "dashed" : "solid"} #e76f78`
+      ? `2px ${inlineTextFocused && !transform.active ? "dashed" : "solid"} #e76f78`
       : undefined,
     outlineOffset: selected ? "2px" : undefined,
   };
   return (
     <div
-      ref={rootRef}
       data-node-path={node.nodePath}
       data-source-resource-id={node.sourceResourceId ?? ""}
       data-click-trigger={clickTrigger}
       data-classroom-input={clickTrigger ? "click" : undefined}
       onClickCapture={() => onNodeSelect?.(node.nodePath)}
-      onPointerCancel={cancelTransform}
-      onPointerDown={inlineTextEditing ? undefined : (event) => beginTransform(event, "move")}
-      onPointerMove={moveTransform}
-      onPointerUp={finishTransform}
+      onPointerCancel={transform.cancel}
+      onPointerDown={inlineTextEditing || !onNodeTransformChange ? undefined : (event) => {
+        onNodeSelect?.(node.nodePath);
+        transform.begin(event, "move");
+      }}
+      onPointerMove={transform.move}
+      onPointerUp={transform.finish}
       style={style}
     >
       {nodeBody(
@@ -694,54 +637,15 @@ function NodeView({
         stageScale,
       )}
       {selected && onNodeTransformChange ? (
-        <>
-          <button
-            type="button"
-            data-courseware-node-move-handle
-            aria-label={nodeMoveLabel}
-            onPointerDown={(event) => beginTransform(event, "move")}
-            style={{
-              position: "absolute",
-              left: 0,
-              top: 0,
-              zIndex: 2147483647,
-              display: "grid",
-              placeItems: "center",
-              width: 28,
-              height: 24,
-              border: "1px solid #fff",
-              borderRadius: "0 0 8px 0",
-              background: "#e76f78",
-              color: "#fff",
-              cursor: "move",
-            }}
-          >
-            <Grip size={15} />
-          </button>
-          <button
-            type="button"
-            data-courseware-node-resize-handle
-            aria-label={nodeResizeLabel}
-            onPointerDown={(event) => beginTransform(event, "resize")}
-            style={{
-              position: "absolute",
-              right: 0,
-              bottom: 0,
-              zIndex: 2147483647,
-              display: "grid",
-              placeItems: "center",
-              width: 28,
-              height: 28,
-              border: "1px solid #fff",
-              borderRadius: "8px 0 0 0",
-              background: "#e76f78",
-              color: "#fff",
-              cursor: "nwse-resize",
-            }}
-          >
-            <MoveDiagonal2 size={15} />
-          </button>
-        </>
+        <CoursewareNodeEditorHandles
+          moveLabel={nodeMoveLabel}
+          resizeLabel={nodeResizeLabel}
+          onMovePointerDown={(event) => transform.begin(event, "move")}
+          onResizePointerDown={(event) => transform.begin(event, "resize")}
+          onPointerMove={transform.move}
+          onPointerUp={transform.finish}
+          onPointerCancel={transform.cancel}
+        />
       ) : null}
     </div>
   );
@@ -947,20 +851,10 @@ export default function DocStage({
             stageScale={scale}
           />
         ))}
-        {snapToGrid && transformingNodePath ? (
-          <div
-            data-courseware-node-snap-grid
-            aria-hidden="true"
-            style={{
-              position: "absolute",
-              inset: 0,
-              zIndex: 2147483646,
-              pointerEvents: "none",
-              backgroundImage: "linear-gradient(to right, rgb(111 139 72 / 0.32) 1px, transparent 1px), linear-gradient(to bottom, rgb(111 139 72 / 0.32) 1px, transparent 1px)",
-              backgroundSize: `${gridStep.x}px ${gridStep.y}px`,
-            }}
-          />
-        ) : null}
+        <CoursewareSnapGridOverlay
+          visible={snapToGrid && Boolean(transformingNodePath)}
+          step={gridStep}
+        />
       </div>
     </div>
   );

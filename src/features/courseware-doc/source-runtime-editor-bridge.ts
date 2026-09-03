@@ -8,140 +8,113 @@ const SOURCE_RUNTIME_EDITOR_BRIDGE = String.raw`<script data-mathin-source-runti
   const FRAME_SOURCE='mathin-source-runtime';
   const HOST_SOURCE='mathin-source-runtime-host';
   const PROTOCOL='${SOURCE_RUNTIME_PROTOCOL}';
-  let editor={enabled:false,selectedNodePath:null,snapToGrid:true,canvas:{width:1200,height:900},nodes:[],moveLabel:'Move',resizeLabel:'Resize'};
+  let editor={enabled:false,selectedNodePath:null,snapToGrid:true,canvas:{width:1200,height:900},nodes:[]};
   let metadata=new Map();
+  let previewBases=new Map();
   let syncQueued=false;
-  let gesture=null;
   let observer=null;
   let observedRoot=null;
 
   const send=(type,extra={})=>parent.postMessage({source:FRAME_SOURCE,protocol:PROTOCOL,type,...extra},'*');
   const number=(value,fallback)=>Number.isFinite(Number(value))?Number(value):fallback;
   const clamp=(value,min,max)=>Math.min(max,Math.max(min,value));
-  const snap=(value,step)=>editor.snapToGrid&&step>0?Math.round(value/step)*step:value;
   const nodePath=node=>node?.dataset?.aixSourcePath||'';
+  const nodes=()=>[...document.querySelectorAll('.aix-layout-node[data-aix-source-path]')];
+  const nodeFor=path=>nodes().find(node=>nodePath(node)===path)||null;
   const normalizeInlineText=value=>String(value??'')
     .replace(/\r\n?/g,'\n')
     .replace(/[ \t]+\n/g,'\n')
     .replace(/\n[ \t]+/g,'\n')
     .replace(/^\n+|\n+$/g,'');
 
-  function installStyle(){
-    if(document.querySelector('style[data-mathin-source-editor-style]'))return;
+  function installOverrideStyle(){
+    if(document.querySelector('style[data-mathin-source-editor-overrides]'))return;
     const style=document.createElement('style');
-    style.dataset.mathinSourceEditorStyle='';
+    style.dataset.mathinSourceEditorOverrides='';
     style.textContent=[
-      '.aix-layout-node[data-mathin-source-selected="true"]{outline:2px solid #ef6b72!important;outline-offset:-2px}',
-      '.aix-layout-node[data-mathin-source-selected="true"] [data-mathin-source-inline-editor]:focus{outline:1px dashed #ef6b72!important;outline-offset:-2px}',
-      '.aix-layout-node[data-mathin-font-size] [data-aix-html],.aix-layout-node[data-mathin-font-size] [data-aix-html] *{font-size:var(--mathin-font-size)!important}',
-      '.aix-layout-node[data-mathin-color] [data-aix-html],.aix-layout-node[data-mathin-color] [data-aix-html] *{color:var(--mathin-color)!important}',
-      '.aix-layout-node[data-mathin-text-align] [data-aix-html],.aix-layout-node[data-mathin-text-align] [data-aix-html] *{text-align:var(--mathin-text-align)!important}',
-      '.mathin-source-node-handle{position:absolute!important;z-index:2147483647!important;display:grid!important;place-items:center!important;width:24px!important;height:24px!important;margin:0!important;padding:0!important;border:0!important;border-radius:4px!important;background:#ef6b72!important;color:#fff!important;font:700 14px/1 sans-serif!important;box-shadow:0 1px 4px #0005!important;cursor:move!important;pointer-events:auto!important;user-select:none!important}',
-      '.mathin-source-node-handle[data-kind="move"]{left:0!important;top:0!important;transform:translate(-2px,-2px)!important}',
-      '.mathin-source-node-handle[data-kind="resize"]{right:0!important;bottom:0!important;transform:translate(2px,2px)!important;cursor:nwse-resize!important}',
+      '[data-mathin-source-inline-root][data-mathin-override-font-size="true"] *{font-size:inherit!important}',
+      '[data-mathin-source-inline-root][data-mathin-override-color="true"] *{color:inherit!important}',
+      '[data-mathin-source-inline-root][data-mathin-override-text-align="true"] *{text-align:inherit!important}',
     ].join('');
     (document.head||document.documentElement).append(style);
   }
 
-  function clearEditorDecorations(node){
-    node.querySelectorAll(':scope > .mathin-source-node-handle').forEach(handle=>handle.remove());
-    delete node.dataset.mathinSourceSelected;
-    delete node.dataset.mathinFontSize;
-    delete node.dataset.mathinColor;
-    delete node.dataset.mathinTextAlign;
-    node.style.removeProperty('--mathin-font-size');
-    node.style.removeProperty('--mathin-color');
-    node.style.removeProperty('--mathin-text-align');
-    if(node.dataset.mathinHidden==='true'){
+  function setOverride(node,name,value){
+    const marker='mathinOverride'+name.split('-').map(part=>part[0].toUpperCase()+part.slice(1)).join('');
+    if(value===null||value===undefined||value===''){
+      if(node.dataset[marker]==='true')node.style.removeProperty(name);
+      delete node.dataset[marker];
+      return;
+    }
+    node.dataset[marker]='true';
+    node.style.setProperty(name,String(value),'important');
+  }
+
+  function syncNode(node,meta){
+    if(meta.visible===false){
+      node.dataset.mathinHidden='true';
+      node.style.setProperty('display','none','important');
+    }else if(node.dataset.mathinHidden==='true'){
       node.style.removeProperty('display');
       delete node.dataset.mathinHidden;
     }
-    if(node.dataset.mathinOpacity==='true'){
-      node.style.removeProperty('opacity');
-      delete node.dataset.mathinOpacity;
+    setOverride(node,'opacity',clamp(number(meta.opacity,1),0,1));
+    setOverride(node,'z-index',Number.isFinite(meta.layer)?meta.layer:null);
+    const content=node.querySelector('[data-aix-html]');
+    if(content){
+      content.dataset.mathinSourceInlineRoot='true';
+      setOverride(content,'font-size',Number.isFinite(meta.fontSize)?String(meta.fontSize)+'px':null);
+      setOverride(content,'color',typeof meta.color==='string'?meta.color:null);
+      setOverride(content,'text-align',['left','center','right','justify'].includes(meta.textAlign)?meta.textAlign:null);
+      const editable=editor.enabled&&meta.editableText;
+      if(editable){
+        if(content.getAttribute('contenteditable')!=='true')content.setAttribute('contenteditable','true');
+        content.setAttribute('spellcheck','true');
+        content.dataset.mathinSourceInlineEditor='true';
+      }else if(content.dataset.mathinSourceInlineEditor==='true'){
+        content.removeAttribute('contenteditable');
+        content.removeAttribute('spellcheck');
+        delete content.dataset.mathinSourceInlineEditor;
+      }
     }
-    node.querySelectorAll('[data-mathin-source-inline-editor]').forEach(target=>{
-      target.removeAttribute('contenteditable');
-      target.removeAttribute('spellcheck');
-      delete target.dataset.mathinSourceInlineEditor;
+    previewBases.set(meta.path,{
+      left:Number.parseFloat(node.style.left||'0')||0,
+      top:Number.parseFloat(node.style.top||'0')||0,
+      width:Number.parseFloat(node.style.width||String(meta.width))||meta.width,
+      height:Number.parseFloat(node.style.height||String(meta.height))||meta.height,
     });
   }
 
-  function startGesture(event,node,meta,kind){
-    if(!editor.enabled||event.button!==0)return;
-    event.preventDefault();
-    event.stopPropagation();
-    event.stopImmediatePropagation();
-    const stage=node.closest('[data-aix-stage]');
-    const stageWidth=Math.max(1,number(stage?.dataset?.width,editor.canvas.width));
-    const scale=Math.max(.0001,(stage?.getBoundingClientRect().width||stageWidth)/stageWidth);
-    gesture={
-      pointerId:event.pointerId,path:meta.path,node,kind,scale,
-      startX:event.clientX,startY:event.clientY,
-      source:{x:meta.x,y:meta.y,width:meta.width,height:meta.height},
-      dom:{
-        x:Number.parseFloat(node.style.left||'0')||0,
-        y:Number.parseFloat(node.style.top||'0')||0,
-        width:Number.parseFloat(node.style.width||String(meta.width))||meta.width,
-        height:Number.parseFloat(node.style.height||String(meta.height))||meta.height,
-      },
-    };
-    try{event.currentTarget.setPointerCapture(event.pointerId)}catch{}
-  }
-
-  function addHandle(node,meta,kind){
-    const handle=document.createElement('button');
-    handle.type='button';
-    handle.className='mathin-source-node-handle';
-    handle.dataset.kind=kind;
-    handle.textContent=kind==='move'?'⠿':'↘';
-    handle.setAttribute('aria-label',kind==='move'?editor.moveLabel:editor.resizeLabel);
-    handle.title=kind==='move'?editor.moveLabel:editor.resizeLabel;
-    handle.addEventListener('pointerdown',event=>startGesture(event,node,meta,kind));
-    handle.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();event.stopImmediatePropagation()});
-    node.append(handle);
+  function sendGeometry(){
+    if(!editor.enabled)return;
+    const stage=document.querySelector('[data-aix-stage]');
+    if(!stage)return;
+    const stageRect=stage.getBoundingClientRect();
+    const measured=nodes().flatMap(node=>{
+      const path=nodePath(node),meta=metadata.get(path);
+      if(!meta)return[];
+      const rect=node.getBoundingClientRect();
+      return[{path,left:rect.left,top:rect.top,width:rect.width,height:rect.height}];
+    });
+    send('editor-geometry',{geometry:{
+      viewport:{width:window.innerWidth,height:window.innerHeight},
+      stage:{left:stageRect.left,top:stageRect.top,width:stageRect.width,height:stageRect.height},
+      nodes:measured,
+    }});
   }
 
   function sync(){
     syncQueued=false;
     observer?.disconnect();
-    installStyle();
+    installOverrideStyle();
     document.documentElement.dataset.mathinSourceEditor=String(editor.enabled===true);
-    document.querySelectorAll('.aix-layout-node[data-aix-source-path]').forEach(node=>{
-      clearEditorDecorations(node);
+    previewBases=new Map();
+    nodes().forEach(node=>{
       const meta=metadata.get(nodePath(node));
-      if(!meta)return;
-      if(meta.visible===false){
-        node.dataset.mathinHidden='true';
-        node.style.setProperty('display','none','important');
-      }
-      node.dataset.mathinOpacity='true';
-      node.style.opacity=String(clamp(number(meta.opacity,1),0,1));
-      if(Number.isFinite(meta.fontSize)){
-        node.dataset.mathinFontSize='true';
-        node.style.setProperty('--mathin-font-size',String(meta.fontSize)+'px');
-      }
-      if(typeof meta.color==='string'&&meta.color){
-        node.dataset.mathinColor='true';
-        node.style.setProperty('--mathin-color',meta.color);
-      }
-      if(['left','center','right','justify'].includes(meta.textAlign)){
-        node.dataset.mathinTextAlign='true';
-        node.style.setProperty('--mathin-text-align',meta.textAlign);
-      }
-      const content=node.querySelector('[data-aix-html]');
-      if(content&&editor.enabled&&meta.editableText){
-        content.contentEditable='true';
-        content.spellcheck=true;
-        content.dataset.mathinSourceInlineEditor='true';
-      }
-      if(editor.enabled&&editor.selectedNodePath===meta.path&&meta.visible!==false){
-        node.dataset.mathinSourceSelected='true';
-        addHandle(node,meta,'move');
-        addHandle(node,meta,'resize');
-      }
+      if(meta)syncNode(node,meta);
     });
     if(observer&&observedRoot)observer.observe(observedRoot,{subtree:true,childList:true});
+    requestAnimationFrame(sendGeometry);
   }
 
   function scheduleSync(){
@@ -157,26 +130,37 @@ const SOURCE_RUNTIME_EDITOR_BRIDGE = String.raw`<script data-mathin-source-runti
     scheduleSync();
   }
 
+  function applyPreview(path,patch){
+    const node=nodeFor(path),meta=metadata.get(path),base=previewBases.get(path);
+    if(!node||!meta||!base||!patch)return;
+    if(Number.isFinite(patch.x))node.style.left=String(base.left+patch.x-meta.x)+'px';
+    if(Number.isFinite(patch.y))node.style.top=String(base.top+patch.y-meta.y)+'px';
+    if(Number.isFinite(patch.width))node.style.width=String(Math.max(1,base.width+patch.width-meta.width))+'px';
+    if(Number.isFinite(patch.height))node.style.height=String(Math.max(1,base.height+patch.height-meta.height))+'px';
+  }
+
   window.addEventListener('message',event=>{
     const message=event.data||{};
     if(event.source!==parent||message.source!==HOST_SOURCE||message.protocol!==PROTOCOL)return;
     if(message.type==='render'&&message.editor)applyEditorState(message.editor);
     if(message.type==='editor-state')applyEditorState(message.editor);
+    if(message.type==='editor-preview-transform')applyPreview(message.nodePath,message.patch);
   });
 
   document.addEventListener('pointerdown',event=>{
     if(!editor.enabled||event.button!==0)return;
-    if(event.target instanceof Element&&event.target.closest('.mathin-source-node-handle'))return;
     const node=event.target instanceof Element?event.target.closest('.aix-layout-node[data-aix-source-path]'):null;
     const path=nodePath(node);
     if(!node||!metadata.has(path))return;
     send('node-selected',{nodePath:path});
+    if(event.target instanceof Element&&event.target.closest('[data-mathin-source-inline-editor]'))return;
+    event.preventDefault();
     event.stopPropagation();
     event.stopImmediatePropagation();
   },true);
 
   document.addEventListener('click',event=>{
-    if(!editor.enabled||!(event.target instanceof Element)||event.target.closest('.mathin-source-node-handle'))return;
+    if(!editor.enabled||!(event.target instanceof Element))return;
     const node=event.target.closest('.aix-layout-node[data-aix-source-path]');
     if(!node||!metadata.has(nodePath(node)))return;
     if(!event.target.closest('[data-mathin-source-inline-editor]'))event.preventDefault();
@@ -187,45 +171,17 @@ const SOURCE_RUNTIME_EDITOR_BRIDGE = String.raw`<script data-mathin-source-runti
   document.addEventListener('focusin',event=>{
     if(!editor.enabled||!(event.target instanceof Element))return;
     const content=event.target.closest('[data-mathin-source-inline-editor]');
-    const node=content?.closest('.aix-layout-node[data-aix-source-path]');
-    const path=nodePath(node);
-    if(path)send('node-selected',{nodePath:path});
+    const path=nodePath(content?.closest('.aix-layout-node[data-aix-source-path]'));
+    if(path){send('node-selected',{nodePath:path});send('node-focus-change',{nodePath:path,focused:true})}
   },true);
 
   document.addEventListener('focusout',event=>{
     if(!editor.enabled||!(event.target instanceof HTMLElement)||!event.target.matches('[data-mathin-source-inline-editor]'))return;
-    const node=event.target.closest('.aix-layout-node[data-aix-source-path]');
-    const path=nodePath(node);
-    if(path)send('node-text-change',{nodePath:path,value:normalizeInlineText(event.target.innerText)});
-  },true);
-
-  window.addEventListener('pointermove',event=>{
-    if(!gesture||event.pointerId!==gesture.pointerId)return;
-    event.preventDefault();
-    const dx=(event.clientX-gesture.startX)/gesture.scale;
-    const dy=(event.clientY-gesture.startY)/gesture.scale;
-    const stepX=Math.max(1,number(editor.canvas.width,1200)/12);
-    const stepY=Math.max(1,number(editor.canvas.height,900)/9);
-    if(gesture.kind==='move'){
-      const x=snap(gesture.source.x+dx,stepX);
-      const y=snap(gesture.source.y+dy,stepY);
-      gesture.node.style.left=String(gesture.dom.x+x-gesture.source.x)+'px';
-      gesture.node.style.top=String(gesture.dom.y+y-gesture.source.y)+'px';
-      gesture.patch={x,y};
-    }else{
-      const width=Math.max(1,snap(gesture.source.width+dx,stepX));
-      const height=Math.max(1,snap(gesture.source.height+dy,stepY));
-      gesture.node.style.width=String(gesture.dom.width+width-gesture.source.width)+'px';
-      gesture.node.style.height=String(gesture.dom.height+height-gesture.source.height)+'px';
-      gesture.patch={width,height};
+    const path=nodePath(event.target.closest('.aix-layout-node[data-aix-source-path]'));
+    if(path){
+      send('node-text-change',{nodePath:path,value:normalizeInlineText(event.target.innerText)});
+      send('node-focus-change',{nodePath:path,focused:false});
     }
-  },true);
-
-  window.addEventListener('pointerup',event=>{
-    if(!gesture||event.pointerId!==gesture.pointerId)return;
-    const completed=gesture;
-    gesture=null;
-    if(completed.patch)send('node-transform-change',{nodePath:completed.path,patch:completed.patch});
   },true);
 
   const observe=()=>{
@@ -234,11 +190,15 @@ const SOURCE_RUNTIME_EDITOR_BRIDGE = String.raw`<script data-mathin-source-runti
     observer.observe(observedRoot,{subtree:true,childList:true});
     scheduleSync();
   };
+  window.addEventListener('resize',()=>requestAnimationFrame(sendGeometry),{passive:true});
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',observe,{once:true});else observe();
 })();
 </script>`;
 
-/** Add app-owned editing behavior without changing the immutable source package. */
+/**
+ * Add the minimal transport needed by the shared host editor. This script
+ * never renders authoring chrome; handles, outlines, and grids live in React.
+ */
 export function injectSourceRuntimeEditorBridge(html: string): string {
   return injectHeadSnippet(html, SOURCE_RUNTIME_EDITOR_BRIDGE);
 }
