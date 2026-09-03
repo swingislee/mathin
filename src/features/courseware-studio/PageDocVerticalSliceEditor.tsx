@@ -1,10 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { RotateCcw } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import {
@@ -34,7 +32,10 @@ import {
 } from "@/features/courseware-doc/courseware-4x3-strategy";
 import type { ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 import type { DocNode, PageDoc } from "@/features/courseware-doc/schema";
-import { useCoursewareEditHistory } from "@/features/courseware-doc/useCoursewareEditHistory";
+import {
+  useCoursewareEditHistory,
+  useCoursewareHistoryShortcuts,
+} from "@/features/courseware-doc/useCoursewareEditHistory";
 import { saveCoursewareDraftAction } from "./actions";
 import type { CoursewareTrack } from "./data";
 import { StagePreview } from "./StagePreview";
@@ -148,7 +149,6 @@ export function PageDocVerticalSliceEditor({
 }: PageDocVerticalSliceEditorProps) {
   const t = useTranslations("coursewareWorkspace");
   const textEditorT = useTranslations("coursewareTextEditor");
-  const elementEditorT = useTranslations("coursewareElementEditor");
   const adaptationT = useTranslations("coursewareFourByThree");
   const [doc, setDoc] = useState<PageDoc>(() => clone(initialDoc));
   const [savedDoc, setSavedDoc] = useState<PageDoc>(() => clone(initialDoc));
@@ -167,7 +167,6 @@ export function PageDocVerticalSliceEditor({
   );
   const displayedTab: EditorTab = coarseLayout ? "layout" : activeTab === "layout" ? "adjust" : activeTab;
   const docRef = useRef(clone(initialDoc));
-  const savedDocRef = useRef(clone(initialDoc));
   const revisionRef = useRef(baseRevisionNo);
   const fourByThreeRevisionRef = useRef(fourByThreeDraft.baseRevisionNo);
   const fourByThreeMaterializedRef = useRef(fourByThreeDraft.materialized);
@@ -193,6 +192,7 @@ export function PageDocVerticalSliceEditor({
   const editHistory = useCoursewareEditHistory({
     currentRef: docRef,
     restore: restoreFromHistory,
+    keyboardShortcuts: false,
   });
   const initialFourByThreeState = useMemo(
     () => courseware43SessionFromPageDoc(fourByThreeDraft.doc)
@@ -211,6 +211,8 @@ export function PageDocVerticalSliceEditor({
     doc: fourByThreeSource.doc,
     bindingUrls: fourByThreeSource.bindingUrls,
   }, initialFourByThreeState, handleFourByThreeStateChange);
+  const activeHistory = coarseLayout ? fourByThree : editHistory;
+  useCoursewareHistoryShortcuts(activeHistory);
 
   const selected = useMemo(() => selectedPath ? visit(doc.nodes, selectedPath) : null, [doc, selectedPath]);
   const selectedImageBindingKey = backgroundSelected
@@ -223,7 +225,6 @@ export function PageDocVerticalSliceEditor({
   const layerItems = useMemo(() => collectLayerItems(doc.nodes), [doc.nodes]);
   const contentChanged = changeSnapshot(doc, "content") !== changeSnapshot(savedDoc, "content");
   const layoutChanged = changeSnapshot(doc, "layout") !== changeSnapshot(savedDoc, "layout");
-  const isDirty = JSON.stringify(doc) !== JSON.stringify(savedDoc);
 
   const flush = useCallback(async (): Promise<boolean> => {
     if (savingRef.current) {
@@ -270,7 +271,6 @@ export function PageDocVerticalSliceEditor({
         fourByThree.markSaved();
       } else {
         revisionRef.current = result.data.revisionNo;
-        savedDocRef.current = clone(docSnapshot);
         setSavedDoc(clone(docSnapshot));
       }
       savedSequenceRef.current = sequence;
@@ -353,10 +353,10 @@ export function PageDocVerticalSliceEditor({
 
   const insertToolbar = (
     <CoursewarePageEditorToolbar
-      canUndo={editHistory.canUndo}
-      canRedo={editHistory.canRedo}
-      onUndo={editHistory.undo}
-      onRedo={editHistory.redo}
+      canUndo={activeHistory.canUndo}
+      canRedo={activeHistory.canRedo}
+      onUndo={activeHistory.undo}
+      onRedo={activeHistory.redo}
       snapToGrid={snapToGrid}
       onSnapToGridChange={setSnapToGrid}
     />
@@ -429,27 +429,6 @@ export function PageDocVerticalSliceEditor({
                   }}
                 />
                 <div className="border-t border-line pt-4">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    className="w-full"
-                    disabled={saveState === "saving" || !isDirty}
-                    onClick={() => {
-                      if (timerRef.current) window.clearTimeout(timerRef.current);
-                      editHistory.record(docRef.current, "reset-unsaved");
-                      const restored = clone(savedDocRef.current);
-                      docRef.current = restored;
-                      sequenceRef.current = savedSequenceRef.current;
-                      setDoc(restored);
-                      setSelectedPath(null);
-                      setSaveState("saved");
-                      setMessage("");
-                    }}
-                  >
-                    <RotateCcw className="size-4" />
-                    {t("verticalSliceReset")}
-                  </Button>
                   <p className="mt-3 text-xs leading-5 text-muted" role="status" aria-live="polite">
                     {message || t("verticalSliceReleaseImmutable")}
                   </p>

@@ -8,7 +8,7 @@
 >
 > **当前施工**：P6-AIX-2 已于 2026-08-13 关闭；当前由 R1-9/P6-9 采集 1305 讲正式来源 inventory、Storage/H5 对象审计与非执行者复核。
 >
-> **剩余项**：P6-9 全局量化验收和正式生产 release-1 重建见 doc 25 R1-9/15/18；§14 的 `DEV-CW-1` Step 0～7B 已获产品负责人确认。Step 7A “仅分流、旧入口继续并存”的结果被退回，Step 7B 已完成审核语义收口与旧链删除并通过人工验收。历史对象与审计记录继续保留。下一门是 Step 7 后、Step 8 前双端组件定稿；不得由此自动进入生产清理、整讲/批量内容改写或新的游戏/H5/工具能力。
+> **剩余项**：P6-9 全局量化验收和正式生产 release-1 重建见 doc 25 R1-9/15/18；§14 的 `DEV-CW-1` Step 0～8A 已获产品负责人确认。Step 7A “仅分流、旧入口继续并存”的结果被退回，Step 7B 已完成审核语义收口与旧链删除，Step 7C 完成三端组件源码复用审计，Step 8A 完成爱学习双轨 typed-patch 草稿并通过人工验收。历史对象与审计记录继续保留；不得由此自动进入生产清理、整讲/批量内容改写或新的游戏/H5/工具能力。
 >
 > **最后核对**：2026-09-02；§13 以前的来源与生产基线结论沿用原证据，§14 只依据当前仓库和本机 Docker 开发库只读核对，不代表 Xiaomi/生产事实。
 
@@ -591,9 +591,9 @@ sanitize 白名单按“移植过来的规则实际选择到的标签/属性”�
 
 ## 14. DEV-CW-1 课程产品统一课件工作区（待产品逐步确认）
 
-> **当前状态**：`STEP 7B REVIEW SEMANTICS AND LEGACY RETIREMENT / USER ACCEPTED`
+> **当前状态**：`STEP 8A SOURCE-RUNTIME DRAFT PERSISTENCE / USER ACCEPTED`
 >
-> **施工授权**：产品负责人已确认 Step 0～7B。Step 7B 已让教研审核统一承载正式课修改审核与教师微课入库审核；备课资料审核归入课次教学履约，并通过“我的待办”投影给审核人；尚未正式投产的旧 `/studio/courseware/[lectureId]` 编辑器、旧适配校对工作台、公开 `publish_cw_track_release` 及其批量适配发布链已退出。旧审核与 release 数据保留用于审计，公共资源保持资源治理。产品负责人于 2026-09-02 明确回复“完成”；Step 8、生产 migration 和任何生产数据库／Storage／release 写入仍需后续单独授权。
+> **施工授权**：产品负责人已确认 Step 0～8A。Step 7B 已让教研审核统一承载正式课修改审核与教师微课入库审核；备课资料审核归入课次教学履约，并通过“我的待办”投影给审核人；尚未正式投产的旧 `/studio/courseware/[lectureId]` 编辑器、旧适配校对工作台、公开 `publish_cw_track_release` 及其批量适配发布链已退出。Step 7C 复核三端共享组件的真实源码复用，Step 8A 让爱学习双轨草稿进入与 PageDoc 相同的自动保存与历史语义。旧审核与 release 数据保留用于审计，公共资源保持资源治理。后续步骤、生产 migration 和任何生产数据库／Storage／release 写入仍需单独授权。
 >
 > **推进原则**：一个批次只交付一个可人工审计的增量。每批机器检查通过后只记为 `READY FOR USER AUDIT`；必须收到产品负责人对该批布局和功能的明确确认，才能开始下一批。未回复、仅查看页面、机器检查通过或 Agent 自评均不构成确认。
 
@@ -760,7 +760,7 @@ Step 0 还需要产品负责人明确以下事项，规划不代替这些产品�
 | 7A 正式适配与教师微课审核分流 | `USER AUDITED / CHANGES REQUIRED` | 新增独立教师微课审核列表／详情 canonical 路径与侧栏入口；正式课审核页仍保留旧适配队列及其五个页签，两套状态机和旧 URL 继续并存。机器检查曾通过，但只能证明拆页合同 | 2026-09-02 产品负责人确认该结果没有恢复“审核”的业务语义，并指出 Step 1～6 已替代旧编辑／适配发布路径；要求删除未投产旧实现而非继续兼容 | 进入 7B；7A 不作为可交付终态 |
 | 7B 审核语义收口与旧链退役 | `USER ACCEPTED` | `a4f051e`：唯一 `/dashboard/courseware/review` 以“正式课／教师微课”投影两类教研审核；微课详情保留 canonical 对象路由，独立列表和旧兼容详情退出；备课资料审核由工作项进入课次对象，指定审核人在课次内批准／退回；旧 Studio 与旧适配校对／发布组件删除。`de72449`：migration `20260902000500_courseware_legacy_publish_retirement` 移除直发与批量适配发布 RPC，历史审核、release 和适配审计数据不删除。机器检查为 TypeScript、受影响 ESLint、9 个定向测试文件 58/58 及退休单测 3/3 | 2026-09-02 产品负责人此前明确“旧编辑器直接从仓库移除”“备课资料审核作为教学环节”，本轮人工验收后回复“完成” | 只关闭 Step 7B；Step 8、生产 migration、生产数据库／Storage／release 写入仍需单独授权 |
 | 7C 三端组件定稿与源码复用审计 | `USER ACCEPTED` | 产品负责人已确认预览／正式课／微课三端视觉。源码审计沿 React 树、状态所有权、动作注册与保存事务逐层核对：三端直接调用同一 `CoursewareWorkbench`、`CoursewareWorkbenchPageRail`、`CoursewareWorkbenchPager`、`CoursewareEditorAdapterSurface`、`CoursewarePageEditorToolbar`、`CoursewarePageElementInspector`、`CoursewareLayerPanel`、`CoursewareTextElementInspector` 与 `CoursewareFourByThreeAdapter`；没有按三端复制一套这些组件。PageDoc、source-runtime、composition 各自保留 schema、renderer 和 patch translator，这是来源能力边界，不是视觉壳复制 | 2026-09-02 产品负责人明确“Step 7C：三端组件视觉已经通过”，并要求以代码而非视觉确认复用；上述源码与定向结构合同完成该复核 | 授权 Step 8A 单页 source-runtime typed-patch 草稿；不授权批量或生产 |
-| 8A source-runtime 双轨草稿持久化 | `READY FOR USER AUDIT` | 统一 loader 不再从 release 预览临时构造爱学习编辑器，而是与 PageDoc 一样读取 native/adapted active draft head。共享保存控件与 `saveCoursewareDraftAction` 以 800ms 自动保存：节点文字／几何／层级／显隐写当前轨，粗排策略只写 adapted 轨。migration `20260902000900_courseware_source_runtime_drafts` 增加严格文档 shape 与 typed patch gate：只允许稳定 `sourcePath` 节点的 x/y/宽高/zIndex/html/编辑样式和一个宿主 4:3 策略变化；来源、viewport、runtime、binding、behavior、producer 未知字段、节点身份／顺序不可变。current head、release 与来源 snapshot 不推进。TypeScript、受影响 ESLint、4 个定向 Vitest 文件 24/24、本机 begin/rollback 双轨／不可变性 SQL 断言通过 | 待产品负责人用一个爱学习页面验证文字／位置修改后自动保存、刷新恢复、16:9/4:3 轨隔离及粗排刷新恢复 | 不开放正式课新增游戏/H5/工具、5,508 页批量改写、生产 migration、Storage 或 release 写入 |
+| 8A source-runtime 双轨草稿持久化 | `USER ACCEPTED` | 统一 loader 不再从 release 预览临时构造爱学习编辑器，而是与 PageDoc 一样读取 native/adapted active draft head。共享保存控件与 `saveCoursewareDraftAction` 以 800ms 自动保存：节点文字／几何／层级／显隐写当前轨，粗排策略只写 adapted 轨。migration `20260902000900_courseware_source_runtime_drafts` 增加严格文档 shape 与 typed patch gate：只允许稳定 `sourcePath` 节点的 x/y/宽高/zIndex/html/编辑样式和一个宿主 4:3 策略变化；来源、viewport、runtime、binding、behavior、producer 未知字段、节点身份／顺序不可变。current head、release 与来源 snapshot 不推进。验收后又把 PageDoc／source-runtime 的粗调与微调历史统一接入顶栏唯一一组撤销／重做，自动保存只更新保存基线而不清空过去／未来历史；右栏重复的撤销、重置和还原入口已删除，快捷键统一为 `Ctrl/Cmd+Z`、`Ctrl/Cmd+Shift+Z` 与 `Ctrl+Y`。定向 Vitest 3 文件 21/21 与受影响 ESLint 通过；全库 TypeScript 仅被并行学生导入开发的两个非课件错误阻断 | 2026-09-03 产品负责人明确回复“已验收”，随后指出自动保存后历史入口失效与按钮重复；该复审缺陷已按同一共享历史合同修复 | 不开放正式课新增游戏/H5/工具、5,508 页批量改写、生产 migration、Storage 或 release 写入 |
 
 Step 1 变更边界：只新增只读数据 loader、连续三栏工作区、画布自适应叶子、课程预览直达按钮、双语文案和定向合同；首轮修订移动课程产品主操作、增加 4:3 缺失的 16:9 降级提示，并把单轨舞台约束为可用宽高内等比完整显示。第二轮把三点菜单移入同一命令行，使对照缺轨时保留双栏空态，按不可变爱学习布局重建旧 4:3 投影，并移除中央冗余标题行和底部状态条。爱学习判定与旧权威在本机开发库 5,508 页上比对为 0 差异；普通 1,200×900 源母版直接呈现为完整 4:3，带动画、嵌入 H5、原生题型或宽画布的 424 页保留顶部兼容带。不接 editor action，不新增 schema/RPC，不写数据库/Storage，不删除讲次工作区或旧 Studio。机器证据为 TypeScript、受影响 ESLint、双语键 5,264×2、定向 Vitest 3 文件 18/18；这些证据不代表布局已经获得产品确认。
 

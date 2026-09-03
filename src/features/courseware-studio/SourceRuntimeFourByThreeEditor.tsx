@@ -1,9 +1,7 @@
 "use client";
 
-import { RotateCcw } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CoursewareEditorAdapterSurface } from "@/features/courseware-doc/CoursewareEditorAdapterSurface";
 import {
@@ -40,7 +38,10 @@ import {
   defaultCourseware43Session,
   type Courseware43SessionState,
 } from "@/features/courseware-doc/courseware-4x3-strategy";
-import { useCoursewareEditHistory } from "@/features/courseware-doc/useCoursewareEditHistory";
+import {
+  useCoursewareEditHistory,
+  useCoursewareHistoryShortcuts,
+} from "@/features/courseware-doc/useCoursewareEditHistory";
 import { saveCoursewareDraftAction } from "./actions";
 import type { CoursewareTrack } from "./data";
 import {
@@ -92,13 +93,11 @@ export function SourceRuntimeFourByThreeEditor({
   const t = useTranslations("coursewareWorkspace");
   const elementEditorT = useTranslations("coursewareElementEditor");
   const [doc, setDoc] = useState<SourceRuntimePageDoc>(() => clone(initialDoc));
-  const [savedDoc, setSavedDoc] = useState<SourceRuntimePageDoc>(() => clone(initialDoc));
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [snapToGrid, setSnapToGrid] = useState(true);
   const [revision, setRevision] = useState(0);
   const [message, setMessage] = useState("");
   const docRef = useRef(clone(initialDoc));
-  const initialRef = useRef(clone(initialDoc));
   const coarseLayout = view === "compare";
   const canPersistFourByThree = coarseLayout;
   const [fourByThreeMaterialized, setFourByThreeMaterialized] = useState(fourByThreeDraft.materialized);
@@ -130,7 +129,11 @@ export function SourceRuntimeFourByThreeEditor({
     setRevision((current) => current + 1);
     markDirty();
   }, [markDirty]);
-  const editHistory = useCoursewareEditHistory({ currentRef: docRef, restore });
+  const editHistory = useCoursewareEditHistory({
+    currentRef: docRef,
+    restore,
+    keyboardShortcuts: false,
+  });
 
   const patchNode = useCallback((nodePath: string, mutate: (node: DocNode) => void) => {
     const previous = docRef.current;
@@ -151,8 +154,6 @@ export function SourceRuntimeFourByThreeEditor({
   const layers = useMemo(() => layerItems(nodes), [nodes]);
   const bridgeNodes = useMemo(() => sourceRuntimeEditorBridgeNodes(doc), [doc]);
   const bridgeCanvas = useMemo(() => sourceRuntimeEditorCanvas(doc), [doc]);
-  const changed = JSON.stringify(doc.payload.data) !== JSON.stringify(savedDoc.payload.data);
-
   const initialFourByThreeState = useMemo(
     () => sourceRuntimeCourseware43Session(fourByThreeDraft.doc)
       ?? defaultCourseware43Session("source-runtime"),
@@ -169,6 +170,8 @@ export function SourceRuntimeFourByThreeEditor({
     doc: coarseLayout ? fourByThreeSource.doc : doc,
     bindingUrls: coarseLayout ? fourByThreeSource.bindingUrls : bindingUrls,
   }, initialFourByThreeState, handleFourByThreeStateChange);
+  const activeHistory = coarseLayout ? fourByThree : editHistory;
+  useCoursewareHistoryShortcuts(activeHistory);
 
   const flush = useCallback(async (): Promise<boolean> => {
     if (savingRef.current) {
@@ -215,7 +218,6 @@ export function SourceRuntimeFourByThreeEditor({
         fourByThree.markSaved();
       } else {
         revisionRef.current = result.data.revisionNo;
-        setSavedDoc(clone(docSnapshot));
       }
       savedSequenceRef.current = sequence;
       setMessage("");
@@ -309,10 +311,10 @@ export function SourceRuntimeFourByThreeEditor({
 
   const toolbar = (
     <CoursewarePageEditorToolbar
-      canUndo={editHistory.canUndo}
-      canRedo={editHistory.canRedo}
-      onUndo={editHistory.undo}
-      onRedo={editHistory.redo}
+      canUndo={activeHistory.canUndo}
+      canRedo={activeHistory.canRedo}
+      onUndo={activeHistory.undo}
+      onRedo={activeHistory.redo}
       snapToGrid={snapToGrid}
       onSnapToGridChange={setSnapToGrid}
     />
@@ -377,21 +379,6 @@ export function SourceRuntimeFourByThreeEditor({
           }}
         />
         <div className="border-t border-line pt-4">
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            className="w-full"
-            disabled={!changed}
-            onClick={() => {
-              const current = docRef.current;
-              editHistory.record(current, "source-reset-session");
-              restore(clone(initialRef.current));
-            }}
-          >
-            <RotateCcw className="size-4" />
-            {t("sourceEditorResetSession")}
-          </Button>
           {message ? <p className="mt-3 text-xs leading-5 text-destructive" role="alert">{message}</p> : null}
           <p className="mt-3 text-xs leading-5 text-muted" role="status">
             {supported ? t("sourceEditorDraftDescription") : t("sourceEditorUnsupportedDescription")}

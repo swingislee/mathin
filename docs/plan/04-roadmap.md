@@ -210,7 +210,7 @@ Phase 1～5 的本机隔离 Supabase、固定开发身份、migration LF checksu
 
 `DEV-CW-1` 回应课程产品中 E 系列、爱学习及后续导入课程缺少单页 16:9/4:3 修订闭环的问题，权威规划见 [doc 16 §14](16-p6-courseware-platform.md#14-dev-cw-1-课程产品统一课件工作区待产品逐步确认)。目标主路径为“课程产品 → 课程/版本 → 讲次 → 指定页面 → 统一课件工作区”，并把共享内容修订、分轨版式、页面上下文资源替换、插入能力和 draft/review/release 放在同一对象上下文内。研发任务只保留责任／待处理投影，公共资源保留高级治理与回滚；旧适配校对与旧 Studio 不再作为平行生产空间。
 
-产品负责人于 2026-08-31～09-02 依次确认 Step 0～7C。Step 3B 把文字／图片／形状节点与图层能力收敛为共享组件；Step 4A/4B 打通共享 4:3 控制器、旧 A～F 映射和单页草稿；Step 5A/5B 打通页面上下文影响预览、单样本替换与回滚；Step 6 让爱学习来源 Viewer 通过共享编辑桥获得选择、文字、几何、图层、网格与历史能力。Step 7B 已收敛审核入口并退役旧直发／批量适配发布链；Step 7C 的三端视觉定稿后，源码复核确认工作台、目录、翻页、编辑 chrome、元素检查器、图层、文字编辑器和 4:3 控制器均为直接组件复用，只有不同文档 schema 的 renderer 与 typed patch translator 保持 adapter 隔离。Step 8A 已在本机接通爱学习双轨草稿持久化：节点修改写当前轨，4:3 粗排写 adapted 轨，来源包／指纹／binding／节点身份和 release 不变；状态为 **DEVELOPMENT READY / AWAITING PRODUCT OWNER FUNCTIONAL ACCEPTANCE**。未批量改写 5,508 页，未触碰生产，也不改变 R1-Live Gate 2。
+产品负责人于 2026-08-31～09-03 依次确认 Step 0～8A。Step 3B 把文字／图片／形状节点与图层能力收敛为共享组件；Step 4A/4B 打通共享 4:3 控制器、旧 A～F 映射和单页草稿；Step 5A/5B 打通页面上下文影响预览、单样本替换与回滚；Step 6 让爱学习来源 Viewer 通过共享编辑桥获得选择、文字、几何、图层、网格与历史能力。Step 7B 已收敛审核入口并退役旧直发／批量适配发布链；Step 7C 的三端视觉定稿后，源码复核确认工作台、目录、翻页、编辑 chrome、元素检查器、图层、文字编辑器和 4:3 控制器均为直接组件复用，只有不同文档 schema 的 renderer 与 typed patch translator 保持 adapter 隔离。Step 8A 已在本机接通并由产品负责人验收爱学习双轨草稿持久化：节点修改写当前轨，4:3 粗排写 adapted 轨，来源包／指纹／binding／节点身份和 release 不变；后续复审把粗调／微调历史统一到顶栏唯一一组撤销／重做，自动保存不再清空本地历史。状态为 **USER ACCEPTED**。未批量改写 5,508 页，未触碰生产，也不改变 R1-Live Gate 2。
 
 #### DEV-SCHOOL-OPS-1 · 学辅运营与教学履约主干
 

@@ -922,7 +922,7 @@ export function CoursewareEditorHistoryControls({
       </CoursewareEditorToolbarButton>
       <CoursewareEditorToolbarButton
         aria-label={redoLabel}
-        title={`${redoLabel} · Ctrl+Shift+Z`}
+        title={`${redoLabel} · Ctrl+Shift+Z / Ctrl+Y`}
         aria-keyshortcuts="Control+Shift+Z Meta+Shift+Z Control+Y Meta+Y"
         disabled={!canRedo}
         onClick={onRedo}

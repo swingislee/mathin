@@ -162,6 +162,11 @@ describe("shared formal-course 4:3 adapter", () => {
     expect(shared).toContain("draftReady?: boolean");
     expect(shared).toContain('t(persistence === "draft" && !draftReady');
     expect(shared).toContain("markSaved");
+    expect(shared).toContain("canRedo: boolean");
+    expect(shared).toContain("setSavedState(state)");
+    expect(shared).not.toContain("setHistory([])");
+    expect(shared).not.toContain('t("undo")');
+    expect(shared).not.toContain('t("reset")');
     expect(shared).toContain("courseware43ViewportPlacement(strategy, sourceAspect(source))");
     expect(shared).toContain("Courseware43StrategyIcon");
     expect(shared).toContain("CoursewareCompactChoiceGroup");
@@ -182,6 +187,8 @@ describe("shared formal-course 4:3 adapter", () => {
     expect(sourceAdapter).toContain("patchSourceRuntimeEditorNode");
     expect(sourceAdapter).toContain("sourcePath");
     expect(pageDocEditor).toContain("CoursewarePageEditorToolbar");
+    expect(pageDocEditor).toContain("const activeHistory = coarseLayout ? fourByThree : editHistory");
+    expect(sourceEditor).toContain("const activeHistory = coarseLayout ? fourByThree : editHistory");
     expect(sharedToolbar).toContain("CoursewareInsertionToolbar");
     expect(sharedToolbar).toContain("CoursewareGridSnapToggle");
     expect(shared).not.toContain("decorateStage");

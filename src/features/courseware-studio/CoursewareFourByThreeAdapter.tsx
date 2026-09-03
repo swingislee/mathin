@@ -1,10 +1,9 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { LayoutTemplate, RotateCcw, Undo2 } from "lucide-react";
+import { LayoutTemplate } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   COURSEWARE_43_STRATEGIES,
   courseware43ViewportPlacement,
@@ -30,12 +29,12 @@ type Courseware43AdapterSource =
 export interface CoursewareFourByThreeController {
   source: Courseware43AdapterSource;
   state: Courseware43SessionState;
-  initialState: Courseware43SessionState;
   canUndo: boolean;
+  canRedo: boolean;
   changed: boolean;
   selectStrategy: (strategy: Courseware43Strategy) => void;
   undo: () => void;
-  reset: () => void;
+  redo: () => void;
   markSaved: () => void;
 }
 
@@ -48,13 +47,15 @@ export function useCoursewareFourByThreeAdapter(
     () => persistedState ?? defaultCourseware43Session(source.kind),
     [persistedState, source.kind],
   );
-  const [initialState, setInitialState] = useState<Courseware43SessionState>(defaultState);
+  const [savedState, setSavedState] = useState<Courseware43SessionState>(defaultState);
   const [state, setState] = useState<Courseware43SessionState>(defaultState);
-  const [history, setHistory] = useState<Courseware43SessionState[]>([]);
+  const [past, setPast] = useState<Courseware43SessionState[]>([]);
+  const [future, setFuture] = useState<Courseware43SessionState[]>([]);
 
   const commit = useCallback((next: Courseware43SessionState) => {
     if (state.strategy === next.strategy) return;
-    setHistory((items) => [...items, state].slice(-20));
+    setPast((items) => [...items, state].slice(-20));
+    setFuture([]);
     setState(next);
     onStateChange?.(next);
   }, [onStateChange, state]);
@@ -63,29 +64,36 @@ export function useCoursewareFourByThreeAdapter(
     commit({ strategy });
   }, [commit, source.kind]);
   const undo = useCallback(() => {
-    const previous = history.at(-1);
+    const previous = past.at(-1);
     if (!previous) return;
+    setFuture((items) => [...items, state].slice(-20));
     setState(previous);
-    setHistory(history.slice(0, -1));
+    setPast(past.slice(0, -1));
     onStateChange?.(previous);
-  }, [history, onStateChange]);
-  const reset = useCallback(() => commit(initialState), [commit, initialState]);
+  }, [onStateChange, past, state]);
+  const redo = useCallback(() => {
+    const next = future.at(-1);
+    if (!next) return;
+    setPast((items) => [...items, state].slice(-20));
+    setState(next);
+    setFuture(future.slice(0, -1));
+    onStateChange?.(next);
+  }, [future, onStateChange, state]);
   const markSaved = useCallback(() => {
-    setInitialState(state);
-    setHistory([]);
+    setSavedState(state);
   }, [state]);
 
   return useMemo<CoursewareFourByThreeController>(() => ({
     source,
     state,
-    initialState,
-    canUndo: history.length > 0,
-    changed: state.strategy !== initialState.strategy,
+    canUndo: past.length > 0,
+    canRedo: future.length > 0,
+    changed: state.strategy !== savedState.strategy,
     selectStrategy,
     undo,
-    reset,
+    redo,
     markSaved,
-  }), [history.length, initialState, markSaved, reset, selectStrategy, source, state, undo]);
+  }), [future.length, markSaved, past.length, redo, savedState.strategy, selectStrategy, source, state, undo]);
 }
 
 const STRATEGY_COPY: Record<Courseware43Strategy, { label: string; description: string }> = {
@@ -143,7 +151,7 @@ export function CoursewareFourByThreePanel({
   className?: string;
 }) {
   const t = useTranslations("coursewareFourByThree");
-  const { source, state, canUndo, changed, selectStrategy, undo, reset } = adapter;
+  const { source, state, changed, selectStrategy } = adapter;
   const activeCopy = STRATEGY_COPY[state.strategy];
   const strategyChoices = COURSEWARE_43_STRATEGIES.map((strategy, index) => ({
     value: strategy,
@@ -187,16 +195,6 @@ export function CoursewareFourByThreePanel({
         <p className="text-xs leading-5 text-muted">{t("sourceRuntimeHint")}</p>
       ) : null}
 
-      <div className="grid grid-cols-2 gap-2 border-t border-line pt-4">
-        <Button type="button" size="sm" variant="secondary" disabled={!canUndo} onClick={undo}>
-          <Undo2 className="size-4" />
-          {t("undo")}
-        </Button>
-        <Button type="button" size="sm" variant="ghost" disabled={!changed} onClick={reset}>
-          <RotateCcw className="size-4" />
-          {t("reset")}
-        </Button>
-      </div>
     </section>
   );
 }

@@ -11,16 +11,52 @@ import {
 const DEFAULT_HISTORY_LIMIT = 20;
 const DEFAULT_COALESCE_MS = 650;
 
+export function useCoursewareHistoryShortcuts({
+  canUndo,
+  canRedo,
+  undo,
+  redo,
+  enabled = true,
+}: {
+  canUndo: boolean;
+  canRedo: boolean;
+  undo: () => void;
+  redo: () => void;
+  enabled?: boolean;
+}) {
+  useEffect(() => {
+    if (!enabled) return;
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.defaultPrevented || !(event.ctrlKey || event.metaKey) || event.altKey) return;
+      if (event.target instanceof HTMLElement) {
+        if (event.target.closest('[role="dialog"]')) return;
+        if (event.target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])')) return;
+      }
+      const key = event.key.toLowerCase();
+      const wantsUndo = key === "z" && !event.shiftKey;
+      const wantsRedo = (key === "z" && event.shiftKey) || key === "y";
+      if ((!wantsUndo || !canUndo) && (!wantsRedo || !canRedo)) return;
+      event.preventDefault();
+      if (wantsUndo) undo();
+      else redo();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [canRedo, canUndo, enabled, redo, undo]);
+}
+
 export function useCoursewareEditHistory<T>({
   currentRef,
   restore,
   limit = DEFAULT_HISTORY_LIMIT,
   coalesceMs = DEFAULT_COALESCE_MS,
+  keyboardShortcuts = true,
 }: {
   currentRef: MutableRefObject<T>;
   restore: (value: T) => void;
   limit?: number;
   coalesceMs?: number;
+  keyboardShortcuts?: boolean;
 }) {
   const pastRef = useRef<T[]>([]);
   const futureRef = useRef<T[]>([]);
@@ -73,21 +109,13 @@ export function useCoursewareEditHistory<T>({
     syncAvailability();
   }, [currentRef, limit, restore, syncAvailability]);
 
-  useEffect(() => {
-    const onKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
-      if (event.target instanceof HTMLElement && event.target.closest('[role="dialog"]')) return;
-      const key = event.key.toLowerCase();
-      const wantsUndo = key === "z" && !event.shiftKey;
-      const wantsRedo = (key === "z" && event.shiftKey) || key === "y";
-      if (!wantsUndo && !wantsRedo) return;
-      event.preventDefault();
-      if (wantsUndo) undo();
-      else redo();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [redo, undo]);
+  useCoursewareHistoryShortcuts({
+    canUndo: availability.canUndo,
+    canRedo: availability.canRedo,
+    undo,
+    redo,
+    enabled: keyboardShortcuts,
+  });
 
   return {
     canUndo: availability.canUndo,

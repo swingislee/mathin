@@ -79,6 +79,8 @@ describe("shared courseware editor workbench", () => {
     expect(history).toContain('window.addEventListener("keydown", onKeyDown)');
     expect(history).toContain('key === "z"');
     expect(history).toContain('key === "y"');
+    expect(history).toContain('keyboardShortcuts = true');
+    expect(history).toContain('[contenteditable]:not([contenteditable="false"])');
     expect(formal).toContain("useCoursewareEditHistory");
     expect(microcourse).toContain("useCoursewareEditHistory");
     expect(formal).toContain("<CoursewarePageEditorToolbar");
@@ -86,6 +88,26 @@ describe("shared courseware editor workbench", () => {
     expect(microcourse).toContain("<CoursewareEditorHistoryControls");
     expect(formal).toContain("editHistory.record(previous");
     expect(microcourse).toContain("editHistory.record(previous");
+  });
+
+  it("keeps one visible history control and switches it to the active 4:3 history", () => {
+    const sharedAdapter = read("src", "features", "courseware-studio", "CoursewareFourByThreeAdapter.tsx");
+    const pageDoc = read("src", "features", "courseware-studio", "PageDocVerticalSliceEditor.tsx");
+    const sourceRuntime = read("src", "features", "courseware-studio", "SourceRuntimeFourByThreeEditor.tsx");
+
+    expect(sharedAdapter).toContain("canRedo: boolean");
+    expect(sharedAdapter).toContain("setFuture((items) => [...items, state].slice(-20))");
+    expect(sharedAdapter).toContain("setSavedState(state)");
+    expect(sharedAdapter).not.toContain("setPast([])");
+    expect(sharedAdapter).not.toContain('t("undo")');
+    expect(sharedAdapter).not.toContain('t("reset")');
+    for (const editor of [pageDoc, sourceRuntime]) {
+      expect(editor).toContain("const activeHistory = coarseLayout ? fourByThree : editHistory");
+      expect(editor).toContain("useCoursewareHistoryShortcuts(activeHistory)");
+      expect(editor).toContain("canUndo={activeHistory.canUndo}");
+      expect(editor).not.toContain("source-reset-session");
+      expect(editor).not.toContain("reset-unsaved");
+    }
   });
 
   it("uses one text-element editor and one DocStage edit behavior in formal and microcourse authoring", () => {
