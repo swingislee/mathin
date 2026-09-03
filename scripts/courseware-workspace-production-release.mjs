@@ -236,6 +236,47 @@ printf 'CURRENT=%s\\nPREVIOUS=%s\\nDEPLOY_LOCK=%s\\nBACKUP_LOCK=%s\\nSERVICE_DIS
   return Object.fromEntries(runRemoteScript(options, script).split(/\r?\n/).map((line) => line.split(/=(.*)/s).slice(0, 2)));
 }
 
+function systemPostflight(options) {
+  const commitShort = options.candidateCommit.slice(0, 12);
+  const script = `set -Eeuo pipefail
+service_root=/home/swing/services/mathin
+backup_root=/mnt/openlist-disk/Backups/Mathin
+current=$(readlink -f "$service_root/current")
+previous=$(readlink -f "$service_root/previous")
+current_commit=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1],encoding="utf-8"))["commit"])' "$current/release.json")
+built_at=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1],encoding="utf-8"))["builtAt"])' "$current/release.json")
+backup=$(find "$backup_root" -mindepth 1 -maxdepth 1 -type d -name 'mathin-db-prechange-*-courseware-workspace-${commitShort}' -printf '%T@ %p\\n' | sort -nr | head -1 | cut -d' ' -f2-)
+test -n "$backup"
+(cd "$backup" && sha256sum -c SHA256SUMS >/dev/null)
+manifest="$current/.next/server/app-paths-manifest.json"
+test -f "$manifest"
+courseware_route=false
+legacy_route=false
+grep -q '/dashboard/courseware/lectures/' "$manifest" && courseware_route=true
+grep -q '/studio/courseware/' "$manifest" && legacy_route=true
+active=$(systemctl --user is-active mathin.service)
+substate=$(systemctl --user show mathin.service -p SubState --value)
+restarts=$(systemctl --user show mathin.service -p NRestarts --value)
+exit_status=$(systemctl --user show mathin.service -p ExecMainStatus --value)
+journal_errors=$(journalctl --user -u mathin.service --since "$built_at" -p err -q --no-pager | wc -l)
+loopback=$(curl --noproxy '*' -fsS --max-time 5 http://127.0.0.1:3131/api/health)
+caddy=$(curl --noproxy '*' --resolve mathin.club:443:127.0.0.1 -fsS --max-time 5 https://mathin.club/api/health)
+zh_login=$(curl --noproxy '*' --resolve mathin.club:443:127.0.0.1 -sS -o /dev/null -w '%{http_code}' --max-time 10 https://mathin.club/zh/login)
+en_login=$(curl --noproxy '*' --resolve mathin.club:443:127.0.0.1 -sS -o /dev/null -w '%{http_code}' --max-time 10 https://mathin.club/en/login)
+zh_protected=$(curl --noproxy '*' --resolve mathin.club:443:127.0.0.1 -sS -o /dev/null -w '%{http_code}' --max-time 10 https://mathin.club/zh/dashboard/courseware)
+en_protected=$(curl --noproxy '*' --resolve mathin.club:443:127.0.0.1 -sS -o /dev/null -w '%{http_code}' --max-time 10 https://mathin.club/en/dashboard/courseware)
+printf 'CURRENT=%s\\nPREVIOUS=%s\\nCURRENT_COMMIT=%s\\nACTIVE=%s\\nSUBSTATE=%s\\nNRESTARTS=%s\\nEXIT_STATUS=%s\\nJOURNAL_ERRORS=%s\\nCOURSEWARE_ROUTE=%s\\nLEGACY_ROUTE=%s\\nBACKUP_PATH=%s\\nBACKUP_VERIFY=ok\\nLOOPBACK=%s\\nCADDY=%s\\nZH_LOGIN=%s\\nEN_LOGIN=%s\\nZH_PROTECTED=%s\\nEN_PROTECTED=%s\\n' "$current" "$previous" "$current_commit" "$active" "$substate" "$restarts" "$exit_status" "$journal_errors" "$courseware_route" "$legacy_route" "$backup" "$loopback" "$caddy" "$zh_login" "$en_login" "$zh_protected" "$en_protected"
+`;
+  const result = Object.fromEntries(runRemoteScript(options, script).split(/\r?\n/).map((line) => line.split(/=(.*)/s).slice(0, 2)));
+  if (result.CURRENT_COMMIT !== options.candidateCommit) fail("production current commit mismatch");
+  if (result.ACTIVE !== "active" || result.SUBSTATE !== "running" || result.NRESTARTS !== "0" || result.EXIT_STATUS !== "0") fail("production service postflight failed");
+  if (result.JOURNAL_ERRORS !== "0") fail("production journal contains release errors");
+  if (result.COURSEWARE_ROUTE !== "true" || result.LEGACY_ROUTE !== "false") fail("production route manifest mismatch");
+  if (result.BACKUP_VERIFY !== "ok") fail("backup verification failed");
+  if (result.ZH_LOGIN !== "200" || result.EN_LOGIN !== "200" || result.ZH_PROTECTED !== "307" || result.EN_PROTECTED !== "307") fail("production HTTP postflight failed");
+  return result;
+}
+
 const options = parseOptions(process.argv.slice(2));
 const migrations = loadCandidateMigrations(options.candidateRoot);
 const migrationHashes = migrations.map(({ name, sha256 }) => ({ name, sha256 }));
@@ -269,5 +310,6 @@ if (options.mode === "preflight") {
     const row = database.candidateMigrations.find((candidate) => candidate.version === migration.version);
     if (row?.checksum !== migration.sha256) fail(`ledger checksum mismatch: ${migration.version}`);
   }
-  process.stdout.write(`${JSON.stringify({ ok: true, database, migrationHashes }, null, 2)}\n`);
+  const system = systemPostflight(options);
+  process.stdout.write(`${JSON.stringify({ ok: true, database, system, migrationHashes }, null, 2)}\n`);
 }
