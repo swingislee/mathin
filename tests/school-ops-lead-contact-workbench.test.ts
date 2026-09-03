@@ -15,6 +15,11 @@ import {
   parseLeadPageSize,
   type LeadPoolRow,
 } from "@/features/school/lead-contract";
+import {
+  defaultInvitationState,
+  invitationDraftIsComplete,
+  invitationStatesForKind,
+} from "@/features/school/invitation-contract";
 
 const root = process.cwd();
 const read = (...segments: string[]) => fs.readFileSync(path.join(root, ...segments), "utf8");
@@ -84,6 +89,34 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(contact).toContain("insert into public.lead_communications");
   });
 
+  it("moves invitation coordination out of the contact status and keeps a natural-language handoff history", () => {
+    const migration = read(
+      "supabase",
+      "migrations",
+      "20260903001100_school_ops_invitation_coordination.sql",
+    );
+    const page = read("src", "app", "[locale]", "dashboard", "invitations", "page.tsx");
+    const workbench = read("src", "features", "school", "InvitationCoordinationWorkbench.tsx");
+    const draftFields = read("src", "features", "school", "InvitationDraftFields.tsx");
+
+    expect(migration).toContain("create table public.lead_invitation_threads");
+    expect(migration).toContain("create table public.lead_invitation_events");
+    expect(migration).toContain("proposed_time_text text not null default ''");
+    expect(migration).toContain("lead_invitation_threads_one_active_idx");
+    expect(migration).toContain("alter table public.lead_invitation_threads enable row level security");
+    expect(migration).toContain("create or replace function public.record_lead_contact_v2");
+    expect(migration).toContain("create or replace function public.update_lead_invitation");
+    expect(migration).toContain("p_invitation_state");
+    expect(migration).not.toContain("p_next_action_at");
+    expect(page).toContain("InvitationCoordinationWorkbench");
+    expect(page).toContain("DashboardCommandTabs");
+    expect(workbench).toContain("copyWithFallback");
+    expect(workbench).toContain("copyRelay");
+    expect(workbench).toContain("sticky left-0 top-0");
+    expect(draftFields).toContain('"assessment_1v1", "activity", "waiting_activity"');
+    expect(draftFields).toContain("invitationStatesForKind");
+  });
+
   it("separates dense seed management from the inline first-contact entry table", () => {
     const page = read("src", "app", "[locale]", "dashboard", "leads", "page.tsx");
     const table = read("src", "features", "school", "LeadPoolTable.tsx");
@@ -141,7 +174,8 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(workbench).toContain("displayedOutcome === value");
     expect(workbench).toContain("showSavedDetails");
     expect(workbench).toContain("savedWechatFact");
-    expect(workbench).toContain("savedVisitFact");
+    expect(workbench).toContain("lead.activeInvitation");
+    expect(workbench).toContain("InvitationDraftFields");
     expect(workbench).toContain("savedInterest");
     expect(workbench).toContain("lead.lastContactNote || t(\"noContactNote\")");
     expect(workbench).toContain('active ? "whitespace-pre-wrap break-words" : "truncate"');
@@ -168,17 +202,54 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(contract).not.toContain("@/lib/supabase/server");
     expect(actions).toContain('authorizedClient("student.assign")');
     expect(actions).toContain('authorizedClient("followup.write")');
-    expect(actions).toContain('p_next_action_at: nullableRpcArg<string>(null)');
+    expect(actions).toContain('supabase.rpc("record_lead_contact_v2"');
+    expect(actions).toContain("p_invitation_state");
     expect(query).toContain('.from("lead_communications")');
+    expect(query).toContain('.from("lead_invitation_threads")');
     expect(query).not.toContain('.from("lead_next_actions")');
   });
 
   it("previews the same automatic contact pools as the database rule", () => {
-    expect(deriveLeadContactDestination("unreachable", false)).toBe("uncontacted");
-    expect(deriveLeadContactDestination("connected", false)).toBe("contacted");
-    expect(deriveLeadContactDestination("declined", false)).toBe("nurture");
-    expect(deriveLeadContactDestination("connected", true)).toBe("intent_confirmed");
-    expect(deriveLeadContactDestination("invalid_number", false)).toBe("invalid");
+    expect(deriveLeadContactDestination("unreachable")).toBe("uncontacted");
+    expect(deriveLeadContactDestination("connected")).toBe("contacted");
+    expect(deriveLeadContactDestination("declined")).toBe("nurture");
+    expect(deriveLeadContactDestination("invalid_number")).toBe("invalid");
+  });
+
+  it("requires concrete coordination facts only when the workflow has reached that state", () => {
+    expect(defaultInvitationState("assessment_1v1")).toBe("coordinating_time");
+    expect(defaultInvitationState("activity")).toBe("awaiting_parent");
+    expect(defaultInvitationState("waiting_activity")).toBe("waiting_activity");
+    expect(invitationStatesForKind("assessment_1v1")).toEqual([
+      "coordinating_time",
+      "awaiting_teacher",
+      "awaiting_parent",
+      "confirmed",
+    ]);
+    expect(invitationDraftIsComplete({
+      kind: "assessment_1v1",
+      state: "coordinating_time",
+      activityId: null,
+      assessorId: null,
+      proposedTimeText: "",
+      locationText: "",
+    })).toBe(true);
+    expect(invitationDraftIsComplete({
+      kind: "assessment_1v1",
+      state: "awaiting_teacher",
+      activityId: null,
+      assessorId: null,
+      proposedTimeText: "周六下午",
+      locationText: "",
+    })).toBe(false);
+    expect(invitationDraftIsComplete({
+      kind: "assessment_1v1",
+      state: "awaiting_parent",
+      activityId: null,
+      assessorId: "00000000-0000-0000-0000-000000000001",
+      proposedTimeText: "周六下午",
+      locationText: "一号教室",
+    })).toBe(true);
   });
 
   it("filters and sorts the currently loaded lead page by its data columns", () => {
@@ -208,6 +279,7 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
       wechatAdded: null,
       visitCommitted: null,
       interestLevel: null,
+      activeInvitation: null,
       ...overrides,
     });
     const rows = [

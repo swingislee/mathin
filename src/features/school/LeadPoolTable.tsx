@@ -283,7 +283,11 @@ export function LeadPoolTable({
                           <span className="text-[11px] text-muted">{formatAt(lead.lastContactAt)}</span>
                           {lead.interestLevel ? <Badge variant="secondary" className="px-1.5 py-0 text-[11px] leading-4">{lead.interestLevel}</Badge> : null}
                           {lead.wechatAdded === true ? <Badge variant="outline" className="px-1.5 py-0 text-[11px] leading-4">{t("wechatAddedShort")}</Badge> : null}
-                          {lead.visitCommitted === true ? <Badge variant="outline" className="px-1.5 py-0 text-[11px] leading-4">{t("visitCommittedShort")}</Badge> : null}
+                          {lead.activeInvitation ? (
+                            <Badge variant="outline" className="px-1.5 py-0 text-[11px] leading-4">
+                              {t(`invitationKind_${lead.activeInvitation.kind}`)} · {t(`invitationState_${lead.activeInvitation.state}`)}
+                            </Badge>
+                          ) : null}
                         </div>
                         <p className="mt-0.5 max-w-64 truncate text-[11px] leading-4 text-muted" title={lead.lastContactNote || undefined}>
                           {lead.lastContactNote || (lead.contactCount > 1 ? t("contactCount", { count: lead.contactCount }) : t("noContactNote"))}

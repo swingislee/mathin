@@ -1,3 +1,5 @@
+import type { InvitationSummary } from "./invitation-contract";
+
 /** Client-safe lead constants and DTOs shared by the server reader and table UI. */
 export const LEAD_STATUSES = [
   "uncontacted",
@@ -20,10 +22,8 @@ export type LeadInterestLevel = "A" | "B" | "C";
 /** Mirror the database routing rule so the entry row can preview its destination. */
 export function deriveLeadContactDestination(
   outcome: LeadContactOutcome,
-  visitCommitted: boolean,
 ): LeadStatus {
   if (outcome === "invalid_number") return "invalid";
-  if (visitCommitted) return "intent_confirmed";
   if (outcome === "declined") return "nurture";
   if (outcome === "unreachable") return "uncontacted";
   return "contacted";
@@ -71,4 +71,5 @@ export interface LeadPoolRow {
   wechatAdded: boolean | null;
   visitCommitted: boolean | null;
   interestLevel: LeadInterestLevel | null;
+  activeInvitation: InvitationSummary | null;
 }

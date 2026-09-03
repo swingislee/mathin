@@ -12,6 +12,7 @@ import {
   type LeadPageSize,
   type LeadStatus,
 } from "./lead-contract";
+import type { InvitationKind, InvitationState } from "./invitation-contract";
 
 interface LeadDbRow {
   id: string;
@@ -50,6 +51,18 @@ interface LeadCommunicationDbRow {
   visit_committed: boolean | null;
   interest_level: LeadInterestLevel | null;
   occurred_at: string;
+}
+
+interface LeadInvitationDbRow {
+  id: string;
+  lead_id: string;
+  kind: InvitationKind;
+  state: InvitationState;
+  activity_id: string | null;
+  assessor_id: string | null;
+  proposed_time_text: string;
+  location_text: string;
+  updated_at: string;
 }
 
 function pickParam(value: string | string[] | undefined): string | undefined {
@@ -124,7 +137,7 @@ export async function listLeadPool(
   const suggestedStudentIds = [...new Set(rows
     .map((row) => row.suggested_student_id)
     .filter((id): id is string => Boolean(id)))];
-  const [sourceResult, interestResult, communicationResult, ownerResult, studentResult] = await Promise.all([
+  const [sourceResult, interestResult, communicationResult, invitationResult, ownerResult, studentResult] = await Promise.all([
     supabase
       .from("lead_source_records")
       .select("id,lead_id,submitted_at,acquisition_method,promoter,location_text,source_marked_duplicate,created_at")
@@ -146,6 +159,14 @@ export async function listLeadPool(
       .order("occurred_at", { ascending: false })
       .limit(5_000)
       .returns<LeadCommunicationDbRow[]>(),
+    supabase
+      .from("lead_invitation_threads")
+      .select("id,lead_id,kind,state,activity_id,assessor_id,proposed_time_text,location_text,updated_at")
+      .in("lead_id", leadIds)
+      .not("state", "in", "(completed,cancelled)")
+      .order("updated_at", { ascending: false })
+      .limit(5_000)
+      .returns<LeadInvitationDbRow[]>(),
     ownerIds.length > 0
       ? supabase.from("profiles").select("id,display_name").in("id", ownerIds)
       : Promise.resolve({ data: [], error: null }),
@@ -156,6 +177,9 @@ export async function listLeadPool(
   if (sourceResult.error) throw new Error(sourceResult.error.message);
   if (interestResult.error) throw new Error(interestResult.error.message);
   if (communicationResult.error) throw new Error(communicationResult.error.message);
+  const invitationUnavailable = invitationResult.error?.code === "42P01"
+    || invitationResult.error?.code === "PGRST205";
+  if (invitationResult.error && !invitationUnavailable) throw new Error(invitationResult.error.message);
   if (ownerResult.error) throw new Error(ownerResult.error.message);
   if (studentResult.error) throw new Error(studentResult.error.message);
 
@@ -175,6 +199,28 @@ export async function listLeadPool(
   }
   const ownerNames = new Map((ownerResult.data ?? []).map((row) => [row.id, row.display_name]));
   const studentNames = new Map((studentResult.data ?? []).map((row) => [row.id, row.name]));
+  const invitationByLead = new Map<string, LeadInvitationDbRow>();
+  for (const invitation of invitationResult.data ?? []) {
+    if (!invitationByLead.has(invitation.lead_id)) invitationByLead.set(invitation.lead_id, invitation);
+  }
+  const invitationActivityIds = [...new Set([...invitationByLead.values()]
+    .map((row) => row.activity_id)
+    .filter((id): id is string => Boolean(id)))];
+  const invitationAssessorIds = [...new Set([...invitationByLead.values()]
+    .map((row) => row.assessor_id)
+    .filter((id): id is string => Boolean(id)))];
+  const [invitationActivityResult, invitationAssessorResult] = await Promise.all([
+    invitationActivityIds.length > 0
+      ? supabase.from("activities").select("id,title,scheduled_at").in("id", invitationActivityIds)
+      : Promise.resolve({ data: [], error: null }),
+    invitationAssessorIds.length > 0
+      ? supabase.from("profiles").select("id,display_name").in("id", invitationAssessorIds)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (invitationActivityResult.error) throw new Error(invitationActivityResult.error.message);
+  if (invitationAssessorResult.error) throw new Error(invitationAssessorResult.error.message);
+  const invitationActivities = new Map((invitationActivityResult.data ?? []).map((row) => [row.id, row]));
+  const invitationAssessors = new Map((invitationAssessorResult.data ?? []).map((row) => [row.id, row.display_name]));
   const communicationsByLead = new Map<string, LeadCommunicationDbRow[]>();
   for (const communication of communicationResult.data ?? []) {
     const entries = communicationsByLead.get(communication.lead_id) ?? [];
@@ -193,6 +239,10 @@ export async function listLeadPool(
       const latest = sources[0];
       const communications = communicationsByLead.get(row.id) ?? [];
       const lastContact = communications[0];
+      const invitation = invitationByLead.get(row.id);
+      const invitationActivity = invitation?.activity_id
+        ? invitationActivities.get(invitation.activity_id)
+        : undefined;
       return {
         id: row.id,
         provisionalStudentName: row.provisional_student_name,
@@ -224,6 +274,19 @@ export async function listLeadPool(
         wechatAdded: lastContact?.wechat_added ?? null,
         visitCommitted: lastContact?.visit_committed ?? null,
         interestLevel: lastContact?.interest_level ?? null,
+        activeInvitation: invitation ? {
+          id: invitation.id,
+          kind: invitation.kind,
+          state: invitation.state,
+          activityId: invitation.activity_id,
+          activityTitle: invitationActivity?.title ?? "",
+          activityScheduledAt: invitationActivity?.scheduled_at ?? null,
+          assessorId: invitation.assessor_id,
+          assessorName: invitation.assessor_id ? invitationAssessors.get(invitation.assessor_id) ?? "" : "",
+          proposedTimeText: invitation.proposed_time_text,
+          locationText: invitation.location_text,
+          updatedAt: invitation.updated_at,
+        } : null,
       };
     }),
   };

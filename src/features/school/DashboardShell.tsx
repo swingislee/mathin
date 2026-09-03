@@ -3,6 +3,7 @@
 import {
   Baby,
   Building2,
+  CalendarCheck2,
   CalendarClock,
   CalendarRange,
   ChartNoAxesColumnIncreasing,
@@ -54,6 +55,7 @@ import { resolveActiveNavHref, type SchoolNavItem } from "./nav";
 const ICONS: Record<string, ComponentType<{ size?: number; strokeWidth?: number }>> = {
   home: LayoutDashboard,
   leads: Sprout,
+  invitations: CalendarCheck2,
   followups: PhoneForwarded,
   students: Users,
   coordination: Handshake,

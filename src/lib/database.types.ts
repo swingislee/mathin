@@ -4840,6 +4840,152 @@ export type Database = {
           },
         ]
       }
+      lead_invitation_events: {
+        Row: {
+          channel: string
+          from_state: string | null
+          id: string
+          invitation_id: string
+          note: string
+          occurred_at: string
+          recorded_by: string
+          to_state: string
+        }
+        Insert: {
+          channel?: string
+          from_state?: string | null
+          id?: string
+          invitation_id: string
+          note?: string
+          occurred_at?: string
+          recorded_by: string
+          to_state: string
+        }
+        Update: {
+          channel?: string
+          from_state?: string | null
+          id?: string
+          invitation_id?: string
+          note?: string
+          occurred_at?: string
+          recorded_by?: string
+          to_state?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_invitation_events_invitation_id_fkey"
+            columns: ["invitation_id"]
+            referencedRelation: "lead_invitation_threads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_invitation_events_recorded_by_fkey"
+            columns: ["recorded_by"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_invitation_threads: {
+        Row: {
+          activity_id: string | null
+          assessor_id: string | null
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string
+          created_by: string
+          id: string
+          kind: string
+          lead_id: string
+          location_text: string
+          owner_id_at_open: string | null
+          proposed_time_text: string
+          state: string
+          summary: string
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          activity_id?: string | null
+          assessor_id?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          kind: string
+          lead_id: string
+          location_text?: string
+          owner_id_at_open?: string | null
+          proposed_time_text?: string
+          state: string
+          summary?: string
+          updated_at?: string
+          updated_by: string
+        }
+        Update: {
+          activity_id?: string | null
+          assessor_id?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          kind?: string
+          lead_id?: string
+          location_text?: string
+          owner_id_at_open?: string | null
+          proposed_time_text?: string
+          state?: string
+          summary?: string
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_invitation_threads_activity_id_fkey"
+            columns: ["activity_id"]
+            referencedRelation: "activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_invitation_threads_assessor_id_fkey"
+            columns: ["assessor_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_invitation_threads_closed_by_fkey"
+            columns: ["closed_by"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_invitation_threads_created_by_fkey"
+            columns: ["created_by"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_invitation_threads_lead_id_fkey"
+            columns: ["lead_id"]
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_invitation_threads_owner_id_at_open_fkey"
+            columns: ["owner_id_at_open"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_invitation_threads_updated_by_fkey"
+            columns: ["updated_by"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_import_row_reviews: {
         Row: {
           batch_id: string
@@ -14089,6 +14235,13 @@ export type Database = {
           variant_count: number
         }[]
       }
+      list_invitation_assessors: {
+        Args: never
+        Returns: {
+          display_name: string
+          user_id: string
+        }[]
+      }
       list_room_options_v2: {
         Args: { p_include_inactive?: boolean }
         Returns: {
@@ -14745,6 +14898,22 @@ export type Database = {
           p_note: string
           p_outcome: string
           p_visit_committed: boolean
+          p_wechat_added: boolean
+        }
+        Returns: Json
+      }
+      record_lead_contact_v2: {
+        Args: {
+          p_activity_id: string
+          p_assessor_id: string
+          p_interest_level: string
+          p_invitation_kind: string
+          p_invitation_state: string
+          p_lead_id: string
+          p_location_text: string
+          p_note: string
+          p_outcome: string
+          p_proposed_time_text: string
           p_wechat_added: boolean
         }
         Returns: Json
@@ -16090,6 +16259,20 @@ export type Database = {
           p_classroom_id: string
           p_expected_unstarted_session_count?: number
           p_room_id?: string
+        }
+        Returns: Json
+      }
+      update_lead_invitation: {
+        Args: {
+          p_activity_id: string
+          p_assessor_id: string
+          p_channel: string
+          p_invitation_id: string
+          p_kind: string
+          p_location_text: string
+          p_note: string
+          p_proposed_time_text: string
+          p_state: string
         }
         Returns: Json
       }

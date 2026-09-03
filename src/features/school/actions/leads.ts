@@ -2,6 +2,13 @@
 
 import { z } from "zod";
 import { actionError, type ActionResult } from "@/lib/action-result";
+import {
+  INVITATION_KINDS,
+  INVITATION_STATES,
+  invitationDraftIsComplete,
+  invitationStatesForKind,
+  type InvitationDraft,
+} from "../invitation-contract";
 import { authorizedClient, nullableRpcArg } from "./guards";
 import { COMMON_CODES, parse, text, uuid } from "./schemas";
 
@@ -13,17 +20,33 @@ const assignLeadsSchema = z.object({
   staffUserId: uuid,
 });
 
+const invitationDraftSchema = z.object({
+  kind: z.enum(INVITATION_KINDS),
+  state: z.enum(INVITATION_STATES),
+  activityId: uuid.nullable(),
+  assessorId: uuid.nullable(),
+  proposedTimeText: text(200),
+  locationText: text(200),
+});
+
 const leadContactSchema = z.object({
   leadId: uuid,
   outcome: z.enum(LEAD_CONTACT_OUTCOMES),
   note: text(2000),
   wechatAdded: z.boolean().nullable(),
-  visitCommitted: z.boolean().nullable(),
   interestLevel: z.enum(LEAD_INTEREST_LEVELS).nullable(),
+  invitation: invitationDraftSchema.nullable(),
 }).superRefine((value, context) => {
   if (["unreachable", "invalid_number"].includes(value.outcome)
-      && (value.wechatAdded === true || value.visitCommitted === true)) {
+      && value.wechatAdded === true) {
     context.addIssue({ code: "custom", message: "INVALID_CONTACT_FACT" });
+  }
+  if (value.invitation) {
+    if (value.outcome !== "connected"
+        || !invitationStatesForKind(value.invitation.kind).includes(value.invitation.state)
+        || !invitationDraftIsComplete(value.invitation)) {
+      context.addIssue({ code: "custom", message: "INVALID_INVITATION" });
+    }
   }
 });
 
@@ -31,8 +54,8 @@ export type LeadContactInput = {
   outcome: (typeof LEAD_CONTACT_OUTCOMES)[number];
   note: string;
   wechatAdded: boolean | null;
-  visitCommitted: boolean | null;
   interestLevel: (typeof LEAD_INTEREST_LEVELS)[number] | null;
+  invitation: InvitationDraft | null;
 };
 
 export async function assignLeadsAction(leadIds: string[], staffUserId: string): Promise<ActionResult<{ count: number }>> {
@@ -57,14 +80,19 @@ export async function recordLeadContactAction(
   try {
     const value = parse(leadContactSchema, { leadId, ...input });
     const { supabase } = await authorizedClient("followup.write");
-    const { error } = await supabase.rpc("record_lead_contact", {
+    const invitation = value.invitation;
+    const { error } = await supabase.rpc("record_lead_contact_v2", {
       p_lead_id: value.leadId,
       p_outcome: value.outcome,
       p_note: value.note,
       p_wechat_added: nullableRpcArg(value.wechatAdded),
-      p_visit_committed: nullableRpcArg(value.visitCommitted),
       p_interest_level: nullableRpcArg(value.interestLevel),
-      p_next_action_at: nullableRpcArg<string>(null),
+      p_invitation_kind: nullableRpcArg(invitation?.kind ?? null),
+      p_invitation_state: nullableRpcArg(invitation?.state ?? null),
+      p_activity_id: nullableRpcArg(invitation?.activityId ?? null),
+      p_assessor_id: nullableRpcArg(invitation?.assessorId ?? null),
+      p_proposed_time_text: invitation?.proposedTimeText ?? "",
+      p_location_text: invitation?.locationText ?? "",
     });
     if (error) throw new Error(error.message);
     return { ok: true };
@@ -73,6 +101,9 @@ export async function recordLeadContactAction(
       "LEAD_UNASSIGNED",
       "LEAD_CLOSED",
       "FORBIDDEN_SCOPE",
+      "INVALID_INVITATION",
+      "ACTIVITY_NOT_FOUND",
+      "ASSESSOR_UNAVAILABLE",
       "NOT_FOUND",
       ...COMMON_CODES,
     ]);

@@ -11,6 +11,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { recordLeadContactAction, type LeadContactInput } from "./actions/leads";
 import { DashboardTableShell } from "./dashboard-page";
+import { InvitationDraftFields } from "./InvitationDraftFields";
+import {
+  invitationDraftIsComplete,
+  type InvitationActivityOption,
+  type InvitationAssessorOption,
+  type InvitationDraft,
+} from "./invitation-contract";
 import {
   deriveLeadContactDestination,
   type LeadContactOutcome,
@@ -77,20 +84,26 @@ function ContactEntryRow({
   active,
   onActivate,
   onSaved,
+  activities,
+  assessors,
+  locale,
 }: {
   lead: LeadPoolRow;
   formatAt: (value: string) => string;
   active: boolean;
   onActivate: (leadId: string) => void;
   onSaved: (leadId: string, input: LeadContactInput) => void;
+  activities: InvitationActivityOption[];
+  assessors: InvitationAssessorOption[];
+  locale: string;
 }) {
   const t = useTranslations("school.leads");
   const rowRef = useRef<HTMLTableRowElement>(null);
   const submittedInputRef = useRef<LeadContactInput | null>(null);
   const [outcome, setOutcome] = useState<LeadContactOutcome | "">("");
   const [wechatState, setWechatState] = useState<TernaryChoice>("");
-  const [visitState, setVisitState] = useState<TernaryChoice>("");
   const [interestLevel, setInterestLevel] = useState<LeadInterestLevel | "">("");
+  const [invitation, setInvitation] = useState<InvitationDraft | null>(null);
   const [note, setNote] = useState("");
 
   useEffect(() => {
@@ -102,8 +115,8 @@ function ContactEntryRow({
   const reset = () => {
     setOutcome("");
     setWechatState("");
-    setVisitState("");
     setInterestLevel("");
+    setInvitation(null);
     setNote("");
   };
   const contactRun = useAction(recordLeadContactAction, {
@@ -123,10 +136,10 @@ function ContactEntryRow({
   });
 
   const reachable = outcome === "connected" || outcome === "declined";
-  const visitCommitted = outcome === "connected" && visitState === "yes";
   const destination = outcome
-    ? deriveLeadContactDestination(outcome, visitCommitted)
+    ? deriveLeadContactDestination(outcome)
     : null;
+  const canSubmit = !invitation || invitationDraftIsComplete(invitation);
   const displayedOutcome = outcome || lead.lastContactOutcome;
   const savedReachable = lead.lastContactOutcome === "connected" || lead.lastContactOutcome === "declined";
   const showSavedDetails = Boolean(lead.lastContactOutcome && (savedReachable || lead.lastContactNote));
@@ -134,11 +147,6 @@ function ContactEntryRow({
     ? t("wechatAddedShort")
     : lead.wechatAdded === false
       ? t("wechatNotAdded")
-      : t("notDiscussed");
-  const savedVisitFact = lead.visitCommitted === true
-    ? t("visitCommittedShort")
-    : lead.visitCommitted === false
-      ? t("visitNotCommitted")
       : t("notDiscussed");
   const savedInterest = lead.interestLevel
     ? t(`interest_${lead.interestLevel}`)
@@ -161,20 +169,15 @@ function ContactEntryRow({
             ? false
             : null
         : null,
-      visitCommitted: nextOutcome === "connected"
-        ? visitState === "yes"
-          ? true
-          : visitState === "no"
-            ? false
-            : null
-        : null,
       interestLevel: nextReachable && interestLevel ? interestLevel : null,
+      invitation: nextOutcome === "connected" ? invitation : null,
     };
   };
 
   const submit = (nextOutcome: LeadContactOutcome | "" = outcome) => {
     if (!nextOutcome) return;
     const input = inputFor(nextOutcome);
+    if (input.invitation && !invitationDraftIsComplete(input.invitation)) return;
     submittedInputRef.current = input;
     contactRun.run(lead.id, input);
   };
@@ -184,10 +187,10 @@ function ContactEntryRow({
     setOutcome(nextOutcome);
     if (nextOutcome === "unreachable" || nextOutcome === "invalid_number") {
       setWechatState("");
-      setVisitState("");
       setInterestLevel("");
+      setInvitation(null);
     } else if (nextOutcome === "declined") {
-      setVisitState("");
+      setInvitation(null);
     }
     if (QUICK_SUBMIT_OUTCOMES.includes(nextOutcome)) submit(nextOutcome);
   };
@@ -212,11 +215,6 @@ function ContactEntryRow({
     { value: "", label: t("notDiscussed") },
     { value: "yes", label: t("wechatAddedShort") },
     { value: "no", label: t("wechatNotAdded") },
-  ];
-  const visitChoices: ReadonlyArray<{ value: TernaryChoice; label: string }> = [
-    { value: "", label: t("notDiscussed") },
-    { value: "yes", label: t("visitCommittedShort") },
-    { value: "no", label: t("visitNotCommitted") },
   ];
   const interestChoices: ReadonlyArray<{
     value: LeadInterestLevel | "";
@@ -345,11 +343,11 @@ function ContactEntryRow({
                     {savedWechatFact}
                   </Badge>
                 </div>
-                {lead.lastContactOutcome === "connected" ? (
+                {lead.activeInvitation ? (
                   <div className="flex items-center gap-1 text-[11px] text-muted">
-                    <span>{t("visitFact")}</span>
+                    <span>{t("invitationFact")}</span>
                     <Badge variant="outline" className="px-1.5 py-0 text-[10px] font-normal leading-4 text-ink">
-                      {savedVisitFact}
+                      {t(`invitationKind_${lead.activeInvitation.kind}`)} · {t(`invitationState_${lead.activeInvitation.state}`)}
                     </Badge>
                   </div>
                 ) : null}
@@ -385,15 +383,6 @@ function ContactEntryRow({
                   disabled={contactRun.pending}
                   onChange={setWechatState}
                 />
-                {outcome === "connected" ? (
-                  <DirectChoiceGroup
-                    label={t("visitFact")}
-                    value={visitState}
-                    choices={visitChoices}
-                    disabled={contactRun.pending}
-                    onChange={setVisitState}
-                  />
-                ) : null}
                 <DirectChoiceGroup
                   label={t("interestLevel")}
                   value={interestLevel}
@@ -404,17 +393,33 @@ function ContactEntryRow({
               </div>
             ) : null}
 
+            {outcome === "connected" ? (
+              <InvitationDraftFields
+                value={invitation}
+                activities={activities}
+                assessors={assessors}
+                locale={locale}
+                disabled={contactRun.pending}
+                onChange={setInvitation}
+              />
+            ) : null}
+
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-[11px] leading-4 text-muted" aria-live="polite">
                 {destination
-                  ? t("contactDestination", { status: t(`status_${destination}`) })
+                  ? invitation
+                    ? t("contactDestinationWithInvitation", {
+                        status: t(`status_${destination}`),
+                        queue: t(`invitationState_${invitation.state}`),
+                      })
+                    : t("contactDestination", { status: t(`status_${destination}`) })
                   : t("contactDestinationPending")}
               </p>
               <Button
                 type="button"
                 size="sm"
                 className="h-8 whitespace-nowrap"
-                disabled={contactRun.pending}
+                disabled={contactRun.pending || !canSubmit}
                 onClick={() => submit()}
               >
                 {contactRun.pending
@@ -435,9 +440,13 @@ function ContactEntryRow({
 export function LeadFirstContactWorkbench({
   leads,
   locale,
+  activities,
+  assessors,
 }: {
   leads: LeadPoolRow[];
   locale: string;
+  activities: InvitationActivityOption[];
+  assessors: InvitationAssessorOption[];
 }) {
   const t = useTranslations("school.leads");
   const [sessionLeads, setSessionLeads] = useState(leads);
@@ -468,7 +477,7 @@ export function LeadFirstContactWorkbench({
     setActiveLeadId(nextLead?.id ?? null);
 
     const savedAt = new Date().toISOString();
-    const destination = deriveLeadContactDestination(input.outcome, input.visitCommitted === true);
+    const destination = deriveLeadContactDestination(input.outcome);
     setSessionLeads((current) => current.map((lead) => lead.id === leadId
       ? {
           ...lead,
@@ -478,8 +487,21 @@ export function LeadFirstContactWorkbench({
           lastContactOutcome: input.outcome,
           lastContactNote: input.note,
           wechatAdded: input.wechatAdded,
-          visitCommitted: input.visitCommitted,
           interestLevel: input.interestLevel,
+          activeInvitation: input.invitation ? {
+            id: lead.activeInvitation?.id ?? `session-${lead.id}`,
+            ...input.invitation,
+            activityTitle: input.invitation.activityId
+              ? activities.find((activity) => activity.id === input.invitation?.activityId)?.title ?? ""
+              : "",
+            activityScheduledAt: input.invitation.activityId
+              ? activities.find((activity) => activity.id === input.invitation?.activityId)?.scheduledAt ?? null
+              : null,
+            assessorName: input.invitation.assessorId
+              ? assessors.find((assessor) => assessor.userId === input.invitation?.assessorId)?.displayName ?? ""
+              : "",
+            updatedAt: savedAt,
+          } : lead.activeInvitation,
         }
       : lead));
   };
@@ -516,6 +538,9 @@ export function LeadFirstContactWorkbench({
                 active={lead.id === resolvedActiveLeadId}
                 onActivate={setActiveLeadId}
                 onSaved={recordAndAdvance}
+                activities={activities}
+                assessors={assessors}
+                locale={locale}
               />
             ))}
           </TableBody>

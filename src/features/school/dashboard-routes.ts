@@ -181,6 +181,15 @@ export const DASHBOARD_ROUTES = {
     createSurface: "derived",
     nav: { labelKey: "leads", group: "subjectOperations" },
   },
+  invitations: {
+    href: "/dashboard/invitations",
+    kind: "queue",
+    environments: STAFF_ONLY,
+    permission: "followup.view",
+    // 电联只发起邀约；时间、老师与家长确认在这里按状态接续，不创建虚构的日历待办。
+    createSurface: "derived",
+    nav: { labelKey: "invitations", group: "subjectOperations" },
+  },
   followups: {
     href: "/dashboard/followups",
     kind: "queue",

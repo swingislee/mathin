@@ -20,6 +20,7 @@ import { LeadPoolBatchActions, LeadPoolSelectionProvider } from "@/features/scho
 import { LeadPoolPagination } from "@/features/school/LeadPoolPagination";
 import { LeadFirstContactWorkbench } from "@/features/school/LeadFirstContactWorkbench";
 import { LeadPoolTable } from "@/features/school/LeadPoolTable";
+import { listInvitationOptions } from "@/features/school/invitations";
 import { LEAD_DEFAULT_PAGE_SIZE, type LeadPageSize } from "@/features/school/lead-contract";
 import { listLeadPool, parseLeadPoolFilters } from "@/features/school/leads";
 import { listStaffMembers } from "@/features/school/staff";
@@ -45,21 +46,24 @@ export default async function LeadsPage({
   const canAssign = perms.has("student.assign");
   const canContact = perms.has("followup.write");
   const filters = parseLeadPoolFilters(rawSearchParams, canScopeAll);
-  const [{ leads, count, pageSize }, assignees] = await Promise.all([
-    listLeadPool(user.id, filters),
-    canAssign
-      ? listStaffMembers().then((members) => members
-          .filter((member) => member.isActive && member.canFollowUp)
-          .map((member) => ({ userId: member.userId, displayName: member.displayName })))
-      : Promise.resolve([]),
-  ]);
-  const maxPage = Math.max(1, Math.ceil(count / pageSize));
   const activeQueue = filters.scope === "unassigned"
     ? "unassigned"
     : filters.scope === "mine" && filters.status === "uncontacted"
       ? "first_contact"
       : filters.scope;
   const isFirstContactWorkbench = activeQueue === "first_contact" && canContact;
+  const [{ leads, count, pageSize }, assignees, invitationOptions] = await Promise.all([
+    listLeadPool(user.id, filters),
+    canAssign
+      ? listStaffMembers().then((members) => members
+          .filter((member) => member.isActive && member.canFollowUp)
+          .map((member) => ({ userId: member.userId, displayName: member.displayName })))
+      : Promise.resolve([]),
+    isFirstContactWorkbench
+      ? listInvitationOptions()
+      : Promise.resolve({ activities: [], assessors: [] }),
+  ]);
+  const maxPage = Math.max(1, Math.ceil(count / pageSize));
   const hasKeywordFilter = Boolean(filters.q);
   const assignableIds = leads
     .filter((lead) => lead.status !== "invalid" && lead.status !== "converted")
@@ -158,7 +162,12 @@ export default async function LeadsPage({
         {leads.length === 0 ? (
           <DashboardEmptyCard>{t(isFirstContactWorkbench ? "firstContactEmpty" : "empty")}</DashboardEmptyCard>
         ) : isFirstContactWorkbench ? (
-          <LeadFirstContactWorkbench leads={leads} locale={locale} />
+          <LeadFirstContactWorkbench
+            leads={leads}
+            locale={locale}
+            activities={invitationOptions.activities}
+            assessors={invitationOptions.assessors}
+          />
         ) : (
           <LeadPoolTable
             leads={leads}
