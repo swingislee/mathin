@@ -279,14 +279,14 @@ export function InvitationCoordinationWorkbench({
 
   return (
     <DashboardTableShell>
-      <Table className="w-full min-w-[70rem] text-xs" containerClassName="max-h-[calc(100dvh-13rem)] overflow-auto">
+      <Table className="w-full min-w-[64rem] text-xs" containerClassName="max-h-[calc(100dvh-13rem)] overflow-auto">
         <TableHeader>
           <TableRow>
-            <TableHead className="sticky left-0 top-0 z-30 h-9 min-w-64 border-r border-line bg-card px-2">{t("leadColumn")}</TableHead>
-            <TableHead className="sticky top-0 z-20 h-9 min-w-44 bg-card px-2">{t("kindColumn")}</TableHead>
-            <TableHead className="sticky top-0 z-20 h-9 min-w-[28rem] bg-card px-2">{t("arrangementColumn")}</TableHead>
-            <TableHead className="sticky top-0 z-20 h-9 min-w-40 bg-card px-2">{t("stateColumn")}</TableHead>
-            <TableHead className="sticky top-0 z-20 h-9 min-w-40 bg-card px-2">{t("updatedColumn")}</TableHead>
+            <TableHead className="sticky left-0 top-0 z-30 h-9 min-w-56 border-r border-line bg-card px-2">{t("leadColumn")}</TableHead>
+            <TableHead className="sticky top-0 z-20 h-9 min-w-36 bg-card px-2">{t("kindColumn")}</TableHead>
+            <TableHead className="sticky top-0 z-20 h-9 min-w-96 bg-card px-2">{t("arrangementColumn")}</TableHead>
+            <TableHead className="sticky top-0 z-20 h-9 min-w-36 bg-card px-2">{t("stateColumn")}</TableHead>
+            <TableHead className="sticky top-0 z-20 h-9 min-w-32 bg-card px-2">{t("updatedColumn")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
