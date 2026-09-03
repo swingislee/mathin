@@ -243,7 +243,7 @@ function ContactEntryRow({
       onKeyDown={handleRowKeyDown}
     >
       <TableCell
-        className="sticky left-0 z-10 min-w-64 border-r border-line bg-card px-2 py-2 align-top"
+        className="sticky left-0 z-10 min-w-56 border-r border-line bg-card px-2 py-2 align-top"
         style={active
           ? { backgroundColor: "color-mix(in srgb, var(--card) 90%, var(--moon))" }
           : undefined}
@@ -269,7 +269,7 @@ function ContactEntryRow({
         ) : null}
       </TableCell>
 
-      <TableCell className="min-w-72 max-w-96 px-2 py-2 align-top">
+      <TableCell className="min-w-60 max-w-80 px-2 py-2 align-top">
         <p className="truncate text-xs text-ink" title={lead.acquisitionLocation || undefined}>
           {lead.acquisitionLocation || t("acquisitionLocationMissing")}
         </p>
@@ -288,7 +288,7 @@ function ContactEntryRow({
         </div>
       </TableCell>
 
-      <TableCell className="min-w-[46rem] px-2 py-2 align-top">
+      <TableCell className="min-w-[38rem] px-2 py-2 align-top">
         <div className="flex items-start gap-2">
           <div className="flex shrink-0 flex-wrap gap-1.5">
             {CONTACT_OUTCOME_SHORTCUTS.map(({ key, outcome: value }) => {
@@ -521,12 +521,12 @@ export function LeadFirstContactWorkbench({
       </div>
 
       <DashboardTableShell>
-        <Table className="w-full min-w-[76rem] text-xs" containerClassName="max-h-[calc(100dvh-15rem)] overflow-auto">
+        <Table className="w-full min-w-[67rem] text-xs" containerClassName="max-h-[calc(100dvh-15rem)] overflow-auto">
           <TableHeader>
             <TableRow>
-              <TableHead className="sticky left-0 top-0 z-30 h-8 min-w-64 bg-card px-2">{t("seed")}</TableHead>
-              <TableHead className="sticky top-0 z-20 h-8 min-w-72 bg-card px-2">{t("firstContactContext")}</TableHead>
-              <TableHead className="sticky top-0 z-20 h-8 min-w-[46rem] bg-card px-2">{t("firstContactEntry")}</TableHead>
+              <TableHead className="sticky left-0 top-0 z-30 h-8 min-w-56 bg-card px-2">{t("seed")}</TableHead>
+              <TableHead className="sticky top-0 z-20 h-8 min-w-60 bg-card px-2">{t("firstContactContext")}</TableHead>
+              <TableHead className="sticky top-0 z-20 h-8 min-w-[38rem] bg-card px-2">{t("firstContactEntry")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
