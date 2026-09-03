@@ -138,7 +138,10 @@ describe("teacher microcourse authoring UX", () => {
     expect(prep).toContain("!detail.coursewareFrozenAt && (canViewPrepArchive || canAuthorMicrocourseProposal)");
     expect(prep).toContain("const editorTemplate = frozenEditorState?.template ?? template");
     expect(prep).not.toContain("selectedMicrocourseTemplate");
-    expect(prep).toContain("customOnly={!detail.lectureId && sessionDocs.length === 0}");
+    expect(prep).not.toContain("customOnly=");
+    expect(prep).toContain("canUnlockFrozen={frozenCoursewareUnlockAvailable}");
+    expect(overlayEditor).not.toContain('t("title", { count: overlay.length })');
+    expect(overlayEditor).not.toContain("prepArchiveCoursewareHint");
     expect(prep).not.toContain('t("prepCurrentCoursewareTitle")');
     expect(prep).not.toContain('t("prepResearchCoursewareTitle")');
     expect(coursewareAction).toContain("const template = await getSessionCoursewareTemplate(id)");

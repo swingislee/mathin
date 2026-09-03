@@ -28,6 +28,7 @@ const prepReviewMigration = read("supabase/migrations/20260730000500_r1_session_
 const operationalGateMigration = read("supabase/migrations/20260822000200_r1_live_operational_gate_simplification.sql");
 const prepUnlockMigration = read("supabase/migrations/20260731000500_r1_preparation_archive_unlock.sql");
 const prepUnlockNarrowingMigration = read("supabase/migrations/20260731000800_r1_narrow_preparation_archive_unlock.sql");
+const trialCoursewareUnlockMigration = read("supabase/migrations/20260903000500_trial_courseware_archive_unlock.sql");
 const learningSeatOrderMigration = read("supabase/migrations/20260731001000_r1_learning_check_seat_order.sql");
 const learningSeatLayoutMigration = read("supabase/migrations/20260731001200_r1_learning_check_seat_layout.sql");
 const learningFillBulkMigration = read("supabase/migrations/20260825000700_classroom_learning_fill_bulk.sql");
@@ -68,7 +69,7 @@ describe("R1 classroom continuity contracts", () => {
     const overlayEditor = read("src/features/school/CoursewareOverlayEditor.tsx");
     const classes = read("src/features/school/classes.ts");
     expect(prep).toContain("canViewPrepArchive");
-    expect(prep).toContain("prepArchiveFrozenTitle");
+    expect(prep).not.toContain("prepArchiveFrozenTitle");
     expect(prep).toContain("coursewareEditorStateFromFrozenSnapshot(detail.courseware, detail.coursewareOverlay)");
     expect(prep).toContain("template={editorTemplate}");
     expect(prep).toContain("initialOverlay={editorOverlay}");
@@ -78,6 +79,10 @@ describe("R1 classroom continuity contracts", () => {
     expect(prepFlow).toContain('t("prepArchiveReadOnly")');
     expect(overlayEditor).toContain("readOnly?: boolean");
     expect(overlayEditor).toContain('ts("coursewareArchivePageRailTitle")');
+    expect(overlayEditor).toContain("canUnlockFrozen?: boolean");
+    expect(overlayEditor).toContain("frozenEditActive");
+    expect(overlayEditor).not.toContain("prepArchiveCoursewareHint");
+    expect(overlayEditor).not.toContain('t("title", { count: overlay.length })');
     expect(classes).toContain("courseware_frozen_at,courseware,courseware_overlay");
   });
 
@@ -87,15 +92,19 @@ describe("R1 classroom continuity contracts", () => {
     const coursewareAction = read("src/features/school/actions/courseware.ts");
     expect(prep).toContain('isFeatureEnabled("teaching.preparation_archive_edit")');
     expect(prep).toContain("canEditPreparationArchive");
-    expect(prep).toContain("canAmendSessionArchive");
+    expect(prep).toContain("frozenCoursewareUnlockAvailable");
+    expect(prep).not.toContain("canAmendSessionArchive");
     expect(prep).toContain("readOnly={preparationWorkflowReadOnly}");
     expect(prep).toContain("reviewerReadOnly={!regularPreparationEditing}");
-    expect(prep).toContain("learningChecksLocked={!canAmendSessionArchive}");
-    expect(prep).toContain("readOnly={!canAmendSessionArchive}");
-    expect(prep).toContain("structureReadOnly={!canEditSessionCourseware}");
+    expect(prep).toContain("learningChecksLocked={!regularPreparationEditing}");
+    expect(prep).toContain("readOnly={!regularPreparationEditing}");
+    expect(prep).toContain("structureReadOnly={!regularPreparationEditing}");
+    expect(prep).toContain("canUnlockFrozen={frozenCoursewareUnlockAvailable}");
     expect(prep).not.toContain("openCoursewareWorkspace");
-    expect(overlayEditor).toContain("structureReadOnly = readOnly");
-    expect(overlayEditor).toContain("prepArchiveUnlockedCoursewareHint");
+    expect(overlayEditor).toContain("baseStructureReadOnly = baseReadOnly");
+    expect(overlayEditor).toContain("setFrozenUnlocked");
+    expect(overlayEditor).toContain("coursewareUnlock");
+    expect(overlayEditor).toContain("coursewareRelock");
     expect(coursewareAction).toContain('rpc("amend_session_courseware_snapshot"');
     expect(prepUnlockMigration).toContain("replace_session_learning_checks");
     expect(prepUnlockMigration).toContain("save_courseware_annotation");
@@ -109,6 +118,10 @@ describe("R1 classroom continuity contracts", () => {
     expect(prepUnlockNarrowingMigration).toContain("session.courseware.snapshot.amended");
     expect(prepUnlockNarrowingMigration).not.toContain("replace_session_learning_checks");
     expect(prepUnlockNarrowingMigration).not.toContain("save_courseware_annotation");
+    expect(trialCoursewareUnlockMigration).toContain("'teaching.preparation_archive_edit'");
+    expect(trialCoursewareUnlockMigration).toContain("target.currently_enabled is distinct from true");
+    expect(trialCoursewareUnlockMigration).toContain("does not grant research staff");
+    expect(trialCoursewareUnlockMigration).not.toContain("courseware.review");
   });
 
   it("binds learning-check defaults to published courseware page identity instead of reusable title templates", () => {

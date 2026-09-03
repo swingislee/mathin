@@ -16,6 +16,8 @@ import {
   Gamepad2,
   Image as ImageIcon,
   Lock,
+  LockKeyhole,
+  LockKeyholeOpen,
   LoaderCircle,
   PenLine,
   Plus,
@@ -99,9 +101,10 @@ export function CoursewareOverlayEditor({
   learningChecksLocked,
   learningChecksConfigured,
   initialPageId,
-  readOnly = false,
-  structureReadOnly = readOnly,
-  customOnly = false,
+  readOnly: baseReadOnly = false,
+  structureReadOnly: baseStructureReadOnly = baseReadOnly,
+  frozen = false,
+  canUnlockFrozen = false,
 }: {
   classroomId: string;
   sessionId: string;
@@ -117,14 +120,19 @@ export function CoursewareOverlayEditor({
   initialPageId?: string;
   readOnly?: boolean;
   structureReadOnly?: boolean;
-  /** 自由课次没有所选方案时，全部页面都由本课教师创建。 */
-  customOnly?: boolean;
+  frozen?: boolean;
+  canUnlockFrozen?: boolean;
 }) {
   const t = useTranslations("school.overlay");
   const ts = useTranslations("school.session");
   const tGames = useTranslations("games");
   const generatedToolbarId = useId();
   const toolbarTargetId = `courseware-annotation-toolbar-${generatedToolbarId.replaceAll(":", "")}`;
+  const [frozenUnlocked, setFrozenUnlocked] = useState(false);
+  const frozenEditActive = frozen && canUnlockFrozen && frozenUnlocked;
+  const readOnly = baseReadOnly && !frozenEditActive;
+  const structureReadOnly = baseStructureReadOnly && !frozenEditActive;
+  const effectiveLearningChecksLocked = learningChecksLocked && !frozenEditActive;
   const [overlay, setOverlay] = useState<OverlaySlot[]>(() => healOverlay(template, initialOverlay));
   const [saveState, setSaveState] = useState<SaveState>("saved");
   const [uploading, setUploading] = useState(false);
@@ -141,7 +149,7 @@ export function CoursewareOverlayEditor({
   const [sudokuVariantId, setSudokuVariantId] = useState<SudokuVariantId>(DEFAULT_SUDOKU_VARIANT_ID);
   const [seed, setSeed] = useState(() => defaultGameSeed(games[0]?.id ?? ""));
   const [learningChecks, setLearningChecks] = useState<LearningCheckItem[]>(() =>
-    initialLearningCheckItems(initialLearningChecks, learningCheckPages, learningChecksLocked, learningChecksConfigured));
+    initialLearningCheckItems(initialLearningChecks, learningCheckPages, effectiveLearningChecksLocked, learningChecksConfigured));
   const coursewareDefaultLearningChecks = useMemo(
     () => learningCheckPages.filter((page) => page.learningCheckEnabled)
       .map((page) => ({ title: page.title, sourcePageId: page.pageDocId })),
@@ -274,7 +282,7 @@ export function CoursewareOverlayEditor({
   };
 
   const toggleLearningCheck = (page: Extract<CoursewareTemplatePage, { type: "doc" }>) => {
-    if (readOnly || learningChecksLocked) return;
+    if (readOnly || effectiveLearningChecksLocked) return;
     restoreUndoRef.current = null;
     setRestoreUndoAvailable(false);
     const current = learningChecksRef.current;
@@ -285,7 +293,7 @@ export function CoursewareOverlayEditor({
   };
 
   const restoreLearningCheckDefaults = () => {
-    if (readOnly || learningChecksLocked || learningCheckDefaultsActive) return;
+    if (readOnly || effectiveLearningChecksLocked || learningCheckDefaultsActive) return;
     const previous = [...learningChecksRef.current];
     restoreUndoRef.current = previous;
     setRestoreUndoAvailable(true);
@@ -298,7 +306,7 @@ export function CoursewareOverlayEditor({
   };
 
   const undoRestoreLearningCheckDefaults = () => {
-    if (readOnly || learningChecksLocked || !restoreUndoRef.current) return;
+    if (readOnly || effectiveLearningChecksLocked || !restoreUndoRef.current) return;
     const previous = restoreUndoRef.current;
     restoreUndoRef.current = null;
     setRestoreUndoAvailable(false);
@@ -334,7 +342,7 @@ export function CoursewareOverlayEditor({
         aria-pressed={selectedForCheck}
         aria-label={ts(selectedForCheck ? "learningCheckQuickRemove" : "learningCheckQuickAdd")}
         title={ts(selectedForCheck ? "learningCheckQuickRemove" : "learningCheckQuickAdd")}
-        disabled={readOnly || learningChecksLocked}
+        disabled={readOnly || effectiveLearningChecksLocked}
         onClick={(event) => {
           event.stopPropagation();
           toggleLearningCheck(page);
@@ -461,74 +469,9 @@ export function CoursewareOverlayEditor({
 
   return (
     <section className="flex min-h-0 flex-1 flex-col">
-      <div className="flex flex-wrap items-center gap-3">
-        <h3 className="text-sm font-medium text-muted">{t("title", { count: overlay.length })}</h3>
-        {!structureReadOnly ? (
-          <span
-            className={saveState === "error" ? "text-rose" : "text-muted"}
-            title={saveLabel}
-            aria-label={saveLabel}
-            data-courseware-save-state={saveState}
-          >
-            {saveState === "saved" ? <Check size={15} aria-hidden />
-              : saveState === "error" ? <CloudAlert size={15} aria-hidden />
-                : saveState === "saving" ? <LoaderCircle size={15} className="animate-spin motion-reduce:animate-none" aria-hidden />
-                  : <Cloud size={15} aria-hidden />}
-            <span className="sr-only">{saveLabel}</span>
-          </span>
-        ) : null}
-        {!structureReadOnly ? <div className="ml-auto flex flex-wrap items-center gap-2">
-          <Input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*,video/*"
-            multiple
-            className="hidden"
-            onChange={(event) => void addFiles(event.target.files)}
-          />
-          <button
-            type="button"
-            disabled={uploading}
-            onClick={() => fileInputRef.current?.click()}
-            className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-xs text-muted transition-colors hover:bg-moon/30 hover:text-ink disabled:opacity-50"
-          >
-            {uploading ? <LoaderCircle size={14} className="animate-spin motion-reduce:animate-none" /> : <Plus size={14} />}
-            {t("addMedia")}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setSeed(defaultGameSeed(gameId));
-              if (gameId === "sudoku") {
-                setDifficulty("hard");
-                setSudokuVariantId(DEFAULT_SUDOKU_VARIANT_ID);
-              }
-              setGameDialog(true);
-            }}
-            className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-xs text-muted transition-colors hover:bg-moon/30 hover:text-ink"
-          >
-            <Gamepad2 size={14} />
-            {t("addGame")}
-          </button>
-          <button
-            type="button"
-            onClick={() => mutate((prev) => [...prev, { page: { id: newId(), type: "board", title: t("boardPageTitle") } }])}
-            className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-xs text-muted transition-colors hover:bg-moon/30 hover:text-ink"
-          >
-            <PenLine size={14} />
-            {t("addBoard")}
-          </button>
-        </div> : null}
-      </div>
-      <p className="mt-2 text-xs text-muted">
-        {structureReadOnly
-          ? ts(readOnly ? "prepArchiveCoursewareHint" : "prepArchiveUnlockedCoursewareHint")
-          : t(customOnly ? "freeHint" : "hint")}
-      </p>
-
       <CoursewareWorkbench
         mode="preview"
-        className="mt-3 flex-1"
+        className="flex-1"
         railWidth="wide"
         items={previewItems}
         selectedIndex={safeSelectedIndex}
@@ -539,13 +482,99 @@ export function CoursewareOverlayEditor({
         nextLabel={ts("coursewareNextPage")}
         toolbarTargetId={!readOnly && selectedPage?.type === "doc" ? toolbarTargetId : undefined}
         selectedPageLabel={selectedPage ? safeSelectedIndex + 1 + " / " + resolvedPages.length + " · " + selectedPage.title : t("previewEmpty")}
+        previewActions={(
+          <>
+            {frozen ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className={`size-7 shrink-0 rounded-full p-0 ${frozenUnlocked ? "text-leaf-deep" : "text-muted"}`}
+                disabled={!canUnlockFrozen}
+                aria-pressed={frozenUnlocked}
+                aria-label={ts(canUnlockFrozen ? (frozenUnlocked ? "coursewareRelock" : "coursewareUnlock") : "coursewareFrozen")}
+                title={ts(canUnlockFrozen ? (frozenUnlocked ? "coursewareRelock" : "coursewareUnlock") : "coursewareFrozen")}
+                onClick={() => setFrozenUnlocked((current) => !current)}
+              >
+                {frozenUnlocked ? <LockKeyholeOpen size={14} /> : <LockKeyhole size={14} />}
+              </Button>
+            ) : null}
+            {!structureReadOnly ? (
+              <span
+                className={saveState === "error" ? "text-rose" : "text-muted"}
+                title={saveLabel}
+                aria-label={saveLabel}
+                data-courseware-save-state={saveState}
+              >
+                {saveState === "saved" ? <Check size={15} aria-hidden />
+                  : saveState === "error" ? <CloudAlert size={15} aria-hidden />
+                    : saveState === "saving" ? <LoaderCircle size={15} className="animate-spin motion-reduce:animate-none" aria-hidden />
+                      : <Cloud size={15} aria-hidden />}
+                <span className="sr-only">{saveLabel}</span>
+              </span>
+            ) : null}
+            {!structureReadOnly ? (
+              <>
+                <Input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*,video/*"
+                  multiple
+                  className="hidden"
+                  onChange={(event) => void addFiles(event.target.files)}
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="size-7 shrink-0 rounded-full p-0 text-muted hover:text-ink"
+                  disabled={uploading}
+                  aria-label={t("addMedia")}
+                  title={t("addMedia")}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {uploading ? <LoaderCircle size={14} className="animate-spin motion-reduce:animate-none" /> : <Plus size={14} />}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="size-7 shrink-0 rounded-full p-0 text-muted hover:text-ink"
+                  aria-label={t("addGame")}
+                  title={t("addGame")}
+                  onClick={() => {
+                    setSeed(defaultGameSeed(gameId));
+                    if (gameId === "sudoku") {
+                      setDifficulty("hard");
+                      setSudokuVariantId(DEFAULT_SUDOKU_VARIANT_ID);
+                    }
+                    setGameDialog(true);
+                  }}
+                >
+                  <Gamepad2 size={14} />
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="size-7 shrink-0 rounded-full p-0 text-muted hover:text-ink"
+                  aria-label={t("addBoard")}
+                  title={t("addBoard")}
+                  onClick={() => mutate((prev) => [...prev, { page: { id: newId(), type: "board", title: t("boardPageTitle") } }])}
+                >
+                  <PenLine size={14} />
+                </Button>
+              </>
+            ) : null}
+          </>
+        )}
         railStatus={(
           <>
             {!readOnly ? <span className={"shrink-0 text-[11px] " + (learningCheckSaveState === "error" ? "text-rose" : "text-muted")}>{learningCheckSaveLabel}</span> : null}
             <span className="shrink-0 text-xs tabular-nums text-muted">{learningChecks.filter((item) => item.sourcePageId).length} / {resolvedPages.length}</span>
           </>
         )}
-        railFooter={!readOnly && !learningChecksLocked ? (
+        railFooter={!readOnly && !effectiveLearningChecksLocked ? (
           <div className="flex items-center gap-1">
             <Button
               type="button"
