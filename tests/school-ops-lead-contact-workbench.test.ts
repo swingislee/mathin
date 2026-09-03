@@ -139,6 +139,12 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(workbench).toContain("lastContactOutcome: input.outcome");
     expect(workbench).toContain("outcome || lead.lastContactOutcome");
     expect(workbench).toContain("displayedOutcome === value");
+    expect(workbench).toContain("showSavedDetails");
+    expect(workbench).toContain("savedWechatFact");
+    expect(workbench).toContain("savedVisitFact");
+    expect(workbench).toContain("savedInterest");
+    expect(workbench).toContain("lead.lastContactNote || t(\"noContactNote\")");
+    expect(workbench).toContain('active ? "whitespace-pre-wrap break-words" : "truncate"');
     expect(workbench).not.toContain("router.refresh()");
     expect(workbench).toContain("rows={1}");
     expect(workbench).toContain("contactNoteInlinePlaceholder");

@@ -128,6 +128,21 @@ function ContactEntryRow({
     ? deriveLeadContactDestination(outcome, visitCommitted)
     : null;
   const displayedOutcome = outcome || lead.lastContactOutcome;
+  const savedReachable = lead.lastContactOutcome === "connected" || lead.lastContactOutcome === "declined";
+  const showSavedDetails = Boolean(lead.lastContactOutcome && (savedReachable || lead.lastContactNote));
+  const savedWechatFact = lead.wechatAdded === true
+    ? t("wechatAddedShort")
+    : lead.wechatAdded === false
+      ? t("wechatNotAdded")
+      : t("notDiscussed");
+  const savedVisitFact = lead.visitCommitted === true
+    ? t("visitCommittedShort")
+    : lead.visitCommitted === false
+      ? t("visitNotCommitted")
+      : t("notDiscussed");
+  const savedInterest = lead.interestLevel
+    ? t(`interest_${lead.interestLevel}`)
+    : t("interestUnrated");
   const sourceAttribution = [
     lead.acquisitionPromoter ? t("promoterValue", { name: lead.acquisitionPromoter }) : "",
     lead.acquisitionMethod,
@@ -316,6 +331,48 @@ function ContactEntryRow({
             aria-label={t("contactNoteFor", { name: lead.provisionalStudentName })}
           />
         </div>
+
+        {showSavedDetails ? (
+          <div
+            className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1"
+            aria-label={t("latestContact")}
+          >
+            {savedReachable ? (
+              <>
+                <div className="flex items-center gap-1 text-[11px] text-muted">
+                  <span>{t("wechatFact")}</span>
+                  <Badge variant="outline" className="px-1.5 py-0 text-[10px] font-normal leading-4 text-ink">
+                    {savedWechatFact}
+                  </Badge>
+                </div>
+                {lead.lastContactOutcome === "connected" ? (
+                  <div className="flex items-center gap-1 text-[11px] text-muted">
+                    <span>{t("visitFact")}</span>
+                    <Badge variant="outline" className="px-1.5 py-0 text-[10px] font-normal leading-4 text-ink">
+                      {savedVisitFact}
+                    </Badge>
+                  </div>
+                ) : null}
+                <div className="flex items-center gap-1 text-[11px] text-muted">
+                  <span>{t("interestLevel")}</span>
+                  <Badge variant="outline" className="px-1.5 py-0 text-[10px] font-normal leading-4 text-ink">
+                    {savedInterest}
+                  </Badge>
+                </div>
+              </>
+            ) : null}
+            <p
+              className={cn(
+                "min-w-52 flex-1 text-[11px] leading-4 text-ink",
+                active ? "whitespace-pre-wrap break-words" : "truncate",
+              )}
+              title={active ? undefined : lead.lastContactNote || undefined}
+            >
+              <span className="text-muted">{t("contactNote")} · </span>
+              {lead.lastContactNote || t("noContactNote")}
+            </p>
+          </div>
+        ) : null}
 
         {active && outcome ? (
           <div className="mt-2 space-y-2 border-t border-line pt-2">
