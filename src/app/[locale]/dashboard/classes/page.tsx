@@ -71,10 +71,11 @@ async function ClassroomCommandPanel({ locale, searchParams }: { locale: string;
       <DashboardCommandFilters>
         <ClassroomFilters filters={filters} scope={scope.scope} />
       </DashboardCommandFilters>
-      {perms.has("class.create") ? (
+      {perms.has("class.create") || perms.has("enrollment.manage") ? (
         <DashboardCommandActions>
-          <Link href="/dashboard/classes/import" className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>{t("importClasses")}</Link>
-          <Link href="/dashboard/classes/new" className={cn(buttonVariants({ size: "sm" }))}>{t("newClass")}</Link>
+          {perms.has("enrollment.manage") ? <Link href="/dashboard/classes/import/roster" className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>{t("importRoster")}</Link> : null}
+          {perms.has("class.create") ? <Link href="/dashboard/classes/import" className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>{t("importClasses")}</Link> : null}
+          {perms.has("class.create") ? <Link href="/dashboard/classes/new" className={cn(buttonVariants({ size: "sm" }))}>{t("newClass")}</Link> : null}
         </DashboardCommandActions>
       ) : null}
     </DashboardCommandPanel>

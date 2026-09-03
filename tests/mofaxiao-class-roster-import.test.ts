@@ -1,0 +1,128 @@
+import fs from "node:fs";
+import path from "node:path";
+import { describe, expect, it } from "vitest";
+import {
+  listMofaxiaoRosterClassCandidates,
+  matchMofaxiaoRosterStudent,
+  parseMofaxiaoClassRosterWorkbook,
+  preferredMofaxiaoRosterClassCandidate,
+} from "@/features/school/mofaxiao-class-roster-import";
+import type { ClassRosterStudentOption, ClassRosterTargetOption } from "@/features/school/actions/types";
+
+function row(values: Record<number, unknown>): unknown[] {
+  const result: unknown[] = [];
+  for (const [index, value] of Object.entries(values)) result[Number(index)] = value;
+  return result;
+}
+
+describe("魔法校班级学员花名册导入", () => {
+  it("只读取 2026 秋季横向花名册，并用报名主表补充唯一手机号", () => {
+    const parsed = parseMofaxiaoClassRosterWorkbook([
+      {
+        sheet: "学员报名信息",
+        data: [[], [], row({ 1: "陈天欣", 2: "18255178761" }), row({ 1: "陈天佑", 2: "18255178761" })],
+      },
+      {
+        sheet: "26年暑秋在读学员",
+        data: [
+          row({ 29: "紫辰" }),
+          row({ 29: "思维体系" }),
+          row({
+            29: "一年级", 30: "秋季", 31: "A+", 32: "Z312", 33: "张灿", 34: "周六", 35: "10:00-12:00",
+            40: "陈天欣", 41: "周张绾宜（王）", 42: "王博煊待定",
+          }),
+        ],
+      },
+    ]);
+
+    expect(parsed).toMatchObject({ sheetName: "26年暑秋在读学员", schoolYear: 2026, season: 2, memberships: 3 });
+    expect(parsed.classes[0]).toMatchObject({ campus: "紫辰", system: "思维体系", grade: 1, teacher: "张灿" });
+    expect(parsed.classes[0].students).toEqual([
+      expect.objectContaining({ sourceCell: "AO3", rawName: "陈天欣", name: "陈天欣", phone: "18255178761", needsReview: false }),
+      expect.objectContaining({ sourceCell: "AP3", rawName: "周张绾宜（王）", name: "周张绾宜", sourceNote: "王", needsReview: true }),
+      expect.objectContaining({ sourceCell: "AQ3", rawName: "王博煊待定", name: "王博煊", sourceNote: "待定", needsReview: true }),
+    ]);
+  });
+
+  it("手机号只在姓名相同后参与匹配，不会把共用号码的兄弟姐妹并成一人", () => {
+    const options: ClassRosterStudentOption[] = [
+      { id: "a", name: "陈天欣", phone: "18255178761", parentPhone: "", grade: 1, status: "enrolled" },
+      { id: "b", name: "陈天佑", phone: "18255178761", parentPhone: "", grade: 2, status: "enrolled" },
+    ];
+    expect(matchMofaxiaoRosterStudent({
+      sourceRow: 3, sourceCell: "AO3", rawName: "陈天佑", name: "陈天佑", phone: "18255178761", sourceNote: "", needsReview: false,
+    }, options)).toMatchObject({ kind: "exact_phone", suggestedStudentId: "b" });
+  });
+
+  it("只有学期、年级、主讲、校区与班型共同形成唯一高置信结果时才自动映射班级", () => {
+    const target = (overrides: Partial<ClassRosterTargetOption>): ClassRosterTargetOption => ({
+      id: "target", name: "一年级秋季A+ 周六 10:00-12:00", grade: 1, termId: "term", schoolYear: 2026,
+      season: 2, courseTitle: "爱学习 A+ 一年级秋季", courseFamilySlug: "aixuexi-primary-math", classType: "A+", campusName: "紫辰", roomName: "Z312",
+      primaryTeacherNames: ["张灿"], capacity: 16, activeEnrollmentCount: 0, ...overrides,
+    });
+    const source = parseMofaxiaoClassRosterWorkbook([{
+      sheet: "26年暑秋在读学员",
+      data: [row({ 29: "紫辰" }), row({ 29: "一年级", 30: "秋季", 31: "A+", 32: "Z312", 33: "张灿", 34: "周六", 35: "10:00-12:00", 40: "陈天欣" })],
+    }]).classes[0];
+    expect(preferredMofaxiaoRosterClassCandidate(source, [target({})])?.id).toBe("target");
+    expect(preferredMofaxiaoRosterClassCandidate(source, [target({ id: "a" }), target({ id: "b" })])).toBeNull();
+    expect(preferredMofaxiaoRosterClassCandidate(source, [target({ campusName: "" })])).toBeNull();
+    expect(preferredMofaxiaoRosterClassCandidate(source, [target({ classType: "S", courseTitle: "二年级 S 班" })])).toBeNull();
+  });
+
+  it("贯通体系的花名册班级只推荐爱学习 G+ 与 A+ 班级", () => {
+    const source = parseMofaxiaoClassRosterWorkbook([{
+      sheet: "26年暑秋在读学员",
+      data: [row({ 29: "紫辰" }), row({ 29: "贯通体系" }), row({ 29: "三年级", 30: "秋季", 31: "G+", 33: "王成国", 40: "陈天欣" })],
+    }]).classes[0];
+    const base: ClassRosterTargetOption = {
+      id: "g", name: "三年级秋季 G+", grade: 3, termId: "term", schoolYear: 2026, season: 2,
+      courseTitle: "爱学习 G+ 苏教版数学 · 三年级秋季", courseFamilySlug: "aixuexi-primary-math", classType: "G+",
+      campusName: "紫辰", roomName: "", primaryTeacherNames: ["王成国"], capacity: 16, activeEnrollmentCount: 0,
+    };
+    const candidates = listMofaxiaoRosterClassCandidates(source, [
+      base,
+      { ...base, id: "a", classType: "A+", courseTitle: "爱学习 A+ 全国版数学 · 三年级秋季" },
+      { ...base, id: "x", classType: "X+", courseTitle: "爱学习 X+ 苏教版数学 · 三年级秋季" },
+      { ...base, id: "e", courseFamilySlug: "xueersi-e-primary-math-cn", classType: "A+", courseTitle: "E 系列数学三年级秋季 A+" },
+    ]);
+    expect(candidates.map((candidate) => candidate.id).sort()).toEqual(["a", "g"]);
+  });
+
+  it("仍只使用现有 xlsx 读取器，不引入 SheetJS", () => {
+    const root = process.cwd();
+    const packageJson = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8")) as { dependencies?: Record<string, string> };
+    expect(packageJson.dependencies).not.toHaveProperty("xlsx");
+  });
+
+  it("服务端只创建最小学员档案和当前在班关系，不写课次、订单、费用或考勤", () => {
+    const root = process.cwd();
+    const read = (...segments: string[]) => fs.readFileSync(path.join(root, ...segments), "utf8");
+    const action = read("src", "features", "school", "actions", "mofaxiao-class-roster-imports.ts");
+    const routes = read("src", "features", "school", "dashboard-routes.ts");
+    const migration = read("supabase", "migrations", "20260903000800_mofaxiao_class_roster_import.sql");
+    const applySection = migration.slice(
+      migration.indexOf("create or replace function public.apply_mofaxiao_class_roster_import"),
+      migration.indexOf("revoke all on function public.get_mofaxiao_class_roster_import_batch"),
+    );
+
+    expect(action).toContain(".strict()");
+    expect(action).toContain('p_source_system: "mofaxiao"');
+    expect(routes).toContain('href: "/dashboard/classes/import/roster"');
+    expect(routes).toContain('permission: "enrollment.manage"');
+    expect(applySection).toContain("insert into public.students");
+    expect(applySection).toContain("insert into public.enrollments");
+    expect(applySection).toContain("'active', now(), v_classroom.term_id");
+    expect(applySection).toContain("where item.batch_id = v_batch.id");
+    for (const forbiddenWrite of [
+      "insert into public.classrooms",
+      "insert into public.class_sessions",
+      "insert into public.orders",
+      "insert into public.payments",
+      "insert into public.attendance",
+      "insert into public.activities",
+    ]) {
+      expect(applySection).not.toContain(forbiddenWrite);
+    }
+  });
+});
