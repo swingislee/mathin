@@ -127,6 +127,7 @@ function ContactEntryRow({
   const destination = outcome
     ? deriveLeadContactDestination(outcome, visitCommitted)
     : null;
+  const displayedOutcome = outcome || lead.lastContactOutcome;
   const sourceAttribution = [
     lead.acquisitionPromoter ? t("promoterValue", { name: lead.acquisitionPromoter }) : "",
     lead.acquisitionMethod,
@@ -278,7 +279,7 @@ function ContactEntryRow({
         <div className="flex items-start gap-2">
           <div className="flex shrink-0 flex-wrap gap-1.5">
             {CONTACT_OUTCOME_SHORTCUTS.map(({ key, outcome: value }) => {
-              const selected = outcome === value;
+              const selected = displayedOutcome === value;
               return (
                 <Button
                   key={value}

@@ -137,6 +137,8 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(workbench).toContain("sessionLeads");
     expect(workbench).toContain("status: destination");
     expect(workbench).toContain("lastContactOutcome: input.outcome");
+    expect(workbench).toContain("outcome || lead.lastContactOutcome");
+    expect(workbench).toContain("displayedOutcome === value");
     expect(workbench).not.toContain("router.refresh()");
     expect(workbench).toContain("rows={1}");
     expect(workbench).toContain("contactNoteInlinePlaceholder");
