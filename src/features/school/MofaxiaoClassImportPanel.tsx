@@ -32,9 +32,11 @@ import { DashboardSection, DashboardTableShell, StatusStrip } from "./dashboard-
 import {
   inferMofaxiaoSchoolYearStart,
   isSupportedMofaxiaoClassType,
+  listMofaxiaoClassCourseCandidates,
   MofaxiaoClassParseError,
   normalizeClassImportText,
   parseMofaxiaoClassWorksheet,
+  preferredMofaxiaoClassCourseCandidate,
   type ParsedMofaxiaoClassWorksheet,
 } from "./mofaxiao-class-import";
 import type { RoomOptionV2 } from "./organization-locations";
@@ -175,16 +177,7 @@ export function MofaxiaoClassImportPanel({
     return [...grouped.values()].sort((left, right) => right.year - left.year);
   }, [schoolTerms]);
 
-  const courseCandidates = (row: MofaxiaoClassImportRow) => courseOptions
-    .filter((course) => (row.grade === null || course.grade === row.grade)
-      && (row.season === null || course.season === null || course.season === row.season))
-    .sort((left, right) => {
-      const leftExact = courseKey(left.title) === courseKey(row.courseName) ? 1 : 0;
-      const rightExact = courseKey(right.title) === courseKey(row.courseName) ? 1 : 0;
-      return rightExact - leftExact
-        || Number(right.catalogVersionCurrent) - Number(left.catalogVersionCurrent)
-        || left.title.localeCompare(right.title, "zh-CN");
-    });
+  const courseCandidates = (row: MofaxiaoClassImportRow) => listMofaxiaoClassCourseCandidates(row, courseOptions);
 
   const resolvedTerm = (row: MofaxiaoClassImportRow): SchoolTermRow | null => {
     if (row.season === null) return null;
@@ -242,12 +235,7 @@ export function MofaxiaoClassImportPanel({
   const initializeMappings = (next: ParsedMofaxiaoClassWorksheet) => {
     const nextCourseMappings: Record<string, string> = {};
     for (const group of groupRows(next.rows, courseMappingKey)) {
-      const candidates = courseOptions.filter((course) =>
-        courseKey(course.title) === courseKey(group.first.courseName)
-        && (group.first.grade === null || course.grade === group.first.grade)
-        && (group.first.season === null || course.season === null || course.season === group.first.season));
-      const current = candidates.filter((course) => course.catalogVersionCurrent);
-      const preferred = current.length === 1 ? current[0] : candidates.length === 1 ? candidates[0] : null;
+      const preferred = preferredMofaxiaoClassCourseCandidate(group.first, courseOptions);
       nextCourseMappings[group.key] = preferred?.id ?? "";
     }
 
