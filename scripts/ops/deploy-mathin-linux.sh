@@ -101,6 +101,32 @@ if [[ -d "$source_root/public" ]]; then
   cp -a "$source_root/public" "$release_tmp/public"
 fi
 
+# Keep the production job worker in the same immutable release as the app.
+# PUSH-P5 ships this runtime without enabling its systemd unit; later gates may
+# activate it only after the Web Push feature, integration, cohort, secrets,
+# provider network, and alerting checks have all passed.
+mkdir -p "$release_tmp/scripts/lib" "$release_tmp/src/features/events"
+cp -a "$source_root/scripts/r1-job-worker.mjs" "$release_tmp/scripts/r1-job-worker.mjs"
+cp -a "$source_root/scripts/lib/web-push-delivery.mjs" "$release_tmp/scripts/lib/web-push-delivery.mjs"
+cp -a "$source_root/src/features/events/web-push-runtime.mjs" "$release_tmp/src/features/events/web-push-runtime.mjs"
+
+copy_worker_package() {
+  local package_name="$1"
+  local source_package="$source_root/node_modules/$package_name"
+  local release_package="$release_tmp/node_modules/$package_name"
+  if [[ ! -e "$source_package" ]]; then
+    echo "Worker runtime dependency is missing: $package_name" >&2
+    exit 1
+  fi
+  if [[ ! -e "$release_package" ]]; then
+    mkdir -p "$(dirname "$release_package")"
+    cp -aL "$source_package" "$release_package"
+  fi
+}
+
+copy_worker_package "@supabase/supabase-js"
+copy_worker_package "web-push"
+
 while IFS= read -r -d '' link; do
   resolved="$(readlink -f "$link" || true)"
   # Next's output-file tracing may preserve a few unused pnpm aggregate links

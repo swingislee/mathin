@@ -212,6 +212,12 @@ Phase 1～5 的本机隔离 Supabase、固定开发身份、migration LF checksu
 
 产品负责人于 2026-08-31 依次确认 Step 0、Step 1 和 Step 2；在 Step 2 通过后进一步明确正式课件与教师微课“本质上应该是同一个组件”，只授权 Step 2A 共享编辑框架迁移。两条编辑链现共用 `CoursewareEditorWorkbench`，由 PageDoc/source-runtime/composition adapter 保留各自页面模型和写态。首轮 Step 2A 审计发现只读微课仍自建预览、正式工作区底部留白过大，且 composition UI 被 `0356de5` 恢复成早于 `487b60d` 的旧布局；第二轮继续要求正式课件的插入与微课共用顶栏，并把微调／4:3／替换切换器并入右栏标题。开发端现复用 `CoursewarePreviewWorkspace` 键盘翻页合同和共享 `CoursewareEditorToolbar` 七枚图标，恢复左栏重命名，右栏删除插入页签，只保留三种属性模式；后续工具组件、800ms 自动保存和共享圆角工作面不变。开发端状态为 **STEP 2A REVISION READY FOR USER AUDIT**；本轮增量 TypeScript、受影响 ESLint、双语键 5323×2 和定向 Vitest 14/14 通过，但不构成视觉或微课回归确认。当前停止在 Step 2A；未授权 Step 3、新 editor action、schema、开发库/Storage 写入、批量任务或生产动作，不改变 R1-Live Gate 2。
 
+#### DEV-WEB-PUSH-1 · 员工桌面 Web Push 生产化
+
+`DEV-WEB-PUSH-1` 是产品负责人于 2026-09-03 选入的独立规划增量，权威范围与 Gate 见 [`employee-desktop-web-push.md`](employee-desktop-web-push.md)。目标是让主动开启该能力的 staff/admin 在 Mathin 标签页或浏览器窗口关闭、但浏览器后台 Push 仍可运行时，收到不含学生/财务等敏感内容的 Windows 系统通知；点击后必须按当前身份重新鉴权并解析既有站内通知。它复用 `domain_events → notifications → notification_deliveries → jobs`，新增通知专用 Service Worker、加密的逐设备订阅、共享电脑 8 小时租期、Web Push Worker、重试/熔断、独立告警、kill switch 和完整验证；不引入页面缓存 PWA，也不承诺浏览器进程被强制结束或系统勿扰时即时显示。
+
+当前状态为 **IMPLEMENTATION IN PROGRESS / LOCAL DARK RUNTIME VERIFIED / PUSH-P5 PENDING / EMPLOYEE TEST NOT AUTHORIZED**。本机 loopback 目标已完成两条 additive migration 的 rollback/零残留/formal，关闭态 postflight 为 feature=false、integration disabled、cohort/subscription/delivery/job=0；通知专用 SW、逐设备 UI、加密订阅、Web Push Worker、retry/TTL/熔断和聚合监控已实现，定向 Vitest 9/9、固定员工/管理员暗态 Playwright 2/2、TypeScript 与受影响 ESLint 通过。生产尚未变更，本轮继续推进到 feature flag off、integration disabled、cohort 空、Worker 服务未激活的 `PUSH-P5` 暗部署；普通产品裁决、员工测试日期、生成类型和外部告警出口等问题进入专题 §10.1 账本并继续代码开发，越权、泄密、误投递、旧业务回归或生产目标不明仍为 `P5-HARD-BLOCK`。只有专题 `PUSH-G5 · EMPLOYEE-TEST-ENTRY` 的安全、共享电脑、重试、监控、回退、Edge/Chrome HTTPS 预生产和生产暗部署清单全部 `PASS`，并由产品负责人登记 3～5 名首批员工及明确确认“进入员工测试”后，才可启用 `employee_test` cohort；员工测试只登记宽泛窗口，实际开始由 Gate 确认触发。该工作项不改变 R1-Live Gate 2；实现触及共享通知、Auth 或 Worker 时追加对应 R1-Live Smoke，失败时保持 Web Push 关闭并继续使用站内铃铛。
+
 ## 6. 原 R1 工作重新定位
 
 | 原阶段 | 已有结果 | R1-Live 处理 | Production 1.0 处理 |

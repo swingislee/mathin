@@ -12,6 +12,7 @@ import type { WorkItemUrgencyBucket } from "@/features/school/stage/types";
 import { Link, useRouter } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { markChangeFeedItemRead, markChangeFeedRead, type ChangeEvent } from "./notifications";
+import { DesktopNotificationControls } from "./DesktopNotificationControls";
 
 export interface InboxWorkItem {
   key: string;
@@ -35,11 +36,13 @@ export function ChangeBell({
   workItems,
   totalWorkItems,
   userId,
+  desktopNotificationsEligible,
 }: {
   initialEvents: ChangeEvent[];
   workItems: InboxWorkItem[];
   totalWorkItems: number;
   userId: string;
+  desktopNotificationsEligible: boolean;
 }) {
   const t = useTranslations("changes");
   const router = useRouter();
@@ -201,6 +204,7 @@ export function ChangeBell({
             )}
           </TabsContent>
         </Tabs>
+        {desktopNotificationsEligible ? <DesktopNotificationControls /> : null}
       </PopoverContent>
     </Popover>
   );

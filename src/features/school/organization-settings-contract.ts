@@ -12,6 +12,7 @@ export const CONFIGURABLE_ORGANIZATION_FEATURE_KEYS = [
   "notifications.email",
   "notifications.sms",
   "notifications.wechat",
+  "notifications.web_push",
   "public_content.publish",
   "teaching.preparation_archive_edit",
   "teaching.classroom_board_checkpoint_v2",
