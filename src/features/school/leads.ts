@@ -1,11 +1,15 @@
+import "server-only";
+
 import { createClient } from "@/lib/supabase/server";
 import {
   LEAD_STATUSES,
+  parseLeadPageSize,
   type LeadContactOutcome,
   type LeadInterestLevel,
   type LeadPoolFilters,
   type LeadPoolRow,
   type LeadPoolScope,
+  type LeadPageSize,
   type LeadStatus,
 } from "./lead-contract";
 
@@ -45,8 +49,6 @@ interface LeadCommunicationDbRow {
   occurred_at: string;
 }
 
-const PAGE_SIZE = 100;
-
 function pickParam(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
@@ -58,6 +60,7 @@ export function parseLeadPoolFilters(
   const requestedScope = pickParam(searchParams.scope);
   const status = pickParam(searchParams.status);
   const page = Math.max(1, Number(pickParam(searchParams.page)) || 1);
+  const pageSize = parseLeadPageSize(searchParams.pageSize);
   const scope: LeadPoolScope = requestedScope === "mine"
     ? "mine"
     : requestedScope === "all" && canScopeAll
@@ -68,6 +71,7 @@ export function parseLeadPoolFilters(
     status: LEAD_STATUSES.includes(status as LeadStatus) ? status as LeadStatus : undefined,
     q: pickParam(searchParams.q)?.trim().slice(0, 80) || undefined,
     page,
+    pageSize,
   };
 }
 
@@ -90,9 +94,9 @@ function sourceTimestamp(row: LeadSourceDbRow): number {
 export async function listLeadPool(
   userId: string,
   filters: LeadPoolFilters,
-): Promise<{ leads: LeadPoolRow[]; count: number; pageSize: number }> {
+): Promise<{ leads: LeadPoolRow[]; count: number; pageSize: LeadPageSize }> {
   const supabase = await createClient();
-  const offset = (filters.page - 1) * PAGE_SIZE;
+  const offset = (filters.page - 1) * filters.pageSize;
   let query = supabase
     .from("leads")
     .select(
@@ -106,12 +110,12 @@ export async function listLeadPool(
 
   const { data, error, count } = await query
     .order("created_at", { ascending: false })
-    .range(offset, offset + PAGE_SIZE - 1)
+    .range(offset, offset + filters.pageSize - 1)
     .returns<LeadDbRow[]>();
   if (error) throw new Error(error.message);
   const rows = data ?? [];
   const leadIds = rows.map((row) => row.id);
-  if (leadIds.length === 0) return { leads: [], count: count ?? 0, pageSize: PAGE_SIZE };
+  if (leadIds.length === 0) return { leads: [], count: count ?? 0, pageSize: filters.pageSize };
 
   const ownerIds = [...new Set(rows.map((row) => row.owner_id).filter((id): id is string => Boolean(id)))];
   const suggestedStudentIds = [...new Set(rows
@@ -180,7 +184,7 @@ export async function listLeadPool(
 
   return {
     count: count ?? 0,
-    pageSize: PAGE_SIZE,
+    pageSize: filters.pageSize,
     leads: rows.map((row) => {
       const sources = sourcesByLead.get(row.id) ?? [];
       const latest = sources[0];

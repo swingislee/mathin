@@ -903,6 +903,7 @@ Phase 1B 交付时状态：**DEVELOPMENT READY / AWAITING PRODUCT OWNER UI AND I
 - migration `20260902001300_school_ops_lead_contact_workbench` 新增 append-only `lead_communications` 与单一开放任务 `lead_next_actions`；沟通时间、月份、周次和操作人由 `occurred_at / recorded_by` 自动形成，负责人当时快照由 `owner_id_at_contact` 保存；
 - `/[locale]/dashboard/leads` 的未分配池增加整页勾选、Shift 首尾连续勾选、负责人选择和显式“批量分配”；分配 RPC 在同一事务内把 `unassigned` 改为 `uncontacted` 并生成 `initial_contact` 任务，目标员工必须具备 `followup.write`；
 - 第二轮界面反馈把负责人选择与“批量分配”统一收回页面顶部命令面板，全选进入表格选择列表头并删除额外操作行；顶部筛选只留跨列关键词搜索，各数据列表头通过 shadcn 控件提供当前已加载页的筛选／排序，数据滚动时表头固定。该布局同时固化为 Dashboard 共享设计规则，后续页面不得把页面级或批量按钮散落在表格外壳内；
+- 第三轮界面反馈把底部上一页／下一页替换为 shadcn `Pagination`，明确显示当前页、总页数、总行数，并允许每页 20／50／100 行；翻页和行数切换保留当前池、关键词及隐含首联状态。客户端表格常量与 DTO 固定从 `lead-contract` 读取，服务端查询模块声明 `server-only`，避免再次把 `next/headers` 带入客户端依赖图；
 - 同一路由增加“我的初次电联”页签。老师只填写接通结果、加微信事实、诺访事实、A/B/C 初步意向和沟通摘要；沟通时间／人员与池内状态由系统推导；
 - 首轮界面反馈明确：Lead 种子表是高密度分配与身份确认界面，不承担后续任务管理。来源批次列和“下一动作”列退出该表，行高压缩；该页面不读取、显示或要求人工编辑 `lead_next_actions`，首联保存只自动完成已有首联任务。底层任务记录继续保留给后续独立工作池，不回填为 Lead 主表字段；
 - 原表的“用户当下加 V／诺访／到访／报名／当下状态”不复制成并列手工快照：加 V 与诺访读取沟通事实，到访读取 Participation，报名读取 Enrollment，产品参与读取后续投放／活动事实；

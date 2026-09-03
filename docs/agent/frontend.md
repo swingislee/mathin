@@ -17,6 +17,7 @@
 - 小王子视觉分三级：公开首页/五星球首页为场景级，内容/Notebook/身份页为内容级，Dashboard/Classroom/Whiteboard/Courseware Studio 为工作区级。工作区的信息密度、可读性和操作速度优先。
 - Dashboard 默认是连续工作区：身份进入 `DashboardPage` / `ObjectBar`，筛选与操作进入 `DashboardCommandPanel`，正文进入无外框 `DashboardSection`，数据集合进入 `DashboardTableShell`，持续栏位只用结构线。
 - 页面级与批量业务按钮只放 `DashboardCommandPanel` 的 actions／selection 槽；`DashboardTableShell` 必须直接从 shadcn `Table` 开始，不得在表格上方另造操作行。全选进入选择列的表头，逐列筛选／排序进入数据列表头，操作列与选择列不伪装成可筛选数据列；有纵向滚动的数据表保持表头固定。
+- 服务端分页表在表格下方使用 shadcn `Pagination`，同时明确显示当前页／总页数、总行数和可设置的每页行数；切换每页行数回到第一页，并保留当前业务范围与搜索条件。
 - 普通标题、筛选、导航、表格、表单、摘要、空态和正文分组不得分别包 Card。只有产品明确要求，或对象确实需要独立搬运、选择、比较时可用 Card；产品已确认的 Card 是页面合同，不得被通用重构删除。
 - 页面头只保留一条身份分隔线；section 不画上下边线；表格外框和行线只由 `DashboardTableShell` / Table 提供。禁止叠加分隔线或以 `border-y` 模拟卡片。
 - 普通 section、栏位、导航、筛选集合和表格外层继承页面背景。背景色只表达已批准的独立表面、选中/状态、悬浮层可读性或课件画布底色。
@@ -26,6 +27,7 @@
 - 业务代码不得新增原生 `<input>`、`<select>`、`<table>` 等控件；优先复用 `components/ui/`，缺失时先检查 shadcn/ui。底层无障碍封装可以使用原生元素。
 - 禁止 `window.confirm()`，也不得为单页重复手搓已有 badge、card、dialog、drawer、table 等组件。
 - 页面、布局和区块默认是 Server Component。`"use client"` 只放在确实使用 hook 或 DOM 事件的交互叶子；白板、课堂实时、编辑器、three.js、游戏棋盘等整块交互体除外。
+- 客户端需要的常量、DTO 和纯函数必须来自明确的 client-safe contract；不得从依赖 Supabase server、`server-only`、`next/headers` 或 `cookies()` 的读取模块引入运行时值。服务端读取模块应声明 `import "server-only"`，共享类型另拆合同文件。
 - 非首屏必需的重型客户端组件用模块级 `next/dynamic` 懒加载；变更客户端边界前后用 `pnpm bundle:report` 对比相关路由。
 - 新增受保护/数据页时，将读取 `cookies()`、`searchParams` 或远程数据的动态子树放进 `<Suspense>`，或提供形状匹配的 `loading.tsx`；静态页头与导航留在边界外。
 - 当前未启用 `cacheComponents`。禁止引入弃用路径上的 `unstable_cache`；正式缓存迁移须单独立项，在此之前写后使用 `router.refresh()`。

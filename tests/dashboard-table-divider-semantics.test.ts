@@ -47,12 +47,16 @@ describe("Dashboard table and divider semantics", () => {
     const tableShell = read("src/features/school/dashboard-page/DashboardCard.tsx");
     const frontendRules = read("docs/agent/frontend.md");
     const designSystem = read("docs/plan/01-design-system.md");
+    const pagination = read("src/components/ui/pagination.tsx");
 
     expect(commandPanel).toContain("不得在 DashboardTableShell");
     expect(tableShell).toContain("外壳正文必须直接从 Table 开始");
     expect(frontendRules).toContain("页面级与批量业务按钮只放");
+    expect(frontendRules).toContain("服务端分页表在表格下方使用 shadcn `Pagination`");
     expect(designSystem).toContain("页面级与批量业务按钮只进入");
     expect(designSystem).toContain("数据区纵向滚动时表头固定");
+    expect(designSystem).toContain("服务端分页统一位于表格下方并使用 shadcn `Pagination`");
+    expect(pagination).toContain('data-slot="pagination-content"');
   });
 
   it("uses borderless Dashboard sections and reserves borders for table or persistent panel boundaries", () => {

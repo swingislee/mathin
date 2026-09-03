@@ -7,7 +7,8 @@ import {
   NO_CONTACT_FILTER,
   NO_OWNER_FILTER,
 } from "@/features/school/lead-table-view";
-import type { LeadPoolRow } from "@/features/school/lead-contract";
+import { leadPaginationTokens } from "@/features/school/lead-pagination";
+import { parseLeadPageSize, type LeadPoolRow } from "@/features/school/lead-contract";
 
 const root = process.cwd();
 const read = (...segments: string[]) => fs.readFileSync(path.join(root, ...segments), "utf8");
@@ -181,6 +182,33 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
       .toEqual(["a", "b", "c"]);
     expect(filterAndSortLeadRows(rows, {}, { column: "latestContact", direction: "desc" }, "zh").map((row) => row.id))
       .toEqual(["c", "a", "b"]);
+  });
+
+  it("uses client-safe contracts and explicit configurable shadcn pagination", () => {
+    const page = read("src", "app", "[locale]", "dashboard", "leads", "page.tsx");
+    const query = read("src", "features", "school", "leads.ts");
+    const contract = read("src", "features", "school", "lead-contract.ts");
+    const pagination = read("src", "features", "school", "LeadPoolPagination.tsx");
+    const shadcnPagination = read("src", "components", "ui", "pagination.tsx");
+
+    expect(query).toContain('import "server-only"');
+    expect(query).toContain("filters.pageSize");
+    expect(query).toContain("offset + filters.pageSize - 1");
+    expect(contract).toContain("LEAD_PAGE_SIZES = [20, 50, 100]");
+    expect(page).toContain("LeadPoolPagination");
+    expect(page).toContain('name="pageSize"');
+    expect(pagination).toContain("PaginationContent");
+    expect(pagination).toContain("PaginationEllipsis");
+    expect(pagination).toContain("LEAD_PAGE_SIZES.map");
+    expect(pagination).toContain("router.replace(hrefFor(1, nextPageSize))");
+    expect(pagination).not.toContain('from "./leads"');
+    expect(shadcnPagination).toContain('data-slot="pagination"');
+    expect(leadPaginationTokens(1, 11)).toEqual([1, 2, 3, 4, 5, "ellipsis-right", 11]);
+    expect(leadPaginationTokens(6, 11)).toEqual([1, "ellipsis-left", 5, 6, 7, "ellipsis-right", 11]);
+    expect(leadPaginationTokens(11, 11)).toEqual([1, "ellipsis-left", 7, 8, 9, 10, 11]);
+    expect(parseLeadPageSize("20")).toBe(20);
+    expect(parseLeadPageSize(["50", "100"])).toBe(50);
+    expect(parseLeadPageSize("500")).toBe(100);
   });
 
   it("selects or clears an inclusive visible range from the plain-click anchor", () => {
