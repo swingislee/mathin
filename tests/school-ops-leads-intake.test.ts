@@ -68,12 +68,13 @@ describe("SCHOOL-OPS Leads seed intake", () => {
 
   it("exposes a separate seed pool and keeps review decisions identity-free", () => {
     const page = read("src", "app", "[locale]", "dashboard", "leads", "page.tsx");
+    const table = read("src", "features", "school", "LeadPoolTable.tsx");
     const panel = read("src", "features", "school", "XiaodituiImportPanel.tsx");
     const actions = read("src", "features", "school", "actions", "lead-imports.ts");
     const routes = read("src", "features", "school", "dashboard-routes.ts");
 
-    expect(page).toContain("identityUnconfirmed");
-    expect(page).toContain("studentSuggestion");
+    expect(table).toContain("identityUnconfirmed");
+    expect(table).toContain("studentSuggestion");
     expect(page).toContain("listLeadPool");
     expect(panel).toContain('href="/dashboard/leads"');
     expect(panel).toContain("getLeadImportBatchAction");

@@ -1,9 +1,7 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toSelectValue } from "@/features/school/controls";
 import {
   DashboardCommandActions,
@@ -13,7 +11,6 @@ import {
   DashboardCommandTabs,
   DashboardEmptyCard,
   DashboardPage,
-  DashboardTableShell,
 } from "@/features/school/dashboard-page";
 import {
   FilterBar,
@@ -22,7 +19,9 @@ import {
   FilterSearchInput,
   FilterSelectTrigger,
 } from "@/features/school/FilterBar";
+import { LeadPoolTable } from "@/features/school/LeadPoolTable";
 import { LEAD_STATUSES, listLeadPool, parseLeadPoolFilters } from "@/features/school/leads";
+import { listStaffMembers } from "@/features/school/staff";
 import { Link } from "@/i18n/navigation";
 import { getMyPerms, requirePerm } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -43,10 +42,24 @@ export default async function LeadsPage({
   ]);
   const canScopeAll = perms.has("student.view.all");
   const canImport = perms.has("student.import");
+  const canAssign = perms.has("student.assign");
+  const canContact = perms.has("followup.write");
   const filters = parseLeadPoolFilters(rawSearchParams, canScopeAll);
-  const { leads, count, pageSize } = await listLeadPool(user.id, filters);
+  const [{ leads, count, pageSize }, assignees] = await Promise.all([
+    listLeadPool(user.id, filters),
+    canAssign
+      ? listStaffMembers().then((members) => members
+          .filter((member) => member.isActive && member.canFollowUp)
+          .map((member) => ({ userId: member.userId, displayName: member.displayName })))
+      : Promise.resolve([]),
+  ]);
   const maxPage = count > 0 ? Math.max(1, Math.ceil(count / pageSize)) : filters.page;
-  const activeFilterCount = [filters.q, filters.status].filter(Boolean).length;
+  const activeQueue = filters.scope === "unassigned"
+    ? "unassigned"
+    : filters.scope === "mine" && filters.status === "uncontacted"
+      ? "first_contact"
+      : filters.scope;
+  const activeFilterCount = [filters.q, activeQueue === "first_contact" ? undefined : filters.status].filter(Boolean).length;
 
   const hrefFor = (next: {
     scope?: typeof filters.scope;
@@ -66,11 +79,6 @@ export default async function LeadsPage({
     const qs = query.toString();
     return `/dashboard/leads${qs ? `?${qs}` : ""}`;
   };
-  const formatAt = (value: string) => new Intl.DateTimeFormat(locale, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-
   return (
     <DashboardPage
       title={t("title")}
@@ -80,12 +88,13 @@ export default async function LeadsPage({
           <DashboardCommandState>
             <DashboardCommandTabs
               ariaLabel={t("scopeLabel")}
-              activeValue={filters.scope}
+              activeValue={activeQueue}
               items={[
-                { value: "unassigned", label: t("scopeUnassigned"), href: hrefFor({ scope: "unassigned", page: 1 }) },
-                { value: "mine", label: t("scopeMine"), href: hrefFor({ scope: "mine", page: 1 }) },
+                { value: "unassigned", label: t("scopeUnassigned"), href: hrefFor({ scope: "unassigned", status: undefined, page: 1 }) },
+                { value: "first_contact", label: t("scopeFirstContact"), href: hrefFor({ scope: "mine", status: "uncontacted", page: 1 }) },
+                { value: "mine", label: t("scopeMine"), href: hrefFor({ scope: "mine", status: undefined, page: 1 }) },
                 ...(canScopeAll
-                  ? [{ value: "all", label: t("scopeAll"), href: hrefFor({ scope: "all", page: 1 }) }]
+                  ? [{ value: "all", label: t("scopeAll"), href: hrefFor({ scope: "all", status: undefined, page: 1 }) }]
                   : []),
               ]}
             />
@@ -144,65 +153,15 @@ export default async function LeadsPage({
       {leads.length === 0 ? (
         <DashboardEmptyCard>{t("empty")}</DashboardEmptyCard>
       ) : (
-        <DashboardTableShell>
-          <Table className="w-full min-w-[82rem] text-sm">
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("seed")}</TableHead>
-                <TableHead>{t("grade")}</TableHead>
-                <TableHead>{t("interests")}</TableHead>
-                <TableHead>{t("source")}</TableHead>
-                <TableHead>{t("submittedAt")}</TableHead>
-                <TableHead>{t("owner")}</TableHead>
-                <TableHead>{t("identity")}</TableHead>
-                <TableHead>{t("status")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {leads.map((lead) => (
-                <TableRow key={lead.id}>
-                  <TableCell className="min-w-48">
-                    <div className="font-medium text-ink">{lead.provisionalStudentName}</div>
-                    <div className="mt-0.5 font-mono text-xs text-muted">{lead.phone}</div>
-                  </TableCell>
-                  <TableCell>{lead.gradeText || (lead.gradeHint ? t("gradeValue", { grade: lead.gradeHint }) : "—")}</TableCell>
-                  <TableCell className="max-w-80">
-                    <div className="flex flex-wrap gap-1">
-                      {lead.interests.length > 0
-                        ? lead.interests.map((interest) => <Badge key={interest} variant="outline" className="font-normal">{interest}</Badge>)
-                        : <span className="text-muted">—</span>}
-                    </div>
-                  </TableCell>
-                  <TableCell className="min-w-56">
-                    <div>{lead.sourceBatchLabel || "—"}</div>
-                    <div className="mt-0.5 text-xs text-muted">
-                      {[lead.sourceRow ? t("sourceRow", { row: lead.sourceRow }) : "", lead.promoter, lead.acquisitionMethod]
-                        .filter(Boolean)
-                        .join(" · ") || "—"}
-                    </div>
-                    {lead.sourceCount > 1 ? <div className="mt-1 text-xs text-muted">{t("sourceCount", { count: lead.sourceCount })}</div> : null}
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap text-xs text-muted">
-                    {lead.submittedAt ? formatAt(lead.submittedAt) : formatAt(lead.createdAt)}
-                  </TableCell>
-                  <TableCell>{lead.ownerName || t("unassignedOwner")}</TableCell>
-                  <TableCell className="min-w-44">
-                    <Badge variant="outline">{t("identityUnconfirmed")}</Badge>
-                    {lead.suggestedStudentName ? (
-                      <p className="mt-1 text-xs text-muted">{t("studentSuggestion", { name: lead.suggestedStudentName })}</p>
-                    ) : null}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={lead.status === "invalid" ? "danger" : lead.status === "converted" ? "secondary" : "outline"}>
-                      {t(`status_${lead.status}`)}
-                    </Badge>
-                    {lead.sourceMarkedDuplicate ? <p className="mt-1 text-xs text-rose">{t("sourceDuplicate")}</p> : null}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </DashboardTableShell>
+        <LeadPoolTable
+          leads={leads}
+          locale={locale}
+          currentUserId={user.id}
+          canAssign={canAssign}
+          canContact={canContact}
+          canContactAll={canContact && canScopeAll}
+          assignees={assignees}
+        />
       )}
     </DashboardPage>
   );
