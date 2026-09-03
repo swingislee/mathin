@@ -112,6 +112,8 @@ describe("魔法校班级学员花名册导入", () => {
     ]).map((candidate) => candidate.id)).toEqual(["e-b"]);
     expect(preferredMofaxiaoRosterClassCandidate(source, [base])?.id).toBe("e-b");
     expect(preferredMofaxiaoRosterClassCandidate(source, [{ ...base, name: "【培优思维】三年级秋季A+|紫辰XLZ周三17:00" }])?.id).toBe("e-b");
+    expect(preferredMofaxiaoRosterClassCandidate(source, [{ ...base, name: "三年级秋季A+周三17:00", campusName: "紫辰阁" }])?.id).toBe("e-b");
+    expect(preferredMofaxiaoRosterClassCandidate(source, [{ ...base, name: "三年级秋季A+周三17:00", campusName: "利港" }])).toBeNull();
     expect(preferredMofaxiaoRosterClassCandidate({ ...source, weekday: "周六", time: "9.12开课10:00-12:00" }, [base])).toBeNull();
   });
 

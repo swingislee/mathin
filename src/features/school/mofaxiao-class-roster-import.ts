@@ -283,11 +283,18 @@ function normalizedStartTime(value: string): string {
   return match ? `${Number(match[1])}:${match[2]}` : "";
 }
 
+function normalizedCampusKey(value: string): string {
+  const normalized = normalizeRosterText(value);
+  if (normalized.includes("紫辰")) return "紫辰阁";
+  if (normalized.includes("利港")) return "利港";
+  return normalized;
+}
+
 function targetMatchesSourceCampus(source: ParsedMofaxiaoRosterClass, target: ClassRosterTargetOption): boolean {
-  const sourceCampus = normalizeRosterText(source.campus);
+  const sourceCampus = normalizedCampusKey(source.campus);
   return Boolean(sourceCampus) && (
-    normalizeRosterText(target.campusName) === sourceCampus
-    || normalizeRosterText(target.name).includes(sourceCampus)
+    normalizedCampusKey(target.campusName) === sourceCampus
+    || normalizedCampusKey(target.name) === sourceCampus
   );
 }
 
