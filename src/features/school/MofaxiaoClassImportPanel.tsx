@@ -31,18 +31,22 @@ import type { SchoolTermRow } from "./courses";
 import { DashboardSection, DashboardTableShell, StatusStrip } from "./dashboard-page";
 import {
   inferMofaxiaoSchoolYearStart,
+  isCreatableMofaxiaoRoomName,
   isSupportedMofaxiaoClassType,
   listMofaxiaoClassCourseCandidates,
   MofaxiaoClassParseError,
   normalizeClassImportText,
+  normalizeMofaxiaoCampusName,
   parseMofaxiaoClassWorksheet,
   preferredMofaxiaoClassCourseCandidate,
+  suggestMofaxiaoClassRoomMapping,
   type ParsedMofaxiaoClassWorksheet,
 } from "./mofaxiao-class-import";
-import type { RoomOptionV2 } from "./organization-locations";
+import type { CampusOptionV2, RoomOptionV2 } from "./organization-locations";
 
 const FREE_CLASS = "__free_class__";
 const NO_ROOM = "__no_room__";
+const CREATE_ROOM_PREFIX = "__create_room__:";
 const UNMAPPED = "__unmapped__";
 const PREVIEW_LIMIT = 200;
 
@@ -63,7 +67,15 @@ function teacherKey(value: string) {
 }
 
 function roomKey(campus: string, room: string) {
-  return `${normalizeClassImportText(campus)}::${normalizeClassImportText(room)}`;
+  return `${normalizeMofaxiaoCampusName(campus)}::${normalizeClassImportText(room)}`;
+}
+
+function createRoomMappingValue(campusId: string) {
+  return `${CREATE_ROOM_PREFIX}${campusId}`;
+}
+
+function createRoomCampusIdFromMapping(value: string): string | null {
+  return value.startsWith(CREATE_ROOM_PREFIX) ? value.slice(CREATE_ROOM_PREFIX.length) : null;
 }
 
 function groupRows(rows: readonly MofaxiaoClassImportRow[], keyOf: (row: MofaxiaoClassImportRow) => string) {
@@ -94,13 +106,17 @@ export function MofaxiaoClassImportPanel({
   recentBatches,
   courseOptions,
   teachers,
+  campusOptions,
   roomOptions,
+  canCreateRooms,
   schoolTerms,
 }: {
   recentBatches: MofaxiaoClassImportBatchSummary[];
   courseOptions: ClassImportCourseOption[];
   teachers: StaffOption[];
+  campusOptions: CampusOptionV2[];
   roomOptions: RoomOptionV2[];
+  canCreateRooms: boolean;
   schoolTerms: SchoolTermRow[];
 }) {
   const t = useTranslations("school.classImport");
@@ -132,6 +148,9 @@ export function MofaxiaoClassImportPanel({
     IDEMPOTENCY_CONFLICT: t("idempotencyConflict"),
     BATCH_HAS_ERRORS: t("batchHasErrors"),
     BATCH_EXPIRED: t("batchExpired"),
+    INVALID_ROOM_CREATION: t("invalidRoomCreation"),
+    ROOM_NAME_EXISTS_INACTIVE: t("roomNameExistsInactive"),
+    LOCATION_PERMISSION_REQUIRED: t("locationPermissionRequired"),
   };
   const previewRun = useAction(previewMofaxiaoClassImportAction, {
     successMessage: t("previewSuccess"),
@@ -196,12 +215,14 @@ export function MofaxiaoClassImportPanel({
   const resolveRow = (row: MofaxiaoClassImportRow): MofaxiaoClassImportRow => {
     const courseMapping = courseMappings[courseMappingKey(row)] ?? "";
     const roomMapping = roomMappings[roomKey(row.campusName, row.roomName)] ?? NO_ROOM;
+    const createRoomCampusId = createRoomCampusIdFromMapping(roomMapping);
     return {
       ...row,
       courseId: courseMapping && courseMapping !== FREE_CLASS ? courseMapping : null,
       importAsFreeClass: courseMapping === FREE_CLASS,
       primaryTeacherId: teacherMappings[teacherKey(row.teacherName)] || null,
-      roomId: roomMapping !== NO_ROOM ? roomMapping : null,
+      roomId: roomMapping !== NO_ROOM && createRoomCampusId === null ? roomMapping : null,
+      createRoomCampusId,
       schoolTermId: resolvedTerm(row)?.id ?? null,
     };
   };
@@ -225,6 +246,9 @@ export function MofaxiaoClassImportPanel({
   const selectedSourceRows = useMemo(() => supportedRows.filter((row) => selectedRows.has(row.sourceRow)), [selectedRows, supportedRows]);
   const resolvedSelectedRows = selectedSourceRows.map(resolveRow);
   const unresolvedSelectedCount = selectedSourceRows.filter((row) => localIssues(row).length > 0).length;
+  const plannedRoomCreations = new Set(resolvedSelectedRows.flatMap((row) => row.createRoomCampusId
+    ? [`${row.createRoomCampusId}::${normalizeClassImportText(row.roomName)}`]
+    : [])).size;
   const defaultSchoolYearRowCount = supportedRows.filter((row) => !row.startDate).length;
   const rowByOrdinal = useMemo(
     () => new Map(resolvedSelectedRows.map((row, index) => [index + 1, row])),
@@ -247,8 +271,14 @@ export function MofaxiaoClassImportPanel({
 
     const nextRoomMappings: Record<string, string> = {};
     for (const group of groupRows(next.rows, (row) => roomKey(row.campusName, row.roomName))) {
-      const matches = roomOptions.filter((room) => roomKey(room.campusName, room.name) === group.key);
-      nextRoomMappings[group.key] = matches.length === 1 ? matches[0].id : NO_ROOM;
+      const suggestion = suggestMofaxiaoClassRoomMapping(
+        group.first,
+        roomOptions,
+        campusOptions,
+        canCreateRooms,
+      );
+      nextRoomMappings[group.key] = suggestion.roomId
+        ?? (suggestion.createRoomCampusId ? createRoomMappingValue(suggestion.createRoomCampusId) : NO_ROOM);
     }
     setCourseMappings(nextCourseMappings);
     setTeacherMappings(nextTeacherMappings);
@@ -404,6 +434,7 @@ export function MofaxiaoClassImportPanel({
                 { label: t("selectedRows"), value: selectedRows.size },
                 { label: t("excludedRows"), value: excludedRows, tone: excludedRows > 0 ? "warning" : "default" },
                 { label: t("unresolvedRows"), value: unresolvedSelectedCount, tone: unresolvedSelectedCount > 0 ? "critical" : "default" },
+                { label: t("roomsToCreate"), value: plannedRoomCreations, tone: plannedRoomCreations > 0 ? "warning" : "default" },
                 { label: t("defaultSchoolYearRows"), value: defaultSchoolYearRowCount },
               ]}
             />
@@ -457,10 +488,26 @@ export function MofaxiaoClassImportPanel({
                   <DashboardTableShell className="mt-2">
                     <Table className="w-full text-xs">
                       <TableHeader><TableRow><TableHead>{t("sourceRoom")}</TableHead><TableHead>{t("mathinRoom")}</TableHead></TableRow></TableHeader>
-                      <TableBody>{roomGroups.map((group) => <TableRow key={group.key}>
-                        <TableCell><span className="font-medium">{group.first.roomName || "—"}</span><span className="ml-2 text-muted">{group.first.campusName}</span></TableCell>
-                        <TableCell className="min-w-56"><Select value={roomMappings[group.key] || NO_ROOM} disabled={pending} onValueChange={(next) => updateMapping(setRoomMappings, group.key, next)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value={NO_ROOM}>{t("noRoom")}</SelectItem>{roomOptions.map((room) => <SelectItem key={room.id} value={room.id}>{room.campusName} · {room.name}</SelectItem>)}</SelectContent></Select></TableCell>
-                      </TableRow>)}</TableBody>
+                      <TableBody>{roomGroups.map((group) => {
+                        const canCreateSourceRoom = canCreateRooms && isCreatableMofaxiaoRoomName(group.first.roomName);
+                        return <TableRow key={group.key}>
+                          <TableCell><span className="font-medium">{group.first.roomName || "—"}</span><span className="ml-2 text-muted">{group.first.campusName}</span></TableCell>
+                          <TableCell className="min-w-64">
+                            <Select value={roomMappings[group.key] || NO_ROOM} disabled={pending} onValueChange={(next) => updateMapping(setRoomMappings, group.key, next)}>
+                              <SelectTrigger><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value={NO_ROOM}>{t("noRoom")}</SelectItem>
+                                {canCreateSourceRoom ? campusOptions.map((campus) => (
+                                  <SelectItem key={`${CREATE_ROOM_PREFIX}${campus.id}`} value={createRoomMappingValue(campus.id)}>
+                                    {t("createRoomInCampus", { campus: campus.name, room: group.first.roomName })}
+                                  </SelectItem>
+                                )) : null}
+                                {roomOptions.map((room) => <SelectItem key={room.id} value={room.id}>{room.campusName} · {room.name}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                        </TableRow>;
+                      })}</TableBody>
                     </Table>
                   </DashboardTableShell>
                 </div>
@@ -487,6 +534,7 @@ export function MofaxiaoClassImportPanel({
                   const course = courseOptions.find((item) => item.id === resolved.courseId);
                   const teacher = teachers.find((item) => item.id === resolved.primaryTeacherId);
                   const room = roomOptions.find((item) => item.id === resolved.roomId);
+                  const createRoomCampus = campusOptions.find((item) => item.id === resolved.createRoomCampusId);
                   const term = resolvedTerm(row);
                   const ordinal = selectedSourceRows.findIndex((item) => item.sourceRow === row.sourceRow) + 1;
                   return <TableRow key={`${row.sourceRow}-${row.externalClassId}`}>
@@ -497,7 +545,11 @@ export function MofaxiaoClassImportPanel({
                     <TableCell>{resolved.importAsFreeClass ? t("freeClass") : course?.title ?? t("unmapped")}</TableCell>
                     <TableCell>{teacher?.name ?? t("unmapped")}</TableCell>
                     <TableCell>{term ? `${term.year}–${term.year + 1} · ${row.seasonText}` : t("unmapped")}</TableCell>
-                    <TableCell>{room ? `${room.campusName} · ${room.name}` : t("noRoom")}</TableCell>
+                    <TableCell>{room
+                      ? `${room.campusName} · ${room.name}`
+                      : createRoomCampus
+                        ? t("roomWillCreate", { campus: createRoomCampus.name, room: row.roomName })
+                        : t("noRoom")}</TableCell>
                     <TableCell>
                       <span>{row.sourceStatus || "—"}</span>
                       {supported ? <span className="ml-2 text-muted">→ {t(`operational_${resolvedOperationalStatus(row)}`)}</span> : null}

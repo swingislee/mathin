@@ -49,6 +49,7 @@ const mofaxiaoClassRowSchema = z.object({
   importAsFreeClass: z.boolean(),
   primaryTeacherId: uuid.nullable(),
   roomId: uuid.nullable(),
+  createRoomCampusId: uuid.nullable(),
   schoolTermId: uuid.nullable(),
 }).strict();
 
@@ -78,6 +79,9 @@ const MOFAXIAO_CLASS_IMPORT_CODES = [
   "INVALID_CAPACITY",
   "INVALID_STAFF",
   "INVALID_ROOM",
+  "INVALID_ROOM_CREATION",
+  "ROOM_NAME_EXISTS_INACTIVE",
+  "LOCATION_PERMISSION_REQUIRED",
   "INVALID_SCHOOL_TERM",
   "COURSE_NOT_AVAILABLE",
   "INVALID_OFFERING_TYPE",

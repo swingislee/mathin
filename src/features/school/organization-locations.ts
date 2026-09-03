@@ -46,6 +46,16 @@ export interface RoomOptionV2 {
   campusName: string;
 }
 
+export interface CampusOptionV2 {
+  id: string;
+  name: string;
+}
+
+export interface ActiveLocationOptionsV2 {
+  campuses: CampusOptionV2[];
+  rooms: RoomOptionV2[];
+}
+
 export interface ScheduleDefaultsV2 {
   defaultDurationMinutes: number;
   conflictPolicy: "warn";
@@ -121,15 +131,22 @@ export async function getCampusV2(campusId: string): Promise<CampusV2> {
   return campusValue(data);
 }
 
-export async function listActiveRoomOptionsV2(): Promise<RoomOptionV2[]> {
+export async function listActiveLocationOptionsV2(): Promise<ActiveLocationOptionsV2> {
   const campuses = await getLocationCatalogV2(false);
-  return campuses.flatMap((campus) => campus.rooms.map((room) => ({
-    id: room.id,
-    name: room.name,
-    capacity: room.capacity,
-    campusId: campus.id,
-    campusName: campus.name,
-  })));
+  return {
+    campuses: campuses.map((campus) => ({ id: campus.id, name: campus.name })),
+    rooms: campuses.flatMap((campus) => campus.rooms.map((room) => ({
+      id: room.id,
+      name: room.name,
+      capacity: room.capacity,
+      campusId: campus.id,
+      campusName: campus.name,
+    }))),
+  };
+}
+
+export async function listActiveRoomOptionsV2(): Promise<RoomOptionV2[]> {
+  return (await listActiveLocationOptionsV2()).rooms;
 }
 
 export async function getScheduleDefaultsV2(): Promise<ScheduleDefaultsV2> {
