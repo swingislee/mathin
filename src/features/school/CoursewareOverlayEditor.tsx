@@ -58,8 +58,7 @@ import type {
   SolutionRecord,
 } from "./teacher-preparation-contract";
 import { replaceSessionLearningChecksAction } from "./session-learning-actions";
-import type { CoursewareLearningCheckPage } from "./session-learning";
-import type { SessionLearningCheck } from "./session-learning-contract";
+import type { CoursewareLearningCheckPage, SessionLearningCheck } from "./session-learning-contract";
 
 type SaveState = "saved" | "saving" | "dirty" | "error";
 type LearningCheckSaveState = "saved" | "saving" | "error";

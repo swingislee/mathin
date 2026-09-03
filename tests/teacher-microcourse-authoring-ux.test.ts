@@ -142,6 +142,8 @@ describe("teacher microcourse authoring UX", () => {
     expect(coursewareAction).toContain("const template = await getSessionCoursewareTemplate(id)");
     expect(livePage).toContain("const template = await getSessionCoursewareTemplate(sessionId)");
     expect(sessionLearning).toContain('supabase.rpc("get_session_courseware_learning_check_pages"');
+    expect(overlayEditor).toContain('from "./session-learning-contract"');
+    expect(overlayEditor).not.toContain('from "./session-learning"');
     expect(overlayEditor).toContain("currentPageIds.has(check.sourcePageId)");
     expect(continuityMigration).toContain("resolve_session_courseware_page_snapshot");
     expect(continuityMigration).toContain("public.build_cw_track_snapshot(microcourse_lecture, 'native-16x9')");

@@ -1,4 +1,4 @@
-import { LEAD_STATUSES, type LeadPoolRow } from "./leads";
+import { LEAD_STATUSES, type LeadPoolRow } from "./lead-contract";
 
 export type LeadTableColumn = "seed" | "interests" | "owner" | "latestContact" | "status";
 export type LeadTableSortDirection = "asc" | "desc";

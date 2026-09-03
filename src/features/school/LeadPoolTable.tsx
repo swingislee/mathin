@@ -39,7 +39,7 @@ import {
   UNKNOWN_GRADE_FILTER,
 } from "./lead-table-view";
 import { useLeadPoolSelection } from "./LeadPoolSelection";
-import { LEAD_STATUSES, type LeadPoolRow } from "./leads";
+import { LEAD_STATUSES, type LeadPoolRow } from "./lead-contract";
 
 const CONTACT_OUTCOMES = ["unreachable", "connected", "declined", "invalid_number"] as const;
 

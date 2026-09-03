@@ -7,7 +7,7 @@ import {
   NO_CONTACT_FILTER,
   NO_OWNER_FILTER,
 } from "@/features/school/lead-table-view";
-import type { LeadPoolRow } from "@/features/school/leads";
+import type { LeadPoolRow } from "@/features/school/lead-contract";
 
 const root = process.cwd();
 const read = (...segments: string[]) => fs.readFileSync(path.join(root, ...segments), "utf8");
@@ -85,6 +85,8 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     );
     const actions = read("src", "features", "school", "actions", "leads.ts");
     const query = read("src", "features", "school", "leads.ts");
+    const tableView = read("src", "features", "school", "lead-table-view.ts");
+    const contract = read("src", "features", "school", "lead-contract.ts");
 
     expect(page).toContain('value: "first_contact"');
     expect(page).toContain('status: "uncontacted"');
@@ -112,6 +114,10 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(table).not.toContain("DateTimePicker");
     expect(table).not.toContain('t("nextAction")');
     expect(table).not.toContain('t("source")');
+    expect(table).toContain('from "./lead-contract"');
+    expect(table).not.toContain('from "./leads"');
+    expect(tableView).toContain('from "./lead-contract"');
+    expect(contract).not.toContain("@/lib/supabase/server");
     expect(actions).toContain('authorizedClient("student.assign")');
     expect(actions).toContain('authorizedClient("followup.write")');
     expect(actions).toContain('p_next_action_at: nullableRpcArg<string>(null)');

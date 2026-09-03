@@ -5,17 +5,10 @@ import { createClient } from "@/lib/supabase/server";
 import { collectPostgrestRowsInBatches } from "@/lib/supabase/postgrest-batches";
 import { getSessionRoster } from "@/features/classroom/roster-server";
 import type {
+  CoursewareLearningCheckPage,
   LearningCheckStatus,
   SessionLearningSetup,
 } from "./session-learning-contract";
-
-export interface CoursewareLearningCheckPage {
-  pageDocId: string;
-  pageNo: number;
-  title: string;
-
-  learningCheckEnabled: boolean;
-}
 
 export async function getSessionLearningSetup(sessionId: string): Promise<SessionLearningSetup> {
   const supabase = await createClient();
