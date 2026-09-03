@@ -4565,7 +4565,7 @@
       "error_MISSING_CLASSROOM_MAPPING": "尚未映射 Mathin 班级",
       "error_INVALID_DEFAULT_CLASS": "默认建班信息格式不完整",
       "error_CLASS_CREATION_FORBIDDEN": "当前账号没有按默认机制新建班级的权限",
-      "error_CLASS_TERM_NOT_FOUND": "无法按来源校区、学年和季节找到运营学期",
+      "error_CLASS_TERM_NOT_FOUND": "无法按学年和季节找到全机构运营学期",
       "error_INVALID_CLASSROOM": "映射班级不存在、不可用或超出当前权限范围",
       "error_CLASS_TERM_MISSING": "映射班级尚未设置运营学年学期",
       "error_MISSING_STUDENT_MAPPING": "选择关联已有档案，但尚未指定学员",

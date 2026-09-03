@@ -4565,7 +4565,7 @@
       "error_MISSING_CLASSROOM_MAPPING": "A Mathin class has not been mapped",
       "error_INVALID_DEFAULT_CLASS": "The default class plan is incomplete or malformed",
       "error_CLASS_CREATION_FORBIDDEN": "This account cannot create a class from the default plan",
-      "error_CLASS_TERM_NOT_FOUND": "No operating term matches the source campus, school year, and season",
+      "error_CLASS_TERM_NOT_FOUND": "No organization-wide operating term matches the school year and season",
       "error_INVALID_CLASSROOM": "The mapped class does not exist, is unavailable, or is outside the current permission scope",
       "error_CLASS_TERM_MISSING": "The mapped class has no operating academic term",
       "error_MISSING_STUDENT_MAPPING": "Linking was selected, but no student record was chosen",

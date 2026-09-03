@@ -213,6 +213,7 @@ describe("魔法校班级学员花名册导入", () => {
     const defaultClassMigration = read("supabase", "migrations", "20260903001200_mofaxiao_roster_default_class_creation.sql");
     const namingMigration = read("supabase", "migrations", "20260903001300_mofaxiao_e_series_science_class_naming.sql");
     const classTypeMigration = read("supabase", "migrations", "20260903001400_mofaxiao_roster_class_type_course_mapping.sql");
+    const termScopeMigration = read("supabase", "migrations", "20260903001600_mofaxiao_roster_organization_term_scope.sql");
     const applySection = migration.slice(
       migration.indexOf("create or replace function public.apply_mofaxiao_class_roster_import"),
       migration.indexOf("revoke all on function public.get_mofaxiao_class_roster_import_batch"),
@@ -258,6 +259,14 @@ describe("魔法校班级学员花名册导入", () => {
     expect(classTypeMigration).toContain("'{defaultClass,courseClassType}'");
     expect(classTypeMigration).toContain("'{defaultClass,businessClassType}'");
     expect(classTypeMigration).toContain("apply_mofaxiao_class_roster_import_class_type_base");
+    expect(termScopeMigration).toContain("school_years_start_year_org_unique_idx");
+    expect(termScopeMigration).toContain("preview_mofaxiao_class_roster_import(text,jsonb,text,text,text,text,text,text,text)");
+    expect(termScopeMigration).toContain("apply_mofaxiao_class_roster_import_class_type_base(uuid)");
+    expect(termScopeMigration).toContain("term\\.campus_id");
+    expect(termScopeMigration).toContain("term.year = v_default_year");
+    expect(termScopeMigration).toContain("term.year = v_school_year");
+    expect(termScopeMigration).toContain("MOFAXIAO_ROSTER_PREVIEW_STILL_CAMPUS_SCOPED");
+    expect(termScopeMigration).toContain("MOFAXIAO_ROSTER_APPLY_STILL_CAMPUS_SCOPED");
     for (const forbiddenWrite of [
       "insert into public.classrooms",
       "insert into public.class_sessions",
