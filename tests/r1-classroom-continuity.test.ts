@@ -78,6 +78,8 @@ describe("R1 classroom continuity contracts", () => {
     expect(prepFlow).toContain('t("prepArchiveReadOnly")');
     expect(overlayEditor).toContain("readOnly?: boolean");
     expect(overlayEditor).toContain('ts("coursewareArchivePageRailTitle")');
+    expect(overlayEditor).toContain("structureReadOnly = readOnly");
+    expect(overlayEditor).toContain("prepArchiveUnlockedCoursewareHint");
     expect(classes).toContain("courseware_frozen_at,courseware,courseware_overlay");
   });
 
@@ -112,22 +114,20 @@ describe("R1 classroom continuity contracts", () => {
   });
 
   it("binds learning-check defaults to published courseware page identity instead of reusable title templates", () => {
-    const studio = read("src/features/courseware-studio/CoursewarePageEditor.tsx");
     const prep = read("src/features/school/SessionPrepPanel.tsx");
     expect(learningCheckFlagMigration).toContain("create table if not exists public.cw_page_learning_check_flags");
     expect(learningCheckFlagMigration).toContain("set_cw_page_learning_check_flag");
     expect(learningCheckFlagMigration).toContain("'learningCheckEnabled',rows.learning_check_enabled");
     expect(learningCheckFlagMigration).toContain("source_page_doc_id uuid references public.cw_page_docs(id)");
-    expect(studio).toContain('t("learningCheckPageFlagTitle")');
-    expect(studio).toContain('t("learningCheckEnabled")');
-    expect(studio).not.toContain("teachingRole");
+    expect(fs.existsSync(path.join(root, "src/features/courseware-studio/CoursewarePageEditor.tsx"))).toBe(false);
     expect(prep).toContain("getSessionCoursewareLearningCheckPages");
     const overlayEditor = read("src/features/school/CoursewareOverlayEditor.tsx");
     expect(overlayEditor).toContain("toggleLearningCheck");
     expect(overlayEditor).toContain("learningCheckSaveQueue");
     expect(overlayEditor).toContain("learningChecksConfigured");
     expect(overlayEditor).toContain("BadgeCheck");
-    expect(overlayEditor).toContain("CoursewarePreviewWorkspace");
+    expect(overlayEditor).toContain("CoursewareWorkbench");
+    expect(overlayEditor).toContain('mode="preview"');
     expect(overlayEditor).toContain("SUDOKU_BOX_ELIMINATION_SEED");
     expect(overlayEditor).toContain("usingSudokuTeachingPreset");
     expect(overlayEditor).toContain('t("sudokuBoxEliminationTitle")');
@@ -135,11 +135,15 @@ describe("R1 classroom continuity contracts", () => {
     expect(overlayEditor).toContain("restoreLearningCheckDefaults");
     expect(overlayEditor).toContain("undoRestoreLearningCheckDefaults");
     const sharedPreview = read("src/features/courseware-preview/CoursewarePreviewWorkspace.tsx");
-    expect(sharedPreview).toContain("data-courseware-page-rail");
-    expect(sharedPreview).toContain("data-courseware-preview-stage");
-    expect(sharedPreview).toContain("ResizeObserver");
-    expect(sharedPreview).toContain('railWidth?: "standard" | "wide"');
-    expect(read("src/features/school/curriculum/LectureCoursewarePreview.tsx")).toContain("CoursewarePreviewWorkspace");
+    const sharedWorkbench = read("src/features/courseware-doc/CoursewareEditorWorkbench.tsx");
+    const sharedStage = read("src/features/courseware-doc/CoursewareStageViewport.tsx");
+    expect(sharedPreview).toContain("CoursewareWorkbench");
+    expect(sharedWorkbench).toContain("data-courseware-page-rail");
+    expect(sharedWorkbench).toContain("data-courseware-preview-stage");
+    expect(sharedWorkbench).toContain("CoursewareStageViewport");
+    expect(sharedStage).toContain("ResizeObserver");
+    expect(sharedWorkbench).toContain('railWidth?: "standard" | "wide"');
+    expect(read("src/features/school/curriculum/LectureCoursewarePreview.tsx")).toContain("CoursewareWorkbench");
     expect(read("src/features/school/SessionWorkspaceBody.tsx")).toContain('scroll={stage === "pre" ? "none" : "auto"}');
     expect(overlayEditor).not.toContain("learningCheckAddCustom");
     expect(learningCheckConfigurationMigration).toContain("learning_checks_configured_at");
@@ -148,7 +152,8 @@ describe("R1 classroom continuity contracts", () => {
 
   it("keeps preparation artifacts and reviews as visible quality signals, not completion gates", () => {
     const prepFlow = read("src/features/school/SessionPreparationFlow.tsx");
-    const reviewPage = read("src/app/[locale]/dashboard/courseware/preparation-review/page.tsx");
+    const prepPanel = read("src/features/school/SessionPrepPanel.tsx");
+    const workItems = read("src/features/school/work-items.ts");
     expect(prepArtifactMigration).toContain("create table if not exists public.session_preparation_artifacts");
     expect(prepArtifactMigration).toContain("solution_files");
     expect(prepArtifactMigration).toContain("lesson_plan_files");
@@ -166,24 +171,27 @@ describe("R1 classroom continuity contracts", () => {
     expect(prepFlow).toContain("saveQueue");
     expect(prepFlow).toContain("latest.current = next");
     expect(prepFlow).not.toContain('type="submit"');
-    expect(reviewPage).toContain("listSessionPreparationReviews");
+    expect(fs.existsSync(path.join(root, "src/features/school/PreparationReviewActions.tsx"))).toBe(true);
+    expect(fs.existsSync(path.join(root, "src/features/school/session-preparation-reviews.ts"))).toBe(true);
+    expect(workItems).toContain('case "session"');
+    expect(fs.existsSync(path.join(root, "src/app/[locale]/dashboard/courseware/preparation-review/page.tsx"))).toBe(false);
   });
 
   it("keeps the preparation canvas fixed while resolving H5 entries through the shared preview workspace", () => {
     const workspace = read("src/features/school/SessionWorkspaceBody.tsx");
     const sessionAssets = read("src/features/classroom/courseware/session-assets.ts");
     const prep = read("src/features/school/SessionPrepPanel.tsx");
-    const sharedPreview = read("src/features/courseware-preview/CoursewarePreviewWorkspace.tsx");
+    const sharedWorkbench = read("src/features/courseware-doc/CoursewareEditorWorkbench.tsx");
     expect(workspace).toContain('scroll={stage === "pre" ? "none" : "auto"}');
     expect(sessionAssets).toContain("getSessionH5BindingUrls");
     expect(sessionAssets).toContain("buildH5EntryUrl");
     expect(prep).toContain("getSessionH5BindingUrls");
     // doc 27 §3 D3：目录与预览的固定轨道换成可拖拽分栏，方向按容器实宽决定。
-    expect(sharedPreview).toContain("ResizablePanelGroup");
-    expect(sharedPreview).toContain("useSplitOrientation");
-    expect(sharedPreview).toContain("overflow-y-auto");
-    expect(sharedPreview).toContain('aria-keyshortcuts="ArrowLeft PageUp"');
-    expect(sharedPreview).toContain('aria-keyshortcuts="ArrowRight PageDown Space"');
+    expect(sharedWorkbench).toContain("ResizablePanelGroup");
+    expect(sharedWorkbench).toContain("useSplitOrientation");
+    expect(sharedWorkbench).toContain("overflow-y-auto");
+    expect(sharedWorkbench).toContain('aria-keyshortcuts="ArrowLeft PageUp"');
+    expect(sharedWorkbench).toContain('aria-keyshortcuts="ArrowRight PageDown Space"');
     const docStage = read("src/features/courseware-doc/DocStage.tsx");
     expect(docStage).toContain("data-board-band");
     expect(docStage).toContain('className="bg-card"');
@@ -226,7 +234,7 @@ describe("R1 classroom continuity contracts", () => {
 
     expect(resolveCourseware([], [{ page: gamePage }])).toEqual([gamePage]);
     expect(livePage).toContain('classroom.myRole === "teacher" && !session.coursewareFrozenAt');
-    expect(livePage).toContain("session.lectureId ? await getSessionCoursewareTemplate(sessionId) : []");
+    expect(livePage).toContain("const template = session.lectureId ? await getSessionCoursewareTemplate(sessionId) : []");
     expect(livePage).toContain("courseware: resolveCourseware(template");
     expect(livePage).not.toContain("session.lectureId && !session.coursewareFrozenAt");
     expect(livePage).not.toContain("if (template.length > 0)");

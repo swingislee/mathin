@@ -20,21 +20,12 @@ describe("P6 adaptation background rework contract", () => {
     expect(migration).toContain("P6-6 superseded during deterministic CAS repair");
   });
 
-  it("requires a structured rejection reason and exposes crop repair plus adjacent editing paths", () => {
-    const review = read("src", "features", "courseware-studio", "AdaptReviewQueue.tsx");
-    const rework = read("src", "features", "courseware-studio", "AdaptBackgroundReworkQueue.tsx");
+  it("keeps the audit history while retiring its parallel review UI", () => {
     const page = read("src", "app", "[locale]", "dashboard", "courseware", "review", "page.tsx");
 
-    expect(review).toContain("ADAPT_REJECTION_CODES");
-    expect(review).toContain("adaptRejectReasonRequired");
-    expect(review).toContain("rejectNote");
-    expect(rework).toContain("cropToFile");
-    expect(rework).toContain("stageCoursewareImageReplacementAction");
-    expect(rework).toContain("repairAdaptBackgroundAction");
-    expect(rework).toContain("track=adapted-4x3");
-    expect(rework).toContain("track=native-16x9");
-    expect(rework).toContain("adaptChangeClassification");
-    expect(page).toContain('requested === "backgrounds" || requested === "rework" || requested === "pages"');
-    expect(page).toContain('|| requested === "releases" || requested === "history"');
+    expect(fs.existsSync(path.join(root, "src", "features", "courseware-studio", "AdaptReviewQueue.tsx"))).toBe(false);
+    expect(fs.existsSync(path.join(root, "src", "features", "courseware-studio", "AdaptBackgroundReworkQueue.tsx"))).toBe(false);
+    expect(page).toContain("FormalCoursewareReviewQueue");
+    expect(page).not.toContain("AdaptReviewQueue");
   });
 });

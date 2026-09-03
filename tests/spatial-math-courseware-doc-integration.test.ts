@@ -19,15 +19,15 @@ describe("SML-0 production CoursewareDoc integration", () => {
     expect(() => parseCoursewareDoc({ ...standard, docVersion: "spatial-page-v2" })).toThrow();
   });
 
-  it("dispatches spatial documents to a lazy renderer without widening the legacy page editor", () => {
+  it("dispatches spatial documents to the shared renderer without retaining the legacy Studio route", () => {
     const preview = read("src/features/courseware-studio/StagePreview.tsx");
-    const studioPage = read("src/app/[locale]/studio/courseware/[lectureId]/page.tsx");
+    const workspace = read("src/features/courseware-studio/UnifiedCoursewareWorkspace.tsx");
 
     expect(preview).toContain("isSpatialPageDoc(props.doc)");
     expect(preview).toContain("SpatialCoursewareStage");
     expect(preview).toContain('aspect-[4/3]');
-    expect(studioPage).toContain("<SpatialStudioViewer");
-    expect(studioPage).toContain("!isSpatialPageDoc(revision.doc)");
+    expect(workspace).toContain("StagePreview");
+    expect(() => read("src/app/[locale]/studio/courseware/[lectureId]/page.tsx")).toThrow();
   });
 
   it("renders the initial deterministic spatial state with the existing WebGL and SVG fallback chain", () => {
@@ -48,16 +48,14 @@ describe("SML-0 production CoursewareDoc integration", () => {
     expect(data).toContain("layoutByRevision.get(entry.revisionId)");
   });
 
-  it("verifies spatial scene hashes before create/save RPCs and leaves legacy blank-page creation intact", () => {
+  it("verifies spatial scene hashes before unified draft saves", () => {
     const actions = read("src/features/courseware-studio/actions.ts");
 
     expect(actions).toContain("verifySpatialDocForAction");
-    expect(actions).toContain('rpc<string>(supabase, "create_cw_spatial_page"');
-    expect(actions).toContain('rpc<string>(supabase, "create_blank_cw_page"');
+    expect(actions).toContain('rpc<Array<{ revision_no: number }>>(supabase, "save_cw_track_page_draft"');
     expect(actions).toContain("SPATIAL_PAGE_SCENE_HASH_MISMATCH");
-    expect(actions).toContain("title: requiredText(100)");
     expect(actions).toContain("PAIRED_TRACKS_NOT_READY");
-    expect(actions).toContain("PAIRED_RELEASE_INCOMPLETE");
+    expect(actions).not.toContain("publishCoursewareReleaseAction");
   });
 
   it("keeps paired delivery atomic across publish, review and rollback while hiding internal helpers", () => {

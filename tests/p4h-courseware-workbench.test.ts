@@ -19,23 +19,18 @@ describe("P4H/P4I-12 courseware workbench contract", () => {
     expect(queue).toContain("/dashboard/courseware/lectures/");
   });
 
-  it("Studio 壳层是脱离 Dashboard 的独立编辑路由（P4I-12）", () => {
-    const layout = read("src", "app", "[locale]", "studio", "layout.tsx");
-    const page = read("src", "app", "[locale]", "studio", "courseware", "[lectureId]", "page.tsx");
-    const editor = read("src", "features", "courseware-studio", "CoursewarePageEditor.tsx");
+  it("retires the parallel Studio editor and routes edits to the unified lecture workspace", () => {
+    const route = path.join(root, "src", "app", "[locale]", "studio", "courseware", "[lectureId]", "page.tsx");
+    const editor = path.join(root, "src", "features", "courseware-studio", "CoursewarePageEditor.tsx");
+    const lecture = read("src", "features", "school", "curriculum", "LectureWorkspaceBody.tsx");
+    const plan = read("src", "features", "school", "teaching-operations", "TeachingPlanEditor.tsx");
 
-    expect(layout).not.toContain("DashboardShell");
-    expect(layout).not.toContain("@/components/site-header");
-    expect(page).toContain("loadCoursewareWorkbenchContext");
-    expect(page).toContain("loadCoursewareStudioPage");
-    expect(page).toContain('requirePerm(locale, "courseware.page.edit")');
-    expect(editor).toContain("FullScreenToolShell");
-    expect(editor).toContain("StageViewport");
-    expect(editor).toContain("submitCoursewareReviewAction");
-    expect(editor).toContain("publishCoursewareReleaseAction");
-    expect(editor).toContain("rollbackCoursewareReleaseAction");
-    expect(editor).not.toContain("<h1");
-    expect(editor).toContain("beforeunload");
+    expect(fs.existsSync(route)).toBe(false);
+    expect(fs.existsSync(editor)).toBe(false);
+    expect(lecture).toContain("?workspace=courseware&track=${track}");
+    expect(plan).toContain("?workspace=courseware&track=native-16x9");
+    expect(lecture).not.toContain("/studio/courseware");
+    expect(plan).not.toContain("/studio/courseware");
   });
 
   it("retires the four P4H-era redirect shells and keeps the canonical lecture workspace", () => {
