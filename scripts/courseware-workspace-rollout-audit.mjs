@@ -13,22 +13,34 @@ function fail(message) {
 }
 
 function parseOptions(argv) {
-  const options = { localDocker: false, container: "supabase-db", compact: false, applicationCommit: "HEAD" };
+  const options = {
+    localDocker: false,
+    sshTarget: null,
+    container: "supabase-db",
+    compact: false,
+    applicationCommit: "HEAD",
+  };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === "--local-docker") options.localDocker = true;
+    else if (arg === "--ssh-target") options.sshTarget = argv[++index] ?? fail("--ssh-target requires a value");
     else if (arg === "--compact") options.compact = true;
     else if (arg === "--container") options.container = argv[++index] ?? fail("--container requires a value");
     else if (arg === "--application-commit") options.applicationCommit = argv[++index] ?? fail("--application-commit requires a value");
     else fail(`unknown argument: ${arg}`);
   }
-  if (!options.localDocker) fail("usage: pnpm cw:workspace-rollout:audit -- --local-docker [--container supabase-db] [--application-commit <git-ref>] [--compact]");
+  if (Number(options.localDocker) + Number(Boolean(options.sshTarget)) !== 1) {
+    fail("usage: pnpm cw:workspace-rollout:audit -- (--local-docker | --ssh-target <host>) [--container supabase-db] [--application-commit <git-ref>] [--compact]");
+  }
   if (!/^[A-Za-z0-9_.-]+$/.test(options.container)) fail("invalid Docker container name");
+  if (options.sshTarget && (!/^(?:[A-Za-z0-9._-]+@)?[A-Za-z0-9._-]+$/.test(options.sshTarget) || options.sshTarget.startsWith("-"))) {
+    fail("invalid SSH target");
+  }
   return options;
 }
 
 const sql = String.raw`
-begin transaction read only;
+begin transaction isolation level repeatable read read only;
 with page_base as (
   select page.id,
          coalesce(source.source_system,
@@ -74,6 +86,7 @@ with page_base as (
   from public.cw_lecture_releases group by track
 )
 select jsonb_build_object(
+  'databaseFingerprint', public.r1_current_database_fingerprint(),
   'migrationHead', (select max(version) from public.schema_migrations),
   'appliedRequiredMigrations', coalesce((
     select jsonb_agg(version order by version) from public.schema_migrations
@@ -92,12 +105,20 @@ select jsonb_build_object(
 rollback;
 `;
 
-function readSnapshot(container) {
-  const executable = process.platform === "win32" ? "docker.exe" : "docker";
-  const result = spawnSync(executable, [
-    "exec", container, "psql", "-U", "postgres", "-d", "postgres",
-    "-X", "-qAt", "-v", "ON_ERROR_STOP=1", "-c", sql,
-  ], { encoding: "utf8", shell: false, maxBuffer: 16 * 1024 * 1024 });
+function readSnapshot(options) {
+  const remoteCommand = `docker exec -i ${options.container} psql -U postgres -d postgres -X -qAt -v ON_ERROR_STOP=1`;
+  const executable = options.sshTarget
+    ? (process.platform === "win32" ? "ssh.exe" : "ssh")
+    : (process.platform === "win32" ? "docker.exe" : "docker");
+  const args = options.sshTarget
+    ? ["-o", "BatchMode=yes", options.sshTarget, remoteCommand]
+    : ["exec", "-i", options.container, "psql", "-U", "postgres", "-d", "postgres", "-X", "-qAt", "-v", "ON_ERROR_STOP=1"];
+  const result = spawnSync(executable, args, {
+    input: sql,
+    encoding: "utf8",
+    shell: false,
+    maxBuffer: 16 * 1024 * 1024,
+  });
   if (result.status !== 0) fail(result.stderr || `psql failed with status ${result.status}`);
   const line = result.stdout.split(/\r?\n/).find((value) => value.trim().startsWith("{"));
   if (!line) fail("database snapshot did not return JSON");
@@ -111,10 +132,12 @@ function resolveGitCommit(reference) {
 }
 
 const options = parseOptions(process.argv.slice(2));
-const plan = buildCoursewareWorkspaceRolloutPlan(readSnapshot(options.container), {
-  environment: "local",
-  executionHost: os.hostname(),
-  databaseTarget: `docker:${options.container}`,
+const plan = buildCoursewareWorkspaceRolloutPlan(readSnapshot(options), {
+  environment: options.sshTarget ? "production" : "local",
+  executionHost: options.sshTarget ?? os.hostname(),
+  databaseTarget: options.sshTarget
+    ? `ssh:${options.sshTarget}/docker:${options.container}`
+    : `docker:${options.container}`,
   applicationCommit: resolveGitCommit(options.applicationCommit),
   generatedAt: new Date().toISOString(),
 });

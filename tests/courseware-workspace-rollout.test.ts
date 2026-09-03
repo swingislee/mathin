@@ -6,6 +6,7 @@ import {
 } from "../scripts/lib/courseware-workspace-rollout.mjs";
 
 const snapshot = {
+  databaseFingerprint: "production-safe-fingerprint",
   migrationHead: "20260903000700_courseware_page_insertions",
   appliedRequiredMigrations: [...REQUIRED_MIGRATIONS],
   functions: { registerInsertedAsset: true, sourceRuntimePatchGate: true },
@@ -30,6 +31,9 @@ describe("courseware workspace rollout inventory", () => {
     const cli = readFileSync("scripts/courseware-workspace-rollout-audit.mjs", "utf8");
 
     expect(cli).toContain("--application-commit");
+    expect(cli).toContain("--ssh-target");
+    expect(cli).toContain("BatchMode=yes");
+    expect(cli).toContain("repeatable read read only");
     expect(cli).toContain("rev-parse");
     expect(cli).toContain("--verify");
   });
@@ -44,6 +48,7 @@ describe("courseware workspace rollout inventory", () => {
     });
 
     expect(plan.inventory.logicalPages).toBe(77_062);
+    expect(plan.target.databaseFingerprint).toBe("production-safe-fingerprint");
     expect(plan.inventory.formalEditablePages).toBe(77_061);
     expect(plan.inventory.insertableTrackHeads).toBe(82_569);
     expect(plan.rollout.existingPageRowsToRewrite).toBe(0);
@@ -52,6 +57,8 @@ describe("courseware workspace rollout inventory", () => {
     expect(plan.rollout.releaseHeadsAdvancedByMigration).toBe(0);
     expect(plan.rollout.frozenSessionsMutatedByMigration).toBe(0);
     expect(plan.decision.localDryRunReady).toBe(true);
+    expect(plan.decision.targetSchemaReady).toBe(true);
+    expect(plan.decision.productionInventoryCaptured).toBe(false);
     expect(plan.decision.productionCandidateReady).toBe(false);
     expect(plan.decision.blockers).toContain("production-read-only-inventory-not-captured");
     expect(plan.inventory.excludedGroups).toEqual([
@@ -73,7 +80,30 @@ describe("courseware workspace rollout inventory", () => {
     });
 
     expect(plan.decision.localDryRunReady).toBe(false);
-    expect(plan.decision.blockers).toContain(`missing-local-migration:${REQUIRED_MIGRATIONS[1]}`);
-    expect(plan.decision.blockers).toContain("required-database-functions-missing");
+    expect(plan.decision.targetSchemaReady).toBe(false);
+    expect(plan.decision.blockers).toContain(`missing-target-migration:${REQUIRED_MIGRATIONS[1]}`);
+    expect(plan.decision.blockers).toContain("required-target-database-functions-missing");
+  });
+
+  it("treats a production read-only capture as inventory, not deployment approval", () => {
+    const plan = buildCoursewareWorkspaceRolloutPlan(snapshot, {
+      environment: "production",
+      executionHost: "xiaomi",
+      databaseTarget: "ssh:xiaomi/docker:supabase-db",
+      applicationCommit: "abc123",
+      generatedAt: "2026-09-03T00:00:00.000Z",
+    });
+
+    expect(plan.target).toEqual(expect.objectContaining({
+      environment: "production",
+      executionHost: "xiaomi",
+      readOnly: true,
+    }));
+    expect(plan.decision.localDryRunReady).toBe(false);
+    expect(plan.decision.targetSchemaReady).toBe(true);
+    expect(plan.decision.productionInventoryCaptured).toBe(true);
+    expect(plan.decision.productionCandidateReady).toBe(false);
+    expect(plan.decision.blockers).not.toContain("production-read-only-inventory-not-captured");
+    expect(plan.decision.blockers).toEqual(["product-owner-production-candidate-approval-pending"]);
   });
 });

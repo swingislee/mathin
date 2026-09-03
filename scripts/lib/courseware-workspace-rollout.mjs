@@ -66,9 +66,10 @@ export function buildCoursewareWorkspaceRolloutPlan(snapshot, context) {
   const frozenSessionCount = integer(snapshot.frozenSessionCount, "frozenSessionCount");
   const functionsReady = snapshot.functions?.registerInsertedAsset === true
     && snapshot.functions?.sourceRuntimePatchGate === true;
+  const targetSchemaReady = missingMigrations.length === 0 && functionsReady;
   const blockers = [
-    ...missingMigrations.map((version) => `missing-local-migration:${version}`),
-    ...(!functionsReady ? ["required-database-functions-missing"] : []),
+    ...missingMigrations.map((version) => `missing-target-migration:${version}`),
+    ...(!functionsReady ? ["required-target-database-functions-missing"] : []),
     ...(context.environment === "production" ? [] : ["production-read-only-inventory-not-captured"]),
     "product-owner-production-candidate-approval-pending",
   ];
@@ -81,6 +82,7 @@ export function buildCoursewareWorkspaceRolloutPlan(snapshot, context) {
       executionHost: context.executionHost,
       databaseTarget: context.databaseTarget,
       readOnly: true,
+      databaseFingerprint: snapshot.databaseFingerprint ?? null,
       migrationHead: snapshot.migrationHead,
     },
     inventory: {
@@ -129,7 +131,9 @@ export function buildCoursewareWorkspaceRolloutPlan(snapshot, context) {
       },
     },
     decision: {
-      localDryRunReady: missingMigrations.length === 0 && functionsReady,
+      targetSchemaReady,
+      localDryRunReady: context.environment === "local" && targetSchemaReady,
+      productionInventoryCaptured: context.environment === "production",
       productionCandidateReady: blockers.length === 0,
       blockers,
     },
