@@ -4,6 +4,10 @@ import {
   buildCoursewareWorkspaceRolloutPlan,
   REQUIRED_MIGRATIONS,
 } from "../scripts/lib/courseware-workspace-rollout.mjs";
+import {
+  COURSEWARE_WORKSPACE_CANDIDATE_MIGRATIONS,
+  stripMigrationTransaction,
+} from "../scripts/lib/courseware-workspace-candidate.mjs";
 
 const snapshot = {
   databaseFingerprint: "production-safe-fingerprint",
@@ -27,6 +31,18 @@ const snapshot = {
 };
 
 describe("courseware workspace rollout inventory", () => {
+  it("keeps the narrow release candidate to six courseware migrations", () => {
+    expect(COURSEWARE_WORKSPACE_CANDIDATE_MIGRATIONS).toEqual([
+      "20260831000100_courseware_page_rename.sql",
+      "20260901000100_courseware_adapted_draft_bootstrap.sql",
+      "20260902000100_courseware_admin_object_capability.sql",
+      "20260902000500_courseware_legacy_publish_retirement.sql",
+      "20260902000900_courseware_source_runtime_drafts.sql",
+      "20260903000700_courseware_page_insertions.sql",
+    ]);
+    expect(stripMigrationTransaction("begin;\r\nselect 1;\r\ncommit;\r\n")).toBe("select 1;\n");
+  });
+
   it("pins the application candidate instead of silently following a moving HEAD", () => {
     const cli = readFileSync("scripts/courseware-workspace-rollout-audit.mjs", "utf8");
 

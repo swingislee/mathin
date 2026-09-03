@@ -50,6 +50,7 @@
     "cw:aixuexi:import": "node scripts/aixuexi-import-all.mjs",
     "cw:adapt-4x3": "node scripts/cw-adapt-4x3.mjs",
     "cw:workspace-rollout:audit": "node scripts/courseware-workspace-rollout-audit.mjs",
+    "cw:workspace-rollout:candidate": "node scripts/courseware-workspace-candidate.mjs",
     "p4e:offline-test": "vitest run tests/p4e-offline.test.ts",
     "p4e:offline-fixture": "node scripts/p4e-offline-fixture.mjs",
     "messages:check": "node scripts/verify-messages.mjs",

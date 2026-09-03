@@ -8,7 +8,7 @@
 >
 > **当前施工**：P6-AIX-2 已于 2026-08-13 关闭；当前由 R1-9/P6-9 采集 1305 讲正式来源 inventory、Storage/H5 对象审计与非执行者复核。
 >
-> **剩余项**：P6-9 全局量化验收和正式生产 release-1 重建见 doc 25 R1-9/15/18；§14 的 `DEV-CW-1` Step 0～8C 已获产品负责人确认。Step 7B 已完成审核语义收口与旧链删除，Step 7C 完成三端组件源码复用审计，Step 8A 完成爱学习双轨 typed-patch 草稿，Step 8B 完成共享页面插入持久化，Step 8C 证明候选无需存量回填。当前 Step 8D 已完成生产只读 inventory，但生产仍缺候选 migration/function，尚未取得部署授权。历史对象与审计记录继续保留；不得由此自动进入生产清理、整讲/批量内容改写或新的游戏/工具能力。
+> **剩余项**：P6-9 全局量化验收和正式生产 release-1 重建见 doc 25 R1-9/15/18；§14 的 `DEV-CW-1` Step 0～8D 已获产品负责人确认。Step 8E 已从生产应用基线建立不夹带并行业务的窄范围候选，完成 6 条 migration 的本地回滚演练、候选构建和生产只读结构快照；生产 migration/function 与应用仍未改变，等待另行部署授权。历史对象与审计记录继续保留；不得由此自动进入生产清理、整讲/批量内容改写或新的游戏/工具能力。
 >
 > **最后核对**：2026-09-03；§13 以前的来源与生产基线结论沿用原证据，§14 只依据当前仓库和本机 Docker 开发库只读核对，不代表 Xiaomi/生产事实。
 
@@ -591,9 +591,9 @@ sanitize 白名单按“移植过来的规则实际选择到的标签/属性”�
 
 ## 14. DEV-CW-1 课程产品统一课件工作区（待产品逐步确认）
 
-> **当前状态**：`STEP 8D PRODUCTION READ-ONLY INVENTORY / READY FOR USER AUDIT`
+> **当前状态**：`STEP 8E NARROW RELEASE CANDIDATE PREPARED / AWAITING PRODUCTION WRITE AUTHORIZATION`
 >
-> **施工授权**：产品负责人已确认 Step 0～8C，并明确授权 Step 8D 生产只读盘点。Step 7B 已让教研审核统一承载正式课修改审核与教师微课入库审核；备课资料审核归入课次教学履约，并通过“我的待办”投影给审核人；尚未正式投产的旧 `/studio/courseware/[lectureId]` 编辑器、旧适配校对工作台、公开 `publish_cw_track_release` 及其批量适配发布链已退出。Step 7C 复核三端共享组件的真实源码复用，Step 8A 让爱学习双轨草稿进入与 PageDoc 相同的自动保存与历史语义，Step 8B 让正式 PageDoc 与爱学习复用同一插入工具、节点工厂、资源选择和按需持久化能力。Step 8D 只读取生产聚合 inventory；生产 migration、数据库／Storage／release 写入和应用发布仍需单独授权。
+> **施工授权**：产品负责人已确认 Step 0～8D，并授权准备部署候选，同时明确本批不是全量部署，不做大范围备份或测试。Step 8E 因此只从生产应用基线建立独立候选、执行受影响检查、本地 migration 回滚演练和生产只读结构快照；生产 migration、数据库／Storage／release 写入和应用发布仍需单独授权。
 >
 > **推进原则**：一个批次只交付一个可人工审计的增量。每批机器检查通过后只记为 `READY FOR USER AUDIT`；必须收到产品负责人对该批布局和功能的明确确认，才能开始下一批。未回复、仅查看页面、机器检查通过或 Agent 自评均不构成确认。
 
@@ -763,7 +763,8 @@ Step 0 还需要产品负责人明确以下事项，规划不代替这些产品�
 | 8A source-runtime 双轨草稿持久化 | `USER ACCEPTED` | 统一 loader 不再从 release 预览临时构造爱学习编辑器，而是与 PageDoc 一样读取 native/adapted active draft head。共享保存控件与 `saveCoursewareDraftAction` 以 800ms 自动保存：节点文字／几何／层级／显隐写当前轨，粗排策略只写 adapted 轨。migration `20260902000900_courseware_source_runtime_drafts` 增加严格文档 shape 与 typed patch gate：只允许稳定 `sourcePath` 节点的 x/y/宽高/zIndex/html/编辑样式和一个宿主 4:3 策略变化；来源、viewport、runtime、binding、behavior、producer 未知字段、节点身份／顺序不可变。current head、release 与来源 snapshot 不推进。验收后又把 PageDoc／source-runtime 的粗调与微调历史统一接入顶栏唯一一组撤销／重做，自动保存只更新保存基线而不清空过去／未来历史；右栏重复的撤销、重置和还原入口已删除，快捷键统一为 `Ctrl/Cmd+Z`、`Ctrl/Cmd+Shift+Z` 与 `Ctrl+Y`。定向 Vitest 3 文件 21/21 与受影响 ESLint 通过；全库 TypeScript 仅被并行学生导入开发的两个非课件错误阻断 | 2026-09-03 产品负责人明确回复“已验收”，随后指出自动保存后历史入口失效与按钮重复；该复审缺陷已按同一共享历史合同修复 | 不开放正式课新增游戏/H5/工具、5,508 页批量改写、生产 migration、Storage 或 release 写入 |
 | 8B 共享页面插入持久化 | `USER ACCEPTED` | `71b008dd` 与 migration `20260903000700_courseware_page_insertions`：正式 PageDoc 与爱学习共同使用 `CoursewareInsertionToolbar`、节点工厂、图片/H5 资源选择和同一保存入口；文字、公式、形状、图片与 H5 插入进入当前页当前轨草稿。source-runtime 仅允许版本化 `mathin-overlay` 新节点，来源 producer 节点、fingerprint、binding、current head 和 release 保持不变；游戏／工具因尚无版本化持久化合同继续 fail closed。定向测试 55/55、ESLint、TypeScript 与本机迁移事务断言通过 | 2026-09-03 产品负责人在爱学习框内编辑和插入能力复审修复后回复“下一阶段”，视为本批人工通过 | 只授权 Step 8C 本机只读扩量盘点；不授权生产访问或写入 |
 | 8C 扩量与生产候选只读盘点 | `USER ACCEPTED` | 新增 `pnpm cw:workspace-rollout:audit -- --local-docker --application-commit 71b008dd`，在单个只读事务内固定应用候选并核对 migration、函数、页面、轨道、binding、release 与冻结课次。本机盘点共 77,170 页，其中正式可编辑 77,061 页、可插入轨道 head 82,571 个、binding 344,946 个、release 2,350 个、冻结课次 3 个；108 个微课 composition 继续由独立已部署 adapter 处理，1 个旧 `aixuexi-page-doc-v1` fail closed。方案明确现有页面改写 0、binding 改写 0、Storage 预上传 0、release 推进 0、冻结会话改写 0，插入资源仅在实际操作时按需登记；本机 migration/function 合同齐备 | 2026-09-03 产品负责人明确回复“Step 8C 通过，允许生产只读盘点”，确认零回填方案并授权下一批只读动作 | 只授权 Step 8D 生产只读 inventory；不授权 migration、Storage、release、业务写入或应用发布 |
-| 8D 生产只读 inventory | `READY FOR USER AUDIT` | 目标核对为本机 `WHITEHOUSE`、本地 origin `127.0.0.1:35421`、SSH `xiaomi → 192.168.5.183`、远端主机 `xiaomi`；生产数据库指纹 `10e3f97e…1a0c` 与已登记目标一致。相同审计 SQL 经 `BatchMode` SSH 在一个 `REPEATABLE READ READ ONLY` 事务执行并回滚。生产共 77,224 页，其中正式可编辑 77,060 页、可插入轨道 head 154,120 个、binding 559,865 个、release 3,770 个、冻结课次 4 个；164 个微课 composition 由独立 adapter 处理，没有未知／旧文档版本。现有页面、binding、Storage、release 与冻结会话仍均无需回填 | 生产 migration head 为 `20260830000700_teacher_microcourse_editor_unification`；候选所需 `20260902000900_courseware_source_runtime_drafts`、`20260903000700_courseware_page_insertions` 及对应函数均未部署，因此只证明 inventory 可兼容零回填，不构成部署就绪或生产通过 | 待产品负责人确认盘点结论；后续如进入部署候选，先形成独立备份／回滚／发布 preflight，再另行取得生产 migration 与应用发布授权 |
+| 8D 生产只读 inventory | `USER ACCEPTED` | 目标核对为本机 `WHITEHOUSE`、本地 origin `127.0.0.1:35421`、SSH `xiaomi → 192.168.5.183`、远端主机 `xiaomi`；生产数据库指纹 `10e3f97e…1a0c` 与已登记目标一致。相同审计 SQL 经 `BatchMode` SSH 在一个 `REPEATABLE READ READ ONLY` 事务执行并回滚。生产共 77,224 页，其中正式可编辑 77,060 页、可插入轨道 head 154,120 个、binding 559,865 个、release 3,770 个、冻结课次 4 个；164 个微课 composition 由独立 adapter 处理，没有未知／旧文档版本。现有页面、binding、Storage、release 与冻结会话仍均无需回填 | 生产 migration head 为 `20260830000700_teacher_microcourse_editor_unification`；候选 schema 尚未部署，因此只证明 inventory 可兼容零回填，不构成生产通过 | 产品负责人随后要求“部署候选准备”，视为确认盘点结论并授权 Step 8E；未授权生产写入 |
+| 8E 窄范围部署候选 | `CANDIDATE PREPARED / AWAITING PRODUCTION WRITE AUTHORIZATION` | 开发验收提交 `71b008dd` 与生产应用 `a165004…` 不在直接祖先链，直接发布会夹带 125 个并行提交；独立分支 `codex/courseware-workspace-rc-20260903` 因此从生产提交建立，候选 `d8fe305d…` 只投影 111 个课件相关文件及直接依赖。6 条 migration 包含页面重命名、4:3 草稿启动、管理员对象能力、旧发布链退休、source-runtime 草稿与页面插入。候选 production build、TypeScript、8 文件 52/52 定向课件合同及候选工具 5/5 通过；6 migration 在本地同一事务执行后回滚，结构基线精确恢复 | 生产 `REPEATABLE READ READ ONLY` 结构快照确认 6 条 migration 全部未应用，保存相关函数、约束和 ledger 的窄范围恢复参考，SHA-256=`77564fba…d7b0f0`。本批没有全量备份／测试，也没有生产 migration、应用切换、数据库／Storage／release 写入 | 实际部署固定候选 `d8fe305d…`；先复核生产指纹、head、current/previous 与快照无漂移，再另行取得生产 migration 和应用发布授权 |
 
 Step 1 变更边界：只新增只读数据 loader、连续三栏工作区、画布自适应叶子、课程预览直达按钮、双语文案和定向合同；首轮修订移动课程产品主操作、增加 4:3 缺失的 16:9 降级提示，并把单轨舞台约束为可用宽高内等比完整显示。第二轮把三点菜单移入同一命令行，使对照缺轨时保留双栏空态，按不可变爱学习布局重建旧 4:3 投影，并移除中央冗余标题行和底部状态条。爱学习判定与旧权威在本机开发库 5,508 页上比对为 0 差异；普通 1,200×900 源母版直接呈现为完整 4:3，带动画、嵌入 H5、原生题型或宽画布的 424 页保留顶部兼容带。不接 editor action，不新增 schema/RPC，不写数据库/Storage，不删除讲次工作区或旧 Studio。机器证据为 TypeScript、受影响 ESLint、双语键 5,264×2、定向 Vitest 3 文件 18/18；这些证据不代表布局已经获得产品确认。
 
