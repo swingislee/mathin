@@ -28,8 +28,10 @@ export interface StudentDetail extends StudentSummary {
   phone: string;
   wechat: string;
   school: string;
+  publicSchoolClass: string;
   region: string;
   source: string;
+  marketActivity: string;
   parentName: string;
   parentRelation: string;
   parentPhone: string;
@@ -66,8 +68,10 @@ interface StudentRow {
   phone: string;
   wechat: string;
   school: string;
+  public_school_class: string;
   region: string;
   source: string;
+  market_activity: string;
   grade: number | null;
   status: StudentStatus;
   follow_up_status: FollowUpStatus;
@@ -159,7 +163,7 @@ export async function listStudents(filters: StudentFilters): Promise<{ students:
   const to = from + PAGE_SIZE - 1;
   let query = supabase
     .from("students")
-    .select("id,name,gender,birthday,phone,wechat,school,region,source,grade,status,follow_up_status,parent_name,parent_relation,parent_phone,bind_code,remark,assigned_to,user_id,deleted_at,last_follow_up_at,next_follow_up_at,profiles!students_assigned_to_fkey(display_name)", { count: "estimated" });
+    .select("id,name,gender,birthday,phone,wechat,school,public_school_class,region,source,market_activity,grade,status,follow_up_status,parent_name,parent_relation,parent_phone,bind_code,remark,assigned_to,user_id,deleted_at,last_follow_up_at,next_follow_up_at,profiles!students_assigned_to_fkey(display_name)", { count: "estimated" });
 
   query = filters.recycle ? query.not("deleted_at", "is", null) : query.is("deleted_at", null);
 
@@ -180,7 +184,7 @@ export async function getStudentDetail(id: string): Promise<StudentDetail | null
   const supabase = await createClient();
   const { data: student, error } = await supabase
     .from("students")
-    .select("id,name,gender,birthday,phone,wechat,school,region,source,grade,status,follow_up_status,parent_name,parent_relation,parent_phone,bind_code,remark,assigned_to,user_id,deleted_at,last_follow_up_at,next_follow_up_at,profiles!students_assigned_to_fkey(display_name)")
+    .select("id,name,gender,birthday,phone,wechat,school,public_school_class,region,source,market_activity,grade,status,follow_up_status,parent_name,parent_relation,parent_phone,bind_code,remark,assigned_to,user_id,deleted_at,last_follow_up_at,next_follow_up_at,profiles!students_assigned_to_fkey(display_name)")
     .eq("id", id)
     .maybeSingle<StudentRow>();
   if (error) throw new Error(error.message);
@@ -202,8 +206,10 @@ export async function getStudentDetail(id: string): Promise<StudentDetail | null
     phone: student.phone,
     wechat: student.wechat,
     school: student.school,
+    publicSchoolClass: student.public_school_class,
     region: student.region,
     source: student.source,
+    marketActivity: student.market_activity,
     parentName: student.parent_name,
     parentRelation: student.parent_relation,
     parentPhone: student.parent_phone,
