@@ -126,6 +126,7 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(page).toContain("isFirstContactWorkbench");
     expect(workbench).toMatch(/<DashboardTableShell>\s*<Table/);
     expect(workbench).toContain("sticky left-0");
+    expect(workbench).toContain("color-mix(in srgb, var(--card) 90%, var(--moon))");
     expect(workbench).toContain("recordLeadContactAction");
     expect(workbench).toContain("deriveLeadContactDestination");
     expect(workbench).toContain("contactDestination");

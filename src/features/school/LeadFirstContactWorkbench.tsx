@@ -225,10 +225,12 @@ function ContactEntryRow({
       onClick={() => onActivate(lead.id)}
       onKeyDown={handleRowKeyDown}
     >
-      <TableCell className={cn(
-        "sticky left-0 z-10 min-w-64 px-2 py-2 align-top",
-        active ? "bg-moon/10" : "bg-card",
-      )}>
+      <TableCell
+        className="sticky left-0 z-10 min-w-64 border-r border-line bg-card px-2 py-2 align-top"
+        style={active
+          ? { backgroundColor: "color-mix(in srgb, var(--card) 90%, var(--moon))" }
+          : undefined}
+      >
         <div className="flex items-baseline gap-2 whitespace-nowrap">
           <span className="font-medium text-ink">{lead.provisionalStudentName}</span>
           <a className="font-mono text-[11px] text-ink underline-offset-4 hover:underline" href={`tel:${lead.phone}`}>
