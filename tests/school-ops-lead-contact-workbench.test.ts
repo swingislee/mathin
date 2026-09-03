@@ -133,7 +133,11 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(workbench).toContain('event.key === "Enter"');
     expect(workbench).toContain("CONTACT_OUTCOME_SHORTCUTS");
     expect(workbench).toContain("DirectChoiceGroup");
-    expect(workbench).toContain("advanceAfter");
+    expect(workbench).toContain("recordAndAdvance");
+    expect(workbench).toContain("sessionLeads");
+    expect(workbench).toContain("status: destination");
+    expect(workbench).toContain("lastContactOutcome: input.outcome");
+    expect(workbench).not.toContain("router.refresh()");
     expect(workbench).toContain("rows={1}");
     expect(workbench).toContain("contactNoteInlinePlaceholder");
     expect(workbench).toContain("focus:h-20");

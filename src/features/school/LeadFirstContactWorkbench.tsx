@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { recordLeadContactAction, type LeadContactInput } from "./actions/leads";
 import { DashboardTableShell } from "./dashboard-page";
@@ -83,11 +82,11 @@ function ContactEntryRow({
   formatAt: (value: string) => string;
   active: boolean;
   onActivate: (leadId: string) => void;
-  onSaved: (leadId: string) => void;
+  onSaved: (leadId: string, input: LeadContactInput) => void;
 }) {
   const t = useTranslations("school.leads");
-  const router = useRouter();
   const rowRef = useRef<HTMLTableRowElement>(null);
+  const submittedInputRef = useRef<LeadContactInput | null>(null);
   const [outcome, setOutcome] = useState<LeadContactOutcome | "">("");
   const [wechatState, setWechatState] = useState<TernaryChoice>("");
   const [visitState, setVisitState] = useState<TernaryChoice>("");
@@ -115,10 +114,12 @@ function ContactEntryRow({
       default: t("contactFailed"),
     },
     onSuccess: () => {
+      const savedInput = submittedInputRef.current;
+      submittedInputRef.current = null;
       reset();
-      onSaved(lead.id);
-      router.refresh();
+      if (savedInput) onSaved(lead.id, savedInput);
     },
+    onError: () => { submittedInputRef.current = null; },
   });
 
   const reachable = outcome === "connected" || outcome === "declined";
@@ -157,7 +158,9 @@ function ContactEntryRow({
 
   const submit = (nextOutcome: LeadContactOutcome | "" = outcome) => {
     if (!nextOutcome) return;
-    contactRun.run(lead.id, inputFor(nextOutcome));
+    const input = inputFor(nextOutcome);
+    submittedInputRef.current = input;
+    contactRun.run(lead.id, input);
   };
 
   const chooseOutcome = (nextOutcome: LeadContactOutcome) => {
@@ -379,9 +382,10 @@ export function LeadFirstContactWorkbench({
   locale: string;
 }) {
   const t = useTranslations("school.leads");
+  const [sessionLeads, setSessionLeads] = useState(leads);
   const [activeLeadId, setActiveLeadId] = useState<string | null>(() => leads[0]?.id ?? null);
-  const freshCount = leads.filter((lead) => lead.contactCount === 0).length;
-  const retryCount = leads.length - freshCount;
+  const freshCount = sessionLeads.filter((lead) => lead.status === "uncontacted" && lead.contactCount === 0).length;
+  const retryCount = sessionLeads.filter((lead) => lead.status === "uncontacted" && lead.contactCount > 0).length;
   const dateTimeFormatter = useMemo(() => new Intl.DateTimeFormat(locale, {
     dateStyle: "short",
     timeStyle: "short",
@@ -389,17 +393,37 @@ export function LeadFirstContactWorkbench({
   }), [locale]);
   const formatAt = (value: string) => dateTimeFormatter.format(new Date(value));
 
-  const resolvedActiveLeadId = activeLeadId && leads.some((lead) => lead.id === activeLeadId)
+  const resolvedActiveLeadId = activeLeadId && sessionLeads.some((lead) => lead.id === activeLeadId)
     ? activeLeadId
-    : leads[0]?.id ?? null;
+    : null;
 
-  const advanceAfter = (leadId: string) => {
-    const currentIndex = leads.findIndex((lead) => lead.id === leadId);
-    if (currentIndex < 0 || leads.length === 0) {
-      setActiveLeadId(leads[0]?.id ?? null);
+  const recordAndAdvance = (leadId: string, input: LeadContactInput) => {
+    const currentIndex = sessionLeads.findIndex((lead) => lead.id === leadId);
+    if (currentIndex < 0 || sessionLeads.length === 0) {
+      setActiveLeadId(null);
       return;
     }
-    setActiveLeadId(leads[currentIndex + 1]?.id ?? leads[0]?.id ?? null);
+    const nextLead = [
+      ...sessionLeads.slice(currentIndex + 1),
+      ...sessionLeads.slice(0, currentIndex),
+    ].find((lead) => lead.status === "uncontacted");
+    setActiveLeadId(nextLead?.id ?? null);
+
+    const savedAt = new Date().toISOString();
+    const destination = deriveLeadContactDestination(input.outcome, input.visitCommitted === true);
+    setSessionLeads((current) => current.map((lead) => lead.id === leadId
+      ? {
+          ...lead,
+          status: destination,
+          contactCount: lead.contactCount + 1,
+          lastContactAt: savedAt,
+          lastContactOutcome: input.outcome,
+          lastContactNote: input.note,
+          wechatAdded: input.wechatAdded,
+          visitCommitted: input.visitCommitted,
+          interestLevel: input.interestLevel,
+        }
+      : lead));
   };
 
   return (
@@ -426,14 +450,14 @@ export function LeadFirstContactWorkbench({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {leads.map((lead) => (
+            {sessionLeads.map((lead) => (
               <ContactEntryRow
                 key={lead.id}
                 lead={lead}
                 formatAt={formatAt}
                 active={lead.id === resolvedActiveLeadId}
                 onActivate={setActiveLeadId}
-                onSaved={advanceAfter}
+                onSaved={recordAndAdvance}
               />
             ))}
           </TableBody>
