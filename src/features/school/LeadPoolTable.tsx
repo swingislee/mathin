@@ -234,6 +234,15 @@ export function LeadPoolTable({
       .map((lead) => lead.id),
     [visibleLeads],
   );
+  const canRecordContact = (lead: LeadPoolRow) => (
+    canContact
+    && lead.status !== "invalid"
+    && lead.status !== "converted"
+    && Boolean(lead.ownerId)
+    && (lead.ownerId === currentUserId || canContactAll)
+  );
+  const showContactActions = leads.some(canRecordContact);
+  const tableColumnCount = 7 + (canAssign ? 1 : 0) + (showContactActions ? 1 : 0);
   const selectedVisibleCount = visibleAssignableIds.filter((id) => selected.has(id)).length;
   const allVisibleSelected = visibleAssignableIds.length > 0
     && selectedVisibleCount === visibleAssignableIds.length;
@@ -351,7 +360,7 @@ export function LeadPoolTable({
     <>
       <DashboardTableShell>
         <Table
-          className="w-full min-w-[92rem] text-xs"
+          className={showContactActions ? "w-full min-w-[92rem] text-xs" : "w-full min-w-[84rem] text-xs"}
           containerClassName="max-h-[calc(100dvh-15rem)] overflow-auto"
         >
           <TableHeader>
@@ -382,14 +391,17 @@ export function LeadPoolTable({
               <TableHead className="sticky top-0 z-20 h-8 bg-card px-2">{columnHeader("owner", t("owner"))}</TableHead>
               <TableHead className="sticky top-0 z-20 h-8 bg-card px-2">{columnHeader("latestContact", t("latestContact"))}</TableHead>
               <TableHead className="sticky top-0 z-20 h-8 bg-card px-2">{columnHeader("status", t("status"))}</TableHead>
-              <TableHead className="sticky top-0 z-20 h-8 w-24 bg-card px-2" />
+              {showContactActions ? (
+                <TableHead className="sticky top-0 z-20 h-8 w-24 bg-card px-2 text-xs font-medium text-muted">
+                  {t("actions")}
+                </TableHead>
+              ) : null}
             </TableRow>
           </TableHeader>
           <TableBody>
             {visibleLeads.map((lead) => {
               const assignable = lead.status !== "invalid" && lead.status !== "converted";
-              const contactable = canContact && Boolean(lead.ownerId)
-                && (lead.ownerId === currentUserId || canContactAll);
+              const contactable = canRecordContact(lead);
               const sourceAttribution = [
                 lead.acquisitionPromoter ? t("promoterValue", { name: lead.acquisitionPromoter }) : "",
                 lead.acquisitionMethod,
@@ -473,21 +485,23 @@ export function LeadPoolTable({
                       {t(`status_${lead.status}`)}
                     </Badge>
                   </TableCell>
-                  <TableCell className="px-2 py-1.5">
-                    {contactable ? (
-                      <Button type="button" variant="ghost" size="sm" className="h-7 whitespace-nowrap px-2 text-xs" onClick={() => setContactTarget(lead)}>
-                        <MessageSquarePlus className="size-4" />
-                        {lead.contactCount > 0 ? t("recordContact") : t("recordFirstContact")}
-                      </Button>
-                    ) : lead.ownerId ? <span className="text-xs text-muted">—</span> : <span className="text-xs text-muted">{t("assignBeforeContact")}</span>}
-                  </TableCell>
+                  {showContactActions ? (
+                    <TableCell className="px-2 py-1.5">
+                      {contactable ? (
+                        <Button type="button" variant="ghost" size="sm" className="h-7 whitespace-nowrap px-2 text-xs" onClick={() => setContactTarget(lead)}>
+                          <MessageSquarePlus className="size-4" />
+                          {lead.contactCount > 0 ? t("recordContact") : t("recordFirstContact")}
+                        </Button>
+                      ) : <span className="text-xs text-muted">—</span>}
+                    </TableCell>
+                  ) : null}
                 </TableRow>
               );
             })}
             {visibleLeads.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={canAssign ? 9 : 8}
+                  colSpan={tableColumnCount}
                   className="h-32 px-4 text-center text-sm text-muted"
                 >
                   {t("columnEmpty")}

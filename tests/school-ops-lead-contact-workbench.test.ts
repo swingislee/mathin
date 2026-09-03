@@ -118,6 +118,8 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(columnHeader).toContain("Select");
     expect(columnHeader).toContain("Button");
     expect(table).toContain("recordFirstContact");
+    expect(table).toContain("showContactActions");
+    expect(table).not.toContain("assignBeforeContact");
     expect(table).toContain("contactAutoFields");
     expect(table).not.toContain("DateTimePicker");
     expect(table).not.toContain('t("nextAction")');
