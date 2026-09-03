@@ -61,8 +61,8 @@ function runRemoteScript(options, script) {
   return run("ssh.exe", ["-o", "BatchMode=yes", options.sshTarget, "bash -s"], script).stdout.trim();
 }
 
-function runPsql(options, sql) {
-  const remote = `docker exec -i ${options.container} psql -U postgres -d postgres -X -qAt -v ON_ERROR_STOP=1`;
+function runPsql(options, sql, user = "postgres") {
+  const remote = `docker exec -i ${options.container} psql -U ${user} -d postgres -X -qAt -v ON_ERROR_STOP=1`;
   const text = run("ssh.exe", ["-o", "BatchMode=yes", options.sshTarget, remote], sql).stdout.trim();
   try { return JSON.parse(text); } catch { fail(`psql did not return one JSON value: ${text.slice(0, 500)}`); }
 }
@@ -142,7 +142,6 @@ create temp table courseware_workspace_release_baseline(snapshot jsonb) on commi
 insert into courseware_workspace_release_baseline values (${countsExpression});
 begin isolation level serializable;
 select pg_advisory_xact_lock(hashtextextended('mathin-courseware-workspace-release',0));
-set local role supabase_admin;
 do $$ begin
   if public.r1_current_database_fingerprint() <> '${EXPECTED_FINGERPRINT}' then raise exception 'PRODUCTION_FINGERPRINT_DRIFT'; end if;
   if (select max(version) from public.schema_migrations) is distinct from '${EXPECTED_HEAD}' then raise exception 'PRODUCTION_MIGRATION_HEAD_DRIFT'; end if;
@@ -244,21 +243,23 @@ const migrationHashes = migrations.map(({ name, sha256 }) => ({ name, sha256 }))
 if (options.mode === "preflight") {
   const database = runPsql(options, inspectionSql("preflight"));
   assertInspection(database, "preflight");
+  const ownerDatabase = runPsql(options, inspectionSql("owner-preflight"), "supabase_admin");
+  assertInspection(ownerDatabase, "preflight");
   const system = systemPreflight(options);
   if (system.DEPLOY_LOCK !== "free" || system.BACKUP_LOCK !== "free") fail("production lock is busy");
   if (Number(system.SERVICE_DISK_PERCENT) >= 75 || Number(system.BACKUP_DISK_PERCENT) >= 85) fail("production disk threshold exceeded");
-  process.stdout.write(`${JSON.stringify({ ok: true, database, system, migrationHashes }, null, 2)}\n`);
+  process.stdout.write(`${JSON.stringify({ ok: true, database, ownerDatabase, system, migrationHashes }, null, 2)}\n`);
 } else if (options.mode === "backup") {
   if (process.env.MATHIN_PRODUCTION_WRITE_AUTHORIZED !== WRITE_CONFIRMATION) fail("production write confirmation missing");
   process.stdout.write(`${JSON.stringify({ ok: true, backup: backup(options, migrations), migrationHashes }, null, 2)}\n`);
 } else if (options.mode === "rehearse") {
   if (process.env.MATHIN_PRODUCTION_WRITE_AUTHORIZED !== WRITE_CONFIRMATION) fail("production write confirmation missing");
-  const result = runPsql(options, migrationSql(migrations, true));
+  const result = runPsql(options, migrationSql(migrations, true), "supabase_admin");
   if (result.candidateRows !== 0 || result.migrationHead !== EXPECTED_HEAD || !result.legacyPublishPresent || result.newFunctionsReady) fail("rollback rehearsal left residue");
   process.stdout.write(`${JSON.stringify({ ok: true, result, migrationHashes }, null, 2)}\n`);
 } else if (options.mode === "apply") {
   if (process.env.MATHIN_PRODUCTION_WRITE_AUTHORIZED !== WRITE_CONFIRMATION) fail("production write confirmation missing");
-  const result = runPsql(options, migrationSql(migrations, false));
+  const result = runPsql(options, migrationSql(migrations, false), "supabase_admin");
   if (result.candidateRows !== migrations.length || result.migrationHead !== migrations.at(-1).version || result.legacyPublishPresent || !result.newFunctionsReady) fail("formal migration postcondition failed");
   process.stdout.write(`${JSON.stringify({ ok: true, result, migrationHashes }, null, 2)}\n`);
 } else {
