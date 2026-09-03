@@ -133,8 +133,11 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(workbench).toContain("CONTACT_OUTCOME_SHORTCUTS");
     expect(workbench).toContain("DirectChoiceGroup");
     expect(workbench).toContain("advanceAfter");
-    expect(workbench).toContain('disabled={!outcome || contactRun.pending}');
+    expect(workbench).toContain("rows={reachable ? 2 : 1}");
     expect(workbench).toContain("lead.lastContactOutcome");
+    expect(workbench).toContain("active && outcome");
+    expect(workbench).toContain('outcome === "connected"');
+    expect(workbench).toContain("contactNotePlaceholder_${outcome}");
     expect(workbench).not.toContain("QUICK_SUBMIT_OUTCOMES");
     expect(workbench).not.toContain("<Select");
     expect(workbench).not.toContain("DateTimePicker");

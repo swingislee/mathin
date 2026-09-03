@@ -296,40 +296,47 @@ function ContactEntryRow({
           })}
         </div>
 
-        {active ? (
+        {active && outcome ? (
           <div className="mt-2 space-y-2 border-t border-line pt-2">
-            <div className="flex flex-wrap gap-x-4 gap-y-2">
-              <DirectChoiceGroup
-                label={t("wechatFact")}
-                value={wechatState}
-                choices={wechatChoices}
-                disabled={!reachable || contactRun.pending}
-                onChange={setWechatState}
-              />
-              <DirectChoiceGroup
-                label={t("visitFact")}
-                value={visitState}
-                choices={visitChoices}
-                disabled={outcome !== "connected" || contactRun.pending}
-                onChange={setVisitState}
-              />
-              <DirectChoiceGroup
-                label={t("interestLevel")}
-                value={interestLevel}
-                choices={interestChoices}
-                disabled={!reachable || contactRun.pending}
-                onChange={setInterestLevel}
-              />
-            </div>
+            {reachable ? (
+              <div className="flex flex-wrap gap-x-4 gap-y-2">
+                <DirectChoiceGroup
+                  label={t("wechatFact")}
+                  value={wechatState}
+                  choices={wechatChoices}
+                  disabled={contactRun.pending}
+                  onChange={setWechatState}
+                />
+                {outcome === "connected" ? (
+                  <DirectChoiceGroup
+                    label={t("visitFact")}
+                    value={visitState}
+                    choices={visitChoices}
+                    disabled={contactRun.pending}
+                    onChange={setVisitState}
+                  />
+                ) : null}
+                <DirectChoiceGroup
+                  label={t("interestLevel")}
+                  value={interestLevel}
+                  choices={interestChoices}
+                  disabled={contactRun.pending}
+                  onChange={setInterestLevel}
+                />
+              </div>
+            ) : null}
 
             <Textarea
               value={note}
               disabled={contactRun.pending}
               onChange={(event) => setNote(event.target.value)}
-              rows={2}
+              rows={reachable ? 2 : 1}
               maxLength={2000}
-              className="min-h-14 w-full resize-y rounded-xl px-2 py-1.5 text-xs"
-              placeholder={t("contactNotePlaceholder")}
+              className={cn(
+                "w-full rounded-xl px-2 py-1.5 text-xs",
+                reachable ? "min-h-14 resize-y" : "min-h-9 resize-none",
+              )}
+              placeholder={t(`contactNotePlaceholder_${outcome}`)}
               aria-label={t("contactNoteFor", { name: lead.provisionalStudentName })}
             />
 
@@ -343,7 +350,7 @@ function ContactEntryRow({
                 type="button"
                 size="sm"
                 className="h-8 whitespace-nowrap"
-                disabled={!outcome || contactRun.pending}
+                disabled={contactRun.pending}
                 onClick={() => submit()}
               >
                 {contactRun.pending
