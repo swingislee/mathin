@@ -38,17 +38,18 @@
 - 生产 `feature_flag_versions` 中没有已启用的 `notifications.web_push`；不存在 `web_push` integration、rollout、subscription、delivery/job 等候选半应用状态。
 - `systemctl --user is-enabled/is-active mathin-jobs.service` 预期为 `not-found|disabled` / `inactive`；发现正在运行的通用 Worker 时先确认其版本、职责和 Job 队列，不得让本批无意接管现有 Job。
 
-## 4. 新鲜备份、rehearsal 与 formal
+## 4. 新鲜备份与 migration rehearsal
 
 1. 最终候选冻结后创建 PostgreSQL custom dump，保存 TOC、聚合计数、candidate commit、两条 migration hash、manifest 与 `SHA256SUMS`；备份目录先写 `.partial`，完成校验后原子改名。迁移不写 Storage，本批不创建 Storage 副本，但 postflight 必须证明 Storage 汇总不变。
 2. 使用 Git archive 的 LF 原文，以真实 schema owner 在 `SERIALIZABLE` 事务执行两条 migration、ledger insert 和 `supabase/tests/web_push_assertions.sql`，然后 `ROLLBACK`。
 3. 新连接确认候选 ledger=0、head/row count恢复、候选表/列/函数均无残留、原函数/ACL和所有冻结计数不变。
-4. 只有零残留检查通过，才用同一原文、同一 checksum 和同一断言正式提交。提交后刷新 PostgREST schema cache。
-5. schema formal postflight 必须得到：feature=false、integration=`disabled` 且 secret 未配置、rollout/subscription/web_push delivery/web_push job=0；`get_platform_operations_snapshot` 在通道关闭时返回 `workerStale=false`。
+4. 只有零残留检查通过，候选才可进入应用原子发布；formal 使用同一原文、同一 checksum 和同一断言，但在 §5 的兼容应用已经健康后提交。
 
-## 5. 应用原子发布与暗态 postflight
+## 5. 应用原子发布、schema formal 与暗态 postflight
 
-使用干净候选运行 `publish-mathin-xiaomi.ps1 -Action Publish`。发布器应完成本地与 Xiaomi production build、immutable release、`current/previous` 原子切换、`mathin.service` 重启和 loopback health；不手工在 `current` 内构建。
+使用干净候选运行 `publish-mathin-xiaomi.ps1 -Action Publish`。发布器应完成本地与 Xiaomi production build、immutable release、`current/previous` 原子切换、`mathin.service` 重启和 loopback health；不手工在 `current` 内构建。候选应用必须兼容 schema 前状态：系统健康页把缺失的 `webPush` snapshot 显式归一为 feature off/全 0，账户控件遇到缺 RPC 时保持禁用，因此应用可以先安全切换且不注册设备。
+
+应用 loopback/Caddy/public health、zh/en 登录和匿名保护路由通过后，再正式提交两条 additive migration、ledger 与 SQL assertions，并刷新 PostgREST schema cache。schema formal postflight 必须得到：feature=false、integration=`disabled` 且 secret 未配置、rollout/subscription/web_push delivery/web_push job=0；`get_platform_operations_snapshot` 在通道关闭时返回 `workerStale=false`。
 
 发布后独立核对：
 

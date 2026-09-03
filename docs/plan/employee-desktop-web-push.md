@@ -333,6 +333,7 @@ delivery: queued → sending → sent
 | `PUSH-ISSUE-06` 本机 Vitest 子进程权限 | `CLOSED` | `G5-BLOCK / DEV-CONTINUE` | 沙箱内 `spawn EPERM` 仍是 runner 限制；2026-09-03 已在获批的沙箱外 runner 直接运行定向文件 | `tests/web-push-production.test.ts` 9/9 通过；后续代码变化按受影响范围重跑 |
 | `PUSH-ISSUE-07` Web Push 发送库锁定 | `CLOSED` | `G5-BLOCK / DEV-CONTINUE` | 初次安装受 pnpm store/审批服务影响；不手工伪造 lockfile，Worker 保持动态加载和关闭态 | 2026-09-03 已锁定 `web-push@3.6.7`，`package.json` 与 `pnpm-lock.yaml` 同步，定向合同通过 |
 | `PUSH-ISSUE-08` 生成数据库类型 | `OPEN` | `G5-BLOCK / DEV-CONTINUE` | `src/lib/database.types.ts` 正由其他工作项修改，本地 schema 也含尚未冻结的后续 migration；当前 Web Push 代码使用窄化 RPC 边界，不覆盖并发改动 | 并发工作项收口后从完整候选 schema 重新生成，`pnpm db:types:check` 通过且无非本批漂移 |
+| `PUSH-ISSUE-09` 生产基线导航双语缺键 | `OPEN` | `FOLLOW-UP` | 基于 production current `8c50b48…` 的候选暗态 Playwright 页面可用且 2/2 通过，但日志确认 `school.nav.adaptReview`、`school.nav.preparationReview` 在 zh/en 均为既有 `MISSING_MESSAGE`；本批不夹带无关导航修复 | 独立补齐两组双语键并验证 production current 对应导航，`operational_errors` 不再新增该签名 |
 
 ### 10.2 当前实现与证据检查点
 
@@ -454,11 +455,11 @@ delivery: queued → sending → sent
 
 ### 14.2 生产发布顺序
 
-1. 按生产写目标 runbook 完成只读 preflight、当前备份、ledger/current/previous、网络与 secret 位置核对。
-2. 先发布 additive schema/RLS/RPC，保持 flag off、integration disabled、cohort 空；核对旧应用兼容。
-3. 发布应用与通知专用 SW；验证未主动开启时没有订阅、permission prompt 或页面网络变化。
-4. 部署独立受监管的 production job Worker，先以 Web Push handler disabled 运行并验证 heartbeat/告警。
-5. 完成暗部署 postflight 和 `PUSH-G5` 后，只加入批准 tester；按设备主动开启。
+1. 按生产写目标 runbook 完成只读 preflight、最终候选的新鲜备份、ledger/current/previous 与 migration rollback/零残留演练。
+2. 先发布对旧 schema 兼容的应用与通知专用 SW；平台运行面板在 `webPush` snapshot 尚不存在时显式显示 feature off/全 0，账户控件的缺 RPC 结果保持禁用，不产生订阅或 permission prompt。
+3. 正式提交 additive schema/RLS/RPC，保持 flag off、integration disabled、cohort 空；刷新 schema cache 后完成应用+数据库联合暗态 postflight。
+4. Worker 运行文件随 immutable release 发布，但 P5 不安装或启动 `mathin-jobs.service`，避免领取生产既有 Job；受监管 Worker 只在 `PUSH-G5` 的 provider、secret、网络和独立告警门通过后激活。
+5. 完成 `PUSH-G5` 后，只加入批准 tester；按设备主动开启。
 
 ### 14.3 回退
 
