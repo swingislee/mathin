@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 import { updateLeadSelection } from "@/features/school/lead-selection";
 import {
   filterAndSortLeadRows,
+  NO_ACQUISITION_LOCATION_FILTER,
+  NO_ACQUISITION_TIME_FILTER,
   NO_CONTACT_FILTER,
   NO_OWNER_FILTER,
 } from "@/features/school/lead-table-view";
@@ -37,23 +39,28 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     }
   });
 
-  it("moves assigned seeds into a first-call queue atomically", () => {
+  it("keeps assignment independent from contact stage while creating the first-call queue atomically", () => {
     const migration = read(
       "supabase",
       "migrations",
-      "20260902001300_school_ops_lead_contact_workbench.sql",
+      "20260903000400_school_ops_lead_pool_semantics.sql",
     );
     const assignment = migration.slice(
       migration.indexOf("create or replace function public.assign_leads"),
-      migration.indexOf("create or replace function public.record_lead_contact"),
+      migration.indexOf("revoke all on function public.normalize_legacy_lead_status"),
     );
 
     expect(assignment).toContain("cardinality(p_lead_ids) not between 1 and 100");
     expect(assignment).toContain("public.has_perm(v_uid, 'student.assign')");
     expect(assignment).toContain("public.has_perm(p_staff_user_id, 'followup.write')");
-    expect(assignment).toContain("status = case when status = 'unassigned' then 'uncontacted'");
+    expect(assignment).toContain("set owner_id = p_staff_user_id");
+    expect(assignment).not.toContain("set owner_id = p_staff_user_id,");
     expect(assignment).toContain("'initial_contact', now(), v_uid");
     expect(assignment).toContain("LEAD_SCOPE_MISMATCH");
+    expect(migration).toContain("set status = 'uncontacted'");
+    expect(migration).toContain("if new.status = 'unassigned' then");
+    expect(migration).toContain("alter column status set default 'uncontacted'");
+    expect(migration).not.toContain("check (status in ('unassigned'");
   });
 
   it("derives pool status and next-action kind from a short call form", () => {
@@ -133,12 +140,17 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
       phone: "13800000000",
       gradeHint: 3,
       gradeText: "",
-      status: "unassigned",
+      status: "uncontacted",
       ownerId: null,
       ownerName: "",
       suggestedStudentId: null,
       suggestedStudentName: "",
       createdAt: "2026-09-01T00:00:00.000Z",
+      acquiredAt: null,
+      acquisitionLocation: "",
+      acquisitionMethod: "扫码填写",
+      acquisitionPromoter: "推广员甲",
+      sourceCount: 1,
       sourceMarkedDuplicate: false,
       interests: [],
       contactCount: 0,
@@ -156,6 +168,8 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
         id: "a",
         provisionalStudentName: "安安",
         status: "contacted",
+        acquiredAt: "2026-09-01T02:00:00.000Z",
+        acquisitionLocation: "合肥市包河区",
         ownerId: "staff-1",
         ownerName: "陈老师",
         lastContactAt: "2026-09-01T10:00:00.000Z",
@@ -165,6 +179,8 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
         id: "c",
         provisionalStudentName: "聪聪",
         status: "nurture",
+        acquiredAt: "2026-09-02T02:00:00.000Z",
+        acquisitionLocation: "芜湖市镜湖区",
         ownerId: "staff-1",
         ownerName: "陈老师",
         lastContactAt: "2026-09-02T10:00:00.000Z",
@@ -176,11 +192,19 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
       .toEqual(["b"]);
     expect(filterAndSortLeadRows(rows, { latestContact: NO_CONTACT_FILTER }, null, "zh").map((row) => row.id))
       .toEqual(["b"]);
+    expect(filterAndSortLeadRows(rows, { acquisitionLocation: NO_ACQUISITION_LOCATION_FILTER }, null, "zh").map((row) => row.id))
+      .toEqual(["b"]);
+    expect(filterAndSortLeadRows(rows, { acquiredAt: NO_ACQUISITION_TIME_FILTER }, null, "zh").map((row) => row.id))
+      .toEqual(["b"]);
+    expect(filterAndSortLeadRows(rows, { acquiredAt: "2026-09-02" }, null, "zh").map((row) => row.id))
+      .toEqual(["c"]);
     expect(filterAndSortLeadRows(rows, { owner: "staff-1", status: "contacted" }, null, "zh").map((row) => row.id))
       .toEqual(["a"]);
     expect(filterAndSortLeadRows(rows, {}, { column: "seed", direction: "asc" }, "zh").map((row) => row.id))
       .toEqual(["a", "b", "c"]);
     expect(filterAndSortLeadRows(rows, {}, { column: "latestContact", direction: "desc" }, "zh").map((row) => row.id))
+      .toEqual(["c", "a", "b"]);
+    expect(filterAndSortLeadRows(rows, {}, { column: "acquiredAt", direction: "desc" }, "zh").map((row) => row.id))
       .toEqual(["c", "a", "b"]);
   });
 

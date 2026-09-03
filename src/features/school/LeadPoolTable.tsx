@@ -30,7 +30,10 @@ import {
 } from "./dashboard-page";
 import {
   filterAndSortLeadRows,
+  leadAcquisitionDateFilterKey,
   leadGradeFilterKey,
+  NO_ACQUISITION_LOCATION_FILTER,
+  NO_ACQUISITION_TIME_FILTER,
   NO_CONTACT_FILTER,
   NO_OWNER_FILTER,
   type LeadTableColumn,
@@ -42,6 +45,7 @@ import { useLeadPoolSelection } from "./LeadPoolSelection";
 import { LEAD_STATUSES, type LeadPoolRow } from "./lead-contract";
 
 const CONTACT_OUTCOMES = ["unreachable", "connected", "declined", "invalid_number"] as const;
+const ACQUISITION_TIME_ZONE = "Asia/Shanghai";
 
 function ContactDialog({
   lead,
@@ -234,10 +238,16 @@ export function LeadPoolTable({
   const allVisibleSelected = visibleAssignableIds.length > 0
     && selectedVisibleCount === visibleAssignableIds.length;
   const someVisibleSelected = selectedVisibleCount > 0 && !allVisibleSelected;
-  const formatAt = (value: string) => new Intl.DateTimeFormat(locale, {
+  const dateTimeFormatter = useMemo(() => new Intl.DateTimeFormat(locale, {
     dateStyle: "short",
     timeStyle: "short",
-  }).format(new Date(value));
+    timeZone: ACQUISITION_TIME_ZONE,
+  }), [locale]);
+  const acquisitionDateFormatter = useMemo(() => new Intl.DateTimeFormat(locale, {
+    dateStyle: "medium",
+    timeZone: ACQUISITION_TIME_ZONE,
+  }), [locale]);
+  const formatAt = (value: string) => dateTimeFormatter.format(new Date(value));
 
   const columnOptions = useMemo<Record<LeadTableColumn, DashboardTableFilterOption[]>>(() => {
     const collator = new Intl.Collator(locale, { numeric: true, sensitivity: "base" });
@@ -245,7 +255,11 @@ export function LeadPoolTable({
       .sort((left, right) => collator.compare(left.label, right.label));
     const grades = new Map<string, string>();
     const interests = new Set<string>();
+    const acquisitionLocations = new Set<string>();
+    const acquisitionDates = new Map<string, string>();
     const owners = new Map<string, string>();
+    let hasMissingAcquisitionLocation = false;
+    let hasMissingAcquisitionTime = false;
     let hasUnassignedOwner = false;
     let hasNoContact = false;
 
@@ -258,6 +272,14 @@ export function LeadPoolTable({
           : lead.gradeText.trim() || t("gradeValue", { grade: lead.gradeHint ?? "" }),
       );
       for (const interest of lead.interests) interests.add(interest);
+      if (lead.acquisitionLocation.trim()) acquisitionLocations.add(lead.acquisitionLocation.trim());
+      else hasMissingAcquisitionLocation = true;
+      if (lead.acquiredAt) {
+        acquisitionDates.set(
+          leadAcquisitionDateFilterKey(lead.acquiredAt),
+          acquisitionDateFormatter.format(new Date(lead.acquiredAt)),
+        );
+      } else hasMissingAcquisitionTime = true;
       if (lead.ownerId) owners.set(lead.ownerId, lead.ownerName || t("unassignedOwner"));
       else hasUnassignedOwner = true;
       if (!lead.lastContactOutcome) hasNoContact = true;
@@ -266,6 +288,20 @@ export function LeadPoolTable({
     return {
       seed: sortOptions([...grades].map(([value, label]) => ({ value, label }))),
       interests: sortOptions([...interests].map((value) => ({ value, label: value }))),
+      acquisitionLocation: sortOptions([
+        ...(hasMissingAcquisitionLocation
+          ? [{ value: NO_ACQUISITION_LOCATION_FILTER, label: t("acquisitionLocationMissing") }]
+          : []),
+        ...[...acquisitionLocations].map((value) => ({ value, label: value })),
+      ]),
+      acquiredAt: [
+        ...(hasMissingAcquisitionTime
+          ? [{ value: NO_ACQUISITION_TIME_FILTER, label: t("acquisitionTimeMissing") }]
+          : []),
+        ...[...acquisitionDates]
+          .sort(([left], [right]) => right.localeCompare(left))
+          .map(([value, label]) => ({ value, label })),
+      ],
       owner: sortOptions([
         ...(hasUnassignedOwner ? [{ value: NO_OWNER_FILTER, label: t("unassignedOwner") }] : []),
         ...[...owners].map(([value, label]) => ({ value, label })),
@@ -276,7 +312,7 @@ export function LeadPoolTable({
       ],
       status: LEAD_STATUSES.map((value) => ({ value, label: t(`status_${value}`) })),
     };
-  }, [leads, locale, t]);
+  }, [acquisitionDateFormatter, leads, locale, t]);
 
   const setColumnFilter = (column: LeadTableColumn, value: string | undefined) => {
     setColumnFilters((current) => {
@@ -315,7 +351,7 @@ export function LeadPoolTable({
     <>
       <DashboardTableShell>
         <Table
-          className="w-full min-w-[68rem] text-xs"
+          className="w-full min-w-[92rem] text-xs"
           containerClassName="max-h-[calc(100dvh-15rem)] overflow-auto"
         >
           <TableHeader>
@@ -341,6 +377,8 @@ export function LeadPoolTable({
               ) : null}
               <TableHead className="sticky top-0 z-20 h-8 bg-card px-2">{columnHeader("seed", t("seed"))}</TableHead>
               <TableHead className="sticky top-0 z-20 h-8 bg-card px-2">{columnHeader("interests", t("interests"))}</TableHead>
+              <TableHead className="sticky top-0 z-20 h-8 bg-card px-2">{columnHeader("acquisitionLocation", t("acquisitionLocation"))}</TableHead>
+              <TableHead className="sticky top-0 z-20 h-8 bg-card px-2">{columnHeader("acquiredAt", t("acquiredAt"))}</TableHead>
               <TableHead className="sticky top-0 z-20 h-8 bg-card px-2">{columnHeader("owner", t("owner"))}</TableHead>
               <TableHead className="sticky top-0 z-20 h-8 bg-card px-2">{columnHeader("latestContact", t("latestContact"))}</TableHead>
               <TableHead className="sticky top-0 z-20 h-8 bg-card px-2">{columnHeader("status", t("status"))}</TableHead>
@@ -352,6 +390,11 @@ export function LeadPoolTable({
               const assignable = lead.status !== "invalid" && lead.status !== "converted";
               const contactable = canContact && Boolean(lead.ownerId)
                 && (lead.ownerId === currentUserId || canContactAll);
+              const sourceAttribution = [
+                lead.acquisitionPromoter ? t("promoterValue", { name: lead.acquisitionPromoter }) : "",
+                lead.acquisitionMethod,
+                lead.sourceCount > 1 ? t("sourceCount", { count: lead.sourceCount }) : "",
+              ].filter(Boolean).join(" · ");
               return (
                 <TableRow key={lead.id} className={selected.has(lead.id) ? "bg-moon/20" : undefined}>
                   {canAssign ? (
@@ -395,7 +438,20 @@ export function LeadPoolTable({
                         : <span className="text-muted">—</span>}
                     </div>
                   </TableCell>
-                  <TableCell className="px-2 py-1.5">{lead.ownerName || t("unassignedOwner")}</TableCell>
+                  <TableCell className="min-w-60 max-w-80 px-2 py-1.5">
+                    {lead.acquisitionLocation
+                      ? <p className="truncate text-ink" title={lead.acquisitionLocation}>{lead.acquisitionLocation}</p>
+                      : <Badge variant="danger" className="px-1.5 py-0 text-[11px] font-normal leading-4">{t("acquisitionLocationMissing")}</Badge>}
+                    <p className="mt-0.5 truncate text-[11px] leading-4 text-muted" title={sourceAttribution || undefined}>
+                      {sourceAttribution || "—"}
+                    </p>
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap px-2 py-1.5">
+                    {lead.acquiredAt
+                      ? formatAt(lead.acquiredAt)
+                      : <Badge variant="danger" className="px-1.5 py-0 text-[11px] font-normal leading-4">{t("acquisitionTimeMissing")}</Badge>}
+                  </TableCell>
+                  <TableCell className="px-2 py-1.5">{lead.ownerName || "—"}</TableCell>
                   <TableCell className="min-w-64 px-2 py-1.5">
                     {lead.lastContactAt && lead.lastContactOutcome ? (
                       <>
@@ -431,7 +487,7 @@ export function LeadPoolTable({
             {visibleLeads.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={canAssign ? 7 : 6}
+                  colSpan={canAssign ? 9 : 8}
                   className="h-32 px-4 text-center text-sm text-muted"
                 >
                   {t("columnEmpty")}

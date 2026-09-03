@@ -19,7 +19,7 @@ interface LeadDbRow {
   phone: string;
   grade_hint: number | null;
   grade_text: string;
-  status: LeadStatus;
+  status: LeadStatus | "unassigned";
   owner_id: string | null;
   suggested_student_id: string | null;
   created_at: string;
@@ -29,6 +29,9 @@ interface LeadSourceDbRow {
   id: string;
   lead_id: string;
   submitted_at: string | null;
+  acquisition_method: string;
+  promoter: string;
+  location_text: string;
   source_marked_duplicate: boolean;
   created_at: string;
 }
@@ -124,7 +127,7 @@ export async function listLeadPool(
   const [sourceResult, interestResult, communicationResult, ownerResult, studentResult] = await Promise.all([
     supabase
       .from("lead_source_records")
-      .select("id,lead_id,submitted_at,source_marked_duplicate,created_at")
+      .select("id,lead_id,submitted_at,acquisition_method,promoter,location_text,source_marked_duplicate,created_at")
       .in("lead_id", leadIds)
       .order("submitted_at", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false })
@@ -196,7 +199,10 @@ export async function listLeadPool(
         phone: row.phone,
         gradeHint: row.grade_hint,
         gradeText: row.grade_text,
-        status: row.status,
+        // The former `unassigned` value mixed ownership with contact progress.
+        // Normalize legacy rows immediately so the UI remains correct before the
+        // semantic cleanup migration is applied to a development database.
+        status: row.status === "unassigned" ? "uncontacted" : row.status,
         ownerId: row.owner_id,
         ownerName: row.owner_id ? ownerNames.get(row.owner_id) ?? "" : "",
         suggestedStudentId: row.suggested_student_id,
@@ -204,6 +210,11 @@ export async function listLeadPool(
           ? studentNames.get(row.suggested_student_id) ?? ""
           : "",
         createdAt: row.created_at,
+        acquiredAt: latest?.submitted_at ?? null,
+        acquisitionLocation: latest?.location_text ?? "",
+        acquisitionMethod: latest?.acquisition_method ?? "",
+        acquisitionPromoter: latest?.promoter ?? "",
+        sourceCount: sources.length,
         sourceMarkedDuplicate: latest?.source_marked_duplicate ?? false,
         interests: interestsByLead.get(row.id) ?? [],
         contactCount: communications.length,

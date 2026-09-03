@@ -83,6 +83,10 @@ export function XiaodituiImportPanel({ recentBatches }: { recentBatches: LeadImp
     }
     return counts;
   }, [parsed]);
+  const acquisitionQuality = useMemo(() => ({
+    missingTime: parsed?.rows.filter((row) => !row.submittedAt).length ?? 0,
+    missingLocation: parsed?.rows.filter((row) => !row.location.trim()).length ?? 0,
+  }), [parsed]);
 
   const errorMessages = {
     default: t("failed"),
@@ -231,6 +235,16 @@ export function XiaodituiImportPanel({ recentBatches }: { recentBatches: LeadImp
             className="mb-3"
             items={[
               { label: t("rows"), value: parsed.rows.length },
+              {
+                label: t("missingAcquisitionTime"),
+                value: acquisitionQuality.missingTime,
+                tone: acquisitionQuality.missingTime > 0 ? "warning" : "default",
+              },
+              {
+                label: t("missingAcquisitionLocation"),
+                value: acquisitionQuality.missingLocation,
+                tone: acquisitionQuality.missingLocation > 0 ? "warning" : "default",
+              },
               { label: t("assessmentIntent"), value: interestCounts.assessment },
               { label: t("activityIntent"), value: interestCounts.activity },
               { label: t("nurtureIntent"), value: interestCounts.nurture },
@@ -238,7 +252,7 @@ export function XiaodituiImportPanel({ recentBatches }: { recentBatches: LeadImp
             ]}
           />
           <DashboardTableShell>
-            <Table className="w-full min-w-[70rem] text-xs">
+            <Table className="w-full min-w-[84rem] text-xs">
               <TableHeader>
                 <TableRow>
                   <TableHead>{t("sourceRow")}</TableHead>
@@ -246,7 +260,9 @@ export function XiaodituiImportPanel({ recentBatches }: { recentBatches: LeadImp
                   <TableHead>{t("phone")}</TableHead>
                   <TableHead>{t("grade")}</TableHead>
                   <TableHead>{t("interests")}</TableHead>
+                  <TableHead>{t("acquisitionLocation")}</TableHead>
                   <TableHead>{t("submittedAt")}</TableHead>
+                  <TableHead>{t("promoter")}</TableHead>
                   <TableHead>{t("sourceDuplicate")}</TableHead>
                   <TableHead>{t("matchResult")}</TableHead>
                 </TableRow>
@@ -267,7 +283,16 @@ export function XiaodituiImportPanel({ recentBatches }: { recentBatches: LeadImp
                           )) : <span className="text-muted">—</span>}
                         </div>
                       </TableCell>
+                      <TableCell className="max-w-72">
+                        {row.location
+                          ? <span title={row.location}>{row.location}</span>
+                          : <span className="text-rose">{t("acquisitionLocationMissing")}</span>}
+                      </TableCell>
                       <TableCell className="whitespace-nowrap text-muted">{row.submittedAt ? formatAt(row.submittedAt) : "—"}</TableCell>
+                      <TableCell>
+                        <span>{row.promoter || "—"}</span>
+                        {row.acquisitionMethod ? <p className="mt-0.5 text-[11px] text-muted">{row.acquisitionMethod}</p> : null}
+                      </TableCell>
                       <TableCell>
                         {row.sourceDuplicate
                           ? <Badge variant="outline" className="whitespace-nowrap font-normal">{t("sourceDuplicateAdvisory")}</Badge>

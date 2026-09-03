@@ -1,6 +1,5 @@
 /** Client-safe lead constants and DTOs shared by the server reader and table UI. */
 export const LEAD_STATUSES = [
-  "unassigned",
   "uncontacted",
   "contacted",
   "nurture",
@@ -46,6 +45,11 @@ export interface LeadPoolRow {
   suggestedStudentId: string | null;
   suggestedStudentName: string;
   createdAt: string;
+  acquiredAt: string | null;
+  acquisitionLocation: string;
+  acquisitionMethod: string;
+  acquisitionPromoter: string;
+  sourceCount: number;
   sourceMarkedDuplicate: boolean;
   interests: string[];
   contactCount: number;

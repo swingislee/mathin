@@ -1,6 +1,13 @@
 import { LEAD_STATUSES, type LeadPoolRow } from "./lead-contract";
 
-export type LeadTableColumn = "seed" | "interests" | "owner" | "latestContact" | "status";
+export type LeadTableColumn =
+  | "seed"
+  | "interests"
+  | "acquisitionLocation"
+  | "acquiredAt"
+  | "owner"
+  | "latestContact"
+  | "status";
 export type LeadTableSortDirection = "asc" | "desc";
 export type LeadTableFilters = Partial<Record<LeadTableColumn, string>>;
 export interface LeadTableSort {
@@ -10,7 +17,11 @@ export interface LeadTableSort {
 
 export const NO_OWNER_FILTER = "$no-owner";
 export const NO_CONTACT_FILTER = "$no-contact";
+export const NO_ACQUISITION_LOCATION_FILTER = "$no-acquisition-location";
+export const NO_ACQUISITION_TIME_FILTER = "$no-acquisition-time";
 export const UNKNOWN_GRADE_FILTER = "$unknown-grade";
+
+const ACQUISITION_TIME_ZONE = "Asia/Shanghai";
 
 export function leadGradeFilterKey(lead: LeadPoolRow): string {
   if (lead.gradeText.trim()) return `text:${lead.gradeText.trim()}`;
@@ -18,9 +29,28 @@ export function leadGradeFilterKey(lead: LeadPoolRow): string {
   return UNKNOWN_GRADE_FILTER;
 }
 
+export function leadAcquisitionDateFilterKey(value: string | null): string {
+  if (!value) return NO_ACQUISITION_TIME_FILTER;
+  const parts = new Intl.DateTimeFormat("en", {
+    timeZone: ACQUISITION_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date(value));
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value ?? "";
+  return `${part("year")}-${part("month")}-${part("day")}`;
+}
+
 function matchesFilters(lead: LeadPoolRow, filters: LeadTableFilters): boolean {
   if (filters.seed && leadGradeFilterKey(lead) !== filters.seed) return false;
   if (filters.interests && !lead.interests.includes(filters.interests)) return false;
+  if (filters.acquisitionLocation) {
+    const location = lead.acquisitionLocation.trim();
+    if (filters.acquisitionLocation === NO_ACQUISITION_LOCATION_FILTER
+      ? location !== ""
+      : location !== filters.acquisitionLocation) return false;
+  }
+  if (filters.acquiredAt && leadAcquisitionDateFilterKey(lead.acquiredAt) !== filters.acquiredAt) return false;
   if (filters.owner) {
     if (filters.owner === NO_OWNER_FILTER ? lead.ownerId !== null : lead.ownerId !== filters.owner) return false;
   }
@@ -56,6 +86,9 @@ export function filterAndSortLeadRows(
     if (sort.column === "latestContact") {
       return compareNullableTime(left.lastContactAt, right.lastContactAt, sort.direction);
     }
+    if (sort.column === "acquiredAt") {
+      return compareNullableTime(left.acquiredAt, right.acquiredAt, sort.direction);
+    }
     if (sort.column === "status") {
       return direction * (LEAD_STATUSES.indexOf(left.status) - LEAD_STATUSES.indexOf(right.status));
     }
@@ -63,7 +96,9 @@ export function filterAndSortLeadRows(
       ? [left.provisionalStudentName, right.provisionalStudentName]
       : sort.column === "interests"
         ? [left.interests.join(" · "), right.interests.join(" · ")]
-        : [left.ownerName, right.ownerName];
+        : sort.column === "acquisitionLocation"
+          ? [left.acquisitionLocation, right.acquisitionLocation]
+          : [left.ownerName, right.ownerName];
     return direction * collator.compare(leftValue, rightValue);
   });
 }

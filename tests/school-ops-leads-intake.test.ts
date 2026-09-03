@@ -52,12 +52,20 @@ describe("SCHOOL-OPS Leads seed intake", () => {
       interests: ["一对一学情诊断", "数独"],
       sourceDuplicate: false,
       promoter: "推广一组",
+      location: "城东",
     });
     expect(first.rows[0].submittedAt).toBe("2026-09-01T02:20:30.000Z");
     expect(second.rows[0]).toMatchObject({ grade: null, sourceDuplicate: true });
     expect(splitXiaodituiInterests("公开课-公开课-英语体验课")).toEqual(["公开课", "英语体验课"]);
     expect(classifyXiaodituiInterest("一对一学情诊断")).toBe("assessment");
     expect(classifyXiaodituiInterest("持续关注领学习资料")).toBe("nurture");
+  });
+
+  it("requires the source positioning column used for acquisition-quality review", () => {
+    expect(() => parseXiaodituiWorksheet([
+      ["孩子姓名", "手机号码", "孩子年级", "预约", "提交时间"],
+      ["小新", "13900000002", "大班", "持续关注领学习资料", "2026-09-02 08:00:00"],
+    ])).toThrowError(expect.objectContaining({ code: "MISSING_REQUIRED_HEADERS" }));
   });
 
   it("keeps the source duplicate flag separate from Mathin identity matching", () => {
@@ -94,7 +102,6 @@ describe("SCHOOL-OPS Leads seed intake", () => {
     expect(migration).toContain("create table public.lead_interest_selections");
     expect(migration).toContain("suggested_student_id");
     expect(applySection).toContain("insert into public.leads");
-    expect(applySection).toContain("'unassigned'");
     expect(applySection).toContain("null,");
     for (const forbiddenWrite of [
       "insert into public.students",
@@ -119,9 +126,13 @@ describe("SCHOOL-OPS Leads seed intake", () => {
 
     expect(table).toContain("identityUnconfirmed");
     expect(table).toContain("studentSuggestion");
+    expect(table).toContain("acquisitionLocation");
+    expect(table).toContain("acquiredAt");
     expect(page).toContain("listLeadPool");
     expect(panel).toContain('href="/dashboard/leads"');
     expect(panel).toContain("getLeadImportBatchAction");
+    expect(panel).toContain('t("acquisitionLocation")');
+    expect(panel).toContain('t("missingAcquisitionLocation")');
     expect(actions).toContain('z.enum(["create_new", "link_existing", "skip"])');
     expect(actions).not.toContain("create_household_student");
     expect(routes).toContain('href: "/dashboard/leads"');

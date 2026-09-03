@@ -25,7 +25,8 @@ const HEADER_ALIASES = {
 
 type HeaderKey = keyof typeof HEADER_ALIASES;
 
-const REQUIRED_KEYS: HeaderKey[] = ["childName", "phone", "gradeText", "interestText", "submittedAt"];
+const REQUIRED_KEYS: HeaderKey[] = ["childName", "phone", "gradeText", "interestText", "submittedAt", "location"];
+const MIN_HEADER_MATCH_COUNT = 4;
 const GRADE_VALUES: Record<string, number | null> = {
   小班: null,
   中班: null,
@@ -130,7 +131,7 @@ function findHeaderRow(grid: readonly (readonly WorksheetCell[])[]): number {
       bestIndex = index;
     }
   }
-  if (bestIndex < 0 || bestScore < REQUIRED_KEYS.length) throw new XiaodituiParseError("UNRECOGNIZED_HEADERS");
+  if (bestIndex < 0 || bestScore < MIN_HEADER_MATCH_COUNT) throw new XiaodituiParseError("UNRECOGNIZED_HEADERS");
   return bestIndex;
 }
 
