@@ -8,11 +8,16 @@ import {
   isHtmlObjectPath,
 } from "@/features/courseware-doc/h5-shim";
 import { parseH5InputProfile, type H5InputProfile } from "@/features/courseware-doc/h5-input-profile";
+import { injectSourceRuntimeEditorBridge } from "@/features/courseware-doc/source-runtime-editor-bridge";
 import {
   isVersionedSourceRuntimeViewerAsset,
   upgradeSourceRuntimeViewerScript,
   versionSourceRuntimeHtmlAssets,
 } from "@/features/courseware-doc/source-runtime-delivery.mjs";
+import {
+  SOURCE_RUNTIME_EDITOR_PARAM,
+  SOURCE_RUNTIME_PROTOCOL,
+} from "@/features/courseware-doc/source-runtime-schema";
 
 /**
  * H5 包垫片(docs/plan/16 §3 D3,proxy matcher 已排除 /api):
@@ -148,9 +153,7 @@ export async function GET(
     if (isVersionedSourceRuntimeViewerAsset(packagePath, request.url)) {
       return new Response(upgradeSourceRuntimeViewerScript(await upstream.text()), {
         status: upstream.status,
-        headers: {
-          ...Object.fromEntries(headers.entries()),
-        },
+        headers: Object.fromEntries(headers.entries()),
       });
     }
     return new Response(upstream.body, {
@@ -164,8 +167,11 @@ export async function GET(
   const upstream = await fetch(publicUrl, { cache: "no-store" });
   if (!upstream.ok) return new Response("Not found", { status: 404, headers: cors });
   const profile = await getActiveH5InputProfile(path[1]);
-  const html = versionSourceRuntimeHtmlAssets(await upstream.text(), request.url);
-  return new Response(injectH5Runtime(html, profile), {
+  const requestUrl = new URL(request.url);
+  const sourceEditor = requestUrl.searchParams.get(SOURCE_RUNTIME_EDITOR_PARAM) === SOURCE_RUNTIME_PROTOCOL;
+  const deliveredHtml = versionSourceRuntimeHtmlAssets(await upstream.text(), request.url);
+  const runtimeHtml = injectH5Runtime(deliveredHtml, profile);
+  return new Response(sourceEditor ? injectSourceRuntimeEditorBridge(runtimeHtml) : runtimeHtml, {
     status: 200,
     headers: {
       ...cors,

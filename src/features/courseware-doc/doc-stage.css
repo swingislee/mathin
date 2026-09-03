@@ -82,3 +82,26 @@
   max-width: revert;
   height: revert;
 }
+
+/*
+ * Existing formal-course rich text carries source inline typography inside the
+ * imported HTML. Authoring overrides live on the DocNode style so preview stays
+ * lossless until a person explicitly changes a field. Once set, propagate the
+ * chosen value through the historical descendants with higher priority.
+ */
+[data-doc-stage] [data-courseware-text-font-override="true"] * {
+  font-size: inherit !important;
+}
+
+[data-doc-stage] [data-courseware-text-color-override="true"] * {
+  color: inherit !important;
+}
+
+[data-doc-stage] [data-courseware-text-align-override="true"] * {
+  text-align: inherit !important;
+}
+
+/* The selected node owns the Word-like dashed/solid authoring outline. */
+[data-doc-stage] [data-courseware-inline-text-editor="true"] {
+  outline: none;
+}

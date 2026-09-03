@@ -43,7 +43,7 @@ export function MicrocourseReviewQueue({
           <TableCell className="hidden max-w-72 py-2 @2xl/page:table-cell"><div className="flex flex-wrap gap-1"><Badge variant="outline">{labels.grade(item.grade)}</Badge><Badge variant="outline">{locale === "en" ? item.primaryTopicTitleEn : item.primaryTopicTitleZh}</Badge>{item.classType && <Badge variant="outline">{item.classType}</Badge>}{item.keywords.slice(0, 3).map((keyword) => <Badge key={keyword} variant="outline">{keyword}</Badge>)}</div></TableCell>
           <TableCell className="py-2"><Badge variant="secondary">{labels.round(item.reviewRoundNo, item.requiredReviewRounds)}</Badge><p className="mt-1 text-[11px] text-muted @4xl/page:hidden">{labels.submitted(formatter.format(new Date(item.submittedAt)))}</p></TableCell>
           <TableCell className="hidden py-2 text-xs text-muted @4xl/page:table-cell">{formatter.format(new Date(item.submittedAt))}</TableCell>
-          <TableCell className="py-2 text-right"><Link href={`/dashboard/courseware/review/microcourses/${item.reviewCycleId}`} className={cn(buttonVariants({ size: "sm" }))}>{labels.review}</Link></TableCell>
+          <TableCell className="py-2 text-right"><Link href={`/dashboard/courseware/microcourse-reviews/${item.reviewCycleId}`} className={cn(buttonVariants({ size: "sm" }))}>{labels.review}</Link></TableCell>
         </TableRow>)}
         {items.length === 0 && <TableRow><TableCell colSpan={5} className="py-12 text-center text-sm text-muted">{labels.empty}</TableCell></TableRow>}
       </TableBody>

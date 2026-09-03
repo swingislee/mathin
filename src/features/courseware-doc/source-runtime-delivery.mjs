@@ -21,11 +21,7 @@ function sourceRuntimeDeliveryRequested(requestUrl) {
     === SOURCE_RUNTIME_DELIVERY_VERSION;
 }
 
-/**
- * The package HTML is revalidated after each app deploy. Version only the
- * portable bridge asset so an already cached immutable package can receive a
- * host-lifecycle hotfix without changing source DOM/CSS or page data.
- */
+/** Version only the portable bridge asset inside an immutable source package. */
 export function versionSourceRuntimeHtmlAssets(html, requestUrl) {
   if (!sourceRuntimeDeliveryRequested(requestUrl)) return html;
   return html.replace(
@@ -40,11 +36,7 @@ export function isVersionedSourceRuntimeViewerAsset(packagePath, requestUrl) {
   return packagePath.endsWith("viewer-runtime.js") && sourceRuntimeDeliveryRequested(requestUrl);
 }
 
-/**
- * Shared by newly built portable runtimes and the delivery upgrade for
- * already-published immutable packages. It changes only page lifecycle:
- * producer Viewer code still owns every rendered element and interaction.
- */
+/** Shared lifecycle for new and already-published source runtimes. */
 export function sourceRuntimeVisualLifecycleScript() {
   return String.raw`
 const mathinVisualLifecycleVersion='${SOURCE_RUNTIME_DELIVERY_VERSION}';
@@ -88,12 +80,6 @@ async function mathinRender(message){
 }`;
 }
 
-/**
- * Published X+ packages still bundle lottie-web 5.6.6. That source player
- * renders before DOMLoaded but does not expose the newer drawnFrame event.
- * Upgrade only the producer Viewer's exact readiness bridge and keep the
- * source lottie-web renderer, DOM and interaction ownership unchanged.
- */
 function upgradeSourceRuntimeLottieReadiness(script) {
   if (script.includes(SOURCE_RUNTIME_LOTTIE_READINESS_MARKER)) return script;
   const functionStart = script.indexOf("async function hydrateAixuexiLottie(){");

@@ -5,8 +5,10 @@ import {
   portableAixuexiViewerHtml,
   stripInertMathTexScriptsForInspection,
 } from "../scripts/lib/aixuexi-source-viewer-runtime.mjs";
+import { injectSourceRuntimeEditorBridge } from "../src/features/courseware-doc/source-runtime-editor-bridge";
 import {
   collectSourceRuntimeBindingKeys,
+  markSourceRuntimeEditorUrl,
   markSourceRuntimeNestedH5Url,
   scopeSourceRuntimeBindings,
   sourceRuntimePageDocSchema,
@@ -165,21 +167,14 @@ describe("producer-owned Aixuexi source runtime", () => {
     expect(portable.viewerScript).toContain("mathin-source-runtime-host");
     expect(portable.viewerScript).toContain("mathinQueuedRender");
     expect(portable.viewerScript).toContain("mathinRenderBody");
-    expect(portable.viewerScript).toContain("document.startViewTransition");
-    expect(portable.viewerScript).toContain("transition.ready.catch");
-    expect(portable.viewerScript).toContain("transition.finished.catch");
-    expect(portable.viewerScript).toContain("transition.updateCallbackDone");
-    expect(portable.viewerScript).not.toContain("mathinWaitForVisualReady");
-    expect(portable.viewerScript).not.toContain("mathinWarmRuntimeFonts");
-    expect(portable.viewerScript).not.toContain("mathinRuntimeFontUrls");
-    expect(portable.viewerScript).not.toContain("slide-runtime.css',location.href");
+    expect(portable.viewerScript).toContain("mathinPrepareVisualMessage");
     expect(portable.viewerScript).toContain("renderKey:message.renderKey");
     expect(portable.viewerScript).not.toContain("route().catch");
     expect(portable.sourceFingerprint).toMatch(/^[0-9a-f]{64}$/);
     expect(portableAixuexiViewerHtml({ hasLottie: true })).toContain("viewer-runtime.js");
   });
 
-  it("upgrades published immutable source viewers through one versioned lifecycle seam", () => {
+  it("upgrades published runtimes through the versioned delivery seam", () => {
     const legacy = [
       "async function mathinRender(message){",
       "  app.replaceChildren();",
@@ -189,37 +184,9 @@ describe("producer-owned Aixuexi source runtime", () => {
     ].join("\n");
     const upgraded = upgradeSourceRuntimeViewerScript(legacy);
     expect(upgraded).toContain("async function mathinRenderBody(message)");
-    expect(upgraded).toContain("document.startViewTransition");
-    expect(upgraded).toContain("transition.ready.catch");
-    expect(upgraded).toContain("transition.finished.catch");
-    expect(upgraded).not.toContain("document.fonts.ready");
-    expect(upgraded).not.toContain("mathinWarmRuntimeFonts");
-    expect(upgraded.indexOf("transition.updateCallbackDone"))
-      .toBeLessThan(upgraded.indexOf("mathinSend('rendered'"));
+    expect(upgraded).toContain("mathinPrepareVisualMessage");
+    expect(upgraded).toContain(`mathinVisualLifecycleVersion='${SOURCE_RUNTIME_DELIVERY_VERSION}'`);
     expect(upgradeSourceRuntimeViewerScript(upgraded)).toBe(upgraded);
-
-    const priorDelivery = [
-      "async function mathinRenderBody(message){app.replaceChildren(message)}",
-      "const mathinVisualLifecycleVersion='3';",
-      "function mathinWarmRuntimeFonts(){}",
-      "async function mathinRender(message){mathinWarmRuntimeFonts()}",
-      "async function mathinDrainRenderQueue(){return mathinRender({})}",
-    ].join("\n");
-    const refreshedDelivery = upgradeSourceRuntimeViewerScript(priorDelivery);
-    expect(refreshedDelivery).toContain(`mathinVisualLifecycleVersion='${SOURCE_RUNTIME_DELIVERY_VERSION}'`);
-    expect(refreshedDelivery).not.toContain("mathinWarmRuntimeFonts");
-
-    const published = [
-      "async function mathinRender(message){",
-      "  app.replaceChildren();",
-      "  mathinSend('rendered');",
-      "}",
-      "window.addEventListener('resize',()=>{})",
-    ].join("\r\n");
-    const upgradedPublished = upgradeSourceRuntimeViewerScript(published);
-    expect(upgradedPublished).toContain("async function mathinRenderBody(message)");
-    expect(upgradedPublished).toContain("renderKey:message.renderKey");
-    expect(upgradedPublished).toContain("window.addEventListener('resize'");
 
     const entry = versionSourceRuntimeEntryUrl("/api/cw-h5/packages/hash/index.html?existing=1#slide");
     expect(entry).toContain(`${SOURCE_RUNTIME_DELIVERY_PARAM}=${SOURCE_RUNTIME_DELIVERY_VERSION}`);
@@ -231,7 +198,7 @@ describe("producer-owned Aixuexi source runtime", () => {
     expect(html).toContain(`viewer-runtime.js?${SOURCE_RUNTIME_DELIVERY_PARAM}=${SOURCE_RUNTIME_DELIVERY_VERSION}`);
   });
 
-  it("re-homes classroom Blob resources inside the opaque source-runtime sandbox", async () => {
+  it("re-homes cached Blob resources inside the opaque source-runtime sandbox", async () => {
     const parentUrl = URL.createObjectURL(new Blob(["image-bytes"], { type: "image/webp" }));
     try {
       const prepared = await prepareSourceRuntimeResourcesForSandbox({
@@ -281,37 +248,6 @@ describe("producer-owned Aixuexi source runtime", () => {
     }
   });
 
-  it("adapts the published 5.6.6 Lottie readiness bridge without replacing source rendering", () => {
-    const published = [
-      "async function hydrateAixuexiLottie(){",
-      "    const animationData=await response.json();",
-      "    let animation=null,settled=false,domReady=false,frameReady=false,finish=()=>{};",
-      "    const ready=()=>{if(domReady&&frameReady){settle('playing')}};",
-      "    animation=window.lottie.loadAnimation({",
-      "        container:target,renderer:'svg',",
-      "        path:source",
-      "      });",
-      "      animation.addEventListener('DOMLoaded',()=>{domReady=true;ready()});",
-      "      animation.addEventListener('drawnFrame',()=>{frameReady=true;ready()});",
-      "}",
-      "const hydrateAixuexiPreviewsBase=hydrateAixuexiPreviews;",
-      "async function mathinRender(message){",
-      "  mathinSend('rendered',{renderKey:message.renderKey});",
-      "}",
-      "async function mathinDrainRenderQueue(){return mathinRender({})}",
-    ].join("\n");
-
-    const upgraded = upgradeSourceRuntimeViewerScript(published);
-    expect(upgraded).toContain(`mathin-source-lottie-readiness-v${SOURCE_RUNTIME_DELIVERY_VERSION}`);
-    expect(upgraded).toContain("animationData");
-    expect(upgraded).not.toContain("path:source");
-    expect(upgraded).toContain("DOMLoaded',()=>{domReady=true;frameReady=true;ready()}");
-    expect(upgraded).not.toContain("addEventListener('drawnFrame'");
-    expect(upgraded).toContain("window.lottie.loadAnimation");
-    expect(upgraded).not.toContain("document.createElement");
-    expect(upgradeSourceRuntimeViewerScript(upgraded)).toBe(upgraded);
-  });
-
   it("keeps Mathin as a sandbox host instead of recreating source buttons", () => {
     const host = readFileSync(
       new URL("../src/features/courseware-doc/SourceRuntimeStage.tsx", import.meta.url),
@@ -325,14 +261,31 @@ describe("producer-owned Aixuexi source runtime", () => {
     expect(host).toContain("runtimeLoadedFor.current = runtimeInstanceKey");
     expect(host).toContain("runtimeInFlightFor.current");
     expect(host).toContain("runtimeQueuedRender.current");
-    expect(host).toContain("completedRenderKey");
     expect(host).toContain("useLayoutEffect(() => {");
     expect(host).toContain('window.addEventListener("message", receive)');
     expect(host).toContain('key={runtimeInstanceKey}');
-    expect(host).toContain('const renderKey = `${runtimeInstanceKey}:${doc.source.coursewareId}:${doc.source.pageDatabaseId}`');
+    expect(host).toContain("sourceFrameSize.width / doc.viewport.width");
+    expect(host).toContain("sourceFrameSize.height / doc.viewport.height");
+    expect(host).toContain("width: doc.viewport.width");
+    expect(host).toContain("height: doc.viewport.height");
+    expect(host).toContain('const renderKey = `${runtimeInstanceKey}:${doc.source.coursewareId}:${doc.source.pageDatabaseId}:${editor?.revision ?? 0}`');
+    expect(host).toContain('type: "editor-state"');
+    expect(host).toContain('message.type === "node-selected"');
     expect(host).not.toContain("setRendered(false)");
     expect(host).not.toContain("@/components/ui/button");
     expect(host).not.toContain("进入互动");
+  });
+
+  it("injects the source editor bridge only through the explicit runtime URL", () => {
+    expect(markSourceRuntimeEditorUrl("/api/cw-h5/packages/hash/index.html?x=1#page"))
+      .toBe("/api/cw-h5/packages/hash/index.html?x=1&mathin_source_editor=mathin-source-runtime-v1#page");
+    const html = injectSourceRuntimeEditorBridge("<!doctype html><html><head></head><body></body></html>");
+    expect(html).toContain("data-mathin-source-runtime-editor");
+    expect(html).toContain("editor-preview-transform");
+    expect(html).toContain("editor-geometry");
+    expect(html).toContain("node-text-change");
+    expect(html).toContain("data-aix-source-path");
+    expect(html).not.toContain("mathin-source-node-handle");
   });
 
   it("registers the generic adapter in the database without dropping legacy documents", () => {

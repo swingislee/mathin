@@ -299,34 +299,6 @@ export async function getTeacherMicrocourseSessionContext(
   return data === null ? null : teacherMicrocourseSessionContextSchema.parse(data);
 }
 
-const teacherMicrocourseSessionWorkspaceSchema = z.object({
-  sessionId: uuid,
-  sessionTitle: z.string(),
-  classroomId: uuid,
-  classroomName: z.string(),
-  scheduledAt: z.string().nullable(),
-  coursewareFrozenAt: z.string().nullable(),
-  startedAt: z.string().nullable(),
-  variantCount: z.number().int().nonnegative(),
-  selectedMicrocourseId: uuid.nullable(),
-  selectedVariantName: z.string().nullable(),
-  primaryTeacherName: z.string(),
-});
-
-export type TeacherMicrocourseSessionWorkspace = z.infer<typeof teacherMicrocourseSessionWorkspaceSchema>;
-
-export async function listTeacherMicrocourseSessionWorkspaces(
-  limit = 100,
-): Promise<TeacherMicrocourseSessionWorkspace[]> {
-  const value = z.number().int().min(1).max(200).parse(limit);
-  const supabase = await createClient();
-  const { data, error } = await rpc(supabase)("list_teacher_microcourse_session_workspaces", {
-    p_limit: value,
-  });
-  if (error) throw new Error(error.message);
-  return z.array(teacherMicrocourseSessionWorkspaceSchema).parse(data ?? []);
-}
-
 export async function getTeacherMicrocourseEditor(microcourseId: string): Promise<TeacherMicrocourseEditor> {
   const parsed = uuid.safeParse(microcourseId);
   if (!parsed.success) throw new Error("VALIDATION");

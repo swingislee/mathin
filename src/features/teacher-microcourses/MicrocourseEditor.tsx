@@ -1,25 +1,29 @@
 "use client";
 
 import { useCallback, useMemo, useRef, useState, useTransition } from "react";
-import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, Play, Plus, Save, Send, Trash2, Undo2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, Plus, Save, Send, Trash2, Undo2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { CoursewareCompositionPage } from "@/features/courseware-doc/composition-page-schema";
-import { CoursewareEditorWorkbench } from "@/features/courseware-doc/CoursewareEditorWorkbench";
+import {
+  CoursewareWorkbench,
+  CoursewareWorkbenchDirectoryHeader,
+  CoursewareWorkbenchPageRail,
+  CoursewareWorkbenchPager,
+} from "@/features/courseware-doc/CoursewareEditorWorkbench";
 import { useRouter } from "@/i18n/navigation";
 import {
   createTeacherCompositionPageAction,
   deleteTeacherMicrocoursePageAction,
-  freezeTeacherMicrocourseSourceSessionAction,
   reorderTeacherMicrocoursePagesAction,
   saveTeacherMicrocourseMetadataAction,
+  selectTeacherMicrocourseVariantAction,
   submitTeacherMicrocourseReviewAction,
   withdrawTeacherMicrocourseAction,
   withdrawTeacherMicrocourseReviewAction,
@@ -75,6 +79,7 @@ export function MicrocourseEditor({ session, editor, canTeach }: {
       : { ...resolved, title: pageTitleDrafts[page.pageDocId] };
   }), [editor.pages, pageDrafts, pageTitleDrafts]);
   const currentPage = pages.find((page) => page.pageDocId === selectedPageId) ?? pages[0] ?? null;
+  const currentPageIndex = currentPage ? pages.findIndex((page) => page.pageDocId === currentPage.pageDocId) : -1;
   const stage = editor.workflow?.stage ?? "idle";
   const inReview = stage === "in_review" || stage === "ready_to_publish";
   const published = Boolean(editor.publishedMetadataRevisionId && editor.currentReleaseId);
@@ -110,16 +115,51 @@ export function MicrocourseEditor({ session, editor, canTeach }: {
     setPageTitleDrafts((current) => ({ ...current, [currentPage.pageDocId]: value }));
     workbenchRef.current?.rename?.(value);
   };
+  const directoryItems = pages.map((page) => {
+    const active = page.pageDocId === currentPage?.pageDocId;
+    return {
+      id: page.pageDocId,
+      title: page.title,
+      selectable: !active,
+      disabled: pending || pageSwitching,
+    };
+  });
+  const persistMetadata = () => saveTeacherMicrocourseMetadataAction({
+    microcourseId: editor.id, title, description, grade, courseSeason, classType, primaryTopicSlug,
+    keywords: keywords.split(/[，,]/).map((item) => item.trim()).filter(Boolean),
+  });
   const saveMetadata = () => startTransition(async () => {
-    const result = await saveTeacherMicrocourseMetadataAction({
-      microcourseId: editor.id, title, description, grade, courseSeason, classType, primaryTopicSlug,
-      keywords: keywords.split(/[，,]/).map((item) => item.trim()).filter(Boolean),
-    });
+    const result = await persistMetadata();
     setMessage(result.ok ? t("metadataSaved") : t("actionFailed", { code: result.code }));
     if (result.ok) router.refresh();
   });
+  const saveForSession = () => startTransition(async () => {
+    if (!await persistCurrentPage()) return;
+    const metadataResult = await persistMetadata();
+    if (!metadataResult.ok) {
+      setMessage(t("actionFailed", { code: metadataResult.code }));
+      return;
+    }
+    if (canTeach && !session.coursewareFrozenAt && !editor.selectedForSession && pages.length > 0) {
+      const selectionResult = await selectTeacherMicrocourseVariantAction({
+        sessionId: session.id,
+        microcourseId: editor.id,
+      });
+      if (!selectionResult.ok) {
+        setMessage(t("actionFailed", { code: selectionResult.code }));
+        return;
+      }
+    }
+    setMessage(t("sessionDraftSaved"));
+    router.push(`/dashboard/sessions/${session.id}?stage=pre`);
+  });
   const submit = () => startTransition(async () => {
     if (!await persistCurrentPage()) return;
+    const metadataResult = await persistMetadata();
+    if (!metadataResult.ok) {
+      setMessage(t("actionFailed", { code: metadataResult.code }));
+      return;
+    }
     const result = await submitTeacherMicrocourseReviewAction({ microcourseId: editor.id, note: reviewNote });
     setMessage(result.ok ? t("reviewSubmitted") : t("actionFailed", { code: result.code }));
     if (result.ok) router.refresh();
@@ -129,17 +169,6 @@ export function MicrocourseEditor({ session, editor, canTeach }: {
     const result = await withdrawTeacherMicrocourseReviewAction(editor.workflow.activeReviewCycleId);
     setMessage(result.ok ? t("reviewWithdrawn") : t("actionFailed", { code: result.code }));
     if (result.ok) router.refresh();
-  });
-  const startClass = () => startTransition(async () => {
-    if (!await persistCurrentPage()) return;
-    if (!session.coursewareFrozenAt) {
-      const result = await freezeTeacherMicrocourseSourceSessionAction(editor.id);
-      if (!result.ok) {
-        setMessage(t("actionFailed", { code: result.code }));
-        return;
-      }
-    }
-    router.push(`/classroom/${session.classroomId}/session/${session.id}/live`);
   });
   const withdrawPublished = () => startTransition(async () => {
     const result = await withdrawTeacherMicrocourseAction(editor.id);
@@ -197,8 +226,7 @@ export function MicrocourseEditor({ session, editor, canTeach }: {
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="truncate text-base font-medium">{t("workspaceTitle")}</h2>
-              <Badge variant="secondary">{t(`workflow_${stage}`)}</Badge>
-              {published ? <Badge variant="outline">{editor.withdrawnAt ? t("withdrawn") : t("published")}</Badge> : null}
+              <Badge variant="secondary">{editor.selectedForSession ? t("selectedForClass") : t("sessionDraft")}</Badge>
             </div>
             <p className="mt-0.5 truncate text-xs text-muted">{title ? `${title} · ${session.title}` : session.title}</p>
           </div>
@@ -207,11 +235,7 @@ export function MicrocourseEditor({ session, editor, canTeach }: {
               {detailsOpen ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
               {detailsOpen ? t("collapseDetails") : t("editDetails")}
             </Button>
-            {inReview
-              ? <Button type="button" variant="secondary" size="sm" disabled={pending || !editor.workflow?.activeReviewCycleId} onClick={withdrawReview}><Undo2 className="size-4" />{t("withdrawReview")}</Button>
-              : <Button type="button" size="sm" disabled={pending || pages.length === 0} onClick={submit}><Send className="size-4" />{published ? t("submitNewVersion") : t("submitReview")}</Button>}
-            {canTeach ? <Button type="button" variant="secondary" size="sm" disabled={pending || pages.length === 0} onClick={startClass}><Play className="size-4" />{session.coursewareFrozenAt ? t("enterClass") : t("freezeAndTeach")}</Button> : null}
-            {published && !editor.withdrawnAt ? <Button type="button" variant="ghost" size="sm" disabled={pending} onClick={() => setWithdrawOpen(true)}>{t("withdrawPublication")}</Button> : null}
+            <Button type="button" size="sm" disabled={pending || !title.trim()} onClick={saveForSession}><Save className="size-4" />{t(canTeach && !session.coursewareFrozenAt ? "saveForSessionAndReturn" : "saveDraftAndReturn")}</Button>
           </div>
         </div>
         {detailsOpen ? (
@@ -223,61 +247,95 @@ export function MicrocourseEditor({ session, editor, canTeach }: {
             <Label className="grid gap-1 lg:col-span-2"><span>{t("primaryTopic")}</span><Select value={primaryTopicSlug} onValueChange={setPrimaryTopicSlug}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{editor.topics.map((topic) => <SelectItem key={topic.id} value={topic.slug}>{locale === "en" ? topic.titleEn : topic.titleZh}</SelectItem>)}</SelectContent></Select></Label>
             <Label className="grid gap-1 lg:col-span-6"><span>{t("description")}</span><Textarea value={description} onChange={(event) => setDescription(event.target.value)} maxLength={2000} rows={2} /></Label>
             <Label className="grid gap-1 lg:col-span-6"><span>{t("keywords")}</span><Input value={keywords} onChange={(event) => setKeywords(event.target.value)} maxLength={400} placeholder={t("keywordsHint")} /></Label>
-            <Label className="grid gap-1 lg:col-span-10"><span>{t("reviewNote")}</span><Input value={reviewNote} onChange={(event) => setReviewNote(event.target.value)} maxLength={1000} placeholder={t("reviewNoteHint")} /></Label>
-            <div className="flex items-end lg:col-span-2"><Button type="button" size="sm" disabled={pending || !title.trim()} onClick={saveMetadata}><Save className="size-4" />{t("saveMetadata")}</Button></div>
+            <div className="flex items-end lg:col-span-12"><Button type="button" size="sm" variant="secondary" disabled={pending || !title.trim()} onClick={saveMetadata}><Save className="size-4" />{t("saveMetadata")}</Button></div>
+            <div className="flex flex-wrap items-start justify-between gap-3 pt-3 lg:col-span-12">
+              <div className="max-w-3xl">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-sm font-medium text-ink">{t("catalogSharingTitle")}</h3>
+                  <Badge variant="secondary">{t(`workflow_${stage}`)}</Badge>
+                  {published ? <Badge variant="outline">{editor.withdrawnAt ? t("withdrawn") : t("published")}</Badge> : null}
+                </div>
+                <p className="mt-1 text-xs leading-5 text-muted">{t("catalogSharingDescription")}</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {inReview
+                  ? <Button type="button" variant="secondary" size="sm" disabled={pending || !editor.workflow?.activeReviewCycleId} onClick={withdrawReview}><Undo2 className="size-4" />{t("withdrawReview")}</Button>
+                  : <Button type="button" variant="secondary" size="sm" disabled={pending || pages.length === 0} onClick={submit}><Send className="size-4" />{published ? t("submitNewVersion") : t("submitReview")}</Button>}
+                {published && !editor.withdrawnAt ? <Button type="button" variant="ghost" size="sm" disabled={pending} onClick={() => setWithdrawOpen(true)}>{t("withdrawPublication")}</Button> : null}
+              </div>
+            </div>
+            <Label className="grid gap-1 lg:col-span-12"><span>{t("reviewNote")}</span><Input value={reviewNote} onChange={(event) => setReviewNote(event.target.value)} maxLength={1000} placeholder={t("reviewNoteHint")} /></Label>
           </div>
         ) : null}
         {message ? <p role="status" className="mt-2 text-xs text-muted">{message}</p> : null}
       </section>
 
       {/* Product-approved shared courseware editor: one workbench, source-specific adapters. */}
-      <CoursewareEditorWorkbench
+      <CoursewareWorkbench
+        mode="microcourse-editor"
         adapter="courseware-composition-v1"
-        className="grid h-[calc(100dvh-9rem)] min-h-[32rem] grid-rows-[minmax(12rem,32dvh)_minmax(0,1fr)] xl:grid-cols-[13rem_minmax(0,1fr)] xl:grid-rows-1"
-      >
-        <nav className="flex min-h-0 flex-col border-b border-line xl:border-b-0 xl:border-r" aria-label={t("pages", { count: pages.length })}>
-          <div className="flex items-center justify-between gap-2 p-3 pb-2">
-            <h3 className="text-sm font-semibold">{t("pages", { count: pages.length })}</h3>
-            <Button type="button" size="sm" variant="ghost" className="size-8 p-0" disabled={pending || pageSwitching} onClick={addBlank} aria-label={t("addBlank")}><Plus className="size-4" /></Button>
-          </div>
-          <div className="flex min-h-0 flex-1 flex-col p-3 pt-0">
-            <div className="pb-3"><MicrocourseSourcePicker microcourseId={editor.id} afterPageDocId={currentPage?.pageDocId ?? null} disabled={pending || pageSwitching} onAdded={(id, count) => void handlePageAdded(id, t("pagesAdded", { count }))} /></div>
-            <ScrollArea className="min-h-0 flex-1">
-              <ol className="space-y-1 px-2 pb-3">
-                {pages.map((page) => {
-                  const active = page.pageDocId === currentPage?.pageDocId;
-                  return <li key={page.pageDocId}>
-                    {active ? (
-                      <div className="flex items-center gap-2 bg-crater/10 px-2 py-1.5 text-ink">
-                        <span className="w-5 shrink-0 text-xs text-muted">{page.pageNo}</span>
-                        <Input
-                          aria-label={t("renamePage")}
-                          value={page.title}
-                          maxLength={200}
-                          className="h-7 min-w-0 flex-1 border-0 bg-transparent px-1 text-sm shadow-none focus-visible:ring-1"
-                          onChange={(event) => renameCurrentPage(event.target.value)}
-                        />
-                      </div>
-                    ) : (
-                      <Button type="button" variant="ghost" disabled={pending || pageSwitching} onClick={() => void selectPage(page.pageDocId)} className="h-10 w-full justify-start rounded-md px-2 text-left">
-                        <span className="w-5 shrink-0 text-xs text-muted">{page.pageNo}</span><span className="min-w-0 truncate text-sm">{page.title}</span>
-                      </Button>
-                    )}
-                  </li>;
-                })}
-              </ol>
-            </ScrollArea>
-            <div className="grid grid-cols-3 gap-1 p-2">
+        layout="viewport"
+        layoutId={`microcourse-editor-${editor.id}`}
+        className="h-[calc(100dvh-9rem)] min-h-[32rem]"
+        directory={{
+          ariaLabel: t("pages", { count: pages.length }),
+          header: <CoursewareWorkbenchDirectoryHeader
+            title={t("pages", { count: pages.length })}
+            action={<Button type="button" size="sm" variant="ghost" className="size-8 p-0" disabled={pending || pageSwitching} onClick={addBlank} aria-label={t("addBlank")}><Plus className="size-4" /></Button>}
+          />,
+          content: <div className="flex size-full min-h-0 flex-col pt-3">
+            <div className="shrink-0 px-3 pb-3"><MicrocourseSourcePicker microcourseId={editor.id} afterPageDocId={currentPage?.pageDocId ?? null} disabled={pending || pageSwitching} onAdded={(id, count) => void handlePageAdded(id, t("pagesAdded", { count }))} /></div>
+            <CoursewareWorkbenchPageRail
+              items={directoryItems}
+              selectedIndex={currentPageIndex}
+              onItemTitleChange={(_item, _index, value) => renameCurrentPage(value)}
+              titleInputLabel={t("renamePage")}
+              titleInputDisabled={pending || pageSwitching}
+              onSelectedIndexChange={(index) => {
+                const page = pages[index];
+                if (page) void selectPage(page.pageDocId);
+              }}
+            />
+          </div>,
+          footer: <div className="grid grid-cols-3 gap-1 p-2">
               <Button type="button" size="sm" variant="ghost" disabled={pending || !currentPage || currentPage.pageNo <= 1} onClick={() => movePage(-1)} aria-label={t("moveUp")}><ArrowUp className="size-4" /></Button>
               <Button type="button" size="sm" variant="ghost" disabled={pending || !currentPage || currentPage.pageNo >= pages.length} onClick={() => movePage(1)} aria-label={t("moveDown")}><ArrowDown className="size-4" /></Button>
               <Button type="button" size="sm" variant="ghost" disabled={pending || !currentPage} onClick={() => setDeletePageId(currentPage?.pageDocId ?? null)} aria-label={t("deletePage")}><Trash2 className="size-4 text-rose" /></Button>
-            </div>
-          </div>
-        </nav>
-        {currentPage
-          ? <CoursewareCompositionWorkbench ref={workbenchRef} key={currentPage.pageDocId} microcourseId={editor.id} page={currentPage} onPersisted={handlePagePersisted} onStatus={setMessage} />
-          : <section className="grid place-items-center"><p className="text-sm text-muted">{t("emptyPages")}</p></section>}
-      </CoursewareEditorWorkbench>
+          </div>,
+        }}
+        canvas={{
+          ariaLabel: t("workspaceTitle"),
+          content: currentPage
+            ? <CoursewareCompositionWorkbench
+                ref={workbenchRef}
+                key={currentPage.pageDocId}
+                microcourseId={editor.id}
+                page={currentPage}
+                onPersisted={handlePagePersisted}
+                onStatus={setMessage}
+              />
+            : <section className="grid size-full place-items-center"><p className="text-sm text-muted">{t("emptyPages")}</p></section>,
+          footer: <CoursewareWorkbenchPager
+            previousLabel={t("previousPage")}
+            nextLabel={t("nextPage")}
+            previousDisabled={pending || pageSwitching || currentPageIndex <= 0}
+            nextDisabled={pending || pageSwitching || currentPageIndex < 0 || currentPageIndex >= pages.length - 1}
+            onPrevious={() => {
+              const previous = pages[currentPageIndex - 1];
+              if (previous) void selectPage(previous.pageDocId);
+            }}
+            onNext={() => {
+              const next = pages[currentPageIndex + 1];
+              if (next) void selectPage(next.pageDocId);
+            }}
+            center={<span className="text-xs tabular-nums text-muted">{t("pageContext", { page: Math.max(0, currentPageIndex + 1), total: pages.length })}</span>}
+          />,
+        }}
+        inspector={{
+          ariaLabel: t("componentPanelTitle"),
+          header: null,
+        }}
+      />
 
       <ConfirmDialog open={deletePageId !== null} onOpenChange={(open) => { if (!open) setDeletePageId(null); }} title={t("deletePageTitle")} description={t("deletePageDescription")} confirmLabel={t("deletePage")} cancelLabel={t("cancel")} onConfirm={deletePage} pending={pending} />
       <ConfirmDialog open={withdrawOpen} onOpenChange={setWithdrawOpen} title={t("withdrawPublicationTitle")} description={t("withdrawPublicationDescription")} confirmLabel={t("withdrawPublication")} cancelLabel={t("cancel")} onConfirm={withdrawPublished} pending={pending} />

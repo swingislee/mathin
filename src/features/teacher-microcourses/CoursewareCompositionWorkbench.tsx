@@ -1,15 +1,10 @@
 "use client";
 
 import {
-  FileCode2,
   Gamepad2,
   ImagePlus,
   LoaderCircle,
-  Save,
-  Shapes,
-  Sigma,
   Trash2,
-  Type,
   Wrench,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -18,6 +13,7 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useRef,
   useState,
   useTransition,
@@ -33,24 +29,38 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Textarea } from "@/components/ui/textarea";
 import { CoursewareCompositionGridEditor } from "@/features/courseware-doc/CoursewareCompositionGridEditor";
+import { CoursewareEditorAdapterSurface } from "@/features/courseware-doc/CoursewareEditorAdapterSurface";
 import {
-  CoursewareEditorBody,
-  CoursewareEditorCanvasFrame,
-  CoursewareEditorHeader,
-  CoursewareEditorToolbar,
+  coursewareTextValue,
+  isCoursewareTextElement,
+  setCoursewareTextValue,
+} from "@/features/courseware-doc/CoursewareTextElementEditor";
+import {
+  CoursewareLayerPanel,
+  CoursewarePageElementInspector,
+  type CoursewareLayerItem,
+} from "@/features/courseware-doc/CoursewarePageElementEditor";
+import {
+  CoursewareEditorSaveControls,
   CoursewareEditorToolbarButton,
   CoursewareEditorToolbarLabel,
 } from "@/features/courseware-doc/CoursewareEditorWorkbench";
+import { CoursewarePageEditorToolbar } from "@/features/courseware-doc/CoursewarePageEditorToolbar";
+import { CoursewareH5AuthoringDialog } from "@/features/courseware-doc/CoursewareH5AuthoringDialog";
+import {
+  createCoursewareInsertedImageNode,
+  createCoursewareInsertedNode,
+} from "@/features/courseware-doc/courseware-inserted-node";
+import { useCoursewareEditHistory } from "@/features/courseware-doc/useCoursewareEditHistory";
 import {
   addCoursewareCompositionGame,
   addCoursewareCompositionH5,
   addCoursewareCompositionNode,
   addCoursewareCompositionTool,
   removeCoursewareCompositionBlock,
+  updateCoursewareCompositionNodeTransform,
 } from "@/features/courseware-doc/composition-page-layout";
 import {
   coursewareCompositionPageSchema,
@@ -61,6 +71,7 @@ import {
 } from "@/features/courseware-doc/composition-page-schema";
 import type { GamePageDoc } from "@/features/courseware-doc/game-page-schema";
 import type { DocNode } from "@/features/courseware-doc/schema";
+import type { DocNodeTransformPatch } from "@/features/courseware-doc/DocStage";
 import { GamePageEditor } from "@/features/games/courseware/GamePageEditor";
 import { gameCoursewareContractsForSurface } from "@/features/games/courseware/registry";
 import { getGame } from "@/features/games/registry";
@@ -74,33 +85,6 @@ import {
   saveTeacherMicrocoursePageAction,
   uploadTeacherMicrocourseImageAction,
 } from "./actions";
-import { microcourseH5Bytes, normalizeMicrocourseH5 } from "./h5";
-import { MICROCOURSE_H5_CSP } from "@/features/courseware-doc/h5-shim";
-import styles from "./CoursewareCompositionWorkbench.module.css";
-
-const DEFAULT_H5 = `<!doctype html>
-<html lang="zh-CN">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>课堂互动</title>
-  <style>
-    body { margin: 0; min-height: 100vh; display: grid; place-items: center; font-family: system-ui; background: #fffaf1; color: #2d2a26; }
-    button { padding: .75rem 1.25rem; border: 0; border-radius: 999px; background: #dd765c; color: white; font: inherit; }
-  </style>
-</head>
-<body>
-  <main><h1>课堂互动</h1><button id="start">开始</button></main>
-  <script>document.querySelector('#start').addEventListener('click', () => alert('开始探索！'))</script>
-</body>
-</html>`;
-
-function h5PreviewDocument(html: string) {
-  const csp = `<meta http-equiv="Content-Security-Policy" content="${MICROCOURSE_H5_CSP}">`;
-  return /<head[\s>]/i.test(html)
-    ? html.replace(/<head([^>]*)>/i, `<head$1>${csp}`)
-    : `${csp}${html}`;
-}
 
 export interface CoursewareCompositionWorkbenchHandle {
   flush: () => Promise<boolean>;
@@ -112,62 +96,6 @@ interface PersistedCompositionPage {
   title: string;
   doc: CoursewareCompositionPage;
   revisionNo: number;
-}
-
-function nodeId(index: number) {
-  return `teacher-${Date.now()}-${index}`;
-}
-
-function manualNode(kind: "text" | "formula" | "shape", index: number): DocNode {
-  const formula = kind === "formula";
-  const shape = kind === "shape";
-  const id = nodeId(index);
-  return {
-    id,
-    nodePath: id,
-    sourceType: `teacher:${kind}`,
-    sourceResourceId: null,
-    adapter: shape ? "shape" : formula ? "rich_text" : "text",
-    name: kind,
-    supported: true,
-    visible: true,
-    interactive: false,
-    zIndex: 1_000 + index,
-    order: 1_000 + index,
-    crop: null,
-    transform: { x: 0, y: 0, width: 320, height: 240, rotation: 0, scaleX: 1, scaleY: 1, anchorX: 0, anchorY: 0, opacity: 1, flipX: false, flipY: false, clip: true },
-    style: { objectFit: "contain", backgroundColor: shape ? "#fff4dc" : null, color: "#2d2a26", borderColor: shape ? "#dd765c" : null, borderWidth: shape ? 2 : 0, borderRadius: shape ? 18 : 0, fontFamily: null, fontSize: formula ? 34 : 32, fontWeight: formula ? 600 : 500, lineHeight: 1.4, letterSpacing: null, whiteSpace: "pre-wrap", textAlign: "left", overflow: "hidden" },
-    content: shape
-      ? { kind: "shape", shapeType: "rectangle", svg: "" }
-      : formula
-        ? { kind: "rich_text", html: '<p><span class="math-tex">\\(x^2+y^2=z^2\\)</span></p>', sanitized: true }
-        : { kind: "text", text: "新文本" },
-    resources: [],
-    children: [],
-  };
-}
-
-function imageNode(bindingKey: string, index: number): DocNode {
-  const id = nodeId(index);
-  return {
-    id,
-    nodePath: id,
-    sourceType: "teacher:image",
-    sourceResourceId: null,
-    adapter: "image",
-    name: "image",
-    supported: true,
-    visible: true,
-    interactive: false,
-    zIndex: 1_000 + index,
-    order: 1_000 + index,
-    crop: null,
-    transform: { x: 0, y: 0, width: 320, height: 320, rotation: 0, scaleX: 1, scaleY: 1, anchorX: 0, anchorY: 0, opacity: 1, flipX: false, flipY: false, clip: true },
-    style: { objectFit: "contain", backgroundColor: null, color: null, borderColor: null, borderWidth: 0, borderRadius: 0, fontFamily: null, fontSize: null, fontWeight: null, lineHeight: null, letterSpacing: null, whiteSpace: null, textAlign: null, overflow: "hidden" },
-    content: null,
-    resources: [{ bindingKey, bindingPath: "$.src", role: "image", kind: "image" }],
-    children: [],
-  };
 }
 
 function blockLabel(
@@ -196,11 +124,18 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
   };
   onPersisted: (draft: PersistedCompositionPage) => void;
   onStatus: (message: string) => void;
-}>(function CoursewareCompositionWorkbench({ microcourseId, page, onPersisted, onStatus }, ref) {
+}>(function CoursewareCompositionWorkbench({
+  microcourseId,
+  page,
+  onPersisted,
+  onStatus,
+}, ref) {
   const t = useTranslations("teacherMicrocourses");
+  const elementEditorT = useTranslations("coursewareElementEditor");
   const [doc, setDoc] = useState(() => structuredClone(page.doc));
   const [bindingUrls, setBindingUrls] = useState({ ...page.bindingUrls });
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(page.doc.layout.blocks[0]?.id ?? null);
+  const [snapToGrid, setSnapToGrid] = useState(true);
   const [message, setMessage] = useState("");
   const [saveState, setSaveState] = useState<"saved" | "saving" | "dirty" | "error">("saved");
   const [pending, startTransition] = useTransition();
@@ -212,7 +147,6 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
   const timerRef = useRef<number | null>(null);
   const savingRef = useRef<Promise<boolean> | null>(null);
   const flushRef = useRef<() => Promise<boolean>>(async () => true);
-
   const flush = useCallback(async (): Promise<boolean> => {
     if (savingRef.current) {
       const previousSaved = await savingRef.current;
@@ -279,6 +213,17 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
     timerRef.current = window.setTimeout(() => void flushRef.current(), 800);
   }, []);
 
+  const restoreFromHistory = useCallback((value: CoursewareCompositionPage) => {
+    docRef.current = value;
+    setDoc(value);
+    setSelectedBlockId(null);
+    markDirty();
+  }, [markDirty]);
+  const editHistory = useCoursewareEditHistory({
+    currentRef: docRef,
+    restore: restoreFromHistory,
+  });
+
   const rename = useCallback((value: string) => {
     titleRef.current = value;
     markDirty();
@@ -287,12 +232,15 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
   useEffect(() => { flushRef.current = flush; }, [flush]);
   useImperativeHandle(ref, () => ({ flush, rename }), [flush, rename]);
 
-  const updateDoc = useCallback((next: CoursewareCompositionPage | ((current: CoursewareCompositionPage) => CoursewareCompositionPage)) => {
-    const value = typeof next === "function" ? next(docRef.current) : next;
+  const updateDoc = useCallback((next: CoursewareCompositionPage | ((current: CoursewareCompositionPage) => CoursewareCompositionPage), historyGroup = "document") => {
+    const previous = docRef.current;
+    const value = typeof next === "function" ? next(previous) : next;
+    if (value === previous) return;
+    editHistory.record(previous, historyGroup);
     docRef.current = value;
     setDoc(value);
     markDirty();
-  }, [markDirty]);
+  }, [editHistory, markDirty]);
 
   useEffect(() => {
     const visibility = () => { if (document.visibilityState === "hidden") void flushRef.current(); };
@@ -308,7 +256,11 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
   }, []);
 
   const addNode = (kind: "text" | "formula" | "shape") => {
-    const node = manualNode(kind, docRef.current.overlay.nodes.length + 1);
+    const node = createCoursewareInsertedNode(
+      kind,
+      docRef.current.overlay.nodes.length + 1,
+      docRef.current.canvas,
+    );
     const next = addCoursewareCompositionNode(docRef.current, node, {
       columnSpan: kind === "shape" ? 4 : 6,
       rowSpan: 3,
@@ -334,7 +286,11 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
         return;
       }
       setBindingUrls((current) => ({ ...current, [result.data.bindingKey]: result.data.url }));
-      const node = imageNode(result.data.bindingKey, docRef.current.overlay.nodes.length + 1);
+      const node = createCoursewareInsertedImageNode(
+        result.data.bindingKey,
+        docRef.current.overlay.nodes.length + 1,
+        docRef.current.canvas,
+      );
       const next = addCoursewareCompositionNode(docRef.current, node, { columnSpan: 4, rowSpan: 4 });
       if (next === docRef.current) {
         setMessage(t("componentNoSpace"));
@@ -346,12 +302,69 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
   };
 
   const selected = doc.layout.blocks.find((block) => block.id === selectedBlockId) ?? null;
+  const selectedNode = selected?.type === "node"
+    ? doc.overlay.nodes.find((item) => item.id === selected.nodeId) ?? null
+    : null;
+  const layerItems = useMemo<CoursewareLayerItem[]>(() => doc.layout.blocks.map((block, index) => {
+    const node = block.type === "node"
+      ? doc.overlay.nodes.find((item) => item.id === block.nodeId) ?? null
+      : null;
+    const kind = blockLabel(block, doc, t);
+    return {
+      id: block.id,
+      label: node?.name?.trim() || `${kind} ${index + 1}`,
+      kind,
+      layer: node?.zIndex ?? index,
+      visible: node?.visible,
+    };
+  }), [doc, t]);
   const patchSelectedNode = (updater: (node: DocNode) => void) => updateDoc((current) => {
     if (!selected || selected.type !== "node") return current;
     const next = structuredClone(current);
     const node = next.overlay.nodes.find((item) => item.id === selected.nodeId);
     if (!node) return current;
     updater(node);
+    return coursewareCompositionPageSchema.parse(next);
+  });
+  const handleNodeTransformChange = useCallback((nodePath: string, patch: DocNodeTransformPatch) => {
+    updateDoc((current) => updateCoursewareCompositionNodeTransform(current, nodePath, patch, snapToGrid));
+  }, [snapToGrid, updateDoc]);
+  const handleNodeTextChange = useCallback((nodePath: string, value: string) => {
+    updateDoc((current) => {
+      const currentNode = current.overlay.nodes.find((node) => node.nodePath === nodePath);
+      if (!currentNode || !isCoursewareTextElement(currentNode) || coursewareTextValue(currentNode) === value) return current;
+      const next = structuredClone(current);
+      const node = next.overlay.nodes.find((item) => item.nodePath === nodePath);
+      if (!node) return current;
+      setCoursewareTextValue(node, value);
+      return coursewareCompositionPageSchema.parse(next);
+    });
+  }, [updateDoc]);
+  const patchBlockLayer = (blockId: string, layer: number) => updateDoc((current) => {
+    const block = current.layout.blocks.find((item) => item.id === blockId);
+    if (!block) return current;
+    if (block.type === "node") {
+      const next = structuredClone(current);
+      const node = next.overlay.nodes.find((item) => item.id === block.nodeId);
+      if (!node || node.zIndex === layer) return current;
+      node.zIndex = layer;
+      return coursewareCompositionPageSchema.parse(next);
+    }
+    const from = current.layout.blocks.findIndex((item) => item.id === blockId);
+    const to = Math.max(0, Math.min(current.layout.blocks.length - 1, layer));
+    if (from === to) return current;
+    const next = structuredClone(current);
+    const [moved] = next.layout.blocks.splice(from, 1);
+    next.layout.blocks.splice(to, 0, moved);
+    return coursewareCompositionPageSchema.parse(next);
+  });
+  const patchBlockVisibility = (blockId: string, visible: boolean) => updateDoc((current) => {
+    const block = current.layout.blocks.find((item) => item.id === blockId);
+    if (!block || block.type !== "node") return current;
+    const next = structuredClone(current);
+    const node = next.overlay.nodes.find((item) => item.id === block.nodeId);
+    if (!node || node.visible === visible) return current;
+    node.visible = visible;
     return coursewareCompositionPageSchema.parse(next);
   });
   const patchSelectedGame = (game: GamePageDoc) => updateDoc((current) => {
@@ -378,39 +391,42 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
     setSelectedBlockId(null);
   };
 
-  const saveLabel = saveState === "saving" ? t("pageAutosaving")
-    : saveState === "dirty" ? t("pageUnsaved")
-      : saveState === "error" ? t("pageAutosaveFailed")
-        : t("pageAutosaved");
-
-  return (
-    <div
-      data-courseware-editor-adapter="courseware-composition-v1"
-      className={cn("flex min-h-0 min-w-0 flex-col overflow-hidden", styles.workbench)}
-    >
-      <CoursewareEditorHeader className="px-3 py-2.5">
-        <div className="flex min-w-0 items-center justify-between gap-3">
-          <CoursewareEditorToolbar aria-label={t("componentPanelTitle")}>
-            <CoursewareEditorToolbarButton aria-label={t("componentText")} title={t("componentText")} onClick={() => addNode("text")}><Type className="size-4" /></CoursewareEditorToolbarButton>
-            <CoursewareEditorToolbarButton aria-label={t("componentFormula")} title={t("componentFormula")} onClick={() => addNode("formula")}><Sigma className="size-4" /></CoursewareEditorToolbarButton>
-            <CoursewareEditorToolbarButton aria-label={t("componentShape")} title={t("componentShape")} onClick={() => addNode("shape")}><Shapes className="size-4" /></CoursewareEditorToolbarButton>
-            <CoursewareEditorToolbarLabel aria-label={t("componentImage")} title={t("componentImage")}>
+  const insertToolbar = (
+    <CoursewarePageEditorToolbar
+      canUndo={editHistory.canUndo}
+      canRedo={editHistory.canRedo}
+      onUndo={editHistory.undo}
+      onRedo={editHistory.redo}
+      snapToGrid={snapToGrid}
+      onSnapToGridChange={setSnapToGrid}
+      insertions={{
+        text: () => addNode("text"),
+        formula: () => addNode("formula"),
+        shape: () => addNode("shape"),
+        image: (
+          <CoursewareEditorToolbarLabel aria-label={t("componentImage")} title={t("componentImage")}>
               <Input type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="sr-only" disabled={pending} onChange={(event) => uploadImage(event.target.files?.[0] ?? null)} />
               <ImagePlus className="size-4" />
-            </CoursewareEditorToolbarLabel>
-            <GameComponentDialog microcourseId={microcourseId} disabled={pending} iconOnly onCreated={(game) => {
+          </CoursewareEditorToolbarLabel>
+        ),
+        game: (
+          <GameComponentDialog microcourseId={microcourseId} disabled={pending} iconOnly onCreated={(game) => {
               const previousIds = new Set(docRef.current.layout.blocks.map((block) => block.id));
               const next = addCoursewareCompositionGame(docRef.current, game);
               updateDoc(next);
               setSelectedBlockId(next.layout.blocks.find((block) => !previousIds.has(block.id))?.id ?? null);
-            }} />
-            <H5ComponentDialog microcourseId={microcourseId} disabled={pending} iconOnly onSaved={(h5) => {
+          }} />
+        ),
+        h5: (
+          <H5ComponentDialog microcourseId={microcourseId} disabled={pending} iconOnly onSaved={(h5) => {
               const previousIds = new Set(docRef.current.layout.blocks.map((block) => block.id));
               const next = addCoursewareCompositionH5(docRef.current, h5);
               updateDoc(next);
               setSelectedBlockId(next.layout.blocks.find((block) => !previousIds.has(block.id))?.id ?? null);
-            }} />
-            <ToolComponentDialog disabled={pending} onCreated={(tool) => {
+          }} />
+        ),
+        tool: (
+          <ToolComponentDialog disabled={pending} onCreated={(tool) => {
               const previousIds = new Set(docRef.current.layout.blocks.map((block) => block.id));
               const next = addCoursewareCompositionTool(docRef.current, tool);
               if (next === docRef.current) {
@@ -419,47 +435,51 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
               }
               updateDoc(next);
               setSelectedBlockId(next.layout.blocks.find((block) => !previousIds.has(block.id))?.id ?? null);
-            }} />
-          </CoursewareEditorToolbar>
-          <div className="flex shrink-0 items-center gap-2">
-            <span data-testid="microcourse-autosave-status" role="status" aria-live="polite" className={cn("inline-flex items-center gap-1 text-xs", saveState === "error" ? "text-rose" : "text-muted")}>
-              {saveState === "saving" && <LoaderCircle className="size-3.5 animate-spin" />}{saveLabel}
-            </span>
-            <Button type="button" size="sm" variant="secondary" className="size-9 p-0" aria-label={t("saveNow")} title={t("saveNow")} disabled={pending || saveState === "saving"} onClick={() => void flush()}>
-              <Save className="size-4" />
-            </Button>
-          </div>
-        </div>
-        {message && <p role="alert" className="mt-2 text-xs text-rose">{message}</p>}
-      </CoursewareEditorHeader>
-      <CoursewareEditorBody className={cn("gap-3 p-3", styles.body)}>
-        <div className={cn("flex min-h-0 min-w-0 items-center justify-center", styles.stageSlot)}>
-          <CoursewareEditorCanvasFrame className={styles.stageFrame}>
-            <CoursewareCompositionGridEditor
-              doc={doc}
-              bindingUrls={bindingUrls}
-              selectedBlockId={selectedBlockId}
-              onSelectBlock={setSelectedBlockId}
-              onChange={updateDoc}
-            />
-          </CoursewareEditorCanvasFrame>
-        </div>
-        <ScrollArea className="min-h-0 rounded-xl border border-line">
-          <div className="space-y-4 p-3">
-            <div>
-              <p className="text-xs font-medium text-muted">{t("gridComponentList")}</p>
-              <div className="mt-2 grid grid-cols-2 gap-1">
-                {doc.layout.blocks.map((block) => (
-                  <Button key={block.id} type="button" size="sm" variant={selectedBlockId === block.id ? "primary" : "ghost"} className="justify-start truncate" onClick={() => setSelectedBlockId(block.id)}>
-                    {blockLabel(block, doc, t)}
-                  </Button>
-                ))}
-              </div>
-              {doc.layout.blocks.length === 0 && <p className="mt-2 text-xs text-muted">{t("componentEmpty")}</p>}
-            </div>
+          }} />
+        ),
+      }}
+    />
+  );
 
-            {selected?.type === "node" ? (
-              <NodeControls doc={doc} block={selected} patch={patchSelectedNode} />
+  const saveControls = (
+    <CoursewareEditorSaveControls
+      state={saveState}
+      labels={{
+        saved: t("pageAutosaved"),
+        saving: t("pageAutosaving"),
+        dirty: t("pageUnsaved"),
+        error: t("pageAutosaveFailed"),
+        saveNow: t("saveNow"),
+      }}
+      onSave={() => void flush()}
+      disabled={pending}
+      statusTestId="microcourse-autosave-status"
+      className="w-auto"
+    />
+  );
+
+  const inspectorHeader = (
+    <h2 className="text-sm font-medium text-ink">{elementEditorT("panelTitle")}</h2>
+  );
+
+  const inspectorContent = (
+    <ScrollArea className="size-full min-h-0">
+      <div className="space-y-4 p-3">
+        {message && <p role="alert" className="text-xs text-rose">{message}</p>}
+            <CoursewareLayerPanel
+              items={layerItems}
+              selectedId={selectedBlockId}
+              onSelect={setSelectedBlockId}
+              onLayerChange={patchBlockLayer}
+              onVisibilityChange={patchBlockVisibility}
+            />
+
+            {selectedNode ? (
+              <CoursewarePageElementInspector
+                node={selectedNode}
+                onPatch={patchSelectedNode}
+                onTransformChange={(patch) => handleNodeTransformChange(selectedNode.nodePath, patch)}
+              />
             ) : null}
             {selected?.type === "game" ? (
               <div className="border-t border-line pt-3">
@@ -483,36 +503,34 @@ export const CoursewareCompositionWorkbench = forwardRef<CoursewareCompositionWo
                 <Trash2 className="size-4" />{t("gridDeleteComponent")}
               </Button>
             ) : null}
-          </div>
-        </ScrollArea>
-      </CoursewareEditorBody>
-    </div>
+      </div>
+    </ScrollArea>
+  );
+
+  return (
+    <CoursewareEditorAdapterSurface
+      toolbar={insertToolbar}
+      saveControls={saveControls}
+      inspectorHeader={inspectorHeader}
+      inspector={inspectorContent}
+      aspect={4 / 3}
+      className="p-3"
+      stageClassName="rounded-xl border border-line bg-white shadow-sm"
+      hostProps={{ "data-courseware-editor-adapter": "courseware-composition-v1" }}
+    >
+      <CoursewareCompositionGridEditor
+        doc={doc}
+        bindingUrls={bindingUrls}
+        selectedBlockId={selectedBlockId}
+        onSelectBlock={setSelectedBlockId}
+        onChange={updateDoc}
+        onNodeTransformChange={handleNodeTransformChange}
+        onNodeTextChange={handleNodeTextChange}
+        snapToGrid={snapToGrid}
+      />
+    </CoursewareEditorAdapterSurface>
   );
 });
-
-function NodeControls({ doc, block, patch }: {
-  doc: CoursewareCompositionPage;
-  block: Extract<CoursewareCompositionBlock, { type: "node" }>;
-  patch: (updater: (node: DocNode) => void) => void;
-}) {
-  const t = useTranslations("teacherMicrocourses");
-  const node = doc.overlay.nodes.find((item) => item.id === block.nodeId);
-  if (!node) return null;
-  return (
-    <div className="space-y-3 border-t border-line pt-3">
-      {node.content?.kind === "text" && (
-        <Label className="grid gap-1"><span>{t("gridTextContent")}</span><Textarea value={node.content.text ?? ""} rows={5} onChange={(event) => patch((item) => { if (item.content?.kind === "text") item.content.text = event.target.value; })} /></Label>
-      )}
-      {node.content?.kind === "rich_text" && (
-        <Label className="grid gap-1"><span>{t("richTextFormula")}</span><Textarea value={node.content.html ?? ""} rows={6} className="font-mono text-xs" onChange={(event) => patch((item) => { if (item.content?.kind === "rich_text") item.content.html = event.target.value; })} /><span className="text-xs font-normal text-muted">{t("formulaHint")}</span></Label>
-      )}
-      {(node.content?.kind === "text" || node.content?.kind === "rich_text") && (
-        <Label className="grid gap-1"><span>{t("fontSize")}</span><Input type="number" min={12} max={96} value={node.style.fontSize ?? 28} onChange={(event) => patch((item) => { item.style.fontSize = Number(event.target.value); })} /></Label>
-      )}
-      <Label className="grid gap-1"><span>{t("color")}</span><Input type="color" value={node.style.color ?? "#2d2a26"} onChange={(event) => patch((item) => { item.style.color = event.target.value; })} /></Label>
-    </div>
-  );
-}
 
 function GameComponentDialog({ microcourseId, disabled = false, iconOnly = false, onCreated }: {
   microcourseId: string;
@@ -621,55 +639,19 @@ function H5ComponentDialog({ microcourseId, disabled = false, iconOnly = false, 
   existing?: CoursewareCompositionH5;
   onSaved: (h5: CoursewareCompositionH5) => void;
 }) {
-  const t = useTranslations("teacherMicrocourses");
-  const [open, setOpen] = useState(false);
-  const [html, setHtml] = useState(DEFAULT_H5);
-  const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [pending, startTransition] = useTransition();
-  useEffect(() => {
-    if (!open || !existing) return;
-    let active = true;
-    loadTeacherMicrocourseH5HtmlAction(existing.artifactId).then((value) => {
-      if (active) setHtml(value);
-    }).catch(() => {
-      if (active) setMessage(t("h5LoadFailed"));
-    }).finally(() => {
-      if (active) setLoading(false);
-    });
-    return () => { active = false; };
-  }, [existing, open, t]);
-  const changeOpen = (nextOpen: boolean) => {
-    setOpen(nextOpen);
-    setMessage("");
-    setLoading(Boolean(nextOpen && existing));
-  };
-  const save = () => startTransition(async () => {
-    const result = await createTeacherH5ComponentArtifactAction({ microcourseId, html });
-    if (!result.ok) {
-      setMessage(t("actionFailed", { code: result.code }));
-      return;
-    }
-    onSaved(result.data.h5);
-    setOpen(false);
-  });
-  const bytes = microcourseH5Bytes(normalizeMicrocourseH5(html)).byteLength;
   return (
-    <Dialog open={open} onOpenChange={changeOpen}>
-      <DialogTrigger asChild>{iconOnly
-        ? <CoursewareEditorToolbarButton aria-label={existing ? t("editH5Component") : t("componentH5")} title={existing ? t("editH5Component") : t("componentH5")} disabled={disabled}><FileCode2 className="size-4" /></CoursewareEditorToolbarButton>
-        : <Button type="button" size="sm" variant="secondary" className={cn(existing && "w-full")} aria-label={existing ? t("editH5Component") : t("componentH5")} title={existing ? t("editH5Component") : t("componentH5")} disabled={disabled}><FileCode2 className="size-4" />{existing ? t("editH5Component") : t("componentH5")}</Button>}
-      </DialogTrigger>
-      <DialogContent className="max-w-5xl">
-        <DialogHeader><DialogTitle>{existing ? t("editH5Component") : t("insertH5ComponentTitle")}</DialogTitle><DialogDescription>{t("h5SecurityHint")}</DialogDescription></DialogHeader>
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_22rem]">
-          <Label className="grid gap-1"><span>{t("html")}</span><Textarea value={html} onChange={(event) => setHtml(event.target.value)} rows={20} className="font-mono text-xs" disabled={loading} /></Label>
-          <div className="overflow-hidden rounded-lg border border-line bg-white"><iframe title={t("h5LivePreview")} sandbox="allow-scripts" srcDoc={h5PreviewDocument(html)} className="aspect-[4/3] w-full border-0" /></div>
-        </div>
-        <p className="text-xs text-muted">{bytes} / 5 MiB</p>
-        {message && <p role="alert" className="text-sm text-rose">{message}</p>}
-        <DialogFooter><Button type="button" variant="secondary" onClick={() => setOpen(false)}>{t("cancel")}</Button><Button type="button" disabled={pending || loading || !html.trim()} onClick={save}>{pending && <LoaderCircle className="size-4 animate-spin" />}{existing ? t("saveNow") : t("insertComponent")}</Button></DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <CoursewareH5AuthoringDialog
+      disabled={disabled}
+      iconOnly={iconOnly}
+      existing={Boolean(existing)}
+      loadHtml={existing ? () => loadTeacherMicrocourseH5HtmlAction(existing.artifactId) : undefined}
+      submit={async (html) => {
+        const result = await createTeacherH5ComponentArtifactAction({ microcourseId, html });
+        return result.ok
+          ? { ok: true, data: result.data.h5 }
+          : { ok: false, code: result.code };
+      }}
+      onSaved={onSaved}
+    />
   );
 }

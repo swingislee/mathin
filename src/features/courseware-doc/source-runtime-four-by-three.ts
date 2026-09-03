@@ -1,6 +1,13 @@
 import type { SourceRuntimePageDoc } from "./source-runtime-schema";
+import {
+  COURSEWARE_43_STRATEGIES,
+  type Courseware43SessionState,
+  type Courseware43Strategy,
+} from "./courseware-4x3-strategy";
 
 export type SourceRuntimeFourByThreeMode = "source-master" | "source-player-compat";
+
+const MATHIN_COURSEWARE_METADATA_KEY = "mathinCourseware";
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -10,6 +17,34 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 
 function positiveFiniteNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : null;
+}
+
+/**
+ * Mathin-owned draft metadata lives beside, never inside, the producer layout.
+ * The source Viewer ignores this reserved object while the formal editor can
+ * restore a track-specific host placement after a reload.
+ */
+export function sourceRuntimeCourseware43Session(
+  doc: SourceRuntimePageDoc,
+): Courseware43SessionState | null {
+  const metadata = asRecord(doc.payload.data[MATHIN_COURSEWARE_METADATA_KEY]);
+  const strategy = metadata?.adapt43Strategy;
+  return COURSEWARE_43_STRATEGIES.includes(strategy as Courseware43Strategy)
+    ? { strategy: strategy as Courseware43Strategy }
+    : null;
+}
+
+export function withSourceRuntimeCourseware43Session(
+  input: SourceRuntimePageDoc,
+  state: Courseware43SessionState,
+): SourceRuntimePageDoc {
+  const doc = structuredClone(input);
+  const current = asRecord(doc.payload.data[MATHIN_COURSEWARE_METADATA_KEY]) ?? {};
+  doc.payload.data[MATHIN_COURSEWARE_METADATA_KEY] = {
+    ...current,
+    adapt43Strategy: state.strategy,
+  };
+  return doc;
 }
 
 function nodeRequiresPlayerCompatibility(value: unknown): boolean {

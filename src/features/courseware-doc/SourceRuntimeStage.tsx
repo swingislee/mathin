@@ -7,11 +7,23 @@ import type { H5PointerBridgeHost } from "./h5-pointer-protocol";
 import type { ResolvedBindingUrls } from "./resolve";
 import { coursewareCanvasStyle } from "./courseware-surface";
 import {
+  markSourceRuntimeEditorUrl,
   markSourceRuntimeNestedH5Url,
   SOURCE_RUNTIME_PROTOCOL,
   type SourceRuntimePageDoc,
 } from "./source-runtime-schema";
+import type {
+  SourceRuntimeEditorBridgeNode,
+  SourceRuntimeEditorCanvas,
+  SourceRuntimeEditorGeometry,
+} from "./source-runtime-editor";
+import {
+  sourceRuntimeEditorBridgeNodes,
+  sourceRuntimeEditorCanvas,
+} from "./source-runtime-editor";
+import { SourceRuntimeEditorOverlay } from "./SourceRuntimeEditorOverlay";
 import { sourceRuntimeFourByThreeMode } from "./source-runtime-four-by-three";
+import type { SourceRuntimeFourByThreeMode } from "./source-runtime-four-by-three";
 import { versionSourceRuntimeEntryUrl } from "./source-runtime-delivery.mjs";
 import {
   prepareSourceRuntimeResourcesForSandbox,
@@ -31,7 +43,33 @@ export interface SourceRuntimeStageProps {
   videoControl?: DocVideoControl;
   onAdvance?: () => void;
   h5PointerBridge?: H5PointerBridgeHost;
+  sourceRuntimeFourByThreeMode?: SourceRuntimeFourByThreeMode;
+  editor?: SourceRuntimeEditorHost;
 }
+
+export interface SourceRuntimeEditorHost {
+  enabled: boolean;
+  revision: number;
+  selectedNodePath: string | null;
+  snapToGrid: boolean;
+  canvas: SourceRuntimeEditorCanvas;
+  nodes: SourceRuntimeEditorBridgeNode[];
+  moveLabel: string;
+  resizeLabel: string;
+  onNodeSelect: (nodePath: string) => void;
+  onNodeTransformChange: (
+    nodePath: string,
+    patch: Partial<Pick<SourceRuntimeEditorBridgeNode, "x" | "y" | "width" | "height">>,
+  ) => void;
+  onNodeTextChange: (nodePath: string, value: string) => void;
+}
+
+type RuntimeEditorPayload = Omit<
+  SourceRuntimeEditorHost,
+  "revision" | "onNodeSelect" | "onNodeTransformChange" | "onNodeTextChange"
+>;
+
+type RuntimeBridgeNode = SourceRuntimeEditorBridgeNode & { resourceUrl?: string | null };
 
 interface RuntimePayload {
   source: typeof HOST_MESSAGE_SOURCE;
@@ -44,21 +82,76 @@ interface RuntimePayload {
   routes: Record<string, string>;
   interactive: boolean;
   advanceOnCanvasClick: boolean;
+  editor?: RuntimeEditorPayload;
 }
 
-function runtimeBindingSignature(doc: SourceRuntimePageDoc, bindingUrls: ResolvedBindingUrls): string {
-  return JSON.stringify({
-    resources: Object.entries(doc.bindings.resources).map(([resourceId, bindingKey]) => (
-      [resourceId, bindingUrls[bindingKey] ?? null]
-    )),
-    routes: doc.bindings.routes.map((route) => [route.path, bindingUrls[route.bindingKey] ?? null]),
+function sourceRuntimeEditorGeometry(value: unknown): SourceRuntimeEditorGeometry | null {
+  if (!value || typeof value !== "object") return null;
+  const raw = value as Record<string, unknown>;
+  const rect = (candidate: unknown) => {
+    if (!candidate || typeof candidate !== "object") return null;
+    const item = candidate as Record<string, unknown>;
+    const values = [item.left, item.top, item.width, item.height];
+    if (!values.every((entry) => typeof entry === "number" && Number.isFinite(entry))) return null;
+    return {
+      left: item.left as number,
+      top: item.top as number,
+      width: item.width as number,
+      height: item.height as number,
+    };
+  };
+  const viewport = raw.viewport as Record<string, unknown> | undefined;
+  const stage = rect(raw.stage);
+  if (!viewport || typeof viewport.width !== "number" || !Number.isFinite(viewport.width)
+      || typeof viewport.height !== "number" || !Number.isFinite(viewport.height)
+      || !stage || !Array.isArray(raw.nodes)) return null;
+  const nodes = raw.nodes.flatMap((candidate) => {
+    const measured = rect(candidate);
+    const path = candidate && typeof candidate === "object"
+      ? (candidate as Record<string, unknown>).path
+      : null;
+    return measured && typeof path === "string" ? [{ path, ...measured }] : [];
   });
+  return {
+    viewport: { width: viewport.width, height: viewport.height },
+    stage,
+    nodes,
+  };
+}
+
+function runtimeEditorPayload(
+  editor: SourceRuntimeEditorHost | undefined,
+  bindingUrls: ResolvedBindingUrls,
+  extensions: SourceRuntimeEditorBridgeNode[],
+  canvas: SourceRuntimeEditorCanvas,
+): RuntimeEditorPayload | undefined {
+  if (!editor && extensions.length === 0) return undefined;
+  const sourceNodes = editor?.nodes ?? extensions;
+  const nodes: RuntimeBridgeNode[] = sourceNodes.map((node) => {
+    const resourceUrl = node.resourceBindingKey ? bindingUrls[node.resourceBindingKey] ?? null : null;
+    return {
+      ...node,
+      resourceUrl: resourceUrl && node.insertedKind === "h5"
+        ? markSourceRuntimeNestedH5Url(resourceUrl)
+        : resourceUrl,
+    };
+  });
+  return {
+    enabled: editor?.enabled ?? false,
+    selectedNodePath: editor?.selectedNodePath ?? null,
+    snapToGrid: editor?.snapToGrid ?? false,
+    canvas: editor?.canvas ?? canvas,
+    nodes,
+    moveLabel: editor?.moveLabel ?? "",
+    resizeLabel: editor?.resizeLabel ?? "",
+  };
 }
 
 function materializePayload(
   doc: SourceRuntimePageDoc,
   bindingUrls: ResolvedBindingUrls,
   interactive: boolean,
+  editorPayload: RuntimeEditorPayload | undefined,
   renderKey: string,
 ): RuntimePayload | null {
   const resources: Record<string, string> = {};
@@ -84,7 +177,17 @@ function materializePayload(
     routes,
     interactive,
     advanceOnCanvasClick: doc.behavior.advanceOnCanvasClick,
+    editor: editorPayload,
   };
+}
+
+function runtimeBindingSignature(doc: SourceRuntimePageDoc, bindingUrls: ResolvedBindingUrls): string {
+  return JSON.stringify({
+    resources: Object.entries(doc.bindings.resources).map(([resourceId, bindingKey]) => (
+      [resourceId, bindingUrls[bindingKey] ?? null]
+    )),
+    routes: doc.bindings.routes.map((route) => [route.path, bindingUrls[route.bindingKey] ?? null]),
+  });
 }
 
 export default function SourceRuntimeStage({
@@ -96,12 +199,25 @@ export default function SourceRuntimeStage({
   videoControl,
   onAdvance,
   h5PointerBridge,
+  sourceRuntimeFourByThreeMode: fourByThreeModeOverride,
+  editor,
 }: SourceRuntimeStageProps) {
   const t = useTranslations("coursewareStage");
   const frameId = `source-runtime/${doc.source.coursewareId}/${doc.source.pageDatabaseId}`;
+  const editorPageKey = `${doc.source.coursewareId}:${doc.source.pageDatabaseId}`;
   const { iframeRef, frameGeneration, onFrameLoad } = useH5FrameRegistration(h5PointerBridge, frameId);
+  const sourceFrameRef = useRef<HTMLDivElement>(null);
+  const [sourceFrameSize, setSourceFrameSize] = useState<{ width: number; height: number } | null>(null);
   const [renderedFrameKey, setRenderedFrameKey] = useState<string | null>(null);
   const [runtimeFailure, setRuntimeFailure] = useState<{ frameKey: string; message: string } | null>(null);
+  const [editorGeometryState, setEditorGeometryState] = useState<{
+    pageKey: string;
+    geometry: SourceRuntimeEditorGeometry;
+  } | null>(null);
+  const [focusedEditorNode, setFocusedEditorNode] = useState<{
+    pageKey: string;
+    nodePath: string;
+  } | null>(null);
   const appliedCtl = useRef<DocVideoControl["ctl"]>(undefined);
   const runtimeReadyFor = useRef<string | null>(null);
   const runtimeLoadedFor = useRef<string | null>(null);
@@ -109,26 +225,38 @@ export default function SourceRuntimeStage({
   const runtimeInFlightFor = useRef<string | null>(null);
   const runtimeQueuedRender = useRef<{ frameKey: string; payload: RuntimePayload } | null>(null);
   const runtimeInstanceFor = useRef<string | null>(null);
-  const runtimeEntry = bindingUrls[doc.runtime.bindingKey];
-  const runtimeSrc = runtimeEntry
-    ? versionSourceRuntimeEntryUrl(markSourceRuntimeNestedH5Url(runtimeEntry))
+  const runtimeEntryBase = bindingUrls[doc.runtime.bindingKey];
+  const extensionNodes = useMemo(
+    () => sourceRuntimeEditorBridgeNodes(doc).filter((node) => node.insertedKind !== null),
+    [doc],
+  );
+  const extensionCanvas = useMemo(() => sourceRuntimeEditorCanvas(doc), [doc]);
+  const bridgePayload = useMemo(
+    () => runtimeEditorPayload(editor, bindingUrls, extensionNodes, extensionCanvas),
+    [bindingUrls, editor, extensionCanvas, extensionNodes],
+  );
+  const runtimeEntryWithMode = runtimeEntryBase && bridgePayload
+    ? markSourceRuntimeEditorUrl(runtimeEntryBase)
+    : runtimeEntryBase;
+  const runtimeEntry = runtimeEntryWithMode
+    ? versionSourceRuntimeEntryUrl(markSourceRuntimeNestedH5Url(runtimeEntryWithMode))
     : null;
   // The runtime package is shared by every page in a source courseware. Keep
   // that iframe alive while only the render payload changes between pages;
   // reloading the immutable viewer bundle on every page turn is the dominant
   // source-preview latency. A different package/entry still remounts safely.
   const runtimeInstanceKey = `${doc.runtime.packageHash}:${runtimeEntry ?? "missing"}`;
-  const renderKey = `${runtimeInstanceKey}:${doc.source.coursewareId}:${doc.source.pageDatabaseId}`;
+  const renderKey = `${runtimeInstanceKey}:${doc.source.coursewareId}:${doc.source.pageDatabaseId}:${editor?.revision ?? 0}`;
   const rendered = renderedFrameKey === renderKey;
   const hasRenderedCurrentRuntime = renderedFrameKey?.startsWith(`${runtimeInstanceKey}:`) ?? false;
   const runtimeError = runtimeFailure?.frameKey === renderKey ? runtimeFailure.message : null;
   const bindingSignature = runtimeBindingSignature(doc, bindingUrls);
   const payload = useMemo(
-    () => materializePayload(doc, bindingUrls, interactive, renderKey),
-    // bindingSignature contains every binding value consumed by materializePayload;
-    // unrelated lecture assets can continue preloading without restarting Blob cloning.
+    () => materializePayload(doc, bindingUrls, interactive, bridgePayload, renderKey),
+    // bindingSignature contains every URL consumed by materializePayload;
+    // unrelated lecture assets can finish loading without cloning Blob data again.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [bindingSignature, doc, interactive, renderKey],
+    [bindingSignature, bridgePayload, doc, interactive, renderKey],
   );
   const [sandboxPayload, setSandboxPayload] = useState<{ renderKey: string; payload: RuntimePayload } | null>(null);
 
@@ -147,9 +275,6 @@ export default function SourceRuntimeStage({
 
   const queueRuntimeRender = useCallback((frameKey: string, nextPayload: RuntimePayload) => {
     if (runtimePayloadSentFor.current === frameKey) return;
-    // The source Viewer mutates one document and one captured-player global.
-    // Keep at most one render in flight and retain only the newest requested
-    // page so fast paging cannot overlap two source modules inside that frame.
     runtimeQueuedRender.current = { frameKey, payload: nextPayload };
     flushRuntimeRender();
   }, [flushRuntimeRender]);
@@ -162,30 +287,55 @@ export default function SourceRuntimeStage({
     runtimePayloadSentFor.current = null;
     runtimeInFlightFor.current = null;
     runtimeQueuedRender.current = null;
+    setEditorGeometryState(null);
+    setFocusedEditorNode(null);
   }, [runtimeInstanceKey]);
+
+  useLayoutEffect(() => {
+    const frame = sourceFrameRef.current;
+    if (!frame) return;
+    const measure = () => {
+      const next = { width: frame.clientWidth, height: frame.clientHeight };
+      setSourceFrameSize((current) => current?.width === next.width && current.height === next.height
+        ? current
+        : next);
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(frame);
+    measure();
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     if (!payload) return;
     const controller = new AbortController();
-    void prepareSourceRuntimeResourcesForSandbox(
-      payload.resources,
-      controller.signal,
-    ).then((resources) => {
-      if (controller.signal.aborted) return;
-      setSandboxPayload({ renderKey, payload: { ...payload, resources } });
-    }).catch(() => {
-      if (controller.signal.aborted) return;
-      setRuntimeFailure({
-        frameKey: renderKey,
-        message: t("sourceRuntimeUnavailable"),
+    void prepareSourceRuntimeResourcesForSandbox(payload.resources, controller.signal)
+      .then((resources) => {
+        if (controller.signal.aborted) return;
+        setSandboxPayload({ renderKey, payload: { ...payload, resources } });
+      })
+      .catch(() => {
+        if (controller.signal.aborted) return;
+        setRuntimeFailure({ frameKey: renderKey, message: t("sourceRuntimeUnavailable") });
       });
-    });
     return () => controller.abort();
   }, [payload, renderKey, t]);
 
   useEffect(() => {
-    if (sandboxPayload?.renderKey === renderKey) queueRuntimeRender(renderKey, sandboxPayload.payload);
+    if (sandboxPayload?.renderKey === renderKey) {
+      queueRuntimeRender(renderKey, sandboxPayload.payload);
+    }
   }, [queueRuntimeRender, renderKey, sandboxPayload]);
+
+  useEffect(() => {
+    if (!bridgePayload || (runtimeReadyFor.current !== runtimeInstanceKey && runtimeLoadedFor.current !== runtimeInstanceKey)) return;
+    iframeRef.current?.contentWindow?.postMessage({
+      source: HOST_MESSAGE_SOURCE,
+      protocol: SOURCE_RUNTIME_PROTOCOL,
+      type: "editor-state",
+      editor: bridgePayload,
+    }, "*");
+  }, [bridgePayload, iframeRef, runtimeInstanceKey]);
 
   // The source Viewer can render a lightweight page between the iframe load
   // event and React's passive-effect flush. Install the message listener in
@@ -194,7 +344,20 @@ export default function SourceRuntimeStage({
   useLayoutEffect(() => {
     const receive = (event: MessageEvent) => {
       if (event.source !== iframeRef.current?.contentWindow) return;
-      const message = event.data as { source?: unknown; protocol?: unknown; type?: unknown; renderKey?: unknown; message?: unknown; action?: unknown; time?: unknown };
+      const message = event.data as {
+        source?: unknown;
+        protocol?: unknown;
+        type?: unknown;
+        renderKey?: unknown;
+        message?: unknown;
+        action?: unknown;
+        time?: unknown;
+        nodePath?: unknown;
+        value?: unknown;
+        patch?: unknown;
+        focused?: unknown;
+        geometry?: unknown;
+      };
       if (message.source === FRAME_MESSAGE_SOURCE && message.protocol === SOURCE_RUNTIME_PROTOCOL) {
         if (message.type === "ready") {
           runtimeReadyFor.current = runtimeInstanceKey;
@@ -212,6 +375,23 @@ export default function SourceRuntimeStage({
           }
         }
         if (message.type === "advance") onAdvance?.();
+        if (message.type === "node-selected" && typeof message.nodePath === "string") {
+          editor?.onNodeSelect(message.nodePath);
+        }
+        if (message.type === "node-focus-change" && typeof message.nodePath === "string") {
+          setFocusedEditorNode(message.focused === true
+            ? { pageKey: editorPageKey, nodePath: message.nodePath }
+            : null);
+        }
+        if (message.type === "editor-geometry") {
+          const geometry = sourceRuntimeEditorGeometry(message.geometry);
+          if (geometry) setEditorGeometryState({ pageKey: editorPageKey, geometry });
+        }
+        if (message.type === "node-text-change"
+            && typeof message.nodePath === "string"
+            && typeof message.value === "string") {
+          editor?.onNodeTextChange(message.nodePath, message.value);
+        }
         if (message.type === "error") {
           const failedRenderKey = typeof message.renderKey === "string"
             ? message.renderKey
@@ -236,7 +416,7 @@ export default function SourceRuntimeStage({
     };
     window.addEventListener("message", receive);
     return () => window.removeEventListener("message", receive);
-  }, [flushRuntimeRender, iframeRef, onAdvance, runtimeInstanceKey, t, videoControl]);
+  }, [editor, editorPageKey, flushRuntimeRender, iframeRef, onAdvance, runtimeInstanceKey, t, videoControl]);
 
   useEffect(() => {
     const ctl = videoControl?.ctl;
@@ -252,14 +432,30 @@ export default function SourceRuntimeStage({
 
   const sourceAspect = doc.viewport.width / doc.viewport.height;
   const outerAspect = stageMode === "board43" ? 4 / 3 : sourceAspect;
-  const fourByThreeMode = sourceRuntimeFourByThreeMode(doc);
+  const fourByThreeMode = fourByThreeModeOverride ?? sourceRuntimeFourByThreeMode(doc);
   const directFourByThree = stageMode === "board43" && fourByThreeMode === "source-master";
   const sourceHeightPercent = directFourByThree
     ? 100
     : Math.min(100, (outerAspect / sourceAspect) * 100);
   const sourceWidthPercent = directFourByThree ? (sourceAspect / outerAspect) * 100 : 100;
   const sourceLeftPercent = directFourByThree ? (100 - sourceWidthPercent) / 2 : 0;
+  // The producer Viewer intentionally caps its own preview scale at 1. Render
+  // it at the document's intrinsic viewport and let the shared host scale that
+  // whole iframe instead; otherwise large workbench canvases expose the
+  // Viewer's white review margins around otherwise correct courseware.
+  const sourceFrameScale = sourceFrameSize
+    ? Math.max(
+        sourceFrameSize.width / doc.viewport.width,
+        sourceFrameSize.height / doc.viewport.height,
+      )
+    : 1;
   const unavailable = !runtimeEntry || !payload;
+  const editorGeometry = editorGeometryState?.pageKey === editorPageKey
+    ? editorGeometryState.geometry
+    : null;
+  const focusedEditorNodePath = focusedEditorNode?.pageKey === editorPageKey
+    ? focusedEditorNode.nodePath
+    : null;
 
   return (
     <div
@@ -279,6 +475,7 @@ export default function SourceRuntimeStage({
         <div className="absolute inset-x-0 bottom-0 bg-card" style={{ height: `${100 - sourceHeightPercent}%` }} />
       ) : null}
       <div
+        ref={sourceFrameRef}
         className="absolute top-0"
         style={{
           left: `${sourceLeftPercent}%`,
@@ -291,7 +488,7 @@ export default function SourceRuntimeStage({
             ref={iframeRef}
             key={runtimeInstanceKey}
             title={doc.source.pageName}
-            src={runtimeSrc ?? undefined}
+            src={runtimeEntry}
             sandbox="allow-scripts allow-forms allow-pointer-lock allow-modals"
             allow="autoplay; fullscreen"
             allowFullScreen
@@ -304,7 +501,30 @@ export default function SourceRuntimeStage({
               flushRuntimeRender();
               onFrameLoad();
             }}
-            className="absolute inset-0 block size-full border-0 bg-white"
+            className="absolute left-0 top-0 block origin-top-left border-0 bg-white"
+            style={{
+              width: doc.viewport.width,
+              height: doc.viewport.height,
+              transform: `scale(${sourceFrameScale})`,
+              visibility: sourceFrameSize ? "visible" : "hidden",
+            }}
+          />
+        ) : null}
+        {editor?.enabled && editorGeometry && sourceFrameSize ? (
+          <SourceRuntimeEditorOverlay
+            editor={editor}
+            geometry={editorGeometry}
+            frameScale={sourceFrameScale}
+            focusedNodePath={focusedEditorNodePath}
+            onPreview={(nodePath, patch) => {
+              iframeRef.current?.contentWindow?.postMessage({
+                source: HOST_MESSAGE_SOURCE,
+                protocol: SOURCE_RUNTIME_PROTOCOL,
+                type: "editor-preview-transform",
+                nodePath,
+                patch,
+              }, "*");
+            }}
           />
         ) : null}
         {!rendered && !hasRenderedCurrentRuntime && !runtimeError && !unavailable ? (

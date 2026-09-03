@@ -77,6 +77,8 @@ export type StagePreviewProps = Omit<DocStageProps, "doc"> & {
   onAdvance?: () => void;
   gameMirror?: GameMirrorState | null;
   onGameMirror?: (state: GameMirrorState) => void;
+  sourceRuntimeFourByThreeMode?: SourceRuntimeStageProps["sourceRuntimeFourByThreeMode"];
+  sourceRuntimeEditor?: SourceRuntimeStageProps["editor"];
 };
 
 export function StagePreview(props: StagePreviewProps) {
@@ -87,6 +89,7 @@ export function StagePreview(props: StagePreviewProps) {
     return (
       <SourceRuntimeStage
         {...props as SourceRuntimeStageProps}
+        editor={props.sourceRuntimeEditor}
       />
     );
   }

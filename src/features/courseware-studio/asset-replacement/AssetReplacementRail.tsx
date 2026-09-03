@@ -1,13 +1,9 @@
 "use client";
 /* eslint-disable @next/next/no-img-element -- private signed URLs are intentionally not routed through next/image. */
 
-import { ImageUp, Upload } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import type { CoursewareSharedAssetDetail } from "../data";
+import { AssetReplacementControls } from "./AssetReplacementControls";
 import { AssetReplacementHistory } from "./AssetReplacementHistory";
 import type { StagedUpload } from "./AssetReplacementPreview";
 
@@ -64,43 +60,20 @@ export function AssetReplacementRail({
         <p className="mt-2 break-all font-mono text-[11px] text-muted">{asset.sha256}</p>
       </section>
 
-      <section>
-        <h3 className="text-xs uppercase tracking-[0.14em] text-muted">{t("assetUploadTitle")}</h3>
-        <p className="mt-1 text-sm text-muted">{t("assetUploadHint")}</p>
-        <div className="mt-3 space-y-2">
-          <Label htmlFor="asset-replacement-file">{t("assetUploadFile")}</Label>
-          <Input
-            id="asset-replacement-file"
-            type="file"
-            accept="image/png,image/jpeg,image/webp,image/gif"
-            onChange={(event) => onFileChange(event.target.files?.[0] ?? null)}
-          />
-          <Label htmlFor="asset-replacement-note">{t("saveNote")}</Label>
-          <Textarea
-            id="asset-replacement-note"
-            value={note}
-            maxLength={1000}
-            onChange={(event) => onNoteChange(event.target.value)}
-            placeholder={t("assetReplacementNotePlaceholder")}
-          />
-          <Button className="w-full" disabled={!canStage} onClick={onStage}>
-            <Upload className="size-4" />{t("assetStageUpload")}
-          </Button>
-        </div>
-
-        {staged ? (
-          <div className="mt-3 space-y-2">
-            <Button className="w-full" disabled={!canApply} onClick={onApply}>
-              <ImageUp className="size-4" />{t("assetApplyReplacement")}
-            </Button>
-            <Button className="w-full" variant="secondary" disabled={pending} onClick={onDiscardStaged}>
-              {t("assetDiscardStaged")}
-            </Button>
-          </div>
-        ) : null}
-
-        {message ? <p role="status" className="mt-3 text-sm text-muted">{message}</p> : null}
-      </section>
+      <AssetReplacementControls
+        inputId="asset-replacement-file"
+        staged={staged}
+        note={note}
+        pending={pending}
+        canStage={canStage}
+        canApply={canApply}
+        message={message}
+        onFileChange={onFileChange}
+        onNoteChange={onNoteChange}
+        onStage={onStage}
+        onApply={onApply}
+        onDiscardStaged={onDiscardStaged}
+      />
 
       <AssetReplacementHistory batches={batches} pending={pending} onRollback={onRollback} />
     </>

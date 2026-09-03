@@ -54,6 +54,8 @@ async function LectureWorkspaceContent({
       detail={workspace.detail}
       nativePreview={workspace.nativePreview}
       adaptedPreview={workspace.adaptedPreview}
+      pageEditor={workspace.pageEditor}
+      sourceRuntimeEditor={workspace.sourceRuntimeEditor}
       canvas={parseUnifiedWorkspaceCanvas(rawSearchParams.canvas)}
       entryTrack={parseCoursewareTrack(rawSearchParams.track)}
       returnTo={returnTo}
@@ -64,7 +66,7 @@ async function LectureWorkspaceContent({
     await loadLectureWorkspacePageData(locale, lectureId, rawSearchParams);
 
   if (microcourseReviewCycleId) {
-    redirect(`/${locale}/dashboard/courseware/review/microcourses/${microcourseReviewCycleId}`);
+    redirect(`/${locale}/dashboard/courseware/microcourse-reviews/${microcourseReviewCycleId}`);
   }
 
   const baseHref = `/dashboard/courseware/lectures/${detail.lecture.id}`;

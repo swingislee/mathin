@@ -1,4 +1,4 @@
-import type { PageDoc } from "./schema";
+import type { DocNode, PageDoc } from "./schema";
 
 /** P6-6 分类报告携带的统一仿射；节点 geometry 与 path points 必须共同变换。 */
 /**
@@ -30,6 +30,57 @@ function transformPoint(x: number, y: number, affine: Adapt43Affine): [number, n
   return [x * scaleX + affine.translateX, y * scaleY + affine.translateY];
 }
 
+function contentFrame(doc: PageDoc, affine: Adapt43Affine, scaleX: number, scaleY: number): DocNode {
+  return {
+    id: "mathin-adapt-4x3-content-frame",
+    nodePath: "$.mathinAdapt43ContentFrame",
+    sourceType: "mathin:adapt-4x3-content-frame",
+    sourceResourceId: null,
+    adapter: "group",
+    name: null,
+    supported: true,
+    visible: true,
+    interactive: false,
+    zIndex: 0,
+    order: 0,
+    crop: null,
+    transform: {
+      x: affine.translateX,
+      y: affine.translateY,
+      width: doc.canvas.width,
+      height: doc.canvas.height,
+      rotation: 0,
+      scaleX,
+      scaleY,
+      anchorX: 0,
+      anchorY: 0,
+      opacity: 1,
+      flipX: false,
+      flipY: false,
+      clip: false,
+    },
+    style: {
+      objectFit: "contain",
+      backgroundColor: null,
+      color: null,
+      borderColor: null,
+      borderWidth: 0,
+      borderRadius: 0,
+      fontFamily: null,
+      fontSize: null,
+      fontWeight: null,
+      lineHeight: null,
+      letterSpacing: null,
+      whiteSpace: null,
+      textAlign: null,
+      overflow: "hidden",
+    },
+    resources: [],
+    content: null,
+    children: doc.nodes,
+  };
+}
+
 /**
  * 生成不可变的 4:3 page-doc-v1 快照。不会触碰资源 bindingKey；背景资源的
  * 派生版本由 page_asset_bindings 的 pin + release snapshot 单独决定。
@@ -40,30 +91,10 @@ export function derive43PageDoc(doc: PageDoc, affine: Adapt43Affine, nodeTransfo
   }
   const { scaleX, scaleY } = axes(affine);
   if (nodeTransformScope === "frame") {
-    const template = doc.nodes[0];
-    if (!template) throw new Error("CONTENT_FRAME_REQUIRES_NODE");
     return {
       ...doc,
       canvas: { ...doc.canvas, width: 960, height: 720 },
-      nodes: [{
-        ...template,
-        id: "mathin-adapt-4x3-content-frame",
-        nodePath: "$.mathinAdapt43ContentFrame",
-        sourceType: "mathin:adapt-4x3-content-frame",
-        sourceResourceId: null,
-        adapter: "group",
-        name: null,
-        supported: true,
-        visible: true,
-        interactive: false,
-        zIndex: 0,
-        order: 0,
-        crop: null,
-        transform: { x: 0, y: 90, width: 1280, height: 720, rotation: 0, scaleX: 0.75, scaleY: 0.75, anchorX: 0, anchorY: 0, opacity: 1, flipX: false, flipY: false, clip: false },
-        resources: [],
-        content: null,
-        children: doc.nodes,
-      }],
+      nodes: [contentFrame(doc, affine, scaleX, scaleY)],
     };
   }
   const mapNode = (node: PageDoc["nodes"][number], depth: number): PageDoc["nodes"][number] => {

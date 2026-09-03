@@ -12,6 +12,10 @@ import {
 } from "@/features/courseware-doc/document";
 import { buildH5EntryUrl, type H5LaunchQuery, type ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 import { PAGE_DOC_VERSION } from "@/features/courseware-doc/schema";
+import {
+  editorBindingLookupTracks,
+  selectEditorBindingRows,
+} from "@/features/courseware-studio/binding-inheritance";
 
 const SIGNED_URL_TTL_SECONDS = 60 * 60;
 export const COURSEWARE_TRACKS = ["native-16x9", "adapted-4x3"] as const;
@@ -249,6 +253,8 @@ export interface SharedAssetUsage {
   courseId: string;
   courseTitle: string;
   productCode: string;
+  familyId: string;
+  catalogVersionId: string;
   pinnedRevisionId: string | null;
   resolvedRevisionId: string;
   frozenSessionCount: number;
@@ -336,6 +342,17 @@ export async function loadCoursewareSharedAssetDetail(assetId: string, track: Co
 
   const { data: signed, error: signedError } = await supabase.storage.from("cw-objects").createSignedUrl(object.storage_path, SIGNED_URL_TTL_SECONDS);
   if (signedError) throw new Error(signedError.message);
+  const usageCourseIds = [...new Set((usageRows ?? []).map((usage) => usage.course_id))];
+  const usageCourses = await collectPostgrestRowsInBatches<string, {
+    id: string;
+    family_id: string;
+    catalog_version_id: string;
+  }>(usageCourseIds, (batch) => supabase
+    .from("courses")
+    .select("id,family_id,catalog_version_id")
+    .in("id", batch)
+    .returns<Array<{ id: string; family_id: string; catalog_version_id: string }>>());
+  const courseScopeById = new Map(usageCourses.map((course) => [course.id, course]));
   return {
     track,
     asset: {
@@ -351,22 +368,28 @@ export async function loadCoursewareSharedAssetDetail(assetId: string, track: Co
       height: object.height ?? 0,
       previewUrl: signed?.signedUrl ?? null,
     },
-    usages: (usageRows ?? []).map((usage): SharedAssetUsage => ({
-      bindingId: usage.binding_id,
-      bindingKey: usage.binding_key,
-      pageDocId: usage.page_doc_id,
-      pageNo: usage.page_no,
-      pageTitle: usage.page_title,
-      lectureId: usage.lecture_id,
-      lectureNo: usage.lecture_no,
-      lectureName: usage.lecture_name,
-      courseId: usage.course_id,
-      courseTitle: usage.course_title,
-      productCode: usage.product_code,
-      pinnedRevisionId: usage.pinned_revision_id,
-      resolvedRevisionId: usage.resolved_revision_id,
-      frozenSessionCount: usage.frozen_session_count,
-    })),
+    usages: (usageRows ?? []).map((usage): SharedAssetUsage => {
+      const courseScope = courseScopeById.get(usage.course_id);
+      if (!courseScope) throw new Error("COURSE_SCOPE_MISSING");
+      return {
+        bindingId: usage.binding_id,
+        bindingKey: usage.binding_key,
+        pageDocId: usage.page_doc_id,
+        pageNo: usage.page_no,
+        pageTitle: usage.page_title,
+        lectureId: usage.lecture_id,
+        lectureNo: usage.lecture_no,
+        lectureName: usage.lecture_name,
+        courseId: usage.course_id,
+        courseTitle: usage.course_title,
+        productCode: usage.product_code,
+        familyId: courseScope.family_id,
+        catalogVersionId: courseScope.catalog_version_id,
+        pinnedRevisionId: usage.pinned_revision_id,
+        resolvedRevisionId: usage.resolved_revision_id,
+        frozenSessionCount: usage.frozen_session_count,
+      };
+    }),
     batches: (batchRows ?? []).map((batch): SharedAssetReplacementBatch => ({
       id: batch.id,
       mode: batch.mode as SharedAssetReplacementBatch["mode"],
@@ -771,18 +794,19 @@ async function resolveEditorBindingUrls(
   if (requiredBindingKeys?.size === 0) return {};
   let bindingQuery = supabase
     .from("cw_page_asset_bindings")
-    .select("binding_key, kind, launch_query, pinned_revision_id, shared_asset_id")
+    .select("binding_key, kind, launch_query, pinned_revision_id, shared_asset_id, track")
     .eq("page_doc_id", pageDocId)
-    .eq("track", track);
+    .in("track", editorBindingLookupTracks(track));
   if (requiredBindingKeys) bindingQuery = bindingQuery.in("binding_key", [...requiredBindingKeys]);
-  const { data: bindings, error: bindingError } = await bindingQuery;
+  const { data: bindingRows, error: bindingError } = await bindingQuery;
   if (bindingError) throw new Error(bindingError.message);
+  const bindings = selectEditorBindingRows(track, bindingRows ?? []);
   if (requiredBindingKeys) {
-    const available = new Set((bindings ?? []).map((binding) => binding.binding_key));
+    const available = new Set(bindings.map((binding) => binding.binding_key));
     const missing = [...requiredBindingKeys].filter((bindingKey) => !available.has(bindingKey));
     if (missing.length > 0) throw new Error(`COURSEWARE_DOC_BINDING_MISSING: ${missing.join(",")}`);
   }
-  if (!bindings?.length) return {};
+  if (!bindings.length) return {};
   const sharedIds = [...new Set(bindings.map((binding) => binding.shared_asset_id))];
   const [assets, variantHeads] = await Promise.all([
     collectPostgrestRowsInBatches<string, { id: string; published_revision_id: string | null }>(sharedIds, (batch) => supabase

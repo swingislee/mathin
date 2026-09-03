@@ -1,9 +1,12 @@
-import { ChevronLeft, ChevronRight, CircleAlert } from "lucide-react";
+import { CircleAlert } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { CoursewareEditorWorkbench } from "@/features/courseware-doc/CoursewareEditorWorkbench";
+import {
+  CoursewareWorkbench,
+  CoursewareWorkbenchDirectoryHeader,
+  CoursewareWorkbenchPager,
+} from "@/features/courseware-doc/CoursewareEditorWorkbench";
 import { isSourceRuntimePageDoc } from "@/features/courseware-doc/source-runtime-schema";
 import { isSpatialPageDoc } from "@/features/courseware-doc/spatial";
 import {
@@ -11,19 +14,20 @@ import {
   ObjectTabs,
   ObjectWorkspace,
 } from "@/features/school/object-workspace";
-import { Link } from "@/i18n/navigation";
-import { cn } from "@/lib/utils";
 import type { LectureWorkspaceDetail } from "@/features/school/curriculum/types";
 import type { CoursewareLecturePreview, CoursewareTrack } from "./data";
-import { CoursewareCapabilityPrototype } from "./CoursewareCapabilityPrototype";
+import { CoursewareFormalPageRail } from "./CoursewareFormalPageRail";
 import { FittedCoursewareCanvas } from "./FittedCoursewareCanvas";
+import { PageDocVerticalSliceEditor } from "./PageDocVerticalSliceEditor";
 import { StagePreview } from "./StagePreview";
+import { SourceRuntimeFourByThreeEditor } from "./SourceRuntimeFourByThreeEditor";
+import type {
+  UnifiedPageDocEditorData,
+  UnifiedSourceRuntimeEditorData,
+} from "./unified-workspace-data";
 
 export const UNIFIED_WORKSPACE_CANVASES = ["compare", "native-16x9", "adapted-4x3"] as const;
 export type UnifiedWorkspaceCanvas = (typeof UNIFIED_WORKSPACE_CANVASES)[number];
-
-const INSERT_TOOLBAR_TARGET_ID = "courseware-workspace-insert-toolbar";
-const CAPABILITY_TABS_TARGET_ID = "courseware-workspace-capability-tabs";
 
 export function parseUnifiedWorkspaceCanvas(value: string | string[] | undefined): UnifiedWorkspaceCanvas {
   const first = Array.isArray(value) ? value[0] : value;
@@ -74,22 +78,13 @@ function TrackCanvas({
   preview,
   label,
   unavailable,
-  toolbarTargetId,
 }: {
   preview: CoursewareLecturePreview | null;
   label: string;
   unavailable: string;
-  toolbarTargetId?: string;
 }) {
   return (
     <section className="flex h-full min-h-0 min-w-0 flex-1 flex-col bg-paper" aria-label={label}>
-      <div className="flex min-h-10 shrink-0 items-center justify-between gap-2 border-b border-line px-3 py-2">
-        <span className="text-xs font-medium text-ink">{label}</span>
-        {toolbarTargetId
-          ? <div id={toolbarTargetId} className="flex min-w-0 flex-1 items-center justify-end overflow-hidden" />
-          : <span className="flex-1" />}
-        <Badge variant={preview ? "secondary" : "outline"}>{preview ? `R${preview.release.releaseNo}` : unavailable}</Badge>
-      </div>
       {preview ? (
         <FittedCoursewareCanvas aspect={previewAspect(preview)}>
           <StagePreview
@@ -110,6 +105,8 @@ export async function UnifiedCoursewareWorkspace({
   detail,
   nativePreview,
   adaptedPreview,
+  pageEditor,
+  sourceRuntimeEditor,
   canvas,
   entryTrack,
   returnTo,
@@ -117,6 +114,8 @@ export async function UnifiedCoursewareWorkspace({
   detail: LectureWorkspaceDetail;
   nativePreview: CoursewareLecturePreview | null;
   adaptedPreview: CoursewareLecturePreview | null;
+  pageEditor: UnifiedPageDocEditorData | null;
+  sourceRuntimeEditor: UnifiedSourceRuntimeEditorData | null;
   canvas: UnifiedWorkspaceCanvas;
   entryTrack: CoursewareTrack;
   returnTo: string | null;
@@ -127,24 +126,45 @@ export async function UnifiedCoursewareWorkspace({
   const pages = directoryPreview?.pages ?? [];
   const backHref = returnTo ?? coursePreviewHref(detail, entryTrack, pageIndex);
   const selectedPage = directoryPreview?.page;
-  const adaptedCanvasFellBack = canvas === "adapted-4x3" && !adaptedPreview && Boolean(nativePreview);
+  const sessionAdaptationAvailable = Boolean(pageEditor || sourceRuntimeEditor);
+  const adaptedCanvasFellBack = canvas === "adapted-4x3"
+    && !adaptedPreview
+    && Boolean(nativePreview)
+    && !sessionAdaptationAvailable;
   const visibleCanvas: UnifiedWorkspaceCanvas = adaptedCanvasFellBack ? "native-16x9" : canvas;
-  const selectedDoc = visibleCanvas === "adapted-4x3"
+  const visibleTrack: CoursewareTrack = visibleCanvas === "adapted-4x3" ? "adapted-4x3" : "native-16x9";
+  const selectedDoc = pageEditor?.doc ?? sourceRuntimeEditor?.doc ?? (visibleCanvas === "adapted-4x3"
     ? adaptedPreview?.page.doc
-    : nativePreview?.page.doc ?? adaptedPreview?.page.doc;
-
+    : nativePreview?.page.doc ?? adaptedPreview?.page.doc);
   const canvasItems = [
-    { value: "compare", label: t("canvasCompare"), href: workspaceHref({ lectureId: detail.lecture.id, canvas: "compare", track: entryTrack, page: pageIndex, returnTo }) },
-    { value: "native-16x9", label: t("canvasNative"), href: workspaceHref({ lectureId: detail.lecture.id, canvas: "native-16x9", track: entryTrack, page: pageIndex, returnTo }) },
-    { value: "adapted-4x3", label: t("canvasAdapted"), href: workspaceHref({ lectureId: detail.lecture.id, canvas: "adapted-4x3", track: entryTrack, page: pageIndex, returnTo }) },
+    { value: "compare", label: t("canvasCompare"), href: workspaceHref({ lectureId: detail.lecture.id, canvas: "compare", track: "native-16x9", page: pageIndex, returnTo }) },
+    { value: "native-16x9", label: t("canvasNative"), href: workspaceHref({ lectureId: detail.lecture.id, canvas: "native-16x9", track: "native-16x9", page: pageIndex, returnTo }) },
+    { value: "adapted-4x3", label: t("canvasAdapted"), href: workspaceHref({ lectureId: detail.lecture.id, canvas: "adapted-4x3", track: "adapted-4x3", page: pageIndex, returnTo }) },
   ];
 
   const previousHref = pageIndex > 1
-    ? workspaceHref({ lectureId: detail.lecture.id, canvas: visibleCanvas, track: entryTrack, page: pageIndex - 1, returnTo })
+    ? workspaceHref({ lectureId: detail.lecture.id, canvas: visibleCanvas, track: visibleTrack, page: pageIndex - 1, returnTo })
     : null;
   const nextHref = pageIndex < pages.length
-    ? workspaceHref({ lectureId: detail.lecture.id, canvas: visibleCanvas, track: entryTrack, page: pageIndex + 1, returnTo })
+    ? workspaceHref({ lectureId: detail.lecture.id, canvas: visibleCanvas, track: visibleTrack, page: pageIndex + 1, returnTo })
     : null;
+  const directoryItems = pages.map((page, index) => {
+    const nativePage = nativePreview?.pages[index];
+    const adaptedPage = adaptedPreview?.pages[index];
+    return {
+      id: page.pageDocId,
+      title: page.title || t("untitledPage"),
+      href: workspaceHref({
+        lectureId: detail.lecture.id,
+        canvas: visibleCanvas,
+        track: visibleTrack,
+        page: index + 1,
+        returnTo,
+      }),
+      nativeAvailable: Boolean(nativePage),
+      adaptedAvailable: Boolean(adaptedPage || (nativePage && sessionAdaptationAvailable)),
+    };
+  });
 
   return (
     <ObjectWorkspace
@@ -158,7 +178,7 @@ export async function UnifiedCoursewareWorkspace({
           { value: detail.variant.title },
           { value: t("pageContext", { page: pageIndex, total: pages.length }) },
         ]}
-        status={<Badge variant="outline">{t("prototypeAudit")}</Badge>}
+        status={<Badge variant="outline">{t(pageEditor ? "formalEditorStatus" : sourceRuntimeEditor ? "sourceEditorStatus" : "sourceReadOnlyStatus")}</Badge>}
       />}
       navigation={(
         <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
@@ -172,99 +192,92 @@ export async function UnifiedCoursewareWorkspace({
         </div>
       )}
     >
-      <CoursewareEditorWorkbench
+      <CoursewareWorkbench
+        mode="formal-editor"
         data-unified-courseware-workspace
         adapter={selectedDoc?.docVersion ?? "unknown"}
-        className="mx-1 -mb-4 grid min-h-0 min-w-0 flex-1 grid-rows-[minmax(10rem,28dvh)_minmax(22rem,1fr)_minmax(10rem,30dvh)] lg:-mb-5 @4xl/workspace:grid-cols-[224px_minmax(0,1fr)_320px] @4xl/workspace:grid-rows-1"
-      >
-        <aside className="flex min-h-0 min-w-0 flex-col border-b border-line @4xl/workspace:border-b-0 @4xl/workspace:border-r" aria-label={t("pageDirectory")}>
-          <div className="flex min-h-11 shrink-0 items-center justify-between gap-2 px-3 py-2">
-            <h2 className="text-xs font-medium text-muted">{t("pageDirectory")}</h2>
-            <span className="text-xs tabular-nums text-muted">{t("pageCount", { count: pages.length })}</span>
-          </div>
-          <ScrollArea className="min-h-0 flex-1">
-            {pages.length > 0 ? (
-              <ol className="divide-y divide-line/70">
-                {pages.map((page, index) => {
-                  const active = index + 1 === pageIndex;
-                  const nativePage = nativePreview?.pages[index];
-                  const adaptedPage = adaptedPreview?.pages[index];
-                  return (
-                    <li key={page.pageDocId}>
-                      <Link
-                        href={workspaceHref({ lectureId: detail.lecture.id, canvas: visibleCanvas, track: entryTrack, page: index + 1, returnTo })}
-                        aria-current={active ? "page" : undefined}
-                        className={cn(
-                          "flex min-h-12 items-center gap-2 px-3 py-2 transition-colors hover:bg-moon/20",
-                          active && "bg-crater/10",
-                        )}
-                      >
-                        <span className="w-5 shrink-0 text-right font-mono text-[11px] text-muted">{index + 1}</span>
-                        <span className="min-w-0 flex-1 truncate text-xs text-ink">{page.title || t("untitledPage")}</span>
-                        <span className="flex shrink-0 gap-1" aria-label={t("trackAvailability")}>
-                          {nativePage ? <span className="size-1.5 rounded-full bg-crater" title={t("canvasNative")} /> : null}
-                          {adaptedPage ? <span className="size-1.5 rounded-full bg-amber-500" title={t("canvasAdapted")} /> : null}
-                        </span>
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ol>
-            ) : <p className="px-3 py-6 text-sm text-muted">{t("noReleasedPages")}</p>}
-          </ScrollArea>
-        </aside>
-
-        <main className="@container/page flex min-h-0 min-w-0 flex-col overflow-hidden" aria-label={t("previewTitle")}>
-          <div className="min-h-0 flex-1 overflow-hidden bg-moon/10">
-            {visibleCanvas === "compare" ? (
+        layout="workspace"
+        layoutId={`formal-courseware-${detail.lecture.id}`}
+        className="mx-1 -mb-4 min-h-0 min-w-0 flex-1 lg:-mb-5"
+        directory={{
+          ariaLabel: t("pageDirectory"),
+          width: "wide",
+          header: <CoursewareWorkbenchDirectoryHeader
+            title={t("pageDirectory")}
+            meta={t("pageCount", { count: pages.length })}
+          />,
+          content: pages.length > 0
+            ? <CoursewareFormalPageRail
+                items={directoryItems}
+                selectedIndex={pageIndex - 1}
+                editablePageId={selectedPage?.pageDocId ?? null}
+              />
+            : <p className="px-3 py-6 text-sm text-muted">{t("noReleasedPages")}</p>,
+        }}
+        canvas={{
+          ariaLabel: t("previewTitle"),
+          content: <div className="size-full min-h-0 overflow-hidden bg-moon/10">
+            {pageEditor ? (
+              <PageDocVerticalSliceEditor
+                key={`${pageEditor.pageDocId}:${pageEditor.baseRevisionNo}:${pageEditor.fourByThreeDraft?.baseRevisionNo ?? "no-4x3"}:${visibleCanvas}`}
+                pageDocId={pageEditor.pageDocId}
+                track={pageEditor.track}
+                view={visibleCanvas}
+                initialDoc={pageEditor.doc}
+                baseRevisionNo={pageEditor.baseRevisionNo}
+                bindingUrls={pageEditor.bindingUrls}
+                imageAssetUsage={pageEditor.imageAssetUsage}
+                replacementContext={pageEditor.replacementContext}
+                fourByThreeSource={pageEditor.fourByThreeSource}
+                fourByThreeDraft={pageEditor.fourByThreeDraft}
+                legacyAdaptClass={pageEditor.legacyAdaptClass}
+              />
+            ) : sourceRuntimeEditor ? (
+              <SourceRuntimeFourByThreeEditor
+                key={`${sourceRuntimeEditor.pageDocId}:${sourceRuntimeEditor.baseRevisionNo}:${sourceRuntimeEditor.fourByThreeDraft.baseRevisionNo}:${visibleCanvas}`}
+                pageDocId={sourceRuntimeEditor.pageDocId}
+                track={sourceRuntimeEditor.track}
+                initialDoc={sourceRuntimeEditor.doc}
+                baseRevisionNo={sourceRuntimeEditor.baseRevisionNo}
+                bindingUrls={sourceRuntimeEditor.bindingUrls}
+                fourByThreeSource={sourceRuntimeEditor.fourByThreeSource}
+                fourByThreeDraft={sourceRuntimeEditor.fourByThreeDraft}
+                view={visibleCanvas}
+              />
+            ) : visibleCanvas === "compare" ? (
               <div className="grid size-full min-h-0 grid-rows-2 gap-px bg-line @4xl/workspace:grid-cols-2 @4xl/workspace:grid-rows-1">
-                <TrackCanvas preview={nativePreview} label={t("canvasNative")} unavailable={t("nativeUnavailable")} toolbarTargetId={INSERT_TOOLBAR_TARGET_ID} />
+                <TrackCanvas preview={nativePreview} label={t("canvasNative")} unavailable={t("nativeUnavailable")} />
                 <TrackCanvas preview={adaptedPreview} label={t("canvasAdapted")} unavailable={t("adaptedUnavailable")} />
               </div>
             ) : visibleCanvas === "adapted-4x3" ? (
-              <TrackCanvas preview={adaptedPreview} label={t("canvasAdapted")} unavailable={t("adaptedUnavailable")} toolbarTargetId={INSERT_TOOLBAR_TARGET_ID} />
+              <TrackCanvas preview={adaptedPreview} label={t("canvasAdapted")} unavailable={t("adaptedUnavailable")} />
             ) : (
-              <TrackCanvas preview={nativePreview} label={t("canvasNative")} unavailable={t("nativeUnavailable")} toolbarTargetId={INSERT_TOOLBAR_TARGET_ID} />
+              <TrackCanvas preview={nativePreview} label={t("canvasNative")} unavailable={t("nativeUnavailable")} />
             )}
-          </div>
-          <div className="flex min-h-11 shrink-0 items-center justify-between gap-2 border-t border-line px-2 py-1.5">
-            {previousHref ? (
-              <Link href={previousHref} className={buttonVariants({ variant: "ghost", size: "sm" })}><ChevronLeft size={15} />{t("previousPage")}</Link>
-            ) : <span />}
-            <span className="text-xs tabular-nums text-muted">{t("pageContext", { page: pageIndex, total: pages.length })}</span>
-            {nextHref ? (
-              <Link href={nextHref} className={buttonVariants({ variant: "ghost", size: "sm" })}>{t("nextPage")}<ChevronRight size={15} /></Link>
-            ) : <span />}
-          </div>
-        </main>
-
-        <aside className="flex min-h-0 min-w-0 flex-col border-t border-line @4xl/workspace:border-l @4xl/workspace:border-t-0" aria-label={t("propertiesTitle")}>
-          <div className="flex min-h-11 shrink-0 items-center gap-3 border-b border-line px-3 py-2">
-            <h2 className="shrink-0 text-sm font-medium text-ink">{t("propertiesTitle")}</h2>
-            <div id={CAPABILITY_TABS_TARGET_ID} className="ml-auto min-w-0 flex-1" />
-          </div>
-          <ScrollArea className="min-h-0 flex-1">
-            <div className="px-4">
-              <section className="py-4">
-                <dl className="space-y-2 text-xs">
-                  <div className="flex items-start justify-between gap-3"><dt className="text-muted">{t("pageIdentity")}</dt><dd className="max-w-[11rem] truncate text-right text-ink">{selectedPage?.pageDocId ?? "—"}</dd></div>
-                  <div className="flex items-start justify-between gap-3"><dt className="text-muted">{t("sourceType")}</dt><dd className="text-right text-ink">{selectedDoc?.docVersion ?? "—"}</dd></div>
-                  <div className="flex items-start justify-between gap-3"><dt className="text-muted">{t("entryTrack")}</dt><dd className="text-right text-ink">{entryTrack === "adapted-4x3" ? t("canvasAdapted") : t("canvasNative")}</dd></div>
-                </dl>
-              </section>
-              <section className="border-t border-line">
-                <CoursewareCapabilityPrototype
-                  sourceType={selectedDoc?.docVersion ?? "unknown"}
-                  activeCanvas={visibleCanvas}
-                  hasAdaptedPreview={Boolean(adaptedPreview)}
-                  toolbarTargetId={INSERT_TOOLBAR_TARGET_ID}
-                  tabsTargetId={CAPABILITY_TABS_TARGET_ID}
-                />
-              </section>
+          </div>,
+          footer: <CoursewareWorkbenchPager
+            previousLabel={t("previousPage")}
+            nextLabel={t("nextPage")}
+            previousDisabled={!previousHref}
+            nextDisabled={!nextHref}
+            previousHref={previousHref}
+            nextHref={nextHref}
+            center={<span className="text-xs tabular-nums text-muted">{t("pageContext", { page: pageIndex, total: pages.length })}</span>}
+          />,
+        }}
+        toolbar={pageEditor || sourceRuntimeEditor ? undefined : <span className="text-xs text-muted">{t("sourceReadOnlyToolbar")}</span>}
+        saveControls={pageEditor || sourceRuntimeEditor ? undefined : <Badge variant="outline">{t("sourceReadOnlyStatus")}</Badge>}
+        inspector={{
+          ariaLabel: t("propertiesTitle"),
+          header: <h2 className="shrink-0 text-sm font-medium text-ink">{t("propertiesTitle")}</h2>,
+          content: pageEditor || sourceRuntimeEditor ? undefined : <ScrollArea className="size-full min-h-0">
+            <div className="px-4 py-5">
+              <p className="text-sm font-medium text-ink">{t("sourceReadOnlyTitle")}</p>
+              <p className="mt-2 text-xs leading-5 text-muted">{t("sourceReadOnlyDescription")}</p>
             </div>
-          </ScrollArea>
-        </aside>
-      </CoursewareEditorWorkbench>
+          </ScrollArea>,
+        }}
+      />
     </ObjectWorkspace>
   );
 }

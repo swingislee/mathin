@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { ClassroomVideoInkSurface } from "@/features/classroom/input/ClassroomVideoInkSurface";
@@ -12,6 +18,11 @@ import { injectBindingUrls, type ResolvedBindingUrls } from "./resolve";
 import { COURSEWARE_LIGHT_SURFACE_STYLE } from "./courseware-surface";
 import { createInteractionRuntime, type InteractionRuntime, type InteractionTrigger } from "./interactions";
 import { renderAixuexiMathHtml } from "./aixuexi-math";
+import {
+  CoursewareNodeEditorHandles,
+  CoursewareSnapGridOverlay,
+  useCoursewareNodeTransform,
+} from "./CoursewareNodeEditing";
 
 /**
  * page-doc-v1 舞台渲染器——镜像 viewer renderedNodeHtmlV2 的 React 移植,
@@ -45,11 +56,31 @@ export interface DocStageProps {
   h5PointerBridge?: H5PointerBridgeHost;
   /** 中台编辑器选择节点；课堂不传，保持原有交互语义。 */
   onNodeSelect?: (nodePath: string) => void;
+  /** 中台编辑器当前选中节点；课堂不传，不产生选中描边。 */
+  selectedNodePath?: string | null;
+  /** 中台编辑器直接拖动/缩放节点；预览与课堂不传，渲染行为保持只读。 */
+  onNodeTransformChange?: (nodePath: string, patch: DocNodeTransformPatch) => void;
+  /** 中台编辑器在来源文字框内直接改字；预览与课堂不传。 */
+  onNodeTextChange?: (nodePath: string, value: string) => void;
+  /** 编辑态网格吸附；关闭时保留自由像素几何。 */
+  snapToGrid?: boolean;
+  nodeGridColumns?: number;
+  nodeGridRows?: number;
+  /** 编辑态移动手柄的无障碍名称。 */
+  nodeMoveLabel?: string;
+  /** 编辑态缩放手柄的无障碍名称。 */
+  nodeResizeLabel?: string;
+  /** 编辑画布可跳过过渡并直接落到自动动画结束态；预览/课堂默认播放。 */
+  playAutoInteractions?: boolean;
   /** Studio 选择画布背景资源；只有存在背景 binding 时才会触发。 */
   onBackgroundSelect?: () => void;
   /** Composition overlays keep the immutable source page visible underneath. */
   transparentCanvas?: boolean;
 }
+
+export type DocNodeTransformPatch = Partial<
+  Pick<DocNode["transform"], "x" | "y" | "width" | "height">
+>;
 
 export interface DocVideoCtl {
   action: "play" | "pause" | "seek";
@@ -324,6 +355,17 @@ function nodeBody(
   videoControl: DocVideoControl | undefined,
   h5PointerBridge: H5PointerBridgeHost | undefined,
   onNodeSelect: ((nodePath: string) => void) | undefined,
+  selectedNodePath: string | null | undefined,
+  onNodeTransformChange: DocStageProps["onNodeTransformChange"],
+  onNodeTextChange: DocStageProps["onNodeTextChange"],
+  inlineTextEditing: boolean,
+  onInlineTextFocusChange: (focused: boolean) => void,
+  nodeMoveLabel: string | undefined,
+  nodeResizeLabel: string | undefined,
+  snapToGrid: boolean,
+  gridStep: { x: number; y: number },
+  onTransformGestureChange: (nodePath: string | null) => void,
+  stageScale: number,
 ): ReactNode {
   const alt = node.content?.text || node.name || node.sourceType;
   const url = bindingUrl(node, RESOURCE_ROLES, urls);
@@ -339,6 +381,15 @@ function nodeBody(
           videoControl={videoControl}
           h5PointerBridge={h5PointerBridge}
           onNodeSelect={onNodeSelect}
+          selectedNodePath={selectedNodePath}
+          onNodeTransformChange={onNodeTransformChange}
+          onNodeTextChange={onNodeTextChange}
+          nodeMoveLabel={nodeMoveLabel}
+          nodeResizeLabel={nodeResizeLabel}
+          snapToGrid={snapToGrid}
+          gridStep={gridStep}
+          onTransformGestureChange={onTransformGestureChange}
+          stageScale={stageScale}
         />
       ));
     case "image":
@@ -410,12 +461,43 @@ function nodeBody(
     case "rich_text":
       return (
         <div
+          data-courseware-inline-text-editor={inlineTextEditing ? "true" : undefined}
+          data-courseware-text-font-override={node.style.fontSize != null ? "true" : undefined}
+          data-courseware-text-color-override={node.style.color ? "true" : undefined}
+          data-courseware-text-align-override={node.style.textAlign ? "true" : undefined}
           style={textBlockStyle(node)}
+          contentEditable={inlineTextEditing || undefined}
+          suppressContentEditableWarning={inlineTextEditing}
+          spellCheck={inlineTextEditing}
+          onPointerDown={inlineTextEditing ? (event) => event.stopPropagation() : undefined}
+          onKeyDownCapture={inlineTextEditing ? (event) => event.stopPropagation() : undefined}
+          onFocus={inlineTextEditing ? () => onInlineTextFocusChange(true) : undefined}
+          onBlur={inlineTextEditing ? (event) => {
+            onInlineTextFocusChange(false);
+            onNodeTextChange?.(node.nodePath, event.currentTarget.innerText);
+          } : undefined}
           dangerouslySetInnerHTML={{ __html: renderAixuexiMathHtml(injectBindingUrls(node.content?.html ?? "", urls)) }}
         />
       );
     case "text":
-      return <div style={textBlockStyle(node)}>{node.content?.text ?? ""}</div>;
+      return (
+        <div
+          data-courseware-inline-text-editor={inlineTextEditing ? "true" : undefined}
+          style={textBlockStyle(node)}
+          contentEditable={inlineTextEditing || undefined}
+          suppressContentEditableWarning={inlineTextEditing}
+          spellCheck={inlineTextEditing}
+          onPointerDown={inlineTextEditing ? (event) => event.stopPropagation() : undefined}
+          onKeyDownCapture={inlineTextEditing ? (event) => event.stopPropagation() : undefined}
+          onFocus={inlineTextEditing ? () => onInlineTextFocusChange(true) : undefined}
+          onBlur={inlineTextEditing ? (event) => {
+            onInlineTextFocusChange(false);
+            onNodeTextChange?.(node.nodePath, event.currentTarget.innerText);
+          } : undefined}
+        >
+          {node.content?.text ?? ""}
+        </div>
+      );
     default:
       return unknownBody(node);
   }
@@ -448,6 +530,15 @@ function NodeView({
   videoControl,
   h5PointerBridge,
   onNodeSelect,
+  selectedNodePath,
+  onNodeTransformChange,
+  onNodeTextChange,
+  nodeMoveLabel,
+  nodeResizeLabel,
+  snapToGrid,
+  gridStep,
+  onTransformGestureChange,
+  stageScale,
 }: {
   node: DocNode;
   urls: ResolvedBindingUrls;
@@ -455,9 +546,38 @@ function NodeView({
   videoControl: DocVideoControl | undefined;
   h5PointerBridge: H5PointerBridgeHost | undefined;
   onNodeSelect: ((nodePath: string) => void) | undefined;
+  selectedNodePath: string | null | undefined;
+  onNodeTransformChange: DocStageProps["onNodeTransformChange"];
+  onNodeTextChange: DocStageProps["onNodeTextChange"];
+  nodeMoveLabel: string | undefined;
+  nodeResizeLabel: string | undefined;
+  snapToGrid: boolean;
+  gridStep: { x: number; y: number };
+  onTransformGestureChange: (nodePath: string | null) => void;
+  stageScale: number;
 }) {
-  const t = node.transform;
+  const [inlineTextFocused, setInlineTextFocused] = useState(false);
+  const transform = useCoursewareNodeTransform({
+    geometry: {
+      x: node.transform.x,
+      y: node.transform.y,
+      width: node.transform.width,
+      height: node.transform.height,
+    },
+    stageScale,
+    snapToGrid,
+    gridStep,
+    onPreview: (next) => onNodeTransformChange?.(node.nodePath, next),
+    onCommit: (next) => onNodeTransformChange?.(node.nodePath, next),
+    onGestureChange: (active) => onTransformGestureChange(active ? node.nodePath : null),
+  });
+  const t = { ...node.transform, ...transform.geometry };
   const s = node.style;
+  const selected = selectedNodePath === node.nodePath;
+  const inlineTextEditing = Boolean(
+    onNodeTextChange
+    && (node.content?.kind === "text" || node.content?.kind === "rich_text"),
+  );
   const clickTrigger = node.sourceResourceId && clickTriggers.has(node.sourceResourceId) ? node.sourceResourceId : "";
   const style: CSSProperties = {
     position: "absolute",
@@ -475,7 +595,11 @@ function NodeView({
     transformOrigin: `${t.anchorX * 100}% ${t.anchorY * 100}%`,
     transform: `translate(${t.x}px,${t.y}px) rotate(${t.rotation}deg) scale(${t.flipX ? -t.scaleX : t.scaleX},${t.flipY ? -t.scaleY : t.scaleY})`,
     display: node.visible ? "block" : "none",
-    cursor: clickTrigger ? "pointer" : undefined,
+    cursor: inlineTextEditing ? "text" : onNodeTransformChange ? "move" : clickTrigger ? "pointer" : undefined,
+    outline: selected
+      ? `2px ${inlineTextFocused && !transform.active ? "dashed" : "solid"} #e76f78`
+      : undefined,
+    outlineOffset: selected ? "2px" : undefined,
   };
   return (
     <div
@@ -484,9 +608,45 @@ function NodeView({
       data-click-trigger={clickTrigger}
       data-classroom-input={clickTrigger ? "click" : undefined}
       onClickCapture={() => onNodeSelect?.(node.nodePath)}
+      onPointerCancel={transform.cancel}
+      onPointerDown={inlineTextEditing || !onNodeTransformChange ? undefined : (event) => {
+        onNodeSelect?.(node.nodePath);
+        transform.begin(event, "move");
+      }}
+      onPointerMove={transform.move}
+      onPointerUp={transform.finish}
       style={style}
     >
-      {nodeBody(node, urls, clickTriggers, videoControl, h5PointerBridge, onNodeSelect)}
+      {nodeBody(
+        node,
+        urls,
+        clickTriggers,
+        videoControl,
+        h5PointerBridge,
+        onNodeSelect,
+        selectedNodePath,
+        onNodeTransformChange,
+        onNodeTextChange,
+        inlineTextEditing,
+        setInlineTextFocused,
+        nodeMoveLabel,
+        nodeResizeLabel,
+        snapToGrid,
+        gridStep,
+        onTransformGestureChange,
+        stageScale,
+      )}
+      {selected && onNodeTransformChange ? (
+        <CoursewareNodeEditorHandles
+          moveLabel={nodeMoveLabel}
+          resizeLabel={nodeResizeLabel}
+          onMovePointerDown={(event) => transform.begin(event, "move")}
+          onResizePointerDown={(event) => transform.begin(event, "resize")}
+          onPointerMove={transform.move}
+          onPointerUp={transform.finish}
+          onPointerCancel={transform.cancel}
+        />
+      ) : null}
     </div>
   );
 }
@@ -504,12 +664,22 @@ export default function DocStage({
   videoControl,
   h5PointerBridge,
   onNodeSelect,
+  selectedNodePath,
+  onNodeTransformChange,
+  onNodeTextChange,
+  snapToGrid = false,
+  nodeGridColumns = 12,
+  nodeGridRows = 9,
+  nodeMoveLabel,
+  nodeResizeLabel,
+  playAutoInteractions = true,
   onBackgroundSelect,
   transparentCanvas = false,
 }: DocStageProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
+  const [transformingNodePath, setTransformingNodePath] = useState<string | null>(null);
   const runtimeRef = useRef<InteractionRuntime | null>(null);
   // 回放游标:replaySteps 中已执行的条数。本地点击成功即预推进,
   // 让自己广播的 doc_step 回流时不被重复执行(课堂单写者=教师)。
@@ -544,7 +714,8 @@ export default function DocStage({
     });
     runtimeRef.current = runtime;
     appliedStepsRef.current = 0;
-    void runtime.runAuto();
+    if (playAutoInteractions) void runtime.runAuto();
+    else runtime.settleAuto();
     const onClick = interactive
       ? (event: MouseEvent) => {
           void runtime.handleStageClick(event.target).then((trigger) => {
@@ -560,7 +731,7 @@ export default function DocStage({
       runtime.dispose();
       runtimeRef.current = null;
     };
-  }, [doc, interactive]);
+  }, [doc, interactive, playAutoInteractions]);
 
   // 远端步进回放:mount 时把已记录的步进全量补放(晚加入/重进页与
   // 现场看课的观众收敛到同一舞台状态),此后每来一条增量执行一条。
@@ -575,6 +746,10 @@ export default function DocStage({
   }, [replaySteps]);
 
   const canvas = doc.canvas;
+  const gridStep = {
+    x: canvas.width / Math.max(1, nodeGridColumns),
+    y: canvas.height / Math.max(1, nodeGridRows),
+  };
   const canvasAspect = canvas.width / canvas.height;
   const scale = containerWidth > 0 ? containerWidth / canvas.width : 0;
   // board43:内容宽度占满舞台宽,16:9 内容高 = 宽×9/16 = 4:3 舞台高的 75%;
@@ -665,8 +840,21 @@ export default function DocStage({
             videoControl={videoControl}
             h5PointerBridge={h5PointerBridge}
             onNodeSelect={onNodeSelect}
+            selectedNodePath={selectedNodePath}
+            onNodeTransformChange={onNodeTransformChange}
+            onNodeTextChange={onNodeTextChange}
+            nodeMoveLabel={nodeMoveLabel}
+            nodeResizeLabel={nodeResizeLabel}
+            snapToGrid={snapToGrid}
+            gridStep={gridStep}
+            onTransformGestureChange={setTransformingNodePath}
+            stageScale={scale}
           />
         ))}
+        <CoursewareSnapGridOverlay
+          visible={snapToGrid && Boolean(transformingNodePath)}
+          step={gridStep}
+        />
       </div>
     </div>
   );

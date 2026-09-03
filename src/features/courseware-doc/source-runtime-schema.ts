@@ -10,6 +10,7 @@ import { z } from "zod";
 export const SOURCE_RUNTIME_PAGE_DOC_VERSION = "source-runtime-page-v1";
 export const SOURCE_RUNTIME_PROTOCOL = "mathin-source-runtime-v1";
 export const SOURCE_RUNTIME_NESTED_H5_PARAM = "mathin_source_runtime";
+export const SOURCE_RUNTIME_EDITOR_PARAM = "mathin_source_editor";
 
 const finite = z.number().finite();
 const sha256Hex = z.string().regex(/^[0-9a-f]{64}$/);
@@ -71,6 +72,13 @@ export function markSourceRuntimeNestedH5Url(url: string): string {
   const fragment = fragmentAt < 0 ? "" : url.slice(fragmentAt);
   const separator = base.includes("?") ? "&" : "?";
   return `${base}${separator}${SOURCE_RUNTIME_NESTED_H5_PARAM}=${encodeURIComponent(SOURCE_RUNTIME_PROTOCOL)}${fragment}`;
+}
+
+export function markSourceRuntimeEditorUrl(url: string): string {
+  const parsed = new URL(url, "http://mathin.local");
+  parsed.searchParams.set(SOURCE_RUNTIME_EDITOR_PARAM, SOURCE_RUNTIME_PROTOCOL);
+  if (/^https?:\/\//i.test(url)) return parsed.toString();
+  return `${parsed.pathname}${parsed.search}${parsed.hash}`;
 }
 
 export function collectSourceRuntimeBindingKeys(doc: SourceRuntimePageDoc): Set<string> {

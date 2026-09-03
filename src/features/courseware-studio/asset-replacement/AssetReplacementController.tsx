@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -12,16 +12,11 @@ import {
   WorkspaceRail,
   WorkspaceSplitShell,
 } from "@/features/school/object-workspace";
-import { useRouter } from "@/i18n/navigation";
-import {
-  applyCoursewareImageReplacementAction,
-  rollbackCoursewareImageReplacementAction,
-  stageCoursewareImageReplacementAction,
-} from "../actions";
 import type { CoursewareSharedAssetDetail } from "../data";
-import { AssetReplacementPreview, type StagedUpload } from "./AssetReplacementPreview";
+import { AssetReplacementPreview } from "./AssetReplacementPreview";
 import { AssetReplacementRail } from "./AssetReplacementRail";
 import { AssetUsageTree, selectableIds } from "./AssetUsageTree";
+import { useAssetReplacementFlow } from "./useAssetReplacementFlow";
 
 /**
  * 素材替换工作区（doc 23 §13）。
@@ -43,26 +38,11 @@ export function AssetReplacementController({ detail, backHref }: { detail: Cours
 
 function AssetReplacementControllerBody({ detail, backHref }: { detail: CoursewareSharedAssetDetail; backHref: string }) {
   const t = useTranslations("coursewareStudio");
-  const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(() => new Set(selectableIds(detail.usages)));
-  const [file, setFile] = useState<File | null>(null);
-  const [staged, setStaged] = useState<StagedUpload | null>(null);
-  const [note, setNote] = useState("");
-  const [message, setMessage] = useState("");
-  const [rollbackBatchId, setRollbackBatchId] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
 
   const eligible = useMemo(() => selectableIds(detail.usages), [detail.usages]);
   const selectedIds = useMemo(() => eligible.filter((id) => selected.has(id)), [eligible, selected]);
-  const frozenSelectedCount = useMemo(
-    () => detail.usages.filter((usage) => selected.has(usage.bindingId)).reduce((count, usage) => count + usage.frozenSessionCount, 0),
-    [detail.usages, selected],
-  );
-  const predictedMode = selectedIds.length === eligible.length ? "publish_pointer" : "branch_rebind";
-
-  useEffect(() => () => {
-    if (staged) URL.revokeObjectURL(staged.previewUrl);
-  }, [staged]);
+  const replacement = useAssetReplacementFlow({ detail, selectedBindingIds: selectedIds });
 
   const toggle = (ids: string[], checked: boolean) => {
     setSelected((current) => {
@@ -74,42 +54,6 @@ function AssetReplacementControllerBody({ detail, backHref }: { detail: Coursewa
       return next;
     });
   };
-
-  const stage = () => startTransition(async () => {
-    if (!file) return;
-    const result = await stageCoursewareImageReplacementAction({ file });
-    if (!result.ok) {
-      setMessage(t("assetStageFailed", { code: result.code }));
-      return;
-    }
-    setStaged({ ...result.data, previewUrl: URL.createObjectURL(file), fileName: file.name });
-    setMessage(t("assetStaged"));
-  });
-
-  const apply = () => startTransition(async () => {
-    if (!staged || selectedIds.length === 0) return;
-    const result = await applyCoursewareImageReplacementAction({
-      sourceSharedAssetId: detail.asset.id,
-      selectedBindingIds: selectedIds,
-      uploadId: staged.uploadId,
-      track: detail.track,
-      note,
-    });
-    if (!result.ok) {
-      setMessage(t("assetReplaceFailed", { code: result.code }));
-      return;
-    }
-    setMessage(t(result.data.mode === "publish_pointer" ? "assetPointerUpdated" : "assetBranchCreated", { count: result.data.affectedCount }));
-    router.refresh();
-  });
-
-  const rollback = () => startTransition(async () => {
-    if (!rollbackBatchId) return;
-    const result = await rollbackCoursewareImageReplacementAction(rollbackBatchId);
-    setRollbackBatchId(null);
-    setMessage(result.ok ? t("assetRollbackSucceeded") : t("assetRollbackFailed", { code: result.code }));
-    if (result.ok) router.refresh();
-  });
 
   const trackLabel = detail.track === "adapted-4x3" ? t("trackAdapted") : t("trackNative");
   const detailHref = (track: "native-16x9" | "adapted-4x3") => `/dashboard/courseware-assets/${detail.asset.id}?track=${track}`;
@@ -155,14 +99,14 @@ function AssetReplacementControllerBody({ detail, backHref }: { detail: Coursewa
                 eligibleCount={eligible.length}
                 trackLabel={trackLabel}
               />
-              {staged ? (
+              {replacement.staged ? (
                 <AssetReplacementPreview
                   currentPreviewUrl={detail.asset.previewUrl}
-                  staged={staged}
+                  staged={replacement.staged}
                   selectedCount={selectedIds.length}
                   unselectedCount={eligible.length - selectedIds.length}
-                  frozenSelectedCount={frozenSelectedCount}
-                  mode={predictedMode}
+                  frozenSelectedCount={replacement.frozenSelectedCount}
+                  mode={replacement.predictedMode}
                   trackLabel={trackLabel}
                 />
               ) : null}
@@ -173,18 +117,18 @@ function AssetReplacementControllerBody({ detail, backHref }: { detail: Coursewa
               <AssetReplacementRail
                 asset={detail.asset}
                 batches={detail.batches}
-                staged={staged}
-                note={note}
-                pending={pending}
-                canStage={!pending && Boolean(file) && selectedIds.length > 0}
-                canApply={!pending && Boolean(staged) && selectedIds.length > 0}
-                message={message}
-                onFileChange={setFile}
-                onNoteChange={setNote}
-                onStage={stage}
-                onApply={apply}
-                onDiscardStaged={() => setStaged(null)}
-                onRollback={setRollbackBatchId}
+                staged={replacement.staged}
+                note={replacement.note}
+                pending={replacement.pending}
+                canStage={replacement.canStage}
+                canApply={replacement.canApply}
+                message={replacement.message}
+                onFileChange={replacement.setFile}
+                onNoteChange={replacement.setNote}
+                onStage={replacement.stage}
+                onApply={replacement.apply}
+                onDiscardStaged={replacement.discardStaged}
+                onRollback={replacement.requestRollback}
               />
             </WorkspaceRail>
           }
@@ -192,14 +136,14 @@ function AssetReplacementControllerBody({ detail, backHref }: { detail: Coursewa
       </ObjectWorkspace>
 
       <ConfirmDialog
-        open={rollbackBatchId !== null}
-        onOpenChange={(open) => { if (!open) setRollbackBatchId(null); }}
+        open={replacement.rollbackBatchId !== null}
+        onOpenChange={(open) => { if (!open) replacement.cancelRollback(); }}
         title={t("assetRollbackConfirmTitle")}
         description={t("assetRollbackConfirmDescription")}
         confirmLabel={t("assetRollback")}
         cancelLabel={t("cancel")}
-        onConfirm={rollback}
-        pending={pending}
+        onConfirm={replacement.rollback}
+        pending={replacement.pending}
       />
     </>
   );
