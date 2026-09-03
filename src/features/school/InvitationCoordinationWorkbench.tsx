@@ -8,6 +8,7 @@ import { useAction } from "@/components/action-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "@/i18n/navigation";
@@ -136,88 +137,102 @@ function InvitationEditor({
   const draftComplete = invitationDraftIsComplete(draft);
 
   return (
-    <div className="space-y-3 rounded-xl border border-line/70 bg-background/55 p-3">
-      <InvitationDraftFields
-        value={draft}
-        activities={activities}
-        assessors={assessors}
-        locale={locale}
-        disabled={updateRun.pending}
-        allowNone={false}
-        onChange={(value) => { if (value) setDraft(value); }}
-      />
-
-      <div className="grid gap-2 lg:grid-cols-[auto_minmax(18rem,1fr)]">
-        <div className="flex flex-wrap items-center gap-1" role="group" aria-label={t("channelLabel")}>
-          <span className="mr-1 text-[11px] text-muted">{t("channelLabel")}</span>
-          {CHANNELS.map((value) => (
-            <Button
-              key={value}
-              type="button"
-              size="sm"
-              variant="secondary"
-              className={cn("h-8 px-2.5 text-xs", channel === value && "border-moon bg-moon/35 text-ink")}
-              aria-pressed={channel === value}
-              disabled={updateRun.pending}
-              onClick={() => setChannel(value)}
-            >
-              {channel === value ? <Check className="size-3" /> : null}
-              {t(`channel_${value}`)}
-            </Button>
-          ))}
-        </div>
-        <Textarea
-          value={note}
+    <div className="px-2 py-1">
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]">
+        <InvitationDraftFields
+          value={draft}
+          activities={activities}
+          assessors={assessors}
+          locale={locale}
           disabled={updateRun.pending}
-          rows={1}
-          maxLength={2000}
-          className="h-8 min-h-8 resize-y overflow-hidden rounded-xl px-2 py-1.5 text-xs transition-[height] focus:h-24 focus:overflow-auto motion-reduce:transition-none"
-          placeholder={t("notePlaceholder")}
-          aria-label={t("noteFor", { name: row.leadName })}
-          onChange={(event) => setNote(event.target.value)}
+          allowNone={false}
+          variant="workflow"
+          onChange={(value) => { if (value) setDraft(value); }}
         />
-      </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-2">
-        <div className="flex flex-wrap items-center gap-1.5">
+        <section className="space-y-3 border-line xl:border-l xl:pl-5">
+          <p className="flex items-center gap-2 text-xs font-medium text-ink">
+            <span className="flex size-5 items-center justify-center rounded-full bg-rose/20 text-[11px] text-rose">3</span>
+            {t("communicationSection")}
+          </p>
+          <div className="grid grid-cols-4 gap-1" role="group" aria-label={t("channelLabel")}>
+            {CHANNELS.map((value) => (
+              <Button
+                key={value}
+                type="button"
+                size="sm"
+                variant="ghost"
+                className={cn(
+                  "h-8 min-w-0 rounded-lg px-1.5 text-[11px]",
+                  channel === value && "bg-moon/35 text-ink",
+                )}
+                aria-pressed={channel === value}
+                disabled={updateRun.pending}
+                onClick={() => setChannel(value)}
+              >
+                {channel === value ? <Check className="size-3" /> : null}
+                <span className="truncate">{t(`channel_${value}`)}</span>
+              </Button>
+            ))}
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor={`invitation-note-${row.id}`} className="text-[11px] text-muted">{t("noteLabel")}</Label>
+            <Textarea
+              id={`invitation-note-${row.id}`}
+              value={note}
+              disabled={updateRun.pending}
+              rows={3}
+              maxLength={2000}
+              className="min-h-20 resize-y rounded-xl px-3 py-2 text-xs"
+              placeholder={t("notePlaceholder")}
+              aria-label={t("noteFor", { name: row.leadName })}
+              onChange={(event) => setNote(event.target.value)}
+            />
+          </div>
           <Button
             type="button"
             size="sm"
-            variant="secondary"
-            className="h-8"
-            disabled={updateRun.pending}
-            onClick={() => copyWithFallback(relayText)
-              .then(() => toast.success(t("copySuccess")))
-              .catch(() => toast.error(t("copyFailed")))}
+            className="h-9 w-full"
+            disabled={updateRun.pending || !draftComplete}
+            onClick={() => submit()}
           >
-            <Copy className="size-3.5" />
-            {t("copyRelay")}
-          </Button>
-          <span className="max-w-2xl truncate text-[11px] text-muted" title={relayText}>{relayText}</span>
-        </div>
-        <div className="flex flex-wrap items-center gap-1.5">
-          <Button type="button" size="sm" variant="ghost" className="h-8" disabled={updateRun.pending} onClick={() => setCancelOpen(true)}>
-            {t("cancelInvitation")}
-          </Button>
-          <Button type="button" size="sm" className="h-8" disabled={updateRun.pending || !draftComplete} onClick={() => submit()}>
             {updateRun.pending ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" /> : <Check className="size-4" />}
             {note.trim() ? t("saveProgress") : t("saveArrangement")}
           </Button>
-        </div>
+          <div className="flex items-center justify-between gap-1">
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-7 px-2 text-[11px]"
+              title={relayText}
+              disabled={updateRun.pending}
+              onClick={() => copyWithFallback(relayText)
+                .then(() => toast.success(t("copySuccess")))
+                .catch(() => toast.error(t("copyFailed")))}
+            >
+              <Copy className="size-3.5" />
+              {t("copyRelay")}
+            </Button>
+            <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-[11px]" disabled={updateRun.pending} onClick={() => setCancelOpen(true)}>
+              {t("cancelInvitation")}
+            </Button>
+          </div>
+        </section>
       </div>
 
-      <div className="border-t border-line pt-2">
+      <div className="mt-4 grid gap-2 border-t border-line pt-3 md:grid-cols-[8rem_minmax(0,1fr)]">
         <p className="text-[11px] font-medium text-ink">{t("recentHistory")}</p>
         {row.events.length > 0 ? (
-          <div className="mt-1 grid gap-1">
+          <div className="grid gap-1">
             {row.events.map((event) => (
-              <p key={event.id} className="text-[11px] leading-4 text-muted">
+              <p key={event.id} className="truncate text-[11px] leading-4 text-muted" title={event.note || undefined}>
                 {formatAt(event.occurredAt)} · {event.recordedByName || t("unknownOperator")} · {t(`channel_${event.channel}`)} · {t(`state_${event.toState}`)}
                 {event.note ? ` · ${event.note}` : ""}
               </p>
             ))}
           </div>
-        ) : <p className="mt-1 text-[11px] text-muted">{t("noHistory")}</p>}
+        ) : <p className="text-[11px] text-muted">{t("noHistory")}</p>}
       </div>
       <ConfirmDialog
         open={cancelOpen}
@@ -279,13 +294,12 @@ export function InvitationCoordinationWorkbench({
 
   return (
     <DashboardTableShell>
-      <Table className="w-full min-w-[64rem] text-xs" containerClassName="max-h-[calc(100dvh-13rem)] overflow-auto">
+      <Table className="w-full min-w-[62rem] text-xs" containerClassName="max-h-[calc(100dvh-13rem)] overflow-auto">
         <TableHeader>
           <TableRow>
             <TableHead className="sticky left-0 top-0 z-30 h-9 min-w-56 border-r border-line bg-card px-2">{t("leadColumn")}</TableHead>
-            <TableHead className="sticky top-0 z-20 h-9 min-w-36 bg-card px-2">{t("kindColumn")}</TableHead>
+            <TableHead className="sticky top-0 z-20 h-9 min-w-64 bg-card px-2">{t("stateColumn")}</TableHead>
             <TableHead className="sticky top-0 z-20 h-9 min-w-96 bg-card px-2">{t("arrangementColumn")}</TableHead>
-            <TableHead className="sticky top-0 z-20 h-9 min-w-36 bg-card px-2">{t("stateColumn")}</TableHead>
             <TableHead className="sticky top-0 z-20 h-9 min-w-32 bg-card px-2">{t("updatedColumn")}</TableHead>
           </TableRow>
         </TableHeader>
@@ -311,17 +325,22 @@ export function InvitationCoordinationWorkbench({
                     </div>
                     <p className="mt-0.5 pl-5 text-[11px] text-muted">{row.gradeText || t("gradePending")}{row.ownerName ? ` · ${row.ownerName}` : ""}</p>
                   </TableCell>
-                  <TableCell className="px-2 py-2"><Badge variant="outline">{t(`kind_${row.kind}`)}</Badge></TableCell>
-                  <TableCell className="max-w-[34rem] px-2 py-2">
-                    <p className="truncate text-ink" title={arrangementText(row, t, formatAt)}>{arrangementText(row, t, formatAt)}</p>
-                    {row.summary ? <p className="mt-0.5 truncate text-[11px] text-muted" title={row.summary}>{row.summary}</p> : null}
+                  <TableCell className="max-w-[22rem] px-2 py-2">
+                    <Badge variant="outline" className="border-moon/60 bg-moon/15">{t(`state_${row.state}`)}</Badge>
+                    <p className="mt-1 truncate text-[11px] text-muted" title={t(`task_${row.state}`)}>{t(`task_${row.state}`)}</p>
                   </TableCell>
-                  <TableCell className="px-2 py-2"><Badge variant={row.state === "confirmed" ? "secondary" : "outline"}>{t(`state_${row.state}`)}</Badge></TableCell>
+                  <TableCell className="max-w-[38rem] px-2 py-2">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <Badge variant="secondary" className="shrink-0 text-[11px]">{t(`kind_${row.kind}`)}</Badge>
+                      <p className="truncate text-ink" title={arrangementText(row, t, formatAt)}>{arrangementText(row, t, formatAt)}</p>
+                    </div>
+                    {row.summary ? <p className="mt-1 truncate text-[11px] text-muted" title={row.summary}>{row.summary}</p> : null}
+                  </TableCell>
                   <TableCell className="whitespace-nowrap px-2 py-2 text-muted">{formatAt(row.updatedAt)}</TableCell>
                 </TableRow>
                 {active ? (
                   <TableRow className="bg-moon/5 hover:bg-moon/5">
-                    <TableCell colSpan={5} className="p-2">
+                    <TableCell colSpan={4} className="p-3">
                       <InvitationEditor
                         row={row}
                         activities={activities}
