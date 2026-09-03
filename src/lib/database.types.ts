@@ -13066,6 +13066,15 @@ export type Database = {
         Args: { p_session_id: string }
         Returns: Json
       }
+      get_session_courseware_learning_check_pages: {
+        Args: { p_session_id: string }
+        Returns: {
+          learning_check_enabled: boolean
+          page_doc_id: string
+          page_no: number
+          title: string
+        }[]
+      }
       get_session_courseware_template: {
         Args: { p_session_id: string }
         Returns: Json
@@ -14950,6 +14959,10 @@ export type Database = {
           required_permission: string
           responsibility: string
         }[]
+      }
+      resolve_session_courseware_page_snapshot: {
+        Args: { p_session_id: string }
+        Returns: Json
       }
       resolve_session_courseware_release: {
         Args: { p_session_id: string }

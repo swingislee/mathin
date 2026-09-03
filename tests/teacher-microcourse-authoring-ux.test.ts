@@ -94,6 +94,7 @@ describe("teacher microcourse authoring UX", () => {
     const editor = read("src", "features", "teacher-microcourses", "MicrocourseEditor.tsx");
     const sessionWorkspace = read("src", "features", "school", "SessionWorkspaceBody.tsx");
     const classroomActions = read("src", "features", "classroom", "actions.ts");
+    const e2e = read("e2e", "teacher-microcourse.spec.ts");
     const zh = read("messages", "zh.json");
     const en = read("messages", "en.json");
 
@@ -107,16 +108,25 @@ describe("teacher microcourse authoring UX", () => {
     expect(sessionWorkspace).toContain("SessionPrepCompleteAction");
     expect(sessionWorkspace).toContain('label: t("enterCandidate")');
     expect(classroomActions).toContain('"freeze_selected_teacher_microcourse_source_session"');
+    expect(e2e).not.toContain('name: "冻结并上课"');
+    expect(e2e).toContain('name: "保存本节并返回备课"');
+    expect(e2e).toContain('name: "进入候课"');
+    expect(e2e).toContain('name: "开始上课"');
     expect(zh).toContain('"saveForSessionAndReturn": "保存本节并返回备课"');
     expect(en).toContain('"saveForSessionAndReturn": "Save for session and return"');
   });
 
   it("loads the selected research version in preparation and copies only for teacher adjustments", () => {
     const prep = read("src", "features", "school", "SessionPrepPanel.tsx");
+    const overlayEditor = read("src", "features", "school", "CoursewareOverlayEditor.tsx");
+    const coursewareAction = read("src", "features", "school", "actions", "courseware.ts");
+    const sessionLearning = read("src", "features", "school", "session-learning.ts");
+    const livePage = read("src", "app", "[locale]", "classroom", "[classId]", "session", "[sessionId]", "live", "page.tsx");
     const route = read("src", "app", "[locale]", "dashboard", "sessions", "[sessionId]", "microcourse", "page.tsx");
     const switcher = read("src", "features", "teacher-microcourses", "MicrocourseVariantSwitcher.tsx");
     const variantMigration = read("supabase", "migrations", "20260829000600_teacher_microcourse_class_root.sql");
     const runtimeMigration = read("supabase", "migrations", "20260828000110_teacher_microcourse_variant_runtime.sql");
+    const continuityMigration = read("supabase", "migrations", "20260903000200_teacher_microcourse_session_runtime_continuity.sql");
     const zh = read("messages", "zh.json");
     const en = read("messages", "en.json");
 
@@ -124,11 +134,24 @@ describe("teacher microcourse authoring UX", () => {
     expect(variantMigration).toContain("set selected_teacher_microcourse_id = new_microcourse_id");
     expect(runtimeMigration).toContain("if frozen_at is null and selected_microcourse_id is not null then");
     expect(runtimeMigration).toContain("public.can_read_teacher_microcourse_draft(selected_microcourse_id, uid)");
-    expect(prep).toContain("const selectedMicrocourseTemplate");
-    expect(prep).toContain("sessionDocs.map((pageDoc)");
-    expect(prep).toContain("detail.lectureId ? template : selectedMicrocourseTemplate");
+    expect(prep).toContain("!detail.coursewareFrozenAt ? getSessionCoursewareTemplate(detail.id)");
+    expect(prep).toContain("const editorTemplate = frozenEditorState?.template ?? template");
+    expect(prep).not.toContain("selectedMicrocourseTemplate");
     expect(prep).toContain("customOnly={!detail.lectureId && sessionDocs.length === 0}");
     expect(prep).toContain('t("prepCurrentCoursewareTitle")');
+    expect(coursewareAction).toContain("const template = await getSessionCoursewareTemplate(id)");
+    expect(livePage).toContain("const template = await getSessionCoursewareTemplate(sessionId)");
+    expect(sessionLearning).toContain('supabase.rpc("get_session_courseware_learning_check_pages"');
+    expect(overlayEditor).toContain("currentPageIds.has(check.sourcePageId)");
+    expect(continuityMigration).toContain("resolve_session_courseware_page_snapshot");
+    expect(continuityMigration).toContain("public.build_cw_track_snapshot(microcourse_lecture, 'native-16x9')");
+    expect(continuityMigration).toContain("get_session_courseware_learning_check_pages");
+    expect(continuityMigration).toContain("page_snapshot := public.resolve_session_courseware_page_snapshot(p_session_id)");
+    expect(continuityMigration).toContain("learning_checks_configured_at = coalesce(learning_checks_configured_at, now())");
+    expect(continuityMigration).toContain("if session_lecture is null and selected_microcourse is not null then");
+    expect(continuityMigration).toContain("courseware_value := public.resolve_cw_courseware_overlay(");
+    expect(continuityMigration).toContain("get_session_preparation_review_page_docs");
+    expect(continuityMigration).toContain("list_session_preparation_review_resolved_assets");
     expect(route).toContain("variants.find((variant) => variant.selectedForSession)");
     expect(switcher).toContain("!activeVariant.canEdit && session.canCreate");
     expect(switcher).toContain("forkTeacherMicrocourseVariantAction");

@@ -51,7 +51,7 @@ export async function SessionPrepPanel({
   );
 
   const [template, learningSetup, coursewareLearningCheckPages, sessionDocs, sessionAssets, prepArtifacts, teacherPreparation] = await Promise.all([
-    detail.lectureId && !detail.coursewareFrozenAt ? getSessionCoursewareTemplate(detail.id) : Promise.resolve([]),
+    !detail.coursewareFrozenAt ? getSessionCoursewareTemplate(detail.id) : Promise.resolve([]),
     canReadSessionMemberState ? getSessionLearningSetup(detail.id) : Promise.resolve(null),
     canViewPrepArchive ? getSessionCoursewareLearningCheckPages(detail.id) : Promise.resolve([]),
     canViewPrepArchive ? getSessionPageDocs(detail.id).catch(() => []) : Promise.resolve([]),
@@ -76,14 +76,6 @@ export async function SessionPrepPanel({
     })),
   }));
   const titleByPageDocId = new Map(coursewareLearningCheckPages.map((page) => [page.pageDocId, page.title]));
-  const selectedMicrocourseTemplate = !detail.lectureId && !detail.coursewareFrozenAt
-    ? sessionDocs.map((pageDoc) => ({
-        id: pageDoc.pageDocId,
-        type: "doc" as const,
-        docId: pageDoc.pageDocId,
-        title: t("currentCoursewarePageTitle", { no: pageDoc.pageNo }),
-      }))
-    : [];
   const solutionPageLabels = Object.fromEntries(sessionDocs.map((pageDoc) => [
     pageDoc.pageDocId,
     t("learningCheckPageOption", {
@@ -95,12 +87,7 @@ export async function SessionPrepPanel({
   const frozenEditorState = detail.coursewareFrozenAt
     ? coursewareEditorStateFromFrozenSnapshot(detail.courseware, detail.coursewareOverlay)
     : null;
-  // A free session has no formal lecture template. Its selected teacher/research
-  // proposal is nevertheless the session's current courseware, so project the
-  // live page docs into the same immutable template refs used by regular classes.
-  // This makes preparation open on the selected content instead of an empty rail.
-  const editorTemplate = frozenEditorState?.template
-    ?? (detail.lectureId ? template : selectedMicrocourseTemplate);
+  const editorTemplate = frozenEditorState?.template ?? template;
   const editorOverlay = frozenEditorState?.overlay ?? detail.coursewareOverlay;
 
   return (

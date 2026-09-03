@@ -973,8 +973,9 @@ const completePrepSchema = z.object({ sessionId: uuid });
  * 完成备课/更新 release 编排（.claude/p4i-0-baseline.md「P4I-14 执行记录」记录的调用顺序）：
  * resolve_session_courseware_release → TS 层 resolveCourseware 合并 → materializeSessionResolved →
  * save_session_prepared_courseware（只要 started_at 仍为空就能重复调用，同一个函数服务
- * "完成备课"首次调用和"更新 release"后续调用）。无 release 时冻结空白/本次覆盖
- * 快照；备课产物、审核和检查项继续显示质量状态，但不阻断教师确认。
+ * "完成备课"首次调用和"更新 release"后续调用）。普通无 release 课次冻结空白/本次
+ * 覆盖快照；自由课所选教师微课只标记 ready，直到正式进入课堂才固定当时版本。
+ * 备课产物、审核和检查项继续显示质量状态，但不阻断教师确认。
  */
 export async function completeSessionPreparationAction(sessionId: string): Promise<ActionResult> {
   try {

@@ -232,7 +232,7 @@ describe("R1 classroom continuity contracts", () => {
 
     expect(resolveCourseware([], [{ page: gamePage }])).toEqual([gamePage]);
     expect(livePage).toContain('classroom.myRole === "teacher" && !session.coursewareFrozenAt');
-    expect(livePage).toContain("session.lectureId ? await getSessionCoursewareTemplate(sessionId) : []");
+    expect(livePage).toContain("const template = await getSessionCoursewareTemplate(sessionId)");
     expect(livePage).toContain("courseware: resolveCourseware(template");
     expect(livePage).not.toContain("session.lectureId && !session.coursewareFrozenAt");
     expect(livePage).not.toContain("if (template.length > 0)");

@@ -48,7 +48,7 @@ export async function saveCoursewareOverlay(sessionId: string, overlay: OverlayS
     return;
   }
 
-  const template = session.lecture_id ? await getSessionCoursewareTemplate(id) : [];
+  const template = await getSessionCoursewareTemplate(id);
   const healed = parseOverlayForSave(template, shapeCheck.data);
   const { error } = await supabase
     .from("class_sessions")

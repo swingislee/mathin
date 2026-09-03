@@ -127,14 +127,20 @@ test("teacher authors, teaches, resubmits, publishes, and the catalog creates on
     await expect(page.getByTestId("sudoku-authoring-grid")).toHaveAttribute("data-sudoku-variant", "classic-6x6");
     await expect(page.getByLabel("数独第 1 格", { exact: true })).toHaveValue("1");
 
-    await page.getByRole("button", { name: "冻结并上课", exact: true }).click();
+    await page.getByRole("button", { name: "保存本节并返回备课", exact: true }).click();
+    await page.waitForURL((url) => url.pathname === sessionPath);
+    await expect(page.getByText("已直接载入本节选用课件", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "完成备课", exact: true }).click();
+    await expect(page.getByText("已完成备课。", { exact: true })).toBeVisible();
+    await page.getByRole("link", { name: "进入候课", exact: true }).click();
     await page.waitForURL((url) => url.pathname === `/zh/classroom/${fixture.sourceClassroomId}/session/${fixture.sourceSessionId}/live`, {
       waitUntil: "domcontentloaded",
     });
+    await page.getByRole("button", { name: "开始上课", exact: true }).click();
     await expect(page.locator('[data-microcourse-mode="composition"]').first()).toBeVisible();
 
     await page.goto(editorPath);
-    await expect(page.getByRole("button", { name: "进入课堂", exact: true })).toBeVisible();
+    await expect(page.getByText("微课编辑", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "编辑微课信息", exact: true }).click();
     await page.getByLabel("提交/审核说明", { exact: true }).fill("首轮提交：请检查来源快照和课堂交互。");
     await page.getByRole("button", { name: "提交审核", exact: true }).click();
@@ -279,10 +285,17 @@ test("teacher and research branch proposals while only the teacher selects and f
     await expect(page.getByText("已设为本节最终使用方案。", { exact: true })).toBeVisible();
     await expect(page.getByText("本节选用", { exact: true }).first()).toBeVisible();
 
-    await page.getByRole("button", { name: "冻结并上课", exact: true }).click();
+    await page.getByRole("button", { name: "保存本节并返回备课", exact: true }).click();
+    await page.waitForURL((url) => url.pathname === sessionPath);
+    await expect(page.getByText("已直接载入本节选用课件", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "完成备课", exact: true }).click();
+    await expect(page.getByText("已完成备课。", { exact: true })).toBeVisible();
+    await page.getByRole("link", { name: "进入候课", exact: true }).click();
     await page.waitForURL((url) => url.pathname === `/zh/classroom/${fixture.sourceClassroomId}/session/${fixture.sourceSessionId}/live`, {
       waitUntil: "domcontentloaded",
     });
+    await page.getByRole("button", { name: "开始上课", exact: true }).click();
+    await expect(page.locator('[data-microcourse-mode="composition"]').first()).toBeVisible();
 
     await page.context().clearCookies();
     await loginWithFixedAccount(page, research, editorPath);

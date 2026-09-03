@@ -77,8 +77,11 @@ function initialLearningCheckItems(
   locked: boolean,
   configured: boolean,
 ): LearningCheckItem[] {
+  const currentPageIds = new Set(pages.map((page) => page.pageDocId));
   if (configured || checks.length > 0 || locked) {
-    return checks.map((check) => ({ title: check.title, sourcePageId: check.sourcePageId }));
+    return checks
+      .filter((check) => check.sourcePageId === null || currentPageIds.has(check.sourcePageId))
+      .map((check) => ({ title: check.title, sourcePageId: check.sourcePageId }));
   }
   return pages.filter((page) => page.learningCheckEnabled)
     .map((page) => ({ title: page.title, sourcePageId: page.pageDocId }));
@@ -115,7 +118,7 @@ export function CoursewareOverlayEditor({
   initialPageId?: string;
   readOnly?: boolean;
   structureReadOnly?: boolean;
-  /** 自由课次没有课程模板，全部页面都由本课教师创建。 */
+  /** 自由课次没有所选方案时，全部页面都由本课教师创建。 */
   customOnly?: boolean;
 }) {
   const t = useTranslations("school.overlay");
