@@ -24,21 +24,21 @@ interface ImportBatchRow {
   batch_label: string | null;
 }
 
-interface ClassroomOptionRow {
+interface ClassRosterTargetOptionRow {
   id: string;
   name: string;
   grade: number | null;
-  capacity: number | null;
   term_id: string | null;
-  courses: { title: string; class_type: string; course_families: { slug: string } | null } | null;
-  school_terms: { year: number; term: number } | null;
-  default_room: { name: string; campuses: { name: string } | null } | null;
-}
-
-interface ClassroomStaffRow {
-  classroom_id: string;
-  responsibility: string;
-  profiles: { display_name: string } | null;
+  school_year: number | null;
+  season: number | null;
+  course_title: string;
+  course_family_slug: string;
+  class_type: string;
+  campus_name: string;
+  room_name: string;
+  primary_teacher_names: string[];
+  capacity: number | null;
+  active_enrollment_count: number;
 }
 
 export async function listRecentMofaxiaoClassRosterImportBatches(
@@ -73,62 +73,25 @@ export async function listRecentMofaxiaoClassRosterImportBatches(
 export async function listClassRosterTargetOptions(): Promise<ClassRosterTargetOption[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from("classrooms")
-    .select("id,name,grade,capacity,term_id,courses(title,class_type,course_families(slug)),school_terms(year,term),default_room:campus_rooms!classrooms_default_room_id_fkey(name,campuses(name))")
-    .eq("purpose", "production")
-    .in("operational_status", ["planning", "active"])
-    .is("archived_at", null)
-    .is("trashed_at", null)
-    .order("name", { ascending: true })
-    .limit(1_000)
-    .returns<ClassroomOptionRow[]>();
+    .rpc("list_mofaxiao_class_roster_target_options")
+    .returns<ClassRosterTargetOptionRow[]>();
   if (error) throw new Error(error.message);
-  const classroomIds = (data ?? []).map((row) => row.id);
-  if (classroomIds.length === 0) return [];
-
-  const [{ data: staffRows, error: staffError }, { data: enrollmentRows, error: enrollmentError }] = await Promise.all([
-    supabase
-      .from("classroom_staff_assignments")
-      .select("classroom_id,responsibility,profiles!classroom_staff_assignments_user_id_fkey(display_name)")
-      .in("classroom_id", classroomIds)
-      .eq("responsibility", "primary_teacher")
-      .is("archived_at", null)
-      .returns<ClassroomStaffRow[]>(),
-    supabase
-      .from("enrollments")
-      .select("classroom_id")
-      .in("classroom_id", classroomIds)
-      .eq("status", "active")
-      .limit(20_000)
-      .returns<Array<{ classroom_id: string }>>(),
-  ]);
-  if (staffError) throw new Error(staffError.message);
-  if (enrollmentError) throw new Error(enrollmentError.message);
-
-  const teachers = new Map<string, string[]>();
-  for (const row of staffRows ?? []) {
-    const name = row.profiles?.display_name?.trim();
-    if (!name) continue;
-    teachers.set(row.classroom_id, [...(teachers.get(row.classroom_id) ?? []), name]);
-  }
-  const enrollmentCounts = new Map<string, number>();
-  for (const row of enrollmentRows ?? []) enrollmentCounts.set(row.classroom_id, (enrollmentCounts.get(row.classroom_id) ?? 0) + 1);
 
   return (data ?? []).map((row) => ({
     id: row.id,
     name: row.name,
     grade: row.grade,
     termId: row.term_id,
-    schoolYear: row.school_terms?.year ?? null,
-    season: row.school_terms?.term ?? null,
-    courseTitle: row.courses?.title ?? "",
-    courseFamilySlug: row.courses?.course_families?.slug ?? "",
-    classType: row.courses?.class_type ?? "",
-    campusName: row.default_room?.campuses?.name ?? "",
-    roomName: row.default_room?.name ?? "",
-    primaryTeacherNames: teachers.get(row.id) ?? [],
+    schoolYear: row.school_year,
+    season: row.season,
+    courseTitle: row.course_title,
+    courseFamilySlug: row.course_family_slug,
+    classType: row.class_type,
+    campusName: row.campus_name,
+    roomName: row.room_name,
+    primaryTeacherNames: row.primary_teacher_names,
     capacity: row.capacity,
-    activeEnrollmentCount: enrollmentCounts.get(row.id) ?? 0,
+    activeEnrollmentCount: row.active_enrollment_count,
   }));
 }
 
