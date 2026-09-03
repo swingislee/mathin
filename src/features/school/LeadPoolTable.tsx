@@ -2,12 +2,11 @@
 
 import { LoaderCircle, MessageSquarePlus, PhoneCall, UsersRound } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useAction } from "@/components/action-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
   Dialog,
   DialogContent,
@@ -24,6 +23,7 @@ import { useRouter } from "@/i18n/navigation";
 import { assignLeadsAction, recordLeadContactAction, type LeadContactInput } from "./actions/leads";
 import { fromSelectValue, toSelectValue } from "./controls";
 import { DashboardTableShell } from "./dashboard-page";
+import { updateLeadSelection } from "./lead-selection";
 import type { LeadPoolRow } from "./leads";
 
 interface AssigneeOption {
@@ -47,7 +47,6 @@ function ContactDialog({
   const [wechatState, setWechatState] = useState("");
   const [visitState, setVisitState] = useState("");
   const [interestLevel, setInterestLevel] = useState("");
-  const [nextActionAt, setNextActionAt] = useState("");
 
   const reset = () => {
     setOutcome("");
@@ -55,12 +54,10 @@ function ContactDialog({
     setWechatState("");
     setVisitState("");
     setInterestLevel("");
-    setNextActionAt("");
   };
   const contactRun = useAction(recordLeadContactAction, {
     successMessage: t("contactSaved"),
     errorMessage: {
-      NEXT_ACTION_NOT_FUTURE: t("nextActionFuture"),
       LEAD_UNASSIGNED: t("contactNeedsOwner"),
       LEAD_CLOSED: t("contactClosed"),
       default: t("contactFailed"),
@@ -81,7 +78,6 @@ function ContactDialog({
       wechatAdded: reachable ? (wechatState === "yes" ? true : wechatState === "no" ? false : null) : null,
       visitCommitted: outcome === "connected" ? (visitState === "yes" ? true : visitState === "no" ? false : null) : null,
       interestLevel: interestLevel === "A" || interestLevel === "B" || interestLevel === "C" ? interestLevel : null,
-      nextActionAt: outcome === "invalid_number" ? null : nextActionAt || null,
     });
   };
 
@@ -102,7 +98,6 @@ function ContactDialog({
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
               <span className="font-medium text-ink">{lead.phone}</span>
               <span className="text-muted">{lead.gradeText || (lead.gradeHint ? t("gradeValue", { grade: lead.gradeHint }) : t("unknownGrade"))}</span>
-              <span className="text-muted">{lead.sourceBatchLabel || t("unknownSource")}</span>
             </div>
             <p className="text-xs leading-5 text-muted">{t("contactAutoFields")}</p>
             <Separator />
@@ -118,7 +113,6 @@ function ContactDialog({
                       setWechatState("");
                       setVisitState("");
                     }
-                    if (next === "invalid_number") setNextActionAt("");
                   }}
                 >
                   <SelectTrigger><SelectValue placeholder={t("contactOutcomePlaceholder")} /></SelectTrigger>
@@ -173,17 +167,6 @@ function ContactDialog({
                   placeholder={t("contactNotePlaceholder")}
                 />
               </Label>
-              <Label className="grid gap-1.5 text-sm font-normal sm:col-span-2">
-                <span>{t("nextActionAt")}</span>
-                <DateTimePicker
-                  mode="datetime"
-                  value={nextActionAt}
-                  onValueChange={setNextActionAt}
-                  disabled={outcome === "invalid_number"}
-                  className="w-full sm:max-w-72"
-                />
-                <span className="text-xs font-normal text-muted">{t("nextActionAutoKind")}</span>
-              </Label>
             </div>
           </div>
         ) : null}
@@ -221,6 +204,8 @@ export function LeadPoolTable({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [assigneeId, setAssigneeId] = useState("");
   const [contactTarget, setContactTarget] = useState<LeadPoolRow | null>(null);
+  const selectionAnchorRef = useRef<string | null>(null);
+  const extendRangeRef = useRef(false);
   const assignableIds = useMemo(
     () => leads.filter((lead) => lead.status !== "invalid" && lead.status !== "converted").map((lead) => lead.id),
     [leads],
@@ -242,30 +227,40 @@ export function LeadPoolTable({
     },
     onSuccess: () => {
       setSelected(new Set());
+      selectionAnchorRef.current = null;
       router.refresh();
     },
   });
 
   const toggleLead = (id: string, checked: boolean) => {
-    setSelected((current) => {
-      const next = new Set(current);
-      if (checked) next.add(id);
-      else next.delete(id);
-      return next;
-    });
+    const extendRange = extendRangeRef.current;
+    const anchorId = selectionAnchorRef.current;
+    setSelected((current) => updateLeadSelection({
+      current,
+      orderedIds: assignableIds,
+      leadId: id,
+      checked,
+      anchorId,
+      extendRange,
+    }));
+    if (!extendRange || !anchorId) selectionAnchorRef.current = id;
+    extendRangeRef.current = false;
   };
 
   return (
     <>
       <DashboardTableShell>
         {canAssign ? (
-          <div className="flex flex-wrap items-center gap-2 border-b border-line/80 px-4 py-3">
+          <div className="flex flex-wrap items-center gap-2 border-b border-line/80 px-3 py-2">
             <Checkbox
               checked={allSelected ? true : someSelected ? "indeterminate" : false}
-              onCheckedChange={(checked) => setSelected(new Set(checked === true ? assignableIds : []))}
+              onCheckedChange={(checked) => {
+                setSelected(new Set(checked === true ? assignableIds : []));
+                selectionAnchorRef.current = null;
+              }}
               aria-label={t("selectPage")}
             />
-            <span className="mr-auto text-sm text-muted">{t("selectedCount", { count: selectedIds.length })}</span>
+            <span className="mr-auto text-xs text-muted">{t("selectedCount", { count: selectedIds.length })}</span>
             <Select value={assigneeId || undefined} onValueChange={setAssigneeId} disabled={assignRun.pending || assignees.length === 0}>
               <SelectTrigger className="w-44" aria-label={t("chooseAssignee")}><SelectValue placeholder={t("chooseAssignee")} /></SelectTrigger>
               <SelectContent>
@@ -283,18 +278,16 @@ export function LeadPoolTable({
             </Button>
           </div>
         ) : null}
-        <Table className="w-full min-w-[94rem] text-sm">
+        <Table className="w-full min-w-[68rem] text-xs">
           <TableHeader>
             <TableRow>
-              {canAssign ? <TableHead className="w-10"><span className="sr-only">{t("select")}</span></TableHead> : null}
-              <TableHead>{t("seed")}</TableHead>
-              <TableHead>{t("source")}</TableHead>
-              <TableHead>{t("interests")}</TableHead>
-              <TableHead>{t("owner")}</TableHead>
-              <TableHead>{t("latestContact")}</TableHead>
-              <TableHead>{t("nextAction")}</TableHead>
-              <TableHead>{t("status")}</TableHead>
-              <TableHead className="w-28" />
+              {canAssign ? <TableHead className="h-8 w-9 px-2"><span className="sr-only">{t("select")}</span></TableHead> : null}
+              <TableHead className="h-8 px-2">{t("seed")}</TableHead>
+              <TableHead className="h-8 px-2">{t("interests")}</TableHead>
+              <TableHead className="h-8 px-2">{t("owner")}</TableHead>
+              <TableHead className="h-8 px-2">{t("latestContact")}</TableHead>
+              <TableHead className="h-8 px-2">{t("status")}</TableHead>
+              <TableHead className="h-8 w-24 px-2" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -303,81 +296,65 @@ export function LeadPoolTable({
               const contactable = canContact && Boolean(lead.ownerId)
                 && (lead.ownerId === currentUserId || canContactAll);
               return (
-                <TableRow key={lead.id}>
+                <TableRow key={lead.id} className={selected.has(lead.id) ? "bg-moon/20" : undefined}>
                   {canAssign ? (
-                    <TableCell>
+                    <TableCell className="w-9 px-2 py-1.5">
                       <Checkbox
                         checked={selected.has(lead.id)}
                         disabled={!assignable || assignRun.pending}
+                        onClick={(event) => { extendRangeRef.current = event.shiftKey; }}
                         onCheckedChange={(checked) => toggleLead(lead.id, checked === true)}
                         aria-label={t("selectLead", { name: lead.provisionalStudentName })}
                       />
                     </TableCell>
                   ) : null}
-                  <TableCell className="min-w-56">
-                    <div className="font-medium text-ink">{lead.provisionalStudentName}</div>
-                    <div className="mt-0.5 font-mono text-xs text-muted">{lead.phone}</div>
-                    <div className="mt-1 flex flex-wrap items-center gap-1">
-                      <span className="text-xs text-muted">{lead.gradeText || (lead.gradeHint ? t("gradeValue", { grade: lead.gradeHint }) : t("unknownGrade"))}</span>
-                      <Badge variant="outline" className="font-normal">{t("identityUnconfirmed")}</Badge>
-                      {lead.sourceMarkedDuplicate ? <Badge variant="danger" className="font-normal">{t("sourceDuplicateShort")}</Badge> : null}
+                  <TableCell className="min-w-60 px-2 py-1.5">
+                    <div className="flex items-baseline gap-2 whitespace-nowrap">
+                      <span className="font-medium text-ink">{lead.provisionalStudentName}</span>
+                      <span className="font-mono text-[11px] text-muted">{lead.phone}</span>
+                    </div>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[11px] leading-4 text-muted">
+                      <span>{lead.gradeText || (lead.gradeHint ? t("gradeValue", { grade: lead.gradeHint }) : t("unknownGrade"))}</span>
+                      <span aria-hidden="true">·</span>
+                      <span>{t("identityUnconfirmed")}</span>
+                      {lead.sourceMarkedDuplicate ? <Badge variant="danger" className="px-1.5 py-0 text-[11px] font-normal leading-4">{t("sourceDuplicateShort")}</Badge> : null}
                     </div>
                     {lead.suggestedStudentName ? (
-                      <p className="mt-1 text-xs text-muted">{t("studentSuggestion", { name: lead.suggestedStudentName })}</p>
+                      <p className="mt-0.5 text-[11px] leading-4 text-muted">{t("studentSuggestion", { name: lead.suggestedStudentName })}</p>
                     ) : null}
                   </TableCell>
-                  <TableCell className="min-w-56">
-                    <div>{lead.sourceBatchLabel || t("unknownSource")}</div>
-                    <div className="mt-0.5 text-xs text-muted">
-                      {[lead.sourceRow ? t("sourceRow", { row: lead.sourceRow }) : "", lead.promoter, lead.acquisitionMethod]
-                        .filter(Boolean)
-                        .join(" · ") || "—"}
-                    </div>
-                    {lead.sourceCount > 1 ? <div className="mt-1 text-xs text-muted">{t("sourceCount", { count: lead.sourceCount })}</div> : null}
-                  </TableCell>
-                  <TableCell className="max-w-72">
+                  <TableCell className="max-w-64 px-2 py-1.5">
                     <div className="flex flex-wrap gap-1">
                       {lead.interests.length > 0
-                        ? lead.interests.map((interest) => <Badge key={interest} variant="outline" className="font-normal">{interest}</Badge>)
+                        ? lead.interests.map((interest) => <Badge key={interest} variant="outline" className="px-1.5 py-0 text-[11px] font-normal leading-4">{interest}</Badge>)
                         : <span className="text-muted">—</span>}
                     </div>
                   </TableCell>
-                  <TableCell>{lead.ownerName || t("unassignedOwner")}</TableCell>
-                  <TableCell className="min-w-64">
+                  <TableCell className="px-2 py-1.5">{lead.ownerName || t("unassignedOwner")}</TableCell>
+                  <TableCell className="min-w-64 px-2 py-1.5">
                     {lead.lastContactAt && lead.lastContactOutcome ? (
                       <>
                         <div className="flex flex-wrap items-center gap-1.5">
-                          <Badge variant="outline">{t(`contactOutcome_${lead.lastContactOutcome}`)}</Badge>
-                          <span className="text-xs text-muted">{formatAt(lead.lastContactAt)}</span>
-                          {lead.interestLevel ? <Badge variant="secondary">{lead.interestLevel}</Badge> : null}
-                          {lead.wechatAdded === true ? <Badge variant="outline">{t("wechatAddedShort")}</Badge> : null}
-                          {lead.visitCommitted === true ? <Badge variant="outline">{t("visitCommittedShort")}</Badge> : null}
+                          <span className="font-medium text-ink">{t(`contactOutcome_${lead.lastContactOutcome}`)}</span>
+                          <span className="text-[11px] text-muted">{formatAt(lead.lastContactAt)}</span>
+                          {lead.interestLevel ? <Badge variant="secondary" className="px-1.5 py-0 text-[11px] leading-4">{lead.interestLevel}</Badge> : null}
+                          {lead.wechatAdded === true ? <Badge variant="outline" className="px-1.5 py-0 text-[11px] leading-4">{t("wechatAddedShort")}</Badge> : null}
+                          {lead.visitCommitted === true ? <Badge variant="outline" className="px-1.5 py-0 text-[11px] leading-4">{t("visitCommittedShort")}</Badge> : null}
                         </div>
-                        <p className="mt-1 max-w-64 truncate text-xs text-muted" title={lead.lastContactNote || undefined}>
-                          {lead.lastContactNote || t("noContactNote")}
+                        <p className="mt-0.5 max-w-64 truncate text-[11px] leading-4 text-muted" title={lead.lastContactNote || undefined}>
+                          {lead.lastContactNote || (lead.contactCount > 1 ? t("contactCount", { count: lead.contactCount }) : t("noContactNote"))}
                         </p>
-                        {lead.contactCount > 1 ? <p className="mt-1 text-xs text-muted">{t("contactCount", { count: lead.contactCount })}</p> : null}
                       </>
                     ) : <span className="text-muted">{t("notContacted")}</span>}
                   </TableCell>
-                  <TableCell className="min-w-44">
-                    {lead.nextActionKind && lead.nextActionAt ? (
-                      <>
-                        <div>{t(`nextAction_${lead.nextActionKind}`)}</div>
-                        <div className="mt-0.5 text-xs text-muted">
-                          {formatAt(lead.nextActionAt)}
-                        </div>
-                      </>
-                    ) : <span className="text-muted">—</span>}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={lead.status === "invalid" ? "danger" : lead.status === "converted" ? "secondary" : "outline"}>
+                  <TableCell className="px-2 py-1.5">
+                    <Badge className="px-1.5 py-0 text-[11px] leading-4" variant={lead.status === "invalid" ? "danger" : lead.status === "converted" ? "secondary" : "outline"}>
                       {t(`status_${lead.status}`)}
                     </Badge>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="px-2 py-1.5">
                     {contactable ? (
-                      <Button type="button" variant="ghost" size="sm" className="whitespace-nowrap" onClick={() => setContactTarget(lead)}>
+                      <Button type="button" variant="ghost" size="sm" className="h-7 whitespace-nowrap px-2 text-xs" onClick={() => setContactTarget(lead)}>
                         <MessageSquarePlus className="size-4" />
                         {lead.contactCount > 0 ? t("recordContact") : t("recordFirstContact")}
                       </Button>

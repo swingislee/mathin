@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { updateLeadSelection } from "@/features/school/lead-selection";
 
 const root = process.cwd();
 const read = (...segments: string[]) => fs.readFileSync(path.join(root, ...segments), "utf8");
@@ -65,7 +66,7 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(contact).toContain("insert into public.lead_communications");
   });
 
-  it("exposes visible batch assignment and a task-oriented first-call queue", () => {
+  it("supports page and shift-range assignment without leaking next actions into the seed table", () => {
     const page = read("src", "app", "[locale]", "dashboard", "leads", "page.tsx");
     const table = read("src", "features", "school", "LeadPoolTable.tsx");
     const actions = read("src", "features", "school", "actions", "leads.ts");
@@ -76,12 +77,40 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(page).toContain("listStaffMembers");
     expect(table).toContain("assignSelected");
     expect(table).toContain("selectedCount");
+    expect(table).toContain("event.shiftKey");
+    expect(table).toContain("selectionAnchorRef");
     expect(table).toContain("recordFirstContact");
     expect(table).toContain("contactAutoFields");
-    expect(table).toContain("DateTimePicker");
+    expect(table).not.toContain("DateTimePicker");
+    expect(table).not.toContain('t("nextAction")');
+    expect(table).not.toContain('t("source")');
     expect(actions).toContain('authorizedClient("student.assign")');
     expect(actions).toContain('authorizedClient("followup.write")');
+    expect(actions).toContain('p_next_action_at: nullableRpcArg<string>(null)');
     expect(query).toContain('.from("lead_communications")');
-    expect(query).toContain('.from("lead_next_actions")');
+    expect(query).not.toContain('.from("lead_next_actions")');
+  });
+
+  it("selects or clears an inclusive visible range from the plain-click anchor", () => {
+    const orderedIds = ["lead-1", "lead-2", "lead-3", "lead-4", "lead-5"];
+    const selected = updateLeadSelection({
+      current: new Set(["lead-1"]),
+      orderedIds,
+      leadId: "lead-4",
+      checked: true,
+      anchorId: "lead-1",
+      extendRange: true,
+    });
+    expect([...selected]).toEqual(["lead-1", "lead-2", "lead-3", "lead-4"]);
+
+    const cleared = updateLeadSelection({
+      current: selected,
+      orderedIds,
+      leadId: "lead-2",
+      checked: false,
+      anchorId: "lead-4",
+      extendRange: true,
+    });
+    expect([...cleared]).toEqual(["lead-1"]);
   });
 });

@@ -214,7 +214,7 @@ Phase 1～5 的本机隔离 Supabase、固定开发身份、migration LF checksu
 
 #### DEV-SCHOOL-OPS-1 · 学辅运营与教学履约主干
 
-`DEV-SCHOOL-OPS-1` 是产品负责人于 2026-09-01 选入的独立开发预演，权威里程碑见 [`30-mathin_school_ops_architecture_plan.md`](30-mathin_school_ops_architecture_plan.md)。规划型 `/dashboard/school-ops` 页面、导航和快照已删除；Phase 2 已把活动详情收敛为“名单与到访 / 本场测评登记”两个角色工作节点，测评、学情、家长关注、老师建议和报名去向在同一学生行完成，后台仍分别写入 Participation、AssessmentResult 与 ActivityRoute。2026-09-02 取得两组真实小地推脱敏导出后，Phase 1B 已让数据收件箱逐行校验并只写 `leads`、来源记录与意向标签，第一组 1071 行形成 1071 个未分配种子，第二组 157 行保持 dry-run（138 拟新增／11 复用／8 待判断／0 错误）。2026-09-03 当前进入 **Phase 1C · 种子批量分配与初次电联**：`/dashboard/leads` 增加当前页批量分配、“我的初次电联”、追加式沟通记录和自动下一任务；老师不再手填确认月份／周次／日期／人员。状态为 **DEVELOPMENT READY / AWAITING PRODUCT OWNER UI AND INTERACTION ACCEPTANCE**；显式建立／关联 Student、加入具体活动和业务组配置未暗做，没有 Xiaomi／生产迁移、业务写入、Storage 或发布动作。
+`DEV-SCHOOL-OPS-1` 是产品负责人于 2026-09-01 选入的独立开发预演，权威里程碑见 [`30-mathin_school_ops_architecture_plan.md`](30-mathin_school_ops_architecture_plan.md)。规划型 `/dashboard/school-ops` 页面、导航和快照已删除；Phase 2 已把活动详情收敛为“名单与到访 / 本场测评登记”两个角色工作节点，测评、学情、家长关注、老师建议和报名去向在同一学生行完成，后台仍分别写入 Participation、AssessmentResult 与 ActivityRoute。2026-09-02 取得两组真实小地推脱敏导出后，Phase 1B 已让数据收件箱逐行校验并只写 `leads`、来源记录与意向标签，第一组 1071 行形成 1071 个未分配种子，第二组 157 行保持 dry-run（138 拟新增／11 复用／8 待判断／0 错误）。2026-09-03 当前进入 **Phase 1C · 种子批量分配与初次电联**：`/dashboard/leads` 增加整页／Shift 连续选择、批量分配、“我的初次电联”和追加式沟通记录；种子表压缩为身份、意向、负责人、最近沟通和池内状态，来源批次与下一动作退出该表，老师不再手填确认月份／周次／日期／人员。状态为 **DEVELOPMENT READY / AWAITING PRODUCT OWNER UI AND INTERACTION ACCEPTANCE**；显式建立／关联 Student、加入具体活动和业务组配置未暗做，没有 Xiaomi／生产迁移、业务写入、Storage 或发布动作。
 
 #### DEV-STAFF-ONBOARD-1 · 员工批量建档
 

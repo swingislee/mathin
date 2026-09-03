@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { actionError, type ActionResult } from "@/lib/action-result";
 import { authorizedClient, nullableRpcArg } from "./guards";
-import { COMMON_CODES, datetime, parse, text, uuid } from "./schemas";
+import { COMMON_CODES, parse, text, uuid } from "./schemas";
 
 const LEAD_CONTACT_OUTCOMES = ["unreachable", "connected", "declined", "invalid_number"] as const;
 const LEAD_INTEREST_LEVELS = ["A", "B", "C"] as const;
@@ -20,14 +20,10 @@ const leadContactSchema = z.object({
   wechatAdded: z.boolean().nullable(),
   visitCommitted: z.boolean().nullable(),
   interestLevel: z.enum(LEAD_INTEREST_LEVELS).nullable(),
-  nextActionAt: datetime.nullable(),
 }).superRefine((value, context) => {
   if (["unreachable", "invalid_number"].includes(value.outcome)
       && (value.wechatAdded === true || value.visitCommitted === true)) {
     context.addIssue({ code: "custom", message: "INVALID_CONTACT_FACT" });
-  }
-  if (value.outcome === "invalid_number" && value.nextActionAt !== null) {
-    context.addIssue({ code: "custom", message: "INVALID_NEXT_ACTION" });
   }
 });
 
@@ -37,7 +33,6 @@ export type LeadContactInput = {
   wechatAdded: boolean | null;
   visitCommitted: boolean | null;
   interestLevel: (typeof LEAD_INTEREST_LEVELS)[number] | null;
-  nextActionAt: string | null;
 };
 
 export async function assignLeadsAction(leadIds: string[], staffUserId: string): Promise<ActionResult<{ count: number }>> {
@@ -69,13 +64,12 @@ export async function recordLeadContactAction(
       p_wechat_added: nullableRpcArg(value.wechatAdded),
       p_visit_committed: nullableRpcArg(value.visitCommitted),
       p_interest_level: nullableRpcArg(value.interestLevel),
-      p_next_action_at: nullableRpcArg(value.nextActionAt),
+      p_next_action_at: nullableRpcArg<string>(null),
     });
     if (error) throw new Error(error.message);
     return { ok: true };
   } catch (error) {
     return actionError(error, [
-      "NEXT_ACTION_NOT_FUTURE",
       "LEAD_UNASSIGNED",
       "LEAD_CLOSED",
       "FORBIDDEN_SCOPE",

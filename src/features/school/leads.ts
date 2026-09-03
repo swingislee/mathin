@@ -32,13 +32,6 @@ export interface LeadPoolRow {
   suggestedStudentId: string | null;
   suggestedStudentName: string;
   createdAt: string;
-  sourceCount: number;
-  sourceBatchLabel: string;
-  sourceRow: number | null;
-  submittedAt: string | null;
-  promoter: string;
-  acquisitionMethod: string;
-  location: string;
   sourceMarkedDuplicate: boolean;
   interests: string[];
   contactCount: number;
@@ -48,13 +41,10 @@ export interface LeadPoolRow {
   wechatAdded: boolean | null;
   visitCommitted: boolean | null;
   interestLevel: LeadInterestLevel | null;
-  nextActionKind: LeadNextActionKind | null;
-  nextActionAt: string | null;
 }
 
 export type LeadContactOutcome = "unreachable" | "connected" | "declined" | "invalid_number";
 export type LeadInterestLevel = "A" | "B" | "C";
-export type LeadNextActionKind = "initial_contact" | "retry" | "wechat_followup" | "visit_confirmation" | "nurture" | "other";
 
 interface LeadDbRow {
   id: string;
@@ -71,12 +61,7 @@ interface LeadDbRow {
 interface LeadSourceDbRow {
   id: string;
   lead_id: string;
-  batch_label: string;
-  source_row: number;
   submitted_at: string | null;
-  promoter: string;
-  acquisition_method: string;
-  location_text: string;
   source_marked_duplicate: boolean;
   created_at: string;
 }
@@ -95,12 +80,6 @@ interface LeadCommunicationDbRow {
   visit_committed: boolean | null;
   interest_level: LeadInterestLevel | null;
   occurred_at: string;
-}
-
-interface LeadNextActionDbRow {
-  lead_id: string;
-  kind: LeadNextActionKind;
-  due_at: string;
 }
 
 const PAGE_SIZE = 100;
@@ -175,10 +154,10 @@ export async function listLeadPool(
   const suggestedStudentIds = [...new Set(rows
     .map((row) => row.suggested_student_id)
     .filter((id): id is string => Boolean(id)))];
-  const [sourceResult, interestResult, communicationResult, nextActionResult, ownerResult, studentResult] = await Promise.all([
+  const [sourceResult, interestResult, communicationResult, ownerResult, studentResult] = await Promise.all([
     supabase
       .from("lead_source_records")
-      .select("id,lead_id,batch_label,source_row,submitted_at,promoter,acquisition_method,location_text,source_marked_duplicate,created_at")
+      .select("id,lead_id,submitted_at,source_marked_duplicate,created_at")
       .in("lead_id", leadIds)
       .order("submitted_at", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false })
@@ -197,13 +176,6 @@ export async function listLeadPool(
       .order("occurred_at", { ascending: false })
       .limit(5_000)
       .returns<LeadCommunicationDbRow[]>(),
-    supabase
-      .from("lead_next_actions")
-      .select("lead_id,kind,due_at")
-      .in("lead_id", leadIds)
-      .eq("status", "open")
-      .limit(500)
-      .returns<LeadNextActionDbRow[]>(),
     ownerIds.length > 0
       ? supabase.from("profiles").select("id,display_name").in("id", ownerIds)
       : Promise.resolve({ data: [], error: null }),
@@ -214,7 +186,6 @@ export async function listLeadPool(
   if (sourceResult.error) throw new Error(sourceResult.error.message);
   if (interestResult.error) throw new Error(interestResult.error.message);
   if (communicationResult.error) throw new Error(communicationResult.error.message);
-  if (nextActionResult.error) throw new Error(nextActionResult.error.message);
   if (ownerResult.error) throw new Error(ownerResult.error.message);
   if (studentResult.error) throw new Error(studentResult.error.message);
 
@@ -243,7 +214,6 @@ export async function listLeadPool(
   for (const communications of communicationsByLead.values()) {
     communications.sort((a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime());
   }
-  const nextActionByLead = new Map((nextActionResult.data ?? []).map((row) => [row.lead_id, row]));
 
   return {
     count: count ?? 0,
@@ -253,7 +223,6 @@ export async function listLeadPool(
       const latest = sources[0];
       const communications = communicationsByLead.get(row.id) ?? [];
       const lastContact = communications[0];
-      const nextAction = nextActionByLead.get(row.id);
       return {
         id: row.id,
         provisionalStudentName: row.provisional_student_name,
@@ -268,13 +237,6 @@ export async function listLeadPool(
           ? studentNames.get(row.suggested_student_id) ?? ""
           : "",
         createdAt: row.created_at,
-        sourceCount: sources.length,
-        sourceBatchLabel: latest?.batch_label ?? "",
-        sourceRow: latest?.source_row ?? null,
-        submittedAt: latest?.submitted_at ?? null,
-        promoter: latest?.promoter ?? "",
-        acquisitionMethod: latest?.acquisition_method ?? "",
-        location: latest?.location_text ?? "",
         sourceMarkedDuplicate: latest?.source_marked_duplicate ?? false,
         interests: interestsByLead.get(row.id) ?? [],
         contactCount: communications.length,
@@ -284,8 +246,6 @@ export async function listLeadPool(
         wechatAdded: lastContact?.wechat_added ?? null,
         visitCommitted: lastContact?.visit_committed ?? null,
         interestLevel: lastContact?.interest_level ?? null,
-        nextActionKind: nextAction?.kind ?? null,
-        nextActionAt: nextAction?.due_at ?? null,
       };
     }),
   };
