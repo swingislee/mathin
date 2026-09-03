@@ -336,6 +336,123 @@ export interface PreviewMofaxiaoClassImportInput {
   rows: MofaxiaoClassImportRow[];
 }
 
+export const MOFAXIAO_CLASS_ROSTER_IMPORT_TEMPLATE_VERSION = "mofaxiao-class-roster-v1" as const;
+
+export type MofaxiaoClassRosterDecision = "link_existing" | "create_student" | "skip";
+
+export interface MofaxiaoClassRosterImportRow {
+  sourceRow: number;
+  sourceCell: string;
+  sourceClassKey: string;
+  sourceClassLabel: string;
+  rawName: string;
+  studentName: string;
+  sourcePhone: string;
+  grade: number | null;
+  classroomId: string | null;
+  decision: MofaxiaoClassRosterDecision;
+  studentId: string | null;
+  sourceNote: string;
+}
+
+export type MofaxiaoClassRosterMatchKind =
+  | "existing_student"
+  | "created_student"
+  | "already_enrolled"
+  | "same_batch"
+  | "skipped";
+
+export interface MofaxiaoClassRosterImportBatchRow {
+  row: number;
+  sourceRow: number;
+  sourceCell: string;
+  sourceName: string;
+  classroomId: string | null;
+  classroomName: string;
+  decision: MofaxiaoClassRosterDecision;
+  studentId: string | null;
+  status: "valid" | "duplicate" | "error" | "inserted" | "skipped";
+  errors: string[];
+  targetId: string | null;
+  matchKind: MofaxiaoClassRosterMatchKind;
+}
+
+export interface MofaxiaoClassRosterImportBatchResult {
+  batchId: string;
+  status: "validated" | "completed";
+  templateVersion: typeof MOFAXIAO_CLASS_ROSTER_IMPORT_TEMPLATE_VERSION;
+  inputHash: string;
+  fileName: string;
+  fileHash: string;
+  sheetName: string;
+  batchLabel: string;
+  total: number;
+  valid: number;
+  dup: number;
+  skipped: number;
+  errorCount: number;
+  inserted: number;
+  createdStudents: number;
+  expiresAt: string;
+  rows: MofaxiaoClassRosterImportBatchRow[];
+}
+
+export interface MofaxiaoClassRosterImportBatchSummary {
+  batchId: string;
+  status: "validated" | "completed";
+  fileName: string;
+  batchLabel: string;
+  total: number;
+  valid: number;
+  duplicates: number;
+  skipped: number;
+  errors: number;
+  inserted: number;
+  createdAt: string;
+  completedAt: string | null;
+}
+
+export interface PreviewMofaxiaoClassRosterImportInput {
+  templateVersion: typeof MOFAXIAO_CLASS_ROSTER_IMPORT_TEMPLATE_VERSION;
+  idempotencyKey: string;
+  fileName: string;
+  fileHash: string;
+  sheetName: string;
+  batchLabel: string;
+  rows: MofaxiaoClassRosterImportRow[];
+}
+
+export interface ClassRosterTargetOption {
+  id: string;
+  name: string;
+  grade: number | null;
+  termId: string | null;
+  schoolYear: number | null;
+  season: number | null;
+  courseTitle: string;
+  courseFamilySlug: string;
+  classType: string;
+  campusName: string;
+  roomName: string;
+  primaryTeacherNames: string[];
+  capacity: number | null;
+  activeEnrollmentCount: number;
+}
+
+export interface ClassRosterStudentOption {
+  id: string;
+  name: string;
+  phone: string;
+  parentPhone: string;
+  grade: number | null;
+  status: string;
+}
+
+export interface ClassRosterSavedMapping {
+  sourceClassKey: string;
+  classroomId: string;
+}
+
 export const STAFF_IMPORT_TEMPLATE_VERSION = "mathin-staff-v1" as const;
 
 export interface ImportStaffRow {
