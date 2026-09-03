@@ -51,7 +51,9 @@ export async function SessionPrepPanel({
   );
 
   const [template, learningSetup, coursewareLearningCheckPages, sessionDocs, sessionAssets, prepArtifacts, teacherPreparation] = await Promise.all([
-    !detail.coursewareFrozenAt ? getSessionCoursewareTemplate(detail.id) : Promise.resolve([]),
+    !detail.coursewareFrozenAt && (canViewPrepArchive || canAuthorMicrocourseProposal)
+      ? getSessionCoursewareTemplate(detail.id)
+      : Promise.resolve([]),
     canReadSessionMemberState ? getSessionLearningSetup(detail.id) : Promise.resolve(null),
     canViewPrepArchive ? getSessionCoursewareLearningCheckPages(detail.id) : Promise.resolve([]),
     canViewPrepArchive ? getSessionPageDocs(detail.id).catch(() => []) : Promise.resolve([]),

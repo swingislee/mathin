@@ -127,6 +127,7 @@ describe("teacher microcourse authoring UX", () => {
     const variantMigration = read("supabase", "migrations", "20260829000600_teacher_microcourse_class_root.sql");
     const runtimeMigration = read("supabase", "migrations", "20260828000110_teacher_microcourse_variant_runtime.sql");
     const continuityMigration = read("supabase", "migrations", "20260903000200_teacher_microcourse_session_runtime_continuity.sql");
+    const readScopeMigration = read("supabase", "migrations", "20260903000300_session_courseware_read_scope.sql");
     const zh = read("messages", "zh.json");
     const en = read("messages", "en.json");
 
@@ -134,7 +135,7 @@ describe("teacher microcourse authoring UX", () => {
     expect(variantMigration).toContain("set selected_teacher_microcourse_id = new_microcourse_id");
     expect(runtimeMigration).toContain("if frozen_at is null and selected_microcourse_id is not null then");
     expect(runtimeMigration).toContain("public.can_read_teacher_microcourse_draft(selected_microcourse_id, uid)");
-    expect(prep).toContain("!detail.coursewareFrozenAt ? getSessionCoursewareTemplate(detail.id)");
+    expect(prep).toContain("!detail.coursewareFrozenAt && (canViewPrepArchive || canAuthorMicrocourseProposal)");
     expect(prep).toContain("const editorTemplate = frozenEditorState?.template ?? template");
     expect(prep).not.toContain("selectedMicrocourseTemplate");
     expect(prep).toContain("customOnly={!detail.lectureId && sessionDocs.length === 0}");
@@ -154,6 +155,14 @@ describe("teacher microcourse authoring UX", () => {
     expect(continuityMigration).toContain("courseware_value := public.resolve_cw_courseware_overlay(");
     expect(continuityMigration).toContain("get_session_preparation_review_page_docs");
     expect(continuityMigration).toContain("list_session_preparation_review_resolved_assets");
+    expect(readScopeMigration).toContain("public.can_read_session_courseware");
+    expect(readScopeMigration).toContain("public.is_session_teacher(session.id, p_uid)");
+    expect(readScopeMigration).toContain("public.is_classroom_staff_assigned(session.classroom_id, p_uid)");
+    expect(readScopeMigration).toContain("public.can_review_session_preparation(session.id, p_uid)");
+    expect(readScopeMigration).toContain("public.has_perm(p_uid, 'class.view.all')");
+    expect(readScopeMigration).toContain("session.lecture_id is null");
+    expect(readScopeMigration).toContain("public.has_perm(p_uid, 'courseware.review')");
+    expect(readScopeMigration.match(/not public\.can_read_session_courseware\(p_session_id, uid\)/g)).toHaveLength(4);
     expect(route).toContain("variants.find((variant) => variant.selectedForSession)");
     expect(switcher).toContain("!activeVariant.canEdit && session.canCreate");
     expect(switcher).toContain("forkTeacherMicrocourseVariantAction");

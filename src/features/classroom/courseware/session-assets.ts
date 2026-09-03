@@ -73,9 +73,9 @@ export async function getSessionH5BindingUrls(pages: readonly SessionPageDoc[]):
 }
 
 /**
- * 课堂取页 doc(P6-5,D4):get_session_page_docs 在数据库内校验教室成员,
+ * 课堂取页 doc(P6-5,D4):get_session_page_docs 在数据库内校验课次课件读取关系，
  * 冻结课次用冻结 pin 的 release,未冻结(候课/试讲)回退讲次 current release。
- * 学生/家长不直读 cw_* 表,这是课堂侧唯一的页内容通道。
+ * 学生/家长不直读 cw_* 表,这是课堂/备课侧唯一的页内容通道。
  */
 export async function getSessionPageDocs(sessionId: string): Promise<SessionPageDoc[]> {
   const parsed = sessionIdSchema.safeParse(sessionId);
@@ -101,8 +101,8 @@ export async function getSessionPageDocs(sessionId: string): Promise<SessionPage
 /**
  * 为候课预载批量签发本课次冻结对象的临时 URL。
  *
- * `list_session_resolved_assets` 在数据库内强制校验当前用户确为教室成员；这里仅在
- * 成员范围已经收窄后使用 service key 签名。学生从不直接读取 cw-objects 桶。
+ * `list_session_resolved_assets` 在数据库内强制校验当前用户拥有课次课件读取关系；
+ * 这里只在范围已经收窄后使用 service key 签名。学生从不直接读取 cw-objects 桶。
  */
 export async function getSessionAssetUrls(sessionId: string): Promise<SessionAssetUrl[]> {
   const parsed = sessionIdSchema.safeParse(sessionId);
