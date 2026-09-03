@@ -199,7 +199,7 @@ cleanup(){ case "$tmp" in "$backup_root"/.*.partial) rm -rf -- "$tmp" ;; esac; }
 trap cleanup EXIT
 docker exec "$container" pg_dump -U postgres -d postgres --format=custom --no-owner >"$tmp/database.dump"
 docker exec "$container" psql -U postgres -d postgres -X -qAt -v ON_ERROR_STOP=1 -c "begin transaction isolation level repeatable read read only; select ${countsExpression.replaceAll("\n", " ")}; rollback;" >"$tmp/database-counts.json"
-docker exec -i "$container" pg_restore -l - <"$tmp/database.dump" >"$tmp/database.toc"
+docker exec -i "$container" pg_restore -l <"$tmp/database.dump" >"$tmp/database.toc"
 printf '%s' '${hashesB64}' | base64 -d >"$tmp/migration-hashes.json"
 printf 'candidate_commit=%s\\ndatabase_fingerprint=${EXPECTED_FINGERPRINT}\\ncreated_at=%s\\nscope=postgresql-only-courseware-workspace\\n' "$commit" "$stamp" >"$tmp/manifest.env"
 (cd "$tmp" && sha256sum database.dump database-counts.json database.toc migration-hashes.json manifest.env >SHA256SUMS)
