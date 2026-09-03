@@ -8,6 +8,7 @@ import {
   matchMofaxiaoRosterStudent,
   parseMofaxiaoClassRosterWorkbook,
   preferredMofaxiaoRosterClassCandidate,
+  teacherInitialsForClassName,
 } from "@/features/school/mofaxiao-class-roster-import";
 import type { ClassRosterStudentOption, ClassRosterTargetOption } from "@/features/school/actions/types";
 
@@ -176,11 +177,16 @@ describe("魔法校班级学员花名册导入", () => {
     expect(preferredMofaxiaoRosterClassCandidate(source, [{ ...base, name: "三年级秋季A+周三17:00", campusName: "利港" }])).toBeNull();
     expect(preferredMofaxiaoRosterClassCandidate({ ...source, weekday: "周六", time: "9.12开课10:00-12:00" }, [base])).toBeNull();
 
+    expect(teacherInitialsForClassName("薛立志")).toBe("XLZ");
+    expect(teacherInitialsForClassName("袁理娟")).toBe("YLJ");
+    expect(teacherInitialsForClassName("张灿")).toBe("ZC");
+    expect(teacherInitialsForClassName("XLZ")).toBe("XLZ");
     expect(buildMofaxiaoRosterDefaultClass(source)).toEqual(expect.objectContaining({
-      name: "【培优思维】三年级秋季B｜紫辰阁薛立志周三17:00-19:30",
+      name: "【培优思维】三年级秋季B｜紫辰阁XLZ周三17:00-19:30",
       system: "培优思维",
       classType: "B",
       campusName: "紫辰阁",
+      teacherName: "薛立志",
       schoolYear: 2026,
       season: 2,
     }));
