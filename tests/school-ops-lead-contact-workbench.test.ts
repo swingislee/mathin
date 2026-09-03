@@ -138,7 +138,9 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(workbench).toContain("active && outcome");
     expect(workbench).toContain('outcome === "connected"');
     expect(workbench).toContain("contactNotePlaceholder_${outcome}");
-    expect(workbench).not.toContain("QUICK_SUBMIT_OUTCOMES");
+    expect(workbench).toContain("QUICK_SUBMIT_OUTCOMES");
+    expect(workbench).toContain("MessageSquarePlus");
+    expect(workbench).toContain("deferSubmit");
     expect(workbench).not.toContain("<Select");
     expect(workbench).not.toContain("DateTimePicker");
     expect(workbench).not.toContain('t("nextAction")');

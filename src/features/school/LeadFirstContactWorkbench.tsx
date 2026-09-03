@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, LoaderCircle } from "lucide-react";
+import { Check, LoaderCircle, MessageSquarePlus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAction } from "@/components/action-form";
@@ -25,6 +25,7 @@ const CONTACT_OUTCOME_SHORTCUTS = [
   { key: "3", outcome: "declined" },
   { key: "4", outcome: "invalid_number" },
 ] as const satisfies ReadonlyArray<{ key: string; outcome: LeadContactOutcome }>;
+const QUICK_SUBMIT_OUTCOMES: readonly LeadContactOutcome[] = ["unreachable", "invalid_number"];
 const ACQUISITION_TIME_ZONE = "Asia/Shanghai";
 
 type TernaryChoice = "" | "yes" | "no";
@@ -159,7 +160,7 @@ function ContactEntryRow({
     contactRun.run(lead.id, inputFor(nextOutcome));
   };
 
-  const chooseOutcome = (nextOutcome: LeadContactOutcome) => {
+  const chooseOutcome = (nextOutcome: LeadContactOutcome, deferSubmit = false) => {
     onActivate(lead.id);
     setOutcome(nextOutcome);
     if (nextOutcome === "unreachable" || nextOutcome === "invalid_number") {
@@ -169,6 +170,7 @@ function ContactEntryRow({
     } else if (nextOutcome === "declined") {
       setVisitState("");
     }
+    if (QUICK_SUBMIT_OUTCOMES.includes(nextOutcome) && !deferSubmit) submit(nextOutcome);
   };
 
   const handleRowKeyDown = (event: React.KeyboardEvent<HTMLTableRowElement>) => {
@@ -271,27 +273,43 @@ function ContactEntryRow({
         <div className="flex flex-wrap gap-1.5">
           {CONTACT_OUTCOME_SHORTCUTS.map(({ key, outcome: value }) => {
             const selected = outcome === value;
+            const quickSubmit = QUICK_SUBMIT_OUTCOMES.includes(value);
             return (
-              <Button
-                key={value}
-                type="button"
-                size="sm"
-                variant={selected ? "primary" : "secondary"}
-                className={cn(
-                  "h-8 px-3 text-xs",
-                  selected && "shadow-sm",
-                )}
-                disabled={contactRun.pending}
-                aria-pressed={selected}
-                onClick={() => chooseOutcome(value)}
-              >
-                {contactRun.pending && selected
-                  ? <LoaderCircle className="size-3.5 animate-spin motion-reduce:animate-none" />
-                  : selected
-                    ? <Check className="size-3.5" />
-                    : <span className="font-mono text-[11px] text-muted">{key}</span>}
-                {t(`contactOutcome_${value}`)}
-              </Button>
+              <div key={value} className="flex items-center gap-0.5">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={selected ? "primary" : "secondary"}
+                  className={cn(
+                    "h-8 px-3 text-xs",
+                    selected && "shadow-sm",
+                  )}
+                  disabled={contactRun.pending}
+                  aria-pressed={selected}
+                  onClick={() => chooseOutcome(value)}
+                >
+                  {contactRun.pending && selected
+                    ? <LoaderCircle className="size-3.5 animate-spin motion-reduce:animate-none" />
+                    : selected
+                      ? <Check className="size-3.5" />
+                      : <span className="font-mono text-[11px] text-muted">{key}</span>}
+                  {t(`contactOutcome_${value}`)}
+                </Button>
+                {quickSubmit ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 w-8 px-0"
+                    disabled={contactRun.pending}
+                    aria-label={t("contactAddNoteBeforeSave", { outcome: t(`contactOutcome_${value}`) })}
+                    title={t("contactAddNoteBeforeSave", { outcome: t(`contactOutcome_${value}`) })}
+                    onClick={() => chooseOutcome(value, true)}
+                  >
+                    <MessageSquarePlus className="size-3.5" />
+                  </Button>
+                ) : null}
+              </div>
             );
           })}
         </div>
