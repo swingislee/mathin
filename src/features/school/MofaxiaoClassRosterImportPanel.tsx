@@ -41,6 +41,7 @@ import {
 } from "./actions/types";
 import { DashboardSection, DashboardTableShell, StatusStrip } from "./dashboard-page";
 import {
+  defaultMofaxiaoRosterStudentDecision,
   listMofaxiaoRosterClassCandidates,
   matchMofaxiaoRosterStudent,
   MofaxiaoClassRosterParseError,
@@ -72,16 +73,6 @@ interface MembershipView {
 
 function filenameLabel(fileName: string): string {
   return fileName.replace(/\.xlsx$/i, "").slice(0, 160);
-}
-
-function initialDecision(item: MembershipView): DecisionState {
-  if (item.match.kind === "exact_phone" && item.match.suggestedStudentId) {
-    return { decision: "link_existing", studentId: item.match.suggestedStudentId };
-  }
-  if (item.match.kind === "review" && item.student.sourceNote.length > 1) {
-    return { decision: "skip", studentId: null };
-  }
-  return { decision: "pending", studentId: item.match.suggestedStudentId };
 }
 
 function StudentPicker({
@@ -237,7 +228,7 @@ export function MofaxiaoClassRosterImportPanel({
           student,
           match: matchMofaxiaoRosterStudent(student, students),
         };
-        nextDecisions[view.key] = initialDecision(view);
+        nextDecisions[view.key] = defaultMofaxiaoRosterStudentDecision(view.match, canCreateStudents);
       }
     }
     setClassMappings(nextClassMappings);
@@ -285,15 +276,6 @@ export function MofaxiaoClassRosterImportPanel({
         studentId: decision === "link_existing" ? studentId ?? current[item.key]?.studentId ?? item.match.suggestedStudentId : null,
       },
     }));
-    resetServerBatch();
-  };
-
-  const bulkResolve = (predicate: (item: MembershipView) => boolean, resolve: (item: MembershipView) => DecisionState) => {
-    setDecisions((current) => {
-      const next = { ...current };
-      for (const item of membershipViews) if (predicate(item)) next[item.key] = resolve(item);
-      return next;
-    });
     resetServerBatch();
   };
 
@@ -430,12 +412,6 @@ export function MofaxiaoClassRosterImportPanel({
               { label: t("skippedStudents"), value: Object.values(decisions).filter((item) => item.decision === "skip").length },
               { label: t("unresolvedStudents"), value: unresolvedDecisionCount, tone: unresolvedDecisionCount > 0 ? "critical" : "default" },
             ]} />
-            <div className="mb-4 flex flex-wrap gap-2">
-              <Button type="button" variant="secondary" size="sm" disabled={pending} onClick={() => bulkResolve((item) => item.match.kind === "unique_name" && Boolean(item.match.suggestedStudentId), (item) => ({ decision: "link_existing", studentId: item.match.suggestedStudentId }))}>{t("acceptUniqueNames")}</Button>
-              <Button type="button" variant="secondary" size="sm" disabled={pending || !canCreateStudents} onClick={() => bulkResolve((item) => item.match.kind === "new" && !item.student.needsReview, () => ({ decision: "create_student", studentId: null }))}>{t("createUnmatched")}</Button>
-              <Button type="button" variant="secondary" size="sm" disabled={pending} onClick={() => bulkResolve((item) => item.match.kind === "review" && Boolean(item.match.suggestedStudentId), (item) => ({ decision: "link_existing", studentId: item.match.suggestedStudentId }))}>{t("acceptReviewedMatches")}</Button>
-              <Button type="button" variant="ghost" size="sm" disabled={pending} onClick={() => bulkResolve((item) => item.student.needsReview, () => ({ decision: "skip", studentId: null }))}>{t("skipReviewed")}</Button>
-            </div>
             {!canCreateStudents ? <p className="mb-3 text-xs text-rose">{t("cannotCreateStudents")}</p> : null}
             <DashboardTableShell>
               <Table className="w-full min-w-[88rem] text-xs">
@@ -443,9 +419,9 @@ export function MofaxiaoClassRosterImportPanel({
                 <TableBody>{membershipViews.slice(0, PREVIEW_LIMIT).map((item) => {
                   const state = decisions[item.key] ?? { decision: "pending", studentId: null };
                   const target = targetClasses.find((option) => option.id === classMappings[item.sourceClass.sourceClassKey]);
-                  return <TableRow key={item.key}>
+                  return <TableRow key={item.key} className={item.student.needsReview ? "bg-rose/5 hover:bg-rose/10" : undefined}>
                     <TableCell className="font-mono text-muted">{item.student.sourceCell}</TableCell>
-                    <TableCell><span className="font-medium">{item.student.rawName}</span>{item.student.rawName !== item.student.name ? <span className="block text-muted">→ {item.student.name}</span> : null}{item.student.needsReview ? <Badge variant="outline" className="mt-1">{t("needsReview")}</Badge> : null}</TableCell>
+                    <TableCell><span className="font-medium">{item.student.rawName}</span>{item.student.rawName !== item.student.name ? <span className="block text-rose">→ {item.student.name}</span> : null}{item.student.needsReview ? <Badge variant="danger" className="mt-1">{t("needsReview")}</Badge> : null}</TableCell>
                     <TableCell className="font-mono">{item.student.phone || "—"}</TableCell>
                     <TableCell><span>{target?.name ?? t("unmapped")}</span><span className="block text-muted">{item.sourceClass.gradeText} · {item.sourceClass.classType}</span></TableCell>
                     <TableCell><Badge variant={item.match.kind === "exact_phone" ? "secondary" : item.match.kind === "new" ? "outline" : item.match.kind === "review" ? "danger" : "outline"}>{t(`match_${item.match.kind}`)}</Badge></TableCell>

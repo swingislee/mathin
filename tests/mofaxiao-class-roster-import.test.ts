@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  defaultMofaxiaoRosterStudentDecision,
   listMofaxiaoRosterClassCandidates,
   matchMofaxiaoRosterStudent,
   parseMofaxiaoClassRosterWorkbook,
@@ -29,18 +30,19 @@ describe("魔法校班级学员花名册导入", () => {
           row({ 29: "思维体系" }),
           row({
             29: "一年级", 30: "秋季", 31: "A+", 32: "Z312", 33: "张灿", 34: "周六", 35: "10:00-12:00",
-            40: "陈天欣", 41: "周张绾宜（王）", 42: "王博煊待定",
+            40: "陈天欣", 41: "周张绾宜（王）", 42: "王博煊待定", 43: "李梓涵（暑期备注）",
           }),
         ],
       },
     ]);
 
-    expect(parsed).toMatchObject({ sheetName: "26年暑秋在读学员", schoolYear: 2026, season: 2, memberships: 3 });
+    expect(parsed).toMatchObject({ sheetName: "26年暑秋在读学员", schoolYear: 2026, season: 2, memberships: 4 });
     expect(parsed.classes[0]).toMatchObject({ campus: "紫辰", system: "思维体系", grade: 1, teacher: "张灿" });
     expect(parsed.classes[0].students).toEqual([
       expect.objectContaining({ sourceCell: "AO3", rawName: "陈天欣", name: "陈天欣", phone: "18255178761", needsReview: false }),
       expect.objectContaining({ sourceCell: "AP3", rawName: "周张绾宜（王）", name: "周张绾宜", sourceNote: "王", needsReview: true }),
       expect.objectContaining({ sourceCell: "AQ3", rawName: "王博煊待定", name: "王博煊", sourceNote: "待定", needsReview: true }),
+      expect.objectContaining({ sourceCell: "AR3", rawName: "李梓涵（暑期备注）", name: "李梓涵", sourceNote: "暑期备注", needsReview: true }),
     ]);
   });
 
@@ -52,6 +54,63 @@ describe("魔法校班级学员花名册导入", () => {
     expect(matchMofaxiaoRosterStudent({
       sourceRow: 3, sourceCell: "AO3", rawName: "陈天佑", name: "陈天佑", phone: "18255178761", sourceNote: "", needsReview: false,
     }, options)).toMatchObject({ kind: "exact_phone", suggestedStudentId: "b" });
+  });
+
+  it("为唯一同名、未找到档案和带备注姓名预填安全默认值，只保留真实歧义", () => {
+    const uniqueOptions: ClassRosterStudentOption[] = [
+      { id: "existing", name: "周张绾宜", phone: "", parentPhone: "", grade: 1, status: "enrolled" },
+    ];
+    const reviewedStudent = {
+      sourceRow: 3,
+      sourceCell: "AP3",
+      rawName: "周张绾宜（王）",
+      name: "周张绾宜",
+      phone: "",
+      sourceNote: "王",
+      needsReview: true,
+    };
+    const reviewedMatch = matchMofaxiaoRosterStudent(reviewedStudent, uniqueOptions);
+    expect(reviewedMatch).toMatchObject({ kind: "review", suggestedStudentId: "existing" });
+    expect(defaultMofaxiaoRosterStudentDecision(reviewedMatch, true)).toEqual({
+      decision: "link_existing",
+      studentId: "existing",
+    });
+
+    const unmatched = matchMofaxiaoRosterStudent({
+      ...reviewedStudent,
+      rawName: "新学员",
+      name: "新学员",
+      sourceNote: "",
+      needsReview: false,
+    }, uniqueOptions);
+    expect(defaultMofaxiaoRosterStudentDecision(unmatched, true)).toEqual({
+      decision: "create_student",
+      studentId: null,
+    });
+    expect(defaultMofaxiaoRosterStudentDecision(unmatched, false)).toEqual({
+      decision: "pending",
+      studentId: null,
+    });
+
+    const reviewedUnmatched = matchMofaxiaoRosterStudent({
+      ...reviewedStudent,
+      rawName: "新学员（待确认）",
+      name: "新学员",
+      sourceNote: "待确认",
+    }, uniqueOptions);
+    expect(defaultMofaxiaoRosterStudentDecision(reviewedUnmatched, true)).toEqual({
+      decision: "create_student",
+      studentId: null,
+    });
+
+    const reviewedAmbiguous = matchMofaxiaoRosterStudent(reviewedStudent, [
+      ...uniqueOptions,
+      { ...uniqueOptions[0], id: "another" },
+    ]);
+    expect(defaultMofaxiaoRosterStudentDecision(reviewedAmbiguous, true)).toEqual({
+      decision: "pending",
+      studentId: null,
+    });
   });
 
   it("只有学期、年级、主讲、校区与班型共同形成唯一高置信结果时才自动映射班级", () => {
@@ -127,6 +186,7 @@ describe("魔法校班级学员花名册导入", () => {
     const root = process.cwd();
     const read = (...segments: string[]) => fs.readFileSync(path.join(root, ...segments), "utf8");
     const action = read("src", "features", "school", "actions", "mofaxiao-class-roster-imports.ts");
+    const panel = read("src", "features", "school", "MofaxiaoClassRosterImportPanel.tsx");
     const optionReader = read("src", "features", "school", "class-roster-imports.ts");
     const routes = read("src", "features", "school", "dashboard-routes.ts");
     const migration = read("supabase", "migrations", "20260903000800_mofaxiao_class_roster_import.sql");
@@ -137,6 +197,8 @@ describe("魔法校班级学员花名册导入", () => {
     );
 
     expect(action).toContain(".strict()");
+    expect(panel).toContain("defaultMofaxiaoRosterStudentDecision(view.match, canCreateStudents)");
+    expect(panel).toContain('"bg-rose/5 hover:bg-rose/10"');
     expect(action).toContain('p_source_system: "mofaxiao"');
     expect(optionReader).toContain('.rpc("list_mofaxiao_class_roster_target_options")');
     expect(optionReader).not.toContain('.from("classrooms")');
