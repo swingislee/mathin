@@ -1,28 +1,11 @@
 "use client";
 
-import { LoaderCircle, MessageSquarePlus, PhoneCall } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useRef, useState } from "react";
-import { useAction } from "@/components/action-form";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { useRouter } from "@/i18n/navigation";
-import { recordLeadContactAction, type LeadContactInput } from "./actions/leads";
-import { fromSelectValue, toSelectValue } from "./controls";
 import {
   DashboardTableColumnHeader,
   DashboardTableShell,
@@ -47,174 +30,16 @@ import { LEAD_STATUSES, type LeadPoolRow } from "./lead-contract";
 const CONTACT_OUTCOMES = ["unreachable", "connected", "declined", "invalid_number"] as const;
 const ACQUISITION_TIME_ZONE = "Asia/Shanghai";
 
-function ContactDialog({
-  lead,
-  open,
-  onOpenChange,
-}: {
-  lead: LeadPoolRow | null;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
-  const t = useTranslations("school.leads");
-  const router = useRouter();
-  const [outcome, setOutcome] = useState<LeadContactInput["outcome"] | "">("");
-  const [note, setNote] = useState("");
-  const [wechatState, setWechatState] = useState("");
-  const [visitState, setVisitState] = useState("");
-  const [interestLevel, setInterestLevel] = useState("");
-
-  const reset = () => {
-    setOutcome("");
-    setNote("");
-    setWechatState("");
-    setVisitState("");
-    setInterestLevel("");
-  };
-  const contactRun = useAction(recordLeadContactAction, {
-    successMessage: t("contactSaved"),
-    errorMessage: {
-      LEAD_UNASSIGNED: t("contactNeedsOwner"),
-      LEAD_CLOSED: t("contactClosed"),
-      default: t("contactFailed"),
-    },
-    onSuccess: () => {
-      reset();
-      onOpenChange(false);
-      router.refresh();
-    },
-  });
-
-  const reachable = outcome === "connected" || outcome === "declined";
-  const submit = () => {
-    if (!lead || !outcome) return;
-    contactRun.run(lead.id, {
-      outcome,
-      note,
-      wechatAdded: reachable ? (wechatState === "yes" ? true : wechatState === "no" ? false : null) : null,
-      visitCommitted: outcome === "connected" ? (visitState === "yes" ? true : visitState === "no" ? false : null) : null,
-      interestLevel: interestLevel === "A" || interestLevel === "B" || interestLevel === "C" ? interestLevel : null,
-    });
-  };
-
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        if (!next && !contactRun.pending) reset();
-        onOpenChange(next);
-      }}
-    >
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>{lead ? t("contactTitle", { name: lead.provisionalStudentName }) : t("contactTitleFallback")}</DialogTitle>
-        </DialogHeader>
-        {lead ? (
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-              <span className="font-medium text-ink">{lead.phone}</span>
-              <span className="text-muted">{lead.gradeText || (lead.gradeHint ? t("gradeValue", { grade: lead.gradeHint }) : t("unknownGrade"))}</span>
-            </div>
-            <p className="text-xs leading-5 text-muted">{t("contactAutoFields")}</p>
-            <Separator />
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Label className="grid gap-1.5 text-sm font-normal">
-                <span>{t("contactOutcome")}</span>
-                <Select
-                  value={outcome || undefined}
-                  onValueChange={(value) => {
-                    const next = value as LeadContactInput["outcome"];
-                    setOutcome(next);
-                    if (next === "unreachable" || next === "invalid_number") {
-                      setWechatState("");
-                      setVisitState("");
-                    }
-                  }}
-                >
-                  <SelectTrigger><SelectValue placeholder={t("contactOutcomePlaceholder")} /></SelectTrigger>
-                  <SelectContent>
-                    {(["unreachable", "connected", "declined", "invalid_number"] as const).map((value) => (
-                      <SelectItem key={value} value={value}>{t(`contactOutcome_${value}`)}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Label>
-              <Label className="grid gap-1.5 text-sm font-normal">
-                <span>{t("interestLevel")}</span>
-                <Select value={toSelectValue(interestLevel)} onValueChange={(value) => setInterestLevel(fromSelectValue(value))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={toSelectValue("")}>{t("interestUnrated")}</SelectItem>
-                    {(["A", "B", "C"] as const).map((value) => (
-                      <SelectItem key={value} value={value}>{t(`interest_${value}`)}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Label>
-              <Label className="grid gap-1.5 text-sm font-normal">
-                <span>{t("wechatFact")}</span>
-                <Select value={toSelectValue(wechatState)} onValueChange={(value) => setWechatState(fromSelectValue(value))} disabled={!reachable}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={toSelectValue("")}>{t("notDiscussed")}</SelectItem>
-                    <SelectItem value="yes">{t("wechatAdded")}</SelectItem>
-                    <SelectItem value="no">{t("wechatNotAdded")}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </Label>
-              <Label className="grid gap-1.5 text-sm font-normal">
-                <span>{t("visitFact")}</span>
-                <Select value={toSelectValue(visitState)} onValueChange={(value) => setVisitState(fromSelectValue(value))} disabled={outcome !== "connected"}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={toSelectValue("")}>{t("notDiscussed")}</SelectItem>
-                    <SelectItem value="yes">{t("visitCommitted")}</SelectItem>
-                    <SelectItem value="no">{t("visitNotCommitted")}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </Label>
-              <Label className="grid gap-1.5 text-sm font-normal sm:col-span-2">
-                <span>{t("contactNote")}</span>
-                <Textarea
-                  value={note}
-                  onChange={(event) => setNote(event.target.value)}
-                  rows={3}
-                  maxLength={2000}
-                  placeholder={t("contactNotePlaceholder")}
-                />
-              </Label>
-            </div>
-          </div>
-        ) : null}
-        <DialogFooter>
-          <Button type="button" variant="ghost" disabled={contactRun.pending} onClick={() => onOpenChange(false)}>{t("cancel")}</Button>
-          <Button type="button" disabled={!lead || !outcome || contactRun.pending} onClick={submit}>
-            {contactRun.pending ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" /> : <PhoneCall className="size-4" />}
-            {t("saveContact")}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 export function LeadPoolTable({
   leads,
   locale,
-  currentUserId,
   canAssign,
-  canContact,
-  canContactAll,
 }: {
   leads: LeadPoolRow[];
   locale: string;
-  currentUserId: string;
   canAssign: boolean;
-  canContact: boolean;
-  canContactAll: boolean;
 }) {
   const t = useTranslations("school.leads");
-  const [contactTarget, setContactTarget] = useState<LeadPoolRow | null>(null);
   const extendRangeRef = useRef(false);
   const [columnFilters, setColumnFilters] = useState<LeadTableFilters>({});
   const [sort, setSort] = useState<LeadTableSort | null>(null);
@@ -234,15 +59,7 @@ export function LeadPoolTable({
       .map((lead) => lead.id),
     [visibleLeads],
   );
-  const canRecordContact = (lead: LeadPoolRow) => (
-    canContact
-    && lead.status !== "invalid"
-    && lead.status !== "converted"
-    && Boolean(lead.ownerId)
-    && (lead.ownerId === currentUserId || canContactAll)
-  );
-  const showContactActions = leads.some(canRecordContact);
-  const tableColumnCount = 7 + (canAssign ? 1 : 0) + (showContactActions ? 1 : 0);
+  const tableColumnCount = 7 + (canAssign ? 1 : 0);
   const selectedVisibleCount = visibleAssignableIds.filter((id) => selected.has(id)).length;
   const allVisibleSelected = visibleAssignableIds.length > 0
     && selectedVisibleCount === visibleAssignableIds.length;
@@ -360,7 +177,7 @@ export function LeadPoolTable({
     <>
       <DashboardTableShell>
         <Table
-          className={showContactActions ? "w-full min-w-[92rem] text-xs" : "w-full min-w-[84rem] text-xs"}
+          className="w-full min-w-[84rem] text-xs"
           containerClassName="max-h-[calc(100dvh-15rem)] overflow-auto"
         >
           <TableHeader>
@@ -391,17 +208,11 @@ export function LeadPoolTable({
               <TableHead className="sticky top-0 z-20 h-8 bg-card px-2">{columnHeader("owner", t("owner"))}</TableHead>
               <TableHead className="sticky top-0 z-20 h-8 bg-card px-2">{columnHeader("latestContact", t("latestContact"))}</TableHead>
               <TableHead className="sticky top-0 z-20 h-8 bg-card px-2">{columnHeader("status", t("status"))}</TableHead>
-              {showContactActions ? (
-                <TableHead className="sticky top-0 z-20 h-8 w-24 bg-card px-2 text-xs font-medium text-muted">
-                  {t("actions")}
-                </TableHead>
-              ) : null}
             </TableRow>
           </TableHeader>
           <TableBody>
             {visibleLeads.map((lead) => {
               const assignable = lead.status !== "invalid" && lead.status !== "converted";
-              const contactable = canRecordContact(lead);
               const sourceAttribution = [
                 lead.acquisitionPromoter ? t("promoterValue", { name: lead.acquisitionPromoter }) : "",
                 lead.acquisitionMethod,
@@ -485,16 +296,6 @@ export function LeadPoolTable({
                       {t(`status_${lead.status}`)}
                     </Badge>
                   </TableCell>
-                  {showContactActions ? (
-                    <TableCell className="px-2 py-1.5">
-                      {contactable ? (
-                        <Button type="button" variant="ghost" size="sm" className="h-7 whitespace-nowrap px-2 text-xs" onClick={() => setContactTarget(lead)}>
-                          <MessageSquarePlus className="size-4" />
-                          {lead.contactCount > 0 ? t("recordContact") : t("recordFirstContact")}
-                        </Button>
-                      ) : <span className="text-xs text-muted">—</span>}
-                    </TableCell>
-                  ) : null}
                 </TableRow>
               );
             })}
@@ -511,12 +312,6 @@ export function LeadPoolTable({
           </TableBody>
         </Table>
       </DashboardTableShell>
-      <ContactDialog
-        key={contactTarget?.id ?? "none"}
-        lead={contactTarget}
-        open={contactTarget !== null}
-        onOpenChange={(next) => { if (!next) setContactTarget(null); }}
-      />
     </>
   );
 }

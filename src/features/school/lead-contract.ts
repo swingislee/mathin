@@ -17,6 +17,18 @@ export type LeadPoolScope = "unassigned" | "mine" | "all";
 export type LeadContactOutcome = "unreachable" | "connected" | "declined" | "invalid_number";
 export type LeadInterestLevel = "A" | "B" | "C";
 
+/** Mirror the database routing rule so the entry row can preview its destination. */
+export function deriveLeadContactDestination(
+  outcome: LeadContactOutcome,
+  visitCommitted: boolean,
+): LeadStatus {
+  if (outcome === "invalid_number") return "invalid";
+  if (visitCommitted) return "intent_confirmed";
+  if (outcome === "declined") return "nurture";
+  if (outcome === "unreachable") return "uncontacted";
+  return "contacted";
+}
+
 export function parseLeadPageSize(value: string | string[] | undefined): LeadPageSize {
   const raw = Array.isArray(value) ? value[0] : value;
   const parsed = Number(raw);

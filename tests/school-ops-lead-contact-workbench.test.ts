@@ -10,7 +10,11 @@ import {
   NO_OWNER_FILTER,
 } from "@/features/school/lead-table-view";
 import { leadPaginationTokens } from "@/features/school/lead-pagination";
-import { parseLeadPageSize, type LeadPoolRow } from "@/features/school/lead-contract";
+import {
+  deriveLeadContactDestination,
+  parseLeadPageSize,
+  type LeadPoolRow,
+} from "@/features/school/lead-contract";
 
 const root = process.cwd();
 const read = (...segments: string[]) => fs.readFileSync(path.join(root, ...segments), "utf8");
@@ -80,9 +84,10 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(contact).toContain("insert into public.lead_communications");
   });
 
-  it("supports page and shift-range assignment without leaking next actions into the seed table", () => {
+  it("separates dense seed management from the inline first-contact entry table", () => {
     const page = read("src", "app", "[locale]", "dashboard", "leads", "page.tsx");
     const table = read("src", "features", "school", "LeadPoolTable.tsx");
+    const workbench = read("src", "features", "school", "LeadFirstContactWorkbench.tsx");
     const selection = read("src", "features", "school", "LeadPoolSelection.tsx");
     const columnHeader = read(
       "src",
@@ -117,12 +122,18 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(columnHeader).toContain("Popover");
     expect(columnHeader).toContain("Select");
     expect(columnHeader).toContain("Button");
-    expect(table).toContain("recordFirstContact");
-    expect(table).toContain("showContactActions");
-    expect(table).not.toContain("assignBeforeContact");
-    expect(table).toContain("contactAutoFields");
-    expect(table).not.toContain("DateTimePicker");
-    expect(table).not.toContain('t("nextAction")');
+    expect(page).toContain("LeadFirstContactWorkbench");
+    expect(page).toContain("isFirstContactWorkbench");
+    expect(workbench).toMatch(/<DashboardTableShell>\s*<Table/);
+    expect(workbench).toContain("sticky left-0");
+    expect(workbench).toContain("recordLeadContactAction");
+    expect(workbench).toContain("deriveLeadContactDestination");
+    expect(workbench).toContain("contactDestination");
+    expect(workbench).toContain('event.key === "Enter"');
+    expect(workbench).not.toContain("DateTimePicker");
+    expect(workbench).not.toContain('t("nextAction")');
+    expect(table).not.toContain("recordLeadContactAction");
+    expect(table).not.toContain("Dialog");
     expect(table).not.toContain('t("source")');
     expect(table).toContain('from "./lead-contract"');
     expect(table).not.toContain('from "./leads"');
@@ -133,6 +144,14 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(actions).toContain('p_next_action_at: nullableRpcArg<string>(null)');
     expect(query).toContain('.from("lead_communications")');
     expect(query).not.toContain('.from("lead_next_actions")');
+  });
+
+  it("previews the same automatic contact pools as the database rule", () => {
+    expect(deriveLeadContactDestination("unreachable", false)).toBe("uncontacted");
+    expect(deriveLeadContactDestination("connected", false)).toBe("contacted");
+    expect(deriveLeadContactDestination("declined", false)).toBe("nurture");
+    expect(deriveLeadContactDestination("connected", true)).toBe("intent_confirmed");
+    expect(deriveLeadContactDestination("invalid_number", false)).toBe("invalid");
   });
 
   it("filters and sorts the currently loaded lead page by its data columns", () => {

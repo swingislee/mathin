@@ -18,6 +18,7 @@ import {
 } from "@/features/school/FilterBar";
 import { LeadPoolBatchActions, LeadPoolSelectionProvider } from "@/features/school/LeadPoolSelection";
 import { LeadPoolPagination } from "@/features/school/LeadPoolPagination";
+import { LeadFirstContactWorkbench } from "@/features/school/LeadFirstContactWorkbench";
 import { LeadPoolTable } from "@/features/school/LeadPoolTable";
 import { LEAD_DEFAULT_PAGE_SIZE, type LeadPageSize } from "@/features/school/lead-contract";
 import { listLeadPool, parseLeadPoolFilters } from "@/features/school/leads";
@@ -58,6 +59,7 @@ export default async function LeadsPage({
     : filters.scope === "mine" && filters.status === "uncontacted"
       ? "first_contact"
       : filters.scope;
+  const isFirstContactWorkbench = activeQueue === "first_contact" && canContact;
   const hasKeywordFilter = Boolean(filters.q);
   const assignableIds = leads
     .filter((lead) => lead.status !== "invalid" && lead.status !== "converted")
@@ -90,10 +92,10 @@ export default async function LeadsPage({
       assignableIds={assignableIds}
     >
       <DashboardPage
-      title={t("title")}
-      description={t("intro")}
-      commandPanel={
-        <DashboardCommandPanel>
+        title={isFirstContactWorkbench ? t("firstContactTitle") : t("title")}
+        description={isFirstContactWorkbench ? t("firstContactIntro") : t("intro")}
+        commandPanel={
+          <DashboardCommandPanel>
           <DashboardCommandState>
             <DashboardCommandTabs
               ariaLabel={t("scopeLabel")}
@@ -129,42 +131,41 @@ export default async function LeadsPage({
             </FilterBar>
           </DashboardCommandFilters>
 
-          {canAssign || canImport ? (
+          {(!isFirstContactWorkbench && canAssign) || (filters.scope === "unassigned" && canImport) ? (
             <DashboardCommandActions>
-              {canAssign ? <LeadPoolBatchActions assignees={assignees} /> : null}
-              {canImport ? (
+              {!isFirstContactWorkbench && canAssign ? <LeadPoolBatchActions assignees={assignees} /> : null}
+              {filters.scope === "unassigned" && canImport ? (
                 <Link href="/dashboard/students/import" className={buttonVariants({ variant: "secondary", size: "sm" })}>
                   {t("openDataInbox")}
                 </Link>
               ) : null}
             </DashboardCommandActions>
           ) : null}
-        </DashboardCommandPanel>
-      }
-      footer={count > 0 ? (
-        <LeadPoolPagination
-          currentPage={filters.page}
-          totalPages={maxPage}
-          totalCount={count}
-          pageSize={pageSize}
-          scope={filters.scope}
-          status={filters.status}
-          q={filters.q}
-        />
-      ) : null}
-    >
-      {leads.length === 0 ? (
-        <DashboardEmptyCard>{t("empty")}</DashboardEmptyCard>
-      ) : (
-        <LeadPoolTable
-          leads={leads}
-          locale={locale}
-          currentUserId={user.id}
-          canAssign={canAssign}
-          canContact={canContact}
-          canContactAll={canContact && canScopeAll}
-        />
-      )}
+          </DashboardCommandPanel>
+        }
+        footer={count > 0 ? (
+          <LeadPoolPagination
+            currentPage={filters.page}
+            totalPages={maxPage}
+            totalCount={count}
+            pageSize={pageSize}
+            scope={filters.scope}
+            status={filters.status}
+            q={filters.q}
+          />
+        ) : null}
+      >
+        {leads.length === 0 ? (
+          <DashboardEmptyCard>{t(isFirstContactWorkbench ? "firstContactEmpty" : "empty")}</DashboardEmptyCard>
+        ) : isFirstContactWorkbench ? (
+          <LeadFirstContactWorkbench leads={leads} locale={locale} />
+        ) : (
+          <LeadPoolTable
+            leads={leads}
+            locale={locale}
+            canAssign={canAssign}
+          />
+        )}
       </DashboardPage>
     </LeadPoolSelectionProvider>
   );
