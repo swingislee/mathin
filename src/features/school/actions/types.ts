@@ -233,6 +233,7 @@ export const MOFAXIAO_CLASS_IMPORT_TEMPLATE_VERSION = "mofaxiao-classes-v1" as c
 
 export interface ClassImportCourseOption {
   id: string;
+  familySlug: string;
   title: string;
   productCode: string | null;
   catalogVersionTitle: string;

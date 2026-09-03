@@ -1,4 +1,4 @@
-import type { MofaxiaoClassImportRow } from "./actions/types";
+import type { ClassImportCourseOption, MofaxiaoClassImportRow } from "./actions/types";
 
 type WorksheetCell = unknown;
 
@@ -72,6 +72,8 @@ const SEASONS = new Map<string, number>([
   ["寒假", 3], ["冬季", 3],
   ["春季", 4],
 ]);
+const AIXUEXI_PRIMARY_MATH_FAMILY = "aixuexi-primary-math";
+const INTEGRATED_THINKING_LEVELS = new Set(["G+", "A+"]);
 
 export type MofaxiaoClassParseErrorCode = "EMPTY_SHEET" | "UNRECOGNIZED_HEADERS" | "MISSING_REQUIRED_HEADERS";
 
@@ -103,6 +105,50 @@ function normalizeHeader(value: string): string {
 
 export function normalizeClassImportText(value: string): string {
   return value.normalize("NFKC").toLocaleLowerCase("zh-CN").replace(/[\s\u3000]+/g, "");
+}
+
+export function isMofaxiaoIntegratedThinkingCourse(row: Pick<MofaxiaoClassImportRow, "courseName">): boolean {
+  return normalizeClassImportText(row.courseName).includes("贯通思维");
+}
+
+function courseMatchesGradeAndSeason(
+  row: Pick<MofaxiaoClassImportRow, "grade" | "season">,
+  course: ClassImportCourseOption,
+): boolean {
+  return (row.grade === null || course.grade === row.grade)
+    && (row.season === null || course.season === null || course.season === row.season);
+}
+
+export function listMofaxiaoClassCourseCandidates(
+  row: Pick<MofaxiaoClassImportRow, "courseName" | "grade" | "season">,
+  courseOptions: readonly ClassImportCourseOption[],
+): ClassImportCourseOption[] {
+  const integratedThinking = isMofaxiaoIntegratedThinkingCourse(row);
+  return courseOptions
+    .filter((course) => courseMatchesGradeAndSeason(row, course)
+      && (!integratedThinking || (
+        course.familySlug === AIXUEXI_PRIMARY_MATH_FAMILY
+        && INTEGRATED_THINKING_LEVELS.has(course.classType)
+      )))
+    .sort((left, right) => {
+      const leftExact = normalizeClassImportText(left.title) === normalizeClassImportText(row.courseName) ? 1 : 0;
+      const rightExact = normalizeClassImportText(right.title) === normalizeClassImportText(row.courseName) ? 1 : 0;
+      return rightExact - leftExact
+        || Number(right.catalogVersionCurrent) - Number(left.catalogVersionCurrent)
+        || left.title.localeCompare(right.title, "zh-CN");
+    });
+}
+
+export function preferredMofaxiaoClassCourseCandidate(
+  row: Pick<MofaxiaoClassImportRow, "courseName" | "grade" | "season">,
+  courseOptions: readonly ClassImportCourseOption[],
+): ClassImportCourseOption | null {
+  const candidates = listMofaxiaoClassCourseCandidates(row, courseOptions);
+  const eligible = isMofaxiaoIntegratedThinkingCourse(row)
+    ? candidates
+    : candidates.filter((course) => normalizeClassImportText(course.title) === normalizeClassImportText(row.courseName));
+  const current = eligible.filter((course) => course.catalogVersionCurrent);
+  return current.length === 1 ? current[0] : eligible.length === 1 ? eligible[0] : null;
 }
 
 function headerMapping(row: readonly WorksheetCell[]): Map<FieldKey, number> {

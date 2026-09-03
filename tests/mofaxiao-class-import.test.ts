@@ -4,8 +4,11 @@ import { describe, expect, it } from "vitest";
 import {
   inferMofaxiaoSchoolYearStart,
   isSupportedMofaxiaoClassType,
+  listMofaxiaoClassCourseCandidates,
   parseMofaxiaoClassWorksheet,
+  preferredMofaxiaoClassCourseCandidate,
 } from "@/features/school/mofaxiao-class-import";
+import type { ClassImportCourseOption } from "@/features/school/actions/types";
 
 const headers = [
   "班级ID", "班级名称", "授课方式", "课程名称", "课程类型", "进度", "学科", "年级", "学期", "班型",
@@ -75,6 +78,29 @@ describe("魔法校班级表解析", () => {
     expect(inferMofaxiaoSchoolYearStart("2026-09-05", 2, 2025)).toBe(2026);
     expect(inferMofaxiaoSchoolYearStart("2027-03-01", 4, 2025)).toBe(2026);
     expect(inferMofaxiaoSchoolYearStart(null, 2, 2026)).toBe(2026);
+  });
+
+  it("贯通思维只匹配爱学习 G+ 和 A+，并按年级自动选择唯一课程", () => {
+    const base = {
+      productCode: null,
+      catalogVersionTitle: "默认版本",
+      catalogVersionCurrent: true,
+      season: 2,
+    };
+    const options: ClassImportCourseOption[] = [
+      { ...base, id: "a1", familySlug: "aixuexi-primary-math", title: "爱学习 A+ 全国版数学 · 一年级秋季", grade: 1, classType: "A+" },
+      { ...base, id: "x1", familySlug: "aixuexi-primary-math", title: "爱学习 X+ 苏教版数学 · 一年级秋季", grade: 1, classType: "X+" },
+      { ...base, id: "e1", familySlug: "xueersi-e-primary-math-cn", title: "E 系列数学一年级秋季 A+", grade: 1, classType: "A+" },
+      { ...base, id: "g3", familySlug: "aixuexi-primary-math", title: "爱学习 G+ 苏教版数学 · 三年级秋季", grade: 3, classType: "G+" },
+      { ...base, id: "x3", familySlug: "aixuexi-primary-math", title: "爱学习 X+ 苏教版数学 · 三年级秋季", grade: 3, classType: "X+" },
+    ];
+
+    const gradeOne = { courseName: "一年级贯通思维秋季", grade: 1, season: 2 };
+    const gradeThree = { courseName: "三年级贯通思维秋季", grade: 3, season: 2 };
+    expect(listMofaxiaoClassCourseCandidates(gradeOne, options).map((course) => course.id)).toEqual(["a1"]);
+    expect(preferredMofaxiaoClassCourseCandidate(gradeOne, options)?.id).toBe("a1");
+    expect(listMofaxiaoClassCourseCandidates(gradeThree, options).map((course) => course.id)).toEqual(["g3"]);
+    expect(preferredMofaxiaoClassCourseCandidate(gradeThree, options)?.id).toBe("g3");
   });
 
   it("服务端导入只建班级壳，不生成课次、报名、订单或费用", () => {

@@ -29,14 +29,14 @@ interface CourseOptionRow {
   term: number | null;
   class_type: string;
   course_catalog_versions: { title: string; is_current: boolean } | null;
-  course_families: { status: string; purpose: string } | null;
+  course_families: { slug: string; status: string; purpose: string } | null;
 }
 
 export async function listClassImportCourseOptions(): Promise<ClassImportCourseOption[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("courses")
-    .select("id,title,product_code,grade,term,class_type,course_catalog_versions(title,is_current),course_families!inner(status,purpose)")
+    .select("id,title,product_code,grade,term,class_type,course_catalog_versions(title,is_current),course_families!inner(slug,status,purpose)")
     .eq("status", "enabled")
     .eq("purpose", "production")
     .eq("course_families.status", "enabled")
@@ -48,6 +48,7 @@ export async function listClassImportCourseOptions(): Promise<ClassImportCourseO
   if (error) throw new Error(error.message);
   return (data ?? []).map((row) => ({
     id: row.id,
+    familySlug: row.course_families?.slug ?? "",
     title: row.title,
     productCode: row.product_code,
     catalogVersionTitle: row.course_catalog_versions?.title ?? "",
