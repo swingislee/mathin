@@ -111,4 +111,17 @@ describe("narrow classroom layout", () => {
     expect(roster).toContain("data-roster-visible-row-count={visibleRowCount}");
     expect(roster).toContain('style={{ height: `${rosterHeightRem}rem` }}');
   });
+
+  it("provides a stable local acceptance route through the same shared learning matrix", () => {
+    const preview = source("src/features/school/LearningCheckMatrixPreview.tsx");
+    const route = source("src/app/[locale]/dashboard/assessments/learning-matrix-preview/page.tsx");
+
+    expect(preview).toContain("<LearningCheckMatrixEntry");
+    expect(preview).toContain("students={students}");
+    expect(preview).toContain("questions={questions}");
+    expect(preview).toContain("onOrientationChange={setOrientation}");
+    expect(preview).not.toContain("<LearningCheckQuickEntryGrid");
+    expect(route).toContain('process.env.NODE_ENV === "production"');
+    expect(route).toContain('requireDashboardEnvironment(locale, ["staff"])');
+  });
 });
