@@ -1,4 +1,3 @@
-import { CircleAlert, CircleCheck } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
 import { getSessionReport, listSubmissions } from "@/features/classroom/actions";
@@ -13,6 +12,7 @@ import { SessionTaskActions } from "./SessionPostworkActions";
 import { SessionStudentPostworkCards, type SessionStudentPostworkRow } from "./SessionStudentPostworkCards";
 import { SessionVideoTaskPublisher } from "./SessionVideoTaskPublisher";
 import { SupportTaskRecipientList } from "./SupportTaskRecipientList";
+import { TeachingPostworkSection, TeachingPostworkStatus } from "./TeachingPostworkSurface";
 import { VideoReviewPanel } from "./VideoReviewPanel";
 import { listSessionVideos } from "./videos";
 
@@ -85,22 +85,13 @@ export async function SessionPostworkPanel({ detail }: { detail: SessionWorkspac
 
   return (
     <div className="flex flex-col gap-5 px-1">
-      <section
-        aria-live="polite"
-        className={pendingRequired > 0
-          ? "flex min-h-10 items-center gap-2 rounded-xl border border-amber-400/40 bg-amber-100/60 px-3 py-2 text-sm text-amber-950 dark:bg-amber-950/35 dark:text-amber-100"
-          : "flex min-h-10 items-center gap-2 rounded-xl border border-leaf/40 bg-leaf/10 px-3 py-2 text-sm text-leaf-deep"}
-      >
-        {pendingRequired > 0
-          ? <CircleAlert size={16} className="shrink-0" aria-hidden="true" />
-          : <CircleCheck size={16} className="shrink-0" aria-hidden="true" />}
-        <p className="min-w-0 flex-1 truncate font-medium">
-          {detail.postworkCompletedAt ? t("postworkAllDone") : t("postworkPending", { count: pendingRequired })}
-        </p>
-        <Badge variant="outline" className="shrink-0 border-current/30 text-current">
-          {t("completionProgress", { done: completedRequired, total: requiredTotal })}
-        </Badge>
-      </section>
+      <TeachingPostworkStatus
+        complete={pendingRequired === 0}
+        label={detail.postworkCompletedAt ? t("postworkAllDone") : t("postworkPending", { count: pendingRequired })}
+        done={completedRequired}
+        total={requiredTotal}
+        progressLabel={t("completionProgress", { done: completedRequired, total: requiredTotal })}
+      />
 
       <section>
         <h3 className="mb-3 font-medium text-ink">{t("independentPublicationsTitle")}</h3>
@@ -116,11 +107,7 @@ export async function SessionPostworkPanel({ detail }: { detail: SessionWorkspac
         </div>
       </section>
 
-      <section className="rounded-2xl border border-line bg-paper/35 p-4">
-        <div>
-          <h3 className="font-medium text-ink">{t("classPerformanceTitle")}</h3>
-          <p className="mt-1 text-xs text-muted">{t("classPerformanceHint")}</p>
-        </div>
+      <TeachingPostworkSection title={t("classPerformanceTitle")} description={t("classPerformanceHint")}>
         <SessionStudentPostworkCards
           sessionId={detail.id}
           rows={studentRows}
@@ -129,7 +116,7 @@ export async function SessionPostworkPanel({ detail }: { detail: SessionWorkspac
           canWriteReview={detail.capabilities.canWriteReview}
           followupTask={followupTask ? { id: followupTask.id, status: followupTask.status } : null}
         />
-      </section>
+      </TeachingPostworkSection>
 
       {detail.capabilities.canWriteReview && <SessionAssignmentReviewPanel items={assignmentReviewItems} />}
 

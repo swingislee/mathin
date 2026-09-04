@@ -2,6 +2,7 @@ import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
 import { listActiveRoomOptionsV2 } from "./organization-locations";
+import type { ClassBuildCourseDetail } from "./teaching-operations/course-picker-types";
 
 export const DEFAULT_PUBLIC_CLASS_PRINT_BACKGROUND = "/illustrations/public-class-print-background-v1.png";
 
@@ -73,16 +74,6 @@ export interface PublicClassClassroomLink {
   candidateRegistrationIds: string[];
 }
 
-export interface PublicClassMicrocourseOption {
-  courseId: string;
-  courseTitle: string;
-  familyId: string;
-  lectureId: string;
-  lectureTitle: string;
-  lectureNo: number;
-  ready: boolean;
-}
-
 export interface PublicClassWorkbenchData {
   activity: {
     id: string;
@@ -100,7 +91,8 @@ export interface PublicClassWorkbenchData {
   roomOptions: Array<{ id: string; name: string; campusName: string; capacity: number | null }>;
   staffOptions: Array<{ id: string; name: string }>;
   microcourseFamilyId: string | null;
-  microcourseOptions: PublicClassMicrocourseOption[];
+  /** Pre-authorized catalog consumed by the same CoursePicker as formal classes. */
+  microcourseCatalog: ClassBuildCourseDetail[];
 }
 
 export interface LinkedPublicClassSummary {
@@ -195,8 +187,20 @@ interface ClassroomDbRow { id: string; name: string }
 interface ClassroomLinkDbRow { classroom_id: string }
 interface ClassroomParticipantDbRow { classroom_id: string; registration_id: string }
 interface TeachingCheckpointDbRow { segment_id: string; page_doc_id: string; position: number }
-interface FamilyDbRow { id: string }
-interface CourseDbRow { id: string; family_id: string; title: string }
+interface FamilyDbRow { id: string; title: string }
+interface CourseDbRow {
+  id: string;
+  family_id: string;
+  title: string;
+  product_code: string | null;
+  catalog_version_id: string;
+  superseded_by_course_id: string | null;
+  grade: number;
+  term: number | null;
+  class_type: string;
+  course_kind: "curriculum" | "microcourse";
+}
+interface CatalogVersionDbRow { id: string; slug: string; title: string }
 interface LectureDbRow {
   id: string;
   course_id: string;
@@ -205,7 +209,7 @@ interface LectureDbRow {
   status: string;
   current_release_id: string | null;
 }
-interface MicrocourseDbRow { id: string; author_id: string }
+interface MicrocourseDbRow { id: string; course_id: string; author_id: string }
 
 export async function getPublicClassWorkbench(activityId: string): Promise<PublicClassWorkbenchData | null> {
   const supabase = await createClient();
@@ -259,7 +263,7 @@ export async function getPublicClassWorkbench(activityId: string): Promise<Publi
     profileIds.length ? from<ProfileDbRow[]>(supabase, "profiles").select("id,display_name").in("id", profileIds) : Promise.resolve({ data: [], error: null }),
     roomIds.length ? from<RoomDbRow[]>(supabase, "campus_rooms").select("id,name,capacity,campus_id").in("id", roomIds) : Promise.resolve({ data: [], error: null }),
     linkedClassroomIds.length ? from<ClassroomDbRow[]>(supabase, "classrooms").select("id,name").in("id", linkedClassroomIds) : Promise.resolve({ data: [], error: null }),
-    from<FamilyDbRow[]>(supabase, "course_families").select("id").eq("slug", "teacher-microcourses").limit(1),
+    from<FamilyDbRow[]>(supabase, "course_families").select("id,title").eq("slug", "teacher-microcourses").limit(1),
     from<ProfileDbRow[]>(supabase, "profiles").select("id,display_name").eq("is_active", true).in("role", ["staff", "admin"]).order("display_name", { ascending: true }).limit(300),
     listActiveRoomOptionsV2(),
     from<ClassroomDbRow[]>(supabase, "classrooms").select("id,name").is("archived_at", null).is("trashed_at", null).order("name", { ascending: true }).limit(300),
@@ -283,11 +287,11 @@ export async function getPublicClassWorkbench(activityId: string): Promise<Publi
   const campusIds = [...new Set([...currentRooms, ...allRooms].map((room) => room.campus_id))];
   const [campusResult, selectedCourseResult, selectedLectureResult, selectedMicrocourseResult, microcourseCourseResult] = await Promise.all([
     campusIds.length ? from<CampusDbRow[]>(supabase, "campuses").select("id,name").in("id", campusIds) : Promise.resolve({ data: [], error: null }),
-    courseIds.length ? from<CourseDbRow[]>(supabase, "courses").select("id,family_id,title").in("id", courseIds) : Promise.resolve({ data: [], error: null }),
+    courseIds.length ? from<CourseDbRow[]>(supabase, "courses").select("id,family_id,title,product_code,catalog_version_id,superseded_by_course_id,grade,term,class_type,course_kind").in("id", courseIds) : Promise.resolve({ data: [], error: null }),
     lectureIds.length ? from<LectureDbRow[]>(supabase, "course_lectures").select("id,course_id,no,name,status,current_release_id").in("id", lectureIds) : Promise.resolve({ data: [], error: null }),
-    microcourseIds.length ? from<MicrocourseDbRow[]>(supabase, "teacher_microcourses").select("id,author_id").in("id", microcourseIds) : Promise.resolve({ data: [], error: null }),
+    microcourseIds.length ? from<MicrocourseDbRow[]>(supabase, "teacher_microcourses").select("id,course_id,author_id").in("id", microcourseIds) : Promise.resolve({ data: [], error: null }),
     microcourseFamilyId
-      ? from<CourseDbRow[]>(supabase, "courses").select("id,family_id,title").eq("family_id", microcourseFamilyId).eq("course_kind", "microcourse").is("trashed_at", null).order("updated_at", { ascending: false }).limit(200)
+      ? from<CourseDbRow[]>(supabase, "courses").select("id,family_id,title,product_code,catalog_version_id,superseded_by_course_id,grade,term,class_type,course_kind").eq("family_id", microcourseFamilyId).eq("course_kind", "microcourse").is("trashed_at", null).order("updated_at", { ascending: false }).limit(200)
       : Promise.resolve({ data: [], error: null }),
   ]);
   const campuses = rows(campusResult);
@@ -301,6 +305,17 @@ export async function getPublicClassWorkbench(activityId: string): Promise<Publi
       .in("course_id", optionCourseIds).neq("status", "archived").order("no", { ascending: true }).limit(1_000)
     : { data: [], error: null };
   const microcourseLectures = rows(microcourseLectureResult);
+  const catalogMicrocourseResult = optionCourseIds.length
+    ? await from<MicrocourseDbRow[]>(supabase, "teacher_microcourses")
+      .select("id,course_id,author_id").in("course_id", optionCourseIds).is("withdrawn_at", null)
+    : { data: [], error: null };
+  const catalogMicrocourses = rows(catalogMicrocourseResult);
+  const versionIds = [...new Set(microcourseCourses.map((course) => course.catalog_version_id))];
+  const catalogVersionResult = versionIds.length
+    ? await from<CatalogVersionDbRow[]>(supabase, "course_catalog_versions")
+      .select("id,slug,title").in("id", versionIds)
+    : { data: [], error: null };
+  const catalogVersions = rows(catalogVersionResult);
 
   const studentById = new Map(students.map((item) => [item.id, item]));
   const leadById = new Map(leads.map((item) => [item.id, item]));
@@ -310,7 +325,9 @@ export async function getPublicClassWorkbench(activityId: string): Promise<Publi
   const classroomById = new Map([...linkedClassrooms, ...classroomOptions].map((item) => [item.id, item.name]));
   const courseById = new Map([...selectedCourses, ...microcourseCourses].map((item) => [item.id, item]));
   const lectureById = new Map([...selectedLectures, ...microcourseLectures].map((item) => [item.id, item]));
+  const catalogVersionById = new Map(catalogVersions.map((item) => [item.id, item]));
   const microcourseById = new Map(selectedMicrocourses.map((item) => [item.id, item]));
+  const catalogAuthorByCourseId = new Map(catalogMicrocourses.map((item) => [item.course_id, item.author_id]));
   const recordsByRegistration = new Map<string, PublicClassParticipantRecord[]>();
   for (const record of recordRows) {
     const entries = recordsByRegistration.get(record.registration_id) ?? [];
@@ -405,16 +422,38 @@ export async function getPublicClassWorkbench(activityId: string): Promise<Publi
     })),
     staffOptions: allStaff.map((item) => ({ id: item.id, name: item.display_name || "—" })),
     microcourseFamilyId,
-    microcourseOptions: microcourseLectures.map((lecture) => {
-      const course = courseById.get(lecture.course_id)!;
+    microcourseCatalog: microcourseCourses.map((course) => {
+      const lectures = microcourseLectures.filter((lecture) => lecture.course_id === course.id);
+      const version = catalogVersionById.get(course.catalog_version_id);
+      const authorId = catalogAuthorByCourseId.get(course.id) ?? null;
       return {
-        courseId: course.id,
-        courseTitle: course.title,
+        id: course.id,
         familyId: course.family_id,
-        lectureId: lecture.id,
-        lectureTitle: lecture.name,
-        lectureNo: lecture.no,
-        ready: lecture.current_release_id !== null,
+        familyTitle: families[0]?.title ?? "—",
+        title: course.title,
+        productCode: course.product_code,
+        catalogVersionSlug: version?.slug ?? "default",
+        catalogVersionTitle: version?.title ?? "",
+        isSuperseded: course.superseded_by_course_id !== null,
+        grade: course.grade,
+        courseSeason: course.term,
+        classType: course.class_type,
+        lectureCount: lectures.length,
+        releasedLectureCount: lectures.filter((lecture) => lecture.current_release_id !== null).length,
+        courseKind: "microcourse",
+        authorId,
+        authorName: authorId ? profileById.get(authorId) ?? null : null,
+        primaryTopicSlug: null,
+        primaryTopicTitleZh: null,
+        primaryTopicTitleEn: null,
+        keywords: [],
+        lectures: lectures.map((lecture) => ({
+          id: lecture.id,
+          no: lecture.no,
+          name: lecture.name,
+          objectives: "",
+          ready: lecture.current_release_id !== null,
+        })),
       };
     }),
   };

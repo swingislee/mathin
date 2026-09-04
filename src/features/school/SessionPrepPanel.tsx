@@ -10,8 +10,8 @@ import { getSessionCoursewareLearningCheckPages, getSessionLearningSetup } from 
 import { SessionPreparationFlow } from "./SessionPreparationFlow";
 import { getSessionPreparationArtifacts } from "./session-preparation-artifacts";
 import { SessionPrepAutostart } from "./SessionPrepAutostart";
-import { SessionPrepSplit } from "./SessionPrepSplit";
 import { SessionLessonPlanWorkspace } from "./SessionLessonPlanWorkspace";
+import { TeachingPreparationSurface } from "./TeachingPreparationSurface";
 import { getTeacherPreparationWorkspace } from "./teacher-preparation";
 import { isFeatureEnabled } from "./organization-settings";
 
@@ -93,15 +93,14 @@ export async function SessionPrepPanel({
   return (
     <>
       {detail.prepStatus === "not_started" && detail.capabilities.canPrepare ? <SessionPrepAutostart sessionId={detail.id} /> : null}
-      <div className="flex h-full min-h-0 min-w-0 flex-col gap-3 px-1">
-        {relationshipReadOnly && !canAuthorMicrocourseProposal ? (
+      <TeachingPreparationSurface
+        notice={relationshipReadOnly && !canAuthorMicrocourseProposal ? (
           <p className="flex shrink-0 items-center gap-2 px-1 text-xs text-muted">
             <LockKeyhole size={14} className="shrink-0" aria-hidden />
             <span>{t("prepReadOnlyNotTeacherTitle")}</span>
           </p>
         ) : null}
-        <SessionPrepSplit
-          flow={(
+        flow={(
             <aside className="@container flex min-h-0 min-w-0 flex-1 flex-col">
               {canViewPrepArchive ? (
                 <SessionPreparationFlow
@@ -127,7 +126,7 @@ export async function SessionPrepPanel({
               ) : null}
             </aside>
           )}
-          courseware={(
+        courseware={(
             <section className="@container flex min-h-0 min-w-0 flex-1 flex-col">
             {detail.lectureObjectives && (
               <div className="mb-3 flex min-w-0 items-baseline gap-2 border-l-2 border-crater/50 pl-3 text-xs">
@@ -174,8 +173,7 @@ export async function SessionPrepPanel({
             ) : null}
             </section>
           )}
-        />
-      </div>
+      />
     </>
   );
 }

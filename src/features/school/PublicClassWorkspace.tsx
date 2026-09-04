@@ -3,7 +3,6 @@
 import {
   ArrowRight,
   BookOpenCheck,
-  Check,
   ChevronDown,
   ChevronRight,
   ClipboardCheck,
@@ -15,14 +14,13 @@ import {
   Pencil,
   Plus,
   Presentation,
-  Search,
   Trash2,
   UserRound,
   UsersRound,
 } from "lucide-react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
-import { Fragment, useMemo, useState, useTransition } from "react";
+import { Fragment, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -46,9 +44,7 @@ import type { ActionResult } from "@/lib/action-result";
 import { cn } from "@/lib/utils";
 import {
   deletePublicClassSegmentAction,
-  createPublicClassMicrocourseProjectAction,
   linkPublicClassroomAction,
-  linkPublicClassSegmentMicrocourseAction,
   savePublicClassParticipantRecordAction,
   savePublicClassSegmentAction,
   syncPublicClassroomCandidatesAction,
@@ -69,11 +65,11 @@ import {
   DashboardCommandActions,
   DashboardCommandPanel,
   DashboardCommandState,
-  DashboardCommandTabs,
   DashboardSection,
   DashboardTableShell,
-  StatusStrip,
 } from "./dashboard-page";
+import { ObjectTabs, StageNavigation } from "./object-workspace";
+import { TeachingPostworkSection, TeachingPostworkStatus } from "./TeachingPostworkSurface";
 
 const NONE = "__none__";
 
@@ -134,19 +130,16 @@ export function PublicClassWorkspace({
   currentUserId: string;
 }) {
   const t = useTranslations("school.publicClass");
+  const sessionT = useTranslations("school.session");
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [editingSegment, setEditingSegment] = useState<PublicClassSegment | "new" | null>(null);
-  const [coursewareSegment, setCoursewareSegment] = useState<PublicClassSegment | null>(null);
-  const participantCount = data.participants.filter((item) => item.status !== "cancelled").length;
   const assessmentSegment = data.segments.find((item) => item.kind === "group_assessment") ?? null;
   const selectedSegment = data.segments.find((item) => item.id === activeSegmentId)
     ?? assessmentSegment
     ?? data.segments[0]
     ?? null;
   const presentationSegments = data.segments.filter((item) => item.kind !== "group_assessment");
-  const readySegments = presentationSegments.filter((item) => item.microcourseLectureId).length;
-  const roomPending = data.segments.filter((item) => !item.roomId && !item.location).length;
   const startedSegments = presentationSegments.filter((item) => item.teachingStartedAt);
   const runState = startedSegments.length === 0
     ? "preparing"
@@ -174,25 +167,28 @@ export function PublicClassWorkspace({
   });
 
   const baseHref = `/dashboard/activities/${data.activity.id}`;
-  const tabs = [
+  const activeStage = activeView === "live" ? "live" : activeView === "review" ? "post" : "pre";
+  const stageItems = [
+    { value: "pre", label: sessionT("stage_pre"), href: `${baseHref}?view=${activeStage === "pre" ? activeView : "teaching"}` },
+    { value: "live", label: sessionT("stage_live"), href: `${baseHref}?view=live${selectedSegment ? `&segment=${selectedSegment.id}` : ""}` },
+    { value: "post", label: sessionT("stage_post"), href: `${baseHref}?view=review` },
+  ];
+  const preparationViews = [
     { value: "teaching", label: t("viewTeachingPreparation"), href: `${baseHref}?view=teaching` },
     { value: "onsite", label: t("viewOnsitePreparation"), href: `${baseHref}?view=onsite` },
-    { value: "live", label: t("viewLive"), href: `${baseHref}?view=live${selectedSegment ? `&segment=${selectedSegment.id}` : ""}` },
-    { value: "review", label: t("viewReview"), href: `${baseHref}?view=review` },
   ];
 
   return <div className="space-y-5">
-    <StatusStrip items={[
-      { label: t("participantCount"), value: participantCount },
-      { label: t("runStatus"), value: t(`runStatus_${runState}`) },
-      { label: t("coursewareReady"), value: `${readySegments}/${presentationSegments.length}` },
-      { label: t("roomPending"), value: roomPending },
-      { label: t("recordedParticipants"), value: `${recordedParticipants}/${participantCount}` },
-    ]} />
-
     <DashboardCommandPanel>
       <DashboardCommandState>
-        <DashboardCommandTabs ariaLabel={t("workspaceViews")} activeValue={activeView} items={tabs} />
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <StageNavigation ariaLabel={sessionT("stageNavLabel")} activeValue={activeStage} items={stageItems} />
+          {activeStage === "pre" ? (
+            <div className="border-l border-line pl-2">
+              <ObjectTabs ariaLabel={t("workspaceViews")} activeValue={activeView} items={preparationViews} />
+            </div>
+          ) : null}
+        </div>
       </DashboardCommandState>
       <DashboardCommandActions>
         {activeView === "onsite" ? <>
@@ -227,7 +223,6 @@ export function PublicClassWorkspace({
       canUseCourseware={canUseCourseware}
       canAuthorMicrocourse={canAuthorMicrocourse}
       currentUserId={currentUserId}
-      onCourseware={setCoursewareSegment}
     /> : null}
     {activeView === "onsite" ? <>
       <OnsitePreparationView
@@ -265,15 +260,6 @@ export function PublicClassWorkspace({
       staff={data.staffOptions}
       pending={pending}
       close={() => setEditingSegment(null)}
-      run={run}
-    /> : null}
-    {coursewareSegment ? <MicrocourseDialog
-      segment={coursewareSegment}
-      activityId={data.activity.id}
-      options={data.microcourseOptions}
-      canCreate={canAuthorMicrocourse}
-      pending={pending}
-      close={() => setCoursewareSegment(null)}
       run={run}
     /> : null}
   </div>;
@@ -382,40 +368,48 @@ function LiveRunOverview({
 function ReviewOverview({ data, recordedParticipants }: { data: PublicClassWorkbenchData; recordedParticipants: number }) {
   const t = useTranslations("school.publicClass");
   const active = data.participants.filter((participant) => participant.status !== "cancelled");
+  const pendingRecords = Math.max(0, active.length - recordedParticipants);
   const assessmentId = data.segments.find((segment) => segment.kind === "group_assessment")?.id;
   const talkId = data.segments.find((segment) => segment.kind === "parent_talk")?.id;
-  return <DashboardSection
-    title={t("reviewTitle")}
-    description={t("reviewHint")}
-    actions={<span className="text-xs text-muted">{t("recordedParticipantsValue", { recorded: recordedParticipants, total: active.length })}</span>}
-  >
-    <DashboardTableShell>
-      <Table className="min-w-[52rem] table-fixed text-xs">
-        <TableHeader><TableRow>
-          <TableHead className="h-9 w-56 px-2">{t("participant")}</TableHead>
-          <TableHead className="h-9 w-28 px-2">{t("attendanceResult")}</TableHead>
-          <TableHead className="h-9 px-2">{t("assessmentSummary")}</TableHead>
-          <TableHead className="h-9 px-2">{t("parentFeedback")}</TableHead>
-          <TableHead className="h-9 px-2">{t("recommendation")}</TableHead>
-        </TableRow></TableHeader>
-        <TableBody>
-          {active.map((participant) => {
-            const assessmentRecord = assessmentId ? recordFor(participant, assessmentId) : null;
-            const talkRecord = talkId ? recordFor(participant, talkId) : null;
-            const attended = participant.status === "attended" || participant.records.some((record) => record.studentPresence === "attended" || record.studentPresence === "late");
-            return <TableRow key={participant.registrationId}>
-              <TableCell className="px-2 py-2"><p className="font-medium text-ink">{participant.name}</p><p className="mt-0.5 truncate text-[11px] text-muted">{participant.gradeText || (participant.grade ? t("gradeValue", { grade: participant.grade }) : t("gradePending"))}</p></TableCell>
-              <TableCell className="px-2 py-2"><Badge variant={attended ? "secondary" : "outline"}>{attended ? t("presence_attended") : t("presence_expected")}</Badge></TableCell>
-              <TableCell className="truncate px-2 py-2 text-muted">{assessmentRecord?.assessmentSummary || assessmentRecord?.learningObservation || "—"}</TableCell>
-              <TableCell className="truncate px-2 py-2 text-muted">{talkRecord?.parentFeedback || assessmentRecord?.parentFeedback || "—"}</TableCell>
-              <TableCell className="truncate px-2 py-2 text-muted">{assessmentRecord?.recommendation || talkRecord?.recommendation || "—"}</TableCell>
-            </TableRow>;
-          })}
-          {active.length === 0 ? <TableRow><TableCell colSpan={5} className="h-32 text-center text-muted">{t("emptyRoster")}</TableCell></TableRow> : null}
-        </TableBody>
-      </Table>
-    </DashboardTableShell>
-  </DashboardSection>;
+  return <div className="space-y-5">
+    <TeachingPostworkStatus
+      complete={pendingRecords === 0}
+      label={pendingRecords === 0 ? t("postworkRecordsComplete") : t("postworkRecordsPending", { count: pendingRecords })}
+      done={recordedParticipants}
+      total={active.length}
+      progressLabel={t("recordedParticipantsValue", { recorded: recordedParticipants, total: active.length })}
+    />
+    <TeachingPostworkSection title={t("reviewTitle")} description={t("reviewHint")}>
+      <div className="mt-4">
+        <DashboardTableShell>
+          <Table className="min-w-[52rem] table-fixed text-xs">
+            <TableHeader><TableRow>
+              <TableHead className="h-9 w-56 px-2">{t("participant")}</TableHead>
+              <TableHead className="h-9 w-28 px-2">{t("attendanceResult")}</TableHead>
+              <TableHead className="h-9 px-2">{t("assessmentSummary")}</TableHead>
+              <TableHead className="h-9 px-2">{t("parentFeedback")}</TableHead>
+              <TableHead className="h-9 px-2">{t("recommendation")}</TableHead>
+            </TableRow></TableHeader>
+            <TableBody>
+              {active.map((participant) => {
+                const assessmentRecord = assessmentId ? recordFor(participant, assessmentId) : null;
+                const talkRecord = talkId ? recordFor(participant, talkId) : null;
+                const attended = participant.status === "attended" || participant.records.some((record) => record.studentPresence === "attended" || record.studentPresence === "late");
+                return <TableRow key={participant.registrationId}>
+                  <TableCell className="px-2 py-2"><p className="font-medium text-ink">{participant.name}</p><p className="mt-0.5 truncate text-[11px] text-muted">{participant.gradeText || (participant.grade ? t("gradeValue", { grade: participant.grade }) : t("gradePending"))}</p></TableCell>
+                  <TableCell className="px-2 py-2"><Badge variant={attended ? "secondary" : "outline"}>{attended ? t("presence_attended") : t("presence_expected")}</Badge></TableCell>
+                  <TableCell className="truncate px-2 py-2 text-muted">{assessmentRecord?.assessmentSummary || assessmentRecord?.learningObservation || "—"}</TableCell>
+                  <TableCell className="truncate px-2 py-2 text-muted">{talkRecord?.parentFeedback || assessmentRecord?.parentFeedback || "—"}</TableCell>
+                  <TableCell className="truncate px-2 py-2 text-muted">{assessmentRecord?.recommendation || talkRecord?.recommendation || "—"}</TableCell>
+                </TableRow>;
+              })}
+              {active.length === 0 ? <TableRow><TableCell colSpan={5} className="h-32 text-center text-muted">{t("emptyRoster")}</TableCell></TableRow> : null}
+            </TableBody>
+          </Table>
+        </DashboardTableShell>
+      </div>
+    </TeachingPostworkSection>
+  </div>;
 }
 
 function SegmentDialog({
@@ -513,137 +507,6 @@ function SegmentDialog({
           {pending && <LoaderCircle className="size-4 animate-spin" />}{t("save")}
         </Button>
       </DialogFooter>
-    </DialogContent>
-  </Dialog>;
-}
-
-function MicrocourseDialog({
-  segment,
-  activityId,
-  options,
-  canCreate,
-  pending,
-  close,
-  run,
-}: {
-  segment: PublicClassSegment;
-  activityId: string;
-  options: PublicClassWorkbenchData["microcourseOptions"];
-  canCreate: boolean;
-  pending: boolean;
-  close: () => void;
-  run: Run;
-}) {
-  const t = useTranslations("school.publicClass");
-  const router = useRouter();
-  const [creating, startCreating] = useTransition();
-  const [query, setQuery] = useState("");
-  const [courseTitle, setCourseTitle] = useState(segment.microcourseCourseTitle ?? segment.title);
-  const [lectureTitle, setLectureTitle] = useState(segment.title);
-  const [grade, setGrade] = useState("1");
-  const current = segment.microcourseCourseId && segment.microcourseLectureId
-    ? `${segment.microcourseCourseId}:${segment.microcourseLectureId}`
-    : NONE;
-  const [selection, setSelection] = useState(current);
-  const selectedOption = options.find((item) => `${item.courseId}:${item.lectureId}` === selection);
-  const filtered = options.filter((option) => `${option.courseTitle} ${option.lectureTitle}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
-  const groups = useMemo(() => {
-    const byCourse = new Map<string, { id: string; title: string; lectures: typeof filtered }>();
-    for (const option of filtered) {
-      const group = byCourse.get(option.courseId) ?? { id: option.courseId, title: option.courseTitle, lectures: [] };
-      group.lectures.push(option);
-      byCourse.set(option.courseId, group);
-    }
-    return [...byCourse.values()];
-  }, [filtered]);
-  const save = () => {
-    run(() => linkPublicClassSegmentMicrocourseAction({
-      segmentId: segment.id,
-      courseId: selectedOption?.courseId ?? null,
-      lectureId: selectedOption?.lectureId ?? null,
-    }), t("coursewareSaved"), close);
-  };
-  const create = () => startCreating(async () => {
-    const result = await createPublicClassMicrocourseProjectAction({
-      segmentId: segment.id,
-      courseTitle,
-      lectureTitle,
-      grade: Number(grade),
-    });
-    if (!result.ok) {
-      toast.error(result.code === "MICROCOURSE_ALREADY_EXISTS"
-        ? t("microcourseAlreadyExists")
-        : t("actionFailed", { code: result.code }));
-      return;
-    }
-    toast.success(t("microcourseCreated"));
-    router.push(`/dashboard/activities/${activityId}/segments/${segment.id}/microcourse`);
-    router.refresh();
-  });
-  return <Dialog open onOpenChange={(open) => { if (!open) close(); }}>
-    <DialogContent className="max-w-3xl">
-      <DialogHeader>
-        <DialogTitle>{t("arrangeCoursewareFor", { title: segment.title })}</DialogTitle>
-        <DialogDescription>{t("coursewareChoiceHint")}</DialogDescription>
-      </DialogHeader>
-      <div className={cn("grid min-h-0 gap-5", canCreate && "lg:grid-cols-[minmax(0,1.25fr)_minmax(17rem,0.75fr)]")}>
-        <section className="min-w-0">
-          <div>
-            <h3 className="text-sm font-medium text-ink">{t("chooseExistingCourseware")}</h3>
-            <p className="mt-1 text-xs leading-5 text-muted">{t("chooseExistingHint")}</p>
-          </div>
-          <div className="relative mt-3">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" />
-            <Input className="pl-9" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("searchMicrocourse")} />
-          </div>
-          <div className="mt-3 max-h-80 overflow-y-auto border-y border-line">
-            <button type="button" onClick={() => setSelection(NONE)} className={cn("flex w-full items-center gap-3 px-3 py-3 text-left text-sm hover:bg-moon/10", selection === NONE && "bg-moon/15")}>
-              <span className="flex size-5 items-center justify-center">{selection === NONE && <Check className="size-4" />}</span>
-              <span>{t("noCourseware")}</span>
-            </button>
-            {groups.map((group) => <div key={group.id} className="border-t border-line first:border-t-0">
-              <p className="bg-moon/10 px-3 py-2 text-xs font-medium text-muted">{group.title}</p>
-              {group.lectures.map((option) => {
-                const value = `${option.courseId}:${option.lectureId}`;
-                return <button key={value} type="button" disabled={!option.ready} onClick={() => setSelection(value)} className={cn("flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-moon/10 disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:bg-transparent", selection === value && "bg-moon/15")}>
-                  <span className="flex size-5 items-center justify-center">{selection === value && <Check className="size-4" />}</span>
-                  <span className="min-w-0 flex-1 truncate text-sm text-ink">{t("lectureLabel", { no: option.lectureNo, title: option.lectureTitle })}</span>
-                  <Badge variant={option.ready ? "secondary" : "outline"}>{option.ready ? t("published") : t("draft")}</Badge>
-                </button>;
-              })}
-            </div>)}
-            {groups.length === 0 ? <p className="px-4 py-10 text-center text-sm text-muted">{t("noMatchingCourseware")}</p> : null}
-          </div>
-          <div className="mt-3 flex justify-end">
-            <Button disabled={pending || creating || (selection !== NONE && !selectedOption?.ready)} onClick={save}>{pending && <LoaderCircle className="size-4 animate-spin" />}{t("useSelection")}</Button>
-          </div>
-        </section>
-
-        {canCreate ? <section className="border-t border-line pt-4 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
-          <div>
-            <h3 className="text-sm font-medium text-ink">{t("createCoursewareHere")}</h3>
-            <p className="mt-1 text-xs leading-5 text-muted">{t("createCoursewareHint")}</p>
-          </div>
-          <div className="mt-4 grid gap-3">
-            <Label className="grid gap-1.5 text-xs text-muted">{t("microcourseTitle")}
-              <Input value={courseTitle} onChange={(event) => setCourseTitle(event.target.value)} maxLength={100} />
-            </Label>
-            <Label className="grid gap-1.5 text-xs text-muted">{t("firstLectureTitle")}
-              <Input value={lectureTitle} onChange={(event) => setLectureTitle(event.target.value)} maxLength={120} />
-            </Label>
-            <Label className="grid gap-1.5 text-xs text-muted">{t("applicableGrade")}
-              <Select value={grade} onValueChange={setGrade}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{Array.from({ length: 9 }, (_, index) => index + 1).map((value) => <SelectItem key={value} value={String(value)}>{t("gradeValue", { grade: value })}</SelectItem>)}</SelectContent>
-              </Select>
-            </Label>
-          </div>
-          <Button className="mt-4 w-full" variant="secondary" disabled={creating || pending || !courseTitle.trim() || !lectureTitle.trim()} onClick={create}>
-            {creating ? <LoaderCircle className="size-4 animate-spin" /> : <Plus className="size-4" />}{t("createAndEdit")}
-          </Button>
-        </section> : null}
-      </div>
-      <DialogFooter><Button variant="ghost" onClick={close}>{t("cancel")}</Button></DialogFooter>
     </DialogContent>
   </Dialog>;
 }

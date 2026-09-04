@@ -17,9 +17,11 @@ describe("DEV-SCHOOL-OPS-1 public-class workbench", () => {
     expect(migration).not.toContain("class_session_id");
   });
 
-  it("lets a segment select or author reusable microcourse content in context", () => {
+  it("uses the formal course picker while keeping activity-specific lecture binding in context", () => {
     const migration = read("supabase", "migrations", "20260904000280_public_class_teaching_flow.sql");
     const workspace = read("src", "features", "school", "PublicClassWorkspace.tsx");
+    const preparation = read("src", "features", "school", "PublicClassTeachingPreparation.tsx");
+    const coursePicker = read("src", "features", "school", "teaching-operations", "CoursePicker.tsx");
     const editorPage = read("src", "app", "[locale]", "dashboard", "activities", "[activityId]", "segments", "[segmentId]", "microcourse", "page.tsx");
 
     expect(migration).toContain("microcourse_course_id");
@@ -27,9 +29,11 @@ describe("DEV-SCHOOL-OPS-1 public-class workbench", () => {
     expect(migration).toContain("link_public_class_segment_microcourse");
     expect(migration).toContain("create_public_class_microcourse_project");
     expect(migration).not.toContain("insert into public.classrooms");
-    expect(workspace).toContain("chooseExistingCourseware");
-    expect(workspace).toContain("createCoursewareHere");
-    expect(workspace).toContain("disabled={!option.ready}");
+    expect(preparation).toContain("CoursePicker");
+    expect(preparation).toContain("catalog={catalog}");
+    expect(coursePicker).toContain("catalog?: readonly ClassBuildCourseDetail[]");
+    expect(workspace).not.toContain("MicrocourseDialog");
+    expect(workspace).not.toContain("searchMicrocourse");
     expect(editorPage).toContain("MicrocourseEditor");
     expect(editorPage).toContain("saveCoursewareAndReturn");
     expect(workspace).not.toContain("/dashboard/sessions/");
@@ -49,13 +53,16 @@ describe("DEV-SCHOOL-OPS-1 public-class workbench", () => {
     expect(migration).toContain("public.end_public_class_segment_teaching");
     expect(migration).toContain("kind in ('trial_lesson', 'parent_talk')");
     expect(migration).not.toContain("insert into public.class_sessions");
-    expect(workspace).toContain('value: "teaching"');
-    expect(workspace).toContain('value: "onsite"');
+    expect(workspace).toContain("StageNavigation");
+    expect(workspace).toContain("ObjectTabs");
+    expect(workspace).toContain('value: "pre"');
     expect(workspace).toContain('value: "live"');
-    expect(workspace).toContain('value: "review"');
+    expect(workspace).toContain('value: "post"');
+    expect(workspace).not.toContain("<StatusStrip");
     expect(workspace).not.toContain("programMapTitle");
     expect(workspace).not.toContain("SegmentFlowStep");
     expect(preparation).toContain("CoursewareOverlayEditor");
+    expect(preparation).toContain("TeachingPreparationSurface");
     expect(preparation).toContain("data-shared-formal-preparation-surface");
     expect(preparation).not.toContain("CoursewareWorkbench");
     expect(preparation).not.toContain("StagePreview");
@@ -73,6 +80,9 @@ describe("DEV-SCHOOL-OPS-1 public-class workbench", () => {
     const workspace = read("src", "features", "school", "PublicClassWorkspace.tsx");
     const preparation = read("src", "features", "school", "PublicClassTeachingPreparation.tsx");
     const formalPreparation = read("src", "features", "school", "SessionPrepPanel.tsx");
+    const formalPostwork = read("src", "features", "school", "SessionPostworkPanel.tsx");
+    const sharedPreparation = read("src", "features", "school", "TeachingPreparationSurface.tsx");
+    const sharedPostwork = read("src", "features", "school", "TeachingPostworkSurface.tsx");
     const sharedCourseware = read("src", "features", "school", "CoursewareOverlayEditor.tsx");
 
     expect(migration).toContain("create table public.public_class_teaching_checkpoints");
@@ -83,6 +93,14 @@ describe("DEV-SCHOOL-OPS-1 public-class workbench", () => {
     expect(preparation).toContain("teachingCheckpointPageIds");
     expect(preparation).toContain("CoursewareOverlayEditor");
     expect(formalPreparation).toContain("CoursewareOverlayEditor");
+    expect(preparation).toContain("TeachingPreparationSurface");
+    expect(formalPreparation).toContain("TeachingPreparationSurface");
+    expect(workspace).toContain("TeachingPostworkStatus");
+    expect(workspace).toContain("TeachingPostworkSection");
+    expect(formalPostwork).toContain("TeachingPostworkStatus");
+    expect(formalPostwork).toContain("TeachingPostworkSection");
+    expect(sharedPreparation).toContain("SessionPrepSplit");
+    expect(sharedPostwork).toContain("data-shared-teaching-postwork-section");
     expect(sharedCourseware).toContain("saveLearningChecksOverride");
     expect(sharedCourseware).toContain("learningChecksReadOnly");
   });

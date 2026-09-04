@@ -70,6 +70,8 @@ export function CoursePicker({
   fixedCourseKind,
   showSelectedDetail = true,
   accessContext = "class-build",
+  catalog,
+  showMicrocourseMetadataFilters = true,
 }: {
   purpose: ClassBuildPurpose;
   selected: ClassBuildCourseDetail | null;
@@ -79,6 +81,13 @@ export function CoursePicker({
   fixedCourseKind?: "curriculum" | "microcourse";
   showSelectedDetail?: boolean;
   accessContext?: "class-build" | "microcourse-source";
+  /**
+   * Some teaching occurrences already load the permitted course catalog with
+   * their server workspace. Supplying it keeps the exact same picker UI while
+   * leaving authorization and data scoping with that workspace.
+   */
+  catalog?: readonly ClassBuildCourseDetail[];
+  showMicrocourseMetadataFilters?: boolean;
 }) {
   const t = useTranslations("school.classBuild");
   const locale = useLocale();
@@ -99,10 +108,36 @@ export function CoursePicker({
   const [selectingId, setSelectingId] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const effectiveCourseKind = fixedCourseKind ?? courseKind;
-  const showMicrocourseFilters = effectiveCourseKind !== "curriculum";
+  const showMicrocourseFilters = showMicrocourseMetadataFilters && effectiveCourseKind !== "curriculum";
+  const catalogResults = useMemo(() => {
+    if (!catalog) return [];
+    const normalizedQuery = query.trim().toLocaleLowerCase();
+    const normalizedKeyword = keyword.trim().toLocaleLowerCase();
+    return catalog.filter((candidate) => {
+      if (effectiveCourseKind && candidate.courseKind !== effectiveCourseKind) return false;
+      if (grade !== null && candidate.grade !== grade) return false;
+      if (courseSeason !== null && candidate.courseSeason !== courseSeason) return false;
+      if (classType && candidate.classType !== classType) return false;
+      if (!includeSuperseded && candidate.isSuperseded) return false;
+      if (primaryTopicSlug && candidate.primaryTopicSlug !== primaryTopicSlug) return false;
+      if (normalizedKeyword && !candidate.keywords.some((item) => item.toLocaleLowerCase().includes(normalizedKeyword))) return false;
+      if (!normalizedQuery) return true;
+      return [
+        candidate.familyTitle,
+        candidate.title,
+        candidate.productCode ?? "",
+        candidate.authorName ?? "",
+        candidate.primaryTopicTitleZh ?? "",
+        candidate.primaryTopicTitleEn ?? "",
+        ...candidate.keywords,
+        ...candidate.lectures.map((lecture) => lecture.name),
+      ].some((item) => item.toLocaleLowerCase().includes(normalizedQuery));
+    });
+  }, [catalog, classType, courseSeason, effectiveCourseKind, grade, includeSuperseded, keyword, primaryTopicSlug, query]);
+  const activeResults: readonly ClassBuildCourseCandidate[] = catalog ? catalogResults : results;
   const grouped = useMemo(() => {
     const groups = new Map<string, ClassBuildCourseCandidate[]>();
-    for (const candidate of results) {
+    for (const candidate of activeResults) {
       const current = groups.get(candidate.familyTitle) ?? [];
       current.push(candidate);
       current.sort((left, right) => left.grade - right.grade
@@ -112,10 +147,10 @@ export function CoursePicker({
       groups.set(candidate.familyTitle, current);
     }
     return Array.from(groups.entries());
-  }, [results]);
+  }, [activeResults]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || catalog) return;
     let active = true;
     const timer = window.setTimeout(() => {
       setSearching(true);
@@ -139,24 +174,31 @@ export function CoursePicker({
         .finally(() => { if (active) setSearching(false); });
     }, 250);
     return () => { active = false; window.clearTimeout(timer); };
-  }, [accessContext, classType, courseSeason, effectiveCourseKind, grade, includeSuperseded, keyword, open, primaryTopicSlug, purpose, query, showMicrocourseFilters]);
+  }, [accessContext, catalog, classType, courseSeason, effectiveCourseKind, grade, includeSuperseded, keyword, open, primaryTopicSlug, purpose, query, showMicrocourseFilters]);
 
   useEffect(() => {
-    if (!open || !showMicrocourseFilters || microcourseTopics.length > 0) return;
+    if (!open || catalog || !showMicrocourseFilters || microcourseTopics.length > 0) return;
     let active = true;
     void listClassBuildMicrocourseTopicsAction()
       .then((topics) => { if (active) setMicrocourseTopics(topics); })
       .catch(() => undefined);
     return () => { active = false; };
-  }, [microcourseTopics.length, open, showMicrocourseFilters]);
+  }, [catalog, microcourseTopics.length, open, showMicrocourseFilters]);
 
   const visibleResults = open ? grouped : [];
-  const showSearching = open && searching;
+  const showSearching = open && !catalog && searching;
 
   const choose = async (candidate: ClassBuildCourseCandidate) => {
     setSelectingId(candidate.id);
     setFailed(false);
     try {
+      const catalogDetail = catalog?.find((item) => item.id === candidate.id);
+      if (catalogDetail) {
+        onSelect(catalogDetail);
+        setOpen(false);
+        setQuery("");
+        return;
+      }
       const detailAction = accessContext === "microcourse-source"
         ? getTeacherMicrocourseSourceCourseDetailAction
         : getClassBuildCourseDetailAction;

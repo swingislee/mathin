@@ -47,6 +47,7 @@ describe("R1 classroom continuity contracts", () => {
     const legacyPage = read("src/app/[locale]/classroom/[classId]/session/[sessionId]/page.tsx");
     const workspace = read("src/features/school/SessionWorkspaceBody.tsx");
     const prep = read("src/features/school/SessionPrepPanel.tsx");
+    const sharedPreparation = read("src/features/school/TeachingPreparationSurface.tsx");
     expect(legacyPage).toContain("/dashboard/sessions/");
     expect(legacyPage).toContain("redirect(");
     expect(legacyPage).not.toContain("CoursewareEditor");
@@ -60,7 +61,8 @@ describe("R1 classroom continuity contracts", () => {
     expect(prep).not.toContain("SessionTrackOverrideSelect");
     // doc 27 §3 D3：固定轨道换成可拖拽分栏。原来的 minmax(24rem,30rem) 是硬下限 384px，
     // 与课件目录的 272px 串联后，1280 视口下 4:3 舞台只剩约 180×135px。
-    expect(prep).toContain("SessionPrepSplit");
+    expect(prep).toContain("TeachingPreparationSurface");
+    expect(sharedPreparation).toContain("SessionPrepSplit");
     expect(prep).not.toContain("SessionLearningCheckEditor");
   });
 
