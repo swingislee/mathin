@@ -14,12 +14,14 @@ import {
   INVITATION_KINDS,
   INVITATION_STATES,
   invitationDraftIsComplete,
-  invitationStateFromFacts,
+  invitationStatesForKind,
   normalizeAssessmentTimeOptions,
+  selectInvitationProgress,
   type InvitationActivityOption,
   type InvitationAssessorOption,
   type InvitationDraft,
   type InvitationKind,
+  type InvitationState,
 } from "./invitation-contract";
 
 interface StoredInvitationDrafts {
@@ -160,13 +162,9 @@ export function InvitationDraftFields({
     });
   };
   const emit = (next: InvitationDraft) => {
-    const emitted = workflow ? next : {
-      ...next,
-      state: invitationStateFromFacts(next),
-    };
-    draftCacheRef.current[emitted.kind] = emitted;
-    persistDrafts(emitted.kind);
-    onChange(emitted);
+    draftCacheRef.current[next.kind] = next;
+    persistDrafts(next.kind);
+    onChange(next);
   };
   const dateTimeFormatter = useMemo(() => new Intl.DateTimeFormat(locale, {
     dateStyle: "short",
@@ -186,6 +184,14 @@ export function InvitationDraftFields({
   const update = <K extends keyof InvitationDraft>(key: K, next: InvitationDraft[K]) => {
     if (!value) return;
     emit({ ...value, [key]: next });
+  };
+  const stateChoices = value?.kind === "assessment_1v1"
+    ? invitationStatesForKind(value.kind)
+    : [];
+  const selectedStateIndex = value ? stateChoices.indexOf(value.state) : -1;
+  const chooseState = (state: InvitationState) => {
+    if (!value) return;
+    emit(selectInvitationProgress(value, state));
   };
   const selectedActivity = value?.activityId
     ? activities.find((activity) => activity.id === value.activityId)
@@ -353,6 +359,52 @@ export function InvitationDraftFields({
     <p className="text-[11px] leading-4 text-muted">{t("waitingActivityHint")}</p>
   ) : null;
 
+  const stateControls = value?.kind === "assessment_1v1" ? (
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <p className="text-[11px] font-medium text-muted">{t("stateLabel")}</p>
+        <p className="text-[10px] text-muted">{t("stateManualHint")}</p>
+      </div>
+      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4" role="group" aria-label={t("stateLabel")}>
+        {stateChoices.map((state, index) => {
+          const selected = value.state === state;
+          const passed = index < selectedStateIndex;
+          return (
+            <Button
+              key={state}
+              type="button"
+              size="sm"
+              variant="secondary"
+              className={cn(
+                "h-auto min-h-10 min-w-0 justify-start gap-2 rounded-lg px-2 py-1.5 text-left text-[11px] leading-4",
+                passed && "bg-leaf/10 text-ink",
+                selected && "border-moon bg-moon/35 text-ink ring-1 ring-moon/55",
+              )}
+              disabled={disabled || editingScope === "assessor"}
+              aria-pressed={selected}
+              onClick={() => chooseState(state)}
+            >
+              <span className={cn(
+                "flex size-5 shrink-0 items-center justify-center rounded-full border text-[10px]",
+                selected
+                  ? "border-moon bg-moon text-ink"
+                  : passed
+                    ? "border-leaf-deep bg-leaf/50 text-ink"
+                    : "border-line text-muted",
+              )}>
+                {passed ? <Check className="size-3" /> : index + 1}
+              </span>
+              <span className="min-w-0">{t(`state_${state}`)}</span>
+            </Button>
+          );
+        })}
+      </div>
+      <p className="border-l-2 border-moon pl-3 text-[11px] leading-5 text-ink">
+        {t(`task_${value.state}`)}
+      </p>
+    </div>
+  ) : null;
+
   return (
     <div
       className={cn(workflow ? "grid gap-5 xl:grid-cols-[12rem_minmax(0,1fr)]" : "space-y-2")}
@@ -367,6 +419,7 @@ export function InvitationDraftFields({
 
       {value ? (
         <section className={cn("space-y-3", workflow && "border-line xl:border-l xl:pl-5")}>
+          {stateControls}
           {workflow ? (
             <p className="text-[11px] font-medium text-muted">{t("arrangementFactsLabel")}</p>
           ) : null}

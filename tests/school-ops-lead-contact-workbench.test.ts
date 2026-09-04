@@ -25,6 +25,7 @@ import {
   invitationDraftIsComplete,
   invitationQueueFrom,
   invitationStateFromFacts,
+  selectInvitationProgress,
   invitationStatesForKind,
   invitationWorkStep,
 } from "@/features/school/invitation-contract";
@@ -140,8 +141,9 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(workbench).toContain("const rowWorkStep = invitationWorkStep(row)");
     expect(workbench).toContain("rowMatchesView");
     expect(draftFields).toContain('"assessment_1v1", "activity", "waiting_activity"');
-    expect(draftFields).toContain("invitationStateFromFacts");
-    expect(draftFields).not.toContain("stateChoices.map");
+    expect(draftFields).not.toContain("invitationStateFromFacts");
+    expect(draftFields).toContain("stateChoices.map");
+    expect(draftFields).toContain("selectInvitationProgress");
     expect(draftFields).toContain("AssessmentAvailabilityGrid");
     expect(draftFields).toContain("draftCacheRef.current");
     expect(draftFields).toContain("window.sessionStorage.setItem");
@@ -335,6 +337,45 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
       scheduledAt: null,
       locationText: "",
     }, "2026-09-05@14:00")).toBeNull();
+    expect(applyDirectAssessmentTime({
+      kind: "assessment_1v1",
+      state: "awaiting_parent",
+      activityId: null,
+      assessorId: "00000000-0000-0000-0000-000000000001",
+      parentTimeOptions: [],
+      assessorTimeOptions: [],
+      scheduledAt: null,
+      locationText: "",
+    }, "2026-09-05@14:00", "awaiting_parent")).toMatchObject({
+      state: "awaiting_parent",
+      scheduledAt: "2026-09-05T06:00:00.000Z",
+    });
+    expect(selectInvitationProgress({
+      kind: "assessment_1v1",
+      state: "coordinating_time",
+      activityId: null,
+      assessorId: "00000000-0000-0000-0000-000000000001",
+      parentTimeOptions: ["2026-09-05@14:00"],
+      assessorTimeOptions: ["2026-09-05@14:00"],
+      scheduledAt: null,
+      locationText: "",
+    }, "awaiting_parent")).toMatchObject({
+      state: "awaiting_parent",
+      scheduledAt: "2026-09-05T06:00:00.000Z",
+    });
+    expect(selectInvitationProgress({
+      kind: "assessment_1v1",
+      state: "confirmed",
+      activityId: null,
+      assessorId: "00000000-0000-0000-0000-000000000001",
+      parentTimeOptions: ["2026-09-05@14:00"],
+      assessorTimeOptions: ["2026-09-05@14:00"],
+      scheduledAt: "2026-09-05T06:00:00.000Z",
+      locationText: "",
+    }, "awaiting_teacher")).toMatchObject({
+      state: "awaiting_teacher",
+      scheduledAt: null,
+    });
     expect(invitationStateFromFacts({
       kind: "assessment_1v1",
       state: "confirmed",

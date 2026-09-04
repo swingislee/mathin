@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, Check, ChevronLeft, ChevronRight, Handshake } from "lucide-react";
+import { CalendarDays, Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +30,19 @@ import {
 type AvailabilitySide = "parent" | "assessor";
 type AvailabilityMode = AvailabilitySide | "direct";
 
+function initialAvailabilityMode(
+  value: InvitationDraft,
+  editableSide: "both" | AvailabilitySide,
+): AvailabilityMode {
+  if (editableSide === "assessor") return "assessor";
+  if (editableSide === "both"
+      && value.assessorId
+      && (value.state === "awaiting_parent" || value.state === "confirmed")) {
+    return "direct";
+  }
+  return "parent";
+}
+
 const EXPIRED_SLOT_STYLE = {
   backgroundColor: "color-mix(in srgb, var(--paper) 84%, var(--line))",
   backgroundImage: "repeating-linear-gradient(135deg, transparent 0 5px, color-mix(in srgb, var(--line) 42%, transparent) 5px 6px)",
@@ -58,7 +71,7 @@ export function AssessmentAvailabilityGrid({
 }) {
   const t = useTranslations("school.invitations");
   const [open, setOpen] = useState(false);
-  const [side, setSide] = useState<AvailabilityMode>(editableSide === "assessor" ? "assessor" : "parent");
+  const [side, setSide] = useState<AvailabilityMode>(() => initialAvailabilityMode(value, editableSide));
   const initialAnchor = value.scheduledAt
     ? new Date(value.scheduledAt)
     : dayFromOption(value.parentTimeOptions[0] ?? value.assessorTimeOptions[0]) ?? new Date();
@@ -102,7 +115,8 @@ export function AssessmentAvailabilityGrid({
   };
   const toggleSlot = (slot: string) => {
     if (side === "direct") {
-      const next = applyDirectAssessmentTime(value, slot);
+      const targetState = value.state === "awaiting_parent" ? "awaiting_parent" : "confirmed";
+      const next = applyDirectAssessmentTime(value, slot, targetState);
       if (!next) return;
       onChange(next);
       setOpen(false);
@@ -130,43 +144,34 @@ export function AssessmentAvailabilityGrid({
           overlap: intersection.length,
         })
       : t("availabilityEmpty");
+  const choosingScheduledTime = value.state === "awaiting_parent" || value.state === "confirmed";
+  const scheduledTimeNeedsAssessor = editableSide === "both" && choosingScheduledTime && !value.assessorId;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <div className={cn("grid gap-1.5", editableSide === "both" && "grid-cols-[minmax(0,1fr)_auto]")}>
-        <Button
-          type="button"
-          variant="secondary"
-          className="h-10 w-full justify-start gap-2 rounded-xl px-3 text-left"
-          disabled={disabled}
-          onClick={() => {
-            setSide(editableSide === "assessor" ? "assessor" : "parent");
-            setOpen(true);
-          }}
-        >
-          <CalendarDays className="size-4 shrink-0 text-moon-deep" />
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-xs font-medium text-ink">{t("availabilityOpen")}</span>
-            <span className="block truncate text-[10px] font-normal text-muted">{triggerSummary}</span>
+      <Button
+        type="button"
+        variant="secondary"
+        className="h-10 w-full justify-start gap-2 rounded-xl px-3 text-left"
+        disabled={disabled || scheduledTimeNeedsAssessor}
+        title={scheduledTimeNeedsAssessor ? t("availabilityDirectNeedsAssessor") : undefined}
+        onClick={() => {
+          setSide(initialAvailabilityMode(value, editableSide));
+          setOpen(true);
+        }}
+      >
+        <CalendarDays className="size-4 shrink-0 text-moon-deep" />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-xs font-medium text-ink">
+            {scheduledTimeNeedsAssessor
+              ? t("availabilityDirectNeedsAssessor")
+              : choosingScheduledTime
+                ? t("availabilityChooseScheduled")
+                : t("availabilityOpen")}
           </span>
-        </Button>
-        {editableSide === "both" ? (
-          <Button
-            type="button"
-            variant="secondary"
-            className="h-10 rounded-xl px-3 text-xs"
-            disabled={disabled || !value.assessorId}
-            title={!value.assessorId ? t("availabilityDirectNeedsAssessor") : undefined}
-            onClick={() => {
-              setSide("direct");
-              setOpen(true);
-            }}
-          >
-            <Handshake className="size-4" />
-            {value.assessorId ? t("availabilityDirectOpen") : t("availabilityDirectNeedsAssessor")}
-          </Button>
-        ) : null}
-      </div>
+          <span className="block truncate text-[10px] font-normal text-muted">{triggerSummary}</span>
+        </span>
+      </Button>
       <DialogContent className="max-w-[min(62rem,calc(100vw-2rem))] gap-3 p-4 sm:p-5">
         <DialogHeader>
           <DialogTitle>{t("availabilityTitle")}</DialogTitle>
@@ -203,7 +208,7 @@ export function AssessmentAvailabilityGrid({
                 <Badge variant="secondary" className="ml-1 px-1.5 py-0 text-[10px]">{value.assessorTimeOptions.length}</Badge>
               </Button>
             ) : null}
-            {editableSide === "both" ? (
+            {editableSide === "both" && choosingScheduledTime ? (
               <Button
                 type="button"
                 size="sm"
@@ -215,7 +220,7 @@ export function AssessmentAvailabilityGrid({
                 onClick={() => setSide("direct")}
               >
                 {side === "direct" ? <Check className="size-3.5" /> : null}
-                {t("availabilityDirectSide")}
+                {t("availabilityScheduledSide")}
               </Button>
             ) : null}
           </div>
@@ -232,7 +237,7 @@ export function AssessmentAvailabilityGrid({
 
         {side === "direct" ? (
           <p className="border-l-2 border-rose pl-3 text-[11px] leading-5 text-ink" role="status">
-            {t("availabilityDirectHint")}
+            {t(value.state === "confirmed" ? "availabilityConfirmedModeHint" : "availabilityCandidateModeHint")}
           </p>
         ) : null}
 
@@ -277,7 +282,7 @@ export function AssessmentAvailabilityGrid({
                   const unavailable = expired && !parent && !assessor && !selected;
                   const directUnavailable = side === "direct" && !instant;
                   const sideLabel = side === "direct"
-                    ? t("availabilityDirectShort")
+                    ? t("availabilityScheduledShort")
                     : t(`availability${side === "parent" ? "Parent" : "Assessor"}Short`);
                   return (
                     <button

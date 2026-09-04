@@ -190,15 +190,44 @@ export function normalizeAssessmentTimeOptions(values: readonly string[]): strin
 export function applyDirectAssessmentTime(
   draft: InvitationDraft,
   option: string,
+  targetState: "awaiting_parent" | "confirmed" = "confirmed",
 ): InvitationDraft | null {
   const scheduledAt = assessmentTimeOptionToInstant(option);
   if (draft.kind !== "assessment_1v1" || !draft.assessorId || !scheduledAt) return null;
   return {
     ...draft,
-    state: "confirmed",
+    state: targetState,
     parentTimeOptions: normalizeAssessmentTimeOptions([...draft.parentTimeOptions, option]),
     assessorTimeOptions: normalizeAssessmentTimeOptions([...draft.assessorTimeOptions, option]),
     scheduledAt,
+  };
+}
+
+export function selectInvitationProgress(
+  draft: InvitationDraft,
+  state: InvitationState,
+): InvitationDraft {
+  if (!invitationStatesForKind(draft.kind).includes(state)) return draft;
+  if (draft.kind !== "assessment_1v1") return { ...draft, state };
+  if (state === "coordinating_time" || state === "awaiting_teacher") {
+    return { ...draft, state, scheduledAt: null };
+  }
+  const sharedInstants = assessmentAvailabilityIntersection(
+    draft.parentTimeOptions,
+    draft.assessorTimeOptions,
+  ).flatMap((option) => {
+    const instant = assessmentTimeOptionToInstant(option);
+    return instant ? [instant] : [];
+  });
+  const selectedStillShared = draft.scheduledAt && sharedInstants.includes(draft.scheduledAt);
+  return {
+    ...draft,
+    state,
+    scheduledAt: selectedStillShared
+      ? draft.scheduledAt
+      : sharedInstants.length === 1
+        ? sharedInstants[0]
+        : null,
   };
 }
 
