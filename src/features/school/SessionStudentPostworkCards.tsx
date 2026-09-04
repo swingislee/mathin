@@ -18,6 +18,7 @@ import type { LearningResultStatus } from "./learning-results";
 import type { ReviewRecord } from "./review-actions";
 import { saveSessionReviewsAction } from "./review-actions";
 import { SessionTaskActions } from "./SessionPostworkActions";
+import { LEARNING_CHECK_STATUS_STYLE } from "./session-learning-visual";
 
 export interface SessionStudentPostworkRow {
   studentId: string;
@@ -30,15 +31,6 @@ export interface SessionStudentPostworkRow {
     status: "explained" | "independent" | "prompted" | "imitated" | "incomplete" | "unchecked";
   }>;
 }
-
-const CHECK_TONE: Record<SessionStudentPostworkRow["checks"][number]["status"], string> = {
-  explained: "border-sky-400/40 bg-sky-100/70 text-sky-950 dark:bg-sky-950/40 dark:text-sky-100",
-  independent: "border-leaf/40 bg-leaf/15 text-leaf-deep",
-  prompted: "border-amber-400/40 bg-amber-100/70 text-amber-950 dark:bg-amber-950/40 dark:text-amber-100",
-  imitated: "border-violet-400/40 bg-violet-100/70 text-violet-950 dark:bg-violet-950/40 dark:text-violet-100",
-  incomplete: "border-rose/40 bg-rose/10 text-rose",
-  unchecked: "border-line bg-paper/50 text-muted",
-};
 
 export function SessionStudentPostworkCards({
   sessionId,
@@ -219,7 +211,11 @@ export function SessionStudentPostworkCards({
                     <li
                       key={check.id}
                       title={check.title}
-                      className={cn("flex min-w-0 items-center gap-1.5 rounded-lg border px-2 py-1 text-[11px]", CHECK_TONE[check.status])}
+                      className={cn(
+                        "flex min-w-0 items-center gap-1.5 rounded-lg border px-2 py-1 text-[11px]",
+                        LEARNING_CHECK_STATUS_STYLE[check.status].card,
+                        LEARNING_CHECK_STATUS_STYLE[check.status].icon,
+                      )}
                     >
                       {check.status === "unchecked"
                         ? <CircleDashed size={12} className="shrink-0" aria-hidden="true" />

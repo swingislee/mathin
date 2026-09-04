@@ -1,13 +1,8 @@
 import { getTranslations } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
-import type { MyLearningCheckResult, MyLearningCheckStatus } from "./customer";
-
-function statusVariant(status: MyLearningCheckStatus): "default" | "secondary" | "outline" | "danger" {
-  if (status === "independent") return "default";
-  if (status === "incomplete") return "danger";
-  if (status === "imitated") return "outline";
-  return "secondary";
-}
+import { cn } from "@/lib/utils";
+import type { MyLearningCheckResult } from "./customer";
+import { LEARNING_CHECK_STATUS_STYLE } from "./session-learning-visual";
 
 export async function StudentLearningCheckResults({
   locale,
@@ -53,7 +48,14 @@ export async function StudentLearningCheckResults({
               {group.map((record) => (
                 <li key={record.checkId} className="flex min-w-0 items-center justify-between gap-3 rounded-lg border border-line bg-paper/45 px-3 py-2 text-sm">
                   <span className="min-w-0 truncate">{record.checkTitle}</span>
-                  <Badge className="shrink-0" variant={statusVariant(record.status)}>
+                  <Badge
+                    className={cn(
+                      "shrink-0",
+                      LEARNING_CHECK_STATUS_STYLE[record.status].card,
+                      LEARNING_CHECK_STATUS_STYLE[record.status].icon,
+                    )}
+                    variant="outline"
+                  >
                     {sessionT(`learningStatus_${record.status}`)}
                   </Badge>
                 </li>

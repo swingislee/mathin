@@ -7,6 +7,7 @@ import {
   type TeacherAssessmentPaperVersion,
   type TeacherAssessmentQuestion,
 } from "@/features/school/teacher-assessment-contract";
+import { LEARNING_CHECK_STATUS_STYLE } from "@/features/school/session-learning-visual";
 
 const root = process.cwd();
 const read = (...segments: string[]) => fs.readFileSync(path.join(root, ...segments), "utf8");
@@ -116,6 +117,20 @@ describe("teacher question assessment workbench", () => {
     expect(statusMigration).toContain("when 'partial' then 'imitated'");
     expect(statusMigration).toContain("when 'unable' then 'incomplete'");
     expect(statusMigration).toContain("when 'not_tested' then 'incomplete'");
+  });
+
+  it("uses one semantic palette across entry and result surfaces", () => {
+    const postwork = read("src", "features", "school", "SessionStudentPostworkCards.tsx");
+    const studentResults = read("src", "features", "school", "StudentLearningCheckResults.tsx");
+
+    expect(LEARNING_CHECK_STATUS_STYLE.explained.active).toContain("sky");
+    expect(LEARNING_CHECK_STATUS_STYLE.independent.active).toContain("leaf");
+    expect(LEARNING_CHECK_STATUS_STYLE.prompted.active).toContain("yellow");
+    expect(LEARNING_CHECK_STATUS_STYLE.imitated.active).toContain("orange");
+    expect(LEARNING_CHECK_STATUS_STYLE.incomplete.active).toContain("rose");
+    expect(LEARNING_CHECK_STATUS_STYLE.imitated.active).not.toContain("violet");
+    expect(postwork).toContain("LEARNING_CHECK_STATUS_STYLE[check.status]");
+    expect(studentResults).toContain("LEARNING_CHECK_STATUS_STYLE[record.status]");
   });
 
   it("uses the same students × questions matrix as classroom entry instead of maintaining a second renderer", () => {
