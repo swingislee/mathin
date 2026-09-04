@@ -2,7 +2,7 @@
 
 import { Check } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,6 +28,20 @@ interface StoredInvitationDrafts {
   version: 1;
   selectedKind: InvitationKind | null;
   drafts: Partial<Record<InvitationKind, InvitationDraft>>;
+}
+
+const ASSESSMENT_PROGRESS_STATES = invitationStatesForKind("assessment_1v1");
+
+interface InvitationShortcutEvent {
+  key: string;
+  repeat: boolean;
+  altKey: boolean;
+  ctrlKey: boolean;
+  metaKey: boolean;
+  shiftKey: boolean;
+  target: EventTarget | null;
+  preventDefault: () => void;
+  stopPropagation: () => void;
 }
 
 export function invitationDraftSessionKey(
@@ -153,19 +167,19 @@ export function InvitationDraftFields({
     const restored = stored.selectedKind ? stored.drafts[stored.selectedKind] ?? null : null;
     if (restored || allowNone) onChangeRef.current(restored);
   }, [allowNone, draftStorageKey]);
-  const persistDrafts = (selectedKind: InvitationKind | null) => {
+  const persistDrafts = useCallback((selectedKind: InvitationKind | null) => {
     if (!draftStorageKey) return;
     writeStoredDrafts(draftStorageKey, {
       version: 1,
       selectedKind,
       drafts: draftCacheRef.current,
     });
-  };
-  const emit = (next: InvitationDraft) => {
+  }, [draftStorageKey]);
+  const emit = useCallback((next: InvitationDraft) => {
     draftCacheRef.current[next.kind] = next;
     persistDrafts(next.kind);
-    onChange(next);
-  };
+    onChangeRef.current(next);
+  }, [persistDrafts]);
   const dateTimeFormatter = useMemo(() => new Intl.DateTimeFormat(locale, {
     dateStyle: "short",
     timeStyle: "short",
@@ -186,13 +200,42 @@ export function InvitationDraftFields({
     emit({ ...value, [key]: next });
   };
   const stateChoices = value?.kind === "assessment_1v1"
-    ? invitationStatesForKind(value.kind)
+    ? ASSESSMENT_PROGRESS_STATES
     : [];
   const selectedStateIndex = value ? stateChoices.indexOf(value.state) : -1;
-  const chooseState = (state: InvitationState) => {
+  const chooseState = useCallback((state: InvitationState) => {
     if (!value) return;
     emit(selectInvitationProgress(value, state));
-  };
+  }, [emit, value]);
+  const handleStateShortcut = useCallback((event: InvitationShortcutEvent) => {
+    if (
+      !value
+      || value.kind !== "assessment_1v1"
+      || disabled
+      || editingScope === "assessor"
+      || event.repeat
+      || event.altKey
+      || event.ctrlKey
+      || event.metaKey
+      || event.shiftKey
+    ) return;
+    const target = event.target;
+    if (
+      target instanceof HTMLElement
+      && target.closest("input, textarea, select, [contenteditable='true'], [role='combobox'], [role='dialog'], [role='listbox'], [role='menu']")
+    ) return;
+    const state = ASSESSMENT_PROGRESS_STATES[Number(event.key) - 1];
+    if (!state) return;
+    event.preventDefault();
+    event.stopPropagation();
+    chooseState(state);
+  }, [chooseState, disabled, editingScope, value]);
+  useEffect(() => {
+    if (!workflow) return;
+    const listener = (event: KeyboardEvent) => handleStateShortcut(event);
+    window.addEventListener("keydown", listener, true);
+    return () => window.removeEventListener("keydown", listener, true);
+  }, [handleStateShortcut, workflow]);
   const selectedActivity = value?.activityId
     ? activities.find((activity) => activity.id === value.activityId)
     : undefined;
@@ -363,9 +406,18 @@ export function InvitationDraftFields({
     <div className="space-y-2">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <p className="text-[11px] font-medium text-muted">{t("stateLabel")}</p>
-        <p className="text-[10px] text-muted">{t("stateManualHint")}</p>
+        <p className="flex items-center gap-1.5 text-[10px] text-muted">
+          <span className="font-mono text-ink">⌨ 1–4</span>
+          <span>· {t("stateManualHint")}</span>
+        </p>
       </div>
-      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4" role="group" aria-label={t("stateLabel")}>
+      <div
+        className="grid gap-1.5"
+        style={{ gridTemplateColumns: `repeat(${stateChoices.length}, minmax(0, 1fr))` }}
+        role="group"
+        aria-label={t("stateLabel")}
+        aria-keyshortcuts="1 2 3 4"
+      >
         {stateChoices.map((state, index) => {
           const selected = value.state === state;
           const passed = index < selectedStateIndex;
@@ -374,14 +426,15 @@ export function InvitationDraftFields({
               key={state}
               type="button"
               size="sm"
-              variant="secondary"
+              variant="ghost"
               className={cn(
-                "h-auto min-h-10 min-w-0 justify-start gap-2 rounded-lg px-2 py-1.5 text-left text-[11px] leading-4",
+                "h-auto min-h-11 min-w-0 flex-col gap-1 rounded-lg px-1.5 py-1.5 text-center text-[11px] leading-4",
                 passed && "bg-leaf/10 text-ink",
-                selected && "border-moon bg-moon/35 text-ink ring-1 ring-moon/55",
+                selected && "bg-moon/35 text-ink",
               )}
               disabled={disabled || editingScope === "assessor"}
               aria-pressed={selected}
+              aria-keyshortcuts={String(index + 1)}
               onClick={() => chooseState(state)}
             >
               <span className={cn(
@@ -394,7 +447,7 @@ export function InvitationDraftFields({
               )}>
                 {passed ? <Check className="size-3" /> : index + 1}
               </span>
-              <span className="min-w-0">{t(`state_${state}`)}</span>
+              <span className="w-full truncate">{t(`state_${state}`)}</span>
             </Button>
           );
         })}
@@ -409,6 +462,7 @@ export function InvitationDraftFields({
     <div
       className={cn(workflow ? "grid gap-5 xl:grid-cols-[12rem_minmax(0,1fr)]" : "space-y-2")}
       data-testid="invitation-draft-fields"
+      onKeyDownCapture={handleStateShortcut}
     >
       <section>
         {workflow ? (
