@@ -121,6 +121,7 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(migration).toContain("alter table public.lead_invitation_threads enable row level security");
     expect(migration).toContain("create or replace function public.record_lead_contact_v2");
     expect(migration).toContain("create or replace function public.update_lead_invitation");
+    expect(migration).toContain("if v_invitation.state in ('completed','cancelled') then raise exception 'INVITATION_CLOSED'; end if;");
     expect(migration).toContain("p_invitation_state");
     expect(migration).not.toContain("p_next_action_at");
     expect(availabilityMigration).toContain("parent_time_options text[]");
@@ -140,7 +141,9 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(workbench).toContain("replaceCoordinationStage");
     expect(workbench).toContain("const rowWorkStep = invitationWorkStep(row)");
     expect(workbench.match(/t\("workHint_waiting_assessor_response", \{ assessor:/g)).toHaveLength(2);
-    expect(workbench).toContain('row.state === "confirmed" && !dirty');
+    expect(workbench).not.toContain('row.state === "confirmed" && !dirty');
+    expect(workbench).toContain("onConfirmedReady");
+    expect(workbench).toContain("confirmedDraftComplete");
     expect(workbench).toContain("rowMatchesView");
     expect(draftFields).toContain('"assessment_1v1", "activity", "waiting_activity"');
     expect(draftFields).not.toContain("invitationStateFromFacts");
@@ -150,6 +153,7 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(draftFields).toContain("draftCacheRef.current");
     expect(draftFields).toContain("window.sessionStorage.setItem");
     expect(draftFields).toContain("clearInvitationDraftSession");
+    expect(draftFields).toContain("onConfirmedReadyRef.current?.(next)");
     expect(availabilityGrid).toContain("grid-cols-[5.5rem_repeat(7");
     expect(availabilityGrid).toContain("ASSESSMENT_SLOT_DEFINITIONS");
     expect(availabilityGrid).toContain('side === "direct"');

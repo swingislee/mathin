@@ -138,6 +138,7 @@ export function InvitationDraftFields({
   editingScope = "full",
   draftStorageKey,
   onChange,
+  onConfirmedReady,
 }: {
   value: InvitationDraft | null;
   activities: InvitationActivityOption[];
@@ -149,6 +150,7 @@ export function InvitationDraftFields({
   editingScope?: "full" | "assessor";
   draftStorageKey?: string;
   onChange: (value: InvitationDraft | null) => void;
+  onConfirmedReady?: (value: InvitationDraft) => void;
 }) {
   const t = useTranslations("school.invitations");
   const workflow = variant === "workflow";
@@ -156,16 +158,25 @@ export function InvitationDraftFields({
     value ? { [value.kind]: value } : {},
   );
   const onChangeRef = useRef(onChange);
+  const onConfirmedReadyRef = useRef(onConfirmedReady);
   useEffect(() => {
     onChangeRef.current = onChange;
   }, [onChange]);
+  useEffect(() => {
+    onConfirmedReadyRef.current = onConfirmedReady;
+  }, [onConfirmedReady]);
   useEffect(() => {
     if (!draftStorageKey) return;
     const stored = readStoredDrafts(draftStorageKey);
     if (!stored) return;
     draftCacheRef.current = { ...draftCacheRef.current, ...stored.drafts };
     const restored = stored.selectedKind ? stored.drafts[stored.selectedKind] ?? null : null;
-    if (restored || allowNone) onChangeRef.current(restored);
+    if (restored || allowNone) {
+      onChangeRef.current(restored);
+      if (restored?.kind === "assessment_1v1" && restored.state === "confirmed" && invitationDraftIsComplete(restored)) {
+        onConfirmedReadyRef.current?.(restored);
+      }
+    }
   }, [allowNone, draftStorageKey]);
   const persistDrafts = useCallback((selectedKind: InvitationKind | null) => {
     if (!draftStorageKey) return;
@@ -179,6 +190,9 @@ export function InvitationDraftFields({
     draftCacheRef.current[next.kind] = next;
     persistDrafts(next.kind);
     onChangeRef.current(next);
+    if (next.kind === "assessment_1v1" && next.state === "confirmed" && invitationDraftIsComplete(next)) {
+      onConfirmedReadyRef.current?.(next);
+    }
   }, [persistDrafts]);
   const dateTimeFormatter = useMemo(() => new Intl.DateTimeFormat(locale, {
     dateStyle: "short",

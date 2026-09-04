@@ -28,6 +28,7 @@ import {
   ASSESSMENT_TIME_ZONE,
   assessmentAvailabilityIntersection,
   assessmentTimeOptionToInstant,
+  invitationDraftIsComplete,
   invitationWorkStep,
   parseAssessmentTimeOption,
   type InvitationActivityOption,
@@ -155,6 +156,7 @@ function InvitationEditor({
   const [channel, setChannel] = useState<InvitationChannel>("wechat");
   const [note, setNote] = useState("");
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [autoFlowFailed, setAutoFlowFailed] = useState(false);
   const submittedInputRef = useRef<UpdateInvitationInput | null>(null);
   const draftStorageKey = invitationDraftSessionKey("coordination", row.id, row.updatedAt);
   const assessorEditing = !canManageInvitation && row.assessorId === currentUserId;
@@ -195,7 +197,11 @@ function InvitationEditor({
       onSaved(row, input);
       setNote("");
       setCancelOpen(false);
+      setAutoFlowFailed(false);
       router.refresh();
+    },
+    onError: () => {
+      if (submittedInputRef.current?.state === "confirmed") setAutoFlowFailed(true);
     },
   });
   const assessorRun = useAction(updateAssessorAvailabilityAction, {
@@ -224,6 +230,7 @@ function InvitationEditor({
   });
   const pending = updateRun.pending || assessorRun.pending;
   const submitSupport = (nextDraft: InvitationDraft) => {
+    if (nextDraft.state === "confirmed") setAutoFlowFailed(false);
     const input = { ...nextDraft, channel, note };
     submittedInputRef.current = input;
     updateRun.run(row.id, input);
@@ -316,6 +323,7 @@ function InvitationEditor({
     location: draft.locationText || selectedActivity?.location || t("locationToConfirm"),
   });
   const dirty = !draftMatchesRow(draft, row);
+  const confirmedDraftComplete = invitationDraftIsComplete(draft);
   const teacherHandoffNeedsSave = dirty || row.state !== "awaiting_teacher" || Boolean(note.trim());
   const candidateNeedsSave = dirty || row.state !== "awaiting_parent" || Boolean(note.trim());
 
@@ -535,16 +543,44 @@ function InvitationEditor({
       );
     }
     if (workStep === "confirmed" && dirty) {
+      const shouldAutoFlow = draft.kind === "assessment_1v1" && row.state !== "confirmed";
       return (
         <>
-          {header(t("workTitle_direct_booking_ready"), t("workHint_direct_booking_ready"))}
+          {header(
+            shouldAutoFlow
+              ? confirmedDraftComplete ? t("workTitle_direct_booking_ready") : t("workTitle_confirmed_incomplete")
+              : confirmedDraftComplete ? t("workTitle_confirmed_changes") : t("workTitle_confirmed_edit_incomplete"),
+            shouldAutoFlow
+              ? confirmedDraftComplete ? t("workHint_direct_booking_ready") : t("workHint_confirmed_incomplete")
+              : confirmedDraftComplete ? t("workHint_confirmed_changes") : t("workHint_confirmed_edit_incomplete"),
+          )}
           <div className="border-l-2 border-rose pl-3">
             <p className="text-sm font-medium text-ink">{currentArrangement}</p>
           </div>
-          <Button type="button" size="sm" className="h-9 w-full" disabled={pending} onClick={() => submitSupport({ ...draft, state: "confirmed" })}>
-            {pending ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" /> : <Check className="size-4" />}
-            {t("saveDirectBooking")}
-          </Button>
+          {shouldAutoFlow ? (
+            confirmedDraftComplete ? (
+              autoFlowFailed ? (
+                <Button type="button" size="sm" variant="secondary" className="h-9 w-full" disabled={pending} onClick={() => submitSupport(draft)}>
+                  {pending ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" /> : null}
+                  {t("retryAutoConfirm")}
+                </Button>
+              ) : (
+                <p className="flex items-center gap-2 rounded-lg bg-leaf/15 px-3 py-2 text-[11px] text-ink" role="status">
+                  <LoaderCircle className="size-3.5 animate-spin motion-reduce:animate-none" />
+                  {t("autoConfirming")}
+                </p>
+              )
+            ) : (
+              <p className="rounded-lg bg-moon/20 px-3 py-2 text-[11px] leading-5 text-ink" role="status">
+                {t("confirmedNeedsExactTime")}
+              </p>
+            )
+          ) : confirmedDraftComplete ? (
+            <Button type="button" size="sm" className="h-9 w-full" disabled={pending} onClick={() => submitSupport(draft)}>
+              {pending ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" /> : <Check className="size-4" />}
+              {t("saveConfirmedChanges")}
+            </Button>
+          ) : null}
           <Button type="button" size="sm" variant="ghost" className="h-8 w-full" disabled={pending} onClick={() => setDraft({ ...draft, state: "coordinating_time", scheduledAt: null })}>
             {t("backToCoordination")}
           </Button>
@@ -578,12 +614,15 @@ function InvitationEditor({
           activities={activities}
           assessors={assessors}
           locale={locale}
-          disabled={pending || (!assessorEditing && row.state === "confirmed" && !dirty)}
+          disabled={pending}
           allowNone={false}
           variant="workflow"
           editingScope={assessorEditing ? "assessor" : "full"}
           draftStorageKey={draftStorageKey}
           onChange={(value) => { if (value) setDraft(value); }}
+          onConfirmedReady={(value) => {
+            if (!assessorEditing && row.state !== "confirmed") submitSupport(value);
+          }}
         />
 
         <section className="space-y-3 border-line xl:border-l xl:pl-5">
